@@ -6,22 +6,7 @@ using UnityEngine.UI;
 using CoordinateSharp;
 
 
-public class FlightLeg
-{
-    public string name;
-    public Coordinate start;
-    public Coordinate end;
-    public GameObject leg;
 
-    public FlightLeg(string _name, Coordinate _start, Coordinate _end, GameObject _leg)
-    {
-        name = _name;
-        start = _start;
-        end = _end;
-        leg = _leg;
-    }
-
-}
 
 public class MainLoop : MonoBehaviour
 {
@@ -51,7 +36,7 @@ public class MainLoop : MonoBehaviour
     private double lonOriginRadians = 35d;
     private double latOriginRadians = 33d;
 
-    private double flightSpeed = 90d;
+    public double flightSpeed = 90d; //TODO: Will be on the leg level
 
 
 
@@ -63,7 +48,7 @@ public class MainLoop : MonoBehaviour
     }
 
 
-    private int ToMagnetic(int angle = 360, int divation = -4)
+    public int ToMagnetic(int angle = 360, int divation = -4)
     {
         int result = angle + divation;
         if (result < 0)
@@ -73,13 +58,13 @@ public class MainLoop : MonoBehaviour
         return result;
     }
 
-    private string ToHMS(double time)
+    public string ToHMS(double time)
     {
         var result = TimeSpan.FromHours(time);
         return result.Minutes + "' " + result.Seconds + "''"; //result.Hours + ": " +  Only return minutes seconds
     }
 
-    private Coordinate CursorToCoordinate(Vector3 cursorPosition)
+    public Coordinate CursorToCoordinate(Vector3 cursorPosition)
     {
 
 
@@ -154,7 +139,7 @@ public class MainLoop : MonoBehaviour
         }
     }
 
-    private Vector3 CursorLocalPosition()
+    public Vector3 CursorLocalPosition()
     {
         var mousePos = Input.mousePosition;
         mousePos.z = 5f;       // we want 2m away from the camera position
@@ -164,10 +149,10 @@ public class MainLoop : MonoBehaviour
 
 
 
-    private void AddFlightLeg(string _name, Coordinate _start, Coordinate _end , GameObject _leg)
-    {
-        flight.Add(new FlightLeg(_name, _start, _end, _leg));
-    }
+    //private void AddFlightLeg(string _name, Coordinate _start, Coordinate _end)
+    //{
+    //    flight.Add(new FlightLeg(_name, _start, _end));
+    //}
 
 
     private bool FlightHasLegs()
@@ -233,13 +218,12 @@ public class MainLoop : MonoBehaviour
 
 
 
-
         if (!drawMode)
         {
-            if (Input.GetMouseButtonDown(0))
-            {
-                CursorToCoordinate(objectPos);
-            }
+            //if (Input.GetMouseButtonDown(0))
+            //{
+            //    CursorToCoordinate(objectPos);
+            //}
             return;
         }
         
@@ -248,25 +232,12 @@ public class MainLoop : MonoBehaviour
 
         if (Input.GetMouseButtonDown(0)) // mouse left was clicked
         {
-            GameObject newLeg;
-            newLeg = Instantiate(leg, Vector3.zero, Quaternion.identity);
-            legs.Add(newLeg);
-
-            legScript = newLeg.GetComponent<lineDraw>();
-            legScript.start.position = objectPos;
-            legScript.end.position = objectPos;
-
-            Coordinate newCoord = CursorToCoordinate(objectPos);
-
-            legScript.startCoord = newCoord;
-            legScript.distanceText.text = "0";
 
             var legName = "LEG" + (flight.Count + 1);
-            AddFlightLeg(legName, newCoord, newCoord, newLeg);
+            FlightLeg newLeg = new FlightLeg(legName);
+            newLeg.CreateAtCurrentPos(this);
 
-            print("legs:");
-            print(flight.Count);
-
+            flight.Add(newLeg);
 
         }
 
@@ -275,23 +246,64 @@ public class MainLoop : MonoBehaviour
         if (!FlightHasLegs()) return;
 
         FlightLeg lastLeg = GetLastFlightLeg();
+        lastLeg.UpdateLegEndFromScreen(objectPos, this);
 
-        legScript = lastLeg.leg.GetComponent<lineDraw>();
-        legScript.end.position = objectPos;
-        legScript.endCoord = CursorToCoordinate(objectPos);
+    }
+}
 
 
-        // TODO: this should be in the leg object itself
-        Distance legDistance = new Distance(legScript.startCoord, legScript.endCoord, Shape.Sphere);
+public class FlightLeg
+{
+    public string legName;
+    public Coordinate start;
+    public Coordinate end;
+    public GameObject leg;
+    public lineDraw legScript;
+    public Vector3 pointStart;
+    public Vector3 pointEnd;
+
+    public FlightLeg(string _name)
+    {
+        legName = _name;
+    }
+
+    public void CreateAtCurrentPos(MainLoop mainLoop)
+    {
+        Vector3 curPosition = mainLoop.CursorLocalPosition();
+        Coordinate curCoord = mainLoop.CursorToCoordinate(curPosition);
+        GameObject newLeg;
+
+        pointStart = curPosition;
+        pointEnd = curPosition;
+
+        newLeg = UnityEngine.Object.Instantiate(mainLoop.leg, Vector3.zero, Quaternion.identity);
+
+        leg = newLeg;
+        legScript = newLeg.GetComponent<lineDraw>();
+        legScript.start.position = curPosition;
+        legScript.end.position = curPosition;
+
+        start = curCoord;
+        end = curCoord;
+
+    }
+
+    public void UpdateLegEndFromScreen(Vector3 pos, MainLoop mainLoop)
+
+    {
+
+        legScript.end.position = pos;
+        pointEnd = pos;
+        end = mainLoop.CursorToCoordinate(pos); //TODO: do I really need this like this?
+
+        Distance legDistance = new Distance(start, end, Shape.Sphere);
         double legDistanceNM = legDistance.NauticalMiles;
 
         legScript.distanceText.text = legDistanceNM.ToString("n1");
-        legScript.durationText.text = ToHMS(legDistanceNM / flightSpeed); //NOT HMS
-        legScript.headingText.text = ToMagnetic(Convert.ToInt32(legDistance.Bearing)) + " M";
+        legScript.durationText.text = mainLoop.ToHMS(legDistanceNM / mainLoop.flightSpeed); //NOT HMS
+        legScript.headingText.text = mainLoop.ToMagnetic(Convert.ToInt32(legDistance.Bearing)) + " M";
 
-        lastLeg.leg.GetComponent<LineRenderer>().enabled = true;
-        //}
-
-
+        leg.GetComponent<LineRenderer>().enabled = true;
     }
+
 }

@@ -14,8 +14,8 @@ public class lineDraw : MonoBehaviour
     public TextMesh durationText;
     public TextMesh headingText;
 
-    public Coordinate startCoord;
-    public Coordinate endCoord;
+    //public Coordinate startCoord;
+    //public Coordinate endCoord;
 
     private LineRenderer lineRenderer;
     private GameObject middle;
