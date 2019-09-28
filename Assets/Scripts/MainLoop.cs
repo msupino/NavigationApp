@@ -5,6 +5,24 @@ using UnityEngine;
 using UnityEngine.UI;
 using CoordinateSharp;
 
+
+public class FlightLeg
+{
+    public string name;
+    public Coordinate start;
+    public Coordinate end;
+    public GameObject leg;
+
+    public FlightLeg(string _name, Coordinate _start, Coordinate _end, GameObject _leg)
+    {
+        name = _name;
+        start = _start;
+        end = _end;
+        leg = _leg;
+    }
+
+}
+
 public class MainLoop : MonoBehaviour
 {
 
@@ -16,6 +34,7 @@ public class MainLoop : MonoBehaviour
 
 
     // Start is called before the first frame update
+    private List<FlightLeg> flight = new List<FlightLeg>();
 
     private List<GameObject> legs = new List<GameObject>();
     private Vector3 lastMouse;
@@ -143,6 +162,25 @@ public class MainLoop : MonoBehaviour
     }
 
 
+
+
+    private void AddFlightLeg(string _name, Coordinate _start, Coordinate _end , GameObject _leg)
+    {
+        flight.Add(new FlightLeg(_name, _start, _end, _leg));
+    }
+
+
+    private bool FlightHasLegs()
+    {
+        if (flight.Count > 0) return true;
+        return false;
+    }
+
+    private FlightLeg GetLastFlightLeg()
+    {
+        return flight[flight.Count-1];
+    }
+
     // Update is called once per frame
     void Update()
     {
@@ -206,41 +244,53 @@ public class MainLoop : MonoBehaviour
         }
         
 
-        
+        // Draw mode:
 
         if (Input.GetMouseButtonDown(0)) // mouse left was clicked
         {
-            legs.Add(Instantiate(leg, Vector3.zero, Quaternion.identity) as GameObject);
+            GameObject newLeg;
+            newLeg = Instantiate(leg, Vector3.zero, Quaternion.identity);
+            legs.Add(newLeg);
 
-            legScript = legs[legs.Count - 1].GetComponent<lineDraw>();
+            legScript = newLeg.GetComponent<lineDraw>();
             legScript.start.position = objectPos;
             legScript.end.position = objectPos;
-            legScript.startCoord = CursorToCoordinate(objectPos);
+
+            Coordinate newCoord = CursorToCoordinate(objectPos);
+
+            legScript.startCoord = newCoord;
             legScript.distanceText.text = "0";
 
-            //Debug.Log("Waypoint created");
+            var legName = "LEG" + (flight.Count + 1);
+            AddFlightLeg(legName, newCoord, newCoord, newLeg);
+
+            print("legs:");
+            print(flight.Count);
 
 
         }
 
         // mouse in motion with the next waypoint...
-        if (legs.Count > 0)
-        {
-            legScript = legs[legs.Count - 1].GetComponent<lineDraw>();
-            legScript.end.position = objectPos;
-            legScript.endCoord = CursorToCoordinate(objectPos);
+
+        if (!FlightHasLegs()) return;
+
+        FlightLeg lastLeg = GetLastFlightLeg();
+
+        legScript = lastLeg.leg.GetComponent<lineDraw>();
+        legScript.end.position = objectPos;
+        legScript.endCoord = CursorToCoordinate(objectPos);
 
 
-            // TODO: this should be in the leg object itself
-            Distance legDistance = new Distance(legScript.startCoord, legScript.endCoord, Shape.Sphere);
-            double legDistanceNM = legDistance.NauticalMiles;
+        // TODO: this should be in the leg object itself
+        Distance legDistance = new Distance(legScript.startCoord, legScript.endCoord, Shape.Sphere);
+        double legDistanceNM = legDistance.NauticalMiles;
 
-            legScript.distanceText.text = legDistanceNM.ToString("n1");
-            legScript.durationText.text = ToHMS(legDistanceNM / flightSpeed); //NOT HMS
-            legScript.headingText.text = ToMagnetic(Convert.ToInt32(legDistance.Bearing)) + " M";
+        legScript.distanceText.text = legDistanceNM.ToString("n1");
+        legScript.durationText.text = ToHMS(legDistanceNM / flightSpeed); //NOT HMS
+        legScript.headingText.text = ToMagnetic(Convert.ToInt32(legDistance.Bearing)) + " M";
 
-            legs[legs.Count - 1].GetComponent<LineRenderer>().enabled = true;
-        }
+        lastLeg.leg.GetComponent<LineRenderer>().enabled = true;
+        //}
 
 
     }
