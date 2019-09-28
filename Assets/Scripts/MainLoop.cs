@@ -20,8 +20,8 @@ public class MainLoop : MonoBehaviour
     // Start is called before the first frame update
     private List<FlightLeg> flight = new List<FlightLeg>();
     private Vector3 lastMouse;
-    private Transform map_camera_transform;
-    private Camera map_camera_camera;
+    private Transform mapCameraTransform;
+    private Camera mapCameraCamera;
     private float zoom;
     private bool canZoom;
     private bool drawMode;
@@ -38,11 +38,10 @@ public class MainLoop : MonoBehaviour
     public double flightSpeed = 90d; //TODO: Will be on the leg level
 
 
-
-    void Start()
+    private void Start()
     {
-        map_camera_transform = mainCamera.transform;
-        map_camera_camera = mainCamera.GetComponent<Camera>();
+        mapCameraTransform = mainCamera.transform;
+        mapCameraCamera = mainCamera.GetComponent<Camera>();
         buttonDraw.GetComponent<Button>().onClick.AddListener(ToggleDrawMode);
     }
 
@@ -189,7 +188,7 @@ public class MainLoop : MonoBehaviour
         if (canZoom)
         {
 
-            map_camera_camera.orthographicSize = zoom;
+            mapCameraCamera.orthographicSize = zoom;
         }
 
 
@@ -206,10 +205,10 @@ public class MainLoop : MonoBehaviour
             {
                 var curMouse = Input.mousePosition;
                 var pos = Camera.main.ScreenToViewportPoint(lastMouse - curMouse);
-                var orthographicSize = map_camera_camera.orthographicSize;
+                var orthographicSize = mapCameraCamera.orthographicSize;
                 var move = new Vector3(pos.x * dragSpeed * (orthographicSize / 10), 0, pos.y * dragSpeed * (orthographicSize / 10));
                 lastMouse = curMouse;
-                map_camera_transform.Translate(move, Space.World);
+                mapCameraTransform.Translate(move, Space.World);
                 return;
             }
         }
