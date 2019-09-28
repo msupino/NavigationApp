@@ -4,7 +4,7 @@ using UnityEngine;
 using CoordinateSharp;
 
 //[ExecuteInEditMode]
-public class lineDraw : MonoBehaviour
+public class LineDraw : MonoBehaviour
 {
     
     public Transform start;
@@ -21,7 +21,7 @@ public class lineDraw : MonoBehaviour
     private GameObject middle;
     
     // Start is called before the first frame update
-    void Start()
+    private void Start()
     {
         middle = Instantiate(perpendicular, Vector3.zero, Quaternion.identity);
         middle.transform.SetParent(gameObject.transform);
@@ -31,20 +31,21 @@ public class lineDraw : MonoBehaviour
     void Update()
     {
         lineRenderer = GetComponent<LineRenderer>();
-        lineRenderer.SetPosition(0, start.position);
-        lineRenderer.SetPosition(1, end.position);
+        var startPosition = start.position;
+        lineRenderer.SetPosition(0, startPosition);
+        var endPosition = end.position;
+        lineRenderer.SetPosition(1, endPosition);
 
 
         // draw the mid line perpendicular to the main line
-        LineRenderer middleLine;
-        middleLine = middle.GetComponent<LineRenderer>();
+        var middleLine = middle.GetComponent<LineRenderer>();
 
-        var newVec = start.position - end.position;
+        var newVec = startPosition - endPosition;
         var newVector = Vector3.Cross(newVec, Vector3.up);
         newVector.Normalize();
 
-        var newPoint = 1 * newVector + ((start.position + end.position) / 2);
-        var newPoint2 = -1 * newVector + ((start.position + end.position) / 2);
+        var newPoint = 1 * newVector + ((startPosition + endPosition) / 2);
+        var newPoint2 = -1 * newVector + ((startPosition + endPosition) / 2);
 
         middleLine.SetPosition(0, newPoint);
         middleLine.SetPosition(1, newPoint2);

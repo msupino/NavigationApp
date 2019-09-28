@@ -133,7 +133,7 @@ GameObject:
   - component: {fileID: 88472781}
   - component: {fileID: 88472780}
   m_Layer: 5
-  m_Name: button_draw
+  m_Name: ButtonDraw
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -409,7 +409,7 @@ GameObject:
   - component: {fileID: 963194227}
   - component: {fileID: 963194226}
   m_Layer: 0
-  m_Name: Main Camera
+  m_Name: MainCamera
   m_TagString: MainCamera
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -831,10 +831,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   leg: {fileID: 4960842751856254096, guid: 3e1ebaad957a45641836232347e706e2, type: 3}
-  main_camera: {fileID: 963194225}
-  button_draw: {fileID: 88472778}
+  mainCamera: {fileID: 963194225}
+  buttonDraw: {fileID: 88472778}
   dragSpeed: 20
   camZoomStep: 5
+  flightSpeed: 90
 --- !u!4 &1684617176
 Transform:
   m_ObjectHideFlags: 0

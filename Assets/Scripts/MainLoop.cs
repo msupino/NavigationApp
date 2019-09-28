@@ -7,14 +7,12 @@ using UnityEngine.EventSystems;
 using CoordinateSharp;
 
 
-
-
 public class MainLoop : MonoBehaviour
 {
 
     public GameObject leg;
-    public GameObject main_camera;
-    public GameObject button_draw;
+    public GameObject mainCamera;
+    public GameObject buttonDraw;
     public float dragSpeed = 20;
     public int camZoomStep = 5;
 
@@ -43,9 +41,9 @@ public class MainLoop : MonoBehaviour
 
     void Start()
     {
-        map_camera_transform = main_camera.transform;
-        map_camera_camera = main_camera.GetComponent<Camera>();
-        button_draw.GetComponent<Button>().onClick.AddListener(ToggleDrawMode);
+        map_camera_transform = mainCamera.transform;
+        map_camera_camera = mainCamera.GetComponent<Camera>();
+        buttonDraw.GetComponent<Button>().onClick.AddListener(ToggleDrawMode);
     }
 
 
@@ -163,7 +161,7 @@ public class MainLoop : MonoBehaviour
     private void RemoveLastLeg()
     {
         FlightLeg lastLeg = flight[flight.Count - 1];
-        Destroy(lastLeg.leg); //Destory the gameObject
+        Destroy(lastLeg.Leg); //Destory the gameObject
         flight.RemoveAt(flight.Count - 1);
     }
 
@@ -197,7 +195,6 @@ public class MainLoop : MonoBehaviour
 
         if (Input.GetKey(KeyCode.Space))
         {
-            print("spacd is pressed");
             if (Input.GetMouseButtonDown(0))
             {
 
@@ -207,10 +204,11 @@ public class MainLoop : MonoBehaviour
 
             if (Input.GetMouseButton(0))
             {
-                Vector3 currMouse = Input.mousePosition;
-                Vector3 pos = Camera.main.ScreenToViewportPoint(lastMouse - currMouse);
-                Vector3 move = new Vector3(pos.x * dragSpeed * (map_camera_camera.orthographicSize / 10), 0, pos.y * dragSpeed * (map_camera_camera.orthographicSize / 10));
-                lastMouse = currMouse;
+                var curMouse = Input.mousePosition;
+                var pos = Camera.main.ScreenToViewportPoint(lastMouse - curMouse);
+                var orthographicSize = map_camera_camera.orthographicSize;
+                var move = new Vector3(pos.x * dragSpeed * (orthographicSize / 10), 0, pos.y * dragSpeed * (orthographicSize / 10));
+                lastMouse = curMouse;
                 map_camera_transform.Translate(move, Space.World);
                 return;
             }
@@ -228,7 +226,7 @@ public class MainLoop : MonoBehaviour
         }
         else if (resumeDrawing)
         {
-            CreateLegAtPos(GetLastFlightLeg().pointEnd);
+            CreateLegAtPos(GetLastFlightLeg().PointEnd);
             resumeDrawing = false;
         }
 
@@ -243,59 +241,57 @@ public class MainLoop : MonoBehaviour
 
 public class FlightLeg
 {
-    public string legName;
-    public Coordinate start;
-    public Coordinate end;
-    public GameObject leg;
-    public lineDraw legScript;
-    public Vector3 pointStart;
-    public Vector3 pointEnd;
+    public string LegName;
+    public Coordinate Start;
+    public Coordinate End;
+    public GameObject Leg;
+    public LineDraw LegScript;
+    public Vector3 PointStart;
+    public Vector3 PointEnd;
 
-    public FlightLeg(string _name)
+    public FlightLeg(string name)
     {
-        legName = _name;
+        LegName = name;
     }
 
     public void CreateAtCurrentPos(MainLoop mainLoop)
     {
-        Vector3 curPosition = mainLoop.CursorLocalPosition();
-        Coordinate curCoord = mainLoop.CursorToCoordinate(curPosition);
-        GameObject newLeg;
+        var curPosition = mainLoop.CursorLocalPosition();
+        var curCoords = mainLoop.CursorToCoordinate(curPosition);
 
-        pointStart = curPosition;
-        pointEnd = curPosition;
+        PointStart = curPosition;
+        PointEnd = curPosition;
 
-        newLeg = UnityEngine.Object.Instantiate(mainLoop.leg, Vector3.zero, Quaternion.identity);
+        var newLeg = UnityEngine.Object.Instantiate(mainLoop.leg, Vector3.zero, Quaternion.identity);
 
-        leg = newLeg;
-        legScript = newLeg.GetComponent<lineDraw>();
-        legScript.start.position = curPosition;
-        legScript.end.position = curPosition;
+        Leg = newLeg;
+        LegScript = newLeg.GetComponent<LineDraw>();
+        LegScript.start.position = curPosition;
+        LegScript.end.position = curPosition;
 
-        start = curCoord;
-        end = curCoord;
+        Start = curCoords;
+        End = curCoords;
 
     }
 
     //TODO: duplicate code for just one line... 
     public void CreateAtPos(MainLoop mainLoop, Vector3 pos)
     {
-        Vector3 curPosition = pos;
-        Coordinate curCoord = mainLoop.CursorToCoordinate(curPosition);
-        GameObject newLeg;
+        var curPosition = pos;
+        var curCoords = mainLoop.CursorToCoordinate(curPosition);
 
-        pointStart = curPosition;
-        pointEnd = curPosition;
+        PointStart = curPosition;
+        PointEnd = curPosition;
 
-        newLeg = UnityEngine.Object.Instantiate(mainLoop.leg, Vector3.zero, Quaternion.identity);
+        var newLeg = UnityEngine.Object.Instantiate(mainLoop.leg, Vector3.zero, Quaternion.identity);
 
-        leg = newLeg;
-        legScript = newLeg.GetComponent<lineDraw>();
-        legScript.start.position = curPosition;
-        legScript.end.position = curPosition;
+        Leg = newLeg;
+        LegScript = newLeg.GetComponent<LineDraw>();
+        LegScript.start.position = curPosition;
+        LegScript.end.position = curPosition;
 
-        start = curCoord;
-        end = curCoord;
+        Start = curCoords;
+        End = curCoords;
 
     }
 
@@ -304,18 +300,18 @@ public class FlightLeg
 
     {
 
-        legScript.end.position = pos;
-        pointEnd = pos;
-        end = mainLoop.CursorToCoordinate(pos); //TODO: do I really need this like this?
+        LegScript.end.position = pos;
+        PointEnd = pos;
+        End = mainLoop.CursorToCoordinate(pos); //TODO: do I really need this like this?
 
-        Distance legDistance = new Distance(start, end, Shape.Sphere);
-        double legDistanceNM = legDistance.NauticalMiles;
+        var legDistance = new Distance(Start, End, Shape.Sphere);
+        var legDistanceNm = legDistance.NauticalMiles;
 
-        legScript.distanceText.text = legDistanceNM.ToString("n1");
-        legScript.durationText.text = mainLoop.ToHMS(legDistanceNM / mainLoop.flightSpeed); //NOT HMS
-        legScript.headingText.text = mainLoop.ToMagnetic(Convert.ToInt32(legDistance.Bearing)) + " M";
+        LegScript.distanceText.text = legDistanceNm.ToString("n1");
+        LegScript.durationText.text = mainLoop.ToHMS(legDistanceNm / mainLoop.flightSpeed); //NOT HMS
+        LegScript.headingText.text = mainLoop.ToMagnetic(Convert.ToInt32(legDistance.Bearing)) + " M";
 
-        leg.GetComponent<LineRenderer>().enabled = true;
+        Leg.GetComponent<LineRenderer>().enabled = true;
     }
 
 }
