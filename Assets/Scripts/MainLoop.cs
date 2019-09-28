@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using CoordinateSharp;
 
 
@@ -36,6 +37,8 @@ public class MainLoop : MonoBehaviour
     private double lonOriginRadians = 35d;
     private double latOriginRadians = 33d;
 
+    private bool resumeDrawing = false;
+
     public double flightSpeed = 90d; //TODO: Will be on the leg level
 
 
@@ -66,34 +69,24 @@ public class MainLoop : MonoBehaviour
 
     public Coordinate CursorToCoordinate(Vector3 cursorPosition)
     {
-
+        // x --> lon (presented as NM dist from 35E lon)
+        // z --> lat (presented as NM dist from 33N lat)
 
         Vector3 objectPos = cursorPosition;
-
         double lon = ((objectPos.x / lonConversionRate) * NMConversionRate) + lonOriginRadians;
         double lat = ((objectPos.z / latConversionRate) * NMConversionRate) + latOriginRadians;
-
-
         Coordinate c = new Coordinate(lat, lon);
-
         //print("lon.x: " + objectPos.x + " lat.y: " + objectPos.z);
         //print("lon: " + (objectPos.x / lonConversionRate) + " lat: " + (objectPos.z / latConversionRate));
         //print("lon: " + lon + " lat: " + lat);
         //print(c);
         return c;
 
-        // method 0, faster, less precise:
-
-
-
-        /* method 1:
-         * 
+        /* more precise method:
+        
         Vector3 origin = cursorPosition;
         origin.x = 0;
         origin.z = 0;
-
-        // x --> lon (presented as NM dist from 35E lon)
-        // z --> lat (presented as NM dist from 33N lat)
 
         //print("x: " + objectPos.x + " y: " + objectPos.y + " z: " + objectPos.z);
 
@@ -110,33 +103,10 @@ public class MainLoop : MonoBehaviour
         Coordinate c = new Coordinate(33.0, 35.0);
         c.Move(dist_as_Meteres, angle, Shape.Sphere);
 
-        
         //print("Pressed at: " + c);
         return null;
         */
 
-    }
-
-    private void ToggleDrawMode()
-    {
-        drawMode = !drawMode;
-        if (!drawMode) FinishDraw();
-        //Debug.Log(drawMode + "< draw mode");
-    }
-
-    private void FinishDraw()
-    {
-        //TODO: what da fuck?
-        //The mouse click is intercepted first in update() and only then the onClick is called,
-        //This is causing a waypoint to get created just under the button...
-        Debug.Log("Finish Drawing!");
-        if (legs.Count > 0)
-        {
-            Destroy(legs[legs.Count - 1]);
-            legs.RemoveAt(legs.Count - 1);
-            Destroy(legs[legs.Count - 1]);
-            legs.RemoveAt(legs.Count - 1);
-        }
     }
 
     public Vector3 CursorLocalPosition()
@@ -147,12 +117,19 @@ public class MainLoop : MonoBehaviour
     }
 
 
+    private void ToggleDrawMode()
+    {
+        drawMode = !drawMode;
+        if (!drawMode) FinishDraw();
+        if (drawMode && FlightHasLegs()) resumeDrawing = true;
+    }
 
 
-    //private void AddFlightLeg(string _name, Coordinate _start, Coordinate _end)
-    //{
-    //    flight.Add(new FlightLeg(_name, _start, _end));
-    //}
+    private void FinishDraw()
+    {
+        Debug.Log("Finish Drawing!");
+        if (FlightHasLegs()) RemoveLastLeg();
+    }
 
 
     private bool FlightHasLegs()
@@ -161,21 +138,46 @@ public class MainLoop : MonoBehaviour
         return false;
     }
 
+
+    private void CreateLegAtCurrentPos()
+    {
+        var legName = "LEG" + (flight.Count + 1);
+        FlightLeg newLeg = new FlightLeg(legName);
+        newLeg.CreateAtCurrentPos(this);
+        flight.Add(newLeg);
+    }
+
+    //TODO: Duplicate code for just one line...
+    private void CreateLegAtPos(Vector3 pos)
+    {
+        var legName = "LEG" + (flight.Count + 1);
+        FlightLeg newLeg = new FlightLeg(legName);
+        newLeg.CreateAtPos(this, pos);
+        flight.Add(newLeg);
+    }
+
     private FlightLeg GetLastFlightLeg()
     {
         return flight[flight.Count-1];
     }
 
+
+    private void RemoveLastLeg()
+    {
+        FlightLeg lastLeg = flight[flight.Count - 1];
+        Destroy(lastLeg.leg); //Destory the gameObject
+        flight.RemoveAt(flight.Count - 1);
+    }
+
+
     // Update is called once per frame
     void Update()
     {
-        lineDraw legScript;
         var objectPos = CursorLocalPosition();
-
-
-        // This is draw mode
         // TODO: edit mode, delete mode
 
+        ////////////////////////////////////////////////////////////
+        // Screen navigation logic /////////////////////////////////
         if (Input.GetAxis("Mouse ScrollWheel") > 0 && zoom > 5)
         {
             zoom -= camZoomStep;
@@ -216,37 +218,26 @@ public class MainLoop : MonoBehaviour
             }
         }
 
+        ////////////////////////////////////////////////////////////
+        // End of Screen navigation logic //////////////////////////
 
-
-        if (!drawMode)
-        {
-            //if (Input.GetMouseButtonDown(0))
-            //{
-            //    CursorToCoordinate(objectPos);
-            //}
-            return;
-        }
-        
+        if (!drawMode) return;
 
         // Draw mode:
-
-        if (Input.GetMouseButtonDown(0)) // mouse left was clicked
+        if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject()) // mouse left was clicked
         {
-
-            var legName = "LEG" + (flight.Count + 1);
-            FlightLeg newLeg = new FlightLeg(legName);
-            newLeg.CreateAtCurrentPos(this);
-
-            flight.Add(newLeg);
-
+            CreateLegAtCurrentPos();
+        }
+        else if (resumeDrawing)
+        {
+            CreateLegAtPos(GetLastFlightLeg().pointEnd);
+            resumeDrawing = false;
         }
 
+
         // mouse in motion with the next waypoint...
-
         if (!FlightHasLegs()) return;
-
-        FlightLeg lastLeg = GetLastFlightLeg();
-        lastLeg.UpdateLegEndFromScreen(objectPos, this);
+        GetLastFlightLeg().UpdateLegEndFromScreen(objectPos, this);
 
     }
 }
@@ -287,6 +278,29 @@ public class FlightLeg
         end = curCoord;
 
     }
+
+    //TODO: duplicate code for just one line... 
+    public void CreateAtPos(MainLoop mainLoop, Vector3 pos)
+    {
+        Vector3 curPosition = pos;
+        Coordinate curCoord = mainLoop.CursorToCoordinate(curPosition);
+        GameObject newLeg;
+
+        pointStart = curPosition;
+        pointEnd = curPosition;
+
+        newLeg = UnityEngine.Object.Instantiate(mainLoop.leg, Vector3.zero, Quaternion.identity);
+
+        leg = newLeg;
+        legScript = newLeg.GetComponent<lineDraw>();
+        legScript.start.position = curPosition;
+        legScript.end.position = curPosition;
+
+        start = curCoord;
+        end = curCoord;
+
+    }
+
 
     public void UpdateLegEndFromScreen(Vector3 pos, MainLoop mainLoop)
 
