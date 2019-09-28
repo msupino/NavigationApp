@@ -21,8 +21,6 @@ public class MainLoop : MonoBehaviour
 
     // Start is called before the first frame update
     private List<FlightLeg> flight = new List<FlightLeg>();
-
-    private List<GameObject> legs = new List<GameObject>();
     private Vector3 lastMouse;
     private Transform map_camera_transform;
     private Camera map_camera_camera;
