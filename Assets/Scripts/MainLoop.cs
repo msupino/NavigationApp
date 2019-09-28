@@ -35,7 +35,7 @@ public class MainLoop : MonoBehaviour
     private double lonOriginRadians = 35d;
     private double latOriginRadians = 33d;
 
-    private bool resumeDrawing = false;
+    private bool resumeDrawing;
 
     public double flightSpeed = 90d; //TODO: Will be on the leg level
 
