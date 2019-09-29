@@ -458,7 +458,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4960842751856254103}
   - component: {fileID: 4960842751856254102}
-  - component: {fileID: 2180724351509512295}
+  - component: {fileID: 2670430973401309932}
   m_Layer: 0
   m_Name: Leg
   m_TagString: Untagged
@@ -580,7 +580,7 @@ LineRenderer:
     generateLightingData: 0
   m_UseWorldSpace: 1
   m_Loop: 0
---- !u!114 &2180724351509512295
+--- !u!114 &2670430973401309932
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -589,7 +589,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 4960842751856254096}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 34913266870b84648ab4e149b5cc3337, type: 3}
+  m_Script: {fileID: 11500000, guid: 67fdb0a9390b42d7b1d26f530c689e1e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   start: {fileID: 4960842751607013944}

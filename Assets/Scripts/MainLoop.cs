@@ -24,7 +24,7 @@ namespace MainLogic
 
         // Start is called before the first frame update
         private List<GameObject> waypoints = new List<GameObject>();
-        private List<FlightLeg> flight = new List<FlightLeg>();
+        private List<FlightLegContainer> flight = new List<FlightLegContainer>();
         private Vector3 lastMouse;
         private Transform mapCameraTransform;
         private Camera mapCameraCamera;
@@ -159,7 +159,7 @@ namespace MainLogic
                 flight.Add(newLeg);
             }*/
 
-        private FlightLeg GetLastFlightLeg()
+        private FlightLegContainer GetLastFlightLeg()
         {
             return flight[flight.Count - 1];
         }
@@ -167,7 +167,7 @@ namespace MainLogic
 
         private void RemoveLastLeg()
         {
-            FlightLeg lastLeg = flight[flight.Count - 1];
+            FlightLegContainer lastLeg = flight[flight.Count - 1];
             Destroy(lastLeg.EndWp); //Destory the gameObject
             Destroy(lastLeg.Leg); //Destory the gameObject
             waypoints.RemoveAt(waypoints.Count - 1);
@@ -185,7 +185,7 @@ namespace MainLogic
         private void CreateLeg(GameObject startWp, GameObject endWp)
         {
             var legName = "LEG" + (flight.Count + 1);
-            FlightLeg newLeg = new FlightLeg(legName, startWp, endWp, leg);
+            FlightLegContainer newLeg = new FlightLegContainer(legName, startWp, endWp, leg);
             flight.Add(newLeg);
         }
         
@@ -276,19 +276,19 @@ namespace MainLogic
 
 }
 
-public class FlightLeg
+public class FlightLegContainer
 {
     public string LegName;
     public GameObject StartWp;
     public GameObject EndWp;
     public GameObject Leg;
-    public LineDraw LegScript;
+    public FlightLeg LegScript;
  
     
     private ConstraintSource startCnsSource;
     private ConstraintSource endCnsSource;
     
-    public FlightLeg(string name, GameObject _startWp, GameObject _endWp, GameObject _legPrefab)
+    public FlightLegContainer(string name, GameObject _startWp, GameObject _endWp, GameObject _legPrefab)
     {
         LegName = name;
         StartWp = _startWp;
@@ -297,7 +297,7 @@ public class FlightLeg
         var newLeg = UnityEngine.Object.Instantiate(_legPrefab, Vector3.zero, Quaternion.identity);
 
         Leg = newLeg;
-        LegScript = newLeg.GetComponent<LineDraw>();
+        LegScript = newLeg.GetComponent<FlightLeg>();
         LegScript.startSource = StartWp;
         LegScript.endSource = EndWp;
         
