@@ -229,8 +229,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6128194314150385366}
-  - component: {fileID: 5693265265771778975}
   - component: {fileID: 4791621103129288673}
+  - component: {fileID: 5693265265771778975}
   m_Layer: 0
   m_Name: TextScale
   m_TagString: Untagged
@@ -255,26 +255,7 @@ Transform:
   - {fileID: 277861496797094887}
   m_Father: {fileID: 4960842751856254103}
   m_RootOrder: 3
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1183024399 &5693265265771778975
-LookAtConstraint:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2070304475551177781}
-  m_Enabled: 1
-  m_Weight: 1
-  m_RotationAtRest: {x: 0, y: 0, z: 0}
-  m_RotationOffset: {x: 0, y: 0, z: 0}
-  m_Roll: 0
-  m_WorldUpObject: {fileID: 0}
-  m_UseUpObject: 0
-  m_IsContraintActive: 1
-  m_IsLocked: 0
-  m_Sources:
-  - sourceTransform: {fileID: 4960842749843055497}
-    weight: 1
+  m_LocalEulerAnglesHint: {x: 0, y: 11.073001, z: 0}
 --- !u!1818360608 &4791621103129288673
 PositionConstraint:
   m_ObjectHideFlags: 0
@@ -292,8 +273,27 @@ PositionConstraint:
   m_IsContraintActive: 1
   m_IsLocked: 1
   m_Sources:
+  - sourceTransform: {fileID: 4960842751607013948}
+    weight: 1
   - sourceTransform: {fileID: 4960842749843055497}
     weight: 1
+--- !u!1183024399 &5693265265771778975
+LookAtConstraint:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2070304475551177781}
+  m_Enabled: 1
+  m_Weight: 1
+  m_RotationAtRest: {x: 0, y: 0, z: 0}
+  m_RotationOffset: {x: 0, y: 0, z: 0}
+  m_Roll: 0
+  m_WorldUpObject: {fileID: 0}
+  m_UseUpObject: 0
+  m_IsContraintActive: 1
+  m_IsLocked: 1
+  m_Sources:
   - sourceTransform: {fileID: 4960842751607013948}
     weight: 1
 --- !u!1 &3326886553131591214
@@ -416,7 +416,7 @@ Transform:
   m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_Children: []
   m_Father: {fileID: 4960842751856254103}
-  m_RootOrder: 0
+  m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4960842751607013944
 GameObject:
@@ -446,7 +446,7 @@ Transform:
   m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_Children: []
   m_Father: {fileID: 4960842751856254103}
-  m_RootOrder: 1
+  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4960842751856254096
 GameObject:
@@ -460,7 +460,7 @@ GameObject:
   - component: {fileID: 4960842751856254102}
   - component: {fileID: 2180724351509512295}
   m_Layer: 0
-  m_Name: line
+  m_Name: Leg
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -477,8 +477,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
-  - {fileID: 4960842749843055497}
   - {fileID: 4960842751607013948}
+  - {fileID: 4960842749843055497}
   - {fileID: 4898921742108773765}
   - {fileID: 6128194314150385366}
   m_Father: {fileID: 0}
@@ -592,8 +592,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34913266870b84648ab4e149b5cc3337, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  start: {fileID: 4960842749843055497}
-  end: {fileID: 4960842751607013948}
+  start: {fileID: 4960842751607013944}
+  end: {fileID: 4960842749843055509}
+  startSource: {fileID: 0}
+  endSource: {fileID: 0}
+  startWaypoint: {fileID: 0}
+  endWaypoint: {fileID: 0}
+  flightSpeed: 90
   perpendicular: {fileID: 238567614440019394}
   distanceText: {fileID: 4886160459903050643}
   durationText: {fileID: 2222033360261551462}
