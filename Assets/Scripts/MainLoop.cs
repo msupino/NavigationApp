@@ -246,7 +246,16 @@ namespace MainLogic
             // Draw mode:
             if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject()) // mouse left was clicked
             {
-                var wp1 = CreateWaypoint(objectPos);
+                GameObject wp1;
+                if (!FlightHasLegs())
+                {
+                    wp1 = CreateWaypoint(objectPos);
+                }
+                else
+                {
+                    wp1 = flight[flight.Count - 1].EndWp;
+                }
+                
                 var wp2 = CreateWaypoint(objectPos);
                 CreateLeg(wp1, wp2);
             }
