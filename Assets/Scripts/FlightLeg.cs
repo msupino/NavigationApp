@@ -29,6 +29,7 @@ public class FlightLeg : MonoBehaviour
     //public Coordinate endCoord;
 
     private LineRenderer lineRenderer;
+    private LineRenderer middleLineRendered;
     private GameObject middle;
     private Vector3 lastStart;
     private Vector3 lastEnd;
@@ -37,8 +38,15 @@ public class FlightLeg : MonoBehaviour
     // Start is called before the first frame update
     private void Start()
     {
+        lineRenderer = GetComponent<LineRenderer>();
+        lineRenderer.startWidth = 0.1f;
+        lineRenderer.endWidth = 0.1f;
+  
         middle = Instantiate(perpendicular, Vector3.zero, Quaternion.identity);
         middle.transform.SetParent(gameObject.transform);
+        middleLineRendered = middle.GetComponent<LineRenderer>();
+        middleLineRendered.startWidth = 0.1f;
+        middleLineRendered.endWidth = 0.1f;
         
         lastStart = start.transform.position;
         lastEnd = end.transform.position;
@@ -72,14 +80,14 @@ public class FlightLeg : MonoBehaviour
             lastEnd = endPosition;
             
             // update evrything...
-            lineRenderer = GetComponent<LineRenderer>();
+            
 
             lineRenderer.SetPosition(0, startPosition);
             lineRenderer.SetPosition(1, endPosition);
 
 
             // draw the mid line perpendicular to the main line
-            var middleLine = middle.GetComponent<LineRenderer>();
+            
 
             var newVec = startPosition - endPosition;
             var newVector = Vector3.Cross(newVec, Vector3.up);
@@ -88,8 +96,8 @@ public class FlightLeg : MonoBehaviour
             var newPoint = 1 * newVector + ((startPosition + endPosition) / 2);
             var newPoint2 = -1 * newVector + ((startPosition + endPosition) / 2);
 
-            middleLine.SetPosition(0, newPoint);
-            middleLine.SetPosition(1, newPoint2);
+            middleLineRendered.SetPosition(0, newPoint);
+            middleLineRendered.SetPosition(1, newPoint2);
 
             middle.SetActive(true);
             
