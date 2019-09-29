@@ -610,10 +610,10 @@ MonoBehaviour:
   selectedColor: {r: 1, g: 1, b: 0, a: 0.8}
   hoverColor: {r: 1, g: 0.75, b: 0, a: 0.8}
   planesOpacity: 0.5
-  handleLength: 0.25
+  handleLength: 0.15
   handleWidth: 0.003
-  planeSize: 0.035
-  triangleSize: 0.03
+  planeSize: 0.03
+  triangleSize: 0.02
   boxSize: 0.03
   circleDetail: 40
   allMoveHandleLengthMultiplier: 1
