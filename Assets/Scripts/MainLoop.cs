@@ -140,25 +140,6 @@ namespace MainLogic
             return false;
         }
 
-
-
-        /*    private void CreateLegAtCurrentPos()
-            {
-                var legName = "LEG" + (flight.Count + 1);
-                FlightLeg newLeg = new FlightLeg(legName);
-                newLeg.CreateAtCurrentPos(this);
-                flight.Add(newLeg);
-            }
-
-            //TODO: Duplicate code for just one line...
-            private void CreateLegAtPos(Vector3 pos)
-            {
-                var legName = "LEG" + (flight.Count + 1);
-                FlightLeg newLeg = new FlightLeg(legName);
-                newLeg.CreateAtPos(this, pos);
-                flight.Add(newLeg);
-            }*/
-
         private FlightLegContainer GetLastFlightLeg()
         {
             return flight[flight.Count - 1];
@@ -307,28 +288,5 @@ public class FlightLegContainer
         Leg.GetComponent<LineRenderer>().enabled = true;
 
     }
-
-
-
-
-    
-
-/*    public void UpdateLegEndFromScreen(Vector3 pos, MainLoop mainLoop)
-
-    {
-
-        LegScript.end.position = pos;
-        PointEnd = pos;
-        End = mainLoop.CursorToCoordinate(pos); //TODO: do I really need this like this?
-
-        var legDistance = new Distance(Start, End, Shape.Sphere);
-        var legDistanceNm = legDistance.NauticalMiles;
-
-        LegScript.distanceText.text = legDistanceNm.ToString("n1");
-        LegScript.durationText.text = mainLoop.ToHMS(legDistanceNm / mainLoop.flightSpeed); //NOT HMS
-        LegScript.headingText.text = mainLoop.ToMagnetic(Convert.ToInt32(legDistance.Bearing)) + " M";
-
-        Leg.GetComponent<LineRenderer>().enabled = true;
-    }*/
 
 }
