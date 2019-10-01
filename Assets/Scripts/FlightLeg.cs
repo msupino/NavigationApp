@@ -4,6 +4,22 @@ using System.Collections.Generic;
 using UnityEngine;
 using CoordinateSharp;
 using MainLogic;
+using UnityEngine.Animations;
+
+
+public struct MinuteMarker
+{
+    public GameObject Marker;
+    public GameObject Text;
+
+}
+
+public struct MinutePair
+{
+    public MinuteMarker Inbound;
+    public MinuteMarker Outbound;
+
+}
 
 //[ExecuteInEditMode]
 public class FlightLeg : MonoBehaviour
@@ -18,7 +34,7 @@ public class FlightLeg : MonoBehaviour
     public Waypoint endWaypoint = null;
     public double flightSpeed = 90d;
     
-    public GameObject perpendicular;
+    public GameObject emptyLine;
     public GameObject minuteText;
     public TextMesh distanceText;
     public TextMesh durationText;
@@ -34,7 +50,7 @@ public class FlightLeg : MonoBehaviour
     private Vector3 lastStart;
     private Vector3 lastEnd;
     
-    private List<GameObject[]> minutes = new List<GameObject[]>();
+    private List<MinutePair> minutes = new List<MinutePair>();
     
     
     // Start is called before the first frame update
@@ -53,7 +69,7 @@ public class FlightLeg : MonoBehaviour
 
     private GameObject PerpendicularLine()
     {
-        var go = Instantiate(perpendicular, Vector3.zero, Quaternion.identity);
+        var go = Instantiate(emptyLine, Vector3.zero, Quaternion.identity);
         go.transform.SetParent(gameObject.transform);
         return go;
     }
@@ -111,7 +127,7 @@ public class FlightLeg : MonoBehaviour
         var endPosition = end.transform.position;
     
         
-        //waypoint chanhed
+        //waypoint changed
         if (startPosition != lastStart || endPosition != lastEnd)
         {
 
@@ -119,7 +135,7 @@ public class FlightLeg : MonoBehaviour
             lastStart = startPosition;
             lastEnd = endPosition;
             
-            // update evrything...
+            // update everything...
             
 
             lineRenderer.SetPosition(0, startPosition);
@@ -137,7 +153,7 @@ public class FlightLeg : MonoBehaviour
 
             distanceText.text = legDistanceNm.ToString("n1");
             durationText.text = MainLoop.ToHMS(legDistanceNm /  flightSpeed); //NOT HMS
-            headingText.text =  MainLoop.ToMagnetic(Convert.ToInt32(legDistance.Bearing)) + " M";
+            headingText.text =  MainLoop.ToMagnetic(Convert.ToInt32(legDistance.Bearing)).ToString("D3") + " M";
 
             
             int roundedMinutes = TimeSpan.FromHours((legDistanceNm /  flightSpeed)).Minutes;
@@ -151,7 +167,8 @@ public class FlightLeg : MonoBehaviour
             int ii=minutes.Count;
             while (minutes.Count > 0 &&  minutes.Count > roundedMinutes)
             {
-                Destroy(minutes[ii-1][0]);
+                Destroy(minutes[ii-1].Inbound.Marker);
+                Destroy(minutes[ii-1].Outbound.Marker);
                 minutes.RemoveAt(ii-1);
                 //print("removed index: " + (ii-1));
                 ii++;
@@ -164,33 +181,54 @@ public class FlightLeg : MonoBehaviour
                 for (int i = minutes.Count; i <= roundedMinutes-1; i+=1)
                 {
 
-                    var l = Instantiate(perpendicular, Vector3.zero, Quaternion.identity);
-                    l.transform.SetParent(gameObject.transform);
-                    l.GetComponent<Renderer>().material.color = Color.blue;
+                    MinutePair pair = new MinutePair();
                     
+                    MinuteMarker inbound = new MinuteMarker();
+                    MinuteMarker outbound = new MinuteMarker();
                     
-                    var digit = Instantiate(minuteText, Vector3.zero, Quaternion.identity);
-                    digit.transform.SetParent(l.transform);
-                    digit.GetComponent<Renderer>().material.color = Color.blue;
+                    inbound.Marker = Instantiate(emptyLine, new Vector3(0,-0.1f,0), Quaternion.identity);
+                    inbound.Marker.transform.SetParent(gameObject.transform);
+                    inbound.Marker.GetComponent<Renderer>().material.color = Color.blue;
                     
+                    outbound.Marker = Instantiate(emptyLine, new Vector3(0,-0.1f,0), Quaternion.identity);
+                    outbound.Marker.transform.SetParent(gameObject.transform);
+                    outbound.Marker.GetComponent<Renderer>().material.color = Color.red;
+                    
+                    // TODO: Need to do this only for even minutes!
 
-                    GameObject[] m = new GameObject[2];
-                    m[0] = l;
-                    m[1] = digit;
+                    if (!IsEven(i))
+                    {
+                        inbound.Text = Instantiate(minuteText, Vector3.zero, Quaternion.identity);
+                        inbound.Text.transform.SetParent(inbound.Marker.transform);
+                        inbound.Text.GetComponent<Renderer>().material.color = Color.blue;
+
+                        outbound.Text = Instantiate(minuteText, Vector3.zero, Quaternion.identity);
+                        outbound.Text.transform.SetParent(inbound.Marker.transform);
+                        outbound.Text.GetComponent<Renderer>().material.color = Color.red;
+                        //flip the label for the outbound markers
+                        outbound.Text.GetComponent<RotationConstraint>().rotationOffset = new Vector3(90f, 0, 0);
+                    }
+
+                    pair.Inbound = inbound;  
+                    pair.Outbound = outbound;  
                     
-                    minutes.Add(m);
+                    minutes.Add(pair);
                     //print("added minute: " + i);
                 }
                 
                 // Update the current markers
                 for (int i = 0; i <= roundedMinutes-1; i+=1)
                 {
-                    var minuteLine = minutes[i][0];
-                    var minuteLineRenderer = minuteLine.GetComponent<LineRenderer>();
+                    var inboundMarkerLineRenderer = minutes[i].Inbound.Marker.GetComponent<LineRenderer>();
+                    var outboundMarkerLineRenderer = minutes[i].Outbound.Marker.GetComponent<LineRenderer>();
+
                     
                     // gets the minute marker position along the leg
-                    var minutePosition = (minuteLength * (i+1)) * Vector3.Normalize(endPosition - startPosition) +
+                    var inboundMarkerPosition = (minuteLength * (i+1)) * Vector3.Normalize(endPosition - startPosition) +
                                          startPosition;
+                    
+                    var outboundMarkerPosition = (minuteLength * (i+1)) * Vector3.Normalize(startPosition - endPosition) +
+                                                endPosition;
                     
                     // get perpendicular vector of this leg
                     var newVec = startPosition - endPosition;
@@ -202,15 +240,23 @@ public class FlightLeg : MonoBehaviour
                     if (IsEven(i + 1))
                     {
                         markerLength = 1;
-                        var d = minutes[i][1];
-                        d.transform.position = minutePosition + ((markerLength+0.5f) * newVector);
-                        d.SetActive(true);
-                        d.GetComponent<TextMesh>().text = (i + 1).ToString();
+                        var inboundText = minutes[i].Inbound.Text;
+                        inboundText.transform.position = inboundMarkerPosition + ((markerLength+0.5f) * newVector);
+                        inboundText.SetActive(true);
+                        inboundText.GetComponent<TextMesh>().text = (i + 1).ToString();
+                        
+                        var outboundText = minutes[i].Outbound.Text;
+                        outboundText.transform.position = outboundMarkerPosition + ((-markerLength-0.5f) * newVector);
+                        outboundText.SetActive(true);
+                        outboundText.GetComponent<TextMesh>().text = (i + 1).ToString();
                     }
 
                     // draw the two points of the minute marker
-                    minuteLineRenderer.SetPosition(0, minutePosition + (markerLength * newVector));
-                    minuteLineRenderer.SetPosition(1, minutePosition);
+                    inboundMarkerLineRenderer.SetPosition(0, inboundMarkerPosition + (markerLength * newVector));
+                    inboundMarkerLineRenderer.SetPosition(1, inboundMarkerPosition);
+                    
+                    outboundMarkerLineRenderer.SetPosition(0, outboundMarkerPosition + (-markerLength * newVector));
+                    outboundMarkerLineRenderer.SetPosition(1, outboundMarkerPosition);
                     
                 }
             }

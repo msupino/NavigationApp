@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 4898921742108773765}
   - component: {fileID: 6097157751835837245}
   m_Layer: 0
-  m_Name: perpendicular
+  m_Name: Empty
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -125,7 +125,7 @@ LineRenderer:
     textureMode: 0
     shadowBias: 0.5
     generateLightingData: 0
-  m_UseWorldSpace: 1
+  m_UseWorldSpace: 0
   m_Loop: 0
 --- !u!1 &1708651851681341335
 GameObject:
@@ -398,7 +398,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4960842749843055497}
   m_Layer: 0
-  m_Name: end
+  m_Name: End
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -428,7 +428,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4960842751607013948}
   m_Layer: 0
-  m_Name: start
+  m_Name: Start
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -600,7 +600,7 @@ MonoBehaviour:
   startWaypoint: {fileID: 0}
   endWaypoint: {fileID: 0}
   flightSpeed: 90
-  perpendicular: {fileID: 238567614440019394}
+  emptyLine: {fileID: 238567614440019394}
   minuteText: {fileID: 8179908770202322411}
   distanceText: {fileID: 4886160459903050643}
   durationText: {fileID: 2222033360261551462}
@@ -723,13 +723,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8179908770202322411}
-  m_LocalRotation: {x: 0.5, y: 0.5, z: -0.5, w: 0.5}
+  m_LocalRotation: {x: 0, y: -0.7071068, z: 0.7071068, w: 0}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 0.025000013, y: 0.025000023, z: 0.025000023}
   m_Children: []
   m_Father: {fileID: 4960842751856254103}
   m_RootOrder: 4
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: -90}
+  m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
 --- !u!23 &3478258072618415863
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -776,14 +776,14 @@ TextMesh:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8179908770202322411}
-  m_Text: 0
+  m_Text: 2
   m_OffsetZ: 0
   m_CharacterSize: 1
   m_LineSpacing: 1
   m_Anchor: 4
   m_Alignment: 1
   m_TabSize: 4
-  m_FontSize: 200
+  m_FontSize: 300
   m_FontStyle: 1
   m_RichText: 1
   m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
@@ -799,8 +799,8 @@ RotationConstraint:
   m_GameObject: {fileID: 8179908770202322411}
   m_Enabled: 1
   m_Weight: 1
-  m_RotationAtRest: {x: 90, y: 0, z: -90}
-  m_RotationOffset: {x: 90, y: 0, z: -90}
+  m_RotationAtRest: {x: 90, y: 0, z: 180}
+  m_RotationOffset: {x: 90, y: 0, z: 180}
   m_AffectRotationX: 1
   m_AffectRotationY: 1
   m_AffectRotationZ: 1
