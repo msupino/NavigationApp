@@ -19,6 +19,7 @@ public class FlightLeg : MonoBehaviour
     public double flightSpeed = 90d;
     
     public GameObject perpendicular;
+    public GameObject minuteText;
     public TextMesh distanceText;
     public TextMesh durationText;
     public TextMesh headingText;
@@ -33,7 +34,7 @@ public class FlightLeg : MonoBehaviour
     private Vector3 lastStart;
     private Vector3 lastEnd;
     
-    private List<GameObject> minutes = new List<GameObject>();
+    private List<GameObject[]> minutes = new List<GameObject[]>();
     
     
     // Start is called before the first frame update
@@ -150,7 +151,7 @@ public class FlightLeg : MonoBehaviour
             int ii=minutes.Count;
             while (minutes.Count > 0 &&  minutes.Count > roundedMinutes)
             {
-                Destroy(minutes[ii-1]);
+                Destroy(minutes[ii-1][0]);
                 minutes.RemoveAt(ii-1);
                 //print("removed index: " + (ii-1));
                 ii++;
@@ -162,15 +163,29 @@ public class FlightLeg : MonoBehaviour
                 //Add missing minute markers
                 for (int i = minutes.Count; i <= roundedMinutes-1; i+=1)
                 {
-                    var l = PerpendicularLine();
-                    minutes.Add(l);
+
+                    var l = Instantiate(perpendicular, Vector3.zero, Quaternion.identity);
+                    l.transform.SetParent(gameObject.transform);
+                    l.GetComponent<Renderer>().material.color = Color.blue;
+                    
+                    
+                    var digit = Instantiate(minuteText, Vector3.zero, Quaternion.identity);
+                    digit.transform.SetParent(l.transform);
+                    digit.GetComponent<Renderer>().material.color = Color.blue;
+                    
+
+                    GameObject[] m = new GameObject[2];
+                    m[0] = l;
+                    m[1] = digit;
+                    
+                    minutes.Add(m);
                     //print("added minute: " + i);
                 }
                 
                 // Update the current markers
                 for (int i = 0; i <= roundedMinutes-1; i+=1)
                 {
-                    var minuteLine = minutes[i];
+                    var minuteLine = minutes[i][0];
                     var minuteLineRenderer = minuteLine.GetComponent<LineRenderer>();
                     
                     // gets the minute marker position along the leg
@@ -182,12 +197,21 @@ public class FlightLeg : MonoBehaviour
                     var newVector = Vector3.Cross(newVec, Vector3.up);
                     newVector.Normalize();
 
+                    // for even minutes let's make them longer, and with a text
                     float markerLength = 0.5f;
-                    if (IsEven(i + 1)) markerLength = 1;
-                    
+                    if (IsEven(i + 1))
+                    {
+                        markerLength = 1;
+                        var d = minutes[i][1];
+                        d.transform.position = minutePosition + ((markerLength+0.5f) * newVector);
+                        d.SetActive(true);
+                        d.GetComponent<TextMesh>().text = (i + 1).ToString();
+                    }
+
                     // draw the two points of the minute marker
                     minuteLineRenderer.SetPosition(0, minutePosition + (markerLength * newVector));
                     minuteLineRenderer.SetPosition(1, minutePosition);
+                    
                 }
             }
             
