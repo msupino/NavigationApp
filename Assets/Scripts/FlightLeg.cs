@@ -165,14 +165,14 @@ public class FlightLeg : MonoBehaviour
                     var minuteLineRenderer = minuteLine.GetComponent<LineRenderer>();
                     
                     var newVec = startPosition - endPosition;
-                    //var newVector = Vector3.Cross(newVec, Vector3.up);
-                    //newVector.Normalize();
+                    var newVector = Vector3.Cross(newVec, Vector3.up);
+                    newVector.Normalize();
                     newVec.Normalize();
 
-                    var newPoint =  (minuteLength*i) * Vector3.Normalize(endPosition - startPosition) + startPosition;
-                    var newPoint2 = (minuteLength*i) * Vector3.Normalize(endPosition - startPosition) + startPosition;
-                    minuteLineRenderer.startWidth = 1f;
-                    minuteLineRenderer.endWidth = 1f;
+                    var newPoint =  0.5f * newVector + (minuteLength*i+1) * Vector3.Normalize(endPosition - startPosition) + startPosition;
+                    var newPoint2 = (minuteLength*i+1) * Vector3.Normalize(endPosition - startPosition) + startPosition;
+                    //minuteLineRenderer.startWidth = 1f;
+                    //minuteLineRenderer.endWidth = 1f;
                     
                     minuteLineRenderer.SetPosition(0, newPoint);
                     minuteLineRenderer.SetPosition(1, newPoint2);
