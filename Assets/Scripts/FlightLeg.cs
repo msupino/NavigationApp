@@ -79,6 +79,17 @@ public class FlightLeg : MonoBehaviour
 
         return result;
     }
+
+    private bool IsEven(int number)
+    {
+        if(number%2 == 0)
+        {
+            return true;
+        }else
+        {
+            return false;
+        }
+    }
     
     // Update is called once per frame
     void Update()
@@ -129,15 +140,13 @@ public class FlightLeg : MonoBehaviour
 
             
             int roundedMinutes = TimeSpan.FromHours((legDistanceNm /  flightSpeed)).Minutes;
+            
+            //TODO: this is sort of constant by the flightSpeed...
             float minuteLength = (float)legDistanceNm / ((float)(legDistanceNm /  flightSpeed)*60f);
-            //print("dist " + legDistanceNm + " total minutes: " + roundedMinutes + "mLen " + minuteLength);
-            // clean up exisiting minutes
-
-
-
-            //print("minutes.Count: " + minutes.Count);
-
+            
             //print("BEFORE: minutes.Count: " +  minutes.Count + " leg minutes: " + roundedMinutes);
+            
+            // clean up redundant minute markers (when the leg shortens...)
             int ii=minutes.Count;
             while (minutes.Count > 0 &&  minutes.Count > roundedMinutes)
             {
@@ -150,38 +159,38 @@ public class FlightLeg : MonoBehaviour
 
             if (roundedMinutes > 0)
             {
-                //Add lines
-                for (int i = minutes.Count; i <= roundedMinutes-1; i++)
+                //Add missing minute markers
+                for (int i = minutes.Count; i <= roundedMinutes-1; i+=1)
                 {
                     var l = PerpendicularLine();
                     minutes.Add(l);
                     //print("added minute: " + i);
                 }
                 
-                for (int i = 0; i <= roundedMinutes-1; i++)
+                // Update the current markers
+                for (int i = 0; i <= roundedMinutes-1; i+=1)
                 {
                     var minuteLine = minutes[i];
-                    //var prepP = GetPerpendicularPoints(startPosition, endPosition, 3f);
                     var minuteLineRenderer = minuteLine.GetComponent<LineRenderer>();
                     
+                    // gets the minute marker position along the leg
+                    var minutePosition = (minuteLength * (i+1)) * Vector3.Normalize(endPosition - startPosition) +
+                                         startPosition;
+                    
+                    // get perpendicular vector of this leg
                     var newVec = startPosition - endPosition;
                     var newVector = Vector3.Cross(newVec, Vector3.up);
                     newVector.Normalize();
-                    newVec.Normalize();
 
-                    var newPoint =  0.5f * newVector + (minuteLength*i+1) * Vector3.Normalize(endPosition - startPosition) + startPosition;
-                    var newPoint2 = (minuteLength*i+1) * Vector3.Normalize(endPosition - startPosition) + startPosition;
-                    //minuteLineRenderer.startWidth = 1f;
-                    //minuteLineRenderer.endWidth = 1f;
+                    float markerLength = 0.5f;
+                    if (IsEven(i + 1)) markerLength = 1;
                     
-                    minuteLineRenderer.SetPosition(0, newPoint);
-                    minuteLineRenderer.SetPosition(1, newPoint2);
+                    // draw the two points of the minute marker
+                    minuteLineRenderer.SetPosition(0, minutePosition + (markerLength * newVector));
+                    minuteLineRenderer.SetPosition(1, minutePosition);
                 }
             }
             
-
-            
-            //print("AFTER: minutes.Count: " +  minutes.Count + " leg minutes: " + roundedMinutes);
         }
 
     }
