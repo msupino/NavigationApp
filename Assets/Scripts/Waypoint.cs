@@ -26,7 +26,7 @@ public class Waypoint : MonoBehaviour
     {
         if (tra.position != lastPos)
         {
-            print("waypoint update");
+            //print("waypoint update");
             var position = tra.position;
             
             
