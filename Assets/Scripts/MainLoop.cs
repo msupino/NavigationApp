@@ -66,7 +66,7 @@ namespace MainLogic
         public static string ToHMS(double time)
         {
             var result = TimeSpan.FromHours(time);
-            return result.Minutes + "' " + result.Seconds + "''"; //result.Hours + ": " +  Only return minutes seconds
+            return result.Minutes + ":" + result.Seconds; //result.Hours + ": " +  Only return minutes seconds
         }
 
         public static Coordinate SceneToCoordinate(Vector3 cursorPosition)

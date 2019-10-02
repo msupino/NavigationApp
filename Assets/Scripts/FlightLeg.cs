@@ -33,7 +33,8 @@ public class FlightLeg : MonoBehaviour
     public Waypoint startWaypoint = null;
     public Waypoint endWaypoint = null;
     public double flightSpeed = 90d;
-    
+
+    public GameObject legInfo;
     public GameObject emptyLine;
     public GameObject minuteText;
     public TextMesh distanceText;
@@ -49,6 +50,9 @@ public class FlightLeg : MonoBehaviour
     private LineRenderer middleLineRenderer;
     private Vector3 lastStart;
     private Vector3 lastEnd;
+    private GameObject inboundLegInfo;
+    private GameObject outboundLegInfo;
+    
     
     private List<MinutePair> minutes = new List<MinutePair>();
     
@@ -65,6 +69,14 @@ public class FlightLeg : MonoBehaviour
         
         lastStart = start.transform.position;
         lastEnd = end.transform.position;
+
+        inboundLegInfo = Instantiate(legInfo, Vector3.zero, Quaternion.identity);
+        inboundLegInfo.transform.SetParent(gameObject.transform);
+        inboundLegInfo.SetActive(true);
+        outboundLegInfo = Instantiate(legInfo, Vector3.zero, Quaternion.identity);
+        outboundLegInfo.transform.SetParent(gameObject.transform);
+        outboundLegInfo.GetComponent<RotationConstraint>().rotationOffset = new Vector3(0, 0, 0);
+        outboundLegInfo.SetActive(true);
     }
 
     private GameObject PerpendicularLine()
@@ -152,10 +164,44 @@ public class FlightLeg : MonoBehaviour
             var legDistanceNm = legDistance.NauticalMiles;
 
             distanceText.text = legDistanceNm.ToString("n1");
-            durationText.text = MainLoop.ToHMS(legDistanceNm /  flightSpeed); //NOT HMS
-            headingText.text =  MainLoop.ToMagnetic(Convert.ToInt32(legDistance.Bearing)).ToString("D3") + " M";
+            //durationText.text = MainLoop.ToHMS(legDistanceNm /  flightSpeed); //NOT HMS
+            //headingText.text =  MainLoop.ToMagnetic(Convert.ToInt32(legDistance.Bearing)).ToString("D3") + " M";
 
-            
+
+
+
+
+            // draw Leg info arrows
+            var newVec = startPosition - endPosition;
+            var newVector = Vector3.Cross(newVec, Vector3.up);
+            newVector.Normalize();
+
+
+            var bearing = MainLoop.ToMagnetic(Convert.ToInt32(legDistance.Bearing));
+            var inverseBearing = (bearing + 180) % 360;
+            var durationMinutes = MainLoop.ToHMS(legDistanceNm / flightSpeed);
+
+
+            var inboundLegInfoHeading = inboundLegInfo.transform.GetChild(0).gameObject;
+            inboundLegInfoHeading.GetComponent<TextMesh>().text = bearing.ToString("D3");
+            var inboundLegInfoDuration = inboundLegInfo.transform.GetChild(1).gameObject; //TODO: how to I get the childs in a nicer fashion?
+            inboundLegInfoDuration.GetComponent<TextMesh>().text = durationMinutes;
+            inboundLegInfo.transform.position =  (3f * newVector) + ((startPosition + endPosition) / 2f);
+
+
+            var outboundLegInfoHeading = outboundLegInfo.transform.GetChild(0).gameObject;
+            outboundLegInfoHeading.GetComponent<TextMesh>().text = inverseBearing.ToString("D3");
+            var outboundLegInfoDuration = outboundLegInfo.transform.GetChild(1).gameObject;
+            outboundLegInfoDuration.GetComponent<TextMesh>().text = durationMinutes;
+            outboundLegInfo.transform.position = (-3f * newVector) + ((startPosition + endPosition) / 2f);
+
+
+            var outboundLegInfoBackground = outboundLegInfo.transform.GetChild(2).gameObject;
+            outboundLegInfoBackground.GetComponent<MeshRenderer>().material.color = new Color(1,0,0,0.33f);
+
+            var inboundLegInfoBackground = inboundLegInfo.transform.GetChild(2).gameObject;
+            inboundLegInfoBackground.GetComponent<MeshRenderer>().material.color = new Color(0, 0, 1, 0.33f);
+
             int roundedMinutes = TimeSpan.FromHours((legDistanceNm /  flightSpeed)).Minutes;
             
             //TODO: this is sort of constant by the flightSpeed...
@@ -231,9 +277,9 @@ public class FlightLeg : MonoBehaviour
                                                 endPosition;
                     
                     // get perpendicular vector of this leg
-                    var newVec = startPosition - endPosition;
-                    var newVector = Vector3.Cross(newVec, Vector3.up);
-                    newVector.Normalize();
+                    //var newVec = startPosition - endPosition;
+                    //var newVector = Vector3.Cross(newVec, Vector3.up);
+                    //newVector.Normalize();
 
                     // for even minutes let's make them longer, and with a text
                     float markerLength = 0.5f;
