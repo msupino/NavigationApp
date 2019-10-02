@@ -40,14 +40,14 @@ public class FlightLeg : MonoBehaviour
     public TextMesh distanceText;
     public TextMesh durationText;
     public TextMesh headingText;
-    
-    
+
+
 
     //public Coordinate startCoord;
     //public Coordinate endCoord;
 
     private LineRenderer lineRenderer;
-    private LineRenderer middleLineRenderer;
+    //private LineRenderer middleLineRenderer;
     private Vector3 lastStart;
     private Vector3 lastEnd;
     private GameObject inboundLegInfo;
@@ -63,10 +63,10 @@ public class FlightLeg : MonoBehaviour
         lineRenderer = GetComponent<LineRenderer>();
         lineRenderer.startWidth = 0.1f;
         lineRenderer.endWidth = 0.1f;
-        
-        var middleGameObject = PerpendicularLine();
-        middleLineRenderer = initLine(middleGameObject);
-        
+
+        //var middleGameObject = PerpendicularLine();
+        //middleLineRenderer = initLine(middleGameObject);
+
         lastStart = start.transform.position;
         lastEnd = end.transform.position;
 
@@ -146,18 +146,18 @@ public class FlightLeg : MonoBehaviour
             // zero out this as the last position
             lastStart = startPosition;
             lastEnd = endPosition;
-            
+
             // update everything...
-            
+
 
             lineRenderer.SetPosition(0, startPosition);
             lineRenderer.SetPosition(1, endPosition);
-            
-            // draw the mid line perpendicular to the main line
-            var perpPoints = GetPerpendicularPoints(startPosition, endPosition, 2f);
-            
-            middleLineRenderer.SetPosition(0, perpPoints[0]);
-            middleLineRenderer.SetPosition(1, perpPoints[1]);
+
+            //// draw the mid line perpendicular to the main line
+            //var perpPoints = GetPerpendicularPoints(startPosition, endPosition, 2f);
+
+            //middleLineRenderer.SetPosition(0, perpPoints[0]);
+            //middleLineRenderer.SetPosition(1, perpPoints[1]);
 
 
             var legDistance = new Distance(startWaypoint.coordinate, endWaypoint.coordinate, Shape.Sphere);
