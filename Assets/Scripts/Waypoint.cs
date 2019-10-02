@@ -11,6 +11,7 @@ public class Waypoint : MonoBehaviour
 {
     public Transform tra;
     public Coordinate coordinate;
+    public Circle circle;
 
     private Vector3 lastPos;
 
@@ -35,5 +36,18 @@ public class Waypoint : MonoBehaviour
             coordinate = MainLoop.SceneToCoordinate(position);
             
         }
+
+    }
+
+    private void OnMouseOver()
+    {
+        circle.width = 0.1f;
+        gameObject.GetComponent<Renderer>().material.color = Color.yellow;
+    }
+
+    private void OnMouseExit()
+    {
+        circle.width = 0.08f;
+        gameObject.GetComponent<Renderer>().material.color = Color.black;
     }
 }

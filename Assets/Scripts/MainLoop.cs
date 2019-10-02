@@ -14,6 +14,8 @@ namespace MainLogic
     public class MainLoop : MonoBehaviour
     {
 
+        public GameObject crosshair;
+        public GameObject drawIndicator;
         public GameObject waypoint;
         public GameObject leg;
         public GameObject mainCamera;
@@ -66,7 +68,7 @@ namespace MainLogic
         public static string ToHMS(double time)
         {
             var result = TimeSpan.FromHours(time);
-            return result.Minutes + ":" + result.Seconds; //result.Hours + ": " +  Only return minutes seconds
+            return result.Minutes + ":" + result.Seconds.ToString("D2"); //result.Hours + ": " +  Only return minutes seconds
         }
 
         public static Coordinate SceneToCoordinate(Vector3 cursorPosition)
@@ -122,14 +124,22 @@ namespace MainLogic
         private void ToggleDrawMode()
         {
             drawMode = !drawMode;
-            if (!drawMode) FinishDraw();
+            if (!drawMode)
+            {
+                FinishDraw();
+                drawIndicator.SetActive(false);
+            }
+            else
+            {
+                drawIndicator.SetActive(true);
+            }
+
             if (drawMode && FlightHasLegs()) resumeDrawing = true;
         }
 
 
         private void FinishDraw()
         {
-            Debug.Log("Finish Drawing!");
             if (FlightHasLegs()) RemoveLastLeg();
         }
 
@@ -175,6 +185,10 @@ namespace MainLogic
         {
             var objectPos = CursorLocalPosition();
             // TODO: edit mode, delete mode
+
+            crosshair.transform.position = objectPos;
+
+            if (Input.GetKeyDown("d")) ToggleDrawMode();
 
             ////////////////////////////////////////////////////////////
             // Screen navigation logic /////////////////////////////////
