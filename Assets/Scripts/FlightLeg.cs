@@ -185,7 +185,7 @@ public class FlightLeg : MonoBehaviour
             var inboundLegInfoHeading = inboundLegInfo.transform.GetChild(0).gameObject;
             inboundLegInfoHeading.GetComponent<TextMesh>().text = bearing.ToString("D3");
             var inboundLegInfoDuration = inboundLegInfo.transform.GetChild(1).gameObject; //TODO: how to I get the childs in a nicer fashion?
-            inboundLegInfoDuration.GetComponent<TextMesh>().text = durationMinutes;
+            inboundLegInfoDuration.GetComponent<TextMesh>().text = durationMinutes; //rounded to nearest 5 seconds
             inboundLegInfo.transform.position =  (3f * newVector) + ((startPosition + endPosition) / 2f);
 
 
@@ -202,7 +202,7 @@ public class FlightLeg : MonoBehaviour
             var inboundLegInfoBackground = inboundLegInfo.transform.GetChild(2).gameObject;
             inboundLegInfoBackground.GetComponent<MeshRenderer>().material.color = new Color(0, 0, 1, 0.33f);
 
-            int roundedMinutes = TimeSpan.FromHours((legDistanceNm /  flightSpeed)).Minutes;
+            int legTimeMinutes = TimeSpan.FromHours((legDistanceNm /  flightSpeed)).Minutes;
             
             //TODO: this is sort of constant by the flightSpeed...
             float minuteLength = (float)legDistanceNm / ((float)(legDistanceNm /  flightSpeed)*60f);
@@ -211,20 +211,19 @@ public class FlightLeg : MonoBehaviour
             
             // clean up redundant minute markers (when the leg shortens...)
             int ii=minutes.Count;
-            while (minutes.Count > 0 &&  minutes.Count > roundedMinutes)
+            while (minutes.Count > 0 &&  minutes.Count > legTimeMinutes && ((ii - 1) < minutes.Count))
             {
                 Destroy(minutes[ii-1].Inbound.Marker);
                 Destroy(minutes[ii-1].Outbound.Marker);
                 minutes.RemoveAt(ii-1);
-                //print("removed index: " + (ii-1));
                 ii++;
             }
             
 
-            if (roundedMinutes > 0)
+            if (legTimeMinutes > 0)
             {
                 //Add missing minute markers
-                for (int i = minutes.Count; i <= roundedMinutes-1; i+=1)
+                for (int i = minutes.Count; i <= legTimeMinutes-1; i+=1)
                 {
 
                     MinutePair pair = new MinutePair();
@@ -263,7 +262,7 @@ public class FlightLeg : MonoBehaviour
                 }
                 
                 // Update the current markers
-                for (int i = 0; i <= roundedMinutes-1; i+=1)
+                for (int i = 0; i <= legTimeMinutes-1; i+=1)
                 {
                     var inboundMarkerLineRenderer = minutes[i].Inbound.Marker.GetComponent<LineRenderer>();
                     var outboundMarkerLineRenderer = minutes[i].Outbound.Marker.GetComponent<LineRenderer>();
