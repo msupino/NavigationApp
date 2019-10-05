@@ -48,6 +48,8 @@ namespace MainLogic
 
         private void Start()
         {
+            Application.targetFrameRate = 24;
+
             mapCameraTransform = mainCamera.transform;
             mapCameraCamera = mainCamera.GetComponent<Camera>();
             buttonDraw.GetComponent<Button>().onClick.AddListener(ToggleDrawMode);
