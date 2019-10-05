@@ -52,6 +52,10 @@ public class FlightLeg : MonoBehaviour
     private Vector3 lastEnd;
     private GameObject inboundLegInfo;
     private GameObject outboundLegInfo;
+    private GameObject inboundDriftGO;
+    private GameObject outboundDriftGO;
+    private LineRenderer inboundDrift;
+    private LineRenderer outboundDrift;
     
     
     private List<MinutePair> minutes = new List<MinutePair>();
@@ -77,6 +81,26 @@ public class FlightLeg : MonoBehaviour
         outboundLegInfo.transform.SetParent(gameObject.transform);
         outboundLegInfo.GetComponent<RotationConstraint>().rotationOffset = new Vector3(0, 0, 0);
         outboundLegInfo.SetActive(true);
+
+        Material dashedMat = Resources.Load("dashedReadStencil", typeof(Material)) as Material;
+
+        inboundDriftGO = Instantiate(emptyLine, Vector3.zero, Quaternion.identity);
+        inboundDriftGO.transform.SetParent(gameObject.transform);
+        inboundDriftGO.GetComponent<Renderer>().material = dashedMat;
+        inboundDrift = inboundDriftGO.GetComponent<LineRenderer>();
+        inboundDrift.positionCount = 2;
+        inboundDrift.startWidth = 0.05f;
+        inboundDrift.endWidth = 0.05f;
+
+        outboundDriftGO = Instantiate(emptyLine, Vector3.zero, Quaternion.identity);
+        outboundDriftGO.transform.SetParent(gameObject.transform);
+        outboundDriftGO.GetComponent<Renderer>().material = dashedMat;
+        outboundDrift = outboundDriftGO.GetComponent<LineRenderer>();
+        outboundDrift.positionCount = 2;
+        outboundDrift.startWidth = 0.05f;
+        outboundDrift.endWidth = 0.05f;
+
+
     }
 
     private GameObject PerpendicularLine()
@@ -305,7 +329,27 @@ public class FlightLeg : MonoBehaviour
                     
                 }
             }
+
+
+            // drift lines
             
+            
+            var rot10deg = Quaternion.Euler(0, 10f, 0);
+
+            var rot10degPivot = rot10deg * (endPosition - startPosition);
+            var rotatedEndPosition = rot10degPivot + startPosition;
+            Vector3 angledVector = (startPosition + rotatedEndPosition) / 2;
+            inboundDrift.SetPosition(0, startPosition);
+            inboundDrift.SetPosition(1, angledVector);
+
+            var rotNeg10degPivot = rot10deg * (startPosition - endPosition);
+            var rotatedStartPosition = rotNeg10degPivot + endPosition;
+            Vector3 angledNegVector = (endPosition + rotatedStartPosition) / 2;
+            outboundDrift.SetPosition(0, endPosition);
+            outboundDrift.SetPosition(1, angledNegVector);
+
+            inboundDriftGO.GetComponent<Renderer>().material.mainTextureScale = new Vector2((float)legDistanceNm, 1);
+            outboundDriftGO.GetComponent<Renderer>().material.mainTextureScale = new Vector2((float)legDistanceNm, 1);
         }
 
     }
