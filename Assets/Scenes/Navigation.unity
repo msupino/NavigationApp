@@ -1927,7 +1927,7 @@ MonoBehaviour:
       _capType: 2
       _fillMode: 0
       _shadeMode: 1
-      _scale: 2
+      _scale: 1.25
       _useZoomFactor: 1
       _coneHeight: 1.65
       _coneRadius: 0.5
@@ -1967,7 +1967,7 @@ MonoBehaviour:
       _lineType: 1
       _fillMode: 0
       _length: 5.5
-      _scale: 2
+      _scale: 1.25
       _useZoomFactor: 1
       _boxHeight: 0.18
       _boxDepth: 0.18
@@ -1984,7 +1984,7 @@ MonoBehaviour:
         _capType: 1
         _fillMode: 0
         _shadeMode: 1
-        _scale: 2
+        _scale: 1.25
         _useZoomFactor: 1
         _coneHeight: 1.65
         _coneRadius: 0.5
@@ -2007,7 +2007,7 @@ MonoBehaviour:
       _lineType: 1
       _fillMode: 0
       _length: 5.5
-      _scale: 2
+      _scale: 1.25
       _useZoomFactor: 1
       _boxHeight: 0.18
       _boxDepth: 0.18
@@ -2024,7 +2024,7 @@ MonoBehaviour:
         _capType: 1
         _fillMode: 0
         _shadeMode: 1
-        _scale: 2
+        _scale: 1.25
         _useZoomFactor: 1
         _coneHeight: 1.65
         _coneRadius: 0.5
@@ -2047,7 +2047,7 @@ MonoBehaviour:
       _lineType: 1
       _fillMode: 0
       _length: 5.5
-      _scale: 2
+      _scale: 1.25
       _useZoomFactor: 1
       _boxHeight: 0.18
       _boxDepth: 0.18
@@ -2064,7 +2064,7 @@ MonoBehaviour:
         _capType: 1
         _fillMode: 0
         _shadeMode: 1
-        _scale: 2
+        _scale: 1.25
         _useZoomFactor: 1
         _coneHeight: 1.65
         _coneRadius: 0.5
@@ -2087,7 +2087,7 @@ MonoBehaviour:
       _lineType: 1
       _fillMode: 0
       _length: 5.5
-      _scale: 2
+      _scale: 1.25
       _useZoomFactor: 1
       _boxHeight: 0.18
       _boxDepth: 0.18
@@ -2104,7 +2104,7 @@ MonoBehaviour:
         _capType: 1
         _fillMode: 0
         _shadeMode: 1
-        _scale: 2
+        _scale: 1.25
         _useZoomFactor: 1
         _coneHeight: 1.65
         _coneRadius: 0.5
@@ -2127,7 +2127,7 @@ MonoBehaviour:
       _lineType: 1
       _fillMode: 0
       _length: 5.5
-      _scale: 2
+      _scale: 1.25
       _useZoomFactor: 1
       _boxHeight: 0.18
       _boxDepth: 0.18
@@ -2144,7 +2144,7 @@ MonoBehaviour:
         _capType: 1
         _fillMode: 0
         _shadeMode: 1
-        _scale: 2
+        _scale: 1.25
         _useZoomFactor: 1
         _coneHeight: 1.65
         _coneRadius: 0.5
@@ -2167,7 +2167,7 @@ MonoBehaviour:
       _lineType: 1
       _fillMode: 0
       _length: 5.5
-      _scale: 2
+      _scale: 1.25
       _useZoomFactor: 1
       _boxHeight: 0.18
       _boxDepth: 0.18
@@ -2184,7 +2184,7 @@ MonoBehaviour:
         _capType: 1
         _fillMode: 0
         _shadeMode: 1
-        _scale: 2
+        _scale: 1.25
         _useZoomFactor: 1
         _coneHeight: 1.65
         _coneRadius: 0.5
@@ -2205,7 +2205,7 @@ MonoBehaviour:
         _hoveredColor: {r: 0.96470594, g: 0.9490197, b: 0.19607845, a: 1}
     _dblSlidersLookAndFeel:
     - _planeType: 0
-      _scale: 2
+      _scale: 1.25
       _useZoomFactor: 1
       _quadWidth: 1.5
       _quadHeight: 1.5
@@ -2236,7 +2236,7 @@ MonoBehaviour:
         _color: {r: 0.5, g: 0.5, b: 0.5, a: 0.1}
         _borderColor: {r: 0.8, g: 0.8, b: 0.8, a: 0.8}
     - _planeType: 0
-      _scale: 2
+      _scale: 1.25
       _useZoomFactor: 1
       _quadWidth: 1.5
       _quadHeight: 1.5
@@ -2267,7 +2267,7 @@ MonoBehaviour:
         _color: {r: 0.5, g: 0.5, b: 0.5, a: 0.1}
         _borderColor: {r: 0.8, g: 0.8, b: 0.8, a: 0.8}
     - _planeType: 0
-      _scale: 2
+      _scale: 1.25
       _useZoomFactor: 1
       _quadWidth: 1.5
       _quadHeight: 1.5
