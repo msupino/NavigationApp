@@ -1184,6 +1184,8 @@ MonoBehaviour:
   buttonDraw: {fileID: 1368558957}
   dragSpeed: 20
   camZoomStep: 5
+  gizmos: {fileID: 716838811}
+  drawing: 0
   flightSpeed: 90
 --- !u!4 &725379321
 Transform:

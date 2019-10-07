@@ -7,6 +7,8 @@ using UnityEngine.EventSystems;
 using UnityEngine.Animations;
 using CoordinateSharp;
 using Tools;
+using RTG;
+
 
 namespace MainLogic
 {
@@ -22,6 +24,7 @@ namespace MainLogic
         public GameObject buttonDraw;
         public float dragSpeed = 20;
         public int camZoomStep = 5;
+        public Tut_1_Enabling_and_Disabling_Gizmos gizmos;
 
 
         // Start is called before the first frame update
@@ -56,6 +59,8 @@ namespace MainLogic
             mapCameraCamera = mainCamera.GetComponent<Camera>();
 
             toolbar = new Toolbar();
+            toolbar.eventDrawing.AddListener(SetStartDrawing);
+            toolbar.eventStopDrawing.AddListener(SetStopDrawing);
 
         }
 
@@ -128,29 +133,26 @@ namespace MainLogic
         }
 
 
-        private void ToggleDrawMode()
-        {
-            drawing = !drawing;
-             
-            if (!drawing)
-            {
-                FinishDraw();
-                drawIndicator.SetActive(false);
-            }
-            else
-            {
-                drawIndicator.SetActive(true);
-            }
 
-            if (drawing && FlightHasLegs()) resumeDrawing = true;
+        public void SetStartDrawing()
+        {
+            drawIndicator.SetActive(true);
+            if (FlightHasLegs())
+            {
+                resumeDrawing = true;
+            }
         }
 
-
-        private void FinishDraw()
+        private void SetStopDrawing()
         {
-            if (FlightHasLegs()) RemoveLastLeg();
+            drawIndicator.SetActive(false);
+            if (FlightHasLegs())
+            {
+                RemoveLastLeg();
+                gizmos.OnTargetObjectChanged(null);
+            }
+            
         }
-
 
         private bool FlightHasLegs()
         {
@@ -196,7 +198,12 @@ namespace MainLogic
 
             crosshair.transform.position = objectPos;
 
-            //if (Input.GetKeyDown("d")) ToggleDrawMode();
+            
+            if (toolbar.currentTool != Tooltype.None && Input.GetKeyDown(KeyCode.Escape))
+            {
+                toolbar.StopAll();
+                return;
+            }
 
             ////////////////////////////////////////////////////////////
             // Screen navigation logic /////////////////////////////////
@@ -247,9 +254,6 @@ namespace MainLogic
             if (toolbar.currentTool != Tooltype.Draw) return;
 
             // Draw mode:
-
-            //if (Input.GetMouseButtonDown(0) && EventSystem.current.IsPointerOverGameObject()) return;
-
             if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject()) // mouse left was clicked
             {
                 GameObject wp1;
