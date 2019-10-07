@@ -17,7 +17,6 @@ namespace MainLogic
     {
 
         public GameObject crosshair;
-        public GameObject drawIndicator;
         public GameObject waypoint;
         public GameObject leg;
         public GameObject mainCamera;
@@ -57,7 +56,6 @@ namespace MainLogic
             mapCameraTransform = mainCamera.transform;
             mapCameraCamera = mainCamera.GetComponent<Camera>();
 
-            //toolbar = new Toolbar();
             toolbar.eventDrawing.AddListener(SetStartDrawing);
             toolbar.eventStopDrawing.AddListener(SetStopDrawing);
 
@@ -109,7 +107,6 @@ namespace MainLogic
 
         public void SetStartDrawing()
         {
-            drawIndicator.SetActive(true);
             if (FlightHasLegs())
             {
                 resumeDrawing = true;
@@ -118,7 +115,6 @@ namespace MainLogic
 
         private void SetStopDrawing()
         {
-            drawIndicator.SetActive(false);
             if (FlightHasLegs())
             {
                 RemoveLastLeg();
