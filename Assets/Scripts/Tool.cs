@@ -11,12 +11,15 @@ public class Tool : MonoBehaviour
 {
     public MainLoop main;
     public Tooltype tool;
-    private Image image;
+    public Texture2D cursorTexture;
+    public CursorMode cursorMode = CursorMode.Auto;
+    public Vector2 hotSpot = Vector2.zero;
     public bool isActive = false;
+
+    private Image image;
     private KeyCode triggerKey;
+
     // Start is called before the first frame update
-
-
     void Start()
     {
         image = gameObject.GetComponent<Image>();
@@ -56,6 +59,7 @@ public class Tool : MonoBehaviour
     {
         image.color = new Color32(255, 255, 255, 100);
         this.isActive = false;
+        Cursor.SetCursor(null, Vector2.zero, cursorMode);
 
         // each button will have a different stop sequence
         switch (tool)
@@ -81,7 +85,9 @@ public class Tool : MonoBehaviour
                 main.toolbar.SetTool(tool);
                 break;
         }
-        
+
+        Cursor.SetCursor(cursorTexture, hotSpot, cursorMode);
+
     }
 
     void Refresh()
