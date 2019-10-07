@@ -173,7 +173,7 @@ namespace RTG
         /// that is different from the current target object. The function takes care
         /// of adjusting the gizmo states accordingly.
         /// </summary>
-        private void OnTargetObjectChanged(GameObject newTargetObject)
+        public void OnTargetObjectChanged(GameObject newTargetObject)
         {
             // Store the new target object
             _targetObject = newTargetObject;
