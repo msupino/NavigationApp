@@ -6,7 +6,7 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using UnityEngine.Animations;
 using CoordinateSharp;
-
+using Tools;
 
 namespace MainLogic
 {
@@ -45,6 +45,7 @@ namespace MainLogic
 
         public double flightSpeed = 90d; //TODO: Will be on the leg level
 
+        public Toolbar toolbar;
 
         private void Start()
         {
@@ -53,6 +54,9 @@ namespace MainLogic
             mapCameraTransform = mainCamera.transform;
             mapCameraCamera = mainCamera.GetComponent<Camera>();
             buttonDraw.GetComponent<Button>().onClick.AddListener(ToggleDrawMode);
+
+            toolbar = new Toolbar();
+
         }
 
 
