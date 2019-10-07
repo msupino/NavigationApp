@@ -7,7 +7,9 @@ using UnityEngine.Animations;
 using Tools;
 using MainLogic;
 
-public class Tool : MonoBehaviour
+public class Tool : MonoBehaviour,
+    IPointerEnterHandler,
+    IPointerExitHandler
 {
     public MainLoop main;
     public Tooltype tool;
@@ -111,6 +113,22 @@ public class Tool : MonoBehaviour
             main.toolbar.SetTool(Tooltype.None);
         }
     }
-    
 
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        image.color = new Color32(255, 255, 255, 150);
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        if (isActive)
+        {
+            image.color = new Color32(255, 255, 255, 255);
+
+        }
+        else
+        {
+            image.color = new Color32(255, 255, 255, 100);
+        }
+    }
 }
