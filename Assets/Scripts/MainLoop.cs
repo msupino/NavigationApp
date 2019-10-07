@@ -32,7 +32,8 @@ namespace MainLogic
         private Camera mapCameraCamera;
         private float zoom;
         private bool canZoom;
-        private bool drawMode;
+
+        public bool drawing = false;
 
         // static varibales to define the world scale
         private static double lonConversionRate = 8.392355; //of NM=0.16666667 degrees along Longatiute
@@ -53,7 +54,6 @@ namespace MainLogic
 
             mapCameraTransform = mainCamera.transform;
             mapCameraCamera = mainCamera.GetComponent<Camera>();
-            buttonDraw.GetComponent<Button>().onClick.AddListener(ToggleDrawMode);
 
             toolbar = new Toolbar();
 
@@ -130,8 +130,9 @@ namespace MainLogic
 
         private void ToggleDrawMode()
         {
-            drawMode = !drawMode;
-            if (!drawMode)
+            drawing = !drawing;
+             
+            if (!drawing)
             {
                 FinishDraw();
                 drawIndicator.SetActive(false);
@@ -141,7 +142,7 @@ namespace MainLogic
                 drawIndicator.SetActive(true);
             }
 
-            if (drawMode && FlightHasLegs()) resumeDrawing = true;
+            if (drawing && FlightHasLegs()) resumeDrawing = true;
         }
 
 
@@ -195,7 +196,7 @@ namespace MainLogic
 
             crosshair.transform.position = objectPos;
 
-            if (Input.GetKeyDown("d")) ToggleDrawMode();
+            //if (Input.GetKeyDown("d")) ToggleDrawMode();
 
             ////////////////////////////////////////////////////////////
             // Screen navigation logic /////////////////////////////////
@@ -243,9 +244,12 @@ namespace MainLogic
             ////////////////////////////////////////////////////////////
             // End of Screen navigation logic //////////////////////////
 
-            if (!drawMode) return;
+            if (toolbar.currentTool != Tooltype.Draw) return;
 
             // Draw mode:
+
+            //if (Input.GetMouseButtonDown(0) && EventSystem.current.IsPointerOverGameObject()) return;
+
             if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject()) // mouse left was clicked
             {
                 GameObject wp1;

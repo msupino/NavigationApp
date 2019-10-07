@@ -46,6 +46,11 @@ public class Tool : MonoBehaviour
                 }
             }
         }
+        else
+        {
+            image.color = new Color32(255, 255, 255, 100);
+            main.toolbar.SetTool(Tooltype.None);
+        }
     }
     
 
