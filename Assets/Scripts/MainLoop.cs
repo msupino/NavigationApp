@@ -36,7 +36,6 @@ namespace MainLogic
         private float zoom;
         private bool canZoom;
 
-        public bool drawing = false;
 
         // static varibales to define the world scale
         private static double lonConversionRate = 8.392355; //of NM=0.16666667 degrees along Longatiute
@@ -58,7 +57,7 @@ namespace MainLogic
             mapCameraTransform = mainCamera.transform;
             mapCameraCamera = mainCamera.GetComponent<Camera>();
 
-            toolbar = new Toolbar();
+            //toolbar = new Toolbar();
             toolbar.eventDrawing.AddListener(SetStartDrawing);
             toolbar.eventStopDrawing.AddListener(SetStopDrawing);
 
@@ -97,32 +96,6 @@ namespace MainLogic
             //print("lon: " + lon + " lat: " + lat);
             //print(c);
             return c;
-
-            /* more precise method:
-            
-            Vector3 origin = cursorPosition;
-            origin.x = 0;
-            origin.z = 0;
-    
-            //print("x: " + objectPos.x + " y: " + objectPos.y + " z: " + objectPos.z);
-    
-            // get angle from origin to cursor point
-            float angle = Mathf.Atan2(objectPos.x - origin.x, objectPos.z - origin.z) * Mathf.Rad2Deg;
-            if (angle < 0) angle = 1 * angle + 360;
-    
-            // convert the dist in NM to Meters
-            float dist_as_NM = Vector3.Distance(origin, objectPos);
-            float dist_as_Meteres = dist_as_NM * 1852;//new Distance(dist_as_NM, DistanceType.NauticalMiles).Meters;
-    
-            //print("Caculate using: distance(NM): " + dist_as_NM + " distance(Meters): " + dist_as_Meteres + " heading: " + angle);
-    
-            Coordinate c = new Coordinate(33.0, 35.0);
-            c.Move(dist_as_Meteres, angle, Shape.Sphere);
-    
-            //print("Pressed at: " + c);
-            return null;
-            */
-
         }
 
         public Vector3 CursorLocalPosition()

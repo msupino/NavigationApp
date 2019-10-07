@@ -13,9 +13,10 @@ namespace Tools
         Erase
     }
 
-    public class Toolbar
+    public class Toolbar : MonoBehaviour
     {
         public Tooltype currentTool;
+        public GameObject stopBanner;
         public List<GameObject> buttons = new List<GameObject>();
         public UnityEvent eventDrawing = new UnityEvent();
         public UnityEvent eventStopDrawing = new UnityEvent();
@@ -25,6 +26,12 @@ namespace Tools
 
         }
 
+        private void Start()
+        {
+            stopBanner.SetActive(false);
+        }
+
+
         public void StopAll()
         {
 
@@ -32,12 +39,20 @@ namespace Tools
             {
                 btn.GetComponent<Tool>().Stop();     
             }
-            currentTool = Tooltype.None;
+            SetTool(Tooltype.None);
         }
 
         public void SetTool(Tooltype t)
         {
             currentTool = t;
+            if (t == Tooltype.None)
+            {
+                stopBanner.SetActive(false);
+            }
+            else
+            {
+                stopBanner.SetActive(true);
+            }
         }
     }
 

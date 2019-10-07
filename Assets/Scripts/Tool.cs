@@ -57,10 +57,15 @@ public class Tool : MonoBehaviour
         image.color = new Color32(255, 255, 255, 100);
         this.isActive = false;
 
+        // each button will have a different stop sequence
         switch (tool)
         {
             case (Tooltype.Draw):
-                main.toolbar.eventStopDrawing.Invoke();
+                // if this is the current tool, invoke a stop for it.
+                if (main.toolbar.currentTool == Tooltype.Draw)
+                {
+                    main.toolbar.eventStopDrawing.Invoke();
+                }
                 break;
         }
     }
@@ -68,22 +73,22 @@ public class Tool : MonoBehaviour
     public void Enter()
     {
         image.color = new Color32(255, 255, 255, 255);
-        main.toolbar.SetTool(tool);
+        
         switch (tool)
         {
             case (Tooltype.Draw):
                 main.toolbar.eventDrawing.Invoke();
+                main.toolbar.SetTool(tool);
                 break;
         }
-        main.toolbar.currentTool = tool;
+        
     }
 
     void Refresh()
     {
         if (isActive)
         {
-            Enter();
-
+            
             foreach (GameObject btn in main.toolbar.buttons)
             {
                 if (btn != gameObject)
@@ -91,11 +96,13 @@ public class Tool : MonoBehaviour
                     btn.GetComponent<Tool>().Stop();
                 }
             }
+
+            Enter();
         }
         else
         {
             this.Stop();
-            main.toolbar.currentTool = Tooltype.None;
+            main.toolbar.SetTool(Tooltype.None);
         }
     }
     
