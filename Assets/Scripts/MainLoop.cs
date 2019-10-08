@@ -24,7 +24,7 @@ namespace MainLogic
     public class MainLoop : MonoBehaviour
     {
 
-        public GameObject crosshair;
+        //public GameObject crosshair;
         public GameObject waypoint;
         public GameObject leg;
         public GameObject mainCamera;
@@ -232,7 +232,7 @@ namespace MainLogic
             var objectPos = CursorLocalPosition();
             // TODO: edit mode, delete mode
 
-            crosshair.transform.position = objectPos;
+            //crosshair.transform.position = objectPos;
 
             
             if (toolbar.currentTool != ToolType.None && Input.GetKeyDown(KeyCode.Escape))
