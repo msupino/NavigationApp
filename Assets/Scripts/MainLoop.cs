@@ -13,7 +13,7 @@ using RTG;
 namespace MainLogic
 {
 
-    struct FlightLegX
+    struct FlightLegData
     {
         public GameObject leg;
         public GameObject start;
@@ -39,9 +39,8 @@ namespace MainLogic
 
 
         // Start is called before the first frame update
-        private List<FlightLegX> flightX = new List<FlightLegX>();
+        private List<FlightLegData> flight = new List<FlightLegData>();
         private List<GameObject> waypoints = new List<GameObject>();
-        private List<FlightLegContainer> flight = new List<FlightLegContainer>();
         private Vector3 lastMouse;
         private Transform mapCameraTransform;
         private Camera mapCameraCamera;
@@ -116,8 +115,6 @@ namespace MainLogic
             return Camera.main.ScreenToWorldPoint(mousePos);
         }
 
-
-
         public void SetStartDrawing()
         {
             if (WaypointsExists())
@@ -142,21 +139,6 @@ namespace MainLogic
             return false;
         }
 
-        // private FlightLegContainer GetLastFlightLeg()
-        // {
-        //     return flight[flight.Count - 1];
-        // }
-
-
-        // private void RemoveLastLeg()
-        // {
-        //     FlightLegContainer lastLeg = flight[flight.Count - 1];
-        //     Destroy(lastLeg.EndWp); //Destory the gameObject
-        //     Destroy(lastLeg.Leg); //Destory the gameObject
-        //     waypoints.RemoveAt(waypoints.Count - 1);
-        //     flight.RemoveAt(flight.Count - 1);
-        // }
-
         private GameObject CreateWaypoint(Vector3 pos)
         {
             GameObject wp = Instantiate(waypoint, pos, Quaternion.identity);
@@ -164,14 +146,6 @@ namespace MainLogic
             
             return wp;
         }
-
-        // private void CreateLeg(GameObject startWp, GameObject endWp)
-        // {
-        //     var legName = "LEG" + (flight.Count + 1);
-        //     FlightLegContainer newLeg = new FlightLegContainer(legName, startWp, endWp, leg);
-        //     flight.Add(newLeg);
-        // }
-        
 
         void RemoveLastWaypoint()
         {
@@ -182,25 +156,17 @@ namespace MainLogic
                 DrawLegs();
             }
         }
+
         void DrawLegs()
         {   
             // to be called when waypoint count is changed!
-
-            // delete all current legs. TODO: refactor
-
-            // for (int x=0; x<flightX.Count; x++)
-            // {
-            //     Destroy(flightX[x].leg);
-            //     flightX.RemoveAt(x);                  
-            // }
-
             for (int i=0; i<waypoints.Count-1; i++)
             {
                 // construct leg between this point and next point.
                 // if there is no next point, we are out.
-                if (flightX.Count <= i)
+                if (flight.Count <= i)
                 {
-                    FlightLegX l = new FlightLegX();
+                    FlightLegData l = new FlightLegData();
                     
                     l.leg = UnityEngine.Object.Instantiate(leg, Vector3.zero, Quaternion.identity);
                     l.script = l.leg.GetComponent<FlightLeg>();
@@ -210,13 +176,13 @@ namespace MainLogic
                     l.script.endWaypoint = waypoints[i+1].GetComponent<Waypoint>();
                     l.leg.GetComponent<LineRenderer>().enabled = true;
 
-                    flightX.Add(l);
+                    flight.Add(l);
                 }
             }    
-            while (flightX.Count > waypoints.Count-1)
+            while (flight.Count > waypoints.Count-1)
             {
-                Destroy(flightX[flightX.Count-1].leg);
-                flightX.RemoveAt(flightX.Count-1);
+                Destroy(flight[flight.Count-1].leg);
+                flight.RemoveAt(flight.Count-1);
             }    
 
         }
@@ -337,40 +303,6 @@ namespace MainLogic
             }
 
         }
-    }
-
-}
-
-public class FlightLegContainer
-{
-    public string LegName;
-    public GameObject StartWp;
-    public GameObject EndWp;
-    public GameObject Leg;
-    public FlightLeg LegScript;
- 
-    
-    private ConstraintSource startCnsSource;
-    private ConstraintSource endCnsSource;
-    
-    public FlightLegContainer(string name, GameObject _startWp, GameObject _endWp, GameObject _legPrefab)
-    {
-        LegName = name;
-        StartWp = _startWp;
-        EndWp = _endWp;
-        
-        var newLeg = UnityEngine.Object.Instantiate(_legPrefab, Vector3.zero, Quaternion.identity);
-
-        Leg = newLeg;
-        LegScript = newLeg.GetComponent<FlightLeg>();
-        LegScript.startSource = StartWp;
-        LegScript.endSource = EndWp;
-        
-        LegScript.startWaypoint = StartWp.GetComponent<Waypoint>();
-        LegScript.endWaypoint = EndWp.GetComponent<Waypoint>();
-        
-        Leg.GetComponent<LineRenderer>().enabled = true;
-
     }
 
 }
