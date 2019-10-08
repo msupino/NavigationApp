@@ -34,6 +34,9 @@ public class Tool : MonoBehaviour,
             case Tooltype.Draw:
                 triggerKey = KeyCode.D;
                 break;
+            case Tooltype.Erase:
+                triggerKey = KeyCode.X;
+                break;    
         }
 
 
@@ -46,7 +49,10 @@ public class Tool : MonoBehaviour,
 
         if (Input.GetKeyDown(triggerKey))
         {
-            if (main.toolbar.currentTool != tool) Enter();
+            if (main.toolbar.currentTool != tool){
+                isActive = true;
+                Refresh();
+            }
         }
  
     }
@@ -73,6 +79,13 @@ public class Tool : MonoBehaviour,
                     main.toolbar.eventStopDrawing.Invoke();
                 }
                 break;
+            case (Tooltype.Erase):
+                // if this is the current tool, invoke a stop for it.
+                if (main.toolbar.currentTool == Tooltype.Erase)
+                {
+                    main.toolbar.eventStopErase.Invoke();
+                }
+                break;
         }
     }
 
@@ -86,9 +99,13 @@ public class Tool : MonoBehaviour,
                 main.toolbar.eventDrawing.Invoke();
                 main.toolbar.SetTool(tool);
                 break;
+            case (Tooltype.Erase):
+                main.toolbar.eventErase.Invoke();
+                main.toolbar.SetTool(tool);
+                break;
         }
 
-        Cursor.SetCursor(cursorTexture, hotSpot, cursorMode);
+        //Cursor.SetCursor(cursorTexture, hotSpot, cursorMode);
 
     }
 

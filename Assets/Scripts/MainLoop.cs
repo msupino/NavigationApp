@@ -24,6 +24,10 @@ namespace MainLogic
         public float dragSpeed = 20;
         public int camZoomStep = 5;
         public Tut_1_Enabling_and_Disabling_Gizmos gizmos;
+        public Texture2D cursorTextureDrag;
+        public Texture2D cursorTextureDragAction;
+        public CursorMode cursorMode = CursorMode.Auto;
+        public Vector2 hotSpot = Vector2.zero;
 
 
         // Start is called before the first frame update
@@ -162,6 +166,8 @@ namespace MainLogic
         // Update is called once per frame
         void Update()
         {
+            //if (!Input.GetKey(KeyCode.Space)) Cursor.SetCursor(null, Vector2.zero, cursorMode);    
+          
             var objectPos = CursorLocalPosition();
             // TODO: edit mode, delete mode
 
@@ -197,6 +203,8 @@ namespace MainLogic
 
             if (Input.GetKey(KeyCode.Space))
             {
+                //Cursor.SetCursor(cursorTextureDrag, hotSpot, cursorMode); 
+                
                 if (Input.GetMouseButtonDown(0))
                 {
 
@@ -206,6 +214,8 @@ namespace MainLogic
 
                 if (Input.GetMouseButton(0))
                 {
+                    //Cursor.SetCursor(cursorTextureDragAction, hotSpot, cursorMode);
+
                     var curMouse = Input.mousePosition;
                     var pos = Camera.main.ScreenToViewportPoint(lastMouse - curMouse);
                     var orthographicSize = mapCameraCamera.orthographicSize;
@@ -220,35 +230,53 @@ namespace MainLogic
             ////////////////////////////////////////////////////////////
             // End of Screen navigation logic //////////////////////////
 
-            if (toolbar.currentTool != Tooltype.Draw) return;
-
-            // Draw mode:
-            if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject()) // mouse left was clicked
+            switch (toolbar.currentTool)
             {
-                GameObject wp1;
-                if (!FlightHasLegs())
+                case Tooltype.Draw:
                 {
-                    wp1 = CreateWaypoint(objectPos);
+                    // Draw mode:
+                    if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject()) // mouse left was clicked
+                    {
+                        GameObject wp1;
+                        if (!FlightHasLegs())
+                        {
+                            wp1 = CreateWaypoint(objectPos);
+                        }
+                        else
+                        {
+                            wp1 = flight[flight.Count - 1].EndWp;
+                        }
+                        
+                        var wp2 = CreateWaypoint(objectPos);
+                        CreateLeg(wp1, wp2);
+                    }
+                    else if (resumeDrawing)
+                    {
+                        var wp1 = flight[flight.Count - 1].EndWp;
+                        var wp2 = CreateWaypoint(wp1.transform.position);
+                        CreateLeg(wp1, wp2);
+                        resumeDrawing = false;
+                    }
+                    
+                    // mouse in motion with the next waypoint...
+                    if (!FlightHasLegs()) return;
+                    waypoints[waypoints.Count - 1].transform.position = objectPos;
+
+                    break;
+
                 }
-                else
+
+                case Tooltype.Erase: 
                 {
-                    wp1 = flight[flight.Count - 1].EndWp;
+                    return;
                 }
                 
-                var wp2 = CreateWaypoint(objectPos);
-                CreateLeg(wp1, wp2);
+                case Tooltype.None: 
+                {
+                    return;
+                }
+
             }
-            else if (resumeDrawing)
-            {
-                var wp1 = flight[flight.Count - 1].EndWp;
-                var wp2 = CreateWaypoint(wp1.transform.position);
-                CreateLeg(wp1, wp2);
-                resumeDrawing = false;
-            }
-            
-            // mouse in motion with the next waypoint...
-            if (!FlightHasLegs()) return;
-            waypoints[waypoints.Count - 1].transform.position = objectPos;
 
         }
     }

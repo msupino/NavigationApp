@@ -20,6 +20,8 @@ namespace Tools
         public List<GameObject> buttons = new List<GameObject>();
         public UnityEvent eventDrawing = new UnityEvent();
         public UnityEvent eventStopDrawing = new UnityEvent();
+        public UnityEvent eventErase = new UnityEvent();
+        public UnityEvent eventStopErase = new UnityEvent();
 
         public Toolbar()
         {
@@ -45,14 +47,19 @@ namespace Tools
         public void SetTool(Tooltype t)
         {
             currentTool = t;
-            if (t == Tooltype.None)
+            switch (t)
             {
-                stopBanner.SetActive(false);
+                case Tooltype.None:
+                    stopBanner.SetActive(false);
+                    break;
+                case Tooltype.Draw:
+                    stopBanner.SetActive(true);
+                    break;
+                case Tooltype.Erase:
+                    stopBanner.SetActive(true);
+                    break;
             }
-            else
-            {
-                stopBanner.SetActive(true);
-            }
+
         }
     }
 
