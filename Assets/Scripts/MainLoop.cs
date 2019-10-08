@@ -13,6 +13,14 @@ using RTG;
 namespace MainLogic
 {
 
+    struct FlightLegX
+    {
+        public GameObject leg;
+        public GameObject start;
+        public GameObject end;
+        public FlightLeg script;
+    }
+
     public class MainLoop : MonoBehaviour
     {
 
@@ -31,6 +39,7 @@ namespace MainLogic
 
 
         // Start is called before the first frame update
+        private List<FlightLegX> flightX = new List<FlightLegX>();
         private List<GameObject> waypoints = new List<GameObject>();
         private List<FlightLegContainer> flight = new List<FlightLegContainer>();
         private Vector3 lastMouse;
@@ -111,7 +120,7 @@ namespace MainLogic
 
         public void SetStartDrawing()
         {
-            if (FlightHasLegs())
+            if (WaypointsExists())
             {
                 resumeDrawing = true;
             }
@@ -119,34 +128,34 @@ namespace MainLogic
 
         private void SetStopDrawing()
         {
-            if (FlightHasLegs())
+            if (WaypointsExists())
             {
-                RemoveLastLeg();
+                RemoveLastWaypoint();
                 gizmos.OnTargetObjectChanged(null);
             }
             
         }
 
-        private bool FlightHasLegs()
+        private bool WaypointsExists()
         {
-            if (flight.Count > 0) return true;
+            if (waypoints.Count > 0) return true;
             return false;
         }
 
-        private FlightLegContainer GetLastFlightLeg()
-        {
-            return flight[flight.Count - 1];
-        }
+        // private FlightLegContainer GetLastFlightLeg()
+        // {
+        //     return flight[flight.Count - 1];
+        // }
 
 
-        private void RemoveLastLeg()
-        {
-            FlightLegContainer lastLeg = flight[flight.Count - 1];
-            Destroy(lastLeg.EndWp); //Destory the gameObject
-            Destroy(lastLeg.Leg); //Destory the gameObject
-            waypoints.RemoveAt(waypoints.Count - 1);
-            flight.RemoveAt(flight.Count - 1);
-        }
+        // private void RemoveLastLeg()
+        // {
+        //     FlightLegContainer lastLeg = flight[flight.Count - 1];
+        //     Destroy(lastLeg.EndWp); //Destory the gameObject
+        //     Destroy(lastLeg.Leg); //Destory the gameObject
+        //     waypoints.RemoveAt(waypoints.Count - 1);
+        //     flight.RemoveAt(flight.Count - 1);
+        // }
 
         private GameObject CreateWaypoint(Vector3 pos)
         {
@@ -156,13 +165,63 @@ namespace MainLogic
             return wp;
         }
 
-        private void CreateLeg(GameObject startWp, GameObject endWp)
-        {
-            var legName = "LEG" + (flight.Count + 1);
-            FlightLegContainer newLeg = new FlightLegContainer(legName, startWp, endWp, leg);
-            flight.Add(newLeg);
-        }
+        // private void CreateLeg(GameObject startWp, GameObject endWp)
+        // {
+        //     var legName = "LEG" + (flight.Count + 1);
+        //     FlightLegContainer newLeg = new FlightLegContainer(legName, startWp, endWp, leg);
+        //     flight.Add(newLeg);
+        // }
         
+
+        void RemoveLastWaypoint()
+        {
+            if (waypoints.Count > 0)
+            {
+                Destroy(waypoints[waypoints.Count-1]);
+                waypoints.RemoveAt(waypoints.Count-1);
+                DrawLegs();
+            }
+        }
+        void DrawLegs()
+        {   
+            // to be called when waypoint count is changed!
+
+            // delete all current legs. TODO: refactor
+
+            // for (int x=0; x<flightX.Count; x++)
+            // {
+            //     Destroy(flightX[x].leg);
+            //     flightX.RemoveAt(x);                  
+            // }
+
+            for (int i=0; i<waypoints.Count-1; i++)
+            {
+                // construct leg between this point and next point.
+                // if there is no next point, we are out.
+                if (flightX.Count <= i)
+                {
+                    FlightLegX l = new FlightLegX();
+                    
+                    l.leg = UnityEngine.Object.Instantiate(leg, Vector3.zero, Quaternion.identity);
+                    l.script = l.leg.GetComponent<FlightLeg>();
+                    l.script.startSource = waypoints[i];
+                    l.script.endSource = waypoints[i+1];
+                    l.script.startWaypoint = waypoints[i].GetComponent<Waypoint>();
+                    l.script.endWaypoint = waypoints[i+1].GetComponent<Waypoint>();
+                    l.leg.GetComponent<LineRenderer>().enabled = true;
+
+                    flightX.Add(l);
+                }
+            }    
+            while (flightX.Count > waypoints.Count-1)
+            {
+                Destroy(flightX[flightX.Count-1].leg);
+                flightX.RemoveAt(flightX.Count-1);
+            }    
+
+        }
+
+
         // Update is called once per frame
         void Update()
         {
@@ -238,30 +297,29 @@ namespace MainLogic
                     if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject()) // mouse left was clicked
                     {
                         GameObject wp1;
-                        if (!FlightHasLegs())
+                        if (!WaypointsExists())
                         {
                             wp1 = CreateWaypoint(objectPos);
                         }
                         else
                         {
-                            wp1 = flight[flight.Count - 1].EndWp;
+                            wp1 = waypoints[waypoints.Count - 1];
                         }
                         
                         var wp2 = CreateWaypoint(objectPos);
-                        CreateLeg(wp1, wp2);
+                        DrawLegs();
                     }
                     else if (resumeDrawing)
                     {
-                        var wp1 = flight[flight.Count - 1].EndWp;
+                        var wp1 = waypoints[waypoints.Count - 1];
                         var wp2 = CreateWaypoint(wp1.transform.position);
-                        CreateLeg(wp1, wp2);
+                        DrawLegs();
                         resumeDrawing = false;
                     }
                     
                     // mouse in motion with the next waypoint...
-                    if (!FlightHasLegs()) return;
+                    if (!WaypointsExists()) return;
                     waypoints[waypoints.Count - 1].transform.position = objectPos;
-
                     break;
 
                 }
@@ -270,7 +328,7 @@ namespace MainLogic
                 {
                     return;
                 }
-                
+
                 case Tooltype.None: 
                 {
                     return;
