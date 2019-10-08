@@ -183,7 +183,6 @@ namespace MainLogic
                         if (curLeg.start != waypoints[i] || curLeg.end != waypoints[i+1])
                         {
                             // this leg needs to be fixed
-                            print("Need to fix the leg between " + waypoints[i].name + " to " + waypoints[i+1].name);
                             curLeg.script.startSource = waypoints[i];
                             curLeg.script.endSource = waypoints[i+1];
                             curLeg.script.startWaypoint = waypoints[i].GetComponent<Waypoint>();
@@ -192,7 +191,7 @@ namespace MainLogic
                             curLeg.end = waypoints[i+1];
                             curLeg.script.dirty = true;
 
-                            flight[i] = curLeg;
+                            flight[i] = curLeg; //cast the updated leg back into the list
                         }
                     }
                     if (flight.Count <= i)
