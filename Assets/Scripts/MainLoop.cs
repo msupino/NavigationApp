@@ -70,6 +70,7 @@ namespace MainLogic
 
             toolbar.eventDrawing.AddListener(SetStartDrawing);
             toolbar.eventStopDrawing.AddListener(SetStopDrawing);
+            toolbar.eventActionTriggered.AddListener(DoAction);
 
         }
 
@@ -147,6 +148,16 @@ namespace MainLogic
             return wp;
         }
 
+        private void DoAction(ToolType tool)
+        {
+            switch(tool)
+            {
+                case ToolType.Reverse:
+                    print("Will reverse the flight");
+                    break;
+            }
+        }
+
         void RemoveLastWaypoint()
         {
             if (waypoints.Count > 0)
@@ -222,7 +233,7 @@ namespace MainLogic
             crosshair.transform.position = objectPos;
 
             
-            if (toolbar.currentTool != Tooltype.None && Input.GetKeyDown(KeyCode.Escape))
+            if (toolbar.currentTool != ToolType.None && Input.GetKeyDown(KeyCode.Escape))
             {
                 toolbar.StopAll();
                 return;
@@ -280,7 +291,7 @@ namespace MainLogic
 
             switch (toolbar.currentTool)
             {
-                case Tooltype.Draw:
+                case ToolType.Draw:
                 {
                     // Draw mode:
                     if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject()) // mouse left was clicked
@@ -313,7 +324,7 @@ namespace MainLogic
 
                 }
 
-                case Tooltype.Erase: 
+                case ToolType.Erase: 
                 {
                     if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject()) // mouse left was clicked
                     {
@@ -323,7 +334,6 @@ namespace MainLogic
                         if( Physics.Raycast( ray, out hit, 100 ) )
                         {
                             GameObject o = hit.transform.gameObject;
-                            Debug.Log( o.name );
                             waypoints.Remove(o);
                             gizmos.OnTargetObjectChanged(null);
                             Destroy(o);
@@ -333,7 +343,7 @@ namespace MainLogic
                     break;
                 }
 
-                case Tooltype.None: 
+                case ToolType.None: 
                 {
                     return;
                 }

@@ -2,21 +2,28 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.Animations;
 using Tools;
 using MainLogic;
+
+
+
 
 public class Tool : MonoBehaviour,
     IPointerEnterHandler,
     IPointerExitHandler
 {
     public MainLoop main;
-    public Tooltype tool;
+    public ToolType tool;
+    public ButtonType typ;
+
     public Texture2D cursorTexture;
     public CursorMode cursorMode = CursorMode.Auto;
     public Vector2 hotSpot = Vector2.zero;
     public bool isActive = false;
+
 
     private Image image;
     private KeyCode triggerKey;
@@ -31,12 +38,15 @@ public class Tool : MonoBehaviour,
 
         switch (tool)
         {
-            case Tooltype.Draw:
+            case ToolType.Draw:
                 triggerKey = KeyCode.D;
                 break;
-            case Tooltype.Erase:
+            case ToolType.Erase:
                 triggerKey = KeyCode.X;
                 break;    
+            case ToolType.Reverse:
+                triggerKey = KeyCode.Z;
+                break;
         }
 
 
@@ -45,7 +55,7 @@ public class Tool : MonoBehaviour,
 
     public void Update()
     {
-        if (tool == Tooltype.None) return;
+        if (tool == ToolType.None) return;
 
         if (Input.GetKeyDown(triggerKey))
         {
@@ -59,6 +69,20 @@ public class Tool : MonoBehaviour,
 
     void Clicked()
     {
+        if (typ == ButtonType.Action)
+        {
+            if (main.toolbar.currentTool == ToolType.None)
+            {
+                main.toolbar.eventActionTriggered.Invoke(tool);
+            }
+            else
+            {
+                Debug.LogWarning("Unbale to invoke action while another tool is active");
+            }
+            return;
+        }
+        
+        
         isActive = !isActive;
         Refresh();
     }
@@ -72,16 +96,16 @@ public class Tool : MonoBehaviour,
         // each button will have a different stop sequence
         switch (tool)
         {
-            case (Tooltype.Draw):
+            case (ToolType.Draw):
                 // if this is the current tool, invoke a stop for it.
-                if (main.toolbar.currentTool == Tooltype.Draw)
+                if (main.toolbar.currentTool == ToolType.Draw)
                 {
                     main.toolbar.eventStopDrawing.Invoke();
                 }
                 break;
-            case (Tooltype.Erase):
+            case (ToolType.Erase):
                 // if this is the current tool, invoke a stop for it.
-                if (main.toolbar.currentTool == Tooltype.Erase)
+                if (main.toolbar.currentTool == ToolType.Erase)
                 {
                     main.toolbar.eventStopErase.Invoke();
                 }
@@ -95,11 +119,11 @@ public class Tool : MonoBehaviour,
         
         switch (tool)
         {
-            case (Tooltype.Draw):
+            case (ToolType.Draw):
                 main.toolbar.eventDrawing.Invoke();
                 main.toolbar.SetTool(tool);
                 break;
-            case (Tooltype.Erase):
+            case (ToolType.Erase):
                 main.toolbar.eventErase.Invoke();
                 main.toolbar.SetTool(tool);
                 break;
@@ -110,7 +134,7 @@ public class Tool : MonoBehaviour,
     }
 
     void Refresh()
-    {
+    { 
         if (isActive)
         {
             
@@ -127,7 +151,7 @@ public class Tool : MonoBehaviour,
         else
         {
             this.Stop();
-            main.toolbar.SetTool(Tooltype.None);
+            main.toolbar.SetTool(ToolType.None);
         }
     }
 

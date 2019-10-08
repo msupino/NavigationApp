@@ -6,22 +6,36 @@ using UnityEngine.Events;
 namespace Tools
 {
 
-    public enum Tooltype
+
+    [System.Serializable]
+    public class ActionEvent : UnityEvent<ToolType>
+    {
+    }
+
+    public enum ToolType
     {
         None,
         Draw,
-        Erase
+        Erase,
+        Reverse
+    }
+
+    public enum ButtonType
+    {
+        Tool,
+        Action
     }
 
     public class Toolbar : MonoBehaviour
     {
-        public Tooltype currentTool;
+        public ToolType currentTool;
         public GameObject stopBanner;
         public List<GameObject> buttons = new List<GameObject>();
         public UnityEvent eventDrawing = new UnityEvent();
         public UnityEvent eventStopDrawing = new UnityEvent();
         public UnityEvent eventErase = new UnityEvent();
         public UnityEvent eventStopErase = new UnityEvent();
+        public ActionEvent eventActionTriggered = new ActionEvent();
 
         public Toolbar()
         {
@@ -41,21 +55,21 @@ namespace Tools
             {
                 btn.GetComponent<Tool>().Stop();     
             }
-            SetTool(Tooltype.None);
+            SetTool(ToolType.None);
         }
 
-        public void SetTool(Tooltype t)
+        public void SetTool(ToolType t)
         {
             currentTool = t;
             switch (t)
             {
-                case Tooltype.None:
+                case ToolType.None:
                     stopBanner.SetActive(false);
                     break;
-                case Tooltype.Draw:
+                case ToolType.Draw:
                     stopBanner.SetActive(true);
                     break;
-                case Tooltype.Erase:
+                case ToolType.Erase:
                     stopBanner.SetActive(true);
                     break;
             }
