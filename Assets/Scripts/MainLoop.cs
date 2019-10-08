@@ -144,6 +144,7 @@ namespace MainLogic
         {
             GameObject wp = Instantiate(waypoint, pos, Quaternion.identity);
             waypoints.Add(wp);
+            wp.name = "Waypoint_" + waypoints.Count;
             
             return wp;
         }
@@ -153,7 +154,8 @@ namespace MainLogic
             switch(tool)
             {
                 case ToolType.Reverse:
-                    print("Will reverse the flight");
+                    waypoints.Reverse();
+                    DrawLegs();
                     break;
             }
         }
@@ -171,18 +173,17 @@ namespace MainLogic
         void DrawLegs()
         {   
             // to be called when waypoint count is changed!
-
             if (waypoints.Count > 1)
             {
                 for (int i=0; i<waypoints.Count-1; i++)
                 {
-
                     if (flight.Count>i)
                     {
                         var curLeg = flight[i];
                         if (curLeg.start != waypoints[i] || curLeg.end != waypoints[i+1])
                         {
                             // this leg needs to be fixed
+                            print("Need to fix the leg between " + waypoints[i].name + " to " + waypoints[i+1].name);
                             curLeg.script.startSource = waypoints[i];
                             curLeg.script.endSource = waypoints[i+1];
                             curLeg.script.startWaypoint = waypoints[i].GetComponent<Waypoint>();
@@ -190,15 +191,16 @@ namespace MainLogic
                             curLeg.start = waypoints[i];
                             curLeg.end = waypoints[i+1];
                             curLeg.script.dirty = true;
+
+                            flight[i] = curLeg;
                         }
                     }
-
-
                     if (flight.Count <= i)
                     {
                         FlightLegData l = new FlightLegData();
                         
                         l.leg = UnityEngine.Object.Instantiate(leg, Vector3.zero, Quaternion.identity);
+                        
                         l.script = l.leg.GetComponent<FlightLeg>();
                         l.script.startSource = waypoints[i];
                         l.script.endSource = waypoints[i+1];
@@ -209,6 +211,7 @@ namespace MainLogic
                         l.end = waypoints[i+1];
 
                         flight.Add(l);
+                        l.leg.name = "Leg_" + flight.Count;
                     }
                 }    
             }
