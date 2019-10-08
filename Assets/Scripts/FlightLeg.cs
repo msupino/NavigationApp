@@ -40,6 +40,7 @@ public class FlightLeg : MonoBehaviour
     public TextMesh distanceText;
     public TextMesh durationText;
     public TextMesh headingText;
+    public bool dirty;
 
 
 
@@ -148,15 +149,17 @@ public class FlightLeg : MonoBehaviour
     void Update()
     {
 
-        if (startSource != null)
-        {
-            start.transform.position = startSource.transform.position;
-        }
+        if (startSource == null || endSource == null) return;
+        
+        // if (startSource != null)
+        // {
+        start.transform.position = startSource.transform.position;
+        // }
 
-        if (endSource != null)
-        {
-            end.transform.position = endSource.transform.position;
-        }
+        // if (endSource != null)
+        // {
+        end.transform.position = endSource.transform.position;
+        // }
 
                 
         var startPosition = start.transform.position;
@@ -164,9 +167,10 @@ public class FlightLeg : MonoBehaviour
     
         
         //waypoint changed
-        if (startPosition != lastStart || endPosition != lastEnd)
+        if ((startPosition != lastStart || endPosition != lastEnd) || dirty)
         {
 
+            dirty = false;    
             // zero out this as the last position
             lastStart = startPosition;
             lastEnd = endPosition;

@@ -160,30 +160,53 @@ namespace MainLogic
         void DrawLegs()
         {   
             // to be called when waypoint count is changed!
-            for (int i=0; i<waypoints.Count-1; i++)
-            {
-                // construct leg between this point and next point.
-                // if there is no next point, we are out.
-                if (flight.Count <= i)
-                {
-                    FlightLegData l = new FlightLegData();
-                    
-                    l.leg = UnityEngine.Object.Instantiate(leg, Vector3.zero, Quaternion.identity);
-                    l.script = l.leg.GetComponent<FlightLeg>();
-                    l.script.startSource = waypoints[i];
-                    l.script.endSource = waypoints[i+1];
-                    l.script.startWaypoint = waypoints[i].GetComponent<Waypoint>();
-                    l.script.endWaypoint = waypoints[i+1].GetComponent<Waypoint>();
-                    l.leg.GetComponent<LineRenderer>().enabled = true;
 
-                    flight.Add(l);
-                }
-            }    
+            if (waypoints.Count > 1)
+            {
+                for (int i=0; i<waypoints.Count-1; i++)
+                {
+
+                    if (flight.Count>i)
+                    {
+                        var curLeg = flight[i];
+                        if (curLeg.start != waypoints[i] || curLeg.end != waypoints[i+1])
+                        {
+                            // this leg needs to be fixed
+                            curLeg.script.startSource = waypoints[i];
+                            curLeg.script.endSource = waypoints[i+1];
+                            curLeg.script.startWaypoint = waypoints[i].GetComponent<Waypoint>();
+                            curLeg.script.endWaypoint = waypoints[i+1].GetComponent<Waypoint>();
+                            curLeg.start = waypoints[i];
+                            curLeg.end = waypoints[i+1];
+                            curLeg.script.dirty = true;
+                        }
+                    }
+
+
+                    if (flight.Count <= i)
+                    {
+                        FlightLegData l = new FlightLegData();
+                        
+                        l.leg = UnityEngine.Object.Instantiate(leg, Vector3.zero, Quaternion.identity);
+                        l.script = l.leg.GetComponent<FlightLeg>();
+                        l.script.startSource = waypoints[i];
+                        l.script.endSource = waypoints[i+1];
+                        l.script.startWaypoint = waypoints[i].GetComponent<Waypoint>();
+                        l.script.endWaypoint = waypoints[i+1].GetComponent<Waypoint>();
+                        l.leg.GetComponent<LineRenderer>().enabled = true;
+                        l.start = waypoints[i];
+                        l.end = waypoints[i+1];
+
+                        flight.Add(l);
+                    }
+                }    
+            }
+            
             while (flight.Count > waypoints.Count-1)
             {
                 Destroy(flight[flight.Count-1].leg);
                 flight.RemoveAt(flight.Count-1);
-            }    
+            } 
 
         }
 
@@ -292,7 +315,22 @@ namespace MainLogic
 
                 case Tooltype.Erase: 
                 {
-                    return;
+                    if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject()) // mouse left was clicked
+                    {
+                        Ray ray = Camera.main.ScreenPointToRay( Input.mousePosition );
+                        RaycastHit hit;
+                        
+                        if( Physics.Raycast( ray, out hit, 100 ) )
+                        {
+                            GameObject o = hit.transform.gameObject;
+                            Debug.Log( o.name );
+                            waypoints.Remove(o);
+                            gizmos.OnTargetObjectChanged(null);
+                            Destroy(o);
+                            DrawLegs();
+                        }
+                    }
+                    break;
                 }
 
                 case Tooltype.None: 
