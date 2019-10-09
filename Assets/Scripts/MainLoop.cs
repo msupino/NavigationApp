@@ -63,6 +63,7 @@ namespace MainLogic
 
         private void Start()
         {
+            // TODO: is this in fact the correct way to optimize for WebGL?
             Application.targetFrameRate = 24;
 
             mapCameraTransform = mainCamera.transform;
