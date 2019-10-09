@@ -6,8 +6,6 @@ using UnityEngine.Events;
 namespace Tools
 {
 
-
-    [System.Serializable]
     public class ActionEvent : UnityEvent<ToolType>
     {
     }
@@ -17,7 +15,10 @@ namespace Tools
         None,
         Draw,
         Erase,
-        Reverse
+        Reverse,
+        NewScene,
+        SaveScene,
+        LoadScene
     }
 
     public enum ButtonType

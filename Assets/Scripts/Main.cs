@@ -9,7 +9,6 @@ using CoordinateSharp;
 using Tools;
 using RTG;
 
-
 namespace MainLogic
 {
 
@@ -18,10 +17,10 @@ namespace MainLogic
         public GameObject leg;
         public GameObject start;
         public GameObject end;
-        public FlightLeg script;
+        public Leg script;
     }
 
-    public class MainLoop : MonoBehaviour
+    public class Main : MonoBehaviour
     {
 
         //public GameObject crosshair;
@@ -36,6 +35,9 @@ namespace MainLogic
         public Texture2D cursorTextureDragAction;
         public CursorMode cursorMode = CursorMode.Auto;
         public Vector2 hotSpot = Vector2.zero;
+        
+        [HideInInspector]
+        public Data dataControl;
 
 
         // Start is called before the first frame update
@@ -65,6 +67,8 @@ namespace MainLogic
         {
             // TODO: is this in fact the correct way to optimize for WebGL?
             Application.targetFrameRate = 24;
+
+            dataControl = new Data();
 
             mapCameraTransform = mainCamera.transform;
             mapCameraCamera = mainCamera.GetComponent<Camera>();
@@ -158,6 +162,11 @@ namespace MainLogic
                     waypoints.Reverse();
                     DrawLegs();
                     break;
+
+                case ToolType.SaveScene:
+                    SceneData scene = new SceneData(waypoints);
+                    dataControl.Save(scene, "scene.json");
+                    break;
             }
         }
 
@@ -201,7 +210,7 @@ namespace MainLogic
                         
                         l.leg = UnityEngine.Object.Instantiate(leg, Vector3.zero, Quaternion.identity);
                         
-                        l.script = l.leg.GetComponent<FlightLeg>();
+                        l.script = l.leg.GetComponent<Leg>();
                         l.script.startSource = waypoints[i];
                         l.script.endSource = waypoints[i+1];
                         l.script.startWaypoint = waypoints[i].GetComponent<Waypoint>();

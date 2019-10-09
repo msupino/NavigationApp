@@ -15,7 +15,7 @@ public class Tool : MonoBehaviour,
     IPointerEnterHandler,
     IPointerExitHandler
 {
-    public MainLoop main;
+    public Main main;
     public ToolType tool;
     public ButtonType typ;
 

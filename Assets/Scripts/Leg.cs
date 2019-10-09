@@ -22,7 +22,7 @@ public struct MinutePair
 }
 
 //[ExecuteInEditMode]
-public class FlightLeg : MonoBehaviour
+public class Leg : MonoBehaviour
 {
     
     public GameObject start;
@@ -205,9 +205,9 @@ public class FlightLeg : MonoBehaviour
             newVector.Normalize();
 
 
-            var bearing = MainLoop.ToMagnetic(Convert.ToInt32(legDistance.Bearing));
+            var bearing = Main.ToMagnetic(Convert.ToInt32(legDistance.Bearing));
             var inverseBearing = (bearing + 180) % 360;
-            var durationMinutes = MainLoop.ToHMS(legDistanceNm / flightSpeed);
+            var durationMinutes = Main.ToHMS(legDistanceNm / flightSpeed);
 
 
             var inboundLegInfoHeading = inboundLegInfo.transform.GetChild(0).gameObject;

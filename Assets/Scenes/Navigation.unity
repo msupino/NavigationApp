@@ -1107,6 +1107,7 @@ MonoBehaviour:
     type: 3}
   cursorMode: 0
   hotSpot: {x: 0, y: 0}
+  dataControl: {fileID: 0}
   flightSpeed: 90
   toolbar: {fileID: 121018545}
 --- !u!4 &725379321
@@ -4991,7 +4992,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   main: {fileID: 725379320}
-  tool: 0
+  tool: 5
   typ: 1
   cursorTexture: {fileID: 0}
   cursorMode: 0

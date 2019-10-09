@@ -19,7 +19,7 @@ public class Waypoint : MonoBehaviour
     {
         tra = gameObject.transform;
         var position = tra.position;
-        coordinate = MainLoop.SceneToCoordinate(position);
+        coordinate = Main.SceneToCoordinate(position);
         lastPos = position;
     }
 
@@ -33,7 +33,7 @@ public class Waypoint : MonoBehaviour
             
             lastPos = position;
             
-            coordinate = MainLoop.SceneToCoordinate(position);
+            coordinate = Main.SceneToCoordinate(position);
             
         }
 
