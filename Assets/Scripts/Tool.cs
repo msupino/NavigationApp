@@ -5,10 +5,6 @@ using UnityEngine.UI;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.Animations;
-using Tools;
-using MainLogic;
-
-
 
 
 public class Tool : MonoBehaviour,

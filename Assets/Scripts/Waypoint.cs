@@ -5,7 +5,6 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using CoordinateSharp;
-using MainLogic;
 
 public class Waypoint : MonoBehaviour
 {
