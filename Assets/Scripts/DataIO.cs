@@ -36,6 +36,11 @@ public class DataIO : MonoBehaviour {
         DownloadFile(gameObject.name, "OnFileDownload", "waypoints.json", bytes, bytes.Length);
     }
 
+
+    public void DownloadPrint(byte[] bytes) {
+        DownloadFile(gameObject.name, "OnFileDownload", "map.jpg", bytes, bytes.Length);
+    }
+
     // Called from browser
     public void OnFileUpload(string url) {
         StartCoroutine(OutputRoutine(url));
@@ -60,6 +65,12 @@ public class DataIO : MonoBehaviour {
         if (!string.IsNullOrEmpty(path)) {
             File.WriteAllText(path, _data);
         }
+    }
+
+    public void DownloadPrint(byte[] bytes)
+    {
+        var path = StandaloneFileBrowser.SaveFilePanel("Title", "", "map", "png");
+        System.IO.File.WriteAllBytes(path, bytes);        
     }
 
     #endif

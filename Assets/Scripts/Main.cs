@@ -69,6 +69,7 @@ public class Main : MonoBehaviour
 
         mapCameraTransform = mainCamera.transform;
         mapCameraCamera = mainCamera.GetComponent<Camera>();
+        exportCamera.SetActive(false);
 
         exportCameraTransform = exportCamera.transform;
         exportCameraCamera = exportCamera.GetComponent<Camera>();
@@ -417,13 +418,12 @@ public class Main : MonoBehaviour
         {
             exportCamera.SetActive(true);
 
-            //exportCameraTransform.position = mapCameraTransform.position;
             exportCameraCamera.orthographicSize = mapCameraCamera.orthographicSize;
 
             int resWidth = 2895;
-            int resHeight = 4096;
+            int resHeight = 4096; // 4K A3 proportions, will be fine for print
 
-            RenderTexture rt = new RenderTexture(resHeight, resHeight, 24);
+            RenderTexture rt = new RenderTexture(resWidth, resHeight, 24);
             exportCameraCamera.targetTexture = rt;
             Texture2D screenShot = new Texture2D(resWidth, resHeight, TextureFormat.RGB24, false);
             exportCameraCamera.Render();
@@ -433,10 +433,9 @@ public class Main : MonoBehaviour
             RenderTexture.active = null; // JC: added to avoid errors
             Destroy(rt);
             byte[] bytes = screenShot.EncodeToPNG();
-            string filename = Application.persistentDataPath + "/" + "snap.png";
-            System.IO.File.WriteAllBytes(filename, bytes);
-            Debug.Log("Snapshot taken to - " + filename);
+            dataIO.DownloadPrint(bytes);
             snapshot = false;
+            exportCamera.SetActive(false);
         }
     }
 
