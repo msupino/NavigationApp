@@ -32,9 +32,7 @@ public class Main : MonoBehaviour
     public Texture2D cursorTextureDragAction;
     public CursorMode cursorMode = CursorMode.Auto;
     public Vector2 hotSpot = Vector2.zero;
-    
-    [HideInInspector]
-    public Data dataControl;
+    public DataIO dataIO;
 
 
     // Start is called before the first frame update
@@ -64,8 +62,6 @@ public class Main : MonoBehaviour
     {
         // TODO: is this in fact the correct way to optimize for WebGL?
         Application.targetFrameRate = 24;
-
-        dataControl = new Data();
 
         mapCameraTransform = mainCamera.transform;
         mapCameraCamera = mainCamera.GetComponent<Camera>();
@@ -168,19 +164,27 @@ public class Main : MonoBehaviour
 
             case ToolType.SaveScene:
                 scene = new SceneData(waypoints);
-                dataControl.Save(scene, "scene.json");
+                dataIO.Download(scene);
                 break;
 
             case ToolType.LoadScene:
-                Cleanup();
-                scene = dataControl.Load("scene.json");
-                foreach(Position p in scene.waypoints)
-                {
-                    CreateWaypoint(new Vector3(p.x, p.y, p.z));
-                }
-                DrawLegs();
+                dataIO.eventUpload.AddListener(OnUploadSceneData);
+                dataIO.Upload();
                 break;
         }
+    }
+
+    private void OnUploadSceneData(string json)
+    {
+        Cleanup();
+
+        SceneData scene = JsonUtility.FromJson<SceneData>(json);
+    
+        foreach(Position p in scene.waypoints)
+        {
+            CreateWaypoint(new Vector3(p.x, p.y, p.z));
+        }
+        DrawLegs();
     }
 
     private void Cleanup()

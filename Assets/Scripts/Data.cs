@@ -2,10 +2,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Unity.IO;
+using UnityEngine.Events;
+using SFB;
 
 //TODO:
 // It can be much nicer if the saved data will be saved as coordinates, and not in scene units.
+
 
 [System.Serializable]
 public class Position
@@ -45,45 +47,3 @@ public class SceneData
 }
 
 
-public class Data
-{
-    private string GetFullPath(string filename)
-    {
-        return Application.persistentDataPath + "/" + filename;
-    }
-    
-    public void Save(SceneData data, string filename)
-    {
-        string fullpath = GetFullPath(filename);
-        Debug.Log("Saving to - " + fullpath);
-        string json = JsonUtility.ToJson(data);
-        Debug.Log(json);
-        FileStream stream = new FileStream(filename, FileMode.Create);
-
-        using (StreamWriter writer = new StreamWriter(fullpath))
-        {
-            writer.Write(json);
-        }
-
-    }
-
-    public SceneData Load(string filename)
-    {
-        string fullpath = GetFullPath(filename);
-        if (File.Exists(fullpath))
-        {
-            using (StreamReader reader = new StreamReader(fullpath))
-            {
-                string json = reader.ReadToEnd();
-                SceneData data = JsonUtility.FromJson<SceneData>(json);
-                return data;
-            }
-        }
-        else
-        {
-            Debug.LogError("File not found! - " + fullpath);
-            return new SceneData(new List<GameObject>());
-        }
-    }
-
-}
