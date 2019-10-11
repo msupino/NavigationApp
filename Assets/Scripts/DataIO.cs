@@ -33,7 +33,7 @@ public class DataIO : MonoBehaviour {
 
     private void _Download(string _data) {
         var bytes = Encoding.UTF8.GetBytes(_data);
-        DownloadFile(gameObject.name, "OnFileDownload", "sample.json", bytes, bytes.Length);
+        DownloadFile(gameObject.name, "OnFileDownload", "waypoints.json", bytes, bytes.Length);
     }
 
     // Called from browser
@@ -56,7 +56,7 @@ public class DataIO : MonoBehaviour {
 
     private void _Download(string _data)
     {
-        var path = StandaloneFileBrowser.SaveFilePanel("Title", "", "sample", "json");
+        var path = StandaloneFileBrowser.SaveFilePanel("Title", "", "waypoints", "json");
         if (!string.IsNullOrEmpty(path)) {
             File.WriteAllText(path, _data);
         }
