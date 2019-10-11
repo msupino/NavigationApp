@@ -160,6 +160,22 @@ public class Main : MonoBehaviour
                 DrawLegs();
                 break;
 
+            case ToolType.NewScene:
+                while (flight.Count > 0)
+                    {
+                        Destroy(flight[flight.Count-1].leg);
+                        flight.RemoveAt(flight.Count-1);
+                    } 
+                
+                while (waypoints.Count > 0)
+                    {
+                        Destroy(waypoints[waypoints.Count-1]);
+                        waypoints.RemoveAt(waypoints.Count-1);
+                    } 
+
+                DrawLegs();
+                break;
+            
             case ToolType.SaveScene:
                 SceneData scene = new SceneData(waypoints);
                 dataControl.Save(scene, "scene.json");
@@ -222,7 +238,7 @@ public class Main : MonoBehaviour
             }    
         }
         
-        while (flight.Count > waypoints.Count-1)
+        while (flight.Count > Math.Max(waypoints.Count-1,0))
         {
             Destroy(flight[flight.Count-1].leg);
             flight.RemoveAt(flight.Count-1);
