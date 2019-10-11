@@ -153,6 +153,8 @@ public class Main : MonoBehaviour
 
     private void DoAction(ToolType tool)
     {
+        SceneData scene;
+
         switch(tool)
         {
             case ToolType.Reverse:
@@ -161,26 +163,41 @@ public class Main : MonoBehaviour
                 break;
 
             case ToolType.NewScene:
-                while (flight.Count > 0)
-                    {
-                        Destroy(flight[flight.Count-1].leg);
-                        flight.RemoveAt(flight.Count-1);
-                    } 
-                
-                while (waypoints.Count > 0)
-                    {
-                        Destroy(waypoints[waypoints.Count-1]);
-                        waypoints.RemoveAt(waypoints.Count-1);
-                    } 
-
-                DrawLegs();
+                Cleanup();
                 break;
-            
+
             case ToolType.SaveScene:
-                SceneData scene = new SceneData(waypoints);
+                scene = new SceneData(waypoints);
                 dataControl.Save(scene, "scene.json");
                 break;
+
+            case ToolType.LoadScene:
+                Cleanup();
+                scene = dataControl.Load("scene.json");
+                foreach(Position p in scene.waypoints)
+                {
+                    CreateWaypoint(new Vector3(p.x, p.y, p.z));
+                }
+                DrawLegs();
+                break;
         }
+    }
+
+    private void Cleanup()
+    {
+        while (flight.Count > 0)
+        {
+            Destroy(flight[flight.Count - 1].leg);
+            flight.RemoveAt(flight.Count - 1);
+        }
+
+        while (waypoints.Count > 0)
+        {
+            Destroy(waypoints[waypoints.Count - 1]);
+            waypoints.RemoveAt(waypoints.Count - 1);
+        }
+
+        DrawLegs();
     }
 
     void RemoveLastWaypoint()
