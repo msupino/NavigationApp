@@ -527,7 +527,7 @@ namespace RTG
 
         private void AdjustOrthoSizeForFocusPt()
         {
-            TargetCamera.orthographicSize = Mathf.Max(0.5f * TargetCamera.GetFrustumHeightFromDistance(_focusPointOffset), 1e-4f);
+            //TargetCamera.orthographicSize = Mathf.Max(0.5f * TargetCamera.GetFrustumHeightFromDistance(_focusPointOffset), 1e-4f);
         }
 
         private IEnumerator DoSmoothPan(float deviceAxisX, float deviceAxisY)
@@ -682,12 +682,12 @@ namespace RTG
             {
                 _targetTransform.position += camMoveDir * FocusSettings.ConstantSpeed * Time.deltaTime;
                 float t = 1.0f - (_targetTransform.position - focusData.CameraWorldPosition).magnitude / distanceToTravel;
-                TargetCamera.orthographicSize = Mathf.Lerp(initialCamOrthoSize, targetOrthoSize, t);
+                //TargetCamera.orthographicSize = Mathf.Lerp(initialCamOrthoSize, targetOrthoSize, t);
 
                 if (Vector3.Dot(camMoveDir, focusData.CameraWorldPosition - _targetTransform.position) <= 0.0f)
                 {
                     _targetTransform.position = focusData.CameraWorldPosition;
-                    TargetCamera.orthographicSize = targetOrthoSize;
+                    //TargetCamera.orthographicSize = targetOrthoSize;
                     break;
                 }
                 yield return null;
@@ -711,14 +711,14 @@ namespace RTG
             {
                 float t = elapsedTime / FocusSettings.SmoothTime;
                 _targetTransform.position = Vector3.Lerp(_targetTransform.position, focusData.CameraWorldPosition, t);
-                TargetCamera.orthographicSize = Mathf.Lerp(TargetCamera.orthographicSize, targetOrthoSize, t);
+                //TargetCamera.orthographicSize = Mathf.Lerp(TargetCamera.orthographicSize, targetOrthoSize, t);
 
                 elapsedTime += Time.deltaTime;
 
                 if (Vector3.Dot(camMoveDir, focusData.CameraWorldPosition - _targetTransform.position) <= 0.0f)
                 {
                     _targetTransform.position = focusData.CameraWorldPosition;
-                    TargetCamera.orthographicSize = targetOrthoSize;
+                    //TargetCamera.orthographicSize = targetOrthoSize;
                     break;
                 }
                 yield return null;
