@@ -8,7 +8,6 @@ using UnityEngine.Animations;
 using CoordinateSharp;
 using RTG;
 
-
 struct FlightLegData
 {
     public GameObject leg;
@@ -34,6 +33,7 @@ public class Main : MonoBehaviour
     public Vector2 hotSpot = Vector2.zero;
     public DataIO dataIO;
 
+    public GameObject exportCamera;
 
     // Start is called before the first frame update
     private List<FlightLegData> flight = new List<FlightLegData>();
@@ -41,8 +41,12 @@ public class Main : MonoBehaviour
     private Vector3 lastMouse;
     private Transform mapCameraTransform;
     private Camera mapCameraCamera;
+    private Transform exportCameraTransform;
+    private Camera exportCameraCamera;
     private float zoom;
     private bool canZoom;
+
+    private bool snapshot;
 
 
     // static varibales to define the world scale
@@ -65,6 +69,9 @@ public class Main : MonoBehaviour
 
         mapCameraTransform = mainCamera.transform;
         mapCameraCamera = mainCamera.GetComponent<Camera>();
+
+        exportCameraTransform = exportCamera.transform;
+        exportCameraCamera = exportCamera.GetComponent<Camera>();
 
         toolbar.eventDrawing.AddListener(SetStartDrawing);
         toolbar.eventStopDrawing.AddListener(SetStopDrawing);
@@ -171,6 +178,12 @@ public class Main : MonoBehaviour
                 dataIO.eventUpload.AddListener(OnUploadSceneData);
                 dataIO.Upload();
                 break;
+
+            case ToolType.Print:
+                snapshot = true;
+                // var p = Application.persistentDataPath + "/snap.png";
+                // ScreenCapture.CaptureScreenshot(p, 1);
+                break;    
         }
     }
 
@@ -397,6 +410,36 @@ public class Main : MonoBehaviour
         }
 
     }
+
+    void LateUpdate()
+    {
+        if (snapshot)
+        {
+            exportCamera.SetActive(true);
+
+            //exportCameraTransform.position = mapCameraTransform.position;
+            exportCameraCamera.orthographicSize = mapCameraCamera.orthographicSize;
+
+            int resWidth = 2895;
+            int resHeight = 4096;
+
+            RenderTexture rt = new RenderTexture(resHeight, resHeight, 24);
+            exportCameraCamera.targetTexture = rt;
+            Texture2D screenShot = new Texture2D(resWidth, resHeight, TextureFormat.RGB24, false);
+            exportCameraCamera.Render();
+            RenderTexture.active = rt;
+            screenShot.ReadPixels(new Rect(0, 0, resWidth, resHeight), 0, 0);
+            exportCameraCamera.targetTexture = null;
+            RenderTexture.active = null; // JC: added to avoid errors
+            Destroy(rt);
+            byte[] bytes = screenShot.EncodeToPNG();
+            string filename = Application.persistentDataPath + "/" + "snap.png";
+            System.IO.File.WriteAllBytes(filename, bytes);
+            Debug.Log("Snapshot taken to - " + filename);
+            snapshot = false;
+        }
+    }
+
 }
 
 

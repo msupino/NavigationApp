@@ -15,7 +15,8 @@ public enum ToolType
     Reverse,
     NewScene,
     SaveScene,
-    LoadScene
+    LoadScene,
+    Print
 }
 
 public enum ButtonType
