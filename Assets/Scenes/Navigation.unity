@@ -7031,7 +7031,6 @@ GameObject:
   - component: {fileID: 1654074216}
   - component: {fileID: 1654074215}
   - component: {fileID: 1654074214}
-  - component: {fileID: 1654074213}
   m_Layer: 5
   m_Name: PrintButton
   m_TagString: Untagged
@@ -7058,23 +7057,6 @@ RectTransform:
   m_AnchoredPosition: {x: 8, y: -296.7201}
   m_SizeDelta: {x: 48, y: 48}
   m_Pivot: {x: 0, y: 1}
---- !u!114 &1654074213
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1654074211}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d4d7c934af453a9469701b72267593ec, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  text: 'Print
-
-'
-  useMousePosition: 0
-  offset: {x: 140, y: -25, z: 0}
 --- !u!114 &1654074214
 MonoBehaviour:
   m_ObjectHideFlags: 0
