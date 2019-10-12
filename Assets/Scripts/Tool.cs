@@ -26,6 +26,40 @@ public class Tool : MonoBehaviour,
     private KeyCode triggerKey;
 
     // Start is called before the first frame update
+
+    #if UNITY_WEBGL && !UNITY_EDITOR
+    //
+    // WebGL
+    //
+    void Start()
+    {
+        image = GetComponent<Image>();
+        image.color = new Color32(255, 255, 255, 100);
+        main.toolbar.buttons.Add(gameObject);
+
+        switch (tool)
+        {
+            case ToolType.Draw:
+                triggerKey = KeyCode.D;
+                break;
+            case ToolType.Erase:
+                triggerKey = KeyCode.X;
+                break;    
+            case ToolType.Reverse:
+                triggerKey = KeyCode.Z;
+                break;
+        }
+        Refresh();
+    }
+
+    public void OnPointerDown(PointerEventData eventData)
+    {
+        Clicked();
+    }
+    #else
+    //
+    // Normal
+    //
     void Start()
     {
         image = GetComponent<Image>();
@@ -45,27 +79,11 @@ public class Tool : MonoBehaviour,
                 triggerKey = KeyCode.Z;
                 break;
         }
-
-
         Refresh();
     }
-    #if UNITY_WEBGL && !UNITY_EDITOR
-    //
-    // WebGL
-    //
-    public void OnPointerDown(PointerEventData eventData)
-    {
-        Clicked();
-    }
-    #else
-    //
-    // Normal
-    //
     public void OnPointerDown(PointerEventData eventData){}
-    public void OnClick() {
-        Clicked();
-    }
     #endif
+
     public void Update()
     {
         if (tool == ToolType.None) return;

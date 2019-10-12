@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System;
 using System.IO;
 using System.Text;
 using System.Runtime.InteropServices;
@@ -71,7 +72,13 @@ public class DataIO : MonoBehaviour {
     public void DownloadPrint(byte[] bytes)
     {
         var path = StandaloneFileBrowser.SaveFilePanel("Title", "", "map", "png");
-        System.IO.File.WriteAllBytes(path, bytes);        
+        try 
+        {
+            System.IO.File.WriteAllBytes(path, bytes);        
+        }
+        catch (ArgumentException){
+            Debug.Log("No file selected");
+        }
     }
 
     #endif
