@@ -445,15 +445,16 @@ public class Main : MonoBehaviour
         
         if (snapshot)
         {
-            Update();    
+            //Update();    
             renderSafeFrame.SetActive(false);
-
+            exportCamera.SetActive(true);
+            exportCameraCamera.orthographicSize = mapCameraCamera.orthographicSize;
             canvas.renderMode = RenderMode.ScreenSpaceCamera;
             canvas.worldCamera = exportCameraCamera;
             canvas.planeDistance = 1;
-            exportCamera.SetActive(true);
+            
 
-            exportCameraCamera.orthographicSize = mapCameraCamera.orthographicSize;
+            
 
             int resWidth = 2895;
             int resHeight = 4096; // 4K A3 proportions, will be fine for print
