@@ -32,10 +32,15 @@ public class Main : MonoBehaviour
     public CursorMode cursorMode = CursorMode.Auto;
     public Vector2 hotSpot = Vector2.zero;
     public DataIO dataIO;
+    public GameObject renderSafeFrame;
+    public Vector2 renderAspectRatio = new Vector2(1,1.42F);
+
 
     public GameObject exportCamera;
+    public double flightSpeed = 90d; //TODO: Will be on the leg level
+    public Toolbar toolbar;
 
-    // Start is called before the first frame update
+
     private List<FlightLegData> flight = new List<FlightLegData>();
     private List<GameObject> waypoints = new List<GameObject>();
     private Vector3 lastMouse;
@@ -45,9 +50,10 @@ public class Main : MonoBehaviour
     private Camera exportCameraCamera;
     private float zoom;
     private bool canZoom;
-
     private bool snapshot;
-
+    private LineRenderer renderSafeFrameLine;
+    private Vector2 renderCurAspectRatio;
+    private int renderCurHeight;
 
     // static varibales to define the world scale
     private static double lonConversionRate = 8.392355; //of NM=0.16666667 degrees along Longatiute
@@ -55,13 +61,10 @@ public class Main : MonoBehaviour
     private static double NMConversionRate = 0.1666667;
     private static double lonOriginRadians = 35d;
     private static double latOriginRadians = 33d;
-
     private bool resumeDrawing;
 
-    public double flightSpeed = 90d; //TODO: Will be on the leg level
 
-    public Toolbar toolbar;
-
+    // Start is called before the first frame update
     private void Start()
     {
         // TODO: is this in fact the correct way to optimize for WebGL?
@@ -78,6 +81,9 @@ public class Main : MonoBehaviour
         toolbar.eventStopDrawing.AddListener(SetStopDrawing);
         toolbar.eventActionTriggered.AddListener(DoAction);
 
+        renderSafeFrameLine = renderSafeFrame.GetComponent<LineRenderer>();
+        renderCurAspectRatio = renderAspectRatio;
+        DrawRenderSafe();
     }
 
 
@@ -128,6 +134,24 @@ public class Main : MonoBehaviour
         {
             resumeDrawing = true;
         }
+    }
+
+    private void DrawRenderSafe()
+    {
+        
+        var screen_top = Camera.main.ScreenToWorldPoint(new Vector2(0,0));
+        var screen_bottom = Camera.main.ScreenToWorldPoint(new Vector2(0,Screen.height));
+        var height = screen_bottom.z - screen_top.z;
+        Debug.Log(screen_bottom);
+        Debug.Log("Current screen size is - " + Screen.height + " by " + Screen.width);
+        float ratio = renderAspectRatio.x / renderAspectRatio.y;
+        //
+        Vector2 frameSize = new Vector2(ratio*height, height);
+        renderSafeFrameLine.SetPosition(0, new Vector3(frameSize.x/2, 0, frameSize.y/2)); //top-right
+        renderSafeFrameLine.SetPosition(1, new Vector3(frameSize.x/2, 0, -frameSize.y/2)); //bottom-right
+        renderSafeFrameLine.SetPosition(2, new Vector3(-frameSize.x/2, 0, -frameSize.y/2));//bottom-left
+        renderSafeFrameLine.SetPosition(3, new Vector3(-frameSize.x/2, 0, frameSize.y/2));//top-left
+        renderSafeFrameLine.SetPosition(4, new Vector3(frameSize.x/2, 0, frameSize.y/2));//top-right(start)
     }
 
     private void SetStopDrawing()
@@ -285,6 +309,12 @@ public class Main : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        
+        if (renderAspectRatio != renderCurAspectRatio){
+            renderCurAspectRatio = renderAspectRatio;
+            DrawRenderSafe();
+        }
+        
         //if (!Input.GetKey(KeyCode.Space)) Cursor.SetCursor(null, Vector2.zero, cursorMode);    
         
         var objectPos = CursorLocalPosition();
@@ -315,8 +345,8 @@ public class Main : MonoBehaviour
 
         if (canZoom)
         {
-
             mapCameraCamera.orthographicSize = zoom;
+            DrawRenderSafe();
         }
 
 
