@@ -34,6 +34,7 @@ public class Main : MonoBehaviour
     public DataIO dataIO;
     public GameObject renderSafeFrame;
     public Vector2 renderAspectRatio = new Vector2(1,1.42F);
+    public Canvas canvas;
 
 
     public GameObject exportCamera;
@@ -441,8 +442,15 @@ public class Main : MonoBehaviour
 
     void LateUpdate()
     {
+        
         if (snapshot)
         {
+            Update();    
+            renderSafeFrame.SetActive(false);
+
+            canvas.renderMode = RenderMode.ScreenSpaceCamera;
+            canvas.worldCamera = exportCameraCamera;
+            canvas.planeDistance = 1;
             exportCamera.SetActive(true);
 
             exportCameraCamera.orthographicSize = mapCameraCamera.orthographicSize;
@@ -463,6 +471,11 @@ public class Main : MonoBehaviour
             dataIO.DownloadPrint(bytes);
             snapshot = false;
             exportCamera.SetActive(false);
+
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.worldCamera = null;
+
+            renderSafeFrame.SetActive(true);
         }
     }
 
