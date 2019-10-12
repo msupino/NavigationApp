@@ -47,6 +47,7 @@ public class DataIO : MonoBehaviour {
     }
 
     public void OnFileDownload() {
+        Debug.Log("downloading file");
     }
 
     #else

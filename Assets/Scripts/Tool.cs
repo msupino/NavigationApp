@@ -6,10 +6,11 @@ using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.Animations;
 
-
-public class Tool : MonoBehaviour,
+[RequireComponent(typeof(Button))]
+public class Tool : MonoBehaviour,  
     IPointerEnterHandler,
-    IPointerExitHandler
+    IPointerExitHandler,
+    IPointerDownHandler
 {
     public Main main;
     public ToolType tool;
@@ -27,9 +28,9 @@ public class Tool : MonoBehaviour,
     // Start is called before the first frame update
     void Start()
     {
-        image = gameObject.GetComponent<Image>();
+        image = GetComponent<Image>();
         image.color = new Color32(255, 255, 255, 100);
-        gameObject.GetComponent<Button>().onClick.AddListener(Clicked);
+        GetComponent<Button>().onClick.AddListener(Clicked);
         main.toolbar.buttons.Add(gameObject);
 
         switch (tool)
@@ -48,7 +49,23 @@ public class Tool : MonoBehaviour,
 
         Refresh();
     }
-
+    #if UNITY_WEBGL && !UNITY_EDITOR
+    //
+    // WebGL
+    //
+    public void OnPointerDown(PointerEventData eventData)
+    {
+        Clicked();
+    }
+    #else
+    //
+    // Normal
+    //
+    public void OnPointerDown(PointerEventData eventData){}
+    public void OnClick() {
+        Clicked();
+    }
+    #endif
     public void Update()
     {
         if (tool == ToolType.None) return;

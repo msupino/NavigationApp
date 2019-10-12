@@ -139,13 +139,11 @@ public class Main : MonoBehaviour
     private void DrawRenderSafe()
     {
         
-        var screen_top = Camera.main.ScreenToWorldPoint(new Vector2(0,0));
-        var screen_bottom = Camera.main.ScreenToWorldPoint(new Vector2(0,Screen.height));
+        var screen_top = Camera.main.ScreenToWorldPoint(new Vector2(0,2));
+        var screen_bottom = Camera.main.ScreenToWorldPoint(new Vector2(0,Screen.height - 2));
         var height = screen_bottom.z - screen_top.z;
-        Debug.Log(screen_bottom);
-        Debug.Log("Current screen size is - " + Screen.height + " by " + Screen.width);
         float ratio = renderAspectRatio.x / renderAspectRatio.y;
-        //
+
         Vector2 frameSize = new Vector2(ratio*height, height);
         renderSafeFrameLine.SetPosition(0, new Vector3(frameSize.x/2, 0, frameSize.y/2)); //top-right
         renderSafeFrameLine.SetPosition(1, new Vector3(frameSize.x/2, 0, -frameSize.y/2)); //bottom-right
@@ -206,8 +204,7 @@ public class Main : MonoBehaviour
 
             case ToolType.Print:
                 snapshot = true;
-                // var p = Application.persistentDataPath + "/snap.png";
-                // ScreenCapture.CaptureScreenshot(p, 1);
+                Update();
                 break;    
         }
     }
