@@ -32,8 +32,9 @@ public class Main : MonoBehaviour
     public CursorMode cursorMode = CursorMode.Auto;
     public Vector2 hotSpot = Vector2.zero;
     public DataIO dataIO;
-    public GameObject renderSafeFrame;
-    public Vector2 renderAspectRatio = new Vector2(1,1.42F);
+    public GameObject editorCanvas;
+    public GameObject renderCanvas;
+    // public Vector2 renderAspectRatio = new Vector2(1,1.42F);
     public Canvas canvas;
 
 
@@ -52,9 +53,9 @@ public class Main : MonoBehaviour
     private float zoom;
     private bool canZoom;
     private bool snapshot;
-    private LineRenderer renderSafeFrameLine;
-    private Vector2 renderCurAspectRatio;
-    private int renderCurHeight;
+    // private LineRenderer renderSafeFrameLine;
+    // private Vector2 renderCurAspectRatio;
+    // private int renderCurHeight;
 
     // static varibales to define the world scale
     private static double lonConversionRate = 8.392355; //of NM=0.16666667 degrees along Longatiute
@@ -82,9 +83,9 @@ public class Main : MonoBehaviour
         toolbar.eventStopDrawing.AddListener(SetStopDrawing);
         toolbar.eventActionTriggered.AddListener(DoAction);
 
-        renderSafeFrameLine = renderSafeFrame.GetComponent<LineRenderer>();
-        renderCurAspectRatio = renderAspectRatio;
-        DrawRenderSafe();
+        // renderSafeFrameLine = renderSafeFrame.GetComponent<LineRenderer>();
+        // renderCurAspectRatio = renderAspectRatio;
+        // DrawRenderSafe();
     }
 
 
@@ -137,21 +138,21 @@ public class Main : MonoBehaviour
         }
     }
 
-    private void DrawRenderSafe()
-    {
+    // private void DrawRenderSafe()
+    // {
         
-        var screen_top = Camera.main.ScreenToWorldPoint(new Vector2(0,2));
-        var screen_bottom = Camera.main.ScreenToWorldPoint(new Vector2(0,Screen.height - 2));
-        var height = screen_bottom.z - screen_top.z;
-        float ratio = renderAspectRatio.x / renderAspectRatio.y;
+    //     var screen_top = Camera.main.ScreenToWorldPoint(new Vector2(0,2));
+    //     var screen_bottom = Camera.main.ScreenToWorldPoint(new Vector2(0,Screen.height - 2));
+    //     var height = screen_bottom.z - screen_top.z;
+    //     float ratio = renderAspectRatio.x / renderAspectRatio.y;
 
-        Vector2 frameSize = new Vector2(ratio*height, height);
-        renderSafeFrameLine.SetPosition(0, new Vector3(frameSize.x/2, 0, frameSize.y/2)); //top-right
-        renderSafeFrameLine.SetPosition(1, new Vector3(frameSize.x/2, 0, -frameSize.y/2)); //bottom-right
-        renderSafeFrameLine.SetPosition(2, new Vector3(-frameSize.x/2, 0, -frameSize.y/2));//bottom-left
-        renderSafeFrameLine.SetPosition(3, new Vector3(-frameSize.x/2, 0, frameSize.y/2));//top-left
-        renderSafeFrameLine.SetPosition(4, new Vector3(frameSize.x/2, 0, frameSize.y/2));//top-right(start)
-    }
+    //     Vector2 frameSize = new Vector2(ratio*height, height);
+    //     renderSafeFrameLine.SetPosition(0, new Vector3(frameSize.x/2, 0, frameSize.y/2)); //top-right
+    //     renderSafeFrameLine.SetPosition(1, new Vector3(frameSize.x/2, 0, -frameSize.y/2)); //bottom-right
+    //     renderSafeFrameLine.SetPosition(2, new Vector3(-frameSize.x/2, 0, -frameSize.y/2));//bottom-left
+    //     renderSafeFrameLine.SetPosition(3, new Vector3(-frameSize.x/2, 0, frameSize.y/2));//top-left
+    //     renderSafeFrameLine.SetPosition(4, new Vector3(frameSize.x/2, 0, frameSize.y/2));//top-right(start)
+    // }
 
     private void SetStopDrawing()
     {
@@ -308,10 +309,10 @@ public class Main : MonoBehaviour
     void Update()
     {
         
-        if (renderAspectRatio != renderCurAspectRatio){
-            renderCurAspectRatio = renderAspectRatio;
-            DrawRenderSafe();
-        }
+        // if (renderAspectRatio != renderCurAspectRatio){
+        //     renderCurAspectRatio = renderAspectRatio;
+        //     DrawRenderSafe();
+        // }
         
         //if (!Input.GetKey(KeyCode.Space)) Cursor.SetCursor(null, Vector2.zero, cursorMode);    
         
@@ -344,7 +345,7 @@ public class Main : MonoBehaviour
         if (canZoom)
         {
             mapCameraCamera.orthographicSize = zoom;
-            DrawRenderSafe();
+            // DrawRenderSafe();
         }
 
 
@@ -446,7 +447,8 @@ public class Main : MonoBehaviour
         if (snapshot)
         {
             //Update();    
-            renderSafeFrame.SetActive(false);
+            editorCanvas.SetActive(false);
+            renderCanvas.SetActive(true);
             exportCamera.SetActive(true);
             exportCameraCamera.orthographicSize = mapCameraCamera.orthographicSize;
             canvas.renderMode = RenderMode.ScreenSpaceCamera;
@@ -476,7 +478,8 @@ public class Main : MonoBehaviour
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.worldCamera = null;
 
-            renderSafeFrame.SetActive(true);
+            renderCanvas.SetActive(false);
+            editorCanvas.SetActive(true);
         }
     }
 
