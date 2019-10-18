@@ -79,6 +79,8 @@ public class Main : MonoBehaviour
         exportCameraTransform = exportCamera.transform;
         exportCameraCamera = exportCamera.GetComponent<Camera>();
 
+        renderCanvas.SetActive(false);
+
         toolbar.eventDrawing.AddListener(SetStartDrawing);
         toolbar.eventStopDrawing.AddListener(SetStopDrawing);
         toolbar.eventActionTriggered.AddListener(DoAction);
