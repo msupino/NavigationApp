@@ -24,8 +24,8 @@ public class Main : MonoBehaviour
     public GameObject leg;
     public GameObject mainCamera;
     public GameObject buttonDraw;
-    public float dragSpeed = 20;
-    public int camZoomStep = 5;
+    public float dragSpeed = 15;
+    public int camZoomStep = 1;
     public Tut_1_Enabling_and_Disabling_Gizmos gizmos;
     public Texture2D cursorTextureDrag;
     public Texture2D cursorTextureDragAction;
@@ -50,7 +50,7 @@ public class Main : MonoBehaviour
     private Camera mapCameraCamera;
     private Transform exportCameraTransform;
     private Camera exportCameraCamera;
-    private float zoom;
+    private float zoom = 15;
     private bool canZoom;
     private bool snapshot;
     // private LineRenderer renderSafeFrameLine;
@@ -72,9 +72,12 @@ public class Main : MonoBehaviour
         // TODO: is this in fact the correct way to optimize for WebGL?
         Application.targetFrameRate = 24;
 
+        
+
         mapCameraTransform = mainCamera.transform;
         mapCameraCamera = mainCamera.GetComponent<Camera>();
         exportCamera.SetActive(false);
+        mapCameraCamera.orthographicSize = zoom;
 
         exportCameraTransform = exportCamera.transform;
         exportCameraCamera = exportCamera.GetComponent<Camera>();

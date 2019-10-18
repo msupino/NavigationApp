@@ -2024,8 +2024,8 @@ MonoBehaviour:
   leg: {fileID: 4960842751856254096, guid: 3e1ebaad957a45641836232347e706e2, type: 3}
   mainCamera: {fileID: 526170695}
   buttonDraw: {fileID: 1368558957}
-  dragSpeed: 20
-  camZoomStep: 5
+  dragSpeed: 15
+  camZoomStep: 1
   gizmos: {fileID: 716838811}
   cursorTextureDrag: {fileID: 0}
   cursorTextureDragAction: {fileID: 2800000, guid: 478d7032c38a54a1f8005f7be620a6de,
