@@ -15,6 +15,8 @@ public class Tool : MonoBehaviour,
     public Main main;
     public ToolType tool;
     public ButtonType typ;
+    public GameObject button;
+    public GameObject highlightPanel;
 
     public Texture2D cursorTexture;
     public CursorMode cursorMode = CursorMode.Auto;
@@ -33,9 +35,11 @@ public class Tool : MonoBehaviour,
     //
     void Start()
     {
-        image = GetComponent<Image>();
-        image.color = new Color32(255, 255, 255, 100);
+        highlightPanel.SetActive(false);
+        //image = GetComponent<Image>();
+        //image.color = new Color32(255, 255, 255, 100);
         main.toolbar.buttons.Add(gameObject);
+        
 
         switch (tool)
         {
@@ -62,10 +66,12 @@ public class Tool : MonoBehaviour,
     //
     void Start()
     {
-        image = GetComponent<Image>();
-        image.color = new Color32(255, 255, 255, 100);
-        GetComponent<Button>().onClick.AddListener(Clicked);
+        highlightPanel.SetActive(false);
+        //image = GetComponent<Image>();
+        //image.color = new Color32(255, 255, 255, 100);
+        button.GetComponent<Button>().onClick.AddListener(Clicked);
         main.toolbar.buttons.Add(gameObject);
+        
 
         switch (tool)
         {
@@ -120,7 +126,8 @@ public class Tool : MonoBehaviour,
 
     public void Stop()
     {
-        image.color = new Color32(255, 255, 255, 100);
+        //image.color = new Color32(255, 255, 255, 100);
+        highlightPanel.SetActive(false);
         this.isActive = false;
         Cursor.SetCursor(null, Vector2.zero, cursorMode);
 
@@ -146,8 +153,9 @@ public class Tool : MonoBehaviour,
 
     public void Enter()
     {
-        image.color = new Color32(255, 255, 255, 255);
-        
+        //image.color = new Color32(255, 255, 255, 255);
+        highlightPanel.SetActive(true);
+
         switch (tool)
         {
             case (ToolType.Draw):
@@ -188,19 +196,22 @@ public class Tool : MonoBehaviour,
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        image.color = new Color32(255, 255, 255, 150);
+        //image.color = new Color32(255, 255, 255, 150);
+        highlightPanel.SetActive(true);
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
         if (isActive)
         {
-            image.color = new Color32(255, 255, 255, 255);
+            highlightPanel.SetActive(true);
+            //image.color = new Color32(255, 255, 255, 255);
 
         }
         else
         {
-            image.color = new Color32(255, 255, 255, 100);
+            highlightPanel.SetActive(false);
+            //image.color = new Color32(255, 255, 255, 100);
         }
     }
 }
