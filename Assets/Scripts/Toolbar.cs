@@ -16,6 +16,7 @@ public enum ToolType
     NewScene,
     SaveScene,
     LoadScene,
+    Settings,
     Print
 }
 
