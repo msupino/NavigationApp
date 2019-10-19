@@ -2,8 +2,12 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
-
+using TMPro;
 public class ActionEvent : UnityEvent<ToolType>
+{
+}
+
+public class InfoEvent : UnityEvent<string>
 {
 }
 
@@ -19,6 +23,8 @@ public enum ToolType
     Settings,
     Print
 }
+
+
 
 public enum ButtonType
 {
@@ -36,6 +42,10 @@ public class Toolbar : MonoBehaviour
     public UnityEvent eventErase = new UnityEvent();
     public UnityEvent eventStopErase = new UnityEvent();
     public ActionEvent eventActionTriggered = new ActionEvent();
+    public GameObject infoPanel;
+    public TextMeshProUGUI infoLabel; 
+
+    private string currentToolDescription = null;
 
     public Toolbar()
     {
@@ -45,8 +55,27 @@ public class Toolbar : MonoBehaviour
     private void Start()
     {
         stopBanner.SetActive(false);
+        displayInfo(null);
     }
 
+    public void displayInfo(string text)
+    {
+        if (text != null) 
+        {
+            infoLabel.text = text;
+        }
+        else
+        {
+            if (currentTool != ToolType.None) 
+            {
+                infoLabel.text = currentToolDescription;
+            }
+            else
+            {
+                infoLabel.text = null;
+            }
+        }
+    }
 
     public void StopAll()
     {
@@ -55,12 +84,14 @@ public class Toolbar : MonoBehaviour
         {
             btn.GetComponent<Tool>().Stop();     
         }
-        SetTool(ToolType.None);
+        SetTool(ToolType.None, null);
     }
 
-    public void SetTool(ToolType t)
+    public void SetTool(ToolType t, string description)
     {
         currentTool = t;
+        currentToolDescription = description;
+
         switch (t)
         {
             case ToolType.None:
@@ -75,4 +106,26 @@ public class Toolbar : MonoBehaviour
         }
 
     }
+
+    public static string GetToolDescription(ToolType tool)
+    {
+        switch (tool){
+            case ToolType.Draw:
+                return "Draw waypoints. Press ESC to stop.";
+            case ToolType.Erase:
+                return "Erase waypoints. Click on a waypoint to erase it. Press ESC to stop.";
+            case ToolType.Reverse:
+                return "Inverse flight.";
+            case ToolType.NewScene:
+                return "New plan.";
+            case ToolType.SaveScene:
+                return "Save plan.";
+            case ToolType.LoadScene:
+                return "Load plan.";
+            case ToolType.Print:
+                return "Print plan. Frame your view to the green region.";
+        }
+        return null;
+    }
+
 }

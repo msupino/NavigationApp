@@ -15,6 +15,7 @@ public class Tool : MonoBehaviour,
     public Main main;
     public ToolType tool;
     public ButtonType typ;
+    
     public GameObject button;
     public GameObject highlightPanel;
 
@@ -22,10 +23,13 @@ public class Tool : MonoBehaviour,
     public CursorMode cursorMode = CursorMode.Auto;
     public Vector2 hotSpot = Vector2.zero;
     public bool isActive = false;
+    public InfoEvent eventInfo = new InfoEvent();
 
 
     private Image image;
     private KeyCode triggerKey;
+
+    private string description;
 
     // Start is called before the first frame update
 
@@ -35,6 +39,7 @@ public class Tool : MonoBehaviour,
     //
     void Start()
     {
+        description = Toolbar.GetToolDescription(tool);
         highlightPanel.SetActive(false);
         //image = GetComponent<Image>();
         //image.color = new Color32(255, 255, 255, 100);
@@ -66,12 +71,13 @@ public class Tool : MonoBehaviour,
     //
     void Start()
     {
+        description = Toolbar.GetToolDescription(tool);
         highlightPanel.SetActive(false);
         //image = GetComponent<Image>();
         //image.color = new Color32(255, 255, 255, 100);
         button.GetComponent<Button>().onClick.AddListener(Clicked);
         main.toolbar.buttons.Add(gameObject);
-        
+        eventInfo.AddListener(main.toolbar.displayInfo);
 
         switch (tool)
         {
@@ -160,11 +166,11 @@ public class Tool : MonoBehaviour,
         {
             case (ToolType.Draw):
                 main.toolbar.eventDrawing.Invoke();
-                main.toolbar.SetTool(tool);
+                main.toolbar.SetTool(tool, description);
                 break;
             case (ToolType.Erase):
                 main.toolbar.eventErase.Invoke();
-                main.toolbar.SetTool(tool);
+                main.toolbar.SetTool(tool, description);
                 break;
         }
 
@@ -190,7 +196,7 @@ public class Tool : MonoBehaviour,
         else
         {
             this.Stop();
-            main.toolbar.SetTool(ToolType.None);
+            main.toolbar.SetTool(ToolType.None, null);
         }
     }
 
@@ -198,6 +204,7 @@ public class Tool : MonoBehaviour,
     {
         //image.color = new Color32(255, 255, 255, 150);
         highlightPanel.SetActive(true);
+        eventInfo.Invoke(description);
     }
 
     public void OnPointerExit(PointerEventData eventData)
@@ -213,5 +220,6 @@ public class Tool : MonoBehaviour,
             highlightPanel.SetActive(false);
             //image.color = new Color32(255, 255, 255, 100);
         }
+        eventInfo.Invoke(null);
     }
 }
