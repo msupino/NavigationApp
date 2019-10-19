@@ -35,7 +35,7 @@ public enum ButtonType
 public class Toolbar : MonoBehaviour
 {
     public ToolType currentTool;
-    public GameObject stopBanner;
+    // public GameObject stopBanner;
     public List<GameObject> buttons = new List<GameObject>();
     public UnityEvent eventDrawing = new UnityEvent();
     public UnityEvent eventStopDrawing = new UnityEvent();
@@ -54,7 +54,7 @@ public class Toolbar : MonoBehaviour
 
     private void Start()
     {
-        stopBanner.SetActive(false);
+        // stopBanner.SetActive(false);
         displayInfo(null);
     }
 
@@ -95,13 +95,13 @@ public class Toolbar : MonoBehaviour
         switch (t)
         {
             case ToolType.None:
-                stopBanner.SetActive(false);
+                // stopBanner.SetActive(false);
                 break;
             case ToolType.Draw:
-                stopBanner.SetActive(true);
+                // stopBanner.SetActive(true);
                 break;
             case ToolType.Erase:
-                stopBanner.SetActive(true);
+                // stopBanner.SetActive(true);
                 break;
         }
 
