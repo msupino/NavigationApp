@@ -37,8 +37,10 @@ public class Leg : MonoBehaviour
     public GameObject emptyLine;
     public GameObject minuteText;
     public TextMesh distanceText;
-
+    public GameObject selectionArea;
     public bool dirty;
+
+    public Inspector inspector;
 
 
 
@@ -159,6 +161,7 @@ public class Leg : MonoBehaviour
         
         flightSpeed = (double)(startWaypoint.speed);
 
+
         // if (startSource != null)
         // {
         start.transform.position = startSource.transform.position;
@@ -189,6 +192,8 @@ public class Leg : MonoBehaviour
             lineRenderer.SetPosition(0, startPosition);
             lineRenderer.SetPosition(1, endPosition);
 
+            
+
             //// draw the mid line perpendicular to the main line
             //var perpPoints = GetPerpendicularPoints(startPosition, endPosition, 2f);
 
@@ -200,6 +205,8 @@ public class Leg : MonoBehaviour
             var legDistanceNm = legDistance.NauticalMiles;
 
             distanceText.text = legDistanceNm.ToString("n1");
+
+            selectionArea.transform.localScale = new Vector3(0.2F, 1, (float)legDistanceNm/10);
 
 
 
@@ -364,4 +371,5 @@ public class Leg : MonoBehaviour
         }
 
     }
+
 }

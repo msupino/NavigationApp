@@ -11,11 +11,13 @@ public class Waypoint : MonoBehaviour
     public Transform tra;
     public Coordinate coordinate;
     public Circle circle;
+    public GameObject inspectorPanel;
 
     public int altitutde = 2000;
     public int speed = 90;
 
     private Vector3 lastPos;
+
 
     private void Start()
     {
@@ -40,6 +42,8 @@ public class Waypoint : MonoBehaviour
         }
 
     }
+
+
 
     private void OnMouseOver()
     {

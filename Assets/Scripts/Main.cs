@@ -37,6 +37,8 @@ public class Main : MonoBehaviour
     // public Vector2 renderAspectRatio = new Vector2(1,1.42F);
     public Canvas canvas;
 
+    public Inspector inspector;
+
 
     public GameObject exportCamera;
     public double flightSpeed = 90d; //TODO: Will be on the leg level
@@ -287,6 +289,7 @@ public class Main : MonoBehaviour
                     l.leg = UnityEngine.Object.Instantiate(leg, Vector3.zero, Quaternion.identity);
                     
                     l.script = l.leg.GetComponent<Leg>();
+                    l.script.inspector = inspector;
                     l.script.startSource = waypoints[i];
                     l.script.endSource = waypoints[i+1];
                     l.script.startWaypoint = waypoints[i].GetComponent<Waypoint>();
