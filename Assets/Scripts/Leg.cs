@@ -37,8 +37,7 @@ public class Leg : MonoBehaviour
     public GameObject emptyLine;
     public GameObject minuteText;
     public TextMesh distanceText;
-    public TextMesh durationText;
-    public TextMesh headingText;
+
     public bool dirty;
 
 
@@ -52,6 +51,8 @@ public class Leg : MonoBehaviour
     private Vector3 lastEnd;
     private GameObject inboundLegInfo;
     private GameObject outboundLegInfo;
+    private GameObject inboundLegInfoTra;
+    private GameObject outboundLegInfoTra;
     private GameObject inboundDriftGO;
     private GameObject outboundDriftGO;
     private LineRenderer inboundDrift;
@@ -68,6 +69,9 @@ public class Leg : MonoBehaviour
         lineRenderer.startWidth = 0.1f;
         lineRenderer.endWidth = 0.1f;
 
+
+        flightSpeed = (double)(startWaypoint.speed);
+
         //var middleGameObject = PerpendicularLine();
         //middleLineRenderer = initLine(middleGameObject);
 
@@ -81,6 +85,9 @@ public class Leg : MonoBehaviour
         outboundLegInfo.transform.SetParent(gameObject.transform);
         outboundLegInfo.GetComponent<RotationConstraint>().rotationOffset = new Vector3(0, 0, 0);
         outboundLegInfo.SetActive(true);
+
+        inboundLegInfoTra = inboundLegInfo.transform.GetChild(0).gameObject;
+        outboundLegInfoTra = outboundLegInfo.transform.GetChild(0).gameObject;
 
         Material dashedMat = Resources.Load("dashedReadStencil", typeof(Material)) as Material;
 
@@ -150,6 +157,8 @@ public class Leg : MonoBehaviour
 
         if (startSource == null || endSource == null) return;
         
+        flightSpeed = (double)(startWaypoint.speed);
+
         // if (startSource != null)
         // {
         start.transform.position = startSource.transform.position;
@@ -191,9 +200,6 @@ public class Leg : MonoBehaviour
             var legDistanceNm = legDistance.NauticalMiles;
 
             distanceText.text = legDistanceNm.ToString("n1");
-            //durationText.text = MainLoop.ToHMS(legDistanceNm /  flightSpeed); //NOT HMS
-            //headingText.text =  MainLoop.ToMagnetic(Convert.ToInt32(legDistance.Bearing)).ToString("D3") + " M";
-
 
 
 
@@ -209,24 +215,26 @@ public class Leg : MonoBehaviour
             var durationMinutes = Main.ToHMS(legDistanceNm / flightSpeed);
 
 
-            var inboundLegInfoHeading = inboundLegInfo.transform.GetChild(0).gameObject;
+            var inboundLegInfoHeading = inboundLegInfoTra.transform.GetChild(0).gameObject;
             inboundLegInfoHeading.GetComponent<TextMesh>().text = bearing.ToString("D3");
-            var inboundLegInfoDuration = inboundLegInfo.transform.GetChild(1).gameObject; //TODO: how to I get the childs in a nicer fashion?
+            var inboundLegInfoDuration = inboundLegInfoTra.transform.GetChild(1).gameObject; //TODO: how to I get the childs in a nicer fashion?
             inboundLegInfoDuration.GetComponent<TextMesh>().text = durationMinutes; //rounded to nearest 5 seconds
             inboundLegInfo.transform.position =  (3f * newVector) + ((startPosition + endPosition) / 2f);
+            // var inboundLegInfoAltitude = inboundLegInfo.transform.GetChild(2).gameObject;
+            // inboundLegInfoAltitude.GetComponent<TextMesh>().text = startWaypoint.altitutde.ToString();
 
-
-            var outboundLegInfoHeading = outboundLegInfo.transform.GetChild(0).gameObject;
+            var outboundLegInfoHeading = outboundLegInfoTra.transform.GetChild(0).gameObject;
             outboundLegInfoHeading.GetComponent<TextMesh>().text = inverseBearing.ToString("D3");
-            var outboundLegInfoDuration = outboundLegInfo.transform.GetChild(1).gameObject;
+            var outboundLegInfoDuration = outboundLegInfoTra.transform.GetChild(1).gameObject;
             outboundLegInfoDuration.GetComponent<TextMesh>().text = durationMinutes;
             outboundLegInfo.transform.position = (-3f * newVector) + ((startPosition + endPosition) / 2f);
+            // var outboundLegInfoAltitude = outboundLegInfo.transform.GetChild(2).gameObject;
+            // outboundLegInfoAltitude.GetComponent<TextMesh>().text = endWaypoint.altitutde.ToString();
 
-
-            var outboundLegInfoBackground = outboundLegInfo.transform.GetChild(2).gameObject;
+            var outboundLegInfoBackground = outboundLegInfoTra.transform.GetChild(3).gameObject;
             outboundLegInfoBackground.GetComponent<MeshRenderer>().material.color = new Color(1,0,0,0.33f);
 
-            var inboundLegInfoBackground = inboundLegInfo.transform.GetChild(2).gameObject;
+            var inboundLegInfoBackground = inboundLegInfoTra.transform.GetChild(3).gameObject;
             inboundLegInfoBackground.GetComponent<MeshRenderer>().material.color = new Color(0, 0, 1, 0.33f);
 
             int legTimeMinutes = TimeSpan.FromHours((legDistanceNm /  flightSpeed)).Minutes;

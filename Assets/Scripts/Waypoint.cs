@@ -12,6 +12,9 @@ public class Waypoint : MonoBehaviour
     public Coordinate coordinate;
     public Circle circle;
 
+    public int altitutde = 2000;
+    public int speed = 90;
+
     private Vector3 lastPos;
 
     private void Start()
