@@ -46,3 +46,10 @@ sysinfo.txt
 
 # Crashlytics generated file
 crashlytics-build.properties
+.idea
+ProjectSettings
+ProjectSettings
+.vscode
+Packages
+Assets/BuildSettings.json
+Assets/BuildSettings.json.meta
