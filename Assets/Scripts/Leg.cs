@@ -32,6 +32,8 @@ public class Leg : MonoBehaviour
     public Waypoint startWaypoint = null;
     public Waypoint endWaypoint = null;
     public double flightSpeed = 90d;
+    public int inboundAltitude = 2000;
+    public int outboundAltitude = 2000;
 
     public GameObject legInfo;
     public GameObject emptyLine;
@@ -46,7 +48,9 @@ public class Leg : MonoBehaviour
 
     //public Coordinate startCoord;
     //public Coordinate endCoord;
-
+    private double curSpeed;
+    private int curInboundAltitude = 2000;
+    private int curOutboundAltitude = 2000;
     private LineRenderer lineRenderer;
     //private LineRenderer middleLineRenderer;
     private Vector3 lastStart;
@@ -71,8 +75,8 @@ public class Leg : MonoBehaviour
         lineRenderer.startWidth = 0.1f;
         lineRenderer.endWidth = 0.1f;
 
-
-        flightSpeed = (double)(startWaypoint.speed);
+        curSpeed = flightSpeed;
+        //flightSpeed = (double)(startWaypoint.speed);
 
         //var middleGameObject = PerpendicularLine();
         //middleLineRenderer = initLine(middleGameObject);
@@ -159,7 +163,7 @@ public class Leg : MonoBehaviour
 
         if (startSource == null || endSource == null) return;
         
-        flightSpeed = (double)(startWaypoint.speed);
+        //flightSpeed = (double)(startWaypoint.speed);
 
 
         // if (startSource != null)
@@ -177,14 +181,21 @@ public class Leg : MonoBehaviour
         var endPosition = end.transform.position;
     
         
-        //waypoint changed
-        if ((startPosition != lastStart || endPosition != lastEnd) || dirty)
+        //waypoint/speed/altitude changed
+        if ((startPosition != lastStart || endPosition != lastEnd)
+            || (curSpeed != flightSpeed)
+            || (curInboundAltitude != inboundAltitude)
+            || (curOutboundAltitude != outboundAltitude)
+            || dirty)
         {
 
             dirty = false;    
             // zero out this as the last position
             lastStart = startPosition;
             lastEnd = endPosition;
+            curSpeed = flightSpeed;
+            curInboundAltitude = inboundAltitude;
+            curOutboundAltitude = outboundAltitude;
 
             // update everything...
 
@@ -227,16 +238,16 @@ public class Leg : MonoBehaviour
             var inboundLegInfoDuration = inboundLegInfoTra.transform.GetChild(1).gameObject; //TODO: how to I get the childs in a nicer fashion?
             inboundLegInfoDuration.GetComponent<TextMesh>().text = durationMinutes; //rounded to nearest 5 seconds
             inboundLegInfo.transform.position =  (3f * newVector) + ((startPosition + endPosition) / 2f);
-            // var inboundLegInfoAltitude = inboundLegInfo.transform.GetChild(2).gameObject;
-            // inboundLegInfoAltitude.GetComponent<TextMesh>().text = startWaypoint.altitutde.ToString();
+            var inboundLegInfoAltitude = inboundLegInfoTra.transform.GetChild(2).gameObject;
+            inboundLegInfoAltitude.GetComponent<TextMesh>().text = inboundAltitude.ToString();
 
             var outboundLegInfoHeading = outboundLegInfoTra.transform.GetChild(0).gameObject;
             outboundLegInfoHeading.GetComponent<TextMesh>().text = inverseBearing.ToString("D3");
             var outboundLegInfoDuration = outboundLegInfoTra.transform.GetChild(1).gameObject;
             outboundLegInfoDuration.GetComponent<TextMesh>().text = durationMinutes;
             outboundLegInfo.transform.position = (-3f * newVector) + ((startPosition + endPosition) / 2f);
-            // var outboundLegInfoAltitude = outboundLegInfo.transform.GetChild(2).gameObject;
-            // outboundLegInfoAltitude.GetComponent<TextMesh>().text = endWaypoint.altitutde.ToString();
+            var outboundLegInfoAltitude = outboundLegInfoTra.transform.GetChild(2).gameObject;
+            outboundLegInfoAltitude.GetComponent<TextMesh>().text = outboundAltitude.ToString();
 
             var outboundLegInfoBackground = outboundLegInfoTra.transform.GetChild(3).gameObject;
             outboundLegInfoBackground.GetComponent<MeshRenderer>().material.color = new Color(1,0,0,0.33f);

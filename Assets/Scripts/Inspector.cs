@@ -1,13 +1,16 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 using TMPro;
 
 public struct Param
 {
     public string name;
-    public System.Action<string> callback;
+    public UnityAction<string> callback;
     public GameObject inputGroup;
+    public TMP_InputField inputField;
+    public string intialValue;
 }
 
 public class Inspector : MonoBehaviour
@@ -31,11 +34,12 @@ public class Inspector : MonoBehaviour
 
     private void Clear()
     {
-        foreach (var p in parameters)
+        for (int i=0;i<parameters.Count;i++)
         {
-            Destroy(p.inputGroup);
-            parameters.Remove(p);
+            Destroy(parameters[i].inputGroup);
+            // parameters.RemoveAt(i);
         }
+        parameters = new List<Param>();
     }
 
 
@@ -47,10 +51,12 @@ public class Inspector : MonoBehaviour
         for (int i = 0; i < _parameters.Count; i++)
         {   
             Param p = _parameters[i];
-            var inputGroup = Instantiate(inpugGroup, Vector3.zero, Quaternion.identity);
-            inputGroup.transform.SetParent(transform);
-            p.inputGroup = inpugGroup;
-            inpugGroup.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = p.name;
+            p.inputGroup = Instantiate(inpugGroup, Vector3.zero, Quaternion.identity);
+            p.inputGroup.transform.SetParent(gameObject.transform);           
+            p.inputGroup.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = p.name;
+            p.inputField = p.inputGroup.transform.GetChild(1).GetComponent<TMP_InputField>();
+            p.inputField.text = p.intialValue;
+            p.inputField.onEndEdit.AddListener(p.callback);
             parameters.Add(p);
         }
           

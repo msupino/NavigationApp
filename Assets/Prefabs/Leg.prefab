@@ -145,7 +145,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1623739457113912300
 Transform:
   m_ObjectHideFlags: 0
@@ -1030,12 +1030,15 @@ MonoBehaviour:
   startWaypoint: {fileID: 0}
   endWaypoint: {fileID: 0}
   flightSpeed: 90
+  inboundAltitude: 2000
+  outboundAltitude: 2000
   legInfo: {fileID: 6239805360378693861}
   emptyLine: {fileID: 238567614440019394}
   minuteText: {fileID: 8179908770202322411}
   distanceText: {fileID: 4886160459903050643}
   selectionArea: {fileID: 2231897168952656744}
   dirty: 0
+  inspector: {fileID: 0}
 --- !u!1 &6072918024276047287
 GameObject:
   m_ObjectHideFlags: 0
