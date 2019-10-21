@@ -53,8 +53,8 @@ public class Inspector : MonoBehaviour
             Param p = _parameters[i];
             p.inputGroup = Instantiate(inpugGroup, Vector3.zero, Quaternion.identity);
             p.inputGroup.transform.SetParent(gameObject.transform);           
-            p.inputGroup.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = p.name;
-            p.inputField = p.inputGroup.transform.GetChild(1).GetComponent<TMP_InputField>();
+            p.inputGroup.transform.GetChild(1).GetComponent<TextMeshProUGUI>().text = p.name;
+            p.inputField = p.inputGroup.transform.GetChild(2).GetComponent<TMP_InputField>();
             p.inputField.text = p.intialValue;
             p.inputField.onEndEdit.AddListener(p.callback);
             parameters.Add(p);

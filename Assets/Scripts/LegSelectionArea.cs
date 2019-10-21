@@ -4,23 +4,6 @@ using UnityEngine;
 using UnityEngine.Events;
 
 
-// public class LegParameters
-// {
-//     public string name;
-//     public System.Action<int> callback;
-//     public LegParameters(string _name, System.Action<int> _callback)
-//     {
-//         name = _name;
-//         callback = _callback;
-//     }
-
-// }
-
-// public struct LegParameters
-// {
-//     public string name;
-//     public System.Action<string> callback;
-// }
 
 public class LegSelectionArea : MonoBehaviour
 {
