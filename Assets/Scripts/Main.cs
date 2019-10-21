@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.Animations;
 using CoordinateSharp;
@@ -214,8 +215,32 @@ public class Main : MonoBehaviour
             case ToolType.Print:
                 snapshot = true;
                 Update();
-                break;    
+                break; 
+
+            case ToolType.Settings:
+                ShowMapSettings();
+                break; 
         }
+    }
+
+    public void SetExampleParam(string param)
+    {
+
+    }
+
+    private void ShowMapSettings()
+    {
+        List<Param> paramaters = new List<Param>();
+
+        Param example = new Param();
+        example.type = ParamType.Standard;
+        example.name = "Example";
+        example.callback = new UnityAction<string>(SetExampleParam);
+        example.intialValue = "example value";//leg.GetComponent<Leg>().flightSpeed.ToString();
+
+        paramaters.Add(example);
+        inspector.Edit(this.gameObject, "Map settings", paramaters);
+        
     }
 
     private void OnUploadSceneData(string json)
