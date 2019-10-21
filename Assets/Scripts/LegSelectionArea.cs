@@ -46,6 +46,13 @@ public class LegSelectionArea : MonoBehaviour
         Debug.Log("Changed outbound altitude to - " + altitude);
     }
 
+    public void ToggleMidLegIndicationDraw(bool state)
+    {
+        var legScript = leg.GetComponent<Leg>();
+        legScript.drawMidLegIndication = state;
+        Debug.Log("Draw mid leg indication: " + state);
+    }
+
     // Update is called once per frame
     void Update()
     {
@@ -70,24 +77,36 @@ public class LegSelectionArea : MonoBehaviour
         List<Param> paramaters = new List<Param>();
 
         Param speed = new Param();
+        speed.type = ParamType.Standard;
         speed.name = "Speed";
         speed.callback = new UnityAction<string>(SetSpeed);
         speed.intialValue = leg.GetComponent<Leg>().flightSpeed.ToString();
 
         Param inboundAltitude = new Param();
+        speed.type = ParamType.Standard;
         inboundAltitude.name = "Inbound Altitude";
         inboundAltitude.callback = new UnityAction<string>(SetInboundAltitude);
         inboundAltitude.intialValue = leg.GetComponent<Leg>().inboundAltitude.ToString();
 
         Param outboundAltitude = new Param();
+        speed.type = ParamType.Standard;
         outboundAltitude.name = "Outbound Altitude";
         outboundAltitude.callback = new UnityAction<string>(SetOutboundAltitude);
         outboundAltitude.intialValue = leg.GetComponent<Leg>().outboundAltitude.ToString();
 
 
+        Param midIndication = new Param();
+        midIndication.type = ParamType.Bool;
+        midIndication.name = "Mid leg indication";
+        midIndication.boolCallback = new UnityAction<bool>(ToggleMidLegIndicationDraw);
+        midIndication.intialBoolValue = leg.GetComponent<Leg>().drawMidLegIndication;
+
+
+
         paramaters.Add(speed);
         paramaters.Add(inboundAltitude); 
         paramaters.Add(outboundAltitude); 
+        paramaters.Add(midIndication);
         inspector.Edit(this.gameObject, leg.name, paramaters);  
     }
 

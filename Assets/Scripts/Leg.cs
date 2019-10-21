@@ -36,10 +36,12 @@ public class Leg : MonoBehaviour
     public int outboundAltitude = 2000;
 
     public GameObject legInfo;
+    public GameObject midLegGroup;
     public GameObject emptyLine;
     public GameObject minuteText;
     public TextMesh distanceText;
     public GameObject selectionArea;
+    public bool drawMidLegIndication = true;
     public bool dirty;
 
     public Inspector inspector;
@@ -76,6 +78,7 @@ public class Leg : MonoBehaviour
         lineRenderer.endWidth = 0.1f;
 
         curSpeed = flightSpeed;
+        midLegGroup.SetActive(drawMidLegIndication);
         //flightSpeed = (double)(startWaypoint.speed);
 
         //var middleGameObject = PerpendicularLine();
@@ -179,6 +182,8 @@ public class Leg : MonoBehaviour
                 
         var startPosition = start.transform.position;
         var endPosition = end.transform.position;
+
+        midLegGroup.SetActive(drawMidLegIndication);
     
         
         //waypoint/speed/altitude changed
@@ -202,14 +207,6 @@ public class Leg : MonoBehaviour
 
             lineRenderer.SetPosition(0, startPosition);
             lineRenderer.SetPosition(1, endPosition);
-
-            
-
-            //// draw the mid line perpendicular to the main line
-            //var perpPoints = GetPerpendicularPoints(startPosition, endPosition, 2f);
-
-            //middleLineRenderer.SetPosition(0, perpPoints[0]);
-            //middleLineRenderer.SetPosition(1, perpPoints[1]);
 
 
             var legDistance = new Distance(startWaypoint.coordinate, endWaypoint.coordinate, Shape.Sphere);
