@@ -31,6 +31,7 @@ public class Inspector : MonoBehaviour
     public GameObject inpugGroup;
     public GameObject boolInputGroup;
     public GameObject clearButton;
+    public GameObject icon;
     
     private List<Param> parameters = new List<Param>();
     // Start is called before the first frame update
@@ -56,6 +57,7 @@ public class Inspector : MonoBehaviour
         parameters = new List<Param>();
         header.text = "";
         clearButton.SetActive(false);
+        icon.SetActive(false);
         selected = null;
 
     }
@@ -65,6 +67,7 @@ public class Inspector : MonoBehaviour
     {
         Clear();
         clearButton.SetActive(true);
+        icon.SetActive(true);
         selected = GO;
         header.text = name; 
         for (int i = 0; i < _parameters.Count; i++)
