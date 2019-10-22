@@ -1416,7 +1416,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_AspectMode: 3
-  m_AspectRatio: 0.704
+  m_AspectRatio: 1.42
 --- !u!222 &407739485
 CanvasRenderer:
   m_ObjectHideFlags: 0
