@@ -262,6 +262,30 @@ public class Main : MonoBehaviour
         }
     }
 
+    public void SetGlobalSpeed(string speed)
+    {
+        for (int i = 0; i<flight.Count; i++)
+        {
+            flight[i].script.flightSpeed = (double)Convert.ToUInt32(speed);
+        }
+        Camera.main.Render();
+    }
+
+
+    public int GetGlobalSpeed()
+    {
+        List<int> speed = new List<int>();
+        for (int i = 0; i<flight.Count; i++)
+        {
+            speed.Add((int)flight[i].script.flightSpeed);
+        }
+        List<int> noDups = speed.Distinct().ToList();
+        if (noDups.Count > 1) return 0; // the is more then one speed in the map
+
+        return noDups[0]; //only one speed in the map   
+
+    }
+
     private void ShowMapSettings()
     {
         List<Param> paramaters = new List<Param>();
@@ -274,7 +298,24 @@ public class Main : MonoBehaviour
         _renderOrientation.enumOptions = RenderOrientationValues;
         _renderOrientation.intInitialValue = GetRenderOrientationIndex();
 
+
+        Param speed = new Param();
+        speed.type = ParamType.Standard;
+        speed.name = "Speed (Global)";
+        speed.callback = new UnityAction<string>(SetGlobalSpeed);
+        var globalSpeed = GetGlobalSpeed();
+        if (globalSpeed==0)
+        {
+            speed.intialValue = "variable";
+        } 
+        else
+        {
+            speed.intialValue = globalSpeed.ToString();    
+        }
+
+
         paramaters.Add(_renderOrientation);
+        paramaters.Add(speed);
         inspector.Edit(this.gameObject, "Map settings", paramaters);   
     }
 
