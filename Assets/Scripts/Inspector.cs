@@ -38,6 +38,8 @@ public class Inspector : MonoBehaviour
     public GameObject comboInputGroup;
     public GameObject clearButton;
     public GameObject icon;
+
+    private bool enterEdit = false;
     
     private List<Param> parameters = new List<Param>();
     // Start is called before the first frame update
@@ -65,13 +67,21 @@ public class Inspector : MonoBehaviour
         clearButton.SetActive(false);
         icon.SetActive(false);
         selected = null;
-
+        
+        if (!enterEdit) 
+        {
+            gameObject.SetActive(false); 
+        }
     }
 
 
     public void Edit(GameObject GO, string name, List<Param> _parameters)
     {
+        enterEdit = true;
         Clear();
+        enterEdit = false;
+
+        gameObject.SetActive(true);
         clearButton.SetActive(true);
         icon.SetActive(true);
         selected = GO;

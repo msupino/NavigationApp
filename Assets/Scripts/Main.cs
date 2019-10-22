@@ -236,12 +236,6 @@ public class Main : MonoBehaviour
         }
     }
 
-    public void SetExampleParam(string param)
-    {
-
-    }
-
-
     private int GetRenderOrientationIndex()
     {
         int index = (int)renderOrientation;
@@ -277,6 +271,8 @@ public class Main : MonoBehaviour
 
     public int GetGlobalSpeed()
     {
+        if(flight.Count==0){return 90;}
+        
         List<int> speed = new List<int>();
         for (int i = 0; i<flight.Count; i++)
         {
@@ -570,9 +566,20 @@ public class Main : MonoBehaviour
 
             
 
-            int resWidth = 2895;
-            int resHeight = 4096; // 4K A3 proportions, will be fine for print
-
+            int resWidth = 1;
+            int resHeight = 1;
+            switch (renderOrientation)
+            {
+                case RenderOrientation.Portrait:
+                    resWidth = 2895;
+                    resHeight = 4096; // 4K A3 proportions, will be fine for print
+                    break;
+                case RenderOrientation.Landscape:
+                    resWidth = 4096;
+                    resHeight = 2895; // 4K A3 proportions, will be fine for print
+                    break;
+            }
+            
             RenderTexture rt = new RenderTexture(resWidth, resHeight, 24);
             exportCameraCamera.targetTexture = rt;
             Texture2D screenShot = new Texture2D(resWidth, resHeight, TextureFormat.RGB24, false);
