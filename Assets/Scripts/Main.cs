@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Events;
@@ -8,6 +9,13 @@ using UnityEngine.EventSystems;
 using UnityEngine.Animations;
 using CoordinateSharp;
 using RTG;
+
+
+public enum RenderOrientation
+{
+    Portrait,
+    Landscape
+}
 
 struct FlightLegData
 {
@@ -35,11 +43,13 @@ public class Main : MonoBehaviour
     public DataIO dataIO;
     public GameObject editorCanvas;
     public GameObject renderCanvas;
+    public RenderOrientation renderOrientation = RenderOrientation.Portrait;
     // public Vector2 renderAspectRatio = new Vector2(1,1.42F);
     public Canvas canvas;
 
     public Inspector inspector;
 
+    public AspectRatioFitter safeAspectRatio;
 
     public GameObject exportCamera;
     public double flightSpeed = 90d; //TODO: Will be on the leg level
@@ -74,6 +84,7 @@ public class Main : MonoBehaviour
     {
         // TODO: is this in fact the correct way to optimize for WebGL?
         Application.targetFrameRate = 24;
+        safeAspectRatio.aspectRatio = 0.704F; //portrait
 
         
 
@@ -172,6 +183,7 @@ public class Main : MonoBehaviour
         
     }
 
+
     private bool WaypointsExists()
     {
         if (waypoints.Count > 0) return true;
@@ -228,19 +240,42 @@ public class Main : MonoBehaviour
 
     }
 
+
+    private int GetRenderOrientationIndex()
+    {
+        int index = (int)renderOrientation;
+        print(index);
+        return index;
+    }
+
+    public void SetRenderOrientation(int orienation)
+    {
+        renderOrientation = (RenderOrientation)orienation;
+        switch(renderOrientation)
+        {
+            case RenderOrientation.Portrait:
+                safeAspectRatio.aspectRatio = 0.704F;
+                break;
+            case RenderOrientation.Landscape:
+            safeAspectRatio.aspectRatio = 1.42F;
+                break;
+        }
+    }
+
     private void ShowMapSettings()
     {
         List<Param> paramaters = new List<Param>();
 
-        Param example = new Param();
-        example.type = ParamType.Standard;
-        example.name = "Example";
-        example.callback = new UnityAction<string>(SetExampleParam);
-        example.intialValue = "example value";//leg.GetComponent<Leg>().flightSpeed.ToString();
+        Param _renderOrientation = new Param();
+        _renderOrientation.type = ParamType.Enum;
+        _renderOrientation.name = "Render Orientation";
+        _renderOrientation.intCallback = new UnityAction<int>(SetRenderOrientation);
+        List<string> RenderOrientationValues = ((RenderOrientation[])Enum.GetValues(typeof(RenderOrientation))).Select(c => c.ToString()).ToList();
+        _renderOrientation.enumOptions = RenderOrientationValues;
+        _renderOrientation.intInitialValue = GetRenderOrientationIndex();
 
-        paramaters.Add(example);
-        inspector.Edit(this.gameObject, "Map settings", paramaters);
-        
+        paramaters.Add(_renderOrientation);
+        inspector.Edit(this.gameObject, "Map settings", paramaters);   
     }
 
     private void OnUploadSceneData(string json)

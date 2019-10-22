@@ -8,7 +8,8 @@ using TMPro;
 public enum ParamType
 {
     Standard,
-    Bool
+    Bool,
+    Enum
 }
 
 public struct Param
@@ -17,11 +18,15 @@ public struct Param
     public ParamType type;
     public UnityAction<string> callback;
     public UnityAction<bool> boolCallback;
+    public UnityAction<int> intCallback;
     public GameObject inputGroup;
     public TMP_InputField inputField;
+    public TMP_Dropdown comboInputField;
     public Toggle boolInputField;
     public string intialValue;
+    public int intInitialValue;
     public bool intialBoolValue;
+    public List<string> enumOptions;
 }
 
 public class Inspector : MonoBehaviour
@@ -30,6 +35,7 @@ public class Inspector : MonoBehaviour
     public TextMeshProUGUI header;
     public GameObject inpugGroup;
     public GameObject boolInputGroup;
+    public GameObject comboInputGroup;
     public GameObject clearButton;
     public GameObject icon;
     
@@ -89,6 +95,18 @@ public class Inspector : MonoBehaviour
                     p.boolInputField = p.inputGroup.transform.GetChild(2).GetComponent<Toggle>();
                     p.boolInputField.isOn = p.intialBoolValue;
                     p.boolInputField.onValueChanged.AddListener(p.boolCallback);
+                    break;
+                case ParamType.Enum:
+                    p.inputGroup = Instantiate(comboInputGroup, Vector3.zero, Quaternion.identity);
+                    p.inputGroup.transform.SetParent(gameObject.transform);           
+                    p.comboInputField = p.inputGroup.transform.GetChild(2).GetComponent<TMP_Dropdown>();
+                    p.comboInputField.options.Clear();
+                    for (int y=0; y<p.enumOptions.Count;y++)
+                    {
+                        p.comboInputField.options.Add(new TMP_Dropdown.OptionData(p.enumOptions[y]));
+                    }
+                    p.comboInputField.value = p.intInitialValue;
+                    p.comboInputField.onValueChanged.AddListener(p.intCallback);
                     break;
             }
             p.inputGroup.transform.GetChild(1).GetComponent<TextMeshProUGUI>().text = p.name;
