@@ -85,6 +85,7 @@ public class Main : MonoBehaviour
         // TODO: is this in fact the correct way to optimize for WebGL?
         Application.targetFrameRate = 24;
         safeAspectRatio.aspectRatio = 0.704F; //portrait
+        renderCanvas.GetComponent<AspectRatioFitter>().aspectRatio = 0.704F;
 
         
 
@@ -255,9 +256,11 @@ public class Main : MonoBehaviour
         {
             case RenderOrientation.Portrait:
                 safeAspectRatio.aspectRatio = 0.704F;
+                renderCanvas.GetComponent<AspectRatioFitter>().aspectRatio = 0.704F;
                 break;
             case RenderOrientation.Landscape:
-            safeAspectRatio.aspectRatio = 1.42F;
+                safeAspectRatio.aspectRatio = 1.42F;
+                renderCanvas.GetComponent<AspectRatioFitter>().aspectRatio = 1.42F;
                 break;
         }
     }
