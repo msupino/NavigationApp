@@ -46,6 +46,7 @@ public class Main : MonoBehaviour
     public RenderOrientation renderOrientation = RenderOrientation.Portrait;
     // public Vector2 renderAspectRatio = new Vector2(1,1.42F);
     public Canvas canvas;
+    public GameObject mapGO;
 
     public Inspector inspector;
 
@@ -286,6 +287,19 @@ public class Main : MonoBehaviour
 
     }
 
+    public void SetMapOpacity(float opacity)
+    {
+        var m = mapGO.GetComponent<Renderer>().material;
+        var c = new Color(m.color.r, m.color.g,m.color.b, opacity);
+        m.color = c;
+    }
+
+    public float GetMapOpacity()
+    {
+        var m = mapGO.GetComponent<Renderer>().material;
+        return m.color.a;
+    }
+
     private void ShowMapSettings()
     {
         List<Param> paramaters = new List<Param>();
@@ -297,6 +311,13 @@ public class Main : MonoBehaviour
         List<string> RenderOrientationValues = ((RenderOrientation[])Enum.GetValues(typeof(RenderOrientation))).Select(c => c.ToString()).ToList();
         _renderOrientation.enumOptions = RenderOrientationValues;
         _renderOrientation.intInitialValue = GetRenderOrientationIndex();
+
+
+        Param mapOpacity = new Param();
+        mapOpacity.type = ParamType.Slider;
+        mapOpacity.name = "Map opacity";
+        mapOpacity.floatCallback = new UnityAction<float>(SetMapOpacity);
+        mapOpacity.floatInitialValue = GetMapOpacity();
 
 
         Param speed = new Param();
@@ -316,6 +337,7 @@ public class Main : MonoBehaviour
 
         paramaters.Add(_renderOrientation);
         paramaters.Add(speed);
+        paramaters.Add(mapOpacity);
         inspector.Edit(this.gameObject, "Map settings", paramaters);   
     }
 

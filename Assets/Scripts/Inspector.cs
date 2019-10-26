@@ -9,7 +9,8 @@ public enum ParamType
 {
     Standard,
     Bool,
-    Enum
+    Enum,
+    Slider
 }
 
 public struct Param
@@ -19,12 +20,15 @@ public struct Param
     public UnityAction<string> callback;
     public UnityAction<bool> boolCallback;
     public UnityAction<int> intCallback;
+    public UnityAction<float> floatCallback;
     public GameObject inputGroup;
     public TMP_InputField inputField;
     public TMP_Dropdown comboInputField;
     public Toggle boolInputField;
+    public Slider sliderInputField;
     public string intialValue;
     public int intInitialValue;
+    public float floatInitialValue;
     public bool intialBoolValue;
     public List<string> enumOptions;
 }
@@ -36,6 +40,7 @@ public class Inspector : MonoBehaviour
     public GameObject inpugGroup;
     public GameObject boolInputGroup;
     public GameObject comboInputGroup;
+    public GameObject sliderInputGroup;
     public GameObject clearButton;
     public GameObject icon;
 
@@ -105,6 +110,13 @@ public class Inspector : MonoBehaviour
                     p.boolInputField = p.inputGroup.transform.GetChild(2).GetComponent<Toggle>();
                     p.boolInputField.isOn = p.intialBoolValue;
                     p.boolInputField.onValueChanged.AddListener(p.boolCallback);
+                    break;
+                case ParamType.Slider:
+                    p.inputGroup = Instantiate(sliderInputGroup, Vector3.zero, Quaternion.identity);
+                    p.inputGroup.transform.SetParent(gameObject.transform);           
+                    p.sliderInputField = p.inputGroup.transform.GetChild(2).GetComponent<Slider>();
+                    p.sliderInputField.value = p.floatInitialValue;
+                    p.sliderInputField.onValueChanged.AddListener(p.floatCallback);
                     break;
                 case ParamType.Enum:
                     p.inputGroup = Instantiate(comboInputGroup, Vector3.zero, Quaternion.identity);
