@@ -46,8 +46,6 @@ public class Leg : MonoBehaviour
 
     public Inspector inspector;
 
-
-
     //public Coordinate startCoord;
     //public Coordinate endCoord;
     private double curSpeed;

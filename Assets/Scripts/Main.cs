@@ -261,9 +261,10 @@ public class Main : MonoBehaviour
 
     public void SetGlobalSpeed(string speed)
     {
+        flightSpeed = (double)Convert.ToUInt32(speed);
         for (int i = 0; i<flight.Count; i++)
         {
-            flight[i].script.flightSpeed = (double)Convert.ToUInt32(speed);
+            flight[i].script.flightSpeed = flightSpeed;
         }
         Camera.main.Render();
     }
@@ -389,6 +390,7 @@ public class Main : MonoBehaviour
                     l.leg = UnityEngine.Object.Instantiate(leg, Vector3.zero, Quaternion.identity);
                     
                     l.script = l.leg.GetComponent<Leg>();
+                    l.script.flightSpeed = flightSpeed;
                     l.script.inspector = inspector;
                     l.script.startSource = waypoints[i];
                     l.script.endSource = waypoints[i+1];
