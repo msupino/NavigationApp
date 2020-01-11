@@ -57,6 +57,8 @@ public class Main : MonoBehaviour
     public Toolbar toolbar;
 
     public GameObject print_frames_rot;
+    public Tool A3buttonTool;
+    public Tool A4buttonTool;
 
 
     private List<FlightLegData> flight = new List<FlightLegData>();
@@ -273,6 +275,9 @@ public class Main : MonoBehaviour
                 print_frames_rot.transform.eulerAngles = new Vector3(0,90,0);
                 break;
         }
+        
+        A4buttonTool.SetUnSelected();
+        A3buttonTool.SetUnSelected();
     }
 
     public void SetGlobalSpeed(string speed)
@@ -337,7 +342,9 @@ public class Main : MonoBehaviour
                     case RenderOrientation.Landscape:
                         zoom = 23;
                         break;    
-                }   
+                } 
+                A3buttonTool.SetSelected(); 
+                A4buttonTool.SetUnSelected(); 
                 break;
             case "A4":
                 switch(renderOrientation)
@@ -348,7 +355,9 @@ public class Main : MonoBehaviour
                     case RenderOrientation.Landscape:
                         zoom = 16;
                         break;    
-                }   
+                }
+                A4buttonTool.SetSelected();
+                A3buttonTool.SetUnSelected();      
                 break;
         }
 
@@ -534,6 +543,8 @@ public class Main : MonoBehaviour
         if (canZoom)
         {
             mapCameraCamera.orthographicSize = zoom;
+            A4buttonTool.SetUnSelected();
+            A3buttonTool.SetUnSelected();
             // DrawRenderSafe();
         }
 

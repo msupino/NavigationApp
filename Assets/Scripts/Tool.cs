@@ -15,15 +15,16 @@ public class Tool : MonoBehaviour,
     public Main main;
     public ToolType tool;
     public ButtonType typ;
-    
     public GameObject button;
     public GameObject highlightPanel;
-
+    public GameObject selectedPanel;
     public Texture2D cursorTexture;
     public CursorMode cursorMode = CursorMode.Auto;
     public Vector2 hotSpot = Vector2.zero;
     public bool isActive = false;
     public InfoEvent eventInfo = new InfoEvent();
+
+    
 
 
     private Image image;
@@ -41,6 +42,7 @@ public class Tool : MonoBehaviour,
     {
         description = Toolbar.GetToolDescription(tool);
         highlightPanel.SetActive(false);
+        selectedPanel.SetActive(false);
         //image = GetComponent<Image>();
         //image.color = new Color32(255, 255, 255, 100);
         main.toolbar.buttons.Add(gameObject);
@@ -229,4 +231,13 @@ public class Tool : MonoBehaviour,
         eventInfo.Invoke(null);
     }
 
+    public void SetSelected()
+    {
+        selectedPanel.SetActive(true);
+    }
+
+    public void SetUnSelected()
+    {
+        selectedPanel.SetActive(false);
+    }
 }
