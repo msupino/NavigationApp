@@ -60,6 +60,7 @@ public class Toolbar : MonoBehaviour
 
     public void displayInfo(string text)
     {
+
         if (text != null) 
         {
             infoLabel.text = text;

@@ -44,6 +44,7 @@ public class Tool : MonoBehaviour,
         //image = GetComponent<Image>();
         //image.color = new Color32(255, 255, 255, 100);
         main.toolbar.buttons.Add(gameObject);
+        eventInfo.AddListener(main.toolbar.displayInfo);
         
 
         switch (tool)
@@ -65,6 +66,7 @@ public class Tool : MonoBehaviour,
     {
         Clicked();
     }
+
     #else
     //
     // Normal
@@ -94,6 +96,9 @@ public class Tool : MonoBehaviour,
         Refresh();
     }
     public void OnPointerDown(PointerEventData eventData){}
+
+
+
     #endif
 
     public void Update()
@@ -200,6 +205,7 @@ public class Tool : MonoBehaviour,
         }
     }
 
+
     public void OnPointerEnter(PointerEventData eventData)
     {
         //image.color = new Color32(255, 255, 255, 150);
@@ -222,4 +228,5 @@ public class Tool : MonoBehaviour,
         }
         eventInfo.Invoke(null);
     }
+
 }
