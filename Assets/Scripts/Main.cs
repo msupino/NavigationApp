@@ -322,15 +322,34 @@ public class Main : MonoBehaviour
         mapCameraTransform = mainCamera.transform;
         mapCameraCamera = mainCamera.GetComponent<Camera>();
 
+        int orienation = GetRenderOrientationIndex();
+        renderOrientation = (RenderOrientation)orienation;
+        
+
         switch(size)
         {
             case "A3":
-                zoom = 29;
+                switch(renderOrientation)
+                {
+                    case RenderOrientation.Portrait:
+                        zoom = 29;
+                        break;  
+                    case RenderOrientation.Landscape:
+                        zoom = 23;
+                        break;    
+                }   
                 break;
             case "A4":
-                zoom = 20;
+                switch(renderOrientation)
+                {
+                    case RenderOrientation.Portrait:
+                        zoom = 20;
+                        break;  
+                    case RenderOrientation.Landscape:
+                        zoom = 16;
+                        break;    
+                }   
                 break;
-
         }
 
         mapCameraCamera.orthographicSize = zoom;
