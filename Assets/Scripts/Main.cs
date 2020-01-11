@@ -9,7 +9,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.Animations;
 using CoordinateSharp;
 using RTG;
-
+using B83;
 
 public enum RenderOrientation
 {
@@ -234,6 +234,15 @@ public class Main : MonoBehaviour
             case ToolType.Settings:
                 ShowMapSettings();
                 break; 
+
+            case ToolType.A3_Zoom:
+                print("Zoom to A3");
+                Camera_Zoom("A3");
+                break; 
+            case ToolType.A4_Zoom:
+                print("Zoom to A4");
+                Camera_Zoom("A4");
+                break; 
         }
     }
 
@@ -250,12 +259,12 @@ public class Main : MonoBehaviour
         switch(renderOrientation)
         {
             case RenderOrientation.Portrait:
-                safeAspectRatio.aspectRatio = 0.704F;
-                renderCanvas.GetComponent<AspectRatioFitter>().aspectRatio = 0.704F;
+                safeAspectRatio.aspectRatio = 0.707F;
+                renderCanvas.GetComponent<AspectRatioFitter>().aspectRatio = 0.707F;
                 break;
             case RenderOrientation.Landscape:
-                safeAspectRatio.aspectRatio = 1.42F;
-                renderCanvas.GetComponent<AspectRatioFitter>().aspectRatio = 1.42F;
+                safeAspectRatio.aspectRatio = 1.414F;
+                renderCanvas.GetComponent<AspectRatioFitter>().aspectRatio = 1.414F;
                 break;
         }
     }
@@ -299,6 +308,29 @@ public class Main : MonoBehaviour
         var m = mapGO.GetComponent<Renderer>().material;
         return m.color.a;
     }
+
+
+    private void Camera_Zoom(string size)
+    {
+
+        mapCameraTransform = mainCamera.transform;
+        mapCameraCamera = mainCamera.GetComponent<Camera>();
+
+        switch(size)
+        {
+            case "A3":
+                zoom = 29;
+                break;
+            case "A4":
+                zoom = 20;
+                break;
+
+        }
+
+        mapCameraCamera.orthographicSize = zoom;
+        canZoom = false;
+    }
+
 
     private void ShowMapSettings()
     {
@@ -595,12 +627,12 @@ public class Main : MonoBehaviour
             switch (renderOrientation)
             {
                 case RenderOrientation.Portrait:
-                    resWidth = 2895;
-                    resHeight = 4096; // 4K A3 proportions, will be fine for print
+                    resWidth = 3508;
+                    resHeight = 4960; // 4K A3 proportions, will be fine for print
                     break;
                 case RenderOrientation.Landscape:
-                    resWidth = 4096;
-                    resHeight = 2895; // 4K A3 proportions, will be fine for print
+                    resWidth = 4960;
+                    resHeight = 3508; // 4K A3 proportions, will be fine for print
                     break;
             }
             
@@ -614,7 +646,9 @@ public class Main : MonoBehaviour
             RenderTexture.active = null; // JC: added to avoid errors
             Destroy(rt);
             byte[] bytes = screenShot.EncodeToPNG();
-            dataIO.DownloadPrint(bytes);
+            byte[] ppi_bytes = B83.Image.PNGTools.ChangePPI(bytes, 300F, 300F); // upres to 300dpi
+
+            dataIO.DownloadPrint(ppi_bytes);
             snapshot = false;
             exportCamera.SetActive(false);
 

@@ -21,7 +21,9 @@ public enum ToolType
     SaveScene,
     LoadScene,
     Settings,
-    Print
+    Print,
+    A3_Zoom,
+    A4_Zoom,
 }
 
 
