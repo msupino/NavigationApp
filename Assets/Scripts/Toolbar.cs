@@ -127,6 +127,10 @@ public class Toolbar : MonoBehaviour
                 return "Load plan.";
             case ToolType.Print:
                 return "Print plan. Frame your view to the green region.";
+            case ToolType.A3_Zoom:
+                return "Scale the map to a 1:250,000 scale on an A3 Print (29.7cm x 42cm)";
+            case ToolType.A4_Zoom:
+                return "Scale the map to a 1:250,000 scale on an A4 Print (21cm x 29.7cm)";
         }
         return null;
     }

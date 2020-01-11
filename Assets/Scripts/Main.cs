@@ -56,6 +56,8 @@ public class Main : MonoBehaviour
     public double flightSpeed = 90d; //TODO: Will be on the leg level
     public Toolbar toolbar;
 
+    public GameObject print_frames_rot;
+
 
     private List<FlightLegData> flight = new List<FlightLegData>();
     private List<GameObject> waypoints = new List<GameObject>();
@@ -261,10 +263,14 @@ public class Main : MonoBehaviour
             case RenderOrientation.Portrait:
                 safeAspectRatio.aspectRatio = 0.707F;
                 renderCanvas.GetComponent<AspectRatioFitter>().aspectRatio = 0.707F;
+                print("portrait");
+                print_frames_rot.transform.eulerAngles = new Vector3(0,0,0);
                 break;
             case RenderOrientation.Landscape:
                 safeAspectRatio.aspectRatio = 1.414F;
                 renderCanvas.GetComponent<AspectRatioFitter>().aspectRatio = 1.414F;
+                print("lendsacpe");
+                print_frames_rot.transform.eulerAngles = new Vector3(0,90,0);
                 break;
         }
     }
