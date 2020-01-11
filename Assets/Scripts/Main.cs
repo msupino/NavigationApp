@@ -34,7 +34,7 @@ public class Main : MonoBehaviour
     public GameObject mainCamera;
     public GameObject buttonDraw;
     public float dragSpeed = 15;
-    public int camZoomStep = 1;
+    public float camZoomStep = 0.5F;
     public Tut_1_Enabling_and_Disabling_Gizmos gizmos;
     public Texture2D cursorTextureDrag;
     public Texture2D cursorTextureDragAction;
@@ -275,7 +275,7 @@ public class Main : MonoBehaviour
                 print_frames_rot.transform.eulerAngles = new Vector3(0,90,0);
                 break;
         }
-        
+
         A4buttonTool.SetUnSelected();
         A3buttonTool.SetUnSelected();
     }
@@ -340,7 +340,7 @@ public class Main : MonoBehaviour
                         zoom = 29;
                         break;  
                     case RenderOrientation.Landscape:
-                        zoom = 23;
+                        zoom = 20.5F;
                         break;    
                 } 
                 A3buttonTool.SetSelected(); 
@@ -350,10 +350,10 @@ public class Main : MonoBehaviour
                 switch(renderOrientation)
                 {
                     case RenderOrientation.Portrait:
-                        zoom = 20;
+                        zoom = 20.5F;
                         break;  
                     case RenderOrientation.Landscape:
-                        zoom = 16;
+                        zoom = 14.5F;
                         break;    
                 }
                 A4buttonTool.SetSelected();
@@ -542,6 +542,7 @@ public class Main : MonoBehaviour
 
         if (canZoom)
         {
+            print(zoom);
             mapCameraCamera.orthographicSize = zoom;
             A4buttonTool.SetUnSelected();
             A3buttonTool.SetUnSelected();
@@ -647,6 +648,7 @@ public class Main : MonoBehaviour
         if (snapshot)
         {
             //Update();    
+            print_frames_rot.SetActive(false);
             editorCanvas.SetActive(false);
             renderCanvas.SetActive(true);
             exportCamera.SetActive(true);
@@ -693,6 +695,7 @@ public class Main : MonoBehaviour
 
             renderCanvas.SetActive(false);
             editorCanvas.SetActive(true);
+            print_frames_rot.SetActive(true);
         }
     }
 

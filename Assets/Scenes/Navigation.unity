@@ -2570,7 +2570,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 682262560}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -14.15, y: -17.800007, z: 20.500004}
+  m_LocalPosition: {x: -14.4, y: -17.800007, z: 20.500004}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 913580123}
@@ -2616,14 +2616,14 @@ LineRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_Positions:
-  - {x: 28.3, y: 0, z: 0}
+  - {x: 28.8, y: 0, z: 0}
   - {x: 0, y: 0, z: 0}
   - {x: 0, y: 0, z: -41}
-  - {x: 28.3, y: 0, z: -41}
-  - {x: 28.3, y: 0, z: 0}
+  - {x: 28.8, y: 0, z: -41}
+  - {x: 28.8, y: 0, z: 0}
   m_Parameters:
     serializedVersion: 3
-    widthMultiplier: 0.1
+    widthMultiplier: 0.05
     widthCurve:
       serializedVersion: 2
       m_Curve:
@@ -2784,7 +2784,7 @@ MonoBehaviour:
   mainCamera: {fileID: 526170695}
   buttonDraw: {fileID: 1368558957}
   dragSpeed: 15
-  camZoomStep: 1
+  camZoomStep: 0.5
   gizmos: {fileID: 716838811}
   cursorTextureDrag: {fileID: 0}
   cursorTextureDragAction: {fileID: 2800000, guid: 478d7032c38a54a1f8005f7be620a6de,
@@ -11052,7 +11052,7 @@ LineRenderer:
   - {x: 41, y: 0, z: 0}
   m_Parameters:
     serializedVersion: 3
-    widthMultiplier: 0.1
+    widthMultiplier: 0.05
     widthCurve:
       serializedVersion: 2
       m_Curve:
