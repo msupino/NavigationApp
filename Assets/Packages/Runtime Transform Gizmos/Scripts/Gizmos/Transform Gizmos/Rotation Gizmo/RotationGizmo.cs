@@ -72,6 +72,11 @@ namespace RTG
             return _axesSliders.Contains(handleId) || _midCap.HandleId == handleId;
         }
 
+        public void SetMidCapHoverable(bool hoverable)
+        {
+            _midCap.SetHoverable(hoverable);
+        }
+
         public void SetSnapEnabled(bool isEnabled)
         {
             _axesSliders.SetSnapEnabled(isEnabled);

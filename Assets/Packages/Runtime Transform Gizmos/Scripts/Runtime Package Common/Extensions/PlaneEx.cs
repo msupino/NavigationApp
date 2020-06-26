@@ -113,14 +113,23 @@ namespace RTG
 
         public static Plane GetCameraFacingAxisSlicePlane(Vector3 axisOrigin, Vector3 axis, Camera camera)
         {
-            Vector3 cameraLook = camera.transform.forward;
-            if (cameraLook.IsAligned(axis, false)) return new Plane();
+            Vector3 crossAxis = camera.transform.forward;
+            if (crossAxis.IsAligned(axis, false)) crossAxis = camera.transform.right;
 
-            Vector3 cross = Vector3.Normalize(Vector3.Cross(cameraLook, axis));
+            Vector3 cross = Vector3.Normalize(Vector3.Cross(crossAxis, axis));
             if (cross.magnitude < 1e-4f) return new Plane();
 
             Vector3 planeNormal = Vector3.Normalize(Vector3.Cross(cross, axis));
             return new Plane(planeNormal, axisOrigin);
+
+            //Vector3 cameraLook = camera.transform.forward;
+            //if (cameraLook.IsAligned(axis, false)) return new Plane(camera.transform.up, axisOrigin);
+
+            //Vector3 cross = Vector3.Normalize(Vector3.Cross(cameraLook, axis));
+            //if (cross.magnitude < 1e-4f) return new Plane();
+
+            //Vector3 planeNormal = Vector3.Normalize(Vector3.Cross(cross, axis));
+            //return new Plane(planeNormal, axisOrigin);
         }
     }
 }

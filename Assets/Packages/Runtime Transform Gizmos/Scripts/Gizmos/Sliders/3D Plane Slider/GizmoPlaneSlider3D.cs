@@ -371,6 +371,7 @@ namespace RTG
         {
             Handle.Set3DShapeHoverable(_quadIndex, IsHoverable);
             Handle.Set3DShapeHoverable(_raTriangleIndex, IsHoverable);
+            Handle.Set3DShapeHoverable(_circleIndex, IsHoverable);
         }
 
         private void OnGizmoPreUpdateBegin(Gizmo gizmo)
@@ -427,43 +428,13 @@ namespace RTG
                 else
                 if (_dragChannel == GizmoDragChannel.Scale)
                 {
-                    float zoomFactor = GetZoomFactor(Gizmo.FocusCamera);
-
                     GizmoDblAxisScaleDrag3D.WorkData workData = new GizmoDblAxisScaleDrag3D.WorkData();
                     workData.Axis0 = Right;
                     workData.Axis1 = Up;
                     workData.DragOrigin = Position;
                     workData.AxisIndex0 = _scaleDragAxisIndexRight;
                     workData.AxisIndex1 = _scaleDragAxisIndexUp;
-                    workData.ScaleMode = Settings.ScaleMode;
-
-                    if (workData.ScaleMode == GizmoDblAxisScaleMode.Independent)
-                    {
-                        workData.IndSnapStep0 = Settings.ScaleSnapStepRight;
-                        workData.IndSnapStep1 = Settings.ScaleSnapStepUp;
-
-                        if (LookAndFeel.PlaneType == GizmoPlane3DType.Quad)
-                        {
-                            workData.IndBaseSize0 = GetRealQuadWidth(zoomFactor) * 0.5f;
-                            workData.IndBaseSize1 = GetRealQuadHeight(zoomFactor) * 0.5f;
-                        }
-                        else
-                        if (LookAndFeel.PlaneType == GizmoPlane3DType.RATriangle)
-                        {
-                            workData.IndBaseSize0 = GetRealRATriXLength(zoomFactor);
-                            workData.IndBaseSize1 = GetRealRATriYLength(zoomFactor);
-                        }
-                    }
-                    else
-                    {
-                        if (LookAndFeel.PlaneType == GizmoPlane3DType.Quad) workData.PropBaseSize = TriangleMath.CalcRATriangleHypotenuse(GetRealQuadSize(zoomFactor) * 0.5f);
-                        else
-                        if (LookAndFeel.PlaneType == GizmoPlane3DType.RATriangle) workData.PropBaseSize = TriangleMath.CalcRATriangleAltitude(GetRealRATriSize(zoomFactor));
-      
-                        workData.PropSnapStep = Settings.ProportionalScaleSnapStep;
-                        workData.PropAxis = ((Right + Up) * 0.5f).normalized;
-                    }
-
+                    workData.SnapStep = Settings.ProportionalScaleSnapStep;
                     _scaleDrag.SetWorkData(workData);
                 }
             }

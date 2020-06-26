@@ -295,6 +295,21 @@ namespace RTG
             _mvVertexSnapDrag.SetTargetObjects(targetObjects);
         }
 
+        public void SetMvAxesLinesHoverable(bool hoverable)
+        {
+            _mvPXSlider.SetHoverable(hoverable);
+            _mvNXSlider.SetHoverable(hoverable);
+            _mvPYSlider.SetHoverable(hoverable);
+            _mvNYSlider.SetHoverable(hoverable);
+            _mvPZSlider.SetHoverable(hoverable);
+            _mvNZSlider.SetHoverable(hoverable);
+        }
+
+        public void SetRtMidCapHoverable(bool hoverable)
+        {
+            _rtMidCap.SetHoverable(hoverable);
+        }
+
         public void SetScaleGuideTargetObjects(IEnumerable<GameObject> targetObjects)
         {
             _scScaleGuideTargetObjects = targetObjects;
@@ -534,7 +549,7 @@ namespace RTG
             }
 
             // Scale
-            _scMidCap.SetVisible(LookAndFeel3D.IsScMidCapVisible);
+            _scMidCap.SetVisible(LookAndFeel3D.IsScMidCapVisible && !_is2DModeEnabled);
             _scUnformScaleDrag.Sensitivity = Settings3D.ScDragSensitivity;
         }
 
@@ -633,7 +648,6 @@ namespace RTG
             else if (handleId == _scMidCap.HandleId)
             {
                 var workData = new GizmoUniformScaleDrag3D.WorkData();
-                workData.BaseSize = _scMidCap.GetRealBoxSize(_scMidCap.GetZoomFactor(Gizmo.GetWorkCamera())).magnitude;
                 workData.DragOrigin = _scMidCap.Position;
                 workData.CameraRight = Gizmo.FocusCamera.transform.right;
                 workData.CameraUp = Gizmo.FocusCamera.transform.up;
@@ -772,8 +786,7 @@ namespace RTG
 
         private void SetScaleHandlesVisible(bool visible)
         {
-            if (LookAndFeel3D.IsScMidCapVisible)
-             _scMidCap.SetVisible(visible);
+            _scMidCap.SetVisible(visible);
         }
     }
 }

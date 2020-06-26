@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace RTG
 {
@@ -10,16 +9,17 @@ namespace RTG
             public Vector3 CameraRight;
             public Vector3 CameraUp;
             public Vector3 DragOrigin;
-            public float BaseSize;
             public float SnapStep;
         }
 
         private WorkData _workData;
         private Vector3 _planeAxis0;
         private Vector3 _planeAxis1;
-        private float _scaledSize;
+        private float _accumSnapDrag;
+        private float _scale;
         private float _relativeScale = 1.0f;
         private float _totalScale = 1.0f;
+        private Vector3 _scaleDragAxis;
 
         public override GizmoDragChannel DragChannel { get { return GizmoDragChannel.Scale; } }
         public float TotalScale { get { return _totalScale; } }
@@ -30,7 +30,8 @@ namespace RTG
             if (!IsActive)
             {
                 _workData = workData;
-                _scaledSize = _workData.BaseSize;
+                _scale = 1.0f;
+                _scaleDragAxis = ((workData.CameraRight + workData.CameraUp) * 0.5f).normalized;
             }
         }
 
@@ -44,31 +45,30 @@ namespace RTG
 
         protected override void CalculateDragValues()
         {
-            Vector3 planeDragPoint = _planeDragSession.DragPoint;
-            Vector3 offsetFromScaleOrigin = (planeDragPoint - _workData.DragOrigin);
-
-            float dragAlongAxis0 = offsetFromScaleOrigin.Dot(_planeAxis0);
-            float dragAlongAxis1 = offsetFromScaleOrigin.Dot(_planeAxis1);
-
             if (CanSnap())
             {
                 _relativeDragScale = Vector3.one;
-                float accumDrag = (dragAlongAxis0 + dragAlongAxis1);
-                if (SnapMath.CanExtractSnap(_workData.SnapStep, accumDrag))
+                _accumSnapDrag += _planeDragSession.DragDelta.Dot(_scaleDragAxis);
+
+                if (SnapMath.CanExtractSnap(_workData.SnapStep, _accumSnapDrag))
                 {
-                    float oldScaledSize = _scaledSize;
-                    _scaledSize = _workData.BaseSize + SnapMath.ExtractSnap(_workData.SnapStep, accumDrag);
-                    _relativeScale = _scaledSize / oldScaledSize;
-                    _totalScale = _scaledSize / _workData.BaseSize;
+                    float snapAmount = SnapMath.ExtractSnap(_workData.SnapStep, ref _accumSnapDrag);
+
+                    float oldScale = _scale;
+                    _scale += snapAmount;
+                    _relativeScale = _scale / oldScale;
+                    _totalScale = _scale / 1.0f;
                     _relativeDragScale = Vector3Ex.FromValue(_relativeScale);
                 }
             }
             else
             {
-                float oldScaledSize = _scaledSize;
-                _scaledSize = _workData.BaseSize + (dragAlongAxis0 + dragAlongAxis1) * Sensitivity;
-                _relativeScale = _scaledSize / oldScaledSize;
-                _totalScale = _scaledSize / _workData.BaseSize;
+                _accumSnapDrag = 0;
+
+                float oldScale = _scale;
+                _scale += _planeDragSession.DragDelta.Dot(_scaleDragAxis) * Sensitivity;
+                _relativeScale = _scale / oldScale;
+                _totalScale = _scale / 1.0f;
                 _relativeDragScale = Vector3Ex.FromValue(_relativeScale);
             }
 

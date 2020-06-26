@@ -452,7 +452,7 @@ MonoBehaviour:
       _text: Scale gizmo
     - _tooltip: Allows you to change universal gizmo settings.
       _text: Universal gizmo
-    _activeTabIndex: 2
+    _activeTabIndex: 1
   _settings:
     _canBeDisplayed: 1
     _isExpanded: 1
@@ -618,6 +618,7 @@ MonoBehaviour:
       _hoveredColor: {r: 0.96470594, g: 0.9490197, b: 0.19607845, a: 1}
     _screenCorner: 1
     _screenOffset: {x: 0, y: 0}
+    _screenSize: 90
     _axesLabelTint: {r: 1, g: 1, b: 1, a: 1}
     _camPrjSwitchLabelTint: {r: 1, g: 1, b: 1, a: 0.7}
     _isCamPrjSwitchLabelVisible: 1
@@ -1609,7 +1610,7 @@ MonoBehaviour:
     _transformableLayers: -1
   _scaleGizmoSettings3D:
     _canBeDisplayed: 1
-    _isExpanded: 0
+    _isExpanded: 1
     _uniformSnapStep: 0.1
     _sglSliderSettings:
     - _lineHoverEps: 0.7
@@ -1618,7 +1619,7 @@ MonoBehaviour:
       _offsetSnapStep: 1
       _rotationSnapStep: 15
       _rotationSnapMode: 0
-      _scaleSnapStep: 0.1
+      _scaleSnapStep: 1
       _offsetSensitivity: 1
       _rotationSensitivity: 0.45
       _scaleSensitivity: 0.6
@@ -1628,7 +1629,7 @@ MonoBehaviour:
       _offsetSnapStep: 1
       _rotationSnapStep: 15
       _rotationSnapMode: 0
-      _scaleSnapStep: 0.1
+      _scaleSnapStep: 1
       _offsetSensitivity: 1
       _rotationSensitivity: 0.45
       _scaleSensitivity: 0.6
@@ -1638,7 +1639,7 @@ MonoBehaviour:
       _offsetSnapStep: 1
       _rotationSnapStep: 15
       _rotationSnapMode: 0
-      _scaleSnapStep: 0.1
+      _scaleSnapStep: 1
       _offsetSensitivity: 1
       _rotationSensitivity: 0.45
       _scaleSensitivity: 0.6
@@ -1648,7 +1649,7 @@ MonoBehaviour:
       _offsetSnapStep: 1
       _rotationSnapStep: 15
       _rotationSnapMode: 0
-      _scaleSnapStep: 0.1
+      _scaleSnapStep: 1
       _offsetSensitivity: 1
       _rotationSensitivity: 0.45
       _scaleSensitivity: 0.6
@@ -1658,7 +1659,7 @@ MonoBehaviour:
       _offsetSnapStep: 1
       _rotationSnapStep: 15
       _rotationSnapMode: 0
-      _scaleSnapStep: 0.1
+      _scaleSnapStep: 1
       _offsetSensitivity: 1
       _rotationSensitivity: 0.45
       _scaleSensitivity: 0.6
@@ -1668,7 +1669,7 @@ MonoBehaviour:
       _offsetSnapStep: 1
       _rotationSnapStep: 15
       _rotationSnapMode: 0
-      _scaleSnapStep: 0.1
+      _scaleSnapStep: 1
       _offsetSensitivity: 1
       _rotationSensitivity: 0.45
       _scaleSensitivity: 0.6
@@ -1684,8 +1685,8 @@ MonoBehaviour:
       _rotationSnapStep: 15
       _rotationSnapMode: 0
       _scaleMode: 1
-      _scaleSnapStepRight: 0.1
-      _scaleSnapStepUp: 0.1
+      _scaleSnapStepRight: 1
+      _scaleSnapStepUp: 1
       _proportionalScaleSnapStep: 0.1
       _offsetSensitivity: 1
       _rotationSensitivity: 0.45
@@ -1701,8 +1702,8 @@ MonoBehaviour:
       _rotationSnapStep: 15
       _rotationSnapMode: 0
       _scaleMode: 1
-      _scaleSnapStepRight: 0.1
-      _scaleSnapStepUp: 0.1
+      _scaleSnapStepRight: 1
+      _scaleSnapStepUp: 1
       _proportionalScaleSnapStep: 0.1
       _offsetSensitivity: 1
       _rotationSensitivity: 0.45
@@ -1718,8 +1719,8 @@ MonoBehaviour:
       _rotationSnapStep: 15
       _rotationSnapMode: 0
       _scaleMode: 1
-      _scaleSnapStepRight: 0.1
-      _scaleSnapStepUp: 0.1
+      _scaleSnapStepRight: 1
+      _scaleSnapStepUp: 1
       _proportionalScaleSnapStep: 0.1
       _offsetSensitivity: 1
       _rotationSensitivity: 0.45
@@ -2130,18 +2131,18 @@ MonoBehaviour:
         CanHaveMouseButtons: 0
   _objectScaleGizmoSettings:
     _canBeDisplayed: 1
-    _isExpanded: 0
+    _isExpanded: 1
     _transformableLayers: -1
   _universalGizmoConfig:
     _canBeDisplayed: 1
     _isExpanded: 1
     _inheritCategory: 0
     _inheritType: 3
-    _displayCategory: 0
+    _displayCategory: 2
   _universalGizmoSettings2D:
-    _canBeDisplayed: 1
+    _canBeDisplayed: 0
     _isExpanded: 0
-    _displayCategory: 0
+    _displayCategory: 2
     _mvDblSliderSettings:
       _areaHoverEps: 0.00001
       _borderLineHoverEps: 7
@@ -2196,8 +2197,8 @@ MonoBehaviour:
       _scaleSensitivity: 1
   _universalGizmoSettings3D:
     _canBeDisplayed: 1
-    _isExpanded: 0
-    _displayCategory: 0
+    _isExpanded: 1
+    _displayCategory: 2
     _mvVertexSnapSettings:
       _canBeDisplayed: 1
       _isExpanded: 1
@@ -2394,7 +2395,7 @@ MonoBehaviour:
       _offsetSnapStep: 1
       _rotationSnapStep: 15
       _rotationSnapMode: 0
-      _scaleSnapStep: 0.1
+      _scaleSnapStep: 1
       _offsetSensitivity: 1
       _rotationSensitivity: 0.45
       _scaleSensitivity: 0.6
@@ -2404,7 +2405,7 @@ MonoBehaviour:
       _offsetSnapStep: 1
       _rotationSnapStep: 15
       _rotationSnapMode: 0
-      _scaleSnapStep: 0.1
+      _scaleSnapStep: 1
       _offsetSensitivity: 1
       _rotationSensitivity: 0.45
       _scaleSensitivity: 0.6
@@ -2414,7 +2415,7 @@ MonoBehaviour:
       _offsetSnapStep: 1
       _rotationSnapStep: 15
       _rotationSnapMode: 0
-      _scaleSnapStep: 0.1
+      _scaleSnapStep: 1
       _offsetSensitivity: 1
       _rotationSensitivity: 0.45
       _scaleSensitivity: 0.6
@@ -2424,7 +2425,7 @@ MonoBehaviour:
       _offsetSnapStep: 1
       _rotationSnapStep: 15
       _rotationSnapMode: 0
-      _scaleSnapStep: 0.1
+      _scaleSnapStep: 1
       _offsetSensitivity: 1
       _rotationSensitivity: 0.45
       _scaleSensitivity: 0.6
@@ -2434,7 +2435,7 @@ MonoBehaviour:
       _offsetSnapStep: 1
       _rotationSnapStep: 15
       _rotationSnapMode: 0
-      _scaleSnapStep: 0.1
+      _scaleSnapStep: 1
       _offsetSensitivity: 1
       _rotationSensitivity: 0.45
       _scaleSensitivity: 0.6
@@ -2444,7 +2445,7 @@ MonoBehaviour:
       _offsetSnapStep: 1
       _rotationSnapStep: 15
       _rotationSnapMode: 0
-      _scaleSnapStep: 0.1
+      _scaleSnapStep: 1
       _offsetSensitivity: 1
       _rotationSensitivity: 0.45
       _scaleSensitivity: 0.6
@@ -2460,8 +2461,8 @@ MonoBehaviour:
       _rotationSnapStep: 15
       _rotationSnapMode: 0
       _scaleMode: 1
-      _scaleSnapStepRight: 0.1
-      _scaleSnapStepUp: 0.1
+      _scaleSnapStepRight: 1
+      _scaleSnapStepUp: 1
       _proportionalScaleSnapStep: 0.1
       _offsetSensitivity: 1
       _rotationSensitivity: 0.45
@@ -2477,8 +2478,8 @@ MonoBehaviour:
       _rotationSnapStep: 15
       _rotationSnapMode: 0
       _scaleMode: 1
-      _scaleSnapStepRight: 0.1
-      _scaleSnapStepUp: 0.1
+      _scaleSnapStepRight: 1
+      _scaleSnapStepUp: 1
       _proportionalScaleSnapStep: 0.1
       _offsetSensitivity: 1
       _rotationSensitivity: 0.45
@@ -2494,16 +2495,16 @@ MonoBehaviour:
       _rotationSnapStep: 15
       _rotationSnapMode: 0
       _scaleMode: 1
-      _scaleSnapStepRight: 0.1
-      _scaleSnapStepUp: 0.1
+      _scaleSnapStepRight: 1
+      _scaleSnapStepUp: 1
       _proportionalScaleSnapStep: 0.1
       _offsetSensitivity: 1
       _rotationSensitivity: 0.45
       _scaleSensitivity: 1
   _universalGizmoLookAndFeel2D:
-    _canBeDisplayed: 1
+    _canBeDisplayed: 0
     _isExpanded: 0
-    _displayCategory: 0
+    _displayCategory: 2
     _mvDblSliderLookAndFeel:
       _fillMode: 1
       _planeType: 0
@@ -2644,7 +2645,7 @@ MonoBehaviour:
   _universalGizmoLookAndFeel3D:
     _canBeDisplayed: 1
     _isExpanded: 0
-    _displayCategory: 0
+    _displayCategory: 2
     _mvVertSnapCapLookAndFeel:
       _fillMode: 1
       _capType: 0
@@ -3557,7 +3558,7 @@ MonoBehaviour:
         CanHaveMouseButtons: 0
   _objectUniversalGizmoSettings:
     _canBeDisplayed: 1
-    _isExpanded: 0
+    _isExpanded: 1
     _transformableLayers: -1
 --- !u!1 &1166821798
 GameObject:

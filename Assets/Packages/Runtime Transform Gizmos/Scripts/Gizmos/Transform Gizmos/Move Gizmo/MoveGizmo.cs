@@ -139,6 +139,16 @@ namespace RTG
                    _2DModeDblSlider.HandleId == handleId;
         }
 
+        public void SetAxesLinesHoverable(bool hoverable)
+        {
+            _pXSlider.SetHoverable(hoverable);
+            _nXSlider.SetHoverable(hoverable);
+            _pYSlider.SetHoverable(hoverable);
+            _nYSlider.SetHoverable(hoverable);
+            _pZSlider.SetHoverable(hoverable);
+            _nZSlider.SetHoverable(hoverable);
+        }
+
         public void SetSnapEnabled(bool isEnabled)
         {
             _axesSliders.SetSnapEnabled(isEnabled);

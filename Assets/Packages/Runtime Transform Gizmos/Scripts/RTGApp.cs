@@ -62,7 +62,7 @@ namespace RTG
 
             // Gizmo engine
             RTGizmosEngine.Get.CanDoHoverUpdate += OnCanDoGizmoHoverUpdate;
-            //RTGizmosEngine.Get.CreateSceneGizmo(RTFocusCamera.Get.TargetCamera);
+            RTGizmosEngine.Get.CreateSceneGizmo(RTFocusCamera.Get.TargetCamera);
             RTGizmosEngine.Get.AddRenderCamera(RTFocusCamera.Get.TargetCamera);
 
             RTMeshCompiler.CompileEntireScene();

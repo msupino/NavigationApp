@@ -57,7 +57,7 @@ namespace RTG
                 Vector2 labelScreenDir = (labelScreenPos - midAxisScreenPos).normalized;
 
                 float absDotCamLook = Mathf.Abs(Vector3Ex.AbsDot(sceneGizmoCamera.Look, gizmoAxis));
-                labelScreenPos = labelScreenPos + Vector2.Scale(labelScreenDir, Vector2Ex.FromValue(SceneGizmoLookAndFeel.AxisLabelScreenSize)) * absDotCamLook;
+                labelScreenPos = labelScreenPos + Vector2.Scale(labelScreenDir, Vector2Ex.FromValue(sgLookAndFeel.AxisLabelScreenSize)) * absDotCamLook;
                 labelPos = sceneGizmoCamera.Camera.ScreenToWorldPoint(new Vector3(labelScreenPos.x, labelScreenPos.y, (labelPos - sceneGizmoCamera.WorldPosition).magnitude));
 
                 Quaternion labelRotation = Quaternion.LookRotation(sceneGizmoCamera.Look, sceneGizmoCamera.Up);
@@ -91,13 +91,13 @@ namespace RTG
 
             Vector3 axis = _sceneGizmo.Gizmo.Transform.GetAxis3D(_axisDesc);
             float alignment = Vector3Ex.AbsDot(axis, _sceneGizmo.SceneGizmoCamera.Look);
-            if (alignment > SceneGizmoLookAndFeel.AxisCamAlignFadeOutThreshold)
+            if (alignment > sgLookAndFeel.AxisCamAlignFadeOutThreshold)
             {
-                if(ctState != ColorTransition.State.CompleteFadeOut &&
+                if (ctState != ColorTransition.State.CompleteFadeOut &&
                    ctState != ColorTransition.State.FadingOut)
                 {
-                    _colorTransition.DurationInSeconds = SceneGizmoLookAndFeel.AxisCamAlignFadeOutDuration;
-                    _colorTransition.FadeOutColor = ColorEx.KeepAllButAlpha(lookAndFeelColor, SceneGizmoLookAndFeel.AxisCamAlignFadeOutAlpha);
+                    _colorTransition.DurationInSeconds = sgLookAndFeel.AxisCamAlignFadeOutDuration;
+                    _colorTransition.FadeOutColor = ColorEx.KeepAllButAlpha(lookAndFeelColor, sgLookAndFeel.AxisCamAlignFadeOutAlpha);
                     _colorTransition.BeginFadeOut(true);
                 }
             }
@@ -107,7 +107,7 @@ namespace RTG
                     ctState != ColorTransition.State.CompleteFadeIn &&
                     ctState != ColorTransition.State.Ready)
                 {
-                    _colorTransition.DurationInSeconds = SceneGizmoLookAndFeel.AxisCamAlignFadeOutDuration;
+                    _colorTransition.DurationInSeconds = sgLookAndFeel.AxisCamAlignFadeOutDuration;
                     _colorTransition.FadeInColor = lookAndFeelColor;
                     _colorTransition.BeginFadeIn(true);
                 }
@@ -129,14 +129,14 @@ namespace RTG
             float zoomFactor = _cap.GetZoomFactor(camera);
 
             Vector3 midCapSize = _sceneGizmo.LookAndFeel.MidCapType == GizmoCap3DType.Box ?
-                Vector3Ex.FromValue(SceneGizmoLookAndFeel.MidCapBoxSize * zoomFactor) : Vector3Ex.FromValue(SceneGizmoLookAndFeel.MidCapSphereRadius * 2.0f * zoomFactor);
+                Vector3Ex.FromValue(_sceneGizmo.LookAndFeel.MidCapBoxSize * zoomFactor) : Vector3Ex.FromValue(_sceneGizmo.LookAndFeel.MidCapSphereRadius * 2.0f * zoomFactor);
             Vector3 midBoxFaceCenter = BoxMath.CalcBoxFaceCenter(midAxisPos, midCapSize, Quaternion.identity, _midAxisBoxFace);
             _cap.CapSlider3DInvert(axisDirection, midBoxFaceCenter);
         }
 
         private void OnGizmoHandlePicked(Gizmo gizmo, int handleId)
         {
-            if(handleId == HandleId)
+            if (handleId == HandleId)
             {
                 Quaternion targetRotation = Quaternion.LookRotation(-_sceneGizmo.Gizmo.Transform.GetAxis3D(_axisDesc), Vector3.up);
                 RTFocusCamera.Get.PerformRotationSwitch(targetRotation);

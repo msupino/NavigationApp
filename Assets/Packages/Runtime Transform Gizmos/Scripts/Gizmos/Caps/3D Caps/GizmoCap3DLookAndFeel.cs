@@ -81,5 +81,11 @@ namespace RTG
         public int NumSphereBorderPoints { get { return _numSphereBorderPoints; } set { _numSphereBorderPoints = Mathf.Max(3, value); } }
         public Color Color { get { return _color; } set { _color = value; } }
         public Color HoveredColor { get { return _hoveredColor; } set { _hoveredColor = value; } }
+
+        public static float DefaultConeHeight { get { return 1.65f; } }
+        public static float DefaultConeRadius { get { return 0.5f; } }
+        public static float DefaultPyramidHeight { get { return 1.65f; } }
+        public static float DefaultPyramidWidth { get { return 0.8f; } }
+        public static float DefaultPyramidDepth { get { return 0.8f; } }
     }
 }

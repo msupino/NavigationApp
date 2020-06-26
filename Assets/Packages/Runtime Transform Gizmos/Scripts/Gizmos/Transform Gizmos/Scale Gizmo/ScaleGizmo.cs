@@ -87,6 +87,16 @@ namespace RTG
                    _dblSliders.Contains(handleId) || _midCap.HandleId == handleId;
         }
 
+        public void SetAxesLinesHoverable(bool hoverable)
+        {
+            _pstvXSlider.SetHoverable(hoverable);
+            _negXSlider.SetHoverable(hoverable);
+            _pstvYSlider.SetHoverable(hoverable);
+            _negYSlider.SetHoverable(hoverable);
+            _pstvZSlider.SetHoverable(hoverable);
+            _negZSlider.SetHoverable(hoverable);
+        }
+
         public void SetSnapEnabled(bool isEnabled)
         {
             _unformScaleDrag.IsSnapEnabled = isEnabled;
@@ -261,7 +271,6 @@ namespace RTG
             if (handleId == _midCap.HandleId)
             {
                 var workData = new GizmoUniformScaleDrag3D.WorkData();
-                workData.BaseSize = _midCap.GetRealBoxSize(_midCap.GetZoomFactor(Gizmo.GetWorkCamera())).magnitude;
                 workData.DragOrigin = _midCap.Position;
                 workData.CameraRight = Gizmo.FocusCamera.transform.right;
                 workData.CameraUp = Gizmo.FocusCamera.transform.up;

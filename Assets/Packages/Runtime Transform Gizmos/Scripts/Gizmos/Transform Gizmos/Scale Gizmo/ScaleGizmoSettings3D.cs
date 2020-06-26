@@ -19,9 +19,9 @@ namespace RTG
         public float LineSliderHoverEps { get { return _sglSliderSettings[0].LineHoverEps; } }
         public float BoxSliderHoverEps { get { return _sglSliderSettings[0].BoxHoverEps; } }
         public float CylinderSliderHoverEps { get { return _sglSliderSettings[0].CylinderHoverEps; } }
-        public float XSnapStep { get { return GetSglSliderSettings(0, AxisSign.Positive).OffsetSnapStep; } }
-        public float YSnapStep { get { return GetSglSliderSettings(1, AxisSign.Positive).OffsetSnapStep; } }
-        public float ZSnapStep { get { return GetSglSliderSettings(2, AxisSign.Positive).OffsetSnapStep; } }
+        public float XSnapStep { get { return GetSglSliderSettings(0, AxisSign.Positive).ScaleSnapStep; } }
+        public float YSnapStep { get { return GetSglSliderSettings(1, AxisSign.Positive).ScaleSnapStep; } }
+        public float ZSnapStep { get { return GetSglSliderSettings(2, AxisSign.Positive).ScaleSnapStep; } }
         public float XYSnapStep { get { return GetDblSliderSettings(PlaneId.XY).ProportionalScaleSnapStep; } }
         public float YZSnapStep { get { return GetDblSliderSettings(PlaneId.YZ).ProportionalScaleSnapStep; } }
         public float ZXSnapStep { get { return GetDblSliderSettings(PlaneId.ZX).ProportionalScaleSnapStep; } }

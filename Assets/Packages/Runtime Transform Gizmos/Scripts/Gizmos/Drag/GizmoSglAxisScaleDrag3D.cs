@@ -1,5 +1,4 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace RTG
 {
@@ -11,12 +10,12 @@ namespace RTG
             public Vector3 DragOrigin;
             public Vector3 Axis;
             public float SnapStep;
-            public float BaseSize;
+            public float EntityScale;
         }
 
         private float _accumSnapDrag;
         private WorkData _workData;
-        private float _scaledSize;
+        private float _scale;
         private float _relativeScale = 1.0f;
         private float _totalScale = 1.0f;
 
@@ -30,7 +29,7 @@ namespace RTG
             if (!IsActive)
             {
                 _workData = workData;
-                _scaledSize = workData.BaseSize;
+                _scale = _workData.EntityScale;
             }
         }
 
@@ -49,21 +48,23 @@ namespace RTG
                 _accumSnapDrag += dragAlongAxis;
                 if (SnapMath.CanExtractSnap(_workData.SnapStep, _accumSnapDrag))
                 {
-                    float oldScaledSize = _scaledSize;
-                    _scaledSize += SnapMath.ExtractSnap(_workData.SnapStep, ref _accumSnapDrag);
-                    _totalScale = _scaledSize / _workData.BaseSize;
-                    _relativeScale = _scaledSize / oldScaledSize;
+                    float snapAmount = SnapMath.ExtractSnap(_workData.SnapStep, ref _accumSnapDrag);
+
+                    float oldScale = _scale;
+                    _scale += snapAmount;
+                    _totalScale = _scale / _workData.EntityScale;
+                    _relativeScale = _scale / oldScale;
                     _relativeDragScale[_workData.AxisIndex] = _relativeScale;
                 }
             }
             else
             {
                 _accumSnapDrag = 0.0f;
-  
-                float oldScaledSize = _scaledSize;
-                _scaledSize += dragAlongAxis * Sensitivity;
-                _totalScale = _scaledSize / _workData.BaseSize;
-                _relativeScale = _scaledSize / oldScaledSize;
+
+                float oldScale = _scale;
+                _scale += dragAlongAxis * Sensitivity;
+                _totalScale = _scale / _workData.EntityScale;
+                _relativeScale = _scale / oldScale;
                 _relativeDragScale[_workData.AxisIndex] = _relativeScale;
             }
 
@@ -75,7 +76,7 @@ namespace RTG
             _accumSnapDrag = 0.0f;
             _relativeScale = 1.0f;
             _totalScale = 1.0f;
-            _scaledSize = 1.0f;
+            _scale = 1.0f;
         }
     }
 }

@@ -330,9 +330,9 @@ namespace RTG
                     GizmoSglAxisScaleDrag3D.WorkData workData = new GizmoSglAxisScaleDrag3D.WorkData();
                     workData.Axis = _scaleAxis.normalized;
                     workData.AxisIndex = _scaleDragAxisIndex;
-                    workData.BaseSize = _scaleAxis.magnitude;
                     workData.DragOrigin = ScaleDragOrigin;
                     workData.SnapStep = Settings.ScaleSnapStep;
+                    workData.EntityScale = 1.0f;
 
                     _scaleDrag.SetWorkData(workData);
                 }

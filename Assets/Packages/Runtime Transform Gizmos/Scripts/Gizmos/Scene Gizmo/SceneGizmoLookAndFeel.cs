@@ -18,6 +18,9 @@ namespace RTG
     [Serializable]
     public class SceneGizmoLookAndFeel : Settings
     {
+        private static readonly float _baseScreenSize = 90.0f;
+        private static readonly float _invBaseScreenSize = 1.0f / _baseScreenSize;
+
         [SerializeField]
         private GizmoCap3DLookAndFeel _midCapLookAndFeel = new GizmoCap3DLookAndFeel();
         [SerializeField]
@@ -26,6 +29,8 @@ namespace RTG
         private SceneGizmoScreenCorner _screenCorner = SceneGizmoScreenCorner.TopRight;
         [SerializeField]
         private Vector2 _screenOffset = Vector2.zero;
+        [SerializeField]
+        private float _screenSize = 90.0f;
         [SerializeField]
         private Color _axesLabelTint = Color.white;
         [SerializeField]
@@ -37,6 +42,15 @@ namespace RTG
 
         public SceneGizmoScreenCorner ScreenCorner { get { return _screenCorner; } set { _screenCorner = value; } }
         public Vector2 ScreenOffset { get { return _screenOffset; } set { _screenOffset = value; } }
+        public float ScreenSize
+        {
+            get { return _screenSize; }
+            set
+            {
+                _screenSize = Mathf.Max(2, value);
+                OnScreenSizeChanged();
+            }
+        }
         public Color AxesLabelTint { get { return _axesLabelTint; } set { _axesLabelTint = value; } }
         public Color CamPrjSwitchLabelTint { get { return _camPrjSwitchLabelTint; } set { _camPrjSwitchLabelTint = value; } }
         public bool IsCamPrjSwitchLabelVisible { get { return _isCamPrjSwitchLabelVisible; } set { _isCamPrjSwitchLabelVisible = value; } }
@@ -45,18 +59,21 @@ namespace RTG
         public Color HoveredColor { get { return AxisCapLookAndFeel.HoveredColor; } }
         public GizmoCap3DType AxesCapType { get { return AxisCapLookAndFeel.CapType; } }
         public GizmoCap3DType MidCapType { get { return _midCapLookAndFeel.CapType; } }
-
-        public static int ScreenSize { get { return 90; } }
-        public static float MidCapBoxSize { get { return 1.01f; } }
-        public static float MidCapSphereRadius { get { return 0.73f; } }
-        public static float AxisLabelScreenSize { get { return 10.0f; } }
-        public static float AxisCamAlignFadeOutThreshold { get { return 0.91f; } }
-        public static float AxisCamAlignFadeOutDuration { get { return 0.2f; } }
-        public static float AxisCamAlignFadeOutAlpha { get { return 0.0f; } }
+        public float MidCapBoxSize { get { return 1.01f * _screenSize * _invBaseScreenSize; } }
+        public float MidCapSphereRadius { get { return 0.73f * _screenSize * _invBaseScreenSize; } }
+        public float AxisConeHeight { get { return GizmoCap3DLookAndFeel.DefaultConeHeight * _screenSize * _invBaseScreenSize; } }
+        public float AxisConeRadius { get { return GizmoCap3DLookAndFeel.DefaultConeRadius * _screenSize * _invBaseScreenSize; } }
+        public float AxisPyramidWidth { get { return GizmoCap3DLookAndFeel.DefaultPyramidWidth * _screenSize * _invBaseScreenSize; } }
+        public float AxisPyramidHeight { get { return GizmoCap3DLookAndFeel.DefaultPyramidHeight * _screenSize * _invBaseScreenSize; } }
+        public float AxisPyramidDepth { get { return GizmoCap3DLookAndFeel.DefaultPyramidDepth * _screenSize * _invBaseScreenSize; } }
+        public float AxisLabelScreenSize { get { return 10.0f * _screenSize * _invBaseScreenSize; } }
+        public float AxisCamAlignFadeOutThreshold { get { return 0.91f; } }
+        public float AxisCamAlignFadeOutDuration { get { return 0.2f; } }
+        public float AxisCamAlignFadeOutAlpha { get { return 0.0f; } }
 
         public SceneGizmoLookAndFeel()
         {
-            for(int axisIndex = 0; axisIndex < _axesCapsLookAndFeel.Length; ++axisIndex)
+            for (int axisIndex = 0; axisIndex < _axesCapsLookAndFeel.Length; ++axisIndex)
             {
                 _axesCapsLookAndFeel[axisIndex] = new GizmoCap3DLookAndFeel();
             }
@@ -72,10 +89,7 @@ namespace RTG
             SetAxisCapColor(RTSystemValues.CenterAxisColor, 2, AxisSign.Negative);
             SetAxisCapType(GizmoCap3DType.Cone);
 
-            _midCapLookAndFeel.BoxWidth = MidCapBoxSize;
-            _midCapLookAndFeel.BoxHeight = MidCapBoxSize;
-            _midCapLookAndFeel.BoxDepth = MidCapBoxSize;
-            _midCapLookAndFeel.SphereRadius = MidCapSphereRadius;
+            OnScreenSizeChanged();
         }
 
         public void SetMidCapColor(Color color)
@@ -182,10 +196,24 @@ namespace RTG
             return _axesCapsLookAndFeel[axisIndex + 3];
         }
 
-        #if UNITY_EDITOR
+        private void OnScreenSizeChanged()
+        {
+            _midCapLookAndFeel.BoxWidth = MidCapBoxSize;
+            _midCapLookAndFeel.BoxHeight = MidCapBoxSize;
+            _midCapLookAndFeel.BoxDepth = MidCapBoxSize;
+            _midCapLookAndFeel.SphereRadius = MidCapSphereRadius;
+
+            foreach (var axisCapLookAndFeel in _axesCapsLookAndFeel)
+            {
+                axisCapLookAndFeel.ConeHeight = AxisConeHeight;
+                axisCapLookAndFeel.ConeRadius = AxisConeRadius;
+            }
+        }
+
+#if UNITY_EDITOR
         protected override void RenderContent(UnityEngine.Object undoRecordObject)
         {
-            bool newBool; Color newColor; Vector2 newVec2;
+            bool newBool; Color newColor; Vector2 newVec2; float newFloat;
             GizmoShadeMode newShadeMode; SceneGizmoScreenCorner newScreenCorner;
             GizmoCap3DType newCapType;
 
@@ -207,6 +235,15 @@ namespace RTG
             {
                 EditorUndoEx.Record(undoRecordObject);
                 ScreenOffset = newVec2;
+            }
+
+            content.text = "Screen size";
+            content.tooltip = "Allows you to change the gizmo screen size.";
+            newFloat = EditorGUILayout.FloatField(content, ScreenSize);
+            if (newFloat != ScreenSize)
+            {
+                EditorUndoEx.Record(undoRecordObject);
+                ScreenSize = newFloat;
             }
 
             EditorGUILayout.Separator();
@@ -254,7 +291,7 @@ namespace RTG
             string[] axesCapLabels = new string[] { "Positive X", "Positive Y", "Positive Z", "Negative X", "Negative Y", "Negative Z" };
             int[] axesIndices = new int[] { 0, 1, 2, 0, 1, 2 };
             AxisSign[] axesSigns = new AxisSign[] { AxisSign.Positive, AxisSign.Positive, AxisSign.Positive, AxisSign.Negative, AxisSign.Negative, AxisSign.Negative };
-            for (int axisIndex = 0; axisIndex < 6; ++axisIndex )
+            for (int axisIndex = 0; axisIndex < 6; ++axisIndex)
             {
                 content.text = axesCapLabels[axisIndex];
                 content.tooltip = "The color of the " + axesCapLabels[axisIndex].ToLower() + ".";
@@ -290,7 +327,7 @@ namespace RTG
             EditorGUILayoutEx.SectionHeader("Labels");
             EditorGUILayout.HelpBox("The alpha value of the axes labels is ignored. The alpha component will always have the same value as the corresponding axis.", MessageType.Info);
             content.text = "Axes label tint";
-            content.tooltip = "Allows you to change the color of the labels associated with the gizmo axes. Note: The alpha component is ignored. The alpha value will " + 
+            content.tooltip = "Allows you to change the color of the labels associated with the gizmo axes. Note: The alpha component is ignored. The alpha value will " +
                               "always be retrieved from the color of the associated axis.";
             newColor = EditorGUILayout.ColorField(content, AxesLabelTint);
             if (newColor != AxesLabelTint)
@@ -312,12 +349,12 @@ namespace RTG
             content.tooltip = "If this is checked, the gizmo will render a label which indicates the current camera projection type (perspective or ortho). " +
                               "This label can also be used to switch between the 2 camera projection modes.";
             newBool = EditorGUILayout.ToggleLeft(content, IsCamPrjSwitchLabelVisible);
-            if(newBool != IsCamPrjSwitchLabelVisible)
+            if (newBool != IsCamPrjSwitchLabelVisible)
             {
                 EditorUndoEx.Record(undoRecordObject);
                 IsCamPrjSwitchLabelVisible = newBool;
             }
         }
-        #endif
+#endif
     }
 }

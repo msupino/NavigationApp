@@ -178,13 +178,9 @@ namespace RTG
             // Store the new target object
             _targetObject = newTargetObject;
 
-            
-
             // Is the target object valid?
             if (_targetObject != null)
             {
-                
-                if(_targetObject.tag == "ghost") return;
                 // It is. Now call 'SetTargetObject' for all gizmos. After the next 4 lines
                 // of code are executed, all gizmos will be able to control this object.
                 _objectMoveGizmo.SetTargetObject(_targetObject);

@@ -67,9 +67,9 @@ namespace RTG
         public float ScLineSliderHoverEps { get { return _scSglSliderSettings[0].LineHoverEps; } }
         public float ScBoxSliderHoverEps { get { return _scSglSliderSettings[0].BoxHoverEps; } }
         public float ScCylinderSliderHoverEps { get { return _scSglSliderSettings[0].CylinderHoverEps; } }
-        public float ScXSnapStep { get { return GetScSglSliderSettings(0, AxisSign.Positive).OffsetSnapStep; } }
-        public float ScYSnapStep { get { return GetScSglSliderSettings(1, AxisSign.Positive).OffsetSnapStep; } }
-        public float ScZSnapStep { get { return GetScSglSliderSettings(2, AxisSign.Positive).OffsetSnapStep; } }
+        public float ScXSnapStep { get { return GetScSglSliderSettings(0, AxisSign.Positive).ScaleSnapStep; } }
+        public float ScYSnapStep { get { return GetScSglSliderSettings(1, AxisSign.Positive).ScaleSnapStep; } }
+        public float ScZSnapStep { get { return GetScSglSliderSettings(2, AxisSign.Positive).ScaleSnapStep; } }
         public float ScXYSnapStep { get { return GetScDblSliderSettings(PlaneId.XY).ProportionalScaleSnapStep; } }
         public float ScYZSnapStep { get { return GetScDblSliderSettings(PlaneId.YZ).ProportionalScaleSnapStep; } }
         public float ScZXSnapStep { get { return GetScDblSliderSettings(PlaneId.ZX).ProportionalScaleSnapStep; } }

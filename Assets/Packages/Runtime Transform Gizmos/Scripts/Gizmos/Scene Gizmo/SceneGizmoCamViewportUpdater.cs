@@ -18,7 +18,7 @@ namespace RTG
             Rect sceneCameraViewRect = sceneGizmoCamera.SceneCamera.pixelRect;
             Vector2 camPrjSwitchLabelRectSize = lookAndFeel.CalculateMaxPrjSwitchLabelRectSize();
             bool usesPrjSwitchLabel = lookAndFeel.IsCamPrjSwitchLabelVisible;
-            float screenSize = SceneGizmoLookAndFeel.ScreenSize;
+            float screenSize = lookAndFeel.ScreenSize;
 
             if (lookAndFeel.ScreenCorner == SceneGizmoScreenCorner.TopRight)
                 sceneGizmoCamera.Camera.pixelRect = new Rect(sceneCameraViewRect.xMax - screenSize + screenOffset.x, sceneCameraViewRect.yMax - screenSize + screenOffset.y, screenSize, screenSize);

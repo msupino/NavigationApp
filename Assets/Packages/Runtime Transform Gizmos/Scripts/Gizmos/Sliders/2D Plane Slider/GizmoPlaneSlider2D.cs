@@ -375,25 +375,7 @@ namespace RTG
                     workData.AxisIndex0 = _scaleDragAxisIndexRight;
                     workData.AxisIndex1 = _scaleDragAxisIndexUp;
                     workData.DragOrigin = ScaleDragOrigin;
-                    workData.ScaleMode = Settings.ScaleMode;
-                    workData.IndBaseSize0 = _scaleAxisRight.magnitude;
-                    workData.IndBaseSize1 = _scaleAxisUp.magnitude;
-
-                    if (workData.ScaleMode == GizmoDblAxisScaleMode.Independent)
-                    {
-                        workData.IndSnapStep0 = Settings.ScaleSnapStepRight;
-                        workData.IndSnapStep1 = Settings.ScaleSnapStepUp;
-                        workData.IndBaseSize0 = _scaleAxisRight.magnitude;
-                        workData.IndBaseSize1 = _scaleAxisUp.magnitude;
-                    }
-                    else
-                    {
-                        Vector2 triSides = new Vector2(_scaleAxisRight.magnitude, _scaleAxisUp.magnitude);
-                        workData.PropBaseSize = TriangleMath.CalcRATriangleHypotenuse(triSides);
-                        workData.PropSnapStep = Settings.ProportionalScaleSnapStep;
-                        workData.PropAxis = ((Right + Up) * 0.5f).normalized;
-                    }
-
+                    workData.SnapStep = Settings.ProportionalScaleSnapStep;
                     _scaleDrag.SetWorkData(workData);
                 }
             }

@@ -763,9 +763,9 @@ namespace RTG
                     workData.Axis = Direction;                                              // The scale session will scale along the slider direction
                     workData.DragOrigin = StartPosition;                                    // The point on the drag plane is the slider's start point
                     workData.SnapStep = Settings.ScaleSnapStep;                             // Use the snap step stored in the slider settings
-                    workData.AxisIndex = ScaleDragAxisIndex;                                // We want the slider to store the scale ouput in the component with the specified index.
-                    workData.BaseSize = GetRealLength(GetZoomFactor(Gizmo.FocusCamera));    // The session needs to know the size of the entity which will be scaled in order to properly
-                                                                                            // calculate a scale drag value. We use the real length of the slider for this.
+                    workData.AxisIndex = ScaleDragAxisIndex;                                // We want the slider to store the scale output in the component with the specified index.
+                    workData.EntityScale = 1.0f;
+
                     _scaleDrag.SetWorkData(workData);                                       // Set the work data
                 }
             }
