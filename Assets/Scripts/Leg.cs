@@ -31,15 +31,20 @@ public class Leg : MonoBehaviour
     public GameObject endSource = null;
     public Waypoint startWaypoint = null;
     public Waypoint endWaypoint = null;
-    public double flightSpeed = 90d;
+    public double flightSpeed = 90d; 
     public int inboundAltitude = 2000;
     public int outboundAltitude = 2000;
+
+    public double TimeInSceonds = 0;
+    public double AccumulatedTimeFromStart = 0;
+    public double AccumulatedTimeFromEnd = 0;
 
     public GameObject legInfo;
     public GameObject midLegGroup;
     public GameObject emptyLine;
     public GameObject minuteText;
     public TextMesh distanceText;
+    public TextMesh AccEndTimeText;
     public GameObject selectionArea;
     public bool drawMidLegIndication = true;
     public bool dirty;
@@ -158,6 +163,11 @@ public class Leg : MonoBehaviour
         }
     }
     
+    public void updateAccumlatedTimes()
+    {
+        AccEndTimeText.text = AccumulatedTimeFromStart.ToString("n1");
+    }
+
     // Update is called once per frame
     void Update()
     {
@@ -212,10 +222,9 @@ public class Leg : MonoBehaviour
 
             distanceText.text = legDistanceNm.ToString("n1");
 
+            
+
             selectionArea.transform.localScale = new Vector3(0.2F, 1, (float)legDistanceNm/10);
-
-
-
 
             // draw Leg info arrows
             var newVec = startPosition - endPosition;
@@ -225,8 +234,11 @@ public class Leg : MonoBehaviour
 
             var bearing = Main.ToMagnetic(Convert.ToInt32(legDistance.Bearing));
             var inverseBearing = (bearing + 180) % 360;
-            var durationMinutes = Main.ToHMS(legDistanceNm / flightSpeed);
+            var duration = legDistanceNm / flightSpeed;
+            var durationMinutes = Main.ToHMS(duration);
+            TimeInSceonds = Main.ToSeconds(duration);
 
+            
 
             var inboundLegInfoHeading = inboundLegInfoTra.transform.GetChild(0).gameObject;
             inboundLegInfoHeading.GetComponent<TextMesh>().text = bearing.ToString("D3");

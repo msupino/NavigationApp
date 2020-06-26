@@ -12,7 +12,9 @@ public class Waypoint : MonoBehaviour
     public Coordinate coordinate;
     public Circle circle;
     public GameObject inspectorPanel;
+    public Main mainLoop;
     private Vector3 lastPos;
+    
 
 
     private void Start()
@@ -34,7 +36,7 @@ public class Waypoint : MonoBehaviour
             lastPos = position;
             
             coordinate = Main.SceneToCoordinate(position);
-            
+            mainLoop.UpdateAccumalatedTimes();
         }
 
     }

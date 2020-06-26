@@ -132,6 +132,12 @@ public class Main : MonoBehaviour
         return result.Minutes + ":" + seconds.ToString("D2"); //result.Hours + ": " +  Only return minutes seconds
     }
 
+    public static double ToSeconds(double time)
+    {
+        var result = TimeSpan.FromHours(time);
+        return result.TotalSeconds;
+    }
+
     public static Coordinate SceneToCoordinate(Vector3 cursorPosition)
     {
         // x --> lon (presented as NM dist from 35E lon)
@@ -201,7 +207,7 @@ public class Main : MonoBehaviour
         GameObject wp = Instantiate(waypoint, pos, Quaternion.identity);
         waypoints.Add(wp);
         wp.name = "Waypoint_" + waypoints.Count;
-        
+        wp.GetComponent<Waypoint>().mainLoop = this;
         return wp;
     }
 
@@ -444,6 +450,22 @@ public class Main : MonoBehaviour
             Destroy(waypoints[waypoints.Count-1]);
             waypoints.RemoveAt(waypoints.Count-1);
             DrawLegs();
+        }
+    }
+
+
+    public void UpdateAccumalatedTimes()
+    {
+        if (flight.Count>1)
+        {
+            double accTime = 0d;
+            for (int i=0; i<flight.Count; i++)
+            {
+                accTime += flight[i].script.TimeInSceonds;
+                flight[i].script.AccumulatedTimeFromStart = accTime;
+                flight[i].script.updateAccumlatedTimes();
+            }
+            print(accTime);
         }
     }
 
