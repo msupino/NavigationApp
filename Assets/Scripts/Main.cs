@@ -138,6 +138,14 @@ public class Main : MonoBehaviour
         return result.TotalSeconds;
     }
 
+
+        public static string ToHMSFromSeconds(double seconds)
+    {
+        var result = TimeSpan.FromSeconds(seconds);
+        var _seconds = (int)Math.Round(result.Seconds / 5.0) * 5;
+        return result.Minutes + ":" + _seconds.ToString("D2"); //result.Hours + ": " +  Only return minutes seconds
+    }
+
     public static Coordinate SceneToCoordinate(Vector3 cursorPosition)
     {
         // x --> lon (presented as NM dist from 35E lon)
@@ -463,9 +471,18 @@ public class Main : MonoBehaviour
             {
                 accTime += flight[i].script.TimeInSceonds;
                 flight[i].script.AccumulatedTimeFromStart = accTime;
+                
+            }
+
+            for (int i=0; i<flight.Count; i++)
+            //for (int i=flight.Count-1; i >= 0; i--)
+            {
+                flight[i].script.AccumulatedTimeFromEnd = accTime;
+                accTime -= flight[i].script.TimeInSceonds;
                 flight[i].script.updateAccumlatedTimes();
             }
-            print(accTime);
+            
+            //print(accTime);
         }
     }
 

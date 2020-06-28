@@ -45,6 +45,7 @@ public class Leg : MonoBehaviour
     public GameObject minuteText;
     public TextMesh distanceText;
     public TextMesh AccEndTimeText;
+    public TextMesh AccStartTimeText;
     public GameObject selectionArea;
     public bool drawMidLegIndication = true;
     public bool dirty;
@@ -165,7 +166,8 @@ public class Leg : MonoBehaviour
     
     public void updateAccumlatedTimes()
     {
-        AccEndTimeText.text = AccumulatedTimeFromStart.ToString("n1");
+        AccEndTimeText.text = Main.ToHMSFromSeconds(AccumulatedTimeFromStart);//AccumulatedTimeFromStart.ToString("n1");
+        AccStartTimeText.text = Main.ToHMSFromSeconds(AccumulatedTimeFromEnd);
     }
 
     // Update is called once per frame
