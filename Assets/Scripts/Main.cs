@@ -140,10 +140,10 @@ public class Main : MonoBehaviour
     }
 
 
-        public static string ToHMSFromSeconds(double seconds)
+    public static string ToHMSFromSeconds(double seconds)
     {
         var result = TimeSpan.FromSeconds(seconds);
-        return result.ToString(@"hh\:mm");
+        return result.ToString(@"mm\:ss");
     }
 
     public static Coordinate SceneToCoordinate(Vector3 cursorPosition)

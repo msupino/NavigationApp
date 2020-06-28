@@ -2906,6 +2906,7 @@ MonoBehaviour:
   print_frames_rot: {fileID: 913580122}
   A3buttonTool: {fileID: 1227498538}
   A4buttonTool: {fileID: 683017277}
+  showAccumulatedFlightTime: 1
 --- !u!4 &725379321
 Transform:
   m_ObjectHideFlags: 0
@@ -3674,7 +3675,7 @@ MonoBehaviour:
       _text: Scale gizmo
     - _tooltip: Allows you to change universal gizmo settings.
       _text: Universal gizmo
-    _activeTabIndex: 4
+    _activeTabIndex: 3
   _settings:
     _canBeDisplayed: 1
     _isExpanded: 1
