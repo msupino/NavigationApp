@@ -115,7 +115,7 @@ public class Main : MonoBehaviour
     }
 
 
-    public static int ToMagnetic(int angle = 360, int divation = -4)
+    public static int ToMagnetic(int angle = 360, int divation = -5)
     {
         int result = angle + divation;
         if (result < 0)
@@ -199,6 +199,7 @@ public class Main : MonoBehaviour
         {
             RemoveLastWaypoint();
             gizmos.OnTargetObjectChanged(null);
+            UpdateAccumalatedTimes();
         }
         
     }
@@ -476,7 +477,7 @@ public class Main : MonoBehaviour
 
     public void UpdateAccumalatedTimes()
     {  
-        if (flight.Count>1)
+        if (flight.Count>0)
         {
             double accTime = 0d;
             for (int i=0; i<flight.Count; i++)
@@ -543,7 +544,7 @@ public class Main : MonoBehaviour
                     flight.Add(l);
                     l.leg.name = "Leg_" + flight.Count;
                 }
-            }    
+            } 
         }
         
         while (flight.Count > Math.Max(waypoints.Count-1,0))
@@ -551,6 +552,8 @@ public class Main : MonoBehaviour
             Destroy(flight[flight.Count-1].leg);
             flight.RemoveAt(flight.Count-1);
         } 
+
+        UpdateAccumalatedTimes(); 
 
     }
 
