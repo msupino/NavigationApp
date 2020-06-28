@@ -59,7 +59,7 @@ public class Main : MonoBehaviour
     public GameObject print_frames_rot;
     public Tool A3buttonTool;
     public Tool A4buttonTool;
-
+    public bool showAccumulatedFlightTime = true;
 
     private List<FlightLegData> flight = new List<FlightLegData>();
     private List<GameObject> waypoints = new List<GameObject>();
@@ -82,6 +82,7 @@ public class Main : MonoBehaviour
     private static double lonOriginRadians = 35d;
     private static double latOriginRadians = 33d;
     private bool resumeDrawing;
+    
 
 
     // Start is called before the first frame update
@@ -142,8 +143,7 @@ public class Main : MonoBehaviour
         public static string ToHMSFromSeconds(double seconds)
     {
         var result = TimeSpan.FromSeconds(seconds);
-        var _seconds = (int)Math.Round(result.Seconds / 5.0) * 5;
-        return result.Minutes + ":" + _seconds.ToString("D2"); //result.Hours + ": " +  Only return minutes seconds
+        return result.ToString(@"hh\:mm");
     }
 
     public static Coordinate SceneToCoordinate(Vector3 cursorPosition)
@@ -335,6 +335,12 @@ public class Main : MonoBehaviour
     }
 
 
+    public void ToggleAccumulatedFlightTime(bool state)
+    {
+        showAccumulatedFlightTime = state;
+        UpdateAccumalatedTimes();
+    }
+
     private void Camera_Zoom(string size)
     {
 
@@ -414,10 +420,16 @@ public class Main : MonoBehaviour
             speed.intialValue = globalSpeed.ToString();    
         }
 
+        Param accumulatedTime = new Param();
+        accumulatedTime.type = ParamType.Bool;
+        accumulatedTime.name = "Show Accumulated flight time";
+        accumulatedTime.boolCallback = new UnityAction<bool>(ToggleAccumulatedFlightTime);
+        accumulatedTime.intialBoolValue = true;
 
         paramaters.Add(_renderOrientation);
         paramaters.Add(speed);
         paramaters.Add(mapOpacity);
+        paramaters.Add(accumulatedTime);
         inspector.Edit(this.gameObject, "Map settings", paramaters);   
     }
 
@@ -463,7 +475,7 @@ public class Main : MonoBehaviour
 
 
     public void UpdateAccumalatedTimes()
-    {
+    {  
         if (flight.Count>1)
         {
             double accTime = 0d;
@@ -517,6 +529,7 @@ public class Main : MonoBehaviour
                     l.leg = UnityEngine.Object.Instantiate(leg, Vector3.zero, Quaternion.identity);
                     
                     l.script = l.leg.GetComponent<Leg>();
+                    l.script.mainLoop = this;
                     l.script.flightSpeed = flightSpeed;
                     l.script.inspector = inspector;
                     l.script.startSource = waypoints[i];

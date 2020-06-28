@@ -26,7 +26,7 @@ public class Leg : MonoBehaviour
     
     public GameObject start;
     public GameObject end;
-    
+    public Main mainLoop;
     public GameObject startSource = null;
     public GameObject endSource = null;
     public Waypoint startWaypoint = null;
@@ -166,8 +166,25 @@ public class Leg : MonoBehaviour
     
     public void updateAccumlatedTimes()
     {
-        AccEndTimeText.text = Main.ToHMSFromSeconds(AccumulatedTimeFromStart);//AccumulatedTimeFromStart.ToString("n1");
-        AccStartTimeText.text = Main.ToHMSFromSeconds(AccumulatedTimeFromEnd);
+        
+        if (mainLoop.showAccumulatedFlightTime == false)
+        {
+            AccEndTimeText.gameObject.transform.parent.gameObject.SetActive(false); 
+            AccStartTimeText.gameObject.transform.parent.gameObject.SetActive(false); 
+        }
+        else
+        {
+            AccEndTimeText.gameObject.transform.parent.gameObject.SetActive(true);
+            AccStartTimeText.gameObject.transform.parent.gameObject.SetActive(true); 
+            AccEndTimeText.text = Main.ToHMSFromSeconds(AccumulatedTimeFromStart);//AccumulatedTimeFromStart.ToString("n1");
+            AccStartTimeText.text = Main.ToHMSFromSeconds(AccumulatedTimeFromEnd);
+        }
+    }
+
+    public void showAccumlatedTimes(bool state)
+    {
+        AccEndTimeText.gameObject.SetActive(state);
+        AccStartTimeText.gameObject.SetActive(state);
     }
 
     // Update is called once per frame
