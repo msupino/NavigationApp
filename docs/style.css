@@ -22,7 +22,9 @@ html, body {
   position: absolute;
   top: 12px;
   left: 12px;
+  max-width: calc(100vw - 24px);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
   padding: 6px;
