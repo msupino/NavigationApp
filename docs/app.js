@@ -878,6 +878,8 @@ function save() {
       inboundAltitude: l.inboundAltitude,
       outboundAltitude: l.outboundAltitude,
       flightSpeed: l.flightSpeed,
+      inLabel: l.inLabel,
+      outLabel: l.outLabel,
     })),
     notes: state.notes.map(n => ({ lat: n.lat, lng: n.lng, text: n.text || '' })),
   };
@@ -1065,8 +1067,17 @@ document.getElementById('tool-add').onclick = () => setMode('add');
 document.getElementById('tool-edit').onclick = () => setMode('edit');
 document.getElementById('tool-note').onclick = () => setMode('note');
 document.getElementById('reverse').onclick = () => {
+  // Reversing flight direction means each leg's inbound/outbound roles swap.
+  // The leg's local axes (along + perpendicular) also flip, so negating the
+  // label offsets keeps the markers visually pinned to the same map pixels.
   state.waypoints.reverse();
-  state.legs.reverse();
+  state.legs = state.legs.reverse().map(l => ({
+    inboundAltitude: l.outboundAltitude,
+    outboundAltitude: l.inboundAltitude,
+    flightSpeed: l.flightSpeed,
+    inLabel: { a: -l.outLabel.a, p: -l.outLabel.p },
+    outLabel: { a: -l.inLabel.a, p: -l.inLabel.p },
+  }));
   state.selected = null;
   showInspector(); draw();
 };
