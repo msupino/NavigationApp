@@ -19,8 +19,8 @@ OUT_W = 1800                             # web output width
 TEN_MIN = 1.0 / 6.0                      # 10 arc-minutes in degrees
 LON_RATE, LAT_RATE = 8.392355, 10.00674  # scene units per 10' (match app.js)
 
-LON_REF_DEG, LON_REF_PX, LON_PX10 = 34 + 10 / 60, 318.0, 551.2
-LAT_REF_DEG, LAT_REF_PX, LAT_PX10 = 33 + 20 / 60, 370.0, 680.0
+LON_REF_DEG, LON_REF_PX, LON_PX10 = 34 + 10 / 60, 323.0, 551.2
+LAT_REF_DEG, LAT_REF_PX, LAT_PX10 = 33 + 20 / 60, 377.0, 680.0
 
 src = Image.open(SRC).convert("RGB")
 W, H = src.size
