@@ -1308,13 +1308,22 @@ try {
   const v = parseFloat(localStorage.getItem(MAGVAR_KEY));
   if (!isNaN(v)) magVar = Math.max(-30, Math.min(30, v));
 } catch (e) { /* storage unavailable */ }
+function showMagVarEqv() {
+  const span = document.getElementById('mag-var-eqv');
+  if (!span) return;
+  if (magVar === 0) span.textContent = '';
+  else if (magVar < 0) span.textContent = `(${-magVar}°E)`;
+  else span.textContent = `(${magVar}°W)`;
+}
 document.getElementById('mag-var').value = magVar;
+showMagVarEqv();
 document.getElementById('mag-var').oninput = e => {
   const v = parseFloat(e.target.value);
   if (isNaN(v)) return;
   magVar = Math.max(-30, Math.min(30, v));
   try { localStorage.setItem(MAGVAR_KEY, String(magVar)); }
   catch (err) { /* storage unavailable */ }
+  showMagVarEqv();
   draw();
 };
 document.getElementById('page-a3').onclick = () => setPage('A3');
