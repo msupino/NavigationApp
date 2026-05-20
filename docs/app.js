@@ -148,6 +148,7 @@ function draw() {
   drawLegs();
   drawWaypoints();
   drawInfo();
+  persist();
 }
 
 // Draw the georeferenced CVFR chart into its scene rectangle.
@@ -231,6 +232,8 @@ function drawLegs() {
     ctx.stroke();
     ctx.lineCap = 'butt';
 
+    drawDriftLines(sa, sb);
+
     const { dist, brg } = geo(A, B);
     const durH = leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
     const magIn = toMagnetic(brg);
@@ -248,12 +251,32 @@ function drawLegs() {
     const nx = -dy, ny = dx;
     const off = 40;
     drawLegArrow(mid.x + nx * off, mid.y + ny * off, ang,
-      pad3(magIn), timeStr, leg.inboundAltitude + ' ft', '#2f6fd0');
+      pad3(magIn), timeStr, String(leg.inboundAltitude), '#2f6fd0');
     drawLegArrow(mid.x - nx * off, mid.y - ny * off, ang + Math.PI,
-      pad3(magOut), timeStr, leg.outboundAltitude + ' ft', '#c0392b');
+      pad3(magOut), timeStr, String(leg.outboundAltitude), '#c0392b');
 
     drawDistanceBadge(mid.x, mid.y, dist);
   }
+}
+
+// 10-degree drift reference lines: one from each leg end, angled 10 deg off
+// the leg, half the leg length, dashed.
+function drawDriftLines(sa, sb) {
+  const a = 10 * Math.PI / 180;
+  const c = Math.cos(a), s = Math.sin(a);
+  const abx = sb.x - sa.x, aby = sb.y - sa.y;
+  const bax = -abx, bay = -aby;
+  ctx.save();
+  ctx.setLineDash([5, 4]);
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = 'rgba(20,20,20,0.6)';
+  ctx.beginPath();
+  ctx.moveTo(sa.x, sa.y);
+  ctx.lineTo(sa.x + (abx * c - aby * s) * 0.5, sa.y + (abx * s + aby * c) * 0.5);
+  ctx.moveTo(sb.x, sb.y);
+  ctx.lineTo(sb.x + (bax * c - bay * s) * 0.5, sb.y + (bax * s + bay * c) * 0.5);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawMinuteMarkers(sa, sb, durH) {
@@ -278,12 +301,13 @@ function drawMinuteMarkers(sa, sb, durH) {
   }
 }
 
-// Navigation leg marker (white pennant): a rectangle carrying altitude and
-// time joined to a triangle carrying the heading, pointing in the direction
-// of flight. Shape follows the leg; text is kept upright.
+// Navigation leg marker (white pennant): three cells — altitude, time,
+// heading — running along the arrow, with a triangle pointing in the flight
+// direction. Text is aligned to the arrow direction.
 function drawLegArrow(cx, cy, flightAng, head, time, alt, accent) {
-  const W = 46, Lr = 38, Lt = 26, L = Lr + Lt;
-  const xb = -L / 2 + Lr;                // rectangle / triangle boundary
+  const cell = 36, W = 28, Lt = 22;
+  const L = cell * 3 + Lt;
+  const xb = -L / 2 + cell * 3;          // rectangle / triangle boundary
 
   ctx.save();
   ctx.translate(cx, cy);
@@ -295,14 +319,13 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent) {
   ctx.lineTo(xb, W / 2);
   ctx.lineTo(-L / 2, W / 2);
   ctx.closePath();
-  ctx.fillStyle = '#ffffff';
-  ctx.fill();
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2;                     // transparent body — outline only
   ctx.strokeStyle = accent;
   ctx.stroke();
-  ctx.lineWidth = 1;                     // row dividers
+  ctx.lineWidth = 1;                     // cell dividers
   ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-  for (const dx of [-L / 2 + 16, xb]) {
+  for (let k = 1; k < 3; k++) {
+    const dx = -L / 2 + k * cell;
     ctx.beginPath();
     ctx.moveTo(dx, -W / 2);
     ctx.lineTo(dx, W / 2);
@@ -310,18 +333,17 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent) {
   }
   ctx.restore();
 
-  // text runs across the marker (perpendicular to the flight axis), upright
-  let ta = Math.atan2(Math.sin(flightAng + Math.PI / 2),
-                      Math.cos(flightAng + Math.PI / 2));
+  // text aligned to the arrow direction, kept upright
+  let ta = Math.atan2(Math.sin(flightAng), Math.cos(flightAng));
   if (ta > Math.PI / 2 || ta < -Math.PI / 2) ta += Math.PI;
   const cos = Math.cos(flightAng), sin = Math.sin(flightAng);
   const at = lx => ({ x: cx + lx * cos, y: cy + lx * sin });
-  const pAlt = at(-L / 2 + 8);
-  const pTime = at(-L / 2 + 27);
-  const pHead = at(xb + Lt * 0.42);
-  drawRotText(pAlt.x, pAlt.y, ta, alt, '9px sans-serif', '#333333');
-  drawRotText(pTime.x, pTime.y, ta, time, 'bold 12px sans-serif', '#1a1a1a');
-  drawRotText(pHead.x, pHead.y, ta, head, 'bold 14px sans-serif', accent);
+  const cAlt = at(-L / 2 + cell * 0.5);
+  const cTime = at(-L / 2 + cell * 1.5);
+  const cHead = at(-L / 2 + cell * 2.5);
+  drawRotText(cAlt.x, cAlt.y, ta, alt, 'bold 11px sans-serif', '#000000');
+  drawRotText(cTime.x, cTime.y, ta, time, 'bold 12px sans-serif', '#000000');
+  drawRotText(cHead.x, cHead.y, ta, head, 'bold 13px sans-serif', '#000000');
 }
 
 function drawRotText(x, y, ang, text, font, color) {
@@ -329,9 +351,12 @@ function drawRotText(x, y, ang, text, font, color) {
   ctx.translate(x, y);
   ctx.rotate(ang);
   ctx.font = font;
-  ctx.fillStyle = color;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  ctx.lineWidth = 3;                      // halo for legibility over the chart
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+  ctx.strokeText(text, 0, 0);
+  ctx.fillStyle = color;
   ctx.fillText(text, 0, 0);
   ctx.restore();
 }
@@ -515,7 +540,9 @@ canvas.addEventListener('pointerdown', e => {
   const leg = hitLeg(px, py);
   if (leg >= 0) {
     state.selected = { type: 'leg', index: leg };
-    drag = { kind: 'pan', sx: px, sy: py, cx: state.cam.x, cz: state.cam.z, moved: false };
+    // noAdd: a click that selects a leg must not also drop a waypoint
+    drag = { kind: 'pan', sx: px, sy: py, cx: state.cam.x, cz: state.cam.z,
+             moved: false, noAdd: true };
     showInspector(); draw();
     return;
   }
@@ -545,7 +572,8 @@ canvas.addEventListener('pointermove', e => {
 
 canvas.addEventListener('pointerup', e => {
   canvas.classList.remove('panning');
-  if (drag && drag.kind === 'pan' && !drag.moved && state.mode === 'add') {
+  if (drag && drag.kind === 'pan' && !drag.moved && !drag.noAdd &&
+      state.mode === 'add') {
     // plain click on empty space in add mode -> new waypoint
     state.waypoints.push(p2s(e.clientX, e.clientY));
     syncLegs();
@@ -686,7 +714,48 @@ function defaultView() {
   draw();
 }
 
+// --- route persistence (survives page reload) ------------------------
+const STORE_KEY = 'plotter.route';
+let persistTimer = null;
+
+function persist() {
+  if (persistTimer) return;
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({
+        waypoints: state.waypoints,
+        legs: state.legs,
+        cam: state.cam,
+      }));
+    } catch (e) { /* storage unavailable */ }
+  }, 500);
+}
+
+function restoreRoute() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    state.waypoints = (d.waypoints || []).map(w => ({ x: +w.x, z: +w.z }));
+    state.legs = (d.legs || []).map(l => ({
+      inboundAltitude: l.inboundAltitude ?? 2000,
+      outboundAltitude: l.outboundAltitude ?? 2000,
+      flightSpeed: l.flightSpeed > 0 ? l.flightSpeed : 90,
+      drawMidLegIndication: l.drawMidLegIndication ?? true,
+    }));
+    syncLegs();
+    if (d.cam && isFinite(d.cam.x) && isFinite(d.cam.z) && d.cam.scale > 0) {
+      state.cam = { x: +d.cam.x, z: +d.cam.z, scale: +d.cam.scale };
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 // --- boot ------------------------------------------------------------
 window.addEventListener('resize', resize);
+const restored = restoreRoute();
 resize();
-defaultView();
+if (!restored) defaultView();
