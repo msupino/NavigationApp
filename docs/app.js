@@ -307,33 +307,47 @@ function drawDistanceBadge(cx, cy, dist) {
   octx.textAlign = 'left';
 }
 
-function waypointRadius(i) {
-  const wp = state.waypoints[i];
-  const label = wp.name && wp.name.trim() ? wp.name.trim() : String(i + 1);
-  octx.font = 'bold 13px sans-serif';
-  return { label, r: Math.max(15, octx.measureText(label).width / 2 + 9) };
-}
+const WP_RADIUS = 13;
 
 function drawWaypoints() {
   for (let i = 0; i < state.waypoints.length; i++) {
-    const s = proj(state.waypoints[i]);
+    const wp = state.waypoints[i];
+    const s = proj(wp);
     const selected = state.selected &&
                      state.selected.type === 'wp' &&
                      state.selected.index === i;
-    const { label, r } = waypointRadius(i);
+    const r = selected ? WP_RADIUS + 2 : WP_RADIUS;
+
+    // point circle with the sequence number
     octx.beginPath();
     octx.arc(s.x, s.y, r, 0, Math.PI * 2);
-    octx.fillStyle = selected ? '#ffcc33' : '#ffffff';
+    octx.fillStyle = selected ? '#ffcc33' : 'rgba(255,246,170,0.80)';
     octx.fill();
     octx.lineWidth = 3;
     octx.strokeStyle = '#161412';
     octx.stroke();
-
     octx.font = 'bold 13px sans-serif';
     octx.fillStyle = '#161412';
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
-    octx.fillText(label, s.x, s.y);
+    octx.fillText(String(i + 1), s.x, s.y);
+
+    // name label above the circle — black on translucent yellow
+    const name = (wp.name || '').trim();
+    if (name) {
+      octx.font = 'bold 12px sans-serif';
+      const bw = octx.measureText(name).width + 12;
+      const bh = 19;
+      const bx = s.x - bw / 2;
+      const by = s.y - r - 5 - bh;
+      octx.fillStyle = 'rgba(255,246,170,0.80)';
+      octx.fillRect(bx, by, bw, bh);
+      octx.lineWidth = 1.5;
+      octx.strokeStyle = '#161412';
+      octx.strokeRect(bx, by, bw, bh);
+      octx.fillStyle = '#161412';
+      octx.fillText(name, s.x, by + bh / 2 + 1);
+    }
     octx.textAlign = 'left';
   }
 }
@@ -397,7 +411,7 @@ function drawPageFrame() {
 function hitWaypoint(px, py) {
   for (let i = state.waypoints.length - 1; i >= 0; i--) {
     const s = proj(state.waypoints[i]);
-    if (Math.hypot(s.x - px, s.y - py) <= waypointRadius(i).r + 4) return i;
+    if (Math.hypot(s.x - px, s.y - py) <= WP_RADIUS + 6) return i;
   }
   return -1;
 }
@@ -467,7 +481,8 @@ function showInspector() {
     }));
   } else {
     const wp = state.waypoints[state.selected.index];
-    title.textContent = 'WP' + (state.selected.index + 1);
+    title.textContent = (wp.name && wp.name.trim())
+      ? wp.name.trim() : 'WP ' + (state.selected.index + 1);
     body.appendChild(textInputRow('Name', wp.name || '', v => {
       wp.name = v; draw();
     }));
@@ -743,15 +758,7 @@ function load(file) {
 // --- print -----------------------------------------------------------
 let printing = false;
 
-function setPage(size) {
-  if (pageSize === size) {
-    pageSize = null;                   // same button toggles the frame off
-  } else {
-    const landscape = confirm(
-      size + ' page orientation:\n\nOK = Landscape\nCancel = Portrait');
-    pageOrient = landscape ? 'landscape' : 'portrait';
-    pageSize = size;
-  }
+function applyPage() {
   document.getElementById('page-a3').classList.toggle('active', pageSize === 'A3');
   document.getElementById('page-a4').classList.toggle('active', pageSize === 'A4');
   let st = document.getElementById('page-style');
@@ -763,6 +770,47 @@ function setPage(size) {
   st.textContent = '@page { size: ' + (pageSize || 'A4') + ' ' +
                    pageOrient + '; margin: 6mm; }';
   draw();
+}
+
+function setPage(size) {
+  if (pageSize === size) {             // same button toggles the frame off
+    pageSize = null;
+    applyPage();
+    return;
+  }
+  chooseOrientation(size, orient => {
+    pageOrient = orient;
+    pageSize = size;
+    applyPage();
+  });
+}
+
+// Modal: pick Landscape or Portrait (named buttons, not OK/Cancel).
+function chooseOrientation(size, onPick) {
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  const box = document.createElement('div');
+  box.className = 'modal';
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = size + ' page — orientation';
+  const btns = document.createElement('div');
+  btns.className = 'modal-btns';
+  for (const [label, val] of [['Landscape', 'landscape'], ['Portrait', 'portrait']]) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.onclick = () => { back.remove(); onPick(val); };
+    btns.appendChild(b);
+  }
+  const cancel = document.createElement('button');
+  cancel.textContent = 'Cancel';
+  cancel.className = 'modal-cancel';
+  cancel.onclick = () => back.remove();
+  btns.appendChild(cancel);
+  box.append(title, btns);
+  back.appendChild(box);
+  back.onclick = e => { if (e.target === back) back.remove(); };
+  document.body.appendChild(back);
 }
 
 function doPrint() {

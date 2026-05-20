@@ -129,8 +129,9 @@ html, body {
 }
 .row:last-child { margin-bottom: 0; }
 .row label { color: #b9b3b3; }
-.row input[type="number"] {
-  width: 90px;
+.row input[type="number"],
+.row input[type="text"] {
+  width: 110px;
   font: inherit;
   font-size: 13px;
   color: #e8e8e8;
@@ -200,3 +201,48 @@ html, body {
   .row input[type="text"] { padding: 8px 6px; font-size: 15px; }
   #info { font-size: 12px; }
 }
+
+/* Orientation picker modal */
+.modal-back {
+  position: absolute;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+}
+.modal {
+  min-width: 240px;
+  padding: 16px;
+  background: #2a2626;
+  border: 1px solid #3a3636;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+.modal-title {
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #e8e8e8;
+  text-align: center;
+}
+.modal-btns {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+.modal-btns button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: #1d6fe0;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+.modal-btns button:hover { background: #2f7fee; }
+.modal-btns .modal-cancel { background: #443f3f; }
+.modal-btns .modal-cancel:hover { background: #555050; }
