@@ -30,10 +30,11 @@ calculation.
 
 ## Background chart
 
-`map.jpg` is the Israel CVFR2020 chart, composited from the four
-`Assets/Resources/CVFR2020/cvfr_pt*.png` slices by `build_map.py`. It is
-georeferenced from the chart's own lat/lon graticule into the scene-coordinate
-model, so waypoints align with the chart. To rebuild:
+`map.jpg` is the Israel CVFR chart, downscaled by `build_map.py` from the
+single-image source `Assets/Resources/LLLL_CVFR.png`. (The CVFR2020 four-part
+set is sliced with overlaps that do not tile cleanly, so the single sheet is
+used instead.) It is georeferenced from the chart's own lat/lon graticule into
+the scene-coordinate model, so waypoints align with the chart. To rebuild:
 
 ```bash
 pip install Pillow
