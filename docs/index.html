@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Plotter — HTML5</title>
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>NavigationApp</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
   <div id="map"></div>
@@ -24,7 +25,10 @@
     <span class="sep"></span>
     <button id="fit" title="Fit route to view">⌖ Fit</button>
     <label class="navtoggle" title="Show return-direction (outbound) info">
-      <input type="checkbox" id="ret-cb" checked> Return info
+      <input type="checkbox" id="ret-cb"> Return path
+    </label>
+    <label class="navtoggle" title="Show distance badge at the middle of each leg">
+      <input type="checkbox" id="mid-cb" checked> Mid-leg dist
     </label>
     <span class="sep"></span>
     <button id="page-a3" title="A3 print page">A3</button>
@@ -33,14 +37,16 @@
   </div>
 
   <div id="inspector" class="hidden">
-    <div id="insp-title">Inspector</div>
+    <div id="insp-header">
+      <span id="insp-title">Inspector</span>
+      <button id="insp-close" title="Close" aria-label="Close">×</button>
+    </div>
     <div id="insp-body"></div>
   </div>
 
   <div id="info"></div>
-  <div id="hint">Click map to drop waypoints · scroll to zoom · drag to pan</div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>
