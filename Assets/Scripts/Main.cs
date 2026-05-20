@@ -236,7 +236,7 @@ public class Main : MonoBehaviour
                 break;
 
             case ToolType.SaveScene:
-                scene = new SceneData(waypoints);
+                scene = new SceneData(waypoints, flight.Select(f => f.script).ToList());
                 dataIO.Download(scene);
                 break;
 
@@ -445,6 +445,18 @@ public class Main : MonoBehaviour
             CreateWaypoint(new Vector3(p.x, p.y, p.z));
         }
         DrawLegs();
+
+        // restore per-leg inbound/outbound altitudes (legs absent in older files)
+        if (scene.legs != null)
+        {
+            for (int i = 0; i < scene.legs.Count && i < flight.Count; i++)
+            {
+                flight[i].script.inboundAltitude = scene.legs[i].inboundAltitude;
+                flight[i].script.outboundAltitude = scene.legs[i].outboundAltitude;
+                flight[i].script.flightSpeed = scene.legs[i].flightSpeed;
+                flight[i].script.drawMidLegIndication = scene.legs[i].drawMidLegIndication;
+            }
+        }
     }
 
     private void Cleanup()
