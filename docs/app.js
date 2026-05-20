@@ -387,7 +387,8 @@ function waypointGeom(i) {
 
 function drawWaypoints() {
   for (let i = 0; i < state.waypoints.length; i++) {
-    const s = proj(state.waypoints[i]);
+    const wp = state.waypoints[i];
+    const s = proj(wp);
     const selected = state.selected &&
                      state.selected.type === 'wp' &&
                      state.selected.index === i;
@@ -401,11 +402,16 @@ function drawWaypoints() {
     octx.lineWidth = 3;
     octx.strokeStyle = '#161412';
     octx.stroke();
+
+    octx.save();
+    octx.translate(s.x, s.y);
+    if (wp.flipped) octx.rotate(Math.PI);
     octx.font = `bold ${fontPx}px sans-serif`;
     octx.fillStyle = '#161412';
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
-    octx.fillText(label, s.x, s.y);
+    octx.fillText(label, 0, 0);
+    octx.restore();
     octx.textAlign = 'left';
   }
 }
@@ -929,7 +935,9 @@ function fitView() {
 // --- save / load -----------------------------------------------------
 function save() {
   const data = {
-    waypoints: state.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name || '' })),
+    waypoints: state.waypoints.map(w => ({
+      lat: w.lat, lng: w.lng, name: w.name || '', flipped: !!w.flipped,
+    })),
     legs: state.legs.map(l => ({
       inboundAltitude: l.inboundAltitude,
       outboundAltitude: l.outboundAltitude,
@@ -954,7 +962,7 @@ function load(file) {
     try {
       const d = JSON.parse(reader.result);
       state.waypoints = (d.waypoints || []).map(w => ({
-        lat: +w.lat, lng: +w.lng, name: w.name || '',
+        lat: +w.lat, lng: +w.lng, name: w.name || '', flipped: !!w.flipped,
       }));
       state.legs = (d.legs || []).map(l => ({
         inboundAltitude: l.inboundAltitude ?? 2000,
@@ -1193,7 +1201,7 @@ function restoreRoute() {
     if (!raw) return false;
     const d = JSON.parse(raw);
     state.waypoints = (d.waypoints || []).map(w => ({
-      lat: +w.lat, lng: +w.lng, name: w.name || '',
+      lat: +w.lat, lng: +w.lng, name: w.name || '', flipped: !!w.flipped,
     }));
     state.legs = (d.legs || []).map(l => ({
       inboundAltitude: l.inboundAltitude ?? 2000,
@@ -1227,7 +1235,11 @@ document.getElementById('reverse').onclick = () => {
   // Reversing flight direction means each leg's inbound/outbound roles swap.
   // The leg's local axes (along + perpendicular) also flip, so negating the
   // label offsets keeps the markers visually pinned to the same map pixels.
-  state.waypoints.reverse();
+  // Waypoint name text is rotated 180° so the chart, when turned around to
+  // fly the return route, still reads upright.
+  state.waypoints = state.waypoints.reverse().map(w => ({
+    ...w, flipped: !w.flipped,
+  }));
   state.legs = state.legs.reverse().map(l => ({
     inboundAltitude: l.outboundAltitude,
     outboundAltitude: l.inboundAltitude,
