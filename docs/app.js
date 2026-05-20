@@ -115,16 +115,34 @@ function syncLegs() {
   while (state.legs.length > need) state.legs.pop();
 }
 
+// --- background chart ------------------------------------------------
+// CVFR2020 chart composited and georeferenced by build_map.py.
+const MAP = { xMin: -17.043, xMax: 49.063, zMin: -275.514, zMax: 23.666 };
+const mapImg = new Image();
+let mapReady = false;
+mapImg.onload = () => { mapReady = true; draw(); };
+mapImg.src = 'map.jpg';
+
 // --- drawing ---------------------------------------------------------
 function draw() {
   ctx.clearRect(0, 0, vw(), vh());
   ctx.fillStyle = '#231F20';
   ctx.fillRect(0, 0, vw(), vh());
 
+  drawMap();
   drawGrid();
   drawLegs();
   drawWaypoints();
   drawInfo();
+}
+
+// Draw the georeferenced CVFR chart into its scene rectangle.
+function drawMap() {
+  if (!mapReady) return;
+  const tl = s2p({ x: MAP.xMin, z: MAP.zMax });
+  const br = s2p({ x: MAP.xMax, z: MAP.zMin });
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(mapImg, tl.x, tl.y, br.x - tl.x, br.y - tl.y);
 }
 
 // Coordinate graticule: one cell per 10' of lat/lon = LON_RATE x LAT_RATE scene units.
@@ -139,7 +157,7 @@ function drawGrid() {
   const x0 = Math.floor(tl.x / LON_RATE) * LON_RATE;
   for (let x = x0; x <= br.x; x += LON_RATE) {
     const sx = s2p({ x, z: 0 }).x;
-    ctx.strokeStyle = '#332f2f';
+    ctx.strokeStyle = 'rgba(170,170,170,0.16)';
     ctx.beginPath();
     ctx.moveTo(sx, 0);
     ctx.lineTo(sx, vh());
@@ -152,7 +170,7 @@ function drawGrid() {
   const z0 = Math.floor(br.z / LAT_RATE) * LAT_RATE;
   for (let z = z0; z <= tl.z; z += LAT_RATE) {
     const sy = s2p({ x: 0, z }).y;
-    ctx.strokeStyle = '#332f2f';
+    ctx.strokeStyle = 'rgba(170,170,170,0.16)';
     ctx.beginPath();
     ctx.moveTo(0, sy);
     ctx.lineTo(vw(), sy);
@@ -480,10 +498,19 @@ window.addEventListener('keydown', e => {
 });
 
 // --- view fitting ----------------------------------------------------
+function fitRect(minX, maxX, minZ, maxZ, pad) {
+  state.cam.x = (minX + maxX) / 2;
+  state.cam.z = (minZ + maxZ) / 2;
+  const spanX = Math.max(maxX - minX, 1);
+  const spanZ = Math.max(maxZ - minZ, 1);
+  const scale = Math.min(vw() / spanX, vh() / spanZ) * pad;
+  state.cam.scale = Math.max(0.4, Math.min(400, scale));
+  draw();
+}
+
 function fitView() {
   if (state.waypoints.length === 0) {
-    state.cam = { x: 0, z: 0, scale: 6 };
-    draw();
+    fitRect(MAP.xMin, MAP.xMax, MAP.zMin, MAP.zMax, 0.96);
     return;
   }
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
@@ -491,13 +518,7 @@ function fitView() {
     minX = Math.min(minX, w.x); maxX = Math.max(maxX, w.x);
     minZ = Math.min(minZ, w.z); maxZ = Math.max(maxZ, w.z);
   }
-  state.cam.x = (minX + maxX) / 2;
-  state.cam.z = (minZ + maxZ) / 2;
-  const spanX = Math.max(maxX - minX, 1);
-  const spanZ = Math.max(maxZ - minZ, 1);
-  const scale = Math.min(vw() / spanX, vh() / spanZ) * 0.7;
-  state.cam.scale = Math.max(0.4, Math.min(400, scale));
-  draw();
+  fitRect(minX, maxX, minZ, maxZ, 0.7);
 }
 
 // --- save / load -----------------------------------------------------
@@ -577,3 +598,4 @@ document.getElementById('fit').onclick = fitView;
 // --- boot ------------------------------------------------------------
 window.addEventListener('resize', resize);
 resize();
+fitView();
