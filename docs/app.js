@@ -75,11 +75,17 @@ const layers = {
 const map = L.map('map', {
   center: [32.0, 34.9],
   zoom: 9,
-  minZoom: 6,
-  maxZoom: 16,
+  minZoom: 8,                  // do not zoom out past the chart extent
+  maxZoom: 15,
   layers: [layers.CVFR],
   zoomControl: false,
   zoomAnimation: false,        // keep the canvas overlay in sync
+  zoomSnap: 0.25,
+  zoomDelta: 0.5,
+  wheelPxPerZoomLevel: 120,    // gentler scroll-wheel zoom (default 60)
+  wheelDebounceTime: 60,
+  maxBounds: [[29.0, 33.9], [33.6, 36.4]],   // keep panning over Israel
+  maxBoundsViscosity: 1.0,
   worldCopyJump: false,
 });
 L.control.zoom({ position: 'topright' }).addTo(map);
