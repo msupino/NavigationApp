@@ -692,7 +692,6 @@ function restoreRoute() {
       outLabel: l.outLabel || { a: 0, p: -44 },
     }));
     syncLegs();
-    if (d.center && d.zoom) map.setView(d.center, d.zoom);
     return true;
   } catch (e) {
     return false;
@@ -740,4 +739,5 @@ document.getElementById('print').onclick = doPrint;
 resizeOverlay();
 setMode('add');
 restoreRoute();
+if (state.waypoints.length) fitView();   // always frame the restored route
 draw();
