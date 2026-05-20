@@ -18,6 +18,8 @@ python3 -m http.server -d docs 8000
 - **Edit** mode — click/drag waypoints, click a leg to edit it.
 - Scroll to zoom, drag empty space to pan, **Fit** to frame the route.
 - Click a leg → set speed, inbound/outbound altitude, mid-leg indication.
+- **Nav waypoints** — toggle the published VFR reporting points overlay
+  (`nav-waypoints.json`, 238 points); names appear when zoomed in.
 - **Save** / **Load** — JSON compatible with the Unity build's scene format
   (`waypoints` + `legs`).
 

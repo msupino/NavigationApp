@@ -123,6 +123,20 @@ let mapReady = false;
 mapImg.onload = () => { mapReady = true; draw(); };
 mapImg.src = 'map.jpg';
 
+// --- navigation waypoints (published VFR reporting points) -----------
+let navWaypoints = [];                 // [{ name, x, z }]
+let showNav = true;
+fetch('nav-waypoints.json')
+  .then(r => r.json())
+  .then(d => {
+    navWaypoints = (d.waypoints || []).map(w => {
+      const s = coordToScene(w.coord[1], w.coord[0]);   // coord = [lon, lat]
+      return { name: w.name, x: s.x, z: s.z };
+    });
+    draw();
+  })
+  .catch(() => {});
+
 // --- drawing ---------------------------------------------------------
 function draw() {
   ctx.clearRect(0, 0, vw(), vh());
@@ -130,6 +144,7 @@ function draw() {
   ctx.fillRect(0, 0, vw(), vh());
 
   drawMap();
+  drawNavWaypoints();
   drawLegs();
   drawWaypoints();
   drawInfo();
@@ -142,6 +157,38 @@ function drawMap() {
   const br = s2p({ x: MAP.xMax, z: MAP.zMin });
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(mapImg, tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+}
+
+// Published navigation waypoints overlay; names appear once zoomed in.
+function drawNavWaypoints() {
+  if (!showNav || navWaypoints.length === 0) return;
+  const showText = state.cam.scale > 16;
+  const r = 5;
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const w of navWaypoints) {
+    const s = s2p(w);
+    if (s.x < -30 || s.x > vw() + 30 || s.y < -30 || s.y > vh() + 30) continue;
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y - r);
+    ctx.lineTo(s.x - r * 0.9, s.y + r * 0.7);
+    ctx.lineTo(s.x + r * 0.9, s.y + r * 0.7);
+    ctx.closePath();
+    ctx.fillStyle = '#b3138a';
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#ffffff';
+    ctx.stroke();
+    if (showText) {
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#ffffff';
+      ctx.strokeText(w.name, s.x, s.y - r - 7);
+      ctx.fillStyle = '#b3138a';
+      ctx.fillText(w.name, s.x, s.y - r - 7);
+    }
+  }
+  ctx.textAlign = 'left';
 }
 
 // Rounded-rectangle path helper.
@@ -627,6 +674,10 @@ document.getElementById('file').onchange = e => {
   e.target.value = '';
 };
 document.getElementById('fit').onclick = fitView;
+document.getElementById('nav-cb').onchange = e => {
+  showNav = e.target.checked;
+  draw();
+};
 
 function defaultView() {
   state.cam.x = (MAP.xMin + MAP.xMax) / 2;
