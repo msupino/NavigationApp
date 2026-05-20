@@ -10,10 +10,11 @@ const MAG_DEV = -5;                    // fixed magnetic deviation
 
 // --- model -----------------------------------------------------------
 const state = {
-  waypoints: [],            // [{ lat, lng }]
+  waypoints: [],            // [{ lat, lng, name }]
   legs: [],                 // per-leg attributes (see newLeg)
-  mode: 'add',              // 'add' | 'edit'
-  selected: null,           // { type:'wp'|'leg', index }
+  notes: [],                // [{ lat, lng, text }] — free-text annotations
+  mode: 'add',              // 'add' | 'edit' | 'note'
+  selected: null,           // { type:'wp'|'leg'|'note', index }
 };
 let showReturn = false;     // outbound (return) markers — off by default
 let showMidLeg = true;
@@ -153,6 +154,7 @@ function draw() {
   octx.clearRect(0, 0, vw(), vh());
   drawLegs();
   drawWaypoints();
+  drawNotes();
   drawInfo();
   if (!printing) drawPageFrame();
   persist();
@@ -390,6 +392,53 @@ function drawWaypoints() {
   }
 }
 
+// --- notes (free-text annotation boxes) ------------------------------
+const NOTE_FONT = 'bold 12px sans-serif';
+const NOTE_PAD_X = 8;
+const NOTE_PAD_Y = 6;
+const NOTE_LINE_H = 16;
+
+function noteRect(i) {
+  const n = state.notes[i];
+  const s = proj(n);
+  const lines = (n.text || '').split('\n');
+  octx.font = NOTE_FONT;
+  let maxW = 1;
+  for (const l of lines) {
+    const w = octx.measureText(l || ' ').width;
+    if (w > maxW) maxW = w;
+  }
+  const w = maxW + NOTE_PAD_X * 2;
+  const h = Math.max(1, lines.length) * NOTE_LINE_H + NOTE_PAD_Y * 2;
+  return { x: s.x - w / 2, y: s.y - h / 2, w, h, lines };
+}
+
+function drawNotes() {
+  for (let i = 0; i < state.notes.length; i++) {
+    const r = noteRect(i);
+    const selected = state.selected &&
+                     state.selected.type === 'note' &&
+                     state.selected.index === i;
+    octx.fillStyle = selected ? 'rgba(255,255,255,0.98)'
+                              : 'rgba(255,255,255,0.92)';
+    octx.fillRect(r.x, r.y, r.w, r.h);
+    octx.lineWidth = selected ? 2.5 : 1.5;
+    octx.strokeStyle = selected ? '#ffcc33' : '#161412';
+    octx.strokeRect(r.x, r.y, r.w, r.h);
+
+    octx.font = NOTE_FONT;
+    octx.fillStyle = '#161412';
+    octx.textAlign = 'center';
+    octx.textBaseline = 'middle';
+    const cx = r.x + r.w / 2;
+    for (let j = 0; j < r.lines.length; j++) {
+      const ly = r.y + NOTE_PAD_Y + NOTE_LINE_H / 2 + j * NOTE_LINE_H;
+      octx.fillText(r.lines[j], cx, ly);
+    }
+    octx.textAlign = 'left';
+  }
+}
+
 function drawInfo() {
   let totalDist = 0, totalH = 0;
   for (let i = 0; i < state.legs.length; i++) {
@@ -446,6 +495,14 @@ function drawPageFrame() {
 }
 
 // --- hit testing -----------------------------------------------------
+function hitNote(px, py) {
+  for (let i = state.notes.length - 1; i >= 0; i--) {
+    const r = noteRect(i);
+    if (px >= r.x && px <= r.x + r.w &&
+        py >= r.y && py <= r.y + r.h) return i;
+  }
+  return -1;
+}
 function hitWaypoint(px, py) {
   for (let i = state.waypoints.length - 1; i >= 0; i--) {
     const s = proj(state.waypoints[i]);
@@ -520,6 +577,24 @@ function showInspector() {
     body.appendChild(numberRow('Outbound alt (ft)', leg.outboundAltitude, v => {
       leg.outboundAltitude = Math.round(v); draw();
     }));
+  } else if (state.selected.type === 'note') {
+    const note = state.notes[state.selected.index];
+    title.value = 'Note ' + (state.selected.index + 1);
+    title.placeholder = '';
+    title.readOnly = true;
+    title.oninput = null;
+    body.appendChild(textareaRow('Text', note.text || '', v => {
+      note.text = v; draw();
+    }));
+    const del = document.createElement('button');
+    del.className = 'insp-btn';
+    del.textContent = 'Delete note';
+    del.onclick = () => {
+      state.notes.splice(state.selected.index, 1);
+      state.selected = null;
+      draw(); showInspector();
+    };
+    body.appendChild(del);
   } else {
     const wp = state.waypoints[state.selected.index];
     title.value = wp.name || '';
@@ -538,6 +613,18 @@ function showInspector() {
     };
     body.appendChild(del);
   }
+}
+function textareaRow(label, value, onChange) {
+  const row = document.createElement('div');
+  row.className = 'row col';
+  const l = document.createElement('label');
+  l.textContent = label;
+  const ta = document.createElement('textarea');
+  ta.value = value || '';
+  ta.rows = 3;
+  ta.oninput = () => onChange(ta.value);
+  row.append(l, ta);
+  return row;
 }
 function numberRow(label, value, onChange) {
   const row = document.createElement('div');
@@ -606,6 +693,15 @@ map.on('mousedown', e => {
     showInspector(); draw();
     return;
   }
+  const note = hitNote(p.x, p.y);
+  if (note >= 0) {
+    downHit = true;
+    state.selected = { type: 'note', index: note };
+    drag = { kind: 'note', i: note };
+    map.dragging.disable();
+    showInspector(); draw();
+    return;
+  }
   const lab = hitLegLabel(p.x, p.y);
   if (lab) {
     downHit = true;
@@ -637,6 +733,10 @@ map.on('mousemove', e => {
     state.waypoints[drag.i].lat = e.latlng.lat;
     state.waypoints[drag.i].lng = e.latlng.lng;
     draw(); showInspector();
+  } else if (drag.kind === 'note') {
+    state.notes[drag.i].lat = e.latlng.lat;
+    state.notes[drag.i].lng = e.latlng.lng;
+    draw();
   } else if (drag.kind === 'label') {
     const ddx = p.x - drag.lx, ddy = p.y - drag.ly;
     drag.lx = p.x; drag.ly = p.y;
@@ -659,6 +759,10 @@ map.on('click', e => {
     syncLegs();
     state.selected = { type: 'wp', index: state.waypoints.length - 1 };
     showInspector(); draw();
+  } else if (state.mode === 'note') {
+    state.notes.push({ lat: e.latlng.lat, lng: e.latlng.lng, text: 'Note' });
+    state.selected = { type: 'note', index: state.notes.length - 1 };
+    showInspector(); draw();
   }
 });
 
@@ -667,11 +771,17 @@ window.addEventListener('keydown', e => {
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
     return;                              // typing in a field — leave the WP alone
   }
-  if ((e.key === 'Delete' || e.key === 'Backspace') &&
-      state.selected && state.selected.type === 'wp') {
-    state.waypoints.splice(state.selected.index, 1);
-    state.selected = null;
-    syncLegs(); draw(); showInspector();
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (!state.selected) return;
+    if (state.selected.type === 'wp') {
+      state.waypoints.splice(state.selected.index, 1);
+      state.selected = null;
+      syncLegs(); draw(); showInspector();
+    } else if (state.selected.type === 'note') {
+      state.notes.splice(state.selected.index, 1);
+      state.selected = null;
+      draw(); showInspector();
+    }
   }
 });
 
@@ -691,24 +801,26 @@ mapEl.addEventListener('touchstart', e => {
   if (e.touches.length !== 1) return;
   const p = touchXY(e.touches[0]);
   const wp = hitWaypoint(p.x, p.y);
+  const note = wp < 0 ? hitNote(p.x, p.y) : -1;
+  const lab = (wp < 0 && note < 0) ? hitLegLabel(p.x, p.y) : null;
+  const leg = (wp < 0 && note < 0 && !lab) ? hitLeg(p.x, p.y) : -1;
+
   if (wp >= 0) {
     touchDrag = { kind: 'wp', i: wp };
     state.selected = { type: 'wp', index: wp };
-  } else {
-    const lab = hitLegLabel(p.x, p.y);
-    if (lab) {
-      const f = legFrame(lab.i);
-      touchDrag = { kind: 'label', i: lab.i, which: lab.which,
-                    lx: p.x, ly: p.y, dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
-      state.selected = { type: 'leg', index: lab.i };
-    } else {
-      const leg = hitLeg(p.x, p.y);
-      if (leg >= 0) {
-        touchDrag = { kind: 'legtap' };
-        state.selected = { type: 'leg', index: leg };
-      }
-    }
+  } else if (note >= 0) {
+    touchDrag = { kind: 'note', i: note };
+    state.selected = { type: 'note', index: note };
+  } else if (lab) {
+    const f = legFrame(lab.i);
+    touchDrag = { kind: 'label', i: lab.i, which: lab.which,
+                  lx: p.x, ly: p.y, dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
+    state.selected = { type: 'leg', index: lab.i };
+  } else if (leg >= 0) {
+    touchDrag = { kind: 'legtap' };
+    state.selected = { type: 'leg', index: leg };
   }
+
   if (touchDrag) {
     map.dragging.disable();
     e.preventDefault();                // suppress pan + the synthetic click
@@ -720,12 +832,16 @@ mapEl.addEventListener('touchmove', e => {
   if (!touchDrag || touchDrag.kind === 'legtap' || e.touches.length !== 1) return;
   e.preventDefault();
   const p = touchXY(e.touches[0]);
+  const ll = map.containerPointToLatLng([p.x, p.y]);
   if (touchDrag.kind === 'wp') {
-    const ll = map.containerPointToLatLng([p.x, p.y]);
     state.waypoints[touchDrag.i].lat = ll.lat;
     state.waypoints[touchDrag.i].lng = ll.lng;
     draw(); showInspector();
-  } else {
+  } else if (touchDrag.kind === 'note') {
+    state.notes[touchDrag.i].lat = ll.lat;
+    state.notes[touchDrag.i].lng = ll.lng;
+    draw();
+  } else if (touchDrag.kind === 'label') {
     const ddx = p.x - touchDrag.lx, ddy = p.y - touchDrag.ly;
     touchDrag.lx = p.x; touchDrag.ly = p.y;
     const leg = state.legs[touchDrag.i];
@@ -764,6 +880,7 @@ function save() {
       outboundAltitude: l.outboundAltitude,
       flightSpeed: l.flightSpeed,
     })),
+    notes: state.notes.map(n => ({ lat: n.lat, lng: n.lng, text: n.text || '' })),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
@@ -786,6 +903,9 @@ function load(file) {
         flightSpeed: l.flightSpeed > 0 ? l.flightSpeed : 90,
         inLabel: l.inLabel || { a: 0, p: 44 },
         outLabel: l.outLabel || { a: 0, p: -44 },
+      }));
+      state.notes = (d.notes || []).map(n => ({
+        lat: +n.lat, lng: +n.lng, text: n.text || '',
       }));
       syncLegs();
       state.selected = null;
@@ -902,6 +1022,7 @@ function persist() {
       localStorage.setItem(STORE_KEY, JSON.stringify({
         waypoints: state.waypoints,
         legs: state.legs,
+        notes: state.notes,
         center: [c.lat, c.lng],
         zoom: map.getZoom(),
       }));
@@ -923,6 +1044,9 @@ function restoreRoute() {
       inLabel: l.inLabel || { a: 0, p: 44 },
       outLabel: l.outLabel || { a: 0, p: -44 },
     }));
+    state.notes = (d.notes || []).map(n => ({
+      lat: +n.lat, lng: +n.lng, text: n.text || '',
+    }));
     syncLegs();
     return true;
   } catch (e) {
@@ -935,10 +1059,12 @@ function setMode(mode) {
   state.mode = mode;
   document.getElementById('tool-add').classList.toggle('active', mode === 'add');
   document.getElementById('tool-edit').classList.toggle('active', mode === 'edit');
-  document.getElementById('map').classList.toggle('add', mode === 'add');
+  document.getElementById('tool-note').classList.toggle('active', mode === 'note');
+  document.getElementById('map').classList.toggle('add', mode === 'add' || mode === 'note');
 }
 document.getElementById('tool-add').onclick = () => setMode('add');
 document.getElementById('tool-edit').onclick = () => setMode('edit');
+document.getElementById('tool-note').onclick = () => setMode('note');
 document.getElementById('reverse').onclick = () => {
   state.waypoints.reverse();
   state.legs.reverse();
@@ -946,9 +1072,11 @@ document.getElementById('reverse').onclick = () => {
   showInspector(); draw();
 };
 document.getElementById('clear').onclick = () => {
-  if (state.waypoints.length && !confirm('Remove all waypoints?')) return;
+  if ((state.waypoints.length || state.notes.length) &&
+      !confirm('Remove all waypoints and notes?')) return;
   state.waypoints = [];
   state.legs = [];
+  state.notes = [];
   state.selected = null;
   showInspector(); draw();
 };

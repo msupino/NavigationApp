@@ -169,6 +169,24 @@ html, body {
 }
 .row .val { color: #e8e8e8; font-variant-numeric: tabular-nums; }
 
+.row.col {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.row textarea {
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+
 .insp-btn {
   width: 100%;
   font: inherit;
