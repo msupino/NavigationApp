@@ -27,6 +27,18 @@ let pageOrient = 'landscape';   // 'landscape' | 'portrait'
 // Yellow text-background colour with the global opacity scale applied.
 const yellowFill = (a) => `rgba(255,246,170,${a * yellowAlpha})`;
 
+// Tinted fill from any "#rrggbb" hex with `a` (× yellowAlpha) for the alpha.
+function tintFill(hex, a) {
+  const h = (hex || '').replace('#', '');
+  if (h.length !== 6) return yellowFill(a);
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${a * yellowAlpha})`;
+}
+
+const NOTE_DEFAULT_COLOR = '#fff6aa';   // matches the existing yellow fill
+
 const newLeg = () => ({
   inboundAltitude: 2000,
   outboundAltitude: 2000,
@@ -420,11 +432,13 @@ function noteRect(i) {
 
 function drawNotes() {
   for (let i = 0; i < state.notes.length; i++) {
+    const n = state.notes[i];
     const r = noteRect(i);
     const selected = state.selected &&
                      state.selected.type === 'note' &&
                      state.selected.index === i;
-    octx.fillStyle = selected ? yellowFill(0.95) : yellowFill(0.80);
+    const color = n.color || NOTE_DEFAULT_COLOR;
+    octx.fillStyle = tintFill(color, selected ? 0.95 : 0.80);
     octx.fillRect(r.x, r.y, r.w, r.h);
     octx.lineWidth = selected ? 2.5 : 1.5;
     octx.strokeStyle = selected ? '#ffcc33' : '#161412';
@@ -590,6 +604,9 @@ function showInspector() {
     body.appendChild(textareaRow('Text', note.text || '', v => {
       note.text = v; draw();
     }));
+    body.appendChild(colorRow('Color', note.color || NOTE_DEFAULT_COLOR, v => {
+      note.color = v; draw();
+    }));
     const del = document.createElement('button');
     del.className = 'insp-btn';
     del.textContent = 'Delete note';
@@ -617,6 +634,18 @@ function showInspector() {
     };
     body.appendChild(del);
   }
+}
+function colorRow(label, value, onChange) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  const l = document.createElement('label');
+  l.textContent = label;
+  const inp = document.createElement('input');
+  inp.type = 'color';
+  inp.value = value || NOTE_DEFAULT_COLOR;
+  inp.oninput = () => onChange(inp.value);
+  row.append(l, inp);
+  return row;
 }
 function textareaRow(label, value, onChange) {
   const row = document.createElement('div');
@@ -886,7 +915,9 @@ function save() {
       inLabel: l.inLabel,
       outLabel: l.outLabel,
     })),
-    notes: state.notes.map(n => ({ lat: n.lat, lng: n.lng, text: n.text || '' })),
+    notes: state.notes.map(n => ({
+      lat: n.lat, lng: n.lng, text: n.text || '', color: n.color || '',
+    })),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
@@ -911,7 +942,7 @@ function load(file) {
         outLabel: l.outLabel || { a: 0, p: -44 },
       }));
       state.notes = (d.notes || []).map(n => ({
-        lat: +n.lat, lng: +n.lng, text: n.text || '',
+        lat: +n.lat, lng: +n.lng, text: n.text || '', color: n.color || '',
       }));
       syncLegs();
       state.selected = null;
@@ -1150,7 +1181,7 @@ function restoreRoute() {
       outLabel: l.outLabel || { a: 0, p: -44 },
     }));
     state.notes = (d.notes || []).map(n => ({
-      lat: +n.lat, lng: +n.lng, text: n.text || '',
+      lat: +n.lat, lng: +n.lng, text: n.text || '', color: n.color || '',
     }));
     syncLegs();
     return true;
