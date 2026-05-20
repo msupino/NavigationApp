@@ -117,7 +117,7 @@ function syncLegs() {
 
 // --- background chart ------------------------------------------------
 // CVFR2020 chart composited and georeferenced by build_map.py.
-const MAP = { xMin: -47.473, xMax: 59.669, zMin: -232.778, zMax: 26.238 };
+const MAP = { xMin: -46.804, xMax: 47.626, zMin: -208.037, zMax: 25.458 };
 const mapImg = new Image();
 let mapReady = false;
 mapImg.onload = () => { mapReady = true; draw(); };
