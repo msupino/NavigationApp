@@ -419,8 +419,7 @@ function drawNotes() {
     const selected = state.selected &&
                      state.selected.type === 'note' &&
                      state.selected.index === i;
-    octx.fillStyle = selected ? 'rgba(255,255,255,0.98)'
-                              : 'rgba(255,255,255,0.92)';
+    octx.fillStyle = selected ? yellowFill(0.95) : yellowFill(0.80);
     octx.fillRect(r.x, r.y, r.w, r.h);
     octx.lineWidth = selected ? 2.5 : 1.5;
     octx.strokeStyle = selected ? '#ffcc33' : '#161412';
@@ -579,7 +578,7 @@ function showInspector() {
     }));
   } else if (state.selected.type === 'note') {
     const note = state.notes[state.selected.index];
-    title.value = 'Note ' + (state.selected.index + 1);
+    title.value = 'Note';
     title.placeholder = '';
     title.readOnly = true;
     title.oninput = null;
