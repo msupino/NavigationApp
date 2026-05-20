@@ -30,10 +30,11 @@ html, body {
   z-index: 1100;
   top: 12px;
   left: 12px;
-  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 4px;
   padding: 6px;
   background: rgba(20, 18, 18, 0.92);
@@ -60,18 +61,19 @@ html, body {
   color: #fff;
 }
 #toolbar .sep {
-  width: 1px;
-  height: 22px;
+  width: auto;
+  height: 1px;
   background: #443f3f;
-  margin: 0 4px;
+  margin: 4px 2px;
 }
 
 #toolbar .drag-handle {
   font-size: 16px;
-  letter-spacing: -3px;
+  letter-spacing: 1px;
+  text-align: center;
   color: #8a8484;
   cursor: grab;
-  padding: 0 6px 0 2px;
+  padding: 0 6px 4px;
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
@@ -256,7 +258,8 @@ html, body {
 
 /* Mobile: bigger touch targets, roomier toolbar. */
 @media (max-width: 680px) {
-  #toolbar { gap: 6px; top: 8px; left: 8px; max-width: calc(100vw - 16px); }
+  #toolbar { gap: 6px; top: 8px; left: 8px;
+             max-height: calc(100vh - 16px); }
   #toolbar button { padding: 9px 12px; font-size: 14px; }
   #toolbar .navtoggle { font-size: 14px; }
   #toolbar .navtoggle input { width: 18px; height: 18px; }
