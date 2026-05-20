@@ -4,10 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Plotter — HTML5</title>
-  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
-  <canvas id="map"></canvas>
+  <div id="map"></div>
+  <canvas id="overlay"></canvas>
 
   <div id="toolbar">
     <button id="tool-add" class="tool active" title="Add waypoints (click map)">✏️ Add</button>
@@ -21,16 +23,13 @@
     <input type="file" id="file" accept="application/json,.json" hidden>
     <span class="sep"></span>
     <button id="fit" title="Fit route to view">⌖ Fit</button>
-    <label class="navtoggle" title="Show published VFR reporting points">
-      <input type="checkbox" id="nav-cb"> Nav waypoints
-    </label>
     <label class="navtoggle" title="Show return-direction (outbound) info">
       <input type="checkbox" id="ret-cb" checked> Return info
     </label>
     <span class="sep"></span>
-    <button id="fit-a3" title="A3 print frame">A3</button>
-    <button id="fit-a4" title="A4 print frame">A4</button>
-    <button id="print" title="Export the framed area as a PNG">🖨 Print</button>
+    <button id="page-a3" title="A3 print page">A3</button>
+    <button id="page-a4" title="A4 print page">A4</button>
+    <button id="print" title="Open the print dialog">🖨 Print</button>
   </div>
 
   <div id="inspector" class="hidden">
@@ -39,8 +38,9 @@
   </div>
 
   <div id="info"></div>
-  <div id="hint">Click map to drop waypoints · scroll to zoom · drag empty space to pan</div>
+  <div id="hint">Click map to drop waypoints · scroll to zoom · drag to pan</div>
 
-  <script src="app.js?v=7"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>
