@@ -94,6 +94,17 @@ html, body {
 }
 #toolbar .navtoggle input { cursor: pointer; margin: 0; }
 #toolbar .navtoggle input[type="range"] { width: 90px; }
+#toolbar .navtoggle input[type="number"] {
+  width: 56px;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 4px;
+  cursor: text;
+}
 
 #inspector {
   position: absolute;
@@ -313,3 +324,40 @@ html, body {
 .modal-btns button:hover { background: #2f7fee; }
 .modal-btns .modal-cancel { background: #443f3f; }
 .modal-btns .modal-cancel:hover { background: #555050; }
+
+/* Flight-plan table modal */
+.modal.wide {
+  min-width: 520px;
+  max-width: 92vw;
+  max-height: 84vh;
+  overflow: auto;
+  padding: 14px;
+}
+.flight-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  margin: 0 0 12px;
+}
+.flight-table th,
+.flight-table td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid #3a3636;
+  white-space: nowrap;
+}
+.flight-table th {
+  position: sticky;
+  top: 0;
+  color: #b9b3b3;
+  background: #2f2b2b;
+  font-weight: 600;
+}
+.flight-table tbody tr:hover { background: rgba(255, 255, 255, 0.04); }
+.flight-table tfoot td {
+  font-weight: 700;
+  border-top: 2px solid #443f3f;
+  border-bottom: none;
+  background: rgba(255, 255, 255, 0.03);
+}
