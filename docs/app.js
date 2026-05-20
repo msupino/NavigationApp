@@ -15,14 +15,15 @@ const state = {
   mode: 'add',              // 'add' | 'edit'
   selected: null,           // { type:'wp'|'leg', index }
 };
-let showReturn = true;
+let showReturn = false;     // outbound (return) markers — off by default
+let showMidLeg = true;
 let pageSize = null;        // null | 'A3' | 'A4'
+let pageOrient = 'landscape';   // 'landscape' | 'portrait'
 
 const newLeg = () => ({
   inboundAltitude: 2000,
   outboundAltitude: 2000,
   flightSpeed: 90,
-  drawMidLegIndication: true,
   inLabel: { a: 0, p: 44 },            // marker offset: along leg, perpendicular
   outLabel: { a: 0, p: -44 },
 });
@@ -88,8 +89,8 @@ const map = L.map('map', {
   maxBoundsViscosity: 1.0,
   worldCopyJump: false,
 });
-L.control.zoom({ position: 'topright' }).addTo(map);
-L.control.layers(layers, null, { position: 'topright' }).addTo(map);
+L.control.zoom({ position: 'bottomright' }).addTo(map);
+L.control.layers(layers, null, { position: 'bottomright' }).addTo(map);
 
 // --- route overlay canvas -------------------------------------------
 const overlay = document.getElementById('overlay');
@@ -177,7 +178,7 @@ function drawLegs() {
         pad3(magOut), timeStr, String(leg.outboundAltitude),
         '#c0392b', 'rgba(255,204,214,0.80)');
     }
-    if (leg.drawMidLegIndication) drawDistanceBadge(mid.x, mid.y, dist);
+    if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
   }
 }
 
@@ -293,28 +294,34 @@ function drawDistanceBadge(cx, cy, dist) {
   octx.textAlign = 'left';
 }
 
+function waypointRadius(i) {
+  const wp = state.waypoints[i];
+  const label = wp.name && wp.name.trim() ? wp.name.trim() : String(i + 1);
+  octx.font = 'bold 13px sans-serif';
+  return { label, r: Math.max(15, octx.measureText(label).width / 2 + 9) };
+}
+
 function drawWaypoints() {
   for (let i = 0; i < state.waypoints.length; i++) {
     const s = proj(state.waypoints[i]);
     const selected = state.selected &&
                      state.selected.type === 'wp' &&
                      state.selected.index === i;
+    const { label, r } = waypointRadius(i);
     octx.beginPath();
-    octx.arc(s.x, s.y, selected ? 9 : 7, 0, Math.PI * 2);
+    octx.arc(s.x, s.y, r, 0, Math.PI * 2);
     octx.fillStyle = selected ? '#ffcc33' : '#ffffff';
     octx.fill();
     octx.lineWidth = 3;
     octx.strokeStyle = '#161412';
     octx.stroke();
 
-    const label = 'WP' + (i + 1);
-    octx.font = 'bold 11px sans-serif';
-    octx.textBaseline = 'middle';
-    octx.lineWidth = 3;
-    octx.strokeStyle = '#fff';
-    octx.strokeText(label, s.x + 12, s.y - 10);
+    octx.font = 'bold 13px sans-serif';
     octx.fillStyle = '#161412';
-    octx.fillText(label, s.x + 12, s.y - 10);
+    octx.textAlign = 'center';
+    octx.textBaseline = 'middle';
+    octx.fillText(label, s.x, s.y);
+    octx.textAlign = 'left';
   }
 }
 
@@ -343,11 +350,17 @@ function metresPerPixel() {
   return map.distance(a, b) / 200;
 }
 
+function pageDims() {                   // page coverage (NM), oriented
+  const p = PAGE_NM[pageSize];
+  return pageOrient === 'portrait' ? { w: p.h, h: p.w } : { w: p.w, h: p.h };
+}
+
 function pageFrameRect() {
   if (!pageSize) return null;
   const mpp = metresPerPixel();
-  const w = PAGE_NM[pageSize].w * 1852 / mpp;
-  const h = PAGE_NM[pageSize].h * 1852 / mpp;
+  const d = pageDims();
+  const w = d.w * 1852 / mpp;
+  const h = d.h * 1852 / mpp;
   return { x: (vw() - w) / 2, y: (vh() - h) / 2, w, h };
 }
 
@@ -371,7 +384,7 @@ function drawPageFrame() {
 function hitWaypoint(px, py) {
   for (let i = state.waypoints.length - 1; i >= 0; i--) {
     const s = proj(state.waypoints[i]);
-    if (Math.hypot(s.x - px, s.y - py) <= 11) return i;
+    if (Math.hypot(s.x - px, s.y - py) <= waypointRadius(i).r + 4) return i;
   }
   return -1;
 }
@@ -439,12 +452,12 @@ function showInspector() {
     body.appendChild(numberRow('Outbound alt (ft)', leg.outboundAltitude, v => {
       leg.outboundAltitude = Math.round(v); draw();
     }));
-    body.appendChild(boolRow('Mid-leg indication', leg.drawMidLegIndication, v => {
-      leg.drawMidLegIndication = v; draw();
-    }));
   } else {
     const wp = state.waypoints[state.selected.index];
     title.textContent = 'WP' + (state.selected.index + 1);
+    body.appendChild(textInputRow('Name', wp.name || '', v => {
+      wp.name = v; draw();
+    }));
     body.appendChild(textRow('Latitude', fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow('Longitude', fmtLatLng(wp.lng, 'E', 'W')));
     const del = document.createElement('button');
@@ -470,6 +483,19 @@ function numberRow(label, value, onChange) {
     const v = parseFloat(inp.value);
     if (!isNaN(v)) onChange(v);
   };
+  row.append(l, inp);
+  return row;
+}
+function textInputRow(label, value, onChange) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  const l = document.createElement('label');
+  l.textContent = label;
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.value = value || '';
+  inp.maxLength = 10;
+  inp.oninput = () => onChange(inp.value);
   row.append(l, inp);
   return row;
 }
@@ -540,7 +566,8 @@ map.on('mousemove', e => {
   const p = e.containerPoint;
   if (drag.kind === 'wp') {
     drag.moved = true;
-    state.waypoints[drag.i] = { lat: e.latlng.lat, lng: e.latlng.lng };
+    state.waypoints[drag.i].lat = e.latlng.lat;
+    state.waypoints[drag.i].lng = e.latlng.lng;
     draw(); showInspector();
   } else if (drag.kind === 'label') {
     const ddx = p.x - drag.lx, ddy = p.y - drag.ly;
@@ -560,7 +587,7 @@ map.on('mouseup', () => {
 map.on('click', e => {
   if (downHit) { downHit = false; return; }
   if (state.mode === 'add') {
-    state.waypoints.push({ lat: e.latlng.lat, lng: e.latlng.lng });
+    state.waypoints.push({ lat: e.latlng.lat, lng: e.latlng.lng, name: '' });
     syncLegs();
     state.selected = { type: 'wp', index: state.waypoints.length - 1 };
     showInspector(); draw();
@@ -575,6 +602,73 @@ window.addEventListener('keydown', e => {
     syncLegs(); draw(); showInspector();
   }
 });
+
+// --- touch interaction (drag waypoints / markers on mobile) ----------
+// Synthesised mouse events don't fire during a touch-drag, so handle touch
+// directly. One-finger touches that hit a route element are captured; other
+// touches fall through to Leaflet for pan / pinch-zoom.
+const mapEl = map.getContainer();
+let touchDrag = null;
+
+function touchXY(t) {
+  const r = mapEl.getBoundingClientRect();
+  return { x: t.clientX - r.left, y: t.clientY - r.top };
+}
+
+mapEl.addEventListener('touchstart', e => {
+  if (e.touches.length !== 1) return;
+  const p = touchXY(e.touches[0]);
+  const wp = hitWaypoint(p.x, p.y);
+  if (wp >= 0) {
+    touchDrag = { kind: 'wp', i: wp };
+    state.selected = { type: 'wp', index: wp };
+  } else {
+    const lab = hitLegLabel(p.x, p.y);
+    if (lab) {
+      const f = legFrame(lab.i);
+      touchDrag = { kind: 'label', i: lab.i, which: lab.which,
+                    lx: p.x, ly: p.y, dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
+      state.selected = { type: 'leg', index: lab.i };
+    } else {
+      const leg = hitLeg(p.x, p.y);
+      if (leg >= 0) {
+        touchDrag = { kind: 'legtap' };
+        state.selected = { type: 'leg', index: leg };
+      }
+    }
+  }
+  if (touchDrag) {
+    map.dragging.disable();
+    e.preventDefault();                // suppress pan + the synthetic click
+    showInspector(); draw();
+  }
+}, { passive: false });
+
+mapEl.addEventListener('touchmove', e => {
+  if (!touchDrag || touchDrag.kind === 'legtap' || e.touches.length !== 1) return;
+  e.preventDefault();
+  const p = touchXY(e.touches[0]);
+  if (touchDrag.kind === 'wp') {
+    const ll = map.containerPointToLatLng([p.x, p.y]);
+    state.waypoints[touchDrag.i].lat = ll.lat;
+    state.waypoints[touchDrag.i].lng = ll.lng;
+    draw(); showInspector();
+  } else {
+    const ddx = p.x - touchDrag.lx, ddy = p.y - touchDrag.ly;
+    touchDrag.lx = p.x; touchDrag.ly = p.y;
+    const leg = state.legs[touchDrag.i];
+    const o = touchDrag.which === 'in' ? leg.inLabel : leg.outLabel;
+    o.a += ddx * touchDrag.dx + ddy * touchDrag.dy;
+    o.p += ddx * touchDrag.nx + ddy * touchDrag.ny;
+    draw();
+  }
+}, { passive: false });
+
+function endTouch() {
+  if (touchDrag) { map.dragging.enable(); touchDrag = null; }
+}
+mapEl.addEventListener('touchend', endTouch);
+mapEl.addEventListener('touchcancel', endTouch);
 
 map.on('move zoom viewreset moveend zoomend', draw);
 map.on('resize', () => { resizeOverlay(); draw(); });
@@ -592,12 +686,11 @@ function fitView() {
 // --- save / load -----------------------------------------------------
 function save() {
   const data = {
-    waypoints: state.waypoints.map(w => ({ lat: w.lat, lng: w.lng })),
+    waypoints: state.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name || '' })),
     legs: state.legs.map(l => ({
       inboundAltitude: l.inboundAltitude,
       outboundAltitude: l.outboundAltitude,
       flightSpeed: l.flightSpeed,
-      drawMidLegIndication: l.drawMidLegIndication,
     })),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -613,13 +706,12 @@ function load(file) {
     try {
       const d = JSON.parse(reader.result);
       state.waypoints = (d.waypoints || []).map(w => ({
-        lat: +w.lat, lng: +w.lng,
+        lat: +w.lat, lng: +w.lng, name: w.name || '',
       }));
       state.legs = (d.legs || []).map(l => ({
         inboundAltitude: l.inboundAltitude ?? 2000,
         outboundAltitude: l.outboundAltitude ?? 2000,
         flightSpeed: l.flightSpeed > 0 ? l.flightSpeed : 90,
-        drawMidLegIndication: l.drawMidLegIndication ?? true,
         inLabel: l.inLabel || { a: 0, p: 44 },
         outLabel: l.outLabel || { a: 0, p: -44 },
       }));
@@ -639,7 +731,14 @@ function load(file) {
 let printing = false;
 
 function setPage(size) {
-  pageSize = pageSize === size ? null : size;
+  if (pageSize === size) {
+    pageSize = null;                   // same button toggles the frame off
+  } else {
+    const landscape = confirm(
+      size + ' page orientation:\n\nOK = Landscape\nCancel = Portrait');
+    pageOrient = landscape ? 'landscape' : 'portrait';
+    pageSize = size;
+  }
   document.getElementById('page-a3').classList.toggle('active', pageSize === 'A3');
   document.getElementById('page-a4').classList.toggle('active', pageSize === 'A4');
   let st = document.getElementById('page-style');
@@ -648,8 +747,8 @@ function setPage(size) {
     st.id = 'page-style';
     document.head.appendChild(st);
   }
-  st.textContent = '@page { size: ' + (pageSize || 'A4') +
-                   ' landscape; margin: 6mm; }';
+  st.textContent = '@page { size: ' + (pageSize || 'A4') + ' ' +
+                   pageOrient + '; margin: 6mm; }';
   draw();
 }
 
@@ -684,12 +783,13 @@ function restoreRoute() {
     const raw = localStorage.getItem(STORE_KEY);
     if (!raw) return false;
     const d = JSON.parse(raw);
-    state.waypoints = (d.waypoints || []).map(w => ({ lat: +w.lat, lng: +w.lng }));
+    state.waypoints = (d.waypoints || []).map(w => ({
+      lat: +w.lat, lng: +w.lng, name: w.name || '',
+    }));
     state.legs = (d.legs || []).map(l => ({
       inboundAltitude: l.inboundAltitude ?? 2000,
       outboundAltitude: l.outboundAltitude ?? 2000,
       flightSpeed: l.flightSpeed > 0 ? l.flightSpeed : 90,
-      drawMidLegIndication: l.drawMidLegIndication ?? true,
       inLabel: l.inLabel || { a: 0, p: 44 },
       outLabel: l.outLabel || { a: 0, p: -44 },
     }));
@@ -733,9 +833,17 @@ document.getElementById('ret-cb').onchange = e => {
   showReturn = e.target.checked;
   draw();
 };
+document.getElementById('mid-cb').onchange = e => {
+  showMidLeg = e.target.checked;
+  draw();
+};
 document.getElementById('page-a3').onclick = () => setPage('A3');
 document.getElementById('page-a4').onclick = () => setPage('A4');
 document.getElementById('print').onclick = doPrint;
+document.getElementById('insp-close').onclick = () => {
+  state.selected = null;
+  showInspector(); draw();
+};
 
 // --- boot ------------------------------------------------------------
 resizeOverlay();
