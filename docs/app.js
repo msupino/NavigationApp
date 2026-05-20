@@ -117,7 +117,7 @@ function syncLegs() {
 
 // --- background chart ------------------------------------------------
 // CVFR2020 chart composited and georeferenced by build_map.py.
-const MAP = { xMin: -46.068, xMax: 61.073, zMin: -235.820, zMax: 23.197 };
+const MAP = { xMin: -47.473, xMax: 59.669, zMin: -232.778, zMax: 26.238 };
 const mapImg = new Image();
 let mapReady = false;
 mapImg.onload = () => { mapReady = true; draw(); };
@@ -278,51 +278,50 @@ function drawMinuteMarkers(sa, sb, durH) {
   }
 }
 
-// Aviation-style leg marker: a square (time + altitude) joined to a triangle
-// (heading) that points in the direction of flight. The shape follows the
-// leg; the text is kept upright.
-function drawLegArrow(cx, cy, flightAng, head, time, alt, color) {
-  const H = 32, Lr = 40, Lt = 30, L = Lr + Lt;
-  const xb = L / 2 - Lt;                 // triangle base, flight-local x
+// Navigation leg marker (white pennant): a rectangle carrying altitude and
+// time joined to a triangle carrying the heading, pointing in the direction
+// of flight. Shape follows the leg; text is kept upright.
+function drawLegArrow(cx, cy, flightAng, head, time, alt, accent) {
+  const W = 46, Lr = 38, Lt = 26, L = Lr + Lt;
+  const xb = -L / 2 + Lr;                // rectangle / triangle boundary
 
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(flightAng);
   ctx.beginPath();
-  ctx.moveTo(-L / 2, -H / 2);
-  ctx.lineTo(xb, -H / 2);
-  ctx.lineTo(L / 2, 0);                  // triangle apex
-  ctx.lineTo(xb, H / 2);
-  ctx.lineTo(-L / 2, H / 2);
+  ctx.moveTo(-L / 2, -W / 2);
+  ctx.lineTo(xb, -W / 2);
+  ctx.lineTo(L / 2, 0);                  // triangle apex = flight direction
+  ctx.lineTo(xb, W / 2);
+  ctx.lineTo(-L / 2, W / 2);
   ctx.closePath();
-  ctx.fillStyle = color;
+  ctx.fillStyle = '#ffffff';
   ctx.fill();
-  ctx.lineWidth = 1.5;
-  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = accent;
   ctx.stroke();
-  ctx.beginPath();                       // square / triangle divider
-  ctx.moveTo(xb, -H / 2);
-  ctx.lineTo(xb, H / 2);
-  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  ctx.lineWidth = 1;                     // row dividers
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  for (const dx of [-L / 2 + 16, xb]) {
+    ctx.beginPath();
+    ctx.moveTo(dx, -W / 2);
+    ctx.lineTo(dx, W / 2);
+    ctx.stroke();
+  }
   ctx.restore();
 
-  let ta = flightAng;
+  // text runs across the marker (perpendicular to the flight axis), upright
+  let ta = Math.atan2(Math.sin(flightAng + Math.PI / 2),
+                      Math.cos(flightAng + Math.PI / 2));
   if (ta > Math.PI / 2 || ta < -Math.PI / 2) ta += Math.PI;
   const cos = Math.cos(flightAng), sin = Math.sin(flightAng);
-  const place = (lx, ly) => ({
-    x: cx + lx * cos - ly * sin,
-    y: cy + lx * sin + ly * cos,
-  });
-  const tri = place(xb + Lt * 0.40, 0);
-  const sqX = (-L / 2 + xb) / 2;
-  const s1 = place(sqX, -7);
-  const s2 = place(sqX, 7);
-
-  drawRotText(tri.x, tri.y, ta, head, 'bold 14px sans-serif', '#fff');
-  drawRotText(s1.x, s1.y, ta, time, '10px sans-serif', '#fff');
-  drawRotText(s2.x, s2.y, ta, alt, '10px sans-serif', '#fff');
+  const at = lx => ({ x: cx + lx * cos, y: cy + lx * sin });
+  const pAlt = at(-L / 2 + 8);
+  const pTime = at(-L / 2 + 27);
+  const pHead = at(xb + Lt * 0.42);
+  drawRotText(pAlt.x, pAlt.y, ta, alt, '9px sans-serif', '#333333');
+  drawRotText(pTime.x, pTime.y, ta, time, 'bold 12px sans-serif', '#1a1a1a');
+  drawRotText(pHead.x, pHead.y, ta, head, 'bold 14px sans-serif', accent);
 }
 
 function drawRotText(x, y, ang, text, font, color) {
