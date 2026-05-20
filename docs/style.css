@@ -55,6 +55,18 @@ html, body {
   margin: 0 4px;
 }
 
+#toolbar .navtoggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: #e8e8e8;
+  padding: 0 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#toolbar .navtoggle input { cursor: pointer; margin: 0; }
+
 #inspector {
   position: absolute;
   top: 12px;
