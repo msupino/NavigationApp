@@ -301,13 +301,13 @@ function drawMinuteMarkers(sa, sb, durH) {
   }
 }
 
-// Navigation leg marker (white pennant): three cells — altitude, time,
-// heading — running along the arrow, with a triangle pointing in the flight
-// direction. Text is aligned to the arrow direction.
+// Navigation leg marker: a two-cell rectangle (altitude, time) joined to a
+// triangle (heading) pointing in the flight direction. Text runs across the
+// marker and is locked to its orientation, matching the reference chart.
 function drawLegArrow(cx, cy, flightAng, head, time, alt, accent) {
-  const cell = 36, W = 28, Lt = 22;
-  const L = cell * 3 + Lt;
-  const xb = -L / 2 + cell * 3;          // rectangle / triangle boundary
+  const W = 46, cell = 22, Lt = 26;
+  const Lr = cell * 2, L = Lr + Lt;
+  const xb = -L / 2 + Lr;                // rectangle / triangle boundary
 
   ctx.save();
   ctx.translate(cx, cy);
@@ -319,13 +319,11 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent) {
   ctx.lineTo(xb, W / 2);
   ctx.lineTo(-L / 2, W / 2);
   ctx.closePath();
-  ctx.lineWidth = 2;                     // transparent body — outline only
+  ctx.lineWidth = 2;
   ctx.strokeStyle = accent;
   ctx.stroke();
   ctx.lineWidth = 1;                     // cell dividers
-  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-  for (let k = 1; k < 3; k++) {
-    const dx = -L / 2 + k * cell;
+  for (const dx of [-L / 2 + cell, xb]) {
     ctx.beginPath();
     ctx.moveTo(dx, -W / 2);
     ctx.lineTo(dx, W / 2);
@@ -333,17 +331,16 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent) {
   }
   ctx.restore();
 
-  // text aligned to the arrow direction, kept upright
-  let ta = Math.atan2(Math.sin(flightAng), Math.cos(flightAng));
-  if (ta > Math.PI / 2 || ta < -Math.PI / 2) ta += Math.PI;
+  // text runs across the marker, locked to its orientation (no upright flip)
+  const ta = flightAng + Math.PI / 2;
   const cos = Math.cos(flightAng), sin = Math.sin(flightAng);
   const at = lx => ({ x: cx + lx * cos, y: cy + lx * sin });
-  const cAlt = at(-L / 2 + cell * 0.5);
-  const cTime = at(-L / 2 + cell * 1.5);
-  const cHead = at(-L / 2 + cell * 2.5);
-  drawRotText(cAlt.x, cAlt.y, ta, alt, 'bold 11px sans-serif', '#000000');
-  drawRotText(cTime.x, cTime.y, ta, time, 'bold 12px sans-serif', '#000000');
-  drawRotText(cHead.x, cHead.y, ta, head, 'bold 13px sans-serif', '#000000');
+  const pAlt = at(-L / 2 + cell * 0.5);
+  const pTime = at(-L / 2 + cell * 1.5);
+  const pHead = at(xb + Lt * 0.32);
+  drawRotText(pAlt.x, pAlt.y, ta, alt, 'bold 13px sans-serif', '#000000');
+  drawRotText(pTime.x, pTime.y, ta, time, 'bold 13px sans-serif', '#000000');
+  drawRotText(pHead.x, pHead.y, ta, head, 'bold 14px sans-serif', '#000000');
 }
 
 function drawRotText(x, y, ang, text, font, color) {
