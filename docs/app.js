@@ -280,6 +280,8 @@ function drawRotText(x, y, ang, text, font, color) {
 function drawDistanceBadge(cx, cy, dist) {
   octx.beginPath();
   octx.arc(cx, cy, 15, 0, Math.PI * 2);
+  octx.fillStyle = 'rgba(255,246,170,0.90)';
+  octx.fill();
   octx.lineWidth = 2.5;
   octx.strokeStyle = '#161412';
   octx.stroke();
