@@ -17,8 +17,13 @@ const state = {
 };
 let showReturn = false;     // outbound (return) markers — off by default
 let showMidLeg = true;
+let highlightDiff = true;   // purple halo on legs that change altitude
+let yellowAlpha = 1;        // global multiplier for yellow label backgrounds
 let pageSize = null;        // null | 'A3' | 'A4'
 let pageOrient = 'landscape';   // 'landscape' | 'portrait'
+
+// Yellow text-background colour with the global opacity scale applied.
+const yellowFill = (a) => `rgba(255,246,170,${a * yellowAlpha})`;
 
 const newLeg = () => ({
   inboundAltitude: 2000,
@@ -61,24 +66,41 @@ function fmtLatLng(v, pos, neg) {
 }
 
 // --- Leaflet map -----------------------------------------------------
+// Layer set mirrors ifl.flight-maps.com (excluding Israel Hiking).
 const TILE = { minZoom: 6, maxZoom: 16, maxNativeZoom: 13 };
+const FM_ATTR =
+  'Charts © <a href="https://flight-maps.com">flight-maps.com</a> · CAAI';
 const layers = {
-  CVFR: L.tileLayer('https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png',
-    { ...TILE, attribution: 'Charts © flight-maps.com' }),
-  Nav: L.tileLayer('https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
-    { ...TILE, attribution: 'Charts © flight-maps.com' }),
-  Satellite: L.tileLayer(
+  'CVFR': L.tileLayer('https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png',
+    { ...TILE, attribution: FM_ATTR }),
+  'Nav': L.tileLayer('https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
+    { ...TILE, attribution: FM_ATTR }),
+  'Low Alt': L.tileLayer('https://flight-maps.com/tiles/la/{z}/{x}/{y}.png',
+    { ...TILE, attribution: FM_ATTR }),
+  'Heli': L.tileLayer('https://flight-maps.com/tiles/il-hel/{z}/{x}/{y}.png',
+    { ...TILE, maxNativeZoom: 12, attribution: FM_ATTR }),
+  'Satellite': L.tileLayer(
     'https://services.arcgisonline.com/ArcGIS/rest/services/' +
     'World_Imagery/MapServer/tile/{z}/{y}/{x}',
     { minZoom: 6, maxZoom: 18, attribution: 'Imagery © Esri' }),
+  'OSM': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    { minZoom: 6, maxZoom: 18, subdomains: 'abc',
+      attribution: '© OpenStreetMap contributors' }),
 };
+
+const LAYER_KEY = 'plotter.layer';
+let initialLayer = layers.CVFR;
+try {
+  const saved = localStorage.getItem(LAYER_KEY);
+  if (saved && layers[saved]) initialLayer = layers[saved];
+} catch (e) { /* storage unavailable */ }
 
 const map = L.map('map', {
   center: [32.0, 34.9],
   zoom: 9,
   minZoom: 8,                  // do not zoom out past the chart extent
   maxZoom: 15,
-  layers: [layers.CVFR],
+  layers: [initialLayer],
   zoomControl: false,
   zoomAnimation: false,        // keep the canvas overlay in sync
   zoomSnap: 0.25,
@@ -91,6 +113,10 @@ const map = L.map('map', {
 });
 L.control.zoom({ position: 'bottomright' }).addTo(map);
 L.control.layers(layers, null, { position: 'bottomright' }).addTo(map);
+map.on('baselayerchange', e => {
+  try { localStorage.setItem(LAYER_KEY, e.name); }
+  catch (err) { /* storage unavailable */ }
+});
 
 // --- route overlay canvas -------------------------------------------
 const overlay = document.getElementById('overlay');
@@ -171,12 +197,12 @@ function drawLegs() {
     const outP = leg.outLabel || { a: 0, p: -44 };
     drawLegArrow(mid.x + dx * inP.a + nx * inP.p, mid.y + dy * inP.a + ny * inP.p,
       ang, pad3(magIn), timeStr, String(leg.inboundAltitude),
-      '#2f6fd0', 'rgba(255,246,170,0.80)');
+      '#2f6fd0', yellowFill(0.80), isAltChange(i, 'in'));
     if (showReturn) {
       drawLegArrow(mid.x + dx * outP.a + nx * outP.p,
         mid.y + dy * outP.a + ny * outP.p, ang + Math.PI,
         pad3(magOut), timeStr, String(leg.outboundAltitude),
-        '#c0392b', 'rgba(255,204,214,0.80)');
+        '#c0392b', 'rgba(255,204,214,0.80)', isAltChange(i, 'out'));
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
   }
@@ -236,10 +262,24 @@ function drawMinuteMarkers(sa, sb, durH) {
   octx.textAlign = 'left';
 }
 
+// Altitude diff: leg's flown altitude differs from the adjacent leg's, so a
+// climb/descent happens here. 'in'  -> inbound vs previous leg's inbound,
+// 'out' -> outbound vs next leg's outbound (return-direction).
+function isAltChange(i, which) {
+  if (!highlightDiff) return false;
+  const cur = state.legs[i];
+  if (which === 'in') {
+    if (i === 0) return false;
+    return cur.inboundAltitude !== state.legs[i - 1].inboundAltitude;
+  }
+  if (i === state.legs.length - 1) return false;
+  return cur.outboundAltitude !== state.legs[i + 1].outboundAltitude;
+}
+
 // Navigation leg marker: a two-cell rectangle (altitude, time) joined to a
 // triangle (heading) pointing in the flight direction. Text runs across the
 // marker and is locked to its orientation.
-function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill) {
+function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo) {
   const W = 46, cell = 22, Lt = 26;
   const Lr = cell * 2, L = Lr + Lt;
   const xb = -L / 2 + Lr;
@@ -254,6 +294,13 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill) {
   octx.lineTo(xb, W / 2);
   octx.lineTo(-L / 2, W / 2);
   octx.closePath();
+  if (halo) {                            // purple band around the marker
+    octx.lineJoin = 'round';
+    octx.lineWidth = 7;
+    octx.strokeStyle = '#8e44ad';
+    octx.stroke();
+    octx.lineJoin = 'miter';
+  }
   octx.fillStyle = fill;
   octx.fill();
   octx.lineWidth = 2;
@@ -294,7 +341,7 @@ function drawRotText(x, y, ang, text, font, color) {
 function drawDistanceBadge(cx, cy, dist) {
   octx.beginPath();
   octx.arc(cx, cy, 15, 0, Math.PI * 2);
-  octx.fillStyle = 'rgba(255,246,170,0.90)';
+  octx.fillStyle = yellowFill(0.90);
   octx.fill();
   octx.lineWidth = 2.5;
   octx.strokeStyle = '#161412';
@@ -309,19 +356,27 @@ function drawDistanceBadge(cx, cy, dist) {
 
 const WP_RADIUS = 13;
 
+// Label to draw inside a waypoint circle, plus the radius needed to fit it.
+function waypointGeom(i) {
+  const wp = state.waypoints[i];
+  const label = (wp.name || '').trim() || String(i + 1);
+  octx.font = 'bold 13px sans-serif';
+  const w = octx.measureText(label).width;
+  return { label, r: Math.max(WP_RADIUS, w / 2 + 9) };
+}
+
 function drawWaypoints() {
   for (let i = 0; i < state.waypoints.length; i++) {
-    const wp = state.waypoints[i];
-    const s = proj(wp);
+    const s = proj(state.waypoints[i]);
     const selected = state.selected &&
                      state.selected.type === 'wp' &&
                      state.selected.index === i;
-    const r = selected ? WP_RADIUS + 2 : WP_RADIUS;
+    const { label, r } = waypointGeom(i);
+    const radius = selected ? r + 2 : r;
 
-    // point circle with the sequence number
     octx.beginPath();
-    octx.arc(s.x, s.y, r, 0, Math.PI * 2);
-    octx.fillStyle = selected ? '#ffcc33' : 'rgba(255,246,170,0.60)';
+    octx.arc(s.x, s.y, radius, 0, Math.PI * 2);
+    octx.fillStyle = selected ? '#ffcc33' : yellowFill(0.60);
     octx.fill();
     octx.lineWidth = 3;
     octx.strokeStyle = '#161412';
@@ -330,24 +385,7 @@ function drawWaypoints() {
     octx.fillStyle = '#161412';
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
-    octx.fillText(String(i + 1), s.x, s.y);
-
-    // name label above the circle — black on translucent yellow
-    const name = (wp.name || '').trim();
-    if (name) {
-      octx.font = 'bold 12px sans-serif';
-      const bw = octx.measureText(name).width + 12;
-      const bh = 19;
-      const bx = s.x - bw / 2;
-      const by = s.y - r - 5 - bh;
-      octx.fillStyle = 'rgba(255,246,170,0.80)';
-      octx.fillRect(bx, by, bw, bh);
-      octx.lineWidth = 1.5;
-      octx.strokeStyle = '#161412';
-      octx.strokeRect(bx, by, bw, bh);
-      octx.fillStyle = '#161412';
-      octx.fillText(name, s.x, by + bh / 2 + 1);
-    }
+    octx.fillText(label, s.x, s.y);
     octx.textAlign = 'left';
   }
 }
@@ -411,7 +449,7 @@ function drawPageFrame() {
 function hitWaypoint(px, py) {
   for (let i = state.waypoints.length - 1; i >= 0; i--) {
     const s = proj(state.waypoints[i]);
-    if (Math.hypot(s.x - px, s.y - py) <= WP_RADIUS + 6) return i;
+    if (Math.hypot(s.x - px, s.y - py) <= waypointGeom(i).r + 6) return i;
   }
   return -1;
 }
@@ -469,7 +507,10 @@ function showInspector() {
 
   if (state.selected.type === 'leg') {
     const leg = state.legs[state.selected.index];
-    title.textContent = 'Leg ' + (state.selected.index + 1);
+    title.value = 'Leg ' + (state.selected.index + 1);
+    title.placeholder = '';
+    title.readOnly = true;
+    title.oninput = null;
     body.appendChild(numberRow('Speed (kt)', leg.flightSpeed, v => {
       leg.flightSpeed = v > 0 ? v : leg.flightSpeed; draw();
     }));
@@ -481,11 +522,10 @@ function showInspector() {
     }));
   } else {
     const wp = state.waypoints[state.selected.index];
-    title.textContent = (wp.name && wp.name.trim())
-      ? wp.name.trim() : 'WP ' + (state.selected.index + 1);
-    body.appendChild(textInputRow('Name', wp.name || '', v => {
-      wp.name = v; draw();
-    }));
+    title.value = wp.name || '';
+    title.placeholder = 'WP ' + (state.selected.index + 1);
+    title.readOnly = false;
+    title.oninput = () => { wp.name = title.value; draw(); };
     body.appendChild(textRow('Latitude', fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow('Longitude', fmtLatLng(wp.lng, 'E', 'W')));
     const del = document.createElement('button');
@@ -623,6 +663,10 @@ map.on('click', e => {
 });
 
 window.addEventListener('keydown', e => {
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+    return;                              // typing in a field — leave the WP alone
+  }
   if ((e.key === 'Delete' || e.key === 'Backspace') &&
       state.selected && state.selected.type === 'wp') {
     state.waypoints.splice(state.selected.index, 1);
@@ -767,8 +811,9 @@ function applyPage() {
     st.id = 'page-style';
     document.head.appendChild(st);
   }
+  // margin: 0 so the dashed frame on screen matches the printed area 1:1
   st.textContent = '@page { size: ' + (pageSize || 'A4') + ' ' +
-                   pageOrient + '; margin: 6mm; }';
+                   pageOrient + '; margin: 0; }';
   draw();
 }
 
@@ -814,9 +859,33 @@ function chooseOrientation(size, onPick) {
 }
 
 function doPrint() {
+  const frame = pageFrameRect();        // null when no page size picked
   printing = true;
-  draw();
+  draw();                                // hides the on-screen page frame
+
+  const root = document.documentElement;
+  if (frame) {
+    // Crop the printed body to the frame rectangle, and offset the map/overlay
+    // so only that region is visible. The browser scales the body to fit the
+    // chosen @page size, giving 1:250,000 on paper.
+    root.style.setProperty('--print-vw', window.innerWidth + 'px');
+    root.style.setProperty('--print-vh', window.innerHeight + 'px');
+    root.style.setProperty('--print-fx', (-frame.x) + 'px');
+    root.style.setProperty('--print-fy', (-frame.y) + 'px');
+    root.style.setProperty('--print-fw', frame.w + 'px');
+    root.style.setProperty('--print-fh', frame.h + 'px');
+    root.classList.add('print-frame');
+  }
+
   window.print();
+
+  if (frame) {
+    root.classList.remove('print-frame');
+    for (const k of ['--print-vw', '--print-vh', '--print-fx',
+                     '--print-fy', '--print-fw', '--print-fh']) {
+      root.style.removeProperty(k);
+    }
+  }
   printing = false;
   draw();
 }
@@ -898,6 +967,22 @@ document.getElementById('mid-cb').onchange = e => {
   showMidLeg = e.target.checked;
   draw();
 };
+document.getElementById('diff-cb').onchange = e => {
+  highlightDiff = e.target.checked;
+  draw();
+};
+const ALPHA_KEY = 'plotter.yellowAlpha';
+try {
+  const v = parseFloat(localStorage.getItem(ALPHA_KEY));
+  if (!isNaN(v)) yellowAlpha = Math.max(0, Math.min(1, v));
+} catch (e) { /* storage unavailable */ }
+document.getElementById('yellow-alpha').value = yellowAlpha;
+document.getElementById('yellow-alpha').oninput = e => {
+  yellowAlpha = parseFloat(e.target.value);
+  try { localStorage.setItem(ALPHA_KEY, String(yellowAlpha)); }
+  catch (err) { /* storage unavailable */ }
+  draw();
+};
 document.getElementById('page-a3').onclick = () => setPage('A3');
 document.getElementById('page-a4').onclick = () => setPage('A4');
 document.getElementById('print').onclick = doPrint;
@@ -905,6 +990,88 @@ document.getElementById('insp-close').onclick = () => {
   state.selected = null;
   showInspector(); draw();
 };
+
+// --- toolbar drag ----------------------------------------------------
+(function makeToolbarDraggable() {
+  const bar = document.getElementById('toolbar');
+  const handle = document.getElementById('toolbar-handle');
+  const KEY = 'plotter.toolbarPos';
+  let dx = 0, dy = 0, dragging = false;
+
+  function clampPos(x, y) {
+    const w = bar.offsetWidth, h = bar.offsetHeight;
+    return {
+      x: Math.max(8, Math.min(window.innerWidth - w - 8, x)),
+      y: Math.max(8, Math.min(window.innerHeight - h - 8, y)),
+    };
+  }
+  function setPos(x, y) {
+    const c = clampPos(x, y);
+    bar.style.left = c.x + 'px';
+    bar.style.top = c.y + 'px';
+    bar.style.right = 'auto';
+  }
+
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      requestAnimationFrame(() => setPos(p.x, p.y));
+    }
+  } catch (e) { /* storage unavailable */ }
+
+  function start(cx, cy) {
+    const r = bar.getBoundingClientRect();
+    dx = cx - r.left;
+    dy = cy - r.top;
+    dragging = true;
+    bar.classList.add('dragging');
+  }
+  function move(cx, cy) {
+    if (!dragging) return;
+    setPos(cx - dx, cy - dy);
+  }
+  function end() {
+    if (!dragging) return;
+    dragging = false;
+    bar.classList.remove('dragging');
+    const r = bar.getBoundingClientRect();
+    try { localStorage.setItem(KEY, JSON.stringify({ x: r.left, y: r.top })); }
+    catch (e) { /* storage unavailable */ }
+  }
+
+  handle.addEventListener('mousedown', e => {
+    e.preventDefault();
+    start(e.clientX, e.clientY);
+    const onMove = ev => move(ev.clientX, ev.clientY);
+    const onUp = () => {
+      end();
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  });
+
+  handle.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    start(t.clientX, t.clientY);
+  }, { passive: false });
+  window.addEventListener('touchmove', e => {
+    if (!dragging || e.touches.length !== 1) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    move(t.clientX, t.clientY);
+  }, { passive: false });
+  window.addEventListener('touchend', end);
+  window.addEventListener('touchcancel', end);
+
+  window.addEventListener('resize', () => {
+    if (bar.style.left) setPos(parseFloat(bar.style.left), parseFloat(bar.style.top));
+  });
+})();
 
 // --- boot ------------------------------------------------------------
 resizeOverlay();
