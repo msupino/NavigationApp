@@ -27,3 +27,19 @@ Conversion rates, magnetic deviation, and time formatting are ported from
 `Assets/Scripts/Main.cs`. Origin is 33°N 35°E; the graticule is one cell per
 10′ of latitude/longitude. Distance and bearing use a spherical great-circle
 calculation.
+
+## Background chart
+
+`map.jpg` is the Israel CVFR2020 chart, composited from the four
+`Assets/Resources/CVFR2020/cvfr_pt*.png` slices by `build_map.py`. It is
+georeferenced from the chart's own lat/lon graticule into the scene-coordinate
+model, so waypoints align with the chart. To rebuild:
+
+```bash
+pip install Pillow
+cd docs && python build_map.py        # writes map.jpg + prints MAP_BOUNDS
+```
+
+If the chart drifts relative to dropped waypoints, adjust the graticule
+reference pixels in `build_map.py` and copy the printed `MAP_BOUNDS` into
+`app.js`.
