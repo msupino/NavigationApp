@@ -6,7 +6,7 @@
  * ------------------------------------------------------------------ */
 
 const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
-const MAG_DEV = -5;                    // fixed magnetic deviation
+let magVar = 5;                        // magnetic variation, ° east (Israel ≈ 5°E)
 
 // --- model -----------------------------------------------------------
 const state = {
@@ -20,6 +20,7 @@ let showReturn = false;     // outbound (return) markers — off by default
 let showMidLeg = true;
 let highlightDiff = true;   // purple halo on legs that change altitude
 let yellowAlpha = 1;        // global multiplier for yellow label backgrounds
+let wpSize = 1;             // waypoint name / number text size scale
 let pageSize = null;        // null | 'A3' | 'A4'
 let pageOrient = 'landscape';   // 'landscape' | 'portrait'
 
@@ -48,7 +49,8 @@ function geo(a, b) {                   // a,b = {lat,lng} -> {dist NM, brg deg}
   return { dist, brg: ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360 };
 }
 function toMagnetic(deg) {
-  return (((Math.round(deg) + MAG_DEV) % 360) + 360) % 360;
+  // Magnetic = True − east variation (positive magVar shifts headings west).
+  return ((Math.round(deg - magVar) % 360) + 360) % 360;
 }
 const pad3 = n => String(n).padStart(3, '0');
 function toHMS(hours) {
@@ -358,13 +360,16 @@ function drawDistanceBadge(cx, cy, dist) {
 
 const WP_RADIUS = 13;
 
-// Label to draw inside a waypoint circle, plus the radius needed to fit it.
+// Label to draw inside a waypoint circle, plus the radius and font px
+// needed to fit it. Scaled by the global `wpSize` slider.
 function waypointGeom(i) {
   const wp = state.waypoints[i];
   const label = (wp.name || '').trim() || String(i + 1);
-  octx.font = 'bold 13px sans-serif';
+  const fontPx = Math.max(8, Math.round(13 * wpSize));
+  octx.font = `bold ${fontPx}px sans-serif`;
   const w = octx.measureText(label).width;
-  return { label, r: Math.max(WP_RADIUS, w / 2 + 9) };
+  const minR = WP_RADIUS * wpSize;
+  return { label, fontPx, r: Math.max(minR, w / 2 + fontPx * 0.7) };
 }
 
 function drawWaypoints() {
@@ -373,7 +378,7 @@ function drawWaypoints() {
     const selected = state.selected &&
                      state.selected.type === 'wp' &&
                      state.selected.index === i;
-    const { label, r } = waypointGeom(i);
+    const { label, fontPx, r } = waypointGeom(i);
     const radius = selected ? r + 2 : r;
 
     octx.beginPath();
@@ -383,7 +388,7 @@ function drawWaypoints() {
     octx.lineWidth = 3;
     octx.strokeStyle = '#161412';
     octx.stroke();
-    octx.font = 'bold 13px sans-serif';
+    octx.font = `bold ${fontPx}px sans-serif`;
     octx.fillStyle = '#161412';
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
@@ -951,6 +956,105 @@ function setPage(size) {
   });
 }
 
+// --- flight plan table -----------------------------------------------
+function wpLabel(i) {
+  const wp = state.waypoints[i];
+  if (!wp) return '';
+  const n = (wp.name || '').trim();
+  return n || ('WP ' + (i + 1));
+}
+
+function showFlightPlan() {
+  if (state.legs.length === 0) {
+    alert('No legs yet — drop at least two waypoints first.');
+    return;
+  }
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  const box = document.createElement('div');
+  box.className = 'modal wide';
+
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = 'Flight plan';
+  box.appendChild(title);
+
+  const table = document.createElement('table');
+  table.className = 'flight-table';
+  const headers = ['#', 'From', 'To', 'Hdg', 'Dist (NM)',
+                   'Speed (kt)', 'Alt (ft)', 'Time'];
+  const thead = document.createElement('thead');
+  const trH = document.createElement('tr');
+  for (const h of headers) {
+    const th = document.createElement('th');
+    th.textContent = h;
+    trH.appendChild(th);
+  }
+  thead.appendChild(trH);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  let totalDist = 0, totalH = 0;
+  for (let i = 0; i < state.legs.length; i++) {
+    const A = state.waypoints[i], B = state.waypoints[i + 1];
+    const leg = state.legs[i];
+    const { dist, brg } = geo(A, B);
+    const durH = leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
+    totalDist += dist;
+    totalH += durH;
+    tbody.appendChild(planRow([
+      String(i + 1),
+      wpLabel(i),
+      wpLabel(i + 1),
+      pad3(toMagnetic(brg)) + '°M',
+      dist.toFixed(1),
+      String(leg.flightSpeed),
+      String(leg.inboundAltitude),
+      durH > 0 ? toHMS(durH) : '--',
+    ]));
+  }
+  table.appendChild(tbody);
+
+  const tfoot = document.createElement('tfoot');
+  const trF = document.createElement('tr');
+  const tdLabel = document.createElement('td');
+  tdLabel.colSpan = 4;
+  tdLabel.textContent = 'Total';
+  trF.appendChild(tdLabel);
+  for (const v of [totalDist.toFixed(1), '', '',
+                   totalH > 0 ? toHMS(totalH) : '--']) {
+    const td = document.createElement('td');
+    td.textContent = v;
+    trF.appendChild(td);
+  }
+  tfoot.appendChild(trF);
+  table.appendChild(tfoot);
+  box.appendChild(table);
+
+  const btns = document.createElement('div');
+  btns.className = 'modal-btns';
+  const close = document.createElement('button');
+  close.textContent = 'Close';
+  close.className = 'modal-cancel';
+  close.onclick = () => back.remove();
+  btns.appendChild(close);
+  box.appendChild(btns);
+
+  back.appendChild(box);
+  back.onclick = e => { if (e.target === back) back.remove(); };
+  document.body.appendChild(back);
+}
+
+function planRow(cells) {
+  const tr = document.createElement('tr');
+  for (const c of cells) {
+    const td = document.createElement('td');
+    td.textContent = c;
+    tr.appendChild(td);
+  }
+  return tr;
+}
+
 // Modal: pick Landscape or Portrait (named buttons, not OK/Cancel).
 function chooseOrientation(size, onPick) {
   const back = document.createElement('div');
@@ -1097,6 +1201,7 @@ document.getElementById('file').onchange = e => {
   e.target.value = '';
 };
 document.getElementById('fit').onclick = fitView;
+document.getElementById('plan').onclick = showFlightPlan;
 document.getElementById('ret-cb').onchange = e => {
   showReturn = e.target.checked;
   draw();
@@ -1118,6 +1223,32 @@ document.getElementById('yellow-alpha').value = yellowAlpha;
 document.getElementById('yellow-alpha').oninput = e => {
   yellowAlpha = parseFloat(e.target.value);
   try { localStorage.setItem(ALPHA_KEY, String(yellowAlpha)); }
+  catch (err) { /* storage unavailable */ }
+  draw();
+};
+const WPSIZE_KEY = 'plotter.wpSize';
+try {
+  const v = parseFloat(localStorage.getItem(WPSIZE_KEY));
+  if (!isNaN(v)) wpSize = Math.max(0.6, Math.min(2, v));
+} catch (e) { /* storage unavailable */ }
+document.getElementById('wp-size').value = wpSize;
+document.getElementById('wp-size').oninput = e => {
+  wpSize = parseFloat(e.target.value);
+  try { localStorage.setItem(WPSIZE_KEY, String(wpSize)); }
+  catch (err) { /* storage unavailable */ }
+  draw();
+};
+const MAGVAR_KEY = 'plotter.magVar';
+try {
+  const v = parseFloat(localStorage.getItem(MAGVAR_KEY));
+  if (!isNaN(v)) magVar = Math.max(-30, Math.min(30, v));
+} catch (e) { /* storage unavailable */ }
+document.getElementById('mag-var').value = magVar;
+document.getElementById('mag-var').oninput = e => {
+  const v = parseFloat(e.target.value);
+  if (isNaN(v)) return;
+  magVar = Math.max(-30, Math.min(30, v));
+  try { localStorage.setItem(MAGVAR_KEY, String(magVar)); }
   catch (err) { /* storage unavailable */ }
   draw();
 };
