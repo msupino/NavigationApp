@@ -28,6 +28,8 @@ const newLeg = () => ({
   outboundAltitude: 2000,
   flightSpeed: 90,
   drawMidLegIndication: true,
+  inLabel: { a: 0, p: 40 },              // marker offset: along leg, perpendicular
+  outLabel: { a: 0, p: -40 },
 });
 
 // --- geo helpers (port of Main.cs static methods) --------------------
@@ -126,6 +128,9 @@ mapImg.src = 'map.jpg';
 // --- navigation waypoints (published VFR reporting points) -----------
 let navWaypoints = [];                 // [{ name, x, z }]
 let showNav = false;                   // off by default — overlay not yet accurate
+let showReturn = true;                 // outbound (return) leg markers
+let printFrame = null;                 // null | 'A3' | 'A4'
+let printing = false;                  // true while rendering for PNG export
 fetch('nav-waypoints.json')
   .then(r => r.json())
   .then(d => {
@@ -148,6 +153,7 @@ function draw() {
   drawLegs();
   drawWaypoints();
   drawInfo();
+  if (!printing) drawPrintFrame();
   persist();
 }
 
@@ -249,11 +255,17 @@ function drawLegs() {
     const len = Math.hypot(dx, dy) || 1;
     dx /= len; dy /= len;
     const nx = -dy, ny = dx;
-    const off = 40;
-    drawLegArrow(mid.x + nx * off, mid.y + ny * off, ang,
-      pad3(magIn), timeStr, String(leg.inboundAltitude), '#2f6fd0');
-    drawLegArrow(mid.x - nx * off, mid.y - ny * off, ang + Math.PI,
-      pad3(magOut), timeStr, String(leg.outboundAltitude), '#c0392b');
+    const inP = leg.inLabel || { a: 0, p: 40 };
+    const outP = leg.outLabel || { a: 0, p: -40 };
+    drawLegArrow(mid.x + dx * inP.a + nx * inP.p, mid.y + dy * inP.a + ny * inP.p,
+      ang, pad3(magIn), timeStr, String(leg.inboundAltitude),
+      '#2f6fd0', 'rgba(255,246,170,0.80)');
+    if (showReturn) {
+      drawLegArrow(mid.x + dx * outP.a + nx * outP.p,
+        mid.y + dy * outP.a + ny * outP.p, ang + Math.PI,
+        pad3(magOut), timeStr, String(leg.outboundAltitude),
+        '#c0392b', 'rgba(255,204,214,0.80)');
+    }
 
     if (leg.drawMidLegIndication) drawDistanceBadge(mid.x, mid.y, dist);
   }
@@ -304,7 +316,7 @@ function drawMinuteMarkers(sa, sb, durH) {
 // Navigation leg marker: a two-cell rectangle (altitude, time) joined to a
 // triangle (heading) pointing in the flight direction. Text runs across the
 // marker and is locked to its orientation, matching the reference chart.
-function drawLegArrow(cx, cy, flightAng, head, time, alt, accent) {
+function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill) {
   const W = 46, cell = 22, Lt = 26;
   const Lr = cell * 2, L = Lr + Lt;
   const xb = -L / 2 + Lr;                // rectangle / triangle boundary
@@ -319,6 +331,8 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent) {
   ctx.lineTo(xb, W / 2);
   ctx.lineTo(-L / 2, W / 2);
   ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
   ctx.lineWidth = 2;
   ctx.strokeStyle = accent;
   ctx.stroke();
@@ -433,6 +447,37 @@ function distToSegment(px, py, a, b) {
   return Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy));
 }
 
+// Screen-space leg-direction frame: midpoint, unit direction, perpendicular.
+function legFrame(i) {
+  const a = s2p(state.waypoints[i]);
+  const b = s2p(state.waypoints[i + 1]);
+  let dx = b.x - a.x, dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  dx /= len; dy /= len;
+  return { mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2,
+           dx, dy, nx: -dy, ny: dx };
+}
+
+function legLabelCenter(i, which) {
+  if (!state.waypoints[i] || !state.waypoints[i + 1]) return null;
+  const f = legFrame(i);
+  const o = (which === 'in' ? state.legs[i].inLabel : state.legs[i].outLabel)
+            || { a: 0, p: 0 };
+  return { x: f.mx + f.dx * o.a + f.nx * o.p,
+           y: f.my + f.dy * o.a + f.ny * o.p };
+}
+
+function hitLegLabel(px, py) {
+  for (let i = 0; i < state.legs.length; i++) {
+    for (const which of ['in', 'out']) {
+      if (which === 'out' && !showReturn) continue;
+      const c = legLabelCenter(i, which);
+      if (c && Math.hypot(c.x - px, c.y - py) <= 34) return { i, which };
+    }
+  }
+  return null;
+}
+
 // --- inspector -------------------------------------------------------
 function showInspector() {
   const insp = document.getElementById('inspector');
@@ -529,6 +574,15 @@ canvas.addEventListener('pointerdown', e => {
     showInspector(); draw();
     return;
   }
+  const lab = hitLegLabel(px, py);
+  if (lab) {
+    const f = legFrame(lab.i);
+    drag = { kind: 'label', i: lab.i, which: lab.which, lx: px, ly: py,
+             dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
+    state.selected = { type: 'leg', index: lab.i };
+    showInspector(); draw();
+    return;
+  }
   const leg = hitLeg(px, py);
   if (leg >= 0) {
     state.selected = { type: 'leg', index: leg };
@@ -550,6 +604,14 @@ canvas.addEventListener('pointermove', e => {
     drag.moved = true;
     state.waypoints[drag.index] = p2s(px, py);
     draw(); showInspector();
+  } else if (drag.kind === 'label') {
+    const ddx = px - drag.lx, ddy = py - drag.ly;
+    drag.lx = px; drag.ly = py;
+    const leg = state.legs[drag.i];
+    const o = drag.which === 'in' ? leg.inLabel : leg.outLabel;
+    o.a += ddx * drag.dx + ddy * drag.dy;       // project onto leg axes
+    o.p += ddx * drag.nx + ddy * drag.ny;
+    draw();
   } else {
     const ddx = px - drag.sx, ddy = py - drag.sy;
     if (Math.abs(ddx) > 3 || Math.abs(ddy) > 3) drag.moved = true;
@@ -651,6 +713,8 @@ function load(file) {
         outboundAltitude: l.outboundAltitude ?? 2000,
         flightSpeed: l.flightSpeed > 0 ? l.flightSpeed : 90,
         drawMidLegIndication: l.drawMidLegIndication ?? true,
+        inLabel: l.inLabel || { a: 0, p: 40 },
+        outLabel: l.outLabel || { a: 0, p: -40 },
       }));
       syncLegs();
       state.selected = null;
@@ -697,6 +761,13 @@ document.getElementById('nav-cb').onchange = e => {
   showNav = e.target.checked;
   draw();
 };
+document.getElementById('ret-cb').onchange = e => {
+  showReturn = e.target.checked;
+  draw();
+};
+document.getElementById('fit-a3').onclick = () => setPrintFrame('A3');
+document.getElementById('fit-a4').onclick = () => setPrintFrame('A4');
+document.getElementById('print').onclick = printPNG;
 
 function defaultView() {
   state.cam.x = (MAP.xMin + MAP.xMax) / 2;
@@ -704,6 +775,82 @@ function defaultView() {
   const fit = vw() / (MAP.xMax - MAP.xMin);
   state.cam.scale = Math.max(0.4, Math.min(400, fit));
   draw();
+}
+
+// --- print frame (A3 / A4) ------------------------------------------
+const A_RATIO = 1 / Math.SQRT2;        // A-series width / height, portrait
+
+function printFrameRect() {
+  if (!printFrame) return null;
+  const margin = printFrame === 'A3' ? 0.96 : 0.72;
+  let h = vh() * margin;
+  let w = h * A_RATIO;
+  if (w > vw() * margin) { w = vw() * margin; h = w / A_RATIO; }
+  return { x: (vw() - w) / 2, y: (vh() - h) / 2, w, h };
+}
+
+function drawPrintFrame() {
+  const r = printFrameRect();
+  if (!r) return;
+  ctx.save();
+  ctx.fillStyle = 'rgba(20,18,18,0.45)';   // dim outside the page
+  ctx.beginPath();
+  ctx.rect(0, 0, vw(), vh());
+  ctx.rect(r.x, r.y, r.w, r.h);
+  ctx.fill('evenodd');
+  ctx.strokeStyle = '#ffcc33';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 5]);
+  ctx.strokeRect(r.x, r.y, r.w, r.h);
+  ctx.restore();
+}
+
+function fitToFrame() {
+  const r = printFrameRect();
+  if (!r) return;
+  let minX, maxX, minZ, maxZ;
+  if (state.waypoints.length) {
+    const xs = state.waypoints.map(w => w.x);
+    const zs = state.waypoints.map(w => w.z);
+    minX = Math.min(...xs); maxX = Math.max(...xs);
+    minZ = Math.min(...zs); maxZ = Math.max(...zs);
+  } else {
+    minX = MAP.xMin; maxX = MAP.xMax; minZ = MAP.zMin; maxZ = MAP.zMax;
+  }
+  const spanX = Math.max(maxX - minX, 1), spanZ = Math.max(maxZ - minZ, 1);
+  state.cam.scale = Math.max(0.4, Math.min(400,
+    Math.min(r.w / spanX, r.h / spanZ) * 0.92));
+  const fcx = r.x + r.w / 2, fcy = r.y + r.h / 2;
+  state.cam.x = (minX + maxX) / 2 - (fcx - vw() / 2) / state.cam.scale;
+  state.cam.z = (minZ + maxZ) / 2 + (fcy - vh() / 2) / state.cam.scale;
+}
+
+function setPrintFrame(size) {
+  printFrame = printFrame === size ? null : size;   // same button toggles off
+  if (printFrame) fitToFrame();
+  draw();
+}
+
+// Export the framed area (or the whole view) as a PNG download.
+function printPNG() {
+  const r = printFrameRect() || { x: 0, y: 0, w: vw(), h: vh() };
+  printing = true;
+  draw();                              // clean render without the frame overlay
+  const out = document.createElement('canvas');
+  out.width = Math.round(r.w * dpr);
+  out.height = Math.round(r.h * dpr);
+  out.getContext('2d').drawImage(
+    canvas, r.x * dpr, r.y * dpr, r.w * dpr, r.h * dpr,
+    0, 0, out.width, out.height);
+  printing = false;
+  draw();                              // restore the frame overlay
+  out.toBlob(b => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = 'plotter-' + (printFrame || 'view') + '.png';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }, 'image/png');
 }
 
 // --- route persistence (survives page reload) ------------------------
@@ -735,6 +882,8 @@ function restoreRoute() {
       outboundAltitude: l.outboundAltitude ?? 2000,
       flightSpeed: l.flightSpeed > 0 ? l.flightSpeed : 90,
       drawMidLegIndication: l.drawMidLegIndication ?? true,
+      inLabel: l.inLabel || { a: 0, p: 40 },
+      outLabel: l.outLabel || { a: 0, p: -40 },
     }));
     syncLegs();
     if (d.cam && isFinite(d.cam.x) && isFinite(d.cam.z) && d.cam.scale > 0) {
