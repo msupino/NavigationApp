@@ -125,7 +125,7 @@ mapImg.src = 'map.jpg';
 
 // --- navigation waypoints (published VFR reporting points) -----------
 let navWaypoints = [];                 // [{ name, x, z }]
-let showNav = true;
+let showNav = false;                   // off by default — overlay not yet accurate
 fetch('nav-waypoints.json')
   .then(r => r.json())
   .then(d => {
