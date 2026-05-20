@@ -240,7 +240,7 @@ function drawLegs() {
     const magOut = (magIn + 180) % 360;
     const timeStr = durH > 0 ? toHMS(durH) : '--';
 
-    if (leg.drawMidLegIndication) drawMinuteMarkers(sa, sb, durH);
+    drawMinuteMarkers(sa, sb, durH);
 
     // info boxes rotated parallel to the leg, one on each side
     const ang = Math.atan2(sb.y - sa.y, sb.x - sa.x);
@@ -255,7 +255,7 @@ function drawLegs() {
     drawLegArrow(mid.x - nx * off, mid.y - ny * off, ang + Math.PI,
       pad3(magOut), timeStr, String(leg.outboundAltitude), '#c0392b');
 
-    drawDistanceBadge(mid.x, mid.y, dist);
+    if (leg.drawMidLegIndication) drawDistanceBadge(mid.x, mid.y, dist);
   }
 }
 
