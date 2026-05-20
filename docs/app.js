@@ -573,6 +573,20 @@ function hitLegLabel(px, py) {
 }
 
 // --- inspector -------------------------------------------------------
+// When an altitude is edited on leg `i`, propagate the new value to legs
+// that currently share the OLD value, walking outward in the natural
+// flight direction for that altitude (inbound forward, outbound backward).
+// Stops at the first leg that already differs, so intentional level
+// changes downstream are preserved.
+function propagateAlt(i, key, newVal, oldVal) {
+  if (newVal === oldVal) return;
+  const dir = key === 'inboundAltitude' ? 1 : -1;
+  for (let j = i + dir; j >= 0 && j < state.legs.length; j += dir) {
+    if (state.legs[j][key] !== oldVal) break;
+    state.legs[j][key] = newVal;
+  }
+}
+
 function showInspector() {
   const insp = document.getElementById('inspector');
   const title = document.getElementById('insp-title');
@@ -582,8 +596,9 @@ function showInspector() {
   insp.classList.remove('hidden');
 
   if (state.selected.type === 'leg') {
-    const leg = state.legs[state.selected.index];
-    title.value = 'Leg ' + (state.selected.index + 1);
+    const idx = state.selected.index;
+    const leg = state.legs[idx];
+    title.value = 'Leg ' + (idx + 1);
     title.placeholder = '';
     title.readOnly = true;
     title.oninput = null;
@@ -591,10 +606,16 @@ function showInspector() {
       leg.flightSpeed = v > 0 ? v : leg.flightSpeed; draw();
     }));
     body.appendChild(numberRow('Inbound alt (ft)', leg.inboundAltitude, v => {
-      leg.inboundAltitude = Math.round(v); draw();
+      const oldVal = leg.inboundAltitude;
+      leg.inboundAltitude = Math.round(v);
+      propagateAlt(idx, 'inboundAltitude', leg.inboundAltitude, oldVal);
+      draw();
     }));
     body.appendChild(numberRow('Outbound alt (ft)', leg.outboundAltitude, v => {
-      leg.outboundAltitude = Math.round(v); draw();
+      const oldVal = leg.outboundAltitude;
+      leg.outboundAltitude = Math.round(v);
+      propagateAlt(idx, 'outboundAltitude', leg.outboundAltitude, oldVal);
+      draw();
     }));
   } else if (state.selected.type === 'note') {
     const note = state.notes[state.selected.index];
