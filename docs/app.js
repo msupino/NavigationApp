@@ -353,9 +353,6 @@ function drawRotText(x, y, ang, text, font, color) {
   ctx.font = font;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.lineWidth = 3;                      // halo for legibility over the chart
-  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-  ctx.strokeText(text, 0, 0);
   ctx.fillStyle = color;
   ctx.fillText(text, 0, 0);
   ctx.restore();
