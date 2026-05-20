@@ -12,14 +12,22 @@ html, body {
 #map {
   position: absolute;
   inset: 0;
-  display: block;
-  cursor: crosshair;
+  background: #231F20;
 }
-#map.edit { cursor: default; }
-#map.panning { cursor: grabbing; }
+#map.add { cursor: crosshair; }
+
+#overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;          /* Leaflet handles pan/zoom underneath */
+  z-index: 400;
+}
+
+.leaflet-container { background: #231F20; }
 
 #toolbar {
   position: absolute;
+  z-index: 1100;
   top: 12px;
   left: 12px;
   max-width: calc(100vw - 24px);
@@ -72,7 +80,8 @@ html, body {
 
 #inspector {
   position: absolute;
-  top: 12px;
+  z-index: 1100;
+  top: 56px;
   right: 12px;
   width: 240px;
   background: rgba(20, 18, 18, 0.95);
@@ -130,6 +139,7 @@ html, body {
 
 #info {
   position: absolute;
+  z-index: 1100;
   bottom: 12px;
   left: 12px;
   padding: 8px 12px;
@@ -149,3 +159,14 @@ html, body {
   font-size: 11px;
   color: #8a8484;
 }
+
+#toolbar.printing,
+.printing #toolbar { background: rgba(20, 18, 18, 0.92); }
+
+/* Print: drop the UI, keep the map + route overlay. */
+@media print {
+  #toolbar, #inspector, #info, #hint,
+  .leaflet-control-container { display: none !important; }
+  #map, #overlay { position: fixed; inset: 0; }
+}
+@page { size: A4 landscape; margin: 6mm; }

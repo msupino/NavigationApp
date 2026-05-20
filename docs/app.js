@@ -1,113 +1,111 @@
 'use strict';
 
 /* ------------------------------------------------------------------ *
- * Plotter — HTML5 port of the Unity NavigationApp map plotter.
- * Coordinate model and conversion rates ported from Assets/Scripts/Main.cs.
+ * Plotter — HTML5 CVFR flight plotter.
+ * Leaflet base map (flight-maps.com tiles) + a canvas route overlay.
  * ------------------------------------------------------------------ */
 
-// --- conversion constants (from Main.cs) -----------------------------
-const LON_RATE   = 8.392355;   // scene units per 10' of longitude
-const LAT_RATE   = 10.00674;   // scene units per 10' of latitude
-const NM_RATE    = 0.1666667;  // 10' expressed in degrees
-const LON_ORIGIN = 35;         // degrees E at scene x = 0
-const LAT_ORIGIN = 33;         // degrees N at scene z = 0
-const MAG_DEV    = -5;         // fixed magnetic deviation (ToMagnetic)
-const EARTH_NM   = 3440.065;   // mean Earth radius in nautical miles
+const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
+const MAG_DEV = -5;                    // fixed magnetic deviation
 
 // --- model -----------------------------------------------------------
 const state = {
-  waypoints: [],            // [{ x, z }]  scene units, plane is (x, z)
-  legs: [],                 // [{ inboundAltitude, outboundAltitude, flightSpeed, drawMidLegIndication }]
-  cam: { x: 0, z: 0, scale: 6 },   // scale = screen px per scene unit
+  waypoints: [],            // [{ lat, lng }]
+  legs: [],                 // per-leg attributes (see newLeg)
   mode: 'add',              // 'add' | 'edit'
   selected: null,           // { type:'wp'|'leg', index }
 };
+let showReturn = true;
+let pageSize = null;        // null | 'A3' | 'A4'
 
 const newLeg = () => ({
   inboundAltitude: 2000,
   outboundAltitude: 2000,
   flightSpeed: 90,
   drawMidLegIndication: true,
-  inLabel: { a: 0, p: 40 },              // marker offset: along leg, perpendicular
-  outLabel: { a: 0, p: -40 },
+  inLabel: { a: 0, p: 44 },            // marker offset: along leg, perpendicular
+  outLabel: { a: 0, p: -44 },
 });
 
-// --- geo helpers (port of Main.cs static methods) --------------------
-function sceneToCoord(x, z) {
-  return {
-    lon: (x / LON_RATE) * NM_RATE + LON_ORIGIN,
-    lat: (z / LAT_RATE) * NM_RATE + LAT_ORIGIN,
-  };
-}
-function coordToScene(lat, lon) {
-  return {
-    x: ((lon - LON_ORIGIN) / NM_RATE) * LON_RATE,
-    z: ((lat - LAT_ORIGIN) / NM_RATE) * LAT_RATE,
-  };
-}
-
-// Great-circle distance (NM) and initial bearing (deg true) between two scene points.
-function geo(p1, p2) {
-  const a = sceneToCoord(p1.x, p1.z);
-  const b = sceneToCoord(p2.x, p2.z);
+// --- helpers ---------------------------------------------------------
+function geo(a, b) {                   // a,b = {lat,lng} -> {dist NM, brg deg}
   const rad = d => (d * Math.PI) / 180;
   const phi1 = rad(a.lat), phi2 = rad(b.lat);
-  const dPhi = rad(b.lat - a.lat), dLam = rad(b.lon - a.lon);
-  const h = Math.sin(dPhi / 2) ** 2 +
-            Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLam / 2) ** 2;
+  const dphi = rad(b.lat - a.lat), dlam = rad(b.lng - a.lng);
+  const h = Math.sin(dphi / 2) ** 2 +
+            Math.cos(phi1) * Math.cos(phi2) * Math.sin(dlam / 2) ** 2;
   const dist = 2 * EARTH_NM * Math.asin(Math.min(1, Math.sqrt(h)));
-  const y = Math.sin(dLam) * Math.cos(phi2);
+  const y = Math.sin(dlam) * Math.cos(phi2);
   const x = Math.cos(phi1) * Math.sin(phi2) -
-            Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLam);
-  const brg = ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
-  return { dist, brg };
+            Math.sin(phi1) * Math.cos(phi2) * Math.cos(dlam);
+  return { dist, brg: ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360 };
 }
-
-// True bearing -> magnetic, integer, wrapped (Main.ToMagnetic).
 function toMagnetic(deg) {
   return (((Math.round(deg) + MAG_DEV) % 360) + 360) % 360;
 }
 const pad3 = n => String(n).padStart(3, '0');
-
-// Decimal hours -> "M:SS", seconds rounded to nearest 5 (Main.ToHMS).
 function toHMS(hours) {
-  const totalMin = hours * 60;
-  let m = Math.floor(totalMin);
-  let s = Math.round(((totalMin - m) * 60) / 5) * 5;
+  const tm = hours * 60;
+  let m = Math.floor(tm);
+  let s = Math.round(((tm - m) * 60) / 5) * 5;
   if (s >= 60) { s -= 60; m++; }
   return m + ':' + String(s).padStart(2, '0');
 }
+function fmtLatLng(v, pos, neg) {
+  const hemi = v >= 0 ? pos : neg;
+  v = Math.abs(v);
+  const d = Math.floor(v);
+  const m = (v - d) * 60;
+  return `${d}°${m.toFixed(1).padStart(4, '0')}'${hemi}`;
+}
 
-// --- canvas / view ---------------------------------------------------
-const canvas = document.getElementById('map');
-const ctx = canvas.getContext('2d');
+// --- Leaflet map -----------------------------------------------------
+const TILE = { minZoom: 6, maxZoom: 16, maxNativeZoom: 13 };
+const layers = {
+  CVFR: L.tileLayer('https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png',
+    { ...TILE, attribution: 'Charts © flight-maps.com' }),
+  Nav: L.tileLayer('https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
+    { ...TILE, attribution: 'Charts © flight-maps.com' }),
+  Satellite: L.tileLayer(
+    'https://services.arcgisonline.com/ArcGIS/rest/services/' +
+    'World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { minZoom: 6, maxZoom: 18, attribution: 'Imagery © Esri' }),
+};
+
+const map = L.map('map', {
+  center: [32.0, 34.9],
+  zoom: 9,
+  minZoom: 6,
+  maxZoom: 16,
+  layers: [layers.CVFR],
+  zoomControl: false,
+  zoomAnimation: false,        // keep the canvas overlay in sync
+  worldCopyJump: false,
+});
+L.control.zoom({ position: 'topright' }).addTo(map);
+L.control.layers(layers, null, { position: 'topright' }).addTo(map);
+
+// --- route overlay canvas -------------------------------------------
+const overlay = document.getElementById('overlay');
+const octx = overlay.getContext('2d');
 let dpr = 1;
 
-function resize() {
-  dpr = window.devicePixelRatio || 1;
-  canvas.width = Math.round(innerWidth * dpr);
-  canvas.height = Math.round(innerHeight * dpr);
-  canvas.style.width = innerWidth + 'px';
-  canvas.style.height = innerHeight + 'px';
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  draw();
-}
-const vw = () => canvas.width / dpr;
-const vh = () => canvas.height / dpr;
+function vw() { return map.getSize().x; }
+function vh() { return map.getSize().y; }
 
-// scene {x,z} -> screen {x,y}  (scene z points up)
-function s2p(p) {
-  return {
-    x: (p.x - state.cam.x) * state.cam.scale + vw() / 2,
-    y: -(p.z - state.cam.z) * state.cam.scale + vh() / 2,
-  };
+function resizeOverlay() {
+  dpr = window.devicePixelRatio || 1;
+  overlay.width = Math.round(vw() * dpr);
+  overlay.height = Math.round(vh() * dpr);
+  overlay.style.width = vw() + 'px';
+  overlay.style.height = vh() + 'px';
+  octx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
-// screen px -> scene {x,z}
-function p2s(px, py) {
-  return {
-    x: (px - vw() / 2) / state.cam.scale + state.cam.x,
-    z: -(py - vh() / 2) / state.cam.scale + state.cam.z,
-  };
+
+// scene point: project a waypoint to overlay (container) pixels
+function proj(wp) {
+  const p = map.latLngToContainerPoint([wp.lat, wp.lng]);
+  return { x: p.x, y: p.y };
 }
 
 // --- leg bookkeeping -------------------------------------------------
@@ -117,126 +115,34 @@ function syncLegs() {
   while (state.legs.length > need) state.legs.pop();
 }
 
-// --- background chart ------------------------------------------------
-// CVFR2020 chart composited and georeferenced by build_map.py.
-const MAP = { xMin: -46.880, xMax: 47.550, zMin: -207.934, zMax: 25.561 };
-const mapImg = new Image();
-let mapReady = false;
-mapImg.onload = () => { mapReady = true; draw(); };
-mapImg.src = 'map.jpg';
-
-// --- navigation waypoints (published VFR reporting points) -----------
-let navWaypoints = [];                 // [{ name, x, z }]
-let showNav = false;                   // off by default — overlay not yet accurate
-let showReturn = true;                 // outbound (return) leg markers
-let printFrame = null;                 // null | 'A3' | 'A4'
-let printing = false;                  // true while rendering for PNG export
-fetch('nav-waypoints.json')
-  .then(r => r.json())
-  .then(d => {
-    navWaypoints = (d.waypoints || []).map(w => {
-      const s = coordToScene(w.coord[1], w.coord[0]);   // coord = [lon, lat]
-      return { name: w.name, x: s.x, z: s.z };
-    });
-    draw();
-  })
-  .catch(() => {});
-
 // --- drawing ---------------------------------------------------------
 function draw() {
-  ctx.clearRect(0, 0, vw(), vh());
-  ctx.fillStyle = '#231F20';
-  ctx.fillRect(0, 0, vw(), vh());
-
-  drawMap();
-  drawNavWaypoints();
+  octx.clearRect(0, 0, vw(), vh());
   drawLegs();
   drawWaypoints();
   drawInfo();
-  if (!printing) drawPrintFrame();
+  if (!printing) drawPageFrame();
   persist();
-}
-
-// Draw the georeferenced CVFR chart into its scene rectangle.
-function drawMap() {
-  if (!mapReady) return;
-  const tl = s2p({ x: MAP.xMin, z: MAP.zMax });
-  const br = s2p({ x: MAP.xMax, z: MAP.zMin });
-  ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(mapImg, tl.x, tl.y, br.x - tl.x, br.y - tl.y);
-}
-
-// Published navigation waypoints overlay; names appear once zoomed in.
-function drawNavWaypoints() {
-  if (!showNav || navWaypoints.length === 0) return;
-  const showText = state.cam.scale > 16;
-  const r = 5;
-  ctx.font = 'bold 10px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  for (const w of navWaypoints) {
-    const s = s2p(w);
-    if (s.x < -30 || s.x > vw() + 30 || s.y < -30 || s.y > vh() + 30) continue;
-    ctx.beginPath();
-    ctx.moveTo(s.x, s.y - r);
-    ctx.lineTo(s.x - r * 0.9, s.y + r * 0.7);
-    ctx.lineTo(s.x + r * 0.9, s.y + r * 0.7);
-    ctx.closePath();
-    ctx.fillStyle = '#b3138a';
-    ctx.fill();
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = '#ffffff';
-    ctx.stroke();
-    if (showText) {
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = '#ffffff';
-      ctx.strokeText(w.name, s.x, s.y - r - 7);
-      ctx.fillStyle = '#b3138a';
-      ctx.fillText(w.name, s.x, s.y - r - 7);
-    }
-  }
-  ctx.textAlign = 'left';
-}
-
-// Rounded-rectangle path helper.
-function roundRectPath(x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
-function fmtDeg(value, pos, neg) {
-  const hemi = value >= 0 ? pos : neg;
-  const v = Math.abs(value);
-  const d = Math.floor(v);
-  const m = Math.round((v - d) * 60);
-  return `${d}°${String(m).padStart(2, '0')}'${hemi}`;
 }
 
 function drawLegs() {
   for (let i = 0; i < state.legs.length; i++) {
-    const A = state.waypoints[i];
-    const B = state.waypoints[i + 1];
+    const A = state.waypoints[i], B = state.waypoints[i + 1];
     if (!A || !B) continue;
     const leg = state.legs[i];
-    const sa = s2p(A), sb = s2p(B);
+    const sa = proj(A), sb = proj(B);
     const selected = state.selected &&
                      state.selected.type === 'leg' &&
                      state.selected.index === i;
 
-    // thick leg line
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = selected ? '#ffcc33' : '#161412';
-    ctx.lineWidth = selected ? 5 : 3.5;
-    ctx.beginPath();
-    ctx.moveTo(sa.x, sa.y);
-    ctx.lineTo(sb.x, sb.y);
-    ctx.stroke();
-    ctx.lineCap = 'butt';
+    octx.lineCap = 'round';
+    octx.strokeStyle = selected ? '#ffcc33' : '#161412';
+    octx.lineWidth = selected ? 5 : 3.5;
+    octx.beginPath();
+    octx.moveTo(sa.x, sa.y);
+    octx.lineTo(sb.x, sb.y);
+    octx.stroke();
+    octx.lineCap = 'butt';
 
     drawDriftLines(sa, sb);
 
@@ -248,15 +154,14 @@ function drawLegs() {
 
     drawMinuteMarkers(sa, sb, durH);
 
-    // info boxes rotated parallel to the leg, one on each side
     const ang = Math.atan2(sb.y - sa.y, sb.x - sa.x);
     const mid = { x: (sa.x + sb.x) / 2, y: (sa.y + sb.y) / 2 };
     let dx = sb.x - sa.x, dy = sb.y - sa.y;
     const len = Math.hypot(dx, dy) || 1;
     dx /= len; dy /= len;
     const nx = -dy, ny = dx;
-    const inP = leg.inLabel || { a: 0, p: 40 };
-    const outP = leg.outLabel || { a: 0, p: -40 };
+    const inP = leg.inLabel || { a: 0, p: 44 };
+    const outP = leg.outLabel || { a: 0, p: -44 };
     drawLegArrow(mid.x + dx * inP.a + nx * inP.p, mid.y + dy * inP.a + ny * inP.p,
       ang, pad3(magIn), timeStr, String(leg.inboundAltitude),
       '#2f6fd0', 'rgba(255,246,170,0.80)');
@@ -266,29 +171,27 @@ function drawLegs() {
         pad3(magOut), timeStr, String(leg.outboundAltitude),
         '#c0392b', 'rgba(255,204,214,0.80)');
     }
-
     if (leg.drawMidLegIndication) drawDistanceBadge(mid.x, mid.y, dist);
   }
 }
 
-// 10-degree drift reference lines: one from each leg end, angled 10 deg off
-// the leg, half the leg length, dashed.
+// 10-degree drift reference lines, one from each end, half the leg length.
 function drawDriftLines(sa, sb) {
   const a = 10 * Math.PI / 180;
   const c = Math.cos(a), s = Math.sin(a);
   const abx = sb.x - sa.x, aby = sb.y - sa.y;
   const bax = -abx, bay = -aby;
-  ctx.save();
-  ctx.setLineDash([5, 4]);
-  ctx.lineWidth = 1.5;
-  ctx.strokeStyle = 'rgba(20,20,20,0.6)';
-  ctx.beginPath();
-  ctx.moveTo(sa.x, sa.y);
-  ctx.lineTo(sa.x + (abx * c - aby * s) * 0.5, sa.y + (abx * s + aby * c) * 0.5);
-  ctx.moveTo(sb.x, sb.y);
-  ctx.lineTo(sb.x + (bax * c - bay * s) * 0.5, sb.y + (bax * s + bay * c) * 0.5);
-  ctx.stroke();
-  ctx.restore();
+  octx.save();
+  octx.setLineDash([5, 4]);
+  octx.lineWidth = 1.5;
+  octx.strokeStyle = 'rgba(20,20,20,0.6)';
+  octx.beginPath();
+  octx.moveTo(sa.x, sa.y);
+  octx.lineTo(sa.x + (abx * c - aby * s) * 0.5, sa.y + (abx * s + aby * c) * 0.5);
+  octx.moveTo(sb.x, sb.y);
+  octx.lineTo(sb.x + (bax * c - bay * s) * 0.5, sb.y + (bax * s + bay * c) * 0.5);
+  octx.stroke();
+  octx.restore();
 }
 
 function drawMinuteMarkers(sa, sb, durH) {
@@ -298,113 +201,112 @@ function drawMinuteMarkers(sa, sb, durH) {
   const len = Math.hypot(dx, dy) || 1;
   dx /= len; dy /= len;
   const nx = -dy, ny = dx;
-  ctx.strokeStyle = '#161412';
-  ctx.lineWidth = 1.5;
+  octx.strokeStyle = '#161412';
+  octx.lineWidth = 1.5;
   const count = Math.floor(totalMin);
   for (let m = 1; m <= count; m++) {
     const f = m / totalMin;
     const px = sa.x + (sb.x - sa.x) * f;
     const py = sa.y + (sb.y - sa.y) * f;
     const tick = m % 2 === 0 ? 7 : 4;
-    ctx.beginPath();
-    ctx.moveTo(px - nx * tick, py - ny * tick);
-    ctx.lineTo(px + nx * tick, py + ny * tick);
-    ctx.stroke();
+    octx.beginPath();
+    octx.moveTo(px - nx * tick, py - ny * tick);
+    octx.lineTo(px + nx * tick, py + ny * tick);
+    octx.stroke();
   }
 }
 
 // Navigation leg marker: a two-cell rectangle (altitude, time) joined to a
 // triangle (heading) pointing in the flight direction. Text runs across the
-// marker and is locked to its orientation, matching the reference chart.
+// marker and is locked to its orientation.
 function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill) {
   const W = 46, cell = 22, Lt = 26;
   const Lr = cell * 2, L = Lr + Lt;
-  const xb = -L / 2 + Lr;                // rectangle / triangle boundary
+  const xb = -L / 2 + Lr;
 
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(flightAng);
-  ctx.beginPath();
-  ctx.moveTo(-L / 2, -W / 2);
-  ctx.lineTo(xb, -W / 2);
-  ctx.lineTo(L / 2, 0);                  // triangle apex = flight direction
-  ctx.lineTo(xb, W / 2);
-  ctx.lineTo(-L / 2, W / 2);
-  ctx.closePath();
-  ctx.fillStyle = fill;
-  ctx.fill();
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = accent;
-  ctx.stroke();
-  ctx.lineWidth = 1;                     // cell dividers
+  octx.save();
+  octx.translate(cx, cy);
+  octx.rotate(flightAng);
+  octx.beginPath();
+  octx.moveTo(-L / 2, -W / 2);
+  octx.lineTo(xb, -W / 2);
+  octx.lineTo(L / 2, 0);
+  octx.lineTo(xb, W / 2);
+  octx.lineTo(-L / 2, W / 2);
+  octx.closePath();
+  octx.fillStyle = fill;
+  octx.fill();
+  octx.lineWidth = 2;
+  octx.strokeStyle = accent;
+  octx.stroke();
+  octx.lineWidth = 1;
   for (const dx of [-L / 2 + cell, xb]) {
-    ctx.beginPath();
-    ctx.moveTo(dx, -W / 2);
-    ctx.lineTo(dx, W / 2);
-    ctx.stroke();
+    octx.beginPath();
+    octx.moveTo(dx, -W / 2);
+    octx.lineTo(dx, W / 2);
+    octx.stroke();
   }
-  ctx.restore();
+  octx.restore();
 
-  // text runs across the marker, locked to its orientation (no upright flip)
   const ta = flightAng + Math.PI / 2;
   const cos = Math.cos(flightAng), sin = Math.sin(flightAng);
   const at = lx => ({ x: cx + lx * cos, y: cy + lx * sin });
   const pAlt = at(-L / 2 + cell * 0.5);
   const pTime = at(-L / 2 + cell * 1.5);
   const pHead = at(xb + Lt * 0.32);
-  drawRotText(pAlt.x, pAlt.y, ta, alt, 'bold 13px sans-serif', '#000000');
-  drawRotText(pTime.x, pTime.y, ta, time, 'bold 13px sans-serif', '#000000');
-  drawRotText(pHead.x, pHead.y, ta, head, 'bold 14px sans-serif', '#000000');
+  drawRotText(pAlt.x, pAlt.y, ta, alt, 'bold 13px sans-serif', '#000');
+  drawRotText(pTime.x, pTime.y, ta, time, 'bold 13px sans-serif', '#000');
+  drawRotText(pHead.x, pHead.y, ta, head, 'bold 14px sans-serif', '#000');
 }
 
 function drawRotText(x, y, ang, text, font, color) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(ang);
-  ctx.font = font;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = color;
-  ctx.fillText(text, 0, 0);
-  ctx.restore();
+  octx.save();
+  octx.translate(x, y);
+  octx.rotate(ang);
+  octx.font = font;
+  octx.textAlign = 'center';
+  octx.textBaseline = 'middle';
+  octx.fillStyle = color;
+  octx.fillText(text, 0, 0);
+  octx.restore();
 }
 
 function drawDistanceBadge(cx, cy, dist) {
-  ctx.beginPath();
-  ctx.arc(cx, cy, 15, 0, Math.PI * 2);
-  ctx.lineWidth = 2.5;
-  ctx.strokeStyle = '#161412';
-  ctx.stroke();
-  ctx.fillStyle = '#161412';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(dist.toFixed(1), cx, cy);
-  ctx.textAlign = 'left';
+  octx.beginPath();
+  octx.arc(cx, cy, 15, 0, Math.PI * 2);
+  octx.lineWidth = 2.5;
+  octx.strokeStyle = '#161412';
+  octx.stroke();
+  octx.fillStyle = '#161412';
+  octx.font = 'bold 11px sans-serif';
+  octx.textAlign = 'center';
+  octx.textBaseline = 'middle';
+  octx.fillText(dist.toFixed(1), cx, cy);
+  octx.textAlign = 'left';
 }
 
 function drawWaypoints() {
   for (let i = 0; i < state.waypoints.length; i++) {
-    const s = s2p(state.waypoints[i]);
+    const s = proj(state.waypoints[i]);
     const selected = state.selected &&
                      state.selected.type === 'wp' &&
                      state.selected.index === i;
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, selected ? 9 : 7, 0, Math.PI * 2);
-    ctx.fillStyle = selected ? '#ffcc33' : '#ffffff';
-    ctx.fill();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = '#161412';
-    ctx.stroke();
+    octx.beginPath();
+    octx.arc(s.x, s.y, selected ? 9 : 7, 0, Math.PI * 2);
+    octx.fillStyle = selected ? '#ffcc33' : '#ffffff';
+    octx.fill();
+    octx.lineWidth = 3;
+    octx.strokeStyle = '#161412';
+    octx.stroke();
 
     const label = 'WP' + (i + 1);
-    ctx.font = 'bold 11px sans-serif';
-    ctx.textBaseline = 'middle';
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = '#fff';
-    ctx.strokeText(label, s.x + 12, s.y - 10);
-    ctx.fillStyle = '#161412';
-    ctx.fillText(label, s.x + 12, s.y - 10);
+    octx.font = 'bold 11px sans-serif';
+    octx.textBaseline = 'middle';
+    octx.lineWidth = 3;
+    octx.strokeStyle = '#fff';
+    octx.strokeText(label, s.x + 12, s.y - 10);
+    octx.fillStyle = '#161412';
+    octx.fillText(label, s.x + 12, s.y - 10);
   }
 }
 
@@ -415,27 +317,61 @@ function drawInfo() {
     totalDist += dist;
     if (state.legs[i].flightSpeed > 0) totalH += dist / state.legs[i].flightSpeed;
   }
-  const el = document.getElementById('info');
-  el.textContent =
+  document.getElementById('info').textContent =
     `Waypoints  ${state.waypoints.length}\n` +
     `Legs       ${state.legs.length}\n` +
     `Distance   ${totalDist.toFixed(1)} NM\n` +
     `Total time ${totalH > 0 ? toHMS(totalH) : '--'}`;
 }
 
+// --- print page frame -----------------------------------------------
+// Landscape page coverage in nautical miles at 1:250,000.
+const PAGE_NM = { A4: { w: 40.09, h: 28.35 }, A3: { w: 56.70, h: 40.09 } };
+
+function metresPerPixel() {
+  const y = vh() / 2;
+  const a = map.containerPointToLatLng([0, y]);
+  const b = map.containerPointToLatLng([200, y]);
+  return map.distance(a, b) / 200;
+}
+
+function pageFrameRect() {
+  if (!pageSize) return null;
+  const mpp = metresPerPixel();
+  const w = PAGE_NM[pageSize].w * 1852 / mpp;
+  const h = PAGE_NM[pageSize].h * 1852 / mpp;
+  return { x: (vw() - w) / 2, y: (vh() - h) / 2, w, h };
+}
+
+function drawPageFrame() {
+  const r = pageFrameRect();
+  if (!r) return;
+  octx.save();
+  octx.fillStyle = 'rgba(20,18,18,0.4)';
+  octx.beginPath();
+  octx.rect(0, 0, vw(), vh());
+  octx.rect(r.x, r.y, r.w, r.h);
+  octx.fill('evenodd');
+  octx.strokeStyle = '#ffcc33';
+  octx.lineWidth = 2;
+  octx.setLineDash([8, 5]);
+  octx.strokeRect(r.x, r.y, r.w, r.h);
+  octx.restore();
+}
+
 // --- hit testing -----------------------------------------------------
 function hitWaypoint(px, py) {
   for (let i = state.waypoints.length - 1; i >= 0; i--) {
-    const s = s2p(state.waypoints[i]);
-    if (Math.hypot(s.x - px, s.y - py) <= 10) return i;
+    const s = proj(state.waypoints[i]);
+    if (Math.hypot(s.x - px, s.y - py) <= 11) return i;
   }
   return -1;
 }
 function hitLeg(px, py) {
   for (let i = 0; i < state.legs.length; i++) {
-    const a = s2p(state.waypoints[i]);
-    const b = s2p(state.waypoints[i + 1]);
-    if (distToSegment(px, py, a, b) <= 7) return i;
+    const a = proj(state.waypoints[i]);
+    const b = proj(state.waypoints[i + 1]);
+    if (distToSegment(px, py, a, b) <= 8) return i;
   }
   return -1;
 }
@@ -446,18 +382,15 @@ function distToSegment(px, py, a, b) {
   t = Math.max(0, Math.min(1, t));
   return Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy));
 }
-
-// Screen-space leg-direction frame: midpoint, unit direction, perpendicular.
 function legFrame(i) {
-  const a = s2p(state.waypoints[i]);
-  const b = s2p(state.waypoints[i + 1]);
+  const a = proj(state.waypoints[i]);
+  const b = proj(state.waypoints[i + 1]);
   let dx = b.x - a.x, dy = b.y - a.y;
   const len = Math.hypot(dx, dy) || 1;
   dx /= len; dy /= len;
   return { mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2,
            dx, dy, nx: -dy, ny: dx };
 }
-
 function legLabelCenter(i, which) {
   if (!state.waypoints[i] || !state.waypoints[i + 1]) return null;
   const f = legFrame(i);
@@ -466,7 +399,6 @@ function legLabelCenter(i, which) {
   return { x: f.mx + f.dx * o.a + f.nx * o.p,
            y: f.my + f.dy * o.a + f.ny * o.p };
 }
-
 function hitLegLabel(px, py) {
   for (let i = 0; i < state.legs.length; i++) {
     for (const which of ['in', 'out']) {
@@ -484,7 +416,6 @@ function showInspector() {
   const title = document.getElementById('insp-title');
   const body = document.getElementById('insp-body');
   body.innerHTML = '';
-
   if (!state.selected) { insp.classList.add('hidden'); return; }
   insp.classList.remove('hidden');
 
@@ -492,7 +423,7 @@ function showInspector() {
     const leg = state.legs[state.selected.index];
     title.textContent = 'Leg ' + (state.selected.index + 1);
     body.appendChild(numberRow('Speed (kt)', leg.flightSpeed, v => {
-      leg.flightSpeed = v > 0 ? v : leg.flightSpeed; draw(); showInspector();
+      leg.flightSpeed = v > 0 ? v : leg.flightSpeed; draw();
     }));
     body.appendChild(numberRow('Inbound alt (ft)', leg.inboundAltitude, v => {
       leg.inboundAltitude = Math.round(v); draw();
@@ -505,10 +436,9 @@ function showInspector() {
     }));
   } else {
     const wp = state.waypoints[state.selected.index];
-    const c = sceneToCoord(wp.x, wp.z);
     title.textContent = 'WP' + (state.selected.index + 1);
-    body.appendChild(textRow('Latitude', fmtDeg(c.lat, 'N', 'S')));
-    body.appendChild(textRow('Longitude', fmtDeg(c.lon, 'E', 'W')));
+    body.appendChild(textRow('Latitude', fmtLatLng(wp.lat, 'N', 'S')));
+    body.appendChild(textRow('Longitude', fmtLatLng(wp.lng, 'E', 'W')));
     const del = document.createElement('button');
     del.className = 'insp-btn';
     del.textContent = 'Delete waypoint';
@@ -520,7 +450,6 @@ function showInspector() {
     body.appendChild(del);
   }
 }
-
 function numberRow(label, value, onChange) {
   const row = document.createElement('div');
   row.className = 'row';
@@ -560,133 +489,102 @@ function textRow(label, value) {
   return row;
 }
 
-// --- pointer interaction ---------------------------------------------
-let drag = null;   // { kind:'pan'|'wp', ... }
+// --- interaction (Leaflet mouse events) ------------------------------
+let drag = null;
+let downHit = false;
 
-canvas.addEventListener('pointerdown', e => {
-  canvas.setPointerCapture(e.pointerId);
-  const px = e.clientX, py = e.clientY;
-  const wp = hitWaypoint(px, py);
-
+map.on('mousedown', e => {
+  const p = e.containerPoint;
+  const wp = hitWaypoint(p.x, p.y);
   if (wp >= 0) {
+    downHit = true;
     state.selected = { type: 'wp', index: wp };
-    drag = { kind: 'wp', index: wp, moved: false };
+    drag = { kind: 'wp', i: wp, moved: false };
+    map.dragging.disable();
     showInspector(); draw();
     return;
   }
-  const lab = hitLegLabel(px, py);
+  const lab = hitLegLabel(p.x, p.y);
   if (lab) {
+    downHit = true;
     const f = legFrame(lab.i);
-    drag = { kind: 'label', i: lab.i, which: lab.which, lx: px, ly: py,
+    drag = { kind: 'label', i: lab.i, which: lab.which, lx: p.x, ly: p.y,
              dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
     state.selected = { type: 'leg', index: lab.i };
+    map.dragging.disable();
     showInspector(); draw();
     return;
   }
-  const leg = hitLeg(px, py);
+  const leg = hitLeg(p.x, p.y);
   if (leg >= 0) {
+    downHit = true;
     state.selected = { type: 'leg', index: leg };
-    // noAdd: a click that selects a leg must not also drop a waypoint
-    drag = { kind: 'pan', sx: px, sy: py, cx: state.cam.x, cz: state.cam.z,
-             moved: false, noAdd: true };
+    drag = { kind: 'legclick' };
+    map.dragging.disable();
     showInspector(); draw();
     return;
   }
-  // empty space — pan; in add mode a click (no drag) drops a waypoint
-  drag = { kind: 'pan', sx: px, sy: py, cx: state.cam.x, cz: state.cam.z, moved: false };
+  downHit = false;                     // empty space -> Leaflet pans
 });
 
-canvas.addEventListener('pointermove', e => {
+map.on('mousemove', e => {
   if (!drag) return;
-  const px = e.clientX, py = e.clientY;
-
+  const p = e.containerPoint;
   if (drag.kind === 'wp') {
     drag.moved = true;
-    state.waypoints[drag.index] = p2s(px, py);
+    state.waypoints[drag.i] = { lat: e.latlng.lat, lng: e.latlng.lng };
     draw(); showInspector();
   } else if (drag.kind === 'label') {
-    const ddx = px - drag.lx, ddy = py - drag.ly;
-    drag.lx = px; drag.ly = py;
+    const ddx = p.x - drag.lx, ddy = p.y - drag.ly;
+    drag.lx = p.x; drag.ly = p.y;
     const leg = state.legs[drag.i];
     const o = drag.which === 'in' ? leg.inLabel : leg.outLabel;
-    o.a += ddx * drag.dx + ddy * drag.dy;       // project onto leg axes
+    o.a += ddx * drag.dx + ddy * drag.dy;
     o.p += ddx * drag.nx + ddy * drag.ny;
     draw();
-  } else {
-    const ddx = px - drag.sx, ddy = py - drag.sy;
-    if (Math.abs(ddx) > 3 || Math.abs(ddy) > 3) drag.moved = true;
-    if (drag.moved) {
-      canvas.classList.add('panning');
-      state.cam.x = drag.cx - ddx / state.cam.scale;
-      state.cam.z = drag.cz + ddy / state.cam.scale;
-      draw();
-    }
   }
 });
 
-canvas.addEventListener('pointerup', e => {
-  canvas.classList.remove('panning');
-  if (drag && drag.kind === 'pan' && !drag.moved && !drag.noAdd &&
-      state.mode === 'add') {
-    // plain click on empty space in add mode -> new waypoint
-    state.waypoints.push(p2s(e.clientX, e.clientY));
+map.on('mouseup', () => {
+  if (drag) { map.dragging.enable(); drag = null; }
+});
+
+map.on('click', e => {
+  if (downHit) { downHit = false; return; }
+  if (state.mode === 'add') {
+    state.waypoints.push({ lat: e.latlng.lat, lng: e.latlng.lng });
     syncLegs();
     state.selected = { type: 'wp', index: state.waypoints.length - 1 };
     showInspector(); draw();
   }
-  drag = null;
 });
-
-canvas.addEventListener('wheel', e => {
-  e.preventDefault();
-  const before = p2s(e.clientX, e.clientY);
-  const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
-  state.cam.scale = Math.max(0.4, Math.min(400, state.cam.scale * factor));
-  const after = p2s(e.clientX, e.clientY);
-  state.cam.x += before.x - after.x;
-  state.cam.z += before.z - after.z;
-  draw();
-}, { passive: false });
 
 window.addEventListener('keydown', e => {
-  if ((e.key === 'Delete' || e.key === 'Backspace') && state.selected) {
-    if (state.selected.type === 'wp') {
-      state.waypoints.splice(state.selected.index, 1);
-      state.selected = null;
-      syncLegs(); draw(); showInspector();
-    }
+  if ((e.key === 'Delete' || e.key === 'Backspace') &&
+      state.selected && state.selected.type === 'wp') {
+    state.waypoints.splice(state.selected.index, 1);
+    state.selected = null;
+    syncLegs(); draw(); showInspector();
   }
 });
 
-// --- view fitting ----------------------------------------------------
-function fitRect(minX, maxX, minZ, maxZ, pad) {
-  state.cam.x = (minX + maxX) / 2;
-  state.cam.z = (minZ + maxZ) / 2;
-  const spanX = Math.max(maxX - minX, 1);
-  const spanZ = Math.max(maxZ - minZ, 1);
-  const scale = Math.min(vw() / spanX, vh() / spanZ) * pad;
-  state.cam.scale = Math.max(0.4, Math.min(400, scale));
-  draw();
-}
+map.on('move zoom viewreset moveend zoomend', draw);
+map.on('resize', () => { resizeOverlay(); draw(); });
 
+// --- view fitting ----------------------------------------------------
 function fitView() {
   if (state.waypoints.length === 0) {
-    fitRect(MAP.xMin, MAP.xMax, MAP.zMin, MAP.zMax, 0.96);
+    map.setView([32.0, 34.9], 9);
     return;
   }
-  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-  for (const w of state.waypoints) {
-    minX = Math.min(minX, w.x); maxX = Math.max(maxX, w.x);
-    minZ = Math.min(minZ, w.z); maxZ = Math.max(maxZ, w.z);
-  }
-  fitRect(minX, maxX, minZ, maxZ, 0.7);
+  const b = L.latLngBounds(state.waypoints.map(w => [w.lat, w.lng]));
+  map.fitBounds(b, { padding: [70, 70] });
 }
 
 // --- save / load -----------------------------------------------------
-// JSON format matches the Unity SceneData (waypoints + legs).
 function save() {
   const data = {
-    waypoints: state.waypoints.map(w => ({ x: w.x, y: 0, z: w.z })),
+    waypoints: state.waypoints.map(w => ({ lat: w.lat, lng: w.lng })),
     legs: state.legs.map(l => ({
       inboundAltitude: l.inboundAltitude,
       outboundAltitude: l.outboundAltitude,
@@ -697,29 +595,31 @@ function save() {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'waypoints.json';
+  a.download = 'route.json';
   a.click();
   URL.revokeObjectURL(a.href);
 }
-
 function load(file) {
   const reader = new FileReader();
   reader.onload = () => {
     try {
       const d = JSON.parse(reader.result);
-      state.waypoints = (d.waypoints || []).map(p => ({ x: +p.x, z: +p.z }));
+      state.waypoints = (d.waypoints || []).map(w => ({
+        lat: +w.lat, lng: +w.lng,
+      }));
       state.legs = (d.legs || []).map(l => ({
         inboundAltitude: l.inboundAltitude ?? 2000,
         outboundAltitude: l.outboundAltitude ?? 2000,
         flightSpeed: l.flightSpeed > 0 ? l.flightSpeed : 90,
         drawMidLegIndication: l.drawMidLegIndication ?? true,
-        inLabel: l.inLabel || { a: 0, p: 40 },
-        outLabel: l.outLabel || { a: 0, p: -40 },
+        inLabel: l.inLabel || { a: 0, p: 44 },
+        outLabel: l.outLabel || { a: 0, p: -44 },
       }));
       syncLegs();
       state.selected = null;
       showInspector();
       fitView();
+      draw();
     } catch (err) {
       alert('Could not load file: ' + err.message);
     }
@@ -727,16 +627,81 @@ function load(file) {
   reader.readAsText(file);
 }
 
-// --- toolbar wiring --------------------------------------------------
+// --- print -----------------------------------------------------------
+let printing = false;
+
+function setPage(size) {
+  pageSize = pageSize === size ? null : size;
+  document.getElementById('page-a3').classList.toggle('active', pageSize === 'A3');
+  document.getElementById('page-a4').classList.toggle('active', pageSize === 'A4');
+  let st = document.getElementById('page-style');
+  if (!st) {
+    st = document.createElement('style');
+    st.id = 'page-style';
+    document.head.appendChild(st);
+  }
+  st.textContent = '@page { size: ' + (pageSize || 'A4') +
+                   ' landscape; margin: 6mm; }';
+  draw();
+}
+
+function doPrint() {
+  printing = true;
+  draw();
+  window.print();
+  printing = false;
+  draw();
+}
+
+// --- route persistence ----------------------------------------------
+const STORE_KEY = 'plotter.route';
+let persistTimer = null;
+function persist() {
+  if (persistTimer) return;
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    try {
+      const c = map.getCenter();
+      localStorage.setItem(STORE_KEY, JSON.stringify({
+        waypoints: state.waypoints,
+        legs: state.legs,
+        center: [c.lat, c.lng],
+        zoom: map.getZoom(),
+      }));
+    } catch (e) { /* storage unavailable */ }
+  }, 500);
+}
+function restoreRoute() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    state.waypoints = (d.waypoints || []).map(w => ({ lat: +w.lat, lng: +w.lng }));
+    state.legs = (d.legs || []).map(l => ({
+      inboundAltitude: l.inboundAltitude ?? 2000,
+      outboundAltitude: l.outboundAltitude ?? 2000,
+      flightSpeed: l.flightSpeed > 0 ? l.flightSpeed : 90,
+      drawMidLegIndication: l.drawMidLegIndication ?? true,
+      inLabel: l.inLabel || { a: 0, p: 44 },
+      outLabel: l.outLabel || { a: 0, p: -44 },
+    }));
+    syncLegs();
+    if (d.center && d.zoom) map.setView(d.center, d.zoom);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// --- toolbar ---------------------------------------------------------
 function setMode(mode) {
   state.mode = mode;
   document.getElementById('tool-add').classList.toggle('active', mode === 'add');
   document.getElementById('tool-edit').classList.toggle('active', mode === 'edit');
-  canvas.classList.toggle('edit', mode === 'edit');
+  document.getElementById('map').classList.toggle('add', mode === 'add');
 }
 document.getElementById('tool-add').onclick = () => setMode('add');
 document.getElementById('tool-edit').onclick = () => setMode('edit');
-
 document.getElementById('reverse').onclick = () => {
   state.waypoints.reverse();
   state.legs.reverse();
@@ -757,137 +722,16 @@ document.getElementById('file').onchange = e => {
   e.target.value = '';
 };
 document.getElementById('fit').onclick = fitView;
-document.getElementById('nav-cb').onchange = e => {
-  showNav = e.target.checked;
-  draw();
-};
 document.getElementById('ret-cb').onchange = e => {
   showReturn = e.target.checked;
   draw();
 };
-document.getElementById('fit-a3').onclick = () => setPrintFrame('A3');
-document.getElementById('fit-a4').onclick = () => setPrintFrame('A4');
-document.getElementById('print').onclick = printPNG;
-
-function defaultView() {
-  state.cam.x = (MAP.xMin + MAP.xMax) / 2;
-  state.cam.z = coordToScene(32.0, 35.0).z;          // central Israel
-  const fit = vw() / (MAP.xMax - MAP.xMin);
-  state.cam.scale = Math.max(0.4, Math.min(400, fit));
-  draw();
-}
-
-// --- print frame (A3 / A4) ------------------------------------------
-// The frame covers a FIXED real-world area (a page printed at 1:250,000), so
-// switching A3<->A4 never changes the zoom — only the framed area changes.
-// Page coverage in scene units (~NM): A4 210x297mm and A3 297x420mm at 1:250k.
-const PAGE_NM = {
-  A4: { w: 28.35, h: 40.09 },
-  A3: { w: 40.09, h: 56.70 },
-};
-// Output pixel size per page (~150 dpi).
-const PAGE_PX = {
-  A4: { w: 1240, h: 1754 },
-  A3: { w: 1754, h: 2480 },
-};
-
-function printFrameRect() {
-  if (!printFrame) return null;
-  const p = PAGE_NM[printFrame];
-  const w = p.w * state.cam.scale;     // tied to zoom -> fixed ground distance
-  const h = p.h * state.cam.scale;
-  return { x: (vw() - w) / 2, y: (vh() - h) / 2, w, h };
-}
-
-function drawPrintFrame() {
-  const r = printFrameRect();
-  if (!r) return;
-  ctx.save();
-  ctx.fillStyle = 'rgba(20,18,18,0.45)';   // dim outside the page
-  ctx.beginPath();
-  ctx.rect(0, 0, vw(), vh());
-  ctx.rect(r.x, r.y, r.w, r.h);
-  ctx.fill('evenodd');
-  ctx.strokeStyle = '#ffcc33';
-  ctx.lineWidth = 2;
-  ctx.setLineDash([8, 5]);
-  ctx.strokeRect(r.x, r.y, r.w, r.h);
-  ctx.restore();
-}
-
-function setPrintFrame(size) {
-  printFrame = printFrame === size ? null : size;   // same button toggles off
-  draw();                              // zoom is left untouched
-}
-
-// Export the framed area (or the whole view) as a PNG download.
-function printPNG() {
-  const r = printFrameRect() || { x: 0, y: 0, w: vw(), h: vh() };
-  printing = true;
-  draw();                              // clean render without the frame overlay
-  const out = document.createElement('canvas');
-  const page = printFrame ? PAGE_PX[printFrame]
-                          : { w: Math.round(r.w * dpr), h: Math.round(r.h * dpr) };
-  out.width = page.w;
-  out.height = page.h;
-  out.getContext('2d').drawImage(
-    canvas, r.x * dpr, r.y * dpr, r.w * dpr, r.h * dpr,
-    0, 0, page.w, page.h);
-  printing = false;
-  draw();                              // restore the frame overlay
-  out.toBlob(b => {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(b);
-    a.download = 'plotter-' + (printFrame || 'view') + '.png';
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }, 'image/png');
-}
-
-// --- route persistence (survives page reload) ------------------------
-const STORE_KEY = 'plotter.route';
-let persistTimer = null;
-
-function persist() {
-  if (persistTimer) return;
-  persistTimer = setTimeout(() => {
-    persistTimer = null;
-    try {
-      localStorage.setItem(STORE_KEY, JSON.stringify({
-        waypoints: state.waypoints,
-        legs: state.legs,
-        cam: state.cam,
-      }));
-    } catch (e) { /* storage unavailable */ }
-  }, 500);
-}
-
-function restoreRoute() {
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return false;
-    const d = JSON.parse(raw);
-    state.waypoints = (d.waypoints || []).map(w => ({ x: +w.x, z: +w.z }));
-    state.legs = (d.legs || []).map(l => ({
-      inboundAltitude: l.inboundAltitude ?? 2000,
-      outboundAltitude: l.outboundAltitude ?? 2000,
-      flightSpeed: l.flightSpeed > 0 ? l.flightSpeed : 90,
-      drawMidLegIndication: l.drawMidLegIndication ?? true,
-      inLabel: l.inLabel || { a: 0, p: 40 },
-      outLabel: l.outLabel || { a: 0, p: -40 },
-    }));
-    syncLegs();
-    if (d.cam && isFinite(d.cam.x) && isFinite(d.cam.z) && d.cam.scale > 0) {
-      state.cam = { x: +d.cam.x, z: +d.cam.z, scale: +d.cam.scale };
-    }
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
+document.getElementById('page-a3').onclick = () => setPage('A3');
+document.getElementById('page-a4').onclick = () => setPage('A4');
+document.getElementById('print').onclick = doPrint;
 
 // --- boot ------------------------------------------------------------
-window.addEventListener('resize', resize);
-const restored = restoreRoute();
-resize();
-if (!restored) defaultView();
+resizeOverlay();
+setMode('add');
+restoreRoute();
+draw();
