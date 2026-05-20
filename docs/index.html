@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plotter — HTML5</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="map"></canvas>
+
+  <div id="toolbar">
+    <button id="tool-add" class="tool active" title="Add waypoints (click map)">✏️ Add</button>
+    <button id="tool-edit" class="tool" title="Select / drag waypoints">✋ Edit</button>
+    <span class="sep"></span>
+    <button id="reverse" title="Reverse route order">⇄ Reverse</button>
+    <button id="clear" title="Remove all waypoints">🗑 Clear</button>
+    <span class="sep"></span>
+    <button id="save" title="Download route as JSON">⬇ Save</button>
+    <button id="load" title="Load route JSON">⬆ Load</button>
+    <input type="file" id="file" accept="application/json,.json" hidden>
+    <span class="sep"></span>
+    <button id="fit" title="Fit route to view">⌖ Fit</button>
+  </div>
+
+  <div id="inspector" class="hidden">
+    <div id="insp-title">Inspector</div>
+    <div id="insp-body"></div>
+  </div>
+
+  <div id="info"></div>
+  <div id="hint">Click map to drop waypoints · scroll to zoom · drag empty space to pan</div>
+
+  <script src="app.js"></script>
+</body>
+</html>
