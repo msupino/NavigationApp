@@ -6,7 +6,8 @@
  * ------------------------------------------------------------------ */
 
 const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
-let magVar = 5;                        // magnetic variation, ° east (Israel ≈ 5°E)
+let magVar = -5;                       // signed offset added to true heading
+                                       // (Israel ≈ −5; equivalent to 5°E variation)
 
 // --- model -----------------------------------------------------------
 const state = {
@@ -61,8 +62,8 @@ function geo(a, b) {                   // a,b = {lat,lng} -> {dist NM, brg deg}
   return { dist, brg: ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360 };
 }
 function toMagnetic(deg) {
-  // Magnetic = True − east variation (positive magVar shifts headings west).
-  return ((Math.round(deg - magVar) % 360) + 360) % 360;
+  // Magnetic = True + magVar (so −5 means "subtract 5", i.e. 5°E variation).
+  return ((Math.round(deg + magVar) % 360) + 360) % 360;
 }
 const pad3 = n => String(n).padStart(3, '0');
 function toHMS(hours) {
