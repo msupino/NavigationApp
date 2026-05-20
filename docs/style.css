@@ -94,6 +94,7 @@ html, body {
 }
 #toolbar .navtoggle input { cursor: pointer; margin: 0; }
 #toolbar .navtoggle input[type="range"] { width: 90px; }
+#toolbar .navtoggle .hint { color: #8a8484; font-size: 12px; }
 #toolbar .navtoggle input[type="number"] {
   width: 56px;
   font: inherit;
