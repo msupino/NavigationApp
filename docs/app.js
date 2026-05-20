@@ -199,11 +199,11 @@ function drawLegs() {
     const len = Math.hypot(dx, dy) || 1;
     dx /= len; dy /= len;
     const nx = -dy, ny = dx;
-    const off = 36;
-    drawLegLabel(mid.x + nx * off, mid.y + ny * off, ang,
-      pad3(magIn) + '°', timeStr, leg.inboundAltitude + ' ft', '#2f6fd0');
-    drawLegLabel(mid.x - nx * off, mid.y - ny * off, ang,
-      pad3(magOut) + '°', timeStr, leg.outboundAltitude + ' ft', '#c0392b');
+    const off = 40;
+    drawLegArrow(mid.x + nx * off, mid.y + ny * off, ang,
+      pad3(magIn), timeStr, leg.inboundAltitude + ' ft', '#2f6fd0');
+    drawLegArrow(mid.x - nx * off, mid.y - ny * off, ang + Math.PI,
+      pad3(magOut), timeStr, leg.outboundAltitude + ' ft', '#c0392b');
 
     drawDistanceBadge(mid.x, mid.y, dist);
   }
@@ -231,33 +231,62 @@ function drawMinuteMarkers(sa, sb, durH) {
   }
 }
 
-// Rotated 3-line info box, kept upright regardless of leg direction.
-function drawLegLabel(cx, cy, ang, head, sub1, sub2, color) {
-  let a = ang;
-  if (a > Math.PI / 2 || a < -Math.PI / 2) a += Math.PI;
+// Aviation-style leg marker: a square (time + altitude) joined to a triangle
+// (heading) that points in the direction of flight. The shape follows the
+// leg; the text is kept upright.
+function drawLegArrow(cx, cy, flightAng, head, time, alt, color) {
+  const H = 32, Lr = 40, Lt = 30, L = Lr + Lt;
+  const xb = L / 2 - Lt;                 // triangle base, flight-local x
+
   ctx.save();
   ctx.translate(cx, cy);
-  ctx.rotate(a);
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.font = 'bold 15px sans-serif';
-  const tw = Math.max(
-    ctx.measureText(head).width,
-    ctx.measureText(sub1).width,
-    ctx.measureText(sub2).width);
-  const w = Math.max(46, tw + 14);
-  const h = 42;
-  roundRectPath(-w / 2, -h / 2, w, h, 5);
+  ctx.rotate(flightAng);
+  ctx.beginPath();
+  ctx.moveTo(-L / 2, -H / 2);
+  ctx.lineTo(xb, -H / 2);
+  ctx.lineTo(L / 2, 0);                  // triangle apex
+  ctx.lineTo(xb, H / 2);
+  ctx.lineTo(-L / 2, H / 2);
+  ctx.closePath();
   ctx.fillStyle = color;
   ctx.fill();
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
   ctx.stroke();
-  ctx.fillStyle = '#fff';
-  ctx.fillText(head, 0, -h / 2 + 12);
-  ctx.font = '10px sans-serif';
-  ctx.fillText(sub1, 0, 1);
-  ctx.fillText(sub2, 0, h / 2 - 10);
+  ctx.beginPath();                       // square / triangle divider
+  ctx.moveTo(xb, -H / 2);
+  ctx.lineTo(xb, H / 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+
+  let ta = flightAng;
+  if (ta > Math.PI / 2 || ta < -Math.PI / 2) ta += Math.PI;
+  const cos = Math.cos(flightAng), sin = Math.sin(flightAng);
+  const place = (lx, ly) => ({
+    x: cx + lx * cos - ly * sin,
+    y: cy + lx * sin + ly * cos,
+  });
+  const tri = place(xb + Lt * 0.40, 0);
+  const sqX = (-L / 2 + xb) / 2;
+  const s1 = place(sqX, -7);
+  const s2 = place(sqX, 7);
+
+  drawRotText(tri.x, tri.y, ta, head, 'bold 14px sans-serif', '#fff');
+  drawRotText(s1.x, s1.y, ta, time, '10px sans-serif', '#fff');
+  drawRotText(s2.x, s2.y, ta, alt, '10px sans-serif', '#fff');
+}
+
+function drawRotText(x, y, ang, text, font, color) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(ang);
+  ctx.font = font;
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 0, 0);
   ctx.restore();
 }
 
