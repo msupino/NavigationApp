@@ -778,14 +778,24 @@ function defaultView() {
 }
 
 // --- print frame (A3 / A4) ------------------------------------------
-const A_RATIO = 1 / Math.SQRT2;        // A-series width / height, portrait
+// The frame covers a FIXED real-world area (a page printed at 1:250,000), so
+// switching A3<->A4 never changes the zoom — only the framed area changes.
+// Page coverage in scene units (~NM): A4 210x297mm and A3 297x420mm at 1:250k.
+const PAGE_NM = {
+  A4: { w: 28.35, h: 40.09 },
+  A3: { w: 40.09, h: 56.70 },
+};
+// Output pixel size per page (~150 dpi).
+const PAGE_PX = {
+  A4: { w: 1240, h: 1754 },
+  A3: { w: 1754, h: 2480 },
+};
 
 function printFrameRect() {
   if (!printFrame) return null;
-  const margin = printFrame === 'A3' ? 0.96 : 0.72;
-  let h = vh() * margin;
-  let w = h * A_RATIO;
-  if (w > vw() * margin) { w = vw() * margin; h = w / A_RATIO; }
+  const p = PAGE_NM[printFrame];
+  const w = p.w * state.cam.scale;     // tied to zoom -> fixed ground distance
+  const h = p.h * state.cam.scale;
   return { x: (vw() - w) / 2, y: (vh() - h) / 2, w, h };
 }
 
@@ -805,30 +815,9 @@ function drawPrintFrame() {
   ctx.restore();
 }
 
-function fitToFrame() {
-  const r = printFrameRect();
-  if (!r) return;
-  let minX, maxX, minZ, maxZ;
-  if (state.waypoints.length) {
-    const xs = state.waypoints.map(w => w.x);
-    const zs = state.waypoints.map(w => w.z);
-    minX = Math.min(...xs); maxX = Math.max(...xs);
-    minZ = Math.min(...zs); maxZ = Math.max(...zs);
-  } else {
-    minX = MAP.xMin; maxX = MAP.xMax; minZ = MAP.zMin; maxZ = MAP.zMax;
-  }
-  const spanX = Math.max(maxX - minX, 1), spanZ = Math.max(maxZ - minZ, 1);
-  state.cam.scale = Math.max(0.4, Math.min(400,
-    Math.min(r.w / spanX, r.h / spanZ) * 0.92));
-  const fcx = r.x + r.w / 2, fcy = r.y + r.h / 2;
-  state.cam.x = (minX + maxX) / 2 - (fcx - vw() / 2) / state.cam.scale;
-  state.cam.z = (minZ + maxZ) / 2 + (fcy - vh() / 2) / state.cam.scale;
-}
-
 function setPrintFrame(size) {
   printFrame = printFrame === size ? null : size;   // same button toggles off
-  if (printFrame) fitToFrame();
-  draw();
+  draw();                              // zoom is left untouched
 }
 
 // Export the framed area (or the whole view) as a PNG download.
@@ -837,11 +826,13 @@ function printPNG() {
   printing = true;
   draw();                              // clean render without the frame overlay
   const out = document.createElement('canvas');
-  out.width = Math.round(r.w * dpr);
-  out.height = Math.round(r.h * dpr);
+  const page = printFrame ? PAGE_PX[printFrame]
+                          : { w: Math.round(r.w * dpr), h: Math.round(r.h * dpr) };
+  out.width = page.w;
+  out.height = page.h;
   out.getContext('2d').drawImage(
     canvas, r.x * dpr, r.y * dpr, r.w * dpr, r.h * dpr,
-    0, 0, out.width, out.height);
+    0, 0, page.w, page.h);
   printing = false;
   draw();                              // restore the frame overlay
   out.toBlob(b => {
