@@ -1,0 +1,579 @@
+'use strict';
+
+/* ------------------------------------------------------------------ *
+ * Plotter — HTML5 port of the Unity NavigationApp map plotter.
+ * Coordinate model and conversion rates ported from Assets/Scripts/Main.cs.
+ * ------------------------------------------------------------------ */
+
+// --- conversion constants (from Main.cs) -----------------------------
+const LON_RATE   = 8.392355;   // scene units per 10' of longitude
+const LAT_RATE   = 10.00674;   // scene units per 10' of latitude
+const NM_RATE    = 0.1666667;  // 10' expressed in degrees
+const LON_ORIGIN = 35;         // degrees E at scene x = 0
+const LAT_ORIGIN = 33;         // degrees N at scene z = 0
+const MAG_DEV    = -5;         // fixed magnetic deviation (ToMagnetic)
+const EARTH_NM   = 3440.065;   // mean Earth radius in nautical miles
+
+// --- model -----------------------------------------------------------
+const state = {
+  waypoints: [],            // [{ x, z }]  scene units, plane is (x, z)
+  legs: [],                 // [{ inboundAltitude, outboundAltitude, flightSpeed, drawMidLegIndication }]
+  cam: { x: 0, z: 0, scale: 6 },   // scale = screen px per scene unit
+  mode: 'add',              // 'add' | 'edit'
+  selected: null,           // { type:'wp'|'leg', index }
+};
+
+const newLeg = () => ({
+  inboundAltitude: 2000,
+  outboundAltitude: 2000,
+  flightSpeed: 90,
+  drawMidLegIndication: true,
+});
+
+// --- geo helpers (port of Main.cs static methods) --------------------
+function sceneToCoord(x, z) {
+  return {
+    lon: (x / LON_RATE) * NM_RATE + LON_ORIGIN,
+    lat: (z / LAT_RATE) * NM_RATE + LAT_ORIGIN,
+  };
+}
+function coordToScene(lat, lon) {
+  return {
+    x: ((lon - LON_ORIGIN) / NM_RATE) * LON_RATE,
+    z: ((lat - LAT_ORIGIN) / NM_RATE) * LAT_RATE,
+  };
+}
+
+// Great-circle distance (NM) and initial bearing (deg true) between two scene points.
+function geo(p1, p2) {
+  const a = sceneToCoord(p1.x, p1.z);
+  const b = sceneToCoord(p2.x, p2.z);
+  const rad = d => (d * Math.PI) / 180;
+  const phi1 = rad(a.lat), phi2 = rad(b.lat);
+  const dPhi = rad(b.lat - a.lat), dLam = rad(b.lon - a.lon);
+  const h = Math.sin(dPhi / 2) ** 2 +
+            Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLam / 2) ** 2;
+  const dist = 2 * EARTH_NM * Math.asin(Math.min(1, Math.sqrt(h)));
+  const y = Math.sin(dLam) * Math.cos(phi2);
+  const x = Math.cos(phi1) * Math.sin(phi2) -
+            Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLam);
+  const brg = ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+  return { dist, brg };
+}
+
+// True bearing -> magnetic, integer, wrapped (Main.ToMagnetic).
+function toMagnetic(deg) {
+  return (((Math.round(deg) + MAG_DEV) % 360) + 360) % 360;
+}
+const pad3 = n => String(n).padStart(3, '0');
+
+// Decimal hours -> "M:SS", seconds rounded to nearest 5 (Main.ToHMS).
+function toHMS(hours) {
+  const totalMin = hours * 60;
+  let m = Math.floor(totalMin);
+  let s = Math.round(((totalMin - m) * 60) / 5) * 5;
+  if (s >= 60) { s -= 60; m++; }
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+// --- canvas / view ---------------------------------------------------
+const canvas = document.getElementById('map');
+const ctx = canvas.getContext('2d');
+let dpr = 1;
+
+function resize() {
+  dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(innerWidth * dpr);
+  canvas.height = Math.round(innerHeight * dpr);
+  canvas.style.width = innerWidth + 'px';
+  canvas.style.height = innerHeight + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  draw();
+}
+const vw = () => canvas.width / dpr;
+const vh = () => canvas.height / dpr;
+
+// scene {x,z} -> screen {x,y}  (scene z points up)
+function s2p(p) {
+  return {
+    x: (p.x - state.cam.x) * state.cam.scale + vw() / 2,
+    y: -(p.z - state.cam.z) * state.cam.scale + vh() / 2,
+  };
+}
+// screen px -> scene {x,z}
+function p2s(px, py) {
+  return {
+    x: (px - vw() / 2) / state.cam.scale + state.cam.x,
+    z: -(py - vh() / 2) / state.cam.scale + state.cam.z,
+  };
+}
+
+// --- leg bookkeeping -------------------------------------------------
+function syncLegs() {
+  const need = Math.max(0, state.waypoints.length - 1);
+  while (state.legs.length < need) state.legs.push(newLeg());
+  while (state.legs.length > need) state.legs.pop();
+}
+
+// --- drawing ---------------------------------------------------------
+function draw() {
+  ctx.clearRect(0, 0, vw(), vh());
+  ctx.fillStyle = '#231F20';
+  ctx.fillRect(0, 0, vw(), vh());
+
+  drawGrid();
+  drawLegs();
+  drawWaypoints();
+  drawInfo();
+}
+
+// Coordinate graticule: one cell per 10' of lat/lon = LON_RATE x LAT_RATE scene units.
+function drawGrid() {
+  const tl = p2s(0, 0);
+  const br = p2s(vw(), vh());
+  ctx.lineWidth = 1;
+  ctx.font = '10px sans-serif';
+  ctx.textBaseline = 'top';
+
+  // vertical lines (constant longitude)
+  const x0 = Math.floor(tl.x / LON_RATE) * LON_RATE;
+  for (let x = x0; x <= br.x; x += LON_RATE) {
+    const sx = s2p({ x, z: 0 }).x;
+    ctx.strokeStyle = '#332f2f';
+    ctx.beginPath();
+    ctx.moveTo(sx, 0);
+    ctx.lineTo(sx, vh());
+    ctx.stroke();
+    const lon = sceneToCoord(x, 0).lon;
+    ctx.fillStyle = '#6c6565';
+    ctx.fillText(fmtDeg(lon, 'E', 'W'), sx + 3, 3);
+  }
+  // horizontal lines (constant latitude)
+  const z0 = Math.floor(br.z / LAT_RATE) * LAT_RATE;
+  for (let z = z0; z <= tl.z; z += LAT_RATE) {
+    const sy = s2p({ x: 0, z }).y;
+    ctx.strokeStyle = '#332f2f';
+    ctx.beginPath();
+    ctx.moveTo(0, sy);
+    ctx.lineTo(vw(), sy);
+    ctx.stroke();
+    const lat = sceneToCoord(0, z).lat;
+    ctx.fillStyle = '#6c6565';
+    ctx.fillText(fmtDeg(lat, 'N', 'S'), 3, sy + 3);
+  }
+}
+
+function fmtDeg(value, pos, neg) {
+  const hemi = value >= 0 ? pos : neg;
+  const v = Math.abs(value);
+  const d = Math.floor(v);
+  const m = Math.round((v - d) * 60);
+  return `${d}°${String(m).padStart(2, '0')}'${hemi}`;
+}
+
+function drawLegs() {
+  for (let i = 0; i < state.legs.length; i++) {
+    const A = state.waypoints[i];
+    const B = state.waypoints[i + 1];
+    if (!A || !B) continue;
+    const leg = state.legs[i];
+    const sa = s2p(A), sb = s2p(B);
+    const selected = state.selected &&
+                     state.selected.type === 'leg' &&
+                     state.selected.index === i;
+
+    // leg line
+    ctx.strokeStyle = selected ? '#ffcc33' : '#d8d2cc';
+    ctx.lineWidth = selected ? 3 : 2;
+    ctx.beginPath();
+    ctx.moveTo(sa.x, sa.y);
+    ctx.lineTo(sb.x, sb.y);
+    ctx.stroke();
+
+    const { dist, brg } = geo(A, B);
+    const durH = leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
+    const magIn = toMagnetic(brg);
+    const magOut = (magIn + 180) % 360;
+
+    if (leg.drawMidLegIndication) drawMinuteMarkers(sa, sb, durH);
+
+    // labels — inbound (blue) on one side, outbound (red) on the other
+    const mid = { x: (sa.x + sb.x) / 2, y: (sa.y + sb.y) / 2 };
+    let dx = sb.x - sa.x, dy = sb.y - sa.y;
+    const len = Math.hypot(dx, dy) || 1;
+    dx /= len; dy /= len;
+    const nx = -dy, ny = dx;          // screen-space perpendicular
+    const off = 26;
+    const timeStr = durH > 0 ? toHMS(durH) : '--';
+
+    drawLabel(mid.x + nx * off, mid.y + ny * off,
+      [`${pad3(magIn)}°M`, `${dist.toFixed(1)} NM  ${timeStr}`, `${leg.inboundAltitude} ft`],
+      '#3a7bd5');
+    drawLabel(mid.x - nx * off, mid.y - ny * off,
+      [`${pad3(magOut)}°M`, `${leg.outboundAltitude} ft`],
+      '#c0392b');
+  }
+}
+
+function drawMinuteMarkers(sa, sb, durH) {
+  const totalMin = durH * 60;
+  if (totalMin < 1) return;
+  let dx = sb.x - sa.x, dy = sb.y - sa.y;
+  const len = Math.hypot(dx, dy) || 1;
+  dx /= len; dy /= len;
+  const nx = -dy, ny = dx;
+  ctx.strokeStyle = '#7d7670';
+  ctx.fillStyle = '#9a938c';
+  ctx.lineWidth = 1;
+  ctx.font = '9px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const count = Math.floor(totalMin);
+  for (let m = 1; m <= count; m++) {
+    const f = m / totalMin;
+    const px = sa.x + (sb.x - sa.x) * f;
+    const py = sa.y + (sb.y - sa.y) * f;
+    const even = m % 2 === 0;
+    const tick = even ? 8 : 4;
+    ctx.beginPath();
+    ctx.moveTo(px - nx * tick, py - ny * tick);
+    ctx.lineTo(px + nx * tick, py + ny * tick);
+    ctx.stroke();
+    if (even) ctx.fillText(String(m), px + nx * (tick + 7), py + ny * (tick + 7));
+  }
+  ctx.textAlign = 'left';
+}
+
+function drawLabel(cx, cy, lines, accent) {
+  ctx.font = '11px sans-serif';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 12;
+  const lh = 13;
+  const h = lines.length * lh + 6;
+  const x = cx - w / 2, y = cy - h / 2;
+  ctx.fillStyle = 'rgba(20,18,18,0.88)';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = accent;
+  ctx.fillRect(x, y, 3, h);
+  ctx.fillStyle = '#e8e8e8';
+  lines.forEach((l, i) => ctx.fillText(l, x + 8, y + 3 + lh / 2 + i * lh));
+}
+
+function drawWaypoints() {
+  ctx.font = '11px sans-serif';
+  ctx.textBaseline = 'middle';
+  for (let i = 0; i < state.waypoints.length; i++) {
+    const s = s2p(state.waypoints[i]);
+    const selected = state.selected &&
+                     state.selected.type === 'wp' &&
+                     state.selected.index === i;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, selected ? 8 : 6, 0, Math.PI * 2);
+    ctx.fillStyle = selected ? '#ffcc33' : '#f0ece6';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#231F20';
+    ctx.stroke();
+    ctx.fillStyle = '#cfc8c1';
+    ctx.fillText('WP' + (i + 1), s.x + 10, s.y - 9);
+  }
+}
+
+function drawInfo() {
+  let totalDist = 0, totalH = 0;
+  for (let i = 0; i < state.legs.length; i++) {
+    const { dist } = geo(state.waypoints[i], state.waypoints[i + 1]);
+    totalDist += dist;
+    if (state.legs[i].flightSpeed > 0) totalH += dist / state.legs[i].flightSpeed;
+  }
+  const el = document.getElementById('info');
+  el.textContent =
+    `Waypoints  ${state.waypoints.length}\n` +
+    `Legs       ${state.legs.length}\n` +
+    `Distance   ${totalDist.toFixed(1)} NM\n` +
+    `Total time ${totalH > 0 ? toHMS(totalH) : '--'}`;
+}
+
+// --- hit testing -----------------------------------------------------
+function hitWaypoint(px, py) {
+  for (let i = state.waypoints.length - 1; i >= 0; i--) {
+    const s = s2p(state.waypoints[i]);
+    if (Math.hypot(s.x - px, s.y - py) <= 10) return i;
+  }
+  return -1;
+}
+function hitLeg(px, py) {
+  for (let i = 0; i < state.legs.length; i++) {
+    const a = s2p(state.waypoints[i]);
+    const b = s2p(state.waypoints[i + 1]);
+    if (distToSegment(px, py, a, b) <= 7) return i;
+  }
+  return -1;
+}
+function distToSegment(px, py, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const l2 = dx * dx + dy * dy;
+  let t = l2 ? ((px - a.x) * dx + (py - a.y) * dy) / l2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy));
+}
+
+// --- inspector -------------------------------------------------------
+function showInspector() {
+  const insp = document.getElementById('inspector');
+  const title = document.getElementById('insp-title');
+  const body = document.getElementById('insp-body');
+  body.innerHTML = '';
+
+  if (!state.selected) { insp.classList.add('hidden'); return; }
+  insp.classList.remove('hidden');
+
+  if (state.selected.type === 'leg') {
+    const leg = state.legs[state.selected.index];
+    title.textContent = 'Leg ' + (state.selected.index + 1);
+    body.appendChild(numberRow('Speed (kt)', leg.flightSpeed, v => {
+      leg.flightSpeed = v > 0 ? v : leg.flightSpeed; draw(); showInspector();
+    }));
+    body.appendChild(numberRow('Inbound alt (ft)', leg.inboundAltitude, v => {
+      leg.inboundAltitude = Math.round(v); draw();
+    }));
+    body.appendChild(numberRow('Outbound alt (ft)', leg.outboundAltitude, v => {
+      leg.outboundAltitude = Math.round(v); draw();
+    }));
+    body.appendChild(boolRow('Mid-leg indication', leg.drawMidLegIndication, v => {
+      leg.drawMidLegIndication = v; draw();
+    }));
+  } else {
+    const wp = state.waypoints[state.selected.index];
+    const c = sceneToCoord(wp.x, wp.z);
+    title.textContent = 'WP' + (state.selected.index + 1);
+    body.appendChild(textRow('Latitude', fmtDeg(c.lat, 'N', 'S')));
+    body.appendChild(textRow('Longitude', fmtDeg(c.lon, 'E', 'W')));
+    const del = document.createElement('button');
+    del.className = 'insp-btn';
+    del.textContent = 'Delete waypoint';
+    del.onclick = () => {
+      state.waypoints.splice(state.selected.index, 1);
+      state.selected = null;
+      syncLegs(); draw(); showInspector();
+    };
+    body.appendChild(del);
+  }
+}
+
+function numberRow(label, value, onChange) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  const l = document.createElement('label');
+  l.textContent = label;
+  const inp = document.createElement('input');
+  inp.type = 'number';
+  inp.value = value;
+  inp.onchange = () => {
+    const v = parseFloat(inp.value);
+    if (!isNaN(v)) onChange(v);
+  };
+  row.append(l, inp);
+  return row;
+}
+function boolRow(label, value, onChange) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  const l = document.createElement('label');
+  l.textContent = label;
+  const inp = document.createElement('input');
+  inp.type = 'checkbox';
+  inp.checked = value;
+  inp.onchange = () => onChange(inp.checked);
+  row.append(l, inp);
+  return row;
+}
+function textRow(label, value) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  const l = document.createElement('label');
+  l.textContent = label;
+  const v = document.createElement('span');
+  v.className = 'val';
+  v.textContent = value;
+  row.append(l, v);
+  return row;
+}
+
+// --- pointer interaction ---------------------------------------------
+let drag = null;   // { kind:'pan'|'wp', ... }
+
+canvas.addEventListener('pointerdown', e => {
+  canvas.setPointerCapture(e.pointerId);
+  const px = e.clientX, py = e.clientY;
+  const wp = hitWaypoint(px, py);
+
+  if (wp >= 0) {
+    state.selected = { type: 'wp', index: wp };
+    drag = { kind: 'wp', index: wp, moved: false };
+    showInspector(); draw();
+    return;
+  }
+  const leg = hitLeg(px, py);
+  if (leg >= 0) {
+    state.selected = { type: 'leg', index: leg };
+    drag = { kind: 'pan', sx: px, sy: py, cx: state.cam.x, cz: state.cam.z, moved: false };
+    showInspector(); draw();
+    return;
+  }
+  // empty space — pan; in add mode a click (no drag) drops a waypoint
+  drag = { kind: 'pan', sx: px, sy: py, cx: state.cam.x, cz: state.cam.z, moved: false };
+});
+
+canvas.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const px = e.clientX, py = e.clientY;
+
+  if (drag.kind === 'wp') {
+    drag.moved = true;
+    state.waypoints[drag.index] = p2s(px, py);
+    draw(); showInspector();
+  } else {
+    const ddx = px - drag.sx, ddy = py - drag.sy;
+    if (Math.abs(ddx) > 3 || Math.abs(ddy) > 3) drag.moved = true;
+    if (drag.moved) {
+      canvas.classList.add('panning');
+      state.cam.x = drag.cx - ddx / state.cam.scale;
+      state.cam.z = drag.cz + ddy / state.cam.scale;
+      draw();
+    }
+  }
+});
+
+canvas.addEventListener('pointerup', e => {
+  canvas.classList.remove('panning');
+  if (drag && drag.kind === 'pan' && !drag.moved && state.mode === 'add') {
+    // plain click on empty space in add mode -> new waypoint
+    state.waypoints.push(p2s(e.clientX, e.clientY));
+    syncLegs();
+    state.selected = { type: 'wp', index: state.waypoints.length - 1 };
+    showInspector(); draw();
+  }
+  drag = null;
+});
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const before = p2s(e.clientX, e.clientY);
+  const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+  state.cam.scale = Math.max(0.4, Math.min(400, state.cam.scale * factor));
+  const after = p2s(e.clientX, e.clientY);
+  state.cam.x += before.x - after.x;
+  state.cam.z += before.z - after.z;
+  draw();
+}, { passive: false });
+
+window.addEventListener('keydown', e => {
+  if ((e.key === 'Delete' || e.key === 'Backspace') && state.selected) {
+    if (state.selected.type === 'wp') {
+      state.waypoints.splice(state.selected.index, 1);
+      state.selected = null;
+      syncLegs(); draw(); showInspector();
+    }
+  }
+});
+
+// --- view fitting ----------------------------------------------------
+function fitView() {
+  if (state.waypoints.length === 0) {
+    state.cam = { x: 0, z: 0, scale: 6 };
+    draw();
+    return;
+  }
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const w of state.waypoints) {
+    minX = Math.min(minX, w.x); maxX = Math.max(maxX, w.x);
+    minZ = Math.min(minZ, w.z); maxZ = Math.max(maxZ, w.z);
+  }
+  state.cam.x = (minX + maxX) / 2;
+  state.cam.z = (minZ + maxZ) / 2;
+  const spanX = Math.max(maxX - minX, 1);
+  const spanZ = Math.max(maxZ - minZ, 1);
+  const scale = Math.min(vw() / spanX, vh() / spanZ) * 0.7;
+  state.cam.scale = Math.max(0.4, Math.min(400, scale));
+  draw();
+}
+
+// --- save / load -----------------------------------------------------
+// JSON format matches the Unity SceneData (waypoints + legs).
+function save() {
+  const data = {
+    waypoints: state.waypoints.map(w => ({ x: w.x, y: 0, z: w.z })),
+    legs: state.legs.map(l => ({
+      inboundAltitude: l.inboundAltitude,
+      outboundAltitude: l.outboundAltitude,
+      flightSpeed: l.flightSpeed,
+      drawMidLegIndication: l.drawMidLegIndication,
+    })),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'waypoints.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function load(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const d = JSON.parse(reader.result);
+      state.waypoints = (d.waypoints || []).map(p => ({ x: +p.x, z: +p.z }));
+      state.legs = (d.legs || []).map(l => ({
+        inboundAltitude: l.inboundAltitude ?? 2000,
+        outboundAltitude: l.outboundAltitude ?? 2000,
+        flightSpeed: l.flightSpeed > 0 ? l.flightSpeed : 90,
+        drawMidLegIndication: l.drawMidLegIndication ?? true,
+      }));
+      syncLegs();
+      state.selected = null;
+      showInspector();
+      fitView();
+    } catch (err) {
+      alert('Could not load file: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// --- toolbar wiring --------------------------------------------------
+function setMode(mode) {
+  state.mode = mode;
+  document.getElementById('tool-add').classList.toggle('active', mode === 'add');
+  document.getElementById('tool-edit').classList.toggle('active', mode === 'edit');
+  canvas.classList.toggle('edit', mode === 'edit');
+}
+document.getElementById('tool-add').onclick = () => setMode('add');
+document.getElementById('tool-edit').onclick = () => setMode('edit');
+
+document.getElementById('reverse').onclick = () => {
+  state.waypoints.reverse();
+  state.legs.reverse();
+  state.selected = null;
+  showInspector(); draw();
+};
+document.getElementById('clear').onclick = () => {
+  if (state.waypoints.length && !confirm('Remove all waypoints?')) return;
+  state.waypoints = [];
+  state.legs = [];
+  state.selected = null;
+  showInspector(); draw();
+};
+document.getElementById('save').onclick = save;
+document.getElementById('load').onclick = () => document.getElementById('file').click();
+document.getElementById('file').onchange = e => {
+  if (e.target.files[0]) load(e.target.files[0]);
+  e.target.value = '';
+};
+document.getElementById('fit').onclick = fitView;
+
+// --- boot ------------------------------------------------------------
+window.addEventListener('resize', resize);
+resize();
