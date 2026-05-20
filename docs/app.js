@@ -208,19 +208,32 @@ function drawMinuteMarkers(sa, sb, durH) {
   const len = Math.hypot(dx, dy) || 1;
   dx /= len; dy /= len;
   const nx = -dy, ny = dx;
-  octx.strokeStyle = '#161412';
-  octx.lineWidth = 1.5;
+  octx.font = 'bold 10px sans-serif';
+  octx.textAlign = 'center';
+  octx.textBaseline = 'middle';
   const count = Math.floor(totalMin);
   for (let m = 1; m <= count; m++) {
     const f = m / totalMin;
     const px = sa.x + (sb.x - sa.x) * f;
     const py = sa.y + (sb.y - sa.y) * f;
-    const tick = m % 2 === 0 ? 7 : 4;
+    const even = m % 2 === 0;
+    const tick = even ? 9 : 4;          // long on even minutes, short on odd
+    octx.strokeStyle = '#161412';
+    octx.lineWidth = even ? 2 : 1.5;
     octx.beginPath();
     octx.moveTo(px - nx * tick, py - ny * tick);
     octx.lineTo(px + nx * tick, py + ny * tick);
     octx.stroke();
+    if (even) {                         // minute number past the tick end
+      const tx = px + nx * (tick + 8), ty = py + ny * (tick + 8);
+      octx.lineWidth = 2.5;
+      octx.strokeStyle = 'rgba(255,255,255,0.85)';
+      octx.strokeText(String(m), tx, ty);
+      octx.fillStyle = '#161412';
+      octx.fillText(String(m), tx, ty);
+    }
   }
+  octx.textAlign = 'left';
 }
 
 // Navigation leg marker: a two-cell rectangle (altitude, time) joined to a
