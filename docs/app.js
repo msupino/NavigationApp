@@ -358,8 +358,6 @@ function drawRotText(x, y, ang, text, font, color) {
 function drawDistanceBadge(cx, cy, dist) {
   ctx.beginPath();
   ctx.arc(cx, cy, 15, 0, Math.PI * 2);
-  ctx.fillStyle = '#fff';
-  ctx.fill();
   ctx.lineWidth = 2.5;
   ctx.strokeStyle = '#161412';
   ctx.stroke();
