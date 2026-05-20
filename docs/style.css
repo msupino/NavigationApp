@@ -66,6 +66,20 @@ html, body {
   margin: 0 4px;
 }
 
+#toolbar .drag-handle {
+  font-size: 16px;
+  letter-spacing: -3px;
+  color: #8a8484;
+  cursor: grab;
+  padding: 0 6px 0 2px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+#toolbar .drag-handle:hover { color: #e8e8e8; }
+#toolbar.dragging { opacity: 0.92; }
+#toolbar.dragging .drag-handle { cursor: grabbing; }
+
 #toolbar .navtoggle {
   display: flex;
   align-items: center;
@@ -77,6 +91,7 @@ html, body {
   white-space: nowrap;
 }
 #toolbar .navtoggle input { cursor: pointer; margin: 0; }
+#toolbar .navtoggle input[type="range"] { width: 90px; }
 
 #inspector {
   position: absolute;
@@ -101,9 +116,21 @@ html, body {
   border-bottom: 1px solid #3a3636;
 }
 #insp-title {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
   font-weight: 600;
   font-size: 13px;
+  color: #e8e8e8;
+  background: transparent;
+  border: none;
+  padding: 0;
+  outline: none;
 }
+#insp-title::placeholder { color: #8a8484; }
+#insp-title:read-only { cursor: default; }
+#insp-title:not(:read-only):hover,
+#insp-title:not(:read-only):focus { color: #fff; }
 #insp-close {
   font: inherit;
   font-size: 18px;
@@ -187,8 +214,27 @@ html, body {
   #toolbar, #inspector, #info, #hint,
   .leaflet-control-container { display: none !important; }
   #map, #overlay { position: fixed; inset: 0; }
+
+  /* When a page size is chosen, crop the printed body to the dashed frame
+     and offset the map/overlay so only that region is visible. */
+  html.print-frame, html.print-frame body {
+    margin: 0;
+    padding: 0;
+    width: var(--print-fw);
+    height: var(--print-fh);
+    overflow: hidden;
+  }
+  html.print-frame #map,
+  html.print-frame #overlay {
+    position: fixed !important;
+    inset: auto !important;
+    left: var(--print-fx);
+    top: var(--print-fy);
+    width: var(--print-vw);
+    height: var(--print-vh);
+  }
 }
-@page { size: A4 landscape; margin: 6mm; }
+@page { size: A4 landscape; margin: 0; }
 
 /* Mobile: bigger touch targets, roomier toolbar. */
 @media (max-width: 680px) {
