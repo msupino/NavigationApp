@@ -446,15 +446,20 @@ public class Main : MonoBehaviour
         }
         DrawLegs();
 
-        // restore per-leg inbound/outbound altitudes (legs absent in older files)
+        // restore per-leg attributes (legs absent in older files)
         if (scene.legs != null)
         {
             for (int i = 0; i < scene.legs.Count && i < flight.Count; i++)
             {
-                flight[i].script.inboundAltitude = scene.legs[i].inboundAltitude;
-                flight[i].script.outboundAltitude = scene.legs[i].outboundAltitude;
-                flight[i].script.flightSpeed = scene.legs[i].flightSpeed;
-                flight[i].script.drawMidLegIndication = scene.legs[i].drawMidLegIndication;
+                LegData legData = scene.legs[i];
+                flight[i].script.inboundAltitude = legData.inboundAltitude;
+                flight[i].script.outboundAltitude = legData.outboundAltitude;
+                flight[i].script.drawMidLegIndication = legData.drawMidLegIndication;
+                // skip zero/negative speed — would divide-by-zero in Leg.Update
+                if (legData.flightSpeed > 0)
+                {
+                    flight[i].script.flightSpeed = legData.flightSpeed;
+                }
             }
         }
     }

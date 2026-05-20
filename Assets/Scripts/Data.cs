@@ -64,9 +64,12 @@ public class SceneData
 
         this.legs = new List<LegData>();
 
-        foreach (Leg leg in legs)
+        if (legs != null)
         {
-            this.legs.Add(new LegData(leg.inboundAltitude, leg.outboundAltitude, leg.flightSpeed, leg.drawMidLegIndication));
+            foreach (Leg leg in legs)
+            {
+                this.legs.Add(new LegData(leg.inboundAltitude, leg.outboundAltitude, leg.flightSpeed, leg.drawMidLegIndication));
+            }
         }
     }
 }
