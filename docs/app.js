@@ -321,7 +321,7 @@ function drawWaypoints() {
     // point circle with the sequence number
     octx.beginPath();
     octx.arc(s.x, s.y, r, 0, Math.PI * 2);
-    octx.fillStyle = selected ? '#ffcc33' : 'rgba(255,246,170,0.80)';
+    octx.fillStyle = selected ? '#ffcc33' : 'rgba(255,246,170,0.60)';
     octx.fill();
     octx.lineWidth = 3;
     octx.strokeStyle = '#161412';
