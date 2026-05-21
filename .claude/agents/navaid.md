@@ -19,11 +19,13 @@ Rules:
 - Work on the `dev` branch only. `main` is branch-protected (production) —
   never commit or push to it; production changes land via a `dev` → `main`
   pull request.
-- The app is `docs/app.js`, `docs/style.css`, `docs/index.html`,
-  `docs/nav-waypoints.json`.
-- After editing `app.js`, run `node --check docs/app.js`.
-- After editing `app.js` or `style.css`, bump the `?v=N` query string on
-  both in `index.html` so visitors do not get stale assets.
+- The app is five ordered plain scripts sharing one global scope —
+  `core.js` → `draw.js` → `interact.js` → `io.js` → `ui.js` — plus
+  `docs/style.css`, `docs/index.html`, `docs/nav-waypoints.json`.
+- After editing any `.js`, run `node --check` on it.
+- After editing any `.js` or `style.css`, bump the `?v=N` query string
+  on every changed file in `index.html` so visitors do not get stale
+  assets.
 - Verify changes with headless-Chrome screenshots against a local
   `python3 -m http.server -d docs`.
 - Commit messages: normal English; end with the Co-Authored-By trailer.
