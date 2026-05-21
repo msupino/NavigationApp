@@ -82,6 +82,22 @@ html, body {
 #toolbar.dragging { opacity: 0.92; }
 #toolbar.dragging .drag-handle { cursor: grabbing; }
 
+#toolbar-toggle {
+  align-self: center;
+  font-size: 14px;
+  line-height: 1;
+  color: #b9b3b3;
+  cursor: pointer;
+  padding: 2px 12px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#toolbar-toggle:hover { color: #fff; }
+/* Collapsed: keep only the drag handle + the toggle visible. */
+#toolbar.collapsed > *:not(#toolbar-handle):not(#toolbar-toggle) {
+  display: none;
+}
+
 #toolbar .navtoggle {
   display: flex;
   align-items: center;
