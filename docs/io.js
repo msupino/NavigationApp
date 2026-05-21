@@ -127,6 +127,26 @@ function showFlightPlan() {
   table.appendChild(thead);
 
   const tbody = document.createElement('tbody');
+  // From / To cells are editable — each waypoint may appear in two rows,
+  // so edits sync every input bound to the same waypoint.
+  const wpInputs = {};                  // waypoint index -> [input elements]
+  function nameCell(wpIdx) {
+    const td = document.createElement('td');
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.className = 'plan-name';
+    inp.maxLength = 10;
+    inp.value = (state.waypoints[wpIdx].name || '').trim();
+    inp.placeholder = 'WP ' + (wpIdx + 1);
+    inp.oninput = () => {
+      state.waypoints[wpIdx].name = inp.value;
+      for (const o of wpInputs[wpIdx]) if (o !== inp) o.value = inp.value;
+      draw();
+    };
+    (wpInputs[wpIdx] || (wpInputs[wpIdx] = [])).push(inp);
+    td.appendChild(inp);
+    return td;
+  }
   let totalDist = 0, totalH = 0;
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
@@ -135,16 +155,16 @@ function showFlightPlan() {
     const durH = leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
     totalDist += dist;
     totalH += durH;
-    tbody.appendChild(planRow([
-      String(i + 1),
-      wpLabel(i),
-      wpLabel(i + 1),
-      pad3(toMagnetic(brg)) + '°M',
-      dist.toFixed(1),
-      String(leg.flightSpeed),
-      String(leg.inboundAltitude),
-      durH > 0 ? toHMS(durH) : '--',
-    ]));
+    const tr = document.createElement('tr');
+    tr.appendChild(planCell(String(i + 1)));
+    tr.appendChild(nameCell(i));
+    tr.appendChild(nameCell(i + 1));
+    tr.appendChild(planCell(pad3(toMagnetic(brg)) + '°M'));
+    tr.appendChild(planCell(dist.toFixed(1)));
+    tr.appendChild(planCell(String(leg.flightSpeed)));
+    tr.appendChild(planCell(String(leg.inboundAltitude)));
+    tr.appendChild(planCell(durH > 0 ? toHMS(durH) : '--'));
+    tbody.appendChild(tr);
   }
   table.appendChild(tbody);
 
@@ -178,14 +198,10 @@ function showFlightPlan() {
   document.body.appendChild(back);
 }
 
-function planRow(cells) {
-  const tr = document.createElement('tr');
-  for (const c of cells) {
-    const td = document.createElement('td');
-    td.textContent = c;
-    tr.appendChild(td);
-  }
-  return tr;
+function planCell(text) {
+  const td = document.createElement('td');
+  td.textContent = text;
+  return td;
 }
 
 // Modal: pick Landscape or Portrait (named buttons, not OK/Cancel).
@@ -321,6 +337,88 @@ function exportPNG() {
       }
     }, 'image/png');
   });
+}
+
+// --- fly the route (Google Earth) -----------------------------------
+// A browser cannot launch or detect a desktop app, so this writes a KML
+// tour and tells the user to open it in Google Earth Pro, which flies
+// the route ~5000 ft above the terrain.
+function flyRoute() {
+  if (state.waypoints.length < 2) {
+    alert('Add at least two waypoints first.');
+    return;
+  }
+  const AGL = 1524;                      // 5000 ft, in metres
+  const wps = state.waypoints;
+  const esc = s => String(s).replace(/[<>&]/g,
+    c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+
+  // heading at each waypoint = bearing toward the next (last reuses prev)
+  const heading = i => {
+    const j = Math.min(i, wps.length - 2);
+    return geo(wps[j], wps[j + 1]).brg;
+  };
+  // KML <Camera> child order is strict — altitudeMode must come last,
+  // or Google Earth ignores it and the eye ends up miles up.
+  const camera = (i, pad) =>
+    pad + '<Camera>\n' +
+    pad + '  <longitude>' + wps[i].lng + '</longitude>\n' +
+    pad + '  <latitude>' + wps[i].lat + '</latitude>\n' +
+    pad + '  <altitude>' + AGL + '</altitude>\n' +
+    pad + '  <heading>' + heading(i).toFixed(1) + '</heading>\n' +
+    pad + '  <tilt>85</tilt>\n' +
+    pad + '  <roll>0</roll>\n' +
+    pad + '  <altitudeMode>relativeToGround</altitudeMode>\n' +
+    pad + '</Camera>\n';
+  const flyTo = (i, dur, mode) =>
+    '    <gx:FlyTo>\n' +
+    '      <gx:duration>' + dur.toFixed(1) + '</gx:duration>\n' +
+    '      <gx:flyToMode>' + mode + '</gx:flyToMode>\n' +
+    camera(i, '      ') +
+    '    </gx:FlyTo>\n';
+
+  let tour = flyTo(0, 4, 'bounce');
+  for (let i = 1; i < wps.length; i++) {
+    const leg = state.legs[i - 1];
+    const { dist } = geo(wps[i - 1], wps[i]);
+    const durH = leg && leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
+    tour += flyTo(i, Math.max(4, Math.min(45, durH * 60 * 4)), 'smooth');
+  }
+
+  const coords = wps.map(w => w.lng + ',' + w.lat + ',0').join(' ');
+  const points = wps.map((w, i) =>
+    '  <Placemark><name>' + esc(wpLabel(i)) + '</name>' +
+    '<Point><coordinates>' + w.lng + ',' + w.lat + ',0</coordinates></Point>' +
+    '</Placemark>').join('\n');
+
+  const kml =
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<kml xmlns="http://www.opengis.net/kml/2.2" ' +
+    'xmlns:gx="http://www.google.com/kml/ext/2.2">\n<Document>\n' +
+    '  <name>NavAid flythrough</name>\n' +
+    camera(0, '  ') +                    // open already at the start, 5000 ft
+    '  <Placemark><name>Route</name>\n' +
+    '    <Style><LineStyle><color>ff3399ff</color><width>3</width></LineStyle></Style>\n' +
+    '    <LineString><tessellate>1</tessellate>\n' +
+    '      <coordinates>' + coords + '</coordinates>\n' +
+    '    </LineString>\n  </Placemark>\n' + points + '\n' +
+    '  <gx:Tour><name>Fly the route</name>\n    <gx:Playlist>\n' +
+    tour + '    </gx:Playlist>\n  </gx:Tour>\n' +
+    '</Document>\n</kml>\n';
+
+  const blob = new Blob([kml],
+    { type: 'application/vnd.google-earth.kml+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'navaid-flythrough.kml';
+  a.click();
+  URL.revokeObjectURL(a.href);
+
+  alert('Saved navaid-flythrough.kml\n\n' +
+    'Open it in Google Earth Pro (desktop) — the "Fly the route" tour ' +
+    'appears under Places; press play to fly the route ~5000 ft above ' +
+    'the terrain.\n\n' +
+    'No Google Earth? It is a free desktop app: google.com/earth/versions');
 }
 
 // --- route persistence ----------------------------------------------
