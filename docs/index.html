@@ -6,6 +6,16 @@
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>NavAid</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <meta name="description" content="Plan CVFR flight routes on the Israel aeronautical chart.">
+  <!-- Link preview (WhatsApp / Open Graph / Twitter) -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="NavAid — CVFR flight planner">
+  <meta property="og:description" content="Plan CVFR flight routes on the Israel aeronautical chart — waypoints, headings, distances, times.">
+  <meta property="og:url" content="https://msupino.github.io/NavigationApp/">
+  <meta property="og:image" content="https://msupino.github.io/NavigationApp/og-preview.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
   <!-- Google Analytics (GA4) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-0XM5PHEK8B"></script>
   <script>
@@ -15,7 +25,7 @@
     gtag('config', 'G-0XM5PHEK8B');
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=51">
+  <link rel="stylesheet" href="style.css?v=54">
 </head>
 <body>
   <div id="map"></div>
@@ -23,9 +33,8 @@
 
   <div id="toolbar">
     <span id="toolbar-handle" class="drag-handle" title="Drag to move">⋯</span>
-    <button id="tool-add" class="tool active" title="Add waypoints (click map)">✏️ Add Waypoint</button>
-    <button id="tool-edit" class="tool" title="Select / drag waypoints">✋ Edit Waypoint</button>
-    <button id="tool-note" class="tool" title="Drop free-text notes (click map)">📝 Add Note</button>
+    <button id="tool-add" class="tool" title="Click map to drop a waypoint (click button again to stop)">✏️ Add Waypoint</button>
+    <button id="tool-note" class="tool" title="Click map to drop a note (click button again to stop)">📝 Add Note</button>
     <span class="sep"></span>
     <button id="reverse" title="Reverse route order">⇄ Reverse Route</button>
     <button id="clear" title="Remove all waypoints and notes">🗑 Clear map</button>
@@ -47,6 +56,9 @@
     </label>
     <label class="navtoggle" title="Overlay published Israeli VFR reporting points">
       <input type="checkbox" id="navwp-cb" checked> Show Nav Waypoints
+    </label>
+    <label class="navtoggle" title="Show waypoint names (off = empty circle)">
+      <input type="checkbox" id="wpname-cb" checked> Show Waypoint names
     </label>
     <label class="navtoggle" title="Opacity of label backgrounds">
       Transparency
@@ -78,6 +90,6 @@
   <div id="info"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="app.js?v=51"></script>
+  <script src="app.js?v=54"></script>
 </body>
 </html>
