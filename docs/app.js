@@ -246,6 +246,10 @@ function isNavName(name) {
 //  - Else if the current name was a nav name (no longer near any nav):
 //    clear it so the circle reverts to the sequence number.
 function applyNavSnap(latlng, currentName) {
+  // Snap only while the nav-waypoint overlay is shown.
+  if (!showNavWP) {
+    return { lat: latlng.lat, lng: latlng.lng, name: currentName || '' };
+  }
   if (currentName && !isNavName(currentName)) {
     return { lat: latlng.lat, lng: latlng.lng, name: currentName };
   }
