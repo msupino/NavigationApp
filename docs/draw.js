@@ -355,6 +355,7 @@ const NOTE_FONT = 'bold 12px sans-serif';
 const NOTE_PAD_X = 8;
 const NOTE_PAD_Y = 6;
 const NOTE_LINE_H = 16;
+const NOTE_MIN_W = 56;                  // keep short / empty notes landscape
 
 function noteRect(i) {
   const n = state.notes[i];
@@ -366,7 +367,7 @@ function noteRect(i) {
     const w = octx.measureText(l || ' ').width;
     if (w > maxW) maxW = w;
   }
-  let w = maxW + NOTE_PAD_X * 2;
+  let w = Math.max(maxW + NOTE_PAD_X * 2, NOTE_MIN_W);
   let h = Math.max(1, lines.length) * NOTE_LINE_H + NOTE_PAD_Y * 2;
   const oval = n.shape === 'oval';
   if (oval) { w *= Math.SQRT2; h *= Math.SQRT2; }   // ellipse must bound the text
