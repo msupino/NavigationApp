@@ -69,6 +69,7 @@ document.getElementById('file').onchange = e => {
   e.target.value = '';
 };
 document.getElementById('fit').onclick = fitView;
+document.getElementById('fly').onclick = flyRoute;
 document.getElementById('plan').onclick = showFlightPlan;
 document.getElementById('ret-cb').onchange = e => {
   showReturn = e.target.checked;
