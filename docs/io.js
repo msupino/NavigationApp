@@ -63,15 +63,6 @@ function load(file) {
 function applyPage() {
   document.getElementById('page-a3').classList.toggle('active', pageSize === 'A3');
   document.getElementById('page-a4').classList.toggle('active', pageSize === 'A4');
-  let st = document.getElementById('page-style');
-  if (!st) {
-    st = document.createElement('style');
-    st.id = 'page-style';
-    document.head.appendChild(st);
-  }
-  // margin: 0 so the dashed frame on screen matches the printed area 1:1
-  st.textContent = '@page { size: ' + (pageSize || 'A4') + ' ' +
-                   pageOrient + '; margin: 0; }';
   draw();
 }
 
@@ -459,13 +450,11 @@ function persist() {
   persistTimer = setTimeout(() => {
     persistTimer = null;
     try {
-      const c = map.getCenter();
+      // center / zoom are not restored (load fits the route) — not saved.
       localStorage.setItem(STORE_KEY, JSON.stringify({
         waypoints: state.waypoints,
         legs: state.legs,
         notes: state.notes,
-        center: [c.lat, c.lng],
-        zoom: map.getZoom(),
       }));
     } catch (e) { /* storage unavailable */ }
   }, 500);
