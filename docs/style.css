@@ -384,6 +384,17 @@ html, body {
   font-weight: 600;
 }
 .flight-table tbody tr:hover { background: rgba(255, 255, 255, 0.04); }
+.plan-name {
+  width: 96px;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+.plan-name:focus { outline: 1px solid #1d6fe0; }
 .flight-table tfoot td {
   font-weight: 700;
   border-top: 2px solid #443f3f;
