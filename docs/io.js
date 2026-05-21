@@ -342,13 +342,13 @@ function exportPNG() {
 // --- fly the route (Google Earth) -----------------------------------
 // A browser cannot launch or detect a desktop app, so this writes a KML
 // tour and tells the user to open it in Google Earth Pro, which flies
-// the route ~500 ft above the terrain.
+// the route ~5000 ft above the terrain.
 function flyRoute() {
   if (state.waypoints.length < 2) {
     alert('Add at least two waypoints first.');
     return;
   }
-  const AGL = 152;                       // ~500 ft, in metres
+  const AGL = 1524;                      // 5000 ft, in metres
   const wps = state.waypoints;
   const esc = s => String(s).replace(/[<>&]/g,
     c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
@@ -396,7 +396,7 @@ function flyRoute() {
     '<kml xmlns="http://www.opengis.net/kml/2.2" ' +
     'xmlns:gx="http://www.google.com/kml/ext/2.2">\n<Document>\n' +
     '  <name>NavAid flythrough</name>\n' +
-    camera(0, '  ') +                    // open already at the start, 500 ft
+    camera(0, '  ') +                    // open already at the start, 5000 ft
     '  <Placemark><name>Route</name>\n' +
     '    <Style><LineStyle><color>ff3399ff</color><width>3</width></LineStyle></Style>\n' +
     '    <LineString><tessellate>1</tessellate>\n' +
@@ -416,7 +416,7 @@ function flyRoute() {
 
   alert('Saved navaid-flythrough.kml\n\n' +
     'Open it in Google Earth Pro (desktop) — the "Fly the route" tour ' +
-    'appears under Places; press play to fly the route ~500 ft above ' +
+    'appears under Places; press play to fly the route ~5000 ft above ' +
     'the terrain.\n\n' +
     'No Google Earth? It is a free desktop app: google.com/earth/versions');
 }
