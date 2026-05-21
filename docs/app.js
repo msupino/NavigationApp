@@ -34,6 +34,8 @@ const state = {
 let showReturn = false;     // outbound (return) markers — off by default
 let showMidLeg = false;
 let highlightDiff = false;  // purple halo on legs that change altitude
+let showNavWP = false;      // Israeli VFR reporting-point overlay
+let navWP = null;           // null = not loaded; [] = loaded empty/error
 let yellowAlpha = 1;        // global multiplier for yellow label backgrounds
 let wpSize = 1;             // waypoint name / number text size scale
 let pageSize = null;        // null | 'A3' | 'A4'
@@ -181,12 +183,60 @@ function syncLegs() {
 // --- drawing ---------------------------------------------------------
 function draw() {
   octx.clearRect(0, 0, vw(), vh());
+  drawNavWaypoints();
   drawLegs();
   drawWaypoints();
   drawNotes();
   drawInfo();
   if (!printing) drawPageFrame();
   persist();
+}
+
+// --- nav-waypoint reference overlay ---------------------------------
+// Lazy-loads docs/nav-waypoints.json on first activation. Source format:
+// { waypoints:[{ name, coord:[lng,lat] }] } — 238 published reporting points.
+async function loadNavWaypoints() {
+  if (navWP !== null) return navWP;
+  try {
+    const res = await fetch('nav-waypoints.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    navWP = (d.waypoints || []).map(w => ({
+      name: w.name, lat: w.coord[1], lng: w.coord[0],
+    }));
+  } catch (e) {
+    console.warn('Failed to load nav waypoints:', e);
+    navWP = [];
+  }
+  return navWP;
+}
+
+function drawNavWaypoints() {
+  if (!showNavWP || !navWP || navWP.length === 0) return;
+  const showLabels = map.getZoom() >= 10;
+  const W = vw(), H = vh(), pad = 30;
+  octx.font = 'bold 10px sans-serif';
+  octx.textAlign = 'left';
+  octx.textBaseline = 'middle';
+  for (const wp of navWP) {
+    const s = proj(wp);
+    if (s.x < -pad || s.x > W + pad || s.y < -pad || s.y > H + pad) continue;
+    octx.fillStyle = '#ffffff';
+    octx.strokeStyle = '#161412';
+    octx.lineWidth = 1.5;
+    octx.beginPath();
+    octx.arc(s.x, s.y, 3.5, 0, Math.PI * 2);
+    octx.fill();
+    octx.stroke();
+    if (showLabels) {
+      octx.lineWidth = 2.5;
+      octx.strokeStyle = 'rgba(255,255,255,0.85)';
+      octx.strokeText(wp.name, s.x + 6, s.y);
+      octx.fillStyle = '#161412';
+      octx.fillText(wp.name, s.x + 6, s.y);
+    }
+  }
+  octx.lineWidth = 1;
 }
 
 function drawLegs() {
@@ -1234,6 +1284,7 @@ function exportPNG() {
     o.save();
     o.scale(s, s);
     o.translate(-fr.x, -fr.y);
+    drawNavWaypoints();
     drawLegs();
     drawWaypoints();
     drawNotes();
@@ -1354,6 +1405,18 @@ document.getElementById('mid-cb').onchange = e => {
 };
 document.getElementById('diff-cb').onchange = e => {
   highlightDiff = e.target.checked;
+  draw();
+};
+const NAVWP_KEY = 'navaid.showNavWP';
+try {
+  showNavWP = localStorage.getItem(NAVWP_KEY) === '1';
+} catch (e) { /* storage unavailable */ }
+document.getElementById('navwp-cb').checked = showNavWP;
+document.getElementById('navwp-cb').onchange = async e => {
+  showNavWP = e.target.checked;
+  try { localStorage.setItem(NAVWP_KEY, showNavWP ? '1' : '0'); }
+  catch (err) { /* storage unavailable */ }
+  if (showNavWP) await loadNavWaypoints();
   draw();
 };
 const ALPHA_KEY = 'navaid.yellowAlpha';
@@ -1499,3 +1562,4 @@ setMode('add');
 restoreRoute();
 if (state.waypoints.length) fitView();   // always frame the restored route
 draw();
+if (showNavWP) loadNavWaypoints().then(draw);
