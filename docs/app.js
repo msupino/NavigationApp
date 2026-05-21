@@ -18,8 +18,8 @@ const state = {
   selected: null,           // { type:'wp'|'leg'|'note', index }
 };
 let showReturn = false;     // outbound (return) markers — off by default
-let showMidLeg = true;
-let highlightDiff = true;   // purple halo on legs that change altitude
+let showMidLeg = false;
+let highlightDiff = false;  // purple halo on legs that change altitude
 let yellowAlpha = 1;        // global multiplier for yellow label backgrounds
 let wpSize = 1;             // waypoint name / number text size scale
 let pageSize = null;        // null | 'A3' | 'A4'
@@ -136,7 +136,7 @@ map.on('baselayerchange', e => {
 
 // --- route overlay canvas -------------------------------------------
 const overlay = document.getElementById('overlay');
-const octx = overlay.getContext('2d');
+let octx = overlay.getContext('2d');   // reassigned during PNG export
 let dpr = 1;
 
 function vw() { return map.getSize().x; }
@@ -1144,61 +1144,95 @@ function chooseOrientation(size, onPick) {
   document.body.appendChild(back);
 }
 
-// Save the framed map + route as a PNG. The flight-maps tiles are not
-// CORS-enabled, so they cannot be read off a canvas directly — at export time
-// each visible tile is re-fetched through the weserv image proxy (which adds
-// Access-Control-Allow-Origin) so the output canvas stays untainted.
+// Save the framed map + route as a PNG, rendered at the highest practical
+// native tile zoom (not the on-screen zoom) for maximum quality. flight-maps
+// tiles are not CORS-enabled, so each tile is fetched through the weserv image
+// proxy (which adds Access-Control-Allow-Origin) to keep the canvas untainted.
 function exportPNG() {
-  const r = pageFrameRect() || { x: 0, y: 0, w: vw(), h: vh() };
-  printing = true;
-  draw();                                // overlay without the page frame
+  const fr = pageFrameRect() || { x: 0, y: 0, w: vw(), h: vh() };
+  if (fr.w < 4 || fr.h < 4) return;
+
+  let base = null, baseName = 'map';
+  for (const n in layers) {
+    if (map.hasLayer(layers[n])) { base = layers[n]; baseName = n; }
+  }
+  if (!base || !base._url) return;
+
+  const nw = map.containerPointToLatLng([fr.x, fr.y]);
+  const se = map.containerPointToLatLng([fr.x + fr.w, fr.y + fr.h]);
+
+  // highest native zoom that keeps tile count and canvas size sane
+  const maxZ = base.options.maxNativeZoom || base.options.maxZoom || 13;
+  let z = maxZ, nwP, seP, W, H;
+  for (; z >= 9; z--) {
+    nwP = map.project([nw.lat, nw.lng], z);
+    seP = map.project([se.lat, se.lng], z);
+    W = Math.round(seP.x - nwP.x);
+    H = Math.round(seP.y - nwP.y);
+    const tiles = (Math.floor(seP.x / 256) - Math.floor(nwP.x / 256) + 1) *
+                  (Math.floor(seP.y / 256) - Math.floor(nwP.y / 256) + 1);
+    if (tiles <= 150 && W <= 8000 && H <= 8000) break;
+  }
 
   const out = document.createElement('canvas');
-  out.width = Math.round(r.w * dpr);
-  out.height = Math.round(r.h * dpr);
+  out.width = W;
+  out.height = H;
   const o = out.getContext('2d');
   o.fillStyle = '#231F20';
-  o.fillRect(0, 0, out.width, out.height);
+  o.fillRect(0, 0, W, H);
 
-  let base = null;
-  for (const name in layers) if (map.hasLayer(layers[name])) base = layers[name];
+  const btn = document.getElementById('print');
+  const btnLabel = btn.textContent;
+  btn.textContent = '⏳ Saving…';
+  btn.disabled = true;
 
-  const mapBox = map.getContainer().getBoundingClientRect();
+  // gather the covering tiles, proxied for CORS
+  const subs = base.options.subdomains || 'abc';
   const jobs = [];
-  if (base && base._tiles) {
-    for (const key in base._tiles) {
-      const t = base._tiles[key];
-      if (!t.current || !t.el || !t.el.src) continue;
-      const tb = t.el.getBoundingClientRect();
+  for (let tx = Math.floor(nwP.x / 256); tx <= Math.floor(seP.x / 256); tx++) {
+    for (let ty = Math.floor(nwP.y / 256); ty <= Math.floor(seP.y / 256); ty++) {
+      const url = L.Util.template(base._url,
+        { z, x: tx, y: ty, s: subs[(tx + ty) % subs.length] });
       const img = new Image();
       img.crossOrigin = 'anonymous';
       const job = {
-        img,
-        x: tb.left - mapBox.left, y: tb.top - mapBox.top,
-        w: tb.width, h: tb.height,
+        img, dx: Math.round(tx * 256 - nwP.x), dy: Math.round(ty * 256 - nwP.y),
         done: new Promise(res => { img.onload = res; img.onerror = res; }),
       };
       img.src = 'https://images.weserv.nl/?url=' +
-                encodeURIComponent(t.el.src.replace(/^https?:\/\//, ''));
+                encodeURIComponent(url.replace(/^https?:\/\//, ''));
       jobs.push(job);
     }
   }
 
   Promise.all(jobs.map(j => j.done)).then(() => {
     for (const j of jobs) {
-      if (!j.img.naturalWidth) continue;
-      o.drawImage(j.img, (j.x - r.x) * dpr, (j.y - r.y) * dpr,
-                  j.w * dpr, j.h * dpr);
+      if (j.img.naturalWidth) {
+        try { o.drawImage(j.img, j.dx, j.dy, 256, 256); } catch (e) { /* skip */ }
+      }
     }
-    o.drawImage(overlay, r.x * dpr, r.y * dpr, r.w * dpr, r.h * dpr,
-                0, 0, out.width, out.height);
-    printing = false;
-    draw();
+    // re-render the route into the export canvas. Web Mercator is a uniform
+    // scale between zooms, so the on-screen projection scaled by s lines up
+    // with the native-zoom tiles exactly.
+    const s = W / fr.w;
+    const prevOctx = octx;
+    octx = o;
+    o.save();
+    o.scale(s, s);
+    o.translate(-fr.x, -fr.y);
+    drawLegs();
+    drawWaypoints();
+    drawNotes();
+    o.restore();
+    octx = prevOctx;
+
     out.toBlob(b => {
+      btn.textContent = btnLabel;
+      btn.disabled = false;
       if (!b) { alert('PNG export failed (a map tile could not be loaded).'); return; }
       const a = document.createElement('a');
       a.href = URL.createObjectURL(b);
-      a.download = 'navigation-' + (pageSize || 'map') + '.png';
+      a.download = 'navigation-' + (pageSize || baseName) + '.png';
       a.click();
       URL.revokeObjectURL(a.href);
     }, 'image/png');
