@@ -7,6 +7,13 @@
   <title>NavAid</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <meta name="description" content="Plan CVFR flight routes on the Israel aeronautical chart.">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="theme-color" content="#231F20">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="NavAid">
   <!-- Link preview (WhatsApp / Open Graph / Twitter) -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="NavAid — CVFR flight planner">
@@ -25,7 +32,7 @@
     gtag('config', 'G-0XM5PHEK8B');
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=57">
+  <link rel="stylesheet" href="style.css?v=58">
 </head>
 <body>
   <div id="map"></div>
@@ -78,6 +85,7 @@
     <button id="page-a3" title="A3 print page">A3</button>
     <button id="page-a4" title="A4 print page">A4</button>
     <button id="print" title="Save the framed map + route as a PNG">⬇ Save PNG</button>
+    <button id="install" title="Install NavAid as an app" hidden>⬇ Install App</button>
   </div>
 
   <div id="inspector" class="hidden">
@@ -91,6 +99,6 @@
   <div id="info"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="app.js?v=57"></script>
+  <script src="app.js?v=58"></script>
 </body>
 </html>
