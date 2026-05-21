@@ -53,8 +53,7 @@ a `dev` → `main` pull request.
   installable app + offline app-shell service worker.
 - `style.css` — dark UI + `@media print` rules.
 - `nav-waypoints.json` — 238 published Israeli VFR reporting points
-  (`{name, lat, lng}`). Lazy-loaded by the "Show Nav Waypoints"
-  toggle.
+  (`{name, lat, lng}`). Fetched once at boot.
 - `.gitattributes` — forces images out of LFS so Pages serves them.
 - `map.jpg`, `build_map.py` — legacy from the pre-Leaflet static-chart
   version. **Unused**, safe to delete.
@@ -69,18 +68,18 @@ a `dev` → `main` pull request.
   `pointer-events: none`, redrawn on every Leaflet `move` / `zoom` /
   `resize`. `proj(wp)` = `map.latLngToContainerPoint`.
 - **State:**
-  - `state.waypoints[i]` = `{lat, lng, name, flipped}` (name optional;
-    `flipped` toggled by Reverse).
+  - `state.waypoints[i]` = `{lat, lng, name}` (name optional).
   - `state.legs[i]` = `{inboundAltitude, outboundAltitude, flightSpeed,
     inLabel, outLabel}`. `inLabel` / `outLabel` are `{a, p}` offsets
     (along-leg / perpendicular, screen px) so markers can be dragged
     apart from the leg midpoint.
-  - `state.notes[i]` = `{lat, lng, text, color}` — free-text annotation
-    boxes with optional per-note `#rrggbb` colour.
-  - `state.mode` = `'add' | 'edit' | 'note'`; `state.selected` =
-    `{type:'wp'|'leg'|'note', index}` or `null`.
+  - `state.notes[i]` = `{lat, lng, text, color, shape}` — free-text
+    annotation boxes; `shape` is `'rect'` or `'oval'`.
+  - `state.mode` = `'add' | 'note' | null` (null = inspect);
+    `state.selected` = `{type:'wp'|'leg'|'note', index}` or `null`.
   - Top-level globals: `showReturn`, `showMidLeg`, `highlightDiff`,
-    `showNavWP`, `navWP`, `yellowAlpha`, `wpSize`, `magVar`,
+    `showNavWP`, `navWP`, `showWpNames`, `wpNameAngle`,
+    `yellowAlpha`, `wpSize`, `magVar`,
     `pageSize`, `pageOrient`.
 - **Interaction (mouse):** Leaflet `mousedown` → hit-test in priority
   order **waypoint > note > leg-label > leg**. On a hit,
@@ -99,7 +98,7 @@ a `dev` → `main` pull request.
 
 ## Features
 
-- **Modes:** Add / Edit / Note.
+- **Modes:** Add / Note (no mode active = inspect).
 - **Inspector:** `#insp-title` is an `<input>` — for waypoints it's
   the editable name (placeholder `WP N`); for legs it's read-only
   `Leg N`; for notes it's read-only and a textarea + color picker
@@ -128,13 +127,15 @@ a `dev` → `main` pull request.
   adjacent legs that currently share the old value, stopping at the
   first different leg. Inbound walks forward, outbound walks backward.
 - **Reverse:** flips waypoint order, swaps each leg's
-  inbound/outbound altitude, swap+negates `inLabel` / `outLabel`,
-  and toggles each waypoint's `flipped` flag (text rotates 180°).
+  inbound/outbound altitude, swap+negates `inLabel` / `outLabel`.
+- **Waypoint-name rotation:** the `⟳` button by "Show Waypoint names"
+  cycles `wpNameAngle` 0/90/180/270; all names draw at that angle.
 - **Plan table:** `📋 Plan` opens a modal with a per-leg flight plan
-  (`#`, From, To, Hdg, Dist, Speed, Alt, Time) plus totals. Uses
-  `textContent` only — user names / notes can't inject HTML.
-- **Show Nav Waypoints** (default **on**): lazy-fetches
-  `nav-waypoints.json`, renders 238 white-fill / black-stroke 3.5 px
+  (`#`, From, To, Hdg, Dist, Speed, Alt, Time) plus totals. From/To
+  names and Speed/Alt are editable inputs; the rest is `textContent`
+  only — user names / notes can't inject HTML.
+- **Show Nav Waypoints** (default **on**): `nav-waypoints.json` is
+  fetched once at boot; renders 238 white-fill / black-stroke 3.5 px
   dots; the 5-letter ID label appears at zoom ≥ 10. Captured in PNG
   export.
 - **A3 / A4 page frame:** `pageFrameRect()` returns the rectangle in
@@ -150,20 +151,24 @@ a `dev` → `main` pull request.
 
 ## Persistence (`localStorage`, all keyed `navaid.*`)
 
-- `navaid.route` — `{waypoints, legs, notes, center, zoom}` (debounced).
+- `navaid.route` — `{waypoints, legs, notes}` (debounced; the view is
+  not saved — a reload fits the route).
 - `navaid.layer` — selected base layer name.
 - `navaid.toolbarPos` — `{x, y}` of the toolbar.
+- `navaid.toolbarCollapsed` — `'0'` / `'1'` for the collapsed toolbar.
 - `navaid.yellowAlpha` — Transparency slider value.
 - `navaid.wpSize` — Text-size slider value.
 - `navaid.magVar` — magnetic variation offset.
 - `navaid.showNavWP` — `'0'` / `'1'` for the nav-waypoints overlay.
+- `navaid.showWpNames` — `'0'` / `'1'` for waypoint-name display.
+- `navaid.wpNameAngle` — waypoint-name rotation (`0`/`90`/`180`/`270`).
 
 A one-time migration at the top of `core.js` copies any old
 `plotter.*` keys into `navaid.*` and removes the old ones.
 
 `save()` / `load()` round-trip waypoints (with `name`), legs (with
-`inLabel` / `outLabel`), and notes (with `color`) as a downloadable
-`route.json`.
+`inLabel` / `outLabel`), and notes (with `color`, `shape`) as a
+downloadable `route.json`.
 
 ## Build / test / deploy
 
@@ -194,6 +199,4 @@ A one-time migration at the top of `core.js` copies any old
   AIRAC cycle actually changes them.
 - `geo` distances are exact great-circle; verify against the chart's
   graticule if precision is questioned.
-- Some helpers in `interact.js` are unused historical leftovers
-  (`textInputRow`, `boolRow`); harmless, prune when convenient.
 - GA4 (`G-0XM5PHEK8B`) tracks page views; no event tracking yet.

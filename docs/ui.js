@@ -75,14 +75,27 @@ document.getElementById('mid-cb').onchange = e => {
   showMidLeg = e.target.checked;
   draw();
 };
+const WPNAME_KEY = 'navaid.showWpNames';
+const WPANGLE_KEY = 'navaid.wpNameAngle';
+try {
+  const sn = localStorage.getItem(WPNAME_KEY);
+  if (sn !== null) showWpNames = sn === '1';
+  const sa = parseInt(localStorage.getItem(WPANGLE_KEY), 10);
+  if (sa === 90 || sa === 180 || sa === 270) wpNameAngle = sa;
+} catch (e) { /* storage unavailable */ }
+document.getElementById('wpname-cb').checked = showWpNames;
 document.getElementById('wpname-cb').onchange = e => {
   showWpNames = e.target.checked;
+  try { localStorage.setItem(WPNAME_KEY, showWpNames ? '1' : '0'); }
+  catch (err) { /* storage unavailable */ }
   draw();
 };
 document.getElementById('wpname-rot').onclick = e => {
   e.stopPropagation();                  // don't toggle the checkbox
   wpNameAngle = (wpNameAngle + 90) % 360;
   e.currentTarget.title = 'Rotate waypoint names (now ' + wpNameAngle + '°)';
+  try { localStorage.setItem(WPANGLE_KEY, String(wpNameAngle)); }
+  catch (err) { /* storage unavailable */ }
   draw();
 };
 document.getElementById('diff-cb').onchange = e => {

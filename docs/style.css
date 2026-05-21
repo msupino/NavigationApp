@@ -269,44 +269,11 @@ html, body {
 }
 #info:empty { display: none; }
 
-#hint {
-  position: absolute;
-  bottom: 12px;
-  right: 12px;
-  padding: 6px 10px;
-  font-size: 11px;
-  color: #8a8484;
-}
-
-#toolbar.printing,
-.printing #toolbar { background: rgba(20, 18, 18, 0.92); }
-
-/* Print: drop the UI, keep the map + route overlay. */
+/* Print (browser Cmd+P): drop the UI, keep the map + route overlay. */
 @media print {
-  #toolbar, #inspector, #info, #hint,
-  .leaflet-control-container { display: none !important; }
+  #toolbar, #inspector, .leaflet-control-container { display: none !important; }
   #map, #overlay { position: fixed; inset: 0; }
-
-  /* When a page size is chosen, crop the printed body to the dashed frame
-     and offset the map/overlay so only that region is visible. */
-  html.print-frame, html.print-frame body {
-    margin: 0;
-    padding: 0;
-    width: var(--print-fw);
-    height: var(--print-fh);
-    overflow: hidden;
-  }
-  html.print-frame #map,
-  html.print-frame #overlay {
-    position: fixed !important;
-    inset: auto !important;
-    left: var(--print-fx);
-    top: var(--print-fy);
-    width: var(--print-vw);
-    height: var(--print-vh);
-  }
 }
-@page { size: A4 landscape; margin: 0; }
 
 /* Mobile: bigger touch targets, roomier toolbar. */
 @media (max-width: 680px) {
