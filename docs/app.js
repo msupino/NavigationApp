@@ -733,11 +733,11 @@ function showInspector() {
     }));
   } else if (state.selected.type === 'note') {
     const note = state.notes[state.selected.index];
-    title.value = 'Note';
+    title.value = '';
     title.placeholder = '';
     title.readOnly = true;
     title.oninput = null;
-    body.appendChild(textareaRow('Text', note.text || '', v => {
+    body.appendChild(textareaRow('', note.text || '', v => {
       note.text = v; draw();
     }));
     body.appendChild(colorRow('Color', note.color || NOTE_DEFAULT_COLOR, v => {
@@ -786,13 +786,16 @@ function colorRow(label, value, onChange) {
 function textareaRow(label, value, onChange) {
   const row = document.createElement('div');
   row.className = 'row col';
-  const l = document.createElement('label');
-  l.textContent = label;
+  if (label) {
+    const l = document.createElement('label');
+    l.textContent = label;
+    row.appendChild(l);
+  }
   const ta = document.createElement('textarea');
   ta.value = value || '';
   ta.rows = 3;
   ta.oninput = () => onChange(ta.value);
-  row.append(l, ta);
+  row.appendChild(ta);
   return row;
 }
 function numberRow(label, value, onChange) {
