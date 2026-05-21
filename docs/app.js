@@ -1655,6 +1655,32 @@ document.getElementById('insp-close').onclick = () => {
   window.addEventListener('touchend', end);
   window.addEventListener('touchcancel', end);
 
+  // collapse / expand the toolbar (keeps just the handle + toggle)
+  const toggle = document.getElementById('toolbar-toggle');
+  const COLLAPSE_KEY = 'navaid.toolbarCollapsed';
+  function setCollapsed(on) {
+    bar.classList.toggle('collapsed', on);
+    toggle.textContent = on ? '☰' : '▴';
+    toggle.title = on ? 'Expand menu' : 'Collapse menu';
+    try { localStorage.setItem(COLLAPSE_KEY, on ? '1' : '0'); }
+    catch (e) { /* storage unavailable */ }
+    if (bar.style.left) {                 // size changed -> keep on screen
+      requestAnimationFrame(() =>
+        setPos(parseFloat(bar.style.left), parseFloat(bar.style.top)));
+    }
+  }
+  toggle.addEventListener('click',
+    () => setCollapsed(!bar.classList.contains('collapsed')));
+  toggle.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setCollapsed(!bar.classList.contains('collapsed'));
+    }
+  });
+  try {
+    if (localStorage.getItem(COLLAPSE_KEY) === '1') setCollapsed(true);
+  } catch (e) { /* storage unavailable */ }
+
   window.addEventListener('resize', () => {
     if (bar.style.left) setPos(parseFloat(bar.style.left), parseFloat(bar.style.top));
   });
