@@ -358,18 +358,23 @@ function flyRoute() {
     const j = Math.min(i, wps.length - 2);
     return geo(wps[j], wps[j + 1]).brg;
   };
+  // KML <Camera> child order is strict — altitudeMode must come last,
+  // or Google Earth ignores it and the eye ends up miles up.
+  const camera = (i, pad) =>
+    pad + '<Camera>\n' +
+    pad + '  <longitude>' + wps[i].lng + '</longitude>\n' +
+    pad + '  <latitude>' + wps[i].lat + '</latitude>\n' +
+    pad + '  <altitude>' + AGL + '</altitude>\n' +
+    pad + '  <heading>' + heading(i).toFixed(1) + '</heading>\n' +
+    pad + '  <tilt>85</tilt>\n' +
+    pad + '  <roll>0</roll>\n' +
+    pad + '  <altitudeMode>relativeToGround</altitudeMode>\n' +
+    pad + '</Camera>\n';
   const flyTo = (i, dur, mode) =>
     '    <gx:FlyTo>\n' +
     '      <gx:duration>' + dur.toFixed(1) + '</gx:duration>\n' +
     '      <gx:flyToMode>' + mode + '</gx:flyToMode>\n' +
-    '      <Camera>\n' +
-    '        <longitude>' + wps[i].lng + '</longitude>\n' +
-    '        <latitude>' + wps[i].lat + '</latitude>\n' +
-    '        <altitude>' + AGL + '</altitude>\n' +
-    '        <altitudeMode>relativeToGround</altitudeMode>\n' +
-    '        <heading>' + heading(i).toFixed(1) + '</heading>\n' +
-    '        <tilt>85</tilt><roll>0</roll>\n' +
-    '      </Camera>\n' +
+    camera(i, '      ') +
     '    </gx:FlyTo>\n';
 
   let tour = flyTo(0, 4, 'bounce');
@@ -391,6 +396,7 @@ function flyRoute() {
     '<kml xmlns="http://www.opengis.net/kml/2.2" ' +
     'xmlns:gx="http://www.google.com/kml/ext/2.2">\n<Document>\n' +
     '  <name>NavAid flythrough</name>\n' +
+    camera(0, '  ') +                    // open already at the start, 500 ft
     '  <Placemark><name>Route</name>\n' +
     '    <Style><LineStyle><color>ff3399ff</color><width>3</width></LineStyle></Style>\n' +
     '    <LineString><tessellate>1</tessellate>\n' +
