@@ -41,6 +41,7 @@ let yellowAlpha = 1;        // global multiplier for yellow label backgrounds
 let wpSize = 1;             // waypoint name / number text size scale
 let pageSize = null;        // null | 'A3' | 'A4'
 let pageOrient = 'landscape';   // 'landscape' | 'portrait'
+let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre
 
 // Yellow text-background colour with the global opacity scale applied.
 const yellowFill = (a) => `rgba(255,246,170,${a * yellowAlpha})`;
@@ -614,7 +615,26 @@ function pageFrameRect() {
   const d = pageDims();
   const w = d.w * 1852 / mpp;
   const h = d.h * 1852 / mpp;
-  return { x: (vw() - w) / 2, y: (vh() - h) / 2, w, h };
+  return { x: (vw() - w) / 2 + pageOffset.x,
+           y: (vh() - h) / 2 + pageOffset.y, w, h };
+}
+
+// True if (px,py) is on the page-frame border band — the drag grip.
+function hitPageFrameEdge(px, py) {
+  const r = pageFrameRect();
+  if (!r) return false;
+  const t = 14;
+  const inOuter = px >= r.x - t && px <= r.x + r.w + t &&
+                  py >= r.y - t && py <= r.y + r.h + t;
+  const inInner = px >= r.x + t && px <= r.x + r.w - t &&
+                  py >= r.y + t && py <= r.y + r.h - t;
+  return inOuter && !inInner;
+}
+
+// Keep the frame centre on screen so it can always be grabbed back.
+function clampPageOffset() {
+  pageOffset.x = Math.max(-vw() / 2, Math.min(vw() / 2, pageOffset.x));
+  pageOffset.y = Math.max(-vh() / 2, Math.min(vh() / 2, pageOffset.y));
 }
 
 function drawPageFrame() {
@@ -900,6 +920,12 @@ map.on('mousedown', e => {
     showInspector(); draw();
     return;
   }
+  if (pageSize && hitPageFrameEdge(p.x, p.y)) {
+    downHit = true;
+    drag = { kind: 'page', lx: p.x, ly: p.y };
+    map.dragging.disable();
+    return;
+  }
   downHit = false;                     // empty space -> Leaflet pans
 });
 
@@ -923,6 +949,12 @@ map.on('mousemove', e => {
     const o = drag.which === 'in' ? leg.inLabel : leg.outLabel;
     o.a += ddx * drag.dx + ddy * drag.dy;
     o.p += ddx * drag.nx + ddy * drag.ny;
+    draw();
+  } else if (drag.kind === 'page') {
+    pageOffset.x += p.x - drag.lx;
+    pageOffset.y += p.y - drag.ly;
+    drag.lx = p.x; drag.ly = p.y;
+    clampPageOffset();
     draw();
   }
 });
@@ -984,6 +1016,8 @@ mapEl.addEventListener('touchstart', e => {
   const note = wp < 0 ? hitNote(p.x, p.y) : -1;
   const lab = (wp < 0 && note < 0) ? hitLegLabel(p.x, p.y) : null;
   const leg = (wp < 0 && note < 0 && !lab) ? hitLeg(p.x, p.y) : -1;
+  const onPage = (wp < 0 && note < 0 && !lab && leg < 0 && pageSize)
+    ? hitPageFrameEdge(p.x, p.y) : false;
 
   if (wp >= 0) {
     touchDrag = { kind: 'wp', i: wp };
@@ -999,6 +1033,8 @@ mapEl.addEventListener('touchstart', e => {
   } else if (leg >= 0) {
     touchDrag = { kind: 'legtap' };
     state.selected = { type: 'leg', index: leg };
+  } else if (onPage) {
+    touchDrag = { kind: 'page', lx: p.x, ly: p.y };
   }
 
   if (touchDrag) {
@@ -1029,6 +1065,12 @@ mapEl.addEventListener('touchmove', e => {
     const o = touchDrag.which === 'in' ? leg.inLabel : leg.outLabel;
     o.a += ddx * touchDrag.dx + ddy * touchDrag.dy;
     o.p += ddx * touchDrag.nx + ddy * touchDrag.ny;
+    draw();
+  } else if (touchDrag.kind === 'page') {
+    pageOffset.x += p.x - touchDrag.lx;
+    pageOffset.y += p.y - touchDrag.ly;
+    touchDrag.lx = p.x; touchDrag.ly = p.y;
+    clampPageOffset();
     draw();
   }
 }, { passive: false });
@@ -1133,6 +1175,7 @@ function setPage(size) {
   chooseOrientation(size, orient => {
     pageOrient = orient;
     pageSize = size;
+    pageOffset = { x: 0, y: 0 };          // start centred
     applyPage();
   });
 }
