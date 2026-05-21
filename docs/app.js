@@ -28,7 +28,7 @@ const state = {
   waypoints: [],            // [{ lat, lng, name }]
   legs: [],                 // per-leg attributes (see newLeg)
   notes: [],                // [{ lat, lng, text }] — free-text annotations
-  mode: 'add',              // 'add' | 'edit' | 'note'
+  mode: null,               // 'add' | 'note' | null (= inspect)
   selected: null,           // { type:'wp'|'leg'|'note', index }
 };
 let showReturn = false;     // outbound (return) markers — off by default
@@ -1400,14 +1400,14 @@ function restoreRoute() {
 
 // --- toolbar ---------------------------------------------------------
 function setMode(mode) {
+  // Clicking the currently-active mode button toggles back to inspect (null).
+  if (state.mode === mode) mode = null;
   state.mode = mode;
   document.getElementById('tool-add').classList.toggle('active', mode === 'add');
-  document.getElementById('tool-edit').classList.toggle('active', mode === 'edit');
   document.getElementById('tool-note').classList.toggle('active', mode === 'note');
   document.getElementById('map').classList.toggle('add', mode === 'add' || mode === 'note');
 }
 document.getElementById('tool-add').onclick = () => setMode('add');
-document.getElementById('tool-edit').onclick = () => setMode('edit');
 document.getElementById('tool-note').onclick = () => setMode('note');
 document.getElementById('reverse').onclick = () => {
   // Reversing flight direction means each leg's inbound/outbound roles swap.
@@ -1610,7 +1610,7 @@ document.getElementById('insp-close').onclick = () => {
 
 // --- boot ------------------------------------------------------------
 resizeOverlay();
-setMode('add');
+setMode(null);
 restoreRoute();
 if (state.waypoints.length) fitView();   // always frame the restored route
 draw();
