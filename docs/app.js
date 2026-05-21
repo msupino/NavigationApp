@@ -190,7 +190,7 @@ function draw() {
   drawWaypoints();
   drawNotes();
   drawInfo();
-  if (!printing) drawPageFrame();
+  drawPageFrame();
   persist();
 }
 
@@ -264,13 +264,12 @@ function applyNavSnap(latlng, currentName) {
 function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
   const showLabels = map.getZoom() >= 10;
-  const W = vw(), H = vh(), pad = 30;
   octx.font = 'bold 10px sans-serif';
   octx.textAlign = 'left';
   octx.textBaseline = 'middle';
   for (const wp of navWP) {
-    const s = proj(wp);
-    if (s.x < -pad || s.x > W + pad || s.y < -pad || s.y > H + pad) continue;
+    const s = proj(wp);                  // no viewport cull: also drawn into
+                                         // the larger PNG-export canvas
     octx.fillStyle = '#ffffff';
     octx.strokeStyle = '#161412';
     octx.lineWidth = 1.5;
@@ -547,9 +546,11 @@ function noteRect(i) {
     const w = octx.measureText(l || ' ').width;
     if (w > maxW) maxW = w;
   }
-  const w = maxW + NOTE_PAD_X * 2;
-  const h = Math.max(1, lines.length) * NOTE_LINE_H + NOTE_PAD_Y * 2;
-  return { x: s.x - w / 2, y: s.y - h / 2, w, h, lines };
+  let w = maxW + NOTE_PAD_X * 2;
+  let h = Math.max(1, lines.length) * NOTE_LINE_H + NOTE_PAD_Y * 2;
+  const oval = n.shape === 'oval';
+  if (oval) { w *= Math.SQRT2; h *= Math.SQRT2; }   // ellipse must bound the text
+  return { x: s.x - w / 2, y: s.y - h / 2, w, h, lines, oval };
 }
 
 function drawNotes() {
@@ -561,19 +562,27 @@ function drawNotes() {
                      state.selected.index === i;
     const color = n.color || NOTE_DEFAULT_COLOR;
     octx.fillStyle = tintFill(color, selected ? 0.95 : 0.80);
-    octx.fillRect(r.x, r.y, r.w, r.h);
     octx.lineWidth = selected ? 2.5 : 1.5;
     octx.strokeStyle = selected ? '#ffcc33' : '#161412';
-    octx.strokeRect(r.x, r.y, r.w, r.h);
+    if (r.oval) {
+      octx.beginPath();
+      octx.ellipse(r.x + r.w / 2, r.y + r.h / 2, r.w / 2, r.h / 2,
+                   0, 0, Math.PI * 2);
+      octx.fill();
+      octx.stroke();
+    } else {
+      octx.fillRect(r.x, r.y, r.w, r.h);
+      octx.strokeRect(r.x, r.y, r.w, r.h);
+    }
 
     octx.font = NOTE_FONT;
     octx.fillStyle = '#161412';
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
     const cx = r.x + r.w / 2;
+    const y0 = r.y + (r.h - r.lines.length * NOTE_LINE_H) / 2;
     for (let j = 0; j < r.lines.length; j++) {
-      const ly = r.y + NOTE_PAD_Y + NOTE_LINE_H / 2 + j * NOTE_LINE_H;
-      octx.fillText(r.lines[j], cx, ly);
+      octx.fillText(r.lines[j], cx, y0 + NOTE_LINE_H / 2 + j * NOTE_LINE_H);
     }
     octx.textAlign = 'left';
   }
@@ -657,8 +666,14 @@ function drawPageFrame() {
 function hitNote(px, py) {
   for (let i = state.notes.length - 1; i >= 0; i--) {
     const r = noteRect(i);
-    if (px >= r.x && px <= r.x + r.w &&
-        py >= r.y && py <= r.y + r.h) return i;
+    if (r.oval) {
+      const dx = (px - (r.x + r.w / 2)) / (r.w / 2);
+      const dy = (py - (r.y + r.h / 2)) / (r.h / 2);
+      if (dx * dx + dy * dy <= 1) return i;
+    } else if (px >= r.x && px <= r.x + r.w &&
+               py >= r.y && py <= r.y + r.h) {
+      return i;
+    }
   }
   return -1;
 }
@@ -766,6 +781,10 @@ function showInspector() {
     body.appendChild(textareaRow('', note.text || '', v => {
       note.text = v; draw();
     }));
+    body.appendChild(selectRow('Shape', note.shape || 'rect',
+      [['rect', 'Rectangle'], ['oval', 'Oval']], v => {
+        note.shape = v; draw();
+      }));
     body.appendChild(colorRow('Color', note.color || NOTE_DEFAULT_COLOR, v => {
       note.color = v; draw();
     }));
@@ -807,6 +826,23 @@ function colorRow(label, value, onChange) {
   inp.value = value || NOTE_DEFAULT_COLOR;
   inp.oninput = () => onChange(inp.value);
   row.append(l, inp);
+  return row;
+}
+function selectRow(label, value, options, onChange) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  const l = document.createElement('label');
+  l.textContent = label;
+  const sel = document.createElement('select');
+  for (const [val, text] of options) {
+    const o = document.createElement('option');
+    o.value = val;
+    o.textContent = text;
+    if (val === value) o.selected = true;
+    sel.appendChild(o);
+  }
+  sel.onchange = () => onChange(sel.value);
+  row.append(l, sel);
   return row;
 }
 function textareaRow(label, value, onChange) {
@@ -1109,6 +1145,7 @@ function save() {
     })),
     notes: state.notes.map(n => ({
       lat: n.lat, lng: n.lng, text: n.text || '', color: n.color || '',
+      shape: n.shape || 'rect',
     })),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -1135,6 +1172,7 @@ function load(file) {
       }));
       state.notes = (d.notes || []).map(n => ({
         lat: +n.lat, lng: +n.lng, text: n.text || '', color: n.color || '',
+        shape: n.shape === 'oval' ? 'oval' : 'rect',
       }));
       syncLegs();
       state.selected = null;
@@ -1149,7 +1187,6 @@ function load(file) {
 }
 
 // --- print -----------------------------------------------------------
-let printing = false;
 
 function applyPage() {
   document.getElementById('page-a3').classList.toggle('active', pageSize === 'A3');
@@ -1359,7 +1396,11 @@ function exportPNG() {
       img.crossOrigin = 'anonymous';
       const job = {
         img, dx: Math.round(tx * 256 - nwP.x), dy: Math.round(ty * 256 - nwP.y),
-        done: new Promise(res => { img.onload = res; img.onerror = res; }),
+        done: new Promise(res => {
+          img.onload = res;
+          img.onerror = res;
+          setTimeout(res, 20000);          // never hang on a stalled tile
+        }),
       };
       img.src = 'https://images.weserv.nl/?url=' +
                 encodeURIComponent(url.replace(/^https?:\/\//, ''));
@@ -1368,9 +1409,13 @@ function exportPNG() {
   }
 
   Promise.all(jobs.map(j => j.done)).then(() => {
+    let failed = 0;
     for (const j of jobs) {
       if (j.img.naturalWidth) {
-        try { o.drawImage(j.img, j.dx, j.dy, 256, 256); } catch (e) { /* skip */ }
+        try { o.drawImage(j.img, j.dx, j.dy, 256, 256); }
+        catch (e) { failed++; }
+      } else {
+        failed++;
       }
     }
     // re-render the route into the export canvas. Web Mercator is a uniform
@@ -1398,6 +1443,10 @@ function exportPNG() {
       a.download = 'navigation-' + (pageSize || baseName) + '.png';
       a.click();
       URL.revokeObjectURL(a.href);
+      if (failed > 0) {
+        alert(failed + ' of ' + jobs.length + ' map tiles failed to load — ' +
+              'the PNG may have blank patches. Re-run the export to retry.');
+      }
     }, 'image/png');
   });
 }
@@ -1438,6 +1487,7 @@ function restoreRoute() {
     }));
     state.notes = (d.notes || []).map(n => ({
       lat: +n.lat, lng: +n.lng, text: n.text || '', color: n.color || '',
+      shape: n.shape === 'oval' ? 'oval' : 'rect',
     }));
     syncLegs();
     return true;
@@ -1678,7 +1728,10 @@ document.getElementById('insp-close').onclick = () => {
     }
   });
   try {
-    if (localStorage.getItem(COLLAPSE_KEY) === '1') setCollapsed(true);
+    const stored = localStorage.getItem(COLLAPSE_KEY);
+    const onPhone = window.matchMedia('(max-width: 680px)').matches;
+    // phones start collapsed unless the user has explicitly expanded before
+    if (stored === '1' || (stored === null && onPhone)) setCollapsed(true);
   } catch (e) { /* storage unavailable */ }
 
   window.addEventListener('resize', () => {
@@ -1695,3 +1748,30 @@ draw();
 // Always load nav-waypoints in the background — they power both the
 // overlay toggle and the auto-snap on drop / drag.
 loadNavWaypoints().then(draw);
+
+// --- PWA: service worker + install button ----------------------------
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .catch(() => { /* offline mode unavailable */ });
+  });
+}
+let deferredInstall = null;
+const installBtn = document.getElementById('install');
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();                    // keep our own button in control
+  deferredInstall = e;
+  if (installBtn) installBtn.hidden = false;
+});
+if (installBtn) {
+  installBtn.onclick = async () => {
+    if (!deferredInstall) return;
+    deferredInstall.prompt();
+    await deferredInstall.userChoice;
+    deferredInstall = null;
+    installBtn.hidden = true;
+  };
+}
+window.addEventListener('appinstalled', () => {
+  if (installBtn) installBtn.hidden = true;
+});
