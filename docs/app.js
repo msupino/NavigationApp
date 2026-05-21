@@ -193,8 +193,10 @@ function draw() {
 }
 
 // --- nav-waypoint reference overlay ---------------------------------
-// Lazy-loads docs/nav-waypoints.json on first activation. Source format:
-// { waypoints:[{ name, coord:[lng,lat] }] } — 238 published reporting points.
+// Lazy-loads docs/nav-waypoints.json on first activation. Format:
+// { waypoints:[{ name, lat, lng }] } — 238 published reporting points.
+// (Old GeoJSON-style entries with `coord:[lng,lat]` are also accepted
+// as a fallback if a stale cache returns them.)
 async function loadNavWaypoints() {
   if (navWP !== null) return navWP;
   try {
@@ -202,7 +204,9 @@ async function loadNavWaypoints() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const d = await res.json();
     navWP = (d.waypoints || []).map(w => ({
-      name: w.name, lat: w.coord[1], lng: w.coord[0],
+      name: w.name,
+      lat: w.lat ?? (w.coord && w.coord[1]),
+      lng: w.lng ?? (w.coord && w.coord[0]),
     }));
   } catch (e) {
     console.warn('Failed to load nav waypoints:', e);
