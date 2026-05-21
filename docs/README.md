@@ -20,14 +20,15 @@ python3 -m http.server -d docs 8000
 The toolbar is a vertical column with a `⋯` grip on top — drag it
 anywhere on screen (its position is remembered).
 
-- **Add** — click the map to drop a waypoint; legs connect them.
-- **Edit** — click / drag waypoints, click a leg to edit it.
-- **Note** — drop a free-text annotation box at the click point;
+- **Add Waypoint** — click the map to drop a waypoint; legs connect
+  them. With no mode active, click / drag an existing waypoint or leg
+  to select and edit it.
+- **Add Note** — drop a free-text annotation box at the click point;
   pick a colour for it in the inspector.
-- **Reverse** — invert the route, swapping each leg's altitude pair
-  and rotating waypoint name text 180° so the chart turned around
+- **Reverse Route** — invert the route, swapping each leg's altitude
+  pair and rotating waypoint name text 180° so the chart turned around
   still reads upright.
-- **Clear** — remove all waypoints + notes (with confirm).
+- **Clear map** — remove all waypoints + notes (with confirm).
 - **Save / Load** — JSON file with the full route + notes.
 - **Fit** — frame the route in view.
 - **📋 Plan** — open a modal with a per-leg flight plan table
@@ -76,3 +77,27 @@ so a reload picks up where you left off.
 Charts are © flight-maps.com / CAAI — public deploys need permission.
 Imagery: © Esri (World Imagery). Map data: © OpenStreetMap
 contributors. VFR reporting points: ICAO/CAAI public AIP data.
+
+---
+
+<div dir="rtl">
+
+## עברית
+
+**NavAid** — כלי לתכנון מסלולי טיסת CVFR באזור ישראל. פועל בדפדפן, ללא התקנה.
+
+- **גרסה חיה:** https://msupino.github.io/NavigationApp/
+- **הוספת נקודת ציון** — לחיצה על המפה מוסיפה נקודה; הקטעים מתחברים אוטומטית.
+  לחיצה או גרירה של נקודה או קטע קיימים פותחת אותם לעריכה.
+- **הוספת הערה** — תיבת טקסט חופשי על המפה, עם בחירת צבע.
+- **היפוך מסלול** — היפוך כיוון הטיסה.
+- **שמירה / טעינה** — קובץ JSON עם המסלול וההערות.
+- **נקודות ניווט** — שכבת נקודות הדיווח (VFR) המפורסמות בישראל.
+- **תוכנית טיסה** — טבלה עם כיוון, מרחק, מהירות, גובה וזמן לכל קטע.
+- **הדפסה / ייצוא PNG** — שמירת המפה והמסלול כתמונה ברזולוציה גבוהה (A3 / A4).
+
+המסלול והתצוגה נשמרים בדפדפן — רענון הדף משחזר את העבודה האחרונה.
+
+מפות תעופה: © flight-maps.com / רת"א — לשימוש אישי.
+
+</div>
