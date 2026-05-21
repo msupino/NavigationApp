@@ -1,0 +1,53 @@
+name: Deploy
+
+# Production = main/docs at "/", staging = dev/docs at "/staging/".
+on:
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main (production)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: m
+          lfs: true
+      - name: Checkout dev (staging)
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          path: d
+          lfs: true
+      - name: Assemble site
+        run: |
+          mkdir -p site/staging
+          cp -r m/docs/. site/
+          cp -r d/docs/. site/staging/
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
