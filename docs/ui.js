@@ -38,11 +38,7 @@ document.getElementById('reverse').onclick = () => {
   // Reversing flight direction means each leg's inbound/outbound roles swap.
   // The leg's local axes (along + perpendicular) also flip, so negating the
   // label offsets keeps the markers visually pinned to the same map pixels.
-  // Waypoint name text is rotated 180° so the chart, when turned around to
-  // fly the return route, still reads upright.
-  state.waypoints = state.waypoints.reverse().map(w => ({
-    ...w, flipped: !w.flipped,
-  }));
+  state.waypoints.reverse();
   state.legs = state.legs.reverse().map(l => ({
     inboundAltitude: l.outboundAltitude,
     outboundAltitude: l.inboundAltitude,
@@ -81,6 +77,12 @@ document.getElementById('mid-cb').onchange = e => {
 };
 document.getElementById('wpname-cb').onchange = e => {
   showWpNames = e.target.checked;
+  draw();
+};
+document.getElementById('wpname-rot').onclick = e => {
+  e.stopPropagation();                  // don't toggle the checkbox
+  wpNameAngle = (wpNameAngle + 90) % 360;
+  e.currentTarget.title = 'Rotate waypoint names (now ' + wpNameAngle + '°)';
   draw();
 };
 document.getElementById('diff-cb').onchange = e => {

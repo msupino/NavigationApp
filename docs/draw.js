@@ -339,7 +339,7 @@ function drawWaypoints() {
 
     octx.save();
     octx.translate(s.x, s.y);
-    if (wp.flipped) octx.rotate(Math.PI);
+    if (wpNameAngle) octx.rotate(wpNameAngle * Math.PI / 180);
     octx.font = `bold ${fontPx}px sans-serif`;
     octx.fillStyle = '#161412';
     octx.textAlign = 'center';

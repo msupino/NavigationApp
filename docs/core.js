@@ -37,6 +37,7 @@ let highlightDiff = false;  // purple halo on legs that change altitude
 let showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
 let navWP = null;           // null = not loaded; [] = loaded empty/error
 let showWpNames = true;     // draw waypoint names (off = empty circle)
+let wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 let yellowAlpha = 1;        // global multiplier for yellow label backgrounds
 let wpSize = 1;             // waypoint name / number text size scale
 let pageSize = null;        // null | 'A3' | 'A4'
