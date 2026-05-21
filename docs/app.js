@@ -1144,36 +1144,65 @@ function chooseOrientation(size, onPick) {
   document.body.appendChild(back);
 }
 
-function doPrint() {
-  const frame = pageFrameRect();        // null when no page size picked
+// Save the framed map + route as a PNG. The flight-maps tiles are not
+// CORS-enabled, so they cannot be read off a canvas directly — at export time
+// each visible tile is re-fetched through the weserv image proxy (which adds
+// Access-Control-Allow-Origin) so the output canvas stays untainted.
+function exportPNG() {
+  const r = pageFrameRect() || { x: 0, y: 0, w: vw(), h: vh() };
   printing = true;
-  draw();                                // hides the on-screen page frame
+  draw();                                // overlay without the page frame
 
-  const root = document.documentElement;
-  if (frame) {
-    // Crop the printed body to the frame rectangle, and offset the map/overlay
-    // so only that region is visible. The browser scales the body to fit the
-    // chosen @page size, giving 1:250,000 on paper.
-    root.style.setProperty('--print-vw', window.innerWidth + 'px');
-    root.style.setProperty('--print-vh', window.innerHeight + 'px');
-    root.style.setProperty('--print-fx', (-frame.x) + 'px');
-    root.style.setProperty('--print-fy', (-frame.y) + 'px');
-    root.style.setProperty('--print-fw', frame.w + 'px');
-    root.style.setProperty('--print-fh', frame.h + 'px');
-    root.classList.add('print-frame');
-  }
+  const out = document.createElement('canvas');
+  out.width = Math.round(r.w * dpr);
+  out.height = Math.round(r.h * dpr);
+  const o = out.getContext('2d');
+  o.fillStyle = '#231F20';
+  o.fillRect(0, 0, out.width, out.height);
 
-  window.print();
+  let base = null;
+  for (const name in layers) if (map.hasLayer(layers[name])) base = layers[name];
 
-  if (frame) {
-    root.classList.remove('print-frame');
-    for (const k of ['--print-vw', '--print-vh', '--print-fx',
-                     '--print-fy', '--print-fw', '--print-fh']) {
-      root.style.removeProperty(k);
+  const mapBox = map.getContainer().getBoundingClientRect();
+  const jobs = [];
+  if (base && base._tiles) {
+    for (const key in base._tiles) {
+      const t = base._tiles[key];
+      if (!t.current || !t.el || !t.el.src) continue;
+      const tb = t.el.getBoundingClientRect();
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      const job = {
+        img,
+        x: tb.left - mapBox.left, y: tb.top - mapBox.top,
+        w: tb.width, h: tb.height,
+        done: new Promise(res => { img.onload = res; img.onerror = res; }),
+      };
+      img.src = 'https://images.weserv.nl/?url=' +
+                encodeURIComponent(t.el.src.replace(/^https?:\/\//, ''));
+      jobs.push(job);
     }
   }
-  printing = false;
-  draw();
+
+  Promise.all(jobs.map(j => j.done)).then(() => {
+    for (const j of jobs) {
+      if (!j.img.naturalWidth) continue;
+      o.drawImage(j.img, (j.x - r.x) * dpr, (j.y - r.y) * dpr,
+                  j.w * dpr, j.h * dpr);
+    }
+    o.drawImage(overlay, r.x * dpr, r.y * dpr, r.w * dpr, r.h * dpr,
+                0, 0, out.width, out.height);
+    printing = false;
+    draw();
+    out.toBlob(b => {
+      if (!b) { alert('PNG export failed (a map tile could not be loaded).'); return; }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = 'navigation-' + (pageSize || 'map') + '.png';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }, 'image/png');
+  });
 }
 
 // --- route persistence ----------------------------------------------
@@ -1328,7 +1357,7 @@ document.getElementById('mag-var').oninput = e => {
 };
 document.getElementById('page-a3').onclick = () => setPage('A3');
 document.getElementById('page-a4').onclick = () => setPage('A4');
-document.getElementById('print').onclick = doPrint;
+document.getElementById('print').onclick = exportPNG;
 document.getElementById('insp-close').onclick = () => {
   state.selected = null;
   showInspector(); draw();
