@@ -28,7 +28,7 @@ const state = {
   waypoints: [],            // [{ lat, lng, name }]
   legs: [],                 // per-leg attributes (see newLeg)
   notes: [],                // [{ lat, lng, text }] — free-text annotations
-  mode: 'add',              // 'add' | 'edit' | 'note'
+  mode: null,               // 'add' | 'note' | null (= inspect)
   selected: null,           // { type:'wp'|'leg'|'note', index }
 };
 let showReturn = false;     // outbound (return) markers — off by default
@@ -36,6 +36,7 @@ let showMidLeg = false;
 let highlightDiff = false;  // purple halo on legs that change altitude
 let showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
 let navWP = null;           // null = not loaded; [] = loaded empty/error
+let showWpNames = true;     // draw waypoint names (off = empty circle)
 let yellowAlpha = 1;        // global multiplier for yellow label backgrounds
 let wpSize = 1;             // waypoint name / number text size scale
 let pageSize = null;        // null | 'A3' | 'A4'
@@ -246,6 +247,10 @@ function isNavName(name) {
 //  - Else if the current name was a nav name (no longer near any nav):
 //    clear it so the circle reverts to the sequence number.
 function applyNavSnap(latlng, currentName) {
+  // Snap only while the nav-waypoint overlay is shown.
+  if (!showNavWP) {
+    return { lat: latlng.lat, lng: latlng.lng, name: currentName || '' };
+  }
   if (currentName && !isNavName(currentName)) {
     return { lat: latlng.lat, lng: latlng.lng, name: currentName };
   }
@@ -485,7 +490,8 @@ const WP_RADIUS = 13;
 // needed to fit it. Scaled by the global `wpSize` slider.
 function waypointGeom(i) {
   const wp = state.waypoints[i];
-  const label = (wp.name || '').trim() || String(i + 1);
+  // Names off -> empty circle (no name, no number).
+  const label = showWpNames ? ((wp.name || '').trim() || String(i + 1)) : '';
   const fontPx = Math.max(8, Math.round(13 * wpSize));
   octx.font = `bold ${fontPx}px sans-serif`;
   const w = octx.measureText(label).width;
@@ -1400,14 +1406,14 @@ function restoreRoute() {
 
 // --- toolbar ---------------------------------------------------------
 function setMode(mode) {
+  // Clicking the currently-active mode button toggles back to inspect (null).
+  if (state.mode === mode) mode = null;
   state.mode = mode;
   document.getElementById('tool-add').classList.toggle('active', mode === 'add');
-  document.getElementById('tool-edit').classList.toggle('active', mode === 'edit');
   document.getElementById('tool-note').classList.toggle('active', mode === 'note');
   document.getElementById('map').classList.toggle('add', mode === 'add' || mode === 'note');
 }
 document.getElementById('tool-add').onclick = () => setMode('add');
-document.getElementById('tool-edit').onclick = () => setMode('edit');
 document.getElementById('tool-note').onclick = () => setMode('note');
 document.getElementById('reverse').onclick = () => {
   // Reversing flight direction means each leg's inbound/outbound roles swap.
@@ -1451,6 +1457,10 @@ document.getElementById('ret-cb').onchange = e => {
 };
 document.getElementById('mid-cb').onchange = e => {
   showMidLeg = e.target.checked;
+  draw();
+};
+document.getElementById('wpname-cb').onchange = e => {
+  showWpNames = e.target.checked;
   draw();
 };
 document.getElementById('diff-cb').onchange = e => {
@@ -1610,7 +1620,7 @@ document.getElementById('insp-close').onclick = () => {
 
 // --- boot ------------------------------------------------------------
 resizeOverlay();
-setMode('add');
+setMode(null);
 restoreRoute();
 if (state.waypoints.length) fitView();   // always frame the restored route
 draw();
