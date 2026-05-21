@@ -229,6 +229,32 @@ function nearestNavWaypoint(latlng, pxThreshold) {
   return best;
 }
 
+// True if `name` exactly matches a known nav waypoint name (so we treat
+// it as auto-snapped, not user-typed, and may overwrite on drag).
+function isNavName(name) {
+  if (!name || !navWP) return false;
+  for (const wp of navWP) if (wp.name === name) return true;
+  return false;
+}
+
+// Decide where a waypoint should sit + what to call it given a target
+// position and its current name. Used by both initial drop and drag.
+//  - If the current name is user-typed (non-empty, not a nav name): leave
+//    the name alone; just move to the target latlng.
+//  - Else if a nav waypoint is within 18 px of the target: snap lat/lng +
+//    name to that nav waypoint.
+//  - Else if the current name was a nav name (no longer near any nav):
+//    clear it so the circle reverts to the sequence number.
+function applyNavSnap(latlng, currentName) {
+  if (currentName && !isNavName(currentName)) {
+    return { lat: latlng.lat, lng: latlng.lng, name: currentName };
+  }
+  const snap = nearestNavWaypoint(latlng, 18);
+  if (snap) return { lat: snap.lat, lng: snap.lng, name: snap.name };
+  return { lat: latlng.lat, lng: latlng.lng,
+           name: isNavName(currentName) ? '' : (currentName || '') };
+}
+
 function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
   const showLabels = map.getZoom() >= 10;
@@ -873,8 +899,9 @@ map.on('mousemove', e => {
   const p = e.containerPoint;
   if (drag.kind === 'wp') {
     drag.moved = true;
-    state.waypoints[drag.i].lat = e.latlng.lat;
-    state.waypoints[drag.i].lng = e.latlng.lng;
+    const wp = state.waypoints[drag.i];
+    const r = applyNavSnap(e.latlng, wp.name || '');
+    wp.lat = r.lat; wp.lng = r.lng; wp.name = r.name;
     draw(); showInspector();
   } else if (drag.kind === 'note') {
     state.notes[drag.i].lat = e.latlng.lat;
@@ -898,17 +925,11 @@ map.on('mouseup', () => {
 map.on('click', e => {
   if (downHit) { downHit = false; return; }
   if (state.mode === 'add') {
-    // If close to a published reporting point, snap to it and use its name.
-    const snap = nearestNavWaypoint(e.latlng, 18);
-    state.waypoints.push(snap
-      ? { lat: snap.lat, lng: snap.lng, name: snap.name }
-      : { lat: e.latlng.lat, lng: e.latlng.lng, name: '' });
+    const r = applyNavSnap(e.latlng, '');
+    state.waypoints.push({ lat: r.lat, lng: r.lng, name: r.name });
     syncLegs();
     state.selected = { type: 'wp', index: state.waypoints.length - 1 };
     showInspector(); draw();
-    // Lazy-load nav waypoints in the background so subsequent clicks can snap
-    // even when the overlay toggle is off.
-    if (navWP === null) loadNavWaypoints().then(draw);
   } else if (state.mode === 'note') {
     state.notes.push({ lat: e.latlng.lat, lng: e.latlng.lng, text: 'Note' });
     state.selected = { type: 'note', index: state.notes.length - 1 };
@@ -984,8 +1005,9 @@ mapEl.addEventListener('touchmove', e => {
   const p = touchXY(e.touches[0]);
   const ll = map.containerPointToLatLng([p.x, p.y]);
   if (touchDrag.kind === 'wp') {
-    state.waypoints[touchDrag.i].lat = ll.lat;
-    state.waypoints[touchDrag.i].lng = ll.lng;
+    const wp = state.waypoints[touchDrag.i];
+    const r = applyNavSnap(ll, wp.name || '');
+    wp.lat = r.lat; wp.lng = r.lng; wp.name = r.name;
     draw(); showInspector();
   } else if (touchDrag.kind === 'note') {
     state.notes[touchDrag.i].lat = ll.lat;
@@ -1589,4 +1611,6 @@ setMode('add');
 restoreRoute();
 if (state.waypoints.length) fitView();   // always frame the restored route
 draw();
-if (showNavWP) loadNavWaypoints().then(draw);
+// Always load nav-waypoints in the background — they power both the
+// overlay toggle and the auto-snap on drop / drag.
+loadNavWaypoints().then(draw);
