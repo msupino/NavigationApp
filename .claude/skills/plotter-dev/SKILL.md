@@ -18,7 +18,7 @@ Re-implements the Unity `NavigationApp` plotter.
 
 - **Live:** https://msupino.github.io/NavigationApp/
 - **Repo:** https://github.com/msupino/NavigationApp (fork of liorbenhorin/NavigationApp)
-- **Branch:** `html5-app` — all web-app work. This branch holds **only**
+- **Branch:** `main` — all web-app work. This branch holds **only**
   the web app (`docs/` + `.claude/`). The Unity tree was intentionally
   stripped from this branch (commit `53188cc`); it survives on `master`
   (Unity 2019) and `clean` (2023 deployed-build sources).
@@ -117,7 +117,7 @@ as a downloadable `route.json`.
   --virtual-time-budget=10000`; allow time for Leaflet + tiles to load).
   Inject a test route with a trailing `<script>` that sets
   `state.waypoints` and calls `syncLegs(); fitView(); draw();`.
-- **Deploy:** `git push origin html5-app`; GitHub Pages auto-builds from
+- **Deploy:** `git push origin main`; GitHub Pages auto-builds from
   that branch's `/docs`. **Always** bump `?v=N` in `index.html` (both
   `app.js` and `style.css`) before pushing. Poll
   `gh api repos/msupino/NavigationApp/pages/builds/latest --jq .status`.
