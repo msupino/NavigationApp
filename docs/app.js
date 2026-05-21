@@ -1324,7 +1324,8 @@ function exportPNG() {
   const nw = map.containerPointToLatLng([fr.x, fr.y]);
   const se = map.containerPointToLatLng([fr.x + fr.w, fr.y + fr.h]);
 
-  // highest native zoom that keeps tile count and canvas size sane
+  // Always export at the layer's max native zoom; only step down if the
+  // region is physically too large for one canvas.
   const maxZ = base.options.maxNativeZoom || base.options.maxZoom || 13;
   let z = maxZ, nwP, seP, W, H;
   for (; z >= 9; z--) {
@@ -1332,9 +1333,7 @@ function exportPNG() {
     seP = map.project([se.lat, se.lng], z);
     W = Math.round(seP.x - nwP.x);
     H = Math.round(seP.y - nwP.y);
-    const tiles = (Math.floor(seP.x / 256) - Math.floor(nwP.x / 256) + 1) *
-                  (Math.floor(seP.y / 256) - Math.floor(nwP.y / 256) + 1);
-    if (tiles <= 150 && W <= 8000 && H <= 8000) break;
+    if (W <= 10000 && H <= 10000) break;
   }
 
   const out = document.createElement('canvas');
