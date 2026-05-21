@@ -34,7 +34,7 @@ const state = {
 let showReturn = false;     // outbound (return) markers — off by default
 let showMidLeg = false;
 let highlightDiff = false;  // purple halo on legs that change altitude
-let showNavWP = false;      // Israeli VFR reporting-point overlay
+let showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
 let navWP = null;           // null = not loaded; [] = loaded empty/error
 let yellowAlpha = 1;        // global multiplier for yellow label backgrounds
 let wpSize = 1;             // waypoint name / number text size scale
@@ -1413,7 +1413,9 @@ document.getElementById('diff-cb').onchange = e => {
 };
 const NAVWP_KEY = 'navaid.showNavWP';
 try {
-  showNavWP = localStorage.getItem(NAVWP_KEY) === '1';
+  const stored = localStorage.getItem(NAVWP_KEY);
+  // New users (null) get the default-on; '0' / '1' override.
+  if (stored !== null) showNavWP = stored === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('navwp-cb').checked = showNavWP;
 document.getElementById('navwp-cb').onchange = async e => {
