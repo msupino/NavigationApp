@@ -36,6 +36,7 @@ let showMidLeg = false;
 let highlightDiff = false;  // purple halo on legs that change altitude
 let showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
 let navWP = null;           // null = not loaded; [] = loaded empty/error
+let showWpNames = true;     // draw waypoint names (off = sequence number)
 let yellowAlpha = 1;        // global multiplier for yellow label backgrounds
 let wpSize = 1;             // waypoint name / number text size scale
 let pageSize = null;        // null | 'A3' | 'A4'
@@ -489,7 +490,7 @@ const WP_RADIUS = 13;
 // needed to fit it. Scaled by the global `wpSize` slider.
 function waypointGeom(i) {
   const wp = state.waypoints[i];
-  const label = (wp.name || '').trim() || String(i + 1);
+  const label = (showWpNames && (wp.name || '').trim()) || String(i + 1);
   const fontPx = Math.max(8, Math.round(13 * wpSize));
   octx.font = `bold ${fontPx}px sans-serif`;
   const w = octx.measureText(label).width;
@@ -1455,6 +1456,10 @@ document.getElementById('ret-cb').onchange = e => {
 };
 document.getElementById('mid-cb').onchange = e => {
   showMidLeg = e.target.checked;
+  draw();
+};
+document.getElementById('wpname-cb').onchange = e => {
+  showWpNames = e.target.checked;
   draw();
 };
 document.getElementById('diff-cb').onchange = e => {

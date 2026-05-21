@@ -1,5 +1,5 @@
 ---
-name: plotter-dev
+name: navaid-dev
 description: >-
   Continue development of NavAid, the HTML5 CVFR flight-route planner in
   /Users/marco/NavigationApp/docs. Use when the user wants to work on the
@@ -30,7 +30,9 @@ Unity `NavigationApp` plotter, which is preserved on the
   `dev` rebuilds the staging URL.
 - `original-plotter` — frozen Unity 2019 project (renamed from `master`).
   Reference only; do not commit web changes here.
-- `export-leg-attributes` — old draft PR branch (C# change, untouched).
+
+`main` is branch-protected — no direct pushes; production changes land via
+a `dev` → `main` pull request.
 
 ## Files (`docs/`)
 
@@ -74,8 +76,9 @@ Unity `NavigationApp` plotter, which is preserved on the
 - **Interaction (mouse):** Leaflet `mousedown` → hit-test in priority
   order **waypoint > note > leg-label > leg**. On a hit,
   `map.dragging.disable()` and own the drag; otherwise let Leaflet pan.
-  `map.on('click')` in `add` mode drops a waypoint, in `note` mode drops
-  a note.
+  `map.on('click')` in `add` mode drops a waypoint (snapped to a nearby
+  nav-waypoint within ~18 px — only while Show Nav Waypoints is on, see
+  `applyNavSnap`), in `note` mode drops a note.
 - **Interaction (touch):** single-finger touchstart / touchmove / touchend
   on `mapEl` mirror the mouse path. Multi-finger or empty-space falls
   through to Leaflet for pan / pinch-zoom.
@@ -166,8 +169,9 @@ A one-time migration at the top of `app.js` copies any old
   - `main/docs/` → `/`
   - `dev/docs/`  → `/staging/`
   - `actions/deploy-pages@v4` publishes the result.
-- **Production deploy** = `git push origin main`.
 - **Staging deploy** = `git push origin dev`.
+- **Production deploy** = merge a `dev` → `main` pull request (`main` is
+  branch-protected; the merge triggers the same workflow).
 - **Always** bump `?v=N` on `app.js` and `style.css` in
   `index.html` before pushing.
 - Watch run status: `gh run list --workflow=deploy.yml --limit 5`.
