@@ -215,6 +215,20 @@ async function loadNavWaypoints() {
   return navWP;
 }
 
+// Closest nav waypoint within `pxThreshold` screen pixels of `latlng`,
+// or null. Returns the {name, lat, lng} entry from the loaded JSON.
+function nearestNavWaypoint(latlng, pxThreshold) {
+  if (!navWP || !navWP.length) return null;
+  const t = map.latLngToContainerPoint([latlng.lat, latlng.lng]);
+  let bestDist = pxThreshold, best = null;
+  for (const wp of navWP) {
+    const p = map.latLngToContainerPoint([wp.lat, wp.lng]);
+    const d = Math.hypot(p.x - t.x, p.y - t.y);
+    if (d < bestDist) { bestDist = d; best = wp; }
+  }
+  return best;
+}
+
 function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
   const showLabels = map.getZoom() >= 10;
@@ -884,10 +898,17 @@ map.on('mouseup', () => {
 map.on('click', e => {
   if (downHit) { downHit = false; return; }
   if (state.mode === 'add') {
-    state.waypoints.push({ lat: e.latlng.lat, lng: e.latlng.lng, name: '' });
+    // If close to a published reporting point, snap to it and use its name.
+    const snap = nearestNavWaypoint(e.latlng, 18);
+    state.waypoints.push(snap
+      ? { lat: snap.lat, lng: snap.lng, name: snap.name }
+      : { lat: e.latlng.lat, lng: e.latlng.lng, name: '' });
     syncLegs();
     state.selected = { type: 'wp', index: state.waypoints.length - 1 };
     showInspector(); draw();
+    // Lazy-load nav waypoints in the background so subsequent clicks can snap
+    // even when the overlay toggle is off.
+    if (navWP === null) loadNavWaypoints().then(draw);
   } else if (state.mode === 'note') {
     state.notes.push({ lat: e.latlng.lat, lng: e.latlng.lng, text: 'Note' });
     state.selected = { type: 'note', index: state.notes.length - 1 };
