@@ -1,9 +1,23 @@
 'use strict';
 
 /* ------------------------------------------------------------------ *
- * Plotter — HTML5 CVFR flight plotter.
+ * NavAid — HTML5 CVFR flight-route planner.
  * Leaflet base map (flight-maps.com tiles) + a canvas route overlay.
  * ------------------------------------------------------------------ */
+
+// One-time migration: the app was renamed from "Plotter" — carry over any
+// localStorage values saved under the old "plotter." prefix.
+try {
+  for (const k of Object.keys(localStorage)) {
+    if (k.indexOf('plotter.') === 0) {
+      const nk = 'navaid.' + k.slice(8);
+      if (localStorage.getItem(nk) === null) {
+        localStorage.setItem(nk, localStorage.getItem(k));
+      }
+      localStorage.removeItem(k);
+    }
+  }
+} catch (e) { /* storage unavailable */ }
 
 const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
 let magVar = -5;                       // signed offset added to true heading
@@ -104,7 +118,7 @@ const layers = {
       attribution: '© OpenStreetMap contributors' }),
 };
 
-const LAYER_KEY = 'plotter.layer';
+const LAYER_KEY = 'navaid.layer';
 let initialLayer = layers.CVFR;
 try {
   const saved = localStorage.getItem(LAYER_KEY);
@@ -936,7 +950,7 @@ function fitView() {
 function save() {
   const data = {
     waypoints: state.waypoints.map(w => ({
-      lat: w.lat, lng: w.lng, name: w.name || '', flipped: !!w.flipped,
+      lat: w.lat, lng: w.lng, name: w.name || '',
     })),
     legs: state.legs.map(l => ({
       inboundAltitude: l.inboundAltitude,
@@ -962,7 +976,7 @@ function load(file) {
     try {
       const d = JSON.parse(reader.result);
       state.waypoints = (d.waypoints || []).map(w => ({
-        lat: +w.lat, lng: +w.lng, name: w.name || '', flipped: !!w.flipped,
+        lat: +w.lat, lng: +w.lng, name: w.name || '', flipped: false,
       }));
       state.legs = (d.legs || []).map(l => ({
         inboundAltitude: l.inboundAltitude ?? 2000,
@@ -1240,7 +1254,7 @@ function exportPNG() {
 }
 
 // --- route persistence ----------------------------------------------
-const STORE_KEY = 'plotter.route';
+const STORE_KEY = 'navaid.route';
 let persistTimer = null;
 function persist() {
   if (persistTimer) return;
@@ -1342,7 +1356,7 @@ document.getElementById('diff-cb').onchange = e => {
   highlightDiff = e.target.checked;
   draw();
 };
-const ALPHA_KEY = 'plotter.yellowAlpha';
+const ALPHA_KEY = 'navaid.yellowAlpha';
 try {
   const v = parseFloat(localStorage.getItem(ALPHA_KEY));
   if (!isNaN(v)) yellowAlpha = Math.max(0, Math.min(1, v));
@@ -1354,7 +1368,7 @@ document.getElementById('yellow-alpha').oninput = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
-const WPSIZE_KEY = 'plotter.wpSize';
+const WPSIZE_KEY = 'navaid.wpSize';
 try {
   const v = parseFloat(localStorage.getItem(WPSIZE_KEY));
   if (!isNaN(v)) wpSize = Math.max(0.6, Math.min(2, v));
@@ -1366,7 +1380,7 @@ document.getElementById('wp-size').oninput = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
-const MAGVAR_KEY = 'plotter.magVar';
+const MAGVAR_KEY = 'navaid.magVar';
 try {
   const v = parseFloat(localStorage.getItem(MAGVAR_KEY));
   if (!isNaN(v)) magVar = Math.max(-30, Math.min(30, v));
@@ -1401,7 +1415,7 @@ document.getElementById('insp-close').onclick = () => {
 (function makeToolbarDraggable() {
   const bar = document.getElementById('toolbar');
   const handle = document.getElementById('toolbar-handle');
-  const KEY = 'plotter.toolbarPos';
+  const KEY = 'navaid.toolbarPos';
   let dx = 0, dy = 0, dragging = false;
 
   function clampPos(x, y) {
