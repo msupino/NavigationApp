@@ -122,6 +122,18 @@ html, body {
   padding: 2px 4px;
   cursor: text;
 }
+#toolbar #wpname-rot {
+  font-size: 13px;
+  line-height: 1;
+  color: #b9b3b3;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 1px 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#toolbar #wpname-rot:hover { color: #fff; }
 #toolbar .navtoggle select {
   flex: 1;
   min-width: 0;
@@ -395,6 +407,17 @@ html, body {
   padding: 2px 5px;
 }
 .plan-name:focus { outline: 1px solid #1d6fe0; }
+.plan-num {
+  width: 64px;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+.plan-num:focus { outline: 1px solid #1d6fe0; }
 .flight-table tfoot td {
   font-weight: 700;
   border-top: 2px solid #443f3f;

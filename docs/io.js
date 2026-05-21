@@ -33,7 +33,7 @@ function load(file) {
     try {
       const d = JSON.parse(reader.result);
       state.waypoints = (d.waypoints || []).map(w => ({
-        lat: +w.lat, lng: +w.lng, name: w.name || '', flipped: false,
+        lat: +w.lat, lng: +w.lng, name: w.name || '',
       }));
       state.legs = (d.legs || []).map(l => ({
         inboundAltitude: l.inboundAltitude ?? 2000,
@@ -147,23 +147,52 @@ function showFlightPlan() {
     td.appendChild(inp);
     return td;
   }
-  let totalDist = 0, totalH = 0;
+  // Speed / Alt cells are editable number inputs.
+  function numCell(value, min, onInput) {
+    const td = document.createElement('td');
+    const inp = document.createElement('input');
+    inp.type = 'number';
+    inp.className = 'plan-num';
+    inp.min = min;
+    inp.value = value;
+    inp.oninput = () => onInput(inp);
+    td.appendChild(inp);
+    return td;
+  }
+  const rows = [];                      // { leg, dist, timeCell }
+  let totDistCell, totTimeCell;
+  function refresh() {                  // recompute Time cells + totals
+    let td = 0, th = 0;
+    for (const r of rows) {
+      const dur = r.leg.flightSpeed > 0 ? r.dist / r.leg.flightSpeed : 0;
+      td += r.dist;
+      th += dur;
+      r.timeCell.textContent = dur > 0 ? toHMS(dur) : '--';
+    }
+    totDistCell.textContent = td.toFixed(1);
+    totTimeCell.textContent = th > 0 ? toHMS(th) : '--';
+  }
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     const leg = state.legs[i];
     const { dist, brg } = geo(A, B);
-    const durH = leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
-    totalDist += dist;
-    totalH += durH;
     const tr = document.createElement('tr');
     tr.appendChild(planCell(String(i + 1)));
     tr.appendChild(nameCell(i));
     tr.appendChild(nameCell(i + 1));
     tr.appendChild(planCell(pad3(toMagnetic(brg)) + '°M'));
     tr.appendChild(planCell(dist.toFixed(1)));
-    tr.appendChild(planCell(String(leg.flightSpeed)));
-    tr.appendChild(planCell(String(leg.inboundAltitude)));
-    tr.appendChild(planCell(durH > 0 ? toHMS(durH) : '--'));
+    tr.appendChild(numCell(leg.flightSpeed, 1, inp => {
+      const v = +inp.value;
+      if (v > 0) { leg.flightSpeed = v; refresh(); draw(); }
+    }));
+    tr.appendChild(numCell(leg.inboundAltitude, -2000, inp => {
+      leg.inboundAltitude = Math.round(+inp.value) || 0;
+      draw();
+    }));
+    const timeCell = planCell('');
+    tr.appendChild(timeCell);
+    rows.push({ leg, dist, timeCell });
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
@@ -174,14 +203,15 @@ function showFlightPlan() {
   tdLabel.colSpan = 4;
   tdLabel.textContent = 'Total';
   trF.appendChild(tdLabel);
-  for (const v of [totalDist.toFixed(1), '', '',
-                   totalH > 0 ? toHMS(totalH) : '--']) {
-    const td = document.createElement('td');
-    td.textContent = v;
-    trF.appendChild(td);
-  }
+  totDistCell = planCell('');
+  trF.appendChild(totDistCell);
+  trF.appendChild(planCell(''));        // Speed column
+  trF.appendChild(planCell(''));        // Alt column
+  totTimeCell = planCell('');
+  trF.appendChild(totTimeCell);
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
+  refresh();
   box.appendChild(table);
 
   const btns = document.createElement('div');
@@ -446,7 +476,7 @@ function restoreRoute() {
     if (!raw) return false;
     const d = JSON.parse(raw);
     state.waypoints = (d.waypoints || []).map(w => ({
-      lat: +w.lat, lng: +w.lng, name: w.name || '', flipped: !!w.flipped,
+      lat: +w.lat, lng: +w.lng, name: w.name || '',
     }));
     state.legs = (d.legs || []).map(l => ({
       inboundAltitude: l.inboundAltitude ?? 2000,
