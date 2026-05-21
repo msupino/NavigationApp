@@ -36,12 +36,21 @@ a `dev` → `main` pull request.
 
 ## Files (`docs/`)
 
-- `index.html` — page, toolbar, Leaflet + app.js. Title is "NavAid";
-  `favicon.svg` is a small plane glyph; GA4 tag `G-0XM5PHEK8B` is
-  embedded. Assets carry `?v=N` query strings; **always bump N on
-  every change** to `app.js` / `style.css` so visitors don't get
-  stale JS / CSS.
-- `app.js` — the whole app.
+- `index.html` — page, toolbar, Leaflet + the five app scripts. Title
+  is "NavAid"; `favicon.svg` is a small plane glyph; GA4 tag
+  `G-0XM5PHEK8B` and a Web App Manifest are embedded. Assets carry
+  `?v=N` query strings; **always bump N on every change** to any
+  `.js` / `style.css` so visitors don't get stale JS / CSS.
+- The app is five plain scripts loaded in order, sharing one global
+  scope (no build step, no modules):
+  `core.js` (migration, state model, geo helpers, Leaflet map,
+  overlay canvas) → `draw.js` (route / nav-waypoint / note rendering,
+  page frame) → `interact.js` (hit-testing, inspector, mouse/touch) →
+  `io.js` (save/load, page setup, flight plan, PNG export,
+  persistence) → `ui.js` (toolbar wiring, drag, boot, PWA). Order
+  matters — later files use globals from earlier ones.
+- `manifest.json`, `sw.js`, `icon-192.png`, `icon-512.png` — PWA:
+  installable app + offline app-shell service worker.
 - `style.css` — dark UI + `@media print` rules.
 - `nav-waypoints.json` — 238 published Israeli VFR reporting points
   (`{name, lat, lng}`). Lazy-loaded by the "Show Nav Waypoints"
@@ -149,7 +158,7 @@ a `dev` → `main` pull request.
 - `navaid.magVar` — magnetic variation offset.
 - `navaid.showNavWP` — `'0'` / `'1'` for the nav-waypoints overlay.
 
-A one-time migration at the top of `app.js` copies any old
+A one-time migration at the top of `core.js` copies any old
 `plotter.*` keys into `navaid.*` and removes the old ones.
 
 `save()` / `load()` round-trip waypoints (with `name`), legs (with
@@ -162,7 +171,7 @@ A one-time migration at the top of `app.js` copies any old
   `http://localhost:8000`. Inject a test route with a trailing
   `<script>` that sets `state.waypoints` and calls
   `syncLegs(); fitView(); draw();`.
-- **Lint** before every commit: `node --check docs/app.js`.
+- **Lint** before every commit: `node --check` each changed `.js`.
 - **Deploy is a workflow** at `.github/workflows/deploy.yml`. It
   triggers on push to `main` *or* `dev` (or manual dispatch),
   checks out **both** branches, and assembles one Pages site:
@@ -172,7 +181,7 @@ A one-time migration at the top of `app.js` copies any old
 - **Staging deploy** = `git push origin dev`.
 - **Production deploy** = merge a `dev` → `main` pull request (`main` is
   branch-protected; the merge triggers the same workflow).
-- **Always** bump `?v=N` on `app.js` and `style.css` in
+- **Always** bump `?v=N` on every changed `.js` and `style.css` in
   `index.html` before pushing.
 - Watch run status: `gh run list --workflow=deploy.yml --limit 5`.
 
@@ -185,6 +194,6 @@ A one-time migration at the top of `app.js` copies any old
   AIRAC cycle actually changes them.
 - `geo` distances are exact great-circle; verify against the chart's
   graticule if precision is questioned.
-- Some helpers in `app.js` are unused historical leftovers
+- Some helpers in `interact.js` are unused historical leftovers
   (`textInputRow`, `boolRow`); harmless, prune when convenient.
 - GA4 (`G-0XM5PHEK8B`) tracks page views; no event tracking yet.
