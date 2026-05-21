@@ -146,11 +146,7 @@ const map = L.map('map', {
   worldCopyJump: false,
 });
 L.control.zoom({ position: 'bottomright' }).addTo(map);
-L.control.layers(layers, null, { position: 'bottomright' }).addTo(map);
-map.on('baselayerchange', e => {
-  try { localStorage.setItem(LAYER_KEY, e.name); }
-  catch (err) { /* storage unavailable */ }
-});
+// Base layer is chosen from the toolbar (#layer-select, wired in ui.js).
 
 // --- route overlay canvas -------------------------------------------
 const overlay = document.getElementById('overlay');

@@ -13,6 +13,27 @@ function setMode(mode) {
 }
 document.getElementById('tool-add').onclick = () => setMode('add');
 document.getElementById('tool-note').onclick = () => setMode('note');
+
+// base map layer picker (replaces the Leaflet layers control)
+const layerSelect = document.getElementById('layer-select');
+for (const name in layers) {
+  const opt = document.createElement('option');
+  opt.value = name;
+  opt.textContent = name;
+  if (map.hasLayer(layers[name])) opt.selected = true;
+  layerSelect.appendChild(opt);
+}
+layerSelect.onchange = () => {
+  for (const name in layers) {
+    if (name !== layerSelect.value && map.hasLayer(layers[name])) {
+      map.removeLayer(layers[name]);
+    }
+  }
+  map.addLayer(layers[layerSelect.value]);
+  draw();                                // keep the route overlay on top
+  try { localStorage.setItem(LAYER_KEY, layerSelect.value); }
+  catch (e) { /* storage unavailable */ }
+};
 document.getElementById('reverse').onclick = () => {
   // Reversing flight direction means each leg's inbound/outbound roles swap.
   // The leg's local axes (along + perpendicular) also flip, so negating the
@@ -255,29 +276,12 @@ draw();
 // overlay toggle and the auto-snap on drop / drag.
 loadNavWaypoints().then(draw);
 
-// --- PWA: service worker + install button ----------------------------
+// --- PWA: service worker --------------------------------------------
+// Registering the worker makes the app installable; the browser shows
+// the install control in the address bar — no in-app button needed.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js')
       .catch(() => { /* offline mode unavailable */ });
   });
 }
-let deferredInstall = null;
-const installBtn = document.getElementById('install');
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();                    // keep our own button in control
-  deferredInstall = e;
-  if (installBtn) installBtn.hidden = false;
-});
-if (installBtn) {
-  installBtn.onclick = async () => {
-    if (!deferredInstall) return;
-    deferredInstall.prompt();
-    await deferredInstall.userChoice;
-    deferredInstall = null;
-    installBtn.hidden = true;
-  };
-}
-window.addEventListener('appinstalled', () => {
-  if (installBtn) installBtn.hidden = true;
-});
