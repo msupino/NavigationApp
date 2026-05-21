@@ -1,59 +1,76 @@
 ---
 name: plotter-dev
 description: >-
-  Continue development of the HTML5 CVFR flight plotter in
-  /Users/marco/NavigationApp/docs. Use when the user wants to work on the map
-  plotter web app — waypoints, legs, leg markers, notes, the Leaflet base map,
-  or the GitHub Pages deploy.
+  Continue development of NavAid, the HTML5 CVFR flight-route planner in
+  /Users/marco/NavigationApp/docs. Use when the user wants to work on the
+  map plotter web app — waypoints, legs, leg markers, notes, the Leaflet
+  base map, the nav-waypoint overlay, or the deploy pipeline.
 ---
 
-# HTML5 CVFR Flight Plotter — developer guide
+# NavAid — HTML5 CVFR flight-route planner — developer guide
 
 ## What this is
 
-A browser flight-route plotter. Leaflet slippy map (flight-maps.com tiles)
-with a canvas overlay that draws the route plus free-text notes. Plain
-HTML / CSS / JS, no build step; Leaflet from CDN is the only dependency.
-Re-implements the Unity `NavigationApp` plotter.
+A browser flight-route planner. Leaflet slippy map (flight-maps.com tiles)
+with a canvas overlay that draws the route, free-text notes, and an
+optional VFR-reporting-point reference layer. Plain HTML / CSS / JS, no
+build step; Leaflet from CDN is the only dependency. Re-implements the
+Unity `NavigationApp` plotter, which is preserved on the
+`original-plotter` branch.
 
-- **Live:** https://msupino.github.io/NavigationApp/
+- **Live (production):** https://msupino.github.io/NavigationApp/
+- **Live (staging):** https://msupino.github.io/NavigationApp/staging/
 - **Repo:** https://github.com/msupino/NavigationApp (fork of liorbenhorin/NavigationApp)
-- **Branch:** `main` — all web-app work. This branch holds **only**
-  the web app (`docs/` + `.claude/`). The Unity tree was intentionally
-  stripped from this branch (commit `53188cc`); it survives on `master`
-  (Unity 2019) and `clean` (2023 deployed-build sources).
+
+## Branches
+
+- `main` — production. The web app source. The Unity tree was stripped
+  here (commit `53188cc`).
+- `dev` — staging. The same web app, work-in-progress. Each push to
+  `dev` rebuilds the staging URL.
+- `original-plotter` — frozen Unity 2019 project (renamed from `master`).
+  Reference only; do not commit web changes here.
+- `export-leg-attributes` — old draft PR branch (C# change, untouched).
 
 ## Files (`docs/`)
 
-- `index.html` — page, toolbar, Leaflet + app.js. Assets carry `?v=N`;
-  **always bump N on every change** to `app.js` / `style.css` so Pages
-  visitors don't get stale JS / CSS.
+- `index.html` — page, toolbar, Leaflet + app.js. Title is "NavAid";
+  `favicon.svg` is a small plane glyph; GA4 tag `G-0XM5PHEK8B` is
+  embedded. Assets carry `?v=N` query strings; **always bump N on
+  every change** to `app.js` / `style.css` so visitors don't get
+  stale JS / CSS.
 - `app.js` — the whole app.
 - `style.css` — dark UI + `@media print` rules.
-- `.gitattributes` — forces images out of LFS so GitHub Pages can serve them.
-- `map.jpg`, `build_map.py`, `nav-waypoints.json` — legacy from the
-  pre-Leaflet static-chart version. **Unused**, safe to delete.
+- `nav-waypoints.json` — 238 published Israeli VFR reporting points
+  (`{name, lat, lng}`). Lazy-loaded by the "Show Nav Waypoints"
+  toggle.
+- `.gitattributes` — forces images out of LFS so Pages serves them.
+- `map.jpg`, `build_map.py` — legacy from the pre-Leaflet static-chart
+  version. **Unused**, safe to delete.
 
 ## Architecture
 
 - **Base map:** Leaflet with six base layers in one `layers` object:
   CVFR / Nav / Low Alt / Heli (flight-maps.com tiles) / Satellite (Esri) /
-  OSM. Selection persisted at `localStorage['plotter.layer']` and
+  OSM. Selection persisted at `localStorage['navaid.layer']` and
   restored *before* `L.map()` runs (no CVFR flash on reload).
 - **Route overlay:** a `<canvas id="overlay">` over the map with
   `pointer-events: none`, redrawn on every Leaflet `move` / `zoom` /
   `resize`. `proj(wp)` = `map.latLngToContainerPoint`.
 - **State:**
-  - `state.waypoints[i]` = `{lat, lng, name}` (name optional).
+  - `state.waypoints[i]` = `{lat, lng, name, flipped}` (name optional;
+    `flipped` toggled by Reverse).
   - `state.legs[i]` = `{inboundAltitude, outboundAltitude, flightSpeed,
     inLabel, outLabel}`. `inLabel` / `outLabel` are `{a, p}` offsets
     (along-leg / perpendicular, screen px) so markers can be dragged
     apart from the leg midpoint.
-  - `state.notes[i]` = `{lat, lng, text}` — free-text annotation boxes.
+  - `state.notes[i]` = `{lat, lng, text, color}` — free-text annotation
+    boxes with optional per-note `#rrggbb` colour.
   - `state.mode` = `'add' | 'edit' | 'note'`; `state.selected` =
     `{type:'wp'|'leg'|'note', index}` or `null`.
   - Top-level globals: `showReturn`, `showMidLeg`, `highlightDiff`,
-    `yellowAlpha`, `pageSize`, `pageOrient`.
+    `showNavWP`, `navWP`, `yellowAlpha`, `wpSize`, `magVar`,
+    `pageSize`, `pageOrient`.
 - **Interaction (mouse):** Leaflet `mousedown` → hit-test in priority
   order **waypoint > note > leg-label > leg**. On a hit,
   `map.dragging.disable()` and own the drag; otherwise let Leaflet pan.
@@ -62,73 +79,108 @@ Re-implements the Unity `NavigationApp` plotter.
 - **Interaction (touch):** single-finger touchstart / touchmove / touchend
   on `mapEl` mirror the mouse path. Multi-finger or empty-space falls
   through to Leaflet for pan / pinch-zoom.
-- **Toolbar:** absolute-positioned panel with a `⋮⋮` drag handle
-  (`#toolbar-handle`); position persisted at `plotter.toolbarPos`,
-  re-clamped on `window resize`.
-- **geo():** great-circle distance (NM) + bearing. Magnetic = true − 5°.
+- **Toolbar:** vertical column, absolute-positioned, with a `⋯` drag
+  handle (`#toolbar-handle`); position persisted at
+  `navaid.toolbarPos`, re-clamped on `window resize`.
+- **geo():** great-circle distance (NM) + bearing. Magnetic = true +
+  `magVar` (signed offset; Israel ≈ −5, equiv. 5°E variation).
 
 ## Features
 
-- **Modes:** Add / Edit / Note (toolbar buttons).
-- **Inspector:** `#insp-title` is an `<input>` — for waypoints it's the
-  **editable Name** (placeholder `WP N`); for legs it's read-only
-  `Leg N`; for notes it's read-only and a textarea below holds the body.
-  The global `keydown` handler bails out when the target is an input /
-  textarea / contenteditable so typing Backspace doesn't delete.
-- **Waypoints:** circle auto-sized to fit either the name or the
-  sequence number (`waypointGeom(i)`). Selection bumps the radius by 2
-  and swaps the fill to gold.
+- **Modes:** Add / Edit / Note.
+- **Inspector:** `#insp-title` is an `<input>` — for waypoints it's
+  the editable name (placeholder `WP N`); for legs it's read-only
+  `Leg N`; for notes it's read-only and a textarea + color picker
+  below holds the body. The global `keydown` handler bails out when
+  the target is an input / textarea / contenteditable so typing
+  Backspace doesn't delete.
+- **Waypoints:** circle auto-sized to fit name or sequence number
+  (`waypointGeom(i)`). Selection bumps the radius +2 and swaps fill
+  to gold. The `wpSize` slider scales font + circle.
 - **Leg markers:** aviation pennant — rectangle (altitude / time) +
-  heading triangle. Yellow-fill inbound, pink-fill return; draggable via
-  the `inLabel` / `outLabel` offsets. `Highlight diff` adds a 7 px
-  purple halo when a leg's altitude differs from the adjacent leg
-  (inbound vs previous leg's inbound, outbound vs next leg's outbound).
-- **Mid-leg distance badge:** single global toggle (`showMidLeg`).
+  heading triangle. Yellow-fill inbound, pink-fill return; draggable
+  via the `inLabel` / `outLabel` offsets. **Highlight diff** adds a
+  7 px purple halo when a leg's altitude differs from the adjacent
+  leg (inbound vs previous leg's inbound, outbound vs next leg's
+  outbound).
+- **Mid-leg distance badge:** global toggle (`showMidLeg`).
 - **Drift lines** (10°), **minute markers** with even-minute numeric
   labels and a white halo.
-- **Labels alpha slider:** scales every yellow text-background fill via
-  `yellowFill(a) = rgba(255,246,170, a * yellowAlpha)`. Persisted at
-  `plotter.yellowAlpha`.
-- **A3/A4 page frame:** `pageFrameRect()` returns the rectangle in
+- **Transparency slider:** scales every label-background fill via
+  `tintFill(hex, a) = rgba(r,g,b, a * yellowAlpha)`. Persisted at
+  `navaid.yellowAlpha`.
+- **Mag var input:** signed offset added to true heading. Negative =
+  east variation. Shows `(N°E)` / `(N°W)` next to the input.
+  Persisted at `navaid.magVar`.
+- **Altitude propagation:** editing a leg's altitude updates the
+  adjacent legs that currently share the old value, stopping at the
+  first different leg. Inbound walks forward, outbound walks backward.
+- **Reverse:** flips waypoint order, swaps each leg's
+  inbound/outbound altitude, swap+negates `inLabel` / `outLabel`,
+  and toggles each waypoint's `flipped` flag (text rotates 180°).
+- **Plan table:** `📋 Plan` opens a modal with a per-leg flight plan
+  (`#`, From, To, Hdg, Dist, Speed, Alt, Time) plus totals. Uses
+  `textContent` only — user names / notes can't inject HTML.
+- **Show Nav Waypoints** (default **on**): lazy-fetches
+  `nav-waypoints.json`, renders 238 white-fill / black-stroke 3.5 px
+  dots; the 5-letter ID label appears at zoom ≥ 10. Captured in PNG
+  export.
+- **A3 / A4 page frame:** `pageFrameRect()` returns the rectangle in
   screen px sized so its contents are 1:250 000. Clicking the same
   size button again clears it. Orientation chosen via the
-  `chooseOrientation()` custom modal (Landscape / Portrait / Cancel).
-- **Print:** when a frame is set, `doPrint()` adds `html.print-frame`
-  and CSS vars (`--print-vw / --print-vh / --print-fx / --print-fy /
-  --print-fw / --print-fh`). The print CSS clamps body to the frame
-  size and offsets `#map` / `#overlay` so only the frame's content is
-  visible. `@page` margin is `0` — full-bleed match to the dashed
-  rectangle. Without a frame, prints the current viewport.
+  `chooseOrientation()` modal.
+- **Save PNG (`exportPNG`):** renders the framed region (or current
+  view if no frame) at native tile zoom into an off-screen canvas.
+  Tiles are pulled through `images.weserv.nl` to dodge the lack of
+  CORS on flight-maps.com tiles. Then re-runs the canvas draws
+  scaled into the export canvas and triggers a `.png` download
+  named `navigation-A4.png` / `navigation-CVFR.png` etc.
 
-## Persistence (`localStorage`)
+## Persistence (`localStorage`, all keyed `navaid.*`)
 
-- `plotter.route` — `{waypoints, legs, notes, center, zoom}` (debounced).
-- `plotter.layer` — selected base layer name.
-- `plotter.toolbarPos` — `{x, y}` of the toolbar.
-- `plotter.yellowAlpha` — labels-opacity slider value.
+- `navaid.route` — `{waypoints, legs, notes, center, zoom}` (debounced).
+- `navaid.layer` — selected base layer name.
+- `navaid.toolbarPos` — `{x, y}` of the toolbar.
+- `navaid.yellowAlpha` — Transparency slider value.
+- `navaid.wpSize` — Text-size slider value.
+- `navaid.magVar` — magnetic variation offset.
+- `navaid.showNavWP` — `'0'` / `'1'` for the nav-waypoints overlay.
 
-`save()` / `load()` write/read the same shape (minus `center` / `zoom`)
-as a downloadable `route.json`.
+A one-time migration at the top of `app.js` copies any old
+`plotter.*` keys into `navaid.*` and removes the old ones.
+
+`save()` / `load()` round-trip waypoints (with `name`), legs (with
+`inLabel` / `outLabel`), and notes (with `color`) as a downloadable
+`route.json`.
 
 ## Build / test / deploy
 
-- **Test:** serve `docs/` (`python3 -m http.server -d docs 8000`),
-  screenshot via headless Chrome (`--headless --screenshot
-  --virtual-time-budget=10000`; allow time for Leaflet + tiles to load).
-  Inject a test route with a trailing `<script>` that sets
-  `state.waypoints` and calls `syncLegs(); fitView(); draw();`.
-- **Deploy:** `git push origin main`; GitHub Pages auto-builds from
-  that branch's `/docs`. **Always** bump `?v=N` in `index.html` (both
-  `app.js` and `style.css`) before pushing. Poll
-  `gh api repos/msupino/NavigationApp/pages/builds/latest --jq .status`.
+- **Test locally:** `python3 -m http.server -d docs 8000` →
+  `http://localhost:8000`. Inject a test route with a trailing
+  `<script>` that sets `state.waypoints` and calls
+  `syncLegs(); fitView(); draw();`.
+- **Lint** before every commit: `node --check docs/app.js`.
+- **Deploy is a workflow** at `.github/workflows/deploy.yml`. It
+  triggers on push to `main` *or* `dev` (or manual dispatch),
+  checks out **both** branches, and assembles one Pages site:
+  - `main/docs/` → `/`
+  - `dev/docs/`  → `/staging/`
+  - `actions/deploy-pages@v4` publishes the result.
+- **Production deploy** = `git push origin main`.
+- **Staging deploy** = `git push origin dev`.
+- **Always** bump `?v=N` on `app.js` and `style.css` in
+  `index.html` before pushing.
+- Watch run status: `gh run list --workflow=deploy.yml --limit 5`.
 
 ## Notes / pending
 
 - flight-maps.com tiles are a third-party service; the CVFR data is
   copyrighted. Fine for personal use; a public deploy needs permission.
-- Tiles are not CORS-enabled, so a canvas-PNG export that includes the
-  map isn't possible — print + Save-as-PDF is the path.
+- `nav-waypoints.json` is a snapshot of 238 Israeli VFR reporting
+  points; refresh manually (OpenAIP API key + a small script) when an
+  AIRAC cycle actually changes them.
 - `geo` distances are exact great-circle; verify against the chart's
   graticule if precision is questioned.
 - Some helpers in `app.js` are unused historical leftovers
   (`textInputRow`, `boolRow`); harmless, prune when convenient.
+- GA4 (`G-0XM5PHEK8B`) tracks page views; no event tracking yet.

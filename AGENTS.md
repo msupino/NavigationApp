@@ -1,32 +1,55 @@
 # AGENTS.md
 
-This branch (`html5-app`) is a static web app deployed via GitHub Pages.
-There is no Unity here — that lives on `master` and `clean`.
+NavAid is a static web app deployed via GitHub Pages from a workflow.
+This branch and the production branch hold only the web app — no
+Unity.
 
 ## Layout
 
 - `docs/` — the deployed app (HTML / CSS / JS, no build step).
-- `.claude/skills/plotter-dev/SKILL.md` — full developer guide for the
-  plotter. **Read this first** for any change to the app.
+- `docs/nav-waypoints.json` — 238 Israeli VFR reporting points
+  (`{name, lat, lng}`); shipped, lazily fetched by the "Show Nav
+  Waypoints" toggle.
+- `.github/workflows/deploy.yml` — Pages build + deploy.
+- `.claude/skills/plotter-dev/SKILL.md` — full developer guide.
+  **Read this first** for any change to the app.
+
+## Branches
+
+- `main` — production (https://msupino.github.io/NavigationApp/).
+- `dev` — staging (https://msupino.github.io/NavigationApp/staging/).
+- `original-plotter` — frozen Unity 2019 reference (renamed from
+  `master`). Don't commit web changes here.
+- `export-leg-attributes` — old draft PR branch.
+
+Each push to `main` or `dev` re-runs the workflow, which checks out
+both branches and assembles a single Pages site:
+`main/docs/` → root, `dev/docs/` → `/staging/`.
 
 ## Working rules for AI agents
 
-- Treat `.claude/skills/plotter-dev/SKILL.md` as the source of truth for
-  architecture, state shape, persistence keys, and deploy mechanics.
+- Treat `.claude/skills/plotter-dev/SKILL.md` as the source of truth
+  for architecture, state shape, persistence keys, and deploy
+  mechanics.
 - **Always bump `?v=N` in `docs/index.html`** (both the `app.js` and
   `style.css` query strings) on any change to those files. Stale-cache
   bugs are the most common Pages footgun.
-- This branch must stay free of Unity files. They were intentionally
-  stripped (commit `53188cc`); the Unity tree lives on `master` and
-  `clean`. Don't reintroduce it here.
-- Persist UI state to `localStorage` only via existing `plotter.*` keys
-  (`plotter.route`, `plotter.layer`, `plotter.toolbarPos`,
-  `plotter.yellowAlpha`); add new keys only with a clear reason.
-- No external dependencies beyond Leaflet (CDN). No build step, no
-  bundler, no transpiler — keep it plain HTML / CSS / JS.
-- Deploy = `git push origin html5-app`. Pages serves from `/docs`.
+- **Always run `node --check docs/app.js`** before committing.
+- Default deploy target during development is `dev` (staging). Only
+  push to `main` when the change is reviewed and ready for
+  production.
+- Persist UI state to `localStorage` only via existing `navaid.*`
+  keys (`navaid.route`, `navaid.layer`, `navaid.toolbarPos`,
+  `navaid.yellowAlpha`, `navaid.wpSize`, `navaid.magVar`,
+  `navaid.showNavWP`). Add new keys only with a clear reason.
+- No external dependencies beyond Leaflet (CDN) and
+  `images.weserv.nl` (used as a CORS proxy by `exportPNG`). No
+  build step, no bundler, no transpiler — keep it plain HTML / CSS
+  / JS.
+- Don't reintroduce Unity files. They live on `original-plotter`.
 
 ## Live + repo
 
-- App: https://msupino.github.io/NavigationApp/
+- App (production): https://msupino.github.io/NavigationApp/
+- App (staging):    https://msupino.github.io/NavigationApp/staging/
 - Repo: https://github.com/msupino/NavigationApp
