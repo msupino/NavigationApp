@@ -19,7 +19,7 @@ try {
   }
 } catch (e) { /* storage unavailable */ }
 
-window.NavAid = { exporting: false, version: '1.258' };  // cross-file export flag (read by ui.js/io.js)
+window.NavAid = { exporting: false, version: '1.259' };  // cross-file export flag (read by ui.js/io.js)
 
 const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
 let magVar = -5;                       // signed offset added to true heading
@@ -268,8 +268,6 @@ const map = L.map('map', {
   zoomDelta: 0.5,
   wheelPxPerZoomLevel: 120,    // gentler scroll-wheel zoom (default 60)
   wheelDebounceTime: 60,
-  maxBounds: [[29.0, 33.9], [33.6, 36.4]],   // keep panning over Israel
-  maxBoundsViscosity: 1.0,
   worldCopyJump: false,
   rotate: true,                // leaflet-rotate: enable map bearing
   rotateControl: false,        // own dial in the toolbar instead
