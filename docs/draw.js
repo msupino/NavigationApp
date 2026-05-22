@@ -24,7 +24,7 @@ async function loadNavWaypoints() {
   try {
     // ?v bumped whenever nav-waypoints.json changes — the service worker
     // caches it cache-first, so a new URL is needed to pick up edits.
-    const res = await fetch('nav-waypoints.json?v=2');
+    const res = await fetch(S.navWpUrl);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const d = await res.json();
     navWP = (d.waypoints || []).map(w => ({
@@ -88,11 +88,18 @@ function applyNavSnap(latlng, currentName) {
 
 function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
+  // Build a set of names claimed by route waypoints snapped to nav-points,
+  // so we don't draw the nav-point dot underneath — it would double the label.
+  const snapped = new Set(
+    state.waypoints.map(w => (w.name || '').trim()).filter(Boolean)
+  );
   const showLabels = map.getZoom() >= 10;
   octx.font = 'bold 10px sans-serif';
   octx.textAlign = 'left';
   octx.textBaseline = 'middle';
   for (const wp of navWP) {
+    if (wp.name && snapped.has(wp.name)) continue;
+    if (wp.he   && snapped.has(wp.he))   continue;
     const s = proj(wp);                  // no viewport cull: also drawn into
                                          // the larger PNG-export canvas
     octx.fillStyle = '#ffffff';
