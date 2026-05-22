@@ -37,6 +37,7 @@ window.S = Object.assign({
   fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time'],
   fpTotal: 'Total',
   fpClose: 'Close',
+  fpPrint: 'Print',
   pageOrientation: ' page — orientation',
   landscape: 'Landscape',
   portrait: 'Portrait',
@@ -160,7 +161,7 @@ const layers = {
     'https://services.arcgisonline.com/ArcGIS/rest/services/' +
     'World_Imagery/MapServer/tile/{z}/{y}/{x}',
     { minZoom: 6, maxZoom: 18, attribution: 'Imagery © Esri' }),
-  'OSM': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  'OpenStreetMap': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     { minZoom: 6, maxZoom: 18, subdomains: 'abc',
       attribution: '© OpenStreetMap contributors' }),
 };
