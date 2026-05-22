@@ -449,7 +449,7 @@ document.getElementById('insp-close').onclick = () => {
     }
   });
   const sc = localStorage.getItem(COLLAPSED_KEY);
-  setCollapsed(sc === null ? true : sc === '1');
+  setCollapsed(sc === null ? false : sc === '1');
 
   window.addEventListener('resize', () => {
     if (bar.style.left) setPos(parseFloat(bar.style.left), parseFloat(bar.style.top));
