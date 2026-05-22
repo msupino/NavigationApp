@@ -52,8 +52,9 @@ a `dev` → `main` pull request.
 - `manifest.json`, `sw.js`, `icon-192.png`, `icon-512.png` — PWA:
   installable app + offline app-shell service worker.
 - `style.css` — dark UI + `@media print` rules.
-- `nav-waypoints.json` — 238 published Israeli VFR reporting points
-  (`{name, lat, lng}`). Fetched once at boot.
+- `nav-waypoints.json` — 256 published Israeli VFR reporting points
+  (`{name, he, lat, lng}`). Fetched once at boot. Source: ForeFlight
+  Israel Base Pack (https://www.foreflightisrael.xyz/).
 - `.gitattributes` — forces images out of LFS so Pages serves them.
 - `map.jpg`, `build_map.py` — legacy from the pre-Leaflet static-chart
   version. **Unused**, safe to delete.
@@ -201,14 +202,12 @@ downloadable `route.json`.
 
 - flight-maps.com tiles are a third-party service; the CVFR data is
   copyrighted. Fine for personal use; a public deploy needs permission.
-- `nav-waypoints.json` — 238 Israeli CVFR reporting points.
-  **Provenance:** originally a **ForeFlight** export — a "ForeFlight
-  Mobile User Waypoints" KML — parsed to JSON by liorbenhorin (commit
-  `3fb31933d`, `Assets/Resources/user-waypoints.json` on his `clean`
-  branch), then ported here and reformatted `coord:[lng,lat]` →
-  `{name, lat, lng}`. OpenAIP lists only 7 IL reporting points — not a
-  usable refresh source. To refresh: re-export from ForeFlight, or
-  transcribe the official Israel CVFR chart / eAIP.
+- `nav-waypoints.json` — 256 Israeli CVFR reporting points.
+  **Source:** ForeFlight Israel Base Pack, https://www.foreflightisrael.xyz/.
+  KMZ (`CVFR WAYPOINTS 0225.kmz`) extracted and converted to
+  `{name, he, lat, lng}` JSON. `name` = ICAO/CVFR code; `he` = Hebrew
+  place name. To refresh: download latest pack from the site, extract
+  the KMZ, diff against the current JSON and add new entries.
 - `geo` distances are exact great-circle; verify against the chart's
   graticule if precision is questioned.
 - GA4 (`G-0XM5PHEK8B`) tracks page views; no event tracking yet.
