@@ -253,10 +253,8 @@ try {
   if (!isNaN(v)) yellowAlpha = Math.max(0, Math.min(1, v));
 } catch (e) { /* storage unavailable */ }
 document.getElementById('yellow-alpha').value = Math.round(yellowAlpha * 100);
-document.getElementById('alpha-val').textContent = Math.round(yellowAlpha * 100) + '%';
 document.getElementById('yellow-alpha').oninput = e => {
   yellowAlpha = parseFloat(e.target.value) / 100;
-  document.getElementById('alpha-val').textContent = e.target.value + '%';
   try { localStorage.setItem(ALPHA_KEY, String(yellowAlpha)); }
   catch (err) { /* storage unavailable */ }
   draw();
