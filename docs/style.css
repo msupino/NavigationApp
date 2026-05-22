@@ -122,6 +122,106 @@ html, body {
   padding: 2px 4px;
   cursor: text;
 }
+#toolbar #wpname-rot {
+  font-size: 13px;
+  line-height: 1;
+  color: #b9b3b3;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 1px 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#toolbar #wpname-rot:hover { color: #fff; }
+
+/* rotate dial — white Google-Earth-style compass by the zoom buttons */
+#rotate-dial {
+  display: block;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #9a9a9a;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+  cursor: grab;
+  touch-action: none;
+}
+#rotate-dial.dragging { cursor: grabbing; }
+#rotate-dial::after {
+  content: 'N';
+  position: absolute;
+  top: 1px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  color: #333;
+}
+#rotate-needle {
+  position: absolute;
+  inset: 0;
+  transform: rotate(0deg);
+}
+#rotate-needle::before {            /* red north pointer */
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 5px;
+  width: 3px;
+  height: 16px;
+  margin-left: -1.5px;
+  background: #c0392b;
+  border-radius: 1.5px;
+}
+#rotate-needle::after {             /* grey south tail */
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 5px;
+  width: 3px;
+  height: 16px;
+  margin-left: -1.5px;
+  background: #888;
+  border-radius: 1.5px;
+}
+
+/* nav-waypoint search */
+.navsearch { position: relative; padding: 0 6px; }
+#wp-search {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 5px;
+  padding: 5px 8px;
+}
+#wp-search-results {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  z-index: 1200;
+  margin-top: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #2a2626;
+  border: 1px solid #3a3636;
+  border-radius: 5px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+#wp-search-results.hidden { display: none; }
+.wp-search-item {
+  padding: 6px 10px;
+  font-size: 13px;
+  color: #e8e8e8;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.wp-search-item:hover,
+.wp-search-item.active { background: #1d6fe0; color: #fff; }
 #toolbar .navtoggle select {
   flex: 1;
   min-width: 0;
@@ -257,44 +357,11 @@ html, body {
 }
 #info:empty { display: none; }
 
-#hint {
-  position: absolute;
-  bottom: 12px;
-  right: 12px;
-  padding: 6px 10px;
-  font-size: 11px;
-  color: #8a8484;
-}
-
-#toolbar.printing,
-.printing #toolbar { background: rgba(20, 18, 18, 0.92); }
-
-/* Print: drop the UI, keep the map + route overlay. */
+/* Print (browser Cmd+P): drop the UI, keep the map + route overlay. */
 @media print {
-  #toolbar, #inspector, #info, #hint,
-  .leaflet-control-container { display: none !important; }
+  #toolbar, #inspector, .leaflet-control-container { display: none !important; }
   #map, #overlay { position: fixed; inset: 0; }
-
-  /* When a page size is chosen, crop the printed body to the dashed frame
-     and offset the map/overlay so only that region is visible. */
-  html.print-frame, html.print-frame body {
-    margin: 0;
-    padding: 0;
-    width: var(--print-fw);
-    height: var(--print-fh);
-    overflow: hidden;
-  }
-  html.print-frame #map,
-  html.print-frame #overlay {
-    position: fixed !important;
-    inset: auto !important;
-    left: var(--print-fx);
-    top: var(--print-fy);
-    width: var(--print-vw);
-    height: var(--print-vh);
-  }
 }
-@page { size: A4 landscape; margin: 0; }
 
 /* Mobile: bigger touch targets, roomier toolbar. */
 @media (max-width: 680px) {
@@ -395,6 +462,17 @@ html, body {
   padding: 2px 5px;
 }
 .plan-name:focus { outline: 1px solid #1d6fe0; }
+.plan-num {
+  width: 64px;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+.plan-num:focus { outline: 1px solid #1d6fe0; }
 .flight-table tfoot td {
   font-weight: 700;
   border-top: 2px solid #443f3f;
