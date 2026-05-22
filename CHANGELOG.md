@@ -6,6 +6,40 @@ pull requests; production is the `main` branch, staging is `dev`.
 
 ## In progress — dev (not yet merged)
 
+### Bug-fix batch 2 — issues #66–#69
+- Deleting a waypoint now removes the leg beside it, so leg altitudes /
+  speeds stay aligned with the route instead of shifting downstream (#66).
+- Rotate dial: a cancelled pointer (`pointercancel`) no longer cycles the
+  bearing (#67).
+- Flight plan: clearing the Speed field resets it to the leg's current
+  speed instead of showing blank (#68).
+- Rotate dial drag debounces the bearing write to localStorage (#69).
+
+### Google Earth export — per-leg altitudes (#64)
+- The `.kml` export no longer prompts for a single AGL value. The
+  flythrough camera flies at the per-leg altitudes from the flight plan
+  (MSL — `altitudeMode=absolute`); the route line and waypoints stay
+  clamped to the ground.
+
+### Rotate dial — tap cycles 90° (#65)
+- Tapping the rotate dial steps the map bearing through 0° / 90° / 180° /
+  270° instead of always resetting to north. Drag still sets any angle.
+
+### Bug-fix batch — issues #57–#62
+- Import validation: a route JSON with non-numeric coordinates is rejected
+  with an error instead of silently blanking the map; the same guard
+  protects the localStorage route cache (#58).
+- Flight-plan altitude edits now cascade to adjacent legs like the
+  inspector's do; number fields commit on `change` (not per keystroke),
+  matching the inspector (#59).
+- Exported route JSON gets a timestamped filename — no more `route (1).json`
+  (#60).
+- PNG export fetches OSM / Esri tiles directly (they support CORS); the
+  weserv proxy is used only for the flight-maps.com layers (#62).
+- Service worker clones navigation responses before the body is consumed (#57).
+- Stale comments corrected: 256 nav-waypoints; `navWpUrl` note (#61).
+- `sw.js` cache bumped to `navaid-v4`.
+
 - **Bilingual UI**: Hebrew root (`/`), English at `/en/`; all dynamic
   strings localised; language picker dropdown in toolbar.
 - Flight plan: editable **Speed** and **Altitude** number inputs; editing

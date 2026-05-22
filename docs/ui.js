@@ -96,23 +96,35 @@ rotDial.addEventListener('pointermove', e => {
   }
   map.setBearing(((360 - dialAngle(e)) % 360 + 360) % 360);
 });
-function rotEnd() {
-  if (rotDragging && !rotMoved) map.setBearing(0);
+function rotEnd(cycle) {
+  if (cycle && rotDragging && !rotMoved) {
+    // Tap steps the bearing through 0° / 90° / 180° / 270°.
+    // From an off-axis angle the first tap snaps back to north.
+    const shown = (((360 - Math.round(mapBearing())) % 360) + 360) % 360;
+    const next = shown % 90 === 0 ? (shown + 90) % 360 : 0;
+    map.setBearing((360 - next) % 360);
+  }
   rotDragging = false;
   rotDial.classList.remove('dragging');
 }
-rotDial.addEventListener('pointerup', rotEnd);
-rotDial.addEventListener('pointercancel', rotEnd);
+rotDial.addEventListener('pointerup', () => rotEnd(true));
+rotDial.addEventListener('pointercancel', () => rotEnd(false));   // aborted — don't rotate
 const BEARING_KEY = 'navaid.bearing';
 try {
   const sb = parseFloat(localStorage.getItem(BEARING_KEY));
   if (!isNaN(sb)) map.setBearing(sb);
 } catch (e) { /* storage unavailable */ }
+let bearingSaveTimer = null;
 map.on('rotate', () => {
   refreshDial(); scheduleDraw();
-  if (NavAid.exporting) return;
-  try { localStorage.setItem(BEARING_KEY, String(mapBearing())); }
-  catch (err) { /* storage unavailable */ }
+  if (NavAid.exporting || bearingSaveTimer) return;
+  // Debounce: a dial drag fires 'rotate' continuously — only the last
+  // value needs persisting.
+  bearingSaveTimer = setTimeout(() => {
+    bearingSaveTimer = null;
+    try { localStorage.setItem(BEARING_KEY, String(mapBearing())); }
+    catch (err) { /* storage unavailable */ }
+  }, 400);
 });
 refreshDial();
 
