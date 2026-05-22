@@ -323,15 +323,17 @@ function drawDistanceBadge(cx, cy, dist) {
 const WP_RADIUS = 13;
 
 // Label to draw inside a waypoint circle, plus the radius and font px
-// needed to fit it. Scaled by the global `wpSize` slider.
+// needed to fit it. Scaled by wpSize slider × zoom (geographic footprint
+// stays roughly constant; floor at 0.35× so markers stay visible when zoomed out).
 function waypointGeom(i) {
   const wp = state.waypoints[i];
-  // Names off -> empty circle (no name, no number).
   const label = showWpNames ? ((wp.name || '').trim() || String(i + 1)) : '';
-  const fontPx = Math.max(8, Math.round(13 * wpSize));
+  const zoomScale = Math.max(0.35, Math.pow(2, map.getZoom() - 12));
+  const scale = wpSize * zoomScale;
+  const fontPx = Math.max(6, Math.round(13 * scale));
   octx.font = `bold ${fontPx}px sans-serif`;
   const w = octx.measureText(label).width;
-  const minR = WP_RADIUS * wpSize;
+  const minR = WP_RADIUS * scale;
   return { label, fontPx, r: Math.max(minR, w / 2 + fontPx * 0.7) };
 }
 
