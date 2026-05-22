@@ -264,8 +264,14 @@ function fileStamp() {
 // tiles are not CORS-enabled, so each tile is fetched through the weserv image
 // proxy (which adds Access-Control-Allow-Origin) to keep the canvas untainted.
 function exportPNG() {
+  // Export is always north-up: the tile compositing assumes a
+  // lat/lng-aligned region, so drop any map rotation for the export
+  // and restore it once the PNG is written.
+  const exportBearing = map.getBearing ? map.getBearing() : 0;
+  if (exportBearing) map.setBearing(0);
+
   const fr = pageFrameRect() || { x: 0, y: 0, w: vw(), h: vh() };
-  if (fr.w < 4 || fr.h < 4) return;
+  if (fr.w < 4 || fr.h < 4) { if (exportBearing) map.setBearing(exportBearing); return; }
 
   let base = null, baseName = 'map';
   for (const n in layers) {
@@ -352,6 +358,7 @@ function exportPNG() {
     out.toBlob(b => {
       btn.textContent = btnLabel;
       btn.disabled = false;
+      if (exportBearing) map.setBearing(exportBearing);   // restore rotation
       if (!b) { alert('PNG export failed (a map tile could not be loaded).'); return; }
       const a = document.createElement('a');
       a.href = URL.createObjectURL(b);

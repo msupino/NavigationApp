@@ -34,6 +34,79 @@ layerSelect.onchange = () => {
   try { localStorage.setItem(LAYER_KEY, layerSelect.value); }
   catch (e) { /* storage unavailable */ }
 };
+
+// --- rotate dial (leaflet-rotate) -----------------------------------
+const rotDial = document.getElementById('rotate-dial');
+const rotNeedle = document.getElementById('rotate-needle');
+const rotDeg = document.getElementById('rotate-deg');
+function mapBearing() { return map.getBearing ? map.getBearing() : 0; }
+function refreshDial() {
+  const b = Math.round(mapBearing());
+  rotNeedle.style.transform = 'rotate(' + b + 'deg)';
+  rotDeg.textContent = (((b % 360) + 360) % 360) + '°';
+}
+function dialAngle(ev) {                 // 0 = north (up), clockwise positive
+  const r = rotDial.getBoundingClientRect();
+  const dx = ev.clientX - (r.left + r.width / 2);
+  const dy = ev.clientY - (r.top + r.height / 2);
+  return Math.atan2(dx, -dy) * 180 / Math.PI;
+}
+let rotDragging = false;
+rotDial.addEventListener('pointerdown', e => {
+  rotDragging = true;
+  rotDial.classList.add('dragging');
+  rotDial.setPointerCapture(e.pointerId);
+  map.setBearing(dialAngle(e));
+});
+rotDial.addEventListener('pointermove', e => {
+  if (rotDragging) map.setBearing(dialAngle(e));
+});
+function rotEnd() { rotDragging = false; rotDial.classList.remove('dragging'); }
+rotDial.addEventListener('pointerup', rotEnd);
+rotDial.addEventListener('pointercancel', rotEnd);
+rotDial.addEventListener('dblclick', () => map.setBearing(0));
+map.on('rotate', () => { refreshDial(); draw(); });
+refreshDial();
+
+// --- nav-waypoint search --------------------------------------------
+const wpSearch = document.getElementById('wp-search');
+const wpResults = document.getElementById('wp-search-results');
+function closeSearch() {
+  wpResults.classList.add('hidden');
+  wpResults.innerHTML = '';
+}
+wpSearch.addEventListener('input', () => {
+  const q = wpSearch.value.trim().toUpperCase();
+  if (!q || !navWP) { closeSearch(); return; }
+  const hits = navWP
+    .filter(w => w.name.toUpperCase().indexOf(q) >= 0)
+    .slice(0, 12);
+  if (!hits.length) { closeSearch(); return; }
+  wpResults.innerHTML = '';
+  for (const w of hits) {
+    const item = document.createElement('div');
+    item.className = 'wp-search-item';
+    item.textContent = w.name;
+    item.onclick = () => {
+      map.setView([w.lat, w.lng], Math.max(map.getZoom(), 12));
+      wpSearch.value = w.name;
+      closeSearch();
+    };
+    wpResults.appendChild(item);
+  }
+  wpResults.classList.remove('hidden');
+});
+wpSearch.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const first = wpResults.querySelector('.wp-search-item');
+    if (first) first.click();
+  } else if (e.key === 'Escape') {
+    closeSearch();
+  }
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('.navsearch')) closeSearch();
+});
 document.getElementById('reverse').onclick = () => {
   // Reversing flight direction means each leg's inbound/outbound roles swap.
   // The leg's local axes (along + perpendicular) also flip, so negating the
