@@ -73,8 +73,8 @@ window.S = Object.assign({
   kmlDocName: 'NavAid flythrough',
   kmlRouteName: 'Route',
   kmlTourName: 'Fly the route',
-  layerLabels: { 'CVFR': 'CVFR', 'Nav': 'Nav', 'Low Alt': 'Low Alt',
-                 'Heli': 'Heli', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap' },
+  layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'Navigation', 'Low Alt': 'Low Alt',
+                 'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap' },
 }, window.S || {});
 
 // --- model -----------------------------------------------------------
@@ -162,11 +162,11 @@ const FM_ATTR =
 const layers = {
   'CVFR': L.tileLayer('https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png',
     { ...TILE, attribution: FM_ATTR }),
-  'Nav': L.tileLayer('https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
+  'Navigation': L.tileLayer('https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
     { ...TILE, attribution: FM_ATTR }),
   'Low Alt': L.tileLayer('https://flight-maps.com/tiles/la/{z}/{x}/{y}.png',
     { ...TILE, attribution: FM_ATTR }),
-  'Heli': L.tileLayer('https://flight-maps.com/tiles/il-hel/{z}/{x}/{y}.png',
+  'Helicopters': L.tileLayer('https://flight-maps.com/tiles/il-hel/{z}/{x}/{y}.png',
     { ...TILE, maxNativeZoom: 12, attribution: FM_ATTR }),
   'Satellite': L.tileLayer(
     'https://services.arcgisonline.com/ArcGIS/rest/services/' +
@@ -182,6 +182,8 @@ let initialLayer = layers.CVFR;
 try {
   let saved = localStorage.getItem(LAYER_KEY);
   if (saved === 'OSM') { saved = 'OpenStreetMap'; localStorage.setItem(LAYER_KEY, saved); }
+  if (saved === 'Nav') { saved = 'Navigation'; localStorage.setItem(LAYER_KEY, saved); }
+  if (saved === 'Heli') { saved = 'Helicopters'; localStorage.setItem(LAYER_KEY, saved); }
   if (saved && layers[saved]) initialLayer = layers[saved];
 } catch (e) { /* storage unavailable */ }
 
