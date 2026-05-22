@@ -32,7 +32,8 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Versioned assets: cache-first.
+  // Versioned assets: cache-first. On a cache miss, prune sibling ?v= entries
+  // for the same path so stale versions don't accumulate indefinitely.
   e.respondWith(
     caches.open(CACHE).then(async cache => {
       const hit = await cache.match(e.request);
@@ -40,6 +41,15 @@ self.addEventListener('fetch', e => {
       const resp = await fetch(e.request);
       if (resp && (resp.ok || resp.type === 'opaque')) {
         cache.put(e.request, resp.clone());
+        if (url.search.includes('v=')) {
+          const keys = await cache.keys();
+          for (const k of keys) {
+            const ku = new URL(k.url);
+            if (ku.pathname === url.pathname && k.url !== e.request.url) {
+              cache.delete(k);
+            }
+          }
+        }
       }
       return resp;
     }));
