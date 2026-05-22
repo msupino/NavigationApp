@@ -293,6 +293,19 @@ document.getElementById('wp-size').oninput = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
+
+const LEGARROW_KEY = 'navaid.legArrowSize';
+try {
+  const v = parseFloat(localStorage.getItem(LEGARROW_KEY));
+  if (!isNaN(v)) legArrowSize = Math.max(0.3, Math.min(2, v));
+} catch (e) { /* storage unavailable */ }
+document.getElementById('leg-arrow-size').value = legArrowSize;
+document.getElementById('leg-arrow-size').oninput = e => {
+  legArrowSize = parseFloat(e.target.value);
+  try { localStorage.setItem(LEGARROW_KEY, String(legArrowSize)); }
+  catch (err) { /* storage unavailable */ }
+  draw();
+};
 const MAGVAR_KEY = 'navaid.magVar';
 try {
   const v = parseFloat(localStorage.getItem(MAGVAR_KEY));
