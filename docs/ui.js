@@ -41,7 +41,8 @@ layerSelect.onchange = () => {
 const rotateCtrl = L.control({ position: 'bottomright' });
 rotateCtrl.onAdd = function () {
   const wrap = L.DomUtil.create('div', 'leaflet-control rotate-ctrl');
-  wrap.innerHTML = '<span id="rotate-dial" role="slider" tabindex="0">' +
+  wrap.innerHTML = '<span id="rotate-hdg"></span>' +
+                   '<span id="rotate-dial" role="slider" tabindex="0">' +
                    '<span id="rotate-needle"></span>' +
                    '</span>';
   L.DomEvent.disableClickPropagation(wrap);
@@ -51,11 +52,13 @@ rotateCtrl.onAdd = function () {
 rotateCtrl.addTo(map);
 const rotDial = document.getElementById('rotate-dial');
 const rotNeedle = document.getElementById('rotate-needle');
+const rotHdg = document.getElementById('rotate-hdg');
 function mapBearing() { return map.getBearing ? map.getBearing() : 0; }
 function refreshDial() {
-  const b = Math.round(mapBearing());
+  const b = (((Math.round(mapBearing())) % 360) + 360) % 360;
   rotNeedle.style.transform = 'rotate(' + b + 'deg)';
-  rotDial.title = S.dialTitle((((b % 360) + 360) % 360));
+  rotDial.title = S.dialTitle(b);
+  rotHdg.textContent = b === 0 ? '' : pad3(b) + '°';
 }
 function dialAngle(ev) {                 // 0 = north (up), clockwise positive
   const r = rotDial.getBoundingClientRect();
