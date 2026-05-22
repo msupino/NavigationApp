@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
   <meta charset="utf-8">
   <meta name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>NavAid</title>
+  <title>NavAid — מתכנן טיסה</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <meta name="description" content="Plan CVFR flight routes on the Israel aeronautical chart.">
+  <meta name="description" content="תכנן מסלולי טיסה CVFR על גבי התרשים האווירי הישראלי.">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
   <meta name="theme-color" content="#231F20">
@@ -14,10 +14,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="NavAid">
-  <!-- Link preview (WhatsApp / Open Graph / Twitter) -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="NavAid — CVFR flight planner">
-  <meta property="og:description" content="Plan CVFR flight routes on the Israel aeronautical chart — waypoints, headings, distances, times.">
+  <meta property="og:title" content="NavAid — מתכנן טיסה CVFR">
+  <meta property="og:description" content="תכנן מסלולי טיסה CVFR על גבי התרשים האווירי הישראלי — ציוני דרך, כיוונים, מרחקים, זמנים.">
   <meta property="og:url" content="https://msupino.github.io/NavigationApp/">
   <meta property="og:image" content="https://msupino.github.io/NavigationApp/og-preview.jpg">
   <meta property="og:image:width" content="1200">
@@ -39,77 +38,79 @@
   <canvas id="overlay"></canvas>
 
   <div id="toolbar">
-    <span id="toolbar-handle" class="drag-handle" title="Drag to move">⋯</span>
-    <span id="toolbar-toggle" title="Collapse menu" role="button" tabindex="0">☰</span>
-    <button id="tool-add" class="tool" title="Click map to drop a waypoint (click button again to stop)">✏️ Add Waypoint</button>
-    <button id="tool-note" class="tool" title="Click map to drop a note (click button again to stop)">📝 Add Note</button>
+    <span id="toolbar-handle" class="drag-handle" title="גרור להזזה">⋯</span>
+    <span id="toolbar-toggle" title="כווץ תפריט" role="button" tabindex="0"><span></span></span>
+    <a class="lang-link" href="./en/" hreflang="en" lang="en">English</a>
+    <button id="tool-add" class="tool" title="לחץ על המפה להוספת ציון דרך (לחץ שוב לעצירה)">✏️ הוסף ציון דרך</button>
+    <button id="tool-note" class="tool" title="לחץ על המפה להוספת הערה (לחץ שוב לעצירה)">📝 הוסף הערה</button>
     <span class="sep"></span>
-    <label class="navtoggle" title="Base map layer">
-      Layer
+    <label class="navtoggle" title="שכבת מפה בסיסית">
+      שכבה
       <select id="layer-select"></select>
     </label>
     <div class="navsearch">
-      <input type="text" id="wp-search" placeholder="🔍 Find nav waypoint" autocomplete="off">
+      <input type="text" id="wp-search" placeholder="🔍 חפש ציון ניווטי" autocomplete="off">
       <div id="wp-search-results" class="hidden"></div>
     </div>
     <span class="sep"></span>
-    <button id="reverse" title="Reverse route order">⇄ Reverse Route</button>
-    <button id="clear" title="Remove all waypoints and notes">🗑 Clear map</button>
+    <button id="reverse" title="הפוך סדר מסלול">⇄ הפוך מסלול</button>
+    <button id="clear" title="הסר את כל ציוני הדרך וההערות">🗑 נקה מפה</button>
     <span class="sep"></span>
-    <button id="save" title="Download route as JSON">⬇ Save</button>
-    <button id="load" title="Load route JSON">⬆ Load</button>
+    <button id="save" title="הורד מסלול כ-JSON">⬇ שמור</button>
+    <button id="load" title="טען JSON מסלול">⬆ טען</button>
     <input type="file" id="file" accept="application/json,.json" hidden>
     <span class="sep"></span>
-    <button id="fit" title="Fit route to view">⌖ Fit</button>
-    <button id="plan" title="Show flight plan table">📋 Plan</button>
-    <button id="fly" title="Save a Google Earth tour of the route (~5000 ft AGL)">✈️ Open in Google Earth</button>
-    <label class="navtoggle" title="Show return-direction (outbound) info">
-      <input type="checkbox" id="ret-cb"> Show return path
+    <button id="fit" title="התאם מסלול לתצוגה">⌖ התאם</button>
+    <button id="plan" title="הצג תכנית טיסה">📋 תכנית</button>
+    <button id="fly" title="שמור סיור Google Earth (~5000 ft מעל הקרקע)">✈️ פתח ב-Google Earth</button>
+    <label class="navtoggle" title="הצג מידע על מסלול חזרה">
+      <input type="checkbox" id="ret-cb"> הצג מסלול חזרה
     </label>
-    <label class="navtoggle" title="Show distance badge at the middle of each leg">
-      <input type="checkbox" id="mid-cb"> Show leg dist
+    <label class="navtoggle" title="הצג מרחק באמצע כל קטע">
+      <input type="checkbox" id="mid-cb"> הצג מרחק קטע
     </label>
-    <label class="navtoggle" title="Halo legs whose altitude differs from the adjacent leg">
-      <input type="checkbox" id="diff-cb"> Highlight diff
+    <label class="navtoggle" title="הדגש קטעים עם הפרש גובה">
+      <input type="checkbox" id="diff-cb"> הדגש הפרש גובה
     </label>
-    <label class="navtoggle" title="Overlay published Israeli VFR reporting points">
-      <input type="checkbox" id="navwp-cb" checked> Show Nav Waypoints
+    <label class="navtoggle" title="הצג ציוני דיווח VFR ישראלים">
+      <input type="checkbox" id="navwp-cb" checked> הצג ציוני ניווט
     </label>
-    <label class="navtoggle" title="Show waypoint names (off = empty circle)">
-      <input type="checkbox" id="wpname-cb" checked> Show Waypoint names
-      <button id="wpname-rot" type="button" title="Rotate waypoint names 90°">⟳</button>
+    <label class="navtoggle" title="הצג שמות ציוני דרך (כבוי = עיגול ריק)">
+      <input type="checkbox" id="wpname-cb" checked> הצג שמות ציוני דרך
+      <button id="wpname-rot" type="button" title="סובב שמות ציוני דרך 90°">⟳</button>
     </label>
-    <label class="navtoggle" title="Opacity of label backgrounds">
-      Transparency
+    <label class="navtoggle" title="שקיפות רקע תוויות">
+      שקיפות
       <input type="range" id="yellow-alpha" min="0" max="1" step="0.05" value="1">
     </label>
-    <label class="navtoggle" title="Waypoint name / number text size">
-      Text size
+    <label class="navtoggle" title="גודל טקסט שמות ציוני דרך">
+      גודל טקסט
       <input type="range" id="wp-size" min="0.6" max="2" step="0.1" value="1">
     </label>
-    <label class="navtoggle" title="Signed offset added to true heading. Negative = east variation; positive = west.">
-      Mag var
+    <label class="navtoggle" title="סטייה מגנטית מהכיוון האמיתי. שלילי = מזרח, חיובי = מערב.">
+      סטייה מגנטית
       <input type="number" id="mag-var" min="-30" max="30" step="0.5" value="-5">°
       <span id="mag-var-eqv" class="hint"></span>
     </label>
     <span class="sep"></span>
-    <button id="page-a3" title="A3 print page">A3</button>
-    <button id="page-a4" title="A4 print page">A4</button>
-    <button id="print" title="Save the framed map + route as a PNG">⬇ Save PNG</button>
+    <button id="page-a3" title="עמוד A3 להדפסה">A3</button>
+    <button id="page-a4" title="עמוד A4 להדפסה">A4</button>
+    <button id="print" title="שמור מפה + מסלול כ-PNG">⬇ שמור PNG</button>
     <div id="info"></div>
-    <a class="lang-link" href="./he/" hreflang="he" lang="he">עברית</a>
   </div>
 
   <div id="inspector" class="hidden">
     <div id="insp-header">
       <input type="text" id="insp-title" maxlength="10" readonly>
-      <button id="insp-close" title="Close" aria-label="Close">×</button>
+      <button id="insp-close" title="סגור" aria-label="סגור">×</button>
     </div>
     <div id="insp-body"></div>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
+  <!-- strings.js must be first — sets window.S before core.js defines defaults -->
+  <script src="./he/strings.js"></script>
   <script src="core.js?v=75"></script>
   <script src="draw.js?v=75"></script>
   <script src="interact.js?v=75"></script>

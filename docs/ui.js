@@ -353,7 +353,6 @@ document.getElementById('insp-close').onclick = () => {
   const COLLAPSE_KEY = 'navaid.toolbarCollapsed';
   function setCollapsed(on) {
     bar.classList.toggle('collapsed', on);
-    toggle.textContent = '☰';
     toggle.title = on ? S.expandMenu : S.collapseMenu;
     try { localStorage.setItem(COLLAPSE_KEY, on ? '1' : '0'); }
     catch (e) { /* storage unavailable */ }

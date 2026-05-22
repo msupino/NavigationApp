@@ -23,10 +23,11 @@ const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
 let magVar = -5;                       // signed offset added to true heading
                                        // (Israel ≈ −5; equivalent to 5°E variation)
 
-// Localisation strings. he/strings.js pre-sets window.S to Hebrew before
-// core.js runs; the || here keeps English as the default for the main app.
-window.S = window.S || {
-  navWpUrl: 'nav-waypoints.json?v=2',  // relative URL — he/ overrides to ../
+// Localisation strings. A strings.js may pre-set window.S with overrides
+// (full locale or just navWpUrl). Object.assign merges: defaults first,
+// then any pre-set keys win, so a partial override doesn't erase the rest.
+window.S = Object.assign({
+  navWpUrl: 'nav-waypoints.json?v=2',  // relative URL — en/ overrides to ../
   navWpSearchField: 'name',            // which field to show/search in results
   wpPrefix: 'WP ',
   noteDefault: 'Note',
@@ -62,7 +63,7 @@ window.S = window.S || {
   clearConfirm: 'Remove all waypoints and notes?',
   expandMenu: 'Expand menu',
   collapseMenu: 'Collapse menu',
-};
+}, window.S || {});
 
 // --- model -----------------------------------------------------------
 const state = {

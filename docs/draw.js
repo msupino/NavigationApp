@@ -110,7 +110,7 @@ function drawNavWaypoints() {
     octx.fill();
     octx.stroke();
     if (showLabels) {
-      const label = wp.he || wp.name;    // Hebrew name; English is for search
+      const label = wp[S.navWpSearchField] || wp.name;
       octx.lineWidth = 2.5;
       octx.strokeStyle = 'rgba(255,255,255,0.85)';
       octx.strokeText(label, s.x + 6, s.y);
