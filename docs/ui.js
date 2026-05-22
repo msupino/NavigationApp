@@ -55,7 +55,7 @@ const rotNeedle = document.getElementById('rotate-needle');
 const rotHdg = document.getElementById('rotate-hdg');
 function mapBearing() { return map.getBearing ? map.getBearing() : 0; }
 function refreshDial() {
-  const b = (((Math.round(mapBearing())) % 360) + 360) % 360;
+  const b = (((360 - Math.round(mapBearing())) % 360) + 360) % 360;
   rotNeedle.style.transform = 'rotate(' + b + 'deg)';
   rotDial.title = S.dialTitle(b);
   if (document.activeElement !== rotHdg) rotHdg.value = b;
@@ -63,7 +63,7 @@ function refreshDial() {
 rotHdg.addEventListener('change', () => {
   const v = ((parseInt(rotHdg.value, 10) % 360) + 360) % 360;
   rotHdg.value = v;
-  map.setBearing(v);
+  map.setBearing((360 - v) % 360);
 });
 rotHdg.addEventListener('keydown', e => {
   if (e.key === 'Enter') rotHdg.blur();
@@ -94,7 +94,7 @@ rotDial.addEventListener('pointermove', e => {
     if (Math.hypot(e.clientX - rotStartX, e.clientY - rotStartY) < ROT_DRAG_PX) return;
     rotMoved = true;
   }
-  map.setBearing(dialAngle(e));
+  map.setBearing(((360 - dialAngle(e)) % 360 + 360) % 360);
 });
 function rotEnd() {
   if (rotDragging && !rotMoved) map.setBearing(0);
