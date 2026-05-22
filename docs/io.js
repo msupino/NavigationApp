@@ -279,18 +279,18 @@ function exportPNG() {
   // Export is always north-up: the tile compositing assumes a
   // lat/lng-aligned region, so drop any map rotation for the export
   // and restore it once the PNG is written.
-  _isExporting = true;
+  NavAid.exporting = true;
   const exportBearing = map.getBearing ? map.getBearing() : 0;
   if (exportBearing) map.setBearing(0);
 
   const fr = pageFrameRect() || { x: 0, y: 0, w: vw(), h: vh() };
-  if (fr.w < 4 || fr.h < 4) { _isExporting = false; if (exportBearing) map.setBearing(exportBearing); return; }
+  if (fr.w < 4 || fr.h < 4) { NavAid.exporting = false; if (exportBearing) map.setBearing(exportBearing); return; }
 
   let base = null, baseName = 'map';
   for (const n in layers) {
     if (map.hasLayer(layers[n])) { base = layers[n]; baseName = n; }
   }
-  if (!base || !base._url) { _isExporting = false; if (exportBearing) map.setBearing(exportBearing); return; }
+  if (!base || !base._url) { NavAid.exporting = false; if (exportBearing) map.setBearing(exportBearing); return; }
 
   const nw = map.containerPointToLatLng([fr.x, fr.y]);
   const se = map.containerPointToLatLng([fr.x + fr.w, fr.y + fr.h]);
@@ -371,7 +371,7 @@ function exportPNG() {
     out.toBlob(b => {
       btn.textContent = btnLabel;
       btn.disabled = false;
-      _isExporting = false;
+      NavAid.exporting = false;
       if (exportBearing) map.setBearing(exportBearing);   // restore rotation
       if (!b) { alert(S.errPngFail); return; }
       const a = document.createElement('a');
@@ -444,14 +444,14 @@ function flyRoute() {
     '<?xml version="1.0" encoding="UTF-8"?>\n' +
     '<kml xmlns="http://www.opengis.net/kml/2.2" ' +
     'xmlns:gx="http://www.google.com/kml/ext/2.2">\n<Document>\n' +
-    '  <name>NavAid flythrough</name>\n' +
+    '  <name>' + S.kmlDocName + '</name>\n' +
     camera(0, '  ') +                    // open already at the start, 5000 ft
-    '  <Placemark><name>Route</name>\n' +
+    '  <Placemark><name>' + S.kmlRouteName + '</name>\n' +
     '    <Style><LineStyle><color>ff3399ff</color><width>3</width></LineStyle></Style>\n' +
     '    <LineString><tessellate>1</tessellate>\n' +
     '      <coordinates>' + coords + '</coordinates>\n' +
     '    </LineString>\n  </Placemark>\n' + points + '\n' +
-    '  <gx:Tour><name>Fly the route</name>\n    <gx:Playlist>\n' +
+    '  <gx:Tour><name>' + S.kmlTourName + '</name>\n    <gx:Playlist>\n' +
     tour + '    </gx:Playlist>\n  </gx:Tour>\n' +
     '</Document>\n</kml>\n';
 
