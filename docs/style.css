@@ -368,6 +368,20 @@ html, body {
   #map, #overlay { position: fixed; inset: 0; }
 }
 
+/* Flight-plan print: hide everything except the table modal. */
+@media print {
+  body.printing-plan #map,
+  body.printing-plan #overlay,
+  body.printing-plan #toolbar,
+  body.printing-plan #inspector,
+  body.printing-plan .leaflet-control-container { display: none !important; }
+  body.printing-plan .modal-back { position: static; background: none; }
+  body.printing-plan .modal { box-shadow: none; border: none; max-height: none; max-width: none; }
+  body.printing-plan .modal-btns { display: none; }
+  body.printing-plan .plan-name,
+  body.printing-plan .plan-num { border: none !important; background: transparent !important; padding: 0 !important; }
+}
+
 /* Mobile: bigger touch targets, roomier toolbar. */
 @media (max-width: 680px) {
   #toolbar { gap: 6px; top: 8px; left: 8px;
