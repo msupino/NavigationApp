@@ -444,7 +444,7 @@ html, body {
 .flight-table th,
 .flight-table td {
   padding: 6px 10px;
-  text-align: left;
+  text-align: start;
   border-bottom: 1px solid #3a3636;
   white-space: nowrap;
 }
