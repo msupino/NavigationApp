@@ -11,6 +11,7 @@ window.S = {
   fpHeaders: ['#', 'מ-', 'אל-', 'כיוון', 'מרחק (NM)', 'מהירות (קשר)', 'גובה (ft)', 'זמן'],
   fpTotal: 'סה"כ',
   fpClose: 'סגור',
+  fpPrint: 'הדפס',
   pageOrientation: ' עמוד — כיוון',
   landscape: 'לרוחב',
   portrait: 'לאורך',

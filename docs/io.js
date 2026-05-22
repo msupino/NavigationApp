@@ -206,6 +206,16 @@ function showFlightPlan() {
 
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
+  const printBtn = document.createElement('button');
+  printBtn.textContent = S.fpPrint;
+  printBtn.onclick = () => {
+    document.body.classList.add('printing-plan');
+    window.print();
+    window.addEventListener('afterprint', () => {
+      document.body.classList.remove('printing-plan');
+    }, { once: true });
+  };
+  btns.appendChild(printBtn);
   const close = document.createElement('button');
   close.textContent = S.fpClose;
   close.className = 'modal-cancel';
