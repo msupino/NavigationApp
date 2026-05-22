@@ -58,7 +58,7 @@ function refreshDial() {
   const b = (((Math.round(mapBearing())) % 360) + 360) % 360;
   rotNeedle.style.transform = 'rotate(' + b + 'deg)';
   rotDial.title = S.dialTitle(b);
-  rotHdg.textContent = b === 0 ? '' : pad3(b) + '°';
+  rotHdg.textContent = pad3(b) + '°';
 }
 function dialAngle(ev) {                 // 0 = north (up), clockwise positive
   const r = rotDial.getBoundingClientRect();
