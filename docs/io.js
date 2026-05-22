@@ -276,39 +276,63 @@ function fileStamp() {
 // tiles are not CORS-enabled, so each tile is fetched through the weserv image
 // proxy (which adds Access-Control-Allow-Origin) to keep the canvas untainted.
 function exportPNG() {
-  // Export is always north-up: the tile compositing assumes a
-  // lat/lng-aligned region, so drop any map rotation for the export
-  // and restore it once the PNG is written.
+  // Export matches the screen view exactly, including map bearing.
+  // Tiles are fetched north-up (axis-aligned) for a bounding box that covers
+  // all 4 frame corners, composited onto an intermediate canvas, then drawn
+  // onto the output canvas with the bearing rotation applied.  The route
+  // overlay uses normal screen coords (which already encode bearing via
+  // latLngToContainerPoint) so the same scale/translate works for any bearing.
   NavAid.exporting = true;
   const exportBearing = map.getBearing ? map.getBearing() : 0;
-  if (exportBearing) map.setBearing(0);
 
   const fr = pageFrameRect() || { x: 0, y: 0, w: vw(), h: vh() };
-  if (fr.w < 4 || fr.h < 4) { NavAid.exporting = false; if (exportBearing) map.setBearing(exportBearing); return; }
+  if (fr.w < 4 || fr.h < 4) { NavAid.exporting = false; return; }
 
   let base = null, baseName = 'map';
   for (const n in layers) {
     if (map.hasLayer(layers[n])) { base = layers[n]; baseName = n; }
   }
-  if (!base || !base._url) { NavAid.exporting = false; if (exportBearing) map.setBearing(exportBearing); return; }
+  if (!base || !base._url) { NavAid.exporting = false; return; }
 
-  const nw = map.containerPointToLatLng([fr.x, fr.y]);
-  const se = map.containerPointToLatLng([fr.x + fr.w, fr.y + fr.h]);
+  // Geographic centre of the frame (stays constant regardless of bearing).
+  const frameCenterLL = map.containerPointToLatLng([fr.x + fr.w / 2, fr.y + fr.h / 2]);
 
-  // Always export at the layer's max native zoom; only step down if the
-  // region is physically too large for one canvas.
+  // All 4 frame corners → axis-aligned lat/lng bounding box for tile fetching.
+  const c0 = map.containerPointToLatLng([fr.x,          fr.y         ]);
+  const c1 = map.containerPointToLatLng([fr.x + fr.w,   fr.y         ]);
+  const c2 = map.containerPointToLatLng([fr.x + fr.w,   fr.y + fr.h  ]);
+  const c3 = map.containerPointToLatLng([fr.x,          fr.y + fr.h  ]);
+  const bbNWll = { lat: Math.max(c0.lat, c1.lat, c2.lat, c3.lat),
+                   lng: Math.min(c0.lng, c1.lng, c2.lng, c3.lng) };
+  const bbSEll = { lat: Math.min(c0.lat, c1.lat, c2.lat, c3.lat),
+                   lng: Math.max(c0.lng, c1.lng, c2.lng, c3.lng) };
+
+  // Zoom down until the bounding box fits in one canvas.
   const maxZ = base.options.maxNativeZoom || base.options.maxZoom || 13;
-  let z = maxZ, nwP, seP, W, H;
-  for (; z >= 9; z--) {
-    nwP = map.project([nw.lat, nw.lng], z);
-    seP = map.project([se.lat, se.lng], z);
-    W = Math.round(seP.x - nwP.x);
-    H = Math.round(seP.y - nwP.y);
-    if (W <= 10000 && H <= 10000) break;
+  let z = maxZ, bbNWP, bbSEP, Wbb, Hbb;
+  for (z = maxZ; z >= 9; z--) {
+    bbNWP = map.project([bbNWll.lat, bbNWll.lng], z);
+    bbSEP = map.project([bbSEll.lat, bbSEll.lng], z);
+    Wbb = Math.round(bbSEP.x - bbNWP.x);
+    Hbb = Math.round(bbSEP.y - bbNWP.y);
+    if (Wbb <= 10000 && Hbb <= 10000) break;
   }
 
+  // Output canvas: same physical size as the frame at the chosen tile zoom.
+  const tilePerScreen = Math.pow(2, z - map.getZoom());
+  const W = Math.round(fr.w * tilePerScreen);
+  const H = Math.round(fr.h * tilePerScreen);
+
+  // Intermediate canvas: north-up tile composite covering the bounding box.
+  const tileCanvas = document.createElement('canvas');
+  tileCanvas.width  = Wbb;
+  tileCanvas.height = Hbb;
+  const tc = tileCanvas.getContext('2d');
+  tc.fillStyle = '#231F20';
+  tc.fillRect(0, 0, Wbb, Hbb);
+
   const out = document.createElement('canvas');
-  out.width = W;
+  out.width  = W;
   out.height = H;
   const o = out.getContext('2d');
   o.fillStyle = '#231F20';
@@ -319,21 +343,23 @@ function exportPNG() {
   btn.textContent = S.saving;
   btn.disabled = true;
 
-  // gather the covering tiles, proxied for CORS
+  // Gather the covering tiles, proxied for CORS.
   const subs = base.options.subdomains || 'abc';
   const jobs = [];
-  for (let tx = Math.floor(nwP.x / 256); tx <= Math.floor(seP.x / 256); tx++) {
-    for (let ty = Math.floor(nwP.y / 256); ty <= Math.floor(seP.y / 256); ty++) {
+  for (let tx = Math.floor(bbNWP.x / 256); tx <= Math.floor(bbSEP.x / 256); tx++) {
+    for (let ty = Math.floor(bbNWP.y / 256); ty <= Math.floor(bbSEP.y / 256); ty++) {
       const url = L.Util.template(base._url,
         { z, x: tx, y: ty, s: subs[(tx + ty) % subs.length] });
       const img = new Image();
       img.crossOrigin = 'anonymous';
       const job = {
-        img, dx: Math.round(tx * 256 - nwP.x), dy: Math.round(ty * 256 - nwP.y),
+        img,
+        dx: Math.round(tx * 256 - bbNWP.x),
+        dy: Math.round(ty * 256 - bbNWP.y),
         done: new Promise(res => {
           img.onload = res;
           img.onerror = res;
-          setTimeout(res, 20000);          // never hang on a stalled tile
+          setTimeout(res, 20000);
         }),
       };
       img.src = 'https://images.weserv.nl/?url=' +
@@ -346,15 +372,28 @@ function exportPNG() {
     let failed = 0;
     for (const j of jobs) {
       if (j.img.naturalWidth) {
-        try { o.drawImage(j.img, j.dx, j.dy, 256, 256); }
+        try { tc.drawImage(j.img, j.dx, j.dy, 256, 256); }
         catch (e) { failed++; }
       } else {
         failed++;
       }
     }
-    // re-render the route into the export canvas. Web Mercator is a uniform
-    // scale between zooms, so the on-screen projection scaled by s lines up
-    // with the native-zoom tiles exactly.
+
+    // Draw the tile canvas onto the output, rotated by the map bearing so the
+    // result matches the screen view.  The frame centre in tile-canvas space
+    // maps to the output centre; rotation is clockwise by exportBearing.
+    const fcP = map.project([frameCenterLL.lat, frameCenterLL.lng], z);
+    const fcx = fcP.x - bbNWP.x;
+    const fcy = fcP.y - bbNWP.y;
+    o.save();
+    o.translate(W / 2, H / 2);
+    o.rotate(exportBearing * Math.PI / 180);
+    o.translate(-fcx, -fcy);
+    o.drawImage(tileCanvas, 0, 0);
+    o.restore();
+
+    // Route overlay: screen coords already encode bearing, so the standard
+    // scale/translate maps them correctly onto the rotated tile output.
     const s = W / fr.w;
     const prevOctx = octx;
     octx = o;
@@ -372,7 +411,6 @@ function exportPNG() {
       btn.textContent = btnLabel;
       btn.disabled = false;
       NavAid.exporting = false;
-      if (exportBearing) map.setBearing(exportBearing);   // restore rotation
       if (!b) { alert(S.errPngFail); return; }
       const a = document.createElement('a');
       a.href = URL.createObjectURL(b);
