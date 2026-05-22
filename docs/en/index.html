@@ -39,7 +39,10 @@
   <div id="toolbar">
     <span id="toolbar-handle" class="drag-handle" title="Drag to move">⋯</span>
     <span id="toolbar-toggle" title="Collapse menu" role="button" tabindex="0"><span></span></span>
-    <a class="lang-link" href="../" hreflang="he" lang="he">עברית</a>
+    <label class="navtoggle">🌐 <select onchange="location.href=this.value">
+        <option value="" selected>English</option>
+        <option value="../">עברית</option>
+      </select></label>
     <button id="tool-add" class="tool" title="Click map to drop a waypoint (click button again to stop)">✏️ Add Waypoint</button>
     <button id="tool-note" class="tool" title="Click map to drop a note (click button again to stop)">📝 Add Note</button>
     <span class="sep"></span>
