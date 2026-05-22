@@ -373,9 +373,7 @@ document.getElementById('insp-close').onclick = () => {
   });
   try {
     const stored = localStorage.getItem(COLLAPSE_KEY);
-    const onPhone = window.matchMedia('(max-width: 680px)').matches;
-    // phones start collapsed unless the user has explicitly expanded before
-    if (stored === '1' || (stored === null && onPhone)) setCollapsed(true);
+    if (stored !== '0') setCollapsed(true);
   } catch (e) { /* storage unavailable */ }
 
   window.addEventListener('resize', () => {
