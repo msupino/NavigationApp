@@ -380,6 +380,7 @@ html, body {
   body.printing-plan .modal-btns { display: none; }
   body.printing-plan .plan-name,
   body.printing-plan .plan-num { border: none !important; background: transparent !important; padding: 0 !important; }
+  body.printing-plan .flight-table th { position: static; }
 }
 
 /* Mobile: bigger touch targets, roomier toolbar. */
