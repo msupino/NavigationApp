@@ -40,7 +40,9 @@ const rotateCtrl = L.control({ position: 'bottomright' });
 rotateCtrl.onAdd = function () {
   const wrap = L.DomUtil.create('div', 'leaflet-control rotate-ctrl');
   wrap.innerHTML = '<span id="rotate-dial" role="slider" tabindex="0">' +
-                   '<span id="rotate-needle"></span></span>';
+                   '<span id="rotate-needle"></span>' +
+                   '<span id="rotate-n" title="Reset map to north">N</span>' +
+                   '</span>';
   L.DomEvent.disableClickPropagation(wrap);
   L.DomEvent.disableScrollPropagation(wrap);
   return wrap;
@@ -75,6 +77,13 @@ function rotEnd() { rotDragging = false; rotDial.classList.remove('dragging'); }
 rotDial.addEventListener('pointerup', rotEnd);
 rotDial.addEventListener('pointercancel', rotEnd);
 rotDial.addEventListener('dblclick', () => map.setBearing(0));
+// the N mark resets the map to north
+const rotN = document.getElementById('rotate-n');
+rotN.addEventListener('pointerdown', e => e.stopPropagation());
+rotN.addEventListener('click', e => {
+  e.stopPropagation();
+  map.setBearing(0);
+});
 map.on('rotate', () => { refreshDial(); draw(); });
 refreshDial();
 
