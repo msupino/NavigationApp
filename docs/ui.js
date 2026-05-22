@@ -449,10 +449,30 @@ document.getElementById('insp-close').onclick = () => {
     }
   });
   const sc = localStorage.getItem(COLLAPSED_KEY);
-  setCollapsed(sc === null ? true : sc === '1');
+  setCollapsed(sc === null ? false : sc === '1');
 
   window.addEventListener('resize', () => {
     if (bar.style.left) setPos(parseFloat(bar.style.left), parseFloat(bar.style.top));
+  });
+})();
+
+// --- section toggles -------------------------------------------------
+(function makeSectionToggle() {
+  document.querySelectorAll('.tb-section-head').forEach(head => {
+    const sec = head.closest('.tb-section');
+    const key = 'navaid.sec.' + sec.dataset.sec;
+    try {
+      if (localStorage.getItem(key) === '1') sec.classList.add('open');
+    } catch (e) { /* storage unavailable */ }
+    function toggle() {
+      sec.classList.toggle('open');
+      try { localStorage.setItem(key, sec.classList.contains('open') ? '1' : '0'); }
+      catch (e) { /* storage unavailable */ }
+    }
+    head.addEventListener('click', toggle);
+    head.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+    });
   });
 })();
 

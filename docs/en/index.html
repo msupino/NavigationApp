@@ -30,7 +30,7 @@
     gtag('config', 'G-0XM5PHEK8B');
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="../style.css?v=114">
+  <link rel="stylesheet" href="../style.css?v=115">
 </head>
 <body>
   <div id="map"></div>
@@ -39,73 +39,99 @@
   <div id="toolbar">
     <span id="toolbar-handle" class="drag-handle" data-i18n-title="tbHandleTitle">⋯</span>
     <span id="toolbar-toggle" role="button" tabindex="0"><span></span><span></span><span></span></span>
-    <label class="navtoggle">🌐 <select onchange="location.href=this.value">
-        <option value="" selected>English</option>
-        <option value="../">עברית</option>
-      </select></label>
-    <button id="tool-add" class="tool" data-i18n="tbAddWp" data-i18n-title="tbAddWpTitle"></button>
-    <button id="tool-note" class="tool" data-i18n="tbAddNote" data-i18n-title="tbAddNoteTitle"></button>
-    <span class="sep"></span>
-    <label class="navtoggle" data-i18n-title="tbLayerTitle">
-      <span data-i18n="tbLayerLabel"></span>
-      <select id="layer-select"></select>
-    </label>
-    <div class="navsearch">
-      <input type="text" id="wp-search" data-i18n-placeholder="tbSearchPlaceholder" autocomplete="off">
-      <div id="wp-search-results" class="hidden"></div>
+
+    <div class="tb-section" data-sec="edit">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecEdit"></div>
+      <div class="tb-section-body">
+        <label class="navtoggle">🌐 <select onchange="location.href=this.value">
+            <option value="" selected>English</option>
+            <option value="../">עברית</option>
+          </select></label>
+        <button id="tool-add" class="tool" data-i18n="tbAddWp" data-i18n-title="tbAddWpTitle"></button>
+        <button id="tool-note" class="tool" data-i18n="tbAddNote" data-i18n-title="tbAddNoteTitle"></button>
+      </div>
     </div>
-    <span class="sep"></span>
-    <button id="reverse" data-i18n="tbReverse" data-i18n-title="tbReverseTitle"></button>
-    <button id="clear" data-i18n="tbClear" data-i18n-title="tbClearTitle"></button>
-    <span class="sep"></span>
-    <button id="save" data-i18n="tbExport" data-i18n-title="tbExportTitle"></button>
-    <button id="load" data-i18n="tbImport" data-i18n-title="tbImportTitle"></button>
-    <input type="file" id="file" accept="application/json,.json" hidden>
-    <span class="sep"></span>
-    <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
-    <button id="plan" data-i18n="tbPlan" data-i18n-title="tbPlanTitle"></button>
-    <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
-    <label class="navtoggle" data-i18n-title="tbShowReturnTitle">
-      <input type="checkbox" id="ret-cb"> <span data-i18n="tbShowReturn"></span>
-    </label>
-    <label class="navtoggle" data-i18n-title="tbShowMidLegTitle">
-      <input type="checkbox" id="mid-cb"> <span data-i18n="tbShowMidLeg"></span>
-    </label>
-    <label class="navtoggle" data-i18n-title="tbHighlightDiffTitle">
-      <input type="checkbox" id="diff-cb"> <span data-i18n="tbHighlightDiff"></span>
-    </label>
-    <label class="navtoggle" data-i18n-title="tbShowNavWpTitle">
-      <input type="checkbox" id="navwp-cb" checked> <span data-i18n="tbShowNavWp"></span>
-    </label>
-    <label class="navtoggle" data-i18n-title="tbShowWpNamesTitle">
-      <input type="checkbox" id="wpname-cb" checked> <span data-i18n="tbShowWpNames"></span>
-      <button id="wpname-rot" type="button">⟳</button>
-    </label>
-    <label class="navtoggle" data-i18n-title="tbTransparencyTitle">
-      <span data-i18n="tbTransparency"></span>
-      <input type="range" id="yellow-alpha" min="0" max="100" step="5" value="100">
-    </label>
-    <label class="navtoggle" data-i18n-title="tbMapOpacityTitle">
-      <span data-i18n="tbMapOpacity"></span>
-      <input type="range" id="map-opacity" min="10" max="100" step="5" value="100">
-    </label>
-    <label class="navtoggle" data-i18n-title="tbWpSizeTitle">
-      <span data-i18n="tbWpSize"></span>
-      <input type="range" id="wp-size" min="0.6" max="2" step="0.1" value="1">
-    </label>
-    <label class="navtoggle" data-i18n-title="tbLegArrowSizeTitle">
-      <span data-i18n="tbLegArrowSize"></span>
-      <input type="range" id="leg-arrow-size" min="0.3" max="2" step="0.1" value="1">
-    </label>
-    <label class="navtoggle" data-i18n-title="tbMagVarTitle">
-      <span data-i18n="tbMagVar"></span>
-      <input type="number" id="mag-var" min="-30" max="30" step="0.5" value="-5">°
-      <span id="mag-var-eqv" class="hint"></span>
-    </label>
-    <span class="sep"></span>
-    <button id="page-a3" data-i18n-title="tbPageA3Title">A3</button>
-    <button id="page-a4" data-i18n-title="tbPageA4Title">A4</button>
-    <button id="print" data-i18n="tbPrint" data-i18n-title="tbPrintTitle"></button>
+
+    <div class="tb-section" data-sec="map">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecMap"></div>
+      <div class="tb-section-body">
+        <label class="navtoggle" data-i18n-title="tbLayerTitle">
+          <span data-i18n="tbLayerLabel"></span>
+          <select id="layer-select"></select>
+        </label>
+        <div class="navsearch">
+          <input type="text" id="wp-search" data-i18n-placeholder="tbSearchPlaceholder" autocomplete="off">
+          <div id="wp-search-results" class="hidden"></div>
+        </div>
+        <label class="navtoggle" data-i18n-title="tbShowNavWpTitle">
+          <input type="checkbox" id="navwp-cb" checked> <span data-i18n="tbShowNavWp"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="tb-section" data-sec="route">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecRoute"></div>
+      <div class="tb-section-body">
+        <button id="reverse" data-i18n="tbReverse" data-i18n-title="tbReverseTitle"></button>
+        <button id="clear" data-i18n="tbClear" data-i18n-title="tbClearTitle"></button>
+        <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
+        <button id="save" data-i18n="tbExport" data-i18n-title="tbExportTitle"></button>
+        <button id="load" data-i18n="tbImport" data-i18n-title="tbImportTitle"></button>
+        <input type="file" id="file" accept="application/json,.json" hidden>
+        <button id="plan" data-i18n="tbPlan" data-i18n-title="tbPlanTitle"></button>
+        <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
+        <label class="navtoggle" data-i18n-title="tbShowReturnTitle">
+          <input type="checkbox" id="ret-cb"> <span data-i18n="tbShowReturn"></span>
+        </label>
+        <label class="navtoggle" data-i18n-title="tbShowMidLegTitle">
+          <input type="checkbox" id="mid-cb"> <span data-i18n="tbShowMidLeg"></span>
+        </label>
+        <label class="navtoggle" data-i18n-title="tbHighlightDiffTitle">
+          <input type="checkbox" id="diff-cb"> <span data-i18n="tbHighlightDiff"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="tb-section" data-sec="display">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecDisplay"></div>
+      <div class="tb-section-body">
+        <label class="navtoggle" data-i18n-title="tbShowWpNamesTitle">
+          <input type="checkbox" id="wpname-cb" checked> <span data-i18n="tbShowWpNames"></span>
+          <button id="wpname-rot" type="button">⟳</button>
+        </label>
+        <label class="navtoggle" data-i18n-title="tbTransparencyTitle">
+          <span data-i18n="tbTransparency"></span>
+          <input type="range" id="yellow-alpha" min="0" max="100" step="5" value="100">
+        </label>
+        <label class="navtoggle" data-i18n-title="tbMapOpacityTitle">
+          <span data-i18n="tbMapOpacity"></span>
+          <input type="range" id="map-opacity" min="10" max="100" step="5" value="100">
+        </label>
+        <label class="navtoggle" data-i18n-title="tbWpSizeTitle">
+          <span data-i18n="tbWpSize"></span>
+          <input type="range" id="wp-size" min="0.6" max="2" step="0.1" value="1">
+        </label>
+        <label class="navtoggle" data-i18n-title="tbLegArrowSizeTitle">
+          <span data-i18n="tbLegArrowSize"></span>
+          <input type="range" id="leg-arrow-size" min="0.3" max="2" step="0.1" value="1">
+        </label>
+        <label class="navtoggle" data-i18n-title="tbMagVarTitle">
+          <span data-i18n="tbMagVar"></span>
+          <input type="number" id="mag-var" min="-30" max="30" step="0.5" value="-5">°
+          <span id="mag-var-eqv" class="hint"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="tb-section" data-sec="print">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecPrint"></div>
+      <div class="tb-section-body">
+        <button id="page-a3" data-i18n-title="tbPageA3Title">A3</button>
+        <button id="page-a4" data-i18n-title="tbPageA4Title">A4</button>
+        <button id="print" data-i18n="tbPrint" data-i18n-title="tbPrintTitle"></button>
+      </div>
+    </div>
+
     <div id="info"></div>
     <span id="app-version"></span>
   </div>
@@ -120,11 +146,11 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
-  <script src="./strings.js?v=114"></script>
-  <script src="../core.js?v=114"></script>
-  <script src="../draw.js?v=114"></script>
-  <script src="../interact.js?v=114"></script>
-  <script src="../io.js?v=114"></script>
-  <script src="../ui.js?v=114"></script>
+  <script src="./strings.js?v=115"></script>
+  <script src="../core.js?v=115"></script>
+  <script src="../draw.js?v=115"></script>
+  <script src="../interact.js?v=115"></script>
+  <script src="../io.js?v=115"></script>
+  <script src="../ui.js?v=115"></script>
 </body>
 </html>
