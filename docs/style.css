@@ -135,15 +135,16 @@ html, body {
 }
 #toolbar #wpname-rot:hover { color: #fff; }
 
-/* rotate dial */
+/* rotate dial — map control by the zoom buttons */
 #rotate-dial {
+  display: block;
   position: relative;
-  width: 34px;
-  height: 34px;
-  flex: none;
+  width: 44px;
+  height: 44px;
   border: 2px solid #6a6464;
   border-radius: 50%;
-  background: #2f2b2b;
+  background: rgba(20, 18, 18, 0.9);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
   cursor: grab;
   touch-action: none;
 }
@@ -166,9 +167,9 @@ html, body {
   content: '';
   position: absolute;
   left: 50%;
-  top: 3px;
+  top: 5px;
   width: 2px;
-  height: 13px;
+  height: 17px;
   margin-left: -1px;
   background: #ffcc33;
   border-radius: 1px;

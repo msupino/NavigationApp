@@ -27,6 +27,7 @@ async function loadNavWaypoints() {
     const d = await res.json();
     navWP = (d.waypoints || []).map(w => ({
       name: w.name,
+      he: w.he || '',                    // Hebrew label (English kept for search)
       lat: w.lat ?? (w.coord && w.coord[1]),
       lng: w.lng ?? (w.coord && w.coord[0]),
     }));
@@ -98,11 +99,12 @@ function drawNavWaypoints() {
     octx.fill();
     octx.stroke();
     if (showLabels) {
+      const label = wp.he || wp.name;    // Hebrew name; English is for search
       octx.lineWidth = 2.5;
       octx.strokeStyle = 'rgba(255,255,255,0.85)';
-      octx.strokeText(wp.name, s.x + 6, s.y);
+      octx.strokeText(label, s.x + 6, s.y);
       octx.fillStyle = '#161412';
-      octx.fillText(wp.name, s.x + 6, s.y);
+      octx.fillText(label, s.x + 6, s.y);
     }
   }
   octx.lineWidth = 1;
