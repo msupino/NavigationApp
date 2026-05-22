@@ -6,6 +6,15 @@ pull requests; production is the `main` branch, staging is `dev`.
 
 ## In progress — dev (not yet merged)
 
+### Bug-fix batch 2 — issues #66–#69
+- Deleting a waypoint now removes the leg beside it, so leg altitudes /
+  speeds stay aligned with the route instead of shifting downstream (#66).
+- Rotate dial: a cancelled pointer (`pointercancel`) no longer cycles the
+  bearing (#67).
+- Flight plan: clearing the Speed field resets it to the leg's current
+  speed instead of showing blank (#68).
+- Rotate dial drag debounces the bearing write to localStorage (#69).
+
 ### Google Earth export — per-leg altitudes (#64)
 - The `.kml` export no longer prompts for a single AGL value. The
   flythrough camera flies at the per-leg altitudes from the flight plan

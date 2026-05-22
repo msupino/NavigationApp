@@ -183,6 +183,7 @@ function showFlightPlan() {
     tr.appendChild(numCell(leg.flightSpeed, 1, inp => {
       const v = +inp.value;
       if (v > 0) { leg.flightSpeed = v; refresh(); draw(); }
+      else inp.value = leg.flightSpeed;   // invalid — restore the real value
     }));
     const altCell = numCell(leg.inboundAltitude, -2000, inp => {
       const oldVal = leg.inboundAltitude;
