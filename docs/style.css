@@ -471,3 +471,15 @@ html, body {
   border-bottom: none;
   background: rgba(255, 255, 255, 0.03);
 }
+
+/* language switcher link in the toolbar */
+.lang-link {
+  display: block;
+  text-align: center;
+  font-size: 0.78em;
+  color: #888;
+  text-decoration: none;
+  padding: 1px 0;
+  letter-spacing: 0.03em;
+}
+.lang-link:hover { color: #ddd; }
