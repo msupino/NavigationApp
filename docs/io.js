@@ -253,6 +253,12 @@ function chooseOrientation(size, onPick) {
   document.body.appendChild(back);
 }
 
+// Timestamp for unique download names — avoids browser " (1)" suffixes.
+function fileStamp() {
+  return new Date().toISOString().slice(0, 19)
+    .replace(/[-:]/g, '').replace('T', '-');
+}
+
 // Save the framed map + route as a PNG, rendered at the highest practical
 // native tile zoom (not the on-screen zoom) for maximum quality. flight-maps
 // tiles are not CORS-enabled, so each tile is fetched through the weserv image
@@ -349,7 +355,8 @@ function exportPNG() {
       if (!b) { alert('PNG export failed (a map tile could not be loaded).'); return; }
       const a = document.createElement('a');
       a.href = URL.createObjectURL(b);
-      a.download = 'navigation-' + (pageSize || baseName) + '.png';
+      a.download = 'navigation-' + (pageSize || baseName) +
+                   '-' + fileStamp() + '.png';
       a.click();
       URL.revokeObjectURL(a.href);
       if (failed > 0) {
@@ -367,6 +374,13 @@ function exportPNG() {
 function flyRoute() {
   if (state.waypoints.length < 2) {
     alert('Add at least two waypoints first.');
+    return;
+  }
+  if (!confirm('Fly the route in Google Earth Pro (desktop).\n\n' +
+      'Press OK to save the tour file (.kml), then open it in Google ' +
+      'Earth — the "Fly the route" tour appears under Places; press ' +
+      'play to fly the route ~5000 ft above the terrain.\n\n' +
+      'No Google Earth? Free desktop app: google.com/earth/versions')) {
     return;
   }
   const AGL = 1524;                      // 5000 ft, in metres
@@ -431,15 +445,9 @@ function flyRoute() {
     { type: 'application/vnd.google-earth.kml+xml' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'navaid-flythrough.kml';
+  a.download = 'navaid-flythrough-' + fileStamp() + '.kml';
   a.click();
   URL.revokeObjectURL(a.href);
-
-  alert('Saved navaid-flythrough.kml\n\n' +
-    'Open it in Google Earth Pro (desktop) — the "Fly the route" tour ' +
-    'appears under Places; press play to fly the route ~5000 ft above ' +
-    'the terrain.\n\n' +
-    'No Google Earth? It is a free desktop app: google.com/earth/versions');
 }
 
 // --- route persistence ----------------------------------------------
