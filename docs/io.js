@@ -281,19 +281,30 @@ function exportPNG() {
   // and restore it once the PNG is written.
   NavAid.exporting = true;
   const exportBearing = map.getBearing ? map.getBearing() : 0;
-  if (exportBearing) map.setBearing(0);
 
   const fr = pageFrameRect() || { x: 0, y: 0, w: vw(), h: vh() };
-  if (fr.w < 4 || fr.h < 4) { NavAid.exporting = false; if (exportBearing) map.setBearing(exportBearing); return; }
+  if (fr.w < 4 || fr.h < 4) { NavAid.exporting = false; return; }
 
   let base = null, baseName = 'map';
   for (const n in layers) {
     if (map.hasLayer(layers[n])) { base = layers[n]; baseName = n; }
   }
-  if (!base || !base._url) { NavAid.exporting = false; if (exportBearing) map.setBearing(exportBearing); return; }
+  if (!base || !base._url) { NavAid.exporting = false; return; }
 
+  // Capture geographic bounds BEFORE bearing reset: the same screen pixels
+  // map to different lat/lngs after rotation changes.
   const nw = map.containerPointToLatLng([fr.x, fr.y]);
   const se = map.containerPointToLatLng([fr.x + fr.w, fr.y + fr.h]);
+
+  // Reset to north-up for axis-aligned tile compositing.
+  if (exportBearing) map.setBearing(0);
+
+  // After bearing reset, reproject the geographic bounds back to screen
+  // pixels so the route overlay aligns with the (now north-up) tile canvas.
+  const nwPx = map.latLngToContainerPoint(nw);
+  const sePx = map.latLngToContainerPoint(se);
+  const frW  = Math.abs(sePx.x - nwPx.x) || fr.w;
+  const frH  = Math.abs(sePx.y - nwPx.y) || fr.h;
 
   // Always export at the layer's max native zoom; only step down if the
   // region is physically too large for one canvas.
@@ -355,12 +366,12 @@ function exportPNG() {
     // re-render the route into the export canvas. Web Mercator is a uniform
     // scale between zooms, so the on-screen projection scaled by s lines up
     // with the native-zoom tiles exactly.
-    const s = W / fr.w;
+    const s = W / frW;
     const prevOctx = octx;
     octx = o;
     o.save();
     o.scale(s, s);
-    o.translate(-fr.x, -fr.y);
+    o.translate(-nwPx.x, -nwPx.y);
     drawNavWaypoints();
     drawLegs();
     drawWaypoints();
