@@ -75,12 +75,12 @@ function applyNavSnap(latlng, currentName) {
   if (!showNavWP) {
     return { lat: latlng.lat, lng: latlng.lng, name: currentName || '' };
   }
-  if (currentName && !isNavName(currentName)) {
-    return { lat: latlng.lat, lng: latlng.lng, name: currentName };
-  }
+  const userTyped = currentName && !isNavName(currentName);
   const snap = nearestNavWaypoint(latlng, 18);
   if (snap) {
-    return { lat: snap.lat, lng: snap.lng, name: snap[S.navWpSearchField] || snap.name };
+    // Always snap position; only overwrite an auto-assigned or empty name.
+    const name = userTyped ? currentName : (snap[S.navWpSearchField] || snap.name);
+    return { lat: snap.lat, lng: snap.lng, name };
   }
   return { lat: latlng.lat, lng: latlng.lng,
            name: isNavName(currentName) ? '' : (currentName || '') };
