@@ -4,24 +4,39 @@ Browser-based CVFR flight-route planner (Israel area). HTML5 + Leaflet,
 no build step. Hosted on GitHub Pages. Summary is drawn from the merged
 pull requests; production is the `main` branch, staging is `dev`.
 
-## In progress — PR #12
+## In progress — dev (not yet merged)
 
-- Flight plan: editable **Speed** and **Altitude** number inputs (with
-  the editable From / To name inputs); editing speed live-updates leg
-  time + totals.
-- **Map rotation**: a 360° dial (white Google-Earth-style compass) by
-  the zoom buttons, via the `leaflet-rotate` plugin; the route overlay
-  tracks the rotated chart. PNG export forces north-up.
-- **Nav-waypoint search** box — type a name, jump to the point.
-- **Hebrew names**: all 238 nav-waypoints carry a `he` name (from the
-  original ForeFlight KML); the overlay shows Hebrew, English kept for
-  search. `nav-waypoints.json` fetched with a `?v` so the service
-  worker picks up data changes.
-- `⟳` button rotates all waypoint names 90° (replaced the auto-flip).
-- **Fly Route → "Open in Google Earth"**: confirm-then-save; timestamped
-  download names.
-- Review cleanup: persist `showWpNames` / `wpNameAngle`; dead-code
-  removal; refreshed `SKILL.md`.
+- **Bilingual UI**: Hebrew root (`/`), English at `/en/`; all dynamic
+  strings localised; language picker dropdown in toolbar.
+- Flight plan: editable **Speed** and **Altitude** number inputs; editing
+  speed live-updates leg time + totals.
+- **Map rotation**: 360° Google-Earth-style compass dial by the zoom
+  buttons; route overlay tracks rotation; bearing persisted across reloads.
+  PNG export forces north-up (bearing restored after export; no stale save
+  during export via `_isExporting` flag).
+- **Nav-waypoint search**: type a name to jump to the point; dropdown shows
+  both Hebrew and English names (`primary / alt`); outside-click closes
+  without clearing text; Escape clears.
+- **Hebrew nav-waypoint names**: all 238 points carry a `he` field; overlay
+  shows Hebrew, English kept for search. `nav-waypoints.json` versioned for
+  SW cache busting.
+- `⟳` button rotates all waypoint names 90°.
+- **"Open route in Google Earth"** (renamed from "Fly Route"): KML tour,
+  confirm-then-save, timestamped filename.
+- **Export / Import** (renamed from Save / Load).
+- **Flight Plan modal**: editable Speed/Altitude columns; Print button.
+- Transparency slider: 0–100% range (no percentage label).
+- Toolbar collapse persisted across reloads and language switches; defaults
+  to collapsed on first visit.
+- Rotate dial tap fixed on mobile (8 px movement threshold).
+- Hamburger toggle uses three explicit `<span>` elements (pseudo-element
+  approach was unreliable on mobile).
+- `showReturn` / `showMidLeg` / `highlightDiff` persistence pattern fixed.
+- Nav-waypoint dot hidden under placed waypoints by position proximity
+  (not name match — works after rename).
+- Hebrew mag-var label corrected: נטייה מגנטית.
+- Layer picker: "OSM" → "OpenStreetMap" (with migration for saved key).
+- `sw.js` cache bumped to `navaid-v3`.
 
 ## 2026-05-21
 

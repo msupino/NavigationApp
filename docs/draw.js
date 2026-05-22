@@ -24,7 +24,7 @@ async function loadNavWaypoints() {
   try {
     // ?v bumped whenever nav-waypoints.json changes — the service worker
     // caches it cache-first, so a new URL is needed to pick up edits.
-    const res = await fetch('nav-waypoints.json?v=2');
+    const res = await fetch(S.navWpUrl);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const d = await res.json();
     navWP = (d.waypoints || []).map(w => ({
@@ -75,12 +75,12 @@ function applyNavSnap(latlng, currentName) {
   if (!showNavWP) {
     return { lat: latlng.lat, lng: latlng.lng, name: currentName || '' };
   }
-  if (currentName && !isNavName(currentName)) {
-    return { lat: latlng.lat, lng: latlng.lng, name: currentName };
-  }
+  const userTyped = currentName && !isNavName(currentName);
   const snap = nearestNavWaypoint(latlng, 18);
   if (snap) {
-    return { lat: snap.lat, lng: snap.lng, name: snap.he || snap.name };
+    // Always snap position; only overwrite an auto-assigned or empty name.
+    const name = userTyped ? currentName : (snap[S.navWpSearchField] || snap.name);
+    return { lat: snap.lat, lng: snap.lng, name };
   }
   return { lat: latlng.lat, lng: latlng.lng,
            name: isNavName(currentName) ? '' : (currentName || '') };
@@ -88,11 +88,17 @@ function applyNavSnap(latlng, currentName) {
 
 function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
+  // Suppress nav-WP dot when a route waypoint sits on it (by position),
+  // regardless of whether the WP name was changed after snapping.
+  const SNAP_DEG = 0.0002;               // ~22 m — matches nearestNavWaypoint px threshold
   const showLabels = map.getZoom() >= 10;
   octx.font = 'bold 10px sans-serif';
   octx.textAlign = 'left';
   octx.textBaseline = 'middle';
   for (const wp of navWP) {
+    const occupied = state.waypoints.some(
+      r => Math.abs(r.lat - wp.lat) < SNAP_DEG && Math.abs(r.lng - wp.lng) < SNAP_DEG);
+    if (occupied) continue;
     const s = proj(wp);                  // no viewport cull: also drawn into
                                          // the larger PNG-export canvas
     octx.fillStyle = '#ffffff';
@@ -103,7 +109,7 @@ function drawNavWaypoints() {
     octx.fill();
     octx.stroke();
     if (showLabels) {
-      const label = wp.he || wp.name;    // Hebrew name; English is for search
+      const label = wp[S.navWpSearchField] || wp.name;
       octx.lineWidth = 2.5;
       octx.strokeStyle = 'rgba(255,255,255,0.85)';
       octx.strokeText(label, s.x + 6, s.y);
@@ -423,10 +429,10 @@ function drawInfo() {
     if (state.legs[i].flightSpeed > 0) totalH += dist / state.legs[i].flightSpeed;
   }
   document.getElementById('info').textContent =
-    `Waypoints  ${state.waypoints.length}\n` +
-    `Legs       ${state.legs.length}\n` +
-    `Distance   ${totalDist.toFixed(1)} NM\n` +
-    `Total time ${totalH > 0 ? toHMS(totalH) : '--'}`;
+    `${S.summaryWaypoints}  ${state.waypoints.length}\n` +
+    `${S.summaryLegs}       ${state.legs.length}\n` +
+    `${S.summaryDist}   ${totalDist.toFixed(1)} NM\n` +
+    `${S.summaryTime} ${totalH > 0 ? toHMS(totalH) : '--'}`;
 }
 
 // --- print page frame -----------------------------------------------
