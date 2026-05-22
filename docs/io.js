@@ -444,7 +444,7 @@ function exportPNG() {
 // --- fly the route (Google Earth) -----------------------------------
 // A browser cannot launch or detect a desktop app, so this writes a KML
 // tour and tells the user to open it in Google Earth Pro, which flies
-// the route ~5000 ft above the terrain.
+// the route at the per-leg altitudes set in the flight plan.
 function flyRoute() {
   if (state.waypoints.length < 2) {
     alert(S.errNeedWps);
@@ -453,11 +453,13 @@ function flyRoute() {
   if (!confirm(S.flyConfirm)) {
     return;
   }
-  const aglInput = prompt(S.flyAglPrompt, '2000');
-  if (aglInput === null) return;
-  const aglFt = Math.max(100, Math.min(20000, parseInt(aglInput, 10) || 2000));
-  const AGL = Math.round(aglFt * 0.3048);   // ft → metres
   const wps = state.waypoints;
+  // Per-waypoint altitude (metres AGL): the leg flown along it; the last
+  // waypoint reuses the last leg. inboundAltitude is feet in the flight plan.
+  const altM = i => {
+    const leg = state.legs[Math.min(i, state.legs.length - 1)];
+    return Math.max(0, Math.round((leg ? leg.inboundAltitude : 2000) * 0.3048));
+  };
   const esc = s => String(s).replace(/[<>&]/g,
     c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 
@@ -472,7 +474,7 @@ function flyRoute() {
     pad + '<Camera>\n' +
     pad + '  <longitude>' + wps[i].lng + '</longitude>\n' +
     pad + '  <latitude>' + wps[i].lat + '</latitude>\n' +
-    pad + '  <altitude>' + AGL + '</altitude>\n' +
+    pad + '  <altitude>' + altM(i) + '</altitude>\n' +
     pad + '  <heading>' + heading(i).toFixed(1) + '</heading>\n' +
     pad + '  <tilt>85</tilt>\n' +
     pad + '  <roll>0</roll>\n' +
@@ -493,10 +495,12 @@ function flyRoute() {
     tour += flyTo(i, Math.max(4, Math.min(45, durH * 60 * 4)), 'smooth');
   }
 
-  const coords = wps.map(w => w.lng + ',' + w.lat + ',0').join(' ');
+  const coords = wps.map((w, i) => w.lng + ',' + w.lat + ',' + altM(i)).join(' ');
   const points = wps.map((w, i) =>
     '  <Placemark><name>' + esc(wpLabel(i)) + '</name>' +
-    '<Point><coordinates>' + w.lng + ',' + w.lat + ',0</coordinates></Point>' +
+    '<Point><extrude>1</extrude>' +
+    '<altitudeMode>relativeToGround</altitudeMode>' +
+    '<coordinates>' + w.lng + ',' + w.lat + ',' + altM(i) + '</coordinates></Point>' +
     '</Placemark>').join('\n');
 
   const kml =
@@ -507,7 +511,7 @@ function flyRoute() {
     camera(0, '  ') +                    // open already at the start, 5000 ft
     '  <Placemark><name>' + S.kmlRouteName + '</name>\n' +
     '    <Style><LineStyle><color>ff3399ff</color><width>3</width></LineStyle></Style>\n' +
-    '    <LineString><tessellate>1</tessellate>\n' +
+    '    <LineString><altitudeMode>relativeToGround</altitudeMode>\n' +
     '      <coordinates>' + coords + '</coordinates>\n' +
     '    </LineString>\n  </Placemark>\n' + points + '\n' +
     '  <gx:Tour><name>' + S.kmlTourName + '</name>\n    <gx:Playlist>\n' +
