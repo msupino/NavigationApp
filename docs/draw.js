@@ -16,7 +16,7 @@ function draw() {
 
 // --- nav-waypoint reference overlay ---------------------------------
 // Lazy-loads docs/nav-waypoints.json on first activation. Format:
-// { waypoints:[{ name, lat, lng }] } — 238 published reporting points.
+// { waypoints:[{ name, lat, lng }] } — 256 published reporting points.
 // (Old GeoJSON-style entries with `coord:[lng,lat]` are also accepted
 // as a fallback if a stale cache returns them.)
 async function loadNavWaypoints() {
