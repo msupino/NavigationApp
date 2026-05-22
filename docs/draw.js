@@ -62,6 +62,18 @@ function isNavName(name) {
   return false;
 }
 
+// Resolve a stored waypoint name to the current locale. If the stored value
+// is a nav-WP name (either language), return the locale-appropriate version.
+// User-typed names are returned as-is.
+function navName(stored) {
+  if (!stored || !navWP) return stored || '';
+  for (const nw of navWP) {
+    if (nw.name === stored || nw.he === stored)
+      return nw[S.navWpSearchField] || nw.name;
+  }
+  return stored;
+}
+
 // Decide where a waypoint should sit + what to call it given a target
 // position and its current name. Used by both initial drop and drag.
 //  - If the current name is user-typed (non-empty, not a nav name): leave
@@ -331,7 +343,7 @@ const WP_RADIUS = 13;
 // stays roughly constant; floor at 0.35× so markers stay visible when zoomed out).
 function waypointGeom(i) {
   const wp = state.waypoints[i];
-  const label = showWpNames ? ((wp.name || '').trim() || String(i + 1)) : '';
+  const label = showWpNames ? (navName((wp.name || '').trim()) || String(i + 1)) : '';
   const zoomScale = Math.max(0.35, Math.pow(2, map.getZoom() - 12));
   const scale = wpSize * zoomScale;
   const fontPx = Math.max(6, Math.round(13 * scale));
