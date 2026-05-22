@@ -39,10 +39,9 @@ layerSelect.onchange = () => {
 const rotateCtrl = L.control({ position: 'bottomright' });
 rotateCtrl.onAdd = function () {
   const wrap = L.DomUtil.create('div', 'leaflet-control rotate-ctrl');
-  wrap.innerHTML = '<span id="rotate-dial" role="slider" tabindex="0">' +
-                   '<span id="rotate-needle"></span>' +
-                   '<span id="rotate-n" title="Reset map to north">N</span>' +
-                   '</span>';
+  wrap.innerHTML = '<span id="rotate-dial" role="slider" tabindex="0" ' +
+                   'title="Drag to rotate the map; click to reset north">' +
+                   '<span id="rotate-needle"></span></span>';
   L.DomEvent.disableClickPropagation(wrap);
   L.DomEvent.disableScrollPropagation(wrap);
   return wrap;
@@ -63,28 +62,41 @@ function dialAngle(ev) {                 // 0 = north (up), clockwise positive
   const dy = ev.clientY - (r.top + r.height / 2);
   return Math.atan2(dx, -dy) * 180 / Math.PI;
 }
-let rotDragging = false;
+// Drag the dial to rotate; a plain click (no drag) resets to north.
+let rotDragging = false, rotMoved = false;
 rotDial.addEventListener('pointerdown', e => {
   rotDragging = true;
+  rotMoved = false;
   rotDial.classList.add('dragging');
-  rotDial.setPointerCapture(e.pointerId);
-  map.setBearing(dialAngle(e));
+  try { rotDial.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
 });
 rotDial.addEventListener('pointermove', e => {
-  if (rotDragging) map.setBearing(dialAngle(e));
+  if (!rotDragging) return;
+  rotMoved = true;
+  map.setBearing(dialAngle(e));
 });
-function rotEnd() { rotDragging = false; rotDial.classList.remove('dragging'); }
-rotDial.addEventListener('pointerup', rotEnd);
-rotDial.addEventListener('pointercancel', rotEnd);
-rotDial.addEventListener('dblclick', () => map.setBearing(0));
-// the N mark resets the map to north
-const rotN = document.getElementById('rotate-n');
-rotN.addEventListener('pointerdown', e => e.stopPropagation());
-rotN.addEventListener('click', e => {
-  e.stopPropagation();
-  map.setBearing(0);
+rotDial.addEventListener('pointerup', () => {
+  if (rotDragging && !rotMoved) map.setBearing(0);   // click = reset north
+  rotDragging = false;
+  rotMoved = false;
+  rotDial.classList.remove('dragging');
 });
-map.on('rotate', () => { refreshDial(); draw(); });
+rotDial.addEventListener('pointercancel', () => {
+  rotDragging = false;
+  rotMoved = false;
+  rotDial.classList.remove('dragging');
+});
+const BEARING_KEY = 'navaid.bearing';
+map.on('rotate', () => {
+  refreshDial();
+  draw();
+  try { localStorage.setItem(BEARING_KEY, String(mapBearing())); }
+  catch (e) { /* storage unavailable */ }
+});
+try {                                    // restore the last map rotation
+  const sb = parseFloat(localStorage.getItem(BEARING_KEY));
+  if (sb) map.setBearing(sb);
+} catch (e) { /* storage unavailable */ }
 refreshDial();
 
 // --- nav-waypoint search --------------------------------------------
