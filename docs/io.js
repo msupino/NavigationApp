@@ -454,8 +454,8 @@ function flyRoute() {
     return;
   }
   const wps = state.waypoints;
-  // Per-waypoint altitude (metres AGL): the leg flown along it; the last
-  // waypoint reuses the last leg. inboundAltitude is feet in the flight plan.
+  // Camera flythrough height per waypoint (metres AGL): the leg flown
+  // along it; the last waypoint reuses the last leg. inboundAltitude is feet.
   const altM = i => {
     const leg = state.legs[Math.min(i, state.legs.length - 1)];
     return Math.max(0, Math.round((leg ? leg.inboundAltitude : 2000) * 0.3048));
@@ -495,12 +495,10 @@ function flyRoute() {
     tour += flyTo(i, Math.max(4, Math.min(45, durH * 60 * 4)), 'smooth');
   }
 
-  const coords = wps.map((w, i) => w.lng + ',' + w.lat + ',' + altM(i)).join(' ');
+  const coords = wps.map(w => w.lng + ',' + w.lat + ',0').join(' ');
   const points = wps.map((w, i) =>
     '  <Placemark><name>' + esc(wpLabel(i)) + '</name>' +
-    '<Point><extrude>1</extrude>' +
-    '<altitudeMode>relativeToGround</altitudeMode>' +
-    '<coordinates>' + w.lng + ',' + w.lat + ',' + altM(i) + '</coordinates></Point>' +
+    '<Point><coordinates>' + w.lng + ',' + w.lat + ',0</coordinates></Point>' +
     '</Placemark>').join('\n');
 
   const kml =
@@ -511,7 +509,7 @@ function flyRoute() {
     camera(0, '  ') +                    // open already at the start, 5000 ft
     '  <Placemark><name>' + S.kmlRouteName + '</name>\n' +
     '    <Style><LineStyle><color>ff3399ff</color><width>3</width></LineStyle></Style>\n' +
-    '    <LineString><altitudeMode>relativeToGround</altitudeMode>\n' +
+    '    <LineString><tessellate>1</tessellate>\n' +
     '      <coordinates>' + coords + '</coordinates>\n' +
     '    </LineString>\n  </Placemark>\n' + points + '\n' +
     '  <gx:Tour><name>' + S.kmlTourName + '</name>\n    <gx:Playlist>\n' +
