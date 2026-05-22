@@ -41,7 +41,6 @@ rotateCtrl.onAdd = function () {
   const wrap = L.DomUtil.create('div', 'leaflet-control rotate-ctrl');
   wrap.innerHTML = '<span id="rotate-dial" role="slider" tabindex="0">' +
                    '<span id="rotate-needle"></span>' +
-                   '<span id="rotate-n" title="Reset map to north">N</span>' +
                    '</span>';
   L.DomEvent.disableClickPropagation(wrap);
   L.DomEvent.disableScrollPropagation(wrap);
@@ -82,16 +81,17 @@ function rotEnd() {
 }
 rotDial.addEventListener('pointerup', rotEnd);
 rotDial.addEventListener('pointercancel', rotEnd);
-rotDial.addEventListener('dblclick', () => map.setBearing(0));
-// the N mark resets the map to north
-const rotN = document.getElementById('rotate-n');
-rotN.addEventListener('pointerdown', e => e.stopPropagation());
-rotN.addEventListener('click', e => {
-  e.stopPropagation();
-  map.setBearing(0);
+map.on('rotate', () => {
+  refreshDial(); draw();
+  try { localStorage.setItem(BEARING_KEY, String(mapBearing())); }
+  catch (err) { /* storage unavailable */ }
 });
-map.on('rotate', () => { refreshDial(); draw(); });
 refreshDial();
+const BEARING_KEY = 'navaid.bearing';
+try {
+  const sb = parseFloat(localStorage.getItem(BEARING_KEY));
+  if (!isNaN(sb)) map.setBearing(sb);
+} catch (e) { /* storage unavailable */ }
 
 // --- nav-waypoint search --------------------------------------------
 const wpSearch = document.getElementById('wp-search');
@@ -132,7 +132,10 @@ wpSearch.addEventListener('keydown', e => {
   }
 });
 document.addEventListener('click', e => {
-  if (!e.target.closest('.navsearch')) closeSearch();
+  if (!e.target.closest('.navsearch')) {
+    closeSearch();
+    wpSearch.value = '';
+  }
 });
 document.getElementById('reverse').onclick = () => {
   // Reversing flight direction means each leg's inbound/outbound roles swap.
@@ -167,12 +170,22 @@ document.getElementById('file').onchange = e => {
 document.getElementById('fit').onclick = fitView;
 document.getElementById('fly').onclick = flyRoute;
 document.getElementById('plan').onclick = showFlightPlan;
+const RETURN_KEY = 'navaid.showReturn';
+const MIDLEG_KEY = 'navaid.showMidLeg';
+try {
+  if (localStorage.getItem(RETURN_KEY) === '1') showReturn = true;
+  if (localStorage.getItem(MIDLEG_KEY) === '1') showMidLeg = true;
+} catch (e) { /* storage unavailable */ }
+document.getElementById('ret-cb').checked = showReturn;
+document.getElementById('mid-cb').checked = showMidLeg;
 document.getElementById('ret-cb').onchange = e => {
   showReturn = e.target.checked;
+  try { localStorage.setItem(RETURN_KEY, showReturn ? '1' : '0'); } catch (err) { /* */ }
   draw();
 };
 document.getElementById('mid-cb').onchange = e => {
   showMidLeg = e.target.checked;
+  try { localStorage.setItem(MIDLEG_KEY, showMidLeg ? '1' : '0'); } catch (err) { /* */ }
   draw();
 };
 const WPNAME_KEY = 'navaid.showWpNames';
@@ -198,8 +211,14 @@ document.getElementById('wpname-rot').onclick = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
+const DIFF_KEY = 'navaid.highlightDiff';
+try {
+  if (localStorage.getItem(DIFF_KEY) === '1') highlightDiff = true;
+} catch (e) { /* storage unavailable */ }
+document.getElementById('diff-cb').checked = highlightDiff;
 document.getElementById('diff-cb').onchange = e => {
   highlightDiff = e.target.checked;
+  try { localStorage.setItem(DIFF_KEY, highlightDiff ? '1' : '0'); } catch (err) { /* */ }
   draw();
 };
 const NAVWP_KEY = 'navaid.showNavWP';

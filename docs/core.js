@@ -64,6 +64,10 @@ window.S = Object.assign({
   clearConfirm: 'Remove all waypoints and notes?',
   expandMenu: 'Expand menu',
   collapseMenu: 'Collapse menu',
+  summaryWaypoints: 'Waypoints',
+  summaryLegs: 'Legs',
+  summaryDist: 'Distance',
+  summaryTime: 'Total time',
 }, window.S || {});
 
 // --- model -----------------------------------------------------------
@@ -169,7 +173,8 @@ const layers = {
 const LAYER_KEY = 'navaid.layer';
 let initialLayer = layers.CVFR;
 try {
-  const saved = localStorage.getItem(LAYER_KEY);
+  let saved = localStorage.getItem(LAYER_KEY);
+  if (saved === 'OSM') { saved = 'OpenStreetMap'; localStorage.setItem(LAYER_KEY, saved); }
   if (saved && layers[saved]) initialLayer = layers[saved];
 } catch (e) { /* storage unavailable */ }
 

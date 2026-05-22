@@ -88,18 +88,17 @@ function applyNavSnap(latlng, currentName) {
 
 function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
-  // Build a set of names claimed by route waypoints snapped to nav-points,
-  // so we don't draw the nav-point dot underneath — it would double the label.
-  const snapped = new Set(
-    state.waypoints.map(w => (w.name || '').trim()).filter(Boolean)
-  );
+  // Suppress nav-WP dot when a route waypoint sits on it (by position),
+  // regardless of whether the WP name was changed after snapping.
+  const SNAP_DEG = 0.0002;               // ~22 m — matches nearestNavWaypoint px threshold
   const showLabels = map.getZoom() >= 10;
   octx.font = 'bold 10px sans-serif';
   octx.textAlign = 'left';
   octx.textBaseline = 'middle';
   for (const wp of navWP) {
-    if (wp.name && snapped.has(wp.name)) continue;
-    if (wp.he   && snapped.has(wp.he))   continue;
+    const occupied = state.waypoints.some(
+      r => Math.abs(r.lat - wp.lat) < SNAP_DEG && Math.abs(r.lng - wp.lng) < SNAP_DEG);
+    if (occupied) continue;
     const s = proj(wp);                  // no viewport cull: also drawn into
                                          // the larger PNG-export canvas
     octx.fillStyle = '#ffffff';
@@ -430,10 +429,10 @@ function drawInfo() {
     if (state.legs[i].flightSpeed > 0) totalH += dist / state.legs[i].flightSpeed;
   }
   document.getElementById('info').textContent =
-    `Waypoints  ${state.waypoints.length}\n` +
-    `Legs       ${state.legs.length}\n` +
-    `Distance   ${totalDist.toFixed(1)} NM\n` +
-    `Total time ${totalH > 0 ? toHMS(totalH) : '--'}`;
+    `${S.summaryWaypoints}  ${state.waypoints.length}\n` +
+    `${S.summaryLegs}       ${state.legs.length}\n` +
+    `${S.summaryDist}   ${totalDist.toFixed(1)} NM\n` +
+    `${S.summaryTime} ${totalH > 0 ? toHMS(totalH) : '--'}`;
 }
 
 // --- print page frame -----------------------------------------------

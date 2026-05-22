@@ -209,11 +209,14 @@ function showFlightPlan() {
   const printBtn = document.createElement('button');
   printBtn.textContent = S.fpPrint;
   printBtn.onclick = () => {
+    const cleanup = () => {
+      document.body.classList.remove('printing-plan');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup, { once: true });
     document.body.classList.add('printing-plan');
     window.print();
-    window.addEventListener('afterprint', () => {
-      document.body.classList.remove('printing-plan');
-    }, { once: true });
+    setTimeout(cleanup, 4000);           // belt-and-braces for Safari
   };
   btns.appendChild(printBtn);
   const close = document.createElement('button');
@@ -286,7 +289,7 @@ function exportPNG() {
   for (const n in layers) {
     if (map.hasLayer(layers[n])) { base = layers[n]; baseName = n; }
   }
-  if (!base || !base._url) return;
+  if (!base || !base._url) { if (exportBearing) map.setBearing(exportBearing); return; }
 
   const nw = map.containerPointToLatLng([fr.x, fr.y]);
   const se = map.containerPointToLatLng([fr.x + fr.w, fr.y + fr.h]);
