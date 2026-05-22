@@ -23,6 +23,53 @@ const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
 let magVar = -5;                       // signed offset added to true heading
                                        // (Israel ≈ −5; equivalent to 5°E variation)
 
+// Localisation strings. A strings.js may pre-set window.S with overrides
+// (full locale or just navWpUrl). Object.assign merges: defaults first,
+// then any pre-set keys win, so a partial override doesn't erase the rest.
+window.S = Object.assign({
+  navWpUrl: 'nav-waypoints.json?v=2',  // relative URL — en/ overrides to ../
+  navWpSearchField: 'name',            // which field to show/search in results
+  wpPrefix: 'WP ',
+  noteDefault: 'Note',
+  errLoadFile: 'Could not load file: ',
+  errNoLegs: 'No legs yet — drop at least two waypoints first.',
+  flightPlan: 'Flight plan',
+  fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time'],
+  fpTotal: 'Total',
+  fpClose: 'Close',
+  fpPrint: 'Print',
+  pageOrientation: ' page — orientation',
+  landscape: 'Landscape',
+  portrait: 'Portrait',
+  cancel: 'Cancel',
+  saving: '⏳ Saving…',
+  errPngFail: 'PNG export failed (a map tile could not be loaded).',
+  errTilesFail: function(f, t) { return f + ' of ' + t + ' map tiles failed to load — the PNG may have blank patches. Re-run the export to retry.'; },
+  errNeedWps: 'Add at least two waypoints first.',
+  flyConfirm: 'Fly the route in Google Earth Pro (desktop).\n\nPress OK to save the tour file (.kml), then open it in Google Earth — the “Fly the route” tour appears under Places; press play to fly the route ~5000 ft above the terrain.\n\nNo Google Earth? Free desktop app: google.com/earth/versions',
+  legTitle: function(n) { return 'Leg ' + n; },
+  speedKt: 'Speed (kt)',
+  inboundAlt: 'Inbound alt (ft)',
+  outboundAlt: 'Outbound alt (ft)',
+  shape: 'Shape',
+  shapeRect: 'Rectangle',
+  shapeOval: 'Oval',
+  color: 'Color',
+  deleteNote: 'Delete note',
+  deleteWp: 'Delete waypoint',
+  latitude: 'Latitude',
+  longitude: 'Longitude',
+  dialTitle: function(b) { return 'Map rotation ' + b + '° — drag to rotate, click for north up'; },
+  wpnameRotTitle: function(a) { return 'Rotate waypoint names (now ' + a + '°)'; },
+  clearConfirm: 'Remove all waypoints and notes?',
+  expandMenu: 'Expand menu',
+  collapseMenu: 'Collapse menu',
+  summaryWaypoints: 'Waypoints',
+  summaryLegs: 'Legs',
+  summaryDist: 'Distance',
+  summaryTime: 'Total time',
+}, window.S || {});
+
 // --- model -----------------------------------------------------------
 const state = {
   waypoints: [],            // [{ lat, lng, name }]
@@ -118,7 +165,7 @@ const layers = {
     'https://services.arcgisonline.com/ArcGIS/rest/services/' +
     'World_Imagery/MapServer/tile/{z}/{y}/{x}',
     { minZoom: 6, maxZoom: 18, attribution: 'Imagery © Esri' }),
-  'OSM': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  'OpenStreetMap': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     { minZoom: 6, maxZoom: 18, subdomains: 'abc',
       attribution: '© OpenStreetMap contributors' }),
 };
@@ -126,7 +173,8 @@ const layers = {
 const LAYER_KEY = 'navaid.layer';
 let initialLayer = layers.CVFR;
 try {
-  const saved = localStorage.getItem(LAYER_KEY);
+  let saved = localStorage.getItem(LAYER_KEY);
+  if (saved === 'OSM') { saved = 'OpenStreetMap'; localStorage.setItem(LAYER_KEY, saved); }
   if (saved && layers[saved]) initialLayer = layers[saved];
 } catch (e) { /* storage unavailable */ }
 

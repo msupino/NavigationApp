@@ -84,13 +84,24 @@ html, body {
 
 #toolbar-toggle {
   align-self: center;
-  font-size: 14px;
-  line-height: 1;
-  color: #b9b3b3;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 18px;
+  height: 13px;
   cursor: pointer;
-  padding: 2px 12px;
+  padding: 4px 12px;
+  box-sizing: content-box;
+  color: #b9b3b3;
   user-select: none;
   -webkit-user-select: none;
+}
+#toolbar-toggle span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 1px;
 }
 #toolbar-toggle:hover { color: #fff; }
 /* Collapsed: keep only the drag handle + the toggle visible. */
@@ -109,7 +120,7 @@ html, body {
   white-space: nowrap;
 }
 #toolbar .navtoggle input { cursor: pointer; margin: 0; }
-#toolbar .navtoggle input[type="range"] { width: 90px; }
+#toolbar .navtoggle input[type="range"] { flex: 1; width: 0; min-width: 0; }
 #toolbar .navtoggle .hint { color: #8a8484; font-size: 12px; }
 #toolbar .navtoggle input[type="number"] {
   width: 56px;
@@ -355,6 +366,21 @@ html, body {
   #map, #overlay { position: fixed; inset: 0; }
 }
 
+/* Flight-plan print: hide everything except the table modal. */
+@media print {
+  body.printing-plan #map,
+  body.printing-plan #overlay,
+  body.printing-plan #toolbar,
+  body.printing-plan #inspector,
+  body.printing-plan .leaflet-control-container { display: none !important; }
+  body.printing-plan .modal-back { position: static; background: none; }
+  body.printing-plan .modal { box-shadow: none; border: none; max-height: none; max-width: none; }
+  body.printing-plan .modal-btns { display: none; }
+  body.printing-plan .plan-name,
+  body.printing-plan .plan-num { border: none !important; background: transparent !important; padding: 0 !important; }
+  body.printing-plan .flight-table th { position: static; }
+}
+
 /* Mobile: bigger touch targets, roomier toolbar. */
 @media (max-width: 680px) {
   #toolbar { gap: 6px; top: 8px; left: 8px;
@@ -431,7 +457,7 @@ html, body {
 .flight-table th,
 .flight-table td {
   padding: 6px 10px;
-  text-align: left;
+  text-align: start;
   border-bottom: 1px solid #3a3636;
   white-space: nowrap;
 }

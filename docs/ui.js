@@ -41,7 +41,6 @@ rotateCtrl.onAdd = function () {
   const wrap = L.DomUtil.create('div', 'leaflet-control rotate-ctrl');
   wrap.innerHTML = '<span id="rotate-dial" role="slider" tabindex="0">' +
                    '<span id="rotate-needle"></span>' +
-                   '<span id="rotate-n" title="Reset map to north">N</span>' +
                    '</span>';
   L.DomEvent.disableClickPropagation(wrap);
   L.DomEvent.disableScrollPropagation(wrap);
@@ -54,8 +53,7 @@ function mapBearing() { return map.getBearing ? map.getBearing() : 0; }
 function refreshDial() {
   const b = Math.round(mapBearing());
   rotNeedle.style.transform = 'rotate(' + b + 'deg)';
-  rotDial.title = 'Map rotation ' + (((b % 360) + 360) % 360) +
-                  '° — drag to rotate, double-click for north up';
+  rotDial.title = S.dialTitle((((b % 360) + 360) % 360));
 }
 function dialAngle(ev) {                 // 0 = north (up), clockwise positive
   const r = rotDial.getBoundingClientRect();
@@ -65,15 +63,22 @@ function dialAngle(ev) {                 // 0 = north (up), clockwise positive
 }
 let rotDragging = false;
 let rotMoved = false;
+let rotStartX = 0, rotStartY = 0;
+const ROT_DRAG_PX = 8;                 // min movement before treating as a drag
 rotDial.addEventListener('pointerdown', e => {
   rotDragging = true;
   rotMoved = false;
+  rotStartX = e.clientX;
+  rotStartY = e.clientY;
   rotDial.classList.add('dragging');
   rotDial.setPointerCapture(e.pointerId);
 });
 rotDial.addEventListener('pointermove', e => {
   if (!rotDragging) return;
-  rotMoved = true;
+  if (!rotMoved) {
+    if (Math.hypot(e.clientX - rotStartX, e.clientY - rotStartY) < ROT_DRAG_PX) return;
+    rotMoved = true;
+  }
   map.setBearing(dialAngle(e));
 });
 function rotEnd() {
@@ -83,15 +88,18 @@ function rotEnd() {
 }
 rotDial.addEventListener('pointerup', rotEnd);
 rotDial.addEventListener('pointercancel', rotEnd);
-rotDial.addEventListener('dblclick', () => map.setBearing(0));
-// the N mark resets the map to north
-const rotN = document.getElementById('rotate-n');
-rotN.addEventListener('pointerdown', e => e.stopPropagation());
-rotN.addEventListener('click', e => {
-  e.stopPropagation();
-  map.setBearing(0);
+const BEARING_KEY = 'navaid.bearing';
+try {
+  const sb = parseFloat(localStorage.getItem(BEARING_KEY));
+  if (!isNaN(sb)) map.setBearing(sb);
+} catch (e) { /* storage unavailable */ }
+let _isExporting = false;
+map.on('rotate', () => {
+  refreshDial(); draw();
+  if (_isExporting) return;
+  try { localStorage.setItem(BEARING_KEY, String(mapBearing())); }
+  catch (err) { /* storage unavailable */ }
 });
-map.on('rotate', () => { refreshDial(); draw(); });
 refreshDial();
 
 // --- nav-waypoint search --------------------------------------------
@@ -105,17 +113,21 @@ wpSearch.addEventListener('input', () => {
   const q = wpSearch.value.trim().toUpperCase();
   if (!q || !navWP) { closeSearch(); return; }
   const hits = navWP
-    .filter(w => w.name.toUpperCase().indexOf(q) >= 0)
+    .filter(w => w.name.toUpperCase().indexOf(q) >= 0 ||
+                 (w.he && w.he.indexOf(wpSearch.value.trim()) >= 0))
     .slice(0, 12);
   if (!hits.length) { closeSearch(); return; }
   wpResults.innerHTML = '';
+  const field = S.navWpSearchField;
   for (const w of hits) {
     const item = document.createElement('div');
     item.className = 'wp-search-item';
-    item.textContent = w.name;
+    const primary = w[field] || w.name;
+    const alt = field === 'he' ? w.name : (w.he || '');
+    item.textContent = alt && alt !== primary ? primary + ' / ' + alt : primary;
     item.onclick = () => {
       map.setView([w.lat, w.lng], Math.max(map.getZoom(), 12));
-      wpSearch.value = w.name;
+      wpSearch.value = primary;
       closeSearch();
     };
     wpResults.appendChild(item);
@@ -128,6 +140,7 @@ wpSearch.addEventListener('keydown', e => {
     if (first) first.click();
   } else if (e.key === 'Escape') {
     closeSearch();
+    wpSearch.value = '';
   }
 });
 document.addEventListener('click', e => {
@@ -150,7 +163,7 @@ document.getElementById('reverse').onclick = () => {
 };
 document.getElementById('clear').onclick = () => {
   if ((state.waypoints.length || state.notes.length) &&
-      !confirm('Remove all waypoints and notes?')) return;
+      !confirm(S.clearConfirm)) return;
   state.waypoints = [];
   state.legs = [];
   state.notes = [];
@@ -166,12 +179,24 @@ document.getElementById('file').onchange = e => {
 document.getElementById('fit').onclick = fitView;
 document.getElementById('fly').onclick = flyRoute;
 document.getElementById('plan').onclick = showFlightPlan;
+const RETURN_KEY = 'navaid.showReturn';
+const MIDLEG_KEY = 'navaid.showMidLeg';
+try {
+  const sr = localStorage.getItem(RETURN_KEY);
+  if (sr !== null) showReturn = sr === '1';
+  const sm = localStorage.getItem(MIDLEG_KEY);
+  if (sm !== null) showMidLeg = sm === '1';
+} catch (e) { /* storage unavailable */ }
+document.getElementById('ret-cb').checked = showReturn;
+document.getElementById('mid-cb').checked = showMidLeg;
 document.getElementById('ret-cb').onchange = e => {
   showReturn = e.target.checked;
+  try { localStorage.setItem(RETURN_KEY, showReturn ? '1' : '0'); } catch (err) { /* */ }
   draw();
 };
 document.getElementById('mid-cb').onchange = e => {
   showMidLeg = e.target.checked;
+  try { localStorage.setItem(MIDLEG_KEY, showMidLeg ? '1' : '0'); } catch (err) { /* */ }
   draw();
 };
 const WPNAME_KEY = 'navaid.showWpNames';
@@ -192,13 +217,20 @@ document.getElementById('wpname-cb').onchange = e => {
 document.getElementById('wpname-rot').onclick = e => {
   e.stopPropagation();                  // don't toggle the checkbox
   wpNameAngle = (wpNameAngle + 90) % 360;
-  e.currentTarget.title = 'Rotate waypoint names (now ' + wpNameAngle + '°)';
+  e.currentTarget.title = S.wpnameRotTitle(wpNameAngle);
   try { localStorage.setItem(WPANGLE_KEY, String(wpNameAngle)); }
   catch (err) { /* storage unavailable */ }
   draw();
 };
+const DIFF_KEY = 'navaid.highlightDiff';
+try {
+  const sd = localStorage.getItem(DIFF_KEY);
+  if (sd !== null) highlightDiff = sd === '1';
+} catch (e) { /* storage unavailable */ }
+document.getElementById('diff-cb').checked = highlightDiff;
 document.getElementById('diff-cb').onchange = e => {
   highlightDiff = e.target.checked;
+  try { localStorage.setItem(DIFF_KEY, highlightDiff ? '1' : '0'); } catch (err) { /* */ }
   draw();
 };
 const NAVWP_KEY = 'navaid.showNavWP';
@@ -220,9 +252,9 @@ try {
   const v = parseFloat(localStorage.getItem(ALPHA_KEY));
   if (!isNaN(v)) yellowAlpha = Math.max(0, Math.min(1, v));
 } catch (e) { /* storage unavailable */ }
-document.getElementById('yellow-alpha').value = yellowAlpha;
+document.getElementById('yellow-alpha').value = Math.round(yellowAlpha * 100);
 document.getElementById('yellow-alpha').oninput = e => {
-  yellowAlpha = parseFloat(e.target.value);
+  yellowAlpha = parseFloat(e.target.value) / 100;
   try { localStorage.setItem(ALPHA_KEY, String(yellowAlpha)); }
   catch (err) { /* storage unavailable */ }
   draw();
@@ -347,15 +379,14 @@ document.getElementById('insp-close').onclick = () => {
   window.addEventListener('touchend', end);
   window.addEventListener('touchcancel', end);
 
+  const COLLAPSED_KEY = 'navaid.toolbarCollapsed';
+
   // collapse / expand the toolbar (keeps just the handle + toggle)
   const toggle = document.getElementById('toolbar-toggle');
-  const COLLAPSE_KEY = 'navaid.toolbarCollapsed';
   function setCollapsed(on) {
     bar.classList.toggle('collapsed', on);
-    toggle.textContent = on ? '☰' : '▴';
-    toggle.title = on ? 'Expand menu' : 'Collapse menu';
-    try { localStorage.setItem(COLLAPSE_KEY, on ? '1' : '0'); }
-    catch (e) { /* storage unavailable */ }
+    toggle.title = on ? S.expandMenu : S.collapseMenu;
+    try { localStorage.setItem(COLLAPSED_KEY, on ? '1' : '0'); } catch (e) { /* */ }
     if (bar.style.left) {                 // size changed -> keep on screen
       requestAnimationFrame(() =>
         setPos(parseFloat(bar.style.left), parseFloat(bar.style.top)));
@@ -369,12 +400,8 @@ document.getElementById('insp-close').onclick = () => {
       setCollapsed(!bar.classList.contains('collapsed'));
     }
   });
-  try {
-    const stored = localStorage.getItem(COLLAPSE_KEY);
-    const onPhone = window.matchMedia('(max-width: 680px)').matches;
-    // phones start collapsed unless the user has explicitly expanded before
-    if (stored === '1' || (stored === null && onPhone)) setCollapsed(true);
-  } catch (e) { /* storage unavailable */ }
+  const sc = localStorage.getItem(COLLAPSED_KEY);
+  setCollapsed(sc === null ? true : sc === '1');
 
   window.addEventListener('resize', () => {
     if (bar.style.left) setPos(parseFloat(bar.style.left), parseFloat(bar.style.top));
