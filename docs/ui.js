@@ -41,7 +41,8 @@ layerSelect.onchange = () => {
 const rotateCtrl = L.control({ position: 'bottomright' });
 rotateCtrl.onAdd = function () {
   const wrap = L.DomUtil.create('div', 'leaflet-control rotate-ctrl');
-  wrap.innerHTML = '<span id="rotate-dial" role="slider" tabindex="0">' +
+  wrap.innerHTML = '<input id="rotate-hdg" type="number" min="0" max="360" step="1" value="0">' +
+                   '<span id="rotate-dial" role="slider" tabindex="0">' +
                    '<span id="rotate-needle"></span>' +
                    '</span>';
   L.DomEvent.disableClickPropagation(wrap);
@@ -51,12 +52,24 @@ rotateCtrl.onAdd = function () {
 rotateCtrl.addTo(map);
 const rotDial = document.getElementById('rotate-dial');
 const rotNeedle = document.getElementById('rotate-needle');
+const rotHdg = document.getElementById('rotate-hdg');
 function mapBearing() { return map.getBearing ? map.getBearing() : 0; }
 function refreshDial() {
-  const b = Math.round(mapBearing());
+  const b = (((360 - Math.round(mapBearing())) % 360) + 360) % 360;
   rotNeedle.style.transform = 'rotate(' + b + 'deg)';
-  rotDial.title = S.dialTitle((((b % 360) + 360) % 360));
+  rotDial.title = S.dialTitle(b);
+  if (document.activeElement !== rotHdg) rotHdg.value = b;
 }
+rotHdg.addEventListener('change', () => {
+  const v = ((parseInt(rotHdg.value, 10) % 360) + 360) % 360;
+  rotHdg.value = v;
+  map.setBearing((360 - v) % 360);
+});
+rotHdg.addEventListener('keydown', e => {
+  if (e.key === 'Enter') rotHdg.blur();
+});
+rotHdg.addEventListener('click', e => e.stopPropagation());
+rotHdg.addEventListener('pointerdown', e => e.stopPropagation());
 function dialAngle(ev) {                 // 0 = north (up), clockwise positive
   const r = rotDial.getBoundingClientRect();
   const dx = ev.clientX - (r.left + r.width / 2);
@@ -81,7 +94,7 @@ rotDial.addEventListener('pointermove', e => {
     if (Math.hypot(e.clientX - rotStartX, e.clientY - rotStartY) < ROT_DRAG_PX) return;
     rotMoved = true;
   }
-  map.setBearing(dialAngle(e));
+  map.setBearing(((360 - dialAngle(e)) % 360 + 360) % 360);
 });
 function rotEnd() {
   if (rotDragging && !rotMoved) map.setBearing(0);
