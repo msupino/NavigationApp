@@ -38,4 +38,8 @@ window.S = {
   clearConfirm: 'להסיר את כל ציוני הדרך וההערות?',
   expandMenu: 'פתח תפריט',
   collapseMenu: 'כווץ תפריט',
+  summaryWaypoints: 'ציוני דרך',
+  summaryLegs: 'קטעים',
+  summaryDist: 'מרחק',
+  summaryTime: 'זמן כולל',
 };
