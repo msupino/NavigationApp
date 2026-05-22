@@ -52,7 +52,7 @@ function load(file) {
       fitView();
       draw();
     } catch (err) {
-      alert('Could not load file: ' + err.message);
+      alert(S.errLoadFile + err.message);
     }
   };
   reader.readAsText(file);
@@ -85,12 +85,12 @@ function wpLabel(i) {
   const wp = state.waypoints[i];
   if (!wp) return '';
   const n = (wp.name || '').trim();
-  return n || ('WP ' + (i + 1));
+  return n || (S.wpPrefix + (i + 1));
 }
 
 function showFlightPlan() {
   if (state.legs.length === 0) {
-    alert('No legs yet — drop at least two waypoints first.');
+    alert(S.errNoLegs);
     return;
   }
   const back = document.createElement('div');
@@ -100,13 +100,12 @@ function showFlightPlan() {
 
   const title = document.createElement('div');
   title.className = 'modal-title';
-  title.textContent = 'Flight plan';
+  title.textContent = S.flightPlan;
   box.appendChild(title);
 
   const table = document.createElement('table');
   table.className = 'flight-table';
-  const headers = ['#', 'From', 'To', 'Hdg', 'Dist (NM)',
-                   'Speed (kt)', 'Alt (ft)', 'Time'];
+  const headers = S.fpHeaders;
   const thead = document.createElement('thead');
   const trH = document.createElement('tr');
   for (const h of headers) {
@@ -128,7 +127,7 @@ function showFlightPlan() {
     inp.className = 'plan-name';
     inp.maxLength = 10;
     inp.value = (state.waypoints[wpIdx].name || '').trim();
-    inp.placeholder = 'WP ' + (wpIdx + 1);
+    inp.placeholder = S.wpPrefix + (wpIdx + 1);
     inp.oninput = () => {
       state.waypoints[wpIdx].name = inp.value;
       for (const o of wpInputs[wpIdx]) if (o !== inp) o.value = inp.value;
@@ -192,7 +191,7 @@ function showFlightPlan() {
   const trF = document.createElement('tr');
   const tdLabel = document.createElement('td');
   tdLabel.colSpan = 4;
-  tdLabel.textContent = 'Total';
+  tdLabel.textContent = S.fpTotal;
   trF.appendChild(tdLabel);
   totDistCell = planCell('');
   trF.appendChild(totDistCell);
@@ -208,7 +207,7 @@ function showFlightPlan() {
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
   const close = document.createElement('button');
-  close.textContent = 'Close';
+  close.textContent = S.fpClose;
   close.className = 'modal-cancel';
   close.onclick = () => back.remove();
   btns.appendChild(close);
@@ -233,17 +232,17 @@ function chooseOrientation(size, onPick) {
   box.className = 'modal';
   const title = document.createElement('div');
   title.className = 'modal-title';
-  title.textContent = size + ' page — orientation';
+  title.textContent = size + S.pageOrientation;
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
-  for (const [label, val] of [['Landscape', 'landscape'], ['Portrait', 'portrait']]) {
+  for (const [label, val] of [[S.landscape, 'landscape'], [S.portrait, 'portrait']]) {
     const b = document.createElement('button');
     b.textContent = label;
     b.onclick = () => { back.remove(); onPick(val); };
     btns.appendChild(b);
   }
   const cancel = document.createElement('button');
-  cancel.textContent = 'Cancel';
+  cancel.textContent = S.cancel;
   cancel.className = 'modal-cancel';
   cancel.onclick = () => back.remove();
   btns.appendChild(cancel);
@@ -303,7 +302,7 @@ function exportPNG() {
 
   const btn = document.getElementById('print');
   const btnLabel = btn.textContent;
-  btn.textContent = '⏳ Saving…';
+  btn.textContent = S.saving;
   btn.disabled = true;
 
   // gather the covering tiles, proxied for CORS
@@ -359,17 +358,14 @@ function exportPNG() {
       btn.textContent = btnLabel;
       btn.disabled = false;
       if (exportBearing) map.setBearing(exportBearing);   // restore rotation
-      if (!b) { alert('PNG export failed (a map tile could not be loaded).'); return; }
+      if (!b) { alert(S.errPngFail); return; }
       const a = document.createElement('a');
       a.href = URL.createObjectURL(b);
       a.download = 'navigation-' + (pageSize || baseName) +
                    '-' + fileStamp() + '.png';
       a.click();
       URL.revokeObjectURL(a.href);
-      if (failed > 0) {
-        alert(failed + ' of ' + jobs.length + ' map tiles failed to load — ' +
-              'the PNG may have blank patches. Re-run the export to retry.');
-      }
+      if (failed > 0) alert(S.errTilesFail(failed, jobs.length));
     }, 'image/png');
   });
 }
@@ -380,14 +376,10 @@ function exportPNG() {
 // the route ~5000 ft above the terrain.
 function flyRoute() {
   if (state.waypoints.length < 2) {
-    alert('Add at least two waypoints first.');
+    alert(S.errNeedWps);
     return;
   }
-  if (!confirm('Fly the route in Google Earth Pro (desktop).\n\n' +
-      'Press OK to save the tour file (.kml), then open it in Google ' +
-      'Earth — the "Fly the route" tour appears under Places; press ' +
-      'play to fly the route ~5000 ft above the terrain.\n\n' +
-      'No Google Earth? Free desktop app: google.com/earth/versions')) {
+  if (!confirm(S.flyConfirm)) {
     return;
   }
   const AGL = 1524;                      // 5000 ft, in metres
