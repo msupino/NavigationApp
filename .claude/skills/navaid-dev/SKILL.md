@@ -194,9 +194,14 @@ downloadable `route.json`.
 
 - flight-maps.com tiles are a third-party service; the CVFR data is
   copyrighted. Fine for personal use; a public deploy needs permission.
-- `nav-waypoints.json` is a snapshot of 238 Israeli VFR reporting
-  points; refresh manually (OpenAIP API key + a small script) when an
-  AIRAC cycle actually changes them.
+- `nav-waypoints.json` — 238 Israeli CVFR reporting points.
+  **Provenance:** originally a **ForeFlight** export — a "ForeFlight
+  Mobile User Waypoints" KML — parsed to JSON by liorbenhorin (commit
+  `3fb31933d`, `Assets/Resources/user-waypoints.json` on his `clean`
+  branch), then ported here and reformatted `coord:[lng,lat]` →
+  `{name, lat, lng}`. OpenAIP lists only 7 IL reporting points — not a
+  usable refresh source. To refresh: re-export from ForeFlight, or
+  transcribe the official Israel CVFR chart / eAIP.
 - `geo` distances are exact great-circle; verify against the chart's
   graticule if precision is questioned.
 - GA4 (`G-0XM5PHEK8B`) tracks page views; no event tracking yet.
