@@ -443,8 +443,14 @@ function endTouch() {
 mapEl.addEventListener('touchend', endTouch);
 mapEl.addEventListener('touchcancel', endTouch);
 
-map.on('move zoom viewreset moveend zoomend', draw);
-map.on('resize', () => { resizeOverlay(); draw(); });
+let _drawPending = false;
+function scheduleDraw() {
+  if (_drawPending) return;
+  _drawPending = true;
+  requestAnimationFrame(() => { _drawPending = false; draw(); });
+}
+map.on('move zoom viewreset moveend zoomend', scheduleDraw);
+map.on('resize', () => { resizeOverlay(); scheduleDraw(); });
 
 // --- view fitting ----------------------------------------------------
 function fitView() {
