@@ -84,13 +84,26 @@ html, body {
 
 #toolbar-toggle {
   align-self: center;
-  font-size: 14px;
-  line-height: 1;
-  color: #b9b3b3;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 18px;
+  height: 13px;
   cursor: pointer;
-  padding: 2px 12px;
+  padding: 4px 12px;
+  box-sizing: content-box;
+  color: #b9b3b3;
   user-select: none;
   -webkit-user-select: none;
+}
+#toolbar-toggle::before,
+#toolbar-toggle::after,
+#toolbar-toggle span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 1px;
 }
 #toolbar-toggle:hover { color: #fff; }
 /* Collapsed: keep only the drag handle + the toggle visible. */
