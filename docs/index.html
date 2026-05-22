@@ -32,7 +32,7 @@
     gtag('config', 'G-0XM5PHEK8B');
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=65">
+  <link rel="stylesheet" href="style.css?v=72">
 </head>
 <body>
   <div id="map"></div>
@@ -48,6 +48,10 @@
       Layer
       <select id="layer-select"></select>
     </label>
+    <div class="navsearch">
+      <input type="text" id="wp-search" placeholder="🔍 Find nav waypoint" autocomplete="off">
+      <div id="wp-search-results" class="hidden"></div>
+    </div>
     <span class="sep"></span>
     <button id="reverse" title="Reverse route order">⇄ Reverse Route</button>
     <button id="clear" title="Remove all waypoints and notes">🗑 Clear map</button>
@@ -58,7 +62,7 @@
     <span class="sep"></span>
     <button id="fit" title="Fit route to view">⌖ Fit</button>
     <button id="plan" title="Show flight plan table">📋 Plan</button>
-    <button id="fly" title="Fly the route in Google Earth (~5000 ft AGL)">✈️ Fly Route</button>
+    <button id="fly" title="Save a Google Earth tour of the route (~5000 ft AGL)">✈️ Open in Google Earth</button>
     <label class="navtoggle" title="Show return-direction (outbound) info">
       <input type="checkbox" id="ret-cb"> Show return path
     </label>
@@ -73,6 +77,7 @@
     </label>
     <label class="navtoggle" title="Show waypoint names (off = empty circle)">
       <input type="checkbox" id="wpname-cb" checked> Show Waypoint names
+      <button id="wpname-rot" type="button" title="Rotate waypoint names 90°">⟳</button>
     </label>
     <label class="navtoggle" title="Opacity of label backgrounds">
       Transparency
@@ -103,10 +108,11 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="core.js?v=65"></script>
-  <script src="draw.js?v=65"></script>
-  <script src="interact.js?v=65"></script>
-  <script src="io.js?v=65"></script>
-  <script src="ui.js?v=65"></script>
+  <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
+  <script src="core.js?v=72"></script>
+  <script src="draw.js?v=72"></script>
+  <script src="interact.js?v=72"></script>
+  <script src="io.js?v=72"></script>
+  <script src="ui.js?v=72"></script>
 </body>
 </html>

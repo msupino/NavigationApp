@@ -33,7 +33,7 @@ function load(file) {
     try {
       const d = JSON.parse(reader.result);
       state.waypoints = (d.waypoints || []).map(w => ({
-        lat: +w.lat, lng: +w.lng, name: w.name || '', flipped: false,
+        lat: +w.lat, lng: +w.lng, name: w.name || '',
       }));
       state.legs = (d.legs || []).map(l => ({
         inboundAltitude: l.inboundAltitude ?? 2000,
@@ -63,15 +63,6 @@ function load(file) {
 function applyPage() {
   document.getElementById('page-a3').classList.toggle('active', pageSize === 'A3');
   document.getElementById('page-a4').classList.toggle('active', pageSize === 'A4');
-  let st = document.getElementById('page-style');
-  if (!st) {
-    st = document.createElement('style');
-    st.id = 'page-style';
-    document.head.appendChild(st);
-  }
-  // margin: 0 so the dashed frame on screen matches the printed area 1:1
-  st.textContent = '@page { size: ' + (pageSize || 'A4') + ' ' +
-                   pageOrient + '; margin: 0; }';
   draw();
 }
 
@@ -147,23 +138,52 @@ function showFlightPlan() {
     td.appendChild(inp);
     return td;
   }
-  let totalDist = 0, totalH = 0;
+  // Speed / Alt cells are editable number inputs.
+  function numCell(value, min, onInput) {
+    const td = document.createElement('td');
+    const inp = document.createElement('input');
+    inp.type = 'number';
+    inp.className = 'plan-num';
+    inp.min = min;
+    inp.value = value;
+    inp.oninput = () => onInput(inp);
+    td.appendChild(inp);
+    return td;
+  }
+  const rows = [];                      // { leg, dist, timeCell }
+  let totDistCell, totTimeCell;
+  function refresh() {                  // recompute Time cells + totals
+    let td = 0, th = 0;
+    for (const r of rows) {
+      const dur = r.leg.flightSpeed > 0 ? r.dist / r.leg.flightSpeed : 0;
+      td += r.dist;
+      th += dur;
+      r.timeCell.textContent = dur > 0 ? toHMS(dur) : '--';
+    }
+    totDistCell.textContent = td.toFixed(1);
+    totTimeCell.textContent = th > 0 ? toHMS(th) : '--';
+  }
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     const leg = state.legs[i];
     const { dist, brg } = geo(A, B);
-    const durH = leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
-    totalDist += dist;
-    totalH += durH;
     const tr = document.createElement('tr');
     tr.appendChild(planCell(String(i + 1)));
     tr.appendChild(nameCell(i));
     tr.appendChild(nameCell(i + 1));
     tr.appendChild(planCell(pad3(toMagnetic(brg)) + '°M'));
     tr.appendChild(planCell(dist.toFixed(1)));
-    tr.appendChild(planCell(String(leg.flightSpeed)));
-    tr.appendChild(planCell(String(leg.inboundAltitude)));
-    tr.appendChild(planCell(durH > 0 ? toHMS(durH) : '--'));
+    tr.appendChild(numCell(leg.flightSpeed, 1, inp => {
+      const v = +inp.value;
+      if (v > 0) { leg.flightSpeed = v; refresh(); draw(); }
+    }));
+    tr.appendChild(numCell(leg.inboundAltitude, -2000, inp => {
+      leg.inboundAltitude = Math.round(+inp.value) || 0;
+      draw();
+    }));
+    const timeCell = planCell('');
+    tr.appendChild(timeCell);
+    rows.push({ leg, dist, timeCell });
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
@@ -174,14 +194,15 @@ function showFlightPlan() {
   tdLabel.colSpan = 4;
   tdLabel.textContent = 'Total';
   trF.appendChild(tdLabel);
-  for (const v of [totalDist.toFixed(1), '', '',
-                   totalH > 0 ? toHMS(totalH) : '--']) {
-    const td = document.createElement('td');
-    td.textContent = v;
-    trF.appendChild(td);
-  }
+  totDistCell = planCell('');
+  trF.appendChild(totDistCell);
+  trF.appendChild(planCell(''));        // Speed column
+  trF.appendChild(planCell(''));        // Alt column
+  totTimeCell = planCell('');
+  trF.appendChild(totTimeCell);
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
+  refresh();
   box.appendChild(table);
 
   const btns = document.createElement('div');
@@ -232,13 +253,25 @@ function chooseOrientation(size, onPick) {
   document.body.appendChild(back);
 }
 
+// Timestamp for unique download names — avoids browser " (1)" suffixes.
+function fileStamp() {
+  return new Date().toISOString().slice(0, 19)
+    .replace(/[-:]/g, '').replace('T', '-');
+}
+
 // Save the framed map + route as a PNG, rendered at the highest practical
 // native tile zoom (not the on-screen zoom) for maximum quality. flight-maps
 // tiles are not CORS-enabled, so each tile is fetched through the weserv image
 // proxy (which adds Access-Control-Allow-Origin) to keep the canvas untainted.
 function exportPNG() {
+  // Export is always north-up: the tile compositing assumes a
+  // lat/lng-aligned region, so drop any map rotation for the export
+  // and restore it once the PNG is written.
+  const exportBearing = map.getBearing ? map.getBearing() : 0;
+  if (exportBearing) map.setBearing(0);
+
   const fr = pageFrameRect() || { x: 0, y: 0, w: vw(), h: vh() };
-  if (fr.w < 4 || fr.h < 4) return;
+  if (fr.w < 4 || fr.h < 4) { if (exportBearing) map.setBearing(exportBearing); return; }
 
   let base = null, baseName = 'map';
   for (const n in layers) {
@@ -325,10 +358,12 @@ function exportPNG() {
     out.toBlob(b => {
       btn.textContent = btnLabel;
       btn.disabled = false;
+      if (exportBearing) map.setBearing(exportBearing);   // restore rotation
       if (!b) { alert('PNG export failed (a map tile could not be loaded).'); return; }
       const a = document.createElement('a');
       a.href = URL.createObjectURL(b);
-      a.download = 'navigation-' + (pageSize || baseName) + '.png';
+      a.download = 'navigation-' + (pageSize || baseName) +
+                   '-' + fileStamp() + '.png';
       a.click();
       URL.revokeObjectURL(a.href);
       if (failed > 0) {
@@ -346,6 +381,13 @@ function exportPNG() {
 function flyRoute() {
   if (state.waypoints.length < 2) {
     alert('Add at least two waypoints first.');
+    return;
+  }
+  if (!confirm('Fly the route in Google Earth Pro (desktop).\n\n' +
+      'Press OK to save the tour file (.kml), then open it in Google ' +
+      'Earth — the "Fly the route" tour appears under Places; press ' +
+      'play to fly the route ~5000 ft above the terrain.\n\n' +
+      'No Google Earth? Free desktop app: google.com/earth/versions')) {
     return;
   }
   const AGL = 1524;                      // 5000 ft, in metres
@@ -410,15 +452,9 @@ function flyRoute() {
     { type: 'application/vnd.google-earth.kml+xml' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'navaid-flythrough.kml';
+  a.download = 'navaid-flythrough-' + fileStamp() + '.kml';
   a.click();
   URL.revokeObjectURL(a.href);
-
-  alert('Saved navaid-flythrough.kml\n\n' +
-    'Open it in Google Earth Pro (desktop) — the "Fly the route" tour ' +
-    'appears under Places; press play to fly the route ~5000 ft above ' +
-    'the terrain.\n\n' +
-    'No Google Earth? It is a free desktop app: google.com/earth/versions');
 }
 
 // --- route persistence ----------------------------------------------
@@ -429,13 +465,11 @@ function persist() {
   persistTimer = setTimeout(() => {
     persistTimer = null;
     try {
-      const c = map.getCenter();
+      // center / zoom are not restored (load fits the route) — not saved.
       localStorage.setItem(STORE_KEY, JSON.stringify({
         waypoints: state.waypoints,
         legs: state.legs,
         notes: state.notes,
-        center: [c.lat, c.lng],
-        zoom: map.getZoom(),
       }));
     } catch (e) { /* storage unavailable */ }
   }, 500);
@@ -446,7 +480,7 @@ function restoreRoute() {
     if (!raw) return false;
     const d = JSON.parse(raw);
     state.waypoints = (d.waypoints || []).map(w => ({
-      lat: +w.lat, lng: +w.lng, name: w.name || '', flipped: !!w.flipped,
+      lat: +w.lat, lng: +w.lng, name: w.name || '',
     }));
     state.legs = (d.legs || []).map(l => ({
       inboundAltitude: l.inboundAltitude ?? 2000,

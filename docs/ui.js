@@ -34,15 +34,94 @@ layerSelect.onchange = () => {
   try { localStorage.setItem(LAYER_KEY, layerSelect.value); }
   catch (e) { /* storage unavailable */ }
 };
+
+// --- rotate dial — a map control next to the zoom buttons -----------
+const rotateCtrl = L.control({ position: 'bottomright' });
+rotateCtrl.onAdd = function () {
+  const wrap = L.DomUtil.create('div', 'leaflet-control rotate-ctrl');
+  wrap.innerHTML = '<span id="rotate-dial" role="slider" tabindex="0">' +
+                   '<span id="rotate-needle"></span></span>';
+  L.DomEvent.disableClickPropagation(wrap);
+  L.DomEvent.disableScrollPropagation(wrap);
+  return wrap;
+};
+rotateCtrl.addTo(map);
+const rotDial = document.getElementById('rotate-dial');
+const rotNeedle = document.getElementById('rotate-needle');
+function mapBearing() { return map.getBearing ? map.getBearing() : 0; }
+function refreshDial() {
+  const b = Math.round(mapBearing());
+  rotNeedle.style.transform = 'rotate(' + b + 'deg)';
+  rotDial.title = 'Map rotation ' + (((b % 360) + 360) % 360) +
+                  '° — drag to rotate, double-click for north up';
+}
+function dialAngle(ev) {                 // 0 = north (up), clockwise positive
+  const r = rotDial.getBoundingClientRect();
+  const dx = ev.clientX - (r.left + r.width / 2);
+  const dy = ev.clientY - (r.top + r.height / 2);
+  return Math.atan2(dx, -dy) * 180 / Math.PI;
+}
+let rotDragging = false;
+rotDial.addEventListener('pointerdown', e => {
+  rotDragging = true;
+  rotDial.classList.add('dragging');
+  rotDial.setPointerCapture(e.pointerId);
+  map.setBearing(dialAngle(e));
+});
+rotDial.addEventListener('pointermove', e => {
+  if (rotDragging) map.setBearing(dialAngle(e));
+});
+function rotEnd() { rotDragging = false; rotDial.classList.remove('dragging'); }
+rotDial.addEventListener('pointerup', rotEnd);
+rotDial.addEventListener('pointercancel', rotEnd);
+rotDial.addEventListener('dblclick', () => map.setBearing(0));
+map.on('rotate', () => { refreshDial(); draw(); });
+refreshDial();
+
+// --- nav-waypoint search --------------------------------------------
+const wpSearch = document.getElementById('wp-search');
+const wpResults = document.getElementById('wp-search-results');
+function closeSearch() {
+  wpResults.classList.add('hidden');
+  wpResults.innerHTML = '';
+}
+wpSearch.addEventListener('input', () => {
+  const q = wpSearch.value.trim().toUpperCase();
+  if (!q || !navWP) { closeSearch(); return; }
+  const hits = navWP
+    .filter(w => w.name.toUpperCase().indexOf(q) >= 0)
+    .slice(0, 12);
+  if (!hits.length) { closeSearch(); return; }
+  wpResults.innerHTML = '';
+  for (const w of hits) {
+    const item = document.createElement('div');
+    item.className = 'wp-search-item';
+    item.textContent = w.name;
+    item.onclick = () => {
+      map.setView([w.lat, w.lng], Math.max(map.getZoom(), 12));
+      wpSearch.value = w.name;
+      closeSearch();
+    };
+    wpResults.appendChild(item);
+  }
+  wpResults.classList.remove('hidden');
+});
+wpSearch.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const first = wpResults.querySelector('.wp-search-item');
+    if (first) first.click();
+  } else if (e.key === 'Escape') {
+    closeSearch();
+  }
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('.navsearch')) closeSearch();
+});
 document.getElementById('reverse').onclick = () => {
   // Reversing flight direction means each leg's inbound/outbound roles swap.
   // The leg's local axes (along + perpendicular) also flip, so negating the
   // label offsets keeps the markers visually pinned to the same map pixels.
-  // Waypoint name text is rotated 180° so the chart, when turned around to
-  // fly the return route, still reads upright.
-  state.waypoints = state.waypoints.reverse().map(w => ({
-    ...w, flipped: !w.flipped,
-  }));
+  state.waypoints.reverse();
   state.legs = state.legs.reverse().map(l => ({
     inboundAltitude: l.outboundAltitude,
     outboundAltitude: l.inboundAltitude,
@@ -79,8 +158,27 @@ document.getElementById('mid-cb').onchange = e => {
   showMidLeg = e.target.checked;
   draw();
 };
+const WPNAME_KEY = 'navaid.showWpNames';
+const WPANGLE_KEY = 'navaid.wpNameAngle';
+try {
+  const sn = localStorage.getItem(WPNAME_KEY);
+  if (sn !== null) showWpNames = sn === '1';
+  const sa = parseInt(localStorage.getItem(WPANGLE_KEY), 10);
+  if (sa === 90 || sa === 180 || sa === 270) wpNameAngle = sa;
+} catch (e) { /* storage unavailable */ }
+document.getElementById('wpname-cb').checked = showWpNames;
 document.getElementById('wpname-cb').onchange = e => {
   showWpNames = e.target.checked;
+  try { localStorage.setItem(WPNAME_KEY, showWpNames ? '1' : '0'); }
+  catch (err) { /* storage unavailable */ }
+  draw();
+};
+document.getElementById('wpname-rot').onclick = e => {
+  e.stopPropagation();                  // don't toggle the checkbox
+  wpNameAngle = (wpNameAngle + 90) % 360;
+  e.currentTarget.title = 'Rotate waypoint names (now ' + wpNameAngle + '°)';
+  try { localStorage.setItem(WPANGLE_KEY, String(wpNameAngle)); }
+  catch (err) { /* storage unavailable */ }
   draw();
 };
 document.getElementById('diff-cb').onchange = e => {

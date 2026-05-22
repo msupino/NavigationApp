@@ -37,6 +37,7 @@ let highlightDiff = false;  // purple halo on legs that change altitude
 let showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
 let navWP = null;           // null = not loaded; [] = loaded empty/error
 let showWpNames = true;     // draw waypoint names (off = empty circle)
+let wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 let yellowAlpha = 1;        // global multiplier for yellow label backgrounds
 let wpSize = 1;             // waypoint name / number text size scale
 let pageSize = null;        // null | 'A3' | 'A4'
@@ -144,6 +145,9 @@ const map = L.map('map', {
   maxBounds: [[29.0, 33.9], [33.6, 36.4]],   // keep panning over Israel
   maxBoundsViscosity: 1.0,
   worldCopyJump: false,
+  rotate: true,                // leaflet-rotate: enable map bearing
+  rotateControl: false,        // own dial in the toolbar instead
+  touchRotate: true,
 });
 L.control.zoom({ position: 'bottomright' }).addTo(map);
 // Base layer is chosen from the toolbar (#layer-select, wired in ui.js).

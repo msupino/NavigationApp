@@ -215,31 +215,6 @@ function numberRow(label, value, onChange) {
   row.append(l, inp);
   return row;
 }
-function textInputRow(label, value, onChange) {
-  const row = document.createElement('div');
-  row.className = 'row';
-  const l = document.createElement('label');
-  l.textContent = label;
-  const inp = document.createElement('input');
-  inp.type = 'text';
-  inp.value = value || '';
-  inp.maxLength = 10;
-  inp.oninput = () => onChange(inp.value);
-  row.append(l, inp);
-  return row;
-}
-function boolRow(label, value, onChange) {
-  const row = document.createElement('div');
-  row.className = 'row';
-  const l = document.createElement('label');
-  l.textContent = label;
-  const inp = document.createElement('input');
-  inp.type = 'checkbox';
-  inp.checked = value;
-  inp.onchange = () => onChange(inp.checked);
-  row.append(l, inp);
-  return row;
-}
 function textRow(label, value) {
   const row = document.createElement('div');
   row.className = 'row';
