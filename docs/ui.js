@@ -462,7 +462,7 @@ document.getElementById('insp-close').onclick = () => {
     const sec = head.closest('.tb-section');
     const key = 'navaid.sec.' + sec.dataset.sec;
     try {
-      if (localStorage.getItem(key) === '0') sec.classList.remove('open');
+      if (localStorage.getItem(key) === '1') sec.classList.add('open');
     } catch (e) { /* storage unavailable */ }
     function toggle() {
       sec.classList.toggle('open');
