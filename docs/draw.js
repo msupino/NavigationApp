@@ -22,11 +22,14 @@ function draw() {
 async function loadNavWaypoints() {
   if (navWP !== null) return navWP;
   try {
-    const res = await fetch('nav-waypoints.json');
+    // ?v bumped whenever nav-waypoints.json changes — the service worker
+    // caches it cache-first, so a new URL is needed to pick up edits.
+    const res = await fetch('nav-waypoints.json?v=2');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const d = await res.json();
     navWP = (d.waypoints || []).map(w => ({
       name: w.name,
+      he: w.he || '',                    // Hebrew label (English kept for search)
       lat: w.lat ?? (w.coord && w.coord[1]),
       lng: w.lng ?? (w.coord && w.coord[0]),
     }));
@@ -51,11 +54,11 @@ function nearestNavWaypoint(latlng, pxThreshold) {
   return best;
 }
 
-// True if `name` exactly matches a known nav waypoint name (so we treat
-// it as auto-snapped, not user-typed, and may overwrite on drag).
+// True if `name` matches a known nav waypoint (English or Hebrew) — so we
+// treat it as auto-snapped, not user-typed, and may overwrite on drag.
 function isNavName(name) {
   if (!name || !navWP) return false;
-  for (const wp of navWP) if (wp.name === name) return true;
+  for (const wp of navWP) if (wp.name === name || wp.he === name) return true;
   return false;
 }
 
@@ -76,7 +79,9 @@ function applyNavSnap(latlng, currentName) {
     return { lat: latlng.lat, lng: latlng.lng, name: currentName };
   }
   const snap = nearestNavWaypoint(latlng, 18);
-  if (snap) return { lat: snap.lat, lng: snap.lng, name: snap.name };
+  if (snap) {
+    return { lat: snap.lat, lng: snap.lng, name: snap.he || snap.name };
+  }
   return { lat: latlng.lat, lng: latlng.lng,
            name: isNavName(currentName) ? '' : (currentName || '') };
 }
@@ -98,11 +103,12 @@ function drawNavWaypoints() {
     octx.fill();
     octx.stroke();
     if (showLabels) {
+      const label = wp.he || wp.name;    // Hebrew name; English is for search
       octx.lineWidth = 2.5;
       octx.strokeStyle = 'rgba(255,255,255,0.85)';
-      octx.strokeText(wp.name, s.x + 6, s.y);
+      octx.strokeText(label, s.x + 6, s.y);
       octx.fillStyle = '#161412';
-      octx.fillText(wp.name, s.x + 6, s.y);
+      octx.fillText(label, s.x + 6, s.y);
     }
   }
   octx.lineWidth = 1;
@@ -339,7 +345,7 @@ function drawWaypoints() {
 
     octx.save();
     octx.translate(s.x, s.y);
-    if (wp.flipped) octx.rotate(Math.PI);
+    if (wpNameAngle) octx.rotate(wpNameAngle * Math.PI / 180);
     octx.font = `bold ${fontPx}px sans-serif`;
     octx.fillStyle = '#161412';
     octx.textAlign = 'center';
