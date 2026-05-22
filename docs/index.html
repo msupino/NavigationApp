@@ -40,7 +40,10 @@
   <div id="toolbar">
     <span id="toolbar-handle" class="drag-handle" title="גרור להזזה">⋯</span>
     <span id="toolbar-toggle" title="כווץ תפריט" role="button" tabindex="0"><span></span></span>
-    <a class="lang-link" href="./en/" hreflang="en" lang="en">English</a>
+    <label class="navtoggle">🌐 <select onchange="location.href=this.value">
+        <option value="" selected>עברית</option>
+        <option value="./en/">English</option>
+      </select></label>
     <button id="tool-add" class="tool" title="לחץ על המפה להוספת ציון דרך (לחץ שוב לעצירה)">✏️ הוסף ציון דרך</button>
     <button id="tool-note" class="tool" title="לחץ על המפה להוספת הערה (לחץ שוב לעצירה)">📝 הוסף הערה</button>
     <span class="sep"></span>
