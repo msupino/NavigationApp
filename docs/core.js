@@ -19,7 +19,7 @@ try {
   }
 } catch (e) { /* storage unavailable */ }
 
-window.NavAid = { exporting: false, version: '1.0' };  // cross-file export flag (read by ui.js/io.js)
+window.NavAid = { exporting: false, version: '1.255' };  // cross-file export flag (read by ui.js/io.js)
 
 const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
 let magVar = -5;                       // signed offset added to true heading
@@ -115,6 +115,8 @@ window.S = Object.assign({
   tbMapOpacityTitle: 'Base map brightness',
   tbWpSize: 'Waypoint size',
   tbWpSizeTitle: 'Waypoint circle and name size',
+  tbLegArrowSize: 'Leg arrow size',
+  tbLegArrowSizeTitle: 'Leg info marker (heading / altitude / time) size',
   tbMagVar: 'Mag var',
   tbMagVarTitle: 'Signed offset added to true heading. Negative = east variation; positive = west.',
   tbPageA3Title: 'A3 print page',
@@ -160,6 +162,7 @@ let showWpNames = true;     // draw waypoint names (off = empty circle)
 let wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 let yellowAlpha = 1;        // global multiplier for yellow label backgrounds
 let wpSize = 1;             // waypoint name / number text size scale
+let legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
 let pageSize = null;        // null | 'A3' | 'A4'
 let pageOrient = 'landscape';   // 'landscape' | 'portrait'
 let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre

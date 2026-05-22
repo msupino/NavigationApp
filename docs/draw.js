@@ -121,7 +121,7 @@ function drawNavWaypoints() {
 }
 
 function drawLegs() {
-  const zoomScale = Math.max(0.35, Math.pow(2, map.getZoom() - 12));
+  const zoomScale = Math.max(0.35, Math.pow(2, map.getZoom() - 12)) * legArrowSize;
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     if (!A || !B) continue;
