@@ -159,12 +159,12 @@ function drawLegs() {
     const outP = leg.outLabel || { a: 0, p: -44 };
     drawLegArrow(mid.x + dx * inP.a + nx * inP.p, mid.y + dy * inP.a + ny * inP.p,
       ang, pad3(magIn), timeStr, String(leg.inboundAltitude),
-      '#2f6fd0', yellowFill(0.80), isAltChange(i, 'in'));
+      '#2f6fd0', yellowFill(0.80), needsHalo(i, 'in'));
     if (showReturn) {
       drawLegArrow(mid.x + dx * outP.a + nx * outP.p,
         mid.y + dy * outP.a + ny * outP.p, ang + Math.PI,
         pad3(magOut), timeStr, String(leg.outboundAltitude),
-        '#c0392b', 'rgba(255,204,214,0.80)', isAltChange(i, 'out'));
+        '#c0392b', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'));
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
   }
@@ -224,18 +224,22 @@ function drawMinuteMarkers(sa, sb, durH) {
   octx.textAlign = 'left';
 }
 
-// Altitude diff: leg's flown altitude differs from the adjacent leg's, so a
-// climb/descent happens here. 'in'  -> inbound vs previous leg's inbound,
-// 'out' -> outbound vs next leg's outbound (return-direction).
-function isAltChange(i, which) {
+// Highlight when altitude OR speed differs from the adjacent leg.
+// 'in'  -> compare with previous leg's inbound altitude/speed.
+// 'out' -> compare with next leg's outbound altitude/speed (return direction).
+function needsHalo(i, which) {
   if (!highlightDiff) return false;
   const cur = state.legs[i];
   if (which === 'in') {
     if (i === 0) return false;
-    return cur.inboundAltitude !== state.legs[i - 1].inboundAltitude;
+    const prev = state.legs[i - 1];
+    return cur.inboundAltitude !== prev.inboundAltitude ||
+           cur.flightSpeed     !== prev.flightSpeed;
   }
   if (i === state.legs.length - 1) return false;
-  return cur.outboundAltitude !== state.legs[i + 1].outboundAltitude;
+  const next = state.legs[i + 1];
+  return cur.outboundAltitude !== next.outboundAltitude ||
+         cur.flightSpeed      !== next.flightSpeed;
 }
 
 // Navigation leg marker: a two-cell rectangle (altitude, time) joined to a
