@@ -19,7 +19,7 @@ const layerSelect = document.getElementById('layer-select');
 for (const name in layers) {
   const opt = document.createElement('option');
   opt.value = name;
-  opt.textContent = name;
+  opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
   if (map.hasLayer(layers[name])) opt.selected = true;
   layerSelect.appendChild(opt);
 }
@@ -30,6 +30,7 @@ layerSelect.onchange = () => {
     }
   }
   map.addLayer(layers[layerSelect.value]);
+  applyMapOpacity();
   draw();                                // keep the route overlay on top
   try { localStorage.setItem(LAYER_KEY, layerSelect.value); }
   catch (e) { /* storage unavailable */ }
@@ -93,10 +94,9 @@ try {
   const sb = parseFloat(localStorage.getItem(BEARING_KEY));
   if (!isNaN(sb)) map.setBearing(sb);
 } catch (e) { /* storage unavailable */ }
-let _isExporting = false;
 map.on('rotate', () => {
   refreshDial(); draw();
-  if (_isExporting) return;
+  if (NavAid.exporting) return;
   try { localStorage.setItem(BEARING_KEY, String(mapBearing())); }
   catch (err) { /* storage unavailable */ }
 });
@@ -109,7 +109,7 @@ function closeSearch() {
   wpResults.classList.add('hidden');
   wpResults.innerHTML = '';
 }
-wpSearch.addEventListener('input', () => {
+function runSearch() {
   const q = wpSearch.value.trim().toUpperCase();
   if (!q || !navWP) { closeSearch(); return; }
   const hits = navWP
@@ -133,7 +133,9 @@ wpSearch.addEventListener('input', () => {
     wpResults.appendChild(item);
   }
   wpResults.classList.remove('hidden');
-});
+}
+wpSearch.addEventListener('input', runSearch);
+wpSearch.addEventListener('focus', () => { if (wpSearch.value.trim()) runSearch(); });
 wpSearch.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     const first = wpResults.querySelector('.wp-search-item');
@@ -258,6 +260,25 @@ document.getElementById('yellow-alpha').oninput = e => {
   try { localStorage.setItem(ALPHA_KEY, String(yellowAlpha)); }
   catch (err) { /* storage unavailable */ }
   draw();
+};
+const MAPOPACITY_KEY = 'navaid.mapOpacity';
+let mapOpacity = 1;
+function applyMapOpacity() {
+  for (const n in layers) {
+    if (map.hasLayer(layers[n])) layers[n].setOpacity(mapOpacity);
+  }
+}
+try {
+  const v = parseFloat(localStorage.getItem(MAPOPACITY_KEY));
+  if (!isNaN(v)) mapOpacity = Math.max(0.1, Math.min(1, v));
+} catch (e) { /* storage unavailable */ }
+document.getElementById('map-opacity').value = Math.round(mapOpacity * 100);
+applyMapOpacity();
+document.getElementById('map-opacity').oninput = e => {
+  mapOpacity = parseFloat(e.target.value) / 100;
+  applyMapOpacity();
+  try { localStorage.setItem(MAPOPACITY_KEY, String(mapOpacity)); }
+  catch (err) { /* storage unavailable */ }
 };
 const WPSIZE_KEY = 'navaid.wpSize';
 try {

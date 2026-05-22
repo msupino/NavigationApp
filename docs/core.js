@@ -19,6 +19,8 @@ try {
   }
 } catch (e) { /* storage unavailable */ }
 
+window.NavAid = { exporting: false };  // cross-file export flag (read by ui.js/io.js)
+
 const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
 let magVar = -5;                       // signed offset added to true heading
                                        // (Israel ≈ −5; equivalent to 5°E variation)
@@ -68,6 +70,11 @@ window.S = Object.assign({
   summaryLegs: 'Legs',
   summaryDist: 'Distance',
   summaryTime: 'Total time',
+  kmlDocName: 'NavAid flythrough',
+  kmlRouteName: 'Route',
+  kmlTourName: 'Fly the route',
+  layerLabels: { 'CVFR': 'CVFR', 'Nav': 'Nav', 'Low Alt': 'Low Alt',
+                 'Heli': 'Heli', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap' },
 }, window.S || {});
 
 // --- model -----------------------------------------------------------
