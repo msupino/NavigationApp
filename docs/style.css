@@ -151,6 +151,22 @@ html, body {
 #toolbar #wpname-rot:hover { color: #fff; }
 
 /* rotate dial — Google-Maps-style compass needle by the zoom buttons */
+.rotate-ctrl {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+#rotate-hdg {
+  font: bold 11px/1 monospace;
+  color: #231F20;
+  background: rgba(255,255,255,0.85);
+  border-radius: 3px;
+  padding: 1px 3px;
+  min-width: 28px;
+  text-align: center;
+  pointer-events: none;
+}
 #rotate-dial {
   display: block;
   position: relative;
