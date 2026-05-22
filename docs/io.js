@@ -84,7 +84,7 @@ function setPage(size) {
 function wpLabel(i) {
   const wp = state.waypoints[i];
   if (!wp) return '';
-  const n = (wp.name || '').trim();
+  const n = navName((wp.name || '').trim());
   return n || (S.wpPrefix + (i + 1));
 }
 
