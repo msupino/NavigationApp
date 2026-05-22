@@ -95,7 +95,7 @@ try {
   if (!isNaN(sb)) map.setBearing(sb);
 } catch (e) { /* storage unavailable */ }
 map.on('rotate', () => {
-  refreshDial(); draw();
+  refreshDial(); scheduleDraw();
   if (NavAid.exporting) return;
   try { localStorage.setItem(BEARING_KEY, String(mapBearing())); }
   catch (err) { /* storage unavailable */ }
