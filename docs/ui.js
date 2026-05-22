@@ -40,7 +40,9 @@ const rotateCtrl = L.control({ position: 'bottomright' });
 rotateCtrl.onAdd = function () {
   const wrap = L.DomUtil.create('div', 'leaflet-control rotate-ctrl');
   wrap.innerHTML = '<span id="rotate-dial" role="slider" tabindex="0">' +
-                   '<span id="rotate-needle"></span></span>';
+                   '<span id="rotate-needle"></span>' +
+                   '<span id="rotate-n" title="Reset map to north">N</span>' +
+                   '</span>';
   L.DomEvent.disableClickPropagation(wrap);
   L.DomEvent.disableScrollPropagation(wrap);
   return wrap;
@@ -62,19 +64,33 @@ function dialAngle(ev) {                 // 0 = north (up), clockwise positive
   return Math.atan2(dx, -dy) * 180 / Math.PI;
 }
 let rotDragging = false;
+let rotMoved = false;
 rotDial.addEventListener('pointerdown', e => {
   rotDragging = true;
+  rotMoved = false;
   rotDial.classList.add('dragging');
   rotDial.setPointerCapture(e.pointerId);
-  map.setBearing(dialAngle(e));
 });
 rotDial.addEventListener('pointermove', e => {
-  if (rotDragging) map.setBearing(dialAngle(e));
+  if (!rotDragging) return;
+  rotMoved = true;
+  map.setBearing(dialAngle(e));
 });
-function rotEnd() { rotDragging = false; rotDial.classList.remove('dragging'); }
+function rotEnd() {
+  if (rotDragging && !rotMoved) map.setBearing(0);
+  rotDragging = false;
+  rotDial.classList.remove('dragging');
+}
 rotDial.addEventListener('pointerup', rotEnd);
 rotDial.addEventListener('pointercancel', rotEnd);
 rotDial.addEventListener('dblclick', () => map.setBearing(0));
+// the N mark resets the map to north
+const rotN = document.getElementById('rotate-n');
+rotN.addEventListener('pointerdown', e => e.stopPropagation());
+rotN.addEventListener('click', e => {
+  e.stopPropagation();
+  map.setBearing(0);
+});
 map.on('rotate', () => { refreshDial(); draw(); });
 refreshDial();
 
