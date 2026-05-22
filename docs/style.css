@@ -135,16 +135,16 @@ html, body {
 }
 #toolbar #wpname-rot:hover { color: #fff; }
 
-/* rotate dial — map control by the zoom buttons */
+/* rotate dial — white Google-Earth-style compass by the zoom buttons */
 #rotate-dial {
   display: block;
   position: relative;
   width: 44px;
   height: 44px;
-  border: 2px solid #6a6464;
+  border: 1px solid #9a9a9a;
   border-radius: 50%;
-  background: rgba(20, 18, 18, 0.9);
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
+  background: #ffffff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
   cursor: grab;
   touch-action: none;
 }
@@ -152,27 +152,39 @@ html, body {
 #rotate-dial::after {
   content: 'N';
   position: absolute;
-  top: 0;
+  top: 1px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 8px;
-  color: #8a8484;
+  font-size: 9px;
+  font-weight: 700;
+  color: #333;
 }
 #rotate-needle {
   position: absolute;
   inset: 0;
   transform: rotate(0deg);
 }
-#rotate-needle::before {
+#rotate-needle::before {            /* red north pointer */
   content: '';
   position: absolute;
   left: 50%;
   top: 5px;
-  width: 2px;
-  height: 17px;
-  margin-left: -1px;
-  background: #ffcc33;
-  border-radius: 1px;
+  width: 3px;
+  height: 16px;
+  margin-left: -1.5px;
+  background: #c0392b;
+  border-radius: 1.5px;
+}
+#rotate-needle::after {             /* grey south tail */
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 5px;
+  width: 3px;
+  height: 16px;
+  margin-left: -1.5px;
+  background: #888;
+  border-radius: 1.5px;
 }
 
 /* nav-waypoint search */

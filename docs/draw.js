@@ -22,7 +22,9 @@ function draw() {
 async function loadNavWaypoints() {
   if (navWP !== null) return navWP;
   try {
-    const res = await fetch('nav-waypoints.json');
+    // ?v bumped whenever nav-waypoints.json changes — the service worker
+    // caches it cache-first, so a new URL is needed to pick up edits.
+    const res = await fetch('nav-waypoints.json?v=2');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const d = await res.json();
     navWP = (d.waypoints || []).map(w => ({
