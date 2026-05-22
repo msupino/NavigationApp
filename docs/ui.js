@@ -30,6 +30,7 @@ layerSelect.onchange = () => {
     }
   }
   map.addLayer(layers[layerSelect.value]);
+  applyMapOpacity();
   draw();                                // keep the route overlay on top
   try { localStorage.setItem(LAYER_KEY, layerSelect.value); }
   catch (e) { /* storage unavailable */ }
@@ -259,6 +260,25 @@ document.getElementById('yellow-alpha').oninput = e => {
   try { localStorage.setItem(ALPHA_KEY, String(yellowAlpha)); }
   catch (err) { /* storage unavailable */ }
   draw();
+};
+const MAPOPACITY_KEY = 'navaid.mapOpacity';
+let mapOpacity = 1;
+function applyMapOpacity() {
+  for (const n in layers) {
+    if (map.hasLayer(layers[n])) layers[n].setOpacity(mapOpacity);
+  }
+}
+try {
+  const v = parseFloat(localStorage.getItem(MAPOPACITY_KEY));
+  if (!isNaN(v)) mapOpacity = Math.max(0.1, Math.min(1, v));
+} catch (e) { /* storage unavailable */ }
+document.getElementById('map-opacity').value = Math.round(mapOpacity * 100);
+applyMapOpacity();
+document.getElementById('map-opacity').oninput = e => {
+  mapOpacity = parseFloat(e.target.value) / 100;
+  applyMapOpacity();
+  try { localStorage.setItem(MAPOPACITY_KEY, String(mapOpacity)); }
+  catch (err) { /* storage unavailable */ }
 };
 const WPSIZE_KEY = 'navaid.wpSize';
 try {
