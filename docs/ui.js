@@ -352,12 +352,12 @@ document.getElementById('insp-close').onclick = () => {
 
   // collapse / expand the toolbar (keeps just the handle + toggle)
   const toggle = document.getElementById('toolbar-toggle');
-  const COLLAPSE_KEY = 'navaid.toolbarCollapsed';
+  // const COLLAPSE_KEY = 'navaid.toolbarCollapsed';  // persistence disabled
   function setCollapsed(on) {
     bar.classList.toggle('collapsed', on);
     toggle.title = on ? S.expandMenu : S.collapseMenu;
-    try { localStorage.setItem(COLLAPSE_KEY, on ? '1' : '0'); }
-    catch (e) { /* storage unavailable */ }
+    // try { localStorage.setItem(COLLAPSE_KEY, on ? '1' : '0'); }
+    // catch (e) { /* storage unavailable */ }
     if (bar.style.left) {                 // size changed -> keep on screen
       requestAnimationFrame(() =>
         setPos(parseFloat(bar.style.left), parseFloat(bar.style.top)));
@@ -371,10 +371,11 @@ document.getElementById('insp-close').onclick = () => {
       setCollapsed(!bar.classList.contains('collapsed'));
     }
   });
-  try {
-    const stored = localStorage.getItem(COLLAPSE_KEY);
-    if (stored !== '0') setCollapsed(true);
-  } catch (e) { /* storage unavailable */ }
+  setCollapsed(true);  // always start collapsed
+  // try {                                           // persistence disabled
+  //   const stored = localStorage.getItem(COLLAPSE_KEY);
+  //   if (stored !== '0') setCollapsed(true);
+  // } catch (e) { /* storage unavailable */ }
 
   window.addEventListener('resize', () => {
     if (bar.style.left) setPos(parseFloat(bar.style.left), parseFloat(bar.style.top));
