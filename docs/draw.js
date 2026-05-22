@@ -54,11 +54,11 @@ function nearestNavWaypoint(latlng, pxThreshold) {
   return best;
 }
 
-// True if `name` exactly matches a known nav waypoint name (so we treat
-// it as auto-snapped, not user-typed, and may overwrite on drag).
+// True if `name` matches a known nav waypoint (English or Hebrew) — so we
+// treat it as auto-snapped, not user-typed, and may overwrite on drag.
 function isNavName(name) {
   if (!name || !navWP) return false;
-  for (const wp of navWP) if (wp.name === name) return true;
+  for (const wp of navWP) if (wp.name === name || wp.he === name) return true;
   return false;
 }
 
@@ -79,7 +79,9 @@ function applyNavSnap(latlng, currentName) {
     return { lat: latlng.lat, lng: latlng.lng, name: currentName };
   }
   const snap = nearestNavWaypoint(latlng, 18);
-  if (snap) return { lat: snap.lat, lng: snap.lng, name: snap.name };
+  if (snap) {
+    return { lat: snap.lat, lng: snap.lng, name: snap.he || snap.name };
+  }
   return { lat: latlng.lat, lng: latlng.lng,
            name: isNavName(currentName) ? '' : (currentName || '') };
 }
