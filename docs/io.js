@@ -23,7 +23,7 @@ function save() {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'route.json';
+  a.download = 'route-' + fileStamp() + '.json';
   a.click();
   URL.revokeObjectURL(a.href);
 }
@@ -32,9 +32,18 @@ function load(file) {
   reader.onload = () => {
     try {
       const d = JSON.parse(reader.result);
-      state.waypoints = (d.waypoints || []).map(w => ({
+      const wps = (d.waypoints || []).map(w => ({
         lat: +w.lat, lng: +w.lng, name: w.name || '',
       }));
+      const notes = (d.notes || []).map(n => ({
+        lat: +n.lat, lng: +n.lng, text: n.text || '', color: n.color || '',
+        shape: n.shape === 'oval' ? 'oval' : 'rect',
+      }));
+      if (wps.concat(notes).some(
+            p => !Number.isFinite(p.lat) || !Number.isFinite(p.lng))) {
+        throw new Error(S.errBadCoords);
+      }
+      state.waypoints = wps;
       state.legs = (d.legs || []).map(l => ({
         inboundAltitude: l.inboundAltitude ?? 2000,
         outboundAltitude: l.outboundAltitude ?? 2000,
@@ -42,10 +51,7 @@ function load(file) {
         inLabel: l.inLabel || { a: 0, p: 44 },
         outLabel: l.outLabel || { a: 0, p: -44 },
       }));
-      state.notes = (d.notes || []).map(n => ({
-        lat: +n.lat, lng: +n.lng, text: n.text || '', color: n.color || '',
-        shape: n.shape === 'oval' ? 'oval' : 'rect',
-      }));
+      state.notes = notes;
       syncLegs();
       state.selected = null;
       showInspector();
@@ -84,7 +90,7 @@ function setPage(size) {
 function wpLabel(i) {
   const wp = state.waypoints[i];
   if (!wp) return '';
-  const n = (wp.name || '').trim();
+  const n = navName((wp.name || '').trim());
   return n || (S.wpPrefix + (i + 1));
 }
 
@@ -137,19 +143,21 @@ function showFlightPlan() {
     td.appendChild(inp);
     return td;
   }
-  // Speed / Alt cells are editable number inputs.
-  function numCell(value, min, onInput) {
+  // Speed / Alt cells are editable number inputs. Commit on `change`
+  // (blur / Enter), matching the inspector's number fields.
+  function numCell(value, min, onCommit) {
     const td = document.createElement('td');
     const inp = document.createElement('input');
     inp.type = 'number';
     inp.className = 'plan-num';
     inp.min = min;
     inp.value = value;
-    inp.oninput = () => onInput(inp);
+    inp.onchange = () => onCommit(inp);
     td.appendChild(inp);
     return td;
   }
   const rows = [];                      // { leg, dist, timeCell }
+  const altInputs = [];                 // leg index -> altitude input
   let totDistCell, totTimeCell;
   function refresh() {                  // recompute Time cells + totals
     let td = 0, th = 0;
@@ -175,11 +183,19 @@ function showFlightPlan() {
     tr.appendChild(numCell(leg.flightSpeed, 1, inp => {
       const v = +inp.value;
       if (v > 0) { leg.flightSpeed = v; refresh(); draw(); }
+      else inp.value = leg.flightSpeed;   // invalid — restore the real value
     }));
-    tr.appendChild(numCell(leg.inboundAltitude, -2000, inp => {
+    const altCell = numCell(leg.inboundAltitude, -2000, inp => {
+      const oldVal = leg.inboundAltitude;
       leg.inboundAltitude = Math.round(+inp.value) || 0;
+      propagateAlt(i, 'inboundAltitude', leg.inboundAltitude, oldVal);
+      for (let k = 0; k < altInputs.length; k++) {
+        if (altInputs[k]) altInputs[k].value = state.legs[k].inboundAltitude;
+      }
       draw();
-    }));
+    });
+    altInputs[i] = altCell.querySelector('.plan-num');
+    tr.appendChild(altCell);
     const timeCell = planCell('');
     tr.appendChild(timeCell);
     rows.push({ leg, dist, timeCell });
@@ -343,8 +359,10 @@ function exportPNG() {
   btn.textContent = S.saving;
   btn.disabled = true;
 
-  // Gather the covering tiles, proxied for CORS.
+  // Gather the covering tiles. CORS-capable layers (OSM, Esri) are fetched
+  // directly; flight-maps.com tiles need the weserv proxy to add CORS headers.
   const subs = base.options.subdomains || 'abc';
+  const corsOk = base.options.corsOk;
   const jobs = [];
   for (let tx = Math.floor(bbNWP.x / 256); tx <= Math.floor(bbSEP.x / 256); tx++) {
     for (let ty = Math.floor(bbNWP.y / 256); ty <= Math.floor(bbSEP.y / 256); ty++) {
@@ -362,8 +380,9 @@ function exportPNG() {
           setTimeout(res, 20000);
         }),
       };
-      img.src = 'https://images.weserv.nl/?url=' +
-                encodeURIComponent(url.replace(/^https?:\/\//, ''));
+      img.src = corsOk ? url
+        : 'https://images.weserv.nl/?url=' +
+          encodeURIComponent(url.replace(/^https?:\/\//, ''));
       jobs.push(job);
     }
   }
@@ -426,7 +445,7 @@ function exportPNG() {
 // --- fly the route (Google Earth) -----------------------------------
 // A browser cannot launch or detect a desktop app, so this writes a KML
 // tour and tells the user to open it in Google Earth Pro, which flies
-// the route ~5000 ft above the terrain.
+// the route at the per-leg altitudes set in the flight plan.
 function flyRoute() {
   if (state.waypoints.length < 2) {
     alert(S.errNeedWps);
@@ -435,11 +454,13 @@ function flyRoute() {
   if (!confirm(S.flyConfirm)) {
     return;
   }
-  const aglInput = prompt(S.flyAglPrompt, '2000');
-  if (aglInput === null) return;
-  const aglFt = Math.max(100, Math.min(20000, parseInt(aglInput, 10) || 2000));
-  const AGL = Math.round(aglFt * 0.3048);   // ft → metres
   const wps = state.waypoints;
+  // Camera flythrough height per waypoint (metres MSL): the leg flown
+  // along it; the last waypoint reuses the last leg. inboundAltitude is feet.
+  const altM = i => {
+    const leg = state.legs[Math.min(i, state.legs.length - 1)];
+    return Math.max(0, Math.round((leg ? leg.inboundAltitude : 2000) * 0.3048));
+  };
   const esc = s => String(s).replace(/[<>&]/g,
     c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 
@@ -450,15 +471,16 @@ function flyRoute() {
   };
   // KML <Camera> child order is strict — altitudeMode must come last,
   // or Google Earth ignores it and the eye ends up miles up.
+  // absolute = altitude is metres above mean sea level (MSL).
   const camera = (i, pad) =>
     pad + '<Camera>\n' +
     pad + '  <longitude>' + wps[i].lng + '</longitude>\n' +
     pad + '  <latitude>' + wps[i].lat + '</latitude>\n' +
-    pad + '  <altitude>' + AGL + '</altitude>\n' +
+    pad + '  <altitude>' + altM(i) + '</altitude>\n' +
     pad + '  <heading>' + heading(i).toFixed(1) + '</heading>\n' +
     pad + '  <tilt>85</tilt>\n' +
     pad + '  <roll>0</roll>\n' +
-    pad + '  <altitudeMode>relativeToGround</altitudeMode>\n' +
+    pad + '  <altitudeMode>absolute</altitudeMode>\n' +
     pad + '</Camera>\n';
   const flyTo = (i, dur, mode) =>
     '    <gx:FlyTo>\n' +
@@ -527,9 +549,18 @@ function restoreRoute() {
     const raw = localStorage.getItem(STORE_KEY);
     if (!raw) return false;
     const d = JSON.parse(raw);
-    state.waypoints = (d.waypoints || []).map(w => ({
+    const wps = (d.waypoints || []).map(w => ({
       lat: +w.lat, lng: +w.lng, name: w.name || '',
     }));
+    const notes = (d.notes || []).map(n => ({
+      lat: +n.lat, lng: +n.lng, text: n.text || '', color: n.color || '',
+      shape: n.shape === 'oval' ? 'oval' : 'rect',
+    }));
+    if (wps.concat(notes).some(
+          p => !Number.isFinite(p.lat) || !Number.isFinite(p.lng))) {
+      return false;                       // corrupt cache — start empty
+    }
+    state.waypoints = wps;
     state.legs = (d.legs || []).map(l => ({
       inboundAltitude: l.inboundAltitude ?? 2000,
       outboundAltitude: l.outboundAltitude ?? 2000,
@@ -537,10 +568,7 @@ function restoreRoute() {
       inLabel: l.inLabel || { a: 0, p: 44 },
       outLabel: l.outLabel || { a: 0, p: -44 },
     }));
-    state.notes = (d.notes || []).map(n => ({
-      lat: +n.lat, lng: +n.lng, text: n.text || '', color: n.color || '',
-      shape: n.shape === 'oval' ? 'oval' : 'rect',
-    }));
+    state.notes = notes;
     syncLegs();
     return true;
   } catch (e) {
