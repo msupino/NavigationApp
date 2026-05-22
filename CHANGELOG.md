@@ -8,8 +8,9 @@ pull requests; production is the `main` branch, staging is `dev`.
 
 ### Google Earth export — per-leg altitudes (#64)
 - The `.kml` export no longer prompts for a single AGL value. The
-  flythrough camera flies at the per-leg altitudes from the flight plan;
-  the route line and waypoints stay clamped to the ground.
+  flythrough camera flies at the per-leg altitudes from the flight plan
+  (MSL — `altitudeMode=absolute`); the route line and waypoints stay
+  clamped to the ground.
 
 ### Rotate dial — tap cycles 90° (#65)
 - Tapping the rotate dial steps the map bearing through 0° / 90° / 180° /

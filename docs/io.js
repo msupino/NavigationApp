@@ -454,7 +454,7 @@ function flyRoute() {
     return;
   }
   const wps = state.waypoints;
-  // Camera flythrough height per waypoint (metres AGL): the leg flown
+  // Camera flythrough height per waypoint (metres MSL): the leg flown
   // along it; the last waypoint reuses the last leg. inboundAltitude is feet.
   const altM = i => {
     const leg = state.legs[Math.min(i, state.legs.length - 1)];
@@ -470,6 +470,7 @@ function flyRoute() {
   };
   // KML <Camera> child order is strict — altitudeMode must come last,
   // or Google Earth ignores it and the eye ends up miles up.
+  // absolute = altitude is metres above mean sea level (MSL).
   const camera = (i, pad) =>
     pad + '<Camera>\n' +
     pad + '  <longitude>' + wps[i].lng + '</longitude>\n' +
@@ -478,7 +479,7 @@ function flyRoute() {
     pad + '  <heading>' + heading(i).toFixed(1) + '</heading>\n' +
     pad + '  <tilt>85</tilt>\n' +
     pad + '  <roll>0</roll>\n' +
-    pad + '  <altitudeMode>relativeToGround</altitudeMode>\n' +
+    pad + '  <altitudeMode>absolute</altitudeMode>\n' +
     pad + '</Camera>\n';
   const flyTo = (i, dur, mode) =>
     '    <gx:FlyTo>\n' +
