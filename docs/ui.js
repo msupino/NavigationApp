@@ -35,15 +35,25 @@ layerSelect.onchange = () => {
   catch (e) { /* storage unavailable */ }
 };
 
-// --- rotate dial (leaflet-rotate) -----------------------------------
+// --- rotate dial — a map control next to the zoom buttons -----------
+const rotateCtrl = L.control({ position: 'bottomright' });
+rotateCtrl.onAdd = function () {
+  const wrap = L.DomUtil.create('div', 'leaflet-control rotate-ctrl');
+  wrap.innerHTML = '<span id="rotate-dial" role="slider" tabindex="0">' +
+                   '<span id="rotate-needle"></span></span>';
+  L.DomEvent.disableClickPropagation(wrap);
+  L.DomEvent.disableScrollPropagation(wrap);
+  return wrap;
+};
+rotateCtrl.addTo(map);
 const rotDial = document.getElementById('rotate-dial');
 const rotNeedle = document.getElementById('rotate-needle');
-const rotDeg = document.getElementById('rotate-deg');
 function mapBearing() { return map.getBearing ? map.getBearing() : 0; }
 function refreshDial() {
   const b = Math.round(mapBearing());
   rotNeedle.style.transform = 'rotate(' + b + 'deg)';
-  rotDeg.textContent = (((b % 360) + 360) % 360) + '°';
+  rotDial.title = 'Map rotation ' + (((b % 360) + 360) % 360) +
+                  '° — drag to rotate, double-click for north up';
 }
 function dialAngle(ev) {                 // 0 = north (up), clockwise positive
   const r = rotDial.getBoundingClientRect();
