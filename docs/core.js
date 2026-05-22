@@ -145,6 +145,9 @@ const map = L.map('map', {
   maxBounds: [[29.0, 33.9], [33.6, 36.4]],   // keep panning over Israel
   maxBoundsViscosity: 1.0,
   worldCopyJump: false,
+  rotate: true,                // leaflet-rotate: enable map bearing
+  rotateControl: false,        // own dial in the toolbar instead
+  touchRotate: true,
 });
 L.control.zoom({ position: 'bottomright' }).addTo(map);
 // Base layer is chosen from the toolbar (#layer-select, wired in ui.js).
