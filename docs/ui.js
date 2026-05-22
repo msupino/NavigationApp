@@ -88,17 +88,19 @@ function rotEnd() {
 }
 rotDial.addEventListener('pointerup', rotEnd);
 rotDial.addEventListener('pointercancel', rotEnd);
-map.on('rotate', () => {
-  refreshDial(); draw();
-  try { localStorage.setItem(BEARING_KEY, String(mapBearing())); }
-  catch (err) { /* storage unavailable */ }
-});
-refreshDial();
 const BEARING_KEY = 'navaid.bearing';
 try {
   const sb = parseFloat(localStorage.getItem(BEARING_KEY));
   if (!isNaN(sb)) map.setBearing(sb);
 } catch (e) { /* storage unavailable */ }
+let _isExporting = false;
+map.on('rotate', () => {
+  refreshDial(); draw();
+  if (_isExporting) return;
+  try { localStorage.setItem(BEARING_KEY, String(mapBearing())); }
+  catch (err) { /* storage unavailable */ }
+});
+refreshDial();
 
 // --- nav-waypoint search --------------------------------------------
 const wpSearch = document.getElementById('wp-search');
@@ -120,10 +122,12 @@ wpSearch.addEventListener('input', () => {
   for (const w of hits) {
     const item = document.createElement('div');
     item.className = 'wp-search-item';
-    item.textContent = w[field] || w.name;
+    const primary = w[field] || w.name;
+    const alt = field === 'he' ? w.name : (w.he || '');
+    item.textContent = alt && alt !== primary ? primary + ' / ' + alt : primary;
     item.onclick = () => {
       map.setView([w.lat, w.lng], Math.max(map.getZoom(), 12));
-      wpSearch.value = w[field] || w.name;
+      wpSearch.value = primary;
       closeSearch();
     };
     wpResults.appendChild(item);
@@ -136,13 +140,11 @@ wpSearch.addEventListener('keydown', e => {
     if (first) first.click();
   } else if (e.key === 'Escape') {
     closeSearch();
+    wpSearch.value = '';
   }
 });
 document.addEventListener('click', e => {
-  if (!e.target.closest('.navsearch')) {
-    closeSearch();
-    wpSearch.value = '';
-  }
+  if (!e.target.closest('.navsearch')) closeSearch();
 });
 document.getElementById('reverse').onclick = () => {
   // Reversing flight direction means each leg's inbound/outbound roles swap.
@@ -180,8 +182,10 @@ document.getElementById('plan').onclick = showFlightPlan;
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
 try {
-  if (localStorage.getItem(RETURN_KEY) === '1') showReturn = true;
-  if (localStorage.getItem(MIDLEG_KEY) === '1') showMidLeg = true;
+  const sr = localStorage.getItem(RETURN_KEY);
+  if (sr !== null) showReturn = sr === '1';
+  const sm = localStorage.getItem(MIDLEG_KEY);
+  if (sm !== null) showMidLeg = sm === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('ret-cb').checked = showReturn;
 document.getElementById('mid-cb').checked = showMidLeg;
@@ -220,7 +224,8 @@ document.getElementById('wpname-rot').onclick = e => {
 };
 const DIFF_KEY = 'navaid.highlightDiff';
 try {
-  if (localStorage.getItem(DIFF_KEY) === '1') highlightDiff = true;
+  const sd = localStorage.getItem(DIFF_KEY);
+  if (sd !== null) highlightDiff = sd === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('diff-cb').checked = highlightDiff;
 document.getElementById('diff-cb').onchange = e => {
@@ -376,14 +381,13 @@ document.getElementById('insp-close').onclick = () => {
   window.addEventListener('touchend', end);
   window.addEventListener('touchcancel', end);
 
+  try { localStorage.removeItem('navaid.toolbarCollapsed'); } catch (e) { /* */ }
+
   // collapse / expand the toolbar (keeps just the handle + toggle)
   const toggle = document.getElementById('toolbar-toggle');
-  // const COLLAPSE_KEY = 'navaid.toolbarCollapsed';  // persistence disabled
   function setCollapsed(on) {
     bar.classList.toggle('collapsed', on);
     toggle.title = on ? S.expandMenu : S.collapseMenu;
-    // try { localStorage.setItem(COLLAPSE_KEY, on ? '1' : '0'); }
-    // catch (e) { /* storage unavailable */ }
     if (bar.style.left) {                 // size changed -> keep on screen
       requestAnimationFrame(() =>
         setPos(parseFloat(bar.style.left), parseFloat(bar.style.top)));
@@ -397,11 +401,7 @@ document.getElementById('insp-close').onclick = () => {
       setCollapsed(!bar.classList.contains('collapsed'));
     }
   });
-  setCollapsed(true);  // always start collapsed
-  // try {                                           // persistence disabled
-  //   const stored = localStorage.getItem(COLLAPSE_KEY);
-  //   if (stored !== '0') setCollapsed(true);
-  // } catch (e) { /* storage unavailable */ }
+  setCollapsed(true);
 
   window.addEventListener('resize', () => {
     if (bar.style.left) setPos(parseFloat(bar.style.left), parseFloat(bar.style.top));
