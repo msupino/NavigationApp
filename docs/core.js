@@ -19,7 +19,7 @@ try {
   }
 } catch (e) { /* storage unavailable */ }
 
-window.NavAid = { exporting: false, version: '1.262' };  // cross-file export flag (read by ui.js/io.js)
+window.NavAid = { exporting: false, version: '1.263' };  // cross-file export flag (read by ui.js/io.js)
 
 const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
 let magVar = -5;                       // signed offset added to true heading
@@ -29,11 +29,12 @@ let magVar = -5;                       // signed offset added to true heading
 // (full locale or just navWpUrl). Object.assign merges: defaults first,
 // then any pre-set keys win, so a partial override doesn't erase the rest.
 window.S = Object.assign({
-  navWpUrl: 'nav-waypoints.json?v=3',  // relative URL — en/ overrides to ../
+  navWpUrl: 'nav-waypoints.json?v=3',  // resolved relative to index.html (docs/)
   navWpSearchField: 'name',            // which field to show/search in results
   wpPrefix: 'WP ',
   noteDefault: 'Note',
   errLoadFile: 'Could not load file: ',
+  errBadCoords: 'file has invalid waypoint coordinates',
   errNoLegs: 'No legs yet — drop at least two waypoints first.',
   flightPlan: 'Flight plan',
   fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time'],
@@ -245,9 +246,9 @@ const layers = {
   'Satellite': L.tileLayer(
     'https://services.arcgisonline.com/ArcGIS/rest/services/' +
     'World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    { minZoom: 6, maxZoom: 18, attribution: 'Imagery © Esri' }),
+    { minZoom: 6, maxZoom: 18, attribution: 'Imagery © Esri', corsOk: true }),
   'OpenStreetMap': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    { minZoom: 6, maxZoom: 18, subdomains: 'abc',
+    { minZoom: 6, maxZoom: 18, subdomains: 'abc', corsOk: true,
       attribution: '© OpenStreetMap contributors' }),
 };
 

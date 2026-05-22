@@ -6,6 +6,21 @@ pull requests; production is the `main` branch, staging is `dev`.
 
 ## In progress — dev (not yet merged)
 
+### Bug-fix batch — issues #57–#62
+- Import validation: a route JSON with non-numeric coordinates is rejected
+  with an error instead of silently blanking the map; the same guard
+  protects the localStorage route cache (#58).
+- Flight-plan altitude edits now cascade to adjacent legs like the
+  inspector's do; number fields commit on `change` (not per keystroke),
+  matching the inspector (#59).
+- Exported route JSON gets a timestamped filename — no more `route (1).json`
+  (#60).
+- PNG export fetches OSM / Esri tiles directly (they support CORS); the
+  weserv proxy is used only for the flight-maps.com layers (#62).
+- Service worker clones navigation responses before the body is consumed (#57).
+- Stale comments corrected: 256 nav-waypoints; `navWpUrl` note (#61).
+- `sw.js` cache bumped to `navaid-v4`.
+
 - **Bilingual UI**: Hebrew root (`/`), English at `/en/`; all dynamic
   strings localised; language picker dropdown in toolbar.
 - Flight plan: editable **Speed** and **Altitude** number inputs; editing

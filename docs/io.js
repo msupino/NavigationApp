@@ -23,7 +23,7 @@ function save() {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'route.json';
+  a.download = 'route-' + fileStamp() + '.json';
   a.click();
   URL.revokeObjectURL(a.href);
 }
@@ -32,9 +32,18 @@ function load(file) {
   reader.onload = () => {
     try {
       const d = JSON.parse(reader.result);
-      state.waypoints = (d.waypoints || []).map(w => ({
+      const wps = (d.waypoints || []).map(w => ({
         lat: +w.lat, lng: +w.lng, name: w.name || '',
       }));
+      const notes = (d.notes || []).map(n => ({
+        lat: +n.lat, lng: +n.lng, text: n.text || '', color: n.color || '',
+        shape: n.shape === 'oval' ? 'oval' : 'rect',
+      }));
+      if (wps.concat(notes).some(
+            p => !Number.isFinite(p.lat) || !Number.isFinite(p.lng))) {
+        throw new Error(S.errBadCoords);
+      }
+      state.waypoints = wps;
       state.legs = (d.legs || []).map(l => ({
         inboundAltitude: l.inboundAltitude ?? 2000,
         outboundAltitude: l.outboundAltitude ?? 2000,
@@ -42,10 +51,7 @@ function load(file) {
         inLabel: l.inLabel || { a: 0, p: 44 },
         outLabel: l.outLabel || { a: 0, p: -44 },
       }));
-      state.notes = (d.notes || []).map(n => ({
-        lat: +n.lat, lng: +n.lng, text: n.text || '', color: n.color || '',
-        shape: n.shape === 'oval' ? 'oval' : 'rect',
-      }));
+      state.notes = notes;
       syncLegs();
       state.selected = null;
       showInspector();
@@ -137,19 +143,21 @@ function showFlightPlan() {
     td.appendChild(inp);
     return td;
   }
-  // Speed / Alt cells are editable number inputs.
-  function numCell(value, min, onInput) {
+  // Speed / Alt cells are editable number inputs. Commit on `change`
+  // (blur / Enter), matching the inspector's number fields.
+  function numCell(value, min, onCommit) {
     const td = document.createElement('td');
     const inp = document.createElement('input');
     inp.type = 'number';
     inp.className = 'plan-num';
     inp.min = min;
     inp.value = value;
-    inp.oninput = () => onInput(inp);
+    inp.onchange = () => onCommit(inp);
     td.appendChild(inp);
     return td;
   }
   const rows = [];                      // { leg, dist, timeCell }
+  const altInputs = [];                 // leg index -> altitude input
   let totDistCell, totTimeCell;
   function refresh() {                  // recompute Time cells + totals
     let td = 0, th = 0;
@@ -176,10 +184,17 @@ function showFlightPlan() {
       const v = +inp.value;
       if (v > 0) { leg.flightSpeed = v; refresh(); draw(); }
     }));
-    tr.appendChild(numCell(leg.inboundAltitude, -2000, inp => {
+    const altCell = numCell(leg.inboundAltitude, -2000, inp => {
+      const oldVal = leg.inboundAltitude;
       leg.inboundAltitude = Math.round(+inp.value) || 0;
+      propagateAlt(i, 'inboundAltitude', leg.inboundAltitude, oldVal);
+      for (let k = 0; k < altInputs.length; k++) {
+        if (altInputs[k]) altInputs[k].value = state.legs[k].inboundAltitude;
+      }
       draw();
-    }));
+    });
+    altInputs[i] = altCell.querySelector('.plan-num');
+    tr.appendChild(altCell);
     const timeCell = planCell('');
     tr.appendChild(timeCell);
     rows.push({ leg, dist, timeCell });
@@ -343,8 +358,10 @@ function exportPNG() {
   btn.textContent = S.saving;
   btn.disabled = true;
 
-  // Gather the covering tiles, proxied for CORS.
+  // Gather the covering tiles. CORS-capable layers (OSM, Esri) are fetched
+  // directly; flight-maps.com tiles need the weserv proxy to add CORS headers.
   const subs = base.options.subdomains || 'abc';
+  const corsOk = base.options.corsOk;
   const jobs = [];
   for (let tx = Math.floor(bbNWP.x / 256); tx <= Math.floor(bbSEP.x / 256); tx++) {
     for (let ty = Math.floor(bbNWP.y / 256); ty <= Math.floor(bbSEP.y / 256); ty++) {
@@ -362,8 +379,9 @@ function exportPNG() {
           setTimeout(res, 20000);
         }),
       };
-      img.src = 'https://images.weserv.nl/?url=' +
-                encodeURIComponent(url.replace(/^https?:\/\//, ''));
+      img.src = corsOk ? url
+        : 'https://images.weserv.nl/?url=' +
+          encodeURIComponent(url.replace(/^https?:\/\//, ''));
       jobs.push(job);
     }
   }
@@ -527,9 +545,18 @@ function restoreRoute() {
     const raw = localStorage.getItem(STORE_KEY);
     if (!raw) return false;
     const d = JSON.parse(raw);
-    state.waypoints = (d.waypoints || []).map(w => ({
+    const wps = (d.waypoints || []).map(w => ({
       lat: +w.lat, lng: +w.lng, name: w.name || '',
     }));
+    const notes = (d.notes || []).map(n => ({
+      lat: +n.lat, lng: +n.lng, text: n.text || '', color: n.color || '',
+      shape: n.shape === 'oval' ? 'oval' : 'rect',
+    }));
+    if (wps.concat(notes).some(
+          p => !Number.isFinite(p.lat) || !Number.isFinite(p.lng))) {
+      return false;                       // corrupt cache — start empty
+    }
+    state.waypoints = wps;
     state.legs = (d.legs || []).map(l => ({
       inboundAltitude: l.inboundAltitude ?? 2000,
       outboundAltitude: l.outboundAltitude ?? 2000,
@@ -537,10 +564,7 @@ function restoreRoute() {
       inLabel: l.inLabel || { a: 0, p: 44 },
       outLabel: l.outLabel || { a: 0, p: -44 },
     }));
-    state.notes = (d.notes || []).map(n => ({
-      lat: +n.lat, lng: +n.lng, text: n.text || '', color: n.color || '',
-      shape: n.shape === 'oval' ? 'oval' : 'rect',
-    }));
+    state.notes = notes;
     syncLegs();
     return true;
   } catch (e) {
