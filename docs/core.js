@@ -29,7 +29,7 @@ let magVar = -5;                       // signed offset added to true heading
 // (full locale or just navWpUrl). Object.assign merges: defaults first,
 // then any pre-set keys win, so a partial override doesn't erase the rest.
 window.S = Object.assign({
-  navWpUrl: 'nav-waypoints.json?v=2',  // relative URL — en/ overrides to ../
+  navWpUrl: 'nav-waypoints.json?v=3',  // relative URL — en/ overrides to ../
   navWpSearchField: 'name',            // which field to show/search in results
   wpPrefix: 'WP ',
   noteDefault: 'Note',

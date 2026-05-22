@@ -1,7 +1,7 @@
 'use strict';
 /* Hebrew localisation — loaded before core.js so the || in core.js keeps this. */
 window.S = {
-  navWpUrl: 'nav-waypoints.json?v=2',
+  navWpUrl: 'nav-waypoints.json?v=3',
   navWpSearchField: 'he',
   wpPrefix: 'נק׳ ',
   noteDefault: 'הערה',
