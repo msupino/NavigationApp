@@ -326,6 +326,9 @@ map.on('click', e => {
     state.notes.push({ lat: e.latlng.lat, lng: e.latlng.lng, text: 'Note' });
     state.selected = { type: 'note', index: state.notes.length - 1 };
     showInspector(); draw();
+  } else if (state.selected) {
+    state.selected = null;               // empty-map click closes the inspector
+    showInspector(); draw();
   }
 });
 
