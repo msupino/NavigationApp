@@ -96,4 +96,9 @@ window.S = {
   tbPrintTitle: 'שמור מפה + מסלול כ-PNG',
   inspCloseTitle: 'סגור',
   inspCloseLabel: 'סגור',
+  tbSecEdit: '✏️ עריכה',
+  tbSecMap: '🗺 מפה',
+  tbSecRoute: '📋 מסלול',
+  tbSecDisplay: '👁 תצוגה',
+  tbSecPrint: '🖨 הדפסה',
 };
