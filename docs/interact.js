@@ -334,6 +334,14 @@ map.on('click', e => {
 
 window.addEventListener('keydown', e => {
   const t = e.target;
+  if (e.key === 'Escape') {
+    if (state.selected) {
+      state.selected = null;
+      showInspector(); draw();
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) t.blur();
+    }
+    return;
+  }
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
     return;                              // typing in a field — leave the WP alone
   }
