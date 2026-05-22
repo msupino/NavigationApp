@@ -3,7 +3,7 @@
 window.S = {
   navWpUrl: 'nav-waypoints.json?v=2',
   navWpSearchField: 'he',
-  wpPrefix: 'WP ',
+  wpPrefix: 'נק׳ ',
   noteDefault: 'הערה',
   errLoadFile: 'לא ניתן לטעון קובץ: ',
   errNoLegs: 'אין קטעים עדיין — הוסף לפחות שני ציוני דרך תחילה.',
@@ -42,4 +42,9 @@ window.S = {
   summaryLegs: 'קטעים',
   summaryDist: 'מרחק',
   summaryTime: 'זמן כולל',
+  kmlDocName: 'NavAid טיסה',
+  kmlRouteName: 'מסלול',
+  kmlTourName: 'טוס את המסלול',
+  layerLabels: { 'CVFR': 'CVFR', 'Nav': 'Nav', 'Low Alt': 'גובה נמוך',
+                 'Heli': 'הלי', 'Satellite': 'לוויין', 'OpenStreetMap': 'OpenStreetMap' },
 };

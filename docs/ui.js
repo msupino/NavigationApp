@@ -19,7 +19,7 @@ const layerSelect = document.getElementById('layer-select');
 for (const name in layers) {
   const opt = document.createElement('option');
   opt.value = name;
-  opt.textContent = name;
+  opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
   if (map.hasLayer(layers[name])) opt.selected = true;
   layerSelect.appendChild(opt);
 }
@@ -93,10 +93,9 @@ try {
   const sb = parseFloat(localStorage.getItem(BEARING_KEY));
   if (!isNaN(sb)) map.setBearing(sb);
 } catch (e) { /* storage unavailable */ }
-let _isExporting = false;
 map.on('rotate', () => {
   refreshDial(); draw();
-  if (_isExporting) return;
+  if (NavAid.exporting) return;
   try { localStorage.setItem(BEARING_KEY, String(mapBearing())); }
   catch (err) { /* storage unavailable */ }
 });
@@ -109,7 +108,7 @@ function closeSearch() {
   wpResults.classList.add('hidden');
   wpResults.innerHTML = '';
 }
-wpSearch.addEventListener('input', () => {
+function runSearch() {
   const q = wpSearch.value.trim().toUpperCase();
   if (!q || !navWP) { closeSearch(); return; }
   const hits = navWP
@@ -133,7 +132,9 @@ wpSearch.addEventListener('input', () => {
     wpResults.appendChild(item);
   }
   wpResults.classList.remove('hidden');
-});
+}
+wpSearch.addEventListener('input', runSearch);
+wpSearch.addEventListener('focus', () => { if (wpSearch.value.trim()) runSearch(); });
 wpSearch.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     const first = wpResults.querySelector('.wp-search-item');
