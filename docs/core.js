@@ -19,7 +19,7 @@ try {
   }
 } catch (e) { /* storage unavailable */ }
 
-window.NavAid = { exporting: false };  // cross-file export flag (read by ui.js/io.js)
+window.NavAid = { exporting: false, version: '1.0' };  // cross-file export flag (read by ui.js/io.js)
 
 const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
 let magVar = -5;                       // signed offset added to true heading
@@ -29,7 +29,7 @@ let magVar = -5;                       // signed offset added to true heading
 // (full locale or just navWpUrl). Object.assign merges: defaults first,
 // then any pre-set keys win, so a partial override doesn't erase the rest.
 window.S = Object.assign({
-  navWpUrl: 'nav-waypoints.json?v=2',  // relative URL — en/ overrides to ../
+  navWpUrl: 'nav-waypoints.json?v=3',  // relative URL — en/ overrides to ../
   navWpSearchField: 'name',            // which field to show/search in results
   wpPrefix: 'WP ',
   noteDefault: 'Note',
@@ -48,7 +48,8 @@ window.S = Object.assign({
   errPngFail: 'PNG export failed (a map tile could not be loaded).',
   errTilesFail: function(f, t) { return f + ' of ' + t + ' map tiles failed to load — the PNG may have blank patches. Re-run the export to retry.'; },
   errNeedWps: 'Add at least two waypoints first.',
-  flyConfirm: 'Fly the route in Google Earth Pro (desktop).\n\nPress OK to save the tour file (.kml), then open it in Google Earth — the “Fly the route” tour appears under Places; press play to fly the route ~5000 ft above the terrain.\n\nNo Google Earth? Free desktop app: google.com/earth/versions',
+  flyConfirm: 'Fly the route in Google Earth Pro (desktop).\n\nPress OK to save the tour file (.kml), then open it in Google Earth — the “Fly the route” tour appears under Places; press play to fly above the terrain.\n\nNo Google Earth? Free desktop app: google.com/earth/versions',
+  flyAglPrompt: 'Fly altitude above ground (ft):',
   legTitle: function(n) { return 'Leg ' + n; },
   speedKt: 'Speed (kt)',
   inboundAlt: 'Inbound alt (ft)',
@@ -75,7 +76,72 @@ window.S = Object.assign({
   kmlTourName: 'Fly the route',
   layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'Navigation', 'Low Alt': 'Low Alt',
                  'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap' },
+  // Toolbar static strings — filled into DOM by applyI18n() on boot
+  tbHandleTitle: 'Drag to move',
+  tbAddWp: '✏️ Add Waypoint',
+  tbAddWpTitle: 'Click map to drop a waypoint (click button again to stop)',
+  tbAddNote: '📝 Add Note',
+  tbAddNoteTitle: 'Click map to drop a note (click button again to stop)',
+  tbLayerLabel: 'Layer',
+  tbLayerTitle: 'Base map layer',
+  tbSearchPlaceholder: '🔍 Find nav waypoint',
+  tbReverse: '⇄ Reverse Route',
+  tbReverseTitle: 'Reverse route order',
+  tbClear: '🗑 Clear map',
+  tbClearTitle: 'Remove all waypoints and notes',
+  tbExport: '⬇ Export',
+  tbExportTitle: 'Export route as JSON',
+  tbImport: '⬆ Import',
+  tbImportTitle: 'Import route JSON',
+  tbFit: '⌖ Fit to screen',
+  tbFitTitle: 'Fit route to view',
+  tbPlan: '📋 Flight Plan',
+  tbPlanTitle: 'Show flight plan table',
+  tbFly: '✈️ Open route in Google Earth',
+  tbFlyTitle: 'Save a Google Earth tour of the route (~5000 ft AGL)',
+  tbShowReturn: 'Show return path',
+  tbShowReturnTitle: 'Show return-direction (outbound) info',
+  tbShowMidLeg: 'Show leg dist',
+  tbShowMidLegTitle: 'Show distance badge at the middle of each leg',
+  tbHighlightDiff: 'Highlight alt/speed diff',
+  tbHighlightDiffTitle: 'Halo legs whose altitude or speed differs from the adjacent leg',
+  tbShowNavWp: 'Show Nav Waypoints',
+  tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
+  tbShowWpNames: 'Show Waypoint names',
+  tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
+  tbTransparency: 'Transparency',
+  tbTransparencyTitle: 'Opacity of label backgrounds',
+  tbMapOpacity: 'Map opacity',
+  tbMapOpacityTitle: 'Base map brightness',
+  tbWpSize: 'Waypoint size',
+  tbWpSizeTitle: 'Waypoint circle and name size',
+  tbMagVar: 'Mag var',
+  tbMagVarTitle: 'Signed offset added to true heading. Negative = east variation; positive = west.',
+  tbPageA3Title: 'A3 print page',
+  tbPageA4Title: 'A4 print page',
+  tbPrint: '⬇ Save PNG',
+  tbPrintTitle: 'Save the framed map + route as a PNG',
+  inspCloseTitle: 'Close',
+  inspCloseLabel: 'Close',
 }, window.S || {});
+
+// Fill data-i18n / data-i18n-title / data-i18n-placeholder / data-i18n-aria
+// attributes from S. Called once after S is resolved.
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = S[el.dataset.i18n] || '';
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    el.title = S[el.dataset.i18nTitle] || '';
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = S[el.dataset.i18nPlaceholder] || '';
+  });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+    el.setAttribute('aria-label', S[el.dataset.i18nAria] || '');
+  });
+}
+applyI18n();
 
 // --- model -----------------------------------------------------------
 const state = {

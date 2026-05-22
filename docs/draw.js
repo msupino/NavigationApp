@@ -121,6 +121,7 @@ function drawNavWaypoints() {
 }
 
 function drawLegs() {
+  const zoomScale = Math.max(0.35, Math.pow(2, map.getZoom() - 12));
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     if (!A || !B) continue;
@@ -159,12 +160,12 @@ function drawLegs() {
     const outP = leg.outLabel || { a: 0, p: -44 };
     drawLegArrow(mid.x + dx * inP.a + nx * inP.p, mid.y + dy * inP.a + ny * inP.p,
       ang, pad3(magIn), timeStr, String(leg.inboundAltitude),
-      '#2f6fd0', yellowFill(0.80), needsHalo(i, 'in'));
+      '#2f6fd0', yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
     if (showReturn) {
       drawLegArrow(mid.x + dx * outP.a + nx * outP.p,
         mid.y + dy * outP.a + ny * outP.p, ang + Math.PI,
         pad3(magOut), timeStr, String(leg.outboundAltitude),
-        '#c0392b', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'));
+        '#c0392b', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
   }
@@ -245,8 +246,9 @@ function needsHalo(i, which) {
 // Navigation leg marker: a two-cell rectangle (altitude, time) joined to a
 // triangle (heading) pointing in the flight direction. Text runs across the
 // marker and is locked to its orientation.
-function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo) {
-  const W = 46, cell = 22, Lt = 26;
+function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc) {
+  sc = sc || 1;
+  const W = 46 * sc, cell = 22 * sc, Lt = 26 * sc;
   const Lr = cell * 2, L = Lr + Lt;
   const xb = -L / 2 + Lr;
 
@@ -262,17 +264,17 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo) {
   octx.closePath();
   if (halo) {                            // purple band around the marker
     octx.lineJoin = 'round';
-    octx.lineWidth = 7;
+    octx.lineWidth = 7 * sc;
     octx.strokeStyle = '#8e44ad';
     octx.stroke();
     octx.lineJoin = 'miter';
   }
   octx.fillStyle = fill;
   octx.fill();
-  octx.lineWidth = 2;
+  octx.lineWidth = 2 * sc;
   octx.strokeStyle = accent;
   octx.stroke();
-  octx.lineWidth = 1;
+  octx.lineWidth = sc;
   for (const dx of [-L / 2 + cell, xb]) {
     octx.beginPath();
     octx.moveTo(dx, -W / 2);
@@ -281,15 +283,17 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo) {
   }
   octx.restore();
 
+  const fontPx = Math.max(6, Math.round(13 * sc));
+  const fontPxH = Math.max(6, Math.round(14 * sc));
   const ta = flightAng + Math.PI / 2;
   const cos = Math.cos(flightAng), sin = Math.sin(flightAng);
   const at = lx => ({ x: cx + lx * cos, y: cy + lx * sin });
   const pAlt = at(-L / 2 + cell * 0.5);
   const pTime = at(-L / 2 + cell * 1.5);
   const pHead = at(xb + Lt * 0.32);
-  drawRotText(pAlt.x, pAlt.y, ta, alt, 'bold 13px sans-serif', '#000');
-  drawRotText(pTime.x, pTime.y, ta, time, 'bold 13px sans-serif', '#000');
-  drawRotText(pHead.x, pHead.y, ta, head, 'bold 14px sans-serif', '#000');
+  drawRotText(pAlt.x, pAlt.y, ta, alt, `bold ${fontPx}px sans-serif`, '#000');
+  drawRotText(pTime.x, pTime.y, ta, time, `bold ${fontPx}px sans-serif`, '#000');
+  drawRotText(pHead.x, pHead.y, ta, head, `bold ${fontPxH}px sans-serif`, '#000');
 }
 
 function drawRotText(x, y, ang, text, font, color) {
@@ -323,15 +327,17 @@ function drawDistanceBadge(cx, cy, dist) {
 const WP_RADIUS = 13;
 
 // Label to draw inside a waypoint circle, plus the radius and font px
-// needed to fit it. Scaled by the global `wpSize` slider.
+// needed to fit it. Scaled by wpSize slider × zoom (geographic footprint
+// stays roughly constant; floor at 0.35× so markers stay visible when zoomed out).
 function waypointGeom(i) {
   const wp = state.waypoints[i];
-  // Names off -> empty circle (no name, no number).
   const label = showWpNames ? ((wp.name || '').trim() || String(i + 1)) : '';
-  const fontPx = Math.max(8, Math.round(13 * wpSize));
+  const zoomScale = Math.max(0.35, Math.pow(2, map.getZoom() - 12));
+  const scale = wpSize * zoomScale;
+  const fontPx = Math.max(6, Math.round(13 * scale));
   octx.font = `bold ${fontPx}px sans-serif`;
   const w = octx.measureText(label).width;
-  const minR = WP_RADIUS * wpSize;
+  const minR = WP_RADIUS * scale;
   return { label, fontPx, r: Math.max(minR, w / 2 + fontPx * 0.7) };
 }
 
