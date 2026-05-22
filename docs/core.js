@@ -75,7 +75,72 @@ window.S = Object.assign({
   kmlTourName: 'Fly the route',
   layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'Navigation', 'Low Alt': 'Low Alt',
                  'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap' },
+  // Toolbar static strings — filled into DOM by applyI18n() on boot
+  tbHandleTitle: 'Drag to move',
+  tbAddWp: '✏️ Add Waypoint',
+  tbAddWpTitle: 'Click map to drop a waypoint (click button again to stop)',
+  tbAddNote: '📝 Add Note',
+  tbAddNoteTitle: 'Click map to drop a note (click button again to stop)',
+  tbLayerLabel: 'Layer',
+  tbLayerTitle: 'Base map layer',
+  tbSearchPlaceholder: '🔍 Find nav waypoint',
+  tbReverse: '⇄ Reverse Route',
+  tbReverseTitle: 'Reverse route order',
+  tbClear: '🗑 Clear map',
+  tbClearTitle: 'Remove all waypoints and notes',
+  tbExport: '⬇ Export',
+  tbExportTitle: 'Export route as JSON',
+  tbImport: '⬆ Import',
+  tbImportTitle: 'Import route JSON',
+  tbFit: '⌖ Fit to screen',
+  tbFitTitle: 'Fit route to view',
+  tbPlan: '📋 Flight Plan',
+  tbPlanTitle: 'Show flight plan table',
+  tbFly: '✈️ Open route in Google Earth',
+  tbFlyTitle: 'Save a Google Earth tour of the route (~5000 ft AGL)',
+  tbShowReturn: 'Show return path',
+  tbShowReturnTitle: 'Show return-direction (outbound) info',
+  tbShowMidLeg: 'Show leg dist',
+  tbShowMidLegTitle: 'Show distance badge at the middle of each leg',
+  tbHighlightDiff: 'Highlight alt/speed diff',
+  tbHighlightDiffTitle: 'Halo legs whose altitude or speed differs from the adjacent leg',
+  tbShowNavWp: 'Show Nav Waypoints',
+  tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
+  tbShowWpNames: 'Show Waypoint names',
+  tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
+  tbTransparency: 'Transparency',
+  tbTransparencyTitle: 'Opacity of label backgrounds',
+  tbMapOpacity: 'Map opacity',
+  tbMapOpacityTitle: 'Base map brightness',
+  tbWpSize: 'Waypoint size',
+  tbWpSizeTitle: 'Waypoint circle and name size',
+  tbMagVar: 'Mag var',
+  tbMagVarTitle: 'Signed offset added to true heading. Negative = east variation; positive = west.',
+  tbPageA3Title: 'A3 print page',
+  tbPageA4Title: 'A4 print page',
+  tbPrint: '⬇ Save PNG',
+  tbPrintTitle: 'Save the framed map + route as a PNG',
+  inspCloseTitle: 'Close',
+  inspCloseLabel: 'Close',
 }, window.S || {});
+
+// Fill data-i18n / data-i18n-title / data-i18n-placeholder / data-i18n-aria
+// attributes from S. Called once after S is resolved.
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = S[el.dataset.i18n] || '';
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    el.title = S[el.dataset.i18nTitle] || '';
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = S[el.dataset.i18nPlaceholder] || '';
+  });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+    el.setAttribute('aria-label', S[el.dataset.i18nAria] || '');
+  });
+}
+applyI18n();
 
 // --- model -----------------------------------------------------------
 const state = {
