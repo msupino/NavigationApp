@@ -82,6 +82,16 @@ function propagateAlt(i, key, newVal, oldVal) {
   }
 }
 
+// Remove waypoint k and the leg beside it, so the remaining legs keep
+// their altitudes / speeds aligned with the route geometry.
+function deleteWaypoint(k) {
+  state.waypoints.splice(k, 1);
+  if (state.legs.length) {
+    state.legs.splice(Math.min(k, state.legs.length - 1), 1);
+  }
+  syncLegs();
+}
+
 function showInspector() {
   const insp = document.getElementById('inspector');
   const title = document.getElementById('insp-title');
@@ -149,9 +159,9 @@ function showInspector() {
     del.className = 'insp-btn';
     del.textContent = S.deleteWp;
     del.onclick = () => {
-      state.waypoints.splice(state.selected.index, 1);
+      deleteWaypoint(state.selected.index);
       state.selected = null;
-      syncLegs(); draw(); showInspector();
+      draw(); showInspector();
     };
     body.appendChild(del);
   }
@@ -348,9 +358,9 @@ window.addEventListener('keydown', e => {
   if (e.key === 'Delete' || e.key === 'Backspace') {
     if (!state.selected) return;
     if (state.selected.type === 'wp') {
-      state.waypoints.splice(state.selected.index, 1);
+      deleteWaypoint(state.selected.index);
       state.selected = null;
-      syncLegs(); draw(); showInspector();
+      draw(); showInspector();
     } else if (state.selected.type === 'note') {
       state.notes.splice(state.selected.index, 1);
       state.selected = null;
