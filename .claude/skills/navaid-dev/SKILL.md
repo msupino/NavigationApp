@@ -186,6 +186,8 @@ downloadable `route.json`.
 - **Staging deploy** = `git push origin dev`.
 - **Production deploy** = merge a `dev` → `main` pull request (`main` is
   branch-protected; the merge triggers the same workflow).
+  **Before merging**: delete `REVIEW.md` from repo root if it exists
+  (`git rm REVIEW.md && git commit`). It must not land in production.
 - **Always** bump `?v=N` on every changed `.js` and `style.css` in
   `index.html` before pushing.
 - Watch run status: `gh run list --workflow=deploy.yml --limit 5`.
