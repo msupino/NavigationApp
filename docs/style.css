@@ -160,13 +160,16 @@ html, body {
 #rotate-hdg {
   font: bold 11px/1 monospace;
   color: #231F20;
-  background: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.9);
+  border: 1px solid #9a9a9a;
   border-radius: 3px;
-  padding: 1px 3px;
-  min-width: 28px;
+  padding: 2px 3px;
+  width: 38px;
   text-align: center;
-  pointer-events: none;
+  -moz-appearance: textfield;
 }
+#rotate-hdg::-webkit-inner-spin-button,
+#rotate-hdg::-webkit-outer-spin-button { -webkit-appearance: none; }
 #rotate-dial {
   display: block;
   position: relative;
