@@ -379,13 +379,14 @@ document.getElementById('insp-close').onclick = () => {
   window.addEventListener('touchend', end);
   window.addEventListener('touchcancel', end);
 
-  try { localStorage.removeItem('navaid.toolbarCollapsed'); } catch (e) { /* */ }
+  const COLLAPSED_KEY = 'navaid.toolbarCollapsed';
 
   // collapse / expand the toolbar (keeps just the handle + toggle)
   const toggle = document.getElementById('toolbar-toggle');
   function setCollapsed(on) {
     bar.classList.toggle('collapsed', on);
     toggle.title = on ? S.expandMenu : S.collapseMenu;
+    try { localStorage.setItem(COLLAPSED_KEY, on ? '1' : '0'); } catch (e) { /* */ }
     if (bar.style.left) {                 // size changed -> keep on screen
       requestAnimationFrame(() =>
         setPos(parseFloat(bar.style.left), parseFloat(bar.style.top)));
@@ -399,7 +400,8 @@ document.getElementById('insp-close').onclick = () => {
       setCollapsed(!bar.classList.contains('collapsed'));
     }
   });
-  setCollapsed(true);
+  const sc = localStorage.getItem(COLLAPSED_KEY);
+  setCollapsed(sc === null ? true : sc === '1');
 
   window.addEventListener('resize', () => {
     if (bar.style.left) setPos(parseFloat(bar.style.left), parseFloat(bar.style.top));
