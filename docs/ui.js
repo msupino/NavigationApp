@@ -54,8 +54,7 @@ function mapBearing() { return map.getBearing ? map.getBearing() : 0; }
 function refreshDial() {
   const b = Math.round(mapBearing());
   rotNeedle.style.transform = 'rotate(' + b + 'deg)';
-  rotDial.title = 'Map rotation ' + (((b % 360) + 360) % 360) +
-                  '° — drag to rotate, double-click for north up';
+  rotDial.title = S.dialTitle((((b % 360) + 360) % 360));
 }
 function dialAngle(ev) {                 // 0 = north (up), clockwise positive
   const r = rotDial.getBoundingClientRect();
@@ -105,17 +104,19 @@ wpSearch.addEventListener('input', () => {
   const q = wpSearch.value.trim().toUpperCase();
   if (!q || !navWP) { closeSearch(); return; }
   const hits = navWP
-    .filter(w => w.name.toUpperCase().indexOf(q) >= 0)
+    .filter(w => w.name.toUpperCase().indexOf(q) >= 0 ||
+                 (w.he && w.he.indexOf(wpSearch.value.trim()) >= 0))
     .slice(0, 12);
   if (!hits.length) { closeSearch(); return; }
   wpResults.innerHTML = '';
+  const field = S.navWpSearchField;
   for (const w of hits) {
     const item = document.createElement('div');
     item.className = 'wp-search-item';
-    item.textContent = w.name;
+    item.textContent = w[field] || w.name;
     item.onclick = () => {
       map.setView([w.lat, w.lng], Math.max(map.getZoom(), 12));
-      wpSearch.value = w.name;
+      wpSearch.value = w[field] || w.name;
       closeSearch();
     };
     wpResults.appendChild(item);
@@ -150,7 +151,7 @@ document.getElementById('reverse').onclick = () => {
 };
 document.getElementById('clear').onclick = () => {
   if ((state.waypoints.length || state.notes.length) &&
-      !confirm('Remove all waypoints and notes?')) return;
+      !confirm(S.clearConfirm)) return;
   state.waypoints = [];
   state.legs = [];
   state.notes = [];
@@ -192,7 +193,7 @@ document.getElementById('wpname-cb').onchange = e => {
 document.getElementById('wpname-rot').onclick = e => {
   e.stopPropagation();                  // don't toggle the checkbox
   wpNameAngle = (wpNameAngle + 90) % 360;
-  e.currentTarget.title = 'Rotate waypoint names (now ' + wpNameAngle + '°)';
+  e.currentTarget.title = S.wpnameRotTitle(wpNameAngle);
   try { localStorage.setItem(WPANGLE_KEY, String(wpNameAngle)); }
   catch (err) { /* storage unavailable */ }
   draw();
@@ -352,8 +353,8 @@ document.getElementById('insp-close').onclick = () => {
   const COLLAPSE_KEY = 'navaid.toolbarCollapsed';
   function setCollapsed(on) {
     bar.classList.toggle('collapsed', on);
-    toggle.textContent = on ? '☰' : '▴';
-    toggle.title = on ? 'Expand menu' : 'Collapse menu';
+    toggle.textContent = '☰';
+    toggle.title = on ? S.expandMenu : S.collapseMenu;
     try { localStorage.setItem(COLLAPSE_KEY, on ? '1' : '0'); }
     catch (e) { /* storage unavailable */ }
     if (bar.style.left) {                 // size changed -> keep on screen

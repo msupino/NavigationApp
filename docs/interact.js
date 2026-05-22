@@ -93,20 +93,20 @@ function showInspector() {
   if (state.selected.type === 'leg') {
     const idx = state.selected.index;
     const leg = state.legs[idx];
-    title.value = 'Leg ' + (idx + 1);
+    title.value = S.legTitle(idx + 1);
     title.placeholder = '';
     title.readOnly = true;
     title.oninput = null;
-    body.appendChild(numberRow('Speed (kt)', leg.flightSpeed, v => {
+    body.appendChild(numberRow(S.speedKt, leg.flightSpeed, v => {
       leg.flightSpeed = v > 0 ? v : leg.flightSpeed; draw();
     }));
-    body.appendChild(numberRow('Inbound alt (ft)', leg.inboundAltitude, v => {
+    body.appendChild(numberRow(S.inboundAlt, leg.inboundAltitude, v => {
       const oldVal = leg.inboundAltitude;
       leg.inboundAltitude = Math.round(v);
       propagateAlt(idx, 'inboundAltitude', leg.inboundAltitude, oldVal);
       draw();
     }));
-    body.appendChild(numberRow('Outbound alt (ft)', leg.outboundAltitude, v => {
+    body.appendChild(numberRow(S.outboundAlt, leg.outboundAltitude, v => {
       const oldVal = leg.outboundAltitude;
       leg.outboundAltitude = Math.round(v);
       propagateAlt(idx, 'outboundAltitude', leg.outboundAltitude, oldVal);
@@ -121,16 +121,16 @@ function showInspector() {
     body.appendChild(textareaRow('', note.text || '', v => {
       note.text = v; draw();
     }));
-    body.appendChild(selectRow('Shape', note.shape || 'rect',
-      [['rect', 'Rectangle'], ['oval', 'Oval']], v => {
+    body.appendChild(selectRow(S.shape, note.shape || 'rect',
+      [['rect', S.shapeRect], ['oval', S.shapeOval]], v => {
         note.shape = v; draw();
       }));
-    body.appendChild(colorRow('Color', note.color || NOTE_DEFAULT_COLOR, v => {
+    body.appendChild(colorRow(S.color, note.color || NOTE_DEFAULT_COLOR, v => {
       note.color = v; draw();
     }));
     const del = document.createElement('button');
     del.className = 'insp-btn';
-    del.textContent = 'Delete note';
+    del.textContent = S.deleteNote;
     del.onclick = () => {
       state.notes.splice(state.selected.index, 1);
       state.selected = null;
@@ -140,14 +140,14 @@ function showInspector() {
   } else {
     const wp = state.waypoints[state.selected.index];
     title.value = wp.name || '';
-    title.placeholder = 'WP ' + (state.selected.index + 1);
+    title.placeholder = S.wpPrefix + (state.selected.index + 1);
     title.readOnly = false;
     title.oninput = () => { wp.name = title.value; draw(); };
-    body.appendChild(textRow('Latitude', fmtLatLng(wp.lat, 'N', 'S')));
-    body.appendChild(textRow('Longitude', fmtLatLng(wp.lng, 'E', 'W')));
+    body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
+    body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
     const del = document.createElement('button');
     del.className = 'insp-btn';
-    del.textContent = 'Delete waypoint';
+    del.textContent = S.deleteWp;
     del.onclick = () => {
       state.waypoints.splice(state.selected.index, 1);
       state.selected = null;
@@ -323,7 +323,7 @@ map.on('click', e => {
     state.selected = { type: 'wp', index: state.waypoints.length - 1 };
     showInspector(); draw();
   } else if (state.mode === 'note') {
-    state.notes.push({ lat: e.latlng.lat, lng: e.latlng.lng, text: 'Note' });
+    state.notes.push({ lat: e.latlng.lat, lng: e.latlng.lng, text: S.noteDefault });
     state.selected = { type: 'note', index: state.notes.length - 1 };
     showInspector(); draw();
   } else if (state.selected) {
