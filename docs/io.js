@@ -397,7 +397,10 @@ function flyRoute() {
   if (!confirm(S.flyConfirm)) {
     return;
   }
-  const AGL = 1524;                      // 5000 ft, in metres
+  const aglInput = prompt(S.flyAglPrompt, '2000');
+  if (aglInput === null) return;
+  const aglFt = Math.max(100, Math.min(20000, parseInt(aglInput, 10) || 2000));
+  const AGL = Math.round(aglFt * 0.3048);   // ft → metres
   const wps = state.waypoints;
   const esc = s => String(s).replace(/[<>&]/g,
     c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
