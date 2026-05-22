@@ -149,16 +149,20 @@ html, body {
   touch-action: none;
 }
 #rotate-dial.dragging { cursor: grabbing; }
-#rotate-dial::after {
-  content: 'N';
+#rotate-n {
   position: absolute;
-  top: 1px;
+  top: -1px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
+  line-height: 1;
   color: #333;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
 }
+#rotate-n:hover { background: #c0392b; color: #fff; }
 #rotate-needle {
   position: absolute;
   inset: 0;
