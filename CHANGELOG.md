@@ -6,6 +6,15 @@ pull requests; production is the `main` branch, staging is `dev`.
 
 ## In progress — dev (not yet merged)
 
+### Google Earth export — per-leg altitudes (#64)
+- The `.kml` export no longer prompts for a single AGL value. The route
+  line, waypoint placemarks, and flythrough camera all use the per-leg
+  altitudes from the flight plan (`altitudeMode=relativeToGround`).
+
+### Rotate dial — tap cycles 90° (#65)
+- Tapping the rotate dial steps the map bearing through 0° / 90° / 180° /
+  270° instead of always resetting to north. Drag still sets any angle.
+
 ### Bug-fix batch — issues #57–#62
 - Import validation: a route JSON with non-numeric coordinates is rejected
   with an error instead of silently blanking the map; the same guard

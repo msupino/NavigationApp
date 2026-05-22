@@ -97,7 +97,13 @@ rotDial.addEventListener('pointermove', e => {
   map.setBearing(((360 - dialAngle(e)) % 360 + 360) % 360);
 });
 function rotEnd() {
-  if (rotDragging && !rotMoved) map.setBearing(0);
+  if (rotDragging && !rotMoved) {
+    // Tap steps the bearing through 0° / 90° / 180° / 270°.
+    // From an off-axis angle the first tap snaps back to north.
+    const shown = (((360 - Math.round(mapBearing())) % 360) + 360) % 360;
+    const next = shown % 90 === 0 ? (shown + 90) % 360 : 0;
+    map.setBearing((360 - next) % 360);
+  }
   rotDragging = false;
   rotDial.classList.remove('dragging');
 }
