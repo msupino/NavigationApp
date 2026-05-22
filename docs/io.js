@@ -299,6 +299,9 @@ function exportPNG() {
   // Reset to north-up for axis-aligned tile compositing.
   if (exportBearing) map.setBearing(0);
 
+  // Screen position of nw/se after north-up reset — used for overlay transform.
+  const nwPx = map.latLngToContainerPoint([nw.lat, nw.lng]);
+  const sePx = map.latLngToContainerPoint([se.lat, se.lng]);
 
   // Always export at the layer's max native zoom; only step down if the
   // region is physically too large for one canvas.
@@ -360,17 +363,12 @@ function exportPNG() {
     // re-render the route into the export canvas. Web Mercator is a uniform
     // scale between zooms, so the on-screen projection scaled by s lines up
     // with the native-zoom tiles exactly.
-    // Overlay transform computed from pure projection math: unaffected by
-    // bearing-reset animation state or containerPoint round-trip errors.
-    const tilePerScreen = Math.pow(2, z - map.getZoom());
-    const centerTile = map.project(map.getCenter(), z);
-    const nwOx = vw() / 2 + (nwP.x - centerTile.x) / tilePerScreen;
-    const nwOy = vh() / 2 + (nwP.y - centerTile.y) / tilePerScreen;
+    const s = W / (sePx.x - nwPx.x);
     const prevOctx = octx;
     octx = o;
     o.save();
-    o.scale(tilePerScreen, tilePerScreen);
-    o.translate(-nwOx, -nwOy);
+    o.scale(s, s);
+    o.translate(-nwPx.x, -nwPx.y);
     drawNavWaypoints();
     drawLegs();
     drawWaypoints();
