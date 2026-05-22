@@ -80,7 +80,7 @@ function applyNavSnap(latlng, currentName) {
   }
   const snap = nearestNavWaypoint(latlng, 18);
   if (snap) {
-    return { lat: snap.lat, lng: snap.lng, name: snap.he || snap.name };
+    return { lat: snap.lat, lng: snap.lng, name: snap[S.navWpSearchField] || snap.name };
   }
   return { lat: latlng.lat, lng: latlng.lng,
            name: isNavName(currentName) ? '' : (currentName || '') };
