@@ -31,7 +31,11 @@ html, body {
   top: 12px;
   left: 12px;
   max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);       /* dynamic viewport on iOS Safari */
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;     /* momentum scroll on iOS */
+  overscroll-behavior: contain;          /* don't chain scroll to the map */
+  touch-action: pan-y;                   /* allow vertical swipe to scroll */
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -384,7 +388,8 @@ html, body {
 /* Mobile: bigger touch targets, roomier toolbar. */
 @media (max-width: 680px) {
   #toolbar { gap: 6px; top: 8px; left: 8px;
-             max-height: calc(100vh - 16px); }
+             max-height: calc(100vh - 16px);
+             max-height: calc(100dvh - 16px); }
   #toolbar button { padding: 9px 12px; font-size: 14px; }
   #toolbar .navtoggle { font-size: 14px; }
   #toolbar .navtoggle input { width: 18px; height: 18px; }
