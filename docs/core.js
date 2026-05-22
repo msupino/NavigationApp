@@ -19,7 +19,7 @@ try {
   }
 } catch (e) { /* storage unavailable */ }
 
-window.NavAid = { exporting: false, version: '1.259' };  // cross-file export flag (read by ui.js/io.js)
+window.NavAid = { exporting: false, version: '1.260' };  // cross-file export flag (read by ui.js/io.js)
 
 const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
 let magVar = -5;                       // signed offset added to true heading
@@ -125,6 +125,11 @@ window.S = Object.assign({
   tbPrintTitle: 'Save the framed map + route as a PNG',
   inspCloseTitle: 'Close',
   inspCloseLabel: 'Close',
+  tbSecEdit: '✏️ Edit',
+  tbSecMap: '🗺 Map',
+  tbSecRoute: '📋 Route',
+  tbSecDisplay: '👁 Display',
+  tbSecPrint: '🖨 Print',
 }, window.S || {});
 
 // Fill data-i18n / data-i18n-title / data-i18n-placeholder / data-i18n-aria
