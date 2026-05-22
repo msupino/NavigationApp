@@ -456,6 +456,26 @@ document.getElementById('insp-close').onclick = () => {
   });
 })();
 
+// --- section toggles -------------------------------------------------
+(function makeSectionToggle() {
+  document.querySelectorAll('.tb-section-head').forEach(head => {
+    const sec = head.closest('.tb-section');
+    const key = 'navaid.sec.' + sec.dataset.sec;
+    try {
+      if (localStorage.getItem(key) === '0') sec.classList.remove('open');
+    } catch (e) { /* storage unavailable */ }
+    function toggle() {
+      sec.classList.toggle('open');
+      try { localStorage.setItem(key, sec.classList.contains('open') ? '1' : '0'); }
+      catch (e) { /* storage unavailable */ }
+    }
+    head.addEventListener('click', toggle);
+    head.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+    });
+  });
+})();
+
 // --- boot ------------------------------------------------------------
 resizeOverlay();
 setMode(null);
