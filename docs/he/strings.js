@@ -32,6 +32,11 @@ window.S = {
   errInvalidRoute: function(msg) { return 'קובץ מסלול לא תקין: ' + msg; },
   errInvalidNavWaypoints: function(msg) { return 'נתוני ציוני ניווט לא תקינים: ' + msg; },
   errInvalidAirfields: function(msg) { return 'נתוני שדות תעופה לא תקינים: ' + msg; },
+  errSavedRouteCorrupt: function(msg) {
+    return 'לא ניתן לשחזר את המסלול השמור, לכן הנתונים המקוריים נשמרו ולא נדרסו. ' +
+      'ניתן לייצא או לבדוק את localStorage["navaid.route"] כדי לשחזר אותם.' +
+      (msg ? '\n\nפירוט: ' + msg : '');
+  },
   errNoLegs: 'אין קטעים עדיין — הוסף לפחות שני ציוני דרך תחילה.',
   flightPlan: 'תכנית טיסה',
   fpHeaders: ['#', 'מ-', 'אל-', 'כיוון', 'מרחק (NM)', 'מהירות (קשר)', 'גובה (ft)', 'זמן'],
