@@ -7,6 +7,8 @@ window.S = {
   noteDefault: 'הערה',
   errLoadFile: 'לא ניתן לטעון קובץ: ',
   errBadCoords: 'הקובץ מכיל קואורדינטות לא תקינות',
+  errInvalidRoute: function(msg) { return 'קובץ מסלול לא תקין: ' + msg; },
+  errInvalidNavWaypoints: function(msg) { return 'נתוני ציוני ניווט לא תקינים: ' + msg; },
   errNoLegs: 'אין קטעים עדיין — הוסף לפחות שני ציוני דרך תחילה.',
   flightPlan: 'תכנית טיסה',
   fpHeaders: ['#', 'מ-', 'אל-', 'כיוון', 'מרחק (NM)', 'מהירות (קשר)', 'גובה (ft)', 'זמן'],

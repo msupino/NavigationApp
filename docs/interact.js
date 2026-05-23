@@ -363,7 +363,9 @@ map.on('click', e => {
     state.selected = { type: 'wp', index: state.waypoints.length - 1 };
     showInspector(); draw();
   } else if (state.mode === 'note') {
-    state.notes.push({ lat: e.latlng.lat, lng: e.latlng.lng, text: S.noteDefault });
+    state.notes.push({ lat: e.latlng.lat, lng: e.latlng.lng,
+                       text: S.noteDefault, color: NOTE_DEFAULT_COLOR,
+                       shape: 'rect' });
     state.selected = { type: 'note', index: state.notes.length - 1 };
     showInspector(); draw();
   } else if (state.selected) {
