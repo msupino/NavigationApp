@@ -19,11 +19,11 @@ try {
   }
 } catch (e) { /* storage unavailable */ }
 
-// `version` is the source-of-truth semver; `-<short-sha>` is auto-appended
-// to it at deploy time by .github/workflows/deploy.yml so the displayed
-// toolbar string matches the cache-bust SHA in `?v=`. On localhost the
-// literal stays unchanged, which is fine.
-window.NavAid = { exporting: false, version: '1.269' };  // cross-file export flag (read by ui.js/io.js)
+// `version` is intentionally stable at 1.0; `-<short-sha>` is auto-appended
+// at deploy time by .github/workflows/deploy.yml so the displayed toolbar
+// string identifies the exact deployed commit. On localhost the literal stays
+// unchanged, which is fine.
+window.NavAid = { exporting: false, version: '1.0' };  // cross-file export flag (read by ui.js/io.js)
 
 const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
 let magVar = -5;                       // signed offset added to true heading
