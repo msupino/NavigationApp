@@ -59,6 +59,7 @@ function legLabelCenter(i, which) {
 function hitLegLabel(px, py) {
   for (let i = 0; i < state.legs.length; i++) {
     for (const which of ['in', 'out']) {
+      if (which === 'out' && !showReturn) continue;
       const c = legLabelCenter(i, which);
       if (c && Math.hypot(c.x - px, c.y - py) <= 34) return { i, which };
     }
