@@ -425,26 +425,37 @@ function exportPNG() {
     tyMin = Math.max(tyMin, Math.floor(cbNW.y / 256));
     tyMax = Math.min(tyMax, Math.floor(cbSE.y / 256));
   }
+  // Fetch each tile first so we can distinguish HTTP 404 (expected outside the
+  // chart's published coverage — e.g. flight-maps.com 404s on tiles outside
+  // Israel and adjacent VFR airspace) from real failures (network, CORS, 5xx,
+  // decode).  Only the latter count toward the "X of Y tiles failed" alert; a
+  // 404 just leaves the dark canvas backdrop showing in that area, matching
+  // what the user already sees on screen.
   const jobs = [];
   for (let tx = txMin; tx <= txMax; tx++) {
     for (let ty = tyMin; ty <= tyMax; ty++) {
       const url = L.Util.template(base._url,
         { z, x: tx, y: ty, s: subs[(tx + ty) % subs.length] });
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      const job = {
-        img,
-        dx: Math.round(tx * 256 - bbNWP.x),
-        dy: Math.round(ty * 256 - bbNWP.y),
-        done: new Promise(res => {
-          img.onload = res;
-          img.onerror = res;
-          setTimeout(res, 20000);
-        }),
-      };
-      img.src = corsOk ? url
+      const fetchUrl = corsOk ? url
         : 'https://images.weserv.nl/?url=' +
           encodeURIComponent(url.replace(/^https?:\/\//, ''));
+      const job = {
+        dx: Math.round(tx * 256 - bbNWP.x),
+        dy: Math.round(ty * 256 - bbNWP.y),
+        bmp: null,
+        failed: false,
+      };
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 20000);
+      job.done = fetch(fetchUrl, { signal: ctrl.signal })
+        .then(r => {
+          if (r.status === 404) return null;        // expected blank tile
+          if (!r.ok) { job.failed = true; return null; }
+          return r.blob().then(b => createImageBitmap(b));
+        })
+        .then(bmp => { job.bmp = bmp; })
+        .catch(() => { job.failed = true; })
+        .then(() => clearTimeout(timer));
       jobs.push(job);
     }
   }
@@ -452,10 +463,10 @@ function exportPNG() {
   Promise.all(jobs.map(j => j.done)).then(() => {
     let failed = 0;
     for (const j of jobs) {
-      if (j.img.naturalWidth) {
-        try { tc.drawImage(j.img, j.dx, j.dy, 256, 256); }
+      if (j.bmp) {
+        try { tc.drawImage(j.bmp, j.dx, j.dy, 256, 256); }
         catch (e) { failed++; }
-      } else {
+      } else if (j.failed) {
         failed++;
       }
     }
