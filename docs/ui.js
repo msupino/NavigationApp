@@ -61,7 +61,12 @@ function refreshDial() {
   if (document.activeElement !== rotHdg) rotHdg.value = b;
 }
 rotHdg.addEventListener('change', () => {
-  const v = ((parseInt(rotHdg.value, 10) % 360) + 360) % 360;
+  // Empty / non-numeric input would flow through as NaN and could persist
+  // 'NaN' to localStorage, breaking rotation until reload (issue #75).
+  // Snap the field back to the current dial value and bail out instead.
+  const raw = parseInt(rotHdg.value, 10);
+  if (!Number.isFinite(raw)) { refreshDial(); return; }
+  const v = ((raw % 360) + 360) % 360;
   rotHdg.value = v;
   map.setBearing((360 - v) % 360);
 });
@@ -111,8 +116,10 @@ rotDial.addEventListener('pointerup', () => rotEnd(true));
 rotDial.addEventListener('pointercancel', () => rotEnd(false));   // aborted — don't rotate
 const BEARING_KEY = 'navaid.bearing';
 try {
+  // Defensive: an older build (or a manual edit) may have stored "NaN".
+  // Number.isFinite rejects NaN / Infinity so we fall back to bearing 0.
   const sb = parseFloat(localStorage.getItem(BEARING_KEY));
-  if (!isNaN(sb)) map.setBearing(sb);
+  if (Number.isFinite(sb)) map.setBearing(sb);
 } catch (e) { /* storage unavailable */ }
 let bearingSaveTimer = null;
 map.on('rotate', () => {
@@ -122,7 +129,9 @@ map.on('rotate', () => {
   // value needs persisting.
   bearingSaveTimer = setTimeout(() => {
     bearingSaveTimer = null;
-    try { localStorage.setItem(BEARING_KEY, String(mapBearing())); }
+    const b = mapBearing();
+    if (!Number.isFinite(b)) return;     // never persist 'NaN' (issue #75)
+    try { localStorage.setItem(BEARING_KEY, String(b)); }
     catch (err) { /* storage unavailable */ }
   }, 400);
 });
