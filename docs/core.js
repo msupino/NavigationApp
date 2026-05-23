@@ -131,7 +131,7 @@ window.S = Object.assign({
   tbSecRoute: '📋 Route',
   tbSecDisplay: '👁 Display',
   tbSecPrint: '🖨 Print',
-  tbViewSource: 'View source',
+  tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
 }, window.S || {});
 
