@@ -217,7 +217,7 @@ function drawAirfields() {
     octx.stroke();
     if (showLabels) {
       const locale = af[S.airfieldLabelField] || af.en || af.name;
-      const label = af.name + (locale && locale !== af.name ? '  ' + locale : '');
+      const label = af.name + (locale && locale !== af.name ? ' / ' + locale : '');
       octx.lineWidth = 2.5;
       octx.strokeStyle = 'rgba(255,255,255,0.85)';
       octx.strokeText(label, s.x + r + 3, s.y);
