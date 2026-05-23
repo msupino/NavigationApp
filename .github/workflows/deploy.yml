@@ -13,7 +13,10 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # Queue runs instead of cancelling. Each commit must actually deploy
+  # because the staging URL is consumed by humans; cancelling intermediate
+  # runs in a fast burst makes commits silently skip the staging site.
+  cancel-in-progress: false
 
 jobs:
   build:

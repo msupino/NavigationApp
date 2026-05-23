@@ -11,7 +11,7 @@ Unity.
   (`{name, lat, lng}`); shipped, lazily fetched by the "Show Nav
   Waypoints" toggle.
 - `.github/workflows/deploy.yml` — Pages build + deploy.
-- `.claude/skills/plotter-dev/SKILL.md` — full developer guide.
+- `.claude/skills/navaid-dev/SKILL.md` — full developer guide.
   **Read this first** for any change to the app.
 
 ## Branches
@@ -28,13 +28,18 @@ both branches and assembles a single Pages site:
 
 ## Working rules for AI agents
 
-- Treat `.claude/skills/plotter-dev/SKILL.md` as the source of truth
+- Treat `.claude/skills/navaid-dev/SKILL.md` as the source of truth
   for architecture, state shape, persistence keys, and deploy
   mechanics.
 - **Always bump `?v=N` in `docs/index.html`** (both the `app.js` and
   `style.css` query strings) on any change to those files. Stale-cache
   bugs are the most common Pages footgun.
 - **Always run `node --check docs/app.js`** before committing.
+- If a push to `dev` / `main` doesn't trigger `Deploy` / `CI` within
+  ~30 s (admin bypass can swallow the event), dispatch manually:
+  `gh workflow run Deploy --ref dev` or `gh workflow run CI --ref dev`.
+  See `.claude/skills/navaid-dev/SKILL.md` "CI / Deploy gotchas" for
+  details.
 - Default deploy target during development is `dev` (staging). Only
   push to `main` when the change is reviewed and ready for
   production.
