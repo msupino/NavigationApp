@@ -491,7 +491,17 @@ document.getElementById('insp-close').onclick = () => {
 // --- boot ------------------------------------------------------------
 resizeOverlay();
 setMode(null);
-restoreRoute();
+// restoreRoute() returns 'corrupt' when the saved blob exists but is
+// unparseable / has invalid coords. Set a flag so persist() refuses to
+// overwrite the (potentially recoverable) blob with empty state — see #73.
+const _restoreResult = restoreRoute();
+if (_restoreResult === 'corrupt') {
+  NavAid.corruptCache = true;
+  console.warn(
+    'NavAid: saved route in localStorage is corrupt; not overwriting. ' +
+    'Inspect localStorage["navaid.route"] to recover, or add a waypoint / ' +
+    'import a route to start over.');
+}
 if (state.waypoints.length) fitView();   // always frame the restored route
 draw();
 // Always load nav-waypoints in the background — they power both the
