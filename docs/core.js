@@ -31,12 +31,15 @@ let magVar = -5;                       // signed offset added to true heading
 window.S = Object.assign({
   navWpUrl: 'nav-waypoints.json?v=3',  // resolved relative to index.html (docs/)
   navWpSearchField: 'name',            // which field to show/search in results
+  airfieldsUrl: 'airfields.json?v=1',  // resolved relative to index.html (docs/)
+  airfieldLabelField: 'en',            // which locale label to show on the overlay
   wpPrefix: 'WP ',
   noteDefault: 'Note',
   errLoadFile: 'Could not load file: ',
   errBadCoords: 'file has invalid waypoint coordinates',
   errInvalidRoute: function(msg) { return 'Invalid route file: ' + msg; },
   errInvalidNavWaypoints: function(msg) { return 'Invalid nav-waypoints data: ' + msg; },
+  errInvalidAirfields: function(msg) { return 'Invalid airfields data: ' + msg; },
   errNoLegs: 'No legs yet — drop at least two waypoints first.',
   flightPlan: 'Flight plan',
   fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time'],
@@ -110,6 +113,8 @@ window.S = Object.assign({
   tbHighlightDiffTitle: 'Halo legs whose altitude or speed differs from the adjacent leg',
   tbShowNavWp: 'Show Nav Waypoints',
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
+  tbShowAirfields: 'Show Airfields',
+  tbShowAirfieldsTitle: 'Overlay published Israeli airfields (BYOP source)',
   tbShowWpNames: 'Show Waypoint names',
   tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
   tbTransparency: 'Transparency',
@@ -170,6 +175,10 @@ let showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
 let navWP = null;           // null = not loaded yet (or last fetch failed —
                             // retry on next toggle / search call); [] or
                             // populated = last fetch resolved successfully.
+let showAirfields = true;   // Israeli airfields overlay (default on)
+let airfields = null;       // same null/[]/populated convention as navWP —
+                            // see loadAirfields() in draw.js. Entries:
+                            // { name, he, en, lat, lng, elev_ft, plates:[] }.
 let showWpNames = true;     // draw waypoint names (off = empty circle)
 let wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 let yellowAlpha = 1;        // global multiplier for yellow label backgrounds
