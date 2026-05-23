@@ -674,6 +674,7 @@ function exportPNG() {
     o.scale(s, s);
     o.translate(-fr.x, -fr.y);
     drawNavWaypoints();
+    drawAirfields();
     drawLegs();
     drawWaypoints();
     drawNotes();
@@ -825,6 +826,7 @@ function restoreRoute() {
   try {
     d = JSON.parse(raw);
   } catch (e) {
+    NavAid.corruptCacheError = e.message;
     return 'corrupt';                     // bad JSON — preserve raw blob (#73)
   }
   // Strict schema check — issue #101. Legacy saved blobs lacking a newer
@@ -832,7 +834,9 @@ function restoreRoute() {
   // 'corrupt' as the preserve-on-failure path from #73: the raw blob is
   // left untouched in localStorage and the boot continues with empty
   // state, so no user work is lost (they can hand-edit / re-import).
-  if (validateRoute(d) !== null) {
+  const verr = validateRoute(d);
+  if (verr !== null) {
+    NavAid.corruptCacheError = verr;
     return 'corrupt';
   }
   state.waypoints = d.waypoints.map(w => ({

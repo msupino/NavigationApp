@@ -545,10 +545,9 @@ setMode(null);
 const _restoreResult = restoreRoute();
 if (_restoreResult === 'corrupt') {
   NavAid.corruptCache = true;
-  console.warn(
-    'NavAid: saved route in localStorage is corrupt; not overwriting. ' +
-    'Inspect localStorage["navaid.route"] to recover, or add a waypoint / ' +
-    'import a route to start over.');
+  const msg = S.errSavedRouteCorrupt(NavAid.corruptCacheError || '');
+  console.warn('NavAid: ' + msg);
+  alert(msg);
 }
 if (state.waypoints.length) fitView();   // always frame the restored route
 draw();

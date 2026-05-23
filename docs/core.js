@@ -65,6 +65,11 @@ window.S = Object.assign({
   errInvalidRoute: function(msg) { return 'Invalid route file: ' + msg; },
   errInvalidNavWaypoints: function(msg) { return 'Invalid nav-waypoints data: ' + msg; },
   errInvalidAirfields: function(msg) { return 'Invalid airfields data: ' + msg; },
+  errSavedRouteCorrupt: function(msg) {
+    return 'Saved route could not be restored, so the original saved data was preserved. ' +
+      'Export or inspect localStorage["navaid.route"] to recover it.' +
+      (msg ? '\n\nDetails: ' + msg : '');
+  },
   errNoLegs: 'No legs yet — drop at least two waypoints first.',
   flightPlan: 'Flight plan',
   fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time'],
