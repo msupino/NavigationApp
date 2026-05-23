@@ -264,20 +264,22 @@ let downHit = false;
 
 map.on('mousedown', e => {
   const p = e.containerPoint;
-  const wp = hitWaypoint(p.x, p.y);
-  if (wp >= 0) {
-    downHit = true;
-    state.selected = { type: 'wp', index: wp };
-    drag = { kind: 'wp', i: wp, moved: false };
-    map.dragging.disable();
-    showInspector(); draw();
-    return;
-  }
+  // Hit-test priority matches paint order so the topmost element wins:
+  // notes are drawn above waypoints (draw.js), so test notes first (issue #71).
   const note = hitNote(p.x, p.y);
   if (note >= 0) {
     downHit = true;
     state.selected = { type: 'note', index: note };
     drag = { kind: 'note', i: note };
+    map.dragging.disable();
+    showInspector(); draw();
+    return;
+  }
+  const wp = hitWaypoint(p.x, p.y);
+  if (wp >= 0) {
+    downHit = true;
+    state.selected = { type: 'wp', index: wp };
+    drag = { kind: 'wp', i: wp, moved: false };
     map.dragging.disable();
     showInspector(); draw();
     return;
@@ -342,9 +344,15 @@ map.on('mousemove', e => {
   }
 });
 
-map.on('mouseup', () => {
+// Re-enable map dragging on release anywhere, not just inside the map.
+// Listening to map.on('mouseup') alone misses releases over the toolbar /
+// browser chrome and leaves the map permanently unpannable (issue #70).
+function endMouseDrag() {
   if (drag) { map.dragging.enable(); drag = null; }
-});
+}
+window.addEventListener('mouseup', endMouseDrag);
+window.addEventListener('pointerup', endMouseDrag);
+window.addEventListener('pointercancel', endMouseDrag);
 
 map.on('click', e => {
   if (downHit) { downHit = false; return; }
@@ -406,19 +414,21 @@ function touchXY(t) {
 mapEl.addEventListener('touchstart', e => {
   if (e.touches.length !== 1) return;
   const p = touchXY(e.touches[0]);
-  const wp = hitWaypoint(p.x, p.y);
-  const note = wp < 0 ? hitNote(p.x, p.y) : -1;
+  // Hit-test priority matches paint order so the topmost element wins:
+  // notes are drawn above waypoints (draw.js), so test notes first (issue #71).
+  const note = hitNote(p.x, p.y);
+  const wp = note < 0 ? hitWaypoint(p.x, p.y) : -1;
   const lab = (wp < 0 && note < 0) ? hitLegLabel(p.x, p.y) : null;
   const leg = (wp < 0 && note < 0 && !lab) ? hitLeg(p.x, p.y) : -1;
   const onPage = (wp < 0 && note < 0 && !lab && leg < 0 && pageSize)
     ? hitPageFrameEdge(p.x, p.y) : false;
 
-  if (wp >= 0) {
-    touchDrag = { kind: 'wp', i: wp };
-    state.selected = { type: 'wp', index: wp };
-  } else if (note >= 0) {
+  if (note >= 0) {
     touchDrag = { kind: 'note', i: note };
     state.selected = { type: 'note', index: note };
+  } else if (wp >= 0) {
+    touchDrag = { kind: 'wp', i: wp };
+    state.selected = { type: 'wp', index: wp };
   } else if (lab) {
     const f = legFrame(lab.i);
     touchDrag = { kind: 'label', i: lab.i, which: lab.which,
