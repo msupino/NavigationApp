@@ -161,12 +161,8 @@ const state = {
   mode: null,               // 'add' | 'note' | null (= inspect)
   selected: null,           // { type:'wp'|'leg'|'note', index }
 };
-// TODO: `showReturn` is now a no-op on the canvas — both inbound and outbound
-// (return) leg markers are always drawn so the mid-leg "kite" is always
-// visible. The toolbar checkbox + localStorage key are kept for backward
-// compatibility; consider removing the toggle in a follow-up UX pass.
-let showReturn = false;     // legacy toggle, no longer affects rendering
-let showMidLeg = false;     // mid-leg yellow distance pill (drawDistanceBadge)
+let showReturn = false;     // outbound (return) markers — off by default
+let showMidLeg = false;
 let highlightDiff = false;  // purple halo on legs that change altitude
 let showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
 let navWP = null;           // null = not loaded; [] = loaded empty/error
