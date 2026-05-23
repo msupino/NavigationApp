@@ -103,6 +103,6 @@ window.S = {
   tbSecRoute: '📋 מסלול',
   tbSecDisplay: '👁 תצוגה',
   tbSecPrint: '🖨 הדפסה',
-  tbViewSource: 'גיטהאב',
-  tbWiki: 'ויקי',
+  tbViewSource: 'GitHub',
+  tbWiki: 'Wiki',
 };
