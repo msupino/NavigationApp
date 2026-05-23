@@ -2,6 +2,145 @@
 /* NavAid — save/load, page setup, flight plan, PNG export, persistence.
    Shares globals with core.js; loaded after interact.js. */
 
+// --- schema validation ----------------------------------------------
+// Strict validation of every documented field on route JSON (file import
+// + localStorage restore) and on nav-waypoints.json. A typo like
+// `flghtSpeed` used to silently default; now it surfaces an alert that
+// names the offending field path so the JSON author can find it. Extra /
+// unknown fields at any level are silently allowed for forward-compat
+// with future schema additions (issue #101). Plain JS — no deps.
+function _vKind(value) {
+  if (Array.isArray(value)) return 'array';
+  if (value === null) return 'null';
+  return typeof value;                  // 'number' | 'string' | 'object' | …
+}
+// Push an error onto `errs` if `obj[key]` is missing or wrong-typed.
+// `type` is one of: 'number' | 'string' | 'object' | 'array' | 'shape'.
+// 'number' rejects NaN/Infinity; 'shape' allows exactly 'rect' | 'oval'.
+function _v(obj, key, type, path, errs) {
+  if (!obj || typeof obj !== 'object' || !(key in obj)) {
+    errs.push(path + '.' + key + ': missing');
+    return false;
+  }
+  const v = obj[key];
+  const k = _vKind(v);
+  if (type === 'number') {
+    if (k !== 'number' || !Number.isFinite(v)) {
+      errs.push(path + '.' + key + ': expected number, got ' + k);
+      return false;
+    }
+  } else if (type === 'string') {
+    if (k !== 'string') {
+      errs.push(path + '.' + key + ': expected string, got ' + k);
+      return false;
+    }
+  } else if (type === 'object') {
+    if (k !== 'object') {
+      errs.push(path + '.' + key + ': expected object, got ' + k);
+      return false;
+    }
+  } else if (type === 'array') {
+    if (k !== 'array') {
+      errs.push(path + '.' + key + ': expected array, got ' + k);
+      return false;
+    }
+  } else if (type === 'shape') {
+    if (v !== 'rect' && v !== 'oval') {
+      errs.push(path + '.' + key + ': expected "rect" or "oval", got ' +
+                JSON.stringify(v));
+      return false;
+    }
+  }
+  return true;
+}
+function validateRoute(d) {
+  const errs = [];
+  if (!d || typeof d !== 'object' || Array.isArray(d)) {
+    return 'root: expected object, got ' + _vKind(d);
+  }
+  const wpsOk   = _v(d, 'waypoints', 'array', 'root', errs);
+  const legsOk  = _v(d, 'legs',      'array', 'root', errs);
+  const notesOk = _v(d, 'notes',     'array', 'root', errs);
+  if (wpsOk) {
+    for (let i = 0; i < d.waypoints.length; i++) {
+      const p = 'waypoints[' + i + ']';
+      const w = d.waypoints[i];
+      if (_vKind(w) !== 'object') {
+        errs.push(p + ': expected object, got ' + _vKind(w));
+        continue;
+      }
+      _v(w, 'lat',  'number', p, errs);
+      _v(w, 'lng',  'number', p, errs);
+      _v(w, 'name', 'string', p, errs);
+    }
+  }
+  if (legsOk) {
+    for (let i = 0; i < d.legs.length; i++) {
+      const p = 'legs[' + i + ']';
+      const l = d.legs[i];
+      if (_vKind(l) !== 'object') {
+        errs.push(p + ': expected object, got ' + _vKind(l));
+        continue;
+      }
+      _v(l, 'inboundAltitude',  'number', p, errs);
+      _v(l, 'outboundAltitude', 'number', p, errs);
+      _v(l, 'flightSpeed',      'number', p, errs);
+      if (_v(l, 'inLabel',  'object', p, errs)) {
+        _v(l.inLabel,  'a', 'number', p + '.inLabel',  errs);
+        _v(l.inLabel,  'p', 'number', p + '.inLabel',  errs);
+      }
+      if (_v(l, 'outLabel', 'object', p, errs)) {
+        _v(l.outLabel, 'a', 'number', p + '.outLabel', errs);
+        _v(l.outLabel, 'p', 'number', p + '.outLabel', errs);
+      }
+    }
+  }
+  if (notesOk) {
+    for (let i = 0; i < d.notes.length; i++) {
+      const p = 'notes[' + i + ']';
+      const n = d.notes[i];
+      if (_vKind(n) !== 'object') {
+        errs.push(p + ': expected object, got ' + _vKind(n));
+        continue;
+      }
+      _v(n, 'lat',   'number', p, errs);
+      _v(n, 'lng',   'number', p, errs);
+      _v(n, 'text',  'string', p, errs);
+      _v(n, 'color', 'string', p, errs);
+      _v(n, 'shape', 'shape',  p, errs);
+    }
+  }
+  if (wpsOk && legsOk) {
+    const wlen = d.waypoints.length, llen = d.legs.length;
+    const expected = wlen === 0 ? 0 : wlen - 1;
+    if (llen !== expected) {
+      errs.push('legs: length ' + llen +
+                ' does not match waypoints.length - 1 (' + expected + ')');
+    }
+  }
+  return errs.length ? errs.join('; ') : null;
+}
+function validateNavWaypoints(d) {
+  const errs = [];
+  if (!d || typeof d !== 'object' || Array.isArray(d)) {
+    return 'root: expected object, got ' + _vKind(d);
+  }
+  if (!_v(d, 'waypoints', 'array', 'root', errs)) return errs.join('; ');
+  for (let i = 0; i < d.waypoints.length; i++) {
+    const p = 'waypoints[' + i + ']';
+    const w = d.waypoints[i];
+    if (_vKind(w) !== 'object') {
+      errs.push(p + ': expected object, got ' + _vKind(w));
+      continue;
+    }
+    _v(w, 'name', 'string', p, errs);
+    _v(w, 'he',   'string', p, errs);
+    _v(w, 'lat',  'number', p, errs);
+    _v(w, 'lng',  'number', p, errs);
+  }
+  return errs.length ? errs.join('; ') : null;
+}
+
 // --- save / load -----------------------------------------------------
 function save() {
   const data = {
@@ -30,36 +169,40 @@ function save() {
 function load(file) {
   const reader = new FileReader();
   reader.onload = () => {
+    let d;
     try {
-      const d = JSON.parse(reader.result);
-      const wps = (d.waypoints || []).map(w => ({
-        lat: +w.lat, lng: +w.lng, name: w.name || '',
-      }));
-      const notes = (d.notes || []).map(n => ({
-        lat: +n.lat, lng: +n.lng, text: n.text || '', color: n.color || '',
-        shape: n.shape === 'oval' ? 'oval' : 'rect',
-      }));
-      if (wps.concat(notes).some(
-            p => !Number.isFinite(p.lat) || !Number.isFinite(p.lng))) {
-        throw new Error(S.errBadCoords);
-      }
-      state.waypoints = wps;
-      state.legs = (d.legs || []).map(l => ({
-        inboundAltitude: l.inboundAltitude ?? 2000,
-        outboundAltitude: l.outboundAltitude ?? 2000,
-        flightSpeed: l.flightSpeed > 0 ? l.flightSpeed : 90,
-        inLabel: normLegLabel(l.inLabel, 44),
-        outLabel: normLegLabel(l.outLabel, -44),
-      }));
-      state.notes = notes;
-      syncLegs();
-      state.selected = null;
-      showInspector();
-      fitView();
-      draw();
+      d = JSON.parse(reader.result);
     } catch (err) {
       alert(S.errLoadFile + err.message);
+      return;
     }
+    // Strict schema check before applying any state — issue #101. Any
+    // missing / mistyped field bails out with a field-path-naming alert
+    // so the JSON author can find the typo. Extras are silently allowed.
+    const verr = validateRoute(d);
+    if (verr) {
+      alert(S.errInvalidRoute(verr));
+      return;
+    }
+    state.waypoints = d.waypoints.map(w => ({
+      lat: w.lat, lng: w.lng, name: w.name,
+    }));
+    state.legs = d.legs.map(l => ({
+      inboundAltitude: l.inboundAltitude,
+      outboundAltitude: l.outboundAltitude,
+      flightSpeed: l.flightSpeed,
+      inLabel:  { a: l.inLabel.a,  p: l.inLabel.p  },
+      outLabel: { a: l.outLabel.a, p: l.outLabel.p },
+    }));
+    state.notes = d.notes.map(n => ({
+      lat: n.lat, lng: n.lng,
+      text: n.text, color: n.color, shape: n.shape,
+    }));
+    syncLegs();
+    state.selected = null;
+    showInspector();
+    fitView();
+    draw();
   };
   reader.readAsText(file);
 }
@@ -643,32 +786,35 @@ function restoreRoute() {
     return false;                         // storage unavailable
   }
   if (!raw) return false;
+  let d;
   try {
-    const d = JSON.parse(raw);
-    const wps = (d.waypoints || []).map(w => ({
-      lat: +w.lat, lng: +w.lng, name: w.name || '',
-    }));
-    const notes = (d.notes || []).map(n => ({
-      lat: +n.lat, lng: +n.lng, text: n.text || '', color: n.color || '',
-      shape: n.shape === 'oval' ? 'oval' : 'rect',
-    }));
-    if (wps.concat(notes).some(
-          p => !Number.isFinite(p.lat) || !Number.isFinite(p.lng))) {
-      return 'corrupt';                   // bad coords — preserve raw blob
-    }
-    state.waypoints = wps;
-    state.legs = (d.legs || []).map(l => ({
-      inboundAltitude: l.inboundAltitude ?? 2000,
-      outboundAltitude: l.outboundAltitude ?? 2000,
-      flightSpeed: l.flightSpeed > 0 ? l.flightSpeed : 90,
-      inLabel: normLegLabel(l.inLabel, 44),
-      outLabel: normLegLabel(l.outLabel, -44),
-    }));
-    state.notes = notes;
-    syncLegs();
-    return true;
+    d = JSON.parse(raw);
   } catch (e) {
-    return 'corrupt';                     // bad JSON — preserve raw blob
+    return 'corrupt';                     // bad JSON — preserve raw blob (#73)
   }
+  // Strict schema check — issue #101. Legacy saved blobs lacking a newer
+  // field (e.g. notes added later) will fail here. The caller treats
+  // 'corrupt' as the preserve-on-failure path from #73: the raw blob is
+  // left untouched in localStorage and the boot continues with empty
+  // state, so no user work is lost (they can hand-edit / re-import).
+  if (validateRoute(d) !== null) {
+    return 'corrupt';
+  }
+  state.waypoints = d.waypoints.map(w => ({
+    lat: w.lat, lng: w.lng, name: w.name,
+  }));
+  state.legs = d.legs.map(l => ({
+    inboundAltitude: l.inboundAltitude,
+    outboundAltitude: l.outboundAltitude,
+    flightSpeed: l.flightSpeed,
+    inLabel:  { a: l.inLabel.a,  p: l.inLabel.p  },
+    outLabel: { a: l.outLabel.a, p: l.outLabel.p },
+  }));
+  state.notes = d.notes.map(n => ({
+    lat: n.lat, lng: n.lng,
+    text: n.text, color: n.color, shape: n.shape,
+  }));
+  syncLegs();
+  return true;
 }
 
