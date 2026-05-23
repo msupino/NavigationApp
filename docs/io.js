@@ -568,6 +568,14 @@ function flyRoute() {
 const STORE_KEY = 'navaid.route';
 let persistTimer = null;
 function persist() {
+  // When boot detected a corrupt saved blob (issue #73), refuse to overwrite
+  // it with the empty in-memory state — that's silent data loss. Once the
+  // user adds a waypoint / note the state is no longer empty and the normal
+  // save path resumes, replacing the corrupt blob with their new work.
+  if (NavAid.corruptCache &&
+      state.waypoints.length === 0 &&
+      state.legs.length === 0 &&
+      state.notes.length === 0) return;
   if (persistTimer) return;
   persistTimer = setTimeout(() => {
     persistTimer = null;
@@ -581,10 +589,21 @@ function persist() {
     } catch (e) { /* storage unavailable */ }
   }, 500);
 }
+// Returns one of:
+//   true       — saved route restored into state.
+//   false      — no saved route (clean first-time boot, safe to persist).
+//   'corrupt'  — a saved blob exists but is unparseable or has bad coords;
+//                state is left empty and the blob is preserved on disk so
+//                the user can copy it out (issue #73).
 function restoreRoute() {
+  let raw = null;
   try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return false;
+    raw = localStorage.getItem(STORE_KEY);
+  } catch (e) {
+    return false;                         // storage unavailable
+  }
+  if (!raw) return false;
+  try {
     const d = JSON.parse(raw);
     const wps = (d.waypoints || []).map(w => ({
       lat: +w.lat, lng: +w.lng, name: w.name || '',
@@ -595,7 +614,7 @@ function restoreRoute() {
     }));
     if (wps.concat(notes).some(
           p => !Number.isFinite(p.lat) || !Number.isFinite(p.lng))) {
-      return false;                       // corrupt cache — start empty
+      return 'corrupt';                   // bad coords — preserve raw blob
     }
     state.waypoints = wps;
     state.legs = (d.legs || []).map(l => ({
@@ -609,7 +628,7 @@ function restoreRoute() {
     syncLegs();
     return true;
   } catch (e) {
-    return false;
+    return 'corrupt';                     // bad JSON — preserve raw blob
   }
 }
 
