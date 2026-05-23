@@ -1,0 +1,73 @@
+name: CI
+
+# Lint / static checks for the static web app. Enforces the rules
+# AGENTS.md describes (node --check, JSON parse, consistent ?v=N) so
+# PRs into main / dev can't ship broken JS or stale cache busts.
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: JS syntax check (node --check)
+        run: |
+          set -e
+          for f in docs/core.js docs/draw.js docs/interact.js docs/io.js docs/ui.js docs/sw.js docs/he/strings.js docs/en/strings.js; do
+            echo "node --check $f"
+            node --check "$f"
+          done
+
+      - name: JSON validation
+        run: |
+          set -e
+          for f in docs/manifest.json docs/nav-waypoints.json; do
+            echo "validating $f"
+            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'));"
+          done
+
+      - name: XML validation (sitemap.xml, BingSiteAuth.xml)
+        run: |
+          set -e
+          python3 -c "import xml.etree.ElementTree as ET; ET.parse('docs/sitemap.xml'); print('sitemap.xml ok')"
+          python3 -c "import xml.etree.ElementTree as ET; ET.parse('docs/BingSiteAuth.xml'); print('BingSiteAuth.xml ok')"
+
+      - name: HTML well-formedness (html-validate)
+        run: npx --yes html-validate@8 --formatter=stylish docs/index.html docs/en/index.html docs/he/index.html
+
+      - name: Cache-bust consistency (?v=N in docs/index.html)
+        run: |
+          vs=$(grep -oE '\?v=[0-9]+' docs/index.html | sort -u)
+          n=$(printf "%s\n" "$vs" | wc -l | tr -d ' ')
+          if [ "$n" -gt 1 ]; then
+            echo "Inconsistent ?v= values in docs/index.html:"
+            printf "%s\n" "$vs"
+            exit 1
+          fi
+          echo "cache-bust ok: $vs"
+
+      - name: Service worker cache name sanity (docs/sw.js)
+        run: |
+          if ! grep -qE "^const CACHE = 'navaid-v[0-9]+';" docs/sw.js; then
+            echo "docs/sw.js is missing the expected 'const CACHE = \"navaid-vN\"' constant."
+            echo "Found:"
+            grep -nE "CACHE" docs/sw.js || true
+            exit 1
+          fi
+          line=$(grep -E "^const CACHE = 'navaid-v[0-9]+';" docs/sw.js)
+          echo "sw cache ok: $line"
