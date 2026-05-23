@@ -343,8 +343,20 @@ html, body {
 }
 #insp-title::placeholder { color: #8a8484; }
 #insp-title:read-only { cursor: default; }
-#insp-title:not(:read-only):hover,
-#insp-title:not(:read-only):focus { color: #fff; }
+#insp-title.editable {
+  background: #241f1f;
+  border: 1px solid #5a5353;
+  border-radius: 5px;
+  padding: 4px 7px;
+  cursor: text;
+}
+#insp-title.editable:hover,
+#insp-title.editable:focus {
+  color: #fff;
+  border-color: #7a706f;
+  background: #2b2626;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
 #insp-close {
   font: inherit;
   font-size: 18px;
