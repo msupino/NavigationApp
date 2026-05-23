@@ -198,6 +198,28 @@ downloadable `route.json`.
   Fix them on `dev` the same way as any other bug — one commit per issue,
   close with `Fixes #N` in the commit message.
 
+## CI / Deploy gotchas
+
+- Both `CI` (`.github/workflows/ci.yml`) and `Deploy`
+  (`.github/workflows/deploy.yml`) have `workflow_dispatch:`. Manual
+  trigger: `gh workflow run CI --ref dev` /
+  `gh workflow run Deploy --ref dev`.
+- **Admin-bypass pushes can silently swallow workflow events.** Pushing
+  to `dev` / `main` as a repo admin while branch protection has required
+  status checks pending records a "Bypassed rule violations" entry but
+  the push event sometimes fails to fire `Deploy` or `CI`. If no run
+  appears within ~30 s of a push (`gh run list --limit 5`), dispatch
+  manually with the commands above.
+- Prefer landing changes via PRs — `pull_request` events fire reliably,
+  no admin bypass needed. Direct push to `dev` is allowed but is the
+  source of the missed-run bug above.
+- Deploy uses `concurrency: { group: pages, cancel-in-progress: false }`
+  so a fast burst of pushes queues runs instead of cancelling them; do
+  not flip `cancel-in-progress` back to `true` — staging deploys are
+  consumed by humans and each commit must actually publish.
+- Cache-bust check (also enforced by CI's `lint` job): every `?v=N` in
+  `docs/index.html` must agree on N. See AGENTS.md for the full rule.
+
 ## Notes / pending
 
 - flight-maps.com tiles are a third-party service; the CVFR data is
