@@ -37,10 +37,31 @@ window.S = Object.assign({
   navWpSearchField: 'name',            // which field to show/search in results
   airfieldsUrl: 'airfields.json?v=1',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
-  wpPrefix: 'WP ',
+
+  // --- Waypoint terminology -------------------------------------------
+  // Rule: use the full word "Waypoint" (Title Case) in all user-facing
+  // English strings — buttons, toggles, tooltips, dialogs. The single
+  // exception is `wpPrefix`, the tight inline fallback label for unnamed
+  // waypoints ("WP 3" / "נק׳ 3" in the inspector and flight plan) where
+  // the abbreviation is intentional; DO NOT expand it to "Waypoint 3".
+  wpPrefix: 'WP ',                                  // short prefix for unnamed waypoints — see rule above
+  summaryWaypoints: 'Waypoints',                    // stats panel total
+  tbAddWp: '✏️ Add Waypoint',                        // toolbar Edit button
+  tbAddWpTitle: 'Click map to drop a waypoint (click button again to stop)',
+  tbShowWpNames: 'Show Waypoint Names',             // Display toggle
+  tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
+  tbWpSize: 'Waypoint Size',                        // Display slider label
+  tbWpSizeTitle: 'Waypoint circle and name size',
+  tbShowNavWp: 'Show Navigation Waypoints',         // Map overlay toggle
+  tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
+  tbSearchPlaceholder: '🔍 Find Navigation Waypoint',
+  deleteWp: 'Delete Waypoint',                      // inspector button
+  clearConfirm: 'Remove all waypoints and notes?',
+  errBadCoords: 'file has invalid waypoint coordinates',
+  // --- end Waypoint terminology ---------------------------------------
+
   noteDefault: 'Note',
   errLoadFile: 'Could not load file: ',
-  errBadCoords: 'file has invalid waypoint coordinates',
   errInvalidRoute: function(msg) { return 'Invalid route file: ' + msg; },
   errInvalidNavWaypoints: function(msg) { return 'Invalid nav-waypoints data: ' + msg; },
   errInvalidAirfields: function(msg) { return 'Invalid airfields data: ' + msg; },
@@ -69,15 +90,12 @@ window.S = Object.assign({
   shapeOval: 'Oval',
   color: 'Color',
   deleteNote: 'Delete note',
-  deleteWp: 'Delete waypoint',
   latitude: 'Latitude',
   longitude: 'Longitude',
   dialTitle: function(b) { return 'Map rotation ' + b + '° — drag to rotate, click for north up'; },
   wpnameRotTitle: function(a) { return 'Rotate waypoint names (now ' + a + '°)'; },
-  clearConfirm: 'Remove all waypoints and notes?',
   expandMenu: 'Expand menu',
   collapseMenu: 'Collapse menu',
-  summaryWaypoints: 'Waypoints',
   summaryLegs: 'Legs',
   summaryDist: 'Distance',
   summaryTime: 'Total time',
@@ -88,13 +106,10 @@ window.S = Object.assign({
                  'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap' },
   // Toolbar static strings — filled into DOM by applyI18n() on boot
   tbHandleTitle: 'Drag to move',
-  tbAddWp: '✏️ Add Waypoint',
-  tbAddWpTitle: 'Click map to drop a waypoint (click button again to stop)',
   tbAddNote: '📝 Add Note',
   tbAddNoteTitle: 'Click map to drop a note (click button again to stop)',
   tbLayerLabel: 'Layer',
   tbLayerTitle: 'Base map layer',
-  tbSearchPlaceholder: '🔍 Find nav waypoint',
   tbReverse: '⇄ Reverse Route',
   tbReverseTitle: 'Reverse route order',
   tbClear: '🗑 Clear map',
@@ -115,18 +130,12 @@ window.S = Object.assign({
   tbShowMidLegTitle: 'Show distance badge at the middle of each leg',
   tbHighlightDiff: 'Highlight alt/speed diff',
   tbHighlightDiffTitle: 'Halo legs whose altitude or speed differs from the adjacent leg',
-  tbShowNavWp: 'Show Nav Waypoints',
-  tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbShowAirfields: 'Show Airfields',
   tbShowAirfieldsTitle: 'Overlay published Israeli airfields (BYOP source)',
-  tbShowWpNames: 'Show Waypoint names',
-  tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
-  tbTransparency: 'WP Transparency',
+  tbTransparency: 'Label Transparency',
   tbTransparencyTitle: 'Opacity of waypoint / leg / note label backgrounds',
   tbMapOpacity: 'Map opacity',
   tbMapOpacityTitle: 'Base map brightness',
-  tbWpSize: 'Waypoint size',
-  tbWpSizeTitle: 'Waypoint circle and name size',
   tbLegArrowSize: 'Leg arrow size',
   tbLegArrowSizeTitle: 'Leg info marker (heading / altitude / time) size',
   tbMagVar: 'Mag var',
