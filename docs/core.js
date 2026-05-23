@@ -19,7 +19,7 @@ try {
   }
 } catch (e) { /* storage unavailable */ }
 
-window.NavAid = { exporting: false, version: '1.268' };  // cross-file export flag (read by ui.js/io.js)
+window.NavAid = { exporting: false, version: '1.269' };  // cross-file export flag (read by ui.js/io.js)
 
 const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
 let magVar = -5;                       // signed offset added to true heading
