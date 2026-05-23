@@ -380,9 +380,29 @@ function exportPNG() {
   // directly; flight-maps.com tiles need the weserv proxy to add CORS headers.
   const subs = base.options.subdomains || 'abc';
   const corsOk = base.options.corsOk;
+
+  // Clip the tile grid to the chart's published coverage when the layer
+  // declares one (flight-maps.com layers only cover Israel + adjacent VFR
+  // airspace).  Tiles outside that box return 404, which used to be reported
+  // as "X of Y map tiles failed to load" even though they are expected blanks
+  // outside the chart.  Areas outside chartBounds simply stay as the dark
+  // canvas background, which matches what the user sees on screen.
+  let txMin = Math.floor(bbNWP.x / 256);
+  let txMax = Math.floor(bbSEP.x / 256);
+  let tyMin = Math.floor(bbNWP.y / 256);
+  let tyMax = Math.floor(bbSEP.y / 256);
+  const cb = base.options.chartBounds;
+  if (cb) {
+    const cbNW = map.project([cb.north, cb.west], z);
+    const cbSE = map.project([cb.south, cb.east], z);
+    txMin = Math.max(txMin, Math.floor(cbNW.x / 256));
+    txMax = Math.min(txMax, Math.floor(cbSE.x / 256));
+    tyMin = Math.max(tyMin, Math.floor(cbNW.y / 256));
+    tyMax = Math.min(tyMax, Math.floor(cbSE.y / 256));
+  }
   const jobs = [];
-  for (let tx = Math.floor(bbNWP.x / 256); tx <= Math.floor(bbSEP.x / 256); tx++) {
-    for (let ty = Math.floor(bbNWP.y / 256); ty <= Math.floor(bbSEP.y / 256); ty++) {
+  for (let tx = txMin; tx <= txMax; tx++) {
+    for (let ty = tyMin; ty <= tyMax; ty++) {
       const url = L.Util.template(base._url,
         { z, x: tx, y: ty, s: subs[(tx + ty) % subs.length] });
       const img = new Image();
