@@ -200,10 +200,10 @@ downloadable `route.json`.
   need to bump it per commit. CI lint still enforces that every `?v=`
   value in the source HTML agrees.
 - **Toolbar version SHA suffix is automatic.** The same Deploy step
-  also rewrites `version: 'x.y'` → `version: 'x.y-<short-sha>'` in
-  `docs/core.js`, so the toolbar shows e.g. `v1.269-80965ca` matching
-  the cache-bust SHA. Authors keep the bare semver in source; the
-  regex is idempotent (matches both `'x.y'` and `'x.y-anything'`).
+  also rewrites `version: '1.0'` → `version: '1.0-<short-sha>'` in
+  `docs/core.js`, so the toolbar identifies the exact deployed commit.
+  Do not manually increase the source version number; the regex is
+  idempotent (matches both `'x.y'` and `'x.y-anything'`).
 - Watch run status: `gh run list --workflow=deploy.yml --limit 5`.
 - **GitHub issues**: a review agent files bugs as GitHub issues on this
   repo. Check open issues at the start of a session:
