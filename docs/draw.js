@@ -173,12 +173,13 @@ function drawLegs() {
     drawLegArrow(mid.x + dx * inP.a + nx * inP.p, mid.y + dy * inP.a + ny * inP.p,
       ang, pad3(magIn), timeStr, String(leg.inboundAltitude),
       '#2f6fd0', yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
-    if (showReturn) {
-      drawLegArrow(mid.x + dx * outP.a + nx * outP.p,
-        mid.y + dy * outP.a + ny * outP.p, ang + Math.PI,
-        pad3(magOut), timeStr, String(leg.outboundAltitude),
-        '#c0392b', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
-    }
+    // Both inbound and outbound (return) leg markers are always drawn so the
+    // mid-leg "kite" (inbound pennant above the leg + return pennant below)
+    // is always visible. The `showReturn` toolbar toggle no longer gates this.
+    drawLegArrow(mid.x + dx * outP.a + nx * outP.p,
+      mid.y + dy * outP.a + ny * outP.p, ang + Math.PI,
+      pad3(magOut), timeStr, String(leg.outboundAltitude),
+      '#c0392b', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
   }
 }
