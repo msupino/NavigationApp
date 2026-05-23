@@ -5,10 +5,30 @@ window.S = {
   navWpSearchField: 'he',
   airfieldsUrl: 'airfields.json?v=1',
   airfieldLabelField: 'he',
-  wpPrefix: 'נק׳ ',
+
+  // --- Waypoint terminology -------------------------------------------
+  // Mirrors the English cluster in core.js — keep the noun phrase
+  // "ציון דרך" / "ציוני דרך" consistent across UI strings. `wpPrefix`
+  // is the intentional short form ("נק׳ 3") used as a fallback inline
+  // label for unnamed waypoints; do not expand it.
+  wpPrefix: 'נק׳ ',                                  // קיצור לתווית מילוט של נקודות בלי שם
+  summaryWaypoints: 'ציוני דרך',                     // פאנל סטטיסטיקה
+  tbAddWp: '✏️ הוסף ציון דרך',                       // כפתור עריכה בסרגל
+  tbAddWpTitle: 'לחץ על המפה להוספת ציון דרך (לחץ שוב לעצירה)',
+  tbShowWpNames: 'הצג שמות ציוני דרך',              // מתג בקטע תצוגה
+  tbShowWpNamesTitle: 'הצג שמות ציוני דרך (כבוי = עיגול ריק)',
+  tbWpSize: 'גודל ציון דרך',                         // מחוון בקטע תצוגה
+  tbWpSizeTitle: 'גודל ציון דרך ושמו',
+  tbShowNavWp: 'הצג ציוני ניווט',                    // מתג שכבת מפה
+  tbShowNavWpTitle: 'הצג ציוני דיווח VFR ישראלים',
+  tbSearchPlaceholder: '🔍 חפש ציון ניווטי',
+  deleteWp: 'מחק ציון דרך',                          // כפתור באינספקטור
+  clearConfirm: 'להסיר את כל ציוני הדרך וההערות?',
+  errBadCoords: 'הקובץ מכיל קואורדינטות לא תקינות',
+  // --- end Waypoint terminology ---------------------------------------
+
   noteDefault: 'הערה',
   errLoadFile: 'לא ניתן לטעון קובץ: ',
-  errBadCoords: 'הקובץ מכיל קואורדינטות לא תקינות',
   errInvalidRoute: function(msg) { return 'קובץ מסלול לא תקין: ' + msg; },
   errInvalidNavWaypoints: function(msg) { return 'נתוני ציוני ניווט לא תקינים: ' + msg; },
   errInvalidAirfields: function(msg) { return 'נתוני שדות תעופה לא תקינים: ' + msg; },
@@ -38,15 +58,12 @@ window.S = {
   shapeOval: 'אליפסה',
   color: 'צבע',
   deleteNote: 'מחק הערה',
-  deleteWp: 'מחק ציון דרך',
   latitude: 'קו רוחב',
   longitude: 'קו אורך',
   dialTitle: function(b) { return 'סיבוב מפה ' + b + '° — גרור לסיבוב, לחץ לצפון'; },
   wpnameRotTitle: function(a) { return 'סובב שמות ציוני דרך (כיום ' + a + '°)'; },
-  clearConfirm: 'להסיר את כל ציוני הדרך וההערות?',
   expandMenu: 'פתח תפריט',
   collapseMenu: 'כווץ תפריט',
-  summaryWaypoints: 'ציוני דרך',
   summaryLegs: 'קטעים',
   summaryDist: 'מרחק',
   summaryTime: 'זמן כולל',
@@ -56,13 +73,10 @@ window.S = {
   layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'ניווט', 'Low Alt': 'גובה נמוך',
                  'Helicopters': 'מסוקים', 'Satellite': 'לוויין', 'OpenStreetMap': 'OpenStreetMap' },
   tbHandleTitle: 'גרור להזזה',
-  tbAddWp: '✏️ הוסף ציון דרך',
-  tbAddWpTitle: 'לחץ על המפה להוספת ציון דרך (לחץ שוב לעצירה)',
   tbAddNote: '📝 הוסף הערה',
   tbAddNoteTitle: 'לחץ על המפה להוספת הערה (לחץ שוב לעצירה)',
   tbLayerLabel: 'שכבה',
   tbLayerTitle: 'שכבת מפה בסיסית',
-  tbSearchPlaceholder: '🔍 חפש ציון ניווטי',
   tbReverse: '⇄ הפוך מסלול',
   tbReverseTitle: 'הפוך סדר מסלול',
   tbClear: '🗑 נקה מפה',
@@ -83,18 +97,12 @@ window.S = {
   tbShowMidLegTitle: 'הצג מרחק באמצע כל קטע',
   tbHighlightDiff: 'הדגש הפרש גובה/מהירות',
   tbHighlightDiffTitle: 'הדגש קטעים עם הפרש גובה או מהירות',
-  tbShowNavWp: 'הצג ציוני ניווט',
-  tbShowNavWpTitle: 'הצג ציוני דיווח VFR ישראלים',
   tbShowAirfields: 'הצג שדות תעופה',
   tbShowAirfieldsTitle: 'הצג שדות תעופה ישראלים מפורסמים (מקור BYOP)',
-  tbShowWpNames: 'הצג שמות ציוני דרך',
-  tbShowWpNamesTitle: 'הצג שמות ציוני דרך (כבוי = עיגול ריק)',
   tbTransparency: 'שקיפות תוויות',
   tbTransparencyTitle: 'שקיפות רקע תוויות (נקודות, קטעים, הערות)',
   tbMapOpacity: 'מפת רקע',
   tbMapOpacityTitle: 'בהירות מפת הרקע',
-  tbWpSize: 'גודל ציון דרך',
-  tbWpSizeTitle: 'גודל ציון דרך ושמו',
   tbLegArrowSize: 'גודל חץ קטע',
   tbLegArrowSizeTitle: 'גודל מחוון המידע של קטע (כיוון / גובה / זמן)',
   tbMagVar: 'נטייה מגנטית',
