@@ -199,6 +199,11 @@ downloadable `route.json`.
   SHA. The source-HTML `?v=N` value is just a placeholder; you don't
   need to bump it per commit. CI lint still enforces that every `?v=`
   value in the source HTML agrees.
+- **Toolbar version SHA suffix is automatic.** The same Deploy step
+  also rewrites `version: 'x.y'` → `version: 'x.y-<short-sha>'` in
+  `docs/core.js`, so the toolbar shows e.g. `v1.269-80965ca` matching
+  the cache-bust SHA. Authors keep the bare semver in source; the
+  regex is idempotent (matches both `'x.y'` and `'x.y-anything'`).
 - Watch run status: `gh run list --workflow=deploy.yml --limit 5`.
 - **GitHub issues**: a review agent files bugs as GitHub issues on this
   repo. Check open issues at the start of a session:
