@@ -23,6 +23,8 @@ window.S = {
   errNeedWps: 'הוסף לפחות שני ציוני דרך תחילה.',
   flyConfirm: 'טוס את המסלול ב-Google Earth Pro (שולחן עבודה).\n\nלחץ אישור כדי לשמור את קובץ הסיור (.kml), ואז פתח אותו ב-Google Earth — הסיור "Fly the route" יופיע תחת Places; לחץ הפעל לטיסה מעל הקרקע.\n\nאין Google Earth? הורד חינם: google.com/earth/versions',
   legTitle: function(n) { return 'קטע ' + n; },
+  legArrow: '←',
+
   speedKt: 'מהירות (קשר)',
   inboundAlt: 'גובה נכנס (ft)',
   outboundAlt: 'גובה יוצא (ft)',

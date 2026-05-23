@@ -92,6 +92,27 @@ function deleteWaypoint(k) {
   syncLegs();
 }
 
+// Compose the leg-inspector title from the names of its endpoints, e.g.
+// "TLV → NETANYA" (LTR) / "TLV ← NETANYA" (RTL). Falls back to the sequence
+// label (`WP N` / `נק׳ N`) for unnamed waypoints, and to the legacy
+// "Leg N" string if the adjacent waypoints can't be resolved.
+function legPairTitle(idx) {
+  try {
+    const a = state.waypoints[idx];
+    const b = state.waypoints[idx + 1];
+    if (!a || !b) return S.legTitle(idx + 1);
+    const labelFor = (wp, i) => {
+      const raw = (wp.name || '').trim();
+      const loc = raw ? (navName(raw) || raw).trim() : '';
+      return loc || (S.wpPrefix + (i + 1));
+    };
+    const arrow = S.legArrow || '→';
+    return labelFor(a, idx) + ' ' + arrow + ' ' + labelFor(b, idx + 1);
+  } catch (e) {
+    return S.legTitle(idx + 1);
+  }
+}
+
 function showInspector() {
   const insp = document.getElementById('inspector');
   const title = document.getElementById('insp-title');
@@ -103,7 +124,7 @@ function showInspector() {
   if (state.selected.type === 'leg') {
     const idx = state.selected.index;
     const leg = state.legs[idx];
-    title.value = S.legTitle(idx + 1);
+    title.value = legPairTitle(idx);
     title.placeholder = '';
     title.readOnly = true;
     title.oninput = null;
