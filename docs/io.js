@@ -463,6 +463,8 @@ function exportPNG() {
     // Draw the tile canvas onto the output, rotated by the map bearing so the
     // result matches the screen view.  The frame centre in tile-canvas space
     // maps to the output centre; rotation is clockwise by exportBearing.
+    // globalAlpha honours the Map-opacity slider so dim tiles on screen also
+    // export dim; overlays drawn after restore() stay at full alpha.
     const fcP = map.project([frameCenterLL.lat, frameCenterLL.lng], z);
     const fcx = fcP.x - bbNWP.x;
     const fcy = fcP.y - bbNWP.y;
@@ -470,6 +472,7 @@ function exportPNG() {
     o.translate(W / 2, H / 2);
     o.rotate(exportBearing * Math.PI / 180);
     o.translate(-fcx, -fcy);
+    o.globalAlpha = (typeof mapOpacity === 'number') ? mapOpacity : 1;
     o.drawImage(tileCanvas, 0, 0);
     o.restore();
 
