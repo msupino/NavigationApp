@@ -16,9 +16,10 @@ function draw() {
 
 // --- nav-waypoint reference overlay ---------------------------------
 // Lazy-loads docs/nav-waypoints.json on first activation. Format:
-// { waypoints:[{ name, lat, lng }] } — 256 published reporting points.
-// (Old GeoJSON-style entries with `coord:[lng,lat]` are also accepted
-// as a fallback if a stale cache returns them.)
+// { waypoints:[{ name, he, lat, lng }] } — 256 published reporting points.
+// Validated strictly by validateNavWaypoints() (issue #101): every
+// documented field must be present and well-typed; extras are silently
+// allowed for forward-compat.
 async function loadNavWaypoints() {
   if (navWP !== null) return navWP;
   try {
@@ -27,11 +28,17 @@ async function loadNavWaypoints() {
     const res = await fetch(S.navWpUrl);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const d = await res.json();
-    navWP = (d.waypoints || []).map(w => ({
+    const verr = validateNavWaypoints(d);
+    if (verr) {
+      console.warn('nav-waypoints schema error:', verr);
+      alert(S.errInvalidNavWaypoints(verr));
+      return [];
+    }
+    navWP = d.waypoints.map(w => ({
       name: w.name,
-      he: w.he || '',                    // Hebrew label (English kept for search)
-      lat: w.lat ?? (w.coord && w.coord[1]),
-      lng: w.lng ?? (w.coord && w.coord[0]),
+      he: w.he,                          // Hebrew label (English kept for search)
+      lat: w.lat,
+      lng: w.lng,
     }));
     return navWP;
   } catch (e) {
