@@ -495,7 +495,7 @@ function flyRoute() {
     pad + '  <latitude>' + wps[i].lat + '</latitude>\n' +
     pad + '  <altitude>' + altM(i) + '</altitude>\n' +
     pad + '  <heading>' + heading(i).toFixed(1) + '</heading>\n' +
-    pad + '  <tilt>85</tilt>\n' +
+    pad + '  <tilt>45</tilt>\n' +
     pad + '  <roll>0</roll>\n' +
     pad + '  <altitudeMode>absolute</altitudeMode>\n' +
     pad + '</Camera>\n';
