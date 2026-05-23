@@ -311,6 +311,31 @@ function exportPNG() {
   }
   if (!base || !base._url) { NavAid.exporting = false; return; }
 
+  // Lock map interaction for the duration of the async tile fetch.  The
+  // route overlay is composited using live proj() after the awaited tiles
+  // resolve; if the user panned / zoomed / rotated during "Saving…", the
+  // overlay would drift relative to the captured tile bounding box and the
+  // saved PNG would be misaligned (issue #74). Remember each handler's
+  // pre-export state so we restore exactly what the user had.
+  const _handlers = ['dragging', 'scrollWheelZoom', 'doubleClickZoom',
+                     'touchZoom', 'boxZoom', 'keyboard', 'touchRotate'];
+  const _handlerWas = {};
+  for (const h of _handlers) {
+    if (map[h] && typeof map[h].enabled === 'function' && map[h].enabled()) {
+      _handlerWas[h] = true;
+      map[h].disable();
+    }
+  }
+  // The rotate dial is a Leaflet control that calls map.setBearing directly,
+  // so the handlers above don't cover it — block pointer events too.
+  const _rotEl = document.querySelector('.rotate-ctrl');
+  const _prevRotPE = _rotEl ? _rotEl.style.pointerEvents : '';
+  if (_rotEl) _rotEl.style.pointerEvents = 'none';
+  function unlockMap() {
+    for (const h in _handlerWas) map[h].enable();
+    if (_rotEl) _rotEl.style.pointerEvents = _prevRotPE;
+  }
+
   // Geographic centre of the frame (stays constant regardless of bearing).
   const frameCenterLL = map.containerPointToLatLng([fr.x + fr.w / 2, fr.y + fr.h / 2]);
 
@@ -466,6 +491,7 @@ function exportPNG() {
     out.toBlob(b => {
       btn.textContent = btnLabel;
       btn.disabled = false;
+      unlockMap();
       NavAid.exporting = false;
       if (!b) { alert(S.errPngFail); return; }
       const a = document.createElement('a');
