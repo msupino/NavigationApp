@@ -25,4 +25,20 @@
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
+  <url>
+    <loc>https://msupino.github.io/NavigationApp/en/</loc>
+    <xhtml:link rel="alternate" hreflang="he" href="https://msupino.github.io/NavigationApp/?lang=he"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://msupino.github.io/NavigationApp/?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://msupino.github.io/NavigationApp/"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://msupino.github.io/NavigationApp/he/</loc>
+    <xhtml:link rel="alternate" hreflang="he" href="https://msupino.github.io/NavigationApp/?lang=he"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://msupino.github.io/NavigationApp/?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://msupino.github.io/NavigationApp/"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
 </urlset>
