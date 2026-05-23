@@ -140,6 +140,41 @@ function validateNavWaypoints(d) {
   }
   return errs.length ? errs.join('; ') : null;
 }
+// Strict schema for docs/airfields.json — { airfields:[{ name, he, en, lat,
+// lng, elev_ft, plates:[string] }] }. Mirrors validateNavWaypoints; the
+// loader in draw.js bails out with an alert that names the offending field
+// path so the JSON author can find the typo. Extras at any level are
+// silently allowed for forward-compat (issue #101).
+function validateAirfields(d) {
+  const errs = [];
+  if (!d || typeof d !== 'object' || Array.isArray(d)) {
+    return 'root: expected object, got ' + _vKind(d);
+  }
+  if (!_v(d, 'airfields', 'array', 'root', errs)) return errs.join('; ');
+  for (let i = 0; i < d.airfields.length; i++) {
+    const p = 'airfields[' + i + ']';
+    const a = d.airfields[i];
+    if (_vKind(a) !== 'object') {
+      errs.push(p + ': expected object, got ' + _vKind(a));
+      continue;
+    }
+    _v(a, 'name',    'string', p, errs);
+    _v(a, 'he',      'string', p, errs);
+    _v(a, 'en',      'string', p, errs);
+    _v(a, 'lat',     'number', p, errs);
+    _v(a, 'lng',     'number', p, errs);
+    _v(a, 'elev_ft', 'number', p, errs);
+    if (_v(a, 'plates', 'array', p, errs)) {
+      for (let j = 0; j < a.plates.length; j++) {
+        if (typeof a.plates[j] !== 'string') {
+          errs.push(p + '.plates[' + j + ']: expected string, got ' +
+                    _vKind(a.plates[j]));
+        }
+      }
+    }
+  }
+  return errs.length ? errs.join('; ') : null;
+}
 
 // --- save / load -----------------------------------------------------
 function save() {
