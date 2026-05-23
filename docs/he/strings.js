@@ -22,6 +22,9 @@ window.S = {
   tbShowNavWp: 'הצג ציוני ניווט',                    // מתג שכבת מפה
   tbShowNavWpTitle: 'הצג ציוני דיווח VFR ישראלים',
   tbSearchPlaceholder: '🔍 חפש ציון ניווטי',
+  tbSearchHint: 'טיפ: הקלד קודים מופרדים ברווח (למשל BAZRA GNYAM TLV) ולחץ Enter לבניית מסלול.',
+  errSearchUnknown: function(t) { return 'ציון ניווט לא מוכר: ' + t; },
+  searchReplaceConfirm: 'להחליף את המסלול הנוכחי בציוני הדרך האלה?',
   deleteWp: 'מחק ציון דרך',                          // כפתור באינספקטור
   clearConfirm: 'להסיר את כל ציוני הדרך וההערות?',
   errBadCoords: 'הקובץ מכיל קואורדינטות לא תקינות',
