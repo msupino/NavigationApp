@@ -165,7 +165,9 @@ let showReturn = false;     // outbound (return) markers — off by default
 let showMidLeg = false;
 let highlightDiff = false;  // purple halo on legs that change altitude
 let showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
-let navWP = null;           // null = not loaded; [] = loaded empty/error
+let navWP = null;           // null = not loaded yet (or last fetch failed —
+                            // retry on next toggle / search call); [] or
+                            // populated = last fetch resolved successfully.
 let showWpNames = true;     // draw waypoint names (off = empty circle)
 let wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 let yellowAlpha = 1;        // global multiplier for yellow label backgrounds

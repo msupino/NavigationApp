@@ -33,11 +33,14 @@ async function loadNavWaypoints() {
       lat: w.lat ?? (w.coord && w.coord[1]),
       lng: w.lng ?? (w.coord && w.coord[0]),
     }));
+    return navWP;
   } catch (e) {
+    // Leave navWP === null so a subsequent toggle / search / snap call can
+    // retry — assigning [] would make the early-return guard short-circuit
+    // forever and disable nav waypoints for the whole session (issue #72).
     console.warn('Failed to load nav waypoints:', e);
-    navWP = [];
+    return [];
   }
-  return navWP;
 }
 
 // Closest nav waypoint within `pxThreshold` screen pixels of `latlng`,
