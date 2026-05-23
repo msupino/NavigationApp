@@ -104,4 +104,5 @@ window.S = {
   tbSecDisplay: '👁 תצוגה',
   tbSecPrint: '🖨 הדפסה',
   tbViewSource: 'קוד מקור',
+  tbWiki: 'ויקי',
 };

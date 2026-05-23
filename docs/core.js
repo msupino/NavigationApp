@@ -132,6 +132,7 @@ window.S = Object.assign({
   tbSecDisplay: '👁 Display',
   tbSecPrint: '🖨 Print',
   tbViewSource: 'View source',
+  tbWiki: 'Wiki',
 }, window.S || {});
 
 // Fill data-i18n / data-i18n-title / data-i18n-placeholder / data-i18n-aria
