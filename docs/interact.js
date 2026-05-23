@@ -327,7 +327,8 @@ map.on('mousemove', e => {
     const ddx = p.x - drag.lx, ddy = p.y - drag.ly;
     drag.lx = p.x; drag.ly = p.y;
     const leg = state.legs[drag.i];
-    const o = drag.which === 'in' ? leg.inLabel : leg.outLabel;
+    const o = leg && (drag.which === 'in' ? leg.inLabel : leg.outLabel);
+    if (!o) return;                    // malformed leg / label — issue #82
     o.a += ddx * drag.dx + ddy * drag.dy;
     o.p += ddx * drag.nx + ddy * drag.ny;
     draw();
@@ -454,7 +455,8 @@ mapEl.addEventListener('touchmove', e => {
     const ddx = p.x - touchDrag.lx, ddy = p.y - touchDrag.ly;
     touchDrag.lx = p.x; touchDrag.ly = p.y;
     const leg = state.legs[touchDrag.i];
-    const o = touchDrag.which === 'in' ? leg.inLabel : leg.outLabel;
+    const o = leg && (touchDrag.which === 'in' ? leg.inLabel : leg.outLabel);
+    if (!o) return;                    // malformed leg / label — issue #82
     o.a += ddx * touchDrag.dx + ddy * touchDrag.dy;
     o.p += ddx * touchDrag.nx + ddy * touchDrag.ny;
     draw();

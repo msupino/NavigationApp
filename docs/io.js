@@ -48,8 +48,8 @@ function load(file) {
         inboundAltitude: l.inboundAltitude ?? 2000,
         outboundAltitude: l.outboundAltitude ?? 2000,
         flightSpeed: l.flightSpeed > 0 ? l.flightSpeed : 90,
-        inLabel: l.inLabel || { a: 0, p: 44 },
-        outLabel: l.outLabel || { a: 0, p: -44 },
+        inLabel: normLegLabel(l.inLabel, 44),
+        outLabel: normLegLabel(l.outLabel, -44),
       }));
       state.notes = notes;
       syncLegs();
@@ -582,8 +582,8 @@ function restoreRoute() {
       inboundAltitude: l.inboundAltitude ?? 2000,
       outboundAltitude: l.outboundAltitude ?? 2000,
       flightSpeed: l.flightSpeed > 0 ? l.flightSpeed : 90,
-      inLabel: l.inLabel || { a: 0, p: 44 },
-      outLabel: l.outLabel || { a: 0, p: -44 },
+      inLabel: normLegLabel(l.inLabel, 44),
+      outLabel: normLegLabel(l.outLabel, -44),
     }));
     state.notes = notes;
     syncLegs();
