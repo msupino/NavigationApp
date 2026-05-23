@@ -35,6 +35,8 @@ window.S = Object.assign({
   noteDefault: 'Note',
   errLoadFile: 'Could not load file: ',
   errBadCoords: 'file has invalid waypoint coordinates',
+  errInvalidRoute: function(msg) { return 'Invalid route file: ' + msg; },
+  errInvalidNavWaypoints: function(msg) { return 'Invalid nav-waypoints data: ' + msg; },
   errNoLegs: 'No legs yet — drop at least two waypoints first.',
   flightPlan: 'Flight plan',
   fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time'],
