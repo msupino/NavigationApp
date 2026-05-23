@@ -147,8 +147,8 @@ html, body {
   border-radius: 1px;
 }
 #toolbar-toggle:hover { color: #fff; }
-/* Collapsed: keep the drag handle, the toggle, the language picker, and the repo link visible. */
-#toolbar.collapsed > *:not(#toolbar-handle):not(#toolbar-toggle):not(#lang-toggle):not(#repo-link) {
+/* Collapsed: keep the drag handle, the toggle, the language picker, and the footer links visible. */
+#toolbar.collapsed > *:not(#toolbar-handle):not(#toolbar-toggle):not(#lang-toggle):not(#footer-links) {
   display: none;
 }
 
@@ -437,22 +437,28 @@ html, body {
   user-select: none;
 }
 
-/* GitHub repo link — footer link below the route-info totals. */
-#toolbar > .repo-link {
-  display: inline-flex;
+/* Footer links row — small repo / wiki links below the route-info totals. */
+#toolbar > #footer-links {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  align-self: flex-start;
+  gap: 4px 12px;
   margin-top: 2px;
   padding: 4px 6px 6px;
   border-top: 1px solid #3a3636;
+}
+#toolbar .footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   color: #8a8484;
   text-decoration: none;
+  white-space: nowrap;
 }
-#toolbar > .repo-link:hover { color: #e8e8e8; }
-#toolbar > .repo-link .repo-link-icon { flex: none; opacity: 0.85; }
-#toolbar > .repo-link:hover .repo-link-icon { opacity: 1; }
+#toolbar .footer-link:hover { color: #e8e8e8; }
+#toolbar .footer-link .footer-link-icon { flex: none; opacity: 0.85; }
+#toolbar .footer-link:hover .footer-link-icon { opacity: 1; }
 
 /* Print (browser Cmd+P): drop the UI, keep the map + route overlay. */
 @media print {
