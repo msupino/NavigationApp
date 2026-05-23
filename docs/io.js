@@ -301,6 +301,7 @@ function exportPNG() {
   NavAid.exporting = true;
   const exportBearing = map.getBearing ? map.getBearing() : 0;
 
+  const framed = !!pageFrameRect();
   const fr = pageFrameRect() || { x: 0, y: 0, w: vw(), h: vh() };
   if (fr.w < 4 || fr.h < 4) { NavAid.exporting = false; return; }
 
@@ -323,15 +324,31 @@ function exportPNG() {
   const bbSEll = { lat: Math.min(c0.lat, c1.lat, c2.lat, c3.lat),
                    lng: Math.max(c0.lng, c1.lng, c2.lng, c3.lng) };
 
-  // Zoom down until the bounding box fits in one canvas.
-  const maxZ = base.options.maxNativeZoom || base.options.maxZoom || 13;
+  // Choose a starting tile zoom.  Framed exports (A3 / A4) target maximum
+  // print quality at the layer's max native zoom.  Without a frame the export
+  // covers the entire viewport; rendering that at max native zoom can balloon
+  // into hundreds of tiles, and the weserv image proxy rate-limits enough of
+  // them that the result has blank patches.  Mirror the on-screen tile zoom
+  // instead so the export matches what the user sees and the tile count stays
+  // bounded by the viewport size.
+  const nativeMax = base.options.maxNativeZoom || base.options.maxZoom || 13;
+  const maxZ = framed
+    ? nativeMax
+    : Math.min(nativeMax, Math.max(7, Math.round(map.getZoom())));
+
+  // Zoom down until the bounding box fits in one canvas AND the parallel tile
+  // count stays within what the proxy will reliably serve.  ~300 tiles ≈ a
+  // 17×17 grid which the weserv proxy handles without dropping requests; the
+  // floor of 7 keeps even very large rotated frames under the cap.
+  const MAX_TILES = 300;
   let z = maxZ, bbNWP, bbSEP, Wbb, Hbb;
-  for (z = maxZ; z >= 9; z--) {
+  for (z = maxZ; z >= 7; z--) {
     bbNWP = map.project([bbNWll.lat, bbNWll.lng], z);
     bbSEP = map.project([bbSEll.lat, bbSEll.lng], z);
     Wbb = Math.round(bbSEP.x - bbNWP.x);
     Hbb = Math.round(bbSEP.y - bbNWP.y);
-    if (Wbb <= 10000 && Hbb <= 10000) break;
+    const tiles = Math.ceil(Wbb / 256) * Math.ceil(Hbb / 256);
+    if (Wbb <= 10000 && Hbb <= 10000 && tiles <= MAX_TILES) break;
   }
 
   // Output canvas: same physical size as the frame at the chosen tile zoom.
