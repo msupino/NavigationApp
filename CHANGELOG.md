@@ -4,7 +4,7 @@ Browser-based CVFR flight-route planner (Israel area). HTML5 + Leaflet,
 no build step. Hosted on GitHub Pages. Summary is drawn from the merged
 pull requests; production is the `main` branch, staging is `dev`.
 
-## v1.269
+## v1.0
 
 ### Toolbar UX
 - Language picker (`🌐`) lifted out of the Edit section so it stays
