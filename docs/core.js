@@ -243,7 +243,14 @@ function fmtLatLng(v, pos, neg) {
 
 // --- Leaflet map -----------------------------------------------------
 // Layer set mirrors ifl.flight-maps.com (excluding Israel Hiking).
-const TILE = { minZoom: 6, maxZoom: 16, maxNativeZoom: 13 };
+// chartBounds = the lat/lng box that flight-maps.com actually publishes
+// tiles for (Israel + adjacent VFR airspace).  exportPNG uses it to skip
+// out-of-coverage tile fetches, which would otherwise return 404 and trip
+// the "X of Y map tiles failed to load" warning when the viewport extends
+// past the chart (the typical case at low zoom).
+const FM_BOUNDS = { south: 28.3, west: 33.7, north: 34.3, east: 36.6 };
+const TILE = { minZoom: 6, maxZoom: 16, maxNativeZoom: 13,
+               chartBounds: FM_BOUNDS };
 const FM_ATTR =
   'Charts © <a href="https://flight-maps.com">flight-maps.com</a> · CAAI';
 const layers = {
