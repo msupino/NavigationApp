@@ -23,9 +23,16 @@ python3 -m http.server -d docs 8000
 
 ## License & data
 
-Charts are © flight-maps.com / CAAI — public deploys need permission.
-Imagery: © Esri (World Imagery). Map data: © OpenStreetMap
-contributors. VFR reporting points: ICAO/CAAI public AIP data.
+NavAid (the source code) is released under the [MIT License](LICENSE) — do
+whatever you want, no warranty, no liability.
+
+Data layers retain their own terms: charts are © flight-maps.com / CAAI
+(public deploys need permission); imagery is © Esri (World Imagery); map data
+is © OpenStreetMap contributors; VFR reporting points are derived from the
+[ForeFlight Israel Base Pack](https://www.foreflightisrael.xyz/) /
+ICAO / CAAI public AIP data.
+
+NavAid is a planning aid only and is not certified for primary navigation.
 
 ---
 
