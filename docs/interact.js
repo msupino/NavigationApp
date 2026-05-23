@@ -118,6 +118,7 @@ function showInspector() {
   const title = document.getElementById('insp-title');
   const body = document.getElementById('insp-body');
   body.innerHTML = '';
+  title.classList.remove('editable');
   if (!state.selected) { insp.classList.add('hidden'); return; }
   insp.classList.remove('hidden');
 
@@ -173,6 +174,7 @@ function showInspector() {
     title.value = wp.name || '';
     title.placeholder = S.wpPrefix + (state.selected.index + 1);
     title.readOnly = false;
+    title.classList.add('editable');
     title.oninput = () => { wp.name = title.value; draw(); };
     body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
