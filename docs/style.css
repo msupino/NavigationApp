@@ -147,8 +147,8 @@ html, body {
   border-radius: 1px;
 }
 #toolbar-toggle:hover { color: #fff; }
-/* Collapsed: keep the drag handle, the toggle, and the language picker visible. */
-#toolbar.collapsed > *:not(#toolbar-handle):not(#toolbar-toggle):not(#lang-toggle) {
+/* Collapsed: keep the drag handle, the toggle, the language picker, and the repo link visible. */
+#toolbar.collapsed > *:not(#toolbar-handle):not(#toolbar-toggle):not(#lang-toggle):not(#repo-link) {
   display: none;
 }
 
@@ -436,6 +436,23 @@ html, body {
   padding: 2px 6px 4px;
   user-select: none;
 }
+
+/* GitHub repo link — footer link below the route-info totals. */
+#toolbar > .repo-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 4px 6px 6px;
+  border-top: 1px solid #3a3636;
+  font-size: 11px;
+  color: #8a8484;
+  text-decoration: none;
+}
+#toolbar > .repo-link:hover { color: #e8e8e8; }
+#toolbar > .repo-link .repo-link-icon { flex: none; opacity: 0.85; }
+#toolbar > .repo-link:hover .repo-link-icon { opacity: 1; }
 
 /* Print (browser Cmd+P): drop the UI, keep the map + route overlay. */
 @media print {

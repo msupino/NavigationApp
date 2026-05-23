@@ -131,6 +131,7 @@ window.S = Object.assign({
   tbSecRoute: '📋 Route',
   tbSecDisplay: '👁 Display',
   tbSecPrint: '🖨 Print',
+  tbViewSource: 'View source',
 }, window.S || {});
 
 // Fill data-i18n / data-i18n-title / data-i18n-placeholder / data-i18n-aria

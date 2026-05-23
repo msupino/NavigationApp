@@ -103,4 +103,5 @@ window.S = {
   tbSecRoute: '📋 מסלול',
   tbSecDisplay: '👁 תצוגה',
   tbSecPrint: '🖨 הדפסה',
+  tbViewSource: 'קוד מקור',
 };
