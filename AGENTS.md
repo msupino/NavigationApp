@@ -37,6 +37,11 @@ both branches and assembles a single Pages site:
   the source value itself doesn't need to be bumped per commit — it's
   just a placeholder kept consistent across `app.js` / `style.css` /
   `strings.js` references.
+- **Toolbar version SHA suffix is automatic at deploy time.** The
+  same Deploy step rewrites `NavAid.version` in `docs/core.js` from
+  `'x.y'` to `'x.y-<short-sha>'`, so the toolbar shows
+  e.g. `v1.269-80965ca` matching the cache-bust SHA. Source keeps the
+  bare semver.
 - **Always run `node --check docs/app.js`** before committing.
 - If a push to `dev` / `main` doesn't trigger `Deploy` / `CI` within
   ~30 s (admin bypass can swallow the event), dispatch manually:
