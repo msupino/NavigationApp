@@ -1,0 +1,305 @@
+{
+  "airfields": [
+    {
+      "name": "LLAR",
+      "he": "ערד",
+      "en": "Arad",
+      "lat": 31.22917,
+      "lng": 35.189037,
+      "elev_ft": 1952,
+      "plates": [
+        "LLAR_airport_CVFR.pdf",
+        "LLAR_airport_Chart.pdf",
+        "LLAR_airport_Circuit.pdf",
+        "LLAR_airport_Text.pdf"
+      ]
+    },
+    {
+      "name": "LLBG",
+      "he": "בן גוריון",
+      "en": "Tel Aviv / Ben Gurion",
+      "lat": 32.011398,
+      "lng": 34.8867,
+      "elev_ft": 135,
+      "plates": [
+        "LLBG_APPROACH_ILS 08.pdf",
+        "LLBG_APPROACH_ILS 12.pdf",
+        "LLBG_APPROACH_ILS 21.pdf",
+        "LLBG_APPROACH_ILS 26.pdf",
+        "LLBG_APPROACH_ILS 30.pdf",
+        "LLBG_APPROACH_LOC 21.pdf",
+        "LLBG_APPROACH_RNP 08.pdf",
+        "LLBG_APPROACH_RNP 12.pdf",
+        "LLBG_APPROACH_RNP 26.pdf",
+        "LLBG_APPROACH_RNP X 30.pdf",
+        "LLBG_APPROACH_RNP Y 21.pdf",
+        "LLBG_APPROACH_RNP Z 30.pdf",
+        "LLBG_ATC_SMAC.pdf",
+        "LLBG_Ground_Aiport Chart.pdf",
+        "LLBG_Ground_GA Apron.pdf",
+        "LLBG_Ground_H+X Apron.pdf",
+        "LLBG_Ground_N Apron.pdf",
+        "LLBG_Ground_Terminal 1 Parking.pdf",
+        "LLBG_SID_08.pdf",
+        "LLBG_SID_12-26-30 (Orlev).pdf",
+        "LLBG_SID_12-26-30 (Pidet+Ripud).pdf",
+        "LLBG_SID_12.pdf",
+        "LLBG_SID_26.pdf",
+        "LLBG_SID_30.pdf",
+        "LLBG_SID_SUVAS1G.pdf",
+        "LLBG_STAR_08-1_V1_en.pdf",
+        "LLBG_STAR_12-1_V1_en.pdf",
+        "LLBG_STAR_12-30-1_V2_en.pdf",
+        "LLBG_STAR_21-26-1_V2_en.pdf",
+        "LLBG_STAR_30-2_V1_en.pdf",
+        "LLBG_TRANS_21-26-1.pdf",
+        "LLBG_VAC_21NAMIM_en.pdf",
+        "LLBG_VAC_30-2_V1_en.pdf",
+        "LLBG_VAC_30-3_v1_en.pdf",
+        "LLBG_VAC_en.pdf",
+        "LLBG_airport_Chart.pdf",
+        "LLBG_airport_VFR.pdf"
+      ]
+    },
+    {
+      "name": "LLBS",
+      "he": "באר שבע",
+      "en": "Beer Sheva / Teyman",
+      "lat": 31.287001,
+      "lng": 34.723,
+      "elev_ft": 656,
+      "plates": [
+        "LLBS_airport_CVFR.pdf",
+        "LLBS_airport_Circuit.pdf",
+        "LLBS_airport_Parking.pdf",
+        "LLBS_airport_Text.pdf",
+        "LLBS_airport_Training Areas.pdf"
+      ]
+    },
+    {
+      "name": "LLER",
+      "he": "רמון (אילת)",
+      "en": "Eilat / Ramon",
+      "lat": 29.727009,
+      "lng": 35.014116,
+      "elev_ft": 288,
+      "plates": [
+        "LLER_ADC_3_en.pdf",
+        "LLER_ADC_RST_en.pdf",
+        "LLER_ADC_U_en.pdf",
+        "LLER_ADC_V1_en.pdf",
+        "LLER_IAC_01-2_en.pdf",
+        "LLER_IAC_01RNP_en.pdf",
+        "LLER_IAC_19ILS_V1_en.pdf",
+        "LLER_IAC_19RNP_en.pdf",
+        "LLER_SID_01-1_en.pdf",
+        "LLER_SID_01NH_en.pdf",
+        "LLER_SID_19-1_en.pdf",
+        "LLER_SID_19-3_en.pdf",
+        "LLER_SID_19NM_en.pdf",
+        "LLER_SID_19NN_en.pdf",
+        "LLER_STAR_01-1_en.pdf",
+        "LLER_STAR_01-2_en.pdf",
+        "LLER_VAC_01-1_en.pdf",
+        "LLER_VAC_19-1_en.pdf",
+        "LLER_VFRTA_en.pdf",
+        "LLER_airport_Chart.pdf"
+      ]
+    },
+    {
+      "name": "LLES",
+      "he": "עין שמר",
+      "en": "Ein Shemer",
+      "lat": 32.4408,
+      "lng": 35.007702,
+      "elev_ft": 95,
+      "plates": [
+        "LLES_airport_CVFR.pdf",
+        "LLES_airport_Text.pdf"
+      ]
+    },
+    {
+      "name": "LLEV",
+      "he": "שדה דב",
+      "en": "Tel Aviv / Sde Dov",
+      "lat": 32.1147,
+      "lng": 34.7822,
+      "elev_ft": 43,
+      "plates": [
+        "LLEV_airport_Chart.pdf",
+        "LLEV_airport_Circuit.pdf",
+        "LLEV_airport_Text.pdf"
+      ]
+    },
+    {
+      "name": "LLEY",
+      "he": "עין יהב",
+      "en": "Ein Yahav",
+      "lat": 30.6217,
+      "lng": 35.2033,
+      "elev_ft": -164,
+      "plates": [
+        "LLEY_airport_CVFR.pdf",
+        "LLEY_airport_Chart.pdf",
+        "LLEY_airport_Circuit.pdf",
+        "LLEY_airport_Text.pdf"
+      ]
+    },
+    {
+      "name": "LLFK",
+      "he": "פיק",
+      "en": "Fiq (Golan)",
+      "lat": 32.786389,
+      "lng": 35.717499,
+      "elev_ft": 1218,
+      "plates": [
+        "LLFK_airport_CVFR.pdf",
+        "LLFK_airport_Chart.pdf",
+        "LLFK_airport_Circuit.pdf",
+        "LLFK_airport_Drones.pdf",
+        "LLFK_airport_Text.pdf"
+      ]
+    },
+    {
+      "name": "LLHA",
+      "he": "חיפה",
+      "en": "Haifa / U. Michaeli",
+      "lat": 32.810219,
+      "lng": 35.043719,
+      "elev_ft": 28,
+      "plates": [
+        "LLHA_Emergency_Lost Communication.pdf",
+        "LLHA_Ground_Airport.pdf",
+        "LLHA_Ground_Parking G.pdf",
+        "LLHA_Ground_Parking N.pdf",
+        "LLHA_Ground_Parking Z.pdf",
+        "LLHA_Ground_Parking.pdf",
+        "LLHA_Misc_Text.pdf",
+        "LLHA_airport_CVFR.pdf",
+        "LLHA_airport_Circuit.pdf",
+        "LLHA_airport_Low Altitude.pdf",
+        "LLHA_airport_Training Areas.pdf",
+        "LLHA_airport_Visual Approach Chart.pdf"
+      ]
+    },
+    {
+      "name": "LLHZ",
+      "he": "הרצליה",
+      "en": "Herzliya",
+      "lat": 32.180599,
+      "lng": 34.834702,
+      "elev_ft": 121,
+      "plates": [
+        "LLHZ_Emergency_Lost Communication.pdf",
+        "LLHZ_Ground_Airport Diagram.pdf",
+        "LLHZ_Ground_Parking A,B,C.pdf",
+        "LLHZ_Ground_Parking D.pdf",
+        "LLHZ_Ground_Parking E.pdf",
+        "LLHZ_Ground_Parking F.pdf",
+        "LLHZ_Ground_Parking G.pdf",
+        "LLHZ_Misc_Text.pdf",
+        "LLHZ_airport_CVFR.pdf",
+        "LLHZ_airport_Circuit.pdf",
+        "LLHZ_airport_Heli Routes.pdf",
+        "LLHZ_airport_Heli Training Areas.pdf",
+        "LLHZ_airport_Training Areas.pdf",
+        "LLHZ_departure_ATS Route Visual.pdf"
+      ]
+    },
+    {
+      "name": "LLIB",
+      "he": "ראש פינה",
+      "en": "Rosh Pina / Mahanayim",
+      "lat": 32.980999,
+      "lng": 35.571899,
+      "elev_ft": 884,
+      "plates": [
+        "LLIB_Ground_Airport.pdf",
+        "LLIB_Ground_Parking.pdf",
+        "LLIB_Misc_Text.pdf",
+        "LLIB_airport_CVFR Routes.pdf",
+        "LLIB_airport_Gliding Areas.pdf",
+        "LLIB_airport_Hot Spots.pdf",
+        "LLIB_airport_Training Areas.pdf",
+        "LLIB_airport_Visual Circuit.pdf",
+        "LLIB_approach_33 VOR Approach.pdf",
+        "LLIB_approach_Visual Approach.pdf",
+        "LLIB_departure_SIDS.pdf",
+        "LLIB_emergency_Lost Communication.pdf"
+      ]
+    },
+    {
+      "name": "LLKS",
+      "he": "קרית שמונה",
+      "en": "Kiryat Shmona",
+      "lat": 33.216275,
+      "lng": 35.59622,
+      "elev_ft": 386,
+      "plates": [
+        "LLKS_airport_CVFR.pdf",
+        "LLKS_airport_Chart.pdf",
+        "LLKS_airport_Text.pdf"
+      ]
+    },
+    {
+      "name": "LLKZ",
+      "he": "קציעות",
+      "en": "Ktziot",
+      "lat": 30.8594,
+      "lng": 34.4431,
+      "elev_ft": 900,
+      "plates": [
+        "LLKZ_airport_Chart.pdf",
+        "LLKZ_airport_Circuit.pdf",
+        "LLKZ_airport_Text.pdf"
+      ]
+    },
+    {
+      "name": "LLMG",
+      "he": "מגידו",
+      "en": "Megiddo",
+      "lat": 32.597301,
+      "lng": 35.228802,
+      "elev_ft": 200,
+      "plates": [
+        "LLMG_airport_CVFR.pdf",
+        "LLMG_airport_Chart.pdf",
+        "LLMG_airport_Circuit.pdf",
+        "LLMG_airport_Text.pdf",
+        "LLMG_airport_Training Areas.pdf",
+        "LLMG_departure_CVFR.pdf"
+      ]
+    },
+    {
+      "name": "LLMZ",
+      "he": "בר יהודה (מצדה)",
+      "en": "Bar Yehuda (Masada)",
+      "lat": 31.328199,
+      "lng": 35.388599,
+      "elev_ft": -1266,
+      "plates": [
+        "LLMZ_airport_CVFR.pdf",
+        "LLMZ_airport_Chart.pdf",
+        "LLMZ_airport_Text.pdf",
+        "LLMZ_airport_Visual Circuit.pdf"
+      ]
+    },
+    {
+      "name": "LLRS",
+      "he": "ראשון לציון",
+      "en": "Rishon LeZion",
+      "lat": 31.9672,
+      "lng": 34.7536,
+      "elev_ft": 60,
+      "plates": [
+        "LLRS_airport_CVFR.pdf",
+        "LLRS_airport_Chart.pdf",
+        "LLRS_airport_Circuit.pdf",
+        "LLRS_airport_Text.pdf",
+        "LLRS_airport_Training Areas.pdf",
+        "LLRS_arrival_North.pdf",
+        "LLRS_parking_Heli.pdf"
+      ]
+    }
+  ]
+}

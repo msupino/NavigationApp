@@ -145,20 +145,46 @@ function closeSearch() {
   wpResults.innerHTML = '';
 }
 function runSearch() {
-  const q = wpSearch.value.trim().toUpperCase();
-  if (!q || !navWP) { closeSearch(); return; }
-  const hits = navWP
-    .filter(w => w.name.toUpperCase().indexOf(q) >= 0 ||
-                 (w.he && w.he.indexOf(wpSearch.value.trim()) >= 0))
-    .slice(0, 12);
+  const qRaw = wpSearch.value.trim();
+  const q = qRaw.toUpperCase();
+  if (!q) { closeSearch(); return; }
+  const hits = [];
+  // Airfields surface first — small (16-entry) high-signal set: ICAO,
+  // English label, and Hebrew label all matched substring.
+  if (airfields && airfields.length) {
+    for (const a of airfields) {
+      if (a.name.toUpperCase().indexOf(q) >= 0 ||
+          (a.en && a.en.toUpperCase().indexOf(q) >= 0) ||
+          (a.he && a.he.indexOf(qRaw) >= 0)) {
+        hits.push({ kind: 'af', entry: a });
+      }
+    }
+  }
+  if (navWP && navWP.length) {
+    for (const w of navWP) {
+      if (w.name.toUpperCase().indexOf(q) >= 0 ||
+          (w.he && w.he.indexOf(qRaw) >= 0)) {
+        hits.push({ kind: 'wp', entry: w });
+      }
+    }
+  }
   if (!hits.length) { closeSearch(); return; }
   wpResults.innerHTML = '';
-  const field = S.navWpSearchField;
-  for (const w of hits) {
+  const wpField = S.navWpSearchField;
+  const afField = S.airfieldLabelField;
+  for (const h of hits.slice(0, 12)) {
+    const w = h.entry;
     const item = document.createElement('div');
     item.className = 'wp-search-item';
-    const primary = w[field] || w.name;
-    const alt = field === 'he' ? w.name : (w.he || '');
+    let primary, alt;
+    if (h.kind === 'af') {
+      primary = w.name;                  // ICAO is always shown first
+      alt = (w[afField] || w.en || '');
+      if (alt === primary) alt = '';
+    } else {
+      primary = w[wpField] || w.name;
+      alt = wpField === 'he' ? w.name : (w.he || '');
+    }
     item.textContent = alt && alt !== primary ? primary + ' / ' + alt : primary;
     item.onclick = () => {
       map.setView([w.lat, w.lng], Math.max(map.getZoom(), 12));
@@ -282,6 +308,19 @@ document.getElementById('navwp-cb').onchange = async e => {
   try { localStorage.setItem(NAVWP_KEY, showNavWP ? '1' : '0'); }
   catch (err) { /* storage unavailable */ }
   if (showNavWP) await loadNavWaypoints();
+  draw();
+};
+const AIRFIELDS_KEY = 'navaid.showAirfields';
+try {
+  const stored = localStorage.getItem(AIRFIELDS_KEY);
+  if (stored !== null) showAirfields = stored === '1';
+} catch (e) { /* storage unavailable */ }
+document.getElementById('airfield-cb').checked = showAirfields;
+document.getElementById('airfield-cb').onchange = async e => {
+  showAirfields = e.target.checked;
+  try { localStorage.setItem(AIRFIELDS_KEY, showAirfields ? '1' : '0'); }
+  catch (err) { /* storage unavailable */ }
+  if (showAirfields) await loadAirfields();
   draw();
 };
 const ALPHA_KEY = 'navaid.yellowAlpha';
@@ -516,6 +555,8 @@ draw();
 // Always load nav-waypoints in the background — they power both the
 // overlay toggle and the auto-snap on drop / drag.
 loadNavWaypoints().then(draw);
+// Same pattern for airfields: powering both the overlay and snap.
+loadAirfields().then(draw);
 
 // --- PWA: service worker --------------------------------------------
 // Registering the worker makes the app installable; the browser shows
