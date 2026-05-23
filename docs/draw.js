@@ -581,10 +581,10 @@ function drawInfo() {
     if (state.legs[i].flightSpeed > 0) totalH += dist / state.legs[i].flightSpeed;
   }
   document.getElementById('info').textContent =
-    `${S.summaryWaypoints}  ${state.waypoints.length}\n` +
-    `${S.summaryLegs}       ${state.legs.length}\n` +
-    `${S.summaryDist}   ${totalDist.toFixed(1)} NM\n` +
-    `${S.summaryTime} ${totalH > 0 ? toHMS(totalH) : '--'}`;
+    `${S.summaryWaypoints}: ${state.waypoints.length}\n` +
+    `${S.summaryLegs}: ${state.legs.length}\n` +
+    `${S.summaryDist}: ${totalDist.toFixed(1)} NM\n` +
+    `${S.summaryTime}: ${totalH > 0 ? toHMS(totalH) : '--'}`;
 }
 
 // --- print page frame -----------------------------------------------
