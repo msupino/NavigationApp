@@ -147,9 +147,16 @@ html, body {
   border-radius: 1px;
 }
 #toolbar-toggle:hover { color: #fff; }
-/* Collapsed: keep only the drag handle + the toggle visible. */
-#toolbar.collapsed > *:not(#toolbar-handle):not(#toolbar-toggle) {
+/* Collapsed: keep the drag handle, the toggle, and the language picker visible. */
+#toolbar.collapsed > *:not(#toolbar-handle):not(#toolbar-toggle):not(#lang-toggle) {
   display: none;
+}
+
+/* Always-visible language picker — small separator from the sections below. */
+#toolbar > #lang-toggle {
+  padding-bottom: 4px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid #3a3636;
 }
 
 #toolbar .navtoggle {
