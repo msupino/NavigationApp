@@ -39,8 +39,12 @@ a `dev` → `main` pull request.
 - `index.html` — page, toolbar, Leaflet + the five app scripts. Title
   is "NavAid"; `favicon.svg` is a small plane glyph; GA4 tag
   `G-0XM5PHEK8B` and a Web App Manifest are embedded. Assets carry
-  `?v=N` query strings; **always bump N on every change** to any
-  `.js` / `style.css` so visitors don't get stale JS / CSS.
+  `?v=N` query strings; cache-bust is now **rewritten automatically by
+  `.github/workflows/deploy.yml`** to `?v=<short-sha>` at upload time,
+  so the in-source value (currently `?v=134`) is just a static
+  placeholder and doesn't need bumping per commit. CI lint still
+  enforces that every `?v=` in the file agrees so authors don't
+  accidentally leave one stale.
 - The app is five plain scripts loaded in order, sharing one global
   scope (no build step, no modules):
   `core.js` (migration, state model, geo helpers, Leaflet map,
@@ -189,8 +193,12 @@ downloadable `route.json`.
   branch-protected; the merge triggers the same workflow).
   **Before merging**: delete `REVIEW.md` from repo root if it exists
   (`git rm REVIEW.md && git commit`). It must not land in production.
-- **Always** bump `?v=N` on every changed `.js` and `style.css` in
-  `index.html` before pushing.
+- **Cache-bust is automatic.** `.github/workflows/deploy.yml` runs
+  `sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g"` against each branch's
+  `docs/index.html` after checkout, using that branch's short commit
+  SHA. The source-HTML `?v=N` value is just a placeholder; you don't
+  need to bump it per commit. CI lint still enforces that every `?v=`
+  value in the source HTML agrees.
 - Watch run status: `gh run list --workflow=deploy.yml --limit 5`.
 - **GitHub issues**: a review agent files bugs as GitHub issues on this
   repo. Check open issues at the start of a session:
@@ -217,8 +225,12 @@ downloadable `route.json`.
   so a fast burst of pushes queues runs instead of cancelling them; do
   not flip `cancel-in-progress` back to `true` — staging deploys are
   consumed by humans and each commit must actually publish.
-- Cache-bust check (also enforced by CI's `lint` job): every `?v=N` in
-  `docs/index.html` must agree on N. See AGENTS.md for the full rule.
+- Cache-bust check (also enforced by CI's `lint` job): every `?v=` in
+  `docs/index.html` must agree (regex `\?v=[A-Za-z0-9]+`, so it
+  matches both the integer placeholder and the SHA value that Deploy
+  rewrites in). The actual cache-bust value users see is the short
+  commit SHA injected by Deploy at upload time. See AGENTS.md for the
+  full rule.
 
 ## Notes / pending
 

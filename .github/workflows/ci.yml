@@ -51,9 +51,13 @@ jobs:
       - name: HTML well-formedness (html-validate)
         run: npx --yes html-validate@8 --formatter=stylish docs/index.html docs/en/index.html docs/he/index.html
 
-      - name: Cache-bust consistency (?v=N in docs/index.html)
+      - name: Cache-bust consistency (?v= in docs/index.html)
         run: |
-          vs=$(grep -oE '\?v=[0-9]+' docs/index.html | sort -u)
+          # Source HTML may carry a placeholder integer (e.g. ?v=134) or a
+          # short commit SHA (e.g. ?v=abc1234) — Deploy rewrites it at upload
+          # time. Either form is fine here; all values just have to agree so
+          # nobody accidentally leaves one stale.
+          vs=$(grep -oE '\?v=[A-Za-z0-9]+' docs/index.html | sort -u)
           n=$(printf "%s\n" "$vs" | wc -l | tr -d ' ')
           if [ "$n" -gt 1 ]; then
             echo "Inconsistent ?v= values in docs/index.html:"

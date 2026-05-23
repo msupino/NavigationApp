@@ -31,9 +31,12 @@ both branches and assembles a single Pages site:
 - Treat `.claude/skills/navaid-dev/SKILL.md` as the source of truth
   for architecture, state shape, persistence keys, and deploy
   mechanics.
-- **Always bump `?v=N` in `docs/index.html`** (both the `app.js` and
-  `style.css` query strings) on any change to those files. Stale-cache
-  bugs are the most common Pages footgun.
+- **Cache-bust is automatic at deploy time.** All `?v=N` values in
+  `docs/index.html` must remain equal (CI lint enforces). The deploy
+  workflow rewrites them to the short commit SHA at upload time, so
+  the source value itself doesn't need to be bumped per commit — it's
+  just a placeholder kept consistent across `app.js` / `style.css` /
+  `strings.js` references.
 - **Always run `node --check docs/app.js`** before committing.
 - If a push to `dev` / `main` doesn't trigger `Deploy` / `CI` within
   ~30 s (admin bypass can swallow the event), dispatch manually:
