@@ -28,12 +28,28 @@ jobs:
           ref: main
           path: m
           lfs: true
+      - name: Cache-bust main (?v= → short SHA)
+        run: |
+          cd m
+          SHA=$(git rev-parse --short HEAD)
+          cd ..
+          sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" m/docs/index.html
+          echo "main ?v= rewritten to ${SHA}:"
+          grep -oE '\?v=[A-Za-z0-9]+' m/docs/index.html | sort -u
       - name: Checkout dev (staging)
         uses: actions/checkout@v4
         with:
           ref: dev
           path: d
           lfs: true
+      - name: Cache-bust dev (?v= → short SHA)
+        run: |
+          cd d
+          SHA=$(git rev-parse --short HEAD)
+          cd ..
+          sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" d/docs/index.html
+          echo "dev ?v= rewritten to ${SHA}:"
+          grep -oE '\?v=[A-Za-z0-9]+' d/docs/index.html | sort -u
       - name: Assemble site
         run: |
           mkdir -p site/staging
