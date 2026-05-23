@@ -3,7 +3,7 @@
 window.S = {
   navWpUrl: 'nav-waypoints.json?v=3',
   navWpSearchField: 'he',
-  airfieldsUrl: 'airfields.json?v=1',
+  airfieldsUrl: 'airfields.json?v=2',
   airfieldLabelField: 'he',
 
   // --- Waypoint terminology -------------------------------------------
