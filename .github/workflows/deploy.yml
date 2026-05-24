@@ -1,0 +1,113 @@
+name: Deploy
+
+# Production = main/docs at "/", staging = dev/docs at "/staging/".
+on:
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: JS syntax check
+        run: |
+          set -e
+          for f in docs/core.js docs/draw.js docs/interact.js docs/io.js docs/ui.js docs/sw.js docs/he/strings.js docs/en/strings.js; do
+            echo "node --check $f"
+            node --check "$f"
+          done
+      - name: JSON validation
+        run: |
+          set -e
+          for f in docs/manifest.json docs/nav-waypoints.json; do
+            echo "validating $f"
+            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'));"
+          done
+      - name: Cache-bust consistency
+        run: |
+          vs=$(grep -oE '\?v=[A-Za-z0-9]+' docs/index.html | sort -u)
+          n=$(printf "%s\n" "$vs" | wc -l | tr -d ' ')
+          if [ "$n" -gt 1 ]; then
+            echo "Inconsistent ?v= values in docs/index.html:"
+            printf "%s\n" "$vs"
+            exit 1
+          fi
+          echo "cache-bust ok: $vs"
+
+  build:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main (production)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: m
+          lfs: true
+      - name: Cache-bust main (?v= → short SHA, version → x.y-SHA)
+        run: |
+          cd m
+          SHA=$(git rev-parse --short HEAD)
+          cd ..
+          sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" m/docs/index.html
+          # Idempotent: matches both 'x.y' and 'x.y-<anything>' so re-runs
+          # rewrite to the current SHA rather than appending a second suffix.
+          sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" m/docs/core.js
+          echo "main ?v= rewritten to ${SHA}:"
+          grep -oE '\?v=[A-Za-z0-9]+' m/docs/index.html | sort -u
+          echo "main NavAid.version rewritten to:"
+          grep -oE "version: '[^']+'" m/docs/core.js
+      - name: Checkout dev (staging)
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          path: d
+          lfs: true
+      - name: Cache-bust dev (?v= → short SHA, version → x.y-SHA)
+        run: |
+          cd d
+          SHA=$(git rev-parse --short HEAD)
+          cd ..
+          sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" d/docs/index.html
+          # Idempotent: matches both 'x.y' and 'x.y-<anything>' so re-runs
+          # rewrite to the current SHA rather than appending a second suffix.
+          sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" d/docs/core.js
+          echo "dev ?v= rewritten to ${SHA}:"
+          grep -oE '\?v=[A-Za-z0-9]+' d/docs/index.html | sort -u
+          echo "dev NavAid.version rewritten to:"
+          grep -oE "version: '[^']+'" d/docs/core.js
+      - name: Assemble site
+        run: |
+          mkdir -p site/staging
+          cp -r m/docs/. site/
+          cp -r d/docs/. site/staging/
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

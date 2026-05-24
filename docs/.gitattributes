@@ -1,0 +1,4 @@
+# GitHub Pages cannot resolve Git LFS pointers — keep web assets as normal blobs.
+*.jpg  -filter -diff -merge
+*.jpeg -filter -diff -merge
+*.png  -filter -diff -merge

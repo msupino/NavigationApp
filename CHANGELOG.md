@@ -1,0 +1,207 @@
+# NavAid — Changelog
+
+Browser-based CVFR flight-route planner (Israel area). HTML5 + Leaflet,
+no build step. Hosted on GitHub Pages. Summary is drawn from the merged
+pull requests; production is the `main` branch, staging is `dev`.
+
+## v1.0
+
+### Toolbar UX
+- Language picker (`🌐`) lifted out of the Edit section so it stays
+  visible regardless of which section is expanded or whether the
+  toolbar is collapsed.
+- New `GitHub` and `Wiki` links in the toolbar footer (always visible,
+  open in a new tab). Hebrew UI uses the English brand names.
+- Leg inspector title now reads `From → To` (locale-aware) instead of
+  `Leg N`.
+
+### Bug fixes (multi-model review)
+- **#70** (blocker): map panning no longer gets stuck when a drag is
+  released off-map — drag cleanup is now bound to `window` mouseup /
+  pointerup / pointercancel.
+- **#71**: notes overlapping waypoints are selectable again — pointer
+  hit-test now matches paint order (notes before waypoints).
+- **#72**: a failed `nav-waypoints.json` fetch no longer permanently
+  disables the overlay / search / snap features for the session.
+- **#73**: a corrupt saved route is preserved instead of silently
+  overwritten with empty state on boot.
+- **#74**: PNG export locks map interaction during the async tile
+  fetch so tiles and route overlay never drift mid-export.
+- **#75**: cleared / non-numeric rotation input is rejected; bearing
+  load/save is guarded against `NaN`.
+- **#79**: PNG export without an A3/A4 frame no longer produces blank
+  patches at large viewport sizes.
+- **#82**: partial `inLabel` / `outLabel` objects on import (e.g.
+  `{a:0}` without `p`) are normalised per-key, so reverse-route and
+  drag math no longer produce `NaN` offsets.
+
+### Google Earth
+- KML camera tilt set to **70°** (was 85° → tried 45° → settled on 70°
+  as the best forward-and-slightly-down view for terrain context).
+
+### SEO / repo hygiene
+- Add `robots.txt`, `sitemap.xml`, `canonical` + `hreflang` (he / en /
+  x-default), and a `WebApplication` JSON-LD block in `index.html`.
+- `/en/` and `/he/` paths restored as language-redirect stubs (each
+  with self-referential canonical).
+- New root `README.md` (English summary + bidi-safe Hebrew block via
+  `<bdi>` wraps).
+- New `LICENSE` (MIT) — source code is permissively licensed; chart /
+  imagery / OSM / nav-waypoints data retain their own terms.
+- GitHub repo description, homepage URL, and topics filled in.
+- New GitHub Wiki: 19 pages (Quick Start, Features, User Guide, Map
+  Layers, Flight Plan, Print and Export, Bilingual UI, Offline / PWA,
+  Settings and Persistence, Keyboard and Touch, FAQ, Architecture,
+  LocalStorage Schema, Service Worker, Deployment, Contributing,
+  Changelog, Google Earth, Nav-waypoints Dataset).
+- Bing webmaster verification file mirrored from main onto dev.
+
+### CI / Deploy
+- New `.github/workflows/ci.yml` lints every PR + push: `node --check`
+  on every JS file, JSON parse for `manifest.json` /
+  `nav-waypoints.json`, XML parse for `sitemap.xml` /
+  `BingSiteAuth.xml`, `html-validate` on the three `index.html`
+  entrypoints, `?v=N` consistency check, and SW cache-name parity.
+- Branch protection on `main` requires the `lint` check (strict);
+  `dev` records the same check non-strict.
+- Deploy workflow: `cancel-in-progress` switched from `true` to
+  `false` so a fast burst of pushes queues runs instead of
+  cancelling intermediate ones.
+- Both workflows now have `workflow_dispatch:` so they can be
+  triggered manually with `gh workflow run …`.
+- `?v=N` cache-bust is **auto-rewritten to the short commit SHA** in
+  `docs/index.html` at deploy time. The integer placeholder in the
+  source HTML doesn't need to be bumped per commit anymore; CI lint
+  still enforces that all `?v=` values agree.
+
+### Hebrew UI
+- Footer link labels `GitHub` / `Wiki` keep the English brand names
+  in the Hebrew strings file.
+- Mid-leg "kite" badges: yellow inbound pennant is always drawn (one
+  always-on kite per leg); the pink return pennant remains gated by
+  the "Show return path" toggle (off by default), matching the
+  original behaviour.
+
+## In progress — dev (not yet merged)
+
+### Bug-fix batch 2 — issues #66–#69
+- Deleting a waypoint now removes the leg beside it, so leg altitudes /
+  speeds stay aligned with the route instead of shifting downstream (#66).
+- Rotate dial: a cancelled pointer (`pointercancel`) no longer cycles the
+  bearing (#67).
+- Flight plan: clearing the Speed field resets it to the leg's current
+  speed instead of showing blank (#68).
+- Rotate dial drag debounces the bearing write to localStorage (#69).
+
+### Google Earth export — per-leg altitudes (#64)
+- The `.kml` export no longer prompts for a single AGL value. The
+  flythrough camera flies at the per-leg altitudes from the flight plan
+  (MSL — `altitudeMode=absolute`); the route line and waypoints stay
+  clamped to the ground.
+
+### Rotate dial — tap cycles 90° (#65)
+- Tapping the rotate dial steps the map bearing through 0° / 90° / 180° /
+  270° instead of always resetting to north. Drag still sets any angle.
+
+### Bug-fix batch — issues #57–#62
+- Import validation: a route JSON with non-numeric coordinates is rejected
+  with an error instead of silently blanking the map; the same guard
+  protects the localStorage route cache (#58).
+- Flight-plan altitude edits now cascade to adjacent legs like the
+  inspector's do; number fields commit on `change` (not per keystroke),
+  matching the inspector (#59).
+- Exported route JSON gets a timestamped filename — no more `route (1).json`
+  (#60).
+- PNG export fetches OSM / Esri tiles directly (they support CORS); the
+  weserv proxy is used only for the flight-maps.com layers (#62).
+- Service worker clones navigation responses before the body is consumed (#57).
+- Stale comments corrected: 256 nav-waypoints; `navWpUrl` note (#61).
+- `sw.js` cache bumped to `navaid-v4`.
+
+- **Bilingual UI**: Hebrew root (`/`), English at `/en/`; all dynamic
+  strings localised; language picker dropdown in toolbar.
+- Flight plan: editable **Speed** and **Altitude** number inputs; editing
+  speed live-updates leg time + totals.
+- **Map rotation**: 360° Google-Earth-style compass dial by the zoom
+  buttons; route overlay tracks rotation; bearing persisted across reloads.
+  PNG export forces north-up (bearing restored after export; no stale save
+  during export via `_isExporting` flag).
+- **Nav-waypoint search**: type a name to jump to the point; dropdown shows
+  both Hebrew and English names (`primary / alt`); outside-click closes
+  without clearing text; Escape clears.
+- **Hebrew nav-waypoint names**: all 238 points carry a `he` field; overlay
+  shows Hebrew, English kept for search. `nav-waypoints.json` versioned for
+  SW cache busting.
+- `⟳` button rotates all waypoint names 90°.
+- **"Open route in Google Earth"** (renamed from "Fly Route"): KML tour,
+  confirm-then-save, timestamped filename.
+- **Export / Import** (renamed from Save / Load).
+- **Flight Plan modal**: editable Speed/Altitude columns; Print button.
+- Transparency slider: 0–100% range (no percentage label).
+- Toolbar collapse persisted across reloads and language switches; defaults
+  to collapsed on first visit.
+- Rotate dial tap fixed on mobile (8 px movement threshold).
+- Hamburger toggle uses three explicit `<span>` elements (pseudo-element
+  approach was unreliable on mobile).
+- `showReturn` / `showMidLeg` / `highlightDiff` persistence pattern fixed.
+- Nav-waypoint dot hidden under placed waypoints by position proximity
+  (not name match — works after rename).
+- Hebrew mag-var label corrected: נטייה מגנטית.
+- Layer picker: "OSM" → "OpenStreetMap" (with migration for saved key).
+- `sw.js` cache bumped to `navaid-v3`.
+
+## 2026-05-21
+
+### PR #11 — Editable flight-plan names; Fly Route (Google Earth)
+- Editable From / To waypoint-name inputs in the Plan table.
+- **Fly Route** button writes a Google Earth KML tour (`gx:Tour`) that
+  flies the route above the terrain; `<Camera>` order fixed; opens at
+  the route start; flythrough altitude 5000 ft AGL.
+
+### PR #10 — Keep short/empty notes landscape
+- 56 px minimum note width — empty oval notes no longer shrink to a
+  vertical ellipse.
+
+### PR #9 — Module refactor + toolbar layer picker / route info
+- Split `app.js` (~1780 lines) into five ordered scripts: `core.js`,
+  `draw.js`, `interact.js`, `io.js`, `ui.js` (behaviour identical).
+- Route-info panel moved into the toolbar footer; base-layer picker
+  moved into the toolbar as a dropdown; in-app Install button removed.
+
+### PR #8 — PWA install, note shapes, mobile collapse, review fixes
+- Toolbar collapse/expand (collapsed by default on phones).
+- PWA: manifest, offline-shell service worker, app icons, Install
+  button.
+- Per-note shape: Rectangle or Oval.
+- `exportPNG` fetch timeout + failed-tile warning; dead-code removal.
+
+### PR #7 — Max-quality PNG export
+- PNG export renders at the layer's max native tile zoom (z13 for
+  CVFR), not the on-screen zoom.
+
+### PR #6 — Draggable A3/A4 page frame
+- The print-page frame can be dragged anywhere instead of being locked
+  to the viewport centre.
+
+### PR #5 — Link-preview image
+- Regenerated `og-preview.jpg` with a bottom-to-top route.
+
+### PR #4 — Production promote: snapping, modes, name toggle
+- Nav-waypoint snapping (drop + drag); toolbar button renames.
+- Toggleable Add modes; Edit Waypoint button dropped.
+- "Show Waypoint names" toggle (off = empty circle).
+- Open Graph link-preview tags; `navaid` dev agent.
+
+### PR #3 — Nav-waypoint snap + toolbar copy
+- Snap new / dragged waypoints to nearby nav-waypoints.
+- Toolbar copy polish.
+
+### PR #2 — NavAid rebrand, Pages workflow, Nav Waypoints overlay
+- Rebrand to NavAid: favicon, GA4, GitHub Pages deploy workflow
+  (`main` -> `/`, `dev` -> `/staging/`).
+- "Show Nav Waypoints" overlay — 238 Israeli VFR reporting points.
+
+## Pre-rewrite
+
+### PR #1 — Leg attributes in scene JSON (Unity, closed unmerged)
+- WIP on the original Unity app; superseded by the HTML5 rewrite.

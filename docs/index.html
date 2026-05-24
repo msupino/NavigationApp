@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>NavAid — מתכנן טיסה</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <meta name="description" content="תכנן מסלולי טיסה CVFR על גבי התרשים האווירי הישראלי.">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="theme-color" content="#231F20">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="NavAid">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="NavAid — מתכנן טיסה CVFR">
+  <meta property="og:description" content="תכנן מסלולי טיסה CVFR על גבי התרשים האווירי הישראלי — ציוני דרך, כיוונים, מרחקים, זמנים.">
+  <meta property="og:url" content="https://msupino.github.io/NavigationApp/">
+  <meta property="og:image" content="https://msupino.github.io/NavigationApp/og-preview.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://msupino.github.io/NavigationApp/">
+  <link rel="alternate" hreflang="he" href="https://msupino.github.io/NavigationApp/?lang=he">
+  <link rel="alternate" hreflang="en" href="https://msupino.github.io/NavigationApp/?lang=en">
+  <link rel="alternate" hreflang="x-default" href="https://msupino.github.io/NavigationApp/">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "NavAid",
+    "alternateName": ["NavAid CVFR Planner", "מתכנן טיסה NavAid"],
+    "description": "Plan CVFR flight routes on the Israel aeronautical chart — waypoints, headings, distances and times.",
+    "url": "https://msupino.github.io/NavigationApp/",
+    "image": "https://msupino.github.io/NavigationApp/og-preview.jpg",
+    "applicationCategory": "TravelApplication",
+    "applicationSubCategory": "Aviation flight planning",
+    "operatingSystem": "Any (web browser)",
+    "browserRequirements": "Requires a modern browser with HTML5 Canvas support.",
+    "inLanguage": ["he", "en"],
+    "isAccessibleForFree": true,
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "author": {
+      "@type": "Person",
+      "name": "Marco Supino"
+    }
+  }
+  </script>
+  <!-- language bootstrap: param > localStorage > 'he'.
+       document.write loads the right strings.js synchronously before core.js. -->
+  <script>
+    (function () {
+      var p = new URLSearchParams(location.search).get('lang');
+      var stored = '';
+      try { stored = localStorage.getItem('navaid.lang') || ''; } catch (e) {}
+      var lang = (p === 'en' || p === 'he') ? p : (stored === 'en' ? 'en' : 'he');
+      try { localStorage.setItem('navaid.lang', lang); } catch (e) {}
+      var h = document.documentElement;
+      h.lang = lang; h.dir = lang === 'he' ? 'rtl' : 'ltr';
+      if (lang === 'en') document.title = 'NavAid';
+      if (!p) history.replaceState(null, '', '?lang=' + lang);
+      window.__navLang = lang;
+        document.write('\x3Cscript src="./' + lang + '/strings.js?v=145">\x3C\/script>');
+    }());
+  </script>
+  <!-- Google Analytics (GA4) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-0XM5PHEK8B"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){ dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-0XM5PHEK8B');
+  </script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="style.css?v=145">
+</head>
+<body>
+  <div id="map"></div>
+  <canvas id="overlay"></canvas>
+
+  <div id="toolbar">
+    <span id="toolbar-handle" class="drag-handle" data-i18n-title="tbHandleTitle">⋯</span>
+    <span id="toolbar-toggle" role="button" tabindex="0"><span></span><span></span><span></span></span>
+
+    <label id="lang-toggle" class="navtoggle">🌐
+      <select id="lang-select" onchange="location.href='?lang='+this.value">
+        <option value="he">עברית</option>
+        <option value="en">English</option>
+      </select>
+    </label>
+    <script>document.getElementById('lang-select').value = window.__navLang;</script>
+
+    <div class="tb-section" data-sec="edit">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecEdit"></div>
+      <div class="tb-section-body">
+        <button id="tool-add" class="tool" data-i18n="tbAddWp" data-i18n-title="tbAddWpTitle"></button>
+        <button id="tool-note" class="tool" data-i18n="tbAddNote" data-i18n-title="tbAddNoteTitle"></button>
+      </div>
+    </div>
+
+    <div class="tb-section" data-sec="map">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecMap"></div>
+      <div class="tb-section-body">
+        <label class="navtoggle" data-i18n-title="tbLayerTitle">
+          <span data-i18n="tbLayerLabel"></span>
+          <select id="layer-select"></select>
+        </label>
+        <div class="navsearch">
+          <input type="text" id="wp-search" data-i18n-placeholder="tbSearchPlaceholder" autocomplete="off">
+          <div id="wp-search-results" class="hidden"></div>
+        </div>
+        <label class="navtoggle" data-i18n-title="tbShowNavWpTitle">
+          <input type="checkbox" id="navwp-cb" checked> <span data-i18n="tbShowNavWp"></span>
+        </label>
+        <label class="navtoggle" data-i18n-title="tbShowAirfieldsTitle">
+          <input type="checkbox" id="airfield-cb" checked> <span data-i18n="tbShowAirfields"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="tb-section" data-sec="route">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecRoute"></div>
+      <div class="tb-section-body">
+        <button id="reverse" data-i18n="tbReverse" data-i18n-title="tbReverseTitle"></button>
+        <button id="clear" data-i18n="tbClear" data-i18n-title="tbClearTitle"></button>
+        <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
+        <button id="save" data-i18n="tbExport" data-i18n-title="tbExportTitle"></button>
+        <button id="load" data-i18n="tbImport" data-i18n-title="tbImportTitle"></button>
+        <input type="file" id="file" accept="application/json,.json" hidden>
+        <button id="plan" data-i18n="tbPlan" data-i18n-title="tbPlanTitle"></button>
+        <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
+        <label class="navtoggle" data-i18n-title="tbShowReturnTitle">
+          <input type="checkbox" id="ret-cb"> <span data-i18n="tbShowReturn"></span>
+        </label>
+        <label class="navtoggle" data-i18n-title="tbShowMidLegTitle">
+          <input type="checkbox" id="mid-cb"> <span data-i18n="tbShowMidLeg"></span>
+        </label>
+        <label class="navtoggle" data-i18n-title="tbHighlightDiffTitle">
+          <input type="checkbox" id="diff-cb"> <span data-i18n="tbHighlightDiff"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="tb-section" data-sec="display">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecDisplay"></div>
+      <div class="tb-section-body">
+        <label class="navtoggle" data-i18n-title="tbShowWpNamesTitle">
+          <input type="checkbox" id="wpname-cb" checked> <span data-i18n="tbShowWpNames"></span>
+          <button id="wpname-rot" type="button">⟳</button>
+        </label>
+        <label class="navtoggle" data-i18n-title="tbTransparencyTitle">
+          <span data-i18n="tbTransparency"></span>
+          <input type="range" id="yellow-alpha" min="0" max="100" step="5" value="100">
+        </label>
+        <label class="navtoggle" data-i18n-title="tbMapOpacityTitle">
+          <span data-i18n="tbMapOpacity"></span>
+          <input type="range" id="map-opacity" min="10" max="100" step="5" value="100">
+        </label>
+        <label class="navtoggle" data-i18n-title="tbWpSizeTitle">
+          <span data-i18n="tbWpSize"></span>
+          <input type="range" id="wp-size" min="0.6" max="2" step="0.1" value="1">
+        </label>
+        <label class="navtoggle" data-i18n-title="tbLegArrowSizeTitle">
+          <span data-i18n="tbLegArrowSize"></span>
+          <input type="range" id="leg-arrow-size" min="0.3" max="2" step="0.1" value="1">
+        </label>
+        <label class="navtoggle" data-i18n-title="tbMagVarTitle">
+          <span data-i18n="tbMagVar"></span>
+          <input type="number" id="mag-var" min="-30" max="30" step="0.5" value="-5">°
+          <span id="mag-var-eqv" class="hint"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="tb-section" data-sec="print">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecPrint"></div>
+      <div class="tb-section-body">
+        <button id="page-a3" data-i18n-title="tbPageA3Title">A3</button>
+        <button id="page-a4" data-i18n-title="tbPageA4Title">A4</button>
+        <button id="print" data-i18n="tbPrint" data-i18n-title="tbPrintTitle"></button>
+      </div>
+    </div>
+
+    <div id="info"></div>
+    <span id="app-version"></span>
+    <div id="footer-links">
+      <a id="repo-link" class="footer-link"
+         href="https://github.com/msupino/NavigationApp"
+         target="_blank" rel="noopener noreferrer"
+         data-i18n-title="tbViewSource">
+        <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
+             aria-hidden="true" focusable="false">
+          <path fill="currentColor" fill-rule="evenodd"
+                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+                   0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
+                   -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07
+                   -1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0
+                   0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44
+                   1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48
+                   0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+        <span class="footer-link-text" data-i18n="tbViewSource"></span>
+      </a>
+      <a id="wiki-link" class="footer-link"
+         href="https://github.com/msupino/NavigationApp/wiki"
+         target="_blank" rel="noopener noreferrer"
+         data-i18n-title="tbWiki">
+        <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
+             aria-hidden="true" focusable="false">
+          <path fill="currentColor" fill-rule="evenodd"
+                d="M0 1.75A.75.75 0 0 1 .75 1h4.253c1.227 0 2.317.59 3 1.501A3.744 3.744 0 0 1 11.006 1h4.245a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75h-4.507a2.25 2.25 0 0 0-1.591.659l-.622.621a.75.75 0 0 1-1.06 0l-.622-.621A2.25 2.25 0 0 0 5.258 13H.75a.75.75 0 0 1-.75-.75Zm7.251 10.324.004-5.073-.002-2.253A2.25 2.25 0 0 0 5.003 2.5H1.5v9h3.757a3.75 3.75 0 0 1 1.994.574ZM8.755 4.75l-.004 7.322a3.752 3.752 0 0 1 1.992-.572H14.5v-9h-3.495a2.25 2.25 0 0 0-2.25 2.25Z"/>
+        </svg>
+        <span class="footer-link-text" data-i18n="tbWiki"></span>
+      </a>
+    </div>
+  </div>
+
+  <div id="inspector" class="hidden">
+    <div id="insp-header">
+      <input type="text" id="insp-title" maxlength="32" readonly>
+      <button id="insp-close" data-i18n-title="inspCloseTitle" data-i18n-aria="inspCloseLabel">×</button>
+    </div>
+    <div id="insp-body"></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
+  <!-- strings.js was loaded by the lang bootstrap in <head> -->
+  <script src="core.js?v=145"></script>
+  <script src="draw.js?v=145"></script>
+  <script src="interact.js?v=145"></script>
+  <script src="io.js?v=145"></script>
+  <script src="ui.js?v=145"></script>
+</body>
+</html>

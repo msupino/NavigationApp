@@ -1,0 +1,612 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: #231F20;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-weight: 700;
+  color: #e8e8e8;
+}
+
+#map {
+  position: absolute;
+  inset: 0;
+  background: #231F20;
+}
+#map.add { cursor: crosshair; }
+
+#overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;          /* Leaflet handles pan/zoom underneath */
+  z-index: 400;
+}
+
+.leaflet-container { background: #231F20; }
+
+#toolbar {
+  position: absolute;
+  z-index: 1100;
+  top: 12px;
+  left: 12px;
+  max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);       /* dynamic viewport on iOS Safari */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;     /* momentum scroll on iOS */
+  overscroll-behavior: contain;          /* don't chain scroll to the map */
+  touch-action: pan-y;                   /* allow vertical swipe to scroll */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 6px;
+  background: rgba(20, 18, 18, 0.92);
+  border: 1px solid #3a3636;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+#toolbar button {
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 5px;
+  padding: 6px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#toolbar button:hover { background: #3c3737; }
+#toolbar button.tool.active {
+  background: #1d6fe0;
+  border-color: #1d6fe0;
+  color: #fff;
+}
+#toolbar .sep {
+  width: auto;
+  height: 1px;
+  background: #443f3f;
+  margin: 4px 2px;
+}
+
+/* --- collapsible sections ------------------------------------------ */
+.tb-section {
+  border-top: 1px solid #3a3636;
+  padding-top: 2px;
+  margin-top: 2px;
+}
+.tb-section:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+.tb-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a8484;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  border-radius: 4px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.tb-section-head:hover { color: #e0d8d8; background: rgba(255,255,255,0.06); }
+.tb-section-head::after {
+  content: '▶';
+  font-size: 8px;
+  display: inline-block;
+  transition: transform 0.15s ease;
+  margin-inline-start: 6px;
+}
+.tb-section.open .tb-section-head::after { transform: rotate(90deg); }
+.tb-section-body {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 4px;
+}
+.tb-section.open .tb-section-body { display: flex; }
+
+#toolbar .drag-handle {
+  font-size: 16px;
+  letter-spacing: 1px;
+  text-align: center;
+  color: #8a8484;
+  cursor: grab;
+  padding: 0 6px 4px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+#toolbar .drag-handle:hover { color: #e8e8e8; }
+#toolbar.dragging { opacity: 0.92; }
+#toolbar.dragging .drag-handle { cursor: grabbing; }
+
+#toolbar-toggle {
+  align-self: center;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 18px;
+  height: 13px;
+  cursor: pointer;
+  padding: 4px 12px;
+  box-sizing: content-box;
+  color: #b9b3b3;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#toolbar-toggle span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 1px;
+}
+#toolbar-toggle:hover { color: #fff; }
+/* Collapsed: keep the drag handle, the toggle, the language picker, and the footer links visible. */
+#toolbar.collapsed > *:not(#toolbar-handle):not(#toolbar-toggle):not(#lang-toggle):not(#footer-links) {
+  display: none;
+}
+
+/* Always-visible language picker — small separator from the sections below. */
+#toolbar > #lang-toggle {
+  padding-bottom: 4px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid #3a3636;
+}
+
+#toolbar .navtoggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: #e8e8e8;
+  padding: 0 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#toolbar .navtoggle input { cursor: pointer; margin: 0; }
+#toolbar .navtoggle input[type="range"] { flex: 1; width: 0; min-width: 0; }
+#toolbar .navtoggle .hint { color: #8a8484; font-size: 12px; }
+#toolbar .navtoggle input[type="number"] {
+  width: 56px;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 4px;
+  cursor: text;
+}
+#toolbar #wpname-rot {
+  font-size: 13px;
+  line-height: 1;
+  color: #b9b3b3;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 1px 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#toolbar #wpname-rot:hover { color: #fff; }
+
+/* rotate dial — Google-Maps-style compass needle by the zoom buttons */
+.rotate-ctrl {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+#rotate-hdg {
+  font: bold 11px/1 monospace;
+  color: #231F20;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid #9a9a9a;
+  border-radius: 3px;
+  padding: 2px 3px;
+  width: 38px;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+#rotate-hdg::-webkit-inner-spin-button,
+#rotate-hdg::-webkit-outer-spin-button { -webkit-appearance: none; }
+#rotate-dial {
+  display: block;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #9a9a9a;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  touch-action: none;
+}
+#rotate-dial.dragging { cursor: grabbing; }
+#rotate-needle {
+  position: absolute;
+  inset: 0;
+  transform: rotate(0deg);
+}
+#rotate-needle::before {            /* red north triangle */
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  margin-left: -7px;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 14px solid #c0392b;
+}
+#rotate-needle::after {             /* grey south triangle */
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  margin-left: -7px;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 14px solid #9a9a9a;
+}
+
+/* nav-waypoint search */
+.navsearch { position: relative; padding: 0 6px; }
+#wp-search {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 5px;
+  padding: 5px 8px;
+}
+#wp-search-results {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  z-index: 1200;
+  margin-top: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #2a2626;
+  border: 1px solid #3a3636;
+  border-radius: 5px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+#wp-search-results.hidden { display: none; }
+.wp-search-item {
+  padding: 6px 10px;
+  font-size: 13px;
+  color: #e8e8e8;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.wp-search-item:hover,
+.wp-search-item.active { background: #1d6fe0; color: #fff; }
+#toolbar .navtoggle select {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+#inspector {
+  position: absolute;
+  z-index: 1100;
+  top: 56px;
+  right: 12px;
+  width: 240px;
+  background: rgba(20, 18, 18, 0.95);
+  border: 1px solid #3a3636;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+#inspector.hidden { display: none; }
+
+#insp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 6px 6px 12px;
+  background: #2f2b2b;
+  border-bottom: 1px solid #3a3636;
+}
+#insp-title {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: transparent;
+  border: none;
+  padding: 0;
+  outline: none;
+}
+#insp-title::placeholder { color: #8a8484; }
+#insp-title:read-only { cursor: default; }
+#insp-title.editable {
+  background: #241f1f;
+  border: 1px solid #5a5353;
+  border-radius: 5px;
+  padding: 4px 7px;
+  cursor: text;
+}
+#insp-title.editable:hover,
+#insp-title.editable:focus {
+  color: #fff;
+  border-color: #7a706f;
+  background: #2b2626;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+#insp-close {
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  width: 24px;
+  height: 24px;
+  color: #b9b3b3;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+#insp-close:hover { background: #443f3f; color: #fff; }
+
+#insp-body { padding: 10px 12px; }
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.row:last-child { margin-bottom: 0; }
+.row label { color: #b9b3b3; }
+.row input[type="number"],
+.row input[type="text"],
+.row select {
+  width: 110px;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+.row select { cursor: pointer; }
+.row .val { color: #e8e8e8; font-variant-numeric: tabular-nums; }
+
+.row.col {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.row textarea {
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+
+.insp-btn {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  color: #fff;
+  background: #b03636;
+  border: none;
+  border-radius: 5px;
+  padding: 7px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.insp-btn:hover { background: #c44141; }
+
+/* Route summary — a footer section at the bottom of the toolbar. */
+#info {
+  margin-top: 4px;
+  padding: 6px 6px 2px;
+  border-top: 1px solid #443f3f;
+  font-size: 12px;
+  color: #b9b3b3;
+  font-variant-numeric: tabular-nums;
+  white-space: pre-line;
+}
+#info:empty { display: none; }
+#app-version {
+  display: block;
+  text-align: right;
+  font-size: 10px;
+  color: #6b6565;
+  padding: 2px 6px 4px;
+  user-select: none;
+}
+
+/* Footer links row — small repo / wiki links below the route-info totals. */
+#toolbar > #footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-top: 2px;
+  padding: 4px 6px 6px;
+  border-top: 1px solid #3a3636;
+}
+#toolbar .footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #8a8484;
+  text-decoration: none;
+  white-space: nowrap;
+}
+#toolbar .footer-link:hover { color: #e8e8e8; }
+#toolbar .footer-link .footer-link-icon { flex: none; opacity: 0.85; }
+#toolbar .footer-link:hover .footer-link-icon { opacity: 1; }
+
+/* Print (browser Cmd+P): drop the UI, keep the map + route overlay. */
+@media print {
+  #toolbar, #inspector, .leaflet-control-container { display: none !important; }
+  #map, #overlay { position: fixed; inset: 0; }
+}
+
+/* Flight-plan print: hide everything except the table modal. */
+@media print {
+  body.printing-plan #map,
+  body.printing-plan #overlay,
+  body.printing-plan #toolbar,
+  body.printing-plan #inspector,
+  body.printing-plan .leaflet-control-container { display: none !important; }
+  body.printing-plan .modal-back { position: static; background: none; }
+  body.printing-plan .modal { box-shadow: none; border: none; max-height: none; max-width: none; }
+  body.printing-plan .modal-btns { display: none; }
+  body.printing-plan .plan-name,
+  body.printing-plan .plan-num { border: none !important; background: transparent !important; padding: 0 !important; }
+  body.printing-plan .flight-table th { position: static; }
+}
+
+/* Mobile: bigger touch targets, roomier toolbar. */
+@media (max-width: 680px) {
+  #toolbar { gap: 6px; top: 8px; left: 8px;
+             max-height: calc(100vh - 16px);
+             max-height: calc(100dvh - 16px); }
+  #toolbar button { padding: 9px 12px; font-size: 14px; }
+  #toolbar .navtoggle { font-size: 14px; }
+  #toolbar .navtoggle input { width: 18px; height: 18px; }
+  #inspector { width: 260px; }
+  .row input[type="number"],
+  .row input[type="text"] { padding: 8px 6px; font-size: 15px; }
+  #info { font-size: 12px; }
+}
+
+/* Orientation picker modal */
+.modal-back {
+  position: absolute;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+}
+.modal {
+  min-width: 240px;
+  padding: 16px;
+  background: #2a2626;
+  border: 1px solid #3a3636;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+.modal-title {
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #e8e8e8;
+  text-align: center;
+}
+.modal-btns {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+.modal-btns button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: #1d6fe0;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+.modal-btns button:hover { background: #2f7fee; }
+.modal-btns .modal-cancel { background: #443f3f; }
+.modal-btns .modal-cancel:hover { background: #555050; }
+
+/* Flight-plan table modal */
+.modal.wide {
+  min-width: 520px;
+  max-width: 92vw;
+  max-height: 84vh;
+  overflow: auto;
+  padding: 14px;
+}
+.flight-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  margin: 0 0 12px;
+}
+.flight-table th,
+.flight-table td {
+  padding: 6px 10px;
+  text-align: start;
+  border-bottom: 1px solid #3a3636;
+  white-space: nowrap;
+}
+.flight-table th {
+  position: sticky;
+  top: 0;
+  color: #b9b3b3;
+  background: #2f2b2b;
+  font-weight: 600;
+}
+.flight-table tbody tr:hover { background: rgba(255, 255, 255, 0.04); }
+.plan-name {
+  width: 96px;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+.plan-name:focus { outline: 1px solid #1d6fe0; }
+.plan-num {
+  width: 64px;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+.plan-num:focus { outline: 1px solid #1d6fe0; }
+.flight-table tfoot td {
+  font-weight: 700;
+  border-top: 2px solid #443f3f;
+  border-bottom: none;
+  background: rgba(255, 255, 255, 0.03);
+}
