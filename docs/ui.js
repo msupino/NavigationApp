@@ -242,6 +242,7 @@ document.getElementById('file').onchange = e => {
 document.getElementById('fit').onclick = fitView;
 document.getElementById('fly').onclick = flyRoute;
 document.getElementById('plan').onclick = showFlightPlan;
+document.getElementById('charts').onclick = showChartsModal;
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
 try {
@@ -566,7 +567,9 @@ draw();
 // overlay toggle and the auto-snap on drop / drag.
 loadNavWaypoints().then(draw);
 // Same pattern for airfields: powering both the overlay and snap.
-loadAirfields().then(draw);
+// Also re-render inspector so plates section appears if a waypoint
+// was restored from sessionStorage before airfields loaded.
+loadAirfields().then(() => { draw(); if (state.selected) showInspector(); });
 
 // Save selected waypoint on refresh / tab-close so it survives page reload.
 window.addEventListener('beforeunload', function () {
