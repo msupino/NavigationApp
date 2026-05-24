@@ -1,0 +1,88 @@
+name: Review
+
+# Deeper code-review checks (lint / static analysis / Lighthouse).
+# Complements ci.yml: ci.yml enforces fast pre-merge gates (syntax,
+# JSON/XML parse, html-validate, ?v= consistency); this runs broader
+# advisory analysis and produces artifacts.
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+  schedule:
+    - cron: '0 6 * * 1'   # weekly CodeQL refresh, Mon 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write   # CodeQL upload
+  actions: read
+
+concurrency:
+  group: review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eslint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: ESLint
+        run: npx --yes eslint@9 docs
+
+  semgrep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.x' }
+      - name: Install Semgrep
+        run: pip install semgrep
+      - name: Semgrep scan (advisory)
+        # No --error: findings are printed for review but do not fail the
+        # job. Tighten once the codebase is baselined.
+        run: semgrep scan --config=auto --quiet --metrics=off
+
+  codeql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+          queries: security-and-quality
+      - uses: github/codeql-action/analyze@v3
+
+  lighthouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Serve docs/
+        run: npx --yes serve@14 docs -l 8080 &
+      - name: Wait for server
+        run: |
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            curl -fs http://localhost:8080 >/dev/null && break
+            sleep 1
+          done
+      - name: Lighthouse
+        run: |
+          npx --yes lighthouse@12 http://localhost:8080 \
+            --chrome-flags="--headless --no-sandbox --disable-gpu" \
+            --output=json --output=html --output-path=./lighthouse \
+            --only-categories=performance,accessibility,best-practices,seo
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: |
+            lighthouse.report.json
+            lighthouse.report.html
