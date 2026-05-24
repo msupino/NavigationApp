@@ -244,11 +244,11 @@ document.getElementById('fly').onclick = flyRoute;
 const GE_MODE_KEY = 'navaid.geMode';
 try {
   const stored = localStorage.getItem(GE_MODE_KEY);
-  if (stored === 'app' || stored === 'web') geMode = stored;
+  if (stored === 'app' || stored === 'web') window.geMode = stored;
 } catch (e) { /* storage unavailable */ }
 document.getElementById('ge-mode-select').value = geMode;
 document.getElementById('ge-mode-select').onchange = e => {
-  geMode = e.target.value;
+  window.geMode = e.target.value;
   try { localStorage.setItem(GE_MODE_KEY, geMode); } catch (err) { /* */ }
 };
 document.getElementById('plan').onclick = showFlightPlan;
