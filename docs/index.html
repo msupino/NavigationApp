@@ -64,7 +64,11 @@
       var h = document.documentElement;
       h.lang = lang; h.dir = lang === 'he' ? 'rtl' : 'ltr';
       if (lang === 'en') document.title = 'NavAid';
-      if (!p) history.replaceState(null, '', '?lang=' + lang);
+      if (!p) {
+        var u = new URL(location.href);
+        u.searchParams.set('lang', lang);
+        history.replaceState(null, '', u.pathname + u.search + u.hash);
+      }
       window.__navLang = lang;
     }());
   </script>
