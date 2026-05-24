@@ -148,15 +148,15 @@ function runSearch() {
   const qRaw = wpSearch.value.trim();
   const q = qRaw.toUpperCase();
   if (!q) { closeSearch(); return; }
-  const hits = [];
-  // Airfields surface first — small (16-entry) high-signal set: ICAO,
-  // English label, and Hebrew label all matched substring.
+  const afHits = [], wpHits = [];
+  // #124: split budget evenly — up to 6 airfields then up to 6 nav-WPs so a
+  // broad query (e.g. "LL") can't fill all 12 slots with airfield results.
   if (airfields && airfields.length) {
     for (const a of airfields) {
       if (a.name.toUpperCase().indexOf(q) >= 0 ||
           (a.en && a.en.toUpperCase().indexOf(q) >= 0) ||
           (a.he && a.he.indexOf(qRaw) >= 0)) {
-        hits.push({ kind: 'af', entry: a });
+        afHits.push({ kind: 'af', entry: a });
       }
     }
   }
@@ -164,15 +164,18 @@ function runSearch() {
     for (const w of navWP) {
       if (w.name.toUpperCase().indexOf(q) >= 0 ||
           (w.he && w.he.indexOf(qRaw) >= 0)) {
-        hits.push({ kind: 'wp', entry: w });
+        wpHits.push({ kind: 'wp', entry: w });
       }
     }
   }
+  const afSlots = Math.min(afHits.length, 6);
+  const wpSlots = Math.min(wpHits.length, 12 - afSlots);
+  const hits = afHits.slice(0, afSlots).concat(wpHits.slice(0, wpSlots));
   if (!hits.length) { closeSearch(); return; }
   wpResults.innerHTML = '';
   const wpField = S.navWpSearchField;
   const afField = S.airfieldLabelField;
-  for (const h of hits.slice(0, 12)) {
+  for (const h of hits) {
     const w = h.entry;
     const item = document.createElement('div');
     item.className = 'wp-search-item';
@@ -397,7 +400,8 @@ showMagVarEqv();
 document.getElementById('mag-var').oninput = e => {
   const v = parseFloat(e.target.value);
   if (isNaN(v)) return;
-  window.magVar =Math.max(-30, Math.min(30, v));
+  window.magVar = Math.max(-30, Math.min(30, v));
+  e.target.value = magVar;             // #85: write clamped value back so input matches
   try { localStorage.setItem(MAGVAR_KEY, String(magVar)); }
   catch (err) { /* storage unavailable */ }
   showMagVarEqv();
