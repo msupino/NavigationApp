@@ -98,7 +98,8 @@ jobs:
           cp -r d/docs/. site/staging/
       - name: Checkout open PR branches (preview deployments)
         run: |
-          mkdir -p site/pr site/branch
+          cd m
+          mkdir -p ../site/pr ../site/branch
           gh pr list --state open --json number,headRefName,baseRefName \
             --jq '.[] | select(.baseRefName == "main" or .baseRefName == "dev") | "\(.number) \(.headRefName)"' \
             | while read NUM BRANCH; do
@@ -109,8 +110,8 @@ jobs:
               SHA=$(git rev-parse --short "origin/$BRANCH" 2>/dev/null) || { echo "  skip (rev-parse failed)"; rm -rf "$STAGING"; continue; }
               sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" "$STAGING/index.html" 2>/dev/null || true
               sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" "$STAGING/core.js" 2>/dev/null || true
-              cp -r "$STAGING" "site/pr/$NUM"
-              cp -r "$STAGING" "site/branch/$BRANCH"
+              cp -r "$STAGING" "../site/pr/$NUM"
+              cp -r "$STAGING" "../site/branch/$BRANCH"
               rm -rf "$STAGING"
               echo "  → /pr/$NUM/ and /branch/$BRANCH/ ($SHA)"
             done
