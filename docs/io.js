@@ -296,6 +296,23 @@ function wpLabel(i) {
   return n || (S.wpPrefix + (i + 1));
 }
 
+// #86: Flight Plan modal state and Escape-to-close handling.
+let flightPlanBack = null;
+let refreshFlightPlan = null;
+let flightPlanEscape = null;
+
+function closeFlightPlan() {
+  if (flightPlanEscape) {
+    document.removeEventListener('keydown', flightPlanEscape);
+    flightPlanEscape = null;
+  }
+  if (flightPlanBack) {
+    flightPlanBack.remove();
+    flightPlanBack = null;
+  }
+  refreshFlightPlan = null;
+}
+
 function showFlightPlan() {
   if (state.legs.length === 0) {
     alert(S.errNoLegs);
@@ -440,13 +457,18 @@ function showFlightPlan() {
   const close = document.createElement('button');
   close.textContent = S.fpClose;
   close.className = 'modal-cancel';
-  close.onclick = () => back.remove();
+  close.onclick = closeFlightPlan;
   btns.appendChild(close);
   box.appendChild(btns);
 
   back.appendChild(box);
-  back.onclick = e => { if (e.target === back) back.remove(); };
+  // Close via the Close button or Escape (#86).
   document.body.appendChild(back);
+  flightPlanBack = back;
+  flightPlanEscape = function (e) {
+    if (e.key === 'Escape') closeFlightPlan();
+  };
+  document.addEventListener('keydown', flightPlanEscape);
 }
 
 function planCell(text) {
@@ -466,21 +488,28 @@ function chooseOrientation(size, onPick) {
   title.textContent = size + S.pageOrientation;
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
+  // #86: Escape closes the picker (counts as cancel).
+  function onEsc(e) { if (e.key === 'Escape') close(); }
+  function close() {
+    document.removeEventListener('keydown', onEsc);
+    back.remove();
+  }
   for (const [label, val] of [[S.landscape, 'landscape'], [S.portrait, 'portrait']]) {
     const b = document.createElement('button');
     b.textContent = label;
-    b.onclick = () => { back.remove(); onPick(val); };
+    b.onclick = () => { close(); onPick(val); };
     btns.appendChild(b);
   }
   const cancel = document.createElement('button');
   cancel.textContent = S.cancel;
   cancel.className = 'modal-cancel';
-  cancel.onclick = () => back.remove();
+  cancel.onclick = close;
   btns.appendChild(cancel);
   box.append(title, btns);
   back.appendChild(box);
-  back.onclick = e => { if (e.target === back) back.remove(); };
+  back.onclick = e => { if (e.target === back) close(); };
   document.body.appendChild(back);
+  document.addEventListener('keydown', onEsc);
 }
 
 // Timestamp for unique download names — avoids browser " (1)" suffixes.
