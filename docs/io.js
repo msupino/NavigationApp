@@ -1085,7 +1085,7 @@ function showPlateViewer(filename, label) {
 
   function onEsc(e) {
     if (e.key === 'Escape') {
-      document.removeEventListener('keydown', onEsc);
+      window.removeEventListener('keydown', onEsc);
       if (blobUrl) URL.revokeObjectURL(blobUrl);
       back.remove();
     }
@@ -1093,12 +1093,12 @@ function showPlateViewer(filename, label) {
   back.appendChild(box);
   back.onclick = e => {
     if (e.target === back) {
-      document.removeEventListener('keydown', onEsc);
+      window.removeEventListener('keydown', onEsc);
       if (blobUrl) URL.revokeObjectURL(blobUrl);
       back.remove();
     }
   };
   document.body.appendChild(back);
-  document.addEventListener('keydown', onEsc);
+  window.addEventListener('keydown', onEsc);
 }
 
