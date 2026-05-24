@@ -80,7 +80,7 @@ function hitLegLabel(px, py) {
 // changes downstream are preserved.
 function propagateAlt(i, key, newVal, oldVal) {
   if (newVal === oldVal) return;
-  const dir = key === 'inboundAltitude' ? 1 : -1;
+  const dir = key === 'outboundAltitude' || key === 'outboundSpeed' ? -1 : 1;
   for (let j = i + dir; j >= 0 && j < state.legs.length; j += dir) {
     if (state.legs[j][key] !== oldVal) break;
     state.legs[j][key] = newVal;
@@ -429,12 +429,12 @@ map.on('click', e => {
                Math.abs(w.lng - r.lng) < SNAP_DEG)) {
       return;
     }
-    state.waypoints.push({ lat: r.lat, lng: r.lng, name: r.name });
+    state.waypoints.push({ lat: r5(r.lat), lng: r5(r.lng), name: r.name });
     syncLegs();
     state.selected = { type: 'wp', index: state.waypoints.length - 1 };
     showInspector(); draw();
   } else if (state.mode === 'note') {
-    state.notes.push({ lat: e.latlng.lat, lng: e.latlng.lng,
+    state.notes.push({ lat: r5(e.latlng.lat), lng: r5(e.latlng.lng),
                        text: S.noteDefault, color: NOTE_DEFAULT_COLOR,
                        shape: 'rect' });
     state.selected = { type: 'note', index: state.notes.length - 1 };
