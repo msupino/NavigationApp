@@ -52,8 +52,8 @@
     }
   }
   </script>
-  <!-- language bootstrap: param > localStorage > 'he'.
-       document.write loads the right strings.js synchronously before core.js. -->
+  <!-- Language bootstrap: param > localStorage > 'he'. Sets window.__navLang;
+       the body-end loader (below) uses it to pick the right strings.js. -->
   <script>
     (function () {
       var p = new URLSearchParams(location.search).get('lang');
@@ -66,7 +66,6 @@
       if (lang === 'en') document.title = 'NavAid';
       if (!p) history.replaceState(null, '', '?lang=' + lang);
       window.__navLang = lang;
-        document.write('\x3Cscript src="./' + lang + '/strings.js?v=145">\x3C\/script>');
     }());
   </script>
   <!-- Google Analytics (GA4) -->
@@ -89,12 +88,23 @@
     <span id="toolbar-toggle" role="button" tabindex="0"><span></span><span></span><span></span></span>
 
     <label id="lang-toggle" class="navtoggle">🌐
-      <select id="lang-select" onchange="location.href='?lang='+this.value">
+      <select id="lang-select">
         <option value="he">עברית</option>
         <option value="en">English</option>
       </select>
     </label>
-    <script>document.getElementById('lang-select').value = window.__navLang;</script>
+    <script>
+      (function () {
+        var sel = document.getElementById('lang-select');
+        sel.value = window.__navLang;
+        sel.addEventListener('change', function () {
+          if (typeof state !== 'undefined' && state.selected) {
+            try { sessionStorage.setItem('navaid.selected', JSON.stringify(state.selected)); } catch (e) {}
+          }
+          location.href = sel.value === 'en' ? '?lang=en' : '?lang=he';
+        });
+      }());
+    </script>
 
     <div class="tb-section" data-sec="edit">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecEdit"></div>
@@ -134,6 +144,7 @@
         <button id="load" data-i18n="tbImport" data-i18n-title="tbImportTitle"></button>
         <input type="file" id="file" accept="application/json,.json" hidden>
         <button id="plan" data-i18n="tbPlan" data-i18n-title="tbPlanTitle"></button>
+        <button id="charts" data-i18n="tbCharts" data-i18n-title="tbChartsTitle"></button>
         <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
         <label class="navtoggle" data-i18n-title="tbShowReturnTitle">
           <input type="checkbox" id="ret-cb"> <span data-i18n="tbShowReturn"></span>
@@ -229,13 +240,30 @@
     <div id="insp-body"></div>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
-  <!-- strings.js was loaded by the lang bootstrap in <head> -->
-  <script src="core.js?v=145"></script>
-  <script src="draw.js?v=145"></script>
-  <script src="interact.js?v=145"></script>
-  <script src="io.js?v=145"></script>
-  <script src="ui.js?v=145"></script>
+  <!-- Dynamic in-order loader. Inserts every script (Leaflet, the
+       lang-specific strings.js, then the 5 app modules) with async=false
+       so they execute in queued order, replacing the previous document.write
+       hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
+  <script>
+    (function () {
+      var v = '?v=145';
+      var srcs = [
+        'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+        'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
+        './' + window.__navLang + '/strings.js' + v,
+        'core.js' + v,
+        'draw.js' + v,
+        'interact.js' + v,
+        'io.js' + v,
+        'ui.js' + v
+      ];
+      for (var i = 0; i < srcs.length; i++) {
+        var s = document.createElement('script');
+        s.src = srcs[i];
+        s.async = false;            // in-order, like parser-inserted
+        document.head.appendChild(s);
+      }
+    }());
+  </script>
 </body>
 </html>

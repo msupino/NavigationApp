@@ -21,12 +21,18 @@ self.addEventListener('fetch', e => {
   if (!cacheable(url)) return;            // map tiles etc -> straight to network
 
   // HTML navigations: network-first so a new ?v= is picked up immediately.
+  // Only cache 2xx responses (#84: never cache a 404/5xx as the offline
+  // shell) and AWAIT the cache.put inside the respondWith promise so the
+  // SW lifecycle can't terminate mid-write on slow devices.
   if (e.request.mode === 'navigate') {
     e.respondWith(
       fetch(e.request)
-        .then(resp => {
-          const copy = resp.clone();   // clone before the body is consumed
-          caches.open(CACHE).then(c => c.put(e.request, copy));
+        .then(async resp => {
+          if (resp && resp.ok) {
+            const copy = resp.clone();
+            const c = await caches.open(CACHE);
+            await c.put(e.request, copy);
+          }
           return resp;
         })
         .catch(() => caches.match(e.request)));
