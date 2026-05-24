@@ -4,6 +4,9 @@ name: Deploy
 on:
   push:
     branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+    types: [opened, synchronize]
   workflow_dispatch:
 
 permissions:
@@ -12,7 +15,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: ${{ github.event_name == 'pull_request' && format('pages-pr-{0}', github.event.number) || 'pages' }}
   cancel-in-progress: true
 
 jobs:
@@ -68,6 +71,12 @@ jobs:
           mkdir -p site/staging
           cp -r m/docs/. site/
           cp -r d/docs/. site/staging/
+          SHA_M=$(git -C m rev-parse --short HEAD)
+          SHA_D=$(git -C d rev-parse --short HEAD)
+          sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA_M}/g" site/index.html
+          sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA_M}'/g" site/core.js
+          sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA_D}/g" site/staging/index.html
+          sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA_D}'/g" site/staging/core.js
       - name: Checkout open PR branches (preview deployments)
         run: |
           cd m
