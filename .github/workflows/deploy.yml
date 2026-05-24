@@ -109,11 +109,29 @@ jobs:
         with:
           ref: main
           path: m
+          lfs: true
+      - name: Cache-bust main (?v= → short SHA, version → x.y-SHA)
+        run: |
+          SHA=$(git -C m rev-parse --short HEAD)
+          sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" m/docs/index.html
+          sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" m/docs/core.js
+          echo "main ?v= rewritten to ${SHA}"
+          echo "main NavAid.version rewritten to:"
+          grep -oE "version: '[^']+'" m/docs/core.js
       - name: Checkout dev (staging)
         uses: actions/checkout@v4
         with:
           ref: dev
           path: d
+          lfs: true
+      - name: Cache-bust dev (?v= → short SHA, version → x.y-SHA)
+        run: |
+          SHA=$(git -C d rev-parse --short HEAD)
+          sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" d/docs/index.html
+          sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" d/docs/core.js
+          echo "dev ?v= rewritten to ${SHA}"
+          echo "dev NavAid.version rewritten to:"
+          grep -oE "version: '[^']+'" d/docs/core.js
       - name: Assemble site
         run: |
           # docs/byop/ is ~133 MB of PDFs (#105). Keep ONE copy at the
