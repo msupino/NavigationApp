@@ -2,7 +2,7 @@
 // End-to-end coverage of the route editing surface: add / drag / delete
 // waypoints, reverse, clear, mode switching, inspector. Same 11-WP
 // LLHZ → LLHA fixture as tests/flight-plan.spec.js and tests/share-route.spec.js.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 
 const ROUTE = {
   waypoints: [
