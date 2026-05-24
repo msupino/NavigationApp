@@ -85,6 +85,10 @@ window.S = Object.assign({
   errTilesFail: function(f, t) { return f + ' of ' + t + ' map tiles failed to load — the PNG may have blank patches. Re-run the export to retry.'; },
   errNeedWps: 'Add at least two waypoints first.',
   flyConfirm: 'Fly the route in Google Earth Pro (desktop).\n\nPress OK to save the tour file (.kml), then open it in Google Earth — the “Fly the route” tour appears under Places; press play to fly above the terrain.\n\nNo Google Earth? Free desktop app: google.com/earth/versions',
+  geWebConfirm: 'Open the route in Google Earth Web (browser).\n\nPress OK to open earth.google.com at the starting waypoint.',
+  chooseGeMode: 'Open in',
+  geModeApp: 'Google Earth Pro (KML)',
+  geModeWeb: 'Google Earth Web',
   legTitle: function(n) { return 'Leg ' + n; },
   legArrow: '→',                       // direction arrow in leg inspector title (LTR)
   speedKt: 'Speed (kt)',

@@ -723,88 +723,118 @@ function exportPNG() {
 }
 
 // --- fly the route (Google Earth) -----------------------------------
-// A browser cannot launch or detect a desktop app, so this writes a KML
-// tour and tells the user to open it in Google Earth Pro, which flies
-// the route at the per-leg altitudes set in the flight plan.
 function flyRoute() {
   if (state.waypoints.length < 2) {
     alert(S.errNeedWps);
     return;
   }
-  if (!confirm(S.flyConfirm)) {
-    return;
-  }
   const wps = state.waypoints;
-  // Camera flythrough height per waypoint (metres MSL): the leg flown
-  // along it; the last waypoint reuses the last leg. inboundAltitude is feet.
   const altM = i => {
     const leg = state.legs[Math.min(i, state.legs.length - 1)];
     return Math.max(0, Math.round((leg ? leg.inboundAltitude : 2000) * 0.3048));
   };
-  const esc = s => String(s).replace(/[<>&]/g,
-    c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
-
-  // heading at each waypoint = bearing toward the next (last reuses prev)
   const heading = i => {
     const j = Math.min(i, wps.length - 2);
     return geo(wps[j], wps[j + 1]).brg;
   };
-  // KML <Camera> child order is strict — altitudeMode must come last,
-  // or Google Earth ignores it and the eye ends up miles up.
-  // absolute = altitude is metres above mean sea level (MSL).
-  const camera = (i, pad) =>
-    pad + '<Camera>\n' +
-    pad + '  <longitude>' + wps[i].lng + '</longitude>\n' +
-    pad + '  <latitude>' + wps[i].lat + '</latitude>\n' +
-    pad + '  <altitude>' + altM(i) + '</altitude>\n' +
-    pad + '  <heading>' + heading(i).toFixed(1) + '</heading>\n' +
-    pad + '  <tilt>70</tilt>\n' +
-    pad + '  <roll>0</roll>\n' +
-    pad + '  <altitudeMode>absolute</altitudeMode>\n' +
-    pad + '</Camera>\n';
-  const flyTo = (i, dur, mode) =>
-    '    <gx:FlyTo>\n' +
-    '      <gx:duration>' + dur.toFixed(1) + '</gx:duration>\n' +
-    '      <gx:flyToMode>' + mode + '</gx:flyToMode>\n' +
-    camera(i, '      ') +
-    '    </gx:FlyTo>\n';
 
-  let tour = flyTo(0, 4, 'bounce');
-  for (let i = 1; i < wps.length; i++) {
-    const leg = state.legs[i - 1];
-    const { dist } = geo(wps[i - 1], wps[i]);
-    const durH = leg && leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
-    tour += flyTo(i, Math.max(4, Math.min(45, durH * 60 * 4)), 'smooth');
+  function onPick(mode) {
+    if (mode === 'web') {
+      if (!confirm(S.geWebConfirm)) return;
+      const url = 'https://earth.google.com/web/@' +
+        wps[0].lat + ',' + wps[0].lng + ',' + altM(0) + 'a,' +
+        heading(0).toFixed(1) + 'h,70t';
+      window.open(url, '_blank');
+      return;
+    }
+
+    if (!confirm(S.flyConfirm)) return;
+
+    const esc = s => String(s).replace(/[<>&]/g,
+      c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+
+    const camera = (i, pad) =>
+      pad + '<Camera>\n' +
+      pad + '  <longitude>' + wps[i].lng + '</longitude>\n' +
+      pad + '  <latitude>' + wps[i].lat + '</latitude>\n' +
+      pad + '  <altitude>' + altM(i) + '</altitude>\n' +
+      pad + '  <heading>' + heading(i).toFixed(1) + '</heading>\n' +
+      pad + '  <tilt>70</tilt>\n' +
+      pad + '  <roll>0</roll>\n' +
+      pad + '  <altitudeMode>absolute</altitudeMode>\n' +
+      pad + '</Camera>\n';
+    const flyTo = (i, dur, mode) =>
+      '    <gx:FlyTo>\n' +
+      '      <gx:duration>' + dur.toFixed(1) + '</gx:duration>\n' +
+      '      <gx:flyToMode>' + mode + '</gx:flyToMode>\n' +
+      camera(i, '      ') +
+      '    </gx:FlyTo>\n';
+
+    let tour = flyTo(0, 4, 'bounce');
+    for (let i = 1; i < wps.length; i++) {
+      const leg = state.legs[i - 1];
+      const { dist } = geo(wps[i - 1], wps[i]);
+      const durH = leg && leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
+      tour += flyTo(i, Math.max(4, Math.min(45, durH * 60 * 4)), 'smooth');
+    }
+
+    const coords = wps.map(w => w.lng + ',' + w.lat + ',0').join(' ');
+    const points = wps.map((w, i) =>
+      '  <Placemark><name>' + esc(wpLabel(i)) + '</name>' +
+      '<Point><coordinates>' + w.lng + ',' + w.lat + ',0</coordinates></Point>' +
+      '</Placemark>').join('\n');
+
+    const kml =
+      '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      '<kml xmlns="http://www.opengis.net/kml/2.2" ' +
+      'xmlns:gx="http://www.google.com/kml/ext/2.2">\n<Document>\n' +
+      '  <name>' + S.kmlDocName + '</name>\n' +
+      camera(0, '  ') +
+      '  <Placemark><name>' + S.kmlRouteName + '</name>\n' +
+      '    <Style><LineStyle><color>ff3399ff</color><width>3</width></LineStyle></Style>\n' +
+      '    <LineString><tessellate>1</tessellate>\n' +
+      '      <coordinates>' + coords + '</coordinates>\n' +
+      '    </LineString>\n  </Placemark>\n' + points + '\n' +
+      '  <gx:Tour><name>' + S.kmlTourName + '</name>\n    <gx:Playlist>\n' +
+      tour + '    </gx:Playlist>\n  </gx:Tour>\n' +
+      '</Document>\n</kml>\n';
+
+    const blob = new Blob([kml],
+      { type: 'application/vnd.google-earth.kml+xml' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'navaid-flythrough-' + fileStamp() + '.kml';
+    a.click();
+    URL.revokeObjectURL(a.href);
   }
 
-  const coords = wps.map(w => w.lng + ',' + w.lat + ',0').join(' ');
-  const points = wps.map((w, i) =>
-    '  <Placemark><name>' + esc(wpLabel(i)) + '</name>' +
-    '<Point><coordinates>' + w.lng + ',' + w.lat + ',0</coordinates></Point>' +
-    '</Placemark>').join('\n');
-
-  const kml =
-    '<?xml version="1.0" encoding="UTF-8"?>\n' +
-    '<kml xmlns="http://www.opengis.net/kml/2.2" ' +
-    'xmlns:gx="http://www.google.com/kml/ext/2.2">\n<Document>\n' +
-    '  <name>' + S.kmlDocName + '</name>\n' +
-    camera(0, '  ') +                    // open already at the start, 5000 ft
-    '  <Placemark><name>' + S.kmlRouteName + '</name>\n' +
-    '    <Style><LineStyle><color>ff3399ff</color><width>3</width></LineStyle></Style>\n' +
-    '    <LineString><tessellate>1</tessellate>\n' +
-    '      <coordinates>' + coords + '</coordinates>\n' +
-    '    </LineString>\n  </Placemark>\n' + points + '\n' +
-    '  <gx:Tour><name>' + S.kmlTourName + '</name>\n    <gx:Playlist>\n' +
-    tour + '    </gx:Playlist>\n  </gx:Tour>\n' +
-    '</Document>\n</kml>\n';
-
-  const blob = new Blob([kml],
-    { type: 'application/vnd.google-earth.kml+xml' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'navaid-flythrough-' + fileStamp() + '.kml';
-  a.click();
-  URL.revokeObjectURL(a.href);
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  const box = document.createElement('div');
+  box.className = 'modal';
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = S.chooseGeMode;
+  const btns = document.createElement('div');
+  btns.className = 'modal-btns';
+  function onEsc(e) { if (e.key === 'Escape') { document.removeEventListener('keydown', onEsc); back.remove(); } }
+  function close() { document.removeEventListener('keydown', onEsc); back.remove(); }
+  for (const [label, mode] of [[S.geModeWeb, 'web'], [S.geModeApp, 'app']]) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.onclick = () => { close(); onPick(mode); };
+    btns.appendChild(b);
+  }
+  const cancel = document.createElement('button');
+  cancel.textContent = S.cancel;
+  cancel.className = 'modal-cancel';
+  cancel.onclick = close;
+  btns.appendChild(cancel);
+  box.append(title, btns);
+  back.appendChild(box);
+  back.onclick = e => { if (e.target === back) close(); };
+  document.body.appendChild(back);
+  document.addEventListener('keydown', onEsc);
 }
 
 // --- route persistence ----------------------------------------------
