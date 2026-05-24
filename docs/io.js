@@ -773,35 +773,35 @@ function exportPNG() {
 }
 
 // --- fly the route (Google Earth) -----------------------------------
-// A browser cannot launch or detect a desktop app, so this writes a KML
-// tour and tells the user to open it in Google Earth Pro, which flies
-// the route at the per-leg altitudes set in the flight plan.
 function flyRoute() {
   if (state.waypoints.length < 2) {
     alert(S.errNeedWps);
     return;
   }
-  if (!confirm(S.flyConfirm)) {
-    return;
-  }
   const wps = state.waypoints;
-  // Camera flythrough height per waypoint (metres MSL): the leg flown
-  // along it; the last waypoint reuses the last leg. inboundAltitude is feet.
   const altM = i => {
     const leg = state.legs[Math.min(i, state.legs.length - 1)];
     return Math.max(0, Math.round((leg ? leg.inboundAltitude : 2000) * 0.3048));
   };
-  const esc = s => String(s).replace(/[<>&]/g,
-    c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
-
-  // heading at each waypoint = bearing toward the next (last reuses prev)
   const heading = i => {
     const j = Math.min(i, wps.length - 2);
     return geo(wps[j], wps[j + 1]).brg;
   };
-  // KML <Camera> child order is strict — altitudeMode must come last,
-  // or Google Earth ignores it and the eye ends up miles up.
-  // absolute = altitude is metres above mean sea level (MSL).
+
+  if (geMode === 'web') {
+    if (!confirm(S.geWebConfirm)) return;
+    const url = 'https://earth.google.com/web/@' +
+      wps[0].lat + ',' + wps[0].lng + ',' + altM(0) + 'a,' +
+      heading(0).toFixed(1) + 'h,70t';
+    window.open(url, '_blank');
+    return;
+  }
+
+  if (!confirm(S.flyConfirm)) return;
+
+  const esc = s => String(s).replace(/[<>&]/g,
+    c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+
   const camera = (i, pad) =>
     pad + '<Camera>\n' +
     pad + '  <longitude>' + wps[i].lng + '</longitude>\n' +
@@ -838,7 +838,7 @@ function flyRoute() {
     '<kml xmlns="http://www.opengis.net/kml/2.2" ' +
     'xmlns:gx="http://www.google.com/kml/ext/2.2">\n<Document>\n' +
     '  <name>' + S.kmlDocName + '</name>\n' +
-    camera(0, '  ') +                    // open already at the start, 5000 ft
+    camera(0, '  ') +
     '  <Placemark><name>' + S.kmlRouteName + '</name>\n' +
     '    <Style><LineStyle><color>ff3399ff</color><width>3</width></LineStyle></Style>\n' +
     '    <LineString><tessellate>1</tessellate>\n' +
