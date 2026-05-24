@@ -68,9 +68,15 @@ jobs:
           path: d
       - name: Assemble site
         run: |
+          # docs/byop/ is ~133 MB of PDFs (#105). Keep ONE copy at the
+          # production root; staging + every PR/branch preview points at it
+          # via an absolute path. Without this the Pages artifact balloons to
+          # >1 GB on a busy day (main + dev + ~7 PRs × 2 = ~1.8 GB).
           mkdir -p site/staging
           cp -r m/docs/. site/
           cp -r d/docs/. site/staging/
+          rm -rf site/staging/byop
+          sed -i "s|const PLATE_BASE = 'byop/';|const PLATE_BASE = '/NavigationApp/byop/';|" site/staging/io.js
           SHA_M=$(git -C m rev-parse --short HEAD)
           SHA_D=$(git -C d rev-parse --short HEAD)
           sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA_M}/g" site/index.html
@@ -91,6 +97,9 @@ jobs:
               SHA=$(git rev-parse --short "origin/$BRANCH" 2>/dev/null) || { echo "  skip (rev-parse failed)"; rm -rf "$STAGING"; continue; }
               sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" "$STAGING/index.html" 2>/dev/null || true
               sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" "$STAGING/core.js" 2>/dev/null || true
+              # Drop the per-PR byop/ copy and point at the production one.
+              rm -rf "$STAGING/byop"
+              sed -i "s|const PLATE_BASE = 'byop/';|const PLATE_BASE = '/NavigationApp/byop/';|" "$STAGING/io.js" 2>/dev/null || true
               cp -r "$STAGING" "../site/pr/$NUM"
               cp -r "$STAGING" "../site/branch/$BRANCH"
               rm -rf "$STAGING"
