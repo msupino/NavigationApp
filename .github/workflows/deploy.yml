@@ -58,13 +58,11 @@ jobs:
         with:
           ref: main
           path: m
-          lfs: true
       - name: Checkout dev (staging)
         uses: actions/checkout@v4
         with:
           ref: dev
           path: d
-          lfs: true
       - name: Assemble site
         run: |
           mkdir -p site/staging

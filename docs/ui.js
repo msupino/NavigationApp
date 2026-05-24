@@ -549,6 +549,17 @@ if (_restoreResult === 'corrupt') {
   console.warn('NavAid: ' + msg);
   alert(msg);
 }
+try {
+  const saved = sessionStorage.getItem('navaid.selected');
+  if (saved) {
+    sessionStorage.removeItem('navaid.selected');
+    const sel = JSON.parse(saved);
+    if (sel && sel.type === 'wp' && sel.index >= 0 && sel.index < state.waypoints.length) {
+      state.selected = sel;
+    }
+  }
+} catch (e) {}
+if (state.selected) showInspector();
 if (state.waypoints.length) fitView();   // always frame the restored route
 draw();
 // Always load nav-waypoints in the background — they power both the
@@ -556,6 +567,13 @@ draw();
 loadNavWaypoints().then(draw);
 // Same pattern for airfields: powering both the overlay and snap.
 loadAirfields().then(draw);
+
+// Save selected waypoint on refresh / tab-close so it survives page reload.
+window.addEventListener('beforeunload', function () {
+  if (state && state.selected) {
+    try { sessionStorage.setItem('navaid.selected', JSON.stringify(state.selected)); } catch (e) {}
+  }
+});
 
 // --- PWA: service worker --------------------------------------------
 // Registering the worker makes the app installable; the browser shows

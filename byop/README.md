@@ -66,4 +66,4 @@ When CAAI / ForeFlight Israel publish a new edition:
 
 ## Status
 
-Currently bundled but **not yet integrated** into NavAid's UI. Future work will surface relevant plates per airport waypoint via the inspector. Tracked separately.
+Integrated into NavAid's UI. Selecting a waypoint whose name matches an airfield ICAO (e.g. `LLBG`) shows its charts in the inspector, grouped by category. Click a chip to open the PDF in a full-screen viewer. See [Airfields dataset](https://github.com/msupino/NavigationApp/wiki/Airfields-Dataset) for details.
