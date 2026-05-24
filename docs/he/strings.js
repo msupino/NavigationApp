@@ -54,9 +54,9 @@ window.S = {
   errNeedWps: 'הוסף לפחות שני ציוני דרך תחילה.',
   flyConfirm: 'טוס את המסלול ב-Google Earth Pro (שולחן עבודה).\n\nלחץ אישור כדי לשמור את קובץ הסיור (.kml), ואז פתח אותו ב-Google Earth — הסיור "Fly the route" יופיע תחת Places; לחץ הפעל לטיסה מעל הקרקע.\n\nאין Google Earth? הורד חינם: google.com/earth/versions',
   geWebConfirm: 'פתח את המסלול ב-Google Earth Web (דפדפן).\n\nלחץ אישור כדי לפתוח את earth.google.com בנקודת הדרך הראשונה.',
-  tbGeMode: '🌍 מצב Google Earth',
-  tbGeModeApp: 'יישום (KML)',
-  tbGeModeWeb: 'אינטרנט (דפדפן)',
+  chooseGeMode: 'פתח ב-',
+  geModeApp: 'Google Earth Pro (KML)',
+  geModeWeb: 'Google Earth Web',
   legTitle: function(n) { return 'קטע ' + n; },
   legArrow: '←',
 

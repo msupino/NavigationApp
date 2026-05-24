@@ -294,8 +294,7 @@ html, body {
 }
 .wp-search-item:hover,
 .wp-search-item.active { background: #1d6fe0; color: #fff; }
-#toolbar .navtoggle select,
-#toolbar .ge-mode-toggle select {
+#toolbar .navtoggle select {
   flex: 1;
   min-width: 0;
   font: inherit;
@@ -307,16 +306,6 @@ html, body {
   padding: 2px 4px;
   cursor: pointer;
 }
-.ge-mode-toggle {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 13px;
-  color: #e8e8e8;
-  padding: 0 6px;
-  white-space: nowrap;
-}
-.ge-mode-toggle select { flex: 1; min-width: 0; }
 
 #inspector {
   position: absolute;
