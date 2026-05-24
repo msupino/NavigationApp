@@ -79,6 +79,7 @@ window.S = Object.assign({
   errNoLegs: 'No legs yet — drop at least two waypoints first.',
   flightPlan: 'Flight plan',
   fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time'],
+  fpReturn: 'Return route',
   fpTotal: 'Total',
   fpClose: 'Close',
   fpPrint: 'Print',
@@ -137,13 +138,13 @@ window.S = Object.assign({
   tbFitTitle: 'Fit route to view',
   tbPlan: '📋 Flight Plan',
   tbPlanTitle: 'Show flight plan table',
-  tbCharts: '🗺️ Charts',
+  tbCharts: '🗺️ Airport Charts',
   tbChartsTitle: 'Browse approach charts for all airfields',
   tbFly: '✈️ Open route in Google Earth',
   tbFlyTitle: 'Save a Google Earth tour of the route at the planned leg altitudes',
   tbShowReturn: 'Show return path',
   tbShowReturnTitle: 'Show return-direction (outbound) info',
-  tbShowMidLeg: 'Show leg dist',
+  tbShowMidLeg: 'Show leg distance',
   tbShowMidLegTitle: 'Show distance badge at the middle of each leg',
   tbHighlightDiff: 'Highlight alt/speed diff',
   tbHighlightDiffTitle: 'Halo legs whose altitude or speed differs from the adjacent leg',
@@ -251,12 +252,18 @@ const newLeg = () => ({
   inboundAltitude: 2000,
   outboundAltitude: 2000,
   flightSpeed: 90,
+  outboundSpeed: 90,
   inLabel: { a: 0, p: 44 },            // marker offset: along leg, perpendicular
   outLabel: { a: 0, p: -44 },
 });
 
 
 // --- helpers ---------------------------------------------------------
+// Round lat/lng to 5 decimals (~1.1 m at 32°N). 3 dp was too coarse — coarser
+// than AIP source data (published to ~18 m) and visibly shifted close-spaced
+// reporting points. 5 dp keeps full source precision while still trimming
+// IEEE-754 noise from drags and JSON imports.
+function r5(v) { return Math.round(v * 100000) / 100000; }
 function geo(a, b) {                   // a,b = {lat,lng} -> {dist NM, brg deg}
   const rad = d => (d * Math.PI) / 180;
   const phi1 = rad(a.lat), phi2 = rad(b.lat);

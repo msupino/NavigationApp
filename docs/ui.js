@@ -220,7 +220,8 @@ document.getElementById('reverse').onclick = () => {
   state.legs = state.legs.reverse().map(l => ({
     inboundAltitude: l.outboundAltitude,
     outboundAltitude: l.inboundAltitude,
-    flightSpeed: l.flightSpeed,
+    flightSpeed: l.outboundSpeed,
+    outboundSpeed: l.flightSpeed,
     inLabel: { a: -l.outLabel.a, p: -l.outLabel.p },
     outLabel: { a: -l.inLabel.a, p: -l.inLabel.p },
   }));
@@ -244,7 +245,11 @@ document.getElementById('file').onchange = e => {
 };
 document.getElementById('fit').onclick = fitView;
 document.getElementById('fly').onclick = flyRoute;
-document.getElementById('plan').onclick = showFlightPlan;
+// Toggle: a second click closes the modal instead of being a no-op (#78 dedupe
+// previously made the button look broken when the modal was already open).
+document.getElementById('plan').onclick = () => {
+  if (fpOpen) closeFlightPlan(); else showFlightPlan();
+};
 document.getElementById('charts').onclick = showChartsModal;
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
@@ -259,6 +264,7 @@ document.getElementById('mid-cb').checked = showMidLeg;
 document.getElementById('ret-cb').onchange = e => {
   window.showReturn =e.target.checked;
   try { localStorage.setItem(RETURN_KEY, showReturn ? '1' : '0'); } catch (err) { /* */ }
+  if (fpOpen) { closeFlightPlan(); setTimeout(showFlightPlan, 0); }
   draw();
 };
 document.getElementById('mid-cb').onchange = e => {
@@ -574,18 +580,21 @@ loadNavWaypoints().then(draw);
 // Also re-render inspector so plates section appears if a waypoint
 // was restored from sessionStorage before airfields loaded.
 loadAirfields().then(() => { draw(); if (state.selected) showInspector(); });
+// Restore flight-plan modal if it was open before refresh / language change.
+try {
+  if (sessionStorage.getItem('navaid.fpOpen')) {
+    sessionStorage.removeItem('navaid.fpOpen');
+    if (state.waypoints.length && typeof showFlightPlan === 'function') showFlightPlan();
+  }
+} catch (e) {}
 
-// Save selected waypoint on refresh / tab-close so it survives page reload.
+// Save selected waypoint and flight-plan state on refresh / tab-close.
 window.addEventListener('beforeunload', function () {
   if (state && state.selected) {
     try { sessionStorage.setItem('navaid.selected', JSON.stringify(state.selected)); } catch (e) {}
   }
-});
-
-// Save selected waypoint on refresh / tab-close so it survives page reload.
-window.addEventListener('beforeunload', function () {
-  if (window.state && window.state.selected) {
-    try { sessionStorage.setItem('navaid.selected', JSON.stringify(window.state.selected)); } catch (e) {}
+  if (window.fpOpen) {
+    try { sessionStorage.setItem('navaid.fpOpen', '1'); } catch (e) {}
   }
 });
 
