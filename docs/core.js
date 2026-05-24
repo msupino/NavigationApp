@@ -92,9 +92,9 @@ window.S = Object.assign({
   errNeedWps: 'Add at least two waypoints first.',
   flyConfirm: 'Fly the route in Google Earth Pro (desktop).\n\nPress OK to save the tour file (.kml), then open it in Google Earth — the “Fly the route” tour appears under Places; press play to fly above the terrain.\n\nNo Google Earth? Free desktop app: google.com/earth/versions',
   geWebConfirm: 'Open the route in Google Earth Web (browser).\n\nPress OK to open earth.google.com at the starting waypoint.',
-  tbGeMode: '🌍 GE Mode',
-  tbGeModeApp: 'App (KML)',
-  tbGeModeWeb: 'Web (Browser)',
+  chooseGeMode: 'Open in',
+  geModeApp: 'Google Earth Pro (KML)',
+  geModeWeb: 'Google Earth Web',
   legTitle: function(n) { return 'Leg ' + n; },
   legArrow: '→',                       // direction arrow in leg inspector title (LTR)
   speedKt: 'Speed (kt)',
@@ -212,7 +212,6 @@ var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 var yellowAlpha = 1;        // global multiplier for yellow label backgrounds
 var wpSize = 1;             // waypoint name / number text size scale
 var legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
-var geMode = 'app';          // 'app' = KML download for GE Pro; 'web' = open earth.google.com
 let pageSize = null;        // null | 'A3' | 'A4'
 let pageOrient = 'landscape';   // 'landscape' | 'portrait'
 let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre
