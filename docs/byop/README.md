@@ -37,15 +37,13 @@ Each airfield has up to ~10 PDFs:
 
 ## Storage
 
-PDFs are stored via **Git LFS** (`.gitattributes` traps `byop/*.pdf`). Total ~133 MB.
+PDFs are stored as regular git blobs under `docs/byop/` and served directly by **GitHub Pages** CDN. Total ~133 MB.
 
-The `byop/` directory is **NOT served by GitHub Pages** — it lives at the repo root, not under `docs/`. Pages does not serve LFS files anyway. The PDFs are accessible at:
+The PDFs are accessible at:
 
 ```
-https://media.githubusercontent.com/media/msupino/NavigationApp/main/byop/<file>.pdf
+https://msupino.github.io/NavigationApp/byop/<file>.pdf
 ```
-
-…or the `raw.githubusercontent.com/...` equivalent.
 
 ## License & attribution
 
@@ -60,10 +58,10 @@ NavAid bundles this snapshot for reference and offline use only. For current ope
 When CAAI / ForeFlight Israel publish a new edition:
 
 1. Download the new pack from <https://www.foreflightisrael.xyz/>.
-2. Replace files under `byop/` with the new pack's `byop/` directory.
-3. Commit (LFS handles the upload). Bump cache-bust on any UI that references the plates.
-4. Update this README's edition / effective date.
+2. Replace files under `docs/byop/` with the new pack's PDFs.
+3. Run `qpdf --flatten-rotation` on any PDFs that have `Rotate:` metadata (check with `pdfinfo`).
+4. Commit. Update this README's edition / effective date.
 
 ## Status
 
-Integrated into NavAid's UI. Selecting a waypoint whose name matches an airfield ICAO (e.g. `LLBG`) shows its charts in the inspector, grouped by category. Click a chip to open the PDF in a full-screen viewer. See [Airfields dataset](https://github.com/msupino/NavigationApp/wiki/Airfields-Dataset) for details.
+Integrated into NavAid's UI. Use the **🗺️ Charts** toolbar button to browse all airfields, or select a waypoint whose name matches an airfield ICAO (e.g. `LLBG`) to see its charts in the inspector. Click a chip to open the PDF in a full-screen viewer. See [Airfields dataset](https://github.com/msupino/NavigationApp/wiki/Airfields-Dataset) for details.
