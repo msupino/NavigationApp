@@ -62,6 +62,7 @@ window.S = Object.assign({
 
   noteDefault: 'Note',
   errLoadFile: 'Could not load file: ',
+  errStorageFull: 'Auto-save failed: browser storage is full. Export your route to keep it.',
   errInvalidRoute: function(msg) { return 'Invalid route file: ' + msg; },
   errInvalidNavWaypoints: function(msg) { return 'Invalid nav-waypoints data: ' + msg; },
   errInvalidAirfields: function(msg) { return 'Invalid airfields data: ' + msg; },
