@@ -7,8 +7,6 @@ on:
   pull_request:
     branches: [main, dev]
     types: [opened, synchronize]
-  merge_group:
-    branches: [main, dev]
   workflow_dispatch:
 
 permissions:
