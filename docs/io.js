@@ -279,8 +279,13 @@ function wpLabel(i) {
 // or closes the modal if the leg count changed.
 let flightPlanBack = null;
 let refreshFlightPlan = null;
+let flightPlanEscape = null;            // #86: Escape-to-close listener
 
 function closeFlightPlan() {
+  if (flightPlanEscape) {
+    document.removeEventListener('keydown', flightPlanEscape);
+    flightPlanEscape = null;
+  }
   if (flightPlanBack) {
     flightPlanBack.remove();
     flightPlanBack = null;
@@ -477,10 +482,14 @@ function showFlightPlan() {
 
   back.appendChild(box);
   // No backdrop-click-to-close — backdrop is pointer-events:none so the map
-  // is reachable; close via the Close button (or Escape from #86 later).
+  // is reachable; close via the Close button or Escape (#86).
   document.body.appendChild(back);
   flightPlanBack = back;
   refreshFlightPlan = refresh;
+  flightPlanEscape = function (e) {
+    if (e.key === 'Escape') closeFlightPlan();
+  };
+  document.addEventListener('keydown', flightPlanEscape);
 }
 
 function planCell(text) {
@@ -500,21 +509,28 @@ function chooseOrientation(size, onPick) {
   title.textContent = size + S.pageOrientation;
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
+  // #86: Escape closes the picker (counts as cancel).
+  function onEsc(e) { if (e.key === 'Escape') close(); }
+  function close() {
+    document.removeEventListener('keydown', onEsc);
+    back.remove();
+  }
   for (const [label, val] of [[S.landscape, 'landscape'], [S.portrait, 'portrait']]) {
     const b = document.createElement('button');
     b.textContent = label;
-    b.onclick = () => { back.remove(); onPick(val); };
+    b.onclick = () => { close(); onPick(val); };
     btns.appendChild(b);
   }
   const cancel = document.createElement('button');
   cancel.textContent = S.cancel;
   cancel.className = 'modal-cancel';
-  cancel.onclick = () => back.remove();
+  cancel.onclick = close;
   btns.appendChild(cancel);
   box.append(title, btns);
   back.appendChild(box);
-  back.onclick = e => { if (e.target === back) back.remove(); };
+  back.onclick = e => { if (e.target === back) close(); };
   document.body.appendChild(back);
+  document.addEventListener('keydown', onEsc);
 }
 
 // Timestamp for unique download names — avoids browser " (1)" suffixes.
