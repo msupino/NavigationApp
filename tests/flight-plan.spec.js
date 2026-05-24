@@ -1,5 +1,5 @@
 // @ts-check
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 
 // Coordinates copied from docs/airfields.json (LLHZ, LLHA) and
 // docs/nav-waypoints.json (the 9 published Israeli CVFR reporting points
