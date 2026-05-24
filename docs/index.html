@@ -101,7 +101,9 @@
           if (typeof state !== 'undefined' && state.selected) {
             try { sessionStorage.setItem('navaid.selected', JSON.stringify(state.selected)); } catch (e) {}
           }
-          location.href = sel.value === 'en' ? '?lang=en' : '?lang=he';
+          var params = new URLSearchParams(location.search);
+          params.set('lang', sel.value);
+          location.href = '?' + params.toString();
         });
       }());
     </script>
