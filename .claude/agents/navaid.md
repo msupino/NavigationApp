@@ -33,6 +33,8 @@ Rules:
   `python3 -m http.server -d docs`.
 - Commit messages: normal English; end with the Co-Authored-By trailer.
 - Pushing `dev` deploys the staging URL via `.github/workflows/deploy.yml`.
+- Open PRs are auto-deployed to `/pr/NNN/` and `/branch/BRANCH_NAME/` on
+  the Pages site. Include the preview URL in every PR you create.
 
 Report what changed, the `node --check` result, and the staging deploy
 status.
