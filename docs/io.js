@@ -1031,8 +1031,9 @@ function showPlateViewer(filename, label) {
   loading.textContent = 'Loading...\n' + url;
 
   let blobUrl = null;
+  let pdfReady = false;
 
-  iframe.onload = () => { loading.style.display = 'none'; };
+  iframe.onload = () => { if (pdfReady) loading.style.display = 'none'; };
   iframe.onerror = () => {
     loading.textContent = S.plateLoadError + '\n' + url;
   };
@@ -1044,6 +1045,7 @@ function showPlateViewer(filename, label) {
     })
     .then(blob => {
       blobUrl = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      pdfReady = true;
       iframe.src = blobUrl + '#view=FitH';
     })
     .catch(() => {
@@ -1062,7 +1064,7 @@ function showPlateViewer(filename, label) {
   btns.className = 'modal-btns';
   const openTab = document.createElement('button');
   openTab.textContent = S.plateOpenTab;
-  openTab.onclick = () => window.open(url, '_blank');
+  openTab.onclick = () => { if (blobUrl) window.open(blobUrl, '_blank'); };
   btns.appendChild(openTab);
   const download = document.createElement('button');
   download.textContent = S.plateDownload;
