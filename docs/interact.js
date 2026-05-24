@@ -57,11 +57,16 @@ function legLabelCenter(i, which) {
            y: f.my + f.dy * o.a + f.ny * o.p };
 }
 function hitLegLabel(px, py) {
+  // #83: scale the hit radius with the same zoom + legArrowSize factor that
+  // sizes the drawn marker (see drawLegArrow in draw.js), so the hit zone
+  // tracks the visual size. Floor at 18 px keeps touch ergonomics.
+  const zoomScale = Math.max(0.35, Math.pow(2, map.getZoom() - 12)) * legArrowSize;
+  const hit = Math.max(18, 34 * zoomScale);
   for (let i = 0; i < state.legs.length; i++) {
     for (const which of ['in', 'out']) {
       if (which === 'out' && !showReturn) continue;
       const c = legLabelCenter(i, which);
-      if (c && Math.hypot(c.x - px, c.y - py) <= 34) return { i, which };
+      if (c && Math.hypot(c.x - px, c.y - py) <= hit) return { i, which };
     }
   }
   return null;
@@ -171,13 +176,67 @@ function showInspector() {
     body.appendChild(del);
   } else {
     const wp = state.waypoints[state.selected.index];
-    title.value = wp.name || '';
+    // #81: show the locale-resolved label so the inspector matches the map.
+    // The canonical stored name (`wp.name`) is whatever the user types/keeps;
+    // navName() converts a nav-WP canonical id to the current locale for read.
+    title.value = navName((wp.name || '').trim()) || wp.name || '';
     title.placeholder = S.wpPrefix + (state.selected.index + 1);
     title.readOnly = false;
     title.classList.add('editable');
     title.oninput = () => { wp.name = title.value; draw(); };
     body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
+    // #105: show plates section if waypoint name matches an airfield.
+    if (airfields && wp.name) {
+      for (const af of airfields) {
+        if (af.name === wp.name && af.plates && af.plates.length) {
+          const section = document.createElement('div');
+          section.className = 'plates-section';
+          const label = document.createElement('div');
+          label.className = 'row';
+          const l = document.createElement('label');
+          l.textContent = S.plates;
+          label.appendChild(l);
+          section.appendChild(label);
+          // Group by category
+          const groups = {};
+          const catOrder = ['approach', 'sid', 'star', 'ground', 'vfr', 'other'];
+          const catLabel = {
+            approach: S.plateCategoryApproach,
+            sid: S.plateCategorySid,
+            star: S.plateCategoryStar,
+            ground: S.plateCategoryGround,
+            vfr: S.plateCategoryVfr,
+            other: S.plateCategoryOther,
+          };
+          for (const fn of af.plates) {
+            const cat = plateCategory(fn);
+            if (!groups[cat]) groups[cat] = [];
+            groups[cat].push(fn);
+          }
+          for (const cat of catOrder) {
+            if (!groups[cat]) continue;
+            const row = document.createElement('div');
+            row.className = 'row';
+            const catLbl = document.createElement('label');
+            catLbl.textContent = catLabel[cat];
+            row.appendChild(catLbl);
+            const chips = document.createElement('span');
+            for (const fn of groups[cat]) {
+              const chip = document.createElement('button');
+              chip.className = 'plate-chip';
+              chip.textContent = prettyPlateLabel(fn);
+              chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
+              chips.appendChild(chip);
+            }
+            row.appendChild(chips);
+            section.appendChild(row);
+          }
+          body.appendChild(section);
+          break;
+        }
+      }
+    }
     const del = document.createElement('button');
     del.className = 'insp-btn';
     del.textContent = S.deleteWp;
@@ -360,6 +419,16 @@ map.on('click', e => {
   if (downHit) { downHit = false; return; }
   if (state.mode === 'add') {
     const r = applyNavSnap(e.latlng, '');
+    // #104: ignore the click if a waypoint already sits at the snap target.
+    // Without this an add-mode click on a nav-WP / airfield that already has
+    // a route waypoint produces a duplicate at the same coords and a leg
+    // with zero distance.
+    const SNAP_DEG = 0.0002;
+    if (state.waypoints.some(
+          w => Math.abs(w.lat - r.lat) < SNAP_DEG &&
+               Math.abs(w.lng - r.lng) < SNAP_DEG)) {
+      return;
+    }
     state.waypoints.push({ lat: r.lat, lng: r.lng, name: r.name });
     syncLegs();
     state.selected = { type: 'wp', index: state.waypoints.length - 1 };
@@ -379,6 +448,8 @@ map.on('click', e => {
 window.addEventListener('keydown', e => {
   const t = e.target;
   if (e.key === 'Escape') {
+    const modal = document.querySelector('.modal-back');
+    if (modal) { modal.remove(); return; }
     if (state.selected) {
       state.selected = null;
       showInspector(); draw();

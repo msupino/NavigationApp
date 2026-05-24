@@ -34,6 +34,27 @@ pull requests; production is the `main` branch, staging is `dev`.
 - **#82**: partial `inLabel` / `outLabel` objects on import (e.g.
   `{a:0}` without `p`) are normalised per-key, so reverse-route and
   drag math no longer produce `NaN` offsets.
+- **#76**: clearing the flight-plan altitude cell no longer commits
+  `0` ft (and no longer cascades that 0 via `propagateAlt`) — the
+  input is restored to the leg's value on empty / non-numeric.
+- **#78**: Flight Plan modal dedupes (a second click is a no-op while
+  one is open), and route mutations now refresh distances, headings,
+  times, and name inputs live; a structural change (leg count) closes
+  the modal instead of leaving a stale table.
+- **#80**: a `QuotaExceededError` from autosave surfaces a one-time
+  alert telling the user to export the route, and further autosave
+  attempts back off (other storage-unavailable errors stay silent).
+- **#81**: inspector and flight-plan name inputs show the locale-
+  resolved label (`navName`) so they match the map; the canonical
+  stored name is still persisted.
+- **#83**: leg-label hit radius scales with map zoom and
+  `legArrowSize`, with a 18 px floor — mouse/touch parity with the
+  drawn marker at extreme zooms.
+- **#84**: service worker only caches `resp.ok` HTML navigations and
+  `await`s the `cache.put` inside the respondWith promise so the SW
+  lifecycle can't terminate mid-write.
+- **#104**: add-mode clicks that snap to a nav-WP / airfield already
+  occupied by a waypoint are ignored — no more zero-distance legs.
 
 ### Google Earth
 - KML camera tilt set to **70°** (was 85° → tried 45° → settled on 70°
