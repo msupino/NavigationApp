@@ -186,6 +186,57 @@ function showInspector() {
     title.oninput = () => { wp.name = title.value; draw(); };
     body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
+    // #105: show plates section if waypoint name matches an airfield.
+    if (airfields && wp.name) {
+      for (const af of airfields) {
+        if (af.name === wp.name && af.plates && af.plates.length) {
+          const section = document.createElement('div');
+          section.className = 'plates-section';
+          const label = document.createElement('div');
+          label.className = 'row';
+          const l = document.createElement('label');
+          l.textContent = S.plates;
+          label.appendChild(l);
+          section.appendChild(label);
+          // Group by category
+          const groups = {};
+          const catOrder = ['approach', 'sid', 'star', 'ground', 'vfr', 'other'];
+          const catLabel = {
+            approach: S.plateCategoryApproach,
+            sid: S.plateCategorySid,
+            star: S.plateCategoryStar,
+            ground: S.plateCategoryGround,
+            vfr: S.plateCategoryVfr,
+            other: S.plateCategoryOther,
+          };
+          for (const fn of af.plates) {
+            const cat = plateCategory(fn);
+            if (!groups[cat]) groups[cat] = [];
+            groups[cat].push(fn);
+          }
+          for (const cat of catOrder) {
+            if (!groups[cat]) continue;
+            const row = document.createElement('div');
+            row.className = 'row';
+            const catLbl = document.createElement('label');
+            catLbl.textContent = catLabel[cat];
+            row.appendChild(catLbl);
+            const chips = document.createElement('span');
+            for (const fn of groups[cat]) {
+              const chip = document.createElement('button');
+              chip.className = 'plate-chip';
+              chip.textContent = prettyPlateLabel(fn);
+              chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
+              chips.appendChild(chip);
+            }
+            row.appendChild(chips);
+            section.appendChild(row);
+          }
+          body.appendChild(section);
+          break;
+        }
+      }
+    }
     const del = document.createElement('button');
     del.className = 'insp-btn';
     del.textContent = S.deleteWp;
