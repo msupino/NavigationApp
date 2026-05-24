@@ -568,6 +568,13 @@ loadNavWaypoints().then(draw);
 // Same pattern for airfields: powering both the overlay and snap.
 loadAirfields().then(draw);
 
+// Save selected waypoint on refresh / tab-close so it survives page reload.
+window.addEventListener('beforeunload', function () {
+  if (window.state && window.state.selected) {
+    try { sessionStorage.setItem('navaid.selected', JSON.stringify(window.state.selected)); } catch (e) {}
+  }
+});
+
 // --- PWA: service worker --------------------------------------------
 // Registering the worker makes the app installable; the browser shows
 // the install control in the address bar — no in-app button needed.
