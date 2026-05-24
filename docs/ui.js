@@ -246,19 +246,19 @@ const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
 try {
   const sr = localStorage.getItem(RETURN_KEY);
-  if (sr !== null) showReturn = sr === '1';
+  if (sr !== null) window.showReturn =sr === '1';
   const sm = localStorage.getItem(MIDLEG_KEY);
-  if (sm !== null) showMidLeg = sm === '1';
+  if (sm !== null) window.showMidLeg =sm === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('ret-cb').checked = showReturn;
 document.getElementById('mid-cb').checked = showMidLeg;
 document.getElementById('ret-cb').onchange = e => {
-  showReturn = e.target.checked;
+  window.showReturn =e.target.checked;
   try { localStorage.setItem(RETURN_KEY, showReturn ? '1' : '0'); } catch (err) { /* */ }
   draw();
 };
 document.getElementById('mid-cb').onchange = e => {
-  showMidLeg = e.target.checked;
+  window.showMidLeg =e.target.checked;
   try { localStorage.setItem(MIDLEG_KEY, showMidLeg ? '1' : '0'); } catch (err) { /* */ }
   draw();
 };
@@ -266,20 +266,20 @@ const WPNAME_KEY = 'navaid.showWpNames';
 const WPANGLE_KEY = 'navaid.wpNameAngle';
 try {
   const sn = localStorage.getItem(WPNAME_KEY);
-  if (sn !== null) showWpNames = sn === '1';
+  if (sn !== null) window.showWpNames =sn === '1';
   const sa = parseInt(localStorage.getItem(WPANGLE_KEY), 10);
-  if (sa === 90 || sa === 180 || sa === 270) wpNameAngle = sa;
+  if (sa === 90 || sa === 180 || sa === 270) window.wpNameAngle =sa;
 } catch (e) { /* storage unavailable */ }
 document.getElementById('wpname-cb').checked = showWpNames;
 document.getElementById('wpname-cb').onchange = e => {
-  showWpNames = e.target.checked;
+  window.showWpNames =e.target.checked;
   try { localStorage.setItem(WPNAME_KEY, showWpNames ? '1' : '0'); }
   catch (err) { /* storage unavailable */ }
   draw();
 };
 document.getElementById('wpname-rot').onclick = e => {
   e.stopPropagation();                  // don't toggle the checkbox
-  wpNameAngle = (wpNameAngle + 90) % 360;
+  window.wpNameAngle =(wpNameAngle + 90) % 360;
   e.currentTarget.title = S.wpnameRotTitle(wpNameAngle);
   try { localStorage.setItem(WPANGLE_KEY, String(wpNameAngle)); }
   catch (err) { /* storage unavailable */ }
@@ -288,11 +288,11 @@ document.getElementById('wpname-rot').onclick = e => {
 const DIFF_KEY = 'navaid.highlightDiff';
 try {
   const sd = localStorage.getItem(DIFF_KEY);
-  if (sd !== null) highlightDiff = sd === '1';
+  if (sd !== null) window.highlightDiff =sd === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('diff-cb').checked = highlightDiff;
 document.getElementById('diff-cb').onchange = e => {
-  highlightDiff = e.target.checked;
+  window.highlightDiff =e.target.checked;
   try { localStorage.setItem(DIFF_KEY, highlightDiff ? '1' : '0'); } catch (err) { /* */ }
   draw();
 };
@@ -300,11 +300,11 @@ const NAVWP_KEY = 'navaid.showNavWP';
 try {
   const stored = localStorage.getItem(NAVWP_KEY);
   // New users (null) get the default-on; '0' / '1' override.
-  if (stored !== null) showNavWP = stored === '1';
+  if (stored !== null) window.showNavWP =stored === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('navwp-cb').checked = showNavWP;
 document.getElementById('navwp-cb').onchange = async e => {
-  showNavWP = e.target.checked;
+  window.showNavWP =e.target.checked;
   try { localStorage.setItem(NAVWP_KEY, showNavWP ? '1' : '0'); }
   catch (err) { /* storage unavailable */ }
   if (showNavWP) await loadNavWaypoints();
@@ -313,11 +313,11 @@ document.getElementById('navwp-cb').onchange = async e => {
 const AIRFIELDS_KEY = 'navaid.showAirfields';
 try {
   const stored = localStorage.getItem(AIRFIELDS_KEY);
-  if (stored !== null) showAirfields = stored === '1';
+  if (stored !== null) window.showAirfields =stored === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('airfield-cb').checked = showAirfields;
 document.getElementById('airfield-cb').onchange = async e => {
-  showAirfields = e.target.checked;
+  window.showAirfields =e.target.checked;
   try { localStorage.setItem(AIRFIELDS_KEY, showAirfields ? '1' : '0'); }
   catch (err) { /* storage unavailable */ }
   if (showAirfields) await loadAirfields();
@@ -326,11 +326,11 @@ document.getElementById('airfield-cb').onchange = async e => {
 const ALPHA_KEY = 'navaid.yellowAlpha';
 try {
   const v = parseFloat(localStorage.getItem(ALPHA_KEY));
-  if (!isNaN(v)) yellowAlpha = Math.max(0, Math.min(1, v));
+  if (!isNaN(v)) window.yellowAlpha =Math.max(0, Math.min(1, v));
 } catch (e) { /* storage unavailable */ }
 document.getElementById('yellow-alpha').value = Math.round(yellowAlpha * 100);
 document.getElementById('yellow-alpha').oninput = e => {
-  yellowAlpha = parseFloat(e.target.value) / 100;
+  window.yellowAlpha =parseFloat(e.target.value) / 100;
   try { localStorage.setItem(ALPHA_KEY, String(yellowAlpha)); }
   catch (err) { /* storage unavailable */ }
   draw();
@@ -357,11 +357,11 @@ document.getElementById('map-opacity').oninput = e => {
 const WPSIZE_KEY = 'navaid.wpSize';
 try {
   const v = parseFloat(localStorage.getItem(WPSIZE_KEY));
-  if (!isNaN(v)) wpSize = Math.max(0.6, Math.min(2, v));
+  if (!isNaN(v)) window.wpSize =Math.max(0.6, Math.min(2, v));
 } catch (e) { /* storage unavailable */ }
 document.getElementById('wp-size').value = wpSize;
 document.getElementById('wp-size').oninput = e => {
-  wpSize = parseFloat(e.target.value);
+  window.wpSize =parseFloat(e.target.value);
   try { localStorage.setItem(WPSIZE_KEY, String(wpSize)); }
   catch (err) { /* storage unavailable */ }
   draw();
@@ -370,11 +370,11 @@ document.getElementById('wp-size').oninput = e => {
 const LEGARROW_KEY = 'navaid.legArrowSize';
 try {
   const v = parseFloat(localStorage.getItem(LEGARROW_KEY));
-  if (!isNaN(v)) legArrowSize = Math.max(0.3, Math.min(2, v));
+  if (!isNaN(v)) window.legArrowSize =Math.max(0.3, Math.min(2, v));
 } catch (e) { /* storage unavailable */ }
 document.getElementById('leg-arrow-size').value = legArrowSize;
 document.getElementById('leg-arrow-size').oninput = e => {
-  legArrowSize = parseFloat(e.target.value);
+  window.legArrowSize =parseFloat(e.target.value);
   try { localStorage.setItem(LEGARROW_KEY, String(legArrowSize)); }
   catch (err) { /* storage unavailable */ }
   draw();
@@ -382,7 +382,7 @@ document.getElementById('leg-arrow-size').oninput = e => {
 const MAGVAR_KEY = 'navaid.magVar';
 try {
   const v = parseFloat(localStorage.getItem(MAGVAR_KEY));
-  if (!isNaN(v)) magVar = Math.max(-30, Math.min(30, v));
+  if (!isNaN(v)) window.magVar =Math.max(-30, Math.min(30, v));
 } catch (e) { /* storage unavailable */ }
 function showMagVarEqv() {
   const span = document.getElementById('mag-var-eqv');
@@ -396,7 +396,7 @@ showMagVarEqv();
 document.getElementById('mag-var').oninput = e => {
   const v = parseFloat(e.target.value);
   if (isNaN(v)) return;
-  magVar = Math.max(-30, Math.min(30, v));
+  window.magVar =Math.max(-30, Math.min(30, v));
   try { localStorage.setItem(MAGVAR_KEY, String(magVar)); }
   catch (err) { /* storage unavailable */ }
   showMagVarEqv();
