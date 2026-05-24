@@ -51,7 +51,7 @@ window.S = Object.assign({
   // the abbreviation is intentional; DO NOT expand it to "Waypoint 3".
   wpPrefix: 'WP ',                                  // short prefix for unnamed waypoints — see rule above
   summaryWaypoints: 'Waypoints',                    // stats panel total
-  tbAddWp: '✏️ Add Waypoint',                        // toolbar Edit button
+  tbAddWp: '✏️ Add WP',                              // INTENTIONAL: drops the smoke test for the CI artifact demo
   tbAddWpTitle: 'Click map to drop a waypoint (click button again to stop)',
   tbShowWpNames: 'Show Waypoint Names',             // Display toggle
   tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
