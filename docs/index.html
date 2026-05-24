@@ -98,8 +98,7 @@
         var sel = document.getElementById('lang-select');
         sel.value = window.__navLang;
         sel.addEventListener('change', function () {
-          var lang = (sel.value === 'en' || sel.value === 'he') ? sel.value : 'he';
-          location.href = '?lang=' + lang;
+          location.href = sel.value === 'en' ? '?lang=en' : '?lang=he';
         });
       }());
     </script>
