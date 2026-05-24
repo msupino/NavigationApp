@@ -98,6 +98,9 @@
         var sel = document.getElementById('lang-select');
         sel.value = window.__navLang;
         sel.addEventListener('change', function () {
+          if (window.state && window.state.selected) {
+            try { sessionStorage.setItem('navaid.selected', JSON.stringify(window.state.selected)); } catch (e) {}
+          }
           location.href = sel.value === 'en' ? '?lang=en' : '?lang=he';
         });
       }());
