@@ -26,7 +26,12 @@ try {
 window.NavAid = { exporting: false, version: '1.0' };  // cross-file export flag (read by ui.js/io.js)
 
 const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
-let magVar = -5;                       // signed offset added to true heading
+// Mutable globals are declared with `var` (not `let`) so that they're a true
+// property on the global object. ui.js writes to them via `window.foo = …` —
+// a `let` binding would be a separate lexical binding from `window.foo` and
+// the writes wouldn't propagate. The `var` form also silences CodeQL's
+// js/missing-variable-declaration alert on those cross-file writes.
+var magVar = -5;                       // signed offset added to true heading
                                        // (Israel ≈ −5; equivalent to 5°E variation)
 
 // Localisation strings. A strings.js may pre-set window.S with overrides
@@ -187,22 +192,22 @@ const state = {
   mode: null,               // 'add' | 'note' | null (= inspect)
   selected: null,           // { type:'wp'|'leg'|'note', index }
 };
-let showReturn = false;     // outbound (return) markers — off by default
-let showMidLeg = false;
-let highlightDiff = false;  // purple halo on legs that change altitude
-let showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
-let navWP = null;           // null = not loaded yet (or last fetch failed —
+var showReturn = false;     // outbound (return) markers — off by default
+var showMidLeg = false;
+var highlightDiff = false;  // purple halo on legs that change altitude
+var showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
+var navWP = null;           // null = not loaded yet (or last fetch failed —
                             // retry on next toggle / search call); [] or
                             // populated = last fetch resolved successfully.
-let showAirfields = true;   // Israeli airfields overlay (default on)
-let airfields = null;       // same null/[]/populated convention as navWP —
+var showAirfields = true;   // Israeli airfields overlay (default on)
+var airfields = null;       // same null/[]/populated convention as navWP —
                             // see loadAirfields() in draw.js. Entries:
                             // { name, he, en, lat, lng, elev_ft, plates:[] }.
-let showWpNames = true;     // draw waypoint names (off = empty circle)
-let wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
-let yellowAlpha = 1;        // global multiplier for yellow label backgrounds
-let wpSize = 1;             // waypoint name / number text size scale
-let legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
+var showWpNames = true;     // draw waypoint names (off = empty circle)
+var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
+var yellowAlpha = 1;        // global multiplier for yellow label backgrounds
+var wpSize = 1;             // waypoint name / number text size scale
+var legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
 let pageSize = null;        // null | 'A3' | 'A4'
 let pageOrient = 'landscape';   // 'landscape' | 'portrait'
 let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre
