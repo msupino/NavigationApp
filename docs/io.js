@@ -886,8 +886,17 @@ function flyRoute() {
   function onPick(mode) {
     if (mode === 'web') {
       if (!confirm(S.geWebConfirm)) return;
+      // #145: validate the first waypoint's coords before string-concat so a
+      // malformed lat/lng (e.g. from a tampered import) can't leak into the
+      // URL. heading()/altM() are already bounded numerics by construction.
+      const lat = Number(wps[0].lat), lng = Number(wps[0].lng);
+      if (!Number.isFinite(lat) || lat < -90 || lat > 90 ||
+          !Number.isFinite(lng) || lng < -180 || lng > 180) {
+        alert(S.errBadCoords);
+        return;
+      }
       const url = 'https://earth.google.com/web/@' +
-        wps[0].lat + ',' + wps[0].lng + ',' + altM(0) + 'a,' +
+        lat.toFixed(6) + ',' + lng.toFixed(6) + ',' + altM(0) + 'a,' +
         heading(0).toFixed(1) + 'h,70t';
       window.open(url, '_blank');
       downloadKml();
