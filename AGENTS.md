@@ -18,6 +18,9 @@ Unity.
 
 - `main` — production (https://msupino.github.io/NavigationApp/).
 - `dev` — staging (https://msupino.github.io/NavigationApp/staging/).
+- Any open PR → auto-deployed to
+  https://msupino.github.io/NavigationApp/pr/NNN/ and
+  https://msupino.github.io/NavigationApp/branch/BRANCH_NAME/
 - `original-plotter` — frozen Unity 2019 reference (renamed from
   `master`). Don't commit web changes here.
 - `export-leg-attributes` — old draft PR branch.
