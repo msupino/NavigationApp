@@ -397,6 +397,8 @@ map.on('click', e => {
 window.addEventListener('keydown', e => {
   const t = e.target;
   if (e.key === 'Escape') {
+    const modal = document.querySelector('.modal-back');
+    if (modal) { modal.remove(); return; }
     if (state.selected) {
       state.selected = null;
       showInspector(); draw();
