@@ -4,6 +4,9 @@ name: Deploy
 on:
   push:
     branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+    types: [opened, synchronize]
   workflow_dispatch:
 
 permissions:
@@ -12,7 +15,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: ${{ github.event_name == 'pull_request' && format('pages-pr-{0}', github.event.number) || 'pages' }}
   cancel-in-progress: true
 
 jobs:
