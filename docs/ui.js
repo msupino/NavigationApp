@@ -363,6 +363,7 @@ document.getElementById('file').onchange = e => {
 };
 document.getElementById('fit').onclick = fitView;
 document.getElementById('fly').onclick = flyRoute;
+document.getElementById('windy').onclick = openWindy;
 // Toggle: a second click closes the modal instead of being a no-op (#78 dedupe
 // previously made the button look broken when the modal was already open).
 document.getElementById('plan').onclick = () => {

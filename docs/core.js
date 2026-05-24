@@ -159,6 +159,8 @@ window.S = Object.assign({
   tbChartsTitle: 'Browse approach charts for all airfields',
   tbFly: '✈️ Open route in Google Earth',
   tbFlyTitle: 'Save a Google Earth tour of the route at the planned leg altitudes',
+  tbWindy: '🌬 Open in Windy',
+  tbWindyTitle: 'Open the current route in Windy VFR route planner (weather along the route)',
   tbShowReturn: 'Show return path',
   tbShowReturnTitle: 'Show return-direction (outbound) info',
   tbShowMidLeg: 'Show leg distance',

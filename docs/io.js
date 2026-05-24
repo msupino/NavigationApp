@@ -1450,6 +1450,28 @@ function exportPNG() {
   });
 }
 
+// --- open route in Windy (#121) -------------------------------------
+// Windy's VFR route planner accepts a semicolon-separated list of decimal
+// lat,lng pairs after /route-planner/vfr/, with an optional map view suffix
+// "?<lat>,<lng>,<zoom>" for the centre and zoom. No API key needed; this is
+// a link-out only.
+function windyRouteUrl() {
+  const pts = state.waypoints
+    .filter(w => Number.isFinite(w.lat) && Number.isFinite(w.lng) &&
+                 w.lat >= -90 && w.lat <= 90 &&
+                 w.lng >= -180 && w.lng <= 180)
+    .map(w => w.lat.toFixed(4) + ',' + w.lng.toFixed(4))
+    .join(';');
+  const c = map.getCenter();
+  const z = Math.round(map.getZoom());
+  return 'https://www.windy.com/route-planner/vfr/' + pts +
+    '?' + c.lat.toFixed(3) + ',' + c.lng.toFixed(3) + ',' + z;
+}
+function openWindy() {
+  if (state.waypoints.length < 2) { alert(S.errNeedWps); return; }
+  window.open(windyRouteUrl(), '_blank', 'noopener,noreferrer');
+}
+
 // Inject a pHYs (physical pixel dimensions) chunk into a PNG blob so that
 // the image prints at the intended physical size when the print dialog uses
 // the embedded DPI rather than scaling to fit the page.

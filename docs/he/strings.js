@@ -120,6 +120,8 @@ window.S = {
   tbCharts: '🗺️ דפיות שדות תעופה',
   tbChartsTitle: 'עיין בדפיות גישה לכל שדות התעופה',
   tbFly: '✈️ פתח מסלול ב-Google Earth',
+  tbWindy: '🌬 פתח ב-Windy',
+  tbWindyTitle: 'פתח את המסלול בתכנן הטיסה VFR של Windy (מזג אוויר לאורך המסלול)',
   tbFlyTitle: 'שמור סיור Google Earth של המסלול בגבהים שנקבעו לקטעים',
   tbShowReturn: 'הצג מסלול חזרה',
   tbShowReturnTitle: 'הצג מידע על מסלול חזרה',
