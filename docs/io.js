@@ -989,3 +989,116 @@ function restoreRoute() {
   return true;
 }
 
+// --- Airfield plates viewer (#105) -----------------------------------
+const PLATE_BASE = 'byop/';
+
+function plateUrl(filename) {
+  return PLATE_BASE + encodeURIComponent(filename);
+}
+
+function plateCategory(filename) {
+  const rest = filename.replace(/^[A-Z]{4}_/, '');
+  const cat = rest.split('_')[0];
+  if (cat === 'APPROACH') return 'approach';
+  if (cat === 'SID') return 'sid';
+  if (cat === 'STAR') return 'star';
+  if (cat === 'Ground' || cat === 'parking') return 'ground';
+  if (cat === 'VAC' || cat === 'airport') return 'vfr';
+  return 'other';
+}
+
+function prettyPlateLabel(filename) {
+  const noIcao = filename.replace(/^[A-Z]{4}_/, '').replace(/\.pdf$/i, '');
+  return noIcao.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function showPlateViewer(filename, label) {
+  const back = document.createElement('div');
+  back.className = 'modal-back plate-viewer';
+  const box = document.createElement('div');
+  box.className = 'modal plate-viewer-box';
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = label;
+  box.appendChild(title);
+
+  const iframe = document.createElement('iframe');
+  iframe.className = 'plate-iframe';
+  const url = plateUrl(filename);
+
+  const loading = document.createElement('div');
+  loading.className = 'plate-loading';
+  loading.textContent = 'Loading...\n' + url;
+
+  let blobUrl = null;
+  let pdfReady = false;
+
+  iframe.onload = () => { if (pdfReady) loading.style.display = 'none'; };
+  iframe.onerror = () => {
+    loading.textContent = S.plateLoadError + '\n' + url;
+  };
+
+  fetch(url, { credentials: 'omit' })
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.blob();
+    })
+    .then(blob => {
+      blobUrl = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      pdfReady = true;
+      iframe.src = blobUrl + '#view=FitH';
+    })
+    .catch(() => {
+      loading.textContent = S.plateLoadError + '\n' + url;
+    });
+
+  box.appendChild(loading);
+  box.appendChild(iframe);
+
+  const att = document.createElement('div');
+  att.className = 'plate-attribution';
+  att.textContent = S.plateAttribution;
+  box.appendChild(att);
+
+  const btns = document.createElement('div');
+  btns.className = 'modal-btns';
+  const openTab = document.createElement('button');
+  openTab.textContent = S.plateOpenTab;
+  openTab.onclick = () => { if (blobUrl) window.open(blobUrl, '_blank'); };
+  btns.appendChild(openTab);
+  const download = document.createElement('button');
+  download.textContent = S.plateDownload;
+  download.onclick = () => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+  };
+  btns.appendChild(download);
+  const close = document.createElement('button');
+  close.textContent = S.plateClose;
+  close.className = 'modal-cancel';
+  close.onclick = () => { if (blobUrl) URL.revokeObjectURL(blobUrl); back.remove(); };
+  btns.appendChild(close);
+
+  box.appendChild(btns);
+
+  function onEsc(e) {
+    if (e.key === 'Escape') {
+      window.removeEventListener('keydown', onEsc);
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      back.remove();
+    }
+  }
+  back.appendChild(box);
+  back.onclick = e => {
+    if (e.target === back) {
+      window.removeEventListener('keydown', onEsc);
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      back.remove();
+    }
+  };
+  document.body.appendChild(back);
+  window.addEventListener('keydown', onEsc);
+}
+
