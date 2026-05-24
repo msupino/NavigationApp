@@ -549,6 +549,17 @@ if (_restoreResult === 'corrupt') {
   console.warn('NavAid: ' + msg);
   alert(msg);
 }
+try {
+  const saved = sessionStorage.getItem('navaid.selected');
+  if (saved) {
+    sessionStorage.removeItem('navaid.selected');
+    const sel = JSON.parse(saved);
+    if (sel && sel.type === 'wp' && sel.index >= 0 && sel.index < state.waypoints.length) {
+      state.selected = sel;
+    }
+  }
+} catch (e) {}
+if (state.selected) showInspector();
 if (state.waypoints.length) fitView();   // always frame the restored route
 draw();
 // Always load nav-waypoints in the background — they power both the

@@ -124,7 +124,17 @@ function showInspector() {
   const body = document.getElementById('insp-body');
   body.innerHTML = '';
   title.classList.remove('editable');
-  if (!state.selected) { insp.classList.add('hidden'); return; }
+  if (!state.selected) {
+    insp.classList.remove('hidden');
+    title.value = S.plates;
+    title.readOnly = true;
+    if (airfields) {
+      renderAirfieldList(body);
+    } else {
+      loadAirfields().then(() => { if (!state.selected) showInspector(); });
+    }
+    return;
+  }
   insp.classList.remove('hidden');
 
   if (state.selected.type === 'leg') {
@@ -248,6 +258,54 @@ function showInspector() {
     body.appendChild(del);
   }
 }
+function renderAirfieldList(body) {
+  const catOrder = ['approach', 'sid', 'star', 'ground', 'vfr', 'other'];
+  const catLabel = {
+    approach: S.plateCategoryApproach,
+    sid: S.plateCategorySid,
+    star: S.plateCategoryStar,
+    ground: S.plateCategoryGround,
+    vfr: S.plateCategoryVfr,
+    other: S.plateCategoryOther,
+  };
+  for (const af of airfields) {
+    if (!af.plates || !af.plates.length) continue;
+    const locationName = af[S.airfieldLabelField] || af.en || af.name;
+    const header = document.createElement('div');
+    header.className = 'airfield-header';
+    header.textContent = af.name + ' — ' + locationName;
+    const chipBox = document.createElement('div');
+    chipBox.className = 'airfield-chips';
+    chipBox.style.display = 'none';
+    const groups = {};
+    for (const fn of af.plates) {
+      const cat = plateCategory(fn);
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(fn);
+    }
+    for (const cat of catOrder) {
+      if (!groups[cat]) continue;
+      const row = document.createElement('div');
+      row.className = 'row';
+      const catLbl = document.createElement('label');
+      catLbl.textContent = catLabel[cat];
+      row.appendChild(catLbl);
+      const chips = document.createElement('span');
+      for (const fn of groups[cat]) {
+        const chip = document.createElement('button');
+        chip.className = 'plate-chip';
+        chip.textContent = prettyPlateLabel(fn);
+        chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
+        chips.appendChild(chip);
+      }
+      row.appendChild(chips);
+      chipBox.appendChild(row);
+    }
+    header.onclick = () => { chipBox.style.display = chipBox.style.display === 'none' ? '' : 'none'; };
+    body.append(header, chipBox);
+  }
+}
+
 function colorRow(label, value, onChange) {
   const row = document.createElement('div');
   row.className = 'row';

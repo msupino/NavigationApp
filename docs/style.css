@@ -636,6 +636,10 @@ html, body {
   white-space: nowrap;
 }
 .plate-chip:hover { background: #3a3636; border-color: #1d6fe0; }
+.airfield-header { cursor: pointer; padding: 6px 8px; margin: 2px 0; border-radius: 4px; font-weight: bold; }
+.airfield-header:hover { background: #2a2a2a; }
+.airfield-chips { padding: 4px 8px 8px; }
+.airfield-chips .row { flex-wrap: wrap; gap: 4px; }
 .plate-chip-small { font-size: 10px; padding: 2px 5px; background: none; border-color: transparent; color: #1d6fe0; cursor: pointer; }
 .plate-chip-small:hover { text-decoration: underline; }
 
