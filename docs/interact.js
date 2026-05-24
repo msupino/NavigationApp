@@ -57,11 +57,16 @@ function legLabelCenter(i, which) {
            y: f.my + f.dy * o.a + f.ny * o.p };
 }
 function hitLegLabel(px, py) {
+  // #83: scale the hit radius with the same zoom + legArrowSize factor that
+  // sizes the drawn marker (see drawLegArrow in draw.js), so the hit zone
+  // tracks the visual size. Floor at 18 px keeps touch ergonomics.
+  const zoomScale = Math.max(0.35, Math.pow(2, map.getZoom() - 12)) * legArrowSize;
+  const hit = Math.max(18, 34 * zoomScale);
   for (let i = 0; i < state.legs.length; i++) {
     for (const which of ['in', 'out']) {
       if (which === 'out' && !showReturn) continue;
       const c = legLabelCenter(i, which);
-      if (c && Math.hypot(c.x - px, c.y - py) <= 34) return { i, which };
+      if (c && Math.hypot(c.x - px, c.y - py) <= hit) return { i, which };
     }
   }
   return null;
@@ -171,7 +176,10 @@ function showInspector() {
     body.appendChild(del);
   } else {
     const wp = state.waypoints[state.selected.index];
-    title.value = wp.name || '';
+    // #81: show the locale-resolved label so the inspector matches the map.
+    // The canonical stored name (`wp.name`) is whatever the user types/keeps;
+    // navName() converts a nav-WP canonical id to the current locale for read.
+    title.value = navName((wp.name || '').trim()) || wp.name || '';
     title.placeholder = S.wpPrefix + (state.selected.index + 1);
     title.readOnly = false;
     title.classList.add('editable');
@@ -360,6 +368,16 @@ map.on('click', e => {
   if (downHit) { downHit = false; return; }
   if (state.mode === 'add') {
     const r = applyNavSnap(e.latlng, '');
+    // #104: ignore the click if a waypoint already sits at the snap target.
+    // Without this an add-mode click on a nav-WP / airfield that already has
+    // a route waypoint produces a duplicate at the same coords and a leg
+    // with zero distance.
+    const SNAP_DEG = 0.0002;
+    if (state.waypoints.some(
+          w => Math.abs(w.lat - r.lat) < SNAP_DEG &&
+               Math.abs(w.lng - r.lng) < SNAP_DEG)) {
+      return;
+    }
     state.waypoints.push({ lat: r.lat, lng: r.lng, name: r.name });
     syncLegs();
     state.selected = { type: 'wp', index: state.waypoints.length - 1 };

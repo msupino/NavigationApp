@@ -12,6 +12,10 @@ function draw() {
   drawNotes();
   drawInfo();
   drawPageFrame();
+  // #78: keep the Flight Plan modal live with the route. The hook is null
+  // when the modal isn't open, or after refresh detects a structural change
+  // and closes it.
+  if (refreshFlightPlan) refreshFlightPlan();
   persist();
 }
 

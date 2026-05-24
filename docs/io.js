@@ -272,7 +272,24 @@ function wpLabel(i) {
   return n || (S.wpPrefix + (i + 1));
 }
 
+// Flight Plan modal lives outside the function so draw() can hook in via
+// refreshFlightPlan(), and so showFlightPlan() can dedupe (#78). When the
+// route is mutated externally (drag wp, reverse, etc.) draw() calls the
+// stored refresh, which resyncs all the per-leg cells from current state
+// or closes the modal if the leg count changed.
+let flightPlanBack = null;
+let refreshFlightPlan = null;
+
+function closeFlightPlan() {
+  if (flightPlanBack) {
+    flightPlanBack.remove();
+    flightPlanBack = null;
+  }
+  refreshFlightPlan = null;
+}
+
 function showFlightPlan() {
+  if (refreshFlightPlan) return;        // #78: dedupe — modal already open
   if (state.legs.length === 0) {
     alert(S.errNoLegs);
     return;
@@ -310,7 +327,8 @@ function showFlightPlan() {
     inp.type = 'text';
     inp.className = 'plan-name';
     inp.maxLength = 10;
-    inp.value = (state.waypoints[wpIdx].name || '').trim();
+    // #81: show the locale-resolved label so the cell matches the map.
+    inp.value = navName((state.waypoints[wpIdx].name || '').trim());
     inp.placeholder = S.wpPrefix + (wpIdx + 1);
     inp.oninput = () => {
       state.waypoints[wpIdx].name = inp.value;
@@ -334,20 +352,12 @@ function showFlightPlan() {
     td.appendChild(inp);
     return td;
   }
-  const rows = [];                      // { leg, dist, timeCell }
   const altInputs = [];                 // leg index -> altitude input
+  const speedInputs = [];               // leg index -> speed input
+  const distCells = [];                 // leg index -> distance cell
+  const hdgCells = [];                  // leg index -> heading cell
+  const timeCells = [];                 // leg index -> time cell
   let totDistCell, totTimeCell;
-  function refresh() {                  // recompute Time cells + totals
-    let td = 0, th = 0;
-    for (const r of rows) {
-      const dur = r.leg.flightSpeed > 0 ? r.dist / r.leg.flightSpeed : 0;
-      td += r.dist;
-      th += dur;
-      r.timeCell.textContent = dur > 0 ? toHMS(dur) : '--';
-    }
-    totDistCell.textContent = td.toFixed(1);
-    totTimeCell.textContent = th > 0 ? toHMS(th) : '--';
-  }
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     const leg = state.legs[i];
@@ -356,27 +366,34 @@ function showFlightPlan() {
     tr.appendChild(planCell(String(i + 1)));
     tr.appendChild(nameCell(i));
     tr.appendChild(nameCell(i + 1));
-    tr.appendChild(planCell(pad3(toMagnetic(brg)) + '°M'));
-    tr.appendChild(planCell(dist.toFixed(1)));
-    tr.appendChild(numCell(leg.flightSpeed, 1, inp => {
+    const hdgCell = planCell(pad3(toMagnetic(brg)) + '°M');
+    tr.appendChild(hdgCell);
+    const distCell = planCell(dist.toFixed(1));
+    tr.appendChild(distCell);
+    const speedCell = numCell(leg.flightSpeed, 1, inp => {
       const v = +inp.value;
-      if (v > 0) { leg.flightSpeed = v; refresh(); draw(); }
+      if (v > 0) { leg.flightSpeed = v; draw(); }
       else inp.value = leg.flightSpeed;   // invalid — restore the real value
-    }));
+    });
+    speedInputs[i] = speedCell.querySelector('.plan-num');
+    tr.appendChild(speedCell);
     const altCell = numCell(leg.inboundAltitude, -2000, inp => {
+      // #76: restore the real value on empty / non-numeric input instead of
+      // committing 0 (which would also cascade via propagateAlt).
+      const v = +inp.value;
+      if (!Number.isFinite(v)) { inp.value = leg.inboundAltitude; return; }
       const oldVal = leg.inboundAltitude;
-      leg.inboundAltitude = Math.round(+inp.value) || 0;
+      leg.inboundAltitude = Math.round(v);
       propagateAlt(i, 'inboundAltitude', leg.inboundAltitude, oldVal);
-      for (let k = 0; k < altInputs.length; k++) {
-        if (altInputs[k]) altInputs[k].value = state.legs[k].inboundAltitude;
-      }
       draw();
     });
     altInputs[i] = altCell.querySelector('.plan-num');
     tr.appendChild(altCell);
     const timeCell = planCell('');
+    timeCells[i] = timeCell;
+    distCells[i] = distCell;
+    hdgCells[i] = hdgCell;
     tr.appendChild(timeCell);
-    rows.push({ leg, dist, timeCell });
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
@@ -395,6 +412,41 @@ function showFlightPlan() {
   trF.appendChild(totTimeCell);
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
+
+  // #78: keep the modal in sync with the live route. draw() calls this
+  // after each redraw so dragging a waypoint or reversing the route
+  // updates dist / hdg / time / total — and a count change (delete wp,
+  // import, clear) closes the modal instead of leaving it stale.
+  function refresh() {
+    if (state.legs.length !== distCells.length) { closeFlightPlan(); return; }
+    let td = 0, th = 0;
+    for (let i = 0; i < state.legs.length; i++) {
+      const A = state.waypoints[i], B = state.waypoints[i + 1];
+      if (!A || !B) continue;
+      const { dist, brg } = geo(A, B);
+      distCells[i].textContent = dist.toFixed(1);
+      hdgCells[i].textContent = pad3(toMagnetic(brg)) + '°M';
+      const dur = state.legs[i].flightSpeed > 0 ? dist / state.legs[i].flightSpeed : 0;
+      td += dist;
+      th += dur;
+      timeCells[i].textContent = dur > 0 ? toHMS(dur) : '--';
+      // Sync the editable inputs unless the user is mid-edit in that cell.
+      if (speedInputs[i] && document.activeElement !== speedInputs[i])
+        speedInputs[i].value = state.legs[i].flightSpeed;
+      if (altInputs[i] && document.activeElement !== altInputs[i])
+        altInputs[i].value = state.legs[i].inboundAltitude;
+    }
+    for (const wpIdx in wpInputs) {
+      const wp = state.waypoints[wpIdx];
+      if (!wp) continue;
+      const localized = navName((wp.name || '').trim());
+      for (const inp of wpInputs[wpIdx]) {
+        if (document.activeElement !== inp) inp.value = localized;
+      }
+    }
+    totDistCell.textContent = td.toFixed(1);
+    totTimeCell.textContent = th > 0 ? toHMS(th) : '--';
+  }
   refresh();
   box.appendChild(table);
 
@@ -416,13 +468,15 @@ function showFlightPlan() {
   const close = document.createElement('button');
   close.textContent = S.fpClose;
   close.className = 'modal-cancel';
-  close.onclick = () => back.remove();
+  close.onclick = closeFlightPlan;
   btns.appendChild(close);
   box.appendChild(btns);
 
   back.appendChild(box);
-  back.onclick = e => { if (e.target === back) back.remove(); };
+  back.onclick = e => { if (e.target === back) closeFlightPlan(); };
   document.body.appendChild(back);
+  flightPlanBack = back;
+  refreshFlightPlan = refresh;
 }
 
 function planCell(text) {
@@ -786,6 +840,7 @@ function flyRoute() {
 // --- route persistence ----------------------------------------------
 const STORE_KEY = 'navaid.route';
 let persistTimer = null;
+let quotaWarned = false;                // #80: stop scheduling after a quota fail
 function persist() {
   // When boot detected a corrupt saved blob (issue #73), refuse to overwrite
   // it with the empty in-memory state — that's silent data loss. Once the
@@ -795,7 +850,7 @@ function persist() {
       state.waypoints.length === 0 &&
       state.legs.length === 0 &&
       state.notes.length === 0) return;
-  if (persistTimer) return;
+  if (persistTimer || quotaWarned) return;
   persistTimer = setTimeout(() => {
     persistTimer = null;
     try {
@@ -805,7 +860,16 @@ function persist() {
         legs: state.legs,
         notes: state.notes,
       }));
-    } catch (e) { /* storage unavailable */ }
+    } catch (e) {
+      // #80: a full quota used to fail silently. Surface it once so the
+      // user knows to export the route; other storage-unavailable errors
+      // (private mode, disabled storage) stay silent as before.
+      if (e && (e.name === 'QuotaExceededError' || e.code === 22 ||
+                e.code === 1014 /* NS_ERROR_DOM_QUOTA_REACHED */)) {
+        quotaWarned = true;
+        try { alert(S.errStorageFull); } catch (_) { /* alert blocked */ }
+      }
+    }
   }, 500);
 }
 // Returns one of:
