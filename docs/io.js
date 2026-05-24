@@ -261,7 +261,31 @@ function setPage(size) {
     pageSize = size;
     pageOffset = { x: 0, y: 0 };          // start centred
     applyPage();
+    fitPageFrame();
   });
+}
+
+function fitPageFrame() {
+  const d = pageDims();
+  if (!d) return;
+  const halfW = d.w * 926;          // NM→m ÷ 2 (1852÷2 = 926)
+  const halfH = d.h * 926;
+  let center;
+  if (state.waypoints.length > 0) {
+    const b = L.latLngBounds(state.waypoints.map(w => [w.lat, w.lng]));
+    center = b.getCenter();
+  } else {
+    center = map.getCenter();
+  }
+  const latRad = center.lat * Math.PI / 180;
+  const cosLat = Math.cos(latRad) || 0.0001;
+  const degLng = halfW / (111320 * cosLat);
+  const degLat = halfH / 110540;
+  const bounds = L.latLngBounds(
+    [center.lat - degLat, center.lng - degLng],
+    [center.lat + degLat, center.lng + degLng]
+  );
+  map.fitBounds(bounds, { padding: [30, 30] });
 }
 
 // --- flight plan table -----------------------------------------------
