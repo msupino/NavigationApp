@@ -619,3 +619,57 @@ html, body {
   border-bottom: none;
   background: rgba(255, 255, 255, 0.03);
 }
+
+/* Airfield plates */
+.plates-section { margin-top: 12px; border-top: 1px solid #3a3636; padding-top: 10px; }
+.plates-section .row { flex-wrap: wrap; gap: 4px; }
+.plate-chip {
+  display: inline-block;
+  font: inherit;
+  font-size: 11px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 3px 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.plate-chip:hover { background: #3a3636; border-color: #1d6fe0; }
+.plate-chip-small { font-size: 10px; padding: 2px 5px; background: none; border-color: transparent; color: #1d6fe0; cursor: pointer; }
+.plate-chip-small:hover { text-decoration: underline; }
+
+/* Plate viewer modal */
+.modal-back.plate-viewer { z-index: 3000; }
+.plate-viewer-box {
+  width: 92vw;
+  max-width: 1100px;
+  height: 88vh;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+}
+.plate-iframe {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: #fff;
+  border-radius: 4px;
+}
+.plate-loading {
+  position: absolute;
+  inset: 50% 0 auto;
+  text-align: center;
+  color: #b9b3b3;
+  font-size: 13px;
+  padding: 20px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.plate-attribution {
+  font-size: 10px;
+  color: #888;
+  text-align: center;
+  padding: 6px 0 4px;
+  line-height: 1.3;
+}

@@ -989,3 +989,89 @@ function restoreRoute() {
   return true;
 }
 
+// --- Airfield plates viewer (#105) -----------------------------------
+const PLATE_BASE = 'https://media.githubusercontent.com/media/msupino/NavigationApp/main/byop/';
+
+function plateUrl(filename) {
+  return PLATE_BASE + encodeURIComponent(filename);
+}
+
+function plateCategory(filename) {
+  const rest = filename.replace(/^[A-Z]{4}_/, '');
+  const cat = rest.split('_')[0];
+  if (cat === 'APPROACH') return 'approach';
+  if (cat === 'SID') return 'sid';
+  if (cat === 'STAR') return 'star';
+  if (cat === 'Ground' || cat === 'parking') return 'ground';
+  if (cat === 'VAC' || cat === 'airport') return 'vfr';
+  return 'other';
+}
+
+function prettyPlateLabel(filename) {
+  const noIcao = filename.replace(/^[A-Z]{4}_/, '').replace(/\.pdf$/i, '');
+  return noIcao.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function showPlateViewer(filename, label) {
+  const back = document.createElement('div');
+  back.className = 'modal-back plate-viewer';
+  const box = document.createElement('div');
+  box.className = 'modal plate-viewer-box';
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = label;
+  box.appendChild(title);
+
+  const iframe = document.createElement('iframe');
+  iframe.className = 'plate-iframe';
+  const url = plateUrl(filename);
+  let loaded = false;
+
+  const loading = document.createElement('div');
+  loading.className = 'plate-loading';
+  loading.textContent = 'Loading...\n' + url;
+
+  iframe.onload = () => { loaded = true; loading.style.display = 'none'; };
+  iframe.onerror = () => {
+    loading.textContent = S.plateLoadError + '\n' + url;
+  };
+  iframe.src = url + '#view=FitH';
+
+  box.appendChild(loading);
+  box.appendChild(iframe);
+
+  const att = document.createElement('div');
+  att.className = 'plate-attribution';
+  att.textContent = S.plateAttribution;
+  box.appendChild(att);
+
+  const btns = document.createElement('div');
+  btns.className = 'modal-btns';
+  const openTab = document.createElement('button');
+  openTab.textContent = S.plateOpenTab;
+  openTab.onclick = () => window.open(url, '_blank');
+  btns.appendChild(openTab);
+  const download = document.createElement('button');
+  download.textContent = S.plateDownload;
+  download.onclick = () => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+  };
+  btns.appendChild(download);
+  const close = document.createElement('button');
+  close.textContent = S.plateClose;
+  close.className = 'modal-cancel';
+  close.onclick = () => back.remove();
+  btns.appendChild(close);
+
+  box.appendChild(btns);
+
+  function onEsc(e) { if (e.key === 'Escape') { document.removeEventListener('keydown', onEsc); back.remove(); } }
+  back.appendChild(box);
+  back.onclick = e => { if (e.target === back) { document.removeEventListener('keydown', onEsc); back.remove(); } };
+  document.body.appendChild(back);
+  document.addEventListener('keydown', onEsc);
+}
+
