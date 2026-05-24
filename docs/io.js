@@ -989,3 +989,217 @@ function restoreRoute() {
   return true;
 }
 
+// --- Airfield plates viewer (#105) -----------------------------------
+const PLATE_BASE = 'byop/';
+
+function plateUrl(filename) {
+  return PLATE_BASE + encodeURIComponent(filename);
+}
+
+function plateCategory(filename) {
+  const rest = filename.replace(/^[A-Z]{4}_/, '');
+  const cat = rest.split('_')[0];
+  if (cat === 'APPROACH') return 'approach';
+  if (cat === 'SID') return 'sid';
+  if (cat === 'STAR') return 'star';
+  if (cat === 'Ground' || cat === 'parking') return 'ground';
+  if (cat === 'VAC' || cat === 'airport') return 'vfr';
+  return 'other';
+}
+
+function prettyPlateLabel(filename) {
+  const noIcao = filename.replace(/^[A-Z]{4}_/, '').replace(/\.pdf$/i, '');
+  return noIcao.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function showPlateViewer(filename, label) {
+  const back = document.createElement('div');
+  back.className = 'modal-back plate-viewer';
+  const box = document.createElement('div');
+  box.className = 'modal plate-viewer-box';
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = label;
+  box.appendChild(title);
+
+  const iframe = document.createElement('iframe');
+  iframe.className = 'plate-iframe';
+  const url = plateUrl(filename);
+
+  const loading = document.createElement('div');
+  loading.className = 'plate-loading';
+  loading.textContent = 'Loading...\n' + url;
+
+  let blobUrl = null;
+  let pdfReady = false;
+
+  iframe.onload = () => { if (pdfReady) loading.style.display = 'none'; };
+  iframe.onerror = () => {
+    loading.textContent = S.plateLoadError + '\n' + url;
+  };
+
+  fetch(url, { credentials: 'omit' })
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.blob();
+    })
+    .then(blob => {
+      blobUrl = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      pdfReady = true;
+      iframe.src = blobUrl + '#view=FitH';
+    })
+    .catch(() => {
+      loading.textContent = S.plateLoadError + '\n' + url;
+    });
+
+  box.appendChild(loading);
+  box.appendChild(iframe);
+
+  const att = document.createElement('div');
+  att.className = 'plate-attribution';
+  att.textContent = S.plateAttribution;
+  box.appendChild(att);
+
+  const btns = document.createElement('div');
+  btns.className = 'modal-btns';
+  const openTab = document.createElement('button');
+  openTab.textContent = S.plateOpenTab;
+  openTab.onclick = () => { if (blobUrl) window.open(blobUrl, '_blank'); };
+  btns.appendChild(openTab);
+  const download = document.createElement('button');
+  download.textContent = S.plateDownload;
+  download.onclick = () => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+  };
+  btns.appendChild(download);
+  const close = document.createElement('button');
+  close.textContent = S.plateClose;
+  close.className = 'modal-cancel';
+  close.onclick = () => { if (blobUrl) URL.revokeObjectURL(blobUrl); back.remove(); };
+  btns.appendChild(close);
+
+  box.appendChild(btns);
+
+  function onEsc(e) {
+    if (e.key === 'Escape') {
+      window.removeEventListener('keydown', onEsc);
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      back.remove();
+    }
+  }
+  back.appendChild(box);
+  back.onclick = e => {
+    if (e.target === back) {
+      window.removeEventListener('keydown', onEsc);
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      back.remove();
+    }
+  };
+  document.body.appendChild(back);
+  window.addEventListener('keydown', onEsc);
+}
+
+function showChartsModal() {
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  const box = document.createElement('div');
+  box.className = 'modal wide';
+
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = S.plates;
+  box.appendChild(title);
+
+  const body = document.createElement('div');
+  body.className = 'charts-modal-body';
+
+  const catOrder = ['approach', 'sid', 'star', 'ground', 'vfr', 'other'];
+  const catLabel = {
+    approach: S.plateCategoryApproach,
+    sid: S.plateCategorySid,
+    star: S.plateCategoryStar,
+    ground: S.plateCategoryGround,
+    vfr: S.plateCategoryVfr,
+    other: S.plateCategoryOther,
+  };
+
+  function renderList(afs) {
+    body.innerHTML = '';
+    const withPlates = afs.filter(af => af.plates && af.plates.length);
+    if (!withPlates.length) {
+      const none = document.createElement('p');
+      none.textContent = S.platesNone;
+      body.appendChild(none);
+      return;
+    }
+    for (const af of withPlates) {
+      const section = document.createElement('details');
+      section.className = 'charts-airport';
+      const summ = document.createElement('summary');
+      summ.textContent = af.name + (af.en ? ' — ' + af.en : '');
+      section.appendChild(summ);
+
+      const groups = {};
+      for (const fn of af.plates) {
+        const cat = plateCategory(fn);
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(fn);
+      }
+      for (const cat of catOrder) {
+        if (!groups[cat]) continue;
+        const catDiv = document.createElement('div');
+        catDiv.className = 'charts-cat';
+        const catLbl = document.createElement('span');
+        catLbl.className = 'charts-cat-label';
+        catLbl.textContent = catLabel[cat];
+        catDiv.appendChild(catLbl);
+        for (const fn of groups[cat]) {
+          const chip = document.createElement('button');
+          chip.className = 'plate-chip';
+          chip.textContent = prettyPlateLabel(fn);
+          chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
+          catDiv.appendChild(chip);
+        }
+        section.appendChild(catDiv);
+      }
+      body.appendChild(section);
+    }
+  }
+
+  if (airfields) {
+    renderList(airfields);
+  } else {
+    const loading = document.createElement('p');
+    loading.textContent = '…';
+    body.appendChild(loading);
+    loadAirfields().then(() => { if (airfields) renderList(airfields); });
+  }
+
+  box.appendChild(body);
+
+  const att = document.createElement('div');
+  att.className = 'plate-attribution';
+  att.textContent = S.plateAttribution;
+  box.appendChild(att);
+
+  const btns = document.createElement('div');
+  btns.className = 'modal-btns';
+  const close = document.createElement('button');
+  close.textContent = S.plateClose;
+  close.className = 'modal-cancel';
+  close.onclick = () => back.remove();
+  btns.appendChild(close);
+  box.appendChild(btns);
+
+  function onEsc(e) {
+    if (e.key === 'Escape') { window.removeEventListener('keydown', onEsc); back.remove(); }
+  }
+  back.appendChild(box);
+  back.onclick = e => { if (e.target === back) { window.removeEventListener('keydown', onEsc); back.remove(); } };
+  document.body.appendChild(back);
+  window.addEventListener('keydown', onEsc);
+}
+
