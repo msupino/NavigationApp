@@ -241,16 +241,6 @@ document.getElementById('file').onchange = e => {
 };
 document.getElementById('fit').onclick = fitView;
 document.getElementById('fly').onclick = flyRoute;
-const GE_MODE_KEY = 'navaid.geMode';
-try {
-  const stored = localStorage.getItem(GE_MODE_KEY);
-  if (stored === 'app' || stored === 'web') window.geMode = stored;
-} catch (e) { /* storage unavailable */ }
-document.getElementById('ge-mode-select').value = geMode;
-document.getElementById('ge-mode-select').onchange = e => {
-  window.geMode = e.target.value;
-  try { localStorage.setItem(GE_MODE_KEY, geMode); } catch (err) { /* */ }
-};
 document.getElementById('plan').onclick = showFlightPlan;
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
