@@ -255,15 +255,6 @@ const newLeg = () => ({
   outLabel: { a: 0, p: -44 },
 });
 
-// Coerce a leg-label object to a well-formed {a, p} pair. Imported JSON
-// can carry partial labels like {a: 10} (issue #82); a missing or
-// non-finite key falls back to the per-key default so downstream math
-// never sees NaN.
-function normLegLabel(lbl, defP) {
-  const a = (lbl && Number.isFinite(+lbl.a)) ? +lbl.a : 0;
-  const p = (lbl && Number.isFinite(+lbl.p)) ? +lbl.p : defP;
-  return { a, p };
-}
 
 // --- helpers ---------------------------------------------------------
 function geo(a, b) {                   // a,b = {lat,lng} -> {dist NM, brg deg}
