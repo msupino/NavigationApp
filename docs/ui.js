@@ -148,15 +148,14 @@ function runSearch() {
   const qRaw = wpSearch.value.trim();
   const q = qRaw.toUpperCase();
   if (!q) { closeSearch(); return; }
-  const hits = [];
-  // Airfields surface first — small (16-entry) high-signal set: ICAO,
-  // English label, and Hebrew label all matched substring.
+  const afHits = [];
+  const navWpHits = [];
   if (airfields && airfields.length) {
     for (const a of airfields) {
       if (a.name.toUpperCase().indexOf(q) >= 0 ||
           (a.en && a.en.toUpperCase().indexOf(q) >= 0) ||
           (a.he && a.he.indexOf(qRaw) >= 0)) {
-        hits.push({ kind: 'af', entry: a });
+        afHits.push({ kind: 'af', entry: a });
       }
     }
   }
@@ -164,15 +163,15 @@ function runSearch() {
     for (const w of navWP) {
       if (w.name.toUpperCase().indexOf(q) >= 0 ||
           (w.he && w.he.indexOf(qRaw) >= 0)) {
-        hits.push({ kind: 'wp', entry: w });
+        navWpHits.push({ kind: 'wp', entry: w });
       }
     }
   }
-  if (!hits.length) { closeSearch(); return; }
+  if (!afHits.length && !navWpHits.length) { closeSearch(); return; }
   wpResults.innerHTML = '';
   const wpField = S.navWpSearchField;
   const afField = S.airfieldLabelField;
-  for (const h of hits.slice(0, 12)) {
+  for (const h of afHits.slice(0, 6).concat(navWpHits.slice(0, 6))) {
     const w = h.entry;
     const item = document.createElement('div');
     item.className = 'wp-search-item';
