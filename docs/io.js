@@ -294,8 +294,11 @@ function showFlightPlan() {
     alert(S.errNoLegs);
     return;
   }
+  // 'flight-plan' variant: backdrop is transparent + pointer-events: none so
+  // the map underneath stays interactive (waypoint drag, pan, etc.) while
+  // the plan is open. The modal box itself opts back into pointer events.
   const back = document.createElement('div');
-  back.className = 'modal-back';
+  back.className = 'modal-back flight-plan';
   const box = document.createElement('div');
   box.className = 'modal wide';
 
@@ -473,7 +476,8 @@ function showFlightPlan() {
   box.appendChild(btns);
 
   back.appendChild(box);
-  back.onclick = e => { if (e.target === back) closeFlightPlan(); };
+  // No backdrop-click-to-close — backdrop is pointer-events:none so the map
+  // is reachable; close via the Close button (or Escape from #86 later).
   document.body.appendChild(back);
   flightPlanBack = back;
   refreshFlightPlan = refresh;
