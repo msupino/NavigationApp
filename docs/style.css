@@ -517,6 +517,15 @@ html, body {
   justify-content: center;
   background: rgba(0, 0, 0, 0.5);
 }
+/* Flight Plan variant: transparent backdrop that doesn't capture events,
+   so the map underneath stays draggable / pannable while the plan is open. */
+.modal-back.flight-plan {
+  background: transparent;
+  pointer-events: none;
+  align-items: flex-start;
+  padding-top: 48px;
+}
+.modal-back.flight-plan > .modal { pointer-events: auto; }
 .modal {
   min-width: 240px;
   padding: 16px;
