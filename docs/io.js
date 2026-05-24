@@ -202,6 +202,15 @@ function save() {
   URL.revokeObjectURL(a.href);
 }
 function load(file) {
+  // #146: hard cap on file size before we even read it. Route JSON is
+  // typically <100 KB; 2 MB leaves room for big routes / future fields and
+  // still aborts a user mis-pick (e.g. a PDF / image) instantly.
+  const MAX_ROUTE_BYTES = 2 * 1024 * 1024;
+  if (file && file.size > MAX_ROUTE_BYTES) {
+    alert(S.errLoadFile + 'file too large (' +
+          (file.size / 1024 / 1024).toFixed(1) + ' MB; max 2 MB)');
+    return;
+  }
   const reader = new FileReader();
   reader.onload = () => {
     let d;
@@ -864,8 +873,17 @@ function flyRoute() {
   function onPick(mode) {
     if (mode === 'web') {
       if (!confirm(S.geWebConfirm)) return;
+      // #145: validate the first waypoint's coords before string-concat so a
+      // malformed lat/lng (e.g. from a tampered import) can't leak into the
+      // URL. heading()/altM() are already bounded numerics by construction.
+      const lat = Number(wps[0].lat), lng = Number(wps[0].lng);
+      if (!Number.isFinite(lat) || lat < -90 || lat > 90 ||
+          !Number.isFinite(lng) || lng < -180 || lng > 180) {
+        alert(S.errBadCoords);
+        return;
+      }
       const url = 'https://earth.google.com/web/@' +
-        wps[0].lat + ',' + wps[0].lng + ',' + altM(0) + 'a,' +
+        lat.toFixed(6) + ',' + lng.toFixed(6) + ',' + altM(0) + 'a,' +
         heading(0).toFixed(1) + 'h,70t';
       window.open(url, '_blank');
       downloadKml();
