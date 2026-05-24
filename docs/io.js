@@ -296,14 +296,10 @@ function wpLabel(i) {
   return n || (S.wpPrefix + (i + 1));
 }
 
-// Flight Plan modal lives outside the function so draw() can hook in via
-// refreshFlightPlan(), and so showFlightPlan() can dedupe (#78). When the
-// route is mutated externally (drag wp, reverse, etc.) draw() calls the
-// stored refresh, which resyncs all the per-leg cells from current state
-// or closes the modal if the leg count changed.
+// #86: Flight Plan modal state and Escape-to-close handling.
 let flightPlanBack = null;
 let refreshFlightPlan = null;
-let flightPlanEscape = null;            // #86: Escape-to-close listener
+let flightPlanEscape = null;
 
 function closeFlightPlan() {
   if (flightPlanEscape) {
@@ -505,8 +501,7 @@ function showFlightPlan() {
   box.appendChild(btns);
 
   back.appendChild(box);
-  // No backdrop-click-to-close — backdrop is pointer-events:none so the map
-  // is reachable; close via the Close button or Escape (#86).
+  // Close via the Close button or Escape (#86).
   document.body.appendChild(back);
   flightPlanBack = back;
   refreshFlightPlan = refresh;
