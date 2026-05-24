@@ -522,10 +522,12 @@ html, body {
 .modal-back.flight-plan {
   background: transparent;
   pointer-events: none;
-  align-items: flex-start;
-  padding-top: 48px;
 }
-.modal-back.flight-plan > .modal { pointer-events: auto; }
+.modal-back.flight-plan > .modal {
+  pointer-events: auto;
+  position: absolute;
+  margin: 0;
+}
 .modal {
   min-width: 240px;
   padding: 16px;
@@ -540,7 +542,10 @@ html, body {
   font-weight: 700;
   color: #e8e8e8;
   text-align: center;
+  cursor: grab;
+  user-select: none;
 }
+.modal-title:active { cursor: grabbing; }
 .modal-btns {
   display: flex;
   gap: 8px;
@@ -563,11 +568,17 @@ html, body {
 
 /* Flight-plan table modal */
 .modal.wide {
+  display: flex;
+  flex-direction: column;
   min-width: 520px;
   max-width: 92vw;
   max-height: 84vh;
-  overflow: auto;
   padding: 14px;
+}
+.modal.wide .fp-scroll {
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
 }
 .flight-table {
   width: 100%;
@@ -618,6 +629,14 @@ html, body {
   border-top: 2px solid #443f3f;
   border-bottom: none;
   background: rgba(255, 255, 255, 0.03);
+}
+.flight-plan-sub {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8e8e8;
+  padding: 16px 12px 4px;
+  border-top: 1px solid #3a3636;
+  margin-top: 12px;
 }
 
 /* Airfield plates */
