@@ -85,6 +85,7 @@ function validateRoute(d) {
       _v(l, 'inboundAltitude',  'number', p, errs);
       _v(l, 'outboundAltitude', 'number', p, errs);
       _v(l, 'flightSpeed',      'number', p, errs);
+      if ('outboundSpeed' in l) _v(l, 'outboundSpeed', 'number', p, errs);
       if (_v(l, 'inLabel',  'object', p, errs)) {
         _v(l.inLabel,  'a', 'number', p + '.inLabel',  errs);
         _v(l.inLabel,  'p', 'number', p + '.inLabel',  errs);
@@ -180,17 +181,18 @@ function validateAirfields(d) {
 function save() {
   const data = {
     waypoints: state.waypoints.map(w => ({
-      lat: w.lat, lng: w.lng, name: w.name || '',
+      lat: r5(w.lat), lng: r5(w.lng), name: w.name || '',
     })),
     legs: state.legs.map(l => ({
       inboundAltitude: l.inboundAltitude,
       outboundAltitude: l.outboundAltitude,
       flightSpeed: l.flightSpeed,
+      outboundSpeed: l.outboundSpeed,
       inLabel: l.inLabel,
       outLabel: l.outLabel,
     })),
     notes: state.notes.map(n => ({
-      lat: n.lat, lng: n.lng, text: n.text || '', color: n.color || '',
+      lat: r5(n.lat), lng: r5(n.lng), text: n.text || '', color: n.color || '',
       shape: n.shape || 'rect',
     })),
   };
@@ -229,17 +231,18 @@ function load(file) {
       return;
     }
     state.waypoints = d.waypoints.map(w => ({
-      lat: w.lat, lng: w.lng, name: w.name,
+      lat: r5(w.lat), lng: r5(w.lng), name: w.name,
     }));
     state.legs = d.legs.map(l => ({
       inboundAltitude: l.inboundAltitude,
       outboundAltitude: l.outboundAltitude,
       flightSpeed: l.flightSpeed,
+      outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
       inLabel:  { a: l.inLabel.a,  p: l.inLabel.p  },
       outLabel: { a: l.outLabel.a, p: l.outLabel.p },
     }));
     state.notes = d.notes.map(n => ({
-      lat: n.lat, lng: n.lng,
+      lat: r5(n.lat), lng: r5(n.lng),
       text: n.text, color: n.color, shape: n.shape,
     }));
     syncLegs();
@@ -309,17 +312,26 @@ function wpLabel(i) {
 let flightPlanBack = null;
 let refreshFlightPlan = null;
 let flightPlanEscape = null;
+let flightPlanCleanup = null;             // tears down drag listeners attached
+                                          // outside the modal subtree (window).
+var fpOpen = false;                       // true while flight-plan modal is shown
 
 function closeFlightPlan() {
   if (flightPlanEscape) {
     document.removeEventListener('keydown', flightPlanEscape);
     flightPlanEscape = null;
   }
+  if (flightPlanCleanup) {
+    try { flightPlanCleanup(); } catch (e) { /* listener removal is best-effort */ }
+    flightPlanCleanup = null;
+  }
   if (flightPlanBack) {
     flightPlanBack.remove();
     flightPlanBack = null;
   }
   refreshFlightPlan = null;
+  fpOpen = false;
+  try { sessionStorage.removeItem('navaid.fpOpen'); } catch (e) {}
 }
 
 function showFlightPlan() {
@@ -340,6 +352,74 @@ function showFlightPlan() {
   title.className = 'modal-title';
   title.textContent = S.flightPlan;
   box.appendChild(title);
+
+  // Drag-to-move on the title bar (mouse + touch).
+  (function (el) {
+    const KEY = 'navaid.fpPos';
+    let dx = 0, dy = 0, dragging = false;
+    function clamp(x, y) {
+      return {
+        x: Math.max(0, Math.min(window.innerWidth - el.offsetWidth, x)),
+        y: Math.max(0, Math.min(window.innerHeight - el.offsetHeight, y)),
+      };
+    }
+    function setPos(x, y) {
+      const c = clamp(x, y);
+      el.style.left = c.x + 'px';
+      el.style.top = c.y + 'px';
+      el.style.margin = '0';
+    }
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) { const p = JSON.parse(raw); setPos(p.x, p.y); }
+    } catch (e) {}
+    function start(cx, cy) {
+      const r = el.getBoundingClientRect();
+      dx = cx - r.left; dy = cy - r.top;
+      dragging = true;
+    }
+    function move(cx, cy) { if (dragging) setPos(cx - dx, cy - dy); }
+    function end() {
+      if (!dragging) return;
+      dragging = false;
+      const r = el.getBoundingClientRect();
+      try { localStorage.setItem(KEY, JSON.stringify({ x: r.left, y: r.top })); } catch (e) {}
+    }
+    title.addEventListener('mousedown', e => {
+      e.preventDefault();
+      start(e.clientX, e.clientY);
+      const onMove = ev => move(ev.clientX, ev.clientY);
+      const onUp = () => { end(); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+    function onTouchStart(e) {
+      if (e.touches.length !== 1) return;
+      e.preventDefault();
+      start(e.touches[0].clientX, e.touches[0].clientY);
+    }
+    function onTouchMove(e) {
+      if (!dragging || e.touches.length !== 1) return;
+      e.preventDefault();
+      move(e.touches[0].clientX, e.touches[0].clientY);
+    }
+    title.addEventListener('touchstart', onTouchStart, { passive: false });
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', end);
+    window.addEventListener('touchcancel', end);
+    // closeFlightPlan() invokes this to detach the window-level listeners so
+    // a re-open doesn't accumulate stale handlers (closures capture el/dragging).
+    flightPlanCleanup = function () {
+      title.removeEventListener('touchstart', onTouchStart, { passive: false });
+      window.removeEventListener('touchmove', onTouchMove, { passive: false });
+      window.removeEventListener('touchend', end);
+      window.removeEventListener('touchcancel', end);
+    };
+  })(box);
+
+  const scrollArea = document.createElement('div');
+  scrollArea.className = 'fp-scroll';
+  box.appendChild(scrollArea);
 
   const table = document.createElement('table');
   table.className = 'flight-table';
@@ -409,20 +489,27 @@ function showFlightPlan() {
     tr.appendChild(distCell);
     const speedCell = numCell(leg.flightSpeed, 1, inp => {
       const v = +inp.value;
-      if (v > 0) { leg.flightSpeed = v; draw(); }
+      if (v > 0) {
+        const oldVal = leg.flightSpeed;
+        leg.flightSpeed = v;
+        propagateAlt(i, 'flightSpeed', leg.flightSpeed, oldVal);
+        draw();
+        refresh();
+        if (retRefresh) retRefresh();
+      }
       else inp.value = leg.flightSpeed;   // invalid — restore the real value
     });
     speedInputs[i] = speedCell.querySelector('.plan-num');
     tr.appendChild(speedCell);
     const altCell = numCell(leg.inboundAltitude, -2000, inp => {
-      // #76: restore the real value on empty / non-numeric input instead of
-      // committing 0 (which would also cascade via propagateAlt).
       const v = +inp.value;
       if (!Number.isFinite(v)) { inp.value = leg.inboundAltitude; return; }
       const oldVal = leg.inboundAltitude;
       leg.inboundAltitude = Math.round(v);
       propagateAlt(i, 'inboundAltitude', leg.inboundAltitude, oldVal);
       draw();
+      refresh();
+      if (retRefresh) retRefresh();
     });
     altInputs[i] = altCell.querySelector('.plan-num');
     tr.appendChild(altCell);
@@ -450,12 +537,7 @@ function showFlightPlan() {
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
 
-  // #78: keep the modal in sync with the live route. draw() calls this
-  // after each redraw so dragging a waypoint or reversing the route
-  // updates dist / hdg / time / total — and a count change (delete wp,
-  // import, clear) closes the modal instead of leaving it stale.
   function refresh() {
-    if (state.legs.length !== distCells.length) { closeFlightPlan(); return; }
     let td = 0, th = 0;
     for (let i = 0; i < state.legs.length; i++) {
       const A = state.waypoints[i], B = state.waypoints[i + 1];
@@ -485,7 +567,124 @@ function showFlightPlan() {
     totTimeCell.textContent = th > 0 ? toHMS(th) : '--';
   }
   refresh();
-  box.appendChild(table);
+  scrollArea.appendChild(table);
+
+  // --- return-route table (when showReturn is on) --------------------
+  let retRefresh = null;
+  if (window.showReturn) {
+    const sub = document.createElement('div');
+    sub.className = 'flight-plan-sub';
+    sub.textContent = S.fpReturn;
+    scrollArea.appendChild(sub);
+
+    const rtable = document.createElement('table');
+    rtable.className = 'flight-table';
+    const rthead = document.createElement('thead');
+    const rtrH = document.createElement('tr');
+    for (const h of headers) {
+      const th = document.createElement('th');
+      th.textContent = h;
+      rtrH.appendChild(th);
+    }
+    rthead.appendChild(rtrH);
+    rtable.appendChild(rthead);
+
+    const rtbody = document.createElement('tbody');
+    const rAltInputs = [];
+    const rSpeedInputs = [];
+    const rDistCells = [];
+    const rHdgCells = [];
+    const rTimeCells = [];
+    let rTotDistCell, rTotTimeCell;
+
+    for (let i = 0; i < state.legs.length; i++) {
+      const ri = state.legs.length - 1 - i;   // reverse leg order — flyable from destination
+      const leg = state.legs[ri];
+      const A = state.waypoints[ri + 1], B = state.waypoints[ri];
+      const { dist, brg } = geo(A, B);
+      const tr = document.createElement('tr');
+      tr.appendChild(planCell(String(i + 1)));
+      tr.appendChild(nameCell(ri + 1));
+      tr.appendChild(nameCell(ri));
+      const hdgCell = planCell(pad3(toMagnetic(brg)) + '°M');
+      tr.appendChild(hdgCell);
+      const distCell = planCell(dist.toFixed(1));
+      tr.appendChild(distCell);
+      const speedCell = numCell(leg.outboundSpeed, 1, inp => {
+        const v = +inp.value;
+        if (v > 0) {
+          const oldVal = leg.outboundSpeed;
+          leg.outboundSpeed = v;
+          propagateAlt(ri, 'outboundSpeed', leg.outboundSpeed, oldVal);
+          draw();
+          refresh();
+          retRefresh();
+        }
+        else inp.value = leg.outboundSpeed;
+      });
+      rSpeedInputs[i] = speedCell.querySelector('.plan-num');
+      tr.appendChild(speedCell);
+      const altCell = numCell(leg.outboundAltitude, -2000, inp => {
+        const v = +inp.value;
+        if (!Number.isFinite(v)) { inp.value = leg.outboundAltitude; return; }
+        const oldVal = leg.outboundAltitude;
+        leg.outboundAltitude = Math.round(v);
+        propagateAlt(ri, 'outboundAltitude', leg.outboundAltitude, oldVal);
+        draw();
+        refresh();
+        retRefresh();
+      });
+      rAltInputs[i] = altCell.querySelector('.plan-num');
+      tr.appendChild(altCell);
+      const timeCell = planCell('');
+      rTimeCells[i] = timeCell;
+      rDistCells[i] = distCell;
+      rHdgCells[i] = hdgCell;
+      tr.appendChild(timeCell);
+      rtbody.appendChild(tr);
+    }
+    rtable.appendChild(rtbody);
+
+    const rtfoot = document.createElement('tfoot');
+    const rtrF = document.createElement('tr');
+    const rtdLabel = document.createElement('td');
+    rtdLabel.colSpan = 4;
+    rtdLabel.textContent = S.fpTotal;
+    rtrF.appendChild(rtdLabel);
+    rTotDistCell = planCell('');
+    rtrF.appendChild(rTotDistCell);
+    rtrF.appendChild(planCell(''));
+    rtrF.appendChild(planCell(''));
+    rTotTimeCell = planCell('');
+    rtrF.appendChild(rTotTimeCell);
+    rtfoot.appendChild(rtrF);
+    rtable.appendChild(rtfoot);
+
+    retRefresh = function () {
+      if (state.legs.length !== rDistCells.length) { closeFlightPlan(); return; }
+      let td = 0, th = 0;
+      for (let i = 0; i < state.legs.length; i++) {
+        const ri = state.legs.length - 1 - i;
+        const A = state.waypoints[ri + 1], B = state.waypoints[ri];
+        if (!A || !B) continue;
+        const { dist, brg } = geo(A, B);
+        rDistCells[i].textContent = dist.toFixed(1);
+        rHdgCells[i].textContent = pad3(toMagnetic(brg)) + '°M';
+        const dur = state.legs[ri].outboundSpeed > 0 ? dist / state.legs[ri].outboundSpeed : 0;
+        td += dist;
+        th += dur;
+        rTimeCells[i].textContent = dur > 0 ? toHMS(dur) : '--';
+        if (rSpeedInputs[i] && document.activeElement !== rSpeedInputs[i])
+          rSpeedInputs[i].value = state.legs[ri].outboundSpeed;
+        if (rAltInputs[i] && document.activeElement !== rAltInputs[i])
+          rAltInputs[i].value = state.legs[ri].outboundAltitude;
+      }
+      rTotDistCell.textContent = td.toFixed(1);
+      rTotTimeCell.textContent = th > 0 ? toHMS(th) : '--';
+    };
+    retRefresh();
+    scrollArea.appendChild(rtable);
+  }
 
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
@@ -513,11 +712,36 @@ function showFlightPlan() {
   // Close via the Close button or Escape (#86).
   document.body.appendChild(back);
   flightPlanBack = back;
-  refreshFlightPlan = refresh;
+  // #78: keep the modal in sync with the live route. draw() calls this after
+  // each redraw so dragging a waypoint or reversing the route updates dist /
+  // hdg / time / total. A leg-count change (delete wp, import, clear) tears
+  // the modal down and re-opens it on the next tick so input handlers rebind
+  // against the new leg array (the old fix just closed it — the rebuild is a
+  // strictly better UX so the pilot doesn't lose the plan view on edits).
+  refreshFlightPlan = retRefresh
+    ? function () {
+        if (state.legs.length !== distCells.length) {
+          closeFlightPlan();
+          setTimeout(showFlightPlan, 0);
+          return;
+        }
+        refresh();
+        retRefresh();
+      }
+    : function () {
+        if (state.legs.length !== distCells.length) {
+          closeFlightPlan();
+          setTimeout(showFlightPlan, 0);
+          return;
+        }
+        refresh();
+      };
   flightPlanEscape = function (e) {
     if (e.key === 'Escape') closeFlightPlan();
   };
   document.addEventListener('keydown', flightPlanEscape);
+  fpOpen = true;
+  try { sessionStorage.removeItem('navaid.fpOpen'); } catch (e) {}
 }
 
 function planCell(text) {
@@ -990,17 +1214,18 @@ function restoreRoute() {
     return 'corrupt';
   }
   state.waypoints = d.waypoints.map(w => ({
-    lat: w.lat, lng: w.lng, name: w.name,
+    lat: r5(w.lat), lng: r5(w.lng), name: w.name,
   }));
   state.legs = d.legs.map(l => ({
     inboundAltitude: l.inboundAltitude,
     outboundAltitude: l.outboundAltitude,
     flightSpeed: l.flightSpeed,
+    outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
     inLabel:  { a: l.inLabel.a,  p: l.inLabel.p  },
     outLabel: { a: l.outLabel.a, p: l.outLabel.p },
   }));
   state.notes = d.notes.map(n => ({
-    lat: n.lat, lng: n.lng,
+    lat: r5(n.lat), lng: r5(n.lng),
     text: n.text, color: n.color, shape: n.shape,
   }));
   syncLegs();
