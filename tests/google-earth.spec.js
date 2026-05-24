@@ -2,7 +2,7 @@
 // Verify the Google Earth KML download exactly mirrors the route geometry:
 // the <LineString>, the per-waypoint <Placemark><Point>s, and the gx:Tour
 // camera positions all carry the same lat/lng sequence as state.waypoints.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 
 const ROUTE = {
   waypoints: [

@@ -2,7 +2,7 @@
 // Verify route JSON import rejects malformed exports without mutating state.
 // Every spec uploads a file to the hidden #file <input>, captures the resulting
 // alert, and asserts that state.waypoints is unchanged.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 
 const ROUTE = {
   waypoints: [
