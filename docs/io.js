@@ -202,6 +202,15 @@ function save() {
   URL.revokeObjectURL(a.href);
 }
 function load(file) {
+  // #146: hard cap on file size before we even read it. Route JSON is
+  // typically <100 KB; 2 MB leaves room for big routes / future fields and
+  // still aborts a user mis-pick (e.g. a PDF / image) instantly.
+  const MAX_ROUTE_BYTES = 2 * 1024 * 1024;
+  if (file && file.size > MAX_ROUTE_BYTES) {
+    alert(S.errLoadFile + 'file too large (' +
+          (file.size / 1024 / 1024).toFixed(1) + ' MB; max 2 MB)');
+    return;
+  }
   const reader = new FileReader();
   reader.onload = () => {
     let d;
