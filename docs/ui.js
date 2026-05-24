@@ -397,6 +397,7 @@ document.getElementById('mag-var').oninput = e => {
   const v = parseFloat(e.target.value);
   if (isNaN(v)) return;
   window.magVar =Math.max(-30, Math.min(30, v));
+  e.target.value = String(magVar);
   try { localStorage.setItem(MAGVAR_KEY, String(magVar)); }
   catch (err) { /* storage unavailable */ }
   showMagVarEqv();
