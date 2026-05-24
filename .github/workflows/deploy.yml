@@ -109,7 +109,6 @@ jobs:
         with:
           ref: main
           path: m
-          lfs: true
       - name: Cache-bust main (?v= → short SHA, version → x.y-SHA)
         run: |
           SHA=$(git -C m rev-parse --short HEAD)
@@ -123,7 +122,6 @@ jobs:
         with:
           ref: dev
           path: d
-          lfs: true
       - name: Cache-bust dev (?v= → short SHA, version → x.y-SHA)
         run: |
           SHA=$(git -C d rev-parse --short HEAD)
