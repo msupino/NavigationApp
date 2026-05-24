@@ -220,8 +220,8 @@ document.getElementById('reverse').onclick = () => {
   state.legs = state.legs.reverse().map(l => ({
     inboundAltitude: l.outboundAltitude,
     outboundAltitude: l.inboundAltitude,
-    flightSpeed: l.outboundSpeed,
-    outboundSpeed: l.flightSpeed,
+    flightSpeed: showReturn ? l.outboundSpeed : l.flightSpeed,
+    outboundSpeed: showReturn ? l.flightSpeed : l.flightSpeed,
     inLabel: { a: -l.outLabel.a, p: -l.outLabel.p },
     outLabel: { a: -l.inLabel.a, p: -l.inLabel.p },
   }));
