@@ -101,6 +101,9 @@
           if (typeof state !== 'undefined' && state.selected) {
             try { sessionStorage.setItem('navaid.selected', JSON.stringify(state.selected)); } catch (e) {}
           }
+          if (typeof fpOpen !== 'undefined' && fpOpen) {
+            try { sessionStorage.setItem('navaid.fpOpen', '1'); } catch (e) {}
+          }
           var params = new URLSearchParams(location.search);
           params.set('lang', sel.value);
           location.href = '?' + params.toString();
@@ -139,15 +142,6 @@
     <div class="tb-section" data-sec="route">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecRoute"></div>
       <div class="tb-section-body">
-        <button id="reverse" data-i18n="tbReverse" data-i18n-title="tbReverseTitle"></button>
-        <button id="clear" data-i18n="tbClear" data-i18n-title="tbClearTitle"></button>
-        <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
-        <button id="save" data-i18n="tbExport" data-i18n-title="tbExportTitle"></button>
-        <button id="load" data-i18n="tbImport" data-i18n-title="tbImportTitle"></button>
-        <input type="file" id="file" accept="application/json,.json" hidden>
-        <button id="plan" data-i18n="tbPlan" data-i18n-title="tbPlanTitle"></button>
-        <button id="charts" data-i18n="tbCharts" data-i18n-title="tbChartsTitle"></button>
-        <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
         <label class="navtoggle" data-i18n-title="tbShowReturnTitle">
           <input type="checkbox" id="ret-cb"> <span data-i18n="tbShowReturn"></span>
         </label>
@@ -157,6 +151,15 @@
         <label class="navtoggle" data-i18n-title="tbHighlightDiffTitle">
           <input type="checkbox" id="diff-cb"> <span data-i18n="tbHighlightDiff"></span>
         </label>
+        <button id="reverse" data-i18n="tbReverse" data-i18n-title="tbReverseTitle"></button>
+        <button id="clear" data-i18n="tbClear" data-i18n-title="tbClearTitle"></button>
+        <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
+        <button id="plan" data-i18n="tbPlan" data-i18n-title="tbPlanTitle"></button>
+        <button id="charts" data-i18n="tbCharts" data-i18n-title="tbChartsTitle"></button>
+        <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
+        <button id="save" data-i18n="tbExport" data-i18n-title="tbExportTitle"></button>
+        <button id="load" data-i18n="tbImport" data-i18n-title="tbImportTitle"></button>
+        <input type="file" id="file" accept="application/json,.json" hidden>
       </div>
     </div>
 
