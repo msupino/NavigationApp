@@ -10,6 +10,8 @@ on:
     branches: [main, dev]
   push:
     branches: [main, dev]
+  merge_group:
+    branches: [main, dev]
   schedule:
     - cron: '0 6 * * 1'   # weekly CodeQL refresh, Mon 06:00 UTC
   workflow_dispatch:
