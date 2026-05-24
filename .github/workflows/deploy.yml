@@ -98,18 +98,21 @@ jobs:
           cp -r d/docs/. site/staging/
       - name: Checkout open PR branches (preview deployments)
         run: |
-          mkdir -p site/pr
-          gh pr list --state open --json headRefName,baseRefName \
-            --jq '.[] | select(.baseRefName == "main" or .baseRefName == "dev") | .headRefName' \
-            | while read BRANCH; do
-              echo "== $BRANCH =="
+          mkdir -p site/pr site/branch
+          gh pr list --state open --json number,headRefName,baseRefName \
+            --jq '.[] | select(.baseRefName == "main" or .baseRefName == "dev") | "\(.number) \(.headRefName)"' \
+            | while read NUM BRANCH; do
+              echo "== PR #$NUM ($BRANCH) =="
               git fetch origin "$BRANCH" --depth 1 -q 2>/dev/null || { echo "  skip (fetch failed)"; continue; }
-              mkdir -p "site/pr/$BRANCH"
-              git archive "origin/$BRANCH" docs/ | tar x -C "site/pr/$BRANCH" --strip-components=1 2>/dev/null || { echo "  skip (archive failed)"; continue; }
-              SHA=$(git rev-parse --short "origin/$BRANCH" 2>/dev/null) || { echo "  skip (rev-parse failed)"; continue; }
-              sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" "site/pr/$BRANCH/index.html" 2>/dev/null || true
-              sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" "site/pr/$BRANCH/core.js" 2>/dev/null || true
-              echo "  → /pr/$BRANCH/ ($SHA)"
+              STAGING=$(mktemp -d)
+              git archive "origin/$BRANCH" docs/ | tar x -C "$STAGING" --strip-components=1 2>/dev/null || { echo "  skip (archive failed)"; rm -rf "$STAGING"; continue; }
+              SHA=$(git rev-parse --short "origin/$BRANCH" 2>/dev/null) || { echo "  skip (rev-parse failed)"; rm -rf "$STAGING"; continue; }
+              sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" "$STAGING/index.html" 2>/dev/null || true
+              sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" "$STAGING/core.js" 2>/dev/null || true
+              cp -r "$STAGING" "site/pr/$NUM"
+              cp -r "$STAGING" "site/branch/$BRANCH"
+              rm -rf "$STAGING"
+              echo "  → /pr/$NUM/ and /branch/$BRANCH/ ($SHA)"
             done
         env:
           GH_TOKEN: ${{ github.token }}
