@@ -244,7 +244,7 @@ document.getElementById('file').onchange = e => {
 };
 document.getElementById('fit').onclick = fitView;
 document.getElementById('fly').onclick = flyRoute;
-document.getElementById('windy').onclick = openWindy;
+document.getElementById('skyvector').onclick = openSkyVector;
 document.getElementById('plan').onclick = showFlightPlan;
 document.getElementById('charts').onclick = showChartsModal;
 const RETURN_KEY = 'navaid.showReturn';
