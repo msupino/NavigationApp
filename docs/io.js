@@ -314,12 +314,16 @@ function closeFlightPlan() {
 }
 
 function showFlightPlan() {
+  if (refreshFlightPlan) return;        // #78: dedupe — modal already open
   if (state.legs.length === 0) {
     alert(S.errNoLegs);
     return;
   }
+  // 'flight-plan' variant: backdrop is transparent + pointer-events: none so
+  // the map underneath stays interactive (waypoint drag, pan, etc.) while
+  // the plan is open. The modal box itself opts back into pointer events.
   const back = document.createElement('div');
-  back.className = 'modal-back';
+  back.className = 'modal-back flight-plan';
   const box = document.createElement('div');
   box.className = 'modal wide';
 
@@ -351,7 +355,8 @@ function showFlightPlan() {
     inp.type = 'text';
     inp.className = 'plan-name';
     inp.maxLength = 10;
-    inp.value = (state.waypoints[wpIdx].name || '').trim();
+    // #81: show the locale-resolved label so the cell matches the map.
+    inp.value = navName((state.waypoints[wpIdx].name || '').trim());
     inp.placeholder = S.wpPrefix + (wpIdx + 1);
     inp.oninput = () => {
       state.waypoints[wpIdx].name = inp.value;
@@ -375,20 +380,12 @@ function showFlightPlan() {
     td.appendChild(inp);
     return td;
   }
-  const rows = [];                      // { leg, dist, timeCell }
   const altInputs = [];                 // leg index -> altitude input
+  const speedInputs = [];               // leg index -> speed input
+  const distCells = [];                 // leg index -> distance cell
+  const hdgCells = [];                  // leg index -> heading cell
+  const timeCells = [];                 // leg index -> time cell
   let totDistCell, totTimeCell;
-  function refresh() {                  // recompute Time cells + totals
-    let td = 0, th = 0;
-    for (const r of rows) {
-      const dur = r.leg.flightSpeed > 0 ? r.dist / r.leg.flightSpeed : 0;
-      td += r.dist;
-      th += dur;
-      r.timeCell.textContent = dur > 0 ? toHMS(dur) : '--';
-    }
-    totDistCell.textContent = td.toFixed(1);
-    totTimeCell.textContent = th > 0 ? toHMS(th) : '--';
-  }
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     const leg = state.legs[i];
@@ -397,27 +394,34 @@ function showFlightPlan() {
     tr.appendChild(planCell(String(i + 1)));
     tr.appendChild(nameCell(i));
     tr.appendChild(nameCell(i + 1));
-    tr.appendChild(planCell(pad3(toMagnetic(brg)) + '°M'));
-    tr.appendChild(planCell(dist.toFixed(1)));
-    tr.appendChild(numCell(leg.flightSpeed, 1, inp => {
+    const hdgCell = planCell(pad3(toMagnetic(brg)) + '°M');
+    tr.appendChild(hdgCell);
+    const distCell = planCell(dist.toFixed(1));
+    tr.appendChild(distCell);
+    const speedCell = numCell(leg.flightSpeed, 1, inp => {
       const v = +inp.value;
-      if (v > 0) { leg.flightSpeed = v; refresh(); draw(); }
+      if (v > 0) { leg.flightSpeed = v; draw(); }
       else inp.value = leg.flightSpeed;   // invalid — restore the real value
-    }));
+    });
+    speedInputs[i] = speedCell.querySelector('.plan-num');
+    tr.appendChild(speedCell);
     const altCell = numCell(leg.inboundAltitude, -2000, inp => {
+      // #76: restore the real value on empty / non-numeric input instead of
+      // committing 0 (which would also cascade via propagateAlt).
+      const v = +inp.value;
+      if (!Number.isFinite(v)) { inp.value = leg.inboundAltitude; return; }
       const oldVal = leg.inboundAltitude;
-      leg.inboundAltitude = Math.round(+inp.value) || 0;
+      leg.inboundAltitude = Math.round(v);
       propagateAlt(i, 'inboundAltitude', leg.inboundAltitude, oldVal);
-      for (let k = 0; k < altInputs.length; k++) {
-        if (altInputs[k]) altInputs[k].value = state.legs[k].inboundAltitude;
-      }
       draw();
     });
     altInputs[i] = altCell.querySelector('.plan-num');
     tr.appendChild(altCell);
     const timeCell = planCell('');
+    timeCells[i] = timeCell;
+    distCells[i] = distCell;
+    hdgCells[i] = hdgCell;
     tr.appendChild(timeCell);
-    rows.push({ leg, dist, timeCell });
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
@@ -436,6 +440,41 @@ function showFlightPlan() {
   trF.appendChild(totTimeCell);
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
+
+  // #78: keep the modal in sync with the live route. draw() calls this
+  // after each redraw so dragging a waypoint or reversing the route
+  // updates dist / hdg / time / total — and a count change (delete wp,
+  // import, clear) closes the modal instead of leaving it stale.
+  function refresh() {
+    if (state.legs.length !== distCells.length) { closeFlightPlan(); return; }
+    let td = 0, th = 0;
+    for (let i = 0; i < state.legs.length; i++) {
+      const A = state.waypoints[i], B = state.waypoints[i + 1];
+      if (!A || !B) continue;
+      const { dist, brg } = geo(A, B);
+      distCells[i].textContent = dist.toFixed(1);
+      hdgCells[i].textContent = pad3(toMagnetic(brg)) + '°M';
+      const dur = state.legs[i].flightSpeed > 0 ? dist / state.legs[i].flightSpeed : 0;
+      td += dist;
+      th += dur;
+      timeCells[i].textContent = dur > 0 ? toHMS(dur) : '--';
+      // Sync the editable inputs unless the user is mid-edit in that cell.
+      if (speedInputs[i] && document.activeElement !== speedInputs[i])
+        speedInputs[i].value = state.legs[i].flightSpeed;
+      if (altInputs[i] && document.activeElement !== altInputs[i])
+        altInputs[i].value = state.legs[i].inboundAltitude;
+    }
+    for (const wpIdx in wpInputs) {
+      const wp = state.waypoints[wpIdx];
+      if (!wp) continue;
+      const localized = navName((wp.name || '').trim());
+      for (const inp of wpInputs[wpIdx]) {
+        if (document.activeElement !== inp) inp.value = localized;
+      }
+    }
+    totDistCell.textContent = td.toFixed(1);
+    totTimeCell.textContent = th > 0 ? toHMS(th) : '--';
+  }
   refresh();
   box.appendChild(table);
 
@@ -465,6 +504,7 @@ function showFlightPlan() {
   // Close via the Close button or Escape (#86).
   document.body.appendChild(back);
   flightPlanBack = back;
+  refreshFlightPlan = refresh;
   flightPlanEscape = function (e) {
     if (e.key === 'Escape') closeFlightPlan();
   };
@@ -752,93 +792,123 @@ function exportPNG() {
 }
 
 // --- fly the route (Google Earth) -----------------------------------
-// A browser cannot launch or detect a desktop app, so this writes a KML
-// tour and tells the user to open it in Google Earth Pro, which flies
-// the route at the per-leg altitudes set in the flight plan.
 function flyRoute() {
   if (state.waypoints.length < 2) {
     alert(S.errNeedWps);
     return;
   }
-  if (!confirm(S.flyConfirm)) {
-    return;
-  }
   const wps = state.waypoints;
-  // Camera flythrough height per waypoint (metres MSL): the leg flown
-  // along it; the last waypoint reuses the last leg. inboundAltitude is feet.
   const altM = i => {
     const leg = state.legs[Math.min(i, state.legs.length - 1)];
     return Math.max(0, Math.round((leg ? leg.inboundAltitude : 2000) * 0.3048));
   };
-  const esc = s => String(s).replace(/[<>&]/g,
-    c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
-
-  // heading at each waypoint = bearing toward the next (last reuses prev)
   const heading = i => {
     const j = Math.min(i, wps.length - 2);
     return geo(wps[j], wps[j + 1]).brg;
   };
-  // KML <Camera> child order is strict — altitudeMode must come last,
-  // or Google Earth ignores it and the eye ends up miles up.
-  // absolute = altitude is metres above mean sea level (MSL).
-  const camera = (i, pad) =>
-    pad + '<Camera>\n' +
-    pad + '  <longitude>' + wps[i].lng + '</longitude>\n' +
-    pad + '  <latitude>' + wps[i].lat + '</latitude>\n' +
-    pad + '  <altitude>' + altM(i) + '</altitude>\n' +
-    pad + '  <heading>' + heading(i).toFixed(1) + '</heading>\n' +
-    pad + '  <tilt>70</tilt>\n' +
-    pad + '  <roll>0</roll>\n' +
-    pad + '  <altitudeMode>absolute</altitudeMode>\n' +
-    pad + '</Camera>\n';
-  const flyTo = (i, dur, mode) =>
-    '    <gx:FlyTo>\n' +
-    '      <gx:duration>' + dur.toFixed(1) + '</gx:duration>\n' +
-    '      <gx:flyToMode>' + mode + '</gx:flyToMode>\n' +
-    camera(i, '      ') +
-    '    </gx:FlyTo>\n';
 
-  let tour = flyTo(0, 4, 'bounce');
-  for (let i = 1; i < wps.length; i++) {
-    const leg = state.legs[i - 1];
-    const { dist } = geo(wps[i - 1], wps[i]);
-    const durH = leg && leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
-    tour += flyTo(i, Math.max(4, Math.min(45, durH * 60 * 4)), 'smooth');
+  function downloadKml() {
+    const esc = s => String(s).replace(/[<>&]/g,
+      c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+    const camera = (i, pad) =>
+      pad + '<Camera>\n' +
+      pad + '  <longitude>' + wps[i].lng + '</longitude>\n' +
+      pad + '  <latitude>' + wps[i].lat + '</latitude>\n' +
+      pad + '  <altitude>' + altM(i) + '</altitude>\n' +
+      pad + '  <heading>' + heading(i).toFixed(1) + '</heading>\n' +
+      pad + '  <tilt>70</tilt>\n' +
+      pad + '  <roll>0</roll>\n' +
+      pad + '  <altitudeMode>absolute</altitudeMode>\n' +
+      pad + '</Camera>\n';
+    const flyTo = (i, dur, mode) =>
+      '    <gx:FlyTo>\n' +
+      '      <gx:duration>' + dur.toFixed(1) + '</gx:duration>\n' +
+      '      <gx:flyToMode>' + mode + '</gx:flyToMode>\n' +
+      camera(i, '      ') +
+      '    </gx:FlyTo>\n';
+    let tour = flyTo(0, 4, 'bounce');
+    for (let i = 1; i < wps.length; i++) {
+      const leg = state.legs[i - 1];
+      const { dist } = geo(wps[i - 1], wps[i]);
+      const durH = leg && leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
+      tour += flyTo(i, Math.max(4, Math.min(45, durH * 60 * 4)), 'smooth');
+    }
+    const coords = wps.map(w => w.lng + ',' + w.lat + ',0').join(' ');
+    const points = wps.map((w, i) =>
+      '  <Placemark><name>' + esc(wpLabel(i)) + '</name>' +
+      '<Point><coordinates>' + w.lng + ',' + w.lat + ',0</coordinates></Point>' +
+      '</Placemark>').join('\n');
+    const kml =
+      '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      '<kml xmlns="http://www.opengis.net/kml/2.2" ' +
+      'xmlns:gx="http://www.google.com/kml/ext/2.2">\n<Document>\n' +
+      '  <name>' + S.kmlDocName + '</name>\n' +
+      camera(0, '  ') +
+      '  <Placemark><name>' + S.kmlRouteName + '</name>\n' +
+      '    <Style><LineStyle><color>ff3399ff</color><width>3</width></LineStyle></Style>\n' +
+      '    <LineString><tessellate>1</tessellate>\n' +
+      '      <coordinates>' + coords + '</coordinates>\n' +
+      '    </LineString>\n  </Placemark>\n' + points + '\n' +
+      '  <gx:Tour><name>' + S.kmlTourName + '</name>\n    <gx:Playlist>\n' +
+      tour + '    </gx:Playlist>\n  </gx:Tour>\n' +
+      '</Document>\n</kml>\n';
+    const blob = new Blob([kml],
+      { type: 'application/vnd.google-earth.kml+xml' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'navaid-flythrough-' + fileStamp() + '.kml';
+    a.click();
+    URL.revokeObjectURL(a.href);
   }
 
-  const coords = wps.map(w => w.lng + ',' + w.lat + ',0').join(' ');
-  const points = wps.map((w, i) =>
-    '  <Placemark><name>' + esc(wpLabel(i)) + '</name>' +
-    '<Point><coordinates>' + w.lng + ',' + w.lat + ',0</coordinates></Point>' +
-    '</Placemark>').join('\n');
+  function onPick(mode) {
+    if (mode === 'web') {
+      if (!confirm(S.geWebConfirm)) return;
+      const url = 'https://earth.google.com/web/@' +
+        wps[0].lat + ',' + wps[0].lng + ',' + altM(0) + 'a,' +
+        heading(0).toFixed(1) + 'h,70t';
+      window.open(url, '_blank');
+      downloadKml();
+      return;
+    }
 
-  const kml =
-    '<?xml version="1.0" encoding="UTF-8"?>\n' +
-    '<kml xmlns="http://www.opengis.net/kml/2.2" ' +
-    'xmlns:gx="http://www.google.com/kml/ext/2.2">\n<Document>\n' +
-    '  <name>' + S.kmlDocName + '</name>\n' +
-    camera(0, '  ') +                    // open already at the start, 5000 ft
-    '  <Placemark><name>' + S.kmlRouteName + '</name>\n' +
-    '    <Style><LineStyle><color>ff3399ff</color><width>3</width></LineStyle></Style>\n' +
-    '    <LineString><tessellate>1</tessellate>\n' +
-    '      <coordinates>' + coords + '</coordinates>\n' +
-    '    </LineString>\n  </Placemark>\n' + points + '\n' +
-    '  <gx:Tour><name>' + S.kmlTourName + '</name>\n    <gx:Playlist>\n' +
-    tour + '    </gx:Playlist>\n  </gx:Tour>\n' +
-    '</Document>\n</kml>\n';
+    if (!confirm(S.flyConfirm)) return;
+    downloadKml();
+  }
 
-  const blob = new Blob([kml],
-    { type: 'application/vnd.google-earth.kml+xml' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'navaid-flythrough-' + fileStamp() + '.kml';
-  a.click();
-  URL.revokeObjectURL(a.href);
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  const box = document.createElement('div');
+  box.className = 'modal';
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = S.chooseGeMode;
+  const btns = document.createElement('div');
+  btns.className = 'modal-btns';
+  function onEsc(e) { if (e.key === 'Escape') { document.removeEventListener('keydown', onEsc); back.remove(); } }
+  function close() { document.removeEventListener('keydown', onEsc); back.remove(); }
+  for (const [label, mode] of [[S.geModeWeb, 'web'], [S.geModeApp, 'app']]) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.onclick = () => { close(); onPick(mode); };
+    btns.appendChild(b);
+  }
+  const cancel = document.createElement('button');
+  cancel.textContent = S.cancel;
+  cancel.className = 'modal-cancel';
+  cancel.onclick = close;
+  btns.appendChild(cancel);
+  box.append(title, btns);
+  back.appendChild(box);
+  back.onclick = e => { if (e.target === back) close(); };
+  document.body.appendChild(back);
+  document.addEventListener('keydown', onEsc);
 }
 
 // --- route persistence ----------------------------------------------
 const STORE_KEY = 'navaid.route';
 let persistTimer = null;
+let quotaWarned = false;                // #80: stop scheduling after a quota fail
 function persist() {
   // When boot detected a corrupt saved blob (issue #73), refuse to overwrite
   // it with the empty in-memory state — that's silent data loss. Once the
@@ -848,7 +918,7 @@ function persist() {
       state.waypoints.length === 0 &&
       state.legs.length === 0 &&
       state.notes.length === 0) return;
-  if (persistTimer) return;
+  if (persistTimer || quotaWarned) return;
   persistTimer = setTimeout(() => {
     persistTimer = null;
     try {
@@ -858,7 +928,16 @@ function persist() {
         legs: state.legs,
         notes: state.notes,
       }));
-    } catch (e) { /* storage unavailable */ }
+    } catch (e) {
+      // #80: a full quota used to fail silently. Surface it once so the
+      // user knows to export the route; other storage-unavailable errors
+      // (private mode, disabled storage) stay silent as before.
+      if (e && (e.name === 'QuotaExceededError' || e.code === 22 ||
+                e.code === 1014 /* NS_ERROR_DOM_QUOTA_REACHED */)) {
+        quotaWarned = true;
+        try { alert(S.errStorageFull); } catch (_) { /* alert blocked */ }
+      }
+    }
   }, 500);
 }
 // Returns one of:
@@ -908,5 +987,219 @@ function restoreRoute() {
   }));
   syncLegs();
   return true;
+}
+
+// --- Airfield plates viewer (#105) -----------------------------------
+const PLATE_BASE = 'byop/';
+
+function plateUrl(filename) {
+  return PLATE_BASE + encodeURIComponent(filename);
+}
+
+function plateCategory(filename) {
+  const rest = filename.replace(/^[A-Z]{4}_/, '');
+  const cat = rest.split('_')[0];
+  if (cat === 'APPROACH') return 'approach';
+  if (cat === 'SID') return 'sid';
+  if (cat === 'STAR') return 'star';
+  if (cat === 'Ground' || cat === 'parking') return 'ground';
+  if (cat === 'VAC' || cat === 'airport') return 'vfr';
+  return 'other';
+}
+
+function prettyPlateLabel(filename) {
+  const noIcao = filename.replace(/^[A-Z]{4}_/, '').replace(/\.pdf$/i, '');
+  return noIcao.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function showPlateViewer(filename, label) {
+  const back = document.createElement('div');
+  back.className = 'modal-back plate-viewer';
+  const box = document.createElement('div');
+  box.className = 'modal plate-viewer-box';
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = label;
+  box.appendChild(title);
+
+  const iframe = document.createElement('iframe');
+  iframe.className = 'plate-iframe';
+  const url = plateUrl(filename);
+
+  const loading = document.createElement('div');
+  loading.className = 'plate-loading';
+  loading.textContent = 'Loading...\n' + url;
+
+  let blobUrl = null;
+  let pdfReady = false;
+
+  iframe.onload = () => { if (pdfReady) loading.style.display = 'none'; };
+  iframe.onerror = () => {
+    loading.textContent = S.plateLoadError + '\n' + url;
+  };
+
+  fetch(url, { credentials: 'omit' })
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.blob();
+    })
+    .then(blob => {
+      blobUrl = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      pdfReady = true;
+      iframe.src = blobUrl + '#view=FitH';
+    })
+    .catch(() => {
+      loading.textContent = S.plateLoadError + '\n' + url;
+    });
+
+  box.appendChild(loading);
+  box.appendChild(iframe);
+
+  const att = document.createElement('div');
+  att.className = 'plate-attribution';
+  att.textContent = S.plateAttribution;
+  box.appendChild(att);
+
+  const btns = document.createElement('div');
+  btns.className = 'modal-btns';
+  const openTab = document.createElement('button');
+  openTab.textContent = S.plateOpenTab;
+  openTab.onclick = () => { if (blobUrl) window.open(blobUrl, '_blank'); };
+  btns.appendChild(openTab);
+  const download = document.createElement('button');
+  download.textContent = S.plateDownload;
+  download.onclick = () => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+  };
+  btns.appendChild(download);
+  const close = document.createElement('button');
+  close.textContent = S.plateClose;
+  close.className = 'modal-cancel';
+  close.onclick = () => { if (blobUrl) URL.revokeObjectURL(blobUrl); back.remove(); };
+  btns.appendChild(close);
+
+  box.appendChild(btns);
+
+  function onEsc(e) {
+    if (e.key === 'Escape') {
+      window.removeEventListener('keydown', onEsc);
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      back.remove();
+    }
+  }
+  back.appendChild(box);
+  back.onclick = e => {
+    if (e.target === back) {
+      window.removeEventListener('keydown', onEsc);
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      back.remove();
+    }
+  };
+  document.body.appendChild(back);
+  window.addEventListener('keydown', onEsc);
+}
+
+function showChartsModal() {
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  const box = document.createElement('div');
+  box.className = 'modal wide';
+
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = S.plates;
+  box.appendChild(title);
+
+  const body = document.createElement('div');
+  body.className = 'charts-modal-body';
+
+  const catOrder = ['approach', 'sid', 'star', 'ground', 'vfr', 'other'];
+  const catLabel = {
+    approach: S.plateCategoryApproach,
+    sid: S.plateCategorySid,
+    star: S.plateCategoryStar,
+    ground: S.plateCategoryGround,
+    vfr: S.plateCategoryVfr,
+    other: S.plateCategoryOther,
+  };
+
+  function renderList(afs) {
+    body.innerHTML = '';
+    const withPlates = afs.filter(af => af.plates && af.plates.length);
+    if (!withPlates.length) {
+      const none = document.createElement('p');
+      none.textContent = S.platesNone;
+      body.appendChild(none);
+      return;
+    }
+    for (const af of withPlates) {
+      const section = document.createElement('details');
+      section.className = 'charts-airport';
+      const summ = document.createElement('summary');
+      summ.textContent = af.name + (af.en ? ' — ' + af.en : '');
+      section.appendChild(summ);
+
+      const groups = {};
+      for (const fn of af.plates) {
+        const cat = plateCategory(fn);
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(fn);
+      }
+      for (const cat of catOrder) {
+        if (!groups[cat]) continue;
+        const catDiv = document.createElement('div');
+        catDiv.className = 'charts-cat';
+        const catLbl = document.createElement('span');
+        catLbl.className = 'charts-cat-label';
+        catLbl.textContent = catLabel[cat];
+        catDiv.appendChild(catLbl);
+        for (const fn of groups[cat]) {
+          const chip = document.createElement('button');
+          chip.className = 'plate-chip';
+          chip.textContent = prettyPlateLabel(fn);
+          chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
+          catDiv.appendChild(chip);
+        }
+        section.appendChild(catDiv);
+      }
+      body.appendChild(section);
+    }
+  }
+
+  if (airfields) {
+    renderList(airfields);
+  } else {
+    const loading = document.createElement('p');
+    loading.textContent = '…';
+    body.appendChild(loading);
+    loadAirfields().then(() => { if (airfields) renderList(airfields); });
+  }
+
+  box.appendChild(body);
+
+  const att = document.createElement('div');
+  att.className = 'plate-attribution';
+  att.textContent = S.plateAttribution;
+  box.appendChild(att);
+
+  const btns = document.createElement('div');
+  btns.className = 'modal-btns';
+  const close = document.createElement('button');
+  close.textContent = S.plateClose;
+  close.className = 'modal-cancel';
+  close.onclick = () => back.remove();
+  btns.appendChild(close);
+  box.appendChild(btns);
+
+  function onEsc(e) {
+    if (e.key === 'Escape') { window.removeEventListener('keydown', onEsc); back.remove(); }
+  }
+  back.appendChild(box);
+  back.onclick = e => { if (e.target === back) { window.removeEventListener('keydown', onEsc); back.remove(); } };
+  document.body.appendChild(back);
+  window.addEventListener('keydown', onEsc);
 }
 
