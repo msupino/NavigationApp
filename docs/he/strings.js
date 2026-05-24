@@ -131,6 +131,8 @@ window.S = {
   tbShowDriftTitle: 'הצג קווי ייחוס סחיפה של 10 מעלות בקצה כל קטע',
   tbShowAirfields: 'הצג/נעץ שדות תעופה',
   tbShowAirfieldsTitle: 'הצג שדות תעופה ישראלים מפורסמים (מקור BYOP)',
+  tbForceSnap: 'הצמדה כפויה',
+  tbForceSnapTitle: 'תמיד הצמד לחיצות לציון הניווט / שדה התעופה הקרוב (אחרת: רדיוס 18 פיקסל)',
   plates: 'דפיות',
   runways: 'מסלולים',
   plateCategoryApproach: 'גישה',
