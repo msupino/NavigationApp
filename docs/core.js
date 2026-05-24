@@ -60,6 +60,9 @@ window.S = Object.assign({
   tbShowNavWp: 'Show Navigation Waypoints',         // Map overlay toggle
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbSearchPlaceholder: '🔍 Find Navigation Waypoint',
+  tbSearchHint: 'Tip: type space-separated waypoint codes (e.g. BAZRA GNYAM TLV) and press Enter to build a route.',
+  errSearchUnknown: function(t) { return 'Unknown waypoint: ' + t; },
+  searchReplaceConfirm: 'Replace the current route with these waypoints?',
   deleteWp: 'Delete Waypoint',                      // inspector button
   clearConfirm: 'Remove all waypoints and notes?',
   errBadCoords: 'file has invalid waypoint coordinates',

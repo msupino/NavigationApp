@@ -159,8 +159,8 @@ function findNavWpToken(token) {
 function runSearch() {
   // Multi-token queries are handled by Enter key (buildRouteFromQuery) —
   // suppress the dropdown and show the hint instead.
-  if (/\s/.test(wpSearch.value.trim())) { closeSearch(); return; }
   const qRaw = wpSearch.value.trim();
+  if (/\s/.test(qRaw)) { closeSearch(); return; }
   const q = qRaw.toUpperCase();
   if (!q) { closeSearch(); return; }
   const hits = [];
