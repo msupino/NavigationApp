@@ -1450,26 +1450,31 @@ function exportPNG() {
   });
 }
 
-// --- open route in Windy (#121) -------------------------------------
-// Windy's distance / VFR route planner accepts a semicolon-separated list of
-// decimal lat,lng pairs after /distance/vfr/, with an optional map view suffix
-// "?<lat>,<lng>,<zoom>" for the centre and zoom. No API key needed; this is
-// a link-out only.
-function windyRouteUrl() {
+// --- open route in SkyVector (#148) ----------------------------------
+// SkyVector's flight planner accepts space-separated waypoints in the `fpl`
+// query param (ICAO codes, navaids, or lat/lon as Ndd.ddddEdd.dddd).
+// chart=301 = sectional; ll & zoom centre the map. Free, no key needed.
+function skyvectorRouteUrl() {
   const pts = state.waypoints
     .filter(w => Number.isFinite(w.lat) && Number.isFinite(w.lng) &&
                  w.lat >= -90 && w.lat <= 90 &&
                  w.lng >= -180 && w.lng <= 180)
-    .map(w => w.lat.toFixed(4) + ',' + w.lng.toFixed(4))
-    .join(';');
+    .map(w => {
+      const lat = Math.abs(w.lat).toFixed(4);
+      const lng = Math.abs(w.lng).toFixed(4);
+      const ns = w.lat >= 0 ? 'N' : 'S';
+      const ew = w.lng >= 0 ? 'E' : 'W';
+      return ns + lat + ew + lng;
+    })
+    .join('%20');
   const c = map.getCenter();
   const z = Math.round(map.getZoom());
-  return 'https://www.windy.com/distance/vfr/' + pts +
-    '?' + c.lat.toFixed(3) + ',' + c.lng.toFixed(3) + ',' + z;
+  return 'https://skyvector.com/?chart=301&fpl=' + pts +
+    '&ll=' + c.lat.toFixed(3) + '%2C' + c.lng.toFixed(3) + '&zoom=' + z;
 }
-function openWindy() {
+function openSkyVector() {
   if (state.waypoints.length < 2) { alert(S.errNeedWps); return; }
-  window.open(windyRouteUrl(), '_blank', 'noopener,noreferrer');
+  window.open(skyvectorRouteUrl(), '_blank', 'noopener,noreferrer');
 }
 
 // Inject a pHYs (physical pixel dimensions) chunk into a PNG blob so that
