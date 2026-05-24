@@ -111,15 +111,20 @@ function applyNavSnap(latlng, currentName) {
   }
   const autoSnapped = isAirfieldName(currentName) || isNavName(currentName);
   const userTyped = currentName && !autoSnapped;
+  // #106: Force-snap mode lifts the 18 px radius so every click resolves to
+  // the absolute nearest known point. Useful when the chart has many close
+  // reporting points and the user wants the published coordinate regardless
+  // of click precision.
+  const px = window.forceSnap ? Infinity : 18;
   if (showAirfields) {
-    const af = nearestAirfield(latlng, 18);
+    const af = nearestAirfield(latlng, px);
     if (af) {
       const name = userTyped ? currentName : af.name;
       return { lat: af.lat, lng: af.lng, name };
     }
   }
   if (showNavWP) {
-    const snap = nearestNavWaypoint(latlng, 18);
+    const snap = nearestNavWaypoint(latlng, px);
     if (snap) {
       const name = userTyped ? currentName : (snap[S.navWpSearchField] || snap.name);
       return { lat: snap.lat, lng: snap.lng, name };

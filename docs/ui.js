@@ -364,6 +364,17 @@ document.getElementById('airfield-cb').onchange = async e => {
   if (showAirfields) await loadAirfields();
   draw();
 };
+const FORCE_SNAP_KEY = 'navaid.forceSnap';
+try {
+  const stored = localStorage.getItem(FORCE_SNAP_KEY);
+  if (stored !== null) window.forceSnap = stored === '1';
+} catch (e) { /* storage unavailable */ }
+document.getElementById('force-snap-cb').checked = forceSnap;
+document.getElementById('force-snap-cb').onchange = e => {
+  window.forceSnap = e.target.checked;
+  try { localStorage.setItem(FORCE_SNAP_KEY, forceSnap ? '1' : '0'); }
+  catch (err) { /* storage unavailable */ }
+};
 const ALPHA_KEY = 'navaid.yellowAlpha';
 try {
   const v = parseFloat(localStorage.getItem(ALPHA_KEY));

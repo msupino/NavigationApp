@@ -118,6 +118,8 @@ window.S = {
   tbHighlightDiffTitle: 'הדגש קטעים עם הפרש גובה או מהירות',
   tbShowAirfields: 'הצג שדות תעופה',
   tbShowAirfieldsTitle: 'הצג שדות תעופה ישראלים מפורסמים (מקור BYOP)',
+  tbForceSnap: 'הצמדה כפויה',
+  tbForceSnapTitle: 'תמיד הצמד לחיצות לציון הניווט / שדה התעופה הקרוב (אחרת: רדיוס 18 פיקסל)',
   plates: 'דפיות',
   plateCategoryApproach: 'גישה',
   plateCategorySid: 'SID',
