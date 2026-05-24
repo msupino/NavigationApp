@@ -640,6 +640,41 @@ html, body {
 .plate-chip-small { font-size: 10px; padding: 2px 5px; background: none; border-color: transparent; color: #1d6fe0; cursor: pointer; }
 .plate-chip-small:hover { text-decoration: underline; }
 
+/* Charts modal */
+.charts-modal-body {
+  max-height: 65vh;
+  overflow-y: auto;
+  padding: 4px 2px;
+}
+.charts-airport {
+  border-bottom: 1px solid #3a3636;
+  padding: 6px 0;
+}
+.charts-airport > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8e8e8;
+  padding: 4px 6px;
+  list-style: none;
+  user-select: none;
+}
+.charts-airport > summary::-webkit-details-marker { display: none; }
+.charts-airport > summary::before { content: '▶ '; font-size: 10px; color: #888; }
+.charts-airport[open] > summary::before { content: '▼ '; }
+.charts-cat {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+}
+.charts-cat-label {
+  font-size: 11px;
+  color: #888;
+  min-width: 70px;
+}
+
 /* Plate viewer modal */
 .modal-back.plate-viewer { z-index: 3000; }
 .plate-viewer-box {
