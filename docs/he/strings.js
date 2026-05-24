@@ -109,7 +109,7 @@ window.S = {
   tbHighlightDiffTitle: 'הדגש קטעים עם הפרש גובה או מהירות',
   tbShowAirfields: 'הצג שדות תעופה',
   tbShowAirfieldsTitle: 'הצג שדות תעופה ישראלים מפורסמים (מקור BYOP)',
-  plates: 'אגרות טיסה',
+  plates: 'דפיות',
   plateCategoryApproach: 'גישה',
   plateCategorySid: 'SID',
   plateCategoryStar: 'STAR',
