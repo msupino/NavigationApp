@@ -99,6 +99,8 @@ window.S = {
   tbFitTitle: 'התאם מסלול לתצוגה',
   tbPlan: '📋 תכנית טיסה',
   tbPlanTitle: 'הצג תכנית טיסה',
+  tbCharts: '🗺️ דפיות',
+  tbChartsTitle: 'עיין בדפיות גישה לכל שדות התעופה',
   tbFly: '✈️ פתח מסלול ב-Google Earth',
   tbFlyTitle: 'שמור סיור Google Earth של המסלול בגבהים שנקבעו לקטעים',
   tbShowReturn: 'הצג מסלול חזרה',
