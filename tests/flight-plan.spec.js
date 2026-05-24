@@ -342,6 +342,32 @@ test.describe('Flight plan', () => {
     await expect(modal).toBeVisible();
   });
 
+  test('reverse route preserves flightSpeed when showReturn is off', async ({ page }) => {
+    // Set leg 0 to have outboundSpeed different from flightSpeed
+    await page.evaluate(() => {
+      state.legs[0].flightSpeed = 90;
+      state.legs[0].outboundSpeed = 130;
+      window.showReturn = false;
+    });
+
+    // Click Reverse Route button
+    await page.locator('#reverse').click();
+    await page.waitForTimeout(100);
+
+    // After reverse, leg 0 was originally leg 9. Check all reversed legs:
+    // flightSpeed should never be 130 (the stale outboundSpeed)
+    const speeds = await page.evaluate(() => state.legs.map(l => ({
+      flightSpeed: l.flightSpeed,
+      outboundSpeed: l.outboundSpeed,
+    })));
+
+    for (let i = 0; i < speeds.length; i++) {
+      expect(speeds[i].flightSpeed).toBe(90);
+      // outboundSpeed should match flightSpeed (not swap in stale 130)
+      expect(speeds[i].outboundSpeed).toBe(90);
+    }
+  });
+
   test('drag-handler touch listeners are cleaned up on close', async ({ page }) => {
     // Stub addEventListener to count the touch listeners attached to window
     // by the drag block. Open/close 5×; count must not grow.
