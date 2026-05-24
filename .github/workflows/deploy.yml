@@ -13,13 +13,44 @@ permissions:
 
 concurrency:
   group: pages
-  # Queue runs instead of cancelling. Each commit must actually deploy
-  # because the staging URL is consumed by humans; cancelling intermediate
-  # runs in a fast burst makes commits silently skip the staging site.
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: JS syntax check
+        run: |
+          set -e
+          for f in docs/core.js docs/draw.js docs/interact.js docs/io.js docs/ui.js docs/sw.js docs/he/strings.js docs/en/strings.js; do
+            echo "node --check $f"
+            node --check "$f"
+          done
+      - name: JSON validation
+        run: |
+          set -e
+          for f in docs/manifest.json docs/nav-waypoints.json; do
+            echo "validating $f"
+            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'));"
+          done
+      - name: Cache-bust consistency
+        run: |
+          vs=$(grep -oE '\?v=[A-Za-z0-9]+' docs/index.html | sort -u)
+          n=$(printf "%s\n" "$vs" | wc -l | tr -d ' ')
+          if [ "$n" -gt 1 ]; then
+            echo "Inconsistent ?v= values in docs/index.html:"
+            printf "%s\n" "$vs"
+            exit 1
+          fi
+          echo "cache-bust ok: $vs"
+
   build:
+    needs: lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main (production)
@@ -65,6 +96,27 @@ jobs:
           mkdir -p site/staging
           cp -r m/docs/. site/
           cp -r d/docs/. site/staging/
+      - name: Checkout open PR branches (preview deployments)
+        run: |
+          cd m
+          mkdir -p ../site/pr ../site/branch
+          gh pr list --state open --json number,headRefName,baseRefName \
+            --jq '.[] | select(.baseRefName == "main" or .baseRefName == "dev") | "\(.number) \(.headRefName)"' \
+            | while read NUM BRANCH; do
+              echo "== PR #$NUM ($BRANCH) =="
+              git fetch origin "$BRANCH" --depth 1 -q 2>/dev/null || { echo "  skip (fetch failed)"; continue; }
+              STAGING=$(mktemp -d)
+              git archive "origin/$BRANCH" docs/ | tar x -C "$STAGING" --strip-components=1 2>/dev/null || { echo "  skip (archive failed)"; rm -rf "$STAGING"; continue; }
+              SHA=$(git rev-parse --short "origin/$BRANCH" 2>/dev/null) || { echo "  skip (rev-parse failed)"; rm -rf "$STAGING"; continue; }
+              sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" "$STAGING/index.html" 2>/dev/null || true
+              sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" "$STAGING/core.js" 2>/dev/null || true
+              cp -r "$STAGING" "../site/pr/$NUM"
+              cp -r "$STAGING" "../site/branch/$BRANCH"
+              rm -rf "$STAGING"
+              echo "  → /pr/$NUM/ and /branch/$BRANCH/ ($SHA)"
+            done
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
