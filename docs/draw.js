@@ -290,9 +290,11 @@ function drawLegs() {
 
     const { dist, brg } = geo(A, B);
     const durH = leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
+    const durOut = leg.outboundSpeed > 0 ? dist / leg.outboundSpeed : 0;
     const magIn = toMagnetic(brg);
     const magOut = (magIn + 180) % 360;
     const timeStr = durH > 0 ? toHMS(durH) : '--';
+    const timeStrOut = durOut > 0 ? toHMS(durOut) : '--';
 
     drawMinuteMarkers(sa, sb, durH);
 
@@ -310,7 +312,7 @@ function drawLegs() {
     if (showReturn) {
       drawLegArrow(mid.x + dx * outP.a + nx * outP.p,
         mid.y + dy * outP.a + ny * outP.p, ang + Math.PI,
-        pad3(magOut), timeStr, String(leg.outboundAltitude),
+        pad3(magOut), timeStrOut, String(leg.outboundAltitude),
         '#c0392b', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
