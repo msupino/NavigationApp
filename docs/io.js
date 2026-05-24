@@ -1451,8 +1451,8 @@ function exportPNG() {
 }
 
 // --- open route in Windy (#121) -------------------------------------
-// Windy's VFR route planner accepts a semicolon-separated list of decimal
-// lat,lng pairs after /route-planner/vfr/, with an optional map view suffix
+// Windy's distance / VFR route planner accepts a semicolon-separated list of
+// decimal lat,lng pairs after /distance/vfr/, with an optional map view suffix
 // "?<lat>,<lng>,<zoom>" for the centre and zoom. No API key needed; this is
 // a link-out only.
 function windyRouteUrl() {
@@ -1464,7 +1464,7 @@ function windyRouteUrl() {
     .join(';');
   const c = map.getCenter();
   const z = Math.round(map.getZoom());
-  return 'https://www.windy.com/route-planner/vfr/' + pts +
+  return 'https://www.windy.com/distance/vfr/' + pts +
     '?' + c.lat.toFixed(3) + ',' + c.lng.toFixed(3) + ',' + z;
 }
 function openWindy() {
