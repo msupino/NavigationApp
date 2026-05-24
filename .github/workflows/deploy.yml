@@ -16,7 +16,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: JS syntax check
+        run: |
+          set -e
+          for f in docs/core.js docs/draw.js docs/interact.js docs/io.js docs/ui.js docs/sw.js docs/he/strings.js docs/en/strings.js; do
+            echo "node --check $f"
+            node --check "$f"
+          done
+      - name: JSON validation
+        run: |
+          set -e
+          for f in docs/manifest.json docs/nav-waypoints.json; do
+            echo "validating $f"
+            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'));"
+          done
+      - name: Cache-bust consistency
+        run: |
+          vs=$(grep -oE '\?v=[A-Za-z0-9]+' docs/index.html | sort -u)
+          n=$(printf "%s\n" "$vs" | wc -l | tr -d ' ')
+          if [ "$n" -gt 1 ]; then
+            echo "Inconsistent ?v= values in docs/index.html:"
+            printf "%s\n" "$vs"
+            exit 1
+          fi
+          echo "cache-bust ok: $vs"
+
   build:
+    needs: lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main (production)
