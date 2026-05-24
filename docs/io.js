@@ -296,14 +296,10 @@ function wpLabel(i) {
   return n || (S.wpPrefix + (i + 1));
 }
 
-// Flight Plan modal lives outside the function so draw() can hook in via
-// refreshFlightPlan(), and so showFlightPlan() can dedupe (#78). When the
-// route is mutated externally (drag wp, reverse, etc.) draw() calls the
-// stored refresh, which resyncs all the per-leg cells from current state
-// or closes the modal if the leg count changed.
+// #86: Flight Plan modal state and Escape-to-close handling.
 let flightPlanBack = null;
 let refreshFlightPlan = null;
-let flightPlanEscape = null;            // #86: Escape-to-close listener
+let flightPlanEscape = null;
 
 function closeFlightPlan() {
   if (flightPlanEscape) {
@@ -505,8 +501,7 @@ function showFlightPlan() {
   box.appendChild(btns);
 
   back.appendChild(box);
-  // No backdrop-click-to-close — backdrop is pointer-events:none so the map
-  // is reachable; close via the Close button or Escape (#86).
+  // Close via the Close button or Escape (#86).
   document.body.appendChild(back);
   flightPlanBack = back;
   refreshFlightPlan = refresh;
@@ -812,21 +807,9 @@ function flyRoute() {
     return geo(wps[j], wps[j + 1]).brg;
   };
 
-  function onPick(mode) {
-    if (mode === 'web') {
-      if (!confirm(S.geWebConfirm)) return;
-      const url = 'https://earth.google.com/web/@' +
-        wps[0].lat + ',' + wps[0].lng + ',' + altM(0) + 'a,' +
-        heading(0).toFixed(1) + 'h,70t';
-      window.open(url, '_blank');
-      return;
-    }
-
-    if (!confirm(S.flyConfirm)) return;
-
+  function downloadKml() {
     const esc = s => String(s).replace(/[<>&]/g,
       c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
-
     const camera = (i, pad) =>
       pad + '<Camera>\n' +
       pad + '  <longitude>' + wps[i].lng + '</longitude>\n' +
@@ -843,7 +826,6 @@ function flyRoute() {
       '      <gx:flyToMode>' + mode + '</gx:flyToMode>\n' +
       camera(i, '      ') +
       '    </gx:FlyTo>\n';
-
     let tour = flyTo(0, 4, 'bounce');
     for (let i = 1; i < wps.length; i++) {
       const leg = state.legs[i - 1];
@@ -851,13 +833,11 @@ function flyRoute() {
       const durH = leg && leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
       tour += flyTo(i, Math.max(4, Math.min(45, durH * 60 * 4)), 'smooth');
     }
-
     const coords = wps.map(w => w.lng + ',' + w.lat + ',0').join(' ');
     const points = wps.map((w, i) =>
       '  <Placemark><name>' + esc(wpLabel(i)) + '</name>' +
       '<Point><coordinates>' + w.lng + ',' + w.lat + ',0</coordinates></Point>' +
       '</Placemark>').join('\n');
-
     const kml =
       '<?xml version="1.0" encoding="UTF-8"?>\n' +
       '<kml xmlns="http://www.opengis.net/kml/2.2" ' +
@@ -872,7 +852,6 @@ function flyRoute() {
       '  <gx:Tour><name>' + S.kmlTourName + '</name>\n    <gx:Playlist>\n' +
       tour + '    </gx:Playlist>\n  </gx:Tour>\n' +
       '</Document>\n</kml>\n';
-
     const blob = new Blob([kml],
       { type: 'application/vnd.google-earth.kml+xml' });
     const a = document.createElement('a');
@@ -882,7 +861,21 @@ function flyRoute() {
     URL.revokeObjectURL(a.href);
   }
 
-  // Modal: choose Google Earth Web or App (Pro).
+  function onPick(mode) {
+    if (mode === 'web') {
+      if (!confirm(S.geWebConfirm)) return;
+      const url = 'https://earth.google.com/web/@' +
+        wps[0].lat + ',' + wps[0].lng + ',' + altM(0) + 'a,' +
+        heading(0).toFixed(1) + 'h,70t';
+      window.open(url, '_blank');
+      downloadKml();
+      return;
+    }
+
+    if (!confirm(S.flyConfirm)) return;
+    downloadKml();
+  }
+
   const back = document.createElement('div');
   back.className = 'modal-back';
   const box = document.createElement('div');
