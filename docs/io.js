@@ -1025,17 +1025,30 @@ function showPlateViewer(filename, label) {
   const iframe = document.createElement('iframe');
   iframe.className = 'plate-iframe';
   const url = plateUrl(filename);
-  let loaded = false;
 
   const loading = document.createElement('div');
   loading.className = 'plate-loading';
   loading.textContent = 'Loading...\n' + url;
 
-  iframe.onload = () => { loaded = true; loading.style.display = 'none'; };
+  let blobUrl = null;
+
+  iframe.onload = () => { loading.style.display = 'none'; };
   iframe.onerror = () => {
     loading.textContent = S.plateLoadError + '\n' + url;
   };
-  iframe.src = url + '#view=FitH';
+
+  fetch(url, { credentials: 'omit' })
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.blob();
+    })
+    .then(blob => {
+      blobUrl = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      iframe.src = blobUrl + '#view=FitH';
+    })
+    .catch(() => {
+      loading.textContent = S.plateLoadError + '\n' + url;
+    });
 
   box.appendChild(loading);
   box.appendChild(iframe);
@@ -1063,14 +1076,26 @@ function showPlateViewer(filename, label) {
   const close = document.createElement('button');
   close.textContent = S.plateClose;
   close.className = 'modal-cancel';
-  close.onclick = () => back.remove();
+  close.onclick = () => { if (blobUrl) URL.revokeObjectURL(blobUrl); back.remove(); };
   btns.appendChild(close);
 
   box.appendChild(btns);
 
-  function onEsc(e) { if (e.key === 'Escape') { document.removeEventListener('keydown', onEsc); back.remove(); } }
+  function onEsc(e) {
+    if (e.key === 'Escape') {
+      document.removeEventListener('keydown', onEsc);
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      back.remove();
+    }
+  }
   back.appendChild(box);
-  back.onclick = e => { if (e.target === back) { document.removeEventListener('keydown', onEsc); back.remove(); } };
+  back.onclick = e => {
+    if (e.target === back) {
+      document.removeEventListener('keydown', onEsc);
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      back.remove();
+    }
+  };
   document.body.appendChild(back);
   document.addEventListener('keydown', onEsc);
 }
