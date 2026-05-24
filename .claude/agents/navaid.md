@@ -23,13 +23,18 @@ Rules:
   `core.js` → `draw.js` → `interact.js` → `io.js` → `ui.js` — plus
   `docs/style.css`, `docs/index.html`, `docs/nav-waypoints.json`.
 - After editing any `.js`, run `node --check` on it.
-- After editing any `.js` or `style.css`, bump the `?v=N` query string
-  on every changed file in `index.html` so visitors do not get stale
-  assets.
+- Keep all `?v=N` placeholders in `docs/index.html` consistent. Do not bump
+  them per commit; Deploy rewrites them to the branch short SHA at upload time.
+  Dataset URLs such as `nav-waypoints.json?v=N` and `airfields.json?v=N` are
+  bumped only when those datasets change.
+- `NavAid.version` stays `1.0` in source. Deploy appends `-<short-sha>`, so
+  published builds show values like `v1.0-abc1234`.
 - Verify changes with headless-Chrome screenshots against a local
   `python3 -m http.server -d docs`.
 - Commit messages: normal English; end with the Co-Authored-By trailer.
 - Pushing `dev` deploys the staging URL via `.github/workflows/deploy.yml`.
+- Open PRs are auto-deployed to `/pr/NNN/` and `/branch/BRANCH_NAME/` on
+  the Pages site. Include the preview URL in every PR you create.
 
 Report what changed, the `node --check` result, and the staging deploy
 status.

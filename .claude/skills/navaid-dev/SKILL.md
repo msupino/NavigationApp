@@ -20,6 +20,8 @@ Unity `NavigationApp` plotter, which is preserved on the
 
 - **Live (production):** https://msupino.github.io/NavigationApp/
 - **Live (staging):** https://msupino.github.io/NavigationApp/staging/
+- **PR preview (by number):** https://msupino.github.io/NavigationApp/pr/NNN/
+- **PR preview (by branch):** https://msupino.github.io/NavigationApp/branch/BRANCH_NAME/
 - **Repo:** https://github.com/msupino/NavigationApp (fork of liorbenhorin/NavigationApp)
 
 ## Branches
@@ -187,6 +189,7 @@ downloadable `route.json`.
   checks out **both** branches, and assembles one Pages site:
   - `main/docs/` → `/`
   - `dev/docs/`  → `/staging/`
+  - `origin/<PR-branch>/docs/` → `/pr/NNN/` and `/branch/<BRANCH>/`
   - `actions/deploy-pages@v4` publishes the result.
 - **Staging deploy** = `git push origin dev`.
 - **Production deploy** = merge a `dev` → `main` pull request (`main` is
@@ -199,6 +202,14 @@ downloadable `route.json`.
   SHA. The source-HTML `?v=N` value is just a placeholder; you don't
   need to bump it per commit. CI lint still enforces that every `?v=`
   value in the source HTML agrees.
+- **Toolbar version SHA suffix is automatic.** The same Deploy step
+  also rewrites `version: '1.0'` → `version: '1.0-<short-sha>'` in
+  `docs/core.js`, so the toolbar identifies the exact deployed commit.
+  Do not manually increase the source version number; the regex is
+  idempotent (matches both `'x.y'` and `'x.y-anything'`).
+- PR preview links: when creating a PR include the direct preview URL
+  in the PR body: `https://msupino.github.io/NavigationApp/pr/NNN/` or
+  `https://msupino.github.io/NavigationApp/branch/BRANCH_NAME/`
 - Watch run status: `gh run list --workflow=deploy.yml --limit 5`.
 - **GitHub issues**: a review agent files bugs as GitHub issues on this
   repo. Check open issues at the start of a session:

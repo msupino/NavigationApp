@@ -57,11 +57,16 @@ function legLabelCenter(i, which) {
            y: f.my + f.dy * o.a + f.ny * o.p };
 }
 function hitLegLabel(px, py) {
+  // #83: scale the hit radius with the same zoom + legArrowSize factor that
+  // sizes the drawn marker (see drawLegArrow in draw.js), so the hit zone
+  // tracks the visual size. Floor at 18 px keeps touch ergonomics.
+  const zoomScale = Math.max(0.35, Math.pow(2, map.getZoom() - 12)) * legArrowSize;
+  const hit = Math.max(18, 34 * zoomScale);
   for (let i = 0; i < state.legs.length; i++) {
     for (const which of ['in', 'out']) {
       if (which === 'out' && !showReturn) continue;
       const c = legLabelCenter(i, which);
-      if (c && Math.hypot(c.x - px, c.y - py) <= 34) return { i, which };
+      if (c && Math.hypot(c.x - px, c.y - py) <= hit) return { i, which };
     }
   }
   return null;
@@ -118,6 +123,7 @@ function showInspector() {
   const title = document.getElementById('insp-title');
   const body = document.getElementById('insp-body');
   body.innerHTML = '';
+  title.classList.remove('editable');
   if (!state.selected) { insp.classList.add('hidden'); return; }
   insp.classList.remove('hidden');
 
@@ -170,9 +176,13 @@ function showInspector() {
     body.appendChild(del);
   } else {
     const wp = state.waypoints[state.selected.index];
-    title.value = wp.name || '';
+    // #81: show the locale-resolved label so the inspector matches the map.
+    // The canonical stored name (`wp.name`) is whatever the user types/keeps;
+    // navName() converts a nav-WP canonical id to the current locale for read.
+    title.value = navName((wp.name || '').trim()) || wp.name || '';
     title.placeholder = S.wpPrefix + (state.selected.index + 1);
     title.readOnly = false;
+    title.classList.add('editable');
     title.oninput = () => { wp.name = title.value; draw(); };
     body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
@@ -264,20 +274,22 @@ let downHit = false;
 
 map.on('mousedown', e => {
   const p = e.containerPoint;
-  const wp = hitWaypoint(p.x, p.y);
-  if (wp >= 0) {
-    downHit = true;
-    state.selected = { type: 'wp', index: wp };
-    drag = { kind: 'wp', i: wp, moved: false };
-    map.dragging.disable();
-    showInspector(); draw();
-    return;
-  }
+  // Hit-test priority matches paint order so the topmost element wins:
+  // notes are drawn above waypoints (draw.js), so test notes first (issue #71).
   const note = hitNote(p.x, p.y);
   if (note >= 0) {
     downHit = true;
     state.selected = { type: 'note', index: note };
     drag = { kind: 'note', i: note };
+    map.dragging.disable();
+    showInspector(); draw();
+    return;
+  }
+  const wp = hitWaypoint(p.x, p.y);
+  if (wp >= 0) {
+    downHit = true;
+    state.selected = { type: 'wp', index: wp };
+    drag = { kind: 'wp', i: wp, moved: false };
     map.dragging.disable();
     showInspector(); draw();
     return;
@@ -342,20 +354,38 @@ map.on('mousemove', e => {
   }
 });
 
-map.on('mouseup', () => {
+// Re-enable map dragging on release anywhere, not just inside the map.
+// Listening to map.on('mouseup') alone misses releases over the toolbar /
+// browser chrome and leaves the map permanently unpannable (issue #70).
+function endMouseDrag() {
   if (drag) { map.dragging.enable(); drag = null; }
-});
+}
+window.addEventListener('mouseup', endMouseDrag);
+window.addEventListener('pointerup', endMouseDrag);
+window.addEventListener('pointercancel', endMouseDrag);
 
 map.on('click', e => {
   if (downHit) { downHit = false; return; }
   if (state.mode === 'add') {
     const r = applyNavSnap(e.latlng, '');
+    // #104: ignore the click if a waypoint already sits at the snap target.
+    // Without this an add-mode click on a nav-WP / airfield that already has
+    // a route waypoint produces a duplicate at the same coords and a leg
+    // with zero distance.
+    const SNAP_DEG = 0.0002;
+    if (state.waypoints.some(
+          w => Math.abs(w.lat - r.lat) < SNAP_DEG &&
+               Math.abs(w.lng - r.lng) < SNAP_DEG)) {
+      return;
+    }
     state.waypoints.push({ lat: r.lat, lng: r.lng, name: r.name });
     syncLegs();
     state.selected = { type: 'wp', index: state.waypoints.length - 1 };
     showInspector(); draw();
   } else if (state.mode === 'note') {
-    state.notes.push({ lat: e.latlng.lat, lng: e.latlng.lng, text: S.noteDefault });
+    state.notes.push({ lat: e.latlng.lat, lng: e.latlng.lng,
+                       text: S.noteDefault, color: NOTE_DEFAULT_COLOR,
+                       shape: 'rect' });
     state.selected = { type: 'note', index: state.notes.length - 1 };
     showInspector(); draw();
   } else if (state.selected) {
@@ -367,6 +397,8 @@ map.on('click', e => {
 window.addEventListener('keydown', e => {
   const t = e.target;
   if (e.key === 'Escape') {
+    const modal = document.querySelector('.modal-back');
+    if (modal) { modal.remove(); return; }
     if (state.selected) {
       state.selected = null;
       showInspector(); draw();
@@ -406,19 +438,21 @@ function touchXY(t) {
 mapEl.addEventListener('touchstart', e => {
   if (e.touches.length !== 1) return;
   const p = touchXY(e.touches[0]);
-  const wp = hitWaypoint(p.x, p.y);
-  const note = wp < 0 ? hitNote(p.x, p.y) : -1;
+  // Hit-test priority matches paint order so the topmost element wins:
+  // notes are drawn above waypoints (draw.js), so test notes first (issue #71).
+  const note = hitNote(p.x, p.y);
+  const wp = note < 0 ? hitWaypoint(p.x, p.y) : -1;
   const lab = (wp < 0 && note < 0) ? hitLegLabel(p.x, p.y) : null;
   const leg = (wp < 0 && note < 0 && !lab) ? hitLeg(p.x, p.y) : -1;
   const onPage = (wp < 0 && note < 0 && !lab && leg < 0 && pageSize)
     ? hitPageFrameEdge(p.x, p.y) : false;
 
-  if (wp >= 0) {
-    touchDrag = { kind: 'wp', i: wp };
-    state.selected = { type: 'wp', index: wp };
-  } else if (note >= 0) {
+  if (note >= 0) {
     touchDrag = { kind: 'note', i: note };
     state.selected = { type: 'note', index: note };
+  } else if (wp >= 0) {
+    touchDrag = { kind: 'wp', i: wp };
+    state.selected = { type: 'wp', index: wp };
   } else if (lab) {
     const f = legFrame(lab.i);
     touchDrag = { kind: 'label', i: lab.i, which: lab.which,

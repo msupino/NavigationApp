@@ -3,10 +3,41 @@
 window.S = {
   navWpUrl: 'nav-waypoints.json?v=3',
   navWpSearchField: 'he',
-  wpPrefix: 'נק׳ ',
+  airfieldsUrl: 'airfields.json?v=2',
+  airfieldLabelField: 'he',
+
+  // --- Waypoint terminology -------------------------------------------
+  // Mirrors the English cluster in core.js — keep the noun phrase
+  // "ציון דרך" / "ציוני דרך" consistent across UI strings. `wpPrefix`
+  // is the intentional short form ("נק׳ 3") used as a fallback inline
+  // label for unnamed waypoints; do not expand it.
+  wpPrefix: 'נק׳ ',                                  // קיצור לתווית מילוט של נקודות בלי שם
+  summaryWaypoints: 'ציוני דרך',                     // פאנל סטטיסטיקה
+  tbAddWp: '✏️ הוסף ציון דרך',                       // כפתור עריכה בסרגל
+  tbAddWpTitle: 'לחץ על המפה להוספת ציון דרך (לחץ שוב לעצירה)',
+  tbShowWpNames: 'הצג שמות ציוני דרך',              // מתג בקטע תצוגה
+  tbShowWpNamesTitle: 'הצג שמות ציוני דרך (כבוי = עיגול ריק)',
+  tbWpSize: 'גודל ציון דרך',                         // מחוון בקטע תצוגה
+  tbWpSizeTitle: 'גודל ציון דרך ושמו',
+  tbShowNavWp: 'הצג ציוני ניווט',                    // מתג שכבת מפה
+  tbShowNavWpTitle: 'הצג ציוני דיווח VFR ישראלים',
+  tbSearchPlaceholder: '🔍 חפש ציון ניווטי',
+  deleteWp: 'מחק ציון דרך',                          // כפתור באינספקטור
+  clearConfirm: 'להסיר את כל ציוני הדרך וההערות?',
+  errBadCoords: 'הקובץ מכיל קואורדינטות לא תקינות',
+  // --- end Waypoint terminology ---------------------------------------
+
   noteDefault: 'הערה',
   errLoadFile: 'לא ניתן לטעון קובץ: ',
-  errBadCoords: 'הקובץ מכיל קואורדינטות לא תקינות',
+  errStorageFull: 'השמירה האוטומטית נכשלה: אחסון הדפדפן מלא. ייצא את המסלול כדי לשמור אותו.',
+  errInvalidRoute: function(msg) { return 'קובץ מסלול לא תקין: ' + msg; },
+  errInvalidNavWaypoints: function(msg) { return 'נתוני ציוני ניווט לא תקינים: ' + msg; },
+  errInvalidAirfields: function(msg) { return 'נתוני שדות תעופה לא תקינים: ' + msg; },
+  errSavedRouteCorrupt: function(msg) {
+    return 'לא ניתן לשחזר את המסלול השמור, לכן הנתונים המקוריים נשמרו ולא נדרסו. ' +
+      'ניתן לייצא או לבדוק את localStorage["navaid.route"] כדי לשחזר אותם.' +
+      (msg ? '\n\nפירוט: ' + msg : '');
+  },
   errNoLegs: 'אין קטעים עדיין — הוסף לפחות שני ציוני דרך תחילה.',
   flightPlan: 'תכנית טיסה',
   fpHeaders: ['#', 'מ-', 'אל-', 'כיוון', 'מרחק (NM)', 'מהירות (קשר)', 'גובה (ft)', 'זמן'],
@@ -22,6 +53,10 @@ window.S = {
   errTilesFail: function(f, t) { return f + ' מתוך ' + t + ' אריחי מפה נכשלו — ייתכן שב-PNG יש אזורים ריקים. נסה שוב.'; },
   errNeedWps: 'הוסף לפחות שני ציוני דרך תחילה.',
   flyConfirm: 'טוס את המסלול ב-Google Earth Pro (שולחן עבודה).\n\nלחץ אישור כדי לשמור את קובץ הסיור (.kml), ואז פתח אותו ב-Google Earth — הסיור "Fly the route" יופיע תחת Places; לחץ הפעל לטיסה מעל הקרקע.\n\nאין Google Earth? הורד חינם: google.com/earth/versions',
+  geWebConfirm: 'פתח את המסלול ב-Google Earth Web (דפדפן).\n\nלחץ אישור כדי לפתוח את earth.google.com בנקודת הדרך הראשונה.',
+  chooseGeMode: 'פתח ב-',
+  geModeApp: 'Google Earth Pro (KML)',
+  geModeWeb: 'Google Earth Web',
   legTitle: function(n) { return 'קטע ' + n; },
   legArrow: '←',
 
@@ -33,15 +68,12 @@ window.S = {
   shapeOval: 'אליפסה',
   color: 'צבע',
   deleteNote: 'מחק הערה',
-  deleteWp: 'מחק ציון דרך',
   latitude: 'קו רוחב',
   longitude: 'קו אורך',
   dialTitle: function(b) { return 'סיבוב מפה ' + b + '° — גרור לסיבוב, לחץ לצפון'; },
   wpnameRotTitle: function(a) { return 'סובב שמות ציוני דרך (כיום ' + a + '°)'; },
-  clearConfirm: 'להסיר את כל ציוני הדרך וההערות?',
   expandMenu: 'פתח תפריט',
   collapseMenu: 'כווץ תפריט',
-  summaryWaypoints: 'ציוני דרך',
   summaryLegs: 'קטעים',
   summaryDist: 'מרחק',
   summaryTime: 'זמן כולל',
@@ -51,13 +83,10 @@ window.S = {
   layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'ניווט', 'Low Alt': 'גובה נמוך',
                  'Helicopters': 'מסוקים', 'Satellite': 'לוויין', 'OpenStreetMap': 'OpenStreetMap' },
   tbHandleTitle: 'גרור להזזה',
-  tbAddWp: '✏️ הוסף ציון דרך',
-  tbAddWpTitle: 'לחץ על המפה להוספת ציון דרך (לחץ שוב לעצירה)',
   tbAddNote: '📝 הוסף הערה',
   tbAddNoteTitle: 'לחץ על המפה להוספת הערה (לחץ שוב לעצירה)',
   tbLayerLabel: 'שכבה',
   tbLayerTitle: 'שכבת מפה בסיסית',
-  tbSearchPlaceholder: '🔍 חפש ציון ניווטי',
   tbSearchHint: 'טיפ: הקלד קודים מופרדים ברווח (למשל BAZRA GNYAM TLV) ולחץ Enter לבניית מסלול.',
   errSearchUnknown: function(t) { return 'ציון ניווט לא מוכר: ' + t; },
   searchReplaceConfirm: 'להחליף את המסלול הנוכחי בציוני הדרך האלה?',
@@ -81,16 +110,12 @@ window.S = {
   tbShowMidLegTitle: 'הצג מרחק באמצע כל קטע',
   tbHighlightDiff: 'הדגש הפרש גובה/מהירות',
   tbHighlightDiffTitle: 'הדגש קטעים עם הפרש גובה או מהירות',
-  tbShowNavWp: 'הצג ציוני ניווט',
-  tbShowNavWpTitle: 'הצג ציוני דיווח VFR ישראלים',
-  tbShowWpNames: 'הצג שמות ציוני דרך',
-  tbShowWpNamesTitle: 'הצג שמות ציוני דרך (כבוי = עיגול ריק)',
-  tbTransparency: 'שקיפות',
-  tbTransparencyTitle: 'שקיפות רקע תוויות',
+  tbShowAirfields: 'הצג שדות תעופה',
+  tbShowAirfieldsTitle: 'הצג שדות תעופה ישראלים מפורסמים (מקור BYOP)',
+  tbTransparency: 'שקיפות תוויות',
+  tbTransparencyTitle: 'שקיפות רקע תוויות (נקודות, קטעים, הערות)',
   tbMapOpacity: 'מפת רקע',
   tbMapOpacityTitle: 'בהירות מפת הרקע',
-  tbWpSize: 'גודל ציון דרך',
-  tbWpSizeTitle: 'גודל ציון דרך ושמו',
   tbLegArrowSize: 'גודל חץ קטע',
   tbLegArrowSizeTitle: 'גודל מחוון המידע של קטע (כיוון / גובה / זמן)',
   tbMagVar: 'נטייה מגנטית',

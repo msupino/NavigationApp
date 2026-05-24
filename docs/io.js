@@ -2,6 +2,180 @@
 /* NavAid — save/load, page setup, flight plan, PNG export, persistence.
    Shares globals with core.js; loaded after interact.js. */
 
+// --- schema validation ----------------------------------------------
+// Strict validation of every documented field on route JSON (file import
+// + localStorage restore) and on nav-waypoints.json. A typo like
+// `flghtSpeed` used to silently default; now it surfaces an alert that
+// names the offending field path so the JSON author can find it. Extra /
+// unknown fields at any level are silently allowed for forward-compat
+// with future schema additions (issue #101). Plain JS — no deps.
+function _vKind(value) {
+  if (Array.isArray(value)) return 'array';
+  if (value === null) return 'null';
+  return typeof value;                  // 'number' | 'string' | 'object' | …
+}
+// Push an error onto `errs` if `obj[key]` is missing or wrong-typed.
+// `type` is one of: 'number' | 'string' | 'object' | 'array' | 'shape'.
+// 'number' rejects NaN/Infinity; 'shape' allows exactly 'rect' | 'oval'.
+function _v(obj, key, type, path, errs) {
+  if (!obj || typeof obj !== 'object' || !(key in obj)) {
+    errs.push(path + '.' + key + ': missing');
+    return false;
+  }
+  const v = obj[key];
+  const k = _vKind(v);
+  if (type === 'number') {
+    if (k !== 'number' || !Number.isFinite(v)) {
+      errs.push(path + '.' + key + ': expected number, got ' + k);
+      return false;
+    }
+  } else if (type === 'string') {
+    if (k !== 'string') {
+      errs.push(path + '.' + key + ': expected string, got ' + k);
+      return false;
+    }
+  } else if (type === 'object') {
+    if (k !== 'object') {
+      errs.push(path + '.' + key + ': expected object, got ' + k);
+      return false;
+    }
+  } else if (type === 'array') {
+    if (k !== 'array') {
+      errs.push(path + '.' + key + ': expected array, got ' + k);
+      return false;
+    }
+  } else if (type === 'shape') {
+    if (v !== 'rect' && v !== 'oval') {
+      errs.push(path + '.' + key + ': expected "rect" or "oval", got ' +
+                JSON.stringify(v));
+      return false;
+    }
+  }
+  return true;
+}
+function validateRoute(d) {
+  const errs = [];
+  if (!d || typeof d !== 'object' || Array.isArray(d)) {
+    return 'root: expected object, got ' + _vKind(d);
+  }
+  const wpsOk   = _v(d, 'waypoints', 'array', 'root', errs);
+  const legsOk  = _v(d, 'legs',      'array', 'root', errs);
+  const notesOk = _v(d, 'notes',     'array', 'root', errs);
+  if (wpsOk) {
+    for (let i = 0; i < d.waypoints.length; i++) {
+      const p = 'waypoints[' + i + ']';
+      const w = d.waypoints[i];
+      if (_vKind(w) !== 'object') {
+        errs.push(p + ': expected object, got ' + _vKind(w));
+        continue;
+      }
+      _v(w, 'lat',  'number', p, errs);
+      _v(w, 'lng',  'number', p, errs);
+      _v(w, 'name', 'string', p, errs);
+    }
+  }
+  if (legsOk) {
+    for (let i = 0; i < d.legs.length; i++) {
+      const p = 'legs[' + i + ']';
+      const l = d.legs[i];
+      if (_vKind(l) !== 'object') {
+        errs.push(p + ': expected object, got ' + _vKind(l));
+        continue;
+      }
+      _v(l, 'inboundAltitude',  'number', p, errs);
+      _v(l, 'outboundAltitude', 'number', p, errs);
+      _v(l, 'flightSpeed',      'number', p, errs);
+      if (_v(l, 'inLabel',  'object', p, errs)) {
+        _v(l.inLabel,  'a', 'number', p + '.inLabel',  errs);
+        _v(l.inLabel,  'p', 'number', p + '.inLabel',  errs);
+      }
+      if (_v(l, 'outLabel', 'object', p, errs)) {
+        _v(l.outLabel, 'a', 'number', p + '.outLabel', errs);
+        _v(l.outLabel, 'p', 'number', p + '.outLabel', errs);
+      }
+    }
+  }
+  if (notesOk) {
+    for (let i = 0; i < d.notes.length; i++) {
+      const p = 'notes[' + i + ']';
+      const n = d.notes[i];
+      if (_vKind(n) !== 'object') {
+        errs.push(p + ': expected object, got ' + _vKind(n));
+        continue;
+      }
+      _v(n, 'lat',   'number', p, errs);
+      _v(n, 'lng',   'number', p, errs);
+      _v(n, 'text',  'string', p, errs);
+      _v(n, 'color', 'string', p, errs);
+      _v(n, 'shape', 'shape',  p, errs);
+    }
+  }
+  if (wpsOk && legsOk) {
+    const wlen = d.waypoints.length, llen = d.legs.length;
+    const expected = wlen === 0 ? 0 : wlen - 1;
+    if (llen !== expected) {
+      errs.push('legs: length ' + llen +
+                ' does not match waypoints.length - 1 (' + expected + ')');
+    }
+  }
+  return errs.length ? errs.join('; ') : null;
+}
+function validateNavWaypoints(d) {
+  const errs = [];
+  if (!d || typeof d !== 'object' || Array.isArray(d)) {
+    return 'root: expected object, got ' + _vKind(d);
+  }
+  if (!_v(d, 'waypoints', 'array', 'root', errs)) return errs.join('; ');
+  for (let i = 0; i < d.waypoints.length; i++) {
+    const p = 'waypoints[' + i + ']';
+    const w = d.waypoints[i];
+    if (_vKind(w) !== 'object') {
+      errs.push(p + ': expected object, got ' + _vKind(w));
+      continue;
+    }
+    _v(w, 'name', 'string', p, errs);
+    _v(w, 'he',   'string', p, errs);
+    _v(w, 'lat',  'number', p, errs);
+    _v(w, 'lng',  'number', p, errs);
+  }
+  return errs.length ? errs.join('; ') : null;
+}
+// Strict schema for docs/airfields.json — { airfields:[{ name, he, en, lat,
+// lng, elev_ft, plates:[string] }] }. Mirrors validateNavWaypoints; the
+// loader in draw.js bails out with an alert that names the offending field
+// path so the JSON author can find the typo. Extras at any level are
+// silently allowed for forward-compat (issue #101).
+function validateAirfields(d) {
+  const errs = [];
+  if (!d || typeof d !== 'object' || Array.isArray(d)) {
+    return 'root: expected object, got ' + _vKind(d);
+  }
+  if (!_v(d, 'airfields', 'array', 'root', errs)) return errs.join('; ');
+  for (let i = 0; i < d.airfields.length; i++) {
+    const p = 'airfields[' + i + ']';
+    const a = d.airfields[i];
+    if (_vKind(a) !== 'object') {
+      errs.push(p + ': expected object, got ' + _vKind(a));
+      continue;
+    }
+    _v(a, 'name',    'string', p, errs);
+    _v(a, 'he',      'string', p, errs);
+    _v(a, 'en',      'string', p, errs);
+    _v(a, 'lat',     'number', p, errs);
+    _v(a, 'lng',     'number', p, errs);
+    _v(a, 'elev_ft', 'number', p, errs);
+    if (_v(a, 'plates', 'array', p, errs)) {
+      for (let j = 0; j < a.plates.length; j++) {
+        if (typeof a.plates[j] !== 'string') {
+          errs.push(p + '.plates[' + j + ']: expected string, got ' +
+                    _vKind(a.plates[j]));
+        }
+      }
+    }
+  }
+  return errs.length ? errs.join('; ') : null;
+}
+
 // --- save / load -----------------------------------------------------
 function save() {
   const data = {
@@ -30,36 +204,40 @@ function save() {
 function load(file) {
   const reader = new FileReader();
   reader.onload = () => {
+    let d;
     try {
-      const d = JSON.parse(reader.result);
-      const wps = (d.waypoints || []).map(w => ({
-        lat: +w.lat, lng: +w.lng, name: w.name || '',
-      }));
-      const notes = (d.notes || []).map(n => ({
-        lat: +n.lat, lng: +n.lng, text: n.text || '', color: n.color || '',
-        shape: n.shape === 'oval' ? 'oval' : 'rect',
-      }));
-      if (wps.concat(notes).some(
-            p => !Number.isFinite(p.lat) || !Number.isFinite(p.lng))) {
-        throw new Error(S.errBadCoords);
-      }
-      state.waypoints = wps;
-      state.legs = (d.legs || []).map(l => ({
-        inboundAltitude: l.inboundAltitude ?? 2000,
-        outboundAltitude: l.outboundAltitude ?? 2000,
-        flightSpeed: l.flightSpeed > 0 ? l.flightSpeed : 90,
-        inLabel: normLegLabel(l.inLabel, 44),
-        outLabel: normLegLabel(l.outLabel, -44),
-      }));
-      state.notes = notes;
-      syncLegs();
-      state.selected = null;
-      showInspector();
-      fitView();
-      draw();
+      d = JSON.parse(reader.result);
     } catch (err) {
       alert(S.errLoadFile + err.message);
+      return;
     }
+    // Strict schema check before applying any state — issue #101. Any
+    // missing / mistyped field bails out with a field-path-naming alert
+    // so the JSON author can find the typo. Extras are silently allowed.
+    const verr = validateRoute(d);
+    if (verr) {
+      alert(S.errInvalidRoute(verr));
+      return;
+    }
+    state.waypoints = d.waypoints.map(w => ({
+      lat: w.lat, lng: w.lng, name: w.name,
+    }));
+    state.legs = d.legs.map(l => ({
+      inboundAltitude: l.inboundAltitude,
+      outboundAltitude: l.outboundAltitude,
+      flightSpeed: l.flightSpeed,
+      inLabel:  { a: l.inLabel.a,  p: l.inLabel.p  },
+      outLabel: { a: l.outLabel.a, p: l.outLabel.p },
+    }));
+    state.notes = d.notes.map(n => ({
+      lat: n.lat, lng: n.lng,
+      text: n.text, color: n.color, shape: n.shape,
+    }));
+    syncLegs();
+    state.selected = null;
+    showInspector();
+    fitView();
+    draw();
   };
   reader.readAsText(file);
 }
@@ -83,7 +261,31 @@ function setPage(size) {
     pageSize = size;
     pageOffset = { x: 0, y: 0 };          // start centred
     applyPage();
+    fitPageFrame();
   });
+}
+
+function fitPageFrame() {
+  const d = pageDims();
+  if (!d) return;
+  const halfW = d.w * 926;          // NM→m ÷ 2 (1852÷2 = 926)
+  const halfH = d.h * 926;
+  let center;
+  if (state.waypoints.length > 0) {
+    const b = L.latLngBounds(state.waypoints.map(w => [w.lat, w.lng]));
+    center = b.getCenter();
+  } else {
+    center = map.getCenter();
+  }
+  const latRad = center.lat * Math.PI / 180;
+  const cosLat = Math.cos(latRad) || 0.0001;
+  const degLng = halfW / (111320 * cosLat);
+  const degLat = halfH / 110540;
+  const bounds = L.latLngBounds(
+    [center.lat - degLat, center.lng - degLng],
+    [center.lat + degLat, center.lng + degLng]
+  );
+  map.fitBounds(bounds, { padding: [30, 30] });
 }
 
 // --- flight plan table -----------------------------------------------
@@ -94,13 +296,38 @@ function wpLabel(i) {
   return n || (S.wpPrefix + (i + 1));
 }
 
+// Flight Plan modal lives outside the function so draw() can hook in via
+// refreshFlightPlan(), and so showFlightPlan() can dedupe (#78). When the
+// route is mutated externally (drag wp, reverse, etc.) draw() calls the
+// stored refresh, which resyncs all the per-leg cells from current state
+// or closes the modal if the leg count changed.
+let flightPlanBack = null;
+let refreshFlightPlan = null;
+let flightPlanEscape = null;            // #86: Escape-to-close listener
+
+function closeFlightPlan() {
+  if (flightPlanEscape) {
+    document.removeEventListener('keydown', flightPlanEscape);
+    flightPlanEscape = null;
+  }
+  if (flightPlanBack) {
+    flightPlanBack.remove();
+    flightPlanBack = null;
+  }
+  refreshFlightPlan = null;
+}
+
 function showFlightPlan() {
+  if (refreshFlightPlan) return;        // #78: dedupe — modal already open
   if (state.legs.length === 0) {
     alert(S.errNoLegs);
     return;
   }
+  // 'flight-plan' variant: backdrop is transparent + pointer-events: none so
+  // the map underneath stays interactive (waypoint drag, pan, etc.) while
+  // the plan is open. The modal box itself opts back into pointer events.
   const back = document.createElement('div');
-  back.className = 'modal-back';
+  back.className = 'modal-back flight-plan';
   const box = document.createElement('div');
   box.className = 'modal wide';
 
@@ -132,7 +359,8 @@ function showFlightPlan() {
     inp.type = 'text';
     inp.className = 'plan-name';
     inp.maxLength = 10;
-    inp.value = (state.waypoints[wpIdx].name || '').trim();
+    // #81: show the locale-resolved label so the cell matches the map.
+    inp.value = navName((state.waypoints[wpIdx].name || '').trim());
     inp.placeholder = S.wpPrefix + (wpIdx + 1);
     inp.oninput = () => {
       state.waypoints[wpIdx].name = inp.value;
@@ -156,20 +384,12 @@ function showFlightPlan() {
     td.appendChild(inp);
     return td;
   }
-  const rows = [];                      // { leg, dist, timeCell }
   const altInputs = [];                 // leg index -> altitude input
+  const speedInputs = [];               // leg index -> speed input
+  const distCells = [];                 // leg index -> distance cell
+  const hdgCells = [];                  // leg index -> heading cell
+  const timeCells = [];                 // leg index -> time cell
   let totDistCell, totTimeCell;
-  function refresh() {                  // recompute Time cells + totals
-    let td = 0, th = 0;
-    for (const r of rows) {
-      const dur = r.leg.flightSpeed > 0 ? r.dist / r.leg.flightSpeed : 0;
-      td += r.dist;
-      th += dur;
-      r.timeCell.textContent = dur > 0 ? toHMS(dur) : '--';
-    }
-    totDistCell.textContent = td.toFixed(1);
-    totTimeCell.textContent = th > 0 ? toHMS(th) : '--';
-  }
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     const leg = state.legs[i];
@@ -178,27 +398,34 @@ function showFlightPlan() {
     tr.appendChild(planCell(String(i + 1)));
     tr.appendChild(nameCell(i));
     tr.appendChild(nameCell(i + 1));
-    tr.appendChild(planCell(pad3(toMagnetic(brg)) + '°M'));
-    tr.appendChild(planCell(dist.toFixed(1)));
-    tr.appendChild(numCell(leg.flightSpeed, 1, inp => {
+    const hdgCell = planCell(pad3(toMagnetic(brg)) + '°M');
+    tr.appendChild(hdgCell);
+    const distCell = planCell(dist.toFixed(1));
+    tr.appendChild(distCell);
+    const speedCell = numCell(leg.flightSpeed, 1, inp => {
       const v = +inp.value;
-      if (v > 0) { leg.flightSpeed = v; refresh(); draw(); }
+      if (v > 0) { leg.flightSpeed = v; draw(); }
       else inp.value = leg.flightSpeed;   // invalid — restore the real value
-    }));
+    });
+    speedInputs[i] = speedCell.querySelector('.plan-num');
+    tr.appendChild(speedCell);
     const altCell = numCell(leg.inboundAltitude, -2000, inp => {
+      // #76: restore the real value on empty / non-numeric input instead of
+      // committing 0 (which would also cascade via propagateAlt).
+      const v = +inp.value;
+      if (!Number.isFinite(v)) { inp.value = leg.inboundAltitude; return; }
       const oldVal = leg.inboundAltitude;
-      leg.inboundAltitude = Math.round(+inp.value) || 0;
+      leg.inboundAltitude = Math.round(v);
       propagateAlt(i, 'inboundAltitude', leg.inboundAltitude, oldVal);
-      for (let k = 0; k < altInputs.length; k++) {
-        if (altInputs[k]) altInputs[k].value = state.legs[k].inboundAltitude;
-      }
       draw();
     });
     altInputs[i] = altCell.querySelector('.plan-num');
     tr.appendChild(altCell);
     const timeCell = planCell('');
+    timeCells[i] = timeCell;
+    distCells[i] = distCell;
+    hdgCells[i] = hdgCell;
     tr.appendChild(timeCell);
-    rows.push({ leg, dist, timeCell });
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
@@ -217,6 +444,41 @@ function showFlightPlan() {
   trF.appendChild(totTimeCell);
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
+
+  // #78: keep the modal in sync with the live route. draw() calls this
+  // after each redraw so dragging a waypoint or reversing the route
+  // updates dist / hdg / time / total — and a count change (delete wp,
+  // import, clear) closes the modal instead of leaving it stale.
+  function refresh() {
+    if (state.legs.length !== distCells.length) { closeFlightPlan(); return; }
+    let td = 0, th = 0;
+    for (let i = 0; i < state.legs.length; i++) {
+      const A = state.waypoints[i], B = state.waypoints[i + 1];
+      if (!A || !B) continue;
+      const { dist, brg } = geo(A, B);
+      distCells[i].textContent = dist.toFixed(1);
+      hdgCells[i].textContent = pad3(toMagnetic(brg)) + '°M';
+      const dur = state.legs[i].flightSpeed > 0 ? dist / state.legs[i].flightSpeed : 0;
+      td += dist;
+      th += dur;
+      timeCells[i].textContent = dur > 0 ? toHMS(dur) : '--';
+      // Sync the editable inputs unless the user is mid-edit in that cell.
+      if (speedInputs[i] && document.activeElement !== speedInputs[i])
+        speedInputs[i].value = state.legs[i].flightSpeed;
+      if (altInputs[i] && document.activeElement !== altInputs[i])
+        altInputs[i].value = state.legs[i].inboundAltitude;
+    }
+    for (const wpIdx in wpInputs) {
+      const wp = state.waypoints[wpIdx];
+      if (!wp) continue;
+      const localized = navName((wp.name || '').trim());
+      for (const inp of wpInputs[wpIdx]) {
+        if (document.activeElement !== inp) inp.value = localized;
+      }
+    }
+    totDistCell.textContent = td.toFixed(1);
+    totTimeCell.textContent = th > 0 ? toHMS(th) : '--';
+  }
   refresh();
   box.appendChild(table);
 
@@ -238,13 +500,20 @@ function showFlightPlan() {
   const close = document.createElement('button');
   close.textContent = S.fpClose;
   close.className = 'modal-cancel';
-  close.onclick = () => back.remove();
+  close.onclick = closeFlightPlan;
   btns.appendChild(close);
   box.appendChild(btns);
 
   back.appendChild(box);
-  back.onclick = e => { if (e.target === back) back.remove(); };
+  // No backdrop-click-to-close — backdrop is pointer-events:none so the map
+  // is reachable; close via the Close button or Escape (#86).
   document.body.appendChild(back);
+  flightPlanBack = back;
+  refreshFlightPlan = refresh;
+  flightPlanEscape = function (e) {
+    if (e.key === 'Escape') closeFlightPlan();
+  };
+  document.addEventListener('keydown', flightPlanEscape);
 }
 
 function planCell(text) {
@@ -264,21 +533,28 @@ function chooseOrientation(size, onPick) {
   title.textContent = size + S.pageOrientation;
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
+  // #86: Escape closes the picker (counts as cancel).
+  function onEsc(e) { if (e.key === 'Escape') close(); }
+  function close() {
+    document.removeEventListener('keydown', onEsc);
+    back.remove();
+  }
   for (const [label, val] of [[S.landscape, 'landscape'], [S.portrait, 'portrait']]) {
     const b = document.createElement('button');
     b.textContent = label;
-    b.onclick = () => { back.remove(); onPick(val); };
+    b.onclick = () => { close(); onPick(val); };
     btns.appendChild(b);
   }
   const cancel = document.createElement('button');
   cancel.textContent = S.cancel;
   cancel.className = 'modal-cancel';
-  cancel.onclick = () => back.remove();
+  cancel.onclick = close;
   btns.appendChild(cancel);
   box.append(title, btns);
   back.appendChild(box);
-  back.onclick = e => { if (e.target === back) back.remove(); };
+  back.onclick = e => { if (e.target === back) close(); };
   document.body.appendChild(back);
+  document.addEventListener('keydown', onEsc);
 }
 
 // Timestamp for unique download names — avoids browser " (1)" suffixes.
@@ -310,6 +586,31 @@ function exportPNG() {
     if (map.hasLayer(layers[n])) { base = layers[n]; baseName = n; }
   }
   if (!base || !base._url) { NavAid.exporting = false; return; }
+
+  // Lock map interaction for the duration of the async tile fetch.  The
+  // route overlay is composited using live proj() after the awaited tiles
+  // resolve; if the user panned / zoomed / rotated during "Saving…", the
+  // overlay would drift relative to the captured tile bounding box and the
+  // saved PNG would be misaligned (issue #74). Remember each handler's
+  // pre-export state so we restore exactly what the user had.
+  const _handlers = ['dragging', 'scrollWheelZoom', 'doubleClickZoom',
+                     'touchZoom', 'boxZoom', 'keyboard', 'touchRotate'];
+  const _handlerWas = {};
+  for (const h of _handlers) {
+    if (map[h] && typeof map[h].enabled === 'function' && map[h].enabled()) {
+      _handlerWas[h] = true;
+      map[h].disable();
+    }
+  }
+  // The rotate dial is a Leaflet control that calls map.setBearing directly,
+  // so the handlers above don't cover it — block pointer events too.
+  const _rotEl = document.querySelector('.rotate-ctrl');
+  const _prevRotPE = _rotEl ? _rotEl.style.pointerEvents : '';
+  if (_rotEl) _rotEl.style.pointerEvents = 'none';
+  function unlockMap() {
+    for (const h in _handlerWas) map[h].enable();
+    if (_rotEl) _rotEl.style.pointerEvents = _prevRotPE;
+  }
 
   // Geographic centre of the frame (stays constant regardless of bearing).
   const frameCenterLL = map.containerPointToLatLng([fr.x + fr.w / 2, fr.y + fr.h / 2]);
@@ -400,26 +701,37 @@ function exportPNG() {
     tyMin = Math.max(tyMin, Math.floor(cbNW.y / 256));
     tyMax = Math.min(tyMax, Math.floor(cbSE.y / 256));
   }
+  // Fetch each tile first so we can distinguish HTTP 404 (expected outside the
+  // chart's published coverage — e.g. flight-maps.com 404s on tiles outside
+  // Israel and adjacent VFR airspace) from real failures (network, CORS, 5xx,
+  // decode).  Only the latter count toward the "X of Y tiles failed" alert; a
+  // 404 just leaves the dark canvas backdrop showing in that area, matching
+  // what the user already sees on screen.
   const jobs = [];
   for (let tx = txMin; tx <= txMax; tx++) {
     for (let ty = tyMin; ty <= tyMax; ty++) {
       const url = L.Util.template(base._url,
         { z, x: tx, y: ty, s: subs[(tx + ty) % subs.length] });
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      const job = {
-        img,
-        dx: Math.round(tx * 256 - bbNWP.x),
-        dy: Math.round(ty * 256 - bbNWP.y),
-        done: new Promise(res => {
-          img.onload = res;
-          img.onerror = res;
-          setTimeout(res, 20000);
-        }),
-      };
-      img.src = corsOk ? url
+      const fetchUrl = corsOk ? url
         : 'https://images.weserv.nl/?url=' +
           encodeURIComponent(url.replace(/^https?:\/\//, ''));
+      const job = {
+        dx: Math.round(tx * 256 - bbNWP.x),
+        dy: Math.round(ty * 256 - bbNWP.y),
+        bmp: null,
+        failed: false,
+      };
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 20000);
+      job.done = fetch(fetchUrl, { signal: ctrl.signal })
+        .then(r => {
+          if (r.status === 404) return null;        // expected blank tile
+          if (!r.ok) { job.failed = true; return null; }
+          return r.blob().then(b => createImageBitmap(b));
+        })
+        .then(bmp => { job.bmp = bmp; })
+        .catch(() => { job.failed = true; })
+        .then(() => clearTimeout(timer));
       jobs.push(job);
     }
   }
@@ -427,10 +739,10 @@ function exportPNG() {
   Promise.all(jobs.map(j => j.done)).then(() => {
     let failed = 0;
     for (const j of jobs) {
-      if (j.img.naturalWidth) {
-        try { tc.drawImage(j.img, j.dx, j.dy, 256, 256); }
+      if (j.bmp) {
+        try { tc.drawImage(j.bmp, j.dx, j.dy, 256, 256); }
         catch (e) { failed++; }
-      } else {
+      } else if (j.failed) {
         failed++;
       }
     }
@@ -438,6 +750,8 @@ function exportPNG() {
     // Draw the tile canvas onto the output, rotated by the map bearing so the
     // result matches the screen view.  The frame centre in tile-canvas space
     // maps to the output centre; rotation is clockwise by exportBearing.
+    // globalAlpha honours the Map-opacity slider so dim tiles on screen also
+    // export dim; overlays drawn after restore() stay at full alpha.
     const fcP = map.project([frameCenterLL.lat, frameCenterLL.lng], z);
     const fcx = fcP.x - bbNWP.x;
     const fcy = fcP.y - bbNWP.y;
@@ -445,6 +759,7 @@ function exportPNG() {
     o.translate(W / 2, H / 2);
     o.rotate(exportBearing * Math.PI / 180);
     o.translate(-fcx, -fcy);
+    o.globalAlpha = (typeof mapOpacity === 'number') ? mapOpacity : 1;
     o.drawImage(tileCanvas, 0, 0);
     o.restore();
 
@@ -457,6 +772,7 @@ function exportPNG() {
     o.scale(s, s);
     o.translate(-fr.x, -fr.y);
     drawNavWaypoints();
+    drawAirfields();
     drawLegs();
     drawWaypoints();
     drawNotes();
@@ -466,6 +782,7 @@ function exportPNG() {
     out.toBlob(b => {
       btn.textContent = btnLabel;
       btn.disabled = false;
+      unlockMap();
       NavAid.exporting = false;
       if (!b) { alert(S.errPngFail); return; }
       const a = document.createElement('a');
@@ -480,95 +797,135 @@ function exportPNG() {
 }
 
 // --- fly the route (Google Earth) -----------------------------------
-// A browser cannot launch or detect a desktop app, so this writes a KML
-// tour and tells the user to open it in Google Earth Pro, which flies
-// the route at the per-leg altitudes set in the flight plan.
 function flyRoute() {
   if (state.waypoints.length < 2) {
     alert(S.errNeedWps);
     return;
   }
-  if (!confirm(S.flyConfirm)) {
-    return;
-  }
   const wps = state.waypoints;
-  // Camera flythrough height per waypoint (metres MSL): the leg flown
-  // along it; the last waypoint reuses the last leg. inboundAltitude is feet.
   const altM = i => {
     const leg = state.legs[Math.min(i, state.legs.length - 1)];
     return Math.max(0, Math.round((leg ? leg.inboundAltitude : 2000) * 0.3048));
   };
-  const esc = s => String(s).replace(/[<>&]/g,
-    c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
-
-  // heading at each waypoint = bearing toward the next (last reuses prev)
   const heading = i => {
     const j = Math.min(i, wps.length - 2);
     return geo(wps[j], wps[j + 1]).brg;
   };
-  // KML <Camera> child order is strict — altitudeMode must come last,
-  // or Google Earth ignores it and the eye ends up miles up.
-  // absolute = altitude is metres above mean sea level (MSL).
-  const camera = (i, pad) =>
-    pad + '<Camera>\n' +
-    pad + '  <longitude>' + wps[i].lng + '</longitude>\n' +
-    pad + '  <latitude>' + wps[i].lat + '</latitude>\n' +
-    pad + '  <altitude>' + altM(i) + '</altitude>\n' +
-    pad + '  <heading>' + heading(i).toFixed(1) + '</heading>\n' +
-    pad + '  <tilt>70</tilt>\n' +
-    pad + '  <roll>0</roll>\n' +
-    pad + '  <altitudeMode>absolute</altitudeMode>\n' +
-    pad + '</Camera>\n';
-  const flyTo = (i, dur, mode) =>
-    '    <gx:FlyTo>\n' +
-    '      <gx:duration>' + dur.toFixed(1) + '</gx:duration>\n' +
-    '      <gx:flyToMode>' + mode + '</gx:flyToMode>\n' +
-    camera(i, '      ') +
-    '    </gx:FlyTo>\n';
 
-  let tour = flyTo(0, 4, 'bounce');
-  for (let i = 1; i < wps.length; i++) {
-    const leg = state.legs[i - 1];
-    const { dist } = geo(wps[i - 1], wps[i]);
-    const durH = leg && leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
-    tour += flyTo(i, Math.max(4, Math.min(45, durH * 60 * 4)), 'smooth');
+  function onPick(mode) {
+    if (mode === 'web') {
+      if (!confirm(S.geWebConfirm)) return;
+      const url = 'https://earth.google.com/web/@' +
+        wps[0].lat + ',' + wps[0].lng + ',' + altM(0) + 'a,' +
+        heading(0).toFixed(1) + 'h,70t';
+      window.open(url, '_blank');
+      return;
+    }
+
+    if (!confirm(S.flyConfirm)) return;
+
+    const esc = s => String(s).replace(/[<>&]/g,
+      c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+
+    const camera = (i, pad) =>
+      pad + '<Camera>\n' +
+      pad + '  <longitude>' + wps[i].lng + '</longitude>\n' +
+      pad + '  <latitude>' + wps[i].lat + '</latitude>\n' +
+      pad + '  <altitude>' + altM(i) + '</altitude>\n' +
+      pad + '  <heading>' + heading(i).toFixed(1) + '</heading>\n' +
+      pad + '  <tilt>70</tilt>\n' +
+      pad + '  <roll>0</roll>\n' +
+      pad + '  <altitudeMode>absolute</altitudeMode>\n' +
+      pad + '</Camera>\n';
+    const flyTo = (i, dur, mode) =>
+      '    <gx:FlyTo>\n' +
+      '      <gx:duration>' + dur.toFixed(1) + '</gx:duration>\n' +
+      '      <gx:flyToMode>' + mode + '</gx:flyToMode>\n' +
+      camera(i, '      ') +
+      '    </gx:FlyTo>\n';
+
+    let tour = flyTo(0, 4, 'bounce');
+    for (let i = 1; i < wps.length; i++) {
+      const leg = state.legs[i - 1];
+      const { dist } = geo(wps[i - 1], wps[i]);
+      const durH = leg && leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
+      tour += flyTo(i, Math.max(4, Math.min(45, durH * 60 * 4)), 'smooth');
+    }
+
+    const coords = wps.map(w => w.lng + ',' + w.lat + ',0').join(' ');
+    const points = wps.map((w, i) =>
+      '  <Placemark><name>' + esc(wpLabel(i)) + '</name>' +
+      '<Point><coordinates>' + w.lng + ',' + w.lat + ',0</coordinates></Point>' +
+      '</Placemark>').join('\n');
+
+    const kml =
+      '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      '<kml xmlns="http://www.opengis.net/kml/2.2" ' +
+      'xmlns:gx="http://www.google.com/kml/ext/2.2">\n<Document>\n' +
+      '  <name>' + S.kmlDocName + '</name>\n' +
+      camera(0, '  ') +
+      '  <Placemark><name>' + S.kmlRouteName + '</name>\n' +
+      '    <Style><LineStyle><color>ff3399ff</color><width>3</width></LineStyle></Style>\n' +
+      '    <LineString><tessellate>1</tessellate>\n' +
+      '      <coordinates>' + coords + '</coordinates>\n' +
+      '    </LineString>\n  </Placemark>\n' + points + '\n' +
+      '  <gx:Tour><name>' + S.kmlTourName + '</name>\n    <gx:Playlist>\n' +
+      tour + '    </gx:Playlist>\n  </gx:Tour>\n' +
+      '</Document>\n</kml>\n';
+
+    const blob = new Blob([kml],
+      { type: 'application/vnd.google-earth.kml+xml' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'navaid-flythrough-' + fileStamp() + '.kml';
+    a.click();
+    URL.revokeObjectURL(a.href);
   }
 
-  const coords = wps.map(w => w.lng + ',' + w.lat + ',0').join(' ');
-  const points = wps.map((w, i) =>
-    '  <Placemark><name>' + esc(wpLabel(i)) + '</name>' +
-    '<Point><coordinates>' + w.lng + ',' + w.lat + ',0</coordinates></Point>' +
-    '</Placemark>').join('\n');
-
-  const kml =
-    '<?xml version="1.0" encoding="UTF-8"?>\n' +
-    '<kml xmlns="http://www.opengis.net/kml/2.2" ' +
-    'xmlns:gx="http://www.google.com/kml/ext/2.2">\n<Document>\n' +
-    '  <name>' + S.kmlDocName + '</name>\n' +
-    camera(0, '  ') +                    // open already at the start, 5000 ft
-    '  <Placemark><name>' + S.kmlRouteName + '</name>\n' +
-    '    <Style><LineStyle><color>ff3399ff</color><width>3</width></LineStyle></Style>\n' +
-    '    <LineString><tessellate>1</tessellate>\n' +
-    '      <coordinates>' + coords + '</coordinates>\n' +
-    '    </LineString>\n  </Placemark>\n' + points + '\n' +
-    '  <gx:Tour><name>' + S.kmlTourName + '</name>\n    <gx:Playlist>\n' +
-    tour + '    </gx:Playlist>\n  </gx:Tour>\n' +
-    '</Document>\n</kml>\n';
-
-  const blob = new Blob([kml],
-    { type: 'application/vnd.google-earth.kml+xml' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'navaid-flythrough-' + fileStamp() + '.kml';
-  a.click();
-  URL.revokeObjectURL(a.href);
+  // Modal: choose Google Earth Web or App (Pro).
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  const box = document.createElement('div');
+  box.className = 'modal';
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = S.chooseGeMode;
+  const btns = document.createElement('div');
+  btns.className = 'modal-btns';
+  function onEsc(e) { if (e.key === 'Escape') { document.removeEventListener('keydown', onEsc); back.remove(); } }
+  function close() { document.removeEventListener('keydown', onEsc); back.remove(); }
+  for (const [label, mode] of [[S.geModeWeb, 'web'], [S.geModeApp, 'app']]) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.onclick = () => { close(); onPick(mode); };
+    btns.appendChild(b);
+  }
+  const cancel = document.createElement('button');
+  cancel.textContent = S.cancel;
+  cancel.className = 'modal-cancel';
+  cancel.onclick = close;
+  btns.appendChild(cancel);
+  box.append(title, btns);
+  back.appendChild(box);
+  back.onclick = e => { if (e.target === back) close(); };
+  document.body.appendChild(back);
+  document.addEventListener('keydown', onEsc);
 }
 
 // --- route persistence ----------------------------------------------
 const STORE_KEY = 'navaid.route';
 let persistTimer = null;
+let quotaWarned = false;                // #80: stop scheduling after a quota fail
 function persist() {
-  if (persistTimer) return;
+  // When boot detected a corrupt saved blob (issue #73), refuse to overwrite
+  // it with the empty in-memory state — that's silent data loss. Once the
+  // user adds a waypoint / note the state is no longer empty and the normal
+  // save path resumes, replacing the corrupt blob with their new work.
+  if (NavAid.corruptCache &&
+      state.waypoints.length === 0 &&
+      state.legs.length === 0 &&
+      state.notes.length === 0) return;
+  if (persistTimer || quotaWarned) return;
   persistTimer = setTimeout(() => {
     persistTimer = null;
     try {
@@ -578,38 +935,64 @@ function persist() {
         legs: state.legs,
         notes: state.notes,
       }));
-    } catch (e) { /* storage unavailable */ }
+    } catch (e) {
+      // #80: a full quota used to fail silently. Surface it once so the
+      // user knows to export the route; other storage-unavailable errors
+      // (private mode, disabled storage) stay silent as before.
+      if (e && (e.name === 'QuotaExceededError' || e.code === 22 ||
+                e.code === 1014 /* NS_ERROR_DOM_QUOTA_REACHED */)) {
+        quotaWarned = true;
+        try { alert(S.errStorageFull); } catch (_) { /* alert blocked */ }
+      }
+    }
   }, 500);
 }
+// Returns one of:
+//   true       — saved route restored into state.
+//   false      — no saved route (clean first-time boot, safe to persist).
+//   'corrupt'  — a saved blob exists but is unparseable or has bad coords;
+//                state is left empty and the blob is preserved on disk so
+//                the user can copy it out (issue #73).
 function restoreRoute() {
+  let raw = null;
   try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return false;
-    const d = JSON.parse(raw);
-    const wps = (d.waypoints || []).map(w => ({
-      lat: +w.lat, lng: +w.lng, name: w.name || '',
-    }));
-    const notes = (d.notes || []).map(n => ({
-      lat: +n.lat, lng: +n.lng, text: n.text || '', color: n.color || '',
-      shape: n.shape === 'oval' ? 'oval' : 'rect',
-    }));
-    if (wps.concat(notes).some(
-          p => !Number.isFinite(p.lat) || !Number.isFinite(p.lng))) {
-      return false;                       // corrupt cache — start empty
-    }
-    state.waypoints = wps;
-    state.legs = (d.legs || []).map(l => ({
-      inboundAltitude: l.inboundAltitude ?? 2000,
-      outboundAltitude: l.outboundAltitude ?? 2000,
-      flightSpeed: l.flightSpeed > 0 ? l.flightSpeed : 90,
-      inLabel: normLegLabel(l.inLabel, 44),
-      outLabel: normLegLabel(l.outLabel, -44),
-    }));
-    state.notes = notes;
-    syncLegs();
-    return true;
+    raw = localStorage.getItem(STORE_KEY);
   } catch (e) {
-    return false;
+    return false;                         // storage unavailable
   }
+  if (!raw) return false;
+  let d;
+  try {
+    d = JSON.parse(raw);
+  } catch (e) {
+    NavAid.corruptCacheError = e.message;
+    return 'corrupt';                     // bad JSON — preserve raw blob (#73)
+  }
+  // Strict schema check — issue #101. Legacy saved blobs lacking a newer
+  // field (e.g. notes added later) will fail here. The caller treats
+  // 'corrupt' as the preserve-on-failure path from #73: the raw blob is
+  // left untouched in localStorage and the boot continues with empty
+  // state, so no user work is lost (they can hand-edit / re-import).
+  const verr = validateRoute(d);
+  if (verr !== null) {
+    NavAid.corruptCacheError = verr;
+    return 'corrupt';
+  }
+  state.waypoints = d.waypoints.map(w => ({
+    lat: w.lat, lng: w.lng, name: w.name,
+  }));
+  state.legs = d.legs.map(l => ({
+    inboundAltitude: l.inboundAltitude,
+    outboundAltitude: l.outboundAltitude,
+    flightSpeed: l.flightSpeed,
+    inLabel:  { a: l.inLabel.a,  p: l.inLabel.p  },
+    outLabel: { a: l.outLabel.a, p: l.outLabel.p },
+  }));
+  state.notes = d.notes.map(n => ({
+    lat: n.lat, lng: n.lng,
+    text: n.text, color: n.color, shape: n.shape,
+  }));
+  syncLegs();
+  return true;
 }
 

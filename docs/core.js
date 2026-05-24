@@ -19,10 +19,19 @@ try {
   }
 } catch (e) { /* storage unavailable */ }
 
-window.NavAid = { exporting: false, version: '1.268' };  // cross-file export flag (read by ui.js/io.js)
+// `version` is intentionally stable at 1.0; `-<short-sha>` is auto-appended
+// at deploy time by .github/workflows/deploy.yml so the displayed toolbar
+// string identifies the exact deployed commit. On localhost the literal stays
+// unchanged, which is fine.
+window.NavAid = { exporting: false, version: '1.0' };  // cross-file export flag (read by ui.js/io.js)
 
 const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
-let magVar = -5;                       // signed offset added to true heading
+// Mutable globals are declared with `var` (not `let`) so that they're a true
+// property on the global object. ui.js writes to them via `window.foo = …` —
+// a `let` binding would be a separate lexical binding from `window.foo` and
+// the writes wouldn't propagate. The `var` form also silences CodeQL's
+// js/missing-variable-declaration alert on those cross-file writes.
+var magVar = -5;                       // signed offset added to true heading
                                        // (Israel ≈ −5; equivalent to 5°E variation)
 
 // Localisation strings. A strings.js may pre-set window.S with overrides
@@ -31,10 +40,42 @@ let magVar = -5;                       // signed offset added to true heading
 window.S = Object.assign({
   navWpUrl: 'nav-waypoints.json?v=3',  // resolved relative to index.html (docs/)
   navWpSearchField: 'name',            // which field to show/search in results
-  wpPrefix: 'WP ',
+  airfieldsUrl: 'airfields.json?v=2',  // resolved relative to index.html (docs/)
+  airfieldLabelField: 'en',            // which locale label to show on the overlay
+
+  // --- Waypoint terminology -------------------------------------------
+  // Rule: use the full word "Waypoint" (Title Case) in all user-facing
+  // English strings — buttons, toggles, tooltips, dialogs. The single
+  // exception is `wpPrefix`, the tight inline fallback label for unnamed
+  // waypoints ("WP 3" / "נק׳ 3" in the inspector and flight plan) where
+  // the abbreviation is intentional; DO NOT expand it to "Waypoint 3".
+  wpPrefix: 'WP ',                                  // short prefix for unnamed waypoints — see rule above
+  summaryWaypoints: 'Waypoints',                    // stats panel total
+  tbAddWp: '✏️ Add Waypoint',                        // toolbar Edit button
+  tbAddWpTitle: 'Click map to drop a waypoint (click button again to stop)',
+  tbShowWpNames: 'Show Waypoint Names',             // Display toggle
+  tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
+  tbWpSize: 'Waypoint Size',                        // Display slider label
+  tbWpSizeTitle: 'Waypoint circle and name size',
+  tbShowNavWp: 'Show Navigation Waypoints',         // Map overlay toggle
+  tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
+  tbSearchPlaceholder: '🔍 Find Navigation Waypoint',
+  deleteWp: 'Delete Waypoint',                      // inspector button
+  clearConfirm: 'Remove all waypoints and notes?',
+  errBadCoords: 'file has invalid waypoint coordinates',
+  // --- end Waypoint terminology ---------------------------------------
+
   noteDefault: 'Note',
   errLoadFile: 'Could not load file: ',
-  errBadCoords: 'file has invalid waypoint coordinates',
+  errStorageFull: 'Auto-save failed: browser storage is full. Export your route to keep it.',
+  errInvalidRoute: function(msg) { return 'Invalid route file: ' + msg; },
+  errInvalidNavWaypoints: function(msg) { return 'Invalid nav-waypoints data: ' + msg; },
+  errInvalidAirfields: function(msg) { return 'Invalid airfields data: ' + msg; },
+  errSavedRouteCorrupt: function(msg) {
+    return 'Saved route could not be restored, so the original saved data was preserved. ' +
+      'Export or inspect localStorage["navaid.route"] to recover it.' +
+      (msg ? '\n\nDetails: ' + msg : '');
+  },
   errNoLegs: 'No legs yet — drop at least two waypoints first.',
   flightPlan: 'Flight plan',
   fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time'],
@@ -50,6 +91,10 @@ window.S = Object.assign({
   errTilesFail: function(f, t) { return f + ' of ' + t + ' map tiles failed to load — the PNG may have blank patches. Re-run the export to retry.'; },
   errNeedWps: 'Add at least two waypoints first.',
   flyConfirm: 'Fly the route in Google Earth Pro (desktop).\n\nPress OK to save the tour file (.kml), then open it in Google Earth — the “Fly the route” tour appears under Places; press play to fly above the terrain.\n\nNo Google Earth? Free desktop app: google.com/earth/versions',
+  geWebConfirm: 'Open the route in Google Earth Web (browser).\n\nPress OK to open earth.google.com at the starting waypoint.',
+  chooseGeMode: 'Open in',
+  geModeApp: 'Google Earth Pro (KML)',
+  geModeWeb: 'Google Earth Web',
   legTitle: function(n) { return 'Leg ' + n; },
   legArrow: '→',                       // direction arrow in leg inspector title (LTR)
   speedKt: 'Speed (kt)',
@@ -60,15 +105,12 @@ window.S = Object.assign({
   shapeOval: 'Oval',
   color: 'Color',
   deleteNote: 'Delete note',
-  deleteWp: 'Delete waypoint',
   latitude: 'Latitude',
   longitude: 'Longitude',
   dialTitle: function(b) { return 'Map rotation ' + b + '° — drag to rotate, click for north up'; },
   wpnameRotTitle: function(a) { return 'Rotate waypoint names (now ' + a + '°)'; },
-  clearConfirm: 'Remove all waypoints and notes?',
   expandMenu: 'Expand menu',
   collapseMenu: 'Collapse menu',
-  summaryWaypoints: 'Waypoints',
   summaryLegs: 'Legs',
   summaryDist: 'Distance',
   summaryTime: 'Total time',
@@ -79,13 +121,10 @@ window.S = Object.assign({
                  'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap' },
   // Toolbar static strings — filled into DOM by applyI18n() on boot
   tbHandleTitle: 'Drag to move',
-  tbAddWp: '✏️ Add Waypoint',
-  tbAddWpTitle: 'Click map to drop a waypoint (click button again to stop)',
   tbAddNote: '📝 Add Note',
   tbAddNoteTitle: 'Click map to drop a note (click button again to stop)',
   tbLayerLabel: 'Layer',
   tbLayerTitle: 'Base map layer',
-  tbSearchPlaceholder: '🔍 Find nav waypoint',
   tbSearchHint: 'Tip: type space-separated codes (e.g. BAZRA GNYAM TLV) and press Enter to build a route.',
   errSearchUnknown: function(t) { return 'Unknown waypoint: ' + t; },
   searchReplaceConfirm: 'Replace the current route with these waypoints?',
@@ -109,16 +148,12 @@ window.S = Object.assign({
   tbShowMidLegTitle: 'Show distance badge at the middle of each leg',
   tbHighlightDiff: 'Highlight alt/speed diff',
   tbHighlightDiffTitle: 'Halo legs whose altitude or speed differs from the adjacent leg',
-  tbShowNavWp: 'Show Nav Waypoints',
-  tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
-  tbShowWpNames: 'Show Waypoint names',
-  tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
-  tbTransparency: 'Transparency',
-  tbTransparencyTitle: 'Opacity of label backgrounds',
+  tbShowAirfields: 'Show Airfields',
+  tbShowAirfieldsTitle: 'Overlay published Israeli airfields (BYOP source)',
+  tbTransparency: 'Label Transparency',
+  tbTransparencyTitle: 'Opacity of waypoint / leg / note label backgrounds',
   tbMapOpacity: 'Map opacity',
   tbMapOpacityTitle: 'Base map brightness',
-  tbWpSize: 'Waypoint size',
-  tbWpSizeTitle: 'Waypoint circle and name size',
   tbLegArrowSize: 'Leg arrow size',
   tbLegArrowSizeTitle: 'Leg info marker (heading / altitude / time) size',
   tbMagVar: 'Mag var',
@@ -164,16 +199,22 @@ const state = {
   mode: null,               // 'add' | 'note' | null (= inspect)
   selected: null,           // { type:'wp'|'leg'|'note', index }
 };
-let showReturn = false;     // outbound (return) markers — off by default
-let showMidLeg = false;
-let highlightDiff = false;  // purple halo on legs that change altitude
-let showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
-let navWP = null;           // null = not loaded; [] = loaded empty/error
-let showWpNames = true;     // draw waypoint names (off = empty circle)
-let wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
-let yellowAlpha = 1;        // global multiplier for yellow label backgrounds
-let wpSize = 1;             // waypoint name / number text size scale
-let legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
+var showReturn = false;     // outbound (return) markers — off by default
+var showMidLeg = false;
+var highlightDiff = false;  // purple halo on legs that change altitude
+var showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
+var navWP = null;           // null = not loaded yet (or last fetch failed —
+                            // retry on next toggle / search call); [] or
+                            // populated = last fetch resolved successfully.
+var showAirfields = true;   // Israeli airfields overlay (default on)
+var airfields = null;       // same null/[]/populated convention as navWP —
+                            // see loadAirfields() in draw.js. Entries:
+                            // { name, he, en, lat, lng, elev_ft, plates:[] }.
+var showWpNames = true;     // draw waypoint names (off = empty circle)
+var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
+var yellowAlpha = 1;        // global multiplier for yellow label backgrounds
+var wpSize = 1;             // waypoint name / number text size scale
+var legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
 let pageSize = null;        // null | 'A3' | 'A4'
 let pageOrient = 'landscape';   // 'landscape' | 'portrait'
 let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre

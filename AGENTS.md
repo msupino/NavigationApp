@@ -18,6 +18,9 @@ Unity.
 
 - `main` — production (https://msupino.github.io/NavigationApp/).
 - `dev` — staging (https://msupino.github.io/NavigationApp/staging/).
+- Any open PR → auto-deployed to
+  https://msupino.github.io/NavigationApp/pr/NNN/ and
+  https://msupino.github.io/NavigationApp/branch/BRANCH_NAME/
 - `original-plotter` — frozen Unity 2019 reference (renamed from
   `master`). Don't commit web changes here.
 - `export-leg-attributes` — old draft PR branch.
@@ -37,6 +40,10 @@ both branches and assembles a single Pages site:
   the source value itself doesn't need to be bumped per commit — it's
   just a placeholder kept consistent across `app.js` / `style.css` /
   `strings.js` references.
+- **Toolbar version SHA suffix is automatic at deploy time.** The
+  same Deploy step rewrites `NavAid.version` in `docs/core.js` from
+  `'1.0'` to `'1.0-<short-sha>'`, so the toolbar identifies the exact
+  deployed commit without manually increasing the source version number.
 - **Always run `node --check docs/app.js`** before committing.
 - If a push to `dev` / `main` doesn't trigger `Deploy` / `CI` within
   ~30 s (admin bypass can swallow the event), dispatch manually:

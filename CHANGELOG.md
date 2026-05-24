@@ -4,6 +4,105 @@ Browser-based CVFR flight-route planner (Israel area). HTML5 + Leaflet,
 no build step. Hosted on GitHub Pages. Summary is drawn from the merged
 pull requests; production is the `main` branch, staging is `dev`.
 
+## v1.0
+
+### Toolbar UX
+- Language picker (`🌐`) lifted out of the Edit section so it stays
+  visible regardless of which section is expanded or whether the
+  toolbar is collapsed.
+- New `GitHub` and `Wiki` links in the toolbar footer (always visible,
+  open in a new tab). Hebrew UI uses the English brand names.
+- Leg inspector title now reads `From → To` (locale-aware) instead of
+  `Leg N`.
+
+### Bug fixes (multi-model review)
+- **#70** (blocker): map panning no longer gets stuck when a drag is
+  released off-map — drag cleanup is now bound to `window` mouseup /
+  pointerup / pointercancel.
+- **#71**: notes overlapping waypoints are selectable again — pointer
+  hit-test now matches paint order (notes before waypoints).
+- **#72**: a failed `nav-waypoints.json` fetch no longer permanently
+  disables the overlay / search / snap features for the session.
+- **#73**: a corrupt saved route is preserved instead of silently
+  overwritten with empty state on boot.
+- **#74**: PNG export locks map interaction during the async tile
+  fetch so tiles and route overlay never drift mid-export.
+- **#75**: cleared / non-numeric rotation input is rejected; bearing
+  load/save is guarded against `NaN`.
+- **#79**: PNG export without an A3/A4 frame no longer produces blank
+  patches at large viewport sizes.
+- **#82**: partial `inLabel` / `outLabel` objects on import (e.g.
+  `{a:0}` without `p`) are normalised per-key, so reverse-route and
+  drag math no longer produce `NaN` offsets.
+- **#76**: clearing the flight-plan altitude cell no longer commits
+  `0` ft (and no longer cascades that 0 via `propagateAlt`) — the
+  input is restored to the leg's value on empty / non-numeric.
+- **#78**: Flight Plan modal dedupes (a second click is a no-op while
+  one is open), and route mutations now refresh distances, headings,
+  times, and name inputs live; a structural change (leg count) closes
+  the modal instead of leaving a stale table.
+- **#80**: a `QuotaExceededError` from autosave surfaces a one-time
+  alert telling the user to export the route, and further autosave
+  attempts back off (other storage-unavailable errors stay silent).
+- **#81**: inspector and flight-plan name inputs show the locale-
+  resolved label (`navName`) so they match the map; the canonical
+  stored name is still persisted.
+- **#83**: leg-label hit radius scales with map zoom and
+  `legArrowSize`, with a 18 px floor — mouse/touch parity with the
+  drawn marker at extreme zooms.
+- **#84**: service worker only caches `resp.ok` HTML navigations and
+  `await`s the `cache.put` inside the respondWith promise so the SW
+  lifecycle can't terminate mid-write.
+- **#104**: add-mode clicks that snap to a nav-WP / airfield already
+  occupied by a waypoint are ignored — no more zero-distance legs.
+
+### Google Earth
+- KML camera tilt set to **70°** (was 85° → tried 45° → settled on 70°
+  as the best forward-and-slightly-down view for terrain context).
+
+### SEO / repo hygiene
+- Add `robots.txt`, `sitemap.xml`, `canonical` + `hreflang` (he / en /
+  x-default), and a `WebApplication` JSON-LD block in `index.html`.
+- `/en/` and `/he/` paths restored as language-redirect stubs (each
+  with self-referential canonical).
+- New root `README.md` (English summary + bidi-safe Hebrew block via
+  `<bdi>` wraps).
+- New `LICENSE` (MIT) — source code is permissively licensed; chart /
+  imagery / OSM / nav-waypoints data retain their own terms.
+- GitHub repo description, homepage URL, and topics filled in.
+- New GitHub Wiki: 19 pages (Quick Start, Features, User Guide, Map
+  Layers, Flight Plan, Print and Export, Bilingual UI, Offline / PWA,
+  Settings and Persistence, Keyboard and Touch, FAQ, Architecture,
+  LocalStorage Schema, Service Worker, Deployment, Contributing,
+  Changelog, Google Earth, Nav-waypoints Dataset).
+- Bing webmaster verification file mirrored from main onto dev.
+
+### CI / Deploy
+- New `.github/workflows/ci.yml` lints every PR + push: `node --check`
+  on every JS file, JSON parse for `manifest.json` /
+  `nav-waypoints.json`, XML parse for `sitemap.xml` /
+  `BingSiteAuth.xml`, `html-validate` on the three `index.html`
+  entrypoints, `?v=N` consistency check, and SW cache-name parity.
+- Branch protection on `main` requires the `lint` check (strict);
+  `dev` records the same check non-strict.
+- Deploy workflow: `cancel-in-progress` switched from `true` to
+  `false` so a fast burst of pushes queues runs instead of
+  cancelling intermediate ones.
+- Both workflows now have `workflow_dispatch:` so they can be
+  triggered manually with `gh workflow run …`.
+- `?v=N` cache-bust is **auto-rewritten to the short commit SHA** in
+  `docs/index.html` at deploy time. The integer placeholder in the
+  source HTML doesn't need to be bumped per commit anymore; CI lint
+  still enforces that all `?v=` values agree.
+
+### Hebrew UI
+- Footer link labels `GitHub` / `Wiki` keep the English brand names
+  in the Hebrew strings file.
+- Mid-leg "kite" badges: yellow inbound pennant is always drawn (one
+  always-on kite per leg); the pink return pennant remains gated by
+  the "Show return path" toggle (off by default), matching the
+  original behaviour.
+
 ## In progress — dev (not yet merged)
 
 ### Bug-fix batch 2 — issues #66–#69

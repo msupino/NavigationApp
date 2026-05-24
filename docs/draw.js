@@ -6,19 +6,25 @@
 function draw() {
   octx.clearRect(0, 0, vw(), vh());
   drawNavWaypoints();
+  drawAirfields();
   drawLegs();
   drawWaypoints();
   drawNotes();
   drawInfo();
   drawPageFrame();
+  // #78: keep the Flight Plan modal live with the route. The hook is null
+  // when the modal isn't open, or after refresh detects a structural change
+  // and closes it.
+  if (refreshFlightPlan) refreshFlightPlan();
   persist();
 }
 
 // --- nav-waypoint reference overlay ---------------------------------
 // Lazy-loads docs/nav-waypoints.json on first activation. Format:
-// { waypoints:[{ name, lat, lng }] } — 256 published reporting points.
-// (Old GeoJSON-style entries with `coord:[lng,lat]` are also accepted
-// as a fallback if a stale cache returns them.)
+// { waypoints:[{ name, he, lat, lng }] } — 256 published reporting points.
+// Validated strictly by validateNavWaypoints() (issue #101): every
+// documented field must be present and well-typed; extras are silently
+// allowed for forward-compat.
 async function loadNavWaypoints() {
   if (navWP !== null) return navWP;
   try {
@@ -27,17 +33,26 @@ async function loadNavWaypoints() {
     const res = await fetch(S.navWpUrl);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const d = await res.json();
-    navWP = (d.waypoints || []).map(w => ({
+    const verr = validateNavWaypoints(d);
+    if (verr) {
+      console.warn('nav-waypoints schema error:', verr);
+      alert(S.errInvalidNavWaypoints(verr));
+      return [];
+    }
+    navWP = d.waypoints.map(w => ({
       name: w.name,
-      he: w.he || '',                    // Hebrew label (English kept for search)
-      lat: w.lat ?? (w.coord && w.coord[1]),
-      lng: w.lng ?? (w.coord && w.coord[0]),
+      he: w.he,                          // Hebrew label (English kept for search)
+      lat: w.lat,
+      lng: w.lng,
     }));
+    return navWP;
   } catch (e) {
+    // Leave navWP === null so a subsequent toggle / search / snap call can
+    // retry — assigning [] would make the early-return guard short-circuit
+    // forever and disable nav waypoints for the whole session (issue #72).
     console.warn('Failed to load nav waypoints:', e);
-    navWP = [];
+    return [];
   }
-  return navWP;
 }
 
 // Closest nav waypoint within `pxThreshold` screen pixels of `latlng`,
@@ -76,26 +91,145 @@ function navName(stored) {
 
 // Decide where a waypoint should sit + what to call it given a target
 // position and its current name. Used by both initial drop and drag.
-//  - If the current name is user-typed (non-empty, not a nav name): leave
-//    the name alone; just move to the target latlng.
-//  - Else if a nav waypoint is within 18 px of the target: snap lat/lng +
-//    name to that nav waypoint.
-//  - Else if the current name was a nav name (no longer near any nav):
+//  - If the current name is user-typed (non-empty, not an auto-snap name):
+//    leave the name alone; just move to the target latlng.
+//  - Else if an airfield is within 18 px of the target (overlay on):
+//    snap lat/lng + adopt its ICAO `name`.
+//  - Else if a nav waypoint is within 18 px of the target (overlay on):
+//    snap lat/lng + name to that nav waypoint.
+//  - Else if the current name was an auto-snap name (no longer near any):
 //    clear it so the circle reverts to the sequence number.
+// Airfields take priority because they're a much smaller set of strongly-
+// known landmarks (16 vs 256 nav-WPs); if both overlays sit on the same
+// spot the airfield name is the more meaningful identifier.
 function applyNavSnap(latlng, currentName) {
-  // Snap only while the nav-waypoint overlay is shown.
-  if (!showNavWP) {
+  // Both overlays off → no snap, leave the name (and any prior auto-snap)
+  // untouched: the user can't see what an "auto" name maps to, so silently
+  // clearing it would feel like data loss.
+  if (!showAirfields && !showNavWP) {
     return { lat: latlng.lat, lng: latlng.lng, name: currentName || '' };
   }
-  const userTyped = currentName && !isNavName(currentName);
-  const snap = nearestNavWaypoint(latlng, 18);
-  if (snap) {
-    // Always snap position; only overwrite an auto-assigned or empty name.
-    const name = userTyped ? currentName : (snap[S.navWpSearchField] || snap.name);
-    return { lat: snap.lat, lng: snap.lng, name };
+  const autoSnapped = isAirfieldName(currentName) || isNavName(currentName);
+  const userTyped = currentName && !autoSnapped;
+  if (showAirfields) {
+    const af = nearestAirfield(latlng, 18);
+    if (af) {
+      const name = userTyped ? currentName : af.name;
+      return { lat: af.lat, lng: af.lng, name };
+    }
+  }
+  if (showNavWP) {
+    const snap = nearestNavWaypoint(latlng, 18);
+    if (snap) {
+      const name = userTyped ? currentName : (snap[S.navWpSearchField] || snap.name);
+      return { lat: snap.lat, lng: snap.lng, name };
+    }
   }
   return { lat: latlng.lat, lng: latlng.lng,
-           name: isNavName(currentName) ? '' : (currentName || '') };
+           name: autoSnapped ? '' : (currentName || '') };
+}
+
+// --- airfield reference overlay -------------------------------------
+// Lazy-loads docs/airfields.json on first activation. Format:
+// { airfields:[{ name, he, en, lat, lng, elev_ft, plates:[string] }] } —
+// published Israeli airfields with matching BYOP plate filenames. The
+// `plates` field is data-only for now; rendering a per-airfield plate
+// list is tracked as a follow-up. Validated strictly by
+// validateAirfields() (issue #101): every documented field must be
+// present and well-typed; extras are silently allowed for forward-compat.
+async function loadAirfields() {
+  if (airfields !== null) return airfields;
+  try {
+    const res = await fetch(S.airfieldsUrl);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    const verr = validateAirfields(d);
+    if (verr) {
+      console.warn('airfields schema error:', verr);
+      alert(S.errInvalidAirfields(verr));
+      return [];
+    }
+    airfields = d.airfields.map(a => ({
+      name: a.name,
+      he: a.he,
+      en: a.en,
+      lat: a.lat,
+      lng: a.lng,
+      elev_ft: a.elev_ft,
+      plates: a.plates.slice(),
+    }));
+    return airfields;
+  } catch (e) {
+    // Leave airfields === null so a subsequent toggle / search call can
+    // retry — assigning [] would make the early-return guard short-circuit
+    // forever and disable the overlay for the whole session (issue #72).
+    console.warn('Failed to load airfields:', e);
+    return [];
+  }
+}
+
+// Closest airfield within `pxThreshold` screen pixels of `latlng`, or null.
+// Returns the {name, he, en, lat, lng, ...} entry from the loaded JSON.
+function nearestAirfield(latlng, pxThreshold) {
+  if (!airfields || !airfields.length) return null;
+  const t = map.latLngToContainerPoint([latlng.lat, latlng.lng]);
+  let bestDist = pxThreshold, best = null;
+  for (const af of airfields) {
+    const p = map.latLngToContainerPoint([af.lat, af.lng]);
+    const d = Math.hypot(p.x - t.x, p.y - t.y);
+    if (d < bestDist) { bestDist = d; best = af; }
+  }
+  return best;
+}
+
+// True if `name` matches a known airfield ICAO (its `name` field).
+// Airfield labels are ICAO — the locale-specific Hebrew / English label
+// is only shown next to the marker, never stored as the WP name.
+function isAirfieldName(name) {
+  if (!name || !airfields) return false;
+  for (const af of airfields) if (af.name === name) return true;
+  return false;
+}
+
+// Distinct from nav-WPs: airfields are rendered as a blue-filled upward
+// triangle (▲) outline, sized to ~7 px at typical zooms. The ICAO and
+// localised name appear next to the marker at zoom ≥ 10. Suppressed when
+// a route waypoint sits on the airfield (proximity-based, like nav-WPs).
+function drawAirfields() {
+  if (!showAirfields || !airfields || airfields.length === 0) return;
+  const SNAP_DEG = 0.0002;               // ~22 m — matches nearestAirfield px threshold
+  const showLabels = map.getZoom() >= 10;
+  const r = 7;                           // half-width of the triangle, screen px
+  octx.font = 'bold 11px sans-serif';
+  octx.textAlign = 'left';
+  octx.textBaseline = 'middle';
+  for (const af of airfields) {
+    const occupied = state.waypoints.some(
+      w => Math.abs(w.lat - af.lat) < SNAP_DEG && Math.abs(w.lng - af.lng) < SNAP_DEG);
+    if (occupied) continue;
+    const s = proj(af);                  // no viewport cull: also drawn into
+                                         // the larger PNG-export canvas
+    octx.beginPath();
+    octx.moveTo(s.x,          s.y - r);
+    octx.lineTo(s.x + r * 0.95, s.y + r * 0.65);
+    octx.lineTo(s.x - r * 0.95, s.y + r * 0.65);
+    octx.closePath();
+    octx.fillStyle = '#2f6fd0';          // saturated blue — distinct from white nav-WP dots
+    octx.fill();
+    octx.lineWidth = 1.5;
+    octx.strokeStyle = '#0a1a2a';
+    octx.stroke();
+    if (showLabels) {
+      const locale = af[S.airfieldLabelField] || af.en || af.name;
+      const label = af.name + (locale && locale !== af.name ? ' / ' + locale : '');
+      octx.lineWidth = 2.5;
+      octx.strokeStyle = 'rgba(255,255,255,0.85)';
+      octx.strokeText(label, s.x + r + 3, s.y);
+      octx.fillStyle = '#0a1a2a';
+      octx.fillText(label, s.x + r + 3, s.y);
+    }
+  }
+  octx.lineWidth = 1;
 }
 
 function drawNavWaypoints() {
@@ -451,10 +585,10 @@ function drawInfo() {
     if (state.legs[i].flightSpeed > 0) totalH += dist / state.legs[i].flightSpeed;
   }
   document.getElementById('info').textContent =
-    `${S.summaryWaypoints}  ${state.waypoints.length}\n` +
-    `${S.summaryLegs}       ${state.legs.length}\n` +
-    `${S.summaryDist}   ${totalDist.toFixed(1)} NM\n` +
-    `${S.summaryTime} ${totalH > 0 ? toHMS(totalH) : '--'}`;
+    `${S.summaryWaypoints}: ${state.waypoints.length}\n` +
+    `${S.summaryLegs}: ${state.legs.length}\n` +
+    `${S.summaryDist}: ${totalDist.toFixed(1)} NM\n` +
+    `${S.summaryTime}: ${totalH > 0 ? toHMS(totalH) : '--'}`;
 }
 
 // --- print page frame -----------------------------------------------
