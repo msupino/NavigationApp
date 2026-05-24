@@ -46,7 +46,9 @@ jobs:
       - name: Semgrep scan (advisory)
         # No --error: findings are printed for review but do not fail the
         # job. Tighten once the codebase is baselined.
-        run: semgrep scan --config=auto --quiet --metrics=off
+        # --config=p/default (registry ruleset) works with --metrics=off;
+        # --config=auto requires metrics enabled.
+        run: semgrep scan --config=p/default --quiet --metrics=off
 
   codeql:
     runs-on: ubuntu-latest
