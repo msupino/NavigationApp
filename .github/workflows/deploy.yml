@@ -96,6 +96,23 @@ jobs:
           mkdir -p site/staging
           cp -r m/docs/. site/
           cp -r d/docs/. site/staging/
+      - name: Checkout open PR branches (preview deployments)
+        run: |
+          mkdir -p site/pr
+          gh pr list --state open --json number,headRefName,baseRefName \
+            --jq '.[] | select(.baseRefName == "main" or .baseRefName == "dev") | "\(.number) \(.headRefName)"' \
+            | while read NUM BRANCH; do
+              echo "== PR #$NUM ($BRANCH) =="
+              git fetch origin "$BRANCH" --depth 1 -q 2>/dev/null || { echo "  skip (fetch failed)"; continue; }
+              mkdir -p "site/pr/$NUM"
+              git archive "origin/$BRANCH" docs/ | tar x -C "site/pr/$NUM" --strip-components=1 2>/dev/null || { echo "  skip (archive failed)"; continue; }
+              SHA=$(git rev-parse --short "origin/$BRANCH" 2>/dev/null) || { echo "  skip (rev-parse failed)"; continue; }
+              sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" "site/pr/$NUM/index.html" 2>/dev/null || true
+              sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" "site/pr/$NUM/core.js" 2>/dev/null || true
+              echo "  → /pr/$NUM/ ($SHA)"
+            done
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
