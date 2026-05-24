@@ -29,6 +29,7 @@ window.S = {
 
   noteDefault: 'הערה',
   errLoadFile: 'לא ניתן לטעון קובץ: ',
+  errStorageFull: 'השמירה האוטומטית נכשלה: אחסון הדפדפן מלא. ייצא את המסלול כדי לשמור אותו.',
   errInvalidRoute: function(msg) { return 'קובץ מסלול לא תקין: ' + msg; },
   errInvalidNavWaypoints: function(msg) { return 'נתוני ציוני ניווט לא תקינים: ' + msg; },
   errInvalidAirfields: function(msg) { return 'נתוני שדות תעופה לא תקינים: ' + msg; },
