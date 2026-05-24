@@ -80,7 +80,7 @@ function hitLegLabel(px, py) {
 // changes downstream are preserved.
 function propagateAlt(i, key, newVal, oldVal) {
   if (newVal === oldVal) return;
-  const dir = key === 'inboundAltitude' ? 1 : -1;
+  const dir = key === 'outboundAltitude' || key === 'outboundSpeed' ? -1 : 1;
   for (let j = i + dir; j >= 0 && j < state.legs.length; j += dir) {
     if (state.legs[j][key] !== oldVal) break;
     state.legs[j][key] = newVal;
@@ -186,6 +186,57 @@ function showInspector() {
     title.oninput = () => { wp.name = title.value; draw(); };
     body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
+    // #105: show plates section if waypoint name matches an airfield.
+    if (airfields && wp.name) {
+      for (const af of airfields) {
+        if (af.name === wp.name && af.plates && af.plates.length) {
+          const section = document.createElement('div');
+          section.className = 'plates-section';
+          const label = document.createElement('div');
+          label.className = 'row';
+          const l = document.createElement('label');
+          l.textContent = S.plates;
+          label.appendChild(l);
+          section.appendChild(label);
+          // Group by category
+          const groups = {};
+          const catOrder = ['approach', 'sid', 'star', 'ground', 'vfr', 'other'];
+          const catLabel = {
+            approach: S.plateCategoryApproach,
+            sid: S.plateCategorySid,
+            star: S.plateCategoryStar,
+            ground: S.plateCategoryGround,
+            vfr: S.plateCategoryVfr,
+            other: S.plateCategoryOther,
+          };
+          for (const fn of af.plates) {
+            const cat = plateCategory(fn);
+            if (!groups[cat]) groups[cat] = [];
+            groups[cat].push(fn);
+          }
+          for (const cat of catOrder) {
+            if (!groups[cat]) continue;
+            const row = document.createElement('div');
+            row.className = 'row';
+            const catLbl = document.createElement('label');
+            catLbl.textContent = catLabel[cat];
+            row.appendChild(catLbl);
+            const chips = document.createElement('span');
+            for (const fn of groups[cat]) {
+              const chip = document.createElement('button');
+              chip.className = 'plate-chip';
+              chip.textContent = prettyPlateLabel(fn);
+              chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
+              chips.appendChild(chip);
+            }
+            row.appendChild(chips);
+            section.appendChild(row);
+          }
+          body.appendChild(section);
+          break;
+        }
+      }
+    }
     const del = document.createElement('button');
     del.className = 'insp-btn';
     del.textContent = S.deleteWp;
@@ -378,12 +429,12 @@ map.on('click', e => {
                Math.abs(w.lng - r.lng) < SNAP_DEG)) {
       return;
     }
-    state.waypoints.push({ lat: r.lat, lng: r.lng, name: r.name });
+    state.waypoints.push({ lat: r5(r.lat), lng: r5(r.lng), name: r.name });
     syncLegs();
     state.selected = { type: 'wp', index: state.waypoints.length - 1 };
     showInspector(); draw();
   } else if (state.mode === 'note') {
-    state.notes.push({ lat: e.latlng.lat, lng: e.latlng.lng,
+    state.notes.push({ lat: r5(e.latlng.lat), lng: r5(e.latlng.lng),
                        text: S.noteDefault, color: NOTE_DEFAULT_COLOR,
                        shape: 'rect' });
     state.selected = { type: 'note', index: state.notes.length - 1 };

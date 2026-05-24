@@ -163,15 +163,15 @@ function runSearch() {
   if (/\s/.test(qRaw)) { closeSearch(); return; }
   const q = qRaw.toUpperCase();
   if (!q) { closeSearch(); return; }
-  const hits = [];
-  // Airfields surface first — small (16-entry) high-signal set: ICAO,
-  // English label, and Hebrew label all matched substring.
+  const afHits = [], wpHits = [];
+  // #124: split budget evenly — up to 6 airfields then up to 6 nav-WPs so a
+  // broad query (e.g. "LL") can't fill all 12 slots with airfield results.
   if (airfields && airfields.length) {
     for (const a of airfields) {
       if (a.name.toUpperCase().indexOf(q) >= 0 ||
           (a.en && a.en.toUpperCase().indexOf(q) >= 0) ||
           (a.he && a.he.indexOf(qRaw) >= 0)) {
-        hits.push({ kind: 'af', entry: a });
+        afHits.push({ kind: 'af', entry: a });
       }
     }
   }
@@ -179,15 +179,18 @@ function runSearch() {
     for (const w of navWP) {
       if (w.name.toUpperCase().indexOf(q) >= 0 ||
           (w.he && w.he.indexOf(qRaw) >= 0)) {
-        hits.push({ kind: 'wp', entry: w });
+        wpHits.push({ kind: 'wp', entry: w });
       }
     }
   }
+  const afSlots = Math.min(afHits.length, 6);
+  const wpSlots = Math.min(wpHits.length, 12 - afSlots);
+  const hits = afHits.slice(0, afSlots).concat(wpHits.slice(0, wpSlots));
   if (!hits.length) { closeSearch(); return; }
   wpResults.innerHTML = '';
   const wpField = S.navWpSearchField;
   const afField = S.airfieldLabelField;
-  for (const h of hits.slice(0, 12)) {
+  for (const h of hits) {
     const w = h.entry;
     const item = document.createElement('div');
     item.className = 'wp-search-item';
@@ -273,7 +276,8 @@ document.getElementById('reverse').onclick = () => {
   state.legs = state.legs.reverse().map(l => ({
     inboundAltitude: l.outboundAltitude,
     outboundAltitude: l.inboundAltitude,
-    flightSpeed: l.flightSpeed,
+    flightSpeed: showReturn ? l.outboundSpeed : l.flightSpeed,
+    outboundSpeed: showReturn ? l.flightSpeed : l.flightSpeed,
     inLabel: { a: -l.outLabel.a, p: -l.outLabel.p },
     outLabel: { a: -l.inLabel.a, p: -l.inLabel.p },
   }));
@@ -297,7 +301,12 @@ document.getElementById('file').onchange = e => {
 };
 document.getElementById('fit').onclick = fitView;
 document.getElementById('fly').onclick = flyRoute;
-document.getElementById('plan').onclick = showFlightPlan;
+// Toggle: a second click closes the modal instead of being a no-op (#78 dedupe
+// previously made the button look broken when the modal was already open).
+document.getElementById('plan').onclick = () => {
+  if (fpOpen) closeFlightPlan(); else showFlightPlan();
+};
+document.getElementById('charts').onclick = showChartsModal;
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
 try {
@@ -311,6 +320,7 @@ document.getElementById('mid-cb').checked = showMidLeg;
 document.getElementById('ret-cb').onchange = e => {
   window.showReturn =e.target.checked;
   try { localStorage.setItem(RETURN_KEY, showReturn ? '1' : '0'); } catch (err) { /* */ }
+  if (fpOpen) { closeFlightPlan(); setTimeout(showFlightPlan, 0); }
   draw();
 };
 document.getElementById('mid-cb').onchange = e => {
@@ -452,7 +462,8 @@ showMagVarEqv();
 document.getElementById('mag-var').oninput = e => {
   const v = parseFloat(e.target.value);
   if (isNaN(v)) return;
-  window.magVar =Math.max(-30, Math.min(30, v));
+  window.magVar = Math.max(-30, Math.min(30, v));
+  e.target.value = magVar;             // #85: write clamped value back so input matches
   try { localStorage.setItem(MAGVAR_KEY, String(magVar)); }
   catch (err) { /* storage unavailable */ }
   showMagVarEqv();
@@ -605,13 +616,43 @@ if (_restoreResult === 'corrupt') {
   console.warn('NavAid: ' + msg);
   alert(msg);
 }
+try {
+  const saved = sessionStorage.getItem('navaid.selected');
+  if (saved) {
+    sessionStorage.removeItem('navaid.selected');
+    const sel = JSON.parse(saved);
+    if (sel && sel.type === 'wp' && sel.index >= 0 && sel.index < state.waypoints.length) {
+      state.selected = sel;
+    }
+  }
+} catch (e) {}
+if (state.selected) showInspector();
 if (state.waypoints.length) fitView();   // always frame the restored route
 draw();
 // Always load nav-waypoints in the background — they power both the
 // overlay toggle and the auto-snap on drop / drag.
 loadNavWaypoints().then(draw);
 // Same pattern for airfields: powering both the overlay and snap.
-loadAirfields().then(draw);
+// Also re-render inspector so plates section appears if a waypoint
+// was restored from sessionStorage before airfields loaded.
+loadAirfields().then(() => { draw(); if (state.selected) showInspector(); });
+// Restore flight-plan modal if it was open before refresh / language change.
+try {
+  if (sessionStorage.getItem('navaid.fpOpen')) {
+    sessionStorage.removeItem('navaid.fpOpen');
+    if (state.waypoints.length && typeof showFlightPlan === 'function') showFlightPlan();
+  }
+} catch (e) {}
+
+// Save selected waypoint and flight-plan state on refresh / tab-close.
+window.addEventListener('beforeunload', function () {
+  if (state && state.selected) {
+    try { sessionStorage.setItem('navaid.selected', JSON.stringify(state.selected)); } catch (e) {}
+  }
+  if (window.fpOpen) {
+    try { sessionStorage.setItem('navaid.fpOpen', '1'); } catch (e) {}
+  }
+});
 
 // --- PWA: service worker --------------------------------------------
 // Registering the worker makes the app installable; the browser shows

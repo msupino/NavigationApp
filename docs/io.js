@@ -85,6 +85,7 @@ function validateRoute(d) {
       _v(l, 'inboundAltitude',  'number', p, errs);
       _v(l, 'outboundAltitude', 'number', p, errs);
       _v(l, 'flightSpeed',      'number', p, errs);
+      if ('outboundSpeed' in l) _v(l, 'outboundSpeed', 'number', p, errs);
       if (_v(l, 'inLabel',  'object', p, errs)) {
         _v(l.inLabel,  'a', 'number', p + '.inLabel',  errs);
         _v(l.inLabel,  'p', 'number', p + '.inLabel',  errs);
@@ -180,17 +181,18 @@ function validateAirfields(d) {
 function save() {
   const data = {
     waypoints: state.waypoints.map(w => ({
-      lat: w.lat, lng: w.lng, name: w.name || '',
+      lat: r5(w.lat), lng: r5(w.lng), name: w.name || '',
     })),
     legs: state.legs.map(l => ({
       inboundAltitude: l.inboundAltitude,
       outboundAltitude: l.outboundAltitude,
       flightSpeed: l.flightSpeed,
+      outboundSpeed: l.outboundSpeed,
       inLabel: l.inLabel,
       outLabel: l.outLabel,
     })),
     notes: state.notes.map(n => ({
-      lat: n.lat, lng: n.lng, text: n.text || '', color: n.color || '',
+      lat: r5(n.lat), lng: r5(n.lng), text: n.text || '', color: n.color || '',
       shape: n.shape || 'rect',
     })),
   };
@@ -202,6 +204,15 @@ function save() {
   URL.revokeObjectURL(a.href);
 }
 function load(file) {
+  // #146: hard cap on file size before we even read it. Route JSON is
+  // typically <100 KB; 2 MB leaves room for big routes / future fields and
+  // still aborts a user mis-pick (e.g. a PDF / image) instantly.
+  const MAX_ROUTE_BYTES = 2 * 1024 * 1024;
+  if (file && file.size > MAX_ROUTE_BYTES) {
+    alert(S.errLoadFile + 'file too large (' +
+          (file.size / 1024 / 1024).toFixed(1) + ' MB; max 2 MB)');
+    return;
+  }
   const reader = new FileReader();
   reader.onload = () => {
     let d;
@@ -220,17 +231,18 @@ function load(file) {
       return;
     }
     state.waypoints = d.waypoints.map(w => ({
-      lat: w.lat, lng: w.lng, name: w.name,
+      lat: r5(w.lat), lng: r5(w.lng), name: w.name,
     }));
     state.legs = d.legs.map(l => ({
       inboundAltitude: l.inboundAltitude,
       outboundAltitude: l.outboundAltitude,
       flightSpeed: l.flightSpeed,
+      outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
       inLabel:  { a: l.inLabel.a,  p: l.inLabel.p  },
       outLabel: { a: l.outLabel.a, p: l.outLabel.p },
     }));
     state.notes = d.notes.map(n => ({
-      lat: n.lat, lng: n.lng,
+      lat: r5(n.lat), lng: r5(n.lng),
       text: n.text, color: n.color, shape: n.shape,
     }));
     syncLegs();
@@ -296,25 +308,30 @@ function wpLabel(i) {
   return n || (S.wpPrefix + (i + 1));
 }
 
-// Flight Plan modal lives outside the function so draw() can hook in via
-// refreshFlightPlan(), and so showFlightPlan() can dedupe (#78). When the
-// route is mutated externally (drag wp, reverse, etc.) draw() calls the
-// stored refresh, which resyncs all the per-leg cells from current state
-// or closes the modal if the leg count changed.
+// #86: Flight Plan modal state and Escape-to-close handling.
 let flightPlanBack = null;
 let refreshFlightPlan = null;
-let flightPlanEscape = null;            // #86: Escape-to-close listener
+let flightPlanEscape = null;
+let flightPlanCleanup = null;             // tears down drag listeners attached
+                                          // outside the modal subtree (window).
+var fpOpen = false;                       // true while flight-plan modal is shown
 
 function closeFlightPlan() {
   if (flightPlanEscape) {
     document.removeEventListener('keydown', flightPlanEscape);
     flightPlanEscape = null;
   }
+  if (flightPlanCleanup) {
+    try { flightPlanCleanup(); } catch (e) { /* listener removal is best-effort */ }
+    flightPlanCleanup = null;
+  }
   if (flightPlanBack) {
     flightPlanBack.remove();
     flightPlanBack = null;
   }
   refreshFlightPlan = null;
+  fpOpen = false;
+  try { sessionStorage.removeItem('navaid.fpOpen'); } catch (e) {}
 }
 
 function showFlightPlan() {
@@ -335,6 +352,74 @@ function showFlightPlan() {
   title.className = 'modal-title';
   title.textContent = S.flightPlan;
   box.appendChild(title);
+
+  // Drag-to-move on the title bar (mouse + touch).
+  (function (el) {
+    const KEY = 'navaid.fpPos';
+    let dx = 0, dy = 0, dragging = false;
+    function clamp(x, y) {
+      return {
+        x: Math.max(0, Math.min(window.innerWidth - el.offsetWidth, x)),
+        y: Math.max(0, Math.min(window.innerHeight - el.offsetHeight, y)),
+      };
+    }
+    function setPos(x, y) {
+      const c = clamp(x, y);
+      el.style.left = c.x + 'px';
+      el.style.top = c.y + 'px';
+      el.style.margin = '0';
+    }
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) { const p = JSON.parse(raw); setPos(p.x, p.y); }
+    } catch (e) {}
+    function start(cx, cy) {
+      const r = el.getBoundingClientRect();
+      dx = cx - r.left; dy = cy - r.top;
+      dragging = true;
+    }
+    function move(cx, cy) { if (dragging) setPos(cx - dx, cy - dy); }
+    function end() {
+      if (!dragging) return;
+      dragging = false;
+      const r = el.getBoundingClientRect();
+      try { localStorage.setItem(KEY, JSON.stringify({ x: r.left, y: r.top })); } catch (e) {}
+    }
+    title.addEventListener('mousedown', e => {
+      e.preventDefault();
+      start(e.clientX, e.clientY);
+      const onMove = ev => move(ev.clientX, ev.clientY);
+      const onUp = () => { end(); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+    function onTouchStart(e) {
+      if (e.touches.length !== 1) return;
+      e.preventDefault();
+      start(e.touches[0].clientX, e.touches[0].clientY);
+    }
+    function onTouchMove(e) {
+      if (!dragging || e.touches.length !== 1) return;
+      e.preventDefault();
+      move(e.touches[0].clientX, e.touches[0].clientY);
+    }
+    title.addEventListener('touchstart', onTouchStart, { passive: false });
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', end);
+    window.addEventListener('touchcancel', end);
+    // closeFlightPlan() invokes this to detach the window-level listeners so
+    // a re-open doesn't accumulate stale handlers (closures capture el/dragging).
+    flightPlanCleanup = function () {
+      title.removeEventListener('touchstart', onTouchStart, { passive: false });
+      window.removeEventListener('touchmove', onTouchMove, { passive: false });
+      window.removeEventListener('touchend', end);
+      window.removeEventListener('touchcancel', end);
+    };
+  })(box);
+
+  const scrollArea = document.createElement('div');
+  scrollArea.className = 'fp-scroll';
+  box.appendChild(scrollArea);
 
   const table = document.createElement('table');
   table.className = 'flight-table';
@@ -404,20 +489,27 @@ function showFlightPlan() {
     tr.appendChild(distCell);
     const speedCell = numCell(leg.flightSpeed, 1, inp => {
       const v = +inp.value;
-      if (v > 0) { leg.flightSpeed = v; draw(); }
+      if (v > 0) {
+        const oldVal = leg.flightSpeed;
+        leg.flightSpeed = v;
+        propagateAlt(i, 'flightSpeed', leg.flightSpeed, oldVal);
+        draw();
+        refresh();
+        if (retRefresh) retRefresh();
+      }
       else inp.value = leg.flightSpeed;   // invalid — restore the real value
     });
     speedInputs[i] = speedCell.querySelector('.plan-num');
     tr.appendChild(speedCell);
     const altCell = numCell(leg.inboundAltitude, -2000, inp => {
-      // #76: restore the real value on empty / non-numeric input instead of
-      // committing 0 (which would also cascade via propagateAlt).
       const v = +inp.value;
       if (!Number.isFinite(v)) { inp.value = leg.inboundAltitude; return; }
       const oldVal = leg.inboundAltitude;
       leg.inboundAltitude = Math.round(v);
       propagateAlt(i, 'inboundAltitude', leg.inboundAltitude, oldVal);
       draw();
+      refresh();
+      if (retRefresh) retRefresh();
     });
     altInputs[i] = altCell.querySelector('.plan-num');
     tr.appendChild(altCell);
@@ -445,12 +537,7 @@ function showFlightPlan() {
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
 
-  // #78: keep the modal in sync with the live route. draw() calls this
-  // after each redraw so dragging a waypoint or reversing the route
-  // updates dist / hdg / time / total — and a count change (delete wp,
-  // import, clear) closes the modal instead of leaving it stale.
   function refresh() {
-    if (state.legs.length !== distCells.length) { closeFlightPlan(); return; }
     let td = 0, th = 0;
     for (let i = 0; i < state.legs.length; i++) {
       const A = state.waypoints[i], B = state.waypoints[i + 1];
@@ -480,7 +567,124 @@ function showFlightPlan() {
     totTimeCell.textContent = th > 0 ? toHMS(th) : '--';
   }
   refresh();
-  box.appendChild(table);
+  scrollArea.appendChild(table);
+
+  // --- return-route table (when showReturn is on) --------------------
+  let retRefresh = null;
+  if (window.showReturn) {
+    const sub = document.createElement('div');
+    sub.className = 'flight-plan-sub';
+    sub.textContent = S.fpReturn;
+    scrollArea.appendChild(sub);
+
+    const rtable = document.createElement('table');
+    rtable.className = 'flight-table';
+    const rthead = document.createElement('thead');
+    const rtrH = document.createElement('tr');
+    for (const h of headers) {
+      const th = document.createElement('th');
+      th.textContent = h;
+      rtrH.appendChild(th);
+    }
+    rthead.appendChild(rtrH);
+    rtable.appendChild(rthead);
+
+    const rtbody = document.createElement('tbody');
+    const rAltInputs = [];
+    const rSpeedInputs = [];
+    const rDistCells = [];
+    const rHdgCells = [];
+    const rTimeCells = [];
+    let rTotDistCell, rTotTimeCell;
+
+    for (let i = 0; i < state.legs.length; i++) {
+      const ri = state.legs.length - 1 - i;   // reverse leg order — flyable from destination
+      const leg = state.legs[ri];
+      const A = state.waypoints[ri + 1], B = state.waypoints[ri];
+      const { dist, brg } = geo(A, B);
+      const tr = document.createElement('tr');
+      tr.appendChild(planCell(String(i + 1)));
+      tr.appendChild(nameCell(ri + 1));
+      tr.appendChild(nameCell(ri));
+      const hdgCell = planCell(pad3(toMagnetic(brg)) + '°M');
+      tr.appendChild(hdgCell);
+      const distCell = planCell(dist.toFixed(1));
+      tr.appendChild(distCell);
+      const speedCell = numCell(leg.outboundSpeed, 1, inp => {
+        const v = +inp.value;
+        if (v > 0) {
+          const oldVal = leg.outboundSpeed;
+          leg.outboundSpeed = v;
+          propagateAlt(ri, 'outboundSpeed', leg.outboundSpeed, oldVal);
+          draw();
+          refresh();
+          retRefresh();
+        }
+        else inp.value = leg.outboundSpeed;
+      });
+      rSpeedInputs[i] = speedCell.querySelector('.plan-num');
+      tr.appendChild(speedCell);
+      const altCell = numCell(leg.outboundAltitude, -2000, inp => {
+        const v = +inp.value;
+        if (!Number.isFinite(v)) { inp.value = leg.outboundAltitude; return; }
+        const oldVal = leg.outboundAltitude;
+        leg.outboundAltitude = Math.round(v);
+        propagateAlt(ri, 'outboundAltitude', leg.outboundAltitude, oldVal);
+        draw();
+        refresh();
+        retRefresh();
+      });
+      rAltInputs[i] = altCell.querySelector('.plan-num');
+      tr.appendChild(altCell);
+      const timeCell = planCell('');
+      rTimeCells[i] = timeCell;
+      rDistCells[i] = distCell;
+      rHdgCells[i] = hdgCell;
+      tr.appendChild(timeCell);
+      rtbody.appendChild(tr);
+    }
+    rtable.appendChild(rtbody);
+
+    const rtfoot = document.createElement('tfoot');
+    const rtrF = document.createElement('tr');
+    const rtdLabel = document.createElement('td');
+    rtdLabel.colSpan = 4;
+    rtdLabel.textContent = S.fpTotal;
+    rtrF.appendChild(rtdLabel);
+    rTotDistCell = planCell('');
+    rtrF.appendChild(rTotDistCell);
+    rtrF.appendChild(planCell(''));
+    rtrF.appendChild(planCell(''));
+    rTotTimeCell = planCell('');
+    rtrF.appendChild(rTotTimeCell);
+    rtfoot.appendChild(rtrF);
+    rtable.appendChild(rtfoot);
+
+    retRefresh = function () {
+      if (state.legs.length !== rDistCells.length) { closeFlightPlan(); return; }
+      let td = 0, th = 0;
+      for (let i = 0; i < state.legs.length; i++) {
+        const ri = state.legs.length - 1 - i;
+        const A = state.waypoints[ri + 1], B = state.waypoints[ri];
+        if (!A || !B) continue;
+        const { dist, brg } = geo(A, B);
+        rDistCells[i].textContent = dist.toFixed(1);
+        rHdgCells[i].textContent = pad3(toMagnetic(brg)) + '°M';
+        const dur = state.legs[ri].outboundSpeed > 0 ? dist / state.legs[ri].outboundSpeed : 0;
+        td += dist;
+        th += dur;
+        rTimeCells[i].textContent = dur > 0 ? toHMS(dur) : '--';
+        if (rSpeedInputs[i] && document.activeElement !== rSpeedInputs[i])
+          rSpeedInputs[i].value = state.legs[ri].outboundSpeed;
+        if (rAltInputs[i] && document.activeElement !== rAltInputs[i])
+          rAltInputs[i].value = state.legs[ri].outboundAltitude;
+      }
+      rTotDistCell.textContent = td.toFixed(1);
+      rTotTimeCell.textContent = th > 0 ? toHMS(th) : '--';
+    };
+    retRefresh();
+    scrollArea.appendChild(rtable);
+  }
 
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
@@ -505,15 +709,39 @@ function showFlightPlan() {
   box.appendChild(btns);
 
   back.appendChild(box);
-  // No backdrop-click-to-close — backdrop is pointer-events:none so the map
-  // is reachable; close via the Close button or Escape (#86).
+  // Close via the Close button or Escape (#86).
   document.body.appendChild(back);
   flightPlanBack = back;
-  refreshFlightPlan = refresh;
+  // #78: keep the modal in sync with the live route. draw() calls this after
+  // each redraw so dragging a waypoint or reversing the route updates dist /
+  // hdg / time / total. A leg-count change (delete wp, import, clear) tears
+  // the modal down and re-opens it on the next tick so input handlers rebind
+  // against the new leg array (the old fix just closed it — the rebuild is a
+  // strictly better UX so the pilot doesn't lose the plan view on edits).
+  refreshFlightPlan = retRefresh
+    ? function () {
+        if (state.legs.length !== distCells.length) {
+          closeFlightPlan();
+          setTimeout(showFlightPlan, 0);
+          return;
+        }
+        refresh();
+        retRefresh();
+      }
+    : function () {
+        if (state.legs.length !== distCells.length) {
+          closeFlightPlan();
+          setTimeout(showFlightPlan, 0);
+          return;
+        }
+        refresh();
+      };
   flightPlanEscape = function (e) {
     if (e.key === 'Escape') closeFlightPlan();
   };
   document.addEventListener('keydown', flightPlanEscape);
+  fpOpen = true;
+  try { sessionStorage.removeItem('navaid.fpOpen'); } catch (e) {}
 }
 
 function planCell(text) {
@@ -812,21 +1040,9 @@ function flyRoute() {
     return geo(wps[j], wps[j + 1]).brg;
   };
 
-  function onPick(mode) {
-    if (mode === 'web') {
-      if (!confirm(S.geWebConfirm)) return;
-      const url = 'https://earth.google.com/web/@' +
-        wps[0].lat + ',' + wps[0].lng + ',' + altM(0) + 'a,' +
-        heading(0).toFixed(1) + 'h,70t';
-      window.open(url, '_blank');
-      return;
-    }
-
-    if (!confirm(S.flyConfirm)) return;
-
+  function downloadKml() {
     const esc = s => String(s).replace(/[<>&]/g,
       c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
-
     const camera = (i, pad) =>
       pad + '<Camera>\n' +
       pad + '  <longitude>' + wps[i].lng + '</longitude>\n' +
@@ -843,7 +1059,6 @@ function flyRoute() {
       '      <gx:flyToMode>' + mode + '</gx:flyToMode>\n' +
       camera(i, '      ') +
       '    </gx:FlyTo>\n';
-
     let tour = flyTo(0, 4, 'bounce');
     for (let i = 1; i < wps.length; i++) {
       const leg = state.legs[i - 1];
@@ -851,13 +1066,11 @@ function flyRoute() {
       const durH = leg && leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
       tour += flyTo(i, Math.max(4, Math.min(45, durH * 60 * 4)), 'smooth');
     }
-
     const coords = wps.map(w => w.lng + ',' + w.lat + ',0').join(' ');
     const points = wps.map((w, i) =>
       '  <Placemark><name>' + esc(wpLabel(i)) + '</name>' +
       '<Point><coordinates>' + w.lng + ',' + w.lat + ',0</coordinates></Point>' +
       '</Placemark>').join('\n');
-
     const kml =
       '<?xml version="1.0" encoding="UTF-8"?>\n' +
       '<kml xmlns="http://www.opengis.net/kml/2.2" ' +
@@ -872,7 +1085,6 @@ function flyRoute() {
       '  <gx:Tour><name>' + S.kmlTourName + '</name>\n    <gx:Playlist>\n' +
       tour + '    </gx:Playlist>\n  </gx:Tour>\n' +
       '</Document>\n</kml>\n';
-
     const blob = new Blob([kml],
       { type: 'application/vnd.google-earth.kml+xml' });
     const a = document.createElement('a');
@@ -882,7 +1094,30 @@ function flyRoute() {
     URL.revokeObjectURL(a.href);
   }
 
-  // Modal: choose Google Earth Web or App (Pro).
+  function onPick(mode) {
+    if (mode === 'web') {
+      if (!confirm(S.geWebConfirm)) return;
+      // #145: validate the first waypoint's coords before string-concat so a
+      // malformed lat/lng (e.g. from a tampered import) can't leak into the
+      // URL. heading()/altM() are already bounded numerics by construction.
+      const lat = Number(wps[0].lat), lng = Number(wps[0].lng);
+      if (!Number.isFinite(lat) || lat < -90 || lat > 90 ||
+          !Number.isFinite(lng) || lng < -180 || lng > 180) {
+        alert(S.errBadCoords);
+        return;
+      }
+      const url = 'https://earth.google.com/web/@' +
+        lat.toFixed(6) + ',' + lng.toFixed(6) + ',' + altM(0) + 'a,' +
+        heading(0).toFixed(1) + 'h,70t';
+      window.open(url, '_blank');
+      downloadKml();
+      return;
+    }
+
+    if (!confirm(S.flyConfirm)) return;
+    downloadKml();
+  }
+
   const back = document.createElement('div');
   back.className = 'modal-back';
   const box = document.createElement('div');
@@ -979,20 +1214,235 @@ function restoreRoute() {
     return 'corrupt';
   }
   state.waypoints = d.waypoints.map(w => ({
-    lat: w.lat, lng: w.lng, name: w.name,
+    lat: r5(w.lat), lng: r5(w.lng), name: w.name,
   }));
   state.legs = d.legs.map(l => ({
     inboundAltitude: l.inboundAltitude,
     outboundAltitude: l.outboundAltitude,
     flightSpeed: l.flightSpeed,
+    outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
     inLabel:  { a: l.inLabel.a,  p: l.inLabel.p  },
     outLabel: { a: l.outLabel.a, p: l.outLabel.p },
   }));
   state.notes = d.notes.map(n => ({
-    lat: n.lat, lng: n.lng,
+    lat: r5(n.lat), lng: r5(n.lng),
     text: n.text, color: n.color, shape: n.shape,
   }));
   syncLegs();
   return true;
+}
+
+// --- Airfield plates viewer (#105) -----------------------------------
+const PLATE_BASE = 'byop/';
+
+function plateUrl(filename) {
+  return PLATE_BASE + encodeURIComponent(filename);
+}
+
+function plateCategory(filename) {
+  const rest = filename.replace(/^[A-Z]{4}_/, '');
+  const cat = rest.split('_')[0];
+  if (cat === 'APPROACH') return 'approach';
+  if (cat === 'SID') return 'sid';
+  if (cat === 'STAR') return 'star';
+  if (cat === 'Ground' || cat === 'parking') return 'ground';
+  if (cat === 'VAC' || cat === 'airport') return 'vfr';
+  return 'other';
+}
+
+function prettyPlateLabel(filename) {
+  const noIcao = filename.replace(/^[A-Z]{4}_/, '').replace(/\.pdf$/i, '');
+  return noIcao.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function showPlateViewer(filename, label) {
+  const back = document.createElement('div');
+  back.className = 'modal-back plate-viewer';
+  const box = document.createElement('div');
+  box.className = 'modal plate-viewer-box';
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = label;
+  box.appendChild(title);
+
+  const iframe = document.createElement('iframe');
+  iframe.className = 'plate-iframe';
+  const url = plateUrl(filename);
+
+  const loading = document.createElement('div');
+  loading.className = 'plate-loading';
+  loading.textContent = 'Loading...\n' + url;
+
+  let blobUrl = null;
+  let pdfReady = false;
+
+  iframe.onload = () => { if (pdfReady) loading.style.display = 'none'; };
+  iframe.onerror = () => {
+    loading.textContent = S.plateLoadError + '\n' + url;
+  };
+
+  fetch(url, { credentials: 'omit' })
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.blob();
+    })
+    .then(blob => {
+      blobUrl = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      pdfReady = true;
+      iframe.src = blobUrl + '#view=FitH';
+    })
+    .catch(() => {
+      loading.textContent = S.plateLoadError + '\n' + url;
+    });
+
+  box.appendChild(loading);
+  box.appendChild(iframe);
+
+  const att = document.createElement('div');
+  att.className = 'plate-attribution';
+  att.textContent = S.plateAttribution;
+  box.appendChild(att);
+
+  const btns = document.createElement('div');
+  btns.className = 'modal-btns';
+  const openTab = document.createElement('button');
+  openTab.textContent = S.plateOpenTab;
+  openTab.onclick = () => { if (blobUrl) window.open(blobUrl, '_blank'); };
+  btns.appendChild(openTab);
+  const download = document.createElement('button');
+  download.textContent = S.plateDownload;
+  download.onclick = () => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+  };
+  btns.appendChild(download);
+  const close = document.createElement('button');
+  close.textContent = S.plateClose;
+  close.className = 'modal-cancel';
+  close.onclick = () => { if (blobUrl) URL.revokeObjectURL(blobUrl); back.remove(); };
+  btns.appendChild(close);
+
+  box.appendChild(btns);
+
+  function onEsc(e) {
+    if (e.key === 'Escape') {
+      window.removeEventListener('keydown', onEsc);
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      back.remove();
+    }
+  }
+  back.appendChild(box);
+  back.onclick = e => {
+    if (e.target === back) {
+      window.removeEventListener('keydown', onEsc);
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      back.remove();
+    }
+  };
+  document.body.appendChild(back);
+  window.addEventListener('keydown', onEsc);
+}
+
+function showChartsModal() {
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  const box = document.createElement('div');
+  box.className = 'modal wide';
+
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = S.plates;
+  box.appendChild(title);
+
+  const body = document.createElement('div');
+  body.className = 'charts-modal-body';
+
+  const catOrder = ['approach', 'sid', 'star', 'ground', 'vfr', 'other'];
+  const catLabel = {
+    approach: S.plateCategoryApproach,
+    sid: S.plateCategorySid,
+    star: S.plateCategoryStar,
+    ground: S.plateCategoryGround,
+    vfr: S.plateCategoryVfr,
+    other: S.plateCategoryOther,
+  };
+
+  function renderList(afs) {
+    body.innerHTML = '';
+    const withPlates = afs.filter(af => af.plates && af.plates.length);
+    if (!withPlates.length) {
+      const none = document.createElement('p');
+      none.textContent = S.platesNone;
+      body.appendChild(none);
+      return;
+    }
+    for (const af of withPlates) {
+      const section = document.createElement('details');
+      section.className = 'charts-airport';
+      const summ = document.createElement('summary');
+      summ.textContent = af.name + (af.en ? ' — ' + af.en : '');
+      section.appendChild(summ);
+
+      const groups = {};
+      for (const fn of af.plates) {
+        const cat = plateCategory(fn);
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(fn);
+      }
+      for (const cat of catOrder) {
+        if (!groups[cat]) continue;
+        const catDiv = document.createElement('div');
+        catDiv.className = 'charts-cat';
+        const catLbl = document.createElement('span');
+        catLbl.className = 'charts-cat-label';
+        catLbl.textContent = catLabel[cat];
+        catDiv.appendChild(catLbl);
+        for (const fn of groups[cat]) {
+          const chip = document.createElement('button');
+          chip.className = 'plate-chip';
+          chip.textContent = prettyPlateLabel(fn);
+          chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
+          catDiv.appendChild(chip);
+        }
+        section.appendChild(catDiv);
+      }
+      body.appendChild(section);
+    }
+  }
+
+  if (airfields) {
+    renderList(airfields);
+  } else {
+    const loading = document.createElement('p');
+    loading.textContent = '…';
+    body.appendChild(loading);
+    loadAirfields().then(() => { if (airfields) renderList(airfields); });
+  }
+
+  box.appendChild(body);
+
+  const att = document.createElement('div');
+  att.className = 'plate-attribution';
+  att.textContent = S.plateAttribution;
+  box.appendChild(att);
+
+  const btns = document.createElement('div');
+  btns.className = 'modal-btns';
+  const close = document.createElement('button');
+  close.textContent = S.plateClose;
+  close.className = 'modal-cancel';
+  close.onclick = () => back.remove();
+  btns.appendChild(close);
+  box.appendChild(btns);
+
+  function onEsc(e) {
+    if (e.key === 'Escape') { window.removeEventListener('keydown', onEsc); back.remove(); }
+  }
+  back.appendChild(box);
+  back.onclick = e => { if (e.target === back) { window.removeEventListener('keydown', onEsc); back.remove(); } };
+  document.body.appendChild(back);
+  window.addEventListener('keydown', onEsc);
 }
 
