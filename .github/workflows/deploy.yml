@@ -87,7 +87,14 @@ jobs:
           cp -r m/docs/. site/
           cp -r d/docs/. site/staging/
           rm -rf site/staging/byop
-          sed -i "s|const PLATE_BASE = 'byop/';|const PLATE_BASE = '/NavigationApp/byop/';|" site/staging/io.js
+          # Rewrite PLATE_BASE in staging's io.js. Regex is whitespace-tolerant
+          # so a stylistic change to the assignment line doesn't silently break
+          # plate loading on PR previews. Verify the rewrite landed.
+          sed -i -E "s#(const|var|let)[[:space:]]+PLATE_BASE[[:space:]]*=[[:space:]]*'[^']*'#const PLATE_BASE = '/NavigationApp/byop/'#" site/staging/io.js
+          if ! grep -qE "const PLATE_BASE = '/NavigationApp/byop/'" site/staging/io.js; then
+            echo "::error::PLATE_BASE rewrite missed site/staging/io.js — staging would serve byop/ from a non-existent path."
+            exit 1
+          fi
           SHA_M=$(git -C m rev-parse --short HEAD)
           SHA_D=$(git -C d rev-parse --short HEAD)
           sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA_M}/g" site/index.html
@@ -110,7 +117,10 @@ jobs:
               sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" "$STAGING/core.js" 2>/dev/null || true
               # Drop the per-PR byop/ copy and point at the production one.
               rm -rf "$STAGING/byop"
-              sed -i "s|const PLATE_BASE = 'byop/';|const PLATE_BASE = '/NavigationApp/byop/';|" "$STAGING/io.js" 2>/dev/null || true
+              sed -i -E "s#(const|var|let)[[:space:]]+PLATE_BASE[[:space:]]*=[[:space:]]*'[^']*'#const PLATE_BASE = '/NavigationApp/byop/'#" "$STAGING/io.js" 2>/dev/null || true
+              if [ -f "$STAGING/io.js" ] && ! grep -qE "const PLATE_BASE = '/NavigationApp/byop/'" "$STAGING/io.js"; then
+                echo "::warning::PLATE_BASE rewrite missed $STAGING/io.js for PR #$NUM — plate viewer will 404 on this preview."
+              fi
               cp -r "$STAGING" "../site/pr/$NUM"
               cp -r "$STAGING" "../site/branch/$BRANCH"
               rm -rf "$STAGING"
