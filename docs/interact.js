@@ -381,11 +381,11 @@ map.on('mousemove', e => {
     drag.moved = true;
     const wp = state.waypoints[drag.i];
     const r = applyNavSnap(e.latlng, wp.name || '');
-    wp.lat = r.lat; wp.lng = r.lng; wp.name = r.name;
+    wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
     draw(); showInspector();
   } else if (drag.kind === 'note') {
-    state.notes[drag.i].lat = e.latlng.lat;
-    state.notes[drag.i].lng = e.latlng.lng;
+    state.notes[drag.i].lat = r5(e.latlng.lat);
+    state.notes[drag.i].lng = r5(e.latlng.lng);
     draw();
   } else if (drag.kind === 'label') {
     const ddx = p.x - drag.lx, ddy = p.y - drag.ly;
@@ -531,11 +531,11 @@ mapEl.addEventListener('touchmove', e => {
   if (touchDrag.kind === 'wp') {
     const wp = state.waypoints[touchDrag.i];
     const r = applyNavSnap(ll, wp.name || '');
-    wp.lat = r.lat; wp.lng = r.lng; wp.name = r.name;
+    wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
     draw(); showInspector();
   } else if (touchDrag.kind === 'note') {
-    state.notes[touchDrag.i].lat = ll.lat;
-    state.notes[touchDrag.i].lng = ll.lng;
+    state.notes[touchDrag.i].lat = r5(ll.lat);
+    state.notes[touchDrag.i].lng = r5(ll.lng);
     draw();
   } else if (touchDrag.kind === 'label') {
     const ddx = p.x - touchDrag.lx, ddy = p.y - touchDrag.ly;
