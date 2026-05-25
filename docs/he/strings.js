@@ -22,6 +22,9 @@ window.S = {
   tbShowNavWp: 'הצג ציוני ניווט',                    // מתג שכבת מפה
   tbShowNavWpTitle: 'הצג ציוני דיווח VFR ישראלים',
   tbSearchPlaceholder: '🔍 חפש ציון ניווטי',
+  tbSearchOpen: '🔍 חפש',
+  tbSearchOpenTitle: 'פתח את חלון החיפוש (Ctrl/Cmd-F)',
+  modalCloseTitle: 'סגור',
   deleteWp: 'מחק ציון דרך',                          // כפתור באינספקטור
   clearConfirm: 'להסיר את כל ציוני הדרך וההערות?',
   errBadCoords: 'הקובץ מכיל קואורדינטות לא תקינות',
