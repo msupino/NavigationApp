@@ -173,6 +173,7 @@ window.S = {
   exportModalTitle: 'ייצוא PNG',
   exportShowNavWP: 'הדפס ציוני ניווט',
   exportShowAirfields: 'הדפס שדות תעופה',
+  exportShowWpNames: 'הדפס שמות ציוני דרך',
   exportLayer: 'שכבת מפה',
   exportBtn: 'ייצא',
 };
