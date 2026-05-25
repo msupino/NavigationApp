@@ -113,6 +113,30 @@ test.describe('Fuel/endurance flight plan modal', () => {
     expect(totalFuel - totNoTaxi).toBeCloseTo(1.1, 1);
   });
 
+  test('renaming origin airfield label keeps taxi fuel (matched by coords)', async ({ page }) => {
+    await boot(page);
+    // Origin remains LLHZ coordinates but the label is renamed.
+    await page.evaluate(() => {
+      state.waypoints[0].name = 'LLHZ1';
+      syncLegs(); draw();
+    });
+    await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
+    await openFlightPlan(page);
+
+    await page.fill('#aircraft-gph', '8.5');
+    await page.locator('#aircraft-gph').dispatchEvent('input');
+
+    await page.fill('#aircraft-taxi', '0');
+    await page.locator('#aircraft-taxi').dispatchEvent('input');
+    const { legFuel: legNoTaxi } = await readFuelCells(page);
+
+    await page.fill('#aircraft-taxi', '1.1');
+    await page.locator('#aircraft-taxi').dispatchEvent('input');
+    const { legFuel: legWithTaxi } = await readFuelCells(page);
+
+    expect(legWithTaxi - legNoTaxi).toBeCloseTo(1.1, 1);
+  });
+
   test('taxi fuel NOT added when origin is not an airfield', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
