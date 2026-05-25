@@ -141,6 +141,7 @@ window.S = {
   inspCloseTitle: 'סגור',
   inspCloseLabel: 'סגור',
   tbSecEdit: '✏️ עריכה',
+  tbSecOutput: '📤 פלט',
   tbSecMap: '🗺 מפה',
   tbSecRoute: '📋 מסלול',
   tbSecDisplay: '👁 תצוגה',

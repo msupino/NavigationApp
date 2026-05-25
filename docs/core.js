@@ -181,6 +181,7 @@ window.S = Object.assign({
   tbSecEdit: '✏️ Edit',
   tbSecMap: '🗺 Map',
   tbSecRoute: '📋 Route',
+  tbSecOutput: '📤 Output',
   tbSecDisplay: '👁 Display',
   tbSecPrint: '🖨 Print',
   tbViewSource: 'GitHub',
