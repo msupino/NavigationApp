@@ -958,7 +958,7 @@ function showExportModal() {
   };
 
   function close() { window.removeEventListener('keydown', onEsc); back.remove(); }
-  function onEsc(e) { if (e.key === 'Escape') close(); }
+  function onEsc(e) { if (e.key === 'Escape') { restoreOrig(); close(); } }
 
   exportBtn.onclick = () => {
     NavAid._restoreExport = restoreOrig;

@@ -63,6 +63,82 @@ test.describe('Export PNG options modal', () => {
     expect(download.suggestedFilename()).toMatch(/^navigation-.+\.png$/);
   });
 
+  test('Live preview: modal defaults hide waypoints/airfields immediately', async ({ page }) => {
+    await boot(page);
+    // Turn waypoints and airfields on so we can verify the modal hides them.
+    await page.evaluate(() => { showNavWP = true; showAirfields = true; draw(); });
+    await page.locator('#print').click();
+    await page.locator('.modal-back').waitFor();
+    // Default state applied: both should be false now.
+    expect(await page.evaluate(() => showNavWP)).toBe(false);
+    expect(await page.evaluate(() => showAirfields)).toBe(false);
+  });
+
+  test('Live preview: toggling checkbox updates the map immediately', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => { showNavWP = false; showAirfields = false; draw(); });
+    await page.locator('#print').click();
+    await page.locator('.modal-back').waitFor();
+    const cbs = page.locator('.modal input[type="checkbox"]');
+    // Check "Print navigation waypoints" → showNavWP becomes true.
+    await cbs.nth(0).check();
+    expect(await page.evaluate(() => showNavWP)).toBe(true);
+    // Uncheck → showNavWP back to false.
+    await cbs.nth(0).uncheck();
+    expect(await page.evaluate(() => showNavWP)).toBe(false);
+    // Check "Print airports" → showAirfields becomes true.
+    await cbs.nth(1).check();
+    expect(await page.evaluate(() => showAirfields)).toBe(true);
+  });
+
+  test('Cancel restores original waypoints/airfields state', async ({ page }) => {
+    await boot(page);
+    // Starting with both visible.
+    await page.evaluate(() => { showNavWP = true; showAirfields = true; draw(); });
+    await page.locator('#print').click();
+    await page.locator('.modal-back').waitFor();
+    // Modal hides them (default). Toggle waypoints on.
+    await page.locator('.modal input[type="checkbox"]').nth(0).check();
+    expect(await page.evaluate(() => showNavWP)).toBe(true);
+    // Cancel → restore original (both true).
+    await page.locator('.modal .modal-cancel').click();
+    await expect(page.locator('.modal-back')).toHaveCount(0);
+    expect(await page.evaluate(() => showNavWP)).toBe(true);
+    expect(await page.evaluate(() => showAirfields)).toBe(true);
+  });
+
+  test('Cancel restores original layer', async ({ page }) => {
+    await boot(page);
+    await page.locator('#layer-select').selectOption('OpenStreetMap');
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+      syncLegs(); draw();
+    });
+    // Verify we're on OSM.
+    expect(await page.locator('#layer-select').inputValue()).toBe('OpenStreetMap');
+    // Open modal (defaults to Navigation), then Cancel.
+    await page.locator('#print').click();
+    await page.locator('.modal-back').waitFor();
+    await page.locator('.modal .modal-cancel').click();
+    // Back to OSM.
+    expect(await page.locator('#layer-select').inputValue()).toBe('OpenStreetMap');
+  });
+
+  test('X button closes modal and restores original state', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => { showNavWP = true; draw(); });
+    await page.locator('#print').click();
+    await page.locator('.modal-back').waitFor();
+    // Toggle waypoints off in the modal.
+    await page.locator('.modal input[type="checkbox"]').nth(0).uncheck();
+    expect(await page.evaluate(() => showNavWP)).toBe(false);
+    // Click ✕ close button.
+    await page.locator('.modal-close-x').click();
+    await expect(page.locator('.modal-back')).toHaveCount(0);
+    // Original state restored.
+    expect(await page.evaluate(() => showNavWP)).toBe(true);
+  });
+
   test('Modal respects checkbox toggles and layer change', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
