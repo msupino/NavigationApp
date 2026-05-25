@@ -236,7 +236,10 @@ var yellowAlpha = 1;        // global multiplier for yellow label backgrounds
 var wpSize = 1;             // waypoint name / number text size scale
 var legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
 let pageSize = null;        // null | 'A3' | 'A4'
-let pageOrient = 'landscape';   // 'landscape' | 'portrait'
+// `var` (not `let`) so window.pageOrient writes from ui.js's boot restore
+// land on the same binding the toggle reads. Default 'portrait' since most
+// CVFR routes are tall (north–south Israel airspace).
+var pageOrient = 'portrait';
 let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre
 
 // Yellow text-background colour with the global opacity scale applied.
