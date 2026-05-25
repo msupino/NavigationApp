@@ -661,40 +661,45 @@ html, body {
 
 /* Charts modal */
 .charts-modal-body {
-  padding: 4px 0;
+  padding: 2px 0;
 }
 .charts-airport {
-  border-bottom: 1px solid #3a3636;
+  margin: 0 2px;
+  padding-bottom: 2px;
 }
-.charts-airport:last-child {
-  border-bottom: none;
+.charts-airport + .charts-airport {
+  border-top: 1px solid #3a3636;
 }
 .charts-airport-header {
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  color: #e8e8e8;
-  padding: 8px 10px;
-  user-select: none;
   display: flex;
   align-items: center;
   gap: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a8484;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  user-select: none;
 }
 .charts-airport-header::before {
   content: '▶';
-  font-size: 9px;
-  color: #888;
-  transition: transform 0.15s;
+  font-size: 8px;
+  display: inline-block;
+  transition: transform 0.15s ease;
 }
 .charts-airport-header.open::before {
-  content: '▼';
+  transform: rotate(90deg);
 }
 .charts-airport-header:hover {
-  background: rgba(255, 255, 255, 0.04);
+  color: #e0d8d8;
+  background: rgba(255,255,255,0.06);
 }
 .charts-airport-body {
   display: none;
-  padding: 0 10px 8px 24px;
+  padding: 2px 8px 8px 22px;
 }
 .charts-airport-body.open {
   display: block;
@@ -706,12 +711,9 @@ html, body {
   gap: 4px;
   padding: 4px 0;
 }
-.charts-cat + .charts-cat {
-  margin-top: 2px;
-}
 .charts-cat-label {
   font-size: 11px;
-  color: #888;
+  color: #b9b3b3;
   min-width: 60px;
   flex-shrink: 0;
 }
