@@ -57,7 +57,7 @@ window.S = Object.assign({
   tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
   tbWpSize: 'Waypoint Size',                        // Display slider label
   tbWpSizeTitle: 'Waypoint circle and name size',
-  tbShowNavWp: 'Show Navigation Waypoints',         // Map overlay toggle
+  tbShowNavWp: 'Show/Pin Navigation Waypoints',     // Map overlay toggle
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbSearchPlaceholder: '🔍 Find Navigation Waypoint',
   tbSearchOpen: '🔍 Find',
@@ -156,7 +156,7 @@ window.S = Object.assign({
   tbShowMidLegTitle: 'Show distance badge at the middle of each leg',
   tbHighlightDiff: 'Highlight alt/speed diff',
   tbHighlightDiffTitle: 'Halo legs whose altitude or speed differs from the adjacent leg',
-  tbShowAirfields: 'Show Airfields',
+  tbShowAirfields: 'Show/Pin Airfields',
   tbShowAirfieldsTitle: 'Overlay published Israeli airfields (BYOP source)',
   plates: 'Charts',
   plateCategoryApproach: 'Approach',
