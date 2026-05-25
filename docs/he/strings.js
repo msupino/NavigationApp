@@ -171,8 +171,7 @@ window.S = {
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
   exportModalTitle: 'ייצוא PNG',
-  exportShowNavWP: 'הדפס ציוני ניווט',
-  exportShowAirfields: 'הדפס שדות תעופה',
+
   exportLayer: 'שכבת מפה',
   exportBtn: 'ייצא',
 };
