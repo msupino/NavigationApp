@@ -28,7 +28,7 @@ async function setupCleanInit(page) {
       if (localStorage.getItem('__test_init_v1') !== '1') {
         for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
         sessionStorage.clear();
-        for (const s of ['edit', 'map', 'route', 'display', 'print']) {
+        for (const s of ['edit','map','route','display','print','build','view','numbers','export']) {
           localStorage.setItem('navaid.sec.' + s, '1');
         }
         localStorage.setItem('__test_init_v1', '1');
