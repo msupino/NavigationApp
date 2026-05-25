@@ -163,7 +163,7 @@ window.S = {
   tbSecBuild: '✏️ בנייה',
   tbSecView: '👁 תצוגה',
   tbSecNumbers: '📋 דפיות',
-  tbSecExport: '📤 ייצוא',
+  tbSecExport: '📤 ייצוא/ייבוא',
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
   exportModalTitle: 'ייצוא PNG',
