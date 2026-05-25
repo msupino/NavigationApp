@@ -33,10 +33,10 @@ async function boot(page, lang = 'en') {
 // #218 — Show/Pin label relabel.
 // ---------------------------------------------------------------------------
 test.describe('#218 — Show/Pin label relabel', () => {
-  test('navWP toggle label reads "Show/Pin Navigation Waypoints"', async ({ page }) => {
+  test('navWP toggle label reads "Show/Pin map waypoints"', async ({ page }) => {
     await boot(page);
     const text = await page.locator('label[data-i18n-title="tbShowNavWpTitle"]').textContent();
-    expect(text).toMatch(/Show\/Pin Navigation Waypoints/i);
+    expect(text).toMatch(/Show\/Pin map waypoints/i);
   });
 
   test('airfields toggle label reads "Show/Pin Airfields"', async ({ page }) => {
