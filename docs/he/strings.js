@@ -159,4 +159,9 @@ window.S = {
   tbSecExport: '📤 ייצוא',
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
+  exportModalTitle: 'ייצוא PNG',
+  exportShowNavWP: 'הדפס נקודות ציון נתיב',
+  exportShowAirfields: 'הדפס שדות תעופה',
+  exportLayer: 'שכבת מפה',
+  exportBtn: 'ייצא',
 };
