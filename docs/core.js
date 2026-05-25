@@ -197,6 +197,11 @@ window.S = Object.assign({
   tbSecExport: '📤 Export',
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
+  exportModalTitle: 'Export PNG',
+  exportShowNavWP: 'Show Nav Waypoints',
+  exportShowAirfields: 'Show Airfields',
+  exportLayer: 'Layer',
+  exportBtn: 'Export',
 }, window.S || {});
 
 // Fill data-i18n / data-i18n-title / data-i18n-placeholder / data-i18n-aria
