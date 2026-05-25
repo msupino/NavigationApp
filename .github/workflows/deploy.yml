@@ -13,6 +13,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  deployments: write
 
 concurrency:
   group: ${{ github.event_name == 'pull_request' && format('pages-pr-{0}', github.event.number) || 'pages' }}
@@ -126,6 +127,19 @@ jobs:
               rm -rf "$STAGING"
               echo "  → /pr/$NUM/ and /branch/$BRANCH/ ($SHA)"
             done
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Create PR deployment
+        if: github.event_name == 'pull_request'
+        run: |
+          URL="https://msupino.github.io/NavigationApp/pr/${{ github.event.number }}/"
+          gh api repos/${{ github.repository }}/deployments \
+            --field ref="${{ github.head_ref }}" \
+            --field environment="pr-preview-${{ github.event.number }}" \
+            --field environment_url="$URL" \
+            --field auto_merge=false \
+            --field required_contexts='[]' \
+            --field description="PR preview at $URL"
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Upload artifact
