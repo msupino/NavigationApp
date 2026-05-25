@@ -89,6 +89,7 @@ test.describe('PNG export filename respects pageSize + orient', () => {
     await page.locator('#page-a4').click();
     const dl = page.waitForEvent('download', { timeout: 30000 });
     await page.locator('#print').click();
+    await page.locator('.modal-back button:first-child').click();
     const download = await dl;
     expect(download.suggestedFilename()).toMatch(/^navigation-A4-.+\.png$/);
   });
@@ -107,9 +108,8 @@ test.describe('PNG export filename respects pageSize + orient', () => {
     // pageSize stays null — exporter falls back to the baseName (layer-derived).
     const dl = page.waitForEvent('download', { timeout: 30000 });
     await page.locator('#print').click();
+    await page.locator('.modal-back button:first-child').click();
     const download = await dl;
-    // Filename pattern: navigation-<base>-<timestamp>.png. We only assert
-    // the suffix shape; the base depends on the layer name.
     expect(download.suggestedFilename()).toMatch(/^navigation-.+-\d.+\.png$/);
   });
 });

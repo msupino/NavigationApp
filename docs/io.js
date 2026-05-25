@@ -882,6 +882,7 @@ function chooseOrientation(size, onPick) {
   const title = document.createElement('div');
   title.className = 'modal-title';
   title.textContent = size + S.pageOrientation;
+  addModalCloseX(box, () => { document.removeEventListener('keydown', onEsc); back.remove(); });
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
   // #86: Escape closes the picker (counts as cancel).
@@ -926,6 +927,32 @@ function showExportModal() {
   title.textContent = S.exportModalTitle;
   box.appendChild(title);
 
+  addModalCloseX(box, () => { restoreOrig(); close(); });
+
+  // Drag to reposition the modal via the title bar.
+  let drag = null;
+  title.addEventListener('mousedown', function (e) {
+    const r = box.getBoundingClientRect();
+    drag = { ox: e.clientX - r.left, oy: e.clientY - r.top };
+    box.style.position = 'fixed';
+    box.style.left = r.left + 'px';
+    box.style.top = r.top + 'px';
+    box.style.margin = '0';
+    const onMove = function (e) {
+      if (!drag) return;
+      box.style.left = (e.clientX - drag.ox) + 'px';
+      box.style.top = (e.clientY - drag.oy) + 'px';
+    };
+    const onUp = function () {
+      drag = null;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  });
+
   const body = document.createElement('div');
   body.style.cssText = 'display:flex;flex-direction:column;gap:10px;padding:4px 0';
 
@@ -969,6 +996,25 @@ function showExportModal() {
 
   box.appendChild(body);
 
+  // Save original state (before applying defaults) so Cancel can restore.
+  const origNavWP = showNavWP;
+  const origAirfields = showAirfields;
+  const origLayer = (function () {
+    for (const n in layers) if (map.hasLayer(layers[n])) return n;
+    return null;
+  })();
+
+  // Apply the modal's default state immediately so the user sees what
+  // the PNG will look like before touching any control.
+  showNavWP = navWpCb.checked;
+  showAirfields = afCb.checked;
+  const chosen = layerSel.value;
+  if (chosen !== origLayer) {
+    for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
+    map.addLayer(layers[chosen]);
+  }
+  draw();
+
   // Buttons.
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
@@ -978,36 +1024,47 @@ function showExportModal() {
   cancelBtn.textContent = S.cancel;
   cancelBtn.className = 'modal-cancel';
 
-  function close() { window.removeEventListener('keydown', onEsc); back.remove(); }
-  function onEsc(e) { if (e.key === 'Escape') close(); }
-
-  exportBtn.onclick = () => {
-    const prevNavWP = showNavWP;
-    const prevAirfields = showAirfields;
-    const prevLayer = (function () {
+  function restoreOrig() {
+    showNavWP = origNavWP;
+    showAirfields = origAirfields;
+    const cur = (function () {
       for (const n in layers) if (map.hasLayer(layers[n])) return n;
       return null;
     })();
-    showNavWP = navWpCb.checked;
-    showAirfields = afCb.checked;
-    const chosen = layerSel.value;
-    if (chosen !== prevLayer) {
+    if (cur !== origLayer) {
       for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
-      map.addLayer(layers[chosen]);
+      if (origLayer) map.addLayer(layers[origLayer]);
     }
-    NavAid._restoreExport = function () {
-      showNavWP = prevNavWP;
-      showAirfields = prevAirfields;
-      if (chosen !== prevLayer) {
-        for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
-        if (prevLayer) map.addLayer(layers[prevLayer]);
-      }
-      NavAid._restoreExport = null;
-    };
+    draw();
+  }
+
+  // Live preview: apply changes to the map immediately.
+  navWpCb.onchange = function () {
+    showNavWP = navWpCb.checked;
+    draw();
+  };
+  afCb.onchange = function () {
+    showAirfields = afCb.checked;
+    draw();
+  };
+  layerSel.onchange = function () {
+    const chosen = layerSel.value;
+    for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
+    map.addLayer(layers[chosen]);
+  };
+
+  function close() { window.removeEventListener('keydown', onEsc); back.remove(); }
+  function onEsc(e) { if (e.key === 'Escape') { restoreOrig(); close(); } }
+
+  exportBtn.onclick = () => {
+    NavAid._restoreExport = restoreOrig;
     close();
     exportPNG();
   };
-  cancelBtn.onclick = close;
+  cancelBtn.onclick = function () {
+    restoreOrig();
+    close();
+  };
 
   btns.appendChild(exportBtn);
   btns.appendChild(cancelBtn);
@@ -1357,6 +1414,7 @@ function flyRoute() {
   const title = document.createElement('div');
   title.className = 'modal-title';
   title.textContent = S.chooseGeMode;
+  addModalCloseX(box, () => { document.removeEventListener('keydown', onEsc); back.remove(); });
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
   function onEsc(e) { if (e.key === 'Escape') { document.removeEventListener('keydown', onEsc); back.remove(); } }
@@ -1577,6 +1635,7 @@ function showPlateViewer(filename, label) {
 }
 
 function showChartsModal() {
+  if (fpOpen) closeFlightPlan();
   const back = document.createElement('div');
   back.className = 'modal-back';
   const box = document.createElement('div');
