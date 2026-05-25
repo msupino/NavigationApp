@@ -60,6 +60,9 @@ window.S = Object.assign({
   tbShowNavWp: 'Show Navigation Waypoints',         // Map overlay toggle
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbSearchPlaceholder: '🔍 Find Navigation Waypoint',
+  tbSearchOpen: '🔍 Find',
+  tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
+  modalCloseTitle: 'Close',
   deleteWp: 'Delete Waypoint',                      // inspector button
   clearConfirm: 'Remove all waypoints and notes?',
   errBadCoords: 'file has invalid waypoint coordinates',
