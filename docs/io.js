@@ -1565,6 +1565,33 @@ function showChartsModal() {
   title.textContent = S.plates;
   box.appendChild(title);
 
+  addModalCloseX(box, () => { window.removeEventListener('keydown', onEsc); back.remove(); });
+
+  let drag = null;
+  title.addEventListener('mousedown', function (e) {
+    const r = box.getBoundingClientRect();
+    drag = { ox: e.clientX - r.left, oy: e.clientY - r.top };
+    box.style.position = 'fixed';
+    box.style.left = r.left + 'px';
+    box.style.top = r.top + 'px';
+    box.style.margin = '0';
+    const onMove = function (e) {
+      if (!drag) return;
+      box.style.left = (e.clientX - drag.ox) + 'px';
+      box.style.top = (e.clientY - drag.oy) + 'px';
+    };
+    const onUp = function () {
+      drag = null;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  });
+
+  const scrollArea = document.createElement('div');
+  scrollArea.className = 'fp-scroll';
   const body = document.createElement('div');
   body.className = 'charts-modal-body';
 
@@ -1588,11 +1615,20 @@ function showChartsModal() {
       return;
     }
     for (const af of withPlates) {
-      const section = document.createElement('details');
+      const section = document.createElement('div');
       section.className = 'charts-airport';
-      const summ = document.createElement('summary');
-      summ.textContent = af.name + (af.en ? ' — ' + af.en : '');
-      section.appendChild(summ);
+      const header = document.createElement('div');
+      header.className = 'charts-airport-header';
+      header.textContent = af.name + (af.en ? ' — ' + af.en : '');
+      header.onclick = function () {
+        const pane = this.nextElementSibling;
+        pane.classList.toggle('open');
+        this.classList.toggle('open');
+      };
+      section.appendChild(header);
+
+      const pane = document.createElement('div');
+      pane.className = 'charts-airport-body';
 
       const groups = {};
       for (const fn of af.plates) {
@@ -1615,8 +1651,9 @@ function showChartsModal() {
           chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
           catDiv.appendChild(chip);
         }
-        section.appendChild(catDiv);
+        pane.appendChild(catDiv);
       }
+      section.appendChild(pane);
       body.appendChild(section);
     }
   }
@@ -1630,14 +1667,13 @@ function showChartsModal() {
     loadAirfields().then(() => { if (airfields) renderList(airfields); });
   }
 
-  box.appendChild(body);
+  scrollArea.appendChild(body);
+  box.appendChild(scrollArea);
 
   const att = document.createElement('div');
   att.className = 'plate-attribution';
   att.textContent = S.plateAttribution;
   box.appendChild(att);
-
-  addModalCloseX(box, () => { window.removeEventListener('keydown', onEsc); back.remove(); });
 
   function onEsc(e) {
     if (e.key === 'Escape') { window.removeEventListener('keydown', onEsc); back.remove(); }
