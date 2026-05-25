@@ -906,36 +906,55 @@ function showExportModal() {
   cancelBtn.textContent = S.cancel;
   cancelBtn.className = 'modal-cancel';
 
+  // Save original state so we can restore on cancel.
+  const origNavWP = showNavWP;
+  const origAirfields = showAirfields;
+  const origLayer = (function () {
+    for (const n in layers) if (map.hasLayer(layers[n])) return n;
+    return null;
+  })();
+
+  function restoreOrig() {
+    showNavWP = origNavWP;
+    showAirfields = origAirfields;
+    const cur = (function () {
+      for (const n in layers) if (map.hasLayer(layers[n])) return n;
+      return null;
+    })();
+    if (cur !== origLayer) {
+      for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
+      if (origLayer) map.addLayer(layers[origLayer]);
+    }
+    draw();
+  }
+
+  // Live preview: apply changes to the map immediately.
+  navWpCb.onchange = function () {
+    showNavWP = navWpCb.checked;
+    draw();
+  };
+  afCb.onchange = function () {
+    showAirfields = afCb.checked;
+    draw();
+  };
+  layerSel.onchange = function () {
+    const chosen = layerSel.value;
+    for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
+    map.addLayer(layers[chosen]);
+  };
+
   function close() { window.removeEventListener('keydown', onEsc); back.remove(); }
   function onEsc(e) { if (e.key === 'Escape') close(); }
 
   exportBtn.onclick = () => {
-    const prevNavWP = showNavWP;
-    const prevAirfields = showAirfields;
-    const prevLayer = (function () {
-      for (const n in layers) if (map.hasLayer(layers[n])) return n;
-      return null;
-    })();
-    showNavWP = navWpCb.checked;
-    showAirfields = afCb.checked;
-    const chosen = layerSel.value;
-    if (chosen !== prevLayer) {
-      for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
-      map.addLayer(layers[chosen]);
-    }
-    NavAid._restoreExport = function () {
-      showNavWP = prevNavWP;
-      showAirfields = prevAirfields;
-      if (chosen !== prevLayer) {
-        for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
-        if (prevLayer) map.addLayer(layers[prevLayer]);
-      }
-      NavAid._restoreExport = null;
-    };
+    NavAid._restoreExport = restoreOrig;
     close();
     exportPNG();
   };
-  cancelBtn.onclick = close;
+  cancelBtn.onclick = function () {
+    restoreOrig();
+    close();
+  };
 
   btns.appendChild(exportBtn);
   btns.appendChild(cancelBtn);
