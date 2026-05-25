@@ -199,6 +199,21 @@
           <input type="number" id="mag-var" min="-30" max="30" step="0.5" value="-5">°
           <span id="mag-var-eqv" class="hint"></span>
         </label>
+        <label class="navtoggle" data-i18n-title="tbAircraftTitle">
+          <span data-i18n="tbAircraft"></span>
+          <select id="aircraft-select">
+            <option value="">—</option>
+            <option value="C152">C152</option>
+            <option value="C172">C172</option>
+            <option value="PA-28">PA-28</option>
+            <option value="custom" data-i18n="tbCustom"></option>
+          </select>
+        </label>
+        <div id="aircraft-custom" class="hidden">
+          <input type="number" id="aircraft-gph" min="1" max="50" step="0.5" placeholder="GPH">
+          <input type="number" id="aircraft-tank" min="5" max="200" step="0.5" placeholder="Tank (gal)">
+          <input type="number" id="aircraft-reserve" min="0" max="120" step="5" placeholder="Reserve (min)">
+        </div>
       </div>
     </div>
 

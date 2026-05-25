@@ -80,11 +80,17 @@ window.S = Object.assign({
   },
   errNoLegs: 'No legs yet — drop at least two waypoints first.',
   flightPlan: 'Flight plan',
-  fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time'],
+  fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time', 'Fuel (gal)', 'Remaining'],
   fpReturn: 'Return route',
   fpTotal: 'Total',
   fpClose: 'Close',
   fpPrint: 'Print',
+  fpFuel: 'Fuel',
+  fpRemaining: 'Remaining',
+  fpFuelWarn: function(h) { return '⚠ Total ' + h.toFixed(1) + ' gal exceeds tank capacity minus reserve'; },
+  tbAircraft: 'Aircraft',
+  tbAircraftTitle: 'Select aircraft for fuel calculation',
+  tbCustom: 'Custom',
   pageOrientation: ' page — orientation',
   landscape: 'Landscape',
   portrait: 'Portrait',
@@ -247,6 +253,26 @@ let pageSize = null;        // null | 'A3' | 'A4'
 // CVFR routes are tall (north–south Israel airspace).
 var pageOrient = 'portrait';
 let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre
+var aircraft = null;               // null | {type, gph, tankCap, reserveMin}
+
+// Fuel / endurance: per-leg fuel = (leg_time × gph), remaining = tankCap − cumulative.
+// Presets are the most common training aircraft in Israel.
+const aircraftPresets = {
+  C152:  { gph: 4.5, tankCap: 24.5, reserveMin: 45 },
+  C172:  { gph: 8.5, tankCap: 56,   reserveMin: 45 },
+  'PA-28': { gph: 8.5, tankCap: 50, reserveMin: 45 },
+};
+
+function loadAircraft() {
+  try {
+    const raw = localStorage.getItem('navaid.aircraft');
+    if (raw) { aircraft = JSON.parse(raw); }
+  } catch (e) { /* storage unavailable */ }
+}
+
+function saveAircraft() {
+  try { localStorage.setItem('navaid.aircraft', JSON.stringify(aircraft)); } catch (e) {}
+}
 
 // Yellow text-background colour with the global opacity scale applied.
 const yellowFill = (a) => `rgba(255,246,170,${a * yellowAlpha})`;

@@ -503,7 +503,9 @@ function showFlightPlan() {
   const distCells = [];                 // leg index -> distance cell
   const hdgCells = [];                  // leg index -> heading cell
   const timeCells = [];                 // leg index -> time cell
-  let totDistCell, totTimeCell;
+  const fuelCells = [];                 // leg index -> fuel (gal) cell
+  const remCells = [];                  // leg index -> remaining (gal) cell
+  let totDistCell, totTimeCell, totFuelCell, totRemCell, fuelWarnCell;
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     const leg = state.legs[i];
@@ -547,6 +549,12 @@ function showFlightPlan() {
     distCells[i] = distCell;
     hdgCells[i] = hdgCell;
     tr.appendChild(timeCell);
+    const fuelCell = planCell('');
+    fuelCells[i] = fuelCell;
+    tr.appendChild(fuelCell);
+    const remCell = planCell('');
+    remCells[i] = remCell;
+    tr.appendChild(remCell);
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
@@ -563,11 +571,24 @@ function showFlightPlan() {
   trF.appendChild(planCell(''));        // Alt column
   totTimeCell = planCell('');
   trF.appendChild(totTimeCell);
+  totFuelCell = planCell('');
+  trF.appendChild(totFuelCell);
+  totRemCell = planCell('');
+  trF.appendChild(totRemCell);
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
 
+  const fuelWarnTr = document.createElement('tr');
+  fuelWarnTr.className = 'hidden';
+  fuelWarnCell = document.createElement('td');
+  fuelWarnCell.colSpan = 10;
+  fuelWarnCell.style.cssText = 'color:#f90;font-size:11px;text-align:center;padding:4px';
+  fuelWarnTr.appendChild(fuelWarnCell);
+  tfoot.appendChild(fuelWarnTr);
+
   function refresh() {
-    let td = 0, th = 0;
+    let td = 0, th = 0, tf = 0;
+    const ac = aircraft;
     for (let i = 0; i < state.legs.length; i++) {
       const A = state.waypoints[i], B = state.waypoints[i + 1];
       if (!A || !B) continue;
@@ -578,6 +599,15 @@ function showFlightPlan() {
       td += dist;
       th += dur;
       timeCells[i].textContent = dur > 0 ? toHMS(dur) : '--';
+      if (ac) {
+        const fuel = dur * ac.gph;
+        tf += fuel;
+        fuelCells[i].textContent = fuel.toFixed(1);
+        remCells[i].textContent = Math.max(0, ac.tankCap - tf).toFixed(1);
+      } else {
+        fuelCells[i].textContent = '--';
+        remCells[i].textContent = '--';
+      }
       // Sync the editable inputs unless the user is mid-edit in that cell.
       if (speedInputs[i] && document.activeElement !== speedInputs[i])
         speedInputs[i].value = state.legs[i].flightSpeed;
@@ -594,6 +624,18 @@ function showFlightPlan() {
     }
     totDistCell.textContent = td.toFixed(1);
     totTimeCell.textContent = th > 0 ? toHMS(th) : '--';
+    if (ac) {
+      totFuelCell.textContent = tf.toFixed(1);
+      totRemCell.textContent = Math.max(0, ac.tankCap - tf).toFixed(1);
+      const reserveGal = (ac.reserveMin / 60) * ac.gph;
+      const warn = tf > ac.tankCap - reserveGal;
+      fuelWarnTr.classList.toggle('hidden', !warn);
+      if (warn) fuelWarnCell.textContent = S.fpFuelWarn(tf);
+    } else {
+      totFuelCell.textContent = '--';
+      totRemCell.textContent = '--';
+      fuelWarnTr.classList.add('hidden');
+    }
   }
   refresh();
   scrollArea.appendChild(table);
@@ -624,7 +666,9 @@ function showFlightPlan() {
     const rDistCells = [];
     const rHdgCells = [];
     const rTimeCells = [];
-    let rTotDistCell, rTotTimeCell;
+    const rFuelCells = [];
+    const rRemCells = [];
+    let rTotDistCell, rTotTimeCell, rTotFuelCell, rTotRemCell;
 
     for (let i = 0; i < state.legs.length; i++) {
       const ri = state.legs.length - 1 - i;   // reverse leg order — flyable from destination
@@ -670,6 +714,12 @@ function showFlightPlan() {
       rDistCells[i] = distCell;
       rHdgCells[i] = hdgCell;
       tr.appendChild(timeCell);
+      const fuelCell = planCell('');
+      rFuelCells[i] = fuelCell;
+      tr.appendChild(fuelCell);
+      const remCell = planCell('');
+      rRemCells[i] = remCell;
+      tr.appendChild(remCell);
       rtbody.appendChild(tr);
     }
     rtable.appendChild(rtbody);
@@ -686,12 +736,36 @@ function showFlightPlan() {
     rtrF.appendChild(planCell(''));
     rTotTimeCell = planCell('');
     rtrF.appendChild(rTotTimeCell);
+    rTotFuelCell = planCell('');
+    rtrF.appendChild(rTotFuelCell);
+    rTotRemCell = planCell('');
+    rtrF.appendChild(rTotRemCell);
     rtfoot.appendChild(rtrF);
     rtable.appendChild(rtfoot);
 
+    const rFuelWarnTr = document.createElement('tr');
+    rFuelWarnTr.className = 'hidden';
+    let rFuelWarnCell = document.createElement('td');
+    rFuelWarnCell.colSpan = 10;
+    rFuelWarnCell.style.cssText = 'color:#f90;font-size:11px;text-align:center;padding:4px';
+    rFuelWarnTr.appendChild(rFuelWarnCell);
+    rtfoot.appendChild(rFuelWarnTr);
+
     retRefresh = function () {
       if (state.legs.length !== rDistCells.length) { closeFlightPlan(); return; }
-      let td = 0, th = 0;
+      let td = 0, th = 0, tf = 0;
+      const fwdFuel = (function () {
+        let f = 0;
+        if (!aircraft) return 0;
+        for (let j = 0; j < state.legs.length; j++) {
+          const A = state.waypoints[j], B = state.waypoints[j + 1];
+          if (!A || !B) continue;
+          const { dist } = geo(A, B);
+          const dur = state.legs[j].flightSpeed > 0 ? dist / state.legs[j].flightSpeed : 0;
+          f += dur * aircraft.gph;
+        }
+        return f;
+      })();
       for (let i = 0; i < state.legs.length; i++) {
         const ri = state.legs.length - 1 - i;
         const A = state.waypoints[ri + 1], B = state.waypoints[ri];
@@ -703,6 +777,15 @@ function showFlightPlan() {
         td += dist;
         th += dur;
         rTimeCells[i].textContent = dur > 0 ? toHMS(dur) : '--';
+        if (aircraft) {
+          const fuel = dur * aircraft.gph;
+          tf += fuel;
+          rFuelCells[i].textContent = fuel.toFixed(1);
+          rRemCells[i].textContent = Math.max(0, aircraft.tankCap - fwdFuel - (tf - fuel) - fuel).toFixed(1);
+        } else {
+          rFuelCells[i].textContent = '--';
+          rRemCells[i].textContent = '--';
+        }
         if (rSpeedInputs[i] && document.activeElement !== rSpeedInputs[i])
           rSpeedInputs[i].value = state.legs[ri].outboundSpeed;
         if (rAltInputs[i] && document.activeElement !== rAltInputs[i])
@@ -710,6 +793,19 @@ function showFlightPlan() {
       }
       rTotDistCell.textContent = td.toFixed(1);
       rTotTimeCell.textContent = th > 0 ? toHMS(th) : '--';
+      if (aircraft) {
+        const totalFuel = fwdFuel + tf;
+        rTotFuelCell.textContent = tf.toFixed(1);
+        rTotRemCell.textContent = Math.max(0, aircraft.tankCap - totalFuel).toFixed(1);
+        const reserveGal = (aircraft.reserveMin / 60) * aircraft.gph;
+        const warn = totalFuel > aircraft.tankCap - reserveGal;
+        rFuelWarnTr.classList.toggle('hidden', !warn);
+        if (warn) rFuelWarnCell.textContent = S.fpFuelWarn(totalFuel);
+      } else {
+        rTotFuelCell.textContent = '--';
+        rTotRemCell.textContent = '--';
+        rFuelWarnTr.classList.add('hidden');
+      }
     };
     retRefresh();
     scrollArea.appendChild(rtable);

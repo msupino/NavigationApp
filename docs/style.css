@@ -295,16 +295,31 @@ html, body {
 .wp-search-item:hover,
 .wp-search-item.active { background: #1d6fe0; color: #fff; }
 #toolbar .navtoggle select {
-  flex: 1;
-  min-width: 0;
   font: inherit;
-  font-size: 13px;
+  font-size: 11px;
   color: #e8e8e8;
   background: #2f2b2b;
-  border: 1px solid #443f3f;
+  border: 1px solid #3a3636;
   border-radius: 4px;
   padding: 2px 4px;
   cursor: pointer;
+}
+#aircraft-custom {
+  display: flex;
+  gap: 4px;
+  padding: 4px 0 2px 12px;
+}
+#aircraft-custom.hidden { display: none; }
+#aircraft-custom input {
+  font: inherit;
+  font-size: 11px;
+  width: 64px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #3a3636;
+  border-radius: 4px;
+  padding: 2px 4px;
+  text-align: center;
 }
 
 #inspector {

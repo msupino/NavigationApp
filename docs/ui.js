@@ -447,6 +447,59 @@ document.getElementById('mag-var').oninput = e => {
   showMagVarEqv();
   draw();
 };
+// Aircraft selector for fuel/endurance calculation.
+(function wireAircraft() {
+  const sel = document.getElementById('aircraft-select');
+  const customDiv = document.getElementById('aircraft-custom');
+  const gphInp = document.getElementById('aircraft-gph');
+  const tankInp = document.getElementById('aircraft-tank');
+  const reserveInp = document.getElementById('aircraft-reserve');
+  function syncUI() {
+    if (!aircraft) { sel.value = ''; customDiv.classList.add('hidden'); return; }
+    if (aircraftPresets[aircraft.type]) {
+      sel.value = aircraft.type;
+      customDiv.classList.add('hidden');
+    } else {
+      sel.value = 'custom';
+      customDiv.classList.remove('hidden');
+      gphInp.value = aircraft.gph;
+      tankInp.value = aircraft.tankCap;
+      reserveInp.value = aircraft.reserveMin;
+    }
+  }
+  function readCustom() {
+    const gph = parseFloat(gphInp.value);
+    const tank = parseFloat(tankInp.value);
+    const reserve = parseFloat(reserveInp.value);
+    if (isNaN(gph) || isNaN(tank)) return null;
+    return { type: 'custom', gph: gph, tankCap: tank, reserveMin: isNaN(reserve) ? 0 : reserve };
+  }
+  sel.onchange = function () {
+    const v = sel.value;
+    if (!v) { aircraft = null; customDiv.classList.add('hidden'); saveAircraft(); draw(); return; }
+    if (v === 'custom') {
+      customDiv.classList.remove('hidden');
+      if (!aircraft || aircraft.type !== 'custom') {
+        aircraft = readCustom() || { type: 'custom', gph: 8.5, tankCap: 56, reserveMin: 45 };
+      }
+      gphInp.value = aircraft.gph;
+      tankInp.value = aircraft.tankCap;
+      reserveInp.value = aircraft.reserveMin;
+    } else {
+      customDiv.classList.add('hidden');
+      const p = aircraftPresets[v];
+      aircraft = { type: v, gph: p.gph, tankCap: p.tankCap, reserveMin: p.reserveMin };
+    }
+    saveAircraft(); draw();
+  };
+  gphInp.oninput = tankInp.oninput = reserveInp.oninput = function () {
+    if (sel.value !== 'custom') return;
+    const a = readCustom();
+    if (a) { aircraft = a; saveAircraft(); draw(); }
+  };
+  loadAircraft();
+  syncUI();
+})();
 document.getElementById('page-a3').onclick = () => setPage('A3');
 document.getElementById('page-a4').onclick = () => setPage('A4');
 // Restore last-used orientation and wire the toolbar toggle button.
