@@ -999,13 +999,16 @@ function exportPNG() {
     o.save();
     o.scale(s, s);
     o.translate(-fr.x, -fr.y);
-    drawNavWaypoints();
-    drawAirfields();
-    drawLegs();
-    drawWaypoints();
-    drawNotes();
-    o.restore();
-    octx = prevOctx;
+    try {
+      drawNavWaypoints();
+      drawAirfields();
+      drawLegs();
+      drawWaypoints();
+      drawNotes();
+      o.restore();
+    } finally {
+      octx = prevOctx;
+    }
 
     out.toBlob(b => {
       btn.textContent = btnLabel;
