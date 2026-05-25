@@ -166,7 +166,7 @@ window.S = {
   tbSecPrint: '🖨 הדפסה',
   tbSecBuild: '✏️ בנייה',
   tbSecView: '👁 תצוגה',
-  tbSecNumbers: '📋 דפיות',
+  tbSecCharts: '📋 דפיות',
   tbSecExport: '📤 ייצוא/ייבוא',
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',

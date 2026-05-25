@@ -36,7 +36,7 @@ test.describe('Flight plan', () => {
       try {
         localStorage.clear();
         sessionStorage.clear();
-        for (const s of ['edit','map','route','display','print','build','view','numbers','export']) {
+        for (const s of ['build','view','display','charts','export','print']) {
           localStorage.setItem('navaid.sec.' + s, '1');
         }
       } catch (e) {}
