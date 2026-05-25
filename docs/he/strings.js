@@ -3,7 +3,7 @@
 window.S = {
   navWpUrl: 'nav-waypoints.json?v=3',
   navWpSearchField: 'he',
-  airfieldsUrl: 'airfields.json?v=2',
+  airfieldsUrl: 'airfields.json?v=3',
   airfieldLabelField: 'he',
 
   // --- Waypoint terminology -------------------------------------------
@@ -126,6 +126,7 @@ window.S = {
   tbShowAirfields: 'הצג/נעץ שדות תעופה',
   tbShowAirfieldsTitle: 'הצג שדות תעופה ישראלים מפורסמים (מקור BYOP)',
   plates: 'דפיות',
+  runways: 'מסלולים',
   plateCategoryApproach: 'גישה',
   plateCategorySid: 'SID',
   plateCategoryStar: 'STAR',

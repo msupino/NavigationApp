@@ -40,7 +40,7 @@ var magVar = -5;                       // signed offset added to true heading
 window.S = Object.assign({
   navWpUrl: 'nav-waypoints.json?v=3',  // resolved relative to index.html (docs/)
   navWpSearchField: 'name',            // which field to show/search in results
-  airfieldsUrl: 'airfields.json?v=2',  // resolved relative to index.html (docs/)
+  airfieldsUrl: 'airfields.json?v=3',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
 
   // --- Waypoint terminology -------------------------------------------
@@ -164,6 +164,7 @@ window.S = Object.assign({
   tbShowAirfields: 'Show/Pin Airfields',
   tbShowAirfieldsTitle: 'Overlay published Israeli airfields (BYOP source)',
   plates: 'Charts',
+  runways: 'Runways',
   plateCategoryApproach: 'Approach',
   plateCategorySid: 'SID',
   plateCategoryStar: 'STAR',

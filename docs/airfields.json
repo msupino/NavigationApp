@@ -12,6 +12,9 @@
         "LLAR_airport_Chart.pdf",
         "LLAR_airport_Circuit.pdf",
         "LLAR_airport_Text.pdf"
+      ],
+      "runways": [
+        "17/35"
       ]
     },
     {
@@ -59,6 +62,11 @@
         "LLBG_VAC_en.pdf",
         "LLBG_airport_Chart.pdf",
         "LLBG_airport_VFR.pdf"
+      ],
+      "runways": [
+        "08/26",
+        "12/30",
+        "21/03"
       ]
     },
     {
@@ -74,6 +82,9 @@
         "LLBS_airport_Parking.pdf",
         "LLBS_airport_Text.pdf",
         "LLBS_airport_Training Areas.pdf"
+      ],
+      "runways": [
+        "17/35"
       ]
     },
     {
@@ -104,6 +115,9 @@
         "LLER_VAC_19-1_en.pdf",
         "LLER_VFRTA_en.pdf",
         "LLER_airport_Chart.pdf"
+      ],
+      "runways": [
+        "03/21"
       ]
     },
     {
@@ -116,6 +130,9 @@
       "plates": [
         "LLES_airport_CVFR.pdf",
         "LLES_airport_Text.pdf"
+      ],
+      "runways": [
+        "09/27"
       ]
     },
     {
@@ -180,6 +197,9 @@
         "LLHA_airport_Low Altitude.pdf",
         "LLHA_airport_Training Areas.pdf",
         "LLHA_airport_Visual Approach Chart.pdf"
+      ],
+      "runways": [
+        "16/34"
       ]
     },
     {
@@ -204,6 +224,9 @@
         "LLHZ_airport_Heli Training Areas.pdf",
         "LLHZ_airport_Training Areas.pdf",
         "LLHZ_departure_ATS Route Visual.pdf"
+      ],
+      "runways": [
+        "11/29"
       ]
     },
     {
@@ -226,6 +249,9 @@
         "LLIB_approach_Visual Approach.pdf",
         "LLIB_departure_SIDS.pdf",
         "LLIB_emergency_Lost Communication.pdf"
+      ],
+      "runways": [
+        "18/36"
       ]
     },
     {
@@ -239,6 +265,9 @@
         "LLKS_airport_CVFR.pdf",
         "LLKS_airport_Chart.pdf",
         "LLKS_airport_Text.pdf"
+      ],
+      "runways": [
+        "18/36"
       ]
     },
     {
@@ -268,6 +297,9 @@
         "LLMG_airport_Text.pdf",
         "LLMG_airport_Training Areas.pdf",
         "LLMG_departure_CVFR.pdf"
+      ],
+      "runways": [
+        "11/29"
       ]
     },
     {
@@ -282,6 +314,9 @@
         "LLMZ_airport_Chart.pdf",
         "LLMZ_airport_Text.pdf",
         "LLMZ_airport_Visual Circuit.pdf"
+      ],
+      "runways": [
+        "02/20"
       ]
     },
     {
