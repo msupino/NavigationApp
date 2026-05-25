@@ -148,6 +148,8 @@ window.S = Object.assign({
   tbChartsTitle: 'Browse approach charts for all airfields',
   tbFly: '✈️ Open route in Google Earth',
   tbFlyTitle: 'Save a Google Earth tour of the route at the planned leg altitudes',
+  tbGpxExport: '📍 Export GPX',
+  tbGpxExportTitle: 'Export route as GPX for portable GPS units',
   tbShowReturn: 'Show return path',
   tbShowReturnTitle: 'Show return-direction (outbound) info',
   tbShowMidLeg: 'Show leg distance',
