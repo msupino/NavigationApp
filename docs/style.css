@@ -729,7 +729,6 @@ html, body {
   line-height: 1.3;
 }
 
-<<<<<<< HEAD
 /* Shared top-right ✕ close button on modal boxes — mirrors the inspector's
  * #insp-close so every dismissable surface uses the same affordance. */
 .modal {
@@ -839,3 +838,15 @@ html, body {
   pointer-events: none;
 }
 .toast.show { opacity: 1; }
+
+/* Quick-action row at the top of the toolbar (#191). Always visible so the
+ * 5 most-used actions don't require expanding a section. */
+#tb-quick {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #3a3636;
+  margin-bottom: 2px;
+}
+#tb-quick button { font-weight: 600; }
