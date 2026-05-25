@@ -205,12 +205,42 @@ wpSearch.addEventListener('keydown', e => {
     const first = wpResults.querySelector('.wp-search-item');
     if (first) first.click();
   } else if (e.key === 'Escape') {
-    closeSearch();
-    wpSearch.value = '';
+    hideSearchOverlay();
+  }
+});
+// Floating search overlay — Ctrl/Cmd-F opens it, Escape or ✕ closes it. The
+// search input moved out of the toolbar Build section so it no longer
+// requires the section to be expanded.
+const searchOverlay = document.getElementById('search-overlay');
+function showSearchOverlay() {
+  searchOverlay.classList.remove('hidden');
+  wpSearch.focus();
+  wpSearch.select();
+}
+function hideSearchOverlay() {
+  searchOverlay.classList.add('hidden');
+  closeSearch();
+  wpSearch.value = '';
+}
+document.getElementById('search-trigger').onclick = showSearchOverlay;
+document.getElementById('search-close').onclick = hideSearchOverlay;
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+    const t = e.target;
+    // Allow native find-in-page when the user is already typing somewhere.
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+      if (t !== wpSearch) return;
+    }
+    e.preventDefault();
+    showSearchOverlay();
+  } else if (e.key === 'Escape' && !searchOverlay.classList.contains('hidden')) {
+    hideSearchOverlay();
   }
 });
 document.addEventListener('click', e => {
-  if (!e.target.closest('.navsearch')) closeSearch();
+  if (!searchOverlay.contains(e.target) && e.target.id !== 'search-trigger') {
+    closeSearch();
+  }
 });
 // Ctrl/Cmd-F focuses the nav-waypoint search instead of the browser's
 // built-in page find — the map has no text to find anyway. Bail when the
