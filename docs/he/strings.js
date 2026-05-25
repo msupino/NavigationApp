@@ -19,7 +19,7 @@ window.S = {
   tbShowWpNamesTitle: 'הצג שמות ציוני דרך (כבוי = עיגול ריק)',
   tbWpSize: 'גודל ציון דרך',                         // מחוון בקטע תצוגה
   tbWpSizeTitle: 'גודל ציון דרך ושמו',
-  tbShowNavWp: 'הצג/נעץ ציוני ניווט',                // מתג שכבת מפה
+  tbShowNavWp: 'הצג/נעץ ציוני ניווט במפה',                // מתג שכבת מפה
   tbShowNavWpTitle: 'הצג ציוני דיווח VFR ישראלים',
   tbSearchPlaceholder: '🔍 חפש ציון ניווטי',
   tbSearchHint: 'טיפ: הקלד קודים מופרדים ברווח (למשל LLHZ BAZRA DEROR SHARO HADRA) ולחץ Enter לבניית מסלול.',
