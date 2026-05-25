@@ -201,7 +201,7 @@ window.S = Object.assign({
   tbSecBuild: '✏️ Build',
   tbSecView: '👁 View',
   tbSecNumbers: '📋 Charts',
-  tbSecExport: '📤 Export',
+  tbSecExport: '📤 Export/Import',
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
   exportModalTitle: 'Export PNG',
