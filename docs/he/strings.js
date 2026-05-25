@@ -19,7 +19,7 @@ window.S = {
   tbShowWpNamesTitle: 'הצג שמות ציוני דרך (כבוי = עיגול ריק)',
   tbWpSize: 'גודל ציון דרך',                         // מחוון בקטע תצוגה
   tbWpSizeTitle: 'גודל ציון דרך ושמו',
-  tbShowNavWp: 'הצג ציוני ניווט',                    // מתג שכבת מפה
+  tbShowNavWp: 'הצג/נעץ ציוני ניווט',                // מתג שכבת מפה
   tbShowNavWpTitle: 'הצג ציוני דיווח VFR ישראלים',
   tbSearchPlaceholder: '🔍 חפש ציון ניווטי',
   tbSearchOpen: '🔍 חפש',
@@ -116,7 +116,7 @@ window.S = {
   tbShowMidLegTitle: 'הצג מרחק באמצע כל קטע',
   tbHighlightDiff: 'הדגש הפרש גובה/מהירות',
   tbHighlightDiffTitle: 'הדגש קטעים עם הפרש גובה או מהירות',
-  tbShowAirfields: 'הצג שדות תעופה',
+  tbShowAirfields: 'הצג/נעץ שדות תעופה',
   tbShowAirfieldsTitle: 'הצג שדות תעופה ישראלים מפורסמים (מקור BYOP)',
   plates: 'דפיות',
   plateCategoryApproach: 'גישה',
