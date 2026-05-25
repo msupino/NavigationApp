@@ -1,4 +1,20 @@
 'use strict';
+
+// Shared helper: attach a top-right '✕' close button to a .modal box. The
+// inspector's #insp-close already uses this pattern; modals now match it
+// (plate viewer, charts modal, flight plan) — see issue thread on toolbar
+// cleanup. `onClose` is invoked when the user clicks the X.
+function addModalCloseX(box, onClose) {
+  const x = document.createElement('button');
+  x.className = 'modal-close-x';
+  x.type = 'button';
+  x.textContent = '✕';
+  x.setAttribute('aria-label', (window.S && S.modalCloseTitle) || 'Close');
+  x.title = (window.S && S.modalCloseTitle) || 'Close';
+  x.onclick = onClose;
+  box.appendChild(x);
+}
+
 /* NavAid — save/load, page setup, flight plan, PNG export, persistence.
    Shares globals with core.js; loaded after interact.js. */
 
@@ -85,6 +101,11 @@ function validateRoute(d) {
       _v(l, 'inboundAltitude',  'number', p, errs);
       _v(l, 'outboundAltitude', 'number', p, errs);
       _v(l, 'flightSpeed',      'number', p, errs);
+      // #212: hasOwnProperty (not 'in') so inherited Object.prototype keys
+      // can never satisfy the optional check.
+      if (Object.prototype.hasOwnProperty.call(l, 'outboundSpeed')) {
+        _v(l, 'outboundSpeed', 'number', p, errs);
+      }
       if (_v(l, 'inLabel',  'object', p, errs)) {
         _v(l.inLabel,  'a', 'number', p + '.inLabel',  errs);
         _v(l.inLabel,  'p', 'number', p + '.inLabel',  errs);
@@ -180,17 +201,18 @@ function validateAirfields(d) {
 function save() {
   const data = {
     waypoints: state.waypoints.map(w => ({
-      lat: w.lat, lng: w.lng, name: w.name || '',
+      lat: r5(w.lat), lng: r5(w.lng), name: w.name || '',
     })),
     legs: state.legs.map(l => ({
       inboundAltitude: l.inboundAltitude,
       outboundAltitude: l.outboundAltitude,
       flightSpeed: l.flightSpeed,
+      outboundSpeed: l.outboundSpeed,
       inLabel: l.inLabel,
       outLabel: l.outLabel,
     })),
     notes: state.notes.map(n => ({
-      lat: n.lat, lng: n.lng, text: n.text || '', color: n.color || '',
+      lat: r5(n.lat), lng: r5(n.lng), text: n.text || '', color: n.color || '',
       shape: n.shape || 'rect',
     })),
   };
@@ -202,6 +224,15 @@ function save() {
   URL.revokeObjectURL(a.href);
 }
 function load(file) {
+  // #146: hard cap on file size before we even read it. Route JSON is
+  // typically <100 KB; 2 MB leaves room for big routes / future fields and
+  // still aborts a user mis-pick (e.g. a PDF / image) instantly.
+  const MAX_ROUTE_BYTES = 2 * 1024 * 1024;
+  if (file && file.size > MAX_ROUTE_BYTES) {
+    alert(S.errLoadFile + 'file too large (' +
+          (file.size / 1024 / 1024).toFixed(1) + ' MB; max 2 MB)');
+    return;
+  }
   const reader = new FileReader();
   reader.onload = () => {
     let d;
@@ -220,17 +251,18 @@ function load(file) {
       return;
     }
     state.waypoints = d.waypoints.map(w => ({
-      lat: w.lat, lng: w.lng, name: w.name,
+      lat: r5(w.lat), lng: r5(w.lng), name: w.name,
     }));
     state.legs = d.legs.map(l => ({
       inboundAltitude: l.inboundAltitude,
       outboundAltitude: l.outboundAltitude,
       flightSpeed: l.flightSpeed,
+      outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
       inLabel:  { a: l.inLabel.a,  p: l.inLabel.p  },
       outLabel: { a: l.outLabel.a, p: l.outLabel.p },
     }));
     state.notes = d.notes.map(n => ({
-      lat: n.lat, lng: n.lng,
+      lat: r5(n.lat), lng: r5(n.lng),
       text: n.text, color: n.color, shape: n.shape,
     }));
     syncLegs();
@@ -256,13 +288,26 @@ function setPage(size) {
     applyPage();
     return;
   }
-  chooseOrientation(size, orient => {
-    pageOrient = orient;
-    pageSize = size;
-    pageOffset = { x: 0, y: 0 };          // start centred
-    applyPage();
-    fitPageFrame();
-  });
+  // Orientation is no longer a per-click modal — the toolbar Landscape/
+  // Portrait toggle (page-orient button) is the source of truth. Default
+  // to landscape on first use if nothing is persisted yet.
+  if (!pageOrient) pageOrient = 'landscape';
+  pageSize = size;
+  pageOffset = { x: 0, y: 0 };
+  applyPage();
+  fitPageFrame();
+}
+function toggleOrientation() {
+  pageOrient = pageOrient === 'portrait' ? 'landscape' : 'portrait';
+  try { localStorage.setItem('navaid.pageOrient', pageOrient); } catch (e) {}
+  if (pageSize) { applyPage(); fitPageFrame(); }
+  refreshOrientButton();
+}
+function refreshOrientButton() {
+  const btn = document.getElementById('page-orient');
+  if (!btn) return;
+  btn.textContent = pageOrient === 'portrait' ? '▯' : '▭';
+  btn.classList.toggle('portrait', pageOrient === 'portrait');
 }
 
 function fitPageFrame() {
@@ -300,17 +345,40 @@ function wpLabel(i) {
 let flightPlanBack = null;
 let refreshFlightPlan = null;
 let flightPlanEscape = null;
+let flightPlanCleanup = null;             // tears down drag listeners attached
+                                          // outside the modal subtree (window).
+var fpOpen = false;                       // true while flight-plan modal is shown
+
+// Returns true if wp.name matches a known airfield ICAO code.
+// Used to decide whether to add startup/taxi fuel to the first leg.
+function isAirport(wp) {
+  if (!wp || !airfields) return false;
+  const name = (wp.name || '').trim().toUpperCase();
+  // Match by name OR by coordinates (renaming the label must not lose the
+  // airport status; tolerance ≈ 100 m to survive minor drag).
+  const eps = 0.001;
+  return airfields.some(a =>
+    a.name === name ||
+    (Math.abs(a.lat - wp.lat) < eps && Math.abs(a.lng - wp.lng) < eps)
+  );
+}
 
 function closeFlightPlan() {
   if (flightPlanEscape) {
     document.removeEventListener('keydown', flightPlanEscape);
     flightPlanEscape = null;
   }
+  if (flightPlanCleanup) {
+    try { flightPlanCleanup(); } catch (e) { /* listener removal is best-effort */ }
+    flightPlanCleanup = null;
+  }
   if (flightPlanBack) {
     flightPlanBack.remove();
     flightPlanBack = null;
   }
   refreshFlightPlan = null;
+  fpOpen = false;
+  try { sessionStorage.removeItem('navaid.fpOpen'); } catch (e) {}
 }
 
 function showFlightPlan() {
@@ -331,6 +399,121 @@ function showFlightPlan() {
   title.className = 'modal-title';
   title.textContent = S.flightPlan;
   box.appendChild(title);
+
+  // Drag-to-move on the title bar (mouse + touch).
+  (function (el) {
+    const KEY = 'navaid.fpPos';
+    let dx = 0, dy = 0, dragging = false;
+    function clamp(x, y) {
+      return {
+        x: Math.max(0, Math.min(window.innerWidth - el.offsetWidth, x)),
+        y: Math.max(0, Math.min(window.innerHeight - el.offsetHeight, y)),
+      };
+    }
+    function setPos(x, y) {
+      const c = clamp(x, y);
+      el.style.left = c.x + 'px';
+      el.style.top = c.y + 'px';
+      el.style.margin = '0';
+    }
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) { const p = JSON.parse(raw); setPos(p.x, p.y); }
+    } catch (e) {}
+    function start(cx, cy) {
+      const r = el.getBoundingClientRect();
+      dx = cx - r.left; dy = cy - r.top;
+      dragging = true;
+    }
+    function move(cx, cy) { if (dragging) setPos(cx - dx, cy - dy); }
+    function end() {
+      if (!dragging) return;
+      dragging = false;
+      const r = el.getBoundingClientRect();
+      try { localStorage.setItem(KEY, JSON.stringify({ x: r.left, y: r.top })); } catch (e) {}
+    }
+    title.addEventListener('mousedown', e => {
+      e.preventDefault();
+      start(e.clientX, e.clientY);
+      const onMove = ev => move(ev.clientX, ev.clientY);
+      const onUp = () => { end(); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+    function onTouchStart(e) {
+      if (e.touches.length !== 1) return;
+      e.preventDefault();
+      start(e.touches[0].clientX, e.touches[0].clientY);
+    }
+    function onTouchMove(e) {
+      if (!dragging || e.touches.length !== 1) return;
+      e.preventDefault();
+      move(e.touches[0].clientX, e.touches[0].clientY);
+    }
+    title.addEventListener('touchstart', onTouchStart, { passive: false });
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', end);
+    window.addEventListener('touchcancel', end);
+    // closeFlightPlan() invokes this to detach the window-level listeners so
+    // a re-open doesn't accumulate stale handlers (closures capture el/dragging).
+    flightPlanCleanup = function () {
+      title.removeEventListener('touchstart', onTouchStart, { passive: false });
+      window.removeEventListener('touchmove', onTouchMove, { passive: false });
+      window.removeEventListener('touchend', end);
+      window.removeEventListener('touchcancel', end);
+    };
+  })(box);
+
+  loadAircraft();
+  const fpAircraft = document.createElement('div');
+  fpAircraft.className = 'fp-aircraft';
+  const acLbl = document.createElement('span');
+  acLbl.textContent = S.tbAircraft + ': ';
+  fpAircraft.appendChild(acLbl);
+  const acInputDiv = document.createElement('div');
+  acInputDiv.id = 'aircraft-custom';
+  function mkAcInput(id, label, title, min, max, step) {
+    const wrap = document.createElement('label');
+    wrap.title = title || label;
+    const lbl = document.createElement('span');
+    lbl.textContent = label + ': ';
+    wrap.appendChild(lbl);
+    const inp = document.createElement('input');
+    inp.type = 'number';
+    inp.id = id;
+    inp.min = min; inp.max = max; inp.step = step;
+    inp.style.width = '60px';
+    wrap.appendChild(inp);
+    return wrap;
+  }
+  acInputDiv.appendChild(mkAcInput('aircraft-gph', S.tbGph, S.tbGphTitle, 1, 50, 0.5));
+  acInputDiv.appendChild(mkAcInput('aircraft-taxi', S.tbTaxiGal, S.tbTaxiGalTitle, 0, 20, 0.1));
+  fpAircraft.appendChild(acInputDiv);
+  const gphInp  = acInputDiv.querySelector('#aircraft-gph');
+  const taxiInp = acInputDiv.querySelector('#aircraft-taxi');
+  function syncAircraftUI() {
+    if (!aircraft) { aircraft = { gph: 8, taxiGal: 1.1 }; saveAircraft(); }
+    gphInp.value  = aircraft.gph;
+    taxiInp.value = aircraft.taxiGal;
+  }
+  function readAircraftInputs() {
+    const gph = parseFloat(gphInp.value);
+    if (isNaN(gph) || gph <= 0) return null;
+    return { gph: gph, taxiGal: parseFloat(taxiInp.value) || 0 };
+  }
+  [gphInp, taxiInp].forEach(inp => {
+    inp.oninput = function () {
+      const a = readAircraftInputs();
+      aircraft = a;
+      saveAircraft(); draw(); refresh();
+    };
+  });
+  syncAircraftUI();
+  box.appendChild(fpAircraft);
+
+  const scrollArea = document.createElement('div');
+  scrollArea.className = 'fp-scroll';
+  box.appendChild(scrollArea);
 
   const table = document.createElement('table');
   table.className = 'flight-table';
@@ -385,7 +568,8 @@ function showFlightPlan() {
   const distCells = [];                 // leg index -> distance cell
   const hdgCells = [];                  // leg index -> heading cell
   const timeCells = [];                 // leg index -> time cell
-  let totDistCell, totTimeCell;
+  const fuelCells = [];                 // leg index -> fuel (gal) cell
+  let totDistCell, totTimeCell, totFuelCell;
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     const leg = state.legs[i];
@@ -400,20 +584,27 @@ function showFlightPlan() {
     tr.appendChild(distCell);
     const speedCell = numCell(leg.flightSpeed, 1, inp => {
       const v = +inp.value;
-      if (v > 0) { leg.flightSpeed = v; draw(); }
+      if (v > 0) {
+        const oldVal = leg.flightSpeed;
+        leg.flightSpeed = v;
+        propagateAlt(i, 'flightSpeed', leg.flightSpeed, oldVal);
+        draw();
+        refresh();
+        if (retRefresh) retRefresh();
+      }
       else inp.value = leg.flightSpeed;   // invalid — restore the real value
     });
     speedInputs[i] = speedCell.querySelector('.plan-num');
     tr.appendChild(speedCell);
     const altCell = numCell(leg.inboundAltitude, -2000, inp => {
-      // #76: restore the real value on empty / non-numeric input instead of
-      // committing 0 (which would also cascade via propagateAlt).
       const v = +inp.value;
       if (!Number.isFinite(v)) { inp.value = leg.inboundAltitude; return; }
       const oldVal = leg.inboundAltitude;
       leg.inboundAltitude = Math.round(v);
       propagateAlt(i, 'inboundAltitude', leg.inboundAltitude, oldVal);
       draw();
+      refresh();
+      if (retRefresh) retRefresh();
     });
     altInputs[i] = altCell.querySelector('.plan-num');
     tr.appendChild(altCell);
@@ -422,6 +613,9 @@ function showFlightPlan() {
     distCells[i] = distCell;
     hdgCells[i] = hdgCell;
     tr.appendChild(timeCell);
+    const fuelCell = planCell('');
+    fuelCells[i] = fuelCell;
+    tr.appendChild(fuelCell);
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
@@ -438,16 +632,16 @@ function showFlightPlan() {
   trF.appendChild(planCell(''));        // Alt column
   totTimeCell = planCell('');
   trF.appendChild(totTimeCell);
+  totFuelCell = planCell('');
+  trF.appendChild(totFuelCell);
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
 
-  // #78: keep the modal in sync with the live route. draw() calls this
-  // after each redraw so dragging a waypoint or reversing the route
-  // updates dist / hdg / time / total — and a count change (delete wp,
-  // import, clear) closes the modal instead of leaving it stale.
   function refresh() {
-    if (state.legs.length !== distCells.length) { closeFlightPlan(); return; }
-    let td = 0, th = 0;
+    let td = 0, th = 0, tf = 0;
+    const ac = aircraft;
+    const taxiFuel = ac && ac.taxiGal && isAirport(state.waypoints[0]) ? ac.taxiGal : 0;
+    if (taxiFuel) tf = taxiFuel;
     for (let i = 0; i < state.legs.length; i++) {
       const A = state.waypoints[i], B = state.waypoints[i + 1];
       if (!A || !B) continue;
@@ -458,7 +652,16 @@ function showFlightPlan() {
       td += dist;
       th += dur;
       timeCells[i].textContent = dur > 0 ? toHMS(dur) : '--';
-      // Sync the editable inputs unless the user is mid-edit in that cell.
+      if (ac) {
+        const fuel = dur * ac.gph;
+        tf += fuel;
+        const mark = i === 0 && taxiFuel;
+        fuelCells[i].textContent = (mark ? fuel + taxiFuel : fuel).toFixed(1) + (mark ? ' *' : '');
+        fuelCells[i].title = mark ? S.fpTaxiTip(taxiFuel) : '';
+      } else {
+        fuelCells[i].textContent = '--';
+        fuelCells[i].title = '';
+      }
       if (speedInputs[i] && document.activeElement !== speedInputs[i])
         speedInputs[i].value = state.legs[i].flightSpeed;
       if (altInputs[i] && document.activeElement !== altInputs[i])
@@ -474,9 +677,147 @@ function showFlightPlan() {
     }
     totDistCell.textContent = td.toFixed(1);
     totTimeCell.textContent = th > 0 ? toHMS(th) : '--';
+    totFuelCell.textContent = ac ? tf.toFixed(1) : '--';
   }
   refresh();
-  box.appendChild(table);
+  scrollArea.appendChild(table);
+
+  // --- return-route table (when showReturn is on) --------------------
+  let retRefresh = null;
+  if (window.showReturn) {
+    const sub = document.createElement('div');
+    sub.className = 'flight-plan-sub';
+    sub.textContent = S.fpReturn;
+    scrollArea.appendChild(sub);
+
+    const rtable = document.createElement('table');
+    rtable.className = 'flight-table';
+    const rthead = document.createElement('thead');
+    const rtrH = document.createElement('tr');
+    for (const h of headers) {
+      const th = document.createElement('th');
+      th.textContent = h;
+      rtrH.appendChild(th);
+    }
+    rthead.appendChild(rtrH);
+    rtable.appendChild(rthead);
+
+    const rtbody = document.createElement('tbody');
+    const rAltInputs = [];
+    const rSpeedInputs = [];
+    const rDistCells = [];
+    const rHdgCells = [];
+    const rTimeCells = [];
+    const rFuelCells = [];
+    let rTotDistCell, rTotTimeCell, rTotFuelCell;
+
+    for (let i = 0; i < state.legs.length; i++) {
+      const ri = state.legs.length - 1 - i;   // reverse leg order — flyable from destination
+      const leg = state.legs[ri];
+      const A = state.waypoints[ri + 1], B = state.waypoints[ri];
+      const { dist, brg } = geo(A, B);
+      const tr = document.createElement('tr');
+      tr.appendChild(planCell(String(i + 1)));
+      tr.appendChild(nameCell(ri + 1));
+      tr.appendChild(nameCell(ri));
+      const hdgCell = planCell(pad3(toMagnetic(brg)) + '°M');
+      tr.appendChild(hdgCell);
+      const distCell = planCell(dist.toFixed(1));
+      tr.appendChild(distCell);
+      const speedCell = numCell(leg.outboundSpeed, 1, inp => {
+        const v = +inp.value;
+        if (v > 0) {
+          const oldVal = leg.outboundSpeed;
+          leg.outboundSpeed = v;
+          propagateAlt(ri, 'outboundSpeed', leg.outboundSpeed, oldVal);
+          draw();
+          refresh();
+          retRefresh();
+        }
+        else inp.value = leg.outboundSpeed;
+      });
+      rSpeedInputs[i] = speedCell.querySelector('.plan-num');
+      tr.appendChild(speedCell);
+      const altCell = numCell(leg.outboundAltitude, -2000, inp => {
+        const v = +inp.value;
+        if (!Number.isFinite(v)) { inp.value = leg.outboundAltitude; return; }
+        const oldVal = leg.outboundAltitude;
+        leg.outboundAltitude = Math.round(v);
+        propagateAlt(ri, 'outboundAltitude', leg.outboundAltitude, oldVal);
+        draw();
+        refresh();
+        retRefresh();
+      });
+      rAltInputs[i] = altCell.querySelector('.plan-num');
+      tr.appendChild(altCell);
+      const timeCell = planCell('');
+      rTimeCells[i] = timeCell;
+      rDistCells[i] = distCell;
+      rHdgCells[i] = hdgCell;
+      tr.appendChild(timeCell);
+      const fuelCell = planCell('');
+      rFuelCells[i] = fuelCell;
+      tr.appendChild(fuelCell);
+      rtbody.appendChild(tr);
+    }
+    rtable.appendChild(rtbody);
+
+    const rtfoot = document.createElement('tfoot');
+    const rtrF = document.createElement('tr');
+    const rtdLabel = document.createElement('td');
+    rtdLabel.colSpan = 4;
+    rtdLabel.textContent = S.fpTotal;
+    rtrF.appendChild(rtdLabel);
+    rTotDistCell = planCell('');
+    rtrF.appendChild(rTotDistCell);
+    rtrF.appendChild(planCell(''));
+    rtrF.appendChild(planCell(''));
+    rTotTimeCell = planCell('');
+    rtrF.appendChild(rTotTimeCell);
+    rTotFuelCell = planCell('');
+    rtrF.appendChild(rTotFuelCell);
+    rtfoot.appendChild(rtrF);
+    rtable.appendChild(rtfoot);
+
+
+    retRefresh = function () {
+      if (state.legs.length !== rDistCells.length) { closeFlightPlan(); return; }
+      let td = 0, th = 0, tf = 0;
+      const retTaxi = aircraft && aircraft.taxiGal && isAirport(state.waypoints[state.waypoints.length - 1]) ? aircraft.taxiGal : 0;
+      if (retTaxi) tf = retTaxi;
+      for (let i = 0; i < state.legs.length; i++) {
+        const ri = state.legs.length - 1 - i;
+        const A = state.waypoints[ri + 1], B = state.waypoints[ri];
+        if (!A || !B) continue;
+        const { dist, brg } = geo(A, B);
+        rDistCells[i].textContent = dist.toFixed(1);
+        rHdgCells[i].textContent = pad3(toMagnetic(brg)) + '°M';
+        const dur = state.legs[ri].outboundSpeed > 0 ? dist / state.legs[ri].outboundSpeed : 0;
+        td += dist;
+        th += dur;
+        rTimeCells[i].textContent = dur > 0 ? toHMS(dur) : '--';
+        if (aircraft) {
+          const fuel = dur * aircraft.gph;
+          tf += fuel;
+          const mark = i === 0 && retTaxi;
+          rFuelCells[i].textContent = (mark ? fuel + retTaxi : fuel).toFixed(1) + (mark ? ' *' : '');
+          rFuelCells[i].title = mark ? S.fpTaxiTip(retTaxi) : '';
+        } else {
+          rFuelCells[i].textContent = '--';
+          rFuelCells[i].title = '';
+        }
+        if (rSpeedInputs[i] && document.activeElement !== rSpeedInputs[i])
+          rSpeedInputs[i].value = state.legs[ri].outboundSpeed;
+        if (rAltInputs[i] && document.activeElement !== rAltInputs[i])
+          rAltInputs[i].value = state.legs[ri].outboundAltitude;
+      }
+      rTotDistCell.textContent = td.toFixed(1);
+      rTotTimeCell.textContent = th > 0 ? toHMS(th) : '--';
+      rTotFuelCell.textContent = aircraft ? tf.toFixed(1) : '--';
+    };
+    retRefresh();
+    scrollArea.appendChild(rtable);
+  }
 
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
@@ -493,22 +834,45 @@ function showFlightPlan() {
     setTimeout(cleanup, 4000);           // belt-and-braces for Safari
   };
   btns.appendChild(printBtn);
-  const close = document.createElement('button');
-  close.textContent = S.fpClose;
-  close.className = 'modal-cancel';
-  close.onclick = closeFlightPlan;
-  btns.appendChild(close);
   box.appendChild(btns);
+  addModalCloseX(box, closeFlightPlan);
 
   back.appendChild(box);
   // Close via the Close button or Escape (#86).
   document.body.appendChild(back);
   flightPlanBack = back;
-  refreshFlightPlan = refresh;
+  // #78: keep the modal in sync with the live route. draw() calls this after
+  // each redraw so dragging a waypoint or reversing the route updates dist /
+  // hdg / time / total. A leg-count change (delete wp, import, clear) tears
+  // the modal down and re-opens it on the next tick so input handlers rebind
+  // against the new leg array (the old fix just closed it — the rebuild is a
+  // strictly better UX so the pilot doesn't lose the plan view on edits).
+  refreshFlightPlan = retRefresh
+    ? function () {
+        if (state.legs.length !== distCells.length) {
+          closeFlightPlan();
+          setTimeout(showFlightPlan, 0);
+          return;
+        }
+        refresh();
+        retRefresh();
+      }
+    : function () {
+        if (state.legs.length !== distCells.length) {
+          closeFlightPlan();
+          setTimeout(showFlightPlan, 0);
+          return;
+        }
+        refresh();
+      };
   flightPlanEscape = function (e) {
     if (e.key === 'Escape') closeFlightPlan();
   };
   document.addEventListener('keydown', flightPlanEscape);
+  fpOpen = true;
+  // navaid.fpOpen is already cleared by closeFlightPlan(); on a fresh open
+  // there's nothing to remove. The redundant call lived here for a while —
+  // dropping it to keep showFlightPlan() side-effect-symmetric.
 }
 
 function planCell(text) {
@@ -526,6 +890,7 @@ function chooseOrientation(size, onPick) {
   const title = document.createElement('div');
   title.className = 'modal-title';
   title.textContent = size + S.pageOrientation;
+  addModalCloseX(box, () => { document.removeEventListener('keydown', onEsc); back.remove(); });
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
   // #86: Escape closes the picker (counts as cancel).
@@ -556,6 +921,217 @@ function chooseOrientation(size, onPick) {
 function fileStamp() {
   return new Date().toISOString().slice(0, 19)
     .replace(/[-:]/g, '').replace('T', '-');
+}
+
+// Show a pre-export modal so the user can decide which overlays and base
+// layer appear in the PNG, independently of the current screen settings.
+function showExportModal() {
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  const box = document.createElement('div');
+  box.className = 'modal';
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = S.exportModalTitle;
+  box.appendChild(title);
+
+  addModalCloseX(box, () => { restoreOrig(); close(); });
+
+  // Drag to reposition the modal via the title bar.
+  let drag = null;
+  title.addEventListener('mousedown', function (e) {
+    const r = box.getBoundingClientRect();
+    drag = { ox: e.clientX - r.left, oy: e.clientY - r.top };
+    box.style.position = 'fixed';
+    box.style.left = r.left + 'px';
+    box.style.top = r.top + 'px';
+    box.style.margin = '0';
+    const onMove = function (e) {
+      if (!drag) return;
+      // Clamp to the viewport so the title bar + ✕ stay reachable. Same
+      // pattern the flight-plan modal already uses.
+      const x = Math.max(0, Math.min(window.innerWidth - box.offsetWidth, e.clientX - drag.ox));
+      const y = Math.max(0, Math.min(window.innerHeight - box.offsetHeight, e.clientY - drag.oy));
+      box.style.left = x + 'px';
+      box.style.top = y + 'px';
+    };
+    const onUp = function () {
+      drag = null;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  });
+
+  const body = document.createElement('div');
+  body.style.cssText = 'display:flex;flex-direction:column;gap:10px;padding:4px 0';
+
+  // Show Nav Waypoints checkbox.
+  const navWpLabel = document.createElement('label');
+  navWpLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
+  const navWpCb = document.createElement('input');
+  navWpCb.type = 'checkbox';
+  navWpCb.checked = false;
+  navWpLabel.appendChild(navWpCb);
+  navWpLabel.appendChild(document.createTextNode(S.exportShowNavWP));
+  body.appendChild(navWpLabel);
+
+  // Show Waypoint Names checkbox (default on).
+  const wpNameLabel = document.createElement('label');
+  wpNameLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
+  const wpNameCb = document.createElement('input');
+  wpNameCb.type = 'checkbox';
+  wpNameCb.checked = true;
+  wpNameLabel.appendChild(wpNameCb);
+  wpNameLabel.appendChild(document.createTextNode(S.exportShowWpNames));
+  body.appendChild(wpNameLabel);
+
+  // Show Airfields checkbox.
+  const afLabel = document.createElement('label');
+  afLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
+  const afCb = document.createElement('input');
+  afCb.type = 'checkbox';
+  afCb.checked = false;
+  afLabel.appendChild(afCb);
+  afLabel.appendChild(document.createTextNode(S.exportShowAirfields));
+  body.appendChild(afLabel);
+
+  // Layer selector.
+  const layerRow = document.createElement('div');
+  layerRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px';
+  const layerLbl = document.createElement('span');
+  layerLbl.textContent = S.exportLayer;
+  layerRow.appendChild(layerLbl);
+  const layerSel = document.createElement('select');
+  layerSel.style.cssText = 'font:inherit;font-size:12px;flex:1';
+  for (const name in layers) {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
+    if (name === 'Navigation') opt.selected = true;
+    layerSel.appendChild(opt);
+  }
+  layerRow.appendChild(layerSel);
+  body.appendChild(layerRow);
+
+  // Map opacity slider.
+  const opacityRow = document.createElement('div');
+  opacityRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px';
+  const opLbl = document.createElement('span');
+  opLbl.textContent = S.tbMapOpacity;
+  opacityRow.appendChild(opLbl);
+  const opSlider = document.createElement('input');
+  opSlider.type = 'range';
+  opSlider.min = '10';
+  opSlider.max = '100';
+  opSlider.value = Math.round(mapOpacity * 100);
+  opSlider.style.cssText = 'flex:1;height:16px;accent-color:#ffd966';
+  opacityRow.appendChild(opSlider);
+  const opVal = document.createElement('span');
+  opVal.style.cssText = 'width:2.2em;text-align:right;font-size:12px';
+  opVal.textContent = opSlider.value + '%';
+  opacityRow.appendChild(opVal);
+  body.appendChild(opacityRow);
+
+  box.appendChild(body);
+
+  // Save original state (before applying defaults) so Cancel can restore.
+  const origNavWP = showNavWP;
+  const origAirfields = showAirfields;
+  const origWpNames = showWpNames;
+  const origMapOpacity = mapOpacity;
+  const origLayer = (function () {
+    for (const n in layers) if (map.hasLayer(layers[n])) return n;
+    return null;
+  })();
+
+  // Apply the modal's default state immediately so the user sees what
+  // the PNG will look like before touching any control.
+  showNavWP = navWpCb.checked;
+  showWpNames = wpNameCb.checked;
+  showAirfields = afCb.checked;
+  const chosen = layerSel.value;
+  if (chosen !== origLayer) {
+    for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
+    map.addLayer(layers[chosen]);
+  }
+  draw();
+
+  // Buttons.
+  const btns = document.createElement('div');
+  btns.className = 'modal-btns';
+  const exportBtn = document.createElement('button');
+  exportBtn.textContent = S.exportBtn;
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = S.cancel;
+  cancelBtn.className = 'modal-cancel';
+
+  function restoreOrig() {
+    showNavWP = origNavWP;
+    showWpNames = origWpNames;
+    showAirfields = origAirfields;
+    const cur = (function () {
+      for (const n in layers) if (map.hasLayer(layers[n])) return n;
+      return null;
+    })();
+    if (cur !== origLayer) {
+      for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
+      if (origLayer) map.addLayer(layers[origLayer]);
+    }
+    mapOpacity = origMapOpacity;
+    applyMapOpacity();
+    draw();
+  }
+
+  // Live preview: apply changes to the map immediately.
+  navWpCb.onchange = function () {
+    showNavWP = navWpCb.checked;
+    draw();
+  };
+  wpNameCb.onchange = function () {
+    showWpNames = wpNameCb.checked;
+    draw();
+  };
+  afCb.onchange = function () {
+    showAirfields = afCb.checked;
+    draw();
+  };
+  layerSel.onchange = function () {
+    const chosen = layerSel.value;
+    for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
+    map.addLayer(layers[chosen]);
+    applyMapOpacity();
+  };
+
+  opSlider.oninput = function () {
+    mapOpacity = parseFloat(this.value) / 100;
+    opVal.textContent = this.value + '%';
+    applyMapOpacity();
+  };
+
+  function close() { window.removeEventListener('keydown', onEsc); back.remove(); }
+  function onEsc(e) { if (e.key === 'Escape') { restoreOrig(); close(); } }
+
+  exportBtn.onclick = () => {
+    NavAid._restoreExport = restoreOrig;
+    close();
+    exportPNG();
+  };
+  cancelBtn.onclick = function () {
+    restoreOrig();
+    close();
+  };
+
+  btns.appendChild(exportBtn);
+  btns.appendChild(cancelBtn);
+  box.appendChild(btns);
+
+  back.appendChild(box);
+  back.onclick = e => { if (e.target === back) close(); };
+  document.body.appendChild(back);
+  document.addEventListener('keydown', onEsc);
 }
 
 // Save the framed map + route as a PNG, rendered at the highest practical
@@ -766,19 +1342,23 @@ function exportPNG() {
     o.save();
     o.scale(s, s);
     o.translate(-fr.x, -fr.y);
-    drawNavWaypoints();
-    drawAirfields();
-    drawLegs();
-    drawWaypoints();
-    drawNotes();
-    o.restore();
-    octx = prevOctx;
+    try {
+      drawNavWaypoints();
+      drawAirfields();
+      drawLegs();
+      drawWaypoints();
+      drawNotes();
+      o.restore();
+    } finally {
+      octx = prevOctx;
+    }
 
     out.toBlob(b => {
       btn.textContent = btnLabel;
       btn.disabled = false;
       unlockMap();
       NavAid.exporting = false;
+      if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
       if (!b) { alert(S.errPngFail); return; }
       const a = document.createElement('a');
       a.href = URL.createObjectURL(b);
@@ -788,6 +1368,17 @@ function exportPNG() {
       URL.revokeObjectURL(a.href);
       if (failed > 0) alert(S.errTilesFail(failed, jobs.length));
     }, 'image/png');
+  }).catch(err => {
+    // #215: a sync throw in the .then body (e.g. drawImage on a malformed
+    // bitmap) would otherwise leave the button disabled forever. Restore
+    // the UI so the user can retry, and surface the failure.
+    console.warn('PNG export pipeline failed:', err);
+    btn.textContent = btnLabel;
+    btn.disabled = false;
+    unlockMap();
+    NavAid.exporting = false;
+    if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
+    try { alert(S.errPngFail); } catch (_) { /* alert blocked */ }
   });
 }
 
@@ -864,8 +1455,17 @@ function flyRoute() {
   function onPick(mode) {
     if (mode === 'web') {
       if (!confirm(S.geWebConfirm)) return;
+      // #145: validate the first waypoint's coords before string-concat so a
+      // malformed lat/lng (e.g. from a tampered import) can't leak into the
+      // URL. heading()/altM() are already bounded numerics by construction.
+      const lat = Number(wps[0].lat), lng = Number(wps[0].lng);
+      if (!Number.isFinite(lat) || lat < -90 || lat > 90 ||
+          !Number.isFinite(lng) || lng < -180 || lng > 180) {
+        alert(S.errBadCoords);
+        return;
+      }
       const url = 'https://earth.google.com/web/@' +
-        wps[0].lat + ',' + wps[0].lng + ',' + altM(0) + 'a,' +
+        lat.toFixed(6) + ',' + lng.toFixed(6) + ',' + altM(0) + 'a,' +
         heading(0).toFixed(1) + 'h,70t';
       window.open(url, '_blank');
       downloadKml();
@@ -883,6 +1483,7 @@ function flyRoute() {
   const title = document.createElement('div');
   title.className = 'modal-title';
   title.textContent = S.chooseGeMode;
+  addModalCloseX(box, () => { document.removeEventListener('keydown', onEsc); back.remove(); });
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
   function onEsc(e) { if (e.key === 'Escape') { document.removeEventListener('keydown', onEsc); back.remove(); } }
@@ -972,20 +1573,437 @@ function restoreRoute() {
     return 'corrupt';
   }
   state.waypoints = d.waypoints.map(w => ({
-    lat: w.lat, lng: w.lng, name: w.name,
+    lat: r5(w.lat), lng: r5(w.lng), name: w.name,
   }));
   state.legs = d.legs.map(l => ({
     inboundAltitude: l.inboundAltitude,
     outboundAltitude: l.outboundAltitude,
     flightSpeed: l.flightSpeed,
+    outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
     inLabel:  { a: l.inLabel.a,  p: l.inLabel.p  },
     outLabel: { a: l.outLabel.a, p: l.outLabel.p },
   }));
   state.notes = d.notes.map(n => ({
-    lat: n.lat, lng: n.lng,
+    lat: r5(n.lat), lng: r5(n.lng),
     text: n.text, color: n.color, shape: n.shape,
   }));
   syncLegs();
   return true;
+}
+
+// --- Airfield plates viewer (#105) -----------------------------------
+const PLATE_BASE = 'byop/';
+
+function plateUrl(filename) {
+  return PLATE_BASE + encodeURIComponent(filename);
+}
+
+function plateCategory(filename) {
+  const rest = filename.replace(/^[A-Z]{4}_/, '');
+  const cat = rest.split('_')[0];
+  if (cat === 'APPROACH') return 'approach';
+  if (cat === 'SID') return 'sid';
+  if (cat === 'STAR') return 'star';
+  if (cat === 'Ground' || cat === 'parking') return 'ground';
+  if (cat === 'VAC' || cat === 'airport') return 'vfr';
+  return 'other';
+}
+
+function prettyPlateLabel(filename) {
+  const noIcao = filename.replace(/^[A-Z]{4}_/, '').replace(/\.pdf$/i, '');
+  return noIcao.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function showPlateViewer(filename, label) {
+  const back = document.createElement('div');
+  back.className = 'modal-back plate-viewer';
+  const box = document.createElement('div');
+  box.className = 'modal plate-viewer-box';
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = label;
+  box.appendChild(title);
+
+  const iframe = document.createElement('iframe');
+  iframe.className = 'plate-iframe';
+  const url = plateUrl(filename);
+
+  const loading = document.createElement('div');
+  loading.className = 'plate-loading';
+  loading.textContent = 'Loading...\n' + url;
+
+  let blobUrl = null;
+  let pdfReady = false;
+
+  iframe.onload = () => { if (pdfReady) loading.style.display = 'none'; };
+  iframe.onerror = () => {
+    loading.textContent = S.plateLoadError + '\n' + url;
+  };
+
+  fetch(url, { credentials: 'omit' })
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.blob();
+    })
+    .then(blob => {
+      blobUrl = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      pdfReady = true;
+      iframe.src = blobUrl + '#view=FitH';
+    })
+    .catch(() => {
+      loading.textContent = S.plateLoadError + '\n' + url;
+    });
+
+  box.appendChild(loading);
+  box.appendChild(iframe);
+
+  const att = document.createElement('div');
+  att.className = 'plate-attribution';
+  att.textContent = S.plateAttribution;
+  box.appendChild(att);
+
+  const btns = document.createElement('div');
+  btns.className = 'modal-btns';
+  const openTab = document.createElement('button');
+  openTab.textContent = S.plateOpenTab;
+  openTab.onclick = () => { if (blobUrl) window.open(blobUrl, '_blank'); };
+  btns.appendChild(openTab);
+  const download = document.createElement('button');
+  download.textContent = S.plateDownload;
+  download.onclick = () => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+  };
+  btns.appendChild(download);
+  box.appendChild(btns);
+  addModalCloseX(box, () => {
+    if (blobUrl) URL.revokeObjectURL(blobUrl);
+    window.removeEventListener('keydown', onEsc);
+    back.remove();
+  });
+
+  function onEsc(e) {
+    if (e.key === 'Escape') {
+      window.removeEventListener('keydown', onEsc);
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      back.remove();
+    }
+  }
+  back.appendChild(box);
+  back.onclick = e => {
+    if (e.target === back) {
+      window.removeEventListener('keydown', onEsc);
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      back.remove();
+    }
+  };
+  document.body.appendChild(back);
+  window.addEventListener('keydown', onEsc);
+}
+
+function showChartsModal() {
+  if (fpOpen) closeFlightPlan();
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  const box = document.createElement('div');
+  box.className = 'modal wide';
+
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = S.plates;
+  box.appendChild(title);
+
+  addModalCloseX(box, () => { window.removeEventListener('keydown', onEsc); back.remove(); });
+
+  let drag = null;
+  title.addEventListener('mousedown', function (e) {
+    const r = box.getBoundingClientRect();
+    drag = { ox: e.clientX - r.left, oy: e.clientY - r.top };
+    box.style.position = 'fixed';
+    box.style.left = r.left + 'px';
+    box.style.top = r.top + 'px';
+    box.style.margin = '0';
+    const onMove = function (e) {
+      if (!drag) return;
+      // Clamp to the viewport so the title bar + ✕ stay reachable. Same
+      // pattern the flight-plan modal already uses.
+      const x = Math.max(0, Math.min(window.innerWidth - box.offsetWidth, e.clientX - drag.ox));
+      const y = Math.max(0, Math.min(window.innerHeight - box.offsetHeight, e.clientY - drag.oy));
+      box.style.left = x + 'px';
+      box.style.top = y + 'px';
+    };
+    const onUp = function () {
+      drag = null;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  });
+
+  const scrollArea = document.createElement('div');
+  scrollArea.className = 'fp-scroll';
+  const body = document.createElement('div');
+  body.className = 'charts-modal-body';
+
+  const catOrder = ['approach', 'sid', 'star', 'ground', 'vfr', 'other'];
+  const catLabel = {
+    approach: S.plateCategoryApproach,
+    sid: S.plateCategorySid,
+    star: S.plateCategoryStar,
+    ground: S.plateCategoryGround,
+    vfr: S.plateCategoryVfr,
+    other: S.plateCategoryOther,
+  };
+
+  function renderList(afs) {
+    body.innerHTML = '';
+    const withPlates = afs.filter(af => af.plates && af.plates.length);
+    if (!withPlates.length) {
+      const none = document.createElement('p');
+      none.textContent = S.platesNone;
+      body.appendChild(none);
+      return;
+    }
+    for (const af of withPlates) {
+      const section = document.createElement('div');
+      section.className = 'charts-airport';
+      const header = document.createElement('div');
+      header.className = 'charts-airport-header';
+      header.textContent = af.name + (af.en ? ' — ' + af.en : '');
+      // Keyboard + screen-reader parity with the toolbar's .tb-section-head
+      // pattern: tabbable, announced as a button, with explicit expanded
+      // state. The pane it controls is display:none until 'open', so without
+      // this the plate chips inside would be unreachable from the keyboard.
+      header.tabIndex = 0;
+      header.setAttribute('role', 'button');
+      header.setAttribute('aria-expanded', 'false');
+      const pane = document.createElement('div');
+      pane.className = 'charts-airport-body';
+      function toggle() {
+        const open = pane.classList.toggle('open');
+        header.classList.toggle('open', open);
+        header.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+      header.addEventListener('click', toggle);
+      header.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+      });
+      section.appendChild(header);
+
+      const groups = {};
+      for (const fn of af.plates) {
+        const cat = plateCategory(fn);
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(fn);
+      }
+      for (const cat of catOrder) {
+        if (!groups[cat]) continue;
+        const catDiv = document.createElement('div');
+        catDiv.className = 'charts-cat';
+        const catLbl = document.createElement('span');
+        catLbl.className = 'charts-cat-label';
+        catLbl.textContent = catLabel[cat];
+        catDiv.appendChild(catLbl);
+        for (const fn of groups[cat]) {
+          const chip = document.createElement('button');
+          chip.className = 'plate-chip';
+          chip.textContent = prettyPlateLabel(fn);
+          chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
+          catDiv.appendChild(chip);
+        }
+        pane.appendChild(catDiv);
+      }
+      section.appendChild(pane);
+      body.appendChild(section);
+    }
+  }
+
+  if (airfields) {
+    renderList(airfields);
+  } else {
+    const loading = document.createElement('p');
+    loading.textContent = '…';
+    body.appendChild(loading);
+    loadAirfields().then(() => { if (airfields) renderList(airfields); });
+  }
+
+  scrollArea.appendChild(body);
+  box.appendChild(scrollArea);
+
+  const att = document.createElement('div');
+  att.className = 'plate-attribution';
+  att.textContent = S.plateAttribution;
+  box.appendChild(att);
+
+  function onEsc(e) {
+    if (e.key === 'Escape') { window.removeEventListener('keydown', onEsc); back.remove(); }
+  }
+  back.appendChild(box);
+  back.onclick = e => { if (e.target === back) { window.removeEventListener('keydown', onEsc); back.remove(); } };
+  document.body.appendChild(back);
+  window.addEventListener('keydown', onEsc);
+}
+
+// --- shareable route link (#162) -----------------------------------
+// Encodes the current route into the URL so a pilot can paste a link
+// into WhatsApp / Telegram and the receiver opens the same route.
+//
+// Wire format (chosen for URL-length budget — JSON+base64 of a 20-WP
+// route blows past WhatsApp's ~2 KB preview render):
+//   ?r=<polyline>         — Google Encoded Polyline of [lat,lng] pairs
+//                            at 1e-5 precision (~1.1 m at 32 N)
+//   &n=<base64url-names>  — names joined by U+001F, then base64url
+//                            (UTF-8 safe — Hebrew names go through)
+//   &l=<compact-legs>     — semicolon-separated `ia,oa,fs[,os]` triples
+//                            where outboundSpeed is optional
+const SHARE_MAX_WAYPOINTS = 64;        // ~1.4 KB URL, fits in WhatsApp preview
+const SHARE_NAME_SEP = '\x1f';
+
+function _polyEncodeSigned(v) {
+  v = v < 0 ? ~(v << 1) : (v << 1);
+  let out = '';
+  while (v >= 0x20) { out += String.fromCharCode((0x20 | (v & 0x1f)) + 63); v >>>= 5; }
+  out += String.fromCharCode(v + 63);
+  return out;
+}
+function polylineEncode(points) {
+  let out = '', prevLat = 0, prevLng = 0;
+  for (const [lat, lng] of points) {
+    const latE5 = Math.round(lat * 1e5), lngE5 = Math.round(lng * 1e5);
+    out += _polyEncodeSigned(latE5 - prevLat) + _polyEncodeSigned(lngE5 - prevLng);
+    prevLat = latE5; prevLng = lngE5;
+  }
+  return out;
+}
+function polylineDecode(str) {
+  const out = [];
+  let i = 0, lat = 0, lng = 0;
+  while (i < str.length) {
+    let b, shift = 0, result = 0;
+    do { b = str.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lat += (result & 1) ? ~(result >>> 1) : (result >>> 1);
+    shift = 0; result = 0;
+    do { b = str.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lng += (result & 1) ? ~(result >>> 1) : (result >>> 1);
+    out.push([lat / 1e5, lng / 1e5]);
+  }
+  return out;
+}
+function _b64UrlEncode(s) {
+  return btoa(unescape(encodeURIComponent(s)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function _b64UrlDecode(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return decodeURIComponent(escape(atob(s)));
+}
+
+// Build the share URL from current state. Returns null if no route or if
+// the route would exceed SHARE_MAX_WAYPOINTS.
+function buildShareUrl() {
+  if (state.waypoints.length < 2) return { err: 'errNeedWps' };
+  if (state.waypoints.length > SHARE_MAX_WAYPOINTS) return { err: 'errShareTooLong' };
+  const r = polylineEncode(state.waypoints.map(w => [w.lat, w.lng]));
+  const n = _b64UrlEncode(state.waypoints.map(w => w.name || '').join(SHARE_NAME_SEP));
+  const l = state.legs.map(leg => {
+    const triple = [leg.inboundAltitude, leg.outboundAltitude, leg.flightSpeed];
+    if (leg.outboundSpeed != null && leg.outboundSpeed !== leg.flightSpeed) {
+      triple.push(leg.outboundSpeed);
+    }
+    return triple.join(',');
+  }).join(';');
+  const base = location.origin + location.pathname;
+  const params = new URLSearchParams(location.search);
+  // Preserve ?lang= so the receiver opens in the sender's language. Drop
+  // any previous share params so re-shares don't double up.
+  params.delete('r'); params.delete('n'); params.delete('l');
+  params.set('r', r); params.set('n', n); params.set('l', l);
+  return { url: base + '?' + params.toString() };
+}
+
+// Decode a share URL back into a route shape. Returns the route or null.
+function decodeShareUrl(search) {
+  const params = new URLSearchParams(search);
+  const r = params.get('r'), n = params.get('n'), l = params.get('l');
+  if (!r || n === null || l === null) return null;
+  let coords, names, legParts;
+  try {
+    coords = polylineDecode(r);
+    names = _b64UrlDecode(n).split(SHARE_NAME_SEP);
+    legParts = l === '' ? [] : l.split(';');
+  } catch (e) {
+    return null;
+  }
+  if (!coords.length || names.length !== coords.length) return null;
+  if (legParts.length !== Math.max(0, coords.length - 1)) return null;
+  const waypoints = coords.map(([lat, lng], i) => ({ lat, lng, name: names[i] || '' }));
+  const legs = legParts.map(s => {
+    const parts = s.split(',').map(Number);
+    if (parts.length < 3 || parts.some(v => !Number.isFinite(v))) return null;
+    const [ia, oa, fs, os] = parts;
+    return {
+      inboundAltitude: ia,
+      outboundAltitude: oa,
+      flightSpeed: fs,
+      outboundSpeed: os != null ? os : fs,
+      inLabel: { a: 0, p: 44 },
+      outLabel: { a: 0, p: -44 },
+    };
+  });
+  if (legs.some(l => l === null)) return null;
+  return { waypoints, legs, notes: [] };
+}
+
+// Called from ui.js boot, before restoreRoute(). Returns true if a route
+// was loaded from the URL (boot should skip restoreRoute in that case).
+function tryLoadRouteFromUrl() {
+  const r = decodeShareUrl(location.search);
+  if (!r) return false;
+  const verr = validateRoute(r);
+  if (verr) { console.warn('share-link schema error:', verr); return false; }
+  state.waypoints = r.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
+  state.legs = r.legs;
+  state.notes = [];
+  return true;
+}
+
+// Lightweight non-blocking toast (no popup, no modal). The share action
+// fires often enough that an alert() was disproportionately disruptive —
+// pilots want the link copied and to keep working. The toast self-removes
+// after 2.5 s; clipboard failures still fall through to a window.prompt
+// so the URL can be copied manually.
+function showToast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  void el.offsetWidth;                  // force reflow so the fade-in runs
+  el.classList.add('show');
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 250);
+  }, 2500);
+}
+
+// Toolbar button handler — copy share URL to clipboard.
+function shareRoute() {
+  const r = buildShareUrl();
+  if (r.err) { alert(S[r.err]); return; }
+  // Clipboard API requires a secure context + user gesture; the button
+  // click satisfies the gesture, but http://localhost might fall back.
+  const writePromise = (navigator.clipboard && navigator.clipboard.writeText)
+    ? navigator.clipboard.writeText(r.url)
+    : Promise.reject(new Error('no clipboard API'));
+  writePromise
+    .then(() => showToast(S.shareCopied))
+    .catch(() => {
+      // Fallback: show the URL in a prompt so the user can copy manually.
+      window.prompt(S.shareCopied, r.url);
+    });
 }
 

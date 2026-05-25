@@ -16,7 +16,11 @@ function draw() {
   // when the modal isn't open, or after refresh detects a structural change
   // and closes it.
   if (refreshFlightPlan) refreshFlightPlan();
-  persist();
+  // #214: skip persist during a PNG export. The export modal flips overlay
+  // toggles for the preview render, then restores them; without this guard
+  // the debounced persist() would write the preview-state mutation to
+  // localStorage if the user reopened the modal mid-export.
+  if (!NavAid.exporting) persist();
 }
 
 // --- nav-waypoint reference overlay ---------------------------------
@@ -157,6 +161,7 @@ async function loadAirfields() {
       lng: a.lng,
       elev_ft: a.elev_ft,
       plates: a.plates.slice(),
+      runways: Array.isArray(a.runways) ? a.runways.slice() : null,
     }));
     return airfields;
   } catch (e) {
@@ -290,9 +295,11 @@ function drawLegs() {
 
     const { dist, brg } = geo(A, B);
     const durH = leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
+    const durOut = leg.outboundSpeed > 0 ? dist / leg.outboundSpeed : 0;
     const magIn = toMagnetic(brg);
     const magOut = (magIn + 180) % 360;
     const timeStr = durH > 0 ? toHMS(durH) : '--';
+    const timeStrOut = durOut > 0 ? toHMS(durOut) : '--';
 
     drawMinuteMarkers(sa, sb, durH);
 
@@ -310,7 +317,7 @@ function drawLegs() {
     if (showReturn) {
       drawLegArrow(mid.x + dx * outP.a + nx * outP.p,
         mid.y + dy * outP.a + ny * outP.p, ang + Math.PI,
-        pad3(magOut), timeStr, String(leg.outboundAltitude),
+        pad3(magOut), timeStrOut, String(leg.outboundAltitude),
         '#c0392b', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
@@ -361,10 +368,8 @@ function drawMinuteMarkers(sa, sb, durH) {
     octx.stroke();
     if (even) {                         // minute number past the tick end
       const tx = px + nx * (tick + 8), ty = py + ny * (tick + 8);
-      octx.lineWidth = 2.5;
-      octx.strokeStyle = 'rgba(255,255,255,0.85)';
-      octx.strokeText(String(m), tx, ty);
       octx.fillStyle = '#161412';
+      octx.font = 'bold 10px sans-serif';
       octx.fillText(String(m), tx, ty);
     }
   }
@@ -386,7 +391,7 @@ function needsHalo(i, which) {
   if (i === state.legs.length - 1) return false;
   const next = state.legs[i + 1];
   return cur.outboundAltitude !== next.outboundAltitude ||
-         cur.flightSpeed      !== next.flightSpeed;
+         cur.outboundSpeed    !== next.outboundSpeed;
 }
 
 // Navigation leg marker: a two-cell rectangle (altitude, time) joined to a

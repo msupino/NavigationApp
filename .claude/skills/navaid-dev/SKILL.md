@@ -34,7 +34,8 @@ Unity `NavigationApp` plotter, which is preserved on the
   Reference only; do not commit web changes here.
 
 `main` is branch-protected — no direct pushes; production changes land via
-a `dev` → `main` pull request.
+a `dev` → `main` pull request. **Every change must go through a feature
+branch and pull request — even one-line fixes.**
 
 ## Files (`docs/`)
 
@@ -246,7 +247,7 @@ downloadable `route.json`.
 ## Notes / pending
 
 - flight-maps.com tiles are a third-party service; the CVFR data is
-  copyrighted. Fine for personal use; a public deploy needs permission.
+  copyrighted.
 - `nav-waypoints.json` — 256 Israeli CVFR reporting points.
   **Source:** ForeFlight Israel Base Pack, https://www.foreflightisrael.xyz/.
   KMZ (`CVFR WAYPOINTS 0225.kmz`) extracted and converted to

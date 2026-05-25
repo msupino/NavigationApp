@@ -35,7 +35,7 @@ self.addEventListener('fetch', e => {
           }
           return resp;
         })
-        .catch(() => caches.match(e.request)));
+        .catch(() => caches.match(e.request).then(m => m || caches.match('/'))));
     return;
   }
 
@@ -46,14 +46,18 @@ self.addEventListener('fetch', e => {
       const hit = await cache.match(e.request);
       if (hit) return hit;
       const resp = await fetch(e.request);
-      if (resp && (resp.ok || resp.type === 'opaque')) {
-        cache.put(e.request, resp.clone());
+      // #144: only cache 2xx responses. cacheable() restricts to same-origin
+      // and unpkg.com, both of which serve CORS, so the legitimate cases all
+      // produce resp.ok. Caching opaque blindly was a cache-poisoning surface
+      // if upstream ever started returning redirects.
+      if (resp && resp.ok) {
+        await cache.put(e.request, resp.clone());
         if (url.search.includes('v=')) {
           const keys = await cache.keys();
           for (const k of keys) {
             const ku = new URL(k.url);
             if (ku.pathname === url.pathname && k.url !== e.request.url) {
-              cache.delete(k);
+              await cache.delete(k);
             }
           }
         }

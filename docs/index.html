@@ -100,50 +100,46 @@
         var sel = document.getElementById('lang-select');
         sel.value = window.__navLang;
         sel.addEventListener('change', function () {
-          location.href = sel.value === 'en' ? '?lang=en' : '?lang=he';
+          if (typeof state !== 'undefined' && state.selected) {
+            try { sessionStorage.setItem('navaid.selected', JSON.stringify(state.selected)); } catch (e) {}
+          }
+          if (typeof fpOpen !== 'undefined' && fpOpen) {
+            try { sessionStorage.setItem('navaid.fpOpen', '1'); } catch (e) {}
+          }
+          var params = new URLSearchParams(location.search);
+          params.set('lang', sel.value);
+          location.href = '?' + params.toString();
         });
       }());
     </script>
 
-    <div class="tb-section" data-sec="edit">
-      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecEdit"></div>
+    <!-- Build: everything you do to construct or edit a route. -->
+    <div class="tb-section" data-sec="build">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecBuild"></div>
       <div class="tb-section-body">
         <button id="tool-add" class="tool" data-i18n="tbAddWp" data-i18n-title="tbAddWpTitle"></button>
         <button id="tool-note" class="tool" data-i18n="tbAddNote" data-i18n-title="tbAddNoteTitle"></button>
+        <button id="search-trigger" type="button" data-i18n="tbSearchOpen" data-i18n-title="tbSearchOpenTitle"></button>
+        <button id="reverse" data-i18n="tbReverse" data-i18n-title="tbReverseTitle"></button>
+        <button id="clear" data-i18n="tbClear" data-i18n-title="tbClearTitle"></button>
+        <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
       </div>
     </div>
 
-    <div class="tb-section" data-sec="map">
-      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecMap"></div>
+    <!-- View: chart appearance + every overlay/toggle/slider. -->
+    <div class="tb-section" data-sec="view">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecView"></div>
       <div class="tb-section-body">
         <label class="navtoggle" data-i18n-title="tbLayerTitle">
           <span data-i18n="tbLayerLabel"></span>
           <select id="layer-select"></select>
         </label>
-        <div class="navsearch">
-          <input type="text" id="wp-search" data-i18n-placeholder="tbSearchPlaceholder" autocomplete="off">
-          <div id="wp-search-results" class="hidden"></div>
-        </div>
         <label class="navtoggle" data-i18n-title="tbShowNavWpTitle">
           <input type="checkbox" id="navwp-cb" checked> <span data-i18n="tbShowNavWp"></span>
         </label>
         <label class="navtoggle" data-i18n-title="tbShowAirfieldsTitle">
           <input type="checkbox" id="airfield-cb" checked> <span data-i18n="tbShowAirfields"></span>
         </label>
-      </div>
-    </div>
-
-    <div class="tb-section" data-sec="route">
-      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecRoute"></div>
-      <div class="tb-section-body">
-        <button id="reverse" data-i18n="tbReverse" data-i18n-title="tbReverseTitle"></button>
-        <button id="clear" data-i18n="tbClear" data-i18n-title="tbClearTitle"></button>
-        <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
-        <button id="save" data-i18n="tbExport" data-i18n-title="tbExportTitle"></button>
-        <button id="load" data-i18n="tbImport" data-i18n-title="tbImportTitle"></button>
-        <input type="file" id="file" accept="application/json,.json" hidden>
-        <button id="plan" data-i18n="tbPlan" data-i18n-title="tbPlanTitle"></button>
-        <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
         <label class="navtoggle" data-i18n-title="tbShowReturnTitle">
           <input type="checkbox" id="ret-cb"> <span data-i18n="tbShowReturn"></span>
         </label>
@@ -153,16 +149,17 @@
         <label class="navtoggle" data-i18n-title="tbHighlightDiffTitle">
           <input type="checkbox" id="diff-cb"> <span data-i18n="tbHighlightDiff"></span>
         </label>
-      </div>
-    </div>
-
-    <div class="tb-section" data-sec="display">
-      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecDisplay"></div>
-      <div class="tb-section-body">
         <label class="navtoggle" data-i18n-title="tbShowWpNamesTitle">
           <input type="checkbox" id="wpname-cb" checked> <span data-i18n="tbShowWpNames"></span>
           <button id="wpname-rot" type="button">⟳</button>
         </label>
+      </div>
+    </div>
+
+    <!-- Display: sliders. -->
+    <div class="tb-section" data-sec="display">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecDisplay"></div>
+      <div class="tb-section-body">
         <label class="navtoggle" data-i18n-title="tbTransparencyTitle">
           <span data-i18n="tbTransparency"></span>
           <input type="range" id="yellow-alpha" min="0" max="100" step="5" value="100">
@@ -179,19 +176,38 @@
           <span data-i18n="tbLegArrowSize"></span>
           <input type="range" id="leg-arrow-size" min="0.3" max="2" step="0.1" value="1">
         </label>
-        <label class="navtoggle" data-i18n-title="tbMagVarTitle">
-          <span data-i18n="tbMagVar"></span>
-          <input type="number" id="mag-var" min="-30" max="30" step="0.5" value="-5">°
-          <span id="mag-var-eqv" class="hint"></span>
-        </label>
+      </div>
+    </div>
+
+    <!-- Charts: flight plan and airfield charts. -->
+    <div class="tb-section" data-sec="charts">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecCharts"></div>
+      <div class="tb-section-body">
+        <button id="plan" data-i18n="tbPlan" data-i18n-title="tbPlanTitle"></button>
+        <button id="charts" data-i18n="tbCharts" data-i18n-title="tbChartsTitle"></button>
+      </div>
+    </div>
+
+    <!-- Export / Import: route file operations. -->
+    <div class="tb-section" data-sec="export">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecExport"></div>
+      <div class="tb-section-body">
+        <button id="save" data-i18n="tbExport" data-i18n-title="tbExportTitle"></button>
+        <button id="load" data-i18n="tbImport" data-i18n-title="tbImportTitle"></button>
+        <button id="share" data-i18n="tbShare" data-i18n-title="tbShareTitle"></button>
+        <input type="file" id="file" accept="application/json,.json" hidden>
+        <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
       </div>
     </div>
 
     <div class="tb-section" data-sec="print">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecPrint"></div>
       <div class="tb-section-body">
-        <button id="page-a3" data-i18n-title="tbPageA3Title">A3</button>
-        <button id="page-a4" data-i18n-title="tbPageA4Title">A4</button>
+        <div id="page-buttons">
+          <button id="page-a3" data-i18n-title="tbPageA3Title">A3</button>
+          <button id="page-a4" data-i18n-title="tbPageA4Title">A4</button>
+          <button id="page-orient" type="button" data-i18n-title="tbOrientTitle">▭</button>
+        </div>
         <button id="print" data-i18n="tbPrint" data-i18n-title="tbPrintTitle"></button>
       </div>
     </div>
@@ -228,6 +244,18 @@
         <span class="footer-link-text" data-i18n="tbWiki"></span>
       </a>
     </div>
+  </div>
+
+  <!-- Floating nav-waypoint search — Ctrl/Cmd-F or the toolbar button shows
+       this overlay. Hidden by default; Escape closes. The input + results
+       moved out of the Build section so the search no longer requires the
+       section to be expanded. -->
+  <div id="search-overlay" class="hidden">
+    <input type="text" id="wp-search" data-i18n-placeholder="tbSearchPlaceholder"
+           data-i18n-title="tbSearchHint" autocomplete="off">
+    <button id="search-close" type="button" data-i18n-title="modalCloseTitle" aria-label="Close">✕</button>
+    <small id="wp-search-hint" class="search-hint" data-i18n="tbSearchHint"></small>
+    <div id="wp-search-results" class="hidden"></div>
   </div>
 
   <div id="inspector" class="hidden">

@@ -40,7 +40,7 @@ var magVar = -5;                       // signed offset added to true heading
 window.S = Object.assign({
   navWpUrl: 'nav-waypoints.json?v=3',  // resolved relative to index.html (docs/)
   navWpSearchField: 'name',            // which field to show/search in results
-  airfieldsUrl: 'airfields.json?v=2',  // resolved relative to index.html (docs/)
+  airfieldsUrl: 'airfields.json?v=3',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
 
   // --- Waypoint terminology -------------------------------------------
@@ -57,9 +57,14 @@ window.S = Object.assign({
   tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
   tbWpSize: 'Waypoint Size',                        // Display slider label
   tbWpSizeTitle: 'Waypoint circle and name size',
-  tbShowNavWp: 'Show Navigation Waypoints',         // Map overlay toggle
+  tbShowNavWp: 'Show/Pin Navigation Waypoints',     // Map overlay toggle
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbSearchPlaceholder: '🔍 Find Navigation Waypoint',
+  tbSearchHint: 'Tip: type space-separated waypoint codes (e.g. LLHZ BAZRA DEROR SHARO HADRA) and press Enter to build a route.',
+  errSearchUnknown: function(t) { return 'Unknown waypoint: ' + t; },
+  searchReplaceConfirm: 'Replace the current route with these waypoints?',
+  tbSearchOpen: '🔍 Find',
+  tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
   deleteWp: 'Delete Waypoint',                      // inspector button
   clearConfirm: 'Remove all waypoints and notes?',
   errBadCoords: 'file has invalid waypoint coordinates',
@@ -78,10 +83,18 @@ window.S = Object.assign({
   },
   errNoLegs: 'No legs yet — drop at least two waypoints first.',
   flightPlan: 'Flight plan',
-  fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time'],
+  fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time', 'Fuel (gal)'],
+  fpReturn: 'Return route',
   fpTotal: 'Total',
   fpClose: 'Close',
   fpPrint: 'Print',
+  fpFuel: 'Fuel',
+  tbAircraft: 'Aircraft',
+  tbGph: 'Gallons per Hour',
+  tbGphTitle: 'Fuel consumption, gallons per hour',
+  tbTaxiGal: 'Taxi/T.O. (gal)',
+  tbTaxiGalTitle: 'Startup + taxi + takeoff fuel allowance in gallons',
+  fpTaxiTip: function(g) { return '+ ' + g.toFixed(1) + ' gal taxi / takeoff included in total'; },
   pageOrientation: ' page — orientation',
   landscape: 'Landscape',
   portrait: 'Portrait',
@@ -133,30 +146,53 @@ window.S = Object.assign({
   tbExportTitle: 'Export route as JSON',
   tbImport: '⬆ Import',
   tbImportTitle: 'Import route JSON',
+  tbShare: '🔗 Share',
+  tbShareTitle: 'Copy a shareable link to this route to the clipboard',
+  shareCopied: 'Route link copied to clipboard',
+  errShareTooLong: 'Route is too long for a share link (max 64 waypoints). Export as JSON and send the file instead.',
   tbFit: '⌖ Fit to screen',
   tbFitTitle: 'Fit route to view',
   tbPlan: '📋 Flight Plan',
   tbPlanTitle: 'Show flight plan table',
+  tbCharts: '🗺️ Airport Charts',
+  tbChartsTitle: 'Browse approach charts for all airfields',
   tbFly: '✈️ Open route in Google Earth',
   tbFlyTitle: 'Save a Google Earth tour of the route at the planned leg altitudes',
   tbShowReturn: 'Show return path',
   tbShowReturnTitle: 'Show return-direction (outbound) info',
-  tbShowMidLeg: 'Show leg dist',
+  tbShowMidLeg: 'Show leg distance',
   tbShowMidLegTitle: 'Show distance badge at the middle of each leg',
   tbHighlightDiff: 'Highlight alt/speed diff',
   tbHighlightDiffTitle: 'Halo legs whose altitude or speed differs from the adjacent leg',
-  tbShowAirfields: 'Show Airfields',
+  tbShowAirfields: 'Show/Pin Airfields',
   tbShowAirfieldsTitle: 'Overlay published Israeli airfields (BYOP source)',
+  plates: 'Charts',
+  runways: 'Runways',
+  plateCategoryApproach: 'Approach',
+  plateCategorySid: 'SID',
+  plateCategoryStar: 'STAR',
+  plateCategoryGround: 'Ground',
+  plateCategoryVfr: 'VFR / Airport',
+  plateCategoryOther: 'Other',
+  plateOpen: 'Open',
+  plateDownload: 'Download',
+  plateOpenTab: 'Open in new tab',
+  plateClose: 'Close',
+  platesNone: 'No charts available — see official AIP',
+  plateLoadError: 'Failed to load chart.',
+  plateAttribution: 'Charts © Israel CAAI / Ministry of Transport — published in the AIP. Snapshot from ForeFlight Israel Base Pack 02-25 edition.',
   tbTransparency: 'Label Transparency',
   tbTransparencyTitle: 'Opacity of waypoint / leg / note label backgrounds',
   tbMapOpacity: 'Map opacity',
   tbMapOpacityTitle: 'Base map brightness',
   tbLegArrowSize: 'Leg arrow size',
   tbLegArrowSizeTitle: 'Leg info marker (heading / altitude / time) size',
-  tbMagVar: 'Mag var',
+  tbMagVar: 'Magnetic Variation',
   tbMagVarTitle: 'Signed offset added to true heading. Negative = east variation; positive = west.',
   tbPageA3Title: 'A3 print page',
   tbPageA4Title: 'A4 print page',
+  tbOrientTitle: 'Orientation — click to toggle landscape / portrait',
+  modalCloseTitle: 'Close',
   tbPrint: '⬇ Save PNG',
   tbPrintTitle: 'Save the framed map + route as a PNG',
   inspCloseTitle: 'Close',
@@ -166,8 +202,18 @@ window.S = Object.assign({
   tbSecRoute: '📋 Route',
   tbSecDisplay: '👁 Display',
   tbSecPrint: '🖨 Print',
+  tbSecBuild: '✏️ Edit',
+  tbSecView: '👁 View',
+  tbSecCharts: '📋 Charts',
+  tbSecExport: '📤 Export/Import',
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
+  exportModalTitle: 'Export PNG',
+  exportShowNavWP: 'Print Navigation Waypoints',
+  exportShowAirfields: 'Print Airfields',
+  exportShowWpNames: 'Print Waypoint Names',
+  exportLayer: 'Layer',
+  exportBtn: 'Export',
 }, window.S || {});
 
 // Fill data-i18n / data-i18n-title / data-i18n-placeholder / data-i18n-aria
@@ -213,8 +259,23 @@ var yellowAlpha = 1;        // global multiplier for yellow label backgrounds
 var wpSize = 1;             // waypoint name / number text size scale
 var legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
 let pageSize = null;        // null | 'A3' | 'A4'
-let pageOrient = 'landscape';   // 'landscape' | 'portrait'
+// `var` (not `let`) so window.pageOrient writes from ui.js's boot restore
+// land on the same binding the toggle reads. Default 'portrait' since most
+// CVFR routes are tall (north–south Israel airspace).
+var pageOrient = 'portrait';
 let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre
+var aircraft = null;               // null | {gph, taxiGal}
+
+function loadAircraft() {
+  try {
+    const raw = localStorage.getItem('navaid.aircraft');
+    if (raw) aircraft = JSON.parse(raw);
+  } catch (e) { /* storage unavailable */ }
+}
+
+function saveAircraft() {
+  try { localStorage.setItem('navaid.aircraft', JSON.stringify(aircraft)); } catch (e) {}
+}
 
 // Yellow text-background colour with the global opacity scale applied.
 const yellowFill = (a) => `rgba(255,246,170,${a * yellowAlpha})`;
@@ -235,21 +296,18 @@ const newLeg = () => ({
   inboundAltitude: 2000,
   outboundAltitude: 2000,
   flightSpeed: 90,
+  outboundSpeed: 90,
   inLabel: { a: 0, p: 44 },            // marker offset: along leg, perpendicular
   outLabel: { a: 0, p: -44 },
 });
 
-// Coerce a leg-label object to a well-formed {a, p} pair. Imported JSON
-// can carry partial labels like {a: 10} (issue #82); a missing or
-// non-finite key falls back to the per-key default so downstream math
-// never sees NaN.
-function normLegLabel(lbl, defP) {
-  const a = (lbl && Number.isFinite(+lbl.a)) ? +lbl.a : 0;
-  const p = (lbl && Number.isFinite(+lbl.p)) ? +lbl.p : defP;
-  return { a, p };
-}
 
 // --- helpers ---------------------------------------------------------
+// Round lat/lng to 5 decimals (~1.1 m at 32°N). 3 dp was too coarse — coarser
+// than AIP source data (published to ~18 m) and visibly shifted close-spaced
+// reporting points. 5 dp keeps full source precision while still trimming
+// IEEE-754 noise from drags and JSON imports.
+function r5(v) { return Math.round(v * 100000) / 100000; }
 function geo(a, b) {                   // a,b = {lat,lng} -> {dist NM, brg deg}
   const rad = d => (d * Math.PI) / 180;
   const phi1 = rad(a.lat), phi2 = rad(b.lat);
@@ -272,6 +330,9 @@ function toHMS(hours) {
   let m = Math.floor(tm);
   let s = Math.round(((tm - m) * 60) / 5) * 5;
   if (s >= 60) { s -= 60; m++; }
+  const h = Math.floor(m / 60);
+  m %= 60;
+  if (h > 0) return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
   return m + ':' + String(s).padStart(2, '0');
 }
 function fmtLatLng(v, pos, neg) {

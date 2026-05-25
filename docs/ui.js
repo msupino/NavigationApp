@@ -144,35 +144,105 @@ function closeSearch() {
   wpResults.classList.add('hidden');
   wpResults.innerHTML = '';
 }
+// Exact-match lookup of one token against airfields + navWP — case-
+// insensitive on the English ICAO code, exact on the Hebrew label.
+// Airfields tried first (smaller, strongly-known set; same priority as
+// applyNavSnap()). Returns the entry or null.
+function findNavWpToken(token) {
+  if (!token) return null;
+  const up = token.toUpperCase();
+  if (airfields && airfields.length) {
+    for (const a of airfields) {
+      if ((a.name && a.name.toUpperCase() === up) ||
+          (a.he && a.he === token) ||
+          (a.en && a.en.toUpperCase() === up)) {
+        return a;
+      }
+    }
+  }
+  if (navWP && navWP.length) {
+    for (const w of navWP) {
+      if ((w.name && w.name.toUpperCase() === up) || (w.he && w.he === token)) {
+        return w;
+      }
+    }
+  }
+  return null;
+}
+// Multi-token Enter: parse space-separated codes, resolve every one against
+// airfields + navWP, replace the route with those waypoints. Inspired by
+// arielbider/cvfr-map.
+async function buildRouteFromQuery(raw) {
+  if (navWP === null) await loadNavWaypoints();
+  if (airfields === null) await loadAirfields();
+  const tokens = raw.split(/\s+/).filter(Boolean);
+  if (tokens.length < 2) return false;
+  const resolved = [];
+  for (const t of tokens) {
+    const w = findNavWpToken(t);
+    if (!w) { alert(S.errSearchUnknown(t)); return false; }
+    resolved.push(w);
+  }
+  if ((state.waypoints.length || state.notes.length) &&
+      !confirm(S.searchReplaceConfirm)) return false;
+  // Always store the canonical ICAO / English code so all tokens render
+  // consistently. navName() in interact.js converts it to the locale at
+  // display time. Without this, HE-locale autofill would store the
+  // Hebrew label for clicked tokens and the English ICAO for typed
+  // tokens — producing the mixed-locale route the user reported.
+  state.waypoints = resolved.map(w => ({
+    lat: w.lat, lng: w.lng, name: w.name,
+  }));
+  state.legs = [];
+  state.selected = null;
+  syncLegs();
+  wpSearch.value = '';
+  hideSearchOverlay();
+  showInspector();
+  fitView();
+  draw();
+  return true;
+}
 function runSearch() {
-  const qRaw = wpSearch.value.trim();
-  const q = qRaw.toUpperCase();
+  // Use the raw value (not trimmed) so a trailing space — meaning "I just
+  // accepted the previous token, waiting to type the next one" — suppresses
+  // the dropdown instead of re-running a stale single-token query.
+  const rawAll = wpSearch.value;
+  const trailingSpace = /\s$/.test(rawAll);
+  const qRaw = rawAll.trim();
+  const multi = /\s/.test(qRaw) || trailingSpace;
+  const lastToken = trailingSpace ? '' : (multi ? (qRaw.split(/\s+/).pop() || '') : qRaw);
+  if (multi && !lastToken) { closeSearch(); return; }
+  const q = lastToken.toUpperCase();
   if (!q) { closeSearch(); return; }
-  const hits = [];
-  // Airfields surface first — small (16-entry) high-signal set: ICAO,
-  // English label, and Hebrew label all matched substring.
+  const afHits = [], wpHits = [];
+  // #124: split budget evenly — up to 6 airfields then up to 6 nav-WPs so a
+  // broad query (e.g. "LL") can't fill all 12 slots with airfield results.
   if (airfields && airfields.length) {
     for (const a of airfields) {
       if (a.name.toUpperCase().indexOf(q) >= 0 ||
           (a.en && a.en.toUpperCase().indexOf(q) >= 0) ||
-          (a.he && a.he.indexOf(qRaw) >= 0)) {
-        hits.push({ kind: 'af', entry: a });
+          (a.he && a.he.indexOf(lastToken) >= 0)) {
+        afHits.push({ kind: 'af', entry: a });
       }
     }
   }
   if (navWP && navWP.length) {
     for (const w of navWP) {
       if (w.name.toUpperCase().indexOf(q) >= 0 ||
-          (w.he && w.he.indexOf(qRaw) >= 0)) {
-        hits.push({ kind: 'wp', entry: w });
+          (w.he && w.he.indexOf(lastToken) >= 0)) {
+        wpHits.push({ kind: 'wp', entry: w });
       }
     }
   }
+  const afSlots = Math.min(afHits.length, 6);
+  const wpSlots = Math.min(wpHits.length, 12 - afSlots);
+  const hits = afHits.slice(0, afSlots).concat(wpHits.slice(0, wpSlots));
   if (!hits.length) { closeSearch(); return; }
   wpResults.innerHTML = '';
   const wpField = S.navWpSearchField;
   const afField = S.airfieldLabelField;
-  for (const h of hits.slice(0, 12)) {
+  for (const h of hits) {
     const w = h.entry;
     const item = document.createElement('div');
     item.className = 'wp-search-item';
@@ -187,6 +257,17 @@ function runSearch() {
     }
     item.textContent = alt && alt !== primary ? primary + ' / ' + alt : primary;
     item.onclick = () => {
+      if (multi) {
+        // Replace just the last token with the canonical ICAO / English
+        // code — keeps the typed route in a single language. Trailing
+        // space primes the next autocomplete.
+        const parts = wpSearch.value.split(/\s+/);
+        parts[parts.length - 1] = w.name;
+        wpSearch.value = parts.join(' ') + ' ';
+        wpSearch.focus();
+        closeSearch();
+        return;
+      }
       map.setView([w.lat, w.lng], Math.max(map.getZoom(), 12));
       wpSearch.value = primary;
       closeSearch();
@@ -199,15 +280,54 @@ wpSearch.addEventListener('input', runSearch);
 wpSearch.addEventListener('focus', () => { if (wpSearch.value.trim()) runSearch(); });
 wpSearch.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
+    const raw = wpSearch.value.trim();
+    // Only treat as a route-build when there are ≥ 2 actual tokens.
+    // A single token with trailing whitespace must still let Enter pick
+    // the highlighted dropdown suggestion.
+    if (raw.split(/\s+/).filter(Boolean).length >= 2) {
+      e.preventDefault();
+      buildRouteFromQuery(raw);
+      return;
+    }
     const first = wpResults.querySelector('.wp-search-item');
     if (first) first.click();
   } else if (e.key === 'Escape') {
-    closeSearch();
-    wpSearch.value = '';
+    hideSearchOverlay();
+  }
+});
+// Floating search overlay — Ctrl/Cmd-F opens it, Escape or ✕ closes it. The
+// search input moved out of the toolbar Build section so it no longer
+// requires the section to be expanded.
+const searchOverlay = document.getElementById('search-overlay');
+function showSearchOverlay() {
+  searchOverlay.classList.remove('hidden');
+  wpSearch.focus();
+  wpSearch.select();
+}
+function hideSearchOverlay() {
+  searchOverlay.classList.add('hidden');
+  closeSearch();
+  wpSearch.value = '';
+}
+document.getElementById('search-trigger').onclick = showSearchOverlay;
+document.getElementById('search-close').onclick = hideSearchOverlay;
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+    const t = e.target;
+    // Allow native find-in-page when the user is already typing somewhere.
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+      if (t !== wpSearch) return;
+    }
+    e.preventDefault();
+    showSearchOverlay();
+  } else if (e.key === 'Escape' && !searchOverlay.classList.contains('hidden')) {
+    hideSearchOverlay();
   }
 });
 document.addEventListener('click', e => {
-  if (!e.target.closest('.navsearch')) closeSearch();
+  if (!searchOverlay.contains(e.target) && e.target.id !== 'search-trigger') {
+    closeSearch();
+  }
 });
 document.getElementById('reverse').onclick = () => {
   // Reversing flight direction means each leg's inbound/outbound roles swap.
@@ -217,7 +337,8 @@ document.getElementById('reverse').onclick = () => {
   state.legs = state.legs.reverse().map(l => ({
     inboundAltitude: l.outboundAltitude,
     outboundAltitude: l.inboundAltitude,
-    flightSpeed: l.flightSpeed,
+    flightSpeed: showReturn ? l.outboundSpeed : l.flightSpeed,
+    outboundSpeed: showReturn ? l.flightSpeed : l.flightSpeed,
     inLabel: { a: -l.outLabel.a, p: -l.outLabel.p },
     outLabel: { a: -l.inLabel.a, p: -l.inLabel.p },
   }));
@@ -235,13 +356,19 @@ document.getElementById('clear').onclick = () => {
 };
 document.getElementById('save').onclick = save;
 document.getElementById('load').onclick = () => document.getElementById('file').click();
+document.getElementById('share').onclick = shareRoute;
 document.getElementById('file').onchange = e => {
   if (e.target.files[0]) load(e.target.files[0]);
   e.target.value = '';
 };
 document.getElementById('fit').onclick = fitView;
 document.getElementById('fly').onclick = flyRoute;
-document.getElementById('plan').onclick = showFlightPlan;
+// Toggle: a second click closes the modal instead of being a no-op (#78 dedupe
+// previously made the button look broken when the modal was already open).
+document.getElementById('plan').onclick = () => {
+  if (fpOpen) closeFlightPlan(); else showFlightPlan();
+};
+document.getElementById('charts').onclick = showChartsModal;
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
 try {
@@ -255,6 +382,7 @@ document.getElementById('mid-cb').checked = showMidLeg;
 document.getElementById('ret-cb').onchange = e => {
   window.showReturn =e.target.checked;
   try { localStorage.setItem(RETURN_KEY, showReturn ? '1' : '0'); } catch (err) { /* */ }
+  if (fpOpen) { closeFlightPlan(); setTimeout(showFlightPlan, 0); }
   draw();
 };
 document.getElementById('mid-cb').onchange = e => {
@@ -336,7 +464,10 @@ document.getElementById('yellow-alpha').oninput = e => {
   draw();
 };
 const MAPOPACITY_KEY = 'navaid.mapOpacity';
-let mapOpacity = 1;
+// `var` (not `let`) so writes from any module via window.mapOpacity reach
+// the same binding the export reads — same hazard documented for every
+// other mutable global in core.js.
+var mapOpacity = 1;
 function applyMapOpacity() {
   for (const n in layers) {
     if (map.hasLayer(layers[n])) layers[n].setOpacity(mapOpacity);
@@ -379,32 +510,18 @@ document.getElementById('leg-arrow-size').oninput = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
-const MAGVAR_KEY = 'navaid.magVar';
-try {
-  const v = parseFloat(localStorage.getItem(MAGVAR_KEY));
-  if (!isNaN(v)) window.magVar =Math.max(-30, Math.min(30, v));
-} catch (e) { /* storage unavailable */ }
-function showMagVarEqv() {
-  const span = document.getElementById('mag-var-eqv');
-  if (!span) return;
-  if (magVar === 0) span.textContent = '';
-  else if (magVar < 0) span.textContent = `(${-magVar}°E)`;
-  else span.textContent = `(${magVar}°W)`;
-}
-document.getElementById('mag-var').value = magVar;
-showMagVarEqv();
-document.getElementById('mag-var').oninput = e => {
-  const v = parseFloat(e.target.value);
-  if (isNaN(v)) return;
-  window.magVar =Math.max(-30, Math.min(30, v));
-  try { localStorage.setItem(MAGVAR_KEY, String(magVar)); }
-  catch (err) { /* storage unavailable */ }
-  showMagVarEqv();
-  draw();
-};
+// magVar is hardcoded at -5 (5°E) in core.js; the input was removed.
+
 document.getElementById('page-a3').onclick = () => setPage('A3');
 document.getElementById('page-a4').onclick = () => setPage('A4');
-document.getElementById('print').onclick = exportPNG;
+// Restore last-used orientation and wire the toolbar toggle button.
+try {
+  const stored = localStorage.getItem('navaid.pageOrient');
+  if (stored === 'portrait' || stored === 'landscape') window.pageOrient = stored;
+} catch (e) { /* storage unavailable */ }
+document.getElementById('page-orient').onclick = toggleOrientation;
+refreshOrientButton();
+document.getElementById('print').onclick = showExportModal;
 document.getElementById('insp-close').onclick = () => {
   state.selected = null;
   showInspector(); draw();
@@ -518,44 +635,97 @@ document.getElementById('insp-close').onclick = () => {
 
 // --- section toggles -------------------------------------------------
 (function makeSectionToggle() {
-  document.querySelectorAll('.tb-section-head').forEach(head => {
-    const sec = head.closest('.tb-section');
+  const sections = Array.from(document.querySelectorAll('.tb-section'));
+  for (const sec of sections) {
+    const head = sec.querySelector('.tb-section-head');
+    if (!head) continue;
     const key = 'navaid.sec.' + sec.dataset.sec;
     try {
       if (localStorage.getItem(key) === '1') sec.classList.add('open');
     } catch (e) { /* storage unavailable */ }
     function toggle() {
-      sec.classList.toggle('open');
-      try { localStorage.setItem(key, sec.classList.contains('open') ? '1' : '0'); }
+      const willOpen = !sec.classList.contains('open');
+      // Accordion behaviour: opening a section closes the others.
+      if (willOpen) {
+        for (const other of sections) {
+          if (other !== sec && other.classList.contains('open')) {
+            other.classList.remove('open');
+            try { localStorage.setItem('navaid.sec.' + other.dataset.sec, '0'); }
+            catch (e) { /* storage unavailable */ }
+          }
+        }
+      }
+      sec.classList.toggle('open', willOpen);
+      try { localStorage.setItem(key, willOpen ? '1' : '0'); }
       catch (e) { /* storage unavailable */ }
     }
     head.addEventListener('click', toggle);
     head.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
     });
-  });
+  }
 })();
 
 // --- boot ------------------------------------------------------------
 resizeOverlay();
 setMode(null);
-// restoreRoute() returns 'corrupt' when the saved blob exists but is
-// unparseable / has invalid coords. Set a flag so persist() refuses to
-// overwrite the (potentially recoverable) blob with empty state — see #73.
-const _restoreResult = restoreRoute();
-if (_restoreResult === 'corrupt') {
-  NavAid.corruptCache = true;
-  const msg = S.errSavedRouteCorrupt(NavAid.corruptCacheError || '');
-  console.warn('NavAid: ' + msg);
-  alert(msg);
+// #162: if the URL carries share-link params (?r=…&n=…&l=…) the receiver
+// gets the shared route. URL wins over localStorage so a paste of someone
+// else's link doesn't appear to do nothing for a user who has their own
+// saved route. If the share-link parse fails we fall through to restore.
+const _sharedLoaded = tryLoadRouteFromUrl();
+let _restoreResult = null;
+if (!_sharedLoaded) {
+  // restoreRoute() returns 'corrupt' when the saved blob exists but is
+  // unparseable / has invalid coords. Set a flag so persist() refuses to
+  // overwrite the (potentially recoverable) blob with empty state — see #73.
+  _restoreResult = restoreRoute();
+  if (_restoreResult === 'corrupt') {
+    NavAid.corruptCache = true;
+    const msg = S.errSavedRouteCorrupt(NavAid.corruptCacheError || '');
+    console.warn('NavAid: ' + msg);
+    alert(msg);
+  }
+} else {
+  syncLegs();
 }
+try {
+  const saved = sessionStorage.getItem('navaid.selected');
+  if (saved) {
+    sessionStorage.removeItem('navaid.selected');
+    const sel = JSON.parse(saved);
+    if (sel && sel.type === 'wp' && sel.index >= 0 && sel.index < state.waypoints.length) {
+      state.selected = sel;
+    }
+  }
+} catch (e) {}
+if (state.selected) showInspector();
 if (state.waypoints.length) fitView();   // always frame the restored route
 draw();
 // Always load nav-waypoints in the background — they power both the
 // overlay toggle and the auto-snap on drop / drag.
 loadNavWaypoints().then(draw);
 // Same pattern for airfields: powering both the overlay and snap.
-loadAirfields().then(draw);
+// Also re-render inspector so plates section appears if a waypoint
+// was restored from sessionStorage before airfields loaded.
+loadAirfields().then(() => { draw(); if (state.selected) showInspector(); });
+// Restore flight-plan modal if it was open before refresh / language change.
+try {
+  if (sessionStorage.getItem('navaid.fpOpen')) {
+    sessionStorage.removeItem('navaid.fpOpen');
+    if (state.waypoints.length && typeof showFlightPlan === 'function') showFlightPlan();
+  }
+} catch (e) {}
+
+// Save selected waypoint and flight-plan state on refresh / tab-close.
+window.addEventListener('beforeunload', function () {
+  if (state && state.selected) {
+    try { sessionStorage.setItem('navaid.selected', JSON.stringify(state.selected)); } catch (e) {}
+  }
+  if (window.fpOpen) {
+    try { sessionStorage.setItem('navaid.fpOpen', '1'); } catch (e) {}
+  }
+});
 
 // --- PWA: service worker --------------------------------------------
 // Registering the worker makes the app installable; the browser shows

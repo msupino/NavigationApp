@@ -1,0 +1,386 @@
+// @ts-check
+// End-to-end coverage of the route editing surface: add / drag / delete
+// waypoints, reverse, clear, mode switching, inspector. Same 11-WP
+// LLHZ → LLHA fixture as tests/flight-plan.spec.js and tests/share-route.spec.js.
+const { test, expect } = require('./_setup');
+
+const ROUTE = {
+  waypoints: [
+    { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
+    { lat: 32.21861, lng: 34.88250, name: 'BAZRA' },
+    { lat: 32.25722, lng: 34.89111, name: 'DEROR' },
+    { lat: 32.32306, lng: 34.90389, name: 'SHARO' },
+    { lat: 32.46472, lng: 34.91222, name: 'HADRA' },
+    { lat: 32.59194, lng: 34.94639, name: 'FRDIS' },
+    { lat: 32.71444, lng: 34.97083, name: 'BOREN' },
+    { lat: 32.75389, lng: 34.93694, name: 'HOTRM' },
+    { lat: 32.79611, lng: 34.94333, name: 'DAROM' },
+    { lat: 32.84111, lng: 34.98111, name: 'GALIM' },
+    { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+  ],
+};
+
+// Sentinel so the init script only clears storage on the FIRST navigation —
+// subsequent reload()s in a single test see the persisted state intact.
+async function setupCleanInit(page) {
+  await page.addInitScript(() => {
+    try {
+      if (localStorage.getItem('__test_init_v1') !== '1') {
+        for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
+        sessionStorage.clear();
+        for (const s of ['build','view','display','charts','export','print']) {
+          localStorage.setItem('navaid.sec.' + s, '1');
+        }
+        localStorage.setItem('__test_init_v1', '1');
+      }
+    } catch (e) {}
+  });
+}
+
+async function bootWithRoute(page) {
+  await setupCleanInit(page);
+  await page.goto('/?lang=en');
+  await page.waitForFunction(() => typeof state !== 'undefined' && typeof syncLegs === 'function');
+  await page.evaluate(route => {
+    state.waypoints = route.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
+    syncLegs();
+    draw();
+  }, ROUTE);
+}
+
+test.describe('Add waypoint', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupCleanInit(page);
+    await page.goto('/?lang=en');
+    await page.waitForFunction(() => typeof state !== 'undefined' && typeof map !== 'undefined');
+  });
+
+  test('Add mode button toggles state.mode', async ({ page }) => {
+    expect(await page.evaluate(() => state.mode)).toBeNull();
+    await page.locator('#tool-add').click();
+    expect(await page.evaluate(() => state.mode)).toBe('add');
+    await page.locator('#tool-add').click();
+    expect(await page.evaluate(() => state.mode)).toBeNull();
+  });
+
+  test('Click in add mode drops a waypoint', async ({ page }) => {
+    await page.evaluate(() => { state.mode = 'add'; });
+    await page.evaluate(() => map.fire('click', { latlng: L.latLng(32.5, 35.0) }));
+    const wps = await page.evaluate(() => state.waypoints.length);
+    expect(wps).toBe(1);
+  });
+
+  test('Two clicks build one leg', async ({ page }) => {
+    await page.evaluate(() => { state.mode = 'add'; });
+    await page.evaluate(() => {
+      map.fire('click', { latlng: L.latLng(32.5, 35.0) });
+      map.fire('click', { latlng: L.latLng(32.7, 35.2) });
+    });
+    const { wps, legs } = await page.evaluate(() => ({
+      wps: state.waypoints.length, legs: state.legs.length,
+    }));
+    expect(wps).toBe(2);
+    expect(legs).toBe(1);
+  });
+
+  test('Switching to note mode disables add mode', async ({ page }) => {
+    await page.locator('#tool-add').click();
+    await page.locator('#tool-note').click();
+    expect(await page.evaluate(() => state.mode)).toBe('note');
+  });
+});
+
+test.describe('Edit / delete waypoint', () => {
+  test.beforeEach(async ({ page }) => bootWithRoute(page));
+
+  test('deleteWaypoint(k) trims both arrays and keeps legs.length = wp.length - 1',
+    async ({ page }) => {
+      // Delete waypoint #5 (FRDIS)
+      await page.evaluate(() => { deleteWaypoint(5); draw(); });
+      const { wps, legs, name } = await page.evaluate(() => ({
+        wps: state.waypoints.length, legs: state.legs.length,
+        name: state.waypoints[5] ? state.waypoints[5].name : null,
+      }));
+      expect(wps).toBe(10);
+      expect(legs).toBe(9);
+      expect(name).toBe('BOREN');         // BOREN shifted into slot 5
+    });
+
+  test('Deleting first waypoint shifts entire array down', async ({ page }) => {
+    await page.evaluate(() => { deleteWaypoint(0); draw(); });
+    const first = await page.evaluate(() => state.waypoints[0].name);
+    expect(first).toBe('BAZRA');
+  });
+
+  test('Deleting last waypoint trims tail', async ({ page }) => {
+    await page.evaluate(() => { deleteWaypoint(state.waypoints.length - 1); draw(); });
+    const last = await page.evaluate(() => state.waypoints[state.waypoints.length - 1].name);
+    expect(last).toBe('GALIM');
+  });
+
+  test('Inspector Delete button removes the selected waypoint', async ({ page }) => {
+    await page.evaluate(() => {
+      state.selected = { type: 'wp', index: 4 };       // HADRA
+      showInspector(); draw();
+    });
+    page.once('dialog', d => d.accept());              // safety: no confirm currently
+    await page.locator('.insp-btn').filter({ hasText: 'Delete Waypoint' }).click();
+    const names = await page.evaluate(() => state.waypoints.map(w => w.name));
+    expect(names).not.toContain('HADRA');
+    expect(names).toHaveLength(10);
+  });
+
+  test('Editing inspector title updates state.waypoints[i].name', async ({ page }) => {
+    await page.evaluate(() => {
+      state.selected = { type: 'wp', index: 1 };
+      showInspector();
+    });
+    const title = page.locator('#insp-title');
+    await title.fill('CUSTOM');
+    await title.dispatchEvent('input');
+    expect(await page.evaluate(() => state.waypoints[1].name)).toBe('CUSTOM');
+  });
+});
+
+test.describe('Reverse route', () => {
+  test.beforeEach(async ({ page }) => bootWithRoute(page));
+
+  test('Reverse flips waypoint order', async ({ page }) => {
+    await page.locator('#reverse').click();
+    const names = await page.evaluate(() => state.waypoints.map(w => w.name));
+    expect(names[0]).toBe('LLHA');
+    expect(names[names.length - 1]).toBe('LLHZ');
+  });
+
+  test('Reverse twice is identity', async ({ page }) => {
+    const before = await page.evaluate(() => state.waypoints.map(w => w.name));
+    await page.locator('#reverse').click();
+    await page.locator('#reverse').click();
+    const after = await page.evaluate(() => state.waypoints.map(w => w.name));
+    expect(after).toEqual(before);
+  });
+
+  test('Reverse swaps inbound and outbound altitudes per leg', async ({ page }) => {
+    await page.evaluate(() => {
+      state.legs.forEach((l, i) => {
+        l.inboundAltitude = 1000 + i * 100;
+        l.outboundAltitude = 2000 + i * 100;
+      });
+    });
+    await page.locator('#reverse').click();
+    const result = await page.evaluate(() => state.legs.map(l => ({
+      ia: l.inboundAltitude, oa: l.outboundAltitude,
+    })));
+    // Before reverse, leg 0 had ia=1000/oa=2000; after reverse it becomes the
+    // last leg in array. Reversed legs swap ia↔oa: new leg-9 has ia=2000, oa=1000.
+    expect(result[result.length - 1]).toEqual({ ia: 2000, oa: 1000 });
+    expect(result[0]).toEqual({ ia: 2900, oa: 1900 });
+  });
+
+  test('legs.length stays consistent after reverse', async ({ page }) => {
+    await page.locator('#reverse').click();
+    const ok = await page.evaluate(() =>
+      state.legs.length === state.waypoints.length - 1);
+    expect(ok).toBe(true);
+  });
+});
+
+test.describe('Clear map', () => {
+  test.beforeEach(async ({ page }) => bootWithRoute(page));
+
+  test('Clear button confirmation empties waypoints, legs, notes', async ({ page }) => {
+    await page.evaluate(() => {
+      state.notes.push({ lat: 32.5, lng: 35.0, text: 'X', color: '#ff0', shape: 'rect' });
+    });
+    page.once('dialog', d => d.accept());
+    await page.locator('#clear').click();
+    const sizes = await page.evaluate(() => ({
+      wps: state.waypoints.length, legs: state.legs.length, notes: state.notes.length,
+    }));
+    expect(sizes).toEqual({ wps: 0, legs: 0, notes: 0 });
+  });
+
+  test('Dismissing the confirm keeps the route intact', async ({ page }) => {
+    page.once('dialog', d => d.dismiss());
+    await page.locator('#clear').click();
+    const wps = await page.evaluate(() => state.waypoints.length);
+    expect(wps).toBe(11);
+  });
+});
+
+test.describe('Notes', () => {
+  test.beforeEach(async ({ page }) => bootWithRoute(page));
+
+  test('Adding a note via map click in note mode', async ({ page }) => {
+    await page.evaluate(() => { state.mode = 'note'; });
+    await page.evaluate(() => map.fire('click', { latlng: L.latLng(32.6, 34.95) }));
+    const len = await page.evaluate(() => state.notes.length);
+    expect(len).toBe(1);
+  });
+
+  test('Note round-trips through save/load schema', async ({ page }) => {
+    await page.evaluate(() => {
+      state.notes = [{ lat: 32.5, lng: 35.0, text: 'Hello', color: '#abcdef', shape: 'oval' }];
+    });
+    const errs = await page.evaluate(() => validateRoute({
+      waypoints: state.waypoints, legs: state.legs, notes: state.notes,
+    }));
+    expect(errs).toBeNull();
+  });
+
+  test('Inspector deletes the selected note', async ({ page }) => {
+    await page.evaluate(() => {
+      state.notes = [
+        { lat: 32.5, lng: 35.0, text: 'A', color: '#fff', shape: 'rect' },
+        { lat: 32.6, lng: 35.1, text: 'B', color: '#fff', shape: 'rect' },
+      ];
+      state.selected = { type: 'note', index: 0 };
+      showInspector(); draw();
+    });
+    page.once('dialog', d => d.accept());
+    await page.locator('.insp-btn').filter({ hasText: 'Delete note' }).click();
+    const remaining = await page.evaluate(() => state.notes.map(n => n.text));
+    expect(remaining).toEqual(['B']);
+  });
+});
+
+test.describe('Persistence', () => {
+  test.beforeEach(async ({ page }) => bootWithRoute(page));
+
+  test('Route auto-persists to localStorage and restores on reload', async ({ page }) => {
+    // draw() schedules a 500 ms-debounced persist; the boot's empty-state draw
+    // wins the timer slot before the bootWithRoute injection can register. Wait
+    // out the first debounce window, then trigger a fresh draw so persist sees
+    // the injected 11-WP route.
+    await page.waitForTimeout(600);
+    await page.evaluate(() => { draw(); });
+    await page.waitForFunction(() => {
+      const raw = localStorage.getItem('navaid.route');
+      if (!raw) return false;
+      try { return JSON.parse(raw).waypoints.length === 11; } catch (e) { return false; }
+    });
+    await page.reload();
+    await page.waitForFunction(() =>
+      typeof state !== 'undefined' && state.waypoints && state.waypoints.length === 11);
+    const names = await page.evaluate(() => state.waypoints.map(w => w.name));
+    expect(names[0]).toBe('LLHZ');
+    expect(names[names.length - 1]).toBe('LLHA');
+  });
+
+  test('Edits trigger an auto-save', async ({ page }) => {
+    await page.waitForTimeout(600);          // let boot's debounced persist drain
+    await page.evaluate(() => {
+      state.waypoints[0].name = 'EDITED';
+      draw();
+    });
+    await page.waitForFunction(() => {
+      const raw = localStorage.getItem('navaid.route');
+      return raw && raw.indexOf('EDITED') >= 0;
+    });
+  });
+});
+
+test.describe('JSON export / import round-trip', () => {
+  test.beforeEach(async ({ page }) => bootWithRoute(page));
+
+  test('save() then validateRoute(parsed) is null', async ({ page }) => {
+    const errs = await page.evaluate(() => {
+      const data = {
+        waypoints: state.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name || '' })),
+        legs: state.legs.map(l => ({
+          inboundAltitude: l.inboundAltitude,
+          outboundAltitude: l.outboundAltitude,
+          flightSpeed: l.flightSpeed,
+          outboundSpeed: l.outboundSpeed,
+          inLabel: l.inLabel, outLabel: l.outLabel,
+        })),
+        notes: [],
+      };
+      return validateRoute(data);
+    });
+    expect(errs).toBeNull();
+  });
+});
+
+test.describe('Inspector close behaviour', () => {
+  test.beforeEach(async ({ page }) => bootWithRoute(page));
+
+  test('Empty-map click clears state.selected', async ({ page }) => {
+    await page.evaluate(() => {
+      state.selected = { type: 'wp', index: 0 };
+      showInspector(); draw();
+    });
+    await page.evaluate(() => map.fire('click', { latlng: L.latLng(31.5, 35.5) }));
+    expect(await page.evaluate(() => state.selected)).toBeNull();
+  });
+
+  test('Inspector close button clears selection', async ({ page }) => {
+    await page.evaluate(() => {
+      state.selected = { type: 'wp', index: 3 };
+      showInspector();
+    });
+    await page.locator('#insp-close').click();
+    expect(await page.evaluate(() => state.selected)).toBeNull();
+  });
+});
+
+test.describe('Layer picker', () => {
+  test.beforeEach(async ({ page }) => bootWithRoute(page));
+
+  test('Changing the layer persists to localStorage', async ({ page }) => {
+    await page.locator('#layer-select').selectOption('OpenStreetMap');
+    await page.waitForFunction(() =>
+      localStorage.getItem('navaid.layer') === 'OpenStreetMap');
+    expect(true).toBe(true);
+  });
+
+  test('Selected layer survives a page reload', async ({ page }) => {
+    await page.locator('#layer-select').selectOption('OpenStreetMap');
+    await page.waitForFunction(() =>
+      localStorage.getItem('navaid.layer') === 'OpenStreetMap');
+    await page.reload();
+    await expect(page.locator('#layer-select')).toHaveValue('OpenStreetMap');
+  });
+});
+
+test.describe('Overlay toggles', () => {
+  test.beforeEach(async ({ page }) => bootWithRoute(page));
+
+  test('Show nav waypoints toggle persists', async ({ page }) => {
+    await page.locator('#navwp-cb').uncheck();
+    await page.waitForFunction(() =>
+      localStorage.getItem('navaid.showNavWP') === '0');
+    await page.reload();
+    await expect(page.locator('#navwp-cb')).not.toBeChecked();
+  });
+
+  test('Show airfields toggle persists', async ({ page }) => {
+    await page.locator('#airfield-cb').uncheck();
+    await page.waitForFunction(() =>
+      localStorage.getItem('navaid.showAirfields') === '0');
+    await page.reload();
+    await expect(page.locator('#airfield-cb')).not.toBeChecked();
+  });
+
+  test('Show return path toggle persists', async ({ page }) => {
+    await page.locator('#ret-cb').check();
+    await page.waitForFunction(() =>
+      localStorage.getItem('navaid.showReturn') === '1');
+    await page.reload();
+    await expect(page.locator('#ret-cb')).toBeChecked();
+  });
+});
+
+test.describe('syncLegs invariant', () => {
+  test('legs.length always equals waypoints.length - 1', async ({ page }) => {
+    await bootWithRoute(page);
+    const after = async () => page.evaluate(() => state.legs.length === state.waypoints.length - 1);
+    expect(await after()).toBe(true);
+    await page.evaluate(() => { deleteWaypoint(0); });
+    expect(await after()).toBe(true);
+    await page.evaluate(() => { state.waypoints.push({ lat: 33, lng: 36, name: 'X' }); syncLegs(); });
+    expect(await after()).toBe(true);
+    await page.locator('#reverse').click();
+    expect(await after()).toBe(true);
+  });
+});
