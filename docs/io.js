@@ -1,4 +1,20 @@
 'use strict';
+
+// Shared helper: attach a top-right '✕' close button to a .modal box. The
+// inspector's #insp-close already uses this pattern; modals now match it
+// (plate viewer, charts modal, flight plan) — see issue thread on toolbar
+// cleanup. `onClose` is invoked when the user clicks the X.
+function addModalCloseX(box, onClose) {
+  const x = document.createElement('button');
+  x.className = 'modal-close-x';
+  x.type = 'button';
+  x.textContent = '✕';
+  x.setAttribute('aria-label', (window.S && S.modalCloseTitle) || 'Close');
+  x.title = (window.S && S.modalCloseTitle) || 'Close';
+  x.onclick = onClose;
+  box.appendChild(x);
+}
+
 /* NavAid — save/load, page setup, flight plan, PNG export, persistence.
    Shares globals with core.js; loaded after interact.js. */
 
@@ -268,13 +284,26 @@ function setPage(size) {
     applyPage();
     return;
   }
-  chooseOrientation(size, orient => {
-    pageOrient = orient;
-    pageSize = size;
-    pageOffset = { x: 0, y: 0 };          // start centred
-    applyPage();
-    fitPageFrame();
-  });
+  // Orientation is no longer a per-click modal — the toolbar Landscape/
+  // Portrait toggle (page-orient button) is the source of truth. Default
+  // to landscape on first use if nothing is persisted yet.
+  if (!pageOrient) pageOrient = 'landscape';
+  pageSize = size;
+  pageOffset = { x: 0, y: 0 };
+  applyPage();
+  fitPageFrame();
+}
+function toggleOrientation() {
+  pageOrient = pageOrient === 'portrait' ? 'landscape' : 'portrait';
+  try { localStorage.setItem('navaid.pageOrient', pageOrient); } catch (e) {}
+  if (pageSize) { applyPage(); fitPageFrame(); }
+  refreshOrientButton();
+}
+function refreshOrientButton() {
+  const btn = document.getElementById('page-orient');
+  if (!btn) return;
+  btn.textContent = pageOrient === 'portrait' ? '▯' : '▭';
+  btn.classList.toggle('portrait', pageOrient === 'portrait');
 }
 
 function fitPageFrame() {
@@ -701,12 +730,8 @@ function showFlightPlan() {
     setTimeout(cleanup, 4000);           // belt-and-braces for Safari
   };
   btns.appendChild(printBtn);
-  const close = document.createElement('button');
-  close.textContent = S.fpClose;
-  close.className = 'modal-cancel';
-  close.onclick = closeFlightPlan;
-  btns.appendChild(close);
   box.appendChild(btns);
+  addModalCloseX(box, closeFlightPlan);
 
   back.appendChild(box);
   // Close via the Close button or Escape (#86).
@@ -1321,13 +1346,12 @@ function showPlateViewer(filename, label) {
     a.click();
   };
   btns.appendChild(download);
-  const close = document.createElement('button');
-  close.textContent = S.plateClose;
-  close.className = 'modal-cancel';
-  close.onclick = () => { if (blobUrl) URL.revokeObjectURL(blobUrl); window.removeEventListener('keydown', onEsc); back.remove(); };
-  btns.appendChild(close);
-
   box.appendChild(btns);
+  addModalCloseX(box, () => {
+    if (blobUrl) URL.revokeObjectURL(blobUrl);
+    window.removeEventListener('keydown', onEsc);
+    back.remove();
+  });
 
   function onEsc(e) {
     if (e.key === 'Escape') {
@@ -1431,14 +1455,7 @@ function showChartsModal() {
   att.textContent = S.plateAttribution;
   box.appendChild(att);
 
-  const btns = document.createElement('div');
-  btns.className = 'modal-btns';
-  const close = document.createElement('button');
-  close.textContent = S.plateClose;
-  close.className = 'modal-cancel';
-  close.onclick = () => { window.removeEventListener('keydown', onEsc); back.remove(); };
-  btns.appendChild(close);
-  box.appendChild(btns);
+  addModalCloseX(box, () => { window.removeEventListener('keydown', onEsc); back.remove(); });
 
   function onEsc(e) {
     if (e.key === 'Escape') { window.removeEventListener('keydown', onEsc); back.remove(); }
