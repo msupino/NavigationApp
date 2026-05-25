@@ -21,6 +21,9 @@ async function boot(page) {
   // so the tests don't race the fetch.
   await page.evaluate(() => loadNavWaypoints());
   await page.waitForFunction(() => Array.isArray(window.navWP) && window.navWP.length > 0);
+  // Airfields too, for airfield-token resolution.
+  await page.evaluate(() => loadAirfields && loadAirfields());
+  await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
 }
 
 async function openSearch(page) {
@@ -50,10 +53,10 @@ test.describe('Multi-token search route builder (#98)', () => {
     expect(names).toEqual(['BAZRA', 'GNYAM']);
   });
 
-  test('multi-token query hides the dropdown (deferred to Enter)', async ({ page }) => {
+  test('multi-token query suppresses dropdown when trailing whitespace (empty tail)', async ({ page }) => {
     await boot(page);
     await openSearch(page);
-    await page.fill('#wp-search', 'BAZRA GNYAM');
+    await page.fill('#wp-search', 'BAZRA ');
     await expect(page.locator('#wp-search-results')).toBeHidden();
   });
 
@@ -92,6 +95,37 @@ test.describe('Multi-token search route builder (#98)', () => {
     await page.waitForTimeout(150);
     const names = await page.evaluate(() => state.waypoints.map(w => w.name));
     expect(names).toEqual(['PRESET']);
+  });
+
+  test('airfield codes resolve too: LLHZ BAZRA builds a route', async ({ page }) => {
+    await boot(page);
+    await openSearch(page);
+    await page.fill('#wp-search', 'LLHZ BAZRA');
+    await page.locator('#wp-search').press('Enter');
+    await page.waitForFunction(() => state.waypoints.length === 2);
+    const names = await page.evaluate(() => state.waypoints.map(w => w.name));
+    expect(names).toEqual(['LLHZ', 'BAZRA']);
+  });
+
+  test('autofill: after "LLHZ BAZ" the dropdown offers BAZRA-style matches', async ({ page }) => {
+    await boot(page);
+    await openSearch(page);
+    await page.fill('#wp-search', 'LLHZ BAZ');
+    // Dropdown should be visible with hits for the last token.
+    await expect(page.locator('#wp-search-results')).toBeVisible();
+    const hits = await page.locator('.wp-search-item').allTextContents();
+    expect(hits.some(t => /BAZRA/i.test(t))).toBe(true);
+  });
+
+  test('clicking an autofill hit replaces the last token + adds trailing space', async ({ page }) => {
+    await boot(page);
+    await openSearch(page);
+    await page.fill('#wp-search', 'LLHZ BAZ');
+    await page.waitForSelector('.wp-search-item');
+    // Click the BAZRA hit.
+    const bazra = page.locator('.wp-search-item').filter({ hasText: /BAZRA/i }).first();
+    await bazra.click();
+    expect(await page.locator('#wp-search').inputValue()).toMatch(/^LLHZ BAZRA $/);
   });
 
   test('search hint element is rendered with i18n text', async ({ page }) => {
