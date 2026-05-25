@@ -35,7 +35,7 @@ self.addEventListener('fetch', e => {
           }
           return resp;
         })
-        .catch(() => caches.match(e.request)));
+        .catch(() => caches.match(e.request).then(m => m || caches.match('/'))));
     return;
   }
 
@@ -51,13 +51,13 @@ self.addEventListener('fetch', e => {
       // produce resp.ok. Caching opaque blindly was a cache-poisoning surface
       // if upstream ever started returning redirects.
       if (resp && resp.ok) {
-        cache.put(e.request, resp.clone());
+        await cache.put(e.request, resp.clone());
         if (url.search.includes('v=')) {
           const keys = await cache.keys();
           for (const k of keys) {
             const ku = new URL(k.url);
             if (ku.pathname === url.pathname && k.url !== e.request.url) {
-              cache.delete(k);
+              await cache.delete(k);
             }
           }
         }
