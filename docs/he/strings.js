@@ -121,6 +121,8 @@ window.S = {
   tbChartsTitle: 'עיין בדפיות גישה לכל שדות התעופה',
   tbFly: '✈️ פתח מסלול ב-Google Earth',
   tbFlyTitle: 'שמור סיור Google Earth של המסלול בגבהים שנקבעו לקטעים',
+  tbGpxExport: '📍 ייצא GPX',
+  tbGpxExportTitle: 'ייצא מסלול כ-GPX ליחידות GPS ניידות',
   tbShowReturn: 'הצג מסלול חזרה',
   tbShowReturnTitle: 'הצג מידע על מסלול חזרה',
   tbShowMidLeg: 'הצג מרחק קטע',
