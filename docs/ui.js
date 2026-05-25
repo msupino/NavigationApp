@@ -144,22 +144,37 @@ function closeSearch() {
   wpResults.classList.add('hidden');
   wpResults.innerHTML = '';
 }
-// Exact-match lookup of one token in navWP — case-insensitive on the English
-// code, exact on the Hebrew label. Returns the navWP entry or null.
+// Exact-match lookup of one token against airfields + navWP — case-
+// insensitive on the English ICAO code, exact on the Hebrew label.
+// Airfields tried first (smaller, strongly-known set; same priority as
+// applyNavSnap()). Returns the entry or null.
 function findNavWpToken(token) {
-  if (!token || !navWP || !navWP.length) return null;
+  if (!token) return null;
   const up = token.toUpperCase();
-  for (const w of navWP) {
-    if ((w.name && w.name.toUpperCase() === up) || (w.he && w.he === token)) {
-      return w;
+  if (airfields && airfields.length) {
+    for (const a of airfields) {
+      if ((a.name && a.name.toUpperCase() === up) ||
+          (a.he && a.he === token) ||
+          (a.en && a.en.toUpperCase() === up)) {
+        return a;
+      }
+    }
+  }
+  if (navWP && navWP.length) {
+    for (const w of navWP) {
+      if ((w.name && w.name.toUpperCase() === up) || (w.he && w.he === token)) {
+        return w;
+      }
     }
   }
   return null;
 }
 // Multi-token Enter: parse space-separated codes, resolve every one against
-// navWP, replace the route with those waypoints. Inspired by arielbider/cvfr-map.
+// airfields + navWP, replace the route with those waypoints. Inspired by
+// arielbider/cvfr-map.
 async function buildRouteFromQuery(raw) {
   if (navWP === null) await loadNavWaypoints();
+  if (airfields === null) await loadAirfields();
   const tokens = raw.split(/\s+/).filter(Boolean);
   if (tokens.length < 2) return false;
   const resolved = [];
@@ -185,11 +200,16 @@ async function buildRouteFromQuery(raw) {
   return true;
 }
 function runSearch() {
-  const qRaw = wpSearch.value.trim();
-  // Multi-token queries are handled by Enter → buildRouteFromQuery —
-  // suppress the dropdown so it doesn't compete with the hint.
-  if (/\s/.test(qRaw)) { closeSearch(); return; }
-  const q = qRaw.toUpperCase();
+  // Use the raw value (not trimmed) so a trailing space — meaning "I just
+  // accepted the previous token, waiting to type the next one" — suppresses
+  // the dropdown instead of re-running a stale single-token query.
+  const rawAll = wpSearch.value;
+  const trailingSpace = /\s$/.test(rawAll);
+  const qRaw = rawAll.trim();
+  const multi = /\s/.test(qRaw) || trailingSpace;
+  const lastToken = trailingSpace ? '' : (multi ? (qRaw.split(/\s+/).pop() || '') : qRaw);
+  if (multi && !lastToken) { closeSearch(); return; }
+  const q = lastToken.toUpperCase();
   if (!q) { closeSearch(); return; }
   const afHits = [], wpHits = [];
   // #124: split budget evenly — up to 6 airfields then up to 6 nav-WPs so a
@@ -198,7 +218,7 @@ function runSearch() {
     for (const a of airfields) {
       if (a.name.toUpperCase().indexOf(q) >= 0 ||
           (a.en && a.en.toUpperCase().indexOf(q) >= 0) ||
-          (a.he && a.he.indexOf(qRaw) >= 0)) {
+          (a.he && a.he.indexOf(lastToken) >= 0)) {
         afHits.push({ kind: 'af', entry: a });
       }
     }
@@ -206,7 +226,7 @@ function runSearch() {
   if (navWP && navWP.length) {
     for (const w of navWP) {
       if (w.name.toUpperCase().indexOf(q) >= 0 ||
-          (w.he && w.he.indexOf(qRaw) >= 0)) {
+          (w.he && w.he.indexOf(lastToken) >= 0)) {
         wpHits.push({ kind: 'wp', entry: w });
       }
     }
@@ -233,6 +253,17 @@ function runSearch() {
     }
     item.textContent = alt && alt !== primary ? primary + ' / ' + alt : primary;
     item.onclick = () => {
+      if (multi) {
+        // Replace just the last token with the chosen full name; keep prior
+        // tokens so the user can keep typing the next leg. Trailing space
+        // primes the next autocomplete.
+        const parts = wpSearch.value.split(/\s+/);
+        parts[parts.length - 1] = primary;
+        wpSearch.value = parts.join(' ') + ' ';
+        wpSearch.focus();
+        closeSearch();
+        return;
+      }
       map.setView([w.lat, w.lng], Math.max(map.getZoom(), 12));
       wpSearch.value = primary;
       closeSearch();
@@ -620,22 +651,35 @@ document.getElementById('insp-close').onclick = () => {
 
 // --- section toggles -------------------------------------------------
 (function makeSectionToggle() {
-  document.querySelectorAll('.tb-section-head').forEach(head => {
-    const sec = head.closest('.tb-section');
+  const sections = Array.from(document.querySelectorAll('.tb-section'));
+  for (const sec of sections) {
+    const head = sec.querySelector('.tb-section-head');
+    if (!head) continue;
     const key = 'navaid.sec.' + sec.dataset.sec;
     try {
       if (localStorage.getItem(key) === '1') sec.classList.add('open');
     } catch (e) { /* storage unavailable */ }
     function toggle() {
-      sec.classList.toggle('open');
-      try { localStorage.setItem(key, sec.classList.contains('open') ? '1' : '0'); }
+      const willOpen = !sec.classList.contains('open');
+      // Accordion behaviour: opening a section closes the others.
+      if (willOpen) {
+        for (const other of sections) {
+          if (other !== sec && other.classList.contains('open')) {
+            other.classList.remove('open');
+            try { localStorage.setItem('navaid.sec.' + other.dataset.sec, '0'); }
+            catch (e) { /* storage unavailable */ }
+          }
+        }
+      }
+      sec.classList.toggle('open', willOpen);
+      try { localStorage.setItem(key, willOpen ? '1' : '0'); }
       catch (e) { /* storage unavailable */ }
     }
     head.addEventListener('click', toggle);
     head.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
     });
-  });
+  }
 })();
 
 // --- boot ------------------------------------------------------------
