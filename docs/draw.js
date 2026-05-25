@@ -308,12 +308,12 @@ function drawLegs() {
     const outP = leg.outLabel || { a: 0, p: -44 };
     drawLegArrow(mid.x + dx * inP.a + nx * inP.p, mid.y + dy * inP.a + ny * inP.p,
       ang, pad3(magIn), timeStr, String(leg.inboundAltitude),
-      '#2f6fd0', 'transparent', needsHalo(i, 'in'), zoomScale);
+      '#2f6fd0', yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
     if (showReturn) {
       drawLegArrow(mid.x + dx * outP.a + nx * outP.p,
         mid.y + dy * outP.a + ny * outP.p, ang + Math.PI,
         pad3(magOut), timeStrOut, String(leg.outboundAltitude),
-        '#c0392b', 'transparent', needsHalo(i, 'out'), zoomScale);
+        '#c0392b', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
   }
@@ -363,10 +363,8 @@ function drawMinuteMarkers(sa, sb, durH) {
     octx.stroke();
     if (even) {                         // minute number past the tick end
       const tx = px + nx * (tick + 8), ty = py + ny * (tick + 8);
-      octx.lineWidth = 2.5;
-      octx.strokeStyle = 'rgba(255,255,255,0.85)';
-      octx.strokeText(String(m), tx, ty);
       octx.fillStyle = '#161412';
+      octx.font = 'bold 10px sans-serif';
       octx.fillText(String(m), tx, ty);
     }
   }
