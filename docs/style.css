@@ -509,7 +509,7 @@ html, body {
 
 /* Orientation picker modal */
 .modal-back {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 2000;
   display: flex;
