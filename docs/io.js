@@ -1539,6 +1539,7 @@ function showPlateViewer(filename, label) {
 }
 
 function showChartsModal() {
+  if (fpOpen) closeFlightPlan();
   const back = document.createElement('div');
   back.className = 'modal-back';
   const box = document.createElement('div');
