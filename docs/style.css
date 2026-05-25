@@ -30,6 +30,10 @@ html, body {
   z-index: 1100;
   top: 12px;
   left: 12px;
+  /* Fixed width so opening a wider section (e.g. Build with long button
+     labels) doesn't shift the whole bar. Picked to fit the widest button
+     label without wrapping. */
+  width: 220px;
   max-height: calc(100vh - 24px);
   max-height: calc(100dvh - 24px);       /* dynamic viewport on iOS Safari */
   overflow-y: auto;
@@ -45,6 +49,7 @@ html, body {
   border: 1px solid #3a3636;
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  box-sizing: border-box;
 }
 
 #toolbar button {
