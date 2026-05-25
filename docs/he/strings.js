@@ -164,7 +164,7 @@ window.S = {
   tbSecRoute: '📋 מסלול',
   tbSecDisplay: '👁 מראה',
   tbSecPrint: '🖨 הדפסה',
-  tbSecBuild: '✏️ בנייה',
+  tbSecBuild: '✏️ עריכה',
   tbSecView: '👁 תצוגה',
   tbSecCharts: '📋 דפיות',
   tbSecExport: '📤 ייצוא/ייבוא',
