@@ -101,7 +101,11 @@ function validateRoute(d) {
       _v(l, 'inboundAltitude',  'number', p, errs);
       _v(l, 'outboundAltitude', 'number', p, errs);
       _v(l, 'flightSpeed',      'number', p, errs);
-      if ('outboundSpeed' in l) _v(l, 'outboundSpeed', 'number', p, errs);
+      // #212: hasOwnProperty (not 'in') so inherited Object.prototype keys
+      // can never satisfy the optional check.
+      if (Object.prototype.hasOwnProperty.call(l, 'outboundSpeed')) {
+        _v(l, 'outboundSpeed', 'number', p, errs);
+      }
       if (_v(l, 'inLabel',  'object', p, errs)) {
         _v(l.inLabel,  'a', 'number', p + '.inLabel',  errs);
         _v(l.inLabel,  'p', 'number', p + '.inLabel',  errs);
@@ -1214,6 +1218,17 @@ function exportPNG() {
       URL.revokeObjectURL(a.href);
       if (failed > 0) alert(S.errTilesFail(failed, jobs.length));
     }, 'image/png');
+  }).catch(err => {
+    // #215: a sync throw in the .then body (e.g. drawImage on a malformed
+    // bitmap) would otherwise leave the button disabled forever. Restore
+    // the UI so the user can retry, and surface the failure.
+    console.warn('PNG export pipeline failed:', err);
+    btn.textContent = btnLabel;
+    btn.disabled = false;
+    unlockMap();
+    NavAid.exporting = false;
+    if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
+    try { alert(S.errPngFail); } catch (_) { /* alert blocked */ }
   });
 }
 
