@@ -354,7 +354,13 @@ var fpOpen = false;                       // true while flight-plan modal is sho
 function isAirport(wp) {
   if (!wp || !airfields) return false;
   const name = (wp.name || '').trim().toUpperCase();
-  return airfields.some(a => a.name === name);
+  // Match by name OR by coordinates (renaming the label must not lose the
+  // airport status; tolerance ≈ 100 m to survive minor drag).
+  const eps = 0.001;
+  return airfields.some(a =>
+    a.name === name ||
+    (Math.abs(a.lat - wp.lat) < eps && Math.abs(a.lng - wp.lng) < eps)
+  );
 }
 
 function closeFlightPlan() {
@@ -942,8 +948,12 @@ function showExportModal() {
     box.style.margin = '0';
     const onMove = function (e) {
       if (!drag) return;
-      box.style.left = (e.clientX - drag.ox) + 'px';
-      box.style.top = (e.clientY - drag.oy) + 'px';
+      // Clamp to the viewport so the title bar + ✕ stay reachable. Same
+      // pattern the flight-plan modal already uses.
+      const x = Math.max(0, Math.min(window.innerWidth - box.offsetWidth, e.clientX - drag.ox));
+      const y = Math.max(0, Math.min(window.innerHeight - box.offsetHeight, e.clientY - drag.oy));
+      box.style.left = x + 'px';
+      box.style.top = y + 'px';
     };
     const onUp = function () {
       drag = null;
@@ -1659,6 +1669,37 @@ function showChartsModal() {
   title.textContent = S.plates;
   box.appendChild(title);
 
+  addModalCloseX(box, () => { window.removeEventListener('keydown', onEsc); back.remove(); });
+
+  let drag = null;
+  title.addEventListener('mousedown', function (e) {
+    const r = box.getBoundingClientRect();
+    drag = { ox: e.clientX - r.left, oy: e.clientY - r.top };
+    box.style.position = 'fixed';
+    box.style.left = r.left + 'px';
+    box.style.top = r.top + 'px';
+    box.style.margin = '0';
+    const onMove = function (e) {
+      if (!drag) return;
+      // Clamp to the viewport so the title bar + ✕ stay reachable. Same
+      // pattern the flight-plan modal already uses.
+      const x = Math.max(0, Math.min(window.innerWidth - box.offsetWidth, e.clientX - drag.ox));
+      const y = Math.max(0, Math.min(window.innerHeight - box.offsetHeight, e.clientY - drag.oy));
+      box.style.left = x + 'px';
+      box.style.top = y + 'px';
+    };
+    const onUp = function () {
+      drag = null;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  });
+
+  const scrollArea = document.createElement('div');
+  scrollArea.className = 'fp-scroll';
   const body = document.createElement('div');
   body.className = 'charts-modal-body';
 
@@ -1682,11 +1723,30 @@ function showChartsModal() {
       return;
     }
     for (const af of withPlates) {
-      const section = document.createElement('details');
+      const section = document.createElement('div');
       section.className = 'charts-airport';
-      const summ = document.createElement('summary');
-      summ.textContent = af.name + (af.en ? ' — ' + af.en : '');
-      section.appendChild(summ);
+      const header = document.createElement('div');
+      header.className = 'charts-airport-header';
+      header.textContent = af.name + (af.en ? ' — ' + af.en : '');
+      // Keyboard + screen-reader parity with the toolbar's .tb-section-head
+      // pattern: tabbable, announced as a button, with explicit expanded
+      // state. The pane it controls is display:none until 'open', so without
+      // this the plate chips inside would be unreachable from the keyboard.
+      header.tabIndex = 0;
+      header.setAttribute('role', 'button');
+      header.setAttribute('aria-expanded', 'false');
+      const pane = document.createElement('div');
+      pane.className = 'charts-airport-body';
+      function toggle() {
+        const open = pane.classList.toggle('open');
+        header.classList.toggle('open', open);
+        header.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+      header.addEventListener('click', toggle);
+      header.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+      });
+      section.appendChild(header);
 
       const groups = {};
       for (const fn of af.plates) {
@@ -1709,8 +1769,9 @@ function showChartsModal() {
           chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
           catDiv.appendChild(chip);
         }
-        section.appendChild(catDiv);
+        pane.appendChild(catDiv);
       }
+      section.appendChild(pane);
       body.appendChild(section);
     }
   }
@@ -1724,14 +1785,13 @@ function showChartsModal() {
     loadAirfields().then(() => { if (airfields) renderList(airfields); });
   }
 
-  box.appendChild(body);
+  scrollArea.appendChild(body);
+  box.appendChild(scrollArea);
 
   const att = document.createElement('div');
   att.className = 'plate-attribution';
   att.textContent = S.plateAttribution;
   box.appendChild(att);
-
-  addModalCloseX(box, () => { window.removeEventListener('keydown', onEsc); back.remove(); });
 
   function onEsc(e) {
     if (e.key === 'Escape') { window.removeEventListener('keydown', onEsc); back.remove(); }

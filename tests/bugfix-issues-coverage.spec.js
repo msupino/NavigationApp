@@ -1,0 +1,145 @@
+// @ts-check
+// Regression coverage for closed bug issues that previously lacked a test.
+// Each suite asserts the user-visible symptom is gone, not the implementation.
+//   #224 — Fit-to-screen zooms too tight when waypoints are close
+//   #226 — Charts modal: a11y keyboard nav, RTL indent, drag-clamp to viewport
+//   #229 — Modal backdrop scrolls out of viewport
+const { test, expect } = require('./_setup');
+
+async function boot(page) {
+  await page.addInitScript(() => {
+    try {
+      if (localStorage.getItem('__test_ic_init') !== '1') {
+        for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
+        sessionStorage.clear();
+        for (const s of ['edit','map','route','display','print','build','view','numbers','export'])
+          localStorage.setItem('navaid.sec.' + s, '1');
+        localStorage.setItem('__test_ic_init', '1');
+      }
+    } catch (e) {}
+  });
+  await page.goto('/?lang=en');
+  await page.waitForFunction(() => typeof state !== 'undefined' && typeof fitView === 'function');
+}
+
+// ---------------------------------------------------------------------------
+// #224: fit-to-screen must not zoom past a useful CVFR scale for close points.
+// ---------------------------------------------------------------------------
+test.describe('#224 — fit-to-screen maxZoom cap', () => {
+  test('two waypoints ~1 NM apart: fitView caps zoom at 11', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      // Two points ~1 NM apart near LLHZ — without the cap, fitBounds would
+      // snap to zoom 14+ and lose surrounding airspace context.
+      state.waypoints = [
+        { lat: 32.18000, lng: 34.83000, name: 'A' },
+        { lat: 32.19500, lng: 34.84500, name: 'B' },
+      ];
+      syncLegs(); draw(); fitView();
+    });
+    const zoom = await page.evaluate(() => map.getZoom());
+    expect(zoom).toBeLessThanOrEqual(11);
+  });
+
+  test('two waypoints ~45 NM apart (LLHZ→LLHA) still fit normally', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
+        { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+      ];
+      syncLegs(); draw(); fitView();
+    });
+    const zoom = await page.evaluate(() => map.getZoom());
+    // The wide route should still fit — cap doesn't force it to zoom 11.
+    expect(zoom).toBeLessThanOrEqual(11);
+    expect(zoom).toBeGreaterThanOrEqual(8);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #226: charts modal a11y, RTL indent, drag-clamp regressions.
+// ---------------------------------------------------------------------------
+test.describe('#226 — charts modal regressions', () => {
+  test('charts headers are keyboard-reachable (role=button, tabIndex=0)', async ({ page }) => {
+    await boot(page);
+    await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
+    await page.locator('#charts').click();
+    await page.locator('.modal-back').waitFor({ timeout: 5000 });
+
+    const head = page.locator('.charts-airport-header').first();
+    expect(await head.getAttribute('role')).toBe('button');
+    expect(await head.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('Enter on a charts header toggles aria-expanded', async ({ page }) => {
+    await boot(page);
+    await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
+    await page.locator('#charts').click();
+    await page.locator('.modal-back').waitFor();
+
+    const head = page.locator('.charts-airport-header').first();
+    const before = await head.getAttribute('aria-expanded');
+    await head.focus();
+    await page.keyboard.press('Enter');
+    const after = await head.getAttribute('aria-expanded');
+    expect(after).not.toBe(before);
+  });
+
+  test('charts body uses padding-inline-start, not physical padding-left', async ({ page }) => {
+    await boot(page);
+    await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
+    await page.locator('#charts').click();
+    await page.locator('.modal-back').waitFor();
+
+    // CSS source must declare padding-inline-start (RTL-aware) somewhere
+    // on .charts-airport-body. Fetching the stylesheet text is the only
+    // reliable way — getComputedStyle resolves to physical longhand.
+    const hasInlineStart = await page.evaluate(async () => {
+      const css = await fetch('/style.css').then(r => r.text());
+      const m = css.match(/\.charts-airport-body\s*\{[^}]*\}/);
+      return m ? /padding-inline-start/.test(m[0]) : false;
+    });
+    expect(hasInlineStart).toBe(true);
+  });
+
+  test('charts modal title bar cannot be dragged off the top of the viewport', async ({ page }) => {
+    await boot(page);
+    await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
+    await page.locator('#charts').click();
+    const modal = page.locator('.modal-back .modal.wide');
+    await modal.waitFor();
+
+    const titleBar = modal.locator('.modal-title');
+    await titleBar.hover();
+    await page.mouse.down();
+    await page.mouse.move(50, -500, { steps: 5 });   // try to drag well above top
+    await page.mouse.up();
+
+    const box = await modal.boundingBox();
+    expect(box).not.toBeNull();
+    if (box) expect(box.y).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #229: .modal-back uses position: fixed so it stays in the viewport when
+// the page is scrolled.
+// ---------------------------------------------------------------------------
+test.describe('#229 — modal backdrop position: fixed', () => {
+  test('.modal-back computes to position: fixed', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      // syncLegs requires at least 2 waypoints for the flight-plan modal.
+      state.waypoints = [
+        { lat: 32.0, lng: 34.9, name: 'A' },
+        { lat: 32.5, lng: 35.0, name: 'B' },
+      ];
+      syncLegs(); draw();
+    });
+    await page.locator('#plan').click();
+    await page.locator('.modal-back').waitFor();
+    const pos = await page.locator('.modal-back').evaluate(el => getComputedStyle(el).position);
+    expect(pos).toBe('fixed');
+  });
+});
