@@ -354,7 +354,13 @@ var fpOpen = false;                       // true while flight-plan modal is sho
 function isAirport(wp) {
   if (!wp || !airfields) return false;
   const name = (wp.name || '').trim().toUpperCase();
-  return airfields.some(a => a.name === name);
+  // Match by name OR by coordinates (renaming the label must not lose the
+  // airport status; tolerance ≈ 100 m to survive minor drag).
+  const eps = 0.001;
+  return airfields.some(a =>
+    a.name === name ||
+    (Math.abs(a.lat - wp.lat) < eps && Math.abs(a.lng - wp.lng) < eps)
+  );
 }
 
 function closeFlightPlan() {
