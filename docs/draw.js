@@ -363,10 +363,8 @@ function drawMinuteMarkers(sa, sb, durH) {
     octx.stroke();
     if (even) {                         // minute number past the tick end
       const tx = px + nx * (tick + 8), ty = py + ny * (tick + 8);
-      octx.lineWidth = 2.5;
-      octx.strokeStyle = 'rgba(255,255,255,0.85)';
-      octx.strokeText(String(m), tx, ty);
       octx.fillStyle = '#161412';
+      octx.font = 'bold 10px sans-serif';
       octx.fillText(String(m), tx, ty);
     }
   }
