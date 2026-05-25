@@ -1,0 +1,156 @@
+// @ts-check
+// Tests for the fuel/endurance calculator in the flight-plan modal.
+// Aircraft is now configured via two free inputs: GPH and Taxi/T.O. (gal).
+// Presets (C152 / C172 / PA-28) and airport-based taxi detection removed.
+const { test, expect } = require('./_setup');
+
+const TWO_WP = [
+  { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
+  { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+];
+
+async function boot(page) {
+  await page.addInitScript(() => {
+    try {
+      if (localStorage.getItem('__test_fuel_init') !== '1') {
+        for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
+        sessionStorage.clear();
+        for (const s of ['edit','map','route','display','print','build','view','numbers','export'])
+          localStorage.setItem('navaid.sec.' + s, '1');
+        localStorage.setItem('__test_fuel_init', '1');
+      }
+    } catch (e) {}
+  });
+  await page.goto('/?lang=en');
+  await page.waitForFunction(() => typeof state !== 'undefined' && typeof syncLegs === 'function');
+  await page.evaluate(wps => {
+    state.waypoints = wps.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
+    syncLegs();
+    draw();
+  }, TWO_WP);
+}
+
+async function openFlightPlan(page) {
+  await page.locator('#plan').click();
+  await page.locator('.modal-back.flight-plan').waitFor({ timeout: 5000 });
+}
+
+// Read (legFuel of row 0, totalFuel from tfoot) from the flight table.
+async function readFuelCells(page) {
+  return page.evaluate(() => {
+    const table = document.querySelector('.flight-table');
+    if (!table) return { legFuel: NaN, totalFuel: NaN };
+    const legRow   = table.querySelector('tbody tr:first-child');
+    const totalRow = table.querySelector('tfoot tr:first-child');
+    function lastCell(row) {
+      if (!row) return NaN;
+      const cells = row.querySelectorAll('td');
+      const last = cells[cells.length - 1];
+      return last ? parseFloat(last.textContent) : NaN;
+    }
+    return { legFuel: lastCell(legRow), totalFuel: lastCell(totalRow) };
+  });
+}
+
+test.describe('Fuel/endurance flight plan modal', () => {
+  test('flight plan modal opens without JS runtime errors', async ({ page }) => {
+    const jsErrors = [];
+    page.on('pageerror', err => jsErrors.push(err.message));
+
+    await boot(page);
+    await openFlightPlan(page);
+
+    expect(jsErrors).toHaveLength(0);
+    await expect(page.locator('#aircraft-gph')).toBeVisible();
+    await expect(page.locator('#aircraft-taxi')).toBeVisible();
+  });
+
+  test('default GPH=8 and taxi=1.1 applied on open: fuel cells show numbers', async ({ page }) => {
+    await boot(page);
+    await openFlightPlan(page);
+
+    expect(parseFloat(await page.locator('#aircraft-gph').inputValue())).toBe(8);
+    expect(parseFloat(await page.locator('#aircraft-taxi').inputValue())).toBeCloseTo(1.1, 1);
+
+    const { legFuel, totalFuel } = await readFuelCells(page);
+    expect(legFuel).toBeGreaterThan(0);
+    expect(totalFuel).toBeGreaterThan(0);
+  });
+
+  test('clearing GPH shows -- in fuel cells', async ({ page }) => {
+    await boot(page);
+    await openFlightPlan(page);
+
+    await page.fill('#aircraft-gph', '');
+    await page.locator('#aircraft-gph').dispatchEvent('input');
+
+    const totFuel = await page.evaluate(() => {
+      const totalRow = document.querySelector('.flight-table tfoot tr:first-child');
+      if (!totalRow) return null;
+      const cells = totalRow.querySelectorAll('td');
+      return cells[cells.length - 1] ? cells[cells.length - 1].textContent : null;
+    });
+    expect(totFuel).toBe('--');
+  });
+
+  test('taxi fuel added to total when origin is a known airfield (LLHZ)', async ({ page }) => {
+    await boot(page);
+    // airfields loaded lazily on first draw(); wait before opening modal.
+    await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
+    await openFlightPlan(page);
+
+    // Zero out taxi first so we have a clean before snapshot.
+    await page.fill('#aircraft-taxi', '0');
+    await page.locator('#aircraft-taxi').dispatchEvent('input');
+    const { legFuel: legNoTaxi, totalFuel: totNoTaxi } = await readFuelCells(page);
+
+    await page.fill('#aircraft-taxi', '1.1');
+    await page.locator('#aircraft-taxi').dispatchEvent('input');
+    const { legFuel: legWithTaxi, totalFuel } = await readFuelCells(page);
+
+    // First leg cell and total both absorb the taxi allowance.
+    expect(legWithTaxi - legNoTaxi).toBeCloseTo(1.1, 1);
+    expect(totalFuel - totNoTaxi).toBeCloseTo(1.1, 1);
+  });
+
+  test('taxi fuel NOT added when origin is not an airfield', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints[0] = { lat: 32.21861, lng: 34.88250, name: 'BAZRA' };
+      syncLegs(); draw();
+    });
+    await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
+    await openFlightPlan(page);
+
+    await page.fill('#aircraft-gph', '8.5');
+    await page.locator('#aircraft-gph').dispatchEvent('input');
+    await page.fill('#aircraft-taxi', '1.1');
+    await page.locator('#aircraft-taxi').dispatchEvent('input');
+
+    const { legFuel, totalFuel } = await readFuelCells(page);
+    // No taxi: total should equal leg fuel.
+    expect(totalFuel).toBeCloseTo(legFuel, 5);
+  });
+
+  test('syncAircraftUI on open does not throw when aircraft is null', async ({ page }) => {
+    const jsErrors = [];
+    page.on('pageerror', err => jsErrors.push(err.message));
+    await boot(page);
+    await page.evaluate(() => { window.aircraft = null; });
+    await openFlightPlan(page);
+    expect(jsErrors).toHaveLength(0);
+  });
+
+  test('pre-saved aircraft loads into GPH and taxi inputs', async ({ page }) => {
+    const jsErrors = [];
+    page.on('pageerror', err => jsErrors.push(err.message));
+    await boot(page);
+    await page.evaluate(() => {
+      window.aircraft = { gph: 7, taxiGal: 1.1 };
+    });
+    await openFlightPlan(page);
+    expect(jsErrors).toHaveLength(0);
+    expect(parseFloat(await page.locator('#aircraft-gph').inputValue())).toBe(7);
+    expect(parseFloat(await page.locator('#aircraft-taxi').inputValue())).toBe(1.1);
+  });
+});
