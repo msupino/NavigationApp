@@ -786,6 +786,7 @@ function chooseOrientation(size, onPick) {
   const title = document.createElement('div');
   title.className = 'modal-title';
   title.textContent = size + S.pageOrientation;
+  addModalCloseX(box, () => { document.removeEventListener('keydown', onEsc); back.remove(); });
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
   // #86: Escape closes the picker (counts as cancel).
@@ -829,6 +830,8 @@ function showExportModal() {
   title.className = 'modal-title';
   title.textContent = S.exportModalTitle;
   box.appendChild(title);
+
+  addModalCloseX(box, () => { restoreOrig(); close(); });
 
   // Drag to reposition the modal via the title bar.
   let drag = null;
@@ -897,6 +900,25 @@ function showExportModal() {
 
   box.appendChild(body);
 
+  // Save original state (before applying defaults) so Cancel can restore.
+  const origNavWP = showNavWP;
+  const origAirfields = showAirfields;
+  const origLayer = (function () {
+    for (const n in layers) if (map.hasLayer(layers[n])) return n;
+    return null;
+  })();
+
+  // Apply the modal's default state immediately so the user sees what
+  // the PNG will look like before touching any control.
+  showNavWP = navWpCb.checked;
+  showAirfields = afCb.checked;
+  const chosen = layerSel.value;
+  if (chosen !== origLayer) {
+    for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
+    map.addLayer(layers[chosen]);
+  }
+  draw();
+
   // Buttons.
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
@@ -905,14 +927,6 @@ function showExportModal() {
   const cancelBtn = document.createElement('button');
   cancelBtn.textContent = S.cancel;
   cancelBtn.className = 'modal-cancel';
-
-  // Save original state so we can restore on cancel.
-  const origNavWP = showNavWP;
-  const origAirfields = showAirfields;
-  const origLayer = (function () {
-    for (const n in layers) if (map.hasLayer(layers[n])) return n;
-    return null;
-  })();
 
   function restoreOrig() {
     showNavWP = origNavWP;
@@ -1304,6 +1318,7 @@ function flyRoute() {
   const title = document.createElement('div');
   title.className = 'modal-title';
   title.textContent = S.chooseGeMode;
+  addModalCloseX(box, () => { document.removeEventListener('keydown', onEsc); back.remove(); });
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
   function onEsc(e) { if (e.key === 'Escape') { document.removeEventListener('keydown', onEsc); back.remove(); } }
