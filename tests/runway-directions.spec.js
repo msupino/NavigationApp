@@ -23,7 +23,7 @@ async function boot(page) {
 }
 
 test.describe('#231 — runway directions in inspector', () => {
-  test('LLHZ waypoint inspector renders the published runway 11/29', async ({ page }) => {
+  test('LLHZ waypoint inspector renders the published runway 10/28', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }];
@@ -31,7 +31,7 @@ test.describe('#231 — runway directions in inspector', () => {
       syncLegs(); draw(); showInspector();
     });
     const chips = await page.locator('.runway-chip').allTextContents();
-    expect(chips).toContain('11/29');
+    expect(chips).toContain('10/28');
   });
 
   test('LLBG waypoint inspector renders multiple runways', async ({ page }) => {
