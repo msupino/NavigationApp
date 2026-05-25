@@ -60,7 +60,7 @@ window.S = Object.assign({
   tbShowNavWp: 'Show/Pin Navigation Waypoints',     // Map overlay toggle
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbSearchPlaceholder: '🔍 Find Navigation Waypoint',
-  tbSearchHint: 'Tip: type space-separated waypoint codes (e.g. BAZRA GNYAM TLV) and press Enter to build a route.',
+  tbSearchHint: 'Tip: type space-separated waypoint codes (e.g. LLHZ BAZRA DEROR SHARO HADRA) and press Enter to build a route.',
   errSearchUnknown: function(t) { return 'Unknown waypoint: ' + t; },
   searchReplaceConfirm: 'Replace the current route with these waypoints?',
   tbSearchOpen: '🔍 Find',
