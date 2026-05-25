@@ -978,6 +978,16 @@ function showExportModal() {
   navWpLabel.appendChild(document.createTextNode(S.exportShowNavWP));
   body.appendChild(navWpLabel);
 
+  // Show Waypoint Names checkbox (default on).
+  const wpNameLabel = document.createElement('label');
+  wpNameLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
+  const wpNameCb = document.createElement('input');
+  wpNameCb.type = 'checkbox';
+  wpNameCb.checked = true;
+  wpNameLabel.appendChild(wpNameCb);
+  wpNameLabel.appendChild(document.createTextNode(S.exportShowWpNames));
+  body.appendChild(wpNameLabel);
+
   // Show Airfields checkbox.
   const afLabel = document.createElement('label');
   afLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
@@ -1006,11 +1016,32 @@ function showExportModal() {
   layerRow.appendChild(layerSel);
   body.appendChild(layerRow);
 
+  // Map opacity slider.
+  const opacityRow = document.createElement('div');
+  opacityRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px';
+  const opLbl = document.createElement('span');
+  opLbl.textContent = S.tbMapOpacity;
+  opacityRow.appendChild(opLbl);
+  const opSlider = document.createElement('input');
+  opSlider.type = 'range';
+  opSlider.min = '10';
+  opSlider.max = '100';
+  opSlider.value = Math.round(mapOpacity * 100);
+  opSlider.style.cssText = 'flex:1;height:16px;accent-color:#ffd966';
+  opacityRow.appendChild(opSlider);
+  const opVal = document.createElement('span');
+  opVal.style.cssText = 'width:2.2em;text-align:right;font-size:12px';
+  opVal.textContent = opSlider.value + '%';
+  opacityRow.appendChild(opVal);
+  body.appendChild(opacityRow);
+
   box.appendChild(body);
 
   // Save original state (before applying defaults) so Cancel can restore.
   const origNavWP = showNavWP;
   const origAirfields = showAirfields;
+  const origWpNames = showWpNames;
+  const origMapOpacity = mapOpacity;
   const origLayer = (function () {
     for (const n in layers) if (map.hasLayer(layers[n])) return n;
     return null;
@@ -1019,6 +1050,7 @@ function showExportModal() {
   // Apply the modal's default state immediately so the user sees what
   // the PNG will look like before touching any control.
   showNavWP = navWpCb.checked;
+  showWpNames = wpNameCb.checked;
   showAirfields = afCb.checked;
   const chosen = layerSel.value;
   if (chosen !== origLayer) {
@@ -1038,6 +1070,7 @@ function showExportModal() {
 
   function restoreOrig() {
     showNavWP = origNavWP;
+    showWpNames = origWpNames;
     showAirfields = origAirfields;
     const cur = (function () {
       for (const n in layers) if (map.hasLayer(layers[n])) return n;
@@ -1047,12 +1080,18 @@ function showExportModal() {
       for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
       if (origLayer) map.addLayer(layers[origLayer]);
     }
+    mapOpacity = origMapOpacity;
+    applyMapOpacity();
     draw();
   }
 
   // Live preview: apply changes to the map immediately.
   navWpCb.onchange = function () {
     showNavWP = navWpCb.checked;
+    draw();
+  };
+  wpNameCb.onchange = function () {
+    showWpNames = wpNameCb.checked;
     draw();
   };
   afCb.onchange = function () {
@@ -1063,6 +1102,13 @@ function showExportModal() {
     const chosen = layerSel.value;
     for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
     map.addLayer(layers[chosen]);
+    applyMapOpacity();
+  };
+
+  opSlider.oninput = function () {
+    mapOpacity = parseFloat(this.value) / 100;
+    opVal.textContent = this.value + '%';
+    applyMapOpacity();
   };
 
   function close() { window.removeEventListener('keydown', onEsc); back.remove(); }
