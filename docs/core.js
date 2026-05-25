@@ -143,7 +143,7 @@ window.S = Object.assign({
   tbReverseTitle: 'Reverse route order',
   tbClear: '🗑 Clear map',
   tbClearTitle: 'Remove all waypoints and notes',
-  tbExport: '⬇ Export',
+  tbExport: '⬇ Export JSON',
   tbExportTitle: 'Export route as JSON',
   tbImport: '⬆ Import JSON/GPX',
   tbImportTitle: 'Import route from JSON or GPX file',
