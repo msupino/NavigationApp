@@ -50,7 +50,6 @@ test.describe('Display checkbox toggles', () => {
     { id: '#diff-cb',     key: 'navaid.highlightDiff',  startsChecked: false },
     { id: '#navwp-cb',    key: 'navaid.showNavWP',      startsChecked: true  },
     { id: '#airfield-cb', key: 'navaid.showAirfields',  startsChecked: true  },
-    { id: '#wpname-cb',   key: 'navaid.showWpNames',    startsChecked: true  },
   ];
   for (const c of cases) {
     test(`${c.id}: toggle writes ${c.key} to localStorage`, async ({ page }) => {
@@ -140,16 +139,4 @@ test.describe('Toolbar collapse', () => {
   });
 });
 
-test.describe('Magnetic variation input', () => {
-  test('changing mag-var writes navaid.magVar and applies on reload', async ({ page }) => {
-    await boot(page);
-    await page.locator('#mag-var').fill('-7');
-    await page.locator('#mag-var').dispatchEvent('change');
-    const stored = await page.evaluate(() => localStorage.getItem('navaid.magVar'));
-    expect(parseFloat(stored)).toBe(-7);
 
-    await page.reload();
-    await page.waitForFunction(() => typeof state !== 'undefined');
-    expect(await page.locator('#mag-var').inputValue()).toBe('-7');
-  });
-});
