@@ -286,6 +286,9 @@ function toHMS(hours) {
   let m = Math.floor(tm);
   let s = Math.round(((tm - m) * 60) / 5) * 5;
   if (s >= 60) { s -= 60; m++; }
+  const h = Math.floor(m / 60);
+  m %= 60;
+  if (h > 0) return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
   return m + ':' + String(s).padStart(2, '0');
 }
 function fmtLatLng(v, pos, neg) {
