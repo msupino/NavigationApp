@@ -388,7 +388,7 @@ function needsHalo(i, which) {
   if (i === state.legs.length - 1) return false;
   const next = state.legs[i + 1];
   return cur.outboundAltitude !== next.outboundAltitude ||
-         cur.flightSpeed      !== next.flightSpeed;
+         cur.outboundSpeed    !== next.outboundSpeed;
 }
 
 // Navigation leg marker: a two-cell rectangle (altitude, time) joined to a
