@@ -444,7 +444,6 @@ function recomputeSuggestions() {
     if (!A || !B) continue;
     const { dist: distAB, brg: brgAB } = geo(A, B);
     if (distAB < 1) continue;
-    const brgABrad = brgAB * Math.PI / 180;
     const candidates = [];
     for (const wp of navWP) {
       if (state.waypoints.some(w => w.name === wp.name ||
