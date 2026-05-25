@@ -20,6 +20,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PR is rebased
+        if: github.event_name == 'pull_request'
+        run: |
+          if ! git merge-base --is-ancestor ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}; then
+            echo "❌ PR branch is not rebased on ${{ github.base_ref }}. Run 'git rebase origin/${{ github.base_ref }}' and push."
+            exit 1
+          fi
+          echo "✅ PR is rebased on ${{ github.base_ref }}"
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -84,6 +95,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PR is rebased
+        if: github.event_name == 'pull_request'
+        run: |
+          if ! git merge-base --is-ancestor ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}; then
+            echo "❌ PR branch is not rebased on ${{ github.base_ref }}. Run 'git rebase origin/${{ github.base_ref }}' and push."
+            exit 1
+          fi
+          echo "✅ PR is rebased on ${{ github.base_ref }}"
 
       - name: Set up Node
         uses: actions/setup-node@v4
