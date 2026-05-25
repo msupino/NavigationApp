@@ -36,7 +36,7 @@ test.describe('#176 Escape listener leak in modals', () => {
     for (let i = 0; i < 5; i++) {
       await page.evaluate(() => showChartsModal());
       // Click the ✕ button (the test-fixture path #184 fixes).
-      await page.locator('.modal-cancel').last().click();
+      await page.locator('.modal-close-x').last().click();
     }
 
     const after = await page.evaluate(() => ({ a: window.__keyAdds, r: window.__keyRems }));
@@ -58,7 +58,7 @@ test.describe('#176 Escape listener leak in modals', () => {
 
     for (let i = 0; i < 3; i++) {
       await page.evaluate(() => showPlateViewer('LLBG_SID_08.pdf', 'SID 08'));
-      await page.locator('.modal-cancel').last().click();
+      await page.locator('.modal-close-x').last().click();
     }
 
     const after = await page.evaluate(() => ({ a: window.__keyAdds, r: window.__keyRems }));
