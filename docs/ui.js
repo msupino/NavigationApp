@@ -432,7 +432,7 @@ try {
   const stored = localStorage.getItem('navaid.pageOrient');
   if (stored === 'portrait' || stored === 'landscape') window.pageOrient = stored;
 } catch (e) { /* storage unavailable */ }
-document.getElementById('page-orient').onchange = e => setOrientation(e.target.value);
+document.getElementById('page-orient').onclick = toggleOrientation;
 refreshOrientButton();
 document.getElementById('print').onclick = exportPNG;
 document.getElementById('insp-close').onclick = () => {

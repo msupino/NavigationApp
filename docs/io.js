@@ -293,16 +293,17 @@ function setPage(size) {
   applyPage();
   fitPageFrame();
 }
-function setOrientation(orient) {
-  if (orient !== 'landscape' && orient !== 'portrait') return;
-  pageOrient = orient;
+function toggleOrientation() {
+  pageOrient = pageOrient === 'portrait' ? 'landscape' : 'portrait';
   try { localStorage.setItem('navaid.pageOrient', pageOrient); } catch (e) {}
   if (pageSize) { applyPage(); fitPageFrame(); }
   refreshOrientButton();
 }
 function refreshOrientButton() {
-  const sel = document.getElementById('page-orient');
-  if (sel) sel.value = pageOrient;
+  const btn = document.getElementById('page-orient');
+  if (!btn) return;
+  btn.textContent = pageOrient === 'portrait' ? '▯' : '▭';
+  btn.classList.toggle('portrait', pageOrient === 'portrait');
 }
 
 function fitPageFrame() {
