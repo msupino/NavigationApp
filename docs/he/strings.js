@@ -162,7 +162,7 @@ window.S = {
   tbSecEdit: '✏️ עריכה',
   tbSecMap: '🗺 מפה',
   tbSecRoute: '📋 מסלול',
-  tbSecDisplay: '👁 תצוגה',
+  tbSecDisplay: '👁 מראה',
   tbSecPrint: '🖨 הדפסה',
   tbSecBuild: '✏️ בנייה',
   tbSecView: '👁 תצוגה',
