@@ -198,7 +198,7 @@ window.S = Object.assign({
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
   exportModalTitle: 'Export PNG',
-  exportShowNavWP: 'Print waypoints',
+  exportShowNavWP: 'Print navigation waypoints',
   exportShowAirfields: 'Print airports',
   exportLayer: 'Layer',
   exportBtn: 'Export',
