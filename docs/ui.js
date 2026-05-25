@@ -358,7 +358,9 @@ document.getElementById('save').onclick = save;
 document.getElementById('load').onclick = () => document.getElementById('file').click();
 document.getElementById('share').onclick = shareRoute;
 document.getElementById('file').onchange = e => {
-  if (e.target.files[0]) load(e.target.files[0]);
+  const f = e.target.files[0];
+  if (!f) return;
+  if (/\.gpx$/i.test(f.name)) loadGpx(f); else load(f);
   e.target.value = '';
 };
 document.getElementById('fit').onclick = fitView;
