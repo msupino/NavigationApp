@@ -914,6 +914,111 @@ function fileStamp() {
     .replace(/[-:]/g, '').replace('T', '-');
 }
 
+// Show a pre-export modal so the user can decide which overlays and base
+// layer appear in the PNG, independently of the current screen settings.
+function showExportModal() {
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  const box = document.createElement('div');
+  box.className = 'modal';
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = S.exportModalTitle;
+  box.appendChild(title);
+
+  const body = document.createElement('div');
+  body.style.cssText = 'display:flex;flex-direction:column;gap:10px;padding:4px 0';
+
+  // Show Nav Waypoints checkbox.
+  const navWpLabel = document.createElement('label');
+  navWpLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
+  const navWpCb = document.createElement('input');
+  navWpCb.type = 'checkbox';
+  navWpCb.checked = showNavWP;
+  navWpLabel.appendChild(navWpCb);
+  navWpLabel.appendChild(document.createTextNode(S.exportShowNavWP));
+  body.appendChild(navWpLabel);
+
+  // Show Airfields checkbox.
+  const afLabel = document.createElement('label');
+  afLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
+  const afCb = document.createElement('input');
+  afCb.type = 'checkbox';
+  afCb.checked = showAirfields;
+  afLabel.appendChild(afCb);
+  afLabel.appendChild(document.createTextNode(S.exportShowAirfields));
+  body.appendChild(afLabel);
+
+  // Layer selector.
+  const layerRow = document.createElement('div');
+  layerRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px';
+  const layerLbl = document.createElement('span');
+  layerLbl.textContent = S.exportLayer;
+  layerRow.appendChild(layerLbl);
+  const layerSel = document.createElement('select');
+  layerSel.style.cssText = 'font:inherit;font-size:12px;flex:1';
+  for (const name in layers) {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
+    if (map.hasLayer(layers[name])) opt.selected = true;
+    layerSel.appendChild(opt);
+  }
+  layerRow.appendChild(layerSel);
+  body.appendChild(layerRow);
+
+  box.appendChild(body);
+
+  // Buttons.
+  const btns = document.createElement('div');
+  btns.className = 'modal-btns';
+  const exportBtn = document.createElement('button');
+  exportBtn.textContent = S.exportBtn;
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = S.cancel;
+  cancelBtn.className = 'modal-cancel';
+
+  function close() { window.removeEventListener('keydown', onEsc); back.remove(); }
+  function onEsc(e) { if (e.key === 'Escape') close(); }
+
+  exportBtn.onclick = () => {
+    const prevNavWP = showNavWP;
+    const prevAirfields = showAirfields;
+    const prevLayer = (function () {
+      for (const n in layers) if (map.hasLayer(layers[n])) return n;
+      return null;
+    })();
+    showNavWP = navWpCb.checked;
+    showAirfields = afCb.checked;
+    const chosen = layerSel.value;
+    if (chosen !== prevLayer) {
+      for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
+      map.addLayer(layers[chosen]);
+    }
+    NavAid._restoreExport = function () {
+      showNavWP = prevNavWP;
+      showAirfields = prevAirfields;
+      if (chosen !== prevLayer) {
+        for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
+        if (prevLayer) map.addLayer(layers[prevLayer]);
+      }
+      NavAid._restoreExport = null;
+    };
+    close();
+    exportPNG();
+  };
+  cancelBtn.onclick = close;
+
+  btns.appendChild(exportBtn);
+  btns.appendChild(cancelBtn);
+  box.appendChild(btns);
+
+  back.appendChild(box);
+  back.onclick = e => { if (e.target === back) close(); };
+  document.body.appendChild(back);
+  document.addEventListener('keydown', onEsc);
+}
+
 // Save the framed map + route as a PNG, rendered at the highest practical
 // native tile zoom (not the on-screen zoom) for maximum quality. flight-maps
 // tiles are not CORS-enabled, so each tile is fetched through the weserv image
@@ -1138,6 +1243,7 @@ function exportPNG() {
       btn.disabled = false;
       unlockMap();
       NavAid.exporting = false;
+      if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
       if (!b) { alert(S.errPngFail); return; }
       const a = document.createElement('a');
       a.href = URL.createObjectURL(b);

@@ -509,7 +509,7 @@ try {
 } catch (e) { /* storage unavailable */ }
 document.getElementById('page-orient').onclick = toggleOrientation;
 refreshOrientButton();
-document.getElementById('print').onclick = exportPNG;
+document.getElementById('print').onclick = showExportModal;
 document.getElementById('insp-close').onclick = () => {
   state.selected = null;
   showInspector(); draw();
