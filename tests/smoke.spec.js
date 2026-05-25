@@ -56,6 +56,9 @@ test.describe('NavAid smoke', () => {
     await page.goto('/?lang=en');
     await page.waitForFunction(() => window.airfields && window.airfields.length > 0);
     await page.waitForFunction(() => window.navWP && window.navWP.length > 0);
+    // Search input lives in a floating overlay (hidden by default). Click
+    // the toolbar trigger to reveal it before typing.
+    await page.locator('#search-trigger').click();
     await page.locator('#wp-search').fill('LL');
     await page.locator('#wp-search').dispatchEvent('input');
     const items = page.locator('#wp-search-results .wp-search-item');
