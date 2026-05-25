@@ -161,6 +161,7 @@ async function loadAirfields() {
       lng: a.lng,
       elev_ft: a.elev_ft,
       plates: a.plates.slice(),
+      runways: Array.isArray(a.runways) ? a.runways.slice() : null,
     }));
     return airfields;
   } catch (e) {
