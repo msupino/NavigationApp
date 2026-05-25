@@ -212,6 +212,18 @@ wpSearch.addEventListener('keydown', e => {
 document.addEventListener('click', e => {
   if (!e.target.closest('.navsearch')) closeSearch();
 });
+// Ctrl/Cmd-F focuses the nav-waypoint search instead of the browser's
+// built-in page find — the map has no text to find anyway. Bail when the
+// user is already typing in an input (would steal Find-in-Page).
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    e.preventDefault();
+    wpSearch.focus();
+    wpSearch.select();
+  }
+});
 document.getElementById('reverse').onclick = () => {
   // Reversing flight direction means each leg's inbound/outbound roles swap.
   // The leg's local axes (along + perpendicular) also flip, so negating the
@@ -415,6 +427,13 @@ document.getElementById('mag-var').oninput = e => {
 };
 document.getElementById('page-a3').onclick = () => setPage('A3');
 document.getElementById('page-a4').onclick = () => setPage('A4');
+// Restore last-used orientation and wire the toolbar toggle button.
+try {
+  const stored = localStorage.getItem('navaid.pageOrient');
+  if (stored === 'portrait' || stored === 'landscape') window.pageOrient = stored;
+} catch (e) { /* storage unavailable */ }
+document.getElementById('page-orient').onclick = toggleOrientation;
+refreshOrientButton();
 document.getElementById('print').onclick = exportPNG;
 document.getElementById('insp-close').onclick = () => {
   state.selected = null;
