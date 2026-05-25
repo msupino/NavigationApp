@@ -202,7 +202,7 @@ window.S = Object.assign({
   tbSecRoute: '📋 Route',
   tbSecDisplay: '👁 Display',
   tbSecPrint: '🖨 Print',
-  tbSecBuild: '✏️ Build',
+  tbSecBuild: '✏️ Edit',
   tbSecView: '👁 View',
   tbSecCharts: '📋 Charts',
   tbSecExport: '📤 Export/Import',
