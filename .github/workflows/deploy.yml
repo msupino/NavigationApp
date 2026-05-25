@@ -13,6 +13,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  deployments: write
 
 concurrency:
   group: ${{ github.event_name == 'pull_request' && format('pages-pr-{0}', github.event.number) || 'pages' }}
@@ -143,3 +144,30 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Create PR deployment
+        if: github.event_name == 'pull_request'
+        run: |
+          URL="https://msupino.github.io/NavigationApp/pr/${{ github.event.number }}/"
+          DEPLOY_JSON=$(gh api "repos/${{ github.repository }}/deployments" --input - <<EOF
+          {
+            "ref": "${{ github.head_ref }}",
+            "environment": "pr-preview-${{ github.event.number }}",
+            "auto_merge": false,
+            "required_contexts": [],
+            "description": "PR preview at $URL"
+          }
+          EOF
+          )
+          DEPLOY_ID=$(echo "$DEPLOY_JSON" | jq -r '.id // empty')
+          if [ -n "$DEPLOY_ID" ]; then
+            gh api "repos/${{ github.repository }}/deployments/$DEPLOY_ID/statuses" --input - <<EOF
+          {
+            "state": "success",
+            "environment_url": "$URL",
+            "log_url": "$URL",
+            "description": "PR preview at $URL"
+          }
+          EOF
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
