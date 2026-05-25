@@ -1466,3 +1466,162 @@ function showChartsModal() {
   window.addEventListener('keydown', onEsc);
 }
 
+// --- shareable route link (#162) -----------------------------------
+// Encodes the current route into the URL so a pilot can paste a link
+// into WhatsApp / Telegram and the receiver opens the same route.
+//
+// Wire format (chosen for URL-length budget — JSON+base64 of a 20-WP
+// route blows past WhatsApp's ~2 KB preview render):
+//   ?r=<polyline>         — Google Encoded Polyline of [lat,lng] pairs
+//                            at 1e-5 precision (~1.1 m at 32 N)
+//   &n=<base64url-names>  — names joined by U+001F, then base64url
+//                            (UTF-8 safe — Hebrew names go through)
+//   &l=<compact-legs>     — semicolon-separated `ia,oa,fs[,os]` triples
+//                            where outboundSpeed is optional
+const SHARE_MAX_WAYPOINTS = 64;        // ~1.4 KB URL, fits in WhatsApp preview
+const SHARE_NAME_SEP = '\x1f';
+
+function _polyEncodeSigned(v) {
+  v = v < 0 ? ~(v << 1) : (v << 1);
+  let out = '';
+  while (v >= 0x20) { out += String.fromCharCode((0x20 | (v & 0x1f)) + 63); v >>>= 5; }
+  out += String.fromCharCode(v + 63);
+  return out;
+}
+function polylineEncode(points) {
+  let out = '', prevLat = 0, prevLng = 0;
+  for (const [lat, lng] of points) {
+    const latE5 = Math.round(lat * 1e5), lngE5 = Math.round(lng * 1e5);
+    out += _polyEncodeSigned(latE5 - prevLat) + _polyEncodeSigned(lngE5 - prevLng);
+    prevLat = latE5; prevLng = lngE5;
+  }
+  return out;
+}
+function polylineDecode(str) {
+  const out = [];
+  let i = 0, lat = 0, lng = 0;
+  while (i < str.length) {
+    let b, shift = 0, result = 0;
+    do { b = str.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lat += (result & 1) ? ~(result >>> 1) : (result >>> 1);
+    shift = 0; result = 0;
+    do { b = str.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lng += (result & 1) ? ~(result >>> 1) : (result >>> 1);
+    out.push([lat / 1e5, lng / 1e5]);
+  }
+  return out;
+}
+function _b64UrlEncode(s) {
+  return btoa(unescape(encodeURIComponent(s)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function _b64UrlDecode(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return decodeURIComponent(escape(atob(s)));
+}
+
+// Build the share URL from current state. Returns null if no route or if
+// the route would exceed SHARE_MAX_WAYPOINTS.
+function buildShareUrl() {
+  if (state.waypoints.length < 2) return { err: 'errNeedWps' };
+  if (state.waypoints.length > SHARE_MAX_WAYPOINTS) return { err: 'errShareTooLong' };
+  const r = polylineEncode(state.waypoints.map(w => [w.lat, w.lng]));
+  const n = _b64UrlEncode(state.waypoints.map(w => w.name || '').join(SHARE_NAME_SEP));
+  const l = state.legs.map(leg => {
+    const triple = [leg.inboundAltitude, leg.outboundAltitude, leg.flightSpeed];
+    if (leg.outboundSpeed != null && leg.outboundSpeed !== leg.flightSpeed) {
+      triple.push(leg.outboundSpeed);
+    }
+    return triple.join(',');
+  }).join(';');
+  const base = location.origin + location.pathname;
+  const params = new URLSearchParams(location.search);
+  // Preserve ?lang= so the receiver opens in the sender's language. Drop
+  // any previous share params so re-shares don't double up.
+  params.delete('r'); params.delete('n'); params.delete('l');
+  params.set('r', r); params.set('n', n); params.set('l', l);
+  return { url: base + '?' + params.toString() };
+}
+
+// Decode a share URL back into a route shape. Returns the route or null.
+function decodeShareUrl(search) {
+  const params = new URLSearchParams(search);
+  const r = params.get('r'), n = params.get('n'), l = params.get('l');
+  if (!r || n === null || l === null) return null;
+  let coords, names, legParts;
+  try {
+    coords = polylineDecode(r);
+    names = _b64UrlDecode(n).split(SHARE_NAME_SEP);
+    legParts = l === '' ? [] : l.split(';');
+  } catch (e) {
+    return null;
+  }
+  if (!coords.length || names.length !== coords.length) return null;
+  if (legParts.length !== Math.max(0, coords.length - 1)) return null;
+  const waypoints = coords.map(([lat, lng], i) => ({ lat, lng, name: names[i] || '' }));
+  const legs = legParts.map(s => {
+    const parts = s.split(',').map(Number);
+    if (parts.length < 3 || parts.some(v => !Number.isFinite(v))) return null;
+    const [ia, oa, fs, os] = parts;
+    return {
+      inboundAltitude: ia,
+      outboundAltitude: oa,
+      flightSpeed: fs,
+      outboundSpeed: os != null ? os : fs,
+      inLabel: { a: 0, p: 44 },
+      outLabel: { a: 0, p: -44 },
+    };
+  });
+  if (legs.some(l => l === null)) return null;
+  return { waypoints, legs, notes: [] };
+}
+
+// Called from ui.js boot, before restoreRoute(). Returns true if a route
+// was loaded from the URL (boot should skip restoreRoute in that case).
+function tryLoadRouteFromUrl() {
+  const r = decodeShareUrl(location.search);
+  if (!r) return false;
+  const verr = validateRoute(r);
+  if (verr) { console.warn('share-link schema error:', verr); return false; }
+  state.waypoints = r.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
+  state.legs = r.legs;
+  state.notes = [];
+  return true;
+}
+
+// Lightweight non-blocking toast (no popup, no modal). The share action
+// fires often enough that an alert() was disproportionately disruptive —
+// pilots want the link copied and to keep working. The toast self-removes
+// after 2.5 s; clipboard failures still fall through to a window.prompt
+// so the URL can be copied manually.
+function showToast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  void el.offsetWidth;                  // force reflow so the fade-in runs
+  el.classList.add('show');
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 250);
+  }, 2500);
+}
+
+// Toolbar button handler — copy share URL to clipboard.
+function shareRoute() {
+  const r = buildShareUrl();
+  if (r.err) { alert(S[r.err]); return; }
+  // Clipboard API requires a secure context + user gesture; the button
+  // click satisfies the gesture, but http://localhost might fall back.
+  const writePromise = (navigator.clipboard && navigator.clipboard.writeText)
+    ? navigator.clipboard.writeText(r.url)
+    : Promise.reject(new Error('no clipboard API'));
+  writePromise
+    .then(() => showToast(S.shareCopied))
+    .catch(() => {
+      // Fallback: show the URL in a prompt so the user can copy manually.
+      window.prompt(S.shareCopied, r.url);
+    });
+}
+
