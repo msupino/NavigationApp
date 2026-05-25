@@ -726,6 +726,21 @@ html, body {
 .plate-chip-small { font-size: 10px; padding: 2px 5px; background: none; border-color: transparent; color: #1d6fe0; cursor: pointer; }
 .plate-chip-small:hover { text-decoration: underline; }
 
+/* Airfield runways (#231) */
+.runways-row { flex-wrap: wrap; gap: 4px; align-items: center; }
+.runway-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.runway-chip {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
 /* Charts modal */
 .charts-modal-body {
   padding: 2px 0;
