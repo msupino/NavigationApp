@@ -111,16 +111,24 @@
       }());
     </script>
 
+    <!-- Quick action row: 5 most-used buttons, always visible above the
+         collapsible sections so they work even when sections are collapsed.
+         Order: build → review → export (✏️ → 📝 → ⌖ → 📋 → ⬇). -->
+    <div id="tb-quick">
+      <button id="tool-add" class="tool" data-i18n="tbAddWp" data-i18n-title="tbAddWpTitle"></button>
+      <button id="tool-note" class="tool" data-i18n="tbAddNote" data-i18n-title="tbAddNoteTitle"></button>
+      <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
+      <button id="plan" data-i18n="tbPlan" data-i18n-title="tbPlanTitle"></button>
+      <button id="save" data-i18n="tbExport" data-i18n-title="tbExportTitle"></button>
+    </div>
+
     <!-- Build: everything you do to construct or edit a route. -->
     <div class="tb-section" data-sec="build">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecBuild"></div>
       <div class="tb-section-body">
-        <button id="tool-add" class="tool" data-i18n="tbAddWp" data-i18n-title="tbAddWpTitle"></button>
-        <button id="tool-note" class="tool" data-i18n="tbAddNote" data-i18n-title="tbAddNoteTitle"></button>
         <button id="search-trigger" type="button" data-i18n="tbSearchOpen" data-i18n-title="tbSearchOpenTitle"></button>
         <button id="reverse" data-i18n="tbReverse" data-i18n-title="tbReverseTitle"></button>
         <button id="clear" data-i18n="tbClear" data-i18n-title="tbClearTitle"></button>
-        <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
       </div>
     </div>
 
@@ -188,7 +196,6 @@
     <div class="tb-section" data-sec="charts">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecCharts"></div>
       <div class="tb-section-body">
-        <button id="plan" data-i18n="tbPlan" data-i18n-title="tbPlanTitle"></button>
         <button id="charts" data-i18n="tbCharts" data-i18n-title="tbChartsTitle"></button>
       </div>
     </div>
@@ -197,7 +204,6 @@
     <div class="tb-section" data-sec="export">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecExport"></div>
       <div class="tb-section-body">
-        <button id="save" data-i18n="tbExport" data-i18n-title="tbExportTitle"></button>
         <button id="load" data-i18n="tbImport" data-i18n-title="tbImportTitle"></button>
         <button id="share" data-i18n="tbShare" data-i18n-title="tbShareTitle"></button>
         <input type="file" id="file" accept="application/json,.json" hidden>
