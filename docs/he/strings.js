@@ -145,7 +145,7 @@ window.S = {
   plateAttribution: 'מפות © רשות התעופה האזרחית / משרד התחבורה — מפורסם ב-AIP. תצלום מחבילת ForeFlight ישראל גרסה 02-25.',
   tbTransparency: 'שקיפות תוויות',
   tbTransparencyTitle: 'שקיפות רקע תוויות (נקודות, קטעים, הערות)',
-  tbMapOpacity: 'בהירות מפת',
+  tbMapOpacity: 'בהירות מפה',
   tbMapOpacityTitle: 'בהירות מפת הרקע',
   tbLegArrowSize: 'גודל חץ קטע',
   tbLegArrowSizeTitle: 'גודל מחוון המידע של קטע (כיוון / גובה / זמן)',
