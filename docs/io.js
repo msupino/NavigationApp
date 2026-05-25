@@ -240,10 +240,9 @@ function exportGpx() {
   let rtepts = '';
   for (let i = 0; i < wps.length; i++) {
     const name = esc(wpLabel(i));
-    const ele = i > 0 ? '    <ele>' + altM(i) + '</ele>\n' : '';
     rtepts += '    <rtept lat="' + wps[i].lat + '" lon="' + wps[i].lng + '">\n' +
       '      <name>' + name + '</name>\n' +
-      ele +
+      '      <ele>' + altM(i) + '</ele>\n' +
       '    </rtept>\n';
   }
   const gpx =
