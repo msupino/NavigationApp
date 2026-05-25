@@ -975,7 +975,7 @@ function showExportModal() {
   navWpCb.type = 'checkbox';
   navWpCb.checked = false;
   navWpLabel.appendChild(navWpCb);
-  navWpLabel.appendChild(document.createTextNode(S.exportShowNavWP));
+  navWpLabel.appendChild(document.createTextNode(S.tbShowNavWp));
   body.appendChild(navWpLabel);
 
   // Show Airfields checkbox.
@@ -985,7 +985,7 @@ function showExportModal() {
   afCb.type = 'checkbox';
   afCb.checked = false;
   afLabel.appendChild(afCb);
-  afLabel.appendChild(document.createTextNode(S.exportShowAirfields));
+  afLabel.appendChild(document.createTextNode(S.tbShowAirfields));
   body.appendChild(afLabel);
 
   // Layer selector.
