@@ -699,7 +699,10 @@ html, body {
 }
 .charts-airport-body {
   display: none;
-  padding: 2px 8px 8px 22px;
+  /* Logical inline-start so the 22 px indent lands on the chevron's side
+     under both LTR and RTL (the default locale is Hebrew). */
+  padding: 2px 8px 8px;
+  padding-inline-start: 22px;
 }
 .charts-airport-body.open {
   display: block;
