@@ -838,7 +838,7 @@ function showExportModal() {
   navWpLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
   const navWpCb = document.createElement('input');
   navWpCb.type = 'checkbox';
-  navWpCb.checked = showNavWP;
+  navWpCb.checked = false;
   navWpLabel.appendChild(navWpCb);
   navWpLabel.appendChild(document.createTextNode(S.exportShowNavWP));
   body.appendChild(navWpLabel);
@@ -848,7 +848,7 @@ function showExportModal() {
   afLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
   const afCb = document.createElement('input');
   afCb.type = 'checkbox';
-  afCb.checked = showAirfields;
+  afCb.checked = false;
   afLabel.appendChild(afCb);
   afLabel.appendChild(document.createTextNode(S.exportShowAirfields));
   body.appendChild(afLabel);
@@ -865,7 +865,7 @@ function showExportModal() {
     const opt = document.createElement('option');
     opt.value = name;
     opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
-    if (map.hasLayer(layers[name])) opt.selected = true;
+    if (name === 'Navigation') opt.selected = true;
     layerSel.appendChild(opt);
   }
   layerRow.appendChild(layerSel);
