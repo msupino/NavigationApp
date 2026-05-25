@@ -1590,6 +1590,24 @@ function tryLoadRouteFromUrl() {
   return true;
 }
 
+// Lightweight non-blocking toast (no popup, no modal). The share action
+// fires often enough that an alert() was disproportionately disruptive —
+// pilots want the link copied and to keep working. The toast self-removes
+// after 2.5 s; clipboard failures still fall through to a window.prompt
+// so the URL can be copied manually.
+function showToast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  void el.offsetWidth;                  // force reflow so the fade-in runs
+  el.classList.add('show');
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 250);
+  }, 2500);
+}
+
 // Toolbar button handler — copy share URL to clipboard.
 function shareRoute() {
   const r = buildShareUrl();
@@ -1600,7 +1618,7 @@ function shareRoute() {
     ? navigator.clipboard.writeText(r.url)
     : Promise.reject(new Error('no clipboard API'));
   writePromise
-    .then(() => alert(S.shareCopied + '\n\n' + r.url))
+    .then(() => showToast(S.shareCopied))
     .catch(() => {
       // Fallback: show the URL in a prompt so the user can copy manually.
       window.prompt(S.shareCopied, r.url);
