@@ -150,27 +150,7 @@
       </div>
     </div>
 
-    <!-- Numbers: anything that runs a calculation against the route. -->
-    <div class="tb-section" data-sec="numbers">
-      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecNumbers"></div>
-      <div class="tb-section-body">
-        <button id="plan" data-i18n="tbPlan" data-i18n-title="tbPlanTitle"></button>
-        <button id="charts" data-i18n="tbCharts" data-i18n-title="tbChartsTitle"></button>
-      </div>
-    </div>
-
-    <!-- Export: send the route somewhere else (file / link / app / print). -->
-    <div class="tb-section" data-sec="export">
-      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecExport"></div>
-      <div class="tb-section-body">
-        <button id="save" data-i18n="tbExport" data-i18n-title="tbExportTitle"></button>
-        <button id="load" data-i18n="tbImport" data-i18n-title="tbImportTitle"></button>
-        <button id="share" data-i18n="tbShare" data-i18n-title="tbShareTitle"></button>
-        <input type="file" id="file" accept="application/json,.json" hidden>
-        <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
-      </div>
-    </div>
-
+    <!-- Display: waypoint names, sliders, mag var. -->
     <div class="tb-section" data-sec="display">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecDisplay"></div>
       <div class="tb-section-body">
@@ -199,6 +179,27 @@
           <input type="number" id="mag-var" min="-30" max="30" step="0.5" value="-5">°
           <span id="mag-var-eqv" class="hint"></span>
         </label>
+      </div>
+    </div>
+
+    <!-- Charts: flight plan and airfield charts. -->
+    <div class="tb-section" data-sec="charts">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecCharts"></div>
+      <div class="tb-section-body">
+        <button id="plan" data-i18n="tbPlan" data-i18n-title="tbPlanTitle"></button>
+        <button id="charts" data-i18n="tbCharts" data-i18n-title="tbChartsTitle"></button>
+      </div>
+    </div>
+
+    <!-- Export / Import: route file operations. -->
+    <div class="tb-section" data-sec="export">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecExport"></div>
+      <div class="tb-section-body">
+        <button id="save" data-i18n="tbExport" data-i18n-title="tbExportTitle"></button>
+        <button id="load" data-i18n="tbImport" data-i18n-title="tbImportTitle"></button>
+        <button id="share" data-i18n="tbShare" data-i18n-title="tbShareTitle"></button>
+        <input type="file" id="file" accept="application/json,.json" hidden>
+        <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
       </div>
     </div>
 
