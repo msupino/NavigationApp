@@ -98,10 +98,18 @@ jobs:
           fi
           SHA_M=$(git -C m rev-parse --short HEAD)
           SHA_D=$(git -C d rev-parse --short HEAD)
-          sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA_M}/g" site/index.html
-          sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA_M}'/g" site/core.js
-          sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA_D}/g" site/staging/index.html
-          sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA_D}'/g" site/staging/core.js
+          # Bump every cache-bust marker (index.html ?v=, core.js version:,
+          # data-file ?v= literals in core.js + he/strings.js, and the SW
+          # CACHE name) so a single deploy invalidates everything that may
+          # have changed in this commit.
+          for ROOT in "site" "site/staging"; do
+            case "$ROOT" in site) SHA="$SHA_M" ;; *) SHA="$SHA_D" ;; esac
+            sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" "$ROOT/index.html"
+            sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" "$ROOT/core.js"
+            sed -i -E "s/(nav-waypoints|airfields)\.json\?v=[A-Za-z0-9]+/\1.json?v=${SHA}/g" \
+              "$ROOT/core.js" "$ROOT/he/strings.js"
+            sed -i -E "s/const CACHE = 'navaid-[A-Za-z0-9_-]+'/const CACHE = 'navaid-${SHA}'/" "$ROOT/sw.js"
+          done
       - name: Checkout open PR branches (preview deployments)
         run: |
           cd m
@@ -116,6 +124,9 @@ jobs:
               SHA=$(git rev-parse --short "origin/$BRANCH" 2>/dev/null) || { echo "  skip (rev-parse failed)"; rm -rf "$STAGING"; continue; }
               sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" "$STAGING/index.html" 2>/dev/null || true
               sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" "$STAGING/core.js" 2>/dev/null || true
+              sed -i -E "s/(nav-waypoints|airfields)\.json\?v=[A-Za-z0-9]+/\1.json?v=${SHA}/g" \
+                "$STAGING/core.js" "$STAGING/he/strings.js" 2>/dev/null || true
+              sed -i -E "s/const CACHE = 'navaid-[A-Za-z0-9_-]+'/const CACHE = 'navaid-${SHA}'/" "$STAGING/sw.js" 2>/dev/null || true
               # Drop the per-PR byop/ copy and point at the production one.
               rm -rf "$STAGING/byop"
               sed -i -E "s#(const|var|let)[[:space:]]+PLATE_BASE[[:space:]]*=[[:space:]]*'[^']*'#const PLATE_BASE = '/NavigationApp/byop/'#" "$STAGING/io.js" 2>/dev/null || true
