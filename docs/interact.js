@@ -455,7 +455,8 @@ window.addEventListener('pointercancel', endMouseDrag);
 
 map.on('click', e => {
   if (downHit) { downHit = false; return; }
-  const hitSugg = hitSuggestion(px, py);
+  const p = e.containerPoint;
+  const hitSugg = hitSuggestion(p.x, p.y);
   if (hitSugg && !state.mode) {
     insertSuggestion(hitSugg.legIdx, hitSugg.wp);
     syncLegs();
