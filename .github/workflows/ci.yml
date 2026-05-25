@@ -23,6 +23,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Enforce PR-to-main comes only from dev
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        run: |
+          if [ "${{ github.head_ref }}" != "dev" ]; then
+            echo "❌ PRs to main must originate from dev (got: ${{ github.head_ref }})."
+            echo "   Workflow: feature → PR to dev → merge → PR dev to main."
+            exit 1
+          fi
+          echo "✅ PR to main originates from dev"
+
       - name: Check PR is rebased
         if: github.event_name == 'pull_request'
         run: |
