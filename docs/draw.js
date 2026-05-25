@@ -50,6 +50,7 @@ async function loadNavWaypoints() {
       lat: w.lat,
       lng: w.lng,
     }));
+    suggestionsDirty = true;             // alert draw() to recompute chips on next render
     return navWP;
   } catch (e) {
     // Leave navWP === null so a subsequent toggle / search / snap call can

@@ -437,7 +437,10 @@ function markSuggestionsDirty() { suggestionsDirty = true; }
 function recomputeSuggestions() {
   const n = state.legs.length;
   legSuggestions = new Array(n);
-  if (!showNavWP || !navWP || navWP.length === 0) return;
+  if (!showNavWP || !navWP || navWP.length === 0) {
+    if (navWP === null) suggestionsDirty = true;  // not loaded yet — retry on next draw
+    return;
+  }
   const THRESHOLD_NM = 2;
   for (let i = 0; i < n; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
