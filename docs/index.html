@@ -210,9 +210,18 @@
           </select>
         </label>
         <div id="aircraft-custom" class="hidden">
-          <input type="number" id="aircraft-gph" min="1" max="50" step="0.5" placeholder="GPH">
-          <input type="number" id="aircraft-tank" min="5" max="200" step="0.5" placeholder="Tank (gal)">
-          <input type="number" id="aircraft-reserve" min="0" max="120" step="5" placeholder="Reserve (min)">
+          <label data-i18n-title="tbGphTitle">
+            <span data-i18n="tbGph"></span>
+            <input type="number" id="aircraft-gph" min="1" max="50" step="0.5">
+          </label>
+          <label data-i18n-title="tbTankTitle">
+            <span data-i18n="tbTank"></span>
+            <input type="number" id="aircraft-tank" min="5" max="200" step="0.5">
+          </label>
+          <label data-i18n-title="tbReserveTitle">
+            <span data-i18n="tbReserve"></span>
+            <input type="number" id="aircraft-reserve" min="0" max="120" step="5">
+          </label>
         </div>
       </div>
     </div>
