@@ -848,8 +848,12 @@ function showExportModal() {
     box.style.margin = '0';
     const onMove = function (e) {
       if (!drag) return;
-      box.style.left = (e.clientX - drag.ox) + 'px';
-      box.style.top = (e.clientY - drag.oy) + 'px';
+      // Clamp to the viewport so the title bar + ✕ stay reachable. Same
+      // pattern the flight-plan modal already uses.
+      const x = Math.max(0, Math.min(window.innerWidth - box.offsetWidth, e.clientX - drag.ox));
+      const y = Math.max(0, Math.min(window.innerHeight - box.offsetHeight, e.clientY - drag.oy));
+      box.style.left = x + 'px';
+      box.style.top = y + 'px';
     };
     const onUp = function () {
       drag = null;
@@ -1577,8 +1581,12 @@ function showChartsModal() {
     box.style.margin = '0';
     const onMove = function (e) {
       if (!drag) return;
-      box.style.left = (e.clientX - drag.ox) + 'px';
-      box.style.top = (e.clientY - drag.oy) + 'px';
+      // Clamp to the viewport so the title bar + ✕ stay reachable. Same
+      // pattern the flight-plan modal already uses.
+      const x = Math.max(0, Math.min(window.innerWidth - box.offsetWidth, e.clientX - drag.ox));
+      const y = Math.max(0, Math.min(window.innerHeight - box.offsetHeight, e.clientY - drag.oy));
+      box.style.left = x + 'px';
+      box.style.top = y + 'px';
     };
     const onUp = function () {
       drag = null;
@@ -1620,15 +1628,25 @@ function showChartsModal() {
       const header = document.createElement('div');
       header.className = 'charts-airport-header';
       header.textContent = af.name + (af.en ? ' — ' + af.en : '');
-      header.onclick = function () {
-        const pane = this.nextElementSibling;
-        pane.classList.toggle('open');
-        this.classList.toggle('open');
-      };
-      section.appendChild(header);
-
+      // Keyboard + screen-reader parity with the toolbar's .tb-section-head
+      // pattern: tabbable, announced as a button, with explicit expanded
+      // state. The pane it controls is display:none until 'open', so without
+      // this the plate chips inside would be unreachable from the keyboard.
+      header.tabIndex = 0;
+      header.setAttribute('role', 'button');
+      header.setAttribute('aria-expanded', 'false');
       const pane = document.createElement('div');
       pane.className = 'charts-airport-body';
+      function toggle() {
+        const open = pane.classList.toggle('open');
+        header.classList.toggle('open', open);
+        header.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+      header.addEventListener('click', toggle);
+      header.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+      });
+      section.appendChild(header);
 
       const groups = {};
       for (const fn of af.plates) {
