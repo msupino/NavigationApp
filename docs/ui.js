@@ -281,6 +281,7 @@ document.getElementById('clear').onclick = () => {
 };
 document.getElementById('save').onclick = save;
 document.getElementById('load').onclick = () => document.getElementById('file').click();
+document.getElementById('share').onclick = shareRoute;
 document.getElementById('file').onchange = e => {
   if (e.target.files[0]) load(e.target.files[0]);
   e.target.value = '';
@@ -599,15 +600,25 @@ document.getElementById('insp-close').onclick = () => {
 // --- boot ------------------------------------------------------------
 resizeOverlay();
 setMode(null);
-// restoreRoute() returns 'corrupt' when the saved blob exists but is
-// unparseable / has invalid coords. Set a flag so persist() refuses to
-// overwrite the (potentially recoverable) blob with empty state — see #73.
-const _restoreResult = restoreRoute();
-if (_restoreResult === 'corrupt') {
-  NavAid.corruptCache = true;
-  const msg = S.errSavedRouteCorrupt(NavAid.corruptCacheError || '');
-  console.warn('NavAid: ' + msg);
-  alert(msg);
+// #162: if the URL carries share-link params (?r=…&n=…&l=…) the receiver
+// gets the shared route. URL wins over localStorage so a paste of someone
+// else's link doesn't appear to do nothing for a user who has their own
+// saved route. If the share-link parse fails we fall through to restore.
+const _sharedLoaded = tryLoadRouteFromUrl();
+let _restoreResult = null;
+if (!_sharedLoaded) {
+  // restoreRoute() returns 'corrupt' when the saved blob exists but is
+  // unparseable / has invalid coords. Set a flag so persist() refuses to
+  // overwrite the (potentially recoverable) blob with empty state — see #73.
+  _restoreResult = restoreRoute();
+  if (_restoreResult === 'corrupt') {
+    NavAid.corruptCache = true;
+    const msg = S.errSavedRouteCorrupt(NavAid.corruptCacheError || '');
+    console.warn('NavAid: ' + msg);
+    alert(msg);
+  }
+} else {
+  syncLegs();
 }
 try {
   const saved = sessionStorage.getItem('navaid.selected');
