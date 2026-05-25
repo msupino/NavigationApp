@@ -16,7 +16,11 @@ function draw() {
   // when the modal isn't open, or after refresh detects a structural change
   // and closes it.
   if (refreshFlightPlan) refreshFlightPlan();
-  persist();
+  // #214: skip persist during a PNG export. The export modal flips overlay
+  // toggles for the preview render, then restores them; without this guard
+  // the debounced persist() would write the preview-state mutation to
+  // localStorage if the user reopened the modal mid-export.
+  if (!NavAid.exporting) persist();
 }
 
 // --- nav-waypoint reference overlay ---------------------------------
