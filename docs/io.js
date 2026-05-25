@@ -830,6 +830,30 @@ function showExportModal() {
   title.textContent = S.exportModalTitle;
   box.appendChild(title);
 
+  // Drag to reposition the modal via the title bar.
+  let drag = null;
+  title.addEventListener('mousedown', function (e) {
+    const r = box.getBoundingClientRect();
+    drag = { ox: e.clientX - r.left, oy: e.clientY - r.top };
+    box.style.position = 'fixed';
+    box.style.left = r.left + 'px';
+    box.style.top = r.top + 'px';
+    box.style.margin = '0';
+    const onMove = function (e) {
+      if (!drag) return;
+      box.style.left = (e.clientX - drag.ox) + 'px';
+      box.style.top = (e.clientY - drag.oy) + 'px';
+    };
+    const onUp = function () {
+      drag = null;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  });
+
   const body = document.createElement('div');
   body.style.cssText = 'display:flex;flex-direction:column;gap:10px;padding:4px 0';
 
