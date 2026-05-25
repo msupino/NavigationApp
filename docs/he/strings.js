@@ -22,7 +22,7 @@ window.S = {
   tbShowNavWp: 'הצג/נעץ ציוני ניווט',                // מתג שכבת מפה
   tbShowNavWpTitle: 'הצג ציוני דיווח VFR ישראלים',
   tbSearchPlaceholder: '🔍 חפש ציון ניווטי',
-  tbSearchHint: 'טיפ: הקלד קודים מופרדים ברווח (למשל BAZRA GNYAM TLV) ולחץ Enter לבניית מסלול.',
+  tbSearchHint: 'טיפ: הקלד קודים מופרדים ברווח (למשל LLHZ BAZRA DEROR SHARO HADRA) ולחץ Enter לבניית מסלול.',
   errSearchUnknown: function(t) { return 'ציון ניווט לא מוכר: ' + t; },
   searchReplaceConfirm: 'להחליף את המסלול הנוכחי בציוני הדרך האלה?',
   tbSearchOpen: '🔍 חפש',

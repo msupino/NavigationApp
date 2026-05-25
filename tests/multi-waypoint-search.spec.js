@@ -43,6 +43,23 @@ test.describe('Multi-token search route builder (#98)', () => {
     expect(len).toBe(0);
   });
 
+  test('Enter on single-token query with trailing space picks dropdown suggestion (not build)', async ({ page }) => {
+    await boot(page);
+    await openSearch(page);
+    await page.fill('#wp-search', 'BAZRA ');
+    // Dropdown is hidden when trailing-space tail is empty, so first re-type
+    // without trailing space, dropdown reappears, then Enter selects.
+    await page.fill('#wp-search', 'BAZRA');
+    await page.waitForSelector('.wp-search-item');
+    // Now add a trailing space (single token + whitespace).
+    await page.fill('#wp-search', 'BAZRA ');
+    await page.locator('#wp-search').press('Enter');
+    // Route must NOT be built (only one real token).
+    await page.waitForTimeout(150);
+    const len = await page.evaluate(() => state.waypoints.length);
+    expect(len).toBe(0);
+  });
+
   test('two-token Enter builds a 2-waypoint route', async ({ page }) => {
     await boot(page);
     await openSearch(page);

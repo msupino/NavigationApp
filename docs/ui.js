@@ -185,15 +185,19 @@ async function buildRouteFromQuery(raw) {
   }
   if ((state.waypoints.length || state.notes.length) &&
       !confirm(S.searchReplaceConfirm)) return false;
-  const field = S.navWpSearchField;
+  // Always store the canonical ICAO / English code so all tokens render
+  // consistently. navName() in interact.js converts it to the locale at
+  // display time. Without this, HE-locale autofill would store the
+  // Hebrew label for clicked tokens and the English ICAO for typed
+  // tokens — producing the mixed-locale route the user reported.
   state.waypoints = resolved.map(w => ({
-    lat: w.lat, lng: w.lng, name: w[field] || w.name,
+    lat: w.lat, lng: w.lng, name: w.name,
   }));
   state.legs = [];
   state.selected = null;
   syncLegs();
-  closeSearch();
   wpSearch.value = '';
+  hideSearchOverlay();
   showInspector();
   fitView();
   draw();
@@ -254,11 +258,11 @@ function runSearch() {
     item.textContent = alt && alt !== primary ? primary + ' / ' + alt : primary;
     item.onclick = () => {
       if (multi) {
-        // Replace just the last token with the chosen full name; keep prior
-        // tokens so the user can keep typing the next leg. Trailing space
-        // primes the next autocomplete.
+        // Replace just the last token with the canonical ICAO / English
+        // code — keeps the typed route in a single language. Trailing
+        // space primes the next autocomplete.
         const parts = wpSearch.value.split(/\s+/);
-        parts[parts.length - 1] = primary;
+        parts[parts.length - 1] = w.name;
         wpSearch.value = parts.join(' ') + ' ';
         wpSearch.focus();
         closeSearch();
@@ -277,7 +281,10 @@ wpSearch.addEventListener('focus', () => { if (wpSearch.value.trim()) runSearch(
 wpSearch.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     const raw = wpSearch.value.trim();
-    if (/\s/.test(raw)) {
+    // Only treat as a route-build when there are ≥ 2 actual tokens.
+    // A single token with trailing whitespace must still let Enter pick
+    // the highlighted dropdown suggestion.
+    if (raw.split(/\s+/).filter(Boolean).length >= 2) {
       e.preventDefault();
       buildRouteFromQuery(raw);
       return;
