@@ -145,6 +145,10 @@ window.S = {
   tbSecRoute: '📋 מסלול',
   tbSecDisplay: '👁 תצוגה',
   tbSecPrint: '🖨 הדפסה',
+  tbSecBuild: '✏️ בנייה',
+  tbSecView: '👁 תצוגה',
+  tbSecNumbers: '📊 חישובים',
+  tbSecExport: '📤 ייצוא',
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
 };

@@ -111,37 +111,36 @@
       }());
     </script>
 
-    <div class="tb-section" data-sec="edit">
-      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecEdit"></div>
+    <!-- Build: everything you do to construct or edit a route. -->
+    <div class="tb-section" data-sec="build">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecBuild"></div>
       <div class="tb-section-body">
         <button id="tool-add" class="tool" data-i18n="tbAddWp" data-i18n-title="tbAddWpTitle"></button>
         <button id="tool-note" class="tool" data-i18n="tbAddNote" data-i18n-title="tbAddNoteTitle"></button>
+        <div class="navsearch">
+          <input type="text" id="wp-search" data-i18n-placeholder="tbSearchPlaceholder" autocomplete="off">
+          <div id="wp-search-results" class="hidden"></div>
+        </div>
+        <button id="reverse" data-i18n="tbReverse" data-i18n-title="tbReverseTitle"></button>
+        <button id="clear" data-i18n="tbClear" data-i18n-title="tbClearTitle"></button>
+        <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
       </div>
     </div>
 
-    <div class="tb-section" data-sec="map">
-      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecMap"></div>
+    <!-- View: chart appearance + every overlay/toggle/slider. -->
+    <div class="tb-section" data-sec="view">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecView"></div>
       <div class="tb-section-body">
         <label class="navtoggle" data-i18n-title="tbLayerTitle">
           <span data-i18n="tbLayerLabel"></span>
           <select id="layer-select"></select>
         </label>
-        <div class="navsearch">
-          <input type="text" id="wp-search" data-i18n-placeholder="tbSearchPlaceholder" autocomplete="off">
-          <div id="wp-search-results" class="hidden"></div>
-        </div>
         <label class="navtoggle" data-i18n-title="tbShowNavWpTitle">
           <input type="checkbox" id="navwp-cb" checked> <span data-i18n="tbShowNavWp"></span>
         </label>
         <label class="navtoggle" data-i18n-title="tbShowAirfieldsTitle">
           <input type="checkbox" id="airfield-cb" checked> <span data-i18n="tbShowAirfields"></span>
         </label>
-      </div>
-    </div>
-
-    <div class="tb-section" data-sec="route">
-      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecRoute"></div>
-      <div class="tb-section-body">
         <label class="navtoggle" data-i18n-title="tbShowReturnTitle">
           <input type="checkbox" id="ret-cb"> <span data-i18n="tbShowReturn"></span>
         </label>
@@ -151,15 +150,26 @@
         <label class="navtoggle" data-i18n-title="tbHighlightDiffTitle">
           <input type="checkbox" id="diff-cb"> <span data-i18n="tbHighlightDiff"></span>
         </label>
-        <button id="reverse" data-i18n="tbReverse" data-i18n-title="tbReverseTitle"></button>
-        <button id="clear" data-i18n="tbClear" data-i18n-title="tbClearTitle"></button>
-        <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
+      </div>
+    </div>
+
+    <!-- Numbers: anything that runs a calculation against the route. -->
+    <div class="tb-section" data-sec="numbers">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecNumbers"></div>
+      <div class="tb-section-body">
         <button id="plan" data-i18n="tbPlan" data-i18n-title="tbPlanTitle"></button>
         <button id="charts" data-i18n="tbCharts" data-i18n-title="tbChartsTitle"></button>
-        <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
+      </div>
+    </div>
+
+    <!-- Export: send the route somewhere else (file / link / app / print). -->
+    <div class="tb-section" data-sec="export">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecExport"></div>
+      <div class="tb-section-body">
         <button id="save" data-i18n="tbExport" data-i18n-title="tbExportTitle"></button>
         <button id="load" data-i18n="tbImport" data-i18n-title="tbImportTitle"></button>
         <input type="file" id="file" accept="application/json,.json" hidden>
+        <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
       </div>
     </div>
 
