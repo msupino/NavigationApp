@@ -759,7 +759,8 @@ html, body {
 }
 #page-buttons > * { flex: 1; }
 #page-orient {
-  font-size: 12px;
-  padding: 4px 6px;
-  flex: 1;
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px 8px;
 }
+#page-orient.portrait { opacity: 0.9; }
