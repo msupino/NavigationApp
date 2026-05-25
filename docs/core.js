@@ -183,6 +183,10 @@ window.S = Object.assign({
   tbSecRoute: '📋 Route',
   tbSecDisplay: '👁 Display',
   tbSecPrint: '🖨 Print',
+  tbSecBuild: '✏️ Build',
+  tbSecView: '👁 View',
+  tbSecNumbers: '📊 Numbers',
+  tbSecExport: '📤 Export',
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
 }, window.S || {});
