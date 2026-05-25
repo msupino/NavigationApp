@@ -211,6 +211,7 @@ window.S = Object.assign({
   exportModalTitle: 'Export PNG',
   exportShowNavWP: 'Print Navigation Waypoints',
   exportShowAirfields: 'Print Airfields',
+  exportShowWpNames: 'Print Waypoint Names',
   exportLayer: 'Layer',
   exportBtn: 'Export',
 }, window.S || {});
