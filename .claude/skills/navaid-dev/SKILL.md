@@ -246,7 +246,7 @@ downloadable `route.json`.
 ## Notes / pending
 
 - flight-maps.com tiles are a third-party service; the CVFR data is
-  copyrighted. Fine for personal use; a public deploy needs permission.
+  copyrighted.
 - `nav-waypoints.json` — 256 Israeli CVFR reporting points.
   **Source:** ForeFlight Israel Base Pack, https://www.foreflightisrael.xyz/.
   KMZ (`CVFR WAYPOINTS 0225.kmz`) extracted and converted to

@@ -77,9 +77,9 @@ so a reload picks up where you left off.
 NavAid (the source code) is released under the [MIT License](../LICENSE) —
 do whatever you want, no warranty, no liability.
 
-Charts are © flight-maps.com / CAAI — public deploys need permission.
-Imagery: © Esri (World Imagery). Map data: © OpenStreetMap
-contributors. VFR reporting points: ICAO/CAAI public AIP data.
+Charts are © flight-maps.com / CAAI. Imagery: © Esri (World Imagery).
+Map data: © OpenStreetMap contributors. VFR reporting points: ICAO/CAAI
+public AIP data.
 
 NavAid is a planning aid only and is not certified for primary navigation.
 
