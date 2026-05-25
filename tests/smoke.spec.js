@@ -8,7 +8,7 @@ test.describe('NavAid smoke', () => {
         localStorage.clear();
         sessionStorage.clear();
         // Sections collapse by default; open all so buttons are visible.
-        for (const s of ['edit', 'map', 'route', 'display', 'print']) {
+        for (const s of ['edit','map','route','display','print','build','view','numbers','export']) {
           localStorage.setItem('navaid.sec.' + s, '1');
         }
       } catch (e) {}
