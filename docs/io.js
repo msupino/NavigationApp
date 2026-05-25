@@ -766,7 +766,9 @@ function showFlightPlan() {
   };
   document.addEventListener('keydown', flightPlanEscape);
   fpOpen = true;
-  try { sessionStorage.removeItem('navaid.fpOpen'); } catch (e) {}
+  // navaid.fpOpen is already cleared by closeFlightPlan(); on a fresh open
+  // there's nothing to remove. The redundant call lived here for a while —
+  // dropping it to keep showFlightPlan() side-effect-symmetric.
 }
 
 function planCell(text) {

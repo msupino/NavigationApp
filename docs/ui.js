@@ -242,18 +242,6 @@ document.addEventListener('click', e => {
     closeSearch();
   }
 });
-// Ctrl/Cmd-F focuses the nav-waypoint search instead of the browser's
-// built-in page find — the map has no text to find anyway. Bail when the
-// user is already typing in an input (would steal Find-in-Page).
-document.addEventListener('keydown', e => {
-  if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
-    const t = e.target;
-    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-    e.preventDefault();
-    wpSearch.focus();
-    wpSearch.select();
-  }
-});
 document.getElementById('reverse').onclick = () => {
   // Reversing flight direction means each leg's inbound/outbound roles swap.
   // The leg's local axes (along + perpendicular) also flip, so negating the
@@ -389,7 +377,10 @@ document.getElementById('yellow-alpha').oninput = e => {
   draw();
 };
 const MAPOPACITY_KEY = 'navaid.mapOpacity';
-let mapOpacity = 1;
+// `var` (not `let`) so writes from any module via window.mapOpacity reach
+// the same binding the export reads — same hazard documented for every
+// other mutable global in core.js.
+var mapOpacity = 1;
 function applyMapOpacity() {
   for (const n in layers) {
     if (map.hasLayer(layers[n])) layers[n].setOpacity(mapOpacity);
