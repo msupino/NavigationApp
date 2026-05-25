@@ -253,8 +253,10 @@
        moved out of the Build section so the search no longer requires the
        section to be expanded. -->
   <div id="search-overlay" class="hidden">
-    <input type="text" id="wp-search" data-i18n-placeholder="tbSearchPlaceholder" autocomplete="off">
+    <input type="text" id="wp-search" data-i18n-placeholder="tbSearchPlaceholder"
+           data-i18n-title="tbSearchHint" autocomplete="off">
     <button id="search-close" type="button" data-i18n-title="modalCloseTitle" aria-label="Close">✕</button>
+    <small id="wp-search-hint" class="search-hint" data-i18n="tbSearchHint"></small>
     <div id="wp-search-results" class="hidden"></div>
   </div>
 

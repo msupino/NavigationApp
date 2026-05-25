@@ -144,8 +144,51 @@ function closeSearch() {
   wpResults.classList.add('hidden');
   wpResults.innerHTML = '';
 }
+// Exact-match lookup of one token in navWP — case-insensitive on the English
+// code, exact on the Hebrew label. Returns the navWP entry or null.
+function findNavWpToken(token) {
+  if (!token || !navWP || !navWP.length) return null;
+  const up = token.toUpperCase();
+  for (const w of navWP) {
+    if ((w.name && w.name.toUpperCase() === up) || (w.he && w.he === token)) {
+      return w;
+    }
+  }
+  return null;
+}
+// Multi-token Enter: parse space-separated codes, resolve every one against
+// navWP, replace the route with those waypoints. Inspired by arielbider/cvfr-map.
+async function buildRouteFromQuery(raw) {
+  if (navWP === null) await loadNavWaypoints();
+  const tokens = raw.split(/\s+/).filter(Boolean);
+  if (tokens.length < 2) return false;
+  const resolved = [];
+  for (const t of tokens) {
+    const w = findNavWpToken(t);
+    if (!w) { alert(S.errSearchUnknown(t)); return false; }
+    resolved.push(w);
+  }
+  if ((state.waypoints.length || state.notes.length) &&
+      !confirm(S.searchReplaceConfirm)) return false;
+  const field = S.navWpSearchField;
+  state.waypoints = resolved.map(w => ({
+    lat: w.lat, lng: w.lng, name: w[field] || w.name,
+  }));
+  state.legs = [];
+  state.selected = null;
+  syncLegs();
+  closeSearch();
+  wpSearch.value = '';
+  showInspector();
+  fitView();
+  draw();
+  return true;
+}
 function runSearch() {
   const qRaw = wpSearch.value.trim();
+  // Multi-token queries are handled by Enter → buildRouteFromQuery —
+  // suppress the dropdown so it doesn't compete with the hint.
+  if (/\s/.test(qRaw)) { closeSearch(); return; }
   const q = qRaw.toUpperCase();
   if (!q) { closeSearch(); return; }
   const afHits = [], wpHits = [];
@@ -202,6 +245,12 @@ wpSearch.addEventListener('input', runSearch);
 wpSearch.addEventListener('focus', () => { if (wpSearch.value.trim()) runSearch(); });
 wpSearch.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
+    const raw = wpSearch.value.trim();
+    if (/\s/.test(raw)) {
+      e.preventDefault();
+      buildRouteFromQuery(raw);
+      return;
+    }
     const first = wpResults.querySelector('.wp-search-item');
     if (first) first.click();
   } else if (e.key === 'Escape') {
