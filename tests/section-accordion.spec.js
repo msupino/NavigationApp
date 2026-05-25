@@ -18,21 +18,21 @@ async function boot(page) {
 }
 
 test.describe('Section accordion (open one closes others)', () => {
-  test('opening Build collapses Numbers', async ({ page }) => {
+  test('opening Build collapses Charts', async ({ page }) => {
     await boot(page);
-    // Pre-open Numbers so we have a section to close.
+    // Pre-open Charts so we have a section to close.
     await page.evaluate(() => {
-      document.querySelector('.tb-section[data-sec="numbers"]').classList.add('open');
-      localStorage.setItem('navaid.sec.numbers', '1');
+      document.querySelector('.tb-section[data-sec="charts"]').classList.add('open');
+      localStorage.setItem('navaid.sec.charts', '1');
     });
-    await expect(page.locator('.tb-section[data-sec="numbers"]')).toHaveClass(/open/);
+    await expect(page.locator('.tb-section[data-sec="charts"]')).toHaveClass(/open/);
 
     // Open Build by clicking its header.
     await page.locator('.tb-section[data-sec="build"] .tb-section-head').click();
 
     await expect(page.locator('.tb-section[data-sec="build"]')).toHaveClass(/open/);
-    await expect(page.locator('.tb-section[data-sec="numbers"]')).not.toHaveClass(/open/);
-    expect(await page.evaluate(() => localStorage.getItem('navaid.sec.numbers'))).toBe('0');
+    await expect(page.locator('.tb-section[data-sec="charts"]')).not.toHaveClass(/open/);
+    expect(await page.evaluate(() => localStorage.getItem('navaid.sec.charts'))).toBe('0');
     expect(await page.evaluate(() => localStorage.getItem('navaid.sec.build'))).toBe('1');
   });
 
@@ -52,7 +52,7 @@ test.describe('Section accordion (open one closes others)', () => {
 
   test('only one section can be open at a time after a sequence of clicks', async ({ page }) => {
     await boot(page);
-    for (const sec of ['build', 'view', 'numbers', 'export']) {
+    for (const sec of ['build', 'view', 'charts', 'export']) {
       await page.locator(`.tb-section[data-sec="${sec}"] .tb-section-head`).click();
     }
     const openSecs = await page.locator('.tb-section.open').evaluateAll(
