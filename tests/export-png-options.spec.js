@@ -80,13 +80,13 @@ test.describe('Export PNG options modal', () => {
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
     const cbs = page.locator('.modal input[type="checkbox"]');
-    // Check "Print navigation waypoints" → showNavWP becomes true.
+    // Check "Print Navigation Waypoints" → showNavWP becomes true.
     await cbs.nth(0).check();
     expect(await page.evaluate(() => showNavWP)).toBe(true);
     // Uncheck → showNavWP back to false.
     await cbs.nth(0).uncheck();
     expect(await page.evaluate(() => showNavWP)).toBe(false);
-    // Check "Print airports" → showAirfields becomes true.
+    // Check "Print Airfields" → showAirfields becomes true.
     await cbs.nth(1).check();
     expect(await page.evaluate(() => showAirfields)).toBe(true);
   });
