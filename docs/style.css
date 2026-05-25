@@ -751,6 +751,60 @@ html, body {
 }
 .modal-close-x:hover { background: #443f3f; color: #fff; }
 
+/* Floating search overlay — Ctrl/Cmd-F shows this top-center panel so the
+ * user can find a nav-waypoint without expanding the Build section. */
+#search-overlay {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1500;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: rgba(20, 18, 18, 0.97);
+  border: 1px solid #443f3f;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  width: min(420px, 90vw);
+}
+#search-overlay.hidden { display: none; }
+#search-overlay #wp-search {
+  flex: 1;
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 8px;
+  background: #2f2b2b;
+  color: #e8e8e8;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  outline: none;
+}
+#search-overlay #wp-search:focus { border-color: #1d6fe0; }
+#search-close {
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
+  line-height: 1;
+  color: #b9b3b3;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+#search-close:hover { background: #443f3f; color: #fff; }
+#search-overlay #wp-search-results {
+  flex-basis: 100%;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: rgba(30, 26, 26, 0.97);
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+}
+#search-overlay #wp-search-results.hidden { display: none; }
+
 /* Print-section orientation toggle (button next to A3 / A4). */
 #page-buttons {
   display: flex;

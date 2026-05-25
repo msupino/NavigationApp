@@ -117,10 +117,7 @@
       <div class="tb-section-body">
         <button id="tool-add" class="tool" data-i18n="tbAddWp" data-i18n-title="tbAddWpTitle"></button>
         <button id="tool-note" class="tool" data-i18n="tbAddNote" data-i18n-title="tbAddNoteTitle"></button>
-        <div class="navsearch">
-          <input type="text" id="wp-search" data-i18n-placeholder="tbSearchPlaceholder" autocomplete="off">
-          <div id="wp-search-results" class="hidden"></div>
-        </div>
+        <button id="search-trigger" type="button" data-i18n="tbSearchOpen" data-i18n-title="tbSearchOpenTitle"></button>
         <button id="reverse" data-i18n="tbReverse" data-i18n-title="tbReverseTitle"></button>
         <button id="clear" data-i18n="tbClear" data-i18n-title="tbClearTitle"></button>
         <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
@@ -248,6 +245,16 @@
         <span class="footer-link-text" data-i18n="tbWiki"></span>
       </a>
     </div>
+  </div>
+
+  <!-- Floating nav-waypoint search — Ctrl/Cmd-F or the toolbar button shows
+       this overlay. Hidden by default; Escape closes. The input + results
+       moved out of the Build section so the search no longer requires the
+       section to be expanded. -->
+  <div id="search-overlay" class="hidden">
+    <input type="text" id="wp-search" data-i18n-placeholder="tbSearchPlaceholder" autocomplete="off">
+    <button id="search-close" type="button" data-i18n-title="modalCloseTitle" aria-label="Close">✕</button>
+    <div id="wp-search-results" class="hidden"></div>
   </div>
 
   <div id="inspector" class="hidden">
