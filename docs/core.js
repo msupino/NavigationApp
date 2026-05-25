@@ -57,7 +57,7 @@ window.S = Object.assign({
   tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
   tbWpSize: 'Waypoint Size',                        // Display slider label
   tbWpSizeTitle: 'Waypoint circle and name size',
-  tbShowNavWp: 'ShowPin map waypoints',     // Map overlay toggle
+  tbShowNavWp: 'Show/Pin map waypoints',     // Map overlay toggle
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbSearchPlaceholder: '🔍 Find Navigation Waypoint',
   tbSearchHint: 'Tip: type space-separated waypoint codes (e.g. LLHZ BAZRA DEROR SHARO HADRA) and press Enter to build a route.',
