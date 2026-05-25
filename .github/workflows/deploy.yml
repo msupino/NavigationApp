@@ -27,10 +27,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
       - name: Check PR is rebased
         if: github.event_name == 'pull_request'
         run: |
+          # Shallow checkout above; fetch the two SHAs we need for the
+          # ancestry check explicitly (cheaper than fetch-depth: 0).
+          git fetch --no-tags --depth=1 origin \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.event.pull_request.head.sha }}"
           if ! git merge-base --is-ancestor ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}; then
             echo "❌ PR branch is not rebased on ${{ github.base_ref }}. Run 'git rebase origin/${{ github.base_ref }}' and push."
             exit 1
@@ -85,8 +90,12 @@ jobs:
           # via an absolute path. Without this the Pages artifact balloons to
           # >1 GB on a busy day (main + dev + ~7 PRs × 2 = ~1.8 GB).
           mkdir -p site/staging
-          cp -r m/docs/. site/
-          cp -r d/docs/. site/staging/
+          # Hardlink (-l) instead of full copy: docs/byop/ is ~133 MB of PDFs
+          # and lives on the same filesystem as the source. Hardlinks share
+          # inodes — no I/O, no extra disk space, near-instant assembly.
+          # The artifact upload still ships them as regular files.
+          cp -rl m/docs/. site/
+          cp -rl d/docs/. site/staging/
           rm -rf site/staging/byop
           # Rewrite PLATE_BASE in staging's io.js. Regex is whitespace-tolerant
           # so a stylistic change to the assignment line doesn't silently break
@@ -114,30 +123,44 @@ jobs:
         run: |
           cd m
           mkdir -p ../site/pr ../site/branch
-          gh pr list --state open --json number,headRefName,baseRefName \
-            --jq '.[] | select(.baseRefName == "main" or .baseRefName == "dev") | "\(.number) \(.headRefName)"' \
-            | while read NUM BRANCH; do
-              echo "== PR #$NUM ($BRANCH) =="
-              git fetch origin "$BRANCH" --depth 1 -q 2>/dev/null || { echo "  skip (fetch failed)"; continue; }
-              STAGING=$(mktemp -d)
-              git archive "origin/$BRANCH" docs/ | tar x -C "$STAGING" --strip-components=1 2>/dev/null || { echo "  skip (archive failed)"; rm -rf "$STAGING"; continue; }
-              SHA=$(git rev-parse --short "origin/$BRANCH" 2>/dev/null) || { echo "  skip (rev-parse failed)"; rm -rf "$STAGING"; continue; }
-              sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" "$STAGING/index.html" 2>/dev/null || true
-              sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" "$STAGING/core.js" 2>/dev/null || true
-              sed -i -E "s/(nav-waypoints|airfields)\.json\?v=[A-Za-z0-9]+/\1.json?v=${SHA}/g" \
-                "$STAGING/core.js" "$STAGING/he/strings.js" 2>/dev/null || true
-              sed -i -E "s/const CACHE = 'navaid-[A-Za-z0-9_-]+'/const CACHE = 'navaid-${SHA}'/" "$STAGING/sw.js" 2>/dev/null || true
-              # Drop the per-PR byop/ copy and point at the production one.
-              rm -rf "$STAGING/byop"
-              sed -i -E "s#(const|var|let)[[:space:]]+PLATE_BASE[[:space:]]*=[[:space:]]*'[^']*'#const PLATE_BASE = '/NavigationApp/byop/'#" "$STAGING/io.js" 2>/dev/null || true
-              if [ -f "$STAGING/io.js" ] && ! grep -qE "const PLATE_BASE = '/NavigationApp/byop/'" "$STAGING/io.js"; then
-                echo "::warning::PLATE_BASE rewrite missed $STAGING/io.js for PR #$NUM — plate viewer will 404 on this preview."
-              fi
-              cp -r "$STAGING" "../site/pr/$NUM"
-              cp -r "$STAGING" "../site/branch/$BRANCH"
-              rm -rf "$STAGING"
-              echo "  → /pr/$NUM/ and /branch/$BRANCH/ ($SHA)"
-            done
+          # Fetch all open-PR branches in one network round trip — much
+          # cheaper than one fetch per PR. Then build each preview in
+          # parallel (xargs -P 4) since the per-PR work is independent.
+          REFS=$(gh pr list --state open --json number,headRefName,baseRefName \
+            --jq '.[] | select(.baseRefName == "main" or .baseRefName == "dev") | "\(.number)\t\(.headRefName)"')
+          if [ -z "$REFS" ]; then
+            echo "No open PRs."
+            exit 0
+          fi
+          BRANCHES=$(printf '%s\n' "$REFS" | cut -f2)
+          # shellcheck disable=SC2086
+          git fetch origin --depth 1 -q $BRANCHES 2>/dev/null || true
+
+          build_preview() {
+            NUM=$1; BRANCH=$2
+            echo "== PR #$NUM ($BRANCH) =="
+            STAGING=$(mktemp -d)
+            git archive "origin/$BRANCH" docs/ | tar x -C "$STAGING" --strip-components=1 2>/dev/null \
+              || { echo "  skip (archive failed)"; rm -rf "$STAGING"; return; }
+            SHA=$(git rev-parse --short "origin/$BRANCH" 2>/dev/null) \
+              || { echo "  skip (rev-parse failed)"; rm -rf "$STAGING"; return; }
+            sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" "$STAGING/index.html" 2>/dev/null || true
+            sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" "$STAGING/core.js" 2>/dev/null || true
+            sed -i -E "s/(nav-waypoints|airfields)\.json\?v=[A-Za-z0-9]+/\1.json?v=${SHA}/g" \
+              "$STAGING/core.js" "$STAGING/he/strings.js" 2>/dev/null || true
+            sed -i -E "s/const CACHE = 'navaid-[A-Za-z0-9_-]+'/const CACHE = 'navaid-${SHA}'/" "$STAGING/sw.js" 2>/dev/null || true
+            rm -rf "$STAGING/byop"
+            sed -i -E "s#(const|var|let)[[:space:]]+PLATE_BASE[[:space:]]*=[[:space:]]*'[^']*'#const PLATE_BASE = '/NavigationApp/byop/'#" "$STAGING/io.js" 2>/dev/null || true
+            if [ -f "$STAGING/io.js" ] && ! grep -qE "const PLATE_BASE = '/NavigationApp/byop/'" "$STAGING/io.js"; then
+              echo "::warning::PLATE_BASE rewrite missed $STAGING/io.js for PR #$NUM — plate viewer will 404 on this preview."
+            fi
+            mv "$STAGING" "../site/pr/$NUM"
+            cp -rl "../site/pr/$NUM" "../site/branch/$BRANCH"
+            echo "  → /pr/$NUM/ and /branch/$BRANCH/ ($SHA)"
+          }
+          export -f build_preview
+
+          printf '%s\n' "$REFS" | xargs -P 4 -I{} bash -c 'IFS=$'\''\t'\'' read -r n b <<< "{}"; build_preview "$n" "$b"'
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Upload artifact
