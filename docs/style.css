@@ -729,7 +729,6 @@ html, body {
   line-height: 1.3;
 }
 
-<<<<<<< HEAD
 /* Shared top-right ✕ close button on modal boxes — mirrors the inspector's
  * #insp-close so every dismissable surface uses the same affordance. */
 .modal {
