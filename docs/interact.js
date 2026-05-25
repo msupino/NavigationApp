@@ -577,6 +577,7 @@ function fitView() {
     return;
   }
   const b = L.latLngBounds(state.waypoints.map(w => [w.lat, w.lng]));
-  map.fitBounds(b, { padding: [70, 70] });
+  // Clamp maxZoom so two close waypoints don't snap to a tight, useless view.
+  map.fitBounds(b, { padding: [70, 70], maxZoom: 11 });
 }
 
