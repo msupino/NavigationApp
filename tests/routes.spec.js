@@ -371,31 +371,6 @@ test.describe('Overlay toggles', () => {
   });
 });
 
-test.describe('Magnetic variation', () => {
-  test.beforeEach(async ({ page }) => bootWithRoute(page));
-
-  test('Clamps to +30 ceiling', async ({ page }) => {
-    const inp = page.locator('#mag-var');
-    await inp.fill('99'); await inp.dispatchEvent('input');
-    await expect(inp).toHaveValue('30');
-  });
-
-  test('Clamps to -30 floor', async ({ page }) => {
-    const inp = page.locator('#mag-var');
-    await inp.fill('-99'); await inp.dispatchEvent('input');
-    await expect(inp).toHaveValue('-30');
-  });
-
-  test('Value persists across reload', async ({ page }) => {
-    const inp = page.locator('#mag-var');
-    await inp.fill('7'); await inp.dispatchEvent('input');
-    await page.waitForFunction(() =>
-      localStorage.getItem('navaid.magVar') === '7');
-    await page.reload();
-    await expect(page.locator('#mag-var')).toHaveValue('7');
-  });
-});
-
 test.describe('syncLegs invariant', () => {
   test('legs.length always equals waypoints.length - 1', async ({ page }) => {
     await bootWithRoute(page);

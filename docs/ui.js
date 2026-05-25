@@ -510,30 +510,7 @@ document.getElementById('leg-arrow-size').oninput = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
-const MAGVAR_KEY = 'navaid.magVar';
-try {
-  const v = parseFloat(localStorage.getItem(MAGVAR_KEY));
-  if (!isNaN(v)) window.magVar =Math.max(-30, Math.min(30, v));
-} catch (e) { /* storage unavailable */ }
-function showMagVarEqv() {
-  const span = document.getElementById('mag-var-eqv');
-  if (!span) return;
-  if (magVar === 0) span.textContent = '';
-  else if (magVar < 0) span.textContent = `(${-magVar}°E)`;
-  else span.textContent = `(${magVar}°W)`;
-}
-document.getElementById('mag-var').value = magVar;
-showMagVarEqv();
-document.getElementById('mag-var').oninput = e => {
-  const v = parseFloat(e.target.value);
-  if (isNaN(v)) return;
-  window.magVar = Math.max(-30, Math.min(30, v));
-  e.target.value = magVar;             // #85: write clamped value back so input matches
-  try { localStorage.setItem(MAGVAR_KEY, String(magVar)); }
-  catch (err) { /* storage unavailable */ }
-  showMagVarEqv();
-  draw();
-};
+// magVar is hardcoded at -5 (5°E) in core.js; the input was removed.
 
 document.getElementById('page-a3').onclick = () => setPage('A3');
 document.getElementById('page-a4').onclick = () => setPage('A4');
