@@ -1769,6 +1769,7 @@ function tryLoadRouteFromUrl() {
   state.waypoints = r.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
   state.legs = r.legs;
   state.notes = [];
+  markSuggestionsDirty();
   return true;
 }
 

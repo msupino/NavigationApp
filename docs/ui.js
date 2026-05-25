@@ -256,7 +256,7 @@ document.getElementById('reverse').onclick = () => {
     outLabel: { a: -l.inLabel.a, p: -l.inLabel.p },
   }));
   state.selected = null;
-  showInspector(); draw();
+  markSuggestionsDirty(); showInspector(); draw();
 };
 document.getElementById('clear').onclick = () => {
   if ((state.waypoints.length || state.notes.length) &&
@@ -265,7 +265,7 @@ document.getElementById('clear').onclick = () => {
   state.legs = [];
   state.notes = [];
   state.selected = null;
-  showInspector(); draw();
+  markSuggestionsDirty(); showInspector(); draw();
 };
 document.getElementById('save').onclick = save;
 document.getElementById('load').onclick = () => document.getElementById('file').click();

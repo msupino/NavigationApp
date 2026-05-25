@@ -5,6 +5,7 @@
 // --- drawing ---------------------------------------------------------
 function draw() {
   octx.clearRect(0, 0, vw(), vh());
+  if (suggestionsDirty) { recomputeSuggestions(); suggestionsDirty = false; }
   drawNavWaypoints();
   drawAirfields();
   drawLegs();
@@ -320,6 +321,31 @@ function drawLegs() {
         '#c0392b', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
+    if (legSuggestions && legSuggestions[i] && legSuggestions[i].length > 0) {
+      const chips = legSuggestions[i];
+      const cx = mid.x + nx * (inP.p > 0 ? 58 : -58);
+      const cy = mid.y + dy * 28;
+      for (let c = 0; c < chips.length; c++) {
+        const ch = chips[c];
+        const cw = octx.measureText(ch.name).width + 14;
+        const chx = cx + c * (cw + 4);
+        const chy = cy;
+        const chh = 20;
+        octx.fillStyle = 'rgba(40,40,45,0.92)';
+        octx.beginPath();
+        octx.roundRect(chx, chy, cw, chh, 4);
+        octx.fill();
+        octx.strokeStyle = '#888';
+        octx.lineWidth = 1;
+        octx.stroke();
+        octx.fillStyle = '#ddd';
+        octx.font = '10px sans-serif';
+        octx.textAlign = 'center';
+        octx.textBaseline = 'middle';
+        octx.fillText(ch.name, chx + cw / 2, chy + chh / 2);
+        ch.sx = chx; ch.sy = chy; ch.sw = cw; ch.sh = chh;
+      }
+    }
   }
 }
 

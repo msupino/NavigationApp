@@ -72,6 +72,22 @@ function hitLegLabel(px, py) {
   return null;
 }
 
+function hitSuggestion(px, py) {
+  if (!legSuggestions) return null;
+  for (let i = 0; i < legSuggestions.length; i++) {
+    const chips = legSuggestions[i];
+    if (!chips) continue;
+    for (let c = 0; c < chips.length; c++) {
+      const ch = chips[c];
+      if (px >= ch.sx && px <= ch.sx + ch.sw &&
+          py >= ch.sy && py <= ch.sy + ch.sh) {
+        return { legIdx: i, wp: ch };
+      }
+    }
+  }
+  return null;
+}
+
 // --- inspector -------------------------------------------------------
 // When an altitude is edited on leg `i`, propagate the new value to legs
 // that currently share the OLD value, walking outward in the natural
@@ -417,6 +433,13 @@ window.addEventListener('pointercancel', endMouseDrag);
 
 map.on('click', e => {
   if (downHit) { downHit = false; return; }
+  const hitSugg = hitSuggestion(px, py);
+  if (hitSugg && !state.mode) {
+    insertSuggestion(hitSugg.legIdx, hitSugg.wp);
+    syncLegs();
+    showInspector(); draw();
+    return;
+  }
   if (state.mode === 'add') {
     const r = applyNavSnap(e.latlng, '');
     // #104: ignore the click if a waypoint already sits at the snap target.

@@ -402,10 +402,61 @@ function proj(wp) {
   return { x: p.x, y: p.y };
 }
 
+// --- nav-WP route suggestions (issue #234) ---------------------------
+// Per-leg cache of nearby nav-waypoints close to the great-circle path.
+// Each entry: { name, he, lat, lng, sx, sy } where sx/sy = chip screen
+// position for hit-testing. null when no candidates or navWP not loaded.
+var legSuggestions = [];
+var suggestionsDirty = true;
+
+function markSuggestionsDirty() { suggestionsDirty = true; }
+
+function recomputeSuggestions() {
+  const n = state.legs.length;
+  legSuggestions = new Array(n);
+  if (!showNavWP || !navWP || navWP.length === 0) return;
+  const THRESHOLD_NM = 2;
+  for (let i = 0; i < n; i++) {
+    const A = state.waypoints[i], B = state.waypoints[i + 1];
+    if (!A || !B) continue;
+    const { dist: distAB, brg: brgAB } = geo(A, B);
+    if (distAB < 1) continue;
+    const brgABrad = brgAB * Math.PI / 180;
+    const candidates = [];
+    for (const wp of navWP) {
+      if (state.waypoints.some(w => w.name === wp.name ||
+          (Math.abs(w.lat - wp.lat) < 0.001 && Math.abs(w.lng - wp.lng) < 0.001))) continue;
+      const { dist: distAC, brg: brgAC } = geo(A, wp);
+      if (distAC < 0.5) continue;
+      const brgDelta = (brgAC - brgAB) * Math.PI / 180;
+      const sinVal = Math.sin(distAC / EARTH_NM) * Math.sin(brgDelta);
+      const xtdRad = Math.asin(Math.max(-1, Math.min(1, sinVal)));
+      const xtdNM = Math.abs(xtdRad) * EARTH_NM;
+      if (xtdNM > THRESHOLD_NM) continue;
+      const cosRatio = Math.cos(distAC / EARTH_NM) / Math.cos(xtdRad);
+      const atdRad = Math.acos(Math.max(-1, Math.min(1, cosRatio)));
+      const atdNM = atdRad * EARTH_NM;
+      if (atdNM < 0 || atdNM > distAB + 0.3) continue;
+      candidates.push({ name: wp.name, he: wp.he, lat: wp.lat, lng: wp.lng });
+    }
+    if (candidates.length === 0) continue;
+    candidates.sort((a, b) => geo(A, a).dist - geo(A, b).dist);
+    if (candidates.length > 6) candidates.length = 6;
+    legSuggestions[i] = candidates;
+  }
+}
+
+function insertSuggestion(legIdx, wp) {
+  state.waypoints.splice(legIdx + 1, 0, { lat: r5(wp.lat), lng: r5(wp.lng), name: wp.name });
+  state.legs.splice(legIdx, 1, newLeg(), newLeg());
+  suggestionsDirty = true;
+}
+
 // --- leg bookkeeping -------------------------------------------------
 function syncLegs() {
   const need = Math.max(0, state.waypoints.length - 1);
   while (state.legs.length < need) state.legs.push(newLeg());
   while (state.legs.length > need) state.legs.pop();
+  markSuggestionsDirty();
 }
 
