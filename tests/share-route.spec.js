@@ -32,7 +32,7 @@ test.describe('Share route link', () => {
       try {
         localStorage.clear();
         sessionStorage.clear();
-        for (const s of ['edit', 'map', 'route', 'display', 'print']) {
+        for (const s of ['edit','map','route','display','print','build','view','numbers','export']) {
           localStorage.setItem('navaid.sec.' + s, '1');
         }
       } catch (e) {}
