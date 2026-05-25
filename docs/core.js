@@ -80,11 +80,18 @@ window.S = Object.assign({
   },
   errNoLegs: 'No legs yet — drop at least two waypoints first.',
   flightPlan: 'Flight plan',
-  fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time'],
+  fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time', 'Fuel (gal)'],
   fpReturn: 'Return route',
   fpTotal: 'Total',
   fpClose: 'Close',
   fpPrint: 'Print',
+  fpFuel: 'Fuel',
+  tbAircraft: 'Aircraft',
+  tbGph: 'Gallons per Hour',
+  tbGphTitle: 'Fuel consumption, gallons per hour',
+  tbTaxiGal: 'Taxi/T.O. (gal)',
+  tbTaxiGalTitle: 'Startup + taxi + takeoff fuel allowance in gallons',
+  fpTaxiTip: function(g) { return '+ ' + g.toFixed(1) + ' gal taxi / takeoff included in total'; },
   pageOrientation: ' page — orientation',
   landscape: 'Landscape',
   portrait: 'Portrait',
@@ -252,6 +259,18 @@ let pageSize = null;        // null | 'A3' | 'A4'
 // CVFR routes are tall (north–south Israel airspace).
 var pageOrient = 'portrait';
 let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre
+var aircraft = null;               // null | {gph, taxiGal}
+
+function loadAircraft() {
+  try {
+    const raw = localStorage.getItem('navaid.aircraft');
+    if (raw) aircraft = JSON.parse(raw);
+  } catch (e) { /* storage unavailable */ }
+}
+
+function saveAircraft() {
+  try { localStorage.setItem('navaid.aircraft', JSON.stringify(aircraft)); } catch (e) {}
+}
 
 // Yellow text-background colour with the global opacity scale applied.
 const yellowFill = (a) => `rgba(255,246,170,${a * yellowAlpha})`;

@@ -53,6 +53,8 @@ both branches and assembles a single Pages site:
 - Default deploy target during development is `dev` (staging). Only
   push to `main` when the change is reviewed and ready for
   production.
+- **Never push directly to `main`.** Every change must go through a
+  feature branch and pull request — even one-line fixes.
 - Persist UI state to `localStorage` only via existing `navaid.*`
   keys (`navaid.route`, `navaid.layer`, `navaid.toolbarPos`,
   `navaid.yellowAlpha`, `navaid.wpSize`, `navaid.magVar`,
