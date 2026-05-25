@@ -1324,7 +1324,7 @@ function showPlateViewer(filename, label) {
   const close = document.createElement('button');
   close.textContent = S.plateClose;
   close.className = 'modal-cancel';
-  close.onclick = () => { if (blobUrl) URL.revokeObjectURL(blobUrl); back.remove(); };
+  close.onclick = () => { if (blobUrl) URL.revokeObjectURL(blobUrl); window.removeEventListener('keydown', onEsc); back.remove(); };
   btns.appendChild(close);
 
   box.appendChild(btns);
@@ -1436,7 +1436,7 @@ function showChartsModal() {
   const close = document.createElement('button');
   close.textContent = S.plateClose;
   close.className = 'modal-cancel';
-  close.onclick = () => back.remove();
+  close.onclick = () => { window.removeEventListener('keydown', onEsc); back.remove(); };
   btns.appendChild(close);
   box.appendChild(btns);
 
