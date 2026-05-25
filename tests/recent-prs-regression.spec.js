@@ -96,7 +96,44 @@ test.describe('#251 — Hebrew tbMapOpacity label', () => {
   });
 });
 
-// Note: PR #252 (Print Waypoint Names + Map Opacity in export modal) carries
-// its own tests in tests/export-png-options.spec.js; no regression spec
-// added here until that PR lands and we can hook the assertions to merged
-// main behaviour.
+// ---------------------------------------------------------------------------
+// #252 — Print Waypoint Names checkbox + map-opacity slider added to modal.
+// ---------------------------------------------------------------------------
+test.describe('#252 — Print Waypoint Names + Map Opacity in export modal', () => {
+  test('export modal has 3 checkboxes, "Waypoint Names" defaults on', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
+        { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+      ];
+      syncLegs(); draw();
+    });
+    await page.locator('#print').click();
+    await page.locator('.modal-back').waitFor();
+
+    const cbs = page.locator('.modal input[type="checkbox"]');
+    expect(await cbs.count()).toBe(3);
+
+    const labels = await page.locator('.modal label').allTextContents();
+    const wpNamesIdx = labels.findIndex(l => /Waypoint Names/i.test(l));
+    expect(wpNamesIdx).toBeGreaterThanOrEqual(0);
+    expect(await cbs.nth(wpNamesIdx).isChecked()).toBe(true);
+  });
+
+  test('export modal includes a map-opacity slider', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
+        { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+      ];
+      syncLegs(); draw();
+    });
+    await page.locator('#print').click();
+    await page.locator('.modal-back').waitFor();
+
+    const ranges = page.locator('.modal input[type="range"]');
+    expect(await ranges.count()).toBeGreaterThanOrEqual(1);
+  });
+});
