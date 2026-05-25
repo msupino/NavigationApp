@@ -30,17 +30,48 @@ jobs:
           fetch-depth: 1
       - name: Check PR is rebased
         if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          # Shallow checkout above; fetch the two SHAs we need for the
-          # ancestry check explicitly (cheaper than fetch-depth: 0).
-          git fetch --no-tags --depth=1 origin \
-            "${{ github.event.pull_request.base.sha }}" \
-            "${{ github.event.pull_request.head.sha }}"
-          if ! git merge-base --is-ancestor ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}; then
-            echo "❌ PR branch is not rebased on ${{ github.base_ref }}. Run 'git rebase origin/${{ github.base_ref }}' and push."
-            exit 1
-          fi
-          echo "✅ PR is rebased on ${{ github.base_ref }}"
+          # Use the compare API instead of a local merge-base walk so the
+          # check works regardless of clone depth. status is one of:
+          #   ahead     — head has new commits, base has none → rebased ✓
+          #   identical — same commit → rebased ✓
+          #   behind    — base has new commits head doesn't → NOT rebased
+          #   diverged  — both have unique commits → NOT rebased
+          STATUS=$(gh api "repos/${{ github.repository }}/compare/${BASE_SHA}...${HEAD_SHA}" --jq '.status' 2>/dev/null || true)
+          case "$STATUS" in
+            ahead|identical)
+              echo "✅ PR is rebased on ${BASE_REF} (status: $STATUS)"
+              ;;
+            behind|diverged)
+              echo "❌ PR branch is not rebased on ${BASE_REF} (status: $STATUS). Run 'git rebase origin/${BASE_REF}' and push."
+              exit 1
+              ;;
+            "")
+              # API call failed or SHA no longer in the repo (e.g., history
+              # rewrite). Compare current head against the current base tip
+              # via a separate compare call.
+              echo "::warning::compare API returned empty for ${BASE_SHA}...${HEAD_SHA}; falling back to current base ref"
+              STATUS=$(gh api "repos/${{ github.repository }}/compare/${BASE_REF}...${HEAD_SHA}" --jq '.status')
+              case "$STATUS" in
+                ahead|identical)
+                  echo "✅ PR is rebased on origin/${BASE_REF} (status: $STATUS)"
+                  ;;
+                *)
+                  echo "❌ PR branch is not rebased on origin/${BASE_REF} (status: $STATUS). Run 'git rebase origin/${BASE_REF}' and push."
+                  exit 1
+                  ;;
+              esac
+              ;;
+            *)
+              echo "::error::Unexpected compare status: $STATUS"
+              exit 1
+              ;;
+          esac
       - uses: actions/setup-node@v4
         with:
           node-version: 20
