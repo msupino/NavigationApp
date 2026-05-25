@@ -40,7 +40,7 @@ var magVar = -5;                       // signed offset added to true heading
 window.S = Object.assign({
   navWpUrl: 'nav-waypoints.json?v=3',  // resolved relative to index.html (docs/)
   navWpSearchField: 'name',            // which field to show/search in results
-  airfieldsUrl: 'airfields.json?v=2',  // resolved relative to index.html (docs/)
+  airfieldsUrl: 'airfields.json?v=3',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
 
   // --- Waypoint terminology -------------------------------------------
@@ -57,9 +57,12 @@ window.S = Object.assign({
   tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
   tbWpSize: 'Waypoint Size',                        // Display slider label
   tbWpSizeTitle: 'Waypoint circle and name size',
-  tbShowNavWp: 'Show Navigation Waypoints',         // Map overlay toggle
+  tbShowNavWp: 'Show/Pin Navigation Waypoints',     // Map overlay toggle
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbSearchPlaceholder: '🔍 Find Navigation Waypoint',
+  tbSearchHint: 'Tip: type space-separated waypoint codes (e.g. LLHZ BAZRA DEROR SHARO HADRA) and press Enter to build a route.',
+  errSearchUnknown: function(t) { return 'Unknown waypoint: ' + t; },
+  searchReplaceConfirm: 'Replace the current route with these waypoints?',
   tbSearchOpen: '🔍 Find',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
   deleteWp: 'Delete Waypoint',                      // inspector button
@@ -80,11 +83,18 @@ window.S = Object.assign({
   },
   errNoLegs: 'No legs yet — drop at least two waypoints first.',
   flightPlan: 'Flight plan',
-  fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time'],
+  fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time', 'Fuel (gal)'],
   fpReturn: 'Return route',
   fpTotal: 'Total',
   fpClose: 'Close',
   fpPrint: 'Print',
+  fpFuel: 'Fuel',
+  tbAircraft: 'Aircraft',
+  tbGph: 'Gallons per Hour',
+  tbGphTitle: 'Fuel consumption, gallons per hour',
+  tbTaxiGal: 'Taxi/T.O. (gal)',
+  tbTaxiGalTitle: 'Startup + taxi + takeoff fuel allowance in gallons',
+  fpTaxiTip: function(g) { return '+ ' + g.toFixed(1) + ' gal taxi / takeoff included in total'; },
   pageOrientation: ' page — orientation',
   landscape: 'Landscape',
   portrait: 'Portrait',
@@ -154,9 +164,10 @@ window.S = Object.assign({
   tbShowMidLegTitle: 'Show distance badge at the middle of each leg',
   tbHighlightDiff: 'Highlight alt/speed diff',
   tbHighlightDiffTitle: 'Halo legs whose altitude or speed differs from the adjacent leg',
-  tbShowAirfields: 'Show Airfields',
+  tbShowAirfields: 'Show/Pin Airfields',
   tbShowAirfieldsTitle: 'Overlay published Israeli airfields (BYOP source)',
   plates: 'Charts',
+  runways: 'Runways',
   plateCategoryApproach: 'Approach',
   plateCategorySid: 'SID',
   plateCategoryStar: 'STAR',
@@ -194,7 +205,7 @@ window.S = Object.assign({
   tbSecBuild: '✏️ Build',
   tbSecView: '👁 View',
   tbSecNumbers: '📋 Charts',
-  tbSecExport: '📤 Export',
+  tbSecExport: '📤 Export/Import',
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
   exportModalTitle: 'Export PNG',
@@ -252,6 +263,18 @@ let pageSize = null;        // null | 'A3' | 'A4'
 // CVFR routes are tall (north–south Israel airspace).
 var pageOrient = 'portrait';
 let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre
+var aircraft = null;               // null | {gph, taxiGal}
+
+function loadAircraft() {
+  try {
+    const raw = localStorage.getItem('navaid.aircraft');
+    if (raw) aircraft = JSON.parse(raw);
+  } catch (e) { /* storage unavailable */ }
+}
+
+function saveAircraft() {
+  try { localStorage.setItem('navaid.aircraft', JSON.stringify(aircraft)); } catch (e) {}
+}
 
 // Yellow text-background colour with the global opacity scale applied.
 const yellowFill = (a) => `rgba(255,246,170,${a * yellowAlpha})`;

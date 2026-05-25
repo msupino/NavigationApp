@@ -202,6 +202,28 @@ function showInspector() {
     title.oninput = () => { wp.name = title.value; draw(); };
     body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
+    // #231: runway directions when the waypoint matches a known airfield.
+    if (airfields && wp.name) {
+      const up = wp.name.trim().toUpperCase();
+      const af = airfields.find(a => a.name === up);
+      if (af && Array.isArray(af.runways) && af.runways.length) {
+        const row = document.createElement('div');
+        row.className = 'row runways-row';
+        const lbl = document.createElement('label');
+        lbl.textContent = S.runways;
+        row.appendChild(lbl);
+        const chips = document.createElement('div');
+        chips.className = 'runway-chips';
+        for (const r of af.runways) {
+          const chip = document.createElement('span');
+          chip.className = 'runway-chip';
+          chip.textContent = r;
+          chips.appendChild(chip);
+        }
+        row.appendChild(chips);
+        body.appendChild(row);
+      }
+    }
     // #105: show plates section if waypoint name matches an airfield.
     if (airfields && wp.name) {
       for (const af of airfields) {
@@ -600,6 +622,7 @@ function fitView() {
     return;
   }
   const b = L.latLngBounds(state.waypoints.map(w => [w.lat, w.lng]));
-  map.fitBounds(b, { padding: [70, 70] });
+  // Clamp maxZoom so two close waypoints don't snap to a tight, useless view.
+  map.fitBounds(b, { padding: [70, 70], maxZoom: 11 });
 }
 

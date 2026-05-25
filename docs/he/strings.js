@@ -3,7 +3,7 @@
 window.S = {
   navWpUrl: 'nav-waypoints.json?v=3',
   navWpSearchField: 'he',
-  airfieldsUrl: 'airfields.json?v=2',
+  airfieldsUrl: 'airfields.json?v=3',
   airfieldLabelField: 'he',
 
   // --- Waypoint terminology -------------------------------------------
@@ -19,9 +19,12 @@ window.S = {
   tbShowWpNamesTitle: 'הצג שמות ציוני דרך (כבוי = עיגול ריק)',
   tbWpSize: 'גודל ציון דרך',                         // מחוון בקטע תצוגה
   tbWpSizeTitle: 'גודל ציון דרך ושמו',
-  tbShowNavWp: 'הצג ציוני ניווט',                    // מתג שכבת מפה
+  tbShowNavWp: 'הצג/נעץ ציוני ניווט',                // מתג שכבת מפה
   tbShowNavWpTitle: 'הצג ציוני דיווח VFR ישראלים',
   tbSearchPlaceholder: '🔍 חפש ציון ניווטי',
+  tbSearchHint: 'טיפ: הקלד קודים מופרדים ברווח (למשל LLHZ BAZRA DEROR SHARO HADRA) ולחץ Enter לבניית מסלול.',
+  errSearchUnknown: function(t) { return 'ציון ניווט לא מוכר: ' + t; },
+  searchReplaceConfirm: 'להחליף את המסלול הנוכחי בציוני הדרך האלה?',
   tbSearchOpen: '🔍 חפש',
   tbSearchOpenTitle: 'פתח את חלון החיפוש (Ctrl/Cmd-F)',
   deleteWp: 'מחק ציון דרך',                          // כפתור באינספקטור
@@ -42,11 +45,18 @@ window.S = {
   },
   errNoLegs: 'אין קטעים עדיין — הוסף לפחות שני ציוני דרך תחילה.',
   flightPlan: 'תכנית טיסה',
-  fpHeaders: ['#', 'מ-', 'אל-', 'כיוון', 'מרחק (NM)', 'מהירות (קשר)', 'גובה (ft)', 'זמן'],
+  fpHeaders: ['#', 'מ-', 'אל-', 'כיוון', 'מרחק (NM)', 'מהירות (קשר)', 'גובה (ft)', 'זמן', 'דלק (גאל)'],
   fpTotal: 'סה"כ',
   fpReturn: 'מסלול חזרה',
   fpClose: 'סגור',
   fpPrint: 'הדפס',
+  fpFuel: 'דלק',
+  tbAircraft: 'כלי טיס',
+  tbGph: 'גלונים לשעה',
+  tbGphTitle: 'צריכת דלק, גלונים לשעה',
+  tbTaxiGal: 'המראה (גאל)',
+  tbTaxiGalTitle: 'דלק הפעלה / נסיעה / המראה בגלונים',
+  fpTaxiTip: function(g) { return '+ ' + g.toFixed(1) + ' גאל הפעלה / המראה כלולים בסה"כ'; },
   pageOrientation: ' עמוד — כיוון',
   landscape: 'לרוחב',
   portrait: 'לאורך',
@@ -116,9 +126,10 @@ window.S = {
   tbShowMidLegTitle: 'הצג מרחק באמצע כל קטע',
   tbHighlightDiff: 'הדגש הפרש גובה/מהירות',
   tbHighlightDiffTitle: 'הדגש קטעים עם הפרש גובה או מהירות',
-  tbShowAirfields: 'הצג שדות תעופה',
+  tbShowAirfields: 'הצג/נעץ שדות תעופה',
   tbShowAirfieldsTitle: 'הצג שדות תעופה ישראלים מפורסמים (מקור BYOP)',
   plates: 'דפיות',
+  runways: 'מסלולים',
   plateCategoryApproach: 'גישה',
   plateCategorySid: 'SID',
   plateCategoryStar: 'STAR',
@@ -156,7 +167,7 @@ window.S = {
   tbSecBuild: '✏️ בנייה',
   tbSecView: '👁 תצוגה',
   tbSecNumbers: '📋 דפיות',
-  tbSecExport: '📤 ייצוא',
+  tbSecExport: '📤 ייצוא/ייבוא',
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
   exportModalTitle: 'ייצוא PNG',

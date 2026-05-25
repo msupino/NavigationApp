@@ -30,6 +30,10 @@ html, body {
   z-index: 1100;
   top: 12px;
   left: 12px;
+  /* Fixed width so opening a wider section (e.g. Build with long button
+     labels) doesn't shift the whole bar. Picked to fit the widest button
+     label without wrapping. */
+  width: 220px;
   max-height: calc(100vh - 24px);
   max-height: calc(100dvh - 24px);       /* dynamic viewport on iOS Safari */
   overflow-y: auto;
@@ -45,6 +49,7 @@ html, body {
   border: 1px solid #3a3636;
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  box-sizing: border-box;
 }
 
 #toolbar button {
@@ -285,6 +290,13 @@ html, body {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
 }
 #wp-search-results.hidden { display: none; }
+.search-hint {
+  display: block;
+  margin: 4px 6px 0;
+  font-size: 11px;
+  line-height: 1.3;
+  color: #9a9a9a;
+}
 .wp-search-item {
   padding: 6px 10px;
   font-size: 13px;
@@ -295,16 +307,42 @@ html, body {
 .wp-search-item:hover,
 .wp-search-item.active { background: #1d6fe0; color: #fff; }
 #toolbar .navtoggle select {
-  flex: 1;
-  min-width: 0;
   font: inherit;
-  font-size: 13px;
+  font-size: 11px;
   color: #e8e8e8;
   background: #2f2b2b;
-  border: 1px solid #443f3f;
+  border: 1px solid #3a3636;
   border-radius: 4px;
   padding: 2px 4px;
   cursor: pointer;
+}
+#aircraft-custom {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  padding: 0 0 0 8px;
+  align-items: center;
+}
+#aircraft-custom label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+#aircraft-custom span {
+  white-space: nowrap;
+}
+#aircraft-custom input {
+  font: inherit;
+  font-size: 11px;
+  width: 64px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #3a3636;
+  border-radius: 4px;
+  padding: 2px 4px;
+  text-align: center;
 }
 
 #inspector {
@@ -575,6 +613,35 @@ html, body {
   max-height: 84vh;
   padding: 14px;
 }
+.fp-aircraft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0 10px;
+  font-size: 13px;
+  color: #b9b3b3;
+  border-bottom: 1px solid #3a3636;
+  margin-bottom: 8px;
+}
+.fp-aircraft select {
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+.fp-aircraft input {
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
 .modal.wide .fp-scroll {
   overflow: auto;
   flex: 1;
@@ -659,39 +726,81 @@ html, body {
 .plate-chip-small { font-size: 10px; padding: 2px 5px; background: none; border-color: transparent; color: #1d6fe0; cursor: pointer; }
 .plate-chip-small:hover { text-decoration: underline; }
 
+/* Airfield runways (#231) */
+.runways-row { flex-wrap: wrap; gap: 4px; align-items: center; }
+.runway-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.runway-chip {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
 /* Charts modal */
 .charts-modal-body {
-  max-height: 65vh;
-  overflow-y: auto;
-  padding: 4px 2px;
+  padding: 2px 0;
 }
 .charts-airport {
-  border-bottom: 1px solid #3a3636;
-  padding: 6px 0;
+  margin: 0 2px;
+  padding-bottom: 2px;
 }
-.charts-airport > summary {
+.charts-airport + .charts-airport {
+  border-top: 1px solid #3a3636;
+}
+.charts-airport-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  color: #e8e8e8;
-  padding: 4px 6px;
-  list-style: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a8484;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 6px 8px;
+  border-radius: 4px;
   user-select: none;
 }
-.charts-airport > summary::-webkit-details-marker { display: none; }
-.charts-airport > summary::before { content: '▶ '; font-size: 10px; color: #888; }
-.charts-airport[open] > summary::before { content: '▼ '; }
+.charts-airport-header::before {
+  content: '▶';
+  font-size: 8px;
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+.charts-airport-header.open::before {
+  transform: rotate(90deg);
+}
+.charts-airport-header:hover {
+  color: #e0d8d8;
+  background: rgba(255,255,255,0.06);
+}
+.charts-airport-body {
+  display: none;
+  /* Logical inline-start so the 22 px indent lands on the chevron's side
+     under both LTR and RTL (the default locale is Hebrew). */
+  padding: 2px 8px 8px;
+  padding-inline-start: 22px;
+}
+.charts-airport-body.open {
+  display: block;
+}
 .charts-cat {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px;
-  padding: 4px 12px;
+  padding: 4px 0;
 }
 .charts-cat-label {
   font-size: 11px;
-  color: #888;
-  min-width: 70px;
+  color: #b9b3b3;
+  min-width: 60px;
+  flex-shrink: 0;
 }
 
 /* Plate viewer modal */
