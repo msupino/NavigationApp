@@ -133,13 +133,16 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           URL="https://msupino.github.io/NavigationApp/pr/${{ github.event.number }}/"
-          gh api repos/${{ github.repository }}/deployments \
-            --field ref="${{ github.head_ref }}" \
-            --field environment="pr-preview-${{ github.event.number }}" \
-            --field environment_url="$URL" \
-            --field auto_merge=false \
-            --field required_contexts='[]' \
-            --field description="PR preview at $URL"
+          gh api "repos/${{ github.repository }}/deployments" --input - <<EOF
+          {
+            "ref": "${{ github.head_ref }}",
+            "environment": "pr-preview-${{ github.event.number }}",
+            "environment_url": "$URL",
+            "auto_merge": false,
+            "required_contexts": [],
+            "description": "PR preview at $URL"
+          }
+          EOF
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Upload artifact
