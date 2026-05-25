@@ -160,8 +160,8 @@ window.S = {
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
   exportModalTitle: 'ייצוא PNG',
-  exportShowNavWP: 'הצג נקודות ציון נתיב',
-  exportShowAirfields: 'הצג שדות תעופה',
+  exportShowNavWP: 'הדפס נקודות ציון',
+  exportShowAirfields: 'הדפס שדות תעופה',
   exportLayer: 'שכבת מפה',
   exportBtn: 'ייצא',
 };
