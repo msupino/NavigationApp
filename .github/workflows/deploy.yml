@@ -161,13 +161,13 @@ jobs:
           DEPLOY_ID=$(echo "$DEPLOY_JSON" | jq -r '.id // empty')
           if [ -n "$DEPLOY_ID" ]; then
             gh api "repos/${{ github.repository }}/deployments/$DEPLOY_ID/statuses" --input - <<EOF
-            {
-              "state": "success",
-              "environment_url": "$URL",
-              "log_url": "$URL",
-              "description": "PR preview at $URL"
-            }
-            EOF
+          {
+            "state": "success",
+            "environment_url": "$URL",
+            "log_url": "$URL",
+            "description": "PR preview at $URL"
+          }
+          EOF
           fi
         env:
           GH_TOKEN: ${{ github.token }}
