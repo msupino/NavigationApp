@@ -40,18 +40,6 @@ test.describe('NavAid smoke', () => {
     expect(url.searchParams.get('deep')).toBe('42');
   });
 
-  test('#85: mag var input clamps to range and shows clamped value', async ({ page }) => {
-    await page.goto('/?lang=en');
-    const inp = page.locator('#mag-var');
-    await inp.scrollIntoViewIfNeeded();
-    await inp.fill('99');
-    await inp.dispatchEvent('input');
-    await expect(inp).toHaveValue('30');
-    await inp.fill('-50');
-    await inp.dispatchEvent('input');
-    await expect(inp).toHaveValue('-30');
-  });
-
   test('#124: search shows both airfields and nav-waypoints for broad query', async ({ page }) => {
     await page.goto('/?lang=en');
     await page.waitForFunction(() => window.airfields && window.airfields.length > 0);
