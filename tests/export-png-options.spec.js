@@ -32,11 +32,12 @@ test.describe('Export PNG options modal', () => {
     await page.locator('.modal-back').waitFor();
     // Title.
     expect(await page.locator('.modal-title').textContent()).toBe('Export PNG');
-    // Both checkboxes off by default.
+    // 3 checkboxes: Nav WPs (off), Waypoint Names (on), Airfields (off).
     const cbs = page.locator('.modal input[type="checkbox"]');
-    expect(await cbs.count()).toBe(2);
-    expect(await cbs.nth(0).isChecked()).toBe(false);
-    expect(await cbs.nth(1).isChecked()).toBe(false);
+    expect(await cbs.count()).toBe(3);
+    expect(await cbs.nth(0).isChecked()).toBe(false);  // Nav WPs
+    expect(await cbs.nth(1).isChecked()).toBe(true);   // Waypoint Names default on
+    expect(await cbs.nth(2).isChecked()).toBe(false);  // Airfields
     // Layer defaults to Navigation.
     const sel = page.locator('.modal select');
     expect(await sel.inputValue()).toBe('Navigation');
@@ -80,14 +81,15 @@ test.describe('Export PNG options modal', () => {
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
     const cbs = page.locator('.modal input[type="checkbox"]');
-    // Check "Print navigation waypoints" → showNavWP becomes true.
+    // Check "Print Navigation Waypoints" → showNavWP becomes true.
     await cbs.nth(0).check();
     expect(await page.evaluate(() => showNavWP)).toBe(true);
     // Uncheck → showNavWP back to false.
     await cbs.nth(0).uncheck();
     expect(await page.evaluate(() => showNavWP)).toBe(false);
-    // Check "Print airports" → showAirfields becomes true.
-    await cbs.nth(1).check();
+    // Check "Print Airfields" (idx 2 after Waypoint Names was added at idx 1)
+    // → showAirfields becomes true.
+    await cbs.nth(2).check();
     expect(await page.evaluate(() => showAirfields)).toBe(true);
   });
 

@@ -209,8 +209,9 @@ window.S = Object.assign({
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
   exportModalTitle: 'Export PNG',
-  exportShowNavWP: 'Print navigation waypoints',
-  exportShowAirfields: 'Print airports',
+  exportShowNavWP: 'Print Navigation Waypoints',
+  exportShowAirfields: 'Print Airfields',
+  exportShowWpNames: 'Print Waypoint Names',
   exportLayer: 'Layer',
   exportBtn: 'Export',
 }, window.S || {});
