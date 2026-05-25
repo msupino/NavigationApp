@@ -349,6 +349,14 @@ let flightPlanCleanup = null;             // tears down drag listeners attached
                                           // outside the modal subtree (window).
 var fpOpen = false;                       // true while flight-plan modal is shown
 
+// Returns true if wp.name matches a known airfield ICAO code.
+// Used to decide whether to add startup/taxi fuel to the first leg.
+function isAirport(wp) {
+  if (!wp || !airfields) return false;
+  const name = (wp.name || '').trim().toUpperCase();
+  return airfields.some(a => a.name === name);
+}
+
 function closeFlightPlan() {
   if (flightPlanEscape) {
     document.removeEventListener('keydown', flightPlanEscape);
@@ -450,6 +458,53 @@ function showFlightPlan() {
     };
   })(box);
 
+  loadAircraft();
+  const fpAircraft = document.createElement('div');
+  fpAircraft.className = 'fp-aircraft';
+  const acLbl = document.createElement('span');
+  acLbl.textContent = S.tbAircraft + ': ';
+  fpAircraft.appendChild(acLbl);
+  const acInputDiv = document.createElement('div');
+  acInputDiv.id = 'aircraft-custom';
+  function mkAcInput(id, label, title, min, max, step) {
+    const wrap = document.createElement('label');
+    wrap.title = title || label;
+    const lbl = document.createElement('span');
+    lbl.textContent = label + ': ';
+    wrap.appendChild(lbl);
+    const inp = document.createElement('input');
+    inp.type = 'number';
+    inp.id = id;
+    inp.min = min; inp.max = max; inp.step = step;
+    inp.style.width = '60px';
+    wrap.appendChild(inp);
+    return wrap;
+  }
+  acInputDiv.appendChild(mkAcInput('aircraft-gph', S.tbGph, S.tbGphTitle, 1, 50, 0.5));
+  acInputDiv.appendChild(mkAcInput('aircraft-taxi', S.tbTaxiGal, S.tbTaxiGalTitle, 0, 20, 0.1));
+  fpAircraft.appendChild(acInputDiv);
+  const gphInp  = acInputDiv.querySelector('#aircraft-gph');
+  const taxiInp = acInputDiv.querySelector('#aircraft-taxi');
+  function syncAircraftUI() {
+    if (!aircraft) { aircraft = { gph: 8, taxiGal: 1.1 }; saveAircraft(); }
+    gphInp.value  = aircraft.gph;
+    taxiInp.value = aircraft.taxiGal;
+  }
+  function readAircraftInputs() {
+    const gph = parseFloat(gphInp.value);
+    if (isNaN(gph) || gph <= 0) return null;
+    return { gph: gph, taxiGal: parseFloat(taxiInp.value) || 0 };
+  }
+  [gphInp, taxiInp].forEach(inp => {
+    inp.oninput = function () {
+      const a = readAircraftInputs();
+      aircraft = a;
+      saveAircraft(); draw(); refresh();
+    };
+  });
+  syncAircraftUI();
+  box.appendChild(fpAircraft);
+
   const scrollArea = document.createElement('div');
   scrollArea.className = 'fp-scroll';
   box.appendChild(scrollArea);
@@ -507,7 +562,8 @@ function showFlightPlan() {
   const distCells = [];                 // leg index -> distance cell
   const hdgCells = [];                  // leg index -> heading cell
   const timeCells = [];                 // leg index -> time cell
-  let totDistCell, totTimeCell;
+  const fuelCells = [];                 // leg index -> fuel (gal) cell
+  let totDistCell, totTimeCell, totFuelCell;
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     const leg = state.legs[i];
@@ -551,6 +607,9 @@ function showFlightPlan() {
     distCells[i] = distCell;
     hdgCells[i] = hdgCell;
     tr.appendChild(timeCell);
+    const fuelCell = planCell('');
+    fuelCells[i] = fuelCell;
+    tr.appendChild(fuelCell);
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
@@ -567,11 +626,16 @@ function showFlightPlan() {
   trF.appendChild(planCell(''));        // Alt column
   totTimeCell = planCell('');
   trF.appendChild(totTimeCell);
+  totFuelCell = planCell('');
+  trF.appendChild(totFuelCell);
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
 
   function refresh() {
-    let td = 0, th = 0;
+    let td = 0, th = 0, tf = 0;
+    const ac = aircraft;
+    const taxiFuel = ac && ac.taxiGal && isAirport(state.waypoints[0]) ? ac.taxiGal : 0;
+    if (taxiFuel) tf = taxiFuel;
     for (let i = 0; i < state.legs.length; i++) {
       const A = state.waypoints[i], B = state.waypoints[i + 1];
       if (!A || !B) continue;
@@ -582,7 +646,16 @@ function showFlightPlan() {
       td += dist;
       th += dur;
       timeCells[i].textContent = dur > 0 ? toHMS(dur) : '--';
-      // Sync the editable inputs unless the user is mid-edit in that cell.
+      if (ac) {
+        const fuel = dur * ac.gph;
+        tf += fuel;
+        const mark = i === 0 && taxiFuel;
+        fuelCells[i].textContent = (mark ? fuel + taxiFuel : fuel).toFixed(1) + (mark ? ' *' : '');
+        fuelCells[i].title = mark ? S.fpTaxiTip(taxiFuel) : '';
+      } else {
+        fuelCells[i].textContent = '--';
+        fuelCells[i].title = '';
+      }
       if (speedInputs[i] && document.activeElement !== speedInputs[i])
         speedInputs[i].value = state.legs[i].flightSpeed;
       if (altInputs[i] && document.activeElement !== altInputs[i])
@@ -598,6 +671,7 @@ function showFlightPlan() {
     }
     totDistCell.textContent = td.toFixed(1);
     totTimeCell.textContent = th > 0 ? toHMS(th) : '--';
+    totFuelCell.textContent = ac ? tf.toFixed(1) : '--';
   }
   refresh();
   scrollArea.appendChild(table);
@@ -628,7 +702,8 @@ function showFlightPlan() {
     const rDistCells = [];
     const rHdgCells = [];
     const rTimeCells = [];
-    let rTotDistCell, rTotTimeCell;
+    const rFuelCells = [];
+    let rTotDistCell, rTotTimeCell, rTotFuelCell;
 
     for (let i = 0; i < state.legs.length; i++) {
       const ri = state.legs.length - 1 - i;   // reverse leg order — flyable from destination
@@ -674,6 +749,9 @@ function showFlightPlan() {
       rDistCells[i] = distCell;
       rHdgCells[i] = hdgCell;
       tr.appendChild(timeCell);
+      const fuelCell = planCell('');
+      rFuelCells[i] = fuelCell;
+      tr.appendChild(fuelCell);
       rtbody.appendChild(tr);
     }
     rtable.appendChild(rtbody);
@@ -690,12 +768,17 @@ function showFlightPlan() {
     rtrF.appendChild(planCell(''));
     rTotTimeCell = planCell('');
     rtrF.appendChild(rTotTimeCell);
+    rTotFuelCell = planCell('');
+    rtrF.appendChild(rTotFuelCell);
     rtfoot.appendChild(rtrF);
     rtable.appendChild(rtfoot);
 
+
     retRefresh = function () {
       if (state.legs.length !== rDistCells.length) { closeFlightPlan(); return; }
-      let td = 0, th = 0;
+      let td = 0, th = 0, tf = 0;
+      const retTaxi = aircraft && aircraft.taxiGal && isAirport(state.waypoints[state.waypoints.length - 1]) ? aircraft.taxiGal : 0;
+      if (retTaxi) tf = retTaxi;
       for (let i = 0; i < state.legs.length; i++) {
         const ri = state.legs.length - 1 - i;
         const A = state.waypoints[ri + 1], B = state.waypoints[ri];
@@ -707,6 +790,16 @@ function showFlightPlan() {
         td += dist;
         th += dur;
         rTimeCells[i].textContent = dur > 0 ? toHMS(dur) : '--';
+        if (aircraft) {
+          const fuel = dur * aircraft.gph;
+          tf += fuel;
+          const mark = i === 0 && retTaxi;
+          rFuelCells[i].textContent = (mark ? fuel + retTaxi : fuel).toFixed(1) + (mark ? ' *' : '');
+          rFuelCells[i].title = mark ? S.fpTaxiTip(retTaxi) : '';
+        } else {
+          rFuelCells[i].textContent = '--';
+          rFuelCells[i].title = '';
+        }
         if (rSpeedInputs[i] && document.activeElement !== rSpeedInputs[i])
           rSpeedInputs[i].value = state.legs[ri].outboundSpeed;
         if (rAltInputs[i] && document.activeElement !== rAltInputs[i])
@@ -714,6 +807,7 @@ function showFlightPlan() {
       }
       rTotDistCell.textContent = td.toFixed(1);
       rTotTimeCell.textContent = th > 0 ? toHMS(th) : '--';
+      rTotFuelCell.textContent = aircraft ? tf.toFixed(1) : '--';
     };
     retRefresh();
     scrollArea.appendChild(rtable);

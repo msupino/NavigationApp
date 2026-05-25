@@ -34,7 +34,8 @@ Unity `NavigationApp` plotter, which is preserved on the
   Reference only; do not commit web changes here.
 
 `main` is branch-protected — no direct pushes; production changes land via
-a `dev` → `main` pull request.
+a `dev` → `main` pull request. **Every change must go through a feature
+branch and pull request — even one-line fixes.**
 
 ## Files (`docs/`)
 
