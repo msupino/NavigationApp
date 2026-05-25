@@ -306,21 +306,24 @@ html, body {
 }
 #aircraft-custom {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 8px;
+  flex-direction: column;
+  gap: 4px;
   padding: 4px 0 2px 12px;
 }
 #aircraft-custom.hidden { display: none; }
 #aircraft-custom label {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 6px;
   font-size: 11px;
+}
+#aircraft-custom span {
+  min-width: 72px;
 }
 #aircraft-custom input {
   font: inherit;
   font-size: 11px;
-  width: 56px;
+  width: 64px;
   color: #e8e8e8;
   background: #2f2b2b;
   border: 1px solid #3a3636;
