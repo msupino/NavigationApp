@@ -437,11 +437,8 @@ function markSuggestionsDirty() { suggestionsDirty = true; }
 function recomputeSuggestions() {
   const n = state.legs.length;
   legSuggestions = new Array(n);
-  if (!showNavWP || !navWP || navWP.length === 0) {
-    if (navWP === null) suggestionsDirty = true;  // not loaded yet — retry on next draw
-    return;
-  }
-  const THRESHOLD_NM = 2;
+  if (!showNavWP || !navWP || navWP.length === 0) return false;
+  const THRESHOLD_NM = 3;
   for (let i = 0; i < n; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     if (!A || !B) continue;
@@ -469,6 +466,7 @@ function recomputeSuggestions() {
     if (candidates.length > 6) candidates.length = 6;
     legSuggestions[i] = candidates;
   }
+  return true;
 }
 
 function insertSuggestion(legIdx, wp) {
