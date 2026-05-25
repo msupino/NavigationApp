@@ -308,12 +308,12 @@ function drawLegs() {
     const outP = leg.outLabel || { a: 0, p: -44 };
     drawLegArrow(mid.x + dx * inP.a + nx * inP.p, mid.y + dy * inP.a + ny * inP.p,
       ang, pad3(magIn), timeStr, String(leg.inboundAltitude),
-      '#2f6fd0', yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
+      '#2f6fd0', 'transparent', needsHalo(i, 'in'), zoomScale);
     if (showReturn) {
       drawLegArrow(mid.x + dx * outP.a + nx * outP.p,
         mid.y + dy * outP.a + ny * outP.p, ang + Math.PI,
         pad3(magOut), timeStrOut, String(leg.outboundAltitude),
-        '#c0392b', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
+        '#c0392b', 'transparent', needsHalo(i, 'out'), zoomScale);
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
   }
