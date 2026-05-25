@@ -447,6 +447,7 @@ document.getElementById('mag-var').oninput = e => {
   showMagVarEqv();
   draw();
 };
+
 document.getElementById('page-a3').onclick = () => setPage('A3');
 document.getElementById('page-a4').onclick = () => setPage('A4');
 // Restore last-used orientation and wire the toolbar toggle button.
