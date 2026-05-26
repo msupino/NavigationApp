@@ -211,7 +211,7 @@ window.S = Object.assign({
   exportModalTitle: 'Export PNG',
   exportShowNavWP: 'Print Navigation Waypoints',
   exportShowAirfields: 'Print Airfields',
-  exportShowWpNames: 'Print Waypoint Names',
+  exportShowWpNames: 'Print route waypoint names',
   exportNoPageWarn: 'No page size selected — exported image ratio may not match a print page.',
   exportLayer: 'Layer',
   exportBtn: 'Export',
