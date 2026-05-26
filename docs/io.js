@@ -1484,8 +1484,9 @@ function drawFlightPlanTable(ctx, x, y, w, h) {
   const numCols = headers.length;
   const numRows = rows.length + 2;        // header + data + total
   const rowH = h / numRows;
-  const fontSize = Math.min(rowH * 0.55, 13);
-  const padX = 5;
+  // Paper-print font: 9-22 px (was capped at 13 — too small on A3).
+  const fontSize = Math.max(9, Math.min(rowH * 0.65, 22));
+  const padX = Math.max(4, Math.round(fontSize * 0.6));
   // Text alignment per column.
   const aligns = ['center', 'left', 'left', 'center', 'right', 'right', 'right', 'center', 'right'];
   ctx.save();
@@ -1512,71 +1513,78 @@ function drawFlightPlanTable(ctx, x, y, w, h) {
     }
   }
   for (let mc = 0; mc < numCols; mc++) colW[mc] = Math.ceil(colW[mc] + 2 * padX);
-  // x-offset for column `col` from `x`.
   const colX = new Array(numCols + 1).fill(0);
   for (let mc = 0; mc < numCols; mc++) colX[mc + 1] = colX[mc] + colW[mc];
   const totalW = colX[numCols];
-  // Background.
-  ctx.fillStyle = 'rgba(42,38,38,0.92)';
+
+  // Paper-print look: white background, black text, visible grid lines.
+  const HEADER_BG = '#e8e6e1';
+  const TOTAL_BG  = '#f0eee9';
+  const STRIPE_BG = '#f7f5f0';
+  const GRID = '#7a7470';
+  const TEXT = '#1a1a1a';
+
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(x, y, totalW, h);
-  // Border.
-  ctx.strokeStyle = '#4a4646';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x, y, totalW, h);
+
   // Helper: draw one cell.
   function cell(row, col, text, bold, bg) {
     const cx = x + colX[col];
     const cy = y + row * rowH;
     const cw = colW[col];
     if (bg) { ctx.fillStyle = bg; ctx.fillRect(cx, cy, cw, rowH); }
-    // Right/bottom grid lines (avoid overdraw on last column/row).
-    ctx.strokeStyle = '#4a4646';
-    ctx.lineWidth = 0.5;
-    if (col < numCols - 1) { ctx.beginPath(); ctx.moveTo(cx + cw, cy); ctx.lineTo(cx + cw, cy + rowH); ctx.stroke(); }
-    if (row < numRows - 1) { ctx.beginPath(); ctx.moveTo(cx, cy + rowH); ctx.lineTo(cx + cw, cy + rowH); ctx.stroke(); }
-    // Text.
-    ctx.fillStyle = bold ? '#e8e8e8' : '#d0d0d0';
+    ctx.fillStyle = TEXT;
     ctx.font = (bold ? 'bold ' : '') + fontSize + 'px sans-serif';
     ctx.textBaseline = 'middle';
-    var a = aligns[col];
+    const a = aligns[col];
     ctx.textAlign = a;
-    var tx = a === 'right' ? cx + cw - padX : a === 'center' ? cx + cw / 2 : cx + padX;
+    const tx = a === 'right' ? cx + cw - padX : a === 'center' ? cx + cw / 2 : cx + padX;
     ctx.fillText(text, tx, cy + rowH / 2);
   }
-  // Header.
-  for (var c = 0; c < numCols; c++) cell(0, c, headers[c], true, '#3a3636');
-  // Data rows.
+  // Header row background.
+  ctx.fillStyle = HEADER_BG;
+  ctx.fillRect(x, y, totalW, rowH);
+  for (var c = 0; c < numCols; c++) cell(0, c, headers[c], true, null);
+  // Data rows with alternating stripe.
   for (var r = 0; r < rows.length; r++) {
     var rd = rows[r];
     var vals = [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel];
     for (var c2 = 0; c2 < numCols; c2++) {
-      cell(r + 1, c2, String(vals[c2]), false, r % 2 === 1 ? 'rgba(255,255,255,0.03)' : null);
+      cell(r + 1, c2, String(vals[c2]), false, r % 2 === 1 ? STRIPE_BG : null);
     }
   }
-  // Total row: "Total" spans first 4 columns.
+  // Total row.
   var tr = rows.length + 1;
-  var totalLabel = S.fpTotal;
-  var totX0 = x;
-  var totX1 = x + colX[4];
   var totCY = y + tr * rowH;
-  ctx.fillStyle = '#333030';
-  ctx.fillRect(totX0, totCY, totX1 - totX0, rowH);
-  ctx.fillStyle = '#e8e8e8';
+  ctx.fillStyle = TOTAL_BG;
+  ctx.fillRect(x, totCY, totalW, rowH);
+  ctx.fillStyle = TEXT;
   ctx.font = 'bold ' + fontSize + 'px sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText(totalLabel, totX0 + padX, totCY + rowH / 2);
-  // Grid lines for total-row cells.
-  for (var c3 = 0; c3 < numCols; c3++) {
-    var cx3 = x + colX[c3];
-    ctx.strokeStyle = '#4a4646';
-    ctx.lineWidth = 0.5;
-    if (c3 < numCols - 1) { ctx.beginPath(); ctx.moveTo(cx3 + colW[c3], totCY); ctx.lineTo(cx3 + colW[c3], totCY + rowH); ctx.stroke(); }
-    ctx.beginPath(); ctx.moveTo(cx3, totCY + rowH); ctx.lineTo(cx3 + colW[c3], totCY + rowH); ctx.stroke();
-  }
-  // Remaining total cells.
+  ctx.fillText(S.fpTotal, x + colX[1] + padX, totCY + rowH / 2);
   for (var c4 = 4; c4 < numCols; c4++) {
     if (totVals[c4] !== undefined) cell(tr, c4, String(totVals[c4]), true, null);
+  }
+  // Grid: outer border + column dividers + row dividers, all in one pass
+  // so they sit on top of all cell backgrounds.
+  ctx.strokeStyle = GRID;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, totalW - 1, h - 1);
+  ctx.lineWidth = 0.75;
+  for (let gc = 1; gc < numCols; gc++) {
+    const gx = Math.round(x + colX[gc]) + 0.5;
+    ctx.beginPath();
+    ctx.moveTo(gx, y);
+    ctx.lineTo(gx, y + h);
+    ctx.stroke();
+  }
+  for (let gr = 1; gr < numRows; gr++) {
+    const gy = Math.round(y + gr * rowH) + 0.5;
+    ctx.beginPath();
+    ctx.moveTo(x, gy);
+    ctx.lineTo(x + totalW, gy);
+    ctx.stroke();
   }
   ctx.restore();
 }
