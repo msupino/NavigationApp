@@ -435,6 +435,31 @@ document.getElementById('drift-cb').onchange = e => {
   try { localStorage.setItem(DRIFT_KEY, showDrift ? '1' : '0'); } catch (err) { /* */ }
   draw();
 };
+// When the user toggles an overlay ON, snap existing waypoints whose name
+// is empty or auto-snapped to the nearest airfield / nav-WP. Preserves
+// user-typed names. Priority matches applyNavSnap: airfields first.
+function snapExistingWaypoints() {
+  for (let i = 0; i < state.waypoints.length; i++) {
+    const wp = state.waypoints[i];
+    const autoSnapped = isAirfieldName(wp.name) || isNavName(wp.name);
+    if (wp.name && !autoSnapped) continue;
+    if (showAirfields) {
+      const af = nearestAirfield(wp, 18);
+      if (af) {
+        wp.lat = r5(af.lat); wp.lng = r5(af.lng);
+        wp.name = af.name;
+        continue;
+      }
+    }
+    if (showNavWP) {
+      const snap = nearestNavWaypoint(wp, 18);
+      if (snap) {
+        wp.lat = r5(snap.lat); wp.lng = r5(snap.lng);
+        wp.name = snap[S.navWpSearchField] || snap.name;
+      }
+    }
+  }
+}
 const NAVWP_KEY = 'navaid.showNavWP';
 try {
   const stored = localStorage.getItem(NAVWP_KEY);
@@ -446,7 +471,10 @@ document.getElementById('navwp-cb').onchange = async e => {
   window.showNavWP =e.target.checked;
   try { localStorage.setItem(NAVWP_KEY, showNavWP ? '1' : '0'); }
   catch (err) { /* storage unavailable */ }
-  if (showNavWP) await loadNavWaypoints();
+  if (showNavWP) {
+    await loadNavWaypoints();
+    snapExistingWaypoints();
+  }
   draw();
 };
 const AIRFIELDS_KEY = 'navaid.showAirfields';
@@ -459,7 +487,10 @@ document.getElementById('airfield-cb').onchange = async e => {
   window.showAirfields =e.target.checked;
   try { localStorage.setItem(AIRFIELDS_KEY, showAirfields ? '1' : '0'); }
   catch (err) { /* storage unavailable */ }
-  if (showAirfields) await loadAirfields();
+  if (showAirfields) {
+    await loadAirfields();
+    snapExistingWaypoints();
+  }
   draw();
 };
 const ALPHA_KEY = 'navaid.yellowAlpha';
@@ -740,11 +771,11 @@ if (state.waypoints.length) fitView();   // always frame the restored route
 draw();
 // Always load nav-waypoints in the background — they power both the
 // overlay toggle and the auto-snap on drop / drag.
-loadNavWaypoints().then(draw);
+loadNavWaypoints().then(() => { snapExistingWaypoints(); draw(); });
 // Same pattern for airfields: powering both the overlay and snap.
 // Also re-render inspector so plates section appears if a waypoint
 // was restored from sessionStorage before airfields loaded.
-loadAirfields().then(() => { draw(); if (state.selected) showInspector(); });
+loadAirfields().then(() => { snapExistingWaypoints(); draw(); if (state.selected) showInspector(); });
 // Restore flight-plan modal if it was open before refresh / language change.
 try {
   if (sessionStorage.getItem('navaid.fpOpen')) {
