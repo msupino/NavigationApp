@@ -859,6 +859,24 @@ function showFlightPlan() {
   box.appendChild(pinBtn);
 
   // Resize handles — all four corners.
+  function computePlanFontSize() {
+    var numRows = (state.legs || []).length + 2;
+    if (numRows < 1) return 13;
+    var titleEl = box.querySelector('.modal-title');
+    var acEl = box.querySelector('.fp-aircraft');
+    var btnsEl = box.querySelector('.modal-btns');
+    var titleH = titleEl ? titleEl.offsetHeight : 40;
+    var acH = acEl ? acEl.offsetHeight : 0;
+    var btnsH = btnsEl ? btnsEl.offsetHeight : 36;
+    var avail = box.offsetHeight - titleH - acH - btnsH - 28;
+    if (avail < 8) return 4;
+    var rowH = avail / numRows;
+    return Math.max(4, Math.min(13, Math.round(rowH * 0.55)));
+  }
+  function applyPlanFontSize() {
+    if (!box.classList.contains('pinned')) return;
+    box.style.setProperty('--fp-font-size', computePlanFontSize() + 'px');
+  }
   var rCleanups = [];
   function makeCornerHandle(corner) {
     var el = document.createElement('div');
@@ -871,24 +889,6 @@ function showFlightPlan() {
       rw = r.width; rh = r.height;
       rl = r.left; rt = r.top;
       rDrag = true;
-    }
-    function computePlanFontSize() {
-      var numRows = (state.legs || []).length + 2;
-      if (numRows < 1) return 13;
-      var titleEl = box.querySelector('.modal-title');
-      var acEl = box.querySelector('.fp-aircraft');
-      var btnsEl = box.querySelector('.modal-btns');
-      var titleH = titleEl ? titleEl.offsetHeight : 40;
-      var acH = acEl ? acEl.offsetHeight : 0;
-      var btnsH = btnsEl ? btnsEl.offsetHeight : 36;
-      var avail = box.offsetHeight - titleH - acH - btnsH - 28;
-      if (avail < 20) return 13;
-      var rowH = avail / numRows;
-      return Math.max(6, Math.min(13, Math.round(rowH * 0.55)));
-    }
-    function applyPlanFontSize() {
-      if (!box.classList.contains('pinned')) return;
-      box.style.setProperty('--fp-font-size', computePlanFontSize() + 'px');
     }
     function clampViewport(l, t, w, h) {
       var maxL = window.innerWidth - w;
