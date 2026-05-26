@@ -118,12 +118,6 @@ html, body {
 .tip-wrap {
   display: flex;
   align-items: center;
-  gap: 3px;
-  min-width: 0;
-}
-.tip-wrap > .navtoggle {
-  flex: 1;
-  min-width: 0;
 }
 
 #toolbar .drag-handle {
