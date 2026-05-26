@@ -501,7 +501,7 @@ MAPOPACITY_EL.oninput = e => {
   catch (err) { /* storage unavailable */ }
 };
 const WPSIZE_KEY = 'navaid.wpSize';
-const WP_SIZE_MIN = 0.1, WP_SIZE_MAX = 2, WP_SIZE_STEP = 0.1;
+const WP_SIZE_MIN = 0, WP_SIZE_MAX = 2, WP_SIZE_STEP = 0.05;
 try {
   const v = parseFloat(localStorage.getItem(WPSIZE_KEY));
   if (!isNaN(v)) window.wpSize =Math.max(WP_SIZE_MIN, Math.min(WP_SIZE_MAX, v));
@@ -517,7 +517,7 @@ WP_EL.oninput = e => {
 };
 
 const LEGARROW_KEY = 'navaid.legArrowSize';
-const LEGARROW_MIN = 0.1, LEGARROW_MAX = 2, LEGARROW_STEP = 0.1;
+const LEGARROW_MIN = 0, LEGARROW_MAX = 2, LEGARROW_STEP = 0.05;
 try {
   const v = parseFloat(localStorage.getItem(LEGARROW_KEY));
   if (!isNaN(v)) window.legArrowSize =Math.max(LEGARROW_MIN, Math.min(LEGARROW_MAX, v));
