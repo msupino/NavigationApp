@@ -1035,6 +1035,14 @@ function showExportModal() {
   opacityRow.appendChild(opVal);
   body.appendChild(opacityRow);
 
+  // Page-size warning.
+  const pageWarn = document.createElement('div');
+  pageWarn.style.cssText = 'font-size:12px;color:#e8b84b;padding:2px 0';
+  if (!pageSize) {
+    pageWarn.textContent = S.exportNoPageWarn;
+  }
+  body.appendChild(pageWarn);
+
   box.appendChild(body);
 
   // Save original state (before applying defaults) so Cancel can restore.
