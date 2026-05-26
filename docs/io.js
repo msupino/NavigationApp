@@ -1028,7 +1028,7 @@ function showExportModal() {
 
   // Map opacity slider.
   const opacityRow = document.createElement('div');
-  opacityRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px';
+  opacityRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;max-width:50%';
   const opLbl = document.createElement('span');
   opLbl.textContent = S.tbMapOpacity;
   opacityRow.appendChild(opLbl);
