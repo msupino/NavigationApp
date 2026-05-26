@@ -1040,6 +1040,7 @@ function showExportModal() {
   pageWarn.style.cssText = 'font-size:12px;color:#e8b84b;padding:2px 0';
   if (!pageSize) {
     pageWarn.textContent = S.exportNoPageWarn;
+    pageWarn.classList.add('blink-warn');
   }
   body.appendChild(pageWarn);
 
