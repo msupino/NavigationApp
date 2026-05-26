@@ -146,6 +146,21 @@ html, body {
 }
 .tip-icon:hover { color: #ccc; background: rgba(255,255,255,0.15); }
 
+.tip-popup {
+  position: fixed;
+  background: #2a2a2a;
+  color: #e8e8e8;
+  padding: 6px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  line-height: 1.4;
+  z-index: 10000;
+  white-space: normal;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  border: 1px solid #4a4a4a;
+}
+
 #toolbar-toggle {
   align-self: center;
   display: inline-flex;

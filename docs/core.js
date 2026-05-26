@@ -240,8 +240,23 @@ function applyI18n() {
     if (!titleKey || el.classList.contains('tb-section-head') || el.nextSibling?.classList?.contains('tip-icon')) return;
     const tip = document.createElement('span');
     tip.className = 'tip-icon';
-    tip.textContent = '?';
+    tip.innerHTML = '<svg viewBox="0 0 16 16" width="12" height="12"><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.4"/><text x="8" y="12" text-anchor="middle" font-size="11" fill="currentColor">i</text></svg>';
     tip.title = S[titleKey] || '';
+    tip.onclick = function (e) {
+      e.stopPropagation();
+      const old = document.querySelector('.tip-popup');
+      if (old) { old.remove(); return; }
+      const p = document.createElement('div');
+      p.className = 'tip-popup';
+      p.textContent = this.title;
+      const r = this.closest('#toolbar') ? this.closest('#toolbar').getBoundingClientRect() : null;
+      if (r) { p.style.maxWidth = (r.width - 20) + 'px'; }
+      const ir = this.getBoundingClientRect();
+      p.style.left = ir.left + 'px';
+      p.style.top = (ir.bottom + 4) + 'px';
+      document.body.appendChild(p);
+      setTimeout(() => document.addEventListener('click', function rm() { p.remove(); document.removeEventListener('click', rm); }), 0);
+    };
     el.parentNode.insertBefore(tip, el.nextSibling);
   });
 }
