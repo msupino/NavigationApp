@@ -236,3 +236,49 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ github.token }}
+
+  e2e-deployed:
+    if: github.event_name == 'pull_request'
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Wait for preview and run e2e
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUM=${{ github.event.number }}
+          URL="https://navaid.supino.org/pr/$PR_NUM/"
+          for i in $(seq 1 30); do
+            HTTP=$(curl -sLo /dev/null -w "%{http_code}" "$URL" 2>/dev/null || echo "000")
+            if [ "$HTTP" = "200" ]; then
+              echo "Preview ready at $URL"
+              break
+            fi
+            echo "  waiting for preview (HTTP $HTTP) ... ($i/30)"
+            sleep 10
+          done
+          MAX=10
+          ATTEMPT=0
+          while [ $ATTEMPT -lt $MAX ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "=== e2e attempt $ATTEMPT/$MAX ==="
+            if BASE_URL="$URL" npm test; then
+              echo "All e2e tests passed!"
+              exit 0
+            fi
+            echo "Tests failed on attempt $ATTEMPT — retrying in 10s..."
+            sleep 10
+          done
+          exit 1
