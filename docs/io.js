@@ -1483,9 +1483,13 @@ function drawFlightPlanTable(ctx, x, y, w, h) {
   const headers = S.fpHeadersShort;
   const numCols = headers.length;
   const numRows = rows.length + 2;        // header + data + total
-  const rowH = h / numRows;
-  // Paper-print font: 9-22 px (was capped at 13 — too small on A3).
-  const fontSize = Math.max(9, Math.min(rowH * 0.65, 22));
+  // Choose font from the available height per row, then clamp the row
+  // height so we never spread the rows out wider than ~1.35 × font.
+  // A tall narrow placeholder used to balloon row spacing — now it
+  // just leaves whitespace at the bottom instead.
+  const idealRowH = h / numRows;
+  const fontSize = Math.max(9, Math.min(idealRowH * 0.7, 22));
+  const rowH = Math.min(idealRowH, Math.ceil(fontSize * 1.35));
   const padX = Math.max(4, Math.round(fontSize * 0.6));
   // Text alignment per column.
   const aligns = ['center', 'left', 'left', 'center', 'right', 'right', 'right', 'center', 'right'];
@@ -1524,8 +1528,10 @@ function drawFlightPlanTable(ctx, x, y, w, h) {
   const GRID = '#7a7470';
   const TEXT = '#1a1a1a';
 
+  // Actual rendered table height (rowH might be less than h/numRows).
+  const tableH = rowH * numRows;
   ctx.fillStyle = '#ffffff';
-  ctx.fillRect(x, y, totalW, h);
+  ctx.fillRect(x, y, totalW, tableH);
 
   // Helper: draw one cell.
   function cell(row, col, text, bold, bg) {
@@ -1570,13 +1576,13 @@ function drawFlightPlanTable(ctx, x, y, w, h) {
   // so they sit on top of all cell backgrounds.
   ctx.strokeStyle = GRID;
   ctx.lineWidth = 1;
-  ctx.strokeRect(x + 0.5, y + 0.5, totalW - 1, h - 1);
+  ctx.strokeRect(x + 0.5, y + 0.5, totalW - 1, tableH - 1);
   ctx.lineWidth = 0.75;
   for (let gc = 1; gc < numCols; gc++) {
     const gx = Math.round(x + colX[gc]) + 0.5;
     ctx.beginPath();
     ctx.moveTo(gx, y);
-    ctx.lineTo(gx, y + h);
+    ctx.lineTo(gx, y + tableH);
     ctx.stroke();
   }
   for (let gr = 1; gr < numRows; gr++) {
