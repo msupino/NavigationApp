@@ -141,6 +141,28 @@ test.describe('Export PNG options modal', () => {
     expect(await page.evaluate(() => showNavWP)).toBe(true);
   });
 
+  test('Warns when no page size (A3/A4) is selected', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+      syncLegs(); draw();
+    });
+    // Ensure no page frame is active.
+    await page.evaluate(() => { pageSize = null; });
+    await page.locator('#print').click();
+    await page.locator('.modal-back').waitFor();
+    await expect(page.locator('.modal-back').getByText(/no page size/i)).toBeVisible();
+    await page.locator('.modal .modal-cancel').click();
+    await expect(page.locator('.modal-back')).toHaveCount(0);
+
+    // Select A3 and reopen — warning should be gone.
+    await page.locator('#page-a3').click();
+    await page.locator('#print').click();
+    await page.locator('.modal-back').waitFor();
+    await expect(page.locator('.modal-back').getByText(/no page size/i)).not.toBeVisible();
+    await page.locator('.modal .modal-cancel').click();
+  });
+
   test('Modal respects checkbox toggles and layer change', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
