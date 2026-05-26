@@ -164,6 +164,8 @@ window.S = Object.assign({
   tbShowMidLegTitle: 'Show distance badge at the middle of each leg',
   tbHighlightDiff: 'Highlight alt/speed diff',
   tbHighlightDiffTitle: 'Halo legs whose altitude or speed differs from the adjacent leg',
+  tbShowDrift: 'Show drift lines',
+  tbShowDriftTitle: 'Show 10-degree drift reference lines at each leg end',
   tbShowAirfields: 'Show/Pin Airfields',
   tbShowAirfieldsTitle: 'Overlay published Israeli airfields (BYOP source)',
   plates: 'Charts',
@@ -211,7 +213,8 @@ window.S = Object.assign({
   exportModalTitle: 'Export PNG',
   exportShowNavWP: 'Print Navigation Waypoints',
   exportShowAirfields: 'Print Airfields',
-  exportShowWpNames: 'Print Waypoint Names',
+  exportShowWpNames: 'Print route waypoint names',
+  exportShowDrift: 'Print drift lines',
   exportNoPageWarn: 'No page size selected — exported image ratio may not match a print page.',
   exportLayer: 'Layer',
   exportBtn: 'Export',
@@ -253,7 +256,8 @@ var navWP = null;           // null = not loaded yet (or last fetch failed —
 var showAirfields = true;   // Israeli airfields overlay (default on)
 var airfields = null;       // same null/[]/populated convention as navWP —
                             // see loadAirfields() in draw.js. Entries:
-                            // { name, he, en, lat, lng, elev_ft, plates:[] }.
+                            // { name, he, en, lat, lng, elev_ft, plates:[], runways:[] }.
+var showDrift = true;       // 10-degree drift reference lines
 var showWpNames = true;     // draw waypoint names (off = empty circle)
 var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 var yellowAlpha = 1;        // global multiplier for yellow label backgrounds
