@@ -648,6 +648,114 @@ html, body {
   flex: 1;
   min-height: 0;
 }
+.modal.pinned .fp-scroll {
+  /* Per user spec: no scroll in pinned mode. Font auto-shrinks to fit
+     (computePlanFontSize uses scrH / rows × 0.85, floor 2px), and column
+     widths are fixed percentages — content fits the box without a bar. */
+  overflow: hidden;
+  min-width: 0;
+}
+.modal.pinned {
+  border-color: #ffd966;
+  box-shadow: 0 0 0 2px rgba(255, 217, 102, 0.3);
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  padding: 2px 4px;
+}
+.modal.pinned .flight-table,
+.modal.pinned .flight-table input {
+  font-size: var(--fp-font-size, 13px);
+  /* line-height 1 so row height tracks the font down to ~0px without a
+     residual padding/leading floor — rows can never overlap. */
+  line-height: 1;
+}
+.modal.pinned .fp-aircraft,
+.modal.pinned .modal-btns,
+.modal.pinned .modal-title,
+.modal.pinned .modal-close-x {
+  display: none;
+}
+.modal.pinned .flight-table th,
+.modal.pinned .flight-table td {
+  /* Zero padding so character runs from one column abut the next. */
+  position: static;
+  padding: 0;
+  border: none;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  /* Each cell only as wide as its OWN content — without this each column
+     widens to the max-content across all rows (including the header),
+     so a long header like "Dist (NM)" left big gaps after short data
+     like "3.3". Setting per-row widths via auto layout is what we get
+     when we drop tabular-nums and let proportional widths apply. */
+  font-variant-numeric: normal;
+}
+.modal.pinned .flight-table { border-spacing: 0; }
+.modal.pinned .flight-table th { font-weight: 600; }
+/* Hide the long-form header row entirely — once the user has the data
+   on the map they know the layout (#, From → To, Hdg, Dist, Spd, Alt,
+   Time, Fuel); the header was the dominant source of column slack. */
+.modal.pinned .flight-table thead { display: none; }
+.modal.pinned .flight-table input {
+  width: auto;
+  max-width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  min-width: 0;
+  height: auto;
+  /* Pinned mode is a read-only on-map readout. Block direct edits but
+     keep programmatic .value updates from refresh() / retRefresh() —
+     pointer-events skips clicks, caret-color hides any stray cursor. */
+  pointer-events: none;
+  caret-color: transparent;
+  user-select: none;
+}
+.modal.pinned .flight-table tfoot td {
+  border: none;
+  font-weight: 700;
+}
+.modal.pinned .flight-table {
+  margin-bottom: 0;
+  border-collapse: collapse;
+  /* Shrink-wrap (max-content) — table sizes to the sum of its column
+     widths, no slack distributed across cells. Font-shrink keeps the
+     natural width ≤ box width, so no max-width clamp needed. */
+  table-layout: auto;
+  width: max-content;
+}
+.modal.pinned .flight-table th:nth-child(1),
+.modal.pinned .flight-table td:nth-child(1) { text-align: center; }
+.modal.pinned .flight-table th:nth-child(4),
+.modal.pinned .flight-table td:nth-child(4) { text-align: center; }
+.modal.pinned .flight-table th:nth-child(5),
+.modal.pinned .flight-table td:nth-child(5) { text-align: right; }
+.modal.pinned .flight-table th:nth-child(6),
+.modal.pinned .flight-table td:nth-child(6) { text-align: right; }
+.modal.pinned .flight-table th:nth-child(7),
+.modal.pinned .flight-table td:nth-child(7) { text-align: right; }
+.modal.pinned .flight-table th:nth-child(8),
+.modal.pinned .flight-table td:nth-child(8) { width: 10%; text-align: center; }
+.modal.pinned .flight-table th:nth-child(9),
+.modal.pinned .flight-table td:nth-child(9) { width: 15%; text-align: right; }
+.modal.pinned .flight-table th:nth-child(1),
+.modal.pinned .flight-table td:nth-child(1) { text-align: center; }
+.modal.pinned .flight-table th:nth-child(4),
+.modal.pinned .flight-table td:nth-child(4) { text-align: center; }
+.modal.pinned .flight-table th:nth-child(5),
+.modal.pinned .flight-table td:nth-child(5) { text-align: right; }
+.modal.pinned .flight-table th:nth-child(6),
+.modal.pinned .flight-table td:nth-child(6) { text-align: right; }
+.modal.pinned .flight-table th:nth-child(7),
+.modal.pinned .flight-table td:nth-child(7) { text-align: right; }
+.modal.pinned .flight-table th:nth-child(8),
+.modal.pinned .flight-table td:nth-child(8) { text-align: center; }
+.modal.pinned .flight-table th:nth-child(9),
+.modal.pinned .flight-table td:nth-child(9) { text-align: right; }
 .flight-table {
   width: 100%;
   border-collapse: collapse;
@@ -698,22 +806,6 @@ html, body {
   border-bottom: none;
   background: rgba(255, 255, 255, 0.03);
 }
-.fp-del {
-  width: 20px;
-  padding: 2px 2px !important;
-  text-align: center;
-}
-.fp-del button {
-  background: none;
-  border: none;
-  color: #b06464;
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
-  padding: 0 2px;
-  border-radius: 3px;
-}
-.fp-del button:hover { color: #e06060; background: rgba(255, 80, 80, 0.1); }
 .flight-plan-sub {
   font-size: 13px;
   font-weight: 600;
@@ -877,6 +969,121 @@ html, body {
 }
 .modal-close-x:hover { background: #443f3f; color: #fff; }
 
+.modal-pin {
+  position: absolute;
+  top: 6px;
+  inset-inline-end: 38px;
+  width: 28px;
+  height: 28px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+  color: #b9b3b3;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  z-index: 1;
+}
+.modal-pin:hover { background: #443f3f; color: #fff; }
+.modal-pin.active { color: #ffd966; }
+/* When pinned, lift the pin button above the box so it never overlaps
+   table content — the box is read-only and may shrink very small. */
+.modal.pinned .modal-pin {
+  top: -22px;
+  inset-inline-end: 0;
+  width: 22px;
+  height: 22px;
+  font-size: 13px;
+  background: rgba(20, 18, 18, 0.85);
+}
+.modal.pinned { cursor: move; }
+.modal.pinned input { cursor: text; }
+
+.resize-handle {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  z-index: 1;
+}
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+}
+.resize-handle.corner-se { bottom: 0; right: 0; cursor: nwse-resize; }
+.resize-handle.corner-se::after { bottom: 2px; right: 2px; border-right: 2px solid #888; border-bottom: 2px solid #888; }
+.resize-handle.corner-sw { bottom: 0; left: 0; cursor: nesw-resize; }
+.resize-handle.corner-sw::after { bottom: 2px; left: 2px; border-left: 2px solid #888; border-bottom: 2px solid #888; }
+.resize-handle.corner-ne { top: 0; right: 0; cursor: nesw-resize; }
+.resize-handle.corner-ne::after { top: 2px; right: 2px; border-right: 2px solid #888; border-top: 2px solid #888; }
+.resize-handle.corner-nw { top: 0; left: 0; cursor: nwse-resize; }
+.resize-handle.corner-nw::after { top: 2px; left: 2px; border-left: 2px solid #888; border-top: 2px solid #888; }
+
+/* Per-session wireframe placeholder shown by the Export PNG dialog's "Add
+   plan to map" button. Marks where drawFlightPlanTable() should render on
+   the PNG; the placeholder itself is a plain DOM element and is NOT drawn
+   into the export canvas. */
+.plan-placeholder {
+  position: fixed;
+  z-index: 600;
+  background: rgba(42, 38, 38, 0.85);
+  border: 1px dashed #ffd966;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  cursor: move;
+  user-select: none;
+  overflow: hidden;
+}
+.plan-placeholder-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  background: rgba(255, 217, 102, 0.15);
+  border-bottom: 1px dashed rgba(255, 217, 102, 0.5);
+  flex: 0 0 auto;
+}
+.plan-placeholder-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #ffd966;
+  text-transform: uppercase;
+}
+.plan-placeholder-close {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: #e8e8e8;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.plan-placeholder-close:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+.plan-placeholder-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  padding: 6px 8px;
+  gap: 4px;
+  min-height: 0;
+}
+.plan-placeholder-bar {
+  flex: 1 1 0;
+  min-height: 4px;
+  max-height: 14px;
+  background: rgba(200, 200, 200, 0.45);
+  border-radius: 2px;
+}
+
 /* Floating search overlay — Ctrl/Cmd-F shows this top-center panel so the
  * user can find a nav-waypoint without expanding the Build section. */
 #search-overlay {
@@ -970,3 +1177,12 @@ html, body {
   50% { opacity: 0.3; }
 }
 .blink-warn { animation: blink-warn 1.2s ease-in-out infinite; }
+
+/* Flight-plan placement picker (export modal). One button per option;
+   the selected one highlights in the yellow accent. */
+.modal .modal-btns + div button.active,
+.modal button.active[type="button"] {
+  background: #ffd966;
+  color: #231F20;
+  border-color: #ffd966;
+}

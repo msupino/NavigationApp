@@ -278,4 +278,66 @@ test.describe('Export PNG options modal', () => {
     const download = await dl;
     expect(download.suggestedFilename()).toMatch(/^navigation-.+\.png$/);
   });
+
+  test('Plan placement: corner pick puts a placeholder near the chosen corner', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
+        { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+      ];
+      syncLegs(); draw();
+    });
+    await page.locator('#print').click();
+    await page.locator('.modal-back').waitFor();
+    // Click the TL placement button (the buttons live in the placement
+    // row after the page-warning).
+    const placeBtn = page.locator('.modal button').filter({ hasText: /TL/ });
+    await placeBtn.click();
+    // A placeholder element shows up on the page.
+    const placeholder = page.locator('.plan-placeholder');
+    await expect(placeholder).toBeVisible();
+    // TL → small offsets from origin.
+    const box = await placeholder.boundingBox();
+    expect(box).not.toBeNull();
+    if (box) {
+      expect(box.x).toBeLessThan(200);
+      expect(box.y).toBeLessThan(200);
+    }
+  });
+
+  test('Plan placement: None removes any existing placeholder', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
+        { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+      ];
+      syncLegs(); draw();
+    });
+    await page.locator('#print').click();
+    await page.locator('.modal-back').waitFor();
+    await page.locator('.modal button').filter({ hasText: /BR/ }).click();
+    await expect(page.locator('.plan-placeholder')).toBeVisible();
+    await page.locator('.modal button').filter({ hasText: /None/ }).click();
+    await expect(page.locator('.plan-placeholder')).toHaveCount(0);
+  });
+
+  test('Export with a placement still produces a PNG', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
+        { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+      ];
+      syncLegs(); draw();
+    });
+    await page.locator('#print').click();
+    await page.locator('.modal-back').waitFor();
+    await page.locator('.modal button').filter({ hasText: /TL/ }).click();
+    const dl = page.waitForEvent('download', { timeout: 30000 });
+    await page.locator('.modal .modal-btns button').first().click();
+    const download = await dl;
+    expect(download.suggestedFilename()).toMatch(/^navigation-.+\.png$/);
+  });
 });

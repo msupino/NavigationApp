@@ -36,33 +36,19 @@ async function openFlightPlan(page) {
 }
 
 // Read (legFuel of row 0, totalFuel from tfoot) from the flight table.
-// Find the fuel column by matching its header text ("Fuel (gal)" or "דלק (גאל)").
 async function readFuelCells(page) {
   return page.evaluate(() => {
     const table = document.querySelector('.flight-table');
     if (!table) return { legFuel: NaN, totalFuel: NaN };
-    const headers = table.querySelectorAll('thead th');
-    let fuelCol = -1;
-    for (let i = 0; i < headers.length; i++) {
-      if (/Fuel|דלק/.test(headers[i].textContent)) { fuelCol = i; break; }
-    }
-    if (fuelCol < 0) return { legFuel: NaN, totalFuel: NaN };
     const legRow   = table.querySelector('tbody tr:first-child');
     const totalRow = table.querySelector('tfoot tr:first-child');
-    function cellAt(row, col) {
+    function lastCell(row) {
       if (!row) return NaN;
       const cells = row.querySelectorAll('td');
-      // tfoot first td has colspan=4, so visual col maps differently.
-      // Walk cells accumulating colspan until we reach the visual column.
-      let vis = 0;
-      for (const c of cells) {
-        const cs = c.colSpan || 1;
-        if (vis <= col && col < vis + cs) return parseFloat(c.textContent);
-        vis += cs;
-      }
-      return NaN;
+      const last = cells[cells.length - 1];
+      return last ? parseFloat(last.textContent) : NaN;
     }
-    return { legFuel: cellAt(legRow, fuelCol), totalFuel: cellAt(totalRow, fuelCol) };
+    return { legFuel: lastCell(legRow), totalFuel: lastCell(totalRow) };
   });
 }
 
@@ -99,24 +85,10 @@ test.describe('Fuel/endurance flight plan modal', () => {
     await page.locator('#aircraft-gph').dispatchEvent('input');
 
     const totFuel = await page.evaluate(() => {
-      const table = document.querySelector('.flight-table');
-      if (!table) return null;
-      const headers = table.querySelectorAll('thead th');
-      let fuelCol = -1;
-      for (let i = 0; i < headers.length; i++) {
-        if (/Fuel|דלק/.test(headers[i].textContent)) { fuelCol = i; break; }
-      }
-      if (fuelCol < 0) return null;
-      const totalRow = table.querySelector('tfoot tr:first-child');
+      const totalRow = document.querySelector('.flight-table tfoot tr:first-child');
       if (!totalRow) return null;
       const cells = totalRow.querySelectorAll('td');
-      let vis = 0;
-      for (const c of cells) {
-        const cs = c.colSpan || 1;
-        if (vis <= fuelCol && fuelCol < vis + cs) return c.textContent;
-        vis += cs;
-      }
-      return null;
+      return cells[cells.length - 1] ? cells[cells.length - 1].textContent : null;
     });
     expect(totFuel).toBe('--');
   });

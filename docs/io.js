@@ -520,13 +520,21 @@ function showFlightPlan() {
   const headers = S.fpHeaders;
   const thead = document.createElement('thead');
   const trH = document.createElement('tr');
+  const fpThCells = [];
   for (const h of headers) {
     const th = document.createElement('th');
     th.textContent = h;
     trH.appendChild(th);
+    fpThCells.push(th);
   }
   thead.appendChild(trH);
   table.appendChild(thead);
+
+  function swapHeaders(pinned) {
+    var hdrs = pinned ? S.fpHeadersShort : S.fpHeaders;
+    for (let i = 0; i < fpThCells.length; i++) fpThCells[i].textContent = hdrs[i];
+    for (let i = 0; i < rfpThCells.length; i++) rfpThCells[i].textContent = hdrs[i];
+  }
 
   const tbody = document.createElement('tbody');
   // From / To cells are editable — each waypoint may appear in two rows,
@@ -616,29 +624,6 @@ function showFlightPlan() {
     const fuelCell = planCell('');
     fuelCells[i] = fuelCell;
     tr.appendChild(fuelCell);
-    // Delete-leg button — removes the "To" waypoint and this leg, then
-    // reconnects the route. The refreshFlightPlan callback detects the
-    // leg-count change and rebuilds the modal.
-    (function (idx) {
-      const delTd = document.createElement('td');
-      delTd.className = 'fp-del';
-      const delBtn = document.createElement('button');
-      delBtn.type = 'button';
-      delBtn.textContent = S.fpDel || '✕';
-      delBtn.title = S.fpDelTitle || 'Delete leg';
-      delBtn.onclick = function () {
-        if (state.waypoints.length < 2) return;
-        state.waypoints.splice(idx + 1, 1);
-        state.legs.splice(idx, 1);
-        syncLegs();
-        state.selected = null;
-        showInspector();
-        draw();
-        if (refreshFlightPlan) refreshFlightPlan();
-      };
-      delTd.appendChild(delBtn);
-      tr.appendChild(delTd);
-    })(i);
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
@@ -657,7 +642,6 @@ function showFlightPlan() {
   trF.appendChild(totTimeCell);
   totFuelCell = planCell('');
   trF.appendChild(totFuelCell);
-  trF.appendChild(planCell(''));        // Delete column (empty)
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
 
@@ -708,6 +692,7 @@ function showFlightPlan() {
 
   // --- return-route table (when showReturn is on) --------------------
   let retRefresh = null;
+  var rfpThCells = [];
   if (window.showReturn) {
     const sub = document.createElement('div');
     sub.className = 'flight-plan-sub';
@@ -722,6 +707,7 @@ function showFlightPlan() {
       const th = document.createElement('th');
       th.textContent = h;
       rtrH.appendChild(th);
+      rfpThCells.push(th);
     }
     rthead.appendChild(rtrH);
     rtable.appendChild(rthead);
@@ -800,7 +786,6 @@ function showFlightPlan() {
     rtrF.appendChild(rTotTimeCell);
     rTotFuelCell = planCell('');
     rtrF.appendChild(rTotFuelCell);
-    rtrF.appendChild(planCell(''));        // Delete column (empty)
     rtfoot.appendChild(rtrF);
     rtable.appendChild(rtfoot);
 
@@ -861,6 +846,16 @@ function showFlightPlan() {
   btns.appendChild(printBtn);
   box.appendChild(btns);
   addModalCloseX(box, closeFlightPlan);
+
+  // Pin-to-map UX retired (PR #338). Plan placement is now chosen from
+  // the Export PNG modal's 'Flight plan placement' row. The flight-plan
+  // modal stays a plain editor with no pin / drag / resize hooks.
+  // Clean stale localStorage from older pin-mode versions.
+  try {
+    localStorage.removeItem('navaid.planPin');
+    localStorage.removeItem('navaid.planW');
+    localStorage.removeItem('navaid.planH');
+  } catch (e) { /* storage unavailable */ }
 
   back.appendChild(box);
   // Close via the Close button or Escape (#86).
@@ -946,6 +941,224 @@ function chooseOrientation(size, onPick) {
 function fileStamp() {
   return new Date().toISOString().slice(0, 19)
     .replace(/[-:]/g, '').replace('T', '-');
+}
+
+// Per-session draggable / resizable wireframe placeholder that marks where
+// the flight-plan table should be drawn into a PNG export. Lives alongside
+// the legacy "pin plan to map" feature; the placeholder is in-memory only
+// (no localStorage) and is recreated each time the user requests it from
+// the Export PNG dialog. When present, exportPNG() uses the placeholder's
+// viewport rect instead of the pinned-plan rect.
+var planPlaceholderEl = null;
+
+function planPlaceholderActive() {
+  return !!(planPlaceholderEl && planPlaceholderEl.isConnected);
+}
+
+function removePlanPlaceholder() {
+  if (planPlaceholderEl && planPlaceholderEl.parentNode) {
+    planPlaceholderEl.parentNode.removeChild(planPlaceholderEl);
+  }
+  planPlaceholderEl = null;
+}
+
+// Compute placeholder rect (px, screen coords) for a placement choice:
+//   'tl' | 'tr' | 'bl' | 'br' — corner of the page frame (or viewport
+//   when no A3/A4 frame is set). 'custom' or undefined → default centre.
+// Box is sized ~28 % of the host rect's width, ~25 % of its height,
+// clamped to a minimum that's still readable when rendered.
+function placeholderRectForPlacement(placement) {
+  // Host = page frame if present, else the visible viewport.
+  var host = pageFrameRect();
+  if (!host) host = { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
+  var w = Math.max(180, Math.round(host.w * 0.28));
+  var h = Math.max(110, Math.round(host.h * 0.25));
+  var margin = 12;
+  var left, top;
+  switch (placement) {
+    case 'tl': left = host.x + margin;             top = host.y + margin; break;
+    case 'tr': left = host.x + host.w - w - margin; top = host.y + margin; break;
+    case 'bl': left = host.x + margin;             top = host.y + host.h - h - margin; break;
+    case 'br': left = host.x + host.w - w - margin; top = host.y + host.h - h - margin; break;
+    default:
+      left = host.x + (host.w - w) / 2;
+      top  = host.y + (host.h - h) / 2;
+  }
+  // Clamp to viewport so corners outside the visible map area still land
+  // somewhere reachable.
+  left = Math.max(0, Math.min(window.innerWidth - w, left));
+  top  = Math.max(0, Math.min(window.innerHeight - h, top));
+  return { left: left, top: top, w: w, h: h };
+}
+
+function createPlanPlaceholder(placement) {
+  removePlanPlaceholder();
+  var el = document.createElement('div');
+  el.className = 'plan-placeholder';
+  var r = placeholderRectForPlacement(placement);
+  el.style.left = r.left + 'px';
+  el.style.top = r.top + 'px';
+  el.style.width = r.w + 'px';
+  el.style.height = r.h + 'px';
+
+  // Header strip: "PLAN" label on the left, × close on the right.
+  var hdr = document.createElement('div');
+  hdr.className = 'plan-placeholder-hdr';
+  var lbl = document.createElement('span');
+  lbl.className = 'plan-placeholder-label';
+  lbl.textContent = (window.S && S.planPlaceholderLabel) || 'PLAN';
+  hdr.appendChild(lbl);
+  var closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'plan-placeholder-close';
+  closeBtn.title = (window.S && S.removePlanFromMap) || 'Remove';
+  closeBtn.setAttribute('aria-label', closeBtn.title);
+  closeBtn.textContent = '\u00D7';
+  closeBtn.onclick = function (e) {
+    e.stopPropagation();
+    removePlanPlaceholder();
+  };
+  hdr.appendChild(closeBtn);
+  el.appendChild(hdr);
+
+  // Wireframe rows — grey bars on a card background. Pure visual mass; no
+  // real data, no headers, no row text. Number of bars (9) ≈ a typical
+  // flight-plan with a header + 7 legs + a total row.
+  var body = document.createElement('div');
+  body.className = 'plan-placeholder-body';
+  for (var i = 0; i < 9; i++) {
+    var bar = document.createElement('div');
+    bar.className = 'plan-placeholder-bar';
+    body.appendChild(bar);
+  }
+  el.appendChild(body);
+
+  // Drag — anywhere on the element except the close button and the resize
+  // handles. Same clamp-to-viewport pattern the pin feature uses.
+  var dragging = false, dX = 0, dY = 0, dL = 0, dT = 0;
+  function dragStart(cx, cy) {
+    var r = el.getBoundingClientRect();
+    dragging = true;
+    dX = cx; dY = cy; dL = r.left; dT = r.top;
+  }
+  function dragMove(cx, cy) {
+    if (!dragging) return;
+    var nl = dL + (cx - dX);
+    var nt = dT + (cy - dY);
+    nl = Math.max(0, Math.min(window.innerWidth - el.offsetWidth, nl));
+    nt = Math.max(0, Math.min(window.innerHeight - el.offsetHeight, nt));
+    el.style.left = nl + 'px';
+    el.style.top = nt + 'px';
+  }
+  function dragEnd() { dragging = false; }
+  el.addEventListener('mousedown', function (e) {
+    var t = e.target;
+    if (t.closest('.plan-placeholder-close')) return;
+    if (t.closest('.resize-handle')) return;
+    e.preventDefault();
+    dragStart(e.clientX, e.clientY);
+    var onMove = function (ev) { dragMove(ev.clientX, ev.clientY); };
+    var onUp = function () {
+      dragEnd();
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  });
+  el.addEventListener('touchstart', function (e) {
+    if (e.touches.length !== 1) return;
+    var t = e.target;
+    if (t.closest('.plan-placeholder-close')) return;
+    if (t.closest('.resize-handle')) return;
+    e.preventDefault();
+    dragStart(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
+  var onTouchMove = function (e) {
+    if (!dragging || e.touches.length !== 1) return;
+    e.preventDefault();
+    dragMove(e.touches[0].clientX, e.touches[0].clientY);
+  };
+  window.addEventListener('touchmove', onTouchMove, { passive: false });
+  window.addEventListener('touchend', dragEnd);
+  window.addEventListener('touchcancel', dragEnd);
+
+  // Four-corner resize handles — same .resize-handle / .corner-* classes the
+  // pinned-plan box uses, so the existing CSS styles them automatically.
+  function makeHandle(corner) {
+    var h = document.createElement('div');
+    h.className = 'resize-handle corner-' + corner;
+    el.appendChild(h);
+    var rx = 0, ry = 0, rw = 0, rh = 0, rl = 0, rt = 0, rDrag = false;
+    function rStart(cx, cy) {
+      var r = el.getBoundingClientRect();
+      rx = cx; ry = cy; rw = r.width; rh = r.height; rl = r.left; rt = r.top;
+      rDrag = true;
+    }
+    function rMove(cx, cy) {
+      if (!rDrag) return;
+      var dx = cx - rx, dy = cy - ry;
+      var nl = rl, nt = rt, nw = rw, nh = rh;
+      if (corner.indexOf('e') !== -1) nw = Math.max(80, rw + dx);
+      if (corner.indexOf('w') !== -1) { nw = Math.max(80, rw - dx); nl = rl + (rw - nw); }
+      if (corner.indexOf('s') !== -1) nh = Math.max(60, rh + dy);
+      if (corner.indexOf('n') !== -1) { nh = Math.max(60, rh - dy); nt = rt + (rh - nh); }
+      nl = Math.max(0, Math.min(window.innerWidth - nw, nl));
+      nt = Math.max(0, Math.min(window.innerHeight - nh, nt));
+      el.style.left = nl + 'px';
+      el.style.top = nt + 'px';
+      el.style.width = nw + 'px';
+      el.style.height = nh + 'px';
+    }
+    function rEnd() { rDrag = false; }
+    h.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      rStart(e.clientX, e.clientY);
+      var onMove = function (ev) { rMove(ev.clientX, ev.clientY); };
+      var onUp = function () {
+        rEnd();
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+    h.addEventListener('touchstart', function (e) {
+      if (e.touches.length !== 1) return;
+      e.preventDefault();
+      e.stopPropagation();
+      rStart(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
+    var rTM = function (e) {
+      if (!rDrag || e.touches.length !== 1) return;
+      e.preventDefault();
+      rMove(e.touches[0].clientX, e.touches[0].clientY);
+    };
+    window.addEventListener('touchmove', rTM, { passive: false });
+    window.addEventListener('touchend', rEnd);
+    window.addEventListener('touchcancel', rEnd);
+  }
+  makeHandle('se');
+  makeHandle('sw');
+  makeHandle('ne');
+  makeHandle('nw');
+
+  document.body.appendChild(el);
+  planPlaceholderEl = el;
+  return el;
+}
+
+function togglePlanPlaceholder() {
+  if (planPlaceholderActive()) { removePlanPlaceholder(); return false; }
+  createPlanPlaceholder();
+  return true;
+}
+
+// Set / move the placeholder to a named placement. Pass null to remove.
+function setPlanPlacement(placement) {
+  if (!placement) { removePlanPlaceholder(); return; }
+  createPlanPlaceholder(placement);
 }
 
 // Show a pre-export modal so the user can decide which overlays and base
@@ -1079,6 +1292,54 @@ function showExportModal() {
   }
   body.appendChild(pageWarn);
 
+  // Flight-plan placement on the export. One row, 6 options:
+  //   None / TL / TR / BL / BR / Custom.
+  // None removes any existing placeholder; corner picks place a
+  // wireframe rectangle in that corner of the page frame (or the
+  // viewport if no A3/A4 frame is set); Custom drops the box at the
+  // centre and the user can drag / resize it.
+  const placeholderRow = document.createElement('div');
+  placeholderRow.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding-top:6px;margin-top:2px;border-top:1px solid #4a4646';
+  const placeholderLbl = document.createElement('div');
+  placeholderLbl.style.cssText = 'font-size:12px;color:#b9b3b3';
+  placeholderLbl.textContent = (S.planPlacementLabel || 'Flight plan placement:');
+  placeholderRow.appendChild(placeholderLbl);
+  const placeholderBtns = document.createElement('div');
+  placeholderBtns.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap';
+  const PLACEMENTS = [
+    { key: 'none',   label: S.planPlacementNone   || 'None' },
+    { key: 'tl',     label: S.planPlacementTL     || '↖ TL' },
+    { key: 'tr',     label: S.planPlacementTR     || '↗ TR' },
+    { key: 'bl',     label: S.planPlacementBL     || '↙ BL' },
+    { key: 'br',     label: S.planPlacementBR     || '↘ BR' },
+    { key: 'custom', label: S.planPlacementCustom || 'Custom…' },
+  ];
+  let currentPlacement = 'none';
+  const placementBtnEls = {};
+  function syncPlacementBtns() {
+    for (const p of PLACEMENTS) {
+      placementBtnEls[p.key].classList.toggle('active', p.key === currentPlacement);
+    }
+  }
+  for (const p of PLACEMENTS) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = p.label;
+    btn.style.cssText = 'font:inherit;font-size:12px;padding:5px 9px;background:#3a3636;color:#e8e8e8;border:1px solid #4a4646;border-radius:4px;cursor:pointer';
+    btn.onclick = function () {
+      currentPlacement = p.key;
+      if (p.key === 'none') removePlanPlaceholder();
+      else if (p.key === 'custom') createPlanPlaceholder();   // centred + draggable
+      else setPlanPlacement(p.key);
+      syncPlacementBtns();
+    };
+    placementBtnEls[p.key] = btn;
+    placeholderBtns.appendChild(btn);
+  }
+  syncPlacementBtns();
+  placeholderRow.appendChild(placeholderBtns);
+  body.appendChild(placeholderRow);
+
   box.appendChild(body);
 
   // Save original state (before applying defaults) so Cancel can restore.
@@ -1183,6 +1444,141 @@ function showExportModal() {
   back.onclick = e => { if (e.target === back) close(); };
   document.body.appendChild(back);
   document.addEventListener('keydown', onEsc);
+}
+
+// Draw the flight-plan table on an export canvas at the given position and
+// size. Called from exportPNG() when the flight plan is pinned to the map.
+// `ctx` is the output-canvas 2d context at identity transform; x/y/w/h are
+// output-canvas pixels.
+function drawFlightPlanTable(ctx, x, y, w, h) {
+  const legs = state.legs || [];
+  const wpts = state.waypoints || [];
+  if (!legs.length || wpts.length < 2) return;
+  const ac = aircraft;
+  const taxiFuel = ac && ac.taxiGal && isAirport(wpts[0]) ? ac.taxiGal : 0;
+  // Compute rows.
+  const rows = [];
+  let totDist = 0, totTime = 0, totFuel = 0;
+  for (let i = 0; i < legs.length; i++) {
+    const A = wpts[i], B = wpts[i + 1];
+    if (!A || !B) continue;
+    const { dist, brg } = geo(A, B);
+    const hdg = toMagnetic(brg);
+    const dur = legs[i].flightSpeed > 0 ? dist / legs[i].flightSpeed : 0;
+    let fuel = ac ? dur * ac.gph : 0;
+    if (i === 0 && taxiFuel) fuel += taxiFuel;
+    totDist += dist;
+    totTime += dur;
+    totFuel += fuel;
+    const fLabel = ac ? fuel.toFixed(1) + (i === 0 && taxiFuel ? ' *' : '') : '--';
+    rows.push({ num: i + 1, from: navName((A.name || '').trim()) || S.wpPrefix + (i + 1),
+      to: navName((B.name || '').trim()) || S.wpPrefix + (i + 2),
+      hdg: pad3(hdg) + '\u00B0M', dist: dist.toFixed(1),
+      speed: String(legs[i].flightSpeed), alt: String(legs[i].inboundAltitude),
+      time: dur > 0 ? toHMS(dur) : '--', fuel: fLabel });
+  }
+  if (!rows.length) return;
+  // Always use short headers on the printed plan — saves horizontal
+  // space, matches the compact on-map placeholder size.
+  const headers = S.fpHeadersShort;
+  const numCols = headers.length;
+  const numRows = rows.length + 2;        // header + data + total
+  const rowH = h / numRows;
+  const fontSize = Math.min(rowH * 0.55, 13);
+  const padX = 5;
+  // Text alignment per column.
+  const aligns = ['center', 'left', 'left', 'center', 'right', 'right', 'right', 'center', 'right'];
+  ctx.save();
+  ctx.font = fontSize + 'px sans-serif';
+  // Pre-compute pixel column widths from measured content (header in bold, all
+  // data rows, total values). Each column is content + 2*padX, so adjacent
+  // cells keep at least ~2*padX (~10 px) of breathing room. This replaces the
+  // old fixed fractions which left too much empty space in compact rows.
+  var totVals = { 4: totDist.toFixed(1), 7: totTime > 0 ? toHMS(totTime) : '--', 8: ac ? totFuel.toFixed(1) : '--' };
+  const colW = new Array(numCols).fill(0);
+  ctx.font = 'bold ' + fontSize + 'px sans-serif';
+  for (let mc = 0; mc < numCols; mc++) {
+    colW[mc] = Math.max(colW[mc], ctx.measureText(String(headers[mc])).width);
+    if (totVals[mc] !== undefined) {
+      colW[mc] = Math.max(colW[mc], ctx.measureText(String(totVals[mc])).width);
+    }
+  }
+  ctx.font = fontSize + 'px sans-serif';
+  for (let mr = 0; mr < rows.length; mr++) {
+    const rd = rows[mr];
+    const mvals = [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel];
+    for (let mc = 0; mc < numCols; mc++) {
+      colW[mc] = Math.max(colW[mc], ctx.measureText(String(mvals[mc])).width);
+    }
+  }
+  for (let mc = 0; mc < numCols; mc++) colW[mc] = Math.ceil(colW[mc] + 2 * padX);
+  // x-offset for column `col` from `x`.
+  const colX = new Array(numCols + 1).fill(0);
+  for (let mc = 0; mc < numCols; mc++) colX[mc + 1] = colX[mc] + colW[mc];
+  const totalW = colX[numCols];
+  // Background.
+  ctx.fillStyle = 'rgba(42,38,38,0.92)';
+  ctx.fillRect(x, y, totalW, h);
+  // Border.
+  ctx.strokeStyle = '#4a4646';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, totalW, h);
+  // Helper: draw one cell.
+  function cell(row, col, text, bold, bg) {
+    const cx = x + colX[col];
+    const cy = y + row * rowH;
+    const cw = colW[col];
+    if (bg) { ctx.fillStyle = bg; ctx.fillRect(cx, cy, cw, rowH); }
+    // Right/bottom grid lines (avoid overdraw on last column/row).
+    ctx.strokeStyle = '#4a4646';
+    ctx.lineWidth = 0.5;
+    if (col < numCols - 1) { ctx.beginPath(); ctx.moveTo(cx + cw, cy); ctx.lineTo(cx + cw, cy + rowH); ctx.stroke(); }
+    if (row < numRows - 1) { ctx.beginPath(); ctx.moveTo(cx, cy + rowH); ctx.lineTo(cx + cw, cy + rowH); ctx.stroke(); }
+    // Text.
+    ctx.fillStyle = bold ? '#e8e8e8' : '#d0d0d0';
+    ctx.font = (bold ? 'bold ' : '') + fontSize + 'px sans-serif';
+    ctx.textBaseline = 'middle';
+    var a = aligns[col];
+    ctx.textAlign = a;
+    var tx = a === 'right' ? cx + cw - padX : a === 'center' ? cx + cw / 2 : cx + padX;
+    ctx.fillText(text, tx, cy + rowH / 2);
+  }
+  // Header.
+  for (var c = 0; c < numCols; c++) cell(0, c, headers[c], true, '#3a3636');
+  // Data rows.
+  for (var r = 0; r < rows.length; r++) {
+    var rd = rows[r];
+    var vals = [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel];
+    for (var c2 = 0; c2 < numCols; c2++) {
+      cell(r + 1, c2, String(vals[c2]), false, r % 2 === 1 ? 'rgba(255,255,255,0.03)' : null);
+    }
+  }
+  // Total row: "Total" spans first 4 columns.
+  var tr = rows.length + 1;
+  var totalLabel = S.fpTotal;
+  var totX0 = x;
+  var totX1 = x + colX[4];
+  var totCY = y + tr * rowH;
+  ctx.fillStyle = '#333030';
+  ctx.fillRect(totX0, totCY, totX1 - totX0, rowH);
+  ctx.fillStyle = '#e8e8e8';
+  ctx.font = 'bold ' + fontSize + 'px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(totalLabel, totX0 + padX, totCY + rowH / 2);
+  // Grid lines for total-row cells.
+  for (var c3 = 0; c3 < numCols; c3++) {
+    var cx3 = x + colX[c3];
+    ctx.strokeStyle = '#4a4646';
+    ctx.lineWidth = 0.5;
+    if (c3 < numCols - 1) { ctx.beginPath(); ctx.moveTo(cx3 + colW[c3], totCY); ctx.lineTo(cx3 + colW[c3], totCY + rowH); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(cx3, totCY + rowH); ctx.lineTo(cx3 + colW[c3], totCY + rowH); ctx.stroke();
+  }
+  // Remaining total cells.
+  for (var c4 = 4; c4 < numCols; c4++) {
+    if (totVals[c4] !== undefined) cell(tr, c4, String(totVals[c4]), true, null);
+  }
+  ctx.restore();
 }
 
 // Save the framed map + route as a PNG, rendered at the highest practical
@@ -1402,6 +1798,28 @@ function exportPNG() {
       o.restore();
     } finally {
       octx = prevOctx;
+    }
+
+    // Flight-plan placement on the export. Priority:
+    //   1. The per-session "Add plan to map" placeholder (explicit user
+    //      intent for export placement; see createPlanPlaceholder).
+    //   2. The legacy pinned-plan rect (still honoured if no placeholder
+    //      is active, so the existing pin-to-map feature is unchanged).
+    var planRect = null;
+    if (typeof planPlaceholderActive === 'function' && planPlaceholderActive()) {
+      planRect = planPlaceholderEl.getBoundingClientRect();
+    } else if (localStorage.getItem('navaid.planPin') === '1') {
+      var fpBox = document.querySelector('.modal-back.flight-plan > .modal');
+      if (fpBox) planRect = fpBox.getBoundingClientRect();
+    }
+    if (planRect) {
+      var fpx = (planRect.left - fr.x) * s;
+      var fpy = (planRect.top - fr.y) * s;
+      var fpw = planRect.width * s;
+      var fph = planRect.height * s;
+      if (fpx + fpw > 0 && fpy + fph > 0 && fpx < W && fpy < H) {
+        drawFlightPlanTable(o, Math.max(0, fpx), Math.max(0, fpy), Math.min(fpw, W - fpx), Math.min(fph, H - fpy));
+      }
     }
 
     out.toBlob(b => {
