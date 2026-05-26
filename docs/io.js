@@ -854,7 +854,14 @@ function showFlightPlan() {
     pinBtn.title = planPinned ? S.fpUnpin : S.fpPin;
     printBtn.style.display = planPinned ? 'none' : '';
     try { localStorage.setItem(PLANPIN_KEY, planPinned ? '1' : '0'); } catch (e) {}
-    if (planPinned) applyPlanFontSize();
+    if (planPinned) {
+      applyPlanFontSize();
+    } else {
+      box.style.width = '';
+      box.style.height = '';
+      box.style.removeProperty('--fp-font-size');
+      try { localStorage.removeItem('navaid.planW'); localStorage.removeItem('navaid.planH'); } catch (e) {}
+    }
   };
   box.appendChild(pinBtn);
 
@@ -871,7 +878,7 @@ function showFlightPlan() {
     var avail = box.offsetHeight - titleH - acH - btnsH - 28;
     if (avail < 6) return 2;
     var rowH = avail / numRows;
-    return Math.max(2, Math.min(13, rowH - 2));
+    return Math.max(2, Math.min(13, rowH - 0.3));
   }
   function applyPlanFontSize() {
     if (!box.classList.contains('pinned')) return;
