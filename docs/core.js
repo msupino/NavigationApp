@@ -282,17 +282,17 @@ function saveAircraft() {
   try { localStorage.setItem('navaid.aircraft', JSON.stringify(aircraft)); } catch (e) {}
 }
 
-// Yellow text-background colour with the global opacity scale applied.
-const yellowFill = (a) => `rgba(255,246,170,${a * yellowAlpha})`;
+// Yellow text-background colour. yellowAlpha directly controls opacity (0–1).
+const yellowFill = (a) => `rgba(255,246,170,${yellowAlpha})`;
 
-// Tinted fill from any "#rrggbb" hex with `a` (× yellowAlpha) for the alpha.
+// Tinted fill from any "#rrggbb" hex — yellowAlpha controls the alpha.
 function tintFill(hex, a) {
   const h = (hex || '').replace('#', '');
   if (h.length !== 6) return yellowFill(a);
   const r = parseInt(h.slice(0, 2), 16);
   const g = parseInt(h.slice(2, 4), 16);
   const b = parseInt(h.slice(4, 6), 16);
-  return `rgba(${r},${g},${b},${a * yellowAlpha})`;
+  return `rgba(${r},${g},${b},${yellowAlpha})`;
 }
 
 const NOTE_DEFAULT_COLOR = '#fff6aa';   // matches the existing yellow fill

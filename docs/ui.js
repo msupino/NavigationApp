@@ -512,7 +512,7 @@ document.getElementById('wp-size').oninput = e => {
 const LEGARROW_KEY = 'navaid.legArrowSize';
 try {
   const v = parseFloat(localStorage.getItem(LEGARROW_KEY));
-  if (!isNaN(v)) window.legArrowSize =Math.max(0.3, Math.min(2, v));
+  if (!isNaN(v)) window.legArrowSize =Math.max(0.2, Math.min(2, v));
 } catch (e) { /* storage unavailable */ }
 document.getElementById('leg-arrow-size').value = legArrowSize;
 document.getElementById('leg-arrow-size').oninput = e => {
