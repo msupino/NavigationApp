@@ -245,9 +245,8 @@ function applyI18n() {
     tip.className = 'tip-icon';
     tip.innerHTML = '<svg viewBox="0 0 16 16" width="12" height="12"><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.4"/><text x="8" y="12" text-anchor="middle" font-size="11" fill="currentColor">i</text></svg>';
     tip.title = S[titleKey] || '';
-    tip.onmousedown = function (e) {
-      e.stopPropagation();  // prevent label activation / button click
-      e.preventDefault();   // prevent focus from shifting
+    tip.onclick = function (e) {
+      e.stopPropagation();
       const old = document.querySelector('.tip-popup');
       if (old) { old.remove(); return; }
       const p = document.createElement('div');
@@ -259,16 +258,20 @@ function applyI18n() {
       p.style.left = ir.left + 'px';
       p.style.top = (ir.bottom + 4) + 'px';
       document.body.appendChild(p);
-      setTimeout(() => document.addEventListener('mousedown', function rm() { p.remove(); document.removeEventListener('mousedown', rm); }), 0);
+      setTimeout(() => document.addEventListener('click', function rm() { p.remove(); document.removeEventListener('click', rm); }), 0);
     };
-    // Append tip at end of container so it's always at the end of the line.
-    // For buttons: append inside button text. For labels: append as last child
-    // (native label activation via click is prevented by e.stopPropagation()
-    // on the tip's mousedown, which fires before the click event).
+    // For buttons: append inside button (inline after text).
+    // For labels: wrap label + tip in a flex div so the tip is outside the
+    // label — native label activation can't be prevented by JS stopPropagation.
     if (el.tagName === 'BUTTON') {
       el.appendChild(tip);
     } else if (el.closest('.navtoggle')) {
-      el.closest('.navtoggle').appendChild(tip);
+      const label = el.closest('.navtoggle');
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;align-items:center';
+      label.parentNode.insertBefore(wrap, label);
+      wrap.appendChild(label);
+      wrap.appendChild(tip);
     } else {
       el.parentNode.insertBefore(tip, el.nextSibling);
     }
