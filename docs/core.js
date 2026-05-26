@@ -257,7 +257,14 @@ function applyI18n() {
       document.body.appendChild(p);
       setTimeout(() => document.addEventListener('click', function rm() { p.remove(); document.removeEventListener('click', rm); }), 0);
     };
-    el.parentNode.insertBefore(tip, el.nextSibling);
+    // Append tip at end of container so it's always at the end of the line.
+    if (el.tagName === 'BUTTON') {
+      el.appendChild(tip);
+    } else if (el.closest('.navtoggle')) {
+      el.closest('.navtoggle').appendChild(tip);
+    } else {
+      el.parentNode.insertBefore(tip, el.nextSibling);
+    }
   });
 }
 applyI18n();
