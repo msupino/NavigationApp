@@ -139,4 +139,45 @@ test.describe('Toolbar collapse', () => {
   });
 });
 
+test.describe('Tooltip icons (tip-icon)', () => {
+  test('tip-icon appears next to labels with tooltips', async ({ page }) => {
+    await boot(page);
+    const icons = page.locator('.tip-icon');
+    const count = await icons.count();
+    // Should be at least one per checkbox/button in the toolbar.
+    expect(count).toBeGreaterThan(5);
+  });
+
+  test('clicking tip-icon shows a popup with tooltip text', async ({ page }) => {
+    await boot(page);
+    const first = page.locator('.tip-icon').first();
+    await first.click();
+    const popup = page.locator('.tip-popup');
+    await expect(popup).toBeVisible();
+    const text = await popup.textContent();
+    expect(text.length).toBeGreaterThan(0);
+  });
+
+  test('tip-icon click does not toggle the parent checkbox', async ({ page }) => {
+    await boot(page);
+    // Find a label that has both a checkbox and a tip-icon.
+    const label = page.locator('.navtoggle').filter({ has: page.locator('.tip-icon') }).first();
+    const checkbox = label.locator('input[type="checkbox"]');
+    const before = await checkbox.isChecked();
+    await label.locator('.tip-icon').click();
+    expect(await checkbox.isChecked()).toBe(before);
+  });
+
+  test('clicking outside dismisses the popup', async ({ page }) => {
+    await boot(page);
+    const first = page.locator('.tip-icon').first();
+    await first.click();
+    const popup = page.locator('.tip-popup');
+    await expect(popup).toBeVisible();
+    // Click the map area to dismiss.
+    await page.locator('#map').click({ position: { x: 10, y: 10 } });
+    await expect(popup).toHaveCount(0);
+  });
+});
+
 
