@@ -467,13 +467,23 @@ try {
   const v = parseFloat(localStorage.getItem(ALPHA_KEY));
   if (!isNaN(v)) window.yellowAlpha =Math.max(0, Math.min(1, v));
 } catch (e) { /* storage unavailable */ }
-document.getElementById('yellow-alpha').value = Math.round(yellowAlpha * 100);
-document.getElementById('yellow-alpha').oninput = e => {
+function updateSliderVal(el, val) {
+  const span = document.getElementById(el.id + '-val');
+  if (span) span.textContent = val;
+}
+
+const YELLOW_EL = document.getElementById('yellow-alpha');
+YELLOW_EL.min = '0'; YELLOW_EL.max = '100'; YELLOW_EL.step = '5';
+YELLOW_EL.value = Math.round(yellowAlpha * 100);
+updateSliderVal(YELLOW_EL, YELLOW_EL.value + '%');
+YELLOW_EL.oninput = e => {
   window.yellowAlpha =parseFloat(e.target.value) / 100;
+  updateSliderVal(e.target, e.target.value + '%');
   try { localStorage.setItem(ALPHA_KEY, String(yellowAlpha)); }
   catch (err) { /* storage unavailable */ }
   draw();
 };
+
 const MAPOPACITY_KEY = 'navaid.mapOpacity';
 // `var` (not `let`) so writes from any module via window.mapOpacity reach
 // the same binding the export reads — same hazard documented for every
@@ -488,35 +498,50 @@ try {
   const v = parseFloat(localStorage.getItem(MAPOPACITY_KEY));
   if (!isNaN(v)) mapOpacity = Math.max(0.1, Math.min(1, v));
 } catch (e) { /* storage unavailable */ }
-document.getElementById('map-opacity').value = Math.round(mapOpacity * 100);
+const MAPOPACITY_EL = document.getElementById('map-opacity');
+MAPOPACITY_EL.min = '10'; MAPOPACITY_EL.max = '100'; MAPOPACITY_EL.step = '5';
+MAPOPACITY_EL.value = Math.round(mapOpacity * 100);
+updateSliderVal(MAPOPACITY_EL, MAPOPACITY_EL.value + '%');
 applyMapOpacity();
-document.getElementById('map-opacity').oninput = e => {
+MAPOPACITY_EL.oninput = e => {
   mapOpacity = parseFloat(e.target.value) / 100;
+  updateSliderVal(e.target, e.target.value + '%');
   applyMapOpacity();
   try { localStorage.setItem(MAPOPACITY_KEY, String(mapOpacity)); }
   catch (err) { /* storage unavailable */ }
 };
+
 const WPSIZE_KEY = 'navaid.wpSize';
+const WP_SIZE_MIN = 0.1, WP_SIZE_MAX = 2, WP_SIZE_STEP = 0.1;
 try {
   const v = parseFloat(localStorage.getItem(WPSIZE_KEY));
-  if (!isNaN(v)) window.wpSize =Math.max(0.6, Math.min(2, v));
+  if (!isNaN(v)) window.wpSize =Math.max(WP_SIZE_MIN, Math.min(WP_SIZE_MAX, v));
 } catch (e) { /* storage unavailable */ }
-document.getElementById('wp-size').value = wpSize;
-document.getElementById('wp-size').oninput = e => {
+const WP_EL = document.getElementById('wp-size');
+WP_EL.min = String(WP_SIZE_MIN); WP_EL.max = String(WP_SIZE_MAX); WP_EL.step = String(WP_SIZE_STEP);
+WP_EL.value = wpSize;
+updateSliderVal(WP_EL, parseFloat(wpSize).toFixed(2));
+WP_EL.oninput = e => {
   window.wpSize =parseFloat(e.target.value);
+  updateSliderVal(e.target, parseFloat(e.target.value).toFixed(2));
   try { localStorage.setItem(WPSIZE_KEY, String(wpSize)); }
   catch (err) { /* storage unavailable */ }
   draw();
 };
 
 const LEGARROW_KEY = 'navaid.legArrowSize';
+const LEGARROW_MIN = 1, LEGARROW_MAX = 3, LEGARROW_STEP = 0.1;
 try {
   const v = parseFloat(localStorage.getItem(LEGARROW_KEY));
-  if (!isNaN(v)) window.legArrowSize =Math.max(0.3, Math.min(2, v));
+  if (!isNaN(v)) window.legArrowSize =Math.max(LEGARROW_MIN, Math.min(LEGARROW_MAX, v));
 } catch (e) { /* storage unavailable */ }
-document.getElementById('leg-arrow-size').value = legArrowSize;
-document.getElementById('leg-arrow-size').oninput = e => {
+const LEGARROW_EL = document.getElementById('leg-arrow-size');
+LEGARROW_EL.min = String(LEGARROW_MIN); LEGARROW_EL.max = String(LEGARROW_MAX); LEGARROW_EL.step = String(LEGARROW_STEP);
+LEGARROW_EL.value = legArrowSize;
+updateSliderVal(LEGARROW_EL, parseFloat(legArrowSize).toFixed(2));
+LEGARROW_EL.oninput = e => {
   window.legArrowSize =parseFloat(e.target.value);
+  updateSliderVal(e.target, parseFloat(e.target.value).toFixed(2));
   try { localStorage.setItem(LEGARROW_KEY, String(legArrowSize)); }
   catch (err) { /* storage unavailable */ }
   draw();
