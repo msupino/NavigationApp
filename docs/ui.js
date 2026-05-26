@@ -499,7 +499,7 @@ document.getElementById('map-opacity').oninput = e => {
 const WPSIZE_KEY = 'navaid.wpSize';
 try {
   const v = parseFloat(localStorage.getItem(WPSIZE_KEY));
-  if (!isNaN(v)) window.wpSize =Math.max(0.5, Math.min(2, v));
+  if (!isNaN(v)) window.wpSize =Math.max(0.2, Math.min(2, v));
 } catch (e) { /* storage unavailable */ }
 document.getElementById('wp-size').value = wpSize;
 document.getElementById('wp-size').oninput = e => {
