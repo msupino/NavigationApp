@@ -35,8 +35,8 @@ test.describe('Export PNG options modal', () => {
     // 3 checkboxes: Nav WPs (off), Waypoint Names (on), Airfields (off).
     const cbs = page.locator('.modal input[type="checkbox"]');
     expect(await cbs.count()).toBe(3);
-    expect(await cbs.nth(0).isChecked()).toBe(false);  // Nav WPs
-    expect(await cbs.nth(1).isChecked()).toBe(true);   // Waypoint Names default on
+    expect(await cbs.nth(0).isChecked()).toBe(true);   // Waypoint Names default on
+    expect(await cbs.nth(1).isChecked()).toBe(false);  // Nav WPs
     expect(await cbs.nth(2).isChecked()).toBe(false);  // Airfields
     // Layer defaults to Navigation.
     const sel = page.locator('.modal select');
@@ -81,14 +81,13 @@ test.describe('Export PNG options modal', () => {
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
     const cbs = page.locator('.modal input[type="checkbox"]');
-    // Check "Print Navigation Waypoints" → showNavWP becomes true.
-    await cbs.nth(0).check();
+    // Check "Print Navigation Waypoints" (idx 1) → showNavWP becomes true.
+    await cbs.nth(1).check();
     expect(await page.evaluate(() => showNavWP)).toBe(true);
     // Uncheck → showNavWP back to false.
-    await cbs.nth(0).uncheck();
+    await cbs.nth(1).uncheck();
     expect(await page.evaluate(() => showNavWP)).toBe(false);
-    // Check "Print Airfields" (idx 2 after Waypoint Names was added at idx 1)
-    // → showAirfields becomes true.
+    // Check "Print Airfields" (idx 2) → showAirfields becomes true.
     await cbs.nth(2).check();
     expect(await page.evaluate(() => showAirfields)).toBe(true);
   });
@@ -99,8 +98,8 @@ test.describe('Export PNG options modal', () => {
     await page.evaluate(() => { showNavWP = true; showAirfields = true; draw(); });
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
-    // Modal hides them (default). Toggle waypoints on.
-    await page.locator('.modal input[type="checkbox"]').nth(0).check();
+    // Modal hides them (default). Toggle waypoints on (idx 1 = Nav WPs).
+    await page.locator('.modal input[type="checkbox"]').nth(1).check();
     expect(await page.evaluate(() => showNavWP)).toBe(true);
     // Cancel → restore original (both true).
     await page.locator('.modal .modal-cancel').click();
@@ -131,8 +130,8 @@ test.describe('Export PNG options modal', () => {
     await page.evaluate(() => { showNavWP = true; draw(); });
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
-    // Toggle waypoints off in the modal.
-    await page.locator('.modal input[type="checkbox"]').nth(0).uncheck();
+    // Toggle waypoints off in the modal (idx 1 = Nav WPs).
+    await page.locator('.modal input[type="checkbox"]').nth(1).uncheck();
     expect(await page.evaluate(() => showNavWP)).toBe(false);
     // Click ✕ close button.
     await page.locator('.modal-close-x').click();
@@ -173,11 +172,11 @@ test.describe('Export PNG options modal', () => {
     await page.locator('.modal-back').waitFor();
     // Toggle both checkboxes on, switch to CVFR.
     const cbs = page.locator('.modal input[type="checkbox"]');
-    await cbs.nth(0).check();
     await cbs.nth(1).check();
+    await cbs.nth(0).check();
     await page.locator('.modal select').selectOption('CVFR');
-    expect(await cbs.nth(0).isChecked()).toBe(true);
     expect(await cbs.nth(1).isChecked()).toBe(true);
+    expect(await cbs.nth(0).isChecked()).toBe(true);
     expect(await page.locator('.modal select').inputValue()).toBe('CVFR');
     // Click Export and verify download triggers.
     const dl = page.waitForEvent('download', { timeout: 30000 });
