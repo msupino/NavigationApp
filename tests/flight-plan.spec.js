@@ -395,4 +395,116 @@ test.describe('Flight plan', () => {
     const leftover = await page.evaluate(() => window.__touchCount);
     expect(leftover).toBe(0);
   });
+
+  test('delete-leg button exists on every forward row', async ({ page }) => {
+    await page.locator('#plan').click();
+    const modal = page.locator('.modal-back.flight-plan');
+    await expect(modal).toBeVisible();
+
+    const fwdRows = modal.locator('.flight-table').first().locator('tbody tr');
+    await expect(fwdRows).toHaveCount(10);
+    for (let i = 0; i < 10; i++) {
+      const delBtn = fwdRows.nth(i).locator('.fp-del button');
+      await expect(delBtn).toBeVisible();
+    }
+  });
+
+  test('delete middle leg (index 3) removes waypoint and reconnects', async ({ page }) => {
+    await page.locator('#plan').click();
+    const modal = page.locator('.modal-back.flight-plan');
+    await expect(modal).toBeVisible();
+
+    // Delete leg 3 (0-based) → removes waypoint 4 (SHARO), reconnects HADRA (idx 4→3 after splice)
+    const fwdRows = modal.locator('.flight-table').first().locator('tbody tr');
+    await fwdRows.nth(3).locator('.fp-del button').click();
+
+    // Modal rebuilds with 9 legs
+    await expect(fwdRows).toHaveCount(9);
+
+    // Leg 3 now connects SHARO(3) → FRDIS(4) (HADRA was removed)
+    const fromInp = fwdRows.nth(3).locator('td').nth(1).locator('input');
+    const toInp   = fwdRows.nth(3).locator('td').nth(2).locator('input');
+    await expect(fromInp).toHaveValue('SHARO');
+    await expect(toInp).toHaveValue('FRDIS');
+  });
+
+  test('delete first leg removes waypoint 1 and reconnects', async ({ page }) => {
+    await page.locator('#plan').click();
+    const modal = page.locator('.modal-back.flight-plan');
+    await expect(modal).toBeVisible();
+
+    const fwdRows = modal.locator('.flight-table').first().locator('tbody tr');
+    await fwdRows.nth(0).locator('.fp-del button').click();
+
+    await expect(fwdRows).toHaveCount(9);
+    // Now waypoint 0 was the first in the route — waypoint 1 (BAZRA) was removed.
+    // Leg 0 connects LLHZ (idx 0) → DEROR (old idx 2, now idx 1)
+    // Actually: delete leg 0 removes waypoint[1] = BAZRA.
+    // Leg 0 becomes LLHZ(0) → DEROR(1)
+    const fromInp = fwdRows.nth(0).locator('td').nth(1).locator('input');
+    const toInp   = fwdRows.nth(0).locator('td').nth(2).locator('input');
+    await expect(fromInp).toHaveValue('LLHZ');
+    await expect(toInp).toHaveValue('DEROR');
+  });
+
+  test('delete last leg removes final waypoint shortens route by 1', async ({ page }) => {
+    await page.locator('#plan').click();
+    const modal = page.locator('.modal-back.flight-plan');
+    await expect(modal).toBeVisible();
+
+    const fwdRows = modal.locator('.flight-table').first().locator('tbody tr');
+    await fwdRows.nth(9).locator('.fp-del button').click();
+
+    await expect(fwdRows).toHaveCount(9);
+    // Last leg connects GALIM → (removed LLHA). After delete:
+    // Leg 8: GALIM(8) → LLHA was at idx 9, removed. So now leg 8 is DAROM(7?) → GALIM(8?)
+    // Actually let me think. After delete leg 9:
+    // waypoints: [LLHZ, BAZRA, DEROR, SHARO, HADRA, FRDIS, BOREN, HOTRM, DAROM, GALIM]
+    // leg 8: GALIM → (removed LLHA), so leg 8 becomes DAROM → GALIM
+    const lastFrom = await fwdRows.nth(8).locator('td').nth(1).locator('input').inputValue();
+    const lastTo   = await fwdRows.nth(8).locator('td').nth(2).locator('input').inputValue();
+    expect(lastFrom).toBe('DAROM');
+    expect(lastTo).toBe('GALIM');
+  });
+
+  test('delete leg updates state correctly (waypoints + legs trimmed)', async ({ page }) => {
+    await page.locator('#plan').click();
+    const fwdRows = page.locator('.modal-back.flight-plan .flight-table').first().locator('tbody tr');
+    await fwdRows.nth(5).locator('.fp-del button').click();
+
+    const wpLen = await page.evaluate(() => state.waypoints.length);
+    const legLen = await page.evaluate(() => state.legs.length);
+    expect(wpLen).toBe(10);   // was 11, removed 1
+    expect(legLen).toBe(9);   // was 10, removed 1
+    expect(legLen).toBe(wpLen - 1);
+  });
+
+  test('delete-leg with return route: both tables rebuild correctly', async ({ page }) => {
+    await page.evaluate(() => { window.showReturn = true; });
+    await page.locator('#plan').click();
+    const modal = page.locator('.modal-back.flight-plan');
+    await expect(modal).toBeVisible();
+
+    const tables = modal.locator('.fp-scroll > .flight-table');
+    const fwdRows = tables.first().locator('tbody tr');
+    const retRows = tables.nth(1).locator('tbody tr');
+
+    // Delete middle leg
+    await fwdRows.nth(4).locator('.fp-del button').click();
+
+    await expect(fwdRows).toHaveCount(9);
+    await expect(retRows).toHaveCount(9);
+
+    // Return headings should still be reciprocal of forward
+    const fwdHdgs = await fwdRows.evaluateAll(rows =>
+      rows.map(r => parseInt((r.querySelectorAll('td')[3]?.textContent || '').replace('°M', ''), 10))
+    );
+    const retHdgs = await retRows.evaluateAll(rows =>
+      rows.map(r => parseInt((r.querySelectorAll('td')[3]?.textContent || '').replace('°M', ''), 10))
+    );
+    for (let i = 0; i < 9; i++) {
+      const ri = 8 - i;
+      expect(retHdgs[i]).toBe((fwdHdgs[ri] + 180) % 360);
+    }
+  });
 });

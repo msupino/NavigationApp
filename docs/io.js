@@ -616,6 +616,29 @@ function showFlightPlan() {
     const fuelCell = planCell('');
     fuelCells[i] = fuelCell;
     tr.appendChild(fuelCell);
+    // Delete-leg button — removes the "To" waypoint and this leg, then
+    // reconnects the route. The refreshFlightPlan callback detects the
+    // leg-count change and rebuilds the modal.
+    (function (idx) {
+      const delTd = document.createElement('td');
+      delTd.className = 'fp-del';
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.textContent = S.fpDel || '✕';
+      delBtn.title = S.fpDelTitle || 'Delete leg';
+      delBtn.onclick = function () {
+        if (state.waypoints.length < 2) return;
+        state.waypoints.splice(idx + 1, 1);
+        state.legs.splice(idx, 1);
+        syncLegs();
+        state.selected = null;
+        showInspector();
+        draw();
+        if (refreshFlightPlan) refreshFlightPlan();
+      };
+      delTd.appendChild(delBtn);
+      tr.appendChild(delTd);
+    })(i);
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
@@ -634,6 +657,7 @@ function showFlightPlan() {
   trF.appendChild(totTimeCell);
   totFuelCell = planCell('');
   trF.appendChild(totFuelCell);
+  trF.appendChild(planCell(''));        // Delete column (empty)
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
 
@@ -776,6 +800,7 @@ function showFlightPlan() {
     rtrF.appendChild(rTotTimeCell);
     rTotFuelCell = planCell('');
     rtrF.appendChild(rTotFuelCell);
+    rtrF.appendChild(planCell(''));        // Delete column (empty)
     rtfoot.appendChild(rtrF);
     rtable.appendChild(rtfoot);
 

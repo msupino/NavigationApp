@@ -45,6 +45,9 @@ both branches and assembles a single Pages site:
   `'1.0'` to `'1.0-<short-sha>'`, so the toolbar identifies the exact
   deployed commit without manually increasing the source version number.
 - **Always run `node --check docs/app.js`** before committing.
+- **Every enhancement, bug fix, or regression must include tests.** Add new
+  test cases to the appropriate `tests/*.spec.js` file. If no file covers
+  the area, create one.
 - If a push to `dev` / `main` doesn't trigger `Deploy` / `CI` within
   ~30 s (admin bypass can swallow the event), dispatch manually:
   `gh workflow run Deploy --ref dev` or `gh workflow run CI --ref dev`.
@@ -54,7 +57,7 @@ both branches and assembles a single Pages site:
   push to `main` when the change is reviewed and ready for
   production.
 - **Never push directly to `main`.** Every change must go through a
-  feature branch and pull request — even one-line fixes.
+  feature branch and pull request targeting `dev` — even one-line fixes.
 - Persist UI state to `localStorage` only via existing `navaid.*`
   keys (`navaid.route`, `navaid.layer`, `navaid.toolbarPos`,
   `navaid.yellowAlpha`, `navaid.wpSize`, `navaid.magVar`,
