@@ -241,7 +241,7 @@ jobs:
     if: github.event_name == 'pull_request'
     needs: deploy
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with:
@@ -266,10 +266,10 @@ jobs:
               echo "Preview ready at $URL"
               break
             fi
-            echo "  waiting for preview (HTTP $HTTP) ... ($i/30)"
-            sleep 10
+            echo "  waiting (HTTP $HTTP) ... ($i/30)"
+            sleep 5
           done
-          MAX=10
+          MAX=5
           ATTEMPT=0
           while [ $ATTEMPT -lt $MAX ]; do
             ATTEMPT=$((ATTEMPT + 1))
@@ -278,7 +278,7 @@ jobs:
               echo "All e2e tests passed!"
               exit 0
             fi
-            echo "Tests failed on attempt $ATTEMPT — retrying in 10s..."
-            sleep 10
+            echo "Failed — retrying in 5s..."
+            sleep 5
           done
           exit 1
