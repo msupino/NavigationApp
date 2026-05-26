@@ -260,7 +260,7 @@ var airfields = null;       // same null/[]/populated convention as navWP —
 var showDrift = true;       // 10-degree drift reference lines
 var showWpNames = true;     // draw waypoint names (off = empty circle)
 var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
-var yellowAlpha = 1;        // global multiplier for yellow label backgrounds
+var yellowAlpha = 0.8;    // global multiplier for yellow label backgrounds (default 80%)
 var wpSize = 1;             // waypoint name / number text size scale
 var legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
 let pageSize = null;        // null | 'A3' | 'A4'
