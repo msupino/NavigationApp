@@ -36,19 +36,33 @@ async function openFlightPlan(page) {
 }
 
 // Read (legFuel of row 0, totalFuel from tfoot) from the flight table.
+// Find the fuel column by matching its header text ("Fuel (gal)" or "דלק (גאל)").
 async function readFuelCells(page) {
   return page.evaluate(() => {
     const table = document.querySelector('.flight-table');
     if (!table) return { legFuel: NaN, totalFuel: NaN };
+    const headers = table.querySelectorAll('thead th');
+    let fuelCol = -1;
+    for (let i = 0; i < headers.length; i++) {
+      if (/Fuel|דלק/.test(headers[i].textContent)) { fuelCol = i; break; }
+    }
+    if (fuelCol < 0) return { legFuel: NaN, totalFuel: NaN };
     const legRow   = table.querySelector('tbody tr:first-child');
     const totalRow = table.querySelector('tfoot tr:first-child');
-    function lastCell(row) {
+    function cellAt(row, col) {
       if (!row) return NaN;
       const cells = row.querySelectorAll('td');
-      const last = cells[cells.length - 1];
-      return last ? parseFloat(last.textContent) : NaN;
+      // tfoot first td has colspan=4, so visual col maps differently.
+      // Walk cells accumulating colspan until we reach the visual column.
+      let vis = 0;
+      for (const c of cells) {
+        const cs = c.colSpan || 1;
+        if (vis <= col && col < vis + cs) return parseFloat(c.textContent);
+        vis += cs;
+      }
+      return NaN;
     }
-    return { legFuel: lastCell(legRow), totalFuel: lastCell(totalRow) };
+    return { legFuel: cellAt(legRow, fuelCol), totalFuel: cellAt(totalRow, fuelCol) };
   });
 }
 
@@ -85,10 +99,24 @@ test.describe('Fuel/endurance flight plan modal', () => {
     await page.locator('#aircraft-gph').dispatchEvent('input');
 
     const totFuel = await page.evaluate(() => {
-      const totalRow = document.querySelector('.flight-table tfoot tr:first-child');
+      const table = document.querySelector('.flight-table');
+      if (!table) return null;
+      const headers = table.querySelectorAll('thead th');
+      let fuelCol = -1;
+      for (let i = 0; i < headers.length; i++) {
+        if (/Fuel|דלק/.test(headers[i].textContent)) { fuelCol = i; break; }
+      }
+      if (fuelCol < 0) return null;
+      const totalRow = table.querySelector('tfoot tr:first-child');
       if (!totalRow) return null;
       const cells = totalRow.querySelectorAll('td');
-      return cells[cells.length - 1] ? cells[cells.length - 1].textContent : null;
+      let vis = 0;
+      for (const c of cells) {
+        const cs = c.colSpan || 1;
+        if (vis <= fuelCol && fuelCol < vis + cs) return c.textContent;
+        vis += cs;
+      }
+      return null;
     });
     expect(totFuel).toBe('--');
   });
