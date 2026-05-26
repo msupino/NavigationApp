@@ -771,11 +771,11 @@ if (state.waypoints.length) fitView();   // always frame the restored route
 draw();
 // Always load nav-waypoints in the background — they power both the
 // overlay toggle and the auto-snap on drop / drag.
-loadNavWaypoints().then(draw);
+loadNavWaypoints().then(() => { snapExistingWaypoints(); draw(); });
 // Same pattern for airfields: powering both the overlay and snap.
 // Also re-render inspector so plates section appears if a waypoint
 // was restored from sessionStorage before airfields loaded.
-loadAirfields().then(() => { draw(); if (state.selected) showInspector(); });
+loadAirfields().then(() => { snapExistingWaypoints(); draw(); if (state.selected) showInspector(); });
 // Restore flight-plan modal if it was open before refresh / language change.
 try {
   if (sessionStorage.getItem('navaid.fpOpen')) {
