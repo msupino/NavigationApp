@@ -245,8 +245,9 @@ function applyI18n() {
     tip.className = 'tip-icon';
     tip.innerHTML = '<svg viewBox="0 0 16 16" width="12" height="12"><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.4"/><text x="8" y="12" text-anchor="middle" font-size="11" fill="currentColor">i</text></svg>';
     tip.title = S[titleKey] || '';
-    tip.onclick = function (e) {
-      e.stopPropagation();
+    tip.onmousedown = function (e) {
+      e.stopPropagation();  // prevent label activation / button click
+      e.preventDefault();   // prevent focus from shifting
       const old = document.querySelector('.tip-popup');
       if (old) { old.remove(); return; }
       const p = document.createElement('div');
@@ -258,21 +259,16 @@ function applyI18n() {
       p.style.left = ir.left + 'px';
       p.style.top = (ir.bottom + 4) + 'px';
       document.body.appendChild(p);
-      setTimeout(() => document.addEventListener('click', function rm() { p.remove(); document.removeEventListener('click', rm); }), 0);
+      setTimeout(() => document.addEventListener('mousedown', function rm() { p.remove(); document.removeEventListener('mousedown', rm); }), 0);
     };
-    // For buttons: append inside so it stays inline with text.
-    // For labels: put tip OUTSIDE the label so clicking it doesn't toggle
-    // the checkbox (native label behavior can't be stopped). Wrap in a flex
-    // container to keep label + tip on the same line.
+    // Append tip at end of container so it's always at the end of the line.
+    // For buttons: append inside button text. For labels: append as last child
+    // (native label activation via click is prevented by e.stopPropagation()
+    // on the tip's mousedown, which fires before the click event).
     if (el.tagName === 'BUTTON') {
       el.appendChild(tip);
     } else if (el.closest('.navtoggle')) {
-      const label = el.closest('.navtoggle');
-      const wrap = document.createElement('div');
-      wrap.className = 'tip-wrap';
-      label.parentNode.insertBefore(wrap, label);
-      wrap.appendChild(label);
-      wrap.appendChild(tip);
+      el.closest('.navtoggle').appendChild(tip);
     } else {
       el.parentNode.insertBefore(tip, el.nextSibling);
     }

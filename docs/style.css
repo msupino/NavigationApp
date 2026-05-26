@@ -115,11 +115,6 @@ html, body {
 }
 .tb-section.open .tb-section-body { display: flex; }
 
-.tip-wrap {
-  display: flex;
-  align-items: center;
-}
-
 #toolbar .drag-handle {
   font-size: 16px;
   letter-spacing: 1px;
