@@ -402,11 +402,12 @@ test.describe('Flight plan', () => {
     expect(await pinBtn.evaluate(el => el.classList.contains('active'))).toBe(true);
   });
 
-  test('Resize handle exists on flight plan', async ({ page }) => {
+  test('Four resize handles exist on flight plan', async ({ page }) => {
     await page.locator('#plan').click();
     const modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();
-    await expect(modal.locator('.resize-handle')).toBeVisible();
+    const handles = modal.locator('.resize-handle');
+    await expect(handles).toHaveCount(4);
   });
 
   test('drag-handler touch listeners are cleaned up on close', async ({ page }) => {

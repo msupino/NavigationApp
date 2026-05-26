@@ -845,36 +845,79 @@ function showFlightPlan() {
   const PLANPIN_KEY = 'navaid.planPin';
   let planPinned = localStorage.getItem(PLANPIN_KEY) === '1';
   pinBtn.title = planPinned ? S.fpUnpin : S.fpPin;
-  if (planPinned) pinBtn.classList.add('active');
+  if (planPinned) { pinBtn.classList.add('active'); box.classList.add('pinned'); }
+  if (planPinned) printBtn.style.display = 'none';
   pinBtn.onclick = function () {
     planPinned = !planPinned;
     pinBtn.classList.toggle('active', planPinned);
+    box.classList.toggle('pinned', planPinned);
     pinBtn.title = planPinned ? S.fpUnpin : S.fpPin;
+    printBtn.style.display = planPinned ? 'none' : '';
     try { localStorage.setItem(PLANPIN_KEY, planPinned ? '1' : '0'); } catch (e) {}
+    if (planPinned) applyPlanFontSize();
   };
   box.appendChild(pinBtn);
 
-  // Resize handle — bottom-right corner drag to resize.
-  var rHandle = document.createElement('div');
-  rHandle.className = 'resize-handle';
-  box.appendChild(rHandle);
-  (function () {
-    var rx = 0, ry = 0, rw = 0, rh = 0, rDrag = false;
+  // Resize handles — all four corners.
+  var rCleanups = [];
+  function makeCornerHandle(corner) {
+    var el = document.createElement('div');
+    el.className = 'resize-handle corner-' + corner;
+    box.appendChild(el);
+    var rx = 0, ry = 0, rw = 0, rh = 0, rl = 0, rt = 0, rDrag = false;
     function rStart(cx, cy) {
       var r = box.getBoundingClientRect();
       rx = cx; ry = cy;
       rw = r.width; rh = r.height;
+      rl = r.left; rt = r.top;
       rDrag = true;
+    }
+    function computePlanFontSize() {
+      var numRows = (state.legs || []).length + 2;
+      if (numRows < 1) return 13;
+      var titleEl = box.querySelector('.modal-title');
+      var acEl = box.querySelector('.fp-aircraft');
+      var btnsEl = box.querySelector('.modal-btns');
+      var titleH = titleEl ? titleEl.offsetHeight : 40;
+      var acH = acEl ? acEl.offsetHeight : 0;
+      var btnsH = btnsEl ? btnsEl.offsetHeight : 36;
+      var avail = box.offsetHeight - titleH - acH - btnsH - 28;
+      if (avail < 20) return 13;
+      var rowH = avail / numRows;
+      return Math.max(6, Math.min(13, Math.round(rowH * 0.55)));
+    }
+    function applyPlanFontSize() {
+      if (!box.classList.contains('pinned')) return;
+      box.style.setProperty('--fp-font-size', computePlanFontSize() + 'px');
+    }
+    function clampViewport(l, t, w, h) {
+      var maxL = window.innerWidth - w;
+      var maxT = window.innerHeight - h;
+      l = Math.max(0, Math.min(maxL, l));
+      t = Math.max(0, Math.min(maxT, t));
+      return { l: l, t: t, w: w, h: h };
     }
     function rMove(cx, cy) {
       if (!rDrag) return;
-      box.style.width = Math.max(300, rw + cx - rx) + 'px';
-      box.style.height = Math.max(200, rh + cy - ry) + 'px';
+      var dx = cx - rx, dy = cy - ry;
+      var nl = rl, nt = rt, nw = rw, nh = rh;
+      if (corner.indexOf('e') !== -1) nw = Math.max(300, rw + dx);
+      if (corner.indexOf('w') !== -1) { nw = Math.max(300, rw - dx); nl = rl + (rw - nw); }
+      if (corner.indexOf('s') !== -1) nh = Math.max(200, rh + dy);
+      if (corner.indexOf('n') !== -1) { nh = Math.max(200, rh - dy); nt = rt + (rh - nh); }
+      var c = clampViewport(nl, nt, nw, nh);
+      box.style.left = c.l + 'px';
+      box.style.top = c.t + 'px';
+      box.style.width = c.w + 'px';
+      box.style.height = c.h + 'px';
+      box.style.margin = '0';
+      applyPlanFontSize();
     }
     function rEnd() {
       if (!rDrag) return;
       rDrag = false;
-      try { localStorage.setItem('navaid.planW', box.offsetWidth); localStorage.setItem('navaid.planH', box.offsetHeight); } catch (e) {}
+      try { localStorage.setItem('navaid.planW', box.offsetWidth); localStorage.setItem('navaid.planH', box.offsetHeight);
+        var rect = box.getBoundingClientRect(); localStorage.setItem('navaid.fpPos', JSON.stringify({ x: rect.left, y: rect.top })); } catch (e) {}
     }
     function rTouchStart(e) {
       if (e.touches.length !== 1) return;
@@ -886,7 +929,7 @@ function showFlightPlan() {
       e.preventDefault();
       rMove(e.touches[0].clientX, e.touches[0].clientY);
     }
-    rHandle.addEventListener('mousedown', function (e) {
+    el.addEventListener('mousedown', function (e) {
       e.preventDefault();
       rStart(e.clientX, e.clientY);
       var onMove = function (ev) { rMove(ev.clientX, ev.clientY); };
@@ -894,20 +937,27 @@ function showFlightPlan() {
       window.addEventListener('mousemove', onMove);
       window.addEventListener('mouseup', onUp);
     });
-    rHandle.addEventListener('touchstart', rTouchStart, { passive: false });
+    el.addEventListener('touchstart', rTouchStart, { passive: false });
     window.addEventListener('touchmove', rTouchMove, { passive: false });
     window.addEventListener('touchend', rEnd);
     window.addEventListener('touchcancel', rEnd);
-    // Extend flightPlanCleanup with resize-teardown.
-    var prevCleanup = flightPlanCleanup;
-    flightPlanCleanup = function () {
-      if (typeof prevCleanup === 'function') prevCleanup();
-      rHandle.removeEventListener('touchstart', rTouchStart, { passive: false });
+    rCleanups.push(function () {
+      el.removeEventListener('touchstart', rTouchStart, { passive: false });
       window.removeEventListener('touchmove', rTouchMove, { passive: false });
       window.removeEventListener('touchend', rEnd);
       window.removeEventListener('touchcancel', rEnd);
-    };
-  })();
+    });
+  }
+  makeCornerHandle('se');
+  makeCornerHandle('sw');
+  makeCornerHandle('ne');
+  makeCornerHandle('nw');
+  // Extend flightPlanCleanup with resize-teardown.
+  var prevCleanup = flightPlanCleanup;
+  flightPlanCleanup = function () {
+    if (typeof prevCleanup === 'function') prevCleanup();
+    for (var i = 0; i < rCleanups.length; i++) rCleanups[i]();
+  };
 
   // Restore saved size.
   try {

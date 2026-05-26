@@ -648,6 +648,17 @@ html, body {
   flex: 1;
   min-height: 0;
 }
+.modal.pinned .fp-scroll {
+  overflow: hidden;
+}
+.modal.pinned {
+  border-color: #ffd966;
+  box-shadow: 0 0 0 2px rgba(255, 217, 102, 0.3);
+}
+.modal.pinned .flight-table,
+.modal.pinned .flight-table input {
+  font-size: var(--fp-font-size, 13px);
+}
 .flight-table {
   width: 100%;
   border-collapse: collapse;
@@ -882,23 +893,24 @@ html, body {
 
 .resize-handle {
   position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 18px;
-  height: 18px;
-  cursor: nwse-resize;
+  width: 16px;
+  height: 16px;
   z-index: 1;
 }
 .resize-handle::after {
   content: '';
   position: absolute;
-  bottom: 3px;
-  right: 3px;
-  width: 10px;
-  height: 10px;
-  border-right: 2px solid #888;
-  border-bottom: 2px solid #888;
+  width: 8px;
+  height: 8px;
 }
+.resize-handle.corner-se { bottom: 0; right: 0; cursor: nwse-resize; }
+.resize-handle.corner-se::after { bottom: 2px; right: 2px; border-right: 2px solid #888; border-bottom: 2px solid #888; }
+.resize-handle.corner-sw { bottom: 0; left: 0; cursor: nesw-resize; }
+.resize-handle.corner-sw::after { bottom: 2px; left: 2px; border-left: 2px solid #888; border-bottom: 2px solid #888; }
+.resize-handle.corner-ne { top: 0; right: 0; cursor: nesw-resize; }
+.resize-handle.corner-ne::after { top: 2px; right: 2px; border-right: 2px solid #888; border-top: 2px solid #888; }
+.resize-handle.corner-nw { top: 0; left: 0; cursor: nwse-resize; }
+.resize-handle.corner-nw::after { top: 2px; left: 2px; border-left: 2px solid #888; border-top: 2px solid #888; }
 
 /* Floating search overlay — Ctrl/Cmd-F shows this top-center panel so the
  * user can find a nav-waypoint without expanding the Build section. */
