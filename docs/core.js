@@ -183,7 +183,7 @@ window.S = Object.assign({
   platesNone: 'No charts available — see official AIP',
   plateLoadError: 'Failed to load chart.',
   plateAttribution: 'Charts © Israel CAAI / Ministry of Transport — published in the AIP. Snapshot from ForeFlight Israel Base Pack 02-25 edition.',
-  tbTransparency: 'Opacity',
+  tbTransparency: 'Label Opacity',
   tbTransparencyTitle: 'Opacity of waypoint / leg / note label backgrounds',
   tbMapOpacity: 'Map opacity',
   tbMapOpacityTitle: 'Base map brightness',
