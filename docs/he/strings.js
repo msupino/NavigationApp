@@ -126,7 +126,7 @@ window.S = {
   tbShowMidLegTitle: 'הצג מרחק באמצע כל קטע',
   tbHighlightDiff: 'הדגש הפרש גובה/מהירות',
   tbHighlightDiffTitle: 'הדגש קטעים עם הפרש גובה או מהירות',
-  tbShowDrift: 'הדפס קווי סחיפה',
+  tbShowDrift: 'הצג קווי סחיפה',
   tbShowDriftTitle: 'הצג קווי ייחוס סחיפה של 10 מעלות בקצה כל קטע',
   tbShowAirfields: 'הצג/נעץ שדות תעופה',
   tbShowAirfieldsTitle: 'הצג שדות תעופה ישראלים מפורסמים (מקור BYOP)',
