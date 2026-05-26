@@ -470,15 +470,15 @@ try {
 const YELLOW_EL = document.getElementById('yellow-alpha');
 YELLOW_EL.min = '0'; YELLOW_EL.max = '100'; YELLOW_EL.step = '5';
 YELLOW_EL.value = Math.round(yellowAlpha * 100);
-const YELLOW_VAL = document.getElementById('yellow-alpha-val');
-YELLOW_VAL.textContent = YELLOW_EL.value;
+YELLOW_EL.title = YELLOW_EL.value;
 YELLOW_EL.oninput = e => {
   window.yellowAlpha =parseFloat(e.target.value) / 100;
-  YELLOW_VAL.textContent = e.target.value;
+  e.target.title = e.target.value;
   try { localStorage.setItem(ALPHA_KEY, String(yellowAlpha)); }
   catch (err) { /* storage unavailable */ }
   draw();
 };
+
 const MAPOPACITY_KEY = 'navaid.mapOpacity';
 // `var` (not `let`) so writes from any module via window.mapOpacity reach
 // the same binding the export reads — same hazard documented for every
@@ -496,16 +496,16 @@ try {
 const MAPOPACITY_EL = document.getElementById('map-opacity');
 MAPOPACITY_EL.min = '10'; MAPOPACITY_EL.max = '100'; MAPOPACITY_EL.step = '5';
 MAPOPACITY_EL.value = Math.round(mapOpacity * 100);
-const MAPOPACITY_VAL = document.getElementById('map-opacity-val');
-MAPOPACITY_VAL.textContent = MAPOPACITY_EL.value;
+MAPOPACITY_EL.title = MAPOPACITY_EL.value;
 applyMapOpacity();
 MAPOPACITY_EL.oninput = e => {
   mapOpacity = parseFloat(e.target.value) / 100;
-  MAPOPACITY_VAL.textContent = e.target.value;
+  e.target.title = e.target.value;
   applyMapOpacity();
   try { localStorage.setItem(MAPOPACITY_KEY, String(mapOpacity)); }
   catch (err) { /* storage unavailable */ }
 };
+
 const WPSIZE_KEY = 'navaid.wpSize';
 const WP_SIZE_MIN = 0, WP_SIZE_MAX = 2, WP_SIZE_STEP = 0.05;
 try {
@@ -515,11 +515,10 @@ try {
 const WP_EL = document.getElementById('wp-size');
 WP_EL.min = String(WP_SIZE_MIN); WP_EL.max = String(WP_SIZE_MAX); WP_EL.step = String(WP_SIZE_STEP);
 WP_EL.value = wpSize;
-const WP_VAL = document.getElementById('wp-size-val');
-WP_VAL.textContent = wpSize;
+WP_EL.title = parseFloat(wpSize).toFixed(2);
 WP_EL.oninput = e => {
   window.wpSize =parseFloat(e.target.value);
-  WP_VAL.textContent = e.target.value;
+  e.target.title = parseFloat(e.target.value).toFixed(2);
   try { localStorage.setItem(WPSIZE_KEY, String(wpSize)); }
   catch (err) { /* storage unavailable */ }
   draw();
@@ -534,11 +533,10 @@ try {
 const LEGARROW_EL = document.getElementById('leg-arrow-size');
 LEGARROW_EL.min = String(LEGARROW_MIN); LEGARROW_EL.max = String(LEGARROW_MAX); LEGARROW_EL.step = String(LEGARROW_STEP);
 LEGARROW_EL.value = legArrowSize;
-const LEGARROW_VAL = document.getElementById('leg-arrow-size-val');
-LEGARROW_VAL.textContent = legArrowSize;
+LEGARROW_EL.title = parseFloat(legArrowSize).toFixed(2);
 LEGARROW_EL.oninput = e => {
   window.legArrowSize =parseFloat(e.target.value);
-  LEGARROW_VAL.textContent = e.target.value;
+  e.target.title = parseFloat(e.target.value).toFixed(2);
   try { localStorage.setItem(LEGARROW_KEY, String(legArrowSize)); }
   catch (err) { /* storage unavailable */ }
   draw();
