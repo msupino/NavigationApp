@@ -35,7 +35,11 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
 
       - name: JS syntax check (node --check)
         run: |
@@ -88,6 +92,9 @@ jobs:
           line=$(grep -E "^const CACHE = 'navaid-v[0-9]+';" docs/sw.js)
           echo "sw cache ok: $line"
 
+      - name: Spell check (English + Hebrew)
+        run: npm run lint:spell
+
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -110,7 +117,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install npm dependencies

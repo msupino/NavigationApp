@@ -58,6 +58,8 @@ both branches and assembles a single Pages site:
   production.
 - **Never push directly to `main`.** Every change must go through a
   feature branch and pull request targeting `dev` — even one-line fixes.
+- **Every PR must be preceded by a GitHub issue.** Open the issue first,
+  then create the PR referencing it (`Fixes #N` or `Closes #N`).
 - Persist UI state to `localStorage` only via existing `navaid.*`
   keys (`navaid.route`, `navaid.layer`, `navaid.toolbarPos`,
   `navaid.yellowAlpha`, `navaid.wpSize`, `navaid.magVar`,

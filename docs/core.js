@@ -211,6 +211,7 @@ window.S = Object.assign({
   tbSecExport: '📤 Export/Import',
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
+  tbIssues: 'Issues / Requests',
   exportModalTitle: 'Export PNG',
   exportShowNavWP: 'Print Navigation Waypoints',
   exportShowAirfields: 'Print Airfields',
