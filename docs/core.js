@@ -260,11 +260,19 @@ function applyI18n() {
       document.body.appendChild(p);
       setTimeout(() => document.addEventListener('click', function rm() { p.remove(); document.removeEventListener('click', rm); }), 0);
     };
-    // Append tip at end of container so it's always at the end of the line.
+    // For buttons: append inside so it stays inline with text.
+    // For labels: put tip OUTSIDE the label so clicking it doesn't toggle
+    // the checkbox (native label behavior can't be stopped). Wrap in a flex
+    // container to keep label + tip on the same line.
     if (el.tagName === 'BUTTON') {
       el.appendChild(tip);
     } else if (el.closest('.navtoggle')) {
-      el.closest('.navtoggle').appendChild(tip);
+      const label = el.closest('.navtoggle');
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;align-items:center;gap:5px';
+      label.parentNode.insertBefore(wrap, label);
+      wrap.appendChild(label);
+      wrap.appendChild(tip);
     } else {
       el.parentNode.insertBefore(tip, el.nextSibling);
     }
