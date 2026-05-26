@@ -424,6 +424,17 @@ document.getElementById('diff-cb').onchange = e => {
   try { localStorage.setItem(DIFF_KEY, highlightDiff ? '1' : '0'); } catch (err) { /* */ }
   draw();
 };
+const DRIFT_KEY = 'navaid.showDrift';
+try {
+  const sd = localStorage.getItem(DRIFT_KEY);
+  if (sd !== null) window.showDrift =sd === '1';
+} catch (e) { /* storage unavailable */ }
+document.getElementById('drift-cb').checked = showDrift;
+document.getElementById('drift-cb').onchange = e => {
+  window.showDrift =e.target.checked;
+  try { localStorage.setItem(DRIFT_KEY, showDrift ? '1' : '0'); } catch (err) { /* */ }
+  draw();
+};
 const NAVWP_KEY = 'navaid.showNavWP';
 try {
   const stored = localStorage.getItem(NAVWP_KEY);
