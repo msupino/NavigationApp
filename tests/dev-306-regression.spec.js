@@ -1,7 +1,7 @@
 // @ts-check
 // Regression coverage for PR #306 (merged into dev only): Show Waypoint
 // Names moved from Display → View section, and the Magnetic Variation
-// toolbar input is removed (magVar hardcoded to -4 in core.js).
+// toolbar input is removed (magVar hardcoded to -6 in core.js).
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
@@ -53,11 +53,11 @@ test.describe('#306 — Magnetic Variation removed from toolbar', () => {
     expect(await page.locator('label[data-i18n-title="tbMagVarTitle"]').count()).toBe(0);
   });
 
-  test('magVar is hardcoded at -4 (4°E for Israel)', async ({ page }) => {
+  test('magVar is hardcoded at -6 (6°E for Israel)', async ({ page }) => {
 
-    expect(await page.evaluate(() => window.magVar)).toBe(-4);
+    expect(await page.evaluate(() => window.magVar)).toBe(-6);
 
-    expect(await page.evaluate(() => window.magVar)).toBe(-4);
+    expect(await page.evaluate(() => window.magVar)).toBe(-6);
   });
 
   test('stale navaid.magVar in localStorage does not override the hardcoded value', async ({ page }) => {
