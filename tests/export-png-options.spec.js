@@ -32,12 +32,13 @@ test.describe('Export PNG options modal', () => {
     await page.locator('.modal-back').waitFor();
     // Title.
     expect(await page.locator('.modal-title').textContent()).toBe('Export PNG');
-    // 3 checkboxes: Nav WPs (off), Waypoint Names (on), Airfields (off).
+    // 4 checkboxes: Waypoint Names (on), Drift Lines (on), Nav WPs (off), Airfields (off).
     const cbs = page.locator('.modal input[type="checkbox"]');
-    expect(await cbs.count()).toBe(3);
+    expect(await cbs.count()).toBe(4);
     expect(await cbs.nth(0).isChecked()).toBe(true);   // Waypoint Names default on
-    expect(await cbs.nth(1).isChecked()).toBe(false);  // Nav WPs
-    expect(await cbs.nth(2).isChecked()).toBe(false);  // Airfields
+    expect(await cbs.nth(1).isChecked()).toBe(true);   // Drift Lines default on
+    expect(await cbs.nth(2).isChecked()).toBe(false);  // Nav WPs
+    expect(await cbs.nth(3).isChecked()).toBe(false);  // Airfields
     // Layer defaults to Navigation.
     const sel = page.locator('.modal select');
     expect(await sel.inputValue()).toBe('Navigation');
