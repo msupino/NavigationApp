@@ -248,6 +248,14 @@ const state = {
 var showReturn = false;     // outbound (return) markers — off by default
 var showMidLeg = false;
 var highlightDiff = false;  // purple halo on legs that change altitude
+var showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
+var navWP = null;           // null = not loaded yet (or last fetch failed —
+                            // retry on next toggle / search call); [] or
+                            // populated = last fetch resolved successfully.
+var showAirfields = true;   // Israeli airfields overlay (default on)
+var airfields = null;       // same null/[]/populated convention as navWP —
+                            // see loadAirfields() in draw.js. Entries:
+                            // { name, he, en, lat, lng, elev_ft, plates:[], runways:[] }.
 var showDrift = true;       // 10-degree drift reference lines
 var showWpNames = true;     // draw waypoint names (off = empty circle)
 var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
