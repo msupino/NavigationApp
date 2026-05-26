@@ -35,7 +35,8 @@ Unity `NavigationApp` plotter, which is preserved on the
 
 `main` is branch-protected — no direct pushes; production changes land via
 a `dev` → `main` pull request. **Every change must go through a feature
-branch and pull request — even one-line fixes.**
+branch and pull request — even one-line fixes.** Feature branches should
+always target `dev` as the PR base branch.
 
 ## Files (`docs/`)
 

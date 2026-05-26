@@ -57,7 +57,7 @@ both branches and assembles a single Pages site:
   push to `main` when the change is reviewed and ready for
   production.
 - **Never push directly to `main`.** Every change must go through a
-  feature branch and pull request — even one-line fixes.
+  feature branch and pull request targeting `dev` — even one-line fixes.
 - Persist UI state to `localStorage` only via existing `navaid.*`
   keys (`navaid.route`, `navaid.layer`, `navaid.toolbarPos`,
   `navaid.yellowAlpha`, `navaid.wpSize`, `navaid.magVar`,
