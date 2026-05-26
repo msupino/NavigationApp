@@ -978,6 +978,16 @@ function showExportModal() {
   wpNameLabel.appendChild(document.createTextNode(S.exportShowWpNames));
   body.appendChild(wpNameLabel);
 
+  // Show Drift Lines checkbox (default on).
+  const driftLabel = document.createElement('label');
+  driftLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
+  const driftCb = document.createElement('input');
+  driftCb.type = 'checkbox';
+  driftCb.checked = true;
+  driftLabel.appendChild(driftCb);
+  driftLabel.appendChild(document.createTextNode(S.exportShowDrift));
+  body.appendChild(driftLabel);
+
   // Show Nav Waypoints checkbox.
   const navWpLabel = document.createElement('label');
   navWpLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
@@ -1050,6 +1060,7 @@ function showExportModal() {
   const origNavWP = showNavWP;
   const origAirfields = showAirfields;
   const origWpNames = showWpNames;
+  const origDrift = showDrift;
   const origMapOpacity = mapOpacity;
   const origLayer = (function () {
     for (const n in layers) if (map.hasLayer(layers[n])) return n;
@@ -1060,6 +1071,7 @@ function showExportModal() {
   // the PNG will look like before touching any control.
   showNavWP = navWpCb.checked;
   showWpNames = wpNameCb.checked;
+  showDrift = driftCb.checked;
   showAirfields = afCb.checked;
   const chosen = layerSel.value;
   if (chosen !== origLayer) {
@@ -1080,6 +1092,7 @@ function showExportModal() {
   function restoreOrig() {
     showNavWP = origNavWP;
     showWpNames = origWpNames;
+    showDrift = origDrift;
     showAirfields = origAirfields;
     const cur = (function () {
       for (const n in layers) if (map.hasLayer(layers[n])) return n;
@@ -1101,6 +1114,10 @@ function showExportModal() {
   };
   wpNameCb.onchange = function () {
     showWpNames = wpNameCb.checked;
+    draw();
+  };
+  driftCb.onchange = function () {
+    showDrift = driftCb.checked;
     draw();
   };
   afCb.onchange = function () {
