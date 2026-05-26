@@ -130,6 +130,22 @@ html, body {
 #toolbar.dragging { opacity: 0.92; }
 #toolbar.dragging .drag-handle { cursor: grabbing; }
 
+.tip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  line-height: 14px;
+  font-size: 10px;
+  color: #888;
+  cursor: help;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+.tip-icon:hover { color: #ccc; background: rgba(255,255,255,0.15); }
+
 #toolbar-toggle {
   align-self: center;
   display: inline-flex;

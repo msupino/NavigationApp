@@ -232,6 +232,18 @@ function applyI18n() {
   document.querySelectorAll('[data-i18n-aria]').forEach(el => {
     el.setAttribute('aria-label', S[el.dataset.i18nAria] || '');
   });
+  // Add ? icon next to labels/buttons that have a tooltip,
+  // so users know extra info is available. Only add once per element.
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const parent = el.closest('[data-i18n-title]');
+    const titleKey = el.dataset.i18nTitle || (parent && parent.dataset.i18nTitle);
+    if (!titleKey || el.classList.contains('tb-section-head') || el.nextSibling?.classList?.contains('tip-icon')) return;
+    const tip = document.createElement('span');
+    tip.className = 'tip-icon';
+    tip.textContent = '?';
+    tip.title = S[titleKey] || '';
+    el.parentNode.insertBefore(tip, el.nextSibling);
+  });
 }
 applyI18n();
 
