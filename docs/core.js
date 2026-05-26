@@ -285,7 +285,7 @@ function saveAircraft() {
 }
 
 // Yellow text-background colour. yellowAlpha directly controls opacity (0–1).
-const yellowFill = () => `rgba(255,246,170,${yellowAlpha})`;
+const yellowFill = (_) => `rgba(255,246,170,${yellowAlpha})`;
 
 // Tinted fill from any "#rrggbb" hex — yellowAlpha controls the alpha.
 function tintFill(hex) {
