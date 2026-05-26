@@ -7,9 +7,12 @@
     "test": "playwright test",
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
-    "test:install": "playwright install --with-deps chromium"
+    "test:install": "playwright install --with-deps chromium",
+    "lint:spell": "cspell docs/core.js docs/he/strings.js"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0"
+    "@cspell/dict-he": "^4.0.5",
+    "@playwright/test": "^1.49.0",
+    "cspell": "^10.0.0"
   }
 }

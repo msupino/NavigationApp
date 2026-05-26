@@ -37,6 +37,8 @@ Unity `NavigationApp` plotter, which is preserved on the
 a `dev` → `main` pull request. **Every change must go through a feature
 branch and pull request — even one-line fixes.** Feature branches should
 always target `dev` as the PR base branch.
+**Every PR must be preceded by a GitHub issue** describing the bug or
+enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
 
 ## Files (`docs/`)
 
@@ -221,6 +223,8 @@ downloadable `route.json`.
   `gh issue list --repo msupino/NavigationApp --state open`
   Fix them on `dev` the same way as any other bug — one commit per issue,
   close with `Fixes #N` in the commit message.
+- **Every PR must have a corresponding issue.** Open the issue first, then
+  create the PR referencing it. This ensures every change is traceable.
 
 ## CI / Deploy gotchas
 

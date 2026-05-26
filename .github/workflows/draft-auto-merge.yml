@@ -1,0 +1,47 @@
+name: Draft + auto-merge
+
+# Every new PR starts in draft mode. When marked "Ready for review"
+# (draft → open), auto-merge is enabled so it merges once CI passes.
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  ensure-draft:
+    if: github.event.action == 'opened' && !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Convert to draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr ready --undo ${{ github.event.pull_request.number }}
+          echo "PR #${{ github.event.pull_request.number }} converted to draft."
+
+  enable-auto-merge:
+    if: github.event.action == 'ready_for_review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable auto-merge (squash)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Guard: only enable if PR is not a draft.
+          STATE=$(gh pr view ${{ github.event.pull_request.number }} \
+            --json isDraft,state --jq 'select(.isDraft==false and .state=="OPEN") | "ok"')
+          if [ "$STATE" != "ok" ]; then
+            echo "PR #${{ github.event.pull_request.number }} is draft — skipping auto-merge."
+            exit 0
+          fi
+          gh pr merge ${{ github.event.pull_request.number }} \
+            --auto --squash \
+            --subject "${{ github.event.pull_request.title }}"
+          echo "Auto-merge enabled for PR #${{ github.event.pull_request.number }}."
