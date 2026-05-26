@@ -183,7 +183,7 @@ window.S = Object.assign({
   platesNone: 'No charts available — see official AIP',
   plateLoadError: 'Failed to load chart.',
   plateAttribution: 'Charts © Israel CAAI / Ministry of Transport — published in the AIP. Snapshot from ForeFlight Israel Base Pack 02-25 edition.',
-  tbTransparency: 'Label Transparency',
+  tbTransparency: 'Label Opacity',
   tbTransparencyTitle: 'Opacity of waypoint / leg / note label backgrounds',
   tbMapOpacity: 'Map opacity',
   tbMapOpacityTitle: 'Base map brightness',
@@ -260,7 +260,7 @@ var airfields = null;       // same null/[]/populated convention as navWP —
 var showDrift = true;       // 10-degree drift reference lines
 var showWpNames = true;     // draw waypoint names (off = empty circle)
 var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
-var yellowAlpha = 1;        // global multiplier for yellow label backgrounds
+var yellowAlpha = 0.8;    // global multiplier for yellow label backgrounds (default 80%)
 var wpSize = 1;             // waypoint name / number text size scale
 var legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
 let pageSize = null;        // null | 'A3' | 'A4'
@@ -282,17 +282,17 @@ function saveAircraft() {
   try { localStorage.setItem('navaid.aircraft', JSON.stringify(aircraft)); } catch (e) {}
 }
 
-// Yellow text-background colour with the global opacity scale applied.
-const yellowFill = (a) => `rgba(255,246,170,${a * yellowAlpha})`;
+// Yellow text-background colour. yellowAlpha directly controls opacity (0–1).
+const yellowFill = (_) => `rgba(255,246,170,${yellowAlpha})`;
 
-// Tinted fill from any "#rrggbb" hex with `a` (× yellowAlpha) for the alpha.
-function tintFill(hex, a) {
+// Tinted fill from any "#rrggbb" hex — yellowAlpha controls the alpha.
+function tintFill(hex) {
   const h = (hex || '').replace('#', '');
-  if (h.length !== 6) return yellowFill(a);
+  if (h.length !== 6) return yellowFill();
   const r = parseInt(h.slice(0, 2), 16);
   const g = parseInt(h.slice(2, 4), 16);
   const b = parseInt(h.slice(4, 6), 16);
-  return `rgba(${r},${g},${b},${a * yellowAlpha})`;
+  return `rgba(${r},${g},${b},${yellowAlpha})`;
 }
 
 const NOTE_DEFAULT_COLOR = '#fff6aa';   // matches the existing yellow fill
