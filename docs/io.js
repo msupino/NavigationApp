@@ -950,6 +950,10 @@ function fileStamp() {
 // the Export PNG dialog. When present, exportPNG() uses the placeholder's
 // viewport rect instead of the pinned-plan rect.
 var planPlaceholderEl = null;
+// 'tl' | 'tr' | 'bl' | 'br' | 'center' — set by the placement picker so
+// exportPNG can anchor the rendered table to the same corner. 'center'
+// is also used for the Custom (free-drag) option.
+var planPlacementAlign = 'center';
 
 function planPlaceholderActive() {
   return !!(planPlaceholderEl && planPlaceholderEl.isConnected);
@@ -1328,6 +1332,8 @@ function showExportModal() {
     btn.style.cssText = 'font:inherit;font-size:12px;padding:5px 9px;background:#3a3636;color:#e8e8e8;border:1px solid #4a4646;border-radius:4px;cursor:pointer';
     btn.onclick = function () {
       currentPlacement = p.key;
+      planPlacementAlign = (p.key === 'tl' || p.key === 'tr' ||
+                            p.key === 'bl' || p.key === 'br') ? p.key : 'center';
       if (p.key === 'none') removePlanPlaceholder();
       else if (p.key === 'custom') createPlanPlaceholder();   // centred + draggable
       else setPlanPlacement(p.key);
@@ -1450,7 +1456,10 @@ function showExportModal() {
 // size. Called from exportPNG() when the flight plan is pinned to the map.
 // `ctx` is the output-canvas 2d context at identity transform; x/y/w/h are
 // output-canvas pixels.
-function drawFlightPlanTable(ctx, x, y, w, h) {
+// align: one of 'tl', 'tr', 'bl', 'br', 'center'. Anchors the rendered
+// table (which is usually smaller than the host w×h rect) to that
+// corner of the host rect. Default 'tl' for backwards compat.
+function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const legs = state.legs || [];
   const wpts = state.waypoints || [];
   if (!legs.length || wpts.length < 2) return;
@@ -1530,6 +1539,16 @@ function drawFlightPlanTable(ctx, x, y, w, h) {
 
   // Actual rendered table height (rowH might be less than h/numRows).
   const tableH = rowH * numRows;
+  // Anchor inside the host rect — table may be smaller than (w,h), so
+  // for BR/BL the caller expects the table at the bottom-right/left, not
+  // floating at the placeholder's top-left.
+  const a = align || 'tl';
+  if (a === 'tr' || a === 'br') x = x + Math.max(0, w - totalW);
+  if (a === 'bl' || a === 'br') y = y + Math.max(0, h - tableH);
+  if (a === 'center') {
+    x = x + Math.max(0, (w - totalW) / 2);
+    y = y + Math.max(0, (h - tableH) / 2);
+  }
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(x, y, totalW, tableH);
 
@@ -1832,7 +1851,9 @@ function exportPNG() {
       var fpw = planRect.width * s;
       var fph = planRect.height * s;
       if (fpx + fpw > 0 && fpy + fph > 0 && fpx < W && fpy < H) {
-        drawFlightPlanTable(o, Math.max(0, fpx), Math.max(0, fpy), Math.min(fpw, W - fpx), Math.min(fph, H - fpy));
+        drawFlightPlanTable(o, Math.max(0, fpx), Math.max(0, fpy),
+          Math.min(fpw, W - fpx), Math.min(fph, H - fpy),
+          planPlacementAlign);
       }
     }
 
