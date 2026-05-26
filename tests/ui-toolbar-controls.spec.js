@@ -76,10 +76,10 @@ test.describe('Sliders persist to localStorage', () => {
 
   test('wp-size slider writes navaid.wpSize', async ({ page }) => {
     await boot(page);
-    await page.locator('#wp-size').fill('1.5');
+    await page.locator('#wp-size').fill('0.5');
     await page.locator('#wp-size').dispatchEvent('input');
     const stored = await page.evaluate(() => localStorage.getItem('navaid.wpSize'));
-    expect(parseFloat(stored)).toBeCloseTo(1.5, 1);
+    expect(parseFloat(stored)).toBeCloseTo(0.5, 1);
   });
 
   test('leg-arrow-size slider writes navaid.legArrowSize', async ({ page }) => {
@@ -92,11 +92,41 @@ test.describe('Sliders persist to localStorage', () => {
 
   test('sliders restore their stored value on reload', async ({ page }) => {
     await boot(page);
-    await page.locator('#wp-size').fill('1.3');
+    await page.locator('#wp-size').fill('0.5');
     await page.locator('#wp-size').dispatchEvent('input');
     await page.reload();
     await page.waitForFunction(() => typeof state !== 'undefined');
-    expect(await page.locator('#wp-size').inputValue()).toBe('1.3');
+    expect(await page.locator('#wp-size').inputValue()).toBe('0.5');
+  });
+
+  test('slider min/max/step set from JS constants', async ({ page }) => {
+    await boot(page);
+    const wp = page.locator('#wp-size');
+    expect(await wp.getAttribute('min')).toBe('0.1');
+    expect(await wp.getAttribute('max')).toBe('2');
+    expect(await wp.getAttribute('step')).toBe('0.1');
+    const la = page.locator('#leg-arrow-size');
+    expect(await la.getAttribute('min')).toBe('1');
+    expect(await la.getAttribute('max')).toBe('3');
+    expect(await la.getAttribute('step')).toBe('0.1');
+  });
+
+  test('percentage sliders show % in value display', async ({ page }) => {
+    await boot(page);
+    const av = page.locator('#yellow-alpha-val');
+    expect(await av.textContent()).toMatch(/^\d+%$/);
+    await page.locator('#yellow-alpha').fill('50');
+    await page.locator('#yellow-alpha').dispatchEvent('input');
+    expect(await av.textContent()).toBe('50%');
+  });
+
+  test('decimal sliders show toFixed(2) in value display', async ({ page }) => {
+    await boot(page);
+    const wv = page.locator('#wp-size-val');
+    expect(await wv.textContent()).toMatch(/^\d+\.\d{2}$/);
+    await page.locator('#wp-size').fill('0.5');
+    await page.locator('#wp-size').dispatchEvent('input');
+    expect(await wv.textContent()).toBe('0.50');
   });
 });
 
