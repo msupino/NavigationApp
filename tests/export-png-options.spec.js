@@ -32,12 +32,13 @@ test.describe('Export PNG options modal', () => {
     await page.locator('.modal-back').waitFor();
     // Title.
     expect(await page.locator('.modal-title').textContent()).toBe('Export PNG');
-    // 3 checkboxes: Nav WPs (off), Waypoint Names (on), Airfields (off).
+    // 4 checkboxes: Waypoint Names (on), Drift Lines (on), Nav WPs (off), Airfields (off).
     const cbs = page.locator('.modal input[type="checkbox"]');
-    expect(await cbs.count()).toBe(3);
+    expect(await cbs.count()).toBe(4);
     expect(await cbs.nth(0).isChecked()).toBe(true);   // Waypoint Names default on
-    expect(await cbs.nth(1).isChecked()).toBe(false);  // Nav WPs
-    expect(await cbs.nth(2).isChecked()).toBe(false);  // Airfields
+    expect(await cbs.nth(1).isChecked()).toBe(true);   // Drift Lines default on
+    expect(await cbs.nth(2).isChecked()).toBe(false);  // Nav WPs
+    expect(await cbs.nth(3).isChecked()).toBe(false);  // Airfields
     // Layer defaults to Navigation.
     const sel = page.locator('.modal select');
     expect(await sel.inputValue()).toBe('Navigation');
@@ -81,14 +82,14 @@ test.describe('Export PNG options modal', () => {
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
     const cbs = page.locator('.modal input[type="checkbox"]');
-    // Check "Print Navigation Waypoints" (idx 1) → showNavWP becomes true.
-    await cbs.nth(1).check();
+    // Check "Print Navigation Waypoints" (idx 2) → showNavWP becomes true.
+    await cbs.nth(2).check();
     expect(await page.evaluate(() => showNavWP)).toBe(true);
     // Uncheck → showNavWP back to false.
-    await cbs.nth(1).uncheck();
+    await cbs.nth(2).uncheck();
     expect(await page.evaluate(() => showNavWP)).toBe(false);
-    // Check "Print Airfields" (idx 2) → showAirfields becomes true.
-    await cbs.nth(2).check();
+    // Check "Print Airfields" (idx 3) → showAirfields becomes true.
+    await cbs.nth(3).check();
     expect(await page.evaluate(() => showAirfields)).toBe(true);
   });
 
@@ -98,8 +99,8 @@ test.describe('Export PNG options modal', () => {
     await page.evaluate(() => { showNavWP = true; showAirfields = true; draw(); });
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
-    // Modal hides them (default). Toggle waypoints on (idx 1 = Nav WPs).
-    await page.locator('.modal input[type="checkbox"]').nth(1).check();
+    // Modal hides them (default). Toggle waypoints on (idx 2 = Nav WPs).
+    await page.locator('.modal input[type="checkbox"]').nth(2).check();
     expect(await page.evaluate(() => showNavWP)).toBe(true);
     // Cancel → restore original (both true).
     await page.locator('.modal .modal-cancel').click();

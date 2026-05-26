@@ -291,7 +291,7 @@ function drawLegs() {
     octx.stroke();
     octx.lineCap = 'butt';
 
-    drawDriftLines(sa, sb);
+    if (showDrift) drawDriftLines(sa, sb);
 
     const { dist, brg } = geo(A, B);
     const durH = leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;

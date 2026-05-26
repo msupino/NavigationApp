@@ -113,7 +113,7 @@ test.describe('#252 — Print Waypoint Names + Map Opacity in export modal', () 
     await page.locator('.modal-back').waitFor();
 
     const cbs = page.locator('.modal input[type="checkbox"]');
-    expect(await cbs.count()).toBe(3);
+    expect(await cbs.count()).toBe(4);
 
     const labels = await page.locator('.modal label').allTextContents();
     const wpNamesIdx = labels.findIndex(l => /Waypoint Names/i.test(l));
