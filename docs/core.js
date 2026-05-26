@@ -88,6 +88,8 @@ window.S = Object.assign({
   fpTotal: 'Total',
   fpClose: 'Close',
   fpPrint: 'Print',
+  fpPin: 'Pin',
+  fpUnpin: 'Unpin',
   fpFuel: 'Fuel',
   tbAircraft: 'Aircraft',
   tbGph: 'Gallons per Hour',

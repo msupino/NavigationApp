@@ -368,6 +368,47 @@ test.describe('Flight plan', () => {
     }
   });
 
+  test('Pin button exists on flight plan and toggles pinned state', async ({ page }) => {
+    await page.locator('#plan').click();
+    const modal = page.locator('.modal-back.flight-plan');
+    await expect(modal).toBeVisible();
+    const pinBtn = modal.locator('.modal-pin');
+    await expect(pinBtn).toBeVisible();
+    // Default unpinned.
+    expect(await pinBtn.getAttribute('title')).toBe('Pin');
+    expect(await page.evaluate(() => localStorage.getItem('navaid.planPin'))).toBeNull();
+    // Click to pin.
+    await pinBtn.click();
+    expect(await pinBtn.getAttribute('title')).toBe('Unpin');
+    expect(await page.evaluate(() => localStorage.getItem('navaid.planPin'))).toBe('1');
+    // Click to unpin.
+    await pinBtn.click();
+    expect(await pinBtn.getAttribute('title')).toBe('Pin');
+    expect(await page.evaluate(() => localStorage.getItem('navaid.planPin'))).toBe('0');
+  });
+
+  test('Pin state survives close/reopen', async ({ page }) => {
+    await page.locator('#plan').click();
+    await page.locator('.modal-pin').click();
+    // Close.
+    await page.locator('.modal-close-x').click();
+    await expect(page.locator('.modal-back.flight-plan')).toHaveCount(0);
+    // Reopen.
+    await page.locator('#plan').click();
+    const modal = page.locator('.modal-back.flight-plan');
+    await expect(modal).toBeVisible();
+    const pinBtn = modal.locator('.modal-pin');
+    expect(await pinBtn.getAttribute('title')).toBe('Unpin');
+    expect(await pinBtn.evaluate(el => el.classList.contains('active'))).toBe(true);
+  });
+
+  test('Resize handle exists on flight plan', async ({ page }) => {
+    await page.locator('#plan').click();
+    const modal = page.locator('.modal-back.flight-plan');
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('.resize-handle')).toBeVisible();
+  });
+
   test('drag-handler touch listeners are cleaned up on close', async ({ page }) => {
     // Stub addEventListener to count the touch listeners attached to window
     // by the drag block. Open/close 5×; count must not grow.

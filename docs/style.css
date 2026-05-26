@@ -861,6 +861,45 @@ html, body {
 }
 .modal-close-x:hover { background: #443f3f; color: #fff; }
 
+.modal-pin {
+  position: absolute;
+  top: 6px;
+  inset-inline-end: 38px;
+  width: 28px;
+  height: 28px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+  color: #b9b3b3;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  z-index: 1;
+}
+.modal-pin:hover { background: #443f3f; color: #fff; }
+.modal-pin.active { color: #ffd966; }
+
+.resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+  z-index: 1;
+}
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid #888;
+  border-bottom: 2px solid #888;
+}
+
 /* Floating search overlay — Ctrl/Cmd-F shows this top-center panel so the
  * user can find a nav-waypoint without expanding the Build section. */
 #search-overlay {

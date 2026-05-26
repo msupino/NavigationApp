@@ -50,6 +50,8 @@ window.S = {
   fpReturn: 'מסלול חזרה',
   fpClose: 'סגור',
   fpPrint: 'הדפס',
+  fpPin: 'נעץ',
+  fpUnpin: 'שחרר',
   fpFuel: 'דלק',
   tbAircraft: 'כלי טיס',
   tbGph: 'גלונים לשעה',

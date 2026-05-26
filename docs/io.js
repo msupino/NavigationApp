@@ -837,6 +837,86 @@ function showFlightPlan() {
   box.appendChild(btns);
   addModalCloseX(box, closeFlightPlan);
 
+  // Pin button — toggles flight plan visibility on PNG export.
+  const pinBtn = document.createElement('button');
+  pinBtn.className = 'modal-pin';
+  pinBtn.type = 'button';
+  pinBtn.textContent = '\uD83D\uDCCC';
+  const PLANPIN_KEY = 'navaid.planPin';
+  let planPinned = localStorage.getItem(PLANPIN_KEY) === '1';
+  pinBtn.title = planPinned ? S.fpUnpin : S.fpPin;
+  if (planPinned) pinBtn.classList.add('active');
+  pinBtn.onclick = function () {
+    planPinned = !planPinned;
+    pinBtn.classList.toggle('active', planPinned);
+    pinBtn.title = planPinned ? S.fpUnpin : S.fpPin;
+    try { localStorage.setItem(PLANPIN_KEY, planPinned ? '1' : '0'); } catch (e) {}
+  };
+  box.appendChild(pinBtn);
+
+  // Resize handle — bottom-right corner drag to resize.
+  var rHandle = document.createElement('div');
+  rHandle.className = 'resize-handle';
+  box.appendChild(rHandle);
+  (function () {
+    var rx = 0, ry = 0, rw = 0, rh = 0, rDrag = false;
+    function rStart(cx, cy) {
+      var r = box.getBoundingClientRect();
+      rx = cx; ry = cy;
+      rw = r.width; rh = r.height;
+      rDrag = true;
+    }
+    function rMove(cx, cy) {
+      if (!rDrag) return;
+      box.style.width = Math.max(300, rw + cx - rx) + 'px';
+      box.style.height = Math.max(200, rh + cy - ry) + 'px';
+    }
+    function rEnd() {
+      if (!rDrag) return;
+      rDrag = false;
+      try { localStorage.setItem('navaid.planW', box.offsetWidth); localStorage.setItem('navaid.planH', box.offsetHeight); } catch (e) {}
+    }
+    function rTouchStart(e) {
+      if (e.touches.length !== 1) return;
+      e.preventDefault();
+      rStart(e.touches[0].clientX, e.touches[0].clientY);
+    }
+    function rTouchMove(e) {
+      if (!rDrag || e.touches.length !== 1) return;
+      e.preventDefault();
+      rMove(e.touches[0].clientX, e.touches[0].clientY);
+    }
+    rHandle.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      rStart(e.clientX, e.clientY);
+      var onMove = function (ev) { rMove(ev.clientX, ev.clientY); };
+      var onUp = function () { rEnd(); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+    rHandle.addEventListener('touchstart', rTouchStart, { passive: false });
+    window.addEventListener('touchmove', rTouchMove, { passive: false });
+    window.addEventListener('touchend', rEnd);
+    window.addEventListener('touchcancel', rEnd);
+    // Extend flightPlanCleanup with resize-teardown.
+    var prevCleanup = flightPlanCleanup;
+    flightPlanCleanup = function () {
+      if (typeof prevCleanup === 'function') prevCleanup();
+      rHandle.removeEventListener('touchstart', rTouchStart, { passive: false });
+      window.removeEventListener('touchmove', rTouchMove, { passive: false });
+      window.removeEventListener('touchend', rEnd);
+      window.removeEventListener('touchcancel', rEnd);
+    };
+  })();
+
+  // Restore saved size.
+  try {
+    const sw = localStorage.getItem('navaid.planW');
+    const sh = localStorage.getItem('navaid.planH');
+    if (sw) box.style.width = sw + 'px';
+    if (sh) box.style.height = sh + 'px';
+  } catch (e) {}
+
   back.appendChild(box);
   // Close via the Close button or Escape (#86).
   document.body.appendChild(back);
@@ -1160,6 +1240,116 @@ function showExportModal() {
   document.addEventListener('keydown', onEsc);
 }
 
+// Draw the flight-plan table on an export canvas at the given position and
+// size. Called from exportPNG() when the flight plan is pinned to the map.
+// `ctx` is the output-canvas 2d context at identity transform; x/y/w/h are
+// output-canvas pixels.
+function drawFlightPlanTable(ctx, x, y, w, h) {
+  const legs = state.legs || [];
+  const wpts = state.waypoints || [];
+  if (!legs.length || wpts.length < 2) return;
+  const ac = aircraft;
+  const taxiFuel = ac && ac.taxiGal && isAirport(wpts[0]) ? ac.taxiGal : 0;
+  // Compute rows.
+  const rows = [];
+  let totDist = 0, totTime = 0, totFuel = 0;
+  for (let i = 0; i < legs.length; i++) {
+    const A = wpts[i], B = wpts[i + 1];
+    if (!A || !B) continue;
+    const { dist, brg } = geo(A, B);
+    const hdg = toMagnetic(brg);
+    const dur = legs[i].flightSpeed > 0 ? dist / legs[i].flightSpeed : 0;
+    let fuel = ac ? dur * ac.gph : 0;
+    if (i === 0 && taxiFuel) fuel += taxiFuel;
+    totDist += dist;
+    totTime += dur;
+    totFuel += fuel;
+    const fLabel = ac ? fuel.toFixed(1) + (i === 0 && taxiFuel ? ' *' : '') : '--';
+    rows.push({ num: i + 1, from: navName((A.name || '').trim()) || S.wpPrefix + (i + 1),
+      to: navName((B.name || '').trim()) || S.wpPrefix + (i + 2),
+      hdg: pad3(hdg) + '\u00B0M', dist: dist.toFixed(1),
+      speed: String(legs[i].flightSpeed), alt: String(legs[i].inboundAltitude),
+      time: dur > 0 ? toHMS(dur) : '--', fuel: fLabel });
+  }
+  if (!rows.length) return;
+  const headers = S.fpHeaders;
+  const numCols = headers.length;
+  // Column width fractions (sum to 1).
+  const colFrac = [0.04, 0.17, 0.17, 0.11, 0.10, 0.10, 0.10, 0.10, 0.11];
+  const numRows = rows.length + 2;        // header + data + total
+  const rowH = h / numRows;
+  const fontSize = Math.min(rowH * 0.55, 13);
+  const padX = 5;
+  // Text alignment per column.
+  const aligns = ['center', 'left', 'left', 'center', 'right', 'right', 'right', 'center', 'right'];
+  ctx.save();
+  ctx.font = fontSize + 'px sans-serif';
+  // Background.
+  ctx.fillStyle = 'rgba(42,38,38,0.92)';
+  ctx.fillRect(x, y, w, h);
+  // Border.
+  ctx.strokeStyle = '#4a4646';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, w, h);
+  // Helper: draw one cell.
+  function cell(row, col, text, bold, bg) {
+    const cx = x + colFrac.slice(0, col).reduce(function (a, b) { return a + b; }, 0) * w;
+    const cy = y + row * rowH;
+    const cw = colFrac[col] * w;
+    if (bg) { ctx.fillStyle = bg; ctx.fillRect(cx, cy, cw, rowH); }
+    // Right/bottom grid lines (avoid overdraw on last column/row).
+    ctx.strokeStyle = '#4a4646';
+    ctx.lineWidth = 0.5;
+    if (col < numCols - 1) { ctx.beginPath(); ctx.moveTo(cx + cw, cy); ctx.lineTo(cx + cw, cy + rowH); ctx.stroke(); }
+    if (row < numRows - 1) { ctx.beginPath(); ctx.moveTo(cx, cy + rowH); ctx.lineTo(cx + cw, cy + rowH); ctx.stroke(); }
+    // Text.
+    ctx.fillStyle = bold ? '#e8e8e8' : '#d0d0d0';
+    ctx.font = (bold ? 'bold ' : '') + fontSize + 'px sans-serif';
+    ctx.textBaseline = 'middle';
+    var a = aligns[col];
+    ctx.textAlign = a;
+    var tx = a === 'right' ? cx + cw - padX : a === 'center' ? cx + cw / 2 : cx + padX;
+    ctx.fillText(text, tx, cy + rowH / 2);
+  }
+  // Header.
+  for (var c = 0; c < numCols; c++) cell(0, c, headers[c], true, '#3a3636');
+  // Data rows.
+  for (var r = 0; r < rows.length; r++) {
+    var rd = rows[r];
+    var vals = [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel];
+    for (var c2 = 0; c2 < numCols; c2++) {
+      cell(r + 1, c2, String(vals[c2]), false, r % 2 === 1 ? 'rgba(255,255,255,0.03)' : null);
+    }
+  }
+  // Total row: "Total" spans first 4 columns.
+  var tr = rows.length + 1;
+  var totalLabel = S.fpTotal;
+  var totX0 = x;
+  var totX1 = x + colFrac.slice(0, 4).reduce(function (a, b) { return a + b; }, 0) * w;
+  var totCY = y + tr * rowH;
+  ctx.fillStyle = '#333030';
+  ctx.fillRect(totX0, totCY, totX1 - totX0, rowH);
+  ctx.fillStyle = '#e8e8e8';
+  ctx.font = 'bold ' + fontSize + 'px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(totalLabel, totX0 + padX, totCY + rowH / 2);
+  // Grid lines for total-row cells.
+  for (var c3 = 0; c3 < numCols; c3++) {
+    var cx3 = x + colFrac.slice(0, c3).reduce(function (a, b) { return a + b; }, 0) * w;
+    ctx.strokeStyle = '#4a4646';
+    ctx.lineWidth = 0.5;
+    if (c3 < numCols - 1) { ctx.beginPath(); ctx.moveTo(cx3 + colFrac[c3] * w, totCY); ctx.lineTo(cx3 + colFrac[c3] * w, totCY + rowH); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(cx3, totCY + rowH); ctx.lineTo(cx3 + colFrac[c3] * w, totCY + rowH); ctx.stroke();
+  }
+  // Remaining total cells.
+  var totVals = { 4: totDist.toFixed(1), 7: totTime > 0 ? toHMS(totTime) : '--', 8: ac ? totFuel.toFixed(1) : '--' };
+  for (var c4 = 4; c4 < numCols; c4++) {
+    if (totVals[c4] !== undefined) cell(tr, c4, String(totVals[c4]), true, null);
+  }
+  ctx.restore();
+}
+
 // Save the framed map + route as a PNG, rendered at the highest practical
 // native tile zoom (not the on-screen zoom) for maximum quality. flight-maps
 // tiles are not CORS-enabled, so each tile is fetched through the weserv image
@@ -1377,6 +1567,22 @@ function exportPNG() {
       o.restore();
     } finally {
       octx = prevOctx;
+    }
+
+    // Pinned flight plan overlay.
+    var planPinned = localStorage.getItem('navaid.planPin') === '1';
+    if (planPinned) {
+      var fpBox = document.querySelector('.modal-back.flight-plan > .modal');
+      if (fpBox) {
+        var fpRect = fpBox.getBoundingClientRect();
+        var fpx = (fpRect.left - fr.x) * s;
+        var fpy = (fpRect.top - fr.y) * s;
+        var fpw = fpRect.width * s;
+        var fph = fpRect.height * s;
+        if (fpx + fpw > 0 && fpy + fph > 0 && fpx < W && fpy < H) {
+          drawFlightPlanTable(o, Math.max(0, fpx), Math.max(0, fpy), Math.min(fpw, W - fpx), Math.min(fph, H - fpy));
+        }
+      }
     }
 
     out.toBlob(b => {

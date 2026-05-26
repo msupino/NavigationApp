@@ -278,4 +278,27 @@ test.describe('Export PNG options modal', () => {
     const download = await dl;
     expect(download.suggestedFilename()).toMatch(/^navigation-.+\.png$/);
   });
+
+  test('Export includes pinned flight plan', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
+        { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+      ];
+      syncLegs(); draw();
+    });
+    // Open flight plan and pin it.
+    await page.locator('#plan').click();
+    await page.locator('.modal-pin').click();
+    // Close the plan.
+    await page.locator('.modal-close-x').click();
+    // Open the export modal and export.
+    const dl = page.waitForEvent('download', { timeout: 30000 });
+    await page.locator('#print').click();
+    await page.locator('.modal-back').waitFor();
+    await page.locator('.modal .modal-btns button').first().click();
+    const download = await dl;
+    expect(download.suggestedFilename()).toMatch(/^navigation-.+\.png$/);
+  });
 });
