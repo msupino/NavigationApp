@@ -650,6 +650,7 @@ html, body {
 }
 .modal.pinned .fp-scroll {
   overflow: hidden;
+  min-width: 0;
 }
 .modal.pinned {
   border-color: #ffd966;
@@ -667,8 +668,10 @@ html, body {
 }
 .modal.pinned .flight-table th,
 .modal.pinned .flight-table td {
-  padding: 1px 3px;
-  border-bottom: none;
+  padding: 0 2px;
+  border: none;
+  line-height: 1;
+  white-space: nowrap;
 }
 .modal.pinned .flight-table th {
   position: static;
@@ -676,19 +679,32 @@ html, body {
 }
 .modal.pinned .flight-table input {
   width: auto;
-  padding: 0 2px;
+  padding: 0;
   border: none;
   background: transparent;
   border-radius: 0;
   min-width: 0;
+  height: auto;
+  line-height: 1;
 }
 .modal.pinned .flight-table tfoot td {
-  border-top: none;
+  border: none;
   font-weight: 700;
 }
 .modal.pinned .flight-table {
   margin-bottom: 0;
   border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+}
+.modal.pinned .flight-table th,
+.modal.pinned .flight-table td {
+  padding: 0 2px;
+  border: none;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .flight-table {
   width: 100%;
