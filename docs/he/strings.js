@@ -172,7 +172,7 @@ window.S = {
   tbSecExport: '📤 ייצוא/ייבוא',
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
-  exportShowDrift: 'הצג קווי סחיפה',
+  exportShowDrift: 'קווי סחיפה',
   exportModalTitle: 'ייצוא PNG',
   exportShowNavWP: 'הדפס ציוני ניווט',
   exportShowAirfields: 'הדפס שדות תעופה',
