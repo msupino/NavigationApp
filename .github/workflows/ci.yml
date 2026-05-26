@@ -134,8 +134,14 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright tests
-        run: npm test
+      - name: Start local server and run tests
+        run: |
+          python3 -m http.server -d docs 8000 --bind 127.0.0.1 & SERVER=$!
+          # Run tests against local server
+          BASE_URL="http://127.0.0.1:8000" npm test
+          EXIT=$?
+          kill $SERVER 2>/dev/null
+          exit $EXIT
 
       - name: Upload Playwright report
         if: always()
