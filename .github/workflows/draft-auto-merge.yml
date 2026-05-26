@@ -29,10 +29,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
+      - uses: actions/checkout@v4
       - name: Enable auto-merge (squash)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Guard: only enable if PR is not a draft.
+          STATE=$(gh pr view ${{ github.event.pull_request.number }} \
+            --json isDraft,state --jq 'select(.isDraft==false and .state=="OPEN") | "ok"')
+          if [ "$STATE" != "ok" ]; then
+            echo "PR #${{ github.event.pull_request.number }} is draft — skipping auto-merge."
+            exit 0
+          fi
           gh pr merge ${{ github.event.pull_request.number }} \
             --auto --squash \
             --subject "${{ github.event.pull_request.title }}"
