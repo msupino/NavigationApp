@@ -661,7 +661,8 @@ html, body {
 }
 .modal.pinned .fp-aircraft,
 .modal.pinned .modal-btns,
-.modal.pinned .modal-title {
+.modal.pinned .modal-title,
+.modal.pinned .modal-close-x {
   display: none;
 }
 .modal.pinned .flight-table th,
