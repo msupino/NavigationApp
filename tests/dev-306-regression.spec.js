@@ -54,9 +54,7 @@ test.describe('#306 — Magnetic Variation removed from toolbar', () => {
   });
 
   test('magVar is hardcoded at -6 (6°E for Israel)', async ({ page }) => {
-
-    expect(await page.evaluate(() => window.magVar)).toBe(-6);
-
+    await boot(page);
     expect(await page.evaluate(() => window.magVar)).toBe(-6);
   });
 
@@ -66,6 +64,6 @@ test.describe('#306 — Magnetic Variation removed from toolbar', () => {
     });
     await page.goto('/?lang=en');
     await page.waitForFunction(() => typeof magVar !== 'undefined');
-    expect(await page.evaluate(() => window.magVar)).toBe(-5);
+    expect(await page.evaluate(() => window.magVar)).toBe(-6);
   });
 });
