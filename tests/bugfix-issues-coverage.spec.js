@@ -230,4 +230,44 @@ test.describe('#340 — applyNavSnap clears auto-snapped name when overlays off'
     const name = await page.evaluate(() => state.waypoints[0].name);
     expect(name).toBe('');
   });
+
+  test('snapExistingWaypoints snaps waypoint at airfield location when showAirfields is ON', async ({ page }) => {
+    await boot(page);
+    await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
+    await page.evaluate(() => {
+      showAirfields = true;
+      state.waypoints = [{ lat: 32.009444, lng: 34.885556, name: '' }];
+      syncLegs(); draw();
+    });
+    await page.evaluate(() => { snapExistingWaypoints(); draw(); });
+    const name = await page.evaluate(() => state.waypoints[0].name);
+    expect(name).toBe('LLBG');
+  });
+
+  test('snapExistingWaypoints snaps waypoint at nav-WP location when showNavWP is ON', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => loadNavWaypoints());
+    await page.waitForFunction(() => Array.isArray(window.navWP) && window.navWP.length > 0);
+    await page.evaluate(() => {
+      showNavWP = true;
+      state.waypoints = [{ lat: 32.918611, lng: 35.096389, name: '' }];
+      syncLegs(); draw();
+    });
+    await page.evaluate(() => { snapExistingWaypoints(); draw(); });
+    const name = await page.evaluate(() => state.waypoints[0].name);
+    expect(name).toBe('AAKKO');
+  });
+
+  test('snapExistingWaypoints preserves user-typed name at airfield location', async ({ page }) => {
+    await boot(page);
+    await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
+    await page.evaluate(() => {
+      showAirfields = true;
+      state.waypoints = [{ lat: 32.009444, lng: 34.885556, name: 'MYHOME' }];
+      syncLegs(); draw();
+    });
+    await page.evaluate(() => { snapExistingWaypoints(); draw(); });
+    const name = await page.evaluate(() => state.waypoints[0].name);
+    expect(name).toBe('MYHOME');
+  });
 });
