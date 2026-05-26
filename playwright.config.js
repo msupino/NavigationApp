@@ -1,6 +1,7 @@
 // @ts-check
 const { defineConfig, devices } = require('@playwright/test');
 
+const isDeployed = !!process.env.BASE_URL;
 const cfg = {
   testDir: './tests',
   fullyParallel: true,
@@ -16,12 +17,12 @@ const cfg = {
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
 };
-if (!process.env.BASE_URL) {
+if (!isDeployed) {
   cfg.webServer = {
     command: 'python3 -m http.server -d docs 8000 --bind 127.0.0.1',
     url: 'http://127.0.0.1:8000',
     reuseExistingServer: !process.env.CI,
-    stdout: 'ignore',
+    stdout: 'pipe',
     stderr: 'pipe',
   };
 }
