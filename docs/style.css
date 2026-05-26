@@ -659,6 +659,14 @@ html, body {
 .modal.pinned .flight-table input {
   font-size: var(--fp-font-size, 13px);
 }
+.modal.pinned .fp-aircraft,
+.modal.pinned .modal-btns,
+.modal.pinned .modal-title {
+  display: none;
+}
+.modal.pinned .flight-table {
+  margin-bottom: 0;
+}
 .flight-table {
   width: 100%;
   border-collapse: collapse;
