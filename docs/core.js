@@ -31,7 +31,7 @@ const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
 // a `let` binding would be a separate lexical binding from `window.foo` and
 // the writes wouldn't propagate. The `var` form also silences CodeQL's
 // js/missing-variable-declaration alert on those cross-file writes.
-var magVar = -5;                       // signed offset added to true heading
+var magVar = -4;                       // signed offset added to true heading
                                        // (Israel ≈ −5; equivalent to 5°E variation)
 
 // Localisation strings. A strings.js may pre-set window.S with overrides
