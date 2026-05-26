@@ -1369,12 +1369,29 @@ function exportPNG() {
       NavAid.exporting = false;
       if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
       if (!b) { alert(S.errPngFail); return; }
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(b);
-      a.download = 'navigation-' + (pageSize || baseName) +
-                   '-' + fileStamp() + '.png';
-      a.click();
-      URL.revokeObjectURL(a.href);
+
+      // Embed physical DPI metadata so the PNG prints at the correct
+      // physical size on A3 / A4 at 1:250,000 scale.
+      const setDl = function (blob) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'navigation-' + (pageSize || baseName) +
+                     '-' + fileStamp() + '.png';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      };
+      if (framed && pageSize) {
+        const mm = pageSize === 'A4' ? [210, 297] : [297, 420];
+        const paperW = pageOrient === 'portrait' ? mm[0] : mm[1];
+        const paperH = pageOrient === 'portrait' ? mm[1] : mm[0];
+        const ppmX = Math.round(W * 1000 / paperW);
+        const ppmY = Math.round(H * 1000 / paperH);
+        b.arrayBuffer().then(buf => {
+          setDl(new Blob([injectPngPhys(buf, ppmX, ppmY)], { type: 'image/png' }));
+        }).catch(function () { setDl(b); });
+      } else {
+        setDl(b);
+      }
       if (failed > 0) alert(S.errTilesFail(failed, jobs.length));
     }, 'image/png');
   }).catch(err => {
@@ -1389,6 +1406,65 @@ function exportPNG() {
     if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
     try { alert(S.errPngFail); } catch (_) { /* alert blocked */ }
   });
+}
+
+// Inject a pHYs (physical pixel dimensions) chunk into a PNG blob so that
+// the image prints at the intended physical size when the print dialog uses
+// the embedded DPI rather than scaling to fit the page.
+function injectPngPhys(buf, ppmX, ppmY) {
+  // PNG format: 8-byte signature, then a series of chunks.
+  // Each chunk: 4 bytes length (big-endian), 4 bytes type, data, 4 bytes CRC.
+  // The first chunk is always IHDR (13 bytes data).  pHYs must follow IHDR.
+  const view = new DataView(buf);
+  const ihdrLen = view.getUint32(8);                    // should be 13
+  const ihdrStart = 12;                                  // after length field
+  const type = String.fromCharCode(view.getUint8(ihdrStart), view.getUint8(ihdrStart + 1),
+                                    view.getUint8(ihdrStart + 2), view.getUint8(ihdrStart + 3));
+  if (type !== 'IHDR') return buf;                      // not a valid PNG
+  const insOff = ihdrStart + 4 + ihdrLen + 4;            // after IHDR data + CRC
+
+  // Build pHYs chunk (9 bytes data).
+  const physData = new ArrayBuffer(9);
+  const pv = new DataView(physData);
+  pv.setUint32(0, ppmX);
+  pv.setUint32(4, ppmY);
+  pv.setUint8(8, 1);                                     // unit = metre
+
+  // CRC covers type + data.
+  const crcBytes = new Uint8Array(4 + 9);
+  crcBytes[0] = 112; crcBytes[1] = 72; crcBytes[2] = 89; crcBytes[3] = 115; // "pHYs"
+  crcBytes.set(new Uint8Array(physData), 4);
+  const crc = pngCrc(crcBytes);
+
+  const chunk = new ArrayBuffer(21);                     // 4 len + 4 type + 9 data + 4 crc
+  const cv = new DataView(chunk);
+  cv.setUint32(0, 9);                                    // data length
+  cv.setUint32(4, 0x70485973);                            // "pHYs"
+  new Uint8Array(chunk, 8, 9).set(new Uint8Array(physData));
+  cv.setUint32(17, crc);                                  // CRC at byte 17 (after 8+9)
+
+  // Splice the pHYs chunk after IHDR.
+  const out = new Uint8Array(buf.byteLength + 21);
+  out.set(new Uint8Array(buf, 0, insOff), 0);
+  out.set(new Uint8Array(chunk), insOff);
+  out.set(new Uint8Array(buf, insOff), insOff + 21);
+  return out.buffer;
+}
+
+// CRC-32 for PNG (IEEE polynomial, init 0xFFFFFFFF, final XOR 0xFFFFFFFF).
+const PNG_CRC_TABLE = (function () {
+  const t = new Int32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c;
+  }
+  return t;
+})();
+function pngCrc(data) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < data.length; i++) c = PNG_CRC_TABLE[(c ^ data[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
 }
 
 // --- fly the route (Google Earth) -----------------------------------
