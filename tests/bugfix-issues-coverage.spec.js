@@ -143,3 +143,91 @@ test.describe('#229 — modal backdrop position: fixed', () => {
     expect(pos).toBe('fixed');
   });
 });
+
+// ---------------------------------------------------------------------------
+// #340: Dragging an auto-snapped airfield/nav-waypoint waypoint with both
+// overlays off clears the auto-snapped name so it becomes a plain waypoint.
+// ---------------------------------------------------------------------------
+test.describe('#340 — applyNavSnap clears auto-snapped name when overlays off', () => {
+  test('airfield-snapped waypoint: both overlays off → name cleared on drag', async ({ page }) => {
+    await boot(page);
+    await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.009444, lng: 34.885556, name: 'LLBG' }];
+      syncLegs(); draw();
+    });
+    await page.evaluate(() => {
+      showAirfields = false;
+      showNavWP = false;
+      const wp = state.waypoints[0];
+      const target = L.latLng(33.0, 36.0);
+      const r = applyNavSnap(target, wp.name);
+      wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
+      draw();
+    });
+    const name = await page.evaluate(() => state.waypoints[0].name);
+    expect(name).toBe('');
+  });
+
+  test('nav-waypoint-snapped waypoint: both overlays off → name cleared on drag', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => loadNavWaypoints());
+    await page.waitForFunction(() => Array.isArray(window.navWP) && window.navWP.length > 0);
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.918611, lng: 35.096389, name: 'AAKKO' }];
+      syncLegs(); draw();
+    });
+    await page.evaluate(() => {
+      showAirfields = false;
+      showNavWP = false;
+      const wp = state.waypoints[0];
+      const target = L.latLng(33.0, 36.0);
+      const r = applyNavSnap(target, wp.name);
+      wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
+      draw();
+    });
+    const name = await page.evaluate(() => state.waypoints[0].name);
+    expect(name).toBe('');
+  });
+
+  test('user-typed name (not auto-snapped): both overlays off → name preserved', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'MYFIELD' }];
+      syncLegs(); draw();
+    });
+    await page.evaluate(() => {
+      showAirfields = false;
+      showNavWP = false;
+      const wp = state.waypoints[0];
+      const target = L.latLng(33.0, 36.0);
+      const r = applyNavSnap(target, wp.name);
+      wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
+      draw();
+    });
+    const name = await page.evaluate(() => state.waypoints[0].name);
+    expect(name).toBe('MYFIELD');
+  });
+
+  test('airfield-snapped waypoint: showAirfields off, showNavWP on, far from nav-WP → name cleared', async ({ page }) => {
+    await boot(page);
+    await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
+    await page.evaluate(() => loadNavWaypoints());
+    await page.waitForFunction(() => Array.isArray(window.navWP) && window.navWP.length > 0);
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.009444, lng: 34.885556, name: 'LLBG' }];
+      syncLegs(); draw();
+    });
+    await page.evaluate(() => {
+      showAirfields = false;
+      showNavWP = true;
+      const wp = state.waypoints[0];
+      const target = L.latLng(33.0, 36.0);
+      const r = applyNavSnap(target, wp.name);
+      wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
+      draw();
+    });
+    const name = await page.evaluate(() => state.waypoints[0].name);
+    expect(name).toBe('');
+  });
+});

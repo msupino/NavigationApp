@@ -107,11 +107,10 @@ function navName(stored) {
 // known landmarks (16 vs 256 nav-WPs); if both overlays sit on the same
 // spot the airfield name is the more meaningful identifier.
 function applyNavSnap(latlng, currentName) {
-  // Both overlays off → no snap, leave the name (and any prior auto-snap)
-  // untouched: the user can't see what an "auto" name maps to, so silently
-  // clearing it would feel like data loss.
   if (!showAirfields && !showNavWP) {
-    return { lat: latlng.lat, lng: latlng.lng, name: currentName || '' };
+    const autoSnapped = isAirfieldName(currentName) || isNavName(currentName);
+    return { lat: latlng.lat, lng: latlng.lng,
+             name: autoSnapped ? '' : (currentName || '') };
   }
   const autoSnapped = isAirfieldName(currentName) || isNavName(currentName);
   const userTyped = currentName && !autoSnapped;
