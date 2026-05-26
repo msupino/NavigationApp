@@ -212,6 +212,7 @@ window.S = Object.assign({
   exportShowNavWP: 'Print Navigation Waypoints',
   exportShowAirfields: 'Print Airfields',
   exportShowWpNames: 'Print Waypoint Names',
+  exportNoPageWarn: 'No page size selected — exported image ratio may not match a print page.',
   exportLayer: 'Layer',
   exportBtn: 'Export',
 }, window.S || {});
