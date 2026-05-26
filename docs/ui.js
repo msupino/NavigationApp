@@ -469,11 +469,7 @@ try {
 } catch (e) { /* storage unavailable */ }
 function updateSliderVal(el, val) {
   const span = document.getElementById(el.id + '-val');
-  if (!span) return;
-  span.textContent = val;
-  const mn = parseFloat(el.min), mx = parseFloat(el.max);
-  const pct = Math.round((parseFloat(val) - mn) / (mx - mn) * 100);
-  span.style.left = Math.max(5, Math.min(95, pct)) + '%';
+  if (span) span.textContent = val;
 }
 
 const YELLOW_EL = document.getElementById('yellow-alpha');
