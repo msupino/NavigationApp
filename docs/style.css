@@ -947,3 +947,9 @@ html, body {
   pointer-events: none;
 }
 .toast.show { opacity: 1; }
+
+@keyframes blink-warn {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.blink-warn { animation: blink-warn 1.2s ease-in-out infinite; }
