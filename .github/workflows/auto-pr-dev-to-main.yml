@@ -1,8 +1,4 @@
-name: Auto PR dev → main
-
-# After every push to dev (including merged PRs), create or update a PR
-# from dev → main so the latest staging changes are one click away from
-# production. Skip if a dev→main PR already exists.
+name: Auto PR dev to main
 
 on:
   push:
@@ -18,13 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: dev
           fetch-depth: 1
 
-      - name: Check for existing dev → main PR
+      - name: Check for existing dev to main PR
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -35,13 +30,12 @@ jobs:
             --json number,title \
             --jq 'length')
           if [ "$EXISTING" -gt 0 ]; then
-            echo "Dev → main PR already exists — skipping creation."
             echo "pr_exists=true" >> "$GITHUB_ENV"
           else
             echo "pr_exists=false" >> "$GITHUB_ENV"
           fi
 
-      - name: Create dev → main PR
+      - name: Create dev to main PR
         if: env.pr_exists == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -50,18 +44,5 @@ jobs:
           gh pr create \
             --base main \
             --head dev \
-            --title "Dev → main ($SHA)" \
-            --body "Auto-generated PR promoting dev ($SHA) to main.
-
-## What's included
-
-Latest changes merged into \`dev\` since the last promotion.
-
-## Checklist
-
-- [ ] Verified in staging: https://msupino.github.io/NavigationApp/staging/
-- [ ] All CI checks pass on this PR
-- [ ] No unintended changes from other branches
-
-**SHA:** $SHA
-**Created:** $(date -u '+%Y-%m-%d %H:%M UTC')"
+            --title "Dev to main ($SHA)" \
+            --body "Auto-generated PR promoting dev ($SHA) to main."
