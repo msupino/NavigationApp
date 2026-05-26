@@ -475,10 +475,10 @@ function updateSliderVal(el, val) {
 const YELLOW_EL = document.getElementById('yellow-alpha');
 YELLOW_EL.min = '0'; YELLOW_EL.max = '100'; YELLOW_EL.step = '5';
 YELLOW_EL.value = Math.round(yellowAlpha * 100);
-updateSliderVal(YELLOW_EL, YELLOW_EL.value);
+updateSliderVal(YELLOW_EL, YELLOW_EL.value + '%');
 YELLOW_EL.oninput = e => {
   window.yellowAlpha =parseFloat(e.target.value) / 100;
-  updateSliderVal(e.target, e.target.value);
+  updateSliderVal(e.target, e.target.value + '%');
   try { localStorage.setItem(ALPHA_KEY, String(yellowAlpha)); }
   catch (err) { /* storage unavailable */ }
   draw();
@@ -501,11 +501,11 @@ try {
 const MAPOPACITY_EL = document.getElementById('map-opacity');
 MAPOPACITY_EL.min = '10'; MAPOPACITY_EL.max = '100'; MAPOPACITY_EL.step = '5';
 MAPOPACITY_EL.value = Math.round(mapOpacity * 100);
-updateSliderVal(MAPOPACITY_EL, MAPOPACITY_EL.value);
+updateSliderVal(MAPOPACITY_EL, MAPOPACITY_EL.value + '%');
 applyMapOpacity();
 MAPOPACITY_EL.oninput = e => {
   mapOpacity = parseFloat(e.target.value) / 100;
-  updateSliderVal(e.target, e.target.value);
+  updateSliderVal(e.target, e.target.value + '%');
   applyMapOpacity();
   try { localStorage.setItem(MAPOPACITY_KEY, String(mapOpacity)); }
   catch (err) { /* storage unavailable */ }
