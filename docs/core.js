@@ -269,7 +269,7 @@ function applyI18n() {
     } else if (el.closest('.navtoggle')) {
       const label = el.closest('.navtoggle');
       const wrap = document.createElement('div');
-      wrap.style.cssText = 'display:flex;align-items:center;gap:5px';
+      wrap.className = 'tip-wrap';
       label.parentNode.insertBefore(wrap, label);
       wrap.appendChild(label);
       wrap.appendChild(tip);

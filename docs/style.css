@@ -115,6 +115,17 @@ html, body {
 }
 .tb-section.open .tb-section-body { display: flex; }
 
+.tip-wrap {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+.tip-wrap > .navtoggle {
+  flex: 1;
+  min-width: 0;
+}
+
 #toolbar .drag-handle {
   font-size: 16px;
   letter-spacing: 1px;
