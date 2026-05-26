@@ -398,7 +398,7 @@ function needsHalo(i, which) {
 // triangle (heading) pointing in the flight direction. Text runs across the
 // marker and is locked to its orientation.
 function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc) {
-  sc = sc || 1;
+  sc = sc ?? 1;
   const W = 46 * sc, cell = 22 * sc, Lt = 26 * sc;
   const Lr = cell * 2, L = Lr + Lt;
   const xb = -L / 2 + Lr;
@@ -434,8 +434,8 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc
   }
   octx.restore();
 
-  const fontPx = Math.max(6, Math.round(13 * sc));
-  const fontPxH = Math.max(6, Math.round(14 * sc));
+  const fontPx = Math.max(4, Math.round(13 * sc));
+  const fontPxH = Math.max(4, Math.round(14 * sc));
   const ta = flightAng + Math.PI / 2;
   const cos = Math.cos(flightAng), sin = Math.sin(flightAng);
   const at = lx => ({ x: cx + lx * cos, y: cy + lx * sin });
@@ -485,7 +485,7 @@ function waypointGeom(i) {
   const label = showWpNames ? (navName((wp.name || '').trim()) || String(i + 1)) : '';
   const zoomScale = Math.max(0.35, Math.pow(2, map.getZoom() - 12));
   const scale = wpSize * zoomScale;
-  const fontPx = Math.max(6, Math.round(13 * scale));
+  const fontPx = Math.max(4, Math.round(13 * scale));
   octx.font = `bold ${fontPx}px sans-serif`;
   const w = octx.measureText(label).width;
   const minR = WP_RADIUS * scale;
