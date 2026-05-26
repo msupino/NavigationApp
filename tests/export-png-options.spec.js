@@ -162,6 +162,99 @@ test.describe('Export PNG options modal', () => {
     await page.locator('.modal .modal-cancel').click();
   });
 
+  test.describe('PNG DPI metadata (pHYs chunk)', () => {
+    async function exportPng(page) {
+      const dl = page.waitForEvent('download', { timeout: 30000 });
+      await page.locator('#print').click();
+      await page.locator('.modal-back').waitFor();
+      await page.locator('.modal .modal-btns button').first().click();
+      const download = await dl;
+      const stream = await download.createReadStream();
+      const chunks = [];
+      for await (const chunk of stream) chunks.push(chunk);
+      return Buffer.concat(chunks);
+    }
+
+    // CRC-32 for PNG validation (same polynomial as the app).
+    function pngCrc(data) {
+      const table = new Int32Array(256);
+      for (let n = 0; n < 256; n++) {
+        let c = n;
+        for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+        table[n] = c;
+      }
+      let c = 0xFFFFFFFF;
+      for (let i = 0; i < data.length; i++) c = table[(c ^ data[i]) & 0xFF] ^ (c >>> 8);
+      return (c ^ 0xFFFFFFFF) >>> 0;
+    }
+
+    // Walks all PNG chunks, verifies every CRC, and reads pHYs ppmX.
+    function readPng(buf) {
+      const view = new DataView(buf.buffer);
+      // Verify PNG signature.
+      expect(view.getUint32(0)).toBe(0x89504E47);
+      expect(view.getUint32(4)).toBe(0x0D0A1A0A);
+      let off = 8;
+      let lastType = '';
+      let ppmX = null;
+      while (off + 8 < buf.byteLength) {
+        if (off + 12 > buf.byteLength) throw new Error('Truncated chunk header at offset ' + off);
+        const len = view.getUint32(off);
+        if (off + 12 + len > buf.byteLength) throw new Error('Chunk data exceeds file at offset ' + off);
+        const type = String.fromCharCode(view.getUint8(off + 4), view.getUint8(off + 5),
+                                           view.getUint8(off + 6), view.getUint8(off + 7));
+        // Verify chunk CRC.
+        const crcData = new Uint8Array(buf.buffer, off + 4, 4 + len);
+        const storedCrc = view.getUint32(off + 8 + len);
+        expect(pngCrc(crcData)).toBe(storedCrc);
+        if (type === 'pHYs') ppmX = view.getUint32(off + 8);
+        lastType = type;
+        off += 12 + len;
+      }
+      // File must end at IEND.
+      expect(lastType).toBe('IEND');
+      expect(off).toBe(buf.byteLength);
+      return ppmX;
+    }
+
+    test('No page frame → no pHYs chunk', async ({ page }) => {
+      await boot(page);
+      await page.evaluate(() => {
+        state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+        syncLegs(); draw();
+        pageSize = null;
+      });
+      const buf = await exportPng(page);
+      expect(readPng(buf)).toBeNull();
+    });
+
+    test('A4 portrait → pHYs embedded (~11811 ppm ≈ 300 DPI)', async ({ page }) => {
+      await boot(page);
+      await page.evaluate(() => {
+        state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+        syncLegs(); draw();
+        pageSize = 'A4'; pageOrient = 'portrait';
+      });
+      const buf = await exportPng(page);
+      const ppm = readPng(buf);
+      expect(ppm).not.toBeNull();
+      expect(ppm).toBeGreaterThan(4000);
+    });
+
+    test('A3 portrait → pHYs embedded', async ({ page }) => {
+      await boot(page);
+      await page.evaluate(() => {
+        state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+        syncLegs(); draw();
+        pageSize = 'A3'; pageOrient = 'portrait';
+      });
+      const buf = await exportPng(page);
+      const ppm = readPng(buf);
+      expect(ppm).not.toBeNull();
+      expect(ppm).toBeGreaterThan(4000);
+    });
+  });
+
   test('Modal respects checkbox toggles and layer change', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
