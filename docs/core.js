@@ -285,12 +285,26 @@ var pageOrient = 'portrait';
 let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre
 var aircraft = null;               // null | {gph, taxiGal}
 
+// Aircraft fuel-calc defaults. Used both by the Flight Plan modal's
+// aircraft inputs and by drawFlightPlanTable when the modal hasn't
+// been opened yet — without this, a PNG export taken straight from
+// the toolbar would render Fuel as '--' because aircraft was null.
+const AIRCRAFT_DEFAULTS = { gph: 8, taxiGal: 1.1 };
+
 function loadAircraft() {
   try {
     const raw = localStorage.getItem('navaid.aircraft');
     if (raw) aircraft = JSON.parse(raw);
   } catch (e) { /* storage unavailable */ }
+  if (!aircraft || typeof aircraft.gph !== 'number') {
+    aircraft = Object.assign({}, AIRCRAFT_DEFAULTS);
+  }
 }
+
+// Eager-load at module parse time so any code path that reads
+// `aircraft` before the Flight Plan modal opens still sees the
+// defaults — drawFlightPlanTable (PNG export) is the main case.
+loadAircraft();
 
 function saveAircraft() {
   try { localStorage.setItem('navaid.aircraft', JSON.stringify(aircraft)); } catch (e) {}
