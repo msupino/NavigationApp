@@ -473,7 +473,7 @@ function updateSliderVal(el, val) {
   span.textContent = val;
   const mn = parseFloat(el.min), mx = parseFloat(el.max);
   const pct = Math.round((parseFloat(val) - mn) / (mx - mn) * 100);
-  span.style.left = Math.max(0, Math.min(100, pct)) + '%';
+  span.style.left = Math.max(5, Math.min(95, pct)) + '%';
 }
 
 const YELLOW_EL = document.getElementById('yellow-alpha');
@@ -534,7 +534,7 @@ WP_EL.oninput = e => {
 };
 
 const LEGARROW_KEY = 'navaid.legArrowSize';
-const LEGARROW_MIN = 0, LEGARROW_MAX = 2, LEGARROW_STEP = 0.05;
+const LEGARROW_MIN = 1, LEGARROW_MAX = 3, LEGARROW_STEP = 0.1;
 try {
   const v = parseFloat(localStorage.getItem(LEGARROW_KEY));
   if (!isNaN(v)) window.legArrowSize =Math.max(LEGARROW_MIN, Math.min(LEGARROW_MAX, v));
