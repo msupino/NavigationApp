@@ -174,6 +174,7 @@ window.S = {
   exportShowNavWP: 'הדפס ציוני ניווט',
   exportShowAirfields: 'הדפס שדות תעופה',
   exportShowWpNames: 'הדפס שמות ציוני דרך',
+  exportNoPageWarn: 'לא נבחר גודל דף — יחס התמונה המיוצאת עשוי שלא להתאים להדפסה.',
   exportLayer: 'שכבת מפה',
   exportBtn: 'ייצא',
 };

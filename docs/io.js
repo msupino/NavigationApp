@@ -968,16 +968,6 @@ function showExportModal() {
   const body = document.createElement('div');
   body.style.cssText = 'display:flex;flex-direction:column;gap:10px;padding:4px 0';
 
-  // Show Nav Waypoints checkbox.
-  const navWpLabel = document.createElement('label');
-  navWpLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
-  const navWpCb = document.createElement('input');
-  navWpCb.type = 'checkbox';
-  navWpCb.checked = false;
-  navWpLabel.appendChild(navWpCb);
-  navWpLabel.appendChild(document.createTextNode(S.exportShowNavWP));
-  body.appendChild(navWpLabel);
-
   // Show Waypoint Names checkbox (default on).
   const wpNameLabel = document.createElement('label');
   wpNameLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
@@ -987,6 +977,16 @@ function showExportModal() {
   wpNameLabel.appendChild(wpNameCb);
   wpNameLabel.appendChild(document.createTextNode(S.exportShowWpNames));
   body.appendChild(wpNameLabel);
+
+  // Show Nav Waypoints checkbox.
+  const navWpLabel = document.createElement('label');
+  navWpLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
+  const navWpCb = document.createElement('input');
+  navWpCb.type = 'checkbox';
+  navWpCb.checked = false;
+  navWpLabel.appendChild(navWpCb);
+  navWpLabel.appendChild(document.createTextNode(S.exportShowNavWP));
+  body.appendChild(navWpLabel);
 
   // Show Airfields checkbox.
   const afLabel = document.createElement('label');
@@ -1034,6 +1034,15 @@ function showExportModal() {
   opVal.textContent = opSlider.value + '%';
   opacityRow.appendChild(opVal);
   body.appendChild(opacityRow);
+
+  // Page-size warning.
+  const pageWarn = document.createElement('div');
+  pageWarn.style.cssText = 'font-size:12px;color:#e8b84b;padding:2px 0';
+  if (!pageSize) {
+    pageWarn.textContent = S.exportNoPageWarn;
+    pageWarn.classList.add('blink-warn');
+  }
+  body.appendChild(pageWarn);
 
   box.appendChild(body);
 
