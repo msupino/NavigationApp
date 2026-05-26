@@ -35,7 +35,8 @@ Unity `NavigationApp` plotter, which is preserved on the
 
 `main` is branch-protected — no direct pushes; production changes land via
 a `dev` → `main` pull request. **Every change must go through a feature
-branch and pull request — even one-line fixes.**
+branch and pull request — even one-line fixes.** Feature branches should
+always target `dev` as the PR base branch.
 
 ## Files (`docs/`)
 
@@ -185,6 +186,9 @@ downloadable `route.json`.
   `<script>` that sets `state.waypoints` and calls
   `syncLegs(); fitView(); draw();`.
 - **Lint** before every commit: `node --check` each changed `.js`.
+- **Every enhancement, bug fix, or regression must include tests.** Add new
+  test cases to the appropriate `tests/*.spec.js` file. If no file covers
+  the area, create one.
 - **Deploy is a workflow** at `.github/workflows/deploy.yml`. It
   triggers on push to `main` *or* `dev` (or manual dispatch),
   checks out **both** branches, and assembles one Pages site:
