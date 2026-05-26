@@ -398,7 +398,7 @@ function needsHalo(i, which) {
 // triangle (heading) pointing in the flight direction. Text runs across the
 // marker and is locked to its orientation.
 function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc) {
-  sc = sc || 1;
+  sc = sc ?? 1;
   const W = 46 * sc, cell = 22 * sc, Lt = 26 * sc;
   const Lr = cell * 2, L = Lr + Lt;
   const xb = -L / 2 + Lr;
