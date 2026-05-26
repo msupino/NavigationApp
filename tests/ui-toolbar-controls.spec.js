@@ -102,9 +102,9 @@ test.describe('Sliders persist to localStorage', () => {
   test('slider min/max/step set from JS constants', async ({ page }) => {
     await boot(page);
     const wp = page.locator('#wp-size');
-    expect(await wp.getAttribute('min')).toBe('0');
+    expect(await wp.getAttribute('min')).toBe('0.1');
     expect(await wp.getAttribute('max')).toBe('2');
-    expect(await wp.getAttribute('step')).toBe('0.05');
+    expect(await wp.getAttribute('step')).toBe('0.1');
     const la = page.locator('#leg-arrow-size');
     expect(await la.getAttribute('min')).toBe('1');
     expect(await la.getAttribute('max')).toBe('3');

@@ -512,7 +512,7 @@ MAPOPACITY_EL.oninput = e => {
 };
 
 const WPSIZE_KEY = 'navaid.wpSize';
-const WP_SIZE_MIN = 0, WP_SIZE_MAX = 2, WP_SIZE_STEP = 0.1;
+const WP_SIZE_MIN = 0.1, WP_SIZE_MAX = 2, WP_SIZE_STEP = 0.1;
 try {
   const v = parseFloat(localStorage.getItem(WPSIZE_KEY));
   if (!isNaN(v)) window.wpSize =Math.max(WP_SIZE_MIN, Math.min(WP_SIZE_MAX, v));
