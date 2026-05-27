@@ -2250,7 +2250,7 @@ var magnifierZoom = 1;
   const zoomVal = document.getElementById('mag-zoom-val');
   if (zoomSlider && zoomVal) {
     zoomSlider.addEventListener('input', function () {
-      magnifierZoom = parseFloat(this.value);
+      window.magnifierZoom = parseFloat(this.value);
       zoomVal.textContent = magnifierZoom.toFixed(2).replace(/\.?0+$/, '') + '×';
       _magDirty = true;
       if (magnifierOn) rebuildMagnifier();
