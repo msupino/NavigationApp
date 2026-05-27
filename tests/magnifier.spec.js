@@ -263,6 +263,93 @@ test.describe('Magnifying glass', () => {
     expect(report.contentScale).toBeGreaterThanOrEqual(8);
   });
 
+  // "Perfecting…" indicator: appears inside the loupe while hi-res sub-tiles
+  // are in flight, disappears once they all settle. Throttling the
+  // flight-maps.com responses guarantees the indicator stays visible long
+  // enough for the test to observe — otherwise a fast LAN cache hit could
+  // flip it on and off within a single frame.
+  test('shows "Perfecting…" indicator while hi-res tiles load, hides after', async ({ page }) => {
+    // Slow every flight-maps.com tile fetch by 700 ms. Registered after
+    // _setup.js so this route handler runs first; non-tile URLs still hit
+    // the existing GA-blocking route.
+    await page.route('**://*.flight-maps.com/**', async route => {
+      await new Promise(r => setTimeout(r, 700));
+      try { await route.continue(); } catch (e) { /* page may close */ }
+    });
+
+    await page.evaluate(() => map.setZoom(8));
+    await page.waitForFunction(
+      () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
+              .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
+      { timeout: 15000 });
+    await page.waitForTimeout(800);
+
+    const mapBox = await page.locator('#map').boundingBox();
+    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
+
+    await page.locator('#tool-magnifier').click();
+
+    const loading = page.locator('#magnifier .mag-loading');
+    // Text content reflects the i18n key.
+    await expect(loading).toHaveText('Perfecting…');
+    // Indicator becomes visible while throttled hi-res tiles are in flight.
+    await expect(loading).toHaveClass(/show/, { timeout: 2000 });
+    // ...and hides once they all settle (load or error).
+    await expect(loading).not.toHaveClass(/show/, { timeout: 8000 });
+  });
+
+  // Edge case: at the layer's maxNativeZoom (CVFR = 13) the rebuild fetches
+  // ZERO hi-res sub-tiles (targetExp = maxNZ - refZ = 0). The indicator
+  // must never become visible — otherwise the user sees a confusing flicker
+  // on a view that's already as crisp as it'll get.
+  test('no indicator at max native zoom (zero hi-res fetches)', async ({ page }) => {
+    await page.evaluate(() => map.setZoom(13));
+    await page.waitForFunction(
+      () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
+              .some(i => /\/13\/\d+\/\d+\.png/.test(i.src)),
+      { timeout: 15000 });
+    await page.waitForTimeout(500);
+
+    const mapBox = await page.locator('#map').boundingBox();
+    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
+
+    await page.locator('#tool-magnifier').click();
+    await page.waitForTimeout(300);
+
+    // Indicator element exists (createMagnifier always appends it) but the
+    // .show class never got applied because no hi-res tiles were fetched.
+    const loading = page.locator('#magnifier .mag-loading');
+    await expect(loading).not.toHaveClass(/show/);
+
+    // Move the cursor — this scheduled a rebuild via updateMagnifier. The
+    // indicator must STILL stay hidden because targetExp is still 0.
+    await page.mouse.move(mapBox.x + mapBox.width / 2 + 80,
+                          mapBox.y + mapBox.height / 2 + 80);
+    await page.waitForTimeout(400);
+    await expect(loading).not.toHaveClass(/show/);
+  });
+
+  // Hebrew translation surfaces correctly in the loading pill.
+  test('"Perfecting…" indicator uses Hebrew translation in he locale', async ({ page }) => {
+    await page.goto('?lang=he');
+    await page.waitForFunction(() => typeof state !== 'undefined');
+    await page.evaluate(() => map.setZoom(8));
+    await page.waitForFunction(
+      () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
+              .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
+      { timeout: 15000 });
+
+    const mapBox = await page.locator('#map').boundingBox();
+    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
+    await page.locator('#tool-magnifier').click();
+
+    const loading = page.locator('#magnifier .mag-loading');
+    await expect(loading).toHaveText('משכלל…');
+  });
+
   // Tile-count guard: with the center-based fetch + `effS = max(slider, sub)`
   // each rebuild's hi-res grid stays small (the loupe shrinks in source-pixel
   // terms as effS grows, so the high-sub case at z=8 doesn't blow up). A

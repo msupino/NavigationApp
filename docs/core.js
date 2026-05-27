@@ -206,6 +206,7 @@ window.S = Object.assign({
   magSettingsTitle: 'Magnifier',
   magZoomLabel: 'Zoom',
   magZoomTitle: 'Magnifier zoom factor',
+  magLoading: 'Perfecting…',
   tbResetAllMarkers: '↺ Reset all marker positions',
   tbResetAllMarkersTitle: 'Reset all leg marker offsets to default positions',
   inspCloseTitle: 'Close',

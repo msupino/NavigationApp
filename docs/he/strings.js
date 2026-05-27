@@ -193,4 +193,5 @@ window.S = {
   magSettingsTitle: 'זכוכית מגדלת',
   magZoomLabel: 'תקריב',
   magZoomTitle: 'גורם התקריב של הזכוכית המגדלת',
+  magLoading: 'משכלל…',
 };

@@ -1025,3 +1025,32 @@ html, body {
 /* magnifying glass */
 #tool-magnifier { font-size: 18px; line-height: 1; padding: 2px 6px; }
 #tool-magnifier.active { background: #3a3636; border-color: #ffcc33; color: #ffcc33; }
+
+/* "Perfecting…" pill that appears inside the loupe while hi-res sub-tiles
+   are still in flight. Sits above the scaled content layer (z-index >= 1),
+   centred, and pointer-events disabled so it never intercepts clicks. */
+.mag-loading {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(20, 18, 18, 0.78);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  border: 1px solid rgba(255, 204, 51, 0.55);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  z-index: 2;
+  white-space: nowrap;
+  animation: mag-loading-pulse 1.4s ease-in-out infinite;
+}
+.mag-loading.show { display: block; }
+@keyframes mag-loading-pulse {
+  0%, 100% { opacity: 0.65; }
+  50% { opacity: 1; }
+}

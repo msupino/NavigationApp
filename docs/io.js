@@ -2179,8 +2179,26 @@ const MAG_BASELINE_Z = 12;
 // sub=16 → up to 4 zoom levels deeper than the displayed map tile, which is
 // what `MAG_BASELINE_Z` needs at the lowest allowed map zoom (8 → 12).
 const MAG_MAX_EXP = 4;
+// In-flight hi-res sub-tile counter for the current rebuild batch. The
+// "Perfecting…" indicator is visible while this is > 0.
+let _magPendingTiles = 0;
+// Monotonically increasing rebuild id. Tile <img>s are tagged with the
+// batch they were created in; load/error callbacks from a stale batch
+// (e.g. cursor moved fast and a newer rebuild already ran) bail out so
+// they don't decrement the current batch's counter.
+let _magBatch = 0;
 
 function magCenter() { return magnifierSize / 2; }
+
+function showMagLoading() {
+  const el = document.querySelector('#magnifier .mag-loading');
+  if (el) el.classList.add('show');
+}
+
+function hideMagLoading() {
+  const el = document.querySelector('#magnifier .mag-loading');
+  if (el) el.classList.remove('show');
+}
 
 function createMagnifier() {
   if (document.getElementById('magnifier')) return;
@@ -2201,6 +2219,13 @@ function createMagnifier() {
     '<div style="position:absolute;top:-1px;left:-24px;width:48px;height:2px;background:rgba(255,60,60,0.8)"></div>' +
     '<div style="position:absolute;top:-24px;left:-1px;width:2px;height:48px;background:rgba(255,60,60,0.8)"></div>';
   mag.appendChild(ch);
+  // "Perfecting…" indicator — sibling of `content` so the loupe's scale()
+  // transform doesn't affect it. Hidden by default; rebuildMagnifier
+  // shows it when there are in-flight hi-res sub-tiles.
+  const loading = document.createElement('div');
+  loading.className = 'mag-loading';
+  loading.textContent = (typeof S !== 'undefined' && S.magLoading) || 'Perfecting…';
+  mag.appendChild(loading);
   document.body.appendChild(mag);
 }
 
@@ -2211,6 +2236,11 @@ function rebuildMagnifier() {
   content.innerHTML = '';
   _magLastX = _magX;
   _magLastY = _magY;
+  // Start a fresh hi-res batch. Any pending load/error callbacks from a
+  // prior rebuild are now stale — they'll match a different `_magBatch`
+  // value and bail out instead of decrementing the new batch's counter.
+  const batch = ++_magBatch;
+  _magPendingTiles = 0;
 
   // clone tiles at current zoom (immediate fallback)
   const tilePane = document.querySelector('.leaflet-tile-pane');
@@ -2352,15 +2382,45 @@ function rebuildMagnifier() {
           tile.style.cssText = 'position:absolute;left:' +
             localX + 'px;top:' + localY + 'px;' +
             'width:' + sz + 'px;height:' + sz + 'px';
-          tile.onerror = () => tile.remove();
+          tile.dataset.batch = String(batch);
+          _magPendingTiles++;
+          // Settle handler shared by load + error. Stale-batch callbacks
+          // (cursor moved fast → newer rebuild already ran) early-return
+          // so they don't decrement the current batch's pending count.
+          const onSettle = (ev) => {
+            const t = ev && ev.target ? ev.target : tile;
+            if (t.dataset.batch !== String(_magBatch)) return;
+            _magPendingTiles--;
+            if (_magPendingTiles <= 0) hideMagLoading();
+          };
+          tile.addEventListener('load', onSettle, { once: true });
+          tile.addEventListener('error', (ev) => {
+            // Preserve the original cleanup behaviour for 404'd tiles.
+            tile.remove();
+            onSettle(ev);
+          }, { once: true });
           tile.src = L.Util.template(activeLayer._url,
             { z: tileTarget, x: tx, y: ty,
               s: subs[(tx + ty) % subs.length] });
+          // Cached images can fire `load` before listeners are attached.
+          // `complete` + `naturalWidth > 0` ⇒ already loaded; `complete`
+          // alone (with `naturalWidth === 0`) ⇒ already errored. Either
+          // way, settle synchronously so the counter doesn't get stuck.
+          if (tile.complete) {
+            if (tile.naturalWidth === 0) tile.remove();
+            onSettle({ target: tile });
+          }
           content.appendChild(tile);
         }
       }
     }
   }
+  // Show the "Perfecting…" pill iff there are still in-flight hi-res
+  // tiles after the loop ran. At max native zoom (no hi-res fetched,
+  // sub=1, 0 tiles) the counter stays at 0 and the pill never appears,
+  // which is what we want — no flicker on already-crisp views.
+  if (_magPendingTiles > 0) showMagLoading();
+  else hideMagLoading();
 
   // capture overlay (waypoint dots, leg lines, notes). The content div is
   // scaled by `_magEffS` for the tile layer, but the overlay wants to stay
@@ -2474,6 +2534,12 @@ function toggleMagnifier() {
     document.removeEventListener('mousemove', updateMagnifier);
     document.removeEventListener('click', onMagClick, true);
     if (_magRAF) { cancelAnimationFrame(_magRAF); _magRAF = null; }
+    // Invalidate any in-flight hi-res callbacks and hide the indicator.
+    // Bumping `_magBatch` is what guarantees onSettle handlers from the
+    // closing batch early-return instead of poking a hidden indicator.
+    _magBatch++;
+    _magPendingTiles = 0;
+    hideMagLoading();
   }
 }
 
