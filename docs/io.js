@@ -2220,10 +2220,10 @@ function rebuildMagnifier() {
         pathParts[3] = '' + ty + pathParts[3].slice(pathParts[3].lastIndexOf('.'));
         tileUrl.pathname = pathParts.join('/');
         img.src = tileUrl.toString();
-        // position in mapZoom pixel space: targetZoom tile coords ÷ sub
+        // position at world pixel in mapZoom space (no dx/dy — transform handles offset)
         img.style.cssText = 'position:absolute;left:' +
-          (tx * tileSize / sub - dx) + 'px;top:' +
-          (ty * tileSize / sub - dy) + 'px;';
+          (tx * tileSize / sub) + 'px;top:' +
+          (ty * tileSize / sub) + 'px;';
         content.appendChild(img);
       }
     }
