@@ -559,7 +559,7 @@ function drawNotes() {
                      state.selected.type === 'note' &&
                      state.selected.index === i;
     const color = n.color || NOTE_DEFAULT_COLOR;
-    octx.fillStyle = tintFill(color, selected ? 0.95 : 0.80);
+    octx.fillStyle = tintFill(color);
     octx.lineWidth = selected ? 2.5 : 1.5;
     octx.strokeStyle = selected ? '#ffcc33' : '#161412';
     if (r.oval) {
