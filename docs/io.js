@@ -2136,6 +2136,7 @@ function showToast(msg) {
 let _magDirty = true;                      // content needs rebuilding
 let _magRAF = null;                        // requestAnimationFrame id
 let _magX = 0, _magY = 0;                 // last known cursor (viewport px)
+let _magFixed = false;                     // click-to-lock fixed position
 
 function magCenter() { return magnifierSize / 2; }
 
@@ -2202,7 +2203,7 @@ function rebuildMagnifier() {
 }
 
 function updateMagnifier(e) {
-  if (!magnifierOn) return;
+  if (!magnifierOn || _magFixed) return;
   _magX = e.clientX;
   _magY = e.clientY;
   if (_magRAF) return;                     // already queued
@@ -2230,11 +2231,19 @@ function updateMagnifier(e) {
   });
 }
 
+function applyMagBorder() {
+  const mag = document.getElementById('magnifier');
+  if (!mag) return;
+  mag.style.borderColor = _magFixed ? 'rgba(102,255,102,0.9)' : 'rgba(255,204,51,0.85)';
+}
+
 function toggleMagnifier() {
   magnifierOn = !magnifierOn;
+  _magFixed = false;
   const mag = document.getElementById('magnifier');
   if (!mag) return;
   mag.style.display = magnifierOn ? 'block' : 'none';
+  applyMagBorder();
   document.getElementById('tool-magnifier').classList.toggle('active', magnifierOn);
   const settings = document.getElementById('magnifier-settings');
   if (settings) settings.classList.toggle('hidden', !magnifierOn);
@@ -2244,13 +2253,27 @@ function toggleMagnifier() {
     // position at last known cursor or viewport centre
     _magX = _magX || window.innerWidth / 2;
     _magY = _magY || window.innerHeight / 2;
-    const mag = document.getElementById('magnifier');
     mag.style.left = (_magX - magCenter()) + 'px'; mag.style.top = (_magY - magCenter()) + 'px';
     document.addEventListener('mousemove', updateMagnifier);
+    document.addEventListener('click', onMagClick, true);
   } else {
     document.removeEventListener('mousemove', updateMagnifier);
+    document.removeEventListener('click', onMagClick, true);
     if (_magRAF) { cancelAnimationFrame(_magRAF); _magRAF = null; }
   }
+}
+
+function onMagClick(e) {
+  if (!magnifierOn) return;
+  // ignore clicks on toolbar / settings panel / inspector
+  const ignore = document.getElementById('toolbar');
+  if (ignore && ignore.contains(e.target)) return;
+  const settings = document.getElementById('magnifier-settings');
+  if (settings && settings.contains(e.target)) return;
+  const insp = document.getElementById('inspector');
+  if (insp && insp.contains(e.target)) return;
+  _magFixed = !_magFixed;
+  applyMagBorder();
 }
 
 // Magnifier zoom + size sliders
