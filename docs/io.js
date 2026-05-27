@@ -2244,6 +2244,7 @@ function toggleMagnifier() {
 }
 
 // Magnifier zoom slider
+var magnifierZoom = 1;
 (function () {
   const zoomSlider = document.getElementById('mag-zoom');
   const zoomVal = document.getElementById('mag-zoom-val');
