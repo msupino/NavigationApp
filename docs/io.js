@@ -2202,6 +2202,23 @@ function rebuildMagnifier() {
   _magDirty = false;
 }
 
+function applyMagnifierTransform() {
+  const mag = document.getElementById('magnifier');
+  const content = document.getElementById('mag-content');
+  if (!mag || !content) return;
+  if (_magDirty) rebuildMagnifier();
+  const mapRect = map.getContainer().getBoundingClientRect();
+  const cp = { x: _magX - mapRect.left, y: _magY - mapRect.top };
+  const S = magnifierZoom;
+  const mapPane = document.querySelector('.leaflet-map-pane');
+  const mat = mapPane ? new DOMMatrixReadOnly(getComputedStyle(mapPane).transform) : null;
+  const dx = mat ? (mat.is2D ? mat.e : mat.m41) : 0;
+  const dy = mat ? (mat.is2D ? mat.f : mat.m42) : 0;
+  content.style.transform =
+    'translate(' + (magCenter() + dx * S - cp.x * S) + 'px,' +
+                   (magCenter() + dy * S - cp.y * S) + 'px) scale(' + S + ')';
+}
+
 function updateMagnifier(e) {
   if (!magnifierOn || _magFixed) return;
   _magX = e.clientX;
@@ -2212,22 +2229,9 @@ function updateMagnifier(e) {
     const mag = document.getElementById('magnifier');
     const content = document.getElementById('mag-content');
     if (!mag || !content) return;
-    // position magnifier
     mag.style.left = (_magX - magCenter()) + 'px';
     mag.style.top = (_magY - magCenter()) + 'px';
-    // rebuild if dirty
-    if (_magDirty) rebuildMagnifier();
-    // compute transform so cursor container-point maps to magnifier centre
-    const mapRect = map.getContainer().getBoundingClientRect();
-    const cp = { x: _magX - mapRect.left, y: _magY - mapRect.top };
-    const S = magnifierZoom;
-    const mapPane = document.querySelector('.leaflet-map-pane');
-    const mat = mapPane ? new DOMMatrixReadOnly(getComputedStyle(mapPane).transform) : null;
-    const dx = mat ? (mat.is2D ? mat.e : mat.m41) : 0;
-    const dy = mat ? (mat.is2D ? mat.f : mat.m42) : 0;
-    content.style.transform =
-      'translate(' + (magCenter() + dx * S - cp.x * S) + 'px,' +
-                     (magCenter() + dy * S - cp.y * S) + 'px) scale(' + S + ')';
+    applyMagnifierTransform();
   });
 }
 
@@ -2285,7 +2289,7 @@ function onMagClick(e) {
       window.magnifierZoom = parseFloat(this.value);
       zoomVal.textContent = magnifierZoom.toFixed(2).replace(/\.?0+$/, '') + '×';
       _magDirty = true;
-      if (magnifierOn) rebuildMagnifier();
+      if (magnifierOn) { rebuildMagnifier(); applyMagnifierTransform(); }
     });
   }
   const sizeSlider = document.getElementById('mag-size');
@@ -2296,8 +2300,26 @@ function onMagClick(e) {
       sizeVal.textContent = magnifierSize + 'px';
       applyMagnifierSize();
       _magDirty = true;
-      if (magnifierOn) rebuildMagnifier();
+      if (magnifierOn) { rebuildMagnifier(); applyMagnifierTransform(); }
     });
+  }
+  // Scroll wheel changes magnifier zoom instead of map zoom
+  const mapContainer = document.getElementById('map');
+  if (mapContainer) {
+    mapContainer.addEventListener('wheel', function (e) {
+      if (!magnifierOn) return;
+      e.preventDefault();
+      const step = e.deltaY > 0 ? -0.25 : 0.25;
+      var v = parseFloat(zoomSlider.value) + step;
+      v = Math.max(1, Math.min(5, Math.round(v * 4) / 4));  // clamp to 1-5, step 0.25
+      if (v === parseFloat(zoomSlider.value)) return;
+      zoomSlider.value = '' + v;
+      window.magnifierZoom = v;
+      zoomVal.textContent = v.toFixed(2).replace(/\.?0+$/, '') + '×';
+      _magDirty = true;
+      rebuildMagnifier();
+      applyMagnifierTransform();
+    }, { passive: false });
   }
   // Settings close button
   const closeBtn = document.getElementById('mag-settings-close');

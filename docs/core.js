@@ -200,7 +200,7 @@ window.S = Object.assign({
   modalCloseTitle: 'Close',
   tbPrint: '⬇ Save PNG',
   tbPrintTitle: 'Save the framed map + route as a PNG',
-  tbMagnifier: '🔍',
+  tbMagnifier: '🔍 Magnifying Glass',
   tbMagnifierTitle: 'Magnifying glass — zoomed view at cursor for precise editing',
   magSettingsTitle: 'Magnifier',
   magZoomLabel: 'Zoom',
