@@ -71,24 +71,29 @@ test.describe('Magnifying glass', () => {
     // move to a position
     const mapBox = await page.locator('#map').boundingBox();
     if (!mapBox) { test.skip(true, 'map not found'); return; }
-    // first, add a couple waypoints so there's something to select
+    // first, add a couple waypoints so there's something to select. Click
+    // coordinates must clear the toolbar (x ≈ 12..252 in the default viewport):
+    // clicking inside the toolbar lands on a `.tb-section-head` and the
+    // accordion collapses Build, hiding `#tool-add` for the rest of the test.
     await page.locator('#tool-add').click();
-    await page.mouse.click(mapBox.x + 100, mapBox.y + 100);
-    await page.mouse.click(mapBox.x + 200, mapBox.y + 200);
+    const wp1x = mapBox.x + 400, wp1y = mapBox.y + 300;
+    const wp2x = mapBox.x + 600, wp2y = mapBox.y + 300;
+    await page.mouse.click(wp1x, wp1y);
+    await page.mouse.click(wp2x, wp2y);
     await page.locator('#tool-add').click(); // exit add mode — magnifier stays on
     // move to first waypoint and click to lock
-    await page.mouse.move(mapBox.x + 100, mapBox.y + 100);
+    await page.mouse.move(wp1x, wp1y);
     const boxBefore = await mag.boundingBox();
-    await page.mouse.click(mapBox.x + 100, mapBox.y + 100);
+    await page.mouse.click(wp1x, wp1y);
     // movement should be locked now
-    await page.mouse.move(mapBox.x + 300, mapBox.y + 300);
+    await page.mouse.move(mapBox.x + 800, mapBox.y + 400);
     const boxAfter = await mag.boundingBox();
     expect(boxBefore?.x).toBe(boxAfter?.x);
     expect(boxBefore?.y).toBe(boxAfter?.y);
     // click again to unlock and select something
-    await page.mouse.click(mapBox.x + 200, mapBox.y + 200);
+    await page.mouse.click(wp2x, wp2y);
     // move mouse — magnifier should follow
-    await page.mouse.move(mapBox.x + 150, mapBox.y + 150);
+    await page.mouse.move(mapBox.x + 700, mapBox.y + 350);
     const boxReleased = await mag.boundingBox();
     expect(boxReleased?.x).not.toBe(boxAfter?.x);
   });
