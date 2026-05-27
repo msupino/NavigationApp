@@ -37,6 +37,7 @@ html, body {
   max-height: calc(100vh - 24px);
   max-height: calc(100dvh - 24px);       /* dynamic viewport on iOS Safari */
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;     /* momentum scroll on iOS */
   overscroll-behavior: contain;          /* don't chain scroll to the map */
   touch-action: pan-y;                   /* allow vertical swipe to scroll */
