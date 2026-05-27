@@ -1,0 +1,16 @@
+name: Question / help
+description: How do I ... ? Is this a bug or expected?
+title: "[Q]: "
+labels: ["question"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: NavAid version (if relevant)
+      placeholder: "1.0-4e5fb49"

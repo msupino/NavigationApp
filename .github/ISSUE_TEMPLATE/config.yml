@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Wiki / docs
+    url: https://github.com/msupino/NavigationApp/wiki
+    about: Check existing docs before opening an issue.
+  - name: Discussions
+    url: https://github.com/msupino/NavigationApp/discussions
+    about: Open-ended ideas or chat that are not bug reports.
