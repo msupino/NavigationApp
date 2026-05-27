@@ -2168,13 +2168,70 @@ function rebuildMagnifier() {
   if (!content) return;
   content.innerHTML = '';
 
-  // clone tiles from the map's tile pane
-  const tilePane = document.querySelector('.leaflet-tile-pane');
-  if (tilePane) {
+  // fetch tiles at a higher zoom for crisp detail, using the same CORS
+  // strategy as exportPNG (weserv proxy for flight-maps tiles)
+  const S = magnifierZoom;
+  const mapZoom = map.getZoom();
+  const zoomStep = Math.ceil(Math.log2(S));
+  const targetZoom = Math.min(mapZoom + zoomStep, 19);
+  const useHighRes = targetZoom > mapZoom;
+
+  let activeLayer = null;
+  for (const key in layers) {
+    if (map.hasLayer(layers[key])) { activeLayer = layers[key]; break; }
+  }
+
+  if (!useHighRes || !activeLayer) {
+    // clone tiles at current zoom
+    const tilePane = document.querySelector('.leaflet-tile-pane');
+    if (tilePane) {
+      for (const img of tilePane.querySelectorAll('img')) {
+        const c = img.cloneNode(true);
+        c.style.visibility = 'visible';
+        content.appendChild(c);
+      }
+    }
+  } else {
+    const tilePane = document.querySelector('.leaflet-tile-pane');
+    if (!tilePane) return;
+    const subs = activeLayer.options.subdomains || 'abc';
+    const corsOk = activeLayer.options.corsOk;
+    const sub = Math.pow(2, targetZoom - mapZoom);
     for (const img of tilePane.querySelectorAll('img')) {
-      const c = img.cloneNode(true);
-      c.style.visibility = 'visible';
-      content.appendChild(c);
+      // parse zoom/x/y from the last 3 numeric path segments
+      const parts = new URL(img.src).pathname.split('/');
+      if (parts.length < 4) continue;
+      const zNum = parseInt(parts[parts.length - 3], 10);
+      if (isNaN(zNum) || zNum !== mapZoom) continue;
+      const yNum = parseInt(parts[parts.length - 1], 10);
+      if (isNaN(yNum)) continue;
+      const xNum = parseInt(parts[parts.length - 2], 10);
+      if (isNaN(xNum)) continue;
+      for (let dy = 0; dy < sub; dy++) {
+        for (let dx = 0; dx < sub; dx++) {
+          const tx = xNum * sub + dx;
+          const ty = yNum * sub + dy;
+          const tile = document.createElement('img');
+          tile.style.cssText = 'position:absolute;left:' +
+            (tx * 256 / sub) + 'px;top:' +
+            (ty * 256 / sub) + 'px;' +
+            'width:256px;height:256px;';
+          content.appendChild(tile);
+          const url = L.Util.template(activeLayer._url,
+            { z: targetZoom, x: tx, y: ty, s: subs[(tx + ty) % subs.length] });
+          const fetchUrl = corsOk ? url
+            : 'https://images.weserv.nl/?url=' +
+              encodeURIComponent(url.replace(/^https?:\/\//, ''));
+          fetch(fetchUrl).then(r => {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.blob();
+          }).then(blob => {
+            tile.src = URL.createObjectURL(blob);
+          }).catch(() => {
+            tile.remove();
+          });
+        }
+      }
     }
   }
 
