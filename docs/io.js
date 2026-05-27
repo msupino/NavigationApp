@@ -520,21 +520,13 @@ function showFlightPlan() {
   const headers = S.fpHeaders;
   const thead = document.createElement('thead');
   const trH = document.createElement('tr');
-  const fpThCells = [];
   for (const h of headers) {
     const th = document.createElement('th');
     th.textContent = h;
     trH.appendChild(th);
-    fpThCells.push(th);
   }
   thead.appendChild(trH);
   table.appendChild(thead);
-
-  function swapHeaders(pinned) {
-    var hdrs = pinned ? S.fpHeadersShort : S.fpHeaders;
-    for (let i = 0; i < fpThCells.length; i++) fpThCells[i].textContent = hdrs[i];
-    for (let i = 0; i < rfpThCells.length; i++) rfpThCells[i].textContent = hdrs[i];
-  }
 
   const tbody = document.createElement('tbody');
   // From / To cells are editable — each waypoint may appear in two rows,
@@ -692,7 +684,6 @@ function showFlightPlan() {
 
   // --- return-route table (when showReturn is on) --------------------
   let retRefresh = null;
-  var rfpThCells = [];
   if (window.showReturn) {
     const sub = document.createElement('div');
     sub.className = 'flight-plan-sub';
@@ -707,7 +698,6 @@ function showFlightPlan() {
       const th = document.createElement('th');
       th.textContent = h;
       rtrH.appendChild(th);
-      rfpThCells.push(th);
     }
     rthead.appendChild(rtrH);
     rtable.appendChild(rthead);
