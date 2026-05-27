@@ -592,9 +592,14 @@ document.getElementById('print').onclick = showExportModal;
 createMagnifier();
 document.getElementById('tool-magnifier').onclick = toggleMagnifier;
 document.getElementById('tool-reset-all-markers').onclick = () => {
+  // PR review #14: confirm before wiping every manual leg-marker offset —
+  // this button is in the always-visible Build section so an accidental
+  // click on a hand-tuned route was costly.
+  if (!confirm(S.resetAllConfirm || 'Reset all marker positions?')) return;
   for (let i = 0; i < state.legs.length; i++) {
-    state.legs[i].inLabel = { a: 0, p: 44, _m: 1 };
-    state.legs[i].outLabel = { a: 0, p: -44, _m: 1 };
+    const d = _defaultLegLabels();
+    state.legs[i].inLabel = d.inLabel;
+    state.legs[i].outLabel = d.outLabel;
   }
   draw();
 };

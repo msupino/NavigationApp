@@ -151,10 +151,14 @@ function showInspector() {
     }));
     const reset = document.createElement('button');
     reset.className = 'insp-btn';
-    reset.textContent = S.resetLegMarkers;
+    // Fallback to a glyph if the locale strings haven't been loaded yet —
+    // Hebrew users used to see literal "undefined" on this button until
+    // resetLegMarkers landed in he/strings.js (PR review #4).
+    reset.textContent = S.resetLegMarkers || '↺';
     reset.onclick = () => {
-      leg.inLabel = { a: 0, p: 44, _m: 1 };
-      leg.outLabel = { a: 0, p: -44, _m: 1 };
+      const d = _defaultLegLabels();
+      leg.inLabel = d.inLabel;
+      leg.outLabel = d.outLabel;
       draw();
     };
     body.appendChild(reset);

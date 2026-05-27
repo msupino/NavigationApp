@@ -68,6 +68,7 @@ window.S = Object.assign({
   deleteWp: 'Delete Waypoint',                      // inspector button
   resetLegMarkers: '↺ Reset marker position',       // inspector leg button — reset label offsets
   resetAllLegMarkers: '↺ Reset all marker positions', // inspector leg button — reset every leg
+  resetAllConfirm: 'Reset all leg marker positions to default? This will clear any manual adjustments.',
   clearConfirm: 'Remove all waypoints and notes?',
   errBadCoords: 'file has invalid waypoint coordinates',
   // --- end Waypoint terminology ---------------------------------------
@@ -314,14 +315,35 @@ function tintFill(hex) {
 
 const NOTE_DEFAULT_COLOR = '#fff6aa';   // matches the existing yellow fill
 
-const newLeg = () => ({
-  inboundAltitude: 2000,
-  outboundAltitude: 2000,
-  flightSpeed: 90,
-  outboundSpeed: 90,
-  inLabel: { a: 0, p: 44 },            // marker offset: along leg, perpendicular
-  outLabel: { a: 0, p: -44 },
-});
+// Default leg-marker offsets. Single source of truth used by newLeg(),
+// the inspector "Reset marker position" button (interact.js), the toolbar
+// "Reset all marker positions" button (ui.js), and the share-URL decoder
+// (io.js). The invariant: stored offsets are size-independent (already
+// divided by legArrowSize), with `_m: 1` marking them migrated. At render
+// time drawLegs multiplies by `legZoomScale() = max(0.35, 2^(zoom-12)) *
+// legArrowSize`, so the on-screen perpendicular distance at zoom 12 is a
+// constant 44 px regardless of legArrowSize. See io.js `_normalizeLegLabel`
+// for the legacy-blob migration that converts pre-#393 raw-pixel offsets
+// to this same unit.
+function _defaultLegLabels() {
+  const k = (typeof legArrowSize === 'number' && legArrowSize > 0)
+    ? legArrowSize : 1;
+  return {
+    inLabel:  { a: 0, p:  44 / k, _m: 1 },
+    outLabel: { a: 0, p: -44 / k, _m: 1 },
+  };
+}
+const newLeg = () => {
+  const d = _defaultLegLabels();
+  return {
+    inboundAltitude: 2000,
+    outboundAltitude: 2000,
+    flightSpeed: 90,
+    outboundSpeed: 90,
+    inLabel: d.inLabel,                  // marker offset: along leg, perpendicular
+    outLabel: d.outLabel,
+  };
+};
 
 
 // --- helpers ---------------------------------------------------------

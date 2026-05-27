@@ -65,9 +65,10 @@ function _v(obj, key, type, path, errs) {
       errs.push(path + '.' + key + ': expected "rect" or "oval", got ' +
                 JSON.stringify(v));
       return false;
-      }
     }
-    }
+  }
+  return true;
+}
 function validateRoute(d) {
   const errs = [];
   if (!d || typeof d !== 'object' || Array.isArray(d)) {
@@ -197,6 +198,25 @@ function validateAirfields(d) {
 }
 
 // --- save / load -----------------------------------------------------
+// Per-leg label normaliser used by every route-ingest path (load() file
+// import, restoreRoute() localStorage boot, decodeShareUrl() short URL).
+// Pre-#393 blobs stored offsets in raw screen pixels at the save-time
+// `legArrowSize`; the new render math multiplies stored offsets by
+// `legZoomScale() = max(0.35, 2^(zoom-12)) * legArrowSize`, so an
+// unmigrated raw value renders at legArrowSize^2 of the intended position.
+// We normalise by dividing by `legacyArrowSize` exactly once — `_m: 1`
+// stamps the result so re-saved blobs never re-migrate. `legacyArrowSize`
+// should be the size the file was *saved* under; if the file does not
+// carry that field we fall back to the current `legArrowSize` (which
+// matches the user's current display environment — the safest default
+// per the PR-review #3 recommendation).
+function _normalizeLegLabel(raw, legacyArrowSize) {
+  if (!raw) return raw;
+  if (raw._m) return { a: raw.a, p: raw.p, _m: 1 };
+  const k = (typeof legacyArrowSize === 'number' && legacyArrowSize > 0)
+    ? legacyArrowSize : 1;
+  return { a: raw.a / k, p: raw.p / k, _m: 1 };
+}
 function save() {
   const data = {
     waypoints: state.waypoints.map(w => ({
@@ -252,13 +272,18 @@ function load(file) {
     state.waypoints = d.waypoints.map(w => ({
       lat: r5(w.lat), lng: r5(w.lng), name: w.name,
     }));
+    // Use the file's `legArrowSize` if present (forward-compat — current
+    // save() doesn't emit it). Otherwise fall back to the current setting.
+    // See _normalizeLegLabel for the migration math.
+    const legacyAS = (typeof d.legArrowSize === 'number' && d.legArrowSize > 0)
+      ? d.legArrowSize : legArrowSize;
     state.legs = d.legs.map(l => ({
       inboundAltitude: l.inboundAltitude,
       outboundAltitude: l.outboundAltitude,
       flightSpeed: l.flightSpeed,
       outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
-      inLabel:  { a: l.inLabel.a,  p: l.inLabel.p,  _m: 1 },
-      outLabel: { a: l.outLabel.a, p: l.outLabel.p, _m: 1 },
+      inLabel:  _normalizeLegLabel(l.inLabel,  legacyAS),
+      outLabel: _normalizeLegLabel(l.outLabel, legacyAS),
     }));
     state.notes = d.notes.map(n => ({
       lat: r5(n.lat), lng: r5(n.lng),
@@ -1701,29 +1726,22 @@ function restoreRoute() {
   state.waypoints = d.waypoints.map(w => ({
     lat: r5(w.lat), lng: r5(w.lng), name: w.name,
   }));
-  state.legs = d.legs.map(l => {
-    const inL  = { a: l.inLabel.a,  p: l.inLabel.p  };
-    const outL = { a: l.outLabel.a, p: l.outLabel.p };
-    // #393 — normalise inLabel/outLabel offsets to zoom-12 reference so they
-    // scale proportionally with zoom. Old (pre-#393) blobs lack _m and hold
-    // raw pixel offsets.
-    if (!l.inLabel._m) {
-      // Divide by legArrowSize to normalise to zoom-12 reference.
-      // legZoomScale(12) = 1 * legArrowSize, so isc = 1 / legArrowSize.
-      // This keeps the marker at the same position at zoom 12; at other
-      // zooms it scales proportionally.
-      inL.a /= legArrowSize;  inL.p /= legArrowSize;
-      outL.a /= legArrowSize; outL.p /= legArrowSize;
-    }
-    inL._m = outL._m = 1;  // always flag as migrated so migration never re-runs
-    return {
-      inboundAltitude: l.inboundAltitude,
-      outboundAltitude: l.outboundAltitude,
-      flightSpeed: l.flightSpeed,
-      outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
-      inLabel: inL, outLabel: outL,
-    };
-  });
+  // #393 — normalise inLabel/outLabel offsets to zoom-12 reference so they
+  // scale proportionally with zoom. Pre-#393 blobs lack `_m` and hold raw
+  // pixel offsets, which `_normalizeLegLabel` divides by `legacyArrowSize`
+  // (one-shot, idempotent — the `_m: 1` stamp blocks any re-migration). If
+  // the saved blob carries its own legArrowSize we honour it; otherwise we
+  // fall back to the current setting (PR-review #3).
+  const legacyAS = (typeof d.legArrowSize === 'number' && d.legArrowSize > 0)
+    ? d.legArrowSize : legArrowSize;
+  state.legs = d.legs.map(l => ({
+    inboundAltitude: l.inboundAltitude,
+    outboundAltitude: l.outboundAltitude,
+    flightSpeed: l.flightSpeed,
+    outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
+    inLabel:  _normalizeLegLabel(l.inLabel,  legacyAS),
+    outLabel: _normalizeLegLabel(l.outLabel, legacyAS),
+  }));
   state.notes = d.notes.map(n => ({
     lat: r5(n.lat), lng: r5(n.lng),
     text: n.text, color: n.color, shape: n.shape,
@@ -2087,13 +2105,19 @@ function decodeShareUrl(search) {
     const parts = s.split(',').map(Number);
     if (parts.length < 3 || parts.some(v => !Number.isFinite(v))) return null;
     const [ia, oa, fs, os] = parts;
+    // Short-URL share format doesn't carry per-leg label offsets — use the
+    // size-independent default with `_m: 1` so the offsets render at the
+    // same on-screen position as a freshly-created leg, independent of
+    // legArrowSize, and so the migration in restoreRoute() / load() never
+    // touches them on a later round-trip (PR-review #3 + #5).
+    const d = _defaultLegLabels();
     return {
       inboundAltitude: ia,
       outboundAltitude: oa,
       flightSpeed: fs,
       outboundSpeed: os != null ? os : fs,
-      inLabel: { a: 0, p: 44 },
-      outLabel: { a: 0, p: -44 },
+      inLabel: d.inLabel,
+      outLabel: d.outLabel,
     };
   });
   if (legs.some(l => l === null)) return null;
@@ -2225,29 +2249,38 @@ function rebuildMagnifier() {
     if (map.hasLayer(layers[key])) { activeLayer = layers[key]; break; }
   }
 
-  // Pick the first cloned tile with a parseable URL + transform as the
+  // Pick the first cloned tile with a known tile coord + transform as the
   // coordinate-system anchor. Hi-res tiles are positioned relative to it,
   // which sidesteps having to recompute Leaflet's tile-container origin
   // (see commit 41fd620 — world-pixel coords are catastrophically wrong).
+  //
+  // We read the tile coords from Leaflet's `_tiles` cache (the `coords`
+  // property is the authoritative {x, y, z} for the tile, independent of
+  // the URL template's slot order). The previous URL-parsing approach
+  // assumed `{z}/{x}/{y}` and silently swapped on Satellite (Esri uses
+  // `{z}/{y}/{x}`, see core.js layers['Satellite']) — every hi-res
+  // request 404'd and the loupe stayed blurry on that base layer.
   let refX = null, refY = null, refZ = null;
   let refLocalX = 0, refLocalY = 0;
   if (activeLayer) {
+    const tileCache = activeLayer._tiles || {};
+    // Build a src→coords lookup from the live tile cache so we can resolve
+    // each cloned <img> back to its authoritative {x,y,z} without trusting
+    // the URL slot order.
+    const coordsBySrc = new Map();
+    for (const k in tileCache) {
+      const t = tileCache[k];
+      if (t && t.el && t.el.src && t.coords) coordsBySrc.set(t.el.src, t.coords);
+    }
     for (const img of tiles) {
       if (!img.src) continue;
-      let parts;
-      try { parts = new URL(img.src).pathname.split('/'); }
-      catch (e) { continue; }
-      if (parts.length < 4) continue;
-      const z = parseInt(parts[parts.length - 3], 10);
-      const x = parseInt(parts[parts.length - 2], 10);
-      const y = parseInt(parts[parts.length - 1], 10);
-      if (!Number.isFinite(z) || !Number.isFinite(x) ||
-          !Number.isFinite(y)) continue;
+      const coords = coordsBySrc.get(img.src);
+      if (!coords) continue;
       const trStr = img.style.transform;
       if (!trStr) continue;
       let mat;
       try { mat = new DOMMatrixReadOnly(trStr); } catch (e) { continue; }
-      refZ = z; refX = x; refY = y;
+      refZ = coords.z; refX = coords.x; refY = coords.y;
       refLocalX = mat.is2D ? mat.e : mat.m41;
       refLocalY = mat.is2D ? mat.f : mat.m42;
       break;
@@ -2458,9 +2491,6 @@ function onMagClick(e) {
 }
 
 // Magnifier zoom slider + scroll-wheel control
-(function () {})();
-
-// Magnifier zoom slider + scroll-wheel control
 (function () {
   const zoomSlider = document.getElementById('mag-zoom');
   const zoomVal = document.getElementById('mag-zoom-val');
@@ -2502,18 +2532,12 @@ function onMagClick(e) {
   }
 })();
 
-// Mark magnifier dirty when the map or route changes
+// Mark magnifier dirty when the map or route changes. The mousemove
+// threshold in updateMagnifier covers cursor drift; combined with these
+// map events the loupe stays current without a draw()-time hook. (PR
+// review #9 removed a previously-dead NavAid._onDraw wrapper that
+// nothing ever called.)
 map.on('moveend zoomend rotate', () => { _magDirty = true; });
-// _onDraw already used by WYSIWYG; piggyback — the WYSIWYG fires after draw
-// so this runs right after it.
-// We hook into draw via a separate channel so the two features are independent.
-// Wrap NavAid._onDraw so it also marks the magnifier dirty.
-if (typeof NavAid._onDraw === 'function') {
-  const _origOnDraw = NavAid._onDraw;
-  NavAid._onDraw = function () { _origOnDraw(); _magDirty = true; };
-} else {
-  NavAid._onDraw = function () { _magDirty = true; };
-}
 
 // --- Toolbar button handler — copy share URL to clipboard. ------------
 function shareRoute() {

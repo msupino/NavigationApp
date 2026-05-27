@@ -1,0 +1,301 @@
+// @ts-check
+// Headline-feature coverage for PR #393 — leg-marker offsets must be
+// stored in size-independent units (already divided by legArrowSize) with
+// `_m: 1` flagging them as migrated, so they render at a constant on-screen
+// position regardless of zoom and legArrowSize. The tests below pin the
+// invariant from every direction it can be reached:
+//
+//   1. zoom round-trip — changing the map zoom never mutates inLabel
+//      (the stored value is size-independent; render math handles the
+//      pixel-scaling at draw time).
+//   2. legacy migration — a pre-#393 navaid.route blob (no `_m`) loads
+//      with offsets divided by legArrowSize and `_m: 1` stamped.
+//   3. idempotency — once migrated, a re-load is a no-op.
+//   4. "Reset all marker positions" — every leg ends up matching the
+//      _defaultLegLabels() invariant (44 / legArrowSize, with `_m: 1`),
+//      and the confirm dialog blocks accidental wipes.
+//   5. round-trip at legArrowSize=2 — save / reload / import produces an
+//      identical rendered marker position (within sub-pixel ε).
+const { test, expect } = require('./_setup');
+
+const TWO_WP = [
+  { lat: 32.18060, lng: 34.83470, name: 'A' },
+  { lat: 32.80972, lng: 35.04389, name: 'B' },
+];
+
+async function boot(page) {
+  await page.addInitScript(() => {
+    try {
+      for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
+      sessionStorage.clear();
+      // Open every toolbar section so DOM queries find the reset button.
+      for (const s of ['build','view','display','charts','export','print'])
+        localStorage.setItem('navaid.sec.' + s, '1');
+    } catch (e) {}
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(
+    () => typeof state !== 'undefined' &&
+          typeof syncLegs === 'function' &&
+          typeof _defaultLegLabels === 'function');
+}
+
+async function loadTwoWp(page) {
+  await page.evaluate(wps => {
+    state.waypoints = wps.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
+    syncLegs();
+    draw();
+  }, TWO_WP);
+}
+
+test.describe('PR #393 — leg marker zoom-independent offsets', () => {
+  // ---------------------------------------------------------------------
+  // 1) Zoom round-trip: the stored offset is in size-independent units, so
+  //    a zoom change does not mutate inLabel. The on-screen pixel position
+  //    DOES change (legZoomScale multiplies by 2^(zoom-12)), but the
+  //    underlying value sticks.
+  // ---------------------------------------------------------------------
+  test('zoom change preserves stored leg marker offset', async ({ page }) => {
+    await boot(page);
+    await loadTwoWp(page);
+    await page.evaluate(() => map.setZoom(12));
+    await page.waitForFunction(() => Math.abs(map.getZoom() - 12) < 0.01);
+
+    // Simulate a drag result by writing a non-default offset directly.
+    await page.evaluate(() => {
+      state.legs[0].inLabel  = { a:  10, p:  30, _m: 1 };
+      state.legs[0].outLabel = { a: -10, p: -30, _m: 1 };
+      draw();
+    });
+    const before = await page.evaluate(() => ({
+      inLabel:  state.legs[0].inLabel,
+      outLabel: state.legs[0].outLabel,
+    }));
+
+    // Bracket the original zoom to verify both directions of change.
+    for (const z of [14, 10, 12]) {
+      await page.evaluate(zn => map.setZoom(zn), z);
+      await page.waitForFunction(zn => Math.abs(map.getZoom() - zn) < 0.01, z);
+      const after = await page.evaluate(() => ({
+        inLabel:  state.legs[0].inLabel,
+        outLabel: state.legs[0].outLabel,
+      }));
+      expect(after).toEqual(before);
+    }
+  });
+
+  // ---------------------------------------------------------------------
+  // 2) Legacy migration: a route saved before #393 has raw pixel offsets
+  //    and no `_m`. Restored under the new code, offsets are divided by
+  //    legArrowSize and `_m: 1` is stamped (one-shot, idempotent).
+  // ---------------------------------------------------------------------
+  test('legacy navaid.route migrates raw offsets by legArrowSize and stamps _m', async ({ page }) => {
+    const RAW = 88;     // raw screen pixels (pre-#393 save under legArrowSize=2)
+    const AS = 2;
+    await page.addInitScript(({ raw, as }) => {
+      try {
+        for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
+        sessionStorage.clear();
+        for (const s of ['build','view','display','charts','export','print'])
+          localStorage.setItem('navaid.sec.' + s, '1');
+        localStorage.setItem('navaid.legArrowSize', String(as));
+        localStorage.setItem('navaid.route', JSON.stringify({
+          waypoints: [
+            { lat: 32.18060, lng: 34.83470, name: 'A' },
+            { lat: 32.80972, lng: 35.04389, name: 'B' },
+          ],
+          legs: [{
+            inboundAltitude: 2000, outboundAltitude: 2000,
+            flightSpeed: 90, outboundSpeed: 90,
+            inLabel:  { a: 0, p:  raw },          // raw, no _m
+            outLabel: { a: 0, p: -raw },
+          }],
+          notes: [],
+        }));
+      } catch (e) {}
+    }, { raw: RAW, as: AS });
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => state && state.legs && state.legs.length === 1);
+
+    const got = await page.evaluate(() => ({
+      legArrowSize: window.legArrowSize,
+      inLabel:  state.legs[0].inLabel,
+      outLabel: state.legs[0].outLabel,
+    }));
+    expect(got.legArrowSize).toBe(AS);
+    expect(got.inLabel ).toEqual({ a: 0, p:  RAW / AS, _m: 1 });
+    expect(got.outLabel).toEqual({ a: 0, p: -RAW / AS, _m: 1 });
+  });
+
+  // ---------------------------------------------------------------------
+  // 3) Migration is idempotent: a second restore (e.g. fresh page load
+  //    after persist()) must not divide a second time.
+  // ---------------------------------------------------------------------
+  test('migration is idempotent across reload', async ({ page }) => {
+    const RAW = 88;
+    const AS = 2;
+    await page.addInitScript(({ raw, as }) => {
+      try {
+        for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
+        sessionStorage.clear();
+        for (const s of ['build','view','display','charts','export','print'])
+          localStorage.setItem('navaid.sec.' + s, '1');
+        localStorage.setItem('navaid.legArrowSize', String(as));
+        localStorage.setItem('navaid.route', JSON.stringify({
+          waypoints: [
+            { lat: 32.18060, lng: 34.83470, name: 'A' },
+            { lat: 32.80972, lng: 35.04389, name: 'B' },
+          ],
+          legs: [{
+            inboundAltitude: 2000, outboundAltitude: 2000,
+            flightSpeed: 90, outboundSpeed: 90,
+            inLabel:  { a: 0, p:  raw },
+            outLabel: { a: 0, p: -raw },
+          }],
+          notes: [],
+        }));
+      } catch (e) {}
+    }, { raw: RAW, as: AS });
+
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => state && state.legs && state.legs.length === 1);
+    // Persist throttles for 500 ms before writing back to localStorage;
+    // wait it out so the second reload sees the migrated blob, not the
+    // original raw one.
+    await page.evaluate(() => { state.legs[0].inboundAltitude++; persist(); });
+    await page.waitForTimeout(700);
+    const stored = await page.evaluate(
+      () => JSON.parse(localStorage.getItem('navaid.route')));
+    expect(stored.legs[0].inLabel ).toEqual({ a: 0, p:  RAW / AS, _m: 1 });
+    expect(stored.legs[0].outLabel).toEqual({ a: 0, p: -RAW / AS, _m: 1 });
+
+    // Now reload — restoreRoute should leave the already-migrated values
+    // untouched (no second divide). _m guards against re-running.
+    await page.reload();
+    await page.waitForFunction(() => state && state.legs && state.legs.length === 1);
+    const after = await page.evaluate(() => ({
+      inLabel:  state.legs[0].inLabel,
+      outLabel: state.legs[0].outLabel,
+    }));
+    expect(after.inLabel ).toEqual({ a: 0, p:  RAW / AS, _m: 1 });
+    expect(after.outLabel).toEqual({ a: 0, p: -RAW / AS, _m: 1 });
+  });
+
+  // ---------------------------------------------------------------------
+  // 4) "Reset all marker positions" — must (a) prompt for confirmation
+  //    (#14) and (b) write the size-independent default (#5) so every
+  //    leg renders at a constant 44 px regardless of legArrowSize.
+  // ---------------------------------------------------------------------
+  test('toolbar reset-all writes default invariant + asks for confirm', async ({ page }) => {
+    const AS = 2;
+    await page.addInitScript(as => {
+      try {
+        for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
+        sessionStorage.clear();
+        for (const s of ['build','view','display','charts','export','print'])
+          localStorage.setItem('navaid.sec.' + s, '1');
+        localStorage.setItem('navaid.legArrowSize', String(as));
+      } catch (e) {}
+    }, AS);
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof _defaultLegLabels === 'function');
+    await loadTwoWp(page);
+    await page.evaluate(() => {
+      state.legs[0].inLabel  = { a: 7, p:  21, _m: 1 };  // manual tweaks
+      state.legs[0].outLabel = { a: 7, p: -21, _m: 1 };
+      draw();
+    });
+
+    // Dismiss path — state must NOT change.
+    page.once('dialog', d => d.dismiss());
+    await page.locator('#tool-reset-all-markers').click();
+    const dismissed = await page.evaluate(() => ({
+      inLabel:  state.legs[0].inLabel,
+      outLabel: state.legs[0].outLabel,
+    }));
+    expect(dismissed.inLabel ).toEqual({ a: 7, p:  21, _m: 1 });
+    expect(dismissed.outLabel).toEqual({ a: 7, p: -21, _m: 1 });
+
+    // Accept path — state matches _defaultLegLabels().
+    page.once('dialog', d => d.accept());
+    await page.locator('#tool-reset-all-markers').click();
+    const accepted = await page.evaluate(() => ({
+      legArrowSize: window.legArrowSize,
+      inLabel:  state.legs[0].inLabel,
+      outLabel: state.legs[0].outLabel,
+      expected: _defaultLegLabels(),
+    }));
+    expect(accepted.legArrowSize).toBe(AS);
+    expect(accepted.inLabel ).toEqual(accepted.expected.inLabel);
+    expect(accepted.outLabel).toEqual(accepted.expected.outLabel);
+    // Spell out the invariant: 44 / AS on the perpendicular axis, `_m: 1`.
+    expect(accepted.inLabel ).toEqual({ a: 0, p:  44 / AS, _m: 1 });
+    expect(accepted.outLabel).toEqual({ a: 0, p: -44 / AS, _m: 1 });
+  });
+
+  // ---------------------------------------------------------------------
+  // 5) Round-trip at legArrowSize=2: save (export JSON) → reload page →
+  //    import the same blob → rendered marker position must match.
+  //    "Rendered" = inLabel.p * legZoomScale() at the same map zoom.
+  // ---------------------------------------------------------------------
+  test('export → reload → import preserves rendered position at legArrowSize=2', async ({ page }) => {
+    const AS = 2;
+    await page.addInitScript(as => {
+      try {
+        for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
+        sessionStorage.clear();
+        for (const s of ['build','view','display','charts','export','print'])
+          localStorage.setItem('navaid.sec.' + s, '1');
+        localStorage.setItem('navaid.legArrowSize', String(as));
+      } catch (e) {}
+    }, AS);
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof _defaultLegLabels === 'function' &&
+                                     typeof legZoomScale === 'function');
+    await loadTwoWp(page);
+    await page.evaluate(() => map.setZoom(12));
+    await page.waitForFunction(() => Math.abs(map.getZoom() - 12) < 0.01);
+
+    const beforeBlob = await page.evaluate(() => JSON.stringify({
+      waypoints: state.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name || '' })),
+      legs: state.legs.map(l => ({
+        inboundAltitude: l.inboundAltitude,
+        outboundAltitude: l.outboundAltitude,
+        flightSpeed: l.flightSpeed,
+        outboundSpeed: l.outboundSpeed,
+        inLabel: l.inLabel, outLabel: l.outLabel,
+      })),
+      notes: [],
+    }));
+    const beforeRender = await page.evaluate(() => {
+      const l = state.legs[0];
+      const k = legZoomScale();
+      return { px: l.inLabel.p * k, k, p: l.inLabel.p, zoom: map.getZoom() };
+    });
+
+    // Reload the page (legArrowSize persists via localStorage) and import
+    // the saved blob. With the helper-driven default + idempotent migration,
+    // the rendered marker position at the same zoom must match.
+    await page.reload();
+    await page.waitForFunction(() => typeof legZoomScale === 'function' &&
+                                     typeof window.legArrowSize === 'number');
+    await page.evaluate(() => { state.waypoints = []; state.legs = []; state.notes = []; draw(); });
+    await page.setInputFiles('#file', {
+      name: 'route.json', mimeType: 'application/json',
+      buffer: Buffer.from(beforeBlob, 'utf8'),
+    });
+    await page.waitForFunction(() => state.waypoints.length === 2 && state.legs.length === 1);
+    await page.evaluate(() => map.setZoom(12));
+    await page.waitForFunction(() => Math.abs(map.getZoom() - 12) < 0.01);
+    const afterRender = await page.evaluate(() => {
+      const l = state.legs[0];
+      const k = legZoomScale();
+      return { px: l.inLabel.p * k, k, p: l.inLabel.p, zoom: map.getZoom() };
+    });
+
+    expect(afterRender.zoom).toBeCloseTo(beforeRender.zoom, 5);
+    expect(afterRender.k   ).toBeCloseTo(beforeRender.k,    5);
+    expect(afterRender.p   ).toBeCloseTo(beforeRender.p,    5);
+    expect(afterRender.px  ).toBeCloseTo(beforeRender.px,   5);
+  });
+});

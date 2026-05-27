@@ -28,6 +28,10 @@ window.S = {
   tbSearchOpen: '🔍 חפש',
   tbSearchOpenTitle: 'פתח את חלון החיפוש (Ctrl/Cmd-F)',
   deleteWp: 'מחק ציון דרך',                          // כפתור באינספקטור
+  resetLegMarkers: '↺ אפס מיקום סמן',                // כפתור איפוס מיקום סמן הקטע באינספקטור
+  tbResetAllMarkers: '↺ אפס מיקום כל הסמנים',         // כפתור בסרגל לאיפוס מיקום כל סמני הקטעים
+  tbResetAllMarkersTitle: 'איפוס מיקום סמני הקטעים למיקומי ברירת המחדל',
+  resetAllConfirm: 'לאפס את מיקום כל סמני הקטעים? פעולה זו תמחק את כל ההתאמות הידניות.',
   clearConfirm: 'להסיר את כל ציוני הדרך וההערות?',
   errBadCoords: 'הקובץ מכיל קואורדינטות לא תקינות',
   // --- end Waypoint terminology ---------------------------------------
@@ -186,6 +190,7 @@ window.S = {
   // --- Magnifying glass ------------------------------------------------
   tbMagnifier: '🔍 זכוכית מגדלת',
   tbMagnifierTitle: 'זכוכית מגדלת — תצוגה מוגדלת במיקום הסמן לעריכה מדויקת',
+  magSettingsTitle: 'זכוכית מגדלת',
   magZoomLabel: 'תקריב',
   magZoomTitle: 'גורם התקריב של הזכוכית המגדלת',
 };
