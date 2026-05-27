@@ -158,18 +158,6 @@ function showInspector() {
       draw();
     };
     body.appendChild(reset);
-    const resetAll = document.createElement('button');
-    resetAll.className = 'insp-btn';
-    resetAll.textContent = S.resetAllLegMarkers;
-    resetAll.style.marginTop = '4px';
-    resetAll.onclick = () => {
-      for (let i = 0; i < state.legs.length; i++) {
-        state.legs[i].inLabel = { a: 0, p: 44, _m: 1 };
-        state.legs[i].outLabel = { a: 0, p: -44, _m: 1 };
-      }
-      draw();
-    };
-    body.appendChild(resetAll);
   } else if (state.selected.type === 'note') {
     const note = state.notes[state.selected.index];
     title.value = '';
