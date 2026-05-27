@@ -2303,15 +2303,18 @@ function onMagClick(e) {
       if (magnifierOn) { rebuildMagnifier(); applyMagnifierTransform(); }
     });
   }
-  // Scroll wheel changes magnifier zoom instead of map zoom
-  const mapContainer = document.getElementById('map');
-  if (mapContainer) {
-    mapContainer.addEventListener('wheel', function (e) {
+  // Scroll wheel changes magnifier zoom instead of map zoom.
+  // Intercept on document during capture phase so we fire before Leaflet's
+  // own wheel handler (which is attached to the map container in bubble phase).
+  if (zoomSlider && zoomVal) {
+    document.addEventListener('wheel', function (e) {
       if (!magnifierOn) return;
+      if (!document.getElementById('map')?.contains(e.target)) return;
+      e.stopPropagation();
       e.preventDefault();
       const step = e.deltaY > 0 ? -0.25 : 0.25;
       var v = parseFloat(zoomSlider.value) + step;
-      v = Math.max(1, Math.min(5, Math.round(v * 4) / 4));  // clamp to 1-5, step 0.25
+      v = Math.max(1, Math.min(5, Math.round(v * 4) / 4));
       if (v === parseFloat(zoomSlider.value)) return;
       zoomSlider.value = '' + v;
       window.magnifierZoom = v;
@@ -2319,7 +2322,7 @@ function onMagClick(e) {
       _magDirty = true;
       rebuildMagnifier();
       applyMagnifierTransform();
-    }, { passive: false });
+    }, { capture: true, passive: false });
   }
   // Settings close button
   const closeBtn = document.getElementById('mag-settings-close');
