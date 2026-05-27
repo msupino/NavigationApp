@@ -15,7 +15,7 @@ async function boot(page) {
       }
     } catch (e) {}
   });
-  await page.goto('/?lang=en');
+  await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined');
   // navWP loads lazily on first draw or buildRouteFromQuery — pre-warm it
   // so the tests don't race the fetch.
