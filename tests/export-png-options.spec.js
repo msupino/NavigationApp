@@ -279,7 +279,7 @@ test.describe('Export PNG options modal', () => {
     expect(download.suggestedFilename()).toMatch(/^navigation-.+\.png$/);
   });
 
-  test('Plan placement: corner pick puts a placeholder near the chosen corner', async ({ page }) => {
+  test('Plan placement: clicking WYSIWYG zone places drag box', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [
@@ -287,26 +287,20 @@ test.describe('Export PNG options modal', () => {
         { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
       ];
       syncLegs(); draw();
+      // Enable page frame so wysiwyg zone is active.
+      setPage('A4');
     });
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
-    // Click the TL placement button (the buttons live in the placement
-    // row after the page-warning).
-    const placeBtn = page.locator('.modal button').filter({ hasText: /TL/ });
-    await placeBtn.click();
-    // A placeholder element shows up on the page.
-    const placeholder = page.locator('.plan-placeholder');
-    await expect(placeholder).toBeVisible();
-    // TL → small offsets from origin.
-    const box = await placeholder.boundingBox();
-    expect(box).not.toBeNull();
-    if (box) {
-      expect(box.x).toBeLessThan(200);
-      expect(box.y).toBeLessThan(200);
-    }
+    const zone = page.locator('.export-wysi-zone');
+    await expect(zone).toBeVisible();
+    // Click top-left area of zone to place the box.
+    const zoneBox = await zone.boundingBox();
+    await page.mouse.click(zoneBox.x + zoneBox.width * 0.1, zoneBox.y + zoneBox.height * 0.1);
+    await expect(page.locator('.export-wysi-box')).toBeVisible();
   });
 
-  test('Plan placement: None removes any existing placeholder', async ({ page }) => {
+  test('Plan placement: Remove button removes the drag box', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [
@@ -314,16 +308,19 @@ test.describe('Export PNG options modal', () => {
         { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
       ];
       syncLegs(); draw();
+      setPage('A4');
     });
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
-    await page.locator('.modal button').filter({ hasText: /BR/ }).click();
-    await expect(page.locator('.plan-placeholder')).toBeVisible();
-    await page.locator('.modal button').filter({ hasText: /None/ }).click();
-    await expect(page.locator('.plan-placeholder')).toHaveCount(0);
+    const zone = page.locator('.export-wysi-zone');
+    const zoneBox = await zone.boundingBox();
+    await page.mouse.click(zoneBox.x + zoneBox.width * 0.5, zoneBox.y + zoneBox.height * 0.5);
+    await expect(page.locator('.export-wysi-box')).toBeVisible();
+    await page.locator('button').filter({ hasText: /Remove/ }).click();
+    await expect(page.locator('.export-wysi-box')).toHaveCount(0);
   });
 
-  test('Export with a placement still produces a PNG', async ({ page }) => {
+  test('Export with a WYSIWYG placement produces a PNG', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [
@@ -331,10 +328,14 @@ test.describe('Export PNG options modal', () => {
         { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
       ];
       syncLegs(); draw();
+      setPage('A4');
     });
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
-    await page.locator('.modal button').filter({ hasText: /TL/ }).click();
+    const zone = page.locator('.export-wysi-zone');
+    const zoneBox = await zone.boundingBox();
+    await page.mouse.click(zoneBox.x + zoneBox.width * 0.05, zoneBox.y + zoneBox.height * 0.05);
+    await expect(page.locator('.export-wysi-box')).toBeVisible();
     const dl = page.waitForEvent('download', { timeout: 30000 });
     await page.locator('.modal .modal-btns button').first().click();
     const download = await dl;

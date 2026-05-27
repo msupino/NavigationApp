@@ -944,6 +944,9 @@ var planPlaceholderEl = null;
 // exportPNG can anchor the rendered table to the same corner. 'center'
 // is also used for the Custom (free-drag) option.
 var planPlacementAlign = 'center';
+// WYSIWYG drag-to-place position. Set by the export modal's drag zone;
+// {xPct, yPct} as fraction [0,1] of the page frame, or null (no table).
+var planWysiwygPos = null;
 
 function planPlaceholderActive() {
   return !!(planPlaceholderEl && planPlaceholderEl.isConnected);
@@ -1286,55 +1289,145 @@ function showExportModal() {
   }
   body.appendChild(pageWarn);
 
-  // Flight-plan placement on the export. One row, 6 options:
-  //   None / TL / TR / BL / BR / Custom.
-  // None removes any existing placeholder; corner picks place a
-  // wireframe rectangle in that corner of the page frame (or the
-  // viewport if no A3/A4 frame is set); Custom drops the box at the
-  // centre and the user can drag / resize it.
-  const placeholderRow = document.createElement('div');
-  placeholderRow.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding-top:6px;margin-top:2px;border-top:1px solid #4a4646';
-  const placeholderLbl = document.createElement('div');
-  placeholderLbl.style.cssText = 'font-size:12px;color:#b9b3b3';
-  placeholderLbl.textContent = (S.planPlacementLabel || 'Flight plan placement:');
-  placeholderRow.appendChild(placeholderLbl);
-  const placeholderBtns = document.createElement('div');
-  placeholderBtns.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap';
-  const PLACEMENTS = [
-    { key: 'none',   label: S.planPlacementNone   || 'None' },
-    { key: 'tl',     label: S.planPlacementTL     || '↖ TL' },
-    { key: 'tr',     label: S.planPlacementTR     || '↗ TR' },
-    { key: 'bl',     label: S.planPlacementBL     || '↙ BL' },
-    { key: 'br',     label: S.planPlacementBR     || '↘ BR' },
-    { key: 'custom', label: S.planPlacementCustom || 'Custom…' },
-  ];
-  let currentPlacement = 'none';
-  const placementBtnEls = {};
-  function syncPlacementBtns() {
-    for (const p of PLACEMENTS) {
-      placementBtnEls[p.key].classList.toggle('active', p.key === currentPlacement);
+  // Flight-plan placement — WYSIWYG drag zone.
+  // Shows a scaled preview of the page frame; user drags a mini table
+  // box to the desired position. Position is stored as {xPct,yPct}
+  // (fraction of frame width/height) in planWysiwygPos and used by
+  // exportPNG() to draw the table at the correct canvas location.
+  planWysiwygPos = null;   // reset each time the modal opens
+  const wysRow = document.createElement('div');
+  wysRow.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding-top:6px;border-top:1px solid #4a4646';
+  const wysHdr = document.createElement('div');
+  wysHdr.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
+  const wysLbl = document.createElement('span');
+  wysLbl.style.cssText = 'font-size:12px;color:#b9b3b3';
+  wysLbl.textContent = (S.planPlacementLabel || 'Flight plan on export — drag to place:');
+  wysHdr.appendChild(wysLbl);
+  const wysRemoveBtn = document.createElement('button');
+  wysRemoveBtn.type = 'button';
+  wysRemoveBtn.textContent = '× Remove';
+  wysRemoveBtn.style.cssText = 'font:inherit;font-size:11px;padding:1px 6px;background:#3a3636;color:#ccc;border:1px solid #4a4646;border-radius:3px;cursor:pointer;display:none';
+  wysHdr.appendChild(wysRemoveBtn);
+  wysRow.appendChild(wysHdr);
+
+  const wysFr = pageFrameRect();
+  const wysZone = document.createElement('div');
+  wysZone.className = 'export-wysi-zone' + (wysFr ? '' : ' disabled');
+  if (wysFr) {
+    wysZone.style.aspectRatio = Math.round(wysFr.w) + '/' + Math.round(wysFr.h);
+  }
+  wysRow.appendChild(wysZone);
+  body.appendChild(wysRow);
+
+  if (!wysFr) {
+    const noFrameHint = document.createElement('span');
+    noFrameHint.className = 'export-wysi-hint';
+    noFrameHint.textContent = 'Set A3/A4 page size to enable';
+    wysZone.appendChild(noFrameHint);
+  }
+
+  // Build mini-table content for the drag box.
+  function buildMiniTable() {
+    const t = document.createElement('table');
+    t.className = 'export-wysi-mini-table';
+    const thead = t.createTHead();
+    const hr = thead.insertRow();
+    for (const h of ['#', 'From', 'To', 'Hdg', 'Dist', 'Spd', 'Alt', 'Time']) {
+      const th = document.createElement('th');
+      th.textContent = h;
+      hr.appendChild(th);
     }
+    const tbody = t.createTBody();
+    const maxRows = Math.min(state.legs.length, 6);
+    for (let i = 0; i < maxRows; i++) {
+      const A = state.waypoints[i], B = state.waypoints[i + 1];
+      const leg = state.legs[i];
+      const { dist, brg } = geo(A, B);
+      const row = tbody.insertRow();
+      const cells = [
+        String(i + 1),
+        navName((A.name || '').trim()) || (S.wpPrefix + (i + 1)),
+        navName((B.name || '').trim()) || (S.wpPrefix + (i + 2)),
+        pad3(toMagnetic(brg)) + '°',
+        dist.toFixed(1),
+        String(leg.flightSpeed),
+        String(leg.inboundAltitude),
+        leg.flightSpeed > 0 ? toHMS(dist / leg.flightSpeed) : '--',
+      ];
+      for (const c of cells) {
+        const td = row.insertCell();
+        td.textContent = c;
+      }
+    }
+    if (state.legs.length > 6) {
+      const moreRow = tbody.insertRow();
+      const td = moreRow.insertCell();
+      td.colSpan = 8;
+      td.style.cssText = 'text-align:center;color:#888;font-style:italic';
+      td.textContent = '+ ' + (state.legs.length - 6) + ' more…';
+    }
+    return t;
   }
-  for (const p of PLACEMENTS) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.textContent = p.label;
-    btn.style.cssText = 'font:inherit;font-size:12px;padding:5px 9px;background:#3a3636;color:#e8e8e8;border:1px solid #4a4646;border-radius:4px;cursor:pointer';
-    btn.onclick = function () {
-      currentPlacement = p.key;
-      planPlacementAlign = (p.key === 'tl' || p.key === 'tr' ||
-                            p.key === 'bl' || p.key === 'br') ? p.key : 'center';
-      if (p.key === 'none') removePlanPlaceholder();
-      else if (p.key === 'custom') createPlanPlaceholder();   // centred + draggable
-      else setPlanPlacement(p.key);
-      syncPlacementBtns();
-    };
-    placementBtnEls[p.key] = btn;
-    placeholderBtns.appendChild(btn);
+
+  let wysDragBox = null;
+  let _wysDrag = null;
+
+  const _wysMoveHandler = function (e) {
+    if (!_wysDrag) return;
+    const zr = wysZone.getBoundingClientRect();
+    const bw = wysDragBox.offsetWidth, bh = wysDragBox.offsetHeight;
+    let nx = e.clientX - zr.left - _wysDrag.ox;
+    let ny = e.clientY - zr.top - _wysDrag.oy;
+    nx = Math.max(0, Math.min(zr.width - bw, nx));
+    ny = Math.max(0, Math.min(zr.height - bh, ny));
+    planWysiwygPos = { xPct: nx / zr.width, yPct: ny / zr.height };
+    wysDragBox.style.left = (planWysiwygPos.xPct * 100) + '%';
+    wysDragBox.style.top = (planWysiwygPos.yPct * 100) + '%';
+    e.preventDefault();
+  };
+  const _wysUpHandler = function () {
+    if (_wysDrag) { wysDragBox.classList.remove('dragging'); _wysDrag = null; }
+  };
+  document.addEventListener('mousemove', _wysMoveHandler);
+  document.addEventListener('mouseup', _wysUpHandler);
+
+  function placeWysBox(xPct, yPct) {
+    planWysiwygPos = { xPct, yPct };
+    if (!wysDragBox) {
+      wysDragBox = document.createElement('div');
+      wysDragBox.className = 'export-wysi-box';
+      wysDragBox.appendChild(buildMiniTable());
+      wysZone.appendChild(wysDragBox);
+      wysRemoveBtn.style.display = '';
+      wysDragBox.addEventListener('mousedown', function (e) {
+        const br = wysDragBox.getBoundingClientRect();
+        const zr = wysZone.getBoundingClientRect();
+        _wysDrag = { ox: e.clientX - br.left, oy: e.clientY - br.top };
+        wysDragBox.classList.add('dragging');
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    }
+    wysDragBox.style.left = (xPct * 100) + '%';
+    wysDragBox.style.top = (yPct * 100) + '%';
   }
-  syncPlacementBtns();
-  placeholderRow.appendChild(placeholderBtns);
-  body.appendChild(placeholderRow);
+
+  wysRemoveBtn.onclick = function () {
+    if (wysDragBox) { wysDragBox.remove(); wysDragBox = null; }
+    planWysiwygPos = null;
+    wysRemoveBtn.style.display = 'none';
+  };
+
+  if (wysFr) {
+    wysZone.addEventListener('click', function (e) {
+      if (wysDragBox && wysDragBox.contains(e.target)) return;
+      const zr = wysZone.getBoundingClientRect();
+      const boxWPct = 0.45;
+      const xPct = Math.max(0, Math.min(1 - boxWPct, (e.clientX - zr.left) / zr.width - boxWPct / 2));
+      const yPct = Math.max(0, Math.min(0.85, (e.clientY - zr.top) / zr.height - 0.1));
+      placeWysBox(xPct, yPct);
+    });
+  }
 
   box.appendChild(body);
 
@@ -1419,7 +1512,12 @@ function showExportModal() {
     applyMapOpacity();
   };
 
-  function close() { window.removeEventListener('keydown', onEsc); back.remove(); }
+  function close() {
+    window.removeEventListener('keydown', onEsc);
+    document.removeEventListener('mousemove', _wysMoveHandler);
+    document.removeEventListener('mouseup', _wysUpHandler);
+    back.remove();
+  }
   function onEsc(e) { if (e.key === 'Escape') { restoreOrig(); close(); } }
 
   exportBtn.onclick = () => {
@@ -1823,28 +1921,13 @@ function exportPNG() {
       octx = prevOctx;
     }
 
-    // Flight-plan placement on the export. Priority:
-    //   1. The per-session "Add plan to map" placeholder (explicit user
-    //      intent for export placement; see createPlanPlaceholder).
-    //   2. The legacy pinned-plan rect (still honoured if no placeholder
-    //      is active, so the existing pin-to-map feature is unchanged).
-    var planRect = null;
-    if (typeof planPlaceholderActive === 'function' && planPlaceholderActive()) {
-      planRect = planPlaceholderEl.getBoundingClientRect();
-    } else if (localStorage.getItem('navaid.planPin') === '1') {
-      var fpBox = document.querySelector('.modal-back.flight-plan > .modal');
-      if (fpBox) planRect = fpBox.getBoundingClientRect();
-    }
-    if (planRect) {
-      var fpx = (planRect.left - fr.x) * s;
-      var fpy = (planRect.top - fr.y) * s;
-      var fpw = planRect.width * s;
-      var fph = planRect.height * s;
-      if (fpx + fpw > 0 && fpy + fph > 0 && fpx < W && fpy < H) {
-        drawFlightPlanTable(o, Math.max(0, fpx), Math.max(0, fpy),
-          Math.min(fpw, W - fpx), Math.min(fph, H - fpy),
-          planPlacementAlign);
-      }
+    // Flight-plan placement: use WYSIWYG drag-zone position when set.
+    if (planWysiwygPos && framed) {
+      var fpxW = planWysiwygPos.xPct * fr.w * s;
+      var fpyW = planWysiwygPos.yPct * fr.h * s;
+      var fpwW = fr.w * s * 0.45;
+      var fphW = fr.h * s * 0.7;
+      drawFlightPlanTable(o, fpxW, fpyW, fpwW, fphW, 'tl');
     }
 
     out.toBlob(b => {
