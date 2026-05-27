@@ -269,6 +269,21 @@ jobs:
             echo "  waiting (HTTP $HTTP) ... ($i/30)"
             sleep 5
           done
+          SHA=$(git rev-parse --short HEAD)
+          echo "Expecting SHA=$SHA in deployed core.js"
+          for i in $(seq 1 12); do
+            FOUND=$(curl -s "$URL"core.js | sed -nE "s/.*version: '1\.0-([A-Za-z0-9]+)'.*/\1/p" 2>/dev/null)
+            if [ "$FOUND" = "$SHA" ]; then
+              echo "Commit SHA verified — preview is fresh"
+              break
+            fi
+            echo "  SHA mismatch (got '$FOUND'), waiting... ($i/12)"
+            sleep 10
+          done
+          if [ "$FOUND" != "$SHA" ]; then
+            echo "Preview never updated to commit $SHA (last seen: '$FOUND')"
+            exit 1
+          fi
           MAX=5
           ATTEMPT=0
           while [ $ATTEMPT -lt $MAX ]; do
