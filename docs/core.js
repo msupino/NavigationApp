@@ -205,6 +205,8 @@ window.S = Object.assign({
   magSettingsTitle: 'Magnifier',
   magZoomLabel: 'Zoom',
   magZoomTitle: 'Magnifier zoom factor',
+  magSizeLabel: 'Size',
+  magSizeTitle: 'Magnifier diameter (px)',
   tbResetAllMarkers: '↺ Reset all marker locations',
   tbResetAllMarkersTitle: 'Reset all leg marker offsets to default positions',
   inspCloseTitle: 'Close',
@@ -279,6 +281,7 @@ function legZoomScale() {   // zoom + legArrowSize → pixel multiplier for offs
 }
 var magnifierOn = false;    // magnifying-glass toggle
 var magnifierZoom = 2;      // default zoom factor
+var magnifierSize = 200;    // magnifier diameter (px)
 let pageSize = null;        // null | 'A3' | 'A4'
 // `var` (not `let`) so window.pageOrient writes from ui.js's boot restore
 // land on the same binding the toggle reads. Default 'portrait' since most

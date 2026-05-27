@@ -2133,18 +2133,18 @@ function showToast(msg) {
 }
 
 // --- magnifying glass -------------------------------------------------
-const MAG_SIZE = 200;                      // diameter px
-const MAG_CENTER = MAG_SIZE / 2;
 let _magDirty = true;                      // content needs rebuilding
 let _magRAF = null;                        // requestAnimationFrame id
 let _magX = 0, _magY = 0;                 // last known cursor (viewport px)
+
+function magCenter() { return magnifierSize / 2; }
 
 function createMagnifier() {
   if (document.getElementById('magnifier')) return;
   const mag = document.createElement('div');
   mag.id = 'magnifier';
-  mag.style.cssText = 'display:none;position:fixed;z-index:1000;width:' + MAG_SIZE +
-    'px;height:' + MAG_SIZE + 'px;border-radius:50%;overflow:hidden;' +
+  mag.style.cssText = 'display:none;position:fixed;z-index:1000;width:' + magnifierSize +
+    'px;height:' + magnifierSize + 'px;border-radius:50%;overflow:hidden;' +
     'pointer-events:none;border:2px solid rgba(255,204,51,0.85);' +
     'box-shadow:0 0 20px rgba(0,0,0,0.6)';
   const content = document.createElement('div');
@@ -2159,6 +2159,16 @@ function createMagnifier() {
     '<div style="position:absolute;top:-24px;left:-1px;width:2px;height:48px;background:rgba(255,60,60,0.8)"></div>';
   mag.appendChild(ch);
   document.body.appendChild(mag);
+}
+
+function applyMagnifierSize() {
+  const mag = document.getElementById('magnifier');
+  if (!mag) return;
+  const c = magCenter();
+  mag.style.width = magnifierSize + 'px';
+  mag.style.height = magnifierSize + 'px';
+  mag.style.left = (_magX - c) + 'px';
+  mag.style.top = (_magY - c) + 'px';
 }
 
 function rebuildMagnifier() {
@@ -2202,8 +2212,8 @@ function updateMagnifier(e) {
     const content = document.getElementById('mag-content');
     if (!mag || !content) return;
     // position magnifier
-    mag.style.left = (_magX - MAG_CENTER) + 'px';
-    mag.style.top = (_magY - MAG_CENTER) + 'px';
+    mag.style.left = (_magX - magCenter()) + 'px';
+    mag.style.top = (_magY - magCenter()) + 'px';
     // rebuild if dirty
     if (_magDirty) rebuildMagnifier();
     // compute transform so cursor container-point maps to magnifier centre
@@ -2215,8 +2225,8 @@ function updateMagnifier(e) {
     const dx = mat ? (mat.is2D ? mat.e : mat.m41) : 0;
     const dy = mat ? (mat.is2D ? mat.f : mat.m42) : 0;
     content.style.transform =
-      'translate(' + (MAG_CENTER + dx * S - cp.x * S) + 'px,' +
-                     (MAG_CENTER + dy * S - cp.y * S) + 'px) scale(' + S + ')';
+      'translate(' + (magCenter() + dx * S - cp.x * S) + 'px,' +
+                     (magCenter() + dy * S - cp.y * S) + 'px) scale(' + S + ')';
   });
 }
 
@@ -2235,7 +2245,7 @@ function toggleMagnifier() {
     _magX = _magX || window.innerWidth / 2;
     _magY = _magY || window.innerHeight / 2;
     const mag = document.getElementById('magnifier');
-    if (mag) { mag.style.left = (_magX - MAG_CENTER) + 'px'; mag.style.top = (_magY - MAG_CENTER) + 'px'; }
+    mag.style.left = (_magX - magCenter()) + 'px'; mag.style.top = (_magY - magCenter()) + 'px';
     document.addEventListener('mousemove', updateMagnifier);
   } else {
     document.removeEventListener('mousemove', updateMagnifier);
@@ -2243,8 +2253,7 @@ function toggleMagnifier() {
   }
 }
 
-// Magnifier zoom slider
-var magnifierZoom = 1;
+// Magnifier zoom + size sliders
 (function () {
   const zoomSlider = document.getElementById('mag-zoom');
   const zoomVal = document.getElementById('mag-zoom-val');
@@ -2252,6 +2261,17 @@ var magnifierZoom = 1;
     zoomSlider.addEventListener('input', function () {
       window.magnifierZoom = parseFloat(this.value);
       zoomVal.textContent = magnifierZoom.toFixed(2).replace(/\.?0+$/, '') + '×';
+      _magDirty = true;
+      if (magnifierOn) rebuildMagnifier();
+    });
+  }
+  const sizeSlider = document.getElementById('mag-size');
+  const sizeVal = document.getElementById('mag-size-val');
+  if (sizeSlider && sizeVal) {
+    sizeSlider.addEventListener('input', function () {
+      window.magnifierSize = parseInt(this.value, 10);
+      sizeVal.textContent = magnifierSize + 'px';
+      applyMagnifierSize();
       _magDirty = true;
       if (magnifierOn) rebuildMagnifier();
     });
