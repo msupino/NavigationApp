@@ -1401,7 +1401,6 @@ function showExportModal() {
       wysRemoveBtn.style.display = '';
       wysDragBox.addEventListener('mousedown', function (e) {
         const br = wysDragBox.getBoundingClientRect();
-        const zr = wysZone.getBoundingClientRect();
         _wysDrag = { ox: e.clientX - br.left, oy: e.clientY - br.top };
         wysDragBox.classList.add('dragging');
         e.preventDefault();
