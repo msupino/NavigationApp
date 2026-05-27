@@ -14,6 +14,7 @@ permissions:
   pages: write
   id-token: write
   deployments: write
+  pull-requests: write
 
 concurrency:
   group: ${{ github.event_name == 'pull_request' && format('pages-pr-{0}', github.event.number) || 'pages' }}
@@ -237,6 +238,27 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+      - name: Post preview link comment
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          BRANCH: ${{ github.head_ref }}
+          REPO: ${{ github.repository }}
+        run: |
+          URL="https://msupino.github.io/NavigationApp/branch/${BRANCH}/"
+          SHORT="${SHA:0:7}"
+          BODY=$(printf '### 🚀 Preview deployed\n\n<a href="%s" target="_blank">Open PR preview →</a>\n\n`%s`\n\nCommit: `%s`' "$URL" "$URL" "$SHORT")
+          # Update existing bot comment if present, otherwise create new one.
+          EXISTING=$(gh api "repos/${REPO}/issues/${PR}/comments" \
+            --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("### 🚀 Preview deployed")))] | .[0].id // empty')
+          if [ -n "$EXISTING" ]; then
+            gh api "repos/${REPO}/issues/comments/${EXISTING}" -X PATCH -f body="$BODY"
+          else
+            gh api "repos/${REPO}/issues/${PR}/comments" -f body="$BODY"
+          fi
+
   e2e-deployed:
     if: github.event_name == 'pull_request'
     needs: deploy
@@ -289,7 +311,7 @@ jobs:
           while [ $ATTEMPT -lt $MAX ]; do
             ATTEMPT=$((ATTEMPT + 1))
             echo "=== e2e attempt $ATTEMPT/$MAX ==="
-            if BASE_URL="$URL" npx playwright test $(ls tests/*.spec.js | grep -vE 'sw\.spec|pwa\.spec') --reporter=list 2>&1; then
+            if BASE_URL="$URL" EXPECTED_SHA="$SHA" npx playwright test $(ls tests/*.spec.js | grep -vE 'sw\.spec|pwa\.spec') --reporter=list 2>&1; then
               echo "All e2e tests passed!"
               exit 0
             fi

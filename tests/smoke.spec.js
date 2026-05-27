@@ -16,7 +16,7 @@ test.describe('NavAid smoke', () => {
   });
 
   test('boots in English with toolbar visible', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await expect(page).toHaveTitle('NavAid');
     await expect(page.locator('#toolbar')).toBeVisible();
     await expect(page.locator('#tool-add')).toHaveText(/Add Waypoint/);
@@ -41,7 +41,7 @@ test.describe('NavAid smoke', () => {
   });
 
   test('#124: search shows both airfields and nav-waypoints for broad query', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(() => window.airfields && window.airfields.length > 0);
     await page.waitForFunction(() => window.navWP && window.navWP.length > 0);
     // Search input lives in a floating overlay (hidden by default). Click
@@ -56,13 +56,13 @@ test.describe('NavAid smoke', () => {
   });
 
   test('#126: normLegLabel removed (no leftover global)', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     const exists = await page.evaluate(() => typeof window.normLegLabel === 'function');
     expect(exists).toBe(false);
   });
 
   test('add two waypoints via state and verify legs sync', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.evaluate(() => {
       state.waypoints = [
         { lat: 32.0, lng: 34.9, name: 'A' },
@@ -77,7 +77,7 @@ test.describe('NavAid smoke', () => {
   });
 
   test('clear map button removes all waypoints', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.evaluate(() => {
       state.waypoints = [
         { lat: 32.0, lng: 34.9, name: 'A' },
