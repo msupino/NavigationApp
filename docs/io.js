@@ -2287,6 +2287,7 @@ function toggleMagnifier() {
     _magX = _magX || window.innerWidth / 2;
     _magY = _magY || window.innerHeight / 2;
     mag.style.left = (_magX - magCenter()) + 'px'; mag.style.top = (_magY - magCenter()) + 'px';
+    applyMagnifierTransform();
     document.addEventListener('mousemove', updateMagnifier);
     document.addEventListener('click', onMagClick, true);
   } else {
