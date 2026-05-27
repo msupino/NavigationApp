@@ -237,6 +237,26 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+      - name: Post preview link comment
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          URL="https://msupino.github.io/NavigationApp/pr/${PR}/"
+          SHORT="${SHA:0:7}"
+          BODY=$(printf '### 🚀 Preview deployed\n\n**[Open PR preview →](%s)**\n\n`%s`\n\nCommit: `%s`' "$URL" "$URL" "$SHORT")
+          # Update existing bot comment if present, otherwise create new one.
+          EXISTING=$(gh api "repos/${REPO}/issues/${PR}/comments" \
+            --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("### 🚀 Preview deployed")))] | .[0].id // empty')
+          if [ -n "$EXISTING" ]; then
+            gh api "repos/${REPO}/issues/comments/${EXISTING}" -X PATCH -f body="$BODY"
+          else
+            gh pr comment "$PR" --body "$BODY"
+          fi
+
   e2e-deployed:
     if: github.event_name == 'pull_request'
     needs: deploy
