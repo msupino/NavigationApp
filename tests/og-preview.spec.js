@@ -35,7 +35,7 @@ test.describe('Social media preview image', () => {
         localStorage.setItem('navaid.layer', 'CVFR');
       } catch (e) {}
     });
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(() =>
       typeof state !== 'undefined' && typeof draw === 'function');
     await page.evaluate(route => {
