@@ -1,0 +1,78 @@
+name: Bug report
+description: Something broke or behaves wrong in NavAid
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please fill the fields below so the bug can be reproduced.
+  - type: input
+    id: build
+    attributes:
+      label: NavAid version
+      description: Bottom-left toolbar shows e.g. `1.0-4e5fb49`. Copy that string.
+      placeholder: "1.0-4e5fb49"
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where did you see it?
+      options:
+        - Production (msupino.github.io/NavigationApp/)
+        - Staging (/staging/)
+        - PR preview (/pr/N/)
+        - Local
+    validations:
+      required: true
+  - type: dropdown
+    id: device
+    attributes:
+      label: Device / browser
+      multiple: true
+      options:
+        - Desktop Chrome
+        - Desktop Firefox
+        - Desktop Safari
+        - iPhone Safari
+        - iPad Safari
+        - Android Chrome
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the route ...
+        2. Click ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual
+      placeholder: |
+        Expected: ...
+        Actual: ...
+    validations:
+      required: true
+  - type: textarea
+    id: route
+    attributes:
+      label: Route (optional)
+      description: If a specific route triggers it, paste the JSON from File → Export Route, or list the waypoint codes.
+      render: text
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot / video (optional)
+  - type: textarea
+    id: console
+    attributes:
+      label: Browser console errors (optional)
+      description: DevTools → Console. Paste any red errors.
+      render: text

@@ -1,0 +1,33 @@
+name: Feature request
+description: Propose a new capability or improvement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What pilot problem does this solve?
+      placeholder: "When planning a CVFR route, I currently have to ..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - Map / overlay
+        - Route + waypoints
+        - Flight plan / export
+        - Aircraft / fuel
+        - Localisation (he/en)
+        - Other
