@@ -358,8 +358,12 @@ test.describe('Magnifying glass', () => {
     // (loupeR is now slider-based, not sub-based), so a 700 ms-per-tile
     // throttle would push total settle time well past 60 s. Registered
     // after _setup.js so this route handler runs first; non-tile URLs
-    // still hit the existing GA-blocking route.
-    await page.route('**://*.flight-maps.com/**', async route => {
+    // still hit the existing GA-blocking route. Regex (not a glob) so
+    // `flight-maps.com` apex is matched alongside any subdomain — the
+    // glob `*.flight-maps.com` requires a leading subdomain segment and
+    // missed every real tile request, which left the indicator timing
+    // entirely up to the runner's network speed.
+    await page.route(/^https?:\/\/([^/]*\.)?flight-maps\.com\//, async route => {
       await new Promise(r => setTimeout(r, 100));
       try { await route.continue(); } catch (e) { /* page may close */ }
     });
