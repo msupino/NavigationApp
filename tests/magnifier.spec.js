@@ -75,10 +75,7 @@ test.describe('Magnifying glass', () => {
     await page.locator('#tool-add').click();
     await page.mouse.click(mapBox.x + 100, mapBox.y + 100);
     await page.mouse.click(mapBox.x + 200, mapBox.y + 200);
-    await page.locator('#tool-add').click(); // exit add mode
-    // enable magnifier
-    await page.locator('#tool-magnifier').click();
-    await page.waitForSelector('#magnifier');
+    await page.locator('#tool-add').click(); // exit add mode — magnifier stays on
     // move to first waypoint and click to lock
     await page.mouse.move(mapBox.x + 100, mapBox.y + 100);
     const boxBefore = await mag.boundingBox();
