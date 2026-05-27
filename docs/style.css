@@ -30,9 +30,8 @@ html, body {
   z-index: 1100;
   top: 12px;
   left: 12px;
-  /* Min-width keeps the bar from collapsing on narrow content; width is
-     auto so it grows to fit the longest label without horizontal scroll. */
-  min-width: 220px;
+  width: 240px;
+  overflow-x: hidden;
   max-height: calc(100vh - 24px);
   max-height: calc(100dvh - 24px);       /* dynamic viewport on iOS Safari */
   overflow-y: auto;

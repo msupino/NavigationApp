@@ -119,7 +119,7 @@ window.S = {
   tbPlanTitle: 'הצג תכנית טיסה',
   tbCharts: '🗺️ דפיות שדות תעופה',
   tbChartsTitle: 'עיין בדפיות גישה לכל שדות התעופה',
-  tbFly: '✈️ פתח מסלול ב-Google Earth',
+  tbFly: '✈️ פתח ב-Google Earth',
   tbFlyTitle: 'שמור סיור Google Earth של המסלול בגבהים שנקבעו לקטעים',
   tbShowReturn: 'הצג מסלול חזרה',
   tbShowReturnTitle: 'הצג מידע על מסלול חזרה',
