@@ -249,7 +249,7 @@ jobs:
         run: |
           URL="https://msupino.github.io/NavigationApp/branch/${BRANCH}/"
           SHORT="${SHA:0:7}"
-          BODY=$(printf '### 🚀 Preview deployed\n\n**[Open PR preview →](%s)**\n\n`%s`\n\nCommit: `%s`' "$URL" "$URL" "$SHORT")
+          BODY=$(printf '### 🚀 Preview deployed\n\n<a href="%s" target="_blank">Open PR preview →</a>\n\n`%s`\n\nCommit: `%s`' "$URL" "$URL" "$SHORT")
           # Update existing bot comment if present, otherwise create new one.
           EXISTING=$(gh api "repos/${REPO}/issues/${PR}/comments" \
             --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("### 🚀 Preview deployed")))] | .[0].id // empty')
