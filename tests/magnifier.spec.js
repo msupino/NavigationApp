@@ -619,7 +619,12 @@ test.describe('Magnifying glass', () => {
     const tileReqs = new Set();
     page.on('request', r => {
       const u = r.url();
-      if (u.includes('flight-maps.com')) tileReqs.add(u);
+      try {
+        const { hostname } = new URL(u);
+        if (hostname === 'flight-maps.com' || hostname.endsWith('.flight-maps.com')) {
+          tileReqs.add(u);
+        }
+      } catch (_) {}
     });
     await page.evaluate(() => map.setZoom(8));
     await page.waitForFunction(
