@@ -40,7 +40,7 @@ test.describe('Share route link', () => {
   });
 
   test('polyline encode/decode round-trips at 5 dp precision', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(() => typeof polylineEncode === 'function');
     const out = await page.evaluate(route => {
       const pts = route.waypoints.map(w => [w.lat, w.lng]);
@@ -57,7 +57,7 @@ test.describe('Share route link', () => {
   });
 
   test('buildShareUrl produces a URL containing r/n/l params', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.evaluate(route => {
       state.waypoints = route.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
       state.legs = route.legs.map(l => ({
@@ -79,7 +79,7 @@ test.describe('Share route link', () => {
   });
 
   test('share URL stays under WhatsApp preview budget for 20 waypoints', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     const len = await page.evaluate(() => {
       state.waypoints = [];
       for (let i = 0; i < 20; i++) {
@@ -96,7 +96,7 @@ test.describe('Share route link', () => {
   });
 
   test('errShareTooLong when over 64 waypoints', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     const out = await page.evaluate(() => {
       state.waypoints = [];
       for (let i = 0; i < 70; i++) {
@@ -111,7 +111,7 @@ test.describe('Share route link', () => {
   test('opening a URL with ?r=&n=&l= loads the encoded route', async ({ page }) => {
     // First build the URL on a fresh app instance, then open a second one
     // with that URL and verify the state matches.
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     const url = await page.evaluate(route => {
       state.waypoints = route.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
       state.legs = route.legs.map(l => ({
@@ -168,7 +168,7 @@ test.describe('Share route link', () => {
   });
 
   test('share button click writes the URL to clipboard', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.evaluate(route => {
       state.waypoints = route.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
       state.legs = route.legs.map(l => ({

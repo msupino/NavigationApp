@@ -48,6 +48,8 @@ both branches and assembles a single Pages site:
 - **Every enhancement, bug fix, or regression must include tests.** Add new
   test cases to the appropriate `tests/*.spec.js` file. If no file covers
   the area, create one.
+- **Keep `tests/README.md` in sync** when adding tests that don't run in
+  e2e-deployed, or when changing the exclusion pattern in `deploy.yml`.
 - If a push to `dev` / `main` doesn't trigger `Deploy` / `CI` within
   ~30 s (admin bypass can swallow the event), dispatch manually:
   `gh workflow run Deploy --ref dev` or `gh workflow run CI --ref dev`.

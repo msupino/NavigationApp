@@ -26,7 +26,7 @@ async function installListenerCounter(page) {
 test.describe('#176 Escape listener leak in modals', () => {
   test('charts modal: open / ✕ / open / ✕ — keydown adds match removes', async ({ page }) => {
     await installListenerCounter(page);
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(() => typeof showChartsModal === 'function');
     await page.evaluate(() => { window.airfields = window.airfields || []; });
 
@@ -48,7 +48,7 @@ test.describe('#176 Escape listener leak in modals', () => {
 
   test('plate viewer: ✕ button removes the Escape listener', async ({ page }) => {
     await installListenerCounter(page);
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(() => typeof showPlateViewer === 'function');
 
     // Block the network fetch so the viewer doesn't try to load a real PDF.
