@@ -281,7 +281,7 @@ function legZoomScale() {   // zoom + legArrowSize → pixel multiplier for offs
 }
 var magnifierOn = false;    // magnifying-glass toggle
 var magnifierZoom = 2;      // default zoom factor
-var magnifierSize = 200;    // magnifier diameter (px)
+var magnifierSize = 400;    // magnifier diameter (px)
 let pageSize = null;        // null | 'A3' | 'A4'
 // `var` (not `let`) so window.pageOrient writes from ui.js's boot restore
 // land on the same binding the toggle reads. Default 'portrait' since most
