@@ -2168,18 +2168,12 @@ function rebuildMagnifier() {
   if (!content) return;
   content.innerHTML = '';
 
-  const mapZoom = map.getZoom();
   const S = magnifierZoom;
+  const mapZoom = map.getZoom();
   const zoomStep = Math.ceil(Math.log2(S));
   const targetZoom = Math.min(mapZoom + zoomStep, 19);
   const useHighRes = targetZoom > mapZoom;
-  const actualStep = useHighRes ? targetZoom - mapZoom : 0;
-  const sub = Math.pow(2, actualStep);
-
-  const mapPane = document.querySelector('.leaflet-map-pane');
-  const mat = mapPane ? new DOMMatrixReadOnly(getComputedStyle(mapPane).transform) : null;
-  const dx = mat ? (mat.is2D ? mat.e : mat.m41) : 0;
-  const dy = mat ? (mat.is2D ? mat.f : mat.m42) : 0;
+  const sub = useHighRes ? Math.pow(2, targetZoom - mapZoom) : 1;
 
   if (!useHighRes) {
     // clone tiles at current zoom
@@ -2193,47 +2187,42 @@ function rebuildMagnifier() {
     }
   } else {
     // fetch tiles at targetZoom for crisp detail
-    const tileImg = document.querySelector('.leaflet-tile-pane img');
-    if (!tileImg) return;
-    const tileUrl = new URL(tileImg.src);
-    const pathParts = tileUrl.pathname.split('/');
-    // pathParts = ['', '12', '3456', '7890.png']
-
-    const mapRect = map.getContainer().getBoundingClientRect();
-    const cp = { x: _magX - mapRect.left, y: _magY - mapRect.top };
-    const centerLL = map.containerPointToLatLng(cp);
-    const centerPx = map.project(centerLL, targetZoom);
-
-    // tiles covering the magnifier circle at targetZoom pixel space
-    const radiusTarget = (magnifierSize / 2) / S * sub;
-    const tileSize = 256;
-    const tx0 = Math.floor((centerPx.x - radiusTarget) / tileSize);
-    const tx1 = Math.floor((centerPx.x + radiusTarget) / tileSize);
-    const ty0 = Math.floor((centerPx.y - radiusTarget) / tileSize);
-    const ty1 = Math.floor((centerPx.y + radiusTarget) / tileSize);
-
-    for (let ty = ty0; ty <= ty1; ty++) {
-      for (let tx = tx0; tx <= tx1; tx++) {
-        const img = document.createElement('img');
-        pathParts[1] = '' + targetZoom;
-        pathParts[2] = '' + tx;
-        pathParts[3] = '' + ty + pathParts[3].slice(pathParts[3].lastIndexOf('.'));
-        tileUrl.pathname = pathParts.join('/');
-        img.src = tileUrl.toString();
-        // position at world pixel in mapZoom space (no dx/dy — transform handles offset)
-        img.style.cssText = 'position:absolute;left:' +
-          (tx * tileSize / sub) + 'px;top:' +
-          (ty * tileSize / sub) + 'px;';
-        content.appendChild(img);
+    const tilePane = document.querySelector('.leaflet-tile-pane');
+    if (!tilePane) return;
+    for (const img of tilePane.querySelectorAll('img')) {
+      // extract zoom, x, y from current tile URL
+      // URL format: .../{zoom}/{x}/{y}.png
+      const match = img.src.match(/\/(\d+)\/(\d+)\/(\d+)\.\w+$/);
+      if (!match) continue;
+      const z = parseInt(match[1], 10);
+      if (z !== mapZoom) continue;
+      const x = parseInt(match[2], 10);
+      const y = parseInt(match[3], 10);
+      // emit sub×sub tiles at targetZoom covering the same area
+      for (let dy = 0; dy < sub; dy++) {
+        for (let dx = 0; dx < sub; dx++) {
+          const tx = x * sub + dx;
+          const ty = y * sub + dy;
+          const tile = document.createElement('img');
+          tile.src = img.src.replace(/\/\d+\/\d+\/\d+\.\w+$/, '/' + targetZoom + '/' + tx + '/' + ty + '.png');
+          tile.style.cssText = 'position:absolute;left:' +
+            (tx * 256 / sub) + 'px;top:' +
+            (ty * 256 / sub) + 'px;';
+          content.appendChild(tile);
+        }
       }
     }
   }
 
-  // capture overlay (always at map zoom)
+  // capture overlay
   const overlay = document.getElementById('overlay');
   if (overlay) {
     const cap = document.createElement('img');
     cap.src = overlay.toDataURL();
+    const mapPane = document.querySelector('.leaflet-map-pane');
+    const mat = mapPane ? new DOMMatrixReadOnly(getComputedStyle(mapPane).transform) : null;
+    const dx = mat ? (mat.is2D ? mat.e : mat.m41) : 0;
+    const dy = mat ? (mat.is2D ? mat.f : mat.m42) : 0;
     cap.style.cssText = 'position:absolute;left:' + (-dx) + 'px;top:' + (-dy) +
       'px;width:' + overlay.style.width + ';height:' + overlay.style.height;
     content.appendChild(cap);

@@ -95,8 +95,6 @@ test.describe('Magnifying glass', () => {
     const boxReleased = await mag.boundingBox();
     expect(boxReleased?.x).not.toBe(boxAfter?.x);
   });
-    expect(boxReleased?.x).not.toBe(boxAfter?.x);
-  });
 
   test('ESC closes magnifier', async ({ page }) => {
     await page.locator('#tool-magnifier').click();
