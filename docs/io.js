@@ -2168,37 +2168,35 @@ function rebuildMagnifier() {
   if (!content) return;
   content.innerHTML = '';
 
-  // fetch tiles at a higher zoom for crisp detail, using the same CORS
-  // strategy as exportPNG (weserv proxy for flight-maps tiles)
+  // clone tiles at current zoom (immediate fallback)
+  const tilePane = document.querySelector('.leaflet-tile-pane');
+  const tiles = tilePane ? Array.from(tilePane.querySelectorAll('img')) : [];
+  for (const img of tiles) {
+    const c = img.cloneNode(true);
+    c.style.visibility = 'visible';
+    content.appendChild(c);
+  }
+
+  // asynchronously overlay higher-zoom tiles for crisp detail
   const S = magnifierZoom;
-  const mapZoom = map.getZoom();
+  const mapZoom = Math.floor(map.getZoom());
   const zoomStep = Math.ceil(Math.log2(S));
   const targetZoom = Math.min(mapZoom + zoomStep, 19);
   const useHighRes = targetZoom > mapZoom;
 
   let activeLayer = null;
-  for (const key in layers) {
-    if (map.hasLayer(layers[key])) { activeLayer = layers[key]; break; }
+  if (useHighRes) {
+    for (const key in layers) {
+      if (map.hasLayer(layers[key])) { activeLayer = layers[key]; break; }
+    }
   }
 
-  if (!useHighRes || !activeLayer) {
-    // clone tiles at current zoom
-    const tilePane = document.querySelector('.leaflet-tile-pane');
-    if (tilePane) {
-      for (const img of tilePane.querySelectorAll('img')) {
-        const c = img.cloneNode(true);
-        c.style.visibility = 'visible';
-        content.appendChild(c);
-      }
-    }
-  } else {
-    const tilePane = document.querySelector('.leaflet-tile-pane');
-    if (!tilePane) return;
+  if (useHighRes && activeLayer) {
     const subs = activeLayer.options.subdomains || 'abc';
     const corsOk = activeLayer.options.corsOk;
     const sub = Math.pow(2, targetZoom - mapZoom);
-    for (const img of tilePane.querySelectorAll('img')) {
-      // parse zoom/x/y from the last 3 numeric path segments
+    const pending = [];
+    for (const img of tiles) {
       const parts = new URL(img.src).pathname.split('/');
       if (parts.length < 4) continue;
       const zNum = parseInt(parts[parts.length - 3], 10);
@@ -2222,14 +2220,12 @@ function rebuildMagnifier() {
           const fetchUrl = corsOk ? url
             : 'https://images.weserv.nl/?url=' +
               encodeURIComponent(url.replace(/^https?:\/\//, ''));
-          fetch(fetchUrl).then(r => {
+          pending.push(fetch(fetchUrl).then(r => {
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.blob();
           }).then(blob => {
             tile.src = URL.createObjectURL(blob);
-          }).catch(() => {
-            tile.remove();
-          });
+          }).catch(() => { tile.remove(); }));
         }
       }
     }
