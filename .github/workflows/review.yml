@@ -80,6 +80,7 @@ jobs:
         run: |
           npx --yes lighthouse@12 http://localhost:8080 \
             --chrome-flags="--headless --no-sandbox --disable-gpu" \
+            --blocked-url-patterns="googletagmanager|google-analytics|doubleclick" \
             --output=json --output=html --output-path=./lighthouse \
             --only-categories=performance,accessibility,best-practices,seo
       - uses: actions/upload-artifact@v4
