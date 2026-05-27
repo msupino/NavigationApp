@@ -2196,7 +2196,6 @@ function rebuildMagnifier() {
     const sub = Math.pow(2, actualTarget - mapZoom);
     if (actualTarget > mapZoom) {
       const subs = activeLayer.options.subdomains || 'abc';
-      const corsOk = activeLayer.options.corsOk;
       for (const img of tiles) {
       const parts = new URL(img.src).pathname.split('/');
       if (parts.length < 4) continue;
@@ -2216,18 +2215,10 @@ function rebuildMagnifier() {
             (tx * sz) + 'px;top:' +
             (ty * sz) + 'px;' +
             'width:' + sz + 'px;height:' + sz + 'px;';
-          content.appendChild(tile);
-          const url = L.Util.template(activeLayer._url,
+          tile.onerror = () => tile.remove();
+          tile.src = L.Util.template(activeLayer._url,
             { z: actualTarget, x: tx, y: ty, s: subs[(tx + ty) % subs.length] });
-          const fetchUrl = corsOk ? url
-            : 'https://images.weserv.nl/?url=' +
-              encodeURIComponent(url.replace(/^https?:\/\//, ''));
-          fetch(fetchUrl).then(r => {
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return r.blob();
-          }).then(blob => {
-            tile.src = URL.createObjectURL(blob);
-          }).catch(() => { tile.remove(); });
+          content.appendChild(tile);
         }
       }
     }
