@@ -2168,62 +2168,13 @@ function rebuildMagnifier() {
   if (!content) return;
   content.innerHTML = '';
 
-  const S = magnifierZoom;
-  const mapZoom = map.getZoom();
-  const zoomStep = Math.ceil(Math.log2(S));
-  const targetZoom = Math.min(mapZoom + zoomStep, 19);
-  const useHighRes = targetZoom > mapZoom;
-  const sub = useHighRes ? Math.pow(2, targetZoom - mapZoom) : 1;
-
-  if (!useHighRes) {
-    // clone tiles at current zoom
-    const tilePane = document.querySelector('.leaflet-tile-pane');
-    if (tilePane) {
-      for (const img of tilePane.querySelectorAll('img')) {
-        const c = img.cloneNode(true);
-        c.style.visibility = 'visible';
-        content.appendChild(c);
-      }
-    }
-  } else {
-    // fetch tiles at targetZoom using the active tile layer's URL template
-    let tileURLTemplate = '';
-    for (const key in layers) {
-      if (map.hasLayer(layers[key]) && layers[key]._url) {
-        tileURLTemplate = layers[key]._url;
-        break;
-      }
-    }
-    const tilePane = document.querySelector('.leaflet-tile-pane');
-    if (!tilePane || !tileURLTemplate) return;
+  // clone tiles from the map's tile pane
+  const tilePane = document.querySelector('.leaflet-tile-pane');
+  if (tilePane) {
     for (const img of tilePane.querySelectorAll('img')) {
-      // parse zoom/x/y from the last 3 numeric path segments
-      const parts = new URL(img.src).pathname.split('/');
-      if (parts.length < 4) continue;
-      const zNum = parseInt(parts[parts.length - 3], 10);
-      if (isNaN(zNum) || zNum !== mapZoom) continue;
-      const yNum = parseInt(parts[parts.length - 1], 10);
-      if (isNaN(yNum)) continue;
-      const xNum = parseInt(parts[parts.length - 2], 10);
-      if (isNaN(xNum)) continue;
-      for (let dy = 0; dy < sub; dy++) {
-        for (let dx = 0; dx < sub; dx++) {
-          const tx = xNum * sub + dx;
-          const ty = yNum * sub + dy;
-          const tile = document.createElement('img');
-          tile.src = tileURLTemplate
-            .replace(/\{z\}/g, targetZoom)
-            .replace(/\{x\}/g, tx)
-            .replace(/\{y\}/g, ty)
-            .replace(/\{s\}/g, 'a')
-            .replace(/\{r\}/g, '');
-          tile.style.cssText = 'position:absolute;left:' +
-            (tx * 256 / sub) + 'px;top:' +
-            (ty * 256 / sub) + 'px;' +
-            'width:256px;height:256px;';
-          content.appendChild(tile);
-        }
-      }
+      const c = img.cloneNode(true);
+      c.style.visibility = 'visible';
+      content.appendChild(c);
     }
   }
 
