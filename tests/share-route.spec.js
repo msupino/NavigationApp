@@ -1,6 +1,6 @@
 // @ts-check
 // Tests for the #162 shareable route link.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 
 // Same 11-waypoint LLHZ → LLHA fixture as tests/flight-plan.spec.js (PR #153),
 // coords copied from docs/airfields.json + docs/nav-waypoints.json at 5 dp.
