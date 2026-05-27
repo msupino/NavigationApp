@@ -2190,24 +2190,26 @@ function rebuildMagnifier() {
     const tilePane = document.querySelector('.leaflet-tile-pane');
     if (!tilePane) return;
     for (const img of tilePane.querySelectorAll('img')) {
-      // extract zoom, x, y from current tile URL
-      // URL format: .../{zoom}/{x}/{y}.png
-      const match = img.src.match(/\/(\d+)\/(\d+)\/(\d+)\.\w+$/);
-      if (!match) continue;
-      const z = parseInt(match[1], 10);
+      // parse URL: .../{zoom}/{x}/{y}[@2x].{ext}
+      const url = new URL(img.src);
+      const pathParts = url.pathname.split('/');
+      if (pathParts.length < 4) continue;
+      const z = parseInt(pathParts[1], 10);
       if (z !== mapZoom) continue;
-      const x = parseInt(match[2], 10);
-      const y = parseInt(match[3], 10);
+      const x = parseInt(pathParts[2], 10);
+      const y = parseInt(pathParts[3], 10);  // parseInt handles @2x suffix
+      const base = url.origin + '/';
       // emit sub×sub tiles at targetZoom covering the same area
       for (let dy = 0; dy < sub; dy++) {
         for (let dx = 0; dx < sub; dx++) {
           const tx = x * sub + dx;
           const ty = y * sub + dy;
           const tile = document.createElement('img');
-          tile.src = img.src.replace(/\/\d+\/\d+\/\d+\.\w+$/, '/' + targetZoom + '/' + tx + '/' + ty + '.png');
+          tile.src = base + targetZoom + '/' + tx + '/' + ty + '.png';
           tile.style.cssText = 'position:absolute;left:' +
             (tx * 256 / sub) + 'px;top:' +
-            (ty * 256 / sub) + 'px;';
+            (ty * 256 / sub) + 'px;' +
+            'width:256px;height:256px;';
           content.appendChild(tile);
         }
       }
