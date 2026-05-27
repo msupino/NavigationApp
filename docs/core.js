@@ -66,8 +66,8 @@ window.S = Object.assign({
   tbSearchOpen: '🔍 Find',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
   deleteWp: 'Delete Waypoint',                      // inspector button
-  resetLegMarkers: '↺ Reset marker location',       // inspector leg button — reset label offsets
-  resetAllLegMarkers: '↺ Reset all marker locations', // inspector leg button — reset every leg
+  resetLegMarkers: '↺ Reset marker position',       // inspector leg button — reset label offsets
+  resetAllLegMarkers: '↺ Reset all marker positions', // inspector leg button — reset every leg
   clearConfirm: 'Remove all waypoints and notes?',
   errBadCoords: 'file has invalid waypoint coordinates',
   // --- end Waypoint terminology ---------------------------------------
@@ -205,7 +205,7 @@ window.S = Object.assign({
   magSettingsTitle: 'Magnifier',
   magZoomLabel: 'Zoom',
   magZoomTitle: 'Magnifier zoom factor',
-  tbResetAllMarkers: '↺ Reset all marker locations',
+  tbResetAllMarkers: '↺ Reset all marker positions',
   tbResetAllMarkersTitle: 'Reset all leg marker offsets to default positions',
   inspCloseTitle: 'Close',
   inspCloseLabel: 'Close',
