@@ -190,7 +190,10 @@ downloadable `route.json`.
 - **Lint** before every commit: `node --check` each changed `.js`.
 - **Every enhancement, bug fix, or regression must include tests.** Add new
   test cases to the appropriate `tests/*.spec.js` file. If no file covers
-  the area, create one.
+  the area, create one. See `tests/README.md` for which tests run in CI
+  vs. deployed e2e.
+- **Keep `tests/README.md` in sync** when adding tests that don't run in
+  e2e-deployed, or when changing the exclusion pattern in `deploy.yml`.
 - **Deploy is a workflow** at `.github/workflows/deploy.yml`. It
   triggers on push to `main` *or* `dev` (or manual dispatch),
   checks out **both** branches, and assembles one Pages site:
