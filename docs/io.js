@@ -2162,16 +2162,6 @@ function createMagnifier() {
   document.body.appendChild(mag);
 }
 
-function applyMagnifierSize() {
-  const mag = document.getElementById('magnifier');
-  if (!mag) return;
-  const c = magCenter();
-  mag.style.width = magnifierSize + 'px';
-  mag.style.height = magnifierSize + 'px';
-  mag.style.left = (_magX - c) + 'px';
-  mag.style.top = (_magY - c) + 'px';
-}
-
 function rebuildMagnifier() {
   if (!magnifierOn) return;
   const content = document.getElementById('mag-content');
@@ -2280,7 +2270,7 @@ function onMagClick(e) {
   applyMagBorder();
 }
 
-// Magnifier zoom + size sliders
+// Magnifier zoom slider + scroll-wheel control
 (function () {
   const zoomSlider = document.getElementById('mag-zoom');
   const zoomVal = document.getElementById('mag-zoom-val');
@@ -2288,17 +2278,6 @@ function onMagClick(e) {
     zoomSlider.addEventListener('input', function () {
       window.magnifierZoom = parseFloat(this.value);
       zoomVal.textContent = magnifierZoom.toFixed(2).replace(/\.?0+$/, '') + '×';
-      _magDirty = true;
-      if (magnifierOn) { rebuildMagnifier(); applyMagnifierTransform(); }
-    });
-  }
-  const sizeSlider = document.getElementById('mag-size');
-  const sizeVal = document.getElementById('mag-size-val');
-  if (sizeSlider && sizeVal) {
-    sizeSlider.addEventListener('input', function () {
-      window.magnifierSize = parseInt(this.value, 10);
-      sizeVal.textContent = magnifierSize + 'px';
-      applyMagnifierSize();
       _magDirty = true;
       if (magnifierOn) { rebuildMagnifier(); applyMagnifierTransform(); }
     });
