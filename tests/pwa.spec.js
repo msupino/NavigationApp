@@ -5,7 +5,7 @@ const { test, expect } = require('./_setup');
 
 test.describe('PWA manifest', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
   });
 
   test('<link rel="manifest"> points at manifest.json', async ({ page }) => {
@@ -65,7 +65,7 @@ test.describe('Service worker', () => {
   });
 
   test('Page registers the service worker on load', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(
       async () => (await navigator.serviceWorker.getRegistration()) != null,
       null,
@@ -80,7 +80,7 @@ test.describe('Service worker', () => {
 
   test('Service worker activates and the cache fills with app shell entries',
     async ({ page }) => {
-      await page.goto('/?lang=en');
+      await page.goto('?lang=en');
       await page.waitForFunction(async () => {
         const reg = await navigator.serviceWorker.getRegistration();
         return reg && reg.active && reg.active.state === 'activated';
@@ -106,7 +106,7 @@ test.describe('Service worker', () => {
 
   test('Index HTML is cached so offline navigation can be served', async ({ page }) => {
     // First load registers + activates the SW but doesn't run through it.
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(async () => {
       const reg = await navigator.serviceWorker.getRegistration();
       return reg && reg.active && reg.active.state === 'activated';
@@ -145,7 +145,7 @@ test.describe('Service worker', () => {
   });
 
   test('Bad upstream response (5xx) is not cached', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(async () => {
       const reg = await navigator.serviceWorker.getRegistration();
       return reg && reg.active && reg.active.state === 'activated';

@@ -41,7 +41,7 @@ test.describe('Flight plan', () => {
         }
       } catch (e) {}
     });
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(() => typeof state !== 'undefined' && typeof showFlightPlan !== 'undefined');
     await page.evaluate(route => {
       state.waypoints = route.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));

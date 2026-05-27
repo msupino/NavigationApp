@@ -289,7 +289,7 @@ jobs:
           while [ $ATTEMPT -lt $MAX ]; do
             ATTEMPT=$((ATTEMPT + 1))
             echo "=== e2e attempt $ATTEMPT/$MAX ==="
-            if BASE_URL="$URL" npx playwright test $(ls tests/*.spec.js | grep -vE 'sw\.spec|pwa\.spec') --reporter=list 2>&1; then
+            if BASE_URL="$URL" EXPECTED_SHA="$SHA" npx playwright test $(ls tests/*.spec.js | grep -vE 'sw\.spec|pwa\.spec') --reporter=list 2>&1; then
               echo "All e2e tests passed!"
               exit 0
             fi

@@ -24,7 +24,7 @@ async function bootWithRoute(page) {
       }
     } catch (e) {}
   });
-  await page.goto('/?lang=en');
+  await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof syncLegs === 'function');
   await page.evaluate(route => {
     state.waypoints = route.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
