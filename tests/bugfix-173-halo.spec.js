@@ -5,7 +5,7 @@ const { test, expect } = require('./_setup');
 
 test.describe('#173 needsHalo outboundSpeed', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(() => typeof state !== 'undefined' && typeof needsHalo === 'function');
     await page.evaluate(() => {
       window.highlightDiff = true;          // needsHalo bails when off

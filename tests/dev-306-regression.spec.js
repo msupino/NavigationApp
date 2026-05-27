@@ -16,7 +16,7 @@ async function boot(page) {
       }
     } catch (e) {}
   });
-  await page.goto('/?lang=en');
+  await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined');
 }
 
@@ -62,7 +62,7 @@ test.describe('#306 — Magnetic Variation removed from toolbar', () => {
     await page.addInitScript(() => {
       try { localStorage.setItem('navaid.magVar', '-12'); } catch (e) {}
     });
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(() => typeof magVar !== 'undefined');
     expect(await page.evaluate(() => window.magVar)).toBe(-5);
   });

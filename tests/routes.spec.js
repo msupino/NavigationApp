@@ -39,7 +39,7 @@ async function setupCleanInit(page) {
 
 async function bootWithRoute(page) {
   await setupCleanInit(page);
-  await page.goto('/?lang=en');
+  await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof syncLegs === 'function');
   await page.evaluate(route => {
     state.waypoints = route.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
@@ -51,7 +51,7 @@ async function bootWithRoute(page) {
 test.describe('Add waypoint', () => {
   test.beforeEach(async ({ page }) => {
     await setupCleanInit(page);
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(() => typeof state !== 'undefined' && typeof map !== 'undefined');
   });
 
