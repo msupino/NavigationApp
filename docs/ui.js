@@ -591,6 +591,13 @@ refreshOrientButton();
 document.getElementById('print').onclick = showExportModal;
 createMagnifier();
 document.getElementById('tool-magnifier').onclick = toggleMagnifier;
+document.getElementById('tool-reset-all-markers').onclick = () => {
+  for (let i = 0; i < state.legs.length; i++) {
+    state.legs[i].inLabel = { a: 0, p: 44, _m: 1 };
+    state.legs[i].outLabel = { a: 0, p: -44, _m: 1 };
+  }
+  draw();
+};
 document.getElementById('insp-close').onclick = () => {
   state.selected = null;
   showInspector(); draw();
