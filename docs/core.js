@@ -159,7 +159,7 @@ window.S = Object.assign({
   tbPlanTitle: 'Show flight plan table',
   tbCharts: '🗺️ Airport Charts',
   tbChartsTitle: 'Browse approach charts for all airfields',
-  tbFly: '✈️ Open route in Google Earth',
+  tbFly: '✈️ Open in Google Earth',
   tbFlyTitle: 'Save a Google Earth tour of the route at the planned leg altitudes',
   tbShowReturn: 'Show return path',
   tbShowReturnTitle: 'Show return-direction (outbound) info',

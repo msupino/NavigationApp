@@ -87,6 +87,10 @@ test.describe('Service worker', () => {
       }, null, { timeout: 15000 });
       // Trigger a fetch the SW intercepts so the cache populates.
       await page.evaluate(async () => { await fetch('core.js?v=999'); });
+      // Give the SW time to finish cache.put inside respondWith before
+      // inspecting the cache — the page's fetch() resolves on body arrival,
+      // not when the SW has finished persisting.
+      await page.waitForTimeout(1000);
       const cached = await page.evaluate(async () => {
         const names = await caches.keys();
         const out = {};
