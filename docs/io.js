@@ -2176,52 +2176,72 @@ function rebuildMagnifier() {
     content.appendChild(c);
   }
 
-  // asynchronously overlay higher-zoom tiles for crisp detail
+  // Overlay higher-zoom tiles on top of the clones for crisp detail. Each
+  // sub-tile is positioned at the SAME local coordinate as its parent clone
+  // (read from the original Leaflet tile's `transform: translate3d(...)`)
+  // rather than at world-pixel coords — Leaflet's tile pane uses an arbitrary
+  // local origin, so world pixels would put the hi-res tiles ~80 000 px away
+  // from the magnifier viewport, leaving only the blurry clones visible. The
+  // per-tile zoom is parsed from the tile URL so the loader also works at
+  // fractional map zooms (zoomSnap: 0.25, zoomDelta: 0.5) where the displayed
+  // tiles' z does not equal Math.floor(map.getZoom()).
   const S = magnifierZoom;
-  const mapZoom = Math.floor(map.getZoom());
   const zoomStep = Math.ceil(Math.log2(S));
-  const targetZoom = Math.min(mapZoom + zoomStep, 19);
-  const useHighRes = targetZoom > mapZoom;
 
   let activeLayer = null;
-  if (useHighRes) {
+  if (zoomStep > 0) {
     for (const key in layers) {
       if (map.hasLayer(layers[key])) { activeLayer = layers[key]; break; }
     }
   }
 
-  if (useHighRes && activeLayer) {
-    const maxNZ = activeLayer.options.maxNativeZoom || 19;
-    const actualTarget = Math.min(targetZoom, maxNZ);
-    const sub = Math.pow(2, actualTarget - mapZoom);
-    if (actualTarget > mapZoom) {
-      const subs = activeLayer.options.subdomains || 'abc';
-      for (const img of tiles) {
-      const parts = new URL(img.src).pathname.split('/');
+  if (activeLayer) {
+    const maxNZ = activeLayer.options.maxNativeZoom ||
+                  activeLayer.options.maxZoom || 19;
+    const subs = activeLayer.options.subdomains || 'abc';
+    for (const img of tiles) {
+      if (!img.src) continue;
+      let parts;
+      try { parts = new URL(img.src).pathname.split('/'); }
+      catch (e) { continue; }
       if (parts.length < 4) continue;
       const zNum = parseInt(parts[parts.length - 3], 10);
-      if (isNaN(zNum) || zNum !== mapZoom) continue;
-      const yNum = parseInt(parts[parts.length - 1], 10);
-      if (isNaN(yNum)) continue;
       const xNum = parseInt(parts[parts.length - 2], 10);
-      if (isNaN(xNum)) continue;
+      const yNum = parseInt(parts[parts.length - 1], 10);
+      if (!Number.isFinite(zNum) || !Number.isFinite(xNum) ||
+          !Number.isFinite(yNum)) continue;
+      const tileTarget = Math.min(zNum + zoomStep, maxNZ);
+      if (tileTarget <= zNum) continue;     // already at max native — no hi-res
+      const sub = Math.pow(2, tileTarget - zNum);
+      // Read the cloned tile's local position from its inline transform
+      // (set by Leaflet's DomUtil.setPosition). Position the hi-res sub-tiles
+      // at the same local coord so they exactly overlay the parent clone.
+      let tileX = 0, tileY = 0;
+      const trStr = img.style.transform;
+      if (trStr) {
+        try {
+          const m = new DOMMatrixReadOnly(trStr);
+          tileX = m.is2D ? m.e : m.m41;
+          tileY = m.is2D ? m.f : m.m42;
+        } catch (e) { continue; }
+      }
+      const sz = 256 / sub;
       for (let dy = 0; dy < sub; dy++) {
         for (let dx = 0; dx < sub; dx++) {
           const tx = xNum * sub + dx;
           const ty = yNum * sub + dy;
           const tile = document.createElement('img');
-          const sz = 256 / sub;
           tile.style.cssText = 'position:absolute;left:' +
-            (tx * sz) + 'px;top:' +
-            (ty * sz) + 'px;' +
-            'width:' + sz + 'px;height:' + sz + 'px;';
+            (tileX + dx * sz) + 'px;top:' +
+            (tileY + dy * sz) + 'px;' +
+            'width:' + sz + 'px;height:' + sz + 'px';
           tile.onerror = () => tile.remove();
           tile.src = L.Util.template(activeLayer._url,
-            { z: actualTarget, x: tx, y: ty, s: subs[(tx + ty) % subs.length] });
+            { z: tileTarget, x: tx, y: ty,
+              s: subs[(tx + ty) % subs.length] });
           content.appendChild(tile);
         }
       }
-    }
     }
   }
 

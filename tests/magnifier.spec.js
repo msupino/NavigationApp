@@ -107,4 +107,108 @@ test.describe('Magnifying glass', () => {
     await page.locator('#mag-settings-close').click();
     await expect(page.locator('#magnifier')).not.toBeVisible();
   });
+
+  // Regression: an earlier iteration of the hi-res loader positioned the
+  // sub-tiles at world-pixel coords (e.g. xNum*256 ≈ 78 000 px) while
+  // Leaflet's cloned tiles are positioned via `transform: translate3d(local,
+  // local, 0)` against an arbitrary tile-pane origin. That put every hi-res
+  // tile ~80 000 px from the magnifier viewport and only the blurry z=mapZoom
+  // clones remained visible. This test pins the loader to the cloned tile's
+  // local coord system: each hi-res sub-tile must share its parent clone's
+  // top-left x/y (with the dx*sz / dy*sz sub-pixel grid offsets).
+  test('high-res sub-tiles align with the cloned parent tile', async ({ page }) => {
+    // Wait for the base tile layer to populate the pane before flipping the
+    // magnifier on — the loader needs real `<img>` elements to parse.
+    await page.waitForFunction(
+      () => document.querySelectorAll('.leaflet-tile-pane img').length > 4,
+      { timeout: 10000 });
+    await page.waitForTimeout(1000);
+
+    const mapBox = await page.locator('#map').boundingBox();
+    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
+    await page.locator('#tool-magnifier').click();
+    // Hi-res tiles fetch over the network — give them time to land.
+    await page.waitForTimeout(2500);
+
+    const report = await page.evaluate(() => {
+      const content = document.getElementById('mag-content');
+      if (!content) return { error: 'no mag-content' };
+      const kids = Array.from(content.children);
+      // Group children by the tile zoom encoded in their `src`. The clones
+      // come straight from `.leaflet-tile-pane img` (current map zoom); the
+      // hi-res sub-tiles use one of the deeper native zoom levels.
+      const byZ = {};
+      const localPos = el => {
+        if (el.style.left) {
+          return { x: parseFloat(el.style.left), y: parseFloat(el.style.top) };
+        }
+        if (el.style.transform) {
+          try {
+            const m = new DOMMatrixReadOnly(el.style.transform);
+            return { x: m.is2D ? m.e : m.m41, y: m.is2D ? m.f : m.m42 };
+          } catch (e) { /* fall through */ }
+        }
+        return null;
+      };
+      for (const el of kids) {
+        if (el.tagName !== 'IMG' || !el.src) continue;
+        let z;
+        try {
+          const parts = new URL(el.src).pathname.split('/');
+          z = parseInt(parts[parts.length - 3], 10);
+        } catch (e) { continue; }
+        if (!Number.isFinite(z)) continue;
+        (byZ[z] = byZ[z] || []).push({
+          src: el.src, pos: localPos(el),
+          w: parseFloat(el.style.width) || el.clientWidth,
+        });
+      }
+      return { byZ, mapZoom: map.getZoom() };
+    });
+
+    expect(report.error).toBeUndefined();
+    const zs = Object.keys(report.byZ).map(Number).sort();
+    // Must have both the clone layer AND a deeper-zoom hi-res layer.
+    expect(zs.length).toBeGreaterThanOrEqual(2);
+    const clonedZ = Math.min(...zs);
+    const hiresZ = Math.max(...zs);
+    expect(hiresZ).toBeGreaterThan(clonedZ);
+
+    const clones = report.byZ[clonedZ];
+    const hires = report.byZ[hiresZ];
+    expect(clones.length).toBeGreaterThan(0);
+    expect(hires.length).toBeGreaterThan(0);
+    // Clones live in Leaflet's local tile-pane coords (~ a few hundred px).
+    // If the hi-res loader regressed back to world-pixel positioning the
+    // sub-tiles would sit at ~xNum*256 — easily 50 000+ px away.
+    const maxClonedX = Math.max(...clones.map(c => Math.abs(c.pos.x)));
+    const maxHiresX = Math.max(...hires.map(h => Math.abs(h.pos.x)));
+    expect(maxHiresX).toBeLessThan(maxClonedX + 1024);
+
+    // Every loaded hi-res sub-tile must sit on the sub-pixel grid of one of
+    // the cloned tiles (i.e. `hi.pos - clone.pos` ≈ (dx*sz, dy*sz) with dx,
+    // dy ∈ [0, sub)). If positioning had regressed back to world-pixel
+    // coords, the modulus check would fail for every hi-res tile because
+    // they'd be 50 000+ px from any clone.
+    const sub = Math.pow(2, hiresZ - clonedZ);
+    const sz = 256 / sub;
+    let aligned = 0;
+    for (const h of hires) {
+      const ok = clones.some(c => {
+        const ddx = h.pos.x - c.pos.x;
+        const ddy = h.pos.y - c.pos.y;
+        if (ddx < -0.5 || ddy < -0.5) return false;
+        if (ddx > (sub - 1) * sz + 0.5) return false;
+        if (ddy > (sub - 1) * sz + 0.5) return false;
+        const rx = ddx % sz, ry = ddy % sz;
+        return (rx < 0.5 || rx > sz - 0.5) && (ry < 0.5 || ry > sz - 0.5);
+      });
+      if (ok) aligned++;
+    }
+    // ALL hi-res tiles should be properly placed on a clone's sub-grid.
+    expect(aligned).toBe(hires.length);
+    // And the sub-tile pixel size must reflect the magnifier's zoom step.
+    expect(Math.abs(hires[0].w - sz)).toBeLessThan(1);
+  });
 });
