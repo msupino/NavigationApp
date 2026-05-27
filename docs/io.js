@@ -2210,10 +2210,11 @@ function rebuildMagnifier() {
           const tx = xNum * sub + dx;
           const ty = yNum * sub + dy;
           const tile = document.createElement('img');
+          const sz = 256 / sub;
           tile.style.cssText = 'position:absolute;left:' +
-            (tx * 256 / sub) + 'px;top:' +
-            (ty * 256 / sub) + 'px;' +
-            'width:256px;height:256px;';
+            (tx * sz) + 'px;top:' +
+            (ty * sz) + 'px;' +
+            'width:' + sz + 'px;height:' + sz + 'px;';
           content.appendChild(tile);
           const url = L.Util.template(activeLayer._url,
             { z: targetZoom, x: tx, y: ty, s: subs[(tx + ty) % subs.length] });
