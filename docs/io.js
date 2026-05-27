@@ -258,8 +258,8 @@ function load(file) {
       outboundAltitude: l.outboundAltitude,
       flightSpeed: l.flightSpeed,
       outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
-      inLabel:  { a: l.inLabel.a,  p: l.inLabel.p  },
-      outLabel: { a: l.outLabel.a, p: l.outLabel.p },
+      inLabel:  { a: l.inLabel.a,  p: l.inLabel.p,  _m: 1 },
+      outLabel: { a: l.outLabel.a, p: l.outLabel.p, _m: 1 },
     }));
     state.notes = d.notes.map(n => ({
       lat: r5(n.lat), lng: r5(n.lng),
@@ -1709,11 +1709,14 @@ function restoreRoute() {
     // scale proportionally with zoom. Old (pre-#393) blobs lack _m and hold
     // raw pixel offsets.
     if (!l.inLabel._m) {
-      const isc = 1 / legZoomScale();
-      inL.a *= isc;  inL.p *= isc;
-      outL.a *= isc; outL.p *= isc;
-      inL._m = outL._m = 1;
+      // Divide by legArrowSize to normalise to zoom-12 reference.
+      // legZoomScale(12) = 1 * legArrowSize, so isc = 1 / legArrowSize.
+      // This keeps the marker at the same position at zoom 12; at other
+      // zooms it scales proportionally.
+      inL.a /= legArrowSize;  inL.p /= legArrowSize;
+      outL.a /= legArrowSize; outL.p /= legArrowSize;
     }
+    inL._m = outL._m = 1;  // always flag as migrated so migration never re-runs
     return {
       inboundAltitude: l.inboundAltitude,
       outboundAltitude: l.outboundAltitude,
@@ -2223,6 +2226,8 @@ function toggleMagnifier() {
   if (!mag) return;
   mag.style.display = magnifierOn ? 'block' : 'none';
   document.getElementById('tool-magnifier').classList.toggle('active', magnifierOn);
+  const settings = document.getElementById('magnifier-settings');
+  if (settings) settings.classList.toggle('hidden', !magnifierOn);
   if (magnifierOn) {
     _magDirty = true;
     rebuildMagnifier();
@@ -2237,6 +2242,27 @@ function toggleMagnifier() {
     if (_magRAF) { cancelAnimationFrame(_magRAF); _magRAF = null; }
   }
 }
+
+// Magnifier zoom slider
+(function () {
+  const zoomSlider = document.getElementById('mag-zoom');
+  const zoomVal = document.getElementById('mag-zoom-val');
+  if (zoomSlider && zoomVal) {
+    zoomSlider.addEventListener('input', function () {
+      magnifierZoom = parseFloat(this.value);
+      zoomVal.textContent = magnifierZoom.toFixed(2).replace(/\.?0+$/, '') + '×';
+      _magDirty = true;
+      if (magnifierOn) rebuildMagnifier();
+    });
+  }
+  // Settings close button
+  const closeBtn = document.getElementById('mag-settings-close');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', function () {
+      if (magnifierOn) toggleMagnifier();
+    });
+  }
+})();
 
 // Mark magnifier dirty when the map or route changes
 map.on('moveend zoomend rotate', () => { _magDirty = true; });

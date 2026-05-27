@@ -66,6 +66,8 @@ window.S = Object.assign({
   tbSearchOpen: '🔍 Find',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
   deleteWp: 'Delete Waypoint',                      // inspector button
+  resetLegMarkers: '↺ Reset markers',               // inspector leg button — reset label offsets
+  resetAllLegMarkers: '↺ Reset all markers',        // inspector leg button — reset every leg
   clearConfirm: 'Remove all waypoints and notes?',
   errBadCoords: 'file has invalid waypoint coordinates',
   // --- end Waypoint terminology ---------------------------------------
@@ -200,6 +202,9 @@ window.S = Object.assign({
   tbPrintTitle: 'Save the framed map + route as a PNG',
   tbMagnifier: '🔍',
   tbMagnifierTitle: 'Magnifying glass — zoomed view at cursor for precise editing',
+  magSettingsTitle: 'Magnifier',
+  magZoomLabel: 'Zoom',
+  magZoomTitle: 'Magnifier zoom factor',
   inspCloseTitle: 'Close',
   inspCloseLabel: 'Close',
   tbSecEdit: '✏️ Edit',

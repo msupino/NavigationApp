@@ -149,6 +149,27 @@ function showInspector() {
       propagateAlt(idx, 'outboundAltitude', leg.outboundAltitude, oldVal);
       draw();
     }));
+    const reset = document.createElement('button');
+    reset.className = 'insp-btn';
+    reset.textContent = S.resetLegMarkers;
+    reset.onclick = () => {
+      leg.inLabel = { a: 0, p: 44, _m: 1 };
+      leg.outLabel = { a: 0, p: -44, _m: 1 };
+      draw();
+    };
+    body.appendChild(reset);
+    const resetAll = document.createElement('button');
+    resetAll.className = 'insp-btn';
+    resetAll.textContent = S.resetAllLegMarkers;
+    resetAll.style.marginTop = '4px';
+    resetAll.onclick = () => {
+      for (let i = 0; i < state.legs.length; i++) {
+        state.legs[i].inLabel = { a: 0, p: 44, _m: 1 };
+        state.legs[i].outLabel = { a: 0, p: -44, _m: 1 };
+      }
+      draw();
+    };
+    body.appendChild(resetAll);
   } else if (state.selected.type === 'note') {
     const note = state.notes[state.selected.index];
     title.value = '';
@@ -473,6 +494,7 @@ window.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     const modal = document.querySelector('.modal-back');
     if (modal) { modal.remove(); return; }
+    if (magnifierOn) { toggleMagnifier(); return; }
     if (state.selected) {
       state.selected = null;
       showInspector(); draw();
