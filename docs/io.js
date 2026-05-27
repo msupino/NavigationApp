@@ -2136,6 +2136,25 @@ let _magDirty = true;                      // content needs rebuilding
 let _magRAF = null;                        // requestAnimationFrame id
 let _magX = 0, _magY = 0;                 // last known cursor (viewport px)
 let _magFixed = false;                     // click-to-lock fixed position
+// Cursor coords used for the most recent hi-res rebuild. Initialised to a
+// sentinel so the first real mousemove always triggers a rebuild — without
+// this the cursor-driven refetch in updateMagnifier would short-circuit when
+// the user opens the loupe with a stale `_magX`.
+let _magLastX = -Infinity, _magLastY = -Infinity;
+// Effective CSS scale for the magnifier content. Refreshed by
+// rebuildMagnifier(); applyMagnifierTransform() reads it for the loupe's
+// `scale()` transform.  Equal to `magnifierZoom` (the slider) at high map
+// zooms but ramps up to ~16 at the widest base-map zoom (8) so the hi-res
+// tile layer renders at native pixel density rather than getting heavily
+// downsampled.
+let _magEffS = 1;
+// Minimum loupe zoom — even when the base map is wide-out (z=8) the hi-res
+// overlay aims for at least this zoom so VFR chart labels stay legible.
+const MAG_BASELINE_Z = 12;
+// Hard ceiling on the per-rebuild sub-tile grid (sub = 2^MAG_MAX_EXP).
+// sub=16 → up to 4 zoom levels deeper than the displayed map tile, which is
+// what `MAG_BASELINE_Z` needs at the lowest allowed map zoom (8 → 12).
+const MAG_MAX_EXP = 4;
 
 function magCenter() { return magnifierSize / 2; }
 
@@ -2166,6 +2185,8 @@ function rebuildMagnifier() {
   const content = document.getElementById('mag-content');
   if (!content) return;
   content.innerHTML = '';
+  _magLastX = _magX;
+  _magLastY = _magY;
 
   // clone tiles at current zoom (immediate fallback)
   const tilePane = document.querySelector('.leaflet-tile-pane');
@@ -2176,64 +2197,127 @@ function rebuildMagnifier() {
     content.appendChild(c);
   }
 
-  // Overlay higher-zoom tiles on top of the clones for crisp detail. Each
-  // sub-tile is positioned at the SAME local coordinate as its parent clone
-  // (read from the original Leaflet tile's `transform: translate3d(...)`)
-  // rather than at world-pixel coords — Leaflet's tile pane uses an arbitrary
-  // local origin, so world pixels would put the hi-res tiles ~80 000 px away
-  // from the magnifier viewport, leaving only the blurry clones visible. The
-  // per-tile zoom is parsed from the tile URL so the loader also works at
-  // fractional map zooms (zoomSnap: 0.25, zoomDelta: 0.5) where the displayed
-  // tiles' z does not equal Math.floor(map.getZoom()).
-  const S = magnifierZoom;
-  const zoomStep = Math.ceil(Math.log2(S));
-
+  // Adaptive hi-res overlay. Two independent dials decide the target tile
+  // zoom:
+  //   1. Slider — `ceil(log2(magnifierZoom))` keeps the optimal pixel-density
+  //      match the slider used to provide on its own.
+  //   2. Baseline — `MAG_BASELINE_Z` (=12) is the zoom at which Israeli VFR
+  //      chart labels become legible. Flooring at this value means a country-
+  //      wide z=8 view still surfaces airfield / waypoint names inside the
+  //      loupe, which the pre-adaptive code did not — the loupe just blew
+  //      z=8 source up to 2× and showed no extra detail.
+  // Clamped to the layer's `maxNativeZoom` (anything beyond just 404s) and
+  // to `MAG_MAX_EXP` so the per-rebuild sub-tile grid stays bounded.
+  //
+  // Together with `_magEffS = max(slider, sub)` (applied by
+  // applyMagnifierTransform), the hi-res tiles render at native pixel
+  // density: their CSS size is `256/sub`, the content is scaled by `sub`,
+  // so each hi-res source pixel maps to one display pixel. That's what
+  // makes z=12 labels actually legible inside the loupe at low base zoom.
+  //
+  // Fetch is centred on the cursor (not "subdivide every clone in the
+  // pane") so the tile count stays bounded by the loupe area instead of
+  // the viewport area. `updateMagnifier` schedules a refetch whenever the
+  // cursor drifts past one loupe radius, so dragging the cursor across
+  // the map updates the crisp area too.
   let activeLayer = null;
-  if (zoomStep > 0) {
-    for (const key in layers) {
-      if (map.hasLayer(layers[key])) { activeLayer = layers[key]; break; }
-    }
+  for (const key in layers) {
+    if (map.hasLayer(layers[key])) { activeLayer = layers[key]; break; }
   }
 
+  // Pick the first cloned tile with a parseable URL + transform as the
+  // coordinate-system anchor. Hi-res tiles are positioned relative to it,
+  // which sidesteps having to recompute Leaflet's tile-container origin
+  // (see commit 41fd620 — world-pixel coords are catastrophically wrong).
+  let refX = null, refY = null, refZ = null;
+  let refLocalX = 0, refLocalY = 0;
   if (activeLayer) {
-    const maxNZ = activeLayer.options.maxNativeZoom ||
-                  activeLayer.options.maxZoom || 19;
-    const subs = activeLayer.options.subdomains || 'abc';
     for (const img of tiles) {
       if (!img.src) continue;
       let parts;
       try { parts = new URL(img.src).pathname.split('/'); }
       catch (e) { continue; }
       if (parts.length < 4) continue;
-      const zNum = parseInt(parts[parts.length - 3], 10);
-      const xNum = parseInt(parts[parts.length - 2], 10);
-      const yNum = parseInt(parts[parts.length - 1], 10);
-      if (!Number.isFinite(zNum) || !Number.isFinite(xNum) ||
-          !Number.isFinite(yNum)) continue;
-      const tileTarget = Math.min(zNum + zoomStep, maxNZ);
-      if (tileTarget <= zNum) continue;     // already at max native — no hi-res
-      const sub = Math.pow(2, tileTarget - zNum);
-      // Read the cloned tile's local position from its inline transform
-      // (set by Leaflet's DomUtil.setPosition). Position the hi-res sub-tiles
-      // at the same local coord so they exactly overlay the parent clone.
-      let tileX = 0, tileY = 0;
+      const z = parseInt(parts[parts.length - 3], 10);
+      const x = parseInt(parts[parts.length - 2], 10);
+      const y = parseInt(parts[parts.length - 1], 10);
+      if (!Number.isFinite(z) || !Number.isFinite(x) ||
+          !Number.isFinite(y)) continue;
       const trStr = img.style.transform;
-      if (trStr) {
-        try {
-          const m = new DOMMatrixReadOnly(trStr);
-          tileX = m.is2D ? m.e : m.m41;
-          tileY = m.is2D ? m.f : m.m42;
-        } catch (e) { continue; }
-      }
+      if (!trStr) continue;
+      let mat;
+      try { mat = new DOMMatrixReadOnly(trStr); } catch (e) { continue; }
+      refZ = z; refX = x; refY = y;
+      refLocalX = mat.is2D ? mat.e : mat.m41;
+      refLocalY = mat.is2D ? mat.f : mat.m42;
+      break;
+    }
+  }
+
+  // Default: no hi-res, content rendered at slider scale only.
+  _magEffS = Math.max(1, magnifierZoom);
+
+  if (activeLayer && refZ !== null) {
+    const maxNZ = activeLayer.options.maxNativeZoom ||
+                  activeLayer.options.maxZoom || 19;
+    const subs = activeLayer.options.subdomains || 'abc';
+    const S = magnifierZoom;
+    const sliderExp = Math.ceil(Math.log2(Math.max(1, S)));
+    const baselineExp = MAG_BASELINE_Z - refZ;
+    const desiredExp = Math.max(sliderExp, baselineExp);
+    const targetExp = Math.max(0,
+      Math.min(MAG_MAX_EXP, Math.min(maxNZ - refZ, desiredExp)));
+    if (targetExp > 0) {
+      const tileTarget = refZ + targetExp;
+      const sub = Math.pow(2, targetExp);
       const sz = 256 / sub;
-      for (let dy = 0; dy < sub; dy++) {
-        for (let dx = 0; dx < sub; dx++) {
-          const tx = xNum * sub + dx;
-          const ty = yNum * sub + dy;
+      // Bump the loupe's CSS scale up to `sub` whenever the slider's natural
+      // S is below it. At map z=8 / slider 2 this turns the loupe into a
+      // z=12 view (effS = 16) instead of a downsampled 2× upscale of z=8.
+      _magEffS = Math.max(S, sub);
+
+      // Cursor in tile-pane-local source pixels (same coord system as the
+      // clones' transforms).
+      const mapPane = document.querySelector('.leaflet-map-pane');
+      let mpX = 0, mpY = 0;
+      if (mapPane) {
+        try {
+          const m = new DOMMatrixReadOnly(getComputedStyle(mapPane).transform);
+          mpX = m.is2D ? m.e : m.m41;
+          mpY = m.is2D ? m.f : m.m42;
+        } catch (e) {}
+      }
+      const mapRect = map.getContainer().getBoundingClientRect();
+      const cursorX = (_magX - mapRect.left) - mpX;
+      const cursorY = (_magY - mapRect.top) - mpY;
+
+      // Loupe area + one loupe-radius margin so the cursor can drift a
+      // little before `updateMagnifier` decides to schedule a refetch.
+      // Sized using `_magEffS` so the math matches the display scale —
+      // otherwise we'd over-fetch by a factor of (effS / slider).
+      const loupeR = magnifierSize / 2 / _magEffS;
+      const radius = 2 * loupeR;
+      const xMin = cursorX - radius, xMax = cursorX + radius;
+      const yMin = cursorY - radius, yMax = cursorY + radius;
+
+      // Map tile-pane-local pixels back to hi-res tile coords using the
+      // reference clone we picked above.
+      const refTxBase = refX * sub;
+      const refTyBase = refY * sub;
+      const txMin = Math.floor(refTxBase + (xMin - refLocalX) / sz);
+      const txMax = Math.floor(refTxBase + (xMax - refLocalX) / sz);
+      const tyMin = Math.floor(refTyBase + (yMin - refLocalY) / sz);
+      const tyMax = Math.floor(refTyBase + (yMax - refLocalY) / sz);
+
+      for (let ty = tyMin; ty <= tyMax; ty++) {
+        if (ty < 0) continue;
+        for (let tx = txMin; tx <= txMax; tx++) {
+          if (tx < 0) continue;
+          const localX = refLocalX + (tx - refTxBase) * sz;
+          const localY = refLocalY + (ty - refTyBase) * sz;
           const tile = document.createElement('img');
           tile.style.cssText = 'position:absolute;left:' +
-            (tileX + dx * sz) + 'px;top:' +
-            (tileY + dy * sz) + 'px;' +
+            localX + 'px;top:' + localY + 'px;' +
             'width:' + sz + 'px;height:' + sz + 'px';
           tile.onerror = () => tile.remove();
           tile.src = L.Util.template(activeLayer._url,
@@ -2245,7 +2329,14 @@ function rebuildMagnifier() {
     }
   }
 
-  // capture overlay
+  // capture overlay (waypoint dots, leg lines, notes). The content div is
+  // scaled by `_magEffS` for the tile layer, but the overlay wants to stay
+  // at the SLIDER's `magnifierZoom` magnification — otherwise waypoint dots
+  // would balloon to 16× at the widest base zoom. We counter-scale the
+  // overlay by `slider / effS` around the cursor pivot, so its displayed
+  // magnification works out to exactly `magnifierZoom` regardless of how
+  // much the tile layer was boosted (pivot ensures the cursor still lands
+  // at the loupe centre).
   const overlay = document.getElementById('overlay');
   if (overlay) {
     const cap = document.createElement('img');
@@ -2254,8 +2345,14 @@ function rebuildMagnifier() {
     const mat = mapPane ? new DOMMatrixReadOnly(getComputedStyle(mapPane).transform) : null;
     const dx = mat ? (mat.is2D ? mat.e : mat.m41) : 0;
     const dy = mat ? (mat.is2D ? mat.f : mat.m42) : 0;
+    const oS = Math.max(1, magnifierZoom) / _magEffS;
+    const mapRect = map.getContainer().getBoundingClientRect();
+    const cpx = _magX - mapRect.left;
+    const cpy = _magY - mapRect.top;
     cap.style.cssText = 'position:absolute;left:' + (-dx) + 'px;top:' + (-dy) +
-      'px;width:' + overlay.style.width + ';height:' + overlay.style.height;
+      'px;width:' + overlay.style.width + ';height:' + overlay.style.height +
+      ';transform-origin:' + cpx + 'px ' + cpy + 'px' +
+      ';transform:scale(' + oS + ')';
     content.appendChild(cap);
   }
   _magDirty = false;
@@ -2268,20 +2365,36 @@ function applyMagnifierTransform() {
   if (_magDirty) rebuildMagnifier();
   const mapRect = map.getContainer().getBoundingClientRect();
   const cp = { x: _magX - mapRect.left, y: _magY - mapRect.top };
-  const S = magnifierZoom;
+  // Use the rebuild's `_magEffS` (max of slider and the adaptive `sub`) so
+  // the hi-res tile layer renders at native pixel density — the cursor
+  // anchor math is identical regardless of which scale we plug in.
+  const effS = _magEffS;
   const mapPane = document.querySelector('.leaflet-map-pane');
   const mat = mapPane ? new DOMMatrixReadOnly(getComputedStyle(mapPane).transform) : null;
   const dx = mat ? (mat.is2D ? mat.e : mat.m41) : 0;
   const dy = mat ? (mat.is2D ? mat.f : mat.m42) : 0;
   content.style.transform =
-    'translate(' + (magCenter() + dx * S - cp.x * S) + 'px,' +
-                   (magCenter() + dy * S - cp.y * S) + 'px) scale(' + S + ')';
+    'translate(' + (magCenter() + dx * effS - cp.x * effS) + 'px,' +
+                   (magCenter() + dy * effS - cp.y * effS) + 'px) scale(' + effS + ')';
 }
 
 function updateMagnifier(e) {
   if (!magnifierOn || _magFixed) return;
   _magX = e.clientX;
   _magY = e.clientY;
+  // If the cursor has wandered past the pre-fetched margin, mark the
+  // hi-res overlay dirty so the next animation frame refetches around the
+  // new center. rebuildMagnifier reserves one loupe-radius of margin in
+  // source-pixel space (`magnifierSize/2/effS`); the cursor moves in
+  // client pixels and source-pixel shift = clientMove / effS, so the
+  // refetch threshold in CLIENT space is simply `magnifierSize/2` —
+  // independent of effS. We dial that down by a third for a bit of
+  // pre-emptive buffer.
+  const moveThreshold = magnifierSize / 3;
+  if (Math.abs(_magX - _magLastX) > moveThreshold ||
+      Math.abs(_magY - _magLastY) > moveThreshold) {
+    _magDirty = true;
+  }
   if (_magRAF) return;                     // already queued
   _magRAF = requestAnimationFrame(() => {
     _magRAF = null;
@@ -2311,10 +2424,15 @@ function toggleMagnifier() {
   const settings = document.getElementById('magnifier-settings');
   if (settings) settings.classList.toggle('hidden', !magnifierOn);
   if (magnifierOn) {
-    _magDirty = true;
-    rebuildMagnifier();
+    // Establish the cursor anchor BEFORE the first rebuild — the adaptive
+    // hi-res fetch is centred on (_magX, _magY), so a stale 0/0 would put
+    // every fetched sub-tile far off the loupe viewport on first open.
     _magX = _magX || window.innerWidth / 2;
     _magY = _magY || window.innerHeight / 2;
+    _magLastX = -Infinity;       // force the next mousemove to refetch
+    _magLastY = -Infinity;
+    _magDirty = true;
+    rebuildMagnifier();
     mag.style.left = (_magX - magCenter()) + 'px'; mag.style.top = (_magY - magCenter()) + 'px';
     applyMagnifierTransform();
     document.addEventListener('mousemove', updateMagnifier);

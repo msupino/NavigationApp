@@ -211,4 +211,90 @@ test.describe('Magnifying glass', () => {
     // And the sub-tile pixel size must reflect the magnifier's zoom step.
     expect(Math.abs(hires[0].w - sz)).toBeLessThan(1);
   });
+
+  // Adaptive zoom: at low map zooms the loupe must surface readable VFR
+  // chart detail (≥ z=12), not just blow up the wide-out z=8 source. The
+  // pre-adaptive iteration capped the hi-res target at `mapZoom +
+  // ceil(log2(magnifierZoom))`, so at the country-wide z=8 view the loupe
+  // would only fetch z=9 / z=10 tiles — chart labels still illegible. The
+  // adaptive design floors the loupe at MAG_BASELINE_Z (12) and bumps the
+  // content scale to `max(slider, sub)` so the deeper tiles render at
+  // native pixel density.
+  test('adaptive: low map zoom fetches z>=12 hi-res tiles + bumps CSS scale', async ({ page }) => {
+    await page.evaluate(() => map.setZoom(8));
+    await page.waitForFunction(
+      () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
+              .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
+      { timeout: 10000 });
+    await page.waitForTimeout(1000);
+
+    const mapBox = await page.locator('#map').boundingBox();
+    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
+    await page.locator('#tool-magnifier').click();
+    await page.waitForTimeout(2500);
+
+    const report = await page.evaluate(() => {
+      const kids = Array.from(document.querySelectorAll('#mag-content img'));
+      const zs = new Set();
+      for (const el of kids) {
+        if (!el.src) continue;
+        try {
+          const p = new URL(el.src).pathname.split('/');
+          const z = parseInt(p[p.length - 3], 10);
+          if (Number.isFinite(z)) zs.add(z);
+        } catch (e) {}
+      }
+      const content = document.getElementById('mag-content');
+      const trMatch = /scale\(([\d.]+)\)/.exec(content.style.transform || '');
+      return {
+        zs: [...zs].sort((a, b) => a - b),
+        contentScale: trMatch ? parseFloat(trMatch[1]) : null,
+        slider: window.magnifierZoom,
+        mapZoom: map.getZoom(),
+      };
+    });
+    // Cloned tiles are at z=8, hi-res must reach the readability baseline.
+    expect(report.zs).toContain(8);
+    expect(Math.max(...report.zs)).toBeGreaterThanOrEqual(12);
+    // The content scale must climb beyond the slider so the hi-res tiles
+    // land at native (or higher) pixel density. At slider=2, mapZoom=8,
+    // sub=16 → effS=16; we accept anything ≥ sub.
+    expect(report.contentScale).toBeGreaterThanOrEqual(8);
+  });
+
+  // Tile-count guard: with the center-based fetch + `effS = max(slider, sub)`
+  // each rebuild's hi-res grid stays small (the loupe shrinks in source-pixel
+  // terms as effS grows, so the high-sub case at z=8 doesn't blow up). A
+  // regression that drops back to the world-pixel layout or to the
+  // subdivide-every-clone iteration would push this past 1 000.
+  test('adaptive: hi-res tile count per rebuild stays bounded', async ({ page }) => {
+    const tileReqs = new Set();
+    page.on('request', r => {
+      const u = r.url();
+      if (u.includes('flight-maps.com')) tileReqs.add(u);
+    });
+    await page.evaluate(() => map.setZoom(8));
+    await page.waitForFunction(
+      () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
+              .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
+      { timeout: 10000 });
+    await page.waitForTimeout(1000);
+
+    const mapBox = await page.locator('#map').boundingBox();
+    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
+    tileReqs.clear();
+    await page.locator('#tool-magnifier').click();
+    await page.waitForTimeout(2500);
+
+    // count hi-res (≥ z=11) requests; we don't care about cloned-zoom hits.
+    let hires = 0;
+    for (const u of tileReqs) {
+      const m = u.match(/tiles\/[^/]+\/(\d+)\//);
+      if (m && parseInt(m[1], 10) >= 11) hires++;
+    }
+    expect(hires).toBeGreaterThan(0);
+    expect(hires).toBeLessThan(200);
+  });
 });
