@@ -21,7 +21,7 @@ async function boot(page) {
       }
     } catch (e) {}
   });
-  await page.goto('/?lang=en');
+  await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof syncLegs === 'function');
   await page.evaluate(wps => {
     state.waypoints = wps.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
