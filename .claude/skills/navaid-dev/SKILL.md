@@ -125,8 +125,59 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
   7 px purple halo when a leg's altitude differs from the adjacent
   leg (inbound vs previous leg's inbound, outbound vs next leg's
   outbound).
+  - **Offset invariant (`_m: 1`):** `inLabel` / `outLabel` are stored in
+    *size-independent* units. The on-screen position is
+    `mid + nx * p * legZoomScale()` where
+    `legZoomScale() = 2^(zoom-12) * legArrowSize`. Defaults come from
+    `_defaultLegLabels()` in `core.js` — `{ a: 0, p: ±44 / legArrowSize, _m: 1 }`.
+    `_normalizeLegLabel()` in `io.js` migrates legacy raw-pixel offsets
+    (no `_m` flag) by dividing by the file's `legArrowSize` and stamping
+    `_m: 1`. Migration runs on `restoreRoute()` (localStorage),
+    `load()` (file import), and is implicit for share-URL decoded
+    routes (which only carry the default).
+  - **Reset buttons:** inspector "↺ Reset marker position" (per leg) and
+    toolbar `#tool-reset-all-markers` "↺ Reset all marker positions"
+    (all legs, prompts `confirm()`). Both call `_defaultLegLabels()`.
 - **Mid-leg distance badge:** global toggle (`showMidLeg`).
-- **Magnifying glass:** toggle button 🔍 in the Print toolbar section. Shows a circular 200px magnified view (cloned tiles + captured overlay canvas) centered on the cursor, with a configurable zoom factor (`magnifierZoom`, default 2×). The magnifier follows the cursor with `pointer-events: none` so clicks/drags pass through to the main map for editing. Content rebuilds on map move/zoom/rotate and after every `draw()`.
+- **Magnifying glass:** toggle button 🔍 in the **View** section. Shows a
+  circular **400 px** loupe (default; `magnifierSize`) of cloned base
+  tiles plus the captured route overlay, centred on the cursor.
+  Configurable via the magnifier settings panel (slider `magnifierZoom`,
+  default 2×, mouse-wheel + slider; close button `#mag-settings-close`).
+  The loupe follows the cursor with `pointer-events: none` so
+  clicks/drags pass through. Click inside the loupe to **lock** it to a
+  fixed map position (border turns green); click again to unlock. ESC
+  closes the magnifier entirely.
+  - **Adaptive hi-res tiles:** `rebuildMagnifier()` in `io.js` reads the
+    active tile layer's `_tiles` cache (works for any URL template,
+    including Satellite's `{z}/{y}/{x}`) and fetches sub-tiles at a
+    deeper zoom so labels stay readable at wide base zooms. Formula:
+    `desiredExp = max(ceil(log2(slider)), MAG_BASELINE_Z - mapZoom)`
+    clamped to `MAG_MAX_EXP = 4` and `maxNativeZoom - mapZoom`.
+    `MAG_BASELINE_Z = 12` (Israeli VFR labels become legible there).
+    Cursor-centred fetch window keeps tile-request count flat at
+    ~16 per rebuild across all base zooms. Tile failures clean up via
+    `tile.onerror = () => tile.remove()`.
+  - **Slider invariant:** the CSS scale on `#mag-content` always equals
+    the slider value — `sub` (tile zoom step) is an implementation
+    detail, not a multiplier on visible magnification. Hi-res tiles
+    are downsampled to the slider's scale rather than forcing the
+    loupe to render at `max(slider, sub)`.
+  - **"Perfecting…" indicator:** a `.mag-loading` pill appears inside
+    the loupe while hi-res sub-tiles are in flight and hides once they
+    all settle (`_magPendingTiles` counter + `_magBatch` id to discard
+    stale callbacks). Never shown at max native zoom (no hi-res
+    fetched). String key `magLoading`.
+  - **Refresh triggers:** map `move`/`zoom`/`moveend`/`zoomend`/
+    `rotate`/`layeradd` all dirty the loupe and queue a single rAF
+    rebuild via `scheduleMagRebuild()`. Cursor moves past
+    `max(8, magnifierSize / 2 / _magEffS)` client px trigger a
+    refetch. Locked loupe keeps its screen position but its content
+    still refreshes when the map below changes.
+  - **Overlay capture:** before `overlay.toDataURL()` the magnifier
+    calls `draw()` so the route, waypoint dots, leg markers, and notes
+    are re-rendered against the current map state and stay anchored
+    to terrain during pan (not just on `moveend`).
 - **Drift lines** (10°), **minute markers** with even-minute numeric
   labels and a white halo.
 - **Transparency slider:** scales every label-background fill via
