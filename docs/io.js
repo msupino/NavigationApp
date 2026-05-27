@@ -2167,24 +2167,73 @@ function rebuildMagnifier() {
   const content = document.getElementById('mag-content');
   if (!content) return;
   content.innerHTML = '';
-  // clone tiles
-  const tilePane = document.querySelector('.leaflet-tile-pane');
-  if (tilePane) {
-    for (const img of tilePane.querySelectorAll('img')) {
-      const c = img.cloneNode(true);
-      c.style.visibility = 'visible';
-      content.appendChild(c);
+
+  const mapZoom = map.getZoom();
+  const S = magnifierZoom;
+  const zoomStep = Math.ceil(Math.log2(S));
+  const targetZoom = Math.min(mapZoom + zoomStep, 19);
+  const useHighRes = targetZoom > mapZoom;
+  const actualStep = useHighRes ? targetZoom - mapZoom : 0;
+  const sub = Math.pow(2, actualStep);
+
+  const mapPane = document.querySelector('.leaflet-map-pane');
+  const mat = mapPane ? new DOMMatrixReadOnly(getComputedStyle(mapPane).transform) : null;
+  const dx = mat ? (mat.is2D ? mat.e : mat.m41) : 0;
+  const dy = mat ? (mat.is2D ? mat.f : mat.m42) : 0;
+
+  if (!useHighRes) {
+    // clone tiles at current zoom
+    const tilePane = document.querySelector('.leaflet-tile-pane');
+    if (tilePane) {
+      for (const img of tilePane.querySelectorAll('img')) {
+        const c = img.cloneNode(true);
+        c.style.visibility = 'visible';
+        content.appendChild(c);
+      }
+    }
+  } else {
+    // fetch tiles at targetZoom for crisp detail
+    const tileImg = document.querySelector('.leaflet-tile-pane img');
+    if (!tileImg) return;
+    const tileUrl = new URL(tileImg.src);
+    const pathParts = tileUrl.pathname.split('/');
+    // pathParts = ['', '12', '3456', '7890.png']
+
+    const mapRect = map.getContainer().getBoundingClientRect();
+    const cp = { x: _magX - mapRect.left, y: _magY - mapRect.top };
+    const centerLL = map.containerPointToLatLng(cp);
+    const centerPx = map.project(centerLL, targetZoom);
+
+    // tiles covering the magnifier circle at targetZoom pixel space
+    const radiusTarget = (magnifierSize / 2) / S * sub;
+    const tileSize = 256;
+    const tx0 = Math.floor((centerPx.x - radiusTarget) / tileSize);
+    const tx1 = Math.floor((centerPx.x + radiusTarget) / tileSize);
+    const ty0 = Math.floor((centerPx.y - radiusTarget) / tileSize);
+    const ty1 = Math.floor((centerPx.y + radiusTarget) / tileSize);
+
+    for (let ty = ty0; ty <= ty1; ty++) {
+      for (let tx = tx0; tx <= tx1; tx++) {
+        const img = document.createElement('img');
+        pathParts[1] = '' + targetZoom;
+        pathParts[2] = '' + tx;
+        pathParts[3] = '' + ty + pathParts[3].slice(pathParts[3].lastIndexOf('.'));
+        tileUrl.pathname = pathParts.join('/');
+        img.src = tileUrl.toString();
+        // position in mapZoom pixel space: targetZoom tile coords ÷ sub
+        img.style.cssText = 'position:absolute;left:' +
+          (tx * tileSize / sub - dx) + 'px;top:' +
+          (ty * tileSize / sub - dy) + 'px;';
+        content.appendChild(img);
+      }
     }
   }
-  // capture overlay
+
+  // capture overlay (always at map zoom)
   const overlay = document.getElementById('overlay');
   if (overlay) {
     const cap = document.createElement('img');
     cap.src = overlay.toDataURL();
-    const mapPane = document.querySelector('.leaflet-map-pane');
-    const mat = mapPane ? new DOMMatrixReadOnly(getComputedStyle(mapPane).transform) : null;
-    const dx = mat ? (mat.is2D ? mat.e : mat.m41) : 0;
-    const dy = mat ? (mat.is2D ? mat.f : mat.m42) : 0;
     cap.style.cssText = 'position:absolute;left:' + (-dx) + 'px;top:' + (-dy) +
       'px;width:' + overlay.style.width + ';height:' + overlay.style.height;
     content.appendChild(cap);
@@ -2240,37 +2289,37 @@ function toggleMagnifier() {
   applyMagBorder();
   document.getElementById('tool-magnifier').classList.toggle('active', magnifierOn);
   const settings = document.getElementById('magnifier-settings');
-  if (settings) {
-    settings.classList.toggle('hidden', !magnifierOn);
-    const lockBtn = document.getElementById('mag-lock');
-    if (lockBtn) lockBtn.textContent = S.magLockLabel;
-  }
+  if (settings) settings.classList.toggle('hidden', !magnifierOn);
   if (magnifierOn) {
     _magDirty = true;
     rebuildMagnifier();
-    // position at last known cursor or viewport centre
     _magX = _magX || window.innerWidth / 2;
     _magY = _magY || window.innerHeight / 2;
     mag.style.left = (_magX - magCenter()) + 'px'; mag.style.top = (_magY - magCenter()) + 'px';
     document.addEventListener('mousemove', updateMagnifier);
+    document.addEventListener('click', onMagClick, true);
   } else {
     document.removeEventListener('mousemove', updateMagnifier);
+    document.removeEventListener('click', onMagClick, true);
     if (_magRAF) { cancelAnimationFrame(_magRAF); _magRAF = null; }
   }
 }
 
-// Magnifier lock button
-(function () {
-  const lockBtn = document.getElementById('mag-lock');
-  if (lockBtn) {
-    lockBtn.addEventListener('click', function () {
-      if (!magnifierOn) return;
-      _magFixed = !_magFixed;
-      applyMagBorder();
-      this.textContent = _magFixed ? S.magUnlockLabel : S.magLockLabel;
-    });
-  }
-})();
+function onMagClick(e) {
+  if (!magnifierOn) return;
+  const ignore = document.getElementById('toolbar');
+  if (ignore && ignore.contains(e.target)) return;
+  const settings = document.getElementById('magnifier-settings');
+  if (settings && settings.contains(e.target)) return;
+  const insp = document.getElementById('inspector');
+  if (insp && insp.contains(e.target)) return;
+  _magFixed = !_magFixed;
+  applyMagBorder();
+  // event passes through to map for selection
+}
+
+// Magnifier zoom slider + scroll-wheel control
+(function () {})();
 
 // Magnifier zoom slider + scroll-wheel control
 (function () {

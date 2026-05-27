@@ -413,8 +413,8 @@ html, body {
 #magnifier-settings {
   position: absolute;
   z-index: 1100;
-  top: 56px;
-  left: 64px;
+  bottom: 12px;
+  right: 12px;
   width: 200px;
   background: rgba(20, 18, 18, 0.95);
   border: 1px solid #3a3636;

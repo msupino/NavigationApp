@@ -64,29 +64,37 @@ test.describe('Magnifying glass', () => {
     expect(zoomVal).toBe(3);
   });
 
-  test('lock button fixes magnifier in place and unlocks', async ({ page }) => {
+  test('click-to-lock toggles on click and selects underlying item', async ({ page }) => {
     await page.locator('#tool-magnifier').click();
     const mag = page.locator('#magnifier');
     await expect(mag).toBeVisible();
     // move to a position
     const mapBox = await page.locator('#map').boundingBox();
     if (!mapBox) { test.skip(true, 'map not found'); return; }
+    // first, add a couple waypoints so there's something to select
+    await page.locator('#tool-add').click();
+    await page.mouse.click(mapBox.x + 100, mapBox.y + 100);
+    await page.mouse.click(mapBox.x + 200, mapBox.y + 200);
+    await page.locator('#tool-add').click(); // exit add mode
+    // enable magnifier
+    await page.locator('#tool-magnifier').click();
+    await page.waitForSelector('#magnifier');
+    // move to first waypoint and click to lock
     await page.mouse.move(mapBox.x + 100, mapBox.y + 100);
     const boxBefore = await mag.boundingBox();
-    // click lock button in settings
-    await page.locator('#mag-lock').click();
-    // move mouse away
+    await page.mouse.click(mapBox.x + 100, mapBox.y + 100);
+    // movement should be locked now
     await page.mouse.move(mapBox.x + 300, mapBox.y + 300);
     const boxAfter = await mag.boundingBox();
-    // magnifier should not have moved
     expect(boxBefore?.x).toBe(boxAfter?.x);
     expect(boxBefore?.y).toBe(boxAfter?.y);
-    // button text should now be Unlock
-    await expect(page.locator('#mag-lock')).toHaveText(/Unlock/);
-    // click Unlock to release
-    await page.locator('#mag-lock').click();
+    // click again to unlock and select something
+    await page.mouse.click(mapBox.x + 200, mapBox.y + 200);
+    // move mouse — magnifier should follow
     await page.mouse.move(mapBox.x + 150, mapBox.y + 150);
     const boxReleased = await mag.boundingBox();
+    expect(boxReleased?.x).not.toBe(boxAfter?.x);
+  });
     expect(boxReleased?.x).not.toBe(boxAfter?.x);
   });
 
