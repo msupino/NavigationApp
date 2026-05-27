@@ -43,6 +43,11 @@ test.describe('Google Analytics blocking', () => {
         if (GA_RE.test(req.url())) failed.push(req.failure() && req.failure().errorText);
       });
       await page.goto('?lang=en');
+      // On PR/branch previews GA is intentionally skipped entirely.
+      const gaLoaded = await page.evaluate(() =>
+        document.querySelector('script[src*="googletagmanager"]') !== null
+      );
+      if (!gaLoaded) return;   // nothing to block
       await page.waitForTimeout(400);
       // gtag/js loader is requested by the production <script async> tag. If
       // the fixture is working, it appears in `failed` with errorText like
