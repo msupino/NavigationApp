@@ -12,7 +12,7 @@ test.describe('Google Analytics blocking', () => {
     page.on('requestfinished', req => {
       if (GA_RE.test(req.url())) completed.push(req.url());
     });
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(() => typeof state !== 'undefined');
     // Mimic the production tag's flow: route the call through the real gtag
     // (which the inline <script> in index.html redeclared). gtag() pushes to
@@ -25,7 +25,7 @@ test.describe('Google Analytics blocking', () => {
   });
 
   test('dataLayer.push is stubbed — items never accumulate', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     // The production inline script calls gtag() twice on boot ('js', 'config').
     // Both go through dataLayer.push. With the stub, the array (now an object
     // posing as an array) never grows.
@@ -42,7 +42,7 @@ test.describe('Google Analytics blocking', () => {
       page.on('requestfailed', req => {
         if (GA_RE.test(req.url())) failed.push(req.failure() && req.failure().errorText);
       });
-      await page.goto('/?lang=en');
+      await page.goto('?lang=en');
       await page.waitForTimeout(400);
       // gtag/js loader is requested by the production <script async> tag. If
       // the fixture is working, it appears in `failed` with errorText like

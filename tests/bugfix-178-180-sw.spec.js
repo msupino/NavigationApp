@@ -15,7 +15,7 @@ async function waitForSW(page) {
 test.describe('#178 cache-first awaits cache.put', () => {
   test('After fetch resolves the asset is in the cache (synchronous from caller view)',
     async ({ page }) => {
-      await page.goto('/?lang=en');
+      await page.goto('?lang=en');
       await waitForSW(page);
       // First reload makes the SW intercept; second reload confirms cached asset.
       await page.reload();
@@ -39,7 +39,7 @@ test.describe('#178 cache-first awaits cache.put', () => {
 
 test.describe('#179 ?v= pruning awaits cache.delete', () => {
   test('After fetching a new ?v= the previous version is evicted', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await waitForSW(page);
     await page.reload();
     await waitForSW(page);
@@ -68,7 +68,7 @@ test.describe('#179 ?v= pruning awaits cache.delete', () => {
 
 test.describe('#180 navigation fallback to cached /', () => {
   test('Offline navigation to uncached URL serves the cached / HTML', async ({ page, context }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await waitForSW(page);
     await page.reload();
     await waitForSW(page);
