@@ -254,7 +254,7 @@ jobs:
           if [ -n "$EXISTING" ]; then
             gh api "repos/${REPO}/issues/comments/${EXISTING}" -X PATCH -f body="$BODY"
           else
-            gh pr comment "$PR" --body "$BODY"
+            gh api "repos/${REPO}/issues/${PR}/comments" -f body="$BODY"
           fi
 
   e2e-deployed:
