@@ -198,6 +198,8 @@ window.S = Object.assign({
   modalCloseTitle: 'Close',
   tbPrint: '⬇ Save PNG',
   tbPrintTitle: 'Save the framed map + route as a PNG',
+  tbMagnifier: '🔍',
+  tbMagnifierTitle: 'Magnifying glass — zoomed view at cursor for precise editing',
   inspCloseTitle: 'Close',
   inspCloseLabel: 'Close',
   tbSecEdit: '✏️ Edit',
@@ -265,6 +267,11 @@ var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 var yellowAlpha = 0.8;    // global multiplier for yellow label backgrounds (default 80%)
 var wpSize = 1;             // waypoint name / number text size scale
 var legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
+function legZoomScale() {   // zoom + legArrowSize → pixel multiplier for offsets/sizes
+  return Math.max(0.35, Math.pow(2, map.getZoom() - 12)) * legArrowSize;
+}
+var magnifierOn = false;    // magnifying-glass toggle
+var magnifierZoom = 2;      // default zoom factor
 let pageSize = null;        // null | 'A3' | 'A4'
 // `var` (not `let`) so window.pageOrient writes from ui.js's boot restore
 // land on the same binding the toggle reads. Default 'portrait' since most

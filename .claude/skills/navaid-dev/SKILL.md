@@ -119,13 +119,14 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
 - **Waypoints:** circle auto-sized to fit name or sequence number
   (`waypointGeom(i)`). Selection bumps the radius +2 and swaps fill
   to gold. The `wpSize` slider scales font + circle.
-- **Leg markers:** aviation pennant — rectangle (altitude / time) +
+- **Leg markers (informally "kite"):** aviation pennant — rectangle (altitude / time) +
   heading triangle. Yellow-fill inbound, pink-fill return; draggable
   via the `inLabel` / `outLabel` offsets. **Highlight diff** adds a
   7 px purple halo when a leg's altitude differs from the adjacent
   leg (inbound vs previous leg's inbound, outbound vs next leg's
   outbound).
 - **Mid-leg distance badge:** global toggle (`showMidLeg`).
+- **Magnifying glass:** toggle button 🔍 in the Print toolbar section. Shows a circular 200px magnified view (cloned tiles + captured overlay canvas) centered on the cursor, with a configurable zoom factor (`magnifierZoom`, default 2×). The magnifier follows the cursor with `pointer-events: none` so clicks/drags pass through to the main map for editing. Content rebuilds on map move/zoom/rotate and after every `draw()`.
 - **Drift lines** (10°), **minute markers** with even-minute numeric
   labels and a white halo.
 - **Transparency slider:** scales every label-background fill via

@@ -968,3 +968,7 @@ html, body {
   50% { opacity: 0.3; }
 }
 .blink-warn { animation: blink-warn 1.2s ease-in-out infinite; }
+
+/* magnifying glass */
+#tool-magnifier { font-size: 18px; line-height: 1; padding: 2px 6px; }
+#tool-magnifier.active { background: #3a3636; border-color: #ffcc33; color: #ffcc33; }

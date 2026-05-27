@@ -1702,14 +1702,26 @@ function restoreRoute() {
   state.waypoints = d.waypoints.map(w => ({
     lat: r5(w.lat), lng: r5(w.lng), name: w.name,
   }));
-  state.legs = d.legs.map(l => ({
-    inboundAltitude: l.inboundAltitude,
-    outboundAltitude: l.outboundAltitude,
-    flightSpeed: l.flightSpeed,
-    outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
-    inLabel:  { a: l.inLabel.a,  p: l.inLabel.p  },
-    outLabel: { a: l.outLabel.a, p: l.outLabel.p },
-  }));
+  state.legs = d.legs.map(l => {
+    const inL  = { a: l.inLabel.a,  p: l.inLabel.p  };
+    const outL = { a: l.outLabel.a, p: l.outLabel.p };
+    // #393 — normalise inLabel/outLabel offsets to zoom-12 reference so they
+    // scale proportionally with zoom. Old (pre-#393) blobs lack _m and hold
+    // raw pixel offsets.
+    if (!l.inLabel._m) {
+      const isc = 1 / legZoomScale();
+      inL.a *= isc;  inL.p *= isc;
+      outL.a *= isc; outL.p *= isc;
+      inL._m = outL._m = 1;
+    }
+    return {
+      inboundAltitude: l.inboundAltitude,
+      outboundAltitude: l.outboundAltitude,
+      flightSpeed: l.flightSpeed,
+      outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
+      inLabel: inL, outLabel: outL,
+    };
+  });
   state.notes = d.notes.map(n => ({
     lat: r5(n.lat), lng: r5(n.lng),
     text: n.text, color: n.color, shape: n.shape,
@@ -2117,7 +2129,129 @@ function showToast(msg) {
   }, 2500);
 }
 
-// Toolbar button handler — copy share URL to clipboard.
+// --- magnifying glass -------------------------------------------------
+const MAG_SIZE = 200;                      // diameter px
+const MAG_CENTER = MAG_SIZE / 2;
+let _magDirty = true;                      // content needs rebuilding
+let _magRAF = null;                        // requestAnimationFrame id
+let _magX = 0, _magY = 0;                 // last known cursor (viewport px)
+
+function createMagnifier() {
+  if (document.getElementById('magnifier')) return;
+  const mag = document.createElement('div');
+  mag.id = 'magnifier';
+  mag.style.cssText = 'display:none;position:fixed;z-index:1000;width:' + MAG_SIZE +
+    'px;height:' + MAG_SIZE + 'px;border-radius:50%;overflow:hidden;' +
+    'pointer-events:none;border:2px solid rgba(255,204,51,0.85);' +
+    'box-shadow:0 0 20px rgba(0,0,0,0.6)';
+  const content = document.createElement('div');
+  content.id = 'mag-content';
+  content.style.cssText = 'position:absolute;top:0;left:0;width:0;height:0;transform-origin:0 0';
+  mag.appendChild(content);
+  // crosshair
+  const ch = document.createElement('div');
+  ch.style.cssText = 'position:absolute;top:50%;left:50%;width:0;height:0;pointer-events:none';
+  ch.innerHTML =
+    '<div style="position:absolute;top:-1px;left:-24px;width:48px;height:2px;background:rgba(255,60,60,0.8)"></div>' +
+    '<div style="position:absolute;top:-24px;left:-1px;width:2px;height:48px;background:rgba(255,60,60,0.8)"></div>';
+  mag.appendChild(ch);
+  document.body.appendChild(mag);
+}
+
+function rebuildMagnifier() {
+  if (!magnifierOn) return;
+  const content = document.getElementById('mag-content');
+  if (!content) return;
+  content.innerHTML = '';
+  // clone tiles
+  const tilePane = document.querySelector('.leaflet-tile-pane');
+  if (tilePane) {
+    for (const img of tilePane.querySelectorAll('img')) {
+      const c = img.cloneNode(true);
+      c.style.visibility = 'visible';
+      content.appendChild(c);
+    }
+  }
+  // capture overlay
+  const overlay = document.getElementById('overlay');
+  if (overlay) {
+    const cap = document.createElement('img');
+    cap.src = overlay.toDataURL();
+    const mapPane = document.querySelector('.leaflet-map-pane');
+    const mat = mapPane ? new DOMMatrixReadOnly(getComputedStyle(mapPane).transform) : null;
+    const dx = mat ? (mat.is2D ? mat.e : mat.m41) : 0;
+    const dy = mat ? (mat.is2D ? mat.f : mat.m42) : 0;
+    cap.style.cssText = 'position:absolute;left:' + (-dx) + 'px;top:' + (-dy) +
+      'px;width:' + overlay.style.width + ';height:' + overlay.style.height;
+    content.appendChild(cap);
+  }
+  _magDirty = false;
+}
+
+function updateMagnifier(e) {
+  if (!magnifierOn) return;
+  _magX = e.clientX;
+  _magY = e.clientY;
+  if (_magRAF) return;                     // already queued
+  _magRAF = requestAnimationFrame(() => {
+    _magRAF = null;
+    const mag = document.getElementById('magnifier');
+    const content = document.getElementById('mag-content');
+    if (!mag || !content) return;
+    // position magnifier
+    mag.style.left = (_magX - MAG_CENTER) + 'px';
+    mag.style.top = (_magY - MAG_CENTER) + 'px';
+    // rebuild if dirty
+    if (_magDirty) rebuildMagnifier();
+    // compute transform so cursor container-point maps to magnifier centre
+    const mapRect = map.getContainer().getBoundingClientRect();
+    const cp = { x: _magX - mapRect.left, y: _magY - mapRect.top };
+    const S = magnifierZoom;
+    const mapPane = document.querySelector('.leaflet-map-pane');
+    const mat = mapPane ? new DOMMatrixReadOnly(getComputedStyle(mapPane).transform) : null;
+    const dx = mat ? (mat.is2D ? mat.e : mat.m41) : 0;
+    const dy = mat ? (mat.is2D ? mat.f : mat.m42) : 0;
+    content.style.transform =
+      'translate(' + (MAG_CENTER + dx * S - cp.x * S) + 'px,' +
+                     (MAG_CENTER + dy * S - cp.y * S) + 'px) scale(' + S + ')';
+  });
+}
+
+function toggleMagnifier() {
+  magnifierOn = !magnifierOn;
+  const mag = document.getElementById('magnifier');
+  if (!mag) return;
+  mag.style.display = magnifierOn ? 'block' : 'none';
+  document.getElementById('tool-magnifier').classList.toggle('active', magnifierOn);
+  if (magnifierOn) {
+    _magDirty = true;
+    rebuildMagnifier();
+    // position at last known cursor or viewport centre
+    _magX = _magX || window.innerWidth / 2;
+    _magY = _magY || window.innerHeight / 2;
+    const mag = document.getElementById('magnifier');
+    if (mag) { mag.style.left = (_magX - MAG_CENTER) + 'px'; mag.style.top = (_magY - MAG_CENTER) + 'px'; }
+    document.addEventListener('mousemove', updateMagnifier);
+  } else {
+    document.removeEventListener('mousemove', updateMagnifier);
+    if (_magRAF) { cancelAnimationFrame(_magRAF); _magRAF = null; }
+  }
+}
+
+// Mark magnifier dirty when the map or route changes
+map.on('moveend zoomend rotate', () => { _magDirty = true; });
+// _onDraw already used by WYSIWYG; piggyback — the WYSIWYG fires after draw
+// so this runs right after it.
+// We hook into draw via a separate channel so the two features are independent.
+// Wrap NavAid._onDraw so it also marks the magnifier dirty.
+if (typeof NavAid._onDraw === 'function') {
+  const _origOnDraw = NavAid._onDraw;
+  NavAid._onDraw = function () { _origOnDraw(); _magDirty = true; };
+} else {
+  NavAid._onDraw = function () { _magDirty = true; };
+}
+
+// --- Toolbar button handler — copy share URL to clipboard. ------------
 function shareRoute() {
   const r = buildShareUrl();
   if (r.err) { alert(S[r.err]); return; }
