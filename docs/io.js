@@ -2471,33 +2471,54 @@ function applyMagnifierTransform() {
                    (magCenter() + dy * effS - cp.y * effS) + 'px) scale(' + effS + ')';
 }
 
-function updateMagnifier(e) {
-  if (!magnifierOn || _magFixed) return;
-  _magX = e.clientX;
-  _magY = e.clientY;
-  // If the cursor has wandered past the pre-fetched margin, mark the
-  // hi-res overlay dirty so the next animation frame refetches around the
-  // new center. rebuildMagnifier reserves one loupe-radius of margin in
-  // source-pixel space (`magnifierSize/2/effS`); the cursor moves in
-  // client pixels and source-pixel shift = clientMove / effS, so the
-  // refetch threshold in CLIENT space is simply `magnifierSize/2` —
-  // independent of effS. We dial that down by a third for a bit of
-  // pre-emptive buffer.
-  const moveThreshold = magnifierSize / 3;
-  if (Math.abs(_magX - _magLastX) > moveThreshold ||
-      Math.abs(_magY - _magLastY) > moveThreshold) {
-    _magDirty = true;
-  }
-  if (_magRAF) return;                     // already queued
+// Shared rAF queue: coalesces every refresh trigger (cursor move, map
+// pan, map zoom, layer change, slider tweak…) into a single per-frame
+// `applyMagnifierTransform` call, which itself runs `rebuildMagnifier`
+// iff `_magDirty`. Centralising the schedule is what lets `map.on('move')`
+// keep the loupe in lock-step with the underlying pan without re-typing
+// the same rAF dance in every caller.
+function scheduleMagRebuild() {
+  if (!magnifierOn) return;
+  if (_magRAF) return;                     // already queued this frame
   _magRAF = requestAnimationFrame(() => {
     _magRAF = null;
     const mag = document.getElementById('magnifier');
     const content = document.getElementById('mag-content');
     if (!mag || !content) return;
-    mag.style.left = (_magX - magCenter()) + 'px';
-    mag.style.top = (_magY - magCenter()) + 'px';
+    // Locked loupe (`_magFixed`) keeps its on-screen position; only the
+    // CONTENT refreshes when the underlying map moves. Without this
+    // guard a pan would yank the locked loupe back to the live cursor.
+    if (!_magFixed) {
+      mag.style.left = (_magX - magCenter()) + 'px';
+      mag.style.top = (_magY - magCenter()) + 'px';
+    }
     applyMagnifierTransform();
   });
+}
+
+function updateMagnifier(e) {
+  if (!magnifierOn || _magFixed) return;
+  _magX = e.clientX;
+  _magY = e.clientY;
+  // Refetch threshold tied to the actual prefetched margin. rebuildMagnifier
+  // fetches a region of radius `magnifierSize/effS` source pixels around
+  // the cursor; source≈client px in this coord system, so we refetch once
+  // the cursor's drifted past HALF that margin — the loupe view never
+  // wanders into un-fetched territory. Lower-bound at 8 px so we don't
+  // thrash on every micro-jitter at extreme effS.
+  //
+  // The previous threshold of `magnifierSize/3` (≈ 133 px on a 400 px
+  // loupe) was independent of `effS`, so at the wide-base-zoom case
+  // (effS ≈ 16, prefetched margin ≈ 25 client px) a 60 px cursor move
+  // didn't trigger a refetch — the user saw stale clones until they
+  // happened to swing the cursor far enough, matching the reported
+  // "have to zoom out and back in to refresh" symptom.
+  const moveThreshold = Math.max(8, magnifierSize / 2 / _magEffS);
+  if (Math.abs(_magX - _magLastX) > moveThreshold ||
+      Math.abs(_magY - _magLastY) > moveThreshold) {
+    _magDirty = true;
+  }
+  scheduleMagRebuild();
 }
 
 function applyMagBorder() {
@@ -2598,12 +2619,24 @@ function onMagClick(e) {
   }
 })();
 
-// Mark magnifier dirty when the map or route changes. The mousemove
-// threshold in updateMagnifier covers cursor drift; combined with these
-// map events the loupe stays current without a draw()-time hook. (PR
-// review #9 removed a previously-dead NavAid._onDraw wrapper that
-// nothing ever called.)
-map.on('moveend zoomend rotate', () => { _magDirty = true; });
+// Keep the loupe in lock-step with the underlying map. `move` / `zoom`
+// fire CONTINUOUSLY while a drag or zoom is in progress; `moveend` /
+// `zoomend` fire on release. The previous `moveend zoomend rotate`
+// wiring only dirtied the flag — it didn't schedule a rebuild — so
+// during a drag the loupe showed stale clones until the user happened
+// to wiggle the cursor far enough to clear the (also-too-large)
+// mousemove threshold. That matched the reported "have to zoom to
+// force a refresh" symptom. We now dirty AND schedule on every map
+// motion, including in-progress events, so the hi-res tiles re-fetch
+// as the user pans.
+//
+// `layeradd` covers base-layer switches (CVFR ↔ Satellite ↔ OSM …) —
+// the active tile layer is what feeds rebuildMagnifier's hi-res URL.
+map.on('move zoom moveend zoomend rotate layeradd', () => {
+  if (!magnifierOn) return;
+  _magDirty = true;
+  scheduleMagRebuild();
+});
 
 // --- Toolbar button handler — copy share URL to clipboard. ------------
 function shareRoute() {

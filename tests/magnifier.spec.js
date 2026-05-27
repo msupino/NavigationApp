@@ -350,6 +350,127 @@ test.describe('Magnifying glass', () => {
     await expect(loading).toHaveText('משכלל…');
   });
 
+  // Refresh-on-pan regression. The pre-fix wiring only dirtied the loupe
+  // on `moveend` — and never scheduled a rebuild — so during a drag the
+  // hi-res tiles inside the loupe stayed stale. The user had to zoom out
+  // and back in to force a refresh. We assert here that programmatically
+  // panning the map mid-magnifier triggers a fresh rebuild batch, which
+  // is what feeds the new hi-res tile fetch around the new viewport.
+  test('pan refreshes loupe content without needing a zoom', async ({ page }) => {
+    await page.evaluate(() => map.setZoom(8));
+    await page.waitForFunction(
+      () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
+              .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
+      { timeout: 15000 });
+    await page.waitForTimeout(800);
+
+    const mapBox = await page.locator('#map').boundingBox();
+    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
+    await page.locator('#tool-magnifier').click();
+    await page.waitForTimeout(800);
+
+    // Snapshot the current batch via the data-batch attribute on a hi-res
+    // sub-tile (rebuildMagnifier stamps every fetched tile with the active
+    // batch id). A panBy that re-runs rebuild will leave NEW tiles with a
+    // larger batch number.
+    const readBatch = () => page.evaluate(() => {
+      const imgs = Array.from(document.querySelectorAll('#mag-content img[data-batch]'));
+      return imgs.length ? Math.max(...imgs.map(i => Number(i.dataset.batch))) : null;
+    });
+    const before = await readBatch();
+    expect(before).not.toBeNull();
+
+    await page.evaluate(() => map.panBy([180, 0], { animate: false }));
+    // Allow the rAF-coalesced rebuild to land + tiles to attach.
+    await page.waitForTimeout(600);
+
+    const after = await readBatch();
+    expect(after).toBeGreaterThan(before);
+  });
+
+  // Threshold regression: the pre-fix moveThreshold was magnifierSize/3
+  // (≈ 133 px) regardless of effS, so at the wide-zoom adaptive case
+  // (effS=16, prefetched margin ≈ 25 px) small cursor moves stayed within
+  // the deadband and never refetched. The new threshold scales with effS,
+  // so a 60 px move at low base zoom now triggers a refresh.
+  test('small cursor move at low zoom refreshes hi-res tiles', async ({ page }) => {
+    await page.evaluate(() => map.setZoom(8));
+    await page.waitForFunction(
+      () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
+              .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
+      { timeout: 15000 });
+    await page.waitForTimeout(800);
+
+    const mapBox = await page.locator('#map').boundingBox();
+    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    const cx = mapBox.x + mapBox.width / 2;
+    const cy = mapBox.y + mapBox.height / 2;
+    await page.mouse.move(cx, cy);
+    await page.locator('#tool-magnifier').click();
+    await page.waitForTimeout(800);
+
+    const readBatch = () => page.evaluate(() => {
+      const imgs = Array.from(document.querySelectorAll('#mag-content img[data-batch]'));
+      return imgs.length ? Math.max(...imgs.map(i => Number(i.dataset.batch))) : null;
+    });
+    const before = await readBatch();
+    expect(before).not.toBeNull();
+
+    // 60 client px — comfortably below the pre-fix 133 px threshold but
+    // well above the new effS-aware threshold (~12.5 at effS=16).
+    await page.mouse.move(cx + 60, cy);
+    await page.waitForTimeout(500);
+
+    const after = await readBatch();
+    expect(after).toBeGreaterThan(before);
+  });
+
+  // Locked-loupe content refresh. When the user clicks to lock the loupe
+  // (`_magFixed = true`) cursor moves stop following — but a map pan must
+  // STILL refresh the content under the loupe, because the geographic
+  // point at the loupe's centre changes as the map moves.
+  test('locked loupe still refreshes content when map pans', async ({ page }) => {
+    await page.evaluate(() => map.setZoom(8));
+    await page.waitForFunction(
+      () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
+              .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
+      { timeout: 15000 });
+    await page.waitForTimeout(800);
+
+    const mapBox = await page.locator('#map').boundingBox();
+    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    const cx = mapBox.x + mapBox.width / 2;
+    const cy = mapBox.y + mapBox.height / 2;
+    await page.mouse.move(cx, cy);
+    await page.locator('#tool-magnifier').click();
+    await page.waitForTimeout(800);
+
+    // Lock the loupe at the current cursor position.
+    await page.mouse.click(cx, cy);
+    await page.waitForTimeout(200);
+    const mag = page.locator('#magnifier');
+    const lockedBox = await mag.boundingBox();
+    expect(lockedBox).toBeTruthy();
+
+    const readBatch = () => page.evaluate(() => {
+      const imgs = Array.from(document.querySelectorAll('#mag-content img[data-batch]'));
+      return imgs.length ? Math.max(...imgs.map(i => Number(i.dataset.batch))) : null;
+    });
+    const before = await readBatch();
+    expect(before).not.toBeNull();
+
+    await page.evaluate(() => map.panBy([180, 0], { animate: false }));
+    await page.waitForTimeout(600);
+
+    // Loupe position must NOT have moved (lock holds it on screen).
+    const stillLockedBox = await mag.boundingBox();
+    expect(Math.abs((stillLockedBox?.x ?? 0) - (lockedBox?.x ?? 0))).toBeLessThan(2);
+    // …but the content MUST have refreshed: a new batch landed.
+    const after = await readBatch();
+    expect(after).toBeGreaterThan(before);
+  });
+
   // Tile-count guard: with the center-based fetch + `effS = max(slider, sub)`
   // each rebuild's hi-res grid stays small (the loupe shrinks in source-pixel
   // terms as effS grows, so the high-sub case at z=8 doesn't blow up). A
