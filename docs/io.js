@@ -2186,26 +2186,37 @@ function rebuildMagnifier() {
       }
     }
   } else {
-    // fetch tiles at targetZoom for crisp detail
+    // fetch tiles at targetZoom using the active tile layer's URL template
+    let tileURLTemplate = '';
+    for (const key in layers) {
+      if (map.hasLayer(layers[key]) && layers[key]._url) {
+        tileURLTemplate = layers[key]._url;
+        break;
+      }
+    }
     const tilePane = document.querySelector('.leaflet-tile-pane');
-    if (!tilePane) return;
+    if (!tilePane || !tileURLTemplate) return;
     for (const img of tilePane.querySelectorAll('img')) {
-      // parse URL: .../{zoom}/{x}/{y}[@2x].{ext}
-      const url = new URL(img.src);
-      const pathParts = url.pathname.split('/');
-      if (pathParts.length < 4) continue;
-      const z = parseInt(pathParts[1], 10);
-      if (z !== mapZoom) continue;
-      const x = parseInt(pathParts[2], 10);
-      const y = parseInt(pathParts[3], 10);  // parseInt handles @2x suffix
-      const base = url.origin + '/';
-      // emit sub×sub tiles at targetZoom covering the same area
+      // parse zoom/x/y from the last 3 numeric path segments
+      const parts = new URL(img.src).pathname.split('/');
+      if (parts.length < 4) continue;
+      const zNum = parseInt(parts[parts.length - 3], 10);
+      if (isNaN(zNum) || zNum !== mapZoom) continue;
+      const yNum = parseInt(parts[parts.length - 1], 10);
+      if (isNaN(yNum)) continue;
+      const xNum = parseInt(parts[parts.length - 2], 10);
+      if (isNaN(xNum)) continue;
       for (let dy = 0; dy < sub; dy++) {
         for (let dx = 0; dx < sub; dx++) {
-          const tx = x * sub + dx;
-          const ty = y * sub + dy;
+          const tx = xNum * sub + dx;
+          const ty = yNum * sub + dy;
           const tile = document.createElement('img');
-          tile.src = base + targetZoom + '/' + tx + '/' + ty + '.png';
+          tile.src = tileURLTemplate
+            .replace(/\{z\}/g, targetZoom)
+            .replace(/\{x\}/g, tx)
+            .replace(/\{y\}/g, ty)
+            .replace(/\{s\}/g, 'a')
+            .replace(/\{r\}/g, '');
           tile.style.cssText = 'position:absolute;left:' +
             (tx * 256 / sub) + 'px;top:' +
             (ty * 256 / sub) + 'px;' +
