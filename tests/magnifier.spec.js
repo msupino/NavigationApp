@@ -217,10 +217,9 @@ test.describe('Magnifying glass', () => {
   // pre-adaptive iteration capped the hi-res target at `mapZoom +
   // ceil(log2(magnifierZoom))`, so at the country-wide z=8 view the loupe
   // would only fetch z=9 / z=10 tiles — chart labels still illegible. The
-  // adaptive design floors the loupe at MAG_BASELINE_Z (12) and bumps the
-  // content scale to `max(slider, sub)` so the deeper tiles render at
-  // native pixel density.
-  test('adaptive: low map zoom fetches z>=12 hi-res tiles + bumps CSS scale', async ({ page }) => {
+  // adaptive design floors the hi-res FETCH zoom at MAG_BASELINE_Z (12);
+  // those tiles are downsampled on display to the slider's magnification.
+  test('adaptive: low map zoom fetches z>=12 hi-res tiles', async ({ page }) => {
     await page.evaluate(() => map.setZoom(8));
     await page.waitForFunction(
       () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
@@ -245,22 +244,100 @@ test.describe('Magnifying glass', () => {
           if (Number.isFinite(z)) zs.add(z);
         } catch (e) {}
       }
-      const content = document.getElementById('mag-content');
-      const trMatch = /scale\(([\d.]+)\)/.exec(content.style.transform || '');
       return {
         zs: [...zs].sort((a, b) => a - b),
-        contentScale: trMatch ? parseFloat(trMatch[1]) : null,
         slider: window.magnifierZoom,
         mapZoom: map.getZoom(),
       };
     });
-    // Cloned tiles are at z=8, hi-res must reach the readability baseline.
+    // Cloned tiles at z=8, hi-res must reach the readability baseline.
     expect(report.zs).toContain(8);
     expect(Math.max(...report.zs)).toBeGreaterThanOrEqual(12);
-    // The content scale must climb beyond the slider so the hi-res tiles
-    // land at native (or higher) pixel density. At slider=2, mapZoom=8,
-    // sub=16 → effS=16; we accept anything ≥ sub.
-    expect(report.contentScale).toBeGreaterThanOrEqual(8);
+  });
+
+  // Slider calibration: the loupe's visible CSS scale must EQUAL the
+  // slider value, regardless of how deep the adaptive `sub` goes. A
+  // pre-fix iteration set `_magEffS = max(slider, sub)`, so at base z=8
+  // / slider 4.75 the loupe rendered at 16× — almost 4× the user's
+  // dialled-in value. Hi-res tiles can still be deeper (z>=12) so they
+  // downsample to slider density for crispness; that's an orthogonal
+  // implementation detail.
+  test('slider value === visible CSS scale (z=8, slider=4.75)', async ({ page }) => {
+    await page.evaluate(() => map.setZoom(8));
+    await page.waitForFunction(
+      () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
+              .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
+      { timeout: 10000 });
+    await page.waitForTimeout(1000);
+
+    const mapBox = await page.locator('#map').boundingBox();
+    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
+    // Open the magnifier first — `#mag-zoom` lives in the
+    // `magnifier-settings` panel which is `display:none` until then.
+    await page.locator('#tool-magnifier').click();
+    await page.waitForTimeout(800);
+
+    // Now dial the slider to 4.75 (the value from the bug report).
+    await page.locator('#mag-zoom').fill('4.75');
+    await page.locator('#mag-zoom').dispatchEvent('input');
+    await page.waitForTimeout(1500);
+
+    const report = await page.evaluate(() => {
+      const content = document.getElementById('mag-content');
+      const trMatch = /scale\(([\d.]+)\)/.exec(content.style.transform || '');
+      const kids = Array.from(document.querySelectorAll('#mag-content img'));
+      const zs = new Set();
+      for (const el of kids) {
+        if (!el.src) continue;
+        try {
+          const p = new URL(el.src).pathname.split('/');
+          const z = parseInt(p[p.length - 3], 10);
+          if (Number.isFinite(z)) zs.add(z);
+        } catch (e) {}
+      }
+      return {
+        contentScale: trMatch ? parseFloat(trMatch[1]) : null,
+        slider: window.magnifierZoom,
+        zs: [...zs].sort((a, b) => a - b),
+      };
+    });
+    // Visible scale must EQUAL the slider — not 16, not 8, not anything
+    // else. The pre-fix bug had this at 16 even though slider=4.75.
+    expect(report.slider).toBe(4.75);
+    expect(report.contentScale).toBeCloseTo(4.75, 5);
+    // Sub-tile fetch is still adaptive: deeper tiles get fetched (>=11)
+    // so the on-screen pixels remain crisp after slider downsampling.
+    expect(Math.max(...report.zs)).toBeGreaterThanOrEqual(11);
+  });
+
+  // Same calibration invariant holds at slider=1: the loupe shows the
+  // map at 1× (no magnification). Pre-fix this rendered at sub=16 — a
+  // 16× mystery zoom on a "1×" slider setting.
+  test('slider value === visible CSS scale (z=8, slider=1)', async ({ page }) => {
+    await page.evaluate(() => map.setZoom(8));
+    await page.waitForFunction(
+      () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
+              .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
+      { timeout: 10000 });
+    await page.waitForTimeout(800);
+
+    const mapBox = await page.locator('#map').boundingBox();
+    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
+    await page.locator('#tool-magnifier').click();
+    await page.waitForTimeout(800);
+
+    await page.locator('#mag-zoom').fill('1');
+    await page.locator('#mag-zoom').dispatchEvent('input');
+    await page.waitForTimeout(800);
+
+    const contentScale = await page.evaluate(() => {
+      const content = document.getElementById('mag-content');
+      const m = /scale\(([\d.]+)\)/.exec(content.style.transform || '');
+      return m ? parseFloat(m[1]) : null;
+    });
+    expect(contentScale).toBeCloseTo(1, 5);
   });
 
   // "Perfecting…" indicator: appears inside the loupe while hi-res sub-tiles
@@ -269,11 +346,16 @@ test.describe('Magnifying glass', () => {
   // enough for the test to observe — otherwise a fast LAN cache hit could
   // flip it on and off within a single frame.
   test('shows "Perfecting…" indicator while hi-res tiles load, hides after', async ({ page }) => {
-    // Slow every flight-maps.com tile fetch by 700 ms. Registered after
-    // _setup.js so this route handler runs first; non-tile URLs still hit
-    // the existing GA-blocking route.
+    // Slow every flight-maps.com tile fetch by 100 ms. Just enough to
+    // keep the indicator's `show` class visible across the assertion
+    // window without dragging the test out: post-calibration-fix the
+    // hi-res grid at slider=2 / z=8 / sub=16 is up to 25×25 = 625 tiles
+    // (loupeR is now slider-based, not sub-based), so a 700 ms-per-tile
+    // throttle would push total settle time well past 60 s. Registered
+    // after _setup.js so this route handler runs first; non-tile URLs
+    // still hit the existing GA-blocking route.
     await page.route('**://*.flight-maps.com/**', async route => {
-      await new Promise(r => setTimeout(r, 700));
+      await new Promise(r => setTimeout(r, 100));
       try { await route.continue(); } catch (e) { /* page may close */ }
     });
 
@@ -295,8 +377,11 @@ test.describe('Magnifying glass', () => {
     await expect(loading).toHaveText('Perfecting…');
     // Indicator becomes visible while throttled hi-res tiles are in flight.
     await expect(loading).toHaveClass(/show/, { timeout: 2000 });
-    // ...and hides once they all settle (load or error).
-    await expect(loading).not.toHaveClass(/show/, { timeout: 8000 });
+    // …and hides once they all settle (load or error). 25×25 tiles ÷ 6
+    // concurrent connections × 100 ms throttle ≈ 10 s in the worst case;
+    // bumped from the pre-calibration 8 s and capped at 20 s to absorb
+    // a couple extra rebuilds (move/layeradd) along the way.
+    await expect(loading).not.toHaveClass(/show/, { timeout: 20000 });
   });
 
   // Edge case: at the layer's maxNativeZoom (CVFR = 13) the rebuild fetches
@@ -390,11 +475,12 @@ test.describe('Magnifying glass', () => {
   });
 
   // Threshold regression: the pre-fix moveThreshold was magnifierSize/3
-  // (≈ 133 px) regardless of effS, so at the wide-zoom adaptive case
-  // (effS=16, prefetched margin ≈ 25 px) small cursor moves stayed within
-  // the deadband and never refetched. The new threshold scales with effS,
-  // so a 60 px move at low base zoom now triggers a refresh.
-  test('small cursor move at low zoom refreshes hi-res tiles', async ({ page }) => {
+  // (≈ 133 px) regardless of how zoomed-in the loupe was. The threshold
+  // now scales with the slider — `magnifierSize/2/slider` — so it
+  // matches the prefetched source-pixel margin around the cursor. At
+  // slider=2 / magnifierSize=400 that's 100 px; we move 150 to comfortably
+  // exceed it while staying well below the pre-fix 133 px deadband.
+  test('cursor move past prefetched margin refreshes hi-res tiles', async ({ page }) => {
     await page.evaluate(() => map.setZoom(8));
     await page.waitForFunction(
       () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
@@ -417,9 +503,10 @@ test.describe('Magnifying glass', () => {
     const before = await readBatch();
     expect(before).not.toBeNull();
 
-    // 60 client px — comfortably below the pre-fix 133 px threshold but
-    // well above the new effS-aware threshold (~12.5 at effS=16).
-    await page.mouse.move(cx + 60, cy);
+    // 150 client px — above the new slider-based threshold (100 at
+    // slider=2, magnifierSize=400) but still on the same screen so we
+    // know it's a "real" cursor move that should refetch.
+    await page.mouse.move(cx + 150, cy);
     await page.waitForTimeout(500);
 
     const after = await readBatch();
@@ -471,10 +558,62 @@ test.describe('Magnifying glass', () => {
     expect(after).toBeGreaterThan(before);
   });
 
-  // Tile-count guard: with the center-based fetch + `effS = max(slider, sub)`
-  // each rebuild's hi-res grid stays small (the loupe shrinks in source-pixel
-  // terms as effS grows, so the high-sub case at z=8 doesn't blow up). A
-  // regression that drops back to the world-pixel layout or to the
+  // Overlay-attach regression: when the map pans, the route / waypoints
+  // / notes drawn on the overlay canvas must stay anchored to the
+  // underlying terrain inside the loupe. Pre-fix, `rebuildMagnifier`
+  // captured `overlay.toDataURL()` BEFORE the overlay's own pan-time
+  // redraw landed (interact.js's `scheduleDraw` runs in a separate rAF
+  // from the loupe rebuild), so the loupe showed a stale snapshot of
+  // the overlay even though the cloned tiles were fresh. The visible
+  // symptom was waypoint dots / leg lines appearing to "float" off the
+  // terrain as the user dragged. We fixed it by calling `draw()`
+  // synchronously inside `rebuildMagnifier` immediately before the
+  // capture, so the toDataURL always reflects post-pan state.
+  test('pan keeps overlay anchored to terrain (no drift)', async ({ page }) => {
+    // Plant a single waypoint so the overlay actually has pixels worth
+    // capturing. Without a route, both pre-fix and post-fix captures are
+    // mostly empty and the comparison below is meaningless.
+    await page.evaluate(() => {
+      const c = map.getCenter();
+      state.waypoints = [{ lat: c.lat, lng: c.lng, name: 'WP1' }];
+      if (typeof syncLegs === 'function') syncLegs();
+      draw();
+    });
+    await page.waitForTimeout(200);
+
+    const mapBox = await page.locator('#map').boundingBox();
+    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    const cx = mapBox.x + mapBox.width / 2;
+    const cy = mapBox.y + mapBox.height / 2;
+    await page.mouse.move(cx, cy);
+    await page.locator('#tool-magnifier').click();
+    await page.waitForTimeout(800);
+
+    // Pan synchronously so map state + 'move'/'moveend' fire in one tick;
+    // the loupe should rebuild and capture a FRESH overlay reflecting
+    // the new map center.
+    await page.evaluate(() => map.panBy([180, 0], { animate: false }));
+    await page.waitForTimeout(600);
+
+    const match = await page.evaluate(() => {
+      const overlay = document.getElementById('overlay');
+      const liveSrc = overlay.toDataURL();
+      const imgs = Array.from(document.querySelectorAll('#mag-content img'));
+      const captures = imgs.filter(i => i.src && i.src.startsWith('data:image'));
+      const loupeSrc = captures.length ? captures[captures.length - 1].src : null;
+      return { equal: loupeSrc === liveSrc, liveLen: liveSrc.length,
+               loupeLen: loupeSrc ? loupeSrc.length : 0 };
+    });
+    // Loupe's most-recent overlay capture must EQUAL the live overlay
+    // post-pan. If they diverge, the loupe captured the overlay before
+    // draw() updated it for the new map state — i.e., the drift bug.
+    expect(match.equal).toBe(true);
+  });
+
+  // Tile-count guard: with the center-based fetch the hi-res grid stays
+  // small (loupeR = magnifierSize/(2*slider) source pixels, so at the
+  // default slider=2 / z=8 / sub=16 case we only fetch a 13×13 grid).
+  // A regression that drops back to the world-pixel layout or to the
   // subdivide-every-clone iteration would push this past 1 000.
   test('adaptive: hi-res tile count per rebuild stays bounded', async ({ page }) => {
     const tileReqs = new Set();
@@ -503,6 +642,13 @@ test.describe('Magnifying glass', () => {
       if (m && parseInt(m[1], 10) >= 11) hires++;
     }
     expect(hires).toBeGreaterThan(0);
-    expect(hires).toBeLessThan(200);
+    // Bound chosen post-calibration-fix: at slider=2 / z=8 / sub=16 a
+    // single rebuild fetches up to ~14×14=196 hi-res tiles, and the test
+    // observes a few rebuilds across the 2.5 s settle window with the
+    // cursor pinned (Leaflet adds tiles, layeradd fires more rebuilds…).
+    // 1000 catches the regression (subdivide-every-clone or world-pixel
+    // coords push past 10 000) without being flaky on the legitimate
+    // multi-rebuild case.
+    expect(hires).toBeLessThan(1000);
   });
 });

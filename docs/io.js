@@ -2165,13 +2165,19 @@ let _magFixed = false;                     // click-to-lock fixed position
 // this the cursor-driven refetch in updateMagnifier would short-circuit when
 // the user opens the loupe with a stale `_magX`.
 let _magLastX = -Infinity, _magLastY = -Infinity;
-// Effective CSS scale for the magnifier content. Refreshed by
-// rebuildMagnifier(); applyMagnifierTransform() reads it for the loupe's
-// `scale()` transform.  Equal to `magnifierZoom` (the slider) at high map
-// zooms but ramps up to ~16 at the widest base-map zoom (8) so the hi-res
-// tile layer renders at native pixel density rather than getting heavily
-// downsampled.
-let _magEffS = 1;
+// Visible CSS scale of the loupe content — ALWAYS equals `magnifierZoom`
+// (the slider value). Refreshed by rebuildMagnifier();
+// applyMagnifierTransform() reads it for the loupe's `scale()` transform.
+//
+// A previous iteration set this to `max(slider, sub)` so hi-res tiles
+// rendered at native pixel density. That conflated two concepts: the
+// USER-FACING magnification (slider) vs. the IMPLEMENTATION-DETAIL
+// sub-tile zoom step. At base z=8 / slider 4.75 the loupe rendered at
+// 16× — almost 4× the value the user dialled in — because `sub` (16)
+// won the max(). The hi-res tiles are still fetched (see `sub` in
+// rebuildMagnifier); they just get downsampled to slider density on
+// display, which is far crisper than upscaling the cloned base tiles.
+let _magScale = 1;
 // Minimum loupe zoom — even when the base map is wide-out (z=8) the hi-res
 // overlay aims for at least this zoom so VFR chart labels stay legible.
 const MAG_BASELINE_Z = 12;
@@ -2263,11 +2269,12 @@ function rebuildMagnifier() {
   // Clamped to the layer's `maxNativeZoom` (anything beyond just 404s) and
   // to `MAG_MAX_EXP` so the per-rebuild sub-tile grid stays bounded.
   //
-  // Together with `_magEffS = max(slider, sub)` (applied by
-  // applyMagnifierTransform), the hi-res tiles render at native pixel
-  // density: their CSS size is `256/sub`, the content is scaled by `sub`,
-  // so each hi-res source pixel maps to one display pixel. That's what
-  // makes z=12 labels actually legible inside the loupe at low base zoom.
+  // The CSS scale on the loupe content is `magnifierZoom` (the slider),
+  // independent of `sub`. Hi-res tiles (CSS size `256/sub`) therefore
+  // display at `(256/sub) * slider` screen px — slightly downsampled
+  // from native (by `sub / slider`), but still vastly crisper than
+  // upscaling the cloned base tiles by `slider`. That's what makes z=12
+  // labels legible inside the loupe at low base zoom.
   //
   // Fetch is centred on the cursor (not "subdivide every clone in the
   // pane") so the tile count stays bounded by the loupe area instead of
@@ -2317,8 +2324,9 @@ function rebuildMagnifier() {
     }
   }
 
-  // Default: no hi-res, content rendered at slider scale only.
-  _magEffS = Math.max(1, magnifierZoom);
+  // CSS scale = the slider value, always. (See _magScale comment for
+  // rationale.) `sub` below is the orthogonal hi-res tile zoom step.
+  _magScale = Math.max(1, magnifierZoom);
 
   if (activeLayer && refZ !== null) {
     const maxNZ = activeLayer.options.maxNativeZoom ||
@@ -2334,10 +2342,9 @@ function rebuildMagnifier() {
       const tileTarget = refZ + targetExp;
       const sub = Math.pow(2, targetExp);
       const sz = 256 / sub;
-      // Bump the loupe's CSS scale up to `sub` whenever the slider's natural
-      // S is below it. At map z=8 / slider 2 this turns the loupe into a
-      // z=12 view (effS = 16) instead of a downsampled 2× upscale of z=8.
-      _magEffS = Math.max(S, sub);
+      // NOTE: `_magScale` is NOT bumped to `sub` here — the loupe's
+      // visible magnification stays exactly at the slider value. Hi-res
+      // tiles fetched below get downsampled to slider density on display.
 
       // Cursor in tile-pane-local source pixels (same coord system as the
       // clones' transforms).
@@ -2356,9 +2363,11 @@ function rebuildMagnifier() {
 
       // Loupe area + one loupe-radius margin so the cursor can drift a
       // little before `updateMagnifier` decides to schedule a refetch.
-      // Sized using `_magEffS` so the math matches the display scale —
-      // otherwise we'd over-fetch by a factor of (effS / slider).
-      const loupeR = magnifierSize / 2 / _magEffS;
+      // Sized using `_magScale` (= slider) so the fetched region matches
+      // the visible source-pixel area: smaller slider → larger visible
+      // source area → larger fetch span. Capped via `MAG_MAX_EXP` /
+      // `maxNZ` above so the per-rebuild grid stays bounded.
+      const loupeR = magnifierSize / 2 / _magScale;
       const radius = 2 * loupeR;
       const xMin = cursorX - radius, xMax = cursorX + radius;
       const yMin = cursorY - radius, yMax = cursorY + radius;
@@ -2422,14 +2431,23 @@ function rebuildMagnifier() {
   if (_magPendingTiles > 0) showMagLoading();
   else hideMagLoading();
 
-  // capture overlay (waypoint dots, leg lines, notes). The content div is
-  // scaled by `_magEffS` for the tile layer, but the overlay wants to stay
-  // at the SLIDER's `magnifierZoom` magnification — otherwise waypoint dots
-  // would balloon to 16× at the widest base zoom. We counter-scale the
-  // overlay by `slider / effS` around the cursor pivot, so its displayed
-  // magnification works out to exactly `magnifierZoom` regardless of how
-  // much the tile layer was boosted (pivot ensures the cursor still lands
-  // at the loupe centre).
+  // Capture the overlay canvas (waypoint dots, leg lines, notes).
+  //
+  // Force a fresh `draw()` BEFORE `toDataURL()` so the capture reflects
+  // the CURRENT map state, not whatever the canvas held when the user
+  // last released a drag. `scheduleDraw` (interact.js) already redraws
+  // on Leaflet's `move` event via rAF, but its callback and our rebuild
+  // callback are independent rAFs — and during a drag, the map pane's
+  // CSS transform updates synchronously while the overlay's canvas
+  // pixels only update on the next rAF. Without this synchronous draw
+  // the loupe captured a stale overlay one frame behind the tiles, so
+  // waypoint dots / leg lines appeared to "float" off the underlying
+  // terrain as the user dragged. Cheap (canvas overlay redraw) and the
+  // duplicated work (scheduleDraw rAF will run again later this frame)
+  // is bounded by the loupe's own rAF coalescing.
+  if (typeof draw === 'function') {
+    try { draw(); } catch (e) { /* never abort the loupe rebuild on a draw error */ }
+  }
   const overlay = document.getElementById('overlay');
   if (overlay) {
     const cap = document.createElement('img');
@@ -2438,14 +2456,12 @@ function rebuildMagnifier() {
     const mat = mapPane ? new DOMMatrixReadOnly(getComputedStyle(mapPane).transform) : null;
     const dx = mat ? (mat.is2D ? mat.e : mat.m41) : 0;
     const dy = mat ? (mat.is2D ? mat.f : mat.m42) : 0;
-    const oS = Math.max(1, magnifierZoom) / _magEffS;
-    const mapRect = map.getContainer().getBoundingClientRect();
-    const cpx = _magX - mapRect.left;
-    const cpy = _magY - mapRect.top;
+    // No counter-scale: `_magScale` is now the slider value directly,
+    // so the content div's `scale(_magScale)` already gives the overlay
+    // its intended magnification. (When `_magScale` was `max(slider, sub)`
+    // we had to divide back out the `sub` boost; not anymore.)
     cap.style.cssText = 'position:absolute;left:' + (-dx) + 'px;top:' + (-dy) +
-      'px;width:' + overlay.style.width + ';height:' + overlay.style.height +
-      ';transform-origin:' + cpx + 'px ' + cpy + 'px' +
-      ';transform:scale(' + oS + ')';
+      'px;width:' + overlay.style.width + ';height:' + overlay.style.height;
     content.appendChild(cap);
   }
   _magDirty = false;
@@ -2458,10 +2474,11 @@ function applyMagnifierTransform() {
   if (_magDirty) rebuildMagnifier();
   const mapRect = map.getContainer().getBoundingClientRect();
   const cp = { x: _magX - mapRect.left, y: _magY - mapRect.top };
-  // Use the rebuild's `_magEffS` (max of slider and the adaptive `sub`) so
-  // the hi-res tile layer renders at native pixel density — the cursor
-  // anchor math is identical regardless of which scale we plug in.
-  const effS = _magEffS;
+  // Loupe's visible CSS scale = the slider (`magnifierZoom`). Hi-res
+  // tiles get downsampled to slider density for display; the adaptive
+  // sub-tile fetch in `rebuildMagnifier` only governs WHICH tiles are
+  // fetched, not how big they appear.
+  const effS = _magScale;
   const mapPane = document.querySelector('.leaflet-map-pane');
   const mat = mapPane ? new DOMMatrixReadOnly(getComputedStyle(mapPane).transform) : null;
   const dx = mat ? (mat.is2D ? mat.e : mat.m41) : 0;
@@ -2501,19 +2518,17 @@ function updateMagnifier(e) {
   _magX = e.clientX;
   _magY = e.clientY;
   // Refetch threshold tied to the actual prefetched margin. rebuildMagnifier
-  // fetches a region of radius `magnifierSize/effS` source pixels around
+  // fetches a region of radius `magnifierSize/scale` source pixels around
   // the cursor; source≈client px in this coord system, so we refetch once
   // the cursor's drifted past HALF that margin — the loupe view never
   // wanders into un-fetched territory. Lower-bound at 8 px so we don't
-  // thrash on every micro-jitter at extreme effS.
+  // thrash on every micro-jitter at high slider values.
   //
-  // The previous threshold of `magnifierSize/3` (≈ 133 px on a 400 px
-  // loupe) was independent of `effS`, so at the wide-base-zoom case
-  // (effS ≈ 16, prefetched margin ≈ 25 client px) a 60 px cursor move
-  // didn't trigger a refetch — the user saw stale clones until they
-  // happened to swing the cursor far enough, matching the reported
-  // "have to zoom out and back in to refresh" symptom.
-  const moveThreshold = Math.max(8, magnifierSize / 2 / _magEffS);
+  // Pre-fix this used `magnifierSize/3` (≈ 133 px on a 400 px loupe) —
+  // a 60 px cursor drift didn't refetch, so the user saw stale clones
+  // until they swung the cursor far enough. That matched the reported
+  // "have to zoom to refresh" symptom.
+  const moveThreshold = Math.max(8, magnifierSize / 2 / _magScale);
   if (Math.abs(_magX - _magLastX) > moveThreshold ||
       Math.abs(_magY - _magLastY) > moveThreshold) {
     _magDirty = true;
