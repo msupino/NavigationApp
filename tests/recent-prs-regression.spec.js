@@ -136,4 +136,24 @@ test.describe('#252 — Print Waypoint Names + Map Opacity in export modal', () 
     const ranges = page.locator('.modal input[type="range"]');
     expect(await ranges.count()).toBeGreaterThanOrEqual(1);
   });
+
+  test.describe('#367 toolbar horizontal scroll', () => {
+    test.beforeEach(async ({ page }) => {
+      await boot(page);
+      // Expand all toolbar sections so every label is visible.
+      for (const s of ['build','view','display','charts','export','print']) {
+        await page.evaluate((sec) => {
+          const el = document.querySelector(`[data-sec="${sec}"] .tb-section-head`);
+          if (el && el.parentElement.dataset.open !== '1') el.click();
+        }, s);
+      }
+    });
+
+    test('English page has no horizontal scrollbar', async ({ page }) => {
+      const noHScroll = await page.evaluate(() =>
+        document.documentElement.scrollWidth <= document.documentElement.clientWidth
+      );
+      expect(noHScroll).toBe(true);
+    });
+  });
 });
