@@ -414,7 +414,7 @@ html, body {
   position: absolute;
   z-index: 1100;
   top: 56px;
-  right: 12px;
+  left: 64px;
   width: 200px;
   background: rgba(20, 18, 18, 0.95);
   border: 1px solid #3a3636;

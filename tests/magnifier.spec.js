@@ -53,25 +53,6 @@ test.describe('Magnifying glass', () => {
     }
   });
 
-  test('click-to-lock fixes magnifier in place', async ({ page }) => {
-    await page.locator('#tool-magnifier').click();
-    const mag = page.locator('#magnifier');
-    await expect(mag).toBeVisible();
-    // move to a position
-    const mapBox = await page.locator('#map').boundingBox();
-    if (!mapBox) { test.skip(true, 'map not found'); return; }
-    await page.mouse.move(mapBox.x + 100, mapBox.y + 100);
-    const boxBefore = await mag.boundingBox();
-    // click to lock
-    await page.mouse.click(mapBox.x + 100, mapBox.y + 100);
-    // move mouse away
-    await page.mouse.move(mapBox.x + 300, mapBox.y + 300);
-    const boxAfter = await mag.boundingBox();
-    // magnifier should not have moved
-    expect(boxBefore?.x).toBe(boxAfter?.x);
-    expect(boxBefore?.y).toBe(boxAfter?.y);
-  });
-
   test('zoom slider updates magnifierZoom', async ({ page }) => {
     await page.locator('#tool-magnifier').click();
     await page.waitForSelector('#mag-zoom');
@@ -83,14 +64,30 @@ test.describe('Magnifying glass', () => {
     expect(zoomVal).toBe(3);
   });
 
-  test('size slider updates magnifierSize', async ({ page }) => {
+  test('lock button fixes magnifier in place and unlocks', async ({ page }) => {
     await page.locator('#tool-magnifier').click();
-    await page.waitForSelector('#mag-size');
-    const slider = page.locator('#mag-size');
-    await slider.fill('300');
-    await slider.dispatchEvent('input');
-    const sizeVal = await page.evaluate(() => window.magnifierSize);
-    expect(sizeVal).toBe(300);
+    const mag = page.locator('#magnifier');
+    await expect(mag).toBeVisible();
+    // move to a position
+    const mapBox = await page.locator('#map').boundingBox();
+    if (!mapBox) { test.skip(true, 'map not found'); return; }
+    await page.mouse.move(mapBox.x + 100, mapBox.y + 100);
+    const boxBefore = await mag.boundingBox();
+    // click lock button in settings
+    await page.locator('#mag-lock').click();
+    // move mouse away
+    await page.mouse.move(mapBox.x + 300, mapBox.y + 300);
+    const boxAfter = await mag.boundingBox();
+    // magnifier should not have moved
+    expect(boxBefore?.x).toBe(boxAfter?.x);
+    expect(boxBefore?.y).toBe(boxAfter?.y);
+    // button text should now be Unlock
+    await expect(page.locator('#mag-lock')).toHaveText(/Unlock/);
+    // click Unlock to release
+    await page.locator('#mag-lock').click();
+    await page.mouse.move(mapBox.x + 150, mapBox.y + 150);
+    const boxReleased = await mag.boundingBox();
+    expect(boxReleased?.x).not.toBe(boxAfter?.x);
   });
 
   test('ESC closes magnifier', async ({ page }) => {

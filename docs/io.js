@@ -2240,7 +2240,11 @@ function toggleMagnifier() {
   applyMagBorder();
   document.getElementById('tool-magnifier').classList.toggle('active', magnifierOn);
   const settings = document.getElementById('magnifier-settings');
-  if (settings) settings.classList.toggle('hidden', !magnifierOn);
+  if (settings) {
+    settings.classList.toggle('hidden', !magnifierOn);
+    const lockBtn = document.getElementById('mag-lock');
+    if (lockBtn) lockBtn.textContent = S.magLockLabel;
+  }
   if (magnifierOn) {
     _magDirty = true;
     rebuildMagnifier();
@@ -2249,26 +2253,24 @@ function toggleMagnifier() {
     _magY = _magY || window.innerHeight / 2;
     mag.style.left = (_magX - magCenter()) + 'px'; mag.style.top = (_magY - magCenter()) + 'px';
     document.addEventListener('mousemove', updateMagnifier);
-    document.addEventListener('click', onMagClick, true);
   } else {
     document.removeEventListener('mousemove', updateMagnifier);
-    document.removeEventListener('click', onMagClick, true);
     if (_magRAF) { cancelAnimationFrame(_magRAF); _magRAF = null; }
   }
 }
 
-function onMagClick(e) {
-  if (!magnifierOn) return;
-  // ignore clicks on toolbar / settings panel / inspector
-  const ignore = document.getElementById('toolbar');
-  if (ignore && ignore.contains(e.target)) return;
-  const settings = document.getElementById('magnifier-settings');
-  if (settings && settings.contains(e.target)) return;
-  const insp = document.getElementById('inspector');
-  if (insp && insp.contains(e.target)) return;
-  _magFixed = !_magFixed;
-  applyMagBorder();
-}
+// Magnifier lock button
+(function () {
+  const lockBtn = document.getElementById('mag-lock');
+  if (lockBtn) {
+    lockBtn.addEventListener('click', function () {
+      if (!magnifierOn) return;
+      _magFixed = !_magFixed;
+      applyMagBorder();
+      this.textContent = _magFixed ? S.magUnlockLabel : S.magLockLabel;
+    });
+  }
+})();
 
 // Magnifier zoom slider + scroll-wheel control
 (function () {
