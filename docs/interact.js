@@ -53,15 +53,15 @@ function legLabelCenter(i, which) {
   const f = legFrame(i);
   const o = (which === 'in' ? state.legs[i].inLabel : state.legs[i].outLabel)
             || { a: 0, p: 0 };
-  return { x: f.mx + f.dx * o.a + f.nx * o.p,
-           y: f.my + f.dy * o.a + f.ny * o.p };
+  const sc = legZoomScale();
+  return { x: f.mx + f.dx * o.a * sc + f.nx * o.p * sc,
+           y: f.my + f.dy * o.a * sc + f.ny * o.p * sc };
 }
 function hitLegLabel(px, py) {
   // #83: scale the hit radius with the same zoom + legArrowSize factor that
   // sizes the drawn marker (see drawLegArrow in draw.js), so the hit zone
   // tracks the visual size. Floor at 18 px keeps touch ergonomics.
-  const zoomScale = Math.max(0.35, Math.pow(2, map.getZoom() - 12)) * legArrowSize;
-  const hit = Math.max(18, 34 * zoomScale);
+  const hit = Math.max(18, 34 * legZoomScale());
   for (let i = 0; i < state.legs.length; i++) {
     for (const which of ['in', 'out']) {
       if (which === 'out' && !showReturn) continue;
@@ -149,6 +149,19 @@ function showInspector() {
       propagateAlt(idx, 'outboundAltitude', leg.outboundAltitude, oldVal);
       draw();
     }));
+    const reset = document.createElement('button');
+    reset.className = 'insp-btn';
+    // Fallback to a glyph if the locale strings haven't been loaded yet —
+    // Hebrew users used to see literal "undefined" on this button until
+    // resetLegMarkers landed in he/strings.js (PR review #4).
+    reset.textContent = S.resetLegMarkers || '↺';
+    reset.onclick = () => {
+      const d = _defaultLegLabels();
+      leg.inLabel = d.inLabel;
+      leg.outLabel = d.outLabel;
+      draw();
+    };
+    body.appendChild(reset);
   } else if (state.selected.type === 'note') {
     const note = state.notes[state.selected.index];
     title.value = '';
@@ -415,8 +428,9 @@ map.on('mousemove', e => {
     const leg = state.legs[drag.i];
     const o = leg && (drag.which === 'in' ? leg.inLabel : leg.outLabel);
     if (!o) return;                    // malformed leg / label — issue #82
-    o.a += ddx * drag.dx + ddy * drag.dy;
-    o.p += ddx * drag.nx + ddy * drag.ny;
+    const isc = 1 / legZoomScale();
+    o.a += (ddx * drag.dx + ddy * drag.dy) * isc;
+    o.p += (ddx * drag.nx + ddy * drag.ny) * isc;
     draw();
   } else if (drag.kind === 'page') {
     pageOffset.x += p.x - drag.lx;
@@ -472,6 +486,7 @@ window.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     const modal = document.querySelector('.modal-back');
     if (modal) { modal.remove(); return; }
+    if (magnifierOn) { toggleMagnifier(); return; }
     if (state.selected) {
       state.selected = null;
       showInspector(); draw();
@@ -565,8 +580,9 @@ mapEl.addEventListener('touchmove', e => {
     const leg = state.legs[touchDrag.i];
     const o = leg && (touchDrag.which === 'in' ? leg.inLabel : leg.outLabel);
     if (!o) return;                    // malformed leg / label — issue #82
-    o.a += ddx * touchDrag.dx + ddy * touchDrag.dy;
-    o.p += ddx * touchDrag.nx + ddy * touchDrag.ny;
+    const isc = 1 / legZoomScale();
+    o.a += (ddx * touchDrag.dx + ddy * touchDrag.dy) * isc;
+    o.p += (ddx * touchDrag.nx + ddy * touchDrag.ny) * isc;
     draw();
   } else if (touchDrag.kind === 'page') {
     pageOffset.x += p.x - touchDrag.lx;
