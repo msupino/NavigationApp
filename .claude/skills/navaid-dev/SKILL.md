@@ -152,8 +152,11 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
     active tile layer's `_tiles` cache (works for any URL template,
     including Satellite's `{z}/{y}/{x}`) and fetches sub-tiles at a
     deeper zoom so labels stay readable at wide base zooms. Formula:
-    `desiredExp = max(ceil(log2(slider)), MAG_BASELINE_Z - mapZoom)`
-    clamped to `MAG_MAX_EXP = 4` and `maxNativeZoom - mapZoom`.
+    `desiredExp = max(ceil(log2(slider)), MAG_BASELINE_Z - refZ)`
+    clamped to `MAG_MAX_EXP = 4` and `maxNativeZoom - refZ`, where
+    `refZ` is the tile zoom of the reference cloned tile —
+    `_tiles[k].coords.z` — which is usually the current Leaflet
+    `map.getZoom()` but can lag during a zoom transition.
     `MAG_BASELINE_Z = 12` (Israeli VFR labels become legible there).
     Cursor-centred fetch window keeps tile-request count flat at
     ~16 per rebuild across all base zooms. Tile failures clean up via
@@ -183,9 +186,10 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
 - **Transparency slider:** scales every label-background fill via
   `tintFill(hex, a) = rgba(r,g,b, a * yellowAlpha)`. Persisted at
   `navaid.yellowAlpha`.
-- **Mag var input:** signed offset added to true heading. Negative =
-  east variation. Shows `(N°E)` / `(N°W)` next to the input.
-  Persisted at `navaid.magVar`.
+- **Magnetic variation:** hardcoded at `magVar = -5` in `core.js`
+  (5°E variation for Israel). The user-facing Mag-var input was
+  removed; the `navaid.magVar` localStorage key is no longer written
+  or read.
 - **Altitude propagation:** editing a leg's altitude updates the
   adjacent legs that currently share the old value, stopping at the
   first different leg. Inbound walks forward, outbound walks backward.
@@ -212,22 +216,49 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
   scaled into the export canvas and triggers a `.png` download
   named `navigation-A4.png` / `navigation-CVFR.png` etc.
 
-## Persistence (`localStorage`, all keyed `navaid.*`)
+## Persistence (`localStorage` + `sessionStorage`, all keyed `navaid.*`)
+
+`localStorage` (persisted across reloads):
 
 - `navaid.route` — `{waypoints, legs, notes}` (debounced; the view is
   not saved — a reload fits the route).
 - `navaid.layer` — selected base layer name.
+- `navaid.lang` — `'en'` / `'he'`; bootstrap script in `index.html`
+  reads this before the app loads.
 - `navaid.toolbarPos` — `{x, y}` of the toolbar.
 - `navaid.toolbarCollapsed` — `'0'` / `'1'` for the collapsed toolbar.
+- `navaid.sec.<sectionId>` — `'0'` / `'1'` per accordion section
+  (`build`, `view`, `display`, `charts`, `export`, `print`).
+- `navaid.bearing` — map bearing in degrees (rotated-map support).
 - `navaid.yellowAlpha` — Transparency slider value.
+- `navaid.mapOpacity` — base-map opacity slider value.
 - `navaid.wpSize` — Text-size slider value.
-- `navaid.magVar` — magnetic variation offset.
+- `navaid.legArrowSize` — leg-arrow size slider value.
+- `navaid.showReturn` — `'0'` / `'1'` for the return-leg overlay.
+- `navaid.showMidLeg` — `'0'` / `'1'` for the mid-leg distance badge.
+- `navaid.showDrift` — `'0'` / `'1'` for drift lines.
+- `navaid.highlightDiff` — `'0'` / `'1'` for altitude-diff halos.
 - `navaid.showNavWP` — `'0'` / `'1'` for the nav-waypoints overlay.
+- `navaid.showAirfields` — `'0'` / `'1'` for the airfield overlay.
 - `navaid.showWpNames` — `'0'` / `'1'` for waypoint-name display.
 - `navaid.wpNameAngle` — waypoint-name rotation (`0`/`90`/`180`/`270`).
+- `navaid.aircraft` — last-used aircraft profile JSON (fuel planner).
+- `navaid.pageOrient` — `'portrait'` / `'landscape'` for page export.
+- `navaid.fpPos` — `{x, y}` of the dragged Flight Plan modal.
 
-A one-time migration at the top of `core.js` copies any old
-`plotter.*` keys into `navaid.*` and removes the old ones.
+`sessionStorage` (cleared on tab close — used to survive a language
+re-load that does a full page navigation):
+
+- `navaid.selected` — `state.selected` round-trip.
+- `navaid.fpOpen` — `'1'` if the Flight Plan modal was open pre-reload.
+
+`magVar` is hardcoded at `-5` in `core.js`; the obsolete
+`navaid.magVar` key is no longer written. A one-time migration at the
+top of `core.js` copies any old `plotter.*` keys into `navaid.*` and
+removes the old ones.
+
+When adding a new key, grep `localStorage.setItem` /
+`sessionStorage.setItem` under `docs/` to stay in sync with this list.
 
 `save()` / `load()` round-trip waypoints (with `name`), legs (with
 `inLabel` / `outLabel`), and notes (with `color`, `shape`) as a
