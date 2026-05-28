@@ -7,6 +7,16 @@ on:
   pull_request:
     branches: [main, dev]
     types: [opened, synchronize, closed]
+  # Bot-merged PRs (gh pr merge --auto via GITHUB_TOKEN) suppress both
+  # `push: dev` and `pull_request: closed`, so chain off the auto-merge
+  # workflow's completion instead. `Draft + auto-merge` synchronously waits
+  # for the merge before completing, so by the time this fires, dev is at
+  # the post-merge tip. workflow_run runs in the context of the default
+  # branch — the build job checks out main + dev explicitly, so trigger ref
+  # doesn't matter.
+  workflow_run:
+    workflows: ["Draft + auto-merge"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -22,6 +32,12 @@ concurrency:
 
 jobs:
   lint:
+    # Gate the whole workflow on workflow_run conclusion=success so we don't
+    # redeploy on Draft+auto-merge runs that ended in failure (e.g. the
+    # wait-for-merge timed out, or the PR was closed without merging).
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

@@ -28,21 +28,55 @@ jobs:
   enable-auto-merge:
     if: github.event.action == 'ready_for_review'
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    # Wait synchronously for the merge so workflow_run-chained `Deploy` and
+    # `Auto PR dev to main` fire AFTER dev has the new commit (anti-recursion
+    # suppresses the `push: dev` and `pull_request: closed` events that the
+    # bot would otherwise emit). 60 min covers worst-case CI (e2e + retries).
+    timeout-minutes: 65
     steps:
       - uses: actions/checkout@v4
-      - name: Enable auto-merge (squash)
+      - name: Enable auto-merge (squash) and wait for merge
         env:
           GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
         run: |
+          set -e
           # Guard: only enable if PR is not a draft.
-          STATE=$(gh pr view ${{ github.event.pull_request.number }} \
+          STATE=$(gh pr view "$PR" \
             --json isDraft,state --jq 'select(.isDraft==false and .state=="OPEN") | "ok"')
           if [ "$STATE" != "ok" ]; then
-            echo "PR #${{ github.event.pull_request.number }} is draft — skipping auto-merge."
+            echo "PR #$PR is draft — skipping auto-merge."
             exit 0
           fi
-          gh pr merge ${{ github.event.pull_request.number }} \
-            --auto --squash \
-            --subject "${{ github.event.pull_request.title }}"
-          echo "Auto-merge enabled for PR #${{ github.event.pull_request.number }}."
+          # --delete-branch is required: the repo's delete_branch_on_merge
+          # setting only fires for human-initiated merges. Auto-merge enabled
+          # by github-actions[bot] honors the flags passed here, not the
+          # repo setting.
+          gh pr merge "$PR" \
+            --auto --squash --delete-branch \
+            --subject "$TITLE"
+          echo "Auto-merge enabled for PR #$PR."
+          # GITHUB_TOKEN-initiated bot merges suppress BOTH `push: dev` and
+          # `pull_request: closed` events (GitHub anti-recursion rule), so
+          # downstream Deploy / Auto-PR-dev-to-main won't fire on their
+          # existing triggers. We synchronously wait for the actual merge,
+          # then let workflow_run chains pick up from this workflow's
+          # successful completion (workflow_run is not subject to the same
+          # anti-recursion suppression). Poll up to 60 min @ 30 s = 120 iters.
+          for i in $(seq 1 120); do
+            MERGE_STATE=$(gh pr view "$PR" --json state --jq '.state')
+            case "$MERGE_STATE" in
+              MERGED)
+                echo "PR #$PR merged on iteration $i."
+                exit 0
+                ;;
+              CLOSED)
+                echo "::warning::PR #$PR closed without merging."
+                exit 0
+                ;;
+            esac
+            sleep 30
+          done
+          echo "::error::Timed out waiting for PR #$PR to merge after 60 min."
+          exit 1
