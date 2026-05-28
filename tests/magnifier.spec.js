@@ -612,9 +612,15 @@ test.describe('Magnifying glass', () => {
     const match = await page.evaluate(() => {
       const overlay = document.getElementById('overlay');
       const liveSrc = overlay.toDataURL();
-      const imgs = Array.from(document.querySelectorAll('#mag-content img'));
-      const captures = imgs.filter(i => i.src && i.src.startsWith('data:image'));
-      const loupeSrc = captures.length ? captures[captures.length - 1].src : null;
+      // Post-#388 the loupe captures the overlay into a same-sized
+      // `<canvas>` via `drawImage` (no per-frame `toDataURL` re-encode
+      // — that was ~10–20 ms per rAF on a 1080p canvas). We re-encode
+      // the captured canvas here just to compare pixels with the live
+      // overlay; the on-disk pixels must still match.
+      const canvases = Array.from(
+        document.querySelectorAll('#mag-content canvas'));
+      const capture = canvases.length ? canvases[canvases.length - 1] : null;
+      const loupeSrc = capture ? capture.toDataURL() : null;
       return { equal: loupeSrc === liveSrc, liveLen: liveSrc.length,
                loupeLen: loupeSrc ? loupeSrc.length : 0 };
     });

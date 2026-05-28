@@ -308,8 +308,19 @@ function drawLegs() {
     const len = Math.hypot(dx, dy) || 1;
     dx /= len; dy /= len;
     const nx = -dy, ny = dx;
-    const inP = leg.inLabel || { a: 0, p: 44 };
-    const outP = leg.outLabel || { a: 0, p: -44 };
+    // Strict validator (`_normalizeLegLabel` + `syncLegs`) should keep
+    // these defined in practice — every code path that touches a leg
+    // stamps `inLabel`/`outLabel` via `_defaultLegLabels()`. Fallback
+    // exists as a defensive guard for hand-edited / corrupted state;
+    // `_defaultLegLabels()` honours the post-#393 invariant
+    // (`p: ±44 / legArrowSize`) so the legacy raw-`44` literal that used
+    // to live here no longer renders an oversized marker when the user
+    // has scaled the arrow.
+    const defaults = (typeof _defaultLegLabels === 'function')
+      ? _defaultLegLabels()
+      : { inLabel: { a: 0, p: 44, _m: 1 }, outLabel: { a: 0, p: -44, _m: 1 } };
+    const inP = leg.inLabel || defaults.inLabel;
+    const outP = leg.outLabel || defaults.outLabel;
     drawLegArrow(mid.x + dx * inP.a * zoomScale + nx * inP.p * zoomScale,
       mid.y + dy * inP.a * zoomScale + ny * inP.p * zoomScale,
       ang, pad3(magIn), timeStr, String(leg.inboundAltitude),

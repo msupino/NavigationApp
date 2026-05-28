@@ -193,8 +193,6 @@ window.S = Object.assign({
   tbMapOpacityTitle: 'Base map brightness',
   tbLegArrowSize: 'Leg arrow size',
   tbLegArrowSizeTitle: 'Leg info marker (heading / altitude / time) size',
-  tbMagVar: 'Magnetic Variation',
-  tbMagVarTitle: 'Signed offset added to true heading. Negative = east variation; positive = west.',
   tbPageA3Title: 'A3 print page',
   tbPageA4Title: 'A4 print page',
   tbOrientTitle: 'Orientation — click to toggle landscape / portrait',

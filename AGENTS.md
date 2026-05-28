@@ -44,7 +44,10 @@ both branches and assembles a single Pages site:
   same Deploy step rewrites `NavAid.version` in `docs/core.js` from
   `'1.0'` to `'1.0-<short-sha>'`, so the toolbar identifies the exact
   deployed commit without manually increasing the source version number.
-- **Always run `node --check docs/app.js`** before committing.
+- **Always run `node --check` on every changed `.js` file** before
+  committing (the app code lives in `docs/core.js`, `docs/draw.js`,
+  `docs/interact.js`, `docs/io.js`, `docs/ui.js`, `docs/sw.js`, and
+  the locale bundles `docs/en/strings.js` / `docs/he/strings.js`).
 - **Every enhancement, bug fix, or regression must include tests.** Add new
   test cases to the appropriate `tests/*.spec.js` file. If no file covers
   the area, create one.
@@ -63,13 +66,14 @@ both branches and assembles a single Pages site:
 - **Every PR must be preceded by a GitHub issue.** Open the issue first,
   then create the PR referencing it (`Fixes #N` or `Closes #N`).
 - Persist UI state to `localStorage` only via existing `navaid.*`
-  keys (`navaid.route`, `navaid.layer`, `navaid.toolbarPos`,
-  `navaid.yellowAlpha`, `navaid.wpSize`, `navaid.magVar`,
-  `navaid.showNavWP`). Add new keys only with a clear reason.
-- No external dependencies beyond Leaflet (CDN) and
-  `images.weserv.nl` (used as a CORS proxy by `exportPNG`). No
-  build step, no bundler, no transpiler — keep it plain HTML / CSS
-  / JS.
+  keys. The authoritative list lives in
+  `.claude/skills/navaid-dev/SKILL.md` (see the **Persistence**
+  section); grep `localStorage.setItem` / `sessionStorage.setItem`
+  in `docs/` to verify. Add new keys only with a clear reason.
+- No external dependencies beyond Leaflet + `leaflet-rotate@0.2.8`
+  (both loaded from `unpkg.com`) and `images.weserv.nl` (used as a
+  CORS proxy by `exportPNG`). No build step, no bundler, no
+  transpiler — keep it plain HTML / CSS / JS.
 - Don't reintroduce Unity files. They live on `original-plotter`.
 
 ## Live + repo

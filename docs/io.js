@@ -915,7 +915,15 @@ function showFlightPlan() {
         refresh();
       };
   flightPlanEscape = function (e) {
-    if (e.key === 'Escape') closeFlightPlan();
+    if (e.key !== 'Escape') return;
+    closeFlightPlan();
+    // The global window-level Escape handler in interact.js otherwise runs
+    // after this one and toggles the magnifier off whenever the plan is
+    // closed while the loupe is open (issue #388 M3 follow-up). Stop the
+    // event from bubbling past `document` so the loupe — which has no
+    // logical relationship to the plan modal — keeps its current state.
+    e.stopPropagation();
+    e.preventDefault();
   };
   document.addEventListener('keydown', flightPlanEscape);
   fpOpen = true;
@@ -2196,6 +2204,25 @@ let _magBatch = 0;
 
 function magCenter() { return magnifierSize / 2; }
 
+// Read Leaflet's `.leaflet-map-pane` CSS transform once and return its
+// {dx, dy} translation. Reading `getComputedStyle(...).transform` forces
+// a style flush; callers in the rAF-driven loupe path should call this
+// once per frame and reuse the result. Returns {dx:0,dy:0} if the pane
+// is missing or the matrix can't be parsed.
+function _readMapPaneOffset() {
+  const mapPane = document.querySelector('.leaflet-map-pane');
+  if (!mapPane) return { dx: 0, dy: 0 };
+  try {
+    const m = new DOMMatrixReadOnly(getComputedStyle(mapPane).transform);
+    return {
+      dx: m.is2D ? m.e : m.m41,
+      dy: m.is2D ? m.f : m.m42,
+    };
+  } catch (e) {
+    return { dx: 0, dy: 0 };
+  }
+}
+
 function showMagLoading() {
   const el = document.querySelector('#magnifier .mag-loading');
   if (el) el.classList.add('show');
@@ -2328,12 +2355,20 @@ function rebuildMagnifier() {
   // rationale.) `sub` below is the orthogonal hi-res tile zoom step.
   _magScale = Math.max(1, magnifierZoom);
 
+  // Cache `getComputedStyle(mapPane).transform` once per rebuild. Reading
+  // it forces a style flush; the rAF-coalesced loupe rebuild used to
+  // pay for that flush twice (here + at the overlay-capture site below).
+  const _paneOffset = _readMapPaneOffset();
+
   if (activeLayer && refZ !== null) {
     const maxNZ = activeLayer.options.maxNativeZoom ||
                   activeLayer.options.maxZoom || 19;
     const subs = activeLayer.options.subdomains || 'abc';
-    const S = magnifierZoom;
-    const sliderExp = Math.ceil(Math.log2(Math.max(1, S)));
+    // Local alias for the slider value. Named `slider` to avoid shadowing
+    // the global i18n `S` (which a sibling block in this same file used
+    // to read for the loading-pill label).
+    const slider = magnifierZoom;
+    const sliderExp = Math.ceil(Math.log2(Math.max(1, slider)));
     const baselineExp = MAG_BASELINE_Z - refZ;
     const desiredExp = Math.max(sliderExp, baselineExp);
     const targetExp = Math.max(0,
@@ -2347,16 +2382,9 @@ function rebuildMagnifier() {
       // tiles fetched below get downsampled to slider density on display.
 
       // Cursor in tile-pane-local source pixels (same coord system as the
-      // clones' transforms).
-      const mapPane = document.querySelector('.leaflet-map-pane');
-      let mpX = 0, mpY = 0;
-      if (mapPane) {
-        try {
-          const m = new DOMMatrixReadOnly(getComputedStyle(mapPane).transform);
-          mpX = m.is2D ? m.e : m.m41;
-          mpY = m.is2D ? m.f : m.m42;
-        } catch (e) {}
-      }
+      // clones' transforms). Uses the cached pane offset captured above.
+      const mpX = _paneOffset.dx;
+      const mpY = _paneOffset.dy;
       const mapRect = map.getContainer().getBoundingClientRect();
       const cursorX = (_magX - mapRect.left) - mpX;
       const cursorY = (_magY - mapRect.top) - mpY;
@@ -2396,8 +2424,18 @@ function rebuildMagnifier() {
           // Settle handler shared by load + error. Stale-batch callbacks
           // (cursor moved fast → newer rebuild already ran) early-return
           // so they don't decrement the current batch's pending count.
+          //
+          // Idempotency: `tile.dataset.settled` guards against a
+          // cached-image race where `tile.complete` is true synchronously
+          // after `tile.src = …` (so we call `onSettle` manually below)
+          // AND the still-pending async `load` event subsequently fires
+          // anyway. Without this tag both calls would decrement
+          // `_magPendingTiles`, masking the bug only because of the
+          // `<= 0` clamp below. The clamp now never sees a true negative.
           const onSettle = (ev) => {
             const t = ev && ev.target ? ev.target : tile;
+            if (t.dataset.settled === '1') return;
+            t.dataset.settled = '1';
             if (t.dataset.batch !== String(_magBatch)) return;
             _magPendingTiles--;
             if (_magPendingTiles <= 0) hideMagLoading();
@@ -2413,8 +2451,10 @@ function rebuildMagnifier() {
               s: subs[(tx + ty) % subs.length] });
           // Cached images can fire `load` before listeners are attached.
           // `complete` + `naturalWidth > 0` ⇒ already loaded; `complete`
-          // alone (with `naturalWidth === 0`) ⇒ already errored. Either
-          // way, settle synchronously so the counter doesn't get stuck.
+          // alone (with `naturalWidth === 0`) ⇒ already errored. Settle
+          // synchronously here so the counter doesn't get stuck; the
+          // `dataset.settled` guard in `onSettle` makes the (still
+          // pending) async load callback a no-op.
           if (tile.complete) {
             if (tile.naturalWidth === 0) tile.remove();
             onSettle({ target: tile });
@@ -2450,12 +2490,25 @@ function rebuildMagnifier() {
   }
   const overlay = document.getElementById('overlay');
   if (overlay) {
-    const cap = document.createElement('img');
-    cap.src = overlay.toDataURL();
-    const mapPane = document.querySelector('.leaflet-map-pane');
-    const mat = mapPane ? new DOMMatrixReadOnly(getComputedStyle(mapPane).transform) : null;
-    const dx = mat ? (mat.is2D ? mat.e : mat.m41) : 0;
-    const dy = mat ? (mat.is2D ? mat.f : mat.m42) : 0;
+    // Copy the overlay pixels into a same-sized `<canvas>` via
+    // `drawImage` (~1 ms at 1080p) instead of re-encoding the canvas to
+    // a base64 PNG via `toDataURL()` (~10–20 ms at 1080p, 50–100 ms at
+    // 4K). The rebuild runs on every coalesced rAF during a pan so the
+    // per-frame budget matters; the visual result is identical because
+    // the loupe just blits the captured pixels through its `scale()`
+    // transform.
+    const cap = document.createElement('canvas');
+    cap.width = overlay.width;
+    cap.height = overlay.height;
+    try {
+      const cctx = cap.getContext('2d');
+      if (cctx) cctx.drawImage(overlay, 0, 0);
+    } catch (e) { /* never abort the loupe rebuild on a draw error */ }
+    // Use the cached pane offset captured at the top of rebuildMagnifier
+    // — avoids a second `getComputedStyle(...).transform` style flush in
+    // the same rAF tick.
+    const dx = _paneOffset.dx;
+    const dy = _paneOffset.dy;
     // No counter-scale: `_magScale` is now the slider value directly,
     // so the content div's `scale(_magScale)` already gives the overlay
     // its intended magnification. (When `_magScale` was `max(slider, sub)`
@@ -2479,10 +2532,7 @@ function applyMagnifierTransform() {
   // sub-tile fetch in `rebuildMagnifier` only governs WHICH tiles are
   // fetched, not how big they appear.
   const effS = _magScale;
-  const mapPane = document.querySelector('.leaflet-map-pane');
-  const mat = mapPane ? new DOMMatrixReadOnly(getComputedStyle(mapPane).transform) : null;
-  const dx = mat ? (mat.is2D ? mat.e : mat.m41) : 0;
-  const dy = mat ? (mat.is2D ? mat.f : mat.m42) : 0;
+  const { dx, dy } = _readMapPaneOffset();
   content.style.transform =
     'translate(' + (magCenter() + dx * effS - cp.x * effS) + 'px,' +
                    (magCenter() + dy * effS - cp.y * effS) + 'px) scale(' + effS + ')';
@@ -2549,7 +2599,13 @@ function toggleMagnifier() {
   if (!mag) return;
   mag.style.display = magnifierOn ? 'block' : 'none';
   applyMagBorder();
-  document.getElementById('tool-magnifier').classList.toggle('active', magnifierOn);
+  const magBtn = document.getElementById('tool-magnifier');
+  magBtn.classList.toggle('active', magnifierOn);
+  // Accessibility: expose toggle state to assistive tech (screen
+  // readers announce "pressed" / "not pressed"). Same pattern applied
+  // to every other toggle button in the toolbar (see ui.js setMode +
+  // tool-reset-all-markers wiring).
+  magBtn.setAttribute('aria-pressed', String(magnifierOn));
   const settings = document.getElementById('magnifier-settings');
   if (settings) settings.classList.toggle('hidden', !magnifierOn);
   if (magnifierOn) {
@@ -2581,12 +2637,17 @@ function toggleMagnifier() {
 
 function onMagClick(e) {
   if (!magnifierOn) return;
-  const ignore = document.getElementById('toolbar');
-  if (ignore && ignore.contains(e.target)) return;
-  const settings = document.getElementById('magnifier-settings');
-  if (settings && settings.contains(e.target)) return;
-  const insp = document.getElementById('inspector');
-  if (insp && insp.contains(e.target)) return;
+  // Any click that lands inside a UI surface (toolbar, magnifier
+  // settings panel, inspector, modal backdrop/box, or the search
+  // overlay) must NOT toggle the loupe lock — those clicks are aimed
+  // at the UI, not at the map underneath. `closest()` lets us match
+  // either a singleton element (id) or a class shared by multiple
+  // dynamically-created modals (.modal-back / .modal).
+  if (e.target && typeof e.target.closest === 'function' &&
+      e.target.closest(
+        '#toolbar, #magnifier-settings, #inspector,' +
+        ' .modal-back, .modal, #search-overlay'
+      )) return;
   _magFixed = !_magFixed;
   applyMagBorder();
   // event passes through to map for selection
