@@ -1,98 +1,12 @@
 {
   "version": 1,
-  "source": "Verified entries: Israel AIP AD 2.22 LLHA (https://e-aip.azurefd.net/2025-10-02-AIRAC/html/eAIP/LL-AD-2.LLHA-en-GB.html) + GitHub issue msupino/NavigationApp#399 chart fragment. Sector frequencies cross-referenced with AIP ENR 2.1 (https://e-aip.azurefd.net/2025-10-02-AIRAC/html/eAIP/LL-ENR-2.1-en-GB.html) and PAMAT (Israeli Domestic AIP, edition 1/24) chapter A-07 §12 'Military Unit Frequencies' via https://www.scribd.com/document/735132303/aip-Full-PAMAT-1-24. Inferred (unverified) entries derived from ENR 2.1 PLUTO/HAGAV sector-boundary line ((315600N 0344200E)-(315500N 0345300E)-(314600N 0350800E)-(314200N 0353100E)) cross-referenced with nav-waypoints.json. Sources also consulted (no new verified entries): AD 2.22 LLBG (https://e-aip.azurefd.net/2025-10-02-AIRAC/html/eAIP/LL-AD-2.LLBG-en-GB.html — references Domestic AIP A-07/B-03 for CVFR routes, not in eAIP), AD 2.22 LLER (https://e-aip.azurefd.net/2025-10-02-AIRAC/html/eAIP/LL-AD-2.LLER-en-GB.html — no named CVFR transfer points), GEN 3.4 (https://e-aip.azurefd.net/2025-10-02-AIRAC/html/eAIP/LL-GEN-3.4-en-GB.html), ENR 6-1 ATS Routes chart (https://www.scribd.com/document/936210641/LL-ENR-6-1-en), Wikimedia Commons IsraelCVFRchart-center.jpg (2009 reference), GitHub code search 'commChange' / 'TYONA' / 'Israel CVFR' (no relevant hits). LLHZ, LLIB, LLOV AD 2 pages return HTTP 404 in the public eAIP (domestic-only airfields). Last verified 2026-05-28.",
+  "source": "Empty pending a chart-specific source. Schema and rendering plumbing are in place (issue #399 / PR #401); data will be populated once a citable source — paragraph in PAMAT chapter B-03, an IAA AIP supplement that names the points, or direct visual inspection of the printed IAA CVFR chart — is available. Sources previously consulted (no extractable per-point comm-change data): Israel eAIP 2025-10-02 AIRAC AD 2.22 LLHA / LLBG / LLER, ENR 2.1, GEN 3.4, ENR 6-1 ATS routes chart; LLHZ / LLIB / LLOV AD 2 pages 404 in public eAIP; PAMAT (Israeli Domestic AIP) edition 1/24 (chart legend names the 'נקודת מעבר קשר' symbols but the symbol-to-waypoint mapping lives on graphical pages, not OCR-extractable). Last reviewed 2026-05-28.",
   "_definition": "Each entry marks a CVFR reporting point where pilots are expected to switch ATC frequencies because the point sits on (or at) a sector / CTR / TMA boundary. The chart annotation may be on the boundary line itself rather than directly at the point — the dataset records the *point of change*, not the chart-text position.",
-  "_NOTE": "TYONA was initially retracted in d4ef4a1 because the chart annotation 'פלוטו מע.' labels the Pluto/Palmachim sector-boundary line rather than the TYONA dot itself. Restored after clarification: TYONA is the reporting point at which pilots cross that boundary, so it IS a comm-change point under the dataset's point-of-change semantics (see _definition). Lesson: chart-text position does not always coincide with the point being annotated; record the point where pilots act. Entries with verified=false are POSITIONAL INFERENCES from the published PLUTO/HAGAV sector-boundary line in ENR 2.1 — they identify reporting points that *geometrically* sit on or near the boundary, but the actual chart 'מעבר תקשורת' symbol placement requires visual inspection of the paper IAA CVFR chart (or PAMAT chapter B-03), which is graphical and not extractable from the published PDF text.",
+  "_NOTE": "Reporting-type (חובה / דרישה — mandatory vs. on-request) is NOT comm-change. Sector-boundary proximity (a nav waypoint sitting geometrically close to a published PLUTO/HAGAV or TMA boundary line) is ALSO NOT a reliable proxy for comm-change. A point is a comm-change point only when a chart-specific source says so — a paragraph in PAMAT chapter B-03, an IAA AIP supplement naming the point, or direct inspection of the printed IAA CVFR chart symbology ('מע.' / 'מז.' / the 'נקודת מעבר קשר' legend symbols). Earlier inferences from boundary geometry (SORES, NSHRM, TZUBA, ZUKIM, BAZRA, HADRA, FRDIS, BOREN) and from sector-boundary chart text ('פלוטו מע.' near TYONA) were removed because they did not meet that bar; the chart-text annotation labels the boundary LINE, not the dot. Re-populate this file only with entries backed by a chart-specific citation in the per-entry `source` field.",
   "_TODO": [
-    "Visual chart walk of the printed IAA CVFR chart (or PAMAT chapter B-03) to either confirm or remove each verified=false entry, and to add the chart 'מע.' / 'מז.' annotations not present in nav-waypoints.json's sector-boundary inference (the chart legend's 'נקודת מעבר קשר בנתיב' / 'נקודת מעבר קשר בין יחידות מבקרות בציון אות הקריאה' symbols).",
-    "LLHZ (Herzliya) CTR boundary points — LLHZ AD 2 page is 404 in public eAIP, so the per-point handoff list requires PAMAT chapter B-03 / chart access.",
-    "LLIB (Rosh Pina) CTR / Galilee corridor — same; LLIB AD 2 page is 404 in public eAIP.",
-    "LLOV (Ovda) corridor — same; LLOV AD 2 page is 404 in public eAIP.",
-    "Negev / Eilat corridor reporting points (BMNUH, ZOFAR, RUHOT, OVDAT, HAZVA, HRGVS area; SOUTH CONTROL ↔ Eilat APP/TWR transitions) — LLER AD 2.22 does not name any CVFR transfer points (only NURIT for IFR). Requires PAMAT/chart access.",
-    "Tel-Aviv → Haifa coastal route mid-segment handoffs (BAZRA, HADRA, FRDIS, BOREN entries below) flagged as candidate handoff points based on geometry + user-supplied hypothesis; require chart confirmation. Frequencies omitted because the actual sector handling depends on altitude (LLBG TMA inside vs. outside) and route lateral position (overwater Tel-Aviv Control vs. overland PLUTO West)."
+    "Source a chart-specific reference for each comm-change reporting point: ideally PAMAT chapter B-03 (Israeli Domestic AIP, CVFR section) which is graphical and requires page-by-page inspection, an IAA AIP supplement, or direct reading of the printed IAA CVFR chart legend ('נקודת מעבר קשר בנתיב' / 'נקודת מעבר קשר בין יחידות מבקרות בציון אות הקריאה').",
+    "Until a chart-specific source surfaces, leave `points: []` empty. The renderer (draw.js drawNavWaypoints, interact.js showInspector) tolerates the empty array — no rings drawn, no inspector badge — so the schema and infrastructure can merge ahead of the data.",
+    "Reporting-type data (mandatory / on-request) is tracked separately on the feat/reporting-required branch (PR #405) — DO NOT conflate the two datasets."
   ],
-  "points": [
-    {
-      "name": "TYONA",
-      "commChange": true,
-      "from": "Tel-Aviv Control 121.40 / 124.30",
-      "to": "Pluto West 118.40",
-      "note": "Sector boundary crossing: Tel-Aviv Control 121.40/124.30 → Pluto West 118.40. Chart annotation 'פלוטו מע.' labels the boundary line near TYONA.",
-      "verified": true,
-      "source": "GitHub issue msupino/NavigationApp#399 — user-supplied chart fragment showing 'פלוטו מע.' adjacent to TYONA on the IAA CVFR chart; sector frequencies cross-referenced with Israel AIP ENR 2.1 (Tel-Aviv FIR — Northern Sector) and Domestic AIP (PAMAT) chapter A-07 §12 (PLUTO West 118.40)."
-    },
-    {
-      "name": "GALIM",
-      "commChange": true,
-      "from": "Tel-Aviv Control 121.40 / 124.30",
-      "to": "Haifa TWR 133.00",
-      "note": "CTR boundary crossing: Tel-Aviv Control ↔ Haifa TWR 133.00 (LLHA CTR entry/exit).",
-      "verified": true,
-      "source": "Israel AIP AD 2.22 LLHA (2025-10-02 AIRAC, https://e-aip.azurefd.net/2025-10-02-AIRAC/html/eAIP/LL-AD-2.LLHA-en-GB.html) §3: 'Arriving flights shall be transferred to Haifa TWR before GALIM 3000/5000 ft' / 'Departure flights shall be transferred to Tel Aviv Control at GALIM, 3000/5000 ft.' Haifa TWR primary 133.000 MHz (AD 2.18 LLHA)."
-    },
-    {
-      "name": "SORES",
-      "commChange": true,
-      "from": "Pluto West 118.40",
-      "to": "Hagav North 128.35",
-      "note": "INFERRED. SORES (31.7997N, 35.0761E) sits ~0.06 NM from the published PLUTO/HAGAV sector-boundary line (315500N 0345300E)-(314600N 0350800E), making it a candidate comm-change point for any CVFR route that crosses the boundary in the Jerusalem-corridor / Beit-Shemesh area. Frequencies cited are the AIP-confirmed pair on each side of the divide; per-direction handoff (north→south vs. south→north) and exact route assignment require visual chart verification.",
-      "verified": false,
-      "source": "Inferred from Israel AIP ENR 2.1 (https://e-aip.azurefd.net/2025-10-02-AIRAC/html/eAIP/LL-ENR-2.1-en-GB.html) — PLUTO/HAGAV (Tel-Aviv FIR Northern/Southern Sector) boundary at 315500N 0345300E - 314600N 0350800E. Frequencies from PAMAT chapter A-07 §12 (https://www.scribd.com/document/735132303/aip-Full-PAMAT-1-24): PLUTO West 118.40, HAGAV North 128.35."
-    },
-    {
-      "name": "NSHRM",
-      "commChange": true,
-      "from": "Pluto West 118.40",
-      "to": "Hagav North 128.35",
-      "note": "INFERRED. NSHRM (מחלף נשרים, 31.9092N, 34.8917E) sits ~0.12 NM from the published PLUTO/HAGAV sector-boundary line (315500N 0345300E)-(315600N 0344200E) on the Ramla/Beit-Shemesh segment. Candidate comm-change point for cross-boundary CVFR routes; frequencies are AIP-confirmed sector pair, per-point assignment requires chart verification.",
-      "verified": false,
-      "source": "Inferred from Israel AIP ENR 2.1 (https://e-aip.azurefd.net/2025-10-02-AIRAC/html/eAIP/LL-ENR-2.1-en-GB.html) — PLUTO/HAGAV boundary. Frequencies from PAMAT chapter A-07 §12 (https://www.scribd.com/document/735132303/aip-Full-PAMAT-1-24)."
-    },
-    {
-      "name": "TZUBA",
-      "commChange": true,
-      "from": "Pluto West 118.40",
-      "to": "Hagav North 128.35",
-      "note": "INFERRED. TZUBA (צובה, 31.7794N, 35.1206E) sits ~0.25 NM from the published PLUTO/HAGAV sector-boundary line (314600N 0350800E)-(314200N 0353100E) on the Judean-Hills / Jerusalem-west segment. Candidate comm-change point for cross-boundary CVFR routes; per-point assignment requires chart verification.",
-      "verified": false,
-      "source": "Inferred from Israel AIP ENR 2.1 (https://e-aip.azurefd.net/2025-10-02-AIRAC/html/eAIP/LL-ENR-2.1-en-GB.html) — PLUTO/HAGAV boundary. Frequencies from PAMAT chapter A-07 §12 (https://www.scribd.com/document/735132303/aip-Full-PAMAT-1-24)."
-    },
-    {
-      "name": "ZUKIM",
-      "commChange": true,
-      "from": "Pluto West 118.40",
-      "to": "Hagav North 128.35",
-      "note": "INFERRED. ZUKIM (עינות-צוקים, 31.7161N, 35.4497E) sits ~0.26 NM from the published PLUTO/HAGAV sector-boundary line (314600N 0350800E)-(314200N 0353100E) on the Dead-Sea / Jordan-Rift-Valley segment. Candidate comm-change point for cross-boundary CVFR routes; per-point assignment requires chart verification.",
-      "verified": false,
-      "source": "Inferred from Israel AIP ENR 2.1 (https://e-aip.azurefd.net/2025-10-02-AIRAC/html/eAIP/LL-ENR-2.1-en-GB.html) — PLUTO/HAGAV boundary. Frequencies from PAMAT chapter A-07 §12 (https://www.scribd.com/document/735132303/aip-Full-PAMAT-1-24)."
-    },
-    {
-      "name": "BAZRA",
-      "commChange": true,
-      "note": "INFERRED, FREQUENCIES NOT CONFIRMED. BAZRA (בצרה, 32.2186N, 34.8825E) sits at the LLBG TMA Northern Central Sector boundary (32°15'53\"N 34°55'39\"E - 32°13'50\"N 35°00'15\"E) ~3 NM north of the published TMA edge, making it a candidate TMA-exit handoff point on the Tel-Aviv → northern coastal CVFR route (user hypothesis in issue #399). Actual from/to depends on altitude (inside TMA = Ben-Gurion TMA control 120.500/119.500; above TMA = Tel-Aviv Control 121.40 / Pluto West 118.40) and direction of flight. Omitted to avoid fabrication — verify against printed CVFR chart.",
-      "verified": false,
-      "source": "Inferred from Israel AIP ENR 2.1 LLBG TMA definition (https://e-aip.azurefd.net/2025-10-02-AIRAC/html/eAIP/LL-ENR-2.1-en-GB.html) and user hypothesis in GitHub issue msupino/NavigationApp#399 (Tel-Aviv CTR / LLBG TMA boundary points beyond TYONA)."
-    },
-    {
-      "name": "HADRA",
-      "commChange": true,
-      "note": "INFERRED, FREQUENCIES NOT CONFIRMED. HADRA (צומת-נחל חדרה, 32.4647N, 34.9122E) is a coastal reporting point mid-segment on the Tel-Aviv → Haifa CVFR route, well north of the LLBG TMA and south of the Haifa CTR (GALIM). User hypothesized a comm-change here (issue #399); plausible handoff Tel-Aviv Control 121.40 ↔ Pluto West 118.40 (overwater→overland) but per-point assignment requires chart verification.",
-      "verified": false,
-      "source": "Inferred from user hypothesis in GitHub issue msupino/NavigationApp#399 (Tel-Aviv CTR / LLBG TMA boundary points beyond TYONA, coastal route to Haifa)."
-    },
-    {
-      "name": "FRDIS",
-      "commChange": true,
-      "note": "INFERRED, FREQUENCIES NOT CONFIRMED. FRDIS (צומת-פורדיס/Fureidis, 32.5919N, 34.9464E) is a coastal reporting point ~15 NM south of GALIM (the verified Haifa CTR transfer point) on the Tel-Aviv → Haifa CVFR route. User hypothesized a comm-change here (issue #399); plausible handoff Tel-Aviv Control ↔ Pluto West, but per-point assignment requires chart verification.",
-      "verified": false,
-      "source": "Inferred from user hypothesis in GitHub issue msupino/NavigationApp#399 (Tel-Aviv CTR / LLBG TMA boundary points beyond TYONA, coastal route to Haifa)."
-    },
-    {
-      "name": "BOREN",
-      "commChange": true,
-      "note": "INFERRED, FREQUENCIES NOT CONFIRMED. BOREN (בית אורן, 32.7144N, 34.9708E) is a south-Carmel reporting point ~8 NM south of GALIM on the inland approach to LLHA. Candidate Pluto West → Haifa TWR pre-handoff point; per-point assignment requires chart verification.",
-      "verified": false,
-      "source": "Inferred from geometry (close to verified GALIM Haifa CTR transfer point) and user hypothesis in GitHub issue msupino/NavigationApp#399."
-    }
-  ]
+  "points": []
 }
