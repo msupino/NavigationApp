@@ -66,6 +66,9 @@ window.S = Object.assign({
   tbSearchOpen: '🔍 Find',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
   deleteWp: 'Delete Waypoint',                      // inspector button
+  resetLegMarkers: '↺ Reset marker position',       // inspector leg button — reset label offsets
+  resetAllLegMarkers: '↺ Reset all marker positions', // inspector leg button — reset every leg
+  resetAllConfirm: 'Reset all leg marker positions to default? This will clear any manual adjustments.',
   clearConfirm: 'Remove all waypoints and notes?',
   errBadCoords: 'file has invalid waypoint coordinates',
   // --- end Waypoint terminology ---------------------------------------
@@ -200,6 +203,14 @@ window.S = Object.assign({
   modalCloseTitle: 'Close',
   tbPrint: '⬇ Save PNG',
   tbPrintTitle: 'Save the framed map + route as a PNG',
+  tbMagnifier: '🔍 Magnifying Glass',
+  tbMagnifierTitle: 'Magnifying glass — zoomed view at cursor for precise editing',
+  magSettingsTitle: 'Magnifier',
+  magZoomLabel: 'Zoom',
+  magZoomTitle: 'Magnifier zoom factor',
+  magLoading: 'Perfecting…',
+  tbResetAllMarkers: '↺ Reset all marker positions',
+  tbResetAllMarkersTitle: 'Reset all leg marker offsets to default positions',
   inspCloseTitle: 'Close',
   inspCloseLabel: 'Close',
   tbSecEdit: '✏️ Edit',
@@ -277,6 +288,12 @@ var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 var yellowAlpha = 0.8;    // global multiplier for yellow label backgrounds (default 80%)
 var wpSize = 1;             // waypoint name / number text size scale
 var legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
+function legZoomScale() {   // zoom + legArrowSize → pixel multiplier for offsets/sizes
+  return Math.max(0.35, Math.pow(2, map.getZoom() - 12)) * legArrowSize;
+}
+var magnifierOn = false;    // magnifying-glass toggle
+var magnifierZoom = 2;      // default zoom factor
+var magnifierSize = 400;    // magnifier diameter (px)
 let pageSize = null;        // null | 'A3' | 'A4'
 // `var` (not `let`) so window.pageOrient writes from ui.js's boot restore
 // land on the same binding the toggle reads. Default 'portrait' since most
@@ -325,14 +342,35 @@ function tintFill(hex) {
 
 const NOTE_DEFAULT_COLOR = '#fff6aa';   // matches the existing yellow fill
 
-const newLeg = () => ({
-  inboundAltitude: 2000,
-  outboundAltitude: 2000,
-  flightSpeed: 90,
-  outboundSpeed: 90,
-  inLabel: { a: 0, p: 44 },            // marker offset: along leg, perpendicular
-  outLabel: { a: 0, p: -44 },
-});
+// Default leg-marker offsets. Single source of truth used by newLeg(),
+// the inspector "Reset marker position" button (interact.js), the toolbar
+// "Reset all marker positions" button (ui.js), and the share-URL decoder
+// (io.js). The invariant: stored offsets are size-independent (already
+// divided by legArrowSize), with `_m: 1` marking them migrated. At render
+// time drawLegs multiplies by `legZoomScale() = max(0.35, 2^(zoom-12)) *
+// legArrowSize`, so the on-screen perpendicular distance at zoom 12 is a
+// constant 44 px regardless of legArrowSize. See io.js `_normalizeLegLabel`
+// for the legacy-blob migration that converts pre-#393 raw-pixel offsets
+// to this same unit.
+function _defaultLegLabels() {
+  const k = (typeof legArrowSize === 'number' && legArrowSize > 0)
+    ? legArrowSize : 1;
+  return {
+    inLabel:  { a: 0, p:  44 / k, _m: 1 },
+    outLabel: { a: 0, p: -44 / k, _m: 1 },
+  };
+}
+const newLeg = () => {
+  const d = _defaultLegLabels();
+  return {
+    inboundAltitude: 2000,
+    outboundAltitude: 2000,
+    flightSpeed: 90,
+    outboundSpeed: 90,
+    inLabel: d.inLabel,                  // marker offset: along leg, perpendicular
+    outLabel: d.outLabel,
+  };
+};
 
 
 // --- helpers ---------------------------------------------------------

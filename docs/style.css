@@ -410,6 +410,59 @@ html, body {
 
 #insp-body { padding: 10px 12px; }
 
+#magnifier-settings {
+  position: absolute;
+  z-index: 1100;
+  bottom: 12px;
+  right: 12px;
+  width: 200px;
+  background: rgba(20, 18, 18, 0.95);
+  border: 1px solid #3a3636;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+#magnifier-settings.hidden { display: none; }
+#mag-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 6px 6px 12px;
+  background: #2f2b2b;
+  border-bottom: 1px solid #3a3636;
+}
+#mag-settings-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: #e8e8e8;
+}
+#mag-settings-close {
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  width: 24px;
+  height: 24px;
+  color: #b9b3b3;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+#mag-settings-close:hover { background: #443f3f; color: #fff; }
+#mag-settings-body { padding: 10px 12px; }
+#mag-settings-body .navtoggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: #e8e8e8;
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
+#mag-settings-body .navtoggle:last-child { margin-bottom: 0; }
+#mag-settings-body .navtoggle input[type="range"] { flex: 1; width: 0; min-width: 0; }
+#mag-settings-body .slider-val { width: 3em; text-align: right; font-size: 11px; color: #ccc; flex-shrink: 0; }
+
 .row {
   display: flex;
   align-items: center;
@@ -1244,4 +1297,35 @@ html, body {
   background: #ffd966;
   color: #231F20;
   border-color: #ffd966;
+/* magnifying glass */
+#tool-magnifier { font-size: 18px; line-height: 1; padding: 2px 6px; }
+#tool-magnifier.active { background: #3a3636; border-color: #ffcc33; color: #ffcc33; }
+
+/* "Perfecting…" pill that appears inside the loupe while hi-res sub-tiles
+   are still in flight. Sits above the scaled content layer (z-index >= 1),
+   centred, and pointer-events disabled so it never intercepts clicks. */
+.mag-loading {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(20, 18, 18, 0.78);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  border: 1px solid rgba(255, 204, 51, 0.55);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  z-index: 2;
+  white-space: nowrap;
+  animation: mag-loading-pulse 1.4s ease-in-out infinite;
+}
+.mag-loading.show { display: block; }
+@keyframes mag-loading-pulse {
+  0%, 100% { opacity: 0.65; }
+  50% { opacity: 1; }
 }
