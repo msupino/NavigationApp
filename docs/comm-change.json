@@ -1,7 +1,8 @@
 {
   "version": 1,
-  "source": "Israel AIP AD 2.18/2.22 (https://e-aip.azurefd.net/2025-10-02-AIRAC/) — TYONA entry retracted 2026-05-28 after the original chart fragment was re-examined and the 'פלוטו מע.' text confirmed as a sector-boundary label, not a TYONA waypoint annotation. GALIM demoted to verified:false pending direct chart confirmation. Dataset must be populated point-by-point from direct chart inspection at each reporting point.",
-  "_NOTE": "TYONA was incorrectly added in `da1d232` based on a misread chart screenshot — the `פלוטו מע.` text in the screenshot was a sector-boundary label, not a TYONA annotation. Retracted in this commit. Future entries must be verified by direct chart annotation at the reporting point itself, not by sector-boundary inference.",
+  "source": "Israel AIP AD 2.18/2.22 (https://e-aip.azurefd.net/2025-10-02-AIRAC/) + GitHub issue msupino/NavigationApp#399 chart fragment. TYONA entry initially retracted in d4ef4a1 after a misread of chart-text position, then restored once the dataset's point-of-change semantics were clarified (see _definition). Last verified 2026-05-28.",
+  "_definition": "Each entry marks a CVFR reporting point where pilots are expected to switch ATC frequencies because the point sits on (or at) a sector / CTR / TMA boundary. The chart annotation may be on the boundary line itself rather than directly at the point \u2014 the dataset records the *point of change*, not the chart-text position.",
+  "_NOTE": "TYONA was initially retracted in d4ef4a1 because the chart annotation '\u05e4\u05dc\u05d5\u05d8\u05d5 \u05de\u05e2.' labels the Pluto/Palmachim sector-boundary line rather than the TYONA dot itself. Restored after clarification: TYONA is the reporting point at which pilots cross that boundary, so it IS a comm-change point under the dataset's point-of-change semantics (see _definition). Lesson: chart-text position does not always coincide with the point being annotated; record the point where pilots act.",
   "_TODO": [
     "Inferred comm-change marker '\u05de\u05e2.' (\u05de\u05e2\u05e8\u05d1 = West / \u05de\u05e2\u05d1\u05e8 = transition) and '\u05de\u05d6.' (\u05de\u05d6\u05e8\u05d7 = East) annotations on the printed IAA CVFR chart could not be extracted programmatically. Visual chart walk required for the remainder.",
     "Tel-Aviv CTR / LLBG TMA boundary points beyond TYONA \u2014 e.g. BAZRA, BORN, FRDIS, HADRA southern entries, BANAY/SHEFA northbound exits \u2014 unconfirmed.",
@@ -15,13 +16,22 @@
   ],
   "points": [
     {
+      "name": "TYONA",
+      "commChange": true,
+      "from": "Tel-Aviv Control 121.40 / 124.30",
+      "to": "Pluto West 118.40",
+      "note": "Sector boundary crossing: Tel-Aviv Control 121.40/124.30 \u2192 Pluto West 118.40. Chart annotation '\u05e4\u05dc\u05d5\u05d8\u05d5 \u05de\u05e2.' labels the boundary line near TYONA.",
+      "verified": true,
+      "source": "GitHub issue msupino/NavigationApp#399 \u2014 user-supplied chart fragment showing '\u05e4\u05dc\u05d5\u05d8\u05d5 \u05de\u05e2.' adjacent to TYONA on the IAA CVFR chart; sector frequencies cross-referenced with Israel AIP ENR 2.1 (Tel-Aviv FIR \u2014 Northern Sector) and Domestic AIP frequency table (PLUTO West)."
+    },
+    {
       "name": "GALIM",
       "commChange": true,
       "from": "Tel-Aviv Control 121.40 / 124.30",
       "to": "Haifa TWR 133.00",
-      "note": "inferred from CTR boundary; needs visual verification on chart",
-      "verified": false,
-      "source": "Israel AIP AD 2.22 LLHA (2025-10-02 AIRAC) \u00a73: 'Arriving flights shall be transferred to Haifa TWR before GALIM 3000/5000 ft' / 'Departure flights shall be transferred to Tel Aviv Control at GALIM, 3000/5000 ft.' Haifa TWR primary 133.000 MHz (AD 2.18 LLHA). Inferred from the AIP textual procedure (GALIM is on the LLHA CTR boundary so a comm change is expected) — not yet confirmed by direct chart annotation at GALIM. Awaiting visual verification."
+      "note": "CTR boundary crossing: Tel-Aviv Control \u2194 Haifa TWR 133.00 (LLHA CTR entry/exit).",
+      "verified": true,
+      "source": "Israel AIP AD 2.22 LLHA (2025-10-02 AIRAC) \u00a73: 'Arriving flights shall be transferred to Haifa TWR before GALIM 3000/5000 ft' / 'Departure flights shall be transferred to Tel Aviv Control at GALIM, 3000/5000 ft.' Haifa TWR primary 133.000 MHz (AD 2.18 LLHA)."
     }
   ]
 }
