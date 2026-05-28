@@ -581,6 +581,24 @@ document.getElementById('airfield-cb').onchange = async e => {
   }
   draw();
 };
+// Reporting-type overlay (issue #404). Default on. Lazy-loads
+// docs/reporting-types.json on first activation, identical convention to the
+// nav-waypoints / airfields overlays above.
+const REPORTING_KEY = 'navaid.showReporting';
+try {
+  const stored = localStorage.getItem(REPORTING_KEY);
+  if (stored !== null) window.showReporting = stored === '1';
+} catch (e) { /* storage unavailable */ }
+document.getElementById('reporting-cb').checked = showReporting;
+document.getElementById('reporting-cb').onchange = async e => {
+  window.showReporting = e.target.checked;
+  try { localStorage.setItem(REPORTING_KEY, showReporting ? '1' : '0'); }
+  catch (err) { /* storage unavailable */ }
+  if (showReporting) await loadReporting();
+  draw();
+};
+// Boot-prefetch when default-on so the badge is ready on first paint.
+if (showReporting) loadReporting().then(() => draw());
 const ALPHA_KEY = 'navaid.yellowAlpha';
 try {
   const v = parseFloat(localStorage.getItem(ALPHA_KEY));

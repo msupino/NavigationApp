@@ -132,7 +132,6 @@ function normalizeWaypointSequenceName(wp) {
   const t = String(wp.name || '').trim();
   if (t && isSequenceWaypointName(t)) wp.name = '';
 }
-
 // --- reporting-type overlay (issue #404) ----------------------------
 // Lazy-loads docs/reporting-types.json on first activation. Format:
 // { points:[{ name:'5LETTER', reportRequired:'mandatory'|'on-request'|'arp' }] }.

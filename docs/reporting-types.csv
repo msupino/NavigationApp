@@ -1,0 +1,200 @@
+code,name_he,reporting_type,north,east
+AAKKO,עכו,mandatory,32° 55' 07" N,35° 05' 47" E
+AFFEK,אפק,mandatory,32° 50' 25" N,35° 07' 40" E
+AFULA,עפולה,mandatory,32° 36' 13" N,35° 16' 55" E
+AHIUD,אחיהוד,on-request,32° 54' 43" N,35° 10' 52" E
+ALLON,אלונ,on-request,32° 02' 29" N,35° 22' 00" E
+ALMOG,אלמוג,on-request,31° 47' 23" N,35° 27' 23" E
+ALUMT,אלומות,on-request,32° 42' 51" N,35° 32' 47" E
+AMIOZ,עמיעוז,on-request,31° 15' 24" N,34° 24' 10" E
+AMNON,אמנונ,on-request,32° 54' 20" N,35° 34' 00" E
+ANATA,ענאתא,mandatory,31° 49' 16" N,35° 16' 17" E
+APOLN,אפולוניה,on-request,32° 11' 28" N,34° 47' 50" E
+ARAVA,צומת הערבה,on-request,30° 59' 22" N,35° 18' 33" E
+ARENA,ארנה,on-request,32° 09' 53" N,34° 47' 08" E
+ARGMN,ארגמנ,on-request,32° 10' 23" N,35° 31' 57" E
+ARRAD,צומת ערד,mandatory,31° 15' 16" N,35° 12' 35" E
+ASKLN,תל אשקלונ,on-request,31° 39' 59" N,34° 32' 21" E
+AYLON,איילונ,mandatory,31° 52' 18" N,34° 56' 37" E
+AZOOZ,עזוז,on-request,30° 48' 00" N,34° 28' 13" E
+BASAN,להבות הבשנ,mandatory,33° 08' 46" N,35° 38' 17" E
+BAZRA,בצרה,mandatory,32° 13' 07" N,34° 52' 57" E
+BEREC,הר ברכ,mandatory,29° 47' 35" N,34° 54' 37" E
+BEZRA,בית עזרא,mandatory,31° 44' 29" N,34° 38' 45" E
+BHAIL,ברור חיל,on-request,31° 33' 28" N,34° 37' 57" E
+BKAMA,בית קמה,mandatory,31° 26' 30" N,34° 45' 56" E
+BMNUH,באר מנוחה,on-request,30° 18' 12" N,35° 08' 03" E
+BOKER,שדה בוקר,mandatory,30° 52' 30" N,34° 47' 09" E
+BOREN,בית אורנ,on-request,32° 42' 52" N,34° 58' 15" E
+BOVED,בית עובד,on-request,31° 55' 13" N,34° 46' 12" E
+BRORA,באר אורה,on-request,29° 42' 29" N,34° 59' 50" E
+BSEMS,בית שמש,on-request,31° 45' 17" N,34° 58' 53" E
+CLORE,קלור,on-request,32° 03' 11" N,34° 44' 09" E
+DALIA,דליה,mandatory,32° 35' 49" N,35° 05' 00" E
+DAROM,מחלפ דרומ,mandatory,32° 47' 46" N,34° 56' 36" E
+DEENA,דינה,mandatory,32° 01' 26" N,34° 38' 26" E
+DEROR,בני דרור,mandatory,32° 15' 26" N,34° 53' 28" E
+DESHE,כרי דשא,mandatory,32° 52' 12" N,35° 31' 57" E
+DIMON,דימונה,mandatory,31° 04' 04" N,35° 00' 21" E
+DUGIT,דוגית,mandatory,32° 51' 09" N,35° 03' 06" E
+DUMIM,כפר אדומימ,on-request,31° 48' 14" N,35° 19' 29" E
+EILAT,אילת,on-request,29° 33' 30" N,34° 57' 32" E
+EIRON,עירונ,on-request,32° 28' 51" N,35° 01' 28" E
+EITAN,נווה איתנ,mandatory,32° 29' 44" N,35° 32' 01" E
+EMMEK,משמר העמק,on-request,32° 36' 54" N,35° 08' 30" E
+ENGDI,עינ גדי,mandatory,31° 27' 51" N,35° 23' 41" E
+ESTOL,אשתאול,on-request,31° 46' 46" N,35° 00' 41" E
+EVLYM,אבליימ,on-request,32° 49' 26" N,35° 09' 05" E
+FAZEL,צומת פצאל,on-request,32° 02' 53" N,35° 27' 47" E
+FRDIS,צומת פורדי,on-request,32° 35' 31" N,34° 56' 47" E
+GALIM,בת גלימ,mandatory,32° 50' 28" N,34° 58' 52" E
+GILAM,גילעמ,mandatory,32° 49' 17" N,35° 07' 57" E
+GILAT,גילת,mandatory,31° 20' 14" N,34° 39' 11" E
+GNYAM,גני עמ,mandatory,32° 09' 01" N,34° 53' 39" E
+GOVRN,בית גוברינ,on-request,31° 36' 22" N,34° 53' 34" E
+GVARM,גברעמ,on-request,31° 35' 36" N,34° 36' 37" E
+GVULT,גבולות,arp,31° 13' 39" N,34° 27' 37" E
+HADRA,חדרה,mandatory,32° 27' 53" N,34° 54' 44" E
+HAREL,מחלפ הראל,on-request,31° 47' 55" N,35° 08' 46" E
+HAROV,כפר חרוב,mandatory,32° 45' 33" N,35° 40' 06" E
+HASID,כפר חידימ,mandatory,32° 44' 48" N,35° 04' 40" E
+HATRU,צומת חתרורימ,mandatory,31° 13' 08" N,35° 14' 54" E
+HAZVA,חצבה,on-request,30° 46' 24" N,35° 14' 11" E
+HNINA,בית חנינא,mandatory,31° 49' 49" N,35° 12' 27" E
+HODYA,הודיה,on-request,31° 40' 58" N,34° 39' 09" E
+HOLOT,חולות,on-request,30° 59' 39" N,34° 21' 37" E
+HOTRM,החותרימ,mandatory,32° 45' 14" N,34° 56' 13" E
+HOVAV,רמת חובב,mandatory,31° 08' 08" N,34° 48' 18" E
+HRGVS,הר גב,on-request,30° 37' 22" N,34° 57' 00" E
+HTZUK,הצוק,mandatory,32° 08' 44" N,34° 46' 42" E
+HULAT,חולתה,mandatory,33° 02' 37" N,35° 37' 46" E
+IKKEA,איקאה,on-request,31° 57' 05" N,34° 46' 13" E
+KANOT,צומת כנות,mandatory,31° 48' 15" N,34° 45' 48" E
+KKDEM,קדמ,arp,31° 15' 46" N,34° 39' 01" E
+KNTRY,קאנטרי קלאב,mandatory,32° 08' 27" N,34° 48' 05" E
+KOYAR,כוכב הירדנ,on-request,32° 35' 51" N,35° 32' 37" E
+KRYON,קיריונ,mandatory,32° 50' 36" N,35° 05' 20" E
+KTORA,צומת קטורה,mandatory,29° 59' 22" N,35° 04' 35" E
+KUVSH,כובשימ,mandatory,31° 15' 31" N,34° 45' 49" E
+LAHAV,להב,on-request,31° 22' 57" N,34° 49' 37" E
+LIAAD,ליעד,mandatory,31° 57' 30" N,34° 30' 54" E
+LLBG,בנ גוריונ,arp,32° 00' 34" N,34° 53' 08" E
+LLBO,הבונימ,arp,32° 39' 00" N,34° 55' 58" E
+LLBS,תימנ,arp,31° 17' 13" N,34° 43' 22" E
+LLEK,תל נופ,arp,31° 50' 12" N,34° 49' 06" E
+LLER,אילנ ואפ רמונ,arp,29° 43' 38" N,35° 00' 51" E
+LLES,עינ שמר,arp,32° 26' 29" N,35° 00' 12" E
+LLEV,עינ ורד,arp,32° 15' 54" N,34° 57' 06" E
+LLEY,עינ יהב,arp,30° 37' 18" N,35° 12' 11" E
+LLFK,פיק,arp,32° 47' 07" N,35° 43' 02" E
+LLHA,חיפה,arp,32° 48' 30" N,35° 02' 34" E
+LLHB,חצרימ,arp,31° 14' 36" N,34° 39' 18" E
+LLHS,חצור,arp,31° 45' 28" N,34° 43' 23" E
+LLHZ,הרצליה,arp,32° 10' 46" N,34° 50' 04" E
+LLIB,ראש פינה,arp,32° 58' 50" N,35° 34' 15" E
+LLKS,קרית שמונה,arp,33° 12' 42" N,35° 35' 47" E
+LLKZ,קציעות,arp,30° 51' 32" N,34° 26' 37" E
+LLMG,מגידו,arp,32° 35' 50" N,35° 14' 05" E
+LLMZ,מצדה,mandatory,31° 19' 45" N,35° 23' 18" E
+LLNV,נבטימ,arp,31° 12' 48" N,35° 01' 06" E
+LLNV,נגב,arp,31° 11' 44" N,35° 02' 21" E
+LLOV,עובדה,arp,29° 56' 06" N,34° 56' 27" E
+LLPL,פלמחימ,arp,31° 53' 54" N,34° 41' 24" E
+LLRD,רמת דוד,arp,32° 40' 00" N,35° 11' 00" E
+LLRM,רמונ,arp,30° 46' 30" N,34° 40' 00" E
+LLRS,ראשונ לציונ,arp,31° 58' 03" N,34° 45' 13" E
+LTRUN,לטרונ,on-request,31° 50' 19" N,34° 59' 12" E
+MEHOL,משולש חולות,mandatory,31° 57' 39" N,34° 45' 51" E
+MESAR,מעלה מישר,on-request,30° 30' 06" N,34° 56' 37" E
+MESEK,משק,mandatory,31° 15' 53" N,34° 41' 59" E
+METAH,מתח,mandatory,31° 13' 32" N,34° 45' 18" E
+MIHMS,מעלה מכמש,mandatory,31° 51' 16" N,35° 19' 46" E
+MINGV,משמר הנגב,on-request,31° 22' 08" N,34° 42' 46" E
+MMORR,מור,on-request,31° 15' 16" N,35° 22' 06" E
+MOVIL,המוביל,mandatory,32° 45' 33" N,35° 14' 00" E
+MRISN,מחלפ ראשונ,on-request,31° 58' 37" N,34° 47' 31" E
+MYTAR,מיתר,mandatory,31° 18' 53" N,34° 56' 17" E
+MZDOT,מצודות,mandatory,31° 21' 23" N,35° 06' 27" E
+NAAMA,נעמה,on-request,31° 54' 31" N,35° 27' 45" E
+NAGID,כפר הנגיד,on-request,31° 53' 23" N,34° 45' 21" E
+NAHEM,כפר מנחמ,on-request,31° 44' 43" N,34° 49' 20" E
+NAHLA,נחלה,on-request,31° 39' 23" N,34° 48' 33" E
+NASIH,אשל הנשיא,mandatory,31° 19' 49" N,34° 41' 54" E
+NCITY,צפונ העיר,mandatory,31° 17' 15" N,34° 47' 29" E
+NCSHN,צומת נחשונ,mandatory,31° 48' 56" N,34° 55' 01" E
+NEGEV,צומת הנגב,on-request,31° 03' 58" N,34° 50' 17" E
+NITZA,ניצנ,mandatory,31° 43' 27" N,34° 34' 14" E
+NIZAN,מזלג ניצנה,mandatory,30° 45' 16" N,34° 33' 54" E
+NMASD,נמל אשדוד,mandatory,31° 50' 00" N,34° 37' 31" E
+NOAAM,נעמ,mandatory,31° 34' 17" N,34° 46' 33" E
+NSHRM,מחלפ נשרימ,mandatory,31° 54' 33" N,34° 53' 30" E
+NTAIM,נטעימ,mandatory,31° 56' 37" N,34° 46' 51" E
+NTVOT,נתיבות,on-request,31° 25' 45" N,34° 35' 57" E
+OFKIM,אופקימ,on-request,31° 19' 20" N,34° 37' 08" E
+OHLIM,אוהלימ,mandatory,31° 11' 28" N,34° 48' 17" E
+OLGAH,אולגה,mandatory,32° 25' 53" N,34° 51' 57" E
+OMMER,עומר,mandatory,31° 16' 29" N,34° 49' 42" E
+OSNAT,אנת,on-request,31° 49' 58" N,34° 31' 24" E
+OVDAT,חורבות עבדת,mandatory,30° 48' 10" N,34° 47' 36" E
+PARDS,פרד,mandatory,32° 06' 10" N,34° 50' 52" E
+PELEG,פלג,on-request,32° 19' 48" N,34° 50' 14" E
+RANNO,רעננה צפונ,mandatory,32° 11' 27" N,34° 53' 18" E
+REVAH,רווחה,on-request,31° 38' 40" N,34° 43' 49" E
+RIDNG,רידינג,on-request,32° 06' 37" N,34° 45' 45" E
+ROKCH,רוקח,on-request,32° 06' 09" N,34° 48' 13" E
+RUHOT,צומת הרוחות,mandatory,30° 39' 36" N,34° 48' 32" E
+SAHAR,ער,on-request,32° 17' 45" N,34° 45' 10" E
+SAMAR,מר,mandatory,29° 49' 53" N,35° 01' 43" E
+SDROT,שדרות,mandatory,31° 30' 24" N,34° 35' 08" E
+SDTYM,שדות ימ,mandatory,32° 29' 48" N,34° 53' 06" E
+SEGEV,שגב,on-request,32° 51' 40" N,35° 15' 45" E
+SFAIM,שפיימ,mandatory,32° 12' 38" N,34° 48' 26" E
+SHAHR,כוכב השחר,on-request,31° 57' 27" N,35° 20' 13" E
+SHALM,מצפה שלמ,on-request,31° 33' 31" N,35° 24' 09" E
+SHARG,שער הגיא,on-request,31° 49' 11" N,35° 01' 16" E
+SHARO,צומת השרונ,on-request,32° 19' 23" N,34° 54' 14" E
+SHRUT,שחרות,mandatory,29° 54' 28" N,35° 00' 12" E
+SIGAL,יגל,mandatory,31° 11' 42" N,34° 17' 34" E
+SIRNI,נצר ירני,on-request,31° 55' 41" N,34° 49' 48" E
+SITIM,שיטימ,on-request,30° 10' 33" N,35° 00' 52" E
+SIZFN,שזפונ,mandatory,30° 02' 51" N,35° 00' 52" E
+SMRAT,שמרת,on-request,32° 57' 06" N,35° 05' 24" E
+SOKET,צומת שוקת,mandatory,31° 18' 27" N,34° 54' 04" E
+SORES,שורש,mandatory,31° 47' 59" N,35° 04' 34" E
+SOVAL,שובל,mandatory,31° 24' 41" N,34° 44' 47" E
+SUPER,ופרלנד,mandatory,31° 58' 35" N,34° 44' 30" E
+SZION,שבי ציונ,on-request,32° 58' 46" N,35° 05' 36" E
+TARAD,תל ערד,on-request,31° 16' 39" N,35° 07' 32" E
+TAVOR,כפר תבור,on-request,32° 41' 25" N,35° 25' 12" E
+TIRAT,טירת צבי,on-request,32° 25' 28" N,35° 31' 36" E
+TLLIM,טללימ,on-request,30° 59' 26" N,34° 45' 44" E
+TYONA,תל יונה,mandatory,32° 00' 17" N,34° 43' 38" E
+TZHOT,צלחות,on-request,31° 18' 28" N,34° 31' 47" E
+VINGT,וינגייט,on-request,32° 15' 20" N,34° 49' 01" E
+YAHEL,יהל,on-request,30° 04' 56" N,35° 08' 00" E
+YAHOL,ימ חולונ,on-request,32° 01' 21" N,34° 27' 38" E
+YAPAL,ימ פלמחימ,mandatory,31° 54' 54" N,34° 27' 30" E
+YASDD,ימ אשדוד,on-request,31° 48' 37" N,34° 27' 23" E
+YASFA,ימ שפיימ,on-request,32° 13' 07" N,34° 37' 29" E
+YATED,יתד,on-request,31° 12' 17" N,34° 20' 04" E
+YAVNE,יבנה מזרח,on-request,31° 52' 19" N,34° 45' 25" E
+YOTVT,יטבתה,on-request,29° 54' 03" N,35° 04' 02" E
+YRIHO,מצפה יריחו,mandatory,31° 49' 10" N,35° 23' 15" E
+YRUHM,ירוחמ,on-request,30° 59' 23" N,34° 54' 39" E
+ZAFIT,צומת צפית,on-request,31° 02' 33" N,35° 11' 59" E
+ZALMN,צלמונ,on-request,32° 51' 12" N,35° 24' 42" E
+ZASHD,צומת אשדוד,mandatory,31° 49' 34" N,34° 42' 30" E
+ZDAFA,צדפה,mandatory,31° 46' 54" N,34° 35' 59" E
+ZGOAL,גורל,mandatory,31° 18' 46" N,34° 47' 16" E
+ZHRYA,זכריה,on-request,31° 41' 59" N,34° 56' 42" E
+ZLHAV,צומת להבימ,mandatory,31° 22' 21" N,34° 47' 36" E
+ZMGEN,צומת מגנ,mandatory,31° 17' 38" N,34° 25' 56" E
+ZMGID,צומת מגידו,mandatory,32° 34' 22" N,35° 11' 28" E
+ZOFAR,צופר,mandatory,30° 33' 35" N,35° 11' 12" E
+ZOHAR,נווה זוהר,mandatory,31° 09' 03" N,35° 22' 21" E
+ZOREA,הזורע,on-request,32° 38' 53" N,35° 07' 08" E
+ZRANA,רעננה מרכז,mandatory,32° 10' 38" N,34° 53' 16" E
+ZUKIM,עינות צוקימ,mandatory,31° 42' 58" N,35° 26' 59" E
+ZURIM,עינ צורימ,mandatory,31°42' 06" N,34° 42' 54" E
+ZYAAR,צומת יער,mandatory,32° 24' 35" N,34° 54' 13" E
+ZZHOR,צומת ציחור,on-request,30° 16' 36" N,35° 01' 12" E

@@ -81,6 +81,18 @@ branch by mistake.
   skipped here — airfield ARPs live in `airfields.json` with richer
   data (runways, plates, English label). Updating: drop the CSV into
   the build script and regenerate.
+- `reporting-types.json` — 198 IAA-CVFR-chart reporting requirements
+  (`{name, reportRequired}` where `reportRequired ∈
+  {'mandatory','on-request','arp'}`). Issue #404. Joined to
+  `nav-waypoints.json` by 5-letter `name` at render time. Lazy-fetched
+  when the **Show reporting type** toolbar checkbox is on (default on);
+  `loadReporting()` / `reportingFor(name)` in `draw.js`.
+  `reporting-types.csv` ships alongside as a sortable mirror of the
+  same dataset for chart-side comparison.
+- `comm-change.json` — frequency-change markers (issue #399, separate
+  from `reporting-types.json`). A point can be both a mandatory reporter
+  and a comm-change point (TYONA, GALIM); the two attributes live in
+  separate files because they answer different questions.
 - `.gitattributes` — forces images out of LFS so Pages serves them.
 - `map.jpg`, `build_map.py` — legacy from the pre-Leaflet static-chart
   version. **Unused**, safe to delete.
@@ -239,6 +251,13 @@ branch by mistake.
   dots; the 5-letter ID label appears at zoom ≥ 10. Captured in PNG
   export. Source: IAA CVFR chart page 113 (2025 edition) — see the
   Notes / pending section.
+- **Show reporting type** (default **on**, issue #404): when both this
+  and Nav Waypoints are on, mandatory reporting points (chart סוג
+  דיווח: חובה) get a small bold red `M` glyph above the dot. On-request
+  points stay as bare dots; ARPs render through the airfields overlay.
+  The inspector also shows a `reporting-badge` row when a route
+  waypoint matches a code in `reporting-types.json`. Persisted at
+  `navaid.showReporting`.
 - **A3 / A4 page frame:** `pageFrameRect()` returns the rectangle in
   screen px sized so its contents are 1:250 000. Clicking the same
   size button again clears it. Orientation chosen via the
@@ -307,6 +326,8 @@ branch by mistake.
 - `navaid.highlightDiff` — `'0'` / `'1'` for altitude-diff halos.
 - `navaid.showNavWP` — `'0'` / `'1'` for the nav-waypoints overlay.
 - `navaid.showAirfields` — `'0'` / `'1'` for the airfield overlay.
+- `navaid.showReporting` — `'0'` / `'1'` for the mandatory-reporting
+  `M`-badge overlay (issue #404).
 - `navaid.showWpNames` — `'0'` / `'1'` for waypoint-name display.
 - `navaid.wpNameAngle` — waypoint-name rotation (`0`/`90`/`180`/`270`).
 - `navaid.aircraft` — last-used aircraft profile JSON (fuel planner).
@@ -432,6 +453,19 @@ downloadable `route.json`.
   columns → `lat`/`lng` rounded to 5 dp), and diff for sanity. The
   exact migration is documented in the body of the PR that introduced
   it (#406).
+- `nav-waypoints.json` — 256 Israeli CVFR reporting points.
+  **Source:** ForeFlight Israel Base Pack, https://www.foreflightisrael.xyz/.
+  KMZ (`CVFR WAYPOINTS 0225.kmz`) extracted and converted to
+  `{name, he, lat, lng}` JSON. `name` = ICAO/CVFR code; `he` = Hebrew
+  place name. To refresh: download latest pack from the site, extract
+  the KMZ, diff against the current JSON and add new entries.
+- `reporting-types.json` — IAA CVFR chart סוג דיווח column transcribed
+  to `{name, reportRequired ∈ {mandatory,on-request,arp}}`. Issue #404.
+  **Source:** user transcription of the IAA "מפת נתיבי תובלה נמוכים"
+  (Low-Level Transit Routes Chart) edition 2/25. 9 non-ARP transcript
+  codes do not match `nav-waypoints.json` — see the file's `_TODO`
+  array (notably `NASIH ≡ ESHEL` and `ZGOAL ≡ GORAL` which are
+  same-point code mismatches between the chart and the ForeFlight pack).
 - `geo` distances are exact great-circle; verify against the chart's
   graticule if precision is questioned.
 - GA4 (`G-0XM5PHEK8B`) tracks page views; no event tracking yet.

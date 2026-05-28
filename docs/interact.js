@@ -296,6 +296,27 @@ function showInspector() {
     };
     body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
+    // Issue #404: reporting-type badge when the waypoint matches a CVFR
+    // reporting point. ARPs (airfields) are deliberately skipped — the
+    // airfields section below already covers them with runways + plates.
+    // Resolved by canonical 5-letter name (uppercased to tolerate a Hebrew
+    // locale-resolved title that left wp.name unchanged).
+    if (reporting && wp.name) {
+      const rep = reportingFor((wp.name || '').trim().toUpperCase());
+      if (rep === 'mandatory' || rep === 'on-request') {
+        const row = document.createElement('div');
+        row.className = 'row reporting-row';
+        const lbl = document.createElement('label');
+        lbl.textContent = S.tbShowReporting;
+        row.appendChild(lbl);
+        const val = document.createElement('span');
+        val.className = 'reporting-badge reporting-' + rep.replace(/[^a-z]/g, '-');
+        val.textContent = rep === 'mandatory' ? S.reportingMandatory
+                                              : S.reportingOnRequest;
+        row.appendChild(val);
+        body.appendChild(row);
+      }
+    }
     // #231: runway directions when the waypoint matches a known airfield.
     if (airfields && wp.name) {
       const up = wp.name.trim().toUpperCase();
