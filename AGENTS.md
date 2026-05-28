@@ -7,9 +7,11 @@ Unity.
 ## Layout
 
 - `docs/` — the deployed app (HTML / CSS / JS, no build step).
-- `docs/nav-waypoints.json` — 238 Israeli VFR reporting points
-  (`{name, lat, lng}`); shipped, lazily fetched by the "Show Nav
-  Waypoints" toggle.
+- `docs/nav-waypoints.json` — 173 Israeli VFR reporting points
+ (`{name, he, lat, lng}`); shipped, lazily fetched by the "Show Nav
+ Waypoints" toggle. Sourced from the published IAA CVFR chart waypoint
+ reference table (page 113, 2025 edition) — see SKILL.md for refresh
+ procedure.
 - `.github/workflows/deploy.yml` — Pages build + deploy.
 - `.claude/skills/navaid-dev/SKILL.md` — full developer guide.
   **Read this first** for any change to the app.
