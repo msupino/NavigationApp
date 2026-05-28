@@ -323,48 +323,175 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
   });
 
   // ---------------------------------------------------------------------
-  // 6) Issue #394: default kites sit just outside the 10° drift cone at
-  //    every zoom / leg length, with an 8 px margin. Computed at render
-  //    time so a zoom change moves the kite proportionally with the leg.
+  // 6) Issue #394: default kites are positioned so their *body* clears
+  //    the 10° drift cone at the leg midpoint with an 8 px visual margin,
+  //    independent of zoom and `legArrowSize`. The kite's drawn width is
+  //    `46 * legZoomScale()` px (drawLegArrow in draw.js), so its centre
+  //    must sit at least `(len/2)*tan(10°) + 23*legZoomScale() + 8` from
+  //    the leg line. The original #394 fix put the *centre* at the cone
+  //    edge, which left the kite body ON the leg line at low zoom or
+  //    `legArrowSize >= 2`. This test pins the corrected invariant: kite
+  //    centre at `cone + halfWidth + margin`, kite *edge* strictly clear
+  //    of both the leg line and the drift cone.
   // ---------------------------------------------------------------------
-  test('default kite sits outside drift cone with ~8 px margin at every zoom', async ({ page }) => {
+  test('default kite body clears leg line + drift cone at every zoom', async ({ page }) => {
     await boot(page);
     await loadTwoWp(page);
 
     const margin = 8;
     const tan10 = Math.tan(10 * Math.PI / 180);
+    const KITE_HALF = 23;                 // px when legZoomScale() === 1
     for (const z of [8, 10, 11, 12, 13, 14]) {
-      const m = await page.evaluate((zoom) => {
-        map.setZoom(zoom);
-        return new Promise(resolve => setTimeout(() => {
-          const a = proj(state.waypoints[0]);
-          const b = proj(state.waypoints[1]);
-          const legLen = Math.hypot(b.x - a.x, b.y - a.y);
-          // Mirror drawLegs' default math for inLabel (sign +1) and
-          // outLabel (sign −1). legLabelCenter() returns the same px,
-          // so use it directly as the source of truth.
-          const ic = legLabelCenter(0, 'in');
-          const oc = legLabelCenter(0, 'out');
-          const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      for (const las of [1, 2, 3]) {
+        const m = await page.evaluate(({ zoom, las }) => {
+          window.legArrowSize = las;
+          map.setZoom(zoom);
+          return new Promise(resolve => setTimeout(() => {
+            const a = proj(state.waypoints[0]);
+            const b = proj(state.waypoints[1]);
+            const legLen = Math.hypot(b.x - a.x, b.y - a.y);
+            // Mirror drawLegs' default math for inLabel (sign +1) and
+            // outLabel (sign −1). legLabelCenter() is the same source of
+            // truth used by hit-testing, so use it directly.
+            const ic = legLabelCenter(0, 'in');
+            const oc = legLabelCenter(0, 'out');
+            const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+            let dx = b.x - a.x, dy = b.y - a.y;
+            const L = Math.hypot(dx, dy) || 1;
+            dx /= L; dy /= L;
+            const nx = -dy, ny = dx;
+            const inPerp  = (ic.x - mx) * nx + (ic.y - my) * ny;
+            const outPerp = (oc.x - mx) * nx + (oc.y - my) * ny;
+            const sc = legZoomScale();
+            resolve({ zoom, las, sc, legLen, inPerp, outPerp });
+          }, 50));
+        }, { zoom: z, las });
+        // Drift cone perpendicular extent at the midpoint, per leg length.
+        const driftPerp = (m.legLen / 2) * tan10;
+        const kiteHalf = KITE_HALF * m.sc;
+        const expected = driftPerp + kiteHalf + margin;
+        expect(m.inPerp ).toBeCloseTo( expected, 1);
+        expect(m.outPerp).toBeCloseTo(-expected, 1);
+        // The kite edge nearest the leg is `centre - halfWidth`, and
+        // must be strictly past the drift cone by at least margin/2 px
+        // — i.e., the leg line is fully clear of the kite's body too.
+        const inEdge  =  m.inPerp  - kiteHalf;
+        const outEdge = -m.outPerp - kiteHalf;
+        expect(inEdge ).toBeGreaterThan(driftPerp + margin / 2);
+        expect(outEdge).toBeGreaterThan(driftPerp + margin / 2);
+        // And the kite edge is strictly clear of the leg line itself
+        // (perpendicular > 0) — this is the headline regression the
+        // user reported on PR #395.
+        expect(inEdge ).toBeGreaterThan(0);
+        expect(outEdge).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  // ---------------------------------------------------------------------
+  // 6b) PR #395 follow-up regression — the user's exact reproduction
+  //    path. With a real-route shape (3 waypoints → 2 legs), persisted
+  //    in localStorage, the user reported that after a hard reload +
+  //    "Reset all marker positions" + zoom 8 the kites still appeared
+  //    on the leg line. Root cause: the original #394 formula put the
+  //    kite *centre* at `(len/2)*tan(10°) + 8` perpendicular but ignored
+  //    the kite's own width (`46 * legZoomScale()`), so the kite *body*
+  //    overlapped the leg line at low zoom / large legArrowSize.
+  // ---------------------------------------------------------------------
+  test('PR #395 — 3 wp + reload + reset-all + zoom 8 keeps kites off the leg line', async ({ page }) => {
+    // Seed a real-shape route directly in localStorage, mirroring what
+    // happens when the user has persisted a route before reload. This
+    // exercises the exact path the user reported failing.
+    await page.addInitScript(() => {
+      try {
+        for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
+        sessionStorage.clear();
+        for (const s of ['build','view','display','charts','export','print'])
+          localStorage.setItem('navaid.sec.' + s, '1');
+        localStorage.setItem('navaid.route', JSON.stringify({
+          waypoints: [
+            { lat: 32.18060, lng: 34.83470, name: 'A' },
+            { lat: 32.50000, lng: 34.95000, name: 'B' },
+            { lat: 32.80972, lng: 35.04389, name: 'C' },
+          ],
+          legs: [
+            { inboundAltitude: 2000, outboundAltitude: 2000,
+              flightSpeed: 90, outboundSpeed: 90,
+              inLabel:  { a: 4, p:  18, _m: 1 },     // hand-tuned
+              outLabel: { a: 4, p: -18, _m: 1 } },
+            { inboundAltitude: 2500, outboundAltitude: 2500,
+              flightSpeed: 90, outboundSpeed: 90,
+              inLabel:  { a: 0, p:  20, _m: 1 },
+              outLabel: { a: 0, p: -20, _m: 1 } },
+          ],
+          notes: [],
+        }));
+      } catch (e) {}
+    });
+    await page.goto('?lang=en');
+    await page.waitForFunction(
+      () => state && state.legs && state.legs.length === 2 &&
+            typeof _defaultLegLabels === 'function');
+
+    // Hard reload — second boot path is the one the user actually walked.
+    await page.reload();
+    await page.waitForFunction(() => state && state.legs && state.legs.length === 2);
+
+    // Click "Reset all marker positions" and accept the confirm. After
+    // this the per-leg labels MUST be the `_default: 1` sentinel so the
+    // renderer falls through to the drift-aware perpendicular formula.
+    page.once('dialog', d => d.accept());
+    await page.locator('#tool-reset-all-markers').click();
+    await page.waitForFunction(
+      () => state.legs.every(l => l.inLabel && l.inLabel._default === 1
+                              && l.outLabel && l.outLabel._default === 1));
+
+    // Set zoom 8 (typical CVFR overview). At this zoom + default
+    // legArrowSize=1 the kite should already be visibly clear of the
+    // leg line; with legArrowSize=2 (a common choice) the original
+    // #394 formula put the kite centre 14 px out and the kite body —
+    // which is 32 px wide at this zoom — overlapped the line. We
+    // sweep both sizes here so the regression sticks.
+    for (const las of [1, 2]) {
+      const measurements = await page.evaluate(async (lasArg) => {
+        window.legArrowSize = lasArg;
+        map.setZoom(8);
+        // One animation frame for setZoom + redraw to settle.
+        await new Promise(r => setTimeout(r, 80));
+        const out = [];
+        for (let i = 0; i < state.legs.length; i++) {
+          const a = proj(state.waypoints[i]);
+          const b = proj(state.waypoints[i + 1]);
           let dx = b.x - a.x, dy = b.y - a.y;
           const L = Math.hypot(dx, dy) || 1;
           dx /= L; dy /= L;
           const nx = -dy, ny = dx;
-          const inPerp  = (ic.x - mx) * nx + (ic.y - my) * ny;
-          const outPerp = (oc.x - mx) * nx + (oc.y - my) * ny;
-          resolve({ zoom, legLen, inPerp, outPerp });
-        }, 50));
-      }, z);
-      // Drift cone perpendicular extent at the midpoint, per leg length.
-      const driftPerp = (m.legLen / 2) * tan10;
-      // Inbound kite is +perpendicular (same side as drift dashes for a
-      // typical eastward leg); outbound mirrors at −perpendicular.
-      expect(m.inPerp ).toBeCloseTo( driftPerp + margin, 1);
-      expect(m.outPerp).toBeCloseTo(-driftPerp - margin, 1);
-      // And both are strictly clear of the cone by at least 4 px even
-      // before round-off, no matter the zoom.
-      expect( m.inPerp).toBeGreaterThan( driftPerp + 4);
-      expect(-m.outPerp).toBeGreaterThan(driftPerp + 4);
+          const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+          const ic = legLabelCenter(i, 'in');
+          const oc = legLabelCenter(i, 'out');
+          const inPerp  = Math.abs((ic.x - mx) * nx + (ic.y - my) * ny);
+          const outPerp = Math.abs((oc.x - mx) * nx + (oc.y - my) * ny);
+          const sc = legZoomScale();
+          // Edge-of-kite distance to the leg line: kite is 46*sc px
+          // wide so half-width is 23*sc. Body clears the leg when
+          // `centerPerp - halfWidth > 0`.
+          const inEdge  = inPerp  - 23 * sc;
+          const outEdge = outPerp - 23 * sc;
+          out.push({ i, inPerp, outPerp, inEdge, outEdge, sc, legLen: L });
+        }
+        return out;
+      }, las);
+      for (const m of measurements) {
+        // Centre is at least 15 px off the leg line (the threshold the
+        // PR-#395 review request specified).
+        expect(m.inPerp ).toBeGreaterThanOrEqual(15);
+        expect(m.outPerp).toBeGreaterThanOrEqual(15);
+        // And the kite *body* is strictly clear of the leg line — this
+        // is what visually broke for the user. Both edges > 0 ensures
+        // no overlap at any zoom / legArrowSize the test exercises.
+        expect(m.inEdge ).toBeGreaterThan(0);
+        expect(m.outEdge).toBeGreaterThan(0);
+      }
     }
   });
 

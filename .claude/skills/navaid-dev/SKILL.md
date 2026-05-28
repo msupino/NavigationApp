@@ -134,13 +134,18 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
     `_m: 1`. Migration runs on `restoreRoute()` (localStorage),
     `load()` (file import), and is implicit for share-URL decoded
     routes (which only carry the default).
-  - **Default sentinel (`_default: 1`, issue #394):** `_defaultLegLabels()`
-    in `core.js` returns `{ a: 0, _default: 1, _m: 1 }` (no `p`). At
-    render time, `drawLegs` (and the matching hit-test in
-    `legLabelCenter`) computes the perpendicular as
-    `legDefaultLabelPerp(legLenPx) = (max(1, legLenPx) / 2) * tan(10°) + 8`,
-    placing the kite just outside the 10° drift cone — independent of
-    `legArrowSize` and zoom-correct without any scaling math. Dragging a
+  - **Default sentinel (`_default: 1`, issue #394 + PR #395
+    follow-up):** `_defaultLegLabels()` in `core.js` returns
+    `{ a: 0, _default: 1, _m: 1 }` (no `p`). At render time, `drawLegs`
+    (and the matching hit-test in `legLabelCenter`) computes the
+    perpendicular as
+    `legDefaultLabelPerp(legLenPx) = (max(1, legLenPx) / 2) * tan(10°)
+    + 23 * legZoomScale() + 8`, placing the kite **body** clear of both
+    the leg line and the 10° drift cone. The `23 * legZoomScale()` term
+    is the kite's own half-width (it's `46 * legZoomScale()` px wide
+    in `drawLegArrow`); without it the kite's *centre* sat at the cone
+    edge but its body still overlapped the leg line at low zoom or
+    `legArrowSize >= 2` (PR #395 follow-up). Dragging a
     default kite calls `_materialiseDefaultLegLabel()` (interact.js) to
     freeze the current rendered offset into the user-dragged
     `{ a, p, _m: 1 }` shape so subsequent drag deltas behave normally.

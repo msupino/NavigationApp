@@ -2,18 +2,27 @@
 /* NavAid — drawing: route, nav-waypoints, notes, page frame.
    Shares globals with core.js; loaded after it. */
 
-// Issue #394: default-kite drift-cone clearance helpers, shared by
+// Issue #394 (+ follow-up bug): default-kite clearance helpers, shared by
 // `drawLegs` (rendering), `legLabelCenter` (interact.js hit-testing),
-// and the drag-start materialiser (interact.js). Drift lines fan out
-// from each waypoint at 10° from the leg axis for half the leg length;
-// the cone's perpendicular extent at along-leg distance `d` is
-// `d * tan(10°)`. At the default along-leg position (midpoint, a=0)
-// that's `(legLength / 2) * tan(10°)`. We add an 8 px margin so the
-// kite sits visibly clear of the dashed drift lines.
+// and the drag-start materialiser (interact.js). The kite shape itself
+// is `46 * legZoomScale()` px wide (see drawLegArrow in this file —
+// `W = 46 * sc`), so its half-extent perpendicular to the leg axis is
+// `23 * legZoomScale()`. Drift lines fan out from each waypoint at 10°
+// from the leg axis for half the leg length; at the default along-leg
+// position (midpoint, a=0) the cone reaches `(legLength / 2) * tan(10°)`
+// perpendicular. The kite's *centre* must therefore sit at least
+// (cone-extent + kite-half-width + visual margin) from the leg line so
+// the kite *body* clears both the leg line and the drift dashes at
+// every zoom and `legArrowSize`. The first cut of this fix only
+// pushed the centre `(len/2)*tan(10°) + 8` out, which left the kite
+// edge ON the leg line at low zoom or `legArrowSize >= 2`.
 const legDefaultDriftTan = Math.tan(10 * Math.PI / 180);
 const legDefaultDriftMarginPx = 8;
+const legDefaultKiteHalfWidthPx = 23;   // kite half-width when legZoomScale() === 1 (W = 46 * sc)
 function legDefaultLabelPerp(legLenPx) {
+  const sc = (typeof legZoomScale === 'function') ? legZoomScale() : 1;
   return (Math.max(1, legLenPx) / 2) * legDefaultDriftTan +
+         legDefaultKiteHalfWidthPx * sc +
          legDefaultDriftMarginPx;
 }
 
