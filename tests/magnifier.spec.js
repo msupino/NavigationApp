@@ -351,20 +351,23 @@ test.describe('Magnifying glass', () => {
   // enough for the test to observe — otherwise a fast LAN cache hit could
   // flip it on and off within a single frame.
   test('shows "Perfecting…" indicator while hi-res tiles load, hides after', async ({ page }) => {
-    // Slow every flight-maps.com tile fetch by 100 ms. Just enough to
-    // keep the indicator's `show` class visible across the assertion
-    // window without dragging the test out: post-calibration-fix the
-    // hi-res grid at slider=2 / z=8 / sub=16 is up to 25×25 = 625 tiles
-    // (loupeR is now slider-based, not sub-based), so a 700 ms-per-tile
-    // throttle would push total settle time well past 60 s. Registered
-    // after _setup.js so this route handler runs first; non-tile URLs
-    // still hit the existing GA-blocking route. Regex (not a glob) so
-    // `flight-maps.com` apex is matched alongside any subdomain — the
-    // glob `*.flight-maps.com` requires a leading subdomain segment and
-    // missed every real tile request, which left the indicator timing
-    // entirely up to the runner's network speed.
+    // Slow every flight-maps.com tile fetch by 1000 ms so the
+    // indicator's `show` class stays visible long enough for Playwright
+    // to poll it. Important: the 169-tile hi-res grid is fetched in
+    // parallel (HTTP/2 multiplexes; even on HTTP/1.1 each route handler
+    // sleeps independently in Node's event loop), so total settle time
+    // is approximately `throttle + RTT`, not `(tiles / 6) * throttle`.
+    // A pre-fix 100 ms throttle locally produced only a ~375 ms `show`
+    // window — narrower than Playwright's ~150 ms polling interval on
+    // CI, which made the assertion miss the class entirely on most runs.
+    // 1000 ms is comfortably wider than the polling cadence while
+    // staying well under the 20 s post-settle assertion below.
+    //
+    // Regex (not a glob) so `flight-maps.com` apex is matched alongside
+    // any subdomain — the glob `*.flight-maps.com` requires a leading
+    // subdomain segment and missed every real tile request.
     await page.route(/^https?:\/\/([^/]*\.)?flight-maps\.com\//, async route => {
-      await new Promise(r => setTimeout(r, 100));
+      await new Promise(r => setTimeout(r, 1000));
       try { await route.continue(); } catch (e) { /* page may close */ }
     });
 
@@ -385,11 +388,13 @@ test.describe('Magnifying glass', () => {
     // Text content reflects the i18n key.
     await expect(loading).toHaveText('Perfecting…');
     // Indicator becomes visible while throttled hi-res tiles are in flight.
-    await expect(loading).toHaveClass(/show/, { timeout: 2000 });
-    // …and hides once they all settle (load or error). 25×25 tiles ÷ 6
-    // concurrent connections × 100 ms throttle ≈ 10 s in the worst case;
-    // bumped from the pre-calibration 8 s and capped at 20 s to absorb
-    // a couple extra rebuilds (move/layeradd) along the way.
+    // Throttle is 1000 ms per tile (parallel), so the `show` class is up
+    // for ~1 s — comfortably wider than Playwright's polling cadence.
+    await expect(loading).toHaveClass(/show/, { timeout: 4000 });
+    // …and hides once they all settle (load or error). All ~169 tiles
+    // fan out in parallel, so total settle time ≈ throttle + RTT.
+    // 20 s gives plenty of cushion for a couple extra rebuilds
+    // (move/layeradd) along the way.
     await expect(loading).not.toHaveClass(/show/, { timeout: 20000 });
   });
 
