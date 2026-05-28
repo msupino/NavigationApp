@@ -915,7 +915,15 @@ function showFlightPlan() {
         refresh();
       };
   flightPlanEscape = function (e) {
-    if (e.key === 'Escape') closeFlightPlan();
+    if (e.key !== 'Escape') return;
+    closeFlightPlan();
+    // The global window-level Escape handler in interact.js otherwise runs
+    // after this one and toggles the magnifier off whenever the plan is
+    // closed while the loupe is open (issue #388 M3 follow-up). Stop the
+    // event from bubbling past `document` so the loupe — which has no
+    // logical relationship to the plan modal — keeps its current state.
+    e.stopPropagation();
+    e.preventDefault();
   };
   document.addEventListener('keydown', flightPlanEscape);
   fpOpen = true;

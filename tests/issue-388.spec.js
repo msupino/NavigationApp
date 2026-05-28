@@ -222,6 +222,13 @@ test.describe('issue #388 — review cleanup', () => {
   // pre-fix toDataURL regression (which can spike to 50–100 ms/frame
   // on 4K) starts costing observable wall-clock under the same
   // workload, without making the test flaky on slow CI hardware.
+  //
+  // The pan loop runs inside a single `page.evaluate` so the wall-clock
+  // measurement isn't dominated by Playwright IPC round-trip overhead
+  // (60 separate `page.evaluate` calls on a slow CI runner can spend
+  // ≥ 10 s in IPC alone, blowing the budget even when the rebuild
+  // itself is fast). The in-browser `performance.now()` captures only
+  // the work that the regression would actually slow down.
   test('H1 (perf) — magnifier survives 60 pan frames inside a loose budget',
     async ({ page }) => {
       const mapBox = await page.locator('#map').boundingBox();
@@ -232,33 +239,42 @@ test.describe('issue #388 — review cleanup', () => {
       await page.locator('#tool-magnifier').click();
       await page.waitForTimeout(600);
 
-      const readBatch = () => page.evaluate(() => {
-        const imgs = Array.from(
-          document.querySelectorAll('#mag-content img[data-batch]'));
-        return imgs.length ? Math.max(...imgs.map(i => Number(i.dataset.batch))) : 0;
+      const result = await page.evaluate(async () => {
+        const readBatch = () => {
+          const imgs = Array.from(
+            document.querySelectorAll('#mag-content img[data-batch]'));
+          return imgs.length
+            ? Math.max(...imgs.map(i => Number(i.dataset.batch)))
+            : 0;
+        };
+        const before = readBatch();
+        const t0 = performance.now();
+        // 60 small panBys (~ a one-second user drag) drive rebuilds via
+        // the `move`/`moveend` listeners. Pre-H1 each rebuild fired a
+        // `toDataURL`; post-H1 each rebuild does a single `drawImage` —
+        // same correctness, far cheaper. We `await requestAnimationFrame`
+        // between panBys so the rAF-coalesced rebuild scheduled by each
+        // `move` event gets a chance to run (otherwise all 60 panBys
+        // collapse into a single rebuild and the perf check is moot).
+        for (let i = 0; i < 60; i++) {
+          map.panBy([i % 2 === 0 ? 8 : -8, 0], { animate: false });
+          await new Promise(r => requestAnimationFrame(r));
+        }
+        // Final settle so the last rebuild's rAF lands before we
+        // sample the batch counter.
+        await new Promise(r => setTimeout(r, 800));
+        const elapsed = performance.now() - t0;
+        const after = readBatch();
+        return { before, after, elapsed };
       });
-      const before = await readBatch();
-
-      const t0 = Date.now();
-      // 60 small panBys (~ a one-second user drag) drive 60 rebuilds via
-      // the `move`/`moveend` listeners. Pre-H1 this fired 60 toDataURLs;
-      // post-H1 it's 60 drawImages — same correctness, far cheaper.
-      for (let i = 0; i < 60; i++) {
-        await page.evaluate(n => {
-          map.panBy([n % 2 === 0 ? 8 : -8, 0], { animate: false });
-        }, i);
-      }
-      await page.waitForTimeout(800);
-      const elapsed = Date.now() - t0;
-      const after = await readBatch();
 
       // A new rebuild must have happened (otherwise we're not actually
       // exercising the hot path).
-      expect(after).toBeGreaterThan(before);
+      expect(result.after).toBeGreaterThan(result.before);
       // Loose ceiling: 60 panBys + final settle should land in well
       // under 10 s. CI hardware varies, but the pre-fix toDataURL path
       // routinely pushed past this on 4K displays.
-      expect(elapsed).toBeLessThan(10_000);
+      expect(result.elapsed).toBeLessThan(10_000);
     });
 
   // M2 — cached `<img>` tiles synchronously satisfy `tile.complete` and
