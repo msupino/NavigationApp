@@ -156,8 +156,6 @@ window.S = {
   tbMapOpacityTitle: 'בהירות מפת הרקע',
   tbLegArrowSize: 'גודל חץ קטע',
   tbLegArrowSizeTitle: 'גודל מחוון המידע של קטע (כיוון / גובה / זמן)',
-  tbMagVar: 'נטייה מגנטית',
-  tbMagVarTitle: 'נטייה מגנטית מהכיוון האמיתי. שלילי = מזרח, חיובי = מערב.',
   tbPageA3Title: 'עמוד A3 להדפסה',
   tbPageA4Title: 'עמוד A4 להדפסה',
   tbOrientTitle: 'כיוון — לחץ למעבר בין לרוחב / לאורך',

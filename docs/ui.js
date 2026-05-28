@@ -7,12 +7,24 @@ function setMode(mode) {
   // Clicking the currently-active mode button toggles back to inspect (null).
   if (state.mode === mode) mode = null;
   state.mode = mode;
-  document.getElementById('tool-add').classList.toggle('active', mode === 'add');
-  document.getElementById('tool-note').classList.toggle('active', mode === 'note');
+  const addBtn = document.getElementById('tool-add');
+  const noteBtn = document.getElementById('tool-note');
+  addBtn.classList.toggle('active', mode === 'add');
+  noteBtn.classList.toggle('active', mode === 'note');
+  // Accessibility: aria-pressed mirrors the .active class so screen
+  // readers announce the toggle state. The mode buttons are exclusive
+  // (only one of add / note can be active at once), so flipping both
+  // here keeps them in sync no matter which mode we entered or left.
+  addBtn.setAttribute('aria-pressed', String(mode === 'add'));
+  noteBtn.setAttribute('aria-pressed', String(mode === 'note'));
   document.getElementById('map').classList.toggle('add', mode === 'add' || mode === 'note');
 }
 document.getElementById('tool-add').onclick = () => setMode('add');
 document.getElementById('tool-note').onclick = () => setMode('note');
+// Initial aria-pressed sync — both modes start off so each button is
+// explicitly "not pressed" in the a11y tree on first paint.
+document.getElementById('tool-add').setAttribute('aria-pressed', 'false');
+document.getElementById('tool-note').setAttribute('aria-pressed', 'false');
 document.getElementById('app-version').textContent = 'v' + NavAid.version;
 
 // base map layer picker (replaces the Leaflet layers control)
