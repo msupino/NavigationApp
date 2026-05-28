@@ -317,19 +317,23 @@ const NOTE_DEFAULT_COLOR = '#fff6aa';   // matches the existing yellow fill
 // Default leg-marker offsets. Single source of truth used by newLeg(),
 // the inspector "Reset marker position" button (interact.js), the toolbar
 // "Reset all marker positions" button (ui.js), and the share-URL decoder
-// (io.js). The invariant: stored offsets are size-independent (already
-// divided by legArrowSize), with `_m: 1` marking them migrated. At render
-// time drawLegs multiplies by `legZoomScale() = max(0.35, 2^(zoom-12)) *
-// legArrowSize`, so the on-screen perpendicular distance at zoom 12 is a
-// constant 44 px regardless of legArrowSize. See io.js `_normalizeLegLabel`
-// for the legacy-blob migration that converts pre-#393 raw-pixel offsets
-// to this same unit.
+// (io.js).
+//
+// `_default: 1` is a sentinel meaning "I'm an unmodified default — compute
+// my perpendicular offset at render time from the current leg's screen
+// length so I stay outside the 10° drift cone." `drawLegs` (draw.js) and
+// `legLabelCenter` (interact.js) handle the sentinel; the drag handlers
+// materialise the current rendered `p` into the stored offset on
+// drag-start so the user-dragged path keeps the existing
+// size-independent `{ a, p, _m: 1 }` shape unchanged (issue #394).
+//
+// `_m: 1` continues to mark the label as migrated, so the legacy-pixel
+// path in `_normalizeLegLabel` (io.js) leaves sentinels untouched on
+// reload. See `_normalizeLegLabel` for the pre-#393 raw-pixel migration.
 function _defaultLegLabels() {
-  const k = (typeof legArrowSize === 'number' && legArrowSize > 0)
-    ? legArrowSize : 1;
   return {
-    inLabel:  { a: 0, p:  44 / k, _m: 1 },
-    outLabel: { a: 0, p: -44 / k, _m: 1 },
+    inLabel:  { a: 0, _default: 1, _m: 1 },
+    outLabel: { a: 0, _default: 1, _m: 1 },
   };
 }
 const newLeg = () => {
