@@ -1,13 +1,24 @@
 name: Auto PR dev to main
 
 on:
-  # Fires when a PR targeting dev is merged. Catches auto-merge squashes that
-  # use GITHUB_TOKEN — those don't trigger `push` events (anti-recursion rule).
+  # Kept for human UI merges and non-bot pushes. GITHUB_TOKEN-initiated bot
+  # merges suppress BOTH this `pull_request: closed` event AND the `push:
+  # dev` below (GitHub anti-recursion rule applies to all events generated
+  # by GITHUB_TOKEN, not just push). Verified empirically against PRs #384,
+  # #389, #395 — none fired either event after the bot merge. The
+  # workflow_run trigger below covers the bot-merge case.
   pull_request:
     types: [closed]
     branches: [dev]
   push:
     branches: [dev]
+  # Chain off Draft+auto-merge, which now waits synchronously for the merge
+  # before completing. workflow_run isn't subject to the anti-recursion
+  # suppression that blocks the push/pull_request triggers above when the
+  # merge is bot-initiated.
+  workflow_run:
+    workflows: ["Draft + auto-merge"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -18,8 +29,13 @@ permissions:
 
 jobs:
   auto-pr:
-    # For pull_request events: only run when the PR was actually merged.
-    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
+    # Per-event guards:
+    # - pull_request: only when actually merged.
+    # - workflow_run: only when the upstream Draft+auto-merge run succeeded.
+    #   (failure/cancelled = no merge actually happened, so no promotion PR.)
+    if: >-
+      (github.event_name != 'pull_request' || github.event.pull_request.merged == true)
+      && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
