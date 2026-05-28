@@ -87,8 +87,29 @@ test.describe('#406 — nav-waypoints.json (CSV-sourced)', () => {
     // on cross-country legs that pass through them.
     expect(bezra).toEqual({ name: 'BEZRA', he: 'בית עזרא',
                             lat: 31.74139, lng: 34.64583 });
-    expect(kuvsh).toEqual({ name: 'KUVSH', he: 'כובשימ',
+    expect(kuvsh).toEqual({ name: 'KUVSH', he: 'כובשים',
                             lat: 31.25861, lng: 34.76361 });
+  });
+
+  // Hebrew final-letter forms (issue #408).
+  //
+  // The chart CSV ships non-final letter forms (כ, מ, נ, פ, צ) even at
+  // end-of-word, which is wrong typographically. We rewrite them to the
+  // final forms (ך, ם, ן, ף, ץ) at every word boundary. A "word boundary"
+  // here means: end-of-string OR followed by any non-Hebrew character.
+  test('every he field uses final-letter forms at end of word', async () => {
+    const d = loadData();
+    // Match a non-final letter that is NOT followed by another Hebrew
+    // letter — i.e. a non-final at end-of-word. After the fix this regex
+    // must NOT match any he field.
+    const nonFinalAtEow = /[כמנפצ](?![\u05D0-\u05EA\u05F0-\u05F2])/;
+    const offenders = [];
+    for (const w of d.waypoints) {
+      if (nonFinalAtEow.test(w.he)) {
+        offenders.push({ name: w.name, he: w.he });
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 
   test('newly-surfaced codes (PR #405 flagged) are present', async () => {
