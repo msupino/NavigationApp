@@ -242,10 +242,10 @@ function drawAirfields() {
     octx.lineTo(s.x + r * 0.95, s.y + r * 0.65);
     octx.lineTo(s.x - r * 0.95, s.y + r * 0.65);
     octx.closePath();
-    octx.fillStyle = '#2f6fd0';          // saturated blue — distinct from white nav-WP dots
+    octx.fillStyle = '#161412';          // near-black — matches nav-WP / leg stroke palette
     octx.fill();
     octx.lineWidth = 1.5;
-    octx.strokeStyle = '#0a1a2a';
+    octx.strokeStyle = '#161412';
     octx.stroke();
     if (showLabels) {
       const locale = af[S.airfieldLabelField] || af.en || af.name;
@@ -253,7 +253,7 @@ function drawAirfields() {
       octx.lineWidth = 2.5;
       octx.strokeStyle = 'rgba(255,255,255,0.85)';
       octx.strokeText(label, s.x + r + 3, s.y);
-      octx.fillStyle = '#0a1a2a';
+      octx.fillStyle = '#161412';
       octx.fillText(label, s.x + r + 3, s.y);
     }
   }
