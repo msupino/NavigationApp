@@ -106,13 +106,22 @@ function validateRoute(d) {
       if (Object.prototype.hasOwnProperty.call(l, 'outboundSpeed')) {
         _v(l, 'outboundSpeed', 'number', p, errs);
       }
+      // Issue #394: `_default: 1` is the sentinel form written by
+      // `_defaultLegLabels()` for an unmodified kite — its perpendicular
+      // is computed at render time from the live leg length, so the
+      // stored shape has no `p`. Accept either the sentinel form
+      // (`a` only) or the user-dragged form (`a` + `p`).
       if (_v(l, 'inLabel',  'object', p, errs)) {
         _v(l.inLabel,  'a', 'number', p + '.inLabel',  errs);
-        _v(l.inLabel,  'p', 'number', p + '.inLabel',  errs);
+        if (!l.inLabel._default) {
+          _v(l.inLabel, 'p', 'number', p + '.inLabel', errs);
+        }
       }
       if (_v(l, 'outLabel', 'object', p, errs)) {
         _v(l.outLabel, 'a', 'number', p + '.outLabel', errs);
-        _v(l.outLabel, 'p', 'number', p + '.outLabel', errs);
+        if (!l.outLabel._default) {
+          _v(l.outLabel, 'p', 'number', p + '.outLabel', errs);
+        }
       }
     }
   }
@@ -212,7 +221,16 @@ function validateAirfields(d) {
 // per the PR-review #3 recommendation).
 function _normalizeLegLabel(raw, legacyArrowSize) {
   if (!raw) return raw;
-  if (raw._m) return { a: raw.a, p: raw.p, _m: 1 };
+  if (raw._m) {
+    // Already-migrated label. Preserve the `_default: 1` sentinel
+    // (issue #394) so the renderer keeps computing the drift-aware
+    // perpendicular at draw time; everything else round-trips as the
+    // size-independent `{ a, p }` pair PR #393 introduced.
+    const out = { a: raw.a, _m: 1 };
+    if (raw._default) out._default = 1;
+    else out.p = raw.p;
+    return out;
+  }
   const k = (typeof legacyArrowSize === 'number' && legacyArrowSize > 0)
     ? legacyArrowSize : 1;
   return { a: raw.a / k, p: raw.p / k, _m: 1 };
