@@ -11,7 +11,9 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # `write` is required so the "Sync main into dev" step can push the merge
+  # commit back to origin/dev before opening the promotion PR.
+  contents: write
   pull-requests: write
 
 jobs:
@@ -24,7 +26,41 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: dev
-          fetch-depth: 1
+          fetch-depth: 0   # need full history to merge main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync main into dev
+        # Skip this step when the triggering push *is* our own auto-sync merge
+        # commit — otherwise the push we make below would re-trigger the
+        # workflow indefinitely. The `pull_request: closed` trigger has its own
+        # `merged == true` filter at the job level so it doesn't need this
+        # guard.
+        if: github.event_name != 'push' || !contains(github.event.head_commit.message, 'auto-sync before promotion PR')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main:main
+          # Skip if dev is already up to date with main (idempotent no-op).
+          BEHIND=$(gh api "repos/${{ github.repository }}/compare/dev...main" --jq '.ahead_by')
+          if [ "$BEHIND" -eq 0 ]; then
+            echo "dev is already up to date with main — skipping merge"
+            echo "had_conflict=false" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          # Try the merge. The exact commit message is matched by the recursion
+          # guard above, so don't change it without updating both.
+          if git merge --no-ff -m "Merge branch 'main' into dev (auto-sync before promotion PR)" main; then
+            echo "Merge succeeded"
+            git push origin dev
+            echo "had_conflict=false" >> "$GITHUB_ENV"
+          else
+            echo "Merge conflict — aborting merge but proceeding to open PR with a warning."
+            git merge --abort || true
+            echo "had_conflict=true" >> "$GITHUB_ENV"
+          fi
 
       - name: Check for existing dev to main PR
         env:
@@ -36,6 +72,8 @@ jobs:
             --state open \
             --json number,title \
             --jq 'length')
+          # `gh api compare` re-queries fresh from origin, so this correctly
+          # reflects dev's state *after* the sync step pushed (if it did).
           # Skip if dev has nothing new on main (e.g. after a main→dev sync).
           BEHIND=$(gh api "repos/${{ github.repository }}/compare/dev...main" --jq '.ahead_by')
           AHEAD=$(gh api "repos/${{ github.repository }}/compare/main...dev" --jq '.ahead_by')
@@ -51,8 +89,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           SHA=$(git rev-parse --short HEAD)
+          BODY="Auto-generated PR promoting dev ($SHA) to main."
+          if [ "${{ env.had_conflict }}" = "true" ]; then
+            BODY="$BODY"$'\n\n'"⚠️ Auto-sync of \`main\` into \`dev\` failed due to merge conflicts. \`dev\` needs to be manually rebased/merged with \`main\` before this PR can be merged."
+          fi
           gh pr create \
             --base main \
             --head dev \
             --title "Dev to main ($SHA)" \
-            --body "Auto-generated PR promoting dev ($SHA) to main."
+            --body "$BODY"
