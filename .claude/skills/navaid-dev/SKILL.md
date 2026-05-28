@@ -62,9 +62,14 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
 - `manifest.json`, `sw.js`, `icon-192.png`, `icon-512.png` — PWA:
   installable app + offline app-shell service worker.
 - `style.css` — dark UI + `@media print` rules.
-- `nav-waypoints.json` — 256 published Israeli VFR reporting points
-  (`{name, he, lat, lng}`). Fetched once at boot. Source: ForeFlight
-  Israel Base Pack (https://www.foreflightisrael.xyz/).
+- `nav-waypoints.json` — 173 published Israeli VFR reporting points
+  (`{name, he, lat, lng}`). Fetched once at boot. **Source:** IAA CVFR
+  chart waypoint reference table (page 113, 2025 edition), shipped as
+  `113_waypoints.csv` upstream. CSV → JSON migration in issue #406 /
+  PR `feat/unified-waypoints`. ARP rows in the CSV are intentionally
+  skipped here — airfield ARPs live in `airfields.json` with richer
+  data (runways, plates, English label). Updating: drop the CSV into
+  the build script and regenerate.
 - `.gitattributes` — forces images out of LFS so Pages serves them.
 - `map.jpg`, `build_map.py` — legacy from the pre-Leaflet static-chart
   version. **Unused**, safe to delete.
@@ -219,9 +224,10 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
   names and Speed/Alt are editable inputs; the rest is `textContent`
   only — user names / notes can't inject HTML.
 - **Show Nav Waypoints** (default **on**): `nav-waypoints.json` is
-  fetched once at boot; renders 238 white-fill / black-stroke 3.5 px
+  fetched once at boot; renders 173 white-fill / black-stroke 3.5 px
   dots; the 5-letter ID label appears at zoom ≥ 10. Captured in PNG
-  export.
+  export. Source: IAA CVFR chart page 113 (2025 edition) — see the
+  Notes / pending section.
 - **A3 / A4 page frame:** `pageFrameRect()` returns the rectangle in
   screen px sized so its contents are 1:250 000. Clicking the same
   size button again clears it. Orientation chosen via the
@@ -359,12 +365,25 @@ downloadable `route.json`.
 
 - flight-maps.com tiles are a third-party service; the CVFR data is
   copyrighted.
-- `nav-waypoints.json` — 256 Israeli CVFR reporting points.
-  **Source:** ForeFlight Israel Base Pack, https://www.foreflightisrael.xyz/.
-  KMZ (`CVFR WAYPOINTS 0225.kmz`) extracted and converted to
-  `{name, he, lat, lng}` JSON. `name` = ICAO/CVFR code; `he` = Hebrew
-  place name. To refresh: download latest pack from the site, extract
-  the KMZ, diff against the current JSON and add new entries.
+- `nav-waypoints.json` — 173 Israeli CVFR reporting points.
+  **Source:** IAA CVFR chart waypoint reference table (page 113, 2025
+  edition), supplied upstream as `113_waypoints.csv`. The CSV is the
+  sole source of truth — the legacy ForeFlight Israel Base Pack
+  (`CVFR WAYPOINTS 0225.kmz`) was replaced in issue #406 because it
+  carried ~91 stale codes (`AREA *`, `LLHA A/B/C`, `LLMG A/B
+  Maarav/Mizrah`, etc.) and had several reporting points off the
+  chart by hundreds of metres (notably `BEZRA` ~752 m, `KUVSH` ~648 m,
+  causing ~1° heading drift on cross-country legs). `{name, he, lat,
+  lng}`: `name` = 5-letter chart code, `he` = Hebrew place name from
+  CSV `Name` column. CSV rows where `Reporting == ARP` are skipped
+  here — airfield ARPs live in `airfields.json` with richer data
+  (runways, plates, English label). To refresh: replace the CSV with
+  the latest chart edition, regenerate the JSON keeping the same
+  `{waypoints: [{name, he, lat, lng}]}` shape and `name`/`he`/`lat`/
+  `lng` mapping (CSV `Code` → `name`, CSV `Name` → `he`, decimal
+  columns → `lat`/`lng` rounded to 5 dp), and diff for sanity. The
+  exact migration is documented in the body of the PR that introduced
+  it (#406).
 - `geo` distances are exact great-circle; verify against the chart's
   graticule if precision is questioned.
 - GA4 (`G-0XM5PHEK8B`) tracks page views; no event tracking yet.

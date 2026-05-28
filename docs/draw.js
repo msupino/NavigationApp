@@ -49,10 +49,11 @@ function draw() {
 
 // --- nav-waypoint reference overlay ---------------------------------
 // Lazy-loads docs/nav-waypoints.json on first activation. Format:
-// { waypoints:[{ name, he, lat, lng }] } — 256 published reporting points.
-// Validated strictly by validateNavWaypoints() (issue #101): every
-// documented field must be present and well-typed; extras are silently
-// allowed for forward-compat.
+// { waypoints:[{ name, he, lat, lng }] } — 173 published reporting
+// points sourced from the IAA CVFR chart page 113 (2025 edition); see
+// issue #406. Validated strictly by validateNavWaypoints() (issue
+// #101): every documented field must be present and well-typed;
+// extras are silently allowed for forward-compat.
 async function loadNavWaypoints() {
   if (navWP !== null) return navWP;
   try {
@@ -128,7 +129,7 @@ function navName(stored) {
 //  - Else if the current name was an auto-snap name (no longer near any):
 //    clear it so the circle reverts to the sequence number.
 // Airfields take priority because they're a much smaller set of strongly-
-// known landmarks (16 vs 256 nav-WPs); if both overlays sit on the same
+// known landmarks (16 vs 173 nav-WPs); if both overlays sit on the same
 // spot the airfield name is the more meaningful identifier.
 function applyNavSnap(latlng, currentName) {
   if (!showAirfields && !showNavWP) {
