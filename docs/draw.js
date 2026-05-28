@@ -83,6 +83,39 @@ async function loadNavWaypoints() {
   }
 }
 
+// Lazy-loads docs/comm-change.json — { points:[{name, commChange, from, to,
+// note, verified, source}] }. Builds an O(1) map keyed by ICAO `name` for
+// the nav-waypoint overlay ring + inspector badge. On 404 or schema error
+// we install an EMPTY map ({}) instead of leaving commChangeMap null —
+// the dataset is intentionally optional, and a missing file must not
+// disable the rest of the nav-WP overlay (issue #399). The map is only
+// rebuilt if a future call observes `commChangeMap === null` (i.e. nothing
+// was installed yet), so a one-time 404 doesn't trigger retry storms.
+async function loadCommChange() {
+  if (commChangeMap !== null) return commChangeMap;
+  try {
+    const res = await fetch(S.commChangeUrl);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    const verr = validateCommChange(d);
+    if (verr) {
+      console.warn('comm-change schema error:', verr);
+      commChangeMap = {};
+      return commChangeMap;
+    }
+    const m = {};
+    for (const pt of d.points) {
+      if (pt && pt.name && pt.commChange) m[pt.name] = pt;
+    }
+    commChangeMap = m;
+    return commChangeMap;
+  } catch (e) {
+    console.warn('Failed to load comm-change dataset:', e);
+    commChangeMap = {};                    // graceful degrade — no rings, no retry
+    return commChangeMap;
+  }
+}
+
 // Closest nav waypoint within `pxThreshold` screen pixels of `latlng`,
 // or null. Returns the {name, lat, lng} entry from the loaded JSON.
 function nearestNavWaypoint(latlng, pxThreshold) {
@@ -260,8 +293,24 @@ function drawAirfields() {
   octx.lineWidth = 1;
 }
 
+// Comm-change ring styling (issue #399). Drawn around the white nav-WP dot
+// when `commChangeMap[name].commChange` is true and the toggle is on. The
+// red is distinct from every other overlay glyph: nav-WP dots are white,
+// airfields blue, route waypoints yellow-on-black, leg kites yellow/pink —
+// so the bright red ring reads as "watch out, frequency boundary" against
+// all base layers (CVFR, OSM, Satellite). Sized just outside the 3.5 px
+// dot so it visually augments rather than replaces it.
+const COMM_CHANGE_RING_COLOR = '#e74c3c';
+const COMM_CHANGE_RING_RADIUS = 6;
+const COMM_CHANGE_RING_WIDTH = 1.8;
+
 function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
+  // Test-inspection hook (issue #399): every comm-change ring drawn this
+  // frame is recorded here so Playwright can assert "ring drew at X"
+  // without snapshotting overlay pixels. Built fresh every draw() so it
+  // never accumulates stale names after a toggle off / pan away.
+  const ringsDrawn = new Set();
   // Suppress nav-WP dot when a route waypoint sits on it (by position),
   // regardless of whether the WP name was changed after snapping.
   const SNAP_DEG = 0.0002;               // ~22 m — matches nearestNavWaypoint px threshold
@@ -282,6 +331,19 @@ function drawNavWaypoints() {
     octx.arc(s.x, s.y, 3.5, 0, Math.PI * 2);
     octx.fill();
     octx.stroke();
+    // Comm-change ring (issue #399). Drawn after the dot so it sits on
+    // top; only when the toggle is on AND the dataset marks this name.
+    // commChangeMap may be null briefly during boot — guard so a fast
+    // first paint can't NPE before loadCommChange resolves.
+    if (showCommChange && commChangeMap && commChangeMap[wp.name] &&
+        commChangeMap[wp.name].commChange) {
+      octx.beginPath();
+      octx.arc(s.x, s.y, COMM_CHANGE_RING_RADIUS, 0, Math.PI * 2);
+      octx.strokeStyle = COMM_CHANGE_RING_COLOR;
+      octx.lineWidth = COMM_CHANGE_RING_WIDTH;
+      octx.stroke();
+      ringsDrawn.add(wp.name);
+    }
     if (showLabels) {
       const label = wp[S.navWpSearchField] || wp.name;
       octx.lineWidth = 2.5;
@@ -292,6 +354,7 @@ function drawNavWaypoints() {
     }
   }
   octx.lineWidth = 1;
+  window.__commChangeRingsDrawn = ringsDrawn;
 }
 
 function drawLegs() {

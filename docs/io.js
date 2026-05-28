@@ -170,6 +170,40 @@ function validateNavWaypoints(d) {
   }
   return errs.length ? errs.join('; ') : null;
 }
+// Strict schema for docs/comm-change.json — { version, source?, _definition?,
+// _NOTE?, _TODO?, points:[{ name, commChange, from?, to?, note?, verified?,
+// source? }] }. Only `points[].name` and `points[].commChange` are required
+// for the renderer; everything else is metadata / inspector content. Unknown
+// keys at any level are tolerated (forward-compat). Issue #399.
+function validateCommChange(d) {
+  const errs = [];
+  if (!d || typeof d !== 'object' || Array.isArray(d)) {
+    return 'root: expected object, got ' + _vKind(d);
+  }
+  if (!_v(d, 'points', 'array', 'root', errs)) return errs.join('; ');
+  for (let i = 0; i < d.points.length; i++) {
+    const p = 'points[' + i + ']';
+    const pt = d.points[i];
+    if (_vKind(pt) !== 'object') {
+      errs.push(p + ': expected object, got ' + _vKind(pt));
+      continue;
+    }
+    _v(pt, 'name', 'string', p, errs);
+    if ('commChange' in pt && typeof pt.commChange !== 'boolean') {
+      errs.push(p + '.commChange: expected boolean, got ' + _vKind(pt.commChange));
+    }
+    for (const k of ['from', 'to', 'note', 'source']) {
+      if (k in pt && typeof pt[k] !== 'string') {
+        errs.push(p + '.' + k + ': expected string, got ' + _vKind(pt[k]));
+      }
+    }
+    if ('verified' in pt && typeof pt.verified !== 'boolean') {
+      errs.push(p + '.verified: expected boolean, got ' + _vKind(pt.verified));
+    }
+  }
+  return errs.length ? errs.join('; ') : null;
+}
+
 // Strict schema for docs/airfields.json — { airfields:[{ name, he, en, lat,
 // lng, elev_ft, plates:[string] }] }. Mirrors validateNavWaypoints; the
 // loader in draw.js bails out with an alert that names the offending field

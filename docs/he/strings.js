@@ -5,6 +5,7 @@ window.S = {
   navWpSearchField: 'he',
   airfieldsUrl: 'airfields.json?v=3',
   airfieldLabelField: 'he',
+  commChangeUrl: 'comm-change.json?v=1',
 
   // --- Waypoint terminology -------------------------------------------
   // Mirrors the English cluster in core.js — keep the noun phrase
@@ -135,6 +136,9 @@ window.S = {
   tbShowDriftTitle: 'הצג קווי ייחוס סחיפה של 10 מעלות בקצה כל קטע',
   tbShowAirfields: 'הצג/נעץ שדות תעופה',
   tbShowAirfieldsTitle: 'הצג שדות תעופה ישראלים מפורסמים (מקור BYOP)',
+  tbShowCommChange: 'הצג מעברי תקשורת',
+  tbShowCommChangeTitle: 'סמן ציוני דיווח שבהם נדרש מעבר תדר ATC',
+  commChangeBadge: '📡 מעבר תקשורת',
   plates: 'דפיות',
   runways: 'מסלולים',
   plateCategoryApproach: 'גישה',

@@ -257,6 +257,8 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
 - `navaid.highlightDiff` — `'0'` / `'1'` for altitude-diff halos.
 - `navaid.showNavWP` — `'0'` / `'1'` for the nav-waypoints overlay.
 - `navaid.showAirfields` — `'0'` / `'1'` for the airfield overlay.
+- `navaid.showCommChange` — `'0'` / `'1'` for the comm-change ring overlay
+  (issue #399; default on). Toggled by the "Show Comm Changes" View checkbox.
 - `navaid.showWpNames` — `'0'` / `'1'` for waypoint-name display.
 - `navaid.wpNameAngle` — waypoint-name rotation (`0`/`90`/`180`/`270`).
 - `navaid.aircraft` — last-used aircraft profile JSON (fuel planner).
@@ -368,18 +370,37 @@ downloadable `route.json`.
 - `comm-change.json` — dataset of CVFR reporting points where pilots
   must change ATC frequency (the `מע.` / `מז.` Hebrew sector callouts
   on the IAA CVFR chart, indicating PLUTO West / PLUTO East / etc.).
-  Schema: `{version, source, _TODO, points: [{name, commChange, from,
-  to, note, verified, source}]}`. `name` matches an ICAO 5-letter
-  code in `nav-waypoints.json`. **Source:** Israel AIP (AD 2.22 LLHA,
-  ENR 2.1, GEN 3.4) for documented FIR/CTR transitions; GitHub issue
-  msupino/NavigationApp#399 for the chart fragment near `TYONA`.
-  Currently only contains a 2-point seed (TYONA, GALIM) verified
-  against published AIP text; the bulk of the chart `מע.` markers
-  require manual visual chart review to extract. **Consumption code
-  (`draw.js` marker overlay, `interact.js` inspector badge,
-  `io.js` flight-plan modal column) is pending in a follow-up PR
-  per issue #399** — the schema is shipped first so the file can be
-  populated iteratively without app-side churn.
+  Schema: `{version, source, _definition, _NOTE, _TODO, points:
+  [{name, commChange, from, to, note, verified, source}]}`. `name`
+  matches an ICAO 5-letter code in `nav-waypoints.json`. **Source:**
+  Israel AIP (AD 2.22 LLHA, ENR 2.1, GEN 3.4) for documented FIR/CTR
+  transitions; GitHub issue msupino/NavigationApp#399 for the chart
+  fragment near `TYONA`. Currently a 2-point seed (TYONA, GALIM)
+  verified against published AIP text; the bulk of the chart `מע.`
+  markers require manual visual chart review to extract.
+  - **Loader:** `loadCommChange()` in `draw.js` lazy-fetches the file
+    at boot (parallel with `loadNavWaypoints` / `loadAirfields` in
+    `ui.js`), validates it with `validateCommChange()` in `io.js`, and
+    builds the module-level `commChangeMap` keyed by `name` for O(1)
+    lookup. A 404 / schema error degrades to `commChangeMap = {}` so
+    a missing dataset never disables the rest of the nav-WP overlay.
+  - **Render:** `drawNavWaypoints` in `draw.js` augments every white
+    nav-WP dot whose `name` has `commChange: true` with a red outer
+    ring (radius 6 px, 1.8 px stroke, `#e74c3c`). Gated by the global
+    `showCommChange` boolean + the View-section `#commchange-cb`
+    checkbox; persisted at `localStorage['navaid.showCommChange']`
+    (default on). The ring sits on top of the white dot — it
+    augments, never replaces. A `window.__commChangeRingsDrawn` Set
+    is rebuilt every frame for Playwright inspection.
+  - **Inspector badge:** `interact.js` `showInspector()` appends a
+    `.commchange-row` to the waypoint pane whenever the selected
+    waypoint's `name` matches a `commChange: true` entry. Shows the
+    i18n label (`S.commChangeBadge`), the `from → to` frequency pair
+    when present, and the optional `note`. Styled in `style.css`
+    under `/* Comm-change inspector badge (issue #399) */`.
+  - **i18n keys:** `tbShowCommChange`, `tbShowCommChangeTitle`,
+    `commChangeBadge` (English defaults in `core.js`, Hebrew overrides
+    in `he/strings.js`).
 - `geo` distances are exact great-circle; verify against the chart's
   graticule if precision is questioned.
 - GA4 (`G-0XM5PHEK8B`) tracks page views; no event tracking yet.

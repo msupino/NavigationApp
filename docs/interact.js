@@ -236,6 +236,36 @@ function showInspector() {
     title.oninput = () => { wp.name = title.value; draw(); };
     body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
+    // Comm-change badge (issue #399). Surfaces the sector / CTR / TMA
+    // frequency change associated with a known comm-change reporting
+    // point. Looked up by the canonical ICAO name so it works for both
+    // auto-snapped nav-WP waypoints and routes built via the search
+    // overlay, regardless of locale (the badge text itself is i18n'd).
+    if (commChangeMap && wp.name) {
+      const cc = commChangeMap[wp.name.trim()];
+      if (cc && cc.commChange) {
+        const row = document.createElement('div');
+        row.className = 'row col commchange-row';
+        const lbl = document.createElement('label');
+        lbl.className = 'commchange-label';
+        lbl.textContent = S.commChangeBadge || '📡 Comm change';
+        row.appendChild(lbl);
+        if (cc.from || cc.to) {
+          const freq = document.createElement('span');
+          freq.className = 'val commchange-freq';
+          const arrow = (S.legArrow || '→');
+          freq.textContent = (cc.from || '?') + ' ' + arrow + ' ' + (cc.to || '?');
+          row.appendChild(freq);
+        }
+        if (cc.note) {
+          const note = document.createElement('span');
+          note.className = 'val commchange-note';
+          note.textContent = cc.note;
+          row.appendChild(note);
+        }
+        body.appendChild(row);
+      }
+    }
     // #231: runway directions when the waypoint matches a known airfield.
     if (airfields && wp.name) {
       const up = wp.name.trim().toUpperCase();
