@@ -365,6 +365,21 @@ downloadable `route.json`.
   `{name, he, lat, lng}` JSON. `name` = ICAO/CVFR code; `he` = Hebrew
   place name. To refresh: download latest pack from the site, extract
   the KMZ, diff against the current JSON and add new entries.
+- `comm-change.json` — dataset of CVFR reporting points where pilots
+  must change ATC frequency (the `מע.` / `מז.` Hebrew sector callouts
+  on the IAA CVFR chart, indicating PLUTO West / PLUTO East / etc.).
+  Schema: `{version, source, _TODO, points: [{name, commChange, from,
+  to, note, verified, source}]}`. `name` matches an ICAO 5-letter
+  code in `nav-waypoints.json`. **Source:** Israel AIP (AD 2.22 LLHA,
+  ENR 2.1, GEN 3.4) for documented FIR/CTR transitions; GitHub issue
+  msupino/NavigationApp#399 for the chart fragment near `TYONA`.
+  Currently only contains a 2-point seed (TYONA, GALIM) verified
+  against published AIP text; the bulk of the chart `מע.` markers
+  require manual visual chart review to extract. **Consumption code
+  (`draw.js` marker overlay, `interact.js` inspector badge,
+  `io.js` flight-plan modal column) is pending in a follow-up PR
+  per issue #399** — the schema is shipped first so the file can be
+  populated iteratively without app-side churn.
 - `geo` distances are exact great-circle; verify against the chart's
   graticule if precision is questioned.
 - GA4 (`G-0XM5PHEK8B`) tracks page views; no event tracking yet.

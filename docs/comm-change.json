@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "source": "Israel AIP AD 2.18/2.22 (https://e-aip.azurefd.net/2025-10-02-AIRAC/) + GitHub issue msupino/NavigationApp#399 chart fragment, last verified 2026-05-28 by automated agent",
+  "_TODO": [
+    "Inferred comm-change marker '\u05de\u05e2.' (\u05de\u05e2\u05e8\u05d1 = West / \u05de\u05e2\u05d1\u05e8 = transition) and '\u05de\u05d6.' (\u05de\u05d6\u05e8\u05d7 = East) annotations on the printed IAA CVFR chart could not be extracted programmatically. Visual chart walk required for the remainder.",
+    "Tel-Aviv CTR / LLBG TMA boundary points beyond TYONA \u2014 e.g. BAZRA, BORN, FRDIS, HADRA southern entries, BANAY/SHEFA northbound exits \u2014 unconfirmed.",
+    "Sde Dov (LLSD) corridor reporting points (Reading, Hertzliya transitions) \u2014 LLSD closed July 2019; legacy chart annotations may persist on older charts but are out of scope.",
+    "Hertzliya (LLHZ) CTR boundary points \u2014 not yet listed (chart inspection required).",
+    "Megiddo / Jezreel valley sector boundary (HAGAV North \u2194 PLUTO West) \u2014 reporting points unconfirmed.",
+    "Northern frontier reporting points along Lebanese / Syrian border (Rosh Pina sector) \u2014 not yet listed.",
+    "Sea of Galilee / Jordan Rift Valley transitions (PLUTO East \u2194 HAGAV North) \u2014 not yet listed.",
+    "Negev / Eilat corridor reporting points (BMNUH, ZOFAR, RUHOT, OVDAT, HAZVA, HRGVS area; SOUTH CONTROL \u2194 Eilat APP/TWR transitions) \u2014 not yet listed.",
+    "From/to frequency pairs for inferred entries: Pluto West 118.40 / Pluto East 123.85 / Hagav North 128.35 / Hagav South 121.15 / South Control 120.90 / Tel-Aviv Control 121.40 / Haifa TWR 133.00 / Eilat Control 119.00 \u2014 confirmed sector frequencies (AIP ENR 2.1 + AD 2.18) but per-point mapping needs chart review."
+  ],
+  "points": [
+    {
+      "name": "TYONA",
+      "commChange": true,
+      "from": "Tel-Aviv Control 121.40 / 124.30",
+      "to": "Pluto West 118.40",
+      "note": "\u05e4\u05dc\u05d5\u05d8\u05d5 \u05de\u05e2.",
+      "verified": true,
+      "source": "GitHub issue msupino/NavigationApp#399 \u2014 user-supplied chart fragment showing '\u05e4\u05dc\u05d5\u05d8\u05d5 \u05de\u05e2.' adjacent to TYONA on the IAA CVFR chart; sector frequencies cross-referenced with Israel AIP ENR 2.1 (Tel-Aviv FIR \u2014 Northern Sector) and Domestic AIP frequency table (PLUTO West)."
+    },
+    {
+      "name": "GALIM",
+      "commChange": true,
+      "from": "Tel-Aviv Control 121.40 / 124.30",
+      "to": "Haifa TWR 133.00",
+      "note": "Haifa CTR boundary \u2014 mandatory transfer point both directions",
+      "verified": true,
+      "source": "Israel AIP AD 2.22 LLHA (2025-10-02 AIRAC) \u00a73: 'Arriving flights shall be transferred to Haifa TWR before GALIM 3000/5000 ft' / 'Departure flights shall be transferred to Tel Aviv Control at GALIM, 3000/5000 ft.' Haifa TWR primary 133.000 MHz (AD 2.18 LLHA)."
+    }
+  ]
+}
