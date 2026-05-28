@@ -155,4 +155,39 @@ test.describe('comm-change dataset (#399)', () => {
       'label[data-i18n-title="tbShowCommChangeTitle"]').textContent();
     expect(labelText).toMatch(/הצג מעברי תקשורת/);
   });
+
+  // PR #401 round-2 — dataset expanded with sector-boundary inferences
+  // (verified=false). Loader treats verified=false the same as verified=true
+  // (commChange:true is the only gate for ring + badge rendering); the
+  // inspector badge still shows the i18n label and the note, but omits the
+  // frequency row when from/to are absent.
+  test('inferred (verified=false) entries still populate commChangeMap', async ({ page }) => {
+    await boot(page);
+    const sores = await page.evaluate(() => window.commChangeMap.SORES);
+    expect(sores).toBeTruthy();
+    expect(sores.commChange).toBe(true);
+    expect(sores.verified).toBe(false);
+  });
+
+  test('inferred entry without from/to renders badge + note, omits freq row', async ({ page }) => {
+    await boot(page);
+    // BAZRA is the canonical "frequencies not confirmed" case — the entry
+    // has commChange:true + note but no from/to, exercising the optional
+    // freq-row branch in showInspector().
+    const BAZRA = { lat: 32.21861111111112, lng: 34.8825, name: 'BAZRA' };
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      state.legs = [];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+      draw();
+    }, BAZRA);
+    const row = page.locator('#inspector .commchange-row');
+    await expect(row).toBeVisible();
+    await expect(row.locator('.commchange-label')).toBeVisible();
+    await expect(row.locator('.commchange-note')).toBeVisible();
+    // No from/to → no .commchange-freq element rendered.
+    await expect(row.locator('.commchange-freq')).toHaveCount(0);
+  });
 });
