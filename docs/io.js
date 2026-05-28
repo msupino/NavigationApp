@@ -198,6 +198,25 @@ function validateAirfields(d) {
 }
 
 // --- save / load -----------------------------------------------------
+// Per-leg label normaliser used by every route-ingest path (load() file
+// import, restoreRoute() localStorage boot, decodeShareUrl() short URL).
+// Pre-#393 blobs stored offsets in raw screen pixels at the save-time
+// `legArrowSize`; the new render math multiplies stored offsets by
+// `legZoomScale() = max(0.35, 2^(zoom-12)) * legArrowSize`, so an
+// unmigrated raw value renders at legArrowSize^2 of the intended position.
+// We normalise by dividing by `legacyArrowSize` exactly once — `_m: 1`
+// stamps the result so re-saved blobs never re-migrate. `legacyArrowSize`
+// should be the size the file was *saved* under; if the file does not
+// carry that field we fall back to the current `legArrowSize` (which
+// matches the user's current display environment — the safest default
+// per the PR-review #3 recommendation).
+function _normalizeLegLabel(raw, legacyArrowSize) {
+  if (!raw) return raw;
+  if (raw._m) return { a: raw.a, p: raw.p, _m: 1 };
+  const k = (typeof legacyArrowSize === 'number' && legacyArrowSize > 0)
+    ? legacyArrowSize : 1;
+  return { a: raw.a / k, p: raw.p / k, _m: 1 };
+}
 function save() {
   const data = {
     waypoints: state.waypoints.map(w => ({
@@ -253,13 +272,18 @@ function load(file) {
     state.waypoints = d.waypoints.map(w => ({
       lat: r5(w.lat), lng: r5(w.lng), name: w.name,
     }));
+    // Use the file's `legArrowSize` if present (forward-compat — current
+    // save() doesn't emit it). Otherwise fall back to the current setting.
+    // See _normalizeLegLabel for the migration math.
+    const legacyAS = (typeof d.legArrowSize === 'number' && d.legArrowSize > 0)
+      ? d.legArrowSize : legArrowSize;
     state.legs = d.legs.map(l => ({
       inboundAltitude: l.inboundAltitude,
       outboundAltitude: l.outboundAltitude,
       flightSpeed: l.flightSpeed,
       outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
-      inLabel:  { a: l.inLabel.a,  p: l.inLabel.p  },
-      outLabel: { a: l.outLabel.a, p: l.outLabel.p },
+      inLabel:  _normalizeLegLabel(l.inLabel,  legacyAS),
+      outLabel: _normalizeLegLabel(l.outLabel, legacyAS),
     }));
     state.notes = d.notes.map(n => ({
       lat: r5(n.lat), lng: r5(n.lng),
@@ -1702,13 +1726,21 @@ function restoreRoute() {
   state.waypoints = d.waypoints.map(w => ({
     lat: r5(w.lat), lng: r5(w.lng), name: w.name,
   }));
+  // #393 — normalise inLabel/outLabel offsets to zoom-12 reference so they
+  // scale proportionally with zoom. Pre-#393 blobs lack `_m` and hold raw
+  // pixel offsets, which `_normalizeLegLabel` divides by `legacyArrowSize`
+  // (one-shot, idempotent — the `_m: 1` stamp blocks any re-migration). If
+  // the saved blob carries its own legArrowSize we honour it; otherwise we
+  // fall back to the current setting (PR-review #3).
+  const legacyAS = (typeof d.legArrowSize === 'number' && d.legArrowSize > 0)
+    ? d.legArrowSize : legArrowSize;
   state.legs = d.legs.map(l => ({
     inboundAltitude: l.inboundAltitude,
     outboundAltitude: l.outboundAltitude,
     flightSpeed: l.flightSpeed,
     outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
-    inLabel:  { a: l.inLabel.a,  p: l.inLabel.p  },
-    outLabel: { a: l.outLabel.a, p: l.outLabel.p },
+    inLabel:  _normalizeLegLabel(l.inLabel,  legacyAS),
+    outLabel: _normalizeLegLabel(l.outLabel, legacyAS),
   }));
   state.notes = d.notes.map(n => ({
     lat: r5(n.lat), lng: r5(n.lng),
@@ -2073,13 +2105,19 @@ function decodeShareUrl(search) {
     const parts = s.split(',').map(Number);
     if (parts.length < 3 || parts.some(v => !Number.isFinite(v))) return null;
     const [ia, oa, fs, os] = parts;
+    // Short-URL share format doesn't carry per-leg label offsets — use the
+    // size-independent default with `_m: 1` so the offsets render at the
+    // same on-screen position as a freshly-created leg, independent of
+    // legArrowSize, and so the migration in restoreRoute() / load() never
+    // touches them on a later round-trip (PR-review #3 + #5).
+    const d = _defaultLegLabels();
     return {
       inboundAltitude: ia,
       outboundAltitude: oa,
       flightSpeed: fs,
       outboundSpeed: os != null ? os : fs,
-      inLabel: { a: 0, p: 44 },
-      outLabel: { a: 0, p: -44 },
+      inLabel: d.inLabel,
+      outLabel: d.outLabel,
     };
   });
   if (legs.some(l => l === null)) return null;
@@ -2117,7 +2155,505 @@ function showToast(msg) {
   }, 2500);
 }
 
-// Toolbar button handler — copy share URL to clipboard.
+// --- magnifying glass -------------------------------------------------
+let _magDirty = true;                      // content needs rebuilding
+let _magRAF = null;                        // requestAnimationFrame id
+let _magX = 0, _magY = 0;                 // last known cursor (viewport px)
+let _magFixed = false;                     // click-to-lock fixed position
+// Cursor coords used for the most recent hi-res rebuild. Initialised to a
+// sentinel so the first real mousemove always triggers a rebuild — without
+// this the cursor-driven refetch in updateMagnifier would short-circuit when
+// the user opens the loupe with a stale `_magX`.
+let _magLastX = -Infinity, _magLastY = -Infinity;
+// Visible CSS scale of the loupe content — ALWAYS equals `magnifierZoom`
+// (the slider value). Refreshed by rebuildMagnifier();
+// applyMagnifierTransform() reads it for the loupe's `scale()` transform.
+//
+// A previous iteration set this to `max(slider, sub)` so hi-res tiles
+// rendered at native pixel density. That conflated two concepts: the
+// USER-FACING magnification (slider) vs. the IMPLEMENTATION-DETAIL
+// sub-tile zoom step. At base z=8 / slider 4.75 the loupe rendered at
+// 16× — almost 4× the value the user dialled in — because `sub` (16)
+// won the max(). The hi-res tiles are still fetched (see `sub` in
+// rebuildMagnifier); they just get downsampled to slider density on
+// display, which is far crisper than upscaling the cloned base tiles.
+let _magScale = 1;
+// Minimum loupe zoom — even when the base map is wide-out (z=8) the hi-res
+// overlay aims for at least this zoom so VFR chart labels stay legible.
+const MAG_BASELINE_Z = 12;
+// Hard ceiling on the per-rebuild sub-tile grid (sub = 2^MAG_MAX_EXP).
+// sub=16 → up to 4 zoom levels deeper than the displayed map tile, which is
+// what `MAG_BASELINE_Z` needs at the lowest allowed map zoom (8 → 12).
+const MAG_MAX_EXP = 4;
+// In-flight hi-res sub-tile counter for the current rebuild batch. The
+// "Perfecting…" indicator is visible while this is > 0.
+let _magPendingTiles = 0;
+// Monotonically increasing rebuild id. Tile <img>s are tagged with the
+// batch they were created in; load/error callbacks from a stale batch
+// (e.g. cursor moved fast and a newer rebuild already ran) bail out so
+// they don't decrement the current batch's counter.
+let _magBatch = 0;
+
+function magCenter() { return magnifierSize / 2; }
+
+function showMagLoading() {
+  const el = document.querySelector('#magnifier .mag-loading');
+  if (el) el.classList.add('show');
+}
+
+function hideMagLoading() {
+  const el = document.querySelector('#magnifier .mag-loading');
+  if (el) el.classList.remove('show');
+}
+
+function createMagnifier() {
+  if (document.getElementById('magnifier')) return;
+  const mag = document.createElement('div');
+  mag.id = 'magnifier';
+  mag.style.cssText = 'display:none;position:fixed;z-index:1000;width:' + magnifierSize +
+    'px;height:' + magnifierSize + 'px;border-radius:50%;overflow:hidden;' +
+    'pointer-events:none;border:2px solid rgba(255,204,51,0.85);' +
+    'box-shadow:0 0 20px rgba(0,0,0,0.6)';
+  const content = document.createElement('div');
+  content.id = 'mag-content';
+  content.style.cssText = 'position:absolute;top:0;left:0;width:0;height:0;transform-origin:0 0';
+  mag.appendChild(content);
+  // crosshair
+  const ch = document.createElement('div');
+  ch.style.cssText = 'position:absolute;top:50%;left:50%;width:0;height:0;pointer-events:none';
+  ch.innerHTML =
+    '<div style="position:absolute;top:-1px;left:-24px;width:48px;height:2px;background:rgba(255,60,60,0.8)"></div>' +
+    '<div style="position:absolute;top:-24px;left:-1px;width:2px;height:48px;background:rgba(255,60,60,0.8)"></div>';
+  mag.appendChild(ch);
+  // "Perfecting…" indicator — sibling of `content` so the loupe's scale()
+  // transform doesn't affect it. Hidden by default; rebuildMagnifier
+  // shows it when there are in-flight hi-res sub-tiles.
+  const loading = document.createElement('div');
+  loading.className = 'mag-loading';
+  loading.textContent = (typeof S !== 'undefined' && S.magLoading) || 'Perfecting…';
+  mag.appendChild(loading);
+  document.body.appendChild(mag);
+}
+
+function rebuildMagnifier() {
+  if (!magnifierOn) return;
+  const content = document.getElementById('mag-content');
+  if (!content) return;
+  content.innerHTML = '';
+  _magLastX = _magX;
+  _magLastY = _magY;
+  // Start a fresh hi-res batch. Any pending load/error callbacks from a
+  // prior rebuild are now stale — they'll match a different `_magBatch`
+  // value and bail out instead of decrementing the new batch's counter.
+  const batch = ++_magBatch;
+  _magPendingTiles = 0;
+
+  // clone tiles at current zoom (immediate fallback)
+  const tilePane = document.querySelector('.leaflet-tile-pane');
+  const tiles = tilePane ? Array.from(tilePane.querySelectorAll('img')) : [];
+  for (const img of tiles) {
+    const c = img.cloneNode(true);
+    c.style.visibility = 'visible';
+    content.appendChild(c);
+  }
+
+  // Adaptive hi-res overlay. Two independent dials decide the target tile
+  // zoom:
+  //   1. Slider — `ceil(log2(magnifierZoom))` keeps the optimal pixel-density
+  //      match the slider used to provide on its own.
+  //   2. Baseline — `MAG_BASELINE_Z` (=12) is the zoom at which Israeli VFR
+  //      chart labels become legible. Flooring at this value means a country-
+  //      wide z=8 view still surfaces airfield / waypoint names inside the
+  //      loupe, which the pre-adaptive code did not — the loupe just blew
+  //      z=8 source up to 2× and showed no extra detail.
+  // Clamped to the layer's `maxNativeZoom` (anything beyond just 404s) and
+  // to `MAG_MAX_EXP` so the per-rebuild sub-tile grid stays bounded.
+  //
+  // The CSS scale on the loupe content is `magnifierZoom` (the slider),
+  // independent of `sub`. Hi-res tiles (CSS size `256/sub`) therefore
+  // display at `(256/sub) * slider` screen px — slightly downsampled
+  // from native (by `sub / slider`), but still vastly crisper than
+  // upscaling the cloned base tiles by `slider`. That's what makes z=12
+  // labels legible inside the loupe at low base zoom.
+  //
+  // Fetch is centred on the cursor (not "subdivide every clone in the
+  // pane") so the tile count stays bounded by the loupe area instead of
+  // the viewport area. `updateMagnifier` schedules a refetch whenever the
+  // cursor drifts past one loupe radius, so dragging the cursor across
+  // the map updates the crisp area too.
+  let activeLayer = null;
+  for (const key in layers) {
+    if (map.hasLayer(layers[key])) { activeLayer = layers[key]; break; }
+  }
+
+  // Pick the first cloned tile with a known tile coord + transform as the
+  // coordinate-system anchor. Hi-res tiles are positioned relative to it,
+  // which sidesteps having to recompute Leaflet's tile-container origin
+  // (see commit 41fd620 — world-pixel coords are catastrophically wrong).
+  //
+  // We read the tile coords from Leaflet's `_tiles` cache (the `coords`
+  // property is the authoritative {x, y, z} for the tile, independent of
+  // the URL template's slot order). The previous URL-parsing approach
+  // assumed `{z}/{x}/{y}` and silently swapped on Satellite (Esri uses
+  // `{z}/{y}/{x}`, see core.js layers['Satellite']) — every hi-res
+  // request 404'd and the loupe stayed blurry on that base layer.
+  let refX = null, refY = null, refZ = null;
+  let refLocalX = 0, refLocalY = 0;
+  if (activeLayer) {
+    const tileCache = activeLayer._tiles || {};
+    // Build a src→coords lookup from the live tile cache so we can resolve
+    // each cloned <img> back to its authoritative {x,y,z} without trusting
+    // the URL slot order.
+    const coordsBySrc = new Map();
+    for (const k in tileCache) {
+      const t = tileCache[k];
+      if (t && t.el && t.el.src && t.coords) coordsBySrc.set(t.el.src, t.coords);
+    }
+    for (const img of tiles) {
+      if (!img.src) continue;
+      const coords = coordsBySrc.get(img.src);
+      if (!coords) continue;
+      const trStr = img.style.transform;
+      if (!trStr) continue;
+      let mat;
+      try { mat = new DOMMatrixReadOnly(trStr); } catch (e) { continue; }
+      refZ = coords.z; refX = coords.x; refY = coords.y;
+      refLocalX = mat.is2D ? mat.e : mat.m41;
+      refLocalY = mat.is2D ? mat.f : mat.m42;
+      break;
+    }
+  }
+
+  // CSS scale = the slider value, always. (See _magScale comment for
+  // rationale.) `sub` below is the orthogonal hi-res tile zoom step.
+  _magScale = Math.max(1, magnifierZoom);
+
+  if (activeLayer && refZ !== null) {
+    const maxNZ = activeLayer.options.maxNativeZoom ||
+                  activeLayer.options.maxZoom || 19;
+    const subs = activeLayer.options.subdomains || 'abc';
+    const S = magnifierZoom;
+    const sliderExp = Math.ceil(Math.log2(Math.max(1, S)));
+    const baselineExp = MAG_BASELINE_Z - refZ;
+    const desiredExp = Math.max(sliderExp, baselineExp);
+    const targetExp = Math.max(0,
+      Math.min(MAG_MAX_EXP, Math.min(maxNZ - refZ, desiredExp)));
+    if (targetExp > 0) {
+      const tileTarget = refZ + targetExp;
+      const sub = Math.pow(2, targetExp);
+      const sz = 256 / sub;
+      // NOTE: `_magScale` is NOT bumped to `sub` here — the loupe's
+      // visible magnification stays exactly at the slider value. Hi-res
+      // tiles fetched below get downsampled to slider density on display.
+
+      // Cursor in tile-pane-local source pixels (same coord system as the
+      // clones' transforms).
+      const mapPane = document.querySelector('.leaflet-map-pane');
+      let mpX = 0, mpY = 0;
+      if (mapPane) {
+        try {
+          const m = new DOMMatrixReadOnly(getComputedStyle(mapPane).transform);
+          mpX = m.is2D ? m.e : m.m41;
+          mpY = m.is2D ? m.f : m.m42;
+        } catch (e) {}
+      }
+      const mapRect = map.getContainer().getBoundingClientRect();
+      const cursorX = (_magX - mapRect.left) - mpX;
+      const cursorY = (_magY - mapRect.top) - mpY;
+
+      // Loupe area + one loupe-radius margin so the cursor can drift a
+      // little before `updateMagnifier` decides to schedule a refetch.
+      // Sized using `_magScale` (= slider) so the fetched region matches
+      // the visible source-pixel area: smaller slider → larger visible
+      // source area → larger fetch span. Capped via `MAG_MAX_EXP` /
+      // `maxNZ` above so the per-rebuild grid stays bounded.
+      const loupeR = magnifierSize / 2 / _magScale;
+      const radius = 2 * loupeR;
+      const xMin = cursorX - radius, xMax = cursorX + radius;
+      const yMin = cursorY - radius, yMax = cursorY + radius;
+
+      // Map tile-pane-local pixels back to hi-res tile coords using the
+      // reference clone we picked above.
+      const refTxBase = refX * sub;
+      const refTyBase = refY * sub;
+      const txMin = Math.floor(refTxBase + (xMin - refLocalX) / sz);
+      const txMax = Math.floor(refTxBase + (xMax - refLocalX) / sz);
+      const tyMin = Math.floor(refTyBase + (yMin - refLocalY) / sz);
+      const tyMax = Math.floor(refTyBase + (yMax - refLocalY) / sz);
+
+      for (let ty = tyMin; ty <= tyMax; ty++) {
+        if (ty < 0) continue;
+        for (let tx = txMin; tx <= txMax; tx++) {
+          if (tx < 0) continue;
+          const localX = refLocalX + (tx - refTxBase) * sz;
+          const localY = refLocalY + (ty - refTyBase) * sz;
+          const tile = document.createElement('img');
+          tile.style.cssText = 'position:absolute;left:' +
+            localX + 'px;top:' + localY + 'px;' +
+            'width:' + sz + 'px;height:' + sz + 'px';
+          tile.dataset.batch = String(batch);
+          _magPendingTiles++;
+          // Settle handler shared by load + error. Stale-batch callbacks
+          // (cursor moved fast → newer rebuild already ran) early-return
+          // so they don't decrement the current batch's pending count.
+          const onSettle = (ev) => {
+            const t = ev && ev.target ? ev.target : tile;
+            if (t.dataset.batch !== String(_magBatch)) return;
+            _magPendingTiles--;
+            if (_magPendingTiles <= 0) hideMagLoading();
+          };
+          tile.addEventListener('load', onSettle, { once: true });
+          tile.addEventListener('error', (ev) => {
+            // Preserve the original cleanup behaviour for 404'd tiles.
+            tile.remove();
+            onSettle(ev);
+          }, { once: true });
+          tile.src = L.Util.template(activeLayer._url,
+            { z: tileTarget, x: tx, y: ty,
+              s: subs[(tx + ty) % subs.length] });
+          // Cached images can fire `load` before listeners are attached.
+          // `complete` + `naturalWidth > 0` ⇒ already loaded; `complete`
+          // alone (with `naturalWidth === 0`) ⇒ already errored. Either
+          // way, settle synchronously so the counter doesn't get stuck.
+          if (tile.complete) {
+            if (tile.naturalWidth === 0) tile.remove();
+            onSettle({ target: tile });
+          }
+          content.appendChild(tile);
+        }
+      }
+    }
+  }
+  // Show the "Perfecting…" pill iff there are still in-flight hi-res
+  // tiles after the loop ran. At max native zoom (no hi-res fetched,
+  // sub=1, 0 tiles) the counter stays at 0 and the pill never appears,
+  // which is what we want — no flicker on already-crisp views.
+  if (_magPendingTiles > 0) showMagLoading();
+  else hideMagLoading();
+
+  // Capture the overlay canvas (waypoint dots, leg lines, notes).
+  //
+  // Force a fresh `draw()` BEFORE `toDataURL()` so the capture reflects
+  // the CURRENT map state, not whatever the canvas held when the user
+  // last released a drag. `scheduleDraw` (interact.js) already redraws
+  // on Leaflet's `move` event via rAF, but its callback and our rebuild
+  // callback are independent rAFs — and during a drag, the map pane's
+  // CSS transform updates synchronously while the overlay's canvas
+  // pixels only update on the next rAF. Without this synchronous draw
+  // the loupe captured a stale overlay one frame behind the tiles, so
+  // waypoint dots / leg lines appeared to "float" off the underlying
+  // terrain as the user dragged. Cheap (canvas overlay redraw) and the
+  // duplicated work (scheduleDraw rAF will run again later this frame)
+  // is bounded by the loupe's own rAF coalescing.
+  if (typeof draw === 'function') {
+    try { draw(); } catch (e) { /* never abort the loupe rebuild on a draw error */ }
+  }
+  const overlay = document.getElementById('overlay');
+  if (overlay) {
+    const cap = document.createElement('img');
+    cap.src = overlay.toDataURL();
+    const mapPane = document.querySelector('.leaflet-map-pane');
+    const mat = mapPane ? new DOMMatrixReadOnly(getComputedStyle(mapPane).transform) : null;
+    const dx = mat ? (mat.is2D ? mat.e : mat.m41) : 0;
+    const dy = mat ? (mat.is2D ? mat.f : mat.m42) : 0;
+    // No counter-scale: `_magScale` is now the slider value directly,
+    // so the content div's `scale(_magScale)` already gives the overlay
+    // its intended magnification. (When `_magScale` was `max(slider, sub)`
+    // we had to divide back out the `sub` boost; not anymore.)
+    cap.style.cssText = 'position:absolute;left:' + (-dx) + 'px;top:' + (-dy) +
+      'px;width:' + overlay.style.width + ';height:' + overlay.style.height;
+    content.appendChild(cap);
+  }
+  _magDirty = false;
+}
+
+function applyMagnifierTransform() {
+  const mag = document.getElementById('magnifier');
+  const content = document.getElementById('mag-content');
+  if (!mag || !content) return;
+  if (_magDirty) rebuildMagnifier();
+  const mapRect = map.getContainer().getBoundingClientRect();
+  const cp = { x: _magX - mapRect.left, y: _magY - mapRect.top };
+  // Loupe's visible CSS scale = the slider (`magnifierZoom`). Hi-res
+  // tiles get downsampled to slider density for display; the adaptive
+  // sub-tile fetch in `rebuildMagnifier` only governs WHICH tiles are
+  // fetched, not how big they appear.
+  const effS = _magScale;
+  const mapPane = document.querySelector('.leaflet-map-pane');
+  const mat = mapPane ? new DOMMatrixReadOnly(getComputedStyle(mapPane).transform) : null;
+  const dx = mat ? (mat.is2D ? mat.e : mat.m41) : 0;
+  const dy = mat ? (mat.is2D ? mat.f : mat.m42) : 0;
+  content.style.transform =
+    'translate(' + (magCenter() + dx * effS - cp.x * effS) + 'px,' +
+                   (magCenter() + dy * effS - cp.y * effS) + 'px) scale(' + effS + ')';
+}
+
+// Shared rAF queue: coalesces every refresh trigger (cursor move, map
+// pan, map zoom, layer change, slider tweak…) into a single per-frame
+// `applyMagnifierTransform` call, which itself runs `rebuildMagnifier`
+// iff `_magDirty`. Centralising the schedule is what lets `map.on('move')`
+// keep the loupe in lock-step with the underlying pan without re-typing
+// the same rAF dance in every caller.
+function scheduleMagRebuild() {
+  if (!magnifierOn) return;
+  if (_magRAF) return;                     // already queued this frame
+  _magRAF = requestAnimationFrame(() => {
+    _magRAF = null;
+    const mag = document.getElementById('magnifier');
+    const content = document.getElementById('mag-content');
+    if (!mag || !content) return;
+    // Locked loupe (`_magFixed`) keeps its on-screen position; only the
+    // CONTENT refreshes when the underlying map moves. Without this
+    // guard a pan would yank the locked loupe back to the live cursor.
+    if (!_magFixed) {
+      mag.style.left = (_magX - magCenter()) + 'px';
+      mag.style.top = (_magY - magCenter()) + 'px';
+    }
+    applyMagnifierTransform();
+  });
+}
+
+function updateMagnifier(e) {
+  if (!magnifierOn || _magFixed) return;
+  _magX = e.clientX;
+  _magY = e.clientY;
+  // Refetch threshold tied to the actual prefetched margin. rebuildMagnifier
+  // fetches a region of radius `magnifierSize/scale` source pixels around
+  // the cursor; source≈client px in this coord system, so we refetch once
+  // the cursor's drifted past HALF that margin — the loupe view never
+  // wanders into un-fetched territory. Lower-bound at 8 px so we don't
+  // thrash on every micro-jitter at high slider values.
+  //
+  // Pre-fix this used `magnifierSize/3` (≈ 133 px on a 400 px loupe) —
+  // a 60 px cursor drift didn't refetch, so the user saw stale clones
+  // until they swung the cursor far enough. That matched the reported
+  // "have to zoom to refresh" symptom.
+  const moveThreshold = Math.max(8, magnifierSize / 2 / _magScale);
+  if (Math.abs(_magX - _magLastX) > moveThreshold ||
+      Math.abs(_magY - _magLastY) > moveThreshold) {
+    _magDirty = true;
+  }
+  scheduleMagRebuild();
+}
+
+function applyMagBorder() {
+  const mag = document.getElementById('magnifier');
+  if (!mag) return;
+  mag.style.borderColor = _magFixed ? 'rgba(102,255,102,0.9)' : 'rgba(255,204,51,0.85)';
+}
+
+function toggleMagnifier() {
+  magnifierOn = !magnifierOn;
+  _magFixed = false;
+  const mag = document.getElementById('magnifier');
+  if (!mag) return;
+  mag.style.display = magnifierOn ? 'block' : 'none';
+  applyMagBorder();
+  document.getElementById('tool-magnifier').classList.toggle('active', magnifierOn);
+  const settings = document.getElementById('magnifier-settings');
+  if (settings) settings.classList.toggle('hidden', !magnifierOn);
+  if (magnifierOn) {
+    // Establish the cursor anchor BEFORE the first rebuild — the adaptive
+    // hi-res fetch is centred on (_magX, _magY), so a stale 0/0 would put
+    // every fetched sub-tile far off the loupe viewport on first open.
+    _magX = _magX || window.innerWidth / 2;
+    _magY = _magY || window.innerHeight / 2;
+    _magLastX = -Infinity;       // force the next mousemove to refetch
+    _magLastY = -Infinity;
+    _magDirty = true;
+    rebuildMagnifier();
+    mag.style.left = (_magX - magCenter()) + 'px'; mag.style.top = (_magY - magCenter()) + 'px';
+    applyMagnifierTransform();
+    document.addEventListener('mousemove', updateMagnifier);
+    document.addEventListener('click', onMagClick, true);
+  } else {
+    document.removeEventListener('mousemove', updateMagnifier);
+    document.removeEventListener('click', onMagClick, true);
+    if (_magRAF) { cancelAnimationFrame(_magRAF); _magRAF = null; }
+    // Invalidate any in-flight hi-res callbacks and hide the indicator.
+    // Bumping `_magBatch` is what guarantees onSettle handlers from the
+    // closing batch early-return instead of poking a hidden indicator.
+    _magBatch++;
+    _magPendingTiles = 0;
+    hideMagLoading();
+  }
+}
+
+function onMagClick(e) {
+  if (!magnifierOn) return;
+  const ignore = document.getElementById('toolbar');
+  if (ignore && ignore.contains(e.target)) return;
+  const settings = document.getElementById('magnifier-settings');
+  if (settings && settings.contains(e.target)) return;
+  const insp = document.getElementById('inspector');
+  if (insp && insp.contains(e.target)) return;
+  _magFixed = !_magFixed;
+  applyMagBorder();
+  // event passes through to map for selection
+}
+
+// Magnifier zoom slider + scroll-wheel control
+(function () {
+  const zoomSlider = document.getElementById('mag-zoom');
+  const zoomVal = document.getElementById('mag-zoom-val');
+  if (zoomSlider && zoomVal) {
+    zoomSlider.addEventListener('input', function () {
+      window.magnifierZoom = parseFloat(this.value);
+      zoomVal.textContent = magnifierZoom.toFixed(2).replace(/\.?0+$/, '') + '×';
+      _magDirty = true;
+      if (magnifierOn) { rebuildMagnifier(); applyMagnifierTransform(); }
+    });
+  }
+  // Scroll wheel changes magnifier zoom instead of map zoom.
+  // Intercept on document during capture phase so we fire before Leaflet's
+  // own wheel handler (which is attached to the map container in bubble phase).
+  if (zoomSlider && zoomVal) {
+    document.addEventListener('wheel', function (e) {
+      if (!magnifierOn) return;
+      if (!document.getElementById('map')?.contains(e.target)) return;
+      e.stopPropagation();
+      e.preventDefault();
+      const step = e.deltaY > 0 ? -0.25 : 0.25;
+      var v = parseFloat(zoomSlider.value) + step;
+      v = Math.max(1, Math.min(5, Math.round(v * 4) / 4));
+      if (v === parseFloat(zoomSlider.value)) return;
+      zoomSlider.value = '' + v;
+      window.magnifierZoom = v;
+      zoomVal.textContent = v.toFixed(2).replace(/\.?0+$/, '') + '×';
+      _magDirty = true;
+      rebuildMagnifier();
+      applyMagnifierTransform();
+    }, { capture: true, passive: false });
+  }
+  // Settings close button
+  const closeBtn = document.getElementById('mag-settings-close');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', function () {
+      if (magnifierOn) toggleMagnifier();
+    });
+  }
+})();
+
+// Keep the loupe in lock-step with the underlying map. `move` / `zoom`
+// fire CONTINUOUSLY while a drag or zoom is in progress; `moveend` /
+// `zoomend` fire on release. The previous `moveend zoomend rotate`
+// wiring only dirtied the flag — it didn't schedule a rebuild — so
+// during a drag the loupe showed stale clones until the user happened
+// to wiggle the cursor far enough to clear the (also-too-large)
+// mousemove threshold. That matched the reported "have to zoom to
+// force a refresh" symptom. We now dirty AND schedule on every map
+// motion, including in-progress events, so the hi-res tiles re-fetch
+// as the user pans.
+//
+// `layeradd` covers base-layer switches (CVFR ↔ Satellite ↔ OSM …) —
+// the active tile layer is what feeds rebuildMagnifier's hi-res URL.
+map.on('move zoom moveend zoomend rotate layeradd', () => {
+  if (!magnifierOn) return;
+  _magDirty = true;
+  scheduleMagRebuild();
+});
+
+// --- Toolbar button handler — copy share URL to clipboard. ------------
 function shareRoute() {
   const r = buildShareUrl();
   if (r.err) { alert(S[r.err]); return; }
