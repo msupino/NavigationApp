@@ -125,16 +125,28 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
   7 px purple halo when a leg's altitude differs from the adjacent
   leg (inbound vs previous leg's inbound, outbound vs next leg's
   outbound).
-  - **Offset invariant (`_m: 1`):** `inLabel` / `outLabel` are stored in
-    *size-independent* units. The on-screen position is
+  - **Offset invariant (`_m: 1`):** user-dragged `inLabel` / `outLabel`
+    are stored in *size-independent* units. The on-screen position is
     `mid + nx * p * legZoomScale()` where
-    `legZoomScale() = 2^(zoom-12) * legArrowSize`. Defaults come from
-    `_defaultLegLabels()` in `core.js` — `{ a: 0, p: ±44 / legArrowSize, _m: 1 }`.
+    `legZoomScale() = max(0.35, 2^(zoom-12)) * legArrowSize`.
     `_normalizeLegLabel()` in `io.js` migrates legacy raw-pixel offsets
     (no `_m` flag) by dividing by the file's `legArrowSize` and stamping
     `_m: 1`. Migration runs on `restoreRoute()` (localStorage),
     `load()` (file import), and is implicit for share-URL decoded
     routes (which only carry the default).
+  - **Default sentinel (`_default: 1`, issue #394):** `_defaultLegLabels()`
+    in `core.js` returns `{ a: 0, _default: 1, _m: 1 }` (no `p`). At
+    render time, `drawLegs` (and the matching hit-test in
+    `legLabelCenter`) computes the perpendicular as
+    `legDefaultLabelPerp(legLenPx) = (max(1, legLenPx) / 2) * tan(10°) + 8`,
+    placing the kite just outside the 10° drift cone — independent of
+    `legArrowSize` and zoom-correct without any scaling math. Dragging a
+    default kite calls `_materialiseDefaultLegLabel()` (interact.js) to
+    freeze the current rendered offset into the user-dragged
+    `{ a, p, _m: 1 }` shape so subsequent drag deltas behave normally.
+    `_normalizeLegLabel` preserves `_default` across reload / import.
+    The validator (`validateRoute`) accepts either shape (`a` only when
+    `_default: 1`, else `a` + `p`).
   - **Reset buttons:** inspector "↺ Reset marker position" (per leg) and
     toolbar `#tool-reset-all-markers` "↺ Reset all marker positions"
     (all legs, prompts `confirm()`). Both call `_defaultLegLabels()`.

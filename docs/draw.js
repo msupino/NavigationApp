@@ -2,6 +2,21 @@
 /* NavAid — drawing: route, nav-waypoints, notes, page frame.
    Shares globals with core.js; loaded after it. */
 
+// Issue #394: default-kite drift-cone clearance helpers, shared by
+// `drawLegs` (rendering), `legLabelCenter` (interact.js hit-testing),
+// and the drag-start materialiser (interact.js). Drift lines fan out
+// from each waypoint at 10° from the leg axis for half the leg length;
+// the cone's perpendicular extent at along-leg distance `d` is
+// `d * tan(10°)`. At the default along-leg position (midpoint, a=0)
+// that's `(legLength / 2) * tan(10°)`. We add an 8 px margin so the
+// kite sits visibly clear of the dashed drift lines.
+const legDefaultDriftTan = Math.tan(10 * Math.PI / 180);
+const legDefaultDriftMarginPx = 8;
+function legDefaultLabelPerp(legLenPx) {
+  return (Math.max(1, legLenPx) / 2) * legDefaultDriftTan +
+         legDefaultDriftMarginPx;
+}
+
 // --- drawing ---------------------------------------------------------
 function draw() {
   octx.clearRect(0, 0, vw(), vh());
@@ -311,23 +326,32 @@ function drawLegs() {
     // Strict validator (`_normalizeLegLabel` + `syncLegs`) should keep
     // these defined in practice — every code path that touches a leg
     // stamps `inLabel`/`outLabel` via `_defaultLegLabels()`. Fallback
-    // exists as a defensive guard for hand-edited / corrupted state;
-    // `_defaultLegLabels()` honours the post-#393 invariant
-    // (`p: ±44 / legArrowSize`) so the legacy raw-`44` literal that used
-    // to live here no longer renders an oversized marker when the user
-    // has scaled the arrow.
+    // exists as a defensive guard for hand-edited / corrupted state.
     const defaults = (typeof _defaultLegLabels === 'function')
       ? _defaultLegLabels()
-      : { inLabel: { a: 0, p: 44, _m: 1 }, outLabel: { a: 0, p: -44, _m: 1 } };
+      : { inLabel: { a: 0, _default: 1, _m: 1 },
+          outLabel: { a: 0, _default: 1, _m: 1 } };
     const inP = leg.inLabel || defaults.inLabel;
     const outP = leg.outLabel || defaults.outLabel;
-    drawLegArrow(mid.x + dx * inP.a * zoomScale + nx * inP.p * zoomScale,
-      mid.y + dy * inP.a * zoomScale + ny * inP.p * zoomScale,
+    // Issue #394: a default (unmodified) kite sits just outside the 10°
+    // drift cone instead of at a fixed per-zoom pixel offset. The cone's
+    // perpendicular extent at the leg midpoint is `(len/2) * tan(10°)`;
+    // adding an 8 px margin keeps the kite visibly clear of the dashed
+    // drift lines at every zoom / leg length. User-dragged offsets
+    // (no `_default` flag) keep the existing `p * legZoomScale()` path so
+    // hand-positioned kites round-trip exactly as PR #393 designed.
+    const driftPerp = legDefaultLabelPerp(len);
+    const inPerp  = inP._default  ?  driftPerp : (inP.p  || 0) * zoomScale;
+    const outPerp = outP._default ? -driftPerp : (outP.p || 0) * zoomScale;
+    const inAlong  = (inP.a  || 0) * zoomScale;
+    const outAlong = (outP.a || 0) * zoomScale;
+    drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
+      mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, String(leg.inboundAltitude),
       '#2f6fd0', yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
     if (showReturn) {
-      drawLegArrow(mid.x + dx * outP.a * zoomScale + nx * outP.p * zoomScale,
-        mid.y + dy * outP.a * zoomScale + ny * outP.p * zoomScale, ang + Math.PI,
+      drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
+        mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, String(leg.outboundAltitude),
         '#c0392b', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
     }

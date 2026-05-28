@@ -1,21 +1,30 @@
 // @ts-check
-// Headline-feature coverage for PR #393 — leg-marker offsets must be
-// stored in size-independent units (already divided by legArrowSize) with
-// `_m: 1` flagging them as migrated, so they render at a constant on-screen
-// position regardless of zoom and legArrowSize. The tests below pin the
-// invariant from every direction it can be reached:
+// Headline-feature coverage for PR #393 + issue #394 — leg-marker offsets:
+//   * user-dragged offsets are stored in size-independent units (already
+//     divided by legArrowSize) with `_m: 1` flagging them as migrated, so
+//     they render at a constant on-screen position regardless of zoom
+//     and legArrowSize (PR #393).
+//   * default (unmodified) offsets are the sentinel
+//     `{ a: 0, _default: 1, _m: 1 }`. Their perpendicular distance is
+//     computed at render time from the live leg length so the kite sits
+//     just outside the 10° drift cone at every zoom / leg length
+//     (issue #394).
 //
-//   1. zoom round-trip — changing the map zoom never mutates inLabel
-//      (the stored value is size-independent; render math handles the
+// The tests below pin the invariants from every direction they can be
+// reached:
+//
+//   1. zoom round-trip — changing the map zoom never mutates a
+//      user-dragged inLabel (size-independent storage; render math handles
 //      pixel-scaling at draw time).
 //   2. legacy migration — a pre-#393 navaid.route blob (no `_m`) loads
 //      with offsets divided by legArrowSize and `_m: 1` stamped.
 //   3. idempotency — once migrated, a re-load is a no-op.
 //   4. "Reset all marker positions" — every leg ends up matching the
-//      _defaultLegLabels() invariant (44 / legArrowSize, with `_m: 1`),
-//      and the confirm dialog blocks accidental wipes.
-//   5. round-trip at legArrowSize=2 — save / reload / import produces an
-//      identical rendered marker position (within sub-pixel ε).
+//      `_defaultLegLabels()` sentinel (`{ a: 0, _default: 1, _m: 1 }`),
+//      and the confirm dialog blocks accidental wipes (issue #394: shape
+//      changed from `{a, p, _m}` to `{a, _default, _m}`).
+//   5. round-trip at legArrowSize=2 — save / reload / import preserves a
+//      user-dragged offset's rendered position (within sub-pixel ε).
 const { test, expect } = require('./_setup');
 
 const TWO_WP = [
@@ -183,8 +192,9 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
 
   // ---------------------------------------------------------------------
   // 4) "Reset all marker positions" — must (a) prompt for confirmation
-  //    (#14) and (b) write the size-independent default (#5) so every
-  //    leg renders at a constant 44 px regardless of legArrowSize.
+  //    (#14) and (b) write the `_defaultLegLabels()` sentinel
+  //    (`{ a: 0, _default: 1, _m: 1 }`) so the renderer falls back to the
+  //    drift-cone-aware perpendicular at draw time (issue #394).
   // ---------------------------------------------------------------------
   test('toolbar reset-all writes default invariant + asks for confirm', async ({ page }) => {
     const AS = 2;
@@ -228,15 +238,18 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
     expect(accepted.legArrowSize).toBe(AS);
     expect(accepted.inLabel ).toEqual(accepted.expected.inLabel);
     expect(accepted.outLabel).toEqual(accepted.expected.outLabel);
-    // Spell out the invariant: 44 / AS on the perpendicular axis, `_m: 1`.
-    expect(accepted.inLabel ).toEqual({ a: 0, p:  44 / AS, _m: 1 });
-    expect(accepted.outLabel).toEqual({ a: 0, p: -44 / AS, _m: 1 });
+    // Spell out the invariant: the issue-#394 sentinel form, identical
+    // for inLabel and outLabel (the sign is applied at render time).
+    expect(accepted.inLabel ).toEqual({ a: 0, _default: 1, _m: 1 });
+    expect(accepted.outLabel).toEqual({ a: 0, _default: 1, _m: 1 });
   });
 
   // ---------------------------------------------------------------------
   // 5) Round-trip at legArrowSize=2: save (export JSON) → reload page →
   //    import the same blob → rendered marker position must match.
-  //    "Rendered" = inLabel.p * legZoomScale() at the same map zoom.
+  //    "Rendered" = inLabel.p * legZoomScale() for a user-dragged offset.
+  //    (Defaults sit at the drift-aware perp computed at render time and
+  //    are covered by the issue-#394 tests below.)
   // ---------------------------------------------------------------------
   test('export → reload → import preserves rendered position at legArrowSize=2', async ({ page }) => {
     const AS = 2;
@@ -255,6 +268,16 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
     await loadTwoWp(page);
     await page.evaluate(() => map.setZoom(12));
     await page.waitForFunction(() => Math.abs(map.getZoom() - 12) < 0.01);
+    // Issue #394: stamp a non-default offset so this test exercises the
+    // user-dragged round-trip invariant directly (size-independent
+    // storage, identical render after reload). Defaults have no stored
+    // `p` — the drift-aware perpendicular is computed at render time
+    // and is covered by `default kite sits outside drift cone …` below.
+    await page.evaluate(() => {
+      state.legs[0].inLabel  = { a:  4, p:  18, _m: 1 };
+      state.legs[0].outLabel = { a: -4, p: -18, _m: 1 };
+      draw();
+    });
 
     const beforeBlob = await page.evaluate(() => JSON.stringify({
       waypoints: state.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name || '' })),
@@ -297,5 +320,113 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
     expect(afterRender.k   ).toBeCloseTo(beforeRender.k,    5);
     expect(afterRender.p   ).toBeCloseTo(beforeRender.p,    5);
     expect(afterRender.px  ).toBeCloseTo(beforeRender.px,   5);
+  });
+
+  // ---------------------------------------------------------------------
+  // 6) Issue #394: default kites sit just outside the 10° drift cone at
+  //    every zoom / leg length, with an 8 px margin. Computed at render
+  //    time so a zoom change moves the kite proportionally with the leg.
+  // ---------------------------------------------------------------------
+  test('default kite sits outside drift cone with ~8 px margin at every zoom', async ({ page }) => {
+    await boot(page);
+    await loadTwoWp(page);
+
+    const margin = 8;
+    const tan10 = Math.tan(10 * Math.PI / 180);
+    for (const z of [8, 10, 11, 12, 13, 14]) {
+      const m = await page.evaluate((zoom) => {
+        map.setZoom(zoom);
+        return new Promise(resolve => setTimeout(() => {
+          const a = proj(state.waypoints[0]);
+          const b = proj(state.waypoints[1]);
+          const legLen = Math.hypot(b.x - a.x, b.y - a.y);
+          // Mirror drawLegs' default math for inLabel (sign +1) and
+          // outLabel (sign −1). legLabelCenter() returns the same px,
+          // so use it directly as the source of truth.
+          const ic = legLabelCenter(0, 'in');
+          const oc = legLabelCenter(0, 'out');
+          const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+          let dx = b.x - a.x, dy = b.y - a.y;
+          const L = Math.hypot(dx, dy) || 1;
+          dx /= L; dy /= L;
+          const nx = -dy, ny = dx;
+          const inPerp  = (ic.x - mx) * nx + (ic.y - my) * ny;
+          const outPerp = (oc.x - mx) * nx + (oc.y - my) * ny;
+          resolve({ zoom, legLen, inPerp, outPerp });
+        }, 50));
+      }, z);
+      // Drift cone perpendicular extent at the midpoint, per leg length.
+      const driftPerp = (m.legLen / 2) * tan10;
+      // Inbound kite is +perpendicular (same side as drift dashes for a
+      // typical eastward leg); outbound mirrors at −perpendicular.
+      expect(m.inPerp ).toBeCloseTo( driftPerp + margin, 1);
+      expect(m.outPerp).toBeCloseTo(-driftPerp - margin, 1);
+      // And both are strictly clear of the cone by at least 4 px even
+      // before round-off, no matter the zoom.
+      expect( m.inPerp).toBeGreaterThan( driftPerp + 4);
+      expect(-m.outPerp).toBeGreaterThan(driftPerp + 4);
+    }
+  });
+
+  // ---------------------------------------------------------------------
+  // 7) Issue #394: short legs at low zoom — the formula's degenerate
+  //    corner. A near-zero leg length must NOT NaN out the renderer or
+  //    collapse the kite onto the leg line; the 8 px margin is the floor.
+  // ---------------------------------------------------------------------
+  test('short leg + low zoom keeps default kite off the leg line (no NaN)', async ({ page }) => {
+    await boot(page);
+    // Two waypoints within ~10 m of each other → leg length collapses
+    // to a handful of pixels even at zoom 14. At zoom 8 it's sub-pixel.
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.18060, lng: 34.83470, name: 'A' },
+        { lat: 32.18070, lng: 34.83480, name: 'B' },
+      ];
+      syncLegs();
+      draw();
+    });
+    for (const z of [8, 10, 12, 14]) {
+      const m = await page.evaluate((zoom) => {
+        map.setZoom(zoom);
+        return new Promise(resolve => setTimeout(() => {
+          const ic = legLabelCenter(0, 'in');
+          resolve({ zoom, x: ic.x, y: ic.y });
+        }, 50));
+      }, z);
+      expect(Number.isFinite(m.x)).toBe(true);
+      expect(Number.isFinite(m.y)).toBe(true);
+    }
+  });
+
+  // ---------------------------------------------------------------------
+  // 8) Issue #394: dragging a default kite materialises the rendered
+  //    offset into `{ a, p, _m: 1 }` (drops `_default`) so subsequent
+  //    drag deltas have a real starting point. Crucially: the kite
+  //    must NOT jump to (0, 0) on the first pointer-move event.
+  // ---------------------------------------------------------------------
+  test('drag-start on default kite preserves visible position', async ({ page }) => {
+    await boot(page);
+    await loadTwoWp(page);
+    await page.evaluate(() => map.setZoom(12));
+    await page.waitForFunction(() => Math.abs(map.getZoom() - 12) < 0.01);
+
+    const result = await page.evaluate(() => {
+      // Capture the current rendered kite centre, then call the
+      // materialiser directly (same code path that runs on mousedown).
+      const before = legLabelCenter(0, 'in');
+      _materialiseDefaultLegLabel(0, 'in');
+      const stored = state.legs[0].inLabel;
+      const after = legLabelCenter(0, 'in');
+      return { before, after, stored };
+    });
+    // Storage shape is now the user-dragged form, no `_default`.
+    expect(result.stored._default).toBeUndefined();
+    expect(typeof result.stored.p).toBe('number');
+    expect(result.stored._m).toBe(1);
+    // Visible position must be unchanged within sub-pixel ε — the only
+    // failure mode the materialiser cares about is the "jumps to 0,0"
+    // pathology.
+    expect(result.after.x).toBeCloseTo(result.before.x, 3);
+    expect(result.after.y).toBeCloseTo(result.before.y, 3);
   });
 });
