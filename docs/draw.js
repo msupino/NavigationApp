@@ -271,7 +271,7 @@ function drawNavWaypoints() {
 }
 
 function drawLegs() {
-  const zoomScale = Math.max(0.35, Math.pow(2, map.getZoom() - 12)) * legArrowSize;
+  const zoomScale = legZoomScale();
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     if (!A || !B) continue;
@@ -310,12 +310,13 @@ function drawLegs() {
     const nx = -dy, ny = dx;
     const inP = leg.inLabel || { a: 0, p: 44 };
     const outP = leg.outLabel || { a: 0, p: -44 };
-    drawLegArrow(mid.x + dx * inP.a + nx * inP.p, mid.y + dy * inP.a + ny * inP.p,
+    drawLegArrow(mid.x + dx * inP.a * zoomScale + nx * inP.p * zoomScale,
+      mid.y + dy * inP.a * zoomScale + ny * inP.p * zoomScale,
       ang, pad3(magIn), timeStr, String(leg.inboundAltitude),
       '#2f6fd0', yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
     if (showReturn) {
-      drawLegArrow(mid.x + dx * outP.a + nx * outP.p,
-        mid.y + dy * outP.a + ny * outP.p, ang + Math.PI,
+      drawLegArrow(mid.x + dx * outP.a * zoomScale + nx * outP.p * zoomScale,
+        mid.y + dy * outP.a * zoomScale + ny * outP.p * zoomScale, ang + Math.PI,
         pad3(magOut), timeStrOut, String(leg.outboundAltitude),
         '#c0392b', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
     }
