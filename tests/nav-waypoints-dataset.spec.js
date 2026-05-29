@@ -1,12 +1,20 @@
 // @ts-check
-// Regression coverage for the docs/nav-waypoints.json content (issue #406).
+// Regression coverage for the docs/nav-waypoints.json content
+// (issues #406 and #408 — and now #410, the image-based rebuild).
 //
-// The dataset was rebuilt from the published IAA CVFR chart waypoint
-// reference table (page 113, 2025 edition, shipped upstream as
+// The dataset was originally rebuilt from the published IAA CVFR chart
+// waypoint reference table (page 113, 2025 edition, shipped upstream as
 // `113_waypoints.csv`). The legacy ForeFlight-derived JSON had ~91 stale
 // codes (`AREA *`, `LLHA A/B/C`, `LLMG A/B Maarav/Mizrah`, etc.) and a
 // handful of reporting points with chart-disagreeing coords — notably
 // BEZRA (~752 m) and KUVSH (~648 m), the heading-drift culprits.
+//
+// PR #410 then rebuilt nav-waypoints.json a second time directly from a
+// high-resolution screenshot of the published chart, replacing the CSV
+// extraction that had introduced typesetting artefacts (digit `2` where
+// Hebrew samekh `ס` belonged, missing final-letter forms, and a few
+// outright spelling errors like `קיריון` vs `קריון` and `רווחה` vs
+// `רוחה`). The chart screenshot is now the source of truth.
 //
 // These checks live as a Playwright spec rather than a Node-only test
 // because the existing test plumbing (_setup.js) is Playwright-based and
@@ -23,12 +31,12 @@ function loadData() {
   return JSON.parse(fs.readFileSync(JSON_PATH, 'utf8'));
 }
 
-test.describe('#406 — nav-waypoints.json (CSV-sourced)', () => {
+test.describe('#406 / #410 — nav-waypoints.json (chart-sourced)', () => {
   test('parses and exposes the expected entry count', async () => {
     const d = loadData();
     expect(Array.isArray(d.waypoints)).toBe(true);
-    // 198 CSV rows: 25 ARP (skipped, see airfields.json) + 1 dup LLNV
-    // (skipped) + 173 reporting points (90 mandatory + 83 on-request).
+    // 199 chart rows: 26 ARP (filtered out, see airfields.json) + 173
+    // reporting points (89 mandatory + 84 on-request).
     expect(d.waypoints.length).toBe(173);
   });
 
@@ -67,28 +75,72 @@ test.describe('#406 — nav-waypoints.json (CSV-sourced)', () => {
     // ICAO airfield codes live in airfields.json. Including them here
     // would mean two overlay markers (white dot + blue triangle) per
     // airfield and confuse the snap-priority logic in applyNavSnap().
-    // LLMZ is the one exception that the CSV chose to ship as a
+    // LLMZ is the one exception that the chart chose to ship as a
     // reporting point and not as an ARP, so it stays here.
     for (const code of ['LLBG', 'LLHZ', 'LLHA', 'LLER', 'LLES', 'LLEV',
                         'LLEY', 'LLFK', 'LLIB', 'LLKS', 'LLKZ', 'LLMG',
-                        'LLRS', 'LLBS']) {
+                        'LLRS', 'LLBS', 'LLEK', 'LLRM', 'LLRD', 'LLNV',
+                        'LLOV', 'LLHS', 'LLHB', 'LLPL', 'LLBO']) {
       expect(codes.has(code)).toBe(false);
     }
   });
 
-  test('BEZRA + KUVSH carry CSV (chart) coords — heading-drift regression', async () => {
+  test('BEZRA + KUVSH carry chart coords — heading-drift regression', async () => {
     const d = loadData();
     const bezra = d.waypoints.find(w => w.name === 'BEZRA');
     const kuvsh = d.waypoints.find(w => w.name === 'KUVSH');
-    // CSV values from 113_waypoints.csv (rounded to 5 dp by build).
-    // Pre-#406 nav-waypoints.json had BEZRA at (31.73525, 34.64917) —
-    // ~752 m south of the chart — and KUVSH at (31.26444, 34.76361) —
-    // ~648 m north of the chart. Both shifts caused ~1° heading drift
-    // on cross-country legs that pass through them.
+    // Chart values (rounded to 5 dp). Pre-#406 nav-waypoints.json had
+    // BEZRA at (31.73525, 34.64917) — ~752 m south of the chart — and
+    // KUVSH at (31.26444, 34.76361) — ~648 m north of the chart. Both
+    // shifts caused ~1° heading drift on cross-country legs that pass
+    // through them.
     expect(bezra).toEqual({ name: 'BEZRA', he: 'בית עזרא',
                             lat: 31.74139, lng: 34.64583 });
-    expect(kuvsh).toEqual({ name: 'KUVSH', he: 'כובשימ',
+    expect(kuvsh).toEqual({ name: 'KUVSH', he: 'כובשים',
                             lat: 31.25861, lng: 34.76361 });
+  });
+
+  // Spot checks that the image-based rebuild (#410) replaced the
+  // CSV-derived text artefacts with what the chart actually prints.
+  test('chart-correct Hebrew names (#410 — image-sourced)', async () => {
+    const d = loadData();
+    const byCode = new Map(d.waypoints.map(w => [w.name, w]));
+    // CSV had digit `2` where the chart prints Hebrew samekh `ס`.
+    expect(byCode.get('OSNAT').he).toBe('אסנת');
+    expect(byCode.get('SAMAR').he).toBe('סמר');
+    expect(byCode.get('SAHAR').he).toBe('סער');
+    expect(byCode.get('SIGAL').he).toBe('סיגל');
+    expect(byCode.get('PARDS').he).toBe('פרדס');
+    expect(byCode.get('SUPER').he).toBe('סופרלנד');
+    expect(byCode.get('HRGVS').he).toBe('הר גבס');
+    expect(byCode.get('HASID').he).toBe('כפר חסידים');
+    expect(byCode.get('SIRNI').he).toBe('נצר סירני');
+    expect(byCode.get('FRDIS').he).toBe('צומת פרדיס');
+    // Spelling fixes vs the legacy CSV.
+    expect(byCode.get('KRYON').he).toBe('קריון');
+    expect(byCode.get('REVAH').he).toBe('רוחה');
+    expect(byCode.get('MEHOL').he).toBe('משולש חולית');
+  });
+
+  // Hebrew final-letter forms (issue #408).
+  //
+  // The chart CSV ships non-final letter forms (כ, מ, נ, פ, צ) even at
+  // end-of-word, which is wrong typographically. We rewrite them to the
+  // final forms (ך, ם, ן, ף, ץ) at every word boundary. A "word boundary"
+  // here means: end-of-string OR followed by any non-Hebrew character.
+  test('every he field uses final-letter forms at end of word', async () => {
+    const d = loadData();
+    // Match a non-final letter that is NOT followed by another Hebrew
+    // letter — i.e. a non-final at end-of-word. After the fix this regex
+    // must NOT match any he field.
+    const nonFinalAtEow = /[כמנפצ](?![\u05D0-\u05EA\u05F0-\u05F2])/;
+    const offenders = [];
+    for (const w of d.waypoints) {
+      if (nonFinalAtEow.test(w.he)) {
+        offenders.push({ name: w.name, he: w.he });
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 
   test('newly-surfaced codes (PR #405 flagged) are present', async () => {
