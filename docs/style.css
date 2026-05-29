@@ -561,6 +561,84 @@ html, body {
 #toolbar .footer-link:hover { color: #e8e8e8; }
 #toolbar .footer-link .footer-link-icon { flex: none; opacity: 0.85; }
 #toolbar .footer-link:hover .footer-link-icon { opacity: 1; }
+/* In-page action variant (issue #420 Help): button styled to match the
+   anchor links beside it. Override the generic #toolbar button skin
+   (padded pill background) so the Shortcuts trigger looks like its
+   neighbours. */
+#toolbar button.footer-link {
+  font: inherit;
+  font-size: 11px;
+  color: #8a8484;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+#toolbar button.footer-link:hover {
+  background: transparent;
+  color: #e8e8e8;
+}
+
+/* Keyboard-shortcuts cheat-sheet (issue #420) ---------------------- */
+.shortcuts-help-modal {
+  min-width: 320px;
+  max-width: min(420px, 92vw);
+  padding: 18px 20px 16px;
+}
+.shortcuts-help-list {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) 1fr;
+  gap: 6px 14px;
+  margin-top: 6px;
+  font-size: 13px;
+}
+.shortcuts-help-group {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #b9b3b3;
+  border-bottom: 1px solid #3a3636;
+  padding-bottom: 2px;
+}
+.shortcuts-help-group:first-of-type { margin-top: 2px; }
+.shortcuts-help-keys {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  color: #e8e8e8;
+  font-weight: 700;
+}
+.shortcuts-help-keys kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  color: #f1ece4;
+  background: #1f1c1c;
+  border: 1px solid #4a4444;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+}
+.shortcuts-help-plus,
+.shortcuts-help-sep {
+  color: #8a8484;
+  font-weight: 400;
+  padding: 0 1px;
+}
+.shortcuts-help-desc {
+  margin: 0;
+  align-self: center;
+  color: #d4cfcf;
+  font-weight: 400;
+}
 
 /* Print (browser Cmd+P): drop the UI, keep the map + route overlay. */
 @media print {

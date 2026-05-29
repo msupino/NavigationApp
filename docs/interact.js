@@ -596,12 +596,49 @@ window.addEventListener('keydown', e => {
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
     return;                              // typing in a field — leave the WP alone
   }
+  // Issue #420: '?' (Shift-/) opens the keyboard-shortcuts cheat-sheet.
+  // Suppressed in inputs (handled by the early return above) so typing a
+  // literal '?' in a waypoint name or note still works. Most browsers
+  // surface this key as `e.key === '?'`, but some keyboard layouts /
+  // automation harnesses fire `e.key === '/'` with `shiftKey: true`, so
+  // accept both.
+  if (!e.ctrlKey && !e.metaKey && !e.altKey &&
+      (e.key === '?' || (e.key === '/' && e.shiftKey))) {
+    e.preventDefault();
+    if (typeof showShortcutsHelp === 'function') showShortcutsHelp();
+    return;
+  }
   // Issue #413: F (no modifier) re-runs fit-to-route. Ctrl/Cmd-F is the
   // search-overlay shortcut handled in ui.js — bail out so we don't shadow it.
   if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
     e.preventDefault();
     fitView();
     return;
+  }
+  // Map zoom (+ / − / numpad) and magnifier (M) — skip under any modal
+  // backdrop so we don't change the map behind dialogs.
+  if (!document.querySelector('.modal-back')) {
+    const zoomInKeys = !e.ctrlKey && !e.metaKey && !e.altKey && (
+      e.code === 'NumpadAdd' || e.code === 'Equal' || e.key === '+');
+    const zoomOutKeys = !e.ctrlKey && !e.metaKey && !e.altKey && (
+      e.code === 'NumpadSubtract' || e.code === 'Minus' || e.key === '-');
+    if (zoomInKeys || zoomOutKeys) {
+      e.preventDefault();
+      const step = zoomInKeys ? 0.25 : -0.25;
+      if (magnifierOn && typeof bumpMagnifierZoomKeyboard === 'function') {
+        bumpMagnifierZoomKeyboard(step);
+      } else if (zoomInKeys) {
+        map.zoomIn();
+      } else {
+        map.zoomOut();
+      }
+      return;
+    }
+    if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      toggleMagnifier();
+      return;
+    }
   }
   if (e.key === 'Delete' || e.key === 'Backspace') {
     if (!state.selected) return;

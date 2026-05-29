@@ -181,6 +181,24 @@ window.S = {
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
   tbIssues: 'בעיות / הצעות',
+
+  // --- Keyboard-shortcuts cheat-sheet (issue #420) --------------------
+  shortcutsHelpTitle: 'מקשי קיצור',
+  shortcutsHelpButton: 'קיצורי מקלדת',
+  shortcutsHelpButtonTitle: 'הצג מקשי קיצור (?)',
+  shortcutsHelpAriaLabel: 'הצג מקשי קיצור',
+  shortcutsGroupNavigation: 'ניווט',
+  shortcutsGroupSearch: 'חיפוש',
+  shortcutsGroupEditing: 'עריכה',
+  shortcutsGroupHelp: 'עזרה',
+  shortcutFitRoute: 'התאם מסלול לתצוגה',
+  shortcutSearch: 'פתח חיפוש',
+  shortcutEsc: 'סגור חלון / בטל בחירה / סגור זכוכית מגדלת',
+  shortcutDelete: 'מחק ציון דרך או הערה שנבחרו',
+  shortcutHelp: 'הצג את גיליון הקיצורים הזה',
+  shortcutZoomIn: 'זום מפה פנימה (+/= או + בנומפד); משנה זום זכוכית כשהזכוכית פתוחה',
+  shortcutZoomOut: 'זום מפה החוצה (− או − בנומפד); משנה זום זכוכית כשהזכוכית פתוחה',
+  shortcutMagnifier: 'הפעלה/כיבוי זכוכית מגדלת',
   exportShowDrift: 'הדפס קווי סחיפה',
   exportModalTitle: 'ייצוא PNG',
   exportShowNavWP: 'הדפס ציוני ניווט',
@@ -192,7 +210,7 @@ window.S = {
 
   // --- Magnifying glass ------------------------------------------------
   tbMagnifier: '🔍 זכוכית מגדלת',
-  tbMagnifierTitle: 'זכוכית מגדלת — תצוגה מוגדלת במיקום הסמן לעריכה מדויקת',
+  tbMagnifierTitle: 'זכוכית מגדלת (M) — תצוגה מוגדלת במיקום הסמן; +/- משנים את הגדלת הזכוכית כשהיא פתוחה',
   magSettingsTitle: 'זכוכית מגדלת',
   magZoomLabel: 'תקריב',
   magZoomTitle: 'גורם התקריב של הזכוכית המגדלת',
