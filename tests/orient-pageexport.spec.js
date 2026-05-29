@@ -2,6 +2,7 @@
 // Regression tests for orient default + persistence (PR #195) and the PNG
 // export filename pattern, which depends on pageSize being set via setPage().
 const { test, expect } = require('./_setup');
+const { pairLLHZ_LLHA } = require('./_airfieldArp');
 
 async function boot(page) {
   // Sentinel so the clear only runs on the first navigation — a reload in
@@ -17,7 +18,7 @@ async function boot(page) {
       }
     } catch (e) {}
   });
-  await page.goto('/?lang=en');
+  await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof setPage === 'function');
 }
 
@@ -78,14 +79,11 @@ test.describe('PNG export filename respects pageSize + orient', () => {
     // Switch to OSM so tiles are CORS-clean and exportPNG can actually run
     // headless without the weserv.nl proxy round-trip.
     await page.locator('#layer-select').selectOption('OpenStreetMap');
-    await page.evaluate(() => {
-      state.waypoints = [
-        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
-        { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
-      ];
+    await page.evaluate(wps => {
+      state.waypoints = wps;
       syncLegs();
       draw();
-    });
+    }, pairLLHZ_LLHA());
     await page.locator('#page-a4').click();
     const dl = page.waitForEvent('download', { timeout: 30000 });
     await page.locator('#print').click();
@@ -97,14 +95,11 @@ test.describe('PNG export filename respects pageSize + orient', () => {
   test('Export with no page frame: filename uses the base layer name', async ({ page }) => {
     await boot(page);
     await page.locator('#layer-select').selectOption('OpenStreetMap');
-    await page.evaluate(() => {
-      state.waypoints = [
-        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
-        { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
-      ];
+    await page.evaluate(wps => {
+      state.waypoints = wps;
       syncLegs();
       draw();
-    });
+    }, pairLLHZ_LLHA());
     // pageSize stays null — exporter falls back to the baseName (layer-derived).
     const dl = page.waitForEvent('download', { timeout: 30000 });
     await page.locator('#print').click();

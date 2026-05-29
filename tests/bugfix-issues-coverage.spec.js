@@ -5,6 +5,7 @@
 //   #226 — Charts modal: a11y keyboard nav, RTL indent, drag-clamp to viewport
 //   #229 — Modal backdrop scrolls out of viewport
 const { test, expect } = require('./_setup');
+const { LLHZ, LLHA, LLBG } = require('./_airfieldArp');
 
 async function boot(page) {
   await page.addInitScript(() => {
@@ -18,7 +19,7 @@ async function boot(page) {
       }
     } catch (e) {}
   });
-  await page.goto('/?lang=en');
+  await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof fitView === 'function');
 }
 
@@ -43,13 +44,13 @@ test.describe('#224 — fit-to-screen maxZoom cap', () => {
 
   test('two waypoints ~45 NM apart (LLHZ→LLHA) still fit normally', async ({ page }) => {
     await boot(page);
-    await page.evaluate(() => {
+    await page.evaluate(([hz, ha]) => {
       state.waypoints = [
-        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
-        { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+        { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+        { lat: ha.lat, lng: ha.lng, name: 'LLHA' },
       ];
       syncLegs(); draw(); fitView();
-    });
+    }, [LLHZ, LLHA]);
     const zoom = await page.evaluate(() => map.getZoom());
     // The wide route should still fit — cap doesn't force it to zoom 11.
     expect(zoom).toBeLessThanOrEqual(11);
@@ -152,10 +153,10 @@ test.describe('#340 — applyNavSnap clears auto-snapped name when overlays off'
   test('airfield-snapped waypoint: both overlays off → name cleared on drag', async ({ page }) => {
     await boot(page);
     await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
-    await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.009444, lng: 34.885556, name: 'LLBG' }];
+    await page.evaluate(bg => {
+      state.waypoints = [{ lat: bg.lat, lng: bg.lng, name: 'LLBG' }];
       syncLegs(); draw();
-    });
+    }, LLBG);
     await page.evaluate(() => {
       showAirfields = false;
       showNavWP = false;
@@ -209,15 +210,74 @@ test.describe('#340 — applyNavSnap clears auto-snapped name when overlays off'
     expect(name).toBe('MYFIELD');
   });
 
+  test('sequence-style label WP 1: both overlays off → name cleared on drag', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(bg => {
+      state.waypoints = [{ lat: bg.lat, lng: bg.lng, name: 'WP 1' }];
+      syncLegs(); draw();
+    }, LLBG);
+    await page.evaluate(() => {
+      showAirfields = false;
+      showNavWP = false;
+      const wp = state.waypoints[0];
+      const target = L.latLng(33.0, 36.0);
+      const r = applyNavSnap(target, wp.name);
+      wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
+      draw();
+    });
+    const name = await page.evaluate(() => state.waypoints[0].name);
+    expect(name).toBe('');
+  });
+
+  test('sequence-style label at airfield: showAirfields on → applyNavSnap adopts ICAO', async ({ page }) => {
+    await boot(page);
+    await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
+    await page.evaluate(bg => {
+      state.waypoints = [{ lat: bg.lat, lng: bg.lng, name: 'WP1' }];
+      syncLegs(); draw();
+    }, LLBG);
+    await page.evaluate(() => {
+      showAirfields = true;
+      showNavWP = false;
+      const wp = state.waypoints[0];
+      const r = applyNavSnap(L.latLng(wp.lat, wp.lng), wp.name);
+      wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
+      draw();
+    });
+    const name = await page.evaluate(() => state.waypoints[0].name);
+    expect(name).toBe('LLBG');
+  });
+
+  test('sequence-shaped stored name WP6: inspector normalizes to empty (dimmed placeholder)', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.0, lng: 34.9, name: 'A' },
+        { lat: 32.1, lng: 35.0, name: 'B' },
+        { lat: 32.2, lng: 35.1, name: 'C' },
+        { lat: 32.3, lng: 35.2, name: 'D' },
+        { lat: 32.4, lng: 35.3, name: 'E' },
+        { lat: 32.5, lng: 35.4, name: 'WP6' },
+      ];
+      syncLegs(); draw();
+      state.selected = { type: 'wp', index: 5 };
+      showInspector();
+    });
+    const val = await page.locator('#insp-title').inputValue();
+    const stored = await page.evaluate(() => state.waypoints[5].name);
+    expect(val).toBe('');
+    expect(stored).toBe('');
+  });
+
   test('airfield-snapped waypoint: showAirfields off, showNavWP on, far from nav-WP → name cleared', async ({ page }) => {
     await boot(page);
     await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
     await page.evaluate(() => loadNavWaypoints());
     await page.waitForFunction(() => Array.isArray(window.navWP) && window.navWP.length > 0);
-    await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.009444, lng: 34.885556, name: 'LLBG' }];
+    await page.evaluate(bg => {
+      state.waypoints = [{ lat: bg.lat, lng: bg.lng, name: 'LLBG' }];
       syncLegs(); draw();
-    });
+    }, LLBG);
     await page.evaluate(() => {
       showAirfields = false;
       showNavWP = true;
@@ -234,11 +294,11 @@ test.describe('#340 — applyNavSnap clears auto-snapped name when overlays off'
   test('snapExistingWaypoints snaps waypoint at airfield location when showAirfields is ON', async ({ page }) => {
     await boot(page);
     await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
-    await page.evaluate(() => {
+    await page.evaluate(bg => {
       showAirfields = true;
-      state.waypoints = [{ lat: 32.009444, lng: 34.885556, name: '' }];
+      state.waypoints = [{ lat: bg.lat, lng: bg.lng, name: '' }];
       syncLegs(); draw();
-    });
+    }, LLBG);
     await page.evaluate(() => { snapExistingWaypoints(); draw(); });
     const name = await page.evaluate(() => state.waypoints[0].name);
     expect(name).toBe('LLBG');
@@ -261,14 +321,27 @@ test.describe('#340 — applyNavSnap clears auto-snapped name when overlays off'
   test('snapExistingWaypoints preserves user-typed name at airfield location', async ({ page }) => {
     await boot(page);
     await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
-    await page.evaluate(() => {
+    await page.evaluate(bg => {
       showAirfields = true;
-      state.waypoints = [{ lat: 32.009444, lng: 34.885556, name: 'MYHOME' }];
+      state.waypoints = [{ lat: bg.lat, lng: bg.lng, name: 'MYHOME' }];
       syncLegs(); draw();
-    });
+    }, LLBG);
     await page.evaluate(() => { snapExistingWaypoints(); draw(); });
     const name = await page.evaluate(() => state.waypoints[0].name);
     expect(name).toBe('MYHOME');
+  });
+
+  test('snapExistingWaypoints replaces sequence-style label at airfield with ICAO', async ({ page }) => {
+    await boot(page);
+    await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
+    await page.evaluate(bg => {
+      showAirfields = true;
+      state.waypoints = [{ lat: bg.lat, lng: bg.lng, name: 'WP 1' }];
+      syncLegs(); draw();
+    }, LLBG);
+    await page.evaluate(() => { snapExistingWaypoints(); draw(); });
+    const name = await page.evaluate(() => state.waypoints[0].name);
+    expect(name).toBe('LLBG');
   });
 
   test('snapExistingWaypoints: both overlays ON, airfield nearby → snaps to airfield (priority)', async ({ page }) => {

@@ -16,7 +16,7 @@ async function boot(page) {
       }
     } catch (e) {}
   });
-  await page.goto('/?lang=en');
+  await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined' && window.airfields && window.navWP);
 }
 
@@ -74,7 +74,7 @@ test.describe('Floating search overlay (#194)', () => {
   });
 
   test('Hebrew query matches Hebrew names', async ({ page }) => {
-    await page.goto('/?lang=he');
+    await page.goto('?lang=he');
     await page.waitForFunction(() => typeof state !== 'undefined' && window.navWP);
     await page.keyboard.press('Control+f');
     await page.locator('#wp-search').fill('בצרה');     // BAZRA in Hebrew

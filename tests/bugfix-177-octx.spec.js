@@ -6,7 +6,7 @@ const { test, expect } = require('./_setup');
 
 test.describe('#177 exportPNG restores octx on throw', () => {
   test('octx restored after a draw function throws (try/finally)', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(() => typeof octx !== 'undefined');
 
     const result = await page.evaluate(() => {
@@ -36,7 +36,7 @@ test.describe('#177 exportPNG restores octx on throw', () => {
   });
 
   test('multiple consecutive exports do not poison the screen ctx', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(() => typeof octx !== 'undefined');
 
     const okAfter = await page.evaluate(() => {

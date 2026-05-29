@@ -4,6 +4,10 @@
 // pollute the production GA4 property (G-0XM5PHEK8B) — neither in CI nor on
 // developer laptops. Spec files import from here instead of @playwright/test.
 //
+// Also verifies the deployed SHA when EXPECTED_SHA env var is set
+// (e2e-deployed workflow), preventing tests from running against a stale
+// or wrong deployment.
+//
 //   const { test, expect } = require('./_setup');
 const base = require('@playwright/test');
 
@@ -15,6 +19,8 @@ const GA_HOSTS = [
   'region1.analytics.google.com',
   'stats.g.doubleclick.net',
 ];
+
+const EXPECTED_SHA = process.env.EXPECTED_SHA;
 
 exports.test = base.test.extend({
   page: async ({ page }, use) => {
@@ -45,6 +51,27 @@ exports.test = base.test.extend({
     });
 
     await use(page);
+
+    // 3. After the test, verify deployed SHA if EXPECTED_SHA is set.
+    //    Catches cases where page.goto resolved to a different deployment
+    //    than the one being tested (e.g. production root instead of /pr/NNN/).
+    if (EXPECTED_SHA) {
+      try {
+        const resp = await page.request.get('core.js');
+        const text = await resp.text();
+        const m = text.match(/version: '1\.0-([A-Za-z0-9]+)'/);
+        const sha = m ? m[1] : null;
+        if (sha && sha !== EXPECTED_SHA) {
+          throw new Error(
+            `SHA mismatch: page deployed commit ${sha}, ` +
+            `expected ${EXPECTED_SHA}. Tests may be running against the wrong URL.`
+          );
+        }
+      } catch (e) {
+        // If the page was closed or navigate failed, skip verification.
+        if (e.message?.includes('SHA mismatch')) throw e;
+      }
+    }
   },
 });
 
