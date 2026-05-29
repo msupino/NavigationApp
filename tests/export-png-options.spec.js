@@ -300,7 +300,7 @@ test.describe('Export PNG options modal', () => {
     await expect(page.locator('.export-wysi-box')).toBeVisible();
   });
 
-  test('Plan placement: Remove button removes the drag box', async ({ page }) => {
+  test('Plan placement: Clear button removes the drag box', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [
@@ -316,7 +316,7 @@ test.describe('Export PNG options modal', () => {
     const zoneBox = await zone.boundingBox();
     await page.mouse.click(zoneBox.x + zoneBox.width * 0.5, zoneBox.y + zoneBox.height * 0.5);
     await expect(page.locator('.export-wysi-box')).toBeVisible();
-    await page.locator('button').filter({ hasText: /Remove/ }).click();
+    await page.locator('#export-wysi-remove').click();
     await expect(page.locator('.export-wysi-box')).toHaveCount(0);
   });
 

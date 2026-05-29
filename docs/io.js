@@ -1320,23 +1320,34 @@ function showExportModal() {
   // exportPNG() to draw the table at the correct canvas location.
   planWysiwygPos = null;   // reset each time the modal opens
   const wysRow = document.createElement('div');
-  wysRow.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding-top:6px;border-top:1px solid #4a4646';
+  wysRow.className = 'export-wysi-row';
   const wysHdr = document.createElement('div');
-  wysHdr.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
+  wysHdr.className = 'export-wysi-hdr';
   const wysLbl = document.createElement('span');
-  wysLbl.style.cssText = 'font-size:12px;color:#b9b3b3';
-  wysLbl.textContent = (S.planPlacementLabel || 'Flight plan on export — drag to place:');
+  wysLbl.className = 'export-wysi-title';
+  wysLbl.textContent = (S.planPlacementLabel || 'Flight plan table on print');
   wysHdr.appendChild(wysLbl);
   const wysRemoveBtn = document.createElement('button');
   wysRemoveBtn.type = 'button';
-  wysRemoveBtn.textContent = '× Remove';
-  wysRemoveBtn.style.cssText = 'font:inherit;font-size:11px;padding:1px 6px;background:#3a3636;color:#ccc;border:1px solid #4a4646;border-radius:3px;cursor:pointer;display:none';
+  wysRemoveBtn.id = 'export-wysi-remove';
+  wysRemoveBtn.className = 'export-wysi-remove-btn';
+  wysRemoveBtn.textContent = S.exportWysiwygRemove || '✕ Clear placement';
+  wysRemoveBtn.title = S.exportWysiwygRemoveTitle || '';
+  wysRemoveBtn.hidden = true;
   wysHdr.appendChild(wysRemoveBtn);
   wysRow.appendChild(wysHdr);
+
+  const wysSub = document.createElement('div');
+  wysSub.className = 'export-wysi-subtitle';
+  wysSub.textContent = S.exportWysiwygSubtitle || '';
+  wysRow.appendChild(wysSub);
 
   const wysFr = pageFrameRect();
   const wysZone = document.createElement('div');
   wysZone.className = 'export-wysi-zone' + (wysFr ? '' : ' disabled');
+  wysZone.setAttribute('role', 'img');
+  wysZone.setAttribute('aria-label', (S.planPlacementLabel || 'Flight plan') + ' — ' +
+    (wysFr ? (S.exportWysiwygSubtitle || '') : (S.exportWysiwygNoFrameHint || '')));
   if (wysFr) {
     wysZone.style.aspectRatio = Math.round(wysFr.w) + '/' + Math.round(wysFr.h);
   }
@@ -1346,7 +1357,7 @@ function showExportModal() {
   if (!wysFr) {
     const noFrameHint = document.createElement('span');
     noFrameHint.className = 'export-wysi-hint';
-    noFrameHint.textContent = 'Set A3/A4 page size to enable';
+    noFrameHint.textContent = S.exportWysiwygNoFrameHint || '';
     wysZone.appendChild(noFrameHint);
   }
 
@@ -1356,7 +1367,8 @@ function showExportModal() {
     t.className = 'export-wysi-mini-table';
     const thead = t.createTHead();
     const hr = thead.insertRow();
-    for (const h of ['#', 'From', 'To', 'Hdg', 'Dist', 'Spd', 'Alt', 'Time']) {
+    const hdrs = (S.fpHeadersShort || S.fpHeaders || []).slice(0, 8);
+    for (const h of hdrs) {
       const th = document.createElement('th');
       th.textContent = h;
       hr.appendChild(th);
@@ -1410,10 +1422,15 @@ function showExportModal() {
     e.preventDefault();
   };
   const _wysUpHandler = function () {
-    if (_wysDrag) { wysDragBox.classList.remove('dragging'); _wysDrag = null; }
+    if (_wysDrag && wysDragBox) { wysDragBox.classList.remove('dragging'); }
+    _wysDrag = null;
   };
-  document.addEventListener('mousemove', _wysMoveHandler);
-  document.addEventListener('mouseup', _wysUpHandler);
+  let _wysListenersAttached = false;
+  if (wysFr) {
+    document.addEventListener('mousemove', _wysMoveHandler);
+    document.addEventListener('mouseup', _wysUpHandler);
+    _wysListenersAttached = true;
+  }
 
   function placeWysBox(xPct, yPct) {
     planWysiwygPos = { xPct, yPct };
@@ -1422,7 +1439,7 @@ function showExportModal() {
       wysDragBox.className = 'export-wysi-box';
       wysDragBox.appendChild(buildMiniTable());
       wysZone.appendChild(wysDragBox);
-      wysRemoveBtn.style.display = '';
+      wysRemoveBtn.hidden = false;
       wysDragBox.addEventListener('mousedown', function (e) {
         const br = wysDragBox.getBoundingClientRect();
         _wysDrag = { ox: e.clientX - br.left, oy: e.clientY - br.top };
@@ -1438,7 +1455,7 @@ function showExportModal() {
   wysRemoveBtn.onclick = function () {
     if (wysDragBox) { wysDragBox.remove(); wysDragBox = null; }
     planWysiwygPos = null;
-    wysRemoveBtn.style.display = 'none';
+    wysRemoveBtn.hidden = true;
   };
 
   if (wysFr) {
@@ -1537,8 +1554,11 @@ function showExportModal() {
 
   function close() {
     window.removeEventListener('keydown', onEsc);
-    document.removeEventListener('mousemove', _wysMoveHandler);
-    document.removeEventListener('mouseup', _wysUpHandler);
+    if (_wysListenersAttached) {
+      document.removeEventListener('mousemove', _wysMoveHandler);
+      document.removeEventListener('mouseup', _wysUpHandler);
+      _wysListenersAttached = false;
+    }
     back.remove();
   }
   function onEsc(e) { if (e.key === 'Escape') { restoreOrig(); close(); } }

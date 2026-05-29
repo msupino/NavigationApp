@@ -858,20 +858,73 @@ html, body {
   background: rgba(255, 255, 255, 0.03);
 }
 /* Export-modal WYSIWYG drag zone ----------------------------------- */
+.export-wysi-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 10px;
+  margin-top: 4px;
+  border-top: 1px solid #4a4646;
+}
+.export-wysi-hdr {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.export-wysi-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8e4e4;
+}
+.export-wysi-subtitle {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #9a9494;
+  margin-top: -2px;
+}
+.export-wysi-remove-btn {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  flex-shrink: 0;
+  background: #3a3636;
+  color: #e8e0e0;
+  border: 1px solid #5a5454;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.export-wysi-remove-btn:hover {
+  background: #4a4444;
+  border-color: #6a6464;
+}
 .export-wysi-zone {
   position: relative;
   width: 100%;
-  background: #111;
-  border: 1px solid #4a4646;
-  border-radius: 6px;
+  max-height: 220px;
+  margin: 0 auto;
+  background:
+    linear-gradient(160deg, rgba(45, 52, 62, 0.95) 0%, #141618 40%, #0c0e10 100%);
+  border: 1px solid #5a5450;
+  border-radius: 8px;
   overflow: hidden;
   cursor: crosshair;
   user-select: none;
-  min-height: 80px;
+  min-height: 96px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+.export-wysi-zone:not(.disabled)::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1px dashed rgba(255, 217, 102, 0.22);
+  border-radius: 4px;
+  pointer-events: none;
 }
 .export-wysi-zone.disabled {
   cursor: not-allowed;
-  opacity: 0.45;
+  opacity: 0.5;
 }
 .export-wysi-hint {
   position: absolute;
@@ -879,8 +932,11 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
-  color: #555;
+  text-align: center;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #8a8585;
   pointer-events: none;
 }
 .export-wysi-box {
@@ -888,33 +944,34 @@ html, body {
   width: 45%;
   background: #fff;
   color: #231F20;
-  border-radius: 2px;
-  border: 1px solid #aaa;
+  border-radius: 3px;
+  border: 1px solid #6a6a6a;
   cursor: grab;
   pointer-events: all;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.5);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
   overflow: hidden;
+  z-index: 1;
 }
-.export-wysi-box.dragging { cursor: grabbing; box-shadow: 0 3px 12px rgba(0,0,0,0.7); }
+.export-wysi-box.dragging { cursor: grabbing; box-shadow: 0 4px 16px rgba(0,0,0,0.75); }
 .export-wysi-mini-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 5.5px;
-  line-height: 1.3;
+  font-size: 6.75px;
+  line-height: 1.35;
   color: #231F20;
   font-variant-numeric: tabular-nums;
 }
 .export-wysi-mini-table th,
 .export-wysi-mini-table td {
-  padding: 1px 2px;
+  padding: 2px 3px;
   white-space: nowrap;
   border-bottom: 1px solid #ddd;
   text-align: start;
 }
 .export-wysi-mini-table thead th {
-  background: #f0f0f0;
+  background: #ececec;
   font-weight: 700;
-  color: #555;
+  color: #444;
 }
 .export-wysi-mini-table tbody tr:nth-child(even) { background: #f8f8f8; }
 
