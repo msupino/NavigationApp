@@ -4,9 +4,11 @@
 // Presets (C152 / C172 / PA-28) and airport-based taxi detection removed.
 const { test, expect } = require('./_setup');
 
+// Coordinates must match docs/airfields.json within isAirport() eps (0.001°)
+// so renamed labels (e.g. LLHZ1) still match by position for taxi fuel.
 const TWO_WP = [
-  { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
-  { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+  { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+  { lat: 32.80833, lng: 35.04278, name: 'LLHA' },
 ];
 
 async function boot(page) {

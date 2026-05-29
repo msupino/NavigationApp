@@ -28,8 +28,8 @@
 const { test, expect } = require('./_setup');
 
 const TWO_WP = [
-  { lat: 32.18060, lng: 34.83470, name: 'A' },
-  { lat: 32.80972, lng: 35.04389, name: 'B' },
+  { lat: 32.17944, lng: 34.83444, name: 'A' },
+  { lat: 32.80833, lng: 35.04278, name: 'B' },
 ];
 
 async function boot(page) {
@@ -110,8 +110,8 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
         localStorage.setItem('navaid.legArrowSize', String(as));
         localStorage.setItem('navaid.route', JSON.stringify({
           waypoints: [
-            { lat: 32.18060, lng: 34.83470, name: 'A' },
-            { lat: 32.80972, lng: 35.04389, name: 'B' },
+            { lat: 32.17944, lng: 34.83444, name: 'A' },
+            { lat: 32.80833, lng: 35.04278, name: 'B' },
           ],
           legs: [{
             inboundAltitude: 2000, outboundAltitude: 2000,
@@ -152,8 +152,8 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
         localStorage.setItem('navaid.legArrowSize', String(as));
         localStorage.setItem('navaid.route', JSON.stringify({
           waypoints: [
-            { lat: 32.18060, lng: 34.83470, name: 'A' },
-            { lat: 32.80972, lng: 35.04389, name: 'B' },
+            { lat: 32.17944, lng: 34.83444, name: 'A' },
+            { lat: 32.80833, lng: 35.04278, name: 'B' },
           ],
           legs: [{
             inboundAltitude: 2000, outboundAltitude: 2000,
@@ -410,9 +410,9 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
           localStorage.setItem('navaid.sec.' + s, '1');
         localStorage.setItem('navaid.route', JSON.stringify({
           waypoints: [
-            { lat: 32.18060, lng: 34.83470, name: 'A' },
+            { lat: 32.17944, lng: 34.83444, name: 'A' },
             { lat: 32.50000, lng: 34.95000, name: 'B' },
-            { lat: 32.80972, lng: 35.04389, name: 'C' },
+            { lat: 32.80833, lng: 35.04278, name: 'C' },
           ],
           legs: [
             { inboundAltitude: 2000, outboundAltitude: 2000,
@@ -506,7 +506,7 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
     // to a handful of pixels even at zoom 14. At zoom 8 it's sub-pixel.
     await page.evaluate(() => {
       state.waypoints = [
-        { lat: 32.18060, lng: 34.83470, name: 'A' },
+        { lat: 32.17944, lng: 34.83444, name: 'A' },
         { lat: 32.18070, lng: 34.83480, name: 'B' },
       ];
       syncLegs();
