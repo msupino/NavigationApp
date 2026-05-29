@@ -11,6 +11,12 @@
 //      sequence placeholder (S.wpPrefix + 1-based index).
 const { test, expect } = require('./_setup');
 
+// e2e-deployed runs many workers against one live preview; script + JSON
+// fetches can exceed the default test / waitForFunction budget.
+const onDeployedPreview = !!process.env.EXPECTED_SHA;
+const bootAppTimeout = onDeployedPreview ? 120_000 : 45_000;
+const bootDataTimeout = onDeployedPreview ? 180_000 : 60_000;
+
 async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
     try {
@@ -29,15 +35,22 @@ async function boot(page, lang = 'en') {
     typeof state !== 'undefined' &&
     typeof showInspector === 'function' &&
     typeof window.resetWpName === 'function' &&
-    typeof window.resetAllWpNames === 'function');
+    typeof window.resetAllWpNames === 'function',
+  { timeout: bootAppTimeout });
   await page.evaluate(() => loadNavWaypoints && loadNavWaypoints());
   await page.evaluate(() => loadAirfields && loadAirfields());
   await page.waitForFunction(() =>
     Array.isArray(window.navWP) && window.navWP.length > 0 &&
-    Array.isArray(window.airfields) && window.airfields.length > 0);
+    Array.isArray(window.airfields) && window.airfields.length > 0,
+  { timeout: bootDataTimeout });
 }
 
 test.describe('#418 — Reset waypoint name button', () => {
+  test.describe.configure(
+    onDeployedPreview
+      ? { mode: 'serial', timeout: 240_000 }
+      : { timeout: 90_000 },
+  );
   test('snap to nav waypoint: TYONA coords → wp.name === "TYONA"', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
@@ -114,7 +127,7 @@ test.describe('#418 — Reset waypoint name button', () => {
         const blob = JSON.parse(localStorage.getItem('navaid.route') || '{}');
         return blob.waypoints && blob.waypoints[0] && blob.waypoints[0].name === 'TYONA';
       } catch (e) { return false; }
-    });
+    }, { timeout: bootDataTimeout });
   });
 
   test('Hebrew locale: button label is "↺ אפס שם נקודה"', async ({ page }) => {
