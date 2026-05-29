@@ -76,7 +76,14 @@ test.describe('SEO URLs', () => {
         'script[type="application/ld+json"]'
       ).forEach(el => {
         const attr = el.getAttribute('href') || el.getAttribute('content') || el.textContent || '';
-        if (attr.includes('msupino.github.io')) results.push(el.outerHTML);
+        let referencesOldDomain = false;
+        try {
+          const parsed = new URL(attr, window.location.origin);
+          referencesOldDomain = parsed.hostname === 'msupino.github.io';
+        } catch {
+          referencesOldDomain = attr.includes('msupino.github.io');
+        }
+        if (referencesOldDomain) results.push(el.outerHTML);
       });
       return results;
     });
