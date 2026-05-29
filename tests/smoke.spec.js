@@ -17,12 +17,13 @@ test.describe('NavAid smoke', () => {
 
   test('boots in English with toolbar visible', async ({ page }) => {
     await page.goto('?lang=en');
-    await expect(page).toHaveTitle('NavAid');
+    await expect(page).toHaveTitle('NavAid — Israel CVFR Flight Route Planner & Navigation Map');
     await expect(page.locator('#toolbar')).toBeVisible();
     await expect(page.locator('#tool-add')).toHaveText(/Add Waypoint/);
   });
 
-  test('boots in Hebrew by default and switches to English', async ({ page }) => {
+  test('boots in Hebrew when localStorage prefers he and switches to English', async ({ page }) => {
+    await page.addInitScript(() => { try { localStorage.setItem('navaid.lang', 'he'); } catch (e) {} });
     await page.goto('/');
     await expect(page.locator('html')).toHaveAttribute('lang', 'he');
     await page.locator('#lang-select').selectOption('en');
