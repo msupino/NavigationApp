@@ -371,6 +371,10 @@ test.describe('Magnifying glass', () => {
   // enough for the test to observe — otherwise a fast LAN cache hit could
   // flip it on and off within a single frame.
   test('shows "Perfecting…" indicator while hi-res tiles load, hides after', async ({ page }) => {
+    // Default suite timeout is 15s — this test throttles tiles (1s each in
+    // parallel) then waits up to 20s for the indicator to clear; under load
+    // or slow runners the whole interaction can exceed 15s.
+    test.setTimeout(deployedPreview ? 120_000 : 60_000);
     // Slow every flight-maps.com tile fetch by 1000 ms so the
     // indicator's `show` class stays visible long enough for Playwright
     // to poll it. Important: the 169-tile hi-res grid is fetched in
@@ -415,7 +419,7 @@ test.describe('Magnifying glass', () => {
     // fan out in parallel, so total settle time ≈ throttle + RTT.
     // 20 s gives plenty of cushion for a couple extra rebuilds
     // (move/layeradd) along the way.
-    await expect(loading).not.toHaveClass(/show/, { timeout: 20000 });
+    await expect(loading).not.toHaveClass(/show/, { timeout: deployedPreview ? 45_000 : 35_000 });
   });
 
   // Edge case: at the layer's maxNativeZoom (CVFR = 13) the rebuild fetches

@@ -3,6 +3,8 @@
 // known airfield (issue #231).
 const { test, expect } = require('./_setup');
 
+const RWY_CHIP = '#insp-body .runway-chip';
+
 async function boot(page) {
   await page.addInitScript(() => {
     try {
@@ -30,7 +32,7 @@ test.describe('#231 — runway directions in inspector', () => {
       state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     });
-    const chips = await page.locator('.runway-chip').allTextContents();
+    const chips = await page.locator(RWY_CHIP).allTextContents();
     expect(chips).toContain('10/28');
   });
 
@@ -41,7 +43,7 @@ test.describe('#231 — runway directions in inspector', () => {
       state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     });
-    const chips = await page.locator('.runway-chip').allTextContents();
+    const chips = await page.locator(RWY_CHIP).allTextContents();
     expect(chips.length).toBeGreaterThanOrEqual(2);
   });
 
@@ -52,7 +54,7 @@ test.describe('#231 — runway directions in inspector', () => {
       state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     });
-    await expect(page.locator('.runway-chip')).toHaveCount(0);
+    await expect(page.locator(RWY_CHIP)).toHaveCount(0);
   });
 
   test('renamed label at same ARP keeps runway chips (coord match)', async ({ page }) => {
@@ -62,7 +64,24 @@ test.describe('#231 — runway directions in inspector', () => {
       state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     });
-    const chips = await page.locator('.runway-chip').allTextContents();
+    const chips = await page.locator(RWY_CHIP).allTextContents();
     expect(chips).toContain('10/28');
+  });
+
+  test('renamed label within ARP drift tolerance still shows runways', async ({ page }) => {
+    await boot(page);
+    const ok = await page.evaluate(() => {
+      const af = airfields.find(a => a.name === 'LLHZ');
+      if (!af) return false;
+      // Slightly offset from published ARP but inside AIRFIELD_POS_MATCH_EPS
+      // (chart refresh / legacy share coords vs current JSON).
+      state.waypoints = [{ lat: af.lat + 0.0015, lng: af.lng, name: 'LLHZ1' }];
+      state.selected = { type: 'wp', index: 0 };
+      syncLegs(); draw(); showInspector();
+      const chips = Array.from(document.querySelectorAll('#insp-body .runway-chip'))
+        .map(el => el.textContent || '');
+      return chips.includes('10/28');
+    });
+    expect(ok).toBe(true);
   });
 });
