@@ -4,6 +4,10 @@ Every test in this directory runs in **CI** (local Python server,
 `http://127.0.0.1:8000`). A subset also runs in **e2e-deployed**
 against the live GitHub Pages preview.
 
+Default **per-test timeout** is **15s** (`playwright.config.js`). Suites that
+need more (PNG export downloads, magnifier tile delays, PWA service worker
+activation) call `test.describe.configure({ timeout: … })` in their spec file.
+
 ## CI (local) — runs every `.spec.js` file
 
 Trigger: every push to a PR branch, `dev`, or `main`.
@@ -44,6 +48,9 @@ name matches `sw.spec` or `pwa.spec` is automatically excluded.
 - **SHA verification** — `EXPECTED_SHA` env var triggers a post-test
   check in `_setup.js` that fetches `/core.js` and compares the version
   SHA. Catches tests running against the wrong deployment.
+- **Service workers blocked** — when `EXPECTED_SHA` is set, `playwright.config.js`
+  sets `serviceWorkers: 'block'` so cache-first SW cannot serve stale JS
+  while HTML/`core.js` match the new deploy SHA.
 - **Retry logic** — up to 5 attempts with 5 s delay between failures.
 - **GA blocking** — all GA/GTM hosts are aborted at the network level
   (`_setup.js`). On PR previews GA is skipped entirely in `index.html`.

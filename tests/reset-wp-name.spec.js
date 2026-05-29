@@ -14,8 +14,8 @@ const { test, expect } = require('./_setup');
 // e2e-deployed runs many workers against one live preview; script + JSON
 // fetches can exceed the default test / waitForFunction budget.
 const onDeployedPreview = !!process.env.EXPECTED_SHA;
-const bootAppTimeout = onDeployedPreview ? 120_000 : 45_000;
-const bootDataTimeout = onDeployedPreview ? 180_000 : 60_000;
+const bootAppTimeout = onDeployedPreview ? 90_000 : 45_000;
+const bootDataTimeout = onDeployedPreview ? 120_000 : 60_000;
 
 async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
