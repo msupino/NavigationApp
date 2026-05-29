@@ -2,6 +2,30 @@
 /* NavAid — drawing: route, nav-waypoints, notes, page frame.
    Shares globals with core.js; loaded after it. */
 
+// Issue #394 (+ follow-up bug): default-kite clearance helpers, shared by
+// `drawLegs` (rendering), `legLabelCenter` (interact.js hit-testing),
+// and the drag-start materialiser (interact.js). The kite shape itself
+// is `46 * legZoomScale()` px wide (see drawLegArrow in this file —
+// `W = 46 * sc`), so its half-extent perpendicular to the leg axis is
+// `23 * legZoomScale()`. Drift lines fan out from each waypoint at 10°
+// from the leg axis for half the leg length; at the default along-leg
+// position (midpoint, a=0) the cone reaches `(legLength / 2) * tan(10°)`
+// perpendicular. The kite's *centre* must therefore sit at least
+// (cone-extent + kite-half-width + visual margin) from the leg line so
+// the kite *body* clears both the leg line and the drift dashes at
+// every zoom and `legArrowSize`. The first cut of this fix only
+// pushed the centre `(len/2)*tan(10°) + 8` out, which left the kite
+// edge ON the leg line at low zoom or `legArrowSize >= 2`.
+const legDefaultDriftTan = Math.tan(10 * Math.PI / 180);
+const legDefaultDriftMarginPx = 8;
+const legDefaultKiteHalfWidthPx = 23;   // kite half-width when legZoomScale() === 1 (W = 46 * sc)
+function legDefaultLabelPerp(legLenPx) {
+  const sc = (typeof legZoomScale === 'function') ? legZoomScale() : 1;
+  return (Math.max(1, legLenPx) / 2) * legDefaultDriftTan +
+         legDefaultKiteHalfWidthPx * sc +
+         legDefaultDriftMarginPx;
+}
+
 // --- drawing ---------------------------------------------------------
 function draw() {
   octx.clearRect(0, 0, vw(), vh());
@@ -25,10 +49,11 @@ function draw() {
 
 // --- nav-waypoint reference overlay ---------------------------------
 // Lazy-loads docs/nav-waypoints.json on first activation. Format:
-// { waypoints:[{ name, he, lat, lng }] } — 256 published reporting points.
-// Validated strictly by validateNavWaypoints() (issue #101): every
-// documented field must be present and well-typed; extras are silently
-// allowed for forward-compat.
+// { waypoints:[{ name, he, lat, lng }] } — 173 published reporting
+// points sourced from the IAA CVFR chart page 113 (2025 edition); see
+// issue #406. Validated strictly by validateNavWaypoints() (issue
+// #101): every documented field must be present and well-typed;
+// extras are silently allowed for forward-compat.
 async function loadNavWaypoints() {
   if (navWP !== null) return navWP;
   try {
@@ -81,6 +106,33 @@ function isNavName(name) {
   return false;
 }
 
+function escapeRegExp(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// True if `name` is the auto sequence label (`WP N`, `WPn`, or locale
+// `S.wpPrefix` + digits). Same family as the dimmed inspector / flight-plan
+// placeholder — not a user-chosen static name.
+function isSequenceWaypointName(name) {
+  const s = String(name || '').trim();
+  if (!s) return false;
+  if (/^wp\s*\d+$/i.test(s)) return true;
+  const p = (typeof S !== 'undefined' && S && S.wpPrefix) ? String(S.wpPrefix) : 'WP ';
+  const flags = /[^\u0000-\u007f]/.test(p) || /[^\u0000-\u007f]/.test(s) ? 'u' : '';
+  if (new RegExp('^' + escapeRegExp(p) + '\\d+$', flags).test(s)) return true;
+  const pt = p.trim();
+  if (pt && new RegExp('^' + escapeRegExp(pt) + '\\s*\\d+$', flags).test(s)) return true;
+  return false;
+}
+
+// Clear stored `wp.name` when it is only a sequence placeholder so the UI
+// shows the dimmed placeholder (empty value) and snap logic applies.
+function normalizeWaypointSequenceName(wp) {
+  if (!wp) return;
+  const t = String(wp.name || '').trim();
+  if (t && isSequenceWaypointName(t)) wp.name = '';
+}
+
 // Resolve a stored waypoint name to the current locale. If the stored value
 // is a nav-WP name (either language), return the locale-appropriate version.
 // User-typed names are returned as-is.
@@ -95,24 +147,28 @@ function navName(stored) {
 
 // Decide where a waypoint should sit + what to call it given a target
 // position and its current name. Used by both initial drop and drag.
-//  - If the current name is user-typed (non-empty, not an auto-snap name):
+//  - If the current name is user-typed (non-empty, not an auto-snap or
+//    sequence label like "WP 6" / "WP6"):
 //    leave the name alone; just move to the target latlng.
 //  - Else if an airfield is within 18 px of the target (overlay on):
 //    snap lat/lng + adopt its ICAO `name`.
 //  - Else if a nav waypoint is within 18 px of the target (overlay on):
 //    snap lat/lng + name to that nav waypoint.
-//  - Else if the current name was an auto-snap name (no longer near any):
+//  - Else if the current name was an auto-snap or sequence label (no longer
+//    near any):
 //    clear it so the circle reverts to the sequence number.
 // Airfields take priority because they're a much smaller set of strongly-
-// known landmarks (16 vs 256 nav-WPs); if both overlays sit on the same
+// known landmarks (16 vs 173 nav-WPs); if both overlays sit on the same
 // spot the airfield name is the more meaningful identifier.
 function applyNavSnap(latlng, currentName) {
   if (!showAirfields && !showNavWP) {
-    const autoSnapped = isAirfieldName(currentName) || isNavName(currentName);
+    const autoSnapped = isAirfieldName(currentName) || isNavName(currentName) ||
+        isSequenceWaypointName(currentName);
     return { lat: latlng.lat, lng: latlng.lng,
              name: autoSnapped ? '' : (currentName || '') };
   }
-  const autoSnapped = isAirfieldName(currentName) || isNavName(currentName);
+  const autoSnapped = isAirfieldName(currentName) || isNavName(currentName) ||
+      isSequenceWaypointName(currentName);
   const userTyped = currentName && !autoSnapped;
   if (showAirfields) {
     const af = nearestAirfield(latlng, 18);
@@ -159,7 +215,7 @@ async function loadAirfields() {
       lat: a.lat,
       lng: a.lng,
       elev_ft: a.elev_ft,
-      plates: a.plates.slice(),
+      plates: Array.isArray(a.plates) ? a.plates.slice() : [],
       runways: Array.isArray(a.runways) ? a.runways.slice() : null,
     }));
     return airfields;
@@ -193,6 +249,25 @@ function isAirfieldName(name) {
   if (!name || !airfields) return false;
   for (const af of airfields) if (af.name === name) return true;
   return false;
+}
+
+// Max |Δlat| and |Δlng| for treating a waypoint as "on" an airfield ARP when
+// the label is not the ICAO code (renamed WP, older saved coords vs chart
+// refresh, r5 rounding). ~0.002° ≈ 220 m at Israel lat — matches `isAirport`.
+const AIRFIELD_POS_MATCH_EPS = 0.002;
+
+// Airfield row from `airfields.json` for inspector runways / plates: prefer an
+// exact ICAO name match, else ARP coords within `AIRFIELD_POS_MATCH_EPS` so a
+// renamed label (or legacy share-link coords) still surfaces charts + runways.
+function airfieldAtWaypoint(wp) {
+  if (!wp || !airfields || !airfields.length) return null;
+  const name = (wp.name || '').trim().toUpperCase();
+  const byName = airfields.find(a => a.name === name);
+  if (byName) return byName;
+  const eps = AIRFIELD_POS_MATCH_EPS;
+  return airfields.find(a =>
+    Math.abs(a.lat - wp.lat) < eps && Math.abs(a.lng - wp.lng) < eps
+  ) || null;
 }
 
 // Distinct from nav-WPs: airfields are rendered as a blue-filled upward
@@ -271,7 +346,7 @@ function drawNavWaypoints() {
 }
 
 function drawLegs() {
-  const zoomScale = Math.max(0.35, Math.pow(2, map.getZoom() - 12)) * legArrowSize;
+  const zoomScale = legZoomScale();
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     if (!A || !B) continue;
@@ -308,14 +383,35 @@ function drawLegs() {
     const len = Math.hypot(dx, dy) || 1;
     dx /= len; dy /= len;
     const nx = -dy, ny = dx;
-    const inP = leg.inLabel || { a: 0, p: 44 };
-    const outP = leg.outLabel || { a: 0, p: -44 };
-    drawLegArrow(mid.x + dx * inP.a + nx * inP.p, mid.y + dy * inP.a + ny * inP.p,
+    // Strict validator (`_normalizeLegLabel` + `syncLegs`) should keep
+    // these defined in practice — every code path that touches a leg
+    // stamps `inLabel`/`outLabel` via `_defaultLegLabels()`. Fallback
+    // exists as a defensive guard for hand-edited / corrupted state.
+    const defaults = (typeof _defaultLegLabels === 'function')
+      ? _defaultLegLabels()
+      : { inLabel: { a: 0, _default: 1, _m: 1 },
+          outLabel: { a: 0, _default: 1, _m: 1 } };
+    const inP = leg.inLabel || defaults.inLabel;
+    const outP = leg.outLabel || defaults.outLabel;
+    // Issue #394: a default (unmodified) kite sits just outside the 10°
+    // drift cone instead of at a fixed per-zoom pixel offset. The cone's
+    // perpendicular extent at the leg midpoint is `(len/2) * tan(10°)`;
+    // adding an 8 px margin keeps the kite visibly clear of the dashed
+    // drift lines at every zoom / leg length. User-dragged offsets
+    // (no `_default` flag) keep the existing `p * legZoomScale()` path so
+    // hand-positioned kites round-trip exactly as PR #393 designed.
+    const driftPerp = legDefaultLabelPerp(len);
+    const inPerp  = inP._default  ?  driftPerp : (inP.p  || 0) * zoomScale;
+    const outPerp = outP._default ? -driftPerp : (outP.p || 0) * zoomScale;
+    const inAlong  = (inP.a  || 0) * zoomScale;
+    const outAlong = (outP.a || 0) * zoomScale;
+    drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
+      mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, String(leg.inboundAltitude),
       '#2f6fd0', yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
     if (showReturn) {
-      drawLegArrow(mid.x + dx * outP.a + nx * outP.p,
-        mid.y + dy * outP.a + ny * outP.p, ang + Math.PI,
+      drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
+        mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, String(leg.outboundAltitude),
         '#c0392b', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
     }
@@ -481,7 +577,10 @@ const WP_RADIUS = 13;
 // stays roughly constant; floor at 0.35× so markers stay visible when zoomed out).
 function waypointGeom(i) {
   const wp = state.waypoints[i];
-  const label = showWpNames ? (navName((wp.name || '').trim()) || String(i + 1)) : '';
+  // Match wpLabel() / inspector placeholder ("WP N"), not a bare digit.
+  const label = showWpNames
+    ? (navName((wp.name || '').trim()) || (S.wpPrefix + (i + 1)))
+    : '';
   const zoomScale = Math.max(0.35, Math.pow(2, map.getZoom() - 12));
   const scale = wpSize * zoomScale;
   const fontPx = Math.max(4, Math.round(13 * scale));
