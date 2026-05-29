@@ -26,10 +26,11 @@
 //   5. round-trip at legArrowSize=2 — save / reload / import preserves a
 //      user-dragged offset's rendered position (within sub-pixel ε).
 const { test, expect } = require('./_setup');
+const { LLHZ, LLHA } = require('./_airfieldArp');
 
 const TWO_WP = [
-  { lat: 32.17944, lng: 34.83444, name: 'A' },
-  { lat: 32.80833, lng: 35.04278, name: 'B' },
+  { lat: LLHZ.lat, lng: LLHZ.lng, name: 'A' },
+  { lat: LLHA.lat, lng: LLHA.lng, name: 'B' },
 ];
 
 async function boot(page) {
@@ -101,7 +102,7 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
   test('legacy navaid.route migrates raw offsets by legArrowSize and stamps _m', async ({ page }) => {
     const RAW = 88;     // raw screen pixels (pre-#393 save under legArrowSize=2)
     const AS = 2;
-    await page.addInitScript(({ raw, as }) => {
+    await page.addInitScript(({ raw, as, hz, ha }) => {
       try {
         for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
         sessionStorage.clear();
@@ -110,8 +111,8 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
         localStorage.setItem('navaid.legArrowSize', String(as));
         localStorage.setItem('navaid.route', JSON.stringify({
           waypoints: [
-            { lat: 32.17944, lng: 34.83444, name: 'A' },
-            { lat: 32.80833, lng: 35.04278, name: 'B' },
+            { lat: hz.lat, lng: hz.lng, name: 'A' },
+            { lat: ha.lat, lng: ha.lng, name: 'B' },
           ],
           legs: [{
             inboundAltitude: 2000, outboundAltitude: 2000,
@@ -122,7 +123,7 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
           notes: [],
         }));
       } catch (e) {}
-    }, { raw: RAW, as: AS });
+    }, { raw: RAW, as: AS, hz: LLHZ, ha: LLHA });
     await page.goto('?lang=en');
     await page.waitForFunction(() => state && state.legs && state.legs.length === 1);
 
@@ -143,7 +144,7 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
   test('migration is idempotent across reload', async ({ page }) => {
     const RAW = 88;
     const AS = 2;
-    await page.addInitScript(({ raw, as }) => {
+    await page.addInitScript(({ raw, as, hz, ha }) => {
       try {
         for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
         sessionStorage.clear();
@@ -152,8 +153,8 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
         localStorage.setItem('navaid.legArrowSize', String(as));
         localStorage.setItem('navaid.route', JSON.stringify({
           waypoints: [
-            { lat: 32.17944, lng: 34.83444, name: 'A' },
-            { lat: 32.80833, lng: 35.04278, name: 'B' },
+            { lat: hz.lat, lng: hz.lng, name: 'A' },
+            { lat: ha.lat, lng: ha.lng, name: 'B' },
           ],
           legs: [{
             inboundAltitude: 2000, outboundAltitude: 2000,
@@ -164,7 +165,7 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
           notes: [],
         }));
       } catch (e) {}
-    }, { raw: RAW, as: AS });
+    }, { raw: RAW, as: AS, hz: LLHZ, ha: LLHA });
 
     await page.goto('?lang=en');
     await page.waitForFunction(() => state && state.legs && state.legs.length === 1);
@@ -402,7 +403,7 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
     // Seed a real-shape route directly in localStorage, mirroring what
     // happens when the user has persisted a route before reload. This
     // exercises the exact path the user reported failing.
-    await page.addInitScript(() => {
+    await page.addInitScript(({ hz, ha }) => {
       try {
         for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
         sessionStorage.clear();
@@ -410,9 +411,9 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
           localStorage.setItem('navaid.sec.' + s, '1');
         localStorage.setItem('navaid.route', JSON.stringify({
           waypoints: [
-            { lat: 32.17944, lng: 34.83444, name: 'A' },
+            { lat: hz.lat, lng: hz.lng, name: 'A' },
             { lat: 32.50000, lng: 34.95000, name: 'B' },
-            { lat: 32.80833, lng: 35.04278, name: 'C' },
+            { lat: ha.lat, lng: ha.lng, name: 'C' },
           ],
           legs: [
             { inboundAltitude: 2000, outboundAltitude: 2000,
@@ -427,7 +428,7 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
           notes: [],
         }));
       } catch (e) {}
-    });
+    }, { hz: LLHZ, ha: LLHA });
     await page.goto('?lang=en');
     await page.waitForFunction(
       () => state && state.legs && state.legs.length === 2 &&
@@ -504,14 +505,14 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
     await boot(page);
     // Two waypoints within ~10 m of each other → leg length collapses
     // to a handful of pixels even at zoom 14. At zoom 8 it's sub-pixel.
-    await page.evaluate(() => {
+    await page.evaluate(([lat, lng]) => {
       state.waypoints = [
-        { lat: 32.17944, lng: 34.83444, name: 'A' },
-        { lat: 32.18070, lng: 34.83480, name: 'B' },
+        { lat, lng, name: 'A' },
+        { lat: lat + 0.0001, lng: lng + 0.0001, name: 'B' },
       ];
       syncLegs();
       draw();
-    });
+    }, [LLHZ.lat, LLHZ.lng]);
     for (const z of [8, 10, 12, 14]) {
       const m = await page.evaluate((zoom) => {
         map.setZoom(zoom);

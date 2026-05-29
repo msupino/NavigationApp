@@ -3,13 +3,9 @@
 // Aircraft is now configured via two free inputs: GPH and Taxi/T.O. (gal).
 // Presets (C152 / C172 / PA-28) and airport-based taxi detection removed.
 const { test, expect } = require('./_setup');
+const { pairLLHZ_LLHA } = require('./_airfieldArp');
 
-// Coordinates must match docs/airfields.json within isAirport() eps (0.001°)
-// so renamed labels (e.g. LLHZ1) still match by position for taxi fuel.
-const TWO_WP = [
-  { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
-  { lat: 32.80833, lng: 35.04278, name: 'LLHA' },
-];
+const TWO_WP = pairLLHZ_LLHA();
 
 async function boot(page) {
   await page.addInitScript(() => {

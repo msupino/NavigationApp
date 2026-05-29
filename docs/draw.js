@@ -295,6 +295,25 @@ function isAirfieldName(name) {
   return false;
 }
 
+// Max |Δlat| and |Δlng| for treating a waypoint as "on" an airfield ARP when
+// the label is not the ICAO code (renamed WP, older saved coords vs chart
+// refresh, r5 rounding). ~0.002° ≈ 220 m at Israel lat — matches `isAirport`.
+const AIRFIELD_POS_MATCH_EPS = 0.002;
+
+// Airfield row from `airfields.json` for inspector runways / plates: prefer an
+// exact ICAO name match, else ARP coords within `AIRFIELD_POS_MATCH_EPS` so a
+// renamed label (or legacy share-link coords) still surfaces charts + runways.
+function airfieldAtWaypoint(wp) {
+  if (!wp || !airfields || !airfields.length) return null;
+  const name = (wp.name || '').trim().toUpperCase();
+  const byName = airfields.find(a => a.name === name);
+  if (byName) return byName;
+  const eps = AIRFIELD_POS_MATCH_EPS;
+  return airfields.find(a =>
+    Math.abs(a.lat - wp.lat) < eps && Math.abs(a.lng - wp.lng) < eps
+  ) || null;
+}
+
 // Distinct from nav-WPs: airfields are rendered as a blue-filled upward
 // triangle (▲) outline, sized to ~7 px at typical zooms. The ICAO and
 // localised name appear next to the marker at zoom ≥ 10. Suppressed when
