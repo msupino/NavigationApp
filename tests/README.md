@@ -56,6 +56,8 @@ name matches `sw.spec` or `pwa.spec` is automatically excluded.
   while HTML/`core.js` match the new deploy SHA.
 - **Worker cap** — with `EXPECTED_SHA`, Playwright uses **4 workers** so one
   preview origin is not overwhelmed (fewer long silent stretches in logs).
-- **Retry logic** — up to 5 attempts with 5 s delay between failures.
+- **Retry logic** — up to **2** full-suite attempts with 5 s delay; each run
+  uses `--max-failures=20` so a broken deploy fails the job sooner instead of
+  finishing all specs after many reds.
 - **GA blocking** — all GA/GTM hosts are aborted at the network level
   (`_setup.js`). On PR previews GA is skipped entirely in `index.html`.
