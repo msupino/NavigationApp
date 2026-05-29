@@ -295,6 +295,21 @@ function isAirfieldName(name) {
   return false;
 }
 
+// Airfield row from `airfields.json` for inspector runways / plates: prefer an
+// exact ICAO name match, else coords within ~100 m of an ARP (same eps as
+// `isAirport` in io.js) so a renamed label at the snapped position still
+// surfaces charts and runway data.
+function airfieldAtWaypoint(wp) {
+  if (!wp || !airfields || !airfields.length) return null;
+  const name = (wp.name || '').trim().toUpperCase();
+  const byName = airfields.find(a => a.name === name);
+  if (byName) return byName;
+  const eps = 0.001;
+  return airfields.find(a =>
+    Math.abs(a.lat - wp.lat) < eps && Math.abs(a.lng - wp.lng) < eps
+  ) || null;
+}
+
 // Distinct from nav-WPs: airfields are rendered as a blue-filled upward
 // triangle (▲) outline, sized to ~7 px at typical zooms. The ICAO and
 // localised name appear next to the marker at zoom ≥ 10. Suppressed when

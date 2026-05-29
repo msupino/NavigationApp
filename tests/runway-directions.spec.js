@@ -26,8 +26,8 @@ test.describe('#231 — runway directions in inspector', () => {
   test('LLHZ waypoint inspector renders the published runway 10/28', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.17944, lng: 34.83444, name: 'LLHZ' }];
-      state.selected = { type: 'waypoint', index: 0 };
+      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }];
+      state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     });
     const chips = await page.locator('.runway-chip').allTextContents();
@@ -38,7 +38,7 @@ test.describe('#231 — runway directions in inspector', () => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [{ lat: 32.00, lng: 34.88, name: 'LLBG' }];
-      state.selected = { type: 'waypoint', index: 0 };
+      state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     });
     const chips = await page.locator('.runway-chip').allTextContents();
@@ -49,23 +49,20 @@ test.describe('#231 — runway directions in inspector', () => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [{ lat: 32.21861, lng: 34.88250, name: 'BAZRA' }];
-      state.selected = { type: 'waypoint', index: 0 };
+      state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     });
     await expect(page.locator('.runway-chip')).toHaveCount(0);
   });
 
-  test('renamed airfield (LLHZ → LLHZ1) loses runway chips (name match only)', async ({ page }) => {
+  test('renamed label at same ARP keeps runway chips (coord match)', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
-      // Even though coords are LLHZ, the runway lookup is by name to avoid
-      // showing wrong data if the user moved the waypoint to a fake location
-      // and kept the airfield label. Renaming is the unambiguous "this is
-      // no longer the airfield" signal.
-      state.waypoints = [{ lat: 32.17944, lng: 34.83444, name: 'LLHZ1' }];
-      state.selected = { type: 'waypoint', index: 0 };
+      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ1' }];
+      state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     });
-    await expect(page.locator('.runway-chip')).toHaveCount(0);
+    const chips = await page.locator('.runway-chip').allTextContents();
+    expect(chips).toContain('10/28');
   });
 });
