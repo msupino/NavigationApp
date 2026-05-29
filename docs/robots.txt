@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://msupino.github.io/NavigationApp/sitemap.xml
+Sitemap: https://navaid.supino.org/sitemap.xml
