@@ -2,6 +2,7 @@
 // Inspector shows the runway directions for a waypoint that matches a
 // known airfield (issue #231).
 const { test, expect } = require('./_setup');
+const { LLHZ } = require('./_airfieldArp');
 
 const RWY_CHIP = '#insp-body .runway-chip';
 
@@ -27,11 +28,11 @@ async function boot(page) {
 test.describe('#231 — runway directions in inspector', () => {
   test('LLHZ waypoint inspector renders the published runway 10/28', async ({ page }) => {
     await boot(page);
-    await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }];
+    await page.evaluate(hz => {
+      state.waypoints = [{ lat: hz.lat, lng: hz.lng, name: 'LLHZ' }];
       state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
-    });
+    }, LLHZ);
     const chips = await page.locator(RWY_CHIP).allTextContents();
     expect(chips).toContain('10/28');
   });
@@ -59,11 +60,11 @@ test.describe('#231 — runway directions in inspector', () => {
 
   test('renamed label at same ARP keeps runway chips (coord match)', async ({ page }) => {
     await boot(page);
-    await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ1' }];
+    await page.evaluate(hz => {
+      state.waypoints = [{ lat: hz.lat, lng: hz.lng, name: 'LLHZ1' }];
       state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
-    });
+    }, LLHZ);
     const chips = await page.locator(RWY_CHIP).allTextContents();
     expect(chips).toContain('10/28');
   });
