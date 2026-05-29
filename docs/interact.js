@@ -171,6 +171,8 @@ function resetWpName(idx) {
   draw();
   showInspector();
 }
+window.resetWpName = resetWpName;
+window.findSnappedReference = findSnappedReference;
 
 // Issue #418: Build toolbar — same naming rules as `resetWpName` for
 // every waypoint in one shot (confirm in ui.js).
