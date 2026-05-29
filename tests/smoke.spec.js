@@ -19,7 +19,7 @@ test.describe('NavAid smoke', () => {
     await page.goto('?lang=en');
     await expect(page).toHaveTitle('NavAid');
     await expect(page.locator('#toolbar')).toBeVisible();
-    await expect(page.locator('#tool-add')).toHaveText(/Add Waypoint/);
+    await expect(page.locator('#tool-add')).toHaveText(/Add waypoint/);
   });
 
   test('boots in Hebrew by default and switches to English', async ({ page }) => {

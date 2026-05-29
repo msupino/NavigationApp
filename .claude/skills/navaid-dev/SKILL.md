@@ -58,7 +58,11 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
   page frame) → `interact.js` (hit-testing, inspector, mouse/touch) →
   `io.js` (save/load, page setup, flight plan, PNG export,
   persistence) → `ui.js` (toolbar wiring, drag, boot, PWA). Order
-  matters — later files use globals from earlier ones.
+  matters — later files use globals from earlier ones. Default English
+  strings live in `core.js` (see the **Waypoint terminology** comment
+  near `window.S`): short imperative buttons use sentence case on the
+  common noun (*Delete waypoint*, *Add waypoint*); Hebrew overrides are
+  in `he/strings.js`.
 - `manifest.json`, `sw.js`, `icon-192.png`, `icon-512.png` — PWA:
   installable app + offline app-shell service worker.
 - `style.css` — dark UI + `@media print` rules.

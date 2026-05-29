@@ -44,14 +44,16 @@ window.S = Object.assign({
   airfieldLabelField: 'en',            // which locale label to show on the overlay
 
   // --- Waypoint terminology -------------------------------------------
-  // Rule: use the full word "Waypoint" (Title Case) in all user-facing
-  // English strings — buttons, toggles, tooltips, dialogs. The single
-  // exception is `wpPrefix`, the tight inline fallback label for unnamed
-  // waypoints ("WP 3" / "נק׳ 3" in the inspector and flight plan) where
-  // the abbreviation is intentional; DO NOT expand it to "Waypoint 3".
+  // Rule: always spell the common noun "waypoint" in full (one word, not
+  // WPT/WPs in user-facing prose). Short imperative buttons use sentence
+  // case ("Delete waypoint", "Add waypoint"); longer labels / toggles may
+  // use title case where it reads naturally ("Show Waypoint Names"). The
+  // single exception is `wpPrefix`, the tight inline fallback label for
+  // unnamed waypoints ("WP 3" / "נק׳ 3" in the inspector and flight plan)
+  // where the abbreviation is intentional; DO NOT expand it to "Waypoint 3".
   wpPrefix: 'WP ',                                  // short prefix for unnamed waypoints — see rule above
   summaryWaypoints: 'Waypoints',                    // stats panel total
-  tbAddWp: '✏️ Add Waypoint',                        // toolbar Edit button
+  tbAddWp: '✏️ Add waypoint',                        // toolbar Edit button
   tbAddWpTitle: 'Click map to drop a waypoint (click button again to stop)',
   tbShowWpNames: 'Show Waypoint Names',             // Display toggle
   tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
@@ -65,7 +67,7 @@ window.S = Object.assign({
   searchReplaceConfirm: 'Replace the current route with these waypoints?',
   tbSearchOpen: '🔍 Find',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
-  deleteWp: 'Delete Waypoint',                      // inspector button
+  deleteWp: 'Delete waypoint',                      // inspector button
   resetLegMarkers: '↺ Reset marker position',       // inspector leg button — reset label offsets
   resetAllLegMarkers: '↺ Reset all marker positions', // inspector leg button — reset every leg
   resetAllConfirm: 'Reset all leg marker positions to default? This will clear any manual adjustments.',
