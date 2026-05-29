@@ -535,6 +535,13 @@ window.addEventListener('keydown', e => {
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
     return;                              // typing in a field — leave the WP alone
   }
+  // Issue #413: F (no modifier) re-runs fit-to-route. Ctrl/Cmd-F is the
+  // search-overlay shortcut handled in ui.js — bail out so we don't shadow it.
+  if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault();
+    fitView();
+    return;
+  }
   if (e.key === 'Delete' || e.key === 'Backspace') {
     if (!state.selected) return;
     if (state.selected.type === 'wp') {
