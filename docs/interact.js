@@ -134,6 +134,61 @@ function deleteWaypoint(k) {
   syncLegs();
 }
 
+// Issue #418: resolve a waypoint to its nearest reference point
+// (airfield or nav waypoint) within the same ~18 px snap distance the
+// drop / drag path uses (`applyNavSnap`). Airfields take priority over
+// nav-WPs because they are a smaller, strongly-known set of landmarks
+// (matches applyNavSnap()). Independent of `showNavWP` / `showAirfields`
+// so the reset action works even when the overlays are hidden.
+// Returns the canonical English code (4-letter ICAO / 5-letter nav-WP)
+// rather than the locale label, so `navName()` can resolve it back to
+// the user's locale at render time.
+function findSnappedReference(wp) {
+  if (!wp || typeof map === 'undefined' || !map) return null;
+  const ll = { lat: wp.lat, lng: wp.lng };
+  if (typeof nearestAirfield === 'function' &&
+      Array.isArray(airfields) && airfields.length) {
+    const af = nearestAirfield(ll, 18);
+    if (af) return { name: af.name };
+  }
+  if (typeof nearestNavWaypoint === 'function' &&
+      Array.isArray(navWP) && navWP.length) {
+    const nw = nearestNavWaypoint(ll, 18);
+    if (nw) return { name: nw.name };
+  }
+  return null;
+}
+
+// Issue #418: inspector "↺ Reset waypoint name" handler. Restores the
+// snapped reference code if the waypoint sits on one; otherwise clears
+// the name so the dimmed sequence placeholder (`S.wpPrefix` + N) shows.
+function resetWpName(idx) {
+  const wp = state.waypoints[idx];
+  if (!wp) return;
+  const snapped = findSnappedReference(wp);
+  wp.name = snapped ? snapped.name : '';
+  persist();
+  draw();
+  showInspector();
+}
+window.resetWpName = resetWpName;
+window.findSnappedReference = findSnappedReference;
+
+// Issue #418: Build toolbar — same naming rules as `resetWpName` for
+// every waypoint in one shot (confirm in ui.js).
+function resetAllWpNames() {
+  for (let i = 0; i < state.waypoints.length; i++) {
+    const wp = state.waypoints[i];
+    if (!wp) continue;
+    const snapped = findSnappedReference(wp);
+    wp.name = snapped ? snapped.name : '';
+  }
+  persist();
+  draw();
+  showInspector();
+}
+window.resetAllWpNames = resetAllWpNames;
+
 // Compose the leg-inspector title from the names of its endpoints, e.g.
 // "TLV → NETANYA" (LTR) / "TLV ← NETANYA" (RTL). Falls back to the sequence
 // label (`WP N` / `נק׳ N`) for unnamed waypoints, and to the legacy
@@ -226,6 +281,7 @@ function showInspector() {
     body.appendChild(del);
   } else {
     const wp = state.waypoints[state.selected.index];
+    normalizeWaypointSequenceName(wp);
     // #81: show the locale-resolved label so the inspector matches the map.
     // The canonical stored name (`wp.name`) is whatever the user types/keeps;
     // navName() converts a nav-WP canonical id to the current locale for read.
@@ -233,7 +289,11 @@ function showInspector() {
     title.placeholder = S.wpPrefix + (state.selected.index + 1);
     title.readOnly = false;
     title.classList.add('editable');
-    title.oninput = () => { wp.name = title.value; draw(); };
+    title.oninput = () => {
+      const t = (title.value || '').trim();
+      wp.name = isSequenceWaypointName(t) ? '' : title.value;
+      draw();
+    };
     body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
     // Comm-change badge (issue #399). Surfaces the sector / CTR / TMA
@@ -266,78 +326,72 @@ function showInspector() {
         body.appendChild(row);
       }
     }
-    // #231: runway directions when the waypoint matches a known airfield.
-    if (airfields && wp.name) {
-      const up = wp.name.trim().toUpperCase();
-      const af = airfields.find(a => a.name === up);
-      if (af && Array.isArray(af.runways) && af.runways.length) {
+    const afInsp = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
+    // #231: runway directions when the waypoint is at a known airfield (ICAO
+    // name or ARP coords — renamed labels at the same ARP keep runways).
+    if (afInsp && Array.isArray(afInsp.runways) && afInsp.runways.length) {
+      const row = document.createElement('div');
+      row.className = 'row runways-row';
+      const lbl = document.createElement('label');
+      lbl.textContent = S.runways;
+      row.appendChild(lbl);
+      const chips = document.createElement('div');
+      chips.className = 'runway-chips';
+      for (const r of afInsp.runways) {
+        const chip = document.createElement('span');
+        chip.className = 'runway-chip';
+        chip.textContent = r;
+        chips.appendChild(chip);
+      }
+      row.appendChild(chips);
+      body.appendChild(row);
+    }
+    // #105: plates when the waypoint matches an airfield by name or ARP coords.
+    if (afInsp && afInsp.plates && afInsp.plates.length) {
+      const af = afInsp;
+      const section = document.createElement('div');
+      section.className = 'plates-section';
+      const label = document.createElement('div');
+      label.className = 'row';
+      const l = document.createElement('label');
+      l.textContent = S.plates;
+      label.appendChild(l);
+      section.appendChild(label);
+      // Group by category
+      const groups = {};
+      const catOrder = ['approach', 'sid', 'star', 'ground', 'vfr', 'other'];
+      const catLabel = {
+        approach: S.plateCategoryApproach,
+        sid: S.plateCategorySid,
+        star: S.plateCategoryStar,
+        ground: S.plateCategoryGround,
+        vfr: S.plateCategoryVfr,
+        other: S.plateCategoryOther,
+      };
+      for (const fn of af.plates) {
+        const cat = plateCategory(fn);
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(fn);
+      }
+      for (const cat of catOrder) {
+        if (!groups[cat]) continue;
         const row = document.createElement('div');
-        row.className = 'row runways-row';
-        const lbl = document.createElement('label');
-        lbl.textContent = S.runways;
-        row.appendChild(lbl);
-        const chips = document.createElement('div');
-        chips.className = 'runway-chips';
-        for (const r of af.runways) {
-          const chip = document.createElement('span');
-          chip.className = 'runway-chip';
-          chip.textContent = r;
+        row.className = 'row';
+        const catLbl = document.createElement('label');
+        catLbl.textContent = catLabel[cat];
+        row.appendChild(catLbl);
+        const chips = document.createElement('span');
+        for (const fn of groups[cat]) {
+          const chip = document.createElement('button');
+          chip.className = 'plate-chip';
+          chip.textContent = prettyPlateLabel(fn);
+          chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
           chips.appendChild(chip);
         }
         row.appendChild(chips);
-        body.appendChild(row);
+        section.appendChild(row);
       }
-    }
-    // #105: show plates section if waypoint name matches an airfield.
-    if (airfields && wp.name) {
-      for (const af of airfields) {
-        if (af.name === wp.name && af.plates && af.plates.length) {
-          const section = document.createElement('div');
-          section.className = 'plates-section';
-          const label = document.createElement('div');
-          label.className = 'row';
-          const l = document.createElement('label');
-          l.textContent = S.plates;
-          label.appendChild(l);
-          section.appendChild(label);
-          // Group by category
-          const groups = {};
-          const catOrder = ['approach', 'sid', 'star', 'ground', 'vfr', 'other'];
-          const catLabel = {
-            approach: S.plateCategoryApproach,
-            sid: S.plateCategorySid,
-            star: S.plateCategoryStar,
-            ground: S.plateCategoryGround,
-            vfr: S.plateCategoryVfr,
-            other: S.plateCategoryOther,
-          };
-          for (const fn of af.plates) {
-            const cat = plateCategory(fn);
-            if (!groups[cat]) groups[cat] = [];
-            groups[cat].push(fn);
-          }
-          for (const cat of catOrder) {
-            if (!groups[cat]) continue;
-            const row = document.createElement('div');
-            row.className = 'row';
-            const catLbl = document.createElement('label');
-            catLbl.textContent = catLabel[cat];
-            row.appendChild(catLbl);
-            const chips = document.createElement('span');
-            for (const fn of groups[cat]) {
-              const chip = document.createElement('button');
-              chip.className = 'plate-chip';
-              chip.textContent = prettyPlateLabel(fn);
-              chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
-              chips.appendChild(chip);
-            }
-            row.appendChild(chips);
-            section.appendChild(row);
-          }
-          body.appendChild(section);
-          break;
-        }
-      }
+      body.appendChild(section);
     }
     const del = document.createElement('button');
     del.className = 'insp-btn';
@@ -348,6 +402,14 @@ function showInspector() {
       draw(); showInspector();
     };
     body.appendChild(del);
+    // Issue #418: ↺ Reset waypoint name — snaps the stored name back to
+    // the nearest reference code, or clears it when off-grid (placeholder).
+    const resetName = document.createElement('button');
+    resetName.className = 'insp-btn';
+    resetName.textContent = S.resetWpName || '↺ Reset waypoint name';
+    if (S.resetWpNameTitle) resetName.title = S.resetWpNameTitle;
+    resetName.onclick = () => resetWpName(state.selected.index);
+    body.appendChild(resetName);
   }
 }
 function colorRow(label, value, onChange) {
@@ -564,6 +626,50 @@ window.addEventListener('keydown', e => {
   }
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
     return;                              // typing in a field — leave the WP alone
+  }
+  // Issue #420: '?' (Shift-/) opens the keyboard-shortcuts cheat-sheet.
+  // Suppressed in inputs (handled by the early return above) so typing a
+  // literal '?' in a waypoint name or note still works. Most browsers
+  // surface this key as `e.key === '?'`, but some keyboard layouts /
+  // automation harnesses fire `e.key === '/'` with `shiftKey: true`, so
+  // accept both.
+  if (!e.ctrlKey && !e.metaKey && !e.altKey &&
+      (e.key === '?' || (e.key === '/' && e.shiftKey))) {
+    e.preventDefault();
+    if (typeof showShortcutsHelp === 'function') showShortcutsHelp();
+    return;
+  }
+  // Issue #413: F (no modifier) re-runs fit-to-route. Ctrl/Cmd-F is the
+  // search-overlay shortcut handled in ui.js — bail out so we don't shadow it.
+  if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault();
+    fitView();
+    return;
+  }
+  // Map zoom (+ / − / numpad) and magnifier (M) — skip under any modal
+  // backdrop so we don't change the map behind dialogs.
+  if (!document.querySelector('.modal-back')) {
+    const zoomInKeys = !e.ctrlKey && !e.metaKey && !e.altKey && (
+      e.code === 'NumpadAdd' || e.code === 'Equal' || e.key === '+');
+    const zoomOutKeys = !e.ctrlKey && !e.metaKey && !e.altKey && (
+      e.code === 'NumpadSubtract' || e.code === 'Minus' || e.key === '-');
+    if (zoomInKeys || zoomOutKeys) {
+      e.preventDefault();
+      const step = zoomInKeys ? 0.25 : -0.25;
+      if (magnifierOn && typeof bumpMagnifierZoomKeyboard === 'function') {
+        bumpMagnifierZoomKeyboard(step);
+      } else if (zoomInKeys) {
+        map.zoomIn();
+      } else {
+        map.zoomOut();
+      }
+      return;
+    }
+    if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      toggleMagnifier();
+      return;
+    }
   }
   if (e.key === 'Delete' || e.key === 'Backspace') {
     if (!state.selected) return;

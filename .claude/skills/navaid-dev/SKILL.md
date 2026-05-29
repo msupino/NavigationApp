@@ -40,6 +40,14 @@ always target `dev` as the PR base branch.
 **Every PR must be preceded by a GitHub issue** describing the bug or
 enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
 
+**Before any `git commit`:** run `git branch --show-current` (and
+`git status` when in doubt). If the branch is not the one the user
+clearly intended for this work (or you are unsure), **stop and ask the
+user** which branch to use — do not guess; another agent or session may
+be using a different branch. If the branch is correct, proceed. Do not
+commit on `main`, `dev`, `original-plotter`, or an unrelated feature
+branch by mistake.
+
 ## Files (`docs/`)
 
 - `index.html` — page, toolbar, Leaflet + the five app scripts. Title
@@ -58,13 +66,21 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
   page frame) → `interact.js` (hit-testing, inspector, mouse/touch) →
   `io.js` (save/load, page setup, flight plan, PNG export,
   persistence) → `ui.js` (toolbar wiring, drag, boot, PWA). Order
-  matters — later files use globals from earlier ones.
+  matters — later files use globals from earlier ones. Default English
+  UI strings live in `core.js` (`window.S`): **sentence case** (first
+  word + proper nouns / acronyms such as BYOP, CVFR, JSON); spell
+  *waypoint* in full in prose. Hebrew overrides: `he/strings.js`.
 - `manifest.json`, `sw.js`, `icon-192.png`, `icon-512.png` — PWA:
   installable app + offline app-shell service worker.
 - `style.css` — dark UI + `@media print` rules.
-- `nav-waypoints.json` — 256 published Israeli VFR reporting points
-  (`{name, he, lat, lng}`). Fetched once at boot. Source: ForeFlight
-  Israel Base Pack (https://www.foreflightisrael.xyz/).
+- `nav-waypoints.json` — 173 published Israeli VFR reporting points
+  (`{name, he, lat, lng}`). Fetched once at boot. **Source:** IAA CVFR
+  chart waypoint reference table (page 113, 2025 edition), shipped as
+  `113_waypoints.csv` upstream. CSV → JSON migration in issue #406 /
+  PR `feat/unified-waypoints`. ARP rows in the CSV are intentionally
+  skipped here — airfield ARPs live in `airfields.json` with richer
+  data (runways, plates, English label). Updating: drop the CSV into
+  the build script and regenerate.
 - `.gitattributes` — forces images out of LFS so Pages serves them.
 - `map.jpg`, `build_map.py` — legacy from the pre-Leaflet static-chart
   version. **Unused**, safe to delete.
@@ -212,20 +228,43 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
   first different leg. Inbound walks forward, outbound walks backward.
 - **Reverse:** flips waypoint order, swaps each leg's
   inbound/outbound altitude, swap+negates `inLabel` / `outLabel`.
-- **Waypoint-name rotation:** the `⟳` button by "Show Waypoint names"
+- **Waypoint-name rotation:** the `⟳` button by "Show waypoint names"
   cycles `wpNameAngle` 0/90/180/270; all names draw at that angle.
 - **Plan table:** `📋 Plan` opens a modal with a per-leg flight plan
   (`#`, From, To, Hdg, Dist, Speed, Alt, Time) plus totals. From/To
   names and Speed/Alt are editable inputs; the rest is `textContent`
   only — user names / notes can't inject HTML.
 - **Show Nav Waypoints** (default **on**): `nav-waypoints.json` is
-  fetched once at boot; renders 238 white-fill / black-stroke 3.5 px
+  fetched once at boot; renders 173 white-fill / black-stroke 3.5 px
   dots; the 5-letter ID label appears at zoom ≥ 10. Captured in PNG
-  export.
+  export. Source: IAA CVFR chart page 113 (2025 edition) — see the
+  Notes / pending section.
 - **A3 / A4 page frame:** `pageFrameRect()` returns the rectangle in
   screen px sized so its contents are 1:250 000. Clicking the same
   size button again clears it. Orientation chosen via the
   `chooseOrientation()` modal.
+- **Keyboard shortcuts cheat-sheet (issue #420):** modal listing every
+  global shortcut, openable via the toolbar "Shortcuts" link (in
+  `#footer-links`) or the `?` (Shift-`/`) key. Built by
+  `showShortcutsHelp()` / `closeShortcutsHelp()` in `io.js` from the
+  `SHORTCUTS_HELP_ROWS` array; each row's `descKey` resolves through
+  `S.shortcut*` so Hebrew and English render idiomatically. Modal has
+  `role="dialog"`, `aria-modal="true"`, `aria-labelledby` on the title,
+  Tab/Shift-Tab focus trap, and closes via Esc / backdrop / ✕ button.
+  `?` is suppressed inside inputs / textareas / contenteditable so users
+  can still type a literal question mark in waypoint names or notes.
+  Current global shortcuts surfaced:
+  - **Navigation:** `F` — fit route to view; `+`/`=` / numpad `+` — zoom
+    map in (loupe zoom in when magnifier is on); `−`/`-` / numpad `−` —
+    zoom map out (loupe zoom out when magnifier is on); `M` — toggle
+    magnifying glass (skipped while any modal backdrop is open).
+  - **Search:** `Ctrl/Cmd-F` — open search
+  - **Editing:** `Esc` — close modal / deselect / close magnifier;
+    `Delete`/`Backspace` — delete selected waypoint or note
+  - **Help:** `?` — open the cheat-sheet
+  When you add a new global keyboard shortcut, append a row to
+  `SHORTCUTS_HELP_ROWS` (and matching `shortcutXxx` keys in `core.js` +
+  `he/strings.js`) so the cheat-sheet stays in sync.
 - **Save PNG (`exportPNG`):** renders the framed region (or current
   view if no frame) at native tile zoom into an off-screen canvas.
   Tiles are pulled through `images.weserv.nl` to dodge the lack of
@@ -237,8 +276,19 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
 
 `localStorage` (persisted across reloads):
 
-- `navaid.route` — `{waypoints, legs, notes}` (debounced; the view is
-  not saved — a reload fits the route).
+- `navaid.route` — `{waypoints, legs, notes}` (debounced; route geometry
+  only — the viewport is saved separately under `navaid.view`).
+- `navaid.view` — `{lat, lng, zoom, bearing?}` of the map viewport at
+  rest, written 300 ms-debounced on `moveend` / `zoomend` / `rotate`
+  (issue #413). On boot the saved view wins over the historical
+  fit-to-route auto-frame; the auto-fit only runs when no valid saved
+  view exists (first-time users, cleared storage). Sanity-rejected if
+  coords fall outside the Israel bbox (lat ∉ [28, 34] or lng ∉ [33, 36])
+  or zoom outside `[map.options.minZoom, map.options.maxZoom]`.
+  `bearing` is also written to legacy `navaid.bearing` for back-compat,
+  but `navaid.view.bearing` wins on restore when present. Manual re-fit:
+  the `⌖ Fit to screen` toolbar button (Build section) or the `F`
+  keyboard shortcut (when not focused in an input).
 - `navaid.layer` — selected base layer name.
 - `navaid.lang` — `'en'` / `'he'`; bootstrap script in `index.html`
   reads this before the app loads.
@@ -289,6 +339,10 @@ downloadable `route.json`.
   `http://localhost:8000`. Inject a test route with a trailing
   `<script>` that sets `state.waypoints` and calls
   `syncLegs(); fitView(); draw();`.
+- **Branch check** before every commit: run `git branch --show-current`.
+  If it does not match the branch for this task (or you are unsure),
+  **ask the user** before committing — other agents may be on another
+  branch. See **Branches** above.
 - **Lint** before every commit: `node --check` each changed `.js`.
 - **Every enhancement, bug fix, or regression must include tests.** Add new
   test cases to the appropriate `tests/*.spec.js` file. If no file covers
@@ -361,12 +415,25 @@ downloadable `route.json`.
 
 - flight-maps.com tiles are a third-party service; the CVFR data is
   copyrighted.
-- `nav-waypoints.json` — 256 Israeli CVFR reporting points.
-  **Source:** ForeFlight Israel Base Pack, https://www.foreflightisrael.xyz/.
-  KMZ (`CVFR WAYPOINTS 0225.kmz`) extracted and converted to
-  `{name, he, lat, lng}` JSON. `name` = ICAO/CVFR code; `he` = Hebrew
-  place name. To refresh: download latest pack from the site, extract
-  the KMZ, diff against the current JSON and add new entries.
+- `nav-waypoints.json` — 173 Israeli CVFR reporting points.
+  **Source:** IAA CVFR chart waypoint reference table (page 113, 2025
+  edition), supplied upstream as `113_waypoints.csv`. The CSV is the
+  sole source of truth — the legacy ForeFlight Israel Base Pack
+  (`CVFR WAYPOINTS 0225.kmz`) was replaced in issue #406 because it
+  carried ~91 stale codes (`AREA *`, `LLHA A/B/C`, `LLMG A/B
+  Maarav/Mizrah`, etc.) and had several reporting points off the
+  chart by hundreds of metres (notably `BEZRA` ~752 m, `KUVSH` ~648 m,
+  causing ~1° heading drift on cross-country legs). `{name, he, lat,
+  lng}`: `name` = 5-letter chart code, `he` = Hebrew place name from
+  CSV `Name` column. CSV rows where `Reporting == ARP` are skipped
+  here — airfield ARPs live in `airfields.json` with richer data
+  (runways, plates, English label). To refresh: replace the CSV with
+  the latest chart edition, regenerate the JSON keeping the same
+  `{waypoints: [{name, he, lat, lng}]}` shape and `name`/`he`/`lat`/
+  `lng` mapping (CSV `Code` → `name`, CSV `Name` → `he`, decimal
+  columns → `lat`/`lng` rounded to 5 dp), and diff for sanity. The
+  exact migration is documented in the body of the PR that introduced
+  it (#406).
 - `comm-change.json` — dataset of CVFR reporting points where pilots
   must change ATC frequency (the `מע.` / `מז.` Hebrew sector callouts
   on the IAA CVFR chart, indicating PLUTO West / PLUTO East / etc.).

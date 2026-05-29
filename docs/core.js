@@ -44,35 +44,39 @@ window.S = Object.assign({
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   commChangeUrl: 'comm-change.json?v=1', // CVFR comm-change reporting points (issue #399)
 
-  // --- Waypoint terminology -------------------------------------------
-  // Rule: use the full word "Waypoint" (Title Case) in all user-facing
-  // English strings — buttons, toggles, tooltips, dialogs. The single
-  // exception is `wpPrefix`, the tight inline fallback label for unnamed
-  // waypoints ("WP 3" / "נק׳ 3" in the inspector and flight plan) where
-  // the abbreviation is intentional; DO NOT expand it to "Waypoint 3".
+  // --- English UI copy (default locale) -------------------------------
+  // Sentence case: capitalize the first word and proper nouns / acronyms
+  // (BYOP, CVFR, JSON, …). Spell "waypoint" in full in prose (never "WPT").
+  // Exception: `wpPrefix` is the tight inline label for unnamed waypoints
+  // ("WP 3" / "נק׳ 3"); do not expand to "Waypoint 3".
   wpPrefix: 'WP ',                                  // short prefix for unnamed waypoints — see rule above
   summaryWaypoints: 'Waypoints',                    // stats panel total
-  tbAddWp: '✏️ Add Waypoint',                        // toolbar Edit button
+  tbAddWp: '✏️ Add waypoint',                        // toolbar Edit button
   tbAddWpTitle: 'Click map to drop a waypoint (click button again to stop)',
-  tbShowWpNames: 'Show Waypoint Names',             // Display toggle
+  tbShowWpNames: 'Show waypoint names',             // Display toggle
   tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
-  tbWpSize: 'Waypoint Size',                        // Display slider label
+  tbWpSize: 'Waypoint size',                        // Display slider label
   tbWpSizeTitle: 'Waypoint circle and name size',
-  tbShowNavWp: 'Show/Pin Navigation Waypoints',     // Map overlay toggle
+  tbShowNavWp: 'Show/pin navigation waypoints',     // Map overlay toggle
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
-  tbSearchPlaceholder: '🔍 Find Navigation Waypoint',
+  tbSearchPlaceholder: '🔍 Find navigation waypoint',
   tbSearchHint: 'Tip: type space-separated waypoint codes (e.g. LLHZ BAZRA DEROR SHARO HADRA) and press Enter to build a route.',
   errSearchUnknown: function(t) { return 'Unknown waypoint: ' + t; },
   searchReplaceConfirm: 'Replace the current route with these waypoints?',
   tbSearchOpen: '🔍 Find',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
-  deleteWp: 'Delete Waypoint',                      // inspector button
+  deleteWp: '🗑 Delete waypoint',                      // inspector button
+  resetWpName: '↺ Reset waypoint name',             // inspector — reference snap or clear (placeholder)
+  resetWpNameTitle: 'Set name to the nearest reference (airfield / nav-WP), or clear when off-grid (dimmed sequence label)',
+  tbResetAllWpNames: '↺ Reset all waypoint names',
+  tbResetAllWpNamesTitle: 'Set each name to its nearest reference, or clear when off-grid',
+  resetAllWpNamesConfirm: 'Reset all waypoint names to their nearest reference codes, or clear when off-grid (sequence placeholders)?',
   resetLegMarkers: '↺ Reset marker position',       // inspector leg button — reset label offsets
   resetAllLegMarkers: '↺ Reset all marker positions', // inspector leg button — reset every leg
   resetAllConfirm: 'Reset all leg marker positions to default? This will clear any manual adjustments.',
   clearConfirm: 'Remove all waypoints and notes?',
   errBadCoords: 'file has invalid waypoint coordinates',
-  // --- end Waypoint terminology ---------------------------------------
+  // --- end English UI copy (waypoint-related keys above) --------------
 
   noteDefault: 'Note',
   errLoadFile: 'Could not load file: ',
@@ -87,7 +91,7 @@ window.S = Object.assign({
   },
   errNoLegs: 'No legs yet — drop at least two waypoints first.',
   flightPlan: 'Flight plan',
-  fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time', 'Fuel (gal)', ''],
+  fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time', 'Fuel (gal)', 'Cum. time', 'Cum. fuel', ''],
   fpDel: '✕',
   fpReturn: 'Return route',
   fpTotal: 'Total',
@@ -95,7 +99,7 @@ window.S = Object.assign({
   fpPrint: 'Print',
   fpFuel: 'Fuel',
   tbAircraft: 'Aircraft',
-  tbGph: 'Gallons per Hour',
+  tbGph: 'Gallons per hour',
   tbGphTitle: 'Fuel consumption, gallons per hour',
   tbTaxiGal: 'Taxi/T.O. (gal)',
   tbTaxiGalTitle: 'Startup + taxi + takeoff fuel allowance in gallons',
@@ -122,7 +126,7 @@ window.S = Object.assign({
   shapeRect: 'Rectangle',
   shapeOval: 'Oval',
   color: 'Color',
-  deleteNote: 'Delete note',
+  deleteNote: '🗑 Delete note',
   latitude: 'Latitude',
   longitude: 'Longitude',
   dialTitle: function(b) { return 'Map rotation ' + b + '° — drag to rotate, click for north up'; },
@@ -139,11 +143,11 @@ window.S = Object.assign({
                  'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap' },
   // Toolbar static strings — filled into DOM by applyI18n() on boot
   tbHandleTitle: 'Drag to move',
-  tbAddNote: '📝 Add Note',
+  tbAddNote: '📝 Add note',
   tbAddNoteTitle: 'Click map to drop a note (click button again to stop)',
   tbLayerLabel: 'Layer',
   tbLayerTitle: 'Base map layer',
-  tbReverse: '⇄ Reverse Route',
+  tbReverse: '⇄ Reverse route',
   tbReverseTitle: 'Reverse route order',
   tbClear: '🗑 Clear map',
   tbClearTitle: 'Remove all waypoints and notes',
@@ -156,10 +160,10 @@ window.S = Object.assign({
   shareCopied: 'Route link copied to clipboard',
   errShareTooLong: 'Route is too long for a share link (max 64 waypoints). Export as JSON and send the file instead.',
   tbFit: '⌖ Fit to screen',
-  tbFitTitle: 'Fit route to view',
-  tbPlan: '📋 Flight Plan',
+  tbFitTitle: 'Fit route to view (F)',
+  tbPlan: '📋 Flight plan',
   tbPlanTitle: 'Show flight plan table',
-  tbCharts: '🗺️ Airport Charts',
+  tbCharts: '🗺️ Airport charts',
   tbChartsTitle: 'Browse approach charts for all airfields',
   tbFly: '✈️ Open in Google Earth',
   tbFlyTitle: 'Save a Google Earth tour of the route at the planned leg altitudes',
@@ -171,7 +175,7 @@ window.S = Object.assign({
   tbHighlightDiffTitle: 'Halo legs whose altitude or speed differs from the adjacent leg',
   tbShowDrift: 'Show drift lines',
   tbShowDriftTitle: 'Show 10-degree drift reference lines at each leg end',
-  tbShowAirfields: 'Show/Pin Airfields',
+  tbShowAirfields: 'Show/pin airfields',
   tbShowAirfieldsTitle: 'Overlay published Israeli airfields (BYOP source)',
   tbShowCommChange: 'Show Comm Changes',
   tbShowCommChangeTitle: 'Mark CVFR reporting points where pilots must change ATC frequency',
@@ -182,7 +186,7 @@ window.S = Object.assign({
   plateCategorySid: 'SID',
   plateCategoryStar: 'STAR',
   plateCategoryGround: 'Ground',
-  plateCategoryVfr: 'VFR / Airport',
+  plateCategoryVfr: 'VFR / airport',
   plateCategoryOther: 'Other',
   plateOpen: 'Open',
   plateDownload: 'Download',
@@ -191,7 +195,7 @@ window.S = Object.assign({
   platesNone: 'No charts available — see official AIP',
   plateLoadError: 'Failed to load chart.',
   plateAttribution: 'Charts © Israel CAAI / Ministry of Transport — published in the AIP. Snapshot from ForeFlight Israel Base Pack 02-25 edition.',
-  tbTransparency: 'Label Opacity',
+  tbTransparency: 'Label opacity',
   tbTransparencyTitle: 'Opacity of waypoint / leg / note label backgrounds',
   tbMapOpacity: 'Map opacity',
   tbMapOpacityTitle: 'Base map brightness',
@@ -203,8 +207,8 @@ window.S = Object.assign({
   modalCloseTitle: 'Close',
   tbPrint: '⬇ Save PNG',
   tbPrintTitle: 'Save the framed map + route as a PNG',
-  tbMagnifier: '🔍 Magnifying Glass',
-  tbMagnifierTitle: 'Magnifying glass — zoomed view at cursor for precise editing',
+  tbMagnifier: '🔍 Magnifying glass',
+  tbMagnifierTitle: 'Magnifying glass (M) — zoomed view at cursor; +/− adjust loupe zoom while open',
   magSettingsTitle: 'Magnifier',
   magZoomLabel: 'Zoom',
   magZoomTitle: 'Magnifier zoom factor',
@@ -221,13 +225,37 @@ window.S = Object.assign({
   tbSecBuild: '✏️ Edit',
   tbSecView: '👁 View',
   tbSecCharts: '📋 Charts',
-  tbSecExport: '📤 Export/Import',
+  tbSecExport: '📤 Export/import',
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
   tbIssues: 'Issues / Requests',
+
+  // --- Keyboard-shortcuts cheat-sheet (issue #420) --------------------
+  // Opens via the toolbar '?' Help link or the '?' (Shift-/) shortcut.
+  // Suppressed while focused in an input / textarea / contenteditable so
+  // typing a literal '?' in a waypoint name / note still works.
+  // Each shortcutXxx row is rendered as <kbd>keys</kbd> + description; the
+  // modal builds itself from the i18n strings so locales control wording.
+  shortcutsHelpTitle: 'Keyboard shortcuts',
+  shortcutsHelpButton: 'Shortcuts',
+  shortcutsHelpButtonTitle: 'Show keyboard shortcuts (?)',
+  shortcutsHelpAriaLabel: 'Show keyboard shortcuts',
+  shortcutsGroupNavigation: 'Navigation',
+  shortcutsGroupSearch: 'Search',
+  shortcutsGroupEditing: 'Editing',
+  shortcutsGroupHelp: 'Help',
+  shortcutFitRoute: 'Fit route to view',
+  shortcutSearch: 'Open search',
+  shortcutReverse: 'Reverse route direction',
+  shortcutEsc: 'Close modal / deselect / close magnifier',
+  shortcutDelete: 'Delete selected waypoint or note',
+  shortcutHelp: 'Show this cheat-sheet',
+  shortcutZoomIn: 'Zoom map in (+/= or numpad +); adjusts loupe zoom when magnifier is on',
+  shortcutZoomOut: 'Zoom map out (− or numpad −); adjusts loupe zoom when magnifier is on',
+  shortcutMagnifier: 'Toggle magnifying glass',
   exportModalTitle: 'Export PNG',
-  exportShowNavWP: 'Print Navigation Waypoints',
-  exportShowAirfields: 'Print Airfields',
+  exportShowNavWP: 'Print navigation waypoints',
+  exportShowAirfields: 'Print airfields',
   exportShowWpNames: 'Print route waypoint names',
   exportShowDrift: 'Print drift lines',
   exportNoPageWarn: 'No page size selected — exported image ratio may not match a print page.',
@@ -271,7 +299,11 @@ var navWP = null;           // null = not loaded yet (or last fetch failed —
 var showAirfields = true;   // Israeli airfields overlay (default on)
 var airfields = null;       // same null/[]/populated convention as navWP —
                             // see loadAirfields() in draw.js. Entries:
-                            // { name, he, en, lat, lng, elev_ft, plates:[], runways:[] }.
+                            // { name, he, lat, lng, en?, elev_ft?, plates:[], runways:[]|null }.
+                            // `en`, `elev_ft`, `plates`, and `runways` are
+                            // optional per the chart-rebuild (#412): ARPs
+                            // surfaced from the IAA chart with no published
+                            // BYOP enrichment ship as bare {name,he,lat,lng}.
 var showCommChange = true;  // Comm-change ring overlay (default on) — issue #399.
 var commChangeMap = null;   // null = not loaded yet (or last fetch failed —
                             // retry on next toggle); {} or populated = last
@@ -462,8 +494,10 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
 
 // --- route overlay canvas -------------------------------------------
 const overlay = document.getElementById('overlay');
-let octx = overlay.getContext('2d');   // reassigned during PNG export
-let dpr = 1;
+// `var` (not `let`) so the binding is a real `window` property — same pattern
+// as `magVar` above. Some harness paths resolve globals via `window` only.
+var octx = overlay.getContext('2d');   // reassigned during PNG export
+var dpr = 1;
 
 function vw() { return map.getSize().x; }
 function vh() { return map.getSize().y; }
