@@ -38,6 +38,16 @@ test.describe('SEO URLs', () => {
     await expect(ogImage).toHaveAttribute('content', CUSTOM_DOMAIN + '/og-preview.jpg');
   });
 
+  test('Twitter Card tags use custom domain', async ({ page }) => {
+    await page.goto('.');
+    const twImage = page.locator('meta[name="twitter:image"]');
+    await expect(twImage).toHaveAttribute('content', CUSTOM_DOMAIN + '/og-preview.jpg');
+    const twTitle = page.locator('meta[name="twitter:title"]');
+    await expect(twTitle).toHaveAttribute('content', /.+/);
+    const twDesc = page.locator('meta[name="twitter:description"]');
+    await expect(twDesc).toHaveAttribute('content', /.+/);
+  });
+
   test('JSON-LD structured data uses custom domain', async ({ page }) => {
     await page.goto('.');
     const jsonLd = page.locator('script[type="application/ld+json"]');
@@ -47,6 +57,8 @@ test.describe('SEO URLs', () => {
     expect(data.image).toBe(CUSTOM_DOMAIN + '/og-preview.jpg');
     expect(Array.isArray(data.keywords)).toBe(true);
     expect(data.keywords.length).toBeGreaterThan(0);
+    expect(Array.isArray(data.featureList)).toBe(true);
+    expect(data.featureList.length).toBeGreaterThan(0);
   });
 
   test('robots.txt points to correct sitemap URL', async ({ page }) => {
@@ -69,6 +81,8 @@ test.describe('SEO URLs', () => {
       expect(href).toContain(CUSTOM_DOMAIN);
       expect(href).not.toContain('msupino.github.io');
     }
+    expect(text).toContain('hreflang="he"');
+    expect(text).toContain(CUSTOM_DOMAIN + '/?lang=he');
     // Single canonical URL with hreflang alternates (no ?lang= or locale-path
     // duplicates that redirect).
     expect(locs.length).toBe(1);
@@ -82,6 +96,7 @@ test.describe('SEO URLs', () => {
       document.querySelectorAll(
         'link[rel="canonical"], link[hreflang], ' +
         'meta[property="og:url"], meta[property="og:image"], ' +
+        'meta[name="twitter:image"], ' +
         'script[type="application/ld+json"]'
       ).forEach(el => {
         const attr = el.getAttribute('href') || el.getAttribute('content') || el.textContent || '';
