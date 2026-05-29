@@ -380,7 +380,10 @@ test.describe('Flight plan', () => {
 
   test('R key inside a text input does not reverse the route', async ({ page }) => {
     const firstBefore = await page.evaluate(() => state.waypoints[0].name);
-    await page.locator('#wp-search').focus();
+    // #wp-search lives in the hidden search overlay; open it so the input is
+    // focusable, otherwise focus() falls through to <body> and 'r' reverses.
+    await page.locator('#search-trigger').click();
+    await expect(page.locator('#wp-search')).toBeFocused();
     await page.keyboard.press('r');
     await page.waitForTimeout(50);
     const firstAfter = await page.evaluate(() => state.waypoints[0].name);
