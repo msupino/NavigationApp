@@ -207,4 +207,47 @@ test.describe('Fuel/endurance flight plan modal', () => {
     expect(parseFloat(await page.locator('#aircraft-gph').inputValue())).toBe(7);
     expect(parseFloat(await page.locator('#aircraft-taxi').inputValue())).toBe(1.1);
   });
+
+  test('cumulative time and fuel columns increase down the route', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+        { lat: 32.21861, lng: 34.88250, name: 'BAZRA' },
+        { lat: 32.80833, lng: 35.04278, name: 'LLHA' },
+      ];
+      syncLegs(); draw();
+    });
+    await openFlightPlan(page);
+
+    const meta = await page.evaluate(() => {
+      function colIndex(re) {
+        const headers = document.querySelectorAll('.flight-table thead th');
+        for (let i = 0; i < headers.length; i++) {
+          if (re.test(headers[i].textContent)) return i;
+        }
+        return -1;
+      }
+      function cellAt(row, col) {
+        let vis = 0;
+        for (const c of row.querySelectorAll('td')) {
+          const cs = c.colSpan || 1;
+          if (vis <= col && col < vis + cs) return c.textContent.trim();
+          vis += cs;
+        }
+        return '';
+      }
+      const headers = Array.from(document.querySelectorAll('.flight-table thead th'))
+        .map(th => th.textContent);
+      const cumFuelCol = colIndex(/Cum\. fuel|דלק מצטבר/);
+      const trs = document.querySelectorAll('.flight-table tbody tr');
+      const cumFuels = Array.from(trs).map(tr => parseFloat(cellAt(tr, cumFuelCol)));
+      return { headers, cumFuels };
+    });
+
+    expect(meta.headers.some(h => /Cum\. time|זמן מצטבר/.test(h))).toBe(true);
+    expect(meta.headers.some(h => /Cum\. fuel|דלק מצטבר/.test(h))).toBe(true);
+    expect(meta.cumFuels).toHaveLength(2);
+    expect(meta.cumFuels[1]).toBeGreaterThan(meta.cumFuels[0]);
+  });
 });
