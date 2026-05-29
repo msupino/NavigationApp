@@ -66,6 +66,8 @@ window.S = Object.assign({
   tbSearchOpen: '🔍 Find',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
   deleteWp: 'Delete Waypoint',                      // inspector button
+  resetWpName: '↺ Reset waypoint name',             // inspector WP button — snap name back to reference code or WP{N}
+  resetWpNameTitle: 'Reset to the nearest reference code (airfield / nav-WP), or to WP{N} when off-grid',
   resetLegMarkers: '↺ Reset marker position',       // inspector leg button — reset label offsets
   resetAllLegMarkers: '↺ Reset all marker positions', // inspector leg button — reset every leg
   resetAllConfirm: 'Reset all leg marker positions to default? This will clear any manual adjustments.',

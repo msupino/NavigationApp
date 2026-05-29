@@ -134,6 +134,44 @@ function deleteWaypoint(k) {
   syncLegs();
 }
 
+// Issue #418: resolve a waypoint to its nearest reference point
+// (airfield or nav waypoint) within the same ~18 px snap distance the
+// drop / drag path uses (`applyNavSnap`). Airfields take priority over
+// nav-WPs because they are a smaller, strongly-known set of landmarks
+// (matches applyNavSnap()). Independent of `showNavWP` / `showAirfields`
+// so the reset action works even when the overlays are hidden.
+// Returns the canonical English code (4-letter ICAO / 5-letter nav-WP)
+// rather than the locale label, so `navName()` can resolve it back to
+// the user's locale at render time.
+function findSnappedReference(wp) {
+  if (!wp || typeof map === 'undefined' || !map) return null;
+  const ll = { lat: wp.lat, lng: wp.lng };
+  if (typeof nearestAirfield === 'function' &&
+      Array.isArray(airfields) && airfields.length) {
+    const af = nearestAirfield(ll, 18);
+    if (af) return { name: af.name };
+  }
+  if (typeof nearestNavWaypoint === 'function' &&
+      Array.isArray(navWP) && navWP.length) {
+    const nw = nearestNavWaypoint(ll, 18);
+    if (nw) return { name: nw.name };
+  }
+  return null;
+}
+
+// Issue #418: inspector "↺ Reset waypoint name" handler. Restores the
+// canonical name — the snapped reference code if the waypoint sits on
+// one, otherwise the sequence-based `WPn` fallback (1-based index).
+function resetWpName(idx) {
+  const wp = state.waypoints[idx];
+  if (!wp) return;
+  const snapped = findSnappedReference(wp);
+  wp.name = snapped ? snapped.name : ('WP' + (idx + 1));
+  persist();
+  draw();
+  showInspector();
+}
+
 // Compose the leg-inspector title from the names of its endpoints, e.g.
 // "TLV → NETANYA" (LTR) / "TLV ← NETANYA" (RTL). Falls back to the sequence
 // label (`WP N` / `נק׳ N`) for unnamed waypoints, and to the legacy
@@ -318,6 +356,14 @@ function showInspector() {
       draw(); showInspector();
     };
     body.appendChild(del);
+    // Issue #418: ↺ Reset waypoint name — snaps the stored name back to
+    // the nearest reference code, or to WP{N} when off-grid.
+    const resetName = document.createElement('button');
+    resetName.className = 'insp-btn';
+    resetName.textContent = S.resetWpName || '↺ Reset waypoint name';
+    if (S.resetWpNameTitle) resetName.title = S.resetWpNameTitle;
+    resetName.onclick = () => resetWpName(state.selected.index);
+    body.appendChild(resetName);
   }
 }
 function colorRow(label, value, onChange) {

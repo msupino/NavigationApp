@@ -121,6 +121,18 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
   below holds the body. The global `keydown` handler bails out when
   the target is an input / textarea / contenteditable so typing
   Backspace doesn't delete.
+  - **Waypoint inspector buttons:** "Delete Waypoint" removes the
+    waypoint + adjacent leg. "↺ Reset waypoint name" (issue #418)
+    sits directly below it and restores `wp.name` to the canonical
+    default — the snapped airfield ICAO / nav-WP 5-letter code if
+    the waypoint sits within ~18 px of one, otherwise the
+    sequence-based fallback `WP{N}` (1-based index in
+    `state.waypoints`). Airfield-first priority matches
+    `applyNavSnap()`; works regardless of overlay toggle state. The
+    canonical English code is stored — `navName()` resolves it back
+    to the user's locale at render time. Handler:
+    `resetWpName(idx)` → `findSnappedReference(wp)` →
+    `persist(); draw(); showInspector();` in `docs/interact.js`.
 - **Waypoints:** circle auto-sized to fit name or sequence number
   (`waypointGeom(i)`). Selection bumps the radius +2 and swaps fill
   to gold. The `wpSize` slider scales font + circle.
