@@ -177,7 +177,6 @@ function reportingFor(name) {
   }
   return _reportingIndex[name] || null;
 }
-
 // Resolve a stored waypoint name to the current locale. If the stored value
 // is a nav-WP name (either language), return the locale-appropriate version.
 // User-typed names are returned as-is.
