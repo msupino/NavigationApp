@@ -21,11 +21,11 @@ async function boot(page) {
 }
 
 test.describe('Export PNG options modal', () => {
-  // PNG export waits on map tiles + canvas pipeline; e2e-deployed can exceed
-  // the default 15s test timeout while waitForEvent('download', { timeout: 30s }).
-  if (process.env.EXPECTED_SHA) {
-    test.describe.configure({ timeout: 120_000 });
-  }
+  // PNG export waits on map tiles + canvas; default 15s is too tight for
+  // waitForEvent('download', { timeout: 30_000 }) locally and on CI.
+  test.describe.configure({
+    timeout: process.env.EXPECTED_SHA ? 120_000 : 60_000,
+  });
 
   test('Modal opens with checkboxes off and layer defaulting to Navigation', async ({ page }) => {
     await boot(page);
