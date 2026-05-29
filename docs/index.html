@@ -17,15 +17,15 @@
   <meta property="og:type" content="website">
   <meta property="og:title" content="NavAid — מתכנן טיסה CVFR">
   <meta property="og:description" content="תכנן מסלולי טיסה CVFR על גבי התרשים האווירי הישראלי — ציוני דרך, כיוונים, מרחקים, זמנים.">
-  <meta property="og:url" content="https://msupino.github.io/NavigationApp/">
-  <meta property="og:image" content="https://msupino.github.io/NavigationApp/og-preview.jpg">
+  <meta property="og:url" content="https://navaid.supino.org/">
+  <meta property="og:image" content="https://navaid.supino.org/og-preview.jpg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="canonical" href="https://msupino.github.io/NavigationApp/">
-  <link rel="alternate" hreflang="he" href="https://msupino.github.io/NavigationApp/?lang=he">
-  <link rel="alternate" hreflang="en" href="https://msupino.github.io/NavigationApp/?lang=en">
-  <link rel="alternate" hreflang="x-default" href="https://msupino.github.io/NavigationApp/">
+  <link rel="canonical" href="https://navaid.supino.org/">
+  <link rel="alternate" hreflang="he" href="https://navaid.supino.org/?lang=he">
+  <link rel="alternate" hreflang="en" href="https://navaid.supino.org/?lang=en">
+  <link rel="alternate" hreflang="x-default" href="https://navaid.supino.org/">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -33,8 +33,8 @@
     "name": "NavAid",
     "alternateName": ["NavAid CVFR Planner", "מתכנן טיסה NavAid"],
     "description": "Plan CVFR flight routes on the Israel aeronautical chart — waypoints, headings, distances and times.",
-    "url": "https://msupino.github.io/NavigationApp/",
-    "image": "https://msupino.github.io/NavigationApp/og-preview.jpg",
+    "url": "https://navaid.supino.org/",
+    "image": "https://navaid.supino.org/og-preview.jpg",
     "applicationCategory": "TravelApplication",
     "applicationSubCategory": "Aviation flight planning",
     "operatingSystem": "Any (web browser)",
@@ -231,6 +231,18 @@
     <div id="info"></div>
     <span id="app-version"></span>
     <div id="footer-links">
+      <button id="help-trigger" type="button" class="footer-link footer-link-button"
+              data-i18n-title="shortcutsHelpButtonTitle" data-i18n-aria="shortcutsHelpAriaLabel">
+        <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
+             aria-hidden="true" focusable="false">
+          <path fill="currentColor" fill-rule="evenodd"
+                d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0Zm0 1.5a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13Zm0
+                   2.75a2.75 2.75 0 0 0-2.75 2.75.75.75 0 0 0 1.5 0 1.25 1.25 0 1 1 1.926 1.054c-.413.265
+                   -.926.65-.926 1.321V10a.75.75 0 0 0 1.5 0v-.347c.057-.041.157-.103.236-.153A2.75 2.75
+                   0 0 0 8 4.25Zm0 7.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"/>
+        </svg>
+        <span class="footer-link-text" data-i18n="shortcutsHelpButton"></span>
+      </button>
       <a id="repo-link" class="footer-link"
          href="https://github.com/msupino/NavigationApp"
          target="_blank" rel="noopener noreferrer"
