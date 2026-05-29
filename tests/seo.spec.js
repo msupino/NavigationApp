@@ -81,7 +81,15 @@ test.describe('SEO URLs', () => {
           const parsed = new URL(attr, window.location.origin);
           referencesOldDomain = parsed.hostname === 'msupino.github.io';
         } catch {
-          referencesOldDomain = attr.includes('msupino.github.io');
+          const urlLikeTokens = attr.match(/https?:\/\/[^\s"'<>]+|\/[^\s"'<>]*/g) || [];
+          referencesOldDomain = urlLikeTokens.some(token => {
+            try {
+              const parsed = new URL(token, window.location.origin);
+              return parsed.hostname === 'msupino.github.io';
+            } catch {
+              return false;
+            }
+          });
         }
         if (referencesOldDomain) results.push(el.outerHTML);
       });
