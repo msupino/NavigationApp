@@ -7,6 +7,8 @@ against the live GitHub Pages preview.
 Default **per-test timeout** is **15s** (`playwright.config.js`). Suites that
 need more (PNG export downloads, magnifier tile delays, PWA service worker
 activation) call `test.describe.configure({ timeout: … })` in their spec file.
+`export-png-options.spec.js` and `orient-pageexport.spec.js` both raise timeouts
+for download-heavy cases (especially when `EXPECTED_SHA` is set on e2e-deployed).
 
 Share-route tests that assert post-load waypoint positions after a URL round
 trip use `tests/_arpFromPage.js` (`r5ArpPairFromPage`) so expectations track the
