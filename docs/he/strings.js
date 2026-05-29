@@ -27,7 +27,7 @@ window.S = {
   searchReplaceConfirm: 'להחליף את המסלול הנוכחי בציוני הדרך האלה?',
   tbSearchOpen: '🔍 חפש',
   tbSearchOpenTitle: 'פתח את חלון החיפוש (Ctrl/Cmd-F)',
-  deleteWp: 'מחק ציון דרך',                          // כפתור באינספקטור
+  deleteWp: '🗑 מחק ציון דרך',                          // כפתור באינספקטור
   resetWpName: '↺ אפס שם נקודה',                     // כפתור באינספקטור — איפוס שם הנקודה לקוד הייחוס או WP{N}
   resetWpNameTitle: 'אפס לקוד הנקודה הקרובה (שדה תעופה / ציון ניווט), או ל-WP{N} אם אין נקודת ייחוס סמוכה',
   tbResetAllWpNames: '↺ אפס את כל שמות ציוני הדרך',
@@ -90,7 +90,7 @@ window.S = {
   shapeRect: 'מלבן',
   shapeOval: 'אליפסה',
   color: 'צבע',
-  deleteNote: 'מחק הערה',
+  deleteNote: '🗑 מחק הערה',
   latitude: 'קו רוחב',
   longitude: 'קו אורך',
   dialTitle: function(b) { return 'סיבוב מפה ' + b + '° — גרור לסיבוב, לחץ לצפון'; },

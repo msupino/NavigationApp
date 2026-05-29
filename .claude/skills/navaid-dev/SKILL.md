@@ -121,7 +121,7 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
   below holds the body. The global `keydown` handler bails out when
   the target is an input / textarea / contenteditable so typing
   Backspace doesn't delete.
-  - **Waypoint inspector buttons:** "Delete Waypoint" removes the
+  - **Waypoint inspector buttons:** "🗑 Delete Waypoint" removes the
     waypoint + adjacent leg. "↺ Reset waypoint name" (issue #418)
     sits directly below it and restores `wp.name` to the canonical
     default — the snapped airfield ICAO / nav-WP 5-letter code if

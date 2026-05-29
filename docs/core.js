@@ -65,7 +65,7 @@ window.S = Object.assign({
   searchReplaceConfirm: 'Replace the current route with these waypoints?',
   tbSearchOpen: '🔍 Find',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
-  deleteWp: 'Delete Waypoint',                      // inspector button
+  deleteWp: '🗑 Delete Waypoint',                      // inspector button
   resetWpName: '↺ Reset waypoint name',             // inspector WP button — snap name back to reference code or WP{N}
   resetWpNameTitle: 'Reset to the nearest reference code (airfield / nav-WP), or to WP{N} when off-grid',
   tbResetAllWpNames: '↺ Reset all waypoint names',
@@ -126,7 +126,7 @@ window.S = Object.assign({
   shapeRect: 'Rectangle',
   shapeOval: 'Oval',
   color: 'Color',
-  deleteNote: 'Delete note',
+  deleteNote: '🗑 Delete note',
   latitude: 'Latitude',
   longitude: 'Longitude',
   dialTitle: function(b) { return 'Map rotation ' + b + '° — drag to rotate, click for north up'; },
