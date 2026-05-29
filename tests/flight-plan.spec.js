@@ -367,6 +367,66 @@ test.describe('Flight plan', () => {
     }
   });
 
+  test('R key reverses the route', async ({ page }) => {
+    const firstBefore = await page.evaluate(() => state.waypoints[0].name);
+    const lastBefore  = await page.evaluate(() => state.waypoints[state.waypoints.length - 1].name);
+    await page.keyboard.press('r');
+    await page.waitForTimeout(50);
+    const firstAfter = await page.evaluate(() => state.waypoints[0].name);
+    const lastAfter  = await page.evaluate(() => state.waypoints[state.waypoints.length - 1].name);
+    expect(firstAfter).toBe(lastBefore);
+    expect(lastAfter).toBe(firstBefore);
+  });
+
+  test('R key inside a text input does not reverse the route', async ({ page }) => {
+    const firstBefore = await page.evaluate(() => state.waypoints[0].name);
+    // #wp-search lives in the hidden search overlay; open it so the input is
+    // focusable, otherwise focus() falls through to <body> and 'r' reverses.
+    await page.locator('#search-trigger').click();
+    await expect(page.locator('#wp-search')).toBeFocused();
+    await page.keyboard.press('r');
+    await page.waitForTimeout(50);
+    const firstAfter = await page.evaluate(() => state.waypoints[0].name);
+    expect(firstAfter).toBe(firstBefore);
+  });
+
+  test('R key preserves _default label flag after reverse', async ({ page }) => {
+    await page.evaluate(() => {
+      state.legs.forEach(l => {
+        l.inLabel  = { a: 0, _default: 1, _m: 1 };
+        l.outLabel = { a: 0, _default: 1, _m: 1 };
+      });
+    });
+    await page.keyboard.press('r');
+    await page.waitForTimeout(50);
+    const flags = await page.evaluate(() => state.legs.map(l => ({
+      inDef: l.inLabel._default, outDef: l.outLabel._default,
+      inM:   l.inLabel._m,       outM:   l.outLabel._m,
+    })));
+    for (const f of flags) {
+      expect(f.inDef).toBe(1);
+      expect(f.outDef).toBe(1);
+      expect(f.inM).toBe(1);
+      expect(f.outM).toBe(1);
+    }
+  });
+
+  test('reverse does not throw when a leg label is missing', async ({ page }) => {
+    const jsErrors = [];
+    page.on('pageerror', err => jsErrors.push(err.message));
+    await page.evaluate(() => {
+      state.legs[0].inLabel = null;
+      state.legs[0].outLabel = undefined;
+    });
+    await page.locator('#reverse').click();
+    await page.waitForTimeout(50);
+    expect(jsErrors).toHaveLength(0);
+    const ok = await page.evaluate(() =>
+      state.legs.every(l => l.inLabel && l.outLabel &&
+        typeof l.inLabel.a === 'number' && typeof l.outLabel.a === 'number'));
+    expect(ok).toBe(true);
+  });
+
   test('drag-handler touch listeners are cleaned up on close', async ({ page }) => {
     // Stub addEventListener to count the touch listeners attached to window
     // by the drag block. Open/close 5×; count must not grow.

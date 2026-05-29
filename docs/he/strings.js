@@ -193,6 +193,7 @@ window.S = {
   shortcutsGroupHelp: 'עזרה',
   shortcutFitRoute: 'התאם מסלול לתצוגה',
   shortcutSearch: 'פתח חיפוש',
+  shortcutReverse: 'הפוך כיוון מסלול',
   shortcutEsc: 'סגור חלון / בטל בחירה / סגור זכוכית מגדלת',
   shortcutDelete: 'מחק ציון דרך או הערה שנבחרו',
   shortcutHelp: 'הצג את גיליון הקיצורים הזה',
