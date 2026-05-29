@@ -329,35 +329,6 @@ function validateNavWaypoints(d) {
   }
   return errs.length ? errs.join('; ') : null;
 }
-// Strict schema for docs/reporting-types.json — { points:[{ name, reportRequired }] }
-// where reportRequired ∈ {'mandatory','on-request','arp'}. Issue #404. Mirrors
-// validateNavWaypoints; loader in draw.js bails out with an alert that names
-// the offending field path. Extras at any level are silently allowed for
-// forward-compat (matches the issue #101 convention).
-const _REPORTING_TYPES = ['mandatory', 'on-request', 'arp'];
-function validateReporting(d) {
-  const errs = [];
-  if (!d || typeof d !== 'object' || Array.isArray(d)) {
-    return 'root: expected object, got ' + _vKind(d);
-  }
-  if (!_v(d, 'points', 'array', 'root', errs)) return errs.join('; ');
-  for (let i = 0; i < d.points.length; i++) {
-    const p = 'points[' + i + ']';
-    const r = d.points[i];
-    if (_vKind(r) !== 'object') {
-      errs.push(p + ': expected object, got ' + _vKind(r));
-      continue;
-    }
-    _v(r, 'name',           'string', p, errs);
-    _v(r, 'reportRequired', 'string', p, errs);
-    if (typeof r.reportRequired === 'string' &&
-        !_REPORTING_TYPES.includes(r.reportRequired)) {
-      errs.push(p + ".reportRequired: expected one of [" +
-                _REPORTING_TYPES.join(',') + "], got " + JSON.stringify(r.reportRequired));
-    }
-  }
-  return errs.length ? errs.join('; ') : null;
-}
 // Strict schema for docs/airfields.json — { airfields:[{ name, he, lat,
 // lng, en?, elev_ft?, plates?:[string], runways?:[string] }] }. Mirrors
 // validateNavWaypoints; the loader in draw.js bails out with an alert that
