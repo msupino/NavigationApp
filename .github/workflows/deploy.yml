@@ -317,6 +317,30 @@ jobs:
             echo "Preview never updated to commit $SHA (last seen: '$FOUND')"
             exit 1
           fi
+          # core.js can propagate before large JSON on the CDN — share-route
+          # and other tests snap ICAO waypoints to docs/airfields.json. Wait
+          # until the deployed file's LLHZ ARP matches this checkout (#421).
+          if [ -f docs/airfields.json ]; then
+            EXP_LLHZ=$(node -e "const j=require('./docs/airfields.json');const a=j.airfields&&j.airfields.find(x=>x.name==='LLHZ');if(a)console.log(a.lat.toFixed(5)+','+a.lng.toFixed(5));" || true)
+            if [ -n "$EXP_LLHZ" ]; then
+              echo "Waiting for deployed airfields.json LLHZ to match repo ($EXP_LLHZ)..."
+              AF_OK=''
+              for i in $(seq 1 36); do
+                GOT=$(curl -fsS "$URL"airfields.json 2>/dev/null | node -e "const fs=require('fs');let s='';try{s=fs.readFileSync(0,'utf8');}catch(e){process.exit(0)}try{const j=JSON.parse(s);const a=j.airfields&&j.airfields.find(x=>x.name==='LLHZ');if(a)console.log(a.lat.toFixed(5)+','+a.lng.toFixed(5));}catch(e){}" || true)
+                if [ "$GOT" = "$EXP_LLHZ" ]; then
+                  echo "Deployed airfields.json LLHZ matches repo."
+                  AF_OK=1
+                  break
+                fi
+                echo "  airfields LLHZ ($GOT vs $EXP_LLHZ) ... ($i/36)"
+                sleep 5
+              done
+              if [ -z "$AF_OK" ]; then
+                echo "::error::Deployed airfields.json never matched repo LLHZ — CDN lag or partial Pages deploy."
+                exit 1
+              fi
+            fi
+          fi
           MAX=2
           ATTEMPT=0
           while [ $ATTEMPT -lt $MAX ]; do
