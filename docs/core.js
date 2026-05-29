@@ -251,6 +251,7 @@ window.S = Object.assign({
   shortcutsGroupHelp: 'Help',
   shortcutFitRoute: 'Fit route to view',
   shortcutSearch: 'Open search',
+  shortcutReverse: 'Reverse route direction',
   shortcutEsc: 'Close modal / deselect / close magnifier',
   shortcutDelete: 'Delete selected waypoint or note',
   shortcutHelp: 'Show this cheat-sheet',
