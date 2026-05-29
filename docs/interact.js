@@ -296,78 +296,72 @@ function showInspector() {
     };
     body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
-    // #231: runway directions when the waypoint matches a known airfield.
-    if (airfields && wp.name) {
-      const up = wp.name.trim().toUpperCase();
-      const af = airfields.find(a => a.name === up);
-      if (af && Array.isArray(af.runways) && af.runways.length) {
+    const afInsp = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
+    // #231: runway directions when the waypoint is at a known airfield (ICAO
+    // name or ARP coords — renamed labels at the same ARP keep runways).
+    if (afInsp && Array.isArray(afInsp.runways) && afInsp.runways.length) {
+      const row = document.createElement('div');
+      row.className = 'row runways-row';
+      const lbl = document.createElement('label');
+      lbl.textContent = S.runways;
+      row.appendChild(lbl);
+      const chips = document.createElement('div');
+      chips.className = 'runway-chips';
+      for (const r of afInsp.runways) {
+        const chip = document.createElement('span');
+        chip.className = 'runway-chip';
+        chip.textContent = r;
+        chips.appendChild(chip);
+      }
+      row.appendChild(chips);
+      body.appendChild(row);
+    }
+    // #105: plates when the waypoint matches an airfield by name or ARP coords.
+    if (afInsp && afInsp.plates && afInsp.plates.length) {
+      const af = afInsp;
+      const section = document.createElement('div');
+      section.className = 'plates-section';
+      const label = document.createElement('div');
+      label.className = 'row';
+      const l = document.createElement('label');
+      l.textContent = S.plates;
+      label.appendChild(l);
+      section.appendChild(label);
+      // Group by category
+      const groups = {};
+      const catOrder = ['approach', 'sid', 'star', 'ground', 'vfr', 'other'];
+      const catLabel = {
+        approach: S.plateCategoryApproach,
+        sid: S.plateCategorySid,
+        star: S.plateCategoryStar,
+        ground: S.plateCategoryGround,
+        vfr: S.plateCategoryVfr,
+        other: S.plateCategoryOther,
+      };
+      for (const fn of af.plates) {
+        const cat = plateCategory(fn);
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(fn);
+      }
+      for (const cat of catOrder) {
+        if (!groups[cat]) continue;
         const row = document.createElement('div');
-        row.className = 'row runways-row';
-        const lbl = document.createElement('label');
-        lbl.textContent = S.runways;
-        row.appendChild(lbl);
-        const chips = document.createElement('div');
-        chips.className = 'runway-chips';
-        for (const r of af.runways) {
-          const chip = document.createElement('span');
-          chip.className = 'runway-chip';
-          chip.textContent = r;
+        row.className = 'row';
+        const catLbl = document.createElement('label');
+        catLbl.textContent = catLabel[cat];
+        row.appendChild(catLbl);
+        const chips = document.createElement('span');
+        for (const fn of groups[cat]) {
+          const chip = document.createElement('button');
+          chip.className = 'plate-chip';
+          chip.textContent = prettyPlateLabel(fn);
+          chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
           chips.appendChild(chip);
         }
         row.appendChild(chips);
-        body.appendChild(row);
+        section.appendChild(row);
       }
-    }
-    // #105: show plates section if waypoint name matches an airfield.
-    if (airfields && wp.name) {
-      for (const af of airfields) {
-        if (af.name === wp.name && af.plates && af.plates.length) {
-          const section = document.createElement('div');
-          section.className = 'plates-section';
-          const label = document.createElement('div');
-          label.className = 'row';
-          const l = document.createElement('label');
-          l.textContent = S.plates;
-          label.appendChild(l);
-          section.appendChild(label);
-          // Group by category
-          const groups = {};
-          const catOrder = ['approach', 'sid', 'star', 'ground', 'vfr', 'other'];
-          const catLabel = {
-            approach: S.plateCategoryApproach,
-            sid: S.plateCategorySid,
-            star: S.plateCategoryStar,
-            ground: S.plateCategoryGround,
-            vfr: S.plateCategoryVfr,
-            other: S.plateCategoryOther,
-          };
-          for (const fn of af.plates) {
-            const cat = plateCategory(fn);
-            if (!groups[cat]) groups[cat] = [];
-            groups[cat].push(fn);
-          }
-          for (const cat of catOrder) {
-            if (!groups[cat]) continue;
-            const row = document.createElement('div');
-            row.className = 'row';
-            const catLbl = document.createElement('label');
-            catLbl.textContent = catLabel[cat];
-            row.appendChild(catLbl);
-            const chips = document.createElement('span');
-            for (const fn of groups[cat]) {
-              const chip = document.createElement('button');
-              chip.className = 'plate-chip';
-              chip.textContent = prettyPlateLabel(fn);
-              chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
-              chips.appendChild(chip);
-            }
-            row.appendChild(chips);
-            section.appendChild(row);
-          }
-          body.appendChild(section);
-          break;
-        }
-      }
+      body.appendChild(section);
     }
     const del = document.createElement('button');
     del.className = 'insp-btn';

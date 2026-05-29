@@ -10,6 +10,7 @@
 //   3. Otherwise → wp.name is cleared ('') so the UI shows the dimmed
 //      sequence placeholder (S.wpPrefix + 1-based index).
 const { test, expect } = require('./_setup');
+const { LLHZ, LLHA, LLBG } = require('./_airfieldArp');
 
 // e2e-deployed runs many workers against one live preview; script + JSON
 // fetches can exceed the default test / waitForFunction budget.
@@ -67,11 +68,11 @@ test.describe('#418 — Reset waypoint name button', () => {
 
   test('snap to airfield: LLBG coords → wp.name === "LLBG"', async ({ page }) => {
     await boot(page);
-    await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.009444, lng: 34.885556, name: 'TYPO' }];
+    await page.evaluate(bg => {
+      state.waypoints = [{ lat: bg.lat, lng: bg.lng, name: 'TYPO' }];
       state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
-    });
+    }, LLBG);
     await page.locator('.insp-btn').filter({ hasText: /Reset waypoint name/ }).click();
     const name = await page.evaluate(() => state.waypoints[0].name);
     expect(name).toBe('LLBG');
@@ -98,15 +99,15 @@ test.describe('#418 — Reset waypoint name button', () => {
 
   test('off-grid third waypoint of three → third name cleared (first two unchanged)', async ({ page }) => {
     await boot(page);
-    await page.evaluate(() => {
+    await page.evaluate(([hz, ha]) => {
       state.waypoints = [
-        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
-        { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+        { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+        { lat: ha.lat, lng: ha.lng, name: 'LLHA' },
         { lat: 33.5, lng: 33.0, name: 'pickMeReset' },
       ];
       state.selected = { type: 'wp', index: 2 };
       syncLegs(); draw(); showInspector();
-    });
+    }, [LLHZ, LLHA]);
     await page.locator('.insp-btn').filter({ hasText: /Reset waypoint name/ }).click();
     const names = await page.evaluate(() => state.waypoints.map(w => w.name));
     expect(names[0]).toBe('LLHZ');
@@ -171,15 +172,15 @@ test.describe('#418 — Reset waypoint name button', () => {
 
   test('toolbar: reset all waypoint names (confirm)', async ({ page }) => {
     await boot(page);
-    await page.evaluate(() => {
+    await page.evaluate(([ty, bg]) => {
       state.waypoints = [
-        { lat: 32.00472, lng: 34.72722, name: 'FOO' },
-        { lat: 32.009444, lng: 34.885556, name: 'BAR' },
+        { lat: ty.lat, lng: ty.lng, name: 'FOO' },
+        { lat: bg.lat, lng: bg.lng, name: 'BAR' },
         { lat: 33.5, lng: 33.0, name: 'Z' },
       ];
       state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
-    });
+    }, [{ lat: 32.00472, lng: 34.72722 }, LLBG]);
     page.once('dialog', d => d.accept());
     await page.locator('#tool-reset-all-wp-names').click();
     const names = await page.evaluate(() => state.waypoints.map(w => w.name));
@@ -210,13 +211,13 @@ test.describe('#418 — Reset waypoint name button', () => {
 
   test('findSnappedReference: airfield wins at LLBG even when overlays were off', async ({ page }) => {
     await boot(page);
-    const code = await page.evaluate(() => {
+    const code = await page.evaluate(bg => {
       showAirfields = false;
       showNavWP = false;
-      const wp = { lat: 32.009444, lng: 34.885556, name: 'X' };
+      const wp = { lat: bg.lat, lng: bg.lng, name: 'X' };
       const r = findSnappedReference(wp);
       return r && r.name;
-    });
+    }, LLBG);
     expect(code).toBe('LLBG');
   });
 
@@ -284,10 +285,10 @@ test.describe('#418 — Reset waypoint name button', () => {
 
   test('flight plan: typing "WP 1" in From cell clears stored waypoint name', async ({ page }) => {
     await boot(page);
-    await page.evaluate(() => {
+    await page.evaluate(([hz, baz]) => {
       state.waypoints = [
-        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
-        { lat: 32.21861, lng: 34.88250, name: 'BAZRA' },
+        { lat: hz.lat, lng: hz.lng, name: 'LLHZ' },
+        { lat: baz.lat, lng: baz.lng, name: 'BAZRA' },
       ];
       state.legs = [{
         inboundAltitude: 1500,
@@ -298,7 +299,7 @@ test.describe('#418 — Reset waypoint name button', () => {
         outLabel: { a: 0, p: -44 },
       }];
       syncLegs(); draw();
-    });
+    }, [LLHZ, { lat: 32.21861, lng: 34.88250 }]);
     await page.locator('#plan').click();
     const modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();

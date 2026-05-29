@@ -1,13 +1,13 @@
 // @ts-check
 // Tests for the #162 shareable route link.
 const { test, expect } = require('./_setup');
-const { r5ArpPairFromPage } = require('./_arpFromPage');
+const { LLHZ, LLHA } = require('./_airfieldArp');
 
 // Same 11-waypoint LLHZ → LLHA fixture as tests/flight-plan.spec.js (PR #153),
-// coords copied from docs/airfields.json + docs/nav-waypoints.json at 5 dp.
+// endpoints from `tests/_airfieldArp.js`, interior points from nav-waypoints.json.
 const ROUTE = {
   waypoints: [
-    { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+    { lat: LLHZ.lat, lng: LLHZ.lng, name: 'LLHZ' },
     { lat: 32.21861, lng: 34.88250, name: 'BAZRA' },
     { lat: 32.25722, lng: 34.89111, name: 'DEROR' },
     { lat: 32.32306, lng: 34.90389, name: 'SHARO' },
@@ -17,7 +17,7 @@ const ROUTE = {
     { lat: 32.75389, lng: 34.93694, name: 'HOTRM' },
     { lat: 32.79611, lng: 34.94333, name: 'DAROM' },
     { lat: 32.84111, lng: 34.98111, name: 'GALIM' },
-    { lat: 32.80833, lng: 35.04278, name: 'LLHA' },
+    { lat: LLHA.lat, lng: LLHA.lng, name: 'LLHA' },
   ],
   legs: Array(10).fill(null).map(() => ({
     inboundAltitude: 1500,
@@ -125,8 +125,8 @@ test.describe('Share route link', () => {
       }));
       return buildShareUrl().url;
     }, ROUTE);
-    const target = '/' + url.split('/').pop();   // strip origin
-    await page.goto(target);
+    const { pathname, search } = new URL(url);
+    await page.goto(pathname + search);
     await page.waitForFunction(() => typeof state !== 'undefined' && state.waypoints.length > 0);
     const loaded = await page.evaluate(() => ({
       wps: state.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name })),
@@ -137,15 +137,11 @@ test.describe('Share route link', () => {
         outboundSpeed: l.outboundSpeed,
       })),
     }));
-    const arp = await r5ArpPairFromPage(page);
     expect(loaded.wps).toHaveLength(ROUTE.waypoints.length);
     for (let i = 0; i < ROUTE.waypoints.length; i++) {
-      const w = ROUTE.waypoints[i];
-      const lw = loaded.wps[i];
-      const exp = arp[w.name] || w;
-      expect(lw.lat).toBeCloseTo(exp.lat, 4);
-      expect(lw.lng).toBeCloseTo(exp.lng, 4);
-      expect(lw.name).toBe(w.name);
+      expect(loaded.wps[i].lat).toBeCloseTo(ROUTE.waypoints[i].lat, 4);
+      expect(loaded.wps[i].lng).toBeCloseTo(ROUTE.waypoints[i].lng, 4);
+      expect(loaded.wps[i].name).toBe(ROUTE.waypoints[i].name);
     }
     expect(loaded.legs).toHaveLength(ROUTE.legs.length);
     for (let i = 0; i < ROUTE.legs.length; i++) {
@@ -165,8 +161,8 @@ test.describe('Share route link', () => {
       syncLegs();
       return buildShareUrl().url;
     });
-    const target = '/' + url.split('/').pop();
-    await page.goto(target);
+    const { pathname: p2, search: s2 } = new URL(url);
+    await page.goto(p2 + s2);
     await page.waitForFunction(() => typeof state !== 'undefined' && state.waypoints.length === 2);
     const names = await page.evaluate(() => state.waypoints.map(w => w.name));
     expect(names).toEqual(['הרצליה', 'חיפה']);
