@@ -4,6 +4,7 @@
   <url>
     <loc>https://navaid.supino.org/</loc>
     <xhtml:link rel="alternate" hreflang="en" href="https://navaid.supino.org/?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="he" href="https://navaid.supino.org/?lang=he"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://navaid.supino.org/"/>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>

@@ -61,7 +61,7 @@ function showShortcutsHelp() {
   const title = document.createElement('div');
   title.className = 'modal-title';
   title.id = 'shortcuts-help-title';
-  title.textContent = S.shortcutsHelpTitle || 'Keyboard Shortcuts';
+  title.textContent = S.shortcutsHelpTitle || 'Keyboard shortcuts';
   // Make the title non-grabbable for this modal — the cheat-sheet is
   // ephemeral, doesn't need positioning, and the cursor: grab on .modal-title
   // would otherwise mislead the user.
@@ -739,11 +739,14 @@ function showFlightPlan() {
     inp.className = 'plan-name';
     inp.maxLength = 10;
     // #81: show the locale-resolved label so the cell matches the map.
+    normalizeWaypointSequenceName(state.waypoints[wpIdx]);
     inp.value = navName((state.waypoints[wpIdx].name || '').trim());
     inp.placeholder = S.wpPrefix + (wpIdx + 1);
     inp.oninput = () => {
-      state.waypoints[wpIdx].name = inp.value;
-      for (const o of wpInputs[wpIdx]) if (o !== inp) o.value = inp.value;
+      const t = (inp.value || '').trim();
+      const next = isSequenceWaypointName(t) ? '' : inp.value;
+      state.waypoints[wpIdx].name = next;
+      for (const o of wpInputs[wpIdx]) if (o !== inp) o.value = next;
       draw();
     };
     (wpInputs[wpIdx] || (wpInputs[wpIdx] = [])).push(inp);
@@ -894,9 +897,12 @@ function showFlightPlan() {
     for (const wpIdx in wpInputs) {
       const wp = state.waypoints[wpIdx];
       if (!wp) continue;
+      const beforeRaw = wp.name;
+      normalizeWaypointSequenceName(wp);
+      const clearedSeq = beforeRaw !== wp.name;
       const localized = navName((wp.name || '').trim());
       for (const inp of wpInputs[wpIdx]) {
-        if (document.activeElement !== inp) inp.value = localized;
+        if (clearedSeq || document.activeElement !== inp) inp.value = localized;
       }
     }
     totDistCell.textContent = td.toFixed(1);
@@ -1201,7 +1207,7 @@ function showExportModal() {
   const body = document.createElement('div');
   body.style.cssText = 'display:flex;flex-direction:column;gap:10px;padding:4px 0';
 
-  // Show Waypoint Names checkbox (default on).
+  // Show waypoint names checkbox (default on).
   const wpNameLabel = document.createElement('label');
   wpNameLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
   const wpNameCb = document.createElement('input');

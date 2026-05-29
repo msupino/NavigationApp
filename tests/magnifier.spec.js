@@ -1,7 +1,19 @@
 // @ts-check
 const { test, expect } = require('./_setup');
 
+// e2e-deployed pulls real map tiles; z=8 pane + loupe CSS settle can exceed
+// the default 15s test timeout without these budgets.
+const deployedPreview = !!process.env.EXPECTED_SHA;
+const magnifierTileReadyMs = deployedPreview ? 35_000 : 12_000;
+const magnifierCalibTestMs = deployedPreview ? 120_000 : 60_000;
+// Tile-pane readiness for z=8 (pan / margin / Perfecting tests).
+const magnifierPaneTileMs = deployedPreview ? 45_000 : 18_000;
+
 test.describe('Magnifying glass', () => {
+  if (deployedPreview) {
+    test.describe.configure({ timeout: 120_000 });
+  }
+
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       try {
@@ -20,7 +32,7 @@ test.describe('Magnifying glass', () => {
   test('button exists in View section and toggles magnifier', async ({ page }) => {
     const btn = page.locator('#tool-magnifier');
     await expect(btn).toBeVisible();
-    await expect(btn).toHaveText(/Magnifying Glass/);
+    await expect(btn).toHaveText(/Magnifying glass/);
     // starts inactive
     await expect(btn).not.toHaveClass(/active/);
     await expect(page.locator('#magnifier')).not.toBeVisible();
@@ -268,11 +280,12 @@ test.describe('Magnifying glass', () => {
   // downsample to slider density for crispness; that's an orthogonal
   // implementation detail.
   test('slider value === visible CSS scale (z=8, slider=4.75)', async ({ page }) => {
+    test.setTimeout(magnifierCalibTestMs);
     await page.evaluate(() => map.setZoom(8));
     await page.waitForFunction(
       () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
               .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
-      { timeout: 10000 });
+      { timeout: magnifierTileReadyMs });
     await page.waitForTimeout(1000);
 
     const mapBox = await page.locator('#map').boundingBox();
@@ -320,11 +333,12 @@ test.describe('Magnifying glass', () => {
   // map at 1× (no magnification). Pre-fix this rendered at sub=16 — a
   // 16× mystery zoom on a "1×" slider setting.
   test('slider value === visible CSS scale (z=8, slider=1)', async ({ page }) => {
+    test.setTimeout(magnifierCalibTestMs);
     await page.evaluate(() => map.setZoom(8));
     await page.waitForFunction(
       () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
               .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
-      { timeout: 10000 });
+      { timeout: magnifierTileReadyMs });
     await page.waitForTimeout(800);
 
     const mapBox = await page.locator('#map').boundingBox();
@@ -335,7 +349,13 @@ test.describe('Magnifying glass', () => {
 
     await page.locator('#mag-zoom').fill('1');
     await page.locator('#mag-zoom').dispatchEvent('input');
-    await page.waitForTimeout(800);
+    await page.waitForFunction(() => {
+      const content = document.getElementById('mag-content');
+      if (!content) return false;
+      const m = /scale\(([\d.]+)\)/.exec(content.style.transform || '');
+      if (!m) return false;
+      return Math.abs(parseFloat(m[1]) - 1) < 0.01;
+    }, { timeout: 25_000 });
 
     const contentScale = await page.evaluate(() => {
       const content = document.getElementById('mag-content');
@@ -375,7 +395,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForFunction(
       () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
               .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
-      { timeout: 15000 });
+      { timeout: magnifierPaneTileMs });
     await page.waitForTimeout(800);
 
     const mapBox = await page.locator('#map').boundingBox();
@@ -407,7 +427,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForFunction(
       () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
               .some(i => /\/13\/\d+\/\d+\.png/.test(i.src)),
-      { timeout: 15000 });
+      { timeout: magnifierPaneTileMs });
     await page.waitForTimeout(500);
 
     const mapBox = await page.locator('#map').boundingBox();
@@ -438,7 +458,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForFunction(
       () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
               .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
-      { timeout: 15000 });
+      { timeout: magnifierPaneTileMs });
 
     const mapBox = await page.locator('#map').boundingBox();
     if (!mapBox) { test.skip(true, 'map not found'); return; }
@@ -460,7 +480,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForFunction(
       () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
               .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
-      { timeout: 15000 });
+      { timeout: magnifierPaneTileMs });
     await page.waitForTimeout(800);
 
     const mapBox = await page.locator('#map').boundingBox();
@@ -499,7 +519,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForFunction(
       () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
               .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
-      { timeout: 15000 });
+      { timeout: magnifierPaneTileMs });
     await page.waitForTimeout(800);
 
     const mapBox = await page.locator('#map').boundingBox();
@@ -536,7 +556,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForFunction(
       () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
               .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
-      { timeout: 15000 });
+      { timeout: magnifierPaneTileMs });
     await page.waitForTimeout(800);
 
     const mapBox = await page.locator('#map').boundingBox();
