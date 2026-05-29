@@ -15,6 +15,164 @@ function addModalCloseX(box, onClose) {
   box.appendChild(x);
 }
 
+// --- Keyboard-shortcuts cheat-sheet (issue #420) --------------------
+// Single source of truth for the visible cheat-sheet rows. Each row's
+// `keys` array is rendered as <kbd> chips so the rendering is locale-
+// agnostic; the `descKey` is looked up in S so each locale controls the
+// wording. Adding a new global shortcut means appending a row here AND
+// updating the audit table in .claude/skills/navaid-dev/SKILL.md so the
+// docs stay in sync.
+const SHORTCUTS_HELP_ROWS = [
+  { group: 'shortcutsGroupNavigation',
+    rows: [
+      { keys: ['F'], descKey: 'shortcutFitRoute' },
+      { keys: ['+'], altKeys: ['='], descKey: 'shortcutZoomIn' },
+      { keys: ['−'], altKeys: ['-'], descKey: 'shortcutZoomOut' },
+      { keys: ['M'], descKey: 'shortcutMagnifier' },
+    ] },
+  { group: 'shortcutsGroupSearch',
+    rows: [{ keys: ['Ctrl', 'F'], altKeys: ['⌘', 'F'], descKey: 'shortcutSearch' }] },
+  { group: 'shortcutsGroupEditing',
+    rows: [
+      { keys: ['Esc'], descKey: 'shortcutEsc' },
+      { keys: ['Delete'], altKeys: ['Backspace'], descKey: 'shortcutDelete' },
+    ] },
+  { group: 'shortcutsGroupHelp',
+    rows: [{ keys: ['?'], descKey: 'shortcutHelp' }] },
+];
+let _shortcutsHelpBack = null;
+let _shortcutsHelpPrevFocus = null;
+let _shortcutsHelpOnEsc = null;
+let _shortcutsHelpOnFocusTrap = null;
+
+function showShortcutsHelp() {
+  if (_shortcutsHelpBack) return;   // already open — idempotent
+  _shortcutsHelpPrevFocus = document.activeElement;
+
+  const back = document.createElement('div');
+  back.className = 'modal-back shortcuts-help';
+
+  const box = document.createElement('div');
+  box.className = 'modal shortcuts-help-modal';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  box.setAttribute('aria-labelledby', 'shortcuts-help-title');
+
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.id = 'shortcuts-help-title';
+  title.textContent = S.shortcutsHelpTitle || 'Keyboard Shortcuts';
+  // Make the title non-grabbable for this modal — the cheat-sheet is
+  // ephemeral, doesn't need positioning, and the cursor: grab on .modal-title
+  // would otherwise mislead the user.
+  title.style.cursor = 'default';
+  box.appendChild(title);
+
+  const list = document.createElement('dl');
+  list.className = 'shortcuts-help-list';
+  for (const group of SHORTCUTS_HELP_ROWS) {
+    const groupTitle = document.createElement('div');
+    groupTitle.className = 'shortcuts-help-group';
+    groupTitle.textContent = S[group.group] || group.group;
+    list.appendChild(groupTitle);
+    for (const row of group.rows) {
+      const dt = document.createElement('dt');
+      dt.className = 'shortcuts-help-keys';
+      // Render primary key combo; if `altKeys` is present, render as
+      // "Ctrl+F / ⌘+F" so users on either OS see their combo.
+      _appendKeyCombo(dt, row.keys);
+      if (row.altKeys) {
+        const sep = document.createElement('span');
+        sep.className = 'shortcuts-help-sep';
+        sep.textContent = ' / ';
+        dt.appendChild(sep);
+        _appendKeyCombo(dt, row.altKeys);
+      }
+      const dd = document.createElement('dd');
+      dd.className = 'shortcuts-help-desc';
+      dd.textContent = S[row.descKey] || row.descKey;
+      list.appendChild(dt);
+      list.appendChild(dd);
+    }
+  }
+  box.appendChild(list);
+
+  addModalCloseX(box, closeShortcutsHelp);
+
+  // Esc: close.
+  _shortcutsHelpOnEsc = function (e) {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      closeShortcutsHelp();
+    }
+  };
+  document.addEventListener('keydown', _shortcutsHelpOnEsc, true);
+
+  // Focus trap: Tab / Shift-Tab cycles inside the modal so screen-reader
+  // users do not escape into the toolbar behind the backdrop.
+  _shortcutsHelpOnFocusTrap = function (e) {
+    if (e.key !== 'Tab') return;
+    const focusables = box.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+  box.addEventListener('keydown', _shortcutsHelpOnFocusTrap);
+
+  back.appendChild(box);
+  back.addEventListener('click', e => {
+    if (e.target === back) closeShortcutsHelp();
+  });
+  document.body.appendChild(back);
+  _shortcutsHelpBack = back;
+
+  // Move focus into the modal so Esc/Tab work without an extra click.
+  const closeBtn = box.querySelector('.modal-close-x');
+  if (closeBtn) closeBtn.focus();
+}
+
+function closeShortcutsHelp() {
+  if (!_shortcutsHelpBack) return;
+  if (_shortcutsHelpOnEsc) {
+    document.removeEventListener('keydown', _shortcutsHelpOnEsc, true);
+    _shortcutsHelpOnEsc = null;
+  }
+  _shortcutsHelpOnFocusTrap = null;
+  _shortcutsHelpBack.remove();
+  _shortcutsHelpBack = null;
+  // Restore focus to whatever was focused before the modal opened so the
+  // user can keep working without an extra click. Guard against the
+  // previously-focused element having been removed from the DOM.
+  if (_shortcutsHelpPrevFocus &&
+      typeof _shortcutsHelpPrevFocus.focus === 'function' &&
+      document.contains(_shortcutsHelpPrevFocus)) {
+    try { _shortcutsHelpPrevFocus.focus(); } catch (e) { /* unfocusable */ }
+  }
+  _shortcutsHelpPrevFocus = null;
+}
+
+function _appendKeyCombo(parent, keys) {
+  for (let i = 0; i < keys.length; i++) {
+    if (i > 0) {
+      const plus = document.createElement('span');
+      plus.className = 'shortcuts-help-plus';
+      plus.textContent = '+';
+      parent.appendChild(plus);
+    }
+    const kbd = document.createElement('kbd');
+    kbd.textContent = keys[i];
+    parent.appendChild(kbd);
+  }
+}
+
 /* NavAid — save/load, page setup, flight plan, PNG export, persistence.
    Shares globals with core.js; loaded after interact.js. */
 
@@ -106,13 +264,22 @@ function validateRoute(d) {
       if (Object.prototype.hasOwnProperty.call(l, 'outboundSpeed')) {
         _v(l, 'outboundSpeed', 'number', p, errs);
       }
+      // Issue #394: `_default: 1` is the sentinel form written by
+      // `_defaultLegLabels()` for an unmodified kite — its perpendicular
+      // is computed at render time from the live leg length, so the
+      // stored shape has no `p`. Accept either the sentinel form
+      // (`a` only) or the user-dragged form (`a` + `p`).
       if (_v(l, 'inLabel',  'object', p, errs)) {
         _v(l.inLabel,  'a', 'number', p + '.inLabel',  errs);
-        _v(l.inLabel,  'p', 'number', p + '.inLabel',  errs);
+        if (!l.inLabel._default) {
+          _v(l.inLabel, 'p', 'number', p + '.inLabel', errs);
+        }
       }
       if (_v(l, 'outLabel', 'object', p, errs)) {
         _v(l.outLabel, 'a', 'number', p + '.outLabel', errs);
-        _v(l.outLabel, 'p', 'number', p + '.outLabel', errs);
+        if (!l.outLabel._default) {
+          _v(l.outLabel, 'p', 'number', p + '.outLabel', errs);
+        }
       }
     }
   }
@@ -212,7 +379,16 @@ function validateAirfields(d) {
 // per the PR-review #3 recommendation).
 function _normalizeLegLabel(raw, legacyArrowSize) {
   if (!raw) return raw;
-  if (raw._m) return { a: raw.a, p: raw.p, _m: 1 };
+  if (raw._m) {
+    // Already-migrated label. Preserve the `_default: 1` sentinel
+    // (issue #394) so the renderer keeps computing the drift-aware
+    // perpendicular at draw time; everything else round-trips as the
+    // size-independent `{ a, p }` pair PR #393 introduced.
+    const out = { a: raw.a, _m: 1 };
+    if (raw._default) out._default = 1;
+    else out.p = raw.p;
+    return out;
+  }
   const k = (typeof legacyArrowSize === 'number' && legacyArrowSize > 0)
     ? legacyArrowSize : 1;
   return { a: raw.a / k, p: raw.p / k, _m: 1 };
@@ -900,7 +1076,15 @@ function showFlightPlan() {
         refresh();
       };
   flightPlanEscape = function (e) {
-    if (e.key === 'Escape') closeFlightPlan();
+    if (e.key !== 'Escape') return;
+    closeFlightPlan();
+    // The global window-level Escape handler in interact.js otherwise runs
+    // after this one and toggles the magnifier off whenever the plan is
+    // closed while the loupe is open (issue #388 M3 follow-up). Stop the
+    // event from bubbling past `document` so the loupe — which has no
+    // logical relationship to the plan modal — keeps its current state.
+    e.stopPropagation();
+    e.preventDefault();
   };
   document.addEventListener('keydown', flightPlanEscape);
   fpOpen = true;
@@ -2741,6 +2925,25 @@ let _magBatch = 0;
 
 function magCenter() { return magnifierSize / 2; }
 
+// Read Leaflet's `.leaflet-map-pane` CSS transform once and return its
+// {dx, dy} translation. Reading `getComputedStyle(...).transform` forces
+// a style flush; callers in the rAF-driven loupe path should call this
+// once per frame and reuse the result. Returns {dx:0,dy:0} if the pane
+// is missing or the matrix can't be parsed.
+function _readMapPaneOffset() {
+  const mapPane = document.querySelector('.leaflet-map-pane');
+  if (!mapPane) return { dx: 0, dy: 0 };
+  try {
+    const m = new DOMMatrixReadOnly(getComputedStyle(mapPane).transform);
+    return {
+      dx: m.is2D ? m.e : m.m41,
+      dy: m.is2D ? m.f : m.m42,
+    };
+  } catch (e) {
+    return { dx: 0, dy: 0 };
+  }
+}
+
 function showMagLoading() {
   const el = document.querySelector('#magnifier .mag-loading');
   if (el) el.classList.add('show');
@@ -2873,12 +3076,20 @@ function rebuildMagnifier() {
   // rationale.) `sub` below is the orthogonal hi-res tile zoom step.
   _magScale = Math.max(1, magnifierZoom);
 
+  // Cache `getComputedStyle(mapPane).transform` once per rebuild. Reading
+  // it forces a style flush; the rAF-coalesced loupe rebuild used to
+  // pay for that flush twice (here + at the overlay-capture site below).
+  const _paneOffset = _readMapPaneOffset();
+
   if (activeLayer && refZ !== null) {
     const maxNZ = activeLayer.options.maxNativeZoom ||
                   activeLayer.options.maxZoom || 19;
     const subs = activeLayer.options.subdomains || 'abc';
-    const S = magnifierZoom;
-    const sliderExp = Math.ceil(Math.log2(Math.max(1, S)));
+    // Local alias for the slider value. Named `slider` to avoid shadowing
+    // the global i18n `S` (which a sibling block in this same file used
+    // to read for the loading-pill label).
+    const slider = magnifierZoom;
+    const sliderExp = Math.ceil(Math.log2(Math.max(1, slider)));
     const baselineExp = MAG_BASELINE_Z - refZ;
     const desiredExp = Math.max(sliderExp, baselineExp);
     const targetExp = Math.max(0,
@@ -2892,16 +3103,9 @@ function rebuildMagnifier() {
       // tiles fetched below get downsampled to slider density on display.
 
       // Cursor in tile-pane-local source pixels (same coord system as the
-      // clones' transforms).
-      const mapPane = document.querySelector('.leaflet-map-pane');
-      let mpX = 0, mpY = 0;
-      if (mapPane) {
-        try {
-          const m = new DOMMatrixReadOnly(getComputedStyle(mapPane).transform);
-          mpX = m.is2D ? m.e : m.m41;
-          mpY = m.is2D ? m.f : m.m42;
-        } catch (e) {}
-      }
+      // clones' transforms). Uses the cached pane offset captured above.
+      const mpX = _paneOffset.dx;
+      const mpY = _paneOffset.dy;
       const mapRect = map.getContainer().getBoundingClientRect();
       const cursorX = (_magX - mapRect.left) - mpX;
       const cursorY = (_magY - mapRect.top) - mpY;
@@ -2941,8 +3145,18 @@ function rebuildMagnifier() {
           // Settle handler shared by load + error. Stale-batch callbacks
           // (cursor moved fast → newer rebuild already ran) early-return
           // so they don't decrement the current batch's pending count.
+          //
+          // Idempotency: `tile.dataset.settled` guards against a
+          // cached-image race where `tile.complete` is true synchronously
+          // after `tile.src = …` (so we call `onSettle` manually below)
+          // AND the still-pending async `load` event subsequently fires
+          // anyway. Without this tag both calls would decrement
+          // `_magPendingTiles`, masking the bug only because of the
+          // `<= 0` clamp below. The clamp now never sees a true negative.
           const onSettle = (ev) => {
             const t = ev && ev.target ? ev.target : tile;
+            if (t.dataset.settled === '1') return;
+            t.dataset.settled = '1';
             if (t.dataset.batch !== String(_magBatch)) return;
             _magPendingTiles--;
             if (_magPendingTiles <= 0) hideMagLoading();
@@ -2958,8 +3172,10 @@ function rebuildMagnifier() {
               s: subs[(tx + ty) % subs.length] });
           // Cached images can fire `load` before listeners are attached.
           // `complete` + `naturalWidth > 0` ⇒ already loaded; `complete`
-          // alone (with `naturalWidth === 0`) ⇒ already errored. Either
-          // way, settle synchronously so the counter doesn't get stuck.
+          // alone (with `naturalWidth === 0`) ⇒ already errored. Settle
+          // synchronously here so the counter doesn't get stuck; the
+          // `dataset.settled` guard in `onSettle` makes the (still
+          // pending) async load callback a no-op.
           if (tile.complete) {
             if (tile.naturalWidth === 0) tile.remove();
             onSettle({ target: tile });
@@ -2995,12 +3211,25 @@ function rebuildMagnifier() {
   }
   const overlay = document.getElementById('overlay');
   if (overlay) {
-    const cap = document.createElement('img');
-    cap.src = overlay.toDataURL();
-    const mapPane = document.querySelector('.leaflet-map-pane');
-    const mat = mapPane ? new DOMMatrixReadOnly(getComputedStyle(mapPane).transform) : null;
-    const dx = mat ? (mat.is2D ? mat.e : mat.m41) : 0;
-    const dy = mat ? (mat.is2D ? mat.f : mat.m42) : 0;
+    // Copy the overlay pixels into a same-sized `<canvas>` via
+    // `drawImage` (~1 ms at 1080p) instead of re-encoding the canvas to
+    // a base64 PNG via `toDataURL()` (~10–20 ms at 1080p, 50–100 ms at
+    // 4K). The rebuild runs on every coalesced rAF during a pan so the
+    // per-frame budget matters; the visual result is identical because
+    // the loupe just blits the captured pixels through its `scale()`
+    // transform.
+    const cap = document.createElement('canvas');
+    cap.width = overlay.width;
+    cap.height = overlay.height;
+    try {
+      const cctx = cap.getContext('2d');
+      if (cctx) cctx.drawImage(overlay, 0, 0);
+    } catch (e) { /* never abort the loupe rebuild on a draw error */ }
+    // Use the cached pane offset captured at the top of rebuildMagnifier
+    // — avoids a second `getComputedStyle(...).transform` style flush in
+    // the same rAF tick.
+    const dx = _paneOffset.dx;
+    const dy = _paneOffset.dy;
     // No counter-scale: `_magScale` is now the slider value directly,
     // so the content div's `scale(_magScale)` already gives the overlay
     // its intended magnification. (When `_magScale` was `max(slider, sub)`
@@ -3024,10 +3253,7 @@ function applyMagnifierTransform() {
   // sub-tile fetch in `rebuildMagnifier` only governs WHICH tiles are
   // fetched, not how big they appear.
   const effS = _magScale;
-  const mapPane = document.querySelector('.leaflet-map-pane');
-  const mat = mapPane ? new DOMMatrixReadOnly(getComputedStyle(mapPane).transform) : null;
-  const dx = mat ? (mat.is2D ? mat.e : mat.m41) : 0;
-  const dy = mat ? (mat.is2D ? mat.f : mat.m42) : 0;
+  const { dx, dy } = _readMapPaneOffset();
   content.style.transform =
     'translate(' + (magCenter() + dx * effS - cp.x * effS) + 'px,' +
                    (magCenter() + dy * effS - cp.y * effS) + 'px) scale(' + effS + ')';
@@ -3094,7 +3320,13 @@ function toggleMagnifier() {
   if (!mag) return;
   mag.style.display = magnifierOn ? 'block' : 'none';
   applyMagBorder();
-  document.getElementById('tool-magnifier').classList.toggle('active', magnifierOn);
+  const magBtn = document.getElementById('tool-magnifier');
+  magBtn.classList.toggle('active', magnifierOn);
+  // Accessibility: expose toggle state to assistive tech (screen
+  // readers announce "pressed" / "not pressed"). Same pattern applied
+  // to every other toggle button in the toolbar (see ui.js setMode +
+  // tool-reset-all-markers wiring).
+  magBtn.setAttribute('aria-pressed', String(magnifierOn));
   const settings = document.getElementById('magnifier-settings');
   if (settings) settings.classList.toggle('hidden', !magnifierOn);
   if (magnifierOn) {
@@ -3126,15 +3358,36 @@ function toggleMagnifier() {
 
 function onMagClick(e) {
   if (!magnifierOn) return;
-  const ignore = document.getElementById('toolbar');
-  if (ignore && ignore.contains(e.target)) return;
-  const settings = document.getElementById('magnifier-settings');
-  if (settings && settings.contains(e.target)) return;
-  const insp = document.getElementById('inspector');
-  if (insp && insp.contains(e.target)) return;
+  // Any click that lands inside a UI surface (toolbar, magnifier
+  // settings panel, inspector, modal backdrop/box, or the search
+  // overlay) must NOT toggle the loupe lock — those clicks are aimed
+  // at the UI, not at the map underneath. `closest()` lets us match
+  // either a singleton element (id) or a class shared by multiple
+  // dynamically-created modals (.modal-back / .modal).
+  if (e.target && typeof e.target.closest === 'function' &&
+      e.target.closest(
+        '#toolbar, #magnifier-settings, #inspector,' +
+        ' .modal-back, .modal, #search-overlay'
+      )) return;
   _magFixed = !_magFixed;
   applyMagBorder();
   // event passes through to map for selection
+}
+
+// Magnifier zoom: shared step for scroll wheel + +/− keys (interact.js).
+function bumpMagnifierZoomKeyboard(step) {
+  const zoomSlider = document.getElementById('mag-zoom');
+  const zoomVal = document.getElementById('mag-zoom-val');
+  if (!zoomSlider || !zoomVal) return;
+  var v = parseFloat(zoomSlider.value) + step;
+  v = Math.max(1, Math.min(5, Math.round(v * 4) / 4));
+  if (v === parseFloat(zoomSlider.value)) return;
+  zoomSlider.value = '' + v;
+  window.magnifierZoom = v;
+  zoomVal.textContent = v.toFixed(2).replace(/\.?0+$/, '') + '×';
+  _magDirty = true;
+  rebuildMagnifier();
+  applyMagnifierTransform();
 }
 
 // Magnifier zoom slider + scroll-wheel control
@@ -3159,15 +3412,7 @@ function onMagClick(e) {
       e.stopPropagation();
       e.preventDefault();
       const step = e.deltaY > 0 ? -0.25 : 0.25;
-      var v = parseFloat(zoomSlider.value) + step;
-      v = Math.max(1, Math.min(5, Math.round(v * 4) / 4));
-      if (v === parseFloat(zoomSlider.value)) return;
-      zoomSlider.value = '' + v;
-      window.magnifierZoom = v;
-      zoomVal.textContent = v.toFixed(2).replace(/\.?0+$/, '') + '×';
-      _magDirty = true;
-      rebuildMagnifier();
-      applyMagnifierTransform();
+      bumpMagnifierZoomKeyboard(step);
     }, { capture: true, passive: false });
   }
   // Settings close button

@@ -157,7 +157,7 @@ window.S = Object.assign({
   shareCopied: 'Route link copied to clipboard',
   errShareTooLong: 'Route is too long for a share link (max 64 waypoints). Export as JSON and send the file instead.',
   tbFit: '⌖ Fit to screen',
-  tbFitTitle: 'Fit route to view',
+  tbFitTitle: 'Fit route to view (F)',
   tbPlan: '📋 Flight Plan',
   tbPlanTitle: 'Show flight plan table',
   tbCharts: '🗺️ Airport Charts',
@@ -195,8 +195,6 @@ window.S = Object.assign({
   tbMapOpacityTitle: 'Base map brightness',
   tbLegArrowSize: 'Leg arrow size',
   tbLegArrowSizeTitle: 'Leg info marker (heading / altitude / time) size',
-  tbMagVar: 'Magnetic Variation',
-  tbMagVarTitle: 'Signed offset added to true heading. Negative = east variation; positive = west.',
   tbPageA3Title: 'A3 print page',
   tbPageA4Title: 'A4 print page',
   tbOrientTitle: 'Orientation — click to toggle landscape / portrait',
@@ -204,7 +202,7 @@ window.S = Object.assign({
   tbPrint: '⬇ Save PNG',
   tbPrintTitle: 'Save the framed map + route as a PNG',
   tbMagnifier: '🔍 Magnifying Glass',
-  tbMagnifierTitle: 'Magnifying glass — zoomed view at cursor for precise editing',
+  tbMagnifierTitle: 'Magnifying glass (M) — zoomed view at cursor; +/− adjust loupe zoom while open',
   magSettingsTitle: 'Magnifier',
   magZoomLabel: 'Zoom',
   magZoomTitle: 'Magnifier zoom factor',
@@ -224,6 +222,30 @@ window.S = Object.assign({
   tbSecExport: '📤 Export/Import',
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
+  tbIssues: 'Issues / Requests',
+
+  // --- Keyboard-shortcuts cheat-sheet (issue #420) --------------------
+  // Opens via the toolbar '?' Help link or the '?' (Shift-/) shortcut.
+  // Suppressed while focused in an input / textarea / contenteditable so
+  // typing a literal '?' in a waypoint name / note still works.
+  // Each shortcutXxx row is rendered as <kbd>keys</kbd> + description; the
+  // modal builds itself from the i18n strings so locales control wording.
+  shortcutsHelpTitle: 'Keyboard Shortcuts',
+  shortcutsHelpButton: 'Shortcuts',
+  shortcutsHelpButtonTitle: 'Show keyboard shortcuts (?)',
+  shortcutsHelpAriaLabel: 'Show keyboard shortcuts',
+  shortcutsGroupNavigation: 'Navigation',
+  shortcutsGroupSearch: 'Search',
+  shortcutsGroupEditing: 'Editing',
+  shortcutsGroupHelp: 'Help',
+  shortcutFitRoute: 'Fit route to view',
+  shortcutSearch: 'Open search',
+  shortcutEsc: 'Close modal / deselect / close magnifier',
+  shortcutDelete: 'Delete selected waypoint or note',
+  shortcutHelp: 'Show this cheat-sheet',
+  shortcutZoomIn: 'Zoom map in (+/= or numpad +); adjusts loupe zoom when magnifier is on',
+  shortcutZoomOut: 'Zoom map out (− or numpad −); adjusts loupe zoom when magnifier is on',
+  shortcutMagnifier: 'Toggle magnifying glass',
   exportModalTitle: 'Export PNG',
   exportShowNavWP: 'Print Navigation Waypoints',
   exportShowAirfields: 'Print Airfields',
@@ -349,19 +371,23 @@ const NOTE_DEFAULT_COLOR = '#fff6aa';   // matches the existing yellow fill
 // Default leg-marker offsets. Single source of truth used by newLeg(),
 // the inspector "Reset marker position" button (interact.js), the toolbar
 // "Reset all marker positions" button (ui.js), and the share-URL decoder
-// (io.js). The invariant: stored offsets are size-independent (already
-// divided by legArrowSize), with `_m: 1` marking them migrated. At render
-// time drawLegs multiplies by `legZoomScale() = max(0.35, 2^(zoom-12)) *
-// legArrowSize`, so the on-screen perpendicular distance at zoom 12 is a
-// constant 44 px regardless of legArrowSize. See io.js `_normalizeLegLabel`
-// for the legacy-blob migration that converts pre-#393 raw-pixel offsets
-// to this same unit.
+// (io.js).
+//
+// `_default: 1` is a sentinel meaning "I'm an unmodified default — compute
+// my perpendicular offset at render time from the current leg's screen
+// length so I stay outside the 10° drift cone." `drawLegs` (draw.js) and
+// `legLabelCenter` (interact.js) handle the sentinel; the drag handlers
+// materialise the current rendered `p` into the stored offset on
+// drag-start so the user-dragged path keeps the existing
+// size-independent `{ a, p, _m: 1 }` shape unchanged (issue #394).
+//
+// `_m: 1` continues to mark the label as migrated, so the legacy-pixel
+// path in `_normalizeLegLabel` (io.js) leaves sentinels untouched on
+// reload. See `_normalizeLegLabel` for the pre-#393 raw-pixel migration.
 function _defaultLegLabels() {
-  const k = (typeof legArrowSize === 'number' && legArrowSize > 0)
-    ? legArrowSize : 1;
   return {
-    inLabel:  { a: 0, p:  44 / k, _m: 1 },
-    outLabel: { a: 0, p: -44 / k, _m: 1 },
+    inLabel:  { a: 0, _default: 1, _m: 1 },
+    outLabel: { a: 0, _default: 1, _m: 1 },
   };
 }
 const newLeg = () => {

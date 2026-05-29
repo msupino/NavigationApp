@@ -7,12 +7,24 @@ function setMode(mode) {
   // Clicking the currently-active mode button toggles back to inspect (null).
   if (state.mode === mode) mode = null;
   state.mode = mode;
-  document.getElementById('tool-add').classList.toggle('active', mode === 'add');
-  document.getElementById('tool-note').classList.toggle('active', mode === 'note');
+  const addBtn = document.getElementById('tool-add');
+  const noteBtn = document.getElementById('tool-note');
+  addBtn.classList.toggle('active', mode === 'add');
+  noteBtn.classList.toggle('active', mode === 'note');
+  // Accessibility: aria-pressed mirrors the .active class so screen
+  // readers announce the toggle state. The mode buttons are exclusive
+  // (only one of add / note can be active at once), so flipping both
+  // here keeps them in sync no matter which mode we entered or left.
+  addBtn.setAttribute('aria-pressed', String(mode === 'add'));
+  noteBtn.setAttribute('aria-pressed', String(mode === 'note'));
   document.getElementById('map').classList.toggle('add', mode === 'add' || mode === 'note');
 }
 document.getElementById('tool-add').onclick = () => setMode('add');
 document.getElementById('tool-note').onclick = () => setMode('note');
+// Initial aria-pressed sync — both modes start off so each button is
+// explicitly "not pressed" in the a11y tree on first paint.
+document.getElementById('tool-add').setAttribute('aria-pressed', 'false');
+document.getElementById('tool-note').setAttribute('aria-pressed', 'false');
 document.getElementById('app-version').textContent = 'v' + NavAid.version;
 
 // base map layer picker (replaces the Leaflet layers control)
@@ -115,11 +127,46 @@ function rotEnd(cycle) {
 rotDial.addEventListener('pointerup', () => rotEnd(true));
 rotDial.addEventListener('pointercancel', () => rotEnd(false));   // aborted — don't rotate
 const BEARING_KEY = 'navaid.bearing';
+// `navaid.view` — issue #413: persist center+zoom (and bearing) across
+// reloads so a refresh / language switch / PWA wake-up doesn't snap back
+// to the auto-fit view. Bearing is also written here so a single payload
+// captures the entire viewport state atomically; the legacy
+// `navaid.bearing` key keeps being written below for backward compat with
+// any tooling that reads it.
+const VIEW_KEY = 'navaid.view';
+// Sanity bbox for restored coords — anything outside is "wildly outside
+// Israel" per issue #413 and is treated as stale.
+const VIEW_LAT_MIN = 28, VIEW_LAT_MAX = 34;
+const VIEW_LNG_MIN = 33, VIEW_LNG_MAX = 36;
+function readSavedView() {
+  let raw = null;
+  try { raw = localStorage.getItem(VIEW_KEY); } catch (e) { return null; }
+  if (!raw) return null;
+  let d;
+  try { d = JSON.parse(raw); } catch (e) { return null; }
+  if (!d || typeof d !== 'object') return null;
+  const lat = +d.lat, lng = +d.lng, zoom = +d.zoom;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(zoom)) return null;
+  if (lat < VIEW_LAT_MIN || lat > VIEW_LAT_MAX) return null;
+  if (lng < VIEW_LNG_MIN || lng > VIEW_LNG_MAX) return null;
+  const minZ = map.options.minZoom, maxZ = map.options.maxZoom;
+  if (Number.isFinite(minZ) && zoom < minZ) return null;
+  if (Number.isFinite(maxZ) && zoom > maxZ) return null;
+  const b = +d.bearing;
+  return { lat, lng, zoom, bearing: Number.isFinite(b) ? b : null };
+}
 try {
   // Defensive: an older build (or a manual edit) may have stored "NaN".
   // Number.isFinite rejects NaN / Infinity so we fall back to bearing 0.
-  const sb = parseFloat(localStorage.getItem(BEARING_KEY));
-  if (Number.isFinite(sb)) map.setBearing(sb);
+  // Read the saved view first so bearing from `navaid.view` (when present)
+  // wins over the legacy `navaid.bearing` key.
+  const sv = readSavedView();
+  if (sv && sv.bearing !== null && map.setBearing) {
+    map.setBearing(sv.bearing);
+  } else {
+    const sb = parseFloat(localStorage.getItem(BEARING_KEY));
+    if (Number.isFinite(sb)) map.setBearing(sb);
+  }
 } catch (e) { /* storage unavailable */ }
 let bearingSaveTimer = null;
 map.on('rotate', () => {
@@ -135,6 +182,27 @@ map.on('rotate', () => {
     catch (err) { /* storage unavailable */ }
   }, 400);
 });
+// Persist the full viewport (center + zoom + bearing) on any change.
+// Debounced ~300 ms because pan/zoom/rotate fire continuously during a
+// drag — only the resting state needs saving.
+let viewSaveTimer = null;
+function scheduleSaveView() {
+  if (NavAid.exporting || viewSaveTimer) return;
+  viewSaveTimer = setTimeout(() => {
+    viewSaveTimer = null;
+    try {
+      const c = map.getCenter();
+      const z = map.getZoom();
+      const b = map.getBearing ? map.getBearing() : 0;
+      if (!c || !Number.isFinite(c.lat) || !Number.isFinite(c.lng) ||
+          !Number.isFinite(z)) return;
+      const payload = { lat: c.lat, lng: c.lng, zoom: z };
+      if (Number.isFinite(b)) payload.bearing = b;
+      localStorage.setItem(VIEW_KEY, JSON.stringify(payload));
+    } catch (e) { /* storage unavailable */ }
+  }, 300);
+}
+map.on('moveend zoomend rotate', scheduleSaveView);
 refreshDial();
 
 // --- nav-waypoint search --------------------------------------------
@@ -311,6 +379,18 @@ function hideSearchOverlay() {
 }
 document.getElementById('search-trigger').onclick = showSearchOverlay;
 document.getElementById('search-close').onclick = hideSearchOverlay;
+
+// Issue #420: keyboard-shortcuts cheat-sheet trigger. The '?' key shortcut
+// is wired in interact.js; this button gives non-keyboard users (touch /
+// mouse) a discoverable entry point.
+{
+  const helpBtn = document.getElementById('help-trigger');
+  if (helpBtn) {
+    helpBtn.onclick = () => {
+      if (typeof showShortcutsHelp === 'function') showShortcutsHelp();
+    };
+  }
+}
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
     const t = e.target;
@@ -781,7 +861,17 @@ try {
   }
 } catch (e) {}
 if (state.selected) showInspector();
-if (state.waypoints.length) fitView();   // always frame the restored route
+// Issue #413 — restore the persisted viewport (center + zoom + bearing) so
+// a reload lands on the user's last view. Falls back to fitView() only
+// when no valid saved view exists. The bearing was already applied above
+// from `navaid.view` (or `navaid.bearing`), so we only re-apply center +
+// zoom here. `animate: false` avoids a visible pan on boot.
+const _savedView = readSavedView();
+if (_savedView) {
+  map.setView([_savedView.lat, _savedView.lng], _savedView.zoom, { animate: false });
+} else if (state.waypoints.length) {
+  fitView();                              // first-time / cleared-storage path
+}
 draw();
 // Always load nav-waypoints in the background — they power both the
 // overlay toggle and the auto-snap on drop / drag.

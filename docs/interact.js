@@ -54,8 +54,45 @@ function legLabelCenter(i, which) {
   const o = (which === 'in' ? state.legs[i].inLabel : state.legs[i].outLabel)
             || { a: 0, p: 0 };
   const sc = legZoomScale();
-  return { x: f.mx + f.dx * o.a * sc + f.nx * o.p * sc,
-           y: f.my + f.dy * o.a * sc + f.ny * o.p * sc };
+  // Issue #394: a default (unmodified) label has no stored `p`; its
+  // perpendicular is computed at render time from the live leg length
+  // so it stays just outside the 10° drift cone. Mirror the renderer's
+  // math here so the kite is grabbable at exactly its visible position.
+  let perp;
+  if (o._default) {
+    const a = proj(state.waypoints[i]);
+    const b = proj(state.waypoints[i + 1]);
+    const legLen = Math.hypot(b.x - a.x, b.y - a.y);
+    const sign = which === 'in' ? 1 : -1;
+    perp = sign * legDefaultLabelPerp(legLen);
+  } else {
+    perp = (o.p || 0) * sc;
+  }
+  const along = (o.a || 0) * sc;
+  return { x: f.mx + f.dx * along + f.nx * perp,
+           y: f.my + f.dy * along + f.ny * perp };
+}
+
+// Issue #394: when the user starts dragging a default (unmodified)
+// kite, freeze the currently-rendered offset into the stored
+// `{ a, p, _m: 1 }` form (drop `_default`) so subsequent drag deltas
+// have a real starting point. Keeps the user-dragged path identical
+// to PR #393's design — only the seed value comes from the drift-cone
+// formula instead of a fixed `±44 / legArrowSize`.
+function _materialiseDefaultLegLabel(legIdx, which) {
+  const leg = state.legs[legIdx];
+  if (!leg) return;
+  const key = which === 'in' ? 'inLabel' : 'outLabel';
+  const o = leg[key];
+  if (!o || !o._default) return;
+  const a = proj(state.waypoints[legIdx]);
+  const b = proj(state.waypoints[legIdx + 1]);
+  if (!a || !b) return;
+  const legLen = Math.hypot(b.x - a.x, b.y - a.y);
+  const sc = legZoomScale() || 1;          // never let scale be 0 here
+  const sign = which === 'in' ? 1 : -1;
+  const perpPx = sign * legDefaultLabelPerp(legLen);
+  leg[key] = { a: o.a || 0, p: perpPx / sc, _m: 1 };
 }
 function hitLegLabel(px, py) {
   // #83: scale the hit radius with the same zoom + legArrowSize factor that
@@ -383,6 +420,7 @@ map.on('mousedown', e => {
   const lab = hitLegLabel(p.x, p.y);
   if (lab) {
     downHit = true;
+    _materialiseDefaultLegLabel(lab.i, lab.which);
     const f = legFrame(lab.i);
     drag = { kind: 'label', i: lab.i, which: lab.which, lx: p.x, ly: p.y,
              dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
@@ -497,6 +535,50 @@ window.addEventListener('keydown', e => {
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
     return;                              // typing in a field — leave the WP alone
   }
+  // Issue #420: '?' (Shift-/) opens the keyboard-shortcuts cheat-sheet.
+  // Suppressed in inputs (handled by the early return above) so typing a
+  // literal '?' in a waypoint name or note still works. Most browsers
+  // surface this key as `e.key === '?'`, but some keyboard layouts /
+  // automation harnesses fire `e.key === '/'` with `shiftKey: true`, so
+  // accept both.
+  if (!e.ctrlKey && !e.metaKey && !e.altKey &&
+      (e.key === '?' || (e.key === '/' && e.shiftKey))) {
+    e.preventDefault();
+    if (typeof showShortcutsHelp === 'function') showShortcutsHelp();
+    return;
+  }
+  // Issue #413: F (no modifier) re-runs fit-to-route. Ctrl/Cmd-F is the
+  // search-overlay shortcut handled in ui.js — bail out so we don't shadow it.
+  if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault();
+    fitView();
+    return;
+  }
+  // Map zoom (+ / − / numpad) and magnifier (M) — skip under any modal
+  // backdrop so we don't change the map behind dialogs.
+  if (!document.querySelector('.modal-back')) {
+    const zoomInKeys = !e.ctrlKey && !e.metaKey && !e.altKey && (
+      e.code === 'NumpadAdd' || e.code === 'Equal' || e.key === '+');
+    const zoomOutKeys = !e.ctrlKey && !e.metaKey && !e.altKey && (
+      e.code === 'NumpadSubtract' || e.code === 'Minus' || e.key === '-');
+    if (zoomInKeys || zoomOutKeys) {
+      e.preventDefault();
+      const step = zoomInKeys ? 0.25 : -0.25;
+      if (magnifierOn && typeof bumpMagnifierZoomKeyboard === 'function') {
+        bumpMagnifierZoomKeyboard(step);
+      } else if (zoomInKeys) {
+        map.zoomIn();
+      } else {
+        map.zoomOut();
+      }
+      return;
+    }
+    if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      toggleMagnifier();
+      return;
+    }
+  }
   if (e.key === 'Delete' || e.key === 'Backspace') {
     if (!state.selected) return;
     if (state.selected.type === 'wp') {
@@ -542,6 +624,7 @@ mapEl.addEventListener('touchstart', e => {
     touchDrag = { kind: 'wp', i: wp };
     state.selected = { type: 'wp', index: wp };
   } else if (lab) {
+    _materialiseDefaultLegLabel(lab.i, lab.which);
     const f = legFrame(lab.i);
     touchDrag = { kind: 'label', i: lab.i, which: lab.which,
                   lx: p.x, ly: p.y, dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
