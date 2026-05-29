@@ -28,10 +28,15 @@ jobs:
   enable-auto-merge:
     if: github.event.action == 'ready_for_review'
     runs-on: ubuntu-latest
-    # Wait synchronously for the merge so workflow_run-chained `Deploy` and
-    # `Auto PR dev to main` fire AFTER dev has the new commit (anti-recursion
-    # suppresses the `push: dev` and `pull_request: closed` events that the
-    # bot would otherwise emit). 60 min covers worst-case CI (e2e + retries).
+    # Wait synchronously for the merge so we can explicitly dispatch
+    # downstream `Deploy` and `Auto PR dev to main` workflows after dev has
+    # the new commit. The original workflow_run-based chain was silently
+    # suppressed by GitHub's anti-recursion rule (it applies to any chain
+    # originating from a GITHUB_TOKEN-driven completion, including
+    # workflow_run — not just the direct push/pull_request events the docs
+    # call out). workflow_dispatch IS exempt, so we trigger downstream
+    # workflows explicitly via `gh workflow run` after the merge lands.
+    # 60 min covers worst-case CI (e2e + retries).
     timeout-minutes: 65
     steps:
       - uses: actions/checkout@v4
@@ -57,18 +62,29 @@ jobs:
             --auto --squash --delete-branch \
             --subject "$TITLE"
           echo "Auto-merge enabled for PR #$PR."
-          # GITHUB_TOKEN-initiated bot merges suppress BOTH `push: dev` and
-          # `pull_request: closed` events (GitHub anti-recursion rule), so
-          # downstream Deploy / Auto-PR-dev-to-main won't fire on their
-          # existing triggers. We synchronously wait for the actual merge,
-          # then let workflow_run chains pick up from this workflow's
-          # successful completion (workflow_run is not subject to the same
-          # anti-recursion suppression). Poll up to 60 min @ 30 s = 120 iters.
+          # GITHUB_TOKEN-initiated bot merges suppress `push: dev`,
+          # `pull_request: closed`, AND `workflow_run` chained events
+          # (GitHub anti-recursion rule — verified empirically against
+          # #384/#389/#395/#412: zero workflow_run runs despite successful
+          # upstream completions). We synchronously wait for the actual
+          # merge, then explicitly `gh workflow run` the downstream
+          # workflows below. Poll up to 60 min @ 30 s = 120 iters.
           for i in $(seq 1 120); do
             MERGE_STATE=$(gh pr view "$PR" --json state --jq '.state')
             case "$MERGE_STATE" in
               MERGED)
                 echo "PR #$PR merged on iteration $i."
+                # Explicit dispatch — workflow_run chain is silently
+                # suppressed when the upstream completion was driven by
+                # GITHUB_TOKEN. workflow_dispatch is exempt from
+                # anti-recursion (per GitHub docs), so this fires reliably.
+                BASE=$(gh pr view "$PR" --json baseRefName --jq '.baseRefName')
+                gh workflow run Deploy --ref "$BASE" || \
+                  echo "::warning::Failed to dispatch Deploy on $BASE"
+                if [ "$BASE" = "dev" ]; then
+                  gh workflow run "Auto PR dev to main" --ref dev || \
+                    echo "::warning::Failed to dispatch Auto PR dev to main"
+                fi
                 exit 0
                 ;;
               CLOSED)
