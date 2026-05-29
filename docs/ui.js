@@ -379,6 +379,18 @@ function hideSearchOverlay() {
 }
 document.getElementById('search-trigger').onclick = showSearchOverlay;
 document.getElementById('search-close').onclick = hideSearchOverlay;
+
+// Issue #420: keyboard-shortcuts cheat-sheet trigger. The '?' key shortcut
+// is wired in interact.js; this button gives non-keyboard users (touch /
+// mouse) a discoverable entry point.
+{
+  const helpBtn = document.getElementById('help-trigger');
+  if (helpBtn) {
+    helpBtn.onclick = () => {
+      if (typeof showShortcutsHelp === 'function') showShortcutsHelp();
+    };
+  }
+}
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
     const t = e.target;
