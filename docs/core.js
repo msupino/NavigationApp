@@ -64,7 +64,12 @@ window.S = Object.assign({
   searchReplaceConfirm: 'Replace the current route with these waypoints?',
   tbSearchOpen: '🔍 Find',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
-  deleteWp: 'Delete waypoint',                      // inspector button
+  deleteWp: '🗑 Delete waypoint',                      // inspector button
+  resetWpName: '↺ Reset waypoint name',             // inspector — reference snap or clear (placeholder)
+  resetWpNameTitle: 'Set name to the nearest reference (airfield / nav-WP), or clear when off-grid (dimmed sequence label)',
+  tbResetAllWpNames: '↺ Reset all waypoint names',
+  tbResetAllWpNamesTitle: 'Set each name to its nearest reference, or clear when off-grid',
+  resetAllWpNamesConfirm: 'Reset all waypoint names to their nearest reference codes, or clear when off-grid (sequence placeholders)?',
   resetLegMarkers: '↺ Reset marker position',       // inspector leg button — reset label offsets
   resetAllLegMarkers: '↺ Reset all marker positions', // inspector leg button — reset every leg
   resetAllConfirm: 'Reset all leg marker positions to default? This will clear any manual adjustments.',
@@ -120,7 +125,7 @@ window.S = Object.assign({
   shapeRect: 'Rectangle',
   shapeOval: 'Oval',
   color: 'Color',
-  deleteNote: 'Delete note',
+  deleteNote: '🗑 Delete note',
   latitude: 'Latitude',
   longitude: 'Longitude',
   dialTitle: function(b) { return 'Map rotation ' + b + '° — drag to rotate, click for north up'; },

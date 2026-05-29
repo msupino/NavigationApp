@@ -25,7 +25,7 @@ async function boot(page, lang = 'en') {
       }
     } catch (e) {}
   });
-  await page.goto('/?lang=' + lang);
+  await page.goto('?lang=' + lang);
   await page.waitForFunction(() => typeof state !== 'undefined');
 }
 

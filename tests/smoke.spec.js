@@ -24,7 +24,7 @@ test.describe('NavAid smoke', () => {
 
   test('boots in Hebrew when localStorage prefers he and switches to English', async ({ page }) => {
     await page.addInitScript(() => { try { localStorage.setItem('navaid.lang', 'he'); } catch (e) {} });
-    await page.goto('/');
+    await page.goto('.');
     await expect(page.locator('html')).toHaveAttribute('lang', 'he');
     await page.locator('#lang-select').selectOption('en');
     await page.waitForURL(/lang=en/);
@@ -32,7 +32,7 @@ test.describe('NavAid smoke', () => {
   });
 
   test('#87: language switch preserves query params', async ({ page }) => {
-    await page.goto('/?lang=he&utm_source=test&deep=42');
+    await page.goto('?lang=he&utm_source=test&deep=42');
     await page.locator('#lang-select').selectOption('en');
     await page.waitForURL(/lang=en/);
     const url = new URL(page.url());

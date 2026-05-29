@@ -739,11 +739,14 @@ function showFlightPlan() {
     inp.className = 'plan-name';
     inp.maxLength = 10;
     // #81: show the locale-resolved label so the cell matches the map.
+    normalizeWaypointSequenceName(state.waypoints[wpIdx]);
     inp.value = navName((state.waypoints[wpIdx].name || '').trim());
     inp.placeholder = S.wpPrefix + (wpIdx + 1);
     inp.oninput = () => {
-      state.waypoints[wpIdx].name = inp.value;
-      for (const o of wpInputs[wpIdx]) if (o !== inp) o.value = inp.value;
+      const t = (inp.value || '').trim();
+      const next = isSequenceWaypointName(t) ? '' : inp.value;
+      state.waypoints[wpIdx].name = next;
+      for (const o of wpInputs[wpIdx]) if (o !== inp) o.value = next;
       draw();
     };
     (wpInputs[wpIdx] || (wpInputs[wpIdx] = [])).push(inp);
@@ -894,9 +897,12 @@ function showFlightPlan() {
     for (const wpIdx in wpInputs) {
       const wp = state.waypoints[wpIdx];
       if (!wp) continue;
+      const beforeRaw = wp.name;
+      normalizeWaypointSequenceName(wp);
+      const clearedSeq = beforeRaw !== wp.name;
       const localized = navName((wp.name || '').trim());
       for (const inp of wpInputs[wpIdx]) {
-        if (document.activeElement !== inp) inp.value = localized;
+        if (clearedSeq || document.activeElement !== inp) inp.value = localized;
       }
     }
     totDistCell.textContent = td.toFixed(1);
