@@ -155,7 +155,7 @@ window.S = Object.assign({
   shareCopied: 'Route link copied to clipboard',
   errShareTooLong: 'Route is too long for a share link (max 64 waypoints). Export as JSON and send the file instead.',
   tbFit: '⌖ Fit to screen',
-  tbFitTitle: 'Fit route to view',
+  tbFitTitle: 'Fit route to view (F)',
   tbPlan: '📋 Flight Plan',
   tbPlanTitle: 'Show flight plan table',
   tbCharts: '🗺️ Airport Charts',
