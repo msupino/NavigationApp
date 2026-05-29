@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport"
@@ -53,18 +53,18 @@
     }
   }
   </script>
-  <!-- Language bootstrap: param > localStorage > 'he'. Sets window.__navLang;
+  <!-- Language bootstrap: param > localStorage > 'en'. Sets window.__navLang;
        the body-end loader (below) uses it to pick the right strings.js. -->
   <script>
     (function () {
       var p = new URLSearchParams(location.search).get('lang');
       var stored = '';
       try { stored = localStorage.getItem('navaid.lang') || ''; } catch (e) {}
-      var lang = (p === 'en' || p === 'he') ? p : (stored === 'en' ? 'en' : 'he');
+      var lang = (p === 'en' || p === 'he') ? p : (stored === 'he' ? 'he' : 'en');
       try { localStorage.setItem('navaid.lang', lang); } catch (e) {}
       var h = document.documentElement;
       h.lang = lang; h.dir = lang === 'he' ? 'rtl' : 'ltr';
-      if (lang === 'en') document.title = 'NavAid';
+      if (lang === 'he') document.title = 'NavAid — מתכנן טיסה';
       if (!p) history.replaceState(null, '', '?lang=' + lang);
       window.__navLang = lang;
     }());
