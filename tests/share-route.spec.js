@@ -125,8 +125,8 @@ test.describe('Share route link', () => {
       }));
       return buildShareUrl().url;
     }, ROUTE);
-    const target = '/' + url.split('/').pop();   // strip origin
-    await page.goto(target);
+    const { pathname, search } = new URL(url);
+    await page.goto(pathname + search);
     await page.waitForFunction(() => typeof state !== 'undefined' && state.waypoints.length > 0);
     const loaded = await page.evaluate(() => ({
       wps: state.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name })),
@@ -161,8 +161,8 @@ test.describe('Share route link', () => {
       syncLegs();
       return buildShareUrl().url;
     });
-    const target = '/' + url.split('/').pop();
-    await page.goto(target);
+    const { pathname: p2, search: s2 } = new URL(url);
+    await page.goto(p2 + s2);
     await page.waitForFunction(() => typeof state !== 'undefined' && state.waypoints.length === 2);
     const names = await page.evaluate(() => state.waypoints.map(w => w.name));
     expect(names).toEqual(['הרצליה', 'חיפה']);
