@@ -8,6 +8,11 @@ Default **per-test timeout** is **15s** (`playwright.config.js`). Suites that
 need more (PNG export downloads, magnifier tile delays, PWA service worker
 activation) call `test.describe.configure({ timeout: … })` in their spec file.
 
+Share-route tests that assert post-load waypoint positions after a URL round
+trip use `tests/_arpFromPage.js` (`r5ArpPairFromPage`) so expectations track the
+**live** `airfields.json` in the browser (avoids stale SW / preview cache vs
+fixture literals).
+
 ## CI (local) — runs every `.spec.js` file
 
 Trigger: every push to a PR branch, `dev`, or `main`.

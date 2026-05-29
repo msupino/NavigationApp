@@ -45,8 +45,8 @@ test.describe('#224 — fit-to-screen maxZoom cap', () => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [
-        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
-        { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+        { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+        { lat: 32.80833, lng: 35.04278, name: 'LLHA' },
       ];
       syncLegs(); draw(); fitView();
     });

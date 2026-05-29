@@ -59,7 +59,7 @@ test.describe('Inspector panel', () => {
   test('inspector body shows latitude + longitude rows for waypoint', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }];
+      state.waypoints = [{ lat: 32.17944, lng: 34.83444, name: 'LLHZ' }];
       state.selected = { type: 'waypoint', index: 0 };
       syncLegs(); draw(); showInspector();
     });
