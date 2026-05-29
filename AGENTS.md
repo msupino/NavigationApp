@@ -46,6 +46,12 @@ both branches and assembles a single Pages site:
   same Deploy step rewrites `NavAid.version` in `docs/core.js` from
   `'1.0'` to `'1.0-<short-sha>'`, so the toolbar identifies the exact
   deployed commit without manually increasing the source version number.
+- **Before `git commit`, verify the current branch** (`git branch
+  --show-current`, and `git status` if needed). If it is not the branch
+  the user intended for this work, or you are unsure, **ask the user**
+  which branch to use before committing (other agents may be using a
+  different branch). Do not commit on `main`, `dev`, or unrelated work
+  by mistake.
 - **Always run `node --check` on every changed `.js` file** before
   committing (the app code lives in `docs/core.js`, `docs/draw.js`,
   `docs/interact.js`, `docs/io.js`, `docs/ui.js`, `docs/sw.js`, and

@@ -437,7 +437,7 @@ document.getElementById('clear').onclick = () => {
 document.getElementById('tool-reset-all-wp-names').onclick = () => {
   if (!state.waypoints.length) return;
   if (!confirm(S.resetAllWpNamesConfirm ||
-      'Reset all waypoint names to reference codes (or WP{N} when off-grid)?')) return;
+      'Reset all waypoint names to their nearest reference codes, or clear when off-grid?')) return;
   if (typeof resetAllWpNames === 'function') resetAllWpNames();
 };
 document.getElementById('save').onclick = save;
@@ -522,12 +522,14 @@ document.getElementById('drift-cb').onchange = e => {
   draw();
 };
 // When the user toggles an overlay ON, snap existing waypoints whose name
-// is empty or auto-snapped to the nearest airfield / nav-WP. Preserves
-// user-typed names. Priority matches applyNavSnap: airfields first.
+// is empty, auto-snapped, or a sequence label (WP N / locale prefix) to the
+// nearest airfield / nav-WP. Preserves user-typed names. Priority matches
+// applyNavSnap: airfields first.
 function snapExistingWaypoints() {
   for (let i = 0; i < state.waypoints.length; i++) {
     const wp = state.waypoints[i];
-    const autoSnapped = isAirfieldName(wp.name) || isNavName(wp.name);
+    const autoSnapped = isAirfieldName(wp.name) || isNavName(wp.name) ||
+        isSequenceWaypointName(wp.name);
     if (wp.name && !autoSnapped) continue;
     if (showAirfields) {
       const af = nearestAirfield(wp, 18);

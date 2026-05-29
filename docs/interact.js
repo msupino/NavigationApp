@@ -160,13 +160,13 @@ function findSnappedReference(wp) {
 }
 
 // Issue #418: inspector "↺ Reset waypoint name" handler. Restores the
-// canonical name — the snapped reference code if the waypoint sits on
-// one, otherwise the sequence-based `WPn` fallback (1-based index).
+// snapped reference code if the waypoint sits on one; otherwise clears
+// the name so the dimmed sequence placeholder (`S.wpPrefix` + N) shows.
 function resetWpName(idx) {
   const wp = state.waypoints[idx];
   if (!wp) return;
   const snapped = findSnappedReference(wp);
-  wp.name = snapped ? snapped.name : ('WP' + (idx + 1));
+  wp.name = snapped ? snapped.name : '';
   persist();
   draw();
   showInspector();
@@ -179,7 +179,7 @@ function resetAllWpNames() {
     const wp = state.waypoints[i];
     if (!wp) continue;
     const snapped = findSnappedReference(wp);
-    wp.name = snapped ? snapped.name : ('WP' + (i + 1));
+    wp.name = snapped ? snapped.name : '';
   }
   persist();
   draw();
@@ -279,6 +279,7 @@ function showInspector() {
     body.appendChild(del);
   } else {
     const wp = state.waypoints[state.selected.index];
+    normalizeWaypointSequenceName(wp);
     // #81: show the locale-resolved label so the inspector matches the map.
     // The canonical stored name (`wp.name`) is whatever the user types/keeps;
     // navName() converts a nav-WP canonical id to the current locale for read.
@@ -286,7 +287,11 @@ function showInspector() {
     title.placeholder = S.wpPrefix + (state.selected.index + 1);
     title.readOnly = false;
     title.classList.add('editable');
-    title.oninput = () => { wp.name = title.value; draw(); };
+    title.oninput = () => {
+      const t = (title.value || '').trim();
+      wp.name = isSequenceWaypointName(t) ? '' : title.value;
+      draw();
+    };
     body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
     // #231: runway directions when the waypoint matches a known airfield.
@@ -372,7 +377,7 @@ function showInspector() {
     };
     body.appendChild(del);
     // Issue #418: ↺ Reset waypoint name — snaps the stored name back to
-    // the nearest reference code, or to WP{N} when off-grid.
+    // the nearest reference code, or clears it when off-grid (placeholder).
     const resetName = document.createElement('button');
     resetName.className = 'insp-btn';
     resetName.textContent = S.resetWpName || '↺ Reset waypoint name';
