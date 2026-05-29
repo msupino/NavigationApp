@@ -100,8 +100,8 @@ test.describe('#418 — Reset waypoint name button', () => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [
-        { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
-        { lat: 32.80833, lng: 35.04278, name: 'LLHA' },
+        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
+        { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
         { lat: 33.5, lng: 33.0, name: 'pickMeReset' },
       ];
       state.selected = { type: 'wp', index: 2 };
@@ -286,7 +286,7 @@ test.describe('#418 — Reset waypoint name button', () => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [
-        { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
         { lat: 32.21861, lng: 34.88250, name: 'BAZRA' },
       ];
       state.legs = [{
