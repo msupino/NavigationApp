@@ -36,6 +36,11 @@ BASE_URL="$URL" EXPECTED_SHA="$SHA" npx playwright test \
 
 Runs against `https://navaid.supino.org/pr/NNN/`.
 
+Use **`page.goto('?lang=en')`** (or `goto('.')` for the index), **not**
+`page.goto('/?lang=en')` — Playwright resolves URLs that start with `/` from
+the **origin root**, so `/…` ignores the `/pr/NNN/` base path and hits the wrong
+site.
+
 ### Excluded files
 
 | File | Reason |

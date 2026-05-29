@@ -32,7 +32,9 @@ async function boot(page, lang = 'en') {
       }
     } catch (e) {}
   });
-  await page.goto('/?lang=' + lang);
+  // Must not start with `/` — with a subpath baseURL (e2e-deployed PR preview),
+  // Playwright resolves `/…` from the origin root, skipping /pr/NNN/.
+  await page.goto('?lang=' + lang);
   await page.waitForFunction(() =>
     typeof state !== 'undefined' &&
     typeof showInspector === 'function' &&
