@@ -219,7 +219,7 @@ window.S = Object.assign({
   tbSecExport: '📤 Export/import',
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
-  tbIssues: 'Issues / requests',
+  tbIssues: 'Issues / Requests',
 
   // --- Keyboard-shortcuts cheat-sheet (issue #420) --------------------
   // Opens via the toolbar '?' Help link or the '?' (Shift-/) shortcut.
