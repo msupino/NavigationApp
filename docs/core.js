@@ -42,6 +42,7 @@ window.S = Object.assign({
   navWpSearchField: 'name',            // which field to show/search in results
   airfieldsUrl: 'airfields.json?v=3',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
+
   // Reporting-type overlay (issue #404) — IAA CVFR chart's סוג דיווח column.
   // Distinct from `commChange` (frequency-change marker, issue #399).
   reportingUrl: 'reporting-types.json?v=1',
@@ -251,6 +252,7 @@ window.S = Object.assign({
   shortcutsGroupHelp: 'Help',
   shortcutFitRoute: 'Fit route to view',
   shortcutSearch: 'Open search',
+  shortcutReverse: 'Reverse route direction',
   shortcutEsc: 'Close modal / deselect / close magnifier',
   shortcutDelete: 'Delete selected waypoint or note',
   shortcutHelp: 'Show this cheat-sheet',

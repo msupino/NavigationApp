@@ -17,6 +17,14 @@ trip use `tests/_arpFromPage.js` (`r5ArpPairFromPage`) so expectations track the
 **live** `airfields.json` in the browser (avoids stale SW / preview cache vs
 fixture literals).
 
+## Airfield ARPs in fixtures
+
+Playwright specs that seed **LLHZ / LLHA / LLBG** coordinates import
+`tests/_airfieldArp.js` (or call `pairLLHZ_LLHA()` from it) so they track
+`docs/airfields.json`. After chart position updates, run
+`node scripts/sync-airfield-test-arps.js` to regenerate `tests/_airfieldArp.js`
+(the module always `require`s the JSON at runtime).
+
 ## CI (local) — runs every `.spec.js` file
 
 Trigger: every push to a PR branch, `dev`, or `main`.

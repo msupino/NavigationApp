@@ -294,6 +294,25 @@ function isAirfieldName(name) {
   return false;
 }
 
+// Max |Δlat| and |Δlng| for treating a waypoint as "on" an airfield ARP when
+// the label is not the ICAO code (renamed WP, older saved coords vs chart
+// refresh, r5 rounding). ~0.002° ≈ 220 m at Israel lat — matches `isAirport`.
+const AIRFIELD_POS_MATCH_EPS = 0.002;
+
+// Airfield row from `airfields.json` for inspector runways / plates: prefer an
+// exact ICAO name match, else ARP coords within `AIRFIELD_POS_MATCH_EPS` so a
+// renamed label (or legacy share-link coords) still surfaces charts + runways.
+function airfieldAtWaypoint(wp) {
+  if (!wp || !airfields || !airfields.length) return null;
+  const name = (wp.name || '').trim().toUpperCase();
+  const byName = airfields.find(a => a.name === name);
+  if (byName) return byName;
+  const eps = AIRFIELD_POS_MATCH_EPS;
+  return airfields.find(a =>
+    Math.abs(a.lat - wp.lat) < eps && Math.abs(a.lng - wp.lng) < eps
+  ) || null;
+}
+
 // Distinct from nav-WPs: airfields are rendered as a blue-filled upward
 // triangle (▲) outline, sized to ~7 px at typical zooms. The ICAO and
 // localised name appear next to the marker at zoom ≥ 10. Suppressed when
@@ -341,13 +360,6 @@ function drawNavWaypoints() {
   // regardless of whether the WP name was changed after snapping.
   const SNAP_DEG = 0.0002;               // ~22 m — matches nearestNavWaypoint px threshold
   const showLabels = map.getZoom() >= 10;
-  // Issue #404: when the user toggles "Show reporting type", overlay a tiny
-  // bold "M" badge above mandatory reporting points. The dot itself stays
-  // unchanged — on-request points are still just dots, mandatory points get
-  // the extra glyph. Resolved by 5-letter `name` against `reporting` (loaded
-  // from docs/reporting-types.json), so the badge survives independent
-  // updates of nav-waypoints.json.
-  const decorate = showReporting && reporting && reporting.length > 0;
   octx.font = 'bold 10px sans-serif';
   octx.textAlign = 'left';
   octx.textBaseline = 'middle';
@@ -371,22 +383,6 @@ function drawNavWaypoints() {
       octx.strokeText(label, s.x + 6, s.y);
       octx.fillStyle = '#161412';
       octx.fillText(label, s.x + 6, s.y);
-    }
-    if (decorate && reportingFor(wp.name) === 'mandatory') {
-      // Tight bold "M" badge directly above the dot — saturated red so it
-      // reads against both light and dark base layers without clashing with
-      // the comm-change ring (issue #399, separate concern).
-      octx.font = 'bold 9px sans-serif';
-      octx.textAlign = 'center';
-      octx.textBaseline = 'alphabetic';
-      octx.lineWidth = 2.5;
-      octx.strokeStyle = 'rgba(255,255,255,0.9)';
-      octx.strokeText('M', s.x, s.y - 6);
-      octx.fillStyle = '#c9362b';
-      octx.fillText('M', s.x, s.y - 6);
-      octx.font = 'bold 10px sans-serif';
-      octx.textAlign = 'left';
-      octx.textBaseline = 'middle';
     }
   }
   octx.lineWidth = 1;

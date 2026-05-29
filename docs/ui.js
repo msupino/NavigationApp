@@ -402,6 +402,10 @@ document.addEventListener('keydown', e => {
     showSearchOverlay();
   } else if (e.key === 'Escape' && !searchOverlay.classList.contains('hidden')) {
     hideSearchOverlay();
+  } else if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    document.getElementById('reverse').click();
   }
 });
 document.addEventListener('click', e => {
@@ -414,14 +418,21 @@ document.getElementById('reverse').onclick = () => {
   // The leg's local axes (along + perpendicular) also flip, so negating the
   // label offsets keeps the markers visually pinned to the same map pixels.
   state.waypoints.reverse();
-  state.legs = state.legs.reverse().map(l => ({
-    inboundAltitude: l.outboundAltitude,
-    outboundAltitude: l.inboundAltitude,
-    flightSpeed: showReturn ? l.outboundSpeed : l.flightSpeed,
-    outboundSpeed: showReturn ? l.flightSpeed : l.flightSpeed,
-    inLabel: { a: -l.outLabel.a, p: -l.outLabel.p },
-    outLabel: { a: -l.inLabel.a, p: -l.inLabel.p },
-  }));
+  // A leg imported from a corrupted file / share URL may be missing a
+  // label; fall back to the default so negating its offsets can't throw.
+  const d = _defaultLegLabels();
+  state.legs = state.legs.reverse().map(l => {
+    const inOld = l.outLabel || d.outLabel;
+    const outOld = l.inLabel || d.inLabel;
+    return {
+      inboundAltitude: l.outboundAltitude,
+      outboundAltitude: l.inboundAltitude,
+      flightSpeed: showReturn ? l.outboundSpeed : l.flightSpeed,
+      outboundSpeed: showReturn ? l.flightSpeed : l.flightSpeed,
+      inLabel:  { a: -inOld.a,  p: -inOld.p,  _m: inOld._m,  _default: inOld._default },
+      outLabel: { a: -outOld.a, p: -outOld.p, _m: outOld._m, _default: outOld._default },
+    };
+  });
   state.selected = null;
   showInspector(); draw();
 };

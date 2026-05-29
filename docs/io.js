@@ -34,6 +34,7 @@ const SHORTCUTS_HELP_ROWS = [
     rows: [{ keys: ['Ctrl', 'F'], altKeys: ['⌘', 'F'], descKey: 'shortcutSearch' }] },
   { group: 'shortcutsGroupEditing',
     rows: [
+      { keys: ['R'], descKey: 'shortcutReverse' },
       { keys: ['Esc'], descKey: 'shortcutEsc' },
       { keys: ['Delete'], altKeys: ['Backspace'], descKey: 'shortcutDelete' },
     ] },
@@ -328,11 +329,6 @@ function validateNavWaypoints(d) {
   }
   return errs.length ? errs.join('; ') : null;
 }
-// Strict schema for docs/reporting-types.json — { points:[{ name, reportRequired }] }
-// where reportRequired ∈ {'mandatory','on-request','arp'}. Issue #404. Mirrors
-// validateNavWaypoints; loader in draw.js bails out with an alert that names
-// the offending field path. Extras at any level are silently allowed for
-// forward-compat (matches the issue #101 convention).
 const _REPORTING_TYPES = ['mandatory', 'on-request', 'arp'];
 function validateReporting(d) {
   const errs = [];
@@ -603,15 +599,7 @@ var fpOpen = false;                       // true while flight-plan modal is sho
 // Returns true if wp.name matches a known airfield ICAO code.
 // Used to decide whether to add startup/taxi fuel to the first leg.
 function isAirport(wp) {
-  if (!wp || !airfields) return false;
-  const name = (wp.name || '').trim().toUpperCase();
-  // Match by name OR by coordinates (renaming the label must not lose the
-  // airport status; tolerance ≈ 100 m to survive minor drag).
-  const eps = 0.001;
-  return airfields.some(a =>
-    a.name === name ||
-    (Math.abs(a.lat - wp.lat) < eps && Math.abs(a.lng - wp.lng) < eps)
-  );
+  return typeof airfieldAtWaypoint === 'function' && airfieldAtWaypoint(wp) != null;
 }
 
 function closeFlightPlan() {
