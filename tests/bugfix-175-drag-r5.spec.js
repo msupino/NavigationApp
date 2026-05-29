@@ -16,7 +16,7 @@ test.describe('#175 drag r5() rounding', () => {
   test('mouse drag of a waypoint rounds destination to 5 dp', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'A' }];
+      state.waypoints = [{ lat: 32.17944, lng: 34.83444, name: 'A' }];
       syncLegs();
     });
     // Simulate the drag-path mutation directly (the production mousemove
@@ -51,8 +51,8 @@ test.describe('#175 drag r5() rounding', () => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [
-        { lat: 32.18060, lng: 34.83470, name: 'A' },
-        { lat: 32.80972, lng: 35.04389, name: 'B' },
+        { lat: 32.17944, lng: 34.83444, name: 'A' },
+        { lat: 32.80833, lng: 35.04278, name: 'B' },
       ];
       syncLegs();
       // Drag-style write of a noisy value.
@@ -74,7 +74,7 @@ test.describe('#175 drag r5() rounding', () => {
     async ({ page }) => {
       await boot(page);
       await page.evaluate(() => {
-        state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'A' }];
+        state.waypoints = [{ lat: 32.17944, lng: 34.83444, name: 'A' }];
       });
       const isFinite = await page.evaluate(() => Number.isFinite(r5(32.18060)));
       expect(isFinite).toBe(true);
