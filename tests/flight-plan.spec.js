@@ -408,6 +408,22 @@ test.describe('Flight plan', () => {
     }
   });
 
+  test('reverse does not throw when a leg label is missing', async ({ page }) => {
+    const jsErrors = [];
+    page.on('pageerror', err => jsErrors.push(err.message));
+    await page.evaluate(() => {
+      state.legs[0].inLabel = null;
+      state.legs[0].outLabel = undefined;
+    });
+    await page.locator('#reverse').click();
+    await page.waitForTimeout(50);
+    expect(jsErrors).toHaveLength(0);
+    const ok = await page.evaluate(() =>
+      state.legs.every(l => l.inLabel && l.outLabel &&
+        typeof l.inLabel.a === 'number' && typeof l.outLabel.a === 'number'));
+    expect(ok).toBe(true);
+  });
+
   test('drag-handler touch listeners are cleaned up on close', async ({ page }) => {
     // Stub addEventListener to count the touch listeners attached to window
     // by the drag block. Open/close 5×; count must not grow.
