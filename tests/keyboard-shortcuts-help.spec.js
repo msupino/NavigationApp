@@ -192,7 +192,7 @@ test.describe('Keyboard-shortcuts cheat-sheet (#420)', () => {
     async ({ page }) => {
       await boot(page, 'en');
       await page.evaluate(() => showShortcutsHelp());
-      await expect(page.locator('#shortcuts-help-title')).toHaveText('Keyboard Shortcuts');
+      await expect(page.locator('#shortcuts-help-title')).toHaveText('Keyboard shortcuts');
       // Every visible row description must be a non-empty string — guards
       // against typos in SHORTCUTS_HELP_ROWS keys that would render the
       // raw key name (e.g. "shortcutFitRoute") in production.
