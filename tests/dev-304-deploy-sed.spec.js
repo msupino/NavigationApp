@@ -18,7 +18,13 @@ function deployYml() {
 }
 
 function run(sed, file) {
-  cp.execFileSync('sed', ['-i', '-E', sed, file]);
+  // BSD sed (macOS): `-i` must be followed by a backup suffix; `''` = no
+  // backup. GNU sed accepts `sed -i -E script file` (empty suffix omitted);
+  // passing a separate `''` breaks argv parsing ("can't read s/.../").
+  const args = process.platform === 'darwin'
+    ? ['-i', '', '-E', sed, file]
+    : ['-i', '-E', sed, file];
+  cp.execFileSync('sed', args);
 }
 
 function tmpCopy(src) {

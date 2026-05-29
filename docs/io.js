@@ -34,6 +34,7 @@ const SHORTCUTS_HELP_ROWS = [
     rows: [{ keys: ['Ctrl', 'F'], altKeys: ['⌘', 'F'], descKey: 'shortcutSearch' }] },
   { group: 'shortcutsGroupEditing',
     rows: [
+      { keys: ['R'], descKey: 'shortcutReverse' },
       { keys: ['Esc'], descKey: 'shortcutEsc' },
       { keys: ['Delete'], altKeys: ['Backspace'], descKey: 'shortcutDelete' },
     ] },
@@ -61,7 +62,7 @@ function showShortcutsHelp() {
   const title = document.createElement('div');
   title.className = 'modal-title';
   title.id = 'shortcuts-help-title';
-  title.textContent = S.shortcutsHelpTitle || 'Keyboard Shortcuts';
+  title.textContent = S.shortcutsHelpTitle || 'Keyboard shortcuts';
   // Make the title non-grabbable for this modal — the cheat-sheet is
   // ephemeral, doesn't need positioning, and the cursor: grab on .modal-title
   // would otherwise mislead the user.
@@ -328,11 +329,17 @@ function validateNavWaypoints(d) {
   }
   return errs.length ? errs.join('; ') : null;
 }
-// Strict schema for docs/airfields.json — { airfields:[{ name, he, en, lat,
-// lng, elev_ft, plates:[string] }] }. Mirrors validateNavWaypoints; the
-// loader in draw.js bails out with an alert that names the offending field
-// path so the JSON author can find the typo. Extras at any level are
-// silently allowed for forward-compat (issue #101).
+// Strict schema for docs/airfields.json — { airfields:[{ name, he, lat,
+// lng, en?, elev_ft?, plates?:[string], runways?:[string] }] }. Mirrors
+// validateNavWaypoints; the loader in draw.js bails out with an alert that
+// names the offending field path so the JSON author can find the typo.
+// Extras at any level are silently allowed for forward-compat (issue #101).
+//
+// Issue #412: `en`, `elev_ft`, `plates`, and `runways` are now OPTIONAL
+// per-entry — the chart's published ARP list (#411) carries airfields whose
+// BYOP plate / elevation / runway enrichment is not yet in the repo, and
+// dropping them just because we don't have a plate folder yet would lose
+// real waypoints. When present they're still strictly type-checked.
 function validateAirfields(d) {
   const errs = [];
   if (!d || typeof d !== 'object' || Array.isArray(d)) {
@@ -346,17 +353,33 @@ function validateAirfields(d) {
       errs.push(p + ': expected object, got ' + _vKind(a));
       continue;
     }
-    _v(a, 'name',    'string', p, errs);
-    _v(a, 'he',      'string', p, errs);
-    _v(a, 'en',      'string', p, errs);
-    _v(a, 'lat',     'number', p, errs);
-    _v(a, 'lng',     'number', p, errs);
-    _v(a, 'elev_ft', 'number', p, errs);
-    if (_v(a, 'plates', 'array', p, errs)) {
-      for (let j = 0; j < a.plates.length; j++) {
-        if (typeof a.plates[j] !== 'string') {
-          errs.push(p + '.plates[' + j + ']: expected string, got ' +
-                    _vKind(a.plates[j]));
+    _v(a, 'name', 'string', p, errs);
+    _v(a, 'he',   'string', p, errs);
+    _v(a, 'lat',  'number', p, errs);
+    _v(a, 'lng',  'number', p, errs);
+    if (Object.prototype.hasOwnProperty.call(a, 'en')) {
+      _v(a, 'en', 'string', p, errs);
+    }
+    if (Object.prototype.hasOwnProperty.call(a, 'elev_ft')) {
+      _v(a, 'elev_ft', 'number', p, errs);
+    }
+    if (Object.prototype.hasOwnProperty.call(a, 'plates')) {
+      if (_v(a, 'plates', 'array', p, errs)) {
+        for (let j = 0; j < a.plates.length; j++) {
+          if (typeof a.plates[j] !== 'string') {
+            errs.push(p + '.plates[' + j + ']: expected string, got ' +
+                      _vKind(a.plates[j]));
+          }
+        }
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(a, 'runways')) {
+      if (_v(a, 'runways', 'array', p, errs)) {
+        for (let j = 0; j < a.runways.length; j++) {
+          if (typeof a.runways[j] !== 'string') {
+            errs.push(p + '.runways[' + j + ']: expected string, got ' +
+                      _vKind(a.runways[j]));
+          }
         }
       }
     }
@@ -552,15 +575,7 @@ var fpOpen = false;                       // true while flight-plan modal is sho
 // Returns true if wp.name matches a known airfield ICAO code.
 // Used to decide whether to add startup/taxi fuel to the first leg.
 function isAirport(wp) {
-  if (!wp || !airfields) return false;
-  const name = (wp.name || '').trim().toUpperCase();
-  // Match by name OR by coordinates (renaming the label must not lose the
-  // airport status; tolerance ≈ 100 m to survive minor drag).
-  const eps = 0.001;
-  return airfields.some(a =>
-    a.name === name ||
-    (Math.abs(a.lat - wp.lat) < eps && Math.abs(a.lng - wp.lng) < eps)
-  );
+  return typeof airfieldAtWaypoint === 'function' && airfieldAtWaypoint(wp) != null;
 }
 
 function closeFlightPlan() {
@@ -739,11 +754,14 @@ function showFlightPlan() {
     inp.className = 'plan-name';
     inp.maxLength = 10;
     // #81: show the locale-resolved label so the cell matches the map.
+    normalizeWaypointSequenceName(state.waypoints[wpIdx]);
     inp.value = navName((state.waypoints[wpIdx].name || '').trim());
     inp.placeholder = S.wpPrefix + (wpIdx + 1);
     inp.oninput = () => {
-      state.waypoints[wpIdx].name = inp.value;
-      for (const o of wpInputs[wpIdx]) if (o !== inp) o.value = inp.value;
+      const t = (inp.value || '').trim();
+      const next = isSequenceWaypointName(t) ? '' : inp.value;
+      state.waypoints[wpIdx].name = next;
+      for (const o of wpInputs[wpIdx]) if (o !== inp) o.value = next;
       draw();
     };
     (wpInputs[wpIdx] || (wpInputs[wpIdx] = [])).push(inp);
@@ -769,7 +787,9 @@ function showFlightPlan() {
   const hdgCells = [];                  // leg index -> heading cell
   const timeCells = [];                 // leg index -> time cell
   const fuelCells = [];                 // leg index -> fuel (gal) cell
-  let totDistCell, totTimeCell, totFuelCell;
+  const cumTimeCells = [];              // leg index -> cumulative time (H:M:S)
+  const cumFuelCells = [];            // leg index -> cumulative fuel (gal)
+  let totDistCell, totTimeCell, totFuelCell, totCumTimeCell, totCumFuelCell;
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     const leg = state.legs[i];
@@ -816,6 +836,35 @@ function showFlightPlan() {
     const fuelCell = planCell('');
     fuelCells[i] = fuelCell;
     tr.appendChild(fuelCell);
+    const cumTimeCell = planCell('');
+    cumTimeCells[i] = cumTimeCell;
+    tr.appendChild(cumTimeCell);
+    const cumFuelCell = planCell('');
+    cumFuelCells[i] = cumFuelCell;
+    tr.appendChild(cumFuelCell);
+    // Delete-leg button — removes the "To" waypoint and this leg, then
+    // reconnects the route. The refreshFlightPlan callback detects the
+    // leg-count change and rebuilds the modal.
+    (function (idx) {
+      const delTd = document.createElement('td');
+      delTd.className = 'fp-del';
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.textContent = S.fpDel || '✕';
+      delBtn.title = S.fpDelTitle || 'Delete leg';
+      delBtn.onclick = function () {
+        if (state.waypoints.length < 2) return;
+        state.waypoints.splice(idx + 1, 1);
+        state.legs.splice(idx, 1);
+        syncLegs();
+        state.selected = null;
+        showInspector();
+        draw();
+        if (refreshFlightPlan) refreshFlightPlan();
+      };
+      delTd.appendChild(delBtn);
+      tr.appendChild(delTd);
+    })(i);
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
@@ -834,6 +883,11 @@ function showFlightPlan() {
   trF.appendChild(totTimeCell);
   totFuelCell = planCell('');
   trF.appendChild(totFuelCell);
+  totCumTimeCell = planCell('');
+  trF.appendChild(totCumTimeCell);
+  totCumFuelCell = planCell('');
+  trF.appendChild(totCumFuelCell);
+  trF.appendChild(planCell(''));        // Delete column (empty)
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
 
@@ -862,6 +916,9 @@ function showFlightPlan() {
         fuelCells[i].textContent = '--';
         fuelCells[i].title = '';
       }
+      cumTimeCells[i].textContent = th > 0 ? toHMS(th) : '--';
+      cumFuelCells[i].textContent = ac ? tf.toFixed(1) : '--';
+      cumFuelCells[i].title = '';
       if (speedInputs[i] && document.activeElement !== speedInputs[i])
         speedInputs[i].value = state.legs[i].flightSpeed;
       if (altInputs[i] && document.activeElement !== altInputs[i])
@@ -870,14 +927,19 @@ function showFlightPlan() {
     for (const wpIdx in wpInputs) {
       const wp = state.waypoints[wpIdx];
       if (!wp) continue;
+      const beforeRaw = wp.name;
+      normalizeWaypointSequenceName(wp);
+      const clearedSeq = beforeRaw !== wp.name;
       const localized = navName((wp.name || '').trim());
       for (const inp of wpInputs[wpIdx]) {
-        if (document.activeElement !== inp) inp.value = localized;
+        if (clearedSeq || document.activeElement !== inp) inp.value = localized;
       }
     }
     totDistCell.textContent = td.toFixed(1);
     totTimeCell.textContent = th > 0 ? toHMS(th) : '--';
     totFuelCell.textContent = ac ? tf.toFixed(1) : '--';
+    totCumTimeCell.textContent = totTimeCell.textContent;
+    totCumFuelCell.textContent = totFuelCell.textContent;
   }
   refresh();
   scrollArea.appendChild(table);
@@ -909,7 +971,9 @@ function showFlightPlan() {
     const rHdgCells = [];
     const rTimeCells = [];
     const rFuelCells = [];
-    let rTotDistCell, rTotTimeCell, rTotFuelCell;
+    const rCumTimeCells = [];
+    const rCumFuelCells = [];
+    let rTotDistCell, rTotTimeCell, rTotFuelCell, rTotCumTimeCell, rTotCumFuelCell;
 
     for (let i = 0; i < state.legs.length; i++) {
       const ri = state.legs.length - 1 - i;   // reverse leg order — flyable from destination
@@ -958,6 +1022,13 @@ function showFlightPlan() {
       const fuelCell = planCell('');
       rFuelCells[i] = fuelCell;
       tr.appendChild(fuelCell);
+      const cumTimeCell = planCell('');
+      rCumTimeCells[i] = cumTimeCell;
+      tr.appendChild(cumTimeCell);
+      const cumFuelCell = planCell('');
+      rCumFuelCells[i] = cumFuelCell;
+      tr.appendChild(cumFuelCell);
+      tr.appendChild(planCell(''));        // Delete column (empty — forward table only)
       rtbody.appendChild(tr);
     }
     rtable.appendChild(rtbody);
@@ -976,6 +1047,11 @@ function showFlightPlan() {
     rtrF.appendChild(rTotTimeCell);
     rTotFuelCell = planCell('');
     rtrF.appendChild(rTotFuelCell);
+    rTotCumTimeCell = planCell('');
+    rtrF.appendChild(rTotCumTimeCell);
+    rTotCumFuelCell = planCell('');
+    rtrF.appendChild(rTotCumFuelCell);
+    rtrF.appendChild(planCell(''));        // Delete column (empty)
     rtfoot.appendChild(rtrF);
     rtable.appendChild(rtfoot);
 
@@ -1006,6 +1082,9 @@ function showFlightPlan() {
           rFuelCells[i].textContent = '--';
           rFuelCells[i].title = '';
         }
+        rCumTimeCells[i].textContent = th > 0 ? toHMS(th) : '--';
+        rCumFuelCells[i].textContent = aircraft ? tf.toFixed(1) : '--';
+        rCumFuelCells[i].title = '';
         if (rSpeedInputs[i] && document.activeElement !== rSpeedInputs[i])
           rSpeedInputs[i].value = state.legs[ri].outboundSpeed;
         if (rAltInputs[i] && document.activeElement !== rAltInputs[i])
@@ -1014,6 +1093,8 @@ function showFlightPlan() {
       rTotDistCell.textContent = td.toFixed(1);
       rTotTimeCell.textContent = th > 0 ? toHMS(th) : '--';
       rTotFuelCell.textContent = aircraft ? tf.toFixed(1) : '--';
+      rTotCumTimeCell.textContent = rTotTimeCell.textContent;
+      rTotCumFuelCell.textContent = rTotFuelCell.textContent;
     };
     retRefresh();
     scrollArea.appendChild(rtable);
@@ -1411,7 +1492,7 @@ function showExportModal() {
   const body = document.createElement('div');
   body.style.cssText = 'display:flex;flex-direction:column;gap:10px;padding:4px 0';
 
-  // Show Waypoint Names checkbox (default on).
+  // Show waypoint names checkbox (default on).
   const wpNameLabel = document.createElement('label');
   wpNameLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
   const wpNameCb = document.createElement('input');

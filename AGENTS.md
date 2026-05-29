@@ -8,8 +8,8 @@ Unity.
 
 - `docs/` — the deployed app (HTML / CSS / JS, no build step).
 - `docs/nav-waypoints.json` — 173 Israeli VFR reporting points
- (`{name, he, lat, lng}`); shipped, lazily fetched by the "Show Nav
- Waypoints" toggle. Sourced from the published IAA CVFR chart waypoint
+ (`{name, he, lat, lng}`); shipped, lazily fetched by the "Show/pin
+ navigation waypoints" toggle. Sourced from the published IAA CVFR chart waypoint
  reference table (page 113, 2025 edition) — see SKILL.md for refresh
  procedure.
 - `.github/workflows/deploy.yml` — Pages build + deploy.
@@ -46,6 +46,12 @@ both branches and assembles a single Pages site:
   same Deploy step rewrites `NavAid.version` in `docs/core.js` from
   `'1.0'` to `'1.0-<short-sha>'`, so the toolbar identifies the exact
   deployed commit without manually increasing the source version number.
+- **Before `git commit`, verify the current branch** (`git branch
+  --show-current`, and `git status` if needed). If it is not the branch
+  the user intended for this work, or you are unsure, **ask the user**
+  which branch to use before committing (other agents may be using a
+  different branch). Do not commit on `main`, `dev`, or unrelated work
+  by mistake.
 - **Always run `node --check` on every changed `.js` file** before
   committing (the app code lives in `docs/core.js`, `docs/draw.js`,
   `docs/interact.js`, `docs/io.js`, `docs/ui.js`, `docs/sw.js`, and
