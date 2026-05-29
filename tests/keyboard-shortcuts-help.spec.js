@@ -23,7 +23,7 @@ async function boot(page, lang = 'en') {
 }
 
 test.describe('Keyboard-shortcuts cheat-sheet (#420)', () => {
-  test('? (Shift-/) opens the modal with at least 4 listed shortcuts', async ({ page }) => {
+  test('? (Shift-/) opens the modal with at least 7 listed shortcuts', async ({ page }) => {
     await boot(page);
     // Make sure nothing is focused so the '?' shortcut path runs.
     await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
@@ -31,7 +31,7 @@ test.describe('Keyboard-shortcuts cheat-sheet (#420)', () => {
     const modal = page.locator('.modal-back.shortcuts-help');
     await expect(modal).toBeVisible();
     const rowCount = await modal.locator('.shortcuts-help-keys').count();
-    expect(rowCount).toBeGreaterThanOrEqual(4);
+    expect(rowCount).toBeGreaterThanOrEqual(7);
   });
 
   test('Modal has role=dialog, aria-modal, and aria-labelledby pointing at title',
@@ -203,4 +203,55 @@ test.describe('Keyboard-shortcuts cheat-sheet (#420)', () => {
         expect(d.trim()).not.toBe('');
       }
     });
+
+  test('+ / − zoom the map when magnifier is off', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      map.setView([32.55, 35.20], 10, { animate: false });
+    });
+    await page.waitForTimeout(100);
+    await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
+    const z0 = await page.evaluate(() => map.getZoom());
+    await page.keyboard.press('Equal');
+    const z1 = await page.evaluate(() => map.getZoom());
+    expect(z1).toBeGreaterThan(z0);
+    await page.keyboard.press('Minus');
+    const z2 = await page.evaluate(() => map.getZoom());
+    expect(z2).toBe(z0);
+  });
+
+  test('+ / − adjust loupe zoom when magnifier is on (map zoom unchanged)', async ({ page }) => {
+    await boot(page);
+    await page.locator('#tool-magnifier').click();
+    await expect(page.locator('#magnifier')).toBeVisible();
+    const mapZ0 = await page.evaluate(() => map.getZoom());
+    const magZ0 = await page.evaluate(() => window.magnifierZoom);
+    await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
+    await page.keyboard.press('Equal');
+    expect(await page.evaluate(() => map.getZoom())).toBe(mapZ0);
+    expect(await page.evaluate(() => window.magnifierZoom)).toBeGreaterThan(magZ0);
+    await page.keyboard.press('Minus');
+    expect(await page.evaluate(() => window.magnifierZoom)).toBe(magZ0);
+  });
+
+  test('M toggles magnifier', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
+    await expect(page.locator('#magnifier')).not.toBeVisible();
+    await page.keyboard.press('m');
+    await expect(page.locator('#magnifier')).toBeVisible();
+    await page.keyboard.press('M');
+    await expect(page.locator('#magnifier')).not.toBeVisible();
+  });
+
+  test('+ does not zoom the map while shortcuts modal is open', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      map.setView([32.55, 35.20], 10, { animate: false });
+      showShortcutsHelp();
+    });
+    const z0 = await page.evaluate(() => map.getZoom());
+    await page.keyboard.press('Equal');
+    expect(await page.evaluate(() => map.getZoom())).toBe(z0);
+  });
 });

@@ -243,7 +243,10 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
   `?` is suppressed inside inputs / textareas / contenteditable so users
   can still type a literal question mark in waypoint names or notes.
   Current global shortcuts surfaced:
-  - **Navigation:** `F` — fit route to view
+  - **Navigation:** `F` — fit route to view; `+`/`=` / numpad `+` — zoom
+    map in (loupe zoom in when magnifier is on); `−`/`-` / numpad `−` —
+    zoom map out (loupe zoom out when magnifier is on); `M` — toggle
+    magnifying glass (skipped while any modal backdrop is open).
   - **Search:** `Ctrl/Cmd-F` — open search
   - **Editing:** `Esc` — close modal / deselect / close magnifier;
     `Delete`/`Backspace` — delete selected waypoint or note

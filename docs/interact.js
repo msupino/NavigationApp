@@ -554,6 +554,31 @@ window.addEventListener('keydown', e => {
     fitView();
     return;
   }
+  // Map zoom (+ / − / numpad) and magnifier (M) — skip under any modal
+  // backdrop so we don't change the map behind dialogs.
+  if (!document.querySelector('.modal-back')) {
+    const zoomInKeys = !e.ctrlKey && !e.metaKey && !e.altKey && (
+      e.code === 'NumpadAdd' || e.code === 'Equal' || e.key === '+');
+    const zoomOutKeys = !e.ctrlKey && !e.metaKey && !e.altKey && (
+      e.code === 'NumpadSubtract' || e.code === 'Minus' || e.key === '-');
+    if (zoomInKeys || zoomOutKeys) {
+      e.preventDefault();
+      const step = zoomInKeys ? 0.25 : -0.25;
+      if (magnifierOn && typeof bumpMagnifierZoomKeyboard === 'function') {
+        bumpMagnifierZoomKeyboard(step);
+      } else if (zoomInKeys) {
+        map.zoomIn();
+      } else {
+        map.zoomOut();
+      }
+      return;
+    }
+    if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      toggleMagnifier();
+      return;
+    }
+  }
   if (e.key === 'Delete' || e.key === 'Backspace') {
     if (!state.selected) return;
     if (state.selected.type === 'wp') {

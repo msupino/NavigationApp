@@ -24,7 +24,12 @@ function addModalCloseX(box, onClose) {
 // docs stay in sync.
 const SHORTCUTS_HELP_ROWS = [
   { group: 'shortcutsGroupNavigation',
-    rows: [{ keys: ['F'], descKey: 'shortcutFitRoute' }] },
+    rows: [
+      { keys: ['F'], descKey: 'shortcutFitRoute' },
+      { keys: ['+'], altKeys: ['='], descKey: 'shortcutZoomIn' },
+      { keys: ['−'], altKeys: ['-'], descKey: 'shortcutZoomOut' },
+      { keys: ['M'], descKey: 'shortcutMagnifier' },
+    ] },
   { group: 'shortcutsGroupSearch',
     rows: [{ keys: ['Ctrl', 'F'], altKeys: ['⌘', 'F'], descKey: 'shortcutSearch' }] },
   { group: 'shortcutsGroupEditing',
@@ -2824,6 +2829,22 @@ function onMagClick(e) {
   // event passes through to map for selection
 }
 
+// Magnifier zoom: shared step for scroll wheel + +/− keys (interact.js).
+function bumpMagnifierZoomKeyboard(step) {
+  const zoomSlider = document.getElementById('mag-zoom');
+  const zoomVal = document.getElementById('mag-zoom-val');
+  if (!zoomSlider || !zoomVal) return;
+  var v = parseFloat(zoomSlider.value) + step;
+  v = Math.max(1, Math.min(5, Math.round(v * 4) / 4));
+  if (v === parseFloat(zoomSlider.value)) return;
+  zoomSlider.value = '' + v;
+  window.magnifierZoom = v;
+  zoomVal.textContent = v.toFixed(2).replace(/\.?0+$/, '') + '×';
+  _magDirty = true;
+  rebuildMagnifier();
+  applyMagnifierTransform();
+}
+
 // Magnifier zoom slider + scroll-wheel control
 (function () {
   const zoomSlider = document.getElementById('mag-zoom');
@@ -2846,15 +2867,7 @@ function onMagClick(e) {
       e.stopPropagation();
       e.preventDefault();
       const step = e.deltaY > 0 ? -0.25 : 0.25;
-      var v = parseFloat(zoomSlider.value) + step;
-      v = Math.max(1, Math.min(5, Math.round(v * 4) / 4));
-      if (v === parseFloat(zoomSlider.value)) return;
-      zoomSlider.value = '' + v;
-      window.magnifierZoom = v;
-      zoomVal.textContent = v.toFixed(2).replace(/\.?0+$/, '') + '×';
-      _magDirty = true;
-      rebuildMagnifier();
-      applyMagnifierTransform();
+      bumpMagnifierZoomKeyboard(step);
     }, { capture: true, passive: false });
   }
   // Settings close button
