@@ -79,8 +79,14 @@ test.describe('Orient default + persistence (#195)', () => {
 
 test.describe('PNG export filename respects pageSize + orient', () => {
   // Tile fetch + PNG download exceeds the default 15s per-test cap on e2e-deployed.
+  // `describe.configure({ timeout })` is unreliable with `test` from `_setup.js`
+  // (`test.extend`); set per-test timeout explicitly.
+  const pngExportMs = process.env.EXPECTED_SHA ? 120_000 : 60_000;
+  test.beforeEach(() => {
+    test.setTimeout(pngExportMs);
+  });
   test.describe.configure({
-    timeout: process.env.EXPECTED_SHA ? 120_000 : 60_000,
+    timeout: pngExportMs,
   });
 
   test('Export with A4 set: download name matches navigation-A4-*.png', async ({ page }) => {
