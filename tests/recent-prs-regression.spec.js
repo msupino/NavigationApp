@@ -66,8 +66,8 @@ test.describe('#250 — export modal checkbox label terminology', () => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [
-        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
-        { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+        { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+        { lat: 32.80833, lng: 35.04278, name: 'LLHA' },
       ];
       syncLegs(); draw();
     });
@@ -104,8 +104,8 @@ test.describe('#252 — Print Waypoint Names + Map Opacity in export modal', () 
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [
-        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
-        { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+        { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+        { lat: 32.80833, lng: 35.04278, name: 'LLHA' },
       ];
       syncLegs(); draw();
     });
@@ -125,8 +125,8 @@ test.describe('#252 — Print Waypoint Names + Map Opacity in export modal', () 
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [
-        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
-        { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+        { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
+        { lat: 32.80833, lng: 35.04278, name: 'LLHA' },
       ];
       syncLegs(); draw();
     });

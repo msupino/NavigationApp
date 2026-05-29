@@ -30,7 +30,7 @@ test.describe('Export PNG options modal', () => {
     await boot(page);
     // Need a route so exportPNG doesn't NOP; the modal should show regardless.
     await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+      state.waypoints = [{ lat: 32.17944, lng: 34.83444, name: 'LLHZ' }, { lat: 32.80833, lng: 35.04278, name: 'LLHA' }];
       syncLegs(); draw();
     });
     await page.locator('#print').click();
@@ -59,7 +59,7 @@ test.describe('Export PNG options modal', () => {
     await boot(page);
     await page.locator('#layer-select').selectOption('OpenStreetMap');
     await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+      state.waypoints = [{ lat: 32.17944, lng: 34.83444, name: 'LLHZ' }, { lat: 32.80833, lng: 35.04278, name: 'LLHA' }];
       syncLegs(); draw();
     });
     // Open modal, leave defaults, click Export.
@@ -119,7 +119,7 @@ test.describe('Export PNG options modal', () => {
     await boot(page);
     await page.locator('#layer-select').selectOption('OpenStreetMap');
     await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+      state.waypoints = [{ lat: 32.17944, lng: 34.83444, name: 'LLHZ' }, { lat: 32.80833, lng: 35.04278, name: 'LLHA' }];
       syncLegs(); draw();
     });
     // Verify we're on OSM.
@@ -150,7 +150,7 @@ test.describe('Export PNG options modal', () => {
   test('Warns when no page size (A3/A4) is selected', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+      state.waypoints = [{ lat: 32.17944, lng: 34.83444, name: 'LLHZ' }, { lat: 32.80833, lng: 35.04278, name: 'LLHA' }];
       syncLegs(); draw();
     });
     // Ensure no page frame is active.
@@ -227,7 +227,7 @@ test.describe('Export PNG options modal', () => {
     test('No page frame → no pHYs chunk', async ({ page }) => {
       await boot(page);
       await page.evaluate(() => {
-        state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+        state.waypoints = [{ lat: 32.17944, lng: 34.83444, name: 'LLHZ' }, { lat: 32.80833, lng: 35.04278, name: 'LLHA' }];
         syncLegs(); draw();
         pageSize = null;
       });
@@ -238,7 +238,7 @@ test.describe('Export PNG options modal', () => {
     test('A4 portrait → pHYs embedded (~11811 ppm ≈ 300 DPI)', async ({ page }) => {
       await boot(page);
       await page.evaluate(() => {
-        state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+        state.waypoints = [{ lat: 32.17944, lng: 34.83444, name: 'LLHZ' }, { lat: 32.80833, lng: 35.04278, name: 'LLHA' }];
         syncLegs(); draw();
         pageSize = 'A4'; pageOrient = 'portrait';
       });
@@ -251,7 +251,7 @@ test.describe('Export PNG options modal', () => {
     test('A3 portrait → pHYs embedded', async ({ page }) => {
       await boot(page);
       await page.evaluate(() => {
-        state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+        state.waypoints = [{ lat: 32.17944, lng: 34.83444, name: 'LLHZ' }, { lat: 32.80833, lng: 35.04278, name: 'LLHA' }];
         syncLegs(); draw();
         pageSize = 'A3'; pageOrient = 'portrait';
       });
@@ -265,7 +265,7 @@ test.describe('Export PNG options modal', () => {
   test('Modal respects checkbox toggles and layer change', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+      state.waypoints = [{ lat: 32.17944, lng: 34.83444, name: 'LLHZ' }, { lat: 32.80833, lng: 35.04278, name: 'LLHA' }];
       syncLegs(); draw();
     });
     await page.locator('#print').click();
