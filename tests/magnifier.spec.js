@@ -6,8 +6,14 @@ const { test, expect } = require('./_setup');
 const deployedPreview = !!process.env.EXPECTED_SHA;
 const magnifierTileReadyMs = deployedPreview ? 35_000 : 12_000;
 const magnifierCalibTestMs = deployedPreview ? 120_000 : 60_000;
+// Tile-pane readiness for z=8 (pan / margin / Perfecting tests).
+const magnifierPaneTileMs = deployedPreview ? 45_000 : 18_000;
 
 test.describe('Magnifying glass', () => {
+  if (deployedPreview) {
+    test.describe.configure({ timeout: 120_000 });
+  }
+
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       try {
@@ -389,7 +395,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForFunction(
       () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
               .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
-      { timeout: 15000 });
+      { timeout: magnifierPaneTileMs });
     await page.waitForTimeout(800);
 
     const mapBox = await page.locator('#map').boundingBox();
@@ -421,7 +427,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForFunction(
       () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
               .some(i => /\/13\/\d+\/\d+\.png/.test(i.src)),
-      { timeout: 15000 });
+      { timeout: magnifierPaneTileMs });
     await page.waitForTimeout(500);
 
     const mapBox = await page.locator('#map').boundingBox();
@@ -452,7 +458,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForFunction(
       () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
               .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
-      { timeout: 15000 });
+      { timeout: magnifierPaneTileMs });
 
     const mapBox = await page.locator('#map').boundingBox();
     if (!mapBox) { test.skip(true, 'map not found'); return; }
@@ -474,7 +480,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForFunction(
       () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
               .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
-      { timeout: 15000 });
+      { timeout: magnifierPaneTileMs });
     await page.waitForTimeout(800);
 
     const mapBox = await page.locator('#map').boundingBox();
@@ -513,7 +519,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForFunction(
       () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
               .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
-      { timeout: 15000 });
+      { timeout: magnifierPaneTileMs });
     await page.waitForTimeout(800);
 
     const mapBox = await page.locator('#map').boundingBox();
@@ -550,7 +556,7 @@ test.describe('Magnifying glass', () => {
     await page.waitForFunction(
       () => Array.from(document.querySelectorAll('.leaflet-tile-pane img'))
               .some(i => /\/8\/\d+\/\d+\.png/.test(i.src)),
-      { timeout: 15000 });
+      { timeout: magnifierPaneTileMs });
     await page.waitForTimeout(800);
 
     const mapBox = await page.locator('#map').boundingBox();
