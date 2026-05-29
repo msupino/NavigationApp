@@ -23,7 +23,10 @@ BASE_URL="http://127.0.0.1:8000" npx playwright test
 
 ## e2e-deployed (remote) — excludes SW/PWA tests
 
-Trigger: after the Deploy workflow finishes building a PR preview.
+Trigger: same Deploy workflow as Pages publish — the **`e2e-deployed` job
+`needs: build`** so it runs **in parallel with** `deploy` (checkout, `npm ci`,
+and Playwright install overlap `deploy-pages`); the script step still waits
+until `navaid.supino.org` returns HTTP 200 and `core.js` carries the head SHA.
 
 ```yaml
 # .github/workflows/deploy.yml

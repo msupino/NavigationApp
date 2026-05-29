@@ -268,7 +268,11 @@ jobs:
 
   e2e-deployed:
     if: github.event_name == 'pull_request' && github.event.action != 'closed'
-    needs: deploy
+    # Only the published site must be ready before tests — not the tail of
+    # `deploy` (deployment records + PR comment). After `build`, `deploy`
+    # publishes the artifact; this job runs in parallel and spends checkout +
+    # npm ci + Playwright install while Pages updates, then waits on URL/SHA.
+    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
