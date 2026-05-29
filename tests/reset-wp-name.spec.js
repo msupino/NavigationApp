@@ -205,7 +205,9 @@ test.describe('#418 — Reset waypoint name button', () => {
     expect(code).toBe('LLBG');
   });
 
-  test('isSequenceWaypointName recognises WP 1, WP1, and Hebrew נק׳ 2', async ({ page }) => {
+  // Split EN / HE: each `boot()` waits on JSON fetches; two boots in one test
+  // often exceeded the default 30s test timeout on CI / e2e-deployed.
+  test('isSequenceWaypointName recognises WP 1 and WP1 (English)', async ({ page }) => {
     await boot(page);
     const en = await page.evaluate(() => ({
       a: isSequenceWaypointName('WP 1'),
@@ -215,6 +217,9 @@ test.describe('#418 — Reset waypoint name button', () => {
     expect(en.a).toBe(true);
     expect(en.b).toBe(true);
     expect(en.c).toBe(false);
+  });
+
+  test('isSequenceWaypointName recognises Hebrew נק׳ 2 and נק׳2', async ({ page }) => {
     await boot(page, 'he');
     const he = await page.evaluate(() => ({
       d: isSequenceWaypointName('נק׳ 2'),
