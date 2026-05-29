@@ -1,7 +1,7 @@
 {
-  "name": "NavAid — CVFR flight planner",
+  "name": "NavAid — Israel CVFR & VFR flight route planner",
   "short_name": "NavAid",
-  "description": "Plan CVFR flight routes on the Israel aeronautical chart.",
+  "description": "Plan CVFR and VFR routes on the Israeli aeronautical chart — waypoints, legs, distances, and flight plan tools for pilots.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
