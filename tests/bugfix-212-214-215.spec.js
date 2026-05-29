@@ -5,13 +5,11 @@
 //   #214 — draw() skips persist() while NavAid.exporting is true
 //   #215 — exportPNG .catch() restores button + NavAid.exporting on failure
 const { test, expect } = require('./_setup');
+const { pairLLHZ_LLHA } = require('./_airfieldArp');
 
 // Shared two-waypoint route (one leg) used across all three suites.
 const TWO_WP_ROUTE = {
-  waypoints: [
-    { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
-    { lat: 32.80833, lng: 35.04278, name: 'LLHA' },
-  ],
+  waypoints: pairLLHZ_LLHA(),
   legs: [{
     inboundAltitude: 1500, outboundAltitude: 2000, flightSpeed: 90,
     inLabel: { a: 0, p: 44 }, outLabel: { a: 0, p: -44 },

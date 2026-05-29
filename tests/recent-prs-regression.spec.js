@@ -12,6 +12,7 @@
 //   #251 — Hebrew tbMapOpacity label is the new wording ('בהירות מפה',
 //          not the old 'מפת רקע')
 const { test, expect } = require('./_setup');
+const { pairLLHZ_LLHA } = require('./_airfieldArp');
 
 async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
@@ -64,13 +65,10 @@ test.describe('#238 — toolbar section order', () => {
 test.describe('#250 — export modal checkbox label terminology', () => {
   test('Print PNG modal labels use navigation waypoints / airfields wording', async ({ page }) => {
     await boot(page);
-    await page.evaluate(() => {
-      state.waypoints = [
-        { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
-        { lat: 32.80833, lng: 35.04278, name: 'LLHA' },
-      ];
+    await page.evaluate(wps => {
+      state.waypoints = wps;
       syncLegs(); draw();
-    });
+    }, pairLLHZ_LLHA());
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
 
@@ -102,13 +100,10 @@ test.describe('#251 — Hebrew tbMapOpacity label', () => {
 test.describe('#252 — Print Waypoint Names + Map Opacity in export modal', () => {
   test('export modal has 3 checkboxes, "Waypoint Names" defaults on', async ({ page }) => {
     await boot(page);
-    await page.evaluate(() => {
-      state.waypoints = [
-        { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
-        { lat: 32.80833, lng: 35.04278, name: 'LLHA' },
-      ];
+    await page.evaluate(wps => {
+      state.waypoints = wps;
       syncLegs(); draw();
-    });
+    }, pairLLHZ_LLHA());
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
 
@@ -123,13 +118,10 @@ test.describe('#252 — Print Waypoint Names + Map Opacity in export modal', () 
 
   test('export modal includes a map-opacity slider', async ({ page }) => {
     await boot(page);
-    await page.evaluate(() => {
-      state.waypoints = [
-        { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
-        { lat: 32.80833, lng: 35.04278, name: 'LLHA' },
-      ];
+    await page.evaluate(wps => {
+      state.waypoints = wps;
       syncLegs(); draw();
-    });
+    }, pairLLHZ_LLHA());
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
 
