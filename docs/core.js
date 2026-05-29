@@ -42,6 +42,9 @@ window.S = Object.assign({
   navWpSearchField: 'name',            // which field to show/search in results
   airfieldsUrl: 'airfields.json?v=3',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
+  // Reporting-type overlay (issue #404) — IAA CVFR chart's סוג דיווח column.
+  // Distinct from `commChange` (frequency-change marker, issue #399).
+  reportingUrl: 'reporting-types.json?v=1',
 
   // --- Waypoint terminology -------------------------------------------
   // Rule: use the full word "Waypoint" (Title Case) in all user-facing
@@ -155,7 +158,7 @@ window.S = Object.assign({
   shareCopied: 'Route link copied to clipboard',
   errShareTooLong: 'Route is too long for a share link (max 64 waypoints). Export as JSON and send the file instead.',
   tbFit: '⌖ Fit to screen',
-  tbFitTitle: 'Fit route to view (F)',
+  tbFitTitle: 'Fit route to view',
   tbPlan: '📋 Flight Plan',
   tbPlanTitle: 'Show flight plan table',
   tbCharts: '🗺️ Airport Charts',
@@ -172,6 +175,12 @@ window.S = Object.assign({
   tbShowDriftTitle: 'Show 10-degree drift reference lines at each leg end',
   tbShowAirfields: 'Show/Pin Airfields',
   tbShowAirfieldsTitle: 'Overlay published Israeli airfields (BYOP source)',
+  tbShowReporting: 'Show reporting type',
+  tbShowReportingTitle: 'Mark mandatory CVFR reporting points (chart סוג דיווח: חובה) with an "M" badge',
+  reportingMandatory: '📍 Mandatory report',
+  reportingOnRequest: '📍 On request',
+  reportingArp: '📍 Aerodrome reference',
+  errInvalidReporting: function(msg) { return 'Invalid reporting-types data: ' + msg; },
   plates: 'Charts',
   runways: 'Runways',
   plateCategoryApproach: 'Approach',
@@ -267,7 +276,15 @@ var navWP = null;           // null = not loaded yet (or last fetch failed —
 var showAirfields = true;   // Israeli airfields overlay (default on)
 var airfields = null;       // same null/[]/populated convention as navWP —
                             // see loadAirfields() in draw.js. Entries:
-                            // { name, he, en, lat, lng, elev_ft, plates:[], runways:[] }.
+                            // { name, he, lat, lng, en?, elev_ft?, plates:[], runways:[]|null }.
+                            // `en`, `elev_ft`, `plates`, and `runways` are
+                            // optional per the chart-rebuild (#412): ARPs
+                            // surfaced from the IAA chart with no published
+                            // BYOP enrichment ship as bare {name,he,lat,lng}.
+var showReporting = true;   // Mandatory-reporting marker overlay (default on, issue #404)
+var reporting = null;       // null/[]/populated, like navWP. Entries:
+                            // { name: '5LETTER', reportRequired: 'mandatory'|'on-request'|'arp' }.
+                            // Loaded from docs/reporting-types.json by loadReporting() in draw.js.
 var showDrift = true;       // 10-degree drift reference lines
 var showWpNames = true;     // draw waypoint names (off = empty circle)
 var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg

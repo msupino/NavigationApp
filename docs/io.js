@@ -170,11 +170,46 @@ function validateNavWaypoints(d) {
   }
   return errs.length ? errs.join('; ') : null;
 }
-// Strict schema for docs/airfields.json — { airfields:[{ name, he, en, lat,
-// lng, elev_ft, plates:[string] }] }. Mirrors validateNavWaypoints; the
-// loader in draw.js bails out with an alert that names the offending field
-// path so the JSON author can find the typo. Extras at any level are
-// silently allowed for forward-compat (issue #101).
+// Strict schema for docs/reporting-types.json — { points:[{ name, reportRequired }] }
+// where reportRequired ∈ {'mandatory','on-request','arp'}. Issue #404. Mirrors
+// validateNavWaypoints; loader in draw.js bails out with an alert that names
+// the offending field path. Extras at any level are silently allowed for
+// forward-compat (matches the issue #101 convention).
+const _REPORTING_TYPES = ['mandatory', 'on-request', 'arp'];
+function validateReporting(d) {
+  const errs = [];
+  if (!d || typeof d !== 'object' || Array.isArray(d)) {
+    return 'root: expected object, got ' + _vKind(d);
+  }
+  if (!_v(d, 'points', 'array', 'root', errs)) return errs.join('; ');
+  for (let i = 0; i < d.points.length; i++) {
+    const p = 'points[' + i + ']';
+    const r = d.points[i];
+    if (_vKind(r) !== 'object') {
+      errs.push(p + ': expected object, got ' + _vKind(r));
+      continue;
+    }
+    _v(r, 'name',           'string', p, errs);
+    _v(r, 'reportRequired', 'string', p, errs);
+    if (typeof r.reportRequired === 'string' &&
+        !_REPORTING_TYPES.includes(r.reportRequired)) {
+      errs.push(p + ".reportRequired: expected one of [" +
+                _REPORTING_TYPES.join(',') + "], got " + JSON.stringify(r.reportRequired));
+    }
+  }
+  return errs.length ? errs.join('; ') : null;
+}
+// Strict schema for docs/airfields.json — { airfields:[{ name, he, lat,
+// lng, en?, elev_ft?, plates?:[string], runways?:[string] }] }. Mirrors
+// validateNavWaypoints; the loader in draw.js bails out with an alert that
+// names the offending field path so the JSON author can find the typo.
+// Extras at any level are silently allowed for forward-compat (issue #101).
+//
+// Issue #412: `en`, `elev_ft`, `plates`, and `runways` are now OPTIONAL
+// per-entry — the chart's published ARP list (#411) carries airfields whose
+// BYOP plate / elevation / runway enrichment is not yet in the repo, and
+// dropping them just because we don't have a plate folder yet would lose
+// real waypoints. When present they're still strictly type-checked.
 function validateAirfields(d) {
   const errs = [];
   if (!d || typeof d !== 'object' || Array.isArray(d)) {
@@ -188,17 +223,33 @@ function validateAirfields(d) {
       errs.push(p + ': expected object, got ' + _vKind(a));
       continue;
     }
-    _v(a, 'name',    'string', p, errs);
-    _v(a, 'he',      'string', p, errs);
-    _v(a, 'en',      'string', p, errs);
-    _v(a, 'lat',     'number', p, errs);
-    _v(a, 'lng',     'number', p, errs);
-    _v(a, 'elev_ft', 'number', p, errs);
-    if (_v(a, 'plates', 'array', p, errs)) {
-      for (let j = 0; j < a.plates.length; j++) {
-        if (typeof a.plates[j] !== 'string') {
-          errs.push(p + '.plates[' + j + ']: expected string, got ' +
-                    _vKind(a.plates[j]));
+    _v(a, 'name', 'string', p, errs);
+    _v(a, 'he',   'string', p, errs);
+    _v(a, 'lat',  'number', p, errs);
+    _v(a, 'lng',  'number', p, errs);
+    if (Object.prototype.hasOwnProperty.call(a, 'en')) {
+      _v(a, 'en', 'string', p, errs);
+    }
+    if (Object.prototype.hasOwnProperty.call(a, 'elev_ft')) {
+      _v(a, 'elev_ft', 'number', p, errs);
+    }
+    if (Object.prototype.hasOwnProperty.call(a, 'plates')) {
+      if (_v(a, 'plates', 'array', p, errs)) {
+        for (let j = 0; j < a.plates.length; j++) {
+          if (typeof a.plates[j] !== 'string') {
+            errs.push(p + '.plates[' + j + ']: expected string, got ' +
+                      _vKind(a.plates[j]));
+          }
+        }
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(a, 'runways')) {
+      if (_v(a, 'runways', 'array', p, errs)) {
+        for (let j = 0; j < a.runways.length; j++) {
+          if (typeof a.runways[j] !== 'string') {
+            errs.push(p + '.runways[' + j + ']: expected string, got ' +
+                      _vKind(a.runways[j]));
+          }
         }
       }
     }
