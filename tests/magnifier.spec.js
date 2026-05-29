@@ -20,7 +20,7 @@ test.describe('Magnifying glass', () => {
   test('button exists in View section and toggles magnifier', async ({ page }) => {
     const btn = page.locator('#tool-magnifier');
     await expect(btn).toBeVisible();
-    await expect(btn).toHaveText(/Magnifying Glass/);
+    await expect(btn).toHaveText(/Magnifying glass/);
     // starts inactive
     await expect(btn).not.toHaveClass(/active/);
     await expect(page.locator('#magnifier')).not.toBeVisible();

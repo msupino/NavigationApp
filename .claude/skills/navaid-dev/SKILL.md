@@ -58,7 +58,10 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
   page frame) → `interact.js` (hit-testing, inspector, mouse/touch) →
   `io.js` (save/load, page setup, flight plan, PNG export,
   persistence) → `ui.js` (toolbar wiring, drag, boot, PWA). Order
-  matters — later files use globals from earlier ones.
+  matters — later files use globals from earlier ones. Default English
+  UI strings live in `core.js` (`window.S`): **sentence case** (first
+  word + proper nouns / acronyms such as BYOP, CVFR, JSON); spell
+  *waypoint* in full in prose. Hebrew overrides: `he/strings.js`.
 - `manifest.json`, `sw.js`, `icon-192.png`, `icon-512.png` — PWA:
   installable app + offline app-shell service worker.
 - `style.css` — dark UI + `@media print` rules.
@@ -217,7 +220,7 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
   first different leg. Inbound walks forward, outbound walks backward.
 - **Reverse:** flips waypoint order, swaps each leg's
   inbound/outbound altitude, swap+negates `inLabel` / `outLabel`.
-- **Waypoint-name rotation:** the `⟳` button by "Show Waypoint names"
+- **Waypoint-name rotation:** the `⟳` button by "Show waypoint names"
   cycles `wpNameAngle` 0/90/180/270; all names draw at that angle.
 - **Plan table:** `📋 Plan` opens a modal with a per-leg flight plan
   (`#`, From, To, Hdg, Dist, Speed, Alt, Time) plus totals. From/To

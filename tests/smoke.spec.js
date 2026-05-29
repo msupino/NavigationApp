@@ -19,7 +19,7 @@ test.describe('NavAid smoke', () => {
     await page.goto('?lang=en');
     await expect(page).toHaveTitle('NavAid — Israel CVFR Flight Route Planner & Navigation Map');
     await expect(page.locator('#toolbar')).toBeVisible();
-    await expect(page.locator('#tool-add')).toHaveText(/Add Waypoint/);
+    await expect(page.locator('#tool-add')).toHaveText(/Add waypoint/);
   });
 
   test('boots in Hebrew when localStorage prefers he and switches to English', async ({ page }) => {

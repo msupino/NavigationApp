@@ -124,7 +124,7 @@ test.describe('Edit / delete waypoint', () => {
       showInspector(); draw();
     });
     page.once('dialog', d => d.accept());              // safety: no confirm currently
-    await page.locator('.insp-btn').filter({ hasText: 'Delete Waypoint' }).click();
+    await page.locator('.insp-btn').filter({ hasText: /Delete waypoint/ }).click();
     const names = await page.evaluate(() => state.waypoints.map(w => w.name));
     expect(names).not.toContain('HADRA');
     expect(names).toHaveLength(10);
