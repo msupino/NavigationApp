@@ -64,7 +64,7 @@ window.S = Object.assign({
   searchReplaceConfirm: 'Replace the current route with these waypoints?',
   tbSearchOpen: '🔍 Find',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
-  deleteWp: '🗑 Delete Waypoint',                      // inspector button
+  deleteWp: '🗑 Delete waypoint',                      // inspector button
   resetWpName: '↺ Reset waypoint name',             // inspector — reference snap or clear (placeholder)
   resetWpNameTitle: 'Set name to the nearest reference (airfield / nav-WP), or clear when off-grid (dimmed sequence label)',
   tbResetAllWpNames: '↺ Reset all waypoint names',

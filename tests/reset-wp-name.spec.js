@@ -142,7 +142,7 @@ test.describe('#418 — Reset waypoint name button', () => {
     expect(text).toMatch(/↺ אפס שם נקודה/);
   });
 
-  test('button is positioned directly below Delete Waypoint', async ({ page }) => {
+  test('button is positioned directly below Delete waypoint', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'x' }];
@@ -150,20 +150,20 @@ test.describe('#418 — Reset waypoint name button', () => {
       syncLegs(); draw(); showInspector();
     });
     const texts = await page.locator('#insp-body .insp-btn').allTextContents();
-    const di = texts.findIndex(t => /Delete Waypoint/i.test(t));
+    const di = texts.findIndex(t => /Delete waypoint/i.test(t));
     const ri = texts.findIndex(t => /Reset waypoint name/i.test(t));
     expect(di).toBeGreaterThanOrEqual(0);
     expect(ri).toBe(di + 1);
   });
 
-  test('inspector Delete Waypoint label includes trash icon', async ({ page }) => {
+  test('inspector Delete waypoint label includes trash icon', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'x' }];
       state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     });
-    const del = await page.locator('#insp-body .insp-btn').filter({ hasText: /Delete Waypoint/ }).textContent();
+    const del = await page.locator('#insp-body .insp-btn').filter({ hasText: /Delete waypoint/ }).textContent();
     expect(del).toMatch(/🗑/);
   });
 
