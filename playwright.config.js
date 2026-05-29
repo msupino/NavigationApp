@@ -5,6 +5,9 @@ module.exports = defineConfig({
   testDir: './tests',
   timeout: 15 * 1000,
   fullyParallel: true,
+  // e2e-deployed: one live origin — cap workers so the log keeps moving and
+  // the preview is not flooded (avoids long “silent” stretches + timeouts).
+  ...(process.env.EXPECTED_SHA ? { workers: 4 } : {}),
   forbidOnly: !!process.env.CI,
   retries: 0,
   reporter: process.env.CI ? 'github' : 'list',

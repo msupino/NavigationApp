@@ -51,6 +51,8 @@ name matches `sw.spec` or `pwa.spec` is automatically excluded.
 - **Service workers blocked** — when `EXPECTED_SHA` is set, `playwright.config.js`
   sets `serviceWorkers: 'block'` so cache-first SW cannot serve stale JS
   while HTML/`core.js` match the new deploy SHA.
+- **Worker cap** — with `EXPECTED_SHA`, Playwright uses **4 workers** so one
+  preview origin is not overwhelmed (fewer long silent stretches in logs).
 - **Retry logic** — up to 5 attempts with 5 s delay between failures.
 - **GA blocking** — all GA/GTM hosts are aborted at the network level
   (`_setup.js`). On PR previews GA is skipped entirely in `index.html`.

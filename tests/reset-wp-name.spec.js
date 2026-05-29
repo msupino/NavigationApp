@@ -14,8 +14,10 @@ const { test, expect } = require('./_setup');
 // e2e-deployed runs many workers against one live preview; script + JSON
 // fetches can exceed the default test / waitForFunction budget.
 const onDeployedPreview = !!process.env.EXPECTED_SHA;
-const bootAppTimeout = onDeployedPreview ? 90_000 : 45_000;
-const bootDataTimeout = onDeployedPreview ? 120_000 : 60_000;
+// SW is blocked when EXPECTED_SHA is set (playwright.config); budgets can be
+// tighter than the pre-fix serial + 240s hammering on one worker.
+const bootAppTimeout = onDeployedPreview ? 60_000 : 45_000;
+const bootDataTimeout = onDeployedPreview ? 90_000 : 60_000;
 
 async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
@@ -47,9 +49,7 @@ async function boot(page, lang = 'en') {
 
 test.describe('#418 — Reset waypoint name button', () => {
   test.describe.configure(
-    onDeployedPreview
-      ? { mode: 'serial', timeout: 240_000 }
-      : { timeout: 90_000 },
+    onDeployedPreview ? { timeout: 180_000 } : { timeout: 90_000 },
   );
   test('snap to nav waypoint: TYONA coords → wp.name === "TYONA"', async ({ page }) => {
     await boot(page);
