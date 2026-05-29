@@ -6,7 +6,7 @@ const { test, expect } = require('./_setup');
 
 const ROUTE = {
   waypoints: [
-    { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
+    { lat: 32.17944, lng: 34.83444, name: 'LLHZ' },
     { lat: 32.21861, lng: 34.88250, name: 'BAZRA' },
     { lat: 32.25722, lng: 34.89111, name: 'DEROR' },
     { lat: 32.32306, lng: 34.90389, name: 'SHARO' },
@@ -16,7 +16,7 @@ const ROUTE = {
     { lat: 32.75389, lng: 34.93694, name: 'HOTRM' },
     { lat: 32.79611, lng: 34.94333, name: 'DAROM' },
     { lat: 32.84111, lng: 34.98111, name: 'GALIM' },
-    { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+    { lat: 32.80833, lng: 35.04278, name: 'LLHA' },
   ],
 };
 

@@ -26,7 +26,7 @@ test.describe('#231 — runway directions in inspector', () => {
   test('LLHZ waypoint inspector renders the published runway 10/28', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }];
+      state.waypoints = [{ lat: 32.17944, lng: 34.83444, name: 'LLHZ' }];
       state.selected = { type: 'waypoint', index: 0 };
       syncLegs(); draw(); showInspector();
     });
@@ -62,7 +62,7 @@ test.describe('#231 — runway directions in inspector', () => {
       // showing wrong data if the user moved the waypoint to a fake location
       // and kept the airfield label. Renaming is the unambiguous "this is
       // no longer the airfield" signal.
-      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ1' }];
+      state.waypoints = [{ lat: 32.17944, lng: 34.83444, name: 'LLHZ1' }];
       state.selected = { type: 'waypoint', index: 0 };
       syncLegs(); draw(); showInspector();
     });

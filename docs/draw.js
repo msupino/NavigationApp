@@ -133,6 +133,51 @@ function normalizeWaypointSequenceName(wp) {
   if (t && isSequenceWaypointName(t)) wp.name = '';
 }
 
+// --- reporting-type overlay (issue #404) ----------------------------
+// Lazy-loads docs/reporting-types.json on first activation. Format:
+// { points:[{ name:'5LETTER', reportRequired:'mandatory'|'on-request'|'arp' }] }.
+// Validated by validateReporting() (io.js). Independent of nav-waypoints.json
+// and comm-change.json — joined at render time by 5-letter `name`.
+async function loadReporting() {
+  if (reporting !== null) return reporting;
+  try {
+    const res = await fetch(S.reportingUrl);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    const verr = validateReporting(d);
+    if (verr) {
+      console.warn('reporting-types schema error:', verr);
+      alert(S.errInvalidReporting(verr));
+      return [];
+    }
+    reporting = d.points.map(p => ({
+      name: p.name,
+      reportRequired: p.reportRequired,
+    }));
+    return reporting;
+  } catch (e) {
+    // Leave reporting === null so a later toggle / inspector can retry —
+    // mirrors the navWP convention (issue #72).
+    console.warn('Failed to load reporting types:', e);
+    return [];
+  }
+}
+
+// O(1) lookup of a 5-letter code's reporting requirement, after loadReporting()
+// resolved. Returns 'mandatory' | 'on-request' | 'arp' | null. Cached on first
+// call; the cache is cleared whenever `reporting` is reassigned (loader retry).
+let _reportingIndex = null;
+let _reportingIndexFor = null;
+function reportingFor(name) {
+  if (!name || !reporting || !reporting.length) return null;
+  if (_reportingIndexFor !== reporting) {
+    _reportingIndex = Object.create(null);
+    for (const r of reporting) _reportingIndex[r.name] = r.reportRequired;
+    _reportingIndexFor = reporting;
+  }
+  return _reportingIndex[name] || null;
+}
+
 // Resolve a stored waypoint name to the current locale. If the stored value
 // is a nav-WP name (either language), return the locale-appropriate version.
 // User-typed names are returned as-is.
@@ -215,7 +260,7 @@ async function loadAirfields() {
       lat: a.lat,
       lng: a.lng,
       elev_ft: a.elev_ft,
-      plates: a.plates.slice(),
+      plates: Array.isArray(a.plates) ? a.plates.slice() : [],
       runways: Array.isArray(a.runways) ? a.runways.slice() : null,
     }));
     return airfields;
@@ -298,6 +343,13 @@ function drawNavWaypoints() {
   // regardless of whether the WP name was changed after snapping.
   const SNAP_DEG = 0.0002;               // ~22 m — matches nearestNavWaypoint px threshold
   const showLabels = map.getZoom() >= 10;
+  // Issue #404: when the user toggles "Show reporting type", overlay a tiny
+  // bold "M" badge above mandatory reporting points. The dot itself stays
+  // unchanged — on-request points are still just dots, mandatory points get
+  // the extra glyph. Resolved by 5-letter `name` against `reporting` (loaded
+  // from docs/reporting-types.json), so the badge survives independent
+  // updates of nav-waypoints.json.
+  const decorate = showReporting && reporting && reporting.length > 0;
   octx.font = 'bold 10px sans-serif';
   octx.textAlign = 'left';
   octx.textBaseline = 'middle';
@@ -321,6 +373,22 @@ function drawNavWaypoints() {
       octx.strokeText(label, s.x + 6, s.y);
       octx.fillStyle = '#161412';
       octx.fillText(label, s.x + 6, s.y);
+    }
+    if (decorate && reportingFor(wp.name) === 'mandatory') {
+      // Tight bold "M" badge directly above the dot — saturated red so it
+      // reads against both light and dark base layers without clashing with
+      // the comm-change ring (issue #399, separate concern).
+      octx.font = 'bold 9px sans-serif';
+      octx.textAlign = 'center';
+      octx.textBaseline = 'alphabetic';
+      octx.lineWidth = 2.5;
+      octx.strokeStyle = 'rgba(255,255,255,0.9)';
+      octx.strokeText('M', s.x, s.y - 6);
+      octx.fillStyle = '#c9362b';
+      octx.fillText('M', s.x, s.y - 6);
+      octx.font = 'bold 10px sans-serif';
+      octx.textAlign = 'left';
+      octx.textBaseline = 'middle';
     }
   }
   octx.lineWidth = 1;
