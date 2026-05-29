@@ -3,12 +3,12 @@
 // One suite per PR — each asserts the user-visible symptom, not the
 // implementation, so refactors won't break them unnecessarily.
 //
-//   #218 — 'Show'  → 'Show/Pin' relabel for the two map-overlay toggles
+//   #218 — 'Show'  → 'Show/pin' relabel for the two map-overlay toggles
 //   #232 — runway directions are already covered by runway-directions.spec.js
 //   #238 — toolbar section order: Build → View → Display → Charts →
-//          Export/Import → Print
+//          Export/import → Print
 //   #250 — export-PNG modal checkbox labels match the View section
-//          terminology ('Navigation Waypoints' / 'Airfields')
+//          terminology ('navigation waypoints' / 'airfields')
 //   #251 — Hebrew tbMapOpacity label is the new wording ('בהירות מפה',
 //          not the old 'מפת רקע')
 const { test, expect } = require('./_setup');
@@ -30,19 +30,19 @@ async function boot(page, lang = 'en') {
 }
 
 // ---------------------------------------------------------------------------
-// #218 — Show/Pin label relabel.
+// #218 — Show/pin label relabel.
 // ---------------------------------------------------------------------------
-test.describe('#218 — Show/Pin label relabel', () => {
-  test('navWP toggle label reads "Show/Pin Navigation Waypoints"', async ({ page }) => {
+test.describe('#218 — Show/pin label relabel', () => {
+  test('navWP toggle label reads "Show/pin navigation waypoints"', async ({ page }) => {
     await boot(page);
     const text = await page.locator('label[data-i18n-title="tbShowNavWpTitle"]').textContent();
-    expect(text).toMatch(/Show\/Pin Navigation Waypoints/i);
+    expect(text).toMatch(/Show\/pin navigation waypoints/i);
   });
 
-  test('airfields toggle label reads "Show/Pin Airfields"', async ({ page }) => {
+  test('airfields toggle label reads "Show/pin airfields"', async ({ page }) => {
     await boot(page);
     const text = await page.locator('label[data-i18n-title="tbShowAirfieldsTitle"]').textContent();
-    expect(text).toMatch(/Show\/Pin Airfields/i);
+    expect(text).toMatch(/Show\/pin airfields/i);
   });
 });
 
@@ -62,7 +62,7 @@ test.describe('#238 — toolbar section order', () => {
 // #250 — export-PNG checkbox labels match View section terminology.
 // ---------------------------------------------------------------------------
 test.describe('#250 — export modal checkbox label terminology', () => {
-  test('Print PNG modal labels use Navigation Waypoints / Airfields wording', async ({ page }) => {
+  test('Print PNG modal labels use navigation waypoints / airfields wording', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [
@@ -76,8 +76,8 @@ test.describe('#250 — export modal checkbox label terminology', () => {
 
     const labels = await page.locator('.modal label').allTextContents();
     const joined = labels.join(' ');
-    expect(joined).toMatch(/Navigation Waypoints/i);
-    expect(joined).toMatch(/Airfields/i);
+    expect(joined).toMatch(/navigation waypoints/i);
+    expect(joined).toMatch(/airfields/i);
     // No leftover legacy 'airports' wording (renamed to Airfields in #250).
     expect(joined).not.toMatch(/\bairports\b/i);
   });
