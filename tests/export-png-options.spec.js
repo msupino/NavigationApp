@@ -20,6 +20,12 @@ async function boot(page) {
 }
 
 test.describe('Export PNG options modal', () => {
+  // PNG export waits on map tiles + canvas pipeline; e2e-deployed can exceed
+  // the default 15s test timeout while waitForEvent('download', { timeout: 30s }).
+  if (process.env.EXPECTED_SHA) {
+    test.describe.configure({ timeout: 120_000 });
+  }
+
   test('Modal opens with checkboxes off and layer defaulting to Navigation', async ({ page }) => {
     await boot(page);
     // Need a route so exportPNG doesn't NOP; the modal should show regardless.
@@ -82,13 +88,13 @@ test.describe('Export PNG options modal', () => {
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
     const cbs = page.locator('.modal input[type="checkbox"]');
-    // Check "Print Navigation Waypoints" (idx 2) → showNavWP becomes true.
+    // Check "Print navigation waypoints" (idx 2) → showNavWP becomes true.
     await cbs.nth(2).check();
     expect(await page.evaluate(() => showNavWP)).toBe(true);
     // Uncheck → showNavWP back to false.
     await cbs.nth(2).uncheck();
     expect(await page.evaluate(() => showNavWP)).toBe(false);
-    // Check "Print Airfields" (idx 3) → showAirfields becomes true.
+    // Check "Print airfields" (idx 3) → showAirfields becomes true.
     await cbs.nth(3).check();
     expect(await page.evaluate(() => showAirfields)).toBe(true);
   });

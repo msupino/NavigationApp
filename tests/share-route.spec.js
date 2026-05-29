@@ -151,7 +151,7 @@ test.describe('Share route link', () => {
   });
 
   test('Hebrew waypoint names round-trip through the share URL', async ({ page }) => {
-    await page.goto('/?lang=he');
+    await page.goto('?lang=he');
     const url = await page.evaluate(() => {
       state.waypoints = [
         { lat: 32.18, lng: 34.83, name: 'הרצליה' },

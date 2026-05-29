@@ -124,7 +124,7 @@ test.describe('Edit / delete waypoint', () => {
       showInspector(); draw();
     });
     page.once('dialog', d => d.accept());              // safety: no confirm currently
-    await page.locator('.insp-btn').filter({ hasText: 'Delete Waypoint' }).click();
+    await page.locator('.insp-btn').filter({ hasText: /Delete waypoint/ }).click();
     const names = await page.evaluate(() => state.waypoints.map(w => w.name));
     expect(names).not.toContain('HADRA');
     expect(names).toHaveLength(10);
@@ -238,7 +238,7 @@ test.describe('Notes', () => {
       showInspector(); draw();
     });
     page.once('dialog', d => d.accept());
-    await page.locator('.insp-btn').filter({ hasText: 'Delete note' }).click();
+    await page.locator('.insp-btn').filter({ hasText: /Delete note/ }).click();
     const remaining = await page.evaluate(() => state.notes.map(n => n.text));
     expect(remaining).toEqual(['B']);
   });
