@@ -1,6 +1,7 @@
 // @ts-check
 // Tests for the #162 shareable route link.
 const { test, expect } = require('./_setup');
+const { r5ArpPairFromPage } = require('./_arpFromPage');
 
 // Same 11-waypoint LLHZ → LLHA fixture as tests/flight-plan.spec.js (PR #153),
 // coords copied from docs/airfields.json + docs/nav-waypoints.json at 5 dp.
@@ -136,11 +137,15 @@ test.describe('Share route link', () => {
         outboundSpeed: l.outboundSpeed,
       })),
     }));
+    const arp = await r5ArpPairFromPage(page);
     expect(loaded.wps).toHaveLength(ROUTE.waypoints.length);
     for (let i = 0; i < ROUTE.waypoints.length; i++) {
-      expect(loaded.wps[i].lat).toBeCloseTo(ROUTE.waypoints[i].lat, 4);
-      expect(loaded.wps[i].lng).toBeCloseTo(ROUTE.waypoints[i].lng, 4);
-      expect(loaded.wps[i].name).toBe(ROUTE.waypoints[i].name);
+      const w = ROUTE.waypoints[i];
+      const lw = loaded.wps[i];
+      const exp = arp[w.name] || w;
+      expect(lw.lat).toBeCloseTo(exp.lat, 4);
+      expect(lw.lng).toBeCloseTo(exp.lng, 4);
+      expect(lw.name).toBe(w.name);
     }
     expect(loaded.legs).toHaveLength(ROUTE.legs.length);
     for (let i = 0; i < ROUTE.legs.length; i++) {
