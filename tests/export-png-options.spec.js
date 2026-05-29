@@ -16,18 +16,23 @@ async function boot(page) {
     } catch (e) {}
   });
   await page.goto('?lang=en');
-  await page.waitForFunction(() => typeof state !== 'undefined' && typeof exportPNG === 'function');
+  await page.waitForFunction(() =>
+    typeof state !== 'undefined' &&
+    typeof draw === 'function' &&
+    typeof exportPNG === 'function' &&
+    typeof window.octx !== 'undefined');
 }
 
 test.describe('Export PNG options modal', () => {
-  // PNG export waits on map tiles + canvas pipeline; e2e-deployed can exceed
-  // the default 15s test timeout while waitForEvent('download', { timeout: 30s }).
-  if (process.env.EXPECTED_SHA) {
-    test.describe.configure({ timeout: 120_000 });
-  }
+  // PNG export waits on map tiles + canvas; default 15s is too tight for
+  // waitForEvent('download', { timeout: 30_000 }) locally and on CI.
+  test.describe.configure({
+    timeout: process.env.EXPECTED_SHA ? 120_000 : 60_000,
+  });
 
   test('Modal opens with checkboxes off and layer defaulting to Navigation', async ({ page }) => {
     await boot(page);
+    expect(await page.evaluate(() => typeof window.octx !== 'undefined')).toBe(true);
     // Need a route so exportPNG doesn't NOP; the modal should show regardless.
     await page.evaluate(() => {
       state.waypoints = [{ lat: 32.17944, lng: 34.83444, name: 'LLHZ' }, { lat: 32.80833, lng: 35.04278, name: 'LLHA' }];

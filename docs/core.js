@@ -496,8 +496,10 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
 
 // --- route overlay canvas -------------------------------------------
 const overlay = document.getElementById('overlay');
-let octx = overlay.getContext('2d');   // reassigned during PNG export
-let dpr = 1;
+// `var` (not `let`) so the binding is a real `window` property — same pattern
+// as `magVar` above. Some harness paths resolve globals via `window` only.
+var octx = overlay.getContext('2d');   // reassigned during PNG export
+var dpr = 1;
 
 function vw() { return map.getSize().x; }
 function vh() { return map.getSize().y; }
