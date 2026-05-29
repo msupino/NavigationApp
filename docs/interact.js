@@ -172,6 +172,21 @@ function resetWpName(idx) {
   showInspector();
 }
 
+// Issue #418: Build toolbar — same naming rules as `resetWpName` for
+// every waypoint in one shot (confirm in ui.js).
+function resetAllWpNames() {
+  for (let i = 0; i < state.waypoints.length; i++) {
+    const wp = state.waypoints[i];
+    if (!wp) continue;
+    const snapped = findSnappedReference(wp);
+    wp.name = snapped ? snapped.name : ('WP' + (i + 1));
+  }
+  persist();
+  draw();
+  showInspector();
+}
+window.resetAllWpNames = resetAllWpNames;
+
 // Compose the leg-inspector title from the names of its endpoints, e.g.
 // "TLV → NETANYA" (LTR) / "TLV ← NETANYA" (RTL). Falls back to the sequence
 // label (`WP N` / `נק׳ N`) for unnamed waypoints, and to the legacy

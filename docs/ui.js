@@ -422,6 +422,12 @@ document.getElementById('clear').onclick = () => {
   state.selected = null;
   showInspector(); draw();
 };
+document.getElementById('tool-reset-all-wp-names').onclick = () => {
+  if (!state.waypoints.length) return;
+  if (!confirm(S.resetAllWpNamesConfirm ||
+      'Reset all waypoint names to reference codes (or WP{N} when off-grid)?')) return;
+  if (typeof resetAllWpNames === 'function') resetAllWpNames();
+};
 document.getElementById('save').onclick = save;
 document.getElementById('load').onclick = () => document.getElementById('file').click();
 document.getElementById('share').onclick = shareRoute;

@@ -133,6 +133,9 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
     to the user's locale at render time. Handler:
     `resetWpName(idx)` → `findSnappedReference(wp)` →
     `persist(); draw(); showInspector();` in `docs/interact.js`.
+    The Build toolbar also has **↺ Reset all waypoint names**
+    (`#tool-reset-all-wp-names`, confirm before run) calling
+    `resetAllWpNames()` — same rules for every waypoint.
 - **Waypoints:** circle auto-sized to fit name or sequence number
   (`waypointGeom(i)`). Selection bumps the radius +2 and swaps fill
   to gold. The `wpSize` slider scales font + circle.

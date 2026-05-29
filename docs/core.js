@@ -68,6 +68,9 @@ window.S = Object.assign({
   deleteWp: 'Delete Waypoint',                      // inspector button
   resetWpName: '↺ Reset waypoint name',             // inspector WP button — snap name back to reference code or WP{N}
   resetWpNameTitle: 'Reset to the nearest reference code (airfield / nav-WP), or to WP{N} when off-grid',
+  tbResetAllWpNames: '↺ Reset all waypoint names',
+  tbResetAllWpNamesTitle: 'Reset every waypoint name to its nearest reference code or WP{N}',
+  resetAllWpNamesConfirm: 'Reset all waypoint names to reference codes (or WP{N} when off-grid)?',
   resetLegMarkers: '↺ Reset marker position',       // inspector leg button — reset label offsets
   resetAllLegMarkers: '↺ Reset all marker positions', // inspector leg button — reset every leg
   resetAllConfirm: 'Reset all leg marker positions to default? This will clear any manual adjustments.',

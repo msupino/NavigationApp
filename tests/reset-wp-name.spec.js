@@ -27,7 +27,8 @@ async function boot(page, lang = 'en') {
   await page.waitForFunction(() =>
     typeof state !== 'undefined' &&
     typeof showInspector === 'function' &&
-    typeof resetWpName === 'function');
+    typeof resetWpName === 'function' &&
+    typeof resetAllWpNames === 'function');
   // Both overlays load lazily but the snap helpers depend on them being
   // populated. Kick the loads and wait so resetWpName() can resolve.
   await page.evaluate(() => loadNavWaypoints && loadNavWaypoints());
@@ -136,5 +137,44 @@ test.describe('#418 — Reset waypoint name button', () => {
     const ri = texts.findIndex(t => /Reset waypoint name/i.test(t));
     expect(di).toBeGreaterThanOrEqual(0);
     expect(ri).toBe(di + 1);
+  });
+
+  test('toolbar: reset all waypoint names (confirm)', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.00472, lng: 34.72722, name: 'FOO' },
+        { lat: 32.009444, lng: 34.885556, name: 'BAR' },
+        { lat: 33.5, lng: 33.0, name: 'Z' },
+      ];
+      state.selected = { type: 'wp', index: 0 };
+      syncLegs(); draw(); showInspector();
+    });
+    page.once('dialog', d => d.accept());
+    await page.locator('#tool-reset-all-wp-names').click();
+    const names = await page.evaluate(() => state.waypoints.map(w => w.name));
+    expect(names).toEqual(['TYONA', 'LLBG', 'WP3']);
+  });
+
+  test('toolbar: reset all names — cancel leaves names unchanged', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.00472, lng: 34.72722, name: 'KEEP' },
+      ];
+      syncLegs(); draw();
+    });
+    page.once('dialog', d => d.dismiss());
+    await page.locator('#tool-reset-all-wp-names').click();
+    const name = await page.evaluate(() => state.waypoints[0].name);
+    expect(name).toBe('KEEP');
+  });
+
+  test('toolbar: reset all with zero waypoints is a no-op', async ({ page }) => {
+    await boot(page);
+    let dialogCount = 0;
+    page.on('dialog', () => { dialogCount++; });
+    await page.locator('#tool-reset-all-wp-names').click();
+    expect(dialogCount).toBe(0);
   });
 });
