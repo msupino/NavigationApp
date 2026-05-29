@@ -45,6 +45,8 @@ test.describe('SEO URLs', () => {
     const data = JSON.parse(text);
     expect(data.url).toBe(CUSTOM_DOMAIN + '/');
     expect(data.image).toBe(CUSTOM_DOMAIN + '/og-preview.jpg');
+    expect(Array.isArray(data.keywords)).toBe(true);
+    expect(data.keywords.length).toBeGreaterThan(0);
   });
 
   test('robots.txt points to correct sitemap URL', async ({ page }) => {
