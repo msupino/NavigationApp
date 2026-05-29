@@ -67,8 +67,9 @@ test.describe('SEO URLs', () => {
       expect(href).toContain(CUSTOM_DOMAIN);
       expect(href).not.toContain('msupino.github.io');
     }
-    // Must have all 5 expected entries.
-    expect(locs.length).toBe(5);
+    // Single canonical URL with hreflang alternates (no ?lang= or locale-path
+    // duplicates that redirect).
+    expect(locs.length).toBe(1);
   });
 
   test('no msupino.github.io URLs in SEO tags', async ({ page }) => {
