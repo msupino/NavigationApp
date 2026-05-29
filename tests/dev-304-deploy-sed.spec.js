@@ -18,7 +18,9 @@ function deployYml() {
 }
 
 function run(sed, file) {
-  cp.execFileSync('sed', ['-i', '-E', sed, file]);
+  // macOS BSD sed: `-i` must be followed by a backup suffix; use `''` for
+  // in-place with no backup. (`sed -i -E` wrongly treats `-E` as the suffix.)
+  cp.execFileSync('sed', ['-i', '', '-E', sed, file]);
 }
 
 function tmpCopy(src) {
