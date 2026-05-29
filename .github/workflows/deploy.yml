@@ -6,7 +6,14 @@ on:
     branches: [main, dev]
   pull_request:
     branches: [main, dev]
-    types: [opened, synchronize]
+    types: [opened, synchronize, closed]
+  # Bot-merged PRs (gh pr merge --auto via GITHUB_TOKEN) suppress both
+  # `push: dev` and `pull_request: closed`. The workflow_run chain we
+  # previously used here was ALSO silently suppressed (anti-recursion
+  # applies to any chain originating from a GITHUB_TOKEN completion —
+  # verified empirically across #384/#389/#395/#412). Instead, the
+  # `Draft + auto-merge` workflow now explicitly `gh workflow run`s this
+  # workflow via workflow_dispatch after detecting the merge.
   workflow_dispatch:
 
 permissions:
@@ -30,7 +37,7 @@ jobs:
         with:
           fetch-depth: 1
       - name: Check PR is rebased
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
         env:
           GH_TOKEN: ${{ github.token }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -211,7 +218,7 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
       - name: Create PR deployment
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
         run: |
           URL="https://msupino.github.io/NavigationApp/pr/${{ github.event.number }}/"
           DEPLOY_JSON=$(gh api "repos/${{ github.repository }}/deployments" --input - <<EOF
@@ -239,7 +246,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Post preview link comment
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.number }}
@@ -260,7 +267,7 @@ jobs:
           fi
 
   e2e-deployed:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
     needs: deploy
     runs-on: ubuntu-latest
     timeout-minutes: 40

@@ -66,6 +66,9 @@ window.S = Object.assign({
   tbSearchOpen: '🔍 Find',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
   deleteWp: 'Delete Waypoint',                      // inspector button
+  resetLegMarkers: '↺ Reset marker position',       // inspector leg button — reset label offsets
+  resetAllLegMarkers: '↺ Reset all marker positions', // inspector leg button — reset every leg
+  resetAllConfirm: 'Reset all leg marker positions to default? This will clear any manual adjustments.',
   clearConfirm: 'Remove all waypoints and notes?',
   errBadCoords: 'file has invalid waypoint coordinates',
   // --- end Waypoint terminology ---------------------------------------
@@ -152,7 +155,7 @@ window.S = Object.assign({
   shareCopied: 'Route link copied to clipboard',
   errShareTooLong: 'Route is too long for a share link (max 64 waypoints). Export as JSON and send the file instead.',
   tbFit: '⌖ Fit to screen',
-  tbFitTitle: 'Fit route to view',
+  tbFitTitle: 'Fit route to view (F)',
   tbPlan: '📋 Flight Plan',
   tbPlanTitle: 'Show flight plan table',
   tbCharts: '🗺️ Airport Charts',
@@ -192,14 +195,20 @@ window.S = Object.assign({
   tbMapOpacityTitle: 'Base map brightness',
   tbLegArrowSize: 'Leg arrow size',
   tbLegArrowSizeTitle: 'Leg info marker (heading / altitude / time) size',
-  tbMagVar: 'Magnetic Variation',
-  tbMagVarTitle: 'Signed offset added to true heading. Negative = east variation; positive = west.',
   tbPageA3Title: 'A3 print page',
   tbPageA4Title: 'A4 print page',
   tbOrientTitle: 'Orientation — click to toggle landscape / portrait',
   modalCloseTitle: 'Close',
   tbPrint: '⬇ Save PNG',
   tbPrintTitle: 'Save the framed map + route as a PNG',
+  tbMagnifier: '🔍 Magnifying Glass',
+  tbMagnifierTitle: 'Magnifying glass (M) — zoomed view at cursor; +/− adjust loupe zoom while open',
+  magSettingsTitle: 'Magnifier',
+  magZoomLabel: 'Zoom',
+  magZoomTitle: 'Magnifier zoom factor',
+  magLoading: 'Perfecting…',
+  tbResetAllMarkers: '↺ Reset all marker positions',
+  tbResetAllMarkersTitle: 'Reset all leg marker offsets to default positions',
   inspCloseTitle: 'Close',
   inspCloseLabel: 'Close',
   tbSecEdit: '✏️ Edit',
@@ -214,6 +223,29 @@ window.S = Object.assign({
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
   tbIssues: 'Issues / Requests',
+
+  // --- Keyboard-shortcuts cheat-sheet (issue #420) --------------------
+  // Opens via the toolbar '?' Help link or the '?' (Shift-/) shortcut.
+  // Suppressed while focused in an input / textarea / contenteditable so
+  // typing a literal '?' in a waypoint name / note still works.
+  // Each shortcutXxx row is rendered as <kbd>keys</kbd> + description; the
+  // modal builds itself from the i18n strings so locales control wording.
+  shortcutsHelpTitle: 'Keyboard Shortcuts',
+  shortcutsHelpButton: 'Shortcuts',
+  shortcutsHelpButtonTitle: 'Show keyboard shortcuts (?)',
+  shortcutsHelpAriaLabel: 'Show keyboard shortcuts',
+  shortcutsGroupNavigation: 'Navigation',
+  shortcutsGroupSearch: 'Search',
+  shortcutsGroupEditing: 'Editing',
+  shortcutsGroupHelp: 'Help',
+  shortcutFitRoute: 'Fit route to view',
+  shortcutSearch: 'Open search',
+  shortcutEsc: 'Close modal / deselect / close magnifier',
+  shortcutDelete: 'Delete selected waypoint or note',
+  shortcutHelp: 'Show this cheat-sheet',
+  shortcutZoomIn: 'Zoom map in (+/= or numpad +); adjusts loupe zoom when magnifier is on',
+  shortcutZoomOut: 'Zoom map out (− or numpad −); adjusts loupe zoom when magnifier is on',
+  shortcutMagnifier: 'Toggle magnifying glass',
   exportModalTitle: 'Export PNG',
   exportShowNavWP: 'Print Navigation Waypoints',
   exportShowAirfields: 'Print Airfields',
@@ -267,6 +299,12 @@ var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 var yellowAlpha = 0.8;    // global multiplier for yellow label backgrounds (default 80%)
 var wpSize = 1;             // waypoint name / number text size scale
 var legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
+function legZoomScale() {   // zoom + legArrowSize → pixel multiplier for offsets/sizes
+  return Math.max(0.35, Math.pow(2, map.getZoom() - 12)) * legArrowSize;
+}
+var magnifierOn = false;    // magnifying-glass toggle
+var magnifierZoom = 2;      // default zoom factor
+var magnifierSize = 400;    // magnifier diameter (px)
 let pageSize = null;        // null | 'A3' | 'A4'
 // `var` (not `let`) so window.pageOrient writes from ui.js's boot restore
 // land on the same binding the toggle reads. Default 'portrait' since most
@@ -301,14 +339,39 @@ function tintFill(hex) {
 
 const NOTE_DEFAULT_COLOR = '#fff6aa';   // matches the existing yellow fill
 
-const newLeg = () => ({
-  inboundAltitude: 2000,
-  outboundAltitude: 2000,
-  flightSpeed: 90,
-  outboundSpeed: 90,
-  inLabel: { a: 0, p: 44 },            // marker offset: along leg, perpendicular
-  outLabel: { a: 0, p: -44 },
-});
+// Default leg-marker offsets. Single source of truth used by newLeg(),
+// the inspector "Reset marker position" button (interact.js), the toolbar
+// "Reset all marker positions" button (ui.js), and the share-URL decoder
+// (io.js).
+//
+// `_default: 1` is a sentinel meaning "I'm an unmodified default — compute
+// my perpendicular offset at render time from the current leg's screen
+// length so I stay outside the 10° drift cone." `drawLegs` (draw.js) and
+// `legLabelCenter` (interact.js) handle the sentinel; the drag handlers
+// materialise the current rendered `p` into the stored offset on
+// drag-start so the user-dragged path keeps the existing
+// size-independent `{ a, p, _m: 1 }` shape unchanged (issue #394).
+//
+// `_m: 1` continues to mark the label as migrated, so the legacy-pixel
+// path in `_normalizeLegLabel` (io.js) leaves sentinels untouched on
+// reload. See `_normalizeLegLabel` for the pre-#393 raw-pixel migration.
+function _defaultLegLabels() {
+  return {
+    inLabel:  { a: 0, _default: 1, _m: 1 },
+    outLabel: { a: 0, _default: 1, _m: 1 },
+  };
+}
+const newLeg = () => {
+  const d = _defaultLegLabels();
+  return {
+    inboundAltitude: 2000,
+    outboundAltitude: 2000,
+    flightSpeed: 90,
+    outboundSpeed: 90,
+    inLabel: d.inLabel,                  // marker offset: along leg, perpendicular
+    outLabel: d.outLabel,
+  };
+};
 
 
 // --- helpers ---------------------------------------------------------

@@ -28,6 +28,10 @@ window.S = {
   tbSearchOpen: '🔍 חפש',
   tbSearchOpenTitle: 'פתח את חלון החיפוש (Ctrl/Cmd-F)',
   deleteWp: 'מחק ציון דרך',                          // כפתור באינספקטור
+  resetLegMarkers: '↺ אפס מיקום סמן',                // כפתור איפוס מיקום סמן הקטע באינספקטור
+  tbResetAllMarkers: '↺ אפס מיקום כל הסמנים',         // כפתור בסרגל לאיפוס מיקום כל סמני הקטעים
+  tbResetAllMarkersTitle: 'איפוס מיקום סמני הקטעים למיקומי ברירת המחדל',
+  resetAllConfirm: 'לאפס את מיקום כל סמני הקטעים? פעולה זו תמחק את כל ההתאמות הידניות.',
   clearConfirm: 'להסיר את כל ציוני הדרך וההערות?',
   errBadCoords: 'הקובץ מכיל קואורדינטות לא תקינות',
   // --- end Waypoint terminology ---------------------------------------
@@ -114,7 +118,7 @@ window.S = {
   shareCopied: 'קישור המסלול הועתק ללוח',
   errShareTooLong: 'המסלול ארוך מדי לקישור שיתוף (מקסימום 64 ציוני דרך). ייצא כ-JSON ושלח את הקובץ במקום.',
   tbFit: '⌖ התאם למסך',
-  tbFitTitle: 'התאם מסלול לתצוגה',
+  tbFitTitle: 'התאם מסלול לתצוגה (F)',
   tbPlan: '📋 תכנית טיסה',
   tbPlanTitle: 'הצג תכנית טיסה',
   tbCharts: '🗺️ דפיות שדות תעופה',
@@ -154,8 +158,6 @@ window.S = {
   tbMapOpacityTitle: 'בהירות מפת הרקע',
   tbLegArrowSize: 'גודל חץ קטע',
   tbLegArrowSizeTitle: 'גודל מחוון המידע של קטע (כיוון / גובה / זמן)',
-  tbMagVar: 'נטייה מגנטית',
-  tbMagVarTitle: 'נטייה מגנטית מהכיוון האמיתי. שלילי = מזרח, חיובי = מערב.',
   tbPageA3Title: 'עמוד A3 להדפסה',
   tbPageA4Title: 'עמוד A4 להדפסה',
   tbOrientTitle: 'כיוון — לחץ למעבר בין לרוחב / לאורך',
@@ -176,6 +178,24 @@ window.S = {
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
   tbIssues: 'בעיות / הצעות',
+
+  // --- Keyboard-shortcuts cheat-sheet (issue #420) --------------------
+  shortcutsHelpTitle: 'מקשי קיצור',
+  shortcutsHelpButton: 'קיצורי מקלדת',
+  shortcutsHelpButtonTitle: 'הצג מקשי קיצור (?)',
+  shortcutsHelpAriaLabel: 'הצג מקשי קיצור',
+  shortcutsGroupNavigation: 'ניווט',
+  shortcutsGroupSearch: 'חיפוש',
+  shortcutsGroupEditing: 'עריכה',
+  shortcutsGroupHelp: 'עזרה',
+  shortcutFitRoute: 'התאם מסלול לתצוגה',
+  shortcutSearch: 'פתח חיפוש',
+  shortcutEsc: 'סגור חלון / בטל בחירה / סגור זכוכית מגדלת',
+  shortcutDelete: 'מחק ציון דרך או הערה שנבחרו',
+  shortcutHelp: 'הצג את גיליון הקיצורים הזה',
+  shortcutZoomIn: 'זום מפה פנימה (+/= או + בנומפד); משנה זום זכוכית כשהזכוכית פתוחה',
+  shortcutZoomOut: 'זום מפה החוצה (− או − בנומפד); משנה זום זכוכית כשהזכוכית פתוחה',
+  shortcutMagnifier: 'הפעלה/כיבוי זכוכית מגדלת',
   exportShowDrift: 'הדפס קווי סחיפה',
   exportModalTitle: 'ייצוא PNG',
   exportShowNavWP: 'הדפס ציוני ניווט',
@@ -184,4 +204,12 @@ window.S = {
   exportNoPageWarn: 'לא נבחר גודל דף — יחס התמונה המיוצאת עשוי שלא להתאים להדפסה.',
   exportLayer: 'שכבת מפה',
   exportBtn: 'ייצא',
+
+  // --- Magnifying glass ------------------------------------------------
+  tbMagnifier: '🔍 זכוכית מגדלת',
+  tbMagnifierTitle: 'זכוכית מגדלת (M) — תצוגה מוגדלת במיקום הסמן; +/- משנים את הגדלת הזכוכית כשהיא פתוחה',
+  magSettingsTitle: 'זכוכית מגדלת',
+  magZoomLabel: 'תקריב',
+  magZoomTitle: 'גורם התקריב של הזכוכית המגדלת',
+  magLoading: 'משכלל…',
 };
