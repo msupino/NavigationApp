@@ -402,6 +402,10 @@ document.addEventListener('keydown', e => {
     showSearchOverlay();
   } else if (e.key === 'Escape' && !searchOverlay.classList.contains('hidden')) {
     hideSearchOverlay();
+  } else if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    document.getElementById('reverse').click();
   }
 });
 document.addEventListener('click', e => {
@@ -419,8 +423,8 @@ document.getElementById('reverse').onclick = () => {
     outboundAltitude: l.inboundAltitude,
     flightSpeed: showReturn ? l.outboundSpeed : l.flightSpeed,
     outboundSpeed: showReturn ? l.flightSpeed : l.flightSpeed,
-    inLabel: { a: -l.outLabel.a, p: -l.outLabel.p },
-    outLabel: { a: -l.inLabel.a, p: -l.inLabel.p },
+    inLabel:  { a: -l.outLabel.a, p: -l.outLabel.p, _m: l.outLabel._m, _default: l.outLabel._default },
+    outLabel: { a: -l.inLabel.a,  p: -l.inLabel.p,  _m: l.inLabel._m,  _default: l.inLabel._default  },
   }));
   state.selected = null;
   showInspector(); draw();

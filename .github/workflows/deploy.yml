@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
       - name: Check PR is rebased
@@ -80,7 +80,7 @@ jobs:
               exit 1
               ;;
           esac
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
       - name: JS syntax check
@@ -113,12 +113,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main (production)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
           path: m
       - name: Checkout dev (staging)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: dev
           path: d
