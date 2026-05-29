@@ -232,6 +232,25 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
   screen px sized so its contents are 1:250 000. Clicking the same
   size button again clears it. Orientation chosen via the
   `chooseOrientation()` modal.
+- **Keyboard shortcuts cheat-sheet (issue #420):** modal listing every
+  global shortcut, openable via the toolbar "Shortcuts" link (in
+  `#footer-links`) or the `?` (Shift-`/`) key. Built by
+  `showShortcutsHelp()` / `closeShortcutsHelp()` in `io.js` from the
+  `SHORTCUTS_HELP_ROWS` array; each row's `descKey` resolves through
+  `S.shortcut*` so Hebrew and English render idiomatically. Modal has
+  `role="dialog"`, `aria-modal="true"`, `aria-labelledby` on the title,
+  Tab/Shift-Tab focus trap, and closes via Esc / backdrop / ✕ button.
+  `?` is suppressed inside inputs / textareas / contenteditable so users
+  can still type a literal question mark in waypoint names or notes.
+  Current global shortcuts surfaced:
+  - **Navigation:** `F` — fit route to view
+  - **Search:** `Ctrl/Cmd-F` — open search
+  - **Editing:** `Esc` — close modal / deselect / close magnifier;
+    `Delete`/`Backspace` — delete selected waypoint or note
+  - **Help:** `?` — open the cheat-sheet
+  When you add a new global keyboard shortcut, append a row to
+  `SHORTCUTS_HELP_ROWS` (and matching `shortcutXxx` keys in `core.js` +
+  `he/strings.js`) so the cheat-sheet stays in sync.
 - **Save PNG (`exportPNG`):** renders the framed region (or current
   view if no frame) at native tile zoom into an off-screen canvas.
   Tiles are pulled through `images.weserv.nl` to dodge the lack of

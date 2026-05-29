@@ -221,6 +221,26 @@ window.S = Object.assign({
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
   tbIssues: 'Issues / Requests',
+
+  // --- Keyboard-shortcuts cheat-sheet (issue #420) --------------------
+  // Opens via the toolbar '?' Help link or the '?' (Shift-/) shortcut.
+  // Suppressed while focused in an input / textarea / contenteditable so
+  // typing a literal '?' in a waypoint name / note still works.
+  // Each shortcutXxx row is rendered as <kbd>keys</kbd> + description; the
+  // modal builds itself from the i18n strings so locales control wording.
+  shortcutsHelpTitle: 'Keyboard Shortcuts',
+  shortcutsHelpButton: 'Shortcuts',
+  shortcutsHelpButtonTitle: 'Show keyboard shortcuts (?)',
+  shortcutsHelpAriaLabel: 'Show keyboard shortcuts',
+  shortcutsGroupNavigation: 'Navigation',
+  shortcutsGroupSearch: 'Search',
+  shortcutsGroupEditing: 'Editing',
+  shortcutsGroupHelp: 'Help',
+  shortcutFitRoute: 'Fit route to view',
+  shortcutSearch: 'Open search',
+  shortcutEsc: 'Close modal / deselect / close magnifier',
+  shortcutDelete: 'Delete selected waypoint or note',
+  shortcutHelp: 'Show this cheat-sheet',
   exportModalTitle: 'Export PNG',
   exportShowNavWP: 'Print Navigation Waypoints',
   exportShowAirfields: 'Print Airfields',

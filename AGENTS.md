@@ -77,6 +77,13 @@ both branches and assembles a single Pages site:
   - `navaid.view` — map center / zoom / bearing, persisted across
     reloads. `F` (no modifier) re-runs fit-to-route; the `⌖ Fit to
     screen` toolbar button does the same.
+- **Keyboard shortcuts must be discoverable.** Every global keyboard
+  shortcut in `docs/` is listed in the `?` cheat-sheet modal
+  (`SHORTCUTS_HELP_ROWS` in `docs/io.js`). When you add a new global
+  shortcut, append a row to that array and add the matching
+  `S.shortcutXxx` strings in `docs/core.js` (English defaults) +
+  `docs/he/strings.js` (Hebrew). See SKILL.md "Keyboard shortcuts
+  cheat-sheet" for the rendering pipeline.
 - No external dependencies beyond Leaflet + `leaflet-rotate@0.2.8`
   (both loaded from `unpkg.com`) and `images.weserv.nl` (used as a
   CORS proxy by `exportPNG`). No build step, no bundler, no

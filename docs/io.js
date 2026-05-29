@@ -15,6 +15,159 @@ function addModalCloseX(box, onClose) {
   box.appendChild(x);
 }
 
+// --- Keyboard-shortcuts cheat-sheet (issue #420) --------------------
+// Single source of truth for the visible cheat-sheet rows. Each row's
+// `keys` array is rendered as <kbd> chips so the rendering is locale-
+// agnostic; the `descKey` is looked up in S so each locale controls the
+// wording. Adding a new global shortcut means appending a row here AND
+// updating the audit table in .claude/skills/navaid-dev/SKILL.md so the
+// docs stay in sync.
+const SHORTCUTS_HELP_ROWS = [
+  { group: 'shortcutsGroupNavigation',
+    rows: [{ keys: ['F'], descKey: 'shortcutFitRoute' }] },
+  { group: 'shortcutsGroupSearch',
+    rows: [{ keys: ['Ctrl', 'F'], altKeys: ['⌘', 'F'], descKey: 'shortcutSearch' }] },
+  { group: 'shortcutsGroupEditing',
+    rows: [
+      { keys: ['Esc'], descKey: 'shortcutEsc' },
+      { keys: ['Delete'], altKeys: ['Backspace'], descKey: 'shortcutDelete' },
+    ] },
+  { group: 'shortcutsGroupHelp',
+    rows: [{ keys: ['?'], descKey: 'shortcutHelp' }] },
+];
+let _shortcutsHelpBack = null;
+let _shortcutsHelpPrevFocus = null;
+let _shortcutsHelpOnEsc = null;
+let _shortcutsHelpOnFocusTrap = null;
+
+function showShortcutsHelp() {
+  if (_shortcutsHelpBack) return;   // already open — idempotent
+  _shortcutsHelpPrevFocus = document.activeElement;
+
+  const back = document.createElement('div');
+  back.className = 'modal-back shortcuts-help';
+
+  const box = document.createElement('div');
+  box.className = 'modal shortcuts-help-modal';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  box.setAttribute('aria-labelledby', 'shortcuts-help-title');
+
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.id = 'shortcuts-help-title';
+  title.textContent = S.shortcutsHelpTitle || 'Keyboard Shortcuts';
+  // Make the title non-grabbable for this modal — the cheat-sheet is
+  // ephemeral, doesn't need positioning, and the cursor: grab on .modal-title
+  // would otherwise mislead the user.
+  title.style.cursor = 'default';
+  box.appendChild(title);
+
+  const list = document.createElement('dl');
+  list.className = 'shortcuts-help-list';
+  for (const group of SHORTCUTS_HELP_ROWS) {
+    const groupTitle = document.createElement('div');
+    groupTitle.className = 'shortcuts-help-group';
+    groupTitle.textContent = S[group.group] || group.group;
+    list.appendChild(groupTitle);
+    for (const row of group.rows) {
+      const dt = document.createElement('dt');
+      dt.className = 'shortcuts-help-keys';
+      // Render primary key combo; if `altKeys` is present, render as
+      // "Ctrl+F / ⌘+F" so users on either OS see their combo.
+      _appendKeyCombo(dt, row.keys);
+      if (row.altKeys) {
+        const sep = document.createElement('span');
+        sep.className = 'shortcuts-help-sep';
+        sep.textContent = ' / ';
+        dt.appendChild(sep);
+        _appendKeyCombo(dt, row.altKeys);
+      }
+      const dd = document.createElement('dd');
+      dd.className = 'shortcuts-help-desc';
+      dd.textContent = S[row.descKey] || row.descKey;
+      list.appendChild(dt);
+      list.appendChild(dd);
+    }
+  }
+  box.appendChild(list);
+
+  addModalCloseX(box, closeShortcutsHelp);
+
+  // Esc: close.
+  _shortcutsHelpOnEsc = function (e) {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      closeShortcutsHelp();
+    }
+  };
+  document.addEventListener('keydown', _shortcutsHelpOnEsc, true);
+
+  // Focus trap: Tab / Shift-Tab cycles inside the modal so screen-reader
+  // users do not escape into the toolbar behind the backdrop.
+  _shortcutsHelpOnFocusTrap = function (e) {
+    if (e.key !== 'Tab') return;
+    const focusables = box.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+  box.addEventListener('keydown', _shortcutsHelpOnFocusTrap);
+
+  back.appendChild(box);
+  back.addEventListener('click', e => {
+    if (e.target === back) closeShortcutsHelp();
+  });
+  document.body.appendChild(back);
+  _shortcutsHelpBack = back;
+
+  // Move focus into the modal so Esc/Tab work without an extra click.
+  const closeBtn = box.querySelector('.modal-close-x');
+  if (closeBtn) closeBtn.focus();
+}
+
+function closeShortcutsHelp() {
+  if (!_shortcutsHelpBack) return;
+  if (_shortcutsHelpOnEsc) {
+    document.removeEventListener('keydown', _shortcutsHelpOnEsc, true);
+    _shortcutsHelpOnEsc = null;
+  }
+  _shortcutsHelpOnFocusTrap = null;
+  _shortcutsHelpBack.remove();
+  _shortcutsHelpBack = null;
+  // Restore focus to whatever was focused before the modal opened so the
+  // user can keep working without an extra click. Guard against the
+  // previously-focused element having been removed from the DOM.
+  if (_shortcutsHelpPrevFocus &&
+      typeof _shortcutsHelpPrevFocus.focus === 'function' &&
+      document.contains(_shortcutsHelpPrevFocus)) {
+    try { _shortcutsHelpPrevFocus.focus(); } catch (e) { /* unfocusable */ }
+  }
+  _shortcutsHelpPrevFocus = null;
+}
+
+function _appendKeyCombo(parent, keys) {
+  for (let i = 0; i < keys.length; i++) {
+    if (i > 0) {
+      const plus = document.createElement('span');
+      plus.className = 'shortcuts-help-plus';
+      plus.textContent = '+';
+      parent.appendChild(plus);
+    }
+    const kbd = document.createElement('kbd');
+    kbd.textContent = keys[i];
+    parent.appendChild(kbd);
+  }
+}
+
 /* NavAid — save/load, page setup, flight plan, PNG export, persistence.
    Shares globals with core.js; loaded after interact.js. */
 

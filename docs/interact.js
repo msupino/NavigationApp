@@ -535,6 +535,18 @@ window.addEventListener('keydown', e => {
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
     return;                              // typing in a field — leave the WP alone
   }
+  // Issue #420: '?' (Shift-/) opens the keyboard-shortcuts cheat-sheet.
+  // Suppressed in inputs (handled by the early return above) so typing a
+  // literal '?' in a waypoint name or note still works. Most browsers
+  // surface this key as `e.key === '?'`, but some keyboard layouts /
+  // automation harnesses fire `e.key === '/'` with `shiftKey: true`, so
+  // accept both.
+  if (!e.ctrlKey && !e.metaKey && !e.altKey &&
+      (e.key === '?' || (e.key === '/' && e.shiftKey))) {
+    e.preventDefault();
+    if (typeof showShortcutsHelp === 'function') showShortcutsHelp();
+    return;
+  }
   // Issue #413: F (no modifier) re-runs fit-to-route. Ctrl/Cmd-F is the
   // search-overlay shortcut handled in ui.js — bail out so we don't shadow it.
   if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
