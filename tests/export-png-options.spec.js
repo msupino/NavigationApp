@@ -24,8 +24,8 @@ async function boot(page) {
 }
 
 test.describe('Export PNG options modal', () => {
-  // PNG export waits on map tiles + canvas; default 15s is too tight for
-  // waitForEvent('download', { timeout: 30_000 }) locally and on CI.
+  // PNG export waits on map tiles + canvas pipeline; default 15s is too tight for
+  // waitForEvent('download', { timeout: 30_000 }) locally and on CI; e2e-deployed needs more.
   test.describe.configure({
     timeout: process.env.EXPECTED_SHA ? 120_000 : 60_000,
   });
