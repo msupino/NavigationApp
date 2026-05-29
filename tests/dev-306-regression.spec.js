@@ -1,6 +1,6 @@
 // @ts-check
-// Regression coverage for PR #306 (merged into dev only): Show Waypoint
-// Names moved from Display → View section, and the Magnetic Variation
+// Regression coverage for PR #306 (merged into dev only): Show waypoint
+// names moved from Display → View section, and the Magnetic Variation
 // toolbar input is removed (magVar hardcoded to -5 in core.js).
 const { test, expect } = require('./_setup');
 
@@ -20,7 +20,7 @@ async function boot(page) {
   await page.waitForFunction(() => typeof state !== 'undefined');
 }
 
-test.describe('#306 — Show Waypoint Names moved to View section', () => {
+test.describe('#306 — Show waypoint names moved to View section', () => {
   test('#wpname-cb lives inside the View section', async ({ page }) => {
     await boot(page);
     const sec = await page.locator('#wpname-cb').evaluate(el =>

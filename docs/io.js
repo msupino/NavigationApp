@@ -61,7 +61,7 @@ function showShortcutsHelp() {
   const title = document.createElement('div');
   title.className = 'modal-title';
   title.id = 'shortcuts-help-title';
-  title.textContent = S.shortcutsHelpTitle || 'Keyboard Shortcuts';
+  title.textContent = S.shortcutsHelpTitle || 'Keyboard shortcuts';
   // Make the title non-grabbable for this modal — the cheat-sheet is
   // ephemeral, doesn't need positioning, and the cursor: grab on .modal-title
   // would otherwise mislead the user.
@@ -1201,7 +1201,7 @@ function showExportModal() {
   const body = document.createElement('div');
   body.style.cssText = 'display:flex;flex-direction:column;gap:10px;padding:4px 0';
 
-  // Show Waypoint Names checkbox (default on).
+  // Show waypoint names checkbox (default on).
   const wpNameLabel = document.createElement('label');
   wpNameLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
   const wpNameCb = document.createElement('input');
