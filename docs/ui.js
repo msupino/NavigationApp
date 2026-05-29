@@ -127,11 +127,46 @@ function rotEnd(cycle) {
 rotDial.addEventListener('pointerup', () => rotEnd(true));
 rotDial.addEventListener('pointercancel', () => rotEnd(false));   // aborted — don't rotate
 const BEARING_KEY = 'navaid.bearing';
+// `navaid.view` — issue #413: persist center+zoom (and bearing) across
+// reloads so a refresh / language switch / PWA wake-up doesn't snap back
+// to the auto-fit view. Bearing is also written here so a single payload
+// captures the entire viewport state atomically; the legacy
+// `navaid.bearing` key keeps being written below for backward compat with
+// any tooling that reads it.
+const VIEW_KEY = 'navaid.view';
+// Sanity bbox for restored coords — anything outside is "wildly outside
+// Israel" per issue #413 and is treated as stale.
+const VIEW_LAT_MIN = 28, VIEW_LAT_MAX = 34;
+const VIEW_LNG_MIN = 33, VIEW_LNG_MAX = 36;
+function readSavedView() {
+  let raw = null;
+  try { raw = localStorage.getItem(VIEW_KEY); } catch (e) { return null; }
+  if (!raw) return null;
+  let d;
+  try { d = JSON.parse(raw); } catch (e) { return null; }
+  if (!d || typeof d !== 'object') return null;
+  const lat = +d.lat, lng = +d.lng, zoom = +d.zoom;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(zoom)) return null;
+  if (lat < VIEW_LAT_MIN || lat > VIEW_LAT_MAX) return null;
+  if (lng < VIEW_LNG_MIN || lng > VIEW_LNG_MAX) return null;
+  const minZ = map.options.minZoom, maxZ = map.options.maxZoom;
+  if (Number.isFinite(minZ) && zoom < minZ) return null;
+  if (Number.isFinite(maxZ) && zoom > maxZ) return null;
+  const b = +d.bearing;
+  return { lat, lng, zoom, bearing: Number.isFinite(b) ? b : null };
+}
 try {
   // Defensive: an older build (or a manual edit) may have stored "NaN".
   // Number.isFinite rejects NaN / Infinity so we fall back to bearing 0.
-  const sb = parseFloat(localStorage.getItem(BEARING_KEY));
-  if (Number.isFinite(sb)) map.setBearing(sb);
+  // Read the saved view first so bearing from `navaid.view` (when present)
+  // wins over the legacy `navaid.bearing` key.
+  const sv = readSavedView();
+  if (sv && sv.bearing !== null && map.setBearing) {
+    map.setBearing(sv.bearing);
+  } else {
+    const sb = parseFloat(localStorage.getItem(BEARING_KEY));
+    if (Number.isFinite(sb)) map.setBearing(sb);
+  }
 } catch (e) { /* storage unavailable */ }
 let bearingSaveTimer = null;
 map.on('rotate', () => {
@@ -147,6 +182,27 @@ map.on('rotate', () => {
     catch (err) { /* storage unavailable */ }
   }, 400);
 });
+// Persist the full viewport (center + zoom + bearing) on any change.
+// Debounced ~300 ms because pan/zoom/rotate fire continuously during a
+// drag — only the resting state needs saving.
+let viewSaveTimer = null;
+function scheduleSaveView() {
+  if (NavAid.exporting || viewSaveTimer) return;
+  viewSaveTimer = setTimeout(() => {
+    viewSaveTimer = null;
+    try {
+      const c = map.getCenter();
+      const z = map.getZoom();
+      const b = map.getBearing ? map.getBearing() : 0;
+      if (!c || !Number.isFinite(c.lat) || !Number.isFinite(c.lng) ||
+          !Number.isFinite(z)) return;
+      const payload = { lat: c.lat, lng: c.lng, zoom: z };
+      if (Number.isFinite(b)) payload.bearing = b;
+      localStorage.setItem(VIEW_KEY, JSON.stringify(payload));
+    } catch (e) { /* storage unavailable */ }
+  }, 300);
+}
+map.on('moveend zoomend rotate', scheduleSaveView);
 refreshDial();
 
 // --- nav-waypoint search --------------------------------------------
@@ -793,7 +849,17 @@ try {
   }
 } catch (e) {}
 if (state.selected) showInspector();
-if (state.waypoints.length) fitView();   // always frame the restored route
+// Issue #413 — restore the persisted viewport (center + zoom + bearing) so
+// a reload lands on the user's last view. Falls back to fitView() only
+// when no valid saved view exists. The bearing was already applied above
+// from `navaid.view` (or `navaid.bearing`), so we only re-apply center +
+// zoom here. `animate: false` avoids a visible pan on boot.
+const _savedView = readSavedView();
+if (_savedView) {
+  map.setView([_savedView.lat, _savedView.lng], _savedView.zoom, { animate: false });
+} else if (state.waypoints.length) {
+  fitView();                              // first-time / cleared-storage path
+}
 draw();
 // Always load nav-waypoints in the background — they power both the
 // overlay toggle and the auto-snap on drop / drag.

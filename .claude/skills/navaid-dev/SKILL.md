@@ -243,8 +243,19 @@ enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
 
 `localStorage` (persisted across reloads):
 
-- `navaid.route` — `{waypoints, legs, notes}` (debounced; the view is
-  not saved — a reload fits the route).
+- `navaid.route` — `{waypoints, legs, notes}` (debounced; route geometry
+  only — the viewport is saved separately under `navaid.view`).
+- `navaid.view` — `{lat, lng, zoom, bearing?}` of the map viewport at
+  rest, written 300 ms-debounced on `moveend` / `zoomend` / `rotate`
+  (issue #413). On boot the saved view wins over the historical
+  fit-to-route auto-frame; the auto-fit only runs when no valid saved
+  view exists (first-time users, cleared storage). Sanity-rejected if
+  coords fall outside the Israel bbox (lat ∉ [28, 34] or lng ∉ [33, 36])
+  or zoom outside `[map.options.minZoom, map.options.maxZoom]`.
+  `bearing` is also written to legacy `navaid.bearing` for back-compat,
+  but `navaid.view.bearing` wins on restore when present. Manual re-fit:
+  the `⌖ Fit to screen` toolbar button (Build section) or the `F`
+  keyboard shortcut (when not focused in an input).
 - `navaid.layer` — selected base layer name.
 - `navaid.lang` — `'en'` / `'he'`; bootstrap script in `index.html`
   reads this before the app loads.

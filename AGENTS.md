@@ -72,6 +72,11 @@ both branches and assembles a single Pages site:
   `.claude/skills/navaid-dev/SKILL.md` (see the **Persistence**
   section); grep `localStorage.setItem` / `sessionStorage.setItem`
   in `docs/` to verify. Add new keys only with a clear reason.
+  Notable keys (see SKILL.md for the full list):
+  - `navaid.route` — route geometry (waypoints / legs / notes).
+  - `navaid.view` — map center / zoom / bearing, persisted across
+    reloads. `F` (no modifier) re-runs fit-to-route; the `⌖ Fit to
+    screen` toolbar button does the same.
 - No external dependencies beyond Leaflet + `leaflet-rotate@0.2.8`
   (both loaded from `unpkg.com`) and `images.weserv.nl` (used as a
   CORS proxy by `exportPNG`). No build step, no bundler, no
