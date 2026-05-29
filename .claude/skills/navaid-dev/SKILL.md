@@ -40,6 +40,14 @@ always target `dev` as the PR base branch.
 **Every PR must be preceded by a GitHub issue** describing the bug or
 enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
 
+**Before any `git commit`:** run `git branch --show-current` (and
+`git status` when in doubt). If the branch is not the one the user
+clearly intended for this work (or you are unsure), **stop and ask the
+user** which branch to use — do not guess; another agent or session may
+be using a different branch. If the branch is correct, proceed. Do not
+commit on `main`, `dev`, `original-plotter`, or an unrelated feature
+branch by mistake.
+
 ## Files (`docs/`)
 
 - `index.html` — page, toolbar, Leaflet + the five app scripts. Title
@@ -329,6 +337,10 @@ downloadable `route.json`.
   `http://localhost:8000`. Inject a test route with a trailing
   `<script>` that sets `state.waypoints` and calls
   `syncLegs(); fitView(); draw();`.
+- **Branch check** before every commit: run `git branch --show-current`.
+  If it does not match the branch for this task (or you are unsure),
+  **ask the user** before committing — other agents may be on another
+  branch. See **Branches** above.
 - **Lint** before every commit: `node --check` each changed `.js`.
 - **Every enhancement, bug fix, or regression must include tests.** Add new
   test cases to the appropriate `tests/*.spec.js` file. If no file covers

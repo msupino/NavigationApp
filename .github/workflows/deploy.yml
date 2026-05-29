@@ -268,7 +268,11 @@ jobs:
 
   e2e-deployed:
     if: github.event_name == 'pull_request' && github.event.action != 'closed'
-    needs: deploy
+    # Only the published site must be ready before tests — not the tail of
+    # `deploy` (deployment records + PR comment). After `build`, `deploy`
+    # publishes the artifact; this job runs in parallel and spends checkout +
+    # npm ci + Playwright install while Pages updates, then waits on URL/SHA.
+    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -313,12 +317,12 @@ jobs:
             echo "Preview never updated to commit $SHA (last seen: '$FOUND')"
             exit 1
           fi
-          MAX=5
+          MAX=2
           ATTEMPT=0
           while [ $ATTEMPT -lt $MAX ]; do
             ATTEMPT=$((ATTEMPT + 1))
             echo "=== e2e attempt $ATTEMPT/$MAX ==="
-            if BASE_URL="$URL" EXPECTED_SHA="$SHA" npx playwright test $(ls tests/*.spec.js | grep -vE 'sw\.spec|pwa\.spec') --reporter=list 2>&1; then
+            if BASE_URL="$URL" EXPECTED_SHA="$SHA" npx playwright test $(ls tests/*.spec.js | grep -vE 'sw\.spec|pwa\.spec') --reporter=list --max-failures=20 2>&1; then
               echo "All e2e tests passed!"
               exit 0
             fi

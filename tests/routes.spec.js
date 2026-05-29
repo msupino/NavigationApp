@@ -238,7 +238,7 @@ test.describe('Notes', () => {
       showInspector(); draw();
     });
     page.once('dialog', d => d.accept());
-    await page.locator('.insp-btn').filter({ hasText: 'Delete note' }).click();
+    await page.locator('.insp-btn').filter({ hasText: /Delete note/ }).click();
     const remaining = await page.evaluate(() => state.notes.map(n => n.text));
     expect(remaining).toEqual(['B']);
   });
