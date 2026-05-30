@@ -1,6 +1,6 @@
 # Israel BYOP Airport Plates
 
-This directory holds 141 published airport plates ("dapeyot") for 16 Israeli airfields, sourced verbatim from the **ForeFlight Israel Base Pack** (`02-25` edition, effective Oct 2025), itself derived from the official **Israel CAAI AIP**.
+This directory holds 141 published airport plates ("dapeyot") for 16 Israeli airfields, snapshotted from the official **Israel CAAI AIP** (`02-25` edition, effective Oct 2025).
 
 ## Contents
 
@@ -48,17 +48,16 @@ https://msupino.github.io/NavigationApp/byop/<file>.pdf
 ## License & attribution
 
 - Charts © **Israel Civil Aviation Authority (CAAI)** / Ministry of Transport.
-- The pack was assembled by **ForeFlight Israel** ([foreflightisrael.xyz](https://www.foreflightisrael.xyz/)) and is published free for personal pilot use.
-- The underlying AIP is publicly available at <https://www.gov.il/en/Departments/Guides/aip-israel>.
+- The AIP is publicly available at <https://www.gov.il/en/Departments/Guides/aip-israel> and is published free for personal pilot use.
 
 NavAid bundles this snapshot for reference and offline use only. For current operational use, **always cross-check against the official AIP** which updates every AIRAC cycle (~28 days).
 
 ## Updating
 
-When CAAI / ForeFlight Israel publish a new edition:
+When CAAI publishes a new AIP edition:
 
-1. Download the new pack from <https://www.foreflightisrael.xyz/>.
-2. Replace files under `docs/byop/` with the new pack's PDFs.
+1. Download the new plates from the official AIP <https://www.gov.il/en/Departments/Guides/aip-israel>.
+2. Replace files under `docs/byop/` with the new edition's PDFs.
 3. Run `qpdf --flatten-rotation` on any PDFs that have `Rotate:` metadata (check with `pdfinfo`).
 4. Commit. Update this README's edition / effective date.
 
