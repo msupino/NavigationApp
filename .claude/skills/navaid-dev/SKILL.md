@@ -420,7 +420,7 @@ downloadable `route.json`.
 - `nav-waypoints.json` — 173 Israeli CVFR reporting points.
   **Source:** IAA CVFR chart waypoint reference table (page 113, 2025
   edition), supplied upstream as `113_waypoints.csv`. The CSV is the
-  sole source of truth — the legacy ForeFlight Israel Base Pack
+  sole source of truth — the legacy KMZ dataset
   (`CVFR WAYPOINTS 0225.kmz`) was replaced in issue #406 because it
   carried ~91 stale codes (`AREA *`, `LLHA A/B/C`, `LLMG A/B
   Maarav/Mizrah`, etc.) and had several reporting points off the
