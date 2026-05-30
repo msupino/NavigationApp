@@ -244,6 +244,36 @@ test.describe('Keyboard-shortcuts cheat-sheet (#420)', () => {
     await expect(page.locator('#magnifier')).not.toBeVisible();
   });
 
+  test('B toggles show-return-path (ret-cb) and persists', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
+    const cb = page.locator('#ret-cb');
+    const before = await cb.isChecked();
+    await page.keyboard.press('b');
+    expect(await cb.isChecked()).toBe(!before);
+    expect(await page.evaluate(() => window.showReturn)).toBe(!before);
+    await page.keyboard.press('B');
+    expect(await cb.isChecked()).toBe(before);
+    expect(await page.evaluate(() => window.showReturn)).toBe(before);
+  });
+
+  test('B is suppressed when typing in an input', async ({ page }) => {
+    await boot(page);
+    await page.locator('#search-trigger').click();
+    await expect(page.locator('#wp-search')).toBeFocused();
+    const before = await page.evaluate(() => window.showReturn);
+    await page.keyboard.press('b');
+    expect(await page.evaluate(() => window.showReturn)).toBe(before);
+    expect(await page.locator('#wp-search').inputValue()).toContain('b');
+  });
+
+  test('B shortcut row appears in the cheat-sheet (Editing group)', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => showShortcutsHelp());
+    const keyTexts = await page.locator('.shortcuts-help-keys').allTextContents();
+    expect(keyTexts.some(t => t.trim() === 'B')).toBe(true);
+  });
+
   test('rows within each category are sorted alphabetically by key', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => showShortcutsHelp());

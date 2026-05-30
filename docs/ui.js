@@ -428,6 +428,11 @@ document.addEventListener('keydown', e => {
     const t = e.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
     document.getElementById('reverse').click();
+  } else if ((e.key === 'b' || e.key === 'B') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    // Toggling the checkbox fires its onchange (persist + redraw).
+    document.getElementById('ret-cb').click();
   }
 });
 document.addEventListener('click', e => {
