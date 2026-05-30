@@ -2231,29 +2231,27 @@ function showPlateViewer(filename, label) {
   };
   btns.appendChild(download);
   box.appendChild(btns);
-  addModalCloseX(box, () => {
+  function teardown() {
+    window.removeEventListener('keydown', onEsc, true);
     if (blobUrl) URL.revokeObjectURL(blobUrl);
-    window.removeEventListener('keydown', onEsc);
     back.remove();
-  });
+  }
+  addModalCloseX(box, teardown);
 
+  // The plate viewer opens on top of the Charts modal. Both the Charts
+  // modal and the global handler in interact.js close a `.modal-back` on
+  // Escape, so a plain bubble listener here would let one Escape close the
+  // plate AND the chart underneath it. Listen in the capture phase and stop
+  // the event so only the topmost (plate) viewer closes.
   function onEsc(e) {
-    if (e.key === 'Escape') {
-      window.removeEventListener('keydown', onEsc);
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
-      back.remove();
-    }
+    if (e.key !== 'Escape') return;
+    e.stopImmediatePropagation();
+    teardown();
   }
   back.appendChild(box);
-  back.onclick = e => {
-    if (e.target === back) {
-      window.removeEventListener('keydown', onEsc);
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
-      back.remove();
-    }
-  };
+  back.onclick = e => { if (e.target === back) teardown(); };
   document.body.appendChild(back);
-  window.addEventListener('keydown', onEsc);
+  window.addEventListener('keydown', onEsc, true);
 }
 
 function showChartsModal() {
