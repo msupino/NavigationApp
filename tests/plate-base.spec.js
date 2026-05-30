@@ -47,4 +47,31 @@ test.describe('plateBase()', () => {
     // Test server serves at '/', so the base is '/byop/'.
     expect(url).toBe('/byop/LLHZ_Ground_Parking%20F.pdf');
   });
+
+  // Regression for the staging PDF 404 (#457): showPlateViewer must fetch the
+  // plate at the location-resolved base and actually receive it. The local
+  // server serves docs/ at '/', so the resolved URL must return 200 and the
+  // loading overlay must NOT flip to the plateLoadError text. On a host where
+  // the prefix is wrong (the original bug) this fetch 404s and the test fails.
+  test('opening a plate fetches the PDF and does not error', async ({ page }) => {
+    await page.goto('?lang=en');
+    await page.waitForFunction(
+      () => typeof showPlateViewer === 'function' && typeof S === 'object');
+
+    // Filename carries a space → encodes to %20, same class as the bug's
+    // `LLHZ_Ground_Parking F.pdf`. The file exists under docs/byop/.
+    const FILE = 'LLHZ_Ground_Parking D.pdf';
+
+    const respPromise = page.waitForResponse(
+      r => r.url().includes('/byop/') && /\.pdf(\?|$)/i.test(r.url()));
+    await page.evaluate((f) => showPlateViewer(f, 'Parking D'), FILE);
+
+    const resp = await respPromise;
+    expect(resp.url()).toContain('/byop/LLHZ_Ground_Parking%20D.pdf');
+    expect(resp.status()).toBe(200);
+
+    // The overlay must never show the failure string for a reachable plate.
+    const errText = await page.evaluate(() => S.plateLoadError);
+    await expect(page.locator('.plate-loading')).not.toContainText(errText);
+  });
 });
