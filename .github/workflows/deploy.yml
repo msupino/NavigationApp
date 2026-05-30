@@ -6,7 +6,14 @@ on:
     branches: [main, dev]
   pull_request:
     branches: [main, dev]
-    types: [opened, synchronize]
+    types: [opened, synchronize, closed]
+  # Bot-merged PRs (gh pr merge --auto via GITHUB_TOKEN) suppress both
+  # `push: dev` and `pull_request: closed`. The workflow_run chain we
+  # previously used here was ALSO silently suppressed (anti-recursion
+  # applies to any chain originating from a GITHUB_TOKEN completion —
+  # verified empirically across #384/#389/#395/#412). Instead, the
+  # `Draft + auto-merge` workflow now explicitly `gh workflow run`s this
+  # workflow via workflow_dispatch after detecting the merge.
   workflow_dispatch:
 
 permissions:
@@ -26,11 +33,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
       - name: Check PR is rebased
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
         env:
           GH_TOKEN: ${{ github.token }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -73,7 +80,7 @@ jobs:
               exit 1
               ;;
           esac
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
       - name: JS syntax check
@@ -106,12 +113,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main (production)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
           path: m
       - name: Checkout dev (staging)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: dev
           path: d
@@ -211,7 +218,7 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
       - name: Create PR deployment
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
         run: |
           URL="https://msupino.github.io/NavigationApp/pr/${{ github.event.number }}/"
           DEPLOY_JSON=$(gh api "repos/${{ github.repository }}/deployments" --input - <<EOF
@@ -239,7 +246,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Post preview link comment
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.number }}
@@ -260,8 +267,12 @@ jobs:
           fi
 
   e2e-deployed:
-    if: github.event_name == 'pull_request'
-    needs: deploy
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    # Only the published site must be ready before tests — not the tail of
+    # `deploy` (deployment records + PR comment). After `build`, `deploy`
+    # publishes the artifact; this job runs in parallel and spends checkout +
+    # npm ci + Playwright install while Pages updates, then waits on URL/SHA.
+    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -306,12 +317,36 @@ jobs:
             echo "Preview never updated to commit $SHA (last seen: '$FOUND')"
             exit 1
           fi
-          MAX=5
+          # core.js can propagate before large JSON on the CDN — share-route
+          # and other tests snap ICAO waypoints to docs/airfields.json. Wait
+          # until the deployed file's LLHZ ARP matches this checkout (#421).
+          if [ -f docs/airfields.json ]; then
+            EXP_LLHZ=$(node -e "const j=require('./docs/airfields.json');const a=j.airfields&&j.airfields.find(x=>x.name==='LLHZ');if(a)console.log(a.lat.toFixed(5)+','+a.lng.toFixed(5));" || true)
+            if [ -n "$EXP_LLHZ" ]; then
+              echo "Waiting for deployed airfields.json LLHZ to match repo ($EXP_LLHZ)..."
+              AF_OK=''
+              for i in $(seq 1 36); do
+                GOT=$(curl -fsS "$URL"airfields.json 2>/dev/null | node -e "const fs=require('fs');let s='';try{s=fs.readFileSync(0,'utf8');}catch(e){process.exit(0)}try{const j=JSON.parse(s);const a=j.airfields&&j.airfields.find(x=>x.name==='LLHZ');if(a)console.log(a.lat.toFixed(5)+','+a.lng.toFixed(5));}catch(e){}" || true)
+                if [ "$GOT" = "$EXP_LLHZ" ]; then
+                  echo "Deployed airfields.json LLHZ matches repo."
+                  AF_OK=1
+                  break
+                fi
+                echo "  airfields LLHZ ($GOT vs $EXP_LLHZ) ... ($i/36)"
+                sleep 5
+              done
+              if [ -z "$AF_OK" ]; then
+                echo "::error::Deployed airfields.json never matched repo LLHZ — CDN lag or partial Pages deploy."
+                exit 1
+              fi
+            fi
+          fi
+          MAX=2
           ATTEMPT=0
           while [ $ATTEMPT -lt $MAX ]; do
             ATTEMPT=$((ATTEMPT + 1))
             echo "=== e2e attempt $ATTEMPT/$MAX ==="
-            if BASE_URL="$URL" EXPECTED_SHA="$SHA" npx playwright test $(ls tests/*.spec.js | grep -vE 'sw\.spec|pwa\.spec') --reporter=list 2>&1; then
+            if BASE_URL="$URL" EXPECTED_SHA="$SHA" npx playwright test $(ls tests/*.spec.js | grep -vE 'sw\.spec|pwa\.spec') --reporter=list --max-failures=20 2>&1; then
               echo "All e2e tests passed!"
               exit 0
             fi

@@ -7,9 +7,11 @@ Unity.
 ## Layout
 
 - `docs/` — the deployed app (HTML / CSS / JS, no build step).
-- `docs/nav-waypoints.json` — 238 Israeli VFR reporting points
-  (`{name, lat, lng}`); shipped, lazily fetched by the "Show Nav
-  Waypoints" toggle.
+- `docs/nav-waypoints.json` — 173 Israeli VFR reporting points
+ (`{name, he, lat, lng}`); shipped, lazily fetched by the "Show/pin
+ navigation waypoints" toggle. Sourced from the published IAA CVFR chart waypoint
+ reference table (page 113, 2025 edition) — see SKILL.md for refresh
+ procedure.
 - `.github/workflows/deploy.yml` — Pages build + deploy.
 - `.claude/skills/navaid-dev/SKILL.md` — full developer guide.
   **Read this first** for any change to the app.
@@ -44,7 +46,16 @@ both branches and assembles a single Pages site:
   same Deploy step rewrites `NavAid.version` in `docs/core.js` from
   `'1.0'` to `'1.0-<short-sha>'`, so the toolbar identifies the exact
   deployed commit without manually increasing the source version number.
-- **Always run `node --check docs/app.js`** before committing.
+- **Before `git commit`, verify the current branch** (`git branch
+  --show-current`, and `git status` if needed). If it is not the branch
+  the user intended for this work, or you are unsure, **ask the user**
+  which branch to use before committing (other agents may be using a
+  different branch). Do not commit on `main`, `dev`, or unrelated work
+  by mistake.
+- **Always run `node --check` on every changed `.js` file** before
+  committing (the app code lives in `docs/core.js`, `docs/draw.js`,
+  `docs/interact.js`, `docs/io.js`, `docs/ui.js`, `docs/sw.js`, and
+  the locale bundles `docs/en/strings.js` / `docs/he/strings.js`).
 - **Every enhancement, bug fix, or regression must include tests.** Add new
   test cases to the appropriate `tests/*.spec.js` file. If no file covers
   the area, create one.
@@ -63,13 +74,29 @@ both branches and assembles a single Pages site:
 - **Every PR must be preceded by a GitHub issue.** Open the issue first,
   then create the PR referencing it (`Fixes #N` or `Closes #N`).
 - Persist UI state to `localStorage` only via existing `navaid.*`
-  keys (`navaid.route`, `navaid.layer`, `navaid.toolbarPos`,
-  `navaid.yellowAlpha`, `navaid.wpSize`, `navaid.magVar`,
-  `navaid.showNavWP`). Add new keys only with a clear reason.
-- No external dependencies beyond Leaflet (CDN) and
-  `images.weserv.nl` (used as a CORS proxy by `exportPNG`). No
-  build step, no bundler, no transpiler — keep it plain HTML / CSS
-  / JS.
+  keys. The authoritative list lives in
+  `.claude/skills/navaid-dev/SKILL.md` (see the **Persistence**
+  section); grep `localStorage.setItem` / `sessionStorage.setItem`
+  in `docs/` to verify. Add new keys only with a clear reason.
+  Notable keys (see SKILL.md for the full list):
+  - `navaid.route` — route geometry (waypoints / legs / notes).
+  - `navaid.view` — map center / zoom / bearing, persisted across
+    reloads. `F` (no modifier) re-runs fit-to-route; the `⌖ Fit to
+    screen` toolbar button does the same. `+`/`=`/numpad `+` and
+    `−`/numpad `−` zoom the map (or loupe zoom when the magnifier is on);
+    `M` toggles the magnifying glass. All are listed in the `?` cheat-sheet
+    (`SHORTCUTS_HELP_ROWS` in `docs/io.js`).
+- **Keyboard shortcuts must be discoverable.** Every global keyboard
+  shortcut in `docs/` is listed in the `?` cheat-sheet modal
+  (`SHORTCUTS_HELP_ROWS` in `docs/io.js`). When you add a new global
+  shortcut, append a row to that array and add the matching
+  `S.shortcutXxx` strings in `docs/core.js` (English defaults) +
+  `docs/he/strings.js` (Hebrew). See SKILL.md "Keyboard shortcuts
+  cheat-sheet" for the rendering pipeline.
+- No external dependencies beyond Leaflet + `leaflet-rotate@0.2.8`
+  (both loaded from `unpkg.com`) and `images.weserv.nl` (used as a
+  CORS proxy by `exportPNG`). No build step, no bundler, no
+  transpiler — keep it plain HTML / CSS / JS.
 - Don't reintroduce Unity files. They live on `original-plotter`.
 
 ## Live + repo
