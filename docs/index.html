@@ -96,9 +96,37 @@
     }
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=152">
+  <link rel="stylesheet" href="style.css?v=153">
 </head>
 <body>
+  <!-- Crawlable static content. The app renders into a full-screen canvas/map
+       with almost no indexable text, so this describes NavAid in real prose for
+       search engines and screen readers. Visually hidden (sr-only), not
+       display:none, so it stays in the rendered accessibility tree. -->
+  <header class="sr-only">
+    <h1>NavAid — Israel CVFR Flight Route Planner &amp; Navigation Map</h1>
+    <p>NavAid is a free, browser-based CVFR flight route planner built on the
+      Israeli aeronautical chart. Plot waypoints, draw legs, and read magnetic
+      headings, distances and estimated times for every segment of your route.
+      It works on desktop and mobile, installs as a Progressive Web App, and
+      runs fully offline once loaded. Available in English and Hebrew.</p>
+    <p>תכנון מסלולי טיסה CVFR על גבי התרשים האווירי הישראלי — סימון נקודות ציון,
+      קטעי טיסה, כיוונים מגנטיים, מרחקים וזמני טיסה. כלי חינמי לטייסים בישראל,
+      פועל בדפדפן, נתמך גם במצב לא מקוון.</p>
+    <h2>Features</h2>
+    <ul>
+      <li>Interactive Israeli CVFR / VFR aeronautical chart base maps</li>
+      <li>Waypoint, leg and note drawing with magnetic headings and distances</li>
+      <li>Optional published VFR reporting-point overlay</li>
+      <li>Printable flight plan and PNG map export</li>
+      <li>Offline-capable installable Progressive Web App</li>
+      <li>English and Hebrew interface</li>
+    </ul>
+    <h2>Israeli airfields and waypoints</h2>
+    <p>Plan routes to and from Israeli airfields including Herzliya (LLHZ),
+      Ben Gurion (LLBG), Haifa (LLHA), Megiddo (LLMG), Eilat / Ramon (LLER)
+      and Sde Teiman (LLSD), and chart nav-waypoints across Israeli airspace.</p>
+  </header>
   <div id="map"></div>
   <canvas id="overlay"></canvas>
 
@@ -220,10 +248,11 @@
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecExport"></div>
       <div class="tb-section-body">
         <button id="save" data-i18n="tbExport" data-i18n-title="tbExportTitle"></button>
+        <button id="gpx" data-i18n="tbGpxExport" data-i18n-title="tbGpxExportTitle"></button>
         <button id="load" data-i18n="tbImport" data-i18n-title="tbImportTitle"></button>
         <button id="share" data-i18n="tbShare" data-i18n-title="tbShareTitle"></button>
-        <input type="file" id="file" accept="application/json,.json" hidden>
         <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
+        <input type="file" id="file" accept="application/json,.json,.gpx,application/gpx+xml" hidden>
       </div>
     </div>
 
@@ -336,7 +365,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=152';
+      var v = '?v=153';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',

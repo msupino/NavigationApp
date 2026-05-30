@@ -455,11 +455,14 @@ document.getElementById('save').onclick = save;
 document.getElementById('load').onclick = () => document.getElementById('file').click();
 document.getElementById('share').onclick = shareRoute;
 document.getElementById('file').onchange = e => {
-  if (e.target.files[0]) load(e.target.files[0]);
+  const f = e.target.files[0];
+  if (!f) return;
+  if (/\.gpx$/i.test(f.name)) loadGpx(f); else load(f);
   e.target.value = '';
 };
 document.getElementById('fit').onclick = fitView;
 document.getElementById('fly').onclick = flyRoute;
+document.getElementById('gpx').onclick = exportGpx;
 // Toggle: a second click closes the modal instead of being a no-op (#78 dedupe
 // previously made the button look broken when the modal was already open).
 document.getElementById('plan').onclick = () => {

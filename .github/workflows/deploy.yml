@@ -152,6 +152,11 @@ jobs:
           # have changed in this commit.
           for ROOT in "site" "site/staging"; do
             case "$ROOT" in site) SHA="$SHA_M" ;; *) SHA="$SHA_D" ;; esac
+            # Keep non-canonical staging out of the search index. Only the
+            # production root (site/) should be crawlable.
+            if [ "$ROOT" = "site/staging" ]; then
+              sed -i '0,/<head>/s//<head>\n  <meta name="robots" content="noindex">/' "$ROOT/index.html"
+            fi
             sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" "$ROOT/index.html"
             sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" "$ROOT/core.js"
             sed -i -E "s/(nav-waypoints|airfields)\.json\?v=[A-Za-z0-9]+/\1.json?v=${SHA}/g" \
@@ -183,6 +188,8 @@ jobs:
               || { echo "  skip (archive failed)"; rm -rf "$STAGING"; return; }
             SHA=$(git rev-parse --short "origin/$BRANCH" 2>/dev/null) \
               || { echo "  skip (rev-parse failed)"; rm -rf "$STAGING"; return; }
+            # PR/branch previews are non-canonical — keep them out of the index.
+            sed -i '0,/<head>/s//<head>\n  <meta name="robots" content="noindex">/' "$STAGING/index.html" 2>/dev/null || true
             sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" "$STAGING/index.html" 2>/dev/null || true
             sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" "$STAGING/core.js" 2>/dev/null || true
             sed -i -E "s/(nav-waypoints|airfields)\.json\?v=[A-Za-z0-9]+/\1.json?v=${SHA}/g" \
