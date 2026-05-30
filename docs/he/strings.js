@@ -158,7 +158,7 @@ window.S = {
   plateClose: 'סגור',
   platesNone: 'אין דפיות — ראה AIP הרשמי',
   plateLoadError: 'טעינת הדפית נכשלה.',
-  plateAttribution: 'מפות © רשות התעופה האזרחית / משרד התחבורה — מפורסם ב-AIP. תצלום מחבילת ForeFlight ישראל גרסה 02-25.',
+  plateAttribution: 'מפות © רשות התעופה האזרחית / משרד התחבורה — מפורסם ב-AIP.',
   tbTransparency: 'שקיפות תוויות',
   tbTransparencyTitle: 'שקיפות רקע תוויות (נקודות, קטעים, הערות)',
   tbMapOpacity: 'בהירות מפה',
