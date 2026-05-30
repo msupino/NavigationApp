@@ -441,6 +441,98 @@ function save() {
   a.click();
   URL.revokeObjectURL(a.href);
 }
+
+// --- GPX export --------------------------------------------------------
+function exportGpx() {
+  if (state.waypoints.length < 2) {
+    alert(S.errNeedWps);
+    return;
+  }
+  const wps = state.waypoints;
+  const esc = s => String(s).replace(/[<>&]/g,
+    c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+  const altM = i => {
+    const leg = state.legs[Math.min(i, state.legs.length - 1)];
+    return Math.max(0, Math.round((leg ? leg.inboundAltitude : 2000) * 0.3048));
+  };
+  let rtepts = '';
+  for (let i = 0; i < wps.length; i++) {
+    const name = esc(wpLabel(i));
+    rtepts += '    <rtept lat="' + wps[i].lat + '" lon="' + wps[i].lng + '">\n' +
+      '      <name>' + name + '</name>\n' +
+      '      <ele>' + altM(i) + '</ele>\n' +
+      '    </rtept>\n';
+  }
+  const gpx =
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<gpx xmlns="http://www.topografix.com/GPX/1/1"\n' +
+    '     version="1.1"\n' +
+    '     creator="NavAid"\n' +
+    '     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n' +
+    '     xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">\n' +
+    '  <rte>\n' +
+    '    <name>NavAid route</name>\n' +
+    rtepts +
+    '  </rte>\n' +
+    '</gpx>\n';
+  const blob = new Blob([gpx], { type: 'application/gpx+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'route-' + fileStamp() + '.gpx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// --- GPX import --------------------------------------------------------
+function loadGpx(file) {
+  const MAX_ROUTE_BYTES = 2 * 1024 * 1024;
+  if (file && file.size > MAX_ROUTE_BYTES) {
+    alert(S.errLoadFile + 'file too large (' +
+          (file.size / 1024 / 1024).toFixed(1) + ' MB; max 2 MB)');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const xml = new DOMParser().parseFromString(reader.result, 'text/xml');
+      const parseErr = xml.querySelector('parsererror');
+      if (parseErr) throw new Error('XML parse error: ' + parseErr.textContent);
+      const rtepts = xml.querySelectorAll('rtept');
+      if (!rtepts.length) {
+        alert(S.errLoadFile + 'no <rtept> elements found in GPX');
+        return;
+      }
+      const wps = [];
+      for (const pt of rtepts) {
+        const lat = parseFloat(pt.getAttribute('lat'));
+        const lng = parseFloat(pt.getAttribute('lon'));
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+        const name = (pt.querySelector('name') || {}).textContent || '';
+        wps.push({ lat: r5(lat), lng: r5(lng), name: name.trim() });
+      }
+      if (wps.length < 2) {
+        alert(S.errNeedWps);
+        return;
+      }
+      state.waypoints = wps;
+      state.legs = wps.slice(0, -1).map(() => ({
+        inboundAltitude: 2000, outboundAltitude: 2000,
+        flightSpeed: 90, outboundSpeed: 90,
+        inLabel: null, outLabel: null,
+      }));
+      state.notes = [];
+      syncLegs();
+      state.selected = null;
+      showInspector();
+      fitView();
+      draw();
+    } catch (err) {
+      alert(S.errLoadFile + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
 function load(file) {
   // #146: hard cap on file size before we even read it. Route JSON is
   // typically <100 KB; 2 MB leaves room for big routes / future fields and
