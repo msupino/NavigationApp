@@ -374,6 +374,19 @@
         "LLMZ_airport_CVFR.pdf",
         "LLMZ_airport_Chart.pdf"
       ]
+    },
+    {
+      "name": "LLAR",
+      "he": "ערד",
+      "en": "Arad",
+      "lat": 31.22972,
+      "lng": 35.18972,
+      "plates": [
+        "LLAR_airport_CVFR.pdf",
+        "LLAR_airport_Chart.pdf",
+        "LLAR_airport_Circuit.pdf",
+        "LLAR_airport_Text.pdf"
+      ]
     }
   ]
 }
