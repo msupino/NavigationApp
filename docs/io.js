@@ -2145,10 +2145,21 @@ function restoreRoute() {
 }
 
 // --- Airfield plates viewer (#105) -----------------------------------
-const PLATE_BASE = 'byop/';
+// Plate PDFs (~133 MB) ship as a SINGLE copy at the deployed artifact root;
+// staging / PR / branch previews don't carry their own copy and resolve
+// plates against that shared root. Deriving the base from location at load
+// time makes the same source work on every host the site is served from —
+// the custom domain (served at '/') and raw GitHub Pages (served under
+// '/NavigationApp/') — so the deploy pipeline no longer has to rewrite a
+// per-environment absolute path (which 404'd on the custom domain).
+function plateBase(pathname) {
+  let dir = (pathname || location.pathname).replace(/[^/]*$/, '');  // drop filename, keep trailing '/'
+  dir = dir.replace(/(staging|pr\/[^/]+|branch\/[^/]+)\/$/, '');     // preview suffix → shared root
+  return dir + 'byop/';
+}
 
 function plateUrl(filename) {
-  return PLATE_BASE + encodeURIComponent(filename);
+  return plateBase() + encodeURIComponent(filename);
 }
 
 function plateCategory(filename) {
