@@ -597,6 +597,14 @@ window.addEventListener('keydown', e => {
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
     return;                              // typing in a field — leave the WP alone
   }
+  // Ctrl/Cmd-Z undoes the last committed edit. Shift-Ctrl-Z (redo) is left
+  // alone — there is no redo, so don't swallow it.
+  if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey) &&
+      !e.altKey && !e.shiftKey) {
+    e.preventDefault();
+    if (typeof undo === 'function') undo();
+    return;
+  }
   // Issue #420: '?' (Shift-/) opens the keyboard-shortcuts cheat-sheet.
   // Suppressed in inputs (handled by the early return above) so typing a
   // literal '?' in a waypoint name or note still works. Most browsers
