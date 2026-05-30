@@ -126,6 +126,28 @@ function rotEnd(cycle) {
 }
 rotDial.addEventListener('pointerup', () => rotEnd(true));
 rotDial.addEventListener('pointercancel', () => rotEnd(false));   // aborted — don't rotate
+// --- live mouse coordinate readout ---------------------------------
+// Bottom-left so it clears the zoom buttons + rotate dial (bottomright)
+// and the layer picker (topright). Updates on every map mousemove with
+// the same DM format the inspector uses for waypoints (fmtLatLng).
+const coordCtrl = L.control({ position: 'bottomleft' });
+coordCtrl.onAdd = function () {
+  const box = L.DomUtil.create('div', 'leaflet-control coord-readout');
+  box.id = 'coord-readout';
+  box.setAttribute('aria-hidden', 'true');
+  return box;
+};
+coordCtrl.addTo(map);
+const coordBox = document.getElementById('coord-readout');
+function showCoord(latlng) {
+  coordBox.textContent = fmtLatLng(latlng.lat, 'N', 'S') + '  ' +
+                         fmtLatLng(latlng.lng, 'E', 'W');
+  coordBox.classList.add('show');
+}
+function hideCoord() { coordBox.classList.remove('show'); }
+map.on('mousemove', e => showCoord(e.latlng));
+map.on('mouseout', hideCoord);
+
 const BEARING_KEY = 'navaid.bearing';
 // `navaid.view` — issue #413: persist center+zoom (and bearing) across
 // reloads so a refresh / language switch / PWA wake-up doesn't snap back
@@ -406,6 +428,11 @@ document.addEventListener('keydown', e => {
     const t = e.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
     document.getElementById('reverse').click();
+  } else if ((e.key === 'b' || e.key === 'B') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    // Toggling the checkbox fires its onchange (persist + redraw).
+    document.getElementById('ret-cb').click();
   }
 });
 document.addEventListener('click', e => {

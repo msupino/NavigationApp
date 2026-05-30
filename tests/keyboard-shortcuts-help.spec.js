@@ -244,6 +244,63 @@ test.describe('Keyboard-shortcuts cheat-sheet (#420)', () => {
     await expect(page.locator('#magnifier')).not.toBeVisible();
   });
 
+  test('B toggles show-return-path (ret-cb) and persists', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
+    const cb = page.locator('#ret-cb');
+    const before = await cb.isChecked();
+    await page.keyboard.press('b');
+    expect(await cb.isChecked()).toBe(!before);
+    expect(await page.evaluate(() => window.showReturn)).toBe(!before);
+    await page.keyboard.press('B');
+    expect(await cb.isChecked()).toBe(before);
+    expect(await page.evaluate(() => window.showReturn)).toBe(before);
+  });
+
+  test('B is suppressed when typing in an input', async ({ page }) => {
+    await boot(page);
+    await page.locator('#search-trigger').click();
+    await expect(page.locator('#wp-search')).toBeFocused();
+    const before = await page.evaluate(() => window.showReturn);
+    await page.keyboard.press('b');
+    expect(await page.evaluate(() => window.showReturn)).toBe(before);
+    expect(await page.locator('#wp-search').inputValue()).toContain('b');
+  });
+
+  test('B shortcut row appears in the cheat-sheet (Editing group)', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => showShortcutsHelp());
+    const keyTexts = await page.locator('.shortcuts-help-keys').allTextContents();
+    expect(keyTexts.some(t => t.trim() === 'B')).toBe(true);
+  });
+
+  test('rows within each category are sorted alphabetically by key', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => showShortcutsHelp());
+    // Walk the <dl>: each .shortcuts-help-group resets a fresh run of
+    // .shortcuts-help-keys rows that must be in alphabetical key order.
+    const groups = await page.evaluate(() => {
+      const out = [];
+      let cur = null;
+      for (const el of document.querySelectorAll(
+          '.shortcuts-help-list > .shortcuts-help-group, .shortcuts-help-list > .shortcuts-help-keys')) {
+        if (el.classList.contains('shortcuts-help-group')) {
+          cur = [];
+          out.push(cur);
+        } else if (cur) {
+          // First key token of the row (the primary combo's leading key).
+          cur.push(el.textContent.trim());
+        }
+      }
+      return out;
+    });
+    expect(groups.length).toBeGreaterThan(1);
+    for (const keys of groups) {
+      const sorted = [...keys].sort((a, b) => a.localeCompare(b));
+      expect(keys).toEqual(sorted);
+    }
+  });
+
   test('+ does not zoom the map while shortcuts modal is open', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
