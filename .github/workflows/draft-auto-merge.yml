@@ -42,7 +42,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Enable auto-merge (squash) and wait for merge
         env:
-          GH_TOKEN: ${{ github.token }}
+          # Prefer a PAT so the eventual merge is attributed to a real user.
+          # GITHUB_TOKEN-attributed merges are anti-recursion-suppressed, so
+          # the resulting push/pull_request events never fire and the
+          # dev->main promotion PR never picks up its checks. A PAT-driven
+          # merge fires those events normally. Falls back to GITHUB_TOKEN.
+          GH_TOKEN: ${{ secrets.AUTOMATION_PAT || github.token }}
+          PAT: ${{ secrets.AUTOMATION_PAT }}
           PR: ${{ github.event.pull_request.number }}
           TITLE: ${{ github.event.pull_request.title }}
         run: |
@@ -74,16 +80,25 @@ jobs:
             case "$MERGE_STATE" in
               MERGED)
                 echo "PR #$PR merged on iteration $i."
-                # Explicit dispatch — workflow_run chain is silently
-                # suppressed when the upstream completion was driven by
-                # GITHUB_TOKEN. workflow_dispatch is exempt from
-                # anti-recursion (per GitHub docs), so this fires reliably.
                 BASE=$(gh pr view "$PR" --json baseRefName --jq '.baseRefName')
+                if [ -n "$PAT" ]; then
+                  # PAT-driven merge already fired push/pull_request events
+                  # (not anti-recursion-suppressed), so Deploy, CI, Review and
+                  # the promotion-PR workflow all run naturally — and the
+                  # pull_request checks badge the dev->main PR. Nothing to
+                  # dispatch.
+                  echo "PAT merge: natural events fire downstream workflows."
+                  exit 0
+                fi
+                # Fallback (no PAT): GITHUB_TOKEN merge suppresses those
+                # events. workflow_dispatch is exempt, so dispatch the
+                # downstream workflows explicitly. NOTE: dispatch-triggered
+                # runs validate the merged code on the base branch but do NOT
+                # badge the dev->main PR (GitHub doesn't associate
+                # workflow_dispatch check suites with PRs) — configure
+                # AUTOMATION_PAT to gate the promotion PR on real checks.
                 gh workflow run Deploy --ref "$BASE" || \
                   echo "::warning::Failed to dispatch Deploy on $BASE"
-                # CI + Review are also suppressed by anti-recursion on the
-                # bot merge, so the open dev->main PR never picks up its
-                # e2e/lint/CodeQL checks. Dispatch them on the base too.
                 gh workflow run CI --ref "$BASE" || \
                   echo "::warning::Failed to dispatch CI on $BASE"
                 gh workflow run Review --ref "$BASE" || \

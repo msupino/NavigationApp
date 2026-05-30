@@ -34,7 +34,12 @@ jobs:
         with:
           ref: dev
           fetch-depth: 0   # need full history to merge main
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Prefer a PAT so the auto-sync `git push origin dev` below fires
+          # push/pull_request events normally. A GITHUB_TOKEN push is
+          # anti-recursion-suppressed, so the dev->main promotion PR's head
+          # would update silently and never re-run its checks. Falls back to
+          # GITHUB_TOKEN when the secret is unset.
+          token: ${{ secrets.AUTOMATION_PAT || secrets.GITHUB_TOKEN }}
 
       - name: Sync main into dev
         # Skip this step when the triggering push *is* our own auto-sync merge
