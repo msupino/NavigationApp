@@ -13,7 +13,7 @@ window.S = {
   // label for unnamed waypoints; do not expand it.
   wpPrefix: 'נק׳ ',                                  // קיצור לתווית מילוט של נקודות בלי שם
   summaryWaypoints: 'ציוני דרך',                     // פאנל סטטיסטיקה
-  tbAddWp: '✏️ הוסף ציון דרך',                       // כפתור עריכה בסרגל
+  tbAddWp: '✏️ הוסף ציון דרך (A)',                   // כפתור עריכה בסרגל
   tbAddWpTitle: 'לחץ על המפה להוספת ציון דרך (לחץ שוב לעצירה)',
   tbShowWpNames: 'הצג שמות ציוני דרך',              // מתג בקטע תצוגה
   tbShowWpNamesTitle: 'הצג שמות ציוני דרך (כבוי = עיגול ריק)',
@@ -25,7 +25,7 @@ window.S = {
   tbSearchHint: 'טיפ: הקלד קודים מופרדים ברווח (למשל LLHZ BAZRA DEROR SHARO HADRA) ולחץ Enter לבניית מסלול.',
   errSearchUnknown: function(t) { return 'ציון ניווט לא מוכר: ' + t; },
   searchReplaceConfirm: 'להחליף את המסלול הנוכחי בציוני הדרך האלה?',
-  tbSearchOpen: '🔍 חפש',
+  tbSearchOpen: '🔍 חפש (Ctrl-F)',
   tbSearchOpenTitle: 'פתח את חלון החיפוש (Ctrl/Cmd-F)',
   deleteWp: '🗑 מחק ציון דרך',                          // כפתור באינספקטור
   resetWpName: '↺ אפס שם נקודה',                     // כפתור באינספקטור — שם לפי ייחוס או ניקוי (תווית אוטומטית)
@@ -106,13 +106,13 @@ window.S = {
   layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'ניווט', 'Low Alt': 'גובה נמוך',
                  'Helicopters': 'מסוקים', 'Satellite': 'לוויין', 'OpenStreetMap': 'OpenStreetMap' },
   tbHandleTitle: 'גרור להזזה',
-  tbAddNote: '📝 הוסף הערה',
+  tbAddNote: '📝 הוסף הערה (N)',
   tbAddNoteTitle: 'לחץ על המפה להוספת הערה (לחץ שוב לעצירה)',
   tbLayerLabel: 'שכבה',
   tbLayerTitle: 'שכבת מפה בסיסית',
-  tbReverse: '⇄ הפוך מסלול',
+  tbReverse: '⇄ הפוך מסלול (R)',
   tbReverseTitle: 'הפוך סדר מסלול',
-  tbClear: '🗑 נקה מפה',
+  tbClear: '🗑 נקה מפה (C)',
   tbClearTitle: 'הסר את כל ציוני הדרך וההערות',
   tbExport: '⬇ ייצא',
   tbExportTitle: 'ייצא מסלול כ-JSON',
@@ -122,7 +122,7 @@ window.S = {
   tbShareTitle: 'העתק קישור לשיתוף המסלול ללוח',
   shareCopied: 'קישור המסלול הועתק ללוח',
   errShareTooLong: 'המסלול ארוך מדי לקישור שיתוף (מקסימום 64 ציוני דרך). ייצא כ-JSON ושלח את הקובץ במקום.',
-  tbFit: '⌖ התאם למסך',
+  tbFit: '⌖ התאם למסך (F)',
   tbFitTitle: 'התאם מסלול לתצוגה (F)',
   tbPlan: '📋 תכנית טיסה',
   tbPlanTitle: 'הצג תכנית טיסה',
@@ -195,6 +195,9 @@ window.S = {
   shortcutsGroupHelp: 'עזרה',
   shortcutFitRoute: 'התאם מסלול לתצוגה',
   shortcutSearch: 'פתח חיפוש',
+  shortcutAddWp: 'הפעל/כבה מצב הוספת ציון דרך (לחץ על המפה להוספה; לחץ שוב לעצירה)',
+  shortcutAddNote: 'הפעל/כבה מצב הוספת הערה (לחץ על המפה להוספה; לחץ שוב לעצירה)',
+  shortcutClear: 'נקה את המפה (הסר את כל ציוני הדרך וההערות)',
   shortcutReverse: 'הפוך כיוון מסלול',
   shortcutEsc: 'סגור חלון / בטל בחירה / סגור זכוכית מגדלת',
   shortcutDelete: 'מחק ציון דרך או הערה שנבחרו',
@@ -212,7 +215,7 @@ window.S = {
   exportBtn: 'ייצא',
 
   // --- Magnifying glass ------------------------------------------------
-  tbMagnifier: '🔍 זכוכית מגדלת',
+  tbMagnifier: '🔍 זכוכית מגדלת (M)',
   tbMagnifierTitle: 'זכוכית מגדלת (M) — תצוגה מוגדלת במיקום הסמן; +/- משנים את הגדלת הזכוכית כשהיא פתוחה',
   magSettingsTitle: 'זכוכית מגדלת',
   magZoomLabel: 'תקריב',
