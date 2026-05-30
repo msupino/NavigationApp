@@ -250,6 +250,7 @@ window.S = Object.assign({
   shortcutAddNote: 'Toggle add-note mode (click map to drop; press again to stop)',
   shortcutClear: 'Clear the map (remove all waypoints and notes)',
   shortcutReverse: 'Reverse route direction',
+  shortcutBothDirections: 'Toggle show return path (both directions)',
   shortcutUndo: 'Undo the last edit, move or delete',
   shortcutEsc: 'Close modal / deselect / close magnifier',
   shortcutDelete: 'Delete selected waypoint or note',

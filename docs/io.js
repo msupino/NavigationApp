@@ -38,6 +38,7 @@ const SHORTCUTS_HELP_ROWS = [
       { keys: ['N'], descKey: 'shortcutAddNote' },
       { keys: ['C'], descKey: 'shortcutClear' },
       { keys: ['R'], descKey: 'shortcutReverse' },
+      { keys: ['B'], descKey: 'shortcutBothDirections' },
       { keys: ['Ctrl', 'Z'], altKeys: ['⌘', 'Z'], descKey: 'shortcutUndo' },
       { keys: ['Esc'], descKey: 'shortcutEsc' },
       { keys: ['D'], altKeys: ['Delete', 'Backspace'], descKey: 'shortcutDelete' },
@@ -80,7 +81,11 @@ function showShortcutsHelp() {
     groupTitle.className = 'shortcuts-help-group';
     groupTitle.textContent = S[group.group] || group.group;
     list.appendChild(groupTitle);
-    for (const row of group.rows) {
+    // Alphabetical within each category (by the primary key combo) so the
+    // rows are predictable to scan; the category order itself is curated.
+    const rows = [...group.rows].sort((a, b) =>
+      a.keys.join('+').localeCompare(b.keys.join('+')));
+    for (const row of rows) {
       const dt = document.createElement('dt');
       dt.className = 'shortcuts-help-keys';
       // Render primary key combo; if `altKeys` is present, render as
@@ -2145,10 +2150,21 @@ function restoreRoute() {
 }
 
 // --- Airfield plates viewer (#105) -----------------------------------
-const PLATE_BASE = 'byop/';
+// Plate PDFs (~133 MB) ship as a SINGLE copy at the deployed artifact root;
+// staging / PR / branch previews don't carry their own copy and resolve
+// plates against that shared root. Deriving the base from location at load
+// time makes the same source work on every host the site is served from —
+// the custom domain (served at '/') and raw GitHub Pages (served under
+// '/NavigationApp/') — so the deploy pipeline no longer has to rewrite a
+// per-environment absolute path (which 404'd on the custom domain).
+function plateBase(pathname) {
+  let dir = (pathname || location.pathname).replace(/[^/]*$/, '');  // drop filename, keep trailing '/'
+  dir = dir.replace(/(staging|pr\/[^/]+|branch\/[^/]+)\/$/, '');     // preview suffix → shared root
+  return dir + 'byop/';
+}
 
 function plateUrl(filename) {
-  return PLATE_BASE + encodeURIComponent(filename);
+  return plateBase() + encodeURIComponent(filename);
 }
 
 function plateCategory(filename) {
@@ -2312,7 +2328,8 @@ function showChartsModal() {
 
   function renderList(afs) {
     body.innerHTML = '';
-    const withPlates = afs.filter(af => af.plates && af.plates.length);
+    const withPlates = afs.filter(af => af.plates && af.plates.length)
+      .sort((a, b) => a.name.localeCompare(b.name));
     if (!withPlates.length) {
       const none = document.createElement('p');
       none.textContent = S.platesNone;
