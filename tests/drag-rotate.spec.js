@@ -106,7 +106,7 @@ test.describe('Page-frame drag grip (C3)', () => {
   test('clampPageOffset keeps the offset within +/- half the viewport', async ({ page }) => {
     await boot(page);
     const out = await page.evaluate(() => {
-      pageOffset = { x: 99999, y: -99999 };
+      pageOffset.x = 99999; pageOffset.y = -99999;
       clampPageOffset();
       return { off: pageOffset, vw: vw(), vh: vh() };
     });
