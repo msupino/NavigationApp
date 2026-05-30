@@ -35,9 +35,10 @@ test.describe('#406 / #410 — nav-waypoints.json (chart-sourced)', () => {
   test('parses and exposes the expected entry count', async () => {
     const d = loadData();
     expect(Array.isArray(d.waypoints)).toBe(true);
-    // 199 chart rows: 26 ARP (filtered out, see airfields.json) + 173
-    // reporting points (89 mandatory + 84 on-request).
-    expect(d.waypoints.length).toBe(173);
+    // 199 chart rows: 26 ARP (filtered out, see airfields.json) + 172
+    // reporting points (89 mandatory + 84 on-request, less LLMZ which
+    // moved to airfields.json as the Bar Yehuda / Masada airfield).
+    expect(d.waypoints.length).toBe(172);
   });
 
   test('every entry carries name + he + lat + lng', async () => {
@@ -75,12 +76,12 @@ test.describe('#406 / #410 — nav-waypoints.json (chart-sourced)', () => {
     // ICAO airfield codes live in airfields.json. Including them here
     // would mean two overlay markers (white dot + blue triangle) per
     // airfield and confuse the snap-priority logic in applyNavSnap().
-    // LLMZ is the one exception that the chart chose to ship as a
-    // reporting point and not as an ARP, so it stays here.
+    // LLMZ (Bar Yehuda / Masada) is an airfield and lives in
+    // airfields.json, so it must not appear here either.
     for (const code of ['LLBG', 'LLHZ', 'LLHA', 'LLER', 'LLES', 'LLEV',
                         'LLEY', 'LLFK', 'LLIB', 'LLKS', 'LLKZ', 'LLMG',
                         'LLRS', 'LLBS', 'LLEK', 'LLRM', 'LLRD', 'LLNV',
-                        'LLOV', 'LLHS', 'LLHB', 'LLPL', 'LLBO']) {
+                        'LLOV', 'LLHS', 'LLHB', 'LLPL', 'LLBO', 'LLMZ']) {
       expect(codes.has(code)).toBe(false);
     }
   });
@@ -149,7 +150,7 @@ test.describe('#406 / #410 — nav-waypoints.json (chart-sourced)', () => {
     // The reporting-required work (#405) and earlier comm-change work
     // surfaced these codes as missing from the legacy KMZ-derived JSON.
     // The chart-sourced CSV carries them all.
-    for (const code of ['NASIH', 'ZGOAL', 'LLMZ', 'MESEK', 'METAH',
+    for (const code of ['NASIH', 'ZGOAL', 'MESEK', 'METAH',
                         'ZURIM', 'TZHOT', 'ZRANA', 'RANNO']) {
       expect(codes.has(code)).toBe(true);
     }
