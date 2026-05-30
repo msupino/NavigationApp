@@ -81,7 +81,11 @@ function showShortcutsHelp() {
     groupTitle.className = 'shortcuts-help-group';
     groupTitle.textContent = S[group.group] || group.group;
     list.appendChild(groupTitle);
-    for (const row of group.rows) {
+    // Alphabetical within each category (by the primary key combo) so the
+    // rows are predictable to scan; the category order itself is curated.
+    const rows = [...group.rows].sort((a, b) =>
+      a.keys.join('+').localeCompare(b.keys.join('+')));
+    for (const row of rows) {
       const dt = document.createElement('dt');
       dt.className = 'shortcuts-help-keys';
       // Render primary key combo; if `altKeys` is present, render as
