@@ -239,6 +239,14 @@ branch by mistake.
   dots; the 5-letter ID label appears at zoom ≥ 10. Captured in PNG
   export. Source: IAA CVFR chart page 113 (2025 edition) — see the
   Notes / pending section.
+- **Charts modal (BYOP plates):** `🗺️ Charts` toolbar button opens
+  `showChartsModal()` (`io.js`), which lists every airfield in
+  `airfields.json` that carries a non-empty `plates[]` as a
+  collapsible section (header `ICAO — English name`, plate chips
+  grouped by `plateCategory()`). **Airfields are listed alphabetically
+  by ICAO** — `renderList()` sorts `withPlates` via
+  `a.name.localeCompare(b.name)` before rendering, so JSON row order
+  never leaks into the UI. Keep that sort when touching the list.
 - **A3 / A4 page frame:** `pageFrameRect()` returns the rectangle in
   screen px sized so its contents are 1:250 000. Clicking the same
   size button again clears it. Orientation chosen via the
