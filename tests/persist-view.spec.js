@@ -3,12 +3,13 @@
 // across browser reloads via the `navaid.view` localStorage key. Boot
 // restores the saved view before the fit-to-route fallback runs.
 const { test, expect } = require('./_setup');
+const { LLHZ, LLHA } = require('./_airfieldArp');
 
 const ROUTE = {
   waypoints: [
-    { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
+    { lat: LLHZ.lat, lng: LLHZ.lng, name: 'LLHZ' },
     { lat: 32.46472, lng: 34.91222, name: 'HADRA' },
-    { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+    { lat: LLHA.lat, lng: LLHA.lng, name: 'LLHA' },
   ],
 };
 

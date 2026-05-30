@@ -27,7 +27,12 @@ window.S = {
   searchReplaceConfirm: 'להחליף את המסלול הנוכחי בציוני הדרך האלה?',
   tbSearchOpen: '🔍 חפש',
   tbSearchOpenTitle: 'פתח את חלון החיפוש (Ctrl/Cmd-F)',
-  deleteWp: 'מחק ציון דרך',                          // כפתור באינספקטור
+  deleteWp: '🗑 מחק ציון דרך',                          // כפתור באינספקטור
+  resetWpName: '↺ אפס שם נקודה',                     // כפתור באינספקטור — שם לפי ייחוס או ניקוי (תווית אוטומטית)
+  resetWpNameTitle: 'הגדר שם לפי נקודת הייחוס הקרובה (שדה תעופה / ציון ניווט), או נקה כשאין ייחוס סמוך',
+  tbResetAllWpNames: '↺ אפס את כל שמות ציוני הדרך',
+  tbResetAllWpNamesTitle: 'הגדר כל שם לפי ייחוס או נקה כשאין ייחוס סמוך',
+  resetAllWpNamesConfirm: 'לאפס את כל שמות ציוני הדרך לפי נקודות ייחוס, או לנקות כשאין ייחוס סמוך?',
   resetLegMarkers: '↺ אפס מיקום סמן',                // כפתור איפוס מיקום סמן הקטע באינספקטור
   tbResetAllMarkers: '↺ אפס מיקום כל הסמנים',         // כפתור בסרגל לאיפוס מיקום כל סמני הקטעים
   tbResetAllMarkersTitle: 'איפוס מיקום סמני הקטעים למיקומי ברירת המחדל',
@@ -49,7 +54,7 @@ window.S = {
   },
   errNoLegs: 'אין קטעים עדיין — הוסף לפחות שני ציוני דרך תחילה.',
   flightPlan: 'תכנית טיסה',
-  fpHeaders: ['#', 'מ-', 'אל-', 'כיוון', 'מרחק (NM)', 'מהירות (קשר)', 'גובה (ft)', 'זמן', 'דלק (גאל)', ''],
+  fpHeaders: ['#', 'מ-', 'אל-', 'כיוון', 'מרחק (NM)', 'מהירות (קשר)', 'גובה (ft)', 'זמן', 'דלק (גאל)', 'זמן מצטבר', 'דלק מצטבר', ''],
   fpDel: '✕',
   fpTotal: 'סה"כ',
   fpReturn: 'מסלול חזרה',
@@ -85,7 +90,7 @@ window.S = {
   shapeRect: 'מלבן',
   shapeOval: 'אליפסה',
   color: 'צבע',
-  deleteNote: 'מחק הערה',
+  deleteNote: '🗑 מחק הערה',
   latitude: 'קו רוחב',
   longitude: 'קו אורך',
   dialTitle: function(b) { return 'סיבוב מפה ' + b + '° — גרור לסיבוב, לחץ לצפון'; },
@@ -190,6 +195,7 @@ window.S = {
   shortcutsGroupHelp: 'עזרה',
   shortcutFitRoute: 'התאם מסלול לתצוגה',
   shortcutSearch: 'פתח חיפוש',
+  shortcutReverse: 'הפוך כיוון מסלול',
   shortcutEsc: 'סגור חלון / בטל בחירה / סגור זכוכית מגדלת',
   shortcutDelete: 'מחק ציון דרך או הערה שנבחרו',
   shortcutHelp: 'הצג את גיליון הקיצורים הזה',
