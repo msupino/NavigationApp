@@ -74,6 +74,13 @@ test.describe('Orient default + persistence (#195)', () => {
 });
 
 test.describe('PNG export filename respects pageSize + orient', () => {
+  // The full exportPNG path (tile load + canvas render + blob download) can
+  // run past the 15s default test timeout on a loaded CI runner — and the
+  // download wait below already allows 30s, which the 15s cap could never
+  // reach. test.slow() triples the timeout (→45s) so the download wait is
+  // the real bound, not the test envelope.
+  test.slow();
+
   test('Export with A4 set: download name matches navigation-A4-*.png', async ({ page }) => {
     await boot(page);
     // Switch to OSM so tiles are CORS-clean and exportPNG can actually run
