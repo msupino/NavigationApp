@@ -39,7 +39,7 @@ const SHORTCUTS_HELP_ROWS = [
       { keys: ['C'], descKey: 'shortcutClear' },
       { keys: ['R'], descKey: 'shortcutReverse' },
       { keys: ['Esc'], descKey: 'shortcutEsc' },
-      { keys: ['Delete'], altKeys: ['Backspace'], descKey: 'shortcutDelete' },
+      { keys: ['D'], altKeys: ['Delete', 'Backspace'], descKey: 'shortcutDelete' },
     ] },
   { group: 'shortcutsGroupHelp',
     rows: [{ keys: ['?'], descKey: 'shortcutHelp' }] },
