@@ -259,8 +259,12 @@ branch by mistake.
     zoom map out (loupe zoom out when magnifier is on); `M` — toggle
     magnifying glass (skipped while any modal backdrop is open).
   - **Search:** `Ctrl/Cmd-F` — open search
-  - **Editing:** `Esc` — close modal / deselect / close magnifier;
-    `Delete`/`Backspace` — delete selected waypoint or note
+  - **Editing:** `A` — toggle add-waypoint mode; `N` — toggle add-note
+    mode; `C` — clear the map; `R` — reverse route direction;
+    `Ctrl/Cmd-Z` — undo the last committed edit/move/delete; `Esc` —
+    close modal / deselect / close magnifier; `D`/`Delete`/`Backspace` —
+    delete selected waypoint or note (A/N/C skipped while any modal
+    backdrop is open)
   - **Help:** `?` — open the cheat-sheet
   When you add a new global keyboard shortcut, append a row to
   `SHORTCUTS_HELP_ROWS` (and matching `shortcutXxx` keys in `core.js` +

@@ -436,6 +436,7 @@ document.getElementById('reverse').onclick = () => {
   state.selected = null;
   showInspector(); draw();
 };
+document.getElementById('undo').onclick = () => { if (typeof undo === 'function') undo(); };
 document.getElementById('clear').onclick = () => {
   if ((state.waypoints.length || state.notes.length) &&
       !confirm(S.clearConfirm)) return;

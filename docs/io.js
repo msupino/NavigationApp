@@ -34,9 +34,13 @@ const SHORTCUTS_HELP_ROWS = [
     rows: [{ keys: ['Ctrl', 'F'], altKeys: ['⌘', 'F'], descKey: 'shortcutSearch' }] },
   { group: 'shortcutsGroupEditing',
     rows: [
+      { keys: ['A'], descKey: 'shortcutAddWp' },
+      { keys: ['N'], descKey: 'shortcutAddNote' },
+      { keys: ['C'], descKey: 'shortcutClear' },
       { keys: ['R'], descKey: 'shortcutReverse' },
+      { keys: ['Ctrl', 'Z'], altKeys: ['⌘', 'Z'], descKey: 'shortcutUndo' },
       { keys: ['Esc'], descKey: 'shortcutEsc' },
-      { keys: ['Delete'], altKeys: ['Backspace'], descKey: 'shortcutDelete' },
+      { keys: ['D'], altKeys: ['Delete', 'Backspace'], descKey: 'shortcutDelete' },
     ] },
   { group: 'shortcutsGroupHelp',
     rows: [{ keys: ['?'], descKey: 'shortcutHelp' }] },
@@ -2002,6 +2006,14 @@ function persist() {
       state.waypoints.length === 0 &&
       state.legs.length === 0 &&
       state.notes.length === 0) return;
+  // Snapshot for undo runs synchronously on every state change (not on the
+  // debounced write) so a quick succession of edits collapses into one undo
+  // step the same way it collapses into one save.
+  recordUndoSnapshot(JSON.stringify({
+    waypoints: state.waypoints,
+    legs: state.legs,
+    notes: state.notes,
+  }));
   if (persistTimer || quotaWarned) return;
   persistTimer = setTimeout(() => {
     persistTimer = null;
@@ -2024,6 +2036,56 @@ function persist() {
     }
   }, 500);
 }
+
+// --- undo -----------------------------------------------------------
+// undoStack holds serialized {waypoints, legs, notes} snapshots of *prior*
+// committed states. lastCommitted is the serialization of the state as it
+// currently stands; when a change makes the new serialization differ, the
+// previous one is pushed so undo() can return to it. The first call after
+// boot only establishes the baseline (no push). `undoing` suppresses the
+// snapshot while undo() is restoring, so an undo never becomes its own entry.
+const UNDO_LIMIT = 50;
+const undoStack = [];
+let lastCommitted = null;
+let undoing = false;
+
+function recordUndoSnapshot(serialized) {
+  if (lastCommitted === null) {           // baseline — nothing to undo to yet
+    lastCommitted = serialized;
+    return;
+  }
+  if (undoing || serialized === lastCommitted) return;
+  undoStack.push(lastCommitted);
+  if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+  lastCommitted = serialized;
+  refreshUndoButton();
+}
+
+function refreshUndoButton() {
+  const btn = document.getElementById('undo');
+  if (btn) btn.disabled = undoStack.length === 0;
+}
+
+function undo() {
+  if (!undoStack.length) return;
+  const prev = undoStack.pop();
+  let snap;
+  try { snap = JSON.parse(prev); } catch (_) { refreshUndoButton(); return; }
+  state.waypoints = Array.isArray(snap.waypoints) ? snap.waypoints : [];
+  state.legs = Array.isArray(snap.legs) ? snap.legs : [];
+  state.notes = Array.isArray(snap.notes) ? snap.notes : [];
+  state.selected = null;
+  undoing = true;
+  lastCommitted = prev;            // align baseline so the redraw won't re-push
+  try {
+    draw();
+    if (typeof showInspector === 'function') showInspector();
+  } finally {
+    undoing = false;
+  }
+  refreshUndoButton();
+}
+
 // Returns one of:
 //   true       — saved route restored into state.
 //   false      — no saved route (clean first-time boot, safe to persist).
