@@ -38,6 +38,7 @@ const SHORTCUTS_HELP_ROWS = [
       { keys: ['N'], descKey: 'shortcutAddNote' },
       { keys: ['C'], descKey: 'shortcutClear' },
       { keys: ['R'], descKey: 'shortcutReverse' },
+      { keys: ['B'], descKey: 'shortcutBothDirections' },
       { keys: ['Ctrl', 'Z'], altKeys: ['⌘', 'Z'], descKey: 'shortcutUndo' },
       { keys: ['Esc'], descKey: 'shortcutEsc' },
       { keys: ['D'], altKeys: ['Delete', 'Backspace'], descKey: 'shortcutDelete' },
