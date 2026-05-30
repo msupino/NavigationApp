@@ -59,6 +59,46 @@ test.describe('A / N / C keyboard shortcuts', () => {
     expect(counts).toEqual({ wp: 0, legs: 0, notes: 0 });
   });
 
+  test('D deletes the selected waypoint', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.0, lng: 34.9, name: 'A' },
+        { lat: 32.2, lng: 35.0, name: 'B' },
+      ];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector(); draw();
+    });
+    await page.keyboard.press('d');
+    const out = await page.evaluate(() => ({
+      wp: state.waypoints.length, sel: state.selected,
+    }));
+    expect(out.wp).toBe(1);
+    expect(out.sel).toBeNull();
+  });
+
+  test('D deletes the selected note', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.notes = [{ lat: 32.1, lng: 34.95, text: 'X', color: '#fff6aa', shape: 'rect' }];
+      state.selected = { type: 'note', index: 0 };
+      showInspector(); draw();
+    });
+    await page.keyboard.press('d');
+    expect(await page.evaluate(() => state.notes.length)).toBe(0);
+  });
+
+  test('D with nothing selected is a no-op', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }];
+      syncLegs(); state.selected = null; draw();
+    });
+    await page.keyboard.press('d');
+    expect(await page.evaluate(() => state.waypoints.length)).toBe(1);
+  });
+
   test('shortcut keys are ignored while typing in an input', async ({ page }) => {
     await boot(page);
     // Open the search overlay (Ctrl-F) so its input is visible + focused,

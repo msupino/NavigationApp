@@ -660,7 +660,9 @@ window.addEventListener('keydown', e => {
       return;
     }
   }
-  if (e.key === 'Delete' || e.key === 'Backspace') {
+  // Delete / Backspace, or D (no modifier), remove the selected feature.
+  if (e.key === 'Delete' || e.key === 'Backspace' ||
+      ((e.key === 'd' || e.key === 'D') && !e.ctrlKey && !e.metaKey && !e.altKey)) {
     if (!state.selected) return;
     if (state.selected.type === 'wp') {
       deleteWaypoint(state.selected.index);

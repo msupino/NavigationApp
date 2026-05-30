@@ -261,7 +261,7 @@ branch by mistake.
   - **Search:** `Ctrl/Cmd-F` — open search
   - **Editing:** `A` — toggle add-waypoint mode; `N` — toggle add-note
     mode; `C` — clear the map; `R` — reverse route direction; `Esc` —
-    close modal / deselect / close magnifier; `Delete`/`Backspace` —
+    close modal / deselect / close magnifier; `D`/`Delete`/`Backspace` —
     delete selected waypoint or note (A/N/C skipped while any modal
     backdrop is open)
   - **Help:** `?` — open the cheat-sheet
