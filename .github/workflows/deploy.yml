@@ -135,15 +135,10 @@ jobs:
           # The artifact upload still ships them as regular files.
           cp -rl m/docs/. site/
           cp -rl d/docs/. site/staging/
+          # No byop copy under staging — io.js plateBase() resolves plates
+          # against the shared root copy at runtime (works on the custom
+          # domain and raw Pages alike), so no PLATE_BASE rewrite is needed.
           rm -rf site/staging/byop
-          # Rewrite PLATE_BASE in staging's io.js. Regex is whitespace-tolerant
-          # so a stylistic change to the assignment line doesn't silently break
-          # plate loading on PR previews. Verify the rewrite landed.
-          sed -i -E "s#(const|var|let)[[:space:]]+PLATE_BASE[[:space:]]*=[[:space:]]*'[^']*'#const PLATE_BASE = '/NavigationApp/byop/'#" site/staging/io.js
-          if ! grep -qE "const PLATE_BASE = '/NavigationApp/byop/'" site/staging/io.js; then
-            echo "::error::PLATE_BASE rewrite missed site/staging/io.js — staging would serve byop/ from a non-existent path."
-            exit 1
-          fi
           SHA_M=$(git -C m rev-parse --short HEAD)
           SHA_D=$(git -C d rev-parse --short HEAD)
           # Bump every cache-bust marker (index.html ?v=, core.js version:,
@@ -195,11 +190,9 @@ jobs:
             sed -i -E "s/(nav-waypoints|airfields)\.json\?v=[A-Za-z0-9]+/\1.json?v=${SHA}/g" \
               "$STAGING/core.js" "$STAGING/he/strings.js" 2>/dev/null || true
             sed -i -E "s/const CACHE = 'navaid-[A-Za-z0-9_-]+'/const CACHE = 'navaid-${SHA}'/" "$STAGING/sw.js" 2>/dev/null || true
+            # No byop copy under previews — io.js plateBase() resolves plates
+            # against the shared root copy at runtime.
             rm -rf "$STAGING/byop"
-            sed -i -E "s#(const|var|let)[[:space:]]+PLATE_BASE[[:space:]]*=[[:space:]]*'[^']*'#const PLATE_BASE = '/NavigationApp/byop/'#" "$STAGING/io.js" 2>/dev/null || true
-            if [ -f "$STAGING/io.js" ] && ! grep -qE "const PLATE_BASE = '/NavigationApp/byop/'" "$STAGING/io.js"; then
-              echo "::warning::PLATE_BASE rewrite missed $STAGING/io.js for PR #$NUM — plate viewer will 404 on this preview."
-            fi
             mv "$STAGING" "../site/pr/$NUM"
             cp -rl "../site/pr/$NUM" "../site/branch/$BRANCH"
             echo "  → /pr/$NUM/ and /branch/$BRANCH/ ($SHA)"
