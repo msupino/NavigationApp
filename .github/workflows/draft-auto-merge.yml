@@ -81,6 +81,13 @@ jobs:
                 BASE=$(gh pr view "$PR" --json baseRefName --jq '.baseRefName')
                 gh workflow run Deploy --ref "$BASE" || \
                   echo "::warning::Failed to dispatch Deploy on $BASE"
+                # CI + Review are also suppressed by anti-recursion on the
+                # bot merge, so the open dev->main PR never picks up its
+                # e2e/lint/CodeQL checks. Dispatch them on the base too.
+                gh workflow run CI --ref "$BASE" || \
+                  echo "::warning::Failed to dispatch CI on $BASE"
+                gh workflow run Review --ref "$BASE" || \
+                  echo "::warning::Failed to dispatch Review on $BASE"
                 if [ "$BASE" = "dev" ]; then
                   gh workflow run "Auto PR dev to main" --ref dev || \
                     echo "::warning::Failed to dispatch Auto PR dev to main"
