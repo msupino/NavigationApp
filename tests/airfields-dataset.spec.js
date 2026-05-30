@@ -37,8 +37,10 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     // 26 chart ARP rows — 1 dropped (second LLNV row, see Anomalies
     // in the PR body: chart prints LLNV twice for Nevatim+Negev) and
     // LLEV (Sde Dov) dropped as a closed aerodrome; LLMZ (Bar Yehuda /
-    // Masada) added as an airfield (it carries BYOP plates).
-    expect(d.airfields.length).toBe(25);
+    // Masada) added as an airfield (it carries BYOP plates); LLAR (Arad)
+    // re-added — its מנחת ערד ARP still prints on the CVFR map and it
+    // retains its BYOP plates.
+    expect(d.airfields.length).toBe(26);
   });
 
   test('every entry carries name + he + lat + lng', async () => {
@@ -127,14 +129,25 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     });
   });
 
-  // The chart treats LLAR (Arad) as out of scope, so it never belongs
-  // in airfields.json. LLMZ (Bar Yehuda / Masada) is an airfield and now
-  // carries BYOP plates, so it lives here (moved out of nav-waypoints).
-  test('LLAR is not present (chart drops it as an ARP)', async () => {
+  // LLAR (Arad) and LLMZ (Bar Yehuda / Masada) both live here: each is
+  // an aerodrome carrying retained BYOP plates. The 2025 chart ARP table
+  // omits LLAR, but its מנחת ערד symbol still prints on the CVFR map, so
+  // it keeps its airfields.json entry + plates.
+  test('LLAR and LLMZ are present (plate-carrying aerodromes)', async () => {
     const d = loadData();
     const codes = new Set(d.airfields.map(a => a.name));
-    expect(codes.has('LLAR')).toBe(false);
+    expect(codes.has('LLAR')).toBe(true);
     expect(codes.has('LLMZ')).toBe(true);
+  });
+
+  // LLAR keeps the BYOP plates retained through the AIP refresh.
+  test('LLAR carries its retained BYOP plates', async () => {
+    const d = loadData();
+    const llar = d.airfields.find(a => a.name === 'LLAR');
+    expect(llar.he).toBe('ערד');
+    expect(llar.en).toBe('Arad');
+    expect(Array.isArray(llar.plates)).toBe(true);
+    expect(llar.plates.length).toBeGreaterThan(0);
   });
 
   // The chart surfaces 11 ARPs that were missing from the legacy
