@@ -6,6 +6,7 @@
 //   - Rotate dial (map rotation writes navaid.bearing)
 //   - Page frame A3/A4 (show/hide via toolbar buttons)
 const { test, expect } = require('./_setup');
+const { LLHZ } = require('./_airfieldArp');
 
 async function boot(page) {
   await page.addInitScript(() => {
@@ -19,7 +20,7 @@ async function boot(page) {
       }
     } catch (e) {}
   });
-  await page.goto('/?lang=en');
+  await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof showInspector === 'function');
 }
 
@@ -31,7 +32,7 @@ test.describe('Inspector panel', () => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [{ lat: 32.1, lng: 34.9, name: 'ALPHA' }];
-      state.selected = { type: 'waypoint', index: 0 };
+      state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     });
     await expect(page.locator('#inspector')).not.toHaveClass(/hidden/);
@@ -47,7 +48,7 @@ test.describe('Inspector panel', () => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [{ lat: 32.1, lng: 34.9, name: 'OLD' }];
-      state.selected = { type: 'waypoint', index: 0 };
+      state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     });
     await page.locator('#insp-title').fill('NEW_NAME');
@@ -58,11 +59,11 @@ test.describe('Inspector panel', () => {
 
   test('inspector body shows latitude + longitude rows for waypoint', async ({ page }) => {
     await boot(page);
-    await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }];
-      state.selected = { type: 'waypoint', index: 0 };
+    await page.evaluate(hz => {
+      state.waypoints = [{ lat: hz.lat, lng: hz.lng, name: 'LLHZ' }];
+      state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
-    });
+    }, LLHZ);
     const bodyText = await page.locator('#insp-body').textContent();
     expect(bodyText).toMatch(/Latitude/);
     expect(bodyText).toMatch(/Longitude/);

@@ -2,6 +2,7 @@
 // Tests for the export-PNG options modal (PR #203): checkboxes for
 // printing waypoints/airports and layer dropdown, defaults, restore.
 const { test, expect } = require('./_setup');
+const { pairLLHZ_LLHA } = require('./_airfieldArp');
 
 async function boot(page) {
   await page.addInitScript(() => {
@@ -15,18 +16,24 @@ async function boot(page) {
       }
     } catch (e) {}
   });
-  await page.goto('/?lang=en');
+  await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof exportPNG === 'function');
 }
 
 test.describe('Export PNG options modal', () => {
+  // PNG export waits on map tiles + canvas; default 15s is too tight for
+  // waitForEvent('download', { timeout: 30_000 }) locally and on CI.
+  test.describe.configure({
+    timeout: process.env.EXPECTED_SHA ? 120_000 : 60_000,
+  });
+
   test('Modal opens with checkboxes off and layer defaulting to Navigation', async ({ page }) => {
     await boot(page);
     // Need a route so exportPNG doesn't NOP; the modal should show regardless.
-    await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+    await page.evaluate(wps => {
+      state.waypoints = wps;
       syncLegs(); draw();
-    });
+    }, pairLLHZ_LLHA());
     await page.locator('#print').click();
     // Wait for the modal backdrop to appear.
     await page.locator('.modal-back').waitFor();
@@ -52,10 +59,10 @@ test.describe('Export PNG options modal', () => {
   test('Export with both checkboxes off uses Navigation layer', async ({ page }) => {
     await boot(page);
     await page.locator('#layer-select').selectOption('OpenStreetMap');
-    await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+    await page.evaluate(wps => {
+      state.waypoints = wps;
       syncLegs(); draw();
-    });
+    }, pairLLHZ_LLHA());
     // Open modal, leave defaults, click Export.
     const dl = page.waitForEvent('download', { timeout: 30000 });
     await page.locator('#print').click();
@@ -82,13 +89,13 @@ test.describe('Export PNG options modal', () => {
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
     const cbs = page.locator('.modal input[type="checkbox"]');
-    // Check "Print Navigation Waypoints" (idx 2) → showNavWP becomes true.
+    // Check "Print navigation waypoints" (idx 2) → showNavWP becomes true.
     await cbs.nth(2).check();
     expect(await page.evaluate(() => showNavWP)).toBe(true);
     // Uncheck → showNavWP back to false.
     await cbs.nth(2).uncheck();
     expect(await page.evaluate(() => showNavWP)).toBe(false);
-    // Check "Print Airfields" (idx 3) → showAirfields becomes true.
+    // Check "Print airfields" (idx 3) → showAirfields becomes true.
     await cbs.nth(3).check();
     expect(await page.evaluate(() => showAirfields)).toBe(true);
   });
@@ -112,10 +119,10 @@ test.describe('Export PNG options modal', () => {
   test('Cancel restores original layer', async ({ page }) => {
     await boot(page);
     await page.locator('#layer-select').selectOption('OpenStreetMap');
-    await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+    await page.evaluate(wps => {
+      state.waypoints = wps;
       syncLegs(); draw();
-    });
+    }, pairLLHZ_LLHA());
     // Verify we're on OSM.
     expect(await page.locator('#layer-select').inputValue()).toBe('OpenStreetMap');
     // Open modal (defaults to Navigation), then Cancel.
@@ -143,10 +150,10 @@ test.describe('Export PNG options modal', () => {
 
   test('Warns when no page size (A3/A4) is selected', async ({ page }) => {
     await boot(page);
-    await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+    await page.evaluate(wps => {
+      state.waypoints = wps;
       syncLegs(); draw();
-    });
+    }, pairLLHZ_LLHA());
     // Ensure no page frame is active.
     await page.evaluate(() => { pageSize = null; });
     await page.locator('#print').click();
@@ -164,6 +171,8 @@ test.describe('Export PNG options modal', () => {
   });
 
   test.describe('PNG DPI metadata (pHYs chunk)', () => {
+    // Tile fetch + canvas export can exceed the default 15s test timeout locally.
+    test.describe.configure({ timeout: 60_000 });
     async function exportPng(page) {
       const dl = page.waitForEvent('download', { timeout: 30000 });
       await page.locator('#print').click();
@@ -220,22 +229,22 @@ test.describe('Export PNG options modal', () => {
 
     test('No page frame → no pHYs chunk', async ({ page }) => {
       await boot(page);
-      await page.evaluate(() => {
-        state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+      await page.evaluate(wps => {
+        state.waypoints = wps;
         syncLegs(); draw();
         pageSize = null;
-      });
+      }, pairLLHZ_LLHA());
       const buf = await exportPng(page);
       expect(readPng(buf)).toBeNull();
     });
 
     test('A4 portrait → pHYs embedded (~11811 ppm ≈ 300 DPI)', async ({ page }) => {
       await boot(page);
-      await page.evaluate(() => {
-        state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+      await page.evaluate(wps => {
+        state.waypoints = wps;
         syncLegs(); draw();
         pageSize = 'A4'; pageOrient = 'portrait';
-      });
+      }, pairLLHZ_LLHA());
       const buf = await exportPng(page);
       const ppm = readPng(buf);
       expect(ppm).not.toBeNull();
@@ -244,11 +253,11 @@ test.describe('Export PNG options modal', () => {
 
     test('A3 portrait → pHYs embedded', async ({ page }) => {
       await boot(page);
-      await page.evaluate(() => {
-        state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+      await page.evaluate(wps => {
+        state.waypoints = wps;
         syncLegs(); draw();
         pageSize = 'A3'; pageOrient = 'portrait';
-      });
+      }, pairLLHZ_LLHA());
       const buf = await exportPng(page);
       const ppm = readPng(buf);
       expect(ppm).not.toBeNull();
@@ -258,10 +267,10 @@ test.describe('Export PNG options modal', () => {
 
   test('Modal respects checkbox toggles and layer change', async ({ page }) => {
     await boot(page);
-    await page.evaluate(() => {
-      state.waypoints = [{ lat: 32.18060, lng: 34.83470, name: 'LLHZ' }, { lat: 32.80972, lng: 35.04389, name: 'LLHA' }];
+    await page.evaluate(wps => {
+      state.waypoints = wps;
       syncLegs(); draw();
-    });
+    }, pairLLHZ_LLHA());
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
     // Toggle both checkboxes on, switch to CVFR.

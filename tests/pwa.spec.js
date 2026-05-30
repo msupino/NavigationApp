@@ -5,7 +5,7 @@ const { test, expect } = require('./_setup');
 
 test.describe('PWA manifest', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
   });
 
   test('<link rel="manifest"> points at manifest.json', async ({ page }) => {
@@ -65,7 +65,7 @@ test.describe('Service worker', () => {
   });
 
   test('Page registers the service worker on load', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(
       async () => (await navigator.serviceWorker.getRegistration()) != null,
       null,
@@ -80,22 +80,31 @@ test.describe('Service worker', () => {
 
   test('Service worker activates and the cache fills with app shell entries',
     async ({ page }) => {
-      await page.goto('/?lang=en');
+      await page.goto('?lang=en');
       await page.waitForFunction(async () => {
         const reg = await navigator.serviceWorker.getRegistration();
         return reg && reg.active && reg.active.state === 'activated';
       }, null, { timeout: 15000 });
+      // 'activated' fires before the SW takes control: controller is set
+      // asynchronously (via controllerchange) after clients.claim() resolves.
+      // A fetch issued before then bypasses the SW and never fills the cache.
+      await page.waitForFunction(
+        () => navigator.serviceWorker.controller != null,
+        null, { timeout: 15000 });
       // Trigger a fetch the SW intercepts so the cache populates.
       await page.evaluate(async () => { await fetch('core.js?v=999'); });
-      const cached = await page.evaluate(async () => {
+      // The page's fetch() resolves on body arrival, not when the SW has
+      // finished cache.put inside respondWith — poll until the cache appears.
+      const cached = await page.waitForFunction(async () => {
         const names = await caches.keys();
         const out = {};
         for (const n of names) {
           const keys = await caches.open(n).then(c => c.keys());
           out[n] = keys.map(r => new URL(r.url).pathname);
         }
-        return out;
-      });
+        const hasNavaid = Object.keys(out).some(n => n.startsWith('navaid-v'));
+        return hasNavaid ? out : false;
+      }, null, { timeout: 15000 }).then(h => h.jsonValue());
       const cacheNames = Object.keys(cached);
       expect(cacheNames.some(n => n.startsWith('navaid-v'))).toBe(true);
       const allPaths = Object.values(cached).flat();
@@ -106,7 +115,7 @@ test.describe('Service worker', () => {
 
   test('Index HTML is cached so offline navigation can be served', async ({ page }) => {
     // First load registers + activates the SW but doesn't run through it.
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(async () => {
       const reg = await navigator.serviceWorker.getRegistration();
       return reg && reg.active && reg.active.state === 'activated';
@@ -145,7 +154,7 @@ test.describe('Service worker', () => {
   });
 
   test('Bad upstream response (5xx) is not cached', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(async () => {
       const reg = await navigator.serviceWorker.getRegistration();
       return reg && reg.active && reg.active.state === 'activated';

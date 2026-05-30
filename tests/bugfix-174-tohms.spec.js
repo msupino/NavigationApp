@@ -5,7 +5,7 @@ const { test, expect } = require('./_setup');
 
 test.describe('#174 toHMS extracts hours', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(() => typeof toHMS === 'function');
   });
 

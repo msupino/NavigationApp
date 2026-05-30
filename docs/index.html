@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>NavAid — מתכנן טיסה</title>
+  <title>NavAid — Israel CVFR Flight Route Planner &amp; Navigation Map</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <meta name="description" content="תכנן מסלולי טיסה CVFR על גבי התרשים האווירי הישראלי.">
+  <meta name="description" content="תכנן מסלולי טיסה CVFR על גבי התרשים האווירי הישראלי — מפות, נתיבים, כיוונים ומרחקים לטייסים. Israel aeronautical chart &amp; CVFR flight planner — interactive maps, waypoints, routes and navigation tools for Israeli pilots.">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
   <meta name="theme-color" content="#231F20">
@@ -15,17 +15,20 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="NavAid">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="NavAid — מתכנן טיסה CVFR">
-  <meta property="og:description" content="תכנן מסלולי טיסה CVFR על גבי התרשים האווירי הישראלי — ציוני דרך, כיוונים, מרחקים, זמנים.">
-  <meta property="og:url" content="https://msupino.github.io/NavigationApp/">
-  <meta property="og:image" content="https://msupino.github.io/NavigationApp/og-preview.jpg">
+  <meta property="og:title" content="NavAid — Israel CVFR Flight Route Planner &amp; Navigation Map">
+  <meta property="og:description" content="Plan CVFR flight routes on the Israeli aeronautical chart — waypoints, headings, distances, times. Free interactive VFR/IFR navigation map for Israel aviation.">
+  <meta property="og:url" content="https://navaid.supino.org/">
+  <meta property="og:image" content="https://navaid.supino.org/og-preview.jpg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="canonical" href="https://msupino.github.io/NavigationApp/">
-  <link rel="alternate" hreflang="he" href="https://msupino.github.io/NavigationApp/?lang=he">
-  <link rel="alternate" hreflang="en" href="https://msupino.github.io/NavigationApp/?lang=en">
-  <link rel="alternate" hreflang="x-default" href="https://msupino.github.io/NavigationApp/">
+  <meta name="twitter:title" content="NavAid — Israel CVFR Flight Route Planner &amp; Navigation Map">
+  <meta name="twitter:description" content="Plan CVFR flight routes on the Israeli aeronautical chart — waypoints, headings, distances, times. Free interactive VFR/IFR navigation map for Israel aviation.">
+  <meta name="twitter:image" content="https://navaid.supino.org/og-preview.jpg">
+  <link rel="canonical" href="https://navaid.supino.org/">
+  <link rel="alternate" hreflang="he" href="https://navaid.supino.org/?lang=he">
+  <link rel="alternate" hreflang="en" href="https://navaid.supino.org/?lang=en">
+  <link rel="alternate" hreflang="x-default" href="https://navaid.supino.org/">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -33,12 +36,19 @@
     "name": "NavAid",
     "alternateName": ["NavAid CVFR Planner", "מתכנן טיסה NavAid"],
     "description": "Plan CVFR flight routes on the Israel aeronautical chart — waypoints, headings, distances and times.",
-    "url": "https://msupino.github.io/NavigationApp/",
-    "image": "https://msupino.github.io/NavigationApp/og-preview.jpg",
+    "url": "https://navaid.supino.org/",
+    "image": "https://navaid.supino.org/og-preview.jpg",
     "applicationCategory": "TravelApplication",
     "applicationSubCategory": "Aviation flight planning",
     "operatingSystem": "Any (web browser)",
     "browserRequirements": "Requires a modern browser with HTML5 Canvas support.",
+    "keywords": ["CVFR", "flight planning", "Israel aviation", "navigation map", "aeronautical chart", "VFR", "IFR", "pilot tools", "ILS", "waypoints"],
+    "featureList": [
+      "Interactive Israeli CVFR / VFR aeronautical chart base maps",
+      "Waypoint, leg, and note drawing with magnetic headings and distances",
+      "Optional published VFR reporting-point overlay",
+      "Printable flight plan and PNG map export"
+    ],
     "inLanguage": ["he", "en"],
     "isAccessibleForFree": true,
     "offers": {
@@ -52,32 +62,41 @@
     }
   }
   </script>
-  <!-- Language bootstrap: param > localStorage > 'he'. Sets window.__navLang;
+  <!-- Language bootstrap: param > localStorage > 'en'. Sets window.__navLang;
        the body-end loader (below) uses it to pick the right strings.js. -->
   <script>
     (function () {
       var p = new URLSearchParams(location.search).get('lang');
       var stored = '';
       try { stored = localStorage.getItem('navaid.lang') || ''; } catch (e) {}
-      var lang = (p === 'en' || p === 'he') ? p : (stored === 'en' ? 'en' : 'he');
+      var lang = (p === 'en' || p === 'he') ? p : (stored === 'he' ? 'he' : 'en');
       try { localStorage.setItem('navaid.lang', lang); } catch (e) {}
       var h = document.documentElement;
       h.lang = lang; h.dir = lang === 'he' ? 'rtl' : 'ltr';
-      if (lang === 'en') document.title = 'NavAid';
+      if (lang === 'he') document.title = 'NavAid — מתכנן טיסה';
       if (!p) history.replaceState(null, '', '?lang=' + lang);
       window.__navLang = lang;
     }());
   </script>
-  <!-- Google Analytics (GA4) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-0XM5PHEK8B"></script>
+  <!-- Google Analytics (GA4) — production only. Excludes /staging/,
+       /pr/NNN/, /branch/NAME/ so only the canonical production site at
+       https://msupino.github.io/NavigationApp/ feeds the GA4 property.
+       The regex matches an optional `NavigationApp/` repo prefix
+       (GitHub Pages serves the site under that path) followed by any
+       of `staging/`, `pr/`, `branch/`. -->
   <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){ dataLayer.push(arguments); }
-    gtag('js', new Date());
-    gtag('config', 'G-0XM5PHEK8B');
+    if (!location.pathname.match(/^(?:\/[^/]+)?\/(?:staging|pr|branch)\//)) {
+      (function(w,d,s){var f=d.getElementsByTagName(s)[0],j=d.createElement(s);
+      j.async=true;j.src='https://www.googletagmanager.com/gtag/js?id=G-0XM5PHEK8B';
+      f.parentNode.insertBefore(j,f);})(window,document,'script');
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function(){ dataLayer.push(arguments); };
+      window.gtag('js', new Date());
+      window.gtag('config', 'G-0XM5PHEK8B');
+    }
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=145">
+  <link rel="stylesheet" href="style.css?v=152">
 </head>
 <body>
   <div id="map"></div>
@@ -114,14 +133,16 @@
     <!-- Build: everything you do to construct or edit a route. -->
     <div class="tb-section" data-sec="build">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecBuild"></div>
-      <div class="tb-section-body">
-        <button id="tool-add" class="tool" data-i18n="tbAddWp" data-i18n-title="tbAddWpTitle"></button>
-        <button id="tool-note" class="tool" data-i18n="tbAddNote" data-i18n-title="tbAddNoteTitle"></button>
-        <button id="search-trigger" type="button" data-i18n="tbSearchOpen" data-i18n-title="tbSearchOpenTitle"></button>
-        <button id="reverse" data-i18n="tbReverse" data-i18n-title="tbReverseTitle"></button>
-        <button id="clear" data-i18n="tbClear" data-i18n-title="tbClearTitle"></button>
-        <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
-      </div>
+  <div class="tb-section-body">
+    <button id="tool-add" class="tool" data-i18n="tbAddWp" data-i18n-title="tbAddWpTitle"></button>
+    <button id="tool-note" class="tool" data-i18n="tbAddNote" data-i18n-title="tbAddNoteTitle"></button>
+    <button id="search-trigger" type="button" data-i18n="tbSearchOpen" data-i18n-title="tbSearchOpenTitle"></button>
+    <button id="reverse" data-i18n="tbReverse" data-i18n-title="tbReverseTitle"></button>
+    <button id="clear" data-i18n="tbClear" data-i18n-title="tbClearTitle"></button>
+    <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
+    <button id="tool-reset-all-markers" type="button" data-i18n="tbResetAllMarkers" data-i18n-title="tbResetAllMarkersTitle"></button>
+    <button id="tool-reset-all-wp-names" type="button" data-i18n="tbResetAllWpNames" data-i18n-title="tbResetAllWpNamesTitle"></button>
+  </div>
     </div>
 
     <!-- View: chart appearance + every overlay/toggle/slider. -->
@@ -157,6 +178,7 @@
         <label class="navtoggle" data-i18n-title="tbShowDriftTitle">
           <input type="checkbox" id="drift-cb" checked> <span data-i18n="tbShowDrift"></span>
         </label>
+        <button id="tool-magnifier" type="button" data-i18n="tbMagnifier" data-i18n-title="tbMagnifierTitle" style="width:100%;margin-top:4px;padding:4px 8px;font-size:12px"></button>
       </div>
     </div>
 
@@ -223,6 +245,18 @@
     <div id="info"></div>
     <span id="app-version"></span>
     <div id="footer-links">
+      <button id="help-trigger" type="button" class="footer-link footer-link-button"
+              data-i18n-title="shortcutsHelpButtonTitle" data-i18n-aria="shortcutsHelpAriaLabel">
+        <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
+             aria-hidden="true" focusable="false">
+          <path fill="currentColor" fill-rule="evenodd"
+                d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0Zm0 1.5a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13Zm0
+                   2.75a2.75 2.75 0 0 0-2.75 2.75.75.75 0 0 0 1.5 0 1.25 1.25 0 1 1 1.926 1.054c-.413.265
+                   -.926.65-.926 1.321V10a.75.75 0 0 0 1.5 0v-.347c.057-.041.157-.103.236-.153A2.75 2.75
+                   0 0 0 8 4.25Zm0 7.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"/>
+        </svg>
+        <span class="footer-link-text" data-i18n="shortcutsHelpButton"></span>
+      </button>
       <a id="repo-link" class="footer-link"
          href="https://github.com/msupino/NavigationApp"
          target="_blank" rel="noopener noreferrer"
@@ -285,13 +319,27 @@
     <div id="insp-body"></div>
   </div>
 
+  <div id="magnifier-settings" class="hidden">
+    <div id="mag-settings-header">
+      <span id="mag-settings-title" data-i18n="magSettingsTitle"></span>
+      <button id="mag-settings-close" type="button" data-i18n-title="modalCloseTitle">✕</button>
+    </div>
+    <div id="mag-settings-body">
+      <label class="navtoggle" data-i18n-title="magZoomTitle">
+        <span data-i18n="magZoomLabel"></span>
+        <input type="range" id="mag-zoom" min="1" max="5" step="0.25" value="2">
+        <span class="slider-val" id="mag-zoom-val">2×</span>
+      </label>
+    </div>
+  </div>
+
   <!-- Dynamic in-order loader. Inserts every script (Leaflet, the
        lang-specific strings.js, then the 5 app modules) with async=false
        so they execute in queued order, replacing the previous document.write
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=145';
+      var v = '?v=152';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',

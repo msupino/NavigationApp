@@ -1,12 +1,13 @@
 // @ts-check
 // Tests for the #162 shareable route link.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
+const { LLHZ, LLHA } = require('./_airfieldArp');
 
 // Same 11-waypoint LLHZ → LLHA fixture as tests/flight-plan.spec.js (PR #153),
-// coords copied from docs/airfields.json + docs/nav-waypoints.json at 5 dp.
+// endpoints from `tests/_airfieldArp.js`, interior points from nav-waypoints.json.
 const ROUTE = {
   waypoints: [
-    { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
+    { lat: LLHZ.lat, lng: LLHZ.lng, name: 'LLHZ' },
     { lat: 32.21861, lng: 34.88250, name: 'BAZRA' },
     { lat: 32.25722, lng: 34.89111, name: 'DEROR' },
     { lat: 32.32306, lng: 34.90389, name: 'SHARO' },
@@ -16,7 +17,7 @@ const ROUTE = {
     { lat: 32.75389, lng: 34.93694, name: 'HOTRM' },
     { lat: 32.79611, lng: 34.94333, name: 'DAROM' },
     { lat: 32.84111, lng: 34.98111, name: 'GALIM' },
-    { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+    { lat: LLHA.lat, lng: LLHA.lng, name: 'LLHA' },
   ],
   legs: Array(10).fill(null).map(() => ({
     inboundAltitude: 1500,
@@ -40,7 +41,7 @@ test.describe('Share route link', () => {
   });
 
   test('polyline encode/decode round-trips at 5 dp precision', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.waitForFunction(() => typeof polylineEncode === 'function');
     const out = await page.evaluate(route => {
       const pts = route.waypoints.map(w => [w.lat, w.lng]);
@@ -57,7 +58,7 @@ test.describe('Share route link', () => {
   });
 
   test('buildShareUrl produces a URL containing r/n/l params', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.evaluate(route => {
       state.waypoints = route.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
       state.legs = route.legs.map(l => ({
@@ -79,7 +80,7 @@ test.describe('Share route link', () => {
   });
 
   test('share URL stays under WhatsApp preview budget for 20 waypoints', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     const len = await page.evaluate(() => {
       state.waypoints = [];
       for (let i = 0; i < 20; i++) {
@@ -96,7 +97,7 @@ test.describe('Share route link', () => {
   });
 
   test('errShareTooLong when over 64 waypoints', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     const out = await page.evaluate(() => {
       state.waypoints = [];
       for (let i = 0; i < 70; i++) {
@@ -111,7 +112,7 @@ test.describe('Share route link', () => {
   test('opening a URL with ?r=&n=&l= loads the encoded route', async ({ page }) => {
     // First build the URL on a fresh app instance, then open a second one
     // with that URL and verify the state matches.
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     const url = await page.evaluate(route => {
       state.waypoints = route.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
       state.legs = route.legs.map(l => ({
@@ -124,8 +125,8 @@ test.describe('Share route link', () => {
       }));
       return buildShareUrl().url;
     }, ROUTE);
-    const target = '/' + url.split('/').pop();   // strip origin
-    await page.goto(target);
+    const { pathname, search } = new URL(url);
+    await page.goto(pathname + search);
     await page.waitForFunction(() => typeof state !== 'undefined' && state.waypoints.length > 0);
     const loaded = await page.evaluate(() => ({
       wps: state.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name })),
@@ -151,7 +152,7 @@ test.describe('Share route link', () => {
   });
 
   test('Hebrew waypoint names round-trip through the share URL', async ({ page }) => {
-    await page.goto('/?lang=he');
+    await page.goto('?lang=he');
     const url = await page.evaluate(() => {
       state.waypoints = [
         { lat: 32.18, lng: 34.83, name: 'הרצליה' },
@@ -160,15 +161,15 @@ test.describe('Share route link', () => {
       syncLegs();
       return buildShareUrl().url;
     });
-    const target = '/' + url.split('/').pop();
-    await page.goto(target);
+    const { pathname: p2, search: s2 } = new URL(url);
+    await page.goto(p2 + s2);
     await page.waitForFunction(() => typeof state !== 'undefined' && state.waypoints.length === 2);
     const names = await page.evaluate(() => state.waypoints.map(w => w.name));
     expect(names).toEqual(['הרצליה', 'חיפה']);
   });
 
   test('share button click writes the URL to clipboard', async ({ page }) => {
-    await page.goto('/?lang=en');
+    await page.goto('?lang=en');
     await page.evaluate(route => {
       state.waypoints = route.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
       state.legs = route.legs.map(l => ({
