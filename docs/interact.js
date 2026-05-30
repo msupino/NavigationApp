@@ -640,6 +640,25 @@ window.addEventListener('keydown', e => {
       toggleMagnifier();
       return;
     }
+    // A / N toggle the add-waypoint / add-note placement modes (same as the
+    // toolbar buttons); C clears the map. Pressing the active mode's key
+    // again toggles back to inspect, mirroring setMode()'s button behaviour.
+    if ((e.key === 'a' || e.key === 'A') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      if (typeof setMode === 'function') setMode('add');
+      return;
+    }
+    if ((e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      if (typeof setMode === 'function') setMode('note');
+      return;
+    }
+    if ((e.key === 'c' || e.key === 'C') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      const clearBtn = document.getElementById('clear');
+      if (clearBtn) clearBtn.click();   // reuse the button's confirm + reset
+      return;
+    }
   }
   if (e.key === 'Delete' || e.key === 'Backspace') {
     if (!state.selected) return;
