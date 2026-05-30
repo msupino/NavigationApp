@@ -4,7 +4,7 @@
 //
 // The dataset was originally rebuilt from the published IAA CVFR chart
 // waypoint reference table (page 113, 2025 edition, shipped upstream as
-// `113_waypoints.csv`). The legacy ForeFlight-derived JSON had ~91 stale
+// `113_waypoints.csv`). The legacy KMZ-derived JSON had ~91 stale
 // codes (`AREA *`, `LLHA A/B/C`, `LLMG A/B Maarav/Mizrah`, etc.) and a
 // handful of reporting points with chart-disagreeing coords — notably
 // BEZRA (~752 m) and KUVSH (~648 m), the heading-drift culprits.
@@ -147,7 +147,7 @@ test.describe('#406 / #410 — nav-waypoints.json (chart-sourced)', () => {
     const d = loadData();
     const codes = new Set(d.waypoints.map(w => w.name));
     // The reporting-required work (#405) and earlier comm-change work
-    // surfaced these codes as missing from the ForeFlight-derived JSON.
+    // surfaced these codes as missing from the legacy KMZ-derived JSON.
     // The chart-sourced CSV carries them all.
     for (const code of ['NASIH', 'ZGOAL', 'LLMZ', 'MESEK', 'METAH',
                         'ZURIM', 'TZHOT', 'ZRANA', 'RANNO']) {
