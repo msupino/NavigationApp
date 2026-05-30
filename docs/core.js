@@ -50,7 +50,7 @@ window.S = Object.assign({
   // ("WP 3" / "נק׳ 3"); do not expand to "Waypoint 3".
   wpPrefix: 'WP ',                                  // short prefix for unnamed waypoints — see rule above
   summaryWaypoints: 'Waypoints',                    // stats panel total
-  tbAddWp: '✏️ Add waypoint',                        // toolbar Edit button
+  tbAddWp: '✏️ Add waypoint (A)',                    // toolbar Edit button
   tbAddWpTitle: 'Click map to drop a waypoint (click button again to stop)',
   tbShowWpNames: 'Show waypoint names',             // Display toggle
   tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
@@ -62,7 +62,7 @@ window.S = Object.assign({
   tbSearchHint: 'Tip: type space-separated waypoint codes (e.g. LLHZ BAZRA DEROR SHARO HADRA) and press Enter to build a route.',
   errSearchUnknown: function(t) { return 'Unknown waypoint: ' + t; },
   searchReplaceConfirm: 'Replace the current route with these waypoints?',
-  tbSearchOpen: '🔍 Find',
+  tbSearchOpen: '🔍 Find (Ctrl-F)',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
   deleteWp: '🗑 Delete waypoint',                      // inspector button
   resetWpName: '↺ Reset waypoint name',             // inspector — reference snap or clear (placeholder)
@@ -142,13 +142,13 @@ window.S = Object.assign({
                  'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap' },
   // Toolbar static strings — filled into DOM by applyI18n() on boot
   tbHandleTitle: 'Drag to move',
-  tbAddNote: '📝 Add note',
+  tbAddNote: '📝 Add note (N)',
   tbAddNoteTitle: 'Click map to drop a note (click button again to stop)',
   tbLayerLabel: 'Layer',
   tbLayerTitle: 'Base map layer',
-  tbReverse: '⇄ Reverse route',
+  tbReverse: '⇄ Reverse route (R)',
   tbReverseTitle: 'Reverse route order',
-  tbClear: '🗑 Clear map',
+  tbClear: '🗑 Clear map (C)',
   tbClearTitle: 'Remove all waypoints and notes',
   tbExport: '⬇ Export JSON',
   tbExportTitle: 'Export route as JSON',
@@ -158,7 +158,7 @@ window.S = Object.assign({
   tbShareTitle: 'Copy a shareable link to this route to the clipboard',
   shareCopied: 'Route link copied to clipboard',
   errShareTooLong: 'Route is too long for a share link (max 64 waypoints). Export as JSON and send the file instead.',
-  tbFit: '⌖ Fit to screen',
+  tbFit: '⌖ Fit to screen (F)',
   tbFitTitle: 'Fit route to view (F)',
   tbPlan: '📋 Flight plan',
   tbPlanTitle: 'Show flight plan table',
@@ -205,7 +205,7 @@ window.S = Object.assign({
   modalCloseTitle: 'Close',
   tbPrint: '⬇ Save PNG',
   tbPrintTitle: 'Save the framed map + route as a PNG',
-  tbMagnifier: '🔍 Magnifying glass',
+  tbMagnifier: '🔍 Magnifying glass (M)',
   tbMagnifierTitle: 'Magnifying glass (M) — zoomed view at cursor; +/− adjust loupe zoom while open',
   magSettingsTitle: 'Magnifier',
   magZoomLabel: 'Zoom',
@@ -244,6 +244,9 @@ window.S = Object.assign({
   shortcutsGroupHelp: 'Help',
   shortcutFitRoute: 'Fit route to view',
   shortcutSearch: 'Open search',
+  shortcutAddWp: 'Toggle add-waypoint mode (click map to drop; press again to stop)',
+  shortcutAddNote: 'Toggle add-note mode (click map to drop; press again to stop)',
+  shortcutClear: 'Clear the map (remove all waypoints and notes)',
   shortcutReverse: 'Reverse route direction',
   shortcutEsc: 'Close modal / deselect / close magnifier',
   shortcutDelete: 'Delete selected waypoint or note',

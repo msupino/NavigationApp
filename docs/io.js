@@ -34,6 +34,9 @@ const SHORTCUTS_HELP_ROWS = [
     rows: [{ keys: ['Ctrl', 'F'], altKeys: ['⌘', 'F'], descKey: 'shortcutSearch' }] },
   { group: 'shortcutsGroupEditing',
     rows: [
+      { keys: ['A'], descKey: 'shortcutAddWp' },
+      { keys: ['N'], descKey: 'shortcutAddNote' },
+      { keys: ['C'], descKey: 'shortcutClear' },
       { keys: ['R'], descKey: 'shortcutReverse' },
       { keys: ['Esc'], descKey: 'shortcutEsc' },
       { keys: ['Delete'], altKeys: ['Backspace'], descKey: 'shortcutDelete' },
