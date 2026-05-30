@@ -597,6 +597,14 @@ window.addEventListener('keydown', e => {
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
     return;                              // typing in a field — leave the WP alone
   }
+  // Ctrl/Cmd-Z undoes the last committed edit. Shift-Ctrl-Z (redo) is left
+  // alone — there is no redo, so don't swallow it.
+  if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey) &&
+      !e.altKey && !e.shiftKey) {
+    e.preventDefault();
+    if (typeof undo === 'function') undo();
+    return;
+  }
   // Issue #420: '?' (Shift-/) opens the keyboard-shortcuts cheat-sheet.
   // Suppressed in inputs (handled by the early return above) so typing a
   // literal '?' in a waypoint name or note still works. Most browsers
@@ -640,8 +648,29 @@ window.addEventListener('keydown', e => {
       toggleMagnifier();
       return;
     }
+    // A / N toggle the add-waypoint / add-note placement modes (same as the
+    // toolbar buttons); C clears the map. Pressing the active mode's key
+    // again toggles back to inspect, mirroring setMode()'s button behaviour.
+    if ((e.key === 'a' || e.key === 'A') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      if (typeof setMode === 'function') setMode('add');
+      return;
+    }
+    if ((e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      if (typeof setMode === 'function') setMode('note');
+      return;
+    }
+    if ((e.key === 'c' || e.key === 'C') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      const clearBtn = document.getElementById('clear');
+      if (clearBtn) clearBtn.click();   // reuse the button's confirm + reset
+      return;
+    }
   }
-  if (e.key === 'Delete' || e.key === 'Backspace') {
+  // Delete / Backspace, or D (no modifier), remove the selected feature.
+  if (e.key === 'Delete' || e.key === 'Backspace' ||
+      ((e.key === 'd' || e.key === 'D') && !e.ctrlKey && !e.metaKey && !e.altKey)) {
     if (!state.selected) return;
     if (state.selected.type === 'wp') {
       deleteWaypoint(state.selected.index);
