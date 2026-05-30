@@ -68,7 +68,13 @@
       "name": "LLBO",
       "he": "הבצים",
       "lat": 32.65,
-      "lng": 34.93278
+      "lng": 34.93278,
+      "plates": [
+        "LLBO_Ground_Diagram.pdf",
+        "LLBO_airport_Chart.pdf",
+        "LLBO_airport_Circuit.pdf",
+        "LLBO_airport_Routes.pdf"
+      ]
     },
     {
       "name": "LLBS",
@@ -78,11 +84,11 @@
       "lng": 34.72278,
       "elev_ft": 656,
       "plates": [
-        "LLBS_airport_CVFR.pdf",
-        "LLBS_airport_Circuit.pdf",
-        "LLBS_airport_Parking.pdf",
-        "LLBS_airport_Text.pdf",
-        "LLBS_airport_Training Areas.pdf"
+        "LLBS_airport_Annex Alef.pdf",
+        "LLBS_airport_Annex Bet.pdf",
+        "LLBS_airport_Annex Daled.pdf",
+        "LLBS_airport_Annex Gimel.pdf",
+        "LLBS_airport_Chart.pdf"
       ],
       "runways": [
         "14/32"
@@ -135,24 +141,11 @@
       "lng": 35.00333,
       "elev_ft": 95,
       "plates": [
-        "LLES_airport_CVFR.pdf",
+        "LLES_airport_Chart.pdf",
         "LLES_airport_Text.pdf"
       ],
       "runways": [
         "09/27"
-      ]
-    },
-    {
-      "name": "LLEV",
-      "he": "עין ורד",
-      "en": "Ein Vered",
-      "lat": 32.265,
-      "lng": 34.95167,
-      "elev_ft": 184,
-      "plates": [
-        "LLEV_airport_Chart.pdf",
-        "LLEV_airport_Circuit.pdf",
-        "LLEV_airport_Text.pdf"
       ]
     },
     {
@@ -163,10 +156,10 @@
       "lng": 35.20306,
       "elev_ft": -164,
       "plates": [
+        "LLEY_airport_Annex Alef.pdf",
         "LLEY_airport_CVFR.pdf",
         "LLEY_airport_Chart.pdf",
-        "LLEY_airport_Circuit.pdf",
-        "LLEY_airport_Text.pdf"
+        "LLEY_airport_Circuit.pdf"
       ]
     },
     {
@@ -177,10 +170,10 @@
       "lng": 35.71722,
       "elev_ft": 1218,
       "plates": [
+        "LLFK_airport_Annex Alef.pdf",
         "LLFK_airport_CVFR.pdf",
         "LLFK_airport_Chart.pdf",
         "LLFK_airport_Circuit.pdf",
-        "LLFK_airport_Drones.pdf",
         "LLFK_airport_Text.pdf"
       ]
     },
@@ -192,18 +185,18 @@
       "lng": 35.04278,
       "elev_ft": 28,
       "plates": [
-        "LLHA_Emergency_Lost Communication.pdf",
-        "LLHA_Ground_Airport.pdf",
-        "LLHA_Ground_Parking G.pdf",
-        "LLHA_Ground_Parking N.pdf",
-        "LLHA_Ground_Parking Z.pdf",
-        "LLHA_Ground_Parking.pdf",
-        "LLHA_Misc_Text.pdf",
-        "LLHA_airport_CVFR.pdf",
-        "LLHA_airport_Circuit.pdf",
-        "LLHA_airport_Low Altitude.pdf",
-        "LLHA_airport_Training Areas.pdf",
-        "LLHA_airport_Visual Approach Chart.pdf"
+        "LLHA_airport_Annex Alef.pdf",
+        "LLHA_airport_Annex Bet 2.pdf",
+        "LLHA_airport_Annex Bet 3.pdf",
+        "LLHA_airport_Annex Bet 4.pdf",
+        "LLHA_airport_Annex Bet.pdf",
+        "LLHA_airport_Annex Chet.pdf",
+        "LLHA_airport_Annex Daled.pdf",
+        "LLHA_airport_Annex Gimel.pdf",
+        "LLHA_airport_Annex He.pdf",
+        "LLHA_airport_Annex Tet.pdf",
+        "LLHA_airport_Annex Zayin.pdf",
+        "LLHA_airport_Chart.pdf"
       ],
       "runways": [
         "15/33"
@@ -229,20 +222,19 @@
       "lng": 34.83444,
       "elev_ft": 121,
       "plates": [
-        "LLHZ_Emergency_Lost Communication.pdf",
-        "LLHZ_Ground_Airport Diagram.pdf",
-        "LLHZ_Ground_Parking A,B,C.pdf",
-        "LLHZ_Ground_Parking D.pdf",
-        "LLHZ_Ground_Parking E.pdf",
-        "LLHZ_Ground_Parking F.pdf",
-        "LLHZ_Ground_Parking G.pdf",
-        "LLHZ_Misc_Text.pdf",
-        "LLHZ_airport_CVFR.pdf",
-        "LLHZ_airport_Circuit.pdf",
-        "LLHZ_airport_Heli Routes.pdf",
-        "LLHZ_airport_Heli Training Areas.pdf",
-        "LLHZ_airport_Training Areas.pdf",
-        "LLHZ_departure_ATS Route Visual.pdf"
+        "LLHZ_airport_Annex Alef.pdf",
+        "LLHZ_airport_Annex Chet.pdf",
+        "LLHZ_airport_Annex Gimel.pdf",
+        "LLHZ_airport_Annex He.pdf",
+        "LLHZ_airport_Annex Tet.pdf",
+        "LLHZ_airport_Annex Yud Alef 2.pdf",
+        "LLHZ_airport_Annex Yud Alef 3.pdf",
+        "LLHZ_airport_Annex Yud Alef.pdf",
+        "LLHZ_airport_Annex Yud Bet.pdf",
+        "LLHZ_airport_Annex Yud Gimel.pdf",
+        "LLHZ_airport_Annex Yud.pdf",
+        "LLHZ_airport_Annex Zayin.pdf",
+        "LLHZ_airport_Chart.pdf"
       ],
       "runways": [
         "10/28"
@@ -256,18 +248,18 @@
       "lng": 35.57083,
       "elev_ft": 884,
       "plates": [
-        "LLIB_Ground_Airport.pdf",
-        "LLIB_Ground_Parking.pdf",
-        "LLIB_Misc_Text.pdf",
-        "LLIB_airport_CVFR Routes.pdf",
-        "LLIB_airport_Gliding Areas.pdf",
-        "LLIB_airport_Hot Spots.pdf",
-        "LLIB_airport_Training Areas.pdf",
-        "LLIB_airport_Visual Circuit.pdf",
-        "LLIB_approach_33 VOR Approach.pdf",
-        "LLIB_approach_Visual Approach.pdf",
-        "LLIB_departure_SIDS.pdf",
-        "LLIB_emergency_Lost Communication.pdf"
+        "LLIB_airport_Annex Alef.pdf",
+        "LLIB_airport_Annex Bet.pdf",
+        "LLIB_airport_Annex Chet.pdf",
+        "LLIB_airport_Annex Daled.pdf",
+        "LLIB_airport_Annex Gimel.pdf",
+        "LLIB_airport_Annex He.pdf",
+        "LLIB_airport_Annex Vav.pdf",
+        "LLIB_airport_Annex Yud Alef.pdf",
+        "LLIB_airport_Annex Yud Bet.pdf",
+        "LLIB_airport_Annex Yud.pdf",
+        "LLIB_airport_Annex Zayin.pdf",
+        "LLIB_airport_Chart.pdf"
       ],
       "runways": [
         "15/33",
@@ -282,9 +274,9 @@
       "lng": 35.59639,
       "elev_ft": 386,
       "plates": [
+        "LLKS_Ground_Diagram.pdf",
         "LLKS_airport_CVFR.pdf",
-        "LLKS_airport_Chart.pdf",
-        "LLKS_airport_Text.pdf"
+        "LLKS_airport_Chart.pdf"
       ],
       "runways": [
         "01/19"
@@ -298,9 +290,9 @@
       "lng": 34.44361,
       "elev_ft": 900,
       "plates": [
+        "LLKZ_airport_Annex Alef.pdf",
         "LLKZ_airport_Chart.pdf",
-        "LLKZ_airport_Circuit.pdf",
-        "LLKZ_airport_Text.pdf"
+        "LLKZ_airport_Circuit.pdf"
       ]
     },
     {
@@ -311,11 +303,11 @@
       "lng": 35.23472,
       "elev_ft": 200,
       "plates": [
+        "LLMG_airport_Annex Alef.pdf",
+        "LLMG_airport_Annex Daled.pdf",
         "LLMG_airport_CVFR.pdf",
         "LLMG_airport_Chart.pdf",
         "LLMG_airport_Circuit.pdf",
-        "LLMG_airport_Text.pdf",
-        "LLMG_airport_Training Areas.pdf",
         "LLMG_departure_CVFR.pdf"
       ],
       "runways": [
@@ -360,13 +352,27 @@
       "lng": 34.75361,
       "elev_ft": 60,
       "plates": [
-        "LLRS_airport_CVFR.pdf",
-        "LLRS_airport_Chart.pdf",
-        "LLRS_airport_Circuit.pdf",
-        "LLRS_airport_Text.pdf",
-        "LLRS_airport_Training Areas.pdf",
-        "LLRS_arrival_North.pdf",
-        "LLRS_parking_Heli.pdf"
+        "LLRS_airport_Annex Alef.pdf",
+        "LLRS_airport_Annex Bet.pdf",
+        "LLRS_airport_Annex Daled.pdf",
+        "LLRS_airport_Annex Gimel.pdf",
+        "LLRS_airport_Annex He.pdf",
+        "LLRS_airport_Annex Vav.pdf",
+        "LLRS_airport_Chart.pdf"
+      ]
+    },
+    {
+      "name": "LLMZ",
+      "he": "מצדה",
+      "en": "Bar Yehuda (Masada)",
+      "lat": 31.32917,
+      "lng": 35.38833,
+      "plates": [
+        "LLMZ_airport_Annex Alef.pdf",
+        "LLMZ_airport_Annex Bet.pdf",
+        "LLMZ_airport_Annex Gimel.pdf",
+        "LLMZ_airport_CVFR.pdf",
+        "LLMZ_airport_Chart.pdf"
       ]
     }
   ]

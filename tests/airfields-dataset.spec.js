@@ -35,7 +35,9 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     const d = loadData();
     expect(Array.isArray(d.airfields)).toBe(true);
     // 26 chart ARP rows — 1 dropped (second LLNV row, see Anomalies
-    // in the PR body: chart prints LLNV twice for Nevatim+Negev).
+    // in the PR body: chart prints LLNV twice for Nevatim+Negev) and
+    // LLEV (Sde Dov) dropped as a closed aerodrome; LLMZ (Bar Yehuda /
+    // Masada) added as an airfield (it carries BYOP plates).
     expect(d.airfields.length).toBe(25);
   });
 
@@ -125,15 +127,14 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     });
   });
 
-  // The chart treats LLAR (Arad) as out of scope and LLMZ (Bar Yehuda
-  // / Masada) as a reporting waypoint (חובה, not ARP), so neither
-  // belongs in airfields.json. LLMZ is now in nav-waypoints.json via
-  // PR #411 instead.
-  test('LLAR and LLMZ are not present (chart drops them as ARPs)', async () => {
+  // The chart treats LLAR (Arad) as out of scope, so it never belongs
+  // in airfields.json. LLMZ (Bar Yehuda / Masada) is an airfield and now
+  // carries BYOP plates, so it lives here (moved out of nav-waypoints).
+  test('LLAR is not present (chart drops it as an ARP)', async () => {
     const d = loadData();
     const codes = new Set(d.airfields.map(a => a.name));
     expect(codes.has('LLAR')).toBe(false);
-    expect(codes.has('LLMZ')).toBe(false);
+    expect(codes.has('LLMZ')).toBe(true);
   });
 
   // The chart surfaces 11 ARPs that were missing from the legacy
@@ -166,8 +167,9 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     expect(byCode.get('LLER').plates.length).toBeGreaterThan(15);
     expect(byCode.get('LLER').runways).toEqual(['01/19']);
 
-    // Spot-check the rest of the previously-enriched entries.
-    for (const code of ['LLBS', 'LLES', 'LLEV', 'LLEY', 'LLFK', 'LLHA',
+    // Spot-check the rest of the previously-enriched entries. LLEV
+    // (Sde Dov) was dropped as a closed aerodrome.
+    for (const code of ['LLBS', 'LLES', 'LLEY', 'LLFK', 'LLHA',
                         'LLHZ', 'LLIB', 'LLKS', 'LLKZ', 'LLMG', 'LLRS']) {
       const a = byCode.get(code);
       expect(Array.isArray(a.plates)).toBe(true);
@@ -184,9 +186,10 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
   test('bare chart-only entries carry only {name, he, lat, lng}', async () => {
     const d = loadData();
     const byCode = new Map(d.airfields.map(a => [a.name, a]));
+    // LLBO (Habonim) now carries BYOP plates from the AIP rebuild, so it
+    // is no longer a bare chart-only entry.
     const bare = ['KKDEM', 'GVULT', 'LLRM', 'LLRD', 'LLEK',
-                  'LLNV', 'LLOV', 'LLPL', 'LLHS', 'LLHB',
-                  'LLBO'];
+                  'LLNV', 'LLOV', 'LLPL', 'LLHS', 'LLHB'];
     for (const code of bare) {
       const a = byCode.get(code);
       expect(Object.keys(a).sort()).toEqual(['he', 'lat', 'lng', 'name']);
@@ -217,7 +220,7 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     const codes = new Set(d.airfields.map(a => a.name));
     // Matches the airfield list in tests/nav-waypoints-dataset.spec.js
     // (the "does NOT include airfield ARP codes" test).
-    for (const code of ['LLBG', 'LLHZ', 'LLHA', 'LLER', 'LLES', 'LLEV',
+    for (const code of ['LLBG', 'LLHZ', 'LLHA', 'LLER', 'LLES',
                         'LLEY', 'LLFK', 'LLIB', 'LLKS', 'LLKZ', 'LLMG',
                         'LLRS', 'LLBS', 'LLEK', 'LLRM', 'LLRD', 'LLNV',
                         'LLOV', 'LLHS', 'LLHB', 'LLPL', 'LLBO']) {

@@ -1,6 +1,6 @@
 # Israel BYOP Airport Plates
 
-This directory holds 141 published airport plates ("dapeyot") for 16 Israeli airfields, snapshotted from the official **Israel CAAI AIP** (`02-25` edition, effective Oct 2025).
+This directory holds 142 published airport plates ("dapeyot") for 16 Israeli airfields, snapshotted from the official **Israel CAAI AIP**. Ben Gurion (LLBG), Eilat / Ramon (LLER) and Arad (LLAR) retain the prior edition; the remaining airfields were rebuilt from the latest per-airfield AIP packs (May 2026). Sde Dov (LLEV) was dropped as a closed aerodrome.
 
 ## Contents
 
@@ -8,17 +8,17 @@ This directory holds 141 published airport plates ("dapeyot") for 16 Israeli air
 |---|---|
 | LLAR | Arad |
 | LLBG | Tel Aviv / Ben Gurion |
+| LLBO | Habonim |
 | LLBS | Be'er Sheva |
 | LLER | Eilat / Ilan & Asaf Ramon |
 | LLES | Ein Shemer |
-| LLEV | Tel Aviv / Sde Dov |
 | LLEY | Ein Yahav |
 | LLFK | Fik (Golan) |
 | LLHA | Haifa |
 | LLHZ | Herzliya |
 | LLIB | Rosh Pina (Mahanayim) |
 | LLKS | Kiryat Shmona |
-| LLKZ | Kibbutz Kfar Yeshoshua |
+| LLKZ | Ktziot |
 | LLMG | Megiddo |
 | LLMZ | Bar Yehuda (Masada) |
 | LLRS | Rishon LeZion |
