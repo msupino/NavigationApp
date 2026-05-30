@@ -244,6 +244,33 @@ test.describe('Keyboard-shortcuts cheat-sheet (#420)', () => {
     await expect(page.locator('#magnifier')).not.toBeVisible();
   });
 
+  test('rows within each category are sorted alphabetically by key', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => showShortcutsHelp());
+    // Walk the <dl>: each .shortcuts-help-group resets a fresh run of
+    // .shortcuts-help-keys rows that must be in alphabetical key order.
+    const groups = await page.evaluate(() => {
+      const out = [];
+      let cur = null;
+      for (const el of document.querySelectorAll(
+          '.shortcuts-help-list > .shortcuts-help-group, .shortcuts-help-list > .shortcuts-help-keys')) {
+        if (el.classList.contains('shortcuts-help-group')) {
+          cur = [];
+          out.push(cur);
+        } else if (cur) {
+          // First key token of the row (the primary combo's leading key).
+          cur.push(el.textContent.trim());
+        }
+      }
+      return out;
+    });
+    expect(groups.length).toBeGreaterThan(1);
+    for (const keys of groups) {
+      const sorted = [...keys].sort((a, b) => a.localeCompare(b));
+      expect(keys).toEqual(sorted);
+    }
+  });
+
   test('+ does not zoom the map while shortcuts modal is open', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
