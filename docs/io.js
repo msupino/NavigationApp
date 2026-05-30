@@ -2327,7 +2327,8 @@ function showChartsModal() {
 
   function renderList(afs) {
     body.innerHTML = '';
-    const withPlates = afs.filter(af => af.plates && af.plates.length);
+    const withPlates = afs.filter(af => af.plates && af.plates.length)
+      .sort((a, b) => a.name.localeCompare(b.name));
     if (!withPlates.length) {
       const none = document.createElement('p');
       none.textContent = S.platesNone;
