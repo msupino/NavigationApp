@@ -181,6 +181,8 @@ window.S = Object.assign({
   tbShowDriftTitle: 'Show 10-degree drift reference lines at each leg end',
   tbShowAirfields: 'Show/pin airfields',
   tbShowAirfieldsTitle: 'Overlay published Israeli airfields (BYOP source)',
+  tbForceSnap: 'Force snap',
+  tbForceSnapTitle: 'Always snap clicks to the nearest airfield or nav-waypoint (otherwise: 18 px radius)',
   tbShowCommChange: 'Show Comm Changes',
   tbShowCommChangeTitle: 'Mark CVFR reporting points where pilots must change ATC frequency',
   commChangeBadge: '📡 Comm change',
@@ -307,6 +309,9 @@ var navWP = null;           // null = not loaded yet (or last fetch failed —
                             // retry on next toggle / search call); [] or
                             // populated = last fetch resolved successfully.
 var showAirfields = true;   // Israeli airfields overlay (default on)
+var forceSnap = false;      // #106: when on, every click snaps to the
+                            // absolute nearest airfield / nav-WP regardless
+                            // of click distance (otherwise: 18 px radius).
 var airfields = null;       // same null/[]/populated convention as navWP —
                             // see loadAirfields() in draw.js. Entries:
                             // { name, he, lat, lng, en?, elev_ft?, plates:[], runways:[]|null }.
