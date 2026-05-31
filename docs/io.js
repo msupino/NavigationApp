@@ -2610,17 +2610,27 @@ function magCenter() { return magnifierSize / 2; }
 // a style flush; callers in the rAF-driven loupe path should call this
 // once per frame and reuse the result. Returns {dx:0,dy:0} if the pane
 // is missing or the matrix can't be parsed.
-function _readMapPaneOffset() {
-  const mapPane = document.querySelector('.leaflet-map-pane');
-  if (!mapPane) return { dx: 0, dy: 0 };
+// The loupe clones live in two coordinate systems: the cloned base /
+// hi-res tiles are positioned in `.leaflet-rotate-pane`-LOCAL pixels
+// (unrotated), while the captured overlay canvas is in rotated CONTAINER
+// pixels (drawn via `latLngToContainerPoint`, which accounts for bearing).
+// To reconcile them we read the rotate-pane's full transform matrix: a
+// `tileWrap` div carries it so the local-space tiles land in container
+// space, and the loupe transform then works in pure container space. At
+// bearing 0 the matrix is the identity, so this is a no-op for the common
+// case. Falls back to `.leaflet-map-pane` (then identity) when the rotate
+// plugin isn't present.
+function _readMagPaneMatrix() {
+  const pane = document.querySelector('.leaflet-rotate-pane') ||
+               document.querySelector('.leaflet-map-pane');
+  const IDENTITY = 'matrix(1, 0, 0, 1, 0, 0)';
+  if (!pane) return { m: new DOMMatrixReadOnly(), css: IDENTITY };
+  const css = getComputedStyle(pane).transform;
+  if (!css || css === 'none') return { m: new DOMMatrixReadOnly(), css: IDENTITY };
   try {
-    const m = new DOMMatrixReadOnly(getComputedStyle(mapPane).transform);
-    return {
-      dx: m.is2D ? m.e : m.m41,
-      dy: m.is2D ? m.f : m.m42,
-    };
+    return { m: new DOMMatrixReadOnly(css), css };
   } catch (e) {
-    return { dx: 0, dy: 0 };
+    return { m: new DOMMatrixReadOnly(), css: IDENTITY };
   }
 }
 
@@ -2676,13 +2686,49 @@ function rebuildMagnifier() {
   const batch = ++_magBatch;
   _magPendingTiles = 0;
 
+  // Read the rotate-pane matrix once. `tileWrap` carries it so every cloned
+  // tile (positioned in rotate-pane-LOCAL pixels) is mapped into CONTAINER
+  // space — the same space the captured overlay canvas lives in. Without
+  // this the tiles ignored map bearing while the overlay honoured it, so
+  // dots / lines drifted off the terrain whenever the map was rotated.
+  const _pane = _readMagPaneMatrix();
+
   // clone tiles at current zoom (immediate fallback)
   const tilePane = document.querySelector('.leaflet-tile-pane');
   const tiles = tilePane ? Array.from(tilePane.querySelectorAll('img')) : [];
+
+  // The cloned tiles' `style.transform` is LEVEL-LOCAL: it positions each
+  // tile relative to its `.leaflet-tile-container` (the per-zoom "level"
+  // element), which itself can carry a scale+translate transform (e.g.
+  // `matrix(4,0,0,4,0,2)` at zoom past maxNativeZoom, or mid zoom-animation).
+  // When zoomed out the level matrix is identity so ignoring it was harmless,
+  // but on zoomed-in views the loupe placed tiles at their level-local pixels
+  // without the level scale — so the magnified tile image drifted away from
+  // the overlay (which is captured in container space). tileWrap therefore
+  // carries `paneMatrix · levelMatrix` to map level-local clone pixels (and
+  // the level-local hi-res tiles below) all the way into CONTAINER space.
+  let _levelMatrix = new DOMMatrixReadOnly();
+  for (const img of tiles) {
+    const lvl = img.parentElement;
+    if (!lvl) continue;
+    const lc = getComputedStyle(lvl).transform;
+    if (lc && lc !== 'none') {
+      try { _levelMatrix = new DOMMatrixReadOnly(lc); } catch (e) { /* identity */ }
+    }
+    break;
+  }
+  const _wrapM = _pane.m.multiply(_levelMatrix);
+
+  const tileWrap = document.createElement('div');
+  tileWrap.style.cssText =
+    'position:absolute;left:0;top:0;width:0;height:0;' +
+    'transform-origin:0 0;transform:' + _wrapM.toString();
+  content.appendChild(tileWrap);
+
   for (const img of tiles) {
     const c = img.cloneNode(true);
     c.style.visibility = 'visible';
-    content.appendChild(c);
+    tileWrap.appendChild(c);
   }
 
   // Adaptive hi-res overlay. Two independent dials decide the target tile
@@ -2756,10 +2802,11 @@ function rebuildMagnifier() {
   // rationale.) `sub` below is the orthogonal hi-res tile zoom step.
   _magScale = Math.max(1, magnifierZoom);
 
-  // Cache `getComputedStyle(mapPane).transform` once per rebuild. Reading
-  // it forces a style flush; the rAF-coalesced loupe rebuild used to
-  // pay for that flush twice (here + at the overlay-capture site below).
-  const _paneOffset = _readMapPaneOffset();
+  // Inverse of the combined pane·level matrix maps a CONTAINER point back
+  // into the LEVEL-LOCAL space the cloned tiles (and refLocalX/Y) live in —
+  // needed to centre the hi-res fetch on the cursor regardless of bearing or
+  // level scale.
+  const _paneInv = _wrapM.inverse();
 
   if (activeLayer && refZ !== null) {
     const maxNZ = activeLayer.options.maxNativeZoom ||
@@ -2782,13 +2829,15 @@ function rebuildMagnifier() {
       // visible magnification stays exactly at the slider value. Hi-res
       // tiles fetched below get downsampled to slider density on display.
 
-      // Cursor in tile-pane-local source pixels (same coord system as the
-      // clones' transforms). Uses the cached pane offset captured above.
-      const mpX = _paneOffset.dx;
-      const mpY = _paneOffset.dy;
+      // Cursor in rotate-pane-LOCAL source pixels (same coord system as the
+      // clones' transforms). The cursor is a CONTAINER point; invert the
+      // rotate-pane matrix to get its local position so the fetch stays
+      // centred under the cursor even when the map is rotated.
       const mapRect = map.getContainer().getBoundingClientRect();
-      const cursorX = (_magX - mapRect.left) - mpX;
-      const cursorY = (_magY - mapRect.top) - mpY;
+      const _curLocal = _paneInv.transformPoint(
+        new DOMPoint(_magX - mapRect.left, _magY - mapRect.top));
+      const cursorX = _curLocal.x;
+      const cursorY = _curLocal.y;
 
       // Loupe area + one loupe-radius margin so the cursor can drift a
       // little before `updateMagnifier` decides to schedule a refetch.
@@ -2860,7 +2909,7 @@ function rebuildMagnifier() {
             if (tile.naturalWidth === 0) tile.remove();
             onSettle({ target: tile });
           }
-          content.appendChild(tile);
+          tileWrap.appendChild(tile);
         }
       }
     }
@@ -2905,17 +2954,13 @@ function rebuildMagnifier() {
       const cctx = cap.getContext('2d');
       if (cctx) cctx.drawImage(overlay, 0, 0);
     } catch (e) { /* never abort the loupe rebuild on a draw error */ }
-    // Use the cached pane offset captured at the top of rebuildMagnifier
-    // — avoids a second `getComputedStyle(...).transform` style flush in
-    // the same rAF tick.
-    const dx = _paneOffset.dx;
-    const dy = _paneOffset.dy;
-    // No counter-scale: `_magScale` is now the slider value directly,
-    // so the content div's `scale(_magScale)` already gives the overlay
-    // its intended magnification. (When `_magScale` was `max(slider, sub)`
-    // we had to divide back out the `sub` boost; not anymore.)
-    cap.style.cssText = 'position:absolute;left:' + (-dx) + 'px;top:' + (-dy) +
-      'px;width:' + overlay.style.width + ';height:' + overlay.style.height;
+    // The overlay canvas is already in CONTAINER pixels (drawn via
+    // `latLngToContainerPoint`, which bakes in bearing), so it sits at the
+    // content origin with no pane offset. `content`'s own transform handles
+    // cursor-centring + the `scale(_magScale)` magnification; the cloned
+    // tiles get into the same container space via `tileWrap`'s matrix.
+    cap.style.cssText = 'position:absolute;left:0;top:0;width:' +
+      overlay.style.width + ';height:' + overlay.style.height;
     content.appendChild(cap);
   }
   _magDirty = false;
@@ -2933,10 +2978,14 @@ function applyMagnifierTransform() {
   // sub-tile fetch in `rebuildMagnifier` only governs WHICH tiles are
   // fetched, not how big they appear.
   const effS = _magScale;
-  const { dx, dy } = _readMapPaneOffset();
+  // `content` works in CONTAINER space: tiles are mapped there via
+  // `tileWrap`'s matrix and the overlay is captured there directly. So the
+  // loupe transform is just "centre the cursor's container point in the
+  // loupe, then scale" — no pane offset, which also keeps it correct under
+  // map rotation.
   content.style.transform =
-    'translate(' + (magCenter() + dx * effS - cp.x * effS) + 'px,' +
-                   (magCenter() + dy * effS - cp.y * effS) + 'px) scale(' + effS + ')';
+    'translate(' + (magCenter() - cp.x * effS) + 'px,' +
+                   (magCenter() - cp.y * effS) + 'px) scale(' + effS + ')';
 }
 
 // Shared rAF queue: coalesces every refresh trigger (cursor move, map
