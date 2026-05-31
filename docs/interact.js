@@ -296,6 +296,36 @@ function showInspector() {
     };
     body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
+    // Comm-change badge (issue #399). Surfaces the sector / CTR / TMA
+    // frequency change associated with a known comm-change reporting
+    // point. Looked up by the canonical ICAO name so it works for both
+    // auto-snapped nav-WP waypoints and routes built via the search
+    // overlay, regardless of locale (the badge text itself is i18n'd).
+    if (commChangeMap && wp.name) {
+      const cc = commChangeMap[wp.name.trim()];
+      if (cc && cc.commChange) {
+        const row = document.createElement('div');
+        row.className = 'row col commchange-row';
+        const lbl = document.createElement('label');
+        lbl.className = 'commchange-label';
+        lbl.textContent = S.commChangeBadge || '📡 Freq change';
+        row.appendChild(lbl);
+        if (cc.from || cc.to) {
+          const freq = document.createElement('span');
+          freq.className = 'val commchange-freq';
+          const arrow = (S.legArrow || '→');
+          freq.textContent = (cc.from || '?') + ' ' + arrow + ' ' + (cc.to || '?');
+          row.appendChild(freq);
+        }
+        if (cc.note) {
+          const note = document.createElement('span');
+          note.className = 'val commchange-note';
+          note.textContent = cc.note;
+          row.appendChild(note);
+        }
+        body.appendChild(row);
+      }
+    }
     const afInsp = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
     // #231: runway directions when the waypoint is at a known airfield (ICAO
     // name or ARP coords — renamed labels at the same ARP keep runways).
@@ -474,7 +504,8 @@ map.on('mousedown', e => {
   if (wp >= 0) {
     downHit = true;
     state.selected = { type: 'wp', index: wp };
-    drag = { kind: 'wp', i: wp, moved: false };
+    drag = { kind: 'wp', i: wp, moved: false,
+             origLat: state.waypoints[wp].lat, origLng: state.waypoints[wp].lng };
     map.dragging.disable();
     showInspector(); draw();
     return;
@@ -515,7 +546,8 @@ map.on('mousemove', e => {
   if (drag.kind === 'wp') {
     drag.moved = true;
     const wp = state.waypoints[drag.i];
-    const r = applyNavSnap(e.latlng, wp.name || '');
+    const r = applyNavSnap(e.latlng, wp.name || '',
+                          { lat: drag.origLat, lng: drag.origLng });
     wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
     draw(); showInspector();
   } else if (drag.kind === 'note') {
@@ -545,7 +577,32 @@ map.on('mousemove', e => {
 // Listening to map.on('mouseup') alone misses releases over the toolbar /
 // browser chrome and leaves the map permanently unpannable (issue #70).
 function endMouseDrag() {
-  if (drag) { map.dragging.enable(); drag = null; }
+  if (drag) {
+    if (drag.kind === 'wp' && drag.moved) {
+      const wp = state.waypoints[drag.i];
+      const SNAP_DEG = 0.0002;
+      const snappedToSelf = Math.abs(wp.lat - drag.origLat) < SNAP_DEG &&
+          Math.abs(wp.lng - drag.origLng) < SNAP_DEG;
+      const snappedToOther = state.waypoints.some((w, j) => j !== drag.i &&
+          Math.abs(w.lat - wp.lat) < SNAP_DEG &&
+          Math.abs(w.lng - wp.lng) < SNAP_DEG);
+      if (snappedToSelf || snappedToOther) {
+        state.waypoints.splice(drag.i, 1);
+        state.selected = null;
+        syncLegs();
+        showInspector(); draw();
+        map.dragging.enable();
+        drag = null;
+        return;
+      }
+    }
+    // #487: a waypoint drag may have landed (snapped) on a comm-change point.
+    // Seed its note now that the position is committed, then repaint.
+    if (drag.kind === 'wp' && typeof seedCommChangeNotes === 'function' &&
+        seedCommChangeNotes()) draw();
+    map.dragging.enable();
+    drag = null;
+  }
 }
 window.addEventListener('mouseup', endMouseDrag);
 window.addEventListener('pointerup', endMouseDrag);
@@ -567,6 +624,7 @@ map.on('click', e => {
     }
     state.waypoints.push({ lat: r5(r.lat), lng: r5(r.lng), name: r.name });
     syncLegs();
+    if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();  // #487
     state.selected = { type: 'wp', index: state.waypoints.length - 1 };
     showInspector(); draw();
   } else if (state.mode === 'note') {
@@ -596,6 +654,14 @@ window.addEventListener('keydown', e => {
   }
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
     return;                              // typing in a field — leave the WP alone
+  }
+  // Ctrl/Cmd-Z undoes the last committed edit. Shift-Ctrl-Z (redo) is left
+  // alone — there is no redo, so don't swallow it.
+  if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey) &&
+      !e.altKey && !e.shiftKey) {
+    e.preventDefault();
+    if (typeof undo === 'function') undo();
+    return;
   }
   // Issue #420: '?' (Shift-/) opens the keyboard-shortcuts cheat-sheet.
   // Suppressed in inputs (handled by the early return above) so typing a
@@ -640,8 +706,29 @@ window.addEventListener('keydown', e => {
       toggleMagnifier();
       return;
     }
+    // A / N toggle the add-waypoint / add-note placement modes (same as the
+    // toolbar buttons); C clears the map. Pressing the active mode's key
+    // again toggles back to inspect, mirroring setMode()'s button behaviour.
+    if ((e.key === 'a' || e.key === 'A') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      if (typeof setMode === 'function') setMode('add');
+      return;
+    }
+    if ((e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      if (typeof setMode === 'function') setMode('note');
+      return;
+    }
+    if ((e.key === 'c' || e.key === 'C') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      const clearBtn = document.getElementById('clear');
+      if (clearBtn) clearBtn.click();   // reuse the button's confirm + reset
+      return;
+    }
   }
-  if (e.key === 'Delete' || e.key === 'Backspace') {
+  // Delete / Backspace, or D (no modifier), remove the selected feature.
+  if (e.key === 'Delete' || e.key === 'Backspace' ||
+      ((e.key === 'd' || e.key === 'D') && !e.ctrlKey && !e.metaKey && !e.altKey)) {
     if (!state.selected) return;
     if (state.selected.type === 'wp') {
       deleteWaypoint(state.selected.index);
@@ -683,7 +770,8 @@ mapEl.addEventListener('touchstart', e => {
     touchDrag = { kind: 'note', i: note };
     state.selected = { type: 'note', index: note };
   } else if (wp >= 0) {
-    touchDrag = { kind: 'wp', i: wp };
+    touchDrag = { kind: 'wp', i: wp, moved: false,
+                  origLat: state.waypoints[wp].lat, origLng: state.waypoints[wp].lng };
     state.selected = { type: 'wp', index: wp };
   } else if (lab) {
     _materialiseDefaultLegLabel(lab.i, lab.which);
@@ -711,8 +799,10 @@ mapEl.addEventListener('touchmove', e => {
   const p = touchXY(e.touches[0]);
   const ll = map.containerPointToLatLng([p.x, p.y]);
   if (touchDrag.kind === 'wp') {
+    touchDrag.moved = true;
     const wp = state.waypoints[touchDrag.i];
-    const r = applyNavSnap(ll, wp.name || '');
+    const r = applyNavSnap(ll, wp.name || '',
+                           { lat: touchDrag.origLat, lng: touchDrag.origLng });
     wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
     draw(); showInspector();
   } else if (touchDrag.kind === 'note') {
@@ -739,7 +829,31 @@ mapEl.addEventListener('touchmove', e => {
 }, { passive: false });
 
 function endTouch() {
-  if (touchDrag) { map.dragging.enable(); touchDrag = null; }
+  if (touchDrag) {
+    if (touchDrag.kind === 'wp' && touchDrag.moved) {
+      const wp = state.waypoints[touchDrag.i];
+      const SNAP_DEG = 0.0002;
+      const snappedToSelf = Math.abs(wp.lat - touchDrag.origLat) < SNAP_DEG &&
+          Math.abs(wp.lng - touchDrag.origLng) < SNAP_DEG;
+      const snappedToOther = state.waypoints.some((w, j) => j !== touchDrag.i &&
+          Math.abs(w.lat - wp.lat) < SNAP_DEG &&
+          Math.abs(w.lng - wp.lng) < SNAP_DEG);
+      if (snappedToSelf || snappedToOther) {
+        state.waypoints.splice(touchDrag.i, 1);
+        state.selected = null;
+        syncLegs();
+        showInspector(); draw();
+        map.dragging.enable();
+        touchDrag = null;
+        return;
+      }
+    }
+    // #487: seed a comm-change note if a touch waypoint-drag landed on one.
+    if (touchDrag.kind === 'wp' && typeof seedCommChangeNotes === 'function' &&
+        seedCommChangeNotes()) draw();
+    map.dragging.enable();
+    touchDrag = null;
+  }
 }
 mapEl.addEventListener('touchend', endTouch);
 mapEl.addEventListener('touchcancel', endTouch);

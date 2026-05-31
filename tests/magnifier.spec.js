@@ -151,7 +151,9 @@ test.describe('Magnifying glass', () => {
     const report = await page.evaluate(() => {
       const content = document.getElementById('mag-content');
       if (!content) return { error: 'no mag-content' };
-      const kids = Array.from(content.children);
+      // Tile clones live inside a `tileWrap` div (it carries the rotate-pane
+      // matrix); query all <img> wherever nested rather than direct children.
+      const kids = Array.from(content.querySelectorAll('img'));
       // Group children by the tile zoom encoded in their `src`. The clones
       // come straight from `.leaflet-tile-pane img` (current map zoom); the
       // hi-res sub-tiles use one of the deeper native zoom levels.
