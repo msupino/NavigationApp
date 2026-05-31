@@ -145,7 +145,7 @@ window.S = {
   tbShowDriftTitle: 'הצג קווי ייחוס סחיפה של 10 מעלות בקצה כל קטע',
   tbShowAirfields: 'הצג/נעץ שדות תעופה',
   tbShowAirfieldsTitle: 'הצג שדות תעופה ישראלים מפורסמים (מקור BYOP)',
-  tbShowCommChange: 'הצג שינויי תדר',
+  tbShowCommChange: 'הצג/הוסף שינויי תדר',
   tbShowCommChangeTitle: 'סמן ציוני דיווח שבהם נדרש מעבר תדר ATC',
   commChangeBadge: '📡 שינוי תדר',
   commChangeNoteText: 'שינוי תדר',

@@ -449,6 +449,7 @@ function drawCommChangeRings() {
 // user deleted. Returns true if any note was added so the caller can persist.
 const COMM_CHANGE_NOTE_LAT_OFFSET = 0.012;   // ~1.3 km north of the dot
 function seedCommChangeNotes() {
+  if (!showCommChange) return false;
   if (!commChangeMap || typeof state === 'undefined' ||
       !Array.isArray(state.waypoints) || !Array.isArray(state.notes)) return false;
   let added = false;

@@ -181,7 +181,7 @@ window.S = Object.assign({
   tbShowDriftTitle: 'Show 10-degree drift reference lines at each leg end',
   tbShowAirfields: 'Show/pin airfields',
   tbShowAirfieldsTitle: 'Overlay published Israeli airfields (BYOP source)',
-  tbShowCommChange: 'Show Freq Changes',
+  tbShowCommChange: 'Show/Add Freq Changes',
   tbShowCommChangeTitle: 'Mark CVFR reporting points where pilots must change ATC frequency',
   commChangeBadge: '📡 Freq change',
   commChangeNoteText: 'Freq change',
