@@ -139,14 +139,153 @@ coordCtrl.onAdd = function () {
 };
 coordCtrl.addTo(map);
 const coordBox = document.getElementById('coord-readout');
+// The readout doubles as a "go to coordinates" input (issue #497): it stays
+// visible showing the map centre, follows the mouse on hover, and turns into
+// an editable field on click. Make it interactive and keep clicks/scroll from
+// leaking through to the map underneath.
+coordBox.removeAttribute('aria-hidden');
+coordBox.title = S.gotoTitle;
+coordBox.classList.add('show', 'interactive');
+L.DomEvent.disableClickPropagation(coordBox);
+L.DomEvent.disableScrollPropagation(coordBox);
+
+let gotoEditing = false;
+function centerCoordText() {
+  const c = map.getCenter();
+  return fmtLatLng(c.lat, 'N', 'S') + '  ' + fmtLatLng(c.lng, 'E', 'W');
+}
 function showCoord(latlng) {
+  if (gotoEditing) return;
   coordBox.textContent = fmtLatLng(latlng.lat, 'N', 'S') + '  ' +
                          fmtLatLng(latlng.lng, 'E', 'W');
-  coordBox.classList.add('show');
 }
-function hideCoord() { coordBox.classList.remove('show'); }
+function showCenterCoord() { if (!gotoEditing) coordBox.textContent = centerCoordText(); }
+showCenterCoord();
 map.on('mousemove', e => showCoord(e.latlng));
-map.on('mouseout', hideCoord);
+map.on('mouseout', showCenterCoord);
+map.on('moveend', showCenterCoord);
+
+// --- temporary "look here" marker (not part of the route) ---------------
+let gotoMarker = null;
+function clearGotoMarker() {
+  if (gotoMarker) { map.removeLayer(gotoMarker); gotoMarker = null; }
+}
+function dropGotoMarker(lat, lng) {
+  clearGotoMarker();
+  gotoMarker = L.circleMarker([lat, lng], {
+    radius: 7, color: '#c0392b', weight: 2,
+    fillColor: '#e74c3c', fillOpacity: 0.85,
+    interactive: false, className: 'goto-marker',
+  }).addTo(map);
+}
+// A genuine map click (drop waypoint, pan, etc.) dismisses the temp marker.
+map.on('click', clearGotoMarker);
+window.clearGotoMarker = clearGotoMarker;
+window.dropGotoMarker = dropGotoMarker;
+window.hasGotoMarker = () => !!gotoMarker;
+
+// --- click-to-edit go-to input -----------------------------------------
+function exitGotoEdit() {
+  gotoEditing = false;
+  coordBox.classList.remove('editing', 'error');
+  showCenterCoord();
+}
+// Break a signed decimal degree into integer degrees/minutes/seconds, with
+// the same 60->0 rollover carry as fmtLatLngDMS so the slots never read 60.
+function dmsParts(v) {
+  const deg = Math.abs(v);
+  let d = Math.floor(deg);
+  let m = Math.floor((deg - d) * 60);
+  let s = Math.round((deg - d - m / 60) * 3600);
+  if (s >= 60) { s -= 60; m += 1; }
+  if (m >= 60) { m -= 60; d += 1; }
+  return { d, m, s };
+}
+function commitGoto() {
+  const num = id => parseFloat(document.getElementById(id).value);
+  const latD = num('goto-lat-d');
+  const lngD = num('goto-lng-d');
+  if (!Number.isFinite(latD) || !Number.isFinite(lngD)) {
+    coordBox.classList.add('error');
+    return false;
+  }
+  const latM = num('goto-lat-m') || 0;
+  const latS = num('goto-lat-s') || 0;
+  const lngM = num('goto-lng-m') || 0;
+  const lngS = num('goto-lng-s') || 0;
+  const lat = latD + latM / 60 + latS / 3600;
+  const lng = lngD + lngM / 60 + lngS / 3600;
+  const ll = finishLatLng(lat, lng);
+  if (!ll) { coordBox.classList.add('error'); return false; }
+  map.setView([ll.lat, ll.lng], Math.max(map.getZoom(), 11));
+  dropGotoMarker(ll.lat, ll.lng);
+  exitGotoEdit();
+  return true;
+}
+// One editable numeric slot; `len` also caps the digits typed in.
+function gotoSlot(id, value, len) {
+  const i = document.createElement('input');
+  i.type = 'text';
+  i.inputMode = 'numeric';
+  i.className = 'goto-num';
+  i.id = id;
+  i.maxLength = len;
+  i.size = len;
+  i.value = len === 2 ? String(value).padStart(2, '0') : String(value);
+  return i;
+}
+function gotoSep(text) {
+  const sep = document.createElement('span');
+  sep.className = 'goto-sep';
+  sep.textContent = text;
+  return sep;
+}
+function enterGotoEdit() {
+  if (gotoEditing) return;
+  gotoEditing = true;
+  coordBox.classList.add('editing');
+  coordBox.classList.remove('error');
+  const c = map.getCenter();
+  const lat = dmsParts(c.lat);
+  const lng = dmsParts(c.lng);
+  coordBox.textContent = '';
+  coordBox.setAttribute('aria-label', S.gotoTitle);
+  coordBox.title = S.gotoError;
+  const slots = [
+    gotoSlot('goto-lat-d', lat.d, 2), gotoSep('°'),
+    gotoSlot('goto-lat-m', lat.m, 2), gotoSep('′'),
+    gotoSlot('goto-lat-s', lat.s, 2), gotoSep('″'),
+    gotoSep('N'), gotoSep(' '),
+    gotoSlot('goto-lng-d', lng.d, 2), gotoSep('°'),
+    gotoSlot('goto-lng-m', lng.m, 2), gotoSep('′'),
+    gotoSlot('goto-lng-s', lng.s, 2), gotoSep('″'),
+    gotoSep('E'),
+  ];
+  const inputs = slots.filter(el => el.tagName === 'INPUT');
+  for (const el of slots) coordBox.appendChild(el);
+  for (let k = 0; k < inputs.length; k++) {
+    const i = inputs[k];
+    i.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); commitGoto(); }
+      else if (e.key === 'Escape') { e.preventDefault(); exitGotoEdit(); }
+      else { coordBox.classList.remove('error'); }
+    });
+    // Auto-advance once a slot is full, so typing flows left to right.
+    i.addEventListener('input', () => {
+      if (i.value.length >= i.maxLength && k < inputs.length - 1) {
+        inputs[k + 1].focus();
+        inputs[k + 1].select();
+      }
+    });
+  }
+  inputs[0].focus();
+  inputs[0].select();
+  // Leave edit mode only when focus exits the readout entirely.
+  coordBox.addEventListener('focusout', e => {
+    if (gotoEditing && !coordBox.contains(e.relatedTarget)) exitGotoEdit();
+  });
+}
+coordBox.addEventListener('click', () => { if (!gotoEditing) enterGotoEdit(); });
 
 const BEARING_KEY = 'navaid.bearing';
 // `navaid.view` — issue #413: persist center+zoom (and bearing) across
