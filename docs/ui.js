@@ -731,6 +731,8 @@ document.getElementById('drift-cb').onchange = e => {
 // nearest airfield / nav-WP. Preserves user-typed names. Priority matches
 // applyNavSnap: airfields first.
 function snapExistingWaypoints() {
+  const occupied = (lat, lng, skipIdx) => state.waypoints.some((w, j) =>
+    j !== skipIdx && w.lat === lat && w.lng === lng);
   for (let i = 0; i < state.waypoints.length; i++) {
     const wp = state.waypoints[i];
     const autoSnapped = isAirfieldName(wp.name) || isNavName(wp.name) ||
@@ -738,7 +740,7 @@ function snapExistingWaypoints() {
     if (wp.name && !autoSnapped) continue;
     if (showAirfields) {
       const af = nearestAirfield(wp, 18);
-      if (af) {
+      if (af && !occupied(r5(af.lat), r5(af.lng), i)) {
         wp.lat = r5(af.lat); wp.lng = r5(af.lng);
         wp.name = af.name;
         continue;
@@ -746,7 +748,7 @@ function snapExistingWaypoints() {
     }
     if (showNavWP) {
       const snap = nearestNavWaypoint(wp, 18);
-      if (snap) {
+      if (snap && !occupied(r5(snap.lat), r5(snap.lng), i)) {
         wp.lat = r5(snap.lat); wp.lng = r5(snap.lng);
         wp.name = snap[S.navWpSearchField] || snap.name;
       }
