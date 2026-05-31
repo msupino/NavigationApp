@@ -152,7 +152,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     await boot(page);
     const labelText = await page.locator(
       'label[data-i18n-title="tbShowCommChangeTitle"]').textContent();
-    expect(labelText).toMatch(/Show Freq Changes/i);
+    expect(labelText).toMatch(/Show\/Add Freq Changes/i);
     const cb = page.locator('#commchange-cb');
     await expect(cb).not.toBeChecked();
   });
@@ -165,7 +165,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     await page.waitForFunction(() => typeof state !== 'undefined');
     const labelText = await page.locator(
       'label[data-i18n-title="tbShowCommChangeTitle"]').textContent();
-    expect(labelText).toMatch(/הצג שינויי תדר/);
+    expect(labelText).toMatch(/הצג\/הוסף שינויי תדר/);
   });
 });
 

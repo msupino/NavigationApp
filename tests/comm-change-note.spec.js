@@ -48,6 +48,7 @@ async function boot(page, lang = 'en') {
   await page.waitForFunction(() => Array.isArray(window.navWP) && window.navWP.length > 0);
   await page.evaluate(() => loadCommChange());
   await page.waitForFunction(() => window.commChangeMap && window.commChangeMap.TYONA);
+  await page.evaluate(() => { window.showCommChange = true; });
   await page.evaluate(t => map.setView([t.lat, t.lng], 11), TYONA);
   await page.evaluate(() => { state.waypoints = []; state.legs = []; state.notes = []; });
 }
