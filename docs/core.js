@@ -319,7 +319,7 @@ var airfields = null;       // same null/[]/populated convention as navWP —
                             // optional per the chart-rebuild (#412): ARPs
                             // surfaced from the IAA chart with no published
                             // BYOP enrichment ship as bare {name,he,lat,lng}.
-var showCommChange = true;  // Comm-change ring overlay (default on) — issue #399.
+var showCommChange = false; // Comm-change ring overlay (default off) — issue #495.
 var commChangeMap = null;   // null = not loaded yet (or last fetch failed —
                             // retry on next toggle); {} or populated = last
                             // fetch resolved. Keyed by nav-WP `name` for
