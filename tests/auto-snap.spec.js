@@ -175,4 +175,25 @@ test.describe('Auto-snap (applyNavSnap)', () => {
     }, LLHZ);
     expect(wpCount).toBe(0);
   });
+
+  test('snapExistingWaypoints skips a ref already occupied by another WP', async ({ page }) => {
+    await boot(page);
+    const result = await page.evaluate(() => {
+      window.showAirfields = true; window.showNavWP = true;
+      const af = airfields[0];
+      const TINY = 0.0001;
+      state.waypoints = [
+        { lat: af.lat + TINY, lng: af.lng, name: '' },
+        { lat: af.lat - TINY, lng: af.lng, name: '' },
+      ];
+      snapExistingWaypoints();
+      // Duplicate = both snapped to the exact same name (non-empty).
+      const duplicate = state.waypoints[0].name !== '' &&
+          state.waypoints[0].name === state.waypoints[1].name &&
+          state.waypoints[0].lat === state.waypoints[1].lat &&
+          state.waypoints[0].lng === state.waypoints[1].lng;
+      return { duplicate, names: [state.waypoints[0].name, state.waypoints[1].name] };
+    });
+    expect(result.duplicate).toBe(false);
+  });
 });

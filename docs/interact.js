@@ -581,8 +581,12 @@ function endMouseDrag() {
     if (drag.kind === 'wp' && drag.moved) {
       const wp = state.waypoints[drag.i];
       const SNAP_DEG = 0.0002;
-      if (Math.abs(wp.lat - drag.origLat) < SNAP_DEG &&
-          Math.abs(wp.lng - drag.origLng) < SNAP_DEG) {
+      const snappedToSelf = Math.abs(wp.lat - drag.origLat) < SNAP_DEG &&
+          Math.abs(wp.lng - drag.origLng) < SNAP_DEG;
+      const snappedToOther = state.waypoints.some((w, j) => j !== drag.i &&
+          Math.abs(w.lat - wp.lat) < SNAP_DEG &&
+          Math.abs(w.lng - wp.lng) < SNAP_DEG);
+      if (snappedToSelf || snappedToOther) {
         state.waypoints.splice(drag.i, 1);
         state.selected = null;
         syncLegs();
@@ -829,8 +833,12 @@ function endTouch() {
     if (touchDrag.kind === 'wp' && touchDrag.moved) {
       const wp = state.waypoints[touchDrag.i];
       const SNAP_DEG = 0.0002;
-      if (Math.abs(wp.lat - touchDrag.origLat) < SNAP_DEG &&
-          Math.abs(wp.lng - touchDrag.origLng) < SNAP_DEG) {
+      const snappedToSelf = Math.abs(wp.lat - touchDrag.origLat) < SNAP_DEG &&
+          Math.abs(wp.lng - touchDrag.origLng) < SNAP_DEG;
+      const snappedToOther = state.waypoints.some((w, j) => j !== touchDrag.i &&
+          Math.abs(w.lat - wp.lat) < SNAP_DEG &&
+          Math.abs(w.lng - wp.lng) < SNAP_DEG);
+      if (snappedToSelf || snappedToOther) {
         state.waypoints.splice(touchDrag.i, 1);
         state.selected = null;
         syncLegs();
