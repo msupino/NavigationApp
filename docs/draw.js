@@ -194,7 +194,11 @@ function navName(stored) {
 // Airfields take priority because they're a much smaller set of strongly-
 // known landmarks (16 vs 173 nav-WPs); if both overlays sit on the same
 // spot the airfield name is the more meaningful identifier.
-function applyNavSnap(latlng, currentName) {
+function applyNavSnap(latlng, currentName, excludeLl) {
+  const EXCL_DEG = 0.0002;
+  const excluded = ll => excludeLl &&
+    Math.abs(ll.lat - excludeLl.lat) < EXCL_DEG &&
+    Math.abs(ll.lng - excludeLl.lng) < EXCL_DEG;
   if (!showAirfields && !showNavWP) {
     const autoSnapped = isAirfieldName(currentName) || isNavName(currentName) ||
         isSequenceWaypointName(currentName);
@@ -218,11 +222,11 @@ function applyNavSnap(latlng, currentName) {
     const cands = [];
     if (showAirfields) {
       const af = nearestAirfield(latlng, Infinity);
-      if (af) cands.push({ pt: af, name: af.name });
+      if (af && !excluded(af)) cands.push({ pt: af, name: af.name });
     }
     if (showNavWP) {
       const nw = nearestNavWaypoint(latlng, Infinity);
-      if (nw) cands.push({ pt: nw, name: nw[S.navWpSearchField] || nw.name });
+      if (nw && !excluded(nw)) cands.push({ pt: nw, name: nw[S.navWpSearchField] || nw.name });
     }
     let best = null, bestD = Infinity;
     for (const c of cands) {
@@ -239,14 +243,14 @@ function applyNavSnap(latlng, currentName) {
   }
   if (showAirfields) {
     const af = nearestAirfield(latlng, 18);
-    if (af) {
+    if (af && !excluded(af)) {
       const name = userTyped ? currentName : af.name;
       return { lat: af.lat, lng: af.lng, name };
     }
   }
   if (showNavWP) {
     const snap = nearestNavWaypoint(latlng, 18);
-    if (snap) {
+    if (snap && !excluded(snap)) {
       const name = userTyped ? currentName : (snap[S.navWpSearchField] || snap.name);
       return { lat: snap.lat, lng: snap.lng, name };
     }
@@ -569,12 +573,12 @@ function drawLegs() {
     drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, String(leg.inboundAltitude),
-      '#2f6fd0', yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
+      '#161412', yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
     if (showReturn) {
       drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, String(leg.outboundAltitude),
-        '#c0392b', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
+        '#161412', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
   }
@@ -697,7 +701,7 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc
   const at = lx => ({ x: cx + lx * cos, y: cy + lx * sin });
   const pAlt = at(-L / 2 + cell * 0.5);
   const pTime = at(-L / 2 + cell * 1.5);
-  const pHead = at(xb + Lt * 0.32);
+  const pHead = at(xb + Lt * 0.22);
   drawRotText(pAlt.x, pAlt.y, ta, alt, `bold ${fontPx}px sans-serif`, '#000');
   drawRotText(pTime.x, pTime.y, ta, time, `bold ${fontPx}px sans-serif`, '#000');
   drawRotText(pHead.x, pHead.y, ta, head, `bold ${fontPxH}px sans-serif`, '#000');
