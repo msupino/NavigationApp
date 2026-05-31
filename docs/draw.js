@@ -194,7 +194,11 @@ function navName(stored) {
 // Airfields take priority because they're a much smaller set of strongly-
 // known landmarks (16 vs 173 nav-WPs); if both overlays sit on the same
 // spot the airfield name is the more meaningful identifier.
-function applyNavSnap(latlng, currentName) {
+function applyNavSnap(latlng, currentName, excludeLl) {
+  const EXCL_DEG = 0.0002;
+  const excluded = ll => excludeLl &&
+    Math.abs(ll.lat - excludeLl.lat) < EXCL_DEG &&
+    Math.abs(ll.lng - excludeLl.lng) < EXCL_DEG;
   if (!showAirfields && !showNavWP) {
     const autoSnapped = isAirfieldName(currentName) || isNavName(currentName) ||
         isSequenceWaypointName(currentName);
@@ -218,11 +222,11 @@ function applyNavSnap(latlng, currentName) {
     const cands = [];
     if (showAirfields) {
       const af = nearestAirfield(latlng, Infinity);
-      if (af) cands.push({ pt: af, name: af.name });
+      if (af && !excluded(af)) cands.push({ pt: af, name: af.name });
     }
     if (showNavWP) {
       const nw = nearestNavWaypoint(latlng, Infinity);
-      if (nw) cands.push({ pt: nw, name: nw[S.navWpSearchField] || nw.name });
+      if (nw && !excluded(nw)) cands.push({ pt: nw, name: nw[S.navWpSearchField] || nw.name });
     }
     let best = null, bestD = Infinity;
     for (const c of cands) {
@@ -239,14 +243,14 @@ function applyNavSnap(latlng, currentName) {
   }
   if (showAirfields) {
     const af = nearestAirfield(latlng, 18);
-    if (af) {
+    if (af && !excluded(af)) {
       const name = userTyped ? currentName : af.name;
       return { lat: af.lat, lng: af.lng, name };
     }
   }
   if (showNavWP) {
     const snap = nearestNavWaypoint(latlng, 18);
-    if (snap) {
+    if (snap && !excluded(snap)) {
       const name = userTyped ? currentName : (snap[S.navWpSearchField] || snap.name);
       return { lat: snap.lat, lng: snap.lng, name };
     }
