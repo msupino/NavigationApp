@@ -111,20 +111,27 @@ async function boot(page) {
   await page.evaluate(() => draw());
 }
 
-test.describe('comm-change schema + UI plumbing (shipped empty dataset)', () => {
-  test('shipped docs/comm-change.json parses and loads to an empty map', async ({ page }) => {
+test.describe('comm-change schema + UI plumbing (shipped populated dataset)', () => {
+  test('shipped docs/comm-change.json parses and loads commChange points', async ({ page }) => {
     await boot(page);
     const map = await page.evaluate(() => window.commChangeMap);
     expect(map).toBeTruthy();
     expect(typeof map).toBe('object');
-    expect(Object.keys(map)).toHaveLength(0);
+    const keys = Object.keys(map);
+    expect(keys.length).toBeGreaterThan(0);
+    // Every shipped entry is keyed by a 5-letter ICAO name and flagged commChange.
+    for (const k of keys) {
+      expect(k).toMatch(/^[A-Z]{5}$/);
+      expect(map[k].commChange).toBe(true);
+    }
+    expect(map.TYONA).toBeTruthy();
   });
 
-  test('empty dataset draws no comm-change rings', async ({ page }) => {
-    await boot(page);
+  test('populated dataset draws comm-change rings for in-view points', async ({ page }) => {
+    await boot(page);   // boot() frames the map on TYONA
     const drawn = await page.evaluate(() =>
       Array.from(window.__commChangeRingsDrawn || []));
-    expect(drawn).toHaveLength(0);
+    expect(drawn).toContain('TYONA');
   });
 
   test('a waypoint whose name is not in the dataset shows no badge', async ({ page }) => {
