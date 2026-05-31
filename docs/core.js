@@ -42,6 +42,7 @@ window.S = Object.assign({
   navWpSearchField: 'name',            // which field to show/search in results
   airfieldsUrl: 'airfields.json?v=3',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
+  commChangeUrl: 'comm-change.json?v=1', // CVFR comm-change reporting points (issue #399)
 
   // --- English UI copy (default locale) -------------------------------
   // Sentence case: capitalize the first word and proper nouns / acronyms
@@ -50,7 +51,7 @@ window.S = Object.assign({
   // ("WP 3" / "נק׳ 3"); do not expand to "Waypoint 3".
   wpPrefix: 'WP ',                                  // short prefix for unnamed waypoints — see rule above
   summaryWaypoints: 'Waypoints',                    // stats panel total
-  tbAddWp: '✏️ Add waypoint',                        // toolbar Edit button
+  tbAddWp: '✏️ Add waypoint (A)',                    // toolbar Edit button
   tbAddWpTitle: 'Click map to drop a waypoint (click button again to stop)',
   tbShowWpNames: 'Show waypoint names',             // Display toggle
   tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
@@ -62,9 +63,9 @@ window.S = Object.assign({
   tbSearchHint: 'Tip: type space-separated waypoint codes (e.g. LLHZ BAZRA DEROR SHARO HADRA) and press Enter to build a route.',
   errSearchUnknown: function(t) { return 'Unknown waypoint: ' + t; },
   searchReplaceConfirm: 'Replace the current route with these waypoints?',
-  tbSearchOpen: '🔍 Find',
+  tbSearchOpen: '🔍 Find (Ctrl-F)',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
-  deleteWp: '🗑 Delete waypoint',                      // inspector button
+  deleteWp: '🗑 Delete waypoint (D)',                  // inspector button
   resetWpName: '↺ Reset waypoint name',             // inspector — reference snap or clear (placeholder)
   resetWpNameTitle: 'Set name to the nearest reference (airfield / nav-WP), or clear when off-grid (dimmed sequence label)',
   tbResetAllWpNames: '↺ Reset all waypoint names',
@@ -125,7 +126,7 @@ window.S = Object.assign({
   shapeRect: 'Rectangle',
   shapeOval: 'Oval',
   color: 'Color',
-  deleteNote: '🗑 Delete note',
+  deleteNote: '🗑 Delete note (D)',
   latitude: 'Latitude',
   longitude: 'Longitude',
   dialTitle: function(b) { return 'Map rotation ' + b + '° — drag to rotate, click for north up'; },
@@ -142,23 +143,25 @@ window.S = Object.assign({
                  'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap' },
   // Toolbar static strings — filled into DOM by applyI18n() on boot
   tbHandleTitle: 'Drag to move',
-  tbAddNote: '📝 Add note',
+  tbAddNote: '📝 Add note (N)',
   tbAddNoteTitle: 'Click map to drop a note (click button again to stop)',
   tbLayerLabel: 'Layer',
   tbLayerTitle: 'Base map layer',
-  tbReverse: '⇄ Reverse route',
+  tbReverse: '⇄ Reverse route (R)',
   tbReverseTitle: 'Reverse route order',
-  tbClear: '🗑 Clear map',
+  tbUndo: '↶ Undo (Ctrl-Z)',
+  tbUndoTitle: 'Undo the last edit, move or delete',
+  tbClear: '🗑 Clear map (C)',
   tbClearTitle: 'Remove all waypoints and notes',
-  tbExport: '⬇ Export',
+  tbExport: '⬇ Export JSON',
   tbExportTitle: 'Export route as JSON',
-  tbImport: '⬆ Import',
-  tbImportTitle: 'Import route JSON',
+  tbImport: '⬆ Import JSON/GPX',
+  tbImportTitle: 'Import route from JSON or GPX file',
   tbShare: '🔗 Share',
   tbShareTitle: 'Copy a shareable link to this route to the clipboard',
   shareCopied: 'Route link copied to clipboard',
   errShareTooLong: 'Route is too long for a share link (max 64 waypoints). Export as JSON and send the file instead.',
-  tbFit: '⌖ Fit to screen',
+  tbFit: '⌖ Fit to screen (F)',
   tbFitTitle: 'Fit route to view (F)',
   tbPlan: '📋 Flight plan',
   tbPlanTitle: 'Show flight plan table',
@@ -166,6 +169,8 @@ window.S = Object.assign({
   tbChartsTitle: 'Browse approach charts for all airfields',
   tbFly: '✈️ Open in Google Earth',
   tbFlyTitle: 'Save a Google Earth tour of the route at the planned leg altitudes',
+  tbGpxExport: '📍 Export GPX',
+  tbGpxExportTitle: 'Export route as GPX for portable GPS units',
   tbShowReturn: 'Show return path',
   tbShowReturnTitle: 'Show return-direction (outbound) info',
   tbShowMidLeg: 'Show leg distance',
@@ -178,6 +183,10 @@ window.S = Object.assign({
   tbShowAirfieldsTitle: 'Overlay published Israeli airfields (BYOP source)',
   tbForceSnap: 'Force snap',
   tbForceSnapTitle: 'Always snap clicks to the nearest airfield or nav-waypoint (otherwise: 18 px radius)',
+  tbShowCommChange: 'Show Comm Changes',
+  tbShowCommChangeTitle: 'Mark CVFR reporting points where pilots must change ATC frequency',
+  commChangeBadge: '📡 Comm change',
+  commChangeNoteText: 'Comm change',
   plates: 'Charts',
   runways: 'Runways',
   plateCategoryApproach: 'Approach',
@@ -192,7 +201,7 @@ window.S = Object.assign({
   plateClose: 'Close',
   platesNone: 'No charts available — see official AIP',
   plateLoadError: 'Failed to load chart.',
-  plateAttribution: 'Charts © Israel CAAI / Ministry of Transport — published in the AIP. Snapshot from ForeFlight Israel Base Pack 02-25 edition.',
+  plateAttribution: 'Charts © Israel CAAI / Ministry of Transport — published in the AIP.',
   tbTransparency: 'Label opacity',
   tbTransparencyTitle: 'Opacity of waypoint / leg / note label backgrounds',
   tbMapOpacity: 'Map opacity',
@@ -205,7 +214,7 @@ window.S = Object.assign({
   modalCloseTitle: 'Close',
   tbPrint: '⬇ Save PNG',
   tbPrintTitle: 'Save the framed map + route as a PNG',
-  tbMagnifier: '🔍 Magnifying glass',
+  tbMagnifier: '🔍 Magnifying glass (M)',
   tbMagnifierTitle: 'Magnifying glass (M) — zoomed view at cursor; +/− adjust loupe zoom while open',
   magSettingsTitle: 'Magnifier',
   magZoomLabel: 'Zoom',
@@ -244,7 +253,12 @@ window.S = Object.assign({
   shortcutsGroupHelp: 'Help',
   shortcutFitRoute: 'Fit route to view',
   shortcutSearch: 'Open search',
+  shortcutAddWp: 'Toggle add-waypoint mode (click map to drop; press again to stop)',
+  shortcutAddNote: 'Toggle add-note mode (click map to drop; press again to stop)',
+  shortcutClear: 'Clear the map (remove all waypoints and notes)',
   shortcutReverse: 'Reverse route direction',
+  shortcutBothDirections: 'Toggle show return path (both directions)',
+  shortcutUndo: 'Undo the last edit, move or delete',
   shortcutEsc: 'Close modal / deselect / close magnifier',
   shortcutDelete: 'Delete selected waypoint or note',
   shortcutHelp: 'Show this cheat-sheet',
@@ -305,6 +319,12 @@ var airfields = null;       // same null/[]/populated convention as navWP —
                             // optional per the chart-rebuild (#412): ARPs
                             // surfaced from the IAA chart with no published
                             // BYOP enrichment ship as bare {name,he,lat,lng}.
+var showCommChange = true;  // Comm-change ring overlay (default on) — issue #399.
+var commChangeMap = null;   // null = not loaded yet (or last fetch failed —
+                            // retry on next toggle); {} or populated = last
+                            // fetch resolved. Keyed by nav-WP `name` for
+                            // O(1) lookup, value is the raw point entry
+                            // `{commChange, from, to, note, verified, source}`.
 var showDrift = true;       // 10-degree drift reference lines
 var showWpNames = true;     // draw waypoint names (off = empty circle)
 var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg

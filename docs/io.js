@@ -34,9 +34,14 @@ const SHORTCUTS_HELP_ROWS = [
     rows: [{ keys: ['Ctrl', 'F'], altKeys: ['⌘', 'F'], descKey: 'shortcutSearch' }] },
   { group: 'shortcutsGroupEditing',
     rows: [
+      { keys: ['A'], descKey: 'shortcutAddWp' },
+      { keys: ['N'], descKey: 'shortcutAddNote' },
+      { keys: ['C'], descKey: 'shortcutClear' },
       { keys: ['R'], descKey: 'shortcutReverse' },
+      { keys: ['B'], descKey: 'shortcutBothDirections' },
+      { keys: ['Ctrl', 'Z'], altKeys: ['⌘', 'Z'], descKey: 'shortcutUndo' },
       { keys: ['Esc'], descKey: 'shortcutEsc' },
-      { keys: ['Delete'], altKeys: ['Backspace'], descKey: 'shortcutDelete' },
+      { keys: ['D'], altKeys: ['Delete', 'Backspace'], descKey: 'shortcutDelete' },
     ] },
   { group: 'shortcutsGroupHelp',
     rows: [{ keys: ['?'], descKey: 'shortcutHelp' }] },
@@ -76,7 +81,11 @@ function showShortcutsHelp() {
     groupTitle.className = 'shortcuts-help-group';
     groupTitle.textContent = S[group.group] || group.group;
     list.appendChild(groupTitle);
-    for (const row of group.rows) {
+    // Alphabetical within each category (by the primary key combo) so the
+    // rows are predictable to scan; the category order itself is curated.
+    const rows = [...group.rows].sort((a, b) =>
+      a.keys.join('+').localeCompare(b.keys.join('+')));
+    for (const row of rows) {
       const dt = document.createElement('dt');
       dt.className = 'shortcuts-help-keys';
       // Render primary key combo; if `altKeys` is present, render as
@@ -329,6 +338,40 @@ function validateNavWaypoints(d) {
   }
   return errs.length ? errs.join('; ') : null;
 }
+// Strict schema for docs/comm-change.json — { version, source?, _definition?,
+// _NOTE?, _TODO?, points:[{ name, commChange, from?, to?, note?, verified?,
+// source? }] }. Only `points[].name` and `points[].commChange` are required
+// for the renderer; everything else is metadata / inspector content. Unknown
+// keys at any level are tolerated (forward-compat). Issue #399.
+function validateCommChange(d) {
+  const errs = [];
+  if (!d || typeof d !== 'object' || Array.isArray(d)) {
+    return 'root: expected object, got ' + _vKind(d);
+  }
+  if (!_v(d, 'points', 'array', 'root', errs)) return errs.join('; ');
+  for (let i = 0; i < d.points.length; i++) {
+    const p = 'points[' + i + ']';
+    const pt = d.points[i];
+    if (_vKind(pt) !== 'object') {
+      errs.push(p + ': expected object, got ' + _vKind(pt));
+      continue;
+    }
+    _v(pt, 'name', 'string', p, errs);
+    if ('commChange' in pt && typeof pt.commChange !== 'boolean') {
+      errs.push(p + '.commChange: expected boolean, got ' + _vKind(pt.commChange));
+    }
+    for (const k of ['from', 'to', 'note', 'source']) {
+      if (k in pt && typeof pt[k] !== 'string') {
+        errs.push(p + '.' + k + ': expected string, got ' + _vKind(pt[k]));
+      }
+    }
+    if ('verified' in pt && typeof pt.verified !== 'boolean') {
+      errs.push(p + '.verified: expected boolean, got ' + _vKind(pt.verified));
+    }
+  }
+  return errs.length ? errs.join('; ') : null;
+}
+
 // Strict schema for docs/airfields.json — { airfields:[{ name, he, lat,
 // lng, en?, elev_ft?, plates?:[string], runways?:[string] }] }. Mirrors
 // validateNavWaypoints; the loader in draw.js bails out with an alert that
@@ -432,6 +475,7 @@ function save() {
     notes: state.notes.map(n => ({
       lat: r5(n.lat), lng: r5(n.lng), text: n.text || '', color: n.color || '',
       shape: n.shape || 'rect',
+      ...(n.cc ? { cc: n.cc } : {}),   // #487: preserve comm-change seed tag
     })),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -441,6 +485,98 @@ function save() {
   a.click();
   URL.revokeObjectURL(a.href);
 }
+
+// --- GPX export --------------------------------------------------------
+function exportGpx() {
+  if (state.waypoints.length < 2) {
+    alert(S.errNeedWps);
+    return;
+  }
+  const wps = state.waypoints;
+  const esc = s => String(s).replace(/[<>&]/g,
+    c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+  const altM = i => {
+    const leg = state.legs[Math.min(i, state.legs.length - 1)];
+    return Math.max(0, Math.round((leg ? leg.inboundAltitude : 2000) * 0.3048));
+  };
+  let rtepts = '';
+  for (let i = 0; i < wps.length; i++) {
+    const name = esc(wpLabel(i));
+    rtepts += '    <rtept lat="' + wps[i].lat + '" lon="' + wps[i].lng + '">\n' +
+      '      <name>' + name + '</name>\n' +
+      '      <ele>' + altM(i) + '</ele>\n' +
+      '    </rtept>\n';
+  }
+  const gpx =
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<gpx xmlns="http://www.topografix.com/GPX/1/1"\n' +
+    '     version="1.1"\n' +
+    '     creator="NavAid"\n' +
+    '     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n' +
+    '     xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">\n' +
+    '  <rte>\n' +
+    '    <name>NavAid route</name>\n' +
+    rtepts +
+    '  </rte>\n' +
+    '</gpx>\n';
+  const blob = new Blob([gpx], { type: 'application/gpx+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'route-' + fileStamp() + '.gpx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// --- GPX import --------------------------------------------------------
+function loadGpx(file) {
+  const MAX_ROUTE_BYTES = 2 * 1024 * 1024;
+  if (file && file.size > MAX_ROUTE_BYTES) {
+    alert(S.errLoadFile + 'file too large (' +
+          (file.size / 1024 / 1024).toFixed(1) + ' MB; max 2 MB)');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const xml = new DOMParser().parseFromString(reader.result, 'text/xml');
+      const parseErr = xml.querySelector('parsererror');
+      if (parseErr) throw new Error('XML parse error: ' + parseErr.textContent);
+      const rtepts = xml.querySelectorAll('rtept');
+      if (!rtepts.length) {
+        alert(S.errLoadFile + 'no <rtept> elements found in GPX');
+        return;
+      }
+      const wps = [];
+      for (const pt of rtepts) {
+        const lat = parseFloat(pt.getAttribute('lat'));
+        const lng = parseFloat(pt.getAttribute('lon'));
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+        const name = (pt.querySelector('name') || {}).textContent || '';
+        wps.push({ lat: r5(lat), lng: r5(lng), name: name.trim() });
+      }
+      if (wps.length < 2) {
+        alert(S.errNeedWps);
+        return;
+      }
+      state.waypoints = wps;
+      state.legs = wps.slice(0, -1).map(() => ({
+        inboundAltitude: 2000, outboundAltitude: 2000,
+        flightSpeed: 90, outboundSpeed: 90,
+        inLabel: null, outLabel: null,
+      }));
+      state.notes = [];
+      syncLegs();
+      state.selected = null;
+      showInspector();
+      fitView();
+      draw();
+    } catch (err) {
+      alert(S.errLoadFile + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
 function load(file) {
   // #146: hard cap on file size before we even read it. Route JSON is
   // typically <100 KB; 2 MB leaves room for big routes / future fields and
@@ -487,6 +623,7 @@ function load(file) {
     state.notes = d.notes.map(n => ({
       lat: r5(n.lat), lng: r5(n.lng),
       text: n.text, color: n.color, shape: n.shape,
+      ...(n.cc ? { cc: n.cc } : {}),   // #487: preserve comm-change seed tag
     }));
     syncLegs();
     state.selected = null;
@@ -1659,6 +1796,7 @@ function exportPNG() {
     o.translate(-fr.x, -fr.y);
     try {
       drawNavWaypoints();
+      drawCommChangeRings();
       drawAirfields();
       drawLegs();
       drawWaypoints();
@@ -1910,6 +2048,14 @@ function persist() {
       state.waypoints.length === 0 &&
       state.legs.length === 0 &&
       state.notes.length === 0) return;
+  // Snapshot for undo runs synchronously on every state change (not on the
+  // debounced write) so a quick succession of edits collapses into one undo
+  // step the same way it collapses into one save.
+  recordUndoSnapshot(JSON.stringify({
+    waypoints: state.waypoints,
+    legs: state.legs,
+    notes: state.notes,
+  }));
   if (persistTimer || quotaWarned) return;
   persistTimer = setTimeout(() => {
     persistTimer = null;
@@ -1932,6 +2078,56 @@ function persist() {
     }
   }, 500);
 }
+
+// --- undo -----------------------------------------------------------
+// undoStack holds serialized {waypoints, legs, notes} snapshots of *prior*
+// committed states. lastCommitted is the serialization of the state as it
+// currently stands; when a change makes the new serialization differ, the
+// previous one is pushed so undo() can return to it. The first call after
+// boot only establishes the baseline (no push). `undoing` suppresses the
+// snapshot while undo() is restoring, so an undo never becomes its own entry.
+const UNDO_LIMIT = 50;
+const undoStack = [];
+let lastCommitted = null;
+let undoing = false;
+
+function recordUndoSnapshot(serialized) {
+  if (lastCommitted === null) {           // baseline — nothing to undo to yet
+    lastCommitted = serialized;
+    return;
+  }
+  if (undoing || serialized === lastCommitted) return;
+  undoStack.push(lastCommitted);
+  if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+  lastCommitted = serialized;
+  refreshUndoButton();
+}
+
+function refreshUndoButton() {
+  const btn = document.getElementById('undo');
+  if (btn) btn.disabled = undoStack.length === 0;
+}
+
+function undo() {
+  if (!undoStack.length) return;
+  const prev = undoStack.pop();
+  let snap;
+  try { snap = JSON.parse(prev); } catch (_) { refreshUndoButton(); return; }
+  state.waypoints = Array.isArray(snap.waypoints) ? snap.waypoints : [];
+  state.legs = Array.isArray(snap.legs) ? snap.legs : [];
+  state.notes = Array.isArray(snap.notes) ? snap.notes : [];
+  state.selected = null;
+  undoing = true;
+  lastCommitted = prev;            // align baseline so the redraw won't re-push
+  try {
+    draw();
+    if (typeof showInspector === 'function') showInspector();
+  } finally {
+    undoing = false;
+  }
+  refreshUndoButton();
+}
+
 // Returns one of:
 //   true       — saved route restored into state.
 //   false      — no saved route (clean first-time boot, safe to persist).
@@ -1991,10 +2187,21 @@ function restoreRoute() {
 }
 
 // --- Airfield plates viewer (#105) -----------------------------------
-const PLATE_BASE = 'byop/';
+// Plate PDFs (~133 MB) ship as a SINGLE copy at the deployed artifact root;
+// staging / PR / branch previews don't carry their own copy and resolve
+// plates against that shared root. Deriving the base from location at load
+// time makes the same source work on every host the site is served from —
+// the custom domain (served at '/') and raw GitHub Pages (served under
+// '/NavigationApp/') — so the deploy pipeline no longer has to rewrite a
+// per-environment absolute path (which 404'd on the custom domain).
+function plateBase(pathname) {
+  let dir = (pathname || location.pathname).replace(/[^/]*$/, '');  // drop filename, keep trailing '/'
+  dir = dir.replace(/(staging|pr\/[^/]+|branch\/[^/]+)\/$/, '');     // preview suffix → shared root
+  return dir + 'byop/';
+}
 
 function plateUrl(filename) {
-  return PLATE_BASE + encodeURIComponent(filename);
+  return plateBase() + encodeURIComponent(filename);
 }
 
 function plateCategory(filename) {
@@ -2077,29 +2284,27 @@ function showPlateViewer(filename, label) {
   };
   btns.appendChild(download);
   box.appendChild(btns);
-  addModalCloseX(box, () => {
+  function teardown() {
+    window.removeEventListener('keydown', onEsc, true);
     if (blobUrl) URL.revokeObjectURL(blobUrl);
-    window.removeEventListener('keydown', onEsc);
     back.remove();
-  });
+  }
+  addModalCloseX(box, teardown);
 
+  // The plate viewer opens on top of the Charts modal. Both the Charts
+  // modal and the global handler in interact.js close a `.modal-back` on
+  // Escape, so a plain bubble listener here would let one Escape close the
+  // plate AND the chart underneath it. Listen in the capture phase and stop
+  // the event so only the topmost (plate) viewer closes.
   function onEsc(e) {
-    if (e.key === 'Escape') {
-      window.removeEventListener('keydown', onEsc);
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
-      back.remove();
-    }
+    if (e.key !== 'Escape') return;
+    e.stopImmediatePropagation();
+    teardown();
   }
   back.appendChild(box);
-  back.onclick = e => {
-    if (e.target === back) {
-      window.removeEventListener('keydown', onEsc);
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
-      back.remove();
-    }
-  };
+  back.onclick = e => { if (e.target === back) teardown(); };
   document.body.appendChild(back);
-  window.addEventListener('keydown', onEsc);
+  window.addEventListener('keydown', onEsc, true);
 }
 
 function showChartsModal() {
@@ -2160,7 +2365,8 @@ function showChartsModal() {
 
   function renderList(afs) {
     body.innerHTML = '';
-    const withPlates = afs.filter(af => af.plates && af.plates.length);
+    const withPlates = afs.filter(af => af.plates && af.plates.length)
+      .sort((a, b) => a.name.localeCompare(b.name));
     if (!withPlates.length) {
       const none = document.createElement('p');
       none.textContent = S.platesNone;
@@ -2441,17 +2647,27 @@ function magCenter() { return magnifierSize / 2; }
 // a style flush; callers in the rAF-driven loupe path should call this
 // once per frame and reuse the result. Returns {dx:0,dy:0} if the pane
 // is missing or the matrix can't be parsed.
-function _readMapPaneOffset() {
-  const mapPane = document.querySelector('.leaflet-map-pane');
-  if (!mapPane) return { dx: 0, dy: 0 };
+// The loupe clones live in two coordinate systems: the cloned base /
+// hi-res tiles are positioned in `.leaflet-rotate-pane`-LOCAL pixels
+// (unrotated), while the captured overlay canvas is in rotated CONTAINER
+// pixels (drawn via `latLngToContainerPoint`, which accounts for bearing).
+// To reconcile them we read the rotate-pane's full transform matrix: a
+// `tileWrap` div carries it so the local-space tiles land in container
+// space, and the loupe transform then works in pure container space. At
+// bearing 0 the matrix is the identity, so this is a no-op for the common
+// case. Falls back to `.leaflet-map-pane` (then identity) when the rotate
+// plugin isn't present.
+function _readMagPaneMatrix() {
+  const pane = document.querySelector('.leaflet-rotate-pane') ||
+               document.querySelector('.leaflet-map-pane');
+  const IDENTITY = 'matrix(1, 0, 0, 1, 0, 0)';
+  if (!pane) return { m: new DOMMatrixReadOnly(), css: IDENTITY };
+  const css = getComputedStyle(pane).transform;
+  if (!css || css === 'none') return { m: new DOMMatrixReadOnly(), css: IDENTITY };
   try {
-    const m = new DOMMatrixReadOnly(getComputedStyle(mapPane).transform);
-    return {
-      dx: m.is2D ? m.e : m.m41,
-      dy: m.is2D ? m.f : m.m42,
-    };
+    return { m: new DOMMatrixReadOnly(css), css };
   } catch (e) {
-    return { dx: 0, dy: 0 };
+    return { m: new DOMMatrixReadOnly(), css: IDENTITY };
   }
 }
 
@@ -2507,13 +2723,49 @@ function rebuildMagnifier() {
   const batch = ++_magBatch;
   _magPendingTiles = 0;
 
+  // Read the rotate-pane matrix once. `tileWrap` carries it so every cloned
+  // tile (positioned in rotate-pane-LOCAL pixels) is mapped into CONTAINER
+  // space — the same space the captured overlay canvas lives in. Without
+  // this the tiles ignored map bearing while the overlay honoured it, so
+  // dots / lines drifted off the terrain whenever the map was rotated.
+  const _pane = _readMagPaneMatrix();
+
   // clone tiles at current zoom (immediate fallback)
   const tilePane = document.querySelector('.leaflet-tile-pane');
   const tiles = tilePane ? Array.from(tilePane.querySelectorAll('img')) : [];
+
+  // The cloned tiles' `style.transform` is LEVEL-LOCAL: it positions each
+  // tile relative to its `.leaflet-tile-container` (the per-zoom "level"
+  // element), which itself can carry a scale+translate transform (e.g.
+  // `matrix(4,0,0,4,0,2)` at zoom past maxNativeZoom, or mid zoom-animation).
+  // When zoomed out the level matrix is identity so ignoring it was harmless,
+  // but on zoomed-in views the loupe placed tiles at their level-local pixels
+  // without the level scale — so the magnified tile image drifted away from
+  // the overlay (which is captured in container space). tileWrap therefore
+  // carries `paneMatrix · levelMatrix` to map level-local clone pixels (and
+  // the level-local hi-res tiles below) all the way into CONTAINER space.
+  let _levelMatrix = new DOMMatrixReadOnly();
+  for (const img of tiles) {
+    const lvl = img.parentElement;
+    if (!lvl) continue;
+    const lc = getComputedStyle(lvl).transform;
+    if (lc && lc !== 'none') {
+      try { _levelMatrix = new DOMMatrixReadOnly(lc); } catch (e) { /* identity */ }
+    }
+    break;
+  }
+  const _wrapM = _pane.m.multiply(_levelMatrix);
+
+  const tileWrap = document.createElement('div');
+  tileWrap.style.cssText =
+    'position:absolute;left:0;top:0;width:0;height:0;' +
+    'transform-origin:0 0;transform:' + _wrapM.toString();
+  content.appendChild(tileWrap);
+
   for (const img of tiles) {
     const c = img.cloneNode(true);
     c.style.visibility = 'visible';
-    content.appendChild(c);
+    tileWrap.appendChild(c);
   }
 
   // Adaptive hi-res overlay. Two independent dials decide the target tile
@@ -2587,10 +2839,11 @@ function rebuildMagnifier() {
   // rationale.) `sub` below is the orthogonal hi-res tile zoom step.
   _magScale = Math.max(1, magnifierZoom);
 
-  // Cache `getComputedStyle(mapPane).transform` once per rebuild. Reading
-  // it forces a style flush; the rAF-coalesced loupe rebuild used to
-  // pay for that flush twice (here + at the overlay-capture site below).
-  const _paneOffset = _readMapPaneOffset();
+  // Inverse of the combined pane·level matrix maps a CONTAINER point back
+  // into the LEVEL-LOCAL space the cloned tiles (and refLocalX/Y) live in —
+  // needed to centre the hi-res fetch on the cursor regardless of bearing or
+  // level scale.
+  const _paneInv = _wrapM.inverse();
 
   if (activeLayer && refZ !== null) {
     const maxNZ = activeLayer.options.maxNativeZoom ||
@@ -2613,13 +2866,15 @@ function rebuildMagnifier() {
       // visible magnification stays exactly at the slider value. Hi-res
       // tiles fetched below get downsampled to slider density on display.
 
-      // Cursor in tile-pane-local source pixels (same coord system as the
-      // clones' transforms). Uses the cached pane offset captured above.
-      const mpX = _paneOffset.dx;
-      const mpY = _paneOffset.dy;
+      // Cursor in rotate-pane-LOCAL source pixels (same coord system as the
+      // clones' transforms). The cursor is a CONTAINER point; invert the
+      // rotate-pane matrix to get its local position so the fetch stays
+      // centred under the cursor even when the map is rotated.
       const mapRect = map.getContainer().getBoundingClientRect();
-      const cursorX = (_magX - mapRect.left) - mpX;
-      const cursorY = (_magY - mapRect.top) - mpY;
+      const _curLocal = _paneInv.transformPoint(
+        new DOMPoint(_magX - mapRect.left, _magY - mapRect.top));
+      const cursorX = _curLocal.x;
+      const cursorY = _curLocal.y;
 
       // Loupe area + one loupe-radius margin so the cursor can drift a
       // little before `updateMagnifier` decides to schedule a refetch.
@@ -2691,7 +2946,7 @@ function rebuildMagnifier() {
             if (tile.naturalWidth === 0) tile.remove();
             onSettle({ target: tile });
           }
-          content.appendChild(tile);
+          tileWrap.appendChild(tile);
         }
       }
     }
@@ -2736,17 +2991,13 @@ function rebuildMagnifier() {
       const cctx = cap.getContext('2d');
       if (cctx) cctx.drawImage(overlay, 0, 0);
     } catch (e) { /* never abort the loupe rebuild on a draw error */ }
-    // Use the cached pane offset captured at the top of rebuildMagnifier
-    // — avoids a second `getComputedStyle(...).transform` style flush in
-    // the same rAF tick.
-    const dx = _paneOffset.dx;
-    const dy = _paneOffset.dy;
-    // No counter-scale: `_magScale` is now the slider value directly,
-    // so the content div's `scale(_magScale)` already gives the overlay
-    // its intended magnification. (When `_magScale` was `max(slider, sub)`
-    // we had to divide back out the `sub` boost; not anymore.)
-    cap.style.cssText = 'position:absolute;left:' + (-dx) + 'px;top:' + (-dy) +
-      'px;width:' + overlay.style.width + ';height:' + overlay.style.height;
+    // The overlay canvas is already in CONTAINER pixels (drawn via
+    // `latLngToContainerPoint`, which bakes in bearing), so it sits at the
+    // content origin with no pane offset. `content`'s own transform handles
+    // cursor-centring + the `scale(_magScale)` magnification; the cloned
+    // tiles get into the same container space via `tileWrap`'s matrix.
+    cap.style.cssText = 'position:absolute;left:0;top:0;width:' +
+      overlay.style.width + ';height:' + overlay.style.height;
     content.appendChild(cap);
   }
   _magDirty = false;
@@ -2764,10 +3015,14 @@ function applyMagnifierTransform() {
   // sub-tile fetch in `rebuildMagnifier` only governs WHICH tiles are
   // fetched, not how big they appear.
   const effS = _magScale;
-  const { dx, dy } = _readMapPaneOffset();
+  // `content` works in CONTAINER space: tiles are mapped there via
+  // `tileWrap`'s matrix and the overlay is captured there directly. So the
+  // loupe transform is just "centre the cursor's container point in the
+  // loupe, then scale" — no pane offset, which also keeps it correct under
+  // map rotation.
   content.style.transform =
-    'translate(' + (magCenter() + dx * effS - cp.x * effS) + 'px,' +
-                   (magCenter() + dy * effS - cp.y * effS) + 'px) scale(' + effS + ')';
+    'translate(' + (magCenter() - cp.x * effS) + 'px,' +
+                   (magCenter() - cp.y * effS) + 'px) scale(' + effS + ')';
 }
 
 // Shared rAF queue: coalesces every refresh trigger (cursor move, map

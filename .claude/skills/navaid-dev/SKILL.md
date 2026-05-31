@@ -239,6 +239,14 @@ branch by mistake.
   dots; the 5-letter ID label appears at zoom ≥ 10. Captured in PNG
   export. Source: IAA CVFR chart page 113 (2025 edition) — see the
   Notes / pending section.
+- **Charts modal (BYOP plates):** `🗺️ Charts` toolbar button opens
+  `showChartsModal()` (`io.js`), which lists every airfield in
+  `airfields.json` that carries a non-empty `plates[]` as a
+  collapsible section (header `ICAO — English name`, plate chips
+  grouped by `plateCategory()`). **Airfields are listed alphabetically
+  by ICAO** — `renderList()` sorts `withPlates` via
+  `a.name.localeCompare(b.name)` before rendering, so JSON row order
+  never leaks into the UI. Keep that sort when touching the list.
 - **A3 / A4 page frame:** `pageFrameRect()` returns the rectangle in
   screen px sized so its contents are 1:250 000. Clicking the same
   size button again clears it. Orientation chosen via the
@@ -259,8 +267,13 @@ branch by mistake.
     zoom map out (loupe zoom out when magnifier is on); `M` — toggle
     magnifying glass (skipped while any modal backdrop is open).
   - **Search:** `Ctrl/Cmd-F` — open search
-  - **Editing:** `Esc` — close modal / deselect / close magnifier;
-    `Delete`/`Backspace` — delete selected waypoint or note
+  - **Editing:** `A` — toggle add-waypoint mode; `N` — toggle add-note
+    mode; `C` — clear the map; `R` — reverse route direction;
+    `B` — toggle show return path / both directions (the `ret-cb`
+    checkbox); `Ctrl/Cmd-Z` — undo the last committed edit/move/delete; `Esc` —
+    close modal / deselect / close magnifier; `D`/`Delete`/`Backspace` —
+    delete selected waypoint or note (A/N/C skipped while any modal
+    backdrop is open)
   - **Help:** `?` — open the cheat-sheet
   When you add a new global keyboard shortcut, append a row to
   `SHORTCUTS_HELP_ROWS` (and matching `shortcutXxx` keys in `core.js` +
@@ -307,6 +320,8 @@ branch by mistake.
 - `navaid.highlightDiff` — `'0'` / `'1'` for altitude-diff halos.
 - `navaid.showNavWP` — `'0'` / `'1'` for the nav-waypoints overlay.
 - `navaid.showAirfields` — `'0'` / `'1'` for the airfield overlay.
+- `navaid.showCommChange` — `'0'` / `'1'` for the comm-change ring overlay
+  (issue #399; default on). Toggled by the "Show Comm Changes" View checkbox.
 - `navaid.showWpNames` — `'0'` / `'1'` for waypoint-name display.
 - `navaid.wpNameAngle` — waypoint-name rotation (`0`/`90`/`180`/`270`).
 - `navaid.aircraft` — last-used aircraft profile JSON (fuel planner).
@@ -416,7 +431,7 @@ downloadable `route.json`.
 - `nav-waypoints.json` — 173 Israeli CVFR reporting points.
   **Source:** IAA CVFR chart waypoint reference table (page 113, 2025
   edition), supplied upstream as `113_waypoints.csv`. The CSV is the
-  sole source of truth — the legacy ForeFlight Israel Base Pack
+  sole source of truth — the legacy KMZ dataset
   (`CVFR WAYPOINTS 0225.kmz`) was replaced in issue #406 because it
   carried ~91 stale codes (`AREA *`, `LLHA A/B/C`, `LLMG A/B
   Maarav/Mizrah`, etc.) and had several reporting points off the
@@ -432,6 +447,40 @@ downloadable `route.json`.
   columns → `lat`/`lng` rounded to 5 dp), and diff for sanity. The
   exact migration is documented in the body of the PR that introduced
   it (#406).
+- `comm-change.json` — dataset of CVFR reporting points where pilots
+  must change ATC frequency (the `מע.` / `מז.` Hebrew sector callouts
+  on the IAA CVFR chart, indicating PLUTO West / PLUTO East / etc.).
+  Schema: `{version, source, _definition, _NOTE, _TODO, points:
+  [{name, commChange, from, to, note, verified, source}]}`. `name`
+  matches an ICAO 5-letter code in `nav-waypoints.json`. **Source:**
+  Israel AIP (AD 2.22 LLHA, ENR 2.1, GEN 3.4) for documented FIR/CTR
+  transitions; GitHub issue msupino/NavigationApp#399 for the chart
+  fragment near `TYONA`. Currently a 2-point seed (TYONA, GALIM)
+  verified against published AIP text; the bulk of the chart `מע.`
+  markers require manual visual chart review to extract.
+  - **Loader:** `loadCommChange()` in `draw.js` lazy-fetches the file
+    at boot (parallel with `loadNavWaypoints` / `loadAirfields` in
+    `ui.js`), validates it with `validateCommChange()` in `io.js`, and
+    builds the module-level `commChangeMap` keyed by `name` for O(1)
+    lookup. A 404 / schema error degrades to `commChangeMap = {}` so
+    a missing dataset never disables the rest of the nav-WP overlay.
+  - **Render:** `drawNavWaypoints` in `draw.js` augments every white
+    nav-WP dot whose `name` has `commChange: true` with a red outer
+    ring (radius 6 px, 1.8 px stroke, `#e74c3c`). Gated by the global
+    `showCommChange` boolean + the View-section `#commchange-cb`
+    checkbox; persisted at `localStorage['navaid.showCommChange']`
+    (default on). The ring sits on top of the white dot — it
+    augments, never replaces. A `window.__commChangeRingsDrawn` Set
+    is rebuilt every frame for Playwright inspection.
+  - **Inspector badge:** `interact.js` `showInspector()` appends a
+    `.commchange-row` to the waypoint pane whenever the selected
+    waypoint's `name` matches a `commChange: true` entry. Shows the
+    i18n label (`S.commChangeBadge`), the `from → to` frequency pair
+    when present, and the optional `note`. Styled in `style.css`
+    under `/* Comm-change inspector badge (issue #399) */`.
+  - **i18n keys:** `tbShowCommChange`, `tbShowCommChangeTitle`,
+    `commChangeBadge` (English defaults in `core.js`, Hebrew overrides
+    in `he/strings.js`).
 - `geo` distances are exact great-circle; verify against the chart's
   graticule if precision is questioned.
 - GA4 (`G-0XM5PHEK8B`) tracks page views; no event tracking yet.
