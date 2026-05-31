@@ -898,6 +898,31 @@ html, body {
 .plate-chip-small { font-size: 10px; padding: 2px 5px; background: none; border-color: transparent; color: #1d6fe0; cursor: pointer; }
 .plate-chip-small:hover { text-decoration: underline; }
 
+/* Comm-change inspector badge (issue #399) */
+.commchange-row {
+  background: rgba(231, 76, 60, 0.12);
+  border: 1px solid rgba(231, 76, 60, 0.45);
+  border-radius: 4px;
+  padding: 6px 8px;
+  gap: 4px;
+}
+.commchange-row .commchange-label {
+  color: #ffb1a8;
+  font-weight: 700;
+  font-size: 12px;
+}
+.commchange-row .commchange-freq {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: #fff;
+}
+.commchange-row .commchange-note {
+  font-size: 11px;
+  color: #d8d8d8;
+  white-space: normal;
+  line-height: 1.35;
+}
+
 /* Airfield runways (#231) */
 .runways-row { flex-wrap: wrap; gap: 4px; align-items: center; }
 .runway-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; }
