@@ -126,6 +126,28 @@ function rotEnd(cycle) {
 }
 rotDial.addEventListener('pointerup', () => rotEnd(true));
 rotDial.addEventListener('pointercancel', () => rotEnd(false));   // aborted — don't rotate
+// --- live mouse coordinate readout ---------------------------------
+// Bottom-left so it clears the zoom buttons + rotate dial (bottomright)
+// and the layer picker (topright). Updates on every map mousemove with
+// the same DM format the inspector uses for waypoints (fmtLatLng).
+const coordCtrl = L.control({ position: 'bottomleft' });
+coordCtrl.onAdd = function () {
+  const box = L.DomUtil.create('div', 'leaflet-control coord-readout');
+  box.id = 'coord-readout';
+  box.setAttribute('aria-hidden', 'true');
+  return box;
+};
+coordCtrl.addTo(map);
+const coordBox = document.getElementById('coord-readout');
+function showCoord(latlng) {
+  coordBox.textContent = fmtLatLng(latlng.lat, 'N', 'S') + '  ' +
+                         fmtLatLng(latlng.lng, 'E', 'W');
+  coordBox.classList.add('show');
+}
+function hideCoord() { coordBox.classList.remove('show'); }
+map.on('mousemove', e => showCoord(e.latlng));
+map.on('mouseout', hideCoord);
+
 const BEARING_KEY = 'navaid.bearing';
 // `navaid.view` — issue #413: persist center+zoom (and bearing) across
 // reloads so a refresh / language switch / PWA wake-up doesn't snap back
@@ -264,6 +286,7 @@ async function buildRouteFromQuery(raw) {
   state.legs = [];
   state.selected = null;
   syncLegs();
+  if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();  // #487
   wpSearch.value = '';
   hideSearchOverlay();
   showInspector();
@@ -406,6 +429,11 @@ document.addEventListener('keydown', e => {
     const t = e.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
     document.getElementById('reverse').click();
+  } else if ((e.key === 'b' || e.key === 'B') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    // Toggling the checkbox fires its onchange (persist + redraw).
+    document.getElementById('ret-cb').click();
   }
 });
 document.addEventListener('click', e => {
@@ -436,6 +464,7 @@ document.getElementById('reverse').onclick = () => {
   state.selected = null;
   showInspector(); draw();
 };
+document.getElementById('undo').onclick = () => { if (typeof undo === 'function') undo(); };
 document.getElementById('clear').onclick = () => {
   if ((state.waypoints.length || state.notes.length) &&
       !confirm(S.clearConfirm)) return;
@@ -455,11 +484,14 @@ document.getElementById('save').onclick = save;
 document.getElementById('load').onclick = () => document.getElementById('file').click();
 document.getElementById('share').onclick = shareRoute;
 document.getElementById('file').onchange = e => {
-  if (e.target.files[0]) load(e.target.files[0]);
+  const f = e.target.files[0];
+  if (!f) return;
+  if (/\.gpx$/i.test(f.name)) loadGpx(f); else load(f);
   e.target.value = '';
 };
 document.getElementById('fit').onclick = fitView;
 document.getElementById('fly').onclick = flyRoute;
+document.getElementById('gpx').onclick = exportGpx;
 // Toggle: a second click closes the modal instead of being a no-op (#78 dedupe
 // previously made the button look broken when the modal was already open).
 document.getElementById('plan').onclick = () => {
@@ -590,6 +622,24 @@ document.getElementById('airfield-cb').onchange = async e => {
     await loadAirfields();
     snapExistingWaypoints();
   }
+  draw();
+};
+// Comm-change overlay toggle (issue #399). The dataset lives in
+// docs/comm-change.json and rings are drawn on top of the nav-WP dots
+// in draw.js. We persist + restore exactly like every other view toggle.
+const COMMCHANGE_KEY = 'navaid.showCommChange';
+try {
+  const stored = localStorage.getItem(COMMCHANGE_KEY);
+  if (stored !== null) window.showCommChange = stored === '1';
+} catch (e) { /* storage unavailable */ }
+document.getElementById('commchange-cb').checked = showCommChange;
+document.getElementById('commchange-cb').onchange = async e => {
+  window.showCommChange = e.target.checked;
+  try { localStorage.setItem(COMMCHANGE_KEY, showCommChange ? '1' : '0'); }
+  catch (err) { /* storage unavailable */ }
+  // Rings draw independently of the nav-WP dot layer (issue #484) but reuse
+  // its positions, so load navWP too even when that layer is off.
+  if (showCommChange) await Promise.all([loadCommChange(), loadNavWaypoints()]);
   draw();
 };
 const ALPHA_KEY = 'navaid.yellowAlpha';
@@ -899,6 +949,13 @@ loadNavWaypoints().then(() => { snapExistingWaypoints(); draw(); });
 // Also re-render inspector so plates section appears if a waypoint
 // was restored from sessionStorage before airfields loaded.
 loadAirfields().then(() => { snapExistingWaypoints(); draw(); if (state.selected) showInspector(); });
+// Comm-change dataset (issue #399): parallel fetch so the rings appear
+// on first paint and the inspector badge is available immediately for
+// a selection restored from sessionStorage. Rings draw independently of
+// the nav-WP dot layer (issue #484), so when comm-change is on we also
+// load navWP positions even if that layer is off.
+loadCommChange().then(() => showCommChange ? loadNavWaypoints() : null)
+  .then(() => { draw(); if (state.selected) showInspector(); });
 // Restore flight-plan modal if it was open before refresh / language change.
 try {
   if (sessionStorage.getItem('navaid.fpOpen')) {
