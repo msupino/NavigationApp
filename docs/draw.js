@@ -482,6 +482,7 @@ function drawCommChangeRings() {
 // user deleted. Returns true if any note was added so the caller can persist.
 const COMM_CHANGE_NOTE_LAT_OFFSET = 0.012;   // ~1.3 km north of the dot
 function seedCommChangeNotes() {
+  if (!showCommChange) return false;
   if (!commChangeMap || typeof state === 'undefined' ||
       !Array.isArray(state.waypoints) || !Array.isArray(state.notes)) return false;
   let added = false;
@@ -494,7 +495,7 @@ function seedCommChangeNotes() {
     state.notes.push({
       lat: r5(wp.lat + COMM_CHANGE_NOTE_LAT_OFFSET),
       lng: r5(wp.lng),
-      text: (typeof S !== 'undefined' && S.commChangeNoteText) || 'Comm change',
+      text: (typeof S !== 'undefined' && S.commChangeNoteText) || 'Freq change',
       color: NOTE_DEFAULT_COLOR,
       shape: 'rect',
       cc: nm,
