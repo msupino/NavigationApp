@@ -233,6 +233,27 @@ html, body {
   display: none;
 }
 .coord-readout.show { display: block; }
+.coord-readout.interactive { pointer-events: auto; cursor: pointer; }
+.coord-readout.editing { cursor: text; }
+.coord-readout.error { border-color: #c0392b; background: rgba(231, 76, 60, 0.12); }
+.coord-readout.editing .goto-num {
+  font: inherit;
+  color: inherit;
+  border: none;
+  border-bottom: 1px solid currentColor;
+  outline: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.coord-readout.editing .goto-sep {
+  opacity: 0.7;
+  padding: 0 1px;
+  -webkit-user-select: none;
+  user-select: none;
+}
 #rotate-hdg {
   font: bold 11px/1 monospace;
   color: #231F20;
