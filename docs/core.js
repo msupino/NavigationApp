@@ -42,6 +42,7 @@ window.S = Object.assign({
   navWpSearchField: 'name',            // which field to show/search in results
   airfieldsUrl: 'airfields.json?v=3',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
+  commChangeUrl: 'comm-change.json?v=1', // CVFR comm-change reporting points (issue #399)
 
   // --- English UI copy (default locale) -------------------------------
   // Sentence case: capitalize the first word and proper nouns / acronyms
@@ -180,6 +181,10 @@ window.S = Object.assign({
   tbShowDriftTitle: 'Show 10-degree drift reference lines at each leg end',
   tbShowAirfields: 'Show/pin airfields',
   tbShowAirfieldsTitle: 'Overlay published Israeli airfields (BYOP source)',
+  tbShowCommChange: 'Show Comm Changes',
+  tbShowCommChangeTitle: 'Mark CVFR reporting points where pilots must change ATC frequency',
+  commChangeBadge: '📡 Comm change',
+  commChangeNoteText: 'Comm change',
   plates: 'Charts',
   runways: 'Runways',
   plateCategoryApproach: 'Approach',
@@ -309,6 +314,12 @@ var airfields = null;       // same null/[]/populated convention as navWP —
                             // optional per the chart-rebuild (#412): ARPs
                             // surfaced from the IAA chart with no published
                             // BYOP enrichment ship as bare {name,he,lat,lng}.
+var showCommChange = true;  // Comm-change ring overlay (default on) — issue #399.
+var commChangeMap = null;   // null = not loaded yet (or last fetch failed —
+                            // retry on next toggle); {} or populated = last
+                            // fetch resolved. Keyed by nav-WP `name` for
+                            // O(1) lookup, value is the raw point entry
+                            // `{commChange, from, to, note, verified, source}`.
 var showDrift = true;       // 10-degree drift reference lines
 var showWpNames = true;     // draw waypoint names (off = empty circle)
 var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
