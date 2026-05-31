@@ -130,7 +130,7 @@ window.S = Object.assign({
   latitude: 'Latitude',
   longitude: 'Longitude',
   gotoTitle: 'Click to go to coordinates',
-  gotoError: 'Enter coordinates like 32°00\'17"N 34°43\'38"E',
+  gotoError: 'Type the digits, or paste a coordinate like 32°00\'17"N 34°43\'38"E',
   dialTitle: function(b) { return 'Map rotation ' + b + '° — drag to rotate, click for north up'; },
   wpnameRotTitle: function(a) { return 'Rotate waypoint names (now ' + a + '°)'; },
   expandMenu: 'Expand menu',
