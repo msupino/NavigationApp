@@ -130,7 +130,6 @@ window.S = Object.assign({
   latitude: 'Latitude',
   longitude: 'Longitude',
   gotoTitle: 'Click to go to coordinates',
-  gotoPlaceholder: '32°00\'17"N 34°43\'38"E',
   gotoError: 'Enter coordinates like 32°00\'17"N 34°43\'38"E',
   dialTitle: function(b) { return 'Map rotation ' + b + '° — drag to rotate, click for north up'; },
   wpnameRotTitle: function(a) { return 'Rotate waypoint names (now ' + a + '°)'; },
@@ -448,21 +447,6 @@ function fmtLatLng(v, pos, neg) {
   const d = Math.floor(v);
   const m = (v - d) * 60;
   return `${d}°${m.toFixed(1).padStart(4, '0')}'${hemi}`;
-}
-
-// Degrees-minutes-seconds, used to prefill the go-to input (issue #497).
-function fmtLatLngDMS(v, pos, neg) {
-  const hemi = v >= 0 ? pos : neg;
-  v = Math.abs(v);
-  const d = Math.floor(v);
-  const mf = (v - d) * 60;
-  const m = Math.floor(mf);
-  const s = Math.round((mf - m) * 60);
-  // Carry a 60" / 60' rollover so we never print 60.
-  let dd = d, mm = m, ss = s;
-  if (ss === 60) { ss = 0; mm += 1; }
-  if (mm === 60) { mm = 0; dd += 1; }
-  return `${dd}°${String(mm).padStart(2, '0')}'${String(ss).padStart(2, '0')}"${hemi}`;
 }
 
 // Go-to sanity box (issue #497): a generous Israel-area bound. Parsed

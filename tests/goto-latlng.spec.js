@@ -53,23 +53,37 @@ test.describe('parseLatLng', () => {
 });
 
 test.describe('go-to input', () => {
-  test('click turns the readout into an input prefilled with the centre', async ({ page }) => {
+  // Fill the six DMS slots in one go.
+  async function fillDMS(page, latD, latM, latS, lngD, lngM, lngS) {
+    await page.locator('#goto-lat-d').fill(String(latD));
+    await page.locator('#goto-lat-m').fill(String(latM));
+    await page.locator('#goto-lat-s').fill(String(latS));
+    await page.locator('#goto-lng-d').fill(String(lngD));
+    await page.locator('#goto-lng-m').fill(String(lngM));
+    await page.locator('#goto-lng-s').fill(String(lngS));
+  }
+
+  test('click turns the readout into DMS slots with fixed symbol separators', async ({ page }) => {
     await boot(page);
     await page.locator('#coord-readout').click();
-    const input = page.locator('#goto-input');
-    await expect(input).toBeVisible();
-    const val = await input.inputValue();
-    expect(val).toMatch(/N/);
-    expect(val).toMatch(/E/);
-    expect(val).toMatch(/"/);   // DMS prefill includes seconds
+    // Six editable numeric slots, each prefilled from the map centre.
+    await expect(page.locator('#coord-readout .goto-num')).toHaveCount(6);
+    await expect(page.locator('#goto-lat-d')).toBeVisible();
+    expect(await page.locator('#goto-lat-d').inputValue()).toMatch(/^\d+$/);
+    // The ° ′ ″ N E are static separators, not typed by the user.
+    const seps = await page.locator('#coord-readout .goto-sep').allTextContents();
+    const joined = seps.join('');
+    expect(joined).toContain('°');
+    expect(joined).toContain('″');
+    expect(joined).toContain('N');
+    expect(joined).toContain('E');
   });
 
   test('Enter pans the map to the typed point and drops a temp marker', async ({ page }) => {
     await boot(page);
     await page.locator('#coord-readout').click();
-    const input = page.locator('#goto-input');
-    await input.fill('32°00\'17"N 34°43\'38"E');
-    await input.press('Enter');
+    await fillDMS(page, 32, 0, 17, 34, 43, 38);
+    await page.locator('#goto-lng-s').press('Enter');
     const center = await page.evaluate(() => {
       const c = map.getCenter();
       return { lat: c.lat, lng: c.lng };
@@ -79,21 +93,21 @@ test.describe('go-to input', () => {
     expect(await page.evaluate(() => window.hasGotoMarker())).toBe(true);
     // The marker is decorative, not a route waypoint.
     expect(await page.evaluate(() => state.waypoints.length)).toBe(0);
-    // Editing finished — input is gone.
-    await expect(page.locator('#goto-input')).toHaveCount(0);
+    // Editing finished — slots are gone.
+    await expect(page.locator('#coord-readout .goto-num')).toHaveCount(0);
   });
 
-  test('invalid input flags an error and keeps the field open', async ({ page }) => {
+  test('out-of-bbox input flags an error and keeps the field open', async ({ page }) => {
     await boot(page);
     const before = await page.evaluate(() => {
       const c = map.getCenter(); return { lat: c.lat, lng: c.lng };
     });
     await page.locator('#coord-readout').click();
-    const input = page.locator('#goto-input');
-    await input.fill('not a coordinate');
-    await input.press('Enter');
+    // 51N 0E — London, outside the Israel bbox.
+    await fillDMS(page, 51, 0, 0, 0, 0, 0);
+    await page.locator('#goto-lng-s').press('Enter');
     await expect(page.locator('#coord-readout')).toHaveClass(/error/);
-    await expect(input).toBeVisible();
+    await expect(page.locator('#goto-lat-d')).toBeVisible();
     const after = await page.evaluate(() => {
       const c = map.getCenter(); return { lat: c.lat, lng: c.lng };
     });
@@ -104,9 +118,9 @@ test.describe('go-to input', () => {
   test('Escape cancels editing without moving the map', async ({ page }) => {
     await boot(page);
     await page.locator('#coord-readout').click();
-    await expect(page.locator('#goto-input')).toBeVisible();
-    await page.locator('#goto-input').press('Escape');
-    await expect(page.locator('#goto-input')).toHaveCount(0);
+    await expect(page.locator('#goto-lat-d')).toBeVisible();
+    await page.locator('#goto-lat-d').press('Escape');
+    await expect(page.locator('#coord-readout .goto-num')).toHaveCount(0);
     await expect(page.locator('#coord-readout')).toHaveClass(/show/);
   });
 

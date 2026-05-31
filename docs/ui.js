@@ -190,13 +190,55 @@ function exitGotoEdit() {
   coordBox.classList.remove('editing', 'error');
   showCenterCoord();
 }
-function commitGoto(value) {
-  const ll = parseLatLng(value);
+// Break a signed decimal degree into integer degrees/minutes/seconds, with
+// the same 60->0 rollover carry as fmtLatLngDMS so the slots never read 60.
+function dmsParts(v) {
+  const deg = Math.abs(v);
+  let d = Math.floor(deg);
+  let m = Math.floor((deg - d) * 60);
+  let s = Math.round((deg - d - m / 60) * 3600);
+  if (s >= 60) { s -= 60; m += 1; }
+  if (m >= 60) { m -= 60; d += 1; }
+  return { d, m, s };
+}
+function commitGoto() {
+  const num = id => parseFloat(document.getElementById(id).value);
+  const latD = num('goto-lat-d');
+  const lngD = num('goto-lng-d');
+  if (!Number.isFinite(latD) || !Number.isFinite(lngD)) {
+    coordBox.classList.add('error');
+    return false;
+  }
+  const latM = num('goto-lat-m') || 0;
+  const latS = num('goto-lat-s') || 0;
+  const lngM = num('goto-lng-m') || 0;
+  const lngS = num('goto-lng-s') || 0;
+  const lat = latD + latM / 60 + latS / 3600;
+  const lng = lngD + lngM / 60 + lngS / 3600;
+  const ll = finishLatLng(lat, lng);
   if (!ll) { coordBox.classList.add('error'); return false; }
   map.setView([ll.lat, ll.lng], Math.max(map.getZoom(), 11));
   dropGotoMarker(ll.lat, ll.lng);
   exitGotoEdit();
   return true;
+}
+// One editable numeric slot; `len` also caps the digits typed in.
+function gotoSlot(id, value, len) {
+  const i = document.createElement('input');
+  i.type = 'text';
+  i.inputMode = 'numeric';
+  i.className = 'goto-num';
+  i.id = id;
+  i.maxLength = len;
+  i.size = len;
+  i.value = len === 2 ? String(value).padStart(2, '0') : String(value);
+  return i;
+}
+function gotoSep(text) {
+  const sep = document.createElement('span');
+  sep.className = 'goto-sep';
+  sep.textContent = text;
+  return sep;
 }
 function enterGotoEdit() {
   if (gotoEditing) return;
@@ -204,23 +246,44 @@ function enterGotoEdit() {
   coordBox.classList.add('editing');
   coordBox.classList.remove('error');
   const c = map.getCenter();
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.id = 'goto-input';
-  input.value = fmtLatLngDMS(c.lat, 'N', 'S') + ' ' + fmtLatLngDMS(c.lng, 'E', 'W');
-  input.placeholder = S.gotoPlaceholder;
-  input.setAttribute('aria-label', S.gotoTitle);
-  input.title = S.gotoError;
+  const lat = dmsParts(c.lat);
+  const lng = dmsParts(c.lng);
   coordBox.textContent = '';
-  coordBox.appendChild(input);
-  input.focus();
-  input.select();
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); commitGoto(input.value); }
-    else if (e.key === 'Escape') { e.preventDefault(); exitGotoEdit(); }
-    else { coordBox.classList.remove('error'); }
+  coordBox.setAttribute('aria-label', S.gotoTitle);
+  coordBox.title = S.gotoError;
+  const slots = [
+    gotoSlot('goto-lat-d', lat.d, 2), gotoSep('°'),
+    gotoSlot('goto-lat-m', lat.m, 2), gotoSep('′'),
+    gotoSlot('goto-lat-s', lat.s, 2), gotoSep('″'),
+    gotoSep('N'), gotoSep(' '),
+    gotoSlot('goto-lng-d', lng.d, 2), gotoSep('°'),
+    gotoSlot('goto-lng-m', lng.m, 2), gotoSep('′'),
+    gotoSlot('goto-lng-s', lng.s, 2), gotoSep('″'),
+    gotoSep('E'),
+  ];
+  const inputs = slots.filter(el => el.tagName === 'INPUT');
+  for (const el of slots) coordBox.appendChild(el);
+  for (let k = 0; k < inputs.length; k++) {
+    const i = inputs[k];
+    i.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); commitGoto(); }
+      else if (e.key === 'Escape') { e.preventDefault(); exitGotoEdit(); }
+      else { coordBox.classList.remove('error'); }
+    });
+    // Auto-advance once a slot is full, so typing flows left to right.
+    i.addEventListener('input', () => {
+      if (i.value.length >= i.maxLength && k < inputs.length - 1) {
+        inputs[k + 1].focus();
+        inputs[k + 1].select();
+      }
+    });
+  }
+  inputs[0].focus();
+  inputs[0].select();
+  // Leave edit mode only when focus exits the readout entirely.
+  coordBox.addEventListener('focusout', e => {
+    if (gotoEditing && !coordBox.contains(e.relatedTarget)) exitGotoEdit();
   });
-  input.addEventListener('blur', () => { if (gotoEditing) exitGotoEdit(); });
 }
 coordBox.addEventListener('click', () => { if (!gotoEditing) enterGotoEdit(); });
 
