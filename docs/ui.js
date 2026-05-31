@@ -188,6 +188,7 @@ window.hasGotoMarker = () => !!gotoMarker;
 function exitGotoEdit() {
   gotoEditing = false;
   coordBox.classList.remove('editing', 'error');
+  coordBox.title = S.gotoTitle;
   showCenterCoord();
 }
 // Break a signed decimal degree into integer degrees/minutes/seconds, with
@@ -223,7 +224,7 @@ function commitGoto() {
   return true;
 }
 // One editable numeric slot; `len` also caps the digits typed in.
-function gotoSlot(id, value, len) {
+function gotoSlot(id, value, len, label) {
   const i = document.createElement('input');
   i.type = 'text';
   i.inputMode = 'numeric';
@@ -231,8 +232,19 @@ function gotoSlot(id, value, len) {
   i.id = id;
   i.maxLength = len;
   i.size = len;
+  i.setAttribute('aria-label', label);
   i.value = len === 2 ? String(value).padStart(2, '0') : String(value);
   return i;
+}
+// Fill the six slots from a decimal lat/lng (used by paste).
+function fillGotoSlots(lat, lng) {
+  const la = dmsParts(lat), lo = dmsParts(lng);
+  const set = (id, v) => {
+    const el = document.getElementById(id);
+    if (el) el.value = String(v).padStart(2, '0');
+  };
+  set('goto-lat-d', la.d); set('goto-lat-m', la.m); set('goto-lat-s', la.s);
+  set('goto-lng-d', lo.d); set('goto-lng-m', lo.m); set('goto-lng-s', lo.s);
 }
 function gotoSep(text) {
   const sep = document.createElement('span');
@@ -252,13 +264,13 @@ function enterGotoEdit() {
   coordBox.setAttribute('aria-label', S.gotoTitle);
   coordBox.title = S.gotoError;
   const slots = [
-    gotoSlot('goto-lat-d', lat.d, 2), gotoSep('°'),
-    gotoSlot('goto-lat-m', lat.m, 2), gotoSep('′'),
-    gotoSlot('goto-lat-s', lat.s, 2), gotoSep('″'),
+    gotoSlot('goto-lat-d', lat.d, 2, S.latitude + ' deg'), gotoSep('°'),
+    gotoSlot('goto-lat-m', lat.m, 2, S.latitude + ' min'), gotoSep('′'),
+    gotoSlot('goto-lat-s', lat.s, 2, S.latitude + ' sec'), gotoSep('″'),
     gotoSep('N'), gotoSep(' '),
-    gotoSlot('goto-lng-d', lng.d, 2), gotoSep('°'),
-    gotoSlot('goto-lng-m', lng.m, 2), gotoSep('′'),
-    gotoSlot('goto-lng-s', lng.s, 2), gotoSep('″'),
+    gotoSlot('goto-lng-d', lng.d, 2, S.longitude + ' deg'), gotoSep('°'),
+    gotoSlot('goto-lng-m', lng.m, 2, S.longitude + ' min'), gotoSep('′'),
+    gotoSlot('goto-lng-s', lng.s, 2, S.longitude + ' sec'), gotoSep('″'),
     gotoSep('E'),
   ];
   const inputs = slots.filter(el => el.tagName === 'INPUT');
@@ -277,15 +289,26 @@ function enterGotoEdit() {
         inputs[k + 1].select();
       }
     });
+    // Pasting a full coordinate string fills every slot at once.
+    i.addEventListener('paste', e => {
+      const cb = e.clipboardData || window.clipboardData;
+      const ll = cb && parseLatLng(cb.getData('text'));
+      if (ll) {
+        e.preventDefault();
+        fillGotoSlots(ll.lat, ll.lng);
+        coordBox.classList.remove('error');
+      }
+    });
   }
   inputs[0].focus();
   inputs[0].select();
-  // Leave edit mode only when focus exits the readout entirely.
-  coordBox.addEventListener('focusout', e => {
-    if (gotoEditing && !coordBox.contains(e.relatedTarget)) exitGotoEdit();
-  });
 }
 coordBox.addEventListener('click', () => { if (!gotoEditing) enterGotoEdit(); });
+// Leave edit mode only when focus exits the readout entirely. Registered once
+// (not per edit) so repeated open/close never stacks duplicate listeners.
+coordBox.addEventListener('focusout', e => {
+  if (gotoEditing && !coordBox.contains(e.relatedTarget)) exitGotoEdit();
+});
 
 const BEARING_KEY = 'navaid.bearing';
 // `navaid.view` — issue #413: persist center+zoom (and bearing) across

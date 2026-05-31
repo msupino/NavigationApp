@@ -124,6 +124,34 @@ test.describe('go-to input', () => {
     await expect(page.locator('#coord-readout')).toHaveClass(/show/);
   });
 
+  test('pasting a full coordinate fills every slot at once', async ({ page }) => {
+    await boot(page);
+    await page.locator('#coord-readout').click();
+    // Fire a real paste event carrying a DMS string into the first slot.
+    await page.evaluate(() => {
+      const dt = new DataTransfer();
+      dt.setData('text', '32°00\'17"N 34°43\'38"E');
+      document.getElementById('goto-lat-d').dispatchEvent(
+        new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+    });
+    const vals = await page.evaluate(() => ({
+      latD: document.getElementById('goto-lat-d').value,
+      latM: document.getElementById('goto-lat-m').value,
+      latS: document.getElementById('goto-lat-s').value,
+      lngD: document.getElementById('goto-lng-d').value,
+      lngM: document.getElementById('goto-lng-m').value,
+      lngS: document.getElementById('goto-lng-s').value,
+    }));
+    expect(vals).toEqual({ latD: '32', latM: '00', latS: '17', lngD: '34', lngM: '43', lngS: '38' });
+    // Committing the pasted value pans there.
+    await page.locator('#goto-lng-s').press('Enter');
+    const center = await page.evaluate(() => {
+      const c = map.getCenter(); return { lat: c.lat, lng: c.lng };
+    });
+    expect(center.lat).toBeCloseTo(32.00472, 2);
+    expect(center.lng).toBeCloseTo(34.72722, 2);
+  });
+
   test('a map click dismisses the temp marker', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => window.dropGotoMarker(32.0, 34.9));
