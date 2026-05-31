@@ -5,6 +5,7 @@ window.S = {
   navWpSearchField: 'he',
   airfieldsUrl: 'airfields.json?v=3',
   airfieldLabelField: 'he',
+  commChangeUrl: 'comm-change.json?v=1',
 
   // --- Waypoint terminology -------------------------------------------
   // Mirrors the English cluster in core.js — keep the noun phrase
@@ -13,7 +14,7 @@ window.S = {
   // label for unnamed waypoints; do not expand it.
   wpPrefix: 'נק׳ ',                                  // קיצור לתווית מילוט של נקודות בלי שם
   summaryWaypoints: 'ציוני דרך',                     // פאנל סטטיסטיקה
-  tbAddWp: '✏️ הוסף ציון דרך',                       // כפתור עריכה בסרגל
+  tbAddWp: '✏️ הוסף ציון דרך (A)',                   // כפתור עריכה בסרגל
   tbAddWpTitle: 'לחץ על המפה להוספת ציון דרך (לחץ שוב לעצירה)',
   tbShowWpNames: 'הצג שמות ציוני דרך',              // מתג בקטע תצוגה
   tbShowWpNamesTitle: 'הצג שמות ציוני דרך (כבוי = עיגול ריק)',
@@ -25,9 +26,9 @@ window.S = {
   tbSearchHint: 'טיפ: הקלד קודים מופרדים ברווח (למשל LLHZ BAZRA DEROR SHARO HADRA) ולחץ Enter לבניית מסלול.',
   errSearchUnknown: function(t) { return 'ציון ניווט לא מוכר: ' + t; },
   searchReplaceConfirm: 'להחליף את המסלול הנוכחי בציוני הדרך האלה?',
-  tbSearchOpen: '🔍 חפש',
+  tbSearchOpen: '🔍 חפש (Ctrl-F)',
   tbSearchOpenTitle: 'פתח את חלון החיפוש (Ctrl/Cmd-F)',
-  deleteWp: '🗑 מחק ציון דרך',                          // כפתור באינספקטור
+  deleteWp: '🗑 מחק ציון דרך (D)',                      // כפתור באינספקטור
   resetWpName: '↺ אפס שם נקודה',                     // כפתור באינספקטור — שם לפי ייחוס או ניקוי (תווית אוטומטית)
   resetWpNameTitle: 'הגדר שם לפי נקודת הייחוס הקרובה (שדה תעופה / ציון ניווט), או נקה כשאין ייחוס סמוך',
   tbResetAllWpNames: '↺ אפס את כל שמות ציוני הדרך',
@@ -92,9 +93,11 @@ window.S = {
   shapeRect: 'מלבן',
   shapeOval: 'אליפסה',
   color: 'צבע',
-  deleteNote: '🗑 מחק הערה',
+  deleteNote: '🗑 מחק הערה (D)',
   latitude: 'קו רוחב',
   longitude: 'קו אורך',
+  gotoTitle: 'לחץ כדי לנווט לקואורדינטות',
+  gotoError: 'הקלד ספרות או הדבק קואורדינטה כמו 32°00\'17"N 34°43\'38"E',
   dialTitle: function(b) { return 'סיבוב מפה ' + b + '° — גרור לסיבוב, לחץ לצפון'; },
   wpnameRotTitle: function(a) { return 'סובב שמות ציוני דרך (כיום ' + a + '°)'; },
   expandMenu: 'פתח תפריט',
@@ -108,13 +111,15 @@ window.S = {
   layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'ניווט', 'Low Alt': 'גובה נמוך',
                  'Helicopters': 'מסוקים', 'Satellite': 'לוויין', 'OpenStreetMap': 'OpenStreetMap' },
   tbHandleTitle: 'גרור להזזה',
-  tbAddNote: '📝 הוסף הערה',
+  tbAddNote: '📝 הוסף הערה (N)',
   tbAddNoteTitle: 'לחץ על המפה להוספת הערה (לחץ שוב לעצירה)',
   tbLayerLabel: 'שכבה',
   tbLayerTitle: 'שכבת מפה בסיסית',
-  tbReverse: '⇄ הפוך מסלול',
+  tbReverse: '⇄ הפוך מסלול (R)',
   tbReverseTitle: 'הפוך סדר מסלול',
-  tbClear: '🗑 נקה מפה',
+  tbUndo: '↶ בטל (Ctrl-Z)',
+  tbUndoTitle: 'בטל את העריכה, ההזזה או המחיקה האחרונה',
+  tbClear: '🗑 נקה מפה (C)',
   tbClearTitle: 'הסר את כל ציוני הדרך וההערות',
   tbExport: '⬇ ייצא',
   tbExportTitle: 'ייצא מסלול כ-JSON',
@@ -124,7 +129,7 @@ window.S = {
   tbShareTitle: 'העתק קישור לשיתוף המסלול ללוח',
   shareCopied: 'קישור המסלול הועתק ללוח',
   errShareTooLong: 'המסלול ארוך מדי לקישור שיתוף (מקסימום 64 ציוני דרך). ייצא כ-JSON ושלח את הקובץ במקום.',
-  tbFit: '⌖ התאם למסך',
+  tbFit: '⌖ התאם למסך (F)',
   tbFitTitle: 'התאם מסלול לתצוגה (F)',
   tbPlan: '📋 תכנית טיסה',
   tbPlanTitle: 'הצג תכנית טיסה',
@@ -132,6 +137,8 @@ window.S = {
   tbChartsTitle: 'עיין בדפיות גישה לכל שדות התעופה',
   tbFly: '✈️ פתח ב-Google Earth',
   tbFlyTitle: 'שמור סיור Google Earth של המסלול בגבהים שנקבעו לקטעים',
+  tbGpxExport: '📍 ייצא GPX',
+  tbGpxExportTitle: 'ייצא מסלול כ-GPX ליחידות GPS ניידות',
   tbShowReturn: 'הצג מסלול חזרה',
   tbShowReturnTitle: 'הצג מידע על מסלול חזרה',
   tbShowMidLeg: 'הצג מרחק קטע',
@@ -142,6 +149,12 @@ window.S = {
   tbShowDriftTitle: 'הצג קווי ייחוס סחיפה של 10 מעלות בקצה כל קטע',
   tbShowAirfields: 'הצג/נעץ שדות תעופה',
   tbShowAirfieldsTitle: 'הצג שדות תעופה ישראלים מפורסמים (מקור BYOP)',
+  tbForceSnap: 'הצמדה כפויה',
+  tbForceSnapTitle: 'תמיד הצמד לחיצות לציון הניווט / שדה התעופה הקרוב (אחרת: רדיוס 18 פיקסל)',
+  tbShowCommChange: 'הצג/הוסף שינויי תדר',
+  tbShowCommChangeTitle: 'סמן ציוני דיווח שבהם נדרש מעבר תדר ATC',
+  commChangeBadge: '📡 שינוי תדר',
+  commChangeNoteText: 'שינוי תדר',
   plates: 'דפיות',
   runways: 'מסלולים',
   plateCategoryApproach: 'גישה',
@@ -156,7 +169,7 @@ window.S = {
   plateClose: 'סגור',
   platesNone: 'אין דפיות — ראה AIP הרשמי',
   plateLoadError: 'טעינת הדפית נכשלה.',
-  plateAttribution: 'מפות © רשות התעופה האזרחית / משרד התחבורה — מפורסם ב-AIP. תצלום מחבילת ForeFlight ישראל גרסה 02-25.',
+  plateAttribution: 'מפות © רשות התעופה האזרחית / משרד התחבורה — מפורסם ב-AIP.',
   tbTransparency: 'שקיפות תוויות',
   tbTransparencyTitle: 'שקיפות רקע תוויות (נקודות, קטעים, הערות)',
   tbMapOpacity: 'בהירות מפה',
@@ -195,7 +208,12 @@ window.S = {
   shortcutsGroupHelp: 'עזרה',
   shortcutFitRoute: 'התאם מסלול לתצוגה',
   shortcutSearch: 'פתח חיפוש',
+  shortcutAddWp: 'הפעל/כבה מצב הוספת ציון דרך (לחץ על המפה להוספה; לחץ שוב לעצירה)',
+  shortcutAddNote: 'הפעל/כבה מצב הוספת הערה (לחץ על המפה להוספה; לחץ שוב לעצירה)',
+  shortcutClear: 'נקה את המפה (הסר את כל ציוני הדרך וההערות)',
   shortcutReverse: 'הפוך כיוון מסלול',
+  shortcutBothDirections: 'הצג/הסתר נתיב חזור (שני הכיוונים)',
+  shortcutUndo: 'בטל את העריכה, ההזזה או המחיקה האחרונה',
   shortcutEsc: 'סגור חלון / בטל בחירה / סגור זכוכית מגדלת',
   shortcutDelete: 'מחק ציון דרך או הערה שנבחרו',
   shortcutHelp: 'הצג את גיליון הקיצורים הזה',
@@ -227,7 +245,7 @@ window.S = {
   planPlacementCustom: 'מותאם…',
 
   // --- Magnifying glass ------------------------------------------------
-  tbMagnifier: '🔍 זכוכית מגדלת',
+  tbMagnifier: '🔍 זכוכית מגדלת (M)',
   tbMagnifierTitle: 'זכוכית מגדלת (M) — תצוגה מוגדלת במיקום הסמן; +/- משנים את הגדלת הזכוכית כשהיא פתוחה',
   magSettingsTitle: 'זכוכית מגדלת',
   magZoomLabel: 'תקריב',

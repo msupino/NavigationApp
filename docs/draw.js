@@ -30,6 +30,7 @@ function legDefaultLabelPerp(legLenPx) {
 function draw() {
   octx.clearRect(0, 0, vw(), vh());
   drawNavWaypoints();
+  drawCommChangeRings();
   drawAirfields();
   drawLegs();
   drawWaypoints();
@@ -81,6 +82,39 @@ async function loadNavWaypoints() {
     // forever and disable nav waypoints for the whole session (issue #72).
     console.warn('Failed to load nav waypoints:', e);
     return [];
+  }
+}
+
+// Lazy-loads docs/comm-change.json — { points:[{name, commChange, from, to,
+// note, verified, source}] }. Builds an O(1) map keyed by ICAO `name` for
+// the nav-waypoint overlay ring + inspector badge. On 404 or schema error
+// we install an EMPTY map ({}) instead of leaving commChangeMap null —
+// the dataset is intentionally optional, and a missing file must not
+// disable the rest of the nav-WP overlay (issue #399). The map is only
+// rebuilt if a future call observes `commChangeMap === null` (i.e. nothing
+// was installed yet), so a one-time 404 doesn't trigger retry storms.
+async function loadCommChange() {
+  if (commChangeMap !== null) return commChangeMap;
+  try {
+    const res = await fetch(S.commChangeUrl);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    const verr = validateCommChange(d);
+    if (verr) {
+      console.warn('comm-change schema error:', verr);
+      commChangeMap = {};
+      return commChangeMap;
+    }
+    const m = {};
+    for (const pt of d.points) {
+      if (pt && pt.name && pt.commChange) m[pt.name] = pt;
+    }
+    commChangeMap = m;
+    return commChangeMap;
+  } catch (e) {
+    console.warn('Failed to load comm-change dataset:', e);
+    commChangeMap = {};                    // graceful degrade — no rings, no retry
+    return commChangeMap;
   }
 }
 
@@ -160,7 +194,11 @@ function navName(stored) {
 // Airfields take priority because they're a much smaller set of strongly-
 // known landmarks (16 vs 173 nav-WPs); if both overlays sit on the same
 // spot the airfield name is the more meaningful identifier.
-function applyNavSnap(latlng, currentName) {
+function applyNavSnap(latlng, currentName, excludeLl) {
+  const EXCL_DEG = 0.0002;
+  const excluded = ll => excludeLl &&
+    Math.abs(ll.lat - excludeLl.lat) < EXCL_DEG &&
+    Math.abs(ll.lng - excludeLl.lng) < EXCL_DEG;
   if (!showAirfields && !showNavWP) {
     const autoSnapped = isAirfieldName(currentName) || isNavName(currentName) ||
         isSequenceWaypointName(currentName);
@@ -170,16 +208,49 @@ function applyNavSnap(latlng, currentName) {
   const autoSnapped = isAirfieldName(currentName) || isNavName(currentName) ||
       isSequenceWaypointName(currentName);
   const userTyped = currentName && !autoSnapped;
+  // #106: Force-snap mode lifts the 18 px radius so every click resolves to
+  // the absolute nearest known point. Useful when the chart has many close
+  // reporting points and the user wants the published coordinate regardless
+  // of click precision.
+  // #106: force-snap lifts the radius. Airfield-first priority is fine inside
+  // the 18 px radius (both rarely sit there together), but at infinite radius
+  // it would make the 16-airfield set always win and leave the 173 nav-WPs
+  // unreachable. So in force-snap mode pick the globally nearest across both
+  // visible sets by screen distance instead of short-circuiting on airfields.
+  if (window.forceSnap) {
+    const t = map.latLngToContainerPoint([latlng.lat, latlng.lng]);
+    const cands = [];
+    if (showAirfields) {
+      const af = nearestAirfield(latlng, Infinity);
+      if (af && !excluded(af)) cands.push({ pt: af, name: af.name });
+    }
+    if (showNavWP) {
+      const nw = nearestNavWaypoint(latlng, Infinity);
+      if (nw && !excluded(nw)) cands.push({ pt: nw, name: nw[S.navWpSearchField] || nw.name });
+    }
+    let best = null, bestD = Infinity;
+    for (const c of cands) {
+      const p = map.latLngToContainerPoint([c.pt.lat, c.pt.lng]);
+      const d = Math.hypot(p.x - t.x, p.y - t.y);
+      if (d < bestD) { bestD = d; best = c; }
+    }
+    if (best) {
+      const name = userTyped ? currentName : best.name;
+      return { lat: best.pt.lat, lng: best.pt.lng, name };
+    }
+    return { lat: latlng.lat, lng: latlng.lng,
+             name: autoSnapped ? '' : (currentName || '') };
+  }
   if (showAirfields) {
     const af = nearestAirfield(latlng, 18);
-    if (af) {
+    if (af && !excluded(af)) {
       const name = userTyped ? currentName : af.name;
       return { lat: af.lat, lng: af.lng, name };
     }
   }
   if (showNavWP) {
     const snap = nearestNavWaypoint(latlng, 18);
-    if (snap) {
+    if (snap && !excluded(snap)) {
       const name = userTyped ? currentName : (snap[S.navWpSearchField] || snap.name);
       return { lat: snap.lat, lng: snap.lng, name };
     }
@@ -311,6 +382,17 @@ function drawAirfields() {
   octx.lineWidth = 1;
 }
 
+// Comm-change ring styling (issue #399). Drawn around the white nav-WP dot
+// when `commChangeMap[name].commChange` is true and the toggle is on. The
+// red is distinct from every other overlay glyph: nav-WP dots are white,
+// airfields blue, route waypoints yellow-on-black, leg kites yellow/pink —
+// so the bright red ring reads as "watch out, frequency boundary" against
+// all base layers (CVFR, OSM, Satellite). Sized just outside the 3.5 px
+// dot so it visually augments rather than replaces it.
+const COMM_CHANGE_RING_COLOR = '#e74c3c';
+const COMM_CHANGE_RING_RADIUS = 6;
+const COMM_CHANGE_RING_WIDTH = 1.8;
+
 function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
   // Suppress nav-WP dot when a route waypoint sits on it (by position),
@@ -344,6 +426,89 @@ function drawNavWaypoints() {
   }
   octx.lineWidth = 1;
 }
+
+// Comm-change rings (issue #399 / #484). Drawn independently of the nav-WP
+// dot layer: the "Show Comm Changes" toggle marks frequency-boundary points
+// whether or not the full 173-dot reporting-point overlay is on. Positions
+// come from the same navWP dataset, so navWP must be loaded when this layer
+// is enabled (toggle handler + boot ensure that). When both layers are on,
+// the dot is drawn by drawNavWaypoints() and the ring here — once each.
+function drawCommChangeRings() {
+  // Test-inspection hook (issue #399): every comm-change ring drawn this
+  // frame is recorded here so Playwright can assert "ring drew at X"
+  // without snapshotting overlay pixels. Built fresh every draw() so it
+  // never accumulates stale names after a toggle off / pan away.
+  const ringsDrawn = new Set();
+  const ringRadii = {};                  // #488 test hook: name -> drawn radius
+  // commChangeMap may be null briefly during boot — guard so a fast first
+  // paint can't NPE before loadCommChange resolves.
+  if (showCommChange && commChangeMap && navWP && navWP.length) {
+    octx.strokeStyle = COMM_CHANGE_RING_COLOR;
+    octx.lineWidth = COMM_CHANGE_RING_WIDTH;
+    // #488: if a route waypoint sits on the point, drawWaypoints() paints a
+    // filled disc over this ring later in the frame — and with "show waypoint
+    // names" on, waypointGeom() enlarges that disc to fit its label. Grow the
+    // ring to enclose the disc (+ its 3px stroke) so it stays visible outside.
+    const SNAP_DEG = 0.0002;               // ~22 m — matches the snap threshold
+    for (const wp of navWP) {
+      if (!commChangeMap[wp.name] || !commChangeMap[wp.name].commChange) continue;
+      const s = proj(wp);                // no viewport cull: also drawn into
+                                         // the larger PNG-export canvas
+      let radius = COMM_CHANGE_RING_RADIUS;
+      const wi = state.waypoints.findIndex(
+        r => Math.abs(r.lat - wp.lat) < SNAP_DEG && Math.abs(r.lng - wp.lng) < SNAP_DEG);
+      if (wi !== -1) {
+        const selected = state.selected &&
+                         state.selected.type === 'wp' && state.selected.index === wi;
+        const discR = (selected ? waypointGeom(wi).r + 2 : waypointGeom(wi).r) + 2;
+        if (discR + COMM_CHANGE_RING_WIDTH > radius) radius = discR + COMM_CHANGE_RING_WIDTH;
+      }
+      octx.beginPath();
+      octx.arc(s.x, s.y, radius, 0, Math.PI * 2);
+      octx.stroke();
+      ringsDrawn.add(wp.name);
+      ringRadii[wp.name] = radius;
+    }
+    octx.lineWidth = 1;
+  }
+  window.__commChangeRingsDrawn = ringsDrawn;
+  window.__commChangeRingRadii = ringRadii;
+}
+
+// Issue #487: auto-seed a real note near any route waypoint that sits on a
+// comm-change reporting point, so the frequency change shows on the printed
+// plan. The note is a normal `state.notes` object (movable / editable /
+// deletable) tagged with `cc: <ICAO>` for idempotency — a point is seeded
+// at most once, and the tag survives reload / export / import, so re-draws
+// or repeated snaps never duplicate it. Seeding is driven ONLY from explicit
+// placement/snap actions (drop, drag-end, search route-build); it must not be
+// called from draw() / load / import / undo or it would resurrect notes the
+// user deleted. Returns true if any note was added so the caller can persist.
+const COMM_CHANGE_NOTE_LAT_OFFSET = 0.012;   // ~1.3 km north of the dot
+function seedCommChangeNotes() {
+  if (!showCommChange) return false;
+  if (!commChangeMap || typeof state === 'undefined' ||
+      !Array.isArray(state.waypoints) || !Array.isArray(state.notes)) return false;
+  let added = false;
+  for (const wp of state.waypoints) {
+    const nm = wp && wp.name ? wp.name.trim() : '';
+    if (!nm) continue;
+    const cc = commChangeMap[nm];
+    if (!cc || !cc.commChange) continue;
+    if (state.notes.some(n => n && n.cc === nm)) continue;   // already seeded / kept
+    state.notes.push({
+      lat: r5(wp.lat + COMM_CHANGE_NOTE_LAT_OFFSET),
+      lng: r5(wp.lng),
+      text: (typeof S !== 'undefined' && S.commChangeNoteText) || 'Freq change',
+      color: NOTE_DEFAULT_COLOR,
+      shape: 'rect',
+      cc: nm,
+    });
+    added = true;
+  }
+  return added;
+}
+window.seedCommChangeNotes = seedCommChangeNotes;
 
 function drawLegs() {
   const zoomScale = legZoomScale();
@@ -408,12 +573,12 @@ function drawLegs() {
     drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, String(leg.inboundAltitude),
-      '#2f6fd0', yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
+      '#161412', yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
     if (showReturn) {
       drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, String(leg.outboundAltitude),
-        '#c0392b', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
+        '#161412', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
   }
@@ -536,7 +701,7 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc
   const at = lx => ({ x: cx + lx * cos, y: cy + lx * sin });
   const pAlt = at(-L / 2 + cell * 0.5);
   const pTime = at(-L / 2 + cell * 1.5);
-  const pHead = at(xb + Lt * 0.32);
+  const pHead = at(xb + Lt * 0.22);
   drawRotText(pAlt.x, pAlt.y, ta, alt, `bold ${fontPx}px sans-serif`, '#000');
   drawRotText(pTime.x, pTime.y, ta, time, `bold ${fontPx}px sans-serif`, '#000');
   drawRotText(pHead.x, pHead.y, ta, head, `bold ${fontPxH}px sans-serif`, '#000');
