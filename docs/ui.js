@@ -126,6 +126,28 @@ function rotEnd(cycle) {
 }
 rotDial.addEventListener('pointerup', () => rotEnd(true));
 rotDial.addEventListener('pointercancel', () => rotEnd(false));   // aborted — don't rotate
+// --- live mouse coordinate readout ---------------------------------
+// Bottom-left so it clears the zoom buttons + rotate dial (bottomright)
+// and the layer picker (topright). Updates on every map mousemove with
+// the same DM format the inspector uses for waypoints (fmtLatLng).
+const coordCtrl = L.control({ position: 'bottomleft' });
+coordCtrl.onAdd = function () {
+  const box = L.DomUtil.create('div', 'leaflet-control coord-readout');
+  box.id = 'coord-readout';
+  box.setAttribute('aria-hidden', 'true');
+  return box;
+};
+coordCtrl.addTo(map);
+const coordBox = document.getElementById('coord-readout');
+function showCoord(latlng) {
+  coordBox.textContent = fmtLatLng(latlng.lat, 'N', 'S') + '  ' +
+                         fmtLatLng(latlng.lng, 'E', 'W');
+  coordBox.classList.add('show');
+}
+function hideCoord() { coordBox.classList.remove('show'); }
+map.on('mousemove', e => showCoord(e.latlng));
+map.on('mouseout', hideCoord);
+
 const BEARING_KEY = 'navaid.bearing';
 // `navaid.view` — issue #413: persist center+zoom (and bearing) across
 // reloads so a refresh / language switch / PWA wake-up doesn't snap back
@@ -406,6 +428,11 @@ document.addEventListener('keydown', e => {
     const t = e.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
     document.getElementById('reverse').click();
+  } else if ((e.key === 'b' || e.key === 'B') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    // Toggling the checkbox fires its onchange (persist + redraw).
+    document.getElementById('ret-cb').click();
   }
 });
 document.addEventListener('click', e => {
@@ -436,6 +463,7 @@ document.getElementById('reverse').onclick = () => {
   state.selected = null;
   showInspector(); draw();
 };
+document.getElementById('undo').onclick = () => { if (typeof undo === 'function') undo(); };
 document.getElementById('clear').onclick = () => {
   if ((state.waypoints.length || state.notes.length) &&
       !confirm(S.clearConfirm)) return;
@@ -455,11 +483,14 @@ document.getElementById('save').onclick = save;
 document.getElementById('load').onclick = () => document.getElementById('file').click();
 document.getElementById('share').onclick = shareRoute;
 document.getElementById('file').onchange = e => {
-  if (e.target.files[0]) load(e.target.files[0]);
+  const f = e.target.files[0];
+  if (!f) return;
+  if (/\.gpx$/i.test(f.name)) loadGpx(f); else load(f);
   e.target.value = '';
 };
 document.getElementById('fit').onclick = fitView;
 document.getElementById('fly').onclick = flyRoute;
+document.getElementById('gpx').onclick = exportGpx;
 // Toggle: a second click closes the modal instead of being a no-op (#78 dedupe
 // previously made the button look broken when the modal was already open).
 document.getElementById('plan').onclick = () => {

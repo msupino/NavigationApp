@@ -239,6 +239,14 @@ branch by mistake.
   dots; the 5-letter ID label appears at zoom ≥ 10. Captured in PNG
   export. Source: IAA CVFR chart page 113 (2025 edition) — see the
   Notes / pending section.
+- **Charts modal (BYOP plates):** `🗺️ Charts` toolbar button opens
+  `showChartsModal()` (`io.js`), which lists every airfield in
+  `airfields.json` that carries a non-empty `plates[]` as a
+  collapsible section (header `ICAO — English name`, plate chips
+  grouped by `plateCategory()`). **Airfields are listed alphabetically
+  by ICAO** — `renderList()` sorts `withPlates` via
+  `a.name.localeCompare(b.name)` before rendering, so JSON row order
+  never leaks into the UI. Keep that sort when touching the list.
 - **A3 / A4 page frame:** `pageFrameRect()` returns the rectangle in
   screen px sized so its contents are 1:250 000. Clicking the same
   size button again clears it. Orientation chosen via the
@@ -259,8 +267,13 @@ branch by mistake.
     zoom map out (loupe zoom out when magnifier is on); `M` — toggle
     magnifying glass (skipped while any modal backdrop is open).
   - **Search:** `Ctrl/Cmd-F` — open search
-  - **Editing:** `Esc` — close modal / deselect / close magnifier;
-    `Delete`/`Backspace` — delete selected waypoint or note
+  - **Editing:** `A` — toggle add-waypoint mode; `N` — toggle add-note
+    mode; `C` — clear the map; `R` — reverse route direction;
+    `B` — toggle show return path / both directions (the `ret-cb`
+    checkbox); `Ctrl/Cmd-Z` — undo the last committed edit/move/delete; `Esc` —
+    close modal / deselect / close magnifier; `D`/`Delete`/`Backspace` —
+    delete selected waypoint or note (A/N/C skipped while any modal
+    backdrop is open)
   - **Help:** `?` — open the cheat-sheet
   When you add a new global keyboard shortcut, append a row to
   `SHORTCUTS_HELP_ROWS` (and matching `shortcutXxx` keys in `core.js` +
@@ -418,7 +431,7 @@ downloadable `route.json`.
 - `nav-waypoints.json` — 173 Israeli CVFR reporting points.
   **Source:** IAA CVFR chart waypoint reference table (page 113, 2025
   edition), supplied upstream as `113_waypoints.csv`. The CSV is the
-  sole source of truth — the legacy ForeFlight Israel Base Pack
+  sole source of truth — the legacy KMZ dataset
   (`CVFR WAYPOINTS 0225.kmz`) was replaced in issue #406 because it
   carried ~91 stale codes (`AREA *`, `LLHA A/B/C`, `LLMG A/B
   Maarav/Mizrah`, etc.) and had several reporting points off the
