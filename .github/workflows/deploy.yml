@@ -23,9 +23,16 @@ permissions:
   deployments: write
   pull-requests: write
 
+# Single global group: the deploy job rebuilds EVERY open PR/branch preview
+# into one Pages artifact and republishes the whole site. Per-PR groups let two
+# deploys run concurrently, so an older job holding a stale snapshot of another
+# PR could publish last and overwrite a fresh preview — surfacing as "stale CDN"
+# in e2e-deployed. Serializing all deploys means the last publish is always the
+# newest snapshot. cancel-in-progress:false queues runs (Actions keeps only the
+# newest pending), so no in-flight publish is aborted half-written.
 concurrency:
-  group: ${{ github.event_name == 'pull_request' && format('pages-pr-{0}', github.event.number) || 'pages' }}
-  cancel-in-progress: true
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   lint:
@@ -274,7 +281,7 @@ jobs:
     # npm ci + Playwright install while Pages updates, then waits on URL/SHA.
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -287,70 +294,47 @@ jobs:
       - run: npm ci
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
-      - name: Wait for preview and run e2e
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Download built site artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: github-pages
+          path: _artifact
+      - name: Extract published site
         run: |
-          PR_NUM=${{ github.event.number }}
-          URL="https://navaid.supino.org/pr/$PR_NUM/"
-          for i in $(seq 1 30); do
-            HTTP=$(curl -sLo /dev/null -w "%{http_code}" "$URL" 2>/dev/null || echo "000")
-            if [ "$HTTP" = "200" ]; then
-              echo "Preview ready at $URL"
-              break
-            fi
-            echo "  waiting (HTTP $HTTP) ... ($i/30)"
-            sleep 5
-          done
-          SHA=$(git rev-parse --short HEAD)
-          echo "Expecting SHA=$SHA in deployed core.js"
-          for i in $(seq 1 12); do
-            FOUND=$(curl -s "$URL"core.js | sed -nE "s/.*version: '1\.0-([A-Za-z0-9]+)'.*/\1/p" 2>/dev/null)
-            if [ "$FOUND" = "$SHA" ]; then
-              echo "Commit SHA verified — preview is fresh"
-              break
-            fi
-            echo "  SHA mismatch (got '$FOUND'), waiting... ($i/12)"
-            sleep 10
-          done
-          if [ "$FOUND" != "$SHA" ]; then
-            echo "Preview never updated to commit $SHA (last seen: '$FOUND')"
-            exit 1
+          mkdir -p _site
+          # upload-pages-artifact ships a single gzipped tar; tar -xf auto-detects.
+          tar -xf _artifact/artifact.tar -C _site
+      - name: Serve published site locally and run e2e
+        env:
+          PR_NUM: ${{ github.event.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Test the byte-identical artifact the deploy job publishes, served
+          # from a local HTTP server — NOT the live CDN. GitHub Pages' Fastly
+          # edge cannot be force-purged, and every PR deploy republishes the
+          # whole site, so concurrent PRs raced and served each other stale
+          # content (flaky "stale CDN" failures, #491). The artifact is exactly
+          # what Pages would publish, so local hosting keeps all deploy-rewrite
+          # coverage (cache-bust ?v=, version SHA, /pr/N/ subpath URLs, byop
+          # base path) while being fully deterministic.
+          PREVIEW="_site/pr/$PR_NUM"
+          if [ ! -f "$PREVIEW/core.js" ]; then
+            echo "::error::No preview at $PREVIEW in the built artifact"; exit 1
           fi
-          # core.js can propagate before large JSON on the CDN — share-route
-          # and other tests snap ICAO waypoints to docs/airfields.json. Wait
-          # until the deployed file's LLHZ ARP matches this checkout (#421).
-          if [ -f docs/airfields.json ]; then
-            EXP_LLHZ=$(node -e "const j=require('./docs/airfields.json');const a=j.airfields&&j.airfields.find(x=>x.name==='LLHZ');if(a)console.log(a.lat.toFixed(5)+','+a.lng.toFixed(5));" || true)
-            if [ -n "$EXP_LLHZ" ]; then
-              echo "Waiting for deployed airfields.json LLHZ to match repo ($EXP_LLHZ)..."
-              AF_OK=''
-              for i in $(seq 1 36); do
-                GOT=$(curl -fsS "$URL"airfields.json 2>/dev/null | node -e "const fs=require('fs');let s='';try{s=fs.readFileSync(0,'utf8');}catch(e){process.exit(0)}try{const j=JSON.parse(s);const a=j.airfields&&j.airfields.find(x=>x.name==='LLHZ');if(a)console.log(a.lat.toFixed(5)+','+a.lng.toFixed(5));}catch(e){}" || true)
-                if [ "$GOT" = "$EXP_LLHZ" ]; then
-                  echo "Deployed airfields.json LLHZ matches repo."
-                  AF_OK=1
-                  break
-                fi
-                echo "  airfields LLHZ ($GOT vs $EXP_LLHZ) ... ($i/36)"
-                sleep 5
-              done
-              if [ -z "$AF_OK" ]; then
-                echo "::error::Deployed airfields.json never matched repo LLHZ — CDN lag or partial Pages deploy."
-                exit 1
-              fi
-            fi
-          fi
-          MAX=2
-          ATTEMPT=0
-          while [ $ATTEMPT -lt $MAX ]; do
-            ATTEMPT=$((ATTEMPT + 1))
-            echo "=== e2e attempt $ATTEMPT/$MAX ==="
-            if BASE_URL="$URL" EXPECTED_SHA="$SHA" npx playwright test $(ls tests/*.spec.js | grep -vE 'sw\.spec|pwa\.spec') --reporter=list --max-failures=20 2>&1; then
-              echo "All e2e tests passed!"
-              exit 0
-            fi
-            echo "Failed — retrying in 5s..."
-            sleep 5
+          # Sanity: the built preview must carry this PR's HEAD commit.
+          SHA=$(sed -nE "s/.*version: '1\.0-([A-Za-z0-9]+)'.*/\1/p" "$PREVIEW/core.js")
+          echo "artifact preview SHA=$SHA, PR HEAD=$HEAD_SHA"
+          case "$HEAD_SHA" in
+            "$SHA"*) echo "Preview matches HEAD" ;;
+            *) echo "::error::Built preview ($SHA) is not HEAD ($HEAD_SHA)"; exit 1 ;;
+          esac
+          python3 -m http.server 8000 --directory _site >/tmp/http.log 2>&1 &
+          SRV=$!
+          trap 'kill $SRV 2>/dev/null || true' EXIT
+          for i in $(seq 1 20); do
+            curl -sf "http://127.0.0.1:8000/pr/$PR_NUM/core.js" >/dev/null && break
+            sleep 0.5
           done
-          exit 1
+          BASE_URL="http://127.0.0.1:8000/pr/$PR_NUM/" EXPECTED_SHA="$SHA" \
+            npx playwright test $(ls tests/*.spec.js | grep -vE 'sw\.spec|pwa\.spec') \
+            --reporter=list --max-failures=20

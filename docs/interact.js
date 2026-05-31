@@ -308,7 +308,7 @@ function showInspector() {
         row.className = 'row col commchange-row';
         const lbl = document.createElement('label');
         lbl.className = 'commchange-label';
-        lbl.textContent = S.commChangeBadge || '📡 Comm change';
+        lbl.textContent = S.commChangeBadge || '📡 Freq change';
         row.appendChild(lbl);
         if (cc.from || cc.to) {
           const freq = document.createElement('span');
@@ -504,7 +504,8 @@ map.on('mousedown', e => {
   if (wp >= 0) {
     downHit = true;
     state.selected = { type: 'wp', index: wp };
-    drag = { kind: 'wp', i: wp, moved: false };
+    drag = { kind: 'wp', i: wp, moved: false,
+             origLat: state.waypoints[wp].lat, origLng: state.waypoints[wp].lng };
     map.dragging.disable();
     showInspector(); draw();
     return;
@@ -545,7 +546,8 @@ map.on('mousemove', e => {
   if (drag.kind === 'wp') {
     drag.moved = true;
     const wp = state.waypoints[drag.i];
-    const r = applyNavSnap(e.latlng, wp.name || '');
+    const r = applyNavSnap(e.latlng, wp.name || '',
+                          { lat: drag.origLat, lng: drag.origLng });
     wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
     draw(); showInspector();
   } else if (drag.kind === 'note') {
@@ -576,6 +578,24 @@ map.on('mousemove', e => {
 // browser chrome and leaves the map permanently unpannable (issue #70).
 function endMouseDrag() {
   if (drag) {
+    if (drag.kind === 'wp' && drag.moved) {
+      const wp = state.waypoints[drag.i];
+      const SNAP_DEG = 0.0002;
+      const snappedToSelf = Math.abs(wp.lat - drag.origLat) < SNAP_DEG &&
+          Math.abs(wp.lng - drag.origLng) < SNAP_DEG;
+      const snappedToOther = state.waypoints.some((w, j) => j !== drag.i &&
+          Math.abs(w.lat - wp.lat) < SNAP_DEG &&
+          Math.abs(w.lng - wp.lng) < SNAP_DEG);
+      if (snappedToSelf || snappedToOther) {
+        state.waypoints.splice(drag.i, 1);
+        state.selected = null;
+        syncLegs();
+        showInspector(); draw();
+        map.dragging.enable();
+        drag = null;
+        return;
+      }
+    }
     // #487: a waypoint drag may have landed (snapped) on a comm-change point.
     // Seed its note now that the position is committed, then repaint.
     if (drag.kind === 'wp' && typeof seedCommChangeNotes === 'function' &&
@@ -750,7 +770,8 @@ mapEl.addEventListener('touchstart', e => {
     touchDrag = { kind: 'note', i: note };
     state.selected = { type: 'note', index: note };
   } else if (wp >= 0) {
-    touchDrag = { kind: 'wp', i: wp };
+    touchDrag = { kind: 'wp', i: wp, moved: false,
+                  origLat: state.waypoints[wp].lat, origLng: state.waypoints[wp].lng };
     state.selected = { type: 'wp', index: wp };
   } else if (lab) {
     _materialiseDefaultLegLabel(lab.i, lab.which);
@@ -778,8 +799,10 @@ mapEl.addEventListener('touchmove', e => {
   const p = touchXY(e.touches[0]);
   const ll = map.containerPointToLatLng([p.x, p.y]);
   if (touchDrag.kind === 'wp') {
+    touchDrag.moved = true;
     const wp = state.waypoints[touchDrag.i];
-    const r = applyNavSnap(ll, wp.name || '');
+    const r = applyNavSnap(ll, wp.name || '',
+                           { lat: touchDrag.origLat, lng: touchDrag.origLng });
     wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
     draw(); showInspector();
   } else if (touchDrag.kind === 'note') {
@@ -807,6 +830,24 @@ mapEl.addEventListener('touchmove', e => {
 
 function endTouch() {
   if (touchDrag) {
+    if (touchDrag.kind === 'wp' && touchDrag.moved) {
+      const wp = state.waypoints[touchDrag.i];
+      const SNAP_DEG = 0.0002;
+      const snappedToSelf = Math.abs(wp.lat - touchDrag.origLat) < SNAP_DEG &&
+          Math.abs(wp.lng - touchDrag.origLng) < SNAP_DEG;
+      const snappedToOther = state.waypoints.some((w, j) => j !== touchDrag.i &&
+          Math.abs(w.lat - wp.lat) < SNAP_DEG &&
+          Math.abs(w.lng - wp.lng) < SNAP_DEG);
+      if (snappedToSelf || snappedToOther) {
+        state.waypoints.splice(touchDrag.i, 1);
+        state.selected = null;
+        syncLegs();
+        showInspector(); draw();
+        map.dragging.enable();
+        touchDrag = null;
+        return;
+      }
+    }
     // #487: seed a comm-change note if a touch waypoint-drag landed on one.
     if (touchDrag.kind === 'wp' && typeof seedCommChangeNotes === 'function' &&
         seedCommChangeNotes()) draw();

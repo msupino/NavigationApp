@@ -129,6 +129,8 @@ window.S = Object.assign({
   deleteNote: '🗑 Delete note (D)',
   latitude: 'Latitude',
   longitude: 'Longitude',
+  gotoTitle: 'Click to go to coordinates',
+  gotoError: 'Type the digits, or paste a coordinate like 32°00\'17"N 34°43\'38"E',
   dialTitle: function(b) { return 'Map rotation ' + b + '° — drag to rotate, click for north up'; },
   wpnameRotTitle: function(a) { return 'Rotate waypoint names (now ' + a + '°)'; },
   expandMenu: 'Expand menu',
@@ -181,10 +183,12 @@ window.S = Object.assign({
   tbShowDriftTitle: 'Show 10-degree drift reference lines at each leg end',
   tbShowAirfields: 'Show/pin airfields',
   tbShowAirfieldsTitle: 'Overlay published Israeli airfields (BYOP source)',
-  tbShowCommChange: 'Show Comm Changes',
+  tbForceSnap: 'Force snap',
+  tbForceSnapTitle: 'Always snap clicks to the nearest airfield or nav-waypoint (otherwise: 18 px radius)',
+  tbShowCommChange: 'Show/Add Freq Changes',
   tbShowCommChangeTitle: 'Mark CVFR reporting points where pilots must change ATC frequency',
-  commChangeBadge: '📡 Comm change',
-  commChangeNoteText: 'Comm change',
+  commChangeBadge: '📡 Freq change',
+  commChangeNoteText: 'Freq change',
   plates: 'Charts',
   runways: 'Runways',
   plateCategoryApproach: 'Approach',
@@ -307,6 +311,9 @@ var navWP = null;           // null = not loaded yet (or last fetch failed —
                             // retry on next toggle / search call); [] or
                             // populated = last fetch resolved successfully.
 var showAirfields = true;   // Israeli airfields overlay (default on)
+var forceSnap = false;      // #106: when on, every click snaps to the
+                            // absolute nearest airfield / nav-WP regardless
+                            // of click distance (otherwise: 18 px radius).
 var airfields = null;       // same null/[]/populated convention as navWP —
                             // see loadAirfields() in draw.js. Entries:
                             // { name, he, lat, lng, en?, elev_ft?, plates:[], runways:[]|null }.
@@ -314,7 +321,7 @@ var airfields = null;       // same null/[]/populated convention as navWP —
                             // optional per the chart-rebuild (#412): ARPs
                             // surfaced from the IAA chart with no published
                             // BYOP enrichment ship as bare {name,he,lat,lng}.
-var showCommChange = true;  // Comm-change ring overlay (default on) — issue #399.
+var showCommChange = false;  // Comm-change ring overlay (default off) — issue #399.
 var commChangeMap = null;   // null = not loaded yet (or last fetch failed —
                             // retry on next toggle); {} or populated = last
                             // fetch resolved. Keyed by nav-WP `name` for
@@ -440,6 +447,58 @@ function fmtLatLng(v, pos, neg) {
   const d = Math.floor(v);
   const m = (v - d) * 60;
   return `${d}°${m.toFixed(1).padStart(4, '0')}'${hemi}`;
+}
+
+// Go-to sanity box (issue #497): a generous Israel-area bound. Parsed
+// coordinates outside this are rejected so a typo can't fling the map to
+// the other side of the planet.
+const GOTO_LAT_MIN = 28, GOTO_LAT_MAX = 34;
+const GOTO_LNG_MIN = 33, GOTO_LNG_MAX = 37;
+
+// Parse a free-text coordinate string into { lat, lng } or null (issue #497).
+// Tolerant of three notations, in priority order:
+//   1. DMS / DM with hemisphere letters:  32°00'17"N 34°43'38"E  /  32 00.3 N ...
+//   2. Signed decimal degrees:            32.005, 34.727  /  32.005 34.727
+// Minutes and seconds are optional; separators (° ' " : and spaces) are loose.
+function parseLatLng(str) {
+  if (typeof str !== 'string') return null;
+  const s = str.trim().toUpperCase();
+  if (!s) return null;
+
+  // --- hemisphere-tagged (DMS / DM) ---
+  // One coordinate = degrees, optional minutes, optional seconds, hemisphere.
+  const comp = /(-?\d+(?:\.\d+)?)\s*[°:\s]?\s*(?:(\d+(?:\.\d+)?)\s*['′M:\s]\s*)?(?:(\d+(?:\.\d+)?)\s*["″S]?\s*)?\s*([NSEW])/g;
+  const found = [];
+  let m;
+  while ((m = comp.exec(s)) !== null) {
+    const deg = parseFloat(m[1]);
+    const min = m[2] ? parseFloat(m[2]) : 0;
+    const sec = m[3] ? parseFloat(m[3]) : 0;
+    if (!Number.isFinite(deg)) continue;
+    let val = Math.abs(deg) + min / 60 + sec / 3600;
+    const hemi = m[4];
+    if (hemi === 'S' || hemi === 'W') val = -val;
+    found.push({ val, axis: (hemi === 'N' || hemi === 'S') ? 'lat' : 'lng' });
+  }
+  if (found.length >= 2) {
+    const lat = found.find(f => f.axis === 'lat');
+    const lng = found.find(f => f.axis === 'lng');
+    if (lat && lng) return finishLatLng(lat.val, lng.val);
+  }
+
+  // --- plain decimal degrees: "lat, lng" or "lat lng" ---
+  const nums = s.match(/-?\d+(?:\.\d+)?/g);
+  if (nums && nums.length >= 2) {
+    return finishLatLng(parseFloat(nums[0]), parseFloat(nums[1]));
+  }
+  return null;
+}
+
+function finishLatLng(lat, lng) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat < GOTO_LAT_MIN || lat > GOTO_LAT_MAX) return null;
+  if (lng < GOTO_LNG_MIN || lng > GOTO_LNG_MAX) return null;
+  return { lat, lng };
 }
 
 // --- Leaflet map -----------------------------------------------------
