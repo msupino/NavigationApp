@@ -402,23 +402,40 @@ function drawCommChangeRings() {
   // without snapshotting overlay pixels. Built fresh every draw() so it
   // never accumulates stale names after a toggle off / pan away.
   const ringsDrawn = new Set();
+  const ringRadii = {};                  // #488 test hook: name -> drawn radius
   // commChangeMap may be null briefly during boot — guard so a fast first
   // paint can't NPE before loadCommChange resolves.
   if (showCommChange && commChangeMap && navWP && navWP.length) {
     octx.strokeStyle = COMM_CHANGE_RING_COLOR;
     octx.lineWidth = COMM_CHANGE_RING_WIDTH;
+    // #488: if a route waypoint sits on the point, drawWaypoints() paints a
+    // filled disc over this ring later in the frame — and with "show waypoint
+    // names" on, waypointGeom() enlarges that disc to fit its label. Grow the
+    // ring to enclose the disc (+ its 3px stroke) so it stays visible outside.
+    const SNAP_DEG = 0.0002;               // ~22 m — matches the snap threshold
     for (const wp of navWP) {
       if (!commChangeMap[wp.name] || !commChangeMap[wp.name].commChange) continue;
       const s = proj(wp);                // no viewport cull: also drawn into
                                          // the larger PNG-export canvas
+      let radius = COMM_CHANGE_RING_RADIUS;
+      const wi = state.waypoints.findIndex(
+        r => Math.abs(r.lat - wp.lat) < SNAP_DEG && Math.abs(r.lng - wp.lng) < SNAP_DEG);
+      if (wi !== -1) {
+        const selected = state.selected &&
+                         state.selected.type === 'wp' && state.selected.index === wi;
+        const discR = (selected ? waypointGeom(wi).r + 2 : waypointGeom(wi).r) + 2;
+        if (discR + COMM_CHANGE_RING_WIDTH > radius) radius = discR + COMM_CHANGE_RING_WIDTH;
+      }
       octx.beginPath();
-      octx.arc(s.x, s.y, COMM_CHANGE_RING_RADIUS, 0, Math.PI * 2);
+      octx.arc(s.x, s.y, radius, 0, Math.PI * 2);
       octx.stroke();
       ringsDrawn.add(wp.name);
+      ringRadii[wp.name] = radius;
     }
     octx.lineWidth = 1;
   }
   window.__commChangeRingsDrawn = ringsDrawn;
+  window.__commChangeRingRadii = ringRadii;
 }
 
 // Issue #487: auto-seed a real note near any route waypoint that sits on a
