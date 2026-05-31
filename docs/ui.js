@@ -624,6 +624,17 @@ document.getElementById('airfield-cb').onchange = async e => {
   }
   draw();
 };
+const FORCE_SNAP_KEY = 'navaid.forceSnap';
+try {
+  const stored = localStorage.getItem(FORCE_SNAP_KEY);
+  if (stored !== null) window.forceSnap = stored === '1';
+} catch (e) { /* storage unavailable */ }
+document.getElementById('force-snap-cb').checked = forceSnap;
+document.getElementById('force-snap-cb').onchange = e => {
+  window.forceSnap = e.target.checked;
+  try { localStorage.setItem(FORCE_SNAP_KEY, forceSnap ? '1' : '0'); }
+  catch (err) { /* storage unavailable */ }
+};
 // Comm-change overlay toggle (issue #399). The dataset lives in
 // docs/comm-change.json and rings are drawn on top of the nav-WP dots
 // in draw.js. We persist + restore exactly like every other view toggle.
