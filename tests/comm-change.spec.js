@@ -290,6 +290,32 @@ test.describe('comm-change rendering (fixture-backed)', () => {
     expect(drawn).toContain('TYONA');
   });
 
+  test('ring grows to enclose a named route-waypoint disc so it stays visible (#488)', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    // Bare ring radius with no route waypoint on the point.
+    const bare = await page.evaluate(() => {
+      state.waypoints = []; state.legs = []; syncLegs();
+      draw();
+      return window.__commChangeRingRadii.TYONA;
+    });
+    // Drop a route waypoint on TYONA with "show waypoint names" ON — the
+    // label-enlarged yellow disc would otherwise cover the bare ring.
+    const grown = await page.evaluate(t => {
+      window.showWpNames = true;
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      state.legs = []; syncLegs();
+      draw();
+      return {
+        ring: window.__commChangeRingRadii.TYONA,
+        disc: waypointGeom(0).r,
+      };
+    }, TYONA);
+    // Ring must now exceed both its bare size and the occupying disc radius.
+    expect(grown.ring).toBeGreaterThan(bare);
+    expect(grown.ring).toBeGreaterThan(grown.disc);
+  });
+
   test('nav-WP dots draw with comm-change OFF and no rings (decoupled, #484)', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
