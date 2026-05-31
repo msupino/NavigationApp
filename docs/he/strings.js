@@ -148,6 +148,7 @@ window.S = {
   tbShowCommChange: 'הצג מעברי תקשורת',
   tbShowCommChangeTitle: 'סמן ציוני דיווח שבהם נדרש מעבר תדר ATC',
   commChangeBadge: '📡 מעבר תקשורת',
+  commChangeNoteText: 'מעבר תקשורת',
   plates: 'דפיות',
   runways: 'מסלולים',
   plateCategoryApproach: 'גישה',

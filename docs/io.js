@@ -475,6 +475,7 @@ function save() {
     notes: state.notes.map(n => ({
       lat: r5(n.lat), lng: r5(n.lng), text: n.text || '', color: n.color || '',
       shape: n.shape || 'rect',
+      ...(n.cc ? { cc: n.cc } : {}),   // #487: preserve comm-change seed tag
     })),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -622,6 +623,7 @@ function load(file) {
     state.notes = d.notes.map(n => ({
       lat: r5(n.lat), lng: r5(n.lng),
       text: n.text, color: n.color, shape: n.shape,
+      ...(n.cc ? { cc: n.cc } : {}),   // #487: preserve comm-change seed tag
     }));
     syncLegs();
     state.selected = null;

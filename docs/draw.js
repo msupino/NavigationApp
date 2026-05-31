@@ -421,6 +421,40 @@ function drawCommChangeRings() {
   window.__commChangeRingsDrawn = ringsDrawn;
 }
 
+// Issue #487: auto-seed a real note near any route waypoint that sits on a
+// comm-change reporting point, so the frequency change shows on the printed
+// plan. The note is a normal `state.notes` object (movable / editable /
+// deletable) tagged with `cc: <ICAO>` for idempotency — a point is seeded
+// at most once, and the tag survives reload / export / import, so re-draws
+// or repeated snaps never duplicate it. Seeding is driven ONLY from explicit
+// placement/snap actions (drop, drag-end, search route-build); it must not be
+// called from draw() / load / import / undo or it would resurrect notes the
+// user deleted. Returns true if any note was added so the caller can persist.
+const COMM_CHANGE_NOTE_LAT_OFFSET = 0.012;   // ~1.3 km north of the dot
+function seedCommChangeNotes() {
+  if (!commChangeMap || typeof state === 'undefined' ||
+      !Array.isArray(state.waypoints) || !Array.isArray(state.notes)) return false;
+  let added = false;
+  for (const wp of state.waypoints) {
+    const nm = wp && wp.name ? wp.name.trim() : '';
+    if (!nm) continue;
+    const cc = commChangeMap[nm];
+    if (!cc || !cc.commChange) continue;
+    if (state.notes.some(n => n && n.cc === nm)) continue;   // already seeded / kept
+    state.notes.push({
+      lat: r5(wp.lat + COMM_CHANGE_NOTE_LAT_OFFSET),
+      lng: r5(wp.lng),
+      text: (typeof S !== 'undefined' && S.commChangeNoteText) || 'Comm change',
+      color: NOTE_DEFAULT_COLOR,
+      shape: 'rect',
+      cc: nm,
+    });
+    added = true;
+  }
+  return added;
+}
+window.seedCommChangeNotes = seedCommChangeNotes;
+
 function drawLegs() {
   const zoomScale = legZoomScale();
   for (let i = 0; i < state.legs.length; i++) {

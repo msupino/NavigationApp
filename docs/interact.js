@@ -575,7 +575,14 @@ map.on('mousemove', e => {
 // Listening to map.on('mouseup') alone misses releases over the toolbar /
 // browser chrome and leaves the map permanently unpannable (issue #70).
 function endMouseDrag() {
-  if (drag) { map.dragging.enable(); drag = null; }
+  if (drag) {
+    // #487: a waypoint drag may have landed (snapped) on a comm-change point.
+    // Seed its note now that the position is committed, then repaint.
+    if (drag.kind === 'wp' && typeof seedCommChangeNotes === 'function' &&
+        seedCommChangeNotes()) draw();
+    map.dragging.enable();
+    drag = null;
+  }
 }
 window.addEventListener('mouseup', endMouseDrag);
 window.addEventListener('pointerup', endMouseDrag);
@@ -597,6 +604,7 @@ map.on('click', e => {
     }
     state.waypoints.push({ lat: r5(r.lat), lng: r5(r.lng), name: r.name });
     syncLegs();
+    if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();  // #487
     state.selected = { type: 'wp', index: state.waypoints.length - 1 };
     showInspector(); draw();
   } else if (state.mode === 'note') {
@@ -798,7 +806,13 @@ mapEl.addEventListener('touchmove', e => {
 }, { passive: false });
 
 function endTouch() {
-  if (touchDrag) { map.dragging.enable(); touchDrag = null; }
+  if (touchDrag) {
+    // #487: seed a comm-change note if a touch waypoint-drag landed on one.
+    if (touchDrag.kind === 'wp' && typeof seedCommChangeNotes === 'function' &&
+        seedCommChangeNotes()) draw();
+    map.dragging.enable();
+    touchDrag = null;
+  }
 }
 mapEl.addEventListener('touchend', endTouch);
 mapEl.addEventListener('touchcancel', endTouch);

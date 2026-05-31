@@ -286,6 +286,7 @@ async function buildRouteFromQuery(raw) {
   state.legs = [];
   state.selected = null;
   syncLegs();
+  if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();  // #487
   wpSearch.value = '';
   hideSearchOverlay();
   showInspector();

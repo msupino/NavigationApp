@@ -184,6 +184,7 @@ window.S = Object.assign({
   tbShowCommChange: 'Show Comm Changes',
   tbShowCommChangeTitle: 'Mark CVFR reporting points where pilots must change ATC frequency',
   commChangeBadge: '📡 Comm change',
+  commChangeNoteText: 'Comm change',
   plates: 'Charts',
   runways: 'Runways',
   plateCategoryApproach: 'Approach',
