@@ -95,7 +95,7 @@ async function boot(page) {
       }
     } catch (e) {}
   });
-  await page.goto('/?lang=en');
+  await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined');
   // Pre-warm every async dataset so subsequent draws / inspector renders
   // can assert against fully-populated state.
@@ -161,7 +161,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     await page.addInitScript(() => {
       try { localStorage.setItem('navaid.lang', 'he'); } catch (e) {}
     });
-    await page.goto('/?lang=he');
+    await page.goto('?lang=he');
     await page.waitForFunction(() => typeof state !== 'undefined');
     const labelText = await page.locator(
       'label[data-i18n-title="tbShowCommChangeTitle"]').textContent();
