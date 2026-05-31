@@ -25,7 +25,7 @@ SOFTWARE.
 NOTE: This MIT license covers the NavAid source code only. The Israeli
 aeronautical CVFR chart layers are © flight-maps.com / CAAI; world imagery
 is © Esri; OpenStreetMap data is © OpenStreetMap contributors; the VFR
-reporting-point dataset is derived from the ForeFlight Israel Base Pack.
+reporting-point dataset is derived from the Israel CAAI AIP / VFR chart.
 Each of those data sources retains its own license terms.
 
 NavAid is a planning aid only and is not certified for primary navigation.
