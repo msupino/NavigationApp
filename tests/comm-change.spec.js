@@ -272,4 +272,35 @@ test.describe('comm-change rendering (fixture-backed)', () => {
     // No from/to → no .commchange-freq element rendered.
     await expect(row.locator('.commchange-freq')).toHaveCount(0);
   });
+
+  test('comm-change rings draw with the nav-WP dot layer OFF (decoupled, #484)', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    // Turn the nav-WP dot layer off but keep comm-change on: the ring must
+    // still draw (it no longer lives inside drawNavWaypoints' early-return).
+    await page.evaluate(async () => {
+      window.showNavWP = false;
+      // navWP positions are still required — loaded by the comm toggle/boot.
+      if (typeof loadNavWaypoints === 'function') await loadNavWaypoints();
+      draw();
+    });
+    const drawn = await page.evaluate(() =>
+      Array.from(window.__commChangeRingsDrawn || []));
+    expect(await page.evaluate(() => window.showNavWP)).toBe(false);
+    expect(drawn).toContain('TYONA');
+  });
+
+  test('nav-WP dots draw with comm-change OFF and no rings (decoupled, #484)', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    await page.evaluate(() => {
+      window.showNavWP = true;
+      window.showCommChange = false;
+      draw();
+    });
+    const drawn = await page.evaluate(() =>
+      Array.from(window.__commChangeRingsDrawn || []));
+    expect(drawn).toHaveLength(0);
+    expect(await page.evaluate(() => window.showNavWP)).toBe(true);
+  });
 });

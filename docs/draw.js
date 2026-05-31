@@ -30,6 +30,7 @@ function legDefaultLabelPerp(legLenPx) {
 function draw() {
   octx.clearRect(0, 0, vw(), vh());
   drawNavWaypoints();
+  drawCommChangeRings();
   drawAirfields();
   drawLegs();
   drawWaypoints();
@@ -357,11 +358,6 @@ const COMM_CHANGE_RING_WIDTH = 1.8;
 
 function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
-  // Test-inspection hook (issue #399): every comm-change ring drawn this
-  // frame is recorded here so Playwright can assert "ring drew at X"
-  // without snapshotting overlay pixels. Built fresh every draw() so it
-  // never accumulates stale names after a toggle off / pan away.
-  const ringsDrawn = new Set();
   // Suppress nav-WP dot when a route waypoint sits on it (by position),
   // regardless of whether the WP name was changed after snapping.
   const SNAP_DEG = 0.0002;               // ~22 m — matches nearestNavWaypoint px threshold
@@ -382,19 +378,6 @@ function drawNavWaypoints() {
     octx.arc(s.x, s.y, 3.5, 0, Math.PI * 2);
     octx.fill();
     octx.stroke();
-    // Comm-change ring (issue #399). Drawn after the dot so it sits on
-    // top; only when the toggle is on AND the dataset marks this name.
-    // commChangeMap may be null briefly during boot — guard so a fast
-    // first paint can't NPE before loadCommChange resolves.
-    if (showCommChange && commChangeMap && commChangeMap[wp.name] &&
-        commChangeMap[wp.name].commChange) {
-      octx.beginPath();
-      octx.arc(s.x, s.y, COMM_CHANGE_RING_RADIUS, 0, Math.PI * 2);
-      octx.strokeStyle = COMM_CHANGE_RING_COLOR;
-      octx.lineWidth = COMM_CHANGE_RING_WIDTH;
-      octx.stroke();
-      ringsDrawn.add(wp.name);
-    }
     if (showLabels) {
       const label = wp[S.navWpSearchField] || wp.name;
       octx.lineWidth = 2.5;
@@ -405,6 +388,36 @@ function drawNavWaypoints() {
     }
   }
   octx.lineWidth = 1;
+}
+
+// Comm-change rings (issue #399 / #484). Drawn independently of the nav-WP
+// dot layer: the "Show Comm Changes" toggle marks frequency-boundary points
+// whether or not the full 173-dot reporting-point overlay is on. Positions
+// come from the same navWP dataset, so navWP must be loaded when this layer
+// is enabled (toggle handler + boot ensure that). When both layers are on,
+// the dot is drawn by drawNavWaypoints() and the ring here — once each.
+function drawCommChangeRings() {
+  // Test-inspection hook (issue #399): every comm-change ring drawn this
+  // frame is recorded here so Playwright can assert "ring drew at X"
+  // without snapshotting overlay pixels. Built fresh every draw() so it
+  // never accumulates stale names after a toggle off / pan away.
+  const ringsDrawn = new Set();
+  // commChangeMap may be null briefly during boot — guard so a fast first
+  // paint can't NPE before loadCommChange resolves.
+  if (showCommChange && commChangeMap && navWP && navWP.length) {
+    octx.strokeStyle = COMM_CHANGE_RING_COLOR;
+    octx.lineWidth = COMM_CHANGE_RING_WIDTH;
+    for (const wp of navWP) {
+      if (!commChangeMap[wp.name] || !commChangeMap[wp.name].commChange) continue;
+      const s = proj(wp);                // no viewport cull: also drawn into
+                                         // the larger PNG-export canvas
+      octx.beginPath();
+      octx.arc(s.x, s.y, COMM_CHANGE_RING_RADIUS, 0, Math.PI * 2);
+      octx.stroke();
+      ringsDrawn.add(wp.name);
+    }
+    octx.lineWidth = 1;
+  }
   window.__commChangeRingsDrawn = ringsDrawn;
 }
 

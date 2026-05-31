@@ -636,7 +636,9 @@ document.getElementById('commchange-cb').onchange = async e => {
   window.showCommChange = e.target.checked;
   try { localStorage.setItem(COMMCHANGE_KEY, showCommChange ? '1' : '0'); }
   catch (err) { /* storage unavailable */ }
-  if (showCommChange) await loadCommChange();
+  // Rings draw independently of the nav-WP dot layer (issue #484) but reuse
+  // its positions, so load navWP too even when that layer is off.
+  if (showCommChange) await Promise.all([loadCommChange(), loadNavWaypoints()]);
   draw();
 };
 const ALPHA_KEY = 'navaid.yellowAlpha';
@@ -948,8 +950,11 @@ loadNavWaypoints().then(() => { snapExistingWaypoints(); draw(); });
 loadAirfields().then(() => { snapExistingWaypoints(); draw(); if (state.selected) showInspector(); });
 // Comm-change dataset (issue #399): parallel fetch so the rings appear
 // on first paint and the inspector badge is available immediately for
-// a selection restored from sessionStorage.
-loadCommChange().then(() => { draw(); if (state.selected) showInspector(); });
+// a selection restored from sessionStorage. Rings draw independently of
+// the nav-WP dot layer (issue #484), so when comm-change is on we also
+// load navWP positions even if that layer is off.
+loadCommChange().then(() => showCommChange ? loadNavWaypoints() : null)
+  .then(() => { draw(); if (state.selected) showInspector(); });
 // Restore flight-plan modal if it was open before refresh / language change.
 try {
   if (sessionStorage.getItem('navaid.fpOpen')) {

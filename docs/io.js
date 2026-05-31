@@ -1794,6 +1794,7 @@ function exportPNG() {
     o.translate(-fr.x, -fr.y);
     try {
       drawNavWaypoints();
+      drawCommChangeRings();
       drawAirfields();
       drawLegs();
       drawWaypoints();
