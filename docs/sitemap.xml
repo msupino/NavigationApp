@@ -2,43 +2,11 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://msupino.github.io/NavigationApp/</loc>
-    <xhtml:link rel="alternate" hreflang="he" href="https://msupino.github.io/NavigationApp/?lang=he"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://msupino.github.io/NavigationApp/?lang=en"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://msupino.github.io/NavigationApp/"/>
+    <loc>https://navaid.supino.org/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://navaid.supino.org/?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="he" href="https://navaid.supino.org/?lang=he"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://navaid.supino.org/"/>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://msupino.github.io/NavigationApp/?lang=he</loc>
-    <xhtml:link rel="alternate" hreflang="he" href="https://msupino.github.io/NavigationApp/?lang=he"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://msupino.github.io/NavigationApp/?lang=en"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://msupino.github.io/NavigationApp/"/>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://msupino.github.io/NavigationApp/?lang=en</loc>
-    <xhtml:link rel="alternate" hreflang="he" href="https://msupino.github.io/NavigationApp/?lang=he"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://msupino.github.io/NavigationApp/?lang=en"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://msupino.github.io/NavigationApp/"/>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://msupino.github.io/NavigationApp/en/</loc>
-    <xhtml:link rel="alternate" hreflang="he" href="https://msupino.github.io/NavigationApp/?lang=he"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://msupino.github.io/NavigationApp/?lang=en"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://msupino.github.io/NavigationApp/"/>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://msupino.github.io/NavigationApp/he/</loc>
-    <xhtml:link rel="alternate" hreflang="he" href="https://msupino.github.io/NavigationApp/?lang=he"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://msupino.github.io/NavigationApp/?lang=en"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://msupino.github.io/NavigationApp/"/>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
   </url>
 </urlset>

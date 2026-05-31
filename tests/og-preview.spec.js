@@ -4,11 +4,12 @@
 //   npx playwright test tests/og-preview.spec.js --reporter=line
 const { test } = require('./_setup');
 const path = require('path');
+const { LLHZ, LLHA } = require('./_airfieldArp');
 
 // 11-waypoint LLHZ → LLHA coastal route — same fixture share-route.spec.js
 // uses, so the preview image stays in sync with the canonical demo route.
 const ROUTE = [
-  { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
+  { lat: LLHZ.lat, lng: LLHZ.lng, name: 'LLHZ' },
   { lat: 32.21861, lng: 34.88250, name: 'BAZRA' },
   { lat: 32.25722, lng: 34.89111, name: 'DEROR' },
   { lat: 32.32306, lng: 34.90389, name: 'SHARO' },
@@ -18,7 +19,7 @@ const ROUTE = [
   { lat: 32.75389, lng: 34.93694, name: 'HOTRM' },
   { lat: 32.79611, lng: 34.94333, name: 'DAROM' },
   { lat: 32.84111, lng: 34.98111, name: 'GALIM' },
-  { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
+  { lat: LLHA.lat, lng: LLHA.lng, name: 'LLHA' },
 ];
 
 test.describe('Social media preview image', () => {

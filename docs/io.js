@@ -15,6 +15,174 @@ function addModalCloseX(box, onClose) {
   box.appendChild(x);
 }
 
+// --- Keyboard-shortcuts cheat-sheet (issue #420) --------------------
+// Single source of truth for the visible cheat-sheet rows. Each row's
+// `keys` array is rendered as <kbd> chips so the rendering is locale-
+// agnostic; the `descKey` is looked up in S so each locale controls the
+// wording. Adding a new global shortcut means appending a row here AND
+// updating the audit table in .claude/skills/navaid-dev/SKILL.md so the
+// docs stay in sync.
+const SHORTCUTS_HELP_ROWS = [
+  { group: 'shortcutsGroupNavigation',
+    rows: [
+      { keys: ['F'], descKey: 'shortcutFitRoute' },
+      { keys: ['+'], altKeys: ['='], descKey: 'shortcutZoomIn' },
+      { keys: ['−'], altKeys: ['-'], descKey: 'shortcutZoomOut' },
+      { keys: ['M'], descKey: 'shortcutMagnifier' },
+    ] },
+  { group: 'shortcutsGroupSearch',
+    rows: [{ keys: ['Ctrl', 'F'], altKeys: ['⌘', 'F'], descKey: 'shortcutSearch' }] },
+  { group: 'shortcutsGroupEditing',
+    rows: [
+      { keys: ['A'], descKey: 'shortcutAddWp' },
+      { keys: ['N'], descKey: 'shortcutAddNote' },
+      { keys: ['C'], descKey: 'shortcutClear' },
+      { keys: ['R'], descKey: 'shortcutReverse' },
+      { keys: ['B'], descKey: 'shortcutBothDirections' },
+      { keys: ['Ctrl', 'Z'], altKeys: ['⌘', 'Z'], descKey: 'shortcutUndo' },
+      { keys: ['Esc'], descKey: 'shortcutEsc' },
+      { keys: ['D'], altKeys: ['Delete', 'Backspace'], descKey: 'shortcutDelete' },
+    ] },
+  { group: 'shortcutsGroupHelp',
+    rows: [{ keys: ['?'], descKey: 'shortcutHelp' }] },
+];
+let _shortcutsHelpBack = null;
+let _shortcutsHelpPrevFocus = null;
+let _shortcutsHelpOnEsc = null;
+let _shortcutsHelpOnFocusTrap = null;
+
+function showShortcutsHelp() {
+  if (_shortcutsHelpBack) return;   // already open — idempotent
+  _shortcutsHelpPrevFocus = document.activeElement;
+
+  const back = document.createElement('div');
+  back.className = 'modal-back shortcuts-help';
+
+  const box = document.createElement('div');
+  box.className = 'modal shortcuts-help-modal';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  box.setAttribute('aria-labelledby', 'shortcuts-help-title');
+
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.id = 'shortcuts-help-title';
+  title.textContent = S.shortcutsHelpTitle || 'Keyboard shortcuts';
+  // Make the title non-grabbable for this modal — the cheat-sheet is
+  // ephemeral, doesn't need positioning, and the cursor: grab on .modal-title
+  // would otherwise mislead the user.
+  title.style.cursor = 'default';
+  box.appendChild(title);
+
+  const list = document.createElement('dl');
+  list.className = 'shortcuts-help-list';
+  for (const group of SHORTCUTS_HELP_ROWS) {
+    const groupTitle = document.createElement('div');
+    groupTitle.className = 'shortcuts-help-group';
+    groupTitle.textContent = S[group.group] || group.group;
+    list.appendChild(groupTitle);
+    // Alphabetical within each category (by the primary key combo) so the
+    // rows are predictable to scan; the category order itself is curated.
+    const rows = [...group.rows].sort((a, b) =>
+      a.keys.join('+').localeCompare(b.keys.join('+')));
+    for (const row of rows) {
+      const dt = document.createElement('dt');
+      dt.className = 'shortcuts-help-keys';
+      // Render primary key combo; if `altKeys` is present, render as
+      // "Ctrl+F / ⌘+F" so users on either OS see their combo.
+      _appendKeyCombo(dt, row.keys);
+      if (row.altKeys) {
+        const sep = document.createElement('span');
+        sep.className = 'shortcuts-help-sep';
+        sep.textContent = ' / ';
+        dt.appendChild(sep);
+        _appendKeyCombo(dt, row.altKeys);
+      }
+      const dd = document.createElement('dd');
+      dd.className = 'shortcuts-help-desc';
+      dd.textContent = S[row.descKey] || row.descKey;
+      list.appendChild(dt);
+      list.appendChild(dd);
+    }
+  }
+  box.appendChild(list);
+
+  addModalCloseX(box, closeShortcutsHelp);
+
+  // Esc: close.
+  _shortcutsHelpOnEsc = function (e) {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      closeShortcutsHelp();
+    }
+  };
+  document.addEventListener('keydown', _shortcutsHelpOnEsc, true);
+
+  // Focus trap: Tab / Shift-Tab cycles inside the modal so screen-reader
+  // users do not escape into the toolbar behind the backdrop.
+  _shortcutsHelpOnFocusTrap = function (e) {
+    if (e.key !== 'Tab') return;
+    const focusables = box.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+  box.addEventListener('keydown', _shortcutsHelpOnFocusTrap);
+
+  back.appendChild(box);
+  back.addEventListener('click', e => {
+    if (e.target === back) closeShortcutsHelp();
+  });
+  document.body.appendChild(back);
+  _shortcutsHelpBack = back;
+
+  // Move focus into the modal so Esc/Tab work without an extra click.
+  const closeBtn = box.querySelector('.modal-close-x');
+  if (closeBtn) closeBtn.focus();
+}
+
+function closeShortcutsHelp() {
+  if (!_shortcutsHelpBack) return;
+  if (_shortcutsHelpOnEsc) {
+    document.removeEventListener('keydown', _shortcutsHelpOnEsc, true);
+    _shortcutsHelpOnEsc = null;
+  }
+  _shortcutsHelpOnFocusTrap = null;
+  _shortcutsHelpBack.remove();
+  _shortcutsHelpBack = null;
+  // Restore focus to whatever was focused before the modal opened so the
+  // user can keep working without an extra click. Guard against the
+  // previously-focused element having been removed from the DOM.
+  if (_shortcutsHelpPrevFocus &&
+      typeof _shortcutsHelpPrevFocus.focus === 'function' &&
+      document.contains(_shortcutsHelpPrevFocus)) {
+    try { _shortcutsHelpPrevFocus.focus(); } catch (e) { /* unfocusable */ }
+  }
+  _shortcutsHelpPrevFocus = null;
+}
+
+function _appendKeyCombo(parent, keys) {
+  for (let i = 0; i < keys.length; i++) {
+    if (i > 0) {
+      const plus = document.createElement('span');
+      plus.className = 'shortcuts-help-plus';
+      plus.textContent = '+';
+      parent.appendChild(plus);
+    }
+    const kbd = document.createElement('kbd');
+    kbd.textContent = keys[i];
+    parent.appendChild(kbd);
+  }
+}
+
 /* NavAid — save/load, page setup, flight plan, PNG export, persistence.
    Shares globals with core.js; loaded after interact.js. */
 
@@ -106,13 +274,22 @@ function validateRoute(d) {
       if (Object.prototype.hasOwnProperty.call(l, 'outboundSpeed')) {
         _v(l, 'outboundSpeed', 'number', p, errs);
       }
+      // Issue #394: `_default: 1` is the sentinel form written by
+      // `_defaultLegLabels()` for an unmodified kite — its perpendicular
+      // is computed at render time from the live leg length, so the
+      // stored shape has no `p`. Accept either the sentinel form
+      // (`a` only) or the user-dragged form (`a` + `p`).
       if (_v(l, 'inLabel',  'object', p, errs)) {
         _v(l.inLabel,  'a', 'number', p + '.inLabel',  errs);
-        _v(l.inLabel,  'p', 'number', p + '.inLabel',  errs);
+        if (!l.inLabel._default) {
+          _v(l.inLabel, 'p', 'number', p + '.inLabel', errs);
+        }
       }
       if (_v(l, 'outLabel', 'object', p, errs)) {
         _v(l.outLabel, 'a', 'number', p + '.outLabel', errs);
-        _v(l.outLabel, 'p', 'number', p + '.outLabel', errs);
+        if (!l.outLabel._default) {
+          _v(l.outLabel, 'p', 'number', p + '.outLabel', errs);
+        }
       }
     }
   }
@@ -161,11 +338,51 @@ function validateNavWaypoints(d) {
   }
   return errs.length ? errs.join('; ') : null;
 }
-// Strict schema for docs/airfields.json — { airfields:[{ name, he, en, lat,
-// lng, elev_ft, plates:[string] }] }. Mirrors validateNavWaypoints; the
-// loader in draw.js bails out with an alert that names the offending field
-// path so the JSON author can find the typo. Extras at any level are
-// silently allowed for forward-compat (issue #101).
+// Strict schema for docs/comm-change.json — { version, source?, _definition?,
+// _NOTE?, _TODO?, points:[{ name, commChange, from?, to?, note?, verified?,
+// source? }] }. Only `points[].name` and `points[].commChange` are required
+// for the renderer; everything else is metadata / inspector content. Unknown
+// keys at any level are tolerated (forward-compat). Issue #399.
+function validateCommChange(d) {
+  const errs = [];
+  if (!d || typeof d !== 'object' || Array.isArray(d)) {
+    return 'root: expected object, got ' + _vKind(d);
+  }
+  if (!_v(d, 'points', 'array', 'root', errs)) return errs.join('; ');
+  for (let i = 0; i < d.points.length; i++) {
+    const p = 'points[' + i + ']';
+    const pt = d.points[i];
+    if (_vKind(pt) !== 'object') {
+      errs.push(p + ': expected object, got ' + _vKind(pt));
+      continue;
+    }
+    _v(pt, 'name', 'string', p, errs);
+    if ('commChange' in pt && typeof pt.commChange !== 'boolean') {
+      errs.push(p + '.commChange: expected boolean, got ' + _vKind(pt.commChange));
+    }
+    for (const k of ['from', 'to', 'note', 'source']) {
+      if (k in pt && typeof pt[k] !== 'string') {
+        errs.push(p + '.' + k + ': expected string, got ' + _vKind(pt[k]));
+      }
+    }
+    if ('verified' in pt && typeof pt.verified !== 'boolean') {
+      errs.push(p + '.verified: expected boolean, got ' + _vKind(pt.verified));
+    }
+  }
+  return errs.length ? errs.join('; ') : null;
+}
+
+// Strict schema for docs/airfields.json — { airfields:[{ name, he, lat,
+// lng, en?, elev_ft?, plates?:[string], runways?:[string] }] }. Mirrors
+// validateNavWaypoints; the loader in draw.js bails out with an alert that
+// names the offending field path so the JSON author can find the typo.
+// Extras at any level are silently allowed for forward-compat (issue #101).
+//
+// Issue #412: `en`, `elev_ft`, `plates`, and `runways` are now OPTIONAL
+// per-entry — the chart's published ARP list (#411) carries airfields whose
+// BYOP plate / elevation / runway enrichment is not yet in the repo, and
+// dropping them just because we don't have a plate folder yet would lose
+// real waypoints. When present they're still strictly type-checked.
 function validateAirfields(d) {
   const errs = [];
   if (!d || typeof d !== 'object' || Array.isArray(d)) {
@@ -179,17 +396,33 @@ function validateAirfields(d) {
       errs.push(p + ': expected object, got ' + _vKind(a));
       continue;
     }
-    _v(a, 'name',    'string', p, errs);
-    _v(a, 'he',      'string', p, errs);
-    _v(a, 'en',      'string', p, errs);
-    _v(a, 'lat',     'number', p, errs);
-    _v(a, 'lng',     'number', p, errs);
-    _v(a, 'elev_ft', 'number', p, errs);
-    if (_v(a, 'plates', 'array', p, errs)) {
-      for (let j = 0; j < a.plates.length; j++) {
-        if (typeof a.plates[j] !== 'string') {
-          errs.push(p + '.plates[' + j + ']: expected string, got ' +
-                    _vKind(a.plates[j]));
+    _v(a, 'name', 'string', p, errs);
+    _v(a, 'he',   'string', p, errs);
+    _v(a, 'lat',  'number', p, errs);
+    _v(a, 'lng',  'number', p, errs);
+    if (Object.prototype.hasOwnProperty.call(a, 'en')) {
+      _v(a, 'en', 'string', p, errs);
+    }
+    if (Object.prototype.hasOwnProperty.call(a, 'elev_ft')) {
+      _v(a, 'elev_ft', 'number', p, errs);
+    }
+    if (Object.prototype.hasOwnProperty.call(a, 'plates')) {
+      if (_v(a, 'plates', 'array', p, errs)) {
+        for (let j = 0; j < a.plates.length; j++) {
+          if (typeof a.plates[j] !== 'string') {
+            errs.push(p + '.plates[' + j + ']: expected string, got ' +
+                      _vKind(a.plates[j]));
+          }
+        }
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(a, 'runways')) {
+      if (_v(a, 'runways', 'array', p, errs)) {
+        for (let j = 0; j < a.runways.length; j++) {
+          if (typeof a.runways[j] !== 'string') {
+            errs.push(p + '.runways[' + j + ']: expected string, got ' +
+                      _vKind(a.runways[j]));
+          }
         }
       }
     }
@@ -198,6 +431,34 @@ function validateAirfields(d) {
 }
 
 // --- save / load -----------------------------------------------------
+// Per-leg label normaliser used by every route-ingest path (load() file
+// import, restoreRoute() localStorage boot, decodeShareUrl() short URL).
+// Pre-#393 blobs stored offsets in raw screen pixels at the save-time
+// `legArrowSize`; the new render math multiplies stored offsets by
+// `legZoomScale() = max(0.35, 2^(zoom-12)) * legArrowSize`, so an
+// unmigrated raw value renders at legArrowSize^2 of the intended position.
+// We normalise by dividing by `legacyArrowSize` exactly once — `_m: 1`
+// stamps the result so re-saved blobs never re-migrate. `legacyArrowSize`
+// should be the size the file was *saved* under; if the file does not
+// carry that field we fall back to the current `legArrowSize` (which
+// matches the user's current display environment — the safest default
+// per the PR-review #3 recommendation).
+function _normalizeLegLabel(raw, legacyArrowSize) {
+  if (!raw) return raw;
+  if (raw._m) {
+    // Already-migrated label. Preserve the `_default: 1` sentinel
+    // (issue #394) so the renderer keeps computing the drift-aware
+    // perpendicular at draw time; everything else round-trips as the
+    // size-independent `{ a, p }` pair PR #393 introduced.
+    const out = { a: raw.a, _m: 1 };
+    if (raw._default) out._default = 1;
+    else out.p = raw.p;
+    return out;
+  }
+  const k = (typeof legacyArrowSize === 'number' && legacyArrowSize > 0)
+    ? legacyArrowSize : 1;
+  return { a: raw.a / k, p: raw.p / k, _m: 1 };
+}
 function save() {
   const data = {
     waypoints: state.waypoints.map(w => ({
@@ -214,6 +475,7 @@ function save() {
     notes: state.notes.map(n => ({
       lat: r5(n.lat), lng: r5(n.lng), text: n.text || '', color: n.color || '',
       shape: n.shape || 'rect',
+      ...(n.cc ? { cc: n.cc } : {}),   // #487: preserve comm-change seed tag
     })),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -223,6 +485,98 @@ function save() {
   a.click();
   URL.revokeObjectURL(a.href);
 }
+
+// --- GPX export --------------------------------------------------------
+function exportGpx() {
+  if (state.waypoints.length < 2) {
+    alert(S.errNeedWps);
+    return;
+  }
+  const wps = state.waypoints;
+  const esc = s => String(s).replace(/[<>&]/g,
+    c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+  const altM = i => {
+    const leg = state.legs[Math.min(i, state.legs.length - 1)];
+    return Math.max(0, Math.round((leg ? leg.inboundAltitude : 2000) * 0.3048));
+  };
+  let rtepts = '';
+  for (let i = 0; i < wps.length; i++) {
+    const name = esc(wpLabel(i));
+    rtepts += '    <rtept lat="' + wps[i].lat + '" lon="' + wps[i].lng + '">\n' +
+      '      <name>' + name + '</name>\n' +
+      '      <ele>' + altM(i) + '</ele>\n' +
+      '    </rtept>\n';
+  }
+  const gpx =
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<gpx xmlns="http://www.topografix.com/GPX/1/1"\n' +
+    '     version="1.1"\n' +
+    '     creator="NavAid"\n' +
+    '     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n' +
+    '     xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">\n' +
+    '  <rte>\n' +
+    '    <name>NavAid route</name>\n' +
+    rtepts +
+    '  </rte>\n' +
+    '</gpx>\n';
+  const blob = new Blob([gpx], { type: 'application/gpx+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'route-' + fileStamp() + '.gpx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// --- GPX import --------------------------------------------------------
+function loadGpx(file) {
+  const MAX_ROUTE_BYTES = 2 * 1024 * 1024;
+  if (file && file.size > MAX_ROUTE_BYTES) {
+    alert(S.errLoadFile + 'file too large (' +
+          (file.size / 1024 / 1024).toFixed(1) + ' MB; max 2 MB)');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const xml = new DOMParser().parseFromString(reader.result, 'text/xml');
+      const parseErr = xml.querySelector('parsererror');
+      if (parseErr) throw new Error('XML parse error: ' + parseErr.textContent);
+      const rtepts = xml.querySelectorAll('rtept');
+      if (!rtepts.length) {
+        alert(S.errLoadFile + 'no <rtept> elements found in GPX');
+        return;
+      }
+      const wps = [];
+      for (const pt of rtepts) {
+        const lat = parseFloat(pt.getAttribute('lat'));
+        const lng = parseFloat(pt.getAttribute('lon'));
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+        const name = (pt.querySelector('name') || {}).textContent || '';
+        wps.push({ lat: r5(lat), lng: r5(lng), name: name.trim() });
+      }
+      if (wps.length < 2) {
+        alert(S.errNeedWps);
+        return;
+      }
+      state.waypoints = wps;
+      state.legs = wps.slice(0, -1).map(() => ({
+        inboundAltitude: 2000, outboundAltitude: 2000,
+        flightSpeed: 90, outboundSpeed: 90,
+        inLabel: null, outLabel: null,
+      }));
+      state.notes = [];
+      syncLegs();
+      state.selected = null;
+      showInspector();
+      fitView();
+      draw();
+    } catch (err) {
+      alert(S.errLoadFile + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
 function load(file) {
   // #146: hard cap on file size before we even read it. Route JSON is
   // typically <100 KB; 2 MB leaves room for big routes / future fields and
@@ -253,17 +607,23 @@ function load(file) {
     state.waypoints = d.waypoints.map(w => ({
       lat: r5(w.lat), lng: r5(w.lng), name: w.name,
     }));
+    // Use the file's `legArrowSize` if present (forward-compat — current
+    // save() doesn't emit it). Otherwise fall back to the current setting.
+    // See _normalizeLegLabel for the migration math.
+    const legacyAS = (typeof d.legArrowSize === 'number' && d.legArrowSize > 0)
+      ? d.legArrowSize : legArrowSize;
     state.legs = d.legs.map(l => ({
       inboundAltitude: l.inboundAltitude,
       outboundAltitude: l.outboundAltitude,
       flightSpeed: l.flightSpeed,
       outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
-      inLabel:  { a: l.inLabel.a,  p: l.inLabel.p  },
-      outLabel: { a: l.outLabel.a, p: l.outLabel.p },
+      inLabel:  _normalizeLegLabel(l.inLabel,  legacyAS),
+      outLabel: _normalizeLegLabel(l.outLabel, legacyAS),
     }));
     state.notes = d.notes.map(n => ({
       lat: r5(n.lat), lng: r5(n.lng),
       text: n.text, color: n.color, shape: n.shape,
+      ...(n.cc ? { cc: n.cc } : {}),   // #487: preserve comm-change seed tag
     }));
     syncLegs();
     state.selected = null;
@@ -352,15 +712,7 @@ var fpOpen = false;                       // true while flight-plan modal is sho
 // Returns true if wp.name matches a known airfield ICAO code.
 // Used to decide whether to add startup/taxi fuel to the first leg.
 function isAirport(wp) {
-  if (!wp || !airfields) return false;
-  const name = (wp.name || '').trim().toUpperCase();
-  // Match by name OR by coordinates (renaming the label must not lose the
-  // airport status; tolerance ≈ 100 m to survive minor drag).
-  const eps = 0.001;
-  return airfields.some(a =>
-    a.name === name ||
-    (Math.abs(a.lat - wp.lat) < eps && Math.abs(a.lng - wp.lng) < eps)
-  );
+  return typeof airfieldAtWaypoint === 'function' && airfieldAtWaypoint(wp) != null;
 }
 
 function closeFlightPlan() {
@@ -539,11 +891,14 @@ function showFlightPlan() {
     inp.className = 'plan-name';
     inp.maxLength = 10;
     // #81: show the locale-resolved label so the cell matches the map.
+    normalizeWaypointSequenceName(state.waypoints[wpIdx]);
     inp.value = navName((state.waypoints[wpIdx].name || '').trim());
     inp.placeholder = S.wpPrefix + (wpIdx + 1);
     inp.oninput = () => {
-      state.waypoints[wpIdx].name = inp.value;
-      for (const o of wpInputs[wpIdx]) if (o !== inp) o.value = inp.value;
+      const t = (inp.value || '').trim();
+      const next = isSequenceWaypointName(t) ? '' : inp.value;
+      state.waypoints[wpIdx].name = next;
+      for (const o of wpInputs[wpIdx]) if (o !== inp) o.value = next;
       draw();
     };
     (wpInputs[wpIdx] || (wpInputs[wpIdx] = [])).push(inp);
@@ -569,7 +924,9 @@ function showFlightPlan() {
   const hdgCells = [];                  // leg index -> heading cell
   const timeCells = [];                 // leg index -> time cell
   const fuelCells = [];                 // leg index -> fuel (gal) cell
-  let totDistCell, totTimeCell, totFuelCell;
+  const cumTimeCells = [];              // leg index -> cumulative time (H:M:S)
+  const cumFuelCells = [];            // leg index -> cumulative fuel (gal)
+  let totDistCell, totTimeCell, totFuelCell, totCumTimeCell, totCumFuelCell;
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     const leg = state.legs[i];
@@ -616,6 +973,12 @@ function showFlightPlan() {
     const fuelCell = planCell('');
     fuelCells[i] = fuelCell;
     tr.appendChild(fuelCell);
+    const cumTimeCell = planCell('');
+    cumTimeCells[i] = cumTimeCell;
+    tr.appendChild(cumTimeCell);
+    const cumFuelCell = planCell('');
+    cumFuelCells[i] = cumFuelCell;
+    tr.appendChild(cumFuelCell);
     // Delete-leg button — removes the "To" waypoint and this leg, then
     // reconnects the route. The refreshFlightPlan callback detects the
     // leg-count change and rebuilds the modal.
@@ -657,6 +1020,10 @@ function showFlightPlan() {
   trF.appendChild(totTimeCell);
   totFuelCell = planCell('');
   trF.appendChild(totFuelCell);
+  totCumTimeCell = planCell('');
+  trF.appendChild(totCumTimeCell);
+  totCumFuelCell = planCell('');
+  trF.appendChild(totCumFuelCell);
   trF.appendChild(planCell(''));        // Delete column (empty)
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
@@ -686,6 +1053,9 @@ function showFlightPlan() {
         fuelCells[i].textContent = '--';
         fuelCells[i].title = '';
       }
+      cumTimeCells[i].textContent = th > 0 ? toHMS(th) : '--';
+      cumFuelCells[i].textContent = ac ? tf.toFixed(1) : '--';
+      cumFuelCells[i].title = '';
       if (speedInputs[i] && document.activeElement !== speedInputs[i])
         speedInputs[i].value = state.legs[i].flightSpeed;
       if (altInputs[i] && document.activeElement !== altInputs[i])
@@ -694,14 +1064,19 @@ function showFlightPlan() {
     for (const wpIdx in wpInputs) {
       const wp = state.waypoints[wpIdx];
       if (!wp) continue;
+      const beforeRaw = wp.name;
+      normalizeWaypointSequenceName(wp);
+      const clearedSeq = beforeRaw !== wp.name;
       const localized = navName((wp.name || '').trim());
       for (const inp of wpInputs[wpIdx]) {
-        if (document.activeElement !== inp) inp.value = localized;
+        if (clearedSeq || document.activeElement !== inp) inp.value = localized;
       }
     }
     totDistCell.textContent = td.toFixed(1);
     totTimeCell.textContent = th > 0 ? toHMS(th) : '--';
     totFuelCell.textContent = ac ? tf.toFixed(1) : '--';
+    totCumTimeCell.textContent = totTimeCell.textContent;
+    totCumFuelCell.textContent = totFuelCell.textContent;
   }
   refresh();
   scrollArea.appendChild(table);
@@ -733,7 +1108,9 @@ function showFlightPlan() {
     const rHdgCells = [];
     const rTimeCells = [];
     const rFuelCells = [];
-    let rTotDistCell, rTotTimeCell, rTotFuelCell;
+    const rCumTimeCells = [];
+    const rCumFuelCells = [];
+    let rTotDistCell, rTotTimeCell, rTotFuelCell, rTotCumTimeCell, rTotCumFuelCell;
 
     for (let i = 0; i < state.legs.length; i++) {
       const ri = state.legs.length - 1 - i;   // reverse leg order — flyable from destination
@@ -782,6 +1159,13 @@ function showFlightPlan() {
       const fuelCell = planCell('');
       rFuelCells[i] = fuelCell;
       tr.appendChild(fuelCell);
+      const cumTimeCell = planCell('');
+      rCumTimeCells[i] = cumTimeCell;
+      tr.appendChild(cumTimeCell);
+      const cumFuelCell = planCell('');
+      rCumFuelCells[i] = cumFuelCell;
+      tr.appendChild(cumFuelCell);
+      tr.appendChild(planCell(''));        // Delete column (empty — forward table only)
       rtbody.appendChild(tr);
     }
     rtable.appendChild(rtbody);
@@ -800,6 +1184,10 @@ function showFlightPlan() {
     rtrF.appendChild(rTotTimeCell);
     rTotFuelCell = planCell('');
     rtrF.appendChild(rTotFuelCell);
+    rTotCumTimeCell = planCell('');
+    rtrF.appendChild(rTotCumTimeCell);
+    rTotCumFuelCell = planCell('');
+    rtrF.appendChild(rTotCumFuelCell);
     rtrF.appendChild(planCell(''));        // Delete column (empty)
     rtfoot.appendChild(rtrF);
     rtable.appendChild(rtfoot);
@@ -831,6 +1219,9 @@ function showFlightPlan() {
           rFuelCells[i].textContent = '--';
           rFuelCells[i].title = '';
         }
+        rCumTimeCells[i].textContent = th > 0 ? toHMS(th) : '--';
+        rCumFuelCells[i].textContent = aircraft ? tf.toFixed(1) : '--';
+        rCumFuelCells[i].title = '';
         if (rSpeedInputs[i] && document.activeElement !== rSpeedInputs[i])
           rSpeedInputs[i].value = state.legs[ri].outboundSpeed;
         if (rAltInputs[i] && document.activeElement !== rAltInputs[i])
@@ -839,6 +1230,8 @@ function showFlightPlan() {
       rTotDistCell.textContent = td.toFixed(1);
       rTotTimeCell.textContent = th > 0 ? toHMS(th) : '--';
       rTotFuelCell.textContent = aircraft ? tf.toFixed(1) : '--';
+      rTotCumTimeCell.textContent = rTotTimeCell.textContent;
+      rTotCumFuelCell.textContent = rTotFuelCell.textContent;
     };
     retRefresh();
     scrollArea.appendChild(rtable);
@@ -891,7 +1284,15 @@ function showFlightPlan() {
         refresh();
       };
   flightPlanEscape = function (e) {
-    if (e.key === 'Escape') closeFlightPlan();
+    if (e.key !== 'Escape') return;
+    closeFlightPlan();
+    // The global window-level Escape handler in interact.js otherwise runs
+    // after this one and toggles the magnifier off whenever the plan is
+    // closed while the loupe is open (issue #388 M3 follow-up). Stop the
+    // event from bubbling past `document` so the loupe — which has no
+    // logical relationship to the plan modal — keeps its current state.
+    e.stopPropagation();
+    e.preventDefault();
   };
   document.addEventListener('keydown', flightPlanEscape);
   fpOpen = true;
@@ -993,7 +1394,7 @@ function showExportModal() {
   const body = document.createElement('div');
   body.style.cssText = 'display:flex;flex-direction:column;gap:10px;padding:4px 0';
 
-  // Show Waypoint Names checkbox (default on).
+  // Show waypoint names checkbox (default on).
   const wpNameLabel = document.createElement('label');
   wpNameLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
   const wpNameCb = document.createElement('input');
@@ -1395,6 +1796,7 @@ function exportPNG() {
     o.translate(-fr.x, -fr.y);
     try {
       drawNavWaypoints();
+      drawCommChangeRings();
       drawAirfields();
       drawLegs();
       drawWaypoints();
@@ -1646,6 +2048,14 @@ function persist() {
       state.waypoints.length === 0 &&
       state.legs.length === 0 &&
       state.notes.length === 0) return;
+  // Snapshot for undo runs synchronously on every state change (not on the
+  // debounced write) so a quick succession of edits collapses into one undo
+  // step the same way it collapses into one save.
+  recordUndoSnapshot(JSON.stringify({
+    waypoints: state.waypoints,
+    legs: state.legs,
+    notes: state.notes,
+  }));
   if (persistTimer || quotaWarned) return;
   persistTimer = setTimeout(() => {
     persistTimer = null;
@@ -1668,6 +2078,56 @@ function persist() {
     }
   }, 500);
 }
+
+// --- undo -----------------------------------------------------------
+// undoStack holds serialized {waypoints, legs, notes} snapshots of *prior*
+// committed states. lastCommitted is the serialization of the state as it
+// currently stands; when a change makes the new serialization differ, the
+// previous one is pushed so undo() can return to it. The first call after
+// boot only establishes the baseline (no push). `undoing` suppresses the
+// snapshot while undo() is restoring, so an undo never becomes its own entry.
+const UNDO_LIMIT = 50;
+const undoStack = [];
+let lastCommitted = null;
+let undoing = false;
+
+function recordUndoSnapshot(serialized) {
+  if (lastCommitted === null) {           // baseline — nothing to undo to yet
+    lastCommitted = serialized;
+    return;
+  }
+  if (undoing || serialized === lastCommitted) return;
+  undoStack.push(lastCommitted);
+  if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+  lastCommitted = serialized;
+  refreshUndoButton();
+}
+
+function refreshUndoButton() {
+  const btn = document.getElementById('undo');
+  if (btn) btn.disabled = undoStack.length === 0;
+}
+
+function undo() {
+  if (!undoStack.length) return;
+  const prev = undoStack.pop();
+  let snap;
+  try { snap = JSON.parse(prev); } catch (_) { refreshUndoButton(); return; }
+  state.waypoints = Array.isArray(snap.waypoints) ? snap.waypoints : [];
+  state.legs = Array.isArray(snap.legs) ? snap.legs : [];
+  state.notes = Array.isArray(snap.notes) ? snap.notes : [];
+  state.selected = null;
+  undoing = true;
+  lastCommitted = prev;            // align baseline so the redraw won't re-push
+  try {
+    draw();
+    if (typeof showInspector === 'function') showInspector();
+  } finally {
+    undoing = false;
+  }
+  refreshUndoButton();
+}
+
 // Returns one of:
 //   true       — saved route restored into state.
 //   false      — no saved route (clean first-time boot, safe to persist).
@@ -1702,13 +2162,21 @@ function restoreRoute() {
   state.waypoints = d.waypoints.map(w => ({
     lat: r5(w.lat), lng: r5(w.lng), name: w.name,
   }));
+  // #393 — normalise inLabel/outLabel offsets to zoom-12 reference so they
+  // scale proportionally with zoom. Pre-#393 blobs lack `_m` and hold raw
+  // pixel offsets, which `_normalizeLegLabel` divides by `legacyArrowSize`
+  // (one-shot, idempotent — the `_m: 1` stamp blocks any re-migration). If
+  // the saved blob carries its own legArrowSize we honour it; otherwise we
+  // fall back to the current setting (PR-review #3).
+  const legacyAS = (typeof d.legArrowSize === 'number' && d.legArrowSize > 0)
+    ? d.legArrowSize : legArrowSize;
   state.legs = d.legs.map(l => ({
     inboundAltitude: l.inboundAltitude,
     outboundAltitude: l.outboundAltitude,
     flightSpeed: l.flightSpeed,
     outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
-    inLabel:  { a: l.inLabel.a,  p: l.inLabel.p  },
-    outLabel: { a: l.outLabel.a, p: l.outLabel.p },
+    inLabel:  _normalizeLegLabel(l.inLabel,  legacyAS),
+    outLabel: _normalizeLegLabel(l.outLabel, legacyAS),
   }));
   state.notes = d.notes.map(n => ({
     lat: r5(n.lat), lng: r5(n.lng),
@@ -1719,10 +2187,21 @@ function restoreRoute() {
 }
 
 // --- Airfield plates viewer (#105) -----------------------------------
-const PLATE_BASE = 'byop/';
+// Plate PDFs (~133 MB) ship as a SINGLE copy at the deployed artifact root;
+// staging / PR / branch previews don't carry their own copy and resolve
+// plates against that shared root. Deriving the base from location at load
+// time makes the same source work on every host the site is served from —
+// the custom domain (served at '/') and raw GitHub Pages (served under
+// '/NavigationApp/') — so the deploy pipeline no longer has to rewrite a
+// per-environment absolute path (which 404'd on the custom domain).
+function plateBase(pathname) {
+  let dir = (pathname || location.pathname).replace(/[^/]*$/, '');  // drop filename, keep trailing '/'
+  dir = dir.replace(/(staging|pr\/[^/]+|branch\/[^/]+)\/$/, '');     // preview suffix → shared root
+  return dir + 'byop/';
+}
 
 function plateUrl(filename) {
-  return PLATE_BASE + encodeURIComponent(filename);
+  return plateBase() + encodeURIComponent(filename);
 }
 
 function plateCategory(filename) {
@@ -1805,29 +2284,27 @@ function showPlateViewer(filename, label) {
   };
   btns.appendChild(download);
   box.appendChild(btns);
-  addModalCloseX(box, () => {
+  function teardown() {
+    window.removeEventListener('keydown', onEsc, true);
     if (blobUrl) URL.revokeObjectURL(blobUrl);
-    window.removeEventListener('keydown', onEsc);
     back.remove();
-  });
+  }
+  addModalCloseX(box, teardown);
 
+  // The plate viewer opens on top of the Charts modal. Both the Charts
+  // modal and the global handler in interact.js close a `.modal-back` on
+  // Escape, so a plain bubble listener here would let one Escape close the
+  // plate AND the chart underneath it. Listen in the capture phase and stop
+  // the event so only the topmost (plate) viewer closes.
   function onEsc(e) {
-    if (e.key === 'Escape') {
-      window.removeEventListener('keydown', onEsc);
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
-      back.remove();
-    }
+    if (e.key !== 'Escape') return;
+    e.stopImmediatePropagation();
+    teardown();
   }
   back.appendChild(box);
-  back.onclick = e => {
-    if (e.target === back) {
-      window.removeEventListener('keydown', onEsc);
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
-      back.remove();
-    }
-  };
+  back.onclick = e => { if (e.target === back) teardown(); };
   document.body.appendChild(back);
-  window.addEventListener('keydown', onEsc);
+  window.addEventListener('keydown', onEsc, true);
 }
 
 function showChartsModal() {
@@ -1888,7 +2365,8 @@ function showChartsModal() {
 
   function renderList(afs) {
     body.innerHTML = '';
-    const withPlates = afs.filter(af => af.plates && af.plates.length);
+    const withPlates = afs.filter(af => af.plates && af.plates.length)
+      .sort((a, b) => a.name.localeCompare(b.name));
     if (!withPlates.length) {
       const none = document.createElement('p');
       none.textContent = S.platesNone;
@@ -2073,13 +2551,19 @@ function decodeShareUrl(search) {
     const parts = s.split(',').map(Number);
     if (parts.length < 3 || parts.some(v => !Number.isFinite(v))) return null;
     const [ia, oa, fs, os] = parts;
+    // Short-URL share format doesn't carry per-leg label offsets — use the
+    // size-independent default with `_m: 1` so the offsets render at the
+    // same on-screen position as a freshly-created leg, independent of
+    // legArrowSize, and so the migration in restoreRoute() / load() never
+    // touches them on a later round-trip (PR-review #3 + #5).
+    const d = _defaultLegLabels();
     return {
       inboundAltitude: ia,
       outboundAltitude: oa,
       flightSpeed: fs,
       outboundSpeed: os != null ? os : fs,
-      inLabel: { a: 0, p: 44 },
-      outLabel: { a: 0, p: -44 },
+      inLabel: d.inLabel,
+      outLabel: d.outLabel,
     };
   });
   if (legs.some(l => l === null)) return null;
@@ -2117,7 +2601,615 @@ function showToast(msg) {
   }, 2500);
 }
 
-// Toolbar button handler — copy share URL to clipboard.
+// --- magnifying glass -------------------------------------------------
+let _magDirty = true;                      // content needs rebuilding
+let _magRAF = null;                        // requestAnimationFrame id
+let _magX = 0, _magY = 0;                 // last known cursor (viewport px)
+let _magFixed = false;                     // click-to-lock fixed position
+// Cursor coords used for the most recent hi-res rebuild. Initialised to a
+// sentinel so the first real mousemove always triggers a rebuild — without
+// this the cursor-driven refetch in updateMagnifier would short-circuit when
+// the user opens the loupe with a stale `_magX`.
+let _magLastX = -Infinity, _magLastY = -Infinity;
+// Visible CSS scale of the loupe content — ALWAYS equals `magnifierZoom`
+// (the slider value). Refreshed by rebuildMagnifier();
+// applyMagnifierTransform() reads it for the loupe's `scale()` transform.
+//
+// A previous iteration set this to `max(slider, sub)` so hi-res tiles
+// rendered at native pixel density. That conflated two concepts: the
+// USER-FACING magnification (slider) vs. the IMPLEMENTATION-DETAIL
+// sub-tile zoom step. At base z=8 / slider 4.75 the loupe rendered at
+// 16× — almost 4× the value the user dialled in — because `sub` (16)
+// won the max(). The hi-res tiles are still fetched (see `sub` in
+// rebuildMagnifier); they just get downsampled to slider density on
+// display, which is far crisper than upscaling the cloned base tiles.
+let _magScale = 1;
+// Minimum loupe zoom — even when the base map is wide-out (z=8) the hi-res
+// overlay aims for at least this zoom so VFR chart labels stay legible.
+const MAG_BASELINE_Z = 12;
+// Hard ceiling on the per-rebuild sub-tile grid (sub = 2^MAG_MAX_EXP).
+// sub=16 → up to 4 zoom levels deeper than the displayed map tile, which is
+// what `MAG_BASELINE_Z` needs at the lowest allowed map zoom (8 → 12).
+const MAG_MAX_EXP = 4;
+// In-flight hi-res sub-tile counter for the current rebuild batch. The
+// "Perfecting…" indicator is visible while this is > 0.
+let _magPendingTiles = 0;
+// Monotonically increasing rebuild id. Tile <img>s are tagged with the
+// batch they were created in; load/error callbacks from a stale batch
+// (e.g. cursor moved fast and a newer rebuild already ran) bail out so
+// they don't decrement the current batch's counter.
+let _magBatch = 0;
+
+function magCenter() { return magnifierSize / 2; }
+
+// Read Leaflet's `.leaflet-map-pane` CSS transform once and return its
+// {dx, dy} translation. Reading `getComputedStyle(...).transform` forces
+// a style flush; callers in the rAF-driven loupe path should call this
+// once per frame and reuse the result. Returns {dx:0,dy:0} if the pane
+// is missing or the matrix can't be parsed.
+// The loupe clones live in two coordinate systems: the cloned base /
+// hi-res tiles are positioned in `.leaflet-rotate-pane`-LOCAL pixels
+// (unrotated), while the captured overlay canvas is in rotated CONTAINER
+// pixels (drawn via `latLngToContainerPoint`, which accounts for bearing).
+// To reconcile them we read the rotate-pane's full transform matrix: a
+// `tileWrap` div carries it so the local-space tiles land in container
+// space, and the loupe transform then works in pure container space. At
+// bearing 0 the matrix is the identity, so this is a no-op for the common
+// case. Falls back to `.leaflet-map-pane` (then identity) when the rotate
+// plugin isn't present.
+function _readMagPaneMatrix() {
+  const pane = document.querySelector('.leaflet-rotate-pane') ||
+               document.querySelector('.leaflet-map-pane');
+  const IDENTITY = 'matrix(1, 0, 0, 1, 0, 0)';
+  if (!pane) return { m: new DOMMatrixReadOnly(), css: IDENTITY };
+  const css = getComputedStyle(pane).transform;
+  if (!css || css === 'none') return { m: new DOMMatrixReadOnly(), css: IDENTITY };
+  try {
+    return { m: new DOMMatrixReadOnly(css), css };
+  } catch (e) {
+    return { m: new DOMMatrixReadOnly(), css: IDENTITY };
+  }
+}
+
+function showMagLoading() {
+  const el = document.querySelector('#magnifier .mag-loading');
+  if (el) el.classList.add('show');
+}
+
+function hideMagLoading() {
+  const el = document.querySelector('#magnifier .mag-loading');
+  if (el) el.classList.remove('show');
+}
+
+function createMagnifier() {
+  if (document.getElementById('magnifier')) return;
+  const mag = document.createElement('div');
+  mag.id = 'magnifier';
+  mag.style.cssText = 'display:none;position:fixed;z-index:1000;width:' + magnifierSize +
+    'px;height:' + magnifierSize + 'px;border-radius:50%;overflow:hidden;' +
+    'pointer-events:none;border:2px solid rgba(255,204,51,0.85);' +
+    'box-shadow:0 0 20px rgba(0,0,0,0.6)';
+  const content = document.createElement('div');
+  content.id = 'mag-content';
+  content.style.cssText = 'position:absolute;top:0;left:0;width:0;height:0;transform-origin:0 0';
+  mag.appendChild(content);
+  // crosshair
+  const ch = document.createElement('div');
+  ch.style.cssText = 'position:absolute;top:50%;left:50%;width:0;height:0;pointer-events:none';
+  ch.innerHTML =
+    '<div style="position:absolute;top:-1px;left:-24px;width:48px;height:2px;background:rgba(255,60,60,0.8)"></div>' +
+    '<div style="position:absolute;top:-24px;left:-1px;width:2px;height:48px;background:rgba(255,60,60,0.8)"></div>';
+  mag.appendChild(ch);
+  // "Perfecting…" indicator — sibling of `content` so the loupe's scale()
+  // transform doesn't affect it. Hidden by default; rebuildMagnifier
+  // shows it when there are in-flight hi-res sub-tiles.
+  const loading = document.createElement('div');
+  loading.className = 'mag-loading';
+  loading.textContent = (typeof S !== 'undefined' && S.magLoading) || 'Perfecting…';
+  mag.appendChild(loading);
+  document.body.appendChild(mag);
+}
+
+function rebuildMagnifier() {
+  if (!magnifierOn) return;
+  const content = document.getElementById('mag-content');
+  if (!content) return;
+  content.innerHTML = '';
+  _magLastX = _magX;
+  _magLastY = _magY;
+  // Start a fresh hi-res batch. Any pending load/error callbacks from a
+  // prior rebuild are now stale — they'll match a different `_magBatch`
+  // value and bail out instead of decrementing the new batch's counter.
+  const batch = ++_magBatch;
+  _magPendingTiles = 0;
+
+  // Read the rotate-pane matrix once. `tileWrap` carries it so every cloned
+  // tile (positioned in rotate-pane-LOCAL pixels) is mapped into CONTAINER
+  // space — the same space the captured overlay canvas lives in. Without
+  // this the tiles ignored map bearing while the overlay honoured it, so
+  // dots / lines drifted off the terrain whenever the map was rotated.
+  const _pane = _readMagPaneMatrix();
+
+  // clone tiles at current zoom (immediate fallback)
+  const tilePane = document.querySelector('.leaflet-tile-pane');
+  const tiles = tilePane ? Array.from(tilePane.querySelectorAll('img')) : [];
+
+  // The cloned tiles' `style.transform` is LEVEL-LOCAL: it positions each
+  // tile relative to its `.leaflet-tile-container` (the per-zoom "level"
+  // element), which itself can carry a scale+translate transform (e.g.
+  // `matrix(4,0,0,4,0,2)` at zoom past maxNativeZoom, or mid zoom-animation).
+  // When zoomed out the level matrix is identity so ignoring it was harmless,
+  // but on zoomed-in views the loupe placed tiles at their level-local pixels
+  // without the level scale — so the magnified tile image drifted away from
+  // the overlay (which is captured in container space). tileWrap therefore
+  // carries `paneMatrix · levelMatrix` to map level-local clone pixels (and
+  // the level-local hi-res tiles below) all the way into CONTAINER space.
+  let _levelMatrix = new DOMMatrixReadOnly();
+  for (const img of tiles) {
+    const lvl = img.parentElement;
+    if (!lvl) continue;
+    const lc = getComputedStyle(lvl).transform;
+    if (lc && lc !== 'none') {
+      try { _levelMatrix = new DOMMatrixReadOnly(lc); } catch (e) { /* identity */ }
+    }
+    break;
+  }
+  const _wrapM = _pane.m.multiply(_levelMatrix);
+
+  const tileWrap = document.createElement('div');
+  tileWrap.style.cssText =
+    'position:absolute;left:0;top:0;width:0;height:0;' +
+    'transform-origin:0 0;transform:' + _wrapM.toString();
+  content.appendChild(tileWrap);
+
+  for (const img of tiles) {
+    const c = img.cloneNode(true);
+    c.style.visibility = 'visible';
+    tileWrap.appendChild(c);
+  }
+
+  // Adaptive hi-res overlay. Two independent dials decide the target tile
+  // zoom:
+  //   1. Slider — `ceil(log2(magnifierZoom))` keeps the optimal pixel-density
+  //      match the slider used to provide on its own.
+  //   2. Baseline — `MAG_BASELINE_Z` (=12) is the zoom at which Israeli VFR
+  //      chart labels become legible. Flooring at this value means a country-
+  //      wide z=8 view still surfaces airfield / waypoint names inside the
+  //      loupe, which the pre-adaptive code did not — the loupe just blew
+  //      z=8 source up to 2× and showed no extra detail.
+  // Clamped to the layer's `maxNativeZoom` (anything beyond just 404s) and
+  // to `MAG_MAX_EXP` so the per-rebuild sub-tile grid stays bounded.
+  //
+  // The CSS scale on the loupe content is `magnifierZoom` (the slider),
+  // independent of `sub`. Hi-res tiles (CSS size `256/sub`) therefore
+  // display at `(256/sub) * slider` screen px — slightly downsampled
+  // from native (by `sub / slider`), but still vastly crisper than
+  // upscaling the cloned base tiles by `slider`. That's what makes z=12
+  // labels legible inside the loupe at low base zoom.
+  //
+  // Fetch is centred on the cursor (not "subdivide every clone in the
+  // pane") so the tile count stays bounded by the loupe area instead of
+  // the viewport area. `updateMagnifier` schedules a refetch whenever the
+  // cursor drifts past one loupe radius, so dragging the cursor across
+  // the map updates the crisp area too.
+  let activeLayer = null;
+  for (const key in layers) {
+    if (map.hasLayer(layers[key])) { activeLayer = layers[key]; break; }
+  }
+
+  // Pick the first cloned tile with a known tile coord + transform as the
+  // coordinate-system anchor. Hi-res tiles are positioned relative to it,
+  // which sidesteps having to recompute Leaflet's tile-container origin
+  // (see commit 41fd620 — world-pixel coords are catastrophically wrong).
+  //
+  // We read the tile coords from Leaflet's `_tiles` cache (the `coords`
+  // property is the authoritative {x, y, z} for the tile, independent of
+  // the URL template's slot order). The previous URL-parsing approach
+  // assumed `{z}/{x}/{y}` and silently swapped on Satellite (Esri uses
+  // `{z}/{y}/{x}`, see core.js layers['Satellite']) — every hi-res
+  // request 404'd and the loupe stayed blurry on that base layer.
+  let refX = null, refY = null, refZ = null;
+  let refLocalX = 0, refLocalY = 0;
+  if (activeLayer) {
+    const tileCache = activeLayer._tiles || {};
+    // Build a src→coords lookup from the live tile cache so we can resolve
+    // each cloned <img> back to its authoritative {x,y,z} without trusting
+    // the URL slot order.
+    const coordsBySrc = new Map();
+    for (const k in tileCache) {
+      const t = tileCache[k];
+      if (t && t.el && t.el.src && t.coords) coordsBySrc.set(t.el.src, t.coords);
+    }
+    for (const img of tiles) {
+      if (!img.src) continue;
+      const coords = coordsBySrc.get(img.src);
+      if (!coords) continue;
+      const trStr = img.style.transform;
+      if (!trStr) continue;
+      let mat;
+      try { mat = new DOMMatrixReadOnly(trStr); } catch (e) { continue; }
+      refZ = coords.z; refX = coords.x; refY = coords.y;
+      refLocalX = mat.is2D ? mat.e : mat.m41;
+      refLocalY = mat.is2D ? mat.f : mat.m42;
+      break;
+    }
+  }
+
+  // CSS scale = the slider value, always. (See _magScale comment for
+  // rationale.) `sub` below is the orthogonal hi-res tile zoom step.
+  _magScale = Math.max(1, magnifierZoom);
+
+  // Inverse of the combined pane·level matrix maps a CONTAINER point back
+  // into the LEVEL-LOCAL space the cloned tiles (and refLocalX/Y) live in —
+  // needed to centre the hi-res fetch on the cursor regardless of bearing or
+  // level scale.
+  const _paneInv = _wrapM.inverse();
+
+  if (activeLayer && refZ !== null) {
+    const maxNZ = activeLayer.options.maxNativeZoom ||
+                  activeLayer.options.maxZoom || 19;
+    const subs = activeLayer.options.subdomains || 'abc';
+    // Local alias for the slider value. Named `slider` to avoid shadowing
+    // the global i18n `S` (which a sibling block in this same file used
+    // to read for the loading-pill label).
+    const slider = magnifierZoom;
+    const sliderExp = Math.ceil(Math.log2(Math.max(1, slider)));
+    const baselineExp = MAG_BASELINE_Z - refZ;
+    const desiredExp = Math.max(sliderExp, baselineExp);
+    const targetExp = Math.max(0,
+      Math.min(MAG_MAX_EXP, Math.min(maxNZ - refZ, desiredExp)));
+    if (targetExp > 0) {
+      const tileTarget = refZ + targetExp;
+      const sub = Math.pow(2, targetExp);
+      const sz = 256 / sub;
+      // NOTE: `_magScale` is NOT bumped to `sub` here — the loupe's
+      // visible magnification stays exactly at the slider value. Hi-res
+      // tiles fetched below get downsampled to slider density on display.
+
+      // Cursor in rotate-pane-LOCAL source pixels (same coord system as the
+      // clones' transforms). The cursor is a CONTAINER point; invert the
+      // rotate-pane matrix to get its local position so the fetch stays
+      // centred under the cursor even when the map is rotated.
+      const mapRect = map.getContainer().getBoundingClientRect();
+      const _curLocal = _paneInv.transformPoint(
+        new DOMPoint(_magX - mapRect.left, _magY - mapRect.top));
+      const cursorX = _curLocal.x;
+      const cursorY = _curLocal.y;
+
+      // Loupe area + one loupe-radius margin so the cursor can drift a
+      // little before `updateMagnifier` decides to schedule a refetch.
+      // Sized using `_magScale` (= slider) so the fetched region matches
+      // the visible source-pixel area: smaller slider → larger visible
+      // source area → larger fetch span. Capped via `MAG_MAX_EXP` /
+      // `maxNZ` above so the per-rebuild grid stays bounded.
+      const loupeR = magnifierSize / 2 / _magScale;
+      const radius = 2 * loupeR;
+      const xMin = cursorX - radius, xMax = cursorX + radius;
+      const yMin = cursorY - radius, yMax = cursorY + radius;
+
+      // Map tile-pane-local pixels back to hi-res tile coords using the
+      // reference clone we picked above.
+      const refTxBase = refX * sub;
+      const refTyBase = refY * sub;
+      const txMin = Math.floor(refTxBase + (xMin - refLocalX) / sz);
+      const txMax = Math.floor(refTxBase + (xMax - refLocalX) / sz);
+      const tyMin = Math.floor(refTyBase + (yMin - refLocalY) / sz);
+      const tyMax = Math.floor(refTyBase + (yMax - refLocalY) / sz);
+
+      for (let ty = tyMin; ty <= tyMax; ty++) {
+        if (ty < 0) continue;
+        for (let tx = txMin; tx <= txMax; tx++) {
+          if (tx < 0) continue;
+          const localX = refLocalX + (tx - refTxBase) * sz;
+          const localY = refLocalY + (ty - refTyBase) * sz;
+          const tile = document.createElement('img');
+          tile.style.cssText = 'position:absolute;left:' +
+            localX + 'px;top:' + localY + 'px;' +
+            'width:' + sz + 'px;height:' + sz + 'px';
+          tile.dataset.batch = String(batch);
+          _magPendingTiles++;
+          // Settle handler shared by load + error. Stale-batch callbacks
+          // (cursor moved fast → newer rebuild already ran) early-return
+          // so they don't decrement the current batch's pending count.
+          //
+          // Idempotency: `tile.dataset.settled` guards against a
+          // cached-image race where `tile.complete` is true synchronously
+          // after `tile.src = …` (so we call `onSettle` manually below)
+          // AND the still-pending async `load` event subsequently fires
+          // anyway. Without this tag both calls would decrement
+          // `_magPendingTiles`, masking the bug only because of the
+          // `<= 0` clamp below. The clamp now never sees a true negative.
+          const onSettle = (ev) => {
+            const t = ev && ev.target ? ev.target : tile;
+            if (t.dataset.settled === '1') return;
+            t.dataset.settled = '1';
+            if (t.dataset.batch !== String(_magBatch)) return;
+            _magPendingTiles--;
+            if (_magPendingTiles <= 0) hideMagLoading();
+          };
+          tile.addEventListener('load', onSettle, { once: true });
+          tile.addEventListener('error', (ev) => {
+            // Preserve the original cleanup behaviour for 404'd tiles.
+            tile.remove();
+            onSettle(ev);
+          }, { once: true });
+          tile.src = L.Util.template(activeLayer._url,
+            { z: tileTarget, x: tx, y: ty,
+              s: subs[(tx + ty) % subs.length] });
+          // Cached images can fire `load` before listeners are attached.
+          // `complete` + `naturalWidth > 0` ⇒ already loaded; `complete`
+          // alone (with `naturalWidth === 0`) ⇒ already errored. Settle
+          // synchronously here so the counter doesn't get stuck; the
+          // `dataset.settled` guard in `onSettle` makes the (still
+          // pending) async load callback a no-op.
+          if (tile.complete) {
+            if (tile.naturalWidth === 0) tile.remove();
+            onSettle({ target: tile });
+          }
+          tileWrap.appendChild(tile);
+        }
+      }
+    }
+  }
+  // Show the "Perfecting…" pill iff there are still in-flight hi-res
+  // tiles after the loop ran. At max native zoom (no hi-res fetched,
+  // sub=1, 0 tiles) the counter stays at 0 and the pill never appears,
+  // which is what we want — no flicker on already-crisp views.
+  if (_magPendingTiles > 0) showMagLoading();
+  else hideMagLoading();
+
+  // Capture the overlay canvas (waypoint dots, leg lines, notes).
+  //
+  // Force a fresh `draw()` BEFORE `toDataURL()` so the capture reflects
+  // the CURRENT map state, not whatever the canvas held when the user
+  // last released a drag. `scheduleDraw` (interact.js) already redraws
+  // on Leaflet's `move` event via rAF, but its callback and our rebuild
+  // callback are independent rAFs — and during a drag, the map pane's
+  // CSS transform updates synchronously while the overlay's canvas
+  // pixels only update on the next rAF. Without this synchronous draw
+  // the loupe captured a stale overlay one frame behind the tiles, so
+  // waypoint dots / leg lines appeared to "float" off the underlying
+  // terrain as the user dragged. Cheap (canvas overlay redraw) and the
+  // duplicated work (scheduleDraw rAF will run again later this frame)
+  // is bounded by the loupe's own rAF coalescing.
+  if (typeof draw === 'function') {
+    try { draw(); } catch (e) { /* never abort the loupe rebuild on a draw error */ }
+  }
+  const overlay = document.getElementById('overlay');
+  if (overlay) {
+    // Copy the overlay pixels into a same-sized `<canvas>` via
+    // `drawImage` (~1 ms at 1080p) instead of re-encoding the canvas to
+    // a base64 PNG via `toDataURL()` (~10–20 ms at 1080p, 50–100 ms at
+    // 4K). The rebuild runs on every coalesced rAF during a pan so the
+    // per-frame budget matters; the visual result is identical because
+    // the loupe just blits the captured pixels through its `scale()`
+    // transform.
+    const cap = document.createElement('canvas');
+    cap.width = overlay.width;
+    cap.height = overlay.height;
+    try {
+      const cctx = cap.getContext('2d');
+      if (cctx) cctx.drawImage(overlay, 0, 0);
+    } catch (e) { /* never abort the loupe rebuild on a draw error */ }
+    // The overlay canvas is already in CONTAINER pixels (drawn via
+    // `latLngToContainerPoint`, which bakes in bearing), so it sits at the
+    // content origin with no pane offset. `content`'s own transform handles
+    // cursor-centring + the `scale(_magScale)` magnification; the cloned
+    // tiles get into the same container space via `tileWrap`'s matrix.
+    cap.style.cssText = 'position:absolute;left:0;top:0;width:' +
+      overlay.style.width + ';height:' + overlay.style.height;
+    content.appendChild(cap);
+  }
+  _magDirty = false;
+}
+
+function applyMagnifierTransform() {
+  const mag = document.getElementById('magnifier');
+  const content = document.getElementById('mag-content');
+  if (!mag || !content) return;
+  if (_magDirty) rebuildMagnifier();
+  const mapRect = map.getContainer().getBoundingClientRect();
+  const cp = { x: _magX - mapRect.left, y: _magY - mapRect.top };
+  // Loupe's visible CSS scale = the slider (`magnifierZoom`). Hi-res
+  // tiles get downsampled to slider density for display; the adaptive
+  // sub-tile fetch in `rebuildMagnifier` only governs WHICH tiles are
+  // fetched, not how big they appear.
+  const effS = _magScale;
+  // `content` works in CONTAINER space: tiles are mapped there via
+  // `tileWrap`'s matrix and the overlay is captured there directly. So the
+  // loupe transform is just "centre the cursor's container point in the
+  // loupe, then scale" — no pane offset, which also keeps it correct under
+  // map rotation.
+  content.style.transform =
+    'translate(' + (magCenter() - cp.x * effS) + 'px,' +
+                   (magCenter() - cp.y * effS) + 'px) scale(' + effS + ')';
+}
+
+// Shared rAF queue: coalesces every refresh trigger (cursor move, map
+// pan, map zoom, layer change, slider tweak…) into a single per-frame
+// `applyMagnifierTransform` call, which itself runs `rebuildMagnifier`
+// iff `_magDirty`. Centralising the schedule is what lets `map.on('move')`
+// keep the loupe in lock-step with the underlying pan without re-typing
+// the same rAF dance in every caller.
+function scheduleMagRebuild() {
+  if (!magnifierOn) return;
+  if (_magRAF) return;                     // already queued this frame
+  _magRAF = requestAnimationFrame(() => {
+    _magRAF = null;
+    const mag = document.getElementById('magnifier');
+    const content = document.getElementById('mag-content');
+    if (!mag || !content) return;
+    // Locked loupe (`_magFixed`) keeps its on-screen position; only the
+    // CONTENT refreshes when the underlying map moves. Without this
+    // guard a pan would yank the locked loupe back to the live cursor.
+    if (!_magFixed) {
+      mag.style.left = (_magX - magCenter()) + 'px';
+      mag.style.top = (_magY - magCenter()) + 'px';
+    }
+    applyMagnifierTransform();
+  });
+}
+
+function updateMagnifier(e) {
+  if (!magnifierOn || _magFixed) return;
+  _magX = e.clientX;
+  _magY = e.clientY;
+  // Refetch threshold tied to the actual prefetched margin. rebuildMagnifier
+  // fetches a region of radius `magnifierSize/scale` source pixels around
+  // the cursor; source≈client px in this coord system, so we refetch once
+  // the cursor's drifted past HALF that margin — the loupe view never
+  // wanders into un-fetched territory. Lower-bound at 8 px so we don't
+  // thrash on every micro-jitter at high slider values.
+  //
+  // Pre-fix this used `magnifierSize/3` (≈ 133 px on a 400 px loupe) —
+  // a 60 px cursor drift didn't refetch, so the user saw stale clones
+  // until they swung the cursor far enough. That matched the reported
+  // "have to zoom to refresh" symptom.
+  const moveThreshold = Math.max(8, magnifierSize / 2 / _magScale);
+  if (Math.abs(_magX - _magLastX) > moveThreshold ||
+      Math.abs(_magY - _magLastY) > moveThreshold) {
+    _magDirty = true;
+  }
+  scheduleMagRebuild();
+}
+
+function applyMagBorder() {
+  const mag = document.getElementById('magnifier');
+  if (!mag) return;
+  mag.style.borderColor = _magFixed ? 'rgba(102,255,102,0.9)' : 'rgba(255,204,51,0.85)';
+}
+
+function toggleMagnifier() {
+  magnifierOn = !magnifierOn;
+  _magFixed = false;
+  const mag = document.getElementById('magnifier');
+  if (!mag) return;
+  mag.style.display = magnifierOn ? 'block' : 'none';
+  applyMagBorder();
+  const magBtn = document.getElementById('tool-magnifier');
+  magBtn.classList.toggle('active', magnifierOn);
+  // Accessibility: expose toggle state to assistive tech (screen
+  // readers announce "pressed" / "not pressed"). Same pattern applied
+  // to every other toggle button in the toolbar (see ui.js setMode +
+  // tool-reset-all-markers wiring).
+  magBtn.setAttribute('aria-pressed', String(magnifierOn));
+  const settings = document.getElementById('magnifier-settings');
+  if (settings) settings.classList.toggle('hidden', !magnifierOn);
+  if (magnifierOn) {
+    // Establish the cursor anchor BEFORE the first rebuild — the adaptive
+    // hi-res fetch is centred on (_magX, _magY), so a stale 0/0 would put
+    // every fetched sub-tile far off the loupe viewport on first open.
+    _magX = _magX || window.innerWidth / 2;
+    _magY = _magY || window.innerHeight / 2;
+    _magLastX = -Infinity;       // force the next mousemove to refetch
+    _magLastY = -Infinity;
+    _magDirty = true;
+    rebuildMagnifier();
+    mag.style.left = (_magX - magCenter()) + 'px'; mag.style.top = (_magY - magCenter()) + 'px';
+    applyMagnifierTransform();
+    document.addEventListener('mousemove', updateMagnifier);
+    document.addEventListener('click', onMagClick, true);
+  } else {
+    document.removeEventListener('mousemove', updateMagnifier);
+    document.removeEventListener('click', onMagClick, true);
+    if (_magRAF) { cancelAnimationFrame(_magRAF); _magRAF = null; }
+    // Invalidate any in-flight hi-res callbacks and hide the indicator.
+    // Bumping `_magBatch` is what guarantees onSettle handlers from the
+    // closing batch early-return instead of poking a hidden indicator.
+    _magBatch++;
+    _magPendingTiles = 0;
+    hideMagLoading();
+  }
+}
+
+function onMagClick(e) {
+  if (!magnifierOn) return;
+  // Any click that lands inside a UI surface (toolbar, magnifier
+  // settings panel, inspector, modal backdrop/box, or the search
+  // overlay) must NOT toggle the loupe lock — those clicks are aimed
+  // at the UI, not at the map underneath. `closest()` lets us match
+  // either a singleton element (id) or a class shared by multiple
+  // dynamically-created modals (.modal-back / .modal).
+  if (e.target && typeof e.target.closest === 'function' &&
+      e.target.closest(
+        '#toolbar, #magnifier-settings, #inspector,' +
+        ' .modal-back, .modal, #search-overlay'
+      )) return;
+  _magFixed = !_magFixed;
+  applyMagBorder();
+  // event passes through to map for selection
+}
+
+// Magnifier zoom: shared step for scroll wheel + +/− keys (interact.js).
+function bumpMagnifierZoomKeyboard(step) {
+  const zoomSlider = document.getElementById('mag-zoom');
+  const zoomVal = document.getElementById('mag-zoom-val');
+  if (!zoomSlider || !zoomVal) return;
+  var v = parseFloat(zoomSlider.value) + step;
+  v = Math.max(1, Math.min(5, Math.round(v * 4) / 4));
+  if (v === parseFloat(zoomSlider.value)) return;
+  zoomSlider.value = '' + v;
+  window.magnifierZoom = v;
+  zoomVal.textContent = v.toFixed(2).replace(/\.?0+$/, '') + '×';
+  _magDirty = true;
+  rebuildMagnifier();
+  applyMagnifierTransform();
+}
+
+// Magnifier zoom slider + scroll-wheel control
+(function () {
+  const zoomSlider = document.getElementById('mag-zoom');
+  const zoomVal = document.getElementById('mag-zoom-val');
+  if (zoomSlider && zoomVal) {
+    zoomSlider.addEventListener('input', function () {
+      window.magnifierZoom = parseFloat(this.value);
+      zoomVal.textContent = magnifierZoom.toFixed(2).replace(/\.?0+$/, '') + '×';
+      _magDirty = true;
+      if (magnifierOn) { rebuildMagnifier(); applyMagnifierTransform(); }
+    });
+  }
+  // Scroll wheel changes magnifier zoom instead of map zoom.
+  // Intercept on document during capture phase so we fire before Leaflet's
+  // own wheel handler (which is attached to the map container in bubble phase).
+  if (zoomSlider && zoomVal) {
+    document.addEventListener('wheel', function (e) {
+      if (!magnifierOn) return;
+      if (!document.getElementById('map')?.contains(e.target)) return;
+      e.stopPropagation();
+      e.preventDefault();
+      const step = e.deltaY > 0 ? -0.25 : 0.25;
+      bumpMagnifierZoomKeyboard(step);
+    }, { capture: true, passive: false });
+  }
+  // Settings close button
+  const closeBtn = document.getElementById('mag-settings-close');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', function () {
+      if (magnifierOn) toggleMagnifier();
+    });
+  }
+})();
+
+// Keep the loupe in lock-step with the underlying map. `move` / `zoom`
+// fire CONTINUOUSLY while a drag or zoom is in progress; `moveend` /
+// `zoomend` fire on release. The previous `moveend zoomend rotate`
+// wiring only dirtied the flag — it didn't schedule a rebuild — so
+// during a drag the loupe showed stale clones until the user happened
+// to wiggle the cursor far enough to clear the (also-too-large)
+// mousemove threshold. That matched the reported "have to zoom to
+// force a refresh" symptom. We now dirty AND schedule on every map
+// motion, including in-progress events, so the hi-res tiles re-fetch
+// as the user pans.
+//
+// `layeradd` covers base-layer switches (CVFR ↔ Satellite ↔ OSM …) —
+// the active tile layer is what feeds rebuildMagnifier's hi-res URL.
+map.on('move zoom moveend zoomend rotate layeradd', () => {
+  if (!magnifierOn) return;
+  _magDirty = true;
+  scheduleMagRebuild();
+});
+
+// --- Toolbar button handler — copy share URL to clipboard. ------------
 function shareRoute() {
   const r = buildShareUrl();
   if (r.err) { alert(S[r.err]); return; }

@@ -7,12 +7,24 @@ function setMode(mode) {
   // Clicking the currently-active mode button toggles back to inspect (null).
   if (state.mode === mode) mode = null;
   state.mode = mode;
-  document.getElementById('tool-add').classList.toggle('active', mode === 'add');
-  document.getElementById('tool-note').classList.toggle('active', mode === 'note');
+  const addBtn = document.getElementById('tool-add');
+  const noteBtn = document.getElementById('tool-note');
+  addBtn.classList.toggle('active', mode === 'add');
+  noteBtn.classList.toggle('active', mode === 'note');
+  // Accessibility: aria-pressed mirrors the .active class so screen
+  // readers announce the toggle state. The mode buttons are exclusive
+  // (only one of add / note can be active at once), so flipping both
+  // here keeps them in sync no matter which mode we entered or left.
+  addBtn.setAttribute('aria-pressed', String(mode === 'add'));
+  noteBtn.setAttribute('aria-pressed', String(mode === 'note'));
   document.getElementById('map').classList.toggle('add', mode === 'add' || mode === 'note');
 }
 document.getElementById('tool-add').onclick = () => setMode('add');
 document.getElementById('tool-note').onclick = () => setMode('note');
+// Initial aria-pressed sync — both modes start off so each button is
+// explicitly "not pressed" in the a11y tree on first paint.
+document.getElementById('tool-add').setAttribute('aria-pressed', 'false');
+document.getElementById('tool-note').setAttribute('aria-pressed', 'false');
 document.getElementById('app-version').textContent = 'v' + NavAid.version;
 
 // base map layer picker (replaces the Leaflet layers control)
@@ -114,12 +126,231 @@ function rotEnd(cycle) {
 }
 rotDial.addEventListener('pointerup', () => rotEnd(true));
 rotDial.addEventListener('pointercancel', () => rotEnd(false));   // aborted — don't rotate
+// --- live mouse coordinate readout ---------------------------------
+// Bottom-left so it clears the zoom buttons + rotate dial (bottomright)
+// and the layer picker (topright). Updates on every map mousemove with
+// the same DM format the inspector uses for waypoints (fmtLatLng).
+const coordCtrl = L.control({ position: 'bottomleft' });
+coordCtrl.onAdd = function () {
+  const box = L.DomUtil.create('div', 'leaflet-control coord-readout');
+  box.id = 'coord-readout';
+  box.setAttribute('aria-hidden', 'true');
+  return box;
+};
+coordCtrl.addTo(map);
+const coordBox = document.getElementById('coord-readout');
+// The readout doubles as a "go to coordinates" input (issue #497): it stays
+// visible showing the map centre, follows the mouse on hover, and turns into
+// an editable field on click. Make it interactive and keep clicks/scroll from
+// leaking through to the map underneath.
+coordBox.removeAttribute('aria-hidden');
+coordBox.title = S.gotoTitle;
+coordBox.classList.add('show', 'interactive');
+L.DomEvent.disableClickPropagation(coordBox);
+L.DomEvent.disableScrollPropagation(coordBox);
+
+let gotoEditing = false;
+function centerCoordText() {
+  const c = map.getCenter();
+  return fmtLatLng(c.lat, 'N', 'S') + '  ' + fmtLatLng(c.lng, 'E', 'W');
+}
+function showCoord(latlng) {
+  if (gotoEditing) return;
+  coordBox.textContent = fmtLatLng(latlng.lat, 'N', 'S') + '  ' +
+                         fmtLatLng(latlng.lng, 'E', 'W');
+}
+function showCenterCoord() { if (!gotoEditing) coordBox.textContent = centerCoordText(); }
+showCenterCoord();
+map.on('mousemove', e => showCoord(e.latlng));
+map.on('mouseout', showCenterCoord);
+map.on('moveend', showCenterCoord);
+
+// --- temporary "look here" marker (not part of the route) ---------------
+let gotoMarker = null;
+function clearGotoMarker() {
+  if (gotoMarker) { map.removeLayer(gotoMarker); gotoMarker = null; }
+}
+function dropGotoMarker(lat, lng) {
+  clearGotoMarker();
+  gotoMarker = L.circleMarker([lat, lng], {
+    radius: 7, color: '#c0392b', weight: 2,
+    fillColor: '#e74c3c', fillOpacity: 0.85,
+    interactive: false, className: 'goto-marker',
+  }).addTo(map);
+}
+// A genuine map click (drop waypoint, pan, etc.) dismisses the temp marker.
+map.on('click', clearGotoMarker);
+window.clearGotoMarker = clearGotoMarker;
+window.dropGotoMarker = dropGotoMarker;
+window.hasGotoMarker = () => !!gotoMarker;
+
+// --- click-to-edit go-to input -----------------------------------------
+function exitGotoEdit() {
+  gotoEditing = false;
+  coordBox.classList.remove('editing', 'error');
+  coordBox.title = S.gotoTitle;
+  showCenterCoord();
+}
+// Break a signed decimal degree into integer degrees/minutes/seconds, with
+// the same 60->0 rollover carry as fmtLatLngDMS so the slots never read 60.
+function dmsParts(v) {
+  const deg = Math.abs(v);
+  let d = Math.floor(deg);
+  let m = Math.floor((deg - d) * 60);
+  let s = Math.round((deg - d - m / 60) * 3600);
+  if (s >= 60) { s -= 60; m += 1; }
+  if (m >= 60) { m -= 60; d += 1; }
+  return { d, m, s };
+}
+function commitGoto() {
+  const num = id => parseFloat(document.getElementById(id).value);
+  const latD = num('goto-lat-d');
+  const lngD = num('goto-lng-d');
+  if (!Number.isFinite(latD) || !Number.isFinite(lngD)) {
+    coordBox.classList.add('error');
+    return false;
+  }
+  const latM = num('goto-lat-m') || 0;
+  const latS = num('goto-lat-s') || 0;
+  const lngM = num('goto-lng-m') || 0;
+  const lngS = num('goto-lng-s') || 0;
+  const lat = latD + latM / 60 + latS / 3600;
+  const lng = lngD + lngM / 60 + lngS / 3600;
+  const ll = finishLatLng(lat, lng);
+  if (!ll) { coordBox.classList.add('error'); return false; }
+  map.setView([ll.lat, ll.lng], Math.max(map.getZoom(), 11));
+  dropGotoMarker(ll.lat, ll.lng);
+  exitGotoEdit();
+  return true;
+}
+// One editable numeric slot; `len` also caps the digits typed in.
+function gotoSlot(id, value, len, label) {
+  const i = document.createElement('input');
+  i.type = 'text';
+  i.inputMode = 'numeric';
+  i.className = 'goto-num';
+  i.id = id;
+  i.maxLength = len;
+  i.size = len;
+  i.setAttribute('aria-label', label);
+  i.value = len === 2 ? String(value).padStart(2, '0') : String(value);
+  return i;
+}
+// Fill the six slots from a decimal lat/lng (used by paste).
+function fillGotoSlots(lat, lng) {
+  const la = dmsParts(lat), lo = dmsParts(lng);
+  const set = (id, v) => {
+    const el = document.getElementById(id);
+    if (el) el.value = String(v).padStart(2, '0');
+  };
+  set('goto-lat-d', la.d); set('goto-lat-m', la.m); set('goto-lat-s', la.s);
+  set('goto-lng-d', lo.d); set('goto-lng-m', lo.m); set('goto-lng-s', lo.s);
+}
+function gotoSep(text) {
+  const sep = document.createElement('span');
+  sep.className = 'goto-sep';
+  sep.textContent = text;
+  return sep;
+}
+function enterGotoEdit() {
+  if (gotoEditing) return;
+  gotoEditing = true;
+  coordBox.classList.add('editing');
+  coordBox.classList.remove('error');
+  const c = map.getCenter();
+  const lat = dmsParts(c.lat);
+  const lng = dmsParts(c.lng);
+  coordBox.textContent = '';
+  coordBox.setAttribute('aria-label', S.gotoTitle);
+  coordBox.title = S.gotoError;
+  const slots = [
+    gotoSlot('goto-lat-d', lat.d, 2, S.latitude + ' deg'), gotoSep('°'),
+    gotoSlot('goto-lat-m', lat.m, 2, S.latitude + ' min'), gotoSep('′'),
+    gotoSlot('goto-lat-s', lat.s, 2, S.latitude + ' sec'), gotoSep('″'),
+    gotoSep('N'), gotoSep(' '),
+    gotoSlot('goto-lng-d', lng.d, 2, S.longitude + ' deg'), gotoSep('°'),
+    gotoSlot('goto-lng-m', lng.m, 2, S.longitude + ' min'), gotoSep('′'),
+    gotoSlot('goto-lng-s', lng.s, 2, S.longitude + ' sec'), gotoSep('″'),
+    gotoSep('E'),
+  ];
+  const inputs = slots.filter(el => el.tagName === 'INPUT');
+  for (const el of slots) coordBox.appendChild(el);
+  for (let k = 0; k < inputs.length; k++) {
+    const i = inputs[k];
+    i.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); commitGoto(); }
+      else if (e.key === 'Escape') { e.preventDefault(); exitGotoEdit(); }
+      else { coordBox.classList.remove('error'); }
+    });
+    // Auto-advance once a slot is full, so typing flows left to right.
+    i.addEventListener('input', () => {
+      if (i.value.length >= i.maxLength && k < inputs.length - 1) {
+        inputs[k + 1].focus();
+        inputs[k + 1].select();
+      }
+    });
+    // Pasting a full coordinate string fills every slot at once.
+    i.addEventListener('paste', e => {
+      const cb = e.clipboardData || window.clipboardData;
+      const ll = cb && parseLatLng(cb.getData('text'));
+      if (ll) {
+        e.preventDefault();
+        fillGotoSlots(ll.lat, ll.lng);
+        coordBox.classList.remove('error');
+      }
+    });
+  }
+  inputs[0].focus();
+  inputs[0].select();
+}
+coordBox.addEventListener('click', () => { if (!gotoEditing) enterGotoEdit(); });
+// Leave edit mode only when focus exits the readout entirely. Registered once
+// (not per edit) so repeated open/close never stacks duplicate listeners.
+coordBox.addEventListener('focusout', e => {
+  if (gotoEditing && !coordBox.contains(e.relatedTarget)) exitGotoEdit();
+});
+
 const BEARING_KEY = 'navaid.bearing';
+// `navaid.view` — issue #413: persist center+zoom (and bearing) across
+// reloads so a refresh / language switch / PWA wake-up doesn't snap back
+// to the auto-fit view. Bearing is also written here so a single payload
+// captures the entire viewport state atomically; the legacy
+// `navaid.bearing` key keeps being written below for backward compat with
+// any tooling that reads it.
+const VIEW_KEY = 'navaid.view';
+// Sanity bbox for restored coords — anything outside is "wildly outside
+// Israel" per issue #413 and is treated as stale.
+const VIEW_LAT_MIN = 28, VIEW_LAT_MAX = 34;
+const VIEW_LNG_MIN = 33, VIEW_LNG_MAX = 36;
+function readSavedView() {
+  let raw = null;
+  try { raw = localStorage.getItem(VIEW_KEY); } catch (e) { return null; }
+  if (!raw) return null;
+  let d;
+  try { d = JSON.parse(raw); } catch (e) { return null; }
+  if (!d || typeof d !== 'object') return null;
+  const lat = +d.lat, lng = +d.lng, zoom = +d.zoom;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(zoom)) return null;
+  if (lat < VIEW_LAT_MIN || lat > VIEW_LAT_MAX) return null;
+  if (lng < VIEW_LNG_MIN || lng > VIEW_LNG_MAX) return null;
+  const minZ = map.options.minZoom, maxZ = map.options.maxZoom;
+  if (Number.isFinite(minZ) && zoom < minZ) return null;
+  if (Number.isFinite(maxZ) && zoom > maxZ) return null;
+  const b = +d.bearing;
+  return { lat, lng, zoom, bearing: Number.isFinite(b) ? b : null };
+}
 try {
   // Defensive: an older build (or a manual edit) may have stored "NaN".
   // Number.isFinite rejects NaN / Infinity so we fall back to bearing 0.
-  const sb = parseFloat(localStorage.getItem(BEARING_KEY));
-  if (Number.isFinite(sb)) map.setBearing(sb);
+  // Read the saved view first so bearing from `navaid.view` (when present)
+  // wins over the legacy `navaid.bearing` key.
+  const sv = readSavedView();
+  if (sv && sv.bearing !== null && map.setBearing) {
+    map.setBearing(sv.bearing);
+  } else {
+    const sb = parseFloat(localStorage.getItem(BEARING_KEY));
+    if (Number.isFinite(sb)) map.setBearing(sb);
+  }
 } catch (e) { /* storage unavailable */ }
 let bearingSaveTimer = null;
 map.on('rotate', () => {
@@ -135,6 +366,27 @@ map.on('rotate', () => {
     catch (err) { /* storage unavailable */ }
   }, 400);
 });
+// Persist the full viewport (center + zoom + bearing) on any change.
+// Debounced ~300 ms because pan/zoom/rotate fire continuously during a
+// drag — only the resting state needs saving.
+let viewSaveTimer = null;
+function scheduleSaveView() {
+  if (NavAid.exporting || viewSaveTimer) return;
+  viewSaveTimer = setTimeout(() => {
+    viewSaveTimer = null;
+    try {
+      const c = map.getCenter();
+      const z = map.getZoom();
+      const b = map.getBearing ? map.getBearing() : 0;
+      if (!c || !Number.isFinite(c.lat) || !Number.isFinite(c.lng) ||
+          !Number.isFinite(z)) return;
+      const payload = { lat: c.lat, lng: c.lng, zoom: z };
+      if (Number.isFinite(b)) payload.bearing = b;
+      localStorage.setItem(VIEW_KEY, JSON.stringify(payload));
+    } catch (e) { /* storage unavailable */ }
+  }, 300);
+}
+map.on('moveend zoomend rotate', scheduleSaveView);
 refreshDial();
 
 // --- nav-waypoint search --------------------------------------------
@@ -196,6 +448,7 @@ async function buildRouteFromQuery(raw) {
   state.legs = [];
   state.selected = null;
   syncLegs();
+  if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();  // #487
   wpSearch.value = '';
   hideSearchOverlay();
   showInspector();
@@ -311,6 +564,18 @@ function hideSearchOverlay() {
 }
 document.getElementById('search-trigger').onclick = showSearchOverlay;
 document.getElementById('search-close').onclick = hideSearchOverlay;
+
+// Issue #420: keyboard-shortcuts cheat-sheet trigger. The '?' key shortcut
+// is wired in interact.js; this button gives non-keyboard users (touch /
+// mouse) a discoverable entry point.
+{
+  const helpBtn = document.getElementById('help-trigger');
+  if (helpBtn) {
+    helpBtn.onclick = () => {
+      if (typeof showShortcutsHelp === 'function') showShortcutsHelp();
+    };
+  }
+}
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
     const t = e.target;
@@ -322,6 +587,15 @@ document.addEventListener('keydown', e => {
     showSearchOverlay();
   } else if (e.key === 'Escape' && !searchOverlay.classList.contains('hidden')) {
     hideSearchOverlay();
+  } else if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    document.getElementById('reverse').click();
+  } else if ((e.key === 'b' || e.key === 'B') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    // Toggling the checkbox fires its onchange (persist + redraw).
+    document.getElementById('ret-cb').click();
   }
 });
 document.addEventListener('click', e => {
@@ -334,17 +608,25 @@ document.getElementById('reverse').onclick = () => {
   // The leg's local axes (along + perpendicular) also flip, so negating the
   // label offsets keeps the markers visually pinned to the same map pixels.
   state.waypoints.reverse();
-  state.legs = state.legs.reverse().map(l => ({
-    inboundAltitude: l.outboundAltitude,
-    outboundAltitude: l.inboundAltitude,
-    flightSpeed: showReturn ? l.outboundSpeed : l.flightSpeed,
-    outboundSpeed: showReturn ? l.flightSpeed : l.flightSpeed,
-    inLabel: { a: -l.outLabel.a, p: -l.outLabel.p },
-    outLabel: { a: -l.inLabel.a, p: -l.inLabel.p },
-  }));
+  // A leg imported from a corrupted file / share URL may be missing a
+  // label; fall back to the default so negating its offsets can't throw.
+  const d = _defaultLegLabels();
+  state.legs = state.legs.reverse().map(l => {
+    const inOld = l.outLabel || d.outLabel;
+    const outOld = l.inLabel || d.inLabel;
+    return {
+      inboundAltitude: l.outboundAltitude,
+      outboundAltitude: l.inboundAltitude,
+      flightSpeed: showReturn ? l.outboundSpeed : l.flightSpeed,
+      outboundSpeed: showReturn ? l.flightSpeed : l.flightSpeed,
+      inLabel:  { a: -inOld.a,  p: -inOld.p,  _m: inOld._m,  _default: inOld._default },
+      outLabel: { a: -outOld.a, p: -outOld.p, _m: outOld._m, _default: outOld._default },
+    };
+  });
   state.selected = null;
   showInspector(); draw();
 };
+document.getElementById('undo').onclick = () => { if (typeof undo === 'function') undo(); };
 document.getElementById('clear').onclick = () => {
   if ((state.waypoints.length || state.notes.length) &&
       !confirm(S.clearConfirm)) return;
@@ -354,15 +636,24 @@ document.getElementById('clear').onclick = () => {
   state.selected = null;
   showInspector(); draw();
 };
+document.getElementById('tool-reset-all-wp-names').onclick = () => {
+  if (!state.waypoints.length) return;
+  if (!confirm(S.resetAllWpNamesConfirm ||
+      'Reset all waypoint names to their nearest reference codes, or clear when off-grid?')) return;
+  if (typeof resetAllWpNames === 'function') resetAllWpNames();
+};
 document.getElementById('save').onclick = save;
 document.getElementById('load').onclick = () => document.getElementById('file').click();
 document.getElementById('share').onclick = shareRoute;
 document.getElementById('file').onchange = e => {
-  if (e.target.files[0]) load(e.target.files[0]);
+  const f = e.target.files[0];
+  if (!f) return;
+  if (/\.gpx$/i.test(f.name)) loadGpx(f); else load(f);
   e.target.value = '';
 };
 document.getElementById('fit').onclick = fitView;
 document.getElementById('fly').onclick = flyRoute;
+document.getElementById('gpx').onclick = exportGpx;
 // Toggle: a second click closes the modal instead of being a no-op (#78 dedupe
 // previously made the button look broken when the modal was already open).
 document.getElementById('plan').onclick = () => {
@@ -436,16 +727,20 @@ document.getElementById('drift-cb').onchange = e => {
   draw();
 };
 // When the user toggles an overlay ON, snap existing waypoints whose name
-// is empty or auto-snapped to the nearest airfield / nav-WP. Preserves
-// user-typed names. Priority matches applyNavSnap: airfields first.
+// is empty, auto-snapped, or a sequence label (WP N / locale prefix) to the
+// nearest airfield / nav-WP. Preserves user-typed names. Priority matches
+// applyNavSnap: airfields first.
 function snapExistingWaypoints() {
+  const occupied = (lat, lng, skipIdx) => state.waypoints.some((w, j) =>
+    j !== skipIdx && w.lat === lat && w.lng === lng);
   for (let i = 0; i < state.waypoints.length; i++) {
     const wp = state.waypoints[i];
-    const autoSnapped = isAirfieldName(wp.name) || isNavName(wp.name);
+    const autoSnapped = isAirfieldName(wp.name) || isNavName(wp.name) ||
+        isSequenceWaypointName(wp.name);
     if (wp.name && !autoSnapped) continue;
     if (showAirfields) {
       const af = nearestAirfield(wp, 18);
-      if (af) {
+      if (af && !occupied(r5(af.lat), r5(af.lng), i)) {
         wp.lat = r5(af.lat); wp.lng = r5(af.lng);
         wp.name = af.name;
         continue;
@@ -453,7 +748,7 @@ function snapExistingWaypoints() {
     }
     if (showNavWP) {
       const snap = nearestNavWaypoint(wp, 18);
-      if (snap) {
+      if (snap && !occupied(r5(snap.lat), r5(snap.lng), i)) {
         wp.lat = r5(snap.lat); wp.lng = r5(snap.lng);
         wp.name = snap[S.navWpSearchField] || snap.name;
       }
@@ -491,6 +786,35 @@ document.getElementById('airfield-cb').onchange = async e => {
     await loadAirfields();
     snapExistingWaypoints();
   }
+  draw();
+};
+const FORCE_SNAP_KEY = 'navaid.forceSnap';
+try {
+  const stored = localStorage.getItem(FORCE_SNAP_KEY);
+  if (stored !== null) window.forceSnap = stored === '1';
+} catch (e) { /* storage unavailable */ }
+document.getElementById('force-snap-cb').checked = forceSnap;
+document.getElementById('force-snap-cb').onchange = e => {
+  window.forceSnap = e.target.checked;
+  try { localStorage.setItem(FORCE_SNAP_KEY, forceSnap ? '1' : '0'); }
+  catch (err) { /* storage unavailable */ }
+};
+// Comm-change overlay toggle (issue #399). The dataset lives in
+// docs/comm-change.json and rings are drawn on top of the nav-WP dots
+// in draw.js. We persist + restore exactly like every other view toggle.
+const COMMCHANGE_KEY = 'navaid.showCommChange';
+try {
+  const stored = localStorage.getItem(COMMCHANGE_KEY);
+  if (stored !== null) window.showCommChange = stored === '1';
+} catch (e) { /* storage unavailable */ }
+document.getElementById('commchange-cb').checked = showCommChange;
+document.getElementById('commchange-cb').onchange = async e => {
+  window.showCommChange = e.target.checked;
+  try { localStorage.setItem(COMMCHANGE_KEY, showCommChange ? '1' : '0'); }
+  catch (err) { /* storage unavailable */ }
+  // Rings draw independently of the nav-WP dot layer (issue #484) but reuse
+  // its positions, so load navWP too even when that layer is off.
+  if (showCommChange) await Promise.all([loadCommChange(), loadNavWaypoints()]);
   draw();
 };
 const ALPHA_KEY = 'navaid.yellowAlpha';
@@ -589,6 +913,20 @@ try {
 document.getElementById('page-orient').onclick = toggleOrientation;
 refreshOrientButton();
 document.getElementById('print').onclick = showExportModal;
+createMagnifier();
+document.getElementById('tool-magnifier').onclick = toggleMagnifier;
+document.getElementById('tool-reset-all-markers').onclick = () => {
+  // PR review #14: confirm before wiping every manual leg-marker offset —
+  // this button is in the always-visible Build section so an accidental
+  // click on a hand-tuned route was costly.
+  if (!confirm(S.resetAllConfirm || 'Reset all marker positions?')) return;
+  for (let i = 0; i < state.legs.length; i++) {
+    const d = _defaultLegLabels();
+    state.legs[i].inLabel = d.inLabel;
+    state.legs[i].outLabel = d.outLabel;
+  }
+  draw();
+};
 document.getElementById('insp-close').onclick = () => {
   state.selected = null;
   showInspector(); draw();
@@ -767,7 +1105,17 @@ try {
   }
 } catch (e) {}
 if (state.selected) showInspector();
-if (state.waypoints.length) fitView();   // always frame the restored route
+// Issue #413 — restore the persisted viewport (center + zoom + bearing) so
+// a reload lands on the user's last view. Falls back to fitView() only
+// when no valid saved view exists. The bearing was already applied above
+// from `navaid.view` (or `navaid.bearing`), so we only re-apply center +
+// zoom here. `animate: false` avoids a visible pan on boot.
+const _savedView = readSavedView();
+if (_savedView) {
+  map.setView([_savedView.lat, _savedView.lng], _savedView.zoom, { animate: false });
+} else if (state.waypoints.length) {
+  fitView();                              // first-time / cleared-storage path
+}
 draw();
 // Always load nav-waypoints in the background — they power both the
 // overlay toggle and the auto-snap on drop / drag.
@@ -776,6 +1124,13 @@ loadNavWaypoints().then(() => { snapExistingWaypoints(); draw(); });
 // Also re-render inspector so plates section appears if a waypoint
 // was restored from sessionStorage before airfields loaded.
 loadAirfields().then(() => { snapExistingWaypoints(); draw(); if (state.selected) showInspector(); });
+// Comm-change dataset (issue #399): parallel fetch so the rings appear
+// on first paint and the inspector badge is available immediately for
+// a selection restored from sessionStorage. Rings draw independently of
+// the nav-WP dot layer (issue #484), so when comm-change is on we also
+// load navWP positions even if that layer is off.
+loadCommChange().then(() => showCommChange ? loadNavWaypoints() : null)
+  .then(() => { draw(); if (state.selected) showInspector(); });
 // Restore flight-plan modal if it was open before refresh / language change.
 try {
   if (sessionStorage.getItem('navaid.fpOpen')) {

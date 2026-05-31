@@ -2,6 +2,7 @@
 // Regression tests for orient default + persistence (PR #195) and the PNG
 // export filename pattern, which depends on pageSize being set via setPage().
 const { test, expect } = require('./_setup');
+const { pairLLHZ_LLHA } = require('./_airfieldArp');
 
 async function boot(page) {
   // Sentinel so the clear only runs on the first navigation — a reload in
@@ -73,19 +74,23 @@ test.describe('Orient default + persistence (#195)', () => {
 });
 
 test.describe('PNG export filename respects pageSize + orient', () => {
+  // The full exportPNG path (tile load + canvas render + blob download) can
+  // run past the 15s default test timeout on a loaded CI runner — and the
+  // download wait below already allows 30s, which the 15s cap could never
+  // reach. test.slow() triples the timeout (→45s) so the download wait is
+  // the real bound, not the test envelope.
+  test.slow();
+
   test('Export with A4 set: download name matches navigation-A4-*.png', async ({ page }) => {
     await boot(page);
     // Switch to OSM so tiles are CORS-clean and exportPNG can actually run
     // headless without the weserv.nl proxy round-trip.
     await page.locator('#layer-select').selectOption('OpenStreetMap');
-    await page.evaluate(() => {
-      state.waypoints = [
-        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
-        { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
-      ];
+    await page.evaluate(wps => {
+      state.waypoints = wps;
       syncLegs();
       draw();
-    });
+    }, pairLLHZ_LLHA());
     await page.locator('#page-a4').click();
     const dl = page.waitForEvent('download', { timeout: 30000 });
     await page.locator('#print').click();
@@ -97,14 +102,11 @@ test.describe('PNG export filename respects pageSize + orient', () => {
   test('Export with no page frame: filename uses the base layer name', async ({ page }) => {
     await boot(page);
     await page.locator('#layer-select').selectOption('OpenStreetMap');
-    await page.evaluate(() => {
-      state.waypoints = [
-        { lat: 32.18060, lng: 34.83470, name: 'LLHZ' },
-        { lat: 32.80972, lng: 35.04389, name: 'LLHA' },
-      ];
+    await page.evaluate(wps => {
+      state.waypoints = wps;
       syncLegs();
       draw();
-    });
+    }, pairLLHZ_LLHA());
     // pageSize stays null — exporter falls back to the baseName (layer-derived).
     const dl = page.waitForEvent('download', { timeout: 30000 });
     await page.locator('#print').click();
