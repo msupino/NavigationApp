@@ -461,7 +461,7 @@ function seedCommChangeNotes() {
     state.notes.push({
       lat: r5(wp.lat + COMM_CHANGE_NOTE_LAT_OFFSET),
       lng: r5(wp.lng),
-      text: (typeof S !== 'undefined' && S.commChangeNoteText) || 'Comm change',
+      text: (typeof S !== 'undefined' && S.commChangeNoteText) || 'Freq change',
       color: NOTE_DEFAULT_COLOR,
       shape: 'rect',
       cc: nm,

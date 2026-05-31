@@ -129,6 +129,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
 
   test('populated dataset draws comm-change rings for in-view points', async ({ page }) => {
     await boot(page);   // boot() frames the map on TYONA
+    await page.evaluate(() => { window.showCommChange = true; draw(); });
     const drawn = await page.evaluate(() =>
       Array.from(window.__commChangeRingsDrawn || []));
     expect(drawn).toContain('TYONA');
@@ -151,9 +152,9 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     await boot(page);
     const labelText = await page.locator(
       'label[data-i18n-title="tbShowCommChangeTitle"]').textContent();
-    expect(labelText).toMatch(/Show Comm Changes/i);
+    expect(labelText).toMatch(/Show Freq Changes/i);
     const cb = page.locator('#commchange-cb');
-    await expect(cb).toBeChecked();
+    await expect(cb).not.toBeChecked();
   });
 
   test('Hebrew locale uses the translated toggle label', async ({ page }) => {
@@ -164,7 +165,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     await page.waitForFunction(() => typeof state !== 'undefined');
     const labelText = await page.locator(
       'label[data-i18n-title="tbShowCommChangeTitle"]').textContent();
-    expect(labelText).toMatch(/הצג מעברי תקשורת/);
+    expect(labelText).toMatch(/הצג שינויי תדר/);
   });
 });
 
@@ -182,6 +183,7 @@ test.describe('comm-change rendering (fixture-backed)', () => {
   test('drawNavWaypoints draws the comm-change ring at TYONA', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
+    await page.evaluate(() => { window.showCommChange = true; draw(); });
     const drawn = await page.evaluate(() =>
       Array.from(window.__commChangeRingsDrawn || []));
     expect(drawn).toContain('TYONA');
@@ -190,7 +192,15 @@ test.describe('comm-change rendering (fixture-backed)', () => {
   test('toggling Show Comm Changes off hides the ring without disabling nav-WPs', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
-    // Sanity check before flipping the toggle.
+    // Enable the toggle first (default is now off).
+    await page.evaluate(() => {
+      const cb = document.getElementById('commchange-cb');
+      cb.checked = true;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await page.waitForFunction(() => window.showCommChange === true);
+    await page.evaluate(() => draw());
+    // Sanity check before flipping back.
     let drawn = await page.evaluate(() =>
       Array.from(window.__commChangeRingsDrawn || []));
     expect(drawn).toContain('TYONA');
@@ -234,7 +244,7 @@ test.describe('comm-change rendering (fixture-backed)', () => {
     const row = page.locator('#inspector .commchange-row');
     await expect(row).toBeVisible();
     const labelText = await row.locator('.commchange-label').textContent();
-    expect(labelText).toMatch(/Comm change/i);
+    expect(labelText).toMatch(/Freq change/i);
     // The fixture entry has both from and to populated.
     const freqText = await row.locator('.commchange-freq').textContent();
     expect(freqText).toMatch(/Tel-Aviv Control/);
@@ -280,6 +290,7 @@ test.describe('comm-change rendering (fixture-backed)', () => {
     // still draw (it no longer lives inside drawNavWaypoints' early-return).
     await page.evaluate(async () => {
       window.showNavWP = false;
+      window.showCommChange = true;  // default is now off
       // navWP positions are still required — loaded by the comm toggle/boot.
       if (typeof loadNavWaypoints === 'function') await loadNavWaypoints();
       draw();
@@ -293,6 +304,7 @@ test.describe('comm-change rendering (fixture-backed)', () => {
   test('ring grows to enclose a named route-waypoint disc so it stays visible (#488)', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
+    await page.evaluate(() => { window.showCommChange = true; draw(); });
     // Bare ring radius with no route waypoint on the point.
     const bare = await page.evaluate(() => {
       state.waypoints = []; state.legs = []; syncLegs();
