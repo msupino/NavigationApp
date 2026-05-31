@@ -308,7 +308,7 @@ function showInspector() {
         row.className = 'row col commchange-row';
         const lbl = document.createElement('label');
         lbl.className = 'commchange-label';
-        lbl.textContent = S.commChangeBadge || '📡 Comm change';
+        lbl.textContent = S.commChangeBadge || '📡 Freq change';
         row.appendChild(lbl);
         if (cc.from || cc.to) {
           const freq = document.createElement('span');

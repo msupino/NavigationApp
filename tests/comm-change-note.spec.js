@@ -64,7 +64,7 @@ test.describe('comm-change auto-note (#487)', () => {
     }, TYONA);
     expect(notes).toHaveLength(1);
     expect(notes[0].cc).toBe('TYONA');
-    expect(notes[0].text).toBe('Comm change');
+    expect(notes[0].text).toBe('Freq change');
     expect(notes[0].shape).toBe('rect');
     expect(notes[0].color).toBeTruthy();
     // Placed just north of the dot, same longitude.
@@ -136,6 +136,6 @@ test.describe('comm-change auto-note (#487)', () => {
       seedCommChangeNotes();
       return state.notes[0].text;
     }, TYONA);
-    expect(text).toBe('מעבר תקשורת');
+    expect(text).toBe('שינוי תדר');
   });
 });
