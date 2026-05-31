@@ -790,6 +790,21 @@ html, body {
   max-height: 84vh;
   padding: 14px;
 }
+/* Bottom-right grip to resize the flight-plan window. */
+.resize-handle {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  z-index: 1;
+}
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+}
+.resize-handle.corner-se { bottom: 0; right: 0; cursor: nwse-resize; }
+.resize-handle.corner-se::after { bottom: 2px; right: 2px; border-right: 2px solid #888; border-bottom: 2px solid #888; }
 .fp-aircraft {
   display: flex;
   flex-wrap: wrap;

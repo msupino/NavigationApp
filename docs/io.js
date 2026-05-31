@@ -816,6 +816,85 @@ function showFlightPlan() {
     };
   })(box);
 
+  // Resizable from a bottom-right corner grip. Restores the last-used size
+  // and persists it (navaid.fpSize) so the plan window stays the size the
+  // pilot picked across opens. Listeners attached to `window` only live for
+  // the duration of an active drag (removed on pointer-up), so there is
+  // nothing to tear down in flightPlanCleanup.
+  (function (el) {
+    const KEY = 'navaid.fpSize';
+    // The default CSS caps the box at 92vw / 84vh; an explicit size must be
+    // free to exceed those, so drop the caps once the user takes control.
+    function applySize(w, h) {
+      el.style.maxWidth = 'none';
+      el.style.maxHeight = 'none';
+      el.style.width = w + 'px';
+      el.style.height = h + 'px';
+    }
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s && s.w > 0 && s.h > 0) {
+          applySize(Math.min(s.w, window.innerWidth),
+                    Math.min(s.h, window.innerHeight));
+        }
+      }
+    } catch (e) { /* storage unavailable / malformed — keep CSS default size */ }
+
+    const grip = document.createElement('div');
+    grip.className = 'resize-handle corner-se';
+    el.appendChild(grip);
+
+    let rx = 0, ry = 0, rw = 0, rh = 0, resizing = false;
+    function start(cx, cy) {
+      const r = el.getBoundingClientRect();
+      rx = cx; ry = cy; rw = r.width; rh = r.height;
+      resizing = true;
+    }
+    function move(cx, cy) {
+      if (!resizing) return;
+      const w = Math.max(360, Math.min(window.innerWidth, rw + (cx - rx)));
+      const h = Math.max(200, Math.min(window.innerHeight, rh + (cy - ry)));
+      applySize(w, h);
+    }
+    function end() {
+      if (!resizing) return;
+      resizing = false;
+      const r = el.getBoundingClientRect();
+      try { localStorage.setItem(KEY, JSON.stringify({ w: r.width, h: r.height })); } catch (e) {}
+    }
+    grip.addEventListener('mousedown', e => {
+      e.preventDefault();
+      e.stopPropagation();                 // don't start a title-bar drag
+      start(e.clientX, e.clientY);
+      const onMove = ev => move(ev.clientX, ev.clientY);
+      const onUp = () => { end(); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+    grip.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) return;
+      e.preventDefault();
+      e.stopPropagation();
+      start(e.touches[0].clientX, e.touches[0].clientY);
+      const onMove = ev => {
+        if (ev.touches.length !== 1) return;
+        ev.preventDefault();
+        move(ev.touches[0].clientX, ev.touches[0].clientY);
+      };
+      const onEnd = () => {
+        end();
+        window.removeEventListener('touchmove', onMove, { passive: false });
+        window.removeEventListener('touchend', onEnd);
+        window.removeEventListener('touchcancel', onEnd);
+      };
+      window.addEventListener('touchmove', onMove, { passive: false });
+      window.addEventListener('touchend', onEnd);
+      window.addEventListener('touchcancel', onEnd);
+    }, { passive: false });
+  })(box);
+
   loadAircraft();
   const fpAircraft = document.createElement('div');
   fpAircraft.className = 'fp-aircraft';
