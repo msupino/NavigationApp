@@ -41,7 +41,7 @@ async function boot(page, lang = 'en') {
         localStorage.setItem('navaid.sec.' + s, '1');
     } catch (e) {}
   });
-  await page.goto('/?lang=' + lang);
+  await page.goto('?lang=' + lang);
   await page.waitForFunction(() => typeof state !== 'undefined' &&
     typeof window.seedCommChangeNotes === 'function');
   await page.evaluate(() => loadNavWaypoints());
