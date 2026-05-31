@@ -95,7 +95,7 @@ window.S = {
   latitude: 'קו רוחב',
   longitude: 'קו אורך',
   gotoTitle: 'לחץ כדי לנווט לקואורדינטות',
-  gotoError: 'הזן קואורדינטות כמו 32°00\'17"N 34°43\'38"E',
+  gotoError: 'הקלד ספרות או הדבק קואורדינטה כמו 32°00\'17"N 34°43\'38"E',
   dialTitle: function(b) { return 'סיבוב מפה ' + b + '° — גרור לסיבוב, לחץ לצפון'; },
   wpnameRotTitle: function(a) { return 'סובב שמות ציוני דרך (כיום ' + a + '°)'; },
   expandMenu: 'פתח תפריט',
