@@ -790,7 +790,7 @@ html, body {
   max-height: 84vh;
   padding: 14px;
 }
-/* Bottom-right grip to resize the flight-plan window. */
+/* Four corner grips to resize the flight-plan window. */
 .resize-handle {
   position: absolute;
   width: 16px;
@@ -805,6 +805,12 @@ html, body {
 }
 .resize-handle.corner-se { bottom: 0; right: 0; cursor: nwse-resize; }
 .resize-handle.corner-se::after { bottom: 2px; right: 2px; border-right: 2px solid #888; border-bottom: 2px solid #888; }
+.resize-handle.corner-sw { bottom: 0; left: 0; cursor: nesw-resize; }
+.resize-handle.corner-sw::after { bottom: 2px; left: 2px; border-left: 2px solid #888; border-bottom: 2px solid #888; }
+.resize-handle.corner-ne { top: 0; right: 0; cursor: nesw-resize; }
+.resize-handle.corner-ne::after { top: 2px; right: 2px; border-right: 2px solid #888; border-top: 2px solid #888; }
+.resize-handle.corner-nw { top: 0; left: 0; cursor: nwse-resize; }
+.resize-handle.corner-nw::after { top: 2px; left: 2px; border-left: 2px solid #888; border-top: 2px solid #888; }
 .fp-aircraft {
   display: flex;
   flex-wrap: wrap;

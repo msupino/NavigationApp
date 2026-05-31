@@ -816,13 +816,14 @@ function showFlightPlan() {
     };
   })(box);
 
-  // Resizable from a bottom-right corner grip. Restores the last-used size
+  // Resizable from any of the four corner grips. Restores the last-used size
   // and persists it (navaid.fpSize) so the plan window stays the size the
   // pilot picked across opens. Listeners attached to `window` only live for
   // the duration of an active drag (removed on pointer-up), so there is
   // nothing to tear down in flightPlanCleanup.
   (function (el) {
     const KEY = 'navaid.fpSize';
+    const MIN_W = 360, MIN_H = 200;
     // The default CSS caps the box at 92vw / 84vh; an explicit size must be
     // free to exceed those, so drop the caps once the user takes control.
     function applySize(w, h) {
@@ -842,57 +843,77 @@ function showFlightPlan() {
       }
     } catch (e) { /* storage unavailable / malformed — keep CSS default size */ }
 
-    const grip = document.createElement('div');
-    grip.className = 'resize-handle corner-se';
-    el.appendChild(grip);
-
-    let rx = 0, ry = 0, rw = 0, rh = 0, resizing = false;
-    function start(cx, cy) {
-      const r = el.getBoundingClientRect();
-      rx = cx; ry = cy; rw = r.width; rh = r.height;
-      resizing = true;
+    // One corner grip. Corners that move the top/left edge (n/w) re-pin the
+    // box's left/top so the opposite edge stays put while dragging.
+    function makeGrip(corner) {
+      const grip = document.createElement('div');
+      grip.className = 'resize-handle corner-' + corner;
+      el.appendChild(grip);
+      const east = corner.indexOf('e') !== -1, west = corner.indexOf('w') !== -1;
+      const south = corner.indexOf('s') !== -1, north = corner.indexOf('n') !== -1;
+      let rx = 0, ry = 0, rw = 0, rh = 0, rl = 0, rt = 0, resizing = false;
+      function start(cx, cy) {
+        const r = el.getBoundingClientRect();
+        rx = cx; ry = cy; rw = r.width; rh = r.height; rl = r.left; rt = r.top;
+        resizing = true;
+      }
+      function move(cx, cy) {
+        if (!resizing) return;
+        const dx = cx - rx, dy = cy - ry;
+        let w = rw, h = rh, l = rl, t = rt;
+        if (east)  w = Math.max(MIN_W, rw + dx);
+        if (west)  { w = Math.max(MIN_W, rw - dx); l = rl + (rw - w); }
+        if (south) h = Math.max(MIN_H, rh + dy);
+        if (north) { h = Math.max(MIN_H, rh - dy); t = rt + (rh - h); }
+        l = Math.max(0, Math.min(window.innerWidth - w, l));
+        t = Math.max(0, Math.min(window.innerHeight - h, t));
+        applySize(w, h);
+        if (west || north) {
+          el.style.left = l + 'px';
+          el.style.top = t + 'px';
+          el.style.margin = '0';
+        }
+      }
+      function end() {
+        if (!resizing) return;
+        resizing = false;
+        const r = el.getBoundingClientRect();
+        try { localStorage.setItem(KEY, JSON.stringify({ w: r.width, h: r.height })); } catch (e) {}
+      }
+      grip.addEventListener('mousedown', e => {
+        e.preventDefault();
+        e.stopPropagation();               // don't start a title-bar drag
+        start(e.clientX, e.clientY);
+        const onMove = ev => move(ev.clientX, ev.clientY);
+        const onUp = () => { end(); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+      });
+      grip.addEventListener('touchstart', e => {
+        if (e.touches.length !== 1) return;
+        e.preventDefault();
+        e.stopPropagation();
+        start(e.touches[0].clientX, e.touches[0].clientY);
+        const onMove = ev => {
+          if (ev.touches.length !== 1) return;
+          ev.preventDefault();
+          move(ev.touches[0].clientX, ev.touches[0].clientY);
+        };
+        const onEnd = () => {
+          end();
+          window.removeEventListener('touchmove', onMove, { passive: false });
+          window.removeEventListener('touchend', onEnd);
+          window.removeEventListener('touchcancel', onEnd);
+        };
+        window.addEventListener('touchmove', onMove, { passive: false });
+        window.addEventListener('touchend', onEnd);
+        window.addEventListener('touchcancel', onEnd);
+      }, { passive: false });
     }
-    function move(cx, cy) {
-      if (!resizing) return;
-      const w = Math.max(360, Math.min(window.innerWidth, rw + (cx - rx)));
-      const h = Math.max(200, Math.min(window.innerHeight, rh + (cy - ry)));
-      applySize(w, h);
-    }
-    function end() {
-      if (!resizing) return;
-      resizing = false;
-      const r = el.getBoundingClientRect();
-      try { localStorage.setItem(KEY, JSON.stringify({ w: r.width, h: r.height })); } catch (e) {}
-    }
-    grip.addEventListener('mousedown', e => {
-      e.preventDefault();
-      e.stopPropagation();                 // don't start a title-bar drag
-      start(e.clientX, e.clientY);
-      const onMove = ev => move(ev.clientX, ev.clientY);
-      const onUp = () => { end(); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onUp);
-    });
-    grip.addEventListener('touchstart', e => {
-      if (e.touches.length !== 1) return;
-      e.preventDefault();
-      e.stopPropagation();
-      start(e.touches[0].clientX, e.touches[0].clientY);
-      const onMove = ev => {
-        if (ev.touches.length !== 1) return;
-        ev.preventDefault();
-        move(ev.touches[0].clientX, ev.touches[0].clientY);
-      };
-      const onEnd = () => {
-        end();
-        window.removeEventListener('touchmove', onMove, { passive: false });
-        window.removeEventListener('touchend', onEnd);
-        window.removeEventListener('touchcancel', onEnd);
-      };
-      window.addEventListener('touchmove', onMove, { passive: false });
-      window.addEventListener('touchend', onEnd);
-      window.addEventListener('touchcancel', onEnd);
-    }, { passive: false });
+    makeGrip('se');
+    makeGrip('sw');
+    makeGrip('ne');
+    makeGrip('nw');
   })(box);
 
   loadAircraft();

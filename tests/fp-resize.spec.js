@@ -61,6 +61,29 @@ test.describe('Flight-plan modal resize', () => {
     expect(stored.h).toBeGreaterThan(before.height + 60);
   });
 
+  test('the top-left grip grows the window and keeps the bottom-right edge put', async ({ page }) => {
+    await page.locator('#plan').click();
+    const modal = page.locator('.modal-back.flight-plan .modal.wide');
+    await expect(modal).toBeVisible();
+    const grip = modal.locator('.resize-handle.corner-nw');
+    await expect(grip).toBeVisible();
+
+    const before = await modal.boundingBox();
+    const gb = await grip.boundingBox();
+    // Drag the NW grip up-left by -100 / -80 → grows w/h, moves left/top edge.
+    await page.mouse.move(gb.x + gb.width / 2, gb.y + gb.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(gb.x + gb.width / 2 - 100, gb.y + gb.height / 2 - 80, { steps: 5 });
+    await page.mouse.up();
+
+    const after = await modal.boundingBox();
+    expect(after.width).toBeGreaterThan(before.width + 60);
+    expect(after.height).toBeGreaterThan(before.height + 40);
+    // Bottom-right corner stays roughly anchored.
+    expect(after.x + after.width).toBeCloseTo(before.x + before.width, -1);
+    expect(after.y + after.height).toBeCloseTo(before.y + before.height, -1);
+  });
+
   test('a persisted size is restored on reopen', async ({ page }) => {
     await page.evaluate(() => {
       localStorage.setItem('navaid.fpSize', JSON.stringify({ w: 760, h: 540 }));
