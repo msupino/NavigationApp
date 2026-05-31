@@ -139,14 +139,90 @@ coordCtrl.onAdd = function () {
 };
 coordCtrl.addTo(map);
 const coordBox = document.getElementById('coord-readout');
+// The readout doubles as a "go to coordinates" input (issue #497): it stays
+// visible showing the map centre, follows the mouse on hover, and turns into
+// an editable field on click. Make it interactive and keep clicks/scroll from
+// leaking through to the map underneath.
+coordBox.removeAttribute('aria-hidden');
+coordBox.title = S.gotoTitle;
+coordBox.classList.add('show', 'interactive');
+L.DomEvent.disableClickPropagation(coordBox);
+L.DomEvent.disableScrollPropagation(coordBox);
+
+let gotoEditing = false;
+function centerCoordText() {
+  const c = map.getCenter();
+  return fmtLatLng(c.lat, 'N', 'S') + '  ' + fmtLatLng(c.lng, 'E', 'W');
+}
 function showCoord(latlng) {
+  if (gotoEditing) return;
   coordBox.textContent = fmtLatLng(latlng.lat, 'N', 'S') + '  ' +
                          fmtLatLng(latlng.lng, 'E', 'W');
-  coordBox.classList.add('show');
 }
-function hideCoord() { coordBox.classList.remove('show'); }
+function showCenterCoord() { if (!gotoEditing) coordBox.textContent = centerCoordText(); }
+showCenterCoord();
 map.on('mousemove', e => showCoord(e.latlng));
-map.on('mouseout', hideCoord);
+map.on('mouseout', showCenterCoord);
+map.on('moveend', showCenterCoord);
+
+// --- temporary "look here" marker (not part of the route) ---------------
+let gotoMarker = null;
+function clearGotoMarker() {
+  if (gotoMarker) { map.removeLayer(gotoMarker); gotoMarker = null; }
+}
+function dropGotoMarker(lat, lng) {
+  clearGotoMarker();
+  gotoMarker = L.circleMarker([lat, lng], {
+    radius: 7, color: '#c0392b', weight: 2,
+    fillColor: '#e74c3c', fillOpacity: 0.85,
+    interactive: false, className: 'goto-marker',
+  }).addTo(map);
+}
+// A genuine map click (drop waypoint, pan, etc.) dismisses the temp marker.
+map.on('click', clearGotoMarker);
+window.clearGotoMarker = clearGotoMarker;
+window.dropGotoMarker = dropGotoMarker;
+window.hasGotoMarker = () => !!gotoMarker;
+
+// --- click-to-edit go-to input -----------------------------------------
+function exitGotoEdit() {
+  gotoEditing = false;
+  coordBox.classList.remove('editing', 'error');
+  showCenterCoord();
+}
+function commitGoto(value) {
+  const ll = parseLatLng(value);
+  if (!ll) { coordBox.classList.add('error'); return false; }
+  map.setView([ll.lat, ll.lng], Math.max(map.getZoom(), 11));
+  dropGotoMarker(ll.lat, ll.lng);
+  exitGotoEdit();
+  return true;
+}
+function enterGotoEdit() {
+  if (gotoEditing) return;
+  gotoEditing = true;
+  coordBox.classList.add('editing');
+  coordBox.classList.remove('error');
+  const c = map.getCenter();
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.id = 'goto-input';
+  input.value = fmtLatLngDMS(c.lat, 'N', 'S') + ' ' + fmtLatLngDMS(c.lng, 'E', 'W');
+  input.placeholder = S.gotoPlaceholder;
+  input.setAttribute('aria-label', S.gotoTitle);
+  input.title = S.gotoError;
+  coordBox.textContent = '';
+  coordBox.appendChild(input);
+  input.focus();
+  input.select();
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); commitGoto(input.value); }
+    else if (e.key === 'Escape') { e.preventDefault(); exitGotoEdit(); }
+    else { coordBox.classList.remove('error'); }
+  });
+  input.addEventListener('blur', () => { if (gotoEditing) exitGotoEdit(); });
+}
+coordBox.addEventListener('click', () => { if (!gotoEditing) enterGotoEdit(); });
 
 const BEARING_KEY = 'navaid.bearing';
 // `navaid.view` — issue #413: persist center+zoom (and bearing) across

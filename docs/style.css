@@ -233,6 +233,19 @@ html, body {
   display: none;
 }
 .coord-readout.show { display: block; }
+.coord-readout.interactive { pointer-events: auto; cursor: pointer; }
+.coord-readout.editing { cursor: text; }
+.coord-readout.error { border-color: #c0392b; background: rgba(231, 76, 60, 0.12); }
+#goto-input {
+  font: inherit;
+  color: inherit;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  width: 24ch;
+}
 #rotate-hdg {
   font: bold 11px/1 monospace;
   color: #231F20;
