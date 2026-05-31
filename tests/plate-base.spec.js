@@ -60,14 +60,14 @@ test.describe('plateBase()', () => {
 
     // Filename carries a space → encodes to %20, same class as the bug's
     // `LLHZ_Ground_Parking F.pdf`. The file exists under docs/byop/.
-    const FILE = 'LLHZ_Ground_Parking D.pdf';
+    const FILE = 'LLHZ_airport_Annex Alef.pdf';
 
     const respPromise = page.waitForResponse(
       r => r.url().includes('/byop/') && /\.pdf(\?|$)/i.test(r.url()));
-    await page.evaluate((f) => showPlateViewer(f, 'Parking D'), FILE);
+    await page.evaluate((f) => showPlateViewer(f, 'Annex Alef'), FILE);
 
     const resp = await respPromise;
-    expect(resp.url()).toContain('/byop/LLHZ_Ground_Parking%20D.pdf');
+    expect(resp.url()).toContain('/byop/LLHZ_airport_Annex%20Alef.pdf');
     expect(resp.status()).toBe(200);
 
     // The overlay must never show the failure string for a reachable plate.
