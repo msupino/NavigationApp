@@ -129,6 +129,8 @@ window.S = Object.assign({
   deleteNote: '🗑 Delete note (D)',
   latitude: 'Latitude',
   longitude: 'Longitude',
+  gotoTitle: 'Click to go to coordinates',
+  gotoError: 'Enter coordinates like 32°00\'17"N 34°43\'38"E',
   dialTitle: function(b) { return 'Map rotation ' + b + '° — drag to rotate, click for north up'; },
   wpnameRotTitle: function(a) { return 'Rotate waypoint names (now ' + a + '°)'; },
   expandMenu: 'Expand menu',
@@ -445,6 +447,58 @@ function fmtLatLng(v, pos, neg) {
   const d = Math.floor(v);
   const m = (v - d) * 60;
   return `${d}°${m.toFixed(1).padStart(4, '0')}'${hemi}`;
+}
+
+// Go-to sanity box (issue #497): a generous Israel-area bound. Parsed
+// coordinates outside this are rejected so a typo can't fling the map to
+// the other side of the planet.
+const GOTO_LAT_MIN = 28, GOTO_LAT_MAX = 34;
+const GOTO_LNG_MIN = 33, GOTO_LNG_MAX = 37;
+
+// Parse a free-text coordinate string into { lat, lng } or null (issue #497).
+// Tolerant of three notations, in priority order:
+//   1. DMS / DM with hemisphere letters:  32°00'17"N 34°43'38"E  /  32 00.3 N ...
+//   2. Signed decimal degrees:            32.005, 34.727  /  32.005 34.727
+// Minutes and seconds are optional; separators (° ' " : and spaces) are loose.
+function parseLatLng(str) {
+  if (typeof str !== 'string') return null;
+  const s = str.trim().toUpperCase();
+  if (!s) return null;
+
+  // --- hemisphere-tagged (DMS / DM) ---
+  // One coordinate = degrees, optional minutes, optional seconds, hemisphere.
+  const comp = /(-?\d+(?:\.\d+)?)\s*[°:\s]?\s*(?:(\d+(?:\.\d+)?)\s*['′M:\s]\s*)?(?:(\d+(?:\.\d+)?)\s*["″S]?\s*)?\s*([NSEW])/g;
+  const found = [];
+  let m;
+  while ((m = comp.exec(s)) !== null) {
+    const deg = parseFloat(m[1]);
+    const min = m[2] ? parseFloat(m[2]) : 0;
+    const sec = m[3] ? parseFloat(m[3]) : 0;
+    if (!Number.isFinite(deg)) continue;
+    let val = Math.abs(deg) + min / 60 + sec / 3600;
+    const hemi = m[4];
+    if (hemi === 'S' || hemi === 'W') val = -val;
+    found.push({ val, axis: (hemi === 'N' || hemi === 'S') ? 'lat' : 'lng' });
+  }
+  if (found.length >= 2) {
+    const lat = found.find(f => f.axis === 'lat');
+    const lng = found.find(f => f.axis === 'lng');
+    if (lat && lng) return finishLatLng(lat.val, lng.val);
+  }
+
+  // --- plain decimal degrees: "lat, lng" or "lat lng" ---
+  const nums = s.match(/-?\d+(?:\.\d+)?/g);
+  if (nums && nums.length >= 2) {
+    return finishLatLng(parseFloat(nums[0]), parseFloat(nums[1]));
+  }
+  return null;
+}
+
+function finishLatLng(lat, lng) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat < GOTO_LAT_MIN || lat > GOTO_LAT_MAX) return null;
+  if (lng < GOTO_LNG_MIN || lng > GOTO_LNG_MAX) return null;
+  return { lat, lng };
 }
 
 // --- Leaflet map -----------------------------------------------------
