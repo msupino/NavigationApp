@@ -569,12 +569,12 @@ function drawLegs() {
     drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, String(leg.inboundAltitude),
-      '#2f6fd0', yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
+      '#161412', yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
     if (showReturn) {
       drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, String(leg.outboundAltitude),
-        '#c0392b', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
+        '#161412', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
   }
@@ -697,7 +697,7 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc
   const at = lx => ({ x: cx + lx * cos, y: cy + lx * sin });
   const pAlt = at(-L / 2 + cell * 0.5);
   const pTime = at(-L / 2 + cell * 1.5);
-  const pHead = at(xb + Lt * 0.32);
+  const pHead = at(xb + Lt * 0.22);
   drawRotText(pAlt.x, pAlt.y, ta, alt, `bold ${fontPx}px sans-serif`, '#000');
   drawRotText(pTime.x, pTime.y, ta, time, `bold ${fontPx}px sans-serif`, '#000');
   drawRotText(pHead.x, pHead.y, ta, head, `bold ${fontPxH}px sans-serif`, '#000');
