@@ -208,16 +208,44 @@ function applyNavSnap(latlng, currentName) {
   // the absolute nearest known point. Useful when the chart has many close
   // reporting points and the user wants the published coordinate regardless
   // of click precision.
-  const px = window.forceSnap ? Infinity : 18;
+  // #106: force-snap lifts the radius. Airfield-first priority is fine inside
+  // the 18 px radius (both rarely sit there together), but at infinite radius
+  // it would make the 16-airfield set always win and leave the 173 nav-WPs
+  // unreachable. So in force-snap mode pick the globally nearest across both
+  // visible sets by screen distance instead of short-circuiting on airfields.
+  if (window.forceSnap) {
+    const t = map.latLngToContainerPoint([latlng.lat, latlng.lng]);
+    const cands = [];
+    if (showAirfields) {
+      const af = nearestAirfield(latlng, Infinity);
+      if (af) cands.push({ pt: af, name: af.name });
+    }
+    if (showNavWP) {
+      const nw = nearestNavWaypoint(latlng, Infinity);
+      if (nw) cands.push({ pt: nw, name: nw[S.navWpSearchField] || nw.name });
+    }
+    let best = null, bestD = Infinity;
+    for (const c of cands) {
+      const p = map.latLngToContainerPoint([c.pt.lat, c.pt.lng]);
+      const d = Math.hypot(p.x - t.x, p.y - t.y);
+      if (d < bestD) { bestD = d; best = c; }
+    }
+    if (best) {
+      const name = userTyped ? currentName : best.name;
+      return { lat: best.pt.lat, lng: best.pt.lng, name };
+    }
+    return { lat: latlng.lat, lng: latlng.lng,
+             name: autoSnapped ? '' : (currentName || '') };
+  }
   if (showAirfields) {
-    const af = nearestAirfield(latlng, px);
+    const af = nearestAirfield(latlng, 18);
     if (af) {
       const name = userTyped ? currentName : af.name;
       return { lat: af.lat, lng: af.lng, name };
     }
   }
   if (showNavWP) {
-    const snap = nearestNavWaypoint(latlng, px);
+    const snap = nearestNavWaypoint(latlng, 18);
     if (snap) {
       const name = userTyped ? currentName : (snap[S.navWpSearchField] || snap.name);
       return { lat: snap.lat, lng: snap.lng, name };
