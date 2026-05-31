@@ -2692,15 +2692,39 @@ function rebuildMagnifier() {
   // this the tiles ignored map bearing while the overlay honoured it, so
   // dots / lines drifted off the terrain whenever the map was rotated.
   const _pane = _readMagPaneMatrix();
-  const tileWrap = document.createElement('div');
-  tileWrap.style.cssText =
-    'position:absolute;left:0;top:0;width:0;height:0;' +
-    'transform-origin:0 0;transform:' + _pane.css;
-  content.appendChild(tileWrap);
 
   // clone tiles at current zoom (immediate fallback)
   const tilePane = document.querySelector('.leaflet-tile-pane');
   const tiles = tilePane ? Array.from(tilePane.querySelectorAll('img')) : [];
+
+  // The cloned tiles' `style.transform` is LEVEL-LOCAL: it positions each
+  // tile relative to its `.leaflet-tile-container` (the per-zoom "level"
+  // element), which itself can carry a scale+translate transform (e.g.
+  // `matrix(4,0,0,4,0,2)` at zoom past maxNativeZoom, or mid zoom-animation).
+  // When zoomed out the level matrix is identity so ignoring it was harmless,
+  // but on zoomed-in views the loupe placed tiles at their level-local pixels
+  // without the level scale — so the magnified tile image drifted away from
+  // the overlay (which is captured in container space). tileWrap therefore
+  // carries `paneMatrix · levelMatrix` to map level-local clone pixels (and
+  // the level-local hi-res tiles below) all the way into CONTAINER space.
+  let _levelMatrix = new DOMMatrixReadOnly();
+  for (const img of tiles) {
+    const lvl = img.parentElement;
+    if (!lvl) continue;
+    const lc = getComputedStyle(lvl).transform;
+    if (lc && lc !== 'none') {
+      try { _levelMatrix = new DOMMatrixReadOnly(lc); } catch (e) { /* identity */ }
+    }
+    break;
+  }
+  const _wrapM = _pane.m.multiply(_levelMatrix);
+
+  const tileWrap = document.createElement('div');
+  tileWrap.style.cssText =
+    'position:absolute;left:0;top:0;width:0;height:0;' +
+    'transform-origin:0 0;transform:' + _wrapM.toString();
+  content.appendChild(tileWrap);
+
   for (const img of tiles) {
     const c = img.cloneNode(true);
     c.style.visibility = 'visible';
@@ -2778,10 +2802,11 @@ function rebuildMagnifier() {
   // rationale.) `sub` below is the orthogonal hi-res tile zoom step.
   _magScale = Math.max(1, magnifierZoom);
 
-  // Inverse of the rotate-pane matrix maps a CONTAINER point back into the
-  // rotate-pane-LOCAL space the cloned tiles live in — needed to centre the
-  // hi-res fetch on the cursor regardless of bearing.
-  const _paneInv = _pane.m.inverse();
+  // Inverse of the combined pane·level matrix maps a CONTAINER point back
+  // into the LEVEL-LOCAL space the cloned tiles (and refLocalX/Y) live in —
+  // needed to centre the hi-res fetch on the cursor regardless of bearing or
+  // level scale.
+  const _paneInv = _wrapM.inverse();
 
   if (activeLayer && refZ !== null) {
     const maxNZ = activeLayer.options.maxNativeZoom ||
