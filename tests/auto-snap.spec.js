@@ -100,4 +100,43 @@ test.describe('Auto-snap (applyNavSnap)', () => {
     }, LLHZ);
     expect(r.name).toBe('HOME');
   });
+
+  // #106/#240: force-snap lifts the snap radius to infinity. The old code
+  // short-circuited on airfields, so at infinite radius the 16-airfield set
+  // always won and the 173 nav-waypoints became unreachable. A click on a
+  // nav-WP must snap to that nav-WP, not a distant airfield.
+  test('force-snap: click on a nav-waypoint snaps to it, not a distant airfield', async ({ page }) => {
+    await boot(page);
+    const out = await page.evaluate(() => {
+      window.showAirfields = true; window.showNavWP = true;
+      window.forceSnap = true;
+      const dist = (a, b) => Math.hypot(a.lat - b.lat, a.lng - b.lng);
+      // Pick the nav-WP farthest from any airfield: the pre-fix bug would snap
+      // it to the nearest airfield, which is unmistakably the wrong feature.
+      let target = null, best = -1;
+      for (const w of navWP) {
+        let dmin = Infinity;
+        for (const af of airfields) dmin = Math.min(dmin, dist(w, af));
+        if (dmin > best) { best = dmin; target = w; }
+      }
+      map.setView([target.lat, target.lng], 10);
+      const r = applyNavSnap({ lat: target.lat, lng: target.lng }, '');
+      return { r, expected: target[S.navWpSearchField] || target.name,
+               lat: target.lat, lng: target.lng };
+    });
+    expect(out.r.name).toBe(out.expected);
+    expect(out.r.lat).toBeCloseTo(out.lat, 5);
+    expect(out.r.lng).toBeCloseTo(out.lng, 5);
+  });
+
+  test('force-snap: click on an airfield still snaps to the airfield', async ({ page }) => {
+    await boot(page);
+    const name = await page.evaluate(hz => {
+      window.showAirfields = true; window.showNavWP = true;
+      window.forceSnap = true;
+      map.setView([hz.lat, hz.lng], 10);
+      return applyNavSnap({ lat: hz.lat, lng: hz.lng }, '').name;
+    }, LLHZ);
+    expect(name).toBe('LLHZ');
+  });
 });

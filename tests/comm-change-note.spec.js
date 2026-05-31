@@ -41,13 +41,14 @@ async function boot(page, lang = 'en') {
         localStorage.setItem('navaid.sec.' + s, '1');
     } catch (e) {}
   });
-  await page.goto('/?lang=' + lang);
+  await page.goto('?lang=' + lang);
   await page.waitForFunction(() => typeof state !== 'undefined' &&
     typeof window.seedCommChangeNotes === 'function');
   await page.evaluate(() => loadNavWaypoints());
   await page.waitForFunction(() => Array.isArray(window.navWP) && window.navWP.length > 0);
   await page.evaluate(() => loadCommChange());
   await page.waitForFunction(() => window.commChangeMap && window.commChangeMap.TYONA);
+  await page.evaluate(() => { window.showCommChange = true; });
   await page.evaluate(t => map.setView([t.lat, t.lng], 11), TYONA);
   await page.evaluate(() => { state.waypoints = []; state.legs = []; state.notes = []; });
 }
@@ -64,7 +65,7 @@ test.describe('comm-change auto-note (#487)', () => {
     }, TYONA);
     expect(notes).toHaveLength(1);
     expect(notes[0].cc).toBe('TYONA');
-    expect(notes[0].text).toBe('Comm change');
+    expect(notes[0].text).toBe('Freq change');
     expect(notes[0].shape).toBe('rect');
     expect(notes[0].color).toBeTruthy();
     // Placed just north of the dot, same longitude.
@@ -136,6 +137,6 @@ test.describe('comm-change auto-note (#487)', () => {
       seedCommChangeNotes();
       return state.notes[0].text;
     }, TYONA);
-    expect(text).toBe('מעבר תקשורת');
+    expect(text).toBe('שינוי תדר');
   });
 });

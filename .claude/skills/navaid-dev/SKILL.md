@@ -321,7 +321,7 @@ branch by mistake.
 - `navaid.showNavWP` — `'0'` / `'1'` for the nav-waypoints overlay.
 - `navaid.showAirfields` — `'0'` / `'1'` for the airfield overlay.
 - `navaid.showCommChange` — `'0'` / `'1'` for the comm-change ring overlay
-  (issue #399; default on). Toggled by the "Show Comm Changes" View checkbox.
+  (issue #399; default off). Toggled by the "Show Comm Changes" View checkbox.
 - `navaid.showWpNames` — `'0'` / `'1'` for waypoint-name display.
 - `navaid.wpNameAngle` — waypoint-name rotation (`0`/`90`/`180`/`270`).
 - `navaid.aircraft` — last-used aircraft profile JSON (fuel planner).
@@ -469,7 +469,7 @@ downloadable `route.json`.
     ring (radius 6 px, 1.8 px stroke, `#e74c3c`). Gated by the global
     `showCommChange` boolean + the View-section `#commchange-cb`
     checkbox; persisted at `localStorage['navaid.showCommChange']`
-    (default on). The ring sits on top of the white dot — it
+    (default off). The ring sits on top of the white dot — it
     augments, never replaces. A `window.__commChangeRingsDrawn` Set
     is rebuilt every frame for Playwright inspection.
   - **Inspector badge:** `interact.js` `showInspector()` appends a
