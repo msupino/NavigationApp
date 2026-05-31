@@ -139,4 +139,40 @@ test.describe('Auto-snap (applyNavSnap)', () => {
     }, LLHZ);
     expect(name).toBe('LLHZ');
   });
+
+  test('excludeLl suppresses snap to origin so WP can escape its own position', async ({ page }) => {
+    await boot(page);
+    const out = await page.evaluate(hz => {
+      window.showAirfields = true; window.showNavWP = true;
+      window.forceSnap = true;
+      map.setView([hz.lat, hz.lng], 10);
+      // Mouse is still at LLHZ but origin is excluded — must NOT snap to LLHZ.
+      const r = applyNavSnap({ lat: hz.lat, lng: hz.lng }, 'LLHZ',
+                              { lat: hz.lat, lng: hz.lng });
+      return { name: r.name, lat: r.lat, lng: r.lng };
+    }, LLHZ);
+    expect(out.name).not.toBe('LLHZ');
+  });
+
+  test('drag waypoint returning to snap-origin is deleted', async ({ page }) => {
+    await boot(page);
+    const wpCount = await page.evaluate(hz => {
+      window.showAirfields = true; window.showNavWP = true;
+      window.forceSnap = true;
+      map.setView([hz.lat, hz.lng], 12);
+      state.waypoints = [{ lat: hz.lat, lng: hz.lng, name: 'LLHZ' }];
+      syncLegs(); draw();
+      const orig = { lat: hz.lat, lng: hz.lng };
+      const wp = state.waypoints[0];
+      const SNAP_DEG = 0.0002;
+      if (Math.abs(wp.lat - orig.lat) < SNAP_DEG &&
+          Math.abs(wp.lng - orig.lng) < SNAP_DEG) {
+        state.waypoints.splice(0, 1);
+        state.selected = null;
+        syncLegs();
+      }
+      return state.waypoints.length;
+    }, LLHZ);
+    expect(wpCount).toBe(0);
+  });
 });
