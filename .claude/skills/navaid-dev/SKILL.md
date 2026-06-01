@@ -216,6 +216,18 @@ branch by mistake.
     to terrain during pan (not just on `moveend`).
 - **Drift lines** (10°), **minute markers** with even-minute numeric
   labels and a white halo.
+- **Hidden developer tuning panel:** open with `?tune=1`
+  (`?lang=en&tune=1`, `/pr/NNN/?lang=en&tune=1`, etc.). The registry
+  lives in `NavAid.tuningDefaults` / `NavAid.tuningGroups` (`core.js`),
+  values are read through `tune(key)` in drawing / hit-testing code, and
+  `createTuningPanel()` (`ui.js`) renders controls into `#tuning-panel`.
+  Preview values are page-local only: no `localStorage` /
+  `sessionStorage` writes, and reload restores source defaults. Any new
+  visual, layout, label-position, dash-pattern, font-size, marker-size,
+  page-frame, or hit-test constant should be added to `tuningDefaults`
+  and a group so it is available in Tune; keep only non-preview domain
+  invariants (for example Earth radius, storage keys, URLs) as hard-coded
+  constants. Cover panel behavior in `tests/tuning-panel.spec.js`.
 - **Transparency slider:** scales every label-background fill via
   `tintFill(hex, a) = rgba(r,g,b, a * yellowAlpha)`. Persisted at
   `navaid.yellowAlpha`.
