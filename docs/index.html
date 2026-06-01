@@ -74,7 +74,11 @@
       var h = document.documentElement;
       h.lang = lang; h.dir = lang === 'he' ? 'rtl' : 'ltr';
       if (lang === 'he') document.title = 'NavAid — מתכנן טיסה';
-      if (!p) history.replaceState(null, '', '?lang=' + lang);
+      if (!p) {
+        var params = new URLSearchParams(location.search);
+        params.set('lang', lang);
+        history.replaceState(null, '', '?' + params.toString());
+      }
       window.__navLang = lang;
     }());
   </script>
@@ -192,6 +196,12 @@
         <label class="navtoggle" data-i18n-title="tbShowAirfieldsTitle">
           <input type="checkbox" id="airfield-cb" checked> <span data-i18n="tbShowAirfields"></span>
         </label>
+        <label class="navtoggle" data-i18n-title="tbShowCumTimeTitle">
+          <input type="checkbox" id="cumtime-cb" checked> <span data-i18n="tbShowCumTime"></span>
+        </label>
+        <label class="navtoggle" data-i18n-title="tbShowDriftTitle">
+          <input type="checkbox" id="drift-cb" checked> <span data-i18n="tbShowDrift"></span>
+        </label>
         <label class="navtoggle" data-i18n-title="tbForceSnapTitle">
           <input type="checkbox" id="force-snap-cb"> <span data-i18n="tbForceSnap"></span>
         </label>
@@ -206,9 +216,6 @@
         </label>
         <label class="navtoggle" data-i18n-title="tbHighlightDiffTitle">
           <input type="checkbox" id="diff-cb"> <span data-i18n="tbHighlightDiff"></span>
-        </label>
-        <label class="navtoggle" data-i18n-title="tbShowDriftTitle">
-          <input type="checkbox" id="drift-cb" checked> <span data-i18n="tbShowDrift"></span>
         </label>
         <button id="tool-magnifier" type="button" data-i18n="tbMagnifier" data-i18n-title="tbMagnifierTitle" style="width:100%;margin-top:4px;padding:4px 8px;font-size:12px"></button>
       </div>
@@ -237,6 +244,16 @@
           <span data-i18n="tbLegArrowSize"></span>
           <input type="range" id="leg-arrow-size" value="1">
           <span class="slider-val" id="leg-arrow-size-val"></span>
+        </label>
+        <label class="navtoggle" data-i18n-title="tbLegLineWidthTitle">
+          <span data-i18n="tbLegLineWidth"></span>
+          <input type="range" id="leg-line-width" value="1">
+          <span class="slider-val" id="leg-line-width-val"></span>
+        </label>
+        <label class="navtoggle" data-i18n-title="tbDriftLineWidthTitle">
+          <span data-i18n="tbDriftLineWidth"></span>
+          <input type="range" id="drift-line-width" value="1">
+          <span class="slider-val" id="drift-line-width-val"></span>
         </label>
       </div>
     </div>
