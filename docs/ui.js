@@ -611,16 +611,28 @@ document.getElementById('reverse').onclick = () => {
   // A leg imported from a corrupted file / share URL may be missing a
   // label; fall back to the default so negating its offsets can't throw.
   const d = _defaultLegLabels();
+  const flipLabel = (label, fallback) => {
+    const src = label || fallback;
+    const next = { a: -(Number.isFinite(src.a) ? src.a : 0) };
+    if (Number.isFinite(src.p)) next.p = -src.p;
+    if (src._m !== undefined) next._m = src._m;
+    if (src._default !== undefined) next._default = src._default;
+    return next;
+  };
   state.legs = state.legs.reverse().map(l => {
     const inOld = l.outLabel || d.outLabel;
     const outOld = l.inLabel || d.inLabel;
+    const cumOld = l.cumLabelRet || d.cumLabelRet;
+    const cumRetOld = l.cumLabel || d.cumLabel;
     return {
       inboundAltitude: l.outboundAltitude,
       outboundAltitude: l.inboundAltitude,
       flightSpeed: showReturn ? l.outboundSpeed : l.flightSpeed,
       outboundSpeed: showReturn ? l.flightSpeed : l.flightSpeed,
-      inLabel:  { a: -inOld.a,  p: -inOld.p,  _m: inOld._m,  _default: inOld._default },
-      outLabel: { a: -outOld.a, p: -outOld.p, _m: outOld._m, _default: outOld._default },
+      inLabel:  flipLabel(inOld, d.inLabel),
+      outLabel: flipLabel(outOld, d.outLabel),
+      cumLabel: flipLabel(cumOld, d.cumLabel),
+      cumLabelRet: flipLabel(cumRetOld, d.cumLabelRet),
     };
   });
   state.selected = null;
@@ -662,14 +674,23 @@ document.getElementById('plan').onclick = () => {
 document.getElementById('charts').onclick = showChartsModal;
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
+const CUMTIME_KEY = 'navaid.showCumTime';
 try {
   const sr = localStorage.getItem(RETURN_KEY);
   if (sr !== null) window.showReturn =sr === '1';
   const sm = localStorage.getItem(MIDLEG_KEY);
   if (sm !== null) window.showMidLeg =sm === '1';
+  const sc = localStorage.getItem(CUMTIME_KEY);
+  if (sc !== null) window.showCumTime = sc === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('ret-cb').checked = showReturn;
 document.getElementById('mid-cb').checked = showMidLeg;
+document.getElementById('cumtime-cb').checked = showCumTime;
+document.getElementById('cumtime-cb').onchange = e => {
+  window.showCumTime = e.target.checked;
+  try { localStorage.setItem(CUMTIME_KEY, showCumTime ? '1' : '0'); } catch (err) { /* */ }
+  draw();
+};
 document.getElementById('ret-cb').onchange = e => {
   window.showReturn =e.target.checked;
   try { localStorage.setItem(RETURN_KEY, showReturn ? '1' : '0'); } catch (err) { /* */ }
@@ -901,6 +922,42 @@ LEGARROW_EL.oninput = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
+
+const LEGLINEWIDTH_KEY = 'navaid.legLineWidth';
+const LEGLINEWIDTH_MIN = 0.5, LEGLINEWIDTH_MAX = 6, LEGLINEWIDTH_STEP = 0.5;
+try {
+  const v = parseFloat(localStorage.getItem(LEGLINEWIDTH_KEY));
+  if (!isNaN(v)) window.legLineWidth = Math.max(LEGLINEWIDTH_MIN, Math.min(LEGLINEWIDTH_MAX, v));
+} catch (e) { /* storage unavailable */ }
+const LEGLINEWIDTH_EL = document.getElementById('leg-line-width');
+LEGLINEWIDTH_EL.min = String(LEGLINEWIDTH_MIN); LEGLINEWIDTH_EL.max = String(LEGLINEWIDTH_MAX); LEGLINEWIDTH_EL.step = String(LEGLINEWIDTH_STEP);
+LEGLINEWIDTH_EL.value = legLineWidth;
+updateSliderVal(LEGLINEWIDTH_EL, parseFloat(legLineWidth).toFixed(1));
+LEGLINEWIDTH_EL.oninput = e => {
+  window.legLineWidth = parseFloat(e.target.value);
+  updateSliderVal(e.target, parseFloat(e.target.value).toFixed(1));
+  try { localStorage.setItem(LEGLINEWIDTH_KEY, String(legLineWidth)); }
+  catch (err) { /* storage unavailable */ }
+  draw();
+};
+
+const DRIFTLINEWIDTH_KEY = 'navaid.driftLineWidth';
+const DRIFTLINEWIDTH_MIN = 0.5, DRIFTLINEWIDTH_MAX = 6, DRIFTLINEWIDTH_STEP = 0.5;
+try {
+  const v = parseFloat(localStorage.getItem(DRIFTLINEWIDTH_KEY));
+  if (!isNaN(v)) window.driftLineWidth = Math.max(DRIFTLINEWIDTH_MIN, Math.min(DRIFTLINEWIDTH_MAX, v));
+} catch (e) { /* storage unavailable */ }
+const DRIFTLINEWIDTH_EL = document.getElementById('drift-line-width');
+DRIFTLINEWIDTH_EL.min = String(DRIFTLINEWIDTH_MIN); DRIFTLINEWIDTH_EL.max = String(DRIFTLINEWIDTH_MAX); DRIFTLINEWIDTH_EL.step = String(DRIFTLINEWIDTH_STEP);
+DRIFTLINEWIDTH_EL.value = driftLineWidth;
+updateSliderVal(DRIFTLINEWIDTH_EL, parseFloat(driftLineWidth).toFixed(1));
+DRIFTLINEWIDTH_EL.oninput = e => {
+  window.driftLineWidth = parseFloat(e.target.value);
+  updateSliderVal(e.target, parseFloat(e.target.value).toFixed(1));
+  try { localStorage.setItem(DRIFTLINEWIDTH_KEY, String(driftLineWidth)); }
+  catch (err) { /* storage unavailable */ }
+  draw();
+};
 // magVar is hardcoded at -5 (5°E) in core.js; the input was removed.
 
 document.getElementById('page-a3').onclick = () => setPage('A3');
@@ -924,6 +981,8 @@ document.getElementById('tool-reset-all-markers').onclick = () => {
     const d = _defaultLegLabels();
     state.legs[i].inLabel = d.inLabel;
     state.legs[i].outLabel = d.outLabel;
+    state.legs[i].cumLabel = d.cumLabel;
+    state.legs[i].cumLabelRet = d.cumLabelRet;
   }
   draw();
 };
@@ -1070,6 +1129,166 @@ document.getElementById('insp-close').onclick = () => {
     });
   }
 })();
+
+// --- hidden tuning panel --------------------------------------------
+// Developer-only preview surface for visual constants. It is intentionally
+// page-local: no localStorage/sessionStorage writes, and reload restores the
+// source defaults. Open with ?tune=1.
+function tuningPanelEnabled() {
+  const params = new URLSearchParams(location.search);
+  return params.has('tune') || params.get('dev') === 'tune' || location.hash === '#tune';
+}
+
+function formatTuneValue(spec, value) {
+  const step = String(spec.step || 1);
+  const dot = step.indexOf('.');
+  const places = dot === -1 ? 0 : step.length - dot - 1;
+  return places ? value.toFixed(places) : String(Math.round(value));
+}
+
+function redrawAfterTune() {
+  draw();
+  if (state.selected) showInspector();
+}
+
+function createTuningPanel() {
+  if (!tuningPanelEnabled()) return;
+  if (!NavAid.tuningDefaults || !NavAid.tuningGroups) return;
+
+  const panel = document.createElement('aside');
+  panel.id = 'tuning-panel';
+  panel.setAttribute('aria-label', 'Tuning panel');
+  panel.addEventListener('click', e => e.stopPropagation());
+  panel.addEventListener('pointerdown', e => e.stopPropagation());
+  panel.addEventListener('keydown', e => e.stopPropagation());
+  panel.addEventListener('wheel', e => e.stopPropagation(), { passive: true });
+
+  const header = document.createElement('div');
+  header.className = 'tune-head';
+  const title = document.createElement('strong');
+  title.textContent = 'Tuning';
+  const subtitle = document.createElement('span');
+  subtitle.textContent = 'Preview only. Resets on reload.';
+  header.append(title, subtitle);
+  panel.appendChild(header);
+
+  const actions = document.createElement('div');
+  actions.className = 'tune-actions';
+  const resetAll = document.createElement('button');
+  resetAll.type = 'button';
+  resetAll.id = 'tune-reset-all';
+  resetAll.textContent = 'Reset all';
+  const copy = document.createElement('button');
+  copy.type = 'button';
+  copy.id = 'tune-copy-json';
+  copy.textContent = 'Copy JSON';
+  actions.append(resetAll, copy);
+  panel.appendChild(actions);
+
+  const controlSets = {};
+  const syncControl = key => {
+    const spec = NavAid.tuningDefaults[key];
+    const v = tune(key);
+    const text = formatTuneValue(spec, v);
+    const set = controlSets[key];
+    if (!set) return;
+    set.range.value = String(v);
+    set.number.value = text;
+  };
+  const applyValue = (key, raw) => {
+    const v = parseFloat(raw);
+    if (!Number.isFinite(v)) {
+      syncControl(key);
+      return;
+    }
+    setTune(key, v);
+    syncControl(key);
+    redrawAfterTune();
+  };
+
+  for (const group of NavAid.tuningGroups) {
+    const details = document.createElement('details');
+    details.className = 'tune-group';
+    details.open = group.name === 'Drift lines' || group.name === 'Route';
+    const summary = document.createElement('summary');
+    summary.textContent = group.name;
+    details.appendChild(summary);
+
+    for (const key of group.keys) {
+      const spec = NavAid.tuningDefaults[key];
+      if (!spec) continue;
+      const row = document.createElement('label');
+      row.className = 'tune-row';
+      row.htmlFor = 'tune-' + key + '-number';
+
+      const name = document.createElement('span');
+      name.className = 'tune-label';
+      name.textContent = spec.label || key;
+
+      const range = document.createElement('input');
+      range.type = 'range';
+      range.id = 'tune-' + key + '-range';
+      range.min = String(spec.min);
+      range.max = String(spec.max);
+      range.step = String(spec.step);
+
+      const number = document.createElement('input');
+      number.type = 'number';
+      number.id = 'tune-' + key + '-number';
+      number.min = String(spec.min);
+      number.max = String(spec.max);
+      number.step = String(spec.step);
+      number.inputMode = 'decimal';
+      number.setAttribute('aria-label', spec.label || key);
+
+      const reset = document.createElement('button');
+      reset.type = 'button';
+      reset.id = 'tune-' + key + '-reset';
+      reset.className = 'tune-reset';
+      reset.textContent = 'Reset';
+      reset.title = 'Reset ' + (spec.label || key);
+
+      controlSets[key] = { range, number };
+      syncControl(key);
+      range.addEventListener('input', () => applyValue(key, range.value));
+      number.addEventListener('input', () => applyValue(key, number.value));
+      reset.addEventListener('click', e => {
+        e.preventDefault();
+        resetTune(key);
+        syncControl(key);
+        redrawAfterTune();
+      });
+
+      row.append(name, range, number, reset);
+      details.appendChild(row);
+    }
+
+    panel.appendChild(details);
+  }
+
+  resetAll.addEventListener('click', () => {
+    resetTune();
+    for (const key of Object.keys(controlSets)) syncControl(key);
+    redrawAfterTune();
+  });
+  copy.addEventListener('click', async () => {
+    const current = {};
+    for (const key of Object.keys(NavAid.tuningDefaults)) current[key] = tune(key);
+    const text = JSON.stringify(current, null, 2);
+    try {
+      await navigator.clipboard.writeText(text);
+      copy.textContent = 'Copied';
+      setTimeout(() => { copy.textContent = 'Copy JSON'; }, 1200);
+    } catch (e) {
+      copy.textContent = 'Copy failed';
+      setTimeout(() => { copy.textContent = 'Copy JSON'; }, 1200);
+    }
+  });
+
+  document.body.appendChild(panel);
+  NavAid.tuningPanel = panel;
+}
+createTuningPanel();
 
 // --- boot ------------------------------------------------------------
 resizeOverlay();

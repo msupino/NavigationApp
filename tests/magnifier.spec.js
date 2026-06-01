@@ -10,9 +10,7 @@ const magnifierCalibTestMs = deployedPreview ? 120_000 : 60_000;
 const magnifierPaneTileMs = deployedPreview ? 45_000 : 18_000;
 
 test.describe('Magnifying glass', () => {
-  if (deployedPreview) {
-    test.describe.configure({ timeout: 120_000 });
-  }
+  test.describe.configure({ timeout: deployedPreview ? 120_000 : 60_000 });
 
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
@@ -534,6 +532,10 @@ test.describe('Magnifying glass', () => {
     const cy = mapBox.y + mapBox.height / 2;
     await page.mouse.move(cx, cy);
     await page.locator('#tool-magnifier').click();
+    // Bump to 2× so the slider-scaled refetch threshold under test is
+    // comfortably smaller than the cursor move below.
+    await page.locator('#mag-zoom').fill('2');
+    await page.locator('#mag-zoom').dispatchEvent('input');
     await page.waitForTimeout(800);
 
     const readBatch = () => page.evaluate(() => {
@@ -571,6 +573,9 @@ test.describe('Magnifying glass', () => {
     const cy = mapBox.y + mapBox.height / 2;
     await page.mouse.move(cx, cy);
     await page.locator('#tool-magnifier').click();
+    // Bump to 2× to exercise the slider-scaled hi-res refresh path.
+    await page.locator('#mag-zoom').fill('2');
+    await page.locator('#mag-zoom').dispatchEvent('input');
     await page.waitForTimeout(800);
 
     // Lock the loupe at the current cursor position.
@@ -684,6 +689,9 @@ test.describe('Magnifying glass', () => {
     await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
     tileReqs.clear();
     await page.locator('#tool-magnifier').click();
+    // Bump to 2× so the adaptive fetch runs at the scale this guard covers.
+    await page.locator('#mag-zoom').fill('2');
+    await page.locator('#mag-zoom').dispatchEvent('input');
     await page.waitForTimeout(2500);
 
     // count hi-res (≥ z=11) requests; we don't care about cloned-zoom hits.
@@ -693,13 +701,12 @@ test.describe('Magnifying glass', () => {
       if (m && parseInt(m[1], 10) >= 11) hires++;
     }
     expect(hires).toBeGreaterThan(0);
-    // Bound chosen post-calibration-fix: at slider=2 / z=8 / sub=16 a
-    // single rebuild fetches up to ~14×14=196 hi-res tiles, and the test
-    // observes a few rebuilds across the 2.5 s settle window with the
-    // cursor pinned (Leaflet adds tiles, layeradd fires more rebuilds…).
-    // 1000 catches the regression (subdivide-every-clone or world-pixel
-    // coords push past 10 000) without being flaky on the legitimate
-    // multi-rebuild case.
-    expect(hires).toBeLessThan(1000);
+    // The loupe now opens at 1× and is bumped to 2×, so the settle window
+    // captures both the open burst and the zoom-change rebuilds — more tile
+    // requests than a single fresh-at-2× open. The bound still catches the
+    // real regressions (subdivide-every-clone / world-pixel coords push the
+    // count into the tens of thousands) without flaking on the legitimate
+    // two-burst case.
+    expect(hires).toBeLessThan(6000);
   });
 });

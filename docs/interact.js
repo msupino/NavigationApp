@@ -20,7 +20,7 @@ function hitNote(px, py) {
 function hitWaypoint(px, py) {
   for (let i = state.waypoints.length - 1; i >= 0; i--) {
     const s = proj(state.waypoints[i]);
-    if (Math.hypot(s.x - px, s.y - py) <= waypointGeom(i).r + 6) return i;
+    if (Math.hypot(s.x - px, s.y - py) <= waypointGeom(i).r + tune('hitWaypointExtraPx')) return i;
   }
   return -1;
 }
@@ -28,7 +28,7 @@ function hitLeg(px, py) {
   for (let i = 0; i < state.legs.length; i++) {
     const a = proj(state.waypoints[i]);
     const b = proj(state.waypoints[i + 1]);
-    if (distToSegment(px, py, a, b) <= 8) return i;
+    if (distToSegment(px, py, a, b) <= tune('hitLegPx')) return i;
   }
   return -1;
 }
@@ -98,13 +98,98 @@ function hitLegLabel(px, py) {
   // #83: scale the hit radius with the same zoom + legArrowSize factor that
   // sizes the drawn marker (see drawLegArrow in draw.js), so the hit zone
   // tracks the visual size. Floor at 18 px keeps touch ergonomics.
-  const hit = Math.max(18, 34 * legZoomScale());
+  const hit = Math.max(tune('hitLegLabelMinPx'), tune('hitLegLabelScalePx') * legZoomScale());
   for (let i = 0; i < state.legs.length; i++) {
     for (const which of ['in', 'out']) {
       if (which === 'out' && !showReturn) continue;
       const c = legLabelCenter(i, which);
       if (c && Math.hypot(c.x - px, c.y - py) <= hit) return { i, which };
     }
+  }
+  return null;
+}
+
+// Cumulative-time kite: position relative to B endpoint with leg.cumLabel offsets.
+// Mirrors legLabelCenter but anchors to B (proj of waypoints[i+1]).
+function cumLabelCenter(i) {
+  if (!state.waypoints[i] || !state.waypoints[i + 1]) return null;
+  const a = proj(state.waypoints[i]);
+  const b = proj(state.waypoints[i + 1]);
+  let dx = b.x - a.x, dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  dx /= len; dy /= len;
+  const nx = -dy, ny = dx;
+  const leg = state.legs[i];
+  const o = (leg && leg.cumLabel) || { a: 0, _default: 1, _m: 1 };
+  const sc = legZoomScale();
+  // Use own driftPerp (not inLabel's perp) so the cum kite is independent
+  // of the navigation kite position when in default state.
+  const perp  = o._default ? legDefaultLabelPerp(len) : (o.p || 0) * sc;
+  const along = (o.a || 0) * sc;
+  return { x: b.x + dx * along + nx * perp,
+           y: b.y + dy * along + ny * perp };
+}
+function _materialiseDefaultCumLabel(legIdx) {
+  const leg = state.legs[legIdx];
+  if (!leg) return;
+  // Create default label if missing (legs loaded before this feature was added).
+  const o = leg.cumLabel || { a: 0, _default: 1, _m: 1 };
+  if (!o._default) return;  // already user-positioned
+  const a = proj(state.waypoints[legIdx]);
+  const b = proj(state.waypoints[legIdx + 1]);
+  if (!a || !b) return;
+  const legLen = Math.hypot(b.x - a.x, b.y - a.y);
+  const sc = legZoomScale() || 1;
+  const perpPx = legDefaultLabelPerp(legLen);
+  leg.cumLabel = { a: o.a || 0, p: perpPx / sc, _m: 1 };
+}
+function hitCumLabel(px, py) {
+  const hit = Math.max(tune('hitCumLabelMinPx'), tune('hitCumLabelScalePx') * legZoomScale());
+  for (let i = 0; i < state.legs.length; i++) {
+    const c = cumLabelCenter(i);
+    if (c && Math.hypot(c.x - px, c.y - py) <= hit) return { i };
+  }
+  return null;
+}
+
+// Return cumulative-time kite: anchored at A (proj of waypoints[i]) with its
+// own leg.cumLabelRet offsets. Same +dx/+nx frame as cumLabelCenter so the
+// drag math is shared; default sits on the opposite perpendicular side.
+function cumLabelRetCenter(i) {
+  if (!state.waypoints[i] || !state.waypoints[i + 1]) return null;
+  const a = proj(state.waypoints[i]);
+  const b = proj(state.waypoints[i + 1]);
+  let dx = b.x - a.x, dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  dx /= len; dy /= len;
+  const nx = -dy, ny = dx;
+  const leg = state.legs[i];
+  const o = (leg && leg.cumLabelRet) || { a: 0, _default: 1, _m: 1 };
+  const sc = legZoomScale();
+  const perp  = o._default ? -legDefaultLabelPerp(len) : (o.p || 0) * sc;
+  const along = (o.a || 0) * sc;
+  return { x: a.x + dx * along + nx * perp,
+           y: a.y + dy * along + ny * perp };
+}
+function _materialiseDefaultCumLabelRet(legIdx) {
+  const leg = state.legs[legIdx];
+  if (!leg) return;
+  const o = leg.cumLabelRet || { a: 0, _default: 1, _m: 1 };
+  if (!o._default) return;
+  const a = proj(state.waypoints[legIdx]);
+  const b = proj(state.waypoints[legIdx + 1]);
+  if (!a || !b) return;
+  const legLen = Math.hypot(b.x - a.x, b.y - a.y);
+  const sc = legZoomScale() || 1;
+  const perpPx = legDefaultLabelPerp(legLen);
+  leg.cumLabelRet = { a: o.a || 0, p: -perpPx / sc, _m: 1 };  // default is the -perp side
+}
+function hitCumLabelRet(px, py) {
+  if (!showReturn) return null;          // return kite only drawn with the return path
+  const hit = Math.max(tune('hitCumLabelMinPx'), tune('hitCumLabelScalePx') * legZoomScale());
+  for (let i = 0; i < state.legs.length; i++) {
+    const c = cumLabelRetCenter(i);
+    if (c && Math.hypot(c.x - px, c.y - py) <= hit) return { i };
   }
   return null;
 }
@@ -251,6 +336,8 @@ function showInspector() {
       const d = _defaultLegLabels();
       leg.inLabel = d.inLabel;
       leg.outLabel = d.outLabel;
+      leg.cumLabel = d.cumLabel;
+      leg.cumLabelRet = d.cumLabelRet;
       draw();
     };
     body.appendChild(reset);
@@ -510,6 +597,30 @@ map.on('mousedown', e => {
     showInspector(); draw();
     return;
   }
+  const cum = hitCumLabel(p.x, p.y);
+  if (cum) {
+    downHit = true;
+    _materialiseDefaultCumLabel(cum.i);
+    const f = legFrame(cum.i);
+    drag = { kind: 'cumlabel', i: cum.i, lx: p.x, ly: p.y,
+             dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
+    state.selected = { type: 'leg', index: cum.i };
+    map.dragging.disable();
+    showInspector(); draw();
+    return;
+  }
+  const cumRet = hitCumLabelRet(p.x, p.y);
+  if (cumRet) {
+    downHit = true;
+    _materialiseDefaultCumLabelRet(cumRet.i);
+    const f = legFrame(cumRet.i);
+    drag = { kind: 'cumlabelret', i: cumRet.i, lx: p.x, ly: p.y,
+             dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
+    state.selected = { type: 'leg', index: cumRet.i };
+    map.dragging.disable();
+    showInspector(); draw();
+    return;
+  }
   const lab = hitLegLabel(p.x, p.y);
   if (lab) {
     downHit = true;
@@ -560,6 +671,16 @@ map.on('mousemove', e => {
     const leg = state.legs[drag.i];
     const o = leg && (drag.which === 'in' ? leg.inLabel : leg.outLabel);
     if (!o) return;                    // malformed leg / label — issue #82
+    const isc = 1 / legZoomScale();
+    o.a += (ddx * drag.dx + ddy * drag.dy) * isc;
+    o.p += (ddx * drag.nx + ddy * drag.ny) * isc;
+    draw();
+  } else if (drag.kind === 'cumlabel' || drag.kind === 'cumlabelret') {
+    const ddx = p.x - drag.lx, ddy = p.y - drag.ly;
+    drag.lx = p.x; drag.ly = p.y;
+    const leg = state.legs[drag.i];
+    const o = leg && (drag.kind === 'cumlabelret' ? leg.cumLabelRet : leg.cumLabel);
+    if (!o) return;
     const isc = 1 / legZoomScale();
     o.a += (ddx * drag.dx + ddy * drag.dy) * isc;
     o.p += (ddx * drag.nx + ddy * drag.ny) * isc;
@@ -761,9 +882,11 @@ mapEl.addEventListener('touchstart', e => {
   // notes are drawn above waypoints (draw.js), so test notes first (issue #71).
   const note = hitNote(p.x, p.y);
   const wp = note < 0 ? hitWaypoint(p.x, p.y) : -1;
-  const lab = (wp < 0 && note < 0) ? hitLegLabel(p.x, p.y) : null;
-  const leg = (wp < 0 && note < 0 && !lab) ? hitLeg(p.x, p.y) : -1;
-  const onPage = (wp < 0 && note < 0 && !lab && leg < 0 && pageSize)
+  const cum = (wp < 0 && note < 0) ? hitCumLabel(p.x, p.y) : null;
+  const cumRet = (wp < 0 && note < 0 && !cum) ? hitCumLabelRet(p.x, p.y) : null;
+  const lab = (wp < 0 && note < 0 && !cum && !cumRet) ? hitLegLabel(p.x, p.y) : null;
+  const leg = (wp < 0 && note < 0 && !lab && !cum && !cumRet) ? hitLeg(p.x, p.y) : -1;
+  const onPage = (wp < 0 && note < 0 && !lab && !cum && !cumRet && leg < 0 && pageSize)
     ? hitPageFrameEdge(p.x, p.y) : false;
 
   if (note >= 0) {
@@ -779,6 +902,18 @@ mapEl.addEventListener('touchstart', e => {
     touchDrag = { kind: 'label', i: lab.i, which: lab.which,
                   lx: p.x, ly: p.y, dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
     state.selected = { type: 'leg', index: lab.i };
+  } else if (cum) {
+    _materialiseDefaultCumLabel(cum.i);
+    const f = legFrame(cum.i);
+    touchDrag = { kind: 'cumlabel', i: cum.i,
+                  lx: p.x, ly: p.y, dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
+    state.selected = { type: 'leg', index: cum.i };
+  } else if (cumRet) {
+    _materialiseDefaultCumLabelRet(cumRet.i);
+    const f = legFrame(cumRet.i);
+    touchDrag = { kind: 'cumlabelret', i: cumRet.i,
+                  lx: p.x, ly: p.y, dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
+    state.selected = { type: 'leg', index: cumRet.i };
   } else if (leg >= 0) {
     touchDrag = { kind: 'legtap' };
     state.selected = { type: 'leg', index: leg };
@@ -815,6 +950,16 @@ mapEl.addEventListener('touchmove', e => {
     const leg = state.legs[touchDrag.i];
     const o = leg && (touchDrag.which === 'in' ? leg.inLabel : leg.outLabel);
     if (!o) return;                    // malformed leg / label — issue #82
+    const isc = 1 / legZoomScale();
+    o.a += (ddx * touchDrag.dx + ddy * touchDrag.dy) * isc;
+    o.p += (ddx * touchDrag.nx + ddy * touchDrag.ny) * isc;
+    draw();
+  } else if (touchDrag.kind === 'cumlabel' || touchDrag.kind === 'cumlabelret') {
+    const ddx = p.x - touchDrag.lx, ddy = p.y - touchDrag.ly;
+    touchDrag.lx = p.x; touchDrag.ly = p.y;
+    const leg = state.legs[touchDrag.i];
+    const o = leg && (touchDrag.kind === 'cumlabelret' ? leg.cumLabelRet : leg.cumLabel);
+    if (!o) return;
     const isc = 1 / legZoomScale();
     o.a += (ddx * touchDrag.dx + ddy * touchDrag.dy) * isc;
     o.p += (ddx * touchDrag.nx + ddy * touchDrag.ny) * isc;
@@ -877,4 +1022,3 @@ function fitView() {
   // Clamp maxZoom so two close waypoints don't snap to a tight, useless view.
   map.fitBounds(b, { padding: [70, 70], maxZoom: 11 });
 }
-

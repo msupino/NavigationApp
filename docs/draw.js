@@ -7,23 +7,25 @@
 // and the drag-start materialiser (interact.js). The kite shape itself
 // is `46 * legZoomScale()` px wide (see drawLegArrow in this file —
 // `W = 46 * sc`), so its half-extent perpendicular to the leg axis is
-// `23 * legZoomScale()`. Drift lines fan out from each waypoint at 10°
+// `23 * legZoomScale()`. Drift lines fan out from each waypoint at the
+// configured drift angle (default 10°)
 // from the leg axis for half the leg length; at the default along-leg
-// position (midpoint, a=0) the cone reaches `(legLength / 2) * tan(10°)`
+// position (midpoint, a=0) the cone reaches
+// `(legLength / 2) * tan(drift angle)`
 // perpendicular. The kite's *centre* must therefore sit at least
 // (cone-extent + kite-half-width + visual margin) from the leg line so
 // the kite *body* clears both the leg line and the drift dashes at
 // every zoom and `legArrowSize`. The first cut of this fix only
 // pushed the centre `(len/2)*tan(10°) + 8` out, which left the kite
 // edge ON the leg line at low zoom or `legArrowSize >= 2`.
-const legDefaultDriftTan = Math.tan(10 * Math.PI / 180);
-const legDefaultDriftMarginPx = 8;
-const legDefaultKiteHalfWidthPx = 23;   // kite half-width when legZoomScale() === 1 (W = 46 * sc)
+function driftAngleRad() {
+  return tune('driftAngleDeg') * Math.PI / 180;
+}
 function legDefaultLabelPerp(legLenPx) {
   const sc = (typeof legZoomScale === 'function') ? legZoomScale() : 1;
-  return (Math.max(1, legLenPx) / 2) * legDefaultDriftTan +
-         legDefaultKiteHalfWidthPx * sc +
-         legDefaultDriftMarginPx;
+  return (Math.max(1, legLenPx) / 2) * Math.tan(driftAngleRad()) +
+         tune('defaultKiteHalfWidthPx') * sc +
+         tune('defaultLabelMarginPx');
 }
 
 // --- drawing ---------------------------------------------------------
@@ -349,8 +351,11 @@ function drawAirfields() {
   if (!showAirfields || !airfields || airfields.length === 0) return;
   const SNAP_DEG = 0.0002;               // ~22 m — matches nearestAirfield px threshold
   const showLabels = map.getZoom() >= 10;
-  const r = 7;                           // half-width of the triangle, screen px
-  octx.font = 'bold 11px sans-serif';
+  const r = tune('airfieldMarkerRadiusPx');
+  const wFactor = tune('airfieldMarkerWidthFactor');
+  const bFactor = tune('airfieldMarkerBaseFactor');
+  const labelOffset = tune('airfieldLabelOffsetPx');
+  octx.font = `bold ${tune('airfieldLabelFontPx')}px sans-serif`;
   octx.textAlign = 'left';
   octx.textBaseline = 'middle';
   for (const af of airfields) {
@@ -361,22 +366,22 @@ function drawAirfields() {
                                          // the larger PNG-export canvas
     octx.beginPath();
     octx.moveTo(s.x,          s.y - r);
-    octx.lineTo(s.x + r * 0.95, s.y + r * 0.65);
-    octx.lineTo(s.x - r * 0.95, s.y + r * 0.65);
+    octx.lineTo(s.x + r * wFactor, s.y + r * bFactor);
+    octx.lineTo(s.x - r * wFactor, s.y + r * bFactor);
     octx.closePath();
     octx.fillStyle = '#2f6fd0';          // saturated blue — distinct from white nav-WP dots
     octx.fill();
-    octx.lineWidth = 1.5;
+    octx.lineWidth = tune('airfieldStrokeWidthPx');
     octx.strokeStyle = '#0a1a2a';
     octx.stroke();
     if (showLabels) {
       const locale = af[S.airfieldLabelField] || af.en || af.name;
       const label = af.name + (locale && locale !== af.name ? ' / ' + locale : '');
-      octx.lineWidth = 2.5;
+      octx.lineWidth = tune('airfieldLabelHaloPx');
       octx.strokeStyle = 'rgba(255,255,255,0.85)';
-      octx.strokeText(label, s.x + r + 3, s.y);
+      octx.strokeText(label, s.x + r + labelOffset, s.y);
       octx.fillStyle = '#0a1a2a';
-      octx.fillText(label, s.x + r + 3, s.y);
+      octx.fillText(label, s.x + r + labelOffset, s.y);
     }
   }
   octx.lineWidth = 1;
@@ -390,8 +395,6 @@ function drawAirfields() {
 // all base layers (CVFR, OSM, Satellite). Sized just outside the 3.5 px
 // dot so it visually augments rather than replaces it.
 const COMM_CHANGE_RING_COLOR = '#e74c3c';
-const COMM_CHANGE_RING_RADIUS = 6;
-const COMM_CHANGE_RING_WIDTH = 1.8;
 
 function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
@@ -399,7 +402,9 @@ function drawNavWaypoints() {
   // regardless of whether the WP name was changed after snapping.
   const SNAP_DEG = 0.0002;               // ~22 m — matches nearestNavWaypoint px threshold
   const showLabels = map.getZoom() >= 10;
-  octx.font = 'bold 10px sans-serif';
+  const dotRadius = tune('navWaypointRadiusPx');
+  const labelOffset = tune('navWaypointLabelOffsetPx');
+  octx.font = `bold ${tune('navWaypointLabelFontPx')}px sans-serif`;
   octx.textAlign = 'left';
   octx.textBaseline = 'middle';
   for (const wp of navWP) {
@@ -410,18 +415,18 @@ function drawNavWaypoints() {
                                          // the larger PNG-export canvas
     octx.fillStyle = '#ffffff';
     octx.strokeStyle = '#161412';
-    octx.lineWidth = 1.5;
+    octx.lineWidth = tune('navWaypointStrokeWidthPx');
     octx.beginPath();
-    octx.arc(s.x, s.y, 3.5, 0, Math.PI * 2);
+    octx.arc(s.x, s.y, dotRadius, 0, Math.PI * 2);
     octx.fill();
     octx.stroke();
     if (showLabels) {
       const label = wp[S.navWpSearchField] || wp.name;
-      octx.lineWidth = 2.5;
+      octx.lineWidth = tune('navWaypointLabelHaloPx');
       octx.strokeStyle = 'rgba(255,255,255,0.85)';
-      octx.strokeText(label, s.x + 6, s.y);
+      octx.strokeText(label, s.x + labelOffset, s.y);
       octx.fillStyle = '#161412';
-      octx.fillText(label, s.x + 6, s.y);
+      octx.fillText(label, s.x + labelOffset, s.y);
     }
   }
   octx.lineWidth = 1;
@@ -443,8 +448,9 @@ function drawCommChangeRings() {
   // commChangeMap may be null briefly during boot — guard so a fast first
   // paint can't NPE before loadCommChange resolves.
   if (showCommChange && commChangeMap && navWP && navWP.length) {
+    const ringWidth = tune('commChangeRingWidthPx');
     octx.strokeStyle = COMM_CHANGE_RING_COLOR;
-    octx.lineWidth = COMM_CHANGE_RING_WIDTH;
+    octx.lineWidth = ringWidth;
     // #488: if a route waypoint sits on the point, drawWaypoints() paints a
     // filled disc over this ring later in the frame — and with "show waypoint
     // names" on, waypointGeom() enlarges that disc to fit its label. Grow the
@@ -454,14 +460,14 @@ function drawCommChangeRings() {
       if (!commChangeMap[wp.name] || !commChangeMap[wp.name].commChange) continue;
       const s = proj(wp);                // no viewport cull: also drawn into
                                          // the larger PNG-export canvas
-      let radius = COMM_CHANGE_RING_RADIUS;
+      let radius = tune('commChangeRingRadiusPx');
       const wi = state.waypoints.findIndex(
         r => Math.abs(r.lat - wp.lat) < SNAP_DEG && Math.abs(r.lng - wp.lng) < SNAP_DEG);
       if (wi !== -1) {
         const selected = state.selected &&
                          state.selected.type === 'wp' && state.selected.index === wi;
         const discR = (selected ? waypointGeom(wi).r + 2 : waypointGeom(wi).r) + 2;
-        if (discR + COMM_CHANGE_RING_WIDTH > radius) radius = discR + COMM_CHANGE_RING_WIDTH;
+        if (discR + ringWidth > radius) radius = discR + ringWidth;
       }
       octx.beginPath();
       octx.arc(s.x, s.y, radius, 0, Math.PI * 2);
@@ -484,7 +490,6 @@ function drawCommChangeRings() {
 // placement/snap actions (drop, drag-end, search route-build); it must not be
 // called from draw() / load / import / undo or it would resurrect notes the
 // user deleted. Returns true if any note was added so the caller can persist.
-const COMM_CHANGE_NOTE_LAT_OFFSET = 0.012;   // ~1.3 km north of the dot
 function seedCommChangeNotes() {
   if (!showCommChange) return false;
   if (!commChangeMap || typeof state === 'undefined' ||
@@ -497,7 +502,7 @@ function seedCommChangeNotes() {
     if (!cc || !cc.commChange) continue;
     if (state.notes.some(n => n && n.cc === nm)) continue;   // already seeded / kept
     state.notes.push({
-      lat: r5(wp.lat + COMM_CHANGE_NOTE_LAT_OFFSET),
+      lat: r5(wp.lat + tune('commChangeNoteLatOffset')),
       lng: r5(wp.lng),
       text: (typeof S !== 'undefined' && S.commChangeNoteText) || 'Freq change',
       color: NOTE_DEFAULT_COLOR,
@@ -512,6 +517,24 @@ window.seedCommChangeNotes = seedCommChangeNotes;
 
 function drawLegs() {
   const zoomScale = legZoomScale();
+
+  // Pre-compute cumulative outbound times (walk legs in reverse so each
+  // entry is "total return time from the last waypoint through leg i").
+  const cumOutArr = new Array(state.legs.length).fill('--');
+  if (showReturn) {
+    let cumOut = 0;
+    for (let j = state.legs.length - 1; j >= 0; j--) {
+      const Aj = state.waypoints[j], Bj = state.waypoints[j + 1];
+      if (!Aj || !Bj) continue;
+      const { dist: dj } = geo(Aj, Bj);
+      const dur = state.legs[j].outboundSpeed > 0 ? dj / state.legs[j].outboundSpeed : 0;
+      cumOut += dur;
+      cumOutArr[j] = cumOut > 0 ? toHMS(cumOut) : '--';
+    }
+  }
+
+  let cumInH = 0;  // running inbound cumulative time (hours)
+
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     if (!A || !B) continue;
@@ -521,9 +544,10 @@ function drawLegs() {
                      state.selected.type === 'leg' &&
                      state.selected.index === i;
 
+    const lw = (typeof legLineWidth === 'number' && legLineWidth > 0) ? legLineWidth : 1;
     octx.lineCap = 'round';
     octx.strokeStyle = selected ? '#ffcc33' : '#161412';
-    octx.lineWidth = selected ? 5 : 3.5;
+    octx.lineWidth = selected ? tune('routeSelectedLineWidthPx') * lw : tune('routeLineWidthPx') * lw;
     octx.beginPath();
     octx.moveTo(sa.x, sa.y);
     octx.lineTo(sb.x, sb.y);
@@ -558,10 +582,10 @@ function drawLegs() {
           outLabel: { a: 0, _default: 1, _m: 1 } };
     const inP = leg.inLabel || defaults.inLabel;
     const outP = leg.outLabel || defaults.outLabel;
-    // Issue #394: a default (unmodified) kite sits just outside the 10°
-    // drift cone instead of at a fixed per-zoom pixel offset. The cone's
-    // perpendicular extent at the leg midpoint is `(len/2) * tan(10°)`;
-    // adding an 8 px margin keeps the kite visibly clear of the dashed
+    // Issue #394: a default (unmodified) kite sits just outside the drift
+    // cone instead of at a fixed per-zoom pixel offset. The cone's
+    // perpendicular extent at the leg midpoint comes from the configured
+    // drift angle; a margin keeps the kite visibly clear of the dashed
     // drift lines at every zoom / leg length. User-dragged offsets
     // (no `_default` flag) keep the existing `p * legZoomScale()` path so
     // hand-positioned kites round-trip exactly as PR #393 designed.
@@ -570,35 +594,64 @@ function drawLegs() {
     const outPerp = outP._default ? -driftPerp : (outP.p || 0) * zoomScale;
     const inAlong  = (inP.a  || 0) * zoomScale;
     const outAlong = (outP.a || 0) * zoomScale;
+    cumInH += durH;
+    const cumInStr = cumInH > 0 ? toHMS(cumInH) : '--';
+
     drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, String(leg.inboundAltitude),
       '#161412', yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
+    // Cumulative inbound time: < [time], position driven by leg.cumLabel
+    // (default: at B waypoint, same perpendicular side as main kite).
+    const defCum = { a: 0, _default: 1, _m: 1 };
+    if (showCumTime) {
+      const cumP = leg.cumLabel || defCum;
+      const cumPerp  = cumP._default ? driftPerp : (cumP.p || 0) * zoomScale;
+      const cumAlong = (cumP.a || 0) * zoomScale;
+      drawCumTimeArrow(sb.x + dx * cumAlong + nx * cumPerp,
+        sb.y + dy * cumAlong + ny * cumPerp,
+        ang - Math.PI / 2, cumInStr, '#161412', yellowFill(0.80), zoomScale);
+    }
+
     if (showReturn) {
       drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, String(leg.outboundAltitude),
         '#161412', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
+      if (showCumTime) {
+        // Cumulative return time kite at A waypoint (return destination).
+        // Own offset (cumLabelRet), anchored at A with the same +dx/+nx frame
+        // as the inbound kite so its drag math is identical; default sits on
+        // the opposite perpendicular side (-driftPerp).
+        const cumRetP = leg.cumLabelRet || defCum;
+        const cumRetPerp  = cumRetP._default ? -driftPerp : (cumRetP.p || 0) * zoomScale;
+        const cumRetAlong = (cumRetP.a || 0) * zoomScale;
+        drawCumTimeArrow(sa.x + dx * cumRetAlong + nx * cumRetPerp,
+          sa.y + dy * cumRetAlong + ny * cumRetPerp,
+          ang + Math.PI / 2, cumOutArr[i], '#161412', 'rgba(255,204,214,0.80)', zoomScale);
+      }
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
   }
 }
 
-// 10-degree drift reference lines, one from each end, half the leg length.
+// Drift reference lines, one from each end, defaulting to half the leg length.
 function drawDriftLines(sa, sb) {
-  const a = 10 * Math.PI / 180;
+  const a = driftAngleRad();
   const c = Math.cos(a), s = Math.sin(a);
   const abx = sb.x - sa.x, aby = sb.y - sa.y;
   const bax = -abx, bay = -aby;
+  const dlw = (typeof driftLineWidth === 'number' && driftLineWidth > 0) ? driftLineWidth : 1;
+  const lenFactor = tune('driftLengthFactor');
   octx.save();
-  octx.setLineDash([5, 4]);
-  octx.lineWidth = 1.5;
+  octx.setLineDash([tune('driftDashOnPx'), tune('driftDashOffPx')]);
+  octx.lineWidth = tune('driftStrokeWidthPx') * dlw;
   octx.strokeStyle = 'rgba(20,20,20,0.6)';
   octx.beginPath();
   octx.moveTo(sa.x, sa.y);
-  octx.lineTo(sa.x + (abx * c - aby * s) * 0.5, sa.y + (abx * s + aby * c) * 0.5);
+  octx.lineTo(sa.x + (abx * c - aby * s) * lenFactor, sa.y + (abx * s + aby * c) * lenFactor);
   octx.moveTo(sb.x, sb.y);
-  octx.lineTo(sb.x + (bax * c - bay * s) * 0.5, sb.y + (bax * s + bay * c) * 0.5);
+  octx.lineTo(sb.x + (bax * c - bay * s) * lenFactor, sb.y + (bax * s + bay * c) * lenFactor);
   octx.stroke();
   octx.restore();
 }
@@ -610,7 +663,7 @@ function drawMinuteMarkers(sa, sb, durH) {
   const len = Math.hypot(dx, dy) || 1;
   dx /= len; dy /= len;
   const nx = -dy, ny = dx;
-  octx.font = 'bold 10px sans-serif';
+  octx.font = `bold ${tune('minuteMarkerFontPx')}px sans-serif`;
   octx.textAlign = 'center';
   octx.textBaseline = 'middle';
   const count = Math.floor(totalMin);
@@ -619,17 +672,18 @@ function drawMinuteMarkers(sa, sb, durH) {
     const px = sa.x + (sb.x - sa.x) * f;
     const py = sa.y + (sb.y - sa.y) * f;
     const even = m % 2 === 0;
-    const tick = even ? 9 : 4;          // long on even minutes, short on odd
+    const tick = even ? tune('minuteTickEvenPx') : tune('minuteTickOddPx');
     octx.strokeStyle = '#161412';
-    octx.lineWidth = even ? 2 : 1.5;
+    octx.lineWidth = even ? tune('minuteTickEvenWidthPx') : tune('minuteTickOddWidthPx');
     octx.beginPath();
     octx.moveTo(px - nx * tick, py - ny * tick);
     octx.lineTo(px + nx * tick, py + ny * tick);
     octx.stroke();
     if (even) {                         // minute number past the tick end
-      const tx = px + nx * (tick + 8), ty = py + ny * (tick + 8);
+      const tx = px + nx * (tick + tune('minuteLabelOffsetPx'));
+      const ty = py + ny * (tick + tune('minuteLabelOffsetPx'));
       octx.fillStyle = '#161412';
-      octx.font = 'bold 10px sans-serif';
+      octx.font = `bold ${tune('minuteMarkerFontPx')}px sans-serif`;
       octx.fillText(String(m), tx, ty);
     }
   }
@@ -654,12 +708,60 @@ function needsHalo(i, which) {
          cur.outboundSpeed    !== next.outboundSpeed;
 }
 
+// Cumulative-time marker: < [time]
+// A backward-pointing triangle (tip toward the leg origin) joined to a single
+// rectangle cell showing the running total time from departure to this leg.
+// Drawn on the opposite perpendicular side from the main inbound kite so both
+// markers are always visible without overlap.
+function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
+  sc = sc ?? 1;
+  const W = tune('cumKiteHeightPx') * sc;
+  const cell = tune('cumKiteCellWidthPx') * sc;
+  const Lt = tune('cumKiteTriangleLenPx') * sc;
+  const L = Lt + cell;
+  // Pentagon: tip on the LEFT (= backward along flightAng), rectangle on right.
+  octx.save();
+  octx.translate(cx, cy);
+  octx.rotate(flightAng);
+  const xb = L / 2 - Lt;                // rectangle/triangle junction
+  octx.beginPath();
+  octx.moveTo(-L / 2, -W / 2);          // top-left of rectangle
+  octx.lineTo(xb,     -W / 2);
+  octx.lineTo( L / 2,  0);              // → tip pointing toward B waypoint
+  octx.lineTo(xb,      W / 2);
+  octx.lineTo(-L / 2,  W / 2);          // bottom-left of rectangle
+  octx.closePath();
+  octx.fillStyle = fill;
+  octx.fill();
+  octx.lineWidth = tune('cumKiteBorderPx') * sc;
+  octx.strokeStyle = accent;
+  octx.stroke();
+  octx.restore();
+
+  const fontPx = Math.max(4, Math.round(tune('cumKiteTextPx') * sc));
+  const cos = Math.cos(flightAng), sin = Math.sin(flightAng);
+  const textLx = -L / 2 + cell / 2;     // centre of the rectangle cell (excludes the triangle)
+  const p = { x: cx + textLx * cos, y: cy + textLx * sin };
+  octx.save();
+  octx.translate(p.x, p.y);
+  // Text orientation matches the navigation kite (flightAng+π = ang+π/2 when kite is at ang-π/2).
+  octx.rotate(flightAng + Math.PI);
+  octx.font = `bold ${fontPx}px sans-serif`;
+  octx.textAlign = 'center';
+  octx.textBaseline = 'middle';
+  octx.fillStyle = '#000';
+  octx.fillText(cumTime, 0, 0);
+  octx.restore();
+}
+
 // Navigation leg marker: a two-cell rectangle (altitude, time) joined to a
 // triangle (heading) pointing in the flight direction. Text runs across the
 // marker and is locked to its orientation.
 function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc) {
   sc = sc ?? 1;
-  const W = 46 * sc, cell = 22 * sc, Lt = 26 * sc;
+  const W = tune('legKiteHeightPx') * sc;
+  const cell = tune('legKiteCellWidthPx') * sc;
+  const Lt = tune('legKiteTriangleLenPx') * sc;
   const Lr = cell * 2, L = Lr + Lt;
   const xb = -L / 2 + Lr;
 
@@ -675,17 +777,17 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc
   octx.closePath();
   if (halo) {                            // purple band around the marker
     octx.lineJoin = 'round';
-    octx.lineWidth = 7 * sc;
+    octx.lineWidth = tune('legKiteHaloPx') * sc;
     octx.strokeStyle = '#8e44ad';
     octx.stroke();
     octx.lineJoin = 'miter';
   }
   octx.fillStyle = fill;
   octx.fill();
-  octx.lineWidth = 2 * sc;
+  octx.lineWidth = tune('legKiteBorderPx') * sc;
   octx.strokeStyle = accent;
   octx.stroke();
-  octx.lineWidth = sc;
+  octx.lineWidth = tune('legKiteDividerPx') * sc;
   for (const dx of [-L / 2 + cell, xb]) {
     octx.beginPath();
     octx.moveTo(dx, -W / 2);
@@ -694,14 +796,14 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc
   }
   octx.restore();
 
-  const fontPx = Math.max(4, Math.round(13 * sc));
-  const fontPxH = Math.max(4, Math.round(14 * sc));
+  const fontPx = Math.max(4, Math.round(tune('legKiteTextPx') * sc));
+  const fontPxH = Math.max(4, Math.round(tune('legKiteHeadingTextPx') * sc));
   const ta = flightAng + Math.PI / 2;
   const cos = Math.cos(flightAng), sin = Math.sin(flightAng);
   const at = lx => ({ x: cx + lx * cos, y: cy + lx * sin });
   const pAlt = at(-L / 2 + cell * 0.5);
   const pTime = at(-L / 2 + cell * 1.5);
-  const pHead = at(xb + Lt * 0.22);
+  const pHead = at(xb + Lt * tune('legKiteHeadingAnchor'));
   drawRotText(pAlt.x, pAlt.y, ta, alt, `bold ${fontPx}px sans-serif`, '#000');
   drawRotText(pTime.x, pTime.y, ta, time, `bold ${fontPx}px sans-serif`, '#000');
   drawRotText(pHead.x, pHead.y, ta, head, `bold ${fontPxH}px sans-serif`, '#000');
@@ -721,21 +823,19 @@ function drawRotText(x, y, ang, text, font, color) {
 
 function drawDistanceBadge(cx, cy, dist) {
   octx.beginPath();
-  octx.arc(cx, cy, 15, 0, Math.PI * 2);
+  octx.arc(cx, cy, tune('distanceBadgeRadiusPx'), 0, Math.PI * 2);
   octx.fillStyle = yellowFill(0.90);
   octx.fill();
-  octx.lineWidth = 2.5;
+  octx.lineWidth = tune('distanceBadgeBorderPx');
   octx.strokeStyle = '#161412';
   octx.stroke();
   octx.fillStyle = '#161412';
-  octx.font = 'bold 11px sans-serif';
+  octx.font = `bold ${tune('distanceBadgeFontPx')}px sans-serif`;
   octx.textAlign = 'center';
   octx.textBaseline = 'middle';
   octx.fillText(dist.toFixed(1), cx, cy);
   octx.textAlign = 'left';
 }
-
-const WP_RADIUS = 13;
 
 // Label to draw inside a waypoint circle, plus the radius and font px
 // needed to fit it. Scaled by wpSize slider × zoom (geographic footprint
@@ -746,13 +846,13 @@ function waypointGeom(i) {
   const label = showWpNames
     ? (navName((wp.name || '').trim()) || (S.wpPrefix + (i + 1)))
     : '';
-  const zoomScale = Math.max(0.35, Math.pow(2, map.getZoom() - 12));
+  const zoomScale = Math.max(tune('waypointMinZoomScale'), Math.pow(2, map.getZoom() - 12));
   const scale = wpSize * zoomScale;
-  const fontPx = Math.max(4, Math.round(13 * scale));
+  const fontPx = Math.max(4, Math.round(tune('waypointFontPx') * scale));
   octx.font = `bold ${fontPx}px sans-serif`;
   const w = octx.measureText(label).width;
-  const minR = WP_RADIUS * scale;
-  return { label, fontPx, r: Math.max(minR, w / 2 + fontPx * 0.7) };
+  const minR = tune('waypointBaseRadiusPx') * scale;
+  return { label, fontPx, r: Math.max(minR, w / 2 + fontPx * tune('waypointTextPadFactor')) };
 }
 
 function drawWaypoints() {
@@ -763,13 +863,13 @@ function drawWaypoints() {
                      state.selected.type === 'wp' &&
                      state.selected.index === i;
     const { label, fontPx, r } = waypointGeom(i);
-    const radius = selected ? r + 2 : r;
+    const radius = selected ? r + tune('waypointSelectedRadiusAddPx') : r;
 
     octx.beginPath();
     octx.arc(s.x, s.y, radius, 0, Math.PI * 2);
     octx.fillStyle = selected ? '#ffcc33' : yellowFill(0.60);
     octx.fill();
-    octx.lineWidth = 3;
+    octx.lineWidth = tune('waypointStrokeWidthPx');
     octx.strokeStyle = '#161412';
     octx.stroke();
 
@@ -787,24 +887,23 @@ function drawWaypoints() {
 }
 
 // --- notes (free-text annotation boxes) ------------------------------
-const NOTE_FONT = 'bold 12px sans-serif';
-const NOTE_PAD_X = 8;
-const NOTE_PAD_Y = 6;
-const NOTE_LINE_H = 16;
-const NOTE_MIN_W = 56;                  // keep short / empty notes landscape
+function noteFont() {
+  return `bold ${tune('noteFontPx')}px sans-serif`;
+}
 
 function noteRect(i) {
   const n = state.notes[i];
   const s = proj(n);
   const lines = (n.text || '').split('\n');
-  octx.font = NOTE_FONT;
+  const lineH = tune('noteLineHeightPx');
+  octx.font = noteFont();
   let maxW = 1;
   for (const l of lines) {
     const w = octx.measureText(l || ' ').width;
     if (w > maxW) maxW = w;
   }
-  let w = Math.max(maxW + NOTE_PAD_X * 2, NOTE_MIN_W);
-  let h = Math.max(1, lines.length) * NOTE_LINE_H + NOTE_PAD_Y * 2;
+  let w = Math.max(maxW + tune('notePadXPx') * 2, tune('noteMinWidthPx'));
+  let h = Math.max(1, lines.length) * lineH + tune('notePadYPx') * 2;
   const oval = n.shape === 'oval';
   if (oval) { w *= Math.SQRT2; h *= Math.SQRT2; }   // ellipse must bound the text
   return { x: s.x - w / 2, y: s.y - h / 2, w, h, lines, oval };
@@ -819,7 +918,7 @@ function drawNotes() {
                      state.selected.index === i;
     const color = n.color || NOTE_DEFAULT_COLOR;
     octx.fillStyle = tintFill(color);
-    octx.lineWidth = selected ? 2.5 : 1.5;
+    octx.lineWidth = selected ? tune('noteSelectedStrokeWidthPx') : tune('noteStrokeWidthPx');
     octx.strokeStyle = selected ? '#ffcc33' : '#161412';
     if (r.oval) {
       octx.beginPath();
@@ -832,14 +931,15 @@ function drawNotes() {
       octx.strokeRect(r.x, r.y, r.w, r.h);
     }
 
-    octx.font = NOTE_FONT;
+    const lineH = tune('noteLineHeightPx');
+    octx.font = noteFont();
     octx.fillStyle = '#161412';
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
     const cx = r.x + r.w / 2;
-    const y0 = r.y + (r.h - r.lines.length * NOTE_LINE_H) / 2;
+    const y0 = r.y + (r.h - r.lines.length * lineH) / 2;
     for (let j = 0; j < r.lines.length; j++) {
-      octx.fillText(r.lines[j], cx, y0 + NOTE_LINE_H / 2 + j * NOTE_LINE_H);
+      octx.fillText(r.lines[j], cx, y0 + lineH / 2 + j * lineH);
     }
     octx.textAlign = 'left';
   }
@@ -889,7 +989,7 @@ function pageFrameRect() {
 function hitPageFrameEdge(px, py) {
   const r = pageFrameRect();
   if (!r) return false;
-  const t = 14;
+  const t = tune('pageFrameHitPx');
   const inOuter = px >= r.x - t && px <= r.x + r.w + t &&
                   py >= r.y - t && py <= r.y + r.h + t;
   const inInner = px >= r.x + t && px <= r.x + r.w - t &&
@@ -907,15 +1007,14 @@ function drawPageFrame() {
   const r = pageFrameRect();
   if (!r) return;
   octx.save();
-  octx.fillStyle = 'rgba(20,18,18,0.4)';
+  octx.fillStyle = `rgba(20,18,18,${tune('pageFrameScrimAlpha')})`;
   octx.beginPath();
   octx.rect(0, 0, vw(), vh());
   octx.rect(r.x, r.y, r.w, r.h);
   octx.fill('evenodd');
   octx.strokeStyle = '#ffcc33';
-  octx.lineWidth = 2;
-  octx.setLineDash([8, 5]);
+  octx.lineWidth = tune('pageFrameLineWidthPx');
+  octx.setLineDash([tune('pageFrameDashOnPx'), tune('pageFrameDashOffPx')]);
   octx.strokeRect(r.x, r.y, r.w, r.h);
   octx.restore();
 }
-
