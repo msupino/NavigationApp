@@ -308,6 +308,15 @@ html, body {
 }
 .coord-readout.show { display: block; }
 .coord-readout.interactive { pointer-events: auto; cursor: pointer; }
+/* Float the readout to the LEFT of the bottom-right zoom +/- + rotate-dial
+   column (~44px wide) instead of stacking under it (#526). The leaflet
+   corner div is the positioning context. */
+.leaflet-bottom.leaflet-right .coord-readout {
+  position: absolute;
+  right: 52px;
+  bottom: 26px;            /* clears the Leaflet attribution row */
+  margin: 0;
+}
 .coord-readout.editing { cursor: text; }
 .coord-readout.error { border-color: #c0392b; background: rgba(231, 76, 60, 0.12); }
 .coord-readout.editing .goto-num {

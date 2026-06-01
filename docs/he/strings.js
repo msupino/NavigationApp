@@ -156,7 +156,7 @@ window.S = {
   legendTitle: 'מקרא',
   legendAirfield: 'שדה תעופה',
   legendWaypoint: 'נקודת דיווח',
-  legendAtcChange: 'שינוי תדר ATC',
+  legendAtcChange: 'שינוי תדר',
   commChangeBadge: '📡 שינוי תדר',
   commChangeNoteText: 'שינוי תדר',
   commChangeCallSign: 'נקודת דיווח',

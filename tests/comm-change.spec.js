@@ -425,6 +425,28 @@ test.describe('comm-change rendering (fixture-backed)', () => {
     expect(freqText).toMatch(/Pluto West/);
   });
 
+  test('inspector badge resolves a Hebrew-labelled waypoint to its comm-change point', async ({ page }) => {
+    // Regression: in Hebrew locale snapped waypoints store the `he` label as
+    // wp.name, but commChangeMap is keyed by canonical English. The badge
+    // lookup must canonicalise first, or it silently misses in Hebrew.
+    await installCommChangeFixture(page);
+    await boot(page);
+    const shown = await page.evaluate(t => {
+      const nav = window.navWP.find(w => w.name === t.name);
+      if (!nav || !nav.he) return { skip: true };
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: nav.he }];  // Hebrew label
+      state.legs = [];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+      draw();
+      const row = document.querySelector('#inspector .commchange-row');
+      return { skip: false, visible: !!row, he: nav.he };
+    }, TYONA);
+    if (shown.skip) { test.skip(true, 'TYONA has no he label in dataset'); return; }
+    expect(shown.visible).toBe(true);
+  });
+
   test('fixture entries with from/to still populate commChangeMap', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
