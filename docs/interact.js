@@ -481,7 +481,13 @@ function showInspector() {
     // auto-snapped nav-WP waypoints and routes built via the search
     // overlay, regardless of locale (the badge text itself is i18n'd).
     if (commChangeMap && wp.name) {
-      const cc = commChangeMap[wp.name.trim()];
+      // Resolve to the canonical ICAO key first: in Hebrew locale snapped
+      // waypoints store the he label as wp.name, and commChangeMap is keyed
+      // by canonical English — a raw lookup would miss the badge in Hebrew
+      // even though the on-map callout (which canonicalises) shows.
+      const ccKey = typeof canonicalNavWaypointName === 'function'
+        ? canonicalNavWaypointName(wp.name) : wp.name.trim();
+      const cc = commChangeMap[ccKey];
       if (cc && cc.commChange) {
         const row = document.createElement('div');
         row.className = 'row col commchange-row';
