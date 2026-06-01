@@ -1,7 +1,7 @@
 # Known Frequency Points
 
-This file mirrors the currently mapped `points[].callSigns` entries in
-`docs/comm-change.json`.
+This file mirrors `points[]` in `docs/comm-change.json`. Rows marked `TBD`
+are comm-change points that do not have `points[].callSigns` assigned yet.
 
 | Waypoint | Call signs | Frequencies |
 | --- | --- | --- |
@@ -25,3 +25,29 @@ This file mirrors the currently mapped `points[].callSigns` entries in
 | NTAIM | בן גוריון (`BEN_GURION`), פלמחים (`PALMACHIM`), תל-נוף (`TEL_NOF`) | 118.3 / 132.1; 135.55 / 118.25; 129.05 |
 | NSHRM | בן גוריון (`BEN_GURION`) | 118.3 / 132.1 |
 | AYLON | בן גוריון (`BEN_GURION`), תל-נוף (`TEL_NOF`) | 118.3 / 132.1; 129.05 |
+| SORES | TBD | TBD |
+| ZUKIM | TBD | TBD |
+| ZASHD | TBD | TBD |
+| NMASD | TBD | TBD |
+| ZDAFA | TBD | TBD |
+| HODYA | TBD | TBD |
+| ZURIM | TBD | TBD |
+| NOAAM | TBD | TBD |
+| SDROT | TBD | TBD |
+| SOVAL | TBD | TBD |
+| ZMGEN | TBD | TBD |
+| SIGAL | TBD | TBD |
+| NCITY | TBD | TBD |
+| SOKET | TBD | TBD |
+| ARRAD | TBD | TBD |
+| HOVAV | TBD | TBD |
+| KTORA | TBD | TBD |
+| SHRUT | TBD | TBD |
+| SAMAR | TBD | TBD |
+| BEREC | TBD | TBD |
+| SIZFN | TBD | TBD |
+| RUHOT | TBD | TBD |
+| NIZAN | TBD | TBD |
+| OVDAT | TBD | TBD |
+| BOKER | TBD | TBD |
+| DIMON | TBD | TBD |

@@ -23,15 +23,15 @@
 // this frame) so the tests can assert visibility without snapshotting overlay
 // canvas pixels — see draw.js drawNavWaypoints.
 const { test, expect } = require('./_setup');
+const fs = require('fs');
 
-// TYONA reporting point — coords lifted from docs/nav-waypoints.json. Used
-// by the fixture-backed group as the "verified" stand-in.
+// TYONA reporting point — coords lifted from docs/nav-waypoints.json.
 const TYONA = { lat: 32.0047, lng: 34.7272, name: 'TYONA' };
 
 // Synthetic fixture matching docs/comm-change.json's schema. Three entries
 // cover every branch the renderer + inspector care about:
-//   * TYONA  — verified=true with from/to (full badge incl. freq row)
-//   * SORES  — verified=false with from/to (inferred path still draws)
+//   * TYONA  — from/to present (full badge incl. freq row)
+//   * SORES  — from/to present (alternate entry still draws)
 //   * BAZRA  — commChange:true with note but NO from/to (freq-row omitted)
 const FIXTURE = {
   version: 1,
@@ -44,7 +44,6 @@ const FIXTURE = {
       from: 'Tel-Aviv Control 121.40 / 124.30',
       to: 'Pluto West 118.40',
       note: 'test fixture entry',
-      verified: true,
       source: 'test fixture',
     },
     {
@@ -53,14 +52,12 @@ const FIXTURE = {
       from: 'Pluto West 118.40',
       to: 'Hagav North 128.35',
       note: 'test fixture entry (inferred)',
-      verified: false,
       source: 'test fixture',
     },
     {
       name: 'BAZRA',
       commChange: true,
       note: 'test fixture entry — frequencies intentionally omitted',
-      verified: false,
       source: 'test fixture',
     },
   ],
@@ -120,9 +117,11 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     const keys = Object.keys(map);
     expect(keys.length).toBeGreaterThan(0);
     // Every shipped entry is keyed by a 5-letter ICAO name and flagged commChange.
+    const allowedPointKeys = ['callSigns', 'commChange', 'from', 'name', 'note', 'source', 'to'];
     for (const k of keys) {
       expect(k).toMatch(/^[A-Z]{5}$/);
       expect(map[k].commChange).toBe(true);
+      expect(Object.keys(map[k]).sort().every(key => allowedPointKeys.includes(key))).toBe(true);
     }
     expect(map.TYONA).toBeTruthy();
     expect(map.TYONA.callSigns).toContain('PLUTO_WEST');
@@ -172,6 +171,14 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(catalog.RAMAT_DAVID.primary).toBe('130.50');
     expect(catalog.HAGAV_NORTH.primary).toBe('128.35');
     expect(catalog.HAGAV_NORTH.secondary).toBe('129.25');
+  });
+
+  test('known-freq-points.md lists every comm-change point', async ({ page }) => {
+    await boot(page);
+    const keys = await page.evaluate(() => Object.keys(window.commChangeMap).sort());
+    const md = fs.readFileSync('known-freq-points.md', 'utf8');
+    const missing = keys.filter(k => !md.includes(`| ${k} |`));
+    expect(missing).toEqual([]);
   });
 
   test('populated dataset draws comm-change rings for in-view points', async ({ page }) => {
@@ -298,13 +305,13 @@ test.describe('comm-change rendering (fixture-backed)', () => {
     expect(freqText).toMatch(/Pluto West/);
   });
 
-  test('inferred (verified=false) fixture entries still populate commChangeMap', async ({ page }) => {
+  test('fixture entries with from/to still populate commChangeMap', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
     const sores = await page.evaluate(() => window.commChangeMap.SORES);
     expect(sores).toBeTruthy();
     expect(sores.commChange).toBe(true);
-    expect(sores.verified).toBe(false);
+    expect(sores.to).toBe('Hagav North 128.35');
   });
 
   test('fixture entry without from/to renders badge + note, omits freq row', async ({ page }) => {

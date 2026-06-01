@@ -344,9 +344,9 @@ function validateNavWaypoints(d) {
   return errs.length ? errs.join('; ') : null;
 }
 // Strict schema for docs/comm-change.json — { version, source?,
-// callSigns?: { ID:{ label?, he?, unit?, primary?, secondary?, atis?, phone?,
-// runway?, source? } }, points:[{ name, commChange, callSigns?, from?, to?,
-// note?, verified?, source? }] }. Only `points[].name` and
+// callSigns?: { ID:{ label?, he?, unit?, primary?, secondary?, atis?,
+// source? } }, points:[{ name, commChange, callSigns?, from?, to?,
+// note?, source? }] }. Only `points[].name` and
 // `points[].commChange` are required for the renderer; everything else is
 // metadata / inspector content. Unknown keys at any level are tolerated
 // (forward-compat). Issue #399.
@@ -366,7 +366,7 @@ function validateCommChange(d) {
           continue;
         }
         for (const k of ['label', 'he', 'unit', 'primary', 'secondary', 'atis',
-                         'phone', 'runway', 'source']) {
+                         'source']) {
           if (k in cs && typeof cs[k] !== 'string') {
             errs.push(p + '.' + k + ': expected string, got ' + _vKind(cs[k]));
           }
@@ -401,9 +401,6 @@ function validateCommChange(d) {
       if (k in pt && typeof pt[k] !== 'string') {
         errs.push(p + '.' + k + ': expected string, got ' + _vKind(pt[k]));
       }
-    }
-    if ('verified' in pt && typeof pt.verified !== 'boolean') {
-      errs.push(p + '.verified: expected boolean, got ' + _vKind(pt.verified));
     }
   }
   return errs.length ? errs.join('; ') : null;

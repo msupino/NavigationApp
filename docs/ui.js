@@ -1372,7 +1372,11 @@ try {
   if (saved) {
     sessionStorage.removeItem('navaid.selected');
     const sel = JSON.parse(saved);
-    if (sel && sel.type === 'wp' && sel.index >= 0 && sel.index < state.waypoints.length) {
+    const valid = sel && sel.index >= 0 &&
+      ((sel.type === 'wp' && sel.index < state.waypoints.length) ||
+       (sel.type === 'leg' && sel.index < state.legs.length) ||
+       (sel.type === 'note' && sel.index < state.notes.length));
+    if (valid) {
       state.selected = sel;
     }
   }

@@ -26,8 +26,8 @@ const FIXTURE = {
     HAGAV: { label: 'Hagav', he: 'חגב', primary: '132.70', secondary: '133.45' },
   },
   points: [
-    { name: 'TYONA', commChange: true, callSigns: ['PLUTO', 'HAGAV'], to: 'Pluto 118.40', verified: false },
-    { name: 'SORES', commChange: true, verified: false },
+    { name: 'TYONA', commChange: true, callSigns: ['PLUTO', 'HAGAV'], to: 'Pluto 118.40' },
+    { name: 'SORES', commChange: true },
   ],
 };
 
@@ -498,6 +498,36 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(Math.abs(after.note.lng - before.note.lng)).toBeGreaterThan(0.005);
   });
 
+  test('deleting a waypoint also deletes its frequency-change callout', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    const out = await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      state.notes = [{
+        lat: 31.9,
+        lng: 34.8,
+        text: 'Manual note',
+        color: '#fff6aa',
+        shape: 'rect',
+      }];
+      syncLegs();
+      seedCommChangeNotes();
+      const before = state.notes.map(n => ({ text: n.text, cc: n.cc || '' }));
+      deleteWaypoint(0);
+      return {
+        before,
+        waypoints: state.waypoints.length,
+        notes: state.notes.map(n => ({ text: n.text, cc: n.cc || '' })),
+      };
+    }, TYONA);
+    expect(out.before).toEqual([
+      { text: 'Manual note', cc: '' },
+      { text: 'Freq change', cc: 'TYONA' },
+    ]);
+    expect(out.waypoints).toBe(0);
+    expect(out.notes).toEqual([{ text: 'Manual note', cc: '' }]);
+  });
+
   test('comm-change note inspector edits name and frequency', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
@@ -534,9 +564,11 @@ test.describe('comm-change auto-note (#487)', () => {
     }, TYONA);
     const sel = page.locator('#insp-body select').first();
     const labels = page.locator('#insp-body .row label');
+    const values = page.locator('#insp-body .row .val');
     await expect(labels.nth(0)).toHaveText('Waypoint');
     await expect(labels.nth(1)).toHaveText('Call sign');
     await expect(labels.nth(2)).toHaveText('Frequency');
+    await expect(values.nth(0)).toHaveText('TYONA');
     await expect(sel).toHaveValue('PLUTO');
     await sel.selectOption('HAGAV');
     const fields = page.locator('#insp-body input[type="text"]');
@@ -565,9 +597,11 @@ test.describe('comm-change auto-note (#487)', () => {
     }, TYONA);
     const fields = page.locator('#insp-body input[type="text"]');
     const labels = page.locator('#insp-body .row label');
+    const values = page.locator('#insp-body .row .val');
     await expect(labels.nth(0)).toHaveText('נקודת דיווח');
     await expect(labels.nth(1)).toHaveText('אות קריאה');
     await expect(labels.nth(2)).toHaveText('תדר');
+    await expect(values.nth(0)).toHaveText('תל יונה');
     await expect(fields.nth(0)).toHaveValue('פלוטו');
     await expect(fields.nth(1)).toHaveValue('118.40');
     const sel = page.locator('#insp-body select').first();

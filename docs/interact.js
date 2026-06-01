@@ -243,9 +243,17 @@ function propagateAlt(i, key, newVal, oldVal) {
 // Remove waypoint k and the leg beside it, so the remaining legs keep
 // their altitudes / speeds aligned with the route geometry.
 function deleteWaypoint(k) {
+  const wp = state.waypoints[k];
+  const ccName = wp && typeof canonicalNavWaypointName === 'function'
+    ? canonicalNavWaypointName(wp.name) : '';
   state.waypoints.splice(k, 1);
   if (state.legs.length) {
     state.legs.splice(Math.min(k, state.legs.length - 1), 1);
+  }
+  if (ccName && Array.isArray(state.notes) &&
+      !state.waypoints.some(w => canonicalNavWaypointName(w && w.name) === ccName)) {
+    state.notes = state.notes.filter(n =>
+      !(n && n.cc && canonicalNavWaypointName(n.cc) === ccName));
   }
   syncLegs();
 }
@@ -387,7 +395,20 @@ function showInspector() {
       const opts = typeof commCallSignOptions === 'function'
         ? commCallSignOptions(note.cc) : [];
       let callSignSelect = null;
+      let callSignInput = null;
       let freqInput = null;
+      const target = typeof commCalloutTarget === 'function'
+        ? commCalloutTarget(note) : null;
+      const wpName = (target && target.name) || note.cc || '';
+      body.appendChild(textRow(S.commChangeCallSign || 'Waypoint',
+        typeof navName === 'function' ? navName(wpName) : wpName));
+      const callSignRow = document.createElement('div');
+      callSignRow.className = 'row col call-sign-row';
+      const callSignLabel = document.createElement('label');
+      callSignLabel.textContent = S.commChangeName || 'Call sign';
+      callSignRow.appendChild(callSignLabel);
+      const callSignControls = document.createElement('div');
+      callSignControls.className = 'call-sign-controls';
       if (opts.length) {
         const current = (note.freqName || '').trim();
         let selected = opts.find(o => typeof commCallSignOptionMatches === 'function'
@@ -398,19 +419,30 @@ function showInspector() {
           selected = { id: '__custom__', label: current };
           rows.unshift(['__custom__', current]);
         }
-        const select = selectRow(S.commChangeCallSign || 'Call sign',
-          selected ? selected.id : opts[0].id, rows, v => {
-            const opt = opts.find(o => o.id === v);
-            if (!opt) return;
-            note.freqName = opt.id;
-            note.freq = opt.freq || '';
-            draw();
-            showInspector();
-          });
-        callSignSelect = select.querySelector('select');
-        body.appendChild(select);
+        callSignSelect = document.createElement('select');
+        for (const [val, text] of rows) {
+          const o = document.createElement('option');
+          o.value = val;
+          o.textContent = text;
+          if (val === (selected ? selected.id : opts[0].id)) o.selected = true;
+          callSignSelect.appendChild(o);
+        }
+        callSignSelect.onchange = () => {
+          const opt = opts.find(o => o.id === callSignSelect.value);
+          if (!opt) return;
+          note.freqName = opt.id;
+          note.freq = opt.freq || '';
+          if (callSignInput) callSignInput.value = opt.label;
+          if (freqInput) freqInput.value = note.freq;
+          draw();
+        };
+        callSignControls.appendChild(callSignSelect);
       }
-      body.appendChild(inputRow(S.commChangeName || 'Name', commNoteName(note) || '', v => {
+      callSignInput = document.createElement('input');
+      callSignInput.type = 'text';
+      callSignInput.value = commNoteName(note) || '';
+      callSignInput.oninput = () => {
+        const v = callSignInput.value;
         const opt = opts.find(o => typeof commCallSignOptionMatches === 'function'
           ? commCallSignOptionMatches(o, v)
           : o.label === v || o.id === v);
@@ -421,10 +453,23 @@ function showInspector() {
           if (freqInput) freqInput.value = note.freq;
         } else {
           note.freqName = v;
-          if (callSignSelect && v) callSignSelect.value = '__custom__';
+          if (callSignSelect && v) {
+            let custom = Array.from(callSignSelect.options)
+              .find(o => o.value === '__custom__');
+            if (!custom) {
+              custom = document.createElement('option');
+              custom.value = '__custom__';
+              callSignSelect.insertBefore(custom, callSignSelect.firstChild);
+            }
+            custom.textContent = v;
+            callSignSelect.value = '__custom__';
+          }
         }
         draw();
-      }));
+      };
+      callSignControls.appendChild(callSignInput);
+      callSignRow.appendChild(callSignControls);
+      body.appendChild(callSignRow);
       const freqRow = inputRow(S.commChangeFreq || 'Frequency', note.freq || '', v => {
         note.freq = v;
         draw();

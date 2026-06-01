@@ -88,7 +88,7 @@ async function loadNavWaypoints() {
 }
 
 // Lazy-loads docs/comm-change.json — { callSigns:{...},
-// points:[{name, commChange, callSigns, from, to, note, verified, source}] }.
+// points:[{name, commChange, callSigns, from, to, note, source}] }.
 // Builds an O(1) map keyed by ICAO `name` for the nav-waypoint overlay ring
 // + inspector badge. On 404 or schema error we install an EMPTY map ({})
 // instead of leaving commChangeMap null — the dataset is intentionally
