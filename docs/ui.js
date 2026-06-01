@@ -611,16 +611,28 @@ document.getElementById('reverse').onclick = () => {
   // A leg imported from a corrupted file / share URL may be missing a
   // label; fall back to the default so negating its offsets can't throw.
   const d = _defaultLegLabels();
+  const flipLabel = (label, fallback) => {
+    const src = label || fallback;
+    const next = { a: -(Number.isFinite(src.a) ? src.a : 0) };
+    if (Number.isFinite(src.p)) next.p = -src.p;
+    if (src._m !== undefined) next._m = src._m;
+    if (src._default !== undefined) next._default = src._default;
+    return next;
+  };
   state.legs = state.legs.reverse().map(l => {
     const inOld = l.outLabel || d.outLabel;
     const outOld = l.inLabel || d.inLabel;
+    const cumOld = l.cumLabelRet || d.cumLabelRet;
+    const cumRetOld = l.cumLabel || d.cumLabel;
     return {
       inboundAltitude: l.outboundAltitude,
       outboundAltitude: l.inboundAltitude,
       flightSpeed: showReturn ? l.outboundSpeed : l.flightSpeed,
       outboundSpeed: showReturn ? l.flightSpeed : l.flightSpeed,
-      inLabel:  { a: -inOld.a,  p: -inOld.p,  _m: inOld._m,  _default: inOld._default },
-      outLabel: { a: -outOld.a, p: -outOld.p, _m: outOld._m, _default: outOld._default },
+      inLabel:  flipLabel(inOld, d.inLabel),
+      outLabel: flipLabel(outOld, d.outLabel),
+      cumLabel: flipLabel(cumOld, d.cumLabel),
+      cumLabelRet: flipLabel(cumRetOld, d.cumLabelRet),
     };
   });
   state.selected = null;
