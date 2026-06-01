@@ -20,7 +20,7 @@ function hitNote(px, py) {
 function hitWaypoint(px, py) {
   for (let i = state.waypoints.length - 1; i >= 0; i--) {
     const s = proj(state.waypoints[i]);
-    if (Math.hypot(s.x - px, s.y - py) <= waypointGeom(i).r + 6) return i;
+    if (Math.hypot(s.x - px, s.y - py) <= waypointGeom(i).r + tune('hitWaypointExtraPx')) return i;
   }
   return -1;
 }
@@ -28,7 +28,7 @@ function hitLeg(px, py) {
   for (let i = 0; i < state.legs.length; i++) {
     const a = proj(state.waypoints[i]);
     const b = proj(state.waypoints[i + 1]);
-    if (distToSegment(px, py, a, b) <= 8) return i;
+    if (distToSegment(px, py, a, b) <= tune('hitLegPx')) return i;
   }
   return -1;
 }
@@ -98,7 +98,7 @@ function hitLegLabel(px, py) {
   // #83: scale the hit radius with the same zoom + legArrowSize factor that
   // sizes the drawn marker (see drawLegArrow in draw.js), so the hit zone
   // tracks the visual size. Floor at 18 px keeps touch ergonomics.
-  const hit = Math.max(18, 34 * legZoomScale());
+  const hit = Math.max(tune('hitLegLabelMinPx'), tune('hitLegLabelScalePx') * legZoomScale());
   for (let i = 0; i < state.legs.length; i++) {
     for (const which of ['in', 'out']) {
       if (which === 'out' && !showReturn) continue;
@@ -144,7 +144,7 @@ function _materialiseDefaultCumLabel(legIdx) {
   leg.cumLabel = { a: o.a || 0, p: perpPx / sc, _m: 1 };
 }
 function hitCumLabel(px, py) {
-  const hit = Math.max(18, 28 * legZoomScale());
+  const hit = Math.max(tune('hitCumLabelMinPx'), tune('hitCumLabelScalePx') * legZoomScale());
   for (let i = 0; i < state.legs.length; i++) {
     const c = cumLabelCenter(i);
     if (c && Math.hypot(c.x - px, c.y - py) <= hit) return { i };
@@ -186,7 +186,7 @@ function _materialiseDefaultCumLabelRet(legIdx) {
 }
 function hitCumLabelRet(px, py) {
   if (!showReturn) return null;          // return kite only drawn with the return path
-  const hit = Math.max(18, 28 * legZoomScale());
+  const hit = Math.max(tune('hitCumLabelMinPx'), tune('hitCumLabelScalePx') * legZoomScale());
   for (let i = 0; i < state.legs.length; i++) {
     const c = cumLabelRetCenter(i);
     if (c && Math.hypot(c.x - px, c.y - py) <= hit) return { i };
@@ -1022,4 +1022,3 @@ function fitView() {
   // Clamp maxZoom so two close waypoints don't snap to a tight, useless view.
   map.fitBounds(b, { padding: [70, 70], maxZoom: 11 });
 }
-
