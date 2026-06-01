@@ -5,6 +5,7 @@
 // --- hit testing -----------------------------------------------------
 function hitNote(px, py) {
   for (let i = state.notes.length - 1; i >= 0; i--) {
+    if (state.notes[i] && state.notes[i].cc && !showCommChange) continue;
     const r = noteRect(i);
     if (r.oval) {
       const dx = (px - (r.x + r.w / 2)) / (r.w / 2);
@@ -184,6 +185,36 @@ function _materialiseDefaultCumLabelRet(legIdx) {
   const perpPx = legDefaultLabelPerp(legLen);
   leg.cumLabelRet = { a: o.a || 0, p: -perpPx / sc, _m: 1 };  // default is the -perp side
 }
+function cumLabelDragFrame(legIdx, isReturn) {
+  if (!state.waypoints[legIdx] || !state.waypoints[legIdx + 1]) return null;
+  const a = proj(state.waypoints[legIdx]);
+  const b = proj(state.waypoints[legIdx + 1]);
+  let dx = b.x - a.x, dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  dx /= len; dy /= len;
+  return {
+    anchor: isReturn ? a : b,
+    dx,
+    dy,
+    nx: -dy,
+    ny: dx,
+  };
+}
+function setCumLabelFromPoint(legIdx, isReturn, px, py) {
+  const leg = state.legs[legIdx];
+  const frame = cumLabelDragFrame(legIdx, isReturn);
+  if (!leg || !frame) return;
+  const key = isReturn ? 'cumLabelRet' : 'cumLabel';
+  const label = leg[key] || { a: 0, p: 0, _m: 1 };
+  const vx = px - frame.anchor.x;
+  const vy = py - frame.anchor.y;
+  const sc = legZoomScale() || 1;
+  label.a = (vx * frame.dx + vy * frame.dy) / sc;
+  label.p = (vx * frame.nx + vy * frame.ny) / sc;
+  label._m = 1;
+  delete label._default;
+  leg[key] = label;
+}
 function hitCumLabelRet(px, py) {
   if (!showReturn) return null;          // return kite only drawn with the return path
   const hit = Math.max(tune('hitCumLabelMinPx'), tune('hitCumLabelScalePx') * legZoomScale());
@@ -343,23 +374,62 @@ function showInspector() {
     body.appendChild(reset);
   } else if (state.selected.type === 'note') {
     const note = state.notes[state.selected.index];
-    title.value = '';
-    title.placeholder = '';
-    title.readOnly = true;
-    title.oninput = null;
-    body.appendChild(textareaRow('', note.text || '', v => {
-      note.text = v; draw();
-    }));
-    body.appendChild(selectRow(S.shape, note.shape || 'rect',
-      [['rect', S.shapeRect], ['oval', S.shapeOval]], v => {
-        note.shape = v; draw();
+    if (note.cc) {
+      if (!note.freqName) note.freqName = commNoteName(note);
+      if (!note.freq) note.freq = commNoteFreq(note);
+      title.value = S.commChangeBadge || 'Freq change';
+      title.placeholder = '';
+      title.readOnly = true;
+      title.oninput = null;
+      const opts = typeof commCallSignOptions === 'function'
+        ? commCallSignOptions(note.cc) : [];
+      if (opts.length) {
+        const current = (note.freqName || '').trim();
+        let selected = opts.find(o => typeof commCallSignOptionMatches === 'function'
+          ? commCallSignOptionMatches(o, current)
+          : o.label === current);
+        const rows = opts.map(o => [o.id, o.label]);
+        if (!selected && current) {
+          selected = { id: '__custom__', label: current };
+          rows.unshift(['__custom__', current]);
+        }
+        body.appendChild(selectRow(S.commChangeCallSign || 'Call sign',
+          selected ? selected.id : opts[0].id, rows, v => {
+            const opt = opts.find(o => o.id === v);
+            if (!opt) return;
+            note.freqName = opt.label;
+            note.freq = opt.freq || '';
+            draw();
+            showInspector();
+          }));
+      }
+      body.appendChild(inputRow(S.commChangeName || 'Name', commNoteName(note) || '', v => {
+        note.freqName = v;
+        draw();
       }));
-    body.appendChild(colorRow(S.color, note.color || NOTE_DEFAULT_COLOR, v => {
-      note.color = v; draw();
-    }));
+      body.appendChild(inputRow(S.commChangeFreq || 'Frequency', note.freq || '', v => {
+        note.freq = v;
+        draw();
+      }));
+    } else {
+      title.value = '';
+      title.placeholder = '';
+      title.readOnly = true;
+      title.oninput = null;
+      body.appendChild(textareaRow('', note.text || '', v => {
+        note.text = v; draw();
+      }));
+      body.appendChild(selectRow(S.shape, note.shape || 'rect',
+        [['rect', S.shapeRect], ['oval', S.shapeOval]], v => {
+          note.shape = v; draw();
+        }));
+      body.appendChild(colorRow(S.color, note.color || NOTE_DEFAULT_COLOR, v => {
+        note.color = v; draw();
+      }));
+    }
     const del = document.createElement('button');
     del.className = 'insp-btn';
-    del.textContent = S.deleteNote;
+    del.textContent = note.cc ? (S.deleteFreqChange || S.deleteNote) : S.deleteNote;
     del.onclick = () => {
       state.notes.splice(state.selected.index, 1);
       state.selected = null;
@@ -558,6 +628,18 @@ function numberRow(label, value, onChange) {
   row.append(l, inp);
   return row;
 }
+function inputRow(label, value, onChange) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  const l = document.createElement('label');
+  l.textContent = label;
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.value = value || '';
+  inp.oninput = () => onChange(inp.value);
+  row.append(l, inp);
+  return row;
+}
 function textRow(label, value) {
   const row = document.createElement('div');
   row.className = 'row';
@@ -582,7 +664,12 @@ map.on('mousedown', e => {
   if (note >= 0) {
     downHit = true;
     state.selected = { type: 'note', index: note };
-    drag = { kind: 'note', i: note };
+    drag = {
+      kind: 'note',
+      i: note,
+      offLat: state.notes[note].lat - e.latlng.lat,
+      offLng: state.notes[note].lng - e.latlng.lng,
+    };
     map.dragging.disable();
     showInspector(); draw();
     return;
@@ -601,9 +688,7 @@ map.on('mousedown', e => {
   if (cum) {
     downHit = true;
     _materialiseDefaultCumLabel(cum.i);
-    const f = legFrame(cum.i);
-    drag = { kind: 'cumlabel', i: cum.i, lx: p.x, ly: p.y,
-             dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
+    drag = { kind: 'cumlabel', i: cum.i };
     state.selected = { type: 'leg', index: cum.i };
     map.dragging.disable();
     showInspector(); draw();
@@ -613,9 +698,7 @@ map.on('mousedown', e => {
   if (cumRet) {
     downHit = true;
     _materialiseDefaultCumLabelRet(cumRet.i);
-    const f = legFrame(cumRet.i);
-    drag = { kind: 'cumlabelret', i: cumRet.i, lx: p.x, ly: p.y,
-             dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
+    drag = { kind: 'cumlabelret', i: cumRet.i };
     state.selected = { type: 'leg', index: cumRet.i };
     map.dragging.disable();
     showInspector(); draw();
@@ -662,8 +745,8 @@ map.on('mousemove', e => {
     wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
     draw(); showInspector();
   } else if (drag.kind === 'note') {
-    state.notes[drag.i].lat = r5(e.latlng.lat);
-    state.notes[drag.i].lng = r5(e.latlng.lng);
+    state.notes[drag.i].lat = r5(e.latlng.lat + (drag.offLat || 0));
+    state.notes[drag.i].lng = r5(e.latlng.lng + (drag.offLng || 0));
     draw();
   } else if (drag.kind === 'label') {
     const ddx = p.x - drag.lx, ddy = p.y - drag.ly;
@@ -676,14 +759,7 @@ map.on('mousemove', e => {
     o.p += (ddx * drag.nx + ddy * drag.ny) * isc;
     draw();
   } else if (drag.kind === 'cumlabel' || drag.kind === 'cumlabelret') {
-    const ddx = p.x - drag.lx, ddy = p.y - drag.ly;
-    drag.lx = p.x; drag.ly = p.y;
-    const leg = state.legs[drag.i];
-    const o = leg && (drag.kind === 'cumlabelret' ? leg.cumLabelRet : leg.cumLabel);
-    if (!o) return;
-    const isc = 1 / legZoomScale();
-    o.a += (ddx * drag.dx + ddy * drag.dy) * isc;
-    o.p += (ddx * drag.nx + ddy * drag.ny) * isc;
+    setCumLabelFromPoint(drag.i, drag.kind === 'cumlabelret', p.x, p.y);
     draw();
   } else if (drag.kind === 'page') {
     pageOffset.x += p.x - drag.lx;
@@ -890,7 +966,13 @@ mapEl.addEventListener('touchstart', e => {
     ? hitPageFrameEdge(p.x, p.y) : false;
 
   if (note >= 0) {
-    touchDrag = { kind: 'note', i: note };
+    const ll = map.containerPointToLatLng([p.x, p.y]);
+    touchDrag = {
+      kind: 'note',
+      i: note,
+      offLat: state.notes[note].lat - ll.lat,
+      offLng: state.notes[note].lng - ll.lng,
+    };
     state.selected = { type: 'note', index: note };
   } else if (wp >= 0) {
     touchDrag = { kind: 'wp', i: wp, moved: false,
@@ -904,15 +986,11 @@ mapEl.addEventListener('touchstart', e => {
     state.selected = { type: 'leg', index: lab.i };
   } else if (cum) {
     _materialiseDefaultCumLabel(cum.i);
-    const f = legFrame(cum.i);
-    touchDrag = { kind: 'cumlabel', i: cum.i,
-                  lx: p.x, ly: p.y, dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
+    touchDrag = { kind: 'cumlabel', i: cum.i };
     state.selected = { type: 'leg', index: cum.i };
   } else if (cumRet) {
     _materialiseDefaultCumLabelRet(cumRet.i);
-    const f = legFrame(cumRet.i);
-    touchDrag = { kind: 'cumlabelret', i: cumRet.i,
-                  lx: p.x, ly: p.y, dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
+    touchDrag = { kind: 'cumlabelret', i: cumRet.i };
     state.selected = { type: 'leg', index: cumRet.i };
   } else if (leg >= 0) {
     touchDrag = { kind: 'legtap' };
@@ -941,8 +1019,8 @@ mapEl.addEventListener('touchmove', e => {
     wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
     draw(); showInspector();
   } else if (touchDrag.kind === 'note') {
-    state.notes[touchDrag.i].lat = r5(ll.lat);
-    state.notes[touchDrag.i].lng = r5(ll.lng);
+    state.notes[touchDrag.i].lat = r5(ll.lat + (touchDrag.offLat || 0));
+    state.notes[touchDrag.i].lng = r5(ll.lng + (touchDrag.offLng || 0));
     draw();
   } else if (touchDrag.kind === 'label') {
     const ddx = p.x - touchDrag.lx, ddy = p.y - touchDrag.ly;
@@ -955,14 +1033,7 @@ mapEl.addEventListener('touchmove', e => {
     o.p += (ddx * touchDrag.nx + ddy * touchDrag.ny) * isc;
     draw();
   } else if (touchDrag.kind === 'cumlabel' || touchDrag.kind === 'cumlabelret') {
-    const ddx = p.x - touchDrag.lx, ddy = p.y - touchDrag.ly;
-    touchDrag.lx = p.x; touchDrag.ly = p.y;
-    const leg = state.legs[touchDrag.i];
-    const o = leg && (touchDrag.kind === 'cumlabelret' ? leg.cumLabelRet : leg.cumLabel);
-    if (!o) return;
-    const isc = 1 / legZoomScale();
-    o.a += (ddx * touchDrag.dx + ddy * touchDrag.dy) * isc;
-    o.p += (ddx * touchDrag.nx + ddy * touchDrag.ny) * isc;
+    setCumLabelFromPoint(touchDrag.i, touchDrag.kind === 'cumlabelret', p.x, p.y);
     draw();
   } else if (touchDrag.kind === 'page') {
     pageOffset.x += p.x - touchDrag.lx;

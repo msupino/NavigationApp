@@ -771,7 +771,7 @@ function snapExistingWaypoints() {
       const snap = nearestNavWaypoint(wp, 18);
       if (snap && !occupied(r5(snap.lat), r5(snap.lng), i)) {
         wp.lat = r5(snap.lat); wp.lng = r5(snap.lng);
-        wp.name = snap[S.navWpSearchField] || snap.name;
+        wp.name = snap.name;
       }
     }
   }
@@ -836,6 +836,14 @@ document.getElementById('commchange-cb').onchange = async e => {
   // Rings draw independently of the nav-WP dot layer (issue #484) but reuse
   // its positions, so load navWP too even when that layer is off.
   if (showCommChange) await Promise.all([loadCommChange(), loadNavWaypoints()]);
+  if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
+  if (!showCommChange && state.selected && state.selected.type === 'note') {
+    const n = state.notes[state.selected.index];
+    if (n && n.cc) {
+      state.selected = null;
+      showInspector();
+    }
+  }
   draw();
 };
 const ALPHA_KEY = 'navaid.yellowAlpha';
@@ -1140,6 +1148,7 @@ function tuningPanelEnabled() {
 }
 
 function formatTuneValue(spec, value) {
+  if (spec.type === 'color' || spec.type === 'select') return String(value);
   const step = String(spec.step || 1);
   const dot = step.indexOf('.');
   const places = dot === -1 ? 0 : step.length - dot - 1;
@@ -1192,16 +1201,24 @@ function createTuningPanel() {
     const text = formatTuneValue(spec, v);
     const set = controlSets[key];
     if (!set) return;
-    set.range.value = String(v);
-    set.number.value = text;
+    if (set.range) set.range.value = String(v);
+    if (set.number) set.number.value = text;
+    if (set.color) set.color.value = String(v);
+    if (set.text) set.text.value = text;
+    if (set.select) set.select.value = String(v);
   };
   const applyValue = (key, raw) => {
-    const v = parseFloat(raw);
-    if (!Number.isFinite(v)) {
-      syncControl(key);
-      return;
+    const spec = NavAid.tuningDefaults[key];
+    if (spec && (spec.type === 'color' || spec.type === 'select')) {
+      setTune(key, raw);
+    } else {
+      const v = parseFloat(raw);
+      if (!Number.isFinite(v)) {
+        syncControl(key);
+        return;
+      }
+      setTune(key, v);
     }
-    setTune(key, v);
     syncControl(key);
     redrawAfterTune();
   };
@@ -1209,7 +1226,6 @@ function createTuningPanel() {
   for (const group of NavAid.tuningGroups) {
     const details = document.createElement('details');
     details.className = 'tune-group';
-    details.open = group.name === 'Drift lines' || group.name === 'Route';
     const summary = document.createElement('summary');
     summary.textContent = group.name;
     details.appendChild(summary);
@@ -1225,22 +1241,6 @@ function createTuningPanel() {
       name.className = 'tune-label';
       name.textContent = spec.label || key;
 
-      const range = document.createElement('input');
-      range.type = 'range';
-      range.id = 'tune-' + key + '-range';
-      range.min = String(spec.min);
-      range.max = String(spec.max);
-      range.step = String(spec.step);
-
-      const number = document.createElement('input');
-      number.type = 'number';
-      number.id = 'tune-' + key + '-number';
-      number.min = String(spec.min);
-      number.max = String(spec.max);
-      number.step = String(spec.step);
-      number.inputMode = 'decimal';
-      number.setAttribute('aria-label', spec.label || key);
-
       const reset = document.createElement('button');
       reset.type = 'button';
       reset.id = 'tune-' + key + '-reset';
@@ -1248,10 +1248,65 @@ function createTuningPanel() {
       reset.textContent = 'Reset';
       reset.title = 'Reset ' + (spec.label || key);
 
-      controlSets[key] = { range, number };
+      const set = {};
+      if (spec.type === 'color') {
+        const color = document.createElement('input');
+        color.type = 'color';
+        color.id = 'tune-' + key + '-color';
+        color.setAttribute('aria-label', spec.label || key);
+
+        const text = document.createElement('input');
+        text.type = 'text';
+        text.id = 'tune-' + key + '-text';
+        text.inputMode = 'text';
+        text.pattern = '#[0-9a-fA-F]{6}';
+        text.setAttribute('aria-label', spec.label || key);
+
+        set.color = color;
+        set.text = text;
+        color.addEventListener('input', () => applyValue(key, color.value));
+        text.addEventListener('input', () => applyValue(key, text.value));
+        row.append(name, color, text, reset);
+      } else if (spec.type === 'select') {
+        const select = document.createElement('select');
+        select.id = 'tune-' + key + '-select';
+        select.setAttribute('aria-label', spec.label || key);
+        for (const opt of spec.options || []) {
+          const option = document.createElement('option');
+          option.value = opt;
+          option.textContent = opt;
+          select.appendChild(option);
+        }
+
+        set.select = select;
+        select.addEventListener('change', () => applyValue(key, select.value));
+        row.append(name, select, reset);
+      } else {
+        const range = document.createElement('input');
+        range.type = 'range';
+        range.id = 'tune-' + key + '-range';
+        range.min = String(spec.min);
+        range.max = String(spec.max);
+        range.step = String(spec.step);
+
+        const number = document.createElement('input');
+        number.type = 'number';
+        number.id = 'tune-' + key + '-number';
+        number.min = String(spec.min);
+        number.max = String(spec.max);
+        number.step = String(spec.step);
+        number.inputMode = 'decimal';
+        number.setAttribute('aria-label', spec.label || key);
+
+        set.range = range;
+        set.number = number;
+        range.addEventListener('input', () => applyValue(key, range.value));
+        number.addEventListener('input', () => applyValue(key, number.value));
+        row.append(name, range, number, reset);
+      }
+
+      controlSets[key] = set;
       syncControl(key);
-      range.addEventListener('input', () => applyValue(key, range.value));
-      number.addEventListener('input', () => applyValue(key, number.value));
       reset.addEventListener('click', e => {
         e.preventDefault();
         resetTune(key);
@@ -1259,7 +1314,6 @@ function createTuningPanel() {
         redrawAfterTune();
       });
 
-      row.append(name, range, number, reset);
       details.appendChild(row);
     }
 
@@ -1349,7 +1403,11 @@ loadAirfields().then(() => { snapExistingWaypoints(); draw(); if (state.selected
 // the nav-WP dot layer (issue #484), so when comm-change is on we also
 // load navWP positions even if that layer is off.
 loadCommChange().then(() => showCommChange ? loadNavWaypoints() : null)
-  .then(() => { draw(); if (state.selected) showInspector(); });
+  .then(() => {
+    if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
+    draw();
+    if (state.selected) showInspector();
+  });
 // Restore flight-plan modal if it was open before refresh / language change.
 try {
   if (sessionStorage.getItem('navaid.fpOpen')) {

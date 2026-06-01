@@ -306,6 +306,11 @@ function validateRoute(d) {
       _v(n, 'text',  'string', p, errs);
       _v(n, 'color', 'string', p, errs);
       _v(n, 'shape', 'shape',  p, errs);
+      for (const k of ['cc', 'freqName', 'freq']) {
+        if (Object.prototype.hasOwnProperty.call(n, k) && typeof n[k] !== 'string') {
+          errs.push(p + '.' + k + ': expected string, got ' + _vKind(n[k]));
+        }
+      }
     }
   }
   if (wpsOk && legsOk) {
@@ -338,15 +343,36 @@ function validateNavWaypoints(d) {
   }
   return errs.length ? errs.join('; ') : null;
 }
-// Strict schema for docs/comm-change.json — { version, source?, _definition?,
-// _NOTE?, _TODO?, points:[{ name, commChange, from?, to?, note?, verified?,
-// source? }] }. Only `points[].name` and `points[].commChange` are required
-// for the renderer; everything else is metadata / inspector content. Unknown
-// keys at any level are tolerated (forward-compat). Issue #399.
+// Strict schema for docs/comm-change.json — { version, source?,
+// callSigns?: { ID:{ label?, he?, unit?, primary?, secondary?, atis?, phone?,
+// runway?, source? } }, points:[{ name, commChange, callSigns?, from?, to?,
+// note?, verified?, source? }] }. Only `points[].name` and
+// `points[].commChange` are required for the renderer; everything else is
+// metadata / inspector content. Unknown keys at any level are tolerated
+// (forward-compat). Issue #399.
 function validateCommChange(d) {
   const errs = [];
   if (!d || typeof d !== 'object' || Array.isArray(d)) {
     return 'root: expected object, got ' + _vKind(d);
+  }
+  if (Object.prototype.hasOwnProperty.call(d, 'callSigns')) {
+    if (_vKind(d.callSigns) !== 'object') {
+      errs.push('root.callSigns: expected object, got ' + _vKind(d.callSigns));
+    } else {
+      for (const [id, cs] of Object.entries(d.callSigns)) {
+        const p = 'callSigns.' + id;
+        if (_vKind(cs) !== 'object') {
+          errs.push(p + ': expected object, got ' + _vKind(cs));
+          continue;
+        }
+        for (const k of ['label', 'he', 'unit', 'primary', 'secondary', 'atis',
+                         'phone', 'runway', 'source']) {
+          if (k in cs && typeof cs[k] !== 'string') {
+            errs.push(p + '.' + k + ': expected string, got ' + _vKind(cs[k]));
+          }
+        }
+      }
+    }
   }
   if (!_v(d, 'points', 'array', 'root', errs)) return errs.join('; ');
   for (let i = 0; i < d.points.length; i++) {
@@ -359,6 +385,17 @@ function validateCommChange(d) {
     _v(pt, 'name', 'string', p, errs);
     if ('commChange' in pt && typeof pt.commChange !== 'boolean') {
       errs.push(p + '.commChange: expected boolean, got ' + _vKind(pt.commChange));
+    }
+    if ('callSigns' in pt) {
+      if (!Array.isArray(pt.callSigns)) {
+        errs.push(p + '.callSigns: expected array, got ' + _vKind(pt.callSigns));
+      } else {
+        for (let j = 0; j < pt.callSigns.length; j++) {
+          if (typeof pt.callSigns[j] !== 'string') {
+            errs.push(p + '.callSigns[' + j + ']: expected string, got ' + _vKind(pt.callSigns[j]));
+          }
+        }
+      }
     }
     for (const k of ['from', 'to', 'note', 'source']) {
       if (k in pt && typeof pt[k] !== 'string') {
@@ -478,6 +515,8 @@ function save() {
       lat: r5(n.lat), lng: r5(n.lng), text: n.text || '', color: n.color || '',
       shape: n.shape || 'rect',
       ...(n.cc ? { cc: n.cc } : {}),   // #487: preserve comm-change seed tag
+      ...(n.freqName ? { freqName: n.freqName } : {}),
+      ...(n.freq ? { freq: n.freq } : {}),
     })),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -630,6 +669,8 @@ function load(file) {
       lat: r5(n.lat), lng: r5(n.lng),
       text: n.text, color: n.color, shape: n.shape,
       ...(n.cc ? { cc: n.cc } : {}),   // #487: preserve comm-change seed tag
+      ...(n.freqName ? { freqName: n.freqName } : {}),
+      ...(n.freq ? { freq: n.freq } : {}),
     }));
     syncLegs();
     state.selected = null;
@@ -2287,6 +2328,9 @@ function restoreRoute() {
   state.notes = d.notes.map(n => ({
     lat: r5(n.lat), lng: r5(n.lng),
     text: n.text, color: n.color, shape: n.shape,
+    ...(n.cc ? { cc: n.cc } : {}),
+    ...(n.freqName ? { freqName: n.freqName } : {}),
+    ...(n.freq ? { freq: n.freq } : {}),
   }));
   syncLegs();
   return true;
@@ -3341,4 +3385,3 @@ function shareRoute() {
       window.prompt(S.shareCopied, r.url);
     });
 }
-

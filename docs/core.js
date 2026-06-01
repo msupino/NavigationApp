@@ -91,7 +91,32 @@ NavAid.tuningDefaults = {
 
   commChangeRingRadiusPx: { value: 6, min: 1, max: 40, step: 0.5, label: 'Comm-change ring radius' },
   commChangeRingWidthPx: { value: 1.8, min: 0.25, max: 10, step: 0.1, label: 'Comm-change ring width' },
-  commChangeNoteLatOffset: { value: 0.012, min: -0.05, max: 0.05, step: 0.001, label: 'Comm-change note lat offset' },
+  commChangeNoteLatOffset: { value: 0, min: -0.15, max: 0.15, step: 0.001, label: 'Comm-change arrow tail lat offset' },
+  commChangeNoteLngOffset: { value: 0.09, min: -0.25, max: 0.25, step: 0.001, label: 'Comm-change arrow tail lng offset' },
+  commChangeArrowWidthPx: { value: 4, min: 1, max: 28, step: 0.5, label: 'Comm-change arrow width' },
+  commChangeArrowColor: { value: '#000000', type: 'color', label: 'Comm-change arrow color' },
+  commChangeArrowLineCap: { value: 'square', type: 'select', options: ['butt', 'round', 'square'], label: 'Comm-change arrow line cap' },
+  commChangeArrowLineJoin: { value: 'miter', type: 'select', options: ['bevel', 'round', 'miter'], label: 'Comm-change arrow line join' },
+  commChangeArrowMiterLimit: { value: 4, min: 1, max: 20, step: 0.5, label: 'Comm-change arrow miter limit' },
+  commChangeArrowHaloPx: { value: 0, min: 0, max: 24, step: 0.5, label: 'Comm-change arrow light halo' },
+  commChangeArrowHaloColor: { value: '#fff9d6', type: 'color', label: 'Comm-change arrow halo color' },
+  commChangeArrowHaloAlpha: { value: 0.92, min: 0, max: 1, step: 0.05, label: 'Comm-change arrow halo alpha' },
+  commChangeSelectedColor: { value: '#ffcc33', type: 'color', label: 'Comm-change selected color' },
+  commChangeSelectedAlpha: { value: 0.35, min: 0, max: 1, step: 0.05, label: 'Comm-change selected alpha' },
+  commChangeSelectedWidthAddPx: { value: 5, min: 0, max: 40, step: 0.5, label: 'Comm-change selected width add' },
+  commChangeArrowBoltPx: { value: 24, min: 0, max: 80, step: 1, label: 'Comm-change lightning amplitude' },
+  commChangeArrowBoltAngleDeg: { value: 90, min: -180, max: 180, step: 1, label: 'Comm-change lightning rotation' },
+  commChangeArrowBend1Along: { value: 0.52, min: 0.05, max: 0.95, step: 0.01, label: 'Comm-change lightning forward fold' },
+  commChangeArrowBend2Along: { value: 0.38, min: 0.05, max: 0.95, step: 0.01, label: 'Comm-change lightning reverse fold' },
+  commChangeNameFontPx: { value: 14, min: 4, max: 40, step: 1, label: 'Comm-change name text size' },
+  commChangeFreqFontPx: { value: 24, min: 4, max: 54, step: 1, label: 'Comm-change freq text size' },
+  commChangeTextColor: { value: '#161412', type: 'color', label: 'Comm-change text color' },
+  commChangeTextHaloColor: { value: '#fff9d6', type: 'color', label: 'Comm-change text halo color' },
+  commChangeTextHaloAlpha: { value: 0.6, min: 0, max: 1, step: 0.05, label: 'Comm-change text halo alpha' },
+  commChangeTextAlong: { value: 0.88, min: 0.1, max: 0.95, step: 0.01, label: 'Comm-change text along arrow' },
+  commChangeTextGapPx: { value: 10, min: 0, max: 30, step: 1, label: 'Comm-change text gap' },
+  commChangeNameHaloWidthPx: { value: 0, min: 0, max: 12, step: 0.5, label: 'Comm-change name halo width' },
+  commChangeFreqHaloWidthPx: { value: 0, min: 0, max: 14, step: 0.5, label: 'Comm-change freq halo width' },
 
   noteFontPx: { value: 12, min: 4, max: 40, step: 1, label: 'Note text size' },
   notePadXPx: { value: 8, min: 0, max: 40, step: 1, label: 'Note horizontal padding' },
@@ -123,7 +148,7 @@ NavAid.tuningGroups = [
   { name: 'Minute markers', keys: ['minuteMarkerFontPx', 'minuteTickEvenPx', 'minuteTickOddPx', 'minuteTickEvenWidthPx', 'minuteTickOddWidthPx', 'minuteLabelOffsetPx'] },
   { name: 'Distance badges', keys: ['distanceBadgeRadiusPx', 'distanceBadgeBorderPx', 'distanceBadgeFontPx'] },
   { name: 'Route waypoints', keys: ['waypointBaseRadiusPx', 'waypointFontPx', 'waypointTextPadFactor', 'waypointMinZoomScale', 'waypointSelectedRadiusAddPx', 'waypointStrokeWidthPx'] },
-  { name: 'Reference overlays', keys: ['airfieldMarkerRadiusPx', 'airfieldMarkerWidthFactor', 'airfieldMarkerBaseFactor', 'airfieldStrokeWidthPx', 'airfieldLabelFontPx', 'airfieldLabelOffsetPx', 'airfieldLabelHaloPx', 'navWaypointRadiusPx', 'navWaypointStrokeWidthPx', 'navWaypointLabelFontPx', 'navWaypointLabelOffsetPx', 'navWaypointLabelHaloPx', 'commChangeRingRadiusPx', 'commChangeRingWidthPx', 'commChangeNoteLatOffset'] },
+  { name: 'Reference overlays', keys: ['airfieldMarkerRadiusPx', 'airfieldMarkerWidthFactor', 'airfieldMarkerBaseFactor', 'airfieldStrokeWidthPx', 'airfieldLabelFontPx', 'airfieldLabelOffsetPx', 'airfieldLabelHaloPx', 'navWaypointRadiusPx', 'navWaypointStrokeWidthPx', 'navWaypointLabelFontPx', 'navWaypointLabelOffsetPx', 'navWaypointLabelHaloPx', 'commChangeRingRadiusPx', 'commChangeRingWidthPx', 'commChangeNoteLatOffset', 'commChangeNoteLngOffset', 'commChangeArrowWidthPx', 'commChangeArrowColor', 'commChangeArrowLineCap', 'commChangeArrowLineJoin', 'commChangeArrowMiterLimit', 'commChangeArrowHaloPx', 'commChangeArrowHaloColor', 'commChangeArrowHaloAlpha', 'commChangeSelectedColor', 'commChangeSelectedAlpha', 'commChangeSelectedWidthAddPx', 'commChangeArrowBoltPx', 'commChangeArrowBoltAngleDeg', 'commChangeArrowBend1Along', 'commChangeArrowBend2Along', 'commChangeNameFontPx', 'commChangeFreqFontPx', 'commChangeTextColor', 'commChangeTextHaloColor', 'commChangeTextHaloAlpha', 'commChangeTextAlong', 'commChangeTextGapPx', 'commChangeNameHaloWidthPx', 'commChangeFreqHaloWidthPx'] },
   { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx'] },
   { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimAlpha', 'pageFrameHitPx'] },
   { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitLegPx', 'hitLegLabelMinPx', 'hitLegLabelScalePx', 'hitCumLabelMinPx', 'hitCumLabelScalePx'] },
@@ -132,11 +157,26 @@ function tune(key) {
   const spec = NavAid.tuningDefaults && NavAid.tuningDefaults[key];
   if (!spec) return 0;
   const v = NavAid.tuning[key];
+  if (spec.type === 'color') return typeof v === 'string' ? v : spec.value;
+  if (spec.type === 'select') {
+    return spec.options && spec.options.indexOf(v) !== -1 ? v : spec.value;
+  }
   return Number.isFinite(v) ? v : spec.value;
 }
 function setTune(key, value) {
   const spec = NavAid.tuningDefaults && NavAid.tuningDefaults[key];
-  if (!spec || !Number.isFinite(value)) return;
+  if (!spec) return;
+  if (spec.type === 'color') {
+    if (typeof value !== 'string' || !/^#[0-9a-f]{6}$/i.test(value)) return;
+    NavAid.tuning[key] = value.toLowerCase();
+    return;
+  }
+  if (spec.type === 'select') {
+    if (!spec.options || spec.options.indexOf(value) === -1) return;
+    NavAid.tuning[key] = value;
+    return;
+  }
+  if (!Number.isFinite(value)) return;
   NavAid.tuning[key] = Math.max(spec.min, Math.min(spec.max, value));
 }
 function resetTune(key) {
@@ -310,6 +350,10 @@ window.S = Object.assign({
   tbShowCommChangeTitle: 'Mark CVFR reporting points where pilots must change ATC frequency',
   commChangeBadge: '📡 Freq change',
   commChangeNoteText: 'Freq change',
+  commChangeCallSign: 'Call sign',
+  commChangeName: 'Name',
+  commChangeFreq: 'Frequency',
+  deleteFreqChange: '🗑 Delete freq change (D)',
   plates: 'Charts',
   runways: 'Runways',
   plateCategoryApproach: 'Approach',
@@ -452,7 +496,9 @@ var commChangeMap = null;   // null = not loaded yet (or last fetch failed —
                             // retry on next toggle); {} or populated = last
                             // fetch resolved. Keyed by nav-WP `name` for
                             // O(1) lookup, value is the raw point entry
-                            // `{commChange, from, to, note, verified, source}`.
+                            // `{commChange, callSigns, from, to, note, ...}`.
+var commChangeCallSigns = {}; // Frequency catalog keyed by call-sign id
+                              // (loaded from comm-change.json `callSigns`).
 var showDrift = true;       // 10-degree drift reference lines
 var showWpNames = true;     // draw waypoint names (off = empty circle)
 var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg

@@ -171,6 +171,14 @@ branch by mistake.
   - **Reset buttons:** inspector "↺ Reset marker position" (per leg) and
     toolbar `#tool-reset-all-markers` "↺ Reset all marker positions"
     (all legs, prompts `confirm()`). Both call `_defaultLegLabels()`.
+- **Cumulative-time kites:** `cumLabel` (inbound, anchored at the leg's
+  destination waypoint) and `cumLabelRet` (return, anchored at the leg's
+  start waypoint) use the same `{a,p,_m:1}` storage as leg labels, but
+  dragging is intentionally endpoint-relative: each pointer move recomputes
+  the vector from the anchor waypoint to the pointer, so the kite orbits the
+  waypoint and can move nearer/farther. The drawn cumulative-time kite rotates
+  to point back at its anchor waypoint, so orbiting is visible instead of
+  reading as a free-floating label.
 - **Mid-leg distance badge:** global toggle (`showMidLeg`).
 - **Magnifying glass:** toggle button 🔍 in the **View** section. Shows a
   circular **400 px** loupe (default; `magnifierSize`) of cloned base
@@ -216,6 +224,26 @@ branch by mistake.
     to terrain during pan (not just on `moveend`).
 - **Drift lines** (10°), **minute markers** with even-minute numeric
   labels and a white halo.
+- **Comm-change frequency callouts:** the "Show/Add Freq Changes" layer
+  still draws red rings on published comm-change reporting points. When a
+  route waypoint sits on one of those points, `seedCommChangeNotes()`
+  creates a real draggable note tagged `cc: <ICAO>`, with editable
+  `freqName` / `freq` fields. Tagged notes render as chart-style lightning
+  arrows: the arrow point stays on the waypoint, the stored note coordinate
+  is the movable far tail, and the name/frequency are drawn above/below the
+  arrow rather than inside a note box. Selecting the callout opens inspector
+  fields for name + frequency. If `docs/comm-change.json` defines a root
+  `callSigns` catalog and a point's `callSigns` array, the inspector also
+  shows a call-sign dropdown; choosing an option copies its default primary
+  frequency into the editable frequency field. Call-sign names use the
+  catalog's `he` translation when the app is in Hebrew, falling back to
+  `label`. Turning the layer on seeds lightning arrows only for matching
+  waypoints already present in the route, never for unrelated reference
+  points. The default callout tail starts east/right of the waypoint via
+  `commChangeNoteLngOffset`. Turning the layer off hides tagged callout
+  notes and disables their hit-testing without deleting them, so toggling
+  back on restores the same editable callouts. These fields are saved in the
+  existing `navaid.route` note payload, not in a separate storage key.
 - **Hidden developer tuning panel:** open with `?tune=1`
   (`?lang=en&tune=1`, `/pr/NNN/?lang=en&tune=1`, etc.). The registry
   lives in `NavAid.tuningDefaults` / `NavAid.tuningGroups` (`core.js`),

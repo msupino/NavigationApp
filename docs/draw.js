@@ -87,14 +87,15 @@ async function loadNavWaypoints() {
   }
 }
 
-// Lazy-loads docs/comm-change.json — { points:[{name, commChange, from, to,
-// note, verified, source}] }. Builds an O(1) map keyed by ICAO `name` for
-// the nav-waypoint overlay ring + inspector badge. On 404 or schema error
-// we install an EMPTY map ({}) instead of leaving commChangeMap null —
-// the dataset is intentionally optional, and a missing file must not
-// disable the rest of the nav-WP overlay (issue #399). The map is only
-// rebuilt if a future call observes `commChangeMap === null` (i.e. nothing
-// was installed yet), so a one-time 404 doesn't trigger retry storms.
+// Lazy-loads docs/comm-change.json — { callSigns:{...},
+// points:[{name, commChange, callSigns, from, to, note, verified, source}] }.
+// Builds an O(1) map keyed by ICAO `name` for the nav-waypoint overlay ring
+// + inspector badge. On 404 or schema error we install an EMPTY map ({})
+// instead of leaving commChangeMap null — the dataset is intentionally
+// optional, and a missing file must not disable the rest of the nav-WP
+// overlay (issue #399). The map is only rebuilt if a future call observes
+// `commChangeMap === null` (i.e. nothing was installed yet), so a one-time
+// 404 doesn't trigger retry storms.
 async function loadCommChange() {
   if (commChangeMap !== null) return commChangeMap;
   try {
@@ -105,8 +106,11 @@ async function loadCommChange() {
     if (verr) {
       console.warn('comm-change schema error:', verr);
       commChangeMap = {};
+      commChangeCallSigns = {};
       return commChangeMap;
     }
+    commChangeCallSigns = (d.callSigns && typeof d.callSigns === 'object' &&
+      !Array.isArray(d.callSigns)) ? d.callSigns : {};
     const m = {};
     for (const pt of d.points) {
       if (pt && pt.name && pt.commChange) m[pt.name] = pt;
@@ -115,6 +119,7 @@ async function loadCommChange() {
     return commChangeMap;
   } catch (e) {
     console.warn('Failed to load comm-change dataset:', e);
+    commChangeCallSigns = {};
     commChangeMap = {};                    // graceful degrade — no rings, no retry
     return commChangeMap;
   }
@@ -140,6 +145,17 @@ function isNavName(name) {
   if (!name || !navWP) return false;
   for (const wp of navWP) if (wp.name === name || wp.he === name) return true;
   return false;
+}
+
+function canonicalNavWaypointName(name) {
+  const s = String(name || '').trim();
+  if (!s) return '';
+  if (navWP) {
+    for (const wp of navWP) {
+      if (wp.name === s || wp.he === s) return wp.name;
+    }
+  }
+  return s;
 }
 
 function escapeRegExp(s) {
@@ -228,7 +244,7 @@ function applyNavSnap(latlng, currentName, excludeLl) {
     }
     if (showNavWP) {
       const nw = nearestNavWaypoint(latlng, Infinity);
-      if (nw && !excluded(nw)) cands.push({ pt: nw, name: nw[S.navWpSearchField] || nw.name });
+      if (nw && !excluded(nw)) cands.push({ pt: nw, name: nw.name });
     }
     let best = null, bestD = Infinity;
     for (const c of cands) {
@@ -253,7 +269,7 @@ function applyNavSnap(latlng, currentName, excludeLl) {
   if (showNavWP) {
     const snap = nearestNavWaypoint(latlng, 18);
     if (snap && !excluded(snap)) {
-      const name = userTyped ? currentName : (snap[S.navWpSearchField] || snap.name);
+      const name = userTyped ? currentName : snap.name;
       return { lat: snap.lat, lng: snap.lng, name };
     }
   }
@@ -487,27 +503,159 @@ function drawCommChangeRings() {
 // deletable) tagged with `cc: <ICAO>` for idempotency — a point is seeded
 // at most once, and the tag survives reload / export / import, so re-draws
 // or repeated snaps never duplicate it. Seeding is driven ONLY from explicit
-// placement/snap actions (drop, drag-end, search route-build); it must not be
-// called from draw() / load / import / undo or it would resurrect notes the
-// user deleted. Returns true if any note was added so the caller can persist.
+// placement/snap/toggle actions (drop, drag-end, search route-build,
+// Show/Add Freq Changes); it must not be called from draw() / load / import /
+// undo or it would resurrect notes the user deleted. Returns true if any note
+// was added so the caller can persist.
+function splitCommCalloutText(raw) {
+  const s = String(raw || '').trim();
+  const m = s.match(/^(.*?)(?:\s+(\d{3}(?:\.\d{1,3})?))$/);
+  return {
+    name: (m ? m[1] : s).trim(),
+    freq: m ? m[2] : '',
+  };
+}
+function commUseHebrewLabels() {
+  const lang = (typeof window !== 'undefined' && window.__navLang) ||
+    (typeof document !== 'undefined' && document.documentElement &&
+      document.documentElement.lang) || '';
+  return String(lang).toLowerCase().slice(0, 2) === 'he';
+}
+function commCallSignLabel(id, row) {
+  if (commUseHebrewLabels() && row && typeof row.he === 'string' && row.he.trim()) {
+    return row.he.trim();
+  }
+  if (row && typeof row.label === 'string' && row.label.trim()) return row.label.trim();
+  return String(id || '').replace(/_/g, ' ').toLowerCase()
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+function commCallSignOptionNames(opt) {
+  if (!opt) return [];
+  const row = (opt.row && typeof opt.row === 'object') ? opt.row : {};
+  return [opt.id, opt.label, row.label, row.he]
+    .filter(v => typeof v === 'string' && v.trim())
+    .map(v => v.trim());
+}
+function commCallSignOptionMatches(opt, raw) {
+  const needle = String(raw || '').trim();
+  if (!needle) return false;
+  return commCallSignOptionNames(opt).some(v => v === needle);
+}
+function commCallSignDefaultFreq(row) {
+  if (!row || typeof row !== 'object') return '';
+  if (typeof row.primary === 'string' && row.primary.trim()) return row.primary.trim();
+  if (typeof row.freq === 'string' && row.freq.trim()) return row.freq.trim();
+  return '';
+}
+function commCallSignOptions(name) {
+  const key = canonicalNavWaypointName(name);
+  const cc = commChangeMap && key ? commChangeMap[key] : null;
+  if (!cc || !Array.isArray(cc.callSigns)) return [];
+  const catalog = (typeof commChangeCallSigns === 'object' && commChangeCallSigns) || {};
+  const out = [];
+  for (const rawId of cc.callSigns) {
+    const id = String(rawId || '').trim();
+    if (!id) continue;
+    const row = catalog[id] || catalog[id.toUpperCase()] || null;
+    out.push({
+      id,
+      label: commCallSignLabel(id, row),
+      freq: commCallSignDefaultFreq(row),
+      row,
+    });
+  }
+  return out;
+}
+function commCalloutDefaults(name) {
+  const key = canonicalNavWaypointName(name);
+  const cc = commChangeMap && key ? commChangeMap[key] : null;
+  const fallback = (typeof S !== 'undefined' && S.commChangeNoteText) || 'Freq change';
+  const opt = commCallSignOptions(key)[0];
+  if (opt) return { freqName: opt.label || fallback, freq: opt.freq || '' };
+  const raw = cc && (cc.to || cc.from || cc.note || cc.name || key);
+  const d = splitCommCalloutText(raw || key || fallback);
+  return { freqName: d.name || fallback, freq: d.freq };
+}
+function commNoteName(n) {
+  if (n && typeof n.freqName === 'string' && n.freqName.trim()) {
+    const current = n.freqName.trim();
+    const opt = n.cc ? commCallSignOptions(n.cc)
+      .find(o => commCallSignOptionMatches(o, current)) : null;
+    return opt ? opt.label : current;
+  }
+  if (n && n.cc) return commCalloutDefaults(n.cc).freqName;
+  return '';
+}
+function commNoteFreq(n) {
+  if (n && typeof n.freq === 'string' && n.freq.trim()) return n.freq.trim();
+  if (n && n.cc) return commCalloutDefaults(n.cc).freq;
+  return '';
+}
+function noteLines(n) {
+  if (n && n.cc) {
+    const name = commNoteName(n);
+    const freq = commNoteFreq(n);
+    return [name ? name.toUpperCase() : '', freq].filter(Boolean);
+  }
+  return (n.text || '').split('\n');
+}
+function commCalloutTarget(n) {
+  if (!n || !n.cc) return null;
+  const key = canonicalNavWaypointName(n.cc);
+  if (!key) return null;
+  const routeWp = state.waypoints.find(w => w &&
+    canonicalNavWaypointName(w.name) === key);
+  if (routeWp) return routeWp;
+  const refWp = Array.isArray(navWP) ? navWP.find(w => w && w.name === key) : null;
+  return refWp || null;
+}
+function commCalloutDefaultTail(wp) {
+  return {
+    lat: r5(wp.lat + tune('commChangeNoteLatOffset')),
+    lng: r5(wp.lng + tune('commChangeNoteLngOffset')),
+  };
+}
 function seedCommChangeNotes() {
   if (!showCommChange) return false;
   if (!commChangeMap || typeof state === 'undefined' ||
       !Array.isArray(state.waypoints) || !Array.isArray(state.notes)) return false;
   let added = false;
   for (const wp of state.waypoints) {
-    const nm = wp && wp.name ? wp.name.trim() : '';
+    if (!wp) continue;
+    const nm = canonicalNavWaypointName(wp && wp.name);
     if (!nm) continue;
     const cc = commChangeMap[nm];
     if (!cc || !cc.commChange) continue;
-    if (state.notes.some(n => n && n.cc === nm)) continue;   // already seeded / kept
+    const callout = commCalloutDefaults(nm);
+    const existing = state.notes.find(n => n && canonicalNavWaypointName(n.cc) === nm);
+    if (existing) {
+      if (existing.cc !== nm) { existing.cc = nm; added = true; }
+      if (!existing.freqName) { existing.freqName = callout.freqName; added = true; }
+      if (!existing.freq) { existing.freq = callout.freq; added = true; }
+      // Earlier auto-generated callouts were note boxes above the point.
+      // Move only notes still sitting on those generated positions to the
+      // chart-style west tail; user-dragged callouts keep their location.
+      const oldLats = [r5(wp.lat + 0.012), r5(wp.lat + 0.07)];
+      const oldLng = r5(wp.lng);
+      if (oldLats.some(oldLat => Math.abs(existing.lat - oldLat) < 0.00002) &&
+          Math.abs(existing.lng - oldLng) < 0.00002) {
+        const tail = commCalloutDefaultTail(wp);
+        existing.lat = tail.lat;
+        existing.lng = tail.lng;
+        added = true;
+      }
+      continue;
+    }
+    const tail = commCalloutDefaultTail(wp);
     state.notes.push({
-      lat: r5(wp.lat + tune('commChangeNoteLatOffset')),
-      lng: r5(wp.lng),
+      lat: tail.lat,
+      lng: tail.lng,
       text: (typeof S !== 'undefined' && S.commChangeNoteText) || 'Freq change',
       color: NOTE_DEFAULT_COLOR,
       shape: 'rect',
       cc: nm,
+      freqName: callout.freqName,
+      freq: callout.freq,
     });
     added = true;
   }
@@ -608,9 +756,11 @@ function drawLegs() {
       const cumP = leg.cumLabel || defCum;
       const cumPerp  = cumP._default ? driftPerp : (cumP.p || 0) * zoomScale;
       const cumAlong = (cumP.a || 0) * zoomScale;
-      drawCumTimeArrow(sb.x + dx * cumAlong + nx * cumPerp,
-        sb.y + dy * cumAlong + ny * cumPerp,
-        ang - Math.PI / 2, cumInStr, '#161412', yellowFill(0.80), zoomScale);
+      const cumX = sb.x + dx * cumAlong + nx * cumPerp;
+      const cumY = sb.y + dy * cumAlong + ny * cumPerp;
+      drawCumTimeArrow(cumX, cumY,
+        Math.atan2(sb.y - cumY, sb.x - cumX),
+        cumInStr, '#161412', yellowFill(0.80), zoomScale);
     }
 
     if (showReturn) {
@@ -626,9 +776,11 @@ function drawLegs() {
         const cumRetP = leg.cumLabelRet || defCum;
         const cumRetPerp  = cumRetP._default ? -driftPerp : (cumRetP.p || 0) * zoomScale;
         const cumRetAlong = (cumRetP.a || 0) * zoomScale;
-        drawCumTimeArrow(sa.x + dx * cumRetAlong + nx * cumRetPerp,
-          sa.y + dy * cumRetAlong + ny * cumRetPerp,
-          ang + Math.PI / 2, cumOutArr[i], '#161412', 'rgba(255,204,214,0.80)', zoomScale);
+        const cumRetX = sa.x + dx * cumRetAlong + nx * cumRetPerp;
+        const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;
+        drawCumTimeArrow(cumRetX, cumRetY,
+          Math.atan2(sa.y - cumRetY, sa.x - cumRetX),
+          cumOutArr[i], '#161412', 'rgba(255,204,214,0.80)', zoomScale);
       }
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
@@ -893,8 +1045,9 @@ function noteFont() {
 
 function noteRect(i) {
   const n = state.notes[i];
+  if (n && n.cc) return commCalloutRect(n);
   const s = proj(n);
-  const lines = (n.text || '').split('\n');
+  const lines = noteLines(n);
   const lineH = tune('noteLineHeightPx');
   octx.font = noteFont();
   let maxW = 1;
@@ -909,14 +1062,191 @@ function noteRect(i) {
   return { x: s.x - w / 2, y: s.y - h / 2, w, h, lines, oval };
 }
 
+function commCalloutTextMetrics(lines) {
+  const name = lines[0] || '';
+  const freq = lines[1] || '';
+  const namePx = tune('commChangeNameFontPx');
+  const freqPx = tune('commChangeFreqFontPx');
+  const oldFont = octx.font;
+  octx.font = `bold ${namePx}px sans-serif`;
+  const nameW = octx.measureText(name || ' ').width;
+  octx.font = `bold ${freqPx}px sans-serif`;
+  const freqW = octx.measureText(freq || ' ').width;
+  octx.font = oldFont;
+  return { name, freq, namePx, freqPx, nameW, freqW };
+}
+
+function colorWithAlpha(color, alpha) {
+  const a = Math.max(0, Math.min(1, Number.isFinite(alpha) ? alpha : 1));
+  const m = typeof color === 'string' && color.match(/^#([0-9a-f]{6})$/i);
+  if (!m) return color;
+  const n = parseInt(m[1], 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+function commCalloutGeom(n) {
+  const target = commCalloutTarget(n);
+  if (!target) return null;
+  const lines = noteLines(n);
+  const text = commCalloutTextMetrics(lines);
+  const tp = proj(target);
+  const fp = proj(n);
+  let dx = fp.x - tp.x;
+  let dy = fp.y - tp.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 4) return null;
+  const ux = dx / len;
+  const uy = dy / len;
+  const nx = -uy;
+  const ny = ux;
+  const width = tune('commChangeArrowWidthPx');
+  const halo = tune('commChangeArrowHaloPx');
+  const bolt = tune('commChangeArrowBoltPx');
+  const boltAngle = tune('commChangeArrowBoltAngleDeg') * Math.PI / 180;
+  const boltX = ux * Math.cos(boltAngle) + nx * Math.sin(boltAngle);
+  const boltY = uy * Math.cos(boltAngle) + ny * Math.sin(boltAngle);
+  const bend1 = {
+    x: tp.x + dx * tune('commChangeArrowBend1Along') + boltX * bolt,
+    y: tp.y + dy * tune('commChangeArrowBend1Along') + boltY * bolt,
+  };
+  const bend2 = {
+    x: tp.x + dx * tune('commChangeArrowBend2Along') - boltX * bolt,
+    y: tp.y + dy * tune('commChangeArrowBend2Along') - boltY * bolt,
+  };
+  const bends = [bend1, bend2];
+  const points = [tp, ...bends, fp];
+  const segs = [];
+  let totalPath = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+    const segLen = Math.hypot(b.x - a.x, b.y - a.y);
+    if (segLen <= 0) continue;
+    segs.push({ a, b, len: segLen });
+    totalPath += segLen;
+  }
+  let want = totalPath * tune('commChangeTextAlong');
+  let textSeg = segs[segs.length - 1];
+  for (const seg of segs) {
+    if (want <= seg.len) { textSeg = seg; break; }
+    want -= seg.len;
+  }
+  const textT = textSeg ? Math.max(0, Math.min(1, want / textSeg.len)) : 0;
+  const tx = textSeg ? textSeg.a.x + (textSeg.b.x - textSeg.a.x) * textT : fp.x;
+  const ty = textSeg ? textSeg.a.y + (textSeg.b.y - textSeg.a.y) * textT : fp.y;
+  let textAngle = textSeg ? Math.atan2(textSeg.b.y - textSeg.a.y, textSeg.b.x - textSeg.a.x)
+                          : Math.atan2(uy, ux);
+  if (Math.cos(textAngle) < 0) textAngle += Math.PI;
+  const textGap = tune('commChangeTextGapPx');
+  return {
+    target: tp, tail: fp, bends, bend1, bend2,
+    ux, uy, nx, ny, len, width, halo, textGap,
+    textX: tx, textY: ty, textAngle, text, lines,
+  };
+}
+
+function commCalloutRect(n) {
+  const g = commCalloutGeom(n);
+  if (!g) {
+    const s = proj(n);
+    return { x: s.x - 20, y: s.y - 20, w: 40, h: 40, lines: noteLines(n), oval: false, comm: true };
+  }
+  const maxTextW = Math.max(g.text.nameW, g.text.freqW);
+  const textH = g.text.namePx + g.text.freqPx + g.width + g.textGap * 2;
+  const pad = Math.max(g.width + g.halo * 2, 16) + 8;
+  const xs = [g.tail.x, g.target.x, ...g.bends.map(p => p.x),
+    g.textX - maxTextW / 2, g.textX + maxTextW / 2];
+  const ys = [g.tail.y, g.target.y, ...g.bends.map(p => p.y),
+    g.textY - textH / 2, g.textY + textH / 2];
+  const minX = Math.min(...xs) - pad;
+  const maxX = Math.max(...xs) + pad;
+  const minY = Math.min(...ys) - pad;
+  const maxY = Math.max(...ys) + pad;
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY, lines: g.lines, oval: false, comm: true };
+}
+
+function strokeCommCalloutShape(g, width, style, alpha) {
+  octx.strokeStyle = style;
+  octx.globalAlpha = alpha;
+  octx.lineWidth = width;
+  octx.lineCap = tune('commChangeArrowLineCap');
+  octx.lineJoin = tune('commChangeArrowLineJoin');
+  octx.miterLimit = tune('commChangeArrowMiterLimit');
+  octx.beginPath();
+  octx.moveTo(g.target.x, g.target.y);
+  for (const p of g.bends) octx.lineTo(p.x, p.y);
+  octx.lineTo(g.tail.x, g.tail.y);
+  octx.stroke();
+  octx.globalAlpha = 1;
+}
+
+function drawCommCalloutText(g) {
+  const name = g.text.name ? g.text.name.toUpperCase() : '';
+  const freq = g.text.freq || '';
+  if (!name && !freq) return;
+  octx.save();
+  octx.translate(g.textX, g.textY);
+  octx.rotate(g.textAngle);
+  octx.textAlign = 'center';
+  octx.lineJoin = 'round';
+  const halo = colorWithAlpha(tune('commChangeTextHaloColor'), tune('commChangeTextHaloAlpha'));
+  const textColor = tune('commChangeTextColor');
+  if (name) {
+    octx.font = `bold ${g.text.namePx}px sans-serif`;
+    octx.textBaseline = 'bottom';
+    const y = -g.width / 2 - g.textGap;
+    octx.lineWidth = tune('commChangeNameHaloWidthPx');
+    octx.strokeStyle = halo;
+    octx.strokeText(name, 0, y);
+    octx.fillStyle = textColor;
+    octx.fillText(name, 0, y);
+  }
+  if (freq) {
+    octx.font = `bold ${g.text.freqPx}px sans-serif`;
+    octx.textBaseline = 'top';
+    const y = g.width / 2 + g.textGap;
+    octx.lineWidth = tune('commChangeFreqHaloWidthPx');
+    octx.strokeStyle = halo;
+    octx.strokeText(freq, 0, y);
+    octx.fillStyle = textColor;
+    octx.fillText(freq, 0, y);
+  }
+  octx.restore();
+}
+
+function drawCommCallout(n, selected) {
+  const g = commCalloutGeom(n);
+  if (!g) return;
+  octx.save();
+  if (selected) {
+    strokeCommCalloutShape(g, g.width + tune('commChangeSelectedWidthAddPx'),
+      tune('commChangeSelectedColor'), tune('commChangeSelectedAlpha'));
+  }
+  if (g.halo > 0) {
+    const halo = colorWithAlpha(tune('commChangeArrowHaloColor'), tune('commChangeArrowHaloAlpha'));
+    strokeCommCalloutShape(g, g.width + g.halo * 2, halo, 1);
+  }
+  strokeCommCalloutShape(g, g.width, tune('commChangeArrowColor'), 1);
+  drawCommCalloutText(g);
+  octx.restore();
+}
+
 function drawNotes() {
   for (let i = 0; i < state.notes.length; i++) {
     const n = state.notes[i];
+    if (n && n.cc && !showCommChange) continue;
     const r = noteRect(i);
     const selected = state.selected &&
                      state.selected.type === 'note' &&
                      state.selected.index === i;
     const color = n.color || NOTE_DEFAULT_COLOR;
+    if (n.cc) {
+      drawCommCallout(n, selected);
+      continue;
+    }
     octx.fillStyle = tintFill(color);
     octx.lineWidth = selected ? tune('noteSelectedStrokeWidthPx') : tune('noteStrokeWidthPx');
     octx.strokeStyle = selected ? '#ffcc33' : '#161412';
