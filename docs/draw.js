@@ -537,9 +537,10 @@ function commCallSignOptionNames(opt) {
     .map(v => v.trim());
 }
 function commCallSignOptionMatches(opt, raw) {
-  const needle = String(raw || '').trim();
+  const needle = String(raw || '').trim().toLocaleLowerCase();
   if (!needle) return false;
-  return commCallSignOptionNames(opt).some(v => v === needle);
+  return commCallSignOptionNames(opt)
+    .some(v => v.toLocaleLowerCase() === needle);
 }
 function commCallSignDefaultFreq(row) {
   if (!row || typeof row !== 'object') return '';
@@ -571,23 +572,34 @@ function commCalloutDefaults(name) {
   const cc = commChangeMap && key ? commChangeMap[key] : null;
   const fallback = (typeof S !== 'undefined' && S.commChangeNoteText) || 'Freq change';
   const opt = commCallSignOptions(key)[0];
-  if (opt) return { freqName: opt.label || fallback, freq: opt.freq || '' };
+  if (opt) return { freqName: opt.id || opt.label || fallback, freq: opt.freq || '' };
   const raw = cc && (cc.to || cc.from || cc.note || cc.name || key);
   const d = splitCommCalloutText(raw || key || fallback);
   return { freqName: d.name || fallback, freq: d.freq };
 }
+function commNoteCallSignOption(n) {
+  if (!n || !n.cc || typeof n.freqName !== 'string' || !n.freqName.trim()) return null;
+  return commCallSignOptions(n.cc)
+    .find(o => commCallSignOptionMatches(o, n.freqName)) || null;
+}
 function commNoteName(n) {
+  const opt = commNoteCallSignOption(n);
+  if (opt) return opt.label;
   if (n && typeof n.freqName === 'string' && n.freqName.trim()) {
-    const current = n.freqName.trim();
-    const opt = n.cc ? commCallSignOptions(n.cc)
-      .find(o => commCallSignOptionMatches(o, current)) : null;
-    return opt ? opt.label : current;
+    return n.freqName.trim();
   }
-  if (n && n.cc) return commCalloutDefaults(n.cc).freqName;
+  if (n && n.cc) {
+    const d = commCalloutDefaults(n.cc);
+    const def = commCallSignOptions(n.cc)
+      .find(o => commCallSignOptionMatches(o, d.freqName));
+    return def ? def.label : d.freqName;
+  }
   return '';
 }
 function commNoteFreq(n) {
   if (n && typeof n.freq === 'string' && n.freq.trim()) return n.freq.trim();
+  const opt = commNoteCallSignOption(n);
+  if (opt && opt.freq) return opt.freq;
   if (n && n.cc) return commCalloutDefaults(n.cc).freq;
   return '';
 }

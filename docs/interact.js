@@ -375,7 +375,10 @@ function showInspector() {
   } else if (state.selected.type === 'note') {
     const note = state.notes[state.selected.index];
     if (note.cc) {
-      if (!note.freqName) note.freqName = commNoteName(note);
+      if (!note.freqName) {
+        note.freqName = (typeof commCalloutDefaults === 'function'
+          ? commCalloutDefaults(note.cc).freqName : commNoteName(note));
+      }
       if (!note.freq) note.freq = commNoteFreq(note);
       title.value = S.commChangeBadge || 'Freq change';
       title.placeholder = '';
@@ -383,6 +386,8 @@ function showInspector() {
       title.oninput = null;
       const opts = typeof commCallSignOptions === 'function'
         ? commCallSignOptions(note.cc) : [];
+      let callSignSelect = null;
+      let freqInput = null;
       if (opts.length) {
         const current = (note.freqName || '').trim();
         let selected = opts.find(o => typeof commCallSignOptionMatches === 'function'
@@ -393,24 +398,39 @@ function showInspector() {
           selected = { id: '__custom__', label: current };
           rows.unshift(['__custom__', current]);
         }
-        body.appendChild(selectRow(S.commChangeCallSign || 'Call sign',
+        const select = selectRow(S.commChangeCallSign || 'Call sign',
           selected ? selected.id : opts[0].id, rows, v => {
             const opt = opts.find(o => o.id === v);
             if (!opt) return;
-            note.freqName = opt.label;
+            note.freqName = opt.id;
             note.freq = opt.freq || '';
             draw();
             showInspector();
-          }));
+          });
+        callSignSelect = select.querySelector('select');
+        body.appendChild(select);
       }
       body.appendChild(inputRow(S.commChangeName || 'Name', commNoteName(note) || '', v => {
-        note.freqName = v;
+        const opt = opts.find(o => typeof commCallSignOptionMatches === 'function'
+          ? commCallSignOptionMatches(o, v)
+          : o.label === v || o.id === v);
+        if (opt) {
+          note.freqName = opt.id;
+          note.freq = opt.freq || '';
+          if (callSignSelect) callSignSelect.value = opt.id;
+          if (freqInput) freqInput.value = note.freq;
+        } else {
+          note.freqName = v;
+          if (callSignSelect && v) callSignSelect.value = '__custom__';
+        }
         draw();
       }));
-      body.appendChild(inputRow(S.commChangeFreq || 'Frequency', note.freq || '', v => {
+      const freqRow = inputRow(S.commChangeFreq || 'Frequency', note.freq || '', v => {
         note.freq = v;
         draw();
-      }));
+      });
+      freqInput = freqRow.querySelector('input');
+      body.appendChild(freqRow);
     } else {
       title.value = '';
       title.placeholder = '';

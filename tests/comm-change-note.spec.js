@@ -71,7 +71,7 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(notes).toHaveLength(1);
     expect(notes[0].cc).toBe('TYONA');
     expect(notes[0].text).toBe('Freq change');
-    expect(notes[0].freqName).toBe('Pluto');
+    expect(notes[0].freqName).toBe('PLUTO');
     expect(notes[0].freq).toBe('118.40');
     expect(notes[0].shape).toBe('rect');
     expect(notes[0].color).toBeTruthy();
@@ -315,7 +315,7 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.changed).toBe(true);
     expect(out.lat).toBeCloseTo(TYONA.lat + NOTE_LAT_OFFSET, 4);
     expect(out.lng).toBeCloseTo(TYONA.lng + NOTE_LNG_OFFSET, 4);
-    expect(out.freqName).toBe('Pluto');
+    expect(out.freqName).toBe('PLUTO');
     expect(out.freq).toBe('118.40');
     expect(out.tailDistancePx).toBeGreaterThan(90);
   });
@@ -337,7 +337,7 @@ test.describe('comm-change auto-note (#487)', () => {
       state.notes.length === 1 && state.notes[0].cc === 'TYONA' &&
       state.notes[0].freq === '118.40');
     const note = await page.evaluate(() => state.notes[0]);
-    expect(note.freqName).toBe('Pluto');
+    expect(note.freqName).toBe('PLUTO');
     expect(note.lat).toBeCloseTo(TYONA.lat + NOTE_LAT_OFFSET, 4);
     expect(note.lng).toBeCloseTo(TYONA.lng + NOTE_LNG_OFFSET, 4);
   });
@@ -442,7 +442,7 @@ test.describe('comm-change auto-note (#487)', () => {
       state.notes.length === 1 && state.notes[0].cc === 'TYONA' &&
       state.notes[0].freq === '118.40');
     const note = await page.evaluate(() => state.notes[0]);
-    expect(note.freqName).toBe('Pluto');
+    expect(note.freqName).toBe('PLUTO');
     expect(note.lat).toBeCloseTo(TYONA.lat + NOTE_LAT_OFFSET, 4);
     expect(note.lng).toBeCloseTo(TYONA.lng + NOTE_LNG_OFFSET, 4);
   });
@@ -464,7 +464,7 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.wpName).not.toBe('TYONA');
     expect(out.display).toBe(out.wpName);
     expect(out.note.cc).toBe('TYONA');
-    expect(out.note.freqName).toBe('פלוטו');
+    expect(out.note.freqName).toBe('PLUTO');
     expect(out.note.freq).toBe('118.40');
   });
 
@@ -533,6 +533,10 @@ test.describe('comm-change auto-note (#487)', () => {
       showInspector();
     }, TYONA);
     const sel = page.locator('#insp-body select').first();
+    const labels = page.locator('#insp-body .row label');
+    await expect(labels.nth(0)).toHaveText('Waypoint');
+    await expect(labels.nth(1)).toHaveText('Call sign');
+    await expect(labels.nth(2)).toHaveText('Frequency');
     await expect(sel).toHaveValue('PLUTO');
     await sel.selectOption('HAGAV');
     const fields = page.locator('#insp-body input[type="text"]');
@@ -544,7 +548,7 @@ test.describe('comm-change auto-note (#487)', () => {
       freq: state.notes[0].freq,
       lines: noteLines(state.notes[0]),
     }));
-    expect(out.freqName).toBe('Hagav');
+    expect(out.freqName).toBe('HAGAV');
     expect(out.freq).toBe('133.45');
     expect(out.lines).toEqual(['HAGAV', '133.45']);
   });
@@ -560,6 +564,10 @@ test.describe('comm-change auto-note (#487)', () => {
       showInspector();
     }, TYONA);
     const fields = page.locator('#insp-body input[type="text"]');
+    const labels = page.locator('#insp-body .row label');
+    await expect(labels.nth(0)).toHaveText('נקודת דיווח');
+    await expect(labels.nth(1)).toHaveText('אות קריאה');
+    await expect(labels.nth(2)).toHaveText('תדר');
     await expect(fields.nth(0)).toHaveValue('פלוטו');
     await expect(fields.nth(1)).toHaveValue('118.40');
     const sel = page.locator('#insp-body select').first();
@@ -572,7 +580,30 @@ test.describe('comm-change auto-note (#487)', () => {
       freq: state.notes[0].freq,
       lines: noteLines(state.notes[0]),
     }));
-    expect(out.freqName).toBe('חגב');
+    expect(out.freqName).toBe('HAGAV');
+    expect(out.freq).toBe('132.70');
+    expect(out.lines).toEqual(['חגב', '132.70']);
+  });
+
+  test('Hebrew call-sign edits look up the default frequency', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page, 'he');
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      syncLegs();
+      seedCommChangeNotes();
+      state.selected = { type: 'note', index: 0 };
+      showInspector();
+    }, TYONA);
+    const fields = page.locator('#insp-body input[type="text"]');
+    await fields.nth(0).fill('חגב');
+    await expect(fields.nth(1)).toHaveValue('132.70');
+    const out = await page.evaluate(() => ({
+      freqName: state.notes[0].freqName,
+      freq: state.notes[0].freq,
+      lines: noteLines(state.notes[0]),
+    }));
+    expect(out.freqName).toBe('HAGAV');
     expect(out.freq).toBe('132.70');
     expect(out.lines).toEqual(['חגב', '132.70']);
   });
@@ -630,7 +661,7 @@ test.describe('comm-change auto-note (#487)', () => {
       };
     }, TYONA);
     expect(out.text).toBe('שינוי תדר');
-    expect(out.freqName).toBe('פלוטו');
+    expect(out.freqName).toBe('PLUTO');
     expect(out.lines).toEqual(['פלוטו', '118.40']);
   });
 });
