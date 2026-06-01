@@ -23,15 +23,15 @@
 // this frame) so the tests can assert visibility without snapshotting overlay
 // canvas pixels — see draw.js drawNavWaypoints.
 const { test, expect } = require('./_setup');
+const fs = require('fs');
 
-// TYONA reporting point — coords lifted from docs/nav-waypoints.json. Used
-// by the fixture-backed group as the "verified" stand-in.
+// TYONA reporting point — coords lifted from docs/nav-waypoints.json.
 const TYONA = { lat: 32.0047, lng: 34.7272, name: 'TYONA' };
 
 // Synthetic fixture matching docs/comm-change.json's schema. Three entries
 // cover every branch the renderer + inspector care about:
-//   * TYONA  — verified=true with from/to (full badge incl. freq row)
-//   * SORES  — verified=false with from/to (inferred path still draws)
+//   * TYONA  — from/to present (full badge incl. freq row)
+//   * SORES  — from/to present (alternate entry still draws)
 //   * BAZRA  — commChange:true with note but NO from/to (freq-row omitted)
 const FIXTURE = {
   version: 1,
@@ -44,7 +44,6 @@ const FIXTURE = {
       from: 'Tel-Aviv Control 121.40 / 124.30',
       to: 'Pluto West 118.40',
       note: 'test fixture entry',
-      verified: true,
       source: 'test fixture',
     },
     {
@@ -53,14 +52,12 @@ const FIXTURE = {
       from: 'Pluto West 118.40',
       to: 'Hagav North 128.35',
       note: 'test fixture entry (inferred)',
-      verified: false,
       source: 'test fixture',
     },
     {
       name: 'BAZRA',
       commChange: true,
       note: 'test fixture entry — frequencies intentionally omitted',
-      verified: false,
       source: 'test fixture',
     },
   ],
@@ -119,12 +116,163 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(typeof map).toBe('object');
     const keys = Object.keys(map);
     expect(keys.length).toBeGreaterThan(0);
-    // Every shipped entry is keyed by a 5-letter ICAO name and flagged commChange.
+    // Every shipped entry is either a 5-letter reporting point or a 4-letter
+    // airfield ICAO destination, and is flagged commChange.
+    const allowedPointKeys = ['callSigns', 'commChange', 'from', 'name', 'note', 'source', 'to'];
     for (const k of keys) {
-      expect(k).toMatch(/^[A-Z]{5}$/);
+      expect(k).toMatch(/^(?:[A-Z]{5}|LL[A-Z0-9]{2})$/);
       expect(map[k].commChange).toBe(true);
+      expect(Object.keys(map[k]).sort().every(key => allowedPointKeys.includes(key))).toBe(true);
     }
     expect(map.TYONA).toBeTruthy();
+    expect(map.TYONA.callSigns).toContain('PLUTO_WEST');
+    expect(map.TYONA.callSigns).toContain('PALMACHIM');
+    expect(map.AAKKO.callSigns).toEqual(['PLUTO_EAST', 'HAIFA']);
+    expect(map.AFULA.callSigns).toEqual(['PLUTO_EAST', 'RAMAT_DAVID', 'MEGIDDO']);
+    expect(map.ARRAD.callSigns).toEqual(['HAGAV_SOUTH', 'HAGAV_NORTH', 'NEGEV']);
+    expect(map.AYLON.callSigns).toEqual(['BEN_GURION', 'TEL_NOF']);
+    expect(map.BEREC.callSigns).toEqual(['RAMON', 'OVDA']);
+    expect(map.BASAN.callSigns).toEqual(['KIRYAT_SHMONA', 'PLUTO_EAST']);
+    expect(map.BOKER.callSigns).toEqual(['RAMON', 'HAGAV_SOUTH']);
+    expect(map.DALIA.callSigns).toEqual(['RAMAT_DAVID', 'PLUTO_WEST']);
+    expect(map.DAROM.callSigns).toEqual(['HAIFA', 'PLUTO_WEST']);
+    expect(map.DEROR.callSigns).toEqual(['HERZLIYA', 'PLUTO_WEST']);
+    expect(map.DESHE.callSigns).toEqual(['ROSH_PINA', 'PLUTO_EAST']);
+    expect(map.DIMON.callSigns).toEqual(['NEGEV', 'HAGAV_SOUTH']);
+    expect(map.GILAM.callSigns).toEqual(['HAIFA', 'PLUTO_EAST']);
+    expect(map.GNYAM.callSigns).toEqual(['HERZLIYA', 'BEN_GURION']);
+    expect(map.HAROV.callSigns).toEqual(['PLUTO_EAST', 'PIK']);
+    expect(map.HASID.callSigns).toEqual(['PLUTO_EAST', 'PLUTO_WEST', 'RAMAT_DAVID', 'HAIFA']);
+    expect(map.HODYA.callSigns).toEqual(['HAGAV_SOUTH', 'HATZOR']);
+    expect(map.HOVAV.callSigns).toEqual(['NEGEV', 'HAGAV_NORTH', 'HAGAV_SOUTH']);
+    expect(map.KNTRY.callSigns).toEqual(['HERZLIYA']);
+    expect(map.KTORA.callSigns).toEqual(['HAGAV_SOUTH', 'RAMON']);
+    expect(map.LLBS.callSigns).toEqual(['TEYMAN']);
+    expect(map.LLMZ.callSigns).toEqual(['MASADA']);
+    expect(map.MOVIL.callSigns).toEqual(['RAMAT_DAVID', 'PLUTO_EAST']);
+    expect(map.NCITY.callSigns).toEqual(['HAGAV_NORTH', 'KEDEM']);
+    expect(map.NMASD.callSigns).toEqual(['PALMACHIM', 'HAGAV_NORTH']);
+    expect(map.NOAAM.callSigns).toEqual(['HAGAV_NORTH', 'TEL_NOF']);
+    expect(map.NTAIM.callSigns).toEqual(['BEN_GURION', 'PALMACHIM', 'TEL_NOF']);
+    expect(map.NSHRM.callSigns).toEqual(['BEN_GURION']);
+    expect(map.OVDAT.callSigns).toEqual(['HAGAV_SOUTH']);
+    expect(map.PARDS.callSigns).toEqual(['BEN_GURION', 'PLUTO_WEST']);
+    expect(map.NIZAN.callSigns).toEqual(['RAMON', 'HAGAV_SOUTH']);
+    expect(map.SAMAR.callSigns).toEqual(['OVDA']);
+    expect(map.SFAIM.callSigns).toEqual(['PLUTO_WEST']);
+    expect(map.SDROT.callSigns).toEqual(['HAGAV_NORTH', 'KEDEM']);
+    expect(map.SHRUT.callSigns).toEqual(['RAMON', 'OVDA']);
+    expect(map.SIGAL.callSigns).toEqual(['HAGAV_NORTH', 'HAGAV_SOUTH']);
+    expect(map.SIZFN.callSigns).toEqual(['OVDA', 'HAGAV_SOUTH']);
+    expect(map.SOKET.callSigns).toEqual(['NEGEV', 'HAGAV_NORTH']);
+    expect(map.SORES.callSigns).toEqual(['PLUTO_EAST', 'TEL_NOF']);
+    expect(map.SOVAL.callSigns).toEqual(['HAGAV_NORTH', 'KEDEM']);
+    expect(map.RUHOT.callSigns).toEqual(['RAMON', 'HAGAV_SOUTH']);
+    expect(map.ZMGID.callSigns).toEqual(['PLUTO_EAST', 'PLUTO_WEST', 'MEGIDDO']);
+    expect(map.ZASHD.callSigns).toEqual(['PALMACHIM']);
+    expect(map.ZDAFA.callSigns).toEqual(['HAGAV_SOUTH', 'HATZOR']);
+    expect(map.ZMGEN.callSigns).toEqual(['HAGAV_NORTH', 'KEDEM']);
+    expect(map.ZUKIM.callSigns).toEqual(['PLUTO_EAST', 'HAGAV_SOUTH']);
+    expect(map.ZURIM.callSigns).toEqual(['HAGAV_NORTH']);
+    const catalog = await page.evaluate(() => window.commChangeCallSigns);
+    expect(catalog.PLUTO_WEST.label).toBe('Pluto West');
+    expect(catalog.PLUTO_WEST.primary).toBe('118.40');
+    expect(catalog.PLUTO_WEST.secondary).toBe('119.15');
+    expect(catalog.PLUTO_WEST.unit).toBe('יב"א 506');
+    expect(catalog.BEN_GURION.he).toBe('בן גוריון');
+    expect(catalog.BEN_GURION.primary).toBe('118.30');
+    expect(catalog.PALMACHIM.label).toBe('Palmachim');
+    expect(catalog.PALMACHIM.primary).toBe('135.55');
+    expect(catalog.PALMACHIM.secondary).toBe('118.25');
+    expect(catalog.HAIFA.he).toBe('חיפה');
+    expect(catalog.HAIFA.primary).toBe('133.00');
+    expect(catalog.KIRYAT_SHMONA.he).toBe('קריית שמונה');
+    expect(catalog.KIRYAT_SHMONA.primary).toBe('126.90');
+    expect(catalog.MEGIDDO.he).toBe('מגידו');
+    expect(catalog.MEGIDDO.primary).toBe('128.60');
+    expect(catalog.ROSH_PINA.he).toBe('ראש פינה');
+    expect(catalog.ROSH_PINA.primary).toBe('118.45');
+    expect(catalog.PLUTO_EAST.he).toBe('פלוטו מזרח');
+    expect(catalog.PLUTO_EAST.primary).toBe('123.85');
+    expect(catalog.PIK.he).toBe('פיק');
+    expect(catalog.PIK.primary).toBe('122.55');
+    expect(catalog.RAMAT_DAVID.he).toBe('רמת דוד');
+    expect(catalog.RAMAT_DAVID.primary).toBe('130.50');
+    expect(catalog.HAGAV_NORTH.primary).toBe('128.35');
+    expect(catalog.HAGAV_NORTH.secondary).toBe('129.25');
+  });
+
+  test('known frequency files use two-decimal frequency formatting', async ({ page }) => {
+    await boot(page);
+    const catalog = await page.evaluate(() => window.commChangeCallSigns);
+    const map = await page.evaluate(() => window.commChangeMap);
+    const badCatalog = [];
+    for (const [id, row] of Object.entries(catalog)) {
+      for (const field of ['primary', 'secondary', 'atis']) {
+        if (row[field] && !/^\d{3}\.\d{2}$/.test(row[field])) {
+          badCatalog.push(`${id}.${field}=${row[field]}`);
+        }
+      }
+    }
+    expect(badCatalog).toEqual([]);
+
+    for (const file of ['known-frequencies.md', 'known-freq-points.md']) {
+      const text = fs.readFileSync(file, 'utf8');
+      const tokens = text.match(/\b1\d{2}(?:\.\d+)?\b/g) || [];
+      const bad = tokens.filter(t => !/^\d{3}\.\d{2}$/.test(t));
+      expect(bad, file).toEqual([]);
+    }
+
+    const freqMd = fs.readFileSync('known-frequencies.md', 'utf8');
+    const idsInSection = heading => {
+      const start = freqMd.indexOf(`## ${heading}`);
+      expect(start, heading).toBeGreaterThanOrEqual(0);
+      const rest = freqMd.slice(start + heading.length + 3);
+      const next = rest.search(/\n## /);
+      const section = next >= 0 ? rest.slice(0, next) : rest;
+      return (section.match(/^\| ([A-Z0-9_]+) \|/gm) || [])
+        .map(line => line.split('|')[1].trim())
+        .filter(id => id !== 'ID')
+        .sort();
+    };
+    const used = Array.from(new Set(Object.values(map)
+      .flatMap(row => Array.isArray(row.callSigns) ? row.callSigns : []))).sort();
+    const unused = Object.keys(catalog).filter(id => !used.includes(id)).sort();
+    expect(idsInSection('Used By Frequency Points')).toEqual(used);
+    expect(idsInSection('Not Assigned To Frequency Points')).toEqual(unused);
+  });
+
+  test('every comm-change point has at least one frequency option', async ({ page }) => {
+    await boot(page);
+    const { map, catalog } = await page.evaluate(() => ({
+      map: window.commChangeMap,
+      catalog: window.commChangeCallSigns,
+    }));
+    const missingOptions = [];
+    const missingFrequencies = [];
+    for (const [name, point] of Object.entries(map)) {
+      const ids = Array.isArray(point.callSigns) ? point.callSigns.filter(Boolean) : [];
+      if (!ids.length) {
+        missingOptions.push(name);
+        continue;
+      }
+      const hasFrequency = ids.some(id => {
+        const row = catalog[id];
+        return row && ((typeof row.primary === 'string' && row.primary.trim()) ||
+          (typeof row.freq === 'string' && row.freq.trim()));
+      });
+      if (!hasFrequency) missingFrequencies.push(name);
+    }
+    expect(missingOptions).toEqual([]);
+    expect(missingFrequencies).toEqual([]);
+  });
+
+  test('known-freq-points.md lists every comm-change point', async ({ page }) => {
+    await boot(page);
+    const keys = await page.evaluate(() => Object.keys(window.commChangeMap).sort());
+    const md = fs.readFileSync('known-freq-points.md', 'utf8');
+    const missing = keys.filter(k => !md.includes(`| ${k} |`));
+    expect(missing).toEqual([]);
   });
 
   test('populated dataset draws comm-change rings for in-view points', async ({ page }) => {
@@ -154,7 +302,31 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
       'label[data-i18n-title="tbShowCommChangeTitle"]').textContent();
     expect(labelText).toMatch(/Show\/Add Freq Changes/i);
     const cb = page.locator('#commchange-cb');
-    await expect(cb).not.toBeChecked();
+    await expect(cb).toBeChecked();
+    const commBeforeSnap = await page.evaluate(() => {
+      const comm = document.querySelector('label[data-i18n-title="tbShowCommChangeTitle"]');
+      const snap = document.querySelector('label[data-i18n-title="tbForceSnapTitle"]');
+      return !!(comm && snap &&
+        (comm.compareDocumentPosition(snap) & Node.DOCUMENT_POSITION_FOLLOWING));
+    });
+    expect(commBeforeSnap).toBe(true);
+  });
+
+  test('legacy stored-off comm-change preference is ignored after key rename', async ({ page }) => {
+    await page.addInitScript(() => {
+      try {
+        for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
+        sessionStorage.clear();
+        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+          localStorage.setItem('navaid.sec.' + s, '1');
+        localStorage.setItem('navaid.showCommChange', '0');
+      } catch (e) {}
+    });
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof state !== 'undefined');
+    await expect(page.locator('#commchange-cb')).toBeChecked();
+    expect(await page.evaluate(() => window.showCommChange)).toBe(true);
+    expect(await page.evaluate(() => localStorage.getItem('navaid.showFreqChanges'))).toBeNull();
   });
 
   test('Hebrew locale uses the translated toggle label', async ({ page }) => {
@@ -192,7 +364,7 @@ test.describe('comm-change rendering (fixture-backed)', () => {
   test('toggling Show Comm Changes off hides the ring without disabling nav-WPs', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
-    // Enable the toggle first (default is now off).
+    // Re-assert the enabled state first, then verify the off path.
     await page.evaluate(() => {
       const cb = document.getElementById('commchange-cb');
       cb.checked = true;
@@ -221,9 +393,11 @@ test.describe('comm-change rendering (fixture-backed)', () => {
     // the augment, not the underlying overlay).
     const navOn = await page.evaluate(() => window.showNavWP === true);
     expect(navOn).toBe(true);
-    // Persistence: the toggle wrote '0' to navaid.showCommChange.
-    const stored = await page.evaluate(() => localStorage.getItem('navaid.showCommChange'));
+    // Persistence: the toggle wrote '0' to the renamed storage key.
+    const stored = await page.evaluate(() => localStorage.getItem('navaid.showFreqChanges'));
     expect(stored).toBe('0');
+    const legacy = await page.evaluate(() => localStorage.getItem('navaid.showCommChange'));
+    expect(legacy).toBeNull();
   });
 
   test('inspector grows a Comm change badge for a TYONA-named route waypoint', async ({ page }) => {
@@ -251,13 +425,13 @@ test.describe('comm-change rendering (fixture-backed)', () => {
     expect(freqText).toMatch(/Pluto West/);
   });
 
-  test('inferred (verified=false) fixture entries still populate commChangeMap', async ({ page }) => {
+  test('fixture entries with from/to still populate commChangeMap', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
     const sores = await page.evaluate(() => window.commChangeMap.SORES);
     expect(sores).toBeTruthy();
     expect(sores.commChange).toBe(true);
-    expect(sores.verified).toBe(false);
+    expect(sores.to).toBe('Hagav North 128.35');
   });
 
   test('fixture entry without from/to renders badge + note, omits freq row', async ({ page }) => {
@@ -290,7 +464,7 @@ test.describe('comm-change rendering (fixture-backed)', () => {
     // still draw (it no longer lives inside drawNavWaypoints' early-return).
     await page.evaluate(async () => {
       window.showNavWP = false;
-      window.showCommChange = true;  // default is now off
+      window.showCommChange = true;
       // navWP positions are still required — loaded by the comm toggle/boot.
       if (typeof loadNavWaypoints === 'function') await loadNavWaypoints();
       draw();

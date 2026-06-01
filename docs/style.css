@@ -87,6 +87,80 @@ html, body {
   margin: 4px 2px;
 }
 
+.map-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px 8px;
+  margin: 2px 0;
+  border: 1px solid #3a3636;
+  border-radius: 5px;
+  background: rgba(47, 43, 43, 0.72);
+}
+.map-legend-title {
+  color: #b9b3b3;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.map-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 18px;
+  color: #e8e8e8;
+  font-size: 12px;
+}
+.legend-symbol {
+  position: relative;
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+.legend-airfield::before,
+.legend-airfield::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+}
+.legend-airfield::before {
+  top: 1px;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 15px solid #0a1a2a;
+}
+.legend-airfield::after {
+  top: 4px;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 11px solid #2f6fd0;
+}
+.legend-waypoint::before,
+.legend-atc::before {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+}
+.legend-waypoint::before {
+  left: 4px;
+  top: 4px;
+  width: 9px;
+  height: 9px;
+  background: #fff;
+  border: 1.5px solid #161412;
+}
+.legend-atc::before {
+  left: 2px;
+  top: 2px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #e74c3c;
+}
+
 /* --- collapsible sections ------------------------------------------ */
 .tb-section {
   border-top: 1px solid #3a3636;
@@ -1229,13 +1303,16 @@ html, body {
   color: #d9d3d3;
   line-height: 1.2;
 }
-#tuning-panel input {
+#tuning-panel input,
+#tuning-panel select {
   min-width: 0;
 }
 #tuning-panel input[type="range"] {
   width: 100%;
 }
-#tuning-panel input[type="number"] {
+#tuning-panel input[type="number"],
+#tuning-panel input[type="text"],
+#tuning-panel select {
   width: 64px;
   padding: 4px 5px;
   color: #e8e8e8;
@@ -1243,6 +1320,20 @@ html, body {
   border: 1px solid #443f3f;
   border-radius: 4px;
   font: inherit;
+}
+#tuning-panel input[type="text"] {
+  width: 86px;
+}
+#tuning-panel input[type="color"] {
+  width: 40px;
+  height: 28px;
+  padding: 2px;
+  background: #231f20;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+}
+#tuning-panel select {
+  width: 118px;
 }
 #tuning-panel .tune-reset {
   padding-inline: 4px;
