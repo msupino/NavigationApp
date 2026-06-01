@@ -662,14 +662,23 @@ document.getElementById('plan').onclick = () => {
 document.getElementById('charts').onclick = showChartsModal;
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
+const CUMTIME_KEY = 'navaid.showCumTime';
 try {
   const sr = localStorage.getItem(RETURN_KEY);
   if (sr !== null) window.showReturn =sr === '1';
   const sm = localStorage.getItem(MIDLEG_KEY);
   if (sm !== null) window.showMidLeg =sm === '1';
+  const sc = localStorage.getItem(CUMTIME_KEY);
+  if (sc !== null) window.showCumTime = sc === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('ret-cb').checked = showReturn;
 document.getElementById('mid-cb').checked = showMidLeg;
+document.getElementById('cumtime-cb').checked = showCumTime;
+document.getElementById('cumtime-cb').onchange = e => {
+  window.showCumTime = e.target.checked;
+  try { localStorage.setItem(CUMTIME_KEY, showCumTime ? '1' : '0'); } catch (err) { /* */ }
+  draw();
+};
 document.getElementById('ret-cb').onchange = e => {
   window.showReturn =e.target.checked;
   try { localStorage.setItem(RETURN_KEY, showReturn ? '1' : '0'); } catch (err) { /* */ }
@@ -901,6 +910,42 @@ LEGARROW_EL.oninput = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
+
+const LEGLINEWIDTH_KEY = 'navaid.legLineWidth';
+const LEGLINEWIDTH_MIN = 0.5, LEGLINEWIDTH_MAX = 6, LEGLINEWIDTH_STEP = 0.5;
+try {
+  const v = parseFloat(localStorage.getItem(LEGLINEWIDTH_KEY));
+  if (!isNaN(v)) window.legLineWidth = Math.max(LEGLINEWIDTH_MIN, Math.min(LEGLINEWIDTH_MAX, v));
+} catch (e) { /* storage unavailable */ }
+const LEGLINEWIDTH_EL = document.getElementById('leg-line-width');
+LEGLINEWIDTH_EL.min = String(LEGLINEWIDTH_MIN); LEGLINEWIDTH_EL.max = String(LEGLINEWIDTH_MAX); LEGLINEWIDTH_EL.step = String(LEGLINEWIDTH_STEP);
+LEGLINEWIDTH_EL.value = legLineWidth;
+updateSliderVal(LEGLINEWIDTH_EL, parseFloat(legLineWidth).toFixed(1));
+LEGLINEWIDTH_EL.oninput = e => {
+  window.legLineWidth = parseFloat(e.target.value);
+  updateSliderVal(e.target, parseFloat(e.target.value).toFixed(1));
+  try { localStorage.setItem(LEGLINEWIDTH_KEY, String(legLineWidth)); }
+  catch (err) { /* storage unavailable */ }
+  draw();
+};
+
+const DRIFTLINEWIDTH_KEY = 'navaid.driftLineWidth';
+const DRIFTLINEWIDTH_MIN = 0.5, DRIFTLINEWIDTH_MAX = 6, DRIFTLINEWIDTH_STEP = 0.5;
+try {
+  const v = parseFloat(localStorage.getItem(DRIFTLINEWIDTH_KEY));
+  if (!isNaN(v)) window.driftLineWidth = Math.max(DRIFTLINEWIDTH_MIN, Math.min(DRIFTLINEWIDTH_MAX, v));
+} catch (e) { /* storage unavailable */ }
+const DRIFTLINEWIDTH_EL = document.getElementById('drift-line-width');
+DRIFTLINEWIDTH_EL.min = String(DRIFTLINEWIDTH_MIN); DRIFTLINEWIDTH_EL.max = String(DRIFTLINEWIDTH_MAX); DRIFTLINEWIDTH_EL.step = String(DRIFTLINEWIDTH_STEP);
+DRIFTLINEWIDTH_EL.value = driftLineWidth;
+updateSliderVal(DRIFTLINEWIDTH_EL, parseFloat(driftLineWidth).toFixed(1));
+DRIFTLINEWIDTH_EL.oninput = e => {
+  window.driftLineWidth = parseFloat(e.target.value);
+  updateSliderVal(e.target, parseFloat(e.target.value).toFixed(1));
+  try { localStorage.setItem(DRIFTLINEWIDTH_KEY, String(driftLineWidth)); }
+  catch (err) { /* storage unavailable */ }
+  draw();
+};
 // magVar is hardcoded at -5 (5°E) in core.js; the input was removed.
 
 document.getElementById('page-a3').onclick = () => setPage('A3');
@@ -924,6 +969,8 @@ document.getElementById('tool-reset-all-markers').onclick = () => {
     const d = _defaultLegLabels();
     state.legs[i].inLabel = d.inLabel;
     state.legs[i].outLabel = d.outLabel;
+    state.legs[i].cumLabel = d.cumLabel;
+    state.legs[i].cumLabelRet = d.cumLabelRet;
   }
   draw();
 };

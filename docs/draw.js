@@ -19,6 +19,7 @@
 const legDefaultDriftTan = Math.tan(10 * Math.PI / 180);
 const legDefaultDriftMarginPx = 8;
 const legDefaultKiteHalfWidthPx = 23;   // kite half-width when legZoomScale() === 1 (W = 46 * sc)
+const driftLineDash = [12, 8];
 function legDefaultLabelPerp(legLenPx) {
   const sc = (typeof legZoomScale === 'function') ? legZoomScale() : 1;
   return (Math.max(1, legLenPx) / 2) * legDefaultDriftTan +
@@ -512,6 +513,24 @@ window.seedCommChangeNotes = seedCommChangeNotes;
 
 function drawLegs() {
   const zoomScale = legZoomScale();
+
+  // Pre-compute cumulative outbound times (walk legs in reverse so each
+  // entry is "total return time from the last waypoint through leg i").
+  const cumOutArr = new Array(state.legs.length).fill('--');
+  if (showReturn) {
+    let cumOut = 0;
+    for (let j = state.legs.length - 1; j >= 0; j--) {
+      const Aj = state.waypoints[j], Bj = state.waypoints[j + 1];
+      if (!Aj || !Bj) continue;
+      const { dist: dj } = geo(Aj, Bj);
+      const dur = state.legs[j].outboundSpeed > 0 ? dj / state.legs[j].outboundSpeed : 0;
+      cumOut += dur;
+      cumOutArr[j] = cumOut > 0 ? toHMS(cumOut) : '--';
+    }
+  }
+
+  let cumInH = 0;  // running inbound cumulative time (hours)
+
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     if (!A || !B) continue;
@@ -521,9 +540,10 @@ function drawLegs() {
                      state.selected.type === 'leg' &&
                      state.selected.index === i;
 
+    const lw = (typeof legLineWidth === 'number' && legLineWidth > 0) ? legLineWidth : 1;
     octx.lineCap = 'round';
     octx.strokeStyle = selected ? '#ffcc33' : '#161412';
-    octx.lineWidth = selected ? 5 : 3.5;
+    octx.lineWidth = selected ? 5 * lw : 3.5 * lw;
     octx.beginPath();
     octx.moveTo(sa.x, sa.y);
     octx.lineTo(sb.x, sb.y);
@@ -570,15 +590,42 @@ function drawLegs() {
     const outPerp = outP._default ? -driftPerp : (outP.p || 0) * zoomScale;
     const inAlong  = (inP.a  || 0) * zoomScale;
     const outAlong = (outP.a || 0) * zoomScale;
+    cumInH += durH;
+    const cumInStr = cumInH > 0 ? toHMS(cumInH) : '--';
+
     drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, String(leg.inboundAltitude),
       '#161412', yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
+    // Cumulative inbound time: < [time], position driven by leg.cumLabel
+    // (default: at B waypoint, same perpendicular side as main kite).
+    const defCum = { a: 0, _default: 1, _m: 1 };
+    if (showCumTime) {
+      const cumP = leg.cumLabel || defCum;
+      const cumPerp  = cumP._default ? driftPerp : (cumP.p || 0) * zoomScale;
+      const cumAlong = (cumP.a || 0) * zoomScale;
+      drawCumTimeArrow(sb.x + dx * cumAlong + nx * cumPerp,
+        sb.y + dy * cumAlong + ny * cumPerp,
+        ang - Math.PI / 2, cumInStr, '#161412', yellowFill(0.80), zoomScale);
+    }
+
     if (showReturn) {
       drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, String(leg.outboundAltitude),
         '#161412', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
+      if (showCumTime) {
+        // Cumulative return time kite at A waypoint (return destination).
+        // Own offset (cumLabelRet), anchored at A with the same +dx/+nx frame
+        // as the inbound kite so its drag math is identical; default sits on
+        // the opposite perpendicular side (-driftPerp).
+        const cumRetP = leg.cumLabelRet || defCum;
+        const cumRetPerp  = cumRetP._default ? -driftPerp : (cumRetP.p || 0) * zoomScale;
+        const cumRetAlong = (cumRetP.a || 0) * zoomScale;
+        drawCumTimeArrow(sa.x + dx * cumRetAlong + nx * cumRetPerp,
+          sa.y + dy * cumRetAlong + ny * cumRetPerp,
+          ang + Math.PI / 2, cumOutArr[i], '#161412', 'rgba(255,204,214,0.80)', zoomScale);
+      }
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
   }
@@ -590,9 +637,10 @@ function drawDriftLines(sa, sb) {
   const c = Math.cos(a), s = Math.sin(a);
   const abx = sb.x - sa.x, aby = sb.y - sa.y;
   const bax = -abx, bay = -aby;
+  const dlw = (typeof driftLineWidth === 'number' && driftLineWidth > 0) ? driftLineWidth : 1;
   octx.save();
-  octx.setLineDash([5, 4]);
-  octx.lineWidth = 1.5;
+  octx.setLineDash(driftLineDash);
+  octx.lineWidth = 1.5 * dlw;
   octx.strokeStyle = 'rgba(20,20,20,0.6)';
   octx.beginPath();
   octx.moveTo(sa.x, sa.y);
@@ -652,6 +700,50 @@ function needsHalo(i, which) {
   const next = state.legs[i + 1];
   return cur.outboundAltitude !== next.outboundAltitude ||
          cur.outboundSpeed    !== next.outboundSpeed;
+}
+
+// Cumulative-time marker: < [time]
+// A backward-pointing triangle (tip toward the leg origin) joined to a single
+// rectangle cell showing the running total time from departure to this leg.
+// Drawn on the opposite perpendicular side from the main inbound kite so both
+// markers are always visible without overlap.
+function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
+  sc = sc ?? 1;
+  const W = 26 * sc, cell = 38 * sc, Lt = 20 * sc;   // wider cell so the time has side padding
+  const L = Lt + cell;
+  // Pentagon: tip on the LEFT (= backward along flightAng), rectangle on right.
+  octx.save();
+  octx.translate(cx, cy);
+  octx.rotate(flightAng);
+  const xb = L / 2 - Lt;                // rectangle/triangle junction
+  octx.beginPath();
+  octx.moveTo(-L / 2, -W / 2);          // top-left of rectangle
+  octx.lineTo(xb,     -W / 2);
+  octx.lineTo( L / 2,  0);              // → tip pointing toward B waypoint
+  octx.lineTo(xb,      W / 2);
+  octx.lineTo(-L / 2,  W / 2);          // bottom-left of rectangle
+  octx.closePath();
+  octx.fillStyle = fill;
+  octx.fill();
+  octx.lineWidth = 1.5 * sc;
+  octx.strokeStyle = accent;
+  octx.stroke();
+  octx.restore();
+
+  const fontPx = Math.max(4, Math.round(13 * sc));   // match the nav kite alt/time text
+  const cos = Math.cos(flightAng), sin = Math.sin(flightAng);
+  const textLx = -L / 2 + cell / 2;     // centre of the rectangle cell (excludes the triangle)
+  const p = { x: cx + textLx * cos, y: cy + textLx * sin };
+  octx.save();
+  octx.translate(p.x, p.y);
+  // Text orientation matches the navigation kite (flightAng+π = ang+π/2 when kite is at ang-π/2).
+  octx.rotate(flightAng + Math.PI);
+  octx.font = `bold ${fontPx}px sans-serif`;
+  octx.textAlign = 'center';
+  octx.textBaseline = 'middle';
+  octx.fillStyle = '#000';
+  octx.fillText(cumTime, 0, 0);
+  octx.restore();
 }
 
 // Navigation leg marker: a two-cell rectangle (altitude, time) joined to a
@@ -918,4 +1010,3 @@ function drawPageFrame() {
   octx.strokeRect(r.x, r.y, r.w, r.h);
   octx.restore();
 }
-
