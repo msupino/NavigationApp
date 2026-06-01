@@ -120,6 +120,40 @@ test.describe('Hidden tuning panel', () => {
     expect(out.persisted).toEqual([]);
   });
 
+  test('close button hides the panel', async ({ page }) => {
+    await boot(page);
+    await expect(page.locator('#tuning-panel')).toBeVisible();
+    await page.locator('#tuning-panel .tune-close').click();
+    await expect(page.locator('#tuning-panel')).not.toBeVisible();
+  });
+
+  test('panel is hidden during print via @media print', async ({ page }) => {
+    await boot(page);
+    await expect(page.locator('#tuning-panel')).toBeVisible();
+    await page.emulateMedia({ media: 'print' });
+    await expect(page.locator('#tuning-panel')).not.toBeVisible();
+    await page.emulateMedia({ media: 'screen' });
+    await expect(page.locator('#tuning-panel')).toBeVisible();
+  });
+
+  test('dragging the header repositions the panel', async ({ page }) => {
+    await boot(page);
+    await page.waitForSelector('#tuning-panel');
+    const headerBox = await page.locator('#tuning-panel .tune-head').boundingBox();
+    const panelBox0 = await page.locator('#tuning-panel').boundingBox();
+    // Start drag at left side of header (away from the ✕ close button).
+    // Move left (more room in the viewport) and down.
+    const sx = headerBox.x + 10;
+    const sy = headerBox.y + 5;
+    await page.mouse.move(sx, sy);
+    await page.mouse.down();
+    await page.mouse.move(sx - 50, sy + 60, { steps: 10 });
+    await page.mouse.up();
+    const panelBox1 = await page.locator('#tuning-panel').boundingBox();
+    expect(Math.round(panelBox1.x - panelBox0.x)).toBe(-50);
+    expect(Math.round(panelBox1.y - panelBox0.y)).toBe(60);
+  });
+
   test('frequency callout arrow and text size controls are tunable', async ({ page }) => {
     await boot(page);
     await openTuneGroup(page, 'Reference overlays');
