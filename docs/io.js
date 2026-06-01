@@ -311,6 +311,10 @@ function validateRoute(d) {
           errs.push(p + '.' + k + ': expected string, got ' + _vKind(n[k]));
         }
       }
+      if (Object.prototype.hasOwnProperty.call(n, 'freqAuto') &&
+          typeof n.freqAuto !== 'boolean') {
+        errs.push(p + '.freqAuto: expected boolean, got ' + _vKind(n.freqAuto));
+      }
     }
   }
   if (wpsOk && legsOk) {
@@ -514,6 +518,7 @@ function save() {
       ...(n.cc ? { cc: n.cc } : {}),   // #487: preserve comm-change seed tag
       ...(n.freqName ? { freqName: n.freqName } : {}),
       ...(n.freq ? { freq: n.freq } : {}),
+      ...(n.freqAuto === true ? { freqAuto: true } : {}),
     })),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -668,6 +673,7 @@ function load(file) {
       ...(n.cc ? { cc: n.cc } : {}),   // #487: preserve comm-change seed tag
       ...(n.freqName ? { freqName: n.freqName } : {}),
       ...(n.freq ? { freq: n.freq } : {}),
+      ...(n.freqAuto === true ? { freqAuto: true } : {}),
     }));
     syncLegs();
     state.selected = null;
@@ -2328,6 +2334,7 @@ function restoreRoute() {
     ...(n.cc ? { cc: n.cc } : {}),
     ...(n.freqName ? { freqName: n.freqName } : {}),
     ...(n.freq ? { freq: n.freq } : {}),
+    ...(n.freqAuto === true ? { freqAuto: true } : {}),
   }));
   syncLegs();
   return true;

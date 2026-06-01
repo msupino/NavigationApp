@@ -636,6 +636,7 @@ document.getElementById('reverse').onclick = () => {
     };
   });
   state.selected = null;
+  if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   showInspector(); draw();
 };
 document.getElementById('undo').onclick = () => { if (typeof undo === 'function') undo(); };
