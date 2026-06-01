@@ -512,8 +512,14 @@ function splitCommCalloutText(raw) {
   const m = s.match(/^(.*?)(?:\s+(\d{3}(?:\.\d{1,3})?))$/);
   return {
     name: (m ? m[1] : s).trim(),
-    freq: m ? m[2] : '',
+    freq: m ? commFormatFreq(m[2]) : '',
   };
+}
+function commFormatFreq(raw) {
+  const s = String(raw || '').trim();
+  if (/^\d{3}$/.test(s)) return s + '.00';
+  if (/^\d{3}\.\d$/.test(s)) return s + '0';
+  return s;
 }
 function commUseHebrewLabels() {
   const lang = (typeof window !== 'undefined' && window.__navLang) ||
@@ -544,8 +550,8 @@ function commCallSignOptionMatches(opt, raw) {
 }
 function commCallSignDefaultFreq(row) {
   if (!row || typeof row !== 'object') return '';
-  if (typeof row.primary === 'string' && row.primary.trim()) return row.primary.trim();
-  if (typeof row.freq === 'string' && row.freq.trim()) return row.freq.trim();
+  if (typeof row.primary === 'string' && row.primary.trim()) return commFormatFreq(row.primary);
+  if (typeof row.freq === 'string' && row.freq.trim()) return commFormatFreq(row.freq);
   return '';
 }
 function commCallSignOptions(name) {
@@ -597,7 +603,7 @@ function commNoteName(n) {
   return '';
 }
 function commNoteFreq(n) {
-  if (n && typeof n.freq === 'string' && n.freq.trim()) return n.freq.trim();
+  if (n && typeof n.freq === 'string' && n.freq.trim()) return commFormatFreq(n.freq);
   const opt = commNoteCallSignOption(n);
   if (opt && opt.freq) return opt.freq;
   if (n && n.cc) return commCalloutDefaults(n.cc).freq;

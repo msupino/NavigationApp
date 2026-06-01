@@ -129,38 +129,63 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(map.AAKKO.callSigns).toEqual(['PLUTO_EAST', 'HAIFA']);
     expect(map.AFULA.callSigns).toEqual(['PLUTO_EAST', 'RAMAT_DAVID', 'MEGIDDO']);
     expect(map.AYLON.callSigns).toEqual(['BEN_GURION', 'TEL_NOF']);
+    expect(map.BEREC.callSigns).toEqual(['RAMON', 'OVDA']);
     expect(map.BASAN.callSigns).toEqual(['KIRYAT_SHMONA', 'PLUTO_EAST']);
+    expect(map.BOKER.callSigns).toEqual(['RAMON', 'HAGAV_SOUTH']);
     expect(map.DALIA.callSigns).toEqual(['RAMAT_DAVID', 'PLUTO_WEST']);
     expect(map.DAROM.callSigns).toEqual(['HAIFA', 'PLUTO_WEST']);
     expect(map.DEROR.callSigns).toEqual(['HERZLIYA', 'PLUTO_WEST']);
     expect(map.DESHE.callSigns).toEqual(['ROSH_PINA', 'PLUTO_EAST']);
+    expect(map.DIMON.callSigns).toEqual(['NEGEV', 'HAGAV_SOUTH']);
     expect(map.GILAM.callSigns).toEqual(['HAIFA', 'PLUTO_EAST']);
     expect(map.GNYAM.callSigns).toEqual(['HERZLIYA', 'BEN_GURION']);
     expect(map.HAROV.callSigns).toEqual(['PLUTO_EAST', 'PIK']);
     expect(map.HASID.callSigns).toEqual(['PLUTO_EAST', 'PLUTO_WEST', 'RAMAT_DAVID', 'HAIFA']);
+    expect(map.HODYA.callSigns).toEqual(['HAGAV_SOUTH', 'HATZOR']);
+    expect(map.HOVAV.callSigns).toEqual(['NEGEV', 'HAGAV_NORTH', 'HAGAV_SOUTH']);
     expect(map.KNTRY.callSigns).toEqual(['HERZLIYA']);
+    expect(map.KTORA.callSigns).toEqual(['HAGAV_SOUTH', 'RAMON']);
     expect(map.MOVIL.callSigns).toEqual(['RAMAT_DAVID', 'PLUTO_EAST']);
+    expect(map.NCITY.callSigns).toEqual(['HAGAV_NORTH', 'KEDEM']);
+    expect(map.NMASD.callSigns).toEqual(['PALMACHIM', 'HAGAV_NORTH']);
+    expect(map.NOAAM.callSigns).toEqual(['HAGAV_NORTH', 'TEL_NOF']);
     expect(map.NTAIM.callSigns).toEqual(['BEN_GURION', 'PALMACHIM', 'TEL_NOF']);
     expect(map.NSHRM.callSigns).toEqual(['BEN_GURION']);
+    expect(map.OVDAT.callSigns).toEqual(['HAGAV_SOUTH']);
     expect(map.PARDS.callSigns).toEqual(['BEN_GURION', 'PLUTO_WEST']);
+    expect(map.NIZAN.callSigns).toEqual(['RAMON', 'HAGAV_SOUTH']);
+    expect(map.SAMAR.callSigns).toEqual(['OVDA']);
     expect(map.SFAIM.callSigns).toEqual(['PLUTO_WEST']);
+    expect(map.SDROT.callSigns).toEqual(['HAGAV_NORTH', 'KEDEM']);
+    expect(map.SHRUT.callSigns).toEqual(['RAMON', 'OVDA']);
+    expect(map.SIGAL.callSigns).toEqual(['HAGAV_NORTH', 'HAGAV_SOUTH']);
+    expect(map.SIZFN.callSigns).toEqual(['OVDA', 'HAGAV_SOUTH']);
+    expect(map.SOKET.callSigns).toEqual(['NEGEV', 'HAGAV_NORTH']);
+    expect(map.SORES.callSigns).toEqual(['PLUTO_EAST', 'TEL_NOF']);
+    expect(map.SOVAL.callSigns).toEqual(['HAGAV_NORTH', 'KEDEM']);
+    expect(map.RUHOT.callSigns).toEqual(['RAMON', 'HAGAV_SOUTH']);
     expect(map.ZMGID.callSigns).toEqual(['PLUTO_EAST', 'PLUTO_WEST', 'MEGIDDO']);
+    expect(map.ZASHD.callSigns).toEqual(['PALMACHIM']);
+    expect(map.ZDAFA.callSigns).toEqual(['HAGAV_SOUTH', 'HATZOR']);
+    expect(map.ZMGEN.callSigns).toEqual(['HAGAV_NORTH', 'KEDEM']);
+    expect(map.ZUKIM.callSigns).toEqual(['PLUTO_EAST', 'HAGAV_SOUTH']);
+    expect(map.ZURIM.callSigns).toEqual(['HAGAV_NORTH']);
     const catalog = await page.evaluate(() => window.commChangeCallSigns);
     expect(catalog.PLUTO_WEST.label).toBe('Pluto West');
     expect(catalog.PLUTO_WEST.primary).toBe('118.40');
     expect(catalog.PLUTO_WEST.secondary).toBe('119.15');
     expect(catalog.PLUTO_WEST.unit).toBe('יב"א 506');
     expect(catalog.BEN_GURION.he).toBe('בן גוריון');
-    expect(catalog.BEN_GURION.primary).toBe('118.3');
+    expect(catalog.BEN_GURION.primary).toBe('118.30');
     expect(catalog.PALMACHIM.label).toBe('Palmachim');
     expect(catalog.PALMACHIM.primary).toBe('135.55');
     expect(catalog.PALMACHIM.secondary).toBe('118.25');
     expect(catalog.HAIFA.he).toBe('חיפה');
-    expect(catalog.HAIFA.primary).toBe('133');
+    expect(catalog.HAIFA.primary).toBe('133.00');
     expect(catalog.KIRYAT_SHMONA.he).toBe('קריית שמונה');
-    expect(catalog.KIRYAT_SHMONA.primary).toBe('126.9');
+    expect(catalog.KIRYAT_SHMONA.primary).toBe('126.90');
     expect(catalog.MEGIDDO.he).toBe('מגידו');
-    expect(catalog.MEGIDDO.primary).toBe('128.6');
+    expect(catalog.MEGIDDO.primary).toBe('128.60');
     expect(catalog.ROSH_PINA.he).toBe('ראש פינה');
     expect(catalog.ROSH_PINA.primary).toBe('118.45');
     expect(catalog.PLUTO_EAST.he).toBe('פלוטו מזרח');
@@ -171,6 +196,46 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(catalog.RAMAT_DAVID.primary).toBe('130.50');
     expect(catalog.HAGAV_NORTH.primary).toBe('128.35');
     expect(catalog.HAGAV_NORTH.secondary).toBe('129.25');
+  });
+
+  test('known frequency files use two-decimal frequency formatting', async ({ page }) => {
+    await boot(page);
+    const catalog = await page.evaluate(() => window.commChangeCallSigns);
+    const map = await page.evaluate(() => window.commChangeMap);
+    const badCatalog = [];
+    for (const [id, row] of Object.entries(catalog)) {
+      for (const field of ['primary', 'secondary', 'atis']) {
+        if (row[field] && !/^\d{3}\.\d{2}$/.test(row[field])) {
+          badCatalog.push(`${id}.${field}=${row[field]}`);
+        }
+      }
+    }
+    expect(badCatalog).toEqual([]);
+
+    for (const file of ['known-frequencies.md', 'known-freq-points.md']) {
+      const text = fs.readFileSync(file, 'utf8');
+      const tokens = text.match(/\b1\d{2}(?:\.\d+)?\b/g) || [];
+      const bad = tokens.filter(t => !/^\d{3}\.\d{2}$/.test(t));
+      expect(bad, file).toEqual([]);
+    }
+
+    const freqMd = fs.readFileSync('known-frequencies.md', 'utf8');
+    const idsInSection = heading => {
+      const start = freqMd.indexOf(`## ${heading}`);
+      expect(start, heading).toBeGreaterThanOrEqual(0);
+      const rest = freqMd.slice(start + heading.length + 3);
+      const next = rest.search(/\n## /);
+      const section = next >= 0 ? rest.slice(0, next) : rest;
+      return (section.match(/^\| ([A-Z0-9_]+) \|/gm) || [])
+        .map(line => line.split('|')[1].trim())
+        .filter(id => id !== 'ID')
+        .sort();
+    };
+    const used = Array.from(new Set(Object.values(map)
+      .flatMap(row => Array.isArray(row.callSigns) ? row.callSigns : []))).sort();
+    const unused = Object.keys(catalog).filter(id => !used.includes(id)).sort();
+    expect(idsInSection('Used By Frequency Points')).toEqual(used);
+    expect(idsInSection('Not Assigned To Frequency Points')).toEqual(unused);
   });
 
   test('known-freq-points.md lists every comm-change point', async ({ page }) => {

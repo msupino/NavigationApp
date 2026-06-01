@@ -394,21 +394,12 @@ function showInspector() {
       title.oninput = null;
       const opts = typeof commCallSignOptions === 'function'
         ? commCallSignOptions(note.cc) : [];
-      let callSignSelect = null;
-      let callSignInput = null;
       let freqInput = null;
       const target = typeof commCalloutTarget === 'function'
         ? commCalloutTarget(note) : null;
       const wpName = (target && target.name) || note.cc || '';
       body.appendChild(textRow(S.commChangeCallSign || 'Waypoint',
         typeof navName === 'function' ? navName(wpName) : wpName));
-      const callSignRow = document.createElement('div');
-      callSignRow.className = 'row col call-sign-row';
-      const callSignLabel = document.createElement('label');
-      callSignLabel.textContent = S.commChangeName || 'Call sign';
-      callSignRow.appendChild(callSignLabel);
-      const callSignControls = document.createElement('div');
-      callSignControls.className = 'call-sign-controls';
       if (opts.length) {
         const current = (note.freqName || '').trim();
         let selected = opts.find(o => typeof commCallSignOptionMatches === 'function'
@@ -419,58 +410,19 @@ function showInspector() {
           selected = { id: '__custom__', label: current };
           rows.unshift(['__custom__', current]);
         }
-        callSignSelect = document.createElement('select');
-        for (const [val, text] of rows) {
-          const o = document.createElement('option');
-          o.value = val;
-          o.textContent = text;
-          if (val === (selected ? selected.id : opts[0].id)) o.selected = true;
-          callSignSelect.appendChild(o);
-        }
-        callSignSelect.onchange = () => {
-          const opt = opts.find(o => o.id === callSignSelect.value);
-          if (!opt) return;
-          note.freqName = opt.id;
-          note.freq = opt.freq || '';
-          if (callSignInput) callSignInput.value = opt.label;
-          if (freqInput) freqInput.value = note.freq;
-          draw();
-        };
-        callSignControls.appendChild(callSignSelect);
+        body.appendChild(selectRow(S.commChangeName || 'Call sign',
+          selected ? selected.id : opts[0].id, rows, v => {
+            const opt = opts.find(o => o.id === v);
+            if (!opt) return;
+            note.freqName = opt.id;
+            note.freq = opt.freq || '';
+            if (freqInput) freqInput.value = note.freq;
+            draw();
+          }));
+      } else {
+        body.appendChild(textRow(S.commChangeName || 'Call sign', commNoteName(note) || ''));
       }
-      callSignInput = document.createElement('input');
-      callSignInput.type = 'text';
-      callSignInput.value = commNoteName(note) || '';
-      callSignInput.oninput = () => {
-        const v = callSignInput.value;
-        const opt = opts.find(o => typeof commCallSignOptionMatches === 'function'
-          ? commCallSignOptionMatches(o, v)
-          : o.label === v || o.id === v);
-        if (opt) {
-          note.freqName = opt.id;
-          note.freq = opt.freq || '';
-          if (callSignSelect) callSignSelect.value = opt.id;
-          if (freqInput) freqInput.value = note.freq;
-        } else {
-          note.freqName = v;
-          if (callSignSelect && v) {
-            let custom = Array.from(callSignSelect.options)
-              .find(o => o.value === '__custom__');
-            if (!custom) {
-              custom = document.createElement('option');
-              custom.value = '__custom__';
-              callSignSelect.insertBefore(custom, callSignSelect.firstChild);
-            }
-            custom.textContent = v;
-            callSignSelect.value = '__custom__';
-          }
-        }
-        draw();
-      };
-      callSignControls.appendChild(callSignInput);
-      callSignRow.appendChild(callSignControls);
-      body.appendChild(callSignRow);
-      const freqRow = inputRow(S.commChangeFreq || 'Frequency', note.freq || '', v => {
+      const freqRow = inputRow(S.commChangeFreq || 'Frequency', commNoteFreq(note) || '', v => {
         note.freq = v;
         draw();
       });

@@ -528,7 +528,7 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.notes).toEqual([{ text: 'Manual note', cc: '' }]);
   });
 
-  test('comm-change note inspector edits name and frequency', async ({ page }) => {
+  test('comm-change note inspector edits frequency without a free-text call-sign field', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
     await page.evaluate(t => {
@@ -539,17 +539,16 @@ test.describe('comm-change auto-note (#487)', () => {
       showInspector();
     }, TYONA);
     const fields = page.locator('#insp-body input[type="text"]');
-    await expect(fields).toHaveCount(2);
-    await fields.nth(0).fill('PLUTO EAST');
-    await fields.nth(1).fill('119.20');
+    await expect(fields).toHaveCount(1);
+    await fields.nth(0).fill('119.20');
     const out = await page.evaluate(() => ({
       freqName: state.notes[0].freqName,
       freq: state.notes[0].freq,
       lines: noteLines(state.notes[0]),
     }));
-    expect(out.freqName).toBe('PLUTO EAST');
+    expect(out.freqName).toBe('PLUTO');
     expect(out.freq).toBe('119.20');
-    expect(out.lines).toEqual(['PLUTO EAST', '119.20']);
+    expect(out.lines).toEqual(['PLUTO', '119.20']);
   });
 
   test('comm-change note inspector selects a call sign default while frequency stays editable', async ({ page }) => {
@@ -572,9 +571,9 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(sel).toHaveValue('PLUTO');
     await sel.selectOption('HAGAV');
     const fields = page.locator('#insp-body input[type="text"]');
-    await expect(fields.nth(0)).toHaveValue('Hagav');
-    await expect(fields.nth(1)).toHaveValue('132.70');
-    await fields.nth(1).fill('133.45');
+    await expect(fields).toHaveCount(1);
+    await expect(fields.nth(0)).toHaveValue('132.70');
+    await fields.nth(0).fill('133.45');
     const out = await page.evaluate(() => ({
       freqName: state.notes[0].freqName,
       freq: state.notes[0].freq,
@@ -598,17 +597,18 @@ test.describe('comm-change auto-note (#487)', () => {
     const fields = page.locator('#insp-body input[type="text"]');
     const labels = page.locator('#insp-body .row label');
     const values = page.locator('#insp-body .row .val');
+    const sel = page.locator('#insp-body select').first();
     await expect(labels.nth(0)).toHaveText('נקודת דיווח');
     await expect(labels.nth(1)).toHaveText('אות קריאה');
     await expect(labels.nth(2)).toHaveText('תדר');
     await expect(values.nth(0)).toHaveText('תל יונה');
-    await expect(fields.nth(0)).toHaveValue('פלוטו');
-    await expect(fields.nth(1)).toHaveValue('118.40');
-    const sel = page.locator('#insp-body select').first();
+    await expect(fields).toHaveCount(1);
+    await expect(fields.nth(0)).toHaveValue('118.40');
     await expect(sel).toHaveValue('PLUTO');
+    await expect(page.locator('#insp-body select option:checked')).toHaveText('פלוטו');
     await sel.selectOption('HAGAV');
-    await expect(fields.nth(0)).toHaveValue('חגב');
-    await expect(fields.nth(1)).toHaveValue('132.70');
+    await expect(page.locator('#insp-body select option:checked')).toHaveText('חגב');
+    await expect(fields.nth(0)).toHaveValue('132.70');
     const out = await page.evaluate(() => ({
       freqName: state.notes[0].freqName,
       freq: state.notes[0].freq,
@@ -619,27 +619,69 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.lines).toEqual(['חגב', '132.70']);
   });
 
-  test('Hebrew call-sign edits look up the default frequency', async ({ page }) => {
+  test('Hebrew stored call sign selects the matching dropdown option and default frequency', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page, 'he');
-    await page.evaluate(t => {
+    const out = await page.evaluate(t => {
       state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      state.notes = [{
+        lat: t.lat + 0.012,
+        lng: t.lng,
+        text: 'שינוי תדר',
+        color: '#fff6aa',
+        shape: 'rect',
+        cc: 'TYONA',
+        freqName: 'חגב',
+        freq: '',
+      }];
       syncLegs();
-      seedCommChangeNotes();
       state.selected = { type: 'note', index: 0 };
       showInspector();
+      return {
+        freqName: state.notes[0].freqName,
+        freq: state.notes[0].freq,
+        lines: noteLines(state.notes[0]),
+      };
     }, TYONA);
     const fields = page.locator('#insp-body input[type="text"]');
-    await fields.nth(0).fill('חגב');
-    await expect(fields.nth(1)).toHaveValue('132.70');
-    const out = await page.evaluate(() => ({
-      freqName: state.notes[0].freqName,
-      freq: state.notes[0].freq,
-      lines: noteLines(state.notes[0]),
-    }));
-    expect(out.freqName).toBe('HAGAV');
+    const sel = page.locator('#insp-body select').first();
+    await expect(fields).toHaveCount(1);
+    await expect(fields.nth(0)).toHaveValue('132.70');
+    await expect(sel).toHaveValue('HAGAV');
+    await expect(page.locator('#insp-body select option:checked')).toHaveText('חגב');
+    expect(out.freqName).toBe('חגב');
     expect(out.freq).toBe('132.70');
     expect(out.lines).toEqual(['חגב', '132.70']);
+  });
+
+  test('comm-change frequencies are formatted with two decimals in callouts and inspector', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    const out = await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      state.notes = [{
+        lat: t.lat + 0.012,
+        lng: t.lng,
+        text: 'Freq change',
+        color: '#fff6aa',
+        shape: 'rect',
+        cc: 'TYONA',
+        freqName: 'PLUTO',
+        freq: '118.4',
+      }];
+      syncLegs();
+      state.selected = { type: 'note', index: 0 };
+      showInspector();
+      return {
+        split: splitCommCalloutText('Haifa 133'),
+        lines: noteLines(state.notes[0]),
+      };
+    }, TYONA);
+    expect(out.split).toEqual({ name: 'Haifa', freq: '133.00' });
+    expect(out.lines).toEqual(['PLUTO', '118.40']);
+    const fields = page.locator('#insp-body input[type="text"]');
+    await expect(fields).toHaveCount(1);
+    await expect(fields.nth(0)).toHaveValue('118.40');
   });
 
   test('load preserves comm-change callout name and frequency fields', async ({ page }) => {

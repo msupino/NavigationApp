@@ -533,11 +533,6 @@ html, body {
 }
 .row select { cursor: pointer; }
 .row .val { color: #e8e8e8; font-variant-numeric: tabular-nums; }
-.call-sign-controls {
-  display: flex;
-  gap: 6px;
-}
-.call-sign-controls input[type="text"] { flex: 1; width: 0; min-width: 0; }
 
 .row.col {
   flex-direction: column;
