@@ -763,7 +763,7 @@ html, body {
 
 /* Print (browser Cmd+P): drop the UI, keep the map + route overlay. */
 @media print {
-  #toolbar, #inspector, .leaflet-control-container { display: none !important; }
+  #toolbar, #inspector, #tuning-panel, .leaflet-control-container { display: none !important; }
   #map, #overlay { position: fixed; inset: 0; }
 }
 
@@ -773,6 +773,7 @@ html, body {
   body.printing-plan #overlay,
   body.printing-plan #toolbar,
   body.printing-plan #inspector,
+  body.printing-plan #tuning-panel,
   body.printing-plan .leaflet-control-container { display: none !important; }
   body.printing-plan .modal-back { position: static; background: none; }
   body.printing-plan .modal { box-shadow: none; border: none; max-height: none; max-width: none; }
@@ -1252,6 +1253,26 @@ html, body {
   gap: 12px;
   align-items: baseline;
   margin-bottom: 8px;
+  cursor: grab;
+  user-select: none;
+}
+#tuning-panel.dragging .tune-head {
+  cursor: grabbing;
+}
+#tuning-panel .tune-close {
+  background: none;
+  border: none;
+  color: #b9b3b3;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+#tuning-panel .tune-close:hover {
+  color: #fff;
+  background: #443f3f;
 }
 #tuning-panel .tune-head strong {
   font-size: 14px;

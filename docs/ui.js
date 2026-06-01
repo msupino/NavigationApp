@@ -1181,8 +1181,75 @@ function createTuningPanel() {
   title.textContent = 'Tuning';
   const subtitle = document.createElement('span');
   subtitle.textContent = 'Preview only. Resets on reload.';
-  header.append(title, subtitle);
+  const left = document.createElement('div');
+  left.style.cssText = 'display:flex;gap:12px;align-items:baseline';
+  left.append(title, subtitle);
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'tune-close';
+  closeBtn.type = 'button';
+  closeBtn.textContent = '✕';
+  closeBtn.setAttribute('aria-label', 'Close tuning panel');
+  closeBtn.onclick = () => { panel.style.display = 'none'; };
+  header.append(left, closeBtn);
   panel.appendChild(header);
+
+  // Drag to reposition via header.
+  {
+    const KEY = 'navaid.tunePanelPos';
+    let dx = 0, dy = 0, dragging = false;
+    function clampPos(x, y) {
+      const w = panel.offsetWidth, h = panel.offsetHeight;
+      return {
+        x: Math.max(8, Math.min(window.innerWidth - w - 8, x)),
+        y: Math.max(8, Math.min(window.innerHeight - h - 8, y)),
+      };
+    }
+    function setPos(x, y) {
+      const c = clampPos(x, y);
+      panel.style.left = c.x + 'px';
+      panel.style.top = c.y + 'px';
+      panel.style.right = 'auto';
+    }
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) {
+        const p = JSON.parse(raw);
+        requestAnimationFrame(() => setPos(p.x, p.y));
+      }
+    } catch (e) { /* storage unavailable */ }
+    function start(cx, cy) {
+      const r = panel.getBoundingClientRect();
+      dx = cx - r.left;
+      dy = cy - r.top;
+      dragging = true;
+      panel.classList.add('dragging');
+    }
+    function move(cx, cy) {
+      if (!dragging) return;
+      setPos(cx - dx, cy - dy);
+    }
+    function end() {
+      if (!dragging) return;
+      dragging = false;
+      panel.classList.remove('dragging');
+      const r = panel.getBoundingClientRect();
+      try { localStorage.setItem(KEY, JSON.stringify({ x: r.left, y: r.top })); }
+      catch (e) { /* storage unavailable */ }
+    }
+    header.addEventListener('mousedown', e => {
+      if (e.target.closest('button')) return;
+      e.preventDefault();
+      start(e.clientX, e.clientY);
+      const onMove = ev => move(ev.clientX, ev.clientY);
+      const onUp = () => {
+        end();
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+  }
 
   const actions = document.createElement('div');
   actions.className = 'tune-actions';
