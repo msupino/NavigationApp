@@ -171,6 +171,14 @@ branch by mistake.
   - **Reset buttons:** inspector "↺ Reset marker position" (per leg) and
     toolbar `#tool-reset-all-markers` "↺ Reset all marker positions"
     (all legs, prompts `confirm()`). Both call `_defaultLegLabels()`.
+- **Cumulative-time kites:** `cumLabel` (inbound, anchored at the leg's
+  destination waypoint) and `cumLabelRet` (return, anchored at the leg's
+  start waypoint) use the same `{a,p,_m:1}` storage as leg labels, but
+  dragging is intentionally endpoint-relative: each pointer move recomputes
+  the vector from the anchor waypoint to the pointer, so the kite orbits the
+  waypoint and can move nearer/farther. The drawn cumulative-time kite rotates
+  to point back at its anchor waypoint, so orbiting is visible instead of
+  reading as a free-floating label.
 - **Mid-leg distance badge:** global toggle (`showMidLeg`).
 - **Magnifying glass:** toggle button 🔍 in the **View** section. Shows a
   circular **400 px** loupe (default; `magnifierSize`) of cloned base
@@ -216,6 +224,29 @@ branch by mistake.
     to terrain during pan (not just on `moveend`).
 - **Drift lines** (10°), **minute markers** with even-minute numeric
   labels and a white halo.
+- **Comm-change frequency callouts:** the "Show/Add Freq Changes" layer
+  still draws red rings on published comm-change reporting points. When a
+  route waypoint sits on one of those points, `seedCommChangeNotes()`
+  creates a real draggable note tagged `cc: <ICAO>`, with editable
+  `freqName` / `freq` fields. Tagged notes render as chart-style lightning
+  arrows: the arrow point stays on the waypoint, the stored note coordinate
+  is the movable far tail, and the name/frequency are drawn above/below the
+  arrow rather than inside a note box. Selecting the callout opens inspector
+  fields for name + frequency. If `docs/comm-change.json` defines a root
+  `callSigns` catalog and a point's `callSigns` array, the inspector also
+  shows a call-sign dropdown; choosing an option copies its default primary
+  frequency into the editable frequency field. Call-sign names use the
+  catalog's `he` translation when the app is in Hebrew, falling back to
+  `label`. Turning the layer on seeds lightning arrows only for matching
+  waypoints already present in the route, never for unrelated reference
+  points. The default callout tail starts east/right of the waypoint via
+  `commChangeNoteLngOffset`. Turning the layer off hides tagged callout
+  notes and disables their hit-testing without deleting them, so toggling
+  back on restores the same editable callouts. These fields are saved in the
+  existing `navaid.route` note payload, not in a separate storage key.
+- **Map legend:** the View menu contains a compact DOM-only legend for
+  airfield triangles, waypoint circles, and ATC-change red rings. It is not
+  drawn by `draw()` or `exportPNG()`, so PNG exports stay chart-only.
 - **Hidden developer tuning panel:** open with `?tune=1`
   (`?lang=en&tune=1`, `/pr/NNN/?lang=en&tune=1`, etc.). The registry
   lives in `NavAid.tuningDefaults` / `NavAid.tuningGroups` (`core.js`),
@@ -332,8 +363,10 @@ branch by mistake.
 - `navaid.highlightDiff` — `'0'` / `'1'` for altitude-diff halos.
 - `navaid.showNavWP` — `'0'` / `'1'` for the nav-waypoints overlay.
 - `navaid.showAirfields` — `'0'` / `'1'` for the airfield overlay.
-- `navaid.showCommChange` — `'0'` / `'1'` for the comm-change ring overlay
-  (issue #399; default off). Toggled by the "Show Comm Changes" View checkbox.
+- `navaid.showFreqChanges` — `'0'` / `'1'` for the Show/Add Freq Changes
+  overlay and callouts (default on). Replaces the legacy
+  `navaid.showCommChange` key, which is intentionally ignored so older
+  stored-off users get the default-on behavior.
 - `navaid.showWpNames` — `'0'` / `'1'` for waypoint-name display.
 - `navaid.wpNameAngle` — waypoint-name rotation (`0`/`90`/`180`/`270`).
 - `navaid.aircraft` — last-used aircraft profile JSON (fuel planner).
@@ -480,8 +513,9 @@ downloadable `route.json`.
     nav-WP dot whose `name` has `commChange: true` with a red outer
     ring (radius 6 px, 1.8 px stroke, `#e74c3c`). Gated by the global
     `showCommChange` boolean + the View-section `#commchange-cb`
-    checkbox; persisted at `localStorage['navaid.showCommChange']`
-    (default off). The ring sits on top of the white dot — it
+    checkbox; persisted at `localStorage['navaid.showFreqChanges']`
+    (default on; the legacy `navaid.showCommChange` key is ignored).
+    The ring sits on top of the white dot — it
     augments, never replaces. A `window.__commChangeRingsDrawn` Set
     is rebuilt every frame for Playwright inspection.
   - **Inspector badge:** `interact.js` `showInspector()` appends a
