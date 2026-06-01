@@ -15,6 +15,12 @@
 const { test, expect } = require('./_setup');
 
 const TYONA = { lat: 32.00472, lng: 34.72722, name: 'TYONA' };
+const LLHZ = { lat: 32.17944, lng: 34.83444, name: 'LLHZ' };
+const DEROR = { lat: 32.25722, lng: 34.89111, name: 'DEROR' };
+const DAROM = { lat: 32.79611, lng: 34.94333, name: 'DAROM' };
+const LLHA = { lat: 32.80833, lng: 35.04278, name: 'LLHA' };
+const NTAIM = { lat: 31.94361, lng: 34.78083, name: 'NTAIM' };
+const NAGID = { lat: 31.88972, lng: 34.75583, name: 'NAGID' };
 const NOTE_LAT_OFFSET = 0;      // keep in sync with commChangeNoteLatOffset
 const NOTE_LNG_OFFSET = 0.09;   // keep in sync with commChangeNoteLngOffset
 
@@ -24,9 +30,18 @@ const FIXTURE = {
   callSigns: {
     PLUTO: { label: 'Pluto', he: 'פלוטו', primary: '118.40', secondary: '119.25' },
     HAGAV: { label: 'Hagav', he: 'חגב', primary: '132.70', secondary: '133.45' },
+    HERZLIYA: { label: 'Herzliya', he: 'הרצליה', primary: '122.20', secondary: '129.40' },
+    PLUTO_WEST: { label: 'Pluto West', he: 'פלוטו מערב', primary: '118.40', secondary: '119.15' },
+    HAIFA: { label: 'Haifa', he: 'חיפה', primary: '133.00', secondary: '134.35' },
+    BEN_GURION: { label: 'Ben Gurion', he: 'בן גוריון', primary: '118.30', secondary: '132.10' },
+    PALMACHIM: { label: 'Palmachim', he: 'פלמחים', primary: '135.55', secondary: '118.25' },
+    TEL_NOF: { label: 'Tel Nof', he: 'תל-נוף', primary: '129.05' },
   },
   points: [
     { name: 'TYONA', commChange: true, callSigns: ['PLUTO', 'HAGAV'], to: 'Pluto 118.40' },
+    { name: 'DEROR', commChange: true, callSigns: ['HERZLIYA', 'PLUTO_WEST'] },
+    { name: 'DAROM', commChange: true, callSigns: ['HAIFA', 'PLUTO_WEST'] },
+    { name: 'NTAIM', commChange: true, callSigns: ['BEN_GURION', 'PALMACHIM', 'TEL_NOF'] },
     { name: 'SORES', commChange: true },
   ],
 };
@@ -51,6 +66,8 @@ async function boot(page, lang = 'en') {
     typeof window.seedCommChangeNotes === 'function');
   await page.evaluate(() => loadNavWaypoints());
   await page.waitForFunction(() => Array.isArray(window.navWP) && window.navWP.length > 0);
+  await page.evaluate(() => loadAirfields());
+  await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
   await page.evaluate(() => loadCommChange());
   await page.waitForFunction(() => window.commChangeMap && window.commChangeMap.TYONA);
   await page.evaluate(() => { window.showCommChange = true; });
@@ -79,6 +96,209 @@ test.describe('comm-change auto-note (#487)', () => {
     // of the waypoint.
     expect(notes[0].lat).toBeCloseTo(TYONA.lat + NOTE_LAT_OFFSET, 4);
     expect(notes[0].lng).toBeCloseTo(TYONA.lng + NOTE_LNG_OFFSET, 4);
+  });
+
+  test('infers frequency callouts from the route direction graph', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    const out = await page.evaluate(({ llhz, deror, darom, llha }) => {
+      state.waypoints = [llhz, deror, darom, llha];
+      state.notes = [];
+      syncLegs();
+      seedCommChangeNotes();
+      return state.notes
+        .filter(n => n.cc)
+        .map(n => ({
+          cc: n.cc,
+          freqName: n.freqName,
+          freq: n.freq,
+          lines: noteLines(n),
+          freqAuto: n.freqAuto,
+        }));
+    }, { llhz: LLHZ, deror: DEROR, darom: DAROM, llha: LLHA });
+    expect(out).toEqual([
+      { cc: 'DEROR', freqName: 'PLUTO_WEST', freq: '118.40', lines: ['PLUTO WEST', '118.40'], freqAuto: true },
+      { cc: 'DAROM', freqName: 'HAIFA', freq: '133.00', lines: ['HAIFA', '133.00'], freqAuto: true },
+    ]);
+  });
+
+  test('reversing the route reverses the inferred frequency callouts', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    const out = await page.evaluate(({ llhz, deror, darom, llha }) => {
+      state.waypoints = [llha, darom, deror, llhz];
+      state.notes = [];
+      syncLegs();
+      seedCommChangeNotes();
+      return state.notes
+        .filter(n => n.cc)
+        .map(n => ({
+          cc: n.cc,
+          freqName: n.freqName,
+          freq: n.freq,
+          lines: noteLines(n),
+        }));
+    }, { llhz: LLHZ, deror: DEROR, darom: DAROM, llha: LLHA });
+    expect(out).toEqual([
+      { cc: 'DAROM', freqName: 'PLUTO_WEST', freq: '118.40', lines: ['PLUTO WEST', '118.40'] },
+      { cc: 'DEROR', freqName: 'HERZLIYA', freq: '122.20', lines: ['HERZLIYA', '122.20'] },
+    ]);
+  });
+
+  test('Reverse route updates existing auto frequency callouts', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    await page.evaluate(({ llhz, deror, darom, llha }) => {
+      state.waypoints = [llhz, deror, darom, llha];
+      state.notes = [];
+      syncLegs();
+      seedCommChangeNotes();
+      draw();
+    }, { llhz: LLHZ, deror: DEROR, darom: DAROM, llha: LLHA });
+    await page.locator('#reverse').click();
+    const out = await page.evaluate(() => ({
+      waypoints: state.waypoints.map(w => w.name),
+      notes: Object.fromEntries(state.notes
+        .filter(n => n.cc)
+        .map(n => [n.cc, { freqName: n.freqName, freq: n.freq, lines: noteLines(n) }])),
+    }));
+    expect(out.waypoints).toEqual(['LLHA', 'DAROM', 'DEROR', 'LLHZ']);
+    expect(out.notes).toEqual({
+      DEROR: { freqName: 'HERZLIYA', freq: '122.20', lines: ['HERZLIYA', '122.20'] },
+      DAROM: { freqName: 'PLUTO_WEST', freq: '118.40', lines: ['PLUTO WEST', '118.40'] },
+    });
+  });
+
+  test('auto frequency guesses are reconsidered when later route points are added', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    const out = await page.evaluate(({ deror, darom, llha }) => {
+      state.waypoints = [deror];
+      state.notes = [];
+      syncLegs();
+      seedCommChangeNotes();
+      const firstGuess = state.notes.map(n => ({
+        cc: n.cc,
+        freqName: n.freqName,
+        freq: n.freq,
+        freqAuto: n.freqAuto,
+      }));
+
+      state.waypoints = [deror, darom, llha];
+      syncLegs();
+      seedCommChangeNotes();
+      const afterNextPoints = state.notes
+        .filter(n => n.cc)
+        .map(n => ({
+          cc: n.cc,
+          freqName: n.freqName,
+          freq: n.freq,
+          lines: noteLines(n),
+          freqAuto: n.freqAuto,
+        }));
+      return { firstGuess, afterNextPoints };
+    }, { deror: DEROR, darom: DAROM, llha: LLHA });
+    expect(out.firstGuess).toEqual([
+      { cc: 'DEROR', freqName: 'HERZLIYA', freq: '122.20', freqAuto: true },
+    ]);
+    expect(out.afterNextPoints).toEqual([
+      { cc: 'DEROR', freqName: 'PLUTO_WEST', freq: '118.40', lines: ['PLUTO WEST', '118.40'], freqAuto: true },
+      { cc: 'DAROM', freqName: 'HAIFA', freq: '133.00', lines: ['HAIFA', '133.00'], freqAuto: true },
+    ]);
+  });
+
+  test('route context hints reconsider a prior ATC guess when a route grows', async ({ page }) => {
+    const routeFixture = {
+      ...FIXTURE,
+      points: [
+        { name: 'TYONA', commChange: true, callSigns: ['PLUTO_WEST', 'PALMACHIM'] },
+        { name: 'NTAIM', commChange: true, callSigns: ['BEN_GURION', 'PALMACHIM', 'TEL_NOF'] },
+      ],
+    };
+    await installCommChangeFixture(page, routeFixture);
+    await boot(page);
+    const out = await page.evaluate(({ tyona, ntaim, nagid }) => {
+      state.waypoints = [tyona, ntaim];
+      state.notes = [];
+      syncLegs();
+      seedCommChangeNotes();
+      const beforeNagid = state.notes
+        .filter(n => n.cc)
+        .map(n => ({
+          cc: n.cc,
+          freqName: n.freqName,
+          freq: n.freq,
+          freqAuto: n.freqAuto,
+        }));
+
+      state.waypoints.push(nagid);
+      syncLegs();
+      seedCommChangeNotes();
+      const afterNagid = state.notes
+        .filter(n => n.cc)
+        .map(n => ({
+          cc: n.cc,
+          freqName: n.freqName,
+          freq: n.freq,
+          lines: noteLines(n),
+          freqAuto: n.freqAuto,
+        }));
+      return { beforeNagid, afterNagid };
+    }, { tyona: TYONA, ntaim: NTAIM, nagid: NAGID });
+    expect(out.beforeNagid).toEqual([
+      { cc: 'TYONA', freqName: 'PALMACHIM', freq: '135.55', freqAuto: true },
+      { cc: 'NTAIM', freqName: 'BEN_GURION', freq: '118.30', freqAuto: true },
+    ]);
+    expect(out.afterNagid).toEqual([
+      { cc: 'TYONA', freqName: 'PALMACHIM', freq: '135.55', lines: ['PALMACHIM', '135.55'], freqAuto: true },
+      { cc: 'NTAIM', freqName: 'PALMACHIM', freq: '135.55', lines: ['PALMACHIM', '135.55'], freqAuto: true },
+    ]);
+  });
+
+  test('route graph updates auto callouts but leaves manual edits alone', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    const out = await page.evaluate(({ llhz, deror, darom, llha }) => {
+      state.waypoints = [llhz, deror, darom, llha];
+      state.notes = [{
+        lat: deror.lat,
+        lng: deror.lng + 0.09,
+        text: 'Freq change',
+        color: '#fff6aa',
+        shape: 'rect',
+        cc: 'DEROR',
+        freqName: 'HERZLIYA',
+        freq: '122.20',
+      }, {
+        lat: darom.lat,
+        lng: darom.lng + 0.09,
+        text: 'Freq change',
+        color: '#fff6aa',
+        shape: 'rect',
+        cc: 'DAROM',
+        freqName: 'PLUTO_WEST',
+        freq: '118.40',
+        freqAuto: true,
+      }];
+      syncLegs();
+      const changed = seedCommChangeNotes();
+      return {
+        changed,
+        notes: state.notes.map(n => ({
+          cc: n.cc,
+          freqName: n.freqName,
+          freq: n.freq,
+          freqAuto: n.freqAuto || false,
+        })),
+      };
+    }, { llhz: LLHZ, deror: DEROR, darom: DAROM, llha: LLHA });
+    expect(out).toEqual({
+      changed: true,
+      notes: [
+        { cc: 'DEROR', freqName: 'HERZLIYA', freq: '122.20', freqAuto: false },
+        { cc: 'DAROM', freqName: 'HAIFA', freq: '133.00', freqAuto: true },
+      ],
+    });
   });
 
   test('is idempotent — a second seed call adds no duplicate', async ({ page }) => {

@@ -576,7 +576,13 @@ function commCallSignOptions(name) {
   }
   return out;
 }
-function commCalloutDefaults(name) {
+function commCallSignOptionById(name, id) {
+  const needle = String(id || '').trim().toLocaleLowerCase();
+  if (!needle) return null;
+  return commCallSignOptions(name)
+    .find(o => String(o.id || '').trim().toLocaleLowerCase() === needle) || null;
+}
+function commStaticCalloutDefaults(name) {
   const key = canonicalNavWaypointName(name);
   const cc = commChangeMap && key ? commChangeMap[key] : null;
   const fallback = (typeof S !== 'undefined' && S.commChangeNoteText) || 'Freq change';
@@ -585,6 +591,211 @@ function commCalloutDefaults(name) {
   const raw = cc && (cc.to || cc.from || cc.note || cc.name || key);
   const d = splitCommCalloutText(raw || key || fallback);
   return { freqName: d.name || fallback, freq: d.freq };
+}
+function commNameKey(s) {
+  return String(s || '').trim().toLocaleLowerCase()
+    .replace(/[^0-9a-z\u0590-\u05ff]+/g, '');
+}
+function commNamesMatch(a, b) {
+  const ak = commNameKey(a);
+  const bk = commNameKey(b);
+  if (!ak || !bk) return false;
+  if (ak === bk) return true;
+  return ak.length >= 4 && bk.length >= 4 &&
+    (ak.includes(bk) || bk.includes(ak));
+}
+function commWaypointNameCandidates(wp) {
+  const out = [];
+  const push = v => {
+    if (typeof v === 'string' && v.trim() && !out.includes(v.trim())) out.push(v.trim());
+  };
+  if (wp) push(wp.name);
+  const key = canonicalNavWaypointName(wp && wp.name);
+  push(key);
+  if (Array.isArray(navWP) && key) {
+    const ref = navWP.find(w => w && canonicalNavWaypointName(w.name) === key);
+    if (ref) {
+      push(ref.name);
+      push(ref.he);
+    }
+  }
+  const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
+  if (af) {
+    push(af.name);
+    push(af.en);
+    push(af.he);
+  }
+  return out;
+}
+function commAllCallSignOptions() {
+  const catalog = (typeof commChangeCallSigns === 'object' && commChangeCallSigns) || {};
+  return Object.keys(catalog).map(id => ({
+    id,
+    label: commCallSignLabel(id, catalog[id]),
+    freq: commCallSignDefaultFreq(catalog[id]),
+    row: catalog[id],
+  }));
+}
+function commOptionPool(allowedIds) {
+  const all = commAllCallSignOptions();
+  if (!Array.isArray(allowedIds) || !allowedIds.length) return all;
+  const allowed = new Set(allowedIds.map(id => String(id || '').toLocaleLowerCase()));
+  return all.filter(o => allowed.has(String(o.id || '').toLocaleLowerCase()));
+}
+function commCallSignReferencePoints(opt, excludedNames) {
+  const out = [];
+  const excluded = new Set((Array.isArray(excludedNames) ? excludedNames : [])
+    .map(canonicalNavWaypointName)
+    .filter(Boolean));
+  const add = p => {
+    if (p && Number.isFinite(p.lat) && Number.isFinite(p.lng)) out.push(p);
+  };
+  if (Array.isArray(airfields)) {
+    for (const af of airfields) {
+      const names = [af.name, af.en, af.he].filter(v => typeof v === 'string' && v.trim());
+      if (commCallSignOptionNames(opt).some(a =>
+        names.some(b => commNamesMatch(a, b)))) add(af);
+    }
+  }
+  if (commChangeMap && typeof commChangeMap === 'object') {
+    for (const [name, row] of Object.entries(commChangeMap)) {
+      const key = canonicalNavWaypointName(name);
+      if (excluded.has(key)) continue;
+      if (!row || !Array.isArray(row.callSigns)) continue;
+      if (!row.callSigns.some(id => String(id || '').toLocaleLowerCase() ===
+          String(opt.id || '').toLocaleLowerCase())) continue;
+      add(commChangeReferencePoint(key));
+    }
+  }
+  return out;
+}
+function commCallSignReferenceDistance(wp, opt, excludedNames) {
+  if (!wp) return Infinity;
+  let best = Infinity;
+  for (const ref of commCallSignReferencePoints(opt, excludedNames)) {
+    best = Math.min(best, geo(wp, ref).dist);
+  }
+  return best;
+}
+function commInferRouteContextCallSignId(points, allowedIds, excludedNames) {
+  const opts = commOptionPool(allowedIds);
+  const pts = (Array.isArray(points) ? points : []).filter(Boolean);
+  if (!pts.length || !opts.length) return '';
+  for (const wp of pts) {
+    const names = commWaypointNameCandidates(wp);
+    for (const opt of opts) {
+      if (commCallSignOptionNames(opt).some(a =>
+        names.some(b => commNamesMatch(a, b)))) return opt.id;
+    }
+  }
+  let best = null;
+  let second = Infinity;
+  for (const opt of opts) {
+    let d = Infinity;
+    for (const wp of pts) d = Math.min(d, commCallSignReferenceDistance(wp, opt, excludedNames));
+    if (!Number.isFinite(d)) continue;
+    if (!best || d < best.dist) {
+      second = best ? best.dist : Infinity;
+      best = { id: opt.id, dist: d };
+    } else {
+      second = Math.min(second, d);
+    }
+  }
+  if (!best || best.dist > 25) return '';
+  if (Number.isFinite(second) && second - best.dist < 0.75) return '';
+  return best.id;
+}
+function commInferWaypointCallSignId(wp, allowedIds) {
+  return commInferRouteContextCallSignId([wp], allowedIds, []);
+}
+function commRouteChangeEntries() {
+  if (!commChangeMap || typeof state === 'undefined' ||
+      !Array.isArray(state.waypoints)) return [];
+  const out = [];
+  for (let i = 0; i < state.waypoints.length; i++) {
+    const wp = state.waypoints[i];
+    const name = canonicalNavWaypointName(wp && wp.name);
+    const row = name && commChangeMap[name];
+    if (!row || !row.commChange || !commChangeWaypointInRange(wp, name)) continue;
+    const options = commCallSignOptions(name).map(o => o.id).filter(Boolean);
+    if (!options.length) continue;
+    out.push({ index: i, name, options, set: new Set(options) });
+  }
+  return out;
+}
+function commRouteDomain(entries, pos) {
+  const ids = [];
+  const push = id => { if (id && !ids.includes(id)) ids.push(id); };
+  if (pos === 0) entries[0].options.forEach(push);
+  else if (pos === entries.length) entries[entries.length - 1].options.forEach(push);
+  else {
+    entries[pos - 1].options.forEach(push);
+    entries[pos].options.forEach(push);
+  }
+  return ids;
+}
+function commRouteDomainHint(entries, pos, allowedIds) {
+  if (!entries.length || !Array.isArray(state.waypoints)) return '';
+  const start = pos === 0 ? 0 : entries[pos - 1].index + 1;
+  const end = pos === entries.length ? state.waypoints.length : entries[pos].index;
+  const points = state.waypoints.slice(start, end);
+  const excluded = [];
+  if (pos > 0) excluded.push(entries[pos - 1].name);
+  if (pos < entries.length) excluded.push(entries[pos].name);
+  return commInferRouteContextCallSignId(points, allowedIds, excluded);
+}
+function commSolveRouteCallSigns(entries) {
+  const n = entries.length;
+  if (!n) return [];
+  const domains = [];
+  for (let i = 0; i <= n; i++) domains.push(commRouteDomain(entries, i));
+  const domainHints = domains.map((ids, i) => commRouteDomainHint(entries, i, ids));
+  let states = new Map();
+  for (const id of domains[0]) {
+    const hint = domainHints[0];
+    const cost = hint ? (id === hint ? 0 : 50) : 0;
+    states.set(id, { cost, path: [id] });
+  }
+  for (let i = 0; i < n; i++) {
+    const next = new Map();
+    for (const [prevId, prev] of states.entries()) {
+      for (const id of domains[i + 1]) {
+        if (!entries[i].set.has(prevId) || !entries[i].set.has(id)) continue;
+        let cost = prev.cost;
+        if (prevId === id && entries[i].options.length > 1) cost += 10;
+        const idx = entries[i].options.indexOf(id);
+        cost += (idx < 0 ? 1 : idx * 0.01);
+        const hint = domainHints[i + 1];
+        if (hint) cost += id === hint ? 0 : 50;
+        const old = next.get(id);
+        if (!old || cost < old.cost) next.set(id, { cost, path: prev.path.concat(id) });
+      }
+    }
+    states = next;
+    if (!states.size) return [];
+  }
+  let best = null;
+  for (const cur of states.values()) {
+    if (!best || cur.cost < best.cost) best = cur;
+  }
+  return best ? best.path : [];
+}
+function commRouteCalloutDefaultsMap() {
+  const entries = commRouteChangeEntries();
+  const path = commSolveRouteCallSigns(entries);
+  if (!path.length) return {};
+  const out = {};
+  for (let i = 0; i < entries.length; i++) {
+    const id = path[i + 1];
+    const opt = commCallSignOptionById(entries[i].name, id);
+    if (opt) out[entries[i].name] = { freqName: opt.id, freq: opt.freq || '' };
+  }
+  return out;
+}
+function commCalloutDefaults(name) {
+  const key = canonicalNavWaypointName(name);
+  const routeDefaults = commRouteCalloutDefaultsMap();
+  return (key && routeDefaults[key]) || commStaticCalloutDefaults(key);
 }
 function commNoteCallSignOption(n) {
   if (!n || !n.cc || typeof n.freqName !== 'string' || !n.freqName.trim()) return null;
@@ -693,6 +904,7 @@ function seedCommChangeNotes() {
   if (!commChangeMap || typeof state === 'undefined' ||
       !Array.isArray(state.waypoints) || !Array.isArray(state.notes)) return false;
   let changed = pruneStaleCommChangeNotes();
+  const routeDefaults = commRouteCalloutDefaultsMap();
   for (const wp of state.waypoints) {
     if (!wp) continue;
     const nm = canonicalNavWaypointName(wp && wp.name);
@@ -700,12 +912,18 @@ function seedCommChangeNotes() {
     const cc = commChangeMap[nm];
     if (!cc || !cc.commChange) continue;
     if (!commChangeWaypointInRange(wp, nm)) continue;
-    const callout = commCalloutDefaults(nm);
+    const callout = routeDefaults[nm] || commStaticCalloutDefaults(nm);
     const existing = state.notes.find(n => n && canonicalNavWaypointName(n.cc) === nm);
     if (existing) {
       if (existing.cc !== nm) { existing.cc = nm; changed = true; }
       if (!existing.freqName) { existing.freqName = callout.freqName; changed = true; }
       if (!existing.freq) { existing.freq = callout.freq; changed = true; }
+      if (existing.freqAuto === true &&
+          (existing.freqName !== callout.freqName || existing.freq !== callout.freq)) {
+        existing.freqName = callout.freqName;
+        existing.freq = callout.freq;
+        changed = true;
+      }
       // Earlier auto-generated callouts were note boxes above the point.
       // Move only notes still sitting on those generated positions to the
       // chart-style west tail; user-dragged callouts keep their location.
@@ -730,6 +948,7 @@ function seedCommChangeNotes() {
       cc: nm,
       freqName: callout.freqName,
       freq: callout.freq,
+      freqAuto: true,
     });
     changed = true;
   }
