@@ -303,6 +303,13 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(labelText).toMatch(/Show\/Add Freq Changes/i);
     const cb = page.locator('#commchange-cb');
     await expect(cb).not.toBeChecked();
+    const commBeforeSnap = await page.evaluate(() => {
+      const comm = document.querySelector('label[data-i18n-title="tbShowCommChangeTitle"]');
+      const snap = document.querySelector('label[data-i18n-title="tbForceSnapTitle"]');
+      return !!(comm && snap &&
+        (comm.compareDocumentPosition(snap) & Node.DOCUMENT_POSITION_FOLLOWING));
+    });
+    expect(commBeforeSnap).toBe(true);
   });
 
   test('Hebrew locale uses the translated toggle label', async ({ page }) => {
