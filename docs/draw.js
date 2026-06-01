@@ -1110,16 +1110,31 @@ function commCalloutGeom(n) {
   if (!target) return null;
   const lines = noteLines(n);
   const text = commCalloutTextMetrics(lines);
-  const tp = proj(target);
+  const targetCenter = proj(target);
   const fp = proj(n);
-  let dx = fp.x - tp.x;
-  let dy = fp.y - tp.y;
+  let dx = fp.x - targetCenter.x;
+  let dy = fp.y - targetCenter.y;
   const len = Math.hypot(dx, dy);
   if (len < 4) return null;
   const ux = dx / len;
   const uy = dy / len;
   const nx = -uy;
   const ny = ux;
+  const key = canonicalNavWaypointName(n.cc);
+  const routeIdx = state.waypoints.findIndex(w => w &&
+    canonicalNavWaypointName(w.name) === key);
+  const targetRadius = routeIdx >= 0
+    ? waypointGeom(routeIdx).r + tune('waypointStrokeWidthPx') / 2
+    : tune('commChangeRingRadiusPx') + tune('commChangeRingWidthPx') / 2;
+  const startGap = Math.max(0, tune('commChangeArrowStartGapPx'));
+  const startClear = Math.min(Math.max(0, len - 4), targetRadius + startGap);
+  const tp = {
+    x: targetCenter.x + ux * startClear,
+    y: targetCenter.y + uy * startClear,
+  };
+  dx = fp.x - tp.x;
+  dy = fp.y - tp.y;
+  const pathLen = Math.hypot(dx, dy) || 1;
   const width = tune('commChangeArrowWidthPx');
   const halo = tune('commChangeArrowHaloPx');
   const bolt = tune('commChangeArrowBoltPx');
@@ -1160,8 +1175,8 @@ function commCalloutGeom(n) {
   if (Math.cos(textAngle) < 0) textAngle += Math.PI;
   const textGap = tune('commChangeTextGapPx');
   return {
-    target: tp, tail: fp, bends, bend1, bend2,
-    ux, uy, nx, ny, len, width, halo, textGap,
+    target: tp, targetCenter, targetRadius, startGap, tail: fp, bends, bend1, bend2,
+    ux, uy, nx, ny, len: pathLen, width, halo, textGap,
     textX: tx, textY: ty, textAngle, text, lines,
   };
 }

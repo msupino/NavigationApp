@@ -119,4 +119,33 @@ test.describe('Hidden tuning panel', () => {
     expect(out.cap).toBe('round');
     expect(out.persisted).toEqual([]);
   });
+
+  test('frequency callout arrow and text size controls are tunable', async ({ page }) => {
+    await boot(page);
+    await openTuneGroup(page, 'Reference overlays');
+    await expect(page.locator('#tune-commChangeArrowStartGapPx-range')).toBeVisible();
+    await expect(page.locator('#tune-commChangeArrowWidthPx-range')).toBeVisible();
+    await expect(page.locator('#tune-commChangeNameFontPx-range')).toBeVisible();
+    await expect(page.locator('#tune-commChangeFreqFontPx-range')).toBeVisible();
+
+    await page.locator('#tune-commChangeArrowStartGapPx-number').fill('12');
+    await page.locator('#tune-commChangeArrowWidthPx-number').fill('7');
+    await page.locator('#tune-commChangeNameFontPx-number').fill('18');
+    await page.locator('#tune-commChangeFreqFontPx-number').fill('20');
+
+    const out = await page.evaluate(() => ({
+      startGap: tune('commChangeArrowStartGapPx'),
+      arrowWidth: tune('commChangeArrowWidthPx'),
+      nameSize: tune('commChangeNameFontPx'),
+      freqSize: tune('commChangeFreqFontPx'),
+      persisted: Object.keys(localStorage).filter(k => k.indexOf('navaid.tune') === 0),
+    }));
+    expect(out).toEqual({
+      startGap: 12,
+      arrowWidth: 7,
+      nameSize: 18,
+      freqSize: 20,
+      persisted: [],
+    });
+  });
 });

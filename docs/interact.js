@@ -6,6 +6,9 @@
 function hitNote(px, py) {
   for (let i = state.notes.length - 1; i >= 0; i--) {
     if (state.notes[i] && state.notes[i].cc && !showCommChange) continue;
+    // Frequency callouts are drawn above waypoint markers, but the waypoint
+    // circle itself must remain independently selectable.
+    if (state.notes[i] && state.notes[i].cc && hitWaypoint(px, py) >= 0) continue;
     const r = noteRect(i);
     if (r.oval) {
       const dx = (px - (r.x + r.w / 2)) / (r.w / 2);

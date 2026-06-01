@@ -186,6 +186,10 @@ test.describe('comm-change auto-note (#487)', () => {
         lines,
         tailDistancePx: Math.hypot(target.x - tail.x, target.y - tail.y),
         tailIsEast: state.notes[0].lng > t.lng,
+        arrowStartClearPx: Math.hypot(g.target.x - target.x, g.target.y - target.y),
+        expectedStartClearPx: waypointGeom(0).r + tune('waypointStrokeWidthPx') / 2 +
+          tune('commChangeArrowStartGapPx'),
+        arrowStartGap: tune('commChangeArrowStartGapPx'),
         arrowWidth: tune('commChangeArrowWidthPx'),
         arrowColor: tune('commChangeArrowColor'),
         arrowLineCap: tune('commChangeArrowLineCap'),
@@ -220,6 +224,8 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.lines).toEqual(['PLUTO', '118.40']);
     expect(out.tailDistancePx).toBeGreaterThan(60);
     expect(out.tailIsEast).toBe(true);
+    expect(out.arrowStartClearPx).toBeCloseTo(out.expectedStartClearPx, 0);
+    expect(out.arrowStartGap).toBe(3);
     expect(out.arrowWidth).toBe(4);
     expect(out.arrowColor).toBe('#000000');
     expect(out.arrowLineCap).toBe('square');
@@ -252,6 +258,35 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.fillTexts).toContain('118.40');
     expect(out.fillRects).toHaveLength(0);
     expect(out.fillCount).toBe(0);
+  });
+
+  test('waypoint center selects the waypoint while the frequency tail selects the callout', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    const pts = await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      syncLegs();
+      seedCommChangeNotes();
+      draw();
+      const center = proj(state.waypoints[0]);
+      const g = commCalloutGeom(state.notes[0]);
+      const r = mapEl.getBoundingClientRect();
+      return {
+        center: { x: r.left + center.x, y: r.top + center.y },
+        tail: { x: r.left + g.tail.x, y: r.top + g.tail.y },
+        hitNoteAtCenter: hitNote(center.x, center.y),
+        hitWaypointAtCenter: hitWaypoint(center.x, center.y),
+        hitNoteAtTail: hitNote(g.tail.x, g.tail.y),
+      };
+    }, TYONA);
+    expect(pts.hitNoteAtCenter).toBe(-1);
+    expect(pts.hitWaypointAtCenter).toBe(0);
+    expect(pts.hitNoteAtTail).toBe(0);
+
+    await page.mouse.click(pts.center.x, pts.center.y);
+    await expect.poll(() => page.evaluate(() => state.selected)).toEqual({ type: 'wp', index: 0 });
+    await page.mouse.click(pts.tail.x, pts.tail.y);
+    await expect.poll(() => page.evaluate(() => state.selected)).toEqual({ type: 'note', index: 0 });
   });
 
   test('comm-change lightning rotation turns the bend vector around the arrow axis', async ({ page }) => {
@@ -526,6 +561,29 @@ test.describe('comm-change auto-note (#487)', () => {
     ]);
     expect(out.waypoints).toBe(0);
     expect(out.notes).toEqual([{ text: 'Manual note', cc: '' }]);
+  });
+
+  test('deleting a frequency-change callout does not delete its waypoint', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      state.notes = [];
+      syncLegs();
+      seedCommChangeNotes();
+      state.selected = { type: 'note', index: 0 };
+      showInspector();
+      draw();
+    }, TYONA);
+    await page.locator('#insp-body .insp-btn').filter({ hasText: /Delete freq change/ }).click();
+    const out = await page.evaluate(() => ({
+      waypoints: state.waypoints.map(w => w.name),
+      notes: state.notes.map(n => ({ text: n.text, cc: n.cc || '' })),
+      selected: state.selected,
+    }));
+    expect(out.waypoints).toEqual(['TYONA']);
+    expect(out.notes).toEqual([]);
+    expect(out.selected).toBeNull();
   });
 
   test('comm-change note inspector edits frequency without a free-text call-sign field', async ({ page }) => {
