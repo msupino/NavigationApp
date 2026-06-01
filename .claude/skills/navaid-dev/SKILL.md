@@ -360,8 +360,10 @@ branch by mistake.
 - `navaid.highlightDiff` — `'0'` / `'1'` for altitude-diff halos.
 - `navaid.showNavWP` — `'0'` / `'1'` for the nav-waypoints overlay.
 - `navaid.showAirfields` — `'0'` / `'1'` for the airfield overlay.
-- `navaid.showCommChange` — `'0'` / `'1'` for the comm-change ring overlay
-  (issue #399; default off). Toggled by the "Show Comm Changes" View checkbox.
+- `navaid.showFreqChanges` — `'0'` / `'1'` for the Show/Add Freq Changes
+  overlay and callouts (default on). Replaces the legacy
+  `navaid.showCommChange` key, which is intentionally ignored so older
+  stored-off users get the default-on behavior.
 - `navaid.showWpNames` — `'0'` / `'1'` for waypoint-name display.
 - `navaid.wpNameAngle` — waypoint-name rotation (`0`/`90`/`180`/`270`).
 - `navaid.aircraft` — last-used aircraft profile JSON (fuel planner).
@@ -508,8 +510,9 @@ downloadable `route.json`.
     nav-WP dot whose `name` has `commChange: true` with a red outer
     ring (radius 6 px, 1.8 px stroke, `#e74c3c`). Gated by the global
     `showCommChange` boolean + the View-section `#commchange-cb`
-    checkbox; persisted at `localStorage['navaid.showCommChange']`
-    (default off). The ring sits on top of the white dot — it
+    checkbox; persisted at `localStorage['navaid.showFreqChanges']`
+    (default on; the legacy `navaid.showCommChange` key is ignored).
+    The ring sits on top of the white dot — it
     augments, never replaces. A `window.__commChangeRingsDrawn` Set
     is rebuilt every frame for Playwright inspection.
   - **Inspector badge:** `interact.js` `showInspector()` appends a

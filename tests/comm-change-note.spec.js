@@ -463,7 +463,7 @@ test.describe('comm-change auto-note (#487)', () => {
         sessionStorage.clear();
         for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
           localStorage.setItem('navaid.sec.' + s, '1');
-        localStorage.setItem('navaid.showCommChange', '1');
+        localStorage.setItem('navaid.showFreqChanges', '1');
         localStorage.setItem('navaid.route', JSON.stringify({
           waypoints: [{ lat: t.lat, lng: t.lng, name: t.name }],
           legs: [],

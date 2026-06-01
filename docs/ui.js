@@ -822,8 +822,10 @@ document.getElementById('force-snap-cb').onchange = e => {
 };
 // Comm-change overlay toggle (issue #399). The dataset lives in
 // docs/comm-change.json and rings are drawn on top of the nav-WP dots
-// in draw.js. We persist + restore exactly like every other view toggle.
-const COMMCHANGE_KEY = 'navaid.showCommChange';
+// in draw.js. This key intentionally replaced the legacy
+// navaid.showCommChange key so users who had stored the old default-off
+// state get the new default-on behavior.
+const COMMCHANGE_KEY = 'navaid.showFreqChanges';
 try {
   const stored = localStorage.getItem(COMMCHANGE_KEY);
   if (stored !== null) window.showCommChange = stored === '1';

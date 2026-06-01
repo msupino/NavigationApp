@@ -302,7 +302,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
       'label[data-i18n-title="tbShowCommChangeTitle"]').textContent();
     expect(labelText).toMatch(/Show\/Add Freq Changes/i);
     const cb = page.locator('#commchange-cb');
-    await expect(cb).not.toBeChecked();
+    await expect(cb).toBeChecked();
     const commBeforeSnap = await page.evaluate(() => {
       const comm = document.querySelector('label[data-i18n-title="tbShowCommChangeTitle"]');
       const snap = document.querySelector('label[data-i18n-title="tbForceSnapTitle"]');
@@ -310,6 +310,23 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
         (comm.compareDocumentPosition(snap) & Node.DOCUMENT_POSITION_FOLLOWING));
     });
     expect(commBeforeSnap).toBe(true);
+  });
+
+  test('legacy stored-off comm-change preference is ignored after key rename', async ({ page }) => {
+    await page.addInitScript(() => {
+      try {
+        for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
+        sessionStorage.clear();
+        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+          localStorage.setItem('navaid.sec.' + s, '1');
+        localStorage.setItem('navaid.showCommChange', '0');
+      } catch (e) {}
+    });
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof state !== 'undefined');
+    await expect(page.locator('#commchange-cb')).toBeChecked();
+    expect(await page.evaluate(() => window.showCommChange)).toBe(true);
+    expect(await page.evaluate(() => localStorage.getItem('navaid.showFreqChanges'))).toBeNull();
   });
 
   test('Hebrew locale uses the translated toggle label', async ({ page }) => {
@@ -347,7 +364,7 @@ test.describe('comm-change rendering (fixture-backed)', () => {
   test('toggling Show Comm Changes off hides the ring without disabling nav-WPs', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
-    // Enable the toggle first (default is now off).
+    // Re-assert the enabled state first, then verify the off path.
     await page.evaluate(() => {
       const cb = document.getElementById('commchange-cb');
       cb.checked = true;
@@ -376,9 +393,11 @@ test.describe('comm-change rendering (fixture-backed)', () => {
     // the augment, not the underlying overlay).
     const navOn = await page.evaluate(() => window.showNavWP === true);
     expect(navOn).toBe(true);
-    // Persistence: the toggle wrote '0' to navaid.showCommChange.
-    const stored = await page.evaluate(() => localStorage.getItem('navaid.showCommChange'));
+    // Persistence: the toggle wrote '0' to the renamed storage key.
+    const stored = await page.evaluate(() => localStorage.getItem('navaid.showFreqChanges'));
     expect(stored).toBe('0');
+    const legacy = await page.evaluate(() => localStorage.getItem('navaid.showCommChange'));
+    expect(legacy).toBeNull();
   });
 
   test('inspector grows a Comm change badge for a TYONA-named route waypoint', async ({ page }) => {
@@ -445,7 +464,7 @@ test.describe('comm-change rendering (fixture-backed)', () => {
     // still draw (it no longer lives inside drawNavWaypoints' early-return).
     await page.evaluate(async () => {
       window.showNavWP = false;
-      window.showCommChange = true;  // default is now off
+      window.showCommChange = true;
       // navWP positions are still required — loaded by the comm toggle/boot.
       if (typeof loadNavWaypoints === 'function') await loadNavWaypoints();
       draw();
