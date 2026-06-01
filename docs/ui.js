@@ -1118,6 +1118,166 @@ document.getElementById('insp-close').onclick = () => {
   }
 })();
 
+// --- hidden tuning panel --------------------------------------------
+// Developer-only preview surface for visual constants. It is intentionally
+// page-local: no localStorage/sessionStorage writes, and reload restores the
+// source defaults. Open with ?tune=1.
+function tuningPanelEnabled() {
+  const params = new URLSearchParams(location.search);
+  return params.has('tune') || params.get('dev') === 'tune' || location.hash === '#tune';
+}
+
+function formatTuneValue(spec, value) {
+  const step = String(spec.step || 1);
+  const dot = step.indexOf('.');
+  const places = dot === -1 ? 0 : step.length - dot - 1;
+  return places ? value.toFixed(places) : String(Math.round(value));
+}
+
+function redrawAfterTune() {
+  draw();
+  if (state.selected) showInspector();
+}
+
+function createTuningPanel() {
+  if (!tuningPanelEnabled()) return;
+  if (!NavAid.tuningDefaults || !NavAid.tuningGroups) return;
+
+  const panel = document.createElement('aside');
+  panel.id = 'tuning-panel';
+  panel.setAttribute('aria-label', 'Tuning panel');
+  panel.addEventListener('click', e => e.stopPropagation());
+  panel.addEventListener('pointerdown', e => e.stopPropagation());
+  panel.addEventListener('keydown', e => e.stopPropagation());
+  panel.addEventListener('wheel', e => e.stopPropagation(), { passive: true });
+
+  const header = document.createElement('div');
+  header.className = 'tune-head';
+  const title = document.createElement('strong');
+  title.textContent = 'Tuning';
+  const subtitle = document.createElement('span');
+  subtitle.textContent = 'Preview only. Resets on reload.';
+  header.append(title, subtitle);
+  panel.appendChild(header);
+
+  const actions = document.createElement('div');
+  actions.className = 'tune-actions';
+  const resetAll = document.createElement('button');
+  resetAll.type = 'button';
+  resetAll.id = 'tune-reset-all';
+  resetAll.textContent = 'Reset all';
+  const copy = document.createElement('button');
+  copy.type = 'button';
+  copy.id = 'tune-copy-json';
+  copy.textContent = 'Copy JSON';
+  actions.append(resetAll, copy);
+  panel.appendChild(actions);
+
+  const controlSets = {};
+  const syncControl = key => {
+    const spec = NavAid.tuningDefaults[key];
+    const v = tune(key);
+    const text = formatTuneValue(spec, v);
+    const set = controlSets[key];
+    if (!set) return;
+    set.range.value = String(v);
+    set.number.value = text;
+  };
+  const applyValue = (key, raw) => {
+    const v = parseFloat(raw);
+    if (!Number.isFinite(v)) {
+      syncControl(key);
+      return;
+    }
+    setTune(key, v);
+    syncControl(key);
+    redrawAfterTune();
+  };
+
+  for (const group of NavAid.tuningGroups) {
+    const details = document.createElement('details');
+    details.className = 'tune-group';
+    details.open = group.name === 'Drift lines' || group.name === 'Route';
+    const summary = document.createElement('summary');
+    summary.textContent = group.name;
+    details.appendChild(summary);
+
+    for (const key of group.keys) {
+      const spec = NavAid.tuningDefaults[key];
+      if (!spec) continue;
+      const row = document.createElement('label');
+      row.className = 'tune-row';
+      row.htmlFor = 'tune-' + key + '-number';
+
+      const name = document.createElement('span');
+      name.className = 'tune-label';
+      name.textContent = spec.label || key;
+
+      const range = document.createElement('input');
+      range.type = 'range';
+      range.id = 'tune-' + key + '-range';
+      range.min = String(spec.min);
+      range.max = String(spec.max);
+      range.step = String(spec.step);
+
+      const number = document.createElement('input');
+      number.type = 'number';
+      number.id = 'tune-' + key + '-number';
+      number.min = String(spec.min);
+      number.max = String(spec.max);
+      number.step = String(spec.step);
+      number.inputMode = 'decimal';
+      number.setAttribute('aria-label', spec.label || key);
+
+      const reset = document.createElement('button');
+      reset.type = 'button';
+      reset.id = 'tune-' + key + '-reset';
+      reset.className = 'tune-reset';
+      reset.textContent = 'Reset';
+      reset.title = 'Reset ' + (spec.label || key);
+
+      controlSets[key] = { range, number };
+      syncControl(key);
+      range.addEventListener('input', () => applyValue(key, range.value));
+      number.addEventListener('input', () => applyValue(key, number.value));
+      reset.addEventListener('click', e => {
+        e.preventDefault();
+        resetTune(key);
+        syncControl(key);
+        redrawAfterTune();
+      });
+
+      row.append(name, range, number, reset);
+      details.appendChild(row);
+    }
+
+    panel.appendChild(details);
+  }
+
+  resetAll.addEventListener('click', () => {
+    resetTune();
+    for (const key of Object.keys(controlSets)) syncControl(key);
+    redrawAfterTune();
+  });
+  copy.addEventListener('click', async () => {
+    const current = {};
+    for (const key of Object.keys(NavAid.tuningDefaults)) current[key] = tune(key);
+    const text = JSON.stringify(current, null, 2);
+    try {
+      await navigator.clipboard.writeText(text);
+      copy.textContent = 'Copied';
+      setTimeout(() => { copy.textContent = 'Copy JSON'; }, 1200);
+    } catch (e) {
+      copy.textContent = 'Copy failed';
+      setTimeout(() => { copy.textContent = 'Copy JSON'; }, 1200);
+    }
+  });
+
+  document.body.appendChild(panel);
+  NavAid.tuningPanel = panel;
+}
+createTuningPanel();
+
 // --- boot ------------------------------------------------------------
 resizeOverlay();
 setMode(null);

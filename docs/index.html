@@ -74,7 +74,11 @@
       var h = document.documentElement;
       h.lang = lang; h.dir = lang === 'he' ? 'rtl' : 'ltr';
       if (lang === 'he') document.title = 'NavAid — מתכנן טיסה';
-      if (!p) history.replaceState(null, '', '?lang=' + lang);
+      if (!p) {
+        var params = new URLSearchParams(location.search);
+        params.set('lang', lang);
+        history.replaceState(null, '', '?' + params.toString());
+      }
       window.__navLang = lang;
     }());
   </script>
