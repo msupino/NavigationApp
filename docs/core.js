@@ -175,6 +175,8 @@ window.S = Object.assign({
   tbGpxExportTitle: 'Export route as GPX for portable GPS units',
   tbShowReturn: 'Show return path',
   tbShowReturnTitle: 'Show return-direction (outbound) info',
+  tbShowCumTime: 'Show cumulative time',
+  tbShowCumTimeTitle: 'Show running total flight time kite after each leg',
   tbShowMidLeg: 'Show leg distance',
   tbShowMidLegTitle: 'Show distance badge at the middle of each leg',
   tbHighlightDiff: 'Highlight alt/speed diff',
@@ -210,6 +212,10 @@ window.S = Object.assign({
   tbMapOpacityTitle: 'Base map brightness',
   tbLegArrowSize: 'Leg arrow size',
   tbLegArrowSizeTitle: 'Leg info marker (heading / altitude / time) size',
+  tbLegLineWidth: 'Leg line width',
+  tbLegLineWidthTitle: 'Route line thickness',
+  tbDriftLineWidth: 'Drift line width',
+  tbDriftLineWidthTitle: 'Drift reference line thickness',
   tbPageA3Title: 'A3 print page',
   tbPageA4Title: 'A4 print page',
   tbOrientTitle: 'Orientation — click to toggle landscape / portrait',
@@ -305,6 +311,7 @@ const state = {
 };
 var showReturn = false;     // outbound (return) markers — off by default
 var showMidLeg = false;
+var showCumTime = true;     // cumulative-time kites — on by default
 var highlightDiff = false;  // purple halo on legs that change altitude
 var showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
 var navWP = null;           // null = not loaded yet (or last fetch failed —
@@ -333,6 +340,8 @@ var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 var yellowAlpha = 0.8;    // global multiplier for yellow label backgrounds (default 80%)
 var wpSize = 1;             // waypoint name / number text size scale
 var legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
+var legLineWidth = 1;       // leg route line width scale (1 = default 3.5 px)
+var driftLineWidth = 1;     // drift reference line width scale (1 = default 1.5 px)
 function legZoomScale() {   // zoom + legArrowSize → pixel multiplier for offsets/sizes
   return Math.max(0.35, Math.pow(2, map.getZoom() - 12)) * legArrowSize;
 }
@@ -393,6 +402,8 @@ function _defaultLegLabels() {
   return {
     inLabel:  { a: 0, _default: 1, _m: 1 },
     outLabel: { a: 0, _default: 1, _m: 1 },
+    cumLabel: { a: 0, _default: 1, _m: 1 },
+    cumLabelRet: { a: 0, _default: 1, _m: 1 },
   };
 }
 const newLeg = () => {
@@ -404,6 +415,8 @@ const newLeg = () => {
     outboundSpeed: 90,
     inLabel: d.inLabel,                  // marker offset: along leg, perpendicular
     outLabel: d.outLabel,
+    cumLabel: d.cumLabel,                // inbound cumulative-time kite offset (B-endpoint relative)
+    cumLabelRet: d.cumLabelRet,          // return cumulative-time kite offset (A-endpoint relative)
   };
 };
 

@@ -471,6 +471,8 @@ function save() {
       outboundSpeed: l.outboundSpeed,
       inLabel: l.inLabel,
       outLabel: l.outLabel,
+      ...(l.cumLabel ? { cumLabel: l.cumLabel } : {}),
+      ...(l.cumLabelRet ? { cumLabelRet: l.cumLabelRet } : {}),
     })),
     notes: state.notes.map(n => ({
       lat: r5(n.lat), lng: r5(n.lng), text: n.text || '', color: n.color || '',
@@ -619,6 +621,10 @@ function load(file) {
       outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
       inLabel:  _normalizeLegLabel(l.inLabel,  legacyAS),
       outLabel: _normalizeLegLabel(l.outLabel, legacyAS),
+      cumLabel: l.cumLabel ? _normalizeLegLabel(l.cumLabel, legacyAS)
+                           : { a: 0, _default: 1, _m: 1 },
+      cumLabelRet: l.cumLabelRet ? _normalizeLegLabel(l.cumLabelRet, legacyAS)
+                                 : { a: 0, _default: 1, _m: 1 },
     }));
     state.notes = d.notes.map(n => ({
       lat: r5(n.lat), lng: r5(n.lng),
@@ -2664,6 +2670,8 @@ function decodeShareUrl(search) {
       outboundSpeed: os != null ? os : fs,
       inLabel: d.inLabel,
       outLabel: d.outLabel,
+      cumLabel: d.cumLabel,
+      cumLabelRet: d.cumLabelRet,
     };
   });
   if (legs.some(l => l === null)) return null;
@@ -3196,6 +3204,14 @@ function toggleMagnifier() {
   const settings = document.getElementById('magnifier-settings');
   if (settings) settings.classList.toggle('hidden', !magnifierOn);
   if (magnifierOn) {
+    // Always open at 1× — opening at a higher zoom left the loupe content
+    // drifting from the cursor until the first move. Reset the slider + label
+    // to match so the control reflects the actual zoom.
+    window.magnifierZoom = 1;
+    const zoomSlider = document.getElementById('mag-zoom');
+    const zoomVal = document.getElementById('mag-zoom-val');
+    if (zoomSlider) zoomSlider.value = '1';
+    if (zoomVal) zoomVal.textContent = '1×';
     // Establish the cursor anchor BEFORE the first rebuild — the adaptive
     // hi-res fetch is centred on (_magX, _magY), so a stale 0/0 would put
     // every fetched sub-tile far off the loupe viewport on first open.
