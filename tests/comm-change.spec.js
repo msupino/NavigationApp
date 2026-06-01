@@ -127,8 +127,12 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(map.TYONA).toBeTruthy();
     expect(map.TYONA.callSigns).toContain('PLUTO_WEST');
     expect(map.TYONA.callSigns).toContain('PALMACHIM');
+    expect(map.AAKKO.callSigns).toEqual(['PLUTO_EAST', 'HAIFA']);
+    expect(map.BASAN.callSigns).toEqual(['KIRYAT_SHMONA', 'PLUTO_EAST']);
+    expect(map.DAROM.callSigns).toEqual(['HAIFA', 'PLUTO_WEST']);
     expect(map.DEROR.callSigns).toEqual(['HERZLIYA', 'PLUTO_WEST']);
     expect(map.DESHE.callSigns).toEqual(['ROSH_PINA', 'PLUTO_EAST']);
+    expect(map.GILAM.callSigns).toEqual(['HAIFA', 'PLUTO_EAST']);
     expect(map.HAROV.callSigns).toEqual(['PLUTO_EAST', 'PIK']);
     const catalog = await page.evaluate(() => window.commChangeCallSigns);
     expect(catalog.PLUTO_WEST.label).toBe('Pluto West');
@@ -138,6 +142,10 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(catalog.PALMACHIM.label).toBe('Palmachim');
     expect(catalog.PALMACHIM.primary).toBe('135.55');
     expect(catalog.PALMACHIM.secondary).toBe('118.25');
+    expect(catalog.HAIFA.he).toBe('חיפה');
+    expect(catalog.HAIFA.primary).toBe('133');
+    expect(catalog.KIRYAT_SHMONA.he).toBe('קריית שמונה');
+    expect(catalog.KIRYAT_SHMONA.primary).toBe('126.9');
     expect(catalog.ROSH_PINA.he).toBe('ראש פינה');
     expect(catalog.ROSH_PINA.primary).toBe('118.45');
     expect(catalog.PLUTO_EAST.he).toBe('פלוטו מזרח');

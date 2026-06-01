@@ -52,14 +52,14 @@
     "TEL_NOF": { "label": "Tel Nof", "he": "תל-נוף", "primary": "129.05", "phone": "08-8684321", "source": "תדרים ואותות קריאה 02/2014" }
   },
   "points": [
-    { "name": "BASAN", "commChange": true, "verified": false },
+    { "name": "BASAN", "commChange": true, "callSigns": ["KIRYAT_SHMONA", "PLUTO_EAST"], "verified": false },
     { "name": "DESHE", "commChange": true, "callSigns": ["ROSH_PINA", "PLUTO_EAST"], "verified": false },
     { "name": "HAROV", "commChange": true, "callSigns": ["PLUTO_EAST", "PIK"], "verified": false },
-    { "name": "AAKKO", "commChange": true, "verified": false },
-    { "name": "GILAM", "commChange": true, "verified": false },
+    { "name": "AAKKO", "commChange": true, "callSigns": ["PLUTO_EAST", "HAIFA"], "verified": false },
+    { "name": "GILAM", "commChange": true, "callSigns": ["HAIFA", "PLUTO_EAST"], "verified": false },
     { "name": "MOVIL", "commChange": true, "verified": false },
     { "name": "HASID", "commChange": true, "verified": false },
-    { "name": "DAROM", "commChange": true, "verified": false },
+    { "name": "DAROM", "commChange": true, "callSigns": ["HAIFA", "PLUTO_WEST"], "verified": false },
     { "name": "AFULA", "commChange": true, "verified": false },
     { "name": "ZMGID", "commChange": true, "verified": false },
     { "name": "DALIA", "commChange": true, "verified": false },
