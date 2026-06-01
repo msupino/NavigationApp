@@ -244,6 +244,9 @@ branch by mistake.
   notes and disables their hit-testing without deleting them, so toggling
   back on restores the same editable callouts. These fields are saved in the
   existing `navaid.route` note payload, not in a separate storage key.
+- **Map legend:** the View menu contains a compact DOM-only legend for
+  airfield triangles, waypoint circles, and ATC-change red rings. It is not
+  drawn by `draw()` or `exportPNG()`, so PNG exports stay chart-only.
 - **Hidden developer tuning panel:** open with `?tune=1`
   (`?lang=en&tune=1`, `/pr/NNN/?lang=en&tune=1`, etc.). The registry
   lives in `NavAid.tuningDefaults` / `NavAid.tuningGroups` (`core.js`),

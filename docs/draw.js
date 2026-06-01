@@ -502,11 +502,14 @@ function drawCommChangeRings() {
 // plan. The note is a normal `state.notes` object (movable / editable /
 // deletable) tagged with `cc: <ICAO>` for idempotency — a point is seeded
 // at most once, and the tag survives reload / export / import, so re-draws
-// or repeated snaps never duplicate it. Seeding is driven ONLY from explicit
-// placement/snap/toggle actions (drop, drag-end, search route-build,
-// Show/Add Freq Changes); it must not be called from draw() / load / import /
-// undo or it would resurrect notes the user deleted. Returns true if any note
-// was added so the caller can persist.
+// or repeated snaps never duplicate it. The same pass also removes tagged
+// notes whose route waypoint moved away from the referenced point. Seeding is
+// driven ONLY from explicit placement/snap/toggle actions (drop, drag-end,
+// search route-build, Show/Add Freq Changes); it must not be called from
+// draw() / load / import / undo or it would resurrect notes the user deleted.
+// Returns true if any note was added, changed, or removed so the caller can
+// persist / repaint.
+const COMM_CHANGE_SNAP_PX = 18;
 function splitCommCalloutText(raw) {
   const s = String(raw || '').trim();
   const m = s.match(/^(.*?)(?:\s+(\d{3}(?:\.\d{1,3})?))$/);
@@ -633,23 +636,76 @@ function commCalloutDefaultTail(wp) {
     lng: r5(wp.lng + tune('commChangeNoteLngOffset')),
   };
 }
+function commChangeReferencePoint(name) {
+  const key = canonicalNavWaypointName(name);
+  if (!key) return null;
+  const row = commChangeMap && commChangeMap[key];
+  if (row && Number.isFinite(row.lat) && Number.isFinite(row.lng)) {
+    return { name: key, lat: row.lat, lng: row.lng };
+  }
+  const refWp = Array.isArray(navWP)
+    ? navWP.find(w => w && canonicalNavWaypointName(w.name) === key)
+    : null;
+  if (refWp) return refWp;
+  const refAf = Array.isArray(airfields)
+    ? airfields.find(a => a && a.name === key)
+    : null;
+  return refAf || null;
+}
+function commChangeWaypointInRange(wp, name) {
+  if (!wp || typeof map === 'undefined' || !map) return false;
+  const key = canonicalNavWaypointName(name);
+  if (!key || canonicalNavWaypointName(wp.name) !== key) return false;
+  const ref = commChangeReferencePoint(key);
+  if (!ref) return true;
+  const a = map.latLngToContainerPoint([wp.lat, wp.lng]);
+  const b = map.latLngToContainerPoint([ref.lat, ref.lng]);
+  return Math.hypot(a.x - b.x, a.y - b.y) <= COMM_CHANGE_SNAP_PX;
+}
+function hasActiveCommChangeWaypoint(name) {
+  if (!Array.isArray(state.waypoints)) return false;
+  const key = canonicalNavWaypointName(name);
+  return !!key && state.waypoints.some(w => commChangeWaypointInRange(w, key));
+}
+function pruneStaleCommChangeNotes() {
+  if (!Array.isArray(state.notes)) return false;
+  let changed = false;
+  const selectedNote = state.selected && state.selected.type === 'note'
+    ? state.notes[state.selected.index] : null;
+  const kept = [];
+  for (const n of state.notes) {
+    if (n && n.cc && !hasActiveCommChangeWaypoint(n.cc)) {
+      changed = true;
+      continue;
+    }
+    kept.push(n);
+  }
+  if (!changed) return false;
+  state.notes = kept;
+  if (selectedNote) {
+    const idx = state.notes.indexOf(selectedNote);
+    state.selected = idx >= 0 ? { type: 'note', index: idx } : null;
+  }
+  return true;
+}
 function seedCommChangeNotes() {
   if (!showCommChange) return false;
   if (!commChangeMap || typeof state === 'undefined' ||
       !Array.isArray(state.waypoints) || !Array.isArray(state.notes)) return false;
-  let added = false;
+  let changed = pruneStaleCommChangeNotes();
   for (const wp of state.waypoints) {
     if (!wp) continue;
     const nm = canonicalNavWaypointName(wp && wp.name);
     if (!nm) continue;
     const cc = commChangeMap[nm];
     if (!cc || !cc.commChange) continue;
+    if (!commChangeWaypointInRange(wp, nm)) continue;
     const callout = commCalloutDefaults(nm);
     const existing = state.notes.find(n => n && canonicalNavWaypointName(n.cc) === nm);
     if (existing) {
-      if (existing.cc !== nm) { existing.cc = nm; added = true; }
-      if (!existing.freqName) { existing.freqName = callout.freqName; added = true; }
-      if (!existing.freq) { existing.freq = callout.freq; added = true; }
+      if (existing.cc !== nm) { existing.cc = nm; changed = true; }
+      if (!existing.freqName) { existing.freqName = callout.freqName; changed = true; }
+      if (!existing.freq) { existing.freq = callout.freq; changed = true; }
       // Earlier auto-generated callouts were note boxes above the point.
       // Move only notes still sitting on those generated positions to the
       // chart-style west tail; user-dragged callouts keep their location.
@@ -660,7 +716,7 @@ function seedCommChangeNotes() {
         const tail = commCalloutDefaultTail(wp);
         existing.lat = tail.lat;
         existing.lng = tail.lng;
-        added = true;
+        changed = true;
       }
       continue;
     }
@@ -675,9 +731,9 @@ function seedCommChangeNotes() {
       freqName: callout.freqName,
       freq: callout.freq,
     });
-    added = true;
+    changed = true;
   }
-  return added;
+  return changed;
 }
 window.seedCommChangeNotes = seedCommChangeNotes;
 

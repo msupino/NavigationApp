@@ -533,6 +533,66 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(Math.abs(after.note.lng - before.note.lng)).toBeGreaterThan(0.005);
   });
 
+  test('comm-change callouts require the waypoint to stay within the 18px snap range', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    const out = await page.evaluate(t => {
+      const center = map.latLngToContainerPoint([t.lat, t.lng]);
+      const near = map.containerPointToLatLng([center.x + 10, center.y]);
+      const far = map.containerPointToLatLng([center.x + 30, center.y]);
+      state.waypoints = [{ lat: r5(near.lat), lng: r5(near.lng), name: t.name }];
+      state.notes = [];
+      syncLegs();
+      const seededNear = seedCommChangeNotes();
+      state.selected = { type: 'note', index: 0 };
+      const nearState = {
+        changed: seededNear,
+        notes: state.notes.map(n => n.cc || ''),
+      };
+      state.waypoints[0].lat = r5(far.lat);
+      state.waypoints[0].lng = r5(far.lng);
+      state.waypoints[0].name = t.name;
+      const prunedFar = seedCommChangeNotes();
+      return {
+        nearState,
+        prunedFar,
+        notes: state.notes.map(n => n.cc || ''),
+        selected: state.selected,
+      };
+    }, TYONA);
+    expect(out.nearState).toEqual({ changed: true, notes: ['TYONA'] });
+    expect(out.prunedFar).toBe(true);
+    expect(out.notes).toEqual([]);
+    expect(out.selected).toBeNull();
+  });
+
+  test('dragging a comm-change waypoint away deletes its frequency-change callout', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    const center = await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      state.notes = [];
+      syncLegs();
+      seedCommChangeNotes();
+      draw();
+      const p = proj(state.waypoints[0]);
+      const r = mapEl.getBoundingClientRect();
+      return { x: r.left + p.x, y: r.top + p.y };
+    }, TYONA);
+    await page.mouse.move(center.x, center.y);
+    await page.mouse.down();
+    await page.mouse.move(center.x + 100, center.y + 20);
+    await page.mouse.up();
+    await page.waitForFunction(() =>
+      state.waypoints.length === 1 && state.notes.filter(n => n && n.cc).length === 0);
+    const out = await page.evaluate(() => ({
+      waypoints: state.waypoints.length,
+      notes: state.notes.map(n => n.cc || ''),
+      selected: state.selected,
+    }));
+    expect(out).toEqual({ waypoints: 1, notes: [], selected: { type: 'wp', index: 0 } });
+  });
+
   test('deleting a waypoint also deletes its frequency-change callout', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);

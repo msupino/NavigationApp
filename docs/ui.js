@@ -1402,7 +1402,12 @@ loadNavWaypoints().then(() => { snapExistingWaypoints(); draw(); });
 // Same pattern for airfields: powering both the overlay and snap.
 // Also re-render inspector so plates section appears if a waypoint
 // was restored from sessionStorage before airfields loaded.
-loadAirfields().then(() => { snapExistingWaypoints(); draw(); if (state.selected) showInspector(); });
+loadAirfields().then(() => {
+  snapExistingWaypoints();
+  if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
+  draw();
+  if (state.selected) showInspector();
+});
 // Comm-change dataset (issue #399): parallel fetch so the rings appear
 // on first paint and the inspector badge is available immediately for
 // a selection restored from sessionStorage. Rings draw independently of
