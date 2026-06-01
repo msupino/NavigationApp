@@ -53,8 +53,8 @@
   },
   "points": [
     { "name": "BASAN", "commChange": true, "verified": false },
-    { "name": "DESHE", "commChange": true, "verified": false },
-    { "name": "HAROV", "commChange": true, "verified": false },
+    { "name": "DESHE", "commChange": true, "callSigns": ["ROSH_PINA", "PLUTO_EAST"], "verified": false },
+    { "name": "HAROV", "commChange": true, "callSigns": ["PLUTO_EAST", "PIK"], "verified": false },
     { "name": "AAKKO", "commChange": true, "verified": false },
     { "name": "GILAM", "commChange": true, "verified": false },
     { "name": "MOVIL", "commChange": true, "verified": false },
