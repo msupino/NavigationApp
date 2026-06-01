@@ -144,10 +144,11 @@ legendCtrl.onAdd = function () {
 legendCtrl.addTo(map);
 
 // --- live mouse coordinate readout ---------------------------------
-// Bottom-left so it clears the zoom buttons + rotate dial (bottomright)
-// and the layer picker (topright). Updates on every map mousemove with
-// the same DM format the inspector uses for waypoints (fmtLatLng).
-const coordCtrl = L.control({ position: 'bottomleft' });
+// Bottom-right, sat to the LEFT of the zoom +/- + rotate-dial column (CSS
+// offsets it clear of those buttons) so it no longer collides with the
+// bottom-left legend (#526). Updates on every map mousemove with the same
+// DM format the inspector uses for waypoints (fmtLatLng).
+const coordCtrl = L.control({ position: 'bottomright' });
 coordCtrl.onAdd = function () {
   const box = L.DomUtil.create('div', 'leaflet-control coord-readout');
   box.id = 'coord-readout';
