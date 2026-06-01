@@ -236,6 +236,68 @@ test.describe('Cumulative-time kite', () => {
     expect(out.inUnchanged).toBe(true);    // moving the cum kite must not touch the nav kite
   });
 
+  test('dragging the cumulative-time kite orbits it around the waypoint anchor', async ({ page }) => {
+    await boot(page);
+    await loadRoute(page);
+    const dragPts = await page.evaluate(() => {
+      window.showCumTime = true;
+      draw();
+      const c = cumLabelCenter(0);
+      const frame = cumLabelDragFrame(0, false);
+      const r = mapEl.getBoundingClientRect();
+      const vx = c.x - frame.anchor.x;
+      const vy = c.y - frame.anchor.y;
+      const candidates = [
+        { x: frame.anchor.x - vy * 0.8, y: frame.anchor.y + vx * 0.8 },
+        { x: frame.anchor.x + vy * 0.8, y: frame.anchor.y - vx * 0.8 },
+        { x: frame.anchor.x + vx * 1.45, y: frame.anchor.y + vy * 1.45 },
+      ];
+      const target = candidates.find(p =>
+        p.x > 40 && p.y > 40 && p.x < map.getSize().x - 40 && p.y < map.getSize().y - 40) ||
+        candidates[2];
+      return {
+        start: { x: r.left + c.x + 8, y: r.top + c.y },
+        target: { x: r.left + target.x, y: r.top + target.y },
+        expected: target,
+        inBefore: JSON.stringify(state.legs[0].inLabel),
+      };
+    });
+    await page.mouse.move(dragPts.start.x, dragPts.start.y);
+    await page.mouse.down();
+    await page.mouse.move(dragPts.target.x, dragPts.target.y);
+    await page.mouse.up();
+    const out = await page.evaluate(expected => {
+      const c = cumLabelCenter(0);
+      const frame = cumLabelDragFrame(0, false);
+      const drawn = [];
+      const real = window.drawCumTimeArrow;
+      window.drawCumTimeArrow = function (cx, cy, ang) {
+        drawn.push({ cx, cy, ang });
+        return real.apply(this, arguments);
+      };
+      draw();
+      window.drawCumTimeArrow = real;
+      const rendered = drawn[0];
+      const expectedAngle = Math.atan2(frame.anchor.y - c.y, frame.anchor.x - c.x);
+      const angleDelta = Math.atan2(Math.sin(rendered.ang - expectedAngle),
+        Math.cos(rendered.ang - expectedAngle));
+      return {
+        center: c,
+        label: state.legs[0].cumLabel,
+        inAfter: JSON.stringify(state.legs[0].inLabel),
+        distancePx: Math.hypot(c.x - expected.x, c.y - expected.y),
+        radialPx: Math.hypot(c.x - frame.anchor.x, c.y - frame.anchor.y),
+        angleDelta,
+      };
+    }, dragPts.expected);
+    expect(out.distancePx).toBeLessThan(2);
+    expect(out.radialPx).toBeGreaterThan(10);
+    expect(out.angleDelta).toBeCloseTo(0, 6);
+    expect(out.label._default).toBeUndefined();
+    expect(out.label._m).toBe(1);
+    expect(out.inAfter).toBe(dragPts.inBefore);
+  });
+
   test('load() preserves a stored cumLabel offset', async ({ page }) => {
     await boot(page);
     await loadRoute(page);

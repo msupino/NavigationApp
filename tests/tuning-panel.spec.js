@@ -14,6 +14,10 @@ async function boot(page, url = '?lang=en&tune=1') {
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof draw === 'function');
 }
 
+async function openTuneGroup(page, name) {
+  await page.locator('#tuning-panel summary').filter({ hasText: new RegExp('^' + name + '$') }).click();
+}
+
 async function captureDrift(page) {
   return page.evaluate(() => {
     const dashCalls = [];
@@ -62,8 +66,14 @@ test.describe('Hidden tuning panel', () => {
     expect(params.get('lang')).toBe('en');
   });
 
+  test('groups start collapsed', async ({ page }) => {
+    await boot(page);
+    expect(await page.locator('#tuning-panel details[open]').count()).toBe(0);
+  });
+
   test('drift dash controls redraw without changing endpoint length', async ({ page }) => {
     await boot(page);
+    await openTuneGroup(page, 'Drift lines');
     await page.locator('#tune-driftDashOnPx-number').fill('24');
 
     const out = await captureDrift(page);
@@ -81,6 +91,7 @@ test.describe('Hidden tuning panel', () => {
 
   test('preview values reset on reload and do not add persistence keys', async ({ page }) => {
     await boot(page);
+    await openTuneGroup(page, 'Route');
     await page.locator('#tune-routeLineWidthPx-number').fill('9');
     expect(await page.evaluate(() => tune('routeLineWidthPx'))).toBe(9);
     expect(await page.evaluate(() =>
@@ -91,5 +102,50 @@ test.describe('Hidden tuning panel', () => {
     await page.waitForFunction(() => typeof state !== 'undefined' && typeof tune === 'function');
     expect(await page.evaluate(() => tune('routeLineWidthPx'))).toBe(3.5);
     await expect(page.locator('#tune-routeLineWidthPx-number')).toHaveValue('3.5');
+  });
+
+  test('color and select controls update preview values', async ({ page }) => {
+    await boot(page);
+    await openTuneGroup(page, 'Reference overlays');
+    await page.locator('#tune-commChangeArrowColor-text').fill('#336699');
+    await page.locator('#tune-commChangeArrowLineCap-select').selectOption('round');
+
+    const out = await page.evaluate(() => ({
+      color: tune('commChangeArrowColor'),
+      cap: tune('commChangeArrowLineCap'),
+      persisted: Object.keys(localStorage).filter(k => k.indexOf('navaid.tune') === 0),
+    }));
+    expect(out.color).toBe('#336699');
+    expect(out.cap).toBe('round');
+    expect(out.persisted).toEqual([]);
+  });
+
+  test('frequency callout arrow and text size controls are tunable', async ({ page }) => {
+    await boot(page);
+    await openTuneGroup(page, 'Reference overlays');
+    await expect(page.locator('#tune-commChangeArrowStartGapPx-range')).toBeVisible();
+    await expect(page.locator('#tune-commChangeArrowWidthPx-range')).toBeVisible();
+    await expect(page.locator('#tune-commChangeNameFontPx-range')).toBeVisible();
+    await expect(page.locator('#tune-commChangeFreqFontPx-range')).toBeVisible();
+
+    await page.locator('#tune-commChangeArrowStartGapPx-number').fill('12');
+    await page.locator('#tune-commChangeArrowWidthPx-number').fill('7');
+    await page.locator('#tune-commChangeNameFontPx-number').fill('18');
+    await page.locator('#tune-commChangeFreqFontPx-number').fill('20');
+
+    const out = await page.evaluate(() => ({
+      startGap: tune('commChangeArrowStartGapPx'),
+      arrowWidth: tune('commChangeArrowWidthPx'),
+      nameSize: tune('commChangeNameFontPx'),
+      freqSize: tune('commChangeFreqFontPx'),
+      persisted: Object.keys(localStorage).filter(k => k.indexOf('navaid.tune') === 0),
+    }));
+    expect(out).toEqual({
+      startGap: 12,
+      arrowWidth: 7,
+      nameSize: 18,
+      freqSize: 20,
+      persisted: [],
+    });
   });
 });

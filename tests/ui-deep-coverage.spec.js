@@ -24,6 +24,21 @@ async function boot(page) {
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof showInspector === 'function');
 }
 
+async function bootWithSavedSelection(page, route, selected) {
+  await page.addInitScript(({ route, selected }) => {
+    try {
+      for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
+      sessionStorage.clear();
+      for (const s of ['build','view','display','charts','export','print'])
+        localStorage.setItem('navaid.sec.' + s, '1');
+      localStorage.setItem('navaid.route', JSON.stringify(route));
+      sessionStorage.setItem('navaid.selected', JSON.stringify(selected));
+    } catch (e) {}
+  }, { route, selected });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof state !== 'undefined' && typeof showInspector === 'function');
+}
+
 // ---------------------------------------------------------------------------
 // Inspector panel
 // ---------------------------------------------------------------------------
@@ -67,6 +82,43 @@ test.describe('Inspector panel', () => {
     const bodyText = await page.locator('#insp-body').textContent();
     expect(bodyText).toMatch(/Latitude/);
     expect(bodyText).toMatch(/Longitude/);
+  });
+
+  test('restores an open note inspector after refresh', async ({ page }) => {
+    await bootWithSavedSelection(page, {
+      waypoints: [],
+      legs: [],
+      notes: [{
+        lat: 32.1,
+        lng: 34.9,
+        text: 'Saved note',
+        color: '#fff6aa',
+        shape: 'rect',
+      }],
+    }, { type: 'note', index: 0 });
+    await expect(page.locator('#inspector')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#insp-body textarea')).toHaveValue('Saved note');
+    expect(await page.evaluate(() => state.selected)).toEqual({ type: 'note', index: 0 });
+  });
+
+  test('restores an open leg inspector after refresh', async ({ page }) => {
+    await bootWithSavedSelection(page, {
+      waypoints: [
+        { lat: 32.1, lng: 34.9, name: 'ALPHA' },
+        { lat: 32.2, lng: 35.0, name: 'BRAVO' },
+      ],
+      legs: [{
+        inboundAltitude: 1000,
+        outboundAltitude: 1000,
+        flightSpeed: 90,
+        inLabel: { a: 0, p: 50, _m: 1 },
+        outLabel: { a: 0, p: -50, _m: 1 },
+      }],
+      notes: [],
+    }, { type: 'leg', index: 0 });
+    await expect(page.locator('#inspector')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#insp-title')).toHaveValue(/ALPHA.*BRAVO/);
+    expect(await page.evaluate(() => state.selected)).toEqual({ type: 'leg', index: 0 });
   });
 });
 
