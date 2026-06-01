@@ -126,6 +126,21 @@ function rotEnd(cycle) {
 }
 rotDial.addEventListener('pointerup', () => rotEnd(true));
 rotDial.addEventListener('pointercancel', () => rotEnd(false));   // aborted — don't rotate
+// --- map legend (top-right) -----------------------------------------
+// The legend markup lives in index.html so applyI18n() fills its text at
+// boot; here we lift that element into a Leaflet control so it floats over
+// the map (a chart legend) instead of sitting inside the View menu (#526).
+const legendCtrl = L.control({ position: 'topright' });
+legendCtrl.onAdd = function () {
+  const wrap = L.DomUtil.create('div', 'leaflet-control');
+  const el = document.getElementById('map-legend');
+  if (el) { el.style.display = ''; wrap.appendChild(el); }
+  L.DomEvent.disableClickPropagation(wrap);
+  L.DomEvent.disableScrollPropagation(wrap);
+  return wrap;
+};
+legendCtrl.addTo(map);
+
 // --- live mouse coordinate readout ---------------------------------
 // Bottom-left so it clears the zoom buttons + rotate dial (bottomright)
 // and the layer picker (topright). Updates on every map mousemove with
