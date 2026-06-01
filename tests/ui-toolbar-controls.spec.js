@@ -65,6 +65,30 @@ test.describe('Display checkbox toggles', () => {
   }
 });
 
+test.describe('View menu legend', () => {
+  test('shows airfield, waypoint, and ATC change symbols without entering the export canvas', async ({ page }) => {
+    await boot(page);
+    const legend = page.locator('#map-legend');
+    await expect(legend).toBeVisible();
+    await expect(legend).toContainText('Legend');
+    await expect(legend).toContainText('Airfield');
+    await expect(legend).toContainText('Waypoint');
+    await expect(legend).toContainText('ATC change');
+    await expect(legend.locator('.legend-airfield')).toBeVisible();
+    await expect(legend.locator('.legend-waypoint')).toBeVisible();
+    await expect(legend.locator('.legend-atc')).toBeVisible();
+    const placement = await page.evaluate(() => {
+      const el = document.getElementById('map-legend');
+      return {
+        inMap: !!(el && el.closest('#map')),
+        inCanvas: !!(el && el.closest('canvas')),
+        inToolbar: !!(el && el.closest('#toolbar')),
+      };
+    });
+    expect(placement).toEqual({ inMap: false, inCanvas: false, inToolbar: true });
+  });
+});
+
 test.describe('Sliders persist to localStorage', () => {
   test('map opacity slider writes navaid.mapOpacity', async ({ page }) => {
     await boot(page);
@@ -169,5 +193,4 @@ test.describe('Toolbar collapse', () => {
     expect(stored === null || stored === '0').toBeTruthy();
   });
 });
-
 
