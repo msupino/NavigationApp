@@ -419,6 +419,7 @@ function showInspector() {
             if (!opt) return;
             note.freqName = opt.id;
             note.freq = opt.freq || '';
+            note.freqAuto = false;
             if (freqInput) freqInput.value = note.freq;
             draw();
           }));
@@ -427,6 +428,7 @@ function showInspector() {
       }
       const freqRow = inputRow(S.commChangeFreq || 'Frequency', commNoteFreq(note) || '', v => {
         note.freq = v;
+        note.freqAuto = false;
         draw();
       });
       freqInput = freqRow.querySelector('input');

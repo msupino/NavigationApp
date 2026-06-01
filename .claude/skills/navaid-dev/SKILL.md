@@ -237,13 +237,27 @@ branch by mistake.
   shows a call-sign dropdown; choosing an option copies its default primary
   frequency into the editable frequency field. Call-sign names use the
   catalog's `he` translation when the app is in Hebrew, falling back to
-  `label`. Turning the layer on seeds lightning arrows only for matching
+  `label`. Defaults are route-aware: `commRouteCalloutDefaultsMap()` treats
+  each comm-change waypoint's call-sign list as a boundary in an ATC graph,
+  then picks the sector after crossing based on route order, neighboring
+  comm-change boundaries, and the actual route points before/after each
+  boundary. Route-context hints match call-sign labels, nearby airfields when
+  one exists, and nearby comm-change boundary points that advertise the same
+  call sign, so sectors without airfields still get useful suggestions.
+  Example: LLHZ → DEROR → DAROM → LLHA suggests PLUTO_WEST at DEROR,
+  then HAIFA at DAROM; the reverse route suggests PLUTO_WEST at DAROM, then
+  HERZLIYA at DEROR. Auto-suggested
+  notes carry `freqAuto: true` so route direction changes can refresh them;
+  changing the call sign or frequency in the inspector clears that flag and
+  preserves the user's manual choice. Turning the layer on seeds lightning
+  arrows only for matching
   waypoints already present in the route, never for unrelated reference
   points. The default callout tail starts east/right of the waypoint via
   `commChangeNoteLngOffset`. Turning the layer off hides tagged callout
   notes and disables their hit-testing without deleting them, so toggling
   back on restores the same editable callouts. These fields are saved in the
-  existing `navaid.route` note payload, not in a separate storage key.
+  existing `navaid.route` note payload (`cc`, `freqName`, `freq`, optional
+  `freqAuto`), not in a separate storage key.
 - **Map legend:** the View menu contains a compact DOM-only legend for
   airfield triangles, waypoint circles, and ATC-change red rings. It is not
   drawn by `draw()` or `exportPNG()`, so PNG exports stay chart-only.
