@@ -15,6 +15,7 @@ known frequency point yet.
 | HAGAV_SOUTH | חגב דרומי | Hagav South | 121.15 |  | unit: יב"א 509 |
 | HAIFA | חיפה | Haifa | 133.00 | 134.35 | atis: 135.40 |
 | HATZOR | חצור | Hatzor | 123.55 |  | unit: חצור |
+| MASADA | מצדה | Masada | 122.55 |  |  |
 | MEGIDDO | מגידו | Megiddo | 128.60 | 128.20 |  |
 | NEGEV | נגב | Negev | 132.40 |  | unit: נבטים |
 | OVDA | עובדה | Ovda | 129.90 |  | unit: עובדה |
@@ -28,6 +29,7 @@ known frequency point yet.
 | RAMON | רמון | Ramon | 124.60 |  | unit: רמון |
 | RAMAT_DAVID | רמת דוד | Ramat David | 130.50 |  | unit: רמת דוד |
 | TEL_NOF | תל-נוף | Tel Nof | 129.05 |  |  |
+| TEYMAN | תימן | Teyman | 122.50 |  |  |
 
 ## Not Assigned To Frequency Points
 
@@ -37,7 +39,6 @@ known frequency point yet.
 | EILAT | אילת | Eilat | 121.80 | 119.00 | atis: 132.55 |
 | HAGAV | חגב | Hagav | 132.70 | 133.45 |  |
 | SHANON | שנון | Shanon | 122.90 |  | unit: יב"א 509 |
-| MASADA | מצדה | Masada | 122.55 |  |  |
 | NEVATIM | נבטים | Nevatim | 120.15 |  |  |
 | ARAD | ערד | Arad | 120.75 |  |  |
 | PLUTO | פלוטו | Pluto | 118.40 | 119.25 |  |
@@ -50,4 +51,3 @@ known frequency point yet.
 | HATZERIM_NORTH | חצרים צפון | Hatzerim North | 125.35 |  | unit: חצרים |
 | HATZERIM_SOUTH | חצרים דרום | Hatzerim South | 130.80 |  | unit: חצרים |
 | SDE_DOV | שדה דב | Sde Dov | 134.95 |  |  |
-| TEYMAN | תימן | Teyman | 122.50 |  |  |

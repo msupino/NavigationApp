@@ -723,6 +723,33 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(tagged).toEqual(['SORES', 'TYONA']);
   });
 
+  test('search route-build seeds notes for comm-change airfield destinations', async ({ page }) => {
+    await boot(page);
+    const out = await page.evaluate(async () => {
+      window.showCommChange = true;
+      const ok = await buildRouteFromQuery('LLBS LLMZ');
+      return {
+        ok,
+        waypoints: state.waypoints.map(w => w.name),
+        notes: state.notes
+          .filter(n => n.cc)
+          .map(n => ({
+            cc: n.cc,
+            freqName: n.freqName,
+            freq: n.freq,
+            lines: noteLines(n),
+          }))
+          .sort((a, b) => a.cc.localeCompare(b.cc)),
+      };
+    });
+    expect(out.ok).toBe(true);
+    expect(out.waypoints).toEqual(['LLBS', 'LLMZ']);
+    expect(out.notes).toEqual([
+      { cc: 'LLBS', freqName: 'TEYMAN', freq: '122.50', lines: ['TEYMAN', '122.50'] },
+      { cc: 'LLMZ', freqName: 'MASADA', freq: '122.55', lines: ['MASADA', '122.55'] },
+    ]);
+  });
+
   test('Hebrew locale seeds the translated note label', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page, 'he');

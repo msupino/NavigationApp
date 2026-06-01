@@ -97,6 +97,8 @@
     { "name": "NIZAN", "commChange": true, "callSigns": ["RAMON", "HAGAV_SOUTH"] },
     { "name": "OVDAT", "commChange": true, "callSigns": ["HAGAV_SOUTH"] },
     { "name": "BOKER", "commChange": true, "callSigns": ["RAMON", "HAGAV_SOUTH"] },
-    { "name": "DIMON", "commChange": true, "callSigns": ["NEGEV", "HAGAV_SOUTH"] }
+    { "name": "DIMON", "commChange": true, "callSigns": ["NEGEV", "HAGAV_SOUTH"] },
+    { "name": "LLBS", "commChange": true, "callSigns": ["TEYMAN"] },
+    { "name": "LLMZ", "commChange": true, "callSigns": ["MASADA"] }
   ]
 }

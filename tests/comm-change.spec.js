@@ -116,10 +116,11 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(typeof map).toBe('object');
     const keys = Object.keys(map);
     expect(keys.length).toBeGreaterThan(0);
-    // Every shipped entry is keyed by a 5-letter ICAO name and flagged commChange.
+    // Every shipped entry is either a 5-letter reporting point or a 4-letter
+    // airfield ICAO destination, and is flagged commChange.
     const allowedPointKeys = ['callSigns', 'commChange', 'from', 'name', 'note', 'source', 'to'];
     for (const k of keys) {
-      expect(k).toMatch(/^[A-Z]{5}$/);
+      expect(k).toMatch(/^(?:[A-Z]{5}|LL[A-Z0-9]{2})$/);
       expect(map[k].commChange).toBe(true);
       expect(Object.keys(map[k]).sort().every(key => allowedPointKeys.includes(key))).toBe(true);
     }
@@ -146,6 +147,8 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(map.HOVAV.callSigns).toEqual(['NEGEV', 'HAGAV_NORTH', 'HAGAV_SOUTH']);
     expect(map.KNTRY.callSigns).toEqual(['HERZLIYA']);
     expect(map.KTORA.callSigns).toEqual(['HAGAV_SOUTH', 'RAMON']);
+    expect(map.LLBS.callSigns).toEqual(['TEYMAN']);
+    expect(map.LLMZ.callSigns).toEqual(['MASADA']);
     expect(map.MOVIL.callSigns).toEqual(['RAMAT_DAVID', 'PLUTO_EAST']);
     expect(map.NCITY.callSigns).toEqual(['HAGAV_NORTH', 'KEDEM']);
     expect(map.NMASD.callSigns).toEqual(['PALMACHIM', 'HAGAV_NORTH']);
@@ -237,6 +240,31 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     const unused = Object.keys(catalog).filter(id => !used.includes(id)).sort();
     expect(idsInSection('Used By Frequency Points')).toEqual(used);
     expect(idsInSection('Not Assigned To Frequency Points')).toEqual(unused);
+  });
+
+  test('every comm-change point has at least one frequency option', async ({ page }) => {
+    await boot(page);
+    const { map, catalog } = await page.evaluate(() => ({
+      map: window.commChangeMap,
+      catalog: window.commChangeCallSigns,
+    }));
+    const missingOptions = [];
+    const missingFrequencies = [];
+    for (const [name, point] of Object.entries(map)) {
+      const ids = Array.isArray(point.callSigns) ? point.callSigns.filter(Boolean) : [];
+      if (!ids.length) {
+        missingOptions.push(name);
+        continue;
+      }
+      const hasFrequency = ids.some(id => {
+        const row = catalog[id];
+        return row && ((typeof row.primary === 'string' && row.primary.trim()) ||
+          (typeof row.freq === 'string' && row.freq.trim()));
+      });
+      if (!hasFrequency) missingFrequencies.push(name);
+    }
+    expect(missingOptions).toEqual([]);
+    expect(missingFrequencies).toEqual([]);
   });
 
   test('known-freq-points.md lists every comm-change point', async ({ page }) => {

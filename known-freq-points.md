@@ -3,7 +3,7 @@
 This file mirrors `points[]` in `docs/comm-change.json`. Rows marked `TBD`
 are comm-change points that do not have `points[].callSigns` assigned yet.
 
-| Waypoint | Call signs | Frequencies |
+| Waypoint / destination | Call signs | Frequencies |
 | --- | --- | --- |
 | BASAN | קריית שמונה (`KIRYAT_SHMONA`), פלוטו מזרח (`PLUTO_EAST`) | 126.90; 123.85 / 134.65 |
 | DESHE | ראש פינה (`ROSH_PINA`), פלוטו מזרח (`PLUTO_EAST`) | 118.45 / 128.45; 123.85 / 134.65 |
@@ -51,3 +51,5 @@ are comm-change points that do not have `points[].callSigns` assigned yet.
 | OVDAT | חגב דרומי (`HAGAV_SOUTH`) | 121.15 |
 | BOKER | רמון (`RAMON`), חגב דרומי (`HAGAV_SOUTH`) | 124.60; 121.15 |
 | DIMON | נגב (`NEGEV`), חגב דרומי (`HAGAV_SOUTH`) | 132.40; 121.15 |
+| LLBS | תימן (`TEYMAN`) | 122.50 |
+| LLMZ | מצדה (`MASADA`) | 122.55 |
