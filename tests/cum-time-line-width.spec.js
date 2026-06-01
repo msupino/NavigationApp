@@ -336,6 +336,38 @@ test.describe('Cumulative-time kite', () => {
     expect(out.inboundUnchanged).toBe(true);   // moving return kite must not move inbound
   });
 
+  test('reverse route preserves moved cumulative-time kite positions', async ({ page }) => {
+    await boot(page);
+    await loadRoute(page);
+    const before = await page.evaluate(() => {
+      window.showReturn = true;
+      window.showCumTime = true;
+      state.legs[0].cumLabel = { a: 18, p: 12, _m: 1 };
+      state.legs[0].cumLabelRet = { a: -24, p: -16, _m: 1 };
+      draw();
+      return {
+        inbound: cumLabelCenter(0),
+        ret: cumLabelRetCenter(0),
+        target: state.legs.length - 1,
+      };
+    });
+    await page.locator('#reverse').click();
+    const after = await page.evaluate(target => ({
+      inbound: cumLabelCenter(target),
+      ret: cumLabelRetCenter(target),
+      labels: {
+        cumLabel: state.legs[target].cumLabel,
+        cumLabelRet: state.legs[target].cumLabelRet,
+      },
+    }), before.target);
+    expect(after.inbound.x).toBeCloseTo(before.ret.x, 4);
+    expect(after.inbound.y).toBeCloseTo(before.ret.y, 4);
+    expect(after.ret.x).toBeCloseTo(before.inbound.x, 4);
+    expect(after.ret.y).toBeCloseTo(before.inbound.y, 4);
+    expect(after.labels.cumLabel).toMatchObject({ a: 24, p: 16, _m: 1 });
+    expect(after.labels.cumLabelRet).toMatchObject({ a: -18, p: -12, _m: 1 });
+  });
+
   test('the return cum kite is not hit-testable when the return path is hidden', async ({ page }) => {
     await boot(page);
     await loadRoute(page);

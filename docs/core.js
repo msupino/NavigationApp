@@ -25,6 +25,125 @@ try {
 // unchanged, which is fine.
 window.NavAid = { exporting: false, version: '1.0' };  // cross-file export flag (read by ui.js/io.js)
 
+// Hidden developer tuning registry. Open with `?tune=1` to preview visual
+// constants without editing source. Values are page-local and reset on reload.
+NavAid.tuning = {};
+NavAid.tuningDefaults = {
+  routeLineWidthPx: { value: 3.5, min: 0.5, max: 12, step: 0.1, label: 'Route line width' },
+  routeSelectedLineWidthPx: { value: 5, min: 0.5, max: 16, step: 0.1, label: 'Selected route line width' },
+
+  driftAngleDeg: { value: 10, min: 1, max: 30, step: 0.5, label: 'Drift angle deg' },
+  driftLengthFactor: { value: 0.5, min: 0.05, max: 1, step: 0.05, label: 'Drift length factor' },
+  driftDashOnPx: { value: 12, min: 1, max: 60, step: 1, label: 'Drift dash on' },
+  driftDashOffPx: { value: 8, min: 0, max: 60, step: 1, label: 'Drift dash gap' },
+  driftStrokeWidthPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Drift stroke width' },
+
+  defaultLabelMarginPx: { value: 8, min: 0, max: 80, step: 1, label: 'Default marker margin' },
+  defaultKiteHalfWidthPx: { value: 23, min: 1, max: 80, step: 1, label: 'Default kite half-width' },
+
+  legKiteHeightPx: { value: 46, min: 8, max: 120, step: 1, label: 'Leg kite height' },
+  legKiteCellWidthPx: { value: 22, min: 8, max: 80, step: 1, label: 'Leg kite cell width' },
+  legKiteTriangleLenPx: { value: 26, min: 8, max: 100, step: 1, label: 'Leg kite triangle length' },
+  legKiteBorderPx: { value: 2, min: 0.25, max: 8, step: 0.25, label: 'Leg kite border width' },
+  legKiteDividerPx: { value: 1, min: 0.25, max: 6, step: 0.25, label: 'Leg kite divider width' },
+  legKiteHaloPx: { value: 7, min: 0, max: 20, step: 0.5, label: 'Leg kite halo width' },
+  legKiteTextPx: { value: 13, min: 4, max: 36, step: 1, label: 'Leg kite text size' },
+  legKiteHeadingTextPx: { value: 14, min: 4, max: 40, step: 1, label: 'Leg kite heading text size' },
+  legKiteHeadingAnchor: { value: 0.22, min: -0.5, max: 1, step: 0.01, label: 'Leg kite heading anchor' },
+
+  cumKiteHeightPx: { value: 26, min: 8, max: 100, step: 1, label: 'Cum kite height' },
+  cumKiteCellWidthPx: { value: 38, min: 10, max: 120, step: 1, label: 'Cum kite cell width' },
+  cumKiteTriangleLenPx: { value: 20, min: 6, max: 100, step: 1, label: 'Cum kite triangle length' },
+  cumKiteBorderPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Cum kite border width' },
+  cumKiteTextPx: { value: 13, min: 4, max: 36, step: 1, label: 'Cum kite text size' },
+
+  minuteMarkerFontPx: { value: 10, min: 4, max: 28, step: 1, label: 'Minute label text size' },
+  minuteTickEvenPx: { value: 9, min: 1, max: 30, step: 1, label: 'Even minute tick length' },
+  minuteTickOddPx: { value: 4, min: 1, max: 30, step: 1, label: 'Odd minute tick length' },
+  minuteTickEvenWidthPx: { value: 2, min: 0.25, max: 8, step: 0.25, label: 'Even minute tick width' },
+  minuteTickOddWidthPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Odd minute tick width' },
+  minuteLabelOffsetPx: { value: 8, min: 0, max: 40, step: 1, label: 'Minute label offset' },
+
+  distanceBadgeRadiusPx: { value: 15, min: 4, max: 50, step: 1, label: 'Distance badge radius' },
+  distanceBadgeBorderPx: { value: 2.5, min: 0.25, max: 10, step: 0.25, label: 'Distance badge border width' },
+  distanceBadgeFontPx: { value: 11, min: 4, max: 30, step: 1, label: 'Distance badge text size' },
+
+  waypointBaseRadiusPx: { value: 13, min: 2, max: 60, step: 1, label: 'Waypoint base radius' },
+  waypointFontPx: { value: 13, min: 4, max: 40, step: 1, label: 'Waypoint text size' },
+  waypointTextPadFactor: { value: 0.7, min: 0, max: 2, step: 0.05, label: 'Waypoint text pad factor' },
+  waypointMinZoomScale: { value: 0.35, min: 0.1, max: 2, step: 0.05, label: 'Waypoint min zoom scale' },
+  waypointSelectedRadiusAddPx: { value: 2, min: 0, max: 20, step: 0.5, label: 'Selected waypoint radius add' },
+  waypointStrokeWidthPx: { value: 3, min: 0.25, max: 10, step: 0.25, label: 'Waypoint stroke width' },
+
+  airfieldMarkerRadiusPx: { value: 7, min: 2, max: 40, step: 1, label: 'Airfield triangle radius' },
+  airfieldMarkerWidthFactor: { value: 0.95, min: 0.1, max: 2, step: 0.05, label: 'Airfield triangle width factor' },
+  airfieldMarkerBaseFactor: { value: 0.65, min: 0.1, max: 2, step: 0.05, label: 'Airfield triangle base factor' },
+  airfieldStrokeWidthPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Airfield stroke width' },
+  airfieldLabelFontPx: { value: 11, min: 4, max: 30, step: 1, label: 'Airfield label text size' },
+  airfieldLabelOffsetPx: { value: 3, min: 0, max: 40, step: 1, label: 'Airfield label offset' },
+  airfieldLabelHaloPx: { value: 2.5, min: 0.25, max: 10, step: 0.25, label: 'Airfield label halo width' },
+
+  navWaypointRadiusPx: { value: 3.5, min: 1, max: 20, step: 0.5, label: 'Nav waypoint dot radius' },
+  navWaypointStrokeWidthPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Nav waypoint stroke width' },
+  navWaypointLabelFontPx: { value: 10, min: 4, max: 28, step: 1, label: 'Nav waypoint label text size' },
+  navWaypointLabelOffsetPx: { value: 6, min: 0, max: 40, step: 1, label: 'Nav waypoint label offset' },
+  navWaypointLabelHaloPx: { value: 2.5, min: 0.25, max: 10, step: 0.25, label: 'Nav waypoint label halo width' },
+
+  commChangeRingRadiusPx: { value: 6, min: 1, max: 40, step: 0.5, label: 'Comm-change ring radius' },
+  commChangeRingWidthPx: { value: 1.8, min: 0.25, max: 10, step: 0.1, label: 'Comm-change ring width' },
+  commChangeNoteLatOffset: { value: 0.012, min: -0.05, max: 0.05, step: 0.001, label: 'Comm-change note lat offset' },
+
+  noteFontPx: { value: 12, min: 4, max: 40, step: 1, label: 'Note text size' },
+  notePadXPx: { value: 8, min: 0, max: 40, step: 1, label: 'Note horizontal padding' },
+  notePadYPx: { value: 6, min: 0, max: 40, step: 1, label: 'Note vertical padding' },
+  noteLineHeightPx: { value: 16, min: 6, max: 60, step: 1, label: 'Note line height' },
+  noteMinWidthPx: { value: 56, min: 1, max: 240, step: 1, label: 'Note min width' },
+  noteStrokeWidthPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Note stroke width' },
+  noteSelectedStrokeWidthPx: { value: 2.5, min: 0.25, max: 10, step: 0.25, label: 'Selected note stroke width' },
+
+  pageFrameLineWidthPx: { value: 2, min: 0.25, max: 10, step: 0.25, label: 'Page frame line width' },
+  pageFrameDashOnPx: { value: 8, min: 1, max: 60, step: 1, label: 'Page frame dash on' },
+  pageFrameDashOffPx: { value: 5, min: 0, max: 60, step: 1, label: 'Page frame dash gap' },
+  pageFrameScrimAlpha: { value: 0.4, min: 0, max: 1, step: 0.05, label: 'Page frame scrim alpha' },
+  pageFrameHitPx: { value: 14, min: 1, max: 80, step: 1, label: 'Page frame drag band' },
+
+  hitWaypointExtraPx: { value: 6, min: 0, max: 40, step: 1, label: 'Waypoint hit extra' },
+  hitLegPx: { value: 8, min: 1, max: 60, step: 1, label: 'Leg line hit width' },
+  hitLegLabelMinPx: { value: 18, min: 1, max: 80, step: 1, label: 'Leg label hit min' },
+  hitLegLabelScalePx: { value: 34, min: 1, max: 120, step: 1, label: 'Leg label hit scale' },
+  hitCumLabelMinPx: { value: 18, min: 1, max: 80, step: 1, label: 'Cum label hit min' },
+  hitCumLabelScalePx: { value: 28, min: 1, max: 120, step: 1, label: 'Cum label hit scale' },
+};
+NavAid.tuningGroups = [
+  { name: 'Route', keys: ['routeLineWidthPx', 'routeSelectedLineWidthPx'] },
+  { name: 'Drift lines', keys: ['driftAngleDeg', 'driftLengthFactor', 'driftDashOnPx', 'driftDashOffPx', 'driftStrokeWidthPx'] },
+  { name: 'Default marker locations', keys: ['defaultLabelMarginPx', 'defaultKiteHalfWidthPx'] },
+  { name: 'Leg kites', keys: ['legKiteHeightPx', 'legKiteCellWidthPx', 'legKiteTriangleLenPx', 'legKiteBorderPx', 'legKiteDividerPx', 'legKiteHaloPx', 'legKiteTextPx', 'legKiteHeadingTextPx', 'legKiteHeadingAnchor'] },
+  { name: 'Cumulative kites', keys: ['cumKiteHeightPx', 'cumKiteCellWidthPx', 'cumKiteTriangleLenPx', 'cumKiteBorderPx', 'cumKiteTextPx'] },
+  { name: 'Minute markers', keys: ['minuteMarkerFontPx', 'minuteTickEvenPx', 'minuteTickOddPx', 'minuteTickEvenWidthPx', 'minuteTickOddWidthPx', 'minuteLabelOffsetPx'] },
+  { name: 'Distance badges', keys: ['distanceBadgeRadiusPx', 'distanceBadgeBorderPx', 'distanceBadgeFontPx'] },
+  { name: 'Route waypoints', keys: ['waypointBaseRadiusPx', 'waypointFontPx', 'waypointTextPadFactor', 'waypointMinZoomScale', 'waypointSelectedRadiusAddPx', 'waypointStrokeWidthPx'] },
+  { name: 'Reference overlays', keys: ['airfieldMarkerRadiusPx', 'airfieldMarkerWidthFactor', 'airfieldMarkerBaseFactor', 'airfieldStrokeWidthPx', 'airfieldLabelFontPx', 'airfieldLabelOffsetPx', 'airfieldLabelHaloPx', 'navWaypointRadiusPx', 'navWaypointStrokeWidthPx', 'navWaypointLabelFontPx', 'navWaypointLabelOffsetPx', 'navWaypointLabelHaloPx', 'commChangeRingRadiusPx', 'commChangeRingWidthPx', 'commChangeNoteLatOffset'] },
+  { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx'] },
+  { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimAlpha', 'pageFrameHitPx'] },
+  { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitLegPx', 'hitLegLabelMinPx', 'hitLegLabelScalePx', 'hitCumLabelMinPx', 'hitCumLabelScalePx'] },
+];
+function tune(key) {
+  const spec = NavAid.tuningDefaults && NavAid.tuningDefaults[key];
+  if (!spec) return 0;
+  const v = NavAid.tuning[key];
+  return Number.isFinite(v) ? v : spec.value;
+}
+function setTune(key, value) {
+  const spec = NavAid.tuningDefaults && NavAid.tuningDefaults[key];
+  if (!spec || !Number.isFinite(value)) return;
+  NavAid.tuning[key] = Math.max(spec.min, Math.min(spec.max, value));
+}
+function resetTune(key) {
+  if (key) delete NavAid.tuning[key];
+  else NavAid.tuning = {};
+}
+
 const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
 // Mutable globals are declared with `var` (not `let`) so that they're a true
 // property on the global object. ui.js writes to them via `window.foo = …` —
@@ -605,4 +724,3 @@ function syncLegs() {
   while (state.legs.length < need) state.legs.push(newLeg());
   while (state.legs.length > need) state.legs.pop();
 }
-
