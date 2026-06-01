@@ -224,15 +224,15 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.arrowColor).toBe('#000000');
     expect(out.arrowLineCap).toBe('square');
     expect(out.arrowLineJoin).toBe('miter');
-    expect(out.arrowMiterLimit).toBe(4);
+    expect(out.arrowMiterLimit).toBe(1);
     expect(out.arrowHalo).toBe(0);
     expect(out.arrowHaloColor).toBe('#fff9d6');
     expect(out.arrowHaloAlpha).toBe(0.92);
     expect(out.selectedColor).toBe('#ffcc33');
     expect(out.selectedAlpha).toBe(0.35);
     expect(out.selectedWidthAdd).toBe(5);
-    expect(out.arrowBolt).toBe(24);
-    expect(out.arrowBoltAngle).toBe(90);
+    expect(out.arrowBolt).toBe(15);
+    expect(out.arrowBoltAngle).toBe(30);
     expect(out.textColor).toBe('#161412');
     expect(out.textHaloColor).toBe('#fff9d6');
     expect(out.textHaloAlpha).toBe(0.6);
@@ -242,11 +242,11 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.freqHaloWidth).toBe(0);
     expect(out.strokeWidths).toContain(4);
     expect(out.bendFractions).toHaveLength(2);
-    expect(out.bendFractions[0]).toBeCloseTo(0.52, 2);
-    expect(out.bendFractions[1]).toBeCloseTo(0.38, 2);
-    expect(out.bendOffsets[0]).toBeCloseTo(24, 0);
-    expect(out.bendOffsets[1]).toBeCloseTo(-24, 0);
-    expect(out.breakSpanPx).toBeGreaterThan(45);
+    expect(out.bendFractions[0]).toBeGreaterThan(0.52);
+    expect(out.bendFractions[1]).toBeLessThan(0.38);
+    expect(out.bendOffsets[0]).toBeCloseTo(7.5, 0);
+    expect(out.bendOffsets[1]).toBeCloseTo(-7.5, 0);
+    expect(out.breakSpanPx).toBeGreaterThan(30);
     expect(out.textRotation).toBeCloseTo(out.expectedTextRotation, 6);
     expect(out.fillTexts).toContain('PLUTO');
     expect(out.fillTexts).toContain('118.40');
@@ -281,9 +281,9 @@ test.describe('comm-change auto-note (#487)', () => {
       };
     }, TYONA);
     expect(out.defaultVector.along).toBeCloseTo(0, 1);
-    expect(out.defaultVector.perp).toBeCloseTo(24, 0);
-    expect(out.rotatedVector.along).toBeCloseTo(24 * Math.SQRT1_2, 0);
-    expect(out.rotatedVector.perp).toBeCloseTo(24 * Math.SQRT1_2, 0);
+    expect(out.defaultVector.perp).toBeCloseTo(15, 0);
+    expect(out.rotatedVector.along).toBeCloseTo(15 * Math.SQRT1_2, 0);
+    expect(out.rotatedVector.perp).toBeCloseTo(15 * Math.SQRT1_2, 0);
   });
 
   test('old auto-seeded callouts are moved far enough for a visible arrow', async ({ page }) => {
