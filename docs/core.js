@@ -362,7 +362,7 @@ window.S = Object.assign({
   legendAirfield: 'Airfield',
   legendWaypoint: 'Waypoint',
   legendAtcChange: 'Freq change',
-  commChangeBadge: '📡 Freq change',
+  commChangeBadge: '📡 Freq change point',
   commChangeNoteText: 'Freq change',
   commChangeCallSign: 'Waypoint',
   commChangeName: 'Call sign',
