@@ -34,10 +34,13 @@ async function boot(page, lang = 'en') {
 // #218 — Show/pin label relabel.
 // ---------------------------------------------------------------------------
 test.describe('#218 — Show/pin label relabel', () => {
-  test('navWP toggle label reads "Show/pin navigation waypoints"', async ({ page }) => {
+  test('navWP toggle label reads "Show/pin nav waypoints"', async ({ page }) => {
     await boot(page);
     const text = await page.locator('label[data-i18n-title="tbShowNavWpTitle"]').textContent();
-    expect(text).toMatch(/Show\/pin navigation waypoints/i);
+    // #526: shortened from "navigation waypoints" so it stops clipping at the
+    // 240px toolbar edge; still the "nav waypoints" wording (not the reverted
+    // "map waypoints" from #310).
+    expect(text).toMatch(/Show\/pin nav waypoints/i);
   });
 
   test('airfields toggle label reads "Show/pin airfields"', async ({ page }) => {
