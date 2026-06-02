@@ -38,24 +38,24 @@ NavAid.tuningDefaults = {
   driftDashOffPx: { value: 8, min: 0, max: 60, step: 1, label: 'Drift dash gap' },
   driftStrokeWidthPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Drift stroke width' },
 
-  defaultLabelMarginPx: { value: 8, min: 0, max: 80, step: 1, label: 'Default marker margin' },
+  defaultLabelMarginPx: { value: 20, min: 0, max: 80, step: 1, label: 'Default marker margin' },
   defaultKiteHalfWidthPx: { value: 23, min: 1, max: 80, step: 1, label: 'Default kite half-width' },
 
-  legKiteHeightPx: { value: 46, min: 8, max: 120, step: 1, label: 'Leg kite height' },
-  legKiteCellWidthPx: { value: 22, min: 8, max: 80, step: 1, label: 'Leg kite cell width' },
-  legKiteTriangleLenPx: { value: 26, min: 8, max: 100, step: 1, label: 'Leg kite triangle length' },
+  legKiteHeightPx: { value: 47, min: 8, max: 120, step: 1, label: 'Leg kite height' },
+  legKiteCellWidthPx: { value: 24, min: 8, max: 80, step: 1, label: 'Leg kite cell width' },
+  legKiteTriangleLenPx: { value: 35, min: 8, max: 100, step: 1, label: 'Leg kite triangle length' },
   legKiteBorderPx: { value: 2, min: 0.25, max: 8, step: 0.25, label: 'Leg kite border width' },
   legKiteDividerPx: { value: 1, min: 0.25, max: 6, step: 0.25, label: 'Leg kite divider width' },
   legKiteHaloPx: { value: 7, min: 0, max: 20, step: 0.5, label: 'Leg kite halo width' },
   legKiteTextPx: { value: 13, min: 4, max: 36, step: 1, label: 'Leg kite text size' },
-  legKiteHeadingTextPx: { value: 14, min: 4, max: 40, step: 1, label: 'Leg kite heading text size' },
-  legKiteHeadingAnchor: { value: 0.22, min: -0.5, max: 1, step: 0.01, label: 'Leg kite heading anchor' },
+  legKiteHeadingTextPx: { value: 13, min: 4, max: 40, step: 1, label: 'Leg kite heading text size' },
+  legKiteHeadingAnchor: { value: 0.25, min: -0.5, max: 1, step: 0.01, label: 'Leg kite heading anchor' },
 
-  cumKiteHeightPx: { value: 26, min: 8, max: 100, step: 1, label: 'Cum kite height' },
-  cumKiteCellWidthPx: { value: 38, min: 10, max: 120, step: 1, label: 'Cum kite cell width' },
+  cumKiteHeightPx: { value: 23, min: 8, max: 100, step: 1, label: 'Cum kite height' },
+  cumKiteCellWidthPx: { value: 43, min: 10, max: 120, step: 1, label: 'Cum kite cell width' },
   cumKiteTriangleLenPx: { value: 20, min: 6, max: 100, step: 1, label: 'Cum kite triangle length' },
   cumKiteBorderPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Cum kite border width' },
-  cumKiteTextPx: { value: 13, min: 4, max: 36, step: 1, label: 'Cum kite text size' },
+  cumKiteTextPx: { value: 15, min: 4, max: 36, step: 1, label: 'Cum kite text size' },
 
   minuteMarkerFontPx: { value: 10, min: 4, max: 28, step: 1, label: 'Minute label text size' },
   minuteTickEvenPx: { value: 9, min: 1, max: 30, step: 1, label: 'Even minute tick length' },
@@ -362,7 +362,7 @@ window.S = Object.assign({
   legendAirfield: 'Airfield',
   legendWaypoint: 'Waypoint',
   legendAtcChange: 'Freq change',
-  commChangeBadge: '📡 Freq change',
+  commChangeBadge: '📡 Freq change point',
   commChangeNoteText: 'Freq change',
   commChangeCallSign: 'Waypoint',
   commChangeName: 'Call sign',
@@ -487,6 +487,7 @@ const state = {
   waypoints: [],            // [{ lat, lng, name }]
   legs: [],                 // per-leg attributes (see newLeg)
   notes: [],                // [{ lat, lng, text }] — free-text annotations
+  commChangeSuppressions: [], // canonical comm-change callouts the user deleted
   mode: null,               // 'add' | 'note' | null (= inspect)
   selected: null,           // { type:'wp'|'leg'|'note', index }
 };

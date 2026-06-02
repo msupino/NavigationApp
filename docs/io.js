@@ -245,6 +245,19 @@ function validateRoute(d) {
   const wpsOk   = _v(d, 'waypoints', 'array', 'root', errs);
   const legsOk  = _v(d, 'legs',      'array', 'root', errs);
   const notesOk = _v(d, 'notes',     'array', 'root', errs);
+  if (Object.prototype.hasOwnProperty.call(d, 'commChangeSuppressions')) {
+    if (!Array.isArray(d.commChangeSuppressions)) {
+      errs.push('root.commChangeSuppressions: expected array, got ' +
+                _vKind(d.commChangeSuppressions));
+    } else {
+      for (let i = 0; i < d.commChangeSuppressions.length; i++) {
+        if (typeof d.commChangeSuppressions[i] !== 'string') {
+          errs.push('root.commChangeSuppressions[' + i +
+                    ']: expected string, got ' + _vKind(d.commChangeSuppressions[i]));
+        }
+      }
+    }
+  }
   if (wpsOk) {
     for (let i = 0; i < d.waypoints.length; i++) {
       const p = 'waypoints[' + i + ']';
@@ -497,7 +510,19 @@ function _normalizeLegLabel(raw, legacyArrowSize) {
     ? legacyArrowSize : 1;
   return { a: raw.a / k, p: raw.p / k, _m: 1 };
 }
+function routeCommChangeSuppressions(raw) {
+  if (typeof normalizeCommChangeSuppressions === 'function') {
+    return normalizeCommChangeSuppressions(raw).slice();
+  }
+  return Array.isArray(raw) ? raw.slice() :
+    (Array.isArray(state.commChangeSuppressions) ? state.commChangeSuppressions.slice() : []);
+}
+function storedCommChangeSuppressions(raw) {
+  return raw && Object.prototype.hasOwnProperty.call(raw, 'commChangeSuppressions')
+    ? routeCommChangeSuppressions(raw.commChangeSuppressions) : [];
+}
 function save() {
+  const commChangeSuppressions = routeCommChangeSuppressions();
   const data = {
     waypoints: state.waypoints.map(w => ({
       lat: r5(w.lat), lng: r5(w.lng), name: w.name || '',
@@ -521,6 +546,7 @@ function save() {
       ...(n.freqAuto === true ? { freqAuto: true } : {}),
     })),
   };
+  if (commChangeSuppressions.length) data.commChangeSuppressions = commChangeSuppressions;
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -608,6 +634,7 @@ function loadGpx(file) {
         inLabel: null, outLabel: null,
       }));
       state.notes = [];
+      state.commChangeSuppressions = [];
       syncLegs();
       state.selected = null;
       showInspector();
@@ -675,6 +702,7 @@ function load(file) {
       ...(n.freq ? { freq: n.freq } : {}),
       ...(n.freqAuto === true ? { freqAuto: true } : {}),
     }));
+    state.commChangeSuppressions = storedCommChangeSuppressions(d);
     syncLegs();
     state.selected = null;
     showInspector();
@@ -2223,6 +2251,7 @@ function persist() {
     waypoints: state.waypoints,
     legs: state.legs,
     notes: state.notes,
+    commChangeSuppressions: routeCommChangeSuppressions(),
   }));
   if (persistTimer || quotaWarned) return;
   persistTimer = setTimeout(() => {
@@ -2233,6 +2262,7 @@ function persist() {
         waypoints: state.waypoints,
         legs: state.legs,
         notes: state.notes,
+        commChangeSuppressions: routeCommChangeSuppressions(),
       }));
     } catch (e) {
       // #80: a full quota used to fail silently. Surface it once so the
@@ -2248,7 +2278,7 @@ function persist() {
 }
 
 // --- undo -----------------------------------------------------------
-// undoStack holds serialized {waypoints, legs, notes} snapshots of *prior*
+// undoStack holds serialized route snapshots of *prior*
 // committed states. lastCommitted is the serialization of the state as it
 // currently stands; when a change makes the new serialization differ, the
 // previous one is pushed so undo() can return to it. The first call after
@@ -2284,6 +2314,7 @@ function undo() {
   state.waypoints = Array.isArray(snap.waypoints) ? snap.waypoints : [];
   state.legs = Array.isArray(snap.legs) ? snap.legs : [];
   state.notes = Array.isArray(snap.notes) ? snap.notes : [];
+  state.commChangeSuppressions = storedCommChangeSuppressions(snap);
   state.selected = null;
   undoing = true;
   lastCommitted = prev;            // align baseline so the redraw won't re-push
@@ -2354,6 +2385,7 @@ function restoreRoute() {
     ...(n.freq ? { freq: n.freq } : {}),
     ...(n.freqAuto === true ? { freqAuto: true } : {}),
   }));
+  state.commChangeSuppressions = storedCommChangeSuppressions(d);
   syncLegs();
   return true;
 }
@@ -2754,6 +2786,7 @@ function tryLoadRouteFromUrl() {
   state.waypoints = r.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
   state.legs = r.legs;
   state.notes = [];
+  state.commChangeSuppressions = [];
   return true;
 }
 
