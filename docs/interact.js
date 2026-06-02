@@ -1070,9 +1070,52 @@ window.addEventListener('keydown', e => {
       return;
     }
   }
-  // Delete / Backspace, or D (no modifier), remove the selected feature.
-  if (e.key === 'Delete' || e.key === 'Backspace' ||
-      ((e.key === 'd' || e.key === 'D') && !e.ctrlKey && !e.metaKey && !e.altKey)) {
+  // X (no modifier): delete the freq-change callout linked to the selected waypoint.
+  if ((e.key === 'x' || e.key === 'X') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (!state.selected) return;
+    const freqNote = selectedFreqNoteIndex();
+    if (freqNote >= 0) {
+      state.notes.splice(freqNote, 1);
+      delete state.selected.freqNoteIndex;
+      draw(); showInspector();
+    }
+    return;
+  }
+  // Z (no modifier): add a freq-change callout to a comm-change waypoint.
+  if ((e.key === 'z' || e.key === 'Z') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (!state.selected || state.selected.type !== 'wp') return;
+    const wp = state.waypoints[state.selected.index];
+    if (!wp || !wp.name || !commChangeMap || !showCommChange) return;
+    const ccKey = typeof canonicalNavWaypointName === 'function'
+      ? canonicalNavWaypointName(wp.name) : wp.name.trim();
+    const cc = commChangeMap[ccKey];
+    if (!cc || !cc.commChange) return;
+    const linkedNote = state.notes.find(n => n && n.cc &&
+      (typeof canonicalNavWaypointName === 'function'
+        ? canonicalNavWaypointName(n.cc) === ccKey
+        : n.cc === ccKey));
+    if (linkedNote) return;
+    const idx = addCommChangeNoteForWaypoint(wp, ccKey);
+    if (idx >= 0) state.selected.freqNoteIndex = idx;
+    draw(); showInspector();
+    return;
+  }
+  // D (no modifier): delete the selected waypoint or note (never a freq-change callout).
+  if ((e.key === 'd' || e.key === 'D') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (!state.selected) return;
+    if (state.selected.type === 'wp') {
+      deleteWaypoint(state.selected.index);
+      state.selected = null;
+      draw(); showInspector();
+    } else if (state.selected.type === 'note' && !state.selected.note?.cc) {
+      state.notes.splice(state.selected.index, 1);
+      state.selected = null;
+      draw(); showInspector();
+    }
+    return;
+  }
+  // Delete / Backspace remove the selected feature (freq callout, waypoint, or note).
+  if (e.key === 'Delete' || e.key === 'Backspace') {
     if (!state.selected) return;
     const freqNote = selectedFreqNoteIndex();
     if (freqNote >= 0) {
