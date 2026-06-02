@@ -1244,7 +1244,9 @@ function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
   octx.save();
   octx.translate(p.x, p.y);
   // Text orientation matches the navigation kite (flightAng+π = ang+π/2 when kite is at ang-π/2).
-  octx.rotate(flightAng + Math.PI);
+  let textAng = flightAng + Math.PI;
+  if (Math.cos(textAng) < 0) textAng += Math.PI;
+  octx.rotate(textAng);
   octx.font = `bold ${fontPx}px sans-serif`;
   octx.textAlign = 'center';
   octx.textBaseline = 'middle';
