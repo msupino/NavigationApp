@@ -101,7 +101,7 @@ test.describe('#251 — Hebrew tbMapOpacity label', () => {
 // #252 — Print Waypoint Names checkbox + map-opacity slider added to modal.
 // ---------------------------------------------------------------------------
 test.describe('#252 — Print Waypoint Names + Map Opacity in export modal', () => {
-  test('export modal has 3 checkboxes, "Waypoint Names" defaults on', async ({ page }) => {
+  test('export modal includes print checkboxes, "Waypoint Names" defaults on', async ({ page }) => {
     await boot(page);
     await page.evaluate(wps => {
       state.waypoints = wps;
@@ -110,13 +110,23 @@ test.describe('#252 — Print Waypoint Names + Map Opacity in export modal', () 
     await page.locator('#print').click();
     await page.locator('.modal-back').waitFor();
 
-    const cbs = page.locator('.modal input[type="checkbox"]');
-    expect(await cbs.count()).toBe(4);
+    const checkboxLabels = page.locator('.modal label:has(input[type="checkbox"])');
+    expect(await checkboxLabels.count()).toBe(5);
+    const labelText = await checkboxLabels.allTextContents();
+    expect(labelText).toEqual(expect.arrayContaining([
+      expect.stringMatching(/waypoint names/i),
+      expect.stringMatching(/drift lines/i),
+      expect.stringMatching(/cumulative time/i),
+      expect.stringMatching(/navigation waypoints/i),
+      expect.stringMatching(/airfields/i),
+    ]));
 
-    const labels = await page.locator('.modal label').allTextContents();
-    const wpNamesIdx = labels.findIndex(l => /Waypoint Names/i.test(l));
-    expect(wpNamesIdx).toBeGreaterThanOrEqual(0);
-    expect(await cbs.nth(wpNamesIdx).isChecked()).toBe(true);
+    await expect(page.locator('.modal label:has(input[type="checkbox"])', {
+      hasText: /waypoint names/i,
+    }).locator('input')).toBeChecked();
+    await expect(page.locator('.modal label:has(input[type="checkbox"])', {
+      hasText: /cumulative time/i,
+    }).locator('input')).toBeChecked();
   });
 
   test('export modal includes a map-opacity slider', async ({ page }) => {
