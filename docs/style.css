@@ -790,18 +790,111 @@ html, body {
 
 /* Flight-plan print: hide everything except the table modal. */
 @media print {
+  body.printing-plan {
+    color: #111;
+    background: #fff;
+  }
   body.printing-plan #map,
   body.printing-plan #overlay,
   body.printing-plan #toolbar,
   body.printing-plan #inspector,
   body.printing-plan #tuning-panel,
   body.printing-plan .leaflet-control-container { display: none !important; }
-  body.printing-plan .modal-back { position: static; background: none; }
-  body.printing-plan .modal { box-shadow: none; border: none; max-height: none; max-width: none; }
-  body.printing-plan .modal-btns { display: none; }
+  body.printing-plan .modal-back.flight-plan {
+    display: block;
+    position: static;
+    inset: auto;
+    background: none;
+    pointer-events: auto;
+  }
+  body.printing-plan .modal-back.flight-plan > .modal,
+  body.printing-plan .modal.wide {
+    display: block;
+    position: static;
+    width: auto !important;
+    height: auto !important;
+    min-width: 0;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    color: #111;
+    background: #fff;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  body.printing-plan .modal-title {
+    margin: 0 0 12px;
+    color: #111;
+    font-size: 18px;
+    text-align: start;
+    cursor: default;
+  }
+  body.printing-plan .modal-btns,
+  body.printing-plan .modal-close-x,
+  body.printing-plan .fp-aircraft { display: none !important; }
+  body.printing-plan .modal.wide .fp-scroll {
+    display: block;
+    overflow: visible;
+  }
+  body.printing-plan .flight-plan-sub {
+    margin: 14px 0 6px;
+    padding: 0;
+    color: #111;
+    border: none;
+  }
+  body.printing-plan .flight-table {
+    width: 100%;
+    margin: 0 0 12px;
+    color: #111;
+    background: #fff;
+    font-size: 10px;
+    page-break-inside: auto;
+  }
+  body.printing-plan .flight-table thead {
+    display: table-header-group;
+  }
+  body.printing-plan .flight-table tfoot {
+    display: table-row-group;
+  }
+  body.printing-plan .flight-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  body.printing-plan .flight-table th,
+  body.printing-plan .flight-table td {
+    padding: 4px 6px;
+    color: #111;
+    background: #fff;
+    border: 1px solid #555;
+    text-align: start;
+  }
+  body.printing-plan .flight-table th {
+    position: static;
+    font-weight: 700;
+  }
+  body.printing-plan .flight-table tfoot td {
+    background: #f3f3f3;
+    border-top: 2px solid #111;
+  }
+  body.printing-plan .flight-table th:last-child,
+  body.printing-plan .flight-table td.fp-del,
+  body.printing-plan .flight-table td:last-child:empty {
+    display: none !important;
+  }
   body.printing-plan .plan-name,
-  body.printing-plan .plan-num { border: none !important; background: transparent !important; padding: 0 !important; }
-  body.printing-plan .flight-table th { position: static; }
+  body.printing-plan .plan-num {
+    width: auto;
+    min-width: 0;
+    color: #111;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    font: inherit;
+    -webkit-appearance: none;
+    appearance: none;
+  }
 }
 
 /* Mobile: bigger touch targets, roomier toolbar. */
@@ -886,27 +979,6 @@ html, body {
   max-height: 84vh;
   padding: 14px;
 }
-/* Four corner grips to resize the flight-plan window. */
-.resize-handle {
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  z-index: 1;
-}
-.resize-handle::after {
-  content: '';
-  position: absolute;
-  width: 8px;
-  height: 8px;
-}
-.resize-handle.corner-se { bottom: 0; right: 0; cursor: nwse-resize; }
-.resize-handle.corner-se::after { bottom: 2px; right: 2px; border-right: 2px solid #888; border-bottom: 2px solid #888; }
-.resize-handle.corner-sw { bottom: 0; left: 0; cursor: nesw-resize; }
-.resize-handle.corner-sw::after { bottom: 2px; left: 2px; border-left: 2px solid #888; border-bottom: 2px solid #888; }
-.resize-handle.corner-ne { top: 0; right: 0; cursor: nesw-resize; }
-.resize-handle.corner-ne::after { top: 2px; right: 2px; border-right: 2px solid #888; border-top: 2px solid #888; }
-.resize-handle.corner-nw { top: 0; left: 0; cursor: nwse-resize; }
-.resize-handle.corner-nw::after { top: 2px; left: 2px; border-left: 2px solid #888; border-top: 2px solid #888; }
 .fp-aircraft {
   display: flex;
   flex-wrap: wrap;
