@@ -1355,7 +1355,7 @@ function showFlightPlan() {
   }
 
   function exportFlightPlanCsv() {
-    const blob = new Blob([flightPlanCsv()], { type: 'text/csv;charset=utf-8' });
+    const blob = new Blob(['\ufeff', flightPlanCsv()], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'flight-plan-' + fileStamp() + '.csv';

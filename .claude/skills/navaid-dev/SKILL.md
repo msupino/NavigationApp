@@ -306,7 +306,8 @@ branch by mistake.
   a print stylesheet that hides modal chrome and controls, then prints the
   plan as plain white-page tables rather than a modal screenshot. The CSV
   button beside Print downloads the currently displayed forward/return plan
-  tables as `flight-plan-*.csv`, excluding modal controls and delete buttons.
+  tables as UTF-8 BOM-prefixed `flight-plan-*.csv`, excluding modal controls
+  and delete buttons.
 - **Show Nav Waypoints** (default **on**): `nav-waypoints.json` is
   fetched once at boot; renders 173 white-fill / black-stroke 3.5 px
   dots; the 5-letter ID label appears at zoom ≥ 10. Captured in PNG
