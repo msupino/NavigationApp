@@ -385,6 +385,8 @@ window.S = Object.assign({
   platesNone: 'No charts available — see official AIP',
   plateLoadError: 'Failed to load chart.',
   plateAttribution: 'Charts © Israel CAAI / Ministry of Transport — published in the AIP.',
+  tbLightMode: 'Light mode',
+  tbLightModeTitle: 'Switch toolbar and panels to a light theme',
   tbTransparency: 'Label opacity',
   tbTransparencyTitle: 'Opacity of waypoint / leg / note label backgrounds',
   tbMapOpacity: 'Map opacity',

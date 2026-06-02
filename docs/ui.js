@@ -873,6 +873,26 @@ document.getElementById('commchange-cb').onchange = async e => {
   draw();
   if (state.selected && (changed || state.selected.type === 'wp')) showInspector();
 };
+const THEME_KEY = 'navaid.theme';
+let displayTheme = 'dark';
+try {
+  const stored = localStorage.getItem(THEME_KEY);
+  if (stored === 'light' || stored === 'dark') displayTheme = stored;
+  if (stored === 'day') displayTheme = 'light';
+} catch (e) { /* storage unavailable */ }
+function applyDisplayTheme() {
+  document.body.classList.toggle('theme-light', displayTheme === 'light');
+  document.body.classList.toggle('theme-dark', displayTheme !== 'light');
+}
+const THEME_LIGHT_EL = document.getElementById('theme-light-cb');
+applyDisplayTheme();
+THEME_LIGHT_EL.checked = displayTheme === 'light';
+THEME_LIGHT_EL.onchange = e => {
+  displayTheme = e.target.checked ? 'light' : 'dark';
+  applyDisplayTheme();
+  try { localStorage.setItem(THEME_KEY, displayTheme); }
+  catch (err) { /* storage unavailable */ }
+};
 const ALPHA_KEY = 'navaid.yellowAlpha';
 try {
   const v = parseFloat(localStorage.getItem(ALPHA_KEY));
