@@ -628,7 +628,12 @@ html, body {
 }
 .row select { cursor: pointer; }
 .row .val { color: #e8e8e8; font-variant-numeric: tabular-nums; }
-.row .freq-unit { color: #b9b3b3; font-size: 11px; margin-left: 4px; }
+.row .freq-control { display: inline-flex; align-items: center; gap: 4px; }
+.row input[type="text"].freq-input.invalid {
+  border-color: #c0392b;
+  background: rgba(231, 76, 60, 0.12);
+}
+.row .freq-unit { color: #b9b3b3; font-size: 11px; }
 
 .row.col {
   flex-direction: column;

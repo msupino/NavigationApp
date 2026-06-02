@@ -1030,6 +1030,56 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.lines).toEqual(['PLUTO', '119.20']);
   });
 
+  test('comm-change frequency input normalizes valid values and shows MHz', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      syncLegs();
+      seedCommChangeNotes();
+      state.selected = { type: 'note', index: 0 };
+      showInspector();
+    }, TYONA);
+    const field = page.locator('#insp-body input[type="text"]').first();
+    await expect(page.locator('#insp-body .freq-unit')).toHaveText('MHz');
+    await field.fill('118.4');
+    await field.blur();
+    await expect(field).toHaveValue('118.40');
+    await expect(field).toHaveAttribute('aria-invalid', 'false');
+    await expect(page.locator('#insp-body input.invalid')).toHaveCount(0);
+    expect(await page.evaluate(() => state.notes[0].freq)).toBe('118.40');
+
+    await field.fill('136.975');
+    await field.blur();
+    await expect(field).toHaveValue('136.975');
+    expect(await page.evaluate(() => state.notes[0].freq)).toBe('136.975');
+  });
+
+  test('comm-change frequency input rejects out-of-range values without storing them', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      syncLegs();
+      seedCommChangeNotes();
+      state.selected = { type: 'note', index: 0 };
+      showInspector();
+    }, TYONA);
+    const field = page.locator('#insp-body input[type="text"]').first();
+    await field.fill('137.00');
+    await expect(field).toHaveAttribute('aria-invalid', 'true');
+    expect(await page.evaluate(() => state.notes[0].freq)).toBe('118.40');
+    await field.blur();
+    await expect(field).toHaveValue('118.40');
+    await expect(field).toHaveAttribute('aria-invalid', 'false');
+    const out = await page.evaluate(() => ({
+      freq: state.notes[0].freq,
+      stored: localStorage.getItem('navaid.route') || '',
+    }));
+    expect(out.freq).toBe('118.40');
+    expect(out.stored).not.toContain('137.00');
+  });
+
   test('comm-change note inspector selects a call sign default while frequency stays editable', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);

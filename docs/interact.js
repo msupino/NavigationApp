@@ -756,6 +756,12 @@ function appendFreqEdit(body, note, editOptions) {
   const opts = typeof commCallSignOptions === 'function'
     ? commCallSignOptions(note.cc) : [];
   let freqInput = null;
+  let lastValidFreq = '';
+  const setFreqInputValid = ok => {
+    if (!freqInput) return;
+    freqInput.classList.toggle('invalid', !ok);
+    freqInput.setAttribute('aria-invalid', ok ? 'false' : 'true');
+  };
   if (opts.length) {
     const current = (note.freqName || '').trim();
     let selected = opts.find(o => typeof commCallSignOptionMatches === 'function'
@@ -771,9 +777,14 @@ function appendFreqEdit(body, note, editOptions) {
         const opt = opts.find(o => o.id === v);
         if (!opt) return;
         note.freqName = opt.id;
-        note.freq = opt.freq || '';
+        note.freq = (typeof commNormalizeFreqInput === 'function'
+          ? commNormalizeFreqInput(opt.freq) : opt.freq) || '';
         note.freqAuto = false;
-        if (freqInput) freqInput.value = note.freq;
+        lastValidFreq = note.freq;
+        if (freqInput) {
+          freqInput.value = note.freq;
+          setFreqInputValid(true);
+        }
         draw();
       }));
   } else {
@@ -784,31 +795,49 @@ function appendFreqEdit(body, note, editOptions) {
   const freqLbl = document.createElement('label');
   freqLbl.textContent = S.commChangeFreq || 'Frequency';
   freqRow.appendChild(freqLbl);
+  const freqControl = document.createElement('span');
+  freqControl.className = 'freq-control';
   freqInput = document.createElement('input');
   freqInput.type = 'text';
+  freqInput.inputMode = 'decimal';
+  freqInput.className = 'freq-input';
   freqInput.value = commNoteFreq(note) || '';
-  let lastValidFreq = freqInput.value;
+  lastValidFreq = freqInput.value;
+  setFreqInputValid(true);
   freqInput.oninput = () => {
-    note.freq = freqInput.value;
+    const normalized = typeof commNormalizeFreqInput === 'function'
+      ? commNormalizeFreqInput(freqInput.value) : freqInput.value.trim();
+    const valid = normalized !== null;
+    setFreqInputValid(valid);
+    if (!valid) return;
+    if (normalized === '') return;
+    note.freq = normalized;
+    if (normalized) lastValidFreq = normalized;
     note.freqAuto = false;
     draw();
   };
   freqInput.onblur = () => {
-    const v = freqInput.value.trim();
-    const valid = /^\d{3}(\.\d{1,3})?$/.test(v) && parseFloat(v) >= 118.00 && parseFloat(v) <= 136.975;
-    if (!valid) {
+    const normalized = typeof commNormalizeFreqInput === 'function'
+      ? commNormalizeFreqInput(freqInput.value) : freqInput.value.trim();
+    if (normalized === null) {
       freqInput.value = lastValidFreq;
       note.freq = lastValidFreq;
+      setFreqInputValid(true);
       draw();
     } else {
-      lastValidFreq = v;
+      freqInput.value = normalized;
+      note.freq = normalized;
+      lastValidFreq = normalized;
+      setFreqInputValid(true);
+      draw();
     }
   };
-  freqRow.appendChild(freqInput);
+  freqControl.appendChild(freqInput);
   const unit = document.createElement('span');
   unit.className = 'freq-unit';
   unit.textContent = 'MHz';
-  freqRow.appendChild(unit);
+  freqControl.appendChild(unit);
+  freqRow.appendChild(freqControl);
   body.appendChild(freqRow);
   // Reset the callout to its default tail position beside the waypoint.
   const target = typeof commCalloutTarget === 'function' ? commCalloutTarget(note) : null;

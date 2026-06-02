@@ -524,6 +524,14 @@ function commFormatFreq(raw) {
   if (/^\d{3}\.\d$/.test(s)) return s + '0';
   return s;
 }
+function commNormalizeFreqInput(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  if (!/^\d{3}(?:\.\d{1,3})?$/.test(s)) return null;
+  const n = Number(s);
+  if (!Number.isFinite(n) || n < 118 || n > 136.975) return null;
+  return commFormatFreq(s);
+}
 function commUseHebrewLabels() {
   const lang = (typeof window !== 'undefined' && window.__navLang) ||
     (typeof document !== 'undefined' && document.documentElement &&
