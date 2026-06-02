@@ -385,10 +385,10 @@ function drawAirfields() {
     octx.lineTo(s.x + r * wFactor, s.y + r * bFactor);
     octx.lineTo(s.x - r * wFactor, s.y + r * bFactor);
     octx.closePath();
-    octx.fillStyle = '#2f6fd0';          // saturated blue — distinct from white nav-WP dots
+    octx.fillStyle = tune('airfieldFillColor');          // saturated blue — distinct from white nav-WP dots
     octx.fill();
     octx.lineWidth = tune('airfieldStrokeWidthPx');
-    octx.strokeStyle = '#0a1a2a';
+    octx.strokeStyle = tune('airfieldOutlineColor');
     octx.stroke();
     if (showLabels) {
       const locale = af[S.airfieldLabelField] || af.en || af.name;
@@ -396,7 +396,7 @@ function drawAirfields() {
       octx.lineWidth = tune('airfieldLabelHaloPx');
       octx.strokeStyle = 'rgba(255,255,255,0.85)';
       octx.strokeText(label, s.x + r + labelOffset, s.y);
-      octx.fillStyle = '#0a1a2a';
+      octx.fillStyle = tune('airfieldOutlineColor');
       octx.fillText(label, s.x + r + labelOffset, s.y);
     }
   }
@@ -429,8 +429,8 @@ function drawNavWaypoints() {
     if (occupied) continue;
     const s = proj(wp);                  // no viewport cull: also drawn into
                                          // the larger PNG-export canvas
-    octx.fillStyle = '#ffffff';
-    octx.strokeStyle = '#161412';
+    octx.fillStyle = tune('navWaypointDotColor');
+    octx.strokeStyle = tune('inkColor');
     octx.lineWidth = tune('navWaypointStrokeWidthPx');
     octx.beginPath();
     octx.arc(s.x, s.y, dotRadius, 0, Math.PI * 2);
@@ -441,7 +441,7 @@ function drawNavWaypoints() {
       octx.lineWidth = tune('navWaypointLabelHaloPx');
       octx.strokeStyle = 'rgba(255,255,255,0.85)';
       octx.strokeText(label, s.x + labelOffset, s.y);
-      octx.fillStyle = '#161412';
+      octx.fillStyle = tune('inkColor');
       octx.fillText(label, s.x + labelOffset, s.y);
     }
   }
@@ -987,7 +987,7 @@ function drawLegs() {
 
     const lw = (typeof legLineWidth === 'number' && legLineWidth > 0) ? legLineWidth : 1;
     octx.lineCap = 'round';
-    octx.strokeStyle = selected ? '#ffcc33' : '#161412';
+    octx.strokeStyle = selected ? tune('selectedColor') : tune('inkColor');
     octx.lineWidth = selected ? tune('routeSelectedLineWidthPx') * lw : tune('routeLineWidthPx') * lw;
     octx.beginPath();
     octx.moveTo(sa.x, sa.y);
@@ -1041,7 +1041,7 @@ function drawLegs() {
     drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, String(leg.inboundAltitude),
-      '#161412', yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
+      tune('inkColor'), yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
     // Cumulative inbound time: < [time], position driven by leg.cumLabel
     // (default: at B waypoint, same perpendicular side as main kite).
     const defCum = { a: 0, _default: 1, _m: 1 };
@@ -1053,14 +1053,14 @@ function drawLegs() {
       const cumY = sb.y + dy * cumAlong + ny * cumPerp;
       drawCumTimeArrow(cumX, cumY,
         Math.atan2(sb.y - cumY, sb.x - cumX),
-        cumInStr, '#161412', yellowFill(0.80), zoomScale);
+        cumInStr, tune('inkColor'), yellowFill(0.80), zoomScale);
     }
 
     if (showReturn) {
       drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, String(leg.outboundAltitude),
-        '#161412', 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
+        tune('inkColor'), 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
       if (showCumTime) {
         // Cumulative return time kite at A waypoint (return destination).
         // Own offset (cumLabelRet), anchored at A with the same +dx/+nx frame
@@ -1073,7 +1073,7 @@ function drawLegs() {
         const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;
         drawCumTimeArrow(cumRetX, cumRetY,
           Math.atan2(sa.y - cumRetY, sa.x - cumRetX),
-          cumOutArr[i], '#161412', 'rgba(255,204,214,0.80)', zoomScale);
+          cumOutArr[i], tune('inkColor'), 'rgba(255,204,214,0.80)', zoomScale);
       }
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
@@ -1118,7 +1118,7 @@ function drawMinuteMarkers(sa, sb, durH) {
     const py = sa.y + (sb.y - sa.y) * f;
     const even = m % 2 === 0;
     const tick = even ? tune('minuteTickEvenPx') : tune('minuteTickOddPx');
-    octx.strokeStyle = '#161412';
+    octx.strokeStyle = tune('inkColor');
     octx.lineWidth = even ? tune('minuteTickEvenWidthPx') : tune('minuteTickOddWidthPx');
     octx.beginPath();
     octx.moveTo(px - nx * tick, py - ny * tick);
@@ -1127,7 +1127,7 @@ function drawMinuteMarkers(sa, sb, durH) {
     if (even) {                         // minute number past the tick end
       const tx = px + nx * (tick + tune('minuteLabelOffsetPx'));
       const ty = py + ny * (tick + tune('minuteLabelOffsetPx'));
-      octx.fillStyle = '#161412';
+      octx.fillStyle = tune('inkColor');
       octx.font = `bold ${tune('minuteMarkerFontPx')}px sans-serif`;
       octx.fillText(String(m), tx, ty);
     }
@@ -1194,7 +1194,7 @@ function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
   octx.font = `bold ${fontPx}px sans-serif`;
   octx.textAlign = 'center';
   octx.textBaseline = 'middle';
-  octx.fillStyle = '#000';
+  octx.fillStyle = tune('kiteTextColor');
   octx.fillText(cumTime, 0, 0);
   octx.restore();
 }
@@ -1223,7 +1223,7 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc
   if (halo) {                            // purple band around the marker
     octx.lineJoin = 'round';
     octx.lineWidth = tune('legKiteHaloPx') * sc;
-    octx.strokeStyle = '#8e44ad';
+    octx.strokeStyle = tune('legKiteHaloColor');
     octx.stroke();
     octx.lineJoin = 'miter';
   }
@@ -1249,9 +1249,9 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc
   const pAlt = at(-L / 2 + cell * 0.5);
   const pTime = at(-L / 2 + cell * 1.5);
   const pHead = at(xb + Lt * tune('legKiteHeadingAnchor'));
-  drawRotText(pAlt.x, pAlt.y, ta, alt, `bold ${fontPx}px sans-serif`, '#000');
-  drawRotText(pTime.x, pTime.y, ta, time, `bold ${fontPx}px sans-serif`, '#000');
-  drawRotText(pHead.x, pHead.y, ta, head, `bold ${fontPxH}px sans-serif`, '#000');
+  drawRotText(pAlt.x, pAlt.y, ta, alt, `bold ${fontPx}px sans-serif`, tune('kiteTextColor'));
+  drawRotText(pTime.x, pTime.y, ta, time, `bold ${fontPx}px sans-serif`, tune('kiteTextColor'));
+  drawRotText(pHead.x, pHead.y, ta, head, `bold ${fontPxH}px sans-serif`, tune('kiteTextColor'));
 }
 
 function drawRotText(x, y, ang, text, font, color) {
@@ -1272,9 +1272,9 @@ function drawDistanceBadge(cx, cy, dist) {
   octx.fillStyle = yellowFill(0.90);
   octx.fill();
   octx.lineWidth = tune('distanceBadgeBorderPx');
-  octx.strokeStyle = '#161412';
+  octx.strokeStyle = tune('inkColor');
   octx.stroke();
-  octx.fillStyle = '#161412';
+  octx.fillStyle = tune('inkColor');
   octx.font = `bold ${tune('distanceBadgeFontPx')}px sans-serif`;
   octx.textAlign = 'center';
   octx.textBaseline = 'middle';
@@ -1312,17 +1312,17 @@ function drawWaypoints() {
 
     octx.beginPath();
     octx.arc(s.x, s.y, radius, 0, Math.PI * 2);
-    octx.fillStyle = selected ? '#ffcc33' : yellowFill(0.60);
+    octx.fillStyle = selected ? tune('selectedColor') : yellowFill(0.60);
     octx.fill();
     octx.lineWidth = tune('waypointStrokeWidthPx');
-    octx.strokeStyle = '#161412';
+    octx.strokeStyle = tune('inkColor');
     octx.stroke();
 
     octx.save();
     octx.translate(s.x, s.y);
     if (wpNameAngle) octx.rotate(wpNameAngle * Math.PI / 180);
     octx.font = `bold ${fontPx}px sans-serif`;
-    octx.fillStyle = '#161412';
+    octx.fillStyle = tune('inkColor');
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
     octx.fillText(label, 0, 0);
@@ -1557,7 +1557,7 @@ function drawNotes() {
     }
     octx.fillStyle = tintFill(color);
     octx.lineWidth = selected ? tune('noteSelectedStrokeWidthPx') : tune('noteStrokeWidthPx');
-    octx.strokeStyle = selected ? '#ffcc33' : '#161412';
+    octx.strokeStyle = selected ? tune('selectedColor') : tune('inkColor');
     if (r.oval) {
       octx.beginPath();
       octx.ellipse(r.x + r.w / 2, r.y + r.h / 2, r.w / 2, r.h / 2,
@@ -1571,7 +1571,7 @@ function drawNotes() {
 
     const lineH = tune('noteLineHeightPx');
     octx.font = noteFont();
-    octx.fillStyle = '#161412';
+    octx.fillStyle = tune('inkColor');
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
     const cx = r.x + r.w / 2;
@@ -1650,7 +1650,7 @@ function drawPageFrame() {
   octx.rect(0, 0, vw(), vh());
   octx.rect(r.x, r.y, r.w, r.h);
   octx.fill('evenodd');
-  octx.strokeStyle = '#ffcc33';
+  octx.strokeStyle = tune('selectedColor');
   octx.lineWidth = tune('pageFrameLineWidthPx');
   octx.setLineDash([tune('pageFrameDashOnPx'), tune('pageFrameDashOffPx')]);
   octx.strokeRect(r.x, r.y, r.w, r.h);
