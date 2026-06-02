@@ -480,7 +480,7 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.fillCount).toBe(0);
   });
 
-  test('waypoint center selects the waypoint while the frequency tail selects the callout', async ({ page }) => {
+  test('waypoint center and frequency tail both open the waypoint inspector', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
     const pts = await page.evaluate(t => {
@@ -506,7 +506,11 @@ test.describe('comm-change auto-note (#487)', () => {
     await page.mouse.click(pts.center.x, pts.center.y);
     await expect.poll(() => page.evaluate(() => state.selected)).toEqual({ type: 'wp', index: 0 });
     await page.mouse.click(pts.tail.x, pts.tail.y);
-    await expect.poll(() => page.evaluate(() => state.selected)).toEqual({ type: 'note', index: 0 });
+    await expect.poll(() => page.evaluate(() => state.selected))
+      .toEqual({ type: 'wp', index: 0, freqNoteIndex: 0 });
+    await expect(page.locator('#insp-title')).toHaveValue('TYONA');
+    await expect(page.locator('#insp-body select')).toHaveCount(1);
+    await expect(page.locator('#insp-body input[type="text"]')).toHaveValue('118.40');
   });
 
   test('comm-change lightning rotation turns the bend vector around the arrow axis', async ({ page }) => {
@@ -748,9 +752,53 @@ test.describe('comm-change auto-note (#487)', () => {
       waypoint: { lat: state.waypoints[0].lat, lng: state.waypoints[0].lng },
       selected: state.selected,
     }));
-    expect(after.selected).toEqual({ type: 'note', index: 0 });
+    expect(after.selected).toEqual({ type: 'wp', index: 0, freqNoteIndex: 0 });
     expect(after.waypoint).toEqual(before.waypoint);
     expect(Math.abs(after.note.lng - before.note.lng)).toBeGreaterThan(0.005);
+  });
+
+  test('snapping a selected waypoint onto a comm-change point refreshes the freq editor', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    const pts = await page.evaluate(t => {
+      window.showNavWP = true;
+      const center = map.latLngToContainerPoint([t.lat, t.lng]);
+      const startLl = map.containerPointToLatLng([center.x + 80, center.y + 60]);
+      state.waypoints = [{ lat: r5(startLl.lat), lng: r5(startLl.lng), name: '' }];
+      state.notes = [];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+      draw();
+      const start = proj(state.waypoints[0]);
+      const target = proj(t);
+      const r = mapEl.getBoundingClientRect();
+      return {
+        beforeHasFreqInput: !!document.querySelector('#insp-body input[type="text"]'),
+        start: { x: r.left + start.x, y: r.top + start.y },
+        target: { x: r.left + target.x, y: r.top + target.y },
+      };
+    }, TYONA);
+    expect(pts.beforeHasFreqInput).toBe(false);
+
+    await page.mouse.move(pts.start.x, pts.start.y);
+    await page.mouse.down();
+    await page.mouse.move(pts.target.x, pts.target.y);
+    await page.mouse.up();
+
+    await expect.poll(() => page.evaluate(() => ({
+      selected: state.selected,
+      waypoint: state.waypoints[0].name,
+      noteCount: state.notes.filter(n => n && n.cc).length,
+      hasFreqInput: !!document.querySelector('#insp-body input[type="text"]'),
+      freq: document.querySelector('#insp-body input[type="text"]')?.value || '',
+    }))).toEqual({
+      selected: { type: 'wp', index: 0 },
+      waypoint: 'TYONA',
+      noteCount: 1,
+      hasFreqInput: true,
+      freq: '118.40',
+    });
   });
 
   test('comm-change callouts require the waypoint to stay within the 18px snap range', async ({ page }) => {
@@ -846,14 +894,17 @@ test.describe('comm-change auto-note (#487)', () => {
   test('deleting a frequency-change callout does not delete its waypoint', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
-    await page.evaluate(t => {
+    const center = await page.evaluate(t => {
       state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
       state.notes = [];
       syncLegs();
       seedCommChangeNotes();
-      state.selected = { type: 'note', index: 0 };
+      state.selected = { type: 'wp', index: 0, freqNoteIndex: 0 };
       showInspector();
       draw();
+      const s = proj(state.waypoints[0]);
+      const r = mapEl.getBoundingClientRect();
+      return { x: r.left + s.x, y: r.top + s.y };
     }, TYONA);
     await page.locator('#insp-body .insp-btn').filter({ hasText: /Delete freq change/ }).click();
     const out = await page.evaluate(() => ({
@@ -863,7 +914,21 @@ test.describe('comm-change auto-note (#487)', () => {
     }));
     expect(out.waypoints).toEqual(['TYONA']);
     expect(out.notes).toEqual([]);
-    expect(out.selected).toBeNull();
+    expect(out.selected).toEqual({ type: 'wp', index: 0 });
+    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ })).toBeVisible();
+
+    await page.mouse.click(center.x, center.y);
+    await expect.poll(() => page.evaluate(() => state.notes.filter(n => n && n.cc).length)).toBe(0);
+
+    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ }).click();
+    await expect.poll(() => page.evaluate(() => ({
+      selected: state.selected,
+      notes: state.notes.map(n => ({ cc: n.cc || '', freqName: n.freqName || '', freq: n.freq || '' })),
+    }))).toEqual({
+      selected: { type: 'wp', index: 0, freqNoteIndex: 0 },
+      notes: [{ cc: 'TYONA', freqName: 'PLUTO', freq: '118.40' }],
+    });
+    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Delete freq change/ })).toBeVisible();
   });
 
   test('comm-change note inspector edits frequency without a free-text call-sign field', async ({ page }) => {
