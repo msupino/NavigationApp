@@ -315,6 +315,20 @@ function deleteWaypoint(k) {
   syncLegs();
 }
 
+function deleteSelectedWpOrNote() {
+  if (state.selected.type === 'wp') {
+    deleteWaypoint(state.selected.index);
+    state.selected = null;
+    draw(); showInspector();
+  } else if (state.selected.type === 'note') {
+    const note = state.notes[state.selected.index];
+    if (note && note.cc && typeof suppressCommChange === 'function') suppressCommChange(note.cc);
+    state.notes.splice(state.selected.index, 1);
+    state.selected = null;
+    draw(); showInspector();
+  }
+}
+
 // Issue #418: resolve a waypoint to its nearest reference point
 // (airfield or nav waypoint) within the same ~18 px snap distance the
 // drop / drag path uses (`applyNavSnap`). Airfields take priority over
@@ -1100,21 +1114,13 @@ window.addEventListener('keydown', e => {
     draw(); showInspector();
     return;
   }
-  // D (no modifier): delete the selected waypoint or note (never a freq-change callout).
+  // D (no modifier): delete the selected waypoint or note (freq callout goes with its waypoint).
   if ((e.key === 'd' || e.key === 'D') && !e.ctrlKey && !e.metaKey && !e.altKey) {
     if (!state.selected) return;
-    if (state.selected.type === 'wp') {
-      deleteWaypoint(state.selected.index);
-      state.selected = null;
-      draw(); showInspector();
-    } else if (state.selected.type === 'note' && !state.selected.note?.cc) {
-      state.notes.splice(state.selected.index, 1);
-      state.selected = null;
-      draw(); showInspector();
-    }
+    deleteSelectedWpOrNote();
     return;
   }
-  // Delete / Backspace remove the selected feature (freq callout, waypoint, or note).
+  // Delete / Backspace: delete freq callout first, otherwise waypoint/note.
   if (e.key === 'Delete' || e.key === 'Backspace') {
     if (!state.selected) return;
     const freqNote = selectedFreqNoteIndex();
@@ -1124,17 +1130,9 @@ window.addEventListener('keydown', e => {
       state.notes.splice(freqNote, 1);
       delete state.selected.freqNoteIndex;
       draw(); showInspector();
-    } else if (state.selected.type === 'wp') {
-      deleteWaypoint(state.selected.index);
-      state.selected = null;
-      draw(); showInspector();
-    } else if (state.selected.type === 'note') {
-      const note = state.notes[state.selected.index];
-      if (note && note.cc && typeof suppressCommChange === 'function') suppressCommChange(note.cc);
-      state.notes.splice(state.selected.index, 1);
-      state.selected = null;
-      draw(); showInspector();
+      return;
     }
+    deleteSelectedWpOrNote();
   }
 });
 
