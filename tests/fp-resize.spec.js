@@ -10,7 +10,7 @@ const ROUTE = {
   ],
 };
 
-async function boot(page) {
+async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
     try {
       localStorage.clear();
@@ -20,7 +20,7 @@ async function boot(page) {
       }
     } catch (e) {}
   });
-  await page.goto('?lang=en');
+  await page.goto('?lang=' + lang);
   await page.waitForFunction(() =>
     typeof state !== 'undefined' && typeof showFlightPlan !== 'undefined');
   await page.evaluate(route => {
@@ -134,6 +134,7 @@ test.describe('Flight-plan modal table print', () => {
     expect(download.suggestedFilename()).toMatch(/^flight-plan-.+\.csv$/);
     const csv = await downloadText(download);
 
+    expect(csv.charCodeAt(0)).toBe(0xfeff);
     expect(csv).toContain('Flight plan\r\n#,From,To,Hdg,Dist (NM),Speed (kt),Alt (ft),Time,Fuel (gal),Cum. time,Cum. fuel');
     expect(csv).toContain('1,LLHZ,LLHA,');
     expect(csv).toContain('\r\nTotal,,,,');
@@ -141,5 +142,22 @@ test.describe('Flight-plan modal table print', () => {
     expect(csv).toContain('1,LLHA,LLHZ,');
     expect(csv).not.toContain('<table');
     expect(csv).not.toContain('✕');
+  });
+
+  test('Hebrew CSV download includes UTF-8 BOM and readable Hebrew headers', async ({ page }) => {
+    await boot(page, 'he');
+    const modal = await openFlightPlan(page);
+
+    const downloadPromise = page.waitForEvent('download');
+    await modal.locator('.modal-btns button', { hasText: 'CSV' }).click();
+    const download = await downloadPromise;
+    const csv = await downloadText(download);
+
+    expect(csv.charCodeAt(0)).toBe(0xfeff);
+    expect(csv).toContain('תכנית טיסה');
+    expect(csv).toContain('כיוון');
+    expect(csv).toContain('מרחק (NM)');
+    expect(csv).not.toContain('◊');
+    expect(csv).not.toContain('¬∞');
   });
 });
