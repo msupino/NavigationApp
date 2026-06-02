@@ -359,6 +359,7 @@ window.S = Object.assign({
   commChangeName: 'Call sign',
   commChangeFreq: 'Frequency',
   deleteFreqChange: '🗑 Delete freq change (D)',
+  resetFreqLocation: '↺ Reset callout location',
   plates: 'Charts',
   runways: 'Runways',
   plateCategoryApproach: 'Approach',

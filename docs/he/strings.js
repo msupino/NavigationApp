@@ -163,6 +163,7 @@ window.S = {
   commChangeName: 'אות קריאה',
   commChangeFreq: 'תדר',
   deleteFreqChange: '🗑 מחק שינוי תדר (D)',
+  resetFreqLocation: '↺ אפס מיקום תווית',
   plates: 'דפיות',
   runways: 'מסלולים',
   plateCategoryApproach: 'גישה',

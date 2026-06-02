@@ -386,53 +386,16 @@ function showInspector() {
   } else if (state.selected.type === 'note') {
     const note = state.notes[state.selected.index];
     if (note.cc) {
-      if (!note.freqName) {
-        note.freqName = (typeof commCalloutDefaults === 'function'
-          ? commCalloutDefaults(note.cc).freqName : commNoteName(note));
-      }
-      if (!note.freq) note.freq = commNoteFreq(note);
       title.value = S.commChangeBadge || 'Freq change';
       title.placeholder = '';
       title.readOnly = true;
       title.oninput = null;
-      const opts = typeof commCallSignOptions === 'function'
-        ? commCallSignOptions(note.cc) : [];
-      let freqInput = null;
       const target = typeof commCalloutTarget === 'function'
         ? commCalloutTarget(note) : null;
       const wpName = (target && target.name) || note.cc || '';
       body.appendChild(textRow(S.commChangeCallSign || 'Waypoint',
         typeof navName === 'function' ? navName(wpName) : wpName));
-      if (opts.length) {
-        const current = (note.freqName || '').trim();
-        let selected = opts.find(o => typeof commCallSignOptionMatches === 'function'
-          ? commCallSignOptionMatches(o, current)
-          : o.label === current);
-        const rows = opts.map(o => [o.id, o.label]);
-        if (!selected && current) {
-          selected = { id: '__custom__', label: current };
-          rows.unshift(['__custom__', current]);
-        }
-        body.appendChild(selectRow(S.commChangeName || 'Call sign',
-          selected ? selected.id : opts[0].id, rows, v => {
-            const opt = opts.find(o => o.id === v);
-            if (!opt) return;
-            note.freqName = opt.id;
-            note.freq = opt.freq || '';
-            note.freqAuto = false;
-            if (freqInput) freqInput.value = note.freq;
-            draw();
-          }));
-      } else {
-        body.appendChild(textRow(S.commChangeName || 'Call sign', commNoteName(note) || ''));
-      }
-      const freqRow = inputRow(S.commChangeFreq || 'Frequency', commNoteFreq(note) || '', v => {
-        note.freq = v;
-        note.freqAuto = false;
-        draw();
-      });
-      freqInput = freqRow.querySelector('input');
-      body.appendChild(freqRow);
+      appendFreqEdit(body, note);
     } else {
       title.value = '';
       title.placeholder = '';
@@ -495,20 +458,32 @@ function showInspector() {
         lbl.className = 'commchange-label';
         lbl.textContent = S.commChangeBadge || '📡 Freq change';
         row.appendChild(lbl);
-        if (cc.from || cc.to) {
-          const freq = document.createElement('span');
-          freq.className = 'val commchange-freq';
-          const arrow = (S.legArrow || '→');
-          freq.textContent = (cc.from || '?') + ' ' + arrow + ' ' + (cc.to || '?');
-          row.appendChild(freq);
-        }
-        if (cc.note) {
-          const note = document.createElement('span');
-          note.className = 'val commchange-note';
-          note.textContent = cc.note;
-          row.appendChild(note);
-        }
         body.appendChild(row);
+        // #530 — united inspector: if a freq callout note exists for this
+        // point, edit it right here (call sign + frequency + reset location)
+        // instead of a read-only badge. Falls back to the read-only from/to
+        // summary when no callout note is present (e.g. overlay off).
+        const linkedNote = state.notes.find(n => n && n.cc &&
+          (typeof canonicalNavWaypointName === 'function'
+            ? canonicalNavWaypointName(n.cc) === ccKey
+            : n.cc === ccKey));
+        if (linkedNote && typeof appendFreqEdit === 'function') {
+          appendFreqEdit(body, linkedNote);
+        } else {
+          if (cc.from || cc.to) {
+            const freq = document.createElement('span');
+            freq.className = 'val commchange-freq';
+            const arrow = (S.legArrow || '→');
+            freq.textContent = (cc.from || '?') + ' ' + arrow + ' ' + (cc.to || '?');
+            row.appendChild(freq);
+          }
+          if (cc.note) {
+            const note = document.createElement('span');
+            note.className = 'val commchange-note';
+            note.textContent = cc.note;
+            row.appendChild(note);
+          }
+        }
       }
     }
     const afInsp = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
@@ -678,6 +653,65 @@ function textRow(label, value) {
   v.textContent = value;
   row.append(l, v);
   return row;
+}
+
+// Freq-change editor rows for a comm-change callout note: call-sign select
+// (or read-only name), frequency input, and a reset-location button. Shared
+// by the note inspector and the waypoint inspector (#530 — united) so a
+// freq-change point is edited from one panel either way.
+function appendFreqEdit(body, note) {
+  if (!note.freqName) {
+    note.freqName = (typeof commCalloutDefaults === 'function'
+      ? commCalloutDefaults(note.cc).freqName : commNoteName(note));
+  }
+  if (!note.freq) note.freq = commNoteFreq(note);
+  const opts = typeof commCallSignOptions === 'function'
+    ? commCallSignOptions(note.cc) : [];
+  let freqInput = null;
+  if (opts.length) {
+    const current = (note.freqName || '').trim();
+    let selected = opts.find(o => typeof commCallSignOptionMatches === 'function'
+      ? commCallSignOptionMatches(o, current)
+      : o.label === current);
+    const rows = opts.map(o => [o.id, o.label]);
+    if (!selected && current) {
+      selected = { id: '__custom__', label: current };
+      rows.unshift(['__custom__', current]);
+    }
+    body.appendChild(selectRow(S.commChangeName || 'Call sign',
+      selected ? selected.id : opts[0].id, rows, v => {
+        const opt = opts.find(o => o.id === v);
+        if (!opt) return;
+        note.freqName = opt.id;
+        note.freq = opt.freq || '';
+        note.freqAuto = false;
+        if (freqInput) freqInput.value = note.freq;
+        draw();
+      }));
+  } else {
+    body.appendChild(textRow(S.commChangeName || 'Call sign', commNoteName(note) || ''));
+  }
+  const freqRow = inputRow(S.commChangeFreq || 'Frequency', commNoteFreq(note) || '', v => {
+    note.freq = v;
+    note.freqAuto = false;
+    draw();
+  });
+  freqInput = freqRow.querySelector('input');
+  body.appendChild(freqRow);
+  // Reset the callout to its default tail position beside the waypoint.
+  const target = typeof commCalloutTarget === 'function' ? commCalloutTarget(note) : null;
+  if (target && typeof commCalloutDefaultTail === 'function') {
+    const reset = document.createElement('button');
+    reset.className = 'insp-btn';
+    reset.textContent = S.resetFreqLocation || S.resetLegMarkers || '↺';
+    reset.onclick = () => {
+      const tail = commCalloutDefaultTail(target);
+      note.lat = tail.lat;
+      note.lng = tail.lng;
+      draw();
+    };
+    body.appendChild(reset);
+  }
 }
 
 // --- interaction (Leaflet mouse events) ------------------------------
