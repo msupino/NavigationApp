@@ -217,7 +217,7 @@ window.S = Object.assign({
   tbShowWpNamesTitle: 'Show waypoint names (off = empty circle)',
   tbWpSize: 'Waypoint size',                        // Display slider label
   tbWpSizeTitle: 'Waypoint circle and name size',
-  tbShowNavWp: 'Show/pin navigation waypoints',     // Map overlay toggle
+  tbShowNavWp: 'Show/pin nav waypoints',            // Map overlay toggle
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbSearchPlaceholder: '🔍 Find navigation waypoint',
   tbSearchHint: 'Tip: type space-separated waypoint codes (e.g. LLHZ BAZRA DEROR SHARO HADRA) and press Enter to build a route.',
@@ -352,7 +352,7 @@ window.S = Object.assign({
   legendTitle: 'Legend',
   legendAirfield: 'Airfield',
   legendWaypoint: 'Waypoint',
-  legendAtcChange: 'ATC change',
+  legendAtcChange: 'Freq change',
   commChangeBadge: '📡 Freq change',
   commChangeNoteText: 'Freq change',
   commChangeCallSign: 'Waypoint',
