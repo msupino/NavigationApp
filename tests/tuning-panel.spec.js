@@ -71,6 +71,32 @@ test.describe('Hidden tuning panel', () => {
     expect(await page.locator('#tuning-panel details[open]').count()).toBe(0);
   });
 
+  test('uses the tuned marker and kite defaults', async ({ page }) => {
+    await boot(page);
+    const values = await page.evaluate(() => ({
+      defaultLabelMarginPx: tune('defaultLabelMarginPx'),
+      legKiteHeightPx: tune('legKiteHeightPx'),
+      legKiteCellWidthPx: tune('legKiteCellWidthPx'),
+      legKiteTriangleLenPx: tune('legKiteTriangleLenPx'),
+      legKiteHeadingTextPx: tune('legKiteHeadingTextPx'),
+      legKiteHeadingAnchor: tune('legKiteHeadingAnchor'),
+      cumKiteHeightPx: tune('cumKiteHeightPx'),
+      cumKiteCellWidthPx: tune('cumKiteCellWidthPx'),
+      cumKiteTextPx: tune('cumKiteTextPx'),
+    }));
+    expect(values).toEqual({
+      defaultLabelMarginPx: 20,
+      legKiteHeightPx: 47,
+      legKiteCellWidthPx: 24,
+      legKiteTriangleLenPx: 35,
+      legKiteHeadingTextPx: 13,
+      legKiteHeadingAnchor: 0.25,
+      cumKiteHeightPx: 23,
+      cumKiteCellWidthPx: 43,
+      cumKiteTextPx: 15,
+    });
+  });
+
   test('drift dash controls redraw without changing endpoint length', async ({ page }) => {
     await boot(page);
     await openTuneGroup(page, 'Drift lines');
