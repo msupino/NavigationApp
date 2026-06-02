@@ -157,7 +157,7 @@ window.S = {
   legendAirfield: 'שדה תעופה',
   legendWaypoint: 'נקודת דיווח',
   legendAtcChange: 'שינוי תדר',
-  commChangeBadge: '📡 שינוי תדר',
+  commChangeBadge: '📡 נקודת שינוי תדר',
   commChangeNoteText: 'שינוי תדר',
   commChangeCallSign: 'נקודת דיווח',
   commChangeName: 'אות קריאה',

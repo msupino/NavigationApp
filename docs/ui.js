@@ -464,6 +464,7 @@ async function buildRouteFromQuery(raw) {
     lat: w.lat, lng: w.lng, name: w.name,
   }));
   state.legs = [];
+  state.commChangeSuppressions = [];
   state.selected = null;
   syncLegs();
   if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();  // #487
@@ -664,6 +665,7 @@ document.getElementById('clear').onclick = () => {
   state.waypoints = [];
   state.legs = [];
   state.notes = [];
+  state.commChangeSuppressions = [];
   state.selected = null;
   showInspector(); draw();
 };

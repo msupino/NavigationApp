@@ -325,23 +325,24 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
 
   // ---------------------------------------------------------------------
   // 6) Issue #394: default kites are positioned so their *body* clears
-  //    the 10° drift cone at the leg midpoint with an 8 px visual margin,
-  //    independent of zoom and `legArrowSize`. The kite's drawn width is
-  //    `46 * legZoomScale()` px (drawLegArrow in draw.js), so its centre
-  //    must sit at least `(len/2)*tan(10°) + 23*legZoomScale() + 8` from
-  //    the leg line. The original #394 fix put the *centre* at the cone
-  //    edge, which left the kite body ON the leg line at low zoom or
-  //    `legArrowSize >= 2`. This test pins the corrected invariant: kite
-  //    centre at `cone + halfWidth + margin`, kite *edge* strictly clear
+  //    the 10° drift cone at the leg midpoint with the tuned visual margin,
+  //    independent of zoom and `legArrowSize`. The kite centre must sit at
+  //    least `(len/2)*tan(10°) + defaultKiteHalfWidth*legZoomScale() +
+  //    defaultLabelMargin` from the leg line. The original #394 fix put the
+  //    *centre* at the cone edge, which left the kite body ON the leg line at
+  //    low zoom or `legArrowSize >= 2`. This test pins the corrected invariant:
+  //    kite centre at `cone + halfWidth + margin`, kite *edge* strictly clear
   //    of both the leg line and the drift cone.
   // ---------------------------------------------------------------------
   test('default kite body clears leg line + drift cone at every zoom', async ({ page }) => {
     await boot(page);
     await loadTwoWp(page);
 
-    const margin = 8;
     const tan10 = Math.tan(10 * Math.PI / 180);
-    const KITE_HALF = 23;                 // px when legZoomScale() === 1
+    const defaults = await page.evaluate(() => ({
+      margin: tune('defaultLabelMarginPx'),
+      kiteHalf: tune('defaultKiteHalfWidthPx'),
+    }));
     for (const z of [8, 10, 11, 12, 13, 14]) {
       for (const las of [1, 2, 3]) {
         const m = await page.evaluate(({ zoom, las }) => {
@@ -369,8 +370,8 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
         }, { zoom: z, las });
         // Drift cone perpendicular extent at the midpoint, per leg length.
         const driftPerp = (m.legLen / 2) * tan10;
-        const kiteHalf = KITE_HALF * m.sc;
-        const expected = driftPerp + kiteHalf + margin;
+        const kiteHalf = defaults.kiteHalf * m.sc;
+        const expected = driftPerp + kiteHalf + defaults.margin;
         expect(m.inPerp ).toBeCloseTo( expected, 1);
         expect(m.outPerp).toBeCloseTo(-expected, 1);
         // The kite edge nearest the leg is `centre - halfWidth`, and
@@ -378,8 +379,8 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
         // — i.e., the leg line is fully clear of the kite's body too.
         const inEdge  =  m.inPerp  - kiteHalf;
         const outEdge = -m.outPerp - kiteHalf;
-        expect(inEdge ).toBeGreaterThan(driftPerp + margin / 2);
-        expect(outEdge).toBeGreaterThan(driftPerp + margin / 2);
+        expect(inEdge ).toBeGreaterThan(driftPerp + defaults.margin / 2);
+        expect(outEdge).toBeGreaterThan(driftPerp + defaults.margin / 2);
         // And the kite edge is strictly clear of the leg line itself
         // (perpendicular > 0) — this is the headline regression the
         // user reported on PR #395.
@@ -395,8 +396,8 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
   //    in localStorage, the user reported that after a hard reload +
   //    "Reset all marker positions" + zoom 8 the kites still appeared
   //    on the leg line. Root cause: the original #394 formula put the
-  //    kite *centre* at `(len/2)*tan(10°) + 8` perpendicular but ignored
-  //    the kite's own width (`46 * legZoomScale()`), so the kite *body*
+  //    kite *centre* at `(len/2)*tan(10°) + margin` perpendicular but ignored
+  //    the kite's own width, so the kite *body*
   //    overlapped the leg line at low zoom / large legArrowSize.
   // ---------------------------------------------------------------------
   test('PR #395 — 3 wp + reload + reset-all + zoom 8 keeps kites off the leg line', async ({ page }) => {
@@ -473,11 +474,11 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
           const inPerp  = Math.abs((ic.x - mx) * nx + (ic.y - my) * ny);
           const outPerp = Math.abs((oc.x - mx) * nx + (oc.y - my) * ny);
           const sc = legZoomScale();
-          // Edge-of-kite distance to the leg line: kite is 46*sc px
-          // wide so half-width is 23*sc. Body clears the leg when
+          // Edge-of-kite distance to the leg line. Body clears the leg when
           // `centerPerp - halfWidth > 0`.
-          const inEdge  = inPerp  - 23 * sc;
-          const outEdge = outPerp - 23 * sc;
+          const halfWidth = tune('defaultKiteHalfWidthPx') * sc;
+          const inEdge  = inPerp  - halfWidth;
+          const outEdge = outPerp - halfWidth;
           out.push({ i, inPerp, outPerp, inEdge, outEdge, sc, legLen: L });
         }
         return out;
@@ -499,7 +500,7 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
   // ---------------------------------------------------------------------
   // 7) Issue #394: short legs at low zoom — the formula's degenerate
   //    corner. A near-zero leg length must NOT NaN out the renderer or
-  //    collapse the kite onto the leg line; the 8 px margin is the floor.
+  //    collapse the kite onto the leg line; the tuned margin is the floor.
   // ---------------------------------------------------------------------
   test('short leg + low zoom keeps default kite off the leg line (no NaN)', async ({ page }) => {
     await boot(page);

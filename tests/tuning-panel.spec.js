@@ -71,6 +71,69 @@ test.describe('Hidden tuning panel', () => {
     expect(await page.locator('#tuning-panel details[open]').count()).toBe(0);
   });
 
+  test('exposes every tuning default through tune() and the panel', async ({ page }) => {
+    await boot(page);
+    const out = await page.evaluate(() => {
+      const defaults = NavAid.tuningDefaults || {};
+      const groupKeys = (NavAid.tuningGroups || []).flatMap(g => g.keys || []);
+      const missingDefaults = groupKeys.filter(key => !defaults[key]);
+      const duplicateGroupKeys = groupKeys.filter((key, i) => groupKeys.indexOf(key) !== i);
+      const rows = Object.entries(defaults).map(([key, spec]) => {
+        const value = tune(key);
+        const type = spec.type || 'number';
+        return {
+          key,
+          type,
+          value,
+          defaultValue: spec.value,
+          inGroup: groupKeys.includes(key),
+          hasReset: !!document.getElementById('tune-' + key + '-reset'),
+          hasRange: !!document.getElementById('tune-' + key + '-range'),
+          hasNumber: !!document.getElementById('tune-' + key + '-number'),
+          hasColor: !!document.getElementById('tune-' + key + '-color'),
+          hasText: !!document.getElementById('tune-' + key + '-text'),
+          hasSelect: !!document.getElementById('tune-' + key + '-select'),
+        };
+      });
+      return { rows, missingDefaults, duplicateGroupKeys };
+    });
+
+    expect(out.missingDefaults).toEqual([]);
+    expect(out.duplicateGroupKeys).toEqual([]);
+    expect(out.rows.filter(row => !row.inGroup).map(row => row.key)).toEqual([]);
+    expect(out.rows.filter(row => row.value !== row.defaultValue).map(row => row.key)).toEqual([]);
+    expect(out.rows.filter(row => !row.hasReset).map(row => row.key)).toEqual([]);
+    expect(out.rows.filter(row => row.type === 'number' && (!row.hasRange || !row.hasNumber)).map(row => row.key)).toEqual([]);
+    expect(out.rows.filter(row => row.type === 'color' && (!row.hasColor || !row.hasText)).map(row => row.key)).toEqual([]);
+    expect(out.rows.filter(row => row.type === 'select' && !row.hasSelect).map(row => row.key)).toEqual([]);
+  });
+
+  test('uses the tuned marker and kite defaults', async ({ page }) => {
+    await boot(page);
+    const values = await page.evaluate(() => ({
+      defaultLabelMarginPx: tune('defaultLabelMarginPx'),
+      legKiteHeightPx: tune('legKiteHeightPx'),
+      legKiteCellWidthPx: tune('legKiteCellWidthPx'),
+      legKiteTriangleLenPx: tune('legKiteTriangleLenPx'),
+      legKiteHeadingTextPx: tune('legKiteHeadingTextPx'),
+      legKiteHeadingAnchor: tune('legKiteHeadingAnchor'),
+      cumKiteHeightPx: tune('cumKiteHeightPx'),
+      cumKiteCellWidthPx: tune('cumKiteCellWidthPx'),
+      cumKiteTextPx: tune('cumKiteTextPx'),
+    }));
+    expect(values).toEqual({
+      defaultLabelMarginPx: 20,
+      legKiteHeightPx: 47,
+      legKiteCellWidthPx: 24,
+      legKiteTriangleLenPx: 35,
+      legKiteHeadingTextPx: 13,
+      legKiteHeadingAnchor: 0.25,
+      cumKiteHeightPx: 23,
+      cumKiteCellWidthPx: 43,
+      cumKiteTextPx: 15,
+    });
+  });
+
   test('drift dash controls redraw without changing endpoint length', async ({ page }) => {
     await boot(page);
     await openTuneGroup(page, 'Drift lines');
