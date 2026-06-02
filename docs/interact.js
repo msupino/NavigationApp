@@ -49,6 +49,30 @@ function selectedFreqNoteIndex() {
   return note && note.cc && commCalloutWaypointIndex(note) === sel.index
     ? sel.freqNoteIndex : -1;
 }
+function addCommChangeNoteForWaypoint(wp, ccKey) {
+  if (!wp || !ccKey || !Array.isArray(state.notes)) return -1;
+  const existing = state.notes.findIndex(n => n && n.cc &&
+    (typeof canonicalNavWaypointName === 'function'
+      ? canonicalNavWaypointName(n.cc) === ccKey
+      : n.cc === ccKey));
+  if (existing >= 0) return existing;
+  const tail = typeof commCalloutDefaultTail === 'function'
+    ? commCalloutDefaultTail(wp) : { lat: r5(wp.lat), lng: r5(wp.lng) };
+  const callout = typeof commCalloutDefaults === 'function'
+    ? commCalloutDefaults(ccKey) : { freqName: ccKey, freq: '' };
+  state.notes.push({
+    lat: tail.lat,
+    lng: tail.lng,
+    text: (typeof S !== 'undefined' && S.commChangeNoteText) || 'Freq change',
+    color: NOTE_DEFAULT_COLOR,
+    shape: 'rect',
+    cc: ccKey,
+    freqName: callout.freqName,
+    freq: callout.freq,
+    freqAuto: true,
+  });
+  return state.notes.length - 1;
+}
 function hitWaypoint(px, py) {
   for (let i = state.waypoints.length - 1; i >= 0; i--) {
     const s = proj(state.waypoints[i]);
@@ -511,6 +535,19 @@ function showInspector() {
             note.textContent = cc.note;
             row.appendChild(note);
           }
+          if (showCommChange) {
+            const add = document.createElement('button');
+            add.className = 'insp-btn';
+            add.textContent = S.addFreqChange || 'Add freq change';
+            add.onclick = () => {
+              const idx = addCommChangeNoteForWaypoint(wp, ccKey);
+              if (idx >= 0 && state.selected && state.selected.type === 'wp') {
+                state.selected.freqNoteIndex = idx;
+              }
+              draw(); showInspector();
+            };
+            body.appendChild(add);
+          }
         }
       }
     }
@@ -899,7 +936,7 @@ function endMouseDrag() {
     }
     // #487: a waypoint drag may have landed (snapped) on a comm-change point.
     // Seed its note now that the position is committed, then repaint.
-    if (drag.kind === 'wp' && typeof seedCommChangeNotes === 'function' &&
+    if (drag.kind === 'wp' && drag.moved && typeof seedCommChangeNotes === 'function' &&
         seedCommChangeNotes()) {
       draw(); showInspector();
     }
@@ -1176,7 +1213,8 @@ function endTouch() {
       }
     }
     // #487: seed a comm-change note if a touch waypoint-drag landed on one.
-    if (touchDrag.kind === 'wp' && typeof seedCommChangeNotes === 'function' &&
+    if (touchDrag.kind === 'wp' && touchDrag.moved &&
+        typeof seedCommChangeNotes === 'function' &&
         seedCommChangeNotes()) {
       draw(); showInspector();
     }

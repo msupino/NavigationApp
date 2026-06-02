@@ -367,6 +367,7 @@ window.S = Object.assign({
   commChangeCallSign: 'Waypoint',
   commChangeName: 'Call sign',
   commChangeFreq: 'Frequency',
+  addFreqChange: 'Add freq change',
   deleteFreqChange: '🗑 Delete freq change (D)',
   resetFreqLocation: '↺ Reset callout location',
   plates: 'Charts',

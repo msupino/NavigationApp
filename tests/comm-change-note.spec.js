@@ -894,7 +894,7 @@ test.describe('comm-change auto-note (#487)', () => {
   test('deleting a frequency-change callout does not delete its waypoint', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
-    await page.evaluate(t => {
+    const center = await page.evaluate(t => {
       state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
       state.notes = [];
       syncLegs();
@@ -902,6 +902,9 @@ test.describe('comm-change auto-note (#487)', () => {
       state.selected = { type: 'wp', index: 0, freqNoteIndex: 0 };
       showInspector();
       draw();
+      const s = proj(state.waypoints[0]);
+      const r = mapEl.getBoundingClientRect();
+      return { x: r.left + s.x, y: r.top + s.y };
     }, TYONA);
     await page.locator('#insp-body .insp-btn').filter({ hasText: /Delete freq change/ }).click();
     const out = await page.evaluate(() => ({
@@ -912,6 +915,20 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.waypoints).toEqual(['TYONA']);
     expect(out.notes).toEqual([]);
     expect(out.selected).toEqual({ type: 'wp', index: 0 });
+    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ })).toBeVisible();
+
+    await page.mouse.click(center.x, center.y);
+    await expect.poll(() => page.evaluate(() => state.notes.filter(n => n && n.cc).length)).toBe(0);
+
+    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ }).click();
+    await expect.poll(() => page.evaluate(() => ({
+      selected: state.selected,
+      notes: state.notes.map(n => ({ cc: n.cc || '', freqName: n.freqName || '', freq: n.freq || '' })),
+    }))).toEqual({
+      selected: { type: 'wp', index: 0, freqNoteIndex: 0 },
+      notes: [{ cc: 'TYONA', freqName: 'PLUTO', freq: '118.40' }],
+    });
+    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Delete freq change/ })).toBeVisible();
   });
 
   test('comm-change note inspector edits frequency without a free-text call-sign field', async ({ page }) => {

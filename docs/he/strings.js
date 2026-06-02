@@ -162,6 +162,7 @@ window.S = {
   commChangeCallSign: 'נקודת דיווח',
   commChangeName: 'אות קריאה',
   commChangeFreq: 'תדר',
+  addFreqChange: 'הוסף שינוי תדר',
   deleteFreqChange: '🗑 מחק שינוי תדר (D)',
   resetFreqLocation: '↺ אפס מיקום תווית',
   plates: 'דפיות',
