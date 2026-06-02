@@ -878,6 +878,54 @@ function hasActiveCommChangeWaypoint(name) {
   const key = canonicalNavWaypointName(name);
   return !!key && state.waypoints.some(w => commChangeWaypointInRange(w, key));
 }
+function normalizeCommChangeSuppressions(raw) {
+  const src = raw === undefined ? state.commChangeSuppressions : raw;
+  const out = [];
+  if (Array.isArray(src)) {
+    for (const v of src) {
+      const key = canonicalNavWaypointName(v);
+      if (key && !out.includes(key)) out.push(key);
+    }
+  }
+  state.commChangeSuppressions = out;
+  return out;
+}
+function isCommChangeSuppressed(name) {
+  const key = canonicalNavWaypointName(name);
+  return !!key && normalizeCommChangeSuppressions().includes(key);
+}
+function suppressCommChange(name) {
+  const key = canonicalNavWaypointName(name);
+  if (!key) return false;
+  const suppressions = normalizeCommChangeSuppressions();
+  if (suppressions.includes(key)) return false;
+  suppressions.push(key);
+  state.commChangeSuppressions = suppressions;
+  return true;
+}
+function unsuppressCommChange(name) {
+  const key = canonicalNavWaypointName(name);
+  if (!key) return false;
+  const suppressions = normalizeCommChangeSuppressions()
+    .filter(v => canonicalNavWaypointName(v) !== key);
+  if (suppressions.length === state.commChangeSuppressions.length) return false;
+  state.commChangeSuppressions = suppressions;
+  return true;
+}
+function pruneStaleCommChangeSuppressions() {
+  if (!Array.isArray(state.commChangeSuppressions)) {
+    state.commChangeSuppressions = [];
+    return false;
+  }
+  const before = normalizeCommChangeSuppressions();
+  const kept = before.filter(name => {
+    const row = commChangeMap && commChangeMap[name];
+    return row && row.commChange && hasActiveCommChangeWaypoint(name);
+  });
+  if (kept.length === before.length) return false;
+  state.commChangeSuppressions = kept;
+  return true;
+}
 function pruneStaleCommChangeNotes() {
   if (!Array.isArray(state.notes)) return false;
   let changed = false;
@@ -904,6 +952,7 @@ function seedCommChangeNotes() {
   if (!commChangeMap || typeof state === 'undefined' ||
       !Array.isArray(state.waypoints) || !Array.isArray(state.notes)) return false;
   let changed = pruneStaleCommChangeNotes();
+  if (pruneStaleCommChangeSuppressions()) changed = true;
   const routeDefaults = commRouteCalloutDefaultsMap();
   for (const wp of state.waypoints) {
     if (!wp) continue;
@@ -915,6 +964,7 @@ function seedCommChangeNotes() {
     const callout = routeDefaults[nm] || commStaticCalloutDefaults(nm);
     const existing = state.notes.find(n => n && canonicalNavWaypointName(n.cc) === nm);
     if (existing) {
+      if (unsuppressCommChange(nm)) changed = true;
       if (existing.cc !== nm) { existing.cc = nm; changed = true; }
       if (!existing.freqName) { existing.freqName = callout.freqName; changed = true; }
       if (!existing.freq) { existing.freq = callout.freq; changed = true; }
@@ -938,6 +988,7 @@ function seedCommChangeNotes() {
       }
       continue;
     }
+    if (isCommChangeSuppressed(nm)) continue;
     const tail = commCalloutDefaultTail(wp);
     state.notes.push({
       lat: tail.lat,
@@ -955,6 +1006,9 @@ function seedCommChangeNotes() {
   return changed;
 }
 window.seedCommChangeNotes = seedCommChangeNotes;
+window.suppressCommChange = suppressCommChange;
+window.unsuppressCommChange = unsuppressCommChange;
+window.normalizeCommChangeSuppressions = normalizeCommChangeSuppressions;
 
 function drawLegs() {
   const zoomScale = legZoomScale();
