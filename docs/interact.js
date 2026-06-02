@@ -21,6 +21,34 @@ function hitNote(px, py) {
   }
   return -1;
 }
+function commCalloutWaypointIndex(note) {
+  if (!note || !note.cc || !Array.isArray(state.waypoints)) return -1;
+  const key = typeof canonicalNavWaypointName === 'function'
+    ? canonicalNavWaypointName(note.cc) : String(note.cc || '').trim();
+  if (!key) return -1;
+  return state.waypoints.findIndex(w => {
+    const name = typeof canonicalNavWaypointName === 'function'
+      ? canonicalNavWaypointName(w && w.name) : String(w && w.name || '').trim();
+    if (name !== key) return false;
+    return typeof commChangeWaypointInRange === 'function'
+      ? commChangeWaypointInRange(w, key) : true;
+  });
+}
+function selectionForNoteHit(noteIndex) {
+  const note = state.notes[noteIndex];
+  const wpIndex = commCalloutWaypointIndex(note);
+  if (wpIndex >= 0) {
+    return { type: 'wp', index: wpIndex, freqNoteIndex: noteIndex };
+  }
+  return { type: 'note', index: noteIndex };
+}
+function selectedFreqNoteIndex() {
+  const sel = state.selected;
+  if (!sel || sel.type !== 'wp' || !Number.isInteger(sel.freqNoteIndex)) return -1;
+  const note = state.notes[sel.freqNoteIndex];
+  return note && note.cc && commCalloutWaypointIndex(note) === sel.index
+    ? sel.freqNoteIndex : -1;
+}
 function hitWaypoint(px, py) {
   for (let i = state.waypoints.length - 1; i >= 0; i--) {
     const s = proj(state.waypoints[i]);
@@ -467,8 +495,8 @@ function showInspector() {
           (typeof canonicalNavWaypointName === 'function'
             ? canonicalNavWaypointName(n.cc) === ccKey
             : n.cc === ccKey));
-        if (linkedNote && typeof appendFreqEdit === 'function') {
-          appendFreqEdit(body, linkedNote);
+        if (showCommChange && linkedNote && typeof appendFreqEdit === 'function') {
+          appendFreqEdit(body, linkedNote, { deleteButton: true });
         } else {
           if (cc.from || cc.to) {
             const freq = document.createElement('span');
@@ -659,7 +687,7 @@ function textRow(label, value) {
 // (or read-only name), frequency input, and a reset-location button. Shared
 // by the note inspector and the waypoint inspector (#530 — united) so a
 // freq-change point is edited from one panel either way.
-function appendFreqEdit(body, note) {
+function appendFreqEdit(body, note, editOptions) {
   if (!note.freqName) {
     note.freqName = (typeof commCalloutDefaults === 'function'
       ? commCalloutDefaults(note.cc).freqName : commNoteName(note));
@@ -712,6 +740,20 @@ function appendFreqEdit(body, note) {
     };
     body.appendChild(reset);
   }
+  if (editOptions && editOptions.deleteButton) {
+    const del = document.createElement('button');
+    del.className = 'insp-btn';
+    del.textContent = S.deleteFreqChange || S.deleteNote;
+    del.onclick = () => {
+      const idx = state.notes.indexOf(note);
+      if (idx >= 0) state.notes.splice(idx, 1);
+      if (state.selected && state.selected.type === 'wp') {
+        delete state.selected.freqNoteIndex;
+      }
+      draw(); showInspector();
+    };
+    body.appendChild(del);
+  }
 }
 
 // --- interaction (Leaflet mouse events) ------------------------------
@@ -725,7 +767,7 @@ map.on('mousedown', e => {
   const note = hitNote(p.x, p.y);
   if (note >= 0) {
     downHit = true;
-    state.selected = { type: 'note', index: note };
+    state.selected = selectionForNoteHit(note);
     drag = {
       kind: 'note',
       i: note,
@@ -858,7 +900,9 @@ function endMouseDrag() {
     // #487: a waypoint drag may have landed (snapped) on a comm-change point.
     // Seed its note now that the position is committed, then repaint.
     if (drag.kind === 'wp' && typeof seedCommChangeNotes === 'function' &&
-        seedCommChangeNotes()) draw();
+        seedCommChangeNotes()) {
+      draw(); showInspector();
+    }
     map.dragging.enable();
     drag = null;
   }
@@ -989,7 +1033,12 @@ window.addEventListener('keydown', e => {
   if (e.key === 'Delete' || e.key === 'Backspace' ||
       ((e.key === 'd' || e.key === 'D') && !e.ctrlKey && !e.metaKey && !e.altKey)) {
     if (!state.selected) return;
-    if (state.selected.type === 'wp') {
+    const freqNote = selectedFreqNoteIndex();
+    if (freqNote >= 0) {
+      state.notes.splice(freqNote, 1);
+      delete state.selected.freqNoteIndex;
+      draw(); showInspector();
+    } else if (state.selected.type === 'wp') {
       deleteWaypoint(state.selected.index);
       state.selected = null;
       draw(); showInspector();
@@ -1035,7 +1084,7 @@ mapEl.addEventListener('touchstart', e => {
       offLat: state.notes[note].lat - ll.lat,
       offLng: state.notes[note].lng - ll.lng,
     };
-    state.selected = { type: 'note', index: note };
+    state.selected = selectionForNoteHit(note);
   } else if (wp >= 0) {
     touchDrag = { kind: 'wp', i: wp, moved: false,
                   origLat: state.waypoints[wp].lat, origLng: state.waypoints[wp].lng };
@@ -1128,7 +1177,9 @@ function endTouch() {
     }
     // #487: seed a comm-change note if a touch waypoint-drag landed on one.
     if (touchDrag.kind === 'wp' && typeof seedCommChangeNotes === 'function' &&
-        seedCommChangeNotes()) draw();
+        seedCommChangeNotes()) {
+      draw(); showInspector();
+    }
     map.dragging.enable();
     touchDrag = null;
   }
