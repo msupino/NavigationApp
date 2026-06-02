@@ -257,22 +257,34 @@ branch by mistake.
   notes and disables their hit-testing without deleting them, so toggling
   back on restores the same editable callouts. These fields are saved in the
   existing `navaid.route` note payload (`cc`, `freqName`, `freq`, optional
-  `freqAuto`), not in a separate storage key.
-- **Map legend:** the View menu contains a compact DOM-only legend for
-  airfield triangles, waypoint circles, and ATC-change red rings. It is not
-  drawn by `draw()` or `exportPNG()`, so PNG exports stay chart-only.
+  `freqAuto`), not in a separate storage key. Deleted callouts are tracked
+  in `navaid.route.suppressedCC` (an array of canonical waypoint names);
+  the auto-seed pass skips suppressed names. "Add freq change" in the
+  waypoint inspector clears the suppression and re-creates the callout.
+  Suppressions are cleared when the waypoint is removed, moves away from
+  the comm-change point, the route is cleared, or a new file is loaded.
+- **Map legend:** a Leaflet control (bottom-left, floating over the map) with
+  entries for airfield triangles, waypoint circles, and freq-change red rings.
+  The markup lives in `index.html` so `applyI18n()` fills its text at boot;
+  `ui.js` reparents the element into the control at startup. Not drawn by
+  `draw()` or `exportPNG()`, so PNG exports stay chart-only.
 - **Hidden developer tuning panel:** open with `?tune=1`
-  (`?lang=en&tune=1`, `/pr/NNN/?lang=en&tune=1`, etc.). The registry
+  (`?lang=en&tune=1`, `/pr/NNN/?lang=en&tune=1`, etc.);
+  `?tune=0` / `false` / `no` explicitly disables it. The registry
   lives in `NavAid.tuningDefaults` / `NavAid.tuningGroups` (`core.js`),
   values are read through `tune(key)` in drawing / hit-testing code, and
   `createTuningPanel()` (`ui.js`) renders controls into `#tuning-panel`.
-  Preview values are page-local only: no `localStorage` /
-  `sessionStorage` writes, and reload restores source defaults. Any new
-  visual, layout, label-position, dash-pattern, font-size, marker-size,
-  page-frame, or hit-test constant should be added to `tuningDefaults`
-  and a group so it is available in Tune; keep only non-preview domain
-  invariants (for example Earth radius, storage keys, URLs) as hard-coded
-  constants. Cover panel behavior in `tests/tuning-panel.spec.js`.
+  Includes a "Colors" group for the last hard-coded draw colors (ink,
+  selected, kite text, leg halo, airfield fill/outline, nav-WP dot).
+  Each slider group has a ↻ reset button that restores the HTML default
+  via the slider's own input handler. Preview values are page-local
+  only: no `localStorage` / `sessionStorage` writes, and reload restores
+  source defaults. Any new visual, layout, label-position, dash-pattern,
+  font-size, marker-size, page-frame, or hit-test constant should be
+  added to `tuningDefaults` and a group so it is available in Tune;
+  keep only non-preview domain invariants (for example Earth radius,
+  storage keys, URLs) as hard-coded constants. Cover panel behavior in
+  `tests/tuning-panel.spec.js`.
 - **Transparency slider:** scales every label-background fill via
   `tintFill(hex, a) = rgba(r,g,b, a * yellowAlpha)`. Persisted at
   `navaid.yellowAlpha`.
@@ -341,6 +353,9 @@ branch by mistake.
   CORS on flight-maps.com tiles. Then re-runs the canvas draws
   scaled into the export canvas and triggers a `.png` download
   named `navigation-A4.png` / `navigation-CVFR.png` etc.
+  An "Include cumulative time" checkbox in the export modal (default on)
+  includes the cumulative-time kite layer in the exported PNG; disabling
+  it still renders leg markers but hides cumulative kites.
 
 ## Persistence (`localStorage` + `sessionStorage`, all keyed `navaid.*`)
 
@@ -532,11 +547,14 @@ downloadable `route.json`.
     The ring sits on top of the white dot — it
     augments, never replaces. A `window.__commChangeRingsDrawn` Set
     is rebuilt every frame for Playwright inspection.
-  - **Inspector badge:** `interact.js` `showInspector()` appends a
-    `.commchange-row` to the waypoint pane whenever the selected
-    waypoint's `name` matches a `commChange: true` entry. Shows the
-    i18n label (`S.commChangeBadge`), the `from → to` frequency pair
-    when present, and the optional `note`. Styled in `style.css`
+  - **Inspector editor:** `interact.js` `showInspector()` appends a
+    freq-change editor to the waypoint pane whenever the selected
+    waypoint has a linked callout note (matched by canonical name).
+    The editor (shared with the note inspector via `appendFreqEdit()`)
+    includes a call-sign dropdown, editable frequency, and reset-callout-
+    location button. When no linked note exists (overlay off or not
+    seeded), a read-only badge shows the `from → to` frequency pair
+    and optional note. Styled in `style.css`
     under `/* Comm-change inspector badge (issue #399) */`.
   - **i18n keys:** `tbShowCommChange`, `tbShowCommChangeTitle`,
     `commChangeBadge` (English defaults in `core.js`, Hebrew overrides
