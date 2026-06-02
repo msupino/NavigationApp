@@ -44,10 +44,16 @@ function selectionForNoteHit(noteIndex) {
 }
 function selectedFreqNoteIndex() {
   const sel = state.selected;
-  if (!sel || sel.type !== 'wp' || !Number.isInteger(sel.freqNoteIndex)) return -1;
-  const note = state.notes[sel.freqNoteIndex];
-  return note && note.cc && commCalloutWaypointIndex(note) === sel.index
-    ? sel.freqNoteIndex : -1;
+  if (!sel || sel.type !== 'wp') return -1;
+  if (Number.isInteger(sel.freqNoteIndex) && sel.freqNoteIndex >= 0) {
+    const note = state.notes[sel.freqNoteIndex];
+    if (note && note.cc && commCalloutWaypointIndex(note) === sel.index) {
+      return sel.freqNoteIndex;
+    }
+  }
+  const idx = state.notes.findIndex(n => n && n.cc && commCalloutWaypointIndex(n) === sel.index);
+  if (idx >= 0) sel.freqNoteIndex = idx;
+  return idx;
 }
 function addCommChangeNoteForWaypoint(wp, ccKey) {
   if (!wp || !ccKey || !Array.isArray(state.notes)) return -1;

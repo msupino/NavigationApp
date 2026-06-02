@@ -149,7 +149,7 @@ test.describe('X / Z / Delete freq-change keyboard shortcuts', () => {
       state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
       syncLegs();
       seedCommChangeNotes();
-      state.selected = { type: 'wp', index: 0, freqNoteIndex: 0 };
+      state.selected = { type: 'wp', index: 0 };
       showInspector(); draw();
     }, TYONA);
     await page.keyboard.press('x');
@@ -232,7 +232,7 @@ test.describe('X / Z / Delete freq-change keyboard shortcuts', () => {
       state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
       syncLegs();
       seedCommChangeNotes();
-      state.selected = { type: 'wp', index: 0, freqNoteIndex: 0 };
+      state.selected = { type: 'wp', index: 0 };
       showInspector(); draw();
     }, TYONA);
     await page.keyboard.press('Delete');
@@ -275,7 +275,7 @@ test.describe('X / Z / Delete freq-change keyboard shortcuts', () => {
       state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
       syncLegs();
       seedCommChangeNotes();
-      state.selected = { type: 'wp', index: 0, freqNoteIndex: 0 };
+      state.selected = { type: 'wp', index: 0 };
       showInspector(); draw();
     }, TYONA);
     await page.keyboard.press('d');
