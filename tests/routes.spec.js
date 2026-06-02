@@ -229,6 +229,25 @@ test.describe('Notes', () => {
     expect(errs).toBeNull();
   });
 
+  test('Comm-change suppression metadata validates as optional string keys', async ({ page }) => {
+    const out = await page.evaluate(() => ({
+      valid: validateRoute({
+        waypoints: [],
+        legs: [],
+        notes: [],
+        commChangeSuppressions: ['TYONA'],
+      }),
+      invalid: validateRoute({
+        waypoints: [],
+        legs: [],
+        notes: [],
+        commChangeSuppressions: ['TYONA', 42],
+      }),
+    }));
+    expect(out.valid).toBeNull();
+    expect(out.invalid).toContain('root.commChangeSuppressions[1]: expected string');
+  });
+
   test('Inspector deletes the selected note', async ({ page }) => {
     await page.evaluate(() => {
       state.notes = [

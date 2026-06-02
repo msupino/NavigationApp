@@ -51,6 +51,7 @@ function selectedFreqNoteIndex() {
 }
 function addCommChangeNoteForWaypoint(wp, ccKey) {
   if (!wp || !ccKey || !Array.isArray(state.notes)) return -1;
+  if (typeof unsuppressCommChange === 'function') unsuppressCommChange(ccKey);
   const existing = state.notes.findIndex(n => n && n.cc &&
     (typeof canonicalNavWaypointName === 'function'
       ? canonicalNavWaypointName(n.cc) === ccKey
@@ -309,6 +310,7 @@ function deleteWaypoint(k) {
       !state.waypoints.some(w => canonicalNavWaypointName(w && w.name) === ccName)) {
     state.notes = state.notes.filter(n =>
       !(n && n.cc && canonicalNavWaypointName(n.cc) === ccName));
+    if (typeof unsuppressCommChange === 'function') unsuppressCommChange(ccName);
   }
   syncLegs();
 }
@@ -468,6 +470,7 @@ function showInspector() {
     del.className = 'insp-btn';
     del.textContent = note.cc ? (S.deleteFreqChange || S.deleteNote) : S.deleteNote;
     del.onclick = () => {
+      if (note.cc && typeof suppressCommChange === 'function') suppressCommChange(note.cc);
       state.notes.splice(state.selected.index, 1);
       state.selected = null;
       draw(); showInspector();
@@ -782,6 +785,7 @@ function appendFreqEdit(body, note, editOptions) {
     del.className = 'insp-btn';
     del.textContent = S.deleteFreqChange || S.deleteNote;
     del.onclick = () => {
+      if (note.cc && typeof suppressCommChange === 'function') suppressCommChange(note.cc);
       const idx = state.notes.indexOf(note);
       if (idx >= 0) state.notes.splice(idx, 1);
       if (state.selected && state.selected.type === 'wp') {
@@ -1072,6 +1076,8 @@ window.addEventListener('keydown', e => {
     if (!state.selected) return;
     const freqNote = selectedFreqNoteIndex();
     if (freqNote >= 0) {
+      const note = state.notes[freqNote];
+      if (note && note.cc && typeof suppressCommChange === 'function') suppressCommChange(note.cc);
       state.notes.splice(freqNote, 1);
       delete state.selected.freqNoteIndex;
       draw(); showInspector();
@@ -1080,6 +1086,8 @@ window.addEventListener('keydown', e => {
       state.selected = null;
       draw(); showInspector();
     } else if (state.selected.type === 'note') {
+      const note = state.notes[state.selected.index];
+      if (note && note.cc && typeof suppressCommChange === 'function') suppressCommChange(note.cc);
       state.notes.splice(state.selected.index, 1);
       state.selected = null;
       draw(); showInspector();
