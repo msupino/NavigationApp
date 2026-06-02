@@ -266,6 +266,8 @@ window.S = Object.assign({
   fpTotal: 'Total',
   fpClose: 'Close',
   fpPrint: 'Print',
+  fpCsv: 'CSV',
+  fpCsvTitle: 'Export this flight plan as CSV',
   fpFuel: 'Fuel',
   tbAircraft: 'Aircraft',
   tbGph: 'Gallons per hour',
