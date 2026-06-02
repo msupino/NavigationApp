@@ -487,6 +487,7 @@ const state = {
   waypoints: [],            // [{ lat, lng, name }]
   legs: [],                 // per-leg attributes (see newLeg)
   notes: [],                // [{ lat, lng, text }] — free-text annotations
+  commChangeSuppressions: [], // canonical comm-change callouts the user deleted
   mode: null,               // 'add' | 'note' | null (= inspect)
   selected: null,           // { type:'wp'|'leg'|'note', index }
 };
