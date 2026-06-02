@@ -180,6 +180,8 @@ window.S = {
   platesNone: 'אין דפיות — ראה AIP הרשמי',
   plateLoadError: 'טעינת הדפית נכשלה.',
   plateAttribution: 'מפות © רשות התעופה האזרחית / משרד התחבורה — מפורסם ב-AIP.',
+  tbLightMode: 'מצב בהיר',
+  tbLightModeTitle: 'החלף את סרגל הכלים והחלונות לערכת צבעים בהירה',
   tbTransparency: 'שקיפות תוויות',
   tbTransparencyTitle: 'שקיפות רקע תוויות (נקודות, קטעים, הערות)',
   tbMapOpacity: 'בהירות מפה',
