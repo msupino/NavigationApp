@@ -873,6 +873,19 @@ function appendFreqEdit(body, note, editOptions) {
 // --- interaction (Leaflet mouse events) ------------------------------
 let drag = null;
 let downHit = false;
+const ORIGIN_RESNAP_ARM_PX = 18;
+
+function dragOriginExclude(d, latlng) {
+  if (!d || d.originSnapArmed) return null;
+  if (!Number.isFinite(d.origLat) || !Number.isFinite(d.origLng)) return null;
+  const origin = map.latLngToContainerPoint([d.origLat, d.origLng]);
+  const cur = map.latLngToContainerPoint([latlng.lat, latlng.lng]);
+  if (Math.hypot(cur.x - origin.x, cur.y - origin.y) > ORIGIN_RESNAP_ARM_PX) {
+    d.originSnapArmed = true;
+    return null;
+  }
+  return { lat: d.origLat, lng: d.origLng };
+}
 
 map.on('mousedown', e => {
   const p = e.containerPoint;
@@ -897,7 +910,8 @@ map.on('mousedown', e => {
     downHit = true;
     state.selected = { type: 'wp', index: wp };
     drag = { kind: 'wp', i: wp, moved: false,
-             origLat: state.waypoints[wp].lat, origLng: state.waypoints[wp].lng };
+             origLat: state.waypoints[wp].lat, origLng: state.waypoints[wp].lng,
+             originSnapArmed: false };
     map.dragging.disable();
     showInspector(); draw();
     return;
@@ -958,8 +972,7 @@ map.on('mousemove', e => {
   if (drag.kind === 'wp') {
     drag.moved = true;
     const wp = state.waypoints[drag.i];
-    const r = applyNavSnap(e.latlng, wp.name || '',
-                          { lat: drag.origLat, lng: drag.origLng });
+    const r = applyNavSnap(e.latlng, wp.name || '', dragOriginExclude(drag, e.latlng));
     wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
     draw(); showInspector();
   } else if (drag.kind === 'note') {
@@ -1001,7 +1014,7 @@ function endMouseDrag() {
       const snappedToOther = state.waypoints.some((w, j) => j !== drag.i &&
           Math.abs(w.lat - wp.lat) < SNAP_DEG &&
           Math.abs(w.lng - wp.lng) < SNAP_DEG);
-      if (snappedToSelf || snappedToOther) {
+      if ((snappedToSelf && !drag.originSnapArmed) || snappedToOther) {
         state.waypoints.splice(drag.i, 1);
         state.selected = null;
         syncLegs();
@@ -1232,7 +1245,8 @@ mapEl.addEventListener('touchstart', e => {
     state.selected = selectionForNoteHit(note);
   } else if (wp >= 0) {
     touchDrag = { kind: 'wp', i: wp, moved: false,
-                  origLat: state.waypoints[wp].lat, origLng: state.waypoints[wp].lng };
+                  origLat: state.waypoints[wp].lat, origLng: state.waypoints[wp].lng,
+                  originSnapArmed: false };
     state.selected = { type: 'wp', index: wp };
   } else if (lab) {
     _materialiseDefaultLegLabel(lab.i, lab.which);
@@ -1270,8 +1284,7 @@ mapEl.addEventListener('touchmove', e => {
   if (touchDrag.kind === 'wp') {
     touchDrag.moved = true;
     const wp = state.waypoints[touchDrag.i];
-    const r = applyNavSnap(ll, wp.name || '',
-                           { lat: touchDrag.origLat, lng: touchDrag.origLng });
+    const r = applyNavSnap(ll, wp.name || '', dragOriginExclude(touchDrag, ll));
     wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
     draw(); showInspector();
   } else if (touchDrag.kind === 'note') {
@@ -1310,7 +1323,7 @@ function endTouch() {
       const snappedToOther = state.waypoints.some((w, j) => j !== touchDrag.i &&
           Math.abs(w.lat - wp.lat) < SNAP_DEG &&
           Math.abs(w.lng - wp.lng) < SNAP_DEG);
-      if (snappedToSelf || snappedToOther) {
+      if ((snappedToSelf && !touchDrag.originSnapArmed) || snappedToOther) {
         state.waypoints.splice(touchDrag.i, 1);
         state.selected = null;
         syncLegs();
