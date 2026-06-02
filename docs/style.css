@@ -1382,6 +1382,206 @@ html, body {
   font-size: 11px;
 }
 
+/* Light mode: UI chrome only. The selected map/chart layer is unchanged. */
+body.theme-light {
+  background: #eef1f5;
+  color: #1f252c;
+}
+body.theme-light #map,
+body.theme-light .leaflet-container {
+  background: #e7ebf0;
+}
+body.theme-light #toolbar,
+body.theme-light #inspector,
+body.theme-light #magnifier-settings,
+body.theme-light #tuning-panel,
+body.theme-light #search-overlay,
+body.theme-light .modal {
+  color: #1f252c;
+  background: rgba(250, 252, 255, 0.96);
+  border-color: #c6ccd6;
+  box-shadow: 0 8px 24px rgba(31, 37, 44, 0.18);
+}
+body.theme-light #toolbar button,
+body.theme-light #toolbar .slider-reset,
+body.theme-light #toolbar #wpname-rot,
+body.theme-light #toolbar .navtoggle select,
+body.theme-light #toolbar .navtoggle input[type="number"],
+body.theme-light #wp-search,
+body.theme-light #search-overlay #wp-search,
+body.theme-light .row input[type="number"],
+body.theme-light .row input[type="text"],
+body.theme-light .row select,
+body.theme-light .row textarea,
+body.theme-light .fp-aircraft select,
+body.theme-light .fp-aircraft input,
+body.theme-light .plan-name,
+body.theme-light .plan-num,
+body.theme-light .plate-chip,
+body.theme-light .runway-chip,
+body.theme-light #tuning-panel button,
+body.theme-light #tuning-panel input[type="number"],
+body.theme-light #tuning-panel input[type="text"],
+body.theme-light #tuning-panel select,
+body.theme-light #tuning-panel input[type="color"] {
+  color: #1f252c;
+  background: #fff;
+  border-color: #b8c0cc;
+}
+body.theme-light #toolbar button:hover,
+body.theme-light #toolbar .slider-reset:hover,
+body.theme-light #toolbar #wpname-rot:hover,
+body.theme-light .plate-chip:hover,
+body.theme-light #tuning-panel button:hover {
+  color: #111820;
+  background: #eef3f9;
+}
+body.theme-light #toolbar button.tool.active,
+body.theme-light #toolbar .wp-search-item.active {
+  color: #fff;
+  background: #1d6fe0;
+  border-color: #1d6fe0;
+}
+body.theme-light .tb-section,
+body.theme-light #toolbar > #lang-toggle,
+body.theme-light #info,
+body.theme-light #footer-links,
+body.theme-light #insp-header,
+body.theme-light #mag-settings-header,
+body.theme-light .fp-aircraft,
+body.theme-light .flight-table th,
+body.theme-light .flight-table td,
+body.theme-light .flight-table tfoot td,
+body.theme-light .flight-plan-sub,
+body.theme-light .plates-section,
+body.theme-light .charts-airport + .charts-airport,
+body.theme-light #tuning-panel .tune-group {
+  border-color: #cfd5df;
+}
+body.theme-light #insp-header,
+body.theme-light #mag-settings-header,
+body.theme-light .flight-table th {
+  background: #eef3f9;
+}
+body.theme-light #insp-title,
+body.theme-light #mag-settings-title,
+body.theme-light .modal-title,
+body.theme-light .flight-plan-sub,
+body.theme-light #toolbar .navtoggle,
+body.theme-light #mag-settings-body .navtoggle,
+body.theme-light .row .val,
+body.theme-light .map-legend-row,
+body.theme-light .wp-search-item,
+body.theme-light .flight-table {
+  color: #1f252c;
+}
+body.theme-light #insp-title.editable {
+  background: #fff;
+  border-color: #b8c0cc;
+}
+body.theme-light #insp-title.editable:hover,
+body.theme-light #insp-title.editable:focus {
+  color: #111820;
+  background: #f7faff;
+  border-color: #8392a6;
+  box-shadow: 0 0 0 1px rgba(29, 111, 224, 0.18);
+}
+body.theme-light .tb-section-head,
+body.theme-light #toolbar .drag-handle,
+body.theme-light #toolbar-toggle,
+body.theme-light #toolbar .slider-val,
+body.theme-light #toolbar .slider-reset,
+body.theme-light #toolbar .navtoggle .hint,
+body.theme-light .row label,
+body.theme-light #info,
+body.theme-light #app-version,
+body.theme-light #toolbar .footer-link,
+body.theme-light .map-legend-title,
+body.theme-light .search-hint,
+body.theme-light .fp-aircraft,
+body.theme-light .flight-table th,
+body.theme-light .charts-airport-header,
+body.theme-light .charts-cat-label,
+body.theme-light .plate-loading,
+body.theme-light .plate-attribution,
+body.theme-light .modal-close-x,
+body.theme-light #insp-close,
+body.theme-light #mag-settings-close,
+body.theme-light #search-close,
+body.theme-light #tuning-panel .tune-close,
+body.theme-light #tuning-panel .tune-head span,
+body.theme-light #tuning-panel .tune-label {
+  color: #647184;
+}
+body.theme-light .tb-section-head:hover,
+body.theme-light #toolbar .drag-handle:hover,
+body.theme-light #toolbar-toggle:hover,
+body.theme-light #toolbar .footer-link:hover,
+body.theme-light .charts-airport-header:hover,
+body.theme-light #insp-close:hover,
+body.theme-light #mag-settings-close:hover,
+body.theme-light #search-close:hover,
+body.theme-light #tuning-panel .tune-close:hover {
+  color: #111820;
+  background: rgba(29, 111, 224, 0.08);
+}
+body.theme-light .map-legend {
+  background: rgba(250, 252, 255, 0.88);
+  border-color: #c6ccd6;
+}
+body.theme-light #wp-search-results,
+body.theme-light #search-overlay #wp-search-results {
+  background: #fff;
+  border-color: #c6ccd6;
+  box-shadow: 0 8px 20px rgba(31, 37, 44, 0.18);
+}
+body.theme-light .wp-search-item:hover {
+  color: #fff;
+  background: #1d6fe0;
+}
+body.theme-light .flight-table tbody tr:hover,
+body.theme-light .flight-table tfoot td {
+  background: rgba(29, 111, 224, 0.07);
+}
+body.theme-light .modal-back {
+  background: rgba(240, 244, 248, 0.62);
+}
+body.theme-light .modal-back.flight-plan {
+  background: transparent;
+}
+body.theme-light .modal-btns .modal-cancel {
+  color: #fff;
+  background: #6b7280;
+}
+body.theme-light .modal-btns .modal-cancel:hover {
+  background: #4b5563;
+}
+body.theme-light .commchange-row {
+  background: rgba(231, 76, 60, 0.09);
+  border-color: rgba(192, 57, 43, 0.36);
+}
+body.theme-light .commchange-row .commchange-label {
+  color: #b8322c;
+}
+body.theme-light .commchange-row .commchange-freq {
+  color: #1f252c;
+}
+body.theme-light .commchange-row .commchange-note {
+  color: #4b5563;
+}
+body.theme-light .plate-chip-small {
+  color: #1d6fe0;
+  background: none;
+  border-color: transparent;
+}
+body.theme-light .runway-chip,
+body.theme-light .plate-chip {
+  background: #f7faff;
+}
+body.theme-light #tuning-panel summary {
+  color: #9b6a00;
+}
+
 /* Print-section orientation toggle (button next to A3 / A4). */
 #page-buttons {
   display: flex;
