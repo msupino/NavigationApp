@@ -65,27 +65,29 @@ test.describe('Display checkbox toggles', () => {
   }
 });
 
-test.describe('View menu legend', () => {
-  test('shows airfield, waypoint, and ATC change symbols without entering the export canvas', async ({ page }) => {
+test.describe('Map legend', () => {
+  test('floats over the map (not in the toolbar) with airfield, waypoint, freq-change symbols', async ({ page }) => {
     await boot(page);
     const legend = page.locator('#map-legend');
     await expect(legend).toBeVisible();
     await expect(legend).toContainText('Legend');
     await expect(legend).toContainText('Airfield');
     await expect(legend).toContainText('Waypoint');
-    await expect(legend).toContainText('ATC change');
+    await expect(legend).toContainText('Freq change');
     await expect(legend.locator('.legend-airfield')).toBeVisible();
     await expect(legend.locator('.legend-waypoint')).toBeVisible();
     await expect(legend.locator('.legend-atc')).toBeVisible();
+    // #526: lifted out of the View menu into a top-right Leaflet control on
+    // the map, so it reads as a chart legend rather than a menu item.
     const placement = await page.evaluate(() => {
       const el = document.getElementById('map-legend');
       return {
         inMap: !!(el && el.closest('#map')),
-        inCanvas: !!(el && el.closest('canvas')),
         inToolbar: !!(el && el.closest('#toolbar')),
+        inLeafletControl: !!(el && el.closest('.leaflet-control')),
       };
     });
-    expect(placement).toEqual({ inMap: false, inCanvas: false, inToolbar: true });
+    expect(placement).toEqual({ inMap: true, inToolbar: false, inLeafletControl: true });
   });
 });
 

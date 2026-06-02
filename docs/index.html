@@ -205,21 +205,6 @@
         <label class="navtoggle" data-i18n-title="tbShowCommChangeTitle">
           <input type="checkbox" id="commchange-cb"> <span data-i18n="tbShowCommChange"></span>
         </label>
-        <div id="map-legend" class="map-legend" data-i18n-aria="legendTitle">
-          <div class="map-legend-title" data-i18n="legendTitle"></div>
-          <div class="map-legend-row">
-            <span class="legend-symbol legend-airfield" aria-hidden="true"></span>
-            <span data-i18n="legendAirfield"></span>
-          </div>
-          <div class="map-legend-row">
-            <span class="legend-symbol legend-waypoint" aria-hidden="true"></span>
-            <span data-i18n="legendWaypoint"></span>
-          </div>
-          <div class="map-legend-row">
-            <span class="legend-symbol legend-atc" aria-hidden="true"></span>
-            <span data-i18n="legendAtcChange"></span>
-          </div>
-        </div>
         <label class="navtoggle" data-i18n-title="tbForceSnapTitle">
           <input type="checkbox" id="force-snap-cb"> <span data-i18n="tbForceSnap"></span>
         </label>
@@ -395,6 +380,26 @@
         <input type="range" id="mag-zoom" min="1" max="5" step="0.25" value="2">
         <span class="slider-val" id="mag-zoom-val">2×</span>
       </label>
+    </div>
+  </div>
+
+  <!-- Map legend. Lives here (not in the toolbar) so applyI18n() fills its
+       data-i18n text at boot; ui.js then reparents it into a top-right
+       Leaflet control so it floats over the map like a chart legend.
+       Hidden until that move so it never flashes in the page flow. -->
+  <div id="map-legend" class="map-legend" data-i18n-aria="legendTitle" style="display:none">
+    <div class="map-legend-title" data-i18n="legendTitle"></div>
+    <div class="map-legend-row">
+      <span class="legend-symbol legend-airfield" aria-hidden="true"></span>
+      <span data-i18n="legendAirfield"></span>
+    </div>
+    <div class="map-legend-row">
+      <span class="legend-symbol legend-waypoint" aria-hidden="true"></span>
+      <span data-i18n="legendWaypoint"></span>
+    </div>
+    <div class="map-legend-row">
+      <span class="legend-symbol legend-atc" aria-hidden="true"></span>
+      <span data-i18n="legendAtcChange"></span>
     </div>
   </div>
 
