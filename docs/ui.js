@@ -935,11 +935,11 @@ YELLOW_EL.oninput = e => {
   draw();
 };
 
-const MAPOPACITY_KEY = 'navaid.mapOpacity';
+const MAPOPACITY_KEY = 'navaid.mapOpacity.v2';
 // `var` (not `let`) so writes from any module via window.mapOpacity reach
 // the same binding the export reads — same hazard documented for every
 // other mutable global in core.js.
-var mapOpacity = 1;
+var mapOpacity = 0.8;
 function applyMapOpacity() {
   for (const n in layers) {
     if (map.hasLayer(layers[n])) layers[n].setOpacity(mapOpacity);
