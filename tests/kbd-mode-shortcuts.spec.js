@@ -116,3 +116,176 @@ test.describe('A / N / C keyboard shortcuts', () => {
     await expect(page.locator('#clear')).toHaveText(/\(C\)/);
   });
 });
+
+const TYONA = { lat: 32.00472, lng: 34.72722, name: 'TYONA' };
+const CC_FIXTURE = {
+  version: 1, source: 'test fixture',
+  callSigns: {
+    PLUTO: { label: 'Pluto', he: 'פלוטו', primary: '118.40', secondary: '119.25' },
+  },
+  points: [{ name: 'TYONA', commChange: true, callSigns: ['PLUTO'], to: 'Pluto 118.40' }],
+};
+
+async function bootWithCC(page) {
+  await page.route('**/comm-change.json*', route => route.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify(CC_FIXTURE),
+  }));
+  await page.goto('?lang=en');
+  await page.waitForFunction(() =>
+    typeof state !== 'undefined' && typeof map !== 'undefined' && typeof setMode === 'function');
+  await page.evaluate(() => {
+    loadNavWaypoints();
+    loadAirfields();
+    loadCommChange();
+  });
+  await page.waitForFunction(() => window.commChangeMap && window.commChangeMap.TYONA);
+  await page.evaluate(() => { window.showCommChange = true; });
+}
+
+test.describe('X / Z / Delete freq-change keyboard shortcuts', () => {
+  test('X deletes the freq-change callout from the selected waypoint (keeps waypoint)', async ({ page }) => {
+    await bootWithCC(page);
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      syncLegs();
+      seedCommChangeNotes();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector(); draw();
+    }, TYONA);
+    await page.keyboard.press('x');
+    const out = await page.evaluate(() => ({
+      wp: state.waypoints.map(w => w.name),
+      notes: state.notes.filter(n => n && n.cc).length,
+      selected: state.selected,
+    }));
+    expect(out.wp).toEqual(['TYONA']);
+    expect(out.notes).toBe(0);
+    expect(out.selected).toEqual({ type: 'wp', index: 0 });
+  });
+
+  test('X with no freq-callout is a no-op', async ({ page }) => {
+    await bootWithCC(page);
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      syncLegs();
+      state.notes = [];
+      state.selected = { type: 'wp', index: 0 };
+      showInspector(); draw();
+    }, TYONA);
+    await page.keyboard.press('x');
+    const out = await page.evaluate(() => ({
+      wp: state.waypoints.length, selected: state.selected,
+    }));
+    expect(out.wp).toBe(1);
+    expect(out.selected).toEqual({ type: 'wp', index: 0 });
+  });
+
+  test('Z adds a freq-change callout to a selected comm-change waypoint', async ({ page }) => {
+    await bootWithCC(page);
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector(); draw();
+    }, TYONA);
+    await page.keyboard.press('z');
+    const out = await page.evaluate(() => ({
+      notes: state.notes.filter(n => n && n.cc).length,
+      cc: state.notes[0]?.cc,
+      freqName: state.notes[0]?.freqName,
+      selected: state.selected,
+    }));
+    expect(out.notes).toBe(1);
+    expect(out.cc).toBe('TYONA');
+    expect(out.freqName).toBe('PLUTO');
+    expect(out.selected).toEqual({ type: 'wp', index: 0, freqNoteIndex: 0 });
+  });
+
+  test('Z on a waypoint with no comm-change data is a no-op', async ({ page }) => {
+    await bootWithCC(page);
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat + 0.5, lng: t.lng + 0.5, name: 'NOPEX' }];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector(); draw();
+    }, TYONA);
+    await page.keyboard.press('z');
+    expect(await page.evaluate(() => state.notes.length)).toBe(0);
+  });
+
+  test('Z on a waypoint that already has a freq callout is a no-op', async ({ page }) => {
+    await bootWithCC(page);
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      syncLegs();
+      seedCommChangeNotes();
+      state.selected = { type: 'wp', index: 0, freqNoteIndex: 0 };
+      showInspector(); draw();
+    }, TYONA);
+    await page.keyboard.press('z');
+    expect(await page.evaluate(() => state.notes.filter(n => n && n.cc).length)).toBe(1);
+  });
+
+  test('Delete/Backspace deletes the freq callout first when a waypoint has one', async ({ page }) => {
+    await bootWithCC(page);
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      syncLegs();
+      seedCommChangeNotes();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector(); draw();
+    }, TYONA);
+    await page.keyboard.press('Delete');
+    const out = await page.evaluate(() => ({
+      wp: state.waypoints.map(w => w.name),
+      notes: state.notes.filter(n => n && n.cc).length,
+      selected: state.selected,
+    }));
+    expect(out.wp).toEqual(['TYONA']);
+    expect(out.notes).toBe(0);
+    expect(out.selected).toEqual({ type: 'wp', index: 0 });
+  });
+
+  test('Delete/Backspace deletes the waypoint when no freq callout exists', async ({ page }) => {
+    await bootWithCC(page);
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector(); draw();
+    }, TYONA);
+    await page.keyboard.press('Delete');
+    expect(await page.evaluate(() => state.waypoints.length)).toBe(0);
+  });
+
+  test('Delete/Backspace deletes a plain note', async ({ page }) => {
+    await bootWithCC(page);
+    await page.evaluate(() => {
+      state.notes = [{ lat: 32.1, lng: 34.9, text: 'Plain', color: '#fff6aa', shape: 'rect' }];
+      state.selected = { type: 'note', index: 0 };
+      showInspector(); draw();
+    });
+    await page.keyboard.press('Backspace');
+    expect(await page.evaluate(() => state.notes.length)).toBe(0);
+  });
+
+  test('D on a waypoint with a freq callout deletes both', async ({ page }) => {
+    await bootWithCC(page);
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      syncLegs();
+      seedCommChangeNotes();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector(); draw();
+    }, TYONA);
+    await page.keyboard.press('d');
+    const out = await page.evaluate(() => ({
+      wp: state.waypoints.length,
+      notes: state.notes.filter(n => n && n.cc).length,
+      selected: state.selected,
+    }));
+    expect(out.wp).toBe(0);
+    expect(out.notes).toBe(0);
+    expect(out.selected).toBeNull();
+  });
+});

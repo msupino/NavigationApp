@@ -4,6 +4,64 @@ Browser-based CVFR flight-route planner (Israel area). HTML5 + Leaflet,
 no build step. Hosted on GitHub Pages. Summary is drawn from the merged
 pull requests; production is the `main` branch, staging is `dev`.
 
+## Cumulative-time kites, frequency-change callouts, tuning panel
+
+- **Cumulative-time kites** per leg — inbound kite at B, optional return
+  kite at A, both draggable around their anchor waypoint (PR #513).
+- **Frequency-change callouts** — known ATC-change points show red rings;
+  matching route waypoints get editable lightning arrows with call sign
+  and frequency (PR #519, #525). Route-aware default call-sign suggestions
+  based on route order (PR #525). Inline editing from the waypoint
+  inspector (PR #533). Deletion suppression persists across reloads
+  (PR #539). Renamed from "Comm Change" to "Freq Change" (PR #490).
+- **Hidden tuning panel** — `?tune=1` exposes drawing constants (PR #515);
+  `?tune=0` disables; per-slider reset; Colors group (PR #531).
+- **Keyboard shortcuts** split — `D` deletes waypoint/note, `X` deletes
+  freq change, `Z` adds freq change, `Delete`/`Backspace` handles all.
+- **Floating map legend** — moved from View menu to a Leaflet control
+  (PR #528).
+- **Leg line-width sliders** — `legLineWidth` and `driftLineWidth`
+  persisted across reloads (PR #513).
+- **Export-PNG** includes "Include cumulative time" checkbox (PR #531).
+
+## Undo, keyboard shortcuts, go-to, flight-plan fuel, magnifier fix
+
+- **Undo** — Ctrl/Cmd-Z to revert last edit/move/delete (PR #456).
+- **Keyboard cheat-sheet** — `?` modal listing all global shortcuts
+  (PR #423). Shortcuts added: `A`/`N`/`C` (PR #453), `D` (PR #455),
+  `B` (PR #477), `R` (PR #446).
+- **Go-to coordinates** — click the lat/long readout to navigate to
+  specific coordinates (PR #498, #501).
+- **Flight-plan fuel** — cumulative time and fuel columns (PR #444);
+  resizable plan window (PR #509).
+- **Magnifier** — fixed rotation misalignment and zoom-in drift (PR #483).
+- **Map view persistence** — center/zoom/bearing saved across reloads
+  via `navaid.view` (PR #415).
+
+## Nav-WP rebuild, comm-change seed, cheat-sheet, toolbar, sliders
+
+- **Nav-waypoints** — rebuilt from IAA CVFR chart CSV (173 points),
+  replacing legacy KMZ dataset (PR #407, #411).
+- **Comm-change seed** — 48 points with call-sign catalog in
+  `docs/comm-change.json` (PR #401).
+- **Floating search overlay** — Ctrl-F opens top-center nav-WP search
+  (PR #453).
+- **Slider constants** — min/max/step defined, inline value labels,
+  `tintFill` fix (PR #329, #335, #366, #368).
+- **Force-snap toggle** — snap to nearest nav-WP/airfield regardless
+  of distance (PR #240).
+- **GPX export** — route export for portable GPS units (PR #239).
+- **Drift lines toggle** (PR #322).
+- **DPI metadata** in exported PNGs for correct print scale (PR #320).
+- **Toolbar width** fixes — 240 px fixed, no stretch (PR #377).
+- **Charts modal** — sorted alphabetically by ICAO (PR #473).
+- **Live lat/long readout** on map (PR #469).
+- **Reset waypoint name** button in inspector (PR #422).
+- **Sentence-case** English strings (PR #431).
+- **Default leg-kite** sits outside 10° drift cone (PR #395).
+- **e2e-deployed** — tests run against built artifact, not live CDN
+  (PR #494).
+
 ## v1.0
 
 ### Toolbar UX
