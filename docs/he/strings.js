@@ -61,6 +61,8 @@ window.S = {
   fpReturn: 'מסלול חזרה',
   fpClose: 'סגור',
   fpPrint: 'הדפס',
+  fpCsv: 'CSV',
+  fpCsvTitle: 'ייצוא תכנית הטיסה לקובץ CSV',
   fpFuel: 'דלק',
   tbAircraft: 'כלי טיס',
   tbGph: 'גלונים לשעה',
