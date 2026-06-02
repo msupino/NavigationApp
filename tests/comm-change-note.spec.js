@@ -55,10 +55,13 @@ async function installCommChangeFixture(page, fixture = FIXTURE) {
 async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
     try {
-      for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
-      sessionStorage.clear();
-      for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
-        localStorage.setItem('navaid.sec.' + s, '1');
+      if (localStorage.getItem('__test_comm_init_v1') !== '1') {
+        for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
+        sessionStorage.clear();
+        for (const s of ['build', 'view', 'display', 'charts', 'export', 'print'])
+          localStorage.setItem('navaid.sec.' + s, '1');
+        localStorage.setItem('__test_comm_init_v1', '1');
+      }
     } catch (e) {}
   });
   await page.goto('?lang=' + lang);
@@ -72,7 +75,12 @@ async function boot(page, lang = 'en') {
   await page.waitForFunction(() => window.commChangeMap && window.commChangeMap.TYONA);
   await page.evaluate(() => { window.showCommChange = true; });
   await page.evaluate(t => map.setView([t.lat, t.lng], 11), TYONA);
-  await page.evaluate(() => { state.waypoints = []; state.legs = []; state.notes = []; });
+  await page.evaluate(() => {
+    state.waypoints = [];
+    state.legs = [];
+    state.notes = [];
+    state.commChangeSuppressions = [];
+  });
 }
 
 test.describe('comm-change auto-note (#487)', () => {
@@ -910,10 +918,12 @@ test.describe('comm-change auto-note (#487)', () => {
     const out = await page.evaluate(() => ({
       waypoints: state.waypoints.map(w => w.name),
       notes: state.notes.map(n => ({ text: n.text, cc: n.cc || '' })),
+      suppressions: state.commChangeSuppressions.slice(),
       selected: state.selected,
     }));
     expect(out.waypoints).toEqual(['TYONA']);
     expect(out.notes).toEqual([]);
+    expect(out.suppressions).toEqual(['TYONA']);
     expect(out.selected).toEqual({ type: 'wp', index: 0 });
     await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ })).toBeVisible();
 
@@ -923,12 +933,78 @@ test.describe('comm-change auto-note (#487)', () => {
     await page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ }).click();
     await expect.poll(() => page.evaluate(() => ({
       selected: state.selected,
+      suppressions: state.commChangeSuppressions.slice(),
       notes: state.notes.map(n => ({ cc: n.cc || '', freqName: n.freqName || '', freq: n.freq || '' })),
     }))).toEqual({
       selected: { type: 'wp', index: 0, freqNoteIndex: 0 },
+      suppressions: [],
       notes: [{ cc: 'TYONA', freqName: 'PLUTO', freq: '118.40' }],
     });
     await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Delete freq change/ })).toBeVisible();
+  });
+
+  test('deleted frequency-change callout stays deleted after refresh', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      state.notes = [];
+      state.commChangeSuppressions = [];
+      syncLegs();
+      seedCommChangeNotes();
+      state.selected = { type: 'wp', index: 0, freqNoteIndex: 0 };
+      showInspector();
+      draw();
+    }, TYONA);
+    await page.locator('#insp-body .insp-btn').filter({ hasText: /Delete freq change/ }).click();
+    await page.waitForFunction(() => {
+      const raw = localStorage.getItem('navaid.route');
+      if (!raw) return false;
+      try {
+        const d = JSON.parse(raw);
+        return d.waypoints.length === 1 &&
+          d.notes.length === 0 &&
+          Array.isArray(d.commChangeSuppressions) &&
+          d.commChangeSuppressions.includes('TYONA');
+      } catch (e) {
+        return false;
+      }
+    });
+
+    await page.reload();
+    await page.waitForFunction(() => typeof state !== 'undefined' &&
+      Array.isArray(state.waypoints) && state.waypoints.length === 1);
+    await page.waitForFunction(() => window.commChangeMap && window.commChangeMap.TYONA &&
+      Array.isArray(window.navWP) && window.navWP.length > 0);
+    const after = await page.evaluate(() => {
+      seedCommChangeNotes();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+      return {
+        waypoints: state.waypoints.map(w => w.name),
+        notes: state.notes.map(n => ({ cc: n.cc || '', freqName: n.freqName || '' })),
+        suppressions: state.commChangeSuppressions.slice(),
+      };
+    });
+    expect(after).toEqual({
+      waypoints: ['TYONA'],
+      notes: [],
+      suppressions: ['TYONA'],
+    });
+    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ })).toBeVisible();
+
+    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ }).click();
+    await expect.poll(() => page.evaluate(() => ({
+      notes: state.notes.map(n => ({
+        cc: n.cc || '',
+        hasFreqName: !!(n.freqName || '').trim(),
+        hasFreq: !!(n.freq || '').trim(),
+      })),
+      suppressions: state.commChangeSuppressions.slice(),
+    }))).toEqual({
+      notes: [{ cc: 'TYONA', hasFreqName: true, hasFreq: true }],
+      suppressions: [],
+    });
   });
 
   test('comm-change note inspector edits frequency without a free-text call-sign field', async ({ page }) => {
