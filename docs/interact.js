@@ -44,10 +44,16 @@ function selectionForNoteHit(noteIndex) {
 }
 function selectedFreqNoteIndex() {
   const sel = state.selected;
-  if (!sel || sel.type !== 'wp' || !Number.isInteger(sel.freqNoteIndex)) return -1;
-  const note = state.notes[sel.freqNoteIndex];
-  return note && note.cc && commCalloutWaypointIndex(note) === sel.index
-    ? sel.freqNoteIndex : -1;
+  if (!sel || sel.type !== 'wp') return -1;
+  if (Number.isInteger(sel.freqNoteIndex) && sel.freqNoteIndex >= 0) {
+    const note = state.notes[sel.freqNoteIndex];
+    if (note && note.cc && commCalloutWaypointIndex(note) === sel.index) {
+      return sel.freqNoteIndex;
+    }
+  }
+  const idx = state.notes.findIndex(n => n && n.cc && commCalloutWaypointIndex(n) === sel.index);
+  if (idx >= 0) sel.freqNoteIndex = idx;
+  return idx;
 }
 function addCommChangeNoteForWaypoint(wp, ccKey) {
   if (!wp || !ccKey || !Array.isArray(state.notes)) return -1;
@@ -313,6 +319,20 @@ function deleteWaypoint(k) {
     if (typeof unsuppressCommChange === 'function') unsuppressCommChange(ccName);
   }
   syncLegs();
+}
+
+function deleteSelectedWpOrNote() {
+  if (state.selected.type === 'wp') {
+    deleteWaypoint(state.selected.index);
+    state.selected = null;
+    draw(); showInspector();
+  } else if (state.selected.type === 'note') {
+    const note = state.notes[state.selected.index];
+    if (note && note.cc && typeof suppressCommChange === 'function') suppressCommChange(note.cc);
+    state.notes.splice(state.selected.index, 1);
+    state.selected = null;
+    draw(); showInspector();
+  }
 }
 
 // Issue #418: resolve a waypoint to its nearest reference point
@@ -1070,9 +1090,44 @@ window.addEventListener('keydown', e => {
       return;
     }
   }
-  // Delete / Backspace, or D (no modifier), remove the selected feature.
-  if (e.key === 'Delete' || e.key === 'Backspace' ||
-      ((e.key === 'd' || e.key === 'D') && !e.ctrlKey && !e.metaKey && !e.altKey)) {
+  // X (no modifier): delete the freq-change callout linked to the selected waypoint.
+  if ((e.key === 'x' || e.key === 'X') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (!state.selected) return;
+    const freqNote = selectedFreqNoteIndex();
+    if (freqNote >= 0) {
+      state.notes.splice(freqNote, 1);
+      delete state.selected.freqNoteIndex;
+      draw(); showInspector();
+    }
+    return;
+  }
+  // Z (no modifier): add a freq-change callout to a comm-change waypoint.
+  if ((e.key === 'z' || e.key === 'Z') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (!state.selected || state.selected.type !== 'wp') return;
+    const wp = state.waypoints[state.selected.index];
+    if (!wp || !wp.name || !commChangeMap || !showCommChange) return;
+    const ccKey = typeof canonicalNavWaypointName === 'function'
+      ? canonicalNavWaypointName(wp.name) : wp.name.trim();
+    const cc = commChangeMap[ccKey];
+    if (!cc || !cc.commChange) return;
+    const linkedNote = state.notes.find(n => n && n.cc &&
+      (typeof canonicalNavWaypointName === 'function'
+        ? canonicalNavWaypointName(n.cc) === ccKey
+        : n.cc === ccKey));
+    if (linkedNote) return;
+    const idx = addCommChangeNoteForWaypoint(wp, ccKey);
+    if (idx >= 0) state.selected.freqNoteIndex = idx;
+    draw(); showInspector();
+    return;
+  }
+  // D (no modifier): delete the selected waypoint or note (freq callout goes with its waypoint).
+  if ((e.key === 'd' || e.key === 'D') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (!state.selected) return;
+    deleteSelectedWpOrNote();
+    return;
+  }
+  // Delete / Backspace: delete freq callout first, otherwise waypoint/note.
+  if (e.key === 'Delete' || e.key === 'Backspace') {
     if (!state.selected) return;
     const freqNote = selectedFreqNoteIndex();
     if (freqNote >= 0) {
@@ -1081,17 +1136,9 @@ window.addEventListener('keydown', e => {
       state.notes.splice(freqNote, 1);
       delete state.selected.freqNoteIndex;
       draw(); showInspector();
-    } else if (state.selected.type === 'wp') {
-      deleteWaypoint(state.selected.index);
-      state.selected = null;
-      draw(); showInspector();
-    } else if (state.selected.type === 'note') {
-      const note = state.notes[state.selected.index];
-      if (note && note.cc && typeof suppressCommChange === 'function') suppressCommChange(note.cc);
-      state.notes.splice(state.selected.index, 1);
-      state.selected = null;
-      draw(); showInspector();
+      return;
     }
+    deleteSelectedWpOrNote();
   }
 });
 
