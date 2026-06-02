@@ -384,7 +384,7 @@ branch by mistake.
 - `navaid.bearing` — map bearing in degrees (rotated-map support).
 - `navaid.theme` — `'dark'` / `'light'` for toolbar and panel chrome.
 - `navaid.yellowAlpha` — Transparency slider value.
-- `navaid.mapOpacity` — base-map opacity slider value.
+- `navaid.mapOpacity.v2` — base-map opacity slider value.
 - `navaid.wpSize` — Text-size slider value.
 - `navaid.legArrowSize` — leg-arrow size slider value.
 - `navaid.showReturn` — `'0'` / `'1'` for the return-leg overlay.

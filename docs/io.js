@@ -1651,6 +1651,7 @@ function showExportModal() {
   opSlider.type = 'range';
   opSlider.min = '10';
   opSlider.max = '100';
+  opSlider.step = '5';
   opSlider.value = Math.round(mapOpacity * 100);
   opSlider.style.cssText = 'flex:1;height:16px;accent-color:#ffd966';
   opacityRow.appendChild(opSlider);

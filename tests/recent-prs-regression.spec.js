@@ -140,6 +140,11 @@ test.describe('#252 — Print Waypoint Names + Map Opacity in export modal', () 
 
     const ranges = page.locator('.modal input[type="range"]');
     expect(await ranges.count()).toBeGreaterThanOrEqual(1);
+    const opacity = ranges.first();
+    await expect(opacity).toHaveAttribute('min', '10');
+    await expect(opacity).toHaveAttribute('max', '100');
+    await expect(opacity).toHaveAttribute('step', '5');
+    await expect(opacity).toHaveValue('80');
   });
 
   test.describe('#367 toolbar horizontal scroll', () => {
