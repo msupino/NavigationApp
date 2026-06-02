@@ -92,6 +92,26 @@ test.describe('Map legend', () => {
 });
 
 test.describe('Sliders persist to localStorage', () => {
+  test('light mode toggle writes navaid.theme and persists across reload', async ({ page }) => {
+    await boot(page);
+    const cb = page.locator('#theme-light-cb');
+    await expect(page.locator('body')).not.toHaveClass(/theme-light/);
+    await expect(cb).not.toBeChecked();
+    await expect(page.locator('label:has(#theme-light-cb)')).toContainText('Light mode');
+    await cb.click();
+    expect(await page.evaluate(() => localStorage.getItem('navaid.theme'))).toBe('light');
+    await expect(page.locator('body')).toHaveClass(/theme-light/);
+
+    await page.reload();
+    await page.waitForFunction(() => typeof state !== 'undefined');
+    await expect(page.locator('#theme-light-cb')).toBeChecked();
+    await expect(page.locator('body')).toHaveClass(/theme-light/);
+
+    await page.locator('#theme-light-cb').click();
+    expect(await page.evaluate(() => localStorage.getItem('navaid.theme'))).toBe('dark');
+    await expect(page.locator('body')).not.toHaveClass(/theme-light/);
+  });
+
   test('map opacity slider writes navaid.mapOpacity', async ({ page }) => {
     await boot(page);
     await page.locator('#map-opacity').fill('50');
@@ -195,4 +215,3 @@ test.describe('Toolbar collapse', () => {
     expect(stored === null || stored === '0').toBeTruthy();
   });
 });
-

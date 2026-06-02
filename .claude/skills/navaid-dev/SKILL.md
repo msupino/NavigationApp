@@ -382,6 +382,7 @@ branch by mistake.
 - `navaid.sec.<sectionId>` — `'0'` / `'1'` per accordion section
   (`build`, `view`, `display`, `charts`, `export`, `print`).
 - `navaid.bearing` — map bearing in degrees (rotated-map support).
+- `navaid.theme` — `'dark'` / `'light'` for toolbar and panel chrome.
 - `navaid.yellowAlpha` — Transparency slider value.
 - `navaid.mapOpacity` — base-map opacity slider value.
 - `navaid.wpSize` — Text-size slider value.
