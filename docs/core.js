@@ -139,6 +139,14 @@ NavAid.tuningDefaults = {
   hitLegLabelScalePx: { value: 34, min: 1, max: 120, step: 1, label: 'Leg label hit scale' },
   hitCumLabelMinPx: { value: 18, min: 1, max: 80, step: 1, label: 'Cum label hit min' },
   hitCumLabelScalePx: { value: 28, min: 1, max: 120, step: 1, label: 'Cum label hit scale' },
+
+  inkColor: { value: '#161412', type: 'color', label: 'Ink color (lines, kites, text strokes)' },
+  selectedColor: { value: '#ffcc33', type: 'color', label: 'Selected highlight color' },
+  kiteTextColor: { value: '#000000', type: 'color', label: 'Kite text color' },
+  legKiteHaloColor: { value: '#8e44ad', type: 'color', label: 'Leg kite halo color' },
+  airfieldFillColor: { value: '#2f6fd0', type: 'color', label: 'Airfield fill color' },
+  airfieldOutlineColor: { value: '#0a1a2a', type: 'color', label: 'Airfield outline color' },
+  navWaypointDotColor: { value: '#ffffff', type: 'color', label: 'Nav waypoint dot color' },
 };
 NavAid.tuningGroups = [
   { name: 'Route', keys: ['routeLineWidthPx', 'routeSelectedLineWidthPx'] },
@@ -153,6 +161,7 @@ NavAid.tuningGroups = [
   { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx'] },
   { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimAlpha', 'pageFrameHitPx'] },
   { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitLegPx', 'hitLegLabelMinPx', 'hitLegLabelScalePx', 'hitCumLabelMinPx', 'hitCumLabelScalePx'] },
+  { name: 'Colors', keys: ['inkColor', 'selectedColor', 'kiteTextColor', 'legKiteHaloColor', 'airfieldFillColor', 'airfieldOutlineColor', 'navWaypointDotColor'] },
 ];
 function tune(key) {
   const spec = NavAid.tuningDefaults && NavAid.tuningDefaults[key];
@@ -261,7 +270,7 @@ window.S = Object.assign({
   tbAircraft: 'Aircraft',
   tbGph: 'Gallons per hour',
   tbGphTitle: 'Fuel consumption, gallons per hour',
-  tbTaxiGal: 'Taxi/T.O. (gal)',
+  tbTaxiGal: 'Taxi and Takeoff (gal)',
   tbTaxiGalTitle: 'Startup + taxi + takeoff fuel allowance in gallons',
   fpTaxiTip: function(g) { return '+ ' + g.toFixed(1) + ' gal taxi / takeoff included in total'; },
   pageOrientation: ' page — orientation',
@@ -358,7 +367,9 @@ window.S = Object.assign({
   commChangeCallSign: 'Waypoint',
   commChangeName: 'Call sign',
   commChangeFreq: 'Frequency',
+  addFreqChange: 'Add freq change',
   deleteFreqChange: '🗑 Delete freq change (D)',
+  resetFreqLocation: '↺ Reset callout location',
   plates: 'Charts',
   runways: 'Runways',
   plateCategoryApproach: 'Approach',
@@ -380,6 +391,7 @@ window.S = Object.assign({
   tbMapOpacityTitle: 'Base map brightness',
   tbLegArrowSize: 'Leg arrow size',
   tbLegArrowSizeTitle: 'Leg info marker (heading / altitude / time) size',
+  sliderReset: 'Reset to default',
   tbLegLineWidth: 'Leg line width',
   tbLegLineWidthTitle: 'Route line thickness',
   tbDriftLineWidth: 'Drift line width',
@@ -446,6 +458,7 @@ window.S = Object.assign({
   exportShowAirfields: 'Print airfields',
   exportShowWpNames: 'Print route waypoint names',
   exportShowDrift: 'Print drift lines',
+  exportShowCumTime: 'Print cumulative time',
   exportNoPageWarn: 'No page size selected — exported image ratio may not match a print page.',
   exportLayer: 'Layer',
   exportBtn: 'Export',

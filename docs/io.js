@@ -1564,6 +1564,17 @@ function showExportModal() {
   driftLabel.appendChild(document.createTextNode(S.exportShowDrift));
   body.appendChild(driftLabel);
 
+  // Show Cumulative time checkbox (default on).
+  const cumLabel = document.createElement('label');
+  cumLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
+  const cumCb = document.createElement('input');
+  cumCb.type = 'checkbox';
+  cumCb.checked = true;
+  cumLabel.appendChild(cumCb);
+  cumLabel.appendChild(document.createTextNode(
+    S.exportShowCumTime || S.tbShowCumTime || 'Show cumulative time'));
+  body.appendChild(cumLabel);
+
   // Show Nav Waypoints checkbox.
   const navWpLabel = document.createElement('label');
   navWpLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
@@ -1637,6 +1648,7 @@ function showExportModal() {
   const origAirfields = showAirfields;
   const origWpNames = showWpNames;
   const origDrift = showDrift;
+  const origCumTime = showCumTime;
   const origMapOpacity = mapOpacity;
   const origLayer = (function () {
     for (const n in layers) if (map.hasLayer(layers[n])) return n;
@@ -1648,6 +1660,7 @@ function showExportModal() {
   showNavWP = navWpCb.checked;
   showWpNames = wpNameCb.checked;
   showDrift = driftCb.checked;
+  showCumTime = cumCb.checked;
   showAirfields = afCb.checked;
   const chosen = layerSel.value;
   if (chosen !== origLayer) {
@@ -1669,6 +1682,7 @@ function showExportModal() {
     showNavWP = origNavWP;
     showWpNames = origWpNames;
     showDrift = origDrift;
+    showCumTime = origCumTime;
     showAirfields = origAirfields;
     const cur = (function () {
       for (const n in layers) if (map.hasLayer(layers[n])) return n;
@@ -1694,6 +1708,10 @@ function showExportModal() {
   };
   driftCb.onchange = function () {
     showDrift = driftCb.checked;
+    draw();
+  };
+  cumCb.onchange = function () {
+    showCumTime = cumCb.checked;
     draw();
   };
   afCb.onchange = function () {
