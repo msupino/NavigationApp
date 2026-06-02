@@ -779,12 +779,36 @@ function appendFreqEdit(body, note, editOptions) {
   } else {
     body.appendChild(textRow(S.commChangeName || 'Call sign', commNoteName(note) || ''));
   }
-  const freqRow = inputRow(S.commChangeFreq || 'Frequency', commNoteFreq(note) || '', v => {
-    note.freq = v;
+  const freqRow = document.createElement('div');
+  freqRow.className = 'row';
+  const freqLbl = document.createElement('label');
+  freqLbl.textContent = S.commChangeFreq || 'Frequency';
+  freqRow.appendChild(freqLbl);
+  freqInput = document.createElement('input');
+  freqInput.type = 'text';
+  freqInput.value = commNoteFreq(note) || '';
+  let lastValidFreq = freqInput.value;
+  freqInput.oninput = () => {
+    note.freq = freqInput.value;
     note.freqAuto = false;
     draw();
-  });
-  freqInput = freqRow.querySelector('input');
+  };
+  freqInput.onblur = () => {
+    const v = freqInput.value.trim();
+    const valid = /^\d{3}(\.\d{1,3})?$/.test(v) && parseFloat(v) >= 118.00 && parseFloat(v) <= 136.975;
+    if (!valid) {
+      freqInput.value = lastValidFreq;
+      note.freq = lastValidFreq;
+      draw();
+    } else {
+      lastValidFreq = v;
+    }
+  };
+  freqRow.appendChild(freqInput);
+  const unit = document.createElement('span');
+  unit.className = 'freq-unit';
+  unit.textContent = 'MHz';
+  freqRow.appendChild(unit);
   body.appendChild(freqRow);
   // Reset the callout to its default tail position beside the waypoint.
   const target = typeof commCalloutTarget === 'function' ? commCalloutTarget(note) : null;

@@ -628,6 +628,7 @@ html, body {
 }
 .row select { cursor: pointer; }
 .row .val { color: #e8e8e8; font-variant-numeric: tabular-nums; }
+.row .freq-unit { color: #b9b3b3; font-size: 11px; margin-left: 4px; }
 
 .row.col {
   flex-direction: column;
