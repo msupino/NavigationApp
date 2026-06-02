@@ -154,26 +154,48 @@ test.describe('Auto-snap (applyNavSnap)', () => {
     expect(out.name).not.toBe('LLHZ');
   });
 
-  test('drag waypoint returning to snap-origin is deleted', async ({ page }) => {
+  test('drag origin can snap again after pointer leaves the origin snap radius', async ({ page }) => {
     await boot(page);
-    const wpCount = await page.evaluate(hz => {
+    const out = await page.evaluate(hz => {
       window.showAirfields = true; window.showNavWP = true;
       window.forceSnap = true;
       map.setView([hz.lat, hz.lng], 12);
       state.waypoints = [{ lat: hz.lat, lng: hz.lng, name: 'LLHZ' }];
       syncLegs(); draw();
-      const orig = { lat: hz.lat, lng: hz.lng };
+      const d = { kind: 'wp', i: 0, moved: true, origLat: hz.lat, origLng: hz.lng,
+                  originSnapArmed: false };
       const wp = state.waypoints[0];
+      const origin = L.latLng(hz.lat, hz.lng);
+      const beforeEscape = applyNavSnap(origin, wp.name || '',
+        dragOriginExclude(d, origin));
+      const op = map.latLngToContainerPoint([hz.lat, hz.lng]);
+      const far = map.containerPointToLatLng([op.x + 40, op.y]);
+      const farSnap = applyNavSnap(far, wp.name || '', dragOriginExclude(d, far));
+      wp.lat = farSnap.lat; wp.lng = farSnap.lng; wp.name = farSnap.name;
+      const backSnap = applyNavSnap(origin, wp.name || '', dragOriginExclude(d, origin));
+      wp.lat = backSnap.lat; wp.lng = backSnap.lng; wp.name = backSnap.name;
       const SNAP_DEG = 0.0002;
-      if (Math.abs(wp.lat - orig.lat) < SNAP_DEG &&
-          Math.abs(wp.lng - orig.lng) < SNAP_DEG) {
+      const snappedToSelf = Math.abs(wp.lat - d.origLat) < SNAP_DEG &&
+          Math.abs(wp.lng - d.origLng) < SNAP_DEG;
+      const snappedToOther = state.waypoints.some((w, j) => j !== d.i &&
+          Math.abs(w.lat - wp.lat) < SNAP_DEG &&
+          Math.abs(w.lng - wp.lng) < SNAP_DEG);
+      if ((snappedToSelf && !d.originSnapArmed) || snappedToOther) {
         state.waypoints.splice(0, 1);
         state.selected = null;
         syncLegs();
       }
-      return state.waypoints.length;
+      return {
+        beforeEscapeName: beforeEscape.name,
+        armed: d.originSnapArmed,
+        backName: backSnap.name,
+        count: state.waypoints.length,
+      };
     }, LLHZ);
-    expect(wpCount).toBe(0);
+    expect(out.beforeEscapeName).not.toBe('LLHZ');
+    expect(out.armed).toBe(true);
+    expect(out.backName).toBe('LLHZ');
+    expect(out.count).toBe(1);
   });
 
   test('snapExistingWaypoints skips a ref already occupied by another WP', async ({ page }) => {
