@@ -425,6 +425,31 @@ test.describe('comm-change rendering (fixture-backed)', () => {
     expect(freqText).toMatch(/Pluto West/);
   });
 
+  test('united inspector: a freq-change waypoint edits the linked callout (call sign + frequency)', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    const out = await page.evaluate(t => {
+      window.showCommChange = true;
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      state.legs = [];
+      syncLegs();
+      // Seed the callout note for this comm-change point, then select the WP.
+      if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
+      const noteCount = state.notes.filter(n => n && n.cc).length;
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+      draw();
+      const insp = document.getElementById('inspector');
+      // A frequency text input means the editor (not the read-only badge) rendered.
+      const inputs = insp.querySelectorAll('input[type="text"], input:not([type])');
+      return { noteCount, hasFreqInput: inputs.length > 0,
+               hasBadge: !!insp.querySelector('.commchange-row') };
+    }, TYONA);
+    expect(out.noteCount).toBeGreaterThan(0);   // a callout note was seeded
+    expect(out.hasBadge).toBe(true);            // freq-change row present
+    expect(out.hasFreqInput).toBe(true);        // editable, not read-only
+  });
+
   test('inspector badge resolves a Hebrew-labelled waypoint to its comm-change point', async ({ page }) => {
     // Regression: in Hebrew locale snapped waypoints store the `he` label as
     // wp.name, but commChangeMap is keyed by canonical English. The badge

@@ -857,7 +857,10 @@ document.getElementById('commchange-cb').onchange = async e => {
   // Rings draw independently of the nav-WP dot layer (issue #484) but reuse
   // its positions, so load navWP too even when that layer is off.
   if (showCommChange) await Promise.all([loadCommChange(), loadNavWaypoints()]);
-  if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
+  let changed = false;
+  if (showCommChange && typeof seedCommChangeNotes === 'function') {
+    changed = seedCommChangeNotes();
+  }
   if (!showCommChange && state.selected && state.selected.type === 'note') {
     const n = state.notes[state.selected.index];
     if (n && n.cc) {
@@ -866,6 +869,7 @@ document.getElementById('commchange-cb').onchange = async e => {
     }
   }
   draw();
+  if (state.selected && (changed || state.selected.type === 'wp')) showInspector();
 };
 const ALPHA_KEY = 'navaid.yellowAlpha';
 try {
