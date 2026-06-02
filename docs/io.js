@@ -894,106 +894,6 @@ function showFlightPlan() {
     };
   })(box);
 
-  // Resizable from any of the four corner grips. Restores the last-used size
-  // and persists it (navaid.fpSize) so the plan window stays the size the
-  // pilot picked across opens. Listeners attached to `window` only live for
-  // the duration of an active drag (removed on pointer-up), so there is
-  // nothing to tear down in flightPlanCleanup.
-  (function (el) {
-    const KEY = 'navaid.fpSize';
-    const MIN_W = 360, MIN_H = 200;
-    // The default CSS caps the box at 92vw / 84vh; an explicit size must be
-    // free to exceed those, so drop the caps once the user takes control.
-    function applySize(w, h) {
-      el.style.maxWidth = 'none';
-      el.style.maxHeight = 'none';
-      el.style.width = w + 'px';
-      el.style.height = h + 'px';
-    }
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) {
-        const s = JSON.parse(raw);
-        if (s && s.w > 0 && s.h > 0) {
-          applySize(Math.min(s.w, window.innerWidth),
-                    Math.min(s.h, window.innerHeight));
-        }
-      }
-    } catch (e) { /* storage unavailable / malformed — keep CSS default size */ }
-
-    // One corner grip. Corners that move the top/left edge (n/w) re-pin the
-    // box's left/top so the opposite edge stays put while dragging.
-    function makeGrip(corner) {
-      const grip = document.createElement('div');
-      grip.className = 'resize-handle corner-' + corner;
-      el.appendChild(grip);
-      const east = corner.indexOf('e') !== -1, west = corner.indexOf('w') !== -1;
-      const south = corner.indexOf('s') !== -1, north = corner.indexOf('n') !== -1;
-      let rx = 0, ry = 0, rw = 0, rh = 0, rl = 0, rt = 0, resizing = false;
-      function start(cx, cy) {
-        const r = el.getBoundingClientRect();
-        rx = cx; ry = cy; rw = r.width; rh = r.height; rl = r.left; rt = r.top;
-        resizing = true;
-      }
-      function move(cx, cy) {
-        if (!resizing) return;
-        const dx = cx - rx, dy = cy - ry;
-        let w = rw, h = rh, l = rl, t = rt;
-        if (east)  w = Math.max(MIN_W, rw + dx);
-        if (west)  { w = Math.max(MIN_W, rw - dx); l = rl + (rw - w); }
-        if (south) h = Math.max(MIN_H, rh + dy);
-        if (north) { h = Math.max(MIN_H, rh - dy); t = rt + (rh - h); }
-        l = Math.max(0, Math.min(window.innerWidth - w, l));
-        t = Math.max(0, Math.min(window.innerHeight - h, t));
-        applySize(w, h);
-        if (west || north) {
-          el.style.left = l + 'px';
-          el.style.top = t + 'px';
-          el.style.margin = '0';
-        }
-      }
-      function end() {
-        if (!resizing) return;
-        resizing = false;
-        const r = el.getBoundingClientRect();
-        try { localStorage.setItem(KEY, JSON.stringify({ w: r.width, h: r.height })); } catch (e) {}
-      }
-      grip.addEventListener('mousedown', e => {
-        e.preventDefault();
-        e.stopPropagation();               // don't start a title-bar drag
-        start(e.clientX, e.clientY);
-        const onMove = ev => move(ev.clientX, ev.clientY);
-        const onUp = () => { end(); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onUp);
-      });
-      grip.addEventListener('touchstart', e => {
-        if (e.touches.length !== 1) return;
-        e.preventDefault();
-        e.stopPropagation();
-        start(e.touches[0].clientX, e.touches[0].clientY);
-        const onMove = ev => {
-          if (ev.touches.length !== 1) return;
-          ev.preventDefault();
-          move(ev.touches[0].clientX, ev.touches[0].clientY);
-        };
-        const onEnd = () => {
-          end();
-          window.removeEventListener('touchmove', onMove, { passive: false });
-          window.removeEventListener('touchend', onEnd);
-          window.removeEventListener('touchcancel', onEnd);
-        };
-        window.addEventListener('touchmove', onMove, { passive: false });
-        window.addEventListener('touchend', onEnd);
-        window.addEventListener('touchcancel', onEnd);
-      }, { passive: false });
-    }
-    makeGrip('se');
-    makeGrip('sw');
-    makeGrip('ne');
-    makeGrip('nw');
-  })(box);
-
   loadAircraft();
   const fpAircraft = document.createElement('div');
   fpAircraft.className = 'fp-aircraft';
@@ -1415,9 +1315,58 @@ function showFlightPlan() {
     scrollArea.appendChild(rtable);
   }
 
+  function flightPlanCsv() {
+    const visibleHeaders = Array.from(table.querySelectorAll('thead th'))
+      .map(th => th.textContent || '')
+      .filter(h => h.trim() !== '');
+    const columnCount = visibleHeaders.length;
+    const csvCell = value => {
+      const s = String(value == null ? '' : value).replace(/\r?\n|\r/g, ' ').trim();
+      return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const rowValues = row => {
+      const values = [];
+      for (const cell of row.children) {
+        if (cell.classList && cell.classList.contains('fp-del')) continue;
+        const span = Math.max(1, cell.colSpan || 1);
+        const input = cell.querySelector('input');
+        const value = input ? input.value : cell.textContent;
+        values.push(value);
+        for (let i = 1; i < span && values.length < columnCount; i++) values.push('');
+        if (values.length >= columnCount) break;
+      }
+      while (values.length < columnCount) values.push('');
+      return values.slice(0, columnCount);
+    };
+    const addTable = (rows, section, planTable) => {
+      rows.push([section]);
+      rows.push(visibleHeaders);
+      planTable.querySelectorAll('tbody tr, tfoot tr').forEach(row => {
+        rows.push(rowValues(row));
+      });
+    };
+    const rows = [];
+    const tables = Array.from(scrollArea.querySelectorAll('.flight-table'));
+    tables.forEach((planTable, idx) => {
+      if (idx > 0) rows.push([]);
+      addTable(rows, idx === 0 ? S.flightPlan : S.fpReturn, planTable);
+    });
+    return rows.map(row => row.map(csvCell).join(',')).join('\r\n') + '\r\n';
+  }
+
+  function exportFlightPlanCsv() {
+    const blob = new Blob(['\ufeff', flightPlanCsv()], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'flight-plan-' + fileStamp() + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
   const printBtn = document.createElement('button');
+  printBtn.type = 'button';
   printBtn.textContent = S.fpPrint;
   printBtn.onclick = () => {
     const cleanup = () => {
@@ -1430,6 +1379,12 @@ function showFlightPlan() {
     setTimeout(cleanup, 4000);           // belt-and-braces for Safari
   };
   btns.appendChild(printBtn);
+  const csvBtn = document.createElement('button');
+  csvBtn.type = 'button';
+  csvBtn.textContent = S.fpCsv || 'CSV';
+  csvBtn.title = S.fpCsvTitle || 'Export this flight plan as CSV';
+  csvBtn.onclick = exportFlightPlanCsv;
+  btns.appendChild(csvBtn);
   box.appendChild(btns);
   addModalCloseX(box, closeFlightPlan);
 
