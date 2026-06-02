@@ -65,7 +65,7 @@ window.S = {
   tbAircraft: 'כלי טיס',
   tbGph: 'גלונים לשעה',
   tbGphTitle: 'צריכת דלק, גלונים לשעה',
-  tbTaxiGal: 'הסעה/המראה (גאל)',
+  tbTaxiGal: 'הסעה והמראה (גאל)',
   tbTaxiGalTitle: 'דלק הפעלה / נסיעה / המראה בגלונים',
   fpTaxiTip: function(g) { return '+ ' + g.toFixed(1) + ' גאל הפעלה / המראה כלולים בסה"כ'; },
   pageOrientation: ' עמוד — כיוון',
