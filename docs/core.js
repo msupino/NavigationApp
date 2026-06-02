@@ -270,7 +270,7 @@ window.S = Object.assign({
   tbAircraft: 'Aircraft',
   tbGph: 'Gallons per hour',
   tbGphTitle: 'Fuel consumption, gallons per hour',
-  tbTaxiGal: 'Taxi/T.O. (gal)',
+  tbTaxiGal: 'Taxi and Takeoff (gal)',
   tbTaxiGalTitle: 'Startup + taxi + takeoff fuel allowance in gallons',
   fpTaxiTip: function(g) { return '+ ' + g.toFixed(1) + ' gal taxi / takeoff included in total'; },
   pageOrientation: ' page — orientation',
