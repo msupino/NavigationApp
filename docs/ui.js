@@ -858,6 +858,26 @@ function updateSliderVal(el, val) {
   const span = document.getElementById(el.id + '-val');
   if (span) span.textContent = val;
 }
+// Small ↻ button next to a Display slider that restores its HTML-default
+// value. Re-fires the slider's own `input` handler so the var, the
+// localStorage write, the value label and the redraw all run as if the
+// user had dragged it back — no per-slider reset wiring needed.
+function addSliderReset(el) {
+  if (!el || !el.parentElement) return;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'slider-reset';
+  btn.textContent = '↻';
+  btn.title = S.sliderReset || 'Reset to default';
+  btn.setAttribute('aria-label', btn.title);
+  btn.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    el.value = el.defaultValue;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  el.parentElement.appendChild(btn);
+}
 
 const YELLOW_EL = document.getElementById('yellow-alpha');
 YELLOW_EL.min = '0'; YELLOW_EL.max = '100'; YELLOW_EL.step = '5';
@@ -969,6 +989,9 @@ DRIFTLINEWIDTH_EL.oninput = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
+// Per-slider reset buttons for the Display section sliders.
+['yellow-alpha', 'map-opacity', 'wp-size', 'leg-arrow-size', 'leg-line-width', 'drift-line-width']
+  .forEach(id => addSliderReset(document.getElementById(id)));
 // magVar is hardcoded at -5 (5°E) in core.js; the input was removed.
 
 document.getElementById('page-a3').onclick = () => setPage('A3');
@@ -1147,7 +1170,13 @@ document.getElementById('insp-close').onclick = () => {
 // source defaults. Open with ?tune=1.
 function tuningPanelEnabled() {
   const params = new URLSearchParams(location.search);
-  return params.has('tune') || params.get('dev') === 'tune' || location.hash === '#tune';
+  // `?tune` / `?tune=1` enables; `?tune=0` (or false/no/off) explicitly
+  // disables — a bare presence check wrongly treated tune=0 as "on".
+  if (params.has('tune')) {
+    const v = (params.get('tune') || '').trim().toLowerCase();
+    return !(v === '0' || v === 'false' || v === 'no' || v === 'off');
+  }
+  return params.get('dev') === 'tune' || location.hash === '#tune';
 }
 
 function formatTuneValue(spec, value) {
