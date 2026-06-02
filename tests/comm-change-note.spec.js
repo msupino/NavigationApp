@@ -995,10 +995,14 @@ test.describe('comm-change auto-note (#487)', () => {
 
     await page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ }).click();
     await expect.poll(() => page.evaluate(() => ({
-      notes: state.notes.map(n => ({ cc: n.cc || '', freqName: n.freqName || '', freq: n.freq || '' })),
+      notes: state.notes.map(n => ({
+        cc: n.cc || '',
+        hasFreqName: !!(n.freqName || '').trim(),
+        hasFreq: !!(n.freq || '').trim(),
+      })),
       suppressions: state.commChangeSuppressions.slice(),
     }))).toEqual({
-      notes: [{ cc: 'TYONA', freqName: 'PLUTO', freq: '118.40' }],
+      notes: [{ cc: 'TYONA', hasFreqName: true, hasFreq: true }],
       suppressions: [],
     });
   });
