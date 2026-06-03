@@ -2789,14 +2789,19 @@ function renderFreqTable(freqSection) {
       renderFreqTable(freqSection);
       afterFreqTableEdit();
     }
+    // pointerdown handles pointer activation; click handles keyboard. Suppress
+    // the click that trails a pointerdown so the reset doesn't fire twice.
+    let resetPointerHandled = false;
     reset.onpointerdown = e => {
       if (reset.disabled) return;
       e.preventDefault();
       e.stopPropagation();
+      resetPointerHandled = true;
       resetTableFreq();
     };
     reset.onclick = e => {
       e.preventDefault();
+      if (resetPointerHandled) { resetPointerHandled = false; return; }
       if (!reset.disabled) resetTableFreq();
     };
     actions.appendChild(reset);
