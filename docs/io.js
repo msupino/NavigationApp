@@ -1140,7 +1140,7 @@ function showFlightPlan() {
       if (retRefresh) retRefresh();
     });
     altInputs[i] = altCell.querySelector('.plan-num');
-    altInputs[i].placeholder = altitudeUnknownLabel();
+    altInputs[i].placeholder = legAltitudePlaceholder(leg, 'inboundAltitude');
     tr.appendChild(altCell);
     const timeCell = planCell('');
     timeCells[i] = timeCell;
@@ -1332,7 +1332,7 @@ function showFlightPlan() {
         retRefresh();
       });
       rAltInputs[i] = altCell.querySelector('.plan-num');
-      rAltInputs[i].placeholder = altitudeUnknownLabel();
+      rAltInputs[i].placeholder = legAltitudePlaceholder(leg, 'outboundAltitude');
       tr.appendChild(altCell);
       const timeCell = planCell('');
       rTimeCells[i] = timeCell;

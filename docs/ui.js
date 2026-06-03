@@ -655,7 +655,12 @@ document.getElementById('reverse').onclick = () => {
       cumLabelRet: flipLabel(cumRetOld, d.cumLabelRet),
       ...(l._legAltitudeAuto ? { _legAltitudeAuto: 1 } : {}),
       ...(l._legAltitudeKey ? { _legAltitudeKey: l._legAltitudeKey } : {}),
-      ...(l._legAltitudeOneWay ? { _legAltitudeOneWay: 1 } : {}),
+      ...(l._legAltitudeOutboundBlocked || l._legAltitudeOneWay
+        ? { _legAltitudeInboundBlocked: 1 } : {}),
+      ...(l._legAltitudeInboundBlocked ? {
+        _legAltitudeOutboundBlocked: 1,
+        _legAltitudeOneWay: 1,
+      } : {}),
     };
   });
   applyLegAltitudesToRoute();

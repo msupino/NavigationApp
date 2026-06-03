@@ -46,8 +46,12 @@ async function clickRoute(page, from, to) {
         outboundAltitude: state.legs[0].outboundAltitude,
         inboundUnknown: Number.isNaN(state.legs[0].inboundAltitude),
         outboundUnknown: Number.isNaN(state.legs[0].outboundAltitude),
-        inboundDisplay: formatAltitudeValue(state.legs[0].inboundAltitude),
-        outboundDisplay: formatAltitudeValue(state.legs[0].outboundAltitude),
+        inboundDisplay: formatAltitudeValue(
+          state.legs[0].inboundAltitude, state.legs[0], 'inboundAltitude'),
+        outboundDisplay: formatAltitudeValue(
+          state.legs[0].outboundAltitude, state.legs[0], 'outboundAltitude'),
+        inboundBlocked: state.legs[0]._legAltitudeInboundBlocked === 1,
+        outboundBlocked: state.legs[0]._legAltitudeOutboundBlocked === 1,
         auto: state.legs[0]._legAltitudeAuto === 1,
       },
     };
@@ -117,11 +121,21 @@ test.describe('leg-altitude map wiring', () => {
     expect(result.leg).toMatchObject({
       inboundAltitude: 3000,
       outboundUnknown: true,
+      outboundDisplay: 'Blocked',
+      outboundBlocked: true,
       auto: true,
     });
     const oneWay = await page.evaluate(() =>
-      state.legs[0]._legAltitudeOneWay === 1 && legAllowsReturn(0) === false);
+      state.legs[0]._legAltitudeOutboundBlocked === 1 && legAllowsReturn(0) === false);
     expect(oneWay).toBe(true);
+    await page.evaluate(() => {
+      state.selected = { type: 'leg', index: 0 };
+      showInspector();
+    });
+    const inspectorAltitudeInputs = page.locator('#insp-body input[type="number"]');
+    await expect(inspectorAltitudeInputs.nth(1)).toHaveValue('3000');
+    await expect(inspectorAltitudeInputs.nth(2)).toHaveValue('');
+    await expect(inspectorAltitudeInputs.nth(2)).toHaveAttribute('placeholder', 'Blocked');
   });
 
   test('ANATA to HNINA uses the charted 5000 / 4500 altitude pair', async ({ page }) => {
@@ -247,7 +261,7 @@ test.describe('leg-altitude map wiring', () => {
     });
   });
 
-  test('blocked reverse of one-way leg-altitude entry is not auto-filled', async ({ page }) => {
+  test('blocked reverse of one-way leg-altitude entry shows blocked current direction', async ({ page }) => {
     await boot(page);
 
     const result = await clickRoute(page, 'SDTYM', 'EIRON');
@@ -255,14 +269,25 @@ test.describe('leg-altitude map wiring', () => {
     expect(result.names).toEqual(['SDTYM', 'EIRON']);
     expect(result.leg).toMatchObject({
       inboundUnknown: true,
-      outboundUnknown: true,
+      inboundDisplay: 'Blocked',
+      inboundBlocked: true,
+      outboundAltitude: 3000,
+      outboundDisplay: '3000',
       auto: true,
     });
-    const key = await page.evaluate(() => state.legs[0]._legAltitudeKey || '');
-    expect(key).toBe('');
+    const returnAllowed = await page.evaluate(() => legAllowsReturn(0) === true);
+    expect(returnAllowed).toBe(true);
+    await page.evaluate(() => {
+      state.selected = { type: 'leg', index: 0 };
+      showInspector();
+    });
+    const inspectorAltitudeInputs = page.locator('#insp-body input[type="number"]');
+    await expect(inspectorAltitudeInputs.nth(1)).toHaveValue('');
+    await expect(inspectorAltitudeInputs.nth(1)).toHaveAttribute('placeholder', 'Blocked');
+    await expect(inspectorAltitudeInputs.nth(2)).toHaveValue('3000');
   });
 
-  test('reversing a one-way leg-altitude entry clears the blocked auto altitude', async ({ page }) => {
+  test('reversing a one-way leg-altitude entry marks the new current direction blocked', async ({ page }) => {
     await boot(page);
     await clickRoute(page, 'EIRON', 'SDTYM');
 
@@ -272,17 +297,27 @@ test.describe('leg-altitude map wiring', () => {
         names: state.waypoints.map(w => w.name),
         inboundUnknown: Number.isNaN(state.legs[0].inboundAltitude),
         outboundUnknown: Number.isNaN(state.legs[0].outboundAltitude),
+        inboundDisplay: formatAltitudeValue(
+          state.legs[0].inboundAltitude, state.legs[0], 'inboundAltitude'),
+        outboundDisplay: formatAltitudeValue(
+          state.legs[0].outboundAltitude, state.legs[0], 'outboundAltitude'),
         key: state.legs[0]._legAltitudeKey || '',
-        oneWay: state.legs[0]._legAltitudeOneWay === 1,
+        inboundBlocked: state.legs[0]._legAltitudeInboundBlocked === 1,
+        outboundBlocked: state.legs[0]._legAltitudeOutboundBlocked === 1,
+        returnAllowed: legAllowsReturn(0) === true,
       };
     });
 
     expect(reversed).toEqual({
       names: ['SDTYM', 'EIRON'],
       inboundUnknown: true,
-      outboundUnknown: true,
-      key: '',
-      oneWay: false,
+      outboundUnknown: false,
+      inboundDisplay: 'Blocked',
+      outboundDisplay: '3000',
+      key: 'EIRON-SDTYM',
+      inboundBlocked: true,
+      outboundBlocked: false,
+      returnAllowed: true,
     });
   });
 

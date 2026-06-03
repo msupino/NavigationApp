@@ -443,13 +443,13 @@ function showInspector() {
       leg.inboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'inboundAltitude', leg.inboundAltitude, oldVal);
       draw();
-    }, { allowUnknown: true, placeholder: altitudeUnknownLabel() }));
+    }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'inboundAltitude') }));
     body.appendChild(numberRow(S.outboundAlt, leg.outboundAltitude, v => {
       const oldVal = leg.outboundAltitude;
       leg.outboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'outboundAltitude', leg.outboundAltitude, oldVal);
       draw();
-    }, { allowUnknown: true, placeholder: altitudeUnknownLabel() }));
+    }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'outboundAltitude') }));
     const reset = document.createElement('button');
     reset.className = 'insp-btn';
     // Fallback to a glyph if the locale strings haven't been loaded yet —

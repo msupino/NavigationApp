@@ -688,7 +688,23 @@ function sameAltitudeValue(a, b) {
 function altitudeUnknownLabel() {
   return S.altitudeUnknown || S.altPairsUnknown || 'Unknown';
 }
-function formatAltitudeValue(v) {
+function altitudeBlockedLabel() {
+  return S.altitudeBlocked || S.altPairsBlocked || 'Blocked';
+}
+function legAltitudeIsBlocked(leg, key) {
+  if (!leg) return false;
+  if (key === 'inboundAltitude') return Boolean(leg._legAltitudeInboundBlocked);
+  if (key === 'outboundAltitude') {
+    return Boolean(leg._legAltitudeOutboundBlocked) ||
+      (Boolean(leg._legAltitudeOneWay) && !leg._legAltitudeInboundBlocked);
+  }
+  return false;
+}
+function legAltitudePlaceholder(leg, key) {
+  return legAltitudeIsBlocked(leg, key) ? altitudeBlockedLabel() : altitudeUnknownLabel();
+}
+function formatAltitudeValue(v, leg, key) {
+  if (legAltitudeIsBlocked(leg, key)) return altitudeBlockedLabel();
   return Number.isFinite(v) ? String(v) : altitudeUnknownLabel();
 }
 function altitudeInputValue(v) {
@@ -892,26 +908,27 @@ function legAltitudeForLeg(i) {
   const from = legAltitudePointAtWaypoint(state.waypoints[i]);
   const to = legAltitudePointAtWaypoint(state.waypoints[i + 1]);
   if (!from || !to || from === to) return null;
+  const resolveSegment = (segment, reverse) => {
+    const inboundAltitude = reverse ? segment.outboundAltitude : segment.inboundAltitude;
+    const outboundAltitude = reverse ? segment.inboundAltitude : segment.outboundAltitude;
+    const inboundBlocked = inboundAltitude === null && segment.oneWay === true;
+    const outboundBlocked = outboundAltitude === null && segment.oneWay === true;
+    if (!Number.isFinite(inboundAltitude) && !Number.isFinite(outboundAltitude) &&
+        !inboundBlocked && !outboundBlocked) {
+      return null;
+    }
+    return {
+      key: legAltitudeKey(segment.from, segment.to),
+      inboundAltitude,
+      outboundAltitude,
+      inboundBlocked,
+      outboundBlocked,
+    };
+  };
   const direct = legAltitudeMap[legAltitudeKey(from, to)];
-  if (direct) {
-    if (!Number.isFinite(direct.inboundAltitude)) return null;
-    return {
-      key: legAltitudeKey(from, to),
-      inboundAltitude: direct.inboundAltitude,
-      outboundAltitude: direct.outboundAltitude,
-      oneWay: direct.outboundAltitude === null,
-    };
-  }
+  if (direct) return resolveSegment(direct, false);
   const reverse = legAltitudeMap[legAltitudeKey(to, from)];
-  if (reverse) {
-    if (!Number.isFinite(reverse.outboundAltitude)) return null;
-    return {
-      key: legAltitudeKey(to, from),
-      inboundAltitude: reverse.outboundAltitude,
-      outboundAltitude: reverse.inboundAltitude,
-      oneWay: reverse.inboundAltitude === null,
-    };
-  }
+  if (reverse) return resolveSegment(reverse, true);
   return null;
 }
 function applyLegAltitudeToLeg(i) {
@@ -919,28 +936,44 @@ function applyLegAltitudeToLeg(i) {
   if (!leg || !leg._legAltitudeAuto) return false;
   if (legAltitudeMap === null) return false;
   const match = legAltitudeForLeg(i);
-  if (match && Number.isFinite(match.inboundAltitude)) {
+  if (match) {
+    const nextInbound = Number.isFinite(match.inboundAltitude)
+      ? match.inboundAltitude
+      : NaN;
     const nextOutbound = Number.isFinite(match.outboundAltitude)
       ? match.outboundAltitude
       : NaN;
-    const changed = !sameAltitudeValue(leg.inboundAltitude, match.inboundAltitude) ||
+    const changed = !sameAltitudeValue(leg.inboundAltitude, nextInbound) ||
       !sameAltitudeValue(leg.outboundAltitude, nextOutbound) ||
       leg._legAltitudeKey !== match.key ||
-      Boolean(leg._legAltitudeOneWay) !== Boolean(match.oneWay);
-    leg.inboundAltitude = match.inboundAltitude;
+      Boolean(leg._legAltitudeInboundBlocked) !== Boolean(match.inboundBlocked) ||
+      Boolean(leg._legAltitudeOutboundBlocked) !== Boolean(match.outboundBlocked) ||
+      Boolean(leg._legAltitudeOneWay) !== Boolean(match.outboundBlocked);
+    leg.inboundAltitude = nextInbound;
     leg.outboundAltitude = nextOutbound;
     leg._legAltitudeKey = match.key;
-    if (match.oneWay) leg._legAltitudeOneWay = 1;
-    else delete leg._legAltitudeOneWay;
+    if (match.inboundBlocked) leg._legAltitudeInboundBlocked = 1;
+    else delete leg._legAltitudeInboundBlocked;
+    if (match.outboundBlocked) {
+      leg._legAltitudeOutboundBlocked = 1;
+      leg._legAltitudeOneWay = 1;
+    } else {
+      delete leg._legAltitudeOutboundBlocked;
+      delete leg._legAltitudeOneWay;
+    }
     return changed;
   }
   const changed = !sameAltitudeValue(leg.inboundAltitude, NaN) ||
     !sameAltitudeValue(leg.outboundAltitude, NaN) ||
     Boolean(leg._legAltitudeKey) ||
+    Boolean(leg._legAltitudeInboundBlocked) ||
+    Boolean(leg._legAltitudeOutboundBlocked) ||
     Boolean(leg._legAltitudeOneWay);
   leg.inboundAltitude = NaN;
   leg.outboundAltitude = NaN;
   delete leg._legAltitudeKey;
+  delete leg._legAltitudeInboundBlocked;
+  delete leg._legAltitudeOutboundBlocked;
   delete leg._legAltitudeOneWay;
   return changed;
 }
@@ -956,9 +989,11 @@ function markLegAltitudeManual(i) {
   if (!leg) return;
   delete leg._legAltitudeAuto;
   delete leg._legAltitudeKey;
+  delete leg._legAltitudeInboundBlocked;
+  delete leg._legAltitudeOutboundBlocked;
   delete leg._legAltitudeOneWay;
 }
 function legAllowsReturn(i) {
   const leg = state.legs[i];
-  return !(leg && leg._legAltitudeOneWay);
+  return !(leg && (leg._legAltitudeOutboundBlocked || leg._legAltitudeOneWay));
 }
