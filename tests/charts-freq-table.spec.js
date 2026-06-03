@@ -140,17 +140,17 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(desheInputs.nth(0)).toHaveAttribute('type', 'number');
     await expect(desheInputs.nth(0)).toHaveValue('3000');
     await expect(desheInputs.nth(1)).toHaveValue('2500');
-    await expect(desheRow).toContainText('reviewed');
+    await expect(desheRow).toContainText('Two way');
     const eironRow = page.locator('.charts-alt-table tbody tr', { hasText: 'EIRON ↔ SDTYM' });
     await expect(eironRow.locator('.charts-alt-input').nth(0)).toHaveValue('3000');
     await expect(eironRow.locator('.charts-alt-input').nth(1))
       .toHaveAttribute('placeholder', 'Blocked');
-    await expect(eironRow).toContainText('candidate · one-way');
+    await expect(eironRow).toContainText('One way');
     const derorRow = page.locator('.charts-alt-table tbody tr', { hasText: 'DEROR ↔ SHARO' });
     const derorInputs = derorRow.locator('.charts-alt-input');
     await expect(derorInputs.nth(0)).toHaveAttribute('placeholder', 'Unknown');
     await expect(derorInputs.nth(1)).toHaveAttribute('placeholder', 'Unknown');
-    await expect(derorRow).toContainText('unknown');
+    await expect(derorRow).toContainText('Unknown');
 
     const search = page.locator('.charts-alt-search');
     await expect(search).toHaveAttribute('placeholder', 'Search altitude pairs');

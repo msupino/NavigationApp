@@ -3003,10 +3003,13 @@ function formatAltitudePairValue(segment, key) {
 }
 
 function altitudePairStatus(segment) {
-  const parts = [];
-  if (segment.status) parts.push(segment.status);
-  if (segment.oneWay === true) parts.push(S.altPairsOneWay || 'one-way');
-  return parts.join(' · ');
+  if (!segment) return '';
+  if (segment.inboundAltitude === null && segment.outboundAltitude === null) {
+    return S.altPairsUnknown || 'Unknown';
+  }
+  return segment.oneWay === true
+    ? (S.altPairsOneWay || 'One way')
+    : (S.altPairsTwoWay || 'Two way');
 }
 
 function altitudePairCellPlaceholder(segment, key) {

@@ -194,6 +194,7 @@ window.S = {
   altitudeUnknown: 'Unknown',
   altPairsUnknown: 'Unknown',
   altPairsOneWay: 'חד-כיווני',
+  altPairsTwoWay: 'דו-כיווני',
   altPairsGoTo: function(from, to) { return 'עבור אל ' + from + ' ↔ ' + to; },
   altPairsLocationMissing: 'נקודות הזוג לא נמצאו',
   addFreqChange: 'הוסף שינוי תדר (Z)',
