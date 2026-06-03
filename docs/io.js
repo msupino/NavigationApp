@@ -2998,7 +2998,7 @@ function formatAltitudePairValue(segment, key) {
   if (!segment) return '';
   const v = segment[key];
   if (v === null && segment.oneWay === true) return S.altPairsBlocked || 'Blocked';
-  if (v === null) return S.altPairsUnknown || 'Unkn';
+  if (v === null) return S.altPairsUnknown || 'Unknown';
   return Number.isFinite(v) ? String(v) : '';
 }
 
@@ -3013,7 +3013,7 @@ function altitudePairCellPlaceholder(segment, key) {
   if (!segment || segment[key] !== null) return '';
   return segment.oneWay === true
     ? (S.altPairsBlocked || 'Blocked')
-    : (S.altPairsUnknown || 'Unkn');
+    : (S.altPairsUnknown || 'Unknown');
 }
 
 function updateAltitudePairRowState(tr, segment, statusCell, inputs) {

@@ -295,8 +295,8 @@ test.describe('leg-altitude map wiring', () => {
     expect(result.leg).toMatchObject({
       inboundUnknown: true,
       outboundUnknown: true,
-      inboundDisplay: 'Unkn',
-      outboundDisplay: 'Unkn',
+      inboundDisplay: 'Unknown',
+      outboundDisplay: 'Unknown',
       auto: true,
     });
 
@@ -306,9 +306,9 @@ test.describe('leg-altitude map wiring', () => {
     });
     const inspectorAltitudeInputs = page.locator('#insp-body input[type="number"]');
     await expect(inspectorAltitudeInputs.nth(1)).toHaveValue('');
-    await expect(inspectorAltitudeInputs.nth(1)).toHaveAttribute('placeholder', 'Unkn');
+    await expect(inspectorAltitudeInputs.nth(1)).toHaveAttribute('placeholder', 'Unknown');
     await expect(inspectorAltitudeInputs.nth(2)).toHaveValue('');
-    await expect(inspectorAltitudeInputs.nth(2)).toHaveAttribute('placeholder', 'Unkn');
+    await expect(inspectorAltitudeInputs.nth(2)).toHaveAttribute('placeholder', 'Unknown');
 
     await page.locator('#plan').click();
     const modal = page.locator('.modal-back.flight-plan');
@@ -321,6 +321,6 @@ test.describe('leg-altitude map wiring', () => {
       .nth(6)
       .locator('input');
     await expect(firstForwardAlt).toHaveValue('');
-    await expect(firstForwardAlt).toHaveAttribute('placeholder', 'Unkn');
+    await expect(firstForwardAlt).toHaveAttribute('placeholder', 'Unknown');
   });
 });

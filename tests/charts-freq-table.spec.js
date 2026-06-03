@@ -148,8 +148,8 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(eironRow).toContainText('candidate · one-way');
     const derorRow = page.locator('.charts-alt-table tbody tr', { hasText: 'DEROR ↔ SHARO' });
     const derorInputs = derorRow.locator('.charts-alt-input');
-    await expect(derorInputs.nth(0)).toHaveAttribute('placeholder', 'Unkn');
-    await expect(derorInputs.nth(1)).toHaveAttribute('placeholder', 'Unkn');
+    await expect(derorInputs.nth(0)).toHaveAttribute('placeholder', 'Unknown');
+    await expect(derorInputs.nth(1)).toHaveAttribute('placeholder', 'Unknown');
     await expect(derorRow).toContainText('unknown');
 
     const search = page.locator('.charts-alt-search');

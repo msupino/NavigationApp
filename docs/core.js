@@ -396,8 +396,8 @@ window.S = Object.assign({
   altPairsStatus: 'Status',
   altPairsDistance: 'NM',
   altPairsBlocked: 'Blocked',
-  altitudeUnknown: 'Unkn',
-  altPairsUnknown: 'Unkn',
+  altitudeUnknown: 'Unknown',
+  altPairsUnknown: 'Unknown',
   altPairsOneWay: 'one-way',
   altPairsGoTo: function(from, to) { return 'Go to ' + from + ' ↔ ' + to; },
   altPairsLocationMissing: 'Pair endpoints not found',
@@ -686,7 +686,7 @@ function sameAltitudeValue(a, b) {
   return a === b || (Number.isNaN(a) && Number.isNaN(b));
 }
 function altitudeUnknownLabel() {
-  return S.altitudeUnknown || S.altPairsUnknown || 'Unkn';
+  return S.altitudeUnknown || S.altPairsUnknown || 'Unknown';
 }
 function formatAltitudeValue(v) {
   return Number.isFinite(v) ? String(v) : altitudeUnknownLabel();
