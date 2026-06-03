@@ -524,6 +524,27 @@ function commFormatFreq(raw) {
   if (/^\d{3}\.\d$/.test(s)) return s + '0';
   return s;
 }
+const COMM_FREQ_INPUT_MIN = '118';
+const COMM_FREQ_INPUT_MAX = '136.975';
+const COMM_FREQ_INPUT_STEP = '0.005';
+function commNormalizeFreqInput(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  if (!/^\d{3}(?:\.\d{1,3})?$/.test(s)) return null;
+  const n = Number(s);
+  if (!Number.isFinite(n) || n < Number(COMM_FREQ_INPUT_MIN) ||
+      n > Number(COMM_FREQ_INPUT_MAX)) return null;
+  return commFormatFreq(s);
+}
+function commConfigureFreqInput(input) {
+  if (!input) return input;
+  input.type = 'number';
+  input.inputMode = 'decimal';
+  input.min = COMM_FREQ_INPUT_MIN;
+  input.max = COMM_FREQ_INPUT_MAX;
+  input.step = COMM_FREQ_INPUT_STEP;
+  return input;
+}
 function commUseHebrewLabels() {
   const lang = (typeof window !== 'undefined' && window.__navLang) ||
     (typeof document !== 'undefined' && document.documentElement &&
@@ -551,11 +572,96 @@ function commCallSignOptionMatches(opt, raw) {
   return commCallSignOptionNames(opt)
     .some(v => v.toLocaleLowerCase() === needle);
 }
+const COMM_FREQ_OVERRIDES_KEY = 'navaid.commFreqOverrides';
+function commCallSignIdKey(id) {
+  return String(id || '').trim().toUpperCase();
+}
+function commReadFreqOverrides() {
+  try {
+    const raw = localStorage.getItem(COMM_FREQ_OVERRIDES_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const out = {};
+    for (const [id, freq] of Object.entries(parsed)) {
+      const key = commCallSignIdKey(id);
+      const val = commFormatFreq(freq);
+      if (key && val) out[key] = val;
+    }
+    return out;
+  } catch (e) {
+    return {};
+  }
+}
+function commWriteFreqOverrides(overrides) {
+  try {
+    const clean = {};
+    for (const [id, freq] of Object.entries(overrides || {})) {
+      const key = commCallSignIdKey(id);
+      const val = commFormatFreq(freq);
+      if (key && val) clean[key] = val;
+    }
+    if (Object.keys(clean).length) {
+      localStorage.setItem(COMM_FREQ_OVERRIDES_KEY, JSON.stringify(clean));
+    } else {
+      localStorage.removeItem(COMM_FREQ_OVERRIDES_KEY);
+    }
+  } catch (e) {}
+}
+function commCatalogCallSignRow(id) {
+  const key = commCallSignIdKey(id);
+  const catalog = (typeof commChangeCallSigns === 'object' && commChangeCallSigns) || {};
+  return catalog[key] || catalog[id] || null;
+}
 function commCallSignDefaultFreq(row) {
   if (!row || typeof row !== 'object') return '';
   if (typeof row.primary === 'string' && row.primary.trim()) return commFormatFreq(row.primary);
   if (typeof row.freq === 'string' && row.freq.trim()) return commFormatFreq(row.freq);
   return '';
+}
+function commCallSignTemplateFreq(id, row) {
+  return commCallSignDefaultFreq(row || commCatalogCallSignRow(id));
+}
+function commCallSignOverrideFreq(id) {
+  const key = commCallSignIdKey(id);
+  return key ? (commReadFreqOverrides()[key] || '') : '';
+}
+function commCallSignEffectiveFreq(id, row) {
+  return commCallSignOverrideFreq(id) || commCallSignTemplateFreq(id, row);
+}
+function commSetCallSignFreqOverride(id, freq) {
+  const key = commCallSignIdKey(id);
+  if (!key) return '';
+  const formatted = commFormatFreq(freq);
+  const template = commCallSignTemplateFreq(key);
+  const overrides = commReadFreqOverrides();
+  if (!formatted || (template && formatted === template)) delete overrides[key];
+  else overrides[key] = formatted;
+  commWriteFreqOverrides(overrides);
+  return formatted || template || '';
+}
+function commApplyCallSignFreqOverride(id, freq) {
+  const key = commCallSignIdKey(id);
+  const effective = commSetCallSignFreqOverride(key, freq);
+  if (!key || !effective || typeof state === 'undefined' || !Array.isArray(state.notes)) {
+    return effective;
+  }
+  for (const n of state.notes) {
+    const opt = commNoteCallSignOption(n);
+    if (opt && commCallSignIdKey(opt.id) === key) {
+      n.freq = effective;
+      n.freqAuto = false;
+    }
+  }
+  return effective;
+}
+function commResetCallSignFreqOverride(id) {
+  const template = commCallSignTemplateFreq(id);
+  return template ? commApplyCallSignFreqOverride(id, template) : '';
+}
+function commResetAllCallSignFreqOverrides() {
+  const catalog = (typeof commChangeCallSigns === 'object' && commChangeCallSigns) || {};
+  for (const id of Object.keys(catalog)) commResetCallSignFreqOverride(id);
+  commWriteFreqOverrides({});
 }
 function commCallSignOptions(name) {
   const key = canonicalNavWaypointName(name);
@@ -570,7 +676,9 @@ function commCallSignOptions(name) {
     out.push({
       id,
       label: commCallSignLabel(id, row),
-      freq: commCallSignDefaultFreq(row),
+      freq: commCallSignEffectiveFreq(id, row),
+      templateFreq: commCallSignTemplateFreq(id, row),
+      overrideFreq: commCallSignOverrideFreq(id),
       row,
     });
   }
@@ -632,7 +740,9 @@ function commAllCallSignOptions() {
   return Object.keys(catalog).map(id => ({
     id,
     label: commCallSignLabel(id, catalog[id]),
-    freq: commCallSignDefaultFreq(catalog[id]),
+    freq: commCallSignEffectiveFreq(id, catalog[id]),
+    templateFreq: commCallSignTemplateFreq(id, catalog[id]),
+    overrideFreq: commCallSignOverrideFreq(id),
     row: catalog[id],
   }));
 }
@@ -817,8 +927,12 @@ function commNoteName(n) {
   return '';
 }
 function commNoteFreq(n) {
-  if (n && typeof n.freq === 'string' && n.freq.trim()) return commFormatFreq(n.freq);
   const opt = commNoteCallSignOption(n);
+  if (opt && opt.overrideFreq &&
+      (n.freqAuto === true || !n.freq || commFormatFreq(n.freq) === (opt.templateFreq || ''))) {
+    return opt.overrideFreq;
+  }
+  if (n && typeof n.freq === 'string' && n.freq.trim()) return commFormatFreq(n.freq);
   if (opt && opt.freq) return opt.freq;
   if (n && n.cc) return commCalloutDefaults(n.cc).freq;
   return '';

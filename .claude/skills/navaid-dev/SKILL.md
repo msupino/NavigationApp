@@ -237,7 +237,11 @@ branch by mistake.
   shows a call-sign dropdown; choosing an option copies its default primary
   frequency into the editable frequency field. Call-sign names use the
   catalog's `he` translation when the app is in Hebrew, falling back to
-  `label`. Defaults are route-aware: `commRouteCalloutDefaultsMap()` treats
+  `label`. Editing a call-sign frequency stores a local override in
+  `navaid.commFreqOverrides` keyed by call-sign id; new and auto-generated
+  callouts for that call sign use the override, and the inspector shows the
+  catalog template frequency when the active value differs. Defaults are
+  route-aware: `commRouteCalloutDefaultsMap()` treats
   each comm-change waypoint's call-sign list as a boundary in an ATC graph,
   then picks the sector after crossing based on route order, neighboring
   comm-change boundaries, and the actual route points before/after each
@@ -313,12 +317,18 @@ branch by mistake.
   dots; the 5-letter ID label appears at zoom ≥ 10. Captured in PNG
   export. Source: IAA CVFR chart page 113 (2025 edition) — see the
   Notes / pending section.
-- **Charts modal (BYOP plates):** `🗺️ Charts` toolbar button opens
-  `showChartsModal()` (`io.js`), which lists every airfield in
+- **Charts / frequency modals:** `📡 Freq table` opens
+  `showFreqTableModal()` (`io.js`) with the comm-change call-sign
+  frequencies referenced by `commChangeMap[*].callSigns` (not unused
+  catalog rows). The search box filters by call sign, code, Hebrew
+  label, and visible frequency values. Edits are local
+  `navaid.commFreqOverrides` values and the row / all restore controls
+  revert those entries back to the shipped template frequencies. `🗺️ Charts` opens
+  `showChartsModal()`, which lists every airfield in
   `airfields.json` that carries a non-empty `plates[]` as a
   collapsible section (header `ICAO — English name`, plate chips
-  grouped by `plateCategory()`). **Airfields are listed alphabetically
-  by ICAO** — `renderList()` sorts `withPlates` via
+  grouped by `plateCategory()`).
+  **Airfields are listed alphabetically by ICAO** — `renderList()` sorts `withPlates` via
   `a.name.localeCompare(b.name)` before rendering, so JSON row order
   never leaks into the UI. Keep that sort when touching the list.
 - **A3 / A4 page frame:** `pageFrameRect()` returns the rectangle in
@@ -402,6 +412,9 @@ branch by mistake.
   overlay and callouts (default on). Replaces the legacy
   `navaid.showCommChange` key, which is intentionally ignored so older
   stored-off users get the default-on behavior.
+- `navaid.commFreqOverrides` — object keyed by comm call-sign id
+  (`HERZLIYA`, `PLUTO_WEST`, etc.) containing locally edited frequency
+  defaults. Empty / template-matching edits remove the key.
 - `navaid.showWpNames` — `'0'` / `'1'` for waypoint-name display.
 - `navaid.wpNameAngle` — waypoint-name rotation (`0`/`90`/`180`/`270`).
 - `navaid.aircraft` — last-used aircraft profile JSON (fuel planner).

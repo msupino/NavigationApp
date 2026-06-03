@@ -518,7 +518,7 @@ test.describe('comm-change auto-note (#487)', () => {
       .toEqual({ type: 'wp', index: 0, freqNoteIndex: 0 });
     await expect(page.locator('#insp-title')).toHaveValue('TYONA');
     await expect(page.locator('#insp-body select')).toHaveCount(1);
-    await expect(page.locator('#insp-body input[type="text"]')).toHaveValue('118.40');
+    await expect(page.locator('#insp-body .freq-input')).toHaveValue('118.40');
   });
 
   test('comm-change lightning rotation turns the bend vector around the arrow axis', async ({ page }) => {
@@ -782,7 +782,7 @@ test.describe('comm-change auto-note (#487)', () => {
       const target = proj(t);
       const r = mapEl.getBoundingClientRect();
       return {
-        beforeHasFreqInput: !!document.querySelector('#insp-body input[type="text"]'),
+        beforeHasFreqInput: !!document.querySelector('#insp-body .freq-input'),
         start: { x: r.left + start.x, y: r.top + start.y },
         target: { x: r.left + target.x, y: r.top + target.y },
       };
@@ -798,8 +798,8 @@ test.describe('comm-change auto-note (#487)', () => {
       selected: state.selected,
       waypoint: state.waypoints[0].name,
       noteCount: state.notes.filter(n => n && n.cc).length,
-      hasFreqInput: !!document.querySelector('#insp-body input[type="text"]'),
-      freq: document.querySelector('#insp-body input[type="text"]')?.value || '',
+      hasFreqInput: !!document.querySelector('#insp-body .freq-input'),
+      freq: document.querySelector('#insp-body .freq-input')?.value || '',
     }))).toEqual({
       selected: { type: 'wp', index: 0 },
       waypoint: 'TYONA',
@@ -1017,7 +1017,7 @@ test.describe('comm-change auto-note (#487)', () => {
       state.selected = { type: 'note', index: 0 };
       showInspector();
     }, TYONA);
-    const fields = page.locator('#insp-body input[type="text"]');
+    const fields = page.locator('#insp-body .freq-input');
     await expect(fields).toHaveCount(1);
     await fields.nth(0).fill('119.20');
     const out = await page.evaluate(() => ({
@@ -1028,6 +1028,60 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.freqName).toBe('PLUTO');
     expect(out.freq).toBe('119.20');
     expect(out.lines).toEqual(['PLUTO', '119.20']);
+  });
+
+  test('comm-change frequency input normalizes valid values and shows MHz', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      syncLegs();
+      seedCommChangeNotes();
+      state.selected = { type: 'note', index: 0 };
+      showInspector();
+    }, TYONA);
+    const field = page.locator('#insp-body .freq-input').first();
+    await expect(page.locator('#insp-body .freq-unit')).toHaveText('MHz');
+    await expect(field).toHaveAttribute('type', 'number');
+    await expect(field).toHaveAttribute('min', '118');
+    await expect(field).toHaveAttribute('max', '136.975');
+    await expect(field).toHaveAttribute('step', '0.005');
+    await field.fill('118.4');
+    await field.blur();
+    await expect(field).toHaveValue('118.40');
+    await expect(field).toHaveAttribute('aria-invalid', 'false');
+    await expect(page.locator('#insp-body input.invalid')).toHaveCount(0);
+    expect(await page.evaluate(() => state.notes[0].freq)).toBe('118.40');
+
+    await field.fill('136.975');
+    await field.blur();
+    await expect(field).toHaveValue('136.975');
+    expect(await page.evaluate(() => state.notes[0].freq)).toBe('136.975');
+  });
+
+  test('comm-change frequency input rejects out-of-range values without storing them', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      syncLegs();
+      seedCommChangeNotes();
+      state.selected = { type: 'note', index: 0 };
+      showInspector();
+    }, TYONA);
+    const field = page.locator('#insp-body .freq-input').first();
+    await field.fill('137.00');
+    await expect(field).toHaveAttribute('aria-invalid', 'true');
+    expect(await page.evaluate(() => state.notes[0].freq)).toBe('118.40');
+    await field.blur();
+    await expect(field).toHaveValue('118.40');
+    await expect(field).toHaveAttribute('aria-invalid', 'false');
+    const out = await page.evaluate(() => ({
+      freq: state.notes[0].freq,
+      stored: localStorage.getItem('navaid.route') || '',
+    }));
+    expect(out.freq).toBe('118.40');
+    expect(out.stored).not.toContain('137.00');
   });
 
   test('comm-change note inspector selects a call sign default while frequency stays editable', async ({ page }) => {
@@ -1049,7 +1103,7 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(values.nth(0)).toHaveText('TYONA');
     await expect(sel).toHaveValue('PLUTO');
     await sel.selectOption('HAGAV');
-    const fields = page.locator('#insp-body input[type="text"]');
+    const fields = page.locator('#insp-body .freq-input');
     await expect(fields).toHaveCount(1);
     await expect(fields.nth(0)).toHaveValue('132.70');
     await fields.nth(0).fill('133.45');
@@ -1063,6 +1117,86 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.lines).toEqual(['HAGAV', '133.45']);
   });
 
+  test('edited call-sign frequency persists locally and applies to matching callouts', async ({ page }) => {
+    const fixture = JSON.parse(JSON.stringify(FIXTURE));
+    fixture.points = [
+      { name: 'TYONA', commChange: true, callSigns: ['PLUTO', 'HAGAV'], to: 'Pluto 118.40' },
+      { name: 'DEROR', commChange: true, callSigns: ['HERZLIYA'] },
+      { name: 'DAROM', commChange: true, callSigns: ['HERZLIYA'] },
+    ];
+    await installCommChangeFixture(page, fixture);
+    await boot(page);
+    await page.evaluate(({ deror, darom }) => {
+      localStorage.removeItem('navaid.commFreqOverrides');
+      state.waypoints = [deror, darom];
+      state.notes = [];
+      syncLegs();
+      seedCommChangeNotes();
+      state.selected = { type: 'note', index: 0 };
+      showInspector();
+    }, { deror: DEROR, darom: DAROM });
+
+    const fields = page.locator('#insp-body .freq-input');
+    const resetFreq = page.locator('#insp-body .commchange-freq-reset');
+    await expect(fields).toHaveCount(1);
+    await expect(fields.first()).toHaveValue('122.20');
+    await expect(resetFreq).toHaveText('↻');
+    await expect(resetFreq).toBeDisabled();
+    await expect(resetFreq).toHaveAttribute('title', 'Reset frequency to template');
+    await expect(page.locator('#insp-body .commchange-template')).toBeHidden();
+
+    await fields.first().fill('125.60');
+    await expect(resetFreq).toBeEnabled();
+    await expect(page.locator('#insp-body .commchange-template')).toBeVisible();
+    await expect(page.locator('#insp-body .commchange-template label')).toHaveText('Template');
+    await expect(page.locator('#insp-body .commchange-template .val')).toHaveText('122.20');
+
+    const edited = await page.evaluate(() => ({
+      overrides: JSON.parse(localStorage.getItem('navaid.commFreqOverrides') || '{}'),
+      notes: state.notes.map(n => ({
+        cc: n.cc,
+        freqName: n.freqName,
+        freq: n.freq,
+        lines: noteLines(n),
+      })),
+    }));
+    expect(edited.overrides).toEqual({ HERZLIYA: '125.60' });
+    expect(edited.notes).toEqual([
+      { cc: 'DEROR', freqName: 'HERZLIYA', freq: '125.60', lines: ['HERZLIYA', '125.60'] },
+      { cc: 'DAROM', freqName: 'HERZLIYA', freq: '125.60', lines: ['HERZLIYA', '125.60'] },
+    ]);
+
+    await resetFreq.click();
+    await expect(fields.first()).toHaveValue('122.20');
+    await expect(resetFreq).toBeDisabled();
+    await expect(page.locator('#insp-body .commchange-template')).toBeHidden();
+    const reverted = await page.evaluate(() => ({
+      rawOverrides: localStorage.getItem('navaid.commFreqOverrides'),
+      notes: state.notes.map(n => ({
+        cc: n.cc,
+        freqName: n.freqName,
+        freq: n.freq,
+        lines: noteLines(n),
+      })),
+    }));
+    expect(reverted.rawOverrides).toBeNull();
+    expect(reverted.notes).toEqual([
+      { cc: 'DEROR', freqName: 'HERZLIYA', freq: '122.20', lines: ['HERZLIYA', '122.20'] },
+      { cc: 'DAROM', freqName: 'HERZLIYA', freq: '122.20', lines: ['HERZLIYA', '122.20'] },
+    ]);
+
+    await fields.first().fill('125.60');
+    const reseeded = await page.evaluate(() => {
+      state.notes = [];
+      seedCommChangeNotes();
+      return state.notes.map(n => ({ cc: n.cc, freqName: n.freqName, freq: n.freq }));
+    });
+    expect(reseeded).toEqual([
+      { cc: 'DEROR', freqName: 'HERZLIYA', freq: '125.60' },
+      { cc: 'DAROM', freqName: 'HERZLIYA', freq: '125.60' },
+    ]);
+  });
+
   test('Hebrew locale shows translated call-sign names in the callout and inspector', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page, 'he');
@@ -1073,7 +1207,7 @@ test.describe('comm-change auto-note (#487)', () => {
       state.selected = { type: 'note', index: 0 };
       showInspector();
     }, TYONA);
-    const fields = page.locator('#insp-body input[type="text"]');
+    const fields = page.locator('#insp-body .freq-input');
     const labels = page.locator('#insp-body .row label');
     const values = page.locator('#insp-body .row .val');
     const sel = page.locator('#insp-body select').first();
@@ -1122,7 +1256,7 @@ test.describe('comm-change auto-note (#487)', () => {
         lines: noteLines(state.notes[0]),
       };
     }, TYONA);
-    const fields = page.locator('#insp-body input[type="text"]');
+    const fields = page.locator('#insp-body .freq-input');
     const sel = page.locator('#insp-body select').first();
     await expect(fields).toHaveCount(1);
     await expect(fields.nth(0)).toHaveValue('132.70');
@@ -1158,7 +1292,7 @@ test.describe('comm-change auto-note (#487)', () => {
     }, TYONA);
     expect(out.split).toEqual({ name: 'Haifa', freq: '133.00' });
     expect(out.lines).toEqual(['PLUTO', '118.40']);
-    const fields = page.locator('#insp-body input[type="text"]');
+    const fields = page.locator('#insp-body .freq-input');
     await expect(fields).toHaveCount(1);
     await expect(fields.nth(0)).toHaveValue('118.40');
   });
