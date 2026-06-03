@@ -374,7 +374,7 @@ function resetWpName(idx) {
   if (!wp) return;
   const snapped = findSnappedReference(wp);
   wp.name = snapped ? snapped.name : '';
-  applyProposedAltitudesToRoute();
+  applyLegAltitudesToRoute();
   persist();
   draw();
   showInspector();
@@ -391,7 +391,7 @@ function resetAllWpNames() {
     const snapped = findSnappedReference(wp);
     wp.name = snapped ? snapped.name : '';
   }
-  applyProposedAltitudesToRoute();
+  applyLegAltitudesToRoute();
   persist();
   draw();
   showInspector();
@@ -1130,7 +1130,7 @@ function endMouseDrag() {
     // Seed its note now that the position is committed, then repaint.
     let changed = false;
     if (drag.kind === 'wp' && drag.moved) {
-      changed = applyProposedAltitudesToRoute();
+      changed = applyLegAltitudesToRoute();
       if (typeof seedCommChangeNotes === 'function' && seedCommChangeNotes()) changed = true;
     }
     if (changed) { draw(); showInspector(); }
@@ -1440,7 +1440,7 @@ function endTouch() {
     // #487: seed a comm-change note if a touch waypoint-drag landed on one.
     let changed = false;
     if (touchDrag.kind === 'wp' && touchDrag.moved) {
-      changed = applyProposedAltitudesToRoute();
+      changed = applyLegAltitudesToRoute();
       if (typeof seedCommChangeNotes === 'function' && seedCommChangeNotes()) changed = true;
     }
     if (changed) { draw(); showInspector(); }

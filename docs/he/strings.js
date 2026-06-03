@@ -6,7 +6,7 @@ window.S = {
   airfieldsUrl: 'airfields.json?v=3',
   airfieldLabelField: 'he',
   commChangeUrl: 'comm-change.json?v=1',
-  proposedAltitudesUrl: 'leg-altitude.json?v=1',
+  legAltitudeUrl: 'leg-altitude.json?v=1',
 
   // --- Waypoint terminology -------------------------------------------
   // Mirrors the English cluster in core.js — keep the noun phrase

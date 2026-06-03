@@ -212,7 +212,7 @@ window.S = Object.assign({
   airfieldsUrl: 'airfields.json?v=3',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   commChangeUrl: 'comm-change.json?v=1', // CVFR comm-change reporting points (issue #399)
-  proposedAltitudesUrl: 'leg-altitude.json?v=1', // CVFR green-route leg altitude table
+  legAltitudeUrl: 'leg-altitude.json?v=1', // CVFR green-route leg altitude table
 
   // --- English UI copy (default locale) -------------------------------
   // Sentence case: capitalize the first word and proper nouns / acronyms
@@ -553,12 +553,12 @@ var commChangeMap = null;   // null = not loaded yet (or last fetch failed —
                             // `{commChange, callSigns, from, to, note, ...}`.
 var commChangeCallSigns = {}; // Frequency catalog keyed by call-sign id
                               // (loaded from comm-change.json `callSigns`).
-var proposedAltitudeMap = null; // null = not loaded yet (or last fetch failed —
+var legAltitudeMap = null; // null = not loaded yet (or last fetch failed —
                                 // retry on next call); {} or populated =
                                 // leg-altitude.json segments keyed as
                                 // `FROM-TO` for automatic fresh-leg altitudes.
-var proposedAltitudePointIds = null; // Set of endpoint ids from the same file.
-var proposedAltitudeDataset = null;  // Raw validated dataset for Charts copy/view.
+var legAltitudePointIds = null; // Set of endpoint ids from the same file.
+var legAltitudeDataset = null;  // Raw validated dataset for Charts copy/view.
 var showDrift = true;       // 10-degree drift reference lines
 var showWpNames = true;     // draw waypoint names (off = empty circle)
 var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
@@ -638,7 +638,7 @@ const newLeg = () => {
     outboundAltitude: NaN,
     flightSpeed: 90,
     outboundSpeed: 90,
-    _proposedAltitudeAuto: 1,           // fresh leg; safe to fill from dataset
+    _legAltitudeAuto: 1,           // fresh leg; safe to fill from dataset
     inLabel: d.inLabel,                  // marker offset: along leg, perpendicular
     outLabel: d.outLabel,
     cumLabel: d.cumLabel,                // inbound cumulative-time kite offset (B-endpoint relative)
@@ -843,16 +843,16 @@ function syncLegs() {
   while (state.legs.length < need) {
     const i = state.legs.length;
     state.legs.push(newLeg());
-    applyProposedAltitudeToLeg(i);
+    applyLegAltitudeToLeg(i);
   }
   while (state.legs.length > need) state.legs.pop();
-  applyProposedAltitudesToRoute();
+  applyLegAltitudesToRoute();
 }
 
-function proposedAltitudeKey(from, to) {
+function legAltitudeKey(from, to) {
   return String(from || '').trim() + '-' + String(to || '').trim();
 }
-function proposedAltitudeKnownPointName(name) {
+function legAltitudeKnownPointName(name) {
   const raw = String(name || '').trim();
   const candidates = [];
   const push = v => {
@@ -867,17 +867,17 @@ function proposedAltitudeKnownPointName(name) {
       if (raw && (af.name === raw || af.en === raw || af.he === raw)) push(af.name);
     }
   }
-  if (!proposedAltitudePointIds) return candidates[0] || '';
-  return candidates.find(v => proposedAltitudePointIds.has(v)) || '';
+  if (!legAltitudePointIds) return candidates[0] || '';
+  return candidates.find(v => legAltitudePointIds.has(v)) || '';
 }
-function proposedAltitudePointAtWaypoint(wp) {
+function legAltitudePointAtWaypoint(wp) {
   if (!wp) return '';
-  const named = proposedAltitudeKnownPointName(wp.name);
+  const named = legAltitudeKnownPointName(wp.name);
   if (named) return named;
-  if (!proposedAltitudePointIds) return '';
+  if (!legAltitudePointIds) return '';
   let best = null;
   const visit = ref => {
-    if (!ref || !proposedAltitudePointIds.has(ref.name)) return;
+    if (!ref || !legAltitudePointIds.has(ref.name)) return;
     const d = geo(wp, ref).dist;
     if (d <= 0.05 && (!best || d < best.dist)) best = { name: ref.name, dist: d };
   };
@@ -885,26 +885,26 @@ function proposedAltitudePointAtWaypoint(wp) {
   if (Array.isArray(airfields)) airfields.forEach(visit);
   return best ? best.name : '';
 }
-function proposedAltitudeForLeg(i) {
-  if (!proposedAltitudeMap || !state.waypoints[i] || !state.waypoints[i + 1]) return null;
-  const from = proposedAltitudePointAtWaypoint(state.waypoints[i]);
-  const to = proposedAltitudePointAtWaypoint(state.waypoints[i + 1]);
+function legAltitudeForLeg(i) {
+  if (!legAltitudeMap || !state.waypoints[i] || !state.waypoints[i + 1]) return null;
+  const from = legAltitudePointAtWaypoint(state.waypoints[i]);
+  const to = legAltitudePointAtWaypoint(state.waypoints[i + 1]);
   if (!from || !to || from === to) return null;
-  const direct = proposedAltitudeMap[proposedAltitudeKey(from, to)];
+  const direct = legAltitudeMap[legAltitudeKey(from, to)];
   if (direct) {
     if (!Number.isFinite(direct.inboundAltitude)) return null;
     return {
-      key: proposedAltitudeKey(from, to),
+      key: legAltitudeKey(from, to),
       inboundAltitude: direct.inboundAltitude,
       outboundAltitude: direct.outboundAltitude,
       oneWay: direct.outboundAltitude === null,
     };
   }
-  const reverse = proposedAltitudeMap[proposedAltitudeKey(to, from)];
+  const reverse = legAltitudeMap[legAltitudeKey(to, from)];
   if (reverse) {
     if (!Number.isFinite(reverse.outboundAltitude)) return null;
     return {
-      key: proposedAltitudeKey(to, from),
+      key: legAltitudeKey(to, from),
       inboundAltitude: reverse.outboundAltitude,
       outboundAltitude: reverse.inboundAltitude,
       oneWay: reverse.inboundAltitude === null,
@@ -912,51 +912,51 @@ function proposedAltitudeForLeg(i) {
   }
   return null;
 }
-function applyProposedAltitudeToLeg(i) {
+function applyLegAltitudeToLeg(i) {
   const leg = state.legs[i];
-  if (!leg || !leg._proposedAltitudeAuto) return false;
-  if (proposedAltitudeMap === null) return false;
-  const match = proposedAltitudeForLeg(i);
+  if (!leg || !leg._legAltitudeAuto) return false;
+  if (legAltitudeMap === null) return false;
+  const match = legAltitudeForLeg(i);
   if (match && Number.isFinite(match.inboundAltitude)) {
     const nextOutbound = Number.isFinite(match.outboundAltitude)
       ? match.outboundAltitude
       : NaN;
     const changed = !sameAltitudeValue(leg.inboundAltitude, match.inboundAltitude) ||
       !sameAltitudeValue(leg.outboundAltitude, nextOutbound) ||
-      leg._proposedAltitudeKey !== match.key ||
-      Boolean(leg._proposedOneWay) !== Boolean(match.oneWay);
+      leg._legAltitudeKey !== match.key ||
+      Boolean(leg._legAltitudeOneWay) !== Boolean(match.oneWay);
     leg.inboundAltitude = match.inboundAltitude;
     leg.outboundAltitude = nextOutbound;
-    leg._proposedAltitudeKey = match.key;
-    if (match.oneWay) leg._proposedOneWay = 1;
-    else delete leg._proposedOneWay;
+    leg._legAltitudeKey = match.key;
+    if (match.oneWay) leg._legAltitudeOneWay = 1;
+    else delete leg._legAltitudeOneWay;
     return changed;
   }
   const changed = !sameAltitudeValue(leg.inboundAltitude, NaN) ||
     !sameAltitudeValue(leg.outboundAltitude, NaN) ||
-    Boolean(leg._proposedAltitudeKey) ||
-    Boolean(leg._proposedOneWay);
+    Boolean(leg._legAltitudeKey) ||
+    Boolean(leg._legAltitudeOneWay);
   leg.inboundAltitude = NaN;
   leg.outboundAltitude = NaN;
-  delete leg._proposedAltitudeKey;
-  delete leg._proposedOneWay;
+  delete leg._legAltitudeKey;
+  delete leg._legAltitudeOneWay;
   return changed;
 }
-function applyProposedAltitudesToRoute() {
+function applyLegAltitudesToRoute() {
   let changed = false;
   for (let i = 0; i < state.legs.length; i++) {
-    if (applyProposedAltitudeToLeg(i)) changed = true;
+    if (applyLegAltitudeToLeg(i)) changed = true;
   }
   return changed;
 }
 function markLegAltitudeManual(i) {
   const leg = state.legs[i];
   if (!leg) return;
-  delete leg._proposedAltitudeAuto;
-  delete leg._proposedAltitudeKey;
-  delete leg._proposedOneWay;
+  delete leg._legAltitudeAuto;
+  delete leg._legAltitudeKey;
+  delete leg._legAltitudeOneWay;
 }
 function legAllowsReturn(i) {
   const leg = state.legs[i];
-  return !(leg && leg._proposedOneWay);
+  return !(leg && leg._legAltitudeOneWay);
 }

@@ -442,7 +442,7 @@ function validateCommChange(d) {
 // Strict schema for docs/leg-altitude.json — a reference table of
 // green CVFR route-segment altitude pairs. Unknown metadata keys are allowed;
 // the map behavior only needs from/to + integer or null altitude fields.
-function validateProposedAltitudes(d) {
+function validateLegAltitudes(d) {
   const errs = [];
   if (!d || typeof d !== 'object' || Array.isArray(d)) {
     return 'root: expected object, got ' + _vKind(d);
@@ -2952,10 +2952,10 @@ function showFreqTableModal() {
 }
 
 function altitudePairSegmentsForChart() {
-  if (proposedAltitudeDataset && Array.isArray(proposedAltitudeDataset.segments)) {
-    return proposedAltitudeDataset.segments.slice();
+  if (legAltitudeDataset && Array.isArray(legAltitudeDataset.segments)) {
+    return legAltitudeDataset.segments.slice();
   }
-  return Object.values(proposedAltitudeMap || {}).map(segment => ({
+  return Object.values(legAltitudeMap || {}).map(segment => ({
     from: segment.from,
     to: segment.to,
     inboundAltitude: segment.inboundAltitude,
@@ -2966,8 +2966,8 @@ function altitudePairSegmentsForChart() {
 }
 
 function altitudePairsDataForCopy() {
-  const data = (proposedAltitudeDataset && Array.isArray(proposedAltitudeDataset.segments))
-    ? proposedAltitudeDataset
+  const data = (legAltitudeDataset && Array.isArray(legAltitudeDataset.segments))
+    ? legAltitudeDataset
     : { version: 1, segments: altitudePairSegmentsForChart() };
   for (const segment of data.segments || []) normalizeAltitudePairSegment(segment);
   return data;
@@ -3220,7 +3220,7 @@ function showAltitudePairsModal() {
   const loading = document.createElement('p');
   loading.textContent = '…';
   altSection.appendChild(loading);
-  loadProposedAltitudes().then(() => renderAltitudePairsTable(altSection));
+  loadLegAltitudes().then(() => renderAltitudePairsTable(altSection));
   scrollArea.appendChild(body);
   modal.box.appendChild(scrollArea);
   modal.show();

@@ -129,25 +129,25 @@ async function loadCommChange() {
 // inboundAltitude,outboundAltitude,status,oneWay,...}] }. The app uses it only as
 // a reference table for freshly-created legs; saved/imported route JSON stays
 // authoritative for existing leg values.
-async function loadProposedAltitudes() {
-  if (proposedAltitudeMap !== null) return proposedAltitudeMap;
+async function loadLegAltitudes() {
+  if (legAltitudeMap !== null) return legAltitudeMap;
   try {
-    const res = await fetch(S.proposedAltitudesUrl);
+    const res = await fetch(S.legAltitudeUrl);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const d = await res.json();
-    const verr = validateProposedAltitudes(d);
+    const verr = validateLegAltitudes(d);
     if (verr) {
       console.warn('leg-altitude schema error:', verr);
-      proposedAltitudeMap = {};
-      proposedAltitudePointIds = new Set();
-      proposedAltitudeDataset = null;
-      return proposedAltitudeMap;
+      legAltitudeMap = {};
+      legAltitudePointIds = new Set();
+      legAltitudeDataset = null;
+      return legAltitudeMap;
     }
     const m = {};
     const ids = new Set();
     for (const segment of d.segments) {
       if (!segment || !segment.from || !segment.to) continue;
-      m[proposedAltitudeKey(segment.from, segment.to)] = {
+      m[legAltitudeKey(segment.from, segment.to)] = {
         from: segment.from,
         to: segment.to,
         inboundAltitude: segment.inboundAltitude,
@@ -158,17 +158,17 @@ async function loadProposedAltitudes() {
       ids.add(segment.from);
       ids.add(segment.to);
     }
-    proposedAltitudeMap = m;
-    proposedAltitudePointIds = ids;
-    proposedAltitudeDataset = d;
-    applyProposedAltitudesToRoute();
-    return proposedAltitudeMap;
+    legAltitudeMap = m;
+    legAltitudePointIds = ids;
+    legAltitudeDataset = d;
+    applyLegAltitudesToRoute();
+    return legAltitudeMap;
   } catch (e) {
     console.warn('Failed to load leg-altitude dataset:', e);
-    proposedAltitudeMap = {};             // graceful degrade — defaults remain
-    proposedAltitudePointIds = new Set();
-    proposedAltitudeDataset = null;
-    return proposedAltitudeMap;
+    legAltitudeMap = {};             // graceful degrade — defaults remain
+    legAltitudePointIds = new Set();
+    legAltitudeDataset = null;
+    return legAltitudeMap;
   }
 }
 

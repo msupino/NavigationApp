@@ -18,9 +18,9 @@ async function boot(page) {
     typeof state !== 'undefined' &&
     typeof loadNavWaypoints === 'function' &&
     typeof loadAirfields === 'function' &&
-    typeof loadProposedAltitudes === 'function');
+    typeof loadLegAltitudes === 'function');
   await page.evaluate(async () => {
-    await Promise.all([loadNavWaypoints(), loadAirfields(), loadProposedAltitudes()]);
+    await Promise.all([loadNavWaypoints(), loadAirfields(), loadLegAltitudes()]);
   });
 }
 
@@ -48,7 +48,7 @@ async function clickRoute(page, from, to) {
         outboundUnknown: Number.isNaN(state.legs[0].outboundAltitude),
         inboundDisplay: formatAltitudeValue(state.legs[0].inboundAltitude),
         outboundDisplay: formatAltitudeValue(state.legs[0].outboundAltitude),
-        auto: state.legs[0]._proposedAltitudeAuto === 1,
+        auto: state.legs[0]._legAltitudeAuto === 1,
       },
     };
   }, { from, to });
@@ -93,11 +93,11 @@ test.describe('leg-altitude map wiring', () => {
       const oldOut = l.outboundAltitude;
       l.outboundAltitude = 2345;
       propagateAlt(0, 'outboundAltitude', l.outboundAltitude, oldOut);
-      applyProposedAltitudesToRoute();
+      applyLegAltitudesToRoute();
       return {
         inboundAltitude: l.inboundAltitude,
         outboundAltitude: l.outboundAltitude,
-        auto: l._proposedAltitudeAuto === 1,
+        auto: l._legAltitudeAuto === 1,
       };
     });
 
@@ -120,7 +120,7 @@ test.describe('leg-altitude map wiring', () => {
       auto: true,
     });
     const oneWay = await page.evaluate(() =>
-      state.legs[0]._proposedOneWay === 1 && legAllowsReturn(0) === false);
+      state.legs[0]._legAltitudeOneWay === 1 && legAllowsReturn(0) === false);
     expect(oneWay).toBe(true);
   });
 
@@ -136,7 +136,7 @@ test.describe('leg-altitude map wiring', () => {
       auto: true,
     });
     const allowsReturn = await page.evaluate(() =>
-      !state.legs[0]._proposedOneWay && legAllowsReturn(0) === true);
+      !state.legs[0]._legAltitudeOneWay && legAllowsReturn(0) === true);
     expect(allowsReturn).toBe(true);
   });
 
@@ -152,7 +152,7 @@ test.describe('leg-altitude map wiring', () => {
       auto: true,
     });
     const allowsReturn = await page.evaluate(() =>
-      !state.legs[0]._proposedOneWay && legAllowsReturn(0) === true);
+      !state.legs[0]._legAltitudeOneWay && legAllowsReturn(0) === true);
     expect(allowsReturn).toBe(true);
   });
 
@@ -258,7 +258,7 @@ test.describe('leg-altitude map wiring', () => {
       outboundUnknown: true,
       auto: true,
     });
-    const key = await page.evaluate(() => state.legs[0]._proposedAltitudeKey || '');
+    const key = await page.evaluate(() => state.legs[0]._legAltitudeKey || '');
     expect(key).toBe('');
   });
 
@@ -272,8 +272,8 @@ test.describe('leg-altitude map wiring', () => {
         names: state.waypoints.map(w => w.name),
         inboundUnknown: Number.isNaN(state.legs[0].inboundAltitude),
         outboundUnknown: Number.isNaN(state.legs[0].outboundAltitude),
-        key: state.legs[0]._proposedAltitudeKey || '',
-        oneWay: state.legs[0]._proposedOneWay === 1,
+        key: state.legs[0]._legAltitudeKey || '',
+        oneWay: state.legs[0]._legAltitudeOneWay === 1,
       };
     });
 

@@ -445,7 +445,7 @@ function findNavWpToken(token) {
 async function buildRouteFromQuery(raw) {
   if (navWP === null) await loadNavWaypoints();
   if (airfields === null) await loadAirfields();
-  if (proposedAltitudeMap === null) await loadProposedAltitudes();
+  if (legAltitudeMap === null) await loadLegAltitudes();
   const tokens = raw.split(/\s+/).filter(Boolean);
   if (tokens.length < 2) return false;
   const resolved = [];
@@ -653,12 +653,12 @@ document.getElementById('reverse').onclick = () => {
       outLabel: flipLabel(outOld, d.outLabel),
       cumLabel: flipLabel(cumOld, d.cumLabel),
       cumLabelRet: flipLabel(cumRetOld, d.cumLabelRet),
-      ...(l._proposedAltitudeAuto ? { _proposedAltitudeAuto: 1 } : {}),
-      ...(l._proposedAltitudeKey ? { _proposedAltitudeKey: l._proposedAltitudeKey } : {}),
-      ...(l._proposedOneWay ? { _proposedOneWay: 1 } : {}),
+      ...(l._legAltitudeAuto ? { _legAltitudeAuto: 1 } : {}),
+      ...(l._legAltitudeKey ? { _legAltitudeKey: l._legAltitudeKey } : {}),
+      ...(l._legAltitudeOneWay ? { _legAltitudeOneWay: 1 } : {}),
     };
   });
-  applyProposedAltitudesToRoute();
+  applyLegAltitudesToRoute();
   state.selected = null;
   if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   showInspector(); draw();
@@ -1548,7 +1548,7 @@ draw();
 // overlay toggle and the auto-snap on drop / drag.
 loadNavWaypoints().then(() => {
   snapExistingWaypoints();
-  applyProposedAltitudesToRoute();
+  applyLegAltitudesToRoute();
   draw();
 });
 // Same pattern for airfields: powering both the overlay and snap.
@@ -1556,15 +1556,15 @@ loadNavWaypoints().then(() => {
 // was restored from sessionStorage before airfields loaded.
 loadAirfields().then(() => {
   snapExistingWaypoints();
-  applyProposedAltitudesToRoute();
+  applyLegAltitudesToRoute();
   if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   draw();
   if (state.selected) showInspector();
 });
-// Proposed green-route altitude table: fills only freshly-created legs, and
+// Leg-altitude green-route altitude table: fills only freshly-created legs, and
 // leaves saved/imported/manual leg values authoritative.
-loadProposedAltitudes().then(() => {
-  if (applyProposedAltitudesToRoute()) {
+loadLegAltitudes().then(() => {
+  if (applyLegAltitudesToRoute()) {
     draw();
     if (state.selected) showInspector();
   }
