@@ -692,6 +692,7 @@ document.getElementById('gpx').onclick = exportGpx;
 document.getElementById('plan').onclick = () => {
   if (fpOpen) closeFlightPlan(); else showFlightPlan();
 };
+document.getElementById('freq-table').onclick = showFreqTableModal;
 document.getElementById('charts').onclick = showChartsModal;
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
