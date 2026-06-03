@@ -154,7 +154,12 @@ test.describe('Charts modal — frequency catalog table', () => {
     await herzliya.press('Enter');
     await expect(herzliya).toHaveAttribute('aria-invalid', 'true');
     await expect(restoreAll).toBeDisabled();
+    await expect(herzliyaReset).toBeEnabled();
     expect(await page.evaluate(() => localStorage.getItem('navaid.commFreqOverrides'))).toBeNull();
+    await herzliyaReset.click();
+    await expect(herzliya).toHaveValue('122.20');
+    await expect(herzliya).toHaveAttribute('aria-invalid', 'false');
+    await expect(herzliyaReset).toBeDisabled();
 
     await herzliya.fill('125.60');
     await herzliya.press('Enter');
