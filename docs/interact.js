@@ -916,15 +916,21 @@ function appendFreqEdit(body, note, editOptions) {
     updateTemplateHint();
     draw();
   }
+  // pointerdown handles pointer activation (so a swallowing drag handler can't
+  // eat the click); click handles keyboard (Enter/Space). Suppress the click
+  // that trails a pointerdown so the reset doesn't fire twice per tap.
+  let resetFreqPointerHandled = false;
   resetFreq.onpointerdown = e => {
     if (resetFreq.disabled) return;
     e.preventDefault();
     e.stopPropagation();
+    resetFreqPointerHandled = true;
     resetFreqToTemplate();
   };
   resetFreq.onclick = e => {
     e.preventDefault();
     e.stopPropagation();
+    if (resetFreqPointerHandled) { resetFreqPointerHandled = false; return; }
     if (!resetFreq.disabled) resetFreqToTemplate();
   };
   freqControl.appendChild(resetFreq);
