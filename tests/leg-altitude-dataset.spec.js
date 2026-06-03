@@ -128,7 +128,7 @@ test.describe('leg-altitude.json scaffold', () => {
       armyAirway: true,
       onAtcApproval: true,
     });
-    expect(byName.get('FRDIS-HADRA')).toMatchObject({
+    expect(byName.get('HADRA-FRDIS')).toMatchObject({
       inboundAltitude: 1500,
       outboundAltitude: 2000,
     });

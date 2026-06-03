@@ -416,8 +416,8 @@
       }
     },
     {
-      "from": "FRDIS",
-      "to": "HADRA",
+      "from": "HADRA",
+      "to": "FRDIS",
       "distanceNm": 7.8,
       "inboundAltitude": 1500,
       "outboundAltitude": 2000,

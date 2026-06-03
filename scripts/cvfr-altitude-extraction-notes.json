@@ -403,15 +403,15 @@
       "evidence": "Altitude pair was selected from same-route yellow CVFR altitude arrows in the segment crop and sign-sheet review. Verify the crop before promoting this row from candidate to reviewed."
     },
     {
-      "segment": "FRDIS-HADRA",
-      "from": "FRDIS",
-      "to": "HADRA",
+      "segment": "HADRA-FRDIS",
+      "from": "HADRA",
+      "to": "FRDIS",
       "inboundAltitude": 1500,
       "outboundAltitude": 2000,
       "status": "candidate",
       "distanceNm": 7.8,
-      "crop": "/tmp/navaid-altitude-extract/FRDIS_HADRA.png",
-      "evidence": "Full-crop review and the airway table agree: FRDIS->HADRA is 1500, while HADRA->FRDIS is 2000. The 2000 labels point northbound on the same coastal route."
+      "crop": "/tmp/navaid-altitude-extract/HADRA_FRDIS.png",
+      "evidence": "Maintainer correction: HADRA->FRDIS is 1500, while FRDIS->HADRA is 2000."
     },
     {
       "segment": "FRDIS-SDTYM",
