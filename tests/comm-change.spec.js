@@ -440,8 +440,8 @@ test.describe('comm-change rendering (fixture-backed)', () => {
       showInspector();
       draw();
       const insp = document.getElementById('inspector');
-      // A frequency text input means the editor (not the read-only badge) rendered.
-      const inputs = insp.querySelectorAll('input[type="text"], input:not([type])');
+      // A frequency input means the editor (not the read-only badge) rendered.
+      const inputs = insp.querySelectorAll('.freq-input');
       return { noteCount, hasFreqInput: inputs.length > 0,
                hasBadge: !!insp.querySelector('.commchange-row') };
     }, TYONA);

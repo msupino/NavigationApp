@@ -2467,19 +2467,22 @@ function showPlateViewer(filename, label) {
   window.addEventListener('keydown', onEsc, true);
 }
 
-function showChartsModal() {
-  if (fpOpen) closeFlightPlan();
+function createDraggableModal(titleText, className) {
   const back = document.createElement('div');
   back.className = 'modal-back';
   const box = document.createElement('div');
-  box.className = 'modal wide';
+  box.className = className || 'modal wide';
 
   const title = document.createElement('div');
   title.className = 'modal-title';
-  title.textContent = S.plates;
+  title.textContent = titleText || '';
   box.appendChild(title);
 
-  addModalCloseX(box, () => { window.removeEventListener('keydown', onEsc); back.remove(); });
+  function close() {
+    window.removeEventListener('keydown', onEsc);
+    back.remove();
+  }
+  addModalCloseX(box, close);
 
   let drag = null;
   title.addEventListener('mousedown', function (e) {
@@ -2508,10 +2511,247 @@ function showChartsModal() {
     e.preventDefault();
   });
 
+  function onEsc(e) {
+    if (e.key === 'Escape') close();
+  }
+  back.onclick = e => { if (e.target === back) close(); };
+  function show() {
+    if (!box.parentNode) back.appendChild(box);
+    document.body.appendChild(back);
+    window.addEventListener('keydown', onEsc);
+  }
+  return { back, box, title, close, show };
+}
+
+function afterFreqTableEdit() {
+  draw();
+  if (state.selected && typeof showInspector === 'function') showInspector();
+}
+
+function renderFreqTable(freqSection) {
+  const existingSearch = freqSection.querySelector('.charts-freq-search');
+  const searchQuery = existingSearch ? existingSearch.value : '';
+  freqSection.innerHTML = '';
+  const titleRow = document.createElement('div');
+  titleRow.className = 'charts-freq-title';
+  const heading = document.createElement('h3');
+  heading.textContent = S.freqTableTitle || 'Frequency defaults';
+  const restoreAll = document.createElement('button');
+  restoreAll.type = 'button';
+  restoreAll.className = 'charts-freq-restore-all';
+  restoreAll.textContent = S.freqTableRestoreAll || 'Restore originals';
+  restoreAll.title = S.freqTableRestoreAll || 'Restore originals';
+  restoreAll.setAttribute('aria-label', restoreAll.title);
+  titleRow.append(heading, restoreAll);
+  freqSection.appendChild(titleRow);
+
+  const usedIds = new Set();
+  if (commChangeMap && typeof commChangeMap === 'object') {
+    for (const row of Object.values(commChangeMap)) {
+      if (!row || !Array.isArray(row.callSigns)) continue;
+      for (const id of row.callSigns) {
+        const key = typeof commCallSignIdKey === 'function'
+          ? commCallSignIdKey(id) : String(id || '').trim().toUpperCase();
+        if (key) usedIds.add(key);
+      }
+    }
+  }
+  const opts = (typeof commAllCallSignOptions === 'function'
+    ? commAllCallSignOptions() : [])
+    .filter(o => o && o.id)
+    .filter(o => {
+      const key = typeof commCallSignIdKey === 'function'
+        ? commCallSignIdKey(o.id) : String(o.id || '').trim().toUpperCase();
+      return key && usedIds.has(key);
+    })
+    .sort((a, b) => (a.label || a.id).localeCompare(b.label || b.id));
+  const hasOverride = opts.some(o => !!o.overrideFreq);
+  restoreAll.disabled = !hasOverride;
+  restoreAll.onclick = e => {
+    e.preventDefault();
+    if (typeof commResetAllCallSignFreqOverrides === 'function') {
+      commResetAllCallSignFreqOverrides();
+    } else {
+      for (const opt of opts) {
+        if (opt.templateFreq && typeof commApplyCallSignFreqOverride === 'function') {
+          commApplyCallSignFreqOverride(opt.id, opt.templateFreq);
+        }
+      }
+    }
+    renderFreqTable(freqSection);
+    afterFreqTableEdit();
+  };
+
+  if (!opts.length) {
+    const empty = document.createElement('p');
+    empty.className = 'charts-freq-empty';
+    empty.textContent = S.freqTableEmpty || 'No frequency catalog available';
+    freqSection.appendChild(empty);
+    return;
+  }
+
+  const searchWrap = document.createElement('div');
+  searchWrap.className = 'charts-freq-search-row';
+  const search = document.createElement('input');
+  search.type = 'search';
+  search.className = 'charts-freq-search';
+  search.placeholder = S.freqTableSearch || 'Search frequencies';
+  search.value = searchQuery;
+  search.setAttribute('aria-label', S.freqTableSearch || 'Search frequencies');
+  searchWrap.appendChild(search);
+  freqSection.appendChild(searchWrap);
+
+  const tableWrap = document.createElement('div');
+  tableWrap.className = 'charts-freq-table-wrap';
+  const table = document.createElement('table');
+  table.className = 'flight-table charts-freq-table';
+  const thead = document.createElement('thead');
+  const headRow = document.createElement('tr');
+  for (const label of [
+    S.freqTableCallSign || 'Call sign',
+    S.commChangeTemplateFreq || 'Template',
+    S.freqTableOverride || 'Override',
+    '',
+  ]) {
+    const th = document.createElement('th');
+    th.textContent = label;
+    headRow.appendChild(th);
+  }
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  for (const opt of opts) {
+    const tr = document.createElement('tr');
+    tr.className = opt.overrideFreq ? 'overridden' : '';
+    const searchText = [
+      opt.id,
+      opt.label,
+      opt.templateFreq,
+      opt.freq,
+      opt.overrideFreq,
+      opt.row && opt.row.he,
+    ].filter(Boolean).join(' ').toLocaleLowerCase();
+    tr.dataset.search = searchText;
+    const name = document.createElement('td');
+    const label = document.createElement('span');
+    label.className = 'charts-freq-label';
+    label.textContent = opt.label || opt.id;
+    name.appendChild(label);
+    if (opt.label && opt.label !== opt.id) {
+      const code = document.createElement('span');
+      code.className = 'charts-freq-code';
+      code.textContent = opt.id;
+      name.appendChild(code);
+    }
+    const template = document.createElement('td');
+    template.className = 'charts-freq-template';
+    template.textContent = opt.templateFreq || '';
+    const local = document.createElement('td');
+    const inp = document.createElement('input');
+    inp.className = 'charts-freq-input';
+    if (typeof commConfigureFreqInput === 'function') {
+      commConfigureFreqInput(inp);
+    } else {
+      inp.type = 'number';
+      inp.inputMode = 'decimal';
+      inp.step = '0.005';
+    }
+    inp.value = opt.freq || opt.templateFreq || '';
+    inp.dataset.callSign = opt.id;
+    inp.setAttribute('aria-label', (opt.label || opt.id) + ' ' +
+      (S.commChangeFreq || 'Frequency'));
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+    });
+    inp.addEventListener('change', () => {
+      const normalized = typeof commNormalizeFreqInput === 'function'
+        ? commNormalizeFreqInput(inp.value) : String(inp.value || '').trim();
+      inp.classList.toggle('invalid', normalized === null);
+      inp.setAttribute('aria-invalid', normalized === null ? 'true' : 'false');
+      if (normalized === null) return;
+      if (typeof commApplyCallSignFreqOverride === 'function') {
+        inp.value = commApplyCallSignFreqOverride(opt.id, normalized) || normalized || inp.value;
+      }
+      renderFreqTable(freqSection);
+      afterFreqTableEdit();
+    });
+    local.appendChild(inp);
+    const actions = document.createElement('td');
+    actions.className = 'charts-freq-actions';
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'commchange-freq-reset';
+    reset.textContent = '↻';
+    reset.title = S.resetFreqOverride || S.sliderReset || 'Reset to default';
+    reset.setAttribute('aria-label', reset.title);
+    reset.disabled = !opt.overrideFreq || !opt.templateFreq;
+    reset.onclick = e => {
+      e.preventDefault();
+      if (typeof commResetCallSignFreqOverride === 'function') {
+        commResetCallSignFreqOverride(opt.id);
+      } else if (opt.templateFreq && typeof commApplyCallSignFreqOverride === 'function') {
+        commApplyCallSignFreqOverride(opt.id, opt.templateFreq);
+      }
+      renderFreqTable(freqSection);
+      afterFreqTableEdit();
+    };
+    actions.appendChild(reset);
+    tr.append(name, template, local, actions);
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  tableWrap.appendChild(table);
+  freqSection.appendChild(tableWrap);
+
+  const noMatches = document.createElement('p');
+  noMatches.className = 'charts-freq-empty charts-freq-no-matches';
+  noMatches.textContent = S.freqTableNoMatches || 'No matching frequencies';
+  noMatches.hidden = true;
+  freqSection.appendChild(noMatches);
+
+  function applySearchFilter() {
+    const q = search.value.trim().toLocaleLowerCase();
+    let shown = 0;
+    for (const tr of tbody.querySelectorAll('tr')) {
+      const hit = !q || (tr.dataset.search || '').includes(q);
+      tr.hidden = !hit;
+      if (hit) shown += 1;
+    }
+    noMatches.hidden = shown > 0;
+  }
+  search.addEventListener('input', applySearchFilter);
+  applySearchFilter();
+}
+
+function showFreqTableModal() {
+  if (fpOpen) closeFlightPlan();
+  const modal = createDraggableModal(S.tbFreqTable || S.freqTableTitle || 'Freq table', 'modal wide');
   const scrollArea = document.createElement('div');
   scrollArea.className = 'fp-scroll';
   const body = document.createElement('div');
   body.className = 'charts-modal-body';
+  const freqSection = document.createElement('div');
+  freqSection.className = 'charts-freq-section charts-freq-section-only';
+  body.appendChild(freqSection);
+  const loadingFreq = document.createElement('p');
+  loadingFreq.textContent = '…';
+  freqSection.appendChild(loadingFreq);
+  loadCommChange().then(() => renderFreqTable(freqSection));
+  scrollArea.appendChild(body);
+  modal.box.appendChild(scrollArea);
+  modal.show();
+}
+
+function showChartsModal() {
+  if (fpOpen) closeFlightPlan();
+  const modal = createDraggableModal(S.plates, 'modal wide');
+  const scrollArea = document.createElement('div');
+  scrollArea.className = 'fp-scroll';
+  const body = document.createElement('div');
+  body.className = 'charts-modal-body';
+  const platesSection = document.createElement('div');
+  platesSection.className = 'charts-plates-section';
+  body.appendChild(platesSection);
 
   const catOrder = ['approach', 'sid', 'star', 'ground', 'vfr', 'other'];
   const catLabel = {
@@ -2524,13 +2764,13 @@ function showChartsModal() {
   };
 
   function renderList(afs) {
-    body.innerHTML = '';
+    platesSection.innerHTML = '';
     const withPlates = afs.filter(af => af.plates && af.plates.length)
       .sort((a, b) => a.name.localeCompare(b.name));
     if (!withPlates.length) {
       const none = document.createElement('p');
       none.textContent = S.platesNone;
-      body.appendChild(none);
+      platesSection.appendChild(none);
       return;
     }
     for (const af of withPlates) {
@@ -2583,7 +2823,7 @@ function showChartsModal() {
         pane.appendChild(catDiv);
       }
       section.appendChild(pane);
-      body.appendChild(section);
+      platesSection.appendChild(section);
     }
   }
 
@@ -2592,25 +2832,18 @@ function showChartsModal() {
   } else {
     const loading = document.createElement('p');
     loading.textContent = '…';
-    body.appendChild(loading);
+    platesSection.appendChild(loading);
     loadAirfields().then(() => { if (airfields) renderList(airfields); });
   }
 
   scrollArea.appendChild(body);
-  box.appendChild(scrollArea);
+  modal.box.appendChild(scrollArea);
 
   const att = document.createElement('div');
   att.className = 'plate-attribution';
   att.textContent = S.plateAttribution;
-  box.appendChild(att);
-
-  function onEsc(e) {
-    if (e.key === 'Escape') { window.removeEventListener('keydown', onEsc); back.remove(); }
-  }
-  back.appendChild(box);
-  back.onclick = e => { if (e.target === back) { window.removeEventListener('keydown', onEsc); back.remove(); } };
-  document.body.appendChild(back);
-  window.addEventListener('keydown', onEsc);
+  modal.box.appendChild(att);
+  modal.show();
 }
 
 // --- shareable route link (#162) -----------------------------------
