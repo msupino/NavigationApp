@@ -2064,46 +2064,132 @@ function pngCrc(data) {
 }
 
 // --- fly the route (Google Earth) -----------------------------------
-function flyRoute() {
+async function flyRoute() {
   if (state.waypoints.length < 2) {
     alert(S.errNeedWps);
     return;
   }
+  if (airfields === null && typeof loadAirfields === 'function') {
+    await loadAirfields();
+  }
   const wps = state.waypoints;
+  const endpointGroundM = i => {
+    if (i !== 0 && i !== wps.length - 1) return null;
+    const af = typeof airfieldAtWaypoint === 'function'
+      ? airfieldAtWaypoint(wps[i])
+      : null;
+    const elevFt = af && Number(af.elev_ft);
+    return Number.isFinite(elevFt) ? Math.round(elevFt * 0.3048) : null;
+  };
   const altM = i => {
+    const groundM = endpointGroundM(i);
+    if (groundM !== null) return groundM;
     const leg = state.legs[Math.min(i, state.legs.length - 1)];
     return Math.max(0, Math.round((leg ? leg.inboundAltitude : 2000) * 0.3048));
   };
-  const heading = i => {
-    const j = Math.min(i, wps.length - 2);
-    return geo(wps[j], wps[j + 1]).brg;
+  const inboundHeading = i => {
+    if (i <= 0) return geo(wps[0], wps[1]).brg;
+    return geo(wps[i - 1], wps[i]).brg;
+  };
+  const outboundHeading = i => geo(wps[i], wps[i + 1]).brg;
+  const normalizeHeading = hdg => ((hdg % 360) + 360) % 360;
+  const signedHeadingDelta = (from, to) =>
+    (((normalizeHeading(to) - normalizeHeading(from)) % 360) + 540) % 360 - 180;
+  const blendHeading = (from, to, f) => normalizeHeading(from + signedHeadingDelta(from, to) * f);
+  const pointAlongLeg = (from, to, bufferNm, fromEnd) => {
+    const { dist } = geo(from, to);
+    if (!Number.isFinite(dist) || dist <= 0) return { lat: to.lat, lng: to.lng };
+    const f = fromEnd
+      ? Math.max(0, 1 - bufferNm / dist)
+      : Math.min(1, bufferNm / dist);
+    return {
+      lat: from.lat + (to.lat - from.lat) * f,
+      lng: from.lng + (to.lng - from.lng) * f,
+    };
+  };
+  const turnBufferNm = i => {
+    const inDist = geo(wps[i - 1], wps[i]).dist;
+    return Math.max(0, Math.min(0.5, inDist * 0.15));
+  };
+  const legAltitudeM = i => {
+    const leg = state.legs[i];
+    return Math.max(0, Math.round((leg ? leg.inboundAltitude : 2000) * 0.3048));
+  };
+  const tourFractions = (legIndex, dist) => {
+    const out = [];
+    const add = f => {
+      const x = Math.max(0, Math.min(1, f));
+      if (x > 0 && !out.some(v => Math.abs(v - x) < 1e-4)) out.push(x);
+    };
+    const steps = Math.max(1, Math.ceil(dist / 1.5));
+    for (let s = 1; s <= steps; s++) add(s / steps);
+    if (legIndex < wps.length - 2 && dist > 0) add(1 - turnBufferNm(legIndex + 1) / dist);
+    return out.sort((a, b) => a - b);
   };
 
   function downloadKml() {
     const esc = s => String(s).replace(/[<>&]/g,
       c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
-    const camera = (i, pad) =>
+    const cameraAt = (pos, alt, hdg, pad) =>
       pad + '<Camera>\n' +
-      pad + '  <longitude>' + wps[i].lng + '</longitude>\n' +
-      pad + '  <latitude>' + wps[i].lat + '</latitude>\n' +
-      pad + '  <altitude>' + altM(i) + '</altitude>\n' +
-      pad + '  <heading>' + heading(i).toFixed(1) + '</heading>\n' +
+      pad + '  <longitude>' + pos.lng + '</longitude>\n' +
+      pad + '  <latitude>' + pos.lat + '</latitude>\n' +
+      pad + '  <altitude>' + alt + '</altitude>\n' +
+      pad + '  <heading>' + hdg.toFixed(1) + '</heading>\n' +
       pad + '  <tilt>70</tilt>\n' +
       pad + '  <roll>0</roll>\n' +
       pad + '  <altitudeMode>absolute</altitudeMode>\n' +
       pad + '</Camera>\n';
-    const flyTo = (i, dur, mode) =>
+    const camera = (i, pad, hdg = inboundHeading(i)) => cameraAt(wps[i], altM(i), hdg, pad);
+    const flyToCamera = (pos, alt, hdg, dur, mode) =>
       '    <gx:FlyTo>\n' +
       '      <gx:duration>' + dur.toFixed(1) + '</gx:duration>\n' +
       '      <gx:flyToMode>' + mode + '</gx:flyToMode>\n' +
-      camera(i, '      ') +
+      cameraAt(pos, alt, hdg, '      ') +
       '    </gx:FlyTo>\n';
-    let tour = flyTo(0, 4, 'bounce');
-    for (let i = 1; i < wps.length; i++) {
-      const leg = state.legs[i - 1];
-      const { dist } = geo(wps[i - 1], wps[i]);
+    const flyTo = (i, dur, mode, hdg = inboundHeading(i)) =>
+      flyToCamera(wps[i], altM(i), hdg, dur, mode);
+    let lastTourHeading = null;
+    const continuousHeading = hdg => {
+      let next = normalizeHeading(hdg);
+      if (lastTourHeading !== null) {
+        while (next - lastTourHeading > 180) next -= 360;
+        while (next - lastTourHeading < -180) next += 360;
+      }
+      lastTourHeading = next;
+      return next;
+    };
+    let tour = flyTo(0, 2, 'smooth', continuousHeading(outboundHeading(0)));
+    for (let i = 0; i < wps.length - 1; i++) {
+      const leg = state.legs[i];
+      const from = wps[i];
+      const to = wps[i + 1];
+      const { dist } = geo(from, to);
       const durH = leg && leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
-      tour += flyTo(i, Math.max(4, Math.min(45, durH * 60 * 4)), 'smooth');
+      const legDur = Math.max(4, Math.min(45, durH * 60 * 4));
+      const legHdg = outboundHeading(i);
+      const hasTurn = i < wps.length - 2 && dist > 0;
+      const turnStartF = hasTurn ? Math.max(0, 1 - turnBufferNm(i + 1) / dist) : 1;
+      const nextHdg = hasTurn ? outboundHeading(i + 1) : legHdg;
+      const turnDur = hasTurn
+        ? Math.min(4, Math.max(1.5, Math.abs(signedHeadingDelta(legHdg, nextHdg)) / 30))
+        : 0;
+      let prevF = 0;
+      for (const f of tourFractions(i, dist)) {
+        const pos = pointAlongLeg(from, to, dist * f, false);
+        const inTurn = hasTurn && f >= turnStartF;
+        const turnPart = inTurn && turnStartF < 1 ? (f - turnStartF) / (1 - turnStartF) : 0;
+        const hdg = inTurn ? blendHeading(legHdg, nextHdg, turnPart) : legHdg;
+        let segDur = legDur * (f - prevF);
+        if (hasTurn && f > turnStartF && turnStartF < 1) {
+          const a = Math.max(prevF, turnStartF);
+          const turnSegPart = (f - a) / (1 - turnStartF);
+          segDur = Math.max(segDur, turnDur * turnSegPart);
+        }
+        const alt = f >= 1 ? altM(i + 1) : legAltitudeM(i);
+        tour += flyToCamera(pos, alt, continuousHeading(hdg), Math.max(0.6, segDur), 'smooth');
+        prevF = f;
+      }
     }
     const coords = wps.map(w => w.lng + ',' + w.lat + ',0').join(' ');
     const points = wps.map((w, i) =>
@@ -2147,7 +2233,7 @@ function flyRoute() {
       }
       const url = 'https://earth.google.com/web/@' +
         lat.toFixed(6) + ',' + lng.toFixed(6) + ',' + altM(0) + 'a,' +
-        heading(0).toFixed(1) + 'h,70t';
+        outboundHeading(0).toFixed(1) + 'h,70t';
       window.open(url, '_blank');
       downloadKml();
       return;

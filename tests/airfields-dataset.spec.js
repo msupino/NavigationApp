@@ -12,9 +12,10 @@
 // Per-entry: every chart ARP keeps the ICAO `name` and the chart's
 // Hebrew `he` / lat / lng (chart is authoritative on Hebrew + coords).
 // Plates, runways, elevation, and English name carry over from the
-// previous airfields.json wherever the ICAO matched; ARPs newly
-// surfaced from the chart ship as bare `{name, he, lat, lng}` until
-// their BYOP enrichment is added in follow-ups.
+// previous airfields.json wherever the ICAO matched; elevations newly
+// confirmed from Wikipedia are kept as `elev_ft`. ARPs newly surfaced
+// from the chart ship with only verified fields until their BYOP
+// enrichment is added in follow-ups.
 //
 // These assertions live as a Playwright spec only to reuse the
 // existing _setup.js plumbing; they are pure JSON checks with no
@@ -163,6 +164,25 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     }
   });
 
+  test('Wikipedia-confirmed elevations are stored in feet', async () => {
+    const d = loadData();
+    const byCode = new Map(d.airfields.map(a => [a.name, a]));
+    const expected = {
+      LLEK: 194,
+      LLHB: 722,
+      LLHS: 148,
+      LLNV: 1391,
+      LLOV: 1493,
+      LLPL: 33,
+      LLRD: 184,
+      LLRM: 2126,
+      LLMZ: -1240,
+    };
+    for (const [code, elevFt] of Object.entries(expected)) {
+      expect(byCode.get(code).elev_ft).toBe(elevFt);
+    }
+  });
+
   // BYOP plates and the runway-chip UI in interact.js read these
   // fields directly. The chart-rebuild must NOT have stripped them
   // from any entry that previously carried them.
@@ -192,17 +212,17 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     }
   });
 
-  // The 11 bare entries (chart-only ARPs without prior enrichment).
-  // Carrying empty `plates`/`runways` or stub `en`/`elev_ft` would
-  // be misleading — the UI hides plate sections and runway chips on
-  // missing data. The validator (io.js) now treats these as optional.
+  // The bare entries (chart-only ARPs without prior enrichment or a
+  // Wikipedia-confirmed elevation). Carrying empty `plates`/`runways`
+  // or stub `en`/`elev_ft` would be misleading — the UI hides plate
+  // sections and runway chips on missing data. The validator (io.js)
+  // now treats these as optional.
   test('bare chart-only entries carry only {name, he, lat, lng}', async () => {
     const d = loadData();
     const byCode = new Map(d.airfields.map(a => [a.name, a]));
     // LLBO (Habonim) now carries BYOP plates from the AIP rebuild, so it
     // is no longer a bare chart-only entry.
-    const bare = ['KKDEM', 'GVULT', 'LLRM', 'LLRD', 'LLEK',
-                  'LLNV', 'LLOV', 'LLPL', 'LLHS', 'LLHB'];
+    const bare = ['KKDEM', 'GVULT'];
     for (const code of bare) {
       const a = byCode.get(code);
       expect(Object.keys(a).sort()).toEqual(['he', 'lat', 'lng', 'name']);
