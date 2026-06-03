@@ -396,7 +396,8 @@ window.S = Object.assign({
   altPairsStatus: 'Status',
   altPairsDistance: 'NM',
   altPairsBlocked: 'Blocked',
-  altPairsUnknown: 'NaN',
+  altitudeUnknown: 'Unkn',
+  altPairsUnknown: 'Unkn',
   altPairsOneWay: 'one-way',
   addFreqChange: 'Add freq change (Z)',
   deleteFreqChange: '🗑 Delete freq change (X)',
@@ -633,8 +634,8 @@ function _defaultLegLabels() {
 const newLeg = () => {
   const d = _defaultLegLabels();
   return {
-    inboundAltitude: 2000,
-    outboundAltitude: 2000,
+    inboundAltitude: NaN,
+    outboundAltitude: NaN,
     flightSpeed: 90,
     outboundSpeed: 90,
     _proposedAltitudeAuto: 1,           // fresh leg; safe to fill from dataset
@@ -681,6 +682,15 @@ function toHMS(hours) {
 }
 function sameAltitudeValue(a, b) {
   return a === b || (Number.isNaN(a) && Number.isNaN(b));
+}
+function altitudeUnknownLabel() {
+  return S.altitudeUnknown || S.altPairsUnknown || 'Unkn';
+}
+function formatAltitudeValue(v) {
+  return Number.isFinite(v) ? String(v) : altitudeUnknownLabel();
+}
+function altitudeInputValue(v) {
+  return Number.isFinite(v) ? String(v) : '';
 }
 function fmtLatLng(v, pos, neg) {
   const hemi = v >= 0 ? pos : neg;

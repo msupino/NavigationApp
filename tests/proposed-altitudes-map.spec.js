@@ -46,6 +46,8 @@ async function clickRoute(page, from, to) {
         outboundAltitude: state.legs[0].outboundAltitude,
         inboundUnknown: Number.isNaN(state.legs[0].inboundAltitude),
         outboundUnknown: Number.isNaN(state.legs[0].outboundAltitude),
+        inboundDisplay: formatAltitudeValue(state.legs[0].inboundAltitude),
+        outboundDisplay: formatAltitudeValue(state.legs[0].outboundAltitude),
         auto: state.legs[0]._proposedAltitudeAuto === 1,
       },
     };
@@ -267,7 +269,32 @@ test.describe('proposed-altitudes map wiring', () => {
     expect(result.leg).toMatchObject({
       inboundUnknown: true,
       outboundUnknown: true,
+      inboundDisplay: 'Unkn',
+      outboundDisplay: 'Unkn',
       auto: true,
     });
+
+    await page.evaluate(() => {
+      state.selected = { type: 'leg', index: 0 };
+      showInspector();
+    });
+    const inspectorAltitudeInputs = page.locator('#insp-body input[type="number"]');
+    await expect(inspectorAltitudeInputs.nth(1)).toHaveValue('');
+    await expect(inspectorAltitudeInputs.nth(1)).toHaveAttribute('placeholder', 'Unkn');
+    await expect(inspectorAltitudeInputs.nth(2)).toHaveValue('');
+    await expect(inspectorAltitudeInputs.nth(2)).toHaveAttribute('placeholder', 'Unkn');
+
+    await page.locator('#plan').click();
+    const modal = page.locator('.modal-back.flight-plan');
+    await expect(modal).toBeVisible();
+    const firstForwardAlt = modal.locator('.fp-scroll > .flight-table')
+      .first()
+      .locator('tbody tr')
+      .first()
+      .locator('td')
+      .nth(6)
+      .locator('input');
+    await expect(firstForwardAlt).toHaveValue('');
+    await expect(firstForwardAlt).toHaveAttribute('placeholder', 'Unkn');
   });
 });

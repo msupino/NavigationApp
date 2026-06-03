@@ -1084,7 +1084,7 @@ function showFlightPlan() {
     inp.type = 'number';
     inp.className = 'plan-num';
     inp.min = min;
-    inp.value = value;
+    inp.value = altitudeInputValue(value);
     inp.onchange = () => onCommit(inp);
     td.appendChild(inp);
     return td;
@@ -1125,16 +1125,22 @@ function showFlightPlan() {
     speedInputs[i] = speedCell.querySelector('.plan-num');
     tr.appendChild(speedCell);
     const altCell = numCell(leg.inboundAltitude, -2000, inp => {
-      const v = +inp.value;
-      if (!Number.isFinite(v)) { inp.value = leg.inboundAltitude; return; }
+      const raw = inp.value.trim();
       const oldVal = leg.inboundAltitude;
-      leg.inboundAltitude = Math.round(v);
+      if (!raw) {
+        leg.inboundAltitude = NaN;
+      } else {
+        const v = Number(raw);
+        if (!Number.isFinite(v)) { inp.value = altitudeInputValue(leg.inboundAltitude); return; }
+        leg.inboundAltitude = Math.round(v);
+      }
       propagateAlt(i, 'inboundAltitude', leg.inboundAltitude, oldVal);
       draw();
       refresh();
       if (retRefresh) retRefresh();
     });
     altInputs[i] = altCell.querySelector('.plan-num');
+    altInputs[i].placeholder = altitudeUnknownLabel();
     tr.appendChild(altCell);
     const timeCell = planCell('');
     timeCells[i] = timeCell;
@@ -1230,7 +1236,7 @@ function showFlightPlan() {
       if (speedInputs[i] && document.activeElement !== speedInputs[i])
         speedInputs[i].value = state.legs[i].flightSpeed;
       if (altInputs[i] && document.activeElement !== altInputs[i])
-        altInputs[i].value = state.legs[i].inboundAltitude;
+        altInputs[i].value = altitudeInputValue(state.legs[i].inboundAltitude);
     }
     for (const wpIdx in wpInputs) {
       const wp = state.waypoints[wpIdx];
@@ -1311,16 +1317,22 @@ function showFlightPlan() {
       rSpeedInputs[i] = speedCell.querySelector('.plan-num');
       tr.appendChild(speedCell);
       const altCell = numCell(leg.outboundAltitude, -2000, inp => {
-        const v = +inp.value;
-        if (!Number.isFinite(v)) { inp.value = leg.outboundAltitude; return; }
+        const raw = inp.value.trim();
         const oldVal = leg.outboundAltitude;
-        leg.outboundAltitude = Math.round(v);
+        if (!raw) {
+          leg.outboundAltitude = NaN;
+        } else {
+          const v = Number(raw);
+          if (!Number.isFinite(v)) { inp.value = altitudeInputValue(leg.outboundAltitude); return; }
+          leg.outboundAltitude = Math.round(v);
+        }
         propagateAlt(ri, 'outboundAltitude', leg.outboundAltitude, oldVal);
         draw();
         refresh();
         retRefresh();
       });
       rAltInputs[i] = altCell.querySelector('.plan-num');
+      rAltInputs[i].placeholder = altitudeUnknownLabel();
       tr.appendChild(altCell);
       const timeCell = planCell('');
       rTimeCells[i] = timeCell;
@@ -1396,7 +1408,7 @@ function showFlightPlan() {
         if (rSpeedInputs[i] && document.activeElement !== rSpeedInputs[i])
           rSpeedInputs[i].value = state.legs[ri].outboundSpeed;
         if (rAltInputs[i] && document.activeElement !== rAltInputs[i])
-          rAltInputs[i].value = state.legs[ri].outboundAltitude;
+          rAltInputs[i].value = altitudeInputValue(state.legs[ri].outboundAltitude);
       }
       rTotDistCell.textContent = td.toFixed(1);
       rTotTimeCell.textContent = th > 0 ? toHMS(th) : '--';
@@ -2981,7 +2993,7 @@ function formatAltitudePairValue(segment, key) {
   if (!segment) return '';
   const v = segment[key];
   if (v === null && segment.oneWay === true) return S.altPairsBlocked || 'Blocked';
-  if (v === null) return S.altPairsUnknown || 'NaN';
+  if (v === null) return S.altPairsUnknown || 'Unkn';
   return Number.isFinite(v) ? String(v) : '';
 }
 
@@ -2996,7 +3008,7 @@ function altitudePairCellPlaceholder(segment, key) {
   if (!segment || segment[key] !== null) return '';
   return segment.oneWay === true
     ? (S.altPairsBlocked || 'Blocked')
-    : (S.altPairsUnknown || 'NaN');
+    : (S.altPairsUnknown || 'Unkn');
 }
 
 function updateAltitudePairRowState(tr, segment, statusCell, inputs) {

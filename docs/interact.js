@@ -295,12 +295,14 @@ function hitCumLabelRet(px, py) {
 // Stops at the first leg that already differs, so intentional level
 // changes downstream are preserved.
 function propagateAlt(i, key, newVal, oldVal) {
-  if (newVal === oldVal) return;
   const altitudeKey = key === 'inboundAltitude' || key === 'outboundAltitude';
+  if (altitudeKey ? sameAltitudeValue(newVal, oldVal) : newVal === oldVal) return;
   if (altitudeKey) markLegAltitudeManual(i);
   const dir = key === 'outboundAltitude' || key === 'outboundSpeed' ? -1 : 1;
   for (let j = i + dir; j >= 0 && j < state.legs.length; j += dir) {
-    if (state.legs[j][key] !== oldVal) break;
+    if (altitudeKey
+      ? !sameAltitudeValue(state.legs[j][key], oldVal)
+      : state.legs[j][key] !== oldVal) break;
     state.legs[j][key] = newVal;
     if (altitudeKey) markLegAltitudeManual(j);
   }
@@ -438,16 +440,16 @@ function showInspector() {
     }));
     body.appendChild(numberRow(S.inboundAlt, leg.inboundAltitude, v => {
       const oldVal = leg.inboundAltitude;
-      leg.inboundAltitude = Math.round(v);
+      leg.inboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'inboundAltitude', leg.inboundAltitude, oldVal);
       draw();
-    }));
+    }, { allowUnknown: true, placeholder: altitudeUnknownLabel() }));
     body.appendChild(numberRow(S.outboundAlt, leg.outboundAltitude, v => {
       const oldVal = leg.outboundAltitude;
-      leg.outboundAltitude = Math.round(v);
+      leg.outboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'outboundAltitude', leg.outboundAltitude, oldVal);
       draw();
-    }));
+    }, { allowUnknown: true, placeholder: altitudeUnknownLabel() }));
     const reset = document.createElement('button');
     reset.className = 'insp-btn';
     // Fallback to a glyph if the locale strings haven't been loaded yet —
@@ -710,15 +712,21 @@ function textareaRow(label, value, onChange) {
   row.appendChild(ta);
   return row;
 }
-function numberRow(label, value, onChange) {
+function numberRow(label, value, onChange, opts = {}) {
   const row = document.createElement('div');
   row.className = 'row';
   const l = document.createElement('label');
   l.textContent = label;
   const inp = document.createElement('input');
   inp.type = 'number';
-  inp.value = value;
+  inp.value = altitudeInputValue(value);
+  if (opts.placeholder) inp.placeholder = opts.placeholder;
   inp.onchange = () => {
+    const raw = inp.value.trim();
+    if (opts.allowUnknown && raw === '') {
+      onChange(NaN);
+      return;
+    }
     const v = parseFloat(inp.value);
     if (!isNaN(v)) onChange(v);
   };

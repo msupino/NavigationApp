@@ -1255,7 +1255,7 @@ function drawLegs() {
 
     drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
-      ang, pad3(magIn), timeStr, String(leg.inboundAltitude),
+      ang, pad3(magIn), timeStr, formatAltitudeValue(leg.inboundAltitude),
       tune('inkColor'), yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
     // Cumulative inbound time: < [time], position driven by leg.cumLabel
     // (default: at B waypoint, same perpendicular side as main kite).
@@ -1274,7 +1274,7 @@ function drawLegs() {
     if (showReturn && legAllowsReturn(i)) {
       drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
-        pad3(magOut), timeStrOut, String(leg.outboundAltitude),
+        pad3(magOut), timeStrOut, formatAltitudeValue(leg.outboundAltitude),
         tune('inkColor'), 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
       if (showCumTime) {
         // Cumulative return time kite at A waypoint (return destination).
