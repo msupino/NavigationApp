@@ -769,6 +769,9 @@ function appendFreqEdit(body, note, editOptions) {
     freqInput.classList.toggle('invalid', !ok);
     freqInput.setAttribute('aria-invalid', ok ? 'false' : 'true');
   }
+  function freqInputInvalid() {
+    return !!(freqInput && freqInput.classList.contains('invalid'));
+  }
   function applyFreqValue(value) {
     const opt = typeof commNoteCallSignOption === 'function'
       ? commNoteCallSignOption(note) : null;
@@ -784,7 +787,7 @@ function appendFreqEdit(body, note, editOptions) {
     const template = opt && opt.templateFreq ? opt.templateFreq : '';
     const normalized = normalizeFreqValue(freqInput ? freqInput.value : note.freq);
     const cur = normalized === null ? (note.freq || '') : (normalized || note.freq || '');
-    const changed = !!(template && cur && cur !== template);
+    const changed = !!(template && (freqInputInvalid() || (cur && cur !== template)));
     templateRow.style.display = changed ? '' : 'none';
     const val = templateRow.querySelector('.val');
     if (val) val.textContent = template;
@@ -847,7 +850,10 @@ function appendFreqEdit(body, note, editOptions) {
     const normalized = normalizeFreqValue(freqInput.value);
     const valid = normalized !== null;
     setFreqInputValid(valid);
-    if (!valid) return false;
+    if (!valid) {
+      updateTemplateHint();
+      return false;
+    }
     if (normalized === '' && !formatInput) {
       updateTemplateHint();
       return true;
@@ -882,9 +888,7 @@ function appendFreqEdit(body, note, editOptions) {
   resetFreq.textContent = '↻';
   resetFreq.title = S.resetFreqOverride || S.sliderReset || 'Reset to default';
   resetFreq.setAttribute('aria-label', resetFreq.title);
-  resetFreq.onclick = e => {
-    e.preventDefault();
-    e.stopPropagation();
+  function resetFreqToTemplate() {
     const opt = typeof commNoteCallSignOption === 'function'
       ? commNoteCallSignOption(note) : null;
     const template = opt && opt.templateFreq ? opt.templateFreq : '';
@@ -897,6 +901,17 @@ function appendFreqEdit(body, note, editOptions) {
     setFreqInputValid(true);
     updateTemplateHint();
     draw();
+  }
+  resetFreq.onpointerdown = e => {
+    if (resetFreq.disabled) return;
+    e.preventDefault();
+    e.stopPropagation();
+    resetFreqToTemplate();
+  };
+  resetFreq.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!resetFreq.disabled) resetFreqToTemplate();
   };
   freqControl.appendChild(resetFreq);
   freqRow.classList.add('commchange-freq-edit');

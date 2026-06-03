@@ -1070,12 +1070,16 @@ test.describe('comm-change auto-note (#487)', () => {
       showInspector();
     }, TYONA);
     const field = page.locator('#insp-body .freq-input').first();
+    const resetFreq = page.locator('#insp-body .commchange-freq-reset');
+    await expect(resetFreq).toBeDisabled();
     await field.fill('137.00');
     await expect(field).toHaveAttribute('aria-invalid', 'true');
+    await expect(resetFreq).toBeEnabled();
     expect(await page.evaluate(() => state.notes[0].freq)).toBe('118.40');
-    await field.blur();
+    await resetFreq.click();
     await expect(field).toHaveValue('118.40');
     await expect(field).toHaveAttribute('aria-invalid', 'false');
+    await expect(resetFreq).toBeDisabled();
     const out = await page.evaluate(() => ({
       freq: state.notes[0].freq,
       stored: localStorage.getItem('navaid.route') || '',

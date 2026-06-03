@@ -2658,16 +2658,25 @@ function renderFreqTable(freqSection) {
     }
     inp.value = opt.freq || opt.templateFreq || '';
     inp.dataset.callSign = opt.id;
+    inp.setAttribute('aria-invalid', 'false');
     inp.setAttribute('aria-label', (opt.label || opt.id) + ' ' +
       (S.commChangeFreq || 'Frequency'));
+    let reset = null;
+    function syncFreqInputValidity() {
+      const normalized = typeof commNormalizeFreqInput === 'function'
+        ? commNormalizeFreqInput(inp.value) : String(inp.value || '').trim();
+      const invalid = normalized === null;
+      inp.classList.toggle('invalid', invalid);
+      inp.setAttribute('aria-invalid', invalid ? 'true' : 'false');
+      if (reset) reset.disabled = !opt.templateFreq || (!opt.overrideFreq && !invalid);
+      return normalized;
+    }
     inp.addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
     });
+    inp.addEventListener('input', syncFreqInputValidity);
     inp.addEventListener('change', () => {
-      const normalized = typeof commNormalizeFreqInput === 'function'
-        ? commNormalizeFreqInput(inp.value) : String(inp.value || '').trim();
-      inp.classList.toggle('invalid', normalized === null);
-      inp.setAttribute('aria-invalid', normalized === null ? 'true' : 'false');
+      const normalized = syncFreqInputValidity();
       if (normalized === null) return;
       if (typeof commApplyCallSignFreqOverride === 'function') {
         inp.value = commApplyCallSignFreqOverride(opt.id, normalized) || normalized || inp.value;
@@ -2678,15 +2687,14 @@ function renderFreqTable(freqSection) {
     local.appendChild(inp);
     const actions = document.createElement('td');
     actions.className = 'charts-freq-actions';
-    const reset = document.createElement('button');
+    reset = document.createElement('button');
     reset.type = 'button';
     reset.className = 'commchange-freq-reset';
     reset.textContent = '↻';
     reset.title = S.resetFreqOverride || S.sliderReset || 'Reset to default';
     reset.setAttribute('aria-label', reset.title);
     reset.disabled = !opt.overrideFreq || !opt.templateFreq;
-    reset.onclick = e => {
-      e.preventDefault();
+    function resetTableFreq() {
       if (typeof commResetCallSignFreqOverride === 'function') {
         commResetCallSignFreqOverride(opt.id);
       } else if (opt.templateFreq && typeof commApplyCallSignFreqOverride === 'function') {
@@ -2694,6 +2702,16 @@ function renderFreqTable(freqSection) {
       }
       renderFreqTable(freqSection);
       afterFreqTableEdit();
+    }
+    reset.onpointerdown = e => {
+      if (reset.disabled) return;
+      e.preventDefault();
+      e.stopPropagation();
+      resetTableFreq();
+    };
+    reset.onclick = e => {
+      e.preventDefault();
+      if (!reset.disabled) resetTableFreq();
     };
     actions.appendChild(reset);
     tr.append(name, template, local, actions);
