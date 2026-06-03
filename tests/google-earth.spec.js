@@ -3,8 +3,9 @@
 // the <LineString>, the per-waypoint <Placemark><Point>s, and the gx:Tour
 // camera positions all carry the same lat/lng sequence as state.waypoints.
 const { test, expect } = require('./_setup');
-const { LLHZ, LLHA } = require('./_airfieldArp');
+const { arp, LLHZ, LLHA } = require('./_airfieldArp');
 const AIRFIELDS = require('../docs/airfields.json').airfields;
+const LLMZ = arp('LLMZ');
 
 const ROUTE = {
   waypoints: [
@@ -159,6 +160,23 @@ test.describe('Google Earth KML export', () => {
     expect(cams[0].alt).toBe(airfieldElevationM('LLHZ'));
     expect(cams[1].alt).toBe(Math.round(5200 * 0.3048));
     expect(cams[2].alt).toBe(airfieldElevationM('LLHA'));
+  });
+
+  test('below-sea-level airfield endpoint keeps its negative ground elevation', async ({ page }) => {
+    await page.evaluate(start => {
+      state.waypoints = [
+        { lat: start.lat, lng: start.lng, name: start.name },
+        { lat: 31.22972, lng: 35.18972, name: 'ARAD' },
+      ];
+      syncLegs();
+      state.legs[0].inboundAltitude = 3000;
+      draw();
+    }, LLMZ);
+    const kml = await captureKml(page);
+    const cams = parseTourCameraCoords(kml);
+    expect(cams).toHaveLength(2);
+    expect(cams[0].alt).toBe(airfieldElevationM('LLMZ'));
+    expect(cams[0].alt).toBeLessThan(0);
   });
 
   test('KML is well-formed XML and starts with the declaration', async ({ page }) => {
