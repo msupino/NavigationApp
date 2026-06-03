@@ -22,11 +22,53 @@ const FIXTURE = {
   ],
 };
 
+const ALTITUDE_FIXTURE = {
+  version: 1,
+  source: 'test altitude fixture',
+  segments: [
+    {
+      from: 'DESHE',
+      to: 'ZALMN',
+      distanceNm: 6.1,
+      inboundAltitude: 3000,
+      outboundAltitude: 2500,
+      status: 'reviewed',
+    },
+    {
+      from: 'EIRON',
+      to: 'SDTYM',
+      distanceNm: 4.2,
+      inboundAltitude: 3000,
+      outboundAltitude: null,
+      oneWay: true,
+      status: 'candidate',
+      detection: { greenScore: 0.8 },
+    },
+    {
+      from: 'DEROR',
+      to: 'SHARO',
+      distanceNm: 4,
+      inboundAltitude: null,
+      outboundAltitude: null,
+      status: 'unknown',
+      source: 'test sibling placeholder',
+    },
+  ],
+};
+
 async function installCommChangeFixture(page) {
   await page.route('**/comm-change.json*', route => route.fulfill({
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify(FIXTURE),
+  }));
+}
+
+async function installAltitudeFixture(page) {
+  await page.route('**/proposed-altitudes.json*', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify(ALTITUDE_FIXTURE),
   }));
 }
 
@@ -41,7 +83,9 @@ async function boot(page) {
   });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof showChartsModal === 'function' &&
-    typeof showFreqTableModal === 'function' && typeof seedCommChangeNotes === 'function');
+    typeof showFreqTableModal === 'function' &&
+    typeof showAltitudePairsModal === 'function' &&
+    typeof seedCommChangeNotes === 'function');
   await page.evaluate(() => loadNavWaypoints());
   await page.waitForFunction(() => Array.isArray(window.navWP) && window.navWP.length > 0);
   await page.evaluate(() => loadAirfields());
@@ -60,6 +104,8 @@ test.describe('Charts modal — frequency catalog table', () => {
 
     await button.click();
     await expect(page.locator('.charts-freq-title h3')).toHaveText('Frequency defaults');
+    await expect(page.locator('.charts-freq-table thead th').nth(1))
+      .toHaveText('Default');
     await expect(page.locator('.charts-freq-table thead th').nth(2))
       .toHaveText('Override');
     const herzliya = page.locator('.charts-freq-input[data-call-sign="HERZLIYA"]');
@@ -71,6 +117,73 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(page.locator('.charts-freq-input[data-call-sign="AZAM"]'))
       .toHaveCount(0);
     await expect(page.locator('.charts-airport-header')).toHaveCount(0);
+    await expect(page.locator('.charts-alt-title')).toHaveCount(0);
+  });
+
+  test('Charts toolbar section exposes learned altitude pairs with JSON copy', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await installCommChangeFixture(page);
+    await installAltitudeFixture(page);
+    await boot(page);
+    const button = page.locator('.tb-section[data-sec="charts"] #alt-pairs');
+    await expect(button).toBeVisible();
+    await expect(button).toHaveText('🧭 Alt pairs');
+
+    await button.click();
+    await expect(page.locator('.charts-alt-title h3')).toHaveText('CVFR altitude pairs');
+    await expect(page.locator('.charts-alt-table tbody tr')).toHaveCount(3);
+    await expect(page.locator('.charts-freq-title')).toHaveCount(0);
+    await expect(page.locator('.charts-airport-header')).toHaveCount(0);
+
+    const desheRow = page.locator('.charts-alt-table tbody tr', { hasText: 'DESHE ↔ ZALMN' });
+    const desheInputs = desheRow.locator('.charts-alt-input');
+    await expect(desheInputs.nth(0)).toHaveAttribute('type', 'number');
+    await expect(desheInputs.nth(0)).toHaveValue('3000');
+    await expect(desheInputs.nth(1)).toHaveValue('2500');
+    await expect(desheRow).toContainText('reviewed');
+    const eironRow = page.locator('.charts-alt-table tbody tr', { hasText: 'EIRON ↔ SDTYM' });
+    await expect(eironRow.locator('.charts-alt-input').nth(0)).toHaveValue('3000');
+    await expect(eironRow.locator('.charts-alt-input').nth(1))
+      .toHaveAttribute('placeholder', 'Blocked');
+    await expect(eironRow).toContainText('candidate · one-way');
+    const derorRow = page.locator('.charts-alt-table tbody tr', { hasText: 'DEROR ↔ SHARO' });
+    const derorInputs = derorRow.locator('.charts-alt-input');
+    await expect(derorInputs.nth(0)).toHaveAttribute('placeholder', 'NaN');
+    await expect(derorInputs.nth(1)).toHaveAttribute('placeholder', 'NaN');
+    await expect(derorRow).toContainText('unknown');
+
+    const search = page.locator('.charts-alt-search');
+    await expect(search).toHaveAttribute('placeholder', 'Search altitude pairs');
+    await search.fill('eiron');
+    await expect(eironRow).toBeVisible();
+    await expect(desheRow).toBeHidden();
+    await expect(derorRow).toBeHidden();
+    await search.fill('deror');
+    await expect(derorRow).toBeVisible();
+    await expect(eironRow).toBeHidden();
+    await search.fill('nope');
+    await expect(page.locator('.charts-alt-no-matches'))
+      .toHaveText('No matching altitude pairs');
+
+    await search.fill('');
+    await desheInputs.nth(0).fill('3100');
+    await desheInputs.nth(0).blur();
+    await derorInputs.nth(0).fill('1500');
+    await derorInputs.nth(0).blur();
+    await derorInputs.nth(1).fill('2000');
+    await derorInputs.nth(1).blur();
+    await page.locator('.charts-alt-copy').click();
+    const clip = await page.evaluate(() => navigator.clipboard.readText());
+    const copied = JSON.parse(clip);
+    expect(copied.segments[0].inboundAltitude).toBe(3100);
+    expect(copied.segments[2]).toMatchObject({
+      from: 'DEROR',
+      to: 'SHARO',
+      inboundAltitude: 1500,
+      outboundAltitude: 2000,
+      status: 'candidate',
+    });
+    expect(copied.segments[2]).not.toHaveProperty('oneWay');
   });
 
   test('Airport charts entry point stays chart-only', async ({ page }) => {
@@ -80,6 +193,8 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(page.locator('.charts-airport-header').first()).toBeVisible();
     await expect(page.locator('.charts-freq-title')).toHaveCount(0);
     await expect(page.locator('.charts-freq-table')).toHaveCount(0);
+    await expect(page.locator('.charts-alt-title')).toHaveCount(0);
+    await expect(page.locator('.charts-alt-table')).toHaveCount(0);
   });
 
   test('search filters frequency table rows', async ({ page }) => {

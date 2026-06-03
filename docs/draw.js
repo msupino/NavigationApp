@@ -125,6 +125,53 @@ async function loadCommChange() {
   }
 }
 
+// Lazy-loads docs/proposed-altitudes.json — { segments:[{from,to,
+// inboundAltitude,outboundAltitude,status,oneWay,...}] }. The app uses it only as
+// a reference table for freshly-created legs; saved/imported route JSON stays
+// authoritative for existing leg values.
+async function loadProposedAltitudes() {
+  if (proposedAltitudeMap !== null) return proposedAltitudeMap;
+  try {
+    const res = await fetch(S.proposedAltitudesUrl);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    const verr = validateProposedAltitudes(d);
+    if (verr) {
+      console.warn('proposed-altitudes schema error:', verr);
+      proposedAltitudeMap = {};
+      proposedAltitudePointIds = new Set();
+      proposedAltitudeDataset = null;
+      return proposedAltitudeMap;
+    }
+    const m = {};
+    const ids = new Set();
+    for (const segment of d.segments) {
+      if (!segment || !segment.from || !segment.to) continue;
+      m[proposedAltitudeKey(segment.from, segment.to)] = {
+        from: segment.from,
+        to: segment.to,
+        inboundAltitude: segment.inboundAltitude,
+        outboundAltitude: segment.outboundAltitude,
+        oneWay: segment.oneWay === true,
+        status: segment.status || 'candidate',
+      };
+      ids.add(segment.from);
+      ids.add(segment.to);
+    }
+    proposedAltitudeMap = m;
+    proposedAltitudePointIds = ids;
+    proposedAltitudeDataset = d;
+    applyProposedAltitudesToRoute();
+    return proposedAltitudeMap;
+  } catch (e) {
+    console.warn('Failed to load proposed-altitudes dataset:', e);
+    proposedAltitudeMap = {};             // graceful degrade — defaults remain
+    proposedAltitudePointIds = new Set();
+    proposedAltitudeDataset = null;
+    return proposedAltitudeMap;
+  }
+}
+
 // Closest nav waypoint within `pxThreshold` screen pixels of `latlng`,
 // or null. Returns the {name, lat, lng} entry from the loaded JSON.
 function nearestNavWaypoint(latlng, pxThreshold) {
@@ -1224,7 +1271,7 @@ function drawLegs() {
         cumInStr, tune('inkColor'), yellowFill(0.80), zoomScale);
     }
 
-    if (showReturn) {
+    if (showReturn && legAllowsReturn(i)) {
       drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, String(leg.outboundAltitude),
@@ -1312,12 +1359,12 @@ function needsHalo(i, which) {
   if (which === 'in') {
     if (i === 0) return false;
     const prev = state.legs[i - 1];
-    return cur.inboundAltitude !== prev.inboundAltitude ||
+    return !sameAltitudeValue(cur.inboundAltitude, prev.inboundAltitude) ||
            cur.flightSpeed     !== prev.flightSpeed;
   }
   if (i === state.legs.length - 1) return false;
   const next = state.legs[i + 1];
-  return cur.outboundAltitude !== next.outboundAltitude ||
+  return !sameAltitudeValue(cur.outboundAltitude, next.outboundAltitude) ||
          cur.outboundSpeed    !== next.outboundSpeed;
 }
 

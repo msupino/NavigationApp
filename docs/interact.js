@@ -164,7 +164,7 @@ function hitLegLabel(px, py) {
   const hit = Math.max(tune('hitLegLabelMinPx'), tune('hitLegLabelScalePx') * legZoomScale());
   for (let i = 0; i < state.legs.length; i++) {
     for (const which of ['in', 'out']) {
-      if (which === 'out' && !showReturn) continue;
+      if (which === 'out' && (!showReturn || !legAllowsReturn(i))) continue;
       const c = legLabelCenter(i, which);
       if (c && Math.hypot(c.x - px, c.y - py) <= hit) return { i, which };
     }
@@ -281,6 +281,7 @@ function hitCumLabelRet(px, py) {
   if (!showReturn) return null;          // return kite only drawn with the return path
   const hit = Math.max(tune('hitCumLabelMinPx'), tune('hitCumLabelScalePx') * legZoomScale());
   for (let i = 0; i < state.legs.length; i++) {
+    if (!legAllowsReturn(i)) continue;
     const c = cumLabelRetCenter(i);
     if (c && Math.hypot(c.x - px, c.y - py) <= hit) return { i };
   }
@@ -295,10 +296,13 @@ function hitCumLabelRet(px, py) {
 // changes downstream are preserved.
 function propagateAlt(i, key, newVal, oldVal) {
   if (newVal === oldVal) return;
+  const altitudeKey = key === 'inboundAltitude' || key === 'outboundAltitude';
+  if (altitudeKey) markLegAltitudeManual(i);
   const dir = key === 'outboundAltitude' || key === 'outboundSpeed' ? -1 : 1;
   for (let j = i + dir; j >= 0 && j < state.legs.length; j += dir) {
     if (state.legs[j][key] !== oldVal) break;
     state.legs[j][key] = newVal;
+    if (altitudeKey) markLegAltitudeManual(j);
   }
 }
 
@@ -368,6 +372,7 @@ function resetWpName(idx) {
   if (!wp) return;
   const snapped = findSnappedReference(wp);
   wp.name = snapped ? snapped.name : '';
+  applyProposedAltitudesToRoute();
   persist();
   draw();
   showInspector();
@@ -384,6 +389,7 @@ function resetAllWpNames() {
     const snapped = findSnappedReference(wp);
     wp.name = snapped ? snapped.name : '';
   }
+  applyProposedAltitudesToRoute();
   persist();
   draw();
   showInspector();
@@ -917,7 +923,7 @@ function appendFreqEdit(body, note, editOptions) {
   freqRow.classList.add('commchange-freq-edit');
   freqRow.appendChild(freqControl);
   body.appendChild(freqRow);
-  templateRow = textRow(S.commChangeTemplateFreq || 'Template', '');
+  templateRow = textRow(S.commChangeTemplateFreq || 'Default', '');
   templateRow.classList.add('commchange-template');
   body.appendChild(templateRow);
   updateTemplateHint();
@@ -1108,10 +1114,12 @@ function endMouseDrag() {
     }
     // #487: a waypoint drag may have landed (snapped) on a comm-change point.
     // Seed its note now that the position is committed, then repaint.
-    if (drag.kind === 'wp' && drag.moved && typeof seedCommChangeNotes === 'function' &&
-        seedCommChangeNotes()) {
-      draw(); showInspector();
+    let changed = false;
+    if (drag.kind === 'wp' && drag.moved) {
+      changed = applyProposedAltitudesToRoute();
+      if (typeof seedCommChangeNotes === 'function' && seedCommChangeNotes()) changed = true;
     }
+    if (changed) { draw(); showInspector(); }
     map.dragging.enable();
     drag = null;
   }
@@ -1416,11 +1424,12 @@ function endTouch() {
       }
     }
     // #487: seed a comm-change note if a touch waypoint-drag landed on one.
-    if (touchDrag.kind === 'wp' && touchDrag.moved &&
-        typeof seedCommChangeNotes === 'function' &&
-        seedCommChangeNotes()) {
-      draw(); showInspector();
+    let changed = false;
+    if (touchDrag.kind === 'wp' && touchDrag.moved) {
+      changed = applyProposedAltitudesToRoute();
+      if (typeof seedCommChangeNotes === 'function' && seedCommChangeNotes()) changed = true;
     }
+    if (changed) { draw(); showInspector(); }
     map.dragging.enable();
     touchDrag = null;
   }
