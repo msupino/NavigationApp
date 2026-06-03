@@ -1358,6 +1358,23 @@ html, body {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
 }
+.charts-alt-pair-button {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.charts-alt-pair-button:focus {
+  outline: 1px solid #1d6fe0;
+  outline-offset: 2px;
+}
 .charts-alt-status,
 .charts-alt-distance {
   color: #b9b3b3;

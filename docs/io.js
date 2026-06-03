@@ -3060,7 +3060,83 @@ function altitudePairNumberInput(segment, key) {
   return input;
 }
 
-function renderAltitudePairsTable(altSection) {
+var altitudePairFocusLayer = null;
+
+function altitudePairEndpoint(name) {
+  const code = String(name || '').trim();
+  if (!code) return null;
+  const visit = p => p && p.name === code && Number.isFinite(p.lat) && Number.isFinite(p.lng);
+  if (Array.isArray(navWP)) {
+    const point = navWP.find(visit);
+    if (point) return point;
+  }
+  if (Array.isArray(airfields)) {
+    const point = airfields.find(visit);
+    if (point) return point;
+  }
+  return null;
+}
+
+function showAltitudePairFocus(from, to) {
+  if (altitudePairFocusLayer && map && map.removeLayer) {
+    map.removeLayer(altitudePairFocusLayer);
+  }
+  const latlngs = [[from.lat, from.lng], [to.lat, to.lng]];
+  const layer = L.layerGroup([
+    L.polyline(latlngs, {
+      color: '#fff2a8',
+      weight: 5,
+      opacity: 0.95,
+      dashArray: '10 8',
+      interactive: false,
+    }),
+    L.circleMarker(latlngs[0], {
+      radius: 7,
+      color: '#fff2a8',
+      weight: 3,
+      fillColor: '#1d6fe0',
+      fillOpacity: 0.95,
+      interactive: false,
+    }),
+    L.circleMarker(latlngs[1], {
+      radius: 7,
+      color: '#fff2a8',
+      weight: 3,
+      fillColor: '#1d6fe0',
+      fillOpacity: 0.95,
+      interactive: false,
+    }),
+  ]).addTo(map);
+  altitudePairFocusLayer = layer;
+  window.setTimeout(() => {
+    if (altitudePairFocusLayer === layer && map && map.hasLayer(layer)) {
+      map.removeLayer(layer);
+      altitudePairFocusLayer = null;
+    }
+  }, 10000);
+}
+
+async function focusAltitudePairSegment(segment, closeModal) {
+  if (!segment) return false;
+  if (navWP === null && typeof loadNavWaypoints === 'function') await loadNavWaypoints();
+  if (airfields === null && typeof loadAirfields === 'function') await loadAirfields();
+  const from = altitudePairEndpoint(segment.from);
+  const to = altitudePairEndpoint(segment.to);
+  if (!from || !to) {
+    if (typeof showToast === 'function') {
+      showToast(S.altPairsLocationMissing || 'Pair endpoints not found');
+    }
+    return false;
+  }
+  if (typeof closeModal === 'function') closeModal();
+  const bounds = L.latLngBounds([[from.lat, from.lng], [to.lat, to.lng]]);
+  map.fitBounds(bounds, { padding: [80, 80], maxZoom: 12, animate: false });
+  showAltitudePairFocus(from, to);
+  return true;
+}
+
+function renderAltitudePairsTable(altSection, opts) {
+  opts = opts || {};
   const existingSearch = altSection.querySelector('.charts-alt-search');
   const searchQuery = existingSearch ? existingSearch.value : '';
   altSection.innerHTML = '';
@@ -3144,7 +3220,24 @@ function renderAltitudePairsTable(altSection) {
 
     const pair = document.createElement('td');
     pair.className = 'charts-alt-pair';
-    pair.textContent = segment.from + ' ↔ ' + segment.to;
+    const pairButton = document.createElement('button');
+    pairButton.type = 'button';
+    pairButton.className = 'charts-alt-pair-button';
+    pairButton.textContent = segment.from + ' ↔ ' + segment.to;
+    pairButton.title = (typeof S.altPairsGoTo === 'function')
+      ? S.altPairsGoTo(segment.from, segment.to)
+      : 'Go to ' + segment.from + ' ↔ ' + segment.to;
+    pairButton.setAttribute('aria-label', pairButton.title);
+    pairButton.addEventListener('click', e => {
+      e.preventDefault();
+      focusAltitudePairSegment(segment, opts.closeModal).catch(err => {
+        console.warn('Failed to focus leg-altitude pair:', err);
+        if (typeof showToast === 'function') {
+          showToast(S.altPairsLocationMissing || 'Pair endpoints not found');
+        }
+      });
+    });
+    pair.appendChild(pairButton);
     const inbound = document.createElement('td');
     const inboundInput = altitudePairNumberInput(segment, 'inboundAltitude');
     inbound.appendChild(inboundInput);
@@ -3220,7 +3313,9 @@ function showAltitudePairsModal() {
   const loading = document.createElement('p');
   loading.textContent = '…';
   altSection.appendChild(loading);
-  loadLegAltitudes().then(() => renderAltitudePairsTable(altSection));
+  loadLegAltitudes().then(() => renderAltitudePairsTable(altSection, {
+    closeModal: modal.close,
+  }));
   scrollArea.appendChild(body);
   modal.box.appendChild(scrollArea);
   modal.show();

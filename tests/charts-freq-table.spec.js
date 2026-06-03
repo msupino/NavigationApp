@@ -186,6 +186,46 @@ test.describe('Charts modal — frequency catalog table', () => {
     expect(copied.segments[2]).not.toHaveProperty('oneWay');
   });
 
+  test('altitude pair labels focus the map on the selected leg', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await installAltitudeFixture(page);
+    await boot(page);
+    await page.locator('#alt-pairs').click();
+
+    const desheRow = page.locator('.charts-alt-table tbody tr', { hasText: 'DESHE ↔ ZALMN' });
+    await expect(desheRow.locator('.charts-alt-pair-button'))
+      .toHaveAttribute('aria-label', 'Go to DESHE ↔ ZALMN');
+    await desheRow.locator('.charts-alt-pair-button').click();
+
+    await expect(page.locator('.charts-alt-title')).toHaveCount(0);
+    const focused = await page.waitForFunction(() => {
+      const from = navWP.find(p => p.name === 'DESHE');
+      const to = navWP.find(p => p.name === 'ZALMN');
+      if (!from || !to) return null;
+      const bounds = map.getBounds();
+      const layer = window.altitudePairFocusLayer;
+      const fromVisible = bounds.contains([from.lat, from.lng]);
+      const toVisible = bounds.contains([to.lat, to.lng]);
+      const hasFocusLayer = Boolean(layer && map.hasLayer(layer));
+      if (!fromVisible || !toVisible || !hasFocusLayer) return null;
+      return {
+        fromVisible,
+        toVisible,
+        hasFocusLayer,
+        routeWaypoints: state.waypoints.length,
+        routeLegs: state.legs.length,
+      };
+    });
+
+    expect(await focused.jsonValue()).toEqual({
+      fromVisible: true,
+      toVisible: true,
+      hasFocusLayer: true,
+      routeWaypoints: 0,
+      routeLegs: 0,
+    });
+  });
+
   test('Airport charts entry point stays chart-only', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);

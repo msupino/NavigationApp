@@ -399,6 +399,8 @@ window.S = Object.assign({
   altitudeUnknown: 'Unkn',
   altPairsUnknown: 'Unkn',
   altPairsOneWay: 'one-way',
+  altPairsGoTo: function(from, to) { return 'Go to ' + from + ' ↔ ' + to; },
+  altPairsLocationMissing: 'Pair endpoints not found',
   addFreqChange: 'Add freq change (Z)',
   deleteFreqChange: '🗑 Delete freq change (X)',
   resetFreqLocation: '↺ Reset callout location',
