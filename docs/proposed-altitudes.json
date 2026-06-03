@@ -1331,6 +1331,28 @@
       "onAtcApproval": true
     },
     {
+      "from": "ZMGEN",
+      "to": "TZHOT",
+      "distanceNm": 5.1,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "TZHOT",
+      "to": "LLHB",
+      "distanceNm": 7.5,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
       "from": "LLBS",
       "to": "LLHB",
       "distanceNm": 4.4,

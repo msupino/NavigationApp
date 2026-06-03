@@ -221,6 +221,32 @@ test.describe('proposed-altitudes map wiring', () => {
     });
   });
 
+  test('ZMGEN to TZHOT uses the upstream Urim airway altitude pair', async ({ page }) => {
+    await boot(page);
+
+    const result = await clickRoute(page, 'ZMGEN', 'TZHOT');
+
+    expect(result.names).toEqual(['ZMGEN', 'TZHOT']);
+    expect(result.leg).toMatchObject({
+      inboundAltitude: 2000,
+      outboundAltitude: 2000,
+      auto: true,
+    });
+  });
+
+  test('TZHOT to LLHB uses the upstream Urim to Hatzerim altitude pair', async ({ page }) => {
+    await boot(page);
+
+    const result = await clickRoute(page, 'TZHOT', 'LLHB');
+
+    expect(result.names).toEqual(['TZHOT', 'LLHB']);
+    expect(result.leg).toMatchObject({
+      inboundAltitude: 2000,
+      outboundAltitude: 2000,
+      auto: true,
+    });
+  });
+
   test('blocked reverse of one-way proposed leg is not auto-filled', async ({ page }) => {
     await boot(page);
 

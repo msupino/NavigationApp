@@ -114,6 +114,20 @@ test.describe('proposed-altitudes.json scaffold', () => {
       outboundAltitude: 2000,
       source: 'cvfr-map airway adjacency',
     });
+    expect(byName.get('ZMGEN-TZHOT')).toMatchObject({
+      inboundAltitude: 2000,
+      outboundAltitude: 2000,
+      source: 'cvfr-map airway adjacency',
+      armyAirway: true,
+      onAtcApproval: true,
+    });
+    expect(byName.get('TZHOT-LLHB')).toMatchObject({
+      inboundAltitude: 2000,
+      outboundAltitude: 2000,
+      source: 'cvfr-map airway adjacency',
+      armyAirway: true,
+      onAtcApproval: true,
+    });
     expect(byName.get('FRDIS-HADRA')).toMatchObject({
       inboundAltitude: 1500,
       outboundAltitude: 2000,

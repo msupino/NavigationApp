@@ -1285,6 +1285,28 @@
       "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
     },
     {
+      "segment": "ZMGEN-TZHOT",
+      "from": "ZMGEN",
+      "to": "TZHOT",
+      "inboundAltitude": 2000,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "distanceNm": 5.1,
+      "crop": "/tmp/navaid-altitude-extract/ZMGEN_TZHOT.png",
+      "evidence": "Treat upstream אורים as local TZHOT per waypoint-coordinate alignment. Seeded from arielbider/cvfr-map airway adjacency: צומת מגן -> אורים publishes 2000 in both directions."
+    },
+    {
+      "segment": "TZHOT-LLHB",
+      "from": "TZHOT",
+      "to": "LLHB",
+      "inboundAltitude": 2000,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "distanceNm": 7.5,
+      "crop": "/tmp/navaid-altitude-extract/TZHOT_LLHB.png",
+      "evidence": "Treat upstream אורים as local TZHOT per waypoint-coordinate alignment. Seeded from arielbider/cvfr-map airway adjacency: אורים -> חצרים publishes 2000 in both directions."
+    },
+    {
       "segment": "LLBS-LLHB",
       "from": "LLBS",
       "to": "LLHB",
