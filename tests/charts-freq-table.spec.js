@@ -72,7 +72,7 @@ async function installAltitudeFixture(page) {
   }));
 }
 
-async function boot(page) {
+async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
     try {
       for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
@@ -81,7 +81,7 @@ async function boot(page) {
         localStorage.setItem('navaid.sec.' + s, '1');
     } catch (e) {}
   });
-  await page.goto('?lang=en');
+  await page.goto('?lang=' + encodeURIComponent(lang));
   await page.waitForFunction(() => typeof showChartsModal === 'function' &&
     typeof showFreqTableModal === 'function' &&
     typeof showAltitudePairsModal === 'function' &&
@@ -224,6 +224,20 @@ test.describe('Charts modal — frequency catalog table', () => {
       routeWaypoints: 0,
       routeLegs: 0,
     });
+  });
+
+  test('Hebrew labels call altitude pairs routes', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await installAltitudeFixture(page);
+    await boot(page, 'he');
+    const button = page.locator('.tb-section[data-sec="charts"] #alt-pairs');
+    await expect(button).toHaveText('🧭 נתיבים');
+    await expect(button).toHaveAttribute('title', 'הצג והעתק נתיבי CVFR שנלמדו');
+
+    await button.click();
+    await expect(page.locator('.charts-alt-title h3')).toHaveText('נתיבי CVFR');
+    await expect(page.locator('.charts-alt-search')).toHaveAttribute('placeholder', 'חפש נתיבים');
+    await expect(page.locator('.charts-alt-table thead th').first()).toHaveText('נתיב');
   });
 
   test('Airport charts entry point stays chart-only', async ({ page }) => {
