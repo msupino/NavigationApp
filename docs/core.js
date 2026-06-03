@@ -212,7 +212,7 @@ window.S = Object.assign({
   airfieldsUrl: 'airfields.json?v=3',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   commChangeUrl: 'comm-change.json?v=1', // CVFR comm-change reporting points (issue #399)
-  proposedAltitudesUrl: 'proposed-altitudes.json?v=1', // CVFR green-route altitude proposals
+  proposedAltitudesUrl: 'leg-altitude.json?v=1', // CVFR green-route leg altitude table
 
   // --- English UI copy (default locale) -------------------------------
   // Sentence case: capitalize the first word and proper nouns / acronyms
@@ -555,7 +555,7 @@ var commChangeCallSigns = {}; // Frequency catalog keyed by call-sign id
                               // (loaded from comm-change.json `callSigns`).
 var proposedAltitudeMap = null; // null = not loaded yet (or last fetch failed —
                                 // retry on next call); {} or populated =
-                                // proposed-altitudes.json segments keyed as
+                                // leg-altitude.json segments keyed as
                                 // `FROM-TO` for automatic fresh-leg altitudes.
 var proposedAltitudePointIds = null; // Set of endpoint ids from the same file.
 var proposedAltitudeDataset = null;  // Raw validated dataset for Charts copy/view.

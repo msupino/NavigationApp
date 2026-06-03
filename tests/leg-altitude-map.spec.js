@@ -1,5 +1,5 @@
 // @ts-check
-// Proposed CVFR altitude table wiring: new map legs between known green-route
+// CVFR leg altitude table wiring: new map legs between known green-route
 // endpoints should pick up the table altitudes automatically.
 const { test, expect } = require('./_setup');
 
@@ -54,8 +54,8 @@ async function clickRoute(page, from, to) {
   }, { from, to });
 }
 
-test.describe('proposed-altitudes map wiring', () => {
-  test('map-added known green-route leg uses proposed altitudes', async ({ page }) => {
+test.describe('leg-altitude map wiring', () => {
+  test('map-added known green-route leg uses leg altitudes', async ({ page }) => {
     await boot(page);
 
     const result = await clickRoute(page, 'DESHE', 'ZALMN');
@@ -68,7 +68,7 @@ test.describe('proposed-altitudes map wiring', () => {
     });
   });
 
-  test('reverse map-added leg swaps proposed inbound/outbound altitudes', async ({ page }) => {
+  test('reverse map-added leg swaps leg-altitude inbound/outbound values', async ({ page }) => {
     await boot(page);
 
     const result = await clickRoute(page, 'ZALMN', 'DESHE');
@@ -81,7 +81,7 @@ test.describe('proposed-altitudes map wiring', () => {
     });
   });
 
-  test('manual altitude edits are not overwritten by the proposed table', async ({ page }) => {
+  test('manual altitude edits are not overwritten by the leg-altitude table', async ({ page }) => {
     await boot(page);
     await clickRoute(page, 'DESHE', 'ZALMN');
 
@@ -108,7 +108,7 @@ test.describe('proposed-altitudes map wiring', () => {
     });
   });
 
-  test('one-way proposed leg fills only the allowed direction', async ({ page }) => {
+  test('one-way leg-altitude entry fills only the allowed direction', async ({ page }) => {
     await boot(page);
 
     const result = await clickRoute(page, 'EIRON', 'SDTYM');
@@ -247,7 +247,7 @@ test.describe('proposed-altitudes map wiring', () => {
     });
   });
 
-  test('blocked reverse of one-way proposed leg is not auto-filled', async ({ page }) => {
+  test('blocked reverse of one-way leg-altitude entry is not auto-filled', async ({ page }) => {
     await boot(page);
 
     const result = await clickRoute(page, 'SDTYM', 'EIRON');
@@ -262,7 +262,7 @@ test.describe('proposed-altitudes map wiring', () => {
     expect(key).toBe('');
   });
 
-  test('reversing a one-way proposed leg clears the blocked auto altitude', async ({ page }) => {
+  test('reversing a one-way leg-altitude entry clears the blocked auto altitude', async ({ page }) => {
     await boot(page);
     await clickRoute(page, 'EIRON', 'SDTYM');
 
@@ -286,7 +286,7 @@ test.describe('proposed-altitudes map wiring', () => {
     });
   });
 
-  test('non-CVFR path with no proposed altitude is marked unknown', async ({ page }) => {
+  test('non-CVFR path with no leg altitude is marked unknown', async ({ page }) => {
     await boot(page);
 
     const result = await clickRoute(page, 'LLHZ', 'LLHA');

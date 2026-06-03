@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "purpose": "Developer review ledger for regenerating docs/proposed-altitudes.json from CVFR PDF/chart imagery. This file is not loaded by the app.",
-  "relatedDataset": "docs/proposed-altitudes.json",
+  "purpose": "Developer review ledger for regenerating docs/leg-altitude.json from CVFR PDF/chart imagery. This file is not loaded by the app.",
+  "relatedDataset": "docs/leg-altitude.json",
   "sourceCharts": [
     {
       "id": "north",

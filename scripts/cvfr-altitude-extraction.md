@@ -1,6 +1,6 @@
 # CVFR Altitude Extraction Notes
 
-This is the breadcrumb trail for regenerating `docs/proposed-altitudes.json`
+This is the breadcrumb trail for regenerating `docs/leg-altitude.json`
 from the Israeli CVFR map PDFs. The app does not load this file; it is here so
 the next chart pass starts from the review method instead of rediscovering it.
 
@@ -12,7 +12,7 @@ the next chart pass starts from the review method instead of rediscovering it.
   `https://www.gov.il/BlobFolder/generalpage/updates-2023/he/aip_CVFR_South_2023.pdf`
 - Point coordinates come from `docs/nav-waypoints.json` and
   `docs/airfields.json`. Do not duplicate point coordinates in
-  `docs/proposed-altitudes.json`.
+  `docs/leg-altitude.json`.
 
 ## Direction Convention
 
@@ -20,7 +20,7 @@ For each segment, `inboundAltitude` means `from -> to` and
 `outboundAltitude` means `to -> from`. If the app later looks up a route leg
 in the reverse order, swap the stored values.
 
-Some CVFR paths are one-way. In `docs/proposed-altitudes.json`, one-way rows
+Some CVFR paths are one-way. In `docs/leg-altitude.json`, one-way rows
 set `oneWay: true` and use `null` for the disallowed direction; the non-null
 altitude is the allowed direction.
 

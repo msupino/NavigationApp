@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 
-const ALTITUDE_PATH = path.join(__dirname, '..', 'docs', 'proposed-altitudes.json');
+const ALTITUDE_PATH = path.join(__dirname, '..', 'docs', 'leg-altitude.json');
 const NAV_PATH = path.join(__dirname, '..', 'docs', 'nav-waypoints.json');
 const AIRFIELDS_PATH = path.join(__dirname, '..', 'docs', 'airfields.json');
 const EXTRACTION_NOTES_PATH = path.join(
@@ -12,7 +12,7 @@ function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
-test.describe('proposed-altitudes.json scaffold', () => {
+test.describe('leg-altitude.json scaffold', () => {
   test('keeps route endpoints in the source waypoint datasets', () => {
     const data = readJson(ALTITUDE_PATH);
 
@@ -190,7 +190,7 @@ test.describe('proposed-altitudes.json scaffold', () => {
     const segments = data.segments.map(segment => `${segment.from}-${segment.to}`);
     const notesByName = new Map(notes.segments.map(segment => [segment.segment, segment]));
 
-    expect(notes.relatedDataset).toBe('docs/proposed-altitudes.json');
+    expect(notes.relatedDataset).toBe('docs/leg-altitude.json');
     expect(notes.sourceCharts.map(chart => chart.id)).toEqual(['north', 'south']);
     expect(notes.sourceCharts.map(chart => chart.region)).toEqual(['north', 'south']);
     expect(notes.sourceCharts.every(chart => chart.url.includes('gov.il'))).toBe(true);

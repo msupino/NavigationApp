@@ -439,7 +439,7 @@ function validateCommChange(d) {
   return errs.length ? errs.join('; ') : null;
 }
 
-// Strict schema for docs/proposed-altitudes.json — a reference table of
+// Strict schema for docs/leg-altitude.json — a reference table of
 // green CVFR route-segment altitude pairs. Unknown metadata keys are allowed;
 // the map behavior only needs from/to + integer or null altitude fields.
 function validateProposedAltitudes(d) {

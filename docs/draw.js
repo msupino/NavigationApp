@@ -125,7 +125,7 @@ async function loadCommChange() {
   }
 }
 
-// Lazy-loads docs/proposed-altitudes.json — { segments:[{from,to,
+// Lazy-loads docs/leg-altitude.json — { segments:[{from,to,
 // inboundAltitude,outboundAltitude,status,oneWay,...}] }. The app uses it only as
 // a reference table for freshly-created legs; saved/imported route JSON stays
 // authoritative for existing leg values.
@@ -137,7 +137,7 @@ async function loadProposedAltitudes() {
     const d = await res.json();
     const verr = validateProposedAltitudes(d);
     if (verr) {
-      console.warn('proposed-altitudes schema error:', verr);
+      console.warn('leg-altitude schema error:', verr);
       proposedAltitudeMap = {};
       proposedAltitudePointIds = new Set();
       proposedAltitudeDataset = null;
@@ -164,7 +164,7 @@ async function loadProposedAltitudes() {
     applyProposedAltitudesToRoute();
     return proposedAltitudeMap;
   } catch (e) {
-    console.warn('Failed to load proposed-altitudes dataset:', e);
+    console.warn('Failed to load leg-altitude dataset:', e);
     proposedAltitudeMap = {};             // graceful degrade — defaults remain
     proposedAltitudePointIds = new Set();
     proposedAltitudeDataset = null;
