@@ -110,6 +110,15 @@
       }
     },
     {
+      "from": "BAZRA",
+      "to": "LLHZ",
+      "distanceNm": 3.4,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 800,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
       "from": "ARAVA",
       "to": "HAZVA",
       "distanceNm": 13.5,
@@ -765,6 +774,24 @@
         "maxGap": 2,
         "samples": 21
       }
+    },
+    {
+      "from": "ZGOAL",
+      "to": "ZLHAV",
+      "distanceNm": 3.6,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "ZGOAL",
+      "to": "OMMER",
+      "distanceNm": 3.1,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
     },
     {
       "from": "NTAIM",

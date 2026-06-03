@@ -136,6 +136,17 @@
       "evidence": "Maintainer correction from CVFR North 2025: BAZRA toward DEROR is 800 and DEROR toward BAZRA is 2000."
     },
     {
+      "segment": "BAZRA-LLHZ",
+      "from": "BAZRA",
+      "to": "LLHZ",
+      "inboundAltitude": 1200,
+      "outboundAltitude": 800,
+      "status": "candidate",
+      "distanceNm": 3.4,
+      "crop": "/tmp/navaid-altitude-extract/BAZRA_LLHZ.png",
+      "evidence": "Seeded from arielbider/cvfr-map airway adjacency: upstream בצרה -> הרצליה publishes 1200, with the reverse הרצליה -> בצרה at 800."
+    },
+    {
       "segment": "ARAVA-HAZVA",
       "from": "ARAVA",
       "to": "HAZVA",
@@ -699,6 +710,28 @@
       "distanceNm": 1.5,
       "crop": "/tmp/navaid-altitude-extract/NCITY_ZGOAL.png",
       "evidence": "Beer Sheba/Goral connector. Use 2500 from NCITY toward ZGOAL and 3000 from ZGOAL back toward NCITY; the eastbound 3000 label belongs to the Goral/Omer branch."
+    },
+    {
+      "segment": "ZGOAL-ZLHAV",
+      "from": "ZGOAL",
+      "to": "ZLHAV",
+      "inboundAltitude": 3500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "distanceNm": 3.6,
+      "crop": "/tmp/navaid-altitude-extract/ZGOAL_ZLHAV.png",
+      "evidence": "Treat upstream GORAL as local ZGOAL per maintainer correction. Seeded from arielbider/cvfr-map airway adjacency: גורל -> צומת להבים publishes 3500, reverse 3000."
+    },
+    {
+      "segment": "ZGOAL-OMMER",
+      "from": "ZGOAL",
+      "to": "OMMER",
+      "inboundAltitude": 3000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "distanceNm": 3.1,
+      "crop": "/tmp/navaid-altitude-extract/ZGOAL_OMMER.png",
+      "evidence": "Treat upstream GORAL as local ZGOAL per maintainer correction. Seeded from arielbider/cvfr-map airway adjacency: גורל -> עומר publishes 3000, reverse 3500."
     },
     {
       "segment": "NTAIM-SUPER",

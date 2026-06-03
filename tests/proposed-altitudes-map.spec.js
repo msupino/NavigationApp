@@ -180,6 +180,32 @@ test.describe('proposed-altitudes map wiring', () => {
     });
   });
 
+  test('BAZRA to LLHZ uses the upstream Herzliya airway altitude pair', async ({ page }) => {
+    await boot(page);
+
+    const result = await clickRoute(page, 'BAZRA', 'LLHZ');
+
+    expect(result.names).toEqual(['BAZRA', 'LLHZ']);
+    expect(result.leg).toMatchObject({
+      inboundAltitude: 1200,
+      outboundAltitude: 800,
+      auto: true,
+    });
+  });
+
+  test('ZGOAL to ZLHAV uses the upstream GORAL airway altitude pair', async ({ page }) => {
+    await boot(page);
+
+    const result = await clickRoute(page, 'ZGOAL', 'ZLHAV');
+
+    expect(result.names).toEqual(['ZGOAL', 'ZLHAV']);
+    expect(result.leg).toMatchObject({
+      inboundAltitude: 3500,
+      outboundAltitude: 3000,
+      auto: true,
+    });
+  });
+
   test('DEROR to SHARO uses the seeded sibling altitude pair', async ({ page }) => {
     await boot(page);
 
@@ -235,9 +261,9 @@ test.describe('proposed-altitudes map wiring', () => {
   test('non-CVFR path with no proposed altitude is marked unknown', async ({ page }) => {
     await boot(page);
 
-    const result = await clickRoute(page, 'LLHZ', 'BAZRA');
+    const result = await clickRoute(page, 'LLHZ', 'LLHA');
 
-    expect(result.names).toEqual(['LLHZ', 'BAZRA']);
+    expect(result.names).toEqual(['LLHZ', 'LLHA']);
     expect(result.leg).toMatchObject({
       inboundUnknown: true,
       outboundUnknown: true,

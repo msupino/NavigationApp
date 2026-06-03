@@ -104,6 +104,11 @@ test.describe('proposed-altitudes.json scaffold', () => {
       inboundAltitude: 800,
       outboundAltitude: 2000,
     });
+    expect(byName.get('BAZRA-LLHZ')).toMatchObject({
+      inboundAltitude: 1200,
+      outboundAltitude: 800,
+      source: 'cvfr-map airway adjacency',
+    });
     expect(byName.get('DEROR-SHARO')).toMatchObject({
       inboundAltitude: 1500,
       outboundAltitude: 2000,
@@ -132,6 +137,16 @@ test.describe('proposed-altitudes.json scaffold', () => {
     expect(byName.get('NCITY-ZGOAL')).toMatchObject({
       inboundAltitude: 2500,
       outboundAltitude: 3000,
+    });
+    expect(byName.get('ZGOAL-ZLHAV')).toMatchObject({
+      inboundAltitude: 3500,
+      outboundAltitude: 3000,
+      source: 'cvfr-map airway adjacency',
+    });
+    expect(byName.get('ZGOAL-OMMER')).toMatchObject({
+      inboundAltitude: 3000,
+      outboundAltitude: 3500,
+      source: 'cvfr-map airway adjacency',
     });
     expect(byName.get('NTAIM-SUPER')).toMatchObject({
       inboundAltitude: 1200,
