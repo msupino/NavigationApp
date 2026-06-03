@@ -64,13 +64,13 @@ function parseLineStringCoords(kml) {
   if (!m) throw new Error('no LineString coordinates in KML');
   return m[1].trim().split(/\s+/).map(t => {
     const [lng, lat, alt] = t.split(',').map(Number);
-    return { lat, lng, alt };
+    return { lat, lng, alt: Number.isFinite(alt) ? alt : 0 };
   });
 }
 
 function parsePlacemarkPoints(kml) {
   const out = [];
-  const re = /<Placemark><name>([^<]*)<\/name><Point><coordinates>([^<]+)<\/coordinates><\/Point><\/Placemark>/g;
+  const re = /<Placemark><name>([^<]*)<\/name><Point>[\s\S]*?<coordinates>([^<]+)<\/coordinates><\/Point><\/Placemark>/g;
   let m;
   while ((m = re.exec(kml)) !== null) {
     const [lng, lat] = m[2].split(',').map(Number);
@@ -81,12 +81,35 @@ function parsePlacemarkPoints(kml) {
 
 function parseTourCameraCoords(kml) {
   const out = [];
-  const re = /<gx:FlyTo>[\s\S]*?<longitude>([^<]+)<\/longitude>\s*<latitude>([^<]+)<\/latitude>\s*<altitude>([^<]+)<\/altitude>/g;
+  const re = /<gx:FlyTo>[\s\S]*?<longitude>([^<]+)<\/longitude>\s*<latitude>([^<]+)<\/latitude>\s*<altitude>([^<]+)<\/altitude>\s*<heading>([^<]+)<\/heading>/g;
   let m;
   while ((m = re.exec(kml)) !== null) {
-    out.push({ lat: Number(m[2]), lng: Number(m[1]), alt: Number(m[3]) });
+    out.push({ lat: Number(m[2]), lng: Number(m[1]), alt: Number(m[3]), heading: Number(m[4]) });
   }
   return out;
+}
+
+function headingDelta(a, b) {
+  return Math.abs((((a - b) % 360) + 540) % 360 - 180);
+}
+
+function approxNm(a, b) {
+  const meanLat = ((a.lat + b.lat) / 2) * Math.PI / 180;
+  return Math.hypot((a.lat - b.lat) * 60, (a.lng - b.lng) * 60 * Math.cos(meanLat));
+}
+
+function cameraAtWaypoint(cam, wp) {
+  return Math.abs(cam.lat - wp.lat) < 1e-5 && Math.abs(cam.lng - wp.lng) < 1e-5;
+}
+
+function waypointTourCameras(cams, waypoints) {
+  let next = 0;
+  return waypoints.map(wp => {
+    const idx = cams.findIndex((cam, i) => i >= next && cameraAtWaypoint(cam, wp));
+    if (idx < 0) throw new Error('missing tour camera for waypoint ' + wp.name);
+    next = idx + 1;
+    return cams[idx];
+  });
 }
 
 function airfieldElevationM(code) {
@@ -117,7 +140,21 @@ test.describe('Google Earth KML export', () => {
     for (let i = 0; i < ROUTE.waypoints.length; i++) {
       expect(coords[i].lat).toBeCloseTo(ROUTE.waypoints[i].lat, 5);
       expect(coords[i].lng).toBeCloseTo(ROUTE.waypoints[i].lng, 5);
-      expect(coords[i].alt).toBe(0);            // route line is clamped to ground
+      expect(coords[i].alt).toBe(0);            // legacy Google Earth ground-line hint
+    }
+  });
+
+  test('LineString keeps Google Earth legacy tessellated ground-line format', async ({ page }) => {
+    const kml = await captureKml(page);
+    const line = kml.match(/<LineString>([\s\S]*?)<\/LineString>/);
+    expect(line).not.toBeNull();
+    expect(line[1]).toContain('<tessellate>1</tessellate>');
+    expect(line[1]).not.toContain('<altitudeMode>');
+    const coordText = line[1].match(/<coordinates>([^<]+)<\/coordinates>/)[1].trim();
+    for (const tuple of coordText.split(/\s+/)) {
+      const parts = tuple.split(',');
+      expect(parts).toHaveLength(3);
+      expect(Number(parts[2])).toBe(0);
     }
   });
 
@@ -135,14 +172,75 @@ test.describe('Google Earth KML export', () => {
   test('gx:Tour cameras visit every waypoint in order', async ({ page }) => {
     const kml = await captureKml(page);
     const cams = parseTourCameraCoords(kml);
-    expect(cams).toHaveLength(ROUTE.waypoints.length);
+    const waypointCams = waypointTourCameras(cams, ROUTE.waypoints);
+    expect(waypointCams).toHaveLength(ROUTE.waypoints.length);
     for (let i = 0; i < ROUTE.waypoints.length; i++) {
-      expect(cams[i].lat).toBeCloseTo(ROUTE.waypoints[i].lat, 5);
-      expect(cams[i].lng).toBeCloseTo(ROUTE.waypoints[i].lng, 5);
+      expect(waypointCams[i].lat).toBeCloseTo(ROUTE.waypoints[i].lat, 5);
+      expect(waypointCams[i].lng).toBeCloseTo(ROUTE.waypoints[i].lng, 5);
+    }
+  });
+
+  test('gx:Tour cameras round heading changes around waypoint arrivals', async ({ page }) => {
+    const turn = { lat: 31.3, lng: 34.8, name: 'TURN' };
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 31.0, lng: 34.8, name: 'START' },
+        { lat: 31.3, lng: 34.8, name: 'TURN' },
+        { lat: 31.3, lng: 35.2, name: 'FINISH' },
+      ];
+      syncLegs();
+      draw();
+    });
+    const expected = await page.evaluate(() => ({
+      first: geo(state.waypoints[0], state.waypoints[1]).brg,
+      turnInbound: geo(state.waypoints[0], state.waypoints[1]).brg,
+      turnOutbound: geo(state.waypoints[1], state.waypoints[2]).brg,
+      finishInbound: geo(state.waypoints[1], state.waypoints[2]).brg,
+    }));
+    const kml = await captureKml(page);
+    const cams = parseTourCameraCoords(kml);
+    expect(cams[0].heading).toBeCloseTo(expected.first, 1);
+    const turnIdx = cams.findIndex(c => cameraAtWaypoint(c, turn));
+    expect(turnIdx).toBeGreaterThan(3);
+    expect(cams[turnIdx - 1].heading).toBeCloseTo(expected.turnInbound, 1);
+    expect(cams[turnIdx - 1].lat).toBeLessThan(31.3);
+    expect(approxNm(cams[turnIdx - 1], turn)).toBeLessThanOrEqual(0.6);
+    expect(cams[turnIdx - 1].lng).toBeCloseTo(34.8, 5);
+    expect(cams[turnIdx].heading).toBeCloseTo(expected.turnOutbound, 1);
+    expect(headingDelta(cams[turnIdx].heading, expected.turnInbound)).toBeGreaterThan(45);
+    expect(cams[turnIdx + 1].lat).toBeCloseTo(31.3, 5);
+    expect(cams[turnIdx + 1].lng).toBeGreaterThan(34.8);
+    expect(approxNm(cams[turnIdx], cams[turnIdx + 1])).toBeGreaterThan(0.5);
+    for (let i = 1; i < cams.length; i++) {
+      expect(approxNm(cams[i - 1], cams[i])).toBeLessThanOrEqual(1.6);
+    }
+  });
+
+  test('gx:Tour headings stay continuous when a turn crosses north', async ({ page }) => {
+    const north = { lat: 31.3, lng: 34.75, name: 'NORTH' };
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 31.0, lng: 34.8, name: 'START' },
+        { lat: 31.3, lng: 34.75, name: 'NORTH' },
+        { lat: 31.6, lng: 34.8, name: 'FINISH' },
+      ];
+      syncLegs();
+      draw();
+    });
+    const kml = await captureKml(page);
+    const cams = parseTourCameraCoords(kml);
+    const northIdx = cams.findIndex(c => cameraAtWaypoint(c, north));
+    expect(northIdx).toBeGreaterThan(3);
+    expect(cams[northIdx - 1].heading).toBeGreaterThan(350);
+    expect(cams[northIdx].heading).toBeGreaterThan(360);
+    expect(cams[northIdx + 1].heading).toBeGreaterThan(360);
+    for (let i = 1; i < cams.length; i++) {
+      expect(Math.abs(cams[i].heading - cams[i - 1].heading)).toBeLessThan(20);
     }
   });
 
   test('airfield endpoints use ground elevation while enroute cameras keep planned altitude', async ({ page }) => {
+    const middle = { lat: 32.21861, lng: 34.88250, name: 'BAZRA' };
     await page.evaluate(({ start, end }) => {
       state.waypoints = [
         { lat: start.lat, lng: start.lng, name: start.name },
@@ -156,10 +254,15 @@ test.describe('Google Earth KML export', () => {
     }, { start: LLHZ, end: LLHA });
     const kml = await captureKml(page);
     const cams = parseTourCameraCoords(kml);
-    expect(cams).toHaveLength(3);
-    expect(cams[0].alt).toBe(airfieldElevationM('LLHZ'));
-    expect(cams[1].alt).toBe(Math.round(5200 * 0.3048));
-    expect(cams[2].alt).toBe(airfieldElevationM('LLHA'));
+    const waypointCams = waypointTourCameras(cams, [
+      LLHZ,
+      middle,
+      LLHA,
+    ]);
+    expect(waypointCams).toHaveLength(3);
+    expect(waypointCams[0].alt).toBe(airfieldElevationM('LLHZ'));
+    expect(waypointCams[1].alt).toBe(Math.round(5200 * 0.3048));
+    expect(waypointCams[2].alt).toBe(airfieldElevationM('LLHA'));
   });
 
   test('below-sea-level airfield endpoint keeps its negative ground elevation', async ({ page }) => {
@@ -174,9 +277,9 @@ test.describe('Google Earth KML export', () => {
     }, LLMZ);
     const kml = await captureKml(page);
     const cams = parseTourCameraCoords(kml);
-    expect(cams).toHaveLength(2);
-    expect(cams[0].alt).toBe(airfieldElevationM('LLMZ'));
-    expect(cams[0].alt).toBeLessThan(0);
+    const startCam = waypointTourCameras(cams, [LLMZ])[0];
+    expect(startCam.alt).toBe(airfieldElevationM('LLMZ'));
+    expect(startCam.alt).toBeLessThan(0);
   });
 
   test('KML is well-formed XML and starts with the declaration', async ({ page }) => {
