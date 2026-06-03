@@ -4,6 +4,7 @@
 // camera positions all carry the same lat/lng sequence as state.waypoints.
 const { test, expect } = require('./_setup');
 const { LLHZ, LLHA } = require('./_airfieldArp');
+const AIRFIELDS = require('../docs/airfields.json').airfields;
 
 const ROUTE = {
   waypoints: [
@@ -79,12 +80,20 @@ function parsePlacemarkPoints(kml) {
 
 function parseTourCameraCoords(kml) {
   const out = [];
-  const re = /<gx:FlyTo>[\s\S]*?<longitude>([^<]+)<\/longitude>\s*<latitude>([^<]+)<\/latitude>/g;
+  const re = /<gx:FlyTo>[\s\S]*?<longitude>([^<]+)<\/longitude>\s*<latitude>([^<]+)<\/latitude>\s*<altitude>([^<]+)<\/altitude>/g;
   let m;
   while ((m = re.exec(kml)) !== null) {
-    out.push({ lat: Number(m[2]), lng: Number(m[1]) });
+    out.push({ lat: Number(m[2]), lng: Number(m[1]), alt: Number(m[3]) });
   }
   return out;
+}
+
+function airfieldElevationM(code) {
+  const af = AIRFIELDS.find(a => a.name === code);
+  if (!af || typeof af.elev_ft !== 'number') {
+    throw new Error('missing airfield elevation for ' + code);
+  }
+  return Math.round(af.elev_ft * 0.3048);
 }
 
 test.describe('Google Earth KML export', () => {
@@ -130,6 +139,26 @@ test.describe('Google Earth KML export', () => {
       expect(cams[i].lat).toBeCloseTo(ROUTE.waypoints[i].lat, 5);
       expect(cams[i].lng).toBeCloseTo(ROUTE.waypoints[i].lng, 5);
     }
+  });
+
+  test('airfield endpoints use ground elevation while enroute cameras keep planned altitude', async ({ page }) => {
+    await page.evaluate(({ start, end }) => {
+      state.waypoints = [
+        { lat: start.lat, lng: start.lng, name: start.name },
+        { lat: 32.21861, lng: 34.88250, name: 'BAZRA' },
+        { lat: end.lat, lng: end.lng, name: end.name },
+      ];
+      syncLegs();
+      state.legs[0].inboundAltitude = 4300;
+      state.legs[1].inboundAltitude = 5200;
+      draw();
+    }, { start: LLHZ, end: LLHA });
+    const kml = await captureKml(page);
+    const cams = parseTourCameraCoords(kml);
+    expect(cams).toHaveLength(3);
+    expect(cams[0].alt).toBe(airfieldElevationM('LLHZ'));
+    expect(cams[1].alt).toBe(Math.round(5200 * 0.3048));
+    expect(cams[2].alt).toBe(airfieldElevationM('LLHA'));
   });
 
   test('KML is well-formed XML and starts with the declaration', async ({ page }) => {

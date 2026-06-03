@@ -2064,13 +2064,26 @@ function pngCrc(data) {
 }
 
 // --- fly the route (Google Earth) -----------------------------------
-function flyRoute() {
+async function flyRoute() {
   if (state.waypoints.length < 2) {
     alert(S.errNeedWps);
     return;
   }
+  if (airfields === null && typeof loadAirfields === 'function') {
+    await loadAirfields();
+  }
   const wps = state.waypoints;
+  const endpointGroundM = i => {
+    if (i !== 0 && i !== wps.length - 1) return null;
+    const af = typeof airfieldAtWaypoint === 'function'
+      ? airfieldAtWaypoint(wps[i])
+      : null;
+    const elevFt = af && Number(af.elev_ft);
+    return Number.isFinite(elevFt) ? Math.round(elevFt * 0.3048) : null;
+  };
   const altM = i => {
+    const groundM = endpointGroundM(i);
+    if (groundM !== null) return groundM;
     const leg = state.legs[Math.min(i, state.legs.length - 1)];
     return Math.max(0, Math.round((leg ? leg.inboundAltitude : 2000) * 0.3048));
   };
