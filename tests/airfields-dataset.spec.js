@@ -151,6 +151,20 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     expect(llar.plates.length).toBeGreaterThan(0);
   });
 
+  test('LLBO carries Habonim labels and retained BYOP plates', async () => {
+    const d = loadData();
+    const llbo = d.airfields.find(a => a.name === 'LLBO');
+    expect(llbo).toMatchObject({
+      he: 'הבונים',
+      en: 'HABONIM',
+    });
+    expect(Array.isArray(llbo.plates)).toBe(true);
+    expect(llbo.plates).toEqual(expect.arrayContaining([
+      'LLBO_Ground_Diagram.pdf',
+      'LLBO_airport_Chart.pdf',
+    ]));
+  });
+
   // The chart surfaces 11 ARPs that were missing from the legacy
   // airfields.json — IAF bases and small civil strips that ship
   // without BYOP plates yet. Listing them keeps the diff pinned.
