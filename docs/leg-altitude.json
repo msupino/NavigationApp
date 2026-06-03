@@ -1896,6 +1896,14 @@
       "source": "cvfr-map airway adjacency"
     },
     {
+      "from": "SHARO",
+      "to": "ZYAAR",
+      "distanceNm": 5.2,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
+      "status": "candidate"
+    },
+    {
       "from": "SFAIM",
       "to": "VINGT",
       "distanceNm": 2.7,

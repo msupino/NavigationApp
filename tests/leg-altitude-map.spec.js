@@ -235,6 +235,32 @@ test.describe('leg-altitude map wiring', () => {
     });
   });
 
+  test('SHARO to ZYAAR uses the maintainer altitude pair', async ({ page }) => {
+    await boot(page);
+
+    const result = await clickRoute(page, 'SHARO', 'ZYAAR');
+
+    expect(result.names).toEqual(['SHARO', 'ZYAAR']);
+    expect(result.leg).toMatchObject({
+      inboundAltitude: 1500,
+      outboundAltitude: 2000,
+      auto: true,
+    });
+  });
+
+  test('ZYAAR to SHARO uses the maintainer reverse altitude', async ({ page }) => {
+    await boot(page);
+
+    const result = await clickRoute(page, 'ZYAAR', 'SHARO');
+
+    expect(result.names).toEqual(['ZYAAR', 'SHARO']);
+    expect(result.leg).toMatchObject({
+      inboundAltitude: 2000,
+      outboundAltitude: 1500,
+      auto: true,
+    });
+  });
+
   test('ZMGEN to TZHOT uses the upstream Urim airway altitude pair', async ({ page }) => {
     await boot(page);
 

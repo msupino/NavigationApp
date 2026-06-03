@@ -1923,6 +1923,17 @@
       "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
     },
     {
+      "segment": "SHARO-ZYAAR",
+      "from": "SHARO",
+      "to": "ZYAAR",
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "distanceNm": 5.2,
+      "crop": "/tmp/navaid-altitude-extract/SHARO_ZYAAR.png",
+      "evidence": "Maintainer correction: SHARO->ZYAAR is 1500, while ZYAAR->SHARO is 2000."
+    },
+    {
       "segment": "SFAIM-VINGT",
       "from": "SFAIM",
       "to": "VINGT",
