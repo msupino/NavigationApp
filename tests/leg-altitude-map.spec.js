@@ -261,6 +261,32 @@ test.describe('leg-altitude map wiring', () => {
     });
   });
 
+  test('ZYAAR to HADRA uses the maintainer altitude pair', async ({ page }) => {
+    await boot(page);
+
+    const result = await clickRoute(page, 'ZYAAR', 'HADRA');
+
+    expect(result.names).toEqual(['ZYAAR', 'HADRA']);
+    expect(result.leg).toMatchObject({
+      inboundAltitude: 1500,
+      outboundAltitude: 2000,
+      auto: true,
+    });
+  });
+
+  test('HADRA to ZYAAR uses the maintainer reverse altitude', async ({ page }) => {
+    await boot(page);
+
+    const result = await clickRoute(page, 'HADRA', 'ZYAAR');
+
+    expect(result.names).toEqual(['HADRA', 'ZYAAR']);
+    expect(result.leg).toMatchObject({
+      inboundAltitude: 2000,
+      outboundAltitude: 1500,
+      auto: true,
+    });
+  });
+
   test('ZMGEN to TZHOT uses the upstream Urim airway altitude pair', async ({ page }) => {
     await boot(page);
 

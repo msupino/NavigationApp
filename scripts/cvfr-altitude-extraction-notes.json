@@ -1934,6 +1934,17 @@
       "evidence": "Maintainer correction: SHARO->ZYAAR is 1500, while ZYAAR->SHARO is 2000."
     },
     {
+      "segment": "ZYAAR-HADRA",
+      "from": "ZYAAR",
+      "to": "HADRA",
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "distanceNm": 3.3,
+      "crop": "/tmp/navaid-altitude-extract/ZYAAR_HADRA.png",
+      "evidence": "Maintainer correction: ZYAAR->HADRA is 1500, while HADRA->ZYAAR is 2000."
+    },
+    {
       "segment": "SFAIM-VINGT",
       "from": "SFAIM",
       "to": "VINGT",

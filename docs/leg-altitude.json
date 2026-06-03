@@ -1904,6 +1904,14 @@
       "status": "candidate"
     },
     {
+      "from": "ZYAAR",
+      "to": "HADRA",
+      "distanceNm": 3.3,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
+      "status": "candidate"
+    },
+    {
       "from": "SFAIM",
       "to": "VINGT",
       "distanceNm": 2.7,
