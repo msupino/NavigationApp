@@ -628,6 +628,13 @@ html, body {
 }
 .row select { cursor: pointer; }
 .row .val { color: #e8e8e8; font-variant-numeric: tabular-nums; }
+.row .freq-control { display: inline-flex; align-items: center; gap: 4px; }
+.row .freq-input.invalid,
+.charts-freq-input.invalid {
+  border-color: #c0392b;
+  background: rgba(231, 76, 60, 0.12);
+}
+.row .freq-unit { color: #b9b3b3; font-size: 11px; }
 
 .row.col {
   flex-direction: column;
@@ -1132,6 +1139,40 @@ html, body {
   white-space: normal;
   line-height: 1.35;
 }
+.commchange-template {
+  margin-top: -3px;
+  font-size: 11px;
+  color: #a9a2a2;
+}
+.commchange-template .val {
+  color: #ffd966;
+}
+.commchange-freq-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.commchange-freq-controls .freq-input {
+  width: 96px;
+}
+.commchange-freq-reset {
+  flex-shrink: 0;
+  font-size: 12px;
+  line-height: 1;
+  color: #b9b3b3;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+.commchange-freq-reset:hover:not(:disabled) {
+  color: #fff;
+}
+.commchange-freq-reset:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
 
 /* Airfield runways (#231) */
 .runways-row { flex-wrap: wrap; gap: 4px; align-items: center; }
@@ -1151,6 +1192,129 @@ html, body {
 /* Charts modal */
 .charts-modal-body {
   padding: 2px 0;
+}
+.charts-freq-section {
+  margin: 0 2px 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #443f3f;
+}
+.charts-freq-section-only {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.charts-freq-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 4px 6px;
+}
+.charts-freq-title h3 {
+  margin: 0;
+  font-size: 13px;
+  color: #e8e8e8;
+}
+.charts-freq-restore-all {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 12px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.charts-freq-restore-all:hover:not(:disabled) {
+  color: #fff;
+  background: #3a3636;
+}
+.charts-freq-restore-all:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.charts-freq-empty {
+  margin: 4px 6px 0;
+  color: #b9b3b3;
+  font-size: 12px;
+}
+.charts-freq-search-row {
+  padding: 0 4px 8px;
+}
+.charts-freq-search {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 5px 8px;
+}
+.charts-freq-search:focus {
+  outline: 1px solid #1d6fe0;
+}
+.charts-freq-table-wrap {
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid #393434;
+  border-radius: 4px;
+}
+.charts-freq-table {
+  margin-bottom: 0;
+}
+.charts-freq-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #302c2c;
+}
+.charts-freq-table tr.overridden,
+.charts-freq-table tbody tr.overridden:hover {
+  background: rgba(255, 217, 102, 0.16);
+}
+.charts-freq-table tr.overridden td:first-child {
+  box-shadow: inset 3px 0 0 #ffd966;
+}
+.charts-freq-table tr.overridden .charts-freq-label {
+  color: #fff2a8;
+  font-weight: 600;
+}
+.charts-freq-label,
+.charts-freq-code {
+  display: block;
+}
+.charts-freq-code {
+  margin-top: 2px;
+  color: #8a8484;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.charts-freq-template {
+  color: #ffd966;
+}
+.charts-freq-input {
+  width: 96px;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+.charts-freq-table tr.overridden .charts-freq-input {
+  background: #3a3422;
+  border-color: #ffd966;
+}
+.charts-freq-input:focus {
+  outline: 1px solid #1d6fe0;
+}
+.charts-freq-actions {
+  width: 28px;
+  text-align: center;
 }
 .charts-airport {
   margin: 0 2px;
@@ -1640,6 +1804,65 @@ body.theme-light .commchange-row .commchange-freq {
 }
 body.theme-light .commchange-row .commchange-note {
   color: #4b5563;
+}
+body.theme-light .commchange-template {
+  color: #6b7280;
+}
+body.theme-light .commchange-template .val {
+  color: #9a6b00;
+}
+body.theme-light .commchange-freq-reset {
+  color: #1f252c;
+  background: #fff;
+  border-color: #b8c0cc;
+}
+body.theme-light .commchange-freq-reset:hover:not(:disabled) {
+  color: #111820;
+  background: #eef3f9;
+}
+body.theme-light .charts-freq-section {
+  border-color: #c6ccd6;
+}
+body.theme-light .charts-freq-title h3 {
+  color: #1f252c;
+}
+body.theme-light .charts-freq-restore-all,
+body.theme-light .charts-freq-search,
+body.theme-light .charts-freq-input {
+  color: #1f252c;
+  background: #fff;
+  border-color: #b8c0cc;
+}
+body.theme-light .charts-freq-restore-all:hover:not(:disabled) {
+  color: #111820;
+  background: #eef3f9;
+}
+body.theme-light .charts-freq-empty,
+body.theme-light .charts-freq-code {
+  color: #6b7280;
+}
+body.theme-light .charts-freq-table-wrap {
+  border-color: #d2d7df;
+}
+body.theme-light .charts-freq-table th {
+  background: #f4f6f8;
+}
+body.theme-light .charts-freq-template {
+  color: #9a6b00;
+}
+body.theme-light .charts-freq-table tr.overridden,
+body.theme-light .charts-freq-table tbody tr.overridden:hover {
+  background: rgba(154, 107, 0, 0.14);
+}
+body.theme-light .charts-freq-table tr.overridden td:first-child {
+  box-shadow: inset 3px 0 0 #9a6b00;
+}
+body.theme-light .charts-freq-table tr.overridden .charts-freq-label {
+  color: #6f4d00;
+}
+body.theme-light .charts-freq-table tr.overridden .charts-freq-input {
+  background: #fff7d6;
+  border-color: #9a6b00;
 }
 body.theme-light .plate-chip-small {
   color: #1d6fe0;
