@@ -2979,19 +2979,7 @@ function altitudePairsJsonForCopy() {
 }
 
 function normalizeAltitudePairSegment(segment) {
-  if (!segment) return;
-  const nullCount = ['inboundAltitude', 'outboundAltitude']
-    .filter(key => segment[key] === null).length;
-  if (nullCount === 2) {
-    delete segment.oneWay;
-    segment.status = 'unknown';
-  } else if (nullCount === 1) {
-    segment.oneWay = true;
-    if (segment.status === 'unknown') segment.status = 'candidate';
-  } else {
-    delete segment.oneWay;
-    if (segment.status === 'unknown') segment.status = 'candidate';
-  }
+  normalizeLegAltitudePairSegment(segment);
 }
 
 function formatAltitudePairValue(segment, key) {
@@ -3139,7 +3127,8 @@ async function focusAltitudePairSegment(segment, closeModal) {
 }
 
 function renderAltitudePairsTable(altSection, opts) {
-  opts = opts || {};
+  opts = opts || altSection._altitudePairsRenderOpts || {};
+  altSection._altitudePairsRenderOpts = opts;
   const existingSearch = altSection.querySelector('.charts-alt-search');
   const searchQuery = existingSearch ? existingSearch.value : '';
   altSection.innerHTML = '';
@@ -3301,6 +3290,12 @@ function renderAltitudePairsTable(altSection, opts) {
   }
   search.addEventListener('input', applySearchFilter);
   applySearchFilter();
+}
+
+function refreshAltitudePairsTableIfOpen() {
+  for (const section of document.querySelectorAll('.charts-alt-section')) {
+    renderAltitudePairsTable(section, section._altitudePairsRenderOpts || {});
+  }
 }
 
 function showAltitudePairsModal() {

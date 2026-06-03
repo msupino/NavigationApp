@@ -297,14 +297,24 @@ function hitCumLabelRet(px, py) {
 function propagateAlt(i, key, newVal, oldVal) {
   const altitudeKey = key === 'inboundAltitude' || key === 'outboundAltitude';
   if (altitudeKey ? sameAltitudeValue(newVal, oldVal) : newVal === oldVal) return;
-  if (altitudeKey) markLegAltitudeManual(i);
+  let pairChanged = false;
+  if (altitudeKey) {
+    markLegAltitudeManual(i);
+    pairChanged = syncLegAltitudePairFromRouteLeg(i, key, newVal) || pairChanged;
+  }
   const dir = key === 'outboundAltitude' || key === 'outboundSpeed' ? -1 : 1;
   for (let j = i + dir; j >= 0 && j < state.legs.length; j += dir) {
     if (altitudeKey
       ? !sameAltitudeValue(state.legs[j][key], oldVal)
       : state.legs[j][key] !== oldVal) break;
     state.legs[j][key] = newVal;
-    if (altitudeKey) markLegAltitudeManual(j);
+    if (altitudeKey) {
+      markLegAltitudeManual(j);
+      pairChanged = syncLegAltitudePairFromRouteLeg(j, key, newVal) || pairChanged;
+    }
+  }
+  if (pairChanged && typeof refreshAltitudePairsTableIfOpen === 'function') {
+    refreshAltitudePairsTableIfOpen();
   }
 }
 

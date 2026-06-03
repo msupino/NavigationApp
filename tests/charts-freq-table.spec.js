@@ -226,6 +226,56 @@ test.describe('Charts modal — frequency catalog table', () => {
     });
   });
 
+  test('leg inspector altitude edits refresh the open altitude pairs chart', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await installAltitudeFixture(page);
+    await boot(page);
+    await page.evaluate(async () => {
+      await loadLegAltitudes();
+      const byName = name => navWP.find(p => p.name === name);
+      state.waypoints = [byName('DESHE'), byName('ZALMN')]
+        .map(p => ({ lat: p.lat, lng: p.lng, name: p.name }));
+      state.legs = [];
+      syncLegs();
+      state.selected = { type: 'leg', index: 0 };
+      showInspector();
+      draw();
+    });
+
+    await page.locator('#alt-pairs').click();
+    const desheRow = page.locator('.charts-alt-table tbody tr', { hasText: 'DESHE ↔ ZALMN' });
+    await expect(desheRow.locator('.charts-alt-input').nth(0)).toHaveValue('3000');
+    await page.locator('#insp-body input[type=number]').nth(1)
+      .evaluate(input => {
+        input.value = '3300';
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    await expect(desheRow.locator('.charts-alt-input').nth(0)).toHaveValue('3300');
+    await expect(desheRow.locator('.charts-alt-input').nth(1)).toHaveValue('2500');
+
+    await page.evaluate(() => {
+      const byName = name => navWP.find(p => p.name === name);
+      state.waypoints = [byName('ZALMN'), byName('DESHE')]
+        .map(p => ({ lat: p.lat, lng: p.lng, name: p.name }));
+      state.legs = [];
+      syncLegs();
+      state.selected = { type: 'leg', index: 0 };
+      showInspector();
+      draw();
+    });
+    await page.locator('#insp-body input[type=number]').nth(1)
+      .evaluate(input => {
+        input.value = '2600';
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    await expect(desheRow.locator('.charts-alt-input').nth(0)).toHaveValue('3300');
+    await expect(desheRow.locator('.charts-alt-input').nth(1)).toHaveValue('2600');
+    await expect.poll(() => page.evaluate(() => {
+      const segment = legAltitudeDataset.segments.find(s => s.from === 'DESHE' && s.to === 'ZALMN');
+      return [segment.inboundAltitude, segment.outboundAltitude];
+    })).toEqual([3300, 2600]);
+  });
+
   test('Hebrew labels call altitude pairs routes', async ({ page }) => {
     await installCommChangeFixture(page);
     await installAltitudeFixture(page);

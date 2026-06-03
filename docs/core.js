@@ -871,6 +871,21 @@ function syncLegs() {
 function legAltitudeKey(from, to) {
   return String(from || '').trim() + '-' + String(to || '').trim();
 }
+function normalizeLegAltitudePairSegment(segment) {
+  if (!segment) return;
+  const nullCount = ['inboundAltitude', 'outboundAltitude']
+    .filter(key => segment[key] === null).length;
+  if (nullCount === 2) {
+    delete segment.oneWay;
+    segment.status = 'unknown';
+  } else if (nullCount === 1) {
+    segment.oneWay = true;
+    if (segment.status === 'unknown') segment.status = 'candidate';
+  } else {
+    delete segment.oneWay;
+    if (segment.status === 'unknown') segment.status = 'candidate';
+  }
+}
 function legAltitudeKnownPointName(name) {
   const raw = String(name || '').trim();
   const candidates = [];
@@ -931,6 +946,48 @@ function legAltitudeForLeg(i) {
   const reverse = legAltitudeMap[legAltitudeKey(to, from)];
   if (reverse) return resolveSegment(reverse, true);
   return null;
+}
+function legAltitudePairMatchForLeg(i) {
+  if (!legAltitudeMap || !state.waypoints[i] || !state.waypoints[i + 1]) return null;
+  const from = legAltitudePointAtWaypoint(state.waypoints[i]);
+  const to = legAltitudePointAtWaypoint(state.waypoints[i + 1]);
+  if (!from || !to || from === to) return null;
+  const directKey = legAltitudeKey(from, to);
+  if (legAltitudeMap[directKey]) {
+    return { key: directKey, segment: legAltitudeMap[directKey], reverse: false };
+  }
+  const reverseKey = legAltitudeKey(to, from);
+  if (legAltitudeMap[reverseKey]) {
+    return { key: reverseKey, segment: legAltitudeMap[reverseKey], reverse: true };
+  }
+  return null;
+}
+function rawLegAltitudeSegment(key) {
+  if (!legAltitudeDataset || !Array.isArray(legAltitudeDataset.segments)) return null;
+  return legAltitudeDataset.segments.find(segment =>
+    legAltitudeKey(segment && segment.from, segment && segment.to) === key) || null;
+}
+function setLegAltitudePairValue(segment, key, value) {
+  if (!segment) return false;
+  const next = Number.isFinite(value) ? Math.round(value) : null;
+  const changed = segment[key] !== next;
+  segment[key] = next;
+  normalizeLegAltitudePairSegment(segment);
+  return changed;
+}
+function syncLegAltitudePairFromRouteLeg(i, key, value) {
+  if (key !== 'inboundAltitude' && key !== 'outboundAltitude') return false;
+  const match = legAltitudePairMatchForLeg(i);
+  if (!match) return false;
+  const pairKey = match.reverse
+    ? (key === 'inboundAltitude' ? 'outboundAltitude' : 'inboundAltitude')
+    : key;
+  let changed = setLegAltitudePairValue(match.segment, pairKey, value);
+  const raw = rawLegAltitudeSegment(match.key);
+  if (raw && raw !== match.segment) {
+    changed = setLegAltitudePairValue(raw, pairKey, value) || changed;
+  }
+  return changed;
 }
 function applyLegAltitudeToLeg(i) {
   const leg = state.legs[i];
