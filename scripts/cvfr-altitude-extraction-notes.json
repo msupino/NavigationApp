@@ -125,6 +125,17 @@
       "evidence": "CVFR North 2025 crop shows the ANATA/HNINA same-route yellow pair: 5000 from ANATA toward HNINA and 4500 from HNINA toward ANATA."
     },
     {
+      "segment": "ANATA-DUMIM",
+      "from": "ANATA",
+      "to": "DUMIM",
+      "inboundAltitude": 4500,
+      "outboundAltitude": 5000,
+      "status": "candidate",
+      "distanceNm": 2.9,
+      "crop": "/tmp/navaid-altitude-extract/ANATA_DUMIM.png",
+      "evidence": "Maintainer correction from CVFR North: ANATA toward DUMIM is 4500 and DUMIM toward ANATA is 5000."
+    },
+    {
       "segment": "BAZRA-DEROR",
       "from": "BAZRA",
       "to": "DEROR",

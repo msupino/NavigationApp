@@ -202,6 +202,38 @@ test.describe('leg-altitude map wiring', () => {
     expect(allowsReturn).toBe(true);
   });
 
+  test('ANATA to DUMIM uses the charted 4500 / 5000 altitude pair', async ({ page }) => {
+    await boot(page);
+
+    const result = await clickRoute(page, 'ANATA', 'DUMIM');
+
+    expect(result.names).toEqual(['ANATA', 'DUMIM']);
+    expect(result.leg).toMatchObject({
+      inboundAltitude: 4500,
+      outboundAltitude: 5000,
+      auto: true,
+    });
+    const allowsReturn = await page.evaluate(() =>
+      !state.legs[0]._legAltitudeOneWay && legAllowsReturn(0) === true);
+    expect(allowsReturn).toBe(true);
+  });
+
+  test('DUMIM to ANATA uses the charted 5000 reverse altitude', async ({ page }) => {
+    await boot(page);
+
+    const result = await clickRoute(page, 'DUMIM', 'ANATA');
+
+    expect(result.names).toEqual(['DUMIM', 'ANATA']);
+    expect(result.leg).toMatchObject({
+      inboundAltitude: 5000,
+      outboundAltitude: 4500,
+      auto: true,
+    });
+    const allowsReturn = await page.evaluate(() =>
+      !state.legs[0]._legAltitudeOneWay && legAllowsReturn(0) === true);
+    expect(allowsReturn).toBe(true);
+  });
+
   test('BAZRA to DEROR uses the charted 800 / 2000 altitude pair', async ({ page }) => {
     await boot(page);
 
