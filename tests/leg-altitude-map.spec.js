@@ -58,6 +58,38 @@ async function clickRoute(page, from, to) {
   }, { from, to });
 }
 
+async function setNamedRoute(page, from, to) {
+  return page.evaluate(({ from, to }) => {
+    const findPoint = name =>
+      (Array.isArray(navWP) && navWP.find(w => w.name === name)) ||
+      (Array.isArray(airfields) && airfields.find(a => a.name === name));
+    const a = findPoint(from);
+    const b = findPoint(to);
+    if (!a || !b) throw new Error('missing point fixture');
+    state.waypoints = [a, b].map(p => ({ lat: p.lat, lng: p.lng, name: p.name }));
+    state.legs = [];
+    state.notes = [];
+    state.selected = null;
+    syncLegs();
+    return {
+      names: state.waypoints.map(w => w.name),
+      leg: {
+        inboundAltitude: state.legs[0].inboundAltitude,
+        outboundAltitude: state.legs[0].outboundAltitude,
+        inboundUnknown: Number.isNaN(state.legs[0].inboundAltitude),
+        outboundUnknown: Number.isNaN(state.legs[0].outboundAltitude),
+        inboundDisplay: formatAltitudeValue(
+          state.legs[0].inboundAltitude, state.legs[0], 'inboundAltitude'),
+        outboundDisplay: formatAltitudeValue(
+          state.legs[0].outboundAltitude, state.legs[0], 'outboundAltitude'),
+        inboundBlocked: state.legs[0]._legAltitudeInboundBlocked === 1,
+        outboundBlocked: state.legs[0]._legAltitudeOutboundBlocked === 1,
+        auto: state.legs[0]._legAltitudeAuto === 1,
+      },
+    };
+  }, { from, to });
+}
+
 test.describe('leg-altitude map wiring', () => {
   test('map-added known green-route leg uses leg altitudes', async ({ page }) => {
     await boot(page);
@@ -409,5 +441,34 @@ test.describe('leg-altitude map wiring', () => {
       .locator('input');
     await expect(firstForwardAlt).toHaveValue('');
     await expect(firstForwardAlt).toHaveAttribute('placeholder', 'Unknown');
+  });
+
+  test('shortcut leg infers altitude when every underlying path leg agrees', async ({ page }) => {
+    await boot(page);
+
+    const result = await setNamedRoute(page, 'SFAIM', 'RIDNG');
+
+    expect(result.names).toEqual(['SFAIM', 'RIDNG']);
+    expect(result.leg).toMatchObject({
+      inboundAltitude: 800,
+      outboundAltitude: 1600,
+      auto: true,
+    });
+    expect(await page.evaluate(() =>
+      Boolean(legAltitudeMap['SFAIM-RIDNG'] || legAltitudeMap['RIDNG-SFAIM'])
+    )).toBe(false);
+  });
+
+  test('reverse shortcut leg infers the opposite consistent altitude', async ({ page }) => {
+    await boot(page);
+
+    const result = await setNamedRoute(page, 'RIDNG', 'SFAIM');
+
+    expect(result.names).toEqual(['RIDNG', 'SFAIM']);
+    expect(result.leg).toMatchObject({
+      inboundAltitude: 1600,
+      outboundAltitude: 800,
+      auto: true,
+    });
   });
 });
