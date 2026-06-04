@@ -22,16 +22,46 @@
         "LLHA"
       ],
       "legs": [
-        { "inboundAltitude": 800, "outboundAltitude": 1200 },
-        { "inboundAltitude": 800, "outboundAltitude": 2000 },
-        { "inboundAltitude": 1500, "outboundAltitude": 2000 },
-        { "inboundAltitude": 1500, "outboundAltitude": 2000 },
-        { "inboundAltitude": 1500, "outboundAltitude": 2000 },
-        { "inboundAltitude": 1500, "outboundAltitude": 2000 },
-        { "inboundAltitude": 1500, "outboundAltitude": 1000 },
-        { "inboundAltitude": 1500, "outboundAltitude": 2000 },
-        { "inboundAltitude": 1500, "outboundAltitude": 2000 },
-        { "inboundAltitude": 1500, "outboundAltitude": 2000 }
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 1200
+        },
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 2000
+        },
+        {
+          "inboundAltitude": 1500,
+          "outboundAltitude": 2000
+        },
+        {
+          "inboundAltitude": 1500,
+          "outboundAltitude": 2000
+        },
+        {
+          "inboundAltitude": 1500,
+          "outboundAltitude": 2000
+        },
+        {
+          "inboundAltitude": 1500,
+          "outboundAltitude": 2000
+        },
+        {
+          "inboundAltitude": 1500,
+          "outboundAltitude": 1000
+        },
+        {
+          "inboundAltitude": 1500,
+          "outboundAltitude": 2000
+        },
+        {
+          "inboundAltitude": 1500,
+          "outboundAltitude": 2000
+        },
+        {
+          "inboundAltitude": 1500,
+          "outboundAltitude": 2000
+        }
       ],
       "notes": [
         {
@@ -54,6 +84,498 @@
           "cc": "DAROM",
           "freqName": "HAIFA",
           "freq": "133.00",
+          "freqAuto": true
+        }
+      ]
+    },
+    {
+      "id": "llha-llhz-coastal",
+      "name": "Haifa to Herzliya",
+      "he": "חיפה להרצליה",
+      "description": "Coastal CVFR route from Haifa to Herzliya.",
+      "heDescription": "מסלול CVFR חופי מחיפה להרצליה.",
+      "defaultSpeed": 90,
+      "waypoints": [
+        "LLHA",
+        "GALIM",
+        "DAROM",
+        "HOTRM",
+        "BOREN",
+        "FRDIS",
+        "HADRA",
+        "SHARO",
+        "DEROR",
+        "BAZRA",
+        "LLHZ"
+      ],
+      "legs": [
+        {
+          "inboundAltitude": 2000,
+          "outboundAltitude": 1500
+        },
+        {
+          "inboundAltitude": 2000,
+          "outboundAltitude": 1500
+        },
+        {
+          "inboundAltitude": 2000,
+          "outboundAltitude": 1500
+        },
+        {
+          "inboundAltitude": 1000,
+          "outboundAltitude": 1500
+        },
+        {
+          "inboundAltitude": 2000,
+          "outboundAltitude": 1500
+        },
+        {
+          "inboundAltitude": 2000,
+          "outboundAltitude": 1500
+        },
+        {
+          "inboundAltitude": 2000,
+          "outboundAltitude": 1500
+        },
+        {
+          "inboundAltitude": 2000,
+          "outboundAltitude": 1500
+        },
+        {
+          "inboundAltitude": 2000,
+          "outboundAltitude": 800
+        },
+        {
+          "inboundAltitude": 1200,
+          "outboundAltitude": 800
+        }
+      ],
+      "notes": [
+        {
+          "lat": 32.79611,
+          "lng": 35.03333,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "DAROM",
+          "freqName": "PLUTO_WEST",
+          "freq": "118.40",
+          "freqAuto": true
+        },
+        {
+          "lat": 32.25722,
+          "lng": 34.98111,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "DEROR",
+          "freqName": "HERZLIYA",
+          "freq": "122.20",
+          "freqAuto": true
+        }
+      ]
+    },
+    {
+      "id": "llhz-llmz-dead-sea",
+      "name": "Herzliya to Masada",
+      "he": "הרצליה למצדה",
+      "description": "CVFR route from Herzliya to Masada via Jerusalem and the Dead Sea.",
+      "heDescription": "מסלול CVFR מהרצליה למצדה דרך ירושלים וים המלח.",
+      "defaultSpeed": 90,
+      "waypoints": [
+        "LLHZ",
+        "SFAIM",
+        "RIDNG",
+        "CLORE",
+        "TYONA",
+        "NTAIM",
+        "SIRNI",
+        "NSHRM",
+        "AYLON",
+        "LTRUN",
+        "SHARG",
+        "SORES",
+        "HAREL",
+        "HNINA",
+        "ANATA",
+        "DUMIM",
+        "YRIHO",
+        "ALMOG",
+        "ZUKIM",
+        "SHALM",
+        "ENGDI",
+        "LLMZ"
+      ],
+      "legs": [
+        {
+          "inboundAltitude": 1200,
+          "outboundAltitude": "NaN"
+        },
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 1600
+        },
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 1200
+        },
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 1200
+        },
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 1200
+        },
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 1200
+        },
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 1200
+        },
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 1200
+        },
+        {
+          "inboundAltitude": 1200,
+          "outboundAltitude": 1600
+        },
+        {
+          "inboundAltitude": 1800,
+          "outboundAltitude": 2300
+        },
+        {
+          "inboundAltitude": 2800,
+          "outboundAltitude": 3300
+        },
+        {
+          "inboundAltitude": 4500,
+          "outboundAltitude": 5000
+        },
+        {
+          "inboundAltitude": 4500,
+          "outboundAltitude": 5000
+        },
+        {
+          "inboundAltitude": 4500,
+          "outboundAltitude": 5000
+        },
+        {
+          "inboundAltitude": 4500,
+          "outboundAltitude": 5000
+        },
+        {
+          "inboundAltitude": 3500,
+          "outboundAltitude": 4000
+        },
+        {
+          "inboundAltitude": 3500,
+          "outboundAltitude": 4000
+        },
+        {
+          "inboundAltitude": 3500,
+          "outboundAltitude": 4000
+        },
+        {
+          "inboundAltitude": 3500,
+          "outboundAltitude": 4000
+        },
+        {
+          "inboundAltitude": 3500,
+          "outboundAltitude": 4000
+        },
+        {
+          "inboundAltitude": 3500,
+          "outboundAltitude": 4000
+        }
+      ],
+      "notes": [
+        {
+          "lat": 32.21056,
+          "lng": 34.89722,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "SFAIM",
+          "freqName": "PLUTO_WEST",
+          "freq": "118.40",
+          "freqAuto": true
+        },
+        {
+          "lat": 32.00925,
+          "lng": 34.79513,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "TYONA",
+          "freqName": "PALMACHIM",
+          "freq": "135.55"
+        },
+        {
+          "lat": 31.96501,
+          "lng": 34.86695,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "NTAIM",
+          "freqName": "TEL_NOF",
+          "freq": "129.05"
+        },
+        {
+          "lat": 31.90917,
+          "lng": 34.98167,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "NSHRM",
+          "freqName": "BEN_GURION",
+          "freq": "118.30",
+          "freqAuto": true
+        },
+        {
+          "lat": 31.87167,
+          "lng": 35.03361,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "AYLON",
+          "freqName": "BEN_GURION",
+          "freq": "118.30",
+          "freqAuto": true
+        },
+        {
+          "lat": 31.84521,
+          "lng": 35.09657,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "SORES",
+          "freqName": "PLUTO_EAST",
+          "freq": "123.85",
+          "freqAuto": true
+        },
+        {
+          "lat": 31.71611,
+          "lng": 35.53972,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "ZUKIM",
+          "freqName": "PLUTO_EAST",
+          "freq": "123.85",
+          "freqAuto": true
+        },
+        {
+          "lat": 31.32917,
+          "lng": 35.47833,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "LLMZ",
+          "freqName": "MASADA",
+          "freq": "122.55",
+          "freqAuto": true
+        }
+      ]
+    },
+    {
+      "id": "llmz-llhz-dead-sea",
+      "name": "Masada to Herzliya",
+      "he": "מצדה להרצליה",
+      "description": "CVFR return route from Masada to Herzliya via the Dead Sea and coastline.",
+      "heDescription": "מסלול CVFR ממצדה להרצליה דרך ים המלח והחוף.",
+      "defaultSpeed": 90,
+      "waypoints": [
+        "LLMZ",
+        "ENGDI",
+        "SHALM",
+        "ZUKIM",
+        "ALMOG",
+        "YRIHO",
+        "DUMIM",
+        "ANATA",
+        "HNINA",
+        "HAREL",
+        "SORES",
+        "SHARG",
+        "LTRUN",
+        "AYLON",
+        "NSHRM",
+        "SIRNI",
+        "NTAIM",
+        "TYONA",
+        "CLORE",
+        "RIDNG",
+        "HTZUK",
+        "KNTRY",
+        "LLHZ"
+      ],
+      "legs": [
+        {
+          "inboundAltitude": 4000,
+          "outboundAltitude": 3500
+        },
+        {
+          "inboundAltitude": 4000,
+          "outboundAltitude": 3500
+        },
+        {
+          "inboundAltitude": 4000,
+          "outboundAltitude": 3500
+        },
+        {
+          "inboundAltitude": 4000,
+          "outboundAltitude": 3500
+        },
+        {
+          "inboundAltitude": 4000,
+          "outboundAltitude": 3500
+        },
+        {
+          "inboundAltitude": 4000,
+          "outboundAltitude": 3500
+        },
+        {
+          "inboundAltitude": 5000,
+          "outboundAltitude": 4500
+        },
+        {
+          "inboundAltitude": 5000,
+          "outboundAltitude": 4500
+        },
+        {
+          "inboundAltitude": 5000,
+          "outboundAltitude": 4500
+        },
+        {
+          "inboundAltitude": 5000,
+          "outboundAltitude": 4500
+        },
+        {
+          "inboundAltitude": 3300,
+          "outboundAltitude": 2800
+        },
+        {
+          "inboundAltitude": 2300,
+          "outboundAltitude": 1800
+        },
+        {
+          "inboundAltitude": 1600,
+          "outboundAltitude": 1200
+        },
+        {
+          "inboundAltitude": 1200,
+          "outboundAltitude": 800
+        },
+        {
+          "inboundAltitude": 1200,
+          "outboundAltitude": 800
+        },
+        {
+          "inboundAltitude": 1200,
+          "outboundAltitude": 800
+        },
+        {
+          "inboundAltitude": 1200,
+          "outboundAltitude": 800
+        },
+        {
+          "inboundAltitude": 1200,
+          "outboundAltitude": 800
+        },
+        {
+          "inboundAltitude": 1200,
+          "outboundAltitude": 800
+        },
+        {
+          "inboundAltitude": 1600,
+          "outboundAltitude": 800
+        },
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 1200
+        },
+        {
+          "inboundAltitude": 1200,
+          "outboundAltitude": "NaN"
+        }
+      ],
+      "notes": [
+        {
+          "lat": 32.00925,
+          "lng": 34.79513,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "TYONA",
+          "freqName": "PLUTO_WEST",
+          "freq": "118.40"
+        },
+        {
+          "lat": 31.96501,
+          "lng": 34.86695,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "NTAIM",
+          "freqName": "TEL_NOF",
+          "freq": "129.05"
+        },
+        {
+          "lat": 31.87167,
+          "lng": 35.03361,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "AYLON",
+          "freqName": "TEL_NOF",
+          "freq": "129.05"
+        },
+        {
+          "lat": 31.84521,
+          "lng": 35.09657,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "SORES",
+          "freqName": "PLUTO_EAST",
+          "freq": "123.85",
+          "freqAuto": true
+        },
+        {
+          "lat": 31.71611,
+          "lng": 35.53972,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "ZUKIM",
+          "freqName": "PLUTO_EAST",
+          "freq": "123.85",
+          "freqAuto": true
+        },
+        {
+          "lat": 31.32917,
+          "lng": 35.47833,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "LLMZ",
+          "freqName": "MASADA",
+          "freq": "122.55",
+          "freqAuto": true
+        },
+        {
+          "lat": 32.14083,
+          "lng": 34.89139,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "KNTRY",
+          "freqName": "HERZLIYA",
+          "freq": "122.20",
           "freqAuto": true
         }
       ]

@@ -347,6 +347,17 @@
       "evidence": "Use the DUMIM/SHAHR vertical-route pair 4000/3500. The nearby 5000/4500 labels belong to the separate ANATA/HNINA branch, which is captured on its own segment."
     },
     {
+      "segment": "DUMIM-YRIHO",
+      "from": "DUMIM",
+      "to": "YRIHO",
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "distanceNm": 3.3,
+      "crop": "/tmp/navaid-altitude-extract/DUMIM_YRIHO.png",
+      "evidence": "Maintainer correction from CVFR North: DUMIM toward YRIHO is 3500 and YRIHO toward DUMIM is 4000."
+    },
+    {
       "segment": "EIRON-HADRA",
       "from": "EIRON",
       "to": "HADRA",
@@ -390,6 +401,17 @@
       "distanceNm": 5.7,
       "crop": "/tmp/navaid-altitude-extract/ENGDI_SHALM.png",
       "evidence": "Altitude pair was selected from same-route yellow CVFR altitude arrows in the segment crop and sign-sheet review. Verify the crop before promoting this row from candidate to reviewed."
+    },
+    {
+      "segment": "ENGDI-LLMZ",
+      "from": "ENGDI",
+      "to": "LLMZ",
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "distanceNm": 8.1,
+      "crop": "/tmp/navaid-altitude-extract/ENGDI_LLMZ.png",
+      "evidence": "Maintainer correction from CVFR South: ENGDI toward LLMZ is 3500 and LLMZ toward ENGDI is 4000."
     },
     {
       "segment": "EVLYM-SEGEV",
@@ -1481,6 +1503,17 @@
       "distanceNm": 4.4,
       "crop": "/tmp/navaid-altitude-extract/ALMOG_ZUKIM.png",
       "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+    },
+    {
+      "segment": "YRIHO-ALMOG",
+      "from": "YRIHO",
+      "to": "ALMOG",
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "distanceNm": 3.9,
+      "crop": "/tmp/navaid-altitude-extract/YRIHO_ALMOG.png",
+      "evidence": "Maintainer correction from CVFR North: YRIHO toward ALMOG is 3500 and ALMOG toward YRIHO is 4000."
     },
     {
       "segment": "ALMOG-NAAMA",

@@ -346,6 +346,15 @@
       }
     },
     {
+      "from": "DUMIM",
+      "to": "YRIHO",
+      "distanceNm": 3.3,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "source": "maintainer correction"
+    },
+    {
       "from": "EIRON",
       "to": "HADRA",
       "distanceNm": 5.8,
@@ -397,6 +406,15 @@
         "maxGap": 13,
         "samples": 80
       }
+    },
+    {
+      "from": "ENGDI",
+      "to": "LLMZ",
+      "distanceNm": 8.1,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "source": "maintainer correction"
     },
     {
       "from": "EVLYM",
@@ -1507,6 +1525,15 @@
       "outboundAltitude": 4000,
       "status": "candidate",
       "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "YRIHO",
+      "to": "ALMOG",
+      "distanceNm": 3.9,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "source": "maintainer correction"
     },
     {
       "from": "ALMOG",
@@ -3060,6 +3087,20 @@
       "field": "outboundAltitude"
     },
     {
+      "from": "DUMIM",
+      "to": "YRIHO",
+      "altitude": 3500,
+      "segment": "DUMIM-YRIHO",
+      "field": "inboundAltitude"
+    },
+    {
+      "from": "YRIHO",
+      "to": "DUMIM",
+      "altitude": 4000,
+      "segment": "DUMIM-YRIHO",
+      "field": "outboundAltitude"
+    },
+    {
       "from": "EIRON",
       "to": "HADRA",
       "altitude": 3000,
@@ -3106,6 +3147,20 @@
       "to": "ENGDI",
       "altitude": 3500,
       "segment": "ENGDI-SHALM",
+      "field": "outboundAltitude"
+    },
+    {
+      "from": "ENGDI",
+      "to": "LLMZ",
+      "altitude": 3500,
+      "segment": "ENGDI-LLMZ",
+      "field": "inboundAltitude"
+    },
+    {
+      "from": "LLMZ",
+      "to": "ENGDI",
+      "altitude": 4000,
+      "segment": "ENGDI-LLMZ",
       "field": "outboundAltitude"
     },
     {
@@ -4471,6 +4526,20 @@
       "to": "ALMOG",
       "altitude": 4000,
       "segment": "ALMOG-ZUKIM",
+      "field": "outboundAltitude"
+    },
+    {
+      "from": "YRIHO",
+      "to": "ALMOG",
+      "altitude": 3500,
+      "segment": "YRIHO-ALMOG",
+      "field": "inboundAltitude"
+    },
+    {
+      "from": "ALMOG",
+      "to": "YRIHO",
+      "altitude": 4000,
+      "segment": "YRIHO-ALMOG",
       "field": "outboundAltitude"
     },
     {

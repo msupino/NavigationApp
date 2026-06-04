@@ -234,6 +234,31 @@ test.describe('leg-altitude map wiring', () => {
     expect(allowsReturn).toBe(true);
   });
 
+  for (const [from, to, inboundAltitude, outboundAltitude] of [
+    ['DUMIM', 'YRIHO', 3500, 4000],
+    ['YRIHO', 'DUMIM', 4000, 3500],
+    ['YRIHO', 'ALMOG', 3500, 4000],
+    ['ALMOG', 'YRIHO', 4000, 3500],
+    ['ENGDI', 'LLMZ', 3500, 4000],
+    ['LLMZ', 'ENGDI', 4000, 3500],
+  ]) {
+    test(`${from} to ${to} uses the charted altitude pair`, async ({ page }) => {
+      await boot(page);
+
+      const result = await clickRoute(page, from, to);
+
+      expect(result.names).toEqual([from, to]);
+      expect(result.leg).toMatchObject({
+        inboundAltitude,
+        outboundAltitude,
+        auto: true,
+      });
+      const allowsReturn = await page.evaluate(() =>
+        !state.legs[0]._legAltitudeOneWay && legAllowsReturn(0) === true);
+      expect(allowsReturn).toBe(true);
+    });
+  }
+
   test('BAZRA to DEROR uses the charted 800 / 2000 altitude pair', async ({ page }) => {
     await boot(page);
 

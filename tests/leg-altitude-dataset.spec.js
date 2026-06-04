@@ -130,6 +130,18 @@ test.describe('leg-altitude.json scaffold', () => {
       inboundAltitude: 4500,
       outboundAltitude: 5000,
     });
+    expect(byName.get('DUMIM-YRIHO')).toMatchObject({
+      inboundAltitude: 3500,
+      outboundAltitude: 4000,
+    });
+    expect(byName.get('YRIHO-ALMOG')).toMatchObject({
+      inboundAltitude: 3500,
+      outboundAltitude: 4000,
+    });
+    expect(byName.get('ENGDI-LLMZ')).toMatchObject({
+      inboundAltitude: 3500,
+      outboundAltitude: 4000,
+    });
     expect(byName.get('BAZRA-DEROR')).toMatchObject({
       inboundAltitude: 800,
       outboundAltitude: 2000,

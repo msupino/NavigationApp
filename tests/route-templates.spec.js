@@ -16,6 +16,22 @@ function routeAltitudeOk(value) {
     (typeof value === 'number' && Number.isFinite(value));
 }
 
+function routeSnapshotScript() {
+  return {
+    waypoints: state.waypoints.map(w => w.name),
+    speeds: state.legs.map(l => [l.flightSpeed, l.outboundSpeed]),
+    alts: state.legs.map(l => [
+      Number.isNaN(l.inboundAltitude) ? 'NaN' : l.inboundAltitude,
+      Number.isNaN(l.outboundAltitude) ? 'NaN' : l.outboundAltitude,
+    ]),
+    notes: state.notes.map(n => ({
+      cc: n.cc || '',
+      freqName: n.freqName || '',
+      freq: n.freq || '',
+    })),
+  };
+}
+
 async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
     try {
@@ -43,6 +59,12 @@ test.describe('route templates', () => {
     expect(data.version).toBe(1);
     expect(Array.isArray(data.templates)).toBe(true);
     expect(data.templates.length).toBeGreaterThan(0);
+    expect(data.templates.map(template => template.id)).toEqual(expect.arrayContaining([
+      'llhz-llha-coastal',
+      'llha-llhz-coastal',
+      'llhz-llmz-dead-sea',
+      'llmz-llhz-dead-sea',
+    ]));
     for (const template of data.templates) {
       expect(typeof template.id).toBe('string');
       expect(typeof template.name).toBe('string');
@@ -70,12 +92,7 @@ test.describe('route templates', () => {
     await page.locator('.route-template-speed').fill('115');
     await page.locator('.route-template-modal button', { hasText: 'Build route' }).click();
     await expect(page.locator('.route-template-modal')).toHaveCount(0);
-    const route = await page.evaluate(() => ({
-      waypoints: state.waypoints.map(w => w.name),
-      speeds: state.legs.map(l => [l.flightSpeed, l.outboundSpeed]),
-      alts: state.legs.map(l => [l.inboundAltitude, l.outboundAltitude]),
-      notes: state.notes.map(n => ({ cc: n.cc || '', freqName: n.freqName || '', freq: n.freq || '' })),
-    }));
+    const route = await page.evaluate(routeSnapshotScript);
     expect(route.waypoints).toEqual([
       'LLHZ', 'BAZRA', 'DEROR', 'SHARO', 'HADRA', 'FRDIS',
       'BOREN', 'HOTRM', 'DAROM', 'GALIM', 'LLHA',
@@ -88,4 +105,79 @@ test.describe('route templates', () => {
       { cc: 'DAROM', freqName: 'HAIFA', freq: '133.00' },
     ]));
   });
+
+  for (const templateCase of [
+    {
+      id: 'llha-llhz-coastal',
+      name: 'Haifa to Herzliya',
+      waypoints: [
+        'LLHA', 'GALIM', 'DAROM', 'HOTRM', 'BOREN', 'FRDIS',
+        'HADRA', 'SHARO', 'DEROR', 'BAZRA', 'LLHZ',
+      ],
+      alts: {
+        0: [2000, 1500],
+        3: [1000, 1500],
+        8: [2000, 800],
+        9: [1200, 800],
+      },
+      notes: [
+        { cc: 'DAROM', freqName: 'PLUTO_WEST', freq: '118.40' },
+        { cc: 'DEROR', freqName: 'HERZLIYA', freq: '122.20' },
+      ],
+    },
+    {
+      id: 'llhz-llmz-dead-sea',
+      name: 'Herzliya to Masada',
+      waypoints: ['LLHZ', 'SFAIM', 'RIDNG', 'CLORE', 'TYONA', 'NTAIM', 'SIRNI',
+        'NSHRM', 'AYLON', 'LTRUN', 'SHARG', 'SORES', 'HAREL', 'HNINA', 'ANATA',
+        'DUMIM', 'YRIHO', 'ALMOG', 'ZUKIM', 'SHALM', 'ENGDI', 'LLMZ'],
+      alts: {
+        0: [1200, 'NaN'],
+        14: [4500, 5000],
+        15: [3500, 4000],
+        16: [3500, 4000],
+        20: [3500, 4000],
+      },
+      notes: [
+        { cc: 'SFAIM', freqName: 'PLUTO_WEST', freq: '118.40' },
+        { cc: 'LLMZ', freqName: 'MASADA', freq: '122.55' },
+      ],
+    },
+    {
+      id: 'llmz-llhz-dead-sea',
+      name: 'Masada to Herzliya',
+      waypoints: ['LLMZ', 'ENGDI', 'SHALM', 'ZUKIM', 'ALMOG', 'YRIHO', 'DUMIM',
+        'ANATA', 'HNINA', 'HAREL', 'SORES', 'SHARG', 'LTRUN', 'AYLON', 'NSHRM',
+        'SIRNI', 'NTAIM', 'TYONA', 'CLORE', 'RIDNG', 'HTZUK', 'KNTRY', 'LLHZ'],
+      alts: {
+        0: [4000, 3500],
+        4: [4000, 3500],
+        5: [4000, 3500],
+        6: [5000, 4500],
+        21: [1200, 'NaN'],
+      },
+      notes: [
+        { cc: 'LLMZ', freqName: 'MASADA', freq: '122.55' },
+        { cc: 'KNTRY', freqName: 'HERZLIYA', freq: '122.20' },
+      ],
+    },
+  ]) {
+    test(`user builds the ${templateCase.name} route template`, async ({ page }) => {
+      await boot(page);
+      await page.locator('#route-templates').click();
+      await page.locator('.route-template-select').selectOption(templateCase.id);
+      await page.locator('.route-template-speed').fill('105');
+      await page.locator('.route-template-modal button', { hasText: 'Build route' }).click();
+      await expect(page.locator('.route-template-modal')).toHaveCount(0);
+
+      const route = await page.evaluate(routeSnapshotScript);
+
+      expect(route.waypoints).toEqual(templateCase.waypoints);
+      expect(route.speeds.every(([a, b]) => a === 105 && b === 105)).toBe(true);
+      for (const [index, alts] of Object.entries(templateCase.alts)) {
+        expect(route.alts[Number(index)]).toEqual(alts);
+      }
+      expect(route.notes).toEqual(expect.arrayContaining(templateCase.notes));
+    });
+  }
 });
