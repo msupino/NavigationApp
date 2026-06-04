@@ -1,5 +1,5 @@
 {
-  "_reportType": "Per-waypoint CVFR reporting class from the IAA chart 'סוג דיווח' column: 'mandatory' = חובה, 'onRequest' = דרישה. Source of truth is the published chart waypoint table (same screenshot the names/coords come from). The mandatory/onRequest split for 153 codes was cross-verified against an independent transcription of the same chart (arielbider/cvfr-map) — verification only; no names, coordinates, or data were imported from it. PROVISIONAL for 19 codes not covered by that cross-check (eyeball read of the chart, pending confirmation): ANATA, EITAN, ENGDI, GILAT, IKKEA, MEHOL, MESEK, METAH, MIHMS, MINGV, MRISN, MZDOT, RANNO, TZHOT, YRIHO, ZGOAL, ZRANA, ZURIM, ZYAAR.",
+  "_reportType": "Per-waypoint CVFR reporting class from the IAA chart 'סוג דיווח' column: 'mandatory' = חובה, 'onRequest' = דרישה. Source of truth is the published chart waypoint table (same screenshot the names/coords come from). The mandatory/onRequest split for 155 codes was cross-verified against an independent transcription of the same chart (arielbider/cvfr-map, matched by code and by Hebrew name/coords) — verification only; no names, coordinates, or data were imported from it. PROVISIONAL for 17 codes not present in that cross-check (eyeball read of the chart, pending confirmation): ANATA, EITAN, ENGDI, GILAT, IKKEA, MEHOL, MESEK, METAH, MIHMS, MINGV, MZDOT, RANNO, TZHOT, YRIHO, ZRANA, ZURIM, ZYAAR.",
   "waypoints": [
     {
       "name": "ZLHAV",
@@ -853,7 +853,7 @@
       "he": "מחלף ראשון",
       "lat": 31.97694,
       "lng": 34.79194,
-      "report": "mandatory"
+      "report": "onRequest"
     },
     {
       "name": "MYTAR",
