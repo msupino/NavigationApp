@@ -58,6 +58,23 @@ test.describe('#406 / #410 — nav-waypoints.json (chart-sourced)', () => {
     }
   });
 
+  test('every entry carries a valid reporting class', async () => {
+    const d = loadData();
+    for (const w of d.waypoints) {
+      // 'mandatory' (חובה) or 'onRequest' (דרישה), from the chart's
+      // 'סוג דיווח' column.
+      expect(['mandatory', 'onRequest']).toContain(w.report);
+    }
+  });
+
+  test('reporting-class split matches the chart (89 mandatory / 83 on-request)', async () => {
+    const d = loadData();
+    const mandatory = d.waypoints.filter(w => w.report === 'mandatory').length;
+    const onRequest = d.waypoints.filter(w => w.report === 'onRequest').length;
+    expect(mandatory).toBe(89);
+    expect(onRequest).toBe(83);
+  });
+
   test('codes are unique', async () => {
     const d = loadData();
     const codes = d.waypoints.map(w => w.name);
@@ -96,14 +113,15 @@ test.describe('#406 / #410 — nav-waypoints.json (chart-sourced)', () => {
     // shifts caused ~1° heading drift on cross-country legs that pass
     // through them.
     expect(bezra).toEqual({ name: 'BEZRA', he: 'בית עזרא',
-                            lat: 31.74139, lng: 34.64583 });
+                            lat: 31.74139, lng: 34.64583, report: 'mandatory' });
     expect(kuvsh).toEqual({ name: 'KUVSH', he: 'כובשים',
-                            lat: 31.25861, lng: 34.76361 });
+                            lat: 31.25861, lng: 34.76361, report: 'mandatory' });
   });
 
   // Spot checks that the image-based rebuild (#410) replaced the
-  // CSV-derived text artefacts with what the chart actually prints.
-  test('chart-correct Hebrew names (#410 — image-sourced)', async () => {
+  // CSV-derived text artefacts, with selected labels aligned to the
+  // arielbider/cvfr-map reference data used for cross-checking.
+  test('chart-correct Hebrew names (#410 — image/upstream-sourced)', async () => {
     const d = loadData();
     const byCode = new Map(d.waypoints.map(w => [w.name, w]));
     // CSV had digit `2` where the chart prints Hebrew samekh `ס`.
@@ -116,10 +134,12 @@ test.describe('#406 / #410 — nav-waypoints.json (chart-sourced)', () => {
     expect(byCode.get('HRGVS').he).toBe('הר גבס');
     expect(byCode.get('HASID').he).toBe('כפר חסידים');
     expect(byCode.get('SIRNI').he).toBe('נצר סירני');
-    expect(byCode.get('FRDIS').he).toBe('צומת פרדיס');
-    // Spelling fixes vs the legacy CSV.
-    expect(byCode.get('KRYON').he).toBe('קריון');
-    expect(byCode.get('REVAH').he).toBe('רוחה');
+    expect(byCode.get('FRDIS').he).toBe('צומת פורדיס');
+    // Spelling fixes vs the legacy CSV / upstream comparison.
+    expect(byCode.get('AFULA').he).toBe('צומת עפולה');
+    expect(byCode.get('KRYON').he).toBe('קיריון');
+    expect(byCode.get('REVAH').he).toBe('רווחה');
+    expect(byCode.get('SIZFN').he).toBe('שזפון');
     expect(byCode.get('MEHOL').he).toBe('משולש חולית');
   });
 

@@ -164,7 +164,7 @@ function hitLegLabel(px, py) {
   const hit = Math.max(tune('hitLegLabelMinPx'), tune('hitLegLabelScalePx') * legZoomScale());
   for (let i = 0; i < state.legs.length; i++) {
     for (const which of ['in', 'out']) {
-      if (which === 'out' && !showReturn) continue;
+      if (which === 'out' && (!showReturn || !legAllowsReturn(i))) continue;
       const c = legLabelCenter(i, which);
       if (c && Math.hypot(c.x - px, c.y - py) <= hit) return { i, which };
     }
@@ -281,6 +281,7 @@ function hitCumLabelRet(px, py) {
   if (!showReturn) return null;          // return kite only drawn with the return path
   const hit = Math.max(tune('hitCumLabelMinPx'), tune('hitCumLabelScalePx') * legZoomScale());
   for (let i = 0; i < state.legs.length; i++) {
+    if (!legAllowsReturn(i)) continue;
     const c = cumLabelRetCenter(i);
     if (c && Math.hypot(c.x - px, c.y - py) <= hit) return { i };
   }
@@ -294,11 +295,26 @@ function hitCumLabelRet(px, py) {
 // Stops at the first leg that already differs, so intentional level
 // changes downstream are preserved.
 function propagateAlt(i, key, newVal, oldVal) {
-  if (newVal === oldVal) return;
+  const altitudeKey = key === 'inboundAltitude' || key === 'outboundAltitude';
+  if (altitudeKey ? sameAltitudeValue(newVal, oldVal) : newVal === oldVal) return;
+  let pairChanged = false;
+  if (altitudeKey) {
+    markLegAltitudeManual(i);
+    pairChanged = syncLegAltitudePairFromRouteLeg(i, key, newVal) || pairChanged;
+  }
   const dir = key === 'outboundAltitude' || key === 'outboundSpeed' ? -1 : 1;
   for (let j = i + dir; j >= 0 && j < state.legs.length; j += dir) {
-    if (state.legs[j][key] !== oldVal) break;
+    if (altitudeKey
+      ? !sameAltitudeValue(state.legs[j][key], oldVal)
+      : state.legs[j][key] !== oldVal) break;
     state.legs[j][key] = newVal;
+    if (altitudeKey) {
+      markLegAltitudeManual(j);
+      pairChanged = syncLegAltitudePairFromRouteLeg(j, key, newVal) || pairChanged;
+    }
+  }
+  if (pairChanged && typeof refreshAltitudePairsTableIfOpen === 'function') {
+    refreshAltitudePairsTableIfOpen();
   }
 }
 
@@ -368,6 +384,7 @@ function resetWpName(idx) {
   if (!wp) return;
   const snapped = findSnappedReference(wp);
   wp.name = snapped ? snapped.name : '';
+  applyLegAltitudesToRoute();
   persist();
   draw();
   showInspector();
@@ -384,6 +401,7 @@ function resetAllWpNames() {
     const snapped = findSnappedReference(wp);
     wp.name = snapped ? snapped.name : '';
   }
+  applyLegAltitudesToRoute();
   persist();
   draw();
   showInspector();
@@ -432,16 +450,16 @@ function showInspector() {
     }));
     body.appendChild(numberRow(S.inboundAlt, leg.inboundAltitude, v => {
       const oldVal = leg.inboundAltitude;
-      leg.inboundAltitude = Math.round(v);
+      leg.inboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'inboundAltitude', leg.inboundAltitude, oldVal);
       draw();
-    }));
+    }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'inboundAltitude') }));
     body.appendChild(numberRow(S.outboundAlt, leg.outboundAltitude, v => {
       const oldVal = leg.outboundAltitude;
-      leg.outboundAltitude = Math.round(v);
+      leg.outboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'outboundAltitude', leg.outboundAltitude, oldVal);
       draw();
-    }));
+    }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'outboundAltitude') }));
     const reset = document.createElement('button');
     reset.className = 'insp-btn';
     // Fallback to a glyph if the locale strings haven't been loaded yet —
@@ -704,15 +722,21 @@ function textareaRow(label, value, onChange) {
   row.appendChild(ta);
   return row;
 }
-function numberRow(label, value, onChange) {
+function numberRow(label, value, onChange, opts = {}) {
   const row = document.createElement('div');
   row.className = 'row';
   const l = document.createElement('label');
   l.textContent = label;
   const inp = document.createElement('input');
   inp.type = 'number';
-  inp.value = value;
+  inp.value = altitudeInputValue(value);
+  if (opts.placeholder) inp.placeholder = opts.placeholder;
   inp.onchange = () => {
+    const raw = inp.value.trim();
+    if (opts.allowUnknown && raw === '') {
+      onChange(NaN);
+      return;
+    }
     const v = parseFloat(inp.value);
     if (!isNaN(v)) onChange(v);
   };
@@ -756,12 +780,46 @@ function appendFreqEdit(body, note, editOptions) {
   const opts = typeof commCallSignOptions === 'function'
     ? commCallSignOptions(note.cc) : [];
   let freqInput = null;
+  let resetFreq = null;
+  let templateRow = null;
   let lastValidFreq = '';
-  const setFreqInputValid = ok => {
+  function normalizeFreqValue(raw) {
+    if (typeof commNormalizeFreqInput === 'function') return commNormalizeFreqInput(raw);
+    const s = String(raw || '').trim();
+    return typeof commFormatFreq === 'function' ? commFormatFreq(s) : s;
+  }
+  function setFreqInputValid(ok) {
     if (!freqInput) return;
     freqInput.classList.toggle('invalid', !ok);
     freqInput.setAttribute('aria-invalid', ok ? 'false' : 'true');
-  };
+  }
+  function freqInputInvalid() {
+    return !!(freqInput && freqInput.classList.contains('invalid'));
+  }
+  function applyFreqValue(value) {
+    const opt = typeof commNoteCallSignOption === 'function'
+      ? commNoteCallSignOption(note) : null;
+    if (opt && typeof commApplyCallSignFreqOverride === 'function') {
+      return commApplyCallSignFreqOverride(opt.id, value) || value;
+    }
+    return value;
+  }
+  function updateTemplateHint() {
+    if (!templateRow) return;
+    const opt = typeof commNoteCallSignOption === 'function'
+      ? commNoteCallSignOption(note) : null;
+    const template = opt && opt.templateFreq ? opt.templateFreq : '';
+    const normalized = normalizeFreqValue(freqInput ? freqInput.value : note.freq);
+    const cur = normalized === null ? (note.freq || '') : (normalized || note.freq || '');
+    const changed = !!(template && (freqInputInvalid() || (cur && cur !== template)));
+    templateRow.style.display = changed ? '' : 'none';
+    const val = templateRow.querySelector('.val');
+    if (val) val.textContent = template;
+    if (resetFreq) {
+      resetFreq.hidden = !template;
+      resetFreq.disabled = !changed;
+    }
+  }
   if (opts.length) {
     const current = (note.freqName || '').trim();
     let selected = opts.find(o => typeof commCallSignOptionMatches === 'function'
@@ -777,14 +835,17 @@ function appendFreqEdit(body, note, editOptions) {
         const opt = opts.find(o => o.id === v);
         if (!opt) return;
         note.freqName = opt.id;
-        note.freq = (typeof commNormalizeFreqInput === 'function'
-          ? commNormalizeFreqInput(opt.freq) : opt.freq) || '';
+        const normalized = normalizeFreqValue(opt.freq);
+        note.freq = normalized === null
+          ? (typeof commFormatFreq === 'function' ? commFormatFreq(opt.freq) : opt.freq || '')
+          : normalized;
         note.freqAuto = false;
         lastValidFreq = note.freq;
         if (freqInput) {
           freqInput.value = note.freq;
           setFreqInputValid(true);
         }
+        updateTemplateHint();
         draw();
       }));
   } else {
@@ -795,40 +856,48 @@ function appendFreqEdit(body, note, editOptions) {
   const freqLbl = document.createElement('label');
   freqLbl.textContent = S.commChangeFreq || 'Frequency';
   freqRow.appendChild(freqLbl);
-  const freqControl = document.createElement('span');
-  freqControl.className = 'freq-control';
+  const freqControl = document.createElement('div');
+  freqControl.className = 'commchange-freq-controls';
   freqInput = document.createElement('input');
-  freqInput.type = 'text';
-  freqInput.inputMode = 'decimal';
   freqInput.className = 'freq-input';
+  if (typeof commConfigureFreqInput === 'function') {
+    commConfigureFreqInput(freqInput);
+  } else {
+    freqInput.type = 'number';
+    freqInput.inputMode = 'decimal';
+    freqInput.step = '0.005';
+  }
   freqInput.value = commNoteFreq(note) || '';
   lastValidFreq = freqInput.value;
   setFreqInputValid(true);
-  freqInput.oninput = () => {
-    const normalized = typeof commNormalizeFreqInput === 'function'
-      ? commNormalizeFreqInput(freqInput.value) : freqInput.value.trim();
+  function commitFreqInput(formatInput) {
+    const normalized = normalizeFreqValue(freqInput.value);
     const valid = normalized !== null;
     setFreqInputValid(valid);
-    if (!valid) return;
-    if (normalized === '') return;
-    note.freq = normalized;
-    if (normalized) lastValidFreq = normalized;
+    if (!valid) {
+      updateTemplateHint();
+      return false;
+    }
+    if (normalized === '' && !formatInput) {
+      updateTemplateHint();
+      return true;
+    }
+    const next = applyFreqValue(normalized);
+    note.freq = next;
+    if (next) lastValidFreq = next;
+    if (formatInput) freqInput.value = next || lastValidFreq;
     note.freqAuto = false;
+    updateTemplateHint();
     draw();
-  };
+    return true;
+  }
+  freqInput.oninput = () => commitFreqInput(false);
   freqInput.onblur = () => {
-    const normalized = typeof commNormalizeFreqInput === 'function'
-      ? commNormalizeFreqInput(freqInput.value) : freqInput.value.trim();
-    if (normalized === null) {
+    if (!commitFreqInput(true)) {
       freqInput.value = lastValidFreq;
       note.freq = lastValidFreq;
       setFreqInputValid(true);
-      draw();
-    } else {
-      freqInput.value = normalized;
-      note.freq = normalized;
-      lastValidFreq = normalized;
-      setFreqInputValid(true);
+      updateTemplateHint();
       draw();
     }
   };
@@ -837,8 +906,51 @@ function appendFreqEdit(body, note, editOptions) {
   unit.className = 'freq-unit';
   unit.textContent = 'MHz';
   freqControl.appendChild(unit);
+  resetFreq = document.createElement('button');
+  resetFreq.type = 'button';
+  resetFreq.className = 'commchange-freq-reset';
+  resetFreq.textContent = '↻';
+  resetFreq.title = S.resetFreqOverride || S.sliderReset || 'Reset to default';
+  resetFreq.setAttribute('aria-label', resetFreq.title);
+  function resetFreqToTemplate() {
+    const opt = typeof commNoteCallSignOption === 'function'
+      ? commNoteCallSignOption(note) : null;
+    const template = opt && opt.templateFreq ? opt.templateFreq : '';
+    if (!opt || !template) return;
+    const next = applyFreqValue(template);
+    note.freq = next;
+    note.freqAuto = false;
+    lastValidFreq = next;
+    freqInput.value = next;
+    setFreqInputValid(true);
+    updateTemplateHint();
+    draw();
+  }
+  // pointerdown handles pointer activation (so a swallowing drag handler can't
+  // eat the click); click handles keyboard (Enter/Space). Suppress the click
+  // that trails a pointerdown so the reset doesn't fire twice per tap.
+  let resetFreqPointerHandled = false;
+  resetFreq.onpointerdown = e => {
+    if (resetFreq.disabled) return;
+    e.preventDefault();
+    e.stopPropagation();
+    resetFreqPointerHandled = true;
+    resetFreqToTemplate();
+  };
+  resetFreq.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (resetFreqPointerHandled) { resetFreqPointerHandled = false; return; }
+    if (!resetFreq.disabled) resetFreqToTemplate();
+  };
+  freqControl.appendChild(resetFreq);
+  freqRow.classList.add('commchange-freq-edit');
   freqRow.appendChild(freqControl);
   body.appendChild(freqRow);
+  templateRow = textRow(S.commChangeTemplateFreq || 'Default', '');
+  templateRow.classList.add('commchange-template');
+  body.appendChild(templateRow);
+  updateTemplateHint();
   // Reset the callout to its default tail position beside the waypoint.
   const target = typeof commCalloutTarget === 'function' ? commCalloutTarget(note) : null;
   if (target && typeof commCalloutDefaultTail === 'function') {
@@ -1026,10 +1138,12 @@ function endMouseDrag() {
     }
     // #487: a waypoint drag may have landed (snapped) on a comm-change point.
     // Seed its note now that the position is committed, then repaint.
-    if (drag.kind === 'wp' && drag.moved && typeof seedCommChangeNotes === 'function' &&
-        seedCommChangeNotes()) {
-      draw(); showInspector();
+    let changed = false;
+    if (drag.kind === 'wp' && drag.moved) {
+      changed = applyLegAltitudesToRoute();
+      if (typeof seedCommChangeNotes === 'function' && seedCommChangeNotes()) changed = true;
     }
+    if (changed) { draw(); showInspector(); }
     map.dragging.enable();
     drag = null;
   }
@@ -1334,11 +1448,12 @@ function endTouch() {
       }
     }
     // #487: seed a comm-change note if a touch waypoint-drag landed on one.
-    if (touchDrag.kind === 'wp' && touchDrag.moved &&
-        typeof seedCommChangeNotes === 'function' &&
-        seedCommChangeNotes()) {
-      draw(); showInspector();
+    let changed = false;
+    if (touchDrag.kind === 'wp' && touchDrag.moved) {
+      changed = applyLegAltitudesToRoute();
+      if (typeof seedCommChangeNotes === 'function' && seedCommChangeNotes()) changed = true;
     }
+    if (changed) { draw(); showInspector(); }
     map.dragging.enable();
     touchDrag = null;
   }

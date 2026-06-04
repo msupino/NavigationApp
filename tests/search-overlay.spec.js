@@ -73,6 +73,20 @@ test.describe('Floating search overlay (#194)', () => {
     expect(count).toBeLessThanOrEqual(12);
   });
 
+  test('results list sits below the input, not over it', async ({ page }) => {
+    await boot(page);
+    await page.locator('#search-trigger').click();
+    await page.locator('#wp-search').fill('LL');
+    await page.locator('#wp-search').dispatchEvent('input');
+    await expect(page.locator('#wp-search-results')).not.toHaveClass(/hidden/);
+    // The toolbar-era #wp-search-results rule is position:absolute; inside
+    // the fixed overlay that floated it on top of the input and hid the
+    // typed text. It must flow below the input instead.
+    const input = await page.locator('#wp-search').boundingBox();
+    const results = await page.locator('#wp-search-results').boundingBox();
+    expect(results.y).toBeGreaterThanOrEqual(input.y + input.height - 1);
+  });
+
   test('Hebrew query matches Hebrew names', async ({ page }) => {
     await page.goto('?lang=he');
     await page.waitForFunction(() => typeof state !== 'undefined' && window.navWP);

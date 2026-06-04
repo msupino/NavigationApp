@@ -629,7 +629,8 @@ html, body {
 .row select { cursor: pointer; }
 .row .val { color: #e8e8e8; font-variant-numeric: tabular-nums; }
 .row .freq-control { display: inline-flex; align-items: center; gap: 4px; }
-.row input[type="text"].freq-input.invalid {
+.row .freq-input.invalid,
+.charts-freq-input.invalid {
   border-color: #c0392b;
   background: rgba(231, 76, 60, 0.12);
 }
@@ -796,18 +797,111 @@ html, body {
 
 /* Flight-plan print: hide everything except the table modal. */
 @media print {
+  body.printing-plan {
+    color: #111;
+    background: #fff;
+  }
   body.printing-plan #map,
   body.printing-plan #overlay,
   body.printing-plan #toolbar,
   body.printing-plan #inspector,
   body.printing-plan #tuning-panel,
   body.printing-plan .leaflet-control-container { display: none !important; }
-  body.printing-plan .modal-back { position: static; background: none; }
-  body.printing-plan .modal { box-shadow: none; border: none; max-height: none; max-width: none; }
-  body.printing-plan .modal-btns { display: none; }
+  body.printing-plan .modal-back.flight-plan {
+    display: block;
+    position: static;
+    inset: auto;
+    background: none;
+    pointer-events: auto;
+  }
+  body.printing-plan .modal-back.flight-plan > .modal,
+  body.printing-plan .modal.wide {
+    display: block;
+    position: static;
+    width: auto !important;
+    height: auto !important;
+    min-width: 0;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    color: #111;
+    background: #fff;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  body.printing-plan .modal-title {
+    margin: 0 0 12px;
+    color: #111;
+    font-size: 18px;
+    text-align: start;
+    cursor: default;
+  }
+  body.printing-plan .modal-btns,
+  body.printing-plan .modal-close-x,
+  body.printing-plan .fp-aircraft { display: none !important; }
+  body.printing-plan .modal.wide .fp-scroll {
+    display: block;
+    overflow: visible;
+  }
+  body.printing-plan .flight-plan-sub {
+    margin: 14px 0 6px;
+    padding: 0;
+    color: #111;
+    border: none;
+  }
+  body.printing-plan .flight-table {
+    width: 100%;
+    margin: 0 0 12px;
+    color: #111;
+    background: #fff;
+    font-size: 10px;
+    page-break-inside: auto;
+  }
+  body.printing-plan .flight-table thead {
+    display: table-header-group;
+  }
+  body.printing-plan .flight-table tfoot {
+    display: table-row-group;
+  }
+  body.printing-plan .flight-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  body.printing-plan .flight-table th,
+  body.printing-plan .flight-table td {
+    padding: 4px 6px;
+    color: #111;
+    background: #fff;
+    border: 1px solid #555;
+    text-align: start;
+  }
+  body.printing-plan .flight-table th {
+    position: static;
+    font-weight: 700;
+  }
+  body.printing-plan .flight-table tfoot td {
+    background: #f3f3f3;
+    border-top: 2px solid #111;
+  }
+  body.printing-plan .flight-table th:last-child,
+  body.printing-plan .flight-table td.fp-del,
+  body.printing-plan .flight-table td:last-child:empty {
+    display: none !important;
+  }
   body.printing-plan .plan-name,
-  body.printing-plan .plan-num { border: none !important; background: transparent !important; padding: 0 !important; }
-  body.printing-plan .flight-table th { position: static; }
+  body.printing-plan .plan-num {
+    width: auto;
+    min-width: 0;
+    color: #111;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    font: inherit;
+    -webkit-appearance: none;
+    appearance: none;
+  }
 }
 
 /* Mobile: bigger touch targets, roomier toolbar. */
@@ -892,27 +986,6 @@ html, body {
   max-height: 84vh;
   padding: 14px;
 }
-/* Four corner grips to resize the flight-plan window. */
-.resize-handle {
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  z-index: 1;
-}
-.resize-handle::after {
-  content: '';
-  position: absolute;
-  width: 8px;
-  height: 8px;
-}
-.resize-handle.corner-se { bottom: 0; right: 0; cursor: nwse-resize; }
-.resize-handle.corner-se::after { bottom: 2px; right: 2px; border-right: 2px solid #888; border-bottom: 2px solid #888; }
-.resize-handle.corner-sw { bottom: 0; left: 0; cursor: nesw-resize; }
-.resize-handle.corner-sw::after { bottom: 2px; left: 2px; border-left: 2px solid #888; border-bottom: 2px solid #888; }
-.resize-handle.corner-ne { top: 0; right: 0; cursor: nesw-resize; }
-.resize-handle.corner-ne::after { top: 2px; right: 2px; border-right: 2px solid #888; border-top: 2px solid #888; }
-.resize-handle.corner-nw { top: 0; left: 0; cursor: nwse-resize; }
-.resize-handle.corner-nw::after { top: 2px; left: 2px; border-left: 2px solid #888; border-top: 2px solid #888; }
 .fp-aircraft {
   display: flex;
   flex-wrap: wrap;
@@ -1066,6 +1139,44 @@ html, body {
   white-space: normal;
   line-height: 1.35;
 }
+.commchange-template {
+  margin-top: -3px;
+  font-size: 11px;
+  color: #a9a2a2;
+}
+.commchange-template .val {
+  color: #ffd966;
+}
+.commchange-freq-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+.commchange-freq-controls .freq-input {
+  width: 96px;
+  direction: ltr;
+  text-align: right;
+}
+.commchange-freq-reset {
+  flex-shrink: 0;
+  font-size: 12px;
+  line-height: 1;
+  color: #b9b3b3;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+.commchange-freq-reset:hover:not(:disabled) {
+  color: #fff;
+}
+.commchange-freq-reset:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
 
 /* Airfield runways (#231) */
 .runways-row { flex-wrap: wrap; gap: 4px; align-items: center; }
@@ -1085,6 +1196,263 @@ html, body {
 /* Charts modal */
 .charts-modal-body {
   padding: 2px 0;
+}
+.charts-freq-section {
+  margin: 0 2px 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #443f3f;
+}
+.charts-freq-section-only {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.charts-alt-section {
+  margin: 0 2px 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #443f3f;
+}
+.charts-alt-section-only {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.charts-freq-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 4px 6px;
+}
+.charts-alt-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 4px 6px;
+}
+.charts-freq-title h3 {
+  margin: 0;
+  font-size: 13px;
+  color: #e8e8e8;
+}
+.charts-alt-title h3 {
+  margin: 0;
+  font-size: 13px;
+  color: #e8e8e8;
+}
+.charts-freq-restore-all {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 12px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.charts-alt-copy {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 12px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.charts-freq-restore-all:hover:not(:disabled) {
+  color: #fff;
+  background: #3a3636;
+}
+.charts-alt-copy:hover {
+  color: #fff;
+  background: #3a3636;
+}
+.charts-freq-restore-all:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.charts-freq-empty {
+  margin: 4px 6px 0;
+  color: #b9b3b3;
+  font-size: 12px;
+}
+.charts-alt-empty {
+  margin: 4px 6px 0;
+  color: #b9b3b3;
+  font-size: 12px;
+}
+.charts-freq-search-row {
+  padding: 0 4px 8px;
+}
+.charts-alt-search-row {
+  padding: 0 4px 8px;
+}
+.charts-freq-search {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 5px 8px;
+}
+.charts-alt-search {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 5px 8px;
+}
+.charts-freq-search:focus {
+  outline: 1px solid #1d6fe0;
+}
+.charts-alt-search:focus {
+  outline: 1px solid #1d6fe0;
+}
+.charts-freq-table-wrap {
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid #393434;
+  border-radius: 4px;
+}
+.charts-alt-table-wrap {
+  max-height: 340px;
+  overflow: auto;
+  border: 1px solid #393434;
+  border-radius: 4px;
+}
+.charts-freq-table {
+  margin-bottom: 0;
+}
+.charts-alt-table {
+  margin-bottom: 0;
+}
+.charts-freq-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #302c2c;
+}
+.charts-alt-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #302c2c;
+}
+.charts-alt-table tr.one-way,
+.charts-alt-table tbody tr.one-way:hover {
+  background: rgba(255, 217, 102, 0.1);
+}
+.charts-alt-table tr.unknown,
+.charts-alt-table tbody tr.unknown:hover {
+  background: rgba(160, 170, 190, 0.08);
+}
+.charts-alt-pair {
+  color: #fff2a8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+.charts-alt-pair-button {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.charts-alt-pair-button:focus {
+  outline: 1px solid #1d6fe0;
+  outline-offset: 2px;
+}
+.charts-alt-status,
+.charts-alt-distance {
+  color: #b9b3b3;
+  font-size: 12px;
+}
+.charts-alt-table .blocked {
+  color: #ffb4b4;
+}
+.charts-alt-input {
+  width: 74px;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 12px;
+  color: #e8e8e8;
+  background: #2a2626;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 3px 5px;
+}
+.charts-alt-input::placeholder {
+  color: #b9b3b3;
+  opacity: 1;
+}
+.charts-alt-input:focus {
+  outline: 1px solid #1d6fe0;
+}
+.charts-alt-input[aria-invalid="true"] {
+  border-color: #b00020;
+  box-shadow: 0 0 0 1px rgba(176, 0, 32, 0.35);
+}
+.charts-freq-table tr.overridden,
+.charts-freq-table tbody tr.overridden:hover {
+  background: rgba(255, 217, 102, 0.16);
+}
+.charts-freq-table tr.overridden td:first-child {
+  box-shadow: inset 3px 0 0 #ffd966;
+}
+.charts-freq-table tr.overridden .charts-freq-label {
+  color: #fff2a8;
+  font-weight: 600;
+}
+.charts-freq-label,
+.charts-freq-code {
+  display: block;
+}
+.charts-freq-code {
+  margin-top: 2px;
+  color: #8a8484;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.charts-freq-template {
+  color: #ffd966;
+}
+.charts-freq-input {
+  width: 96px;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+.charts-freq-table tr.overridden .charts-freq-input {
+  background: #3a3422;
+  border-color: #ffd966;
+}
+.charts-freq-input:focus {
+  outline: 1px solid #1d6fe0;
+}
+.charts-freq-actions {
+  width: 28px;
+  text-align: center;
 }
 .charts-airport {
   margin: 0 2px;
@@ -1246,6 +1614,13 @@ html, body {
 }
 #search-close:hover { background: #443f3f; color: #fff; }
 #search-overlay #wp-search-results {
+  /* Override the toolbar-era absolute positioning (see #wp-search-results
+     above): inside the fixed overlay it must flow below the input as a
+     flex row, not float on top of it and hide the typed text. */
+  position: static;
+  left: auto;
+  right: auto;
+  margin-top: 0;
   flex-basis: 100%;
   max-height: 60vh;
   overflow-y: auto;
@@ -1575,6 +1950,114 @@ body.theme-light .commchange-row .commchange-freq {
 body.theme-light .commchange-row .commchange-note {
   color: #4b5563;
 }
+body.theme-light .commchange-template {
+  color: #6b7280;
+}
+body.theme-light .commchange-template .val {
+  color: #9a6b00;
+}
+body.theme-light .commchange-freq-reset {
+  color: #1f252c;
+  background: #fff;
+  border-color: #b8c0cc;
+}
+body.theme-light .commchange-freq-reset:hover:not(:disabled) {
+  color: #111820;
+  background: #eef3f9;
+}
+body.theme-light .charts-freq-section {
+  border-color: #c6ccd6;
+}
+body.theme-light .charts-alt-section {
+  border-color: #c6ccd6;
+}
+body.theme-light .charts-freq-title h3 {
+  color: #1f252c;
+}
+body.theme-light .charts-alt-title h3 {
+  color: #1f252c;
+}
+body.theme-light .charts-freq-restore-all,
+body.theme-light .charts-freq-search,
+body.theme-light .charts-freq-input {
+  color: #1f252c;
+  background: #fff;
+  border-color: #b8c0cc;
+}
+body.theme-light .charts-alt-copy,
+body.theme-light .charts-alt-search {
+  color: #1f252c;
+  background: #fff;
+  border-color: #b8c0cc;
+}
+body.theme-light .charts-freq-restore-all:hover:not(:disabled) {
+  color: #111820;
+  background: #eef3f9;
+}
+body.theme-light .charts-alt-copy:hover {
+  color: #111820;
+  background: #eef3f9;
+}
+body.theme-light .charts-freq-empty,
+body.theme-light .charts-freq-code {
+  color: #6b7280;
+}
+body.theme-light .charts-alt-empty,
+body.theme-light .charts-alt-status,
+body.theme-light .charts-alt-distance {
+  color: #6b7280;
+}
+body.theme-light .charts-freq-table-wrap {
+  border-color: #d2d7df;
+}
+body.theme-light .charts-alt-table-wrap {
+  border-color: #d2d7df;
+}
+body.theme-light .charts-freq-table th {
+  background: #f4f6f8;
+}
+body.theme-light .charts-alt-table th {
+  background: #f4f6f8;
+}
+body.theme-light .charts-alt-table tr.one-way,
+body.theme-light .charts-alt-table tbody tr.one-way:hover {
+  background: rgba(154, 107, 0, 0.08);
+}
+body.theme-light .charts-alt-table tr.unknown,
+body.theme-light .charts-alt-table tbody tr.unknown:hover {
+  background: rgba(70, 85, 105, 0.06);
+}
+body.theme-light .charts-alt-pair {
+  color: #6f4d00;
+}
+body.theme-light .charts-alt-table .blocked {
+  color: #9d2b2b;
+}
+body.theme-light .charts-alt-input {
+  color: #1f252c;
+  background: #fff;
+  border-color: #b8c0cc;
+}
+body.theme-light .charts-alt-input::placeholder {
+  color: #6b7280;
+}
+body.theme-light .charts-freq-template {
+  color: #9a6b00;
+}
+body.theme-light .charts-freq-table tr.overridden,
+body.theme-light .charts-freq-table tbody tr.overridden:hover {
+  background: rgba(154, 107, 0, 0.14);
+}
+body.theme-light .charts-freq-table tr.overridden td:first-child {
+  box-shadow: inset 3px 0 0 #9a6b00;
+}
+body.theme-light .charts-freq-table tr.overridden .charts-freq-label {
+  color: #6f4d00;
+}
+body.theme-light .charts-freq-table tr.overridden .charts-freq-input {
+  background: #fff7d6;
+  border-color: #9a6b00;
+}
 body.theme-light .plate-chip-small {
   color: #1d6fe0;
   background: none;
@@ -1621,6 +2104,40 @@ body.theme-light #tuning-panel summary {
   pointer-events: none;
 }
 .toast.show { opacity: 1; }
+
+.build-update-notice {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 5200;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(92vw, 560px);
+  padding: 8px 10px;
+  color: #fff;
+  background: rgba(20, 18, 18, 0.96);
+  border: 1px solid #ffcc33;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  font-size: 13px;
+}
+.build-update-notice span { flex: 1; min-width: 0; }
+.build-update-notice button {
+  flex: none;
+  font: inherit;
+  color: #fff;
+  background: #1d6fe0;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.build-update-notice button:hover { background: #2f7fee; }
+.build-update-notice .update-dismiss { background: #443f3f; }
+.build-update-notice .update-dismiss:hover { background: #555050; }
 
 @keyframes blink-warn {
   0%, 100% { opacity: 1; }

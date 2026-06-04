@@ -445,6 +445,7 @@ function findNavWpToken(token) {
 async function buildRouteFromQuery(raw) {
   if (navWP === null) await loadNavWaypoints();
   if (airfields === null) await loadAirfields();
+  if (legAltitudeMap === null) await loadLegAltitudes();
   const tokens = raw.split(/\s+/).filter(Boolean);
   if (tokens.length < 2) return false;
   const resolved = [];
@@ -652,8 +653,17 @@ document.getElementById('reverse').onclick = () => {
       outLabel: flipLabel(outOld, d.outLabel),
       cumLabel: flipLabel(cumOld, d.cumLabel),
       cumLabelRet: flipLabel(cumRetOld, d.cumLabelRet),
+      ...(l._legAltitudeAuto ? { _legAltitudeAuto: 1 } : {}),
+      ...(l._legAltitudeKey ? { _legAltitudeKey: l._legAltitudeKey } : {}),
+      ...(l._legAltitudeOutboundBlocked || l._legAltitudeOneWay
+        ? { _legAltitudeInboundBlocked: 1 } : {}),
+      ...(l._legAltitudeInboundBlocked ? {
+        _legAltitudeOutboundBlocked: 1,
+        _legAltitudeOneWay: 1,
+      } : {}),
     };
   });
+  applyLegAltitudesToRoute();
   state.selected = null;
   if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   showInspector(); draw();
@@ -692,6 +702,8 @@ document.getElementById('gpx').onclick = exportGpx;
 document.getElementById('plan').onclick = () => {
   if (fpOpen) closeFlightPlan(); else showFlightPlan();
 };
+document.getElementById('freq-table').onclick = showFreqTableModal;
+document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
 document.getElementById('charts').onclick = showChartsModal;
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
@@ -935,11 +947,11 @@ YELLOW_EL.oninput = e => {
   draw();
 };
 
-const MAPOPACITY_KEY = 'navaid.mapOpacity';
+const MAPOPACITY_KEY = 'navaid.mapOpacity.v2';
 // `var` (not `let`) so writes from any module via window.mapOpacity reach
 // the same binding the export reads — same hazard documented for every
 // other mutable global in core.js.
-var mapOpacity = 1;
+var mapOpacity = 0.8;
 function applyMapOpacity() {
   for (const n in layers) {
     if (map.hasLayer(layers[n])) layers[n].setOpacity(mapOpacity);
@@ -1539,15 +1551,28 @@ if (_savedView) {
 draw();
 // Always load nav-waypoints in the background — they power both the
 // overlay toggle and the auto-snap on drop / drag.
-loadNavWaypoints().then(() => { snapExistingWaypoints(); draw(); });
+loadNavWaypoints().then(() => {
+  snapExistingWaypoints();
+  applyLegAltitudesToRoute();
+  draw();
+});
 // Same pattern for airfields: powering both the overlay and snap.
 // Also re-render inspector so plates section appears if a waypoint
 // was restored from sessionStorage before airfields loaded.
 loadAirfields().then(() => {
   snapExistingWaypoints();
+  applyLegAltitudesToRoute();
   if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   draw();
   if (state.selected) showInspector();
+});
+// Leg-altitude green-route altitude table: fills only freshly-created legs, and
+// leaves saved/imported/manual leg values authoritative.
+loadLegAltitudes().then(() => {
+  if (applyLegAltitudesToRoute()) {
+    draw();
+    if (state.selected) showInspector();
+  }
 });
 // Comm-change dataset (issue #399): parallel fetch so the rings appear
 // on first paint and the inspector badge is available immediately for
@@ -1578,12 +1603,66 @@ window.addEventListener('beforeunload', function () {
   }
 });
 
+function showBuildUpdateNotice() {
+  if (document.getElementById('build-update-notice')) return;
+  const el = document.createElement('div');
+  el.id = 'build-update-notice';
+  el.className = 'build-update-notice';
+  el.setAttribute('role', 'status');
+  const msg = document.createElement('span');
+  msg.textContent = S.updateAvailable ||
+    'New NavAid build available. Hard refresh or reload to update.';
+  const reload = document.createElement('button');
+  reload.type = 'button';
+  reload.className = 'update-reload';
+  reload.textContent = S.updateReload || 'Reload';
+  reload.onclick = () => window.location.reload();
+  const dismiss = document.createElement('button');
+  dismiss.type = 'button';
+  dismiss.className = 'update-dismiss';
+  dismiss.textContent = S.updateDismiss || 'Dismiss';
+  dismiss.onclick = () => el.remove();
+  el.append(msg, reload, dismiss);
+  document.body.appendChild(el);
+}
+
+function watchServiceWorkerUpdates(sw) {
+  if (!sw || typeof sw.register !== 'function') return Promise.resolve(null);
+  let hadController = !!sw.controller;
+  const notifyIfUpdate = () => {
+    if (hadController) showBuildUpdateNotice();
+    hadController = true;
+  };
+  if (typeof sw.addEventListener === 'function') {
+    sw.addEventListener('controllerchange', notifyIfUpdate);
+  }
+  return sw.register('sw.js').then(reg => {
+    const watchWorker = worker => {
+      if (!worker || typeof worker.addEventListener !== 'function') return;
+      worker.addEventListener('statechange', () => {
+        if ((worker.state === 'installed' || worker.state === 'activated') &&
+            hadController) {
+          showBuildUpdateNotice();
+        }
+      });
+    };
+    if (reg && reg.waiting && hadController) showBuildUpdateNotice();
+    if (reg) {
+      watchWorker(reg.installing);
+      if (typeof reg.addEventListener === 'function') {
+        reg.addEventListener('updatefound', () => watchWorker(reg.installing));
+      }
+      if (typeof reg.update === 'function') reg.update().catch(() => {});
+    }
+    return reg;
+  }).catch(() => null);
+}
+
 // --- PWA: service worker --------------------------------------------
 // Registering the worker makes the app installable; the browser shows
 // the install control in the address bar — no in-app button needed.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js')
-      .catch(() => { /* offline mode unavailable */ });
+    watchServiceWorkerUpdates(navigator.serviceWorker);
   });
 }
