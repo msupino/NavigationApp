@@ -1610,6 +1610,13 @@ html, body {
 }
 #search-close:hover { background: #443f3f; color: #fff; }
 #search-overlay #wp-search-results {
+  /* Override the toolbar-era absolute positioning (see #wp-search-results
+     above): inside the fixed overlay it must flow below the input as a
+     flex row, not float on top of it and hide the typed text. */
+  position: static;
+  left: auto;
+  right: auto;
+  margin-top: 0;
   flex-basis: 100%;
   max-height: 60vh;
   overflow-y: auto;
