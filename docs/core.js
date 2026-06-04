@@ -238,6 +238,7 @@ window.S = Object.assign({
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   commChangeUrl: 'comm-change.json?v=1', // CVFR comm-change reporting points (issue #399)
   legAltitudeUrl: 'leg-altitude.json?v=1', // CVFR green-route leg altitude table
+  routeTemplatesUrl: 'route-templates.json?v=1', // ready-made route templates
 
   // --- English UI copy (default locale) -------------------------------
   // Sentence case: capitalize the first word and proper nouns / acronyms
@@ -260,6 +261,19 @@ window.S = Object.assign({
   searchReplaceConfirm: 'Replace the current route with these waypoints?',
   tbSearchOpen: '🔍 Find (Ctrl-F)',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
+  tbRouteTemplates: '🧭 Templates',
+  tbRouteTemplatesTitle: 'Build a ready-made route',
+  routeTemplatesTitle: 'Route templates',
+  routeTemplateRoute: 'Route',
+  routeTemplateSpeed: 'Speed (kt)',
+  routeTemplateApply: 'Build route',
+  routeTemplateEmpty: 'No route templates available',
+  routeTemplateLoadError: 'Could not load route templates.',
+  routeTemplateReplaceConfirm: 'Replace the current route with this template?',
+  routeTemplateBadSpeed: 'Enter a valid speed in knots.',
+  routeTemplateReady: function(name, speed) {
+    return name + ' template loaded at ' + speed + ' kt';
+  },
   deleteWp: '🗑 Delete waypoint (D)',                  // inspector button
   resetWpName: '↺ Reset waypoint name',             // inspector — reference snap or clear (placeholder)
   resetWpNameTitle: 'Set name to the nearest reference (airfield / nav-WP), or clear when off-grid (dimmed sequence label)',
@@ -590,6 +604,7 @@ var legAltitudeMap = null; // null = not loaded yet (or last fetch failed —
                                 // `FROM-TO` for automatic fresh-leg altitudes.
 var legAltitudePointIds = null; // Set of endpoint ids from the same file.
 var legAltitudeDataset = null;  // Raw validated dataset for Charts copy/view.
+var legAltitudeDirectionPool = null; // Directed altitude entries, one per allowed direction.
 var showDrift = true;       // 10-degree drift reference lines
 var showWpNames = true;     // draw waypoint names (off = empty circle)
 var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
@@ -904,6 +919,38 @@ function syncLegs() {
 function legAltitudeKey(from, to) {
   return String(from || '').trim() + '-' + String(to || '').trim();
 }
+function legAltitudeDirectionsFromSegments(segments) {
+  const out = [];
+  for (const segment of segments || []) {
+    if (!segment || typeof segment.from !== 'string' || typeof segment.to !== 'string') continue;
+    if (Number.isInteger(segment.inboundAltitude)) {
+      out.push({
+        from: segment.from,
+        to: segment.to,
+        altitude: segment.inboundAltitude,
+        segment: legAltitudeKey(segment.from, segment.to),
+        field: 'inboundAltitude',
+      });
+    }
+    if (Number.isInteger(segment.outboundAltitude)) {
+      out.push({
+        from: segment.to,
+        to: segment.from,
+        altitude: segment.outboundAltitude,
+        segment: legAltitudeKey(segment.from, segment.to),
+        field: 'outboundAltitude',
+      });
+    }
+  }
+  return out;
+}
+function syncLegAltitudeDatasetDirectionPool(data) {
+  if (!data || !Array.isArray(data.segments)) return [];
+  const pool = legAltitudeDirectionsFromSegments(data.segments);
+  data.directionPool = pool;
+  if (data === legAltitudeDataset) legAltitudeDirectionPool = pool;
+  return pool;
+}
 function normalizeLegAltitudePairSegment(segment) {
   if (!segment) return;
   const nullCount = ['inboundAltitude', 'outboundAltitude']
@@ -959,9 +1006,19 @@ function legAltitudeDirectionalEdges() {
         !Number.isFinite(distanceNm) || distanceNm <= 0) return;
     (edges[from] || (edges[from] = [])).push({ to, altitude, distanceNm });
   };
+  const distanceBySegment = {};
   for (const segment of Object.values(legAltitudeMap || {})) {
-    add(segment.from, segment.to, segment.inboundAltitude, segment.distanceNm);
-    add(segment.to, segment.from, segment.outboundAltitude, segment.distanceNm);
+    distanceBySegment[legAltitudeKey(segment.from, segment.to)] = segment.distanceNm;
+  }
+  if (Array.isArray(legAltitudeDirectionPool) && legAltitudeDirectionPool.length) {
+    for (const dir of legAltitudeDirectionPool) {
+      add(dir.from, dir.to, dir.altitude, distanceBySegment[dir.segment]);
+    }
+  } else {
+    for (const segment of Object.values(legAltitudeMap || {})) {
+      add(segment.from, segment.to, segment.inboundAltitude, segment.distanceNm);
+      add(segment.to, segment.from, segment.outboundAltitude, segment.distanceNm);
+    }
   }
   return edges;
 }
@@ -1080,6 +1137,7 @@ function setLegAltitudePairValue(segment, key, value) {
   const changed = segment[key] !== next;
   segment[key] = next;
   normalizeLegAltitudePairSegment(segment);
+  syncLegAltitudeDatasetDirectionPool(legAltitudeDataset);
   return changed;
 }
 function syncLegAltitudePairFromRouteLeg(i, key, value) {
