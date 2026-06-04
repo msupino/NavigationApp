@@ -202,6 +202,63 @@ test.describe('leg-altitude map wiring', () => {
     expect(allowsReturn).toBe(true);
   });
 
+  test('ANATA to DUMIM uses the charted 4500 / 5000 altitude pair', async ({ page }) => {
+    await boot(page);
+
+    const result = await clickRoute(page, 'ANATA', 'DUMIM');
+
+    expect(result.names).toEqual(['ANATA', 'DUMIM']);
+    expect(result.leg).toMatchObject({
+      inboundAltitude: 4500,
+      outboundAltitude: 5000,
+      auto: true,
+    });
+    const allowsReturn = await page.evaluate(() =>
+      !state.legs[0]._legAltitudeOneWay && legAllowsReturn(0) === true);
+    expect(allowsReturn).toBe(true);
+  });
+
+  test('DUMIM to ANATA uses the charted 5000 reverse altitude', async ({ page }) => {
+    await boot(page);
+
+    const result = await clickRoute(page, 'DUMIM', 'ANATA');
+
+    expect(result.names).toEqual(['DUMIM', 'ANATA']);
+    expect(result.leg).toMatchObject({
+      inboundAltitude: 5000,
+      outboundAltitude: 4500,
+      auto: true,
+    });
+    const allowsReturn = await page.evaluate(() =>
+      !state.legs[0]._legAltitudeOneWay && legAllowsReturn(0) === true);
+    expect(allowsReturn).toBe(true);
+  });
+
+  for (const [from, to, inboundAltitude, outboundAltitude] of [
+    ['DUMIM', 'YRIHO', 3500, 4000],
+    ['YRIHO', 'DUMIM', 4000, 3500],
+    ['YRIHO', 'ALMOG', 3500, 4000],
+    ['ALMOG', 'YRIHO', 4000, 3500],
+    ['ENGDI', 'LLMZ', 3500, 4000],
+    ['LLMZ', 'ENGDI', 4000, 3500],
+  ]) {
+    test(`${from} to ${to} uses the charted altitude pair`, async ({ page }) => {
+      await boot(page);
+
+      const result = await clickRoute(page, from, to);
+
+      expect(result.names).toEqual([from, to]);
+      expect(result.leg).toMatchObject({
+        inboundAltitude,
+        outboundAltitude,
+        auto: true,
+      });
+      const allowsReturn = await page.evaluate(() =>
+        !state.legs[0]._legAltitudeOneWay && legAllowsReturn(0) === true);
+      expect(allowsReturn).toBe(true);
+    });
+  }
+
   test('BAZRA to DEROR uses the charted 800 / 2000 altitude pair', async ({ page }) => {
     await boot(page);
 
@@ -371,6 +428,37 @@ test.describe('leg-altitude map wiring', () => {
     });
   });
 
+  test('route-template promoted legs fill from the shared altitude table', async ({ page }) => {
+    await boot(page);
+
+    for (const [from, to, inboundAltitude, outboundAltitude] of [
+      ['SFAIM', 'HTZUK', 800, 1600],
+      ['HTZUK', 'SFAIM', 1600, 800],
+      ['SFAIM', 'RIDNG', 800, 1600],
+      ['RIDNG', 'SFAIM', 1600, 800],
+      ['TYONA', 'NTAIM', 800, 1200],
+      ['NTAIM', 'TYONA', 1200, 800],
+      ['NTAIM', 'BOVED', 800, 1200],
+      ['BOVED', 'NTAIM', 1200, 800],
+      ['NITZA', 'HODYA', 1500, 2000],
+      ['HODYA', 'NITZA', 2000, 1500],
+      ['HODYA', 'REVAH', 1500, 2000],
+      ['REVAH', 'HODYA', 2000, 1500],
+      ['SOVAL', 'MINGV', 2500, 3000],
+      ['MINGV', 'SOVAL', 3000, 2500],
+      ['RIDNG', 'HTZUK', 1200, 800],
+    ]) {
+      const result = await setNamedRoute(page, from, to);
+
+      expect(result.names).toEqual([from, to]);
+      expect(result.leg).toMatchObject({
+        inboundAltitude,
+        outboundAltitude,
+        auto: true,
+      });
+    }
+  });
+
   test('blocked reverse of one-way leg-altitude entry shows blocked current direction', async ({ page }) => {
     await boot(page);
 
@@ -469,7 +557,7 @@ test.describe('leg-altitude map wiring', () => {
     await expect(firstForwardAlt).toHaveAttribute('placeholder', 'Unknown');
   });
 
-  test('shortcut leg infers altitude when every underlying path leg agrees', async ({ page }) => {
+  test('promoted SFAIM to RIDNG shortcut uses the shared altitude row', async ({ page }) => {
     await boot(page);
 
     const result = await setNamedRoute(page, 'SFAIM', 'RIDNG');
@@ -482,10 +570,10 @@ test.describe('leg-altitude map wiring', () => {
     });
     expect(await page.evaluate(() =>
       Boolean(legAltitudeMap['SFAIM-RIDNG'] || legAltitudeMap['RIDNG-SFAIM'])
-    )).toBe(false);
+    )).toBe(true);
   });
 
-  test('reverse shortcut leg infers the opposite consistent altitude', async ({ page }) => {
+  test('reverse promoted SFAIM to RIDNG shortcut swaps the shared altitude row', async ({ page }) => {
     await boot(page);
 
     const result = await setNamedRoute(page, 'RIDNG', 'SFAIM');
