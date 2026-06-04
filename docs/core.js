@@ -570,6 +570,11 @@ var wpSize = 1;             // waypoint name / number text size scale
 var legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
 var legLineWidth = 1;       // leg route line width scale (1 = default 3.5 px)
 var driftLineWidth = 1;     // drift reference line width scale (1 = default 1.5 px)
+
+const LEG_ALTITUDE_INFER_MAX_HOPS = 6;
+const LEG_ALTITUDE_INFER_MAX_DISTANCE_RATIO = 1.35;
+const LEG_ALTITUDE_INFER_MAX_EXTRA_NM = 0.8;
+
 function legZoomScale() {   // zoom + legArrowSize → pixel multiplier for offsets/sizes
   return Math.max(0.35, Math.pow(2, map.getZoom() - 12)) * legArrowSize;
 }
@@ -919,6 +924,61 @@ function legAltitudePointAtWaypoint(wp) {
   if (Array.isArray(airfields)) airfields.forEach(visit);
   return best ? best.name : '';
 }
+function legAltitudeDirectionalEdges() {
+  const edges = {};
+  const add = (from, to, altitude, distanceNm) => {
+    if (!from || !to || !Number.isFinite(altitude) ||
+        !Number.isFinite(distanceNm) || distanceNm <= 0) return;
+    (edges[from] || (edges[from] = [])).push({ to, altitude, distanceNm });
+  };
+  for (const segment of Object.values(legAltitudeMap || {})) {
+    add(segment.from, segment.to, segment.inboundAltitude, segment.distanceNm);
+    add(segment.to, segment.from, segment.outboundAltitude, segment.distanceNm);
+  }
+  return edges;
+}
+function inferConsistentLegAltitude(from, to, directDistanceNm) {
+  if (!from || !to || from === to || !Number.isFinite(directDistanceNm)) return null;
+  const edges = legAltitudeDirectionalEdges();
+  const maxDistance = directDistanceNm * LEG_ALTITUDE_INFER_MAX_DISTANCE_RATIO +
+    LEG_ALTITUDE_INFER_MAX_EXTRA_NM;
+  const queue = [{
+    node: from,
+    altitude: null,
+    distanceNm: 0,
+    hops: 0,
+    path: [from],
+  }];
+  const bestDistance = {};
+  const foundAltitudes = new Set();
+  while (queue.length) {
+    const cur = queue.shift();
+    if (!cur || cur.hops >= LEG_ALTITUDE_INFER_MAX_HOPS) continue;
+    for (const edge of edges[cur.node] || []) {
+      if (cur.path.includes(edge.to)) continue;
+      const altitude = cur.altitude === null ? edge.altitude : cur.altitude;
+      if (cur.altitude !== null && edge.altitude !== cur.altitude) continue;
+      const distanceNm = cur.distanceNm + edge.distanceNm;
+      if (distanceNm > maxDistance) continue;
+      if (edge.to === to) {
+        foundAltitudes.add(altitude);
+        continue;
+      }
+      const key = edge.to + '|' + altitude;
+      if (Number.isFinite(bestDistance[key]) && bestDistance[key] <= distanceNm) continue;
+      bestDistance[key] = distanceNm;
+      queue.push({
+        node: edge.to,
+        altitude,
+        distanceNm,
+        hops: cur.hops + 1,
+        path: cur.path.concat(edge.to),
+      });
+    }
+  }
+  if (foundAltitudes.size !== 1) return null;
+  return foundAltitudes.values().next().value;
+}
 function legAltitudeForLeg(i) {
   if (!legAltitudeMap || !state.waypoints[i] || !state.waypoints[i + 1]) return null;
   const from = legAltitudePointAtWaypoint(state.waypoints[i]);
@@ -942,9 +1002,28 @@ function legAltitudeForLeg(i) {
     };
   };
   const direct = legAltitudeMap[legAltitudeKey(from, to)];
-  if (direct) return resolveSegment(direct, false);
+  if (direct) {
+    const match = resolveSegment(direct, false);
+    if (match) return match;
+  }
   const reverse = legAltitudeMap[legAltitudeKey(to, from)];
-  if (reverse) return resolveSegment(reverse, true);
+  if (reverse) {
+    const match = resolveSegment(reverse, true);
+    if (match) return match;
+  }
+  const directDistanceNm = geo(state.waypoints[i], state.waypoints[i + 1]).dist;
+  const inferredInbound = inferConsistentLegAltitude(from, to, directDistanceNm);
+  const inferredOutbound = inferConsistentLegAltitude(to, from, directDistanceNm);
+  if (Number.isFinite(inferredInbound) || Number.isFinite(inferredOutbound)) {
+    return {
+      key: legAltitudeKey(from, to),
+      inboundAltitude: Number.isFinite(inferredInbound) ? inferredInbound : null,
+      outboundAltitude: Number.isFinite(inferredOutbound) ? inferredOutbound : null,
+      inboundBlocked: false,
+      outboundBlocked: false,
+      inferred: true,
+    };
+  }
   return null;
 }
 function legAltitudePairMatchForLeg(i) {
