@@ -516,8 +516,9 @@ function reportingFor(name) {
     for (const w of navWP) if (w.report) _reportIndex[w.name] = w.report;
     _reportIndexFor = navWP;
   }
+  // `name` is guaranteed truthy by the guard above.
   const key = typeof canonicalNavWaypointName === 'function'
-    ? canonicalNavWaypointName(name) : String(name || '').trim();
+    ? canonicalNavWaypointName(name) : String(name).trim();
   return (key && _reportIndex[key]) || null;
 }
 // Small "M" badge on mandatory (חובה) reporting points so they stand out on
