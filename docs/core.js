@@ -588,7 +588,7 @@ var showMidLeg = false;
 var showCumTime = true;     // cumulative-time kites — on by default
 var highlightDiff = false;  // purple halo on legs that change altitude
 var showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
-var showReporting = true;   // mandatory/on-request reporting badges (default on) — issue #404
+var showReporting = false;  // mandatory reporting badges (opt-in, default off) — issue #404
 var navWP = null;           // null = not loaded yet (or last fetch failed —
                             // retry on next toggle / search call); [] or
                             // populated = last fetch resolved successfully.

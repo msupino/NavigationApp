@@ -24,7 +24,7 @@ window.S = {
   tbWpSizeTitle: 'גודל ציון דרך ושמו',
   tbShowNavWp: 'הצג/נעץ ציוני ניווט',                // מתג שכבת מפה
   tbShowNavWpTitle: 'הצג ציוני דיווח VFR ישראלים',
-  tbShowReporting: 'הצג דיווח חובה',
+  tbShowReporting: 'הצג נקודות דיווח חובה',
   tbShowReportingTitle: 'סמן ציונים שהם נקודות דיווח חובה',
   report: 'דיווח',
   reportingMandatory: '📍 דיווח חובה',

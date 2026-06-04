@@ -40,20 +40,29 @@ test.describe('Reporting-type overlay (#404)', () => {
     expect(out.junk).toBeNull();
   });
 
-  test('toggle is default-on, persists, and gates the badge pass', async ({ page }) => {
+  test('toggle is default-off, opt-in, and persists', async ({ page }) => {
     await boot(page);
     const cb = page.locator('#reporting-cb');
-    await expect(cb).toBeChecked();
-    expect(await page.evaluate(() => showReporting)).toBe(true);
-    await cb.click();
+    await expect(cb).not.toBeChecked();
     expect(await page.evaluate(() => showReporting)).toBe(false);
-    expect(await page.evaluate(() => localStorage.getItem('navaid.showReporting'))).toBe('0');
+    await cb.click();
+    expect(await page.evaluate(() => showReporting)).toBe(true);
+    expect(await page.evaluate(() => localStorage.getItem('navaid.showReporting'))).toBe('1');
     await page.reload();
     await page.waitForFunction(() => typeof state !== 'undefined' && window.navWP);
-    await expect(page.locator('#reporting-cb')).not.toBeChecked();
+    await expect(page.locator('#reporting-cb')).toBeChecked();
   });
 
-  test('inspector shows the reporting row for a mandatory waypoint, none for others', async ({ page }) => {
+  test('toggle is the last item in the View section', async ({ page }) => {
+    await boot(page);
+    const last = await page.evaluate(() => {
+      const labels = [...document.querySelectorAll('.tb-section[data-sec="view"] .navtoggle input')];
+      return labels[labels.length - 1].id;
+    });
+    expect(last).toBe('reporting-cb');
+  });
+
+  test('inspector reporting row always shows (independent of the map toggle)', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [
@@ -61,10 +70,13 @@ test.describe('Reporting-type overlay (#404)', () => {
         { lat: 32.0, lng: 34.8, name: 'FOO' },              // not a reporting point
       ];
       syncLegs(); draw();
-      state.selected = { type: 'wp', index: 0 }; showInspector();
     });
+    // Map overlay is default-off, but the inspector row is informational and
+    // shows regardless: mandatory waypoint gets the row.
+    await page.evaluate(() => { state.selected = { type: 'wp', index: 0 }; showInspector(); });
     await expect(page.locator('#insp-body .reporting-badge-row')).toHaveCount(1);
     await expect(page.locator('#insp-body .reporting-badge-row')).toContainText(/Mandatory/i);
+    // Non-reporting waypoint gets no row.
     await page.evaluate(() => { state.selected = { type: 'wp', index: 1 }; showInspector(); });
     await expect(page.locator('#insp-body .reporting-badge-row')).toHaveCount(0);
   });
