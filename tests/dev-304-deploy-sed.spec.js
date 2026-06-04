@@ -46,21 +46,23 @@ test.describe('#304 — deploy sed bumps every cache-bust marker', () => {
     const file = tmpCopy(path.join(__dirname, '..', 'docs', 'core.js'));
     const SHA = 'abc1234';
     run(`s/version: '([0-9]+\\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\\1-${SHA}'/g`, file);
-    run(`s/(nav-waypoints|airfields)\\.json\\?v=[A-Za-z0-9]+/\\1.json?v=${SHA}/g`, file);
+    run(`s/(nav-waypoints|airfields|leg-altitude)\\.json\\?v=[A-Za-z0-9]+/\\1.json?v=${SHA}/g`, file);
     const out = fs.readFileSync(file, 'utf8');
     expect(out).toMatch(new RegExp(`version: '1\\.0-${SHA}'`));
     expect(out).toMatch(new RegExp(`nav-waypoints\\.json\\?v=${SHA}`));
     expect(out).toMatch(new RegExp(`airfields\\.json\\?v=${SHA}`));
+    expect(out).toMatch(new RegExp(`leg-altitude\\.json\\?v=${SHA}`));
     fs.unlinkSync(file);
   });
 
   test('sed rewrites he/strings.js data-file ?v= too', async () => {
     const file = tmpCopy(path.join(__dirname, '..', 'docs', 'he', 'strings.js'));
     const SHA = 'def5678';
-    run(`s/(nav-waypoints|airfields)\\.json\\?v=[A-Za-z0-9]+/\\1.json?v=${SHA}/g`, file);
+    run(`s/(nav-waypoints|airfields|leg-altitude)\\.json\\?v=[A-Za-z0-9]+/\\1.json?v=${SHA}/g`, file);
     const out = fs.readFileSync(file, 'utf8');
     expect(out).toMatch(new RegExp(`nav-waypoints\\.json\\?v=${SHA}`));
     expect(out).toMatch(new RegExp(`airfields\\.json\\?v=${SHA}`));
+    expect(out).toMatch(new RegExp(`leg-altitude\\.json\\?v=${SHA}`));
     fs.unlinkSync(file);
   });
 

@@ -1146,13 +1146,13 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(fields.first()).toHaveValue('122.20');
     await expect(resetFreq).toHaveText('↻');
     await expect(resetFreq).toBeDisabled();
-    await expect(resetFreq).toHaveAttribute('title', 'Reset frequency to template');
+    await expect(resetFreq).toHaveAttribute('title', 'Reset frequency to default');
     await expect(page.locator('#insp-body .commchange-template')).toBeHidden();
 
     await fields.first().fill('125.60');
     await expect(resetFreq).toBeEnabled();
     await expect(page.locator('#insp-body .commchange-template')).toBeVisible();
-    await expect(page.locator('#insp-body .commchange-template label')).toHaveText('Template');
+    await expect(page.locator('#insp-body .commchange-template label')).toHaveText('Default');
     await expect(page.locator('#insp-body .commchange-template .val')).toHaveText('122.20');
 
     const edited = await page.evaluate(() => ({

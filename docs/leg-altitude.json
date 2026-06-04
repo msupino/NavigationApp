@@ -1,0 +1,2700 @@
+{
+  "version": 1,
+  "source": "Candidate CVFR green-route altitude scaffold. Coordinates are not duplicated here; segment endpoint ids resolve against docs/nav-waypoints.json and docs/airfields.json. Some rows were detected from CVFR chart imagery and manually audited; sibling coverage rows with source=cvfr-map airway adjacency were seeded from the upstream airway table so direct CVFR legs are visible in the editable chart. Candidate altitudes should be checked against official CVFR chart labels before promotion. Double-ended same-route markers may apply the same altitude both directions, while one-way routes use null for the disallowed direction. status=reviewed marks rows confirmed from maintainer-provided evidence. status=unknown with two null altitudes is an editable placeholder.",
+  "sourceCharts": [
+    {
+      "id": "north",
+      "title": "CVFR North 2025",
+      "url": "https://www.gov.il/BlobFolder/generalpage/idcunim-2025/he/%D7%91'-03%20CVFR%20%D7%A6%D7%A4%D7%95%D7%A0%D7%99-.pdf"
+    },
+    {
+      "id": "south",
+      "title": "CVFR South 2023",
+      "url": "https://www.gov.il/BlobFolder/generalpage/updates-2023/he/aip_CVFR_South_2023.pdf"
+    }
+  ],
+  "schema": {
+    "segments": "Candidate direct green CVFR route segments. Endpoint coordinates are looked up by from/to in docs/nav-waypoints.json or docs/airfields.json. inboundAltitude is from -> to; outboundAltitude is to -> from. Altitudes are feet MSL. A single null means that direction is not allowed and requires oneWay=true; two nulls require status=unknown and mean the row is an editable placeholder. Candidate values may come from chart-read yellow CVFR altitude arrows/markers or from source=cvfr-map airway adjacency sibling coverage. Double-ended same-route markers may apply the same altitude both directions. status=reviewed marks rows confirmed from maintainer-provided evidence."
+  },
+  "segments": [
+    {
+      "from": "AAKKO",
+      "to": "AHIUD",
+      "distanceNm": 4.3,
+      "inboundAltitude": null,
+      "outboundAltitude": 2000,
+      "oneWay": true,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.656,
+        "maxGap": 12,
+        "samples": 61
+      }
+    },
+    {
+      "from": "AFFEK",
+      "to": "LLHA",
+      "distanceNm": 4.7,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.746,
+        "maxGap": 16,
+        "samples": 67
+      }
+    },
+    {
+      "from": "ALUMT",
+      "to": "DESHE",
+      "distanceNm": 9.4,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.789,
+        "maxGap": 7,
+        "samples": 90
+      }
+    },
+    {
+      "from": "ALUMT",
+      "to": "KOYAR",
+      "distanceNm": 7,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.7,
+        "maxGap": 10,
+        "samples": 90
+      }
+    },
+    {
+      "from": "AMNON",
+      "to": "DESHE",
+      "distanceNm": 2.7,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.846,
+        "maxGap": 3,
+        "samples": 39
+      }
+    },
+    {
+      "from": "ANATA",
+      "to": "HNINA",
+      "distanceNm": 3.3,
+      "inboundAltitude": 5000,
+      "outboundAltitude": 4500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 1,
+        "maxGap": 0,
+        "samples": 36
+      }
+    },
+    {
+      "from": "BAZRA",
+      "to": "DEROR",
+      "distanceNm": 2.4,
+      "inboundAltitude": 800,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 1,
+        "maxGap": 0,
+        "samples": 28
+      }
+    },
+    {
+      "from": "BAZRA",
+      "to": "LLHZ",
+      "distanceNm": 3.4,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 800,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "ARAVA",
+      "to": "HAZVA",
+      "distanceNm": 13.5,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.922,
+        "maxGap": 7,
+        "samples": 90
+      }
+    },
+    {
+      "from": "ARAVA",
+      "to": "ZOHAR",
+      "distanceNm": 10.2,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.856,
+        "maxGap": 9,
+        "samples": 90
+      }
+    },
+    {
+      "from": "ARENA",
+      "to": "HTZUK",
+      "distanceNm": 1.2,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1600,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.7,
+        "maxGap": 5,
+        "samples": 20
+      }
+    },
+    {
+      "from": "ARRAD",
+      "to": "LLMZ",
+      "distanceNm": 10.2,
+      "inboundAltitude": 4000,
+      "outboundAltitude": null,
+      "oneWay": true,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.9,
+        "maxGap": 8,
+        "samples": 90
+      }
+    },
+    {
+      "from": "ARRAD",
+      "to": "MMORR",
+      "distanceNm": 8.1,
+      "inboundAltitude": null,
+      "outboundAltitude": 4000,
+      "oneWay": true,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.822,
+        "maxGap": 9,
+        "samples": 90
+      }
+    },
+    {
+      "from": "ARRAD",
+      "to": "TARAD",
+      "distanceNm": 4.5,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.719,
+        "maxGap": 11,
+        "samples": 64
+      }
+    },
+    {
+      "from": "BASAN",
+      "to": "HULAT",
+      "distanceNm": 6.2,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.663,
+        "maxGap": 14,
+        "samples": 89
+      }
+    },
+    {
+      "from": "BKAMA",
+      "to": "LAHAV",
+      "distanceNm": 4.7,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.716,
+        "maxGap": 10,
+        "samples": 67
+      }
+    },
+    {
+      "from": "BKAMA",
+      "to": "NOAAM",
+      "distanceNm": 7.8,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.744,
+        "maxGap": 10,
+        "samples": 90
+      }
+    },
+    {
+      "from": "BKAMA",
+      "to": "SOVAL",
+      "distanceNm": 2.1,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.759,
+        "maxGap": 4,
+        "samples": 29
+      }
+    },
+    {
+      "from": "BMNUH",
+      "to": "YAHEL",
+      "distanceNm": 13.3,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.933,
+        "maxGap": 6,
+        "samples": 90
+      }
+    },
+    {
+      "from": "BOKER",
+      "to": "OVDAT",
+      "distanceNm": 4.4,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate"
+    },
+    {
+      "from": "BRORA",
+      "to": "SAMAR",
+      "distanceNm": 7.6,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.778,
+        "maxGap": 10,
+        "samples": 90
+      }
+    },
+    {
+      "from": "CLORE",
+      "to": "RIDNG",
+      "distanceNm": 3.7,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 800,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.635,
+        "maxGap": 7,
+        "samples": 52
+      }
+    },
+    {
+      "from": "DESHE",
+      "to": "TAVOR",
+      "distanceNm": 12.2,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.911,
+        "maxGap": 6,
+        "samples": 90
+      }
+    },
+    {
+      "from": "DESHE",
+      "to": "ZALMN",
+      "distanceNm": 6.2,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2500,
+      "status": "reviewed",
+      "detection": {
+        "greenScore": 0.674,
+        "maxGap": 11,
+        "samples": 89
+      }
+    },
+    {
+      "from": "DUMIM",
+      "to": "SHAHR",
+      "distanceNm": 9.2,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.667,
+        "maxGap": 20,
+        "samples": 90
+      }
+    },
+    {
+      "from": "EIRON",
+      "to": "HADRA",
+      "distanceNm": 5.8,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.659,
+        "maxGap": 10,
+        "samples": 82
+      }
+    },
+    {
+      "from": "EIRON",
+      "to": "SDTYM",
+      "distanceNm": 7.1,
+      "inboundAltitude": 3000,
+      "outboundAltitude": null,
+      "oneWay": true,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.644,
+        "maxGap": 11,
+        "samples": 90
+      }
+    },
+    {
+      "from": "EITAN",
+      "to": "KOYAR",
+      "distanceNm": 6.1,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.659,
+        "maxGap": 12,
+        "samples": 88
+      }
+    },
+    {
+      "from": "ENGDI",
+      "to": "SHALM",
+      "distanceNm": 5.7,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.637,
+        "maxGap": 13,
+        "samples": 80
+      }
+    },
+    {
+      "from": "EVLYM",
+      "to": "SEGEV",
+      "distanceNm": 6,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.678,
+        "maxGap": 11,
+        "samples": 87
+      }
+    },
+    {
+      "from": "FAZEL",
+      "to": "NAAMA",
+      "distanceNm": 8.4,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.867,
+        "maxGap": 7,
+        "samples": 90
+      }
+    },
+    {
+      "from": "HADRA",
+      "to": "FRDIS",
+      "distanceNm": 7.8,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.722,
+        "maxGap": 11,
+        "samples": 90
+      }
+    },
+    {
+      "from": "FRDIS",
+      "to": "SDTYM",
+      "distanceNm": 6.5,
+      "inboundAltitude": 2000,
+      "outboundAltitude": null,
+      "oneWay": true,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.756,
+        "maxGap": 12,
+        "samples": 90
+      }
+    },
+    {
+      "from": "GOVRN",
+      "to": "NOAAM",
+      "distanceNm": 6.3,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.656,
+        "maxGap": 11,
+        "samples": 90
+      }
+    },
+    {
+      "from": "GOVRN",
+      "to": "ZHRYA",
+      "distanceNm": 6.2,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.67,
+        "maxGap": 10,
+        "samples": 88
+      }
+    },
+    {
+      "from": "HADRA",
+      "to": "SHARO",
+      "distanceNm": 8.5,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.744,
+        "maxGap": 20,
+        "samples": 90
+      }
+    },
+    {
+      "from": "HATRU",
+      "to": "ZOHAR",
+      "distanceNm": 7.6,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.744,
+        "maxGap": 8,
+        "samples": 90
+      }
+    },
+    {
+      "from": "HAZVA",
+      "to": "LLEY",
+      "distanceNm": 9.3,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.856,
+        "maxGap": 11,
+        "samples": 90
+      }
+    },
+    {
+      "from": "LLEY",
+      "to": "ZOFAR",
+      "distanceNm": 3.8,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate"
+    },
+    {
+      "from": "HRGVS",
+      "to": "RUHOT",
+      "distanceNm": 7.6,
+      "inboundAltitude": 4500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.756,
+        "maxGap": 10,
+        "samples": 90
+      }
+    },
+    {
+      "from": "HRGVS",
+      "to": "ZOFAR",
+      "distanceNm": 12.8,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.889,
+        "maxGap": 9,
+        "samples": 90
+      }
+    },
+    {
+      "from": "HTZUK",
+      "to": "KNTRY",
+      "distanceNm": 1.2,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.9,
+        "maxGap": 1,
+        "samples": 20
+      }
+    },
+    {
+      "from": "IKKEA",
+      "to": "LLRS",
+      "distanceNm": 1.3,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 800,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.7,
+        "maxGap": 6,
+        "samples": 20
+      }
+    },
+    {
+      "from": "KRYON",
+      "to": "LLHA",
+      "distanceNm": 3.1,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.844,
+        "maxGap": 4,
+        "samples": 45
+      }
+    },
+    {
+      "from": "KTORA",
+      "to": "YAHEL",
+      "distanceNm": 6.3,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.682,
+        "maxGap": 10,
+        "samples": 88
+      }
+    },
+    {
+      "from": "KUVSH",
+      "to": "LLBS",
+      "distanceNm": 2.7,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.816,
+        "maxGap": 7,
+        "samples": 38
+      }
+    },
+    {
+      "from": "KUVSH",
+      "to": "NCITY",
+      "distanceNm": 2.2,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.742,
+        "maxGap": 7,
+        "samples": 31
+      }
+    },
+    {
+      "from": "LAHAV",
+      "to": "SOKET",
+      "distanceNm": 5.9,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.735,
+        "maxGap": 14,
+        "samples": 83
+      }
+    },
+    {
+      "from": "LLBG",
+      "to": "PARDS",
+      "distanceNm": 5.9,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.714,
+        "maxGap": 9,
+        "samples": 84
+      }
+    },
+    {
+      "from": "LLRS",
+      "to": "NTAIM",
+      "distanceNm": 2,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.75,
+        "maxGap": 3,
+        "samples": 28
+      }
+    },
+    {
+      "from": "MEHOL",
+      "to": "NTAIM",
+      "distanceNm": 1.3,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.65,
+        "maxGap": 5,
+        "samples": 20
+      }
+    },
+    {
+      "from": "MIHMS",
+      "to": "SHAHR",
+      "distanceNm": 6.2,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.705,
+        "maxGap": 11,
+        "samples": 88
+      }
+    },
+    {
+      "from": "MINGV",
+      "to": "NASIH",
+      "distanceNm": 2.4,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 1,
+        "maxGap": 0,
+        "samples": 34
+      }
+    },
+    {
+      "from": "MMORR",
+      "to": "ZOHAR",
+      "distanceNm": 6.2,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.716,
+        "maxGap": 9,
+        "samples": 88
+      }
+    },
+    {
+      "from": "MRISN",
+      "to": "NTAIM",
+      "distanceNm": 2.1,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.621,
+        "maxGap": 7,
+        "samples": 29
+      }
+    },
+    {
+      "from": "MYTAR",
+      "to": "SOKET",
+      "distanceNm": 1.9,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.852,
+        "maxGap": 3,
+        "samples": 27
+      }
+    },
+    {
+      "from": "MYTAR",
+      "to": "TARAD",
+      "distanceNm": 9.9,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.844,
+        "maxGap": 8,
+        "samples": 90
+      }
+    },
+    {
+      "from": "NCITY",
+      "to": "OMMER",
+      "distanceNm": 2,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.966,
+        "maxGap": 1,
+        "samples": 29
+      }
+    },
+    {
+      "from": "NCITY",
+      "to": "ZGOAL",
+      "distanceNm": 1.5,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.905,
+        "maxGap": 2,
+        "samples": 21
+      }
+    },
+    {
+      "from": "ZGOAL",
+      "to": "ZLHAV",
+      "distanceNm": 3.6,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "ZGOAL",
+      "to": "OMMER",
+      "distanceNm": 3.1,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "NTAIM",
+      "to": "SUPER",
+      "distanceNm": 2.8,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 800,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.65,
+        "maxGap": 7,
+        "samples": 40
+      }
+    },
+    {
+      "from": "OLGAH",
+      "to": "PELEG",
+      "distanceNm": 6.3,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.674,
+        "maxGap": 11,
+        "samples": 89
+      }
+    },
+    {
+      "from": "OLGAH",
+      "to": "SDTYM",
+      "distanceNm": 4,
+      "inboundAltitude": null,
+      "outboundAltitude": 800,
+      "oneWay": true,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.793,
+        "maxGap": 12,
+        "samples": 58
+      }
+    },
+    {
+      "from": "OVDAT",
+      "to": "RUHOT",
+      "distanceNm": 8.6,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 4500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.833,
+        "maxGap": 9,
+        "samples": 90
+      }
+    },
+    {
+      "from": "PELEG",
+      "to": "VINGT",
+      "distanceNm": 4.6,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.631,
+        "maxGap": 9,
+        "samples": 65
+      }
+    },
+    {
+      "from": "SEGEV",
+      "to": "ZALMN",
+      "distanceNm": 7.5,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.811,
+        "maxGap": 8,
+        "samples": 90
+      }
+    },
+    {
+      "from": "SHALM",
+      "to": "ZUKIM",
+      "distanceNm": 9.8,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.867,
+        "maxGap": 6,
+        "samples": 90
+      }
+    },
+    {
+      "from": "SHRUT",
+      "to": "YOTVT",
+      "distanceNm": 3.4,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.978,
+        "maxGap": 1,
+        "samples": 46
+      }
+    },
+    {
+      "from": "SMRAT",
+      "to": "SZION",
+      "distanceNm": 1.7,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.625,
+        "maxGap": 5,
+        "samples": 24
+      }
+    },
+    {
+      "from": "YAVNE",
+      "to": "ZASHD",
+      "distanceNm": 3.7,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "detection": {
+        "greenScore": 0.673,
+        "maxGap": 7,
+        "samples": 52
+      }
+    },
+    {
+      "from": "BRORA",
+      "to": "EILAT",
+      "distanceNm": 9.2,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "SAMAR",
+      "to": "YOTVT",
+      "distanceNm": 4.6,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "BEREC",
+      "to": "BRORA",
+      "distanceNm": 6.8,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 4500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true
+    },
+    {
+      "from": "BEREC",
+      "to": "LLOV",
+      "distanceNm": 8.7,
+      "inboundAltitude": 4500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true
+    },
+    {
+      "from": "LLOV",
+      "to": "SAMAR",
+      "distanceNm": 7.7,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true
+    },
+    {
+      "from": "LLOV",
+      "to": "SHRUT",
+      "distanceNm": 3.6,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true
+    },
+    {
+      "from": "LLOV",
+      "to": "SIZFN",
+      "distanceNm": 7.8,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "SIZFN",
+      "to": "YAHEL",
+      "distanceNm": 6.5,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "SITIM",
+      "to": "SIZFN",
+      "distanceNm": 7.7,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "SITIM",
+      "to": "ZZHOR",
+      "distanceNm": 6.1,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "BMNUH",
+      "to": "ZZHOR",
+      "distanceNm": 6.1,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "KTORA",
+      "to": "YOTVT",
+      "distanceNm": 5.3,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "BMNUH",
+      "to": "ZOFAR",
+      "distanceNm": 15.6,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "LLMZ",
+      "to": "MMORR",
+      "distanceNm": 4.6,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "ARRAD",
+      "to": "HATRU",
+      "distanceNm": 2.9,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "ARAVA",
+      "to": "ZAFIT",
+      "distanceNm": 6.5,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "DIMON",
+      "to": "ZAFIT",
+      "distanceNm": 10.1,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "DIMON",
+      "to": "LLNV",
+      "distanceNm": 8.8,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true
+    },
+    {
+      "from": "ARRAD",
+      "to": "LLNV",
+      "distanceNm": 10.1,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true
+    },
+    {
+      "from": "HOVAV",
+      "to": "LLNV",
+      "distanceNm": 11.9,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "HOVAV",
+      "to": "NEGEV",
+      "distanceNm": 4.5,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "NEGEV",
+      "to": "TLLIM",
+      "distanceNm": 6,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "LLKZ",
+      "to": "TLLIM",
+      "distanceNm": 18.2,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "BOKER",
+      "to": "TLLIM",
+      "distanceNm": 7,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "BOKER",
+      "to": "YRUHM",
+      "distanceNm": 9.4,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "DIMON",
+      "to": "YRUHM",
+      "distanceNm": 6.8,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "MESAR",
+      "to": "RUHOT",
+      "distanceNm": 11.8,
+      "inboundAltitude": 4500,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "MESAR",
+      "to": "ZZHOR",
+      "distanceNm": 14.1,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "LLRM",
+      "to": "OVDAT",
+      "distanceNm": 6.7,
+      "inboundAltitude": 4000,
+      "outboundAltitude": null,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "oneWay": true,
+      "armyAirway": true
+    },
+    {
+      "from": "BOKER",
+      "to": "LLRM",
+      "distanceNm": 8.6,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true
+    },
+    {
+      "from": "LLRM",
+      "to": "NIZAN",
+      "distanceNm": 5.4,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "AZOOZ",
+      "to": "NIZAN",
+      "distanceNm": 5.6,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "AZOOZ",
+      "to": "LLKZ",
+      "distanceNm": 3.8,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "HOLOT",
+      "to": "LLKZ",
+      "distanceNm": 9.2,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "HOLOT",
+      "to": "SIGAL",
+      "distanceNm": 12.5,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "SIGAL",
+      "to": "YATED",
+      "distanceNm": 2.2,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "GVULT",
+      "to": "YATED",
+      "distanceNm": 6.6,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "AMIOZ",
+      "to": "GVULT",
+      "distanceNm": 3.4,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "AMIOZ",
+      "to": "YATED",
+      "distanceNm": 4.7,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "AMIOZ",
+      "to": "ZMGEN",
+      "distanceNm": 2.7,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "ZMGEN",
+      "to": "TZHOT",
+      "distanceNm": 5.1,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "TZHOT",
+      "to": "LLHB",
+      "distanceNm": 7.5,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "LLBS",
+      "to": "LLHB",
+      "distanceNm": 4.4,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "LLHB",
+      "to": "NASIH",
+      "distanceNm": 5.7,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "LLHB",
+      "to": "OFKIM",
+      "distanceNm": 5.1,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "NTVOT",
+      "to": "OFKIM",
+      "distanceNm": 6.5,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "NTVOT",
+      "to": "SDROT",
+      "distanceNm": 4.7,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "BKAMA",
+      "to": "NTVOT",
+      "distanceNm": 8.6,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "NASIH",
+      "to": "SOVAL",
+      "distanceNm": 5.5,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "LLBS",
+      "to": "NASIH",
+      "distanceNm": 2.9,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "OHLIM",
+      "to": "OMMER",
+      "distanceNm": 5.2,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "HOVAV",
+      "to": "OHLIM",
+      "distanceNm": 3.3,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "OMMER",
+      "to": "SOKET",
+      "distanceNm": 4.2,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "BKAMA",
+      "to": "ZLHAV",
+      "distanceNm": 4.4,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "HOVAV",
+      "to": "SOKET",
+      "distanceNm": 11.4,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "LLMZ",
+      "to": "SHALM",
+      "distanceNm": 13.8,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "ALMOG",
+      "to": "ZUKIM",
+      "distanceNm": 4.4,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "ALMOG",
+      "to": "NAAMA",
+      "distanceNm": 7.1,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "ARGMN",
+      "to": "FAZEL",
+      "distanceNm": 8.3,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "ALLON",
+      "to": "FAZEL",
+      "distanceNm": 4.9,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "ALLON",
+      "to": "SHAHR",
+      "distanceNm": 5.3,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "ALMOG",
+      "to": "DUMIM",
+      "distanceNm": 6.8,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "ARGMN",
+      "to": "TIRAT",
+      "distanceNm": 15.1,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "KOYAR",
+      "to": "TIRAT",
+      "distanceNm": 10.4,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "ALUMT",
+      "to": "HAROV",
+      "distanceNm": 6.7,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "HAROV",
+      "to": "LLFK",
+      "distanceNm": 2.9,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "ALUMT",
+      "to": "TAVOR",
+      "distanceNm": 6.5,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "AMNON",
+      "to": "LLIB",
+      "distanceNm": 4.5,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "HULAT",
+      "to": "LLIB",
+      "distanceNm": 4.8,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "BASAN",
+      "to": "LLKS",
+      "distanceNm": 4.5,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "MOVIL",
+      "to": "ZALMN",
+      "distanceNm": 10.6,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "HASID",
+      "to": "MOVIL",
+      "distanceNm": 7.9,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "EVLYM",
+      "to": "GILAM",
+      "distanceNm": 1,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "AHIUD",
+      "to": "EVLYM",
+      "distanceNm": 5.5,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "EVLYM",
+      "to": "HASID",
+      "distanceNm": 5.9,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "HASID",
+      "to": "LLHA",
+      "distanceNm": 4.1,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "DUGIT",
+      "to": "LLHA",
+      "distanceNm": 2.7,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "AAKKO",
+      "to": "DUGIT",
+      "distanceNm": 4.6,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "AAKKO",
+      "to": "SMRAT",
+      "distanceNm": 2,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "GALIM",
+      "to": "LLHA",
+      "distanceNm": 3.7,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "DAROM",
+      "to": "GALIM",
+      "distanceNm": 3.3,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "DAROM",
+      "to": "HOTRM",
+      "distanceNm": 2.6,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "BOREN",
+      "to": "HOTRM",
+      "distanceNm": 2.9,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 1000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "BOREN",
+      "to": "FRDIS",
+      "distanceNm": 7.5,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "FRDIS",
+      "to": "HASID",
+      "distanceNm": 11.4,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "LLRD",
+      "to": "MOVIL",
+      "distanceNm": 6,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true
+    },
+    {
+      "from": "LLRD",
+      "to": "ZOREA",
+      "distanceNm": 3.5,
+      "inboundAltitude": 2000,
+      "outboundAltitude": null,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "oneWay": true,
+      "armyAirway": true
+    },
+    {
+      "from": "EMMEK",
+      "to": "LLRD",
+      "distanceNm": 3.8,
+      "inboundAltitude": 1500,
+      "outboundAltitude": null,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "oneWay": true,
+      "armyAirway": true
+    },
+    {
+      "from": "DALIA",
+      "to": "EMMEK",
+      "distanceNm": 3.1,
+      "inboundAltitude": 1500,
+      "outboundAltitude": null,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "oneWay": true,
+      "armyAirway": true
+    },
+    {
+      "from": "DALIA",
+      "to": "HADRA",
+      "distanceNm": 11.7,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "HASID",
+      "to": "LLRD",
+      "distanceNm": 7.1,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "DALIA",
+      "to": "ZOREA",
+      "distanceNm": 3.6,
+      "inboundAltitude": null,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "oneWay": true,
+      "armyAirway": true
+    },
+    {
+      "from": "LLRD",
+      "to": "ZMGID",
+      "distanceNm": 5.8,
+      "inboundAltitude": 3000,
+      "outboundAltitude": null,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "oneWay": true,
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "AFULA",
+      "to": "TAVOR",
+      "distanceNm": 8.7,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "AFULA",
+      "to": "ZMGID",
+      "distanceNm": 5,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "EIRON",
+      "to": "ZMGID",
+      "distanceNm": 10.1,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "HADRA",
+      "to": "OLGAH",
+      "distanceNm": 3.1,
+      "inboundAltitude": null,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "oneWay": true
+    },
+    {
+      "from": "DEROR",
+      "to": "SHARO",
+      "distanceNm": 4,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "SHARO",
+      "to": "ZYAAR",
+      "distanceNm": 5.2,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
+      "status": "candidate"
+    },
+    {
+      "from": "ZYAAR",
+      "to": "HADRA",
+      "distanceNm": 3.3,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
+      "status": "candidate"
+    },
+    {
+      "from": "SFAIM",
+      "to": "VINGT",
+      "distanceNm": 2.7,
+      "inboundAltitude": 1600,
+      "outboundAltitude": 800,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "LLHZ",
+      "to": "SFAIM",
+      "distanceNm": 2.3,
+      "inboundAltitude": 1200,
+      "outboundAltitude": null,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "oneWay": true
+    },
+    {
+      "from": "APOLN",
+      "to": "SFAIM",
+      "distanceNm": 1.3,
+      "inboundAltitude": 1600,
+      "outboundAltitude": 800,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "GNYAM",
+      "to": "LLHZ",
+      "distanceNm": 3.5,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "KNTRY",
+      "to": "LLHZ",
+      "distanceNm": 2.9,
+      "inboundAltitude": 1200,
+      "outboundAltitude": null,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "oneWay": true
+    },
+    {
+      "from": "GNYAM",
+      "to": "PARDS",
+      "distanceNm": 3.7,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "APOLN",
+      "to": "ARENA",
+      "distanceNm": 1.7,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1600,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "HTZUK",
+      "to": "RIDNG",
+      "distanceNm": 2.3,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1600,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "CLORE",
+      "to": "TYONA",
+      "distanceNm": 2.9,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "SUPER",
+      "to": "TYONA",
+      "distanceNm": 1.9,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 800,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "LLBG",
+      "to": "MRISN",
+      "distanceNm": 5.2,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "LLBG",
+      "to": "NSHRM",
+      "distanceNm": 6,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "AYLON",
+      "to": "LLBG",
+      "distanceNm": 8.8,
+      "inboundAltitude": 300,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "NTAIM",
+      "to": "SIRNI",
+      "distanceNm": 2.7,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "NSHRM",
+      "to": "SIRNI",
+      "distanceNm": 3.3,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 800,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "AYLON",
+      "to": "NSHRM",
+      "distanceNm": 3.5,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 800,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "AYLON",
+      "to": "LTRUN",
+      "distanceNm": 3,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 1600,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "LTRUN",
+      "to": "SHARG",
+      "distanceNm": 2.1,
+      "inboundAltitude": 1800,
+      "outboundAltitude": 2300,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "SHARG",
+      "to": "SORES",
+      "distanceNm": 3.1,
+      "inboundAltitude": 2800,
+      "outboundAltitude": 3300,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "HAREL",
+      "to": "SORES",
+      "distanceNm": 3.6,
+      "inboundAltitude": 5000,
+      "outboundAltitude": 4500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "HAREL",
+      "to": "HNINA",
+      "distanceNm": 3.7,
+      "inboundAltitude": 4500,
+      "outboundAltitude": 5000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "DUMIM",
+      "to": "HNINA",
+      "distanceNm": 6.2,
+      "inboundAltitude": 5000,
+      "outboundAltitude": 4500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "ESTOL",
+      "to": "SORES",
+      "distanceNm": 3.5,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "ESTOL",
+      "to": "LTRUN",
+      "distanceNm": 3.8,
+      "inboundAltitude": 2200,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "BSEMS",
+      "to": "LTRUN",
+      "distanceNm": 5,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "BSEMS",
+      "to": "ESTOL",
+      "distanceNm": 2.1,
+      "inboundAltitude": 4000,
+      "outboundAltitude": 3500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "BSEMS",
+      "to": "NCSHN",
+      "distanceNm": 4.9,
+      "inboundAltitude": 3500,
+      "outboundAltitude": 4000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "NCSHN",
+      "to": "NSHRM",
+      "distanceNm": 5.8,
+      "inboundAltitude": 1600,
+      "outboundAltitude": 800,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "AYLON",
+      "to": "LLEK",
+      "distanceNm": 6.7,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true
+    },
+    {
+      "from": "LLEK",
+      "to": "NSHRM",
+      "distanceNm": 5.7,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "LLEK",
+      "to": "NTAIM",
+      "distanceNm": 6.7,
+      "inboundAltitude": null,
+      "outboundAltitude": 800,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "oneWay": true,
+      "armyAirway": true
+    },
+    {
+      "from": "LLEK",
+      "to": "NAGID",
+      "distanceNm": 4.5,
+      "inboundAltitude": 1200,
+      "outboundAltitude": null,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "oneWay": true,
+      "armyAirway": true
+    },
+    {
+      "from": "KANOT",
+      "to": "LLEK",
+      "distanceNm": 3.4,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "LLEK",
+      "to": "NAHEM",
+      "distanceNm": 5.5,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true
+    },
+    {
+      "from": "KANOT",
+      "to": "LLHS",
+      "distanceNm": 3.5,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "NAHEM",
+      "to": "NAHLA",
+      "distanceNm": 5.4,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true
+    },
+    {
+      "from": "NAHLA",
+      "to": "NOAAM",
+      "distanceNm": 5.4,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true
+    },
+    {
+      "from": "BEZRA",
+      "to": "LLHS",
+      "distanceNm": 4.1,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true
+    },
+    {
+      "from": "LLHS",
+      "to": "ZASHD",
+      "distanceNm": 4.2,
+      "inboundAltitude": 1200,
+      "outboundAltitude": null,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "oneWay": true,
+      "armyAirway": true
+    },
+    {
+      "from": "BEZRA",
+      "to": "ZASHD",
+      "distanceNm": 6,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true
+    },
+    {
+      "from": "BEZRA",
+      "to": "ZDAFA",
+      "distanceNm": 3.4,
+      "inboundAltitude": 1600,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "LLPL",
+      "to": "NAGID",
+      "distanceNm": 3.4,
+      "inboundAltitude": 800,
+      "outboundAltitude": null,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "oneWay": true,
+      "armyAirway": true
+    },
+    {
+      "from": "LLPL",
+      "to": "NTAIM",
+      "distanceNm": 5.4,
+      "inboundAltitude": null,
+      "outboundAltitude": 800,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "oneWay": true,
+      "armyAirway": true
+    },
+    {
+      "from": "AAKKO",
+      "to": "KRYON",
+      "distanceNm": 4.5,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "GILAM",
+      "to": "LLHA",
+      "distanceNm": 4.6,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "BSEMS",
+      "to": "ZHRYA",
+      "distanceNm": 3.8,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "BHAIL",
+      "to": "BKAMA",
+      "distanceNm": 9.7,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "BHAIL",
+      "to": "GVARM",
+      "distanceNm": 2.4,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "GVARM",
+      "to": "NTVOT",
+      "distanceNm": 9.9,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "ASKLN",
+      "to": "GVARM",
+      "distanceNm": 5.7,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "ASKLN",
+      "to": "NITZA",
+      "distanceNm": 3.8,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 800,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "NITZA",
+      "to": "ZDAFA",
+      "distanceNm": 3.8,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "PARDS",
+      "to": "ROKCH",
+      "distanceNm": 2.2,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "RIDNG",
+      "to": "ROKCH",
+      "distanceNm": 2.1,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "BOVED",
+      "to": "NTAIM",
+      "distanceNm": 1.5,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "BOVED",
+      "to": "NAGID",
+      "distanceNm": 2,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "NAGID",
+      "to": "YAVNE",
+      "distanceNm": 1.1,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "NMASD",
+      "to": "ZASHD",
+      "distanceNm": 4.3,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 800,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "NMASD",
+      "to": "TYONA",
+      "distanceNm": 11.5,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 800,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "onAtcApproval": true
+    },
+    {
+      "from": "NMASD",
+      "to": "ZDAFA",
+      "distanceNm": 3.4,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "PELEG",
+      "to": "SAHAR",
+      "distanceNm": 4.8,
+      "inboundAltitude": 500,
+      "outboundAltitude": 1000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "SAHAR",
+      "to": "YASFA",
+      "distanceNm": 8,
+      "inboundAltitude": 500,
+      "outboundAltitude": 1000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "YAHOL",
+      "to": "YASFA",
+      "distanceNm": 14.4,
+      "inboundAltitude": 1000,
+      "outboundAltitude": 500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "LIAAD",
+      "to": "YASFA",
+      "distanceNm": 16.6,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "DEENA",
+      "to": "RIDNG",
+      "distanceNm": 8.1,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 800,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "LIAAD",
+      "to": "OSNAT",
+      "distanceNm": 7.6,
+      "inboundAltitude": 1000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "YAHOL",
+      "to": "YAPAL",
+      "distanceNm": 6.5,
+      "inboundAltitude": 500,
+      "outboundAltitude": 1000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "YAPAL",
+      "to": "YASDD",
+      "distanceNm": 6.3,
+      "inboundAltitude": 500,
+      "outboundAltitude": 1000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "ASKLN",
+      "to": "YASDD",
+      "distanceNm": 9.6,
+      "inboundAltitude": 1000,
+      "outboundAltitude": 500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "OSNAT",
+      "to": "ZDAFA",
+      "distanceNm": 5,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1600,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "NITZA",
+      "to": "OSNAT",
+      "distanceNm": 7,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "ASKLN",
+      "to": "OSNAT",
+      "distanceNm": 10,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "DEENA",
+      "to": "LIAAD",
+      "distanceNm": 7.5,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "GVARM",
+      "to": "SDROT",
+      "distanceNm": 5.4,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency",
+      "armyAirway": true,
+      "onAtcApproval": true
+    },
+    {
+      "from": "AFULA",
+      "to": "LLMG",
+      "distanceNm": 2.4,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 1000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "HOTRM",
+      "to": "LLBO",
+      "distanceNm": 6.2,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 1000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "FRDIS",
+      "to": "LLBO",
+      "distanceNm": 3.6,
+      "inboundAltitude": 0,
+      "outboundAltitude": 0,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "NOAAM",
+      "to": "REVAH",
+      "distanceNm": 5,
+      "inboundAltitude": 3000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "HODYA",
+      "to": "REVAH",
+      "distanceNm": 4.6,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 2500,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    },
+    {
+      "from": "HODYA",
+      "to": "NITZA",
+      "distanceNm": 4.9,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 2000,
+      "status": "candidate",
+      "source": "cvfr-map airway adjacency"
+    }
+  ]
+}

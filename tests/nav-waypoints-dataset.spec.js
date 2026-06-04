@@ -102,8 +102,9 @@ test.describe('#406 / #410 — nav-waypoints.json (chart-sourced)', () => {
   });
 
   // Spot checks that the image-based rebuild (#410) replaced the
-  // CSV-derived text artefacts with what the chart actually prints.
-  test('chart-correct Hebrew names (#410 — image-sourced)', async () => {
+  // CSV-derived text artefacts, with selected labels aligned to the
+  // arielbider/cvfr-map reference data used for cross-checking.
+  test('chart-correct Hebrew names (#410 — image/upstream-sourced)', async () => {
     const d = loadData();
     const byCode = new Map(d.waypoints.map(w => [w.name, w]));
     // CSV had digit `2` where the chart prints Hebrew samekh `ס`.
@@ -116,10 +117,12 @@ test.describe('#406 / #410 — nav-waypoints.json (chart-sourced)', () => {
     expect(byCode.get('HRGVS').he).toBe('הר גבס');
     expect(byCode.get('HASID').he).toBe('כפר חסידים');
     expect(byCode.get('SIRNI').he).toBe('נצר סירני');
-    expect(byCode.get('FRDIS').he).toBe('צומת פרדיס');
-    // Spelling fixes vs the legacy CSV.
-    expect(byCode.get('KRYON').he).toBe('קריון');
-    expect(byCode.get('REVAH').he).toBe('רוחה');
+    expect(byCode.get('FRDIS').he).toBe('צומת פורדיס');
+    // Spelling fixes vs the legacy CSV / upstream comparison.
+    expect(byCode.get('AFULA').he).toBe('צומת עפולה');
+    expect(byCode.get('KRYON').he).toBe('קיריון');
+    expect(byCode.get('REVAH').he).toBe('רווחה');
+    expect(byCode.get('SIZFN').he).toBe('שזפון');
     expect(byCode.get('MEHOL').he).toBe('משולש חולית');
   });
 
