@@ -126,9 +126,9 @@ async function loadCommChange() {
 }
 
 // Lazy-loads docs/leg-altitude.json — { segments:[{from,to,
-// inboundAltitude,outboundAltitude,status,oneWay,...}] }. The app uses it only as
-// a reference table for freshly-created legs; saved/imported route JSON stays
-// authoritative for existing leg values.
+// inboundAltitude,outboundAltitude,status,oneWay,...}], directionPool:[...] }.
+// The app uses it only as a reference table for freshly-created legs;
+// saved/imported route JSON stays authoritative for existing leg values.
 async function loadLegAltitudes() {
   if (legAltitudeMap !== null) return legAltitudeMap;
   try {
@@ -143,6 +143,9 @@ async function loadLegAltitudes() {
       legAltitudeDataset = null;
       return legAltitudeMap;
     }
+    const directions = Array.isArray(d.directionPool)
+      ? d.directionPool
+      : legAltitudeDirectionsFromSegments(d.segments);
     const m = {};
     const ids = new Set();
     for (const segment of d.segments) {
@@ -162,6 +165,7 @@ async function loadLegAltitudes() {
     legAltitudeMap = m;
     legAltitudePointIds = ids;
     legAltitudeDataset = d;
+    legAltitudeDirectionPool = directions;
     applyLegAltitudesToRoute();
     return legAltitudeMap;
   } catch (e) {
@@ -169,6 +173,7 @@ async function loadLegAltitudes() {
     legAltitudeMap = {};             // graceful degrade — defaults remain
     legAltitudePointIds = new Set();
     legAltitudeDataset = null;
+    legAltitudeDirectionPool = null;
     return legAltitudeMap;
   }
 }

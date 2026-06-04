@@ -977,6 +977,55 @@ html, body {
 .modal-btns .modal-cancel { background: #443f3f; }
 .modal-btns .modal-cancel:hover { background: #555050; }
 
+.route-template-modal {
+  min-width: 320px;
+  max-width: min(440px, 92vw);
+}
+.route-template-body {
+  display: grid;
+  gap: 10px;
+  font-size: 13px;
+}
+.route-template-row {
+  display: grid;
+  grid-template-columns: minmax(92px, 1fr) minmax(0, 190px);
+  gap: 10px;
+  align-items: center;
+  color: #b9b3b3;
+}
+.route-template-row select,
+.route-template-row input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 5px 7px;
+}
+.route-template-row input[aria-invalid="true"] {
+  border-color: #c0392b;
+  background: rgba(231, 76, 60, 0.12);
+}
+.route-template-path {
+  margin: 2px 0 0;
+  color: #e8e8e8;
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.route-template-description,
+.route-template-empty {
+  margin: 0;
+  color: #b9b3b3;
+  line-height: 1.35;
+}
+
 /* Flight-plan table modal */
 .modal.wide {
   display: flex;
