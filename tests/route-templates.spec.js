@@ -60,7 +60,10 @@ test.describe('route templates', () => {
 
   test('user selects a speed and builds the Herzliya to Haifa route', async ({ page }) => {
     await boot(page);
-    await page.locator('#route-templates').click();
+    await expect(page.locator('.tb-section[data-sec="build"] #route-templates')).toHaveCount(0);
+    const button = page.locator('.tb-section[data-sec="charts"] #route-templates');
+    await expect(button).toBeVisible();
+    await button.click();
     await expect(page.locator('.route-template-modal')).toBeVisible();
     await expect(page.locator('.route-template-select')).toHaveValue('llhz-llha-coastal');
     await expect(page.locator('.route-template-speed')).toHaveValue('90');
