@@ -442,7 +442,7 @@ function drawAirfields() {
       const locale = af[S.airfieldLabelField] || af.en || af.name;
       const label = af.name + (locale && locale !== af.name ? ' / ' + locale : '');
       octx.lineWidth = tune('airfieldLabelHaloPx');
-      octx.strokeStyle = 'rgba(255,255,255,0.85)';
+      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
       octx.strokeText(label, s.x + r + labelOffset, s.y);
       octx.fillStyle = tune('airfieldOutlineColor');
       octx.fillText(label, s.x + r + labelOffset, s.y);
@@ -487,7 +487,7 @@ function drawNavWaypoints() {
     if (showLabels) {
       const label = wp[S.navWpSearchField] || wp.name;
       octx.lineWidth = tune('navWaypointLabelHaloPx');
-      octx.strokeStyle = 'rgba(255,255,255,0.85)';
+      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
       octx.strokeText(label, s.x + labelOffset, s.y);
       octx.fillStyle = tune('inkColor');
       octx.fillText(label, s.x + labelOffset, s.y);
@@ -1307,7 +1307,7 @@ function drawDriftLines(sa, sb) {
   octx.save();
   octx.setLineDash([tune('driftDashOnPx'), tune('driftDashOffPx')]);
   octx.lineWidth = tune('driftStrokeWidthPx') * dlw;
-  octx.strokeStyle = 'rgba(20,20,20,0.6)';
+  octx.strokeStyle = colorWithAlpha(tune('driftLineColor'), tune('driftLineAlpha'));
   octx.beginPath();
   octx.moveTo(sa.x, sa.y);
   octx.lineTo(sa.x + (abx * c - aby * s) * lenFactor, sa.y + (abx * s + aby * c) * lenFactor);
