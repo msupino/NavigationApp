@@ -154,7 +154,7 @@ test.describe('Hidden tuning panel', () => {
 
   test('preview values reset on reload and do not add persistence keys', async ({ page }) => {
     await boot(page);
-    await openTuneGroup(page, 'Route');
+    await openTuneGroup(page, 'Route line');
     await page.locator('#tune-routeLineWidthPx-number').fill('9');
     expect(await page.evaluate(() => tune('routeLineWidthPx'))).toBe(9);
     expect(await page.evaluate(() =>
@@ -169,7 +169,7 @@ test.describe('Hidden tuning panel', () => {
 
   test('color and select controls update preview values', async ({ page }) => {
     await boot(page);
-    await openTuneGroup(page, 'Reference overlays');
+    await openTuneGroup(page, 'Frequency changes');
     await page.locator('#tune-commChangeArrowColor-text').fill('#336699');
     await page.locator('#tune-commChangeArrowLineCap-select').selectOption('round');
 
@@ -219,7 +219,7 @@ test.describe('Hidden tuning panel', () => {
 
   test('frequency callout arrow and text size controls are tunable', async ({ page }) => {
     await boot(page);
-    await openTuneGroup(page, 'Reference overlays');
+    await openTuneGroup(page, 'Frequency changes');
     await expect(page.locator('#tune-commChangeArrowStartGapPx-range')).toBeVisible();
     await expect(page.locator('#tune-commChangeArrowWidthPx-range')).toBeVisible();
     await expect(page.locator('#tune-commChangeNameFontPx-range')).toBeVisible();
