@@ -345,6 +345,32 @@ test.describe('leg-altitude map wiring', () => {
     });
   });
 
+  test('NMASD to NITZA uses the maintainer altitude pair', async ({ page }) => {
+    await boot(page);
+
+    const result = await clickRoute(page, 'NMASD', 'NITZA');
+
+    expect(result.names).toEqual(['NMASD', 'NITZA']);
+    expect(result.leg).toMatchObject({
+      inboundAltitude: 800,
+      outboundAltitude: 1200,
+      auto: true,
+    });
+  });
+
+  test('NITZA to NMASD uses the maintainer reverse altitude', async ({ page }) => {
+    await boot(page);
+
+    const result = await clickRoute(page, 'NITZA', 'NMASD');
+
+    expect(result.names).toEqual(['NITZA', 'NMASD']);
+    expect(result.leg).toMatchObject({
+      inboundAltitude: 1200,
+      outboundAltitude: 800,
+      auto: true,
+    });
+  });
+
   test('blocked reverse of one-way leg-altitude entry shows blocked current direction', async ({ page }) => {
     await boot(page);
 
