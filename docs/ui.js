@@ -476,6 +476,267 @@ async function buildRouteFromQuery(raw) {
   draw();
   return true;
 }
+
+let routeTemplates = null;
+
+function routeTemplateLabel(template) {
+  const lang = (window.__navLang || document.documentElement.lang || '').toLowerCase();
+  if (lang.slice(0, 2) === 'he' && template.he) return template.he;
+  return template.name || template.id || '';
+}
+
+function routeTemplateDescription(template) {
+  const lang = (window.__navLang || document.documentElement.lang || '').toLowerCase();
+  if (lang.slice(0, 2) === 'he' && template.heDescription) return template.heDescription;
+  return template.description || '';
+}
+
+function routeTemplateAltitudeOk(value) {
+  return value === null || value === 'NaN' ||
+    (typeof value === 'number' && Number.isFinite(value));
+}
+
+function normalizeRouteTemplateData(data) {
+  if (!data || typeof data !== 'object' || !Array.isArray(data.templates)) return [];
+  const out = [];
+  for (const template of data.templates) {
+    if (!template || typeof template !== 'object') continue;
+    if (typeof template.id !== 'string' || !template.id.trim()) continue;
+    if (typeof template.name !== 'string' || !template.name.trim()) continue;
+    if (!Array.isArray(template.waypoints) || template.waypoints.length < 2) continue;
+    if (!Array.isArray(template.legs) ||
+        template.legs.length !== template.waypoints.length - 1) continue;
+    const defaultSpeed = Number(template.defaultSpeed);
+    if (!Number.isFinite(defaultSpeed) || defaultSpeed <= 0) continue;
+    let ok = true;
+    const waypoints = template.waypoints.map(code => String(code || '').trim().toUpperCase());
+    ok = waypoints.every(Boolean);
+    for (const leg of template.legs) {
+      if (!leg || typeof leg !== 'object' ||
+          !routeTemplateAltitudeOk(leg.inboundAltitude) ||
+          !routeTemplateAltitudeOk(leg.outboundAltitude)) {
+        ok = false;
+        break;
+      }
+    }
+    if (!ok) continue;
+    const notes = Array.isArray(template.notes) ? template.notes.filter(note =>
+      note && typeof note === 'object' &&
+      Number.isFinite(note.lat) && Number.isFinite(note.lng) &&
+      typeof note.text === 'string' &&
+      typeof note.color === 'string' &&
+      (note.shape === 'rect' || note.shape === 'oval')) : [];
+    out.push({
+      ...template,
+      waypoints,
+      defaultSpeed,
+      notes,
+    });
+  }
+  return out;
+}
+
+async function loadRouteTemplates() {
+  if (routeTemplates !== null) return routeTemplates;
+  try {
+    const res = await fetch(S.routeTemplatesUrl || 'route-templates.json?v=1');
+    if (!res.ok) throw new Error(String(res.status));
+    routeTemplates = normalizeRouteTemplateData(await res.json());
+  } catch (e) {
+    routeTemplates = [];
+    console.warn('Failed to load route templates:', e);
+  }
+  return routeTemplates;
+}
+
+function routeTemplateLeg(templateLeg, speed) {
+  const labels = typeof _defaultLegLabels === 'function'
+    ? _defaultLegLabels()
+    : {
+      inLabel: { a: 0, _default: 1, _m: 1 },
+      outLabel: { a: 0, _default: 1, _m: 1 },
+      cumLabel: { a: 0, _default: 1, _m: 1 },
+      cumLabelRet: { a: 0, _default: 1, _m: 1 },
+    };
+  return {
+    inboundAltitude: typeof decodeRouteAltitude === 'function'
+      ? decodeRouteAltitude(templateLeg.inboundAltitude)
+      : templateLeg.inboundAltitude,
+    outboundAltitude: typeof decodeRouteAltitude === 'function'
+      ? decodeRouteAltitude(templateLeg.outboundAltitude)
+      : templateLeg.outboundAltitude,
+    flightSpeed: speed,
+    outboundSpeed: speed,
+    inLabel: labels.inLabel,
+    outLabel: labels.outLabel,
+    cumLabel: labels.cumLabel,
+    cumLabelRet: labels.cumLabelRet,
+  };
+}
+
+async function routeFromTemplate(template, speed) {
+  if (navWP === null) await loadNavWaypoints();
+  if (airfields === null) await loadAirfields();
+  const waypoints = [];
+  for (const code of template.waypoints) {
+    const point = findNavWpToken(code);
+    if (!point) throw new Error(code);
+    waypoints.push({ lat: point.lat, lng: point.lng, name: point.name });
+  }
+  return {
+    waypoints,
+    legs: template.legs.map(leg => routeTemplateLeg(leg, speed)),
+    notes: (template.notes || []).map(note => ({
+      lat: r5(note.lat),
+      lng: r5(note.lng),
+      text: note.text,
+      color: note.color,
+      shape: note.shape,
+      ...(note.cc ? { cc: note.cc } : {}),
+      ...(note.freqName ? { freqName: note.freqName } : {}),
+      ...(note.freq ? { freq: note.freq } : {}),
+      ...(note.freqAuto === true ? { freqAuto: true } : {}),
+    })),
+  };
+}
+
+async function applyRouteTemplate(template, speed, closeModal) {
+  const route = await routeFromTemplate(template, speed);
+  const verr = typeof validateRoute === 'function' ? validateRoute(route) : null;
+  if (verr) throw new Error(verr);
+  if ((state.waypoints.length || state.notes.length) &&
+      !confirm(S.routeTemplateReplaceConfirm ||
+        S.searchReplaceConfirm ||
+        'Replace the current route?')) return false;
+  state.waypoints = route.waypoints;
+  state.legs = route.legs;
+  state.notes = route.notes;
+  state.commChangeSuppressions = [];
+  state.selected = null;
+  syncLegs();
+  if (showCommChange && typeof loadCommChange === 'function') {
+    await loadCommChange();
+    if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
+  }
+  showInspector();
+  fitView();
+  draw();
+  if (typeof closeModal === 'function') closeModal();
+  if (typeof showToast === 'function') {
+    const name = routeTemplateLabel(template);
+    const msg = typeof S.routeTemplateReady === 'function'
+      ? S.routeTemplateReady(name, speed)
+      : name + ' template loaded';
+    showToast(msg);
+  }
+  return true;
+}
+
+function showRouteTemplatesModal() {
+  if (fpOpen) closeFlightPlan();
+  const modal = createDraggableModal(S.routeTemplatesTitle || 'Route templates', 'modal route-template-modal');
+  const body = document.createElement('div');
+  body.className = 'route-template-body';
+  const loading = document.createElement('p');
+  loading.className = 'route-template-empty';
+  loading.textContent = '…';
+  body.appendChild(loading);
+  modal.box.appendChild(body);
+  modal.show();
+
+  loadRouteTemplates().then(templates => {
+    body.innerHTML = '';
+    if (!templates.length) {
+      const empty = document.createElement('p');
+      empty.className = 'route-template-empty';
+      empty.textContent = S.routeTemplateEmpty || 'No route templates available';
+      body.appendChild(empty);
+      return;
+    }
+
+    const routeRow = document.createElement('label');
+    routeRow.className = 'route-template-row';
+    const routeLabel = document.createElement('span');
+    routeLabel.textContent = S.routeTemplateRoute || 'Route';
+    const select = document.createElement('select');
+    select.className = 'route-template-select';
+    for (const template of templates) {
+      const option = document.createElement('option');
+      option.value = template.id;
+      option.textContent = routeTemplateLabel(template);
+      select.appendChild(option);
+    }
+    routeRow.append(routeLabel, select);
+
+    const speedRow = document.createElement('label');
+    speedRow.className = 'route-template-row';
+    const speedLabel = document.createElement('span');
+    speedLabel.textContent = S.routeTemplateSpeed || 'Speed (kt)';
+    const speed = document.createElement('input');
+    speed.type = 'number';
+    speed.className = 'route-template-speed';
+    speed.min = '1';
+    speed.max = '300';
+    speed.step = '1';
+    speed.inputMode = 'numeric';
+    speedRow.append(speedLabel, speed);
+
+    const path = document.createElement('p');
+    path.className = 'route-template-path';
+    const desc = document.createElement('p');
+    desc.className = 'route-template-description';
+
+    const btns = document.createElement('div');
+    btns.className = 'modal-btns';
+    const apply = document.createElement('button');
+    apply.type = 'button';
+    apply.textContent = S.routeTemplateApply || 'Build route';
+    btns.appendChild(apply);
+
+    const selectedTemplate = () =>
+      templates.find(template => template.id === select.value) || templates[0];
+    const updateDetails = () => {
+      const template = selectedTemplate();
+      speed.value = String(template.defaultSpeed || 90);
+      path.textContent = template.waypoints.join(' → ');
+      desc.textContent = routeTemplateDescription(template);
+      desc.hidden = !desc.textContent;
+    };
+    select.addEventListener('change', updateDetails);
+    updateDetails();
+
+    apply.onclick = async () => {
+      const template = selectedTemplate();
+      const nextSpeed = Number(speed.value);
+      if (!Number.isFinite(nextSpeed) || nextSpeed <= 0) {
+        speed.setAttribute('aria-invalid', 'true');
+        alert(S.routeTemplateBadSpeed || 'Enter a valid speed in knots.');
+        return;
+      }
+      speed.setAttribute('aria-invalid', 'false');
+      apply.disabled = true;
+      try {
+        const ok = await applyRouteTemplate(template, Math.round(nextSpeed), modal.close);
+        if (!ok) apply.disabled = false;
+      } catch (e) {
+        apply.disabled = false;
+        alert((S.routeTemplateLoadError || 'Could not load route templates.') +
+          (e && e.message ? '\n' + e.message : ''));
+      }
+    };
+
+    body.append(routeRow, speedRow, path, desc, btns);
+    select.focus();
+  }).catch(e => {
+    body.innerHTML = '';
+    const err = document.createElement('p');
+    err.className = 'route-template-empty';
+    err.textContent = (S.routeTemplateLoadError || 'Could not load route templates.') +
+      (e && e.message ? ' ' + e.message : '');
+    body.appendChild(err);
+  });
+}
+
 function runSearch() {
   // Use the raw value (not trimmed) so a trailing space — meaning "I just
   // accepted the previous token, waiting to type the next one" — suppresses
@@ -688,6 +949,7 @@ document.getElementById('tool-reset-all-wp-names').onclick = () => {
 document.getElementById('save').onclick = save;
 document.getElementById('load').onclick = () => document.getElementById('file').click();
 document.getElementById('share').onclick = shareRoute;
+document.getElementById('route-templates').onclick = showRouteTemplatesModal;
 document.getElementById('file').onchange = e => {
   const f = e.target.files[0];
   if (!f) return;
