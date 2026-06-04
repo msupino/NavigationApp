@@ -447,7 +447,8 @@ function validateCommChange(d) {
 
 // Strict schema for docs/leg-altitude.json — a reference table of
 // green CVFR route-segment altitude pairs. Unknown metadata keys are allowed;
-// the map behavior only needs from/to + integer or null altitude fields.
+// the map behavior needs from/to + integer/null altitude fields, plus the
+// optional directionPool must mirror those pairs when present.
 function validateLegAltitudes(d) {
   const errs = [];
   if (!d || typeof d !== 'object' || Array.isArray(d)) {
@@ -496,6 +497,40 @@ function validateLegAltitudes(d) {
       if (nullCount !== 2) errs.push(p + ': unknown segment must have two null altitudes');
     } else if (nullCount) {
       errs.push(p + ': null altitude requires oneWay=true');
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(d, 'directionPool')) {
+    if (!Array.isArray(d.directionPool)) {
+      errs.push('root.directionPool: expected array, got ' + _vKind(d.directionPool));
+    } else {
+      const expected = legAltitudeDirectionsFromSegments(d.segments || []);
+      const expectedKeys = new Set(expected.map(dir =>
+        [dir.from, dir.to, dir.altitude, dir.segment, dir.field].join('|')));
+      const seenDirections = new Set();
+      for (let i = 0; i < d.directionPool.length; i++) {
+        const p = 'directionPool[' + i + ']';
+        const dir = d.directionPool[i];
+        if (_vKind(dir) !== 'object') {
+          errs.push(p + ': expected object, got ' + _vKind(dir));
+          continue;
+        }
+        for (const key of ['from', 'to', 'segment', 'field']) {
+          _v(dir, key, 'string', p, errs);
+        }
+        if (!Object.prototype.hasOwnProperty.call(dir, 'altitude')) {
+          errs.push(p + '.altitude: missing');
+        } else if (!Number.isInteger(dir.altitude) || !Number.isFinite(dir.altitude)) {
+          errs.push(p + '.altitude: expected integer, got ' + _vKind(dir.altitude));
+        }
+        const key = [dir.from, dir.to, dir.altitude, dir.segment, dir.field].join('|');
+        if (seenDirections.has(key)) errs.push(p + ': duplicate direction ' + key);
+        seenDirections.add(key);
+        if (!expectedKeys.has(key)) errs.push(p + ': does not match segment altitude pair');
+      }
+      if (seenDirections.size !== expectedKeys.size) {
+        errs.push('root.directionPool: expected ' + expectedKeys.size +
+          ' directed entries, got ' + seenDirections.size);
+      }
     }
   }
   return errs.length ? errs.join('; ') : null;
@@ -2976,6 +3011,7 @@ function altitudePairsDataForCopy() {
     ? legAltitudeDataset
     : { version: 1, segments: altitudePairSegmentsForChart() };
   for (const segment of data.segments || []) normalizeAltitudePairSegment(segment);
+  syncLegAltitudeDatasetDirectionPool(data);
   return data;
 }
 

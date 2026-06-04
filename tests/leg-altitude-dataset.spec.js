@@ -12,6 +12,31 @@ function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
+function directionPoolFromSegments(segments) {
+  const out = [];
+  for (const segment of segments || []) {
+    if (Number.isInteger(segment.inboundAltitude)) {
+      out.push({
+        from: segment.from,
+        to: segment.to,
+        altitude: segment.inboundAltitude,
+        segment: `${segment.from}-${segment.to}`,
+        field: 'inboundAltitude',
+      });
+    }
+    if (Number.isInteger(segment.outboundAltitude)) {
+      out.push({
+        from: segment.to,
+        to: segment.from,
+        altitude: segment.outboundAltitude,
+        segment: `${segment.from}-${segment.to}`,
+        field: 'outboundAltitude',
+      });
+    }
+  }
+  return out;
+}
+
 test.describe('leg-altitude.json scaffold', () => {
   test('keeps route endpoints in the source waypoint datasets', () => {
     const data = readJson(ALTITUDE_PATH);
@@ -19,6 +44,7 @@ test.describe('leg-altitude.json scaffold', () => {
     expect(data.version).toBe(1);
     expect(Object.prototype.hasOwnProperty.call(data, 'points')).toBe(false);
     expect(Array.isArray(data.segments)).toBe(true);
+    expect(Array.isArray(data.directionPool)).toBe(true);
     expect(data.sourceCharts.map(c => c.id)).toEqual(['north', 'south']);
   });
 
@@ -174,6 +200,11 @@ test.describe('leg-altitude.json scaffold', () => {
       inboundAltitude: 1200,
       outboundAltitude: 800,
     });
+    expect(byName.get('NMASD-NITZA')).toMatchObject({
+      inboundAltitude: 800,
+      outboundAltitude: 1200,
+      source: 'maintainer correction',
+    });
     expect(byName.get('OLGAH-PELEG')).toMatchObject({
       inboundAltitude: 800,
       outboundAltitude: 1500,
@@ -190,6 +221,32 @@ test.describe('leg-altitude.json scaffold', () => {
     expect(byName.has('HAZVA-ZOFAR')).toBe(false);
     expect(byName.has('OLGAH-VINGT')).toBe(false);
     expect(byName.has('PELEG-SDTYM')).toBe(false);
+  });
+
+  test('directionPool mirrors every allowed segment direction', () => {
+    const data = readJson(ALTITUDE_PATH);
+    const expected = directionPoolFromSegments(data.segments);
+    const toKey = dir => [dir.from, dir.to, dir.altitude, dir.segment, dir.field].join('|');
+    const expectedKeys = expected.map(toKey).sort();
+    const actualKeys = data.directionPool.map(toKey).sort();
+
+    expect(actualKeys).toEqual(expectedKeys);
+    expect(data.directionPool).toEqual(expect.arrayContaining([
+      {
+        from: 'DESHE',
+        to: 'ZALMN',
+        altitude: 3000,
+        segment: 'DESHE-ZALMN',
+        field: 'inboundAltitude',
+      },
+      {
+        from: 'ZALMN',
+        to: 'DESHE',
+        altitude: 2500,
+        segment: 'DESHE-ZALMN',
+        field: 'outboundAltitude',
+      },
+    ]));
   });
 
   test('keeps the extraction review ledger in sync with the altitude data', () => {
