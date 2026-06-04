@@ -1948,14 +1948,14 @@ function exportPNG() {
   tileCanvas.width  = Wbb;
   tileCanvas.height = Hbb;
   const tc = tileCanvas.getContext('2d');
-  tc.fillStyle = '#231F20';
+  tc.fillStyle = tune('exportBgColor');
   tc.fillRect(0, 0, Wbb, Hbb);
 
   const out = document.createElement('canvas');
   out.width  = W;
   out.height = H;
   const o = out.getContext('2d');
-  o.fillStyle = '#231F20';
+  o.fillStyle = tune('exportBgColor');
   o.fillRect(0, 0, W, H);
 
   const btn = document.getElementById('print');
@@ -3079,30 +3079,27 @@ function showAltitudePairFocus(from, to) {
     map.removeLayer(altitudePairFocusLayer);
   }
   const latlngs = [[from.lat, from.lng], [to.lat, to.lng]];
+  const lineColor = tune('altPairFocusColor');
+  const dotColor = tune('altPairFocusDotColor');
+  const dotRadius = tune('altPairFocusDotRadiusPx');
+  const dot = ll => L.circleMarker(ll, {
+    radius: dotRadius,
+    color: lineColor,
+    weight: 3,
+    fillColor: dotColor,
+    fillOpacity: 0.95,
+    interactive: false,
+  });
   const layer = L.layerGroup([
     L.polyline(latlngs, {
-      color: '#fff2a8',
-      weight: 5,
+      color: lineColor,
+      weight: tune('altPairFocusWidthPx'),
       opacity: 0.95,
-      dashArray: '10 8',
+      dashArray: tune('altPairFocusDashOnPx') + ' ' + tune('altPairFocusDashOffPx'),
       interactive: false,
     }),
-    L.circleMarker(latlngs[0], {
-      radius: 7,
-      color: '#fff2a8',
-      weight: 3,
-      fillColor: '#1d6fe0',
-      fillOpacity: 0.95,
-      interactive: false,
-    }),
-    L.circleMarker(latlngs[1], {
-      radius: 7,
-      color: '#fff2a8',
-      weight: 3,
-      fillColor: '#1d6fe0',
-      fillOpacity: 0.95,
-      interactive: false,
-    }),
+    dot(latlngs[0]),
+    dot(latlngs[1]),
   ]).addTo(map);
   altitudePairFocusLayer = layer;
   window.setTimeout(() => {
@@ -3110,7 +3107,7 @@ function showAltitudePairFocus(from, to) {
       map.removeLayer(layer);
       altitudePairFocusLayer = null;
     }
-  }, 10000);
+  }, tune('altPairFocusMs'));
 }
 
 async function focusAltitudePairSegment(segment, closeModal) {
