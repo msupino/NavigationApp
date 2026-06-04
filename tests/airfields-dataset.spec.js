@@ -9,13 +9,11 @@
 // LLKS, LLES — the chart-vs-JSON drift originally identified during
 // the route-heading regressions of #406).
 //
-// Per-entry: every chart ARP keeps the ICAO `name` and the chart's
-// Hebrew `he` / lat / lng (chart is authoritative on Hebrew + coords).
-// Plates, runways, elevation, and English name carry over from the
-// previous airfields.json wherever the ICAO matched; elevations newly
-// confirmed from Wikipedia are kept as `elev_ft`. ARPs newly surfaced
-// from the chart ship with only verified fields until their BYOP
-// enrichment is added in follow-ups.
+// Per-entry: every chart ARP keeps the ICAO `name`, the chart's Hebrew
+// `he` / lat / lng (chart is authoritative on Hebrew + coords), and an
+// English `en` label for search/display. Plates, runways, and elevation
+// carry over from the previous airfields.json wherever the ICAO matched;
+// elevations newly confirmed from Wikipedia are kept as `elev_ft`.
 //
 // These assertions live as a Playwright spec only to reuse the
 // existing _setup.js plumbing; they are pure JSON checks with no
@@ -45,11 +43,15 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     expect(d.airfields.length).toBe(27);
   });
 
-  test('every entry carries name + he + lat + lng', async () => {
+  test('every entry carries name + he + en + lat + lng', async () => {
     const d = loadData();
     for (const a of d.airfields) {
       expect(typeof a.name).toBe('string');
+      expect(a.name.trim()).not.toBe('');
       expect(typeof a.he).toBe('string');
+      expect(a.he.trim()).not.toBe('');
+      expect(typeof a.en).toBe('string');
+      expect(a.en.trim()).not.toBe('');
       expect(typeof a.lat).toBe('number');
       expect(typeof a.lng).toBe('number');
       // Israel rough bounding box — same envelope used in
@@ -169,13 +171,24 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
   // The chart surfaces 11 ARPs that were missing from the legacy
   // airfields.json — IAF bases and small civil strips that ship
   // without BYOP plates yet. Listing them keeps the diff pinned.
-  test('newly-surfaced chart ARPs are present', async () => {
+  test('newly-surfaced chart ARPs are present with English labels', async () => {
     const d = loadData();
-    const codes = new Set(d.airfields.map(a => a.name));
-    for (const code of ['KKDEM', 'GVULT', 'LLRM', 'LLRD', 'LLEK',
-                        'LLNV', 'LLOV', 'LLPL', 'LLHS', 'LLHB',
-                        'LLBO']) {
-      expect(codes.has(code)).toBe(true);
+    const byCode = new Map(d.airfields.map(a => [a.name, a]));
+    const expectedEnglish = {
+      KKDEM: 'Kedem',
+      GVULT: 'Gvulot',
+      LLRM: 'Ramon',
+      LLRD: 'Ramat David',
+      LLEK: 'Tel Nof',
+      LLNV: 'Nevatim',
+      LLOV: 'Ovda',
+      LLPL: 'Palmachim',
+      LLHS: 'Hatzor',
+      LLHB: 'Hatzerim',
+      LLBO: 'HABONIM',
+    };
+    for (const [code, en] of Object.entries(expectedEnglish)) {
+      expect(byCode.get(code).en).toBe(en);
     }
   });
 
@@ -228,11 +241,10 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
   });
 
   // The bare entries (chart-only ARPs without prior enrichment or a
-  // Wikipedia-confirmed elevation). Carrying empty `plates`/`runways`
-  // or stub `en`/`elev_ft` would be misleading — the UI hides plate
-  // sections and runway chips on missing data. The validator (io.js)
-  // now treats these as optional.
-  test('bare chart-only entries carry only {name, he, lat, lng}', async () => {
+  // Wikipedia-confirmed elevation). They still carry English labels for
+  // search/display, but omit optional `plates`/`runways`/`elev_ft`; the
+  // UI hides plate sections and runway chips on missing data.
+  test('bare chart-only entries carry only labels and coords', async () => {
     const d = loadData();
     const byCode = new Map(d.airfields.map(a => [a.name, a]));
     // LLBO (Habonim) now carries BYOP plates from the AIP rebuild, so it
@@ -240,7 +252,7 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     const bare = ['KKDEM', 'GVULT'];
     for (const code of bare) {
       const a = byCode.get(code);
-      expect(Object.keys(a).sort()).toEqual(['he', 'lat', 'lng', 'name']);
+      expect(Object.keys(a).sort()).toEqual(['en', 'he', 'lat', 'lng', 'name']);
     }
   });
 

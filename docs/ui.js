@@ -1603,12 +1603,66 @@ window.addEventListener('beforeunload', function () {
   }
 });
 
+function showBuildUpdateNotice() {
+  if (document.getElementById('build-update-notice')) return;
+  const el = document.createElement('div');
+  el.id = 'build-update-notice';
+  el.className = 'build-update-notice';
+  el.setAttribute('role', 'status');
+  const msg = document.createElement('span');
+  msg.textContent = S.updateAvailable ||
+    'New NavAid build available. Hard refresh or reload to update.';
+  const reload = document.createElement('button');
+  reload.type = 'button';
+  reload.className = 'update-reload';
+  reload.textContent = S.updateReload || 'Reload';
+  reload.onclick = () => window.location.reload();
+  const dismiss = document.createElement('button');
+  dismiss.type = 'button';
+  dismiss.className = 'update-dismiss';
+  dismiss.textContent = S.updateDismiss || 'Dismiss';
+  dismiss.onclick = () => el.remove();
+  el.append(msg, reload, dismiss);
+  document.body.appendChild(el);
+}
+
+function watchServiceWorkerUpdates(sw) {
+  if (!sw || typeof sw.register !== 'function') return Promise.resolve(null);
+  let hadController = !!sw.controller;
+  const notifyIfUpdate = () => {
+    if (hadController) showBuildUpdateNotice();
+    hadController = true;
+  };
+  if (typeof sw.addEventListener === 'function') {
+    sw.addEventListener('controllerchange', notifyIfUpdate);
+  }
+  return sw.register('sw.js').then(reg => {
+    const watchWorker = worker => {
+      if (!worker || typeof worker.addEventListener !== 'function') return;
+      worker.addEventListener('statechange', () => {
+        if ((worker.state === 'installed' || worker.state === 'activated') &&
+            hadController) {
+          showBuildUpdateNotice();
+        }
+      });
+    };
+    if (reg && reg.waiting && hadController) showBuildUpdateNotice();
+    if (reg) {
+      watchWorker(reg.installing);
+      if (typeof reg.addEventListener === 'function') {
+        reg.addEventListener('updatefound', () => watchWorker(reg.installing));
+      }
+      if (typeof reg.update === 'function') reg.update().catch(() => {});
+    }
+    return reg;
+  }).catch(() => null);
+}
+
 // --- PWA: service worker --------------------------------------------
 // Registering the worker makes the app installable; the browser shows
 // the install control in the address bar — no in-app button needed.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js')
-      .catch(() => { /* offline mode unavailable */ });
+    watchServiceWorkerUpdates(navigator.serviceWorker);
   });
 }
