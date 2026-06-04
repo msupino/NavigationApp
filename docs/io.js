@@ -373,6 +373,12 @@ function validateNavWaypoints(d) {
     _v(w, 'he',   'string', p, errs);
     _v(w, 'lat',  'number', p, errs);
     _v(w, 'lng',  'number', p, errs);
+    // `report` is optional (chart reporting class). When present it must be
+    // one of the two CVFR classes: 'mandatory' (חובה) or 'onRequest' (דרישה).
+    if (Object.prototype.hasOwnProperty.call(w, 'report') &&
+        w.report !== 'mandatory' && w.report !== 'onRequest') {
+      errs.push(p + '.report: expected "mandatory" or "onRequest", got ' + _vKind(w.report));
+    }
   }
   return errs.length ? errs.join('; ') : null;
 }

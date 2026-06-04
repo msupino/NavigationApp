@@ -58,6 +58,15 @@ test.describe('#406 / #410 — nav-waypoints.json (chart-sourced)', () => {
     }
   });
 
+  test('every entry carries a valid reporting class', async () => {
+    const d = loadData();
+    for (const w of d.waypoints) {
+      // 'mandatory' (חובה) or 'onRequest' (דרישה), from the chart's
+      // 'סוג דיווח' column.
+      expect(['mandatory', 'onRequest']).toContain(w.report);
+    }
+  });
+
   test('codes are unique', async () => {
     const d = loadData();
     const codes = d.waypoints.map(w => w.name);
@@ -96,9 +105,9 @@ test.describe('#406 / #410 — nav-waypoints.json (chart-sourced)', () => {
     // shifts caused ~1° heading drift on cross-country legs that pass
     // through them.
     expect(bezra).toEqual({ name: 'BEZRA', he: 'בית עזרא',
-                            lat: 31.74139, lng: 34.64583 });
+                            lat: 31.74139, lng: 34.64583, report: 'mandatory' });
     expect(kuvsh).toEqual({ name: 'KUVSH', he: 'כובשים',
-                            lat: 31.25861, lng: 34.76361 });
+                            lat: 31.25861, lng: 34.76361, report: 'mandatory' });
   });
 
   // Spot checks that the image-based rebuild (#410) replaced the
