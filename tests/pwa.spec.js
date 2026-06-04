@@ -172,4 +172,54 @@ test.describe('Service worker', () => {
     });
     expect(cached).toBe(false);
   });
+
+  test('First service-worker control does not show the build update notice', async ({ page }) => {
+    await page.goto('?lang=en');
+    const shown = await page.evaluate(async () => {
+      const listeners = {};
+      const fakeSw = {
+        controller: null,
+        addEventListener(type, cb) { listeners[type] = cb; },
+        register() {
+          return Promise.resolve({
+            installing: null,
+            waiting: null,
+            addEventListener() {},
+            update() { return Promise.resolve(); },
+          });
+        },
+      };
+      await watchServiceWorkerUpdates(fakeSw);
+      listeners.controllerchange();
+      return !!document.getElementById('build-update-notice');
+    });
+    expect(shown).toBe(false);
+  });
+
+  test('New service-worker control shows a hard-refresh build notice', async ({ page }) => {
+    await page.goto('?lang=en');
+    const text = await page.evaluate(async () => {
+      const listeners = {};
+      const fakeSw = {
+        controller: {},
+        addEventListener(type, cb) { listeners[type] = cb; },
+        register() {
+          return Promise.resolve({
+            installing: null,
+            waiting: null,
+            addEventListener() {},
+            update() { return Promise.resolve(); },
+          });
+        },
+      };
+      await watchServiceWorkerUpdates(fakeSw);
+      listeners.controllerchange();
+      return document.getElementById('build-update-notice')?.textContent || '';
+    });
+    expect(text).toContain('New NavAid build available');
+    expect(text).toContain('Hard refresh');
+    expect(text).toContain('Reload');
+    await page.locator('#build-update-notice .update-dismiss').click();
+    await expect(page.locator('#build-update-notice')).toHaveCount(0);
+  });
 });
