@@ -3,12 +3,14 @@
     {
       "name": "GVULT",
       "he": "גבולות",
+      "en": "Gvulot",
       "lat": 31.2275,
       "lng": 34.46028
     },
     {
       "name": "KKDEM",
       "he": "קדם",
+      "en": "Kedem",
       "lat": 31.26278,
       "lng": 34.65028
     },
@@ -66,7 +68,8 @@
     },
     {
       "name": "LLBO",
-      "he": "הבצים",
+      "he": "הבונים",
+      "en": "HABONIM",
       "lat": 32.65,
       "lng": 34.93278,
       "plates": [
@@ -97,8 +100,10 @@
     {
       "name": "LLEK",
       "he": "תל נוף",
+      "en": "Tel Nof",
       "lat": 31.83667,
-      "lng": 34.81889
+      "lng": 34.81889,
+      "elev_ft": 194
     },
     {
       "name": "LLER",
@@ -147,6 +152,13 @@
       "runways": [
         "09/27"
       ]
+    },
+    {
+      "name": "LLEV",
+      "he": "עין ורד",
+      "en": "Ein Vered",
+      "lat": 32.265,
+      "lng": 34.95167
     },
     {
       "name": "LLEY",
@@ -205,14 +217,18 @@
     {
       "name": "LLHB",
       "he": "חצרים",
+      "en": "Hatzerim",
       "lat": 31.24333,
-      "lng": 34.655
+      "lng": 34.655,
+      "elev_ft": 722
     },
     {
       "name": "LLHS",
       "he": "חצור",
+      "en": "Hatzor",
       "lat": 31.75778,
-      "lng": 34.72306
+      "lng": 34.72306,
+      "elev_ft": 148
     },
     {
       "name": "LLHZ",
@@ -317,32 +333,42 @@
     {
       "name": "LLNV",
       "he": "נבטים",
+      "en": "Nevatim",
       "lat": 31.21333,
-      "lng": 35.01833
+      "lng": 35.01833,
+      "elev_ft": 1391
     },
     {
       "name": "LLOV",
       "he": "עובדה",
+      "en": "Ovda",
       "lat": 29.935,
-      "lng": 34.94083
+      "lng": 34.94083,
+      "elev_ft": 1493
     },
     {
       "name": "LLPL",
       "he": "פלמחים",
+      "en": "Palmachim",
       "lat": 31.89833,
-      "lng": 34.69
+      "lng": 34.69,
+      "elev_ft": 33
     },
     {
       "name": "LLRD",
       "he": "רמת דוד",
+      "en": "Ramat David",
       "lat": 32.66861,
-      "lng": 35.18333
+      "lng": 35.18333,
+      "elev_ft": 184
     },
     {
       "name": "LLRM",
       "he": "רמון",
+      "en": "Ramon",
       "lat": 30.775,
-      "lng": 34.66667
+      "lng": 34.66667,
+      "elev_ft": 2126
     },
     {
       "name": "LLRS",
@@ -367,6 +393,7 @@
       "en": "Bar Yehuda (Masada)",
       "lat": 31.32917,
       "lng": 35.38833,
+      "elev_ft": -1240,
       "plates": [
         "LLMZ_airport_Annex Alef.pdf",
         "LLMZ_airport_Annex Bet.pdf",

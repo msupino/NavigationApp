@@ -92,11 +92,45 @@ test.describe('Map legend', () => {
 });
 
 test.describe('Sliders persist to localStorage', () => {
-  test('map opacity slider writes navaid.mapOpacity', async ({ page }) => {
+  test('light mode toggle writes navaid.theme and persists across reload', async ({ page }) => {
+    await boot(page);
+    const cb = page.locator('#theme-light-cb');
+    await expect(page.locator('body')).not.toHaveClass(/theme-light/);
+    await expect(cb).not.toBeChecked();
+    await expect(page.locator('label:has(#theme-light-cb)')).toContainText('Light mode');
+    await cb.click();
+    expect(await page.evaluate(() => localStorage.getItem('navaid.theme'))).toBe('light');
+    await expect(page.locator('body')).toHaveClass(/theme-light/);
+
+    await page.reload();
+    await page.waitForFunction(() => typeof state !== 'undefined');
+    await expect(page.locator('#theme-light-cb')).toBeChecked();
+    await expect(page.locator('body')).toHaveClass(/theme-light/);
+
+    await page.locator('#theme-light-cb').click();
+    expect(await page.evaluate(() => localStorage.getItem('navaid.theme'))).toBe('dark');
+    await expect(page.locator('body')).not.toHaveClass(/theme-light/);
+  });
+
+  test('map opacity defaults to 80% and ignores the legacy storage key', async ({ page }) => {
+    await boot(page);
+    await expect(page.locator('#map-opacity')).toHaveValue('80');
+    await expect(page.locator('#map-opacity-val')).toHaveText('80%');
+    await page.evaluate(() => {
+      localStorage.setItem('navaid.mapOpacity', '0.25');
+      localStorage.removeItem('navaid.mapOpacity.v2');
+    });
+    await page.reload();
+    await page.waitForFunction(() => typeof state !== 'undefined');
+    await expect(page.locator('#map-opacity')).toHaveValue('80');
+    await expect(page.locator('#map-opacity-val')).toHaveText('80%');
+  });
+
+  test('map opacity slider writes navaid.mapOpacity.v2', async ({ page }) => {
     await boot(page);
     await page.locator('#map-opacity').fill('50');
     await page.locator('#map-opacity').dispatchEvent('input');
-    const stored = await page.evaluate(() => localStorage.getItem('navaid.mapOpacity'));
+    const stored = await page.evaluate(() => localStorage.getItem('navaid.mapOpacity.v2'));
     expect(parseFloat(stored)).toBeCloseTo(0.5, 2);
   });
 
@@ -195,4 +229,3 @@ test.describe('Toolbar collapse', () => {
     expect(stored === null || stored === '0').toBeTruthy();
   });
 });
-

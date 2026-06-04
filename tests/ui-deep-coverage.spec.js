@@ -158,7 +158,7 @@ test.describe('Charts modal navigation', () => {
     await head.click();
 
     // Plate chips render as buttons inside .charts-cat blocks.
-    const chip = page.locator('.charts-modal-body button').first();
+    const chip = page.locator('.charts-modal-body .plate-chip').first();
     if (await chip.count()) {
       await chip.click();
       // Plate viewer opens as a new modal-back; charts modal stays open

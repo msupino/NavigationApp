@@ -225,6 +225,9 @@
     <div class="tb-section" data-sec="display">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecDisplay"></div>
       <div class="tb-section-body">
+        <label class="navtoggle" data-i18n-title="tbLightModeTitle">
+          <input type="checkbox" id="theme-light-cb"> <span data-i18n="tbLightMode"></span>
+        </label>
         <label class="navtoggle" data-i18n-title="tbTransparencyTitle">
           <span data-i18n="tbTransparency"></span>
           <input type="range" id="yellow-alpha" value="80">
@@ -232,7 +235,7 @@
         </label>
         <label class="navtoggle" data-i18n-title="tbMapOpacityTitle">
           <span data-i18n="tbMapOpacity"></span>
-          <input type="range" id="map-opacity" value="100">
+          <input type="range" id="map-opacity" value="80">
           <span class="slider-val" id="map-opacity-val"></span>
         </label>
         <label class="navtoggle" data-i18n-title="tbWpSizeTitle">
@@ -263,6 +266,8 @@
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecCharts"></div>
       <div class="tb-section-body">
         <button id="plan" data-i18n="tbPlan" data-i18n-title="tbPlanTitle"></button>
+        <button id="freq-table" data-i18n="tbFreqTable" data-i18n-title="tbFreqTableTitle"></button>
+        <button id="alt-pairs" data-i18n="tbAltPairs" data-i18n-title="tbAltPairsTitle"></button>
         <button id="charts" data-i18n="tbCharts" data-i18n-title="tbChartsTitle"></button>
       </div>
     </div>

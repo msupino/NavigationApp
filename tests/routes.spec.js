@@ -166,6 +166,7 @@ test.describe('Reverse route', () => {
       state.legs.forEach((l, i) => {
         l.inboundAltitude = 1000 + i * 100;
         l.outboundAltitude = 2000 + i * 100;
+        markLegAltitudeManual(i);
       });
     });
     await page.locator('#reverse').click();

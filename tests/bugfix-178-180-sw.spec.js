@@ -10,6 +10,12 @@ async function waitForSW(page) {
     const reg = await navigator.serviceWorker.getRegistration();
     return reg && reg.active && reg.active.state === 'activated';
   }, null, { timeout: 15000 });
+  const controlled = await page.evaluate(() => !!navigator.serviceWorker.controller);
+  if (!controlled) {
+    await page.reload();
+  }
+  await page.waitForFunction(() => !!navigator.serviceWorker.controller,
+    null, { timeout: 15000 });
 }
 
 test.describe('#178 cache-first awaits cache.put', () => {

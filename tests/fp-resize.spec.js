@@ -10,89 +10,154 @@ const ROUTE = {
   ],
 };
 
-test.describe('Flight-plan modal resize', () => {
+async function boot(page, lang = 'en') {
+  await page.addInitScript(() => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      for (const s of ['build','view','display','charts','export','print']) {
+        localStorage.setItem('navaid.sec.' + s, '1');
+      }
+    } catch (e) {}
+  });
+  await page.goto('?lang=' + lang);
+  await page.waitForFunction(() =>
+    typeof state !== 'undefined' && typeof showFlightPlan !== 'undefined');
+  await page.evaluate(route => {
+    state.waypoints = route.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
+    syncLegs();
+    draw();
+  }, ROUTE);
+}
+
+async function openFlightPlan(page) {
+  await page.locator('#plan').click();
+  const modal = page.locator('.modal-back.flight-plan .modal.wide');
+  await expect(modal).toBeVisible();
+  return modal;
+}
+
+async function downloadText(download) {
+  const stream = await download.createReadStream();
+  const chunks = [];
+  for await (const chunk of stream) chunks.push(chunk);
+  return Buffer.concat(chunks).toString('utf8');
+}
+
+test.describe('Flight-plan modal table print', () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
-      try {
-        localStorage.clear();
-        sessionStorage.clear();
-        for (const s of ['build','view','display','charts','export','print']) {
-          localStorage.setItem('navaid.sec.' + s, '1');
-        }
-      } catch (e) {}
-    });
-    await page.goto('?lang=en');
-    await page.waitForFunction(() =>
-      typeof state !== 'undefined' && typeof showFlightPlan !== 'undefined');
-    await page.evaluate(route => {
-      state.waypoints = route.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
-      syncLegs();
-      draw();
-    }, ROUTE);
+    await boot(page);
   });
 
-  test('a corner grip resizes the plan window and persists the size', async ({ page }) => {
-    await page.locator('#plan').click();
-    const modal = page.locator('.modal-back.flight-plan .modal.wide');
-    await expect(modal).toBeVisible();
-    const grip = modal.locator('.resize-handle.corner-se');
-    await expect(grip).toBeVisible();
+  test('plan window has no resize grips or size persistence', async ({ page }) => {
+    const modal = await openFlightPlan(page);
+    await expect(modal.locator('.resize-handle')).toHaveCount(0);
 
-    const before = await modal.boundingBox();
-
-    // Drag the grip down-right by +120 / +90.
-    const gb = await grip.boundingBox();
-    await page.mouse.move(gb.x + gb.width / 2, gb.y + gb.height / 2);
+    await page.mouse.move(20, 20);
     await page.mouse.down();
-    await page.mouse.move(gb.x + gb.width / 2 + 120, gb.y + gb.height / 2 + 90, { steps: 5 });
+    await page.mouse.move(180, 160, { steps: 4 });
     await page.mouse.up();
 
-    const after = await modal.boundingBox();
-    expect(after.width).toBeGreaterThan(before.width + 80);
-    expect(after.height).toBeGreaterThan(before.height + 60);
-
-    // Size is persisted to localStorage.
-    const stored = await page.evaluate(() => {
-      const raw = localStorage.getItem('navaid.fpSize');
-      return raw ? JSON.parse(raw) : null;
-    });
-    expect(stored).not.toBeNull();
-    expect(stored.w).toBeGreaterThan(before.width + 80);
-    expect(stored.h).toBeGreaterThan(before.height + 60);
+    const stored = await page.evaluate(() => localStorage.getItem('navaid.fpSize'));
+    expect(stored).toBeNull();
   });
 
-  test('the top-left grip grows the window and keeps the bottom-right edge put', async ({ page }) => {
-    await page.locator('#plan').click();
-    const modal = page.locator('.modal-back.flight-plan .modal.wide');
-    await expect(modal).toBeVisible();
-    const grip = modal.locator('.resize-handle.corner-nw');
-    await expect(grip).toBeVisible();
-
-    const before = await modal.boundingBox();
-    const gb = await grip.boundingBox();
-    // Drag the NW grip up-left by -100 / -80 → grows w/h, moves left/top edge.
-    await page.mouse.move(gb.x + gb.width / 2, gb.y + gb.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(gb.x + gb.width / 2 - 100, gb.y + gb.height / 2 - 80, { steps: 5 });
-    await page.mouse.up();
-
-    const after = await modal.boundingBox();
-    expect(after.width).toBeGreaterThan(before.width + 60);
-    expect(after.height).toBeGreaterThan(before.height + 40);
-    // Bottom-right corner stays roughly anchored.
-    expect(after.x + after.width).toBeCloseTo(before.x + before.width, -1);
-    expect(after.y + after.height).toBeCloseTo(before.y + before.height, -1);
-  });
-
-  test('a persisted size is restored on reopen', async ({ page }) => {
+  test('legacy persisted flight-plan size is ignored', async ({ page }) => {
     await page.evaluate(() => {
       localStorage.setItem('navaid.fpSize', JSON.stringify({ w: 760, h: 540 }));
     });
-    await page.locator('#plan').click();
-    const modal = page.locator('.modal-back.flight-plan .modal.wide');
-    await expect(modal).toBeVisible();
-    const box = await modal.boundingBox();
-    expect(box.width).toBeCloseTo(760, -1);
-    expect(box.height).toBeCloseTo(540, -1);
+    const modal = await openFlightPlan(page);
+    const inlineSize = await modal.evaluate(el => ({
+      width: el.style.width,
+      height: el.style.height,
+      maxWidth: el.style.maxWidth,
+      maxHeight: el.style.maxHeight,
+    }));
+    expect(inlineSize).toEqual({ width: '', height: '', maxWidth: '', maxHeight: '' });
+  });
+
+  test('print mode is a white table document without modal controls', async ({ page }) => {
+    await openFlightPlan(page);
+    await page.emulateMedia({ media: 'print' });
+    const printState = await page.evaluate(() => {
+      document.body.classList.add('printing-plan');
+      const styleOf = selector => {
+        const el = document.querySelector(selector);
+        return el ? getComputedStyle(el) : null;
+      };
+      const modal = styleOf('.modal-back.flight-plan .modal.wide');
+      const table = document.querySelector('.flight-table');
+      const th = styleOf('.flight-table th');
+      const td = styleOf('.flight-table td');
+      return {
+        tableTag: table && table.tagName,
+        modalPosition: modal && modal.position,
+        modalBackground: modal && modal.backgroundColor,
+        modalBoxShadow: modal && modal.boxShadow,
+        mapDisplay: styleOf('#map').display,
+        toolbarDisplay: styleOf('#toolbar').display,
+        buttonsDisplay: styleOf('.modal-btns').display,
+        closeDisplay: styleOf('.modal-close-x').display,
+        aircraftDisplay: styleOf('.fp-aircraft').display,
+        deleteDisplay: styleOf('.fp-del').display,
+        thBorder: th && th.borderTopStyle,
+        tdBorder: td && td.borderTopStyle,
+        thBackground: th && th.backgroundColor,
+      };
+    });
+
+    expect(printState.tableTag).toBe('TABLE');
+    expect(printState.modalPosition).toBe('static');
+    expect(printState.modalBackground).toBe('rgb(255, 255, 255)');
+    expect(printState.modalBoxShadow).toBe('none');
+    expect(printState.mapDisplay).toBe('none');
+    expect(printState.toolbarDisplay).toBe('none');
+    expect(printState.buttonsDisplay).toBe('none');
+    expect(printState.closeDisplay).toBe('none');
+    expect(printState.aircraftDisplay).toBe('none');
+    expect(printState.deleteDisplay).toBe('none');
+    expect(printState.thBorder).toBe('solid');
+    expect(printState.tdBorder).toBe('solid');
+    expect(printState.thBackground).toBe('rgb(255, 255, 255)');
+  });
+
+  test('CSV button downloads the current flight-plan tables', async ({ page }) => {
+    await page.evaluate(() => { window.showReturn = true; });
+    const modal = await openFlightPlan(page);
+    const buttons = await modal.locator('.modal-btns button').evaluateAll(btns =>
+      btns.map(btn => btn.textContent.trim()));
+    expect(buttons).toEqual(['Print', 'CSV']);
+
+    const downloadPromise = page.waitForEvent('download');
+    await modal.locator('.modal-btns button', { hasText: 'CSV' }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/^flight-plan-.+\.csv$/);
+    const csv = await downloadText(download);
+
+    expect(csv.charCodeAt(0)).toBe(0xfeff);
+    expect(csv).toContain('Flight plan\r\n#,From,To,Hdg,Dist (NM),Speed (kt),Alt (ft),Time,Fuel (gal),Cum. time,Cum. fuel');
+    expect(csv).toContain('1,LLHZ,LLHA,');
+    expect(csv).toContain('\r\nTotal,,,,');
+    expect(csv).toContain('\r\nReturn route\r\n#,From,To,Hdg,Dist (NM),Speed (kt),Alt (ft),Time,Fuel (gal),Cum. time,Cum. fuel');
+    expect(csv).toContain('1,LLHA,LLHZ,');
+    expect(csv).not.toContain('<table');
+    expect(csv).not.toContain('✕');
+  });
+
+  test('Hebrew CSV download includes UTF-8 BOM and readable Hebrew headers', async ({ page }) => {
+    await boot(page, 'he');
+    const modal = await openFlightPlan(page);
+
+    const downloadPromise = page.waitForEvent('download');
+    await modal.locator('.modal-btns button', { hasText: 'CSV' }).click();
+    const download = await downloadPromise;
+    const csv = await downloadText(download);
+
+    expect(csv.charCodeAt(0)).toBe(0xfeff);
+    expect(csv).toContain('תכנית טיסה');
+    expect(csv).toContain('כיוון');
+    expect(csv).toContain('מרחק (NM)');
+    expect(csv).not.toContain('◊');
+    expect(csv).not.toContain('¬∞');
   });
 });

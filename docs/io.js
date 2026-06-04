@@ -237,6 +237,22 @@ function _v(obj, key, type, path, errs) {
   }
   return true;
 }
+function _isRouteAltitude(v) {
+  return v === 'NaN' || v === null ||
+    (typeof v === 'number' && (Number.isFinite(v) || Number.isNaN(v)));
+}
+function _vRouteAltitude(obj, key, path, errs) {
+  if (!obj || typeof obj !== 'object' || !(key in obj)) {
+    errs.push(path + '.' + key + ': missing');
+    return false;
+  }
+  if (!_isRouteAltitude(obj[key])) {
+    errs.push(path + '.' + key + ': expected number or "NaN", got ' +
+              _vKind(obj[key]));
+    return false;
+  }
+  return true;
+}
 function validateRoute(d) {
   const errs = [];
   if (!d || typeof d !== 'object' || Array.isArray(d)) {
@@ -279,8 +295,8 @@ function validateRoute(d) {
         errs.push(p + ': expected object, got ' + _vKind(l));
         continue;
       }
-      _v(l, 'inboundAltitude',  'number', p, errs);
-      _v(l, 'outboundAltitude', 'number', p, errs);
+      _vRouteAltitude(l, 'inboundAltitude', p, errs);
+      _vRouteAltitude(l, 'outboundAltitude', p, errs);
       _v(l, 'flightSpeed',      'number', p, errs);
       // #212: hasOwnProperty (not 'in') so inherited Object.prototype keys
       // can never satisfy the optional check.
@@ -357,6 +373,12 @@ function validateNavWaypoints(d) {
     _v(w, 'he',   'string', p, errs);
     _v(w, 'lat',  'number', p, errs);
     _v(w, 'lng',  'number', p, errs);
+    // `report` is optional (chart reporting class). When present it must be
+    // one of the two CVFR classes: 'mandatory' (חובה) or 'onRequest' (דרישה).
+    if (Object.prototype.hasOwnProperty.call(w, 'report') &&
+        w.report !== 'mandatory' && w.report !== 'onRequest') {
+      errs.push(p + '.report: expected "mandatory" or "onRequest", got ' + _vKind(w.report));
+    }
   }
   return errs.length ? errs.join('; ') : null;
 }
@@ -418,6 +440,62 @@ function validateCommChange(d) {
       if (k in pt && typeof pt[k] !== 'string') {
         errs.push(p + '.' + k + ': expected string, got ' + _vKind(pt[k]));
       }
+    }
+  }
+  return errs.length ? errs.join('; ') : null;
+}
+
+// Strict schema for docs/leg-altitude.json — a reference table of
+// green CVFR route-segment altitude pairs. Unknown metadata keys are allowed;
+// the map behavior only needs from/to + integer or null altitude fields.
+function validateLegAltitudes(d) {
+  const errs = [];
+  if (!d || typeof d !== 'object' || Array.isArray(d)) {
+    return 'root: expected object, got ' + _vKind(d);
+  }
+  if (!_v(d, 'segments', 'array', 'root', errs)) return errs.join('; ');
+  const seen = new Set();
+  for (let i = 0; i < d.segments.length; i++) {
+    const p = 'segments[' + i + ']';
+    const segment = d.segments[i];
+    if (_vKind(segment) !== 'object') {
+      errs.push(p + ': expected object, got ' + _vKind(segment));
+      continue;
+    }
+    _v(segment, 'from', 'string', p, errs);
+    _v(segment, 'to', 'string', p, errs);
+    if (Object.prototype.hasOwnProperty.call(segment, 'oneWay') &&
+        typeof segment.oneWay !== 'boolean') {
+      errs.push(p + '.oneWay: expected boolean, got ' + _vKind(segment.oneWay));
+    }
+    for (const key of ['inboundAltitude', 'outboundAltitude']) {
+      if (!Object.prototype.hasOwnProperty.call(segment, key)) {
+        errs.push(p + '.' + key + ': missing');
+      } else if (segment[key] !== null &&
+          (!Number.isInteger(segment[key]) || !Number.isFinite(segment[key]))) {
+        errs.push(p + '.' + key + ': expected integer or null, got ' +
+                  _vKind(segment[key]));
+      }
+    }
+    if (typeof segment.from === 'string' && typeof segment.to === 'string') {
+      if (!segment.from.trim() || !segment.to.trim()) {
+        errs.push(p + ': from/to must be non-empty');
+      } else if (segment.from === segment.to) {
+        errs.push(p + ': from and to must differ');
+      }
+      const k = segment.from + '-' + segment.to;
+      if (seen.has(k)) errs.push(p + ': duplicate segment ' + k);
+      seen.add(k);
+    }
+    const nullCount = ['inboundAltitude', 'outboundAltitude']
+      .filter(key => segment[key] === null).length;
+    const status = typeof segment.status === 'string' ? segment.status : '';
+    if (segment.oneWay === true) {
+      if (nullCount !== 1) errs.push(p + ': oneWay segment must have exactly one null altitude');
+    } else if (status === 'unknown') {
+      if (nullCount !== 2) errs.push(p + ': unknown segment must have two null altitudes');
+    } else if (nullCount) {
+      errs.push(p + ': null altitude requires oneWay=true');
     }
   }
   return errs.length ? errs.join('; ') : null;
@@ -521,6 +599,31 @@ function storedCommChangeSuppressions(raw) {
   return raw && Object.prototype.hasOwnProperty.call(raw, 'commChangeSuppressions')
     ? routeCommChangeSuppressions(raw.commChangeSuppressions) : [];
 }
+function encodeRouteAltitude(v) {
+  return Number.isNaN(v) ? 'NaN' : v;
+}
+function decodeRouteAltitude(v) {
+  return v === 'NaN' || v === null ? NaN : v;
+}
+function encodeRouteLegAltitudes(l) {
+  return {
+    ...l,
+    inboundAltitude: encodeRouteAltitude(l.inboundAltitude),
+    outboundAltitude: encodeRouteAltitude(l.outboundAltitude),
+  };
+}
+function altitudeMetersForExport(ft, fallbackFt = 0) {
+  const v = Number.isFinite(ft) ? ft : fallbackFt;
+  return Math.max(0, Math.round(v * 0.3048));
+}
+function routeSnapshotForStorage() {
+  return {
+    waypoints: state.waypoints,
+    legs: state.legs.map(encodeRouteLegAltitudes),
+    notes: state.notes,
+    commChangeSuppressions: routeCommChangeSuppressions(),
+  };
+}
 function save() {
   const commChangeSuppressions = routeCommChangeSuppressions();
   const data = {
@@ -528,8 +631,8 @@ function save() {
       lat: r5(w.lat), lng: r5(w.lng), name: w.name || '',
     })),
     legs: state.legs.map(l => ({
-      inboundAltitude: l.inboundAltitude,
-      outboundAltitude: l.outboundAltitude,
+      inboundAltitude: encodeRouteAltitude(l.inboundAltitude),
+      outboundAltitude: encodeRouteAltitude(l.outboundAltitude),
       flightSpeed: l.flightSpeed,
       outboundSpeed: l.outboundSpeed,
       inLabel: l.inLabel,
@@ -566,7 +669,7 @@ function exportGpx() {
     c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
   const altM = i => {
     const leg = state.legs[Math.min(i, state.legs.length - 1)];
-    return Math.max(0, Math.round((leg ? leg.inboundAltitude : 2000) * 0.3048));
+    return altitudeMetersForExport(leg ? leg.inboundAltitude : 2000, leg ? 0 : 2000);
   };
   let rtepts = '';
   for (let i = 0; i < wps.length; i++) {
@@ -628,11 +731,7 @@ function loadGpx(file) {
         return;
       }
       state.waypoints = wps;
-      state.legs = wps.slice(0, -1).map(() => ({
-        inboundAltitude: 2000, outboundAltitude: 2000,
-        flightSpeed: 90, outboundSpeed: 90,
-        inLabel: null, outLabel: null,
-      }));
+      state.legs = [];
       state.notes = [];
       state.commChangeSuppressions = [];
       syncLegs();
@@ -683,8 +782,8 @@ function load(file) {
     const legacyAS = (typeof d.legArrowSize === 'number' && d.legArrowSize > 0)
       ? d.legArrowSize : legArrowSize;
     state.legs = d.legs.map(l => ({
-      inboundAltitude: l.inboundAltitude,
-      outboundAltitude: l.outboundAltitude,
+      inboundAltitude: decodeRouteAltitude(l.inboundAltitude),
+      outboundAltitude: decodeRouteAltitude(l.outboundAltitude),
       flightSpeed: l.flightSpeed,
       outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
       inLabel:  _normalizeLegLabel(l.inLabel,  legacyAS),
@@ -894,106 +993,6 @@ function showFlightPlan() {
     };
   })(box);
 
-  // Resizable from any of the four corner grips. Restores the last-used size
-  // and persists it (navaid.fpSize) so the plan window stays the size the
-  // pilot picked across opens. Listeners attached to `window` only live for
-  // the duration of an active drag (removed on pointer-up), so there is
-  // nothing to tear down in flightPlanCleanup.
-  (function (el) {
-    const KEY = 'navaid.fpSize';
-    const MIN_W = 360, MIN_H = 200;
-    // The default CSS caps the box at 92vw / 84vh; an explicit size must be
-    // free to exceed those, so drop the caps once the user takes control.
-    function applySize(w, h) {
-      el.style.maxWidth = 'none';
-      el.style.maxHeight = 'none';
-      el.style.width = w + 'px';
-      el.style.height = h + 'px';
-    }
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) {
-        const s = JSON.parse(raw);
-        if (s && s.w > 0 && s.h > 0) {
-          applySize(Math.min(s.w, window.innerWidth),
-                    Math.min(s.h, window.innerHeight));
-        }
-      }
-    } catch (e) { /* storage unavailable / malformed — keep CSS default size */ }
-
-    // One corner grip. Corners that move the top/left edge (n/w) re-pin the
-    // box's left/top so the opposite edge stays put while dragging.
-    function makeGrip(corner) {
-      const grip = document.createElement('div');
-      grip.className = 'resize-handle corner-' + corner;
-      el.appendChild(grip);
-      const east = corner.indexOf('e') !== -1, west = corner.indexOf('w') !== -1;
-      const south = corner.indexOf('s') !== -1, north = corner.indexOf('n') !== -1;
-      let rx = 0, ry = 0, rw = 0, rh = 0, rl = 0, rt = 0, resizing = false;
-      function start(cx, cy) {
-        const r = el.getBoundingClientRect();
-        rx = cx; ry = cy; rw = r.width; rh = r.height; rl = r.left; rt = r.top;
-        resizing = true;
-      }
-      function move(cx, cy) {
-        if (!resizing) return;
-        const dx = cx - rx, dy = cy - ry;
-        let w = rw, h = rh, l = rl, t = rt;
-        if (east)  w = Math.max(MIN_W, rw + dx);
-        if (west)  { w = Math.max(MIN_W, rw - dx); l = rl + (rw - w); }
-        if (south) h = Math.max(MIN_H, rh + dy);
-        if (north) { h = Math.max(MIN_H, rh - dy); t = rt + (rh - h); }
-        l = Math.max(0, Math.min(window.innerWidth - w, l));
-        t = Math.max(0, Math.min(window.innerHeight - h, t));
-        applySize(w, h);
-        if (west || north) {
-          el.style.left = l + 'px';
-          el.style.top = t + 'px';
-          el.style.margin = '0';
-        }
-      }
-      function end() {
-        if (!resizing) return;
-        resizing = false;
-        const r = el.getBoundingClientRect();
-        try { localStorage.setItem(KEY, JSON.stringify({ w: r.width, h: r.height })); } catch (e) {}
-      }
-      grip.addEventListener('mousedown', e => {
-        e.preventDefault();
-        e.stopPropagation();               // don't start a title-bar drag
-        start(e.clientX, e.clientY);
-        const onMove = ev => move(ev.clientX, ev.clientY);
-        const onUp = () => { end(); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onUp);
-      });
-      grip.addEventListener('touchstart', e => {
-        if (e.touches.length !== 1) return;
-        e.preventDefault();
-        e.stopPropagation();
-        start(e.touches[0].clientX, e.touches[0].clientY);
-        const onMove = ev => {
-          if (ev.touches.length !== 1) return;
-          ev.preventDefault();
-          move(ev.touches[0].clientX, ev.touches[0].clientY);
-        };
-        const onEnd = () => {
-          end();
-          window.removeEventListener('touchmove', onMove, { passive: false });
-          window.removeEventListener('touchend', onEnd);
-          window.removeEventListener('touchcancel', onEnd);
-        };
-        window.addEventListener('touchmove', onMove, { passive: false });
-        window.addEventListener('touchend', onEnd);
-        window.addEventListener('touchcancel', onEnd);
-      }, { passive: false });
-    }
-    makeGrip('se');
-    makeGrip('sw');
-    makeGrip('ne');
-    makeGrip('nw');
-  })(box);
-
   loadAircraft();
   const fpAircraft = document.createElement('div');
   fpAircraft.className = 'fp-aircraft';
@@ -1091,7 +1090,7 @@ function showFlightPlan() {
     inp.type = 'number';
     inp.className = 'plan-num';
     inp.min = min;
-    inp.value = value;
+    inp.value = altitudeInputValue(value);
     inp.onchange = () => onCommit(inp);
     td.appendChild(inp);
     return td;
@@ -1132,16 +1131,22 @@ function showFlightPlan() {
     speedInputs[i] = speedCell.querySelector('.plan-num');
     tr.appendChild(speedCell);
     const altCell = numCell(leg.inboundAltitude, -2000, inp => {
-      const v = +inp.value;
-      if (!Number.isFinite(v)) { inp.value = leg.inboundAltitude; return; }
+      const raw = inp.value.trim();
       const oldVal = leg.inboundAltitude;
-      leg.inboundAltitude = Math.round(v);
+      if (!raw) {
+        leg.inboundAltitude = NaN;
+      } else {
+        const v = Number(raw);
+        if (!Number.isFinite(v)) { inp.value = altitudeInputValue(leg.inboundAltitude); return; }
+        leg.inboundAltitude = Math.round(v);
+      }
       propagateAlt(i, 'inboundAltitude', leg.inboundAltitude, oldVal);
       draw();
       refresh();
       if (retRefresh) retRefresh();
     });
     altInputs[i] = altCell.querySelector('.plan-num');
+    altInputs[i].placeholder = legAltitudePlaceholder(leg, 'inboundAltitude');
     tr.appendChild(altCell);
     const timeCell = planCell('');
     timeCells[i] = timeCell;
@@ -1237,7 +1242,7 @@ function showFlightPlan() {
       if (speedInputs[i] && document.activeElement !== speedInputs[i])
         speedInputs[i].value = state.legs[i].flightSpeed;
       if (altInputs[i] && document.activeElement !== altInputs[i])
-        altInputs[i].value = state.legs[i].inboundAltitude;
+        altInputs[i].value = altitudeInputValue(state.legs[i].inboundAltitude);
     }
     for (const wpIdx in wpInputs) {
       const wp = state.waypoints[wpIdx];
@@ -1318,16 +1323,22 @@ function showFlightPlan() {
       rSpeedInputs[i] = speedCell.querySelector('.plan-num');
       tr.appendChild(speedCell);
       const altCell = numCell(leg.outboundAltitude, -2000, inp => {
-        const v = +inp.value;
-        if (!Number.isFinite(v)) { inp.value = leg.outboundAltitude; return; }
+        const raw = inp.value.trim();
         const oldVal = leg.outboundAltitude;
-        leg.outboundAltitude = Math.round(v);
+        if (!raw) {
+          leg.outboundAltitude = NaN;
+        } else {
+          const v = Number(raw);
+          if (!Number.isFinite(v)) { inp.value = altitudeInputValue(leg.outboundAltitude); return; }
+          leg.outboundAltitude = Math.round(v);
+        }
         propagateAlt(ri, 'outboundAltitude', leg.outboundAltitude, oldVal);
         draw();
         refresh();
         retRefresh();
       });
       rAltInputs[i] = altCell.querySelector('.plan-num');
+      rAltInputs[i].placeholder = legAltitudePlaceholder(leg, 'outboundAltitude');
       tr.appendChild(altCell);
       const timeCell = planCell('');
       rTimeCells[i] = timeCell;
@@ -1403,7 +1414,7 @@ function showFlightPlan() {
         if (rSpeedInputs[i] && document.activeElement !== rSpeedInputs[i])
           rSpeedInputs[i].value = state.legs[ri].outboundSpeed;
         if (rAltInputs[i] && document.activeElement !== rAltInputs[i])
-          rAltInputs[i].value = state.legs[ri].outboundAltitude;
+          rAltInputs[i].value = altitudeInputValue(state.legs[ri].outboundAltitude);
       }
       rTotDistCell.textContent = td.toFixed(1);
       rTotTimeCell.textContent = th > 0 ? toHMS(th) : '--';
@@ -1415,9 +1426,58 @@ function showFlightPlan() {
     scrollArea.appendChild(rtable);
   }
 
+  function flightPlanCsv() {
+    const visibleHeaders = Array.from(table.querySelectorAll('thead th'))
+      .map(th => th.textContent || '')
+      .filter(h => h.trim() !== '');
+    const columnCount = visibleHeaders.length;
+    const csvCell = value => {
+      const s = String(value == null ? '' : value).replace(/\r?\n|\r/g, ' ').trim();
+      return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const rowValues = row => {
+      const values = [];
+      for (const cell of row.children) {
+        if (cell.classList && cell.classList.contains('fp-del')) continue;
+        const span = Math.max(1, cell.colSpan || 1);
+        const input = cell.querySelector('input');
+        const value = input ? input.value : cell.textContent;
+        values.push(value);
+        for (let i = 1; i < span && values.length < columnCount; i++) values.push('');
+        if (values.length >= columnCount) break;
+      }
+      while (values.length < columnCount) values.push('');
+      return values.slice(0, columnCount);
+    };
+    const addTable = (rows, section, planTable) => {
+      rows.push([section]);
+      rows.push(visibleHeaders);
+      planTable.querySelectorAll('tbody tr, tfoot tr').forEach(row => {
+        rows.push(rowValues(row));
+      });
+    };
+    const rows = [];
+    const tables = Array.from(scrollArea.querySelectorAll('.flight-table'));
+    tables.forEach((planTable, idx) => {
+      if (idx > 0) rows.push([]);
+      addTable(rows, idx === 0 ? S.flightPlan : S.fpReturn, planTable);
+    });
+    return rows.map(row => row.map(csvCell).join(',')).join('\r\n') + '\r\n';
+  }
+
+  function exportFlightPlanCsv() {
+    const blob = new Blob(['\ufeff', flightPlanCsv()], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'flight-plan-' + fileStamp() + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
   const printBtn = document.createElement('button');
+  printBtn.type = 'button';
   printBtn.textContent = S.fpPrint;
   printBtn.onclick = () => {
     const cleanup = () => {
@@ -1430,6 +1490,12 @@ function showFlightPlan() {
     setTimeout(cleanup, 4000);           // belt-and-braces for Safari
   };
   btns.appendChild(printBtn);
+  const csvBtn = document.createElement('button');
+  csvBtn.type = 'button';
+  csvBtn.textContent = S.fpCsv || 'CSV';
+  csvBtn.title = S.fpCsvTitle || 'Export this flight plan as CSV';
+  csvBtn.onclick = exportFlightPlanCsv;
+  btns.appendChild(csvBtn);
   box.appendChild(btns);
   addModalCloseX(box, closeFlightPlan);
 
@@ -1651,6 +1717,7 @@ function showExportModal() {
   opSlider.type = 'range';
   opSlider.min = '10';
   opSlider.max = '100';
+  opSlider.step = '5';
   opSlider.value = Math.round(mapOpacity * 100);
   opSlider.style.cssText = 'flex:1;height:16px;accent-color:#ffd966';
   opacityRow.appendChild(opSlider);
@@ -2108,46 +2175,132 @@ function pngCrc(data) {
 }
 
 // --- fly the route (Google Earth) -----------------------------------
-function flyRoute() {
+async function flyRoute() {
   if (state.waypoints.length < 2) {
     alert(S.errNeedWps);
     return;
   }
+  if (airfields === null && typeof loadAirfields === 'function') {
+    await loadAirfields();
+  }
   const wps = state.waypoints;
-  const altM = i => {
-    const leg = state.legs[Math.min(i, state.legs.length - 1)];
-    return Math.max(0, Math.round((leg ? leg.inboundAltitude : 2000) * 0.3048));
+  const endpointGroundM = i => {
+    if (i !== 0 && i !== wps.length - 1) return null;
+    const af = typeof airfieldAtWaypoint === 'function'
+      ? airfieldAtWaypoint(wps[i])
+      : null;
+    const elevFt = af && Number(af.elev_ft);
+    return Number.isFinite(elevFt) ? Math.round(elevFt * 0.3048) : null;
   };
-  const heading = i => {
-    const j = Math.min(i, wps.length - 2);
-    return geo(wps[j], wps[j + 1]).brg;
+  const altM = i => {
+    const groundM = endpointGroundM(i);
+    if (groundM !== null) return groundM;
+    const leg = state.legs[Math.min(i, state.legs.length - 1)];
+    return altitudeMetersForExport(leg ? leg.inboundAltitude : 2000, leg ? 0 : 2000);
+  };
+  const inboundHeading = i => {
+    if (i <= 0) return geo(wps[0], wps[1]).brg;
+    return geo(wps[i - 1], wps[i]).brg;
+  };
+  const outboundHeading = i => geo(wps[i], wps[i + 1]).brg;
+  const normalizeHeading = hdg => ((hdg % 360) + 360) % 360;
+  const signedHeadingDelta = (from, to) =>
+    (((normalizeHeading(to) - normalizeHeading(from)) % 360) + 540) % 360 - 180;
+  const blendHeading = (from, to, f) => normalizeHeading(from + signedHeadingDelta(from, to) * f);
+  const pointAlongLeg = (from, to, bufferNm, fromEnd) => {
+    const { dist } = geo(from, to);
+    if (!Number.isFinite(dist) || dist <= 0) return { lat: to.lat, lng: to.lng };
+    const f = fromEnd
+      ? Math.max(0, 1 - bufferNm / dist)
+      : Math.min(1, bufferNm / dist);
+    return {
+      lat: from.lat + (to.lat - from.lat) * f,
+      lng: from.lng + (to.lng - from.lng) * f,
+    };
+  };
+  const turnBufferNm = i => {
+    const inDist = geo(wps[i - 1], wps[i]).dist;
+    return Math.max(0, Math.min(0.5, inDist * 0.15));
+  };
+  const legAltitudeM = i => {
+    const leg = state.legs[i];
+    return altitudeMetersForExport(leg ? leg.inboundAltitude : 2000, leg ? 0 : 2000);
+  };
+  const tourFractions = (legIndex, dist) => {
+    const out = [];
+    const add = f => {
+      const x = Math.max(0, Math.min(1, f));
+      if (x > 0 && !out.some(v => Math.abs(v - x) < 1e-4)) out.push(x);
+    };
+    const steps = Math.max(1, Math.ceil(dist / 1.5));
+    for (let s = 1; s <= steps; s++) add(s / steps);
+    if (legIndex < wps.length - 2 && dist > 0) add(1 - turnBufferNm(legIndex + 1) / dist);
+    return out.sort((a, b) => a - b);
   };
 
   function downloadKml() {
     const esc = s => String(s).replace(/[<>&]/g,
       c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
-    const camera = (i, pad) =>
+    const cameraAt = (pos, alt, hdg, pad) =>
       pad + '<Camera>\n' +
-      pad + '  <longitude>' + wps[i].lng + '</longitude>\n' +
-      pad + '  <latitude>' + wps[i].lat + '</latitude>\n' +
-      pad + '  <altitude>' + altM(i) + '</altitude>\n' +
-      pad + '  <heading>' + heading(i).toFixed(1) + '</heading>\n' +
+      pad + '  <longitude>' + pos.lng + '</longitude>\n' +
+      pad + '  <latitude>' + pos.lat + '</latitude>\n' +
+      pad + '  <altitude>' + alt + '</altitude>\n' +
+      pad + '  <heading>' + hdg.toFixed(1) + '</heading>\n' +
       pad + '  <tilt>70</tilt>\n' +
       pad + '  <roll>0</roll>\n' +
       pad + '  <altitudeMode>absolute</altitudeMode>\n' +
       pad + '</Camera>\n';
-    const flyTo = (i, dur, mode) =>
+    const camera = (i, pad, hdg = inboundHeading(i)) => cameraAt(wps[i], altM(i), hdg, pad);
+    const flyToCamera = (pos, alt, hdg, dur, mode) =>
       '    <gx:FlyTo>\n' +
       '      <gx:duration>' + dur.toFixed(1) + '</gx:duration>\n' +
       '      <gx:flyToMode>' + mode + '</gx:flyToMode>\n' +
-      camera(i, '      ') +
+      cameraAt(pos, alt, hdg, '      ') +
       '    </gx:FlyTo>\n';
-    let tour = flyTo(0, 4, 'bounce');
-    for (let i = 1; i < wps.length; i++) {
-      const leg = state.legs[i - 1];
-      const { dist } = geo(wps[i - 1], wps[i]);
+    const flyTo = (i, dur, mode, hdg = inboundHeading(i)) =>
+      flyToCamera(wps[i], altM(i), hdg, dur, mode);
+    let lastTourHeading = null;
+    const continuousHeading = hdg => {
+      let next = normalizeHeading(hdg);
+      if (lastTourHeading !== null) {
+        while (next - lastTourHeading > 180) next -= 360;
+        while (next - lastTourHeading < -180) next += 360;
+      }
+      lastTourHeading = next;
+      return next;
+    };
+    let tour = flyTo(0, 2, 'smooth', continuousHeading(outboundHeading(0)));
+    for (let i = 0; i < wps.length - 1; i++) {
+      const leg = state.legs[i];
+      const from = wps[i];
+      const to = wps[i + 1];
+      const { dist } = geo(from, to);
       const durH = leg && leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
-      tour += flyTo(i, Math.max(4, Math.min(45, durH * 60 * 4)), 'smooth');
+      const legDur = Math.max(4, Math.min(45, durH * 60 * 4));
+      const legHdg = outboundHeading(i);
+      const hasTurn = i < wps.length - 2 && dist > 0;
+      const turnStartF = hasTurn ? Math.max(0, 1 - turnBufferNm(i + 1) / dist) : 1;
+      const nextHdg = hasTurn ? outboundHeading(i + 1) : legHdg;
+      const turnDur = hasTurn
+        ? Math.min(4, Math.max(1.5, Math.abs(signedHeadingDelta(legHdg, nextHdg)) / 30))
+        : 0;
+      let prevF = 0;
+      for (const f of tourFractions(i, dist)) {
+        const pos = pointAlongLeg(from, to, dist * f, false);
+        const inTurn = hasTurn && f >= turnStartF;
+        const turnPart = inTurn && turnStartF < 1 ? (f - turnStartF) / (1 - turnStartF) : 0;
+        const hdg = inTurn ? blendHeading(legHdg, nextHdg, turnPart) : legHdg;
+        let segDur = legDur * (f - prevF);
+        if (hasTurn && f > turnStartF && turnStartF < 1) {
+          const a = Math.max(prevF, turnStartF);
+          const turnSegPart = (f - a) / (1 - turnStartF);
+          segDur = Math.max(segDur, turnDur * turnSegPart);
+        }
+        const alt = f >= 1 ? altM(i + 1) : legAltitudeM(i);
+        tour += flyToCamera(pos, alt, continuousHeading(hdg), Math.max(0.6, segDur), 'smooth');
+        prevF = f;
+      }
     }
     const coords = wps.map(w => w.lng + ',' + w.lat + ',0').join(' ');
     const points = wps.map((w, i) =>
@@ -2191,7 +2344,7 @@ function flyRoute() {
       }
       const url = 'https://earth.google.com/web/@' +
         lat.toFixed(6) + ',' + lng.toFixed(6) + ',' + altM(0) + 'a,' +
-        heading(0).toFixed(1) + 'h,70t';
+        outboundHeading(0).toFixed(1) + 'h,70t';
       window.open(url, '_blank');
       downloadKml();
       return;
@@ -2247,23 +2400,13 @@ function persist() {
   // Snapshot for undo runs synchronously on every state change (not on the
   // debounced write) so a quick succession of edits collapses into one undo
   // step the same way it collapses into one save.
-  recordUndoSnapshot(JSON.stringify({
-    waypoints: state.waypoints,
-    legs: state.legs,
-    notes: state.notes,
-    commChangeSuppressions: routeCommChangeSuppressions(),
-  }));
+  recordUndoSnapshot(JSON.stringify(routeSnapshotForStorage()));
   if (persistTimer || quotaWarned) return;
   persistTimer = setTimeout(() => {
     persistTimer = null;
     try {
       // center / zoom are not restored (load fits the route) — not saved.
-      localStorage.setItem(STORE_KEY, JSON.stringify({
-        waypoints: state.waypoints,
-        legs: state.legs,
-        notes: state.notes,
-        commChangeSuppressions: routeCommChangeSuppressions(),
-      }));
+      localStorage.setItem(STORE_KEY, JSON.stringify(routeSnapshotForStorage()));
     } catch (e) {
       // #80: a full quota used to fail silently. Surface it once so the
       // user knows to export the route; other storage-unavailable errors
@@ -2312,7 +2455,12 @@ function undo() {
   let snap;
   try { snap = JSON.parse(prev); } catch (_) { refreshUndoButton(); return; }
   state.waypoints = Array.isArray(snap.waypoints) ? snap.waypoints : [];
-  state.legs = Array.isArray(snap.legs) ? snap.legs : [];
+  state.legs = Array.isArray(snap.legs)
+    ? snap.legs.map(leg => ({
+      ...leg,
+      inboundAltitude: decodeRouteAltitude(leg.inboundAltitude),
+      outboundAltitude: decodeRouteAltitude(leg.outboundAltitude),
+    })) : [];
   state.notes = Array.isArray(snap.notes) ? snap.notes : [];
   state.commChangeSuppressions = storedCommChangeSuppressions(snap);
   state.selected = null;
@@ -2370,8 +2518,8 @@ function restoreRoute() {
   const legacyAS = (typeof d.legArrowSize === 'number' && d.legArrowSize > 0)
     ? d.legArrowSize : legArrowSize;
   state.legs = d.legs.map(l => ({
-    inboundAltitude: l.inboundAltitude,
-    outboundAltitude: l.outboundAltitude,
+    inboundAltitude: decodeRouteAltitude(l.inboundAltitude),
+    outboundAltitude: decodeRouteAltitude(l.outboundAltitude),
     flightSpeed: l.flightSpeed,
     outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
     inLabel:  _normalizeLegLabel(l.inLabel,  legacyAS),
@@ -2511,19 +2659,22 @@ function showPlateViewer(filename, label) {
   window.addEventListener('keydown', onEsc, true);
 }
 
-function showChartsModal() {
-  if (fpOpen) closeFlightPlan();
+function createDraggableModal(titleText, className) {
   const back = document.createElement('div');
   back.className = 'modal-back';
   const box = document.createElement('div');
-  box.className = 'modal wide';
+  box.className = className || 'modal wide';
 
   const title = document.createElement('div');
   title.className = 'modal-title';
-  title.textContent = S.plates;
+  title.textContent = titleText || '';
   box.appendChild(title);
 
-  addModalCloseX(box, () => { window.removeEventListener('keydown', onEsc); back.remove(); });
+  function close() {
+    window.removeEventListener('keydown', onEsc);
+    back.remove();
+  }
+  addModalCloseX(box, close);
 
   let drag = null;
   title.addEventListener('mousedown', function (e) {
@@ -2552,10 +2703,638 @@ function showChartsModal() {
     e.preventDefault();
   });
 
+  function onEsc(e) {
+    if (e.key === 'Escape') close();
+  }
+  back.onclick = e => { if (e.target === back) close(); };
+  function show() {
+    if (!box.parentNode) back.appendChild(box);
+    document.body.appendChild(back);
+    window.addEventListener('keydown', onEsc);
+  }
+  return { back, box, title, close, show };
+}
+
+function afterFreqTableEdit() {
+  draw();
+  if (state.selected && typeof showInspector === 'function') showInspector();
+}
+
+function renderFreqTable(freqSection) {
+  const existingSearch = freqSection.querySelector('.charts-freq-search');
+  const searchQuery = existingSearch ? existingSearch.value : '';
+  freqSection.innerHTML = '';
+  const titleRow = document.createElement('div');
+  titleRow.className = 'charts-freq-title';
+  const heading = document.createElement('h3');
+  heading.textContent = S.freqTableTitle || 'Frequency defaults';
+  const restoreAll = document.createElement('button');
+  restoreAll.type = 'button';
+  restoreAll.className = 'charts-freq-restore-all';
+  restoreAll.textContent = S.freqTableRestoreAll || 'Restore originals';
+  restoreAll.title = S.freqTableRestoreAll || 'Restore originals';
+  restoreAll.setAttribute('aria-label', restoreAll.title);
+  titleRow.append(heading, restoreAll);
+  freqSection.appendChild(titleRow);
+
+  const usedIds = new Set();
+  if (commChangeMap && typeof commChangeMap === 'object') {
+    for (const row of Object.values(commChangeMap)) {
+      if (!row || !Array.isArray(row.callSigns)) continue;
+      for (const id of row.callSigns) {
+        const key = typeof commCallSignIdKey === 'function'
+          ? commCallSignIdKey(id) : String(id || '').trim().toUpperCase();
+        if (key) usedIds.add(key);
+      }
+    }
+  }
+  const opts = (typeof commAllCallSignOptions === 'function'
+    ? commAllCallSignOptions() : [])
+    .filter(o => o && o.id)
+    .filter(o => {
+      const key = typeof commCallSignIdKey === 'function'
+        ? commCallSignIdKey(o.id) : String(o.id || '').trim().toUpperCase();
+      return key && usedIds.has(key);
+    })
+    .sort((a, b) => (a.label || a.id).localeCompare(b.label || b.id));
+  const hasOverride = opts.some(o => !!o.overrideFreq);
+  restoreAll.disabled = !hasOverride;
+  restoreAll.onclick = e => {
+    e.preventDefault();
+    if (typeof commResetAllCallSignFreqOverrides === 'function') {
+      commResetAllCallSignFreqOverrides();
+    } else {
+      for (const opt of opts) {
+        if (opt.templateFreq && typeof commApplyCallSignFreqOverride === 'function') {
+          commApplyCallSignFreqOverride(opt.id, opt.templateFreq);
+        }
+      }
+    }
+    renderFreqTable(freqSection);
+    afterFreqTableEdit();
+  };
+
+  if (!opts.length) {
+    const empty = document.createElement('p');
+    empty.className = 'charts-freq-empty';
+    empty.textContent = S.freqTableEmpty || 'No frequency catalog available';
+    freqSection.appendChild(empty);
+    return;
+  }
+
+  const searchWrap = document.createElement('div');
+  searchWrap.className = 'charts-freq-search-row';
+  const search = document.createElement('input');
+  search.type = 'search';
+  search.className = 'charts-freq-search';
+  search.placeholder = S.freqTableSearch || 'Search frequencies';
+  search.value = searchQuery;
+  search.setAttribute('aria-label', S.freqTableSearch || 'Search frequencies');
+  searchWrap.appendChild(search);
+  freqSection.appendChild(searchWrap);
+
+  const tableWrap = document.createElement('div');
+  tableWrap.className = 'charts-freq-table-wrap';
+  const table = document.createElement('table');
+  table.className = 'flight-table charts-freq-table';
+  const thead = document.createElement('thead');
+  const headRow = document.createElement('tr');
+  for (const label of [
+    S.freqTableCallSign || 'Call sign',
+    S.freqTableDefault || S.commChangeTemplateFreq || 'Default',
+    S.freqTableOverride || 'Override',
+    '',
+  ]) {
+    const th = document.createElement('th');
+    th.textContent = label;
+    headRow.appendChild(th);
+  }
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  for (const opt of opts) {
+    const tr = document.createElement('tr');
+    tr.className = opt.overrideFreq ? 'overridden' : '';
+    const searchText = [
+      opt.id,
+      opt.label,
+      opt.templateFreq,
+      opt.freq,
+      opt.overrideFreq,
+      opt.row && opt.row.he,
+    ].filter(Boolean).join(' ').toLocaleLowerCase();
+    tr.dataset.search = searchText;
+    const name = document.createElement('td');
+    const label = document.createElement('span');
+    label.className = 'charts-freq-label';
+    label.textContent = opt.label || opt.id;
+    name.appendChild(label);
+    if (opt.label && opt.label !== opt.id) {
+      const code = document.createElement('span');
+      code.className = 'charts-freq-code';
+      code.textContent = opt.id;
+      name.appendChild(code);
+    }
+    const template = document.createElement('td');
+    template.className = 'charts-freq-template';
+    template.textContent = opt.templateFreq || '';
+    const local = document.createElement('td');
+    const inp = document.createElement('input');
+    inp.className = 'charts-freq-input';
+    if (typeof commConfigureFreqInput === 'function') {
+      commConfigureFreqInput(inp);
+    } else {
+      inp.type = 'number';
+      inp.inputMode = 'decimal';
+      inp.step = '0.005';
+    }
+    inp.value = opt.freq || opt.templateFreq || '';
+    inp.dataset.callSign = opt.id;
+    inp.setAttribute('aria-invalid', 'false');
+    inp.setAttribute('aria-label', (opt.label || opt.id) + ' ' +
+      (S.commChangeFreq || 'Frequency'));
+    let reset = null;
+    function syncFreqInputValidity() {
+      const normalized = typeof commNormalizeFreqInput === 'function'
+        ? commNormalizeFreqInput(inp.value) : String(inp.value || '').trim();
+      const invalid = normalized === null;
+      inp.classList.toggle('invalid', invalid);
+      inp.setAttribute('aria-invalid', invalid ? 'true' : 'false');
+      if (reset) reset.disabled = !opt.templateFreq || (!opt.overrideFreq && !invalid);
+      return normalized;
+    }
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+    });
+    inp.addEventListener('input', syncFreqInputValidity);
+    inp.addEventListener('change', () => {
+      const normalized = syncFreqInputValidity();
+      if (normalized === null) return;
+      if (typeof commApplyCallSignFreqOverride === 'function') {
+        inp.value = commApplyCallSignFreqOverride(opt.id, normalized) || normalized || inp.value;
+      }
+      renderFreqTable(freqSection);
+      afterFreqTableEdit();
+    });
+    local.appendChild(inp);
+    const actions = document.createElement('td');
+    actions.className = 'charts-freq-actions';
+    reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'commchange-freq-reset';
+    reset.textContent = '↻';
+    reset.title = S.resetFreqOverride || S.sliderReset || 'Reset to default';
+    reset.setAttribute('aria-label', reset.title);
+    reset.disabled = !opt.overrideFreq || !opt.templateFreq;
+    function resetTableFreq() {
+      if (typeof commResetCallSignFreqOverride === 'function') {
+        commResetCallSignFreqOverride(opt.id);
+      } else if (opt.templateFreq && typeof commApplyCallSignFreqOverride === 'function') {
+        commApplyCallSignFreqOverride(opt.id, opt.templateFreq);
+      }
+      renderFreqTable(freqSection);
+      afterFreqTableEdit();
+    }
+    // pointerdown handles pointer activation; click handles keyboard. Suppress
+    // the click that trails a pointerdown so the reset doesn't fire twice.
+    let resetPointerHandled = false;
+    reset.onpointerdown = e => {
+      if (reset.disabled) return;
+      e.preventDefault();
+      e.stopPropagation();
+      resetPointerHandled = true;
+      resetTableFreq();
+    };
+    reset.onclick = e => {
+      e.preventDefault();
+      if (resetPointerHandled) { resetPointerHandled = false; return; }
+      if (!reset.disabled) resetTableFreq();
+    };
+    actions.appendChild(reset);
+    tr.append(name, template, local, actions);
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  tableWrap.appendChild(table);
+  freqSection.appendChild(tableWrap);
+
+  const noMatches = document.createElement('p');
+  noMatches.className = 'charts-freq-empty charts-freq-no-matches';
+  noMatches.textContent = S.freqTableNoMatches || 'No matching frequencies';
+  noMatches.hidden = true;
+  freqSection.appendChild(noMatches);
+
+  function applySearchFilter() {
+    const q = search.value.trim().toLocaleLowerCase();
+    let shown = 0;
+    for (const tr of tbody.querySelectorAll('tr')) {
+      const hit = !q || (tr.dataset.search || '').includes(q);
+      tr.hidden = !hit;
+      if (hit) shown += 1;
+    }
+    noMatches.hidden = shown > 0;
+  }
+  search.addEventListener('input', applySearchFilter);
+  applySearchFilter();
+}
+
+function showFreqTableModal() {
+  if (fpOpen) closeFlightPlan();
+  const modal = createDraggableModal(S.tbFreqTable || S.freqTableTitle || 'Freq table', 'modal wide');
   const scrollArea = document.createElement('div');
   scrollArea.className = 'fp-scroll';
   const body = document.createElement('div');
   body.className = 'charts-modal-body';
+  const freqSection = document.createElement('div');
+  freqSection.className = 'charts-freq-section charts-freq-section-only';
+  body.appendChild(freqSection);
+  const loadingFreq = document.createElement('p');
+  loadingFreq.textContent = '…';
+  freqSection.appendChild(loadingFreq);
+  loadCommChange().then(() => renderFreqTable(freqSection));
+  scrollArea.appendChild(body);
+  modal.box.appendChild(scrollArea);
+  modal.show();
+}
+
+function altitudePairSegmentsForChart() {
+  if (legAltitudeDataset && Array.isArray(legAltitudeDataset.segments)) {
+    return legAltitudeDataset.segments.slice();
+  }
+  return Object.values(legAltitudeMap || {}).map(segment => ({
+    from: segment.from,
+    to: segment.to,
+    inboundAltitude: segment.inboundAltitude,
+    outboundAltitude: segment.outboundAltitude,
+    ...(segment.oneWay ? { oneWay: true } : {}),
+    ...(segment.status ? { status: segment.status } : {}),
+  }));
+}
+
+function altitudePairsDataForCopy() {
+  const data = (legAltitudeDataset && Array.isArray(legAltitudeDataset.segments))
+    ? legAltitudeDataset
+    : { version: 1, segments: altitudePairSegmentsForChart() };
+  for (const segment of data.segments || []) normalizeAltitudePairSegment(segment);
+  return data;
+}
+
+function altitudePairsJsonForCopy() {
+  const data = altitudePairsDataForCopy();
+  return JSON.stringify(data, null, 2);
+}
+
+function normalizeAltitudePairSegment(segment) {
+  normalizeLegAltitudePairSegment(segment);
+}
+
+function formatAltitudePairValue(segment, key) {
+  if (!segment) return '';
+  const v = segment[key];
+  if (v === null && segment.oneWay === true) return S.altPairsBlocked || 'Blocked';
+  if (v === null) return S.altPairsUnknown || 'Unknown';
+  return Number.isFinite(v) ? String(v) : '';
+}
+
+function altitudePairStatus(segment) {
+  if (!segment) return '';
+  if (segment.inboundAltitude === null && segment.outboundAltitude === null) {
+    return S.altPairsUnknown || 'Unknown';
+  }
+  return segment.oneWay === true
+    ? (S.altPairsOneWay || 'One way')
+    : (S.altPairsTwoWay || 'Two way');
+}
+
+function altitudePairCellPlaceholder(segment, key) {
+  if (!segment || segment[key] !== null) return '';
+  return segment.oneWay === true
+    ? (S.altPairsBlocked || 'Blocked')
+    : (S.altPairsUnknown || 'Unknown');
+}
+
+function updateAltitudePairRowState(tr, segment, statusCell, inputs) {
+  normalizeAltitudePairSegment(segment);
+  tr.classList.toggle('one-way', segment.oneWay === true);
+  tr.classList.toggle('unknown',
+    segment.inboundAltitude === null && segment.outboundAltitude === null);
+  if (statusCell) statusCell.textContent = altitudePairStatus(segment);
+  if (inputs) {
+    for (const input of inputs) {
+      input.placeholder = altitudePairCellPlaceholder(segment, input.dataset.altKey);
+    }
+  }
+  const fromAlt = formatAltitudePairValue(segment, 'inboundAltitude');
+  const toAlt = formatAltitudePairValue(segment, 'outboundAltitude');
+  const distance = Number.isFinite(segment.distanceNm)
+    ? String(Math.round(segment.distanceNm * 10) / 10) : '';
+  tr.dataset.search = [
+    segment.from,
+    segment.to,
+    fromAlt,
+    toAlt,
+    altitudePairStatus(segment),
+    distance,
+    segment.note,
+    segment.source,
+  ].filter(Boolean).join(' ').toLocaleLowerCase();
+}
+
+function altitudePairNumberInput(segment, key) {
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.className = 'charts-alt-input';
+  input.min = '0';
+  input.step = '100';
+  input.inputMode = 'numeric';
+  input.dataset.altKey = key;
+  input.value = Number.isFinite(segment[key]) ? String(segment[key]) : '';
+  input.placeholder = altitudePairCellPlaceholder(segment, key);
+  input.setAttribute('aria-label',
+    (key === 'inboundAltitude'
+      ? (S.altPairsInbound || 'From to')
+      : (S.altPairsOutbound || 'To from')) + ' ' + segment.from + ' ' + segment.to);
+  return input;
+}
+
+var altitudePairFocusLayer = null;
+
+function altitudePairEndpoint(name) {
+  const code = String(name || '').trim();
+  if (!code) return null;
+  const visit = p => p && p.name === code && Number.isFinite(p.lat) && Number.isFinite(p.lng);
+  if (Array.isArray(navWP)) {
+    const point = navWP.find(visit);
+    if (point) return point;
+  }
+  if (Array.isArray(airfields)) {
+    const point = airfields.find(visit);
+    if (point) return point;
+  }
+  return null;
+}
+
+function showAltitudePairFocus(from, to) {
+  if (altitudePairFocusLayer && map && map.removeLayer) {
+    map.removeLayer(altitudePairFocusLayer);
+  }
+  const latlngs = [[from.lat, from.lng], [to.lat, to.lng]];
+  const layer = L.layerGroup([
+    L.polyline(latlngs, {
+      color: '#fff2a8',
+      weight: 5,
+      opacity: 0.95,
+      dashArray: '10 8',
+      interactive: false,
+    }),
+    L.circleMarker(latlngs[0], {
+      radius: 7,
+      color: '#fff2a8',
+      weight: 3,
+      fillColor: '#1d6fe0',
+      fillOpacity: 0.95,
+      interactive: false,
+    }),
+    L.circleMarker(latlngs[1], {
+      radius: 7,
+      color: '#fff2a8',
+      weight: 3,
+      fillColor: '#1d6fe0',
+      fillOpacity: 0.95,
+      interactive: false,
+    }),
+  ]).addTo(map);
+  altitudePairFocusLayer = layer;
+  window.setTimeout(() => {
+    if (altitudePairFocusLayer === layer && map && map.hasLayer(layer)) {
+      map.removeLayer(layer);
+      altitudePairFocusLayer = null;
+    }
+  }, 10000);
+}
+
+async function focusAltitudePairSegment(segment, closeModal) {
+  if (!segment) return false;
+  if (navWP === null && typeof loadNavWaypoints === 'function') await loadNavWaypoints();
+  if (airfields === null && typeof loadAirfields === 'function') await loadAirfields();
+  const from = altitudePairEndpoint(segment.from);
+  const to = altitudePairEndpoint(segment.to);
+  if (!from || !to) {
+    if (typeof showToast === 'function') {
+      showToast(S.altPairsLocationMissing || 'Pair endpoints not found');
+    }
+    return false;
+  }
+  if (typeof closeModal === 'function') closeModal();
+  const bounds = L.latLngBounds([[from.lat, from.lng], [to.lat, to.lng]]);
+  map.fitBounds(bounds, { padding: [80, 80], maxZoom: 12, animate: false });
+  showAltitudePairFocus(from, to);
+  return true;
+}
+
+function renderAltitudePairsTable(altSection, opts) {
+  opts = opts || altSection._altitudePairsRenderOpts || {};
+  altSection._altitudePairsRenderOpts = opts;
+  const existingSearch = altSection.querySelector('.charts-alt-search');
+  const searchQuery = existingSearch ? existingSearch.value : '';
+  altSection.innerHTML = '';
+
+  const titleRow = document.createElement('div');
+  titleRow.className = 'charts-alt-title';
+  const heading = document.createElement('h3');
+  heading.textContent = S.altPairsTitle || 'CVFR altitude pairs';
+  const copy = document.createElement('button');
+  copy.type = 'button';
+  copy.className = 'charts-alt-copy';
+  copy.textContent = S.altPairsCopyJson || 'Copy JSON';
+  copy.title = copy.textContent;
+  copy.setAttribute('aria-label', copy.title);
+  titleRow.append(heading, copy);
+  altSection.appendChild(titleRow);
+
+  copy.onclick = async e => {
+    e.preventDefault();
+    const text = altitudePairsJsonForCopy();
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error('no clipboard');
+      await navigator.clipboard.writeText(text);
+      copy.textContent = S.altPairsCopied || 'Copied';
+      if (typeof showToast === 'function') showToast(S.altPairsCopied || 'Copied');
+    } catch (err) {
+      copy.textContent = S.altPairsCopyFailed || 'Copy failed';
+      window.prompt(S.altPairsCopyJson || 'Copy JSON', text);
+    } finally {
+      setTimeout(() => { copy.textContent = S.altPairsCopyJson || 'Copy JSON'; }, 1200);
+    }
+  };
+
+  const segments = altitudePairSegmentsForChart()
+    .filter(segment => segment && segment.from && segment.to)
+    .sort((a, b) => (a.from + '-' + a.to).localeCompare(b.from + '-' + b.to));
+  if (!segments.length) {
+    const empty = document.createElement('p');
+    empty.className = 'charts-alt-empty';
+    empty.textContent = S.altPairsEmpty || 'No altitude-pair data available';
+    altSection.appendChild(empty);
+    return;
+  }
+
+  const searchWrap = document.createElement('div');
+  searchWrap.className = 'charts-alt-search-row';
+  const search = document.createElement('input');
+  search.type = 'search';
+  search.className = 'charts-alt-search';
+  search.placeholder = S.altPairsSearch || 'Search altitude pairs';
+  search.value = searchQuery;
+  search.setAttribute('aria-label', S.altPairsSearch || 'Search altitude pairs');
+  searchWrap.appendChild(search);
+  altSection.appendChild(searchWrap);
+
+  const tableWrap = document.createElement('div');
+  tableWrap.className = 'charts-alt-table-wrap';
+  const table = document.createElement('table');
+  table.className = 'flight-table charts-alt-table';
+  const thead = document.createElement('thead');
+  const headRow = document.createElement('tr');
+  for (const label of [
+    S.altPairsPair || 'Pair',
+    S.altPairsInbound || 'From → to',
+    S.altPairsOutbound || 'To → from',
+    S.altPairsStatus || 'Status',
+    S.altPairsDistance || 'NM',
+  ]) {
+    const th = document.createElement('th');
+    th.textContent = label;
+    headRow.appendChild(th);
+  }
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  for (const segment of segments) {
+    const tr = document.createElement('tr');
+    normalizeAltitudePairSegment(segment);
+    const distance = Number.isFinite(segment.distanceNm)
+      ? String(Math.round(segment.distanceNm * 10) / 10) : '';
+
+    const pair = document.createElement('td');
+    pair.className = 'charts-alt-pair';
+    const pairButton = document.createElement('button');
+    pairButton.type = 'button';
+    pairButton.className = 'charts-alt-pair-button';
+    pairButton.textContent = segment.from + ' ↔ ' + segment.to;
+    pairButton.title = (typeof S.altPairsGoTo === 'function')
+      ? S.altPairsGoTo(segment.from, segment.to)
+      : 'Go to ' + segment.from + ' ↔ ' + segment.to;
+    pairButton.setAttribute('aria-label', pairButton.title);
+    pairButton.addEventListener('click', e => {
+      e.preventDefault();
+      focusAltitudePairSegment(segment, opts.closeModal).catch(err => {
+        console.warn('Failed to focus leg-altitude pair:', err);
+        if (typeof showToast === 'function') {
+          showToast(S.altPairsLocationMissing || 'Pair endpoints not found');
+        }
+      });
+    });
+    pair.appendChild(pairButton);
+    const inbound = document.createElement('td');
+    const inboundInput = altitudePairNumberInput(segment, 'inboundAltitude');
+    inbound.appendChild(inboundInput);
+    const outbound = document.createElement('td');
+    const outboundInput = altitudePairNumberInput(segment, 'outboundAltitude');
+    outbound.appendChild(outboundInput);
+    const statusCell = document.createElement('td');
+    statusCell.className = 'charts-alt-status';
+    const distCell = document.createElement('td');
+    distCell.className = 'charts-alt-distance';
+    distCell.textContent = distance;
+    tr.append(pair, inbound, outbound, statusCell, distCell);
+    const inputs = [inboundInput, outboundInput];
+    const commitInput = input => {
+      const raw = input.value.trim();
+      if (!raw) {
+        input.setAttribute('aria-invalid', 'false');
+        segment[input.dataset.altKey] = null;
+      } else {
+        const next = Number(raw);
+        if (!Number.isFinite(next)) {
+          input.setAttribute('aria-invalid', 'true');
+          return;
+        }
+        input.setAttribute('aria-invalid', 'false');
+        segment[input.dataset.altKey] = Math.round(next);
+        input.value = String(segment[input.dataset.altKey]);
+      }
+      updateAltitudePairRowState(tr, segment, statusCell, inputs);
+      applySearchFilter();
+    };
+    for (const input of inputs) {
+      input.addEventListener('change', () => commitInput(input));
+      input.addEventListener('blur', () => commitInput(input));
+    }
+    updateAltitudePairRowState(tr, segment, statusCell, inputs);
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  tableWrap.appendChild(table);
+  altSection.appendChild(tableWrap);
+
+  const noMatches = document.createElement('p');
+  noMatches.className = 'charts-alt-empty charts-alt-no-matches';
+  noMatches.textContent = S.altPairsNoMatches || 'No matching altitude pairs';
+  noMatches.hidden = true;
+  altSection.appendChild(noMatches);
+
+  function applySearchFilter() {
+    const q = search.value.trim().toLocaleLowerCase();
+    let shown = 0;
+    for (const tr of tbody.querySelectorAll('tr')) {
+      const hit = !q || (tr.dataset.search || '').includes(q);
+      tr.hidden = !hit;
+      if (hit) shown += 1;
+    }
+    noMatches.hidden = shown > 0;
+  }
+  search.addEventListener('input', applySearchFilter);
+  applySearchFilter();
+}
+
+function refreshAltitudePairsTableIfOpen() {
+  for (const section of document.querySelectorAll('.charts-alt-section')) {
+    renderAltitudePairsTable(section, section._altitudePairsRenderOpts || {});
+  }
+}
+
+function showAltitudePairsModal() {
+  if (fpOpen) closeFlightPlan();
+  const modal = createDraggableModal(S.tbAltPairs || S.altPairsTitle || 'Alt pairs', 'modal wide');
+  const scrollArea = document.createElement('div');
+  scrollArea.className = 'fp-scroll';
+  const body = document.createElement('div');
+  body.className = 'charts-modal-body';
+  const altSection = document.createElement('div');
+  altSection.className = 'charts-alt-section charts-alt-section-only';
+  body.appendChild(altSection);
+  const loading = document.createElement('p');
+  loading.textContent = '…';
+  altSection.appendChild(loading);
+  loadLegAltitudes().then(() => renderAltitudePairsTable(altSection, {
+    closeModal: modal.close,
+  }));
+  scrollArea.appendChild(body);
+  modal.box.appendChild(scrollArea);
+  modal.show();
+}
+
+function showChartsModal() {
+  if (fpOpen) closeFlightPlan();
+  const modal = createDraggableModal(S.plates, 'modal wide');
+  const scrollArea = document.createElement('div');
+  scrollArea.className = 'fp-scroll';
+  const body = document.createElement('div');
+  body.className = 'charts-modal-body';
+  const platesSection = document.createElement('div');
+  platesSection.className = 'charts-plates-section';
+  body.appendChild(platesSection);
 
   const catOrder = ['approach', 'sid', 'star', 'ground', 'vfr', 'other'];
   const catLabel = {
@@ -2568,13 +3347,13 @@ function showChartsModal() {
   };
 
   function renderList(afs) {
-    body.innerHTML = '';
+    platesSection.innerHTML = '';
     const withPlates = afs.filter(af => af.plates && af.plates.length)
       .sort((a, b) => a.name.localeCompare(b.name));
     if (!withPlates.length) {
       const none = document.createElement('p');
       none.textContent = S.platesNone;
-      body.appendChild(none);
+      platesSection.appendChild(none);
       return;
     }
     for (const af of withPlates) {
@@ -2627,7 +3406,7 @@ function showChartsModal() {
         pane.appendChild(catDiv);
       }
       section.appendChild(pane);
-      body.appendChild(section);
+      platesSection.appendChild(section);
     }
   }
 
@@ -2636,25 +3415,18 @@ function showChartsModal() {
   } else {
     const loading = document.createElement('p');
     loading.textContent = '…';
-    body.appendChild(loading);
+    platesSection.appendChild(loading);
     loadAirfields().then(() => { if (airfields) renderList(airfields); });
   }
 
   scrollArea.appendChild(body);
-  box.appendChild(scrollArea);
+  modal.box.appendChild(scrollArea);
 
   const att = document.createElement('div');
   att.className = 'plate-attribution';
   att.textContent = S.plateAttribution;
-  box.appendChild(att);
-
-  function onEsc(e) {
-    if (e.key === 'Escape') { window.removeEventListener('keydown', onEsc); back.remove(); }
-  }
-  back.appendChild(box);
-  back.onclick = e => { if (e.target === back) { window.removeEventListener('keydown', onEsc); back.remove(); } };
-  document.body.appendChild(back);
-  window.addEventListener('keydown', onEsc);
+  modal.box.appendChild(att);
+  modal.show();
 }
 
 // --- shareable route link (#162) -----------------------------------
@@ -2720,7 +3492,11 @@ function buildShareUrl() {
   const r = polylineEncode(state.waypoints.map(w => [w.lat, w.lng]));
   const n = _b64UrlEncode(state.waypoints.map(w => w.name || '').join(SHARE_NAME_SEP));
   const l = state.legs.map(leg => {
-    const triple = [leg.inboundAltitude, leg.outboundAltitude, leg.flightSpeed];
+    const triple = [
+      encodeRouteAltitude(leg.inboundAltitude),
+      encodeRouteAltitude(leg.outboundAltitude),
+      leg.flightSpeed,
+    ];
     if (leg.outboundSpeed != null && leg.outboundSpeed !== leg.flightSpeed) {
       triple.push(leg.outboundSpeed);
     }
@@ -2752,9 +3528,18 @@ function decodeShareUrl(search) {
   if (legParts.length !== Math.max(0, coords.length - 1)) return null;
   const waypoints = coords.map(([lat, lng], i) => ({ lat, lng, name: names[i] || '' }));
   const legs = legParts.map(s => {
-    const parts = s.split(',').map(Number);
-    if (parts.length < 3 || parts.some(v => !Number.isFinite(v))) return null;
-    const [ia, oa, fs, os] = parts;
+    const parts = s.split(',');
+    const altitudePart = raw => raw === 'NaN' ? NaN : Number(raw);
+    const numericPart = raw => Number(raw);
+    if (parts.length < 3) return null;
+    const ia = altitudePart(parts[0]);
+    const oa = altitudePart(parts[1]);
+    const fs = numericPart(parts[2]);
+    const os = parts.length > 3 ? numericPart(parts[3]) : undefined;
+    if ((!Number.isFinite(ia) && !Number.isNaN(ia)) ||
+        (!Number.isFinite(oa) && !Number.isNaN(oa)) ||
+        !Number.isFinite(fs) ||
+        (os !== undefined && !Number.isFinite(os))) return null;
     // Short-URL share format doesn't carry per-leg label offsets — use the
     // size-independent default with `_m: 1` so the offsets render at the
     // same on-screen position as a freshly-created leg, independent of

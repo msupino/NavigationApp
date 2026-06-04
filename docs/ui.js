@@ -445,6 +445,7 @@ function findNavWpToken(token) {
 async function buildRouteFromQuery(raw) {
   if (navWP === null) await loadNavWaypoints();
   if (airfields === null) await loadAirfields();
+  if (legAltitudeMap === null) await loadLegAltitudes();
   const tokens = raw.split(/\s+/).filter(Boolean);
   if (tokens.length < 2) return false;
   const resolved = [];
@@ -652,8 +653,17 @@ document.getElementById('reverse').onclick = () => {
       outLabel: flipLabel(outOld, d.outLabel),
       cumLabel: flipLabel(cumOld, d.cumLabel),
       cumLabelRet: flipLabel(cumRetOld, d.cumLabelRet),
+      ...(l._legAltitudeAuto ? { _legAltitudeAuto: 1 } : {}),
+      ...(l._legAltitudeKey ? { _legAltitudeKey: l._legAltitudeKey } : {}),
+      ...(l._legAltitudeOutboundBlocked || l._legAltitudeOneWay
+        ? { _legAltitudeInboundBlocked: 1 } : {}),
+      ...(l._legAltitudeInboundBlocked ? {
+        _legAltitudeOutboundBlocked: 1,
+        _legAltitudeOneWay: 1,
+      } : {}),
     };
   });
+  applyLegAltitudesToRoute();
   state.selected = null;
   if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   showInspector(); draw();
@@ -692,6 +702,8 @@ document.getElementById('gpx').onclick = exportGpx;
 document.getElementById('plan').onclick = () => {
   if (fpOpen) closeFlightPlan(); else showFlightPlan();
 };
+document.getElementById('freq-table').onclick = showFreqTableModal;
+document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
 document.getElementById('charts').onclick = showChartsModal;
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
@@ -873,6 +885,26 @@ document.getElementById('commchange-cb').onchange = async e => {
   draw();
   if (state.selected && (changed || state.selected.type === 'wp')) showInspector();
 };
+const THEME_KEY = 'navaid.theme';
+let displayTheme = 'dark';
+try {
+  const stored = localStorage.getItem(THEME_KEY);
+  if (stored === 'light' || stored === 'dark') displayTheme = stored;
+  if (stored === 'day') displayTheme = 'light';
+} catch (e) { /* storage unavailable */ }
+function applyDisplayTheme() {
+  document.body.classList.toggle('theme-light', displayTheme === 'light');
+  document.body.classList.toggle('theme-dark', displayTheme !== 'light');
+}
+const THEME_LIGHT_EL = document.getElementById('theme-light-cb');
+applyDisplayTheme();
+THEME_LIGHT_EL.checked = displayTheme === 'light';
+THEME_LIGHT_EL.onchange = e => {
+  displayTheme = e.target.checked ? 'light' : 'dark';
+  applyDisplayTheme();
+  try { localStorage.setItem(THEME_KEY, displayTheme); }
+  catch (err) { /* storage unavailable */ }
+};
 const ALPHA_KEY = 'navaid.yellowAlpha';
 try {
   const v = parseFloat(localStorage.getItem(ALPHA_KEY));
@@ -915,11 +947,11 @@ YELLOW_EL.oninput = e => {
   draw();
 };
 
-const MAPOPACITY_KEY = 'navaid.mapOpacity';
+const MAPOPACITY_KEY = 'navaid.mapOpacity.v2';
 // `var` (not `let`) so writes from any module via window.mapOpacity reach
 // the same binding the export reads — same hazard documented for every
 // other mutable global in core.js.
-var mapOpacity = 1;
+var mapOpacity = 0.8;
 function applyMapOpacity() {
   for (const n in layers) {
     if (map.hasLayer(layers[n])) layers[n].setOpacity(mapOpacity);
@@ -1519,15 +1551,28 @@ if (_savedView) {
 draw();
 // Always load nav-waypoints in the background — they power both the
 // overlay toggle and the auto-snap on drop / drag.
-loadNavWaypoints().then(() => { snapExistingWaypoints(); draw(); });
+loadNavWaypoints().then(() => {
+  snapExistingWaypoints();
+  applyLegAltitudesToRoute();
+  draw();
+});
 // Same pattern for airfields: powering both the overlay and snap.
 // Also re-render inspector so plates section appears if a waypoint
 // was restored from sessionStorage before airfields loaded.
 loadAirfields().then(() => {
   snapExistingWaypoints();
+  applyLegAltitudesToRoute();
   if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   draw();
   if (state.selected) showInspector();
+});
+// Leg-altitude green-route altitude table: fills only freshly-created legs, and
+// leaves saved/imported/manual leg values authoritative.
+loadLegAltitudes().then(() => {
+  if (applyLegAltitudesToRoute()) {
+    draw();
+    if (state.selected) showInspector();
+  }
 });
 // Comm-change dataset (issue #399): parallel fetch so the rings appear
 // on first paint and the inspector badge is available immediately for
