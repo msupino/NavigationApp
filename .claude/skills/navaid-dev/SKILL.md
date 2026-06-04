@@ -40,6 +40,12 @@ always target `dev` as the PR base branch.
 **Every PR must be preceded by a GitHub issue** describing the bug or
 enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
 
+**Before creating a feature branch from `dev`:** update local `dev`
+first. Fetch `origin`, check out `dev`, fast-forward it to `origin/dev`,
+then create or switch to the feature branch from that updated tip. If
+`dev` cannot fast-forward cleanly, stop and resolve that before
+branching.
+
 **Before any `git commit`:** run `git branch --show-current` (and
 `git status` when in doubt). If the branch is not the one the user
 clearly intended for this work (or you are unsure), **stop and ask the
