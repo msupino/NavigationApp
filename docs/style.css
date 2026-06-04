@@ -1151,9 +1151,13 @@ html, body {
   display: flex;
   align-items: center;
   gap: 4px;
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 .commchange-freq-controls .freq-input {
   width: 96px;
+  direction: ltr;
+  text-align: right;
 }
 .commchange-freq-reset {
   flex-shrink: 0;

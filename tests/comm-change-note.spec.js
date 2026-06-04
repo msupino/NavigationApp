@@ -1059,6 +1059,38 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(await page.evaluate(() => state.notes[0].freq)).toBe('136.975');
   });
 
+  test('comm-change frequency input keeps MHz controls ordered in Hebrew RTL', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page, 'he');
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      syncLegs();
+      seedCommChangeNotes();
+      state.selected = { type: 'note', index: 0 };
+      showInspector();
+    }, TYONA);
+    const row = page.locator('#insp-body .commchange-freq-edit').first();
+    const label = row.locator('label');
+    const control = row.locator('.commchange-freq-controls');
+    const field = control.locator('.freq-input');
+    const unit = control.locator('.freq-unit');
+    const resetFreq = control.locator('.commchange-freq-reset');
+    await expect(label).toHaveText('תדר');
+    await expect(control).toHaveCSS('direction', 'ltr');
+    const boxes = await Promise.all([
+      label.boundingBox(),
+      control.boundingBox(),
+      field.boundingBox(),
+      unit.boundingBox(),
+      resetFreq.boundingBox(),
+    ]);
+    const [labelBox, controlBox, fieldBox, unitBox, resetBox] = boxes;
+    expect(labelBox && controlBox && fieldBox && unitBox && resetBox).toBeTruthy();
+    expect(labelBox.x).toBeGreaterThan(controlBox.x);
+    expect(fieldBox.x).toBeLessThan(unitBox.x);
+    expect(unitBox.x).toBeLessThan(resetBox.x);
+  });
+
   test('comm-change frequency input rejects out-of-range values without storing them', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
