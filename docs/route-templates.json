@@ -382,6 +382,220 @@
       ]
     },
     {
+      "id": "llhz-llbs-south",
+      "name": "Herzliya to Teyman",
+      "he": "הרצליה לתימן",
+      "description": "CVFR route from Herzliya to Beer Sheva / Teyman.",
+      "heDescription": "מסלול CVFR מהרצליה לבאר שבע / תימן.",
+      "defaultSpeed": 90,
+      "waypoints": [
+        "LLHZ",
+        "SFAIM",
+        "HTZUK",
+        "RIDNG",
+        "CLORE",
+        "TYONA",
+        "NTAIM",
+        "BOVED",
+        "NAGID",
+        "YAVNE",
+        "ZASHD",
+        "NMASD",
+        "NITZA",
+        "HODYA",
+        "REVAH",
+        "NOAAM",
+        "BKAMA",
+        "SOVAL",
+        "MINGV",
+        "NASIH",
+        "LLBS"
+      ],
+      "legs": [
+        {
+          "inboundAltitude": 1200,
+          "outboundAltitude": "NaN"
+        },
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 1600
+        },
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 1600
+        },
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 1200
+        },
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 1200
+        },
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 1200
+        },
+        {
+          "inboundAltitude": 1200,
+          "outboundAltitude": 800
+        },
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 1200
+        },
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 1200
+        },
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 1200
+        },
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 1200
+        },
+        {
+          "inboundAltitude": 800,
+          "outboundAltitude": 1200
+        },
+        {
+          "inboundAltitude": 2000,
+          "outboundAltitude": 2500
+        },
+        {
+          "inboundAltitude": 2000,
+          "outboundAltitude": 2500
+        },
+        {
+          "inboundAltitude": 2500,
+          "outboundAltitude": 3000
+        },
+        {
+          "inboundAltitude": 2500,
+          "outboundAltitude": 3000
+        },
+        {
+          "inboundAltitude": 2500,
+          "outboundAltitude": 3000
+        },
+        {
+          "inboundAltitude": 2500,
+          "outboundAltitude": "NaN"
+        },
+        {
+          "inboundAltitude": 2500,
+          "outboundAltitude": 3000
+        },
+        {
+          "inboundAltitude": 2000,
+          "outboundAltitude": 3000
+        }
+      ],
+      "notes": [
+        {
+          "lat": 32.21056,
+          "lng": 34.89722,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "SFAIM",
+          "freqName": "PLUTO_WEST",
+          "freq": "118.40",
+          "freqAuto": true
+        },
+        {
+          "lat": 32.00472,
+          "lng": 34.81722,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "TYONA",
+          "freqName": "PLUTO_WEST",
+          "freq": "118.40",
+          "freqAuto": true
+        },
+        {
+          "lat": 31.94361,
+          "lng": 34.87083,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "NTAIM",
+          "freqName": "BEN_GURION",
+          "freq": "118.30",
+          "freqAuto": true
+        },
+        {
+          "lat": 31.82611,
+          "lng": 34.79833,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "ZASHD",
+          "freqName": "PALMACHIM",
+          "freq": "135.55",
+          "freqAuto": true
+        },
+        {
+          "lat": 31.83333,
+          "lng": 34.71528,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "NMASD",
+          "freqName": "PALMACHIM",
+          "freq": "135.55",
+          "freqAuto": true
+        },
+        {
+          "lat": 31.68278,
+          "lng": 34.7425,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "HODYA",
+          "freqName": "HAGAV_SOUTH",
+          "freq": "121.15",
+          "freqAuto": true
+        },
+        {
+          "lat": 31.57139,
+          "lng": 34.86583,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "NOAAM",
+          "freqName": "HAGAV_NORTH",
+          "freq": "128.35",
+          "freqAuto": true
+        },
+        {
+          "lat": 31.41139,
+          "lng": 34.83639,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "SOVAL",
+          "freqName": "HAGAV_NORTH",
+          "freq": "128.35",
+          "freqAuto": true
+        },
+        {
+          "lat": 31.28694,
+          "lng": 34.81278,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "LLBS",
+          "freqName": "TEYMAN",
+          "freq": "122.50",
+          "freqAuto": true
+        }
+      ]
+    },
+    {
       "id": "llmz-llhz-dead-sea",
       "name": "Masada to Herzliya",
       "he": "מצדה להרצליה",

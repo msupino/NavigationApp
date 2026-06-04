@@ -63,6 +63,7 @@ test.describe('route templates', () => {
       'llhz-llha-coastal',
       'llha-llhz-coastal',
       'llhz-llmz-dead-sea',
+      'llhz-llbs-south',
       'llmz-llhz-dead-sea',
     ]));
     for (const template of data.templates) {
@@ -141,6 +142,24 @@ test.describe('route templates', () => {
       notes: [
         { cc: 'SFAIM', freqName: 'PLUTO_WEST', freq: '118.40' },
         { cc: 'LLMZ', freqName: 'MASADA', freq: '122.55' },
+      ],
+    },
+    {
+      id: 'llhz-llbs-south',
+      name: 'Herzliya to Teyman',
+      waypoints: ['LLHZ', 'SFAIM', 'HTZUK', 'RIDNG', 'CLORE', 'TYONA', 'NTAIM',
+        'BOVED', 'NAGID', 'YAVNE', 'ZASHD', 'NMASD', 'NITZA', 'HODYA', 'REVAH',
+        'NOAAM', 'BKAMA', 'SOVAL', 'MINGV', 'NASIH', 'LLBS'],
+      alts: {
+        0: [1200, 'NaN'],
+        6: [1200, 800],
+        12: [2000, 2500],
+        17: [2500, 'NaN'],
+        19: [2000, 3000],
+      },
+      notes: [
+        { cc: 'SFAIM', freqName: 'PLUTO_WEST', freq: '118.40' },
+        { cc: 'LLBS', freqName: 'TEYMAN', freq: '122.50' },
       ],
     },
     {
