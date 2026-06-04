@@ -174,6 +174,11 @@ test.describe('leg-altitude.json scaffold', () => {
       inboundAltitude: 1200,
       outboundAltitude: 800,
     });
+    expect(byName.get('NMASD-NITZA')).toMatchObject({
+      inboundAltitude: 800,
+      outboundAltitude: 1200,
+      source: 'maintainer correction',
+    });
     expect(byName.get('OLGAH-PELEG')).toMatchObject({
       inboundAltitude: 800,
       outboundAltitude: 1500,

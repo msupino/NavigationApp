@@ -2605,6 +2605,17 @@
       "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
     },
     {
+      "segment": "NMASD-NITZA",
+      "from": "NMASD",
+      "to": "NITZA",
+      "inboundAltitude": 800,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "distanceNm": 7.1,
+      "crop": "/tmp/navaid-altitude-extract/NMASD_NITZA.png",
+      "evidence": "Maintainer correction for a direct NMASD to NITZA leg missed by shortcut-altitude inference: use 800 from NMASD to NITZA and 1200 for the return."
+    },
+    {
       "segment": "PELEG-SAHAR",
       "from": "PELEG",
       "to": "SAHAR",

@@ -2489,6 +2489,15 @@
       "source": "cvfr-map airway adjacency"
     },
     {
+      "from": "NMASD",
+      "to": "NITZA",
+      "distanceNm": 7.1,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "source": "maintainer correction"
+    },
+    {
       "from": "PELEG",
       "to": "SAHAR",
       "distanceNm": 4.8,
