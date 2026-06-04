@@ -150,6 +150,7 @@ async function loadLegAltitudes() {
       m[legAltitudeKey(segment.from, segment.to)] = {
         from: segment.from,
         to: segment.to,
+        distanceNm: segment.distanceNm,
         inboundAltitude: segment.inboundAltitude,
         outboundAltitude: segment.outboundAltitude,
         oneWay: segment.oneWay === true,
