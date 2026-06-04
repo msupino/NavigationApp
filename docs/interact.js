@@ -857,7 +857,7 @@ function appendFreqEdit(body, note, editOptions) {
   freqLbl.textContent = S.commChangeFreq || 'Frequency';
   freqRow.appendChild(freqLbl);
   const freqControl = document.createElement('div');
-  freqControl.className = 'freq-control';
+  freqControl.className = 'commchange-freq-controls';
   freqInput = document.createElement('input');
   freqInput.className = 'freq-input';
   if (typeof commConfigureFreqInput === 'function') {
