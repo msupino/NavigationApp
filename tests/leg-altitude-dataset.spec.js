@@ -190,6 +190,21 @@ test.describe('leg-altitude.json scaffold', () => {
       inboundAltitude: 800,
       outboundAltitude: 1200,
     });
+    expect(byName.get('HTZUK-RIDNG')).toMatchObject({
+      inboundAltitude: 800,
+      outboundAltitude: 1200,
+      source: 'route template correction',
+    });
+    expect(byName.get('SFAIM-HTZUK')).toMatchObject({
+      inboundAltitude: 800,
+      outboundAltitude: 1600,
+      source: 'route template correction',
+    });
+    expect(byName.get('SFAIM-RIDNG')).toMatchObject({
+      inboundAltitude: 800,
+      outboundAltitude: 1600,
+      source: 'route template correction',
+    });
     expect(byName.get('MRISN-NTAIM')).toMatchObject({
       inboundAltitude: 1200,
       outboundAltitude: 1200,
@@ -220,6 +235,31 @@ test.describe('leg-altitude.json scaffold', () => {
       inboundAltitude: 800,
       outboundAltitude: 1200,
       source: 'maintainer correction',
+    });
+    expect(byName.get('BOVED-NTAIM')).toMatchObject({
+      inboundAltitude: 1200,
+      outboundAltitude: 800,
+      source: 'route template correction',
+    });
+    expect(byName.get('HODYA-NITZA')).toMatchObject({
+      inboundAltitude: 2000,
+      outboundAltitude: 1500,
+      source: 'route template correction',
+    });
+    expect(byName.get('HODYA-REVAH')).toMatchObject({
+      inboundAltitude: 1500,
+      outboundAltitude: 2000,
+      source: 'route template correction',
+    });
+    expect(byName.get('SOVAL-MINGV')).toMatchObject({
+      inboundAltitude: 2500,
+      outboundAltitude: 3000,
+      source: 'route template correction',
+    });
+    expect(byName.get('TYONA-NTAIM')).toMatchObject({
+      inboundAltitude: 800,
+      outboundAltitude: 1200,
+      source: 'route template correction',
     });
     expect(byName.get('OLGAH-PELEG')).toMatchObject({
       inboundAltitude: 800,

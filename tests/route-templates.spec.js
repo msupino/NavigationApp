@@ -11,15 +11,11 @@ function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
-function routeAltitudeOk(value) {
-  return value === null || value === 'NaN' ||
-    (typeof value === 'number' && Number.isFinite(value));
-}
-
 function routeSnapshotScript() {
   return {
     waypoints: state.waypoints.map(w => w.name),
     speeds: state.legs.map(l => [l.flightSpeed, l.outboundSpeed]),
+    auto: state.legs.map(l => l._legAltitudeAuto === 1),
     alts: state.legs.map(l => [
       Number.isNaN(l.inboundAltitude) ? 'NaN' : l.inboundAltitude,
       Number.isNaN(l.outboundAltitude) ? 'NaN' : l.outboundAltitude,
@@ -48,7 +44,7 @@ async function boot(page, lang = 'en') {
 }
 
 test.describe('route templates', () => {
-  test('dataset templates reference known points and complete leg lists', async () => {
+  test('dataset templates reference known points and keep altitude data shared', async () => {
     const data = readJson(TEMPLATES_PATH);
     const airfields = readJson(AIRFIELDS_PATH).airfields;
     const navWp = readJson(NAV_WP_PATH).waypoints;
@@ -73,12 +69,8 @@ test.describe('route templates', () => {
       expect(Number.isFinite(template.defaultSpeed)).toBe(true);
       expect(template.defaultSpeed).toBeGreaterThan(0);
       expect(template.waypoints.length).toBeGreaterThan(1);
-      expect(template.legs.length).toBe(template.waypoints.length - 1);
+      expect(Object.prototype.hasOwnProperty.call(template, 'legs')).toBe(false);
       for (const code of template.waypoints) expect(known.has(code)).toBe(true);
-      for (const leg of template.legs) {
-        expect(routeAltitudeOk(leg.inboundAltitude)).toBe(true);
-        expect(routeAltitudeOk(leg.outboundAltitude)).toBe(true);
-      }
     }
   });
 
@@ -100,6 +92,7 @@ test.describe('route templates', () => {
       'BOREN', 'HOTRM', 'DAROM', 'GALIM', 'LLHA',
     ]);
     expect(route.speeds.every(([a, b]) => a === 115 && b === 115)).toBe(true);
+    expect(route.auto.every(Boolean)).toBe(true);
     expect(route.alts[0]).toEqual([800, 1200]);
     expect(route.alts[6]).toEqual([1500, 1000]);
     expect(route.notes).toEqual(expect.arrayContaining([
@@ -135,6 +128,8 @@ test.describe('route templates', () => {
         'DUMIM', 'YRIHO', 'ALMOG', 'ZUKIM', 'SHALM', 'ENGDI', 'LLMZ'],
       alts: {
         0: [1200, 'NaN'],
+        1: [800, 1600],
+        4: [800, 1200],
         14: [4500, 5000],
         15: [3500, 4000],
         16: [3500, 4000],
@@ -153,9 +148,10 @@ test.describe('route templates', () => {
         'NOAAM', 'BKAMA', 'SOVAL', 'MINGV', 'NASIH', 'LLBS'],
       alts: {
         0: [1200, 'NaN'],
-        6: [1200, 800],
-        12: [2000, 2500],
-        17: [2500, 'NaN'],
+        1: [800, 1600],
+        6: [800, 1200],
+        12: [1500, 2000],
+        17: [2500, 3000],
         19: [2000, 3000],
       },
       notes: [
@@ -171,9 +167,11 @@ test.describe('route templates', () => {
         'TYONA', 'CLORE', 'RIDNG', 'HTZUK', 'KNTRY', 'LLHZ'],
       alts: {
         0: [3000, 2000],
-        6: [2500, 2000],
-        13: [800, 1200],
-        17: [1600, 800],
+        2: [3000, 2500],
+        6: [2000, 1500],
+        7: [2000, 1500],
+        13: [1200, 800],
+        17: [1200, 800],
         19: [1200, 'NaN'],
       },
       notes: [
@@ -192,6 +190,7 @@ test.describe('route templates', () => {
         4: [4000, 3500],
         5: [4000, 3500],
         6: [5000, 4500],
+        19: [1200, 800],
         21: [1200, 'NaN'],
       },
       notes: [
@@ -212,6 +211,7 @@ test.describe('route templates', () => {
 
       expect(route.waypoints).toEqual(templateCase.waypoints);
       expect(route.speeds.every(([a, b]) => a === 105 && b === 105)).toBe(true);
+      expect(route.auto.every(Boolean)).toBe(true);
       for (const [index, alts] of Object.entries(templateCase.alts)) {
         expect(route.alts[Number(index)]).toEqual(alts);
       }

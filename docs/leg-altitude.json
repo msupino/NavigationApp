@@ -2017,9 +2017,9 @@
       "to": "RIDNG",
       "distanceNm": 2.3,
       "inboundAltitude": 800,
-      "outboundAltitude": 1600,
+      "outboundAltitude": 1200,
       "status": "candidate",
-      "source": "cvfr-map airway adjacency"
+      "source": "route template correction"
     },
     {
       "from": "CLORE",
@@ -2473,10 +2473,10 @@
       "from": "BOVED",
       "to": "NTAIM",
       "distanceNm": 1.5,
-      "inboundAltitude": 800,
-      "outboundAltitude": 1200,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 800,
       "status": "candidate",
-      "source": "cvfr-map airway adjacency"
+      "source": "route template correction"
     },
     {
       "from": "BOVED",
@@ -2727,19 +2727,55 @@
       "from": "HODYA",
       "to": "REVAH",
       "distanceNm": 4.6,
-      "inboundAltitude": 2000,
-      "outboundAltitude": 2500,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
       "status": "candidate",
-      "source": "cvfr-map airway adjacency"
+      "source": "route template correction"
     },
     {
       "from": "HODYA",
       "to": "NITZA",
       "distanceNm": 4.9,
-      "inboundAltitude": 2500,
-      "outboundAltitude": 2000,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
       "status": "candidate",
-      "source": "cvfr-map airway adjacency"
+      "source": "route template correction"
+    },
+    {
+      "from": "SFAIM",
+      "to": "HTZUK",
+      "distanceNm": 4.2,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1600,
+      "status": "candidate",
+      "source": "route template correction"
+    },
+    {
+      "from": "SFAIM",
+      "to": "RIDNG",
+      "distanceNm": 6.4,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1600,
+      "status": "candidate",
+      "source": "route template correction"
+    },
+    {
+      "from": "SOVAL",
+      "to": "MINGV",
+      "distanceNm": 3.1,
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "source": "route template correction"
+    },
+    {
+      "from": "TYONA",
+      "to": "NTAIM",
+      "distanceNm": 4.6,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "source": "route template correction"
     }
   ],
   "directionPool": [
@@ -5196,7 +5232,7 @@
     {
       "from": "RIDNG",
       "to": "HTZUK",
-      "altitude": 1600,
+      "altitude": 1200,
       "segment": "HTZUK-RIDNG",
       "field": "outboundAltitude"
     },
@@ -5812,14 +5848,14 @@
     {
       "from": "BOVED",
       "to": "NTAIM",
-      "altitude": 800,
+      "altitude": 1200,
       "segment": "BOVED-NTAIM",
       "field": "inboundAltitude"
     },
     {
       "from": "NTAIM",
       "to": "BOVED",
-      "altitude": 1200,
+      "altitude": 800,
       "segment": "BOVED-NTAIM",
       "field": "outboundAltitude"
     },
@@ -6162,29 +6198,85 @@
     {
       "from": "HODYA",
       "to": "REVAH",
-      "altitude": 2000,
+      "altitude": 1500,
       "segment": "HODYA-REVAH",
       "field": "inboundAltitude"
     },
     {
       "from": "REVAH",
       "to": "HODYA",
-      "altitude": 2500,
+      "altitude": 2000,
       "segment": "HODYA-REVAH",
       "field": "outboundAltitude"
     },
     {
       "from": "HODYA",
       "to": "NITZA",
-      "altitude": 2500,
+      "altitude": 2000,
       "segment": "HODYA-NITZA",
       "field": "inboundAltitude"
     },
     {
       "from": "NITZA",
       "to": "HODYA",
-      "altitude": 2000,
+      "altitude": 1500,
       "segment": "HODYA-NITZA",
+      "field": "outboundAltitude"
+    },
+    {
+      "from": "SFAIM",
+      "to": "HTZUK",
+      "altitude": 800,
+      "segment": "SFAIM-HTZUK",
+      "field": "inboundAltitude"
+    },
+    {
+      "from": "HTZUK",
+      "to": "SFAIM",
+      "altitude": 1600,
+      "segment": "SFAIM-HTZUK",
+      "field": "outboundAltitude"
+    },
+    {
+      "from": "SFAIM",
+      "to": "RIDNG",
+      "altitude": 800,
+      "segment": "SFAIM-RIDNG",
+      "field": "inboundAltitude"
+    },
+    {
+      "from": "RIDNG",
+      "to": "SFAIM",
+      "altitude": 1600,
+      "segment": "SFAIM-RIDNG",
+      "field": "outboundAltitude"
+    },
+    {
+      "from": "SOVAL",
+      "to": "MINGV",
+      "altitude": 2500,
+      "segment": "SOVAL-MINGV",
+      "field": "inboundAltitude"
+    },
+    {
+      "from": "MINGV",
+      "to": "SOVAL",
+      "altitude": 3000,
+      "segment": "SOVAL-MINGV",
+      "field": "outboundAltitude"
+    },
+    {
+      "from": "TYONA",
+      "to": "NTAIM",
+      "altitude": 800,
+      "segment": "TYONA-NTAIM",
+      "field": "inboundAltitude"
+    },
+    {
+      "from": "NTAIM",
+      "to": "TYONA",
+      "altitude": 1200,
+      "segment": "TYONA-NTAIM",
       "field": "outboundAltitude"
     }
   ]

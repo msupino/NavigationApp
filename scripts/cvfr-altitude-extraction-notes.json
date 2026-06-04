@@ -2070,11 +2070,11 @@
       "from": "HTZUK",
       "to": "RIDNG",
       "inboundAltitude": 800,
-      "outboundAltitude": 1600,
+      "outboundAltitude": 1200,
       "status": "candidate",
       "distanceNm": 2.3,
       "crop": "/tmp/navaid-altitude-extract/HTZUK_RIDNG.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Promoted from maintainer route-template altitude payloads before stripping embedded template legs. Current route direction values are authoritative; return-side values fill only directions that were not already known in the shared altitude table."
     },
     {
       "segment": "CLORE-TYONA",
@@ -2586,12 +2586,12 @@
       "segment": "BOVED-NTAIM",
       "from": "BOVED",
       "to": "NTAIM",
-      "inboundAltitude": 800,
-      "outboundAltitude": 1200,
+      "inboundAltitude": 1200,
+      "outboundAltitude": 800,
       "status": "candidate",
       "distanceNm": 1.5,
       "crop": "/tmp/navaid-altitude-extract/BOVED_NTAIM.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Promoted from maintainer route-template altitude payloads before stripping embedded template legs. Current route direction values are authoritative; return-side values fill only directions that were not already known in the shared altitude table."
     },
     {
       "segment": "BOVED-NAGID",
@@ -2861,23 +2861,67 @@
       "segment": "HODYA-REVAH",
       "from": "HODYA",
       "to": "REVAH",
-      "inboundAltitude": 2000,
-      "outboundAltitude": 2500,
+      "inboundAltitude": 1500,
+      "outboundAltitude": 2000,
       "status": "candidate",
       "distanceNm": 4.6,
       "crop": "/tmp/navaid-altitude-extract/HODYA_REVAH.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Promoted from maintainer route-template altitude payloads before stripping embedded template legs. Current route direction values are authoritative; return-side values fill only directions that were not already known in the shared altitude table."
     },
     {
       "segment": "HODYA-NITZA",
       "from": "HODYA",
       "to": "NITZA",
-      "inboundAltitude": 2500,
-      "outboundAltitude": 2000,
+      "inboundAltitude": 2000,
+      "outboundAltitude": 1500,
       "status": "candidate",
       "distanceNm": 4.9,
       "crop": "/tmp/navaid-altitude-extract/HODYA_NITZA.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Promoted from maintainer route-template altitude payloads before stripping embedded template legs. Current route direction values are authoritative; return-side values fill only directions that were not already known in the shared altitude table."
+    },
+    {
+      "segment": "SFAIM-HTZUK",
+      "crop": "/tmp/navaid-altitude-extract/SFAIM_HTZUK.png",
+      "from": "SFAIM",
+      "to": "HTZUK",
+      "inboundAltitude": 800,
+      "outboundAltitude": 1600,
+      "status": "candidate",
+      "distanceNm": 4.2,
+      "evidence": "Promoted from maintainer route-template altitude payloads before stripping embedded template legs. Current route direction values are authoritative; return-side values fill only directions that were not already known in the shared altitude table."
+    },
+    {
+      "segment": "SFAIM-RIDNG",
+      "crop": "/tmp/navaid-altitude-extract/SFAIM_RIDNG.png",
+      "from": "SFAIM",
+      "to": "RIDNG",
+      "inboundAltitude": 800,
+      "outboundAltitude": 1600,
+      "status": "candidate",
+      "distanceNm": 6.4,
+      "evidence": "Promoted from maintainer route-template altitude payloads before stripping embedded template legs. Current route direction values are authoritative; return-side values fill only directions that were not already known in the shared altitude table."
+    },
+    {
+      "segment": "SOVAL-MINGV",
+      "crop": "/tmp/navaid-altitude-extract/SOVAL_MINGV.png",
+      "from": "SOVAL",
+      "to": "MINGV",
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "candidate",
+      "distanceNm": 3.1,
+      "evidence": "Promoted from maintainer route-template altitude payloads before stripping embedded template legs. Current route direction values are authoritative; return-side values fill only directions that were not already known in the shared altitude table."
+    },
+    {
+      "segment": "TYONA-NTAIM",
+      "crop": "/tmp/navaid-altitude-extract/TYONA_NTAIM.png",
+      "from": "TYONA",
+      "to": "NTAIM",
+      "inboundAltitude": 800,
+      "outboundAltitude": 1200,
+      "status": "candidate",
+      "distanceNm": 4.6,
+      "evidence": "Promoted from maintainer route-template altitude payloads before stripping embedded template legs. Current route direction values are authoritative; return-side values fill only directions that were not already known in the shared altitude table."
     }
   ]
 }
