@@ -508,9 +508,8 @@ function normalizeRouteTemplateData(data) {
         template.legs.length !== template.waypoints.length - 1) continue;
     const defaultSpeed = Number(template.defaultSpeed);
     if (!Number.isFinite(defaultSpeed) || defaultSpeed <= 0) continue;
-    let ok = true;
     const waypoints = template.waypoints.map(code => String(code || '').trim().toUpperCase());
-    ok = waypoints.every(Boolean);
+    let ok = waypoints.every(Boolean);
     for (const leg of template.legs) {
       if (!leg || typeof leg !== 'object' ||
           !routeTemplateAltitudeOk(leg.inboundAltitude) ||
