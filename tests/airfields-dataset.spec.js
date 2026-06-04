@@ -36,12 +36,13 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     const d = loadData();
     expect(Array.isArray(d.airfields)).toBe(true);
     // 26 chart ARP rows — 1 dropped (second LLNV row, see Anomalies
-    // in the PR body: chart prints LLNV twice for Nevatim+Negev) and
-    // LLEV (Sde Dov) dropped as a closed aerodrome; LLMZ (Bar Yehuda /
-    // Masada) added as an airfield (it carries BYOP plates); LLAR (Arad)
-    // re-added — its מנחת ערד ARP still prints on the CVFR map and it
-    // retains its BYOP plates.
-    expect(d.airfields.length).toBe(26);
+    // in the PR body: chart prints LLNV twice for Nevatim+Negev); LLEV
+    // (עין ורד / Ein Vered) is an active ARP on the chart and is kept (it
+    // had been mis-dropped earlier as the closed Sde Dov — that is LLSD);
+    // LLMZ (Bar Yehuda / Masada) added as an airfield (it carries BYOP
+    // plates); LLAR (Arad) re-added — its מנחת ערד ARP still prints on the
+    // CVFR map and it retains its BYOP plates.
+    expect(d.airfields.length).toBe(27);
   });
 
   test('every entry carries name + he + lat + lng', async () => {
