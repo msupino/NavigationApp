@@ -445,6 +445,7 @@ function findNavWpToken(token) {
 async function buildRouteFromQuery(raw) {
   if (navWP === null) await loadNavWaypoints();
   if (airfields === null) await loadAirfields();
+  if (legAltitudeMap === null) await loadLegAltitudes();
   const tokens = raw.split(/\s+/).filter(Boolean);
   if (tokens.length < 2) return false;
   const resolved = [];
@@ -652,8 +653,17 @@ document.getElementById('reverse').onclick = () => {
       outLabel: flipLabel(outOld, d.outLabel),
       cumLabel: flipLabel(cumOld, d.cumLabel),
       cumLabelRet: flipLabel(cumRetOld, d.cumLabelRet),
+      ...(l._legAltitudeAuto ? { _legAltitudeAuto: 1 } : {}),
+      ...(l._legAltitudeKey ? { _legAltitudeKey: l._legAltitudeKey } : {}),
+      ...(l._legAltitudeOutboundBlocked || l._legAltitudeOneWay
+        ? { _legAltitudeInboundBlocked: 1 } : {}),
+      ...(l._legAltitudeInboundBlocked ? {
+        _legAltitudeOutboundBlocked: 1,
+        _legAltitudeOneWay: 1,
+      } : {}),
     };
   });
+  applyLegAltitudesToRoute();
   state.selected = null;
   if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   showInspector(); draw();
@@ -693,6 +703,7 @@ document.getElementById('plan').onclick = () => {
   if (fpOpen) closeFlightPlan(); else showFlightPlan();
 };
 document.getElementById('freq-table').onclick = showFreqTableModal;
+document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
 document.getElementById('charts').onclick = showChartsModal;
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
@@ -1540,15 +1551,28 @@ if (_savedView) {
 draw();
 // Always load nav-waypoints in the background — they power both the
 // overlay toggle and the auto-snap on drop / drag.
-loadNavWaypoints().then(() => { snapExistingWaypoints(); draw(); });
+loadNavWaypoints().then(() => {
+  snapExistingWaypoints();
+  applyLegAltitudesToRoute();
+  draw();
+});
 // Same pattern for airfields: powering both the overlay and snap.
 // Also re-render inspector so plates section appears if a waypoint
 // was restored from sessionStorage before airfields loaded.
 loadAirfields().then(() => {
   snapExistingWaypoints();
+  applyLegAltitudesToRoute();
   if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   draw();
   if (state.selected) showInspector();
+});
+// Leg-altitude green-route altitude table: fills only freshly-created legs, and
+// leaves saved/imported/manual leg values authoritative.
+loadLegAltitudes().then(() => {
+  if (applyLegAltitudesToRoute()) {
+    draw();
+    if (state.selected) showInspector();
+  }
 });
 // Comm-change dataset (issue #399): parallel fetch so the rings appear
 // on first paint and the inspector badge is available immediately for

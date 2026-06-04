@@ -151,6 +151,41 @@ test.describe('Share route link', () => {
     }
   });
 
+  test('unknown NaN altitudes round-trip through the share URL', async ({ page }) => {
+    await page.goto('?lang=en');
+    const url = await page.evaluate(route => {
+      state.waypoints = route.waypoints.slice(0, 2)
+        .map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
+      const d = _defaultLegLabels();
+      state.legs = [{
+        inboundAltitude: NaN,
+        outboundAltitude: NaN,
+        flightSpeed: 90,
+        outboundSpeed: 90,
+        inLabel: d.inLabel,
+        outLabel: d.outLabel,
+        cumLabel: d.cumLabel,
+        cumLabelRet: d.cumLabelRet,
+      }];
+      return buildShareUrl().url;
+    }, ROUTE);
+    expect(new URL(url).searchParams.get('l')).toBe('NaN,NaN,90');
+
+    const { pathname, search } = new URL(url);
+    await page.goto(pathname + search);
+    await page.waitForFunction(() => typeof state !== 'undefined' && state.legs.length === 1);
+    const loaded = await page.evaluate(() => ({
+      inboundUnknown: Number.isNaN(state.legs[0].inboundAltitude),
+      outboundUnknown: Number.isNaN(state.legs[0].outboundAltitude),
+      flightSpeed: state.legs[0].flightSpeed,
+    }));
+    expect(loaded).toEqual({
+      inboundUnknown: true,
+      outboundUnknown: true,
+      flightSpeed: 90,
+    });
+  });
+
   test('Hebrew waypoint names round-trip through the share URL', async ({ page }) => {
     await page.goto('?lang=he');
     const url = await page.evaluate(() => {
