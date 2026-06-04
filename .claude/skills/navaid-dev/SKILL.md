@@ -540,6 +540,21 @@ downloadable `route.json`.
   columns → `lat`/`lng` rounded to 5 dp), and diff for sanity. The
   exact migration is documented in the body of the PR that introduced
   it (#406).
+- `proposed-altitudes.json` — candidate altitude pairs for detected green
+  CVFR route segments. Coordinates are intentionally not duplicated here:
+  segment endpoints resolve by `from` / `to` against `nav-waypoints.json`
+  and `airfields.json`. `inboundAltitude` means `from -> to`;
+  `outboundAltitude` means `to -> from`; `oneWay: true` rows use `null`
+  for the disallowed direction. The extraction/review trail lives in
+  `scripts/cvfr-altitude-extraction.md`, with a machine-readable review ledger
+  in `scripts/cvfr-altitude-extraction-notes.json`. The app loads this file as
+  a runtime reference for freshly-created legs only; saved/imported route leg
+  values stay authoritative, and manual altitude edits clear the auto-fill
+  marker. Equal inbound/outbound values are allowed when the chart publishes
+  the same altitude both directions, including double-ended yellow altitude
+  tags. When refreshing from new PDFs, use the guide's same-route review rules
+  before trusting OCR or nearest yellow signs, especially around Haifa / LLHA,
+  Herzliya, Beer Sheba, the coastal strip, and Arad / Metzada.
 - `comm-change.json` — dataset of CVFR reporting points where pilots
   must change ATC frequency (the `מע.` / `מז.` Hebrew sector callouts
   on the IAA CVFR chart, indicating PLUTO West / PLUTO East / etc.).

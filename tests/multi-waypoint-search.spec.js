@@ -124,6 +124,16 @@ test.describe('Multi-token search route builder (#98)', () => {
     expect(names).toEqual(['LLHZ', 'BAZRA']);
   });
 
+  test('airfield aliases resolve to canonical ICAO codes: HABONIM builds LLBO', async ({ page }) => {
+    await boot(page);
+    await openSearch(page);
+    await page.fill('#wp-search', 'HABONIM BAZRA');
+    await page.locator('#wp-search').press('Enter');
+    await page.waitForFunction(() => state.waypoints.length === 2);
+    const names = await page.evaluate(() => state.waypoints.map(w => w.name));
+    expect(names).toEqual(['LLBO', 'BAZRA']);
+  });
+
   test('autofill: after "LLHZ BAZ" the dropdown offers BAZRA-style matches', async ({ page }) => {
     await boot(page);
     await openSearch(page);

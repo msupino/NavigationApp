@@ -1203,6 +1203,16 @@ html, body {
   padding-bottom: 0;
   border-bottom: 0;
 }
+.charts-alt-section {
+  margin: 0 2px 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #443f3f;
+}
+.charts-alt-section-only {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
 .charts-freq-title {
   display: flex;
   align-items: center;
@@ -1210,7 +1220,19 @@ html, body {
   gap: 8px;
   padding: 2px 4px 6px;
 }
+.charts-alt-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 4px 6px;
+}
 .charts-freq-title h3 {
+  margin: 0;
+  font-size: 13px;
+  color: #e8e8e8;
+}
+.charts-alt-title h3 {
   margin: 0;
   font-size: 13px;
   color: #e8e8e8;
@@ -1226,7 +1248,22 @@ html, body {
   padding: 4px 8px;
   cursor: pointer;
 }
+.charts-alt-copy {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 12px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
 .charts-freq-restore-all:hover:not(:disabled) {
+  color: #fff;
+  background: #3a3636;
+}
+.charts-alt-copy:hover {
   color: #fff;
   background: #3a3636;
 }
@@ -1239,7 +1276,15 @@ html, body {
   color: #b9b3b3;
   font-size: 12px;
 }
+.charts-alt-empty {
+  margin: 4px 6px 0;
+  color: #b9b3b3;
+  font-size: 12px;
+}
 .charts-freq-search-row {
+  padding: 0 4px 8px;
+}
+.charts-alt-search-row {
   padding: 0 4px 8px;
 }
 .charts-freq-search {
@@ -1253,7 +1298,21 @@ html, body {
   border-radius: 4px;
   padding: 5px 8px;
 }
+.charts-alt-search {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 5px 8px;
+}
 .charts-freq-search:focus {
+  outline: 1px solid #1d6fe0;
+}
+.charts-alt-search:focus {
   outline: 1px solid #1d6fe0;
 }
 .charts-freq-table-wrap {
@@ -1262,7 +1321,16 @@ html, body {
   border: 1px solid #393434;
   border-radius: 4px;
 }
+.charts-alt-table-wrap {
+  max-height: 340px;
+  overflow: auto;
+  border: 1px solid #393434;
+  border-radius: 4px;
+}
 .charts-freq-table {
+  margin-bottom: 0;
+}
+.charts-alt-table {
   margin-bottom: 0;
 }
 .charts-freq-table th {
@@ -1270,6 +1338,72 @@ html, body {
   top: 0;
   z-index: 1;
   background: #302c2c;
+}
+.charts-alt-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #302c2c;
+}
+.charts-alt-table tr.one-way,
+.charts-alt-table tbody tr.one-way:hover {
+  background: rgba(255, 217, 102, 0.1);
+}
+.charts-alt-table tr.unknown,
+.charts-alt-table tbody tr.unknown:hover {
+  background: rgba(160, 170, 190, 0.08);
+}
+.charts-alt-pair {
+  color: #fff2a8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+.charts-alt-pair-button {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.charts-alt-pair-button:focus {
+  outline: 1px solid #1d6fe0;
+  outline-offset: 2px;
+}
+.charts-alt-status,
+.charts-alt-distance {
+  color: #b9b3b3;
+  font-size: 12px;
+}
+.charts-alt-table .blocked {
+  color: #ffb4b4;
+}
+.charts-alt-input {
+  width: 74px;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 12px;
+  color: #e8e8e8;
+  background: #2a2626;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 3px 5px;
+}
+.charts-alt-input::placeholder {
+  color: #b9b3b3;
+  opacity: 1;
+}
+.charts-alt-input:focus {
+  outline: 1px solid #1d6fe0;
+}
+.charts-alt-input[aria-invalid="true"] {
+  border-color: #b00020;
+  box-shadow: 0 0 0 1px rgba(176, 0, 32, 0.35);
 }
 .charts-freq-table tr.overridden,
 .charts-freq-table tbody tr.overridden:hover {
@@ -1823,7 +1957,13 @@ body.theme-light .commchange-freq-reset:hover:not(:disabled) {
 body.theme-light .charts-freq-section {
   border-color: #c6ccd6;
 }
+body.theme-light .charts-alt-section {
+  border-color: #c6ccd6;
+}
 body.theme-light .charts-freq-title h3 {
+  color: #1f252c;
+}
+body.theme-light .charts-alt-title h3 {
   color: #1f252c;
 }
 body.theme-light .charts-freq-restore-all,
@@ -1833,7 +1973,17 @@ body.theme-light .charts-freq-input {
   background: #fff;
   border-color: #b8c0cc;
 }
+body.theme-light .charts-alt-copy,
+body.theme-light .charts-alt-search {
+  color: #1f252c;
+  background: #fff;
+  border-color: #b8c0cc;
+}
 body.theme-light .charts-freq-restore-all:hover:not(:disabled) {
+  color: #111820;
+  background: #eef3f9;
+}
+body.theme-light .charts-alt-copy:hover {
   color: #111820;
   background: #eef3f9;
 }
@@ -1841,11 +1991,44 @@ body.theme-light .charts-freq-empty,
 body.theme-light .charts-freq-code {
   color: #6b7280;
 }
+body.theme-light .charts-alt-empty,
+body.theme-light .charts-alt-status,
+body.theme-light .charts-alt-distance {
+  color: #6b7280;
+}
 body.theme-light .charts-freq-table-wrap {
+  border-color: #d2d7df;
+}
+body.theme-light .charts-alt-table-wrap {
   border-color: #d2d7df;
 }
 body.theme-light .charts-freq-table th {
   background: #f4f6f8;
+}
+body.theme-light .charts-alt-table th {
+  background: #f4f6f8;
+}
+body.theme-light .charts-alt-table tr.one-way,
+body.theme-light .charts-alt-table tbody tr.one-way:hover {
+  background: rgba(154, 107, 0, 0.08);
+}
+body.theme-light .charts-alt-table tr.unknown,
+body.theme-light .charts-alt-table tbody tr.unknown:hover {
+  background: rgba(70, 85, 105, 0.06);
+}
+body.theme-light .charts-alt-pair {
+  color: #6f4d00;
+}
+body.theme-light .charts-alt-table .blocked {
+  color: #9d2b2b;
+}
+body.theme-light .charts-alt-input {
+  color: #1f252c;
+  background: #fff;
+  border-color: #b8c0cc;
+}
+body.theme-light .charts-alt-input::placeholder {
+  color: #6b7280;
 }
 body.theme-light .charts-freq-template {
   color: #9a6b00;

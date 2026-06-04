@@ -125,6 +125,53 @@ async function loadCommChange() {
   }
 }
 
+// Lazy-loads docs/leg-altitude.json — { segments:[{from,to,
+// inboundAltitude,outboundAltitude,status,oneWay,...}] }. The app uses it only as
+// a reference table for freshly-created legs; saved/imported route JSON stays
+// authoritative for existing leg values.
+async function loadLegAltitudes() {
+  if (legAltitudeMap !== null) return legAltitudeMap;
+  try {
+    const res = await fetch(S.legAltitudeUrl);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    const verr = validateLegAltitudes(d);
+    if (verr) {
+      console.warn('leg-altitude schema error:', verr);
+      legAltitudeMap = {};
+      legAltitudePointIds = new Set();
+      legAltitudeDataset = null;
+      return legAltitudeMap;
+    }
+    const m = {};
+    const ids = new Set();
+    for (const segment of d.segments) {
+      if (!segment || !segment.from || !segment.to) continue;
+      m[legAltitudeKey(segment.from, segment.to)] = {
+        from: segment.from,
+        to: segment.to,
+        inboundAltitude: segment.inboundAltitude,
+        outboundAltitude: segment.outboundAltitude,
+        oneWay: segment.oneWay === true,
+        status: segment.status || 'candidate',
+      };
+      ids.add(segment.from);
+      ids.add(segment.to);
+    }
+    legAltitudeMap = m;
+    legAltitudePointIds = ids;
+    legAltitudeDataset = d;
+    applyLegAltitudesToRoute();
+    return legAltitudeMap;
+  } catch (e) {
+    console.warn('Failed to load leg-altitude dataset:', e);
+    legAltitudeMap = {};             // graceful degrade — defaults remain
+    legAltitudePointIds = new Set();
+    legAltitudeDataset = null;
+    return legAltitudeMap;
+  }
+}
+
 // Closest nav waypoint within `pxThreshold` screen pixels of `latlng`,
 // or null. Returns the {name, lat, lng} entry from the loaded JSON.
 function nearestNavWaypoint(latlng, pxThreshold) {
@@ -1208,7 +1255,7 @@ function drawLegs() {
 
     drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
-      ang, pad3(magIn), timeStr, String(leg.inboundAltitude),
+      ang, pad3(magIn), timeStr, formatAltitudeValue(leg.inboundAltitude, leg, 'inboundAltitude'),
       tune('inkColor'), yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
     // Cumulative inbound time: < [time], position driven by leg.cumLabel
     // (default: at B waypoint, same perpendicular side as main kite).
@@ -1224,10 +1271,10 @@ function drawLegs() {
         cumInStr, tune('inkColor'), yellowFill(0.80), zoomScale);
     }
 
-    if (showReturn) {
+    if (showReturn && legAllowsReturn(i)) {
       drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
-        pad3(magOut), timeStrOut, String(leg.outboundAltitude),
+        pad3(magOut), timeStrOut, formatAltitudeValue(leg.outboundAltitude, leg, 'outboundAltitude'),
         tune('inkColor'), 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
       if (showCumTime) {
         // Cumulative return time kite at A waypoint (return destination).
@@ -1312,12 +1359,12 @@ function needsHalo(i, which) {
   if (which === 'in') {
     if (i === 0) return false;
     const prev = state.legs[i - 1];
-    return cur.inboundAltitude !== prev.inboundAltitude ||
+    return !sameAltitudeValue(cur.inboundAltitude, prev.inboundAltitude) ||
            cur.flightSpeed     !== prev.flightSpeed;
   }
   if (i === state.legs.length - 1) return false;
   const next = state.legs[i + 1];
-  return cur.outboundAltitude !== next.outboundAltitude ||
+  return !sameAltitudeValue(cur.outboundAltitude, next.outboundAltitude) ||
          cur.outboundSpeed    !== next.outboundSpeed;
 }
 
