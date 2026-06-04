@@ -531,6 +531,19 @@ function showInspector() {
     };
     body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
+    // Reporting-type badge (issue #404). The chart's סוג דיווח class lives
+    // inline on the nav-WP (`report`). Surfaces mandatory (חובה) vs on-request
+    // (דרישה) for a route waypoint that matches a known reporting point.
+    if (typeof reportingFor === 'function') {
+      const rep = reportingFor(wp.name);
+      if (rep === 'mandatory' || rep === 'onRequest') {
+        const row = textRow(S.report || 'Reporting',
+          rep === 'mandatory' ? (S.reportingMandatory || '📍 Mandatory report')
+                              : (S.reportingOnRequest || '📍 Report on request'));
+        row.classList.add('reporting-badge-row');
+        body.appendChild(row);
+      }
+    }
     // Comm-change badge (issue #399). Surfaces the sector / CTR / TMA
     // frequency change associated with a known comm-change reporting
     // point. Looked up by the canonical ICAO name so it works for both

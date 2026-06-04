@@ -1087,6 +1087,19 @@ document.getElementById('navwp-cb').onchange = async e => {
   }
   draw();
 };
+const REPORTING_KEY = 'navaid.showReporting';
+try {
+  const stored = localStorage.getItem(REPORTING_KEY);
+  if (stored !== null) window.showReporting = stored === '1';
+} catch (e) { /* storage unavailable */ }
+document.getElementById('reporting-cb').checked = showReporting;
+document.getElementById('reporting-cb').onchange = async e => {
+  window.showReporting = e.target.checked;
+  try { localStorage.setItem(REPORTING_KEY, showReporting ? '1' : '0'); }
+  catch (err) { /* storage unavailable */ }
+  if (showReporting && navWP === null) await loadNavWaypoints();
+  draw();
+};
 const AIRFIELDS_KEY = 'navaid.showAirfields';
 try {
   const stored = localStorage.getItem(AIRFIELDS_KEY);
