@@ -67,6 +67,14 @@ test.describe('#406 / #410 — nav-waypoints.json (chart-sourced)', () => {
     }
   });
 
+  test('reporting-class split matches the chart (89 mandatory / 83 on-request)', async () => {
+    const d = loadData();
+    const mandatory = d.waypoints.filter(w => w.report === 'mandatory').length;
+    const onRequest = d.waypoints.filter(w => w.report === 'onRequest').length;
+    expect(mandatory).toBe(89);
+    expect(onRequest).toBe(83);
+  });
+
   test('codes are unique', async () => {
     const d = loadData();
     const codes = d.waypoints.map(w => w.name);

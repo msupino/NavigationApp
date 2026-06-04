@@ -1,12 +1,12 @@
 {
-  "_reportType": "Per-waypoint CVFR reporting class from the IAA chart 'סוג דיווח' column: 'mandatory' = חובה, 'onRequest' = דרישה. Source of truth is the published chart waypoint table (same screenshot the names/coords come from). The mandatory/onRequest split for 155 codes was cross-verified against an independent transcription of the same chart (arielbider/cvfr-map, matched by code and by Hebrew name/coords) — verification only; no names, coordinates, or data were imported from it. PROVISIONAL for 17 codes not present in that cross-check (eyeball read of the chart, pending confirmation): ANATA, EITAN, ENGDI, GILAT, IKKEA, MEHOL, MESEK, METAH, MIHMS, MINGV, MZDOT, RANNO, TZHOT, YRIHO, ZRANA, ZURIM, ZYAAR.",
+  "_reportType": "Per-waypoint CVFR reporting class from the IAA chart 'סוג דיווח' column: 'mandatory' = חובה, 'onRequest' = דרישה. Transcribed from the full published chart waypoint table (codes, coordinates, and reporting class). The chart's ARP rows are airfields and live in airfields.json.",
   "waypoints": [
     {
       "name": "ZLHAV",
       "he": "צומת להבים",
       "lat": 31.3725,
       "lng": 34.79333,
-      "report": "onRequest"
+      "report": "mandatory"
     },
     {
       "name": "ZMGID",
@@ -27,7 +27,7 @@
       "he": "צומת נחשון",
       "lat": 31.81556,
       "lng": 34.91694,
-      "report": "onRequest"
+      "report": "mandatory"
     },
     {
       "name": "ARRAD",
@@ -83,7 +83,7 @@
       "he": "צופר",
       "lat": 30.55972,
       "lng": 35.18667,
-      "report": "onRequest"
+      "report": "mandatory"
     },
     {
       "name": "TZHOT",
@@ -125,7 +125,7 @@
       "he": "קלור",
       "lat": 32.05306,
       "lng": 34.73583,
-      "report": "mandatory"
+      "report": "onRequest"
     },
     {
       "name": "REVAH",
@@ -146,7 +146,7 @@
       "he": "רידינג",
       "lat": 32.11028,
       "lng": 34.7625,
-      "report": "mandatory"
+      "report": "onRequest"
     },
     {
       "name": "HOVAV",
@@ -342,7 +342,7 @@
       "he": "נווה זוהר",
       "lat": 31.15083,
       "lng": 35.3725,
-      "report": "onRequest"
+      "report": "mandatory"
     },
     {
       "name": "NAHLA",
@@ -363,7 +363,7 @@
       "he": "ניצן",
       "lat": 31.72417,
       "lng": 34.57056,
-      "report": "onRequest"
+      "report": "mandatory"
     },
     {
       "name": "NMASD",
@@ -517,7 +517,7 @@
       "he": "צדפה",
       "lat": 31.78167,
       "lng": 34.59972,
-      "report": "onRequest"
+      "report": "mandatory"
     },
     {
       "name": "ZASHD",
@@ -594,7 +594,7 @@
       "he": "וינגייט",
       "lat": 32.25556,
       "lng": 34.81694,
-      "report": "mandatory"
+      "report": "onRequest"
     },
     {
       "name": "ZHRYA",
@@ -608,7 +608,7 @@
       "he": "חדרה",
       "lat": 32.46472,
       "lng": 34.91222,
-      "report": "onRequest"
+      "report": "mandatory"
     },
     {
       "name": "HOLOT",
@@ -692,7 +692,7 @@
       "he": "ים פלמחים",
       "lat": 31.915,
       "lng": 34.45833,
-      "report": "onRequest"
+      "report": "mandatory"
     },
     {
       "name": "YASFA",
@@ -811,7 +811,7 @@
       "he": "ליעד",
       "lat": 31.95833,
       "lng": 34.515,
-      "report": "onRequest"
+      "report": "mandatory"
     },
     {
       "name": "MMORR",
@@ -895,14 +895,14 @@
       "he": "אוהלים",
       "lat": 31.19111,
       "lng": 34.80472,
-      "report": "onRequest"
+      "report": "mandatory"
     },
     {
       "name": "OLGAH",
       "he": "אולגה",
       "lat": 32.43139,
       "lng": 34.86583,
-      "report": "onRequest"
+      "report": "mandatory"
     },
     {
       "name": "OFKIM",
@@ -937,7 +937,7 @@
       "he": "איקאה",
       "lat": 31.95139,
       "lng": 34.77028,
-      "report": "mandatory"
+      "report": "onRequest"
     },
     {
       "name": "ALUMT",
@@ -979,7 +979,7 @@
       "he": "אפולוניה",
       "lat": 32.19111,
       "lng": 34.79722,
-      "report": "mandatory"
+      "report": "onRequest"
     },
     {
       "name": "AFFEK",
@@ -1000,14 +1000,14 @@
       "he": "ארנה",
       "lat": 32.16472,
       "lng": 34.78556,
-      "report": "mandatory"
+      "report": "onRequest"
     },
     {
       "name": "NASIH",
       "he": "אשל הנשיא",
       "lat": 31.33028,
       "lng": 34.69833,
-      "report": "onRequest"
+      "report": "mandatory"
     },
     {
       "name": "ESTOL",
@@ -1035,7 +1035,7 @@
       "he": "בית אורן",
       "lat": 32.71444,
       "lng": 34.97083,
-      "report": "mandatory"
+      "report": "onRequest"
     },
     {
       "name": "GOVRN",
@@ -1049,7 +1049,7 @@
       "he": "בית חנינא",
       "lat": 31.83028,
       "lng": 35.2075,
-      "report": "onRequest"
+      "report": "mandatory"
     },
     {
       "name": "BOVED",
@@ -1070,7 +1070,7 @@
       "he": "בית קמה",
       "lat": 31.44167,
       "lng": 34.76556,
-      "report": "onRequest"
+      "report": "mandatory"
     },
     {
       "name": "BSEMS",
