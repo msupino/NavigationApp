@@ -7,6 +7,7 @@ window.S = {
   airfieldLabelField: 'he',
   commChangeUrl: 'comm-change.json?v=1',
   legAltitudeUrl: 'leg-altitude.json?v=1',
+  routeTemplatesUrl: 'route-templates.json?v=1',
 
   // --- Waypoint terminology -------------------------------------------
   // Mirrors the English cluster in core.js — keep the noun phrase
@@ -29,6 +30,19 @@ window.S = {
   searchReplaceConfirm: 'להחליף את המסלול הנוכחי בציוני הדרך האלה?',
   tbSearchOpen: '🔍 חפש (Ctrl-F)',
   tbSearchOpenTitle: 'פתח את חלון החיפוש (Ctrl/Cmd-F)',
+  tbRouteTemplates: '🧭 תבניות',
+  tbRouteTemplatesTitle: 'בנה מסלול מוכן',
+  routeTemplatesTitle: 'תבניות מסלול',
+  routeTemplateRoute: 'מסלול',
+  routeTemplateSpeed: 'מהירות (קשר)',
+  routeTemplateApply: 'בנה מסלול',
+  routeTemplateEmpty: 'אין תבניות מסלול זמינות',
+  routeTemplateLoadError: 'לא ניתן לטעון תבניות מסלול.',
+  routeTemplateReplaceConfirm: 'להחליף את המסלול הנוכחי בתבנית הזו?',
+  routeTemplateBadSpeed: 'הזן מהירות תקינה בקשרים.',
+  routeTemplateReady: function(name, speed) {
+    return 'תבנית ' + name + ' נטענה במהירות ' + speed + ' קשר';
+  },
   deleteWp: '🗑 מחק ציון דרך (D)',                      // כפתור באינספקטור
   resetWpName: '↺ אפס שם נקודה',                     // כפתור באינספקטור — שם לפי ייחוס או ניקוי (תווית אוטומטית)
   resetWpNameTitle: 'הגדר שם לפי נקודת הייחוס הקרובה (שדה תעופה / ציון ניווט), או נקה כשאין ייחוס סמוך',

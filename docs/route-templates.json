@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "templates": [
+    {
+      "id": "llhz-llha-coastal",
+      "name": "Herzliya to Haifa",
+      "he": "הרצליה לחיפה",
+      "description": "Coastal CVFR route from Herzliya to Haifa.",
+      "heDescription": "מסלול CVFR חופי מהרצליה לחיפה.",
+      "defaultSpeed": 90,
+      "waypoints": [
+        "LLHZ",
+        "BAZRA",
+        "DEROR",
+        "SHARO",
+        "HADRA",
+        "FRDIS",
+        "BOREN",
+        "HOTRM",
+        "DAROM",
+        "GALIM",
+        "LLHA"
+      ],
+      "legs": [
+        { "inboundAltitude": 800, "outboundAltitude": 1200 },
+        { "inboundAltitude": 800, "outboundAltitude": 2000 },
+        { "inboundAltitude": 1500, "outboundAltitude": 2000 },
+        { "inboundAltitude": 1500, "outboundAltitude": 2000 },
+        { "inboundAltitude": 1500, "outboundAltitude": 2000 },
+        { "inboundAltitude": 1500, "outboundAltitude": 2000 },
+        { "inboundAltitude": 1500, "outboundAltitude": 1000 },
+        { "inboundAltitude": 1500, "outboundAltitude": 2000 },
+        { "inboundAltitude": 1500, "outboundAltitude": 2000 },
+        { "inboundAltitude": 1500, "outboundAltitude": 2000 }
+      ],
+      "notes": [
+        {
+          "lat": 32.25722,
+          "lng": 34.98111,
+          "text": "שינוי תדר",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "DEROR",
+          "freqName": "PLUTO_WEST",
+          "freq": "118.40",
+          "freqAuto": true
+        },
+        {
+          "lat": 32.7913,
+          "lng": 34.83327,
+          "text": "שינוי תדר",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "DAROM",
+          "freqName": "HAIFA",
+          "freq": "133.00",
+          "freqAuto": true
+        }
+      ]
+    }
+  ]
+}

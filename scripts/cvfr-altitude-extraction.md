@@ -20,6 +20,22 @@ For each segment, `inboundAltitude` means `from -> to` and
 `outboundAltitude` means `to -> from`. If the app later looks up a route leg
 in the reverse order, swap the stored values.
 
+`docs/leg-altitude.json` also carries a top-level `directionPool` array. Each
+entry is one allowed directed altitude claim, keyed by the source segment and
+source field:
+
+```json
+{ "from": "NMASD", "to": "NITZA", "altitude": 800,
+  "segment": "NMASD-NITZA", "field": "inboundAltitude" }
+```
+
+This keeps the app-compatible pair format while making the chart direction
+explicit for inference and review. Regenerate it after segment edits with:
+
+```sh
+node scripts/sync-leg-altitude-directions.js
+```
+
 Some CVFR paths are one-way. In `docs/leg-altitude.json`, one-way rows
 set `oneWay: true` and use `null` for the disallowed direction; the non-null
 altitude is the allowed direction.
