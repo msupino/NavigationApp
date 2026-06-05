@@ -14,6 +14,40 @@ permissions:
   contents: read
 
 jobs:
+  dev-history:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Ensure dev received one squash-style commit
+        run: |
+          set -e
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.sha }}"
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            RANGE="$AFTER"
+          else
+            RANGE="$BEFORE..$AFTER"
+          fi
+          COUNT=$(git rev-list --count "$RANGE")
+          MERGES=$(git rev-list --merges --count "$RANGE")
+          if [ "$COUNT" -ne 1 ]; then
+            echo "❌ dev must receive exactly one commit per integration. Use squash merge."
+            echo "Received $COUNT commits in $RANGE."
+            exit 1
+          fi
+          if [ "$MERGES" -ne 0 ]; then
+            echo "❌ dev received a merge commit. Use squash merge."
+            git rev-list --merges --oneline "$RANGE"
+            exit 1
+          fi
+          echo "✅ dev received one non-merge commit."
+
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 5
