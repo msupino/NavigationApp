@@ -157,19 +157,19 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await expect(page.locator('.flight-table thead .fp-vor-col').first()).toBeVisible();
   });
 
-  test('bottom-bar radial/DME is gated by the Show VOR toggle', async ({ page }) => {
+  test('bottom-bar radial/DME follows the reference VOR (independent of markers)', async ({ page }) => {
     await boot(page);
     const out = await page.evaluate(async () => {
       await loadVors();
       window.vorRef = 'NAT';
-      window.showVor = false;
-      const off = vorReadoutSuffix(32.4, 34.9);
-      window.showVor = true;
-      const on = vorReadoutSuffix(32.4, 34.9);
-      return { off, on };
+      window.showVor = false;            // markers off — readout still works
+      const refMarkersOff = vorReadoutText(32.4, 34.9);
+      window.vorRef = null;              // no reference → no readout
+      const noRef = vorReadoutText(32.4, 34.9);
+      return { refMarkersOff, noRef };
     });
-    expect(out.off).toBe('');
-    expect(out.on).toMatch(/NAT R-\d{3}° \/ \d/);
+    expect(out.refMarkersOff).toMatch(/NAT R-\d{3}° \/ \d/);
+    expect(out.noRef).toBe('');
   });
 
   test('markers are selectable outside edit mode (VOR / airfield / nav-WP)', async ({ page }) => {

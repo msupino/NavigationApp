@@ -175,13 +175,17 @@ function centerCoordText() {
 }
 // When a reference VOR is selected, append its magnetic radial + DME to the
 // point — turns the readout into a live "radial/DME of any point" tool.
-function vorReadoutSuffix(lat, lng) {
-  if (!showVor || typeof activeVor !== 'function') return '';
+function vorReadoutText(lat, lng) {
+  if (typeof activeVor !== 'function') return '';
   const v = activeVor();
   if (!v) return '';
   const rd = vorRadialDme(v, lat, lng);
   if (!rd) return '';
-  return '   ' + v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme);
+  return v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme);
+}
+function vorReadoutSuffix(lat, lng) {
+  const text = vorReadoutText(lat, lng);
+  return text ? '   ' + text : '';
 }
 function showCoord(latlng) {
   if (gotoEditing) return;
