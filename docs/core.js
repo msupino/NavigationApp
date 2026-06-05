@@ -305,6 +305,12 @@ window.S = Object.assign({
   tbShowVorTitle: 'Overlay Israeli VOR/DME stations and pick a reference for radial/DME',
   vorRefLabel: 'VOR ref',
   vorRefNone: '— none —',
+  vorName: 'Name',
+  vorFreq: 'Frequency',
+  vorUseRef: 'Use as reference VOR',
+  vorRefActive: '✓ Reference VOR (tap to clear)',
+  elevation: 'Elevation',
+  navHebrew: 'Hebrew',
   vorFrom: function(id) { return 'From ' + id; },     // inspector / readout prefix
   vorRadialDme: function(rad, dme) {                  // e.g. "R-263° / 12.4 NM"
     return 'R-' + rad + '° / ' + dme + ' NM';

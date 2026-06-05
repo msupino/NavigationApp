@@ -67,6 +67,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await boot(page);
     await page.evaluate(async () => {
       await loadVors();
+      window.showVor = true;            // the radial row is overlay-gated
       window.vorRef = 'NAT';
       state.waypoints = [
         { lat: 32.46472, lng: 34.91222, name: 'HADRA' },
@@ -79,12 +80,12 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await expect(row).toHaveCount(1);
     await expect(row).toContainText(/NAT/);
     await expect(row).toContainText(/R-\d{3}° \/ \d/);
-    // No reference → no row.
-    await page.evaluate(() => { window.vorRef = null; showInspector(); });
+    // Overlay off → no row even with a reference selected.
+    await page.evaluate(() => { window.showVor = false; showInspector(); });
     await expect(page.locator('#insp-body .vor-radial-row')).toHaveCount(0);
   });
 
-  test('flight plan shows Radial/DME columns + VOR picker with frequency', async ({ page }) => {
+  test('flight plan: VOR picker + frequency, Radial/DME to the leg START', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [
@@ -95,15 +96,112 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     });
     await page.locator('#plan').click();
     await page.locator('.modal-back').waitFor();
-    // Header carries Radial + DME.
     const headers = await page.locator('.flight-table thead th').allTextContents();
     expect(headers).toEqual(expect.arrayContaining(['Radial', 'DME']));
-    // Pick NAT → freq shows, leg radial/DME populate (To = HADRA).
     await page.locator('#fp-vor-select').selectOption('NAT');
     await expect(page.locator('.fp-vor-freq')).toContainText('112.40');
     const radialIdx = headers.indexOf('Radial');
     const firstRow = page.locator('.flight-table tbody tr').first();
-    await expect(firstRow.locator('td').nth(radialIdx)).toHaveText(/^R-\d{3}$/);
-    await expect(firstRow.locator('td').nth(radialIdx + 1)).toHaveText(/^\d+(\.\d)?$/);
+    // Radial/DME are for the leg's START point (A), not the destination.
+    const expected = await page.evaluate(() => {
+      const rd = vorRadialDme(activeVor(), 32.1, 34.85);
+      return { r: 'R-' + rd.radial, d: rd.dme };
+    });
+    await expect(firstRow.locator('td').nth(radialIdx)).toHaveText(expected.r);
+    await expect(firstRow.locator('td').nth(radialIdx + 1)).toHaveText(expected.d);
+  });
+
+  test('flight plan hides the Radial/DME columns when no VOR is selected', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.1, lng: 34.85, name: 'A' },
+        { lat: 32.46, lng: 34.91, name: 'B' },
+      ];
+      syncLegs(); draw();
+    });
+    await page.locator('#plan').click();
+    await page.locator('.modal-back').waitFor();
+    // No VOR → table marked no-vor, Radial header hidden.
+    await expect(page.locator('.flight-table').first()).toHaveClass(/no-vor/);
+    await expect(page.locator('.flight-table thead .fp-vor-col').first()).toBeHidden();
+    // Select a VOR → columns appear.
+    await page.locator('#fp-vor-select').selectOption('NAT');
+    await expect(page.locator('.flight-table').first()).not.toHaveClass(/no-vor/);
+    await expect(page.locator('.flight-table thead .fp-vor-col').first()).toBeVisible();
+  });
+
+  test('bottom-bar radial/DME is gated by the Show VOR toggle', async ({ page }) => {
+    await boot(page);
+    const out = await page.evaluate(async () => {
+      await loadVors();
+      window.vorRef = 'NAT';
+      window.showVor = false;
+      const off = vorReadoutSuffix(32.4, 34.9);
+      window.showVor = true;
+      const on = vorReadoutSuffix(32.4, 34.9);
+      return { off, on };
+    });
+    expect(out.off).toBe('');
+    expect(out.on).toMatch(/NAT R-\d{3}° \/ \d/);
+  });
+
+  test('markers are selectable outside edit mode (VOR / airfield / nav-WP)', async ({ page }) => {
+    await boot(page);
+    // VOR marker hit-test + read-only inspector + "use as reference".
+    const hit = await page.evaluate(async () => {
+      await loadVors();
+      window.showVor = true;
+      map.setView([32.332, 34.968], 10);
+      const s = proj(vorByIdent('NAT'));
+      return hitOverlayMarker(Math.round(s.x), Math.round(s.y));
+    });
+    expect(hit).toMatchObject({ type: 'vor' });
+    await page.evaluate(t => { state.selected = t; showInspector(); }, hit);
+    await expect(page.locator('#insp-title')).toHaveValue('NAT');
+    await expect(page.locator('#insp-body')).toContainText('112.40');
+    const useBtn = page.locator('#insp-body .insp-btn', { hasText: /reference/i });
+    await expect(useBtn).toBeVisible();
+    await useBtn.click();
+    expect(await page.evaluate(() => vorRef)).toBe('NAT');
+
+    // Airfield marker → read-only inspector with coordinates.
+    const afHit = await page.evaluate(async () => {
+      if (typeof loadAirfields === 'function') await loadAirfields();
+      window.showAirfields = true;
+      const af = airfields.find(a => a.name === 'LLHA') || airfields[0];
+      map.setView([af.lat, af.lng], 10);
+      const s = proj(af);
+      return { hit: hitOverlayMarker(Math.round(s.x), Math.round(s.y)), name: af.name };
+    });
+    expect(afHit.hit).toMatchObject({ type: 'airfield' });
+    await page.evaluate(t => { state.selected = t; showInspector(); }, afHit.hit);
+    await expect(page.locator('#insp-title')).toHaveValue(new RegExp(afHit.name));
+  });
+
+  test('markers are NOT selected in add (edit) mode', async ({ page }) => {
+    await boot(page);
+    const hit = await page.evaluate(async () => {
+      await loadVors();
+      window.showVor = true;
+      state.mode = 'add';
+      map.setView([32.332, 34.968], 10);
+      const s = proj(vorByIdent('NAT'));
+      // Simulate the mousedown gate: overlay hit only when not in add/note.
+      return (state.mode !== 'add' && state.mode !== 'note')
+        ? hitOverlayMarker(Math.round(s.x), Math.round(s.y)) : null;
+    });
+    expect(hit).toBeNull();
+  });
+
+  test('route templates are returned sorted alphabetically by name', async ({ page }) => {
+    await boot(page);
+    const out = await page.evaluate(async () => {
+      const list = await loadRouteTemplates();
+      const names = list.map(t => t.name);
+      const sorted = [...names].sort((a, b) => a.localeCompare(b));
+      return { names, sorted };
+    });
+    expect(out.names).toEqual(out.sorted);
   });
 });

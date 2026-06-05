@@ -176,7 +176,7 @@ function centerCoordText() {
 // When a reference VOR is selected, append its magnetic radial + DME to the
 // point — turns the readout into a live "radial/DME of any point" tool.
 function vorReadoutSuffix(lat, lng) {
-  if (typeof activeVor !== 'function') return '';
+  if (!showVor || typeof activeVor !== 'function') return '';
   const v = activeVor();
   if (!v) return '';
   const rd = vorRadialDme(v, lat, lng);
@@ -548,6 +548,8 @@ function normalizeRouteTemplateData(data) {
       notes,
     });
   }
+  // Present templates alphabetically by name (locale-aware).
+  out.sort((a, b) => String(a.name).localeCompare(String(b.name)));
   return out;
 }
 

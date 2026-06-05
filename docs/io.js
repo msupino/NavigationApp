@@ -1155,11 +1155,12 @@ function showFlightPlan() {
   const headers = S.fpHeaders;
   const thead = document.createElement('thead');
   const trH = document.createElement('tr');
-  for (const h of headers) {
+  headers.forEach((h, idx) => {
     const th = document.createElement('th');
     th.textContent = h;
+    if (idx === headers.length - 3 || idx === headers.length - 2) th.classList.add('fp-vor-col');
     trH.appendChild(th);
-  }
+  });
   thead.appendChild(trH);
   table.appendChild(thead);
 
@@ -1280,9 +1281,11 @@ function showFlightPlan() {
     tr.appendChild(cumFuelCell);
     const radialCell = planCell('');
     radialCells[i] = radialCell;
+    radialCell.classList.add('fp-vor-col');
     tr.appendChild(radialCell);
     const dmeCell = planCell('');
     dmeCells[i] = dmeCell;
+    dmeCell.classList.add('fp-vor-col');
     tr.appendChild(dmeCell);
     // Delete-leg button — removes the "To" waypoint and this leg, then
     // reconnects the route. The refreshFlightPlan callback detects the
@@ -1329,13 +1332,15 @@ function showFlightPlan() {
   trF.appendChild(totCumTimeCell);
   totCumFuelCell = planCell('');
   trF.appendChild(totCumFuelCell);
-  trF.appendChild(planCell(''));        // Radial column (empty)
-  trF.appendChild(planCell(''));        // DME column (empty)
+  const totRadial = planCell(''); totRadial.classList.add('fp-vor-col'); trF.appendChild(totRadial);
+  const totDme = planCell(''); totDme.classList.add('fp-vor-col'); trF.appendChild(totDme);
   trF.appendChild(planCell(''));        // Delete column (empty)
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
 
   function refresh() {
+    // Hide the Radial / DME columns entirely when no reference VOR is chosen.
+    table.classList.toggle('no-vor', !(typeof activeVor === 'function' && activeVor()));
     let td = 0, th = 0, tf = 0;
     const ac = aircraft;
     const taxiFuel = ac && ac.taxiGal && isAirport(state.waypoints[0]) ? ac.taxiGal : 0;
@@ -1347,7 +1352,7 @@ function showFlightPlan() {
       distCells[i].textContent = dist.toFixed(1);
       hdgCells[i].textContent = pad3(toMagnetic(brg)) + '°M';
       if (radialCells[i]) {
-        const rc = vorCells(B);
+        const rc = vorCells(A);          // radial/DME to the leg's start point
         radialCells[i].textContent = rc[0];
         dmeCells[i].textContent = rc[1];
       }
@@ -1405,11 +1410,12 @@ function showFlightPlan() {
     rtable.className = 'flight-table';
     const rthead = document.createElement('thead');
     const rtrH = document.createElement('tr');
-    for (const h of headers) {
+    headers.forEach((h, idx) => {
       const th = document.createElement('th');
       th.textContent = h;
+      if (idx === headers.length - 3 || idx === headers.length - 2) th.classList.add('fp-vor-col');
       rtrH.appendChild(th);
-    }
+    });
     rthead.appendChild(rtrH);
     rtable.appendChild(rthead);
 
@@ -1487,9 +1493,11 @@ function showFlightPlan() {
       tr.appendChild(cumFuelCell);
       const radialCell = planCell('');
       rRadialCells[i] = radialCell;
+      radialCell.classList.add('fp-vor-col');
       tr.appendChild(radialCell);
       const dmeCell = planCell('');
       rDmeCells[i] = dmeCell;
+      dmeCell.classList.add('fp-vor-col');
       tr.appendChild(dmeCell);
       tr.appendChild(planCell(''));        // Delete column (empty — forward table only)
       rtbody.appendChild(tr);
@@ -1514,8 +1522,8 @@ function showFlightPlan() {
     rtrF.appendChild(rTotCumTimeCell);
     rTotCumFuelCell = planCell('');
     rtrF.appendChild(rTotCumFuelCell);
-    rtrF.appendChild(planCell(''));        // Radial column (empty)
-    rtrF.appendChild(planCell(''));        // DME column (empty)
+    const rTotRadial = planCell(''); rTotRadial.classList.add('fp-vor-col'); rtrF.appendChild(rTotRadial);
+    const rTotDme = planCell(''); rTotDme.classList.add('fp-vor-col'); rtrF.appendChild(rTotDme);
     rtrF.appendChild(planCell(''));        // Delete column (empty)
     rtfoot.appendChild(rtrF);
     rtable.appendChild(rtfoot);
@@ -1523,6 +1531,7 @@ function showFlightPlan() {
 
     retRefresh = function () {
       if (state.legs.length !== rDistCells.length) { closeFlightPlan(); return; }
+      rtable.classList.toggle('no-vor', !(typeof activeVor === 'function' && activeVor()));
       let td = 0, th = 0, tf = 0;
       const retTaxi = aircraft && aircraft.taxiGal && isAirport(state.waypoints[state.waypoints.length - 1]) ? aircraft.taxiGal : 0;
       if (retTaxi) tf = retTaxi;
@@ -1534,7 +1543,7 @@ function showFlightPlan() {
         rDistCells[i].textContent = dist.toFixed(1);
         rHdgCells[i].textContent = pad3(toMagnetic(brg)) + '°M';
         if (rRadialCells[i]) {
-          const rc = vorCells(B);
+          const rc = vorCells(A);        // radial/DME to the leg's start point
           rRadialCells[i].textContent = rc[0];
           rDmeCells[i].textContent = rc[1];
         }
