@@ -32,8 +32,10 @@ function legDefaultLabelPerp(legLenPx) {
 function draw() {
   octx.clearRect(0, 0, vw(), vh());
   drawNavWaypoints();
+  drawReportingBadges();
   drawCommChangeRings();
   drawAirfields();
+  drawVors();
   drawLegs();
   drawWaypoints();
   drawNotes();
@@ -76,6 +78,7 @@ async function loadNavWaypoints() {
       he: w.he,                          // Hebrew label (English kept for search)
       lat: w.lat,
       lng: w.lng,
+      report: w.report,                  // 'mandatory' | 'onRequest' (issue #404)
     }));
     return navWP;
   } catch (e) {
@@ -369,6 +372,47 @@ async function loadAirfields() {
     return [];
   }
 }
+// --- VOR/DME stations (issue #404 follow-up) ------------------------
+// Lazy-loads docs/vor.json: { vors:[{ ident, name, he?, freq, lat, lng }] }.
+// Used by the overlay markers, the selectable reference for radial/DME
+// readouts, and (later) the flight-plan radial/DME columns.
+async function loadVors() {
+  if (vors !== null) return vors;
+  try {
+    const res = await fetch(S.vorUrl);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    const verr = typeof validateVors === 'function' ? validateVors(d) : null;
+    if (verr) {
+      console.warn('vor schema error:', verr);
+      if (typeof S.errInvalidVors === 'function') alert(S.errInvalidVors(verr));
+      return [];
+    }
+    vors = d.vors.map(v => ({
+      ident: v.ident, name: v.name, he: v.he,
+      freq: v.freq, lat: v.lat, lng: v.lng,
+    }));
+    return vors;
+  } catch (e) {
+    console.warn('Failed to load VORs:', e);
+    return [];
+  }
+}
+function vorByIdent(ident) {
+  if (!ident || !vors) return null;
+  return vors.find(v => v.ident === ident) || null;
+}
+// The currently-selected reference VOR object (or null).
+function activeVor() { return vorByIdent(vorRef); }
+// Magnetic radial FROM the VOR to a point + DME (great-circle nm).
+// Radial is magnetic (VOR radials are defined magnetic; matches the Hdg
+// column). Returns { radial: '263', dme: '12.4' } strings, or null.
+function vorRadialDme(vor, lat, lng) {
+  if (!vor || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const g = geo({ lat: vor.lat, lng: vor.lng }, { lat, lng });
+  if (!g || !Number.isFinite(g.brg) || !Number.isFinite(g.dist)) return null;
+  return { radial: pad3(toMagnetic(g.brg)), dme: g.dist.toFixed(1) };
+}
 
 // Closest airfield within `pxThreshold` screen pixels of `latlng`, or null.
 // Returns the {name, he, en, lat, lng, ...} entry from the loaded JSON.
@@ -498,6 +542,101 @@ function drawNavWaypoints() {
       octx.fillText(label, s.x + labelOffset, s.y);
     }
   }
+  octx.lineWidth = 1;
+}
+
+// VOR/DME station overlay. Each station draws a compass-rose glyph (ring +
+// N/E/S/W ticks + centre dot) with an ident + frequency label. The selected
+// reference VOR is highlighted so it is obvious which one feeds the radial/
+// DME readouts. Gated by the "Show VOR stations" toggle.
+function drawVors() {
+  if (!showVor || !vors || !vors.length) return;
+  const r = tune('vorMarkerRadiusPx');
+  const showLabels = map.getZoom() >= 8;
+  octx.save();
+  octx.textAlign = 'left';
+  octx.textBaseline = 'middle';
+  octx.font = `bold ${tune('vorLabelFontPx')}px sans-serif`;
+  for (const v of vors) {
+    const s = proj(v);
+    const sel = v.ident === vorRef;
+    const col = sel ? tune('vorSelectedColor') : tune('vorMarkerColor');
+    octx.strokeStyle = col;
+    octx.fillStyle = col;
+    octx.lineWidth = tune('vorMarkerWidthPx') * (sel ? 1.6 : 1);
+    octx.beginPath();
+    octx.arc(s.x, s.y, r, 0, Math.PI * 2);
+    octx.stroke();
+    // N/E/S/W ticks just outside the ring.
+    for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
+      octx.beginPath();
+      octx.moveTo(s.x + dx * r, s.y + dy * r);
+      octx.lineTo(s.x + dx * (r + 4), s.y + dy * (r + 4));
+      octx.stroke();
+    }
+    octx.beginPath();
+    octx.arc(s.x, s.y, Math.max(1.5, r * 0.22), 0, Math.PI * 2);
+    octx.fill();
+    if (showLabels) {
+      const label = v.ident + '  ' + v.freq;
+      const lx = s.x + r + 6, ly = s.y;
+      octx.lineWidth = 2.5;
+      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
+      octx.strokeText(label, lx, ly);
+      octx.fillStyle = col;
+      octx.fillText(label, lx, ly);
+    }
+  }
+  octx.restore();
+  octx.lineWidth = 1;
+}
+
+// --- reporting-type overlay (issue #404 / PR #405 design) ------------
+// The CVFR chart's סוג דיווח class lives inline on each nav-waypoint as
+// `report` ('mandatory' = חובה, 'onRequest' = דרישה). reportingFor() resolves
+// a route-waypoint or nav-WP name (English code or Hebrew label) to its class.
+let _reportIndex = null;
+let _reportIndexFor = null;
+function reportingFor(name) {
+  if (!name || !navWP || !navWP.length) return null;
+  if (_reportIndexFor !== navWP) {
+    _reportIndex = Object.create(null);
+    for (const w of navWP) if (w.report) _reportIndex[w.name] = w.report;
+    _reportIndexFor = navWP;
+  }
+  // `name` is guaranteed truthy by the guard above.
+  const key = typeof canonicalNavWaypointName === 'function'
+    ? canonicalNavWaypointName(name) : String(name).trim();
+  return (key && _reportIndex[key]) || null;
+}
+// Small "M" badge on mandatory (חובה) reporting points so they stand out on
+// the chart. Drawn as its own pass — independent of the nav-WP dot overlay —
+// so it tracks the dedicated "Show mandatory reports" toggle. On-request
+// points are not badged (they are the common case); the inspector still
+// reports both classes for any selected waypoint.
+function drawReportingBadges() {
+  if (!showReporting || !navWP || !navWP.length) return;
+  const r = tune('reportBadgeRadiusPx');
+  const off = tune('reportBadgeOffsetPx');
+  octx.save();
+  octx.textAlign = 'center';
+  octx.textBaseline = 'middle';
+  octx.font = `bold ${tune('reportBadgeFontPx')}px sans-serif`;
+  for (const wp of navWP) {
+    if (wp.report !== 'mandatory') continue;
+    const s = proj(wp);
+    const cx = s.x + off, cy = s.y - off;
+    octx.beginPath();
+    octx.arc(cx, cy, r, 0, Math.PI * 2);
+    octx.fillStyle = tune('reportBadgeColor');
+    octx.fill();
+    octx.lineWidth = 1.5;
+    octx.strokeStyle = tune('inkColor');
+    octx.stroke();
+    octx.fillStyle = tune('reportBadgeTextColor');
+    octx.fillText('M', cx, cy + 0.5);
+  }
+  octx.restore();
   octx.lineWidth = 1;
 }
 

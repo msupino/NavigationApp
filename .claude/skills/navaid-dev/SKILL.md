@@ -305,6 +305,12 @@ branch by mistake.
 - **Altitude propagation:** editing a leg's altitude updates the
   adjacent legs that currently share the old value, stopping at the
   first different leg. Inbound walks forward, outbound walks backward.
+- **Route templates never carry altitudes.** `route-templates.json`
+  entries define only waypoints + `defaultSpeed`; leg altitudes are
+  resolved from `leg-altitude.json` (the charted/inferred CVFR pairs).
+  Do not add `inboundAltitude` / `outboundAltitude` to a template — they
+  must come from the altitude dataset so a route stays consistent with
+  the chart. Templates are listed alphabetically by name.
 - **Reverse:** flips waypoint order, swaps each leg's
   inbound/outbound altitude, swap+negates `inLabel` / `outLabel`.
 - **Waypoint-name rotation:** the `⟳` button by "Show waypoint names"
