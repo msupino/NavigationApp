@@ -168,7 +168,6 @@ NavAid.tuningDefaults = {
   vorMarkerColor: { value: '#127a7a', type: 'color', label: 'VOR marker color' },
   vorSelectedColor: { value: '#e67e22', type: 'color', label: 'VOR selected (reference) color' },
   vorLabelFontPx: { value: 10, min: 4, max: 28, step: 1, label: 'VOR label text size' },
-
   reportBadgeRadiusPx: { value: 7, min: 3, max: 20, step: 0.5, label: 'Reporting badge radius' },
   reportBadgeOffsetPx: { value: 9, min: 0, max: 40, step: 1, label: 'Reporting badge offset' },
   reportBadgeFontPx: { value: 9, min: 4, max: 24, step: 1, label: 'Reporting badge text size' },
