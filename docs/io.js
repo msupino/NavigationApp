@@ -1096,6 +1096,54 @@ function showFlightPlan() {
     };
   });
   syncAircraftUI();
+  // Reference VOR picker — drives the per-leg Radial / DME columns. Shares the
+  // global `vorRef` with the map overlay so both stay in sync.
+  const vorWrap = document.createElement('label');
+  vorWrap.className = 'fp-vor';
+  vorWrap.title = S.tbShowVorTitle || '';
+  const vorLbl = document.createElement('span');
+  vorLbl.textContent = (S.fpVorLabel || 'VOR') + ': ';
+  vorWrap.appendChild(vorLbl);
+  const vorSel = document.createElement('select');
+  vorSel.id = 'fp-vor-select';
+  const vorFreqSpan = document.createElement('span');
+  vorFreqSpan.className = 'fp-vor-freq';
+  function fillFpVorSelect() {
+    vorSel.innerHTML = '';
+    const none = document.createElement('option');
+    none.value = ''; none.textContent = S.vorRefNone || '— none —';
+    vorSel.appendChild(none);
+    for (const v of (vors || [])) {
+      const opt = document.createElement('option');
+      opt.value = v.ident;
+      opt.textContent = v.ident + ' · ' + v.name;
+      vorSel.appendChild(opt);
+    }
+    vorSel.value = vorRef || '';
+    const cur = typeof activeVor === 'function' ? activeVor() : null;
+    vorFreqSpan.textContent = cur ? cur.freq + ' MHz' : '';
+  }
+  vorSel.onchange = () => {
+    window.vorRef = vorSel.value || null;
+    try {
+      if (vorRef) localStorage.setItem('navaid.vorRef', vorRef);
+      else localStorage.removeItem('navaid.vorRef');
+    } catch (e) { /* */ }
+    const vs = document.getElementById('vor-ref-select');
+    if (vs) vs.value = vorRef || '';
+    fillFpVorSelect();
+    draw();
+    refresh();
+    if (retRefresh) retRefresh();
+  };
+  vorWrap.appendChild(vorSel);
+  vorWrap.appendChild(vorFreqSpan);
+  fpAircraft.appendChild(vorWrap);
+  if (vors === null && typeof loadVors === 'function') {
+    loadVors().then(() => { fillFpVorSelect(); refresh(); if (retRefresh) retRefresh(); });
+  } else {
+    fillFpVorSelect();
+  }
   box.appendChild(fpAircraft);
 
   const scrollArea = document.createElement('div');
@@ -1161,6 +1209,16 @@ function showFlightPlan() {
   const fuelCells = [];                 // leg index -> fuel (gal) cell
   const cumTimeCells = [];              // leg index -> cumulative time (H:M:S)
   const cumFuelCells = [];            // leg index -> cumulative fuel (gal)
+  const radialCells = [];              // leg index -> VOR radial cell (To wp)
+  const dmeCells = [];                 // leg index -> VOR DME cell (To wp)
+  // Radial (magnetic) + DME of a waypoint from the selected reference VOR.
+  function vorCells(wp) {
+    const v = typeof activeVor === 'function' ? activeVor() : null;
+    const empty = S.fpVorRadialEmpty || '—';
+    if (!v || !wp) return [empty, empty];
+    const rd = vorRadialDme(v, wp.lat, wp.lng);
+    return rd ? ['R-' + rd.radial, rd.dme] : [empty, empty];
+  }
   let totDistCell, totTimeCell, totFuelCell, totCumTimeCell, totCumFuelCell;
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
@@ -1220,6 +1278,12 @@ function showFlightPlan() {
     const cumFuelCell = planCell('');
     cumFuelCells[i] = cumFuelCell;
     tr.appendChild(cumFuelCell);
+    const radialCell = planCell('');
+    radialCells[i] = radialCell;
+    tr.appendChild(radialCell);
+    const dmeCell = planCell('');
+    dmeCells[i] = dmeCell;
+    tr.appendChild(dmeCell);
     // Delete-leg button — removes the "To" waypoint and this leg, then
     // reconnects the route. The refreshFlightPlan callback detects the
     // leg-count change and rebuilds the modal.
@@ -1265,6 +1329,8 @@ function showFlightPlan() {
   trF.appendChild(totCumTimeCell);
   totCumFuelCell = planCell('');
   trF.appendChild(totCumFuelCell);
+  trF.appendChild(planCell(''));        // Radial column (empty)
+  trF.appendChild(planCell(''));        // DME column (empty)
   trF.appendChild(planCell(''));        // Delete column (empty)
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
@@ -1280,6 +1346,11 @@ function showFlightPlan() {
       const { dist, brg } = geo(A, B);
       distCells[i].textContent = dist.toFixed(1);
       hdgCells[i].textContent = pad3(toMagnetic(brg)) + '°M';
+      if (radialCells[i]) {
+        const rc = vorCells(B);
+        radialCells[i].textContent = rc[0];
+        dmeCells[i].textContent = rc[1];
+      }
       const dur = state.legs[i].flightSpeed > 0 ? dist / state.legs[i].flightSpeed : 0;
       td += dist;
       th += dur;
@@ -1351,6 +1422,8 @@ function showFlightPlan() {
     const rFuelCells = [];
     const rCumTimeCells = [];
     const rCumFuelCells = [];
+    const rRadialCells = [];
+    const rDmeCells = [];
     let rTotDistCell, rTotTimeCell, rTotFuelCell, rTotCumTimeCell, rTotCumFuelCell;
 
     for (let i = 0; i < state.legs.length; i++) {
@@ -1412,6 +1485,12 @@ function showFlightPlan() {
       const cumFuelCell = planCell('');
       rCumFuelCells[i] = cumFuelCell;
       tr.appendChild(cumFuelCell);
+      const radialCell = planCell('');
+      rRadialCells[i] = radialCell;
+      tr.appendChild(radialCell);
+      const dmeCell = planCell('');
+      rDmeCells[i] = dmeCell;
+      tr.appendChild(dmeCell);
       tr.appendChild(planCell(''));        // Delete column (empty — forward table only)
       rtbody.appendChild(tr);
     }
@@ -1435,6 +1514,8 @@ function showFlightPlan() {
     rtrF.appendChild(rTotCumTimeCell);
     rTotCumFuelCell = planCell('');
     rtrF.appendChild(rTotCumFuelCell);
+    rtrF.appendChild(planCell(''));        // Radial column (empty)
+    rtrF.appendChild(planCell(''));        // DME column (empty)
     rtrF.appendChild(planCell(''));        // Delete column (empty)
     rtfoot.appendChild(rtrF);
     rtable.appendChild(rtfoot);
@@ -1452,6 +1533,11 @@ function showFlightPlan() {
         const { dist, brg } = geo(A, B);
         rDistCells[i].textContent = dist.toFixed(1);
         rHdgCells[i].textContent = pad3(toMagnetic(brg)) + '°M';
+        if (rRadialCells[i]) {
+          const rc = vorCells(B);
+          rRadialCells[i].textContent = rc[0];
+          rDmeCells[i].textContent = rc[1];
+        }
         const dur = state.legs[ri].outboundSpeed > 0 ? dist / state.legs[ri].outboundSpeed : 0;
         td += dist;
         th += dur;

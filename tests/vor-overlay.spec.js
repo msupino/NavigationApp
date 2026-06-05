@@ -83,4 +83,27 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await page.evaluate(() => { window.vorRef = null; showInspector(); });
     await expect(page.locator('#insp-body .vor-radial-row')).toHaveCount(0);
   });
+
+  test('flight plan shows Radial/DME columns + VOR picker with frequency', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.1, lng: 34.85, name: 'A' },
+        { lat: 32.46472, lng: 34.91222, name: 'HADRA' },
+      ];
+      syncLegs(); draw();
+    });
+    await page.locator('#plan').click();
+    await page.locator('.modal-back').waitFor();
+    // Header carries Radial + DME.
+    const headers = await page.locator('.flight-table thead th').allTextContents();
+    expect(headers).toEqual(expect.arrayContaining(['Radial', 'DME']));
+    // Pick NAT → freq shows, leg radial/DME populate (To = HADRA).
+    await page.locator('#fp-vor-select').selectOption('NAT');
+    await expect(page.locator('.fp-vor-freq')).toContainText('112.40');
+    const radialIdx = headers.indexOf('Radial');
+    const firstRow = page.locator('.flight-table tbody tr').first();
+    await expect(firstRow.locator('td').nth(radialIdx)).toHaveText(/^R-\d{3}$/);
+    await expect(firstRow.locator('td').nth(radialIdx + 1)).toHaveText(/^\d+(\.\d)?$/);
+  });
 });

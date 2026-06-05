@@ -1185,6 +1185,8 @@ if (vorRefSelect) {
     draw();
     if (state.selected) showInspector();
     if (typeof showCenterCoord === 'function') showCenterCoord();
+    // Keep an open flight plan's Radial/DME columns in sync.
+    if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
   };
 }
 // Boot: if the overlay was left on (or a ref was stored), load the dataset.
