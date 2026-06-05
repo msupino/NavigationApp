@@ -1,5 +1,5 @@
 // @ts-check
-// One-off generator for docs/og-preview.jpg (Open Graph / Twitter card
+// One-off generator for docs/assets/og-preview.jpg (Open Graph / Twitter card
 // image, 1200×630). Not part of the regular suite — run on demand:
 //   npx playwright test tests/og-preview.spec.js --reporter=line
 const { test } = require('./_setup');
@@ -25,7 +25,7 @@ const ROUTE = [
 test.describe('Social media preview image', () => {
   test.use({ viewport: { width: 1200, height: 630 } });
 
-  test('docs/og-preview.jpg captured fresh', async ({ page }) => {
+  test('docs/assets/og-preview.jpg captured fresh', async ({ page }) => {
     await page.addInitScript(() => {
       try {
         localStorage.clear(); sessionStorage.clear();
@@ -48,7 +48,7 @@ test.describe('Social media preview image', () => {
     // Wait for tiles to settle.
     await page.waitForTimeout(1500);
     await page.screenshot({
-      path: path.join(__dirname, '..', 'docs', 'og-preview.jpg'),
+      path: path.join(__dirname, '..', 'docs', 'assets', 'og-preview.jpg'),
       type: 'jpeg',
       quality: 85,
       fullPage: false,

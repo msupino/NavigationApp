@@ -1,5 +1,5 @@
 // @ts-check
-// Regression coverage for the docs/airfields.json content (issue #412).
+// Regression coverage for the docs/data/airfields.json content (issue #412).
 //
 // This file was rebuilt from the published IAA CVFR chart waypoint
 // reference table (page 113, 2025 edition, same screenshot that fed
@@ -23,7 +23,7 @@ const { test, expect } = require('./_setup');
 const fs = require('fs');
 const path = require('path');
 
-const JSON_PATH = path.join(__dirname, '..', 'docs', 'airfields.json');
+const JSON_PATH = path.join(__dirname, '..', 'docs', 'data', 'airfields.json');
 
 function loadData() {
   return JSON.parse(fs.readFileSync(JSON_PATH, 'utf8'));

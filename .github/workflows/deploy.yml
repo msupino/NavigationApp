@@ -93,14 +93,14 @@ jobs:
       - name: JS syntax check
         run: |
           set -e
-          for f in docs/core.js docs/draw.js docs/interact.js docs/io.js docs/ui.js docs/sw.js docs/he/strings.js docs/en/strings.js; do
+          for f in docs/app/core.js docs/app/draw.js docs/app/interact.js docs/app/io.js docs/app/ui.js docs/sw.js docs/i18n/he/strings.js docs/i18n/en/strings.js; do
             echo "node --check $f"
             node --check "$f"
           done
       - name: JSON validation
         run: |
           set -e
-          for f in docs/manifest.json docs/nav-waypoints.json; do
+          for f in docs/manifest.json docs/data/nav-waypoints.json; do
             echo "validating $f"
             node -e "JSON.parse(require('fs').readFileSync('$f','utf8'));"
           done
@@ -152,6 +152,24 @@ jobs:
           # data-file ?v= literals in core.js + he/strings.js, and the SW
           # CACHE name) so a single deploy invalidates everything that may
           # have changed in this commit.
+          rewrite_cache_busts() {
+            ROOT=$1
+            SHA=$2
+            CORE="$ROOT/app/core.js"
+            [ -f "$CORE" ] || CORE="$ROOT/core.js"
+            HE_STRINGS="$ROOT/i18n/he/strings.js"
+            [ -f "$HE_STRINGS" ] || HE_STRINGS="$ROOT/he/strings.js"
+            if [ ! -f "$CORE" ]; then
+              echo "::error::Cannot find core.js under $ROOT"
+              exit 1
+            fi
+            sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" "$ROOT/index.html"
+            sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" "$CORE"
+            DATA_FILES="$CORE"
+            if [ -f "$HE_STRINGS" ]; then DATA_FILES="$DATA_FILES $HE_STRINGS"; fi
+            sed -i -E "s/(nav-waypoints|airfields|leg-altitude|route-templates)\.json\?v=[A-Za-z0-9]+/\1.json?v=${SHA}/g" $DATA_FILES
+            sed -i -E "s/const CACHE = 'navaid-[A-Za-z0-9_-]+'/const CACHE = 'navaid-${SHA}'/" "$ROOT/sw.js"
+          }
           for ROOT in "site" "site/staging"; do
             case "$ROOT" in site) SHA="$SHA_M" ;; *) SHA="$SHA_D" ;; esac
             # Keep non-canonical staging out of the search index. Only the
@@ -159,11 +177,7 @@ jobs:
             if [ "$ROOT" = "site/staging" ]; then
               sed -i '0,/<head>/s//<head>\n  <meta name="robots" content="noindex">/' "$ROOT/index.html"
             fi
-            sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" "$ROOT/index.html"
-            sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" "$ROOT/core.js"
-            sed -i -E "s/(nav-waypoints|airfields|leg-altitude|route-templates)\.json\?v=[A-Za-z0-9]+/\1.json?v=${SHA}/g" \
-              "$ROOT/core.js" "$ROOT/he/strings.js"
-            sed -i -E "s/const CACHE = 'navaid-[A-Za-z0-9_-]+'/const CACHE = 'navaid-${SHA}'/" "$ROOT/sw.js"
+            rewrite_cache_busts "$ROOT" "$SHA"
           done
       - name: Checkout open PR branches (preview deployments)
         run: |
@@ -182,6 +196,31 @@ jobs:
           # shellcheck disable=SC2086
           git fetch origin --depth 1 -q $BRANCHES 2>/dev/null || true
 
+          rewrite_cache_busts() {
+            ROOT=$1
+            SHA=$2
+            INDEX="$ROOT/index.html"
+            CORE="$ROOT/app/core.js"
+            [ -f "$CORE" ] || CORE="$ROOT/core.js"
+            HE_STRINGS="$ROOT/i18n/he/strings.js"
+            [ -f "$HE_STRINGS" ] || HE_STRINGS="$ROOT/he/strings.js"
+            if [ -f "$INDEX" ]; then
+              sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" "$INDEX" 2>/dev/null || true
+            fi
+            if [ -f "$CORE" ]; then
+              sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" "$CORE" 2>/dev/null || true
+            fi
+            DATA_FILES=""
+            if [ -f "$CORE" ]; then DATA_FILES="$DATA_FILES $CORE"; fi
+            if [ -f "$HE_STRINGS" ]; then DATA_FILES="$DATA_FILES $HE_STRINGS"; fi
+            if [ -n "$DATA_FILES" ]; then
+              sed -i -E "s/(nav-waypoints|airfields|leg-altitude|route-templates)\.json\?v=[A-Za-z0-9]+/\1.json?v=${SHA}/g" $DATA_FILES 2>/dev/null || true
+            fi
+            if [ -f "$ROOT/sw.js" ]; then
+              sed -i -E "s/const CACHE = 'navaid-[A-Za-z0-9_-]+'/const CACHE = 'navaid-${SHA}'/" "$ROOT/sw.js" 2>/dev/null || true
+            fi
+          }
+
           build_preview() {
             NUM=$1; BRANCH=$2
             echo "== PR #$NUM ($BRANCH) =="
@@ -192,11 +231,7 @@ jobs:
               || { echo "  skip (rev-parse failed)"; rm -rf "$STAGING"; return; }
             # PR/branch previews are non-canonical — keep them out of the index.
             sed -i '0,/<head>/s//<head>\n  <meta name="robots" content="noindex">/' "$STAGING/index.html" 2>/dev/null || true
-            sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" "$STAGING/index.html" 2>/dev/null || true
-            sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" "$STAGING/core.js" 2>/dev/null || true
-            sed -i -E "s/(nav-waypoints|airfields|leg-altitude|route-templates)\.json\?v=[A-Za-z0-9]+/\1.json?v=${SHA}/g" \
-              "$STAGING/core.js" "$STAGING/he/strings.js" 2>/dev/null || true
-            sed -i -E "s/const CACHE = 'navaid-[A-Za-z0-9_-]+'/const CACHE = 'navaid-${SHA}'/" "$STAGING/sw.js" 2>/dev/null || true
+            rewrite_cache_busts "$STAGING" "$SHA"
             # No byop copy under previews — io.js plateBase() resolves plates
             # against the shared root copy at runtime.
             rm -rf "$STAGING/byop"
@@ -318,11 +353,11 @@ jobs:
           # coverage (cache-bust ?v=, version SHA, /pr/N/ subpath URLs, byop
           # base path) while being fully deterministic.
           PREVIEW="_site/pr/$PR_NUM"
-          if [ ! -f "$PREVIEW/core.js" ]; then
+          if [ ! -f "$PREVIEW/app/core.js" ]; then
             echo "::error::No preview at $PREVIEW in the built artifact"; exit 1
           fi
           # Sanity: the built preview must carry this PR's HEAD commit.
-          SHA=$(sed -nE "s/.*version: '1\.0-([A-Za-z0-9]+)'.*/\1/p" "$PREVIEW/core.js")
+          SHA=$(sed -nE "s/.*version: '1\.0-([A-Za-z0-9]+)'.*/\1/p" "$PREVIEW/app/core.js")
           echo "artifact preview SHA=$SHA, PR HEAD=$HEAD_SHA"
           case "$HEAD_SHA" in
             "$SHA"*) echo "Preview matches HEAD" ;;
@@ -332,7 +367,7 @@ jobs:
           SRV=$!
           trap 'kill $SRV 2>/dev/null || true' EXIT
           for i in $(seq 1 20); do
-            curl -sf "http://127.0.0.1:8000/pr/$PR_NUM/core.js" >/dev/null && break
+            curl -sf "http://127.0.0.1:8000/pr/$PR_NUM/app/core.js" >/dev/null && break
             sleep 0.5
           done
           BASE_URL="http://127.0.0.1:8000/pr/$PR_NUM/" EXPECTED_SHA="$SHA" \

@@ -2,8 +2,8 @@
 const { test, expect } = require('./_setup');
 const { LLHZ, LLHA } = require('./_airfieldArp');
 
-// Endpoints from `docs/airfields.json` via `tests/_airfieldArp.js`; CVFR
-// reporting points between them from `docs/nav-waypoints.json` (5 dp).
+// Endpoints from `docs/data/airfields.json` via `tests/_airfieldArp.js`; CVFR
+// reporting points between them from `docs/data/nav-waypoints.json` (5 dp).
 const ROUTE = {
   waypoints: [
     { lat: LLHZ.lat, lng: LLHZ.lng, name: 'LLHZ' },

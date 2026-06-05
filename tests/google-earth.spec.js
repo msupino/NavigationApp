@@ -4,7 +4,7 @@
 // camera positions all carry the same lat/lng sequence as state.waypoints.
 const { test, expect } = require('./_setup');
 const { arp, LLHZ, LLHA } = require('./_airfieldArp');
-const AIRFIELDS = require('../docs/airfields.json').airfields;
+const AIRFIELDS = require('../docs/data/airfields.json').airfields;
 const LLMZ = arp('LLMZ');
 
 const ROUTE = {

@@ -8,7 +8,7 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <meta name="description" content="CVFR Israel map navigation aid for pilots: plan routes on the Israeli aeronautical chart with interactive maps, waypoints, headings, distances and flight-plan tools. תכנון מסלולי CVFR על גבי התרשים האווירי הישראלי.">
   <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
   <meta name="theme-color" content="#231F20">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -18,13 +18,13 @@
   <meta property="og:title" content="NavAid — CVFR Israel Map Navigation Aid &amp; Flight Planner">
   <meta property="og:description" content="CVFR Israel map navigation aid for pilots. Plan routes on the Israeli aeronautical chart with waypoints, headings, distances, times and flight-plan tools.">
   <meta property="og:url" content="https://navaid.supino.org/">
-  <meta property="og:image" content="https://navaid.supino.org/og-preview.jpg">
+  <meta property="og:image" content="https://navaid.supino.org/assets/og-preview.jpg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="NavAid — CVFR Israel Map Navigation Aid &amp; Flight Planner">
   <meta name="twitter:description" content="CVFR Israel map navigation aid for pilots. Plan routes on the Israeli aeronautical chart with waypoints, headings, distances, times and flight-plan tools.">
-  <meta name="twitter:image" content="https://navaid.supino.org/og-preview.jpg">
+  <meta name="twitter:image" content="https://navaid.supino.org/assets/og-preview.jpg">
   <link rel="canonical" href="https://navaid.supino.org/">
   <link rel="alternate" hreflang="he" href="https://navaid.supino.org/?lang=he">
   <link rel="alternate" hreflang="en" href="https://navaid.supino.org/?lang=en">
@@ -37,7 +37,7 @@
     "alternateName": ["CVFR Israel Map Navigation Aid", "NavAid CVFR Planner", "Israel CVFR map", "מתכנן טיסה NavAid"],
     "description": "CVFR Israel map navigation aid for planning routes on the Israeli aeronautical chart — waypoints, headings, distances and times.",
     "url": "https://navaid.supino.org/",
-    "image": "https://navaid.supino.org/og-preview.jpg",
+    "image": "https://navaid.supino.org/assets/og-preview.jpg",
     "applicationCategory": "TravelApplication",
     "applicationSubCategory": "Aviation flight planning",
     "operatingSystem": "Any (web browser)",
@@ -100,7 +100,7 @@
     }
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=153">
+  <link rel="stylesheet" href="app/style.css?v=153">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -429,12 +429,12 @@
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
-        './' + window.__navLang + '/strings.js' + v,
-        'core.js' + v,
-        'draw.js' + v,
-        'interact.js' + v,
-        'io.js' + v,
-        'ui.js' + v
+        'i18n/' + window.__navLang + '/strings.js' + v,
+        'app/core.js' + v,
+        'app/draw.js' + v,
+        'app/interact.js' + v,
+        'app/io.js' + v,
+        'app/ui.js' + v
       ];
       for (var i = 0; i < srcs.length; i++) {
         var s = document.createElement('script');

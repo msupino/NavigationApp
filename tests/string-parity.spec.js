@@ -1,13 +1,13 @@
 // @ts-check
 // Guards EN/HE string parity. English lives in core.js defaults (en/strings.js
-// is empty); Hebrew overrides live in docs/he/strings.js. Every Hebrew key
+// is empty); Hebrew overrides live in docs/i18n/he/strings.js. Every Hebrew key
 // MUST correspond to an English key — a he key with no English counterpart is
 // a stale entry or a typo that silently never renders.
 const { test, expect } = require('./_setup');
 
 async function heKeys(page) {
   return page.evaluate(async () => {
-    const txt = await (await fetch('he/strings.js')).text();
+    const txt = await (await fetch('i18n/he/strings.js')).text();
     const sandbox = {};
     // he/strings.js is `window.S = { ... }`; run it against a fake window.
     new Function('window', txt)(sandbox);

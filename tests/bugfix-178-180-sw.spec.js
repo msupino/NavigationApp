@@ -28,13 +28,13 @@ test.describe('#178 cache-first awaits cache.put', () => {
       await waitForSW(page);
       // Hit a versioned asset and check it's cached the moment fetch resolves.
       const inCache = await page.evaluate(async () => {
-        const url = 'core.js?v=test178';
+        const url = 'app/core.js?v=test178';
         await fetch(url);                  // SW handles + caches
         // If the SW awaits cache.put, the entry exists before we look.
         for (const name of await caches.keys()) {
           const cache = await caches.open(name);
           for (const req of await cache.keys()) {
-            if (req.url.includes('core.js?v=test178')) return true;
+            if (req.url.includes('app/core.js?v=test178')) return true;
           }
         }
         return false;
@@ -51,16 +51,16 @@ test.describe('#179 ?v= pruning awaits cache.delete', () => {
     await waitForSW(page);
     const purged = await page.evaluate(async () => {
       // Seed two old versions, then fetch a third — the SW must delete the old ones.
-      await fetch('core.js?v=oldA');
-      await fetch('core.js?v=oldB');
-      await fetch('core.js?v=newC');
+      await fetch('app/core.js?v=oldA');
+      await fetch('app/core.js?v=oldB');
+      await fetch('app/core.js?v=newC');
       let oldA = false, oldB = false, newC = false;
       for (const name of await caches.keys()) {
         const cache = await caches.open(name);
         for (const req of await cache.keys()) {
-          if (req.url.includes('core.js?v=oldA')) oldA = true;
-          if (req.url.includes('core.js?v=oldB')) oldB = true;
-          if (req.url.includes('core.js?v=newC')) newC = true;
+          if (req.url.includes('app/core.js?v=oldA')) oldA = true;
+          if (req.url.includes('app/core.js?v=oldB')) oldB = true;
+          if (req.url.includes('app/core.js?v=newC')) newC = true;
         }
       }
       return { oldA, oldB, newC };
