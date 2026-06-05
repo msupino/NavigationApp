@@ -48,10 +48,11 @@ test.describe('Auto-snap (applyNavSnap)', () => {
       const nw = navWP[0];
       map.setView([nw.lat, nw.lng], 12);
       const r = applyNavSnap({ lat: nw.lat, lng: nw.lng }, '');
-      return { r, expected: nw[S.navWpSearchField] || nw.name,
+      return { r, expected: nw.name, display: navName(nw.name),
                lat: nw.lat, lng: nw.lng };
     });
     expect(out.r.name).toBe(out.expected);
+    expect(out.display).not.toBe(out.expected);
     expect(out.r.lat).toBeCloseTo(out.lat, 5);
     expect(out.r.lng).toBeCloseTo(out.lng, 5);
   });
@@ -103,7 +104,7 @@ test.describe('Auto-snap (applyNavSnap)', () => {
 
   // #106/#240: force-snap lifts the snap radius to infinity. The old code
   // short-circuited on airfields, so at infinite radius the 16-airfield set
-  // always won and the 173 nav-waypoints became unreachable. A click on a
+  // always won and the 172 nav-waypoints became unreachable. A click on a
   // nav-WP must snap to that nav-WP, not a distant airfield.
   test('force-snap: click on a nav-waypoint snaps to it, not a distant airfield', async ({ page }) => {
     await boot(page);
@@ -121,10 +122,11 @@ test.describe('Auto-snap (applyNavSnap)', () => {
       }
       map.setView([target.lat, target.lng], 10);
       const r = applyNavSnap({ lat: target.lat, lng: target.lng }, '');
-      return { r, expected: target[S.navWpSearchField] || target.name,
+      return { r, expected: target.name, display: navName(target.name),
                lat: target.lat, lng: target.lng };
     });
     expect(out.r.name).toBe(out.expected);
+    expect(out.display).not.toBe(out.expected);
     expect(out.r.lat).toBeCloseTo(out.lat, 5);
     expect(out.r.lng).toBeCloseTo(out.lng, 5);
   });

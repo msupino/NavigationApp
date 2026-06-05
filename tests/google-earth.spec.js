@@ -5,7 +5,13 @@
 const { test, expect } = require('./_setup');
 const { arp, LLHZ, LLHA } = require('./_airfieldArp');
 const AIRFIELDS = require('../docs/data/airfields.json').airfields;
+const NAV_WAYPOINTS = require('../docs/data/nav-waypoints.json').waypoints;
 const LLMZ = arp('LLMZ');
+
+const NAV_EN = new Map(NAV_WAYPOINTS.map(w => [w.name, w.en]));
+function displayName(code) {
+  return NAV_EN.get(code) || code;
+}
 
 const ROUTE = {
   waypoints: [
@@ -158,14 +164,14 @@ test.describe('Google Earth KML export', () => {
     }
   });
 
-  test('Per-waypoint Placemark Points use the same coords and names', async ({ page }) => {
+  test('Per-waypoint Placemark Points use the same coords and displayed names', async ({ page }) => {
     const kml = await captureKml(page);
     const points = parsePlacemarkPoints(kml);
     expect(points).toHaveLength(ROUTE.waypoints.length);
     for (let i = 0; i < ROUTE.waypoints.length; i++) {
       expect(points[i].lat).toBeCloseTo(ROUTE.waypoints[i].lat, 5);
       expect(points[i].lng).toBeCloseTo(ROUTE.waypoints[i].lng, 5);
-      expect(points[i].name).toBe(ROUTE.waypoints[i].name);
+      expect(points[i].name).toBe(displayName(ROUTE.waypoints[i].name));
     }
   });
 

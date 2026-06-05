@@ -54,7 +54,7 @@ function draw() {
 
 // --- nav-waypoint reference overlay ---------------------------------
 // Lazy-loads docs/data/nav-waypoints.json on first activation. Format:
-// { waypoints:[{ name, he, lat, lng }] } — 173 published reporting
+// { waypoints:[{ name, en, he, lat, lng }] } — 172 published reporting
 // points sourced from the IAA CVFR chart page 113 (2025 edition); see
 // issue #406. Validated strictly by validateNavWaypoints() (issue
 // #101): every documented field must be present and well-typed;
@@ -75,7 +75,8 @@ async function loadNavWaypoints() {
     }
     navWP = d.waypoints.map(w => ({
       name: w.name,
-      he: w.he,                          // Hebrew label (English kept for search)
+      en: w.en,                          // English label (name stays canonical code)
+      he: w.he,                          // Hebrew label
       lat: w.lat,
       lng: w.lng,
       report: w.report,                  // 'mandatory' | 'onRequest' (issue #404)
@@ -195,11 +196,13 @@ function nearestNavWaypoint(latlng, pxThreshold) {
   return best;
 }
 
-// True if `name` matches a known nav waypoint (English or Hebrew) — so we
+// True if `name` matches a known nav waypoint (code, English, or Hebrew) — so we
 // treat it as auto-snapped, not user-typed, and may overwrite on drag.
 function isNavName(name) {
   if (!name || !navWP) return false;
-  for (const wp of navWP) if (wp.name === name || wp.he === name) return true;
+  for (const wp of navWP) {
+    if (wp.name === name || wp.en === name || wp.he === name) return true;
+  }
   return false;
 }
 
@@ -208,7 +211,7 @@ function canonicalNavWaypointName(name) {
   if (!s) return '';
   if (navWP) {
     for (const wp of navWP) {
-      if (wp.name === s || wp.he === s) return wp.name;
+      if (wp.name === s || wp.en === s || wp.he === s) return wp.name;
     }
   }
   return s;
@@ -242,13 +245,14 @@ function normalizeWaypointSequenceName(wp) {
 }
 
 // Resolve a stored waypoint name to the current locale. If the stored value
-// is a nav-WP name (either language), return the locale-appropriate version.
+// is a nav-WP name (code or either language), return the locale-appropriate
+// version.
 // User-typed names are returned as-is.
 function navName(stored) {
   if (!stored || !navWP) return stored || '';
   for (const nw of navWP) {
-    if (nw.name === stored || nw.he === stored)
-      return nw[S.navWpSearchField] || nw.name;
+    if (nw.name === stored || nw.en === stored || nw.he === stored)
+      return nw[S.navWpSearchField] || nw.en || nw.name;
   }
   return stored;
 }
@@ -266,7 +270,7 @@ function navName(stored) {
 //    near any):
 //    clear it so the circle reverts to the sequence number.
 // Airfields take priority because they're a much smaller set of strongly-
-// known landmarks (16 vs 173 nav-WPs); if both overlays sit on the same
+// known landmarks (16 vs 172 nav-WPs); if both overlays sit on the same
 // spot the airfield name is the more meaningful identifier.
 function applyNavSnap(latlng, currentName, excludeLl) {
   const EXCL_DEG = 0.0002;
@@ -288,7 +292,7 @@ function applyNavSnap(latlng, currentName, excludeLl) {
   // of click precision.
   // #106: force-snap lifts the radius. Airfield-first priority is fine inside
   // the 18 px radius (both rarely sit there together), but at infinite radius
-  // it would make the 16-airfield set always win and leave the 173 nav-WPs
+  // it would make the 16-airfield set always win and leave the 172 nav-WPs
   // unreachable. So in force-snap mode pick the globally nearest across both
   // visible sets by screen distance instead of short-circuiting on airfields.
   if (window.forceSnap) {
@@ -594,7 +598,7 @@ function drawVors() {
 // --- reporting-type overlay (issue #404 / PR #405 design) ------------
 // The CVFR chart's סוג דיווח class lives inline on each nav-waypoint as
 // `report` ('mandatory' = חובה, 'onRequest' = דרישה). reportingFor() resolves
-// a route-waypoint or nav-WP name (English code or Hebrew label) to its class.
+// a route-waypoint or nav-WP name (code or either locale label) to its class.
 let _reportIndex = null;
 let _reportIndexFor = null;
 function reportingFor(name) {
@@ -916,6 +920,7 @@ function commWaypointNameCandidates(wp) {
     const ref = navWP.find(w => w && canonicalNavWaypointName(w.name) === key);
     if (ref) {
       push(ref.name);
+      push(ref.en);
       push(ref.he);
     }
   }

@@ -41,11 +41,14 @@ test.describe('#406 / #410 — nav-waypoints.json (chart-sourced)', () => {
     expect(d.waypoints.length).toBe(172);
   });
 
-  test('every entry carries name + he + lat + lng', async () => {
+  test('every entry carries name + en + he + lat + lng', async () => {
     const d = loadData();
     for (const w of d.waypoints) {
       expect(typeof w.name).toBe('string');
+      expect(typeof w.en).toBe('string');
       expect(typeof w.he).toBe('string');
+      expect(w.en.trim()).not.toBe('');
+      expect(w.en).not.toBe(w.name);
       expect(typeof w.lat).toBe('number');
       expect(typeof w.lng).toBe('number');
       // Israel rough bounding box — catches accidental column swaps or
@@ -112,10 +115,19 @@ test.describe('#406 / #410 — nav-waypoints.json (chart-sourced)', () => {
     // KUVSH at (31.26444, 34.76361) — ~648 m north of the chart. Both
     // shifts caused ~1° heading drift on cross-country legs that pass
     // through them.
-    expect(bezra).toEqual({ name: 'BEZRA', he: 'בית עזרא',
+    expect(bezra).toEqual({ name: 'BEZRA', en: 'Beit Ezra', he: 'בית עזרא',
                             lat: 31.74139, lng: 34.64583, report: 'mandatory' });
-    expect(kuvsh).toEqual({ name: 'KUVSH', he: 'כובשים',
+    expect(kuvsh).toEqual({ name: 'KUVSH', en: 'Kovshim', he: 'כובשים',
                             lat: 31.25861, lng: 34.76361, report: 'mandatory' });
+  });
+
+  test('English display names are meaningful labels, not only chart codes', async () => {
+    const d = loadData();
+    const byCode = new Map(d.waypoints.map(w => [w.name, w]));
+    expect(byCode.get('SDTYM').en).toBe('Sdot Yam');
+    expect(byCode.get('DEROR').en).toBe('Bnei Dror');
+    expect(byCode.get('NMASD').en).toBe('Ashdod Port');
+    expect(byCode.get('ZLHAV').en).toBe('Lehavim Junction');
   });
 
   // Spot checks that the image-based rebuild (#410) replaced the

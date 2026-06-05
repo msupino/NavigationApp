@@ -1,6 +1,12 @@
 // @ts-check
 const { test, expect } = require('./_setup');
 const { LLHZ, LLHA } = require('./_airfieldArp');
+const NAV_WAYPOINTS = require('../docs/data/nav-waypoints.json').waypoints;
+
+const NAV_EN = new Map(NAV_WAYPOINTS.map(w => [w.name, w.en]));
+function displayName(code) {
+  return NAV_EN.get(code) || code;
+}
 
 // Endpoints from `docs/data/airfields.json` via `tests/_airfieldArp.js`; CVFR
 // reporting points between them from `docs/data/nav-waypoints.json` (5 dp).
@@ -71,13 +77,13 @@ test.describe('Flight plan', () => {
     // From/To cells contain <input> — read their values
     const firstFrom = await fwdRows.nth(0).locator('td').nth(1).locator('input').inputValue();
     const firstTo = await fwdRows.nth(0).locator('td').nth(2).locator('input').inputValue();
-    expect(firstFrom).toBe('LLHZ');
-    expect(firstTo).toBe('BAZRA');
+    expect(firstFrom).toBe(displayName('LLHZ'));
+    expect(firstTo).toBe(displayName('BAZRA'));
 
     const lastFrom = await fwdRows.nth(9).locator('td').nth(1).locator('input').inputValue();
     const lastTo = await fwdRows.nth(9).locator('td').nth(2).locator('input').inputValue();
-    expect(lastFrom).toBe('GALIM');
-    expect(lastTo).toBe('LLHA');
+    expect(lastFrom).toBe(displayName('GALIM'));
+    expect(lastTo).toBe(displayName('LLHA'));
 
     // No return section
     await expect(modal.locator('.flight-plan-sub')).toHaveCount(0);
@@ -483,8 +489,8 @@ test.describe('Flight plan', () => {
     // Leg 3 now connects SHARO(3) → FRDIS(4) (HADRA was removed)
     const fromInp = fwdRows.nth(3).locator('td').nth(1).locator('input');
     const toInp   = fwdRows.nth(3).locator('td').nth(2).locator('input');
-    await expect(fromInp).toHaveValue('SHARO');
-    await expect(toInp).toHaveValue('FRDIS');
+    await expect(fromInp).toHaveValue(displayName('SHARO'));
+    await expect(toInp).toHaveValue(displayName('FRDIS'));
   });
 
   test('delete first leg removes waypoint 1 and reconnects', async ({ page }) => {
@@ -502,8 +508,8 @@ test.describe('Flight plan', () => {
     // Leg 0 becomes LLHZ(0) → DEROR(1)
     const fromInp = fwdRows.nth(0).locator('td').nth(1).locator('input');
     const toInp   = fwdRows.nth(0).locator('td').nth(2).locator('input');
-    await expect(fromInp).toHaveValue('LLHZ');
-    await expect(toInp).toHaveValue('DEROR');
+    await expect(fromInp).toHaveValue(displayName('LLHZ'));
+    await expect(toInp).toHaveValue(displayName('DEROR'));
   });
 
   test('delete last leg removes final waypoint shortens route by 1', async ({ page }) => {
@@ -522,8 +528,8 @@ test.describe('Flight plan', () => {
     // leg 8: GALIM → (removed LLHA), so leg 8 becomes DAROM → GALIM
     const lastFrom = await fwdRows.nth(8).locator('td').nth(1).locator('input').inputValue();
     const lastTo   = await fwdRows.nth(8).locator('td').nth(2).locator('input').inputValue();
-    expect(lastFrom).toBe('DAROM');
-    expect(lastTo).toBe('GALIM');
+    expect(lastFrom).toBe(displayName('DAROM'));
+    expect(lastTo).toBe(displayName('GALIM'));
   });
 
   test('delete leg updates state correctly (waypoints + legs trimmed)', async ({ page }) => {

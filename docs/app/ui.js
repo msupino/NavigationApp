@@ -468,7 +468,12 @@ function findNavWpToken(token) {
   }
   if (navWP && navWP.length) {
     for (const w of navWP) {
-      if ((w.name && w.name.toUpperCase() === up) || (w.he && w.he === token)) {
+      const en = String(w.en || '');
+      const enKey = en.toUpperCase().replace(/[\s_-]+/g, '');
+      const tokenKey = up.replace(/[\s_-]+/g, '');
+      if ((w.name && w.name.toUpperCase() === up) ||
+          (en && (en.toUpperCase() === up || enKey === tokenKey)) ||
+          (w.he && w.he === token)) {
         return w;
       }
     }
@@ -492,7 +497,7 @@ async function buildRouteFromQuery(raw) {
   }
   if ((state.waypoints.length || state.notes.length) &&
       !confirm(S.searchReplaceConfirm)) return false;
-  // Always store the canonical ICAO / English code so all tokens render
+  // Always store the canonical airfield / nav-waypoint code so all tokens render
   // consistently. navName() in interact.js converts it to the locale at
   // display time. Without this, HE-locale autofill would store the
   // Hebrew label for clicked tokens and the English ICAO for typed
@@ -820,6 +825,7 @@ function runSearch() {
   if (navWP && navWP.length) {
     for (const w of navWP) {
       if (w.name.toUpperCase().indexOf(q) >= 0 ||
+          (w.en && w.en.toUpperCase().indexOf(q) >= 0) ||
           (w.he && w.he.indexOf(lastToken) >= 0)) {
         wpHits.push({ kind: 'wp', entry: w });
       }
@@ -842,14 +848,18 @@ function runSearch() {
       alt = (w[afField] || w.en || '');
       if (alt === primary) alt = '';
     } else {
-      primary = w[wpField] || w.name;
-      alt = wpField === 'he' ? w.name : (w.he || '');
+      primary = w[wpField] || w.en || w.name;
+      if (wpField === 'he') {
+        alt = w.name + (w.en ? ' / ' + w.en : '');
+      } else {
+        alt = w.name + (w.he ? ' / ' + w.he : '');
+      }
     }
     item.textContent = alt && alt !== primary ? primary + ' / ' + alt : primary;
     item.onclick = () => {
       if (multi) {
-        // Replace just the last token with the canonical ICAO / English
-        // code — keeps the typed route in a single language. Trailing
+        // Replace just the last token with the canonical code — keeps the
+        // typed route in a single stable identifier set. Trailing
         // space primes the next autocomplete.
         const parts = wpSearch.value.split(/\s+/);
         parts[parts.length - 1] = w.name;
