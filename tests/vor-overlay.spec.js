@@ -69,7 +69,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await boot(page);
     await page.evaluate(async () => {
       await loadVors();
-      window.showVor = true;            // the radial row is overlay-gated
+      window.showVor = false;           // markers off — readout still works
       window.vorRef = 'NAT';
       state.waypoints = [
         { lat: 32.46472, lng: 34.91222, name: 'HADRA' },
@@ -82,8 +82,8 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await expect(row).toHaveCount(1);
     await expect(row).toContainText(/NAT/);
     await expect(row).toContainText(/R-\d{3}° \/ \d/);
-    // Overlay off → no row even with a reference selected.
-    await page.evaluate(() => { window.showVor = false; showInspector(); });
+    // No reference → no row.
+    await page.evaluate(() => { window.vorRef = null; showInspector(); });
     await expect(page.locator('#insp-body .vor-radial-row')).toHaveCount(0);
   });
 

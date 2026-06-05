@@ -483,9 +483,10 @@ function inspLocaleName(o) {
     : (o.en || o.name || o.ident || '');
 }
 
-// Shared "From <VOR>  R-xxx° / yy.y NM" inspector row (overlay-gated).
+// Shared "From <VOR>  R-xxx° / yy.y NM" inspector row. The selected
+// reference VOR drives radial/DME readouts independently of marker visibility.
 function appendVorRadialRow(body, lat, lng) {
-  if (!showVor || typeof activeVor !== 'function') return;
+  if (typeof activeVor !== 'function') return;
   const v = activeVor();
   if (!v) return;
   const rd = vorRadialDme(v, lat, lng);
@@ -710,16 +711,7 @@ function showInspector() {
     };
     body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
-    // Radial + DME from the selected reference VOR (when the overlay is on).
-    if (showVor && typeof activeVor === 'function' && activeVor()) {
-      const v = activeVor();
-      const rd = vorRadialDme(v, wp.lat, wp.lng);
-      if (rd) {
-        const row = textRow(S.vorFrom(v.ident), S.vorRadialDme(rd.radial, rd.dme));
-        row.classList.add('vor-radial-row');
-        body.appendChild(row);
-      }
-    }
+    appendVorRadialRow(body, wp.lat, wp.lng);
     // Reporting-type badge (issue #404). The chart's סוג דיווח class lives
     // inline on the nav-WP (`report`). Surfaces mandatory (חובה) vs on-request
     // (דרישה) for a route waypoint that matches a known reporting point.
