@@ -892,7 +892,7 @@ html, body {
     margin: 0 0 12px;
     color: #111;
     background: #fff;
-    font-size: 10px;
+    font-size: 9px;
     page-break-inside: auto;
   }
   body.printing-plan .flight-table thead {
@@ -907,7 +907,7 @@ html, body {
   }
   body.printing-plan .flight-table th,
   body.printing-plan .flight-table td {
-    padding: 2px 4px;
+    padding: 1px 3px;
     color: #111;
     background: #fff;
     border: 1px solid #555;
@@ -925,6 +925,10 @@ html, body {
   body.printing-plan .flight-table td.fp-del,
   body.printing-plan .flight-table td:last-child:empty {
     display: none !important;
+  }
+  body.printing-plan .flight-table .fp-vor-col {
+    font-size: 8px;
+    padding: 1px 2px;
   }
   body.printing-plan .plan-name,
   body.printing-plan .plan-num {
