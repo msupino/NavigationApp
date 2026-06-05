@@ -470,8 +470,8 @@ function legPairTitle(idx) {
   }
 }
 
-// Current UI language for inspector labels (he shows Hebrew names only,
-// en shows English/code only — no mixed-language strings).
+// Current UI language for inspector labels (Hebrew uses Hebrew labels, English
+// uses English/code labels).
 function inspLang() {
   return (window.__navLang === 'he' ||
     (document.documentElement && document.documentElement.lang === 'he')) ? 'he' : 'en';
@@ -685,10 +685,8 @@ function showInspector() {
     if (!nw) { insp.classList.add('hidden'); return; }
     title.value = nw.name;
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
-    // Single-language: in Hebrew show the Hebrew point name; in English the
-    // code title already is the English label, so no extra row.
     const nwLocale = inspLocaleName(nw);
-    if (nwLocale && nwLocale !== nw.name) {
+    if (nwLocale) {
       body.appendChild(textRow(S.navHebrew || 'Waypoint name', nwLocale));
     }
     body.appendChild(textRow(S.latitude, fmtLatLng(nw.lat, 'N', 'S')));
@@ -1398,6 +1396,15 @@ window.addEventListener('keydown', e => {
       state.selected = null;
       showInspector(); draw();
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) t.blur();
+      return;
+    }
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+      return;
+    }
+    if (state.mode === 'add' || state.mode === 'note') {
+      e.preventDefault();
+      if (typeof setMode === 'function') setMode(null);
+      draw();
     }
     return;
   }

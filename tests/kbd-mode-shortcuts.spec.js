@@ -41,6 +41,34 @@ test.describe('A / N / C keyboard shortcuts', () => {
     expect(await page.evaluate(() => state.mode)).toBe('note');
   });
 
+  test('Escape exits add-waypoint mode when no inspector or modal is open', async ({ page }) => {
+    await boot(page);
+    await page.keyboard.press('a');
+    expect(await page.evaluate(() => ({
+      mode: state.mode,
+      selected: state.selected,
+      inspectorHidden: document.getElementById('inspector').classList.contains('hidden'),
+    }))).toEqual({ mode: 'add', selected: null, inspectorHidden: true });
+
+    await page.keyboard.press('Escape');
+    expect(await page.evaluate(() => state.mode)).toBeNull();
+    await expect(page.locator('#tool-add')).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('Escape exits add-note mode when no inspector or modal is open', async ({ page }) => {
+    await boot(page);
+    await page.keyboard.press('n');
+    expect(await page.evaluate(() => ({
+      mode: state.mode,
+      selected: state.selected,
+      inspectorHidden: document.getElementById('inspector').classList.contains('hidden'),
+    }))).toEqual({ mode: 'note', selected: null, inspectorHidden: true });
+
+    await page.keyboard.press('Escape');
+    expect(await page.evaluate(() => state.mode)).toBeNull();
+    await expect(page.locator('#tool-note')).toHaveAttribute('aria-pressed', 'false');
+  });
+
   test('C clears all waypoints and notes', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {

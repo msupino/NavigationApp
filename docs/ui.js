@@ -157,6 +157,15 @@ coordCtrl.onAdd = function () {
 };
 coordCtrl.addTo(map);
 const coordBox = document.getElementById('coord-readout');
+const vorReadoutCtrl = L.control({ position: 'bottomright' });
+vorReadoutCtrl.onAdd = function () {
+  const box = L.DomUtil.create('div', 'leaflet-control coord-readout vor-readout');
+  box.id = 'vor-readout';
+  box.setAttribute('aria-hidden', 'true');
+  return box;
+};
+vorReadoutCtrl.addTo(map);
+const vorReadoutBox = document.getElementById('vor-readout');
 // The readout doubles as a "go to coordinates" input (issue #497): it stays
 // visible showing the map centre, follows the mouse on hover, and turns into
 // an editable field on click. Make it interactive and keep clicks/scroll from
@@ -168,13 +177,15 @@ L.DomEvent.disableClickPropagation(coordBox);
 L.DomEvent.disableScrollPropagation(coordBox);
 
 let gotoEditing = false;
+function coordReadoutText(lat, lng) {
+  return fmtLatLng(lat, 'N', 'S') + '  ' + fmtLatLng(lng, 'E', 'W');
+}
 function centerCoordText() {
   const c = map.getCenter();
-  return fmtLatLng(c.lat, 'N', 'S') + '  ' + fmtLatLng(c.lng, 'E', 'W') +
-         vorReadoutSuffix(c.lat, c.lng);
+  return coordReadoutText(c.lat, c.lng);
 }
-// When a reference VOR is selected, append its magnetic radial + DME to the
-// point — turns the readout into a live "radial/DME of any point" tool.
+// When a reference VOR is selected, show its magnetic radial + DME for the
+// point in a separate readout box below the live coordinates.
 function vorReadoutText(lat, lng) {
   if (typeof activeVor !== 'function') return '';
   const v = activeVor();
@@ -183,17 +194,26 @@ function vorReadoutText(lat, lng) {
   if (!rd) return '';
   return v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme);
 }
-function vorReadoutSuffix(lat, lng) {
-  const text = vorReadoutText(lat, lng);
-  return text ? '   ' + text : '';
+function setVorReadout(text) {
+  if (!vorReadoutBox) return;
+  vorReadoutBox.textContent = text || '';
+  vorReadoutBox.classList.toggle('show', !!text);
+  vorReadoutBox.setAttribute('aria-hidden', text ? 'false' : 'true');
+}
+function showVorReadout(lat, lng) {
+  setVorReadout(vorReadoutText(lat, lng));
 }
 function showCoord(latlng) {
   if (gotoEditing) return;
-  coordBox.textContent = fmtLatLng(latlng.lat, 'N', 'S') + '  ' +
-                         fmtLatLng(latlng.lng, 'E', 'W') +
-                         vorReadoutSuffix(latlng.lat, latlng.lng);
+  coordBox.textContent = coordReadoutText(latlng.lat, latlng.lng);
+  showVorReadout(latlng.lat, latlng.lng);
 }
-function showCenterCoord() { if (!gotoEditing) coordBox.textContent = centerCoordText(); }
+function showCenterCoord() {
+  if (gotoEditing) return;
+  const c = map.getCenter();
+  coordBox.textContent = coordReadoutText(c.lat, c.lng);
+  showVorReadout(c.lat, c.lng);
+}
 showCenterCoord();
 map.on('mousemove', e => showCoord(e.latlng));
 map.on('mouseout', showCenterCoord);
@@ -1193,7 +1213,7 @@ if (vorCb) {
     if (showVor && vors === null) await loadVors();
     syncVorUI();
     draw();
-    if (state.selected) showInspector();   // refresh the radial/DME row gating
+    if (state.selected) showInspector();   // refresh radial/DME rows
     if (typeof showCenterCoord === 'function') showCenterCoord();
     if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
   };
@@ -1213,7 +1233,11 @@ if (vorRefSelect) {
   };
 }
 // Boot: keep the reference selector populated even when markers are hidden.
-loadVors().then(() => { syncVorUI(); if (showVor) draw(); });
+loadVors().then(() => {
+  syncVorUI();
+  if (typeof showCenterCoord === 'function') showCenterCoord();
+  if (showVor) draw();
+});
 const FORCE_SNAP_KEY = 'navaid.forceSnap';
 try {
   const stored = localStorage.getItem(FORCE_SNAP_KEY);

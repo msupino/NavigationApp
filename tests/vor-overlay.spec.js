@@ -1,7 +1,7 @@
 // @ts-check
 // VOR/DME overlay + radial/DME readouts (issue #404 follow-up): map markers,
 // a selectable reference VOR, and magnetic radial + DME of any point shown in
-// the cursor readout and the waypoint inspector.
+// its own bottom readout and the waypoint inspector.
 const { test, expect } = require('./_setup');
 
 async function boot(page, lang = 'en') {
@@ -172,6 +172,45 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     });
     expect(out.refMarkersOff).toMatch(/NAT R-\d{3}° \/ \d/);
     expect(out.noRef).toBe('');
+  });
+
+  test('bottom readouts keep coordinates and VOR radial/DME in separate boxes', async ({ page }) => {
+    await boot(page);
+    const out = await page.evaluate(async () => {
+      await loadVors();
+      window.vorRef = 'NAT';
+      window.showVor = false;            // marker overlay remains independent
+      const p = L.latLng(32.4, 34.9);
+      map.fire('mousemove', { latlng: p });
+      return {
+        coord: document.getElementById('coord-readout').textContent,
+        vor: document.getElementById('vor-readout').textContent,
+        coordExpected: fmtLatLng(p.lat, 'N', 'S') + '  ' + fmtLatLng(p.lng, 'E', 'W'),
+        vorHidden: document.getElementById('vor-readout').getAttribute('aria-hidden'),
+      };
+    });
+    expect(out.coord).toBe(out.coordExpected);
+    expect(out.coord).not.toMatch(/NAT R-/);
+    expect(out.vor).toMatch(/NAT R-\d{3}° \/ \d/);
+    expect(out.vorHidden).toBe('false');
+
+    await page.evaluate(() => { window.vorRef = null; showCenterCoord(); });
+    await expect(page.locator('#vor-readout')).not.toHaveClass(/show/);
+    await expect(page.locator('#vor-readout')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  test('nav-waypoint inspector shows the resolved name row in English too', async ({ page }) => {
+    await boot(page, 'en');
+    const code = await page.evaluate(async () => {
+      await loadNavWaypoints();
+      const index = navWP.findIndex(w => w.name === 'HADRA');
+      state.selected = { type: 'navwp', index: index >= 0 ? index : 0 };
+      showInspector();
+      return navWP[state.selected.index].name;
+    });
+    const nameRow = page.locator('#insp-body .row').filter({ hasText: 'Waypoint name' });
+    await expect(nameRow).toHaveCount(1);
+    await expect(nameRow).toContainText(code);
   });
 
   test('markers are selectable outside edit mode (VOR / airfield / nav-WP)', async ({ page }) => {

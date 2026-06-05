@@ -275,6 +275,12 @@ html, body {
 }
 #toolbar .navtoggle input { cursor: pointer; margin: 0; }
 #toolbar .navtoggle input[type="range"] { flex: 1; width: 0; min-width: 0; }
+#toolbar #vor-ref-row {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
 #toolbar .slider-val { width: 3em; text-align: right; font-size: 11px; color: #ccc; flex-shrink: 0; }
 #toolbar .slider-reset {
   flex-shrink: 0;
@@ -342,6 +348,9 @@ html, body {
   right: 52px;
   bottom: 26px;            /* clears the Leaflet attribution row */
   margin: 0;
+}
+.leaflet-bottom.leaflet-right .vor-readout {
+  bottom: 46px;
 }
 .coord-readout.editing { cursor: text; }
 .coord-readout.error { border-color: #c0392b; background: rgba(231, 76, 60, 0.12); }
@@ -470,6 +479,12 @@ html, body {
   border-radius: 4px;
   padding: 2px 4px;
   cursor: pointer;
+}
+#toolbar #vor-ref-row select {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 #aircraft-custom {
   display: inline-flex;
@@ -892,7 +907,7 @@ html, body {
   }
   body.printing-plan .flight-table th,
   body.printing-plan .flight-table td {
-    padding: 4px 6px;
+    padding: 2px 4px;
     color: #111;
     background: #fff;
     border: 1px solid #555;
