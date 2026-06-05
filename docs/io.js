@@ -382,6 +382,29 @@ function validateNavWaypoints(d) {
   }
   return errs.length ? errs.join('; ') : null;
 }
+// Strict schema for docs/vor.json — { vors:[{ ident, name, freq, lat, lng,
+// he? }] }. Unknown keys tolerated (forward-compat).
+function validateVors(d) {
+  const errs = [];
+  if (!d || typeof d !== 'object' || Array.isArray(d)) {
+    return 'root: expected object, got ' + _vKind(d);
+  }
+  if (!_v(d, 'vors', 'array', 'root', errs)) return errs.join('; ');
+  for (let i = 0; i < d.vors.length; i++) {
+    const p = 'vors[' + i + ']';
+    const v = d.vors[i];
+    if (_vKind(v) !== 'object') {
+      errs.push(p + ': expected object, got ' + _vKind(v));
+      continue;
+    }
+    _v(v, 'ident', 'string', p, errs);
+    _v(v, 'name',  'string', p, errs);
+    _v(v, 'freq',  'string', p, errs);
+    _v(v, 'lat',   'number', p, errs);
+    _v(v, 'lng',   'number', p, errs);
+  }
+  return errs.length ? errs.join('; ') : null;
+}
 // Strict schema for docs/comm-change.json — { version, source?,
 // callSigns?: { ID:{ label?, he?, unit?, primary?, secondary?, atis?,
 // source? } }, points:[{ name, commChange, callSigns?, from?, to?,

@@ -170,12 +170,24 @@ L.DomEvent.disableScrollPropagation(coordBox);
 let gotoEditing = false;
 function centerCoordText() {
   const c = map.getCenter();
-  return fmtLatLng(c.lat, 'N', 'S') + '  ' + fmtLatLng(c.lng, 'E', 'W');
+  return fmtLatLng(c.lat, 'N', 'S') + '  ' + fmtLatLng(c.lng, 'E', 'W') +
+         vorReadoutSuffix(c.lat, c.lng);
+}
+// When a reference VOR is selected, append its magnetic radial + DME to the
+// point — turns the readout into a live "radial/DME of any point" tool.
+function vorReadoutSuffix(lat, lng) {
+  if (typeof activeVor !== 'function') return '';
+  const v = activeVor();
+  if (!v) return '';
+  const rd = vorRadialDme(v, lat, lng);
+  if (!rd) return '';
+  return '   ' + v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme);
 }
 function showCoord(latlng) {
   if (gotoEditing) return;
   coordBox.textContent = fmtLatLng(latlng.lat, 'N', 'S') + '  ' +
-                         fmtLatLng(latlng.lng, 'E', 'W');
+                         fmtLatLng(latlng.lng, 'E', 'W') +
+                         vorReadoutSuffix(latlng.lat, latlng.lng);
 }
 function showCenterCoord() { if (!gotoEditing) coordBox.textContent = centerCoordText(); }
 showCenterCoord();
@@ -1122,6 +1134,65 @@ document.getElementById('airfield-cb').onchange = async e => {
   }
   draw();
 };
+// --- VOR/DME overlay + reference selector --------------------------------
+const VOR_KEY = 'navaid.showVor';
+const VOR_REF_KEY = 'navaid.vorRef';
+const vorCb = document.getElementById('vor-cb');
+const vorRefRow = document.getElementById('vor-ref-row');
+const vorRefSelect = document.getElementById('vor-ref-select');
+try {
+  if (localStorage.getItem(VOR_KEY) === '1') window.showVor = true;
+  const ref = localStorage.getItem(VOR_REF_KEY);
+  if (ref) window.vorRef = ref;
+} catch (e) { /* storage unavailable */ }
+function populateVorRefSelect() {
+  if (!vorRefSelect) return;
+  vorRefSelect.innerHTML = '';
+  const none = document.createElement('option');
+  none.value = '';
+  none.textContent = S.vorRefNone || '— none —';
+  vorRefSelect.appendChild(none);
+  for (const v of (vors || [])) {
+    const opt = document.createElement('option');
+    opt.value = v.ident;
+    opt.textContent = v.ident + ' · ' + v.name + ' (' + v.freq + ')';
+    vorRefSelect.appendChild(opt);
+  }
+  vorRefSelect.value = vorRef || '';
+}
+function syncVorUI() {
+  if (vorCb) vorCb.checked = showVor;
+  if (vorRefRow) vorRefRow.style.display = showVor ? '' : 'none';
+  populateVorRefSelect();
+}
+if (vorCb) {
+  vorCb.onchange = async e => {
+    window.showVor = e.target.checked;
+    try { localStorage.setItem(VOR_KEY, showVor ? '1' : '0'); } catch (err) { /* */ }
+    if (showVor && vors === null) await loadVors();
+    syncVorUI();
+    draw();
+    if (typeof showCenterCoord === 'function') showCenterCoord();
+  };
+}
+if (vorRefSelect) {
+  vorRefSelect.onchange = e => {
+    window.vorRef = e.target.value || null;
+    try {
+      if (vorRef) localStorage.setItem(VOR_REF_KEY, vorRef);
+      else localStorage.removeItem(VOR_REF_KEY);
+    } catch (err) { /* */ }
+    draw();
+    if (state.selected) showInspector();
+    if (typeof showCenterCoord === 'function') showCenterCoord();
+  };
+}
+// Boot: if the overlay was left on (or a ref was stored), load the dataset.
+if (showVor || vorRef) {
+  loadVors().then(() => { syncVorUI(); draw(); });
+} else {
+  syncVorUI();
+}
 const FORCE_SNAP_KEY = 'navaid.forceSnap';
 try {
   const stored = localStorage.getItem(FORCE_SNAP_KEY);

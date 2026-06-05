@@ -1,0 +1,12 @@
+{
+  "_source": "Israeli VOR/DME stations. Idents, names and types from the IAA eAIP GEN 2.5 (List of Radio Navigation Aids); frequencies and coordinates from the OurAirports open navaid dataset. VERIFY against the current eAIP before operational use — coordinates are antenna-site approximations. Add BSA (Beer-Sheba), RAM (Eilat/Ramon) and any others here as their data is confirmed.",
+  "vors": [
+    { "ident": "BGN", "name": "Ben Gurion", "he": "בן גוריון", "freq": "113.50", "lat": 32.0131, "lng": 34.8752 },
+    { "ident": "NAT", "name": "Natania", "he": "נתניה", "freq": "112.40", "lat": 32.332, "lng": 34.968 },
+    { "ident": "ROP", "name": "Rosh Pina", "he": "ראש פינה", "freq": "115.30", "lat": 32.9826, "lng": 35.5727 },
+    { "ident": "MZD", "name": "Metzada (Masada)", "he": "מצדה", "freq": "115.00", "lat": 31.3306, "lng": 35.3905 },
+    { "ident": "ZFR", "name": "Zofar", "he": "צופר", "freq": "115.60", "lat": 30.5583, "lng": 35.1611 },
+    { "ident": "OVD", "name": "Ovda", "he": "עובדה", "freq": "114.10", "lat": 29.9667, "lng": 34.9472 },
+    { "ident": "LOT", "name": "Eilot", "he": "אילות", "freq": "112.00", "lat": 29.6078, "lng": 34.9756 }
+  ]
+}

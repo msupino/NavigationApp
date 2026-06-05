@@ -7,6 +7,7 @@ window.S = {
   airfieldLabelField: 'he',
   commChangeUrl: 'comm-change.json?v=1',
   legAltitudeUrl: 'leg-altitude.json?v=1',
+  vorUrl: 'vor.json?v=1',
   routeTemplatesUrl: 'route-templates.json?v=1',
 
   // --- Waypoint terminology -------------------------------------------
@@ -62,6 +63,13 @@ window.S = {
   errStorageFull: 'השמירה האוטומטית נכשלה: אחסון הדפדפן מלא. ייצא את המסלול כדי לשמור אותו.',
   errInvalidRoute: function(msg) { return 'קובץ מסלול לא תקין: ' + msg; },
   errInvalidNavWaypoints: function(msg) { return 'נתוני ציוני ניווט לא תקינים: ' + msg; },
+  errInvalidVors: function(msg) { return 'נתוני VOR לא תקינים: ' + msg; },
+  tbShowVor: 'הצג תחנות VOR',
+  tbShowVorTitle: 'הצג תחנות VOR/DME ובחר תחנת ייחוס לרדיאל/DME',
+  vorRefLabel: 'תחנת ייחוס',
+  vorRefNone: '— ללא —',
+  vorFrom: function(id) { return 'מ-' + id; },
+  vorRadialDme: function(rad, dme) { return 'R-' + rad + '° / ' + dme + ' NM'; },
   errInvalidAirfields: function(msg) { return 'נתוני שדות תעופה לא תקינים: ' + msg; },
   errSavedRouteCorrupt: function(msg) {
     return 'לא ניתן לשחזר את המסלול השמור, לכן הנתונים המקוריים נשמרו ולא נדרסו. ' +

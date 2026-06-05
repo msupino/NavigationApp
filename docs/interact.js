@@ -531,6 +531,16 @@ function showInspector() {
     };
     body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
+    // Radial + DME from the selected reference VOR (if any).
+    if (typeof activeVor === 'function' && activeVor()) {
+      const v = activeVor();
+      const rd = vorRadialDme(v, wp.lat, wp.lng);
+      if (rd) {
+        const row = textRow(S.vorFrom(v.ident), S.vorRadialDme(rd.radial, rd.dme));
+        row.classList.add('vor-radial-row');
+        body.appendChild(row);
+      }
+    }
     // Comm-change badge (issue #399). Surfaces the sector / CTR / TMA
     // frequency change associated with a known comm-change reporting
     // point. Looked up by the canonical ICAO name so it works for both
