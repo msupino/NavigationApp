@@ -1,6 +1,6 @@
 // @ts-check
 // Workflow-level regression coverage: automated changes that land on `dev`
-// must be single, non-merge commits so staging stays squash-only.
+// must avoid merge commits so staging stays squash-style.
 const { test, expect } = require('./_setup');
 const fs = require('fs');
 const path = require('path');
@@ -25,13 +25,14 @@ test.describe('dev squash workflow guards', () => {
     expect(yml).not.toContain('git merge --no-ff');
   });
 
-  test('CI fails dev pushes that are not one non-merge commit', () => {
+  test('CI rejects merge commits on dev pushes', () => {
     const yml = workflow('ci.yml');
     expect(yml).toContain('dev-history:');
     expect(yml).toContain("github.event_name == 'push' && github.ref == 'refs/heads/dev'");
     expect(yml).toContain('COUNT=$(git rev-list --count "$RANGE")');
     expect(yml).toContain('MERGES=$(git rev-list --merges --count "$RANGE")');
-    expect(yml).toContain('dev must receive exactly one commit per integration');
+    expect(yml).not.toContain('dev must receive exactly one commit per integration');
     expect(yml).toContain('dev received a merge commit');
+    expect(yml).toContain('dev received $COUNT non-merge commit(s)');
   });
 });
