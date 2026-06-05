@@ -131,14 +131,13 @@ test.describe('Edit / delete waypoint', () => {
     expect(names).toHaveLength(10);
   });
 
-  test('Editing inspector title updates state.waypoints[i].name', async ({ page }) => {
+  test('Editing inspector waypoint-name row updates state.waypoints[i].name', async ({ page }) => {
     await page.evaluate(() => {
       state.selected = { type: 'wp', index: 1 };
       showInspector();
     });
-    const title = page.locator('#insp-title');
-    await title.fill('CUSTOM');
-    await title.dispatchEvent('input');
+    const nameInput = page.locator('#insp-body .row input[type="text"]').first();
+    await nameInput.fill('CUSTOM');
     expect(await page.evaluate(() => state.waypoints[1].name)).toBe('CUSTOM');
   });
 });

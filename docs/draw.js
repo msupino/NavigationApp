@@ -35,6 +35,7 @@ function draw() {
   drawReportingBadges();
   drawCommChangeRings();
   drawAirfields();
+  drawVors();
   drawLegs();
   drawWaypoints();
   drawNotes();
@@ -371,6 +372,47 @@ async function loadAirfields() {
     return [];
   }
 }
+// --- VOR/DME stations (issue #404 follow-up) ------------------------
+// Lazy-loads docs/vor.json: { vors:[{ ident, name, he?, freq, lat, lng }] }.
+// Used by the overlay markers, the selectable reference for radial/DME
+// readouts, and (later) the flight-plan radial/DME columns.
+async function loadVors() {
+  if (vors !== null) return vors;
+  try {
+    const res = await fetch(S.vorUrl);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    const verr = typeof validateVors === 'function' ? validateVors(d) : null;
+    if (verr) {
+      console.warn('vor schema error:', verr);
+      if (typeof S.errInvalidVors === 'function') alert(S.errInvalidVors(verr));
+      return [];
+    }
+    vors = d.vors.map(v => ({
+      ident: v.ident, name: v.name, he: v.he,
+      freq: v.freq, lat: v.lat, lng: v.lng,
+    }));
+    return vors;
+  } catch (e) {
+    console.warn('Failed to load VORs:', e);
+    return [];
+  }
+}
+function vorByIdent(ident) {
+  if (!ident || !vors) return null;
+  return vors.find(v => v.ident === ident) || null;
+}
+// The currently-selected reference VOR object (or null).
+function activeVor() { return vorByIdent(vorRef); }
+// Magnetic radial FROM the VOR to a point + DME (great-circle nm).
+// Radial is magnetic (VOR radials are defined magnetic; matches the Hdg
+// column). Returns { radial: '263', dme: '12.4' } strings, or null.
+function vorRadialDme(vor, lat, lng) {
+  if (!vor || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const g = geo({ lat: vor.lat, lng: vor.lng }, { lat, lng });
+  if (!g || !Number.isFinite(g.brg) || !Number.isFinite(g.dist)) return null;
+  return { radial: pad3(toMagnetic(g.brg)), dme: g.dist.toFixed(1) };
+}
 
 // Closest airfield within `pxThreshold` screen pixels of `latlng`, or null.
 // Returns the {name, he, en, lat, lng, ...} entry from the loaded JSON.
@@ -500,6 +542,52 @@ function drawNavWaypoints() {
       octx.fillText(label, s.x + labelOffset, s.y);
     }
   }
+  octx.lineWidth = 1;
+}
+
+// VOR/DME station overlay. Each station draws a compass-rose glyph (ring +
+// N/E/S/W ticks + centre dot) with an ident + frequency label. The selected
+// reference VOR is highlighted so it is obvious which one feeds the radial/
+// DME readouts. Gated by the "Show VOR stations" toggle.
+function drawVors() {
+  if (!showVor || !vors || !vors.length) return;
+  const r = tune('vorMarkerRadiusPx');
+  const showLabels = map.getZoom() >= 8;
+  octx.save();
+  octx.textAlign = 'left';
+  octx.textBaseline = 'middle';
+  octx.font = `bold ${tune('vorLabelFontPx')}px sans-serif`;
+  for (const v of vors) {
+    const s = proj(v);
+    const sel = v.ident === vorRef;
+    const col = sel ? tune('vorSelectedColor') : tune('vorMarkerColor');
+    octx.strokeStyle = col;
+    octx.fillStyle = col;
+    octx.lineWidth = tune('vorMarkerWidthPx') * (sel ? 1.6 : 1);
+    octx.beginPath();
+    octx.arc(s.x, s.y, r, 0, Math.PI * 2);
+    octx.stroke();
+    // N/E/S/W ticks just outside the ring.
+    for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
+      octx.beginPath();
+      octx.moveTo(s.x + dx * r, s.y + dy * r);
+      octx.lineTo(s.x + dx * (r + 4), s.y + dy * (r + 4));
+      octx.stroke();
+    }
+    octx.beginPath();
+    octx.arc(s.x, s.y, Math.max(1.5, r * 0.22), 0, Math.PI * 2);
+    octx.fill();
+    if (showLabels) {
+      const label = v.ident + '  ' + v.freq;
+      const lx = s.x + r + 6, ly = s.y;
+      octx.lineWidth = 2.5;
+      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
+      octx.strokeText(label, lx, ly);
+      octx.fillStyle = col;
+      octx.fillText(label, lx, ly);
+    }
+  }
+  octx.restore();
   octx.lineWidth = 1;
 }
 

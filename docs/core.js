@@ -163,6 +163,11 @@ NavAid.tuningDefaults = {
 
   exportBgColor: { value: '#231f20', type: 'color', label: 'PNG export background color' },
 
+  vorMarkerRadiusPx: { value: 9, min: 3, max: 30, step: 0.5, label: 'VOR marker radius' },
+  vorMarkerWidthPx: { value: 2, min: 0.25, max: 8, step: 0.25, label: 'VOR marker stroke width' },
+  vorMarkerColor: { value: '#127a7a', type: 'color', label: 'VOR marker color' },
+  vorSelectedColor: { value: '#e67e22', type: 'color', label: 'VOR selected (reference) color' },
+  vorLabelFontPx: { value: 10, min: 4, max: 28, step: 1, label: 'VOR label text size' },
   reportBadgeRadiusPx: { value: 7, min: 3, max: 20, step: 0.5, label: 'Reporting badge radius' },
   reportBadgeOffsetPx: { value: 9, min: 0, max: 40, step: 1, label: 'Reporting badge offset' },
   reportBadgeFontPx: { value: 9, min: 4, max: 24, step: 1, label: 'Reporting badge text size' },
@@ -191,6 +196,7 @@ NavAid.tuningGroups = [
   { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimAlpha', 'pageFrameHitPx'] },
   { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitLegPx', 'hitLegLabelMinPx', 'hitLegLabelScalePx', 'hitCumLabelMinPx', 'hitCumLabelScalePx'] },
   { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs'] },
+  { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx'] },
   { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeFontPx', 'reportBadgeColor', 'reportBadgeTextColor'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'kiteTextColor', 'legKiteHaloColor'] },
@@ -246,6 +252,7 @@ window.S = Object.assign({
   commChangeUrl: 'comm-change.json?v=1', // CVFR comm-change reporting points (issue #399)
   legAltitudeUrl: 'leg-altitude.json?v=1', // CVFR green-route leg altitude table
   routeTemplatesUrl: 'route-templates.json?v=1', // ready-made route templates
+  vorUrl: 'vor.json?v=1',              // Israeli VOR/DME stations (#404 follow-up)
 
   // --- English UI copy (default locale) -------------------------------
   // Sentence case: capitalize the first word and proper nouns / acronyms
@@ -304,6 +311,21 @@ window.S = Object.assign({
   errStorageFull: 'Auto-save failed: browser storage is full. Export your route to keep it.',
   errInvalidRoute: function(msg) { return 'Invalid route file: ' + msg; },
   errInvalidNavWaypoints: function(msg) { return 'Invalid nav-waypoints data: ' + msg; },
+  errInvalidVors: function(msg) { return 'Invalid VOR data: ' + msg; },
+  tbShowVor: 'Show VOR stations',
+  tbShowVorTitle: 'Overlay Israeli VOR/DME stations and pick a reference for radial/DME',
+  vorRefLabel: 'VOR ref',
+  vorRefNone: '— none —',
+  vorName: 'Name',
+  vorFreq: 'Frequency',
+  vorUseRef: 'Use as reference VOR',
+  vorRefActive: '✓ Reference VOR (tap to clear)',
+  elevation: 'Elevation',
+  navHebrew: 'Waypoint name',
+  vorFrom: function(id) { return 'From ' + id + ' VOR'; }, // inspector / readout prefix
+  vorRadialDme: function(rad, dme) {                  // e.g. "R-263° / 12.4 NM"
+    return 'R-' + rad + '° / ' + dme + ' NM';
+  },
   errInvalidAirfields: function(msg) { return 'Invalid airfields data: ' + msg; },
   errSavedRouteCorrupt: function(msg) {
     return 'Saved route could not be restored, so the original saved data was preserved. ' +
@@ -312,7 +334,9 @@ window.S = Object.assign({
   },
   errNoLegs: 'No legs yet — drop at least two waypoints first.',
   flightPlan: 'Flight plan',
-  fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time', 'Fuel (gal)', 'Cum. time', 'Cum. fuel', ''],
+  fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time', 'Fuel (gal)', 'Cum. time', 'Cum. fuel', 'Radial', 'DME', ''],
+  fpVorLabel: 'VOR',
+  fpVorRadialEmpty: '—',
   fpDel: '✕',
   fpReturn: 'Return route',
   fpTotal: 'Total',
@@ -593,6 +617,9 @@ var navWP = null;           // null = not loaded yet (or last fetch failed —
                             // retry on next toggle / search call); [] or
                             // populated = last fetch resolved successfully.
 var showAirfields = true;   // Israeli airfields overlay (default on)
+var showVor = false;        // VOR/DME station overlay (opt-in, default off)
+var vors = null;            // null = not loaded yet; [] or populated once fetched
+var vorRef = null;          // ident of the selected reference VOR (radial/DME source)
 var forceSnap = false;      // #106: when on, every click snaps to the
                             // absolute nearest airfield / nav-WP regardless
                             // of click distance (otherwise: 18 px radius).

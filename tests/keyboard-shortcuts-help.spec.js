@@ -99,9 +99,9 @@ test.describe('Keyboard-shortcuts cheat-sheet (#420)', () => {
     expect(value.length).toBeGreaterThan(0);
   });
 
-  test('? is suppressed when focused in #insp-title (waypoint name input)', async ({ page }) => {
+  test('? is suppressed when focused in the waypoint-name inspector input', async ({ page }) => {
     await boot(page);
-    // Drop two waypoints and select the first so #insp-title appears + is editable.
+    // Drop two waypoints and select the first so the editable name row appears.
     await page.evaluate(() => {
       state.waypoints = [
         { lat: 32.0, lng: 34.9, name: 'A' },
@@ -112,9 +112,9 @@ test.describe('Keyboard-shortcuts cheat-sheet (#420)', () => {
       showInspector();
       draw();
     });
-    const title = page.locator('#insp-title');
-    await title.click();
-    await title.focus();
+    const nameInput = page.locator('#insp-body .row input[type="text"]').first();
+    await nameInput.click();
+    await nameInput.focus();
     await page.keyboard.press('Shift+/');
     await expect(page.locator('.modal-back.shortcuts-help')).toHaveCount(0);
   });

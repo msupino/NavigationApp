@@ -157,6 +157,15 @@ coordCtrl.onAdd = function () {
 };
 coordCtrl.addTo(map);
 const coordBox = document.getElementById('coord-readout');
+const vorReadoutCtrl = L.control({ position: 'bottomright' });
+vorReadoutCtrl.onAdd = function () {
+  const box = L.DomUtil.create('div', 'leaflet-control coord-readout vor-readout');
+  box.id = 'vor-readout';
+  box.setAttribute('aria-hidden', 'true');
+  return box;
+};
+vorReadoutCtrl.addTo(map);
+const vorReadoutBox = document.getElementById('vor-readout');
 // The readout doubles as a "go to coordinates" input (issue #497): it stays
 // visible showing the map centre, follows the mouse on hover, and turns into
 // an editable field on click. Make it interactive and keep clicks/scroll from
@@ -168,16 +177,43 @@ L.DomEvent.disableClickPropagation(coordBox);
 L.DomEvent.disableScrollPropagation(coordBox);
 
 let gotoEditing = false;
+function coordReadoutText(lat, lng) {
+  return fmtLatLng(lat, 'N', 'S') + '  ' + fmtLatLng(lng, 'E', 'W');
+}
 function centerCoordText() {
   const c = map.getCenter();
-  return fmtLatLng(c.lat, 'N', 'S') + '  ' + fmtLatLng(c.lng, 'E', 'W');
+  return coordReadoutText(c.lat, c.lng);
+}
+// When a reference VOR is selected, show its magnetic radial + DME for the
+// point in a separate readout box below the live coordinates.
+function vorReadoutText(lat, lng) {
+  if (typeof activeVor !== 'function') return '';
+  const v = activeVor();
+  if (!v) return '';
+  const rd = vorRadialDme(v, lat, lng);
+  if (!rd) return '';
+  return v.ident + ' ' + S.vorRadialDme(rd.radial, rd.dme);
+}
+function setVorReadout(text) {
+  if (!vorReadoutBox) return;
+  vorReadoutBox.textContent = text || '';
+  vorReadoutBox.classList.toggle('show', !!text);
+  vorReadoutBox.setAttribute('aria-hidden', text ? 'false' : 'true');
+}
+function showVorReadout(lat, lng) {
+  setVorReadout(vorReadoutText(lat, lng));
 }
 function showCoord(latlng) {
   if (gotoEditing) return;
-  coordBox.textContent = fmtLatLng(latlng.lat, 'N', 'S') + '  ' +
-                         fmtLatLng(latlng.lng, 'E', 'W');
+  coordBox.textContent = coordReadoutText(latlng.lat, latlng.lng);
+  showVorReadout(latlng.lat, latlng.lng);
 }
-function showCenterCoord() { if (!gotoEditing) coordBox.textContent = centerCoordText(); }
+function showCenterCoord() {
+  if (gotoEditing) return;
+  const c = map.getCenter();
+  coordBox.textContent = coordReadoutText(c.lat, c.lng);
+  showVorReadout(c.lat, c.lng);
+}
 showCenterCoord();
 map.on('mousemove', e => showCoord(e.latlng));
 map.on('mouseout', showCenterCoord);
@@ -536,6 +572,8 @@ function normalizeRouteTemplateData(data) {
       notes,
     });
   }
+  // Present templates alphabetically by name (locale-aware).
+  out.sort((a, b) => String(a.name).localeCompare(String(b.name)));
   return out;
 }
 
@@ -1135,6 +1173,71 @@ document.getElementById('airfield-cb').onchange = async e => {
   }
   draw();
 };
+// --- VOR/DME overlay + reference selector --------------------------------
+const VOR_KEY = 'navaid.showVor';
+const VOR_REF_KEY = 'navaid.vorRef';
+const vorCb = document.getElementById('vor-cb');
+const vorRefRow = document.getElementById('vor-ref-row');
+const vorRefSelect = document.getElementById('vor-ref-select');
+try {
+  if (localStorage.getItem(VOR_KEY) === '1') window.showVor = true;
+  const ref = localStorage.getItem(VOR_REF_KEY);
+  if (ref) window.vorRef = ref;
+} catch (e) { /* storage unavailable */ }
+function populateVorRefSelect() {
+  if (!vorRefSelect) return;
+  vorRefSelect.innerHTML = '';
+  const none = document.createElement('option');
+  none.value = '';
+  none.textContent = S.vorRefNone || '— none —';
+  vorRefSelect.appendChild(none);
+  for (const v of (vors || [])) {
+    const opt = document.createElement('option');
+    opt.value = v.ident;
+    opt.textContent = v.ident + ' · ' + v.name + ' (' + v.freq + ')';
+    vorRefSelect.appendChild(opt);
+  }
+  vorRefSelect.value = vorRef || '';
+}
+function syncVorUI() {
+  if (vorCb) vorCb.checked = showVor;
+  // The reference selector is always available: picking a VOR for
+  // radial/DME readouts is independent of the map-marker overlay.
+  if (vorRefRow) vorRefRow.style.display = '';
+  populateVorRefSelect();
+}
+if (vorCb) {
+  vorCb.onchange = async e => {
+    window.showVor = e.target.checked;
+    try { localStorage.setItem(VOR_KEY, showVor ? '1' : '0'); } catch (err) { /* */ }
+    if (showVor && vors === null) await loadVors();
+    syncVorUI();
+    draw();
+    if (state.selected) showInspector();   // refresh radial/DME rows
+    if (typeof showCenterCoord === 'function') showCenterCoord();
+    if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
+  };
+}
+if (vorRefSelect) {
+  vorRefSelect.onchange = e => {
+    window.vorRef = e.target.value || null;
+    try {
+      if (vorRef) localStorage.setItem(VOR_REF_KEY, vorRef);
+      else localStorage.removeItem(VOR_REF_KEY);
+    } catch (err) { /* */ }
+    draw();
+    if (state.selected) showInspector();
+    if (typeof showCenterCoord === 'function') showCenterCoord();
+    // Keep an open flight plan's Radial/DME columns in sync.
+    if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
+  };
+}
+// Boot: keep the reference selector populated even when markers are hidden.
+loadVors().then(() => {
+  syncVorUI();
+  if (typeof showCenterCoord === 'function') showCenterCoord();
+  if (showVor) draw();
+});
 const FORCE_SNAP_KEY = 'navaid.forceSnap';
 try {
   const stored = localStorage.getItem(FORCE_SNAP_KEY);
@@ -1366,6 +1469,15 @@ document.getElementById('tool-reset-all-markers').onclick = () => {
     state.legs[i].outLabel = d.outLabel;
     state.legs[i].cumLabel = d.cumLabel;
     state.legs[i].cumLabelRet = d.cumLabelRet;
+  }
+  for (const note of state.notes) {
+    if (!note || !note.cc) continue;
+    const target = typeof commCalloutTarget === 'function' ? commCalloutTarget(note) : null;
+    if (target && typeof commCalloutDefaultTail === 'function') {
+      const tail = commCalloutDefaultTail(target);
+      note.lat = tail.lat;
+      note.lng = tail.lng;
+    }
   }
   draw();
 };

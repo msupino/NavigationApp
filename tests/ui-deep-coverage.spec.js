@@ -59,15 +59,14 @@ test.describe('Inspector panel', () => {
     expect(sel).toBeNull();
   });
 
-  test('editing the inspector title updates state.waypoints[i].name live', async ({ page }) => {
+  test('editing the inspector waypoint-name row updates state.waypoints[i].name live', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [{ lat: 32.1, lng: 34.9, name: 'OLD' }];
       state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     });
-    await page.locator('#insp-title').fill('NEW_NAME');
-    await page.locator('#insp-title').dispatchEvent('input');
+    await page.locator('#insp-body .row input[type="text"]').first().fill('NEW_NAME');
     const name = await page.evaluate(() => state.waypoints[0].name);
     expect(name).toBe('NEW_NAME');
   });

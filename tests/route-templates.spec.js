@@ -44,6 +44,30 @@ async function boot(page, lang = 'en') {
 }
 
 test.describe('route templates', () => {
+  test('templates carry NO altitude data (altitudes come from leg-altitude.json)', async () => {
+    const data = readJson(TEMPLATES_PATH);
+    for (const t of data.templates) {
+      // No leg/altitude fields at the template level.
+      expect(t).not.toHaveProperty('legs');
+      expect(t).not.toHaveProperty('inboundAltitude');
+      expect(t).not.toHaveProperty('outboundAltitude');
+      // ...nor nested in any leg-like array, just in case.
+      for (const leg of (t.legs || [])) {
+        expect(leg).not.toHaveProperty('inboundAltitude');
+        expect(leg).not.toHaveProperty('outboundAltitude');
+      }
+    }
+  });
+
+  test('templates are listed alphabetically by name in the modal', async ({ page }) => {
+    await boot(page);
+    await page.locator('.tb-section[data-sec="charts"] #route-templates').click();
+    await expect(page.locator('.route-template-modal')).toBeVisible();
+    const names = await page.locator('.route-template-select option').allTextContents();
+    const sorted = [...names].sort((a, b) => a.localeCompare(b));
+    expect(names).toEqual(sorted);
+  });
+
   test('dataset templates reference known points and keep altitude data shared', async () => {
     const data = readJson(TEMPLATES_PATH);
     const airfields = readJson(AIRFIELDS_PATH).airfields;
@@ -81,7 +105,8 @@ test.describe('route templates', () => {
     await expect(button).toBeVisible();
     await button.click();
     await expect(page.locator('.route-template-modal')).toBeVisible();
-    await expect(page.locator('.route-template-select')).toHaveValue('llhz-llha-coastal');
+    // Templates are listed alphabetically by name, so select explicitly.
+    await page.locator('.route-template-select').selectOption('llhz-llha-coastal');
     await expect(page.locator('.route-template-speed')).toHaveValue('90');
     await page.locator('.route-template-speed').fill('115');
     await page.locator('.route-template-modal button', { hasText: 'Build route' }).click();
