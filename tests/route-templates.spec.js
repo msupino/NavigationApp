@@ -11,9 +11,21 @@ function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
-function routeAltitudeOk(value) {
-  return value === null || value === 'NaN' ||
-    (typeof value === 'number' && Number.isFinite(value));
+function routeSnapshotScript() {
+  return {
+    waypoints: state.waypoints.map(w => w.name),
+    speeds: state.legs.map(l => [l.flightSpeed, l.outboundSpeed]),
+    auto: state.legs.map(l => l._legAltitudeAuto === 1),
+    alts: state.legs.map(l => [
+      Number.isNaN(l.inboundAltitude) ? 'NaN' : l.inboundAltitude,
+      Number.isNaN(l.outboundAltitude) ? 'NaN' : l.outboundAltitude,
+    ]),
+    notes: state.notes.map(n => ({
+      cc: n.cc || '',
+      freqName: n.freqName || '',
+      freq: n.freq || '',
+    })),
+  };
 }
 
 async function boot(page, lang = 'en') {
@@ -32,7 +44,7 @@ async function boot(page, lang = 'en') {
 }
 
 test.describe('route templates', () => {
-  test('dataset templates reference known points and complete leg lists', async () => {
+  test('dataset templates reference known points and keep altitude data shared', async () => {
     const data = readJson(TEMPLATES_PATH);
     const airfields = readJson(AIRFIELDS_PATH).airfields;
     const navWp = readJson(NAV_WP_PATH).waypoints;
@@ -43,18 +55,22 @@ test.describe('route templates', () => {
     expect(data.version).toBe(1);
     expect(Array.isArray(data.templates)).toBe(true);
     expect(data.templates.length).toBeGreaterThan(0);
+    expect(data.templates.map(template => template.id)).toEqual(expect.arrayContaining([
+      'llhz-llha-coastal',
+      'llha-llhz-coastal',
+      'llhz-llmz-dead-sea',
+      'llhz-llbs-south',
+      'llbs-llhz-south',
+      'llmz-llhz-dead-sea',
+    ]));
     for (const template of data.templates) {
       expect(typeof template.id).toBe('string');
       expect(typeof template.name).toBe('string');
       expect(Number.isFinite(template.defaultSpeed)).toBe(true);
       expect(template.defaultSpeed).toBeGreaterThan(0);
       expect(template.waypoints.length).toBeGreaterThan(1);
-      expect(template.legs.length).toBe(template.waypoints.length - 1);
+      expect(Object.prototype.hasOwnProperty.call(template, 'legs')).toBe(false);
       for (const code of template.waypoints) expect(known.has(code)).toBe(true);
-      for (const leg of template.legs) {
-        expect(routeAltitudeOk(leg.inboundAltitude)).toBe(true);
-        expect(routeAltitudeOk(leg.outboundAltitude)).toBe(true);
-      }
     }
   });
 
@@ -70,17 +86,13 @@ test.describe('route templates', () => {
     await page.locator('.route-template-speed').fill('115');
     await page.locator('.route-template-modal button', { hasText: 'Build route' }).click();
     await expect(page.locator('.route-template-modal')).toHaveCount(0);
-    const route = await page.evaluate(() => ({
-      waypoints: state.waypoints.map(w => w.name),
-      speeds: state.legs.map(l => [l.flightSpeed, l.outboundSpeed]),
-      alts: state.legs.map(l => [l.inboundAltitude, l.outboundAltitude]),
-      notes: state.notes.map(n => ({ cc: n.cc || '', freqName: n.freqName || '', freq: n.freq || '' })),
-    }));
+    const route = await page.evaluate(routeSnapshotScript);
     expect(route.waypoints).toEqual([
       'LLHZ', 'BAZRA', 'DEROR', 'SHARO', 'HADRA', 'FRDIS',
       'BOREN', 'HOTRM', 'DAROM', 'GALIM', 'LLHA',
     ]);
     expect(route.speeds.every(([a, b]) => a === 115 && b === 115)).toBe(true);
+    expect(route.auto.every(Boolean)).toBe(true);
     expect(route.alts[0]).toEqual([800, 1200]);
     expect(route.alts[6]).toEqual([1500, 1000]);
     expect(route.notes).toEqual(expect.arrayContaining([
@@ -88,4 +100,122 @@ test.describe('route templates', () => {
       { cc: 'DAROM', freqName: 'HAIFA', freq: '133.00' },
     ]));
   });
+
+  for (const templateCase of [
+    {
+      id: 'llha-llhz-coastal',
+      name: 'Haifa to Herzliya',
+      waypoints: [
+        'LLHA', 'GALIM', 'DAROM', 'HOTRM', 'BOREN', 'FRDIS',
+        'HADRA', 'SHARO', 'DEROR', 'BAZRA', 'LLHZ',
+      ],
+      alts: {
+        0: [2000, 1500],
+        3: [1000, 1500],
+        8: [2000, 800],
+        9: [1200, 800],
+      },
+      notes: [
+        { cc: 'DAROM', freqName: 'PLUTO_WEST', freq: '118.40' },
+        { cc: 'DEROR', freqName: 'HERZLIYA', freq: '122.20' },
+      ],
+    },
+    {
+      id: 'llhz-llmz-dead-sea',
+      name: 'Herzliya to Masada',
+      waypoints: ['LLHZ', 'SFAIM', 'RIDNG', 'CLORE', 'TYONA', 'NTAIM', 'SIRNI',
+        'NSHRM', 'AYLON', 'LTRUN', 'SHARG', 'SORES', 'HAREL', 'HNINA', 'ANATA',
+        'DUMIM', 'YRIHO', 'ALMOG', 'ZUKIM', 'SHALM', 'ENGDI', 'LLMZ'],
+      alts: {
+        0: [1200, 'NaN'],
+        1: [800, 1600],
+        4: [800, 1200],
+        14: [4500, 5000],
+        15: [3500, 4000],
+        16: [3500, 4000],
+        20: [3500, 4000],
+      },
+      notes: [
+        { cc: 'SFAIM', freqName: 'PLUTO_WEST', freq: '118.40' },
+        { cc: 'LLMZ', freqName: 'MASADA', freq: '122.55' },
+      ],
+    },
+    {
+      id: 'llhz-llbs-south',
+      name: 'Herzliya to Teyman',
+      waypoints: ['LLHZ', 'SFAIM', 'HTZUK', 'RIDNG', 'CLORE', 'TYONA', 'NTAIM',
+        'BOVED', 'NAGID', 'YAVNE', 'ZASHD', 'NMASD', 'NITZA', 'HODYA', 'REVAH',
+        'NOAAM', 'BKAMA', 'SOVAL', 'MINGV', 'NASIH', 'LLBS'],
+      alts: {
+        0: [1200, 'NaN'],
+        1: [800, 1600],
+        6: [800, 1200],
+        12: [1500, 2000],
+        17: [2500, 3000],
+        19: [2000, 3000],
+      },
+      notes: [
+        { cc: 'SFAIM', freqName: 'PLUTO_WEST', freq: '118.40' },
+        { cc: 'LLBS', freqName: 'TEYMAN', freq: '122.50' },
+      ],
+    },
+    {
+      id: 'llbs-llhz-south',
+      name: 'Teyman to Herzliya',
+      waypoints: ['LLBS', 'NASIH', 'MINGV', 'SOVAL', 'BKAMA', 'NOAAM', 'REVAH',
+        'HODYA', 'NITZA', 'NMASD', 'ZASHD', 'YAVNE', 'NAGID', 'BOVED', 'NTAIM',
+        'TYONA', 'CLORE', 'RIDNG', 'HTZUK', 'KNTRY', 'LLHZ'],
+      alts: {
+        0: [3000, 2000],
+        2: [3000, 2500],
+        6: [2000, 1500],
+        7: [2000, 1500],
+        13: [1200, 800],
+        17: [1200, 800],
+        19: [1200, 'NaN'],
+      },
+      notes: [
+        { cc: 'LLBS', freqName: 'TEYMAN', freq: '122.50' },
+        { cc: 'KNTRY', freqName: 'HERZLIYA', freq: '122.20' },
+      ],
+    },
+    {
+      id: 'llmz-llhz-dead-sea',
+      name: 'Masada to Herzliya',
+      waypoints: ['LLMZ', 'ENGDI', 'SHALM', 'ZUKIM', 'ALMOG', 'YRIHO', 'DUMIM',
+        'ANATA', 'HNINA', 'HAREL', 'SORES', 'SHARG', 'LTRUN', 'AYLON', 'NSHRM',
+        'SIRNI', 'NTAIM', 'TYONA', 'CLORE', 'RIDNG', 'HTZUK', 'KNTRY', 'LLHZ'],
+      alts: {
+        0: [4000, 3500],
+        4: [4000, 3500],
+        5: [4000, 3500],
+        6: [5000, 4500],
+        19: [1200, 800],
+        21: [1200, 'NaN'],
+      },
+      notes: [
+        { cc: 'LLMZ', freqName: 'MASADA', freq: '122.55' },
+        { cc: 'KNTRY', freqName: 'HERZLIYA', freq: '122.20' },
+      ],
+    },
+  ]) {
+    test(`user builds the ${templateCase.name} route template`, async ({ page }) => {
+      await boot(page);
+      await page.locator('#route-templates').click();
+      await page.locator('.route-template-select').selectOption(templateCase.id);
+      await page.locator('.route-template-speed').fill('105');
+      await page.locator('.route-template-modal button', { hasText: 'Build route' }).click();
+      await expect(page.locator('.route-template-modal')).toHaveCount(0);
+
+      const route = await page.evaluate(routeSnapshotScript);
+
+      expect(route.waypoints).toEqual(templateCase.waypoints);
+      expect(route.speeds.every(([a, b]) => a === 105 && b === 105)).toBe(true);
+      expect(route.auto.every(Boolean)).toBe(true);
+      for (const [index, alts] of Object.entries(templateCase.alts)) {
+        expect(route.alts[Number(index)]).toEqual(alts);
+      }
+      expect(route.notes).toEqual(expect.arrayContaining(templateCase.notes));
+    });
+  }
 });
