@@ -24,6 +24,11 @@ window.S = {
   tbWpSizeTitle: 'גודל ציון דרך ושמו',
   tbShowNavWp: 'הצג/נעץ ציוני ניווט',                // מתג שכבת מפה
   tbShowNavWpTitle: 'הצג ציוני דיווח VFR ישראלים',
+  tbShowReporting: 'הצג נקודות דיווח חובה',
+  tbShowReportingTitle: 'סמן ציונים שהם נקודות דיווח חובה',
+  report: 'דיווח',
+  reportingMandatory: '📍 דיווח חובה',
+  reportingOnRequest: '📍 דיווח לפי דרישה',
   tbSearchPlaceholder: '🔍 חפש ציון ניווטי',
   tbSearchHint: 'טיפ: הקלד קודים מופרדים ברווח (למשל LLHZ BAZRA DEROR SHARO HADRA) ולחץ Enter לבניית מסלול.',
   errSearchUnknown: function(t) { return 'ציון ניווט לא מוכר: ' + t; },
