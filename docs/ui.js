@@ -504,18 +504,20 @@ function normalizeRouteTemplateData(data) {
     if (typeof template.id !== 'string' || !template.id.trim()) continue;
     if (typeof template.name !== 'string' || !template.name.trim()) continue;
     if (!Array.isArray(template.waypoints) || template.waypoints.length < 2) continue;
-    if (!Array.isArray(template.legs) ||
-        template.legs.length !== template.waypoints.length - 1) continue;
+    const templateLegs = Array.isArray(template.legs) ? template.legs : null;
+    if (templateLegs && templateLegs.length !== template.waypoints.length - 1) continue;
     const defaultSpeed = Number(template.defaultSpeed);
     if (!Number.isFinite(defaultSpeed) || defaultSpeed <= 0) continue;
     const waypoints = template.waypoints.map(code => String(code || '').trim().toUpperCase());
     let ok = waypoints.every(Boolean);
-    for (const leg of template.legs) {
-      if (!leg || typeof leg !== 'object' ||
-          !routeTemplateAltitudeOk(leg.inboundAltitude) ||
-          !routeTemplateAltitudeOk(leg.outboundAltitude)) {
-        ok = false;
-        break;
+    if (templateLegs) {
+      for (const leg of templateLegs) {
+        if (!leg || typeof leg !== 'object' ||
+            !routeTemplateAltitudeOk(leg.inboundAltitude) ||
+            !routeTemplateAltitudeOk(leg.outboundAltitude)) {
+          ok = false;
+          break;
+        }
       }
     }
     if (!ok) continue;
@@ -525,10 +527,12 @@ function normalizeRouteTemplateData(data) {
       typeof note.text === 'string' &&
       typeof note.color === 'string' &&
       (note.shape === 'rect' || note.shape === 'oval')) : [];
+    const { legs: _templateLegs, ...templateRest } = template;
     out.push({
-      ...template,
+      ...templateRest,
       waypoints,
       defaultSpeed,
+      ...(templateLegs ? { legs: templateLegs } : {}),
       notes,
     });
   }
@@ -549,6 +553,15 @@ async function loadRouteTemplates() {
 }
 
 function routeTemplateLeg(templateLeg, speed) {
+  const hasExplicitAltitudes = templateLeg && typeof templateLeg === 'object' &&
+    Object.prototype.hasOwnProperty.call(templateLeg, 'inboundAltitude') &&
+    Object.prototype.hasOwnProperty.call(templateLeg, 'outboundAltitude');
+  if (!hasExplicitAltitudes && typeof newLeg === 'function') {
+    const leg = newLeg();
+    leg.flightSpeed = speed;
+    leg.outboundSpeed = speed;
+    return leg;
+  }
   const labels = typeof _defaultLegLabels === 'function'
     ? _defaultLegLabels()
     : {
@@ -559,11 +572,11 @@ function routeTemplateLeg(templateLeg, speed) {
     };
   return {
     inboundAltitude: typeof decodeRouteAltitude === 'function'
-      ? decodeRouteAltitude(templateLeg.inboundAltitude)
-      : templateLeg.inboundAltitude,
+      ? decodeRouteAltitude(templateLeg && templateLeg.inboundAltitude)
+      : (templateLeg && templateLeg.inboundAltitude),
     outboundAltitude: typeof decodeRouteAltitude === 'function'
-      ? decodeRouteAltitude(templateLeg.outboundAltitude)
-      : templateLeg.outboundAltitude,
+      ? decodeRouteAltitude(templateLeg && templateLeg.outboundAltitude)
+      : (templateLeg && templateLeg.outboundAltitude),
     flightSpeed: speed,
     outboundSpeed: speed,
     inLabel: labels.inLabel,
@@ -576,15 +589,21 @@ function routeTemplateLeg(templateLeg, speed) {
 async function routeFromTemplate(template, speed) {
   if (navWP === null) await loadNavWaypoints();
   if (airfields === null) await loadAirfields();
+  if (legAltitudeMap === null) await loadLegAltitudes();
   const waypoints = [];
   for (const code of template.waypoints) {
     const point = findNavWpToken(code);
     if (!point) throw new Error(code);
     waypoints.push({ lat: point.lat, lng: point.lng, name: point.name });
   }
+  const templateLegs = Array.isArray(template.legs) ? template.legs : [];
+  const legs = [];
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    legs.push(routeTemplateLeg(templateLegs[i], speed));
+  }
   return {
     waypoints,
-    legs: template.legs.map(leg => routeTemplateLeg(leg, speed)),
+    legs,
     notes: (template.notes || []).map(note => ({
       lat: r5(note.lat),
       lng: r5(note.lng),
