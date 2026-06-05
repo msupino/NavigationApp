@@ -57,13 +57,13 @@ test.describe('SEO URLs', () => {
     await expect(ogUrl).toHaveAttribute('content', CUSTOM_DOMAIN + '/');
 
     const ogImage = page.locator('meta[property="og:image"]');
-    await expect(ogImage).toHaveAttribute('content', CUSTOM_DOMAIN + '/og-preview.jpg');
+    await expect(ogImage).toHaveAttribute('content', CUSTOM_DOMAIN + '/assets/og-preview.jpg');
   });
 
   test('Twitter Card tags use custom domain', async ({ page }) => {
     await page.goto('.');
     const twImage = page.locator('meta[name="twitter:image"]');
-    await expect(twImage).toHaveAttribute('content', CUSTOM_DOMAIN + '/og-preview.jpg');
+    await expect(twImage).toHaveAttribute('content', CUSTOM_DOMAIN + '/assets/og-preview.jpg');
     const twTitle = page.locator('meta[name="twitter:title"]');
     await expect(twTitle).toHaveAttribute('content', /.+/);
     const twDesc = page.locator('meta[name="twitter:description"]');
@@ -76,7 +76,7 @@ test.describe('SEO URLs', () => {
     const text = await jsonLd.textContent();
     const data = JSON.parse(text);
     expect(data.url).toBe(CUSTOM_DOMAIN + '/');
-    expect(data.image).toBe(CUSTOM_DOMAIN + '/og-preview.jpg');
+    expect(data.image).toBe(CUSTOM_DOMAIN + '/assets/og-preview.jpg');
     expect(Array.isArray(data.keywords)).toBe(true);
     expect(data.keywords.length).toBeGreaterThan(0);
     expect(Array.isArray(data.featureList)).toBe(true);

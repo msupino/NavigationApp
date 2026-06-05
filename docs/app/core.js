@@ -245,14 +245,14 @@ var magVar = -5;                       // signed offset added to true heading
 // (full locale or just navWpUrl). Object.assign merges: defaults first,
 // then any pre-set keys win, so a partial override doesn't erase the rest.
 window.S = Object.assign({
-  navWpUrl: 'nav-waypoints.json?v=3',  // resolved relative to index.html (docs/)
+  navWpUrl: 'data/nav-waypoints.json?v=3',  // resolved relative to index.html (docs/)
   navWpSearchField: 'name',            // which field to show/search in results
-  airfieldsUrl: 'airfields.json?v=3',  // resolved relative to index.html (docs/)
+  airfieldsUrl: 'data/airfields.json?v=3',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
-  commChangeUrl: 'comm-change.json?v=1', // CVFR comm-change reporting points (issue #399)
-  legAltitudeUrl: 'leg-altitude.json?v=1', // CVFR green-route leg altitude table
-  routeTemplatesUrl: 'route-templates.json?v=1', // ready-made route templates
-  vorUrl: 'vor.json?v=1',              // Israeli VOR/DME stations (#404 follow-up)
+  commChangeUrl: 'data/comm-change.json?v=1', // CVFR comm-change reporting points (issue #399)
+  legAltitudeUrl: 'data/leg-altitude.json?v=1', // CVFR green-route leg altitude table
+  routeTemplatesUrl: 'data/route-templates.json?v=1', // ready-made route templates
+  vorUrl: 'data/vor.json?v=1',              // Israeli VOR/DME stations (#404 follow-up)
 
   // --- English UI copy (default locale) -------------------------------
   // Sentence case: capitalize the first word and proper nouns / acronyms

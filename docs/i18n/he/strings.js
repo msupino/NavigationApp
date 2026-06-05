@@ -1,14 +1,14 @@
 'use strict';
 /* Hebrew localisation — loaded before core.js so the || in core.js keeps this. */
 window.S = {
-  navWpUrl: 'nav-waypoints.json?v=3',
+  navWpUrl: 'data/nav-waypoints.json?v=3',
   navWpSearchField: 'he',
-  airfieldsUrl: 'airfields.json?v=3',
+  airfieldsUrl: 'data/airfields.json?v=3',
   airfieldLabelField: 'he',
-  commChangeUrl: 'comm-change.json?v=1',
-  legAltitudeUrl: 'leg-altitude.json?v=1',
-  vorUrl: 'vor.json?v=1',
-  routeTemplatesUrl: 'route-templates.json?v=1',
+  commChangeUrl: 'data/comm-change.json?v=1',
+  legAltitudeUrl: 'data/leg-altitude.json?v=1',
+  vorUrl: 'data/vor.json?v=1',
+  routeTemplatesUrl: 'data/route-templates.json?v=1',
 
   // --- Waypoint terminology -------------------------------------------
   // Mirrors the English cluster in core.js — keep the noun phrase

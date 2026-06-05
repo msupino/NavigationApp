@@ -73,7 +73,7 @@ jobs:
       - name: JS syntax check (node --check)
         run: |
           set -e
-          for f in docs/core.js docs/draw.js docs/interact.js docs/io.js docs/ui.js docs/sw.js docs/he/strings.js docs/en/strings.js; do
+          for f in docs/app/core.js docs/app/draw.js docs/app/interact.js docs/app/io.js docs/app/ui.js docs/sw.js docs/i18n/he/strings.js docs/i18n/en/strings.js; do
             echo "node --check $f"
             node --check "$f"
           done
@@ -81,7 +81,7 @@ jobs:
       - name: JSON validation
         run: |
           set -e
-          for f in docs/manifest.json docs/nav-waypoints.json; do
+          for f in docs/manifest.json docs/data/nav-waypoints.json; do
             echo "validating $f"
             node -e "JSON.parse(require('fs').readFileSync('$f','utf8'));"
           done

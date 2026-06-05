@@ -1,11 +1,11 @@
 // @ts-check
-// Keeps `tests/_airfieldArp.js` aligned with `docs/airfields.json` (no browser).
+// Keeps `tests/_airfieldArp.js` aligned with `docs/data/airfields.json` (no browser).
 const { test, expect } = require('./_setup');
-const data = require('../docs/airfields.json');
+const data = require('../docs/data/airfields.json');
 const { arp, pairLLHZ_LLHA } = require('./_airfieldArp');
 
 test.describe('_airfieldArp', () => {
-  test('ARP objects match docs/airfields.json', () => {
+  test('ARP objects match docs/data/airfields.json', () => {
     for (const code of ['LLHZ', 'LLHA', 'LLBG']) {
       const j = data.airfields.find(a => a.name === code);
       expect(j).toBeTruthy();

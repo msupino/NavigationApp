@@ -16,6 +16,18 @@ python3 -m http.server -d docs 8000
 # http://localhost:8000
 ```
 
+## Layout
+
+- `index.html`, `sw.js`, `manifest.json`, `robots.txt`, `sitemap.xml`, and
+  `BingSiteAuth.xml` stay at the web root because browsers, crawlers, or Pages
+  workflows address them directly.
+- `app/` holds the plain JavaScript and CSS loaded by `index.html`.
+- `data/` holds shipped JSON datasets.
+- `i18n/` holds locale string bundles.
+- `assets/` holds icons and social preview images.
+- `byop/` keeps the published chart PDFs at their stable public URL.
+- `legacy/` holds the old static-map generator artifacts.
+
 ## License & data
 
 NavAid is released under the [MIT License](../LICENSE) — no warranty, no liability.

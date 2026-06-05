@@ -43,7 +43,7 @@ pull requests; production is the `main` branch, staging is `dev`.
 - **Nav-waypoints** — rebuilt from IAA CVFR chart CSV (173 points),
   replacing legacy KMZ dataset (PR #407, #411).
 - **Comm-change seed** — 48 points with call-sign catalog in
-  `docs/comm-change.json` (PR #401).
+  `docs/data/comm-change.json` (PR #401).
 - **Floating search overlay** — Ctrl-F opens top-center nav-WP search
   (PR #453).
 - **Slider constants** — min/max/step defined, inline value labels,
