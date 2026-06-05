@@ -3705,7 +3705,18 @@ function buildShareUrl() {
   // Preserve ?lang= so the receiver opens in the sender's language. Drop
   // any previous share params so re-shares don't double up.
   params.delete('r'); params.delete('n'); params.delete('l');
+  params.delete('f'); params.delete('x');
   params.set('r', r); params.set('n', n); params.set('l', l);
+  const freqNotes = state.notes.filter(n => n && n.cc);
+  if (freqNotes.length) {
+    const f = _b64UrlEncode(freqNotes.map(n =>
+      [n.cc, n.freqName || '', n.freq || ''].join(',')).join(';'));
+    params.set('f', f);
+  }
+  const supps = state.commChangeSuppressions;
+  if (Array.isArray(supps) && supps.length) {
+    params.set('x', _b64UrlEncode(supps.join(',')));
+  }
   return { url: base + '?' + params.toString() };
 }
 
@@ -3715,10 +3726,24 @@ function decodeShareUrl(search) {
   const r = params.get('r'), n = params.get('n'), l = params.get('l');
   if (!r || n === null || l === null) return null;
   let coords, names, legParts;
+  let freqNotes = [], suppressions = [];
   try {
     coords = polylineDecode(r);
     names = _b64UrlDecode(n).split(SHARE_NAME_SEP);
     legParts = l === '' ? [] : l.split(';');
+    const f = params.get('f');
+    if (f) {
+      const raw = _b64UrlDecode(f);
+      freqNotes = raw.split(';').filter(Boolean).map(s => {
+        const p = s.split(',');
+        if (p.length < 3) return null;
+        return { cc: p[0], freqName: p[1], freq: p[2] };
+      }).filter(Boolean);
+    }
+    const x = params.get('x');
+    if (x) {
+      suppressions = _b64UrlDecode(x).split(',').filter(Boolean);
+    }
   } catch (e) {
     return null;
   }
@@ -3756,7 +3781,7 @@ function decodeShareUrl(search) {
     };
   });
   if (legs.some(l => l === null)) return null;
-  return { waypoints, legs, notes: [] };
+  return { waypoints, legs, notes: [], freqNotes, suppressions };
 }
 
 // Called from ui.js boot, before restoreRoute(). Returns true if a route
@@ -3770,6 +3795,26 @@ function tryLoadRouteFromUrl() {
   state.legs = r.legs;
   state.notes = [];
   state.commChangeSuppressions = [];
+  if (Array.isArray(r.suppressions) && r.suppressions.length) {
+    state.commChangeSuppressions = r.suppressions.slice();
+  }
+  if (Array.isArray(r.freqNotes) && r.freqNotes.length) {
+    for (const fn of r.freqNotes) {
+      const idx = state.notes.push({
+        text: 'Freq change', color: '#fff6aa', shape: 'rect',
+        cc: fn.cc, freqName: fn.freqName, freq: fn.freq,
+      }) - 1;
+      // Place tail at default position for the target waypoint.
+      const wp = state.waypoints.find(w => w &&
+        typeof canonicalNavWaypointName === 'function' &&
+        canonicalNavWaypointName(w.name) === fn.cc);
+      if (wp && typeof commCalloutDefaultTail === 'function') {
+        const tail = commCalloutDefaultTail(wp);
+        state.notes[idx].lat = tail.lat;
+        state.notes[idx].lng = tail.lng;
+      }
+    }
+  }
   return true;
 }
 
