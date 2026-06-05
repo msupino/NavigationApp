@@ -57,7 +57,7 @@ exports.test = base.test.extend({
     //    than the one being tested (e.g. production root instead of /pr/NNN/).
     if (EXPECTED_SHA) {
       try {
-        const resp = await page.request.get('core.js');
+        const resp = await page.request.get('app/core.js');
         const text = await resp.text();
         const m = text.match(/version: '1\.0-([A-Za-z0-9]+)'/);
         const sha = m ? m[1] : null;

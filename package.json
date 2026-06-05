@@ -8,7 +8,7 @@
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
     "test:install": "playwright install --with-deps chromium",
-    "lint:spell": "cspell --config cspell.json docs/core.js docs/he/strings.js"
+    "lint:spell": "cspell --config cspell.json docs/app/core.js docs/i18n/he/strings.js"
   },
   "devDependencies": {
     "@cspell/dict-he": "^4.0.5",

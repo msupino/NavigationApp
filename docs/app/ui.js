@@ -468,7 +468,12 @@ function findNavWpToken(token) {
   }
   if (navWP && navWP.length) {
     for (const w of navWP) {
-      if ((w.name && w.name.toUpperCase() === up) || (w.he && w.he === token)) {
+      const en = String(w.en || '');
+      const enKey = en.toUpperCase().replace(/[\s_-]+/g, '');
+      const tokenKey = up.replace(/[\s_-]+/g, '');
+      if ((w.name && w.name.toUpperCase() === up) ||
+          (en && (en.toUpperCase() === up || enKey === tokenKey)) ||
+          (w.he && w.he === token)) {
         return w;
       }
     }
@@ -492,7 +497,7 @@ async function buildRouteFromQuery(raw) {
   }
   if ((state.waypoints.length || state.notes.length) &&
       !confirm(S.searchReplaceConfirm)) return false;
-  // Always store the canonical ICAO / English code so all tokens render
+  // Always store the canonical airfield / nav-waypoint code so all tokens render
   // consistently. navName() in interact.js converts it to the locale at
   // display time. Without this, HE-locale autofill would store the
   // Hebrew label for clicked tokens and the English ICAO for typed
@@ -580,7 +585,7 @@ function normalizeRouteTemplateData(data) {
 async function loadRouteTemplates() {
   if (routeTemplates !== null) return routeTemplates;
   try {
-    const res = await fetch(S.routeTemplatesUrl || 'route-templates.json?v=1');
+    const res = await fetch(S.routeTemplatesUrl || 'data/route-templates.json?v=1');
     if (!res.ok) throw new Error(String(res.status));
     routeTemplates = normalizeRouteTemplateData(await res.json());
   } catch (e) {
@@ -820,6 +825,7 @@ function runSearch() {
   if (navWP && navWP.length) {
     for (const w of navWP) {
       if (w.name.toUpperCase().indexOf(q) >= 0 ||
+          (w.en && w.en.toUpperCase().indexOf(q) >= 0) ||
           (w.he && w.he.indexOf(lastToken) >= 0)) {
         wpHits.push({ kind: 'wp', entry: w });
       }
@@ -842,14 +848,18 @@ function runSearch() {
       alt = (w[afField] || w.en || '');
       if (alt === primary) alt = '';
     } else {
-      primary = w[wpField] || w.name;
-      alt = wpField === 'he' ? w.name : (w.he || '');
+      primary = w[wpField] || w.en || w.name;
+      if (wpField === 'he') {
+        alt = w.name + (w.en ? ' / ' + w.en : '');
+      } else {
+        alt = w.name + (w.he ? ' / ' + w.he : '');
+      }
     }
     item.textContent = alt && alt !== primary ? primary + ' / ' + alt : primary;
     item.onclick = () => {
       if (multi) {
-        // Replace just the last token with the canonical ICAO / English
-        // code — keeps the typed route in a single language. Trailing
+        // Replace just the last token with the canonical code — keeps the
+        // typed route in a single stable identifier set. Trailing
         // space primes the next autocomplete.
         const parts = wpSearch.value.split(/\s+/);
         parts[parts.length - 1] = w.name;
@@ -1174,13 +1184,22 @@ document.getElementById('airfield-cb').onchange = async e => {
   draw();
 };
 // --- VOR/DME overlay + reference selector --------------------------------
-const VOR_KEY = 'navaid.showVor';
+const VOR_STATIONS_KEY = 'navaid.showVorStations';
+const VOR_LEGACY_KEY = 'navaid.showVor';
 const VOR_REF_KEY = 'navaid.vorRef';
 const vorCb = document.getElementById('vor-cb');
 const vorRefRow = document.getElementById('vor-ref-row');
 const vorRefSelect = document.getElementById('vor-ref-select');
 try {
-  if (localStorage.getItem(VOR_KEY) === '1') window.showVor = true;
+  const storedStations = localStorage.getItem(VOR_STATIONS_KEY);
+  const legacyStations = localStorage.getItem(VOR_LEGACY_KEY);
+  if (storedStations !== null) {
+    window.showVorStations = storedStations === '1';
+  } else if (legacyStations !== null) {
+    window.showVorStations = legacyStations === '1';
+    localStorage.setItem(VOR_STATIONS_KEY, window.showVorStations ? '1' : '0');
+    localStorage.removeItem(VOR_LEGACY_KEY);
+  }
   const ref = localStorage.getItem(VOR_REF_KEY);
   if (ref) window.vorRef = ref;
 } catch (e) { /* storage unavailable */ }
@@ -1200,7 +1219,7 @@ function populateVorRefSelect() {
   vorRefSelect.value = vorRef || '';
 }
 function syncVorUI() {
-  if (vorCb) vorCb.checked = showVor;
+  if (vorCb) vorCb.checked = showVorStations;
   // The reference selector is always available: picking a VOR for
   // radial/DME readouts is independent of the map-marker overlay.
   if (vorRefRow) vorRefRow.style.display = '';
@@ -1208,9 +1227,12 @@ function syncVorUI() {
 }
 if (vorCb) {
   vorCb.onchange = async e => {
-    window.showVor = e.target.checked;
-    try { localStorage.setItem(VOR_KEY, showVor ? '1' : '0'); } catch (err) { /* */ }
-    if (showVor && vors === null) await loadVors();
+    window.showVorStations = e.target.checked;
+    try {
+      localStorage.setItem(VOR_STATIONS_KEY, showVorStations ? '1' : '0');
+      localStorage.removeItem(VOR_LEGACY_KEY);
+    } catch (err) { /* */ }
+    if (showVorStations && vors === null) await loadVors();
     syncVorUI();
     draw();
     if (state.selected) showInspector();   // refresh radial/DME rows
@@ -1236,7 +1258,7 @@ if (vorRefSelect) {
 loadVors().then(() => {
   syncVorUI();
   if (typeof showCenterCoord === 'function') showCenterCoord();
-  if (showVor) draw();
+  if (showVorStations) draw();
 });
 const FORCE_SNAP_KEY = 'navaid.forceSnap';
 try {
@@ -1250,7 +1272,7 @@ document.getElementById('force-snap-cb').onchange = e => {
   catch (err) { /* storage unavailable */ }
 };
 // Comm-change overlay toggle (issue #399). The dataset lives in
-// docs/comm-change.json and rings are drawn on top of the nav-WP dots
+// docs/data/comm-change.json and rings are drawn on top of the nav-WP dots
 // in draw.js. This key intentionally replaced the legacy
 // navaid.showCommChange key so users who had stored the old default-off
 // state get the new default-on behavior.
@@ -2033,7 +2055,9 @@ function showBuildUpdateNotice() {
 
 function watchServiceWorkerUpdates(sw) {
   if (!sw || typeof sw.register !== 'function') return Promise.resolve(null);
-  let hadController = !!sw.controller;
+  const controlledAtStart = !!sw.controller;
+  let hadController = controlledAtStart;
+  let firstInstallWorker = null;
   const notifyIfUpdate = () => {
     if (hadController) showBuildUpdateNotice();
     hadController = true;
@@ -2047,11 +2071,15 @@ function watchServiceWorkerUpdates(sw) {
       worker.addEventListener('statechange', () => {
         if ((worker.state === 'installed' || worker.state === 'activated') &&
             hadController) {
+          if (!controlledAtStart && worker === firstInstallWorker) return;
           showBuildUpdateNotice();
         }
       });
     };
-    if (reg && reg.waiting && hadController) showBuildUpdateNotice();
+    if (!controlledAtStart && reg) firstInstallWorker = reg.installing || reg.waiting || null;
+    if (reg && reg.waiting && hadController && reg.waiting !== firstInstallWorker) {
+      showBuildUpdateNotice();
+    }
     if (reg) {
       watchWorker(reg.installing);
       if (typeof reg.addEventListener === 'function') {

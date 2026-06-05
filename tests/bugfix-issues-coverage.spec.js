@@ -94,10 +94,12 @@ test.describe('#226 — charts modal regressions', () => {
     await page.locator('.modal-back').waitFor();
 
     // CSS source must declare padding-inline-start (RTL-aware) somewhere
-    // on .charts-airport-body. Fetching the stylesheet text is the only
-    // reliable way — getComputedStyle resolves to physical longhand.
+    // on .charts-airport-body. Fetching the actual linked stylesheet keeps
+    // the assertion valid for root, staging, and /pr/NNN/ preview paths.
     const hasInlineStart = await page.evaluate(async () => {
-      const css = await fetch('/style.css').then(r => r.text());
+      const href = document.querySelector('link[href*="app/style.css"]')?.href
+        || new URL('app/style.css', document.baseURI).href;
+      const css = await fetch(href).then(r => r.text());
       const m = css.match(/\.charts-airport-body\s*\{[^}]*\}/);
       return m ? /padding-inline-start/.test(m[0]) : false;
     });

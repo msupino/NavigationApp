@@ -1,6 +1,6 @@
 # Known Frequencies
 
-This file mirrors the reusable `callSigns` catalog in `docs/comm-change.json`.
+This file mirrors the reusable `callSigns` catalog in `docs/data/comm-change.json`.
 The first table lists call signs currently referenced by `points[].callSigns`.
 The second table keeps catalog frequencies that are not assigned to any
 known frequency point yet.

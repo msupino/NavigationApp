@@ -65,31 +65,35 @@ branch by mistake.
   placeholder and doesn't need bumping per commit. CI lint still
   enforces that every `?v=` in the file agrees so authors don't
   accidentally leave one stale.
-- The app is five plain scripts loaded in order, sharing one global
+- `app/` — the app source. The app is five plain scripts loaded in order,
+  sharing one global
   scope (no build step, no modules):
-  `core.js` (migration, state model, geo helpers, Leaflet map,
-  overlay canvas) → `draw.js` (route / nav-waypoint / note rendering,
-  page frame) → `interact.js` (hit-testing, inspector, mouse/touch) →
-  `io.js` (save/load, page setup, flight plan, PNG export,
-  persistence) → `ui.js` (toolbar wiring, drag, boot, PWA). Order
+  `app/core.js` (migration, state model, geo helpers, Leaflet map,
+  overlay canvas) → `app/draw.js` (route / nav-waypoint / note rendering,
+  page frame) → `app/interact.js` (hit-testing, inspector, mouse/touch) →
+  `app/io.js` (save/load, page setup, flight plan, PNG export,
+  persistence) → `app/ui.js` (toolbar wiring, drag, boot, PWA). Order
   matters — later files use globals from earlier ones. Default English
-  UI strings live in `core.js` (`window.S`): **sentence case** (first
+  UI strings live in `app/core.js` (`window.S`): **sentence case** (first
   word + proper nouns / acronyms such as BYOP, CVFR, JSON); spell
-  *waypoint* in full in prose. Hebrew overrides: `he/strings.js`.
-- `manifest.json`, `sw.js`, `icon-192.png`, `icon-512.png` — PWA:
-  installable app + offline app-shell service worker.
-- `style.css` — dark UI + `@media print` rules.
-- `nav-waypoints.json` — 173 published Israeli VFR reporting points
+  *waypoint* in full in prose. Hebrew overrides:
+  `i18n/he/strings.js`.
+- `app/style.css` — dark UI + `@media print` rules.
+- `data/` — shipped JSON datasets used by the app.
+- `i18n/` — locale string bundles.
+- `assets/` — icons and social preview images.
+- `manifest.json`, `sw.js` — PWA manifest + offline app-shell service worker.
+- `data/nav-waypoints.json` — 173 published Israeli VFR reporting points
   (`{name, he, lat, lng}`). Fetched once at boot. **Source:** IAA CVFR
   chart waypoint reference table (page 113, 2025 edition), shipped as
   `113_waypoints.csv` upstream. CSV → JSON migration in issue #406 /
   PR `feat/unified-waypoints`. ARP rows in the CSV are intentionally
-  skipped here — airfield ARPs live in `airfields.json` with richer
+  skipped here — airfield ARPs live in `data/airfields.json` with richer
   data (runways, plates, English label). Updating: drop the CSV into
   the build script and regenerate.
 - `.gitattributes` — forces images out of LFS so Pages serves them.
-- `map.jpg`, `build_map.py` — legacy from the pre-Leaflet static-chart
-  version. **Unused**, safe to delete.
+- `legacy/map.jpg`, `legacy/build_map.py` — legacy from the pre-Leaflet
+  static-chart version. **Unused**, safe to delete.
 
 ## Architecture
 
@@ -238,7 +242,7 @@ branch by mistake.
   arrows: the arrow point stays on the waypoint, the stored note coordinate
   is the movable far tail, and the name/frequency are drawn above/below the
   arrow rather than inside a note box. Selecting the callout opens inspector
-  fields for name + frequency. If `docs/comm-change.json` defines a root
+  fields for name + frequency. If `docs/data/comm-change.json` defines a root
   `callSigns` catalog and a point's `callSigns` array, the inspector also
   shows a call-sign dropdown; choosing an option copies its default primary
   frequency into the editable frequency field. Call-sign names use the
@@ -488,7 +492,7 @@ downloadable `route.json`.
   value in the source HTML agrees.
 - **Toolbar version SHA suffix is automatic.** The same Deploy step
   also rewrites `version: '1.0'` → `version: '1.0-<short-sha>'` in
-  `docs/core.js`, so the toolbar identifies the exact deployed commit.
+  `docs/app/core.js`, so the toolbar identifies the exact deployed commit.
   Do not manually increase the source version number; the regex is
   idempotent (matches both `'x.y'` and `'x.y-anything'`).
 - PR preview links: when creating a PR include the direct preview URL
