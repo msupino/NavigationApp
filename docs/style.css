@@ -927,8 +927,12 @@ html, body {
     display: none !important;
   }
   body.printing-plan .flight-table .fp-vor-col {
+    display: table-cell !important;
     font-size: 8px;
     padding: 1px 2px;
+  }
+  body.printing-plan .flight-table .fp-vor-col select {
+    display: none !important;
   }
   body.printing-plan .plan-name,
   body.printing-plan .plan-num {
