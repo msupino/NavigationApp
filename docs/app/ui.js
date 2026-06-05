@@ -1184,13 +1184,22 @@ document.getElementById('airfield-cb').onchange = async e => {
   draw();
 };
 // --- VOR/DME overlay + reference selector --------------------------------
-const VOR_KEY = 'navaid.showVor';
+const VOR_STATIONS_KEY = 'navaid.showVorStations';
+const VOR_LEGACY_KEY = 'navaid.showVor';
 const VOR_REF_KEY = 'navaid.vorRef';
 const vorCb = document.getElementById('vor-cb');
 const vorRefRow = document.getElementById('vor-ref-row');
 const vorRefSelect = document.getElementById('vor-ref-select');
 try {
-  if (localStorage.getItem(VOR_KEY) === '1') window.showVor = true;
+  const storedStations = localStorage.getItem(VOR_STATIONS_KEY);
+  const legacyStations = localStorage.getItem(VOR_LEGACY_KEY);
+  if (storedStations !== null) {
+    window.showVorStations = storedStations === '1';
+  } else if (legacyStations !== null) {
+    window.showVorStations = legacyStations === '1';
+    localStorage.setItem(VOR_STATIONS_KEY, window.showVorStations ? '1' : '0');
+    localStorage.removeItem(VOR_LEGACY_KEY);
+  }
   const ref = localStorage.getItem(VOR_REF_KEY);
   if (ref) window.vorRef = ref;
 } catch (e) { /* storage unavailable */ }
@@ -1210,7 +1219,7 @@ function populateVorRefSelect() {
   vorRefSelect.value = vorRef || '';
 }
 function syncVorUI() {
-  if (vorCb) vorCb.checked = showVor;
+  if (vorCb) vorCb.checked = showVorStations;
   // The reference selector is always available: picking a VOR for
   // radial/DME readouts is independent of the map-marker overlay.
   if (vorRefRow) vorRefRow.style.display = '';
@@ -1218,9 +1227,12 @@ function syncVorUI() {
 }
 if (vorCb) {
   vorCb.onchange = async e => {
-    window.showVor = e.target.checked;
-    try { localStorage.setItem(VOR_KEY, showVor ? '1' : '0'); } catch (err) { /* */ }
-    if (showVor && vors === null) await loadVors();
+    window.showVorStations = e.target.checked;
+    try {
+      localStorage.setItem(VOR_STATIONS_KEY, showVorStations ? '1' : '0');
+      localStorage.removeItem(VOR_LEGACY_KEY);
+    } catch (err) { /* */ }
+    if (showVorStations && vors === null) await loadVors();
     syncVorUI();
     draw();
     if (state.selected) showInspector();   // refresh radial/DME rows
@@ -1246,7 +1258,7 @@ if (vorRefSelect) {
 loadVors().then(() => {
   syncVorUI();
   if (typeof showCenterCoord === 'function') showCenterCoord();
-  if (showVor) draw();
+  if (showVorStations) draw();
 });
 const FORCE_SNAP_KEY = 'navaid.forceSnap';
 try {

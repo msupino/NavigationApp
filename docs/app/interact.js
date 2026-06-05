@@ -91,7 +91,7 @@ function hitWaypoint(px, py) {
 // VOR / airfield / nav-waypoint markers that are not route waypoints. Each
 // is gated by its own visibility toggle and only when the dataset is loaded.
 function hitVorMarker(px, py) {
-  if (!showVor || !vors || !vors.length) return -1;
+  if (!showVorStations || !vors || !vors.length) return -1;
   const r = tune('vorMarkerRadiusPx') + tune('hitWaypointExtraPx');
   for (let i = vors.length - 1; i >= 0; i--) {
     const s = proj(vors[i]);
