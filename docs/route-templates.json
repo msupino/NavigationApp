@@ -92,6 +92,118 @@
       ]
     },
     {
+      "id": "llhz-llib-north",
+      "name": "Herzliya to Rosh Pina",
+      "he": "הרצליה לראש פינה",
+      "description": "CVFR route from Herzliya to Rosh Pina via Megiddo and Tavor.",
+      "heDescription": "מסלול CVFR מהרצליה לראש פינה דרך מגידו ותבור.",
+      "defaultSpeed": 90,
+      "waypoints": [
+        "LLHZ",
+        "BAZRA",
+        "DEROR",
+        "SHARO",
+        "HADRA",
+        "EIRON",
+        "ZMGID",
+        "AFULA",
+        "TAVOR",
+        "DESHE",
+        "AMNON",
+        "LLIB"
+      ],
+      "notes": [
+        {
+          "lat": 32.25549,
+          "lng": 34.98029,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "DEROR",
+          "freqName": "PLUTO_WEST",
+          "freq": "118.40",
+          "freqAuto": true
+        },
+        {
+          "lat": 32.52667,
+          "lng": 35.26968,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "ZMGID",
+          "freqName": "PLUTO_EAST",
+          "freq": "123.85"
+        },
+        {
+          "lat": 32.87,
+          "lng": 35.6225,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "DESHE",
+          "freqName": "ROSH_PINA",
+          "freq": "118.45",
+          "freqAuto": true
+        }
+      ]
+    },
+    {
+      "id": "llib-llhz-north",
+      "name": "Rosh Pina to Herzliya",
+      "he": "ראש פינה להרצליה",
+      "description": "CVFR route from Rosh Pina to Herzliya via Tavor and Megiddo.",
+      "heDescription": "מסלול CVFR מראש פינה להרצליה דרך תבור ומגידו.",
+      "defaultSpeed": 90,
+      "waypoints": [
+        "LLIB",
+        "AMNON",
+        "DESHE",
+        "TAVOR",
+        "AFULA",
+        "ZMGID",
+        "EIRON",
+        "HADRA",
+        "SHARO",
+        "DEROR",
+        "BAZRA",
+        "LLHZ"
+      ],
+      "notes": [
+        {
+          "lat": 32.25549,
+          "lng": 34.98029,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "DEROR",
+          "freqName": "HERZLIYA",
+          "freq": "122.20",
+          "freqAuto": true
+        },
+        {
+          "lat": 32.52667,
+          "lng": 35.26968,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "ZMGID",
+          "freqName": "PLUTO_WEST",
+          "freq": "118.40"
+        },
+        {
+          "lat": 32.87,
+          "lng": 35.6225,
+          "text": "Freq change",
+          "color": "#fff6aa",
+          "shape": "rect",
+          "cc": "DESHE",
+          "freqName": "PLUTO_EAST",
+          "freq": "123.85",
+          "freqAuto": true
+        }
+      ]
+    },
+    {
       "id": "llhz-llmz-dead-sea",
       "name": "Herzliya to Masada",
       "he": "הרצליה למצדה",
