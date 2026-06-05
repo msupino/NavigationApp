@@ -14,6 +14,28 @@ const CUSTOM_DOMAIN = 'https://navaid.supino.org';
 
 test.describe('SEO URLs', () => {
 
+  test('indexable metadata includes CVFR Israel map navigation aid phrase', async ({ page }) => {
+    await page.goto('.');
+    const target = /CVFR Israel Map Navigation Aid/i;
+    await expect(page).toHaveTitle(target);
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', target);
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', target);
+    await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', target);
+    await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', target);
+    await expect(page.locator('meta[name="twitter:description"]')).toHaveAttribute('content', target);
+    await expect(page.locator('header.sr-only h1')).toContainText(target);
+
+    const jsonLd = page.locator('script[type="application/ld+json"]');
+    const data = JSON.parse(await jsonLd.textContent());
+    const haystack = [
+      data.name,
+      ...(Array.isArray(data.alternateName) ? data.alternateName : []),
+      data.description,
+      ...(Array.isArray(data.keywords) ? data.keywords : []),
+    ].join(' ');
+    expect(haystack).toMatch(target);
+  });
+
   test('canonical and hreflang use custom domain', async ({ page }) => {
     await page.goto('.');
     const canonical = page.locator('link[rel="canonical"]');

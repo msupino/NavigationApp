@@ -82,6 +82,8 @@ test.describe('route templates', () => {
     expect(data.templates.map(template => template.id)).toEqual(expect.arrayContaining([
       'llhz-llha-coastal',
       'llha-llhz-coastal',
+      'llhz-llib-north',
+      'llib-llhz-north',
       'llhz-llmz-dead-sea',
       'llhz-llbs-south',
       'llbs-llhz-south',
@@ -127,6 +129,47 @@ test.describe('route templates', () => {
   });
 
   for (const templateCase of [
+    {
+      id: 'llhz-llib-north',
+      name: 'Herzliya to Rosh Pina',
+      waypoints: [
+        'LLHZ', 'BAZRA', 'DEROR', 'SHARO', 'HADRA', 'EIRON',
+        'ZMGID', 'AFULA', 'TAVOR', 'DESHE', 'AMNON', 'LLIB',
+      ],
+      alts: {
+        0: [800, 1200],
+        1: [800, 2000],
+        2: [1500, 2000],
+        4: [2500, 3000],
+        7: [2500, 3000],
+        10: [2500, 3000],
+      },
+      notes: [
+        { cc: 'DEROR', freqName: 'PLUTO_WEST', freq: '118.40' },
+        { cc: 'ZMGID', freqName: 'PLUTO_EAST', freq: '123.85' },
+        { cc: 'DESHE', freqName: 'ROSH_PINA', freq: '118.45' },
+      ],
+    },
+    {
+      id: 'llib-llhz-north',
+      name: 'Rosh Pina to Herzliya',
+      waypoints: [
+        'LLIB', 'AMNON', 'DESHE', 'TAVOR', 'AFULA', 'ZMGID',
+        'EIRON', 'HADRA', 'SHARO', 'DEROR', 'BAZRA', 'LLHZ',
+      ],
+      alts: {
+        0: [3000, 2500],
+        4: [3000, 2500],
+        7: [2000, 1500],
+        9: [2000, 800],
+        10: [1200, 800],
+      },
+      notes: [
+        { cc: 'DEROR', freqName: 'HERZLIYA', freq: '122.20' },
+        { cc: 'ZMGID', freqName: 'PLUTO_WEST', freq: '118.40' },
+        { cc: 'DESHE', freqName: 'PLUTO_EAST', freq: '123.85' },
+      ],
+    },
     {
       id: 'llha-llhz-coastal',
       name: 'Haifa to Herzliya',
