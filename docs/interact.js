@@ -87,6 +87,47 @@ function hitWaypoint(px, py) {
   }
   return -1;
 }
+// Overlay-marker hit testing for read-only selection (outside edit mode):
+// VOR / airfield / nav-waypoint markers that are not route waypoints. Each
+// is gated by its own visibility toggle and only when the dataset is loaded.
+function hitVorMarker(px, py) {
+  if (!showVor || !vors || !vors.length) return -1;
+  const r = tune('vorMarkerRadiusPx') + tune('hitWaypointExtraPx');
+  for (let i = vors.length - 1; i >= 0; i--) {
+    const s = proj(vors[i]);
+    if (Math.hypot(s.x - px, s.y - py) <= r) return i;
+  }
+  return -1;
+}
+function hitAirfieldMarker(px, py) {
+  if (!showAirfields || !airfields || !airfields.length) return -1;
+  const r = tune('airfieldMarkerRadiusPx') + tune('hitWaypointExtraPx');
+  for (let i = airfields.length - 1; i >= 0; i--) {
+    const s = proj(airfields[i]);
+    if (Math.hypot(s.x - px, s.y - py) <= r) return i;
+  }
+  return -1;
+}
+function hitNavWpMarker(px, py) {
+  if (!showNavWP || !navWP || !navWP.length) return -1;
+  const r = tune('navWaypointRadiusPx') + tune('hitWaypointExtraPx');
+  for (let i = navWP.length - 1; i >= 0; i--) {
+    const s = proj(navWP[i]);
+    if (Math.hypot(s.x - px, s.y - py) <= r) return i;
+  }
+  return -1;
+}
+// Topmost overlay marker under the point (VOR > airfield > nav-WP, matching
+// paint order). Returns a read-only selection descriptor, or null.
+function hitOverlayMarker(px, py) {
+  let i = hitVorMarker(px, py);
+  if (i >= 0) return { type: 'vor', index: i };
+  i = hitAirfieldMarker(px, py);
+  if (i >= 0) return { type: 'airfield', index: i };
+  i = hitNavWpMarker(px, py);
+  if (i >= 0) return { type: 'navwp', index: i };
+  return null;
+}
 function hitLeg(px, py) {
   for (let i = 0; i < state.legs.length; i++) {
     const a = proj(state.waypoints[i]);
@@ -366,12 +407,12 @@ function findSnappedReference(wp) {
   if (typeof nearestAirfield === 'function' &&
       Array.isArray(airfields) && airfields.length) {
     const af = nearestAirfield(ll, 18);
-    if (af) return { name: af.name };
+    if (af) return { name: af.name, he: af.he, en: af.en };
   }
   if (typeof nearestNavWaypoint === 'function' &&
       Array.isArray(navWP) && navWP.length) {
     const nw = nearestNavWaypoint(ll, 18);
-    if (nw) return { name: nw.name };
+    if (nw) return { name: nw.name, he: nw.he, en: nw.en };
   }
   return null;
 }
@@ -427,6 +468,75 @@ function legPairTitle(idx) {
   } catch (e) {
     return S.legTitle(idx + 1);
   }
+}
+
+// Current UI language for inspector labels (Hebrew uses Hebrew labels, English
+// uses English/code labels).
+function inspLang() {
+  return (window.__navLang === 'he' ||
+    (document.documentElement && document.documentElement.lang === 'he')) ? 'he' : 'en';
+}
+function inspLocaleName(o) {
+  if (!o) return '';
+  return inspLang() === 'he'
+    ? (o.he || o.name || o.ident || '')
+    : (o.en || o.name || o.ident || '');
+}
+
+// Shared "From <VOR>  R-xxx° / yy.y NM" inspector row. The selected
+// reference VOR drives radial/DME readouts independently of marker visibility.
+function appendVorRadialRow(body, lat, lng) {
+  if (typeof activeVor !== 'function') return;
+  const v = activeVor();
+  if (!v) return;
+  const rd = vorRadialDme(v, lat, lng);
+  if (!rd) return;
+  const row = textRow(S.vorFrom(v.ident), S.vorRadialDme(rd.radial, rd.dme));
+  row.classList.add('vor-radial-row');
+  body.appendChild(row);
+}
+
+// Grouped, clickable BYOP plate chips for an airfield (read-only inspector).
+function appendAirfieldPlates(body, af) {
+  if (!af || !Array.isArray(af.plates) || !af.plates.length) return;
+  const section = document.createElement('div');
+  section.className = 'plates-section';
+  const label = document.createElement('div');
+  label.className = 'row';
+  const l = document.createElement('label');
+  l.textContent = S.plates;
+  label.appendChild(l);
+  section.appendChild(label);
+  const groups = {};
+  const catOrder = ['approach', 'sid', 'star', 'ground', 'vfr', 'other'];
+  const catLabel = {
+    approach: S.plateCategoryApproach, sid: S.plateCategorySid,
+    star: S.plateCategoryStar, ground: S.plateCategoryGround,
+    vfr: S.plateCategoryVfr, other: S.plateCategoryOther,
+  };
+  for (const fn of af.plates) {
+    const cat = plateCategory(fn);
+    (groups[cat] || (groups[cat] = [])).push(fn);
+  }
+  for (const cat of catOrder) {
+    if (!groups[cat]) continue;
+    const row = document.createElement('div');
+    row.className = 'row';
+    const catLbl = document.createElement('label');
+    catLbl.textContent = catLabel[cat];
+    row.appendChild(catLbl);
+    const chips = document.createElement('span');
+    for (const fn of groups[cat]) {
+      const chip = document.createElement('button');
+      chip.className = 'plate-chip';
+      chip.textContent = prettyPlateLabel(fn);
+      chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
+      chips.appendChild(chip);
+    }
+    row.appendChild(chips);
+    section.appendChild(row);
+  }
+  body.appendChild(section);
 }
 
 function showInspector() {
@@ -514,23 +624,116 @@ function showInspector() {
       draw(); showInspector();
     };
     body.appendChild(del);
+  } else if (state.selected.type === 'vor') {
+    const v = vors && vors[state.selected.index];
+    if (!v) { insp.classList.add('hidden'); return; }
+    title.value = v.ident;
+    title.placeholder = ''; title.readOnly = true; title.oninput = null;
+    body.appendChild(textRow(S.vorName || 'Name', inspLocaleName(v)));
+    body.appendChild(textRow(S.vorFreq || 'Frequency', v.freq + ' MHz'));
+    body.appendChild(textRow(S.latitude, fmtLatLng(v.lat, 'N', 'S')));
+    body.appendChild(textRow(S.longitude, fmtLatLng(v.lng, 'E', 'W')));
+    const useBtn = document.createElement('button');
+    useBtn.className = 'insp-btn';
+    const isRef = vorRef === v.ident;
+    useBtn.textContent = isRef ? (S.vorRefActive || '✓ Reference VOR (tap to clear)')
+                               : (S.vorUseRef || 'Use as reference VOR');
+    useBtn.onclick = () => {
+      window.vorRef = isRef ? null : v.ident;
+      try {
+        if (vorRef) localStorage.setItem('navaid.vorRef', vorRef);
+        else localStorage.removeItem('navaid.vorRef');
+      } catch (e) { /* */ }
+      const vs = document.getElementById('vor-ref-select');
+      if (vs) vs.value = vorRef || '';
+      if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
+      draw(); showInspector();
+    };
+    body.appendChild(useBtn);
+  } else if (state.selected.type === 'airfield') {
+    const af = airfields && airfields[state.selected.index];
+    if (!af) { insp.classList.add('hidden'); return; }
+    const locale = inspLocaleName(af);
+    title.value = af.name + (locale && locale !== af.name ? ' / ' + locale : '');
+    title.placeholder = ''; title.readOnly = true; title.oninput = null;
+    body.appendChild(textRow(S.latitude, fmtLatLng(af.lat, 'N', 'S')));
+    body.appendChild(textRow(S.longitude, fmtLatLng(af.lng, 'E', 'W')));
+    if (Number.isFinite(af.elev_ft)) {
+      body.appendChild(textRow(S.elevation || 'Elevation', af.elev_ft + ' ft'));
+    }
+    appendVorRadialRow(body, af.lat, af.lng);
+    if (Array.isArray(af.runways) && af.runways.length) {
+      const row = document.createElement('div');
+      row.className = 'row runways-row';
+      const lbl = document.createElement('label');
+      lbl.textContent = S.runways;
+      row.appendChild(lbl);
+      const chips = document.createElement('div');
+      chips.className = 'runway-chips';
+      for (const r of af.runways) {
+        const chip = document.createElement('span');
+        chip.className = 'runway-chip';
+        chip.textContent = r;
+        chips.appendChild(chip);
+      }
+      row.appendChild(chips);
+      body.appendChild(row);
+    }
+    appendAirfieldPlates(body, af);
+  } else if (state.selected.type === 'navwp') {
+    const nw = navWP && navWP[state.selected.index];
+    if (!nw) { insp.classList.add('hidden'); return; }
+    title.value = nw.name;
+    title.placeholder = ''; title.readOnly = true; title.oninput = null;
+    const nwLocale = inspLocaleName(nw);
+    if (nwLocale) {
+      body.appendChild(textRow(S.navHebrew || 'Waypoint name', nwLocale));
+    }
+    body.appendChild(textRow(S.latitude, fmtLatLng(nw.lat, 'N', 'S')));
+    body.appendChild(textRow(S.longitude, fmtLatLng(nw.lng, 'E', 'W')));
+    appendVorRadialRow(body, nw.lat, nw.lng);
   } else {
     const wp = state.waypoints[state.selected.index];
     normalizeWaypointSequenceName(wp);
-    // #81: show the locale-resolved label so the inspector matches the map.
-    // The canonical stored name (`wp.name`) is whatever the user types/keeps;
-    // navName() converts a nav-WP canonical id to the current locale for read.
-    title.value = navName((wp.name || '').trim()) || wp.name || '';
-    title.placeholder = S.wpPrefix + (state.selected.index + 1);
-    title.readOnly = false;
-    title.classList.add('editable');
-    title.oninput = () => {
-      const t = (title.value || '').trim();
-      wp.name = isSequenceWaypointName(t) ? '' : title.value;
+    const ref = typeof findSnappedReference === 'function' ? findSnappedReference(wp) : null;
+    let canonical = ref ? ref.name : null;
+    let refLocale = ref ? inspLocaleName(ref) : '';
+    const storedName = (wp.name || '').trim();
+    if (!canonical && storedName && navWP) {
+      for (const nw of navWP) {
+        if (nw.name === storedName || nw.he === storedName) {
+          canonical = nw.name;
+          refLocale = inspLocaleName(nw);
+          break;
+        }
+      }
+    }
+    title.value = canonical || navName(storedName) || (S.wpPrefix + (state.selected.index + 1));
+    title.placeholder = '';
+    title.readOnly = true;
+    title.oninput = null;
+    let labelValue = storedName ? navName(storedName) : '';
+    if (refLocale && (!storedName || storedName === canonical)) labelValue = refLocale;
+    body.appendChild(inputRow(S.navHebrew || 'Waypoint name', labelValue || storedName, v => {
+      wp.name = isSequenceWaypointName((v || '').trim()) ? '' : v;
       draw();
-    };
+    }));
     body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
+    appendVorRadialRow(body, wp.lat, wp.lng);
+    // Reporting-type badge (issue #404). The chart's סוג דיווח class lives
+    // inline on the nav-WP (`report`). Surfaces mandatory (חובה) vs on-request
+    // (דרישה) for a route waypoint that matches a known reporting point.
+    if (typeof reportingFor === 'function') {
+      const rep = reportingFor(wp.name);
+      if (rep === 'mandatory' || rep === 'onRequest') {
+        const row = textRow(S.report || 'Reporting',
+          rep === 'mandatory' ? (S.reportingMandatory || '📍 Mandatory report')
+                              : (S.reportingOnRequest || '📍 Report on request'));
+        row.classList.add('reporting-badge-row');
+        body.appendChild(row);
+      }
+    }
     // Comm-change badge (issue #399). Surfaces the sector / CTR / TMA
     // frequency change associated with a known comm-change reporting
     // point. Looked up by the canonical ICAO name so it works for both
@@ -1069,6 +1272,17 @@ map.on('mousedown', e => {
     showInspector(); draw();
     return;
   }
+  // Outside edit mode, a click on a VOR / airfield / nav-WP marker opens its
+  // read-only inspector. Not draggable, so leave map panning enabled.
+  if (state.mode !== 'add' && state.mode !== 'note') {
+    const ov = hitOverlayMarker(p.x, p.y);
+    if (ov) {
+      downHit = true;
+      state.selected = ov;
+      showInspector(); draw();
+      return;
+    }
+  }
   if (pageSize && hitPageFrameEdge(p.x, p.y)) {
     downHit = true;
     drag = { kind: 'page', lx: p.x, ly: p.y };
@@ -1193,6 +1407,15 @@ window.addEventListener('keydown', e => {
       state.selected = null;
       showInspector(); draw();
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) t.blur();
+      return;
+    }
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+      return;
+    }
+    if (state.mode === 'add' || state.mode === 'note') {
+      e.preventDefault();
+      if (typeof setMode === 'function') setMode(null);
+      draw();
     }
     return;
   }
@@ -1381,6 +1604,18 @@ mapEl.addEventListener('touchstart', e => {
     state.selected = { type: 'leg', index: leg };
   } else if (onPage) {
     touchDrag = { kind: 'page', lx: p.x, ly: p.y };
+  }
+
+  // Outside edit mode, a tap on a VOR / airfield / nav-WP marker opens its
+  // read-only inspector (no drag).
+  if (!touchDrag && state.mode !== 'add' && state.mode !== 'note') {
+    const ov = hitOverlayMarker(p.x, p.y);
+    if (ov) {
+      state.selected = ov;
+      e.preventDefault();
+      showInspector(); draw();
+      return;
+    }
   }
 
   if (touchDrag) {

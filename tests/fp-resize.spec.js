@@ -121,6 +121,51 @@ test.describe('Flight-plan modal table print', () => {
     expect(printState.thBackground).toBe('rgb(255, 255, 255)');
   });
 
+  test('print mode fits VOR-enabled forward and return tables into the page width', async ({ page }) => {
+    await page.setViewportSize({ width: 794, height: 1123 });
+    await page.evaluate(async route => {
+      if (typeof loadVors === 'function') await loadVors();
+      window.vorRef = 'NAT';
+      window.showReturn = true;
+      state.waypoints = route.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
+      syncLegs();
+      draw();
+    }, {
+      waypoints: [
+        { lat: LLHZ.lat, lng: LLHZ.lng, name: 'LLHZ' },
+        { lat: 32.46472, lng: 34.91222, name: 'HADRA' },
+        { lat: 32.12, lng: 34.86, name: 'LONGWP001' },
+        { lat: LLHA.lat, lng: LLHA.lng, name: 'LLHA' },
+      ],
+    });
+    await openFlightPlan(page);
+    await page.emulateMedia({ media: 'print' });
+
+    const fit = await page.evaluate(() => {
+      document.body.classList.add('printing-plan');
+      const pageWidth = document.documentElement.clientWidth;
+      return Array.from(document.querySelectorAll('.flight-table')).map(table => {
+        const rect = table.getBoundingClientRect();
+        return {
+          layout: getComputedStyle(table).tableLayout,
+          left: rect.left,
+          right: rect.right,
+          width: rect.width,
+          scrollWidth: table.scrollWidth,
+          pageWidth,
+        };
+      });
+    });
+
+    expect(fit).toHaveLength(2);
+    for (const table of fit) {
+      expect(table.layout).toBe('fixed');
+      expect(table.left).toBeGreaterThanOrEqual(0);
+      expect(table.right).toBeLessThanOrEqual(table.pageWidth + 1);
+      expect(table.scrollWidth).toBeLessThanOrEqual(table.width + 1);
+    }
+  });
+
   test('CSV button downloads the current flight-plan tables', async ({ page }) => {
     await page.evaluate(() => { window.showReturn = true; });
     const modal = await openFlightPlan(page);

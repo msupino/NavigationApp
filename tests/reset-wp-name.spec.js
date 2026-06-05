@@ -78,7 +78,7 @@ test.describe('#418 — Reset waypoint name button', () => {
     expect(name).toBe('LLBG');
   });
 
-  test('off-grid single waypoint → name cleared; inspector shows placeholder WP1', async ({ page }) => {
+  test('off-grid single waypoint → name cleared; inspector title shows WP1', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [{ lat: 33.5, lng: 33.0, name: 'somethingCustom' }];
@@ -92,9 +92,9 @@ test.describe('#418 — Reset waypoint name button', () => {
       ph: document.getElementById('insp-title').placeholder,
     }));
     expect(stored).toBe('');
-    expect(titleVal).toBe('');
-    expect(ph).toMatch(/^WP/);
-    expect(ph).toContain('1');
+    expect(titleVal).toMatch(/^WP/);
+    expect(titleVal).toContain('1');
+    expect(ph).toBe('');
   });
 
   test('off-grid third waypoint of three → third name cleared (first two unchanged)', async ({ page }) => {
@@ -113,8 +113,8 @@ test.describe('#418 — Reset waypoint name button', () => {
     expect(names[0]).toBe('LLHZ');
     expect(names[1]).toBe('LLHA');
     expect(names[2]).toBe('');
-    const ph = await page.evaluate(() => document.getElementById('insp-title').placeholder);
-    expect(ph).toContain('3');
+    const titleVal = await page.evaluate(() => document.getElementById('insp-title').value);
+    expect(titleVal).toContain('3');
   });
 
   test('reset persists to localStorage (navaid.route)', async ({ page }) => {
@@ -266,7 +266,7 @@ test.describe('#418 — Reset waypoint name button', () => {
     expect(label).toContain('1');
   });
 
-  test('inspector: typing sequence text "WP 3" into title clears stored name', async ({ page }) => {
+  test('inspector: typing sequence text "WP 3" into waypoint-name row clears stored name', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [
@@ -277,8 +277,8 @@ test.describe('#418 — Reset waypoint name button', () => {
       state.selected = { type: 'wp', index: 2 };
       syncLegs(); draw(); showInspector();
     });
-    const title = page.locator('#insp-title');
-    await title.fill('WP 3');
+    const nameInput = page.locator('#insp-body .row input[type="text"]').first();
+    await nameInput.fill('WP 3');
     const stored = await page.evaluate(() => state.waypoints[2].name);
     expect(stored).toBe('');
   });
