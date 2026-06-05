@@ -48,28 +48,47 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
 
   test('toggle + reference selection persist across reload', async ({ page }) => {
     await boot(page);
-    await expect(page.locator('#vor-cb')).not.toBeChecked();
+    await expect(page.locator('#vor-cb')).toBeChecked();
+    expect(await page.evaluate(() => showVorStations)).toBe(true);
     await expect(page.locator('#vor-ref-row')).toBeVisible();
     await expect(page.locator('#vor-ref-select option[value="NAT"]')).toHaveCount(1);
     await page.locator('#vor-ref-select').selectOption('NAT');
     expect(await page.evaluate(() => vorRef)).toBe('NAT');
     expect(await page.evaluate(() => localStorage.getItem('navaid.vorRef'))).toBe('NAT');
 
-    await page.locator('#vor-cb').click();
-    expect(await page.evaluate(() => localStorage.getItem('navaid.showVor'))).toBe('1');
+    await page.locator('#vor-cb').uncheck();
+    expect(await page.evaluate(() => localStorage.getItem('navaid.showVorStations'))).toBe('0');
+    expect(await page.evaluate(() => localStorage.getItem('navaid.showVor'))).toBeNull();
     expect(await page.evaluate(() => localStorage.getItem('navaid.vorRef'))).toBe('NAT');
 
     await page.reload();
     await page.waitForFunction(() => typeof state !== 'undefined' && window.vors);
-    await expect(page.locator('#vor-cb')).toBeChecked();
+    await expect(page.locator('#vor-cb')).not.toBeChecked();
+    expect(await page.evaluate(() => showVorStations)).toBe(false);
     expect(await page.evaluate(() => vorRef)).toBe('NAT');
+  });
+
+  test('legacy showVor storage migrates to showVorStations', async ({ page }) => {
+    await page.addInitScript(() => {
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+        localStorage.setItem('navaid.showVor', '0');
+      } catch (e) {}
+    });
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof state !== 'undefined' && typeof loadVors === 'function');
+    await expect(page.locator('#vor-cb')).not.toBeChecked();
+    expect(await page.evaluate(() => showVorStations)).toBe(false);
+    expect(await page.evaluate(() => localStorage.getItem('navaid.showVorStations'))).toBe('0');
+    expect(await page.evaluate(() => localStorage.getItem('navaid.showVor'))).toBeNull();
   });
 
   test('inspector shows From <VOR> radial/DME when a reference is selected', async ({ page }) => {
     await boot(page);
     await page.evaluate(async () => {
       await loadVors();
-      window.showVor = false;           // markers off — readout still works
+      window.showVorStations = false;   // markers off — readout still works
       window.vorRef = 'NAT';
       state.waypoints = [
         { lat: 32.46472, lng: 34.91222, name: 'HADRA' },
@@ -164,7 +183,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     const out = await page.evaluate(async () => {
       await loadVors();
       window.vorRef = 'NAT';
-      window.showVor = false;            // markers off — readout still works
+      window.showVorStations = false;    // markers off — readout still works
       const refMarkersOff = vorReadoutText(32.4, 34.9);
       window.vorRef = null;              // no reference → no readout
       const noRef = vorReadoutText(32.4, 34.9);
@@ -179,7 +198,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     const out = await page.evaluate(async () => {
       await loadVors();
       window.vorRef = 'NAT';
-      window.showVor = false;            // marker overlay remains independent
+      window.showVorStations = false;    // marker overlay remains independent
       const p = L.latLng(32.4, 34.9);
       map.fire('mousemove', { latlng: p });
       return {
@@ -218,7 +237,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     // VOR marker hit-test + read-only inspector + "use as reference".
     const hit = await page.evaluate(async () => {
       await loadVors();
-      window.showVor = true;
+      window.showVorStations = true;
       map.setView([32.332, 34.968], 10);
       const s = proj(vorByIdent('NAT'));
       return hitOverlayMarker(Math.round(s.x), Math.round(s.y));
@@ -250,7 +269,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await boot(page);
     const hit = await page.evaluate(async () => {
       await loadVors();
-      window.showVor = true;
+      window.showVorStations = true;
       state.mode = 'add';
       map.setView([32.332, 34.968], 10);
       const s = proj(vorByIdent('NAT'));
@@ -380,41 +399,32 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       await loadVors();
       map.setView([32.332, 34.968], 8);
     });
-    // Markers off by default.
-    await page.evaluate(() => {
-      showVor = false;
-      draw();
-      const p = proj(vorByIdent('NAT'));
-      return { px: p.x, py: p.y };
-    });
     let hit = await page.evaluate(() => {
       const s = proj(vorByIdent('NAT'));
       return hitOverlayMarker(Math.round(s.x), Math.round(s.y));
     });
+    expect(hit).toMatchObject({ type: 'vor' });
+    // Toggle off.
+    await page.locator('#vor-cb').uncheck();
+    hit = await page.evaluate(() => {
+      const s = proj(vorByIdent('NAT'));
+      return hitOverlayMarker(Math.round(s.x), Math.round(s.y));
+    });
     expect(hit).toBeNull();
-    // Toggle on.
+    // Toggle on again.
     await page.locator('#vor-cb').check();
-    await page.evaluate(() => showVor || draw());
     hit = await page.evaluate(() => {
       const s = proj(vorByIdent('NAT'));
       return hitOverlayMarker(Math.round(s.x), Math.round(s.y));
     });
     expect(hit).toMatchObject({ type: 'vor' });
-    // Toggle off again.
-    await page.locator('#vor-cb').uncheck();
-    await page.evaluate(() => { showVor = false; draw(); });
-    hit = await page.evaluate(() => {
-      const s = proj(vorByIdent('NAT'));
-      return hitOverlayMarker(Math.round(s.x), Math.round(s.y));
-    });
-    expect(hit).toBeNull();
   });
 
   test('selected reference VOR draws with highlighted color', async ({ page }) => {
     await boot(page);
     await page.evaluate(async () => {
       await loadVors();
-      showVor = true;
+      showVorStations = true;
       vorRef = 'NAT';
       map.setView([32.332, 34.968], 10);
     });
@@ -445,7 +455,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     // At the default map view (zoom >= 8), labels are drawn.
     await page.evaluate(async () => {
       await loadVors();
-      showVor = true;
+      showVorStations = true;
       draw();
     });
     // Verify the condition used in drawVors evaluates correctly.
@@ -457,7 +467,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await boot(page);
     await page.evaluate(async () => {
       await loadVors();
-      showVor = true;
+      showVorStations = true;
       const idx = vors.findIndex(v => v.ident === 'NAT');
       state.selected = { type: 'vor', index: idx };
       showInspector();

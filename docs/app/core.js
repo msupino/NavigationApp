@@ -617,7 +617,7 @@ var navWP = null;           // null = not loaded yet (or last fetch failed —
                             // retry on next toggle / search call); [] or
                             // populated = last fetch resolved successfully.
 var showAirfields = true;   // Israeli airfields overlay (default on)
-var showVor = false;        // VOR/DME station overlay (opt-in, default off)
+var showVorStations = true; // VOR/DME station overlay (default on)
 var vors = null;            // null = not loaded yet; [] or populated once fetched
 var vorRef = null;          // ident of the selected reference VOR (radial/DME source)
 var forceSnap = false;      // #106: when on, every click snaps to the

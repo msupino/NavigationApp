@@ -550,7 +550,7 @@ function drawNavWaypoints() {
 // reference VOR is highlighted so it is obvious which one feeds the radial/
 // DME readouts. Gated by the "Show VOR stations" toggle.
 function drawVors() {
-  if (!showVor || !vors || !vors.length) return;
+  if (!showVorStations || !vors || !vors.length) return;
   const r = tune('vorMarkerRadiusPx');
   const showLabels = map.getZoom() >= 8;
   octx.save();
