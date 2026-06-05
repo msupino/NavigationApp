@@ -1680,11 +1680,15 @@ function showFlightPlan() {
   printBtn.type = 'button';
   printBtn.textContent = S.fpPrint;
   printBtn.onclick = () => {
+    const pageStyle = document.createElement('style');
+    pageStyle.textContent = '@page { size: A4 landscape; margin: 8mm; }';
     const cleanup = () => {
       document.body.classList.remove('printing-plan');
+      pageStyle.remove();
       window.removeEventListener('afterprint', cleanup);
     };
     window.addEventListener('afterprint', cleanup, { once: true });
+    document.head.appendChild(pageStyle);
     document.body.classList.add('printing-plan');
     window.print();
     setTimeout(cleanup, 4000);           // belt-and-braces for Safari
