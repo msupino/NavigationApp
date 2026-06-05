@@ -1136,7 +1136,7 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(labels.nth(0)).toHaveText('Waypoint');
     await expect(labels.nth(1)).toHaveText('Call sign');
     await expect(labels.nth(2)).toHaveText('Frequency');
-    await expect(values.nth(0)).toHaveText('TYONA');
+    await expect(values.nth(0)).toHaveText('Tel Yona');
     await expect(sel).toHaveValue('PLUTO');
     await sel.selectOption('HAGAV');
     const fields = page.locator('#insp-body .freq-input');

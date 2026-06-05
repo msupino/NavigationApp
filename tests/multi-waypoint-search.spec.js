@@ -134,6 +134,20 @@ test.describe('Multi-token search route builder (#98)', () => {
     expect(names).toEqual(['LLBO', 'BAZRA']);
   });
 
+  test('nav-waypoint English labels resolve to canonical chart codes', async ({ page }) => {
+    await boot(page);
+    await openSearch(page);
+    await page.fill('#wp-search', 'SdotYam EIRON');
+    await page.locator('#wp-search').press('Enter');
+    await page.waitForFunction(() => state.waypoints.length === 2);
+    const out = await page.evaluate(() => ({
+      names: state.waypoints.map(w => w.name),
+      labels: state.waypoints.map(w => navName(w.name)),
+    }));
+    expect(out.names).toEqual(['SDTYM', 'EIRON']);
+    expect(out.labels[0]).toBe('Sdot Yam');
+  });
+
   test('autofill: after "LLHZ BAZ" the dropdown offers BAZRA-style matches', async ({ page }) => {
     await boot(page);
     await openSearch(page);
@@ -142,6 +156,15 @@ test.describe('Multi-token search route builder (#98)', () => {
     await expect(page.locator('#wp-search-results')).toBeVisible();
     const hits = await page.locator('.wp-search-item').allTextContents();
     expect(hits.some(t => /BAZRA/i.test(t))).toBe(true);
+  });
+
+  test('autofill searches nav-waypoint English labels and keeps the code visible', async ({ page }) => {
+    await boot(page);
+    await openSearch(page);
+    await page.fill('#wp-search', 'sdot');
+    await page.waitForSelector('.wp-search-item');
+    const hits = await page.locator('.wp-search-item').allTextContents();
+    expect(hits.some(t => /Sdot Yam.*SDTYM/i.test(t))).toBe(true);
   });
 
   test('clicking an autofill hit replaces the last token + adds trailing space', async ({ page }) => {
