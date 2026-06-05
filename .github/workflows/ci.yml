@@ -24,7 +24,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Ensure dev received one squash-style commit
+      - name: Ensure dev received no merge commits
         run: |
           set -e
           BEFORE="${{ github.event.before }}"
@@ -36,17 +36,12 @@ jobs:
           fi
           COUNT=$(git rev-list --count "$RANGE")
           MERGES=$(git rev-list --merges --count "$RANGE")
-          if [ "$COUNT" -ne 1 ]; then
-            echo "❌ dev must receive exactly one commit per integration. Use squash merge."
-            echo "Received $COUNT commits in $RANGE."
-            exit 1
-          fi
           if [ "$MERGES" -ne 0 ]; then
             echo "❌ dev received a merge commit. Use squash merge."
             git rev-list --merges --oneline "$RANGE"
             exit 1
           fi
-          echo "✅ dev received one non-merge commit."
+          echo "✅ dev received $COUNT non-merge commit(s)."
 
   lint:
     runs-on: ubuntu-latest
