@@ -1181,6 +1181,8 @@ function populateVorRefSelect() {
 }
 function syncVorUI() {
   if (vorCb) vorCb.checked = showVor;
+  // The reference selector is always available: picking a VOR for
+  // radial/DME readouts is independent of the map-marker overlay.
   if (vorRefRow) vorRefRow.style.display = '';
   populateVorRefSelect();
 }
