@@ -3,9 +3,9 @@ const { test, expect } = require('./_setup');
 const fs = require('fs');
 const path = require('path');
 
-const TEMPLATES_PATH = path.join(__dirname, '..', 'docs', 'route-templates.json');
-const AIRFIELDS_PATH = path.join(__dirname, '..', 'docs', 'airfields.json');
-const NAV_WP_PATH = path.join(__dirname, '..', 'docs', 'nav-waypoints.json');
+const TEMPLATES_PATH = path.join(__dirname, '..', 'docs', 'data', 'route-templates.json');
+const AIRFIELDS_PATH = path.join(__dirname, '..', 'docs', 'data', 'airfields.json');
+const NAV_WP_PATH = path.join(__dirname, '..', 'docs', 'data', 'nav-waypoints.json');
 
 function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));

@@ -53,7 +53,7 @@ function draw() {
 }
 
 // --- nav-waypoint reference overlay ---------------------------------
-// Lazy-loads docs/nav-waypoints.json on first activation. Format:
+// Lazy-loads docs/data/nav-waypoints.json on first activation. Format:
 // { waypoints:[{ name, he, lat, lng }] } — 173 published reporting
 // points sourced from the IAA CVFR chart page 113 (2025 edition); see
 // issue #406. Validated strictly by validateNavWaypoints() (issue
@@ -90,7 +90,7 @@ async function loadNavWaypoints() {
   }
 }
 
-// Lazy-loads docs/comm-change.json — { callSigns:{...},
+// Lazy-loads docs/data/comm-change.json — { callSigns:{...},
 // points:[{name, commChange, callSigns, from, to, note, source}] }.
 // Builds an O(1) map keyed by ICAO `name` for the nav-waypoint overlay ring
 // + inspector badge. On 404 or schema error we install an EMPTY map ({})
@@ -128,7 +128,7 @@ async function loadCommChange() {
   }
 }
 
-// Lazy-loads docs/leg-altitude.json — { segments:[{from,to,
+// Lazy-loads docs/data/leg-altitude.json — { segments:[{from,to,
 // inboundAltitude,outboundAltitude,status,oneWay,...}], directionPool:[...] }.
 // The app uses it only as a reference table for freshly-created legs;
 // saved/imported route JSON stays authoritative for existing leg values.
@@ -334,7 +334,7 @@ function applyNavSnap(latlng, currentName, excludeLl) {
 }
 
 // --- airfield reference overlay -------------------------------------
-// Lazy-loads docs/airfields.json on first activation. Format:
+// Lazy-loads docs/data/airfields.json on first activation. Format:
 // { airfields:[{ name, he, en, lat, lng, elev_ft, plates:[string] }] } —
 // published Israeli airfields with matching BYOP plate filenames. The
 // `plates` field is data-only for now; rendering a per-airfield plate
@@ -373,7 +373,7 @@ async function loadAirfields() {
   }
 }
 // --- VOR/DME stations (issue #404 follow-up) ------------------------
-// Lazy-loads docs/vor.json: { vors:[{ ident, name, he?, freq, lat, lng }] }.
+// Lazy-loads docs/data/vor.json: { vors:[{ ident, name, he?, freq, lat, lng }] }.
 // Used by the overlay markers, the selectable reference for radial/DME
 // readouts, and (later) the flight-plan radial/DME columns.
 async function loadVors() {

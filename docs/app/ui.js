@@ -580,7 +580,7 @@ function normalizeRouteTemplateData(data) {
 async function loadRouteTemplates() {
   if (routeTemplates !== null) return routeTemplates;
   try {
-    const res = await fetch(S.routeTemplatesUrl || 'route-templates.json?v=1');
+    const res = await fetch(S.routeTemplatesUrl || 'data/route-templates.json?v=1');
     if (!res.ok) throw new Error(String(res.status));
     routeTemplates = normalizeRouteTemplateData(await res.json());
   } catch (e) {
@@ -1250,7 +1250,7 @@ document.getElementById('force-snap-cb').onchange = e => {
   catch (err) { /* storage unavailable */ }
 };
 // Comm-change overlay toggle (issue #399). The dataset lives in
-// docs/comm-change.json and rings are drawn on top of the nav-WP dots
+// docs/data/comm-change.json and rings are drawn on top of the nav-WP dots
 // in draw.js. This key intentionally replaced the legacy
 // navaid.showCommChange key so users who had stored the old default-off
 // state get the new default-on behavior.

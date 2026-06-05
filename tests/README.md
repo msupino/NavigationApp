@@ -21,7 +21,7 @@ fixture literals).
 
 Playwright specs that seed **LLHZ / LLHA / LLBG** coordinates import
 `tests/_airfieldArp.js` (or call `pairLLHZ_LLHA()` from it) so they track
-`docs/airfields.json`. After chart position updates, run
+`docs/data/airfields.json`. After chart position updates, run
 `node scripts/sync-airfield-test-arps.js` to regenerate `tests/_airfieldArp.js`
 (the module always `require`s the JSON at runtime).
 
@@ -71,11 +71,11 @@ name matches `sw.spec` or `pwa.spec` is automatically excluded.
 ### Extra checks
 
 - **SHA verification** — `EXPECTED_SHA` env var triggers a post-test
-  check in `_setup.js` that fetches `/core.js` and compares the version
+  check in `_setup.js` that fetches `/app/core.js` and compares the version
   SHA. Catches tests running against the wrong deployment.
 - **Service workers blocked** — when `EXPECTED_SHA` is set, `playwright.config.js`
   sets `serviceWorkers: 'block'` so cache-first SW cannot serve stale JS
-  while HTML/`core.js` match the new deploy SHA.
+  while HTML/`app/core.js` match the new deploy SHA.
 - **Worker cap** — with `EXPECTED_SHA`, Playwright uses **4 workers** so one
   preview origin is not overwhelmed (fewer long silent stretches in logs).
 - **Retry logic** — up to **2** full-suite attempts with 5 s delay; each run

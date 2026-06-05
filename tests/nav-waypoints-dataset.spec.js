@@ -1,5 +1,5 @@
 // @ts-check
-// Regression coverage for the docs/nav-waypoints.json content
+// Regression coverage for the docs/data/nav-waypoints.json content
 // (issues #406 and #408 — and now #410, the image-based rebuild).
 //
 // The dataset was originally rebuilt from the published IAA CVFR chart
@@ -25,7 +25,7 @@ const { test, expect } = require('./_setup');
 const fs = require('fs');
 const path = require('path');
 
-const JSON_PATH = path.join(__dirname, '..', 'docs', 'nav-waypoints.json');
+const JSON_PATH = path.join(__dirname, '..', 'docs', 'data', 'nav-waypoints.json');
 
 function loadData() {
   return JSON.parse(fs.readFileSync(JSON_PATH, 'utf8'));

@@ -1,7 +1,7 @@
 // @ts-check
 // Issue #399 — CVFR comm-change rendering on top of the nav-waypoint overlay.
 //
-// As of PR #401 the shipped dataset (docs/comm-change.json) is intentionally
+// As of PR #401 the shipped dataset (docs/data/comm-change.json) is intentionally
 // empty (`points: []`) — the schema + rendering + toolbar toggle merge as
 // plumbing, but no points are listed until a chart-specific source surfaces
 // (PAMAT chapter B-03 / IAA AIP supplement / printed CVFR chart). Earlier
@@ -10,7 +10,7 @@
 // These tests therefore split into two groups:
 //
 //   1. SHIPPED-FILE TESTS: assert the toolbar/checkbox/dom presence and the
-//      graceful-empty behaviour against the real docs/comm-change.json
+//      graceful-empty behaviour against the real docs/data/comm-change.json
 //      (commChangeMap is {} — no rings, no badges).
 //
 //   2. FIXTURE-BACKED TESTS: stub the comm-change.json fetch with a small
@@ -25,10 +25,10 @@
 const { test, expect } = require('./_setup');
 const fs = require('fs');
 
-// TYONA reporting point — coords lifted from docs/nav-waypoints.json.
+// TYONA reporting point — coords lifted from docs/data/nav-waypoints.json.
 const TYONA = { lat: 32.0047, lng: 34.7272, name: 'TYONA' };
 
-// Synthetic fixture matching docs/comm-change.json's schema. Three entries
+// Synthetic fixture matching docs/data/comm-change.json's schema. Three entries
 // cover every branch the renderer + inspector care about:
 //   * TYONA  — from/to present (full badge incl. freq row)
 //   * SORES  — from/to present (alternate entry still draws)
@@ -109,7 +109,7 @@ async function boot(page) {
 }
 
 test.describe('comm-change schema + UI plumbing (shipped populated dataset)', () => {
-  test('shipped docs/comm-change.json parses and loads commChange points', async ({ page }) => {
+  test('shipped docs/data/comm-change.json parses and loads commChange points', async ({ page }) => {
     await boot(page);
     const map = await page.evaluate(() => window.commChangeMap);
     expect(map).toBeTruthy();
