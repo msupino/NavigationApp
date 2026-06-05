@@ -695,18 +695,21 @@ function showInspector() {
   } else {
     const wp = state.waypoints[state.selected.index];
     normalizeWaypointSequenceName(wp);
-    // #81: show the locale-resolved label so the inspector matches the map.
-    // The canonical stored name (`wp.name`) is whatever the user types/keeps;
-    // navName() converts a nav-WP canonical id to the current locale for read.
-    title.value = navName((wp.name || '').trim()) || wp.name || '';
-    title.placeholder = S.wpPrefix + (state.selected.index + 1);
-    title.readOnly = false;
-    title.classList.add('editable');
-    title.oninput = () => {
-      const t = (title.value || '').trim();
-      wp.name = isSequenceWaypointName(t) ? '' : title.value;
+    const ref = typeof findSnappedReference === 'function' ? findSnappedReference(wp) : null;
+    let canonical = ref ? ref.name : null;
+    if (!canonical && wp.name && navWP) {
+      for (const nw of navWP) {
+        if (nw.name === wp.name || nw.he === wp.name) { canonical = nw.name; break; }
+      }
+    }
+    title.value = canonical || navName((wp.name || '').trim()) || (S.wpPrefix + (state.selected.index + 1));
+    title.placeholder = '';
+    title.readOnly = true;
+    title.oninput = null;
+    body.appendChild(inputRow('Label', wp.name || '', v => {
+      wp.name = isSequenceWaypointName((v || '').trim()) ? '' : v;
       draw();
-    };
+    }));
     body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
     appendVorRadialRow(body, wp.lat, wp.lng);
