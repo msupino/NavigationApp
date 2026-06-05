@@ -1470,6 +1470,15 @@ document.getElementById('tool-reset-all-markers').onclick = () => {
     state.legs[i].cumLabel = d.cumLabel;
     state.legs[i].cumLabelRet = d.cumLabelRet;
   }
+  for (const note of state.notes) {
+    if (!note || !note.cc) continue;
+    const target = typeof commCalloutTarget === 'function' ? commCalloutTarget(note) : null;
+    if (target && typeof commCalloutDefaultTail === 'function') {
+      const tail = commCalloutDefaultTail(target);
+      note.lat = tail.lat;
+      note.lng = tail.lng;
+    }
+  }
   draw();
 };
 document.getElementById('insp-close').onclick = () => {
