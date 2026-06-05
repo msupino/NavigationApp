@@ -370,6 +370,7 @@ function validateNavWaypoints(d) {
       continue;
     }
     _v(w, 'name', 'string', p, errs);
+    _v(w, 'en',   'string', p, errs);
     _v(w, 'he',   'string', p, errs);
     _v(w, 'lat',  'number', p, errs);
     _v(w, 'lng',  'number', p, errs);

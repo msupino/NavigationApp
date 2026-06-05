@@ -220,16 +220,18 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
 
   test('nav-waypoint inspector shows the resolved name row in English too', async ({ page }) => {
     await boot(page, 'en');
-    const code = await page.evaluate(async () => {
+    const out = await page.evaluate(async () => {
       await loadNavWaypoints();
       const index = navWP.findIndex(w => w.name === 'HADRA');
       state.selected = { type: 'navwp', index: index >= 0 ? index : 0 };
       showInspector();
-      return navWP[state.selected.index].name;
+      const wp = navWP[state.selected.index];
+      return { code: wp.name, label: wp.en };
     });
+    await expect(page.locator('#insp-title')).toHaveValue(out.code);
     const nameRow = page.locator('#insp-body .row').filter({ hasText: 'Waypoint name' });
     await expect(nameRow).toHaveCount(1);
-    await expect(nameRow).toContainText(code);
+    await expect(nameRow).toContainText(out.label);
   });
 
   test('markers are selectable outside edit mode (VOR / airfield / nav-WP)', async ({ page }) => {
@@ -547,7 +549,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     });
     // Title combines ICAO + English name.
     await expect(page.locator('#insp-title')).toHaveValue(/LLHA.*Haifa/);
-    // NavWP inspector — shows ICAO code as title, name row shows same code.
+    // NavWP inspector — shows code as title and English label in the name row.
     await page.evaluate(async () => {
       await loadNavWaypoints();
       const hadraIdx = navWP.findIndex(w => w.name === 'HADRA');
@@ -555,5 +557,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       showInspector();
     });
     await expect(page.locator('#insp-title')).toHaveValue('HADRA');
+    const navNameRow = page.locator('#insp-body .row').filter({ hasText: 'Waypoint name' });
+    await expect(navNameRow).toContainText('Hadera');
   });
 });

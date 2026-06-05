@@ -398,7 +398,7 @@ function deleteSelectedWpOrNote() {
 // nav-WPs because they are a smaller, strongly-known set of landmarks
 // (matches applyNavSnap()). Independent of `showNavWP` / `showAirfields`
 // so the reset action works even when the overlays are hidden.
-// Returns the canonical English code (4-letter ICAO / 5-letter nav-WP)
+// Returns the canonical code (4-letter ICAO / 5-letter nav-WP)
 // rather than the locale label, so `navName()` can resolve it back to
 // the user's locale at render time.
 function findSnappedReference(wp) {
@@ -701,7 +701,7 @@ function showInspector() {
     const storedName = (wp.name || '').trim();
     if (!canonical && storedName && navWP) {
       for (const nw of navWP) {
-        if (nw.name === storedName || nw.he === storedName) {
+        if (nw.name === storedName || nw.en === storedName || nw.he === storedName) {
           canonical = nw.name;
           refLocale = inspLocaleName(nw);
           break;
