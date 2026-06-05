@@ -1,6 +1,6 @@
 # CVFR Altitude Extraction Notes
 
-This is the breadcrumb trail for regenerating `docs/leg-altitude.json`
+This is the breadcrumb trail for regenerating `docs/data/leg-altitude.json`
 from the Israeli CVFR map PDFs. The app does not load this file; it is here so
 the next chart pass starts from the review method instead of rediscovering it.
 
@@ -10,9 +10,9 @@ the next chart pass starts from the review method instead of rediscovering it.
   `https://www.gov.il/BlobFolder/generalpage/idcunim-2025/he/%D7%91'-03%20CVFR%20%D7%A6%D7%A4%D7%95%D7%A0%D7%99-.pdf`
 - South chart: `CVFR South 2023`
   `https://www.gov.il/BlobFolder/generalpage/updates-2023/he/aip_CVFR_South_2023.pdf`
-- Point coordinates come from `docs/nav-waypoints.json` and
-  `docs/airfields.json`. Do not duplicate point coordinates in
-  `docs/leg-altitude.json`.
+- Point coordinates come from `docs/data/nav-waypoints.json` and
+  `docs/data/airfields.json`. Do not duplicate point coordinates in
+  `docs/data/leg-altitude.json`.
 
 ## Direction Convention
 
@@ -20,7 +20,7 @@ For each segment, `inboundAltitude` means `from -> to` and
 `outboundAltitude` means `to -> from`. If the app later looks up a route leg
 in the reverse order, swap the stored values.
 
-`docs/leg-altitude.json` also carries a top-level `directionPool` array. Each
+`docs/data/leg-altitude.json` also carries a top-level `directionPool` array. Each
 entry is one allowed directed altitude claim, keyed by the source segment and
 source field:
 
@@ -36,7 +36,7 @@ explicit for inference and review. Regenerate it after segment edits with:
 node scripts/sync-leg-altitude-directions.js
 ```
 
-Some CVFR paths are one-way. In `docs/leg-altitude.json`, one-way rows
+Some CVFR paths are one-way. In `docs/data/leg-altitude.json`, one-way rows
 set `oneWay: true` and use `null` for the disallowed direction; the non-null
 altitude is the allowed direction.
 
@@ -72,7 +72,7 @@ shape of the review output.
 ## Process
 
 1. Download the current north/south PDFs and render them at high resolution.
-2. Use `docs/nav-waypoints.json` and `docs/airfields.json` as the only point
+2. Use `docs/data/nav-waypoints.json` and `docs/data/airfields.json` as the only point
    source. Candidate segment endpoints are point ids, not copied coordinates.
 3. Detect likely green CVFR route segments by sampling the chart between known
    endpoints. Store `detection.greenScore`, `detection.maxGap`, and

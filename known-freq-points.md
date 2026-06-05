@@ -1,6 +1,6 @@
 # Known Frequency Points
 
-This file mirrors `points[]` in `docs/comm-change.json`. Rows marked `TBD`
+This file mirrors `points[]` in `docs/data/comm-change.json`. Rows marked `TBD`
 are comm-change points that do not have `points[].callSigns` assigned yet.
 
 | Waypoint / destination | Call signs | Frequencies |

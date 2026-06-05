@@ -370,6 +370,7 @@ function validateNavWaypoints(d) {
       continue;
     }
     _v(w, 'name', 'string', p, errs);
+    _v(w, 'en',   'string', p, errs);
     _v(w, 'he',   'string', p, errs);
     _v(w, 'lat',  'number', p, errs);
     _v(w, 'lng',  'number', p, errs);
@@ -382,7 +383,7 @@ function validateNavWaypoints(d) {
   }
   return errs.length ? errs.join('; ') : null;
 }
-// Strict schema for docs/vor.json — { vors:[{ ident, name, freq, lat, lng,
+// Strict schema for docs/data/vor.json — { vors:[{ ident, name, freq, lat, lng,
 // he? }] }. Unknown keys tolerated (forward-compat).
 function validateVors(d) {
   const errs = [];
@@ -405,7 +406,7 @@ function validateVors(d) {
   }
   return errs.length ? errs.join('; ') : null;
 }
-// Strict schema for docs/comm-change.json — { version, source?,
+// Strict schema for docs/data/comm-change.json — { version, source?,
 // callSigns?: { ID:{ label?, he?, unit?, primary?, secondary?, atis?,
 // source? } }, points:[{ name, commChange, callSigns?, from?, to?,
 // note?, source? }] }. Only `points[].name` and
@@ -468,7 +469,7 @@ function validateCommChange(d) {
   return errs.length ? errs.join('; ') : null;
 }
 
-// Strict schema for docs/leg-altitude.json — a reference table of
+// Strict schema for docs/data/leg-altitude.json — a reference table of
 // green CVFR route-segment altitude pairs. Unknown metadata keys are allowed;
 // the map behavior needs from/to + integer/null altitude fields, plus the
 // optional directionPool must mirror those pairs when present.
@@ -559,7 +560,7 @@ function validateLegAltitudes(d) {
   return errs.length ? errs.join('; ') : null;
 }
 
-// Strict schema for docs/airfields.json — { airfields:[{ name, he, lat,
+// Strict schema for docs/data/airfields.json — { airfields:[{ name, he, lat,
 // lng, en?, elev_ft?, plates?:[string], runways?:[string] }] }. Mirrors
 // validateNavWaypoints; the loader in draw.js bails out with an alert that
 // names the offending field path so the JSON author can find the typo.

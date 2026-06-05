@@ -6,8 +6,10 @@ Unity.
 
 ## Layout
 
-- `docs/` — the deployed app (HTML / CSS / JS, no build step).
-- `docs/nav-waypoints.json` — 173 Israeli VFR reporting points
+- `docs/` — the deployed app, with browser-root files at the top level
+ and source/data grouped below (`app/`, `data/`, `i18n/`, `assets/`,
+ `legacy/`; `byop/` remains a stable public chart-PDF URL).
+- `docs/data/nav-waypoints.json` — 173 Israeli VFR reporting points
  (`{name, he, lat, lng}`); shipped, lazily fetched by the "Show/pin
  navigation waypoints" toggle. Sourced from the published IAA CVFR chart waypoint
  reference table (page 113, 2025 edition) — see SKILL.md for refresh
@@ -40,10 +42,10 @@ both branches and assembles a single Pages site:
   `docs/index.html` must remain equal (CI lint enforces). The deploy
   workflow rewrites them to the short commit SHA at upload time, so
   the source value itself doesn't need to be bumped per commit — it's
-  just a placeholder kept consistent across `app.js` / `style.css` /
+  just a placeholder kept consistent across `docs/app/*.js` / `docs/app/style.css` /
   `strings.js` references.
 - **Toolbar version SHA suffix is automatic at deploy time.** The
-  same Deploy step rewrites `NavAid.version` in `docs/core.js` from
+  same Deploy step rewrites `NavAid.version` in `docs/app/core.js` from
   `'1.0'` to `'1.0-<short-sha>'`, so the toolbar identifies the exact
   deployed commit without manually increasing the source version number.
 - **Before `git commit`, verify the current branch** (`git branch
@@ -53,9 +55,10 @@ both branches and assembles a single Pages site:
   different branch). Do not commit on `main`, `dev`, or unrelated work
   by mistake.
 - **Always run `node --check` on every changed `.js` file** before
-  committing (the app code lives in `docs/core.js`, `docs/draw.js`,
-  `docs/interact.js`, `docs/io.js`, `docs/ui.js`, `docs/sw.js`, and
-  the locale bundles `docs/en/strings.js` / `docs/he/strings.js`).
+  committing (the app code lives in `docs/app/core.js`,
+  `docs/app/draw.js`, `docs/app/interact.js`, `docs/app/io.js`,
+  `docs/app/ui.js`, `docs/sw.js`, and the locale bundles
+  `docs/i18n/en/strings.js` / `docs/i18n/he/strings.js`).
 - **Every enhancement, bug fix, or regression must include tests.** Add new
   test cases to the appropriate `tests/*.spec.js` file. If no file covers
   the area, create one.
@@ -85,13 +88,13 @@ both branches and assembles a single Pages site:
     screen` toolbar button does the same. `+`/`=`/numpad `+` and
     `−`/numpad `−` zoom the map (or loupe zoom when the magnifier is on);
     `M` toggles the magnifying glass. All are listed in the `?` cheat-sheet
-    (`SHORTCUTS_HELP_ROWS` in `docs/io.js`).
+    (`SHORTCUTS_HELP_ROWS` in `docs/app/io.js`).
 - **Keyboard shortcuts must be discoverable.** Every global keyboard
   shortcut in `docs/` is listed in the `?` cheat-sheet modal
-  (`SHORTCUTS_HELP_ROWS` in `docs/io.js`). When you add a new global
+  (`SHORTCUTS_HELP_ROWS` in `docs/app/io.js`). When you add a new global
   shortcut, append a row to that array and add the matching
-  `S.shortcutXxx` strings in `docs/core.js` (English defaults) +
-  `docs/he/strings.js` (Hebrew). See SKILL.md "Keyboard shortcuts
+  `S.shortcutXxx` strings in `docs/app/core.js` (English defaults) +
+  `docs/i18n/he/strings.js` (Hebrew). See SKILL.md "Keyboard shortcuts
   cheat-sheet" for the rendering pipeline.
 - No external dependencies beyond Leaflet + `leaflet-rotate@0.2.8`
   (both loaded from `unpkg.com`) and `images.weserv.nl` (used as a

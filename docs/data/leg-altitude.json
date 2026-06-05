@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "source": "Candidate CVFR green-route altitude scaffold. Coordinates are not duplicated here; segment endpoint ids resolve against docs/nav-waypoints.json and docs/airfields.json. Some rows were detected from CVFR chart imagery and manually audited; sibling coverage rows with source=cvfr-map airway adjacency were seeded from the upstream airway table so direct CVFR legs are visible in the editable chart. Candidate altitudes should be checked against official CVFR chart labels before promotion. Double-ended same-route markers may apply the same altitude both directions, while one-way routes use null for the disallowed direction. status=reviewed marks rows confirmed from maintainer-provided evidence. status=unknown with two null altitudes is an editable placeholder.",
+  "source": "Candidate CVFR green-route altitude scaffold. Coordinates are not duplicated here; segment endpoint ids resolve against docs/data/nav-waypoints.json and docs/data/airfields.json. Some rows were detected from CVFR chart imagery and manually audited; sibling coverage rows with source=cvfr-map airway adjacency were seeded from the upstream airway table so direct CVFR legs are visible in the editable chart. Candidate altitudes should be checked against official CVFR chart labels before promotion. Double-ended same-route markers may apply the same altitude both directions, while one-way routes use null for the disallowed direction. status=reviewed marks rows confirmed from maintainer-provided evidence. status=unknown with two null altitudes is an editable placeholder.",
   "sourceCharts": [
     {
       "id": "north",
@@ -14,7 +14,7 @@
     }
   ],
   "schema": {
-    "segments": "Candidate direct green CVFR route segments. Endpoint coordinates are looked up by from/to in docs/nav-waypoints.json or docs/airfields.json. inboundAltitude is from -> to; outboundAltitude is to -> from. Altitudes are feet MSL. A single null means that direction is not allowed and requires oneWay=true; two nulls require status=unknown and mean the row is an editable placeholder. Candidate values may come from chart-read yellow CVFR altitude arrows/markers or from source=cvfr-map airway adjacency sibling coverage. Double-ended same-route markers may apply the same altitude both directions. status=reviewed marks rows confirmed from maintainer-provided evidence."
+    "segments": "Candidate direct green CVFR route segments. Endpoint coordinates are looked up by from/to in docs/data/nav-waypoints.json or docs/data/airfields.json. inboundAltitude is from -> to; outboundAltitude is to -> from. Altitudes are feet MSL. A single null means that direction is not allowed and requires oneWay=true; two nulls require status=unknown and mean the row is an editable placeholder. Candidate values may come from chart-read yellow CVFR altitude arrows/markers or from source=cvfr-map airway adjacency sibling coverage. Double-ended same-route markers may apply the same altitude both directions. status=reviewed marks rows confirmed from maintainer-provided evidence."
   },
   "segments": [
     {
