@@ -16,8 +16,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  # `write` is required so the "Sync main into dev" step can push the merge
-  # commit back to origin/dev before opening the promotion PR.
+  # `write` is required so the "Squash-sync main into dev" step can push the
+  # single integration commit back to origin/dev before opening the promotion PR.
   contents: write
   pull-requests: write
 
@@ -36,11 +36,11 @@ jobs:
           fetch-depth: 0   # need full history to merge main
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Sync main into dev
-        # Skip this step when the triggering push *is* our own auto-sync merge
+      - name: Squash-sync main into dev
+        # Skip this step when the triggering push *is* our own auto-sync
         # commit — otherwise the push we make below would re-trigger the
-        # workflow indefinitely. The `pull_request: closed` trigger has its own
-        # `merged == true` filter at the job level so it doesn't need this
+        # workflow indefinitely. The `pull_request: closed` trigger has its
+        # own `merged == true` filter at the job level so it doesn't need this
         # guard.
         if: github.event_name != 'push' || !contains(github.event.head_commit.message, 'auto-sync before promotion PR')
         env:
@@ -57,15 +57,22 @@ jobs:
             echo "had_conflict=false" >> "$GITHUB_ENV"
             exit 0
           fi
-          # Try the merge. The exact commit message is matched by the recursion
-          # guard above, so don't change it without updating both.
-          if git merge --no-ff -m "Merge branch 'main' into dev (auto-sync before promotion PR)" main; then
-            echo "Merge succeeded"
+          # Try a squash merge so every automated update that lands on dev is
+          # one ordinary commit. The exact commit message is matched by the
+          # recursion guard above, so don't change it without updating both.
+          if git merge --squash main; then
+            if git diff --cached --quiet; then
+              echo "main introduced no tree changes for dev — skipping commit"
+              echo "had_conflict=false" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            git commit -m "Squash merge main into dev (auto-sync before promotion PR)"
+            echo "Squash-sync succeeded"
             git push origin dev
             echo "had_conflict=false" >> "$GITHUB_ENV"
           else
-            echo "Merge conflict — aborting merge but proceeding to open PR with a warning."
-            git merge --abort || true
+            echo "Squash-sync conflict — aborting merge but proceeding to open PR with a warning."
+            git merge --abort || git reset --merge || true
             echo "had_conflict=true" >> "$GITHUB_ENV"
           fi
 
