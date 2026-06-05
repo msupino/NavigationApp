@@ -502,6 +502,20 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       showInspector();
     });
     await expect(page.locator('#insp-body')).toContainText('חדרה');
+    // Route waypoint on the same nav-WP mirrors that inspector: ICAO on top,
+    // localized name row below (editable), no hard-coded English "Label".
+    await page.evaluate(async () => {
+      await loadNavWaypoints();
+      const hadra = navWP.find(w => w.name === 'HADRA');
+      state.waypoints = [{ lat: hadra.lat, lng: hadra.lng, name: 'HADRA' }];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+    });
+    await expect(page.locator('#insp-title')).toHaveValue('HADRA');
+    const routeNameRow = page.locator('#insp-body .row').filter({ hasText: 'שם נקודה' }).first();
+    await expect(routeNameRow.locator('input')).toHaveValue('חדרה');
+    await expect(page.locator('#insp-body')).not.toContainText('Label');
   });
 
   test('English locale shows English names in VOR, airfield, and navWP inspectors', async ({ page }) => {

@@ -407,12 +407,12 @@ function findSnappedReference(wp) {
   if (typeof nearestAirfield === 'function' &&
       Array.isArray(airfields) && airfields.length) {
     const af = nearestAirfield(ll, 18);
-    if (af) return { name: af.name };
+    if (af) return { name: af.name, he: af.he, en: af.en };
   }
   if (typeof nearestNavWaypoint === 'function' &&
       Array.isArray(navWP) && navWP.length) {
     const nw = nearestNavWaypoint(ll, 18);
-    if (nw) return { name: nw.name };
+    if (nw) return { name: nw.name, he: nw.he, en: nw.en };
   }
   return null;
 }
@@ -697,16 +697,24 @@ function showInspector() {
     normalizeWaypointSequenceName(wp);
     const ref = typeof findSnappedReference === 'function' ? findSnappedReference(wp) : null;
     let canonical = ref ? ref.name : null;
-    if (!canonical && wp.name && navWP) {
+    let refLocale = ref ? inspLocaleName(ref) : '';
+    const storedName = (wp.name || '').trim();
+    if (!canonical && storedName && navWP) {
       for (const nw of navWP) {
-        if (nw.name === wp.name || nw.he === wp.name) { canonical = nw.name; break; }
+        if (nw.name === storedName || nw.he === storedName) {
+          canonical = nw.name;
+          refLocale = inspLocaleName(nw);
+          break;
+        }
       }
     }
-    title.value = canonical || navName((wp.name || '').trim()) || (S.wpPrefix + (state.selected.index + 1));
+    title.value = canonical || navName(storedName) || (S.wpPrefix + (state.selected.index + 1));
     title.placeholder = '';
     title.readOnly = true;
     title.oninput = null;
-    body.appendChild(inputRow('Label', wp.name || '', v => {
+    let labelValue = storedName ? navName(storedName) : '';
+    if (refLocale && (!storedName || storedName === canonical)) labelValue = refLocale;
+    body.appendChild(inputRow(S.navHebrew || 'Waypoint name', labelValue || storedName, v => {
       wp.name = isSequenceWaypointName((v || '').trim()) ? '' : v;
       draw();
     }));
