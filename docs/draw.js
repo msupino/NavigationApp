@@ -32,6 +32,7 @@ function legDefaultLabelPerp(legLenPx) {
 function draw() {
   octx.clearRect(0, 0, vw(), vh());
   drawNavWaypoints();
+  drawReportingBadges();
   drawCommChangeRings();
   drawAirfields();
   drawVors();
@@ -77,6 +78,7 @@ async function loadNavWaypoints() {
       he: w.he,                          // Hebrew label (English kept for search)
       lat: w.lat,
       lng: w.lng,
+      report: w.report,                  // 'mandatory' | 'onRequest' (issue #404)
     }));
     return navWP;
   } catch (e) {
@@ -584,6 +586,55 @@ function drawVors() {
       octx.fillStyle = col;
       octx.fillText(label, lx, ly);
     }
+  }
+  octx.restore();
+  octx.lineWidth = 1;
+}
+
+// --- reporting-type overlay (issue #404 / PR #405 design) ------------
+// The CVFR chart's סוג דיווח class lives inline on each nav-waypoint as
+// `report` ('mandatory' = חובה, 'onRequest' = דרישה). reportingFor() resolves
+// a route-waypoint or nav-WP name (English code or Hebrew label) to its class.
+let _reportIndex = null;
+let _reportIndexFor = null;
+function reportingFor(name) {
+  if (!name || !navWP || !navWP.length) return null;
+  if (_reportIndexFor !== navWP) {
+    _reportIndex = Object.create(null);
+    for (const w of navWP) if (w.report) _reportIndex[w.name] = w.report;
+    _reportIndexFor = navWP;
+  }
+  // `name` is guaranteed truthy by the guard above.
+  const key = typeof canonicalNavWaypointName === 'function'
+    ? canonicalNavWaypointName(name) : String(name).trim();
+  return (key && _reportIndex[key]) || null;
+}
+// Small "M" badge on mandatory (חובה) reporting points so they stand out on
+// the chart. Drawn as its own pass — independent of the nav-WP dot overlay —
+// so it tracks the dedicated "Show mandatory reports" toggle. On-request
+// points are not badged (they are the common case); the inspector still
+// reports both classes for any selected waypoint.
+function drawReportingBadges() {
+  if (!showReporting || !navWP || !navWP.length) return;
+  const r = tune('reportBadgeRadiusPx');
+  const off = tune('reportBadgeOffsetPx');
+  octx.save();
+  octx.textAlign = 'center';
+  octx.textBaseline = 'middle';
+  octx.font = `bold ${tune('reportBadgeFontPx')}px sans-serif`;
+  for (const wp of navWP) {
+    if (wp.report !== 'mandatory') continue;
+    const s = proj(wp);
+    const cx = s.x + off, cy = s.y - off;
+    octx.beginPath();
+    octx.arc(cx, cy, r, 0, Math.PI * 2);
+    octx.fillStyle = tune('reportBadgeColor');
+    octx.fill();
+    octx.lineWidth = 1.5;
+    octx.strokeStyle = tune('inkColor');
+    octx.stroke();
+    octx.fillStyle = tune('reportBadgeTextColor');
+    octx.fillText('M', cx, cy + 0.5);
   }
   octx.restore();
   octx.lineWidth = 1;

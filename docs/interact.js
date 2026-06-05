@@ -470,6 +470,19 @@ function legPairTitle(idx) {
   }
 }
 
+// Current UI language for inspector labels (he shows Hebrew names only,
+// en shows English/code only — no mixed-language strings).
+function inspLang() {
+  return (window.__navLang === 'he' ||
+    (document.documentElement && document.documentElement.lang === 'he')) ? 'he' : 'en';
+}
+function inspLocaleName(o) {
+  if (!o) return '';
+  return inspLang() === 'he'
+    ? (o.he || o.name || o.ident || '')
+    : (o.en || o.name || o.ident || '');
+}
+
 // Shared "From <VOR>  R-xxx° / yy.y NM" inspector row (overlay-gated).
 function appendVorRadialRow(body, lat, lng) {
   if (!showVor || typeof activeVor !== 'function') return;
@@ -699,6 +712,19 @@ function showInspector() {
       if (rd) {
         const row = textRow(S.vorFrom(v.ident), S.vorRadialDme(rd.radial, rd.dme));
         row.classList.add('vor-radial-row');
+        body.appendChild(row);
+      }
+    }
+    // Reporting-type badge (issue #404). The chart's סוג דיווח class lives
+    // inline on the nav-WP (`report`). Surfaces mandatory (חובה) vs on-request
+    // (דרישה) for a route waypoint that matches a known reporting point.
+    if (typeof reportingFor === 'function') {
+      const rep = reportingFor(wp.name);
+      if (rep === 'mandatory' || rep === 'onRequest') {
+        const row = textRow(S.report || 'Reporting',
+          rep === 'mandatory' ? (S.reportingMandatory || '📍 Mandatory report')
+                              : (S.reportingOnRequest || '📍 Report on request'));
+        row.classList.add('reporting-badge-row');
         body.appendChild(row);
       }
     }

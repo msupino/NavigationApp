@@ -168,6 +168,12 @@ NavAid.tuningDefaults = {
   vorMarkerColor: { value: '#127a7a', type: 'color', label: 'VOR marker color' },
   vorSelectedColor: { value: '#e67e22', type: 'color', label: 'VOR selected (reference) color' },
   vorLabelFontPx: { value: 10, min: 4, max: 28, step: 1, label: 'VOR label text size' },
+
+  reportBadgeRadiusPx: { value: 7, min: 3, max: 20, step: 0.5, label: 'Reporting badge radius' },
+  reportBadgeOffsetPx: { value: 9, min: 0, max: 40, step: 1, label: 'Reporting badge offset' },
+  reportBadgeFontPx: { value: 9, min: 4, max: 24, step: 1, label: 'Reporting badge text size' },
+  reportBadgeColor: { value: '#d63b3b', type: 'color', label: 'Reporting badge fill' },
+  reportBadgeTextColor: { value: '#ffffff', type: 'color', label: 'Reporting badge text color' },
 };
 // Groups are ordered to mirror the route-building workflow: the route line
 // and its per-leg annotations first, then the markers you place, then the
@@ -192,6 +198,7 @@ NavAid.tuningGroups = [
   { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitLegPx', 'hitLegLabelMinPx', 'hitLegLabelScalePx', 'hitCumLabelMinPx', 'hitCumLabelScalePx'] },
   { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs'] },
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx'] },
+  { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeFontPx', 'reportBadgeColor', 'reportBadgeTextColor'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'kiteTextColor', 'legKiteHaloColor'] },
 ];
@@ -263,6 +270,11 @@ window.S = Object.assign({
   tbWpSizeTitle: 'Waypoint circle and name size',
   tbShowNavWp: 'Show/pin nav waypoints',            // Map overlay toggle
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
+  tbShowReporting: 'Show mandatory reports',        // reporting-type overlay toggle
+  tbShowReportingTitle: 'Badge waypoints that are mandatory (חובה) reporting points',
+  report: 'Reporting',
+  reportingMandatory: '📍 Mandatory report',
+  reportingOnRequest: '📍 Report on request',
   tbSearchPlaceholder: '🔍 Find navigation waypoint',
   tbSearchHint: 'Tip: type space-separated waypoint codes (e.g. LLHZ BAZRA DEROR SHARO HADRA) and press Enter to build a route.',
   errSearchUnknown: function(t) { return 'Unknown waypoint: ' + t; },
@@ -311,7 +323,7 @@ window.S = Object.assign({
   vorRefActive: '✓ Reference VOR (tap to clear)',
   elevation: 'Elevation',
   navHebrew: 'Hebrew',
-  vorFrom: function(id) { return 'From ' + id; },     // inspector / readout prefix
+  vorFrom: function(id) { return 'From ' + id + ' VOR'; }, // inspector / readout prefix
   vorRadialDme: function(rad, dme) {                  // e.g. "R-263° / 12.4 NM"
     return 'R-' + rad + '° / ' + dme + ' NM';
   },
@@ -601,6 +613,7 @@ var showMidLeg = false;
 var showCumTime = true;     // cumulative-time kites — on by default
 var highlightDiff = false;  // purple halo on legs that change altitude
 var showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
+var showReporting = false;  // mandatory reporting badges (opt-in, default off) — issue #404
 var navWP = null;           // null = not loaded yet (or last fetch failed —
                             // retry on next toggle / search call); [] or
                             // populated = last fetch resolved successfully.
