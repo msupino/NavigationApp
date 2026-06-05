@@ -39,6 +39,9 @@ html, body {
 .flight-table.no-vor .fp-vor-col { display: none; }
 .fp-vor { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
 .fp-vor-freq { color: #9ad; font-size: 12px; }
+.fp-leg-vor { font-size: 10px; max-width: 56px; margin-inline-end: 3px; vertical-align: middle;
+  background: #2f2b2b; color: #e8e8e8; border: 1px solid #443f3f; border-radius: 3px; }
+.fp-radial-val { white-space: nowrap; }
 
 #overlay {
   position: absolute;

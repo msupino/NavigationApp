@@ -1213,12 +1213,57 @@ function showFlightPlan() {
   const radialCells = [];              // leg index -> VOR radial cell (To wp)
   const dmeCells = [];                 // leg index -> VOR DME cell (To wp)
   // Radial (magnetic) + DME of a waypoint from the selected reference VOR.
-  function vorCells(wp) {
-    const v = typeof activeVor === 'function' ? activeVor() : null;
+  // Per-leg override (leg.vorRef) wins over the global reference VOR.
+  const legVorSelects = [];             // { sel, leg } for every Radial cell
+  function legVorObj(leg) {
+    return (leg && leg.vorRef && typeof vorByIdent === 'function' ? vorByIdent(leg.vorRef) : null)
+      || (typeof activeVor === 'function' ? activeVor() : null);
+  }
+  function anyVorActive() {
+    return !!(typeof activeVor === 'function' && activeVor()) ||
+      state.legs.some(l => l && l.vorRef);
+  }
+  function vorCells(wp, leg) {
+    const v = legVorObj(leg);
     const empty = S.fpVorRadialEmpty || '—';
     if (!v || !wp) return [empty, empty];
     const rd = vorRadialDme(v, wp.lat, wp.lng);
     return rd ? ['R-' + rd.radial, rd.dme] : [empty, empty];
+  }
+  // A Radial cell carries a per-leg VOR picker (default = global reference)
+  // plus the radial value; the DME cell stays plain text. Returns the value
+  // span so refresh() can update it.
+  function radialCellWithPicker(legIdx) {
+    const td = planCell('');
+    td.classList.add('fp-vor-col');
+    const sel = document.createElement('select');
+    sel.className = 'fp-leg-vor';
+    sel.onchange = () => {
+      if (state.legs[legIdx]) state.legs[legIdx].vorRef = sel.value || null;
+      refresh();
+      if (retRefresh) retRefresh();
+    };
+    const val = document.createElement('span');
+    val.className = 'fp-radial-val';
+    td.appendChild(sel);
+    td.appendChild(val);
+    legVorSelects.push({ sel, leg: legIdx });
+    return { td, val };
+  }
+  function fillLegVorSelects() {
+    for (const { sel, leg } of legVorSelects) {
+      sel.innerHTML = '';
+      const def = document.createElement('option');
+      def.value = '';
+      def.textContent = (vorRef ? vorRef : (S.vorRefNone || '—'));
+      sel.appendChild(def);
+      for (const v of (vors || [])) {
+        const o = document.createElement('option');
+        o.value = v.ident; o.textContent = v.ident;
+        sel.appendChild(o);
+      }
+      sel.value = (state.legs[leg] && state.legs[leg].vorRef) || '';
+    }
   }
   let totDistCell, totTimeCell, totFuelCell, totCumTimeCell, totCumFuelCell;
   for (let i = 0; i < state.legs.length; i++) {
@@ -1279,10 +1324,9 @@ function showFlightPlan() {
     const cumFuelCell = planCell('');
     cumFuelCells[i] = cumFuelCell;
     tr.appendChild(cumFuelCell);
-    const radialCell = planCell('');
-    radialCells[i] = radialCell;
-    radialCell.classList.add('fp-vor-col');
-    tr.appendChild(radialCell);
+    const radial = radialCellWithPicker(i);
+    radialCells[i] = radial.val;
+    tr.appendChild(radial.td);
     const dmeCell = planCell('');
     dmeCells[i] = dmeCell;
     dmeCell.classList.add('fp-vor-col');
@@ -1339,8 +1383,10 @@ function showFlightPlan() {
   table.appendChild(tfoot);
 
   function refresh() {
-    // Hide the Radial / DME columns entirely when no reference VOR is chosen.
-    table.classList.toggle('no-vor', !(typeof activeVor === 'function' && activeVor()));
+    // Hide the Radial / DME columns when neither a global reference VOR nor
+    // any per-leg override is set.
+    fillLegVorSelects();
+    table.classList.toggle('no-vor', !anyVorActive());
     let td = 0, th = 0, tf = 0;
     const ac = aircraft;
     const taxiFuel = ac && ac.taxiGal && isAirport(state.waypoints[0]) ? ac.taxiGal : 0;
@@ -1352,7 +1398,7 @@ function showFlightPlan() {
       distCells[i].textContent = dist.toFixed(1);
       hdgCells[i].textContent = pad3(toMagnetic(brg)) + '°M';
       if (radialCells[i]) {
-        const rc = vorCells(A);          // radial/DME to the leg's start point
+        const rc = vorCells(A, state.legs[i]); // radial/DME to the leg's start
         radialCells[i].textContent = rc[0];
         dmeCells[i].textContent = rc[1];
       }
@@ -1491,10 +1537,9 @@ function showFlightPlan() {
       const cumFuelCell = planCell('');
       rCumFuelCells[i] = cumFuelCell;
       tr.appendChild(cumFuelCell);
-      const radialCell = planCell('');
-      rRadialCells[i] = radialCell;
-      radialCell.classList.add('fp-vor-col');
-      tr.appendChild(radialCell);
+      const radial = radialCellWithPicker(ri);
+      rRadialCells[i] = radial.val;
+      tr.appendChild(radial.td);
       const dmeCell = planCell('');
       rDmeCells[i] = dmeCell;
       dmeCell.classList.add('fp-vor-col');
@@ -1531,7 +1576,7 @@ function showFlightPlan() {
 
     retRefresh = function () {
       if (state.legs.length !== rDistCells.length) { closeFlightPlan(); return; }
-      rtable.classList.toggle('no-vor', !(typeof activeVor === 'function' && activeVor()));
+      rtable.classList.toggle('no-vor', !anyVorActive());
       let td = 0, th = 0, tf = 0;
       const retTaxi = aircraft && aircraft.taxiGal && isAirport(state.waypoints[state.waypoints.length - 1]) ? aircraft.taxiGal : 0;
       if (retTaxi) tf = retTaxi;
@@ -1543,7 +1588,7 @@ function showFlightPlan() {
         rDistCells[i].textContent = dist.toFixed(1);
         rHdgCells[i].textContent = pad3(toMagnetic(brg)) + '°M';
         if (rRadialCells[i]) {
-          const rc = vorCells(A);        // radial/DME to the leg's start point
+          const rc = vorCells(A, state.legs[ri]); // radial/DME to leg start
           rRadialCells[i].textContent = rc[0];
           rDmeCells[i].textContent = rc[1];
         }
@@ -1594,7 +1639,9 @@ function showFlightPlan() {
         if (cell.classList && cell.classList.contains('fp-del')) continue;
         const span = Math.max(1, cell.colSpan || 1);
         const input = cell.querySelector('input');
-        const value = input ? input.value : cell.textContent;
+        const radialVal = cell.querySelector('.fp-radial-val');
+        const value = input ? input.value
+          : (radialVal ? radialVal.textContent : cell.textContent);
         values.push(value);
         for (let i = 1; i < span && values.length < columnCount; i++) values.push('');
         if (values.length >= columnCount) break;

@@ -107,8 +107,34 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       const rd = vorRadialDme(activeVor(), 32.1, 34.85);
       return { r: 'R-' + rd.radial, d: rd.dme };
     });
-    await expect(firstRow.locator('td').nth(radialIdx)).toHaveText(expected.r);
+    // Radial cell carries a per-leg VOR picker + the value span.
+    await expect(firstRow.locator('td').nth(radialIdx).locator('.fp-radial-val')).toHaveText(expected.r);
     await expect(firstRow.locator('td').nth(radialIdx + 1)).toHaveText(expected.d);
+  });
+
+  test('flight plan: per-leg VOR override changes that leg only', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.1, lng: 34.85, name: 'A' },
+        { lat: 32.46472, lng: 34.91222, name: 'HADRA' },
+      ];
+      syncLegs(); draw();
+    });
+    await page.locator('#plan').click();
+    await page.locator('.modal-back').waitFor();
+    await page.locator('#fp-vor-select').selectOption('NAT');     // default = NAT
+    const headers = await page.locator('.flight-table thead th').allTextContents();
+    const radialIdx = headers.indexOf('Radial');
+    const firstRow = page.locator('.flight-table tbody tr').first();
+    // Override leg 0 to BGN.
+    await firstRow.locator('td').nth(radialIdx).locator('select.fp-leg-vor').selectOption('BGN');
+    expect(await page.evaluate(() => state.legs[0].vorRef)).toBe('BGN');
+    const expBgn = await page.evaluate(() => {
+      const rd = vorRadialDme(vorByIdent('BGN'), 32.1, 34.85);
+      return 'R-' + rd.radial;
+    });
+    await expect(firstRow.locator('td').nth(radialIdx).locator('.fp-radial-val')).toHaveText(expBgn);
   });
 
   test('flight plan hides the Radial/DME columns when no VOR is selected', async ({ page }) => {

@@ -1187,7 +1187,9 @@ if (vorCb) {
     if (showVor && vors === null) await loadVors();
     syncVorUI();
     draw();
+    if (state.selected) showInspector();   // refresh the radial/DME row gating
     if (typeof showCenterCoord === 'function') showCenterCoord();
+    if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
   };
 }
 if (vorRefSelect) {
