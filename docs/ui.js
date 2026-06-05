@@ -1181,7 +1181,7 @@ function populateVorRefSelect() {
 }
 function syncVorUI() {
   if (vorCb) vorCb.checked = showVor;
-  if (vorRefRow) vorRefRow.style.display = showVor ? '' : 'none';
+  if (vorRefRow) vorRefRow.style.display = '';
   populateVorRefSelect();
 }
 if (vorCb) {
@@ -1210,12 +1210,8 @@ if (vorRefSelect) {
     if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
   };
 }
-// Boot: if the overlay was left on (or a ref was stored), load the dataset.
-if (showVor || vorRef) {
-  loadVors().then(() => { syncVorUI(); draw(); });
-} else {
-  syncVorUI();
-}
+// Boot: keep the reference selector populated even when markers are hidden.
+loadVors().then(() => { syncVorUI(); if (showVor) draw(); });
 const FORCE_SNAP_KEY = 'navaid.forceSnap';
 try {
   const stored = localStorage.getItem(FORCE_SNAP_KEY);

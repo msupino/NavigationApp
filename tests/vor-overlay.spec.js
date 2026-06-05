@@ -49,11 +49,13 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
   test('toggle + reference selection persist across reload', async ({ page }) => {
     await boot(page);
     await expect(page.locator('#vor-cb')).not.toBeChecked();
-    await expect(page.locator('#vor-ref-row')).toBeHidden();
-    await page.locator('#vor-cb').click();
     await expect(page.locator('#vor-ref-row')).toBeVisible();
+    await expect(page.locator('#vor-ref-select option[value="NAT"]')).toHaveCount(1);
     await page.locator('#vor-ref-select').selectOption('NAT');
     expect(await page.evaluate(() => vorRef)).toBe('NAT');
+    expect(await page.evaluate(() => localStorage.getItem('navaid.vorRef'))).toBe('NAT');
+
+    await page.locator('#vor-cb').click();
     expect(await page.evaluate(() => localStorage.getItem('navaid.showVor'))).toBe('1');
     expect(await page.evaluate(() => localStorage.getItem('navaid.vorRef'))).toBe('NAT');
 
