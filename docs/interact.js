@@ -628,7 +628,7 @@ function showInspector() {
     if (!v) { insp.classList.add('hidden'); return; }
     title.value = v.ident;
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
-    body.appendChild(textRow(S.vorName || 'Name', v.name));
+    body.appendChild(textRow(S.vorName || 'Name', inspLocaleName(v)));
     body.appendChild(textRow(S.vorFreq || 'Frequency', v.freq + ' MHz'));
     body.appendChild(textRow(S.latitude, fmtLatLng(v.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(v.lng, 'E', 'W')));
@@ -652,7 +652,7 @@ function showInspector() {
   } else if (state.selected.type === 'airfield') {
     const af = airfields && airfields[state.selected.index];
     if (!af) { insp.classList.add('hidden'); return; }
-    const locale = af[S.airfieldLabelField] || af.en || af.name;
+    const locale = inspLocaleName(af);
     title.value = af.name + (locale && locale !== af.name ? ' / ' + locale : '');
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     body.appendChild(textRow(S.latitude, fmtLatLng(af.lat, 'N', 'S')));
@@ -684,7 +684,12 @@ function showInspector() {
     if (!nw) { insp.classList.add('hidden'); return; }
     title.value = nw.name;
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
-    if (nw.he && nw.he !== nw.name) body.appendChild(textRow(S.navHebrew || 'Hebrew', nw.he));
+    // Single-language: in Hebrew show the Hebrew point name; in English the
+    // code title already is the English label, so no extra row.
+    const nwLocale = inspLocaleName(nw);
+    if (nwLocale && nwLocale !== nw.name) {
+      body.appendChild(textRow(S.navHebrew || 'Waypoint name', nwLocale));
+    }
     body.appendChild(textRow(S.latitude, fmtLatLng(nw.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(nw.lng, 'E', 'W')));
     appendVorRadialRow(body, nw.lat, nw.lng);

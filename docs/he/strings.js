@@ -78,7 +78,7 @@ window.S = {
   vorUseRef: 'הגדר כתחנת ייחוס',
   vorRefActive: '✓ תחנת ייחוס (הקש לביטול)',
   elevation: 'גובה',
-  navHebrew: 'עברית',
+  navHebrew: 'שם נקודה',
   vorFrom: function(id) { return 'מ-' + id + ' VOR'; },
   vorRadialDme: function(rad, dme) { return 'R-' + rad + '° / ' + dme + ' NM'; },
   errInvalidAirfields: function(msg) { return 'נתוני שדות תעופה לא תקינים: ' + msg; },

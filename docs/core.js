@@ -321,7 +321,7 @@ window.S = Object.assign({
   vorUseRef: 'Use as reference VOR',
   vorRefActive: '✓ Reference VOR (tap to clear)',
   elevation: 'Elevation',
-  navHebrew: 'Hebrew',
+  navHebrew: 'Waypoint name',
   vorFrom: function(id) { return 'From ' + id + ' VOR'; }, // inspector / readout prefix
   vorRadialDme: function(rad, dme) {                  // e.g. "R-263° / 12.4 NM"
     return 'R-' + rad + '° / ' + dme + ' NM';
