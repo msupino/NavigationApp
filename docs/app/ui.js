@@ -2033,7 +2033,9 @@ function showBuildUpdateNotice() {
 
 function watchServiceWorkerUpdates(sw) {
   if (!sw || typeof sw.register !== 'function') return Promise.resolve(null);
-  let hadController = !!sw.controller;
+  const controlledAtStart = !!sw.controller;
+  let hadController = controlledAtStart;
+  let firstInstallWorker = null;
   const notifyIfUpdate = () => {
     if (hadController) showBuildUpdateNotice();
     hadController = true;
@@ -2047,11 +2049,15 @@ function watchServiceWorkerUpdates(sw) {
       worker.addEventListener('statechange', () => {
         if ((worker.state === 'installed' || worker.state === 'activated') &&
             hadController) {
+          if (!controlledAtStart && worker === firstInstallWorker) return;
           showBuildUpdateNotice();
         }
       });
     };
-    if (reg && reg.waiting && hadController) showBuildUpdateNotice();
+    if (!controlledAtStart && reg) firstInstallWorker = reg.installing || reg.waiting || null;
+    if (reg && reg.waiting && hadController && reg.waiting !== firstInstallWorker) {
+      showBuildUpdateNotice();
+    }
     if (reg) {
       watchWorker(reg.installing);
       if (typeof reg.addEventListener === 'function') {
