@@ -28,6 +28,20 @@ html, body {
   background: #231F20;
 }
 #map.add { cursor: crosshair; }
+/* Non-edit (select) mode reads as an arrow — markers are clickable, not a
+   grab/pan hand. Crosshair in add/note mode; grabbing while actively panning. */
+#map .leaflet-grab,
+#map .leaflet-interactive { cursor: default; }
+#map.add .leaflet-grab,
+#map.add .leaflet-interactive { cursor: crosshair; }
+#map.leaflet-dragging .leaflet-grab { cursor: grabbing; }
+/* Flight-plan VOR Radial/DME columns collapse when no reference VOR is set. */
+.flight-table.no-vor .fp-vor-col { display: none; }
+.fp-vor { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
+.fp-vor-freq { color: #9ad; font-size: 12px; }
+.fp-leg-vor { font-size: 10px; max-width: 56px; margin-inline-end: 3px; vertical-align: middle;
+  background: #2f2b2b; color: #e8e8e8; border: 1px solid #443f3f; border-radius: 3px; }
+.fp-radial-val { white-space: nowrap; }
 
 #overlay {
   position: absolute;
@@ -261,6 +275,12 @@ html, body {
 }
 #toolbar .navtoggle input { cursor: pointer; margin: 0; }
 #toolbar .navtoggle input[type="range"] { flex: 1; width: 0; min-width: 0; }
+#toolbar #vor-ref-row {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
 #toolbar .slider-val { width: 3em; text-align: right; font-size: 11px; color: #ccc; flex-shrink: 0; }
 #toolbar .slider-reset {
   flex-shrink: 0;
@@ -328,6 +348,9 @@ html, body {
   right: 52px;
   bottom: 26px;            /* clears the Leaflet attribution row */
   margin: 0;
+}
+.leaflet-bottom.leaflet-right .vor-readout {
+  bottom: 46px;
 }
 .coord-readout.editing { cursor: text; }
 .coord-readout.error { border-color: #c0392b; background: rgba(231, 76, 60, 0.12); }
@@ -457,6 +480,12 @@ html, body {
   padding: 2px 4px;
   cursor: pointer;
 }
+#toolbar #vor-ref-row select {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
 #aircraft-custom {
   display: inline-flex;
   flex-direction: row;
@@ -497,7 +526,14 @@ html, body {
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  /* Cap to the viewport so a tall inspector (big airports with many charts)
+     scrolls instead of overflowing off-screen. */
+  max-height: calc(100dvh - 68px);
 }
+/* The header stays put; only the body scrolls. */
+#insp-body { overflow-y: auto; }
 #inspector.hidden { display: none; }
 
 #insp-header {
@@ -853,10 +889,12 @@ html, body {
   }
   body.printing-plan .flight-table {
     width: 100%;
+    table-layout: fixed;
     margin: 0 0 12px;
     color: #111;
     background: #fff;
-    font-size: 10px;
+    font-size: 8px;
+    line-height: 1.12;
     page-break-inside: auto;
   }
   body.printing-plan .flight-table thead {
@@ -871,11 +909,14 @@ html, body {
   }
   body.printing-plan .flight-table th,
   body.printing-plan .flight-table td {
-    padding: 4px 6px;
+    padding: 1px 2px;
     color: #111;
     background: #fff;
     border: 1px solid #555;
     text-align: start;
+    vertical-align: top;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   body.printing-plan .flight-table th {
     position: static;
@@ -890,15 +931,42 @@ html, body {
   body.printing-plan .flight-table td:last-child:empty {
     display: none !important;
   }
+  body.printing-plan .flight-table .fp-vor-col {
+    display: table-cell !important;
+    font-size: inherit;
+    padding: 1px 2px;
+  }
+  body.printing-plan .flight-table .fp-vor-col select {
+    display: none !important;
+  }
+  body.printing-plan .flight-table th:nth-child(1) { width: 3%; }
+  body.printing-plan .flight-table th:nth-child(2),
+  body.printing-plan .flight-table th:nth-child(3) { width: 10%; }
+  body.printing-plan .flight-table th:nth-child(4) { width: 7%; }
+  body.printing-plan .flight-table th:nth-child(5) { width: 7%; }
+  body.printing-plan .flight-table th:nth-child(6) { width: 8%; }
+  body.printing-plan .flight-table th:nth-child(7) { width: 7%; }
+  body.printing-plan .flight-table th:nth-child(8) { width: 7%; }
+  body.printing-plan .flight-table th:nth-child(9) { width: 8%; }
+  body.printing-plan .flight-table th:nth-child(10),
+  body.printing-plan .flight-table th:nth-child(11) { width: 8%; }
+  body.printing-plan .flight-table th:nth-child(12) { width: 9%; }
+  body.printing-plan .flight-table th:nth-child(13) { width: 7%; }
+  body.printing-plan .fp-radial-val {
+    white-space: normal;
+  }
   body.printing-plan .plan-name,
   body.printing-plan .plan-num {
-    width: auto;
+    display: block;
+    width: 100%;
+    max-width: 100%;
     min-width: 0;
     color: #111;
     background: transparent !important;
     border: none !important;
     padding: 0 !important;
     font: inherit;
+    text-align: inherit;
     -webkit-appearance: none;
     appearance: none;
   }

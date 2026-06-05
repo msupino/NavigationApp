@@ -1,5 +1,5 @@
 // @ts-check
-// Live coordinate readout (bottom-left map control).
+// Live coordinate readout (bottom-right map control).
 //
 // The box is always visible: it shows the map-centre coordinates by default,
 // follows the cursor on map mousemove, and falls back to the centre on

@@ -382,6 +382,29 @@ function validateNavWaypoints(d) {
   }
   return errs.length ? errs.join('; ') : null;
 }
+// Strict schema for docs/vor.json — { vors:[{ ident, name, freq, lat, lng,
+// he? }] }. Unknown keys tolerated (forward-compat).
+function validateVors(d) {
+  const errs = [];
+  if (!d || typeof d !== 'object' || Array.isArray(d)) {
+    return 'root: expected object, got ' + _vKind(d);
+  }
+  if (!_v(d, 'vors', 'array', 'root', errs)) return errs.join('; ');
+  for (let i = 0; i < d.vors.length; i++) {
+    const p = 'vors[' + i + ']';
+    const v = d.vors[i];
+    if (_vKind(v) !== 'object') {
+      errs.push(p + ': expected object, got ' + _vKind(v));
+      continue;
+    }
+    _v(v, 'ident', 'string', p, errs);
+    _v(v, 'name',  'string', p, errs);
+    _v(v, 'freq',  'string', p, errs);
+    _v(v, 'lat',   'number', p, errs);
+    _v(v, 'lng',   'number', p, errs);
+  }
+  return errs.length ? errs.join('; ') : null;
+}
 // Strict schema for docs/comm-change.json — { version, source?,
 // callSigns?: { ID:{ label?, he?, unit?, primary?, secondary?, atis?,
 // source? } }, points:[{ name, commChange, callSigns?, from?, to?,
@@ -1073,6 +1096,54 @@ function showFlightPlan() {
     };
   });
   syncAircraftUI();
+  // Reference VOR picker — drives the per-leg Radial / DME columns. Shares the
+  // global `vorRef` with the map overlay so both stay in sync.
+  const vorWrap = document.createElement('label');
+  vorWrap.className = 'fp-vor';
+  vorWrap.title = S.tbShowVorTitle || '';
+  const vorLbl = document.createElement('span');
+  vorLbl.textContent = (S.fpVorLabel || 'VOR') + ': ';
+  vorWrap.appendChild(vorLbl);
+  const vorSel = document.createElement('select');
+  vorSel.id = 'fp-vor-select';
+  const vorFreqSpan = document.createElement('span');
+  vorFreqSpan.className = 'fp-vor-freq';
+  function fillFpVorSelect() {
+    vorSel.innerHTML = '';
+    const none = document.createElement('option');
+    none.value = ''; none.textContent = S.vorRefNone || '— none —';
+    vorSel.appendChild(none);
+    for (const v of (vors || [])) {
+      const opt = document.createElement('option');
+      opt.value = v.ident;
+      opt.textContent = v.ident + ' · ' + v.name;
+      vorSel.appendChild(opt);
+    }
+    vorSel.value = vorRef || '';
+    const cur = typeof activeVor === 'function' ? activeVor() : null;
+    vorFreqSpan.textContent = cur ? cur.freq + ' MHz' : '';
+  }
+  vorSel.onchange = () => {
+    window.vorRef = vorSel.value || null;
+    try {
+      if (vorRef) localStorage.setItem('navaid.vorRef', vorRef);
+      else localStorage.removeItem('navaid.vorRef');
+    } catch (e) { /* */ }
+    const vs = document.getElementById('vor-ref-select');
+    if (vs) vs.value = vorRef || '';
+    fillFpVorSelect();
+    draw();
+    refresh();
+    if (retRefresh) retRefresh();
+  };
+  vorWrap.appendChild(vorSel);
+  vorWrap.appendChild(vorFreqSpan);
+  fpAircraft.appendChild(vorWrap);
+  if (vors === null && typeof loadVors === 'function') {
+    loadVors().then(() => { fillFpVorSelect(); refresh(); if (retRefresh) retRefresh(); });
+  } else {
+    fillFpVorSelect();
+  }
   box.appendChild(fpAircraft);
 
   const scrollArea = document.createElement('div');
@@ -1084,11 +1155,12 @@ function showFlightPlan() {
   const headers = S.fpHeaders;
   const thead = document.createElement('thead');
   const trH = document.createElement('tr');
-  for (const h of headers) {
+  headers.forEach((h, idx) => {
     const th = document.createElement('th');
     th.textContent = h;
+    if (idx === headers.length - 3 || idx === headers.length - 2) th.classList.add('fp-vor-col');
     trH.appendChild(th);
-  }
+  });
   thead.appendChild(trH);
   table.appendChild(thead);
 
@@ -1138,6 +1210,61 @@ function showFlightPlan() {
   const fuelCells = [];                 // leg index -> fuel (gal) cell
   const cumTimeCells = [];              // leg index -> cumulative time (H:M:S)
   const cumFuelCells = [];            // leg index -> cumulative fuel (gal)
+  const radialCells = [];              // leg index -> VOR radial cell (To wp)
+  const dmeCells = [];                 // leg index -> VOR DME cell (To wp)
+  // Radial (magnetic) + DME of a waypoint from the selected reference VOR.
+  // Per-leg override (leg.vorRef) wins over the global reference VOR.
+  const legVorSelects = [];             // { sel, leg } for every Radial cell
+  function legVorObj(leg) {
+    return (leg && leg.vorRef && typeof vorByIdent === 'function' ? vorByIdent(leg.vorRef) : null)
+      || (typeof activeVor === 'function' ? activeVor() : null);
+  }
+  function anyVorActive() {
+    return !!(typeof activeVor === 'function' && activeVor()) ||
+      state.legs.some(l => l && l.vorRef);
+  }
+  function vorCells(wp, leg) {
+    const v = legVorObj(leg);
+    const empty = S.fpVorRadialEmpty || '—';
+    if (!v || !wp) return [empty, empty];
+    const rd = vorRadialDme(v, wp.lat, wp.lng);
+    return rd ? ['R-' + rd.radial, rd.dme] : [empty, empty];
+  }
+  // A Radial cell carries a per-leg VOR picker (default = global reference)
+  // plus the radial value; the DME cell stays plain text. Returns the value
+  // span so refresh() can update it.
+  function radialCellWithPicker(legIdx) {
+    const td = planCell('');
+    td.classList.add('fp-vor-col');
+    const sel = document.createElement('select');
+    sel.className = 'fp-leg-vor';
+    sel.onchange = () => {
+      if (state.legs[legIdx]) state.legs[legIdx].vorRef = sel.value || null;
+      refresh();
+      if (retRefresh) retRefresh();
+    };
+    const val = document.createElement('span');
+    val.className = 'fp-radial-val';
+    td.appendChild(sel);
+    td.appendChild(val);
+    legVorSelects.push({ sel, leg: legIdx });
+    return { td, val };
+  }
+  function fillLegVorSelects() {
+    for (const { sel, leg } of legVorSelects) {
+      sel.innerHTML = '';
+      const def = document.createElement('option');
+      def.value = '';
+      def.textContent = (vorRef ? vorRef : (S.vorRefNone || '—'));
+      sel.appendChild(def);
+      for (const v of (vors || [])) {
+        const o = document.createElement('option');
+        o.value = v.ident; o.textContent = v.ident;
+        sel.appendChild(o);
+      }
+      sel.value = (state.legs[leg] && state.legs[leg].vorRef) || '';
+    }
+  }
   let totDistCell, totTimeCell, totFuelCell, totCumTimeCell, totCumFuelCell;
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
@@ -1197,6 +1324,13 @@ function showFlightPlan() {
     const cumFuelCell = planCell('');
     cumFuelCells[i] = cumFuelCell;
     tr.appendChild(cumFuelCell);
+    const radial = radialCellWithPicker(i);
+    radialCells[i] = radial.val;
+    tr.appendChild(radial.td);
+    const dmeCell = planCell('');
+    dmeCells[i] = dmeCell;
+    dmeCell.classList.add('fp-vor-col');
+    tr.appendChild(dmeCell);
     // Delete-leg button — removes the "To" waypoint and this leg, then
     // reconnects the route. The refreshFlightPlan callback detects the
     // leg-count change and rebuilds the modal.
@@ -1242,11 +1376,17 @@ function showFlightPlan() {
   trF.appendChild(totCumTimeCell);
   totCumFuelCell = planCell('');
   trF.appendChild(totCumFuelCell);
+  const totRadial = planCell(''); totRadial.classList.add('fp-vor-col'); trF.appendChild(totRadial);
+  const totDme = planCell(''); totDme.classList.add('fp-vor-col'); trF.appendChild(totDme);
   trF.appendChild(planCell(''));        // Delete column (empty)
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
 
   function refresh() {
+    // Hide the Radial / DME columns when neither a global reference VOR nor
+    // any per-leg override is set.
+    fillLegVorSelects();
+    table.classList.toggle('no-vor', !anyVorActive());
     let td = 0, th = 0, tf = 0;
     const ac = aircraft;
     const taxiFuel = ac && ac.taxiGal && isAirport(state.waypoints[0]) ? ac.taxiGal : 0;
@@ -1257,6 +1397,11 @@ function showFlightPlan() {
       const { dist, brg } = geo(A, B);
       distCells[i].textContent = dist.toFixed(1);
       hdgCells[i].textContent = pad3(toMagnetic(brg)) + '°M';
+      if (radialCells[i]) {
+        const rc = vorCells(A, state.legs[i]); // radial/DME to the leg's start
+        radialCells[i].textContent = rc[0];
+        dmeCells[i].textContent = rc[1];
+      }
       const dur = state.legs[i].flightSpeed > 0 ? dist / state.legs[i].flightSpeed : 0;
       td += dist;
       th += dur;
@@ -1311,11 +1456,12 @@ function showFlightPlan() {
     rtable.className = 'flight-table';
     const rthead = document.createElement('thead');
     const rtrH = document.createElement('tr');
-    for (const h of headers) {
+    headers.forEach((h, idx) => {
       const th = document.createElement('th');
       th.textContent = h;
+      if (idx === headers.length - 3 || idx === headers.length - 2) th.classList.add('fp-vor-col');
       rtrH.appendChild(th);
-    }
+    });
     rthead.appendChild(rtrH);
     rtable.appendChild(rthead);
 
@@ -1328,6 +1474,8 @@ function showFlightPlan() {
     const rFuelCells = [];
     const rCumTimeCells = [];
     const rCumFuelCells = [];
+    const rRadialCells = [];
+    const rDmeCells = [];
     let rTotDistCell, rTotTimeCell, rTotFuelCell, rTotCumTimeCell, rTotCumFuelCell;
 
     for (let i = 0; i < state.legs.length; i++) {
@@ -1389,6 +1537,13 @@ function showFlightPlan() {
       const cumFuelCell = planCell('');
       rCumFuelCells[i] = cumFuelCell;
       tr.appendChild(cumFuelCell);
+      const radial = radialCellWithPicker(ri);
+      rRadialCells[i] = radial.val;
+      tr.appendChild(radial.td);
+      const dmeCell = planCell('');
+      rDmeCells[i] = dmeCell;
+      dmeCell.classList.add('fp-vor-col');
+      tr.appendChild(dmeCell);
       tr.appendChild(planCell(''));        // Delete column (empty — forward table only)
       rtbody.appendChild(tr);
     }
@@ -1412,6 +1567,8 @@ function showFlightPlan() {
     rtrF.appendChild(rTotCumTimeCell);
     rTotCumFuelCell = planCell('');
     rtrF.appendChild(rTotCumFuelCell);
+    const rTotRadial = planCell(''); rTotRadial.classList.add('fp-vor-col'); rtrF.appendChild(rTotRadial);
+    const rTotDme = planCell(''); rTotDme.classList.add('fp-vor-col'); rtrF.appendChild(rTotDme);
     rtrF.appendChild(planCell(''));        // Delete column (empty)
     rtfoot.appendChild(rtrF);
     rtable.appendChild(rtfoot);
@@ -1419,6 +1576,7 @@ function showFlightPlan() {
 
     retRefresh = function () {
       if (state.legs.length !== rDistCells.length) { closeFlightPlan(); return; }
+      rtable.classList.toggle('no-vor', !anyVorActive());
       let td = 0, th = 0, tf = 0;
       const retTaxi = aircraft && aircraft.taxiGal && isAirport(state.waypoints[state.waypoints.length - 1]) ? aircraft.taxiGal : 0;
       if (retTaxi) tf = retTaxi;
@@ -1429,6 +1587,11 @@ function showFlightPlan() {
         const { dist, brg } = geo(A, B);
         rDistCells[i].textContent = dist.toFixed(1);
         rHdgCells[i].textContent = pad3(toMagnetic(brg)) + '°M';
+        if (rRadialCells[i]) {
+          const rc = vorCells(A, state.legs[ri]); // radial/DME to leg start
+          rRadialCells[i].textContent = rc[0];
+          rDmeCells[i].textContent = rc[1];
+        }
         const dur = state.legs[ri].outboundSpeed > 0 ? dist / state.legs[ri].outboundSpeed : 0;
         td += dist;
         th += dur;
@@ -1476,7 +1639,9 @@ function showFlightPlan() {
         if (cell.classList && cell.classList.contains('fp-del')) continue;
         const span = Math.max(1, cell.colSpan || 1);
         const input = cell.querySelector('input');
-        const value = input ? input.value : cell.textContent;
+        const radialVal = cell.querySelector('.fp-radial-val');
+        const value = input ? input.value
+          : (radialVal ? radialVal.textContent : cell.textContent);
         values.push(value);
         for (let i = 1; i < span && values.length < columnCount; i++) values.push('');
         if (values.length >= columnCount) break;
@@ -1515,11 +1680,15 @@ function showFlightPlan() {
   printBtn.type = 'button';
   printBtn.textContent = S.fpPrint;
   printBtn.onclick = () => {
+    const pageStyle = document.createElement('style');
+    pageStyle.textContent = '@page { size: A4 landscape; margin: 8mm; }';
     const cleanup = () => {
       document.body.classList.remove('printing-plan');
+      pageStyle.remove();
       window.removeEventListener('afterprint', cleanup);
     };
     window.addEventListener('afterprint', cleanup, { once: true });
+    document.head.appendChild(pageStyle);
     document.body.classList.add('printing-plan');
     window.print();
     setTimeout(cleanup, 4000);           // belt-and-braces for Safari
@@ -3540,7 +3709,18 @@ function buildShareUrl() {
   // Preserve ?lang= so the receiver opens in the sender's language. Drop
   // any previous share params so re-shares don't double up.
   params.delete('r'); params.delete('n'); params.delete('l');
+  params.delete('f'); params.delete('x');
   params.set('r', r); params.set('n', n); params.set('l', l);
+  const freqNotes = state.notes.filter(n => n && n.cc);
+  if (freqNotes.length) {
+    const f = _b64UrlEncode(freqNotes.map(n =>
+      [n.cc, n.freqName || '', n.freq || ''].join(',')).join(';'));
+    params.set('f', f);
+  }
+  const supps = state.commChangeSuppressions;
+  if (Array.isArray(supps) && supps.length) {
+    params.set('x', _b64UrlEncode(supps.join(',')));
+  }
   return { url: base + '?' + params.toString() };
 }
 
@@ -3550,10 +3730,24 @@ function decodeShareUrl(search) {
   const r = params.get('r'), n = params.get('n'), l = params.get('l');
   if (!r || n === null || l === null) return null;
   let coords, names, legParts;
+  let freqNotes = [], suppressions = [];
   try {
     coords = polylineDecode(r);
     names = _b64UrlDecode(n).split(SHARE_NAME_SEP);
     legParts = l === '' ? [] : l.split(';');
+    const f = params.get('f');
+    if (f) {
+      const raw = _b64UrlDecode(f);
+      freqNotes = raw.split(';').filter(Boolean).map(s => {
+        const p = s.split(',');
+        if (p.length < 3) return null;
+        return { cc: p[0], freqName: p[1], freq: p[2] };
+      }).filter(Boolean);
+    }
+    const x = params.get('x');
+    if (x) {
+      suppressions = _b64UrlDecode(x).split(',').filter(Boolean);
+    }
   } catch (e) {
     return null;
   }
@@ -3591,7 +3785,7 @@ function decodeShareUrl(search) {
     };
   });
   if (legs.some(l => l === null)) return null;
-  return { waypoints, legs, notes: [] };
+  return { waypoints, legs, notes: [], freqNotes, suppressions };
 }
 
 // Called from ui.js boot, before restoreRoute(). Returns true if a route
@@ -3605,6 +3799,26 @@ function tryLoadRouteFromUrl() {
   state.legs = r.legs;
   state.notes = [];
   state.commChangeSuppressions = [];
+  if (Array.isArray(r.suppressions) && r.suppressions.length) {
+    state.commChangeSuppressions = r.suppressions.slice();
+  }
+  if (Array.isArray(r.freqNotes) && r.freqNotes.length) {
+    for (const fn of r.freqNotes) {
+      const idx = state.notes.push({
+        text: 'Freq change', color: '#fff6aa', shape: 'rect',
+        cc: fn.cc, freqName: fn.freqName, freq: fn.freq,
+      }) - 1;
+      // Place tail at default position for the target waypoint.
+      const wp = state.waypoints.find(w => w &&
+        typeof canonicalNavWaypointName === 'function' &&
+        canonicalNavWaypointName(w.name) === fn.cc);
+      if (wp && typeof commCalloutDefaultTail === 'function') {
+        const tail = commCalloutDefaultTail(wp);
+        state.notes[idx].lat = tail.lat;
+        state.notes[idx].lng = tail.lng;
+      }
+    }
+  }
   return true;
 }
 

@@ -248,7 +248,7 @@ test.describe('#340 — applyNavSnap clears auto-snapped name when overlays off'
     expect(name).toBe('LLBG');
   });
 
-  test('sequence-shaped stored name WP6: inspector normalizes to empty (dimmed placeholder)', async ({ page }) => {
+  test('sequence-shaped stored name WP6: inspector normalizes storage and shows sequence title', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {
       state.waypoints = [
@@ -265,7 +265,7 @@ test.describe('#340 — applyNavSnap clears auto-snapped name when overlays off'
     });
     const val = await page.locator('#insp-title').inputValue();
     const stored = await page.evaluate(() => state.waypoints[5].name);
-    expect(val).toBe('');
+    expect(val).toBe('WP 6');
     expect(stored).toBe('');
   });
 
