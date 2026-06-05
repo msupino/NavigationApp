@@ -246,7 +246,7 @@ var magVar = -5;                       // signed offset added to true heading
 // then any pre-set keys win, so a partial override doesn't erase the rest.
 window.S = Object.assign({
   navWpUrl: 'data/nav-waypoints.json?v=3',  // resolved relative to index.html (docs/)
-  navWpSearchField: 'name',            // which field to show/search in results
+  navWpSearchField: 'en',              // which locale label to show/search in results
   airfieldsUrl: 'data/airfields.json?v=3',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   commChangeUrl: 'data/comm-change.json?v=1', // CVFR comm-change reporting points (issue #399)
