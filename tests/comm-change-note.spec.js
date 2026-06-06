@@ -488,7 +488,7 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.fillCount).toBe(0);
   });
 
-  test('waypoint center and frequency tail both open the waypoint inspector', async ({ page }) => {
+  test('waypoint center, frequency arrow, and tail open the waypoint inspector', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
     const pts = await page.evaluate(t => {
@@ -498,27 +498,154 @@ test.describe('comm-change auto-note (#487)', () => {
       draw();
       const center = proj(state.waypoints[0]);
       const g = commCalloutGeom(state.notes[0]);
+      const arrow = {
+        x: (g.bend2.x + g.tail.x) / 2,
+        y: (g.bend2.y + g.tail.y) / 2,
+      };
       const r = mapEl.getBoundingClientRect();
       return {
         center: { x: r.left + center.x, y: r.top + center.y },
+        arrow: { x: r.left + arrow.x, y: r.top + arrow.y },
         tail: { x: r.left + g.tail.x, y: r.top + g.tail.y },
         hitNoteAtCenter: hitNote(center.x, center.y),
+        hitNoteAtArrow: hitNote(arrow.x, arrow.y),
         hitWaypointAtCenter: hitWaypoint(center.x, center.y),
         hitNoteAtTail: hitNote(g.tail.x, g.tail.y),
       };
     }, TYONA);
     expect(pts.hitNoteAtCenter).toBe(-1);
     expect(pts.hitWaypointAtCenter).toBe(0);
+    expect(pts.hitNoteAtArrow).toBe(0);
     expect(pts.hitNoteAtTail).toBe(0);
 
     await page.mouse.click(pts.center.x, pts.center.y);
     await expect.poll(() => page.evaluate(() => state.selected)).toEqual({ type: 'wp', index: 0 });
+    await page.mouse.click(pts.arrow.x, pts.arrow.y);
+    await expect.poll(() => page.evaluate(() => state.selected))
+      .toEqual({ type: 'wp', index: 0, freqNoteIndex: 0 });
     await page.mouse.click(pts.tail.x, pts.tail.y);
     await expect.poll(() => page.evaluate(() => state.selected))
       .toEqual({ type: 'wp', index: 0, freqNoteIndex: 0 });
     await expect(page.locator('#insp-title')).toHaveValue('TYONA');
     await expect(page.locator('#insp-body select')).toHaveCount(1);
     await expect(page.locator('#insp-body .freq-input')).toHaveValue('118.40');
+
+    const widths = await page.evaluate(() => {
+      state.selected = { type: 'wp', index: 0, freqNoteIndex: 0 };
+      const seen = [];
+      const realStroke = octx.stroke.bind(octx);
+      octx.stroke = function () {
+        seen.push(octx.lineWidth);
+        return realStroke();
+      };
+      drawNotes();
+      octx.stroke = realStroke;
+      return {
+        seen,
+        selectedWidth: tune('commChangeArrowWidthPx') + tune('commChangeSelectedWidthAddPx'),
+      };
+    });
+    expect(widths.seen).toContain(widths.selectedWidth);
+  });
+
+  test('comm-change arrow overlapping a route waypoint opens the point chooser', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    const pts = await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      syncLegs();
+      seedCommChangeNotes();
+      draw();
+      const g = commCalloutGeom(state.notes[0]);
+      const arrow = {
+        x: (g.bend2.x + g.tail.x) / 2,
+        y: (g.bend2.y + g.tail.y) / 2,
+      };
+      const ll = map.containerPointToLatLng([arrow.x, arrow.y]);
+      state.waypoints.push({ lat: r5(ll.lat), lng: r5(ll.lng), name: 'HIDDEN' });
+      syncLegs();
+      draw();
+      const r = mapEl.getBoundingClientRect();
+      return {
+        arrow: { x: r.left + arrow.x, y: r.top + arrow.y },
+        commHits: hitCommCalloutCandidates(arrow.x, arrow.y),
+        wpHits: hitWaypointCandidates(arrow.x, arrow.y),
+      };
+    }, TYONA);
+    expect(pts.commHits).toEqual([{ type: 'commcallout', index: 0 }]);
+    expect(pts.wpHits).toEqual([{ type: 'wp', index: 1 }]);
+
+    await page.mouse.click(pts.arrow.x, pts.arrow.y);
+    await expect(page.locator('.point-choice-modal')).toBeVisible();
+    await expect(page.locator('.point-choice-option')).toHaveCount(2);
+    await expect(page.locator('.point-choice-option').filter({ hasText: 'Freq-change arrow' })).toBeVisible();
+    await expect(page.locator('.point-choice-option').filter({ hasText: 'HIDDEN' })).toBeVisible();
+
+    await page.locator('.point-choice-option').filter({ hasText: 'HIDDEN' }).click();
+    expect(await page.evaluate(() => state.selected)).toEqual({ type: 'wp', index: 1 });
+    await expect(page.locator('#insp-title')).toHaveValue('HIDDEN');
+
+    await page.mouse.click(pts.arrow.x, pts.arrow.y);
+    await expect(page.locator('.point-choice-modal')).toBeVisible();
+    await page.locator('.point-choice-option').filter({ hasText: 'Freq-change arrow' }).click();
+    expect(await page.evaluate(() => state.selected)).toEqual({ type: 'wp', index: 0, freqNoteIndex: 0 });
+    await expect(page.locator('#insp-title')).toHaveValue('TYONA');
+  });
+
+  test('comm-change arrow overlapping a comm-change ring opens the point chooser', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    const pts = await page.evaluate(t => {
+      window.showNavWP = false;
+      window.showCommChange = true;
+      const target = navWP.find(w => w.name === t.name);
+      const tail = commCalloutDefaultTail(target);
+      state.waypoints = [];
+      state.legs = [];
+      state.notes = [{
+        lat: tail.lat,
+        lng: tail.lng,
+        text: 'Freq change',
+        color: NOTE_DEFAULT_COLOR,
+        shape: 'rect',
+        cc: t.name,
+        freqName: 'PLUTO_WEST',
+        freq: '118.40',
+      }];
+      map.setView([target.lat, target.lng], 12);
+      draw();
+      const g = commCalloutGeom(state.notes[0]);
+      const p = g.target;
+      const r = mapEl.getBoundingClientRect();
+      return {
+        point: { x: r.left + p.x, y: r.top + p.y },
+        commHits: hitCommCalloutCandidates(p.x, p.y),
+        ringHits: hitCommChangeMarkerCandidates(p.x, p.y),
+        navHits: hitNavWpMarkerCandidates(p.x, p.y),
+      };
+    }, DEROR);
+    expect(pts.commHits).toEqual([{ type: 'commcallout', index: 0 }]);
+    expect(pts.ringHits).toEqual(expect.arrayContaining([expect.objectContaining({ type: 'navwp' })]));
+    expect(pts.navHits).toEqual([]);
+
+    await page.mouse.click(pts.point.x, pts.point.y);
+    await expect(page.locator('.point-choice-modal')).toBeVisible();
+    await expect(page.locator('.point-choice-option')).toHaveCount(2);
+    await expect(page.locator('.point-choice-option').filter({ hasText: 'Freq-change arrow' })).toBeVisible();
+    await expect(page.locator('.point-choice-option').filter({ hasText: 'Navigation waypoint' })).toBeVisible();
+
+    await page.locator('.point-choice-option').filter({ hasText: 'Navigation waypoint' }).click();
+    expect(await page.evaluate(() => {
+      const sel = state.selected;
+      const nw = sel && sel.type === 'navwp' ? navWP[sel.index] : null;
+      return nw && nw.name;
+    })).toBe('DEROR');
+    await expect(page.locator('#insp-title')).toHaveValue('DEROR');
+
+    await page.mouse.click(pts.point.x, pts.point.y);
+    await expect(page.locator('.point-choice-modal')).toBeVisible();
+    await page.locator('.point-choice-option').filter({ hasText: 'Freq-change arrow' }).click();
+    expect(await page.evaluate(() => state.selected)).toEqual({ type: 'note', index: 0 });
   });
 
   test('comm-change lightning rotation turns the bend vector around the arrow axis', async ({ page }) => {
