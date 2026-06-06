@@ -1909,14 +1909,22 @@ function drawCommCallout(n, selected) {
   octx.restore();
 }
 
+function selectedCommCallout(i) {
+  if (!state.selected) return false;
+  if (state.selected.type === 'note' && state.selected.index === i) return true;
+  return state.selected.type === 'wp' && state.selected.freqNoteIndex === i;
+}
+
 function drawNotes() {
   for (let i = 0; i < state.notes.length; i++) {
     const n = state.notes[i];
     if (n && n.cc && !showCommChange) continue;
     const r = noteRect(i);
-    const selected = state.selected &&
-                     state.selected.type === 'note' &&
-                     state.selected.index === i;
+    const selected = n && n.cc
+      ? selectedCommCallout(i)
+      : state.selected &&
+        state.selected.type === 'note' &&
+        state.selected.index === i;
     const color = n.color || NOTE_DEFAULT_COLOR;
     if (n.cc) {
       drawCommCallout(n, selected);

@@ -5,6 +5,7 @@
   <meta name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>NavAid — CVFR Israel Map Navigation Aid &amp; Flight Planner</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <meta name="description" content="CVFR Israel map navigation aid for pilots: plan routes on the Israeli aeronautical chart with interactive maps, waypoints, headings, distances and flight-plan tools. תכנון מסלולי CVFR על גבי התרשים האווירי הישראלי.">
   <link rel="manifest" href="manifest.json">
@@ -15,6 +16,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="NavAid">
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="NavAid">
   <meta property="og:title" content="NavAid — CVFR Israel Map Navigation Aid &amp; Flight Planner">
   <meta property="og:description" content="CVFR Israel map navigation aid for pilots. Plan routes on the Israeli aeronautical chart with waypoints, headings, distances, times and flight-plan tools.">
   <meta property="og:url" content="https://navaid.supino.org/">
@@ -32,34 +34,48 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": "NavAid — CVFR Israel Map Navigation Aid",
-    "alternateName": ["CVFR Israel Map Navigation Aid", "NavAid CVFR Planner", "Israel CVFR map", "מתכנן טיסה NavAid"],
-    "description": "CVFR Israel map navigation aid for planning routes on the Israeli aeronautical chart — waypoints, headings, distances and times.",
-    "url": "https://navaid.supino.org/",
-    "image": "https://navaid.supino.org/assets/og-preview.jpg",
-    "applicationCategory": "TravelApplication",
-    "applicationSubCategory": "Aviation flight planning",
-    "operatingSystem": "Any (web browser)",
-    "browserRequirements": "Requires a modern browser with HTML5 Canvas support.",
-    "keywords": ["CVFR Israel map navigation aid", "CVFR", "flight planning", "Israel aviation", "navigation map", "aeronautical chart", "VFR", "IFR", "pilot tools", "ILS", "waypoints"],
-    "featureList": [
-      "Interactive Israeli CVFR / VFR aeronautical chart base maps",
-      "Waypoint, leg, and note drawing with magnetic headings and distances",
-      "Optional published VFR reporting-point overlay",
-      "Printable flight plan and PNG map export"
-    ],
-    "inLanguage": ["he", "en"],
-    "isAccessibleForFree": true,
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
-    "author": {
-      "@type": "Person",
-      "name": "Marco Supino"
-    }
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://navaid.supino.org/#website",
+        "url": "https://navaid.supino.org/",
+        "name": "NavAid",
+        "alternateName": ["NavAid CVFR", "CVFR Israel Map Navigation Aid", "Israel CVFR map"],
+        "inLanguage": ["he", "en"]
+      },
+      {
+        "@type": "WebApplication",
+        "@id": "https://navaid.supino.org/#app",
+        "isPartOf": { "@id": "https://navaid.supino.org/#website" },
+        "name": "NavAid — CVFR Israel Map Navigation Aid",
+        "alternateName": ["CVFR Israel Map Navigation Aid", "NavAid CVFR Planner", "Israel CVFR map", "מתכנן טיסה NavAid"],
+        "description": "CVFR Israel map navigation aid for planning routes on the Israeli aeronautical chart — waypoints, headings, distances and times.",
+        "url": "https://navaid.supino.org/",
+        "image": "https://navaid.supino.org/assets/og-preview.jpg",
+        "applicationCategory": "TravelApplication",
+        "applicationSubCategory": "Aviation flight planning",
+        "operatingSystem": "Any (web browser)",
+        "browserRequirements": "Requires a modern browser with HTML5 Canvas support.",
+        "keywords": ["CVFR Israel map navigation aid", "CVFR", "flight planning", "Israel aviation", "navigation map", "aeronautical chart", "VFR", "IFR", "pilot tools", "ILS", "waypoints"],
+        "featureList": [
+          "Interactive Israeli CVFR / VFR aeronautical chart base maps",
+          "Waypoint, leg, and note drawing with magnetic headings and distances",
+          "Optional published VFR reporting-point overlay",
+          "Printable flight plan and PNG map export"
+        ],
+        "inLanguage": ["he", "en"],
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "Marco Supino"
+        }
+      }
+    ]
   }
   </script>
   <!-- Language bootstrap: param > localStorage > 'en'. Sets window.__navLang;
