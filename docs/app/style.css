@@ -1045,6 +1045,47 @@ html, body {
 .modal-btns .modal-cancel { background: #443f3f; }
 .modal-btns .modal-cancel:hover { background: #555050; }
 
+.point-choice-modal {
+  min-width: 260px;
+  max-width: min(360px, 92vw);
+}
+.point-choice-list {
+  display: grid;
+  gap: 8px;
+}
+.point-choice-option {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 9px 11px;
+  font: inherit;
+  color: #e8e8e8;
+  text-align: start;
+  background: #332f2f;
+  border: 1px solid #443f3f;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.point-choice-option:hover,
+.point-choice-option:focus {
+  color: #fff;
+  background: #1d6fe0;
+  border-color: #2f7fee;
+  outline: none;
+}
+.point-choice-primary {
+  font-size: 13px;
+  font-weight: 700;
+}
+.point-choice-meta {
+  font-size: 11px;
+  color: #b9b3b3;
+}
+.point-choice-option:hover .point-choice-meta,
+.point-choice-option:focus .point-choice-meta {
+  color: #e9f1ff;
+}
+
 .route-template-modal {
   min-width: 320px;
   max-width: min(440px, 92vw);
@@ -1917,6 +1958,7 @@ body.theme-light .plan-name,
 body.theme-light .plan-num,
 body.theme-light .plate-chip,
 body.theme-light .runway-chip,
+body.theme-light .point-choice-option,
 body.theme-light #tuning-panel button,
 body.theme-light #tuning-panel input[type="number"],
 body.theme-light #tuning-panel input[type="text"],
@@ -1930,6 +1972,8 @@ body.theme-light #toolbar button:hover,
 body.theme-light #toolbar .slider-reset:hover,
 body.theme-light #toolbar #wpname-rot:hover,
 body.theme-light .plate-chip:hover,
+body.theme-light .point-choice-option:hover,
+body.theme-light .point-choice-option:focus,
 body.theme-light #tuning-panel button:hover {
   color: #111820;
   background: #eef3f9;
@@ -1970,6 +2014,7 @@ body.theme-light #mag-settings-body .navtoggle,
 body.theme-light .row .val,
 body.theme-light .map-legend-row,
 body.theme-light .wp-search-item,
+body.theme-light .point-choice-primary,
 body.theme-light .flight-table {
   color: #1f252c;
 }
@@ -2003,6 +2048,7 @@ body.theme-light .charts-cat-label,
 body.theme-light .plate-loading,
 body.theme-light .plate-attribution,
 body.theme-light .modal-close-x,
+body.theme-light .point-choice-meta,
 body.theme-light #insp-close,
 body.theme-light #mag-settings-close,
 body.theme-light #search-close,
@@ -2022,6 +2068,10 @@ body.theme-light #search-close:hover,
 body.theme-light #tuning-panel .tune-close:hover {
   color: #111820;
   background: rgba(29, 111, 224, 0.08);
+}
+body.theme-light .point-choice-option:hover .point-choice-meta,
+body.theme-light .point-choice-option:focus .point-choice-meta {
+  color: #4b5563;
 }
 body.theme-light .map-legend {
   background: rgba(250, 252, 255, 0.88);
