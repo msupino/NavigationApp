@@ -663,7 +663,7 @@ function splitLegAt(legIndex, latlng) {
   if (!state.waypoints[i] || !state.waypoints[i + 1]) return false;
 
   const source = state.legs[i];
-  const inserted = { lat: r5(latlng.lat), lng: r5(latlng.lng), name: '' };
+  const inserted = { lat: r5(latlng.lat), lng: r5(latlng.lng), name: '', _defaultWpName: 1 };
   state.waypoints.splice(i + 1, 0, inserted);
   state.legs.splice(i, 1, splitLegCopy(source), splitLegCopy(source));
   if (state.legs.length !== Math.max(0, state.waypoints.length - 1)) syncLegs();
@@ -1295,8 +1295,11 @@ function showInspector() {
     title.readOnly = true;
     title.oninput = null;
     let labelValue = storedName ? navName(storedName) : '';
-    if (refLocale && (!storedName || storedName === canonical)) labelValue = refLocale;
-    body.appendChild(inputRow(S.navHebrew || 'Waypoint name', labelValue || storedName, v => {
+    const defaultWpName = S.wpPrefix + (state.selected.index + 1);
+    const preferDefaultWpName = !storedName && wp._defaultWpName;
+    if (!preferDefaultWpName && refLocale && (!storedName || storedName === canonical)) labelValue = refLocale;
+    const nameValue = labelValue || storedName || defaultWpName;
+    body.appendChild(inputRow(S.navHebrew || 'Waypoint name', nameValue, v => {
       wp.name = isSequenceWaypointName((v || '').trim()) ? '' : v;
       draw();
     }));
