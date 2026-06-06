@@ -12,6 +12,23 @@ const { test, expect } = require('./_setup');
 
 const CUSTOM_DOMAIN = 'https://navaid.supino.org';
 
+async function structuredData(page) {
+  const text = await page.locator('script[type="application/ld+json"]').textContent();
+  const data = JSON.parse(text || '{}');
+  return Array.isArray(data['@graph']) ? data['@graph'] : [data];
+}
+
+function hasType(node, type) {
+  const value = node && node['@type'];
+  return Array.isArray(value) ? value.includes(type) : value === type;
+}
+
+function structuredNode(nodes, type) {
+  const node = nodes.find(item => hasType(item, type));
+  expect(node, `${type} JSON-LD node`).toBeTruthy();
+  return node;
+}
+
 test.describe('SEO URLs', () => {
 
   test('indexable metadata includes CVFR Israel map navigation aid phrase', async ({ page }) => {
@@ -25,15 +42,38 @@ test.describe('SEO URLs', () => {
     await expect(page.locator('meta[name="twitter:description"]')).toHaveAttribute('content', target);
     await expect(page.locator('header.sr-only h1')).toContainText(target);
 
-    const jsonLd = page.locator('script[type="application/ld+json"]');
-    const data = JSON.parse(await jsonLd.textContent());
+    const nodes = await structuredData(page);
+    const app = structuredNode(nodes, 'WebApplication');
     const haystack = [
-      data.name,
-      ...(Array.isArray(data.alternateName) ? data.alternateName : []),
-      data.description,
-      ...(Array.isArray(data.keywords) ? data.keywords : []),
+      app.name,
+      ...(Array.isArray(app.alternateName) ? app.alternateName : []),
+      app.description,
+      ...(Array.isArray(app.keywords) ? app.keywords : []),
     ].join(' ');
     expect(haystack).toMatch(target);
+  });
+
+  test('site name metadata prefers NavAid over the domain', async ({ page }) => {
+    await page.goto('.');
+    await expect(page.locator('meta[property="og:site_name"]')).toHaveAttribute('content', 'NavAid');
+
+    const nodes = await structuredData(page);
+    const site = structuredNode(nodes, 'WebSite');
+    expect(site.name).toBe('NavAid');
+    expect(site.name).not.toMatch(/supino\.org/i);
+    expect(site.url).toBe(CUSTOM_DOMAIN + '/');
+    expect(site.alternateName).toContain('CVFR Israel Map Navigation Aid');
+  });
+
+  test('favicon metadata exposes a crawlable square PNG icon', async ({ page }) => {
+    await page.goto('.');
+    const icon = page.locator('link[rel="icon"][type="image/png"]');
+    await expect(icon).toHaveAttribute('href', 'assets/icon-192.png');
+    await expect(icon).toHaveAttribute('sizes', '192x192');
+
+    const resp = await page.request.get('assets/icon-192.png');
+    expect(resp.ok()).toBe(true);
+    expect(resp.headers()['content-type']).toContain('image/png');
   });
 
   test('canonical and hreflang use custom domain', async ({ page }) => {
@@ -72,15 +112,16 @@ test.describe('SEO URLs', () => {
 
   test('JSON-LD structured data uses custom domain', async ({ page }) => {
     await page.goto('.');
-    const jsonLd = page.locator('script[type="application/ld+json"]');
-    const text = await jsonLd.textContent();
-    const data = JSON.parse(text);
-    expect(data.url).toBe(CUSTOM_DOMAIN + '/');
-    expect(data.image).toBe(CUSTOM_DOMAIN + '/assets/og-preview.jpg');
-    expect(Array.isArray(data.keywords)).toBe(true);
-    expect(data.keywords.length).toBeGreaterThan(0);
-    expect(Array.isArray(data.featureList)).toBe(true);
-    expect(data.featureList.length).toBeGreaterThan(0);
+    const nodes = await structuredData(page);
+    const site = structuredNode(nodes, 'WebSite');
+    const app = structuredNode(nodes, 'WebApplication');
+    expect(site.url).toBe(CUSTOM_DOMAIN + '/');
+    expect(app.url).toBe(CUSTOM_DOMAIN + '/');
+    expect(app.image).toBe(CUSTOM_DOMAIN + '/assets/og-preview.jpg');
+    expect(Array.isArray(app.keywords)).toBe(true);
+    expect(app.keywords.length).toBeGreaterThan(0);
+    expect(Array.isArray(app.featureList)).toBe(true);
+    expect(app.featureList.length).toBeGreaterThan(0);
   });
 
   test('robots.txt points to correct sitemap URL', async ({ page }) => {
