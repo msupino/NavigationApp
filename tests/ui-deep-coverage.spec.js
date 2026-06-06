@@ -83,6 +83,41 @@ test.describe('Inspector panel', () => {
     expect(bodyText).toMatch(/Longitude/);
   });
 
+  test('waypoint inspector shows an expandable satellite snippet', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(hz => {
+      state.waypoints = [{ lat: hz.lat, lng: hz.lng, name: 'LLHZ' }];
+      state.selected = { type: 'wp', index: 0 };
+      syncLegs(); draw(); showInspector();
+    }, LLHZ);
+
+    const snippet = page.locator('#insp-body .satellite-snippet').first();
+    await expect(page.locator('#insp-body .satellite-snippet-section')).toBeVisible();
+    await expect(snippet).toBeVisible();
+    await expect(snippet.locator('img')).toHaveCount(9);
+    await expect(snippet.locator('.satellite-crosshair')).toBeVisible();
+    const src = await snippet.locator('img').first().getAttribute('src');
+    expect(src).toContain('World_Imagery/MapServer/tile/');
+
+    await snippet.click();
+    const modal = page.locator('.satellite-preview-modal');
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('.satellite-expanded')).toBeVisible();
+    await expect(modal.locator('.satellite-zoom-level')).toHaveText('17z');
+    await expect(modal.locator('.satellite-expanded')).toHaveAttribute('data-zoom', '17');
+
+    await modal.getByRole('button', { name: 'Zoom in' }).click();
+    await expect(modal.locator('.satellite-zoom-level')).toHaveText('18z');
+    await expect(modal.locator('.satellite-expanded')).toHaveAttribute('data-zoom', '18');
+
+    await modal.getByRole('button', { name: 'Zoom out' }).click();
+    await expect(modal.locator('.satellite-expanded')).toHaveAttribute('data-zoom', '17');
+
+    await modal.locator('.satellite-preview-viewport').dispatchEvent('wheel', { deltaY: 100 });
+    await expect(modal.locator('.satellite-zoom-level')).toHaveText('16z');
+    await expect(modal.locator('.satellite-expanded')).toHaveAttribute('data-zoom', '16');
+  });
+
   test('restores an open note inspector after refresh', async ({ page }) => {
     await bootWithSavedSelection(page, {
       waypoints: [],
