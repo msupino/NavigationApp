@@ -694,8 +694,17 @@ async function applyRouteTemplate(template, speed, closeModal) {
 }
 
 function showRouteTemplatesModal() {
-  if (fpOpen) closeFlightPlan();
-  const modal = createDraggableModal(S.routeTemplatesTitle || 'Route templates', 'modal route-template-modal');
+  if (typeof prepareChartModal === 'function') {
+    if (!prepareChartModal('route-templates')) return;
+  } else {
+    if (fpOpen) closeFlightPlan();
+    if (typeof rememberOpenChartModal === 'function') rememberOpenChartModal('route-templates');
+  }
+  const modal = createDraggableModal(S.routeTemplatesTitle || 'Route templates',
+    'modal route-template-modal',
+    typeof clearOpenChartModal === 'function'
+      ? () => clearOpenChartModal('route-templates') : null,
+    { nonBlocking: true, chartKind: 'route-templates' });
   const body = document.createElement('div');
   body.className = 'route-template-body';
   const loading = document.createElement('p');
@@ -796,6 +805,29 @@ function showRouteTemplatesModal() {
       (e && e.message ? ' ' + e.message : '');
     body.appendChild(err);
   });
+}
+
+function restoreOpenChartModal() {
+  if (typeof readOpenChartModal !== 'function') return;
+  const kind = readOpenChartModal();
+  if (!kind) return;
+  if (kind === 'airport-charts' && typeof showChartsModal === 'function') {
+    showChartsModal();
+    return;
+  }
+  if (kind === 'freq-table' && typeof showFreqTableModal === 'function') {
+    showFreqTableModal();
+    return;
+  }
+  if (kind === 'alt-pairs' && typeof showAltitudePairsModal === 'function') {
+    showAltitudePairsModal();
+    return;
+  }
+  if (kind === 'route-templates' && typeof showRouteTemplatesModal === 'function') {
+    showRouteTemplatesModal();
+    return;
+  }
+  if (typeof clearOpenChartModal === 'function') clearOpenChartModal();
 }
 
 function runSearch() {
@@ -1025,11 +1057,7 @@ document.getElementById('file').onchange = e => {
 document.getElementById('fit').onclick = fitView;
 document.getElementById('fly').onclick = flyRoute;
 document.getElementById('gpx').onclick = exportGpx;
-// Toggle: a second click closes the modal instead of being a no-op (#78 dedupe
-// previously made the button look broken when the modal was already open).
-document.getElementById('plan').onclick = () => {
-  if (fpOpen) closeFlightPlan(); else showFlightPlan();
-};
+document.getElementById('plan').onclick = showFlightPlan;
 document.getElementById('freq-table').onclick = showFreqTableModal;
 document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
 document.getElementById('charts').onclick = showChartsModal;
@@ -1257,6 +1285,7 @@ if (vorRefSelect) {
 // Boot: keep the reference selector populated even when markers are hidden.
 loadVors().then(() => {
   syncVorUI();
+  retryPendingInspectorSelection();
   if (typeof showCenterCoord === 'function') showCenterCoord();
   if (showVorStations) draw();
 });
@@ -1949,21 +1978,19 @@ if (!_sharedLoaded) {
 } else {
   syncLegs();
 }
-try {
-  const saved = sessionStorage.getItem('navaid.selected');
-  if (saved) {
-    sessionStorage.removeItem('navaid.selected');
-    const sel = JSON.parse(saved);
-    const valid = sel && sel.index >= 0 &&
-      ((sel.type === 'wp' && sel.index < state.waypoints.length) ||
-       (sel.type === 'leg' && sel.index < state.legs.length) ||
-       (sel.type === 'note' && sel.index < state.notes.length));
-    if (valid) {
-      state.selected = sel;
-    }
+let pendingInspectorSelection = null;
+function retryPendingInspectorSelection() {
+  if (!pendingInspectorSelection || typeof tryRestoreInspectorSelection !== 'function') return;
+  const result = tryRestoreInspectorSelection(pendingInspectorSelection);
+  if (result === 'restored' || result === 'invalid') {
+    pendingInspectorSelection = null;
   }
+}
+try {
+  pendingInspectorSelection = typeof readStoredInspectorSelection === 'function'
+    ? readStoredInspectorSelection() : null;
+  retryPendingInspectorSelection();
 } catch (e) {}
-if (state.selected) showInspector();
 // Issue #413 — restore the persisted viewport (center + zoom + bearing) so
 // a reload lands on the user's last view. Falls back to fitView() only
 // when no valid saved view exists. The bearing was already applied above
@@ -1979,6 +2006,7 @@ draw();
 // Always load nav-waypoints in the background — they power both the
 // overlay toggle and the auto-snap on drop / drag.
 loadNavWaypoints().then(() => {
+  retryPendingInspectorSelection();
   snapExistingWaypoints();
   applyLegAltitudesToRoute();
   draw();
@@ -1987,6 +2015,7 @@ loadNavWaypoints().then(() => {
 // Also re-render inspector so plates section appears if a waypoint
 // was restored from sessionStorage before airfields loaded.
 loadAirfields().then(() => {
+  retryPendingInspectorSelection();
   snapExistingWaypoints();
   applyLegAltitudesToRoute();
   if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
@@ -2008,23 +2037,28 @@ loadLegAltitudes().then(() => {
 // load navWP positions even if that layer is off.
 loadCommChange().then(() => showCommChange ? loadNavWaypoints() : null)
   .then(() => {
+    retryPendingInspectorSelection();
     if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
     draw();
     if (state.selected) showInspector();
   });
 // Restore flight-plan modal if it was open before refresh / language change.
+let restoredFlightPlan = false;
 try {
   if (sessionStorage.getItem('navaid.fpOpen')) {
     sessionStorage.removeItem('navaid.fpOpen');
-    if (state.waypoints.length && typeof showFlightPlan === 'function') showFlightPlan();
+    if (state.waypoints.length && typeof showFlightPlan === 'function') {
+      showFlightPlan();
+      restoredFlightPlan = true;
+    }
   }
 } catch (e) {}
+if (!restoredFlightPlan) restoreOpenChartModal();
 
 // Save selected waypoint and flight-plan state on refresh / tab-close.
 window.addEventListener('beforeunload', function () {
-  if (state && state.selected) {
-    try { sessionStorage.setItem('navaid.selected', JSON.stringify(state.selected)); } catch (e) {}
-  }
+  if (typeof flushPersist === 'function') flushPersist();
+  if (typeof persistInspectorSelection === 'function') persistInspectorSelection();
   if (window.fpOpen) {
     try { sessionStorage.setItem('navaid.fpOpen', '1'); } catch (e) {}
   }
