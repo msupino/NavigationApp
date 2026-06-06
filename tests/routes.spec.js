@@ -182,6 +182,7 @@ test.describe('Split leg', () => {
         after: { waypoints: state.waypoints.length, legs: state.legs.length },
         inserted: state.waypoints[idx + 1],
         selected: state.selected,
+        inspectorName: document.querySelector('#insp-body .row input[type="text"]')?.value || '',
         first: fields(state.legs[idx]),
         second: fields(state.legs[idx + 1]),
       };
@@ -193,8 +194,10 @@ test.describe('Split leg', () => {
       legs: out.before.legs + 1,
     });
     expect(out.after.legs).toBe(out.after.waypoints - 1);
-    expect(out.inserted).toEqual({ lat: 32.34568, lng: 34.98765, name: '' });
+    expect(out.inserted).toMatchObject({ lat: 32.34568, lng: 34.98765, name: '' });
+    expect(out.inserted._defaultWpName).toBe(1);
     expect(out.selected).toEqual({ type: 'wp', index: 3 });
+    expect(out.inspectorName).toBe('WP 4');
     for (const leg of [out.first, out.second]) {
       expect(leg).toMatchObject({
         inboundAltitude: 1234,
@@ -298,12 +301,15 @@ test.describe('Split leg', () => {
       legs: state.legs.length,
       inserted: state.waypoints[legIndex + 1],
       selected: state.selected,
+      inspectorName: document.querySelector('#insp-body .row input[type="text"]')?.value || '',
     }), pos.legIndex);
     expect(after.waypoints).toBe(pos.before.waypoints + 1);
     expect(after.legs).toBe(pos.before.legs + 1);
     expect(after.legs).toBe(after.waypoints - 1);
-    expect(after.inserted).toEqual({ lat: pos.lat, lng: pos.lng, name: '' });
+    expect(after.inserted).toMatchObject({ lat: pos.lat, lng: pos.lng, name: '' });
+    expect(after.inserted._defaultWpName).toBe(1);
     expect(after.selected).toEqual({ type: 'wp', index: pos.legIndex + 1 });
+    expect(after.inspectorName).toBe(`WP ${pos.legIndex + 2}`);
   });
 
   test('double-clicking away from a leg does not split the route', async ({ page }) => {
