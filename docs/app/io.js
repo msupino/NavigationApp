@@ -2791,6 +2791,7 @@ function restoreRoute() {
   }
   state.waypoints = d.waypoints.map(w => ({
     lat: r5(w.lat), lng: r5(w.lng), name: w.name,
+    ...(w._defaultWpName ? { _defaultWpName: 1 } : {}),
   }));
   // #393 — normalise inLabel/outLabel offsets to zoom-12 reference so they
   // scale proportionally with zoom. Pre-#393 blobs lack `_m` and hold raw
