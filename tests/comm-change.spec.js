@@ -180,36 +180,47 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(catalog.PLUTO_WEST.secondary).toBe('119.15');
     expect(catalog.PLUTO_WEST.unit).toBe('יב"א 506');
     expect(catalog.BEN_GURION.he).toBe('בן גוריון');
-    expect(catalog.BEN_GURION.primary).toBe('118.30');
+    expect(catalog.BEN_GURION.primary).toBe('134.60');
+    expect(catalog.BEN_GURION.clearance).toBe('121.55');
     expect(catalog.PALMACHIM.label).toBe('Palmachim');
     expect(catalog.PALMACHIM.primary).toBe('135.55');
     expect(catalog.PALMACHIM.secondary).toBe('118.25');
+    expect(catalog.PALMACHIM.atis).toBe('126.10');
     expect(catalog.HAIFA.he).toBe('חיפה');
     expect(catalog.HAIFA.primary).toBe('133.00');
+    expect(catalog.HAIFA.secondary).toBe('127.80');
     expect(catalog.KIRYAT_SHMONA.he).toBe('קריית שמונה');
     expect(catalog.KIRYAT_SHMONA.primary).toBe('126.90');
     expect(catalog.MEGIDDO.he).toBe('מגידו');
-    expect(catalog.MEGIDDO.primary).toBe('128.60');
+    expect(catalog.MEGIDDO.primary).toBe('124.40');
     expect(catalog.ROSH_PINA.he).toBe('ראש פינה');
     expect(catalog.ROSH_PINA.primary).toBe('118.45');
+    expect(catalog.ROSH_PINA.secondary).toBe('119.65');
+    expect(catalog.ROSH_PINA.atis).toBe('132.45');
     expect(catalog.PLUTO_EAST.he).toBe('פלוטו מזרח');
     expect(catalog.PLUTO_EAST.primary).toBe('123.85');
     expect(catalog.PIK.he).toBe('פיק');
     expect(catalog.PIK.primary).toBe('122.55');
     expect(catalog.RAMAT_DAVID.he).toBe('רמת דוד');
     expect(catalog.RAMAT_DAVID.primary).toBe('130.50');
+    expect(catalog.RAMAT_DAVID.secondary).toBe('119.80');
     expect(catalog.HAGAV_NORTH.primary).toBe('128.35');
     expect(catalog.HAGAV_NORTH.secondary).toBe('129.25');
   });
 
-  test('known frequency files use two-decimal frequency formatting', async ({ page }) => {
+  test('known frequency files use valid radio-frequency formatting', async ({ page }) => {
     await boot(page);
     const catalog = await page.evaluate(() => window.commChangeCallSigns);
     const map = await page.evaluate(() => window.commChangeMap);
     const badCatalog = [];
+    const freqFields = [
+      'primary', 'secondary', 'alternate', 'secondaryAlternate',
+      'atis', 'atisDeparture', 'ground', 'groundWest', 'groundEast',
+      'clearance', 'appPrimary', 'appSecondary', 'tmaPrimary', 'tmaSecondary',
+    ];
     for (const [id, row] of Object.entries(catalog)) {
-      for (const field of ['primary', 'secondary', 'atis']) {
-        if (row[field] && !/^\d{3}\.\d{2}$/.test(row[field])) {
+      for (const field of freqFields) {
+        if (row[field] && !/^\d{3}\.\d{2,3}$/.test(row[field])) {
           badCatalog.push(`${id}.${field}=${row[field]}`);
         }
       }
@@ -219,7 +230,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     for (const file of ['known-frequencies.md', 'known-freq-points.md']) {
       const text = fs.readFileSync(file, 'utf8');
       const tokens = text.match(/\b1\d{2}(?:\.\d+)?\b/g) || [];
-      const bad = tokens.filter(t => !/^\d{3}\.\d{2}$/.test(t));
+      const bad = tokens.filter(t => !/^\d{3}\.\d{2,3}$/.test(t));
       expect(bad, file).toEqual([]);
     }
 

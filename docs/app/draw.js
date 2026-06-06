@@ -364,6 +364,8 @@ async function loadAirfields() {
       lat: a.lat,
       lng: a.lng,
       elev_ft: a.elev_ft,
+      atis: a.atis,
+      clearance: a.clearance,
       plates: Array.isArray(a.plates) ? a.plates.slice() : [],
       runways: Array.isArray(a.runways) ? a.runways.slice() : null,
     }));
