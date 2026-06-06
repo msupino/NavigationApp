@@ -5,10 +5,16 @@
 // --- hit testing -----------------------------------------------------
 function hitNote(px, py) {
   for (let i = state.notes.length - 1; i >= 0; i--) {
-    if (state.notes[i] && state.notes[i].cc && !showCommChange) continue;
+    const note = state.notes[i];
+    if (note && note.cc && !showCommChange) continue;
     // Frequency callouts are drawn above waypoint markers, but the waypoint
     // circle itself must remain independently selectable.
-    if (state.notes[i] && state.notes[i].cc && hitWaypoint(px, py) >= 0) continue;
+    if (note && note.cc && hitWaypoint(px, py) >= 0) continue;
+    if (note && note.cc) {
+      const hitComm = hitCommCallout(px, py, note);
+      if (hitComm === true) return i;
+      if (hitComm === false) continue;
+    }
     const r = noteRect(i);
     if (r.oval) {
       const dx = (px - (r.x + r.w / 2)) / (r.w / 2);
@@ -20,6 +26,26 @@ function hitNote(px, py) {
     }
   }
   return -1;
+}
+function hitCommCallout(px, py, note) {
+  const g = (typeof commCalloutGeom === 'function') ? commCalloutGeom(note) : null;
+  if (!g) return null;
+  const hitPx = Math.max(10, g.width + g.halo * 2 + tune('hitWaypointExtraPx'));
+  const points = [g.target, ...g.bends, g.tail];
+  for (let i = 0; i < points.length - 1; i++) {
+    if (distToSegment(px, py, points[i], points[i + 1]) <= hitPx) return true;
+  }
+
+  const maxTextW = Math.max(g.text.nameW, g.text.freqW);
+  const textH = g.text.namePx + g.text.freqPx + g.width + g.textGap * 2;
+  const dx = px - g.textX;
+  const dy = py - g.textY;
+  const c = Math.cos(g.textAngle);
+  const s = Math.sin(g.textAngle);
+  const lx = dx * c + dy * s;
+  const ly = -dx * s + dy * c;
+  return Math.abs(lx) <= maxTextW / 2 + hitPx &&
+         Math.abs(ly) <= textH / 2 + hitPx;
 }
 function commCalloutWaypointIndex(note) {
   if (!note || !note.cc || !Array.isArray(state.waypoints)) return -1;
