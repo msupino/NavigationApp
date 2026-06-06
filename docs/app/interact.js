@@ -751,6 +751,167 @@ function appendVorRadialRow(body, lat, lng) {
   body.appendChild(row);
 }
 
+const SATELLITE_TILE_SIZE = 256;
+const SATELLITE_PREVIEW_ZOOM = 16;
+const SATELLITE_EXPANDED_ZOOM = 17;
+const SATELLITE_MIN_ZOOM = 13;
+const SATELLITE_MAX_ZOOM = 18;
+const SATELLITE_TILE_URL =
+  'https://services.arcgisonline.com/ArcGIS/rest/services/' +
+  'World_Imagery/MapServer/tile/';
+
+function clampSatelliteZoom(z) {
+  const n = Number(z);
+  if (!Number.isFinite(n)) return SATELLITE_EXPANDED_ZOOM;
+  return Math.max(SATELLITE_MIN_ZOOM, Math.min(SATELLITE_MAX_ZOOM, Math.round(n)));
+}
+
+function satelliteTileUrl(z, x, y) {
+  return SATELLITE_TILE_URL + z + '/' + y + '/' + x;
+}
+
+function satelliteTilePoint(lat, lng, z) {
+  const clampedLat = Math.max(-85.05112878, Math.min(85.05112878, Number(lat)));
+  const safeLng = Number(lng);
+  const rad = clampedLat * Math.PI / 180;
+  const n = Math.pow(2, z);
+  const x = ((safeLng + 180) / 360) * n;
+  const y = (1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2 * n;
+  return { x, y, n };
+}
+
+function buildSatelliteSnippet(point, opts = {}) {
+  const lat = Number(point && point.lat);
+  const lng = Number(point && point.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const expanded = !!opts.expanded;
+  const width = expanded ? Math.max(300, Math.min(620, window.innerWidth - 64)) : 214;
+  const height = expanded ? Math.max(220, Math.min(420, window.innerHeight - 180)) : 118;
+  const z = expanded ? clampSatelliteZoom(opts.zoom) : SATELLITE_PREVIEW_ZOOM;
+  const p = satelliteTilePoint(lat, lng, z);
+  const centerTileX = Math.floor(p.x);
+  const centerTileY = Math.floor(p.y);
+  const globalX = p.x * SATELLITE_TILE_SIZE;
+  const globalY = p.y * SATELLITE_TILE_SIZE;
+  const snippet = document.createElement('div');
+  snippet.className = 'satellite-snippet' + (expanded ? ' satellite-expanded' : '');
+  snippet.dataset.zoom = String(z);
+  snippet.style.setProperty('--sat-width', width + 'px');
+  snippet.style.setProperty('--sat-height', height + 'px');
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const tileX = ((centerTileX + dx) % p.n + p.n) % p.n;
+      const tileY = Math.max(0, Math.min(p.n - 1, centerTileY + dy));
+      const img = document.createElement('img');
+      img.alt = '';
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      img.src = satelliteTileUrl(z, tileX, tileY);
+      img.style.left = ((centerTileX + dx) * SATELLITE_TILE_SIZE - globalX + width / 2) + 'px';
+      img.style.top = ((centerTileY + dy) * SATELLITE_TILE_SIZE - globalY + height / 2) + 'px';
+      snippet.appendChild(img);
+    }
+  }
+  const cross = document.createElement('span');
+  cross.className = 'satellite-crosshair';
+  snippet.appendChild(cross);
+  const attr = document.createElement('span');
+  attr.className = 'satellite-attribution';
+  attr.textContent = S.satelliteAttribution || 'Imagery © Esri';
+  snippet.appendChild(attr);
+  return snippet;
+}
+
+function showSatellitePreviewModal(point, label) {
+  if (typeof createDraggableModal !== 'function') return;
+  const modal = createDraggableModal(S.satelliteSnippetTitle || 'Satellite view',
+    'modal satellite-preview-modal');
+  const body = document.createElement('div');
+  body.className = 'satellite-preview-body';
+  const controls = document.createElement('div');
+  controls.className = 'satellite-zoom-controls';
+  const zoomOut = document.createElement('button');
+  zoomOut.type = 'button';
+  zoomOut.className = 'satellite-zoom-btn';
+  zoomOut.textContent = '-';
+  zoomOut.title = S.satelliteZoomOut || 'Zoom out';
+  zoomOut.setAttribute('aria-label', S.satelliteZoomOut || 'Zoom out');
+  const zoomLevel = document.createElement('span');
+  zoomLevel.className = 'satellite-zoom-level';
+  const zoomIn = document.createElement('button');
+  zoomIn.type = 'button';
+  zoomIn.className = 'satellite-zoom-btn';
+  zoomIn.textContent = '+';
+  zoomIn.title = S.satelliteZoomIn || 'Zoom in';
+  zoomIn.setAttribute('aria-label', S.satelliteZoomIn || 'Zoom in');
+  controls.append(zoomOut, zoomLevel, zoomIn);
+  body.appendChild(controls);
+  const viewport = document.createElement('div');
+  viewport.className = 'satellite-preview-viewport';
+  body.appendChild(viewport);
+  const caption = document.createElement('div');
+  caption.className = 'satellite-caption';
+  const name = label ? label + ' - ' : '';
+  caption.textContent = name +
+    fmtLatLng(point.lat, 'N', 'S') + ' ' + fmtLatLng(point.lng, 'E', 'W');
+  body.appendChild(caption);
+  let zoom = SATELLITE_EXPANDED_ZOOM;
+  function renderZoom() {
+    viewport.innerHTML = '';
+    const snippet = buildSatelliteSnippet(point, { expanded: true, zoom });
+    if (snippet) viewport.appendChild(snippet);
+    zoomLevel.textContent = zoom + 'z';
+    zoomOut.disabled = zoom <= SATELLITE_MIN_ZOOM;
+    zoomIn.disabled = zoom >= SATELLITE_MAX_ZOOM;
+  }
+  function setZoom(next) {
+    const z = clampSatelliteZoom(next);
+    if (z === zoom) return;
+    zoom = z;
+    renderZoom();
+  }
+  zoomOut.onclick = () => setZoom(zoom - 1);
+  zoomIn.onclick = () => setZoom(zoom + 1);
+  viewport.addEventListener('wheel', e => {
+    e.preventDefault();
+    setZoom(zoom + (e.deltaY < 0 ? 1 : -1));
+  }, { passive: false });
+  renderZoom();
+  modal.box.appendChild(body);
+  modal.show();
+}
+
+function appendSatelliteSnippet(body, point, label) {
+  const snippet = buildSatelliteSnippet(point);
+  if (!snippet) return;
+  const section = document.createElement('div');
+  section.className = 'satellite-snippet-section';
+  const head = document.createElement('div');
+  head.className = 'satellite-snippet-head';
+  const title = document.createElement('label');
+  title.textContent = S.satelliteSnippet || 'Satellite';
+  head.appendChild(title);
+  const expand = document.createElement('button');
+  expand.type = 'button';
+  expand.className = 'satellite-expand-hint';
+  expand.textContent = S.satelliteExpand || 'Expand';
+  head.appendChild(expand);
+  section.appendChild(head);
+  snippet.tabIndex = 0;
+  snippet.setAttribute('role', 'button');
+  snippet.setAttribute('aria-label', S.satelliteSnippetOpen || 'Expand satellite view');
+  const open = () => showSatellitePreviewModal(point, label);
+  snippet.addEventListener('click', open);
+  snippet.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    open();
+  });
+  expand.onclick = open;
+  section.appendChild(snippet);
+  body.appendChild(section);
+}
+
 // Grouped, clickable BYOP plate chips for an airfield (read-only inspector).
 function appendAirfieldPlates(body, af) {
   if (!af || !Array.isArray(af.plates) || !af.plates.length) return;
@@ -900,6 +1061,7 @@ function showInspector() {
     body.appendChild(textRow(S.vorFreq || 'Frequency', v.freq + ' MHz'));
     body.appendChild(textRow(S.latitude, fmtLatLng(v.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(v.lng, 'E', 'W')));
+    appendSatelliteSnippet(body, v, v.ident);
     const useBtn = document.createElement('button');
     useBtn.className = 'insp-btn';
     const isRef = vorRef === v.ident;
@@ -933,6 +1095,7 @@ function showInspector() {
     if (Number.isFinite(af.elev_ft)) {
       body.appendChild(textRow(S.elevation || 'Elevation', af.elev_ft + ' ft'));
     }
+    appendSatelliteSnippet(body, af, title.value);
     appendVorRadialRow(body, af.lat, af.lng);
     if (Array.isArray(af.runways) && af.runways.length) {
       const row = document.createElement('div');
@@ -968,6 +1131,7 @@ function showInspector() {
     }
     body.appendChild(textRow(S.latitude, fmtLatLng(nw.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(nw.lng, 'E', 'W')));
+    appendSatelliteSnippet(body, nw, nw.name);
     appendVorRadialRow(body, nw.lat, nw.lng);
   } else {
     const wp = state.waypoints[state.selected.index];
@@ -997,6 +1161,7 @@ function showInspector() {
     }));
     body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
+    appendSatelliteSnippet(body, wp, title.value);
     appendVorRadialRow(body, wp.lat, wp.lng);
     // Reporting-type badge (issue #404). The chart's סוג דיווח class lives
     // inline on the nav-WP (`report`). Surfaces mandatory (חובה) vs on-request
