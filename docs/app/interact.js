@@ -90,6 +90,85 @@ function selectedFreqNoteIndex() {
   if (idx >= 0) sel.freqNoteIndex = idx;
   return idx;
 }
+
+const INSPECTOR_SELECTION_KEY = 'navaid.selected';
+
+function inspectorSelectionDataReady(sel) {
+  if (!sel || typeof sel !== 'object') return true;
+  if (sel.type === 'navwp') return Array.isArray(navWP);
+  if (sel.type === 'airfield') return Array.isArray(airfields);
+  if (sel.type === 'vor') return Array.isArray(vors);
+  return true;
+}
+
+function normalizeInspectorSelection(sel) {
+  if (!sel || typeof sel !== 'object') return null;
+  const index = Number(sel.index);
+  if (!Number.isInteger(index) || index < 0) return null;
+  if (sel.type === 'wp') {
+    if (!state.waypoints || index >= state.waypoints.length) return null;
+    const out = { type: 'wp', index };
+    if (Number.isInteger(sel.freqNoteIndex) && sel.freqNoteIndex >= 0) {
+      const note = state.notes && state.notes[sel.freqNoteIndex];
+      if (note && note.cc) out.freqNoteIndex = sel.freqNoteIndex;
+    }
+    return out;
+  }
+  if (sel.type === 'leg') {
+    return state.legs && index < state.legs.length ? { type: 'leg', index } : null;
+  }
+  if (sel.type === 'note') {
+    return state.notes && index < state.notes.length ? { type: 'note', index } : null;
+  }
+  if (sel.type === 'navwp') {
+    return Array.isArray(navWP) && index < navWP.length ? { type: 'navwp', index } : null;
+  }
+  if (sel.type === 'airfield') {
+    return Array.isArray(airfields) && index < airfields.length ? { type: 'airfield', index } : null;
+  }
+  if (sel.type === 'vor') {
+    return Array.isArray(vors) && index < vors.length ? { type: 'vor', index } : null;
+  }
+  return null;
+}
+
+function readStoredInspectorSelection() {
+  try {
+    const raw = sessionStorage.getItem(INSPECTOR_SELECTION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function clearStoredInspectorSelection() {
+  try { sessionStorage.removeItem(INSPECTOR_SELECTION_KEY); } catch (e) { /* */ }
+}
+
+function persistInspectorSelection() {
+  const sel = normalizeInspectorSelection(state.selected);
+  if (!sel) {
+    clearStoredInspectorSelection();
+    return null;
+  }
+  state.selected = sel;
+  try { sessionStorage.setItem(INSPECTOR_SELECTION_KEY, JSON.stringify(sel)); }
+  catch (e) { /* */ }
+  return sel;
+}
+
+function tryRestoreInspectorSelection(sel) {
+  if (!sel) return 'empty';
+  const normalized = normalizeInspectorSelection(sel);
+  if (normalized) {
+    state.selected = normalized;
+    showInspector();
+    return 'restored';
+  }
+  if (!inspectorSelectionDataReady(sel)) return 'pending';
+  clearStoredInspectorSelection();
+  return 'invalid';
+}
 function addCommChangeNoteForWaypoint(wp, ccKey) {
   if (!wp || !ccKey || !Array.isArray(state.notes)) return -1;
   if (typeof unsuppressCommChange === 'function') unsuppressCommChange(ccKey);
@@ -721,7 +800,14 @@ function showInspector() {
   const body = document.getElementById('insp-body');
   body.innerHTML = '';
   title.classList.remove('editable');
-  if (!state.selected) { insp.classList.add('hidden'); return; }
+  const normalized = normalizeInspectorSelection(state.selected);
+  if (!normalized) {
+    state.selected = null;
+    insp.classList.add('hidden');
+    clearStoredInspectorSelection();
+    return;
+  }
+  state.selected = normalized;
   insp.classList.remove('hidden');
 
   if (state.selected.type === 'leg') {
@@ -802,7 +888,12 @@ function showInspector() {
     body.appendChild(del);
   } else if (state.selected.type === 'vor') {
     const v = vors && vors[state.selected.index];
-    if (!v) { insp.classList.add('hidden'); return; }
+    if (!v) {
+      state.selected = null;
+      insp.classList.add('hidden');
+      clearStoredInspectorSelection();
+      return;
+    }
     title.value = v.ident;
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     body.appendChild(textRow(S.vorName || 'Name', inspLocaleName(v)));
@@ -828,7 +919,12 @@ function showInspector() {
     body.appendChild(useBtn);
   } else if (state.selected.type === 'airfield') {
     const af = airfields && airfields[state.selected.index];
-    if (!af) { insp.classList.add('hidden'); return; }
+    if (!af) {
+      state.selected = null;
+      insp.classList.add('hidden');
+      clearStoredInspectorSelection();
+      return;
+    }
     const locale = inspLocaleName(af);
     title.value = af.name + (locale && locale !== af.name ? ' / ' + locale : '');
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
@@ -858,7 +954,12 @@ function showInspector() {
     appendAirfieldPlates(body, af);
   } else if (state.selected.type === 'navwp') {
     const nw = navWP && navWP[state.selected.index];
-    if (!nw) { insp.classList.add('hidden'); return; }
+    if (!nw) {
+      state.selected = null;
+      insp.classList.add('hidden');
+      clearStoredInspectorSelection();
+      return;
+    }
     title.value = nw.name;
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     const nwLocale = inspLocaleName(nw);
@@ -1056,6 +1157,7 @@ function showInspector() {
     resetName.onclick = () => resetWpName(state.selected.index);
     body.appendChild(resetName);
   }
+  persistInspectorSelection();
 }
 function colorRow(label, value, onChange) {
   const row = document.createElement('div');
