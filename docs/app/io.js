@@ -449,8 +449,11 @@ function validateVors(d) {
   return errs.length ? errs.join('; ') : null;
 }
 // Strict schema for docs/data/comm-change.json — { version, source?,
-// callSigns?: { ID:{ label?, he?, unit?, primary?, secondary?, atis?,
-// source? } }, points:[{ name, commChange, callSigns?, from?, to?,
+// callSigns?: { ID:{ label?, he?, unit?, primary?, secondary?, alternate?,
+// secondaryAlternate?, atis?, atisDeparture?, ground?, groundWest?,
+// groundEast?, clearance?, appPrimary?, appSecondary?, tmaPrimary?,
+// tmaSecondary?, phone?, source? } }, points:[{ name, commChange,
+// callSigns?, from?, to?,
 // note?, source? }] }. Only `points[].name` and
 // `points[].commChange` are required for the renderer; everything else is
 // metadata / inspector content. Unknown keys at any level are tolerated
@@ -470,8 +473,12 @@ function validateCommChange(d) {
           errs.push(p + ': expected object, got ' + _vKind(cs));
           continue;
         }
-        for (const k of ['label', 'he', 'unit', 'primary', 'secondary', 'atis',
-                         'source']) {
+        for (const k of ['label', 'he', 'unit', 'primary', 'secondary',
+                         'alternate', 'secondaryAlternate', 'atis',
+                         'atisDeparture', 'ground', 'groundWest',
+                         'groundEast', 'clearance', 'appPrimary',
+                         'appSecondary', 'tmaPrimary', 'tmaSecondary',
+                         'phone', 'source']) {
           if (k in cs && typeof cs[k] !== 'string') {
             errs.push(p + '.' + k + ': expected string, got ' + _vKind(cs[k]));
           }
@@ -603,12 +610,12 @@ function validateLegAltitudes(d) {
 }
 
 // Strict schema for docs/data/airfields.json — { airfields:[{ name, he, lat,
-// lng, en?, elev_ft?, plates?:[string], runways?:[string] }] }. Mirrors
+// lng, en?, elev_ft?, atis?, clearance?, plates?:[string], runways?:[string] }] }. Mirrors
 // validateNavWaypoints; the loader in draw.js bails out with an alert that
 // names the offending field path so the JSON author can find the typo.
 // Extras at any level are silently allowed for forward-compat (issue #101).
 //
-// Issue #412: `en`, `elev_ft`, `plates`, and `runways` are now OPTIONAL
+// Issue #412: `en`, `elev_ft`, `atis`, `clearance`, `plates`, and `runways` are now OPTIONAL
 // per-entry — the chart's published ARP list (#411) carries airfields whose
 // BYOP plate / elevation / runway enrichment is not yet in the repo, and
 // dropping them just because we don't have a plate folder yet would lose
@@ -635,6 +642,12 @@ function validateAirfields(d) {
     }
     if (Object.prototype.hasOwnProperty.call(a, 'elev_ft')) {
       _v(a, 'elev_ft', 'number', p, errs);
+    }
+    if (Object.prototype.hasOwnProperty.call(a, 'atis')) {
+      _v(a, 'atis', 'string', p, errs);
+    }
+    if (Object.prototype.hasOwnProperty.call(a, 'clearance')) {
+      _v(a, 'clearance', 'string', p, errs);
     }
     if (Object.prototype.hasOwnProperty.call(a, 'plates')) {
       if (_v(a, 'plates', 'array', p, errs)) {

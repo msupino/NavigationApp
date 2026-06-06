@@ -86,7 +86,7 @@
           "shape": "rect",
           "cc": "DEROR",
           "freqName": "HERZLIYA",
-          "freq": "122.20",
+          "freq": "125.60",
           "freqAuto": true
         }
       ]
@@ -177,7 +177,7 @@
           "shape": "rect",
           "cc": "DEROR",
           "freqName": "HERZLIYA",
-          "freq": "122.20",
+          "freq": "125.60",
           "freqAuto": true
         },
         {
@@ -274,7 +274,7 @@
           "shape": "rect",
           "cc": "NSHRM",
           "freqName": "BEN_GURION",
-          "freq": "118.30",
+          "freq": "134.60",
           "freqAuto": true
         },
         {
@@ -285,7 +285,7 @@
           "shape": "rect",
           "cc": "AYLON",
           "freqName": "BEN_GURION",
-          "freq": "118.30",
+          "freq": "134.60",
           "freqAuto": true
         },
         {
@@ -384,7 +384,7 @@
           "shape": "rect",
           "cc": "NTAIM",
           "freqName": "BEN_GURION",
-          "freq": "118.30",
+          "freq": "134.60",
           "freqAuto": true
         },
         {
@@ -571,7 +571,7 @@
           "shape": "rect",
           "cc": "KNTRY",
           "freqName": "HERZLIYA",
-          "freq": "122.20",
+          "freq": "125.60",
           "freqAuto": true
         }
       ]
@@ -680,7 +680,7 @@
           "shape": "rect",
           "cc": "KNTRY",
           "freqName": "HERZLIYA",
-          "freq": "122.20",
+          "freq": "125.60",
           "freqAuto": true
         }
       ]

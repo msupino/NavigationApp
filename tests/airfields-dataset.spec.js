@@ -211,6 +211,31 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     }
   });
 
+  test('known ATIS and clearance frequencies are stored on matching airfields', async () => {
+    const d = loadData();
+    const byCode = new Map(d.airfields.map(a => [a.name, a]));
+
+    expect(byCode.get('LLBG').atis).toBe('Arrival 132.50 MHz / Departure 132.80 MHz');
+    expect(byCode.get('LLBG').clearance).toBe('121.55 MHz');
+    expect(byCode.get('LLER').atis).toBe('132.55 MHz');
+    expect(byCode.get('LLHA').atis).toBe('135.40 MHz');
+    expect(byCode.get('LLHZ').clearance).toBe('121.70 MHz');
+    expect(byCode.get('LLIB').atis).toBe('132.45 MHz');
+    expect(byCode.get('LLPL').atis).toBe('126.10 MHz');
+
+    const withAtis = d.airfields
+      .filter(a => typeof a.atis === 'string' && a.atis.trim())
+      .map(a => a.name)
+      .sort();
+    expect(withAtis).toEqual(['LLBG', 'LLER', 'LLHA', 'LLIB', 'LLPL']);
+
+    const withClearance = d.airfields
+      .filter(a => typeof a.clearance === 'string' && a.clearance.trim())
+      .map(a => a.name)
+      .sort();
+    expect(withClearance).toEqual(['LLBG', 'LLHZ']);
+  });
+
   // BYOP plates and the runway-chip UI in interact.js read these
   // fields directly. The chart-rebuild must NOT have stripped them
   // from any entry that previously carried them.
