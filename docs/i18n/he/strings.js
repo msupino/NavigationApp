@@ -39,6 +39,7 @@ window.S = {
   choosePointAirfield: 'שדה תעופה',
   choosePointNavWaypoint: 'ציון ניווט',
   choosePointVor: 'תחנת VOR',
+  choosePointCommChange: 'חץ שינוי תדר',
   tbSearchOpen: '🔍 חפש (Ctrl-F)',
   tbSearchOpenTitle: 'פתח את חלון החיפוש (Ctrl/Cmd-F)',
   tbRouteTemplates: '🧭 תבניות',

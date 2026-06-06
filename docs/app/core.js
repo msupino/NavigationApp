@@ -283,6 +283,7 @@ window.S = Object.assign({
   choosePointAirfield: 'Airfield',
   choosePointNavWaypoint: 'Navigation waypoint',
   choosePointVor: 'VOR station',
+  choosePointCommChange: 'Freq-change arrow',
   tbSearchOpen: '🔍 Find (Ctrl-F)',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
   tbRouteTemplates: '🧭 Templates',

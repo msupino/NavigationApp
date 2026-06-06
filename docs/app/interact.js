@@ -47,6 +47,15 @@ function hitCommCallout(px, py, note) {
   return Math.abs(lx) <= maxTextW / 2 + hitPx &&
          Math.abs(ly) <= textH / 2 + hitPx;
 }
+function hitCommCalloutCandidates(px, py) {
+  const hits = [];
+  for (let i = state.notes.length - 1; i >= 0; i--) {
+    const note = state.notes[i];
+    if (!note || !note.cc || !showCommChange) continue;
+    if (hitCommCallout(px, py, note) === true) hits.push({ type: 'commcallout', index: i });
+  }
+  return hits;
+}
 function commCalloutWaypointIndex(note) {
   if (!note || !note.cc || !Array.isArray(state.waypoints)) return -1;
   const key = typeof canonicalNavWaypointName === 'function'
@@ -165,6 +174,20 @@ function hitNavWpMarkerCandidates(px, py) {
   }
   return hits;
 }
+function hitCommChangeMarkerCandidates(px, py) {
+  const hits = [];
+  if (!showCommChange || !commChangeMap || !navWP || !navWP.length) return hits;
+  const r = tune('commChangeRingRadiusPx') +
+    tune('commChangeRingWidthPx') / 2 +
+    tune('commChangeArrowStartGapPx') + tune('hitWaypointExtraPx');
+  for (let i = navWP.length - 1; i >= 0; i--) {
+    const wp = navWP[i];
+    if (!wp || !commChangeMap[wp.name] || !commChangeMap[wp.name].commChange) continue;
+    const s = proj(wp);
+    if (Math.hypot(s.x - px, s.y - py) <= r) hits.push({ type: 'navwp', index: i });
+  }
+  return hits;
+}
 // Topmost overlay marker under the point (VOR > airfield > nav-WP, matching
 // paint order). Returns a read-only selection descriptor, or null.
 function hitOverlayMarker(px, py) {
@@ -175,9 +198,36 @@ function hitOverlayMarkerCandidates(px, py) {
   return []
     .concat(hitVorMarkerCandidates(px, py) || [])
     .concat(hitAirfieldMarkerCandidates(px, py) || [])
-    .concat(hitNavWpMarkerCandidates(px, py) || []);
+    .concat(hitNavWpMarkerCandidates(px, py) || [])
+    .concat(hitCommChangeMarkerCandidates(px, py) || []);
+}
+function dedupePointCandidates(candidates) {
+  const seen = new Set();
+  const out = [];
+  for (const c of candidates || []) {
+    if (!c || !Number.isInteger(c.index)) continue;
+    const key = c.type + ':' + c.index;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(c);
+  }
+  return out;
 }
 function pointChoiceText(c) {
+  if (c.type === 'commcallout') {
+    const note = state.notes[c.index] || {};
+    const name = typeof commNoteName === 'function' ? commNoteName(note) : (note.freqName || '');
+    const freq = typeof commNoteFreq === 'function' ? commNoteFreq(note) : (note.freq || '');
+    const target = typeof commCalloutTarget === 'function' ? commCalloutTarget(note) : null;
+    const targetName = target && (target.name || target.en || target.he || note.cc);
+    const parts = [];
+    if (targetName || note.cc) parts.push(navName(targetName || note.cc));
+    if (name || freq) parts.push([name, freq].filter(Boolean).join(' / '));
+    return {
+      primary: S.choosePointCommChange || 'Freq-change arrow',
+      meta: parts.join(' - '),
+    };
+  }
   if (c.type === 'wp') {
     const wp = state.waypoints[c.index] || {};
     const primary = navName((wp.name || '').trim()) || (S.wpPrefix + (c.index + 1));
@@ -210,12 +260,14 @@ function pointChoiceText(c) {
   };
 }
 function selectPointCandidate(c) {
-  state.selected = { type: c.type, index: c.index };
+  state.selected = c.type === 'commcallout'
+    ? selectionForNoteHit(c.index)
+    : { type: c.type, index: c.index };
   showInspector();
   draw();
 }
 function showPointChoice(candidates) {
-  const items = (candidates || []).filter(c => c && Number.isInteger(c.index));
+  const items = dedupePointCandidates(candidates);
   if (!items.length) return false;
   if (items.length === 1) {
     selectPointCandidate(items[0]);
@@ -1330,6 +1382,16 @@ map.on('mousedown', e => {
   const p = e.containerPoint;
   // Hit-test priority matches paint order so the topmost element wins:
   // notes are drawn above waypoints (draw.js), so test notes first (issue #71).
+  const includeOverlayChoices = state.mode !== 'add' && state.mode !== 'note';
+  const commHits = hitCommCalloutCandidates(p.x, p.y);
+  const wpHits = hitWaypointCandidates(p.x, p.y);
+  const ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
+  const commChoiceHits = commHits.concat(wpHits, ovHits);
+  if (commHits.length && commChoiceHits.length > 1) {
+    downHit = true;
+    showPointChoice(commChoiceHits);
+    return;
+  }
   const note = hitNote(p.x, p.y);
   if (note >= 0) {
     downHit = true;
@@ -1344,7 +1406,6 @@ map.on('mousedown', e => {
     showInspector(); draw();
     return;
   }
-  const wpHits = hitWaypointCandidates(p.x, p.y);
   if (wpHits.length > 1) {
     downHit = true;
     showPointChoice(wpHits);
@@ -1404,8 +1465,7 @@ map.on('mousedown', e => {
   }
   // Outside edit mode, a click on a VOR / airfield / nav-WP marker opens its
   // read-only inspector. Not draggable, so leave map panning enabled.
-  if (state.mode !== 'add' && state.mode !== 'note') {
-    const ovHits = hitOverlayMarkerCandidates(p.x, p.y);
+  if (includeOverlayChoices) {
     if (ovHits.length > 1) {
       downHit = true;
       showPointChoice(ovHits);
@@ -1697,10 +1757,21 @@ mapEl.addEventListener('touchstart', e => {
   const p = touchXY(e.touches[0]);
   // Hit-test priority matches paint order so the topmost element wins:
   // notes are drawn above waypoints (draw.js), so test notes first (issue #71).
+  const includeOverlayChoices = state.mode !== 'add' && state.mode !== 'note';
+  const commHits = hitCommCalloutCandidates(p.x, p.y);
+  const wpHits = hitWaypointCandidates(p.x, p.y);
+  const ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
+  const commChoiceHits = commHits.concat(wpHits, ovHits);
+  if (commHits.length && commChoiceHits.length > 1) {
+    e.preventDefault();
+    showPointChoice(commChoiceHits);
+    return;
+  }
   const note = hitNote(p.x, p.y);
-  const wpHits = note < 0 ? hitWaypointCandidates(p.x, p.y) : [];
-  const wpAmbiguous = wpHits.length > 1;
-  const wp = wpHits.length ? wpHits[0].index : -1;
+  const activeWpHits = note < 0 ? wpHits : [];
+  const activeOvHits = note < 0 ? ovHits : [];
+  const wpAmbiguous = activeWpHits.length > 1;
+  const wp = activeWpHits.length ? activeWpHits[0].index : -1;
   const cum = (!wpAmbiguous && wp < 0 && note < 0) ? hitCumLabel(p.x, p.y) : null;
   const cumRet = (!wpAmbiguous && wp < 0 && note < 0 && !cum) ? hitCumLabelRet(p.x, p.y) : null;
   const lab = (!wpAmbiguous && wp < 0 && note < 0 && !cum && !cumRet) ? hitLegLabel(p.x, p.y) : null;
@@ -1719,7 +1790,7 @@ mapEl.addEventListener('touchstart', e => {
     state.selected = selectionForNoteHit(note);
   } else if (wpAmbiguous) {
     e.preventDefault();
-    showPointChoice(wpHits);
+    showPointChoice(activeWpHits);
     return;
   } else if (wp >= 0) {
     touchDrag = { kind: 'wp', i: wp, moved: false,
@@ -1749,15 +1820,14 @@ mapEl.addEventListener('touchstart', e => {
 
   // Outside edit mode, a tap on a VOR / airfield / nav-WP marker opens its
   // read-only inspector (no drag).
-  if (!touchDrag && state.mode !== 'add' && state.mode !== 'note') {
-    const ovHits = hitOverlayMarkerCandidates(p.x, p.y);
-    if (ovHits.length > 1) {
+  if (!touchDrag && includeOverlayChoices) {
+    if (activeOvHits.length > 1) {
       e.preventDefault();
-      showPointChoice(ovHits);
+      showPointChoice(activeOvHits);
       return;
     }
-    if (ovHits.length) {
-      state.selected = ovHits[0];
+    if (activeOvHits.length) {
+      state.selected = activeOvHits[0];
       e.preventDefault();
       showInspector(); draw();
       return;
