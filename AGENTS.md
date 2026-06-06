@@ -48,6 +48,10 @@ both branches and assembles a single Pages site:
   same Deploy step rewrites `NavAid.version` in `docs/app/core.js` from
   `'1.0'` to `'1.0-<short-sha>'`, so the toolbar identifies the exact
   deployed commit without manually increasing the source version number.
+- **Before creating a feature branch from `dev`, merge production back
+  into `dev` first.** Fetch `origin`, check out `dev`, fast-forward it
+  to `origin/dev`, merge `origin/main` into `dev`, resolve and push that
+  merge if needed, then branch from the updated `dev` tip.
 - **Before `git commit`, verify the current branch** (`git branch
   --show-current`, and `git status` if needed). If it is not the branch
   the user intended for this work, or you are unsure, **ask the user**
