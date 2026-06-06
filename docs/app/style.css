@@ -1273,6 +1273,163 @@ html, body {
 .plate-chip-small { font-size: 10px; padding: 2px 5px; background: none; border-color: transparent; color: #1d6fe0; cursor: pointer; }
 .plate-chip-small:hover { text-decoration: underline; }
 
+/* Inspector satellite preview */
+.satellite-snippet-section {
+  margin: 10px 0 12px;
+  padding-top: 10px;
+  border-top: 1px solid #3a3636;
+}
+.satellite-snippet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.satellite-snippet-head label {
+  color: #b9b3b3;
+}
+.satellite-expand-hint {
+  font: inherit;
+  font-size: 11px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 3px 7px;
+  cursor: pointer;
+}
+.satellite-expand-hint:hover {
+  color: #fff;
+  background: #3a3636;
+  border-color: #1d6fe0;
+}
+.satellite-snippet {
+  position: relative;
+  width: min(100%, var(--sat-width, 214px));
+  height: var(--sat-height, 118px);
+  margin: 0 auto;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid #443f3f;
+  border-radius: 6px;
+  background: #141212;
+  cursor: zoom-in;
+}
+.satellite-snippet:focus {
+  outline: 2px solid #1d6fe0;
+  outline-offset: 2px;
+}
+.satellite-snippet img {
+  position: absolute;
+  width: 256px;
+  height: 256px;
+  max-width: none;
+  user-select: none;
+  pointer-events: none;
+}
+.satellite-crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(255, 218, 76, 0.96);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.75), 0 1px 4px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+  z-index: 2;
+}
+.satellite-crosshair::before,
+.satellite-crosshair::after {
+  content: '';
+  position: absolute;
+  background: rgba(255, 218, 76, 0.96);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.62);
+}
+.satellite-crosshair::before {
+  left: 50%;
+  top: -12px;
+  bottom: -12px;
+  width: 2px;
+  transform: translateX(-50%);
+}
+.satellite-crosshair::after {
+  left: -12px;
+  right: -12px;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+}
+.satellite-attribution {
+  position: absolute;
+  right: 4px;
+  bottom: 3px;
+  z-index: 3;
+  padding: 1px 4px;
+  color: rgba(255, 255, 255, 0.86);
+  background: rgba(0, 0, 0, 0.58);
+  border-radius: 3px;
+  font-size: 9px;
+  line-height: 1.3;
+  pointer-events: none;
+}
+.satellite-preview-modal {
+  max-width: calc(100vw - 32px);
+}
+.satellite-preview-body {
+  display: grid;
+  gap: 8px;
+}
+.satellite-zoom-controls {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  justify-self: center;
+}
+.satellite-zoom-btn {
+  width: 30px;
+  height: 28px;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.satellite-zoom-btn:hover:not(:disabled) {
+  color: #fff;
+  background: #3a3636;
+  border-color: #1d6fe0;
+}
+.satellite-zoom-btn:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+.satellite-zoom-level {
+  min-width: 34px;
+  color: #b9b3b3;
+  font-size: 12px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.satellite-preview-body .satellite-snippet {
+  width: var(--sat-width, 620px);
+  height: var(--sat-height, 420px);
+  cursor: zoom-in;
+}
+.satellite-caption {
+  color: #b9b3b3;
+  font-size: 12px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Comm-change inspector badge (issue #399) */
 .commchange-row {
   background: rgba(231, 76, 60, 0.12);
@@ -1959,6 +2116,8 @@ body.theme-light .plan-num,
 body.theme-light .plate-chip,
 body.theme-light .runway-chip,
 body.theme-light .point-choice-option,
+body.theme-light .satellite-expand-hint,
+body.theme-light .satellite-zoom-btn,
 body.theme-light #tuning-panel button,
 body.theme-light #tuning-panel input[type="number"],
 body.theme-light #tuning-panel input[type="text"],
@@ -1974,6 +2133,8 @@ body.theme-light #toolbar #wpname-rot:hover,
 body.theme-light .plate-chip:hover,
 body.theme-light .point-choice-option:hover,
 body.theme-light .point-choice-option:focus,
+body.theme-light .satellite-expand-hint:hover,
+body.theme-light .satellite-zoom-btn:hover:not(:disabled),
 body.theme-light #tuning-panel button:hover {
   color: #111820;
   background: #eef3f9;
@@ -1983,6 +2144,10 @@ body.theme-light #toolbar .wp-search-item.active {
   color: #fff;
   background: #1d6fe0;
   border-color: #1d6fe0;
+}
+body.theme-light .satellite-snippet {
+  border-color: #b8c0cc;
+  background: #dfe6ef;
 }
 body.theme-light .tb-section,
 body.theme-light #toolbar > #lang-toggle,
@@ -1996,6 +2161,7 @@ body.theme-light .flight-table td,
 body.theme-light .flight-table tfoot td,
 body.theme-light .flight-plan-sub,
 body.theme-light .plates-section,
+body.theme-light .satellite-snippet-section,
 body.theme-light .charts-airport + .charts-airport,
 body.theme-light #tuning-panel .tune-group {
   border-color: #cfd5df;
@@ -2049,6 +2215,9 @@ body.theme-light .plate-loading,
 body.theme-light .plate-attribution,
 body.theme-light .modal-close-x,
 body.theme-light .point-choice-meta,
+body.theme-light .satellite-snippet-head label,
+body.theme-light .satellite-caption,
+body.theme-light .satellite-zoom-level,
 body.theme-light #insp-close,
 body.theme-light #mag-settings-close,
 body.theme-light #search-close,
