@@ -41,12 +41,14 @@ always target `dev` as the PR base branch.
 enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
 
 **Before creating a feature branch from `dev`:** update local `dev`
-first, then merge production back into it. Fetch `origin`, check out
-`dev`, fast-forward it to `origin/dev`, merge `origin/main` into `dev`
-and resolve/push that merge if needed, then create or switch to the
-feature branch from that updated `dev` tip. If `dev` cannot
-fast-forward or the `origin/main` merge cannot be resolved cleanly,
-stop and resolve that before branching.
+first, then bring production back into it while keeping `dev` linear.
+Fetch `origin`, check out `dev`, fast-forward it to `origin/dev`, and
+integrate `origin/main` into `dev` without leaving a merge commit
+(fast-forward when possible; otherwise reapply/squash the `dev` delta
+onto `origin/main`). Resolve and push that linear `dev` update before
+creating or switching to the feature branch. If `dev` cannot
+fast-forward or `origin/main` cannot be integrated cleanly, stop and
+resolve that before branching.
 
 **Before any `git commit`:** run `git branch --show-current` (and
 `git status` when in doubt). If the branch is not the one the user
