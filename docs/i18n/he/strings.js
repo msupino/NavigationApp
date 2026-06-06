@@ -87,6 +87,9 @@ window.S = {
   navHebrew: 'שם נקודה',
   vorFrom: function(id) { return 'מ-' + id + ' VOR'; },
   vorRadialDme: function(rad, dme) { return 'R-' + rad + '° / ' + dme + ' NM'; },
+  primary: 'ראשי',
+  atis: 'ATIS',
+  clearance: 'קלירנס',
   errInvalidAirfields: function(msg) { return 'נתוני שדות תעופה לא תקינים: ' + msg; },
   errSavedRouteCorrupt: function(msg) {
     return 'לא ניתן לשחזר את המסלול השמור, לכן הנתונים המקוריים נשמרו ולא נדרסו. ' +

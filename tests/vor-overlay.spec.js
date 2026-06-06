@@ -395,6 +395,139 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     }
   });
 
+  test('airfield inspector shows primary, clearance, and ATIS frequencies when available', async ({ page }) => {
+    await boot(page, 'en');
+    await page.evaluate(async () => {
+      await Promise.all([loadAirfields(), loadCommChange()]);
+      state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLHA') };
+      showInspector();
+    });
+    await expect(page.locator('#insp-body .primary-row')).toContainText('Primary');
+    await expect(page.locator('#insp-body .primary-row')).toContainText('133.00 MHz');
+    await expect(page.locator('#insp-body .atis-row')).toContainText('ATIS');
+    await expect(page.locator('#insp-body .atis-row')).toContainText('135.40 MHz');
+
+    await page.evaluate(() => {
+      state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLBG') };
+      showInspector();
+    });
+    await expect(page.locator('#insp-body .primary-row')).toContainText('134.60 MHz');
+    await expect(page.locator('#insp-body .clearance-row')).toContainText('121.55 MHz');
+    await expect(page.locator('#insp-body .atis-row')).toContainText('132.50 MHz');
+    await expect(page.locator('#insp-body .atis-row')).toContainText('132.80 MHz');
+    const markerOrder = await page.evaluate(() => {
+      const rows = Array.from(document.querySelector('#insp-body').children);
+      return {
+        primary: rows.findIndex(el => el.classList.contains('primary-row')),
+        atis: rows.findIndex(el => el.classList.contains('atis-row')),
+        satellite: rows.findIndex(el => el.classList.contains('satellite-snippet-section')),
+      };
+    });
+    expect(markerOrder.primary).toBeGreaterThanOrEqual(0);
+    expect(markerOrder.atis).toBeGreaterThan(markerOrder.primary);
+    expect(markerOrder.satellite).toBeGreaterThan(markerOrder.atis);
+
+    await page.evaluate(() => {
+      state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLIB') };
+      showInspector();
+    });
+    await expect(page.locator('#insp-body .primary-row')).toContainText('118.45 MHz');
+    await expect(page.locator('#insp-body .atis-row')).toContainText('132.45 MHz');
+
+    await page.evaluate(() => {
+      state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLHZ') };
+      showInspector();
+    });
+    await expect(page.locator('#insp-body .primary-row')).toContainText('125.60 MHz');
+    await expect(page.locator('#insp-body .clearance-row')).toContainText('121.70 MHz');
+    await expect(page.locator('#insp-body .atis-row')).toHaveCount(0);
+
+    await page.evaluate(() => {
+      state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLPL') };
+      showInspector();
+    });
+    await expect(page.locator('#insp-body .primary-row')).toContainText('135.55 MHz');
+    await expect(page.locator('#insp-body .atis-row')).toContainText('126.10 MHz');
+
+    await page.evaluate(() => {
+      state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLAR') };
+      showInspector();
+    });
+    await expect(page.locator('#insp-body .primary-row')).toContainText('120.75 MHz');
+    await expect(page.locator('#insp-body .atis-row')).toHaveCount(0);
+    await expect(page.locator('#insp-body .clearance-row')).toHaveCount(0);
+
+    await page.evaluate(() => {
+      state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLES') };
+      showInspector();
+    });
+    await expect(page.locator('#insp-body .primary-row')).toHaveCount(0);
+
+    await page.evaluate(() => {
+      const af = airfields.find(a => a.name === 'LLBG');
+      state.waypoints = [{ name: af.name, lat: af.lat, lng: af.lng }];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+    });
+    await expect(page.locator('#insp-title')).toHaveValue(/LLBG/);
+    await expect(page.locator('#insp-title')).toHaveValue(/Ben Gurion/);
+    await expect(page.locator('#insp-body .primary-row')).toContainText('134.60 MHz');
+    await expect(page.locator('#insp-body .clearance-row')).toContainText('121.55 MHz');
+    await expect(page.locator('#insp-body .atis-row')).toContainText('132.50 MHz');
+    const routeOrder = await page.evaluate(() => {
+      const rows = Array.from(document.querySelector('#insp-body').children);
+      return {
+        primary: rows.findIndex(el => el.classList.contains('primary-row')),
+        atis: rows.findIndex(el => el.classList.contains('atis-row')),
+        satellite: rows.findIndex(el => el.classList.contains('satellite-snippet-section')),
+      };
+    });
+    expect(routeOrder.primary).toBeGreaterThanOrEqual(0);
+    expect(routeOrder.atis).toBeGreaterThan(routeOrder.primary);
+    expect(routeOrder.satellite).toBeGreaterThan(routeOrder.atis);
+
+    await page.evaluate(() => {
+      const af = airfields.find(a => a.name === 'LLHZ');
+      state.waypoints = [{ name: af.name, lat: af.lat, lng: af.lng }];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+    });
+    await expect(page.locator('#insp-title')).toHaveValue(/LLHZ/);
+    await expect(page.locator('#insp-title')).toHaveValue(/Herzliya/);
+    await expect(page.locator('#insp-body .primary-row')).toContainText('125.60 MHz');
+    await expect(page.locator('#insp-body .clearance-row')).toContainText('121.70 MHz');
+    await expect(page.locator('#insp-body .atis-row')).toHaveCount(0);
+  });
+
+  test('Hebrew airfield inspector keeps ICAO and frequency values in reading order', async ({ page }) => {
+    await boot(page, 'he');
+    await page.evaluate(async () => {
+      await Promise.all([loadAirfields(), loadCommChange()]);
+      state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLIB') };
+      showInspector();
+    });
+    await expect(page.locator('#insp-title')).toHaveValue(/LLIB/);
+    await expect(page.locator('#insp-title')).toHaveValue(/ראש פינה/);
+    await expect(page.locator('#insp-body .primary-row')).toContainText('ראשי');
+    await expect(page.locator('#insp-body .primary-row')).toContainText('118.45 MHz');
+    await expect(page.locator('#insp-body .atis-row')).toContainText('132.45 MHz');
+    const bidi = await page.evaluate(() => {
+      const primary = document.querySelector('#insp-body .primary-row .val');
+      const atis = document.querySelector('#insp-body .atis-row .val');
+      const title = document.getElementById('insp-title');
+      return {
+        titleDir: getComputedStyle(title).direction,
+        primaryDir: getComputedStyle(primary).direction,
+        atisDir: getComputedStyle(atis).direction,
+      };
+    });
+    expect(bidi.titleDir).toBe('ltr');
+    expect(bidi.primaryDir).toBe('ltr');
+    expect(bidi.atisDir).toBe('ltr');
+  });
+
   test('toggling VOR checkbox shows/hides markers on the map', async ({ page }) => {
     await boot(page);
     await page.evaluate(async () => {
