@@ -142,6 +142,43 @@ test.describe('Edit / delete waypoint', () => {
   });
 });
 
+test.describe('Point selection chooser', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupCleanInit(page);
+    await page.goto('?lang=en');
+    await page.waitForFunction(() =>
+      typeof state !== 'undefined' &&
+      typeof createDraggableModal === 'function' &&
+      typeof hitWaypointCandidates === 'function');
+  });
+
+  test('close route waypoints ask which point to select instead of changing zoom', async ({ page }) => {
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.2, lng: 34.9, name: 'FIRST' },
+        { lat: 32.20001, lng: 34.90001, name: 'SECOND' },
+      ];
+      syncLegs();
+      map.setView([32.2, 34.9], 12);
+      draw();
+    });
+    const beforeZoom = await page.evaluate(() => map.getZoom());
+    await page.evaluate(() => {
+      const p = proj(state.waypoints[0]);
+      map.fire('mousedown', {
+        containerPoint: L.point(p.x, p.y),
+        latlng: L.latLng(state.waypoints[0].lat, state.waypoints[0].lng),
+      });
+    });
+    await expect(page.locator('.point-choice-modal')).toBeVisible();
+    await expect(page.locator('.point-choice-option')).toHaveCount(2);
+    await page.locator('.point-choice-option').filter({ hasText: 'SECOND' }).click();
+    expect(await page.evaluate(() => state.selected)).toEqual({ type: 'wp', index: 1 });
+    await expect(page.locator('#insp-title')).toHaveValue('SECOND');
+    expect(await page.evaluate(() => map.getZoom())).toBe(beforeZoom);
+  });
+});
+
 test.describe('Reverse route', () => {
   test.beforeEach(async ({ page }) => bootWithRoute(page));
 
