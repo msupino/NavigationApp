@@ -142,6 +142,200 @@ test.describe('Edit / delete waypoint', () => {
   });
 });
 
+test.describe('Split leg', () => {
+  test.beforeEach(async ({ page }) => bootWithRoute(page));
+
+  test('splitLegAt inserts a blank waypoint and preserves the old leg values', async ({ page }) => {
+    const out = await page.evaluate(() => {
+      const idx = 2;
+      Object.assign(state.legs[idx], {
+        inboundAltitude: 1234,
+        outboundAltitude: 2345,
+        flightSpeed: 111,
+        outboundSpeed: 122,
+        vorRef: 'NAT',
+        _legAltitudeOutboundBlocked: 1,
+        _legAltitudeOneWay: 1,
+        inLabel: { a: 12, p: 3, _m: 1 },
+        outLabel: { a: -8, p: -4, _m: 1 },
+        cumLabel: { a: 6, p: 2, _m: 1 },
+        cumLabelRet: { a: -6, p: -2, _m: 1 },
+      });
+      const before = { waypoints: state.waypoints.length, legs: state.legs.length };
+      const ok = splitLegAt(idx, { lat: 32.3456789, lng: 34.9876543 });
+      const fields = leg => ({
+        inboundAltitude: leg.inboundAltitude,
+        outboundAltitude: leg.outboundAltitude,
+        flightSpeed: leg.flightSpeed,
+        outboundSpeed: leg.outboundSpeed,
+        vorRef: leg.vorRef,
+        outboundBlocked: Boolean(leg._legAltitudeOutboundBlocked),
+        oneWay: Boolean(leg._legAltitudeOneWay),
+        inLabel: leg.inLabel,
+        outLabel: leg.outLabel,
+        cumLabel: leg.cumLabel,
+        cumLabelRet: leg.cumLabelRet,
+      });
+      return {
+        ok,
+        before,
+        after: { waypoints: state.waypoints.length, legs: state.legs.length },
+        inserted: state.waypoints[idx + 1],
+        selected: state.selected,
+        first: fields(state.legs[idx]),
+        second: fields(state.legs[idx + 1]),
+      };
+    });
+
+    expect(out.ok).toBe(true);
+    expect(out.after).toEqual({
+      waypoints: out.before.waypoints + 1,
+      legs: out.before.legs + 1,
+    });
+    expect(out.after.legs).toBe(out.after.waypoints - 1);
+    expect(out.inserted).toEqual({ lat: 32.34568, lng: 34.98765, name: '' });
+    expect(out.selected).toEqual({ type: 'wp', index: 3 });
+    for (const leg of [out.first, out.second]) {
+      expect(leg).toMatchObject({
+        inboundAltitude: 1234,
+        outboundAltitude: 2345,
+        flightSpeed: 111,
+        outboundSpeed: 122,
+        vorRef: 'NAT',
+        outboundBlocked: true,
+        oneWay: true,
+      });
+      expect(leg.inLabel).toEqual({ a: 0, _default: 1, _m: 1 });
+      expect(leg.outLabel).toEqual({ a: 0, _default: 1, _m: 1 });
+      expect(leg.cumLabel).toEqual({ a: 0, _default: 1, _m: 1 });
+      expect(leg.cumLabelRet).toEqual({ a: 0, _default: 1, _m: 1 });
+    }
+  });
+
+  test('single-clicking a leg still only selects it', async ({ page }) => {
+    const pos = await page.evaluate(() => {
+      map.setView([32.3, 34.9], 10);
+      draw();
+      let picked = null;
+      for (let i = 0; i < state.legs.length && !picked; i++) {
+        const a = proj(state.waypoints[i]);
+        const b = proj(state.waypoints[i + 1]);
+        for (const t of [0.35, 0.45, 0.55, 0.65]) {
+          const x = a.x + (b.x - a.x) * t;
+          const y = a.y + (b.y - a.y) * t;
+          if (hitLeg(x, y) === i &&
+              hitNote(x, y) < 0 &&
+              !hitWaypointCandidates(x, y).length &&
+              !hitCumLabel(x, y) &&
+              !hitCumLabelRet(x, y) &&
+              !hitLegLabel(x, y) &&
+              !hitOverlayMarkerCandidates(x, y).length) {
+            picked = { x, y, legIndex: i };
+            break;
+          }
+        }
+      }
+      if (!picked) throw new Error('No leg-only click point found');
+      const rect = map.getContainer().getBoundingClientRect();
+      return {
+        x: rect.left + picked.x,
+        y: rect.top + picked.y,
+        legIndex: picked.legIndex,
+        before: { waypoints: state.waypoints.length, legs: state.legs.length },
+      };
+    });
+    await page.mouse.click(pos.x, pos.y);
+    const after = await page.evaluate(() => ({
+      waypoints: state.waypoints.length,
+      legs: state.legs.length,
+      selected: state.selected,
+    }));
+    expect(after.waypoints).toBe(pos.before.waypoints);
+    expect(after.legs).toBe(pos.before.legs);
+    expect(after.selected).toEqual({ type: 'leg', index: pos.legIndex });
+  });
+
+  test('double-clicking a leg splits it at the clicked point', async ({ page }) => {
+    const pos = await page.evaluate(() => {
+      map.setView([32.3, 34.9], 10);
+      draw();
+      let picked = null;
+      for (let i = 0; i < state.legs.length && !picked; i++) {
+        const a = proj(state.waypoints[i]);
+        const b = proj(state.waypoints[i + 1]);
+        for (const t of [0.35, 0.45, 0.55, 0.65]) {
+          const x = a.x + (b.x - a.x) * t;
+          const y = a.y + (b.y - a.y) * t;
+          if (hitLeg(x, y) === i &&
+              hitNote(x, y) < 0 &&
+              !hitWaypointCandidates(x, y).length &&
+              !hitCumLabel(x, y) &&
+              !hitCumLabelRet(x, y) &&
+              !hitLegLabel(x, y) &&
+              !hitOverlayMarkerCandidates(x, y).length) {
+            picked = { x, y, legIndex: i };
+            break;
+          }
+        }
+      }
+      if (!picked) throw new Error('No leg-only click point found');
+      const rect = map.getContainer().getBoundingClientRect();
+      const clientX = Math.round(rect.left + picked.x);
+      const clientY = Math.round(rect.top + picked.y);
+      const ll = map.containerPointToLatLng([clientX - rect.left, clientY - rect.top]);
+      return {
+        x: clientX,
+        y: clientY,
+        legIndex: picked.legIndex,
+        lat: r5(ll.lat),
+        lng: r5(ll.lng),
+        before: { waypoints: state.waypoints.length, legs: state.legs.length },
+      };
+    });
+    await page.mouse.dblclick(pos.x, pos.y);
+    const after = await page.evaluate(legIndex => ({
+      waypoints: state.waypoints.length,
+      legs: state.legs.length,
+      inserted: state.waypoints[legIndex + 1],
+      selected: state.selected,
+    }), pos.legIndex);
+    expect(after.waypoints).toBe(pos.before.waypoints + 1);
+    expect(after.legs).toBe(pos.before.legs + 1);
+    expect(after.legs).toBe(after.waypoints - 1);
+    expect(after.inserted).toEqual({ lat: pos.lat, lng: pos.lng, name: '' });
+    expect(after.selected).toEqual({ type: 'wp', index: pos.legIndex + 1 });
+  });
+
+  test('double-clicking away from a leg does not split the route', async ({ page }) => {
+    const pos = await page.evaluate(() => {
+      map.setView([32.3, 34.9], 10);
+      draw();
+      const rect = map.getContainer().getBoundingClientRect();
+      const candidates = [
+        [24, 24],
+        [rect.width - 24, 24],
+        [24, rect.height - 24],
+        [rect.width - 24, rect.height - 24],
+      ];
+      const pick = candidates.find(([x, y]) =>
+        hitLeg(x, y) < 0 &&
+        hitNote(x, y) < 0 &&
+        !hitWaypointCandidates(x, y).length) || candidates[0];
+      return {
+        x: rect.left + pick[0],
+        y: rect.top + pick[1],
+        before: { waypoints: state.waypoints.length, legs: state.legs.length },
+      };
+    });
+    await page.mouse.dblclick(pos.x, pos.y);
+    const after = await page.evaluate(() => ({
+      waypoints: state.waypoints.length,
+      legs: state.legs.length,
+    }));
+    expect(after).toEqual(pos.before);
+  });
+});
+
 test.describe('Point selection chooser', () => {
   test.beforeEach(async ({ page }) => {
     await setupCleanInit(page);
