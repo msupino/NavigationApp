@@ -488,7 +488,7 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.fillCount).toBe(0);
   });
 
-  test('waypoint center and frequency tail both open the waypoint inspector', async ({ page }) => {
+  test('waypoint center, frequency arrow, and tail open the waypoint inspector', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
     const pts = await page.evaluate(t => {
@@ -498,27 +498,54 @@ test.describe('comm-change auto-note (#487)', () => {
       draw();
       const center = proj(state.waypoints[0]);
       const g = commCalloutGeom(state.notes[0]);
+      const arrow = {
+        x: (g.bend2.x + g.tail.x) / 2,
+        y: (g.bend2.y + g.tail.y) / 2,
+      };
       const r = mapEl.getBoundingClientRect();
       return {
         center: { x: r.left + center.x, y: r.top + center.y },
+        arrow: { x: r.left + arrow.x, y: r.top + arrow.y },
         tail: { x: r.left + g.tail.x, y: r.top + g.tail.y },
         hitNoteAtCenter: hitNote(center.x, center.y),
+        hitNoteAtArrow: hitNote(arrow.x, arrow.y),
         hitWaypointAtCenter: hitWaypoint(center.x, center.y),
         hitNoteAtTail: hitNote(g.tail.x, g.tail.y),
       };
     }, TYONA);
     expect(pts.hitNoteAtCenter).toBe(-1);
     expect(pts.hitWaypointAtCenter).toBe(0);
+    expect(pts.hitNoteAtArrow).toBe(0);
     expect(pts.hitNoteAtTail).toBe(0);
 
     await page.mouse.click(pts.center.x, pts.center.y);
     await expect.poll(() => page.evaluate(() => state.selected)).toEqual({ type: 'wp', index: 0 });
+    await page.mouse.click(pts.arrow.x, pts.arrow.y);
+    await expect.poll(() => page.evaluate(() => state.selected))
+      .toEqual({ type: 'wp', index: 0, freqNoteIndex: 0 });
     await page.mouse.click(pts.tail.x, pts.tail.y);
     await expect.poll(() => page.evaluate(() => state.selected))
       .toEqual({ type: 'wp', index: 0, freqNoteIndex: 0 });
     await expect(page.locator('#insp-title')).toHaveValue('TYONA');
     await expect(page.locator('#insp-body select')).toHaveCount(1);
     await expect(page.locator('#insp-body .freq-input')).toHaveValue('118.40');
+
+    const widths = await page.evaluate(() => {
+      state.selected = { type: 'wp', index: 0, freqNoteIndex: 0 };
+      const seen = [];
+      const realStroke = octx.stroke.bind(octx);
+      octx.stroke = function () {
+        seen.push(octx.lineWidth);
+        return realStroke();
+      };
+      drawNotes();
+      octx.stroke = realStroke;
+      return {
+        seen,
+        selectedWidth: tune('commChangeArrowWidthPx') + tune('commChangeSelectedWidthAddPx'),
+      };
+    });
+    expect(widths.seen).toContain(widths.selectedWidth);
   });
 
   test('comm-change lightning rotation turns the bend vector around the arrow axis', async ({ page }) => {
