@@ -15,6 +15,48 @@ function addModalCloseX(box, onClose) {
   box.appendChild(x);
 }
 
+const OPEN_CHART_MODAL_KEY = 'navaid.openChartModal';
+
+function rememberOpenChartModal(kind) {
+  if (!kind) return;
+  try { sessionStorage.setItem(OPEN_CHART_MODAL_KEY, kind); } catch (e) { /* */ }
+}
+
+function readOpenChartModal() {
+  try { return sessionStorage.getItem(OPEN_CHART_MODAL_KEY) || ''; }
+  catch (e) { return ''; }
+}
+
+function clearOpenChartModal(kind) {
+  try {
+    const current = sessionStorage.getItem(OPEN_CHART_MODAL_KEY);
+    if (!kind || current === kind) sessionStorage.removeItem(OPEN_CHART_MODAL_KEY);
+  } catch (e) { /* */ }
+}
+
+function closeOpenChartModals() {
+  for (const back of Array.from(document.querySelectorAll('.modal-back[data-chart-modal]'))) {
+    if (typeof back._navaidClose === 'function') back._navaidClose();
+    else back.remove();
+  }
+}
+
+function isChartModalOpen(kind) {
+  if (!kind) return false;
+  for (const back of document.querySelectorAll('.modal-back[data-chart-modal]')) {
+    if (back.dataset.chartModal === kind) return true;
+  }
+  return false;
+}
+
+function prepareChartModal(kind) {
+  if (isChartModalOpen(kind)) return false;
+  if (fpOpen) closeFlightPlan();
+  closeOpenChartModals();
+  rememberOpenChartModal(kind);
+  return true;
+}
+
 // --- Keyboard-shortcuts cheat-sheet (issue #420) --------------------
 // Single source of truth for the visible cheat-sheet rows. Each row's
 // `keys` array is rendered as <kbd> chips so the rendering is locale-
@@ -975,6 +1017,8 @@ function showFlightPlan() {
     alert(S.errNoLegs);
     return;
   }
+  closeOpenChartModals();
+  clearOpenChartModal();
   // 'flight-plan' variant: backdrop is transparent + pointer-events: none so
   // the map underneath stays interactive (waypoint drag, pan, etc.) while
   // the plan is open. The modal box itself opts back into pointer events.
@@ -2625,6 +2669,27 @@ function persist() {
   }, 500);
 }
 
+function flushPersist() {
+  if (NavAid.corruptCache &&
+      state.waypoints.length === 0 &&
+      state.legs.length === 0 &&
+      state.notes.length === 0) return;
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  if (quotaWarned) return;
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(routeSnapshotForStorage()));
+  } catch (e) {
+    if (e && (e.name === 'QuotaExceededError' || e.code === 22 ||
+              e.code === 1014 /* NS_ERROR_DOM_QUOTA_REACHED */)) {
+      quotaWarned = true;
+      try { alert(S.errStorageFull); } catch (_) { /* alert blocked */ }
+    }
+  }
+}
+
 // --- undo -----------------------------------------------------------
 // undoStack holds serialized route snapshots of *prior*
 // committed states. lastCommitted is the serialization of the state as it
@@ -2864,9 +2929,10 @@ function showPlateViewer(filename, label) {
   window.addEventListener('keydown', onEsc, true);
 }
 
-function createDraggableModal(titleText, className) {
+function createDraggableModal(titleText, className, onClose, options = {}) {
   const back = document.createElement('div');
-  back.className = 'modal-back';
+  back.className = options.nonBlocking ? 'modal-back flight-plan' : 'modal-back';
+  if (options.chartKind) back.dataset.chartModal = options.chartKind;
   const box = document.createElement('div');
   box.className = className || 'modal wide';
 
@@ -2875,10 +2941,15 @@ function createDraggableModal(titleText, className) {
   title.textContent = titleText || '';
   box.appendChild(title);
 
+  let closed = false;
   function close() {
+    if (closed) return;
+    closed = true;
     window.removeEventListener('keydown', onEsc);
-    back.remove();
+    if (back.parentNode) back.remove();
+    if (typeof onClose === 'function') onClose();
   }
+  back._navaidClose = close;
   addModalCloseX(box, close);
 
   let drag = null;
@@ -3144,8 +3215,10 @@ function renderFreqTable(freqSection) {
 }
 
 function showFreqTableModal() {
-  if (fpOpen) closeFlightPlan();
-  const modal = createDraggableModal(S.tbFreqTable || S.freqTableTitle || 'Freq table', 'modal wide');
+  if (!prepareChartModal('freq-table')) return;
+  const modal = createDraggableModal(S.tbFreqTable || S.freqTableTitle || 'Freq table',
+    'modal wide', () => clearOpenChartModal('freq-table'),
+    { nonBlocking: true, chartKind: 'freq-table' });
   const scrollArea = document.createElement('div');
   scrollArea.className = 'fp-scroll';
   const body = document.createElement('div');
@@ -3508,8 +3581,10 @@ function refreshAltitudePairsTableIfOpen() {
 }
 
 function showAltitudePairsModal() {
-  if (fpOpen) closeFlightPlan();
-  const modal = createDraggableModal(S.tbAltPairs || S.altPairsTitle || 'Alt pairs', 'modal wide');
+  if (!prepareChartModal('alt-pairs')) return;
+  const modal = createDraggableModal(S.tbAltPairs || S.altPairsTitle || 'Alt pairs',
+    'modal wide', () => clearOpenChartModal('alt-pairs'),
+    { nonBlocking: true, chartKind: 'alt-pairs' });
   const scrollArea = document.createElement('div');
   scrollArea.className = 'fp-scroll';
   const body = document.createElement('div');
@@ -3529,8 +3604,10 @@ function showAltitudePairsModal() {
 }
 
 function showChartsModal() {
-  if (fpOpen) closeFlightPlan();
-  const modal = createDraggableModal(S.plates, 'modal wide');
+  if (!prepareChartModal('airport-charts')) return;
+  const modal = createDraggableModal(S.plates, 'modal wide',
+    () => clearOpenChartModal('airport-charts'),
+    { nonBlocking: true, chartKind: 'airport-charts' });
   const scrollArea = document.createElement('div');
   scrollArea.className = 'fp-scroll';
   const body = document.createElement('div');

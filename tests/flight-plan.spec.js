@@ -336,15 +336,13 @@ test.describe('Flight plan', () => {
     stateOutAlts.forEach((v, i) => expect(v).toBe(4000));
   });
 
-  test('Flight Plan button toggles: second click closes the modal', async ({ page }) => {
+  test('Flight Plan button keeps the chart window open on a second click', async ({ page }) => {
     const modal = page.locator('.modal-back.flight-plan');
     await page.locator('#plan').click();
     await expect(modal).toBeVisible();
     await page.locator('#plan').click();
-    await expect(modal).toHaveCount(0);
-    // Re-open with a third click.
-    await page.locator('#plan').click();
     await expect(modal).toBeVisible();
+    await expect(modal).toHaveCount(1);
   });
 
   test('reverse route preserves flightSpeed when showReturn is off', async ({ page }) => {
@@ -455,7 +453,7 @@ test.describe('Flight plan', () => {
     });
     for (let i = 0; i < 5; i++) {
       await page.locator('#plan').click();
-      await page.locator('#plan').click();
+      await page.locator('.modal-back.flight-plan .modal-close-x').click();
     }
     const leftover = await page.evaluate(() => window.__touchCount);
     expect(leftover).toBe(0);
