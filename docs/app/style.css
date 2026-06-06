@@ -555,6 +555,7 @@ html, body {
   border: none;
   padding: 0;
   outline: none;
+  unicode-bidi: plaintext;
 }
 #insp-title::placeholder { color: #8a8484; }
 #insp-title:read-only { cursor: default; }
@@ -663,7 +664,11 @@ html, body {
   padding: 4px 6px;
 }
 .row select { cursor: pointer; }
-.row .val { color: #e8e8e8; font-variant-numeric: tabular-nums; }
+.row .val {
+  color: #e8e8e8;
+  font-variant-numeric: tabular-nums;
+  unicode-bidi: plaintext;
+}
 .row .freq-control { display: inline-flex; align-items: center; gap: 4px; }
 .row .freq-input.invalid,
 .charts-freq-input.invalid {

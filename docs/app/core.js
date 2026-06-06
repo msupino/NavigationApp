@@ -332,6 +332,9 @@ window.S = Object.assign({
   vorRadialDme: function(rad, dme) {                  // e.g. "R-263° / 12.4 NM"
     return 'R-' + rad + '° / ' + dme + ' NM';
   },
+  primary: 'Primary',
+  atis: 'ATIS',
+  clearance: 'Clearance',
   errInvalidAirfields: function(msg) { return 'Invalid airfields data: ' + msg; },
   errSavedRouteCorrupt: function(msg) {
     return 'Saved route could not be restored, so the original saved data was preserved. ' +
@@ -638,8 +641,9 @@ var forceSnap = false;      // #106: when on, every click snaps to the
                             // of click distance (otherwise: 18 px radius).
 var airfields = null;       // same null/[]/populated convention as navWP —
                             // see loadAirfields() in draw.js. Entries:
-                            // { name, he, lat, lng, en?, elev_ft?, plates:[], runways:[]|null }.
-                            // `en`, `elev_ft`, `plates`, and `runways` are
+                            // { name, he, lat, lng, en?, elev_ft?, atis?, clearance?, plates:[], runways:[]|null }.
+                            // `en`, `elev_ft`, `atis`, `clearance`,
+                            // `plates`, and `runways` are
                             // optional per the chart-rebuild (#412): ARPs
                             // surfaced from the IAA chart with no published
                             // BYOP enrichment ship as bare {name,he,lat,lng}.

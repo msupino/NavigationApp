@@ -751,6 +751,91 @@ function appendVorRadialRow(body, lat, lng) {
   body.appendChild(row);
 }
 
+function airfieldAtisText(af) {
+  return af && typeof af.atis === 'string' ? af.atis.trim() : '';
+}
+
+function airfieldClearanceText(af) {
+  return af && typeof af.clearance === 'string' ? af.clearance.trim() : '';
+}
+
+const AIRFIELD_CALL_SIGN_IDS = {
+  GVULT: null,
+  KKDEM: 'KEDEM',
+  LLAR: 'ARAD',
+  LLBG: 'BEN_GURION',
+  LLBO: 'HABONIM',
+  LLBS: 'TEYMAN',
+  LLEK: 'TEL_NOF',
+  LLER: 'EILAT',
+  LLES: null,
+  LLEV: 'EIN_VERED',
+  LLEY: 'EIN_YAHAV',
+  LLFK: 'PIK',
+  LLHA: 'HAIFA',
+  LLHB: 'HATZERIM_NORTH',
+  LLHS: 'HATZOR',
+  LLHZ: 'HERZLIYA',
+  LLIB: 'ROSH_PINA',
+  LLKS: 'KIRYAT_SHMONA',
+  LLKZ: null,
+  LLMG: 'MEGIDDO',
+  LLMZ: 'MASADA',
+  LLNV: 'NEVATIM',
+  LLOV: 'OVDA',
+  LLPL: 'PALMACHIM',
+  LLRD: 'RAMAT_DAVID',
+  LLRM: 'RAMON',
+  LLRS: 'RISHON_LEZION',
+};
+
+function airfieldPrimaryText(af) {
+  const id = af && Object.prototype.hasOwnProperty.call(AIRFIELD_CALL_SIGN_IDS, af.name)
+    ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
+  const row = id && typeof commCatalogCallSignRow === 'function'
+    ? commCatalogCallSignRow(id) : null;
+  const primary = row && typeof row.primary === 'string' ? row.primary.trim() : '';
+  if (!primary) return '';
+  return (typeof commFormatFreq === 'function' ? commFormatFreq(primary) : primary) + ' MHz';
+}
+
+function refreshAirfieldInspectorAfterCommCatalog(af) {
+  if (!af || commChangeMap !== null || typeof loadCommChange !== 'function') return;
+  loadCommChange().then(() => {
+    const sel = state && state.selected;
+    let current = null;
+    if (sel && sel.type === 'airfield' && airfields) {
+      current = airfields[sel.index];
+    } else if (sel && sel.type === 'wp' && typeof airfieldAtWaypoint === 'function') {
+      current = airfieldAtWaypoint(state.waypoints[sel.index]);
+    }
+    if (current && current.name === af.name) showInspector();
+  });
+}
+
+function appendAirfieldFrequencyRows(body, af) {
+  const primary = airfieldPrimaryText(af);
+  if (primary) {
+    const row = textRow(S.primary || 'Primary', primary);
+    row.classList.add('primary-row');
+    body.appendChild(row);
+  } else {
+    refreshAirfieldInspectorAfterCommCatalog(af);
+  }
+  const clearance = airfieldClearanceText(af);
+  if (clearance) {
+    const row = textRow(S.clearance || 'Clearance', clearance);
+    row.classList.add('clearance-row');
+    body.appendChild(row);
+  }
+  const atis = airfieldAtisText(af);
+  if (atis) {
+    const row = textRow(S.atis || 'ATIS', atis);
+    row.classList.add('atis-row');
+    body.appendChild(row);
+  }
+}
+
 const SATELLITE_TILE_SIZE = 256;
 const SATELLITE_PREVIEW_ZOOM = 16;
 const SATELLITE_EXPANDED_ZOOM = 17;
@@ -955,12 +1040,48 @@ function appendAirfieldPlates(body, af) {
   body.appendChild(section);
 }
 
+function appendAirfieldRunways(body, af) {
+  if (!af || !Array.isArray(af.runways) || !af.runways.length) return;
+  const row = document.createElement('div');
+  row.className = 'row runways-row';
+  const lbl = document.createElement('label');
+  lbl.textContent = S.runways;
+  row.appendChild(lbl);
+  const chips = document.createElement('div');
+  chips.className = 'runway-chips';
+  for (const r of af.runways) {
+    const chip = document.createElement('span');
+    chip.className = 'runway-chip';
+    chip.textContent = r;
+    chips.appendChild(chip);
+  }
+  row.appendChild(chips);
+  body.appendChild(row);
+}
+
+function airfieldInspectorTitle(af) {
+  const locale = inspLocaleName(af);
+  return af.name + (locale && locale !== af.name ? ' / ' + locale : '');
+}
+
+function appendAirfieldDetailRows(body, af, label) {
+  if (Number.isFinite(af.elev_ft)) {
+    body.appendChild(textRow(S.elevation || 'Elevation', af.elev_ft + ' ft'));
+  }
+  appendAirfieldFrequencyRows(body, af);
+  appendSatelliteSnippet(body, af, label || airfieldInspectorTitle(af));
+  appendVorRadialRow(body, af.lat, af.lng);
+  appendAirfieldRunways(body, af);
+  appendAirfieldPlates(body, af);
+}
+
 function showInspector() {
   const insp = document.getElementById('inspector');
   const title = document.getElementById('insp-title');
   const body = document.getElementById('insp-body');
   body.innerHTML = '';
   title.classList.remove('editable');
+  title.dir = 'auto';
   const normalized = normalizeInspectorSelection(state.selected);
   if (!normalized) {
     state.selected = null;
@@ -1087,34 +1208,11 @@ function showInspector() {
       clearStoredInspectorSelection();
       return;
     }
-    const locale = inspLocaleName(af);
-    title.value = af.name + (locale && locale !== af.name ? ' / ' + locale : '');
+    title.value = airfieldInspectorTitle(af);
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     body.appendChild(textRow(S.latitude, fmtLatLng(af.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(af.lng, 'E', 'W')));
-    if (Number.isFinite(af.elev_ft)) {
-      body.appendChild(textRow(S.elevation || 'Elevation', af.elev_ft + ' ft'));
-    }
-    appendSatelliteSnippet(body, af, title.value);
-    appendVorRadialRow(body, af.lat, af.lng);
-    if (Array.isArray(af.runways) && af.runways.length) {
-      const row = document.createElement('div');
-      row.className = 'row runways-row';
-      const lbl = document.createElement('label');
-      lbl.textContent = S.runways;
-      row.appendChild(lbl);
-      const chips = document.createElement('div');
-      chips.className = 'runway-chips';
-      for (const r of af.runways) {
-        const chip = document.createElement('span');
-        chip.className = 'runway-chip';
-        chip.textContent = r;
-        chips.appendChild(chip);
-      }
-      row.appendChild(chips);
-      body.appendChild(row);
-    }
-    appendAirfieldPlates(body, af);
+    appendAirfieldDetailRows(body, af, title.value);
   } else if (state.selected.type === 'navwp') {
     const nw = navWP && navWP[state.selected.index];
     if (!nw) {
@@ -1136,6 +1234,7 @@ function showInspector() {
   } else {
     const wp = state.waypoints[state.selected.index];
     normalizeWaypointSequenceName(wp);
+    const afInsp = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
     const ref = typeof findSnappedReference === 'function' ? findSnappedReference(wp) : null;
     let canonical = ref ? ref.name : null;
     let refLocale = ref ? inspLocaleName(ref) : '';
@@ -1149,7 +1248,8 @@ function showInspector() {
         }
       }
     }
-    title.value = canonical || navName(storedName) || (S.wpPrefix + (state.selected.index + 1));
+    title.value = afInsp ? airfieldInspectorTitle(afInsp)
+      : canonical || navName(storedName) || (S.wpPrefix + (state.selected.index + 1));
     title.placeholder = '';
     title.readOnly = true;
     title.oninput = null;
@@ -1161,8 +1261,12 @@ function showInspector() {
     }));
     body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
-    appendSatelliteSnippet(body, wp, title.value);
-    appendVorRadialRow(body, wp.lat, wp.lng);
+    if (afInsp) {
+      appendAirfieldDetailRows(body, afInsp, title.value);
+    } else {
+      appendSatelliteSnippet(body, wp, title.value);
+      appendVorRadialRow(body, wp.lat, wp.lng);
+    }
     // Reporting-type badge (issue #404). The chart's סוג דיווח class lives
     // inline on the nav-WP (`report`). Surfaces mandatory (חובה) vs on-request
     // (דרישה) for a route waypoint that matches a known reporting point.
@@ -1236,73 +1340,6 @@ function showInspector() {
           }
         }
       }
-    }
-    const afInsp = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
-    // #231: runway directions when the waypoint is at a known airfield (ICAO
-    // name or ARP coords — renamed labels at the same ARP keep runways).
-    if (afInsp && Array.isArray(afInsp.runways) && afInsp.runways.length) {
-      const row = document.createElement('div');
-      row.className = 'row runways-row';
-      const lbl = document.createElement('label');
-      lbl.textContent = S.runways;
-      row.appendChild(lbl);
-      const chips = document.createElement('div');
-      chips.className = 'runway-chips';
-      for (const r of afInsp.runways) {
-        const chip = document.createElement('span');
-        chip.className = 'runway-chip';
-        chip.textContent = r;
-        chips.appendChild(chip);
-      }
-      row.appendChild(chips);
-      body.appendChild(row);
-    }
-    // #105: plates when the waypoint matches an airfield by name or ARP coords.
-    if (afInsp && afInsp.plates && afInsp.plates.length) {
-      const af = afInsp;
-      const section = document.createElement('div');
-      section.className = 'plates-section';
-      const label = document.createElement('div');
-      label.className = 'row';
-      const l = document.createElement('label');
-      l.textContent = S.plates;
-      label.appendChild(l);
-      section.appendChild(label);
-      // Group by category
-      const groups = {};
-      const catOrder = ['approach', 'sid', 'star', 'ground', 'vfr', 'other'];
-      const catLabel = {
-        approach: S.plateCategoryApproach,
-        sid: S.plateCategorySid,
-        star: S.plateCategoryStar,
-        ground: S.plateCategoryGround,
-        vfr: S.plateCategoryVfr,
-        other: S.plateCategoryOther,
-      };
-      for (const fn of af.plates) {
-        const cat = plateCategory(fn);
-        if (!groups[cat]) groups[cat] = [];
-        groups[cat].push(fn);
-      }
-      for (const cat of catOrder) {
-        if (!groups[cat]) continue;
-        const row = document.createElement('div');
-        row.className = 'row';
-        const catLbl = document.createElement('label');
-        catLbl.textContent = catLabel[cat];
-        row.appendChild(catLbl);
-        const chips = document.createElement('span');
-        for (const fn of groups[cat]) {
-          const chip = document.createElement('button');
-          chip.className = 'plate-chip';
-          chip.textContent = prettyPlateLabel(fn);
-          chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
-          chips.appendChild(chip);
-        }
-        row.appendChild(chips);
-        section.appendChild(row);
-      }
-      body.appendChild(section);
     }
     const del = document.createElement('button');
     del.className = 'insp-btn';
@@ -1408,6 +1445,7 @@ function textRow(label, value) {
   l.textContent = label;
   const v = document.createElement('span');
   v.className = 'val';
+  v.dir = 'auto';
   v.textContent = value;
   row.append(l, v);
   return row;
