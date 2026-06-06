@@ -633,6 +633,47 @@ function deleteWaypoint(k) {
   syncLegs();
 }
 
+function splitLegCopy(source) {
+  const d = _defaultLegLabels();
+  const leg = {
+    inboundAltitude: source ? source.inboundAltitude : NaN,
+    outboundAltitude: source ? source.outboundAltitude : NaN,
+    flightSpeed: source && Number.isFinite(source.flightSpeed) && source.flightSpeed > 0
+      ? source.flightSpeed : 90,
+    outboundSpeed: source && Number.isFinite(source.outboundSpeed) && source.outboundSpeed > 0
+      ? source.outboundSpeed
+      : (source && Number.isFinite(source.flightSpeed) && source.flightSpeed > 0
+        ? source.flightSpeed : 90),
+    inLabel: d.inLabel,
+    outLabel: d.outLabel,
+    cumLabel: d.cumLabel,
+    cumLabelRet: d.cumLabelRet,
+  };
+  if (source && source.vorRef) leg.vorRef = source.vorRef;
+  for (const key of ['_legAltitudeInboundBlocked', '_legAltitudeOutboundBlocked', '_legAltitudeOneWay']) {
+    if (source && source[key]) leg[key] = source[key];
+  }
+  return leg;
+}
+
+function splitLegAt(legIndex, latlng) {
+  const i = Number(legIndex);
+  if (!Number.isInteger(i) || i < 0 || i >= state.legs.length) return false;
+  if (!latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return false;
+  if (!state.waypoints[i] || !state.waypoints[i + 1]) return false;
+
+  const source = state.legs[i];
+  const inserted = { lat: r5(latlng.lat), lng: r5(latlng.lng), name: '' };
+  state.waypoints.splice(i + 1, 0, inserted);
+  state.legs.splice(i, 1, splitLegCopy(source), splitLegCopy(source));
+  if (state.legs.length !== Math.max(0, state.waypoints.length - 1)) syncLegs();
+  state.selected = { type: 'wp', index: i + 1 };
+  draw();
+  showInspector();
+  return true;
+}
+window.splitLegAt = splitLegAt;
+
 function deleteSelectedWpOrNote() {
   if (state.selected.type === 'wp') {
     deleteWaypoint(state.selected.index);
@@ -2051,6 +2092,23 @@ window.addEventListener('keydown', e => {
 // touches fall through to Leaflet for pan / pinch-zoom.
 const mapEl = map.getContainer();
 let touchDrag = null;
+
+mapEl.addEventListener('dblclick', e => {
+  if (state.mode === 'add' || state.mode === 'note') return;
+  const rect = mapEl.getBoundingClientRect();
+  const p = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  if (hitNote(p.x, p.y) >= 0) return;
+  if (hitWaypointCandidates(p.x, p.y).length) return;
+  if (hitCumLabel(p.x, p.y) || hitCumLabelRet(p.x, p.y) || hitLegLabel(p.x, p.y)) return;
+  if (hitOverlayMarkerCandidates(p.x, p.y).length) return;
+  const leg = hitLeg(p.x, p.y);
+  if (leg < 0) return;
+  e.preventDefault();
+  e.stopPropagation();
+  if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+  downHit = false;
+  splitLegAt(leg, map.containerPointToLatLng([p.x, p.y]));
+}, true);
 
 function touchXY(t) {
   const r = mapEl.getBoundingClientRect();
