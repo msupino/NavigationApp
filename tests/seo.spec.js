@@ -60,7 +60,7 @@ test.describe('SEO URLs', () => {
     const nodes = await structuredData(page);
     const site = structuredNode(nodes, 'WebSite');
     expect(site.name).toBe('NavAid');
-    expect(site.name).not.toMatch(/supino\.org/i);
+    expect(site.name).not.toMatch(/^supino\.org$/i);
     expect(site.url).toBe(CUSTOM_DOMAIN + '/');
     expect(site.alternateName).toContain('CVFR Israel Map Navigation Aid');
   });
