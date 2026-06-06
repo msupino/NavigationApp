@@ -21,6 +21,8 @@
       "lat": 32.00944,
       "lng": 34.88556,
       "elev_ft": 134,
+      "atis": "Arrival 132.50 MHz / Departure 132.80 MHz",
+      "clearance": "121.55 MHz",
       "plates": [
         "LLBG_APPROACH_ILS 08.pdf",
         "LLBG_APPROACH_ILS 12.pdf",
@@ -112,6 +114,7 @@
       "lat": 29.72722,
       "lng": 35.01417,
       "elev_ft": 288,
+      "atis": "132.55 MHz",
       "plates": [
         "LLER_ADC_3_en.pdf",
         "LLER_ADC_RST_en.pdf",
@@ -196,6 +199,7 @@
       "lat": 32.80833,
       "lng": 35.04278,
       "elev_ft": 28,
+      "atis": "135.40 MHz",
       "plates": [
         "LLHA_airport_Annex Alef.pdf",
         "LLHA_airport_Annex Bet 2.pdf",
@@ -237,6 +241,7 @@
       "lat": 32.17944,
       "lng": 34.83444,
       "elev_ft": 121,
+      "clearance": "121.70 MHz",
       "plates": [
         "LLHZ_airport_Annex Alef.pdf",
         "LLHZ_airport_Annex Chet.pdf",
@@ -263,6 +268,7 @@
       "lat": 32.98056,
       "lng": 35.57083,
       "elev_ft": 884,
+      "atis": "132.45 MHz",
       "plates": [
         "LLIB_airport_Annex Alef.pdf",
         "LLIB_airport_Annex Bet.pdf",
@@ -352,7 +358,8 @@
       "en": "Palmachim",
       "lat": 31.89833,
       "lng": 34.69,
-      "elev_ft": 33
+      "elev_ft": 33,
+      "atis": "126.10 MHz"
     },
     {
       "name": "LLRD",
