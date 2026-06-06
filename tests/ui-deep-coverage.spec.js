@@ -119,6 +119,62 @@ test.describe('Inspector panel', () => {
     await expect(page.locator('#insp-title')).toHaveValue(/ALPHA.*BRAVO/);
     expect(await page.evaluate(() => state.selected)).toEqual({ type: 'leg', index: 0 });
   });
+
+  test('keeps a route waypoint inspector open across language change', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.1, lng: 34.9, name: 'ALPHA' }];
+      state.selected = { type: 'wp', index: 0 };
+      syncLegs(); draw(); showInspector();
+    });
+    await expect(page.locator('#inspector')).not.toHaveClass(/hidden/);
+
+    await expect.poll(() =>
+      page.evaluate(() => sessionStorage.getItem('navaid.selected')))
+      .toBe('{"type":"wp","index":0}');
+    await page.goto('?lang=he');
+    await page.waitForFunction(() =>
+      state && state.selected && state.selected.type === 'wp' && state.selected.index === 0);
+    await expect(page.locator('#lang-select')).toHaveValue('he');
+    await expect(page.locator('#inspector')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#insp-title')).toHaveValue('ALPHA');
+  });
+
+  test('restores overlay inspectors after refresh once datasets load', async ({ page }) => {
+    await boot(page);
+
+    await page.evaluate(async () => {
+      await loadVors();
+      state.selected = { type: 'vor', index: vors.findIndex(v => v.ident === 'NAT') };
+      showInspector();
+    });
+    await page.reload();
+    await page.waitForFunction(() =>
+      state && state.selected && state.selected.type === 'vor' && Array.isArray(vors));
+    await expect(page.locator('#insp-title')).toHaveValue('NAT');
+
+    await page.evaluate(() => { state.selected = null; showInspector(); });
+    await page.evaluate(async () => {
+      await loadAirfields();
+      state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLHA') };
+      showInspector();
+    });
+    await page.reload();
+    await page.waitForFunction(() =>
+      state && state.selected && state.selected.type === 'airfield' && Array.isArray(airfields));
+    await expect(page.locator('#insp-title')).toHaveValue(/LLHA/);
+
+    await page.evaluate(() => { state.selected = null; showInspector(); });
+    await page.evaluate(async () => {
+      await loadNavWaypoints();
+      state.selected = { type: 'navwp', index: navWP.findIndex(w => w.name === 'HADRA') };
+      showInspector();
+    });
+    await page.reload();
+    await page.waitForFunction(() =>
+      state && state.selected && state.selected.type === 'navwp' && Array.isArray(navWP));
+    await expect(page.locator('#insp-title')).toHaveValue('HADRA');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -163,6 +219,94 @@ test.describe('Charts modal navigation', () => {
       // Plate viewer opens as a new modal-back; charts modal stays open
       // underneath. At least one modal-back must still be visible.
       await expect(page.locator('.modal-back').first()).toBeVisible();
+    }
+  });
+
+  test('Charts section modals reopen after refresh', async ({ page }) => {
+    await boot(page);
+    const cases = [
+      { button: '#charts', marker: '.charts-airport-header' },
+      { button: '#freq-table', marker: '.charts-freq-title h3' },
+      { button: '#alt-pairs', marker: '.charts-alt-title' },
+      { button: '#route-templates', marker: '.route-template-modal' },
+    ];
+    for (const c of cases) {
+      await page.locator(c.button).click();
+      await expect(page.locator(c.marker).first()).toBeVisible();
+      await page.reload();
+      await expect(page.locator(c.marker).first()).toBeVisible();
+      await page.locator('.modal-back .modal-close-x').last().click();
+      await expect(page.locator('.modal-back')).toHaveCount(0);
+    }
+  });
+
+  test('Opening a charts section window closes the previous charts section window', async ({ page }) => {
+    await boot(page);
+    await page.waitForFunction(() => typeof state !== 'undefined' &&
+      typeof showChartsModal === 'function' &&
+      typeof showFreqTableModal === 'function' &&
+      typeof showAltitudePairsModal === 'function' &&
+      typeof showRouteTemplatesModal === 'function' &&
+      typeof showFlightPlan === 'function');
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.1, lng: 34.9, name: 'A' },
+        { lat: 32.2, lng: 35.0, name: 'B' },
+      ];
+      state.legs = [];
+      syncLegs();
+      draw();
+    });
+    const cases = [
+      { button: '#charts', kind: 'airport-charts', marker: '.charts-airport-header' },
+      { button: '#plan', kind: 'flight-plan', marker: '.flight-table' },
+      { button: '#freq-table', kind: 'freq-table', marker: '.charts-freq-title h3' },
+      { button: '#plan', kind: 'flight-plan', marker: '.flight-table' },
+      { button: '#alt-pairs', kind: 'alt-pairs', marker: '.charts-alt-title' },
+      { button: '#route-templates', kind: 'route-templates', marker: '.route-template-modal' },
+    ];
+    for (const c of cases) {
+      await page.locator(c.button).click();
+      await expect(page.locator(c.marker).first()).toBeVisible();
+      const open = await page.evaluate(() => ({
+        charts: Array.from(document.querySelectorAll('.modal-back[data-chart-modal]'))
+          .map(el => el.dataset.chartModal),
+        flightPlan: !!window.fpOpen,
+      }));
+      if (c.kind === 'flight-plan') {
+        expect(open).toEqual({ charts: [], flightPlan: true });
+      } else {
+        expect(open).toEqual({ charts: [c.kind], flightPlan: false });
+      }
+    }
+    await page.locator('.modal-back .modal-close-x').last().click();
+    await expect(page.locator('.modal-back')).toHaveCount(0);
+  });
+
+  test('Charts section modals allow toolbar language change', async ({ page }) => {
+    await boot(page);
+    const cases = [
+      { button: '#charts', marker: '.charts-airport-header' },
+      { button: '#freq-table', marker: '.charts-freq-title h3' },
+      { button: '#alt-pairs', marker: '.charts-alt-title' },
+      { button: '#route-templates', marker: '.route-template-modal' },
+    ];
+    for (const c of cases) {
+      await page.goto('?lang=en');
+      await page.waitForFunction(() => typeof state !== 'undefined' &&
+        typeof showChartsModal === 'function' &&
+        typeof showRouteTemplatesModal === 'function');
+      await page.locator(c.button).click();
+      await expect(page.locator(c.marker).first()).toBeVisible();
+      await expect(page.locator('.modal-back.flight-plan')).toHaveCount(1);
+      await Promise.all([
+        page.waitForURL(/lang=he/),
+        page.locator('#lang-select').selectOption('he'),
+      ]);
+      await expect(page.locator('html')).toHaveAttribute('lang', 'he');
+      await expect(page.locator(c.marker).first()).toBeVisible();
+      await page.locator('.modal-back .modal-close-x').last().click();
+      await expect(page.locator('.modal-back')).toHaveCount(0);
     }
   });
 });
