@@ -148,6 +148,7 @@ window.S = {
   satelliteAttribution: 'תצלום © Esri',
   satelliteZoomIn: 'התקרב',
   satelliteZoomOut: 'התרחק',
+  satelliteResetCenter: 'מרכז מחדש על נקודת הדרך',
   gotoTitle: 'לחץ כדי לנווט לקואורדינטות',
   gotoError: 'הקלד ספרות או הדבק קואורדינטה כמו 32°00\'17"N 34°43\'38"E',
   dialTitle: function(b) { return 'סיבוב מפה ' + b + '° — גרור לסיבוב, לחץ לצפון'; },

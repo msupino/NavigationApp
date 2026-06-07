@@ -948,63 +948,139 @@ function buildSatelliteSnippet(point, opts = {}) {
   return snippet;
 }
 
+// Fresh, independent copies of the main map's base layers. Leaflet attaches a
+// tile layer to a single map, so the modal must NOT reuse the live instances
+// from core.js (that would yank them off the main map) — clone url + options.
+function satelliteModalLayers() {
+  const out = {};
+  if (typeof layers !== 'object' || !layers) return out;
+  for (const nm in layers) {
+    const src = layers[nm];
+    if (src && src._url) out[nm] = L.tileLayer(src._url, Object.assign({}, src.options));
+  }
+  return out;
+}
+
+// Reset-to-centre control: snaps the modal map back over the waypoint. Built
+// as a Leaflet bar so it matches the zoom control's look in the same corner.
+function satelliteResetControl(lmap, point, zoom) {
+  const Ctl = L.Control.extend({
+    options: { position: 'bottomright' },
+    onAdd: function () {
+      const c = L.DomUtil.create('div', 'leaflet-bar satellite-reset-control');
+      const a = L.DomUtil.create('a', '', c);
+      a.href = '#';
+      a.innerHTML = '⌖';
+      a.title = S.satelliteResetCenter || 'Recentre on waypoint';
+      a.setAttribute('role', 'button');
+      a.setAttribute('aria-label', S.satelliteResetCenter || 'Recentre on waypoint');
+      L.DomEvent.on(a, 'click', function (e) {
+        L.DomEvent.stop(e);
+        lmap.setView([point.lat, point.lng], zoom);
+      });
+      L.DomEvent.disableClickPropagation(c);
+      return c;
+    },
+  });
+  return new Ctl();
+}
+
 function showSatellitePreviewModal(point, label) {
-  if (typeof createDraggableModal !== 'function') return;
+  if (typeof createDraggableModal !== 'function' || typeof L === 'undefined') return;
   const modal = createDraggableModal(S.satelliteSnippetTitle || 'Satellite view',
     'modal satellite-preview-modal');
   const body = document.createElement('div');
   body.className = 'satellite-preview-body';
-  const controls = document.createElement('div');
-  controls.className = 'satellite-zoom-controls';
-  const zoomOut = document.createElement('button');
-  zoomOut.type = 'button';
-  zoomOut.className = 'satellite-zoom-btn';
-  zoomOut.textContent = '-';
-  zoomOut.title = S.satelliteZoomOut || 'Zoom out';
-  zoomOut.setAttribute('aria-label', S.satelliteZoomOut || 'Zoom out');
-  const zoomLevel = document.createElement('span');
-  zoomLevel.className = 'satellite-zoom-level';
-  const zoomIn = document.createElement('button');
-  zoomIn.type = 'button';
-  zoomIn.className = 'satellite-zoom-btn';
-  zoomIn.textContent = '+';
-  zoomIn.title = S.satelliteZoomIn || 'Zoom in';
-  zoomIn.setAttribute('aria-label', S.satelliteZoomIn || 'Zoom in');
-  controls.append(zoomOut, zoomLevel, zoomIn);
-  body.appendChild(controls);
-  const viewport = document.createElement('div');
-  viewport.className = 'satellite-preview-viewport';
-  body.appendChild(viewport);
+  const mapEl = document.createElement('div');
+  mapEl.className = 'satellite-preview-map';
+  body.appendChild(mapEl);
   const caption = document.createElement('div');
   caption.className = 'satellite-caption';
   const name = label ? label + ' - ' : '';
   caption.textContent = name +
     fmtLatLng(point.lat, 'N', 'S') + ' ' + fmtLatLng(point.lng, 'E', 'W');
   body.appendChild(caption);
-  let zoom = SATELLITE_EXPANDED_ZOOM;
-  function renderZoom() {
-    viewport.innerHTML = '';
-    const snippet = buildSatelliteSnippet(point, { expanded: true, zoom });
-    if (snippet) viewport.appendChild(snippet);
-    zoomLevel.textContent = zoom + 'z';
-    zoomOut.disabled = zoom <= SATELLITE_MIN_ZOOM;
-    zoomIn.disabled = zoom >= SATELLITE_MAX_ZOOM;
-  }
-  function setZoom(next) {
-    const z = clampSatelliteZoom(next);
-    if (z === zoom) return;
-    zoom = z;
-    renderZoom();
-  }
-  zoomOut.onclick = () => setZoom(zoom - 1);
-  zoomIn.onclick = () => setZoom(zoom + 1);
-  viewport.addEventListener('wheel', e => {
-    e.preventDefault();
-    setZoom(zoom + (e.deltaY < 0 ? 1 : -1));
-  }, { passive: false });
-  renderZoom();
   modal.box.appendChild(body);
   modal.show();
+  // Build the map after show() so the container has its final dimensions.
+  const mLayers = satelliteModalLayers();
+  // Default to the satellite imagery (this is the "satellite view"), falling
+  // back to the chart if the layer set is somehow empty.
+  const startLayer = mLayers.Satellite || mLayers.CVFR || Object.values(mLayers)[0];
+  const lmap = L.map(mapEl, {
+    center: [point.lat, point.lng],
+    zoom: SATELLITE_EXPANDED_ZOOM,
+    minZoom: SATELLITE_MIN_ZOOM,
+    maxZoom: SATELLITE_MAX_ZOOM,
+    layers: startLayer ? [startLayer] : [],
+    zoomControl: false,
+  });
+  // Black-on-white zoom buttons, bottom-right — identical to the main map.
+  L.control.zoom({ position: 'bottomright' }).addTo(lmap);
+  // Layer picker as a dropdown, matching the main app's view-menu selector
+  // (#layer-select) instead of Leaflet's radio list.
+  const layerNames = Object.keys(mLayers);
+  if (layerNames.length) {
+    // The 4 flight-maps.com charts only publish tiles up to a limited zoom;
+    // past that they 404. Disable picking them when zoomed in beyond their
+    // range, and drop back to satellite if one was active.
+    const CHART_NAMES = ['CVFR', 'Navigation', 'Low Alt', 'Helicopters'];
+    const chartMax = nm => (mLayers[nm] && mLayers[nm].options &&
+      mLayers[nm].options.maxZoom) || SATELLITE_MAX_ZOOM;
+    const LayerSelect = L.Control.extend({
+      options: { position: 'topright' },
+      onAdd: function () {
+        const c = L.DomUtil.create('div', 'satellite-layer-control');
+        const sel = L.DomUtil.create('select', 'satellite-layer-select', c);
+        sel.setAttribute('aria-label', S.exportLayer || 'Map layer');
+        for (const nm of layerNames) {
+          const opt = document.createElement('option');
+          opt.value = nm;
+          opt.textContent = (S.layerLabels && S.layerLabels[nm]) || nm;
+          if (lmap.hasLayer(mLayers[nm])) opt.selected = true;
+          sel.appendChild(opt);
+        }
+        L.DomEvent.disableClickPropagation(c);
+        L.DomEvent.on(sel, 'change', () => {
+          for (const nm of layerNames) {
+            if (lmap.hasLayer(mLayers[nm])) lmap.removeLayer(mLayers[nm]);
+          }
+          lmap.addLayer(mLayers[sel.value]);
+        });
+        this._select = sel;
+        return c;
+      },
+    });
+    const layerCtl = new LayerSelect();
+    lmap.addControl(layerCtl);
+    function syncLayerAvailability() {
+      const z = lmap.getZoom();
+      const sel = layerCtl._select;
+      if (sel) {
+        Array.from(sel.options).forEach(opt => {
+          if (CHART_NAMES.indexOf(opt.value) !== -1) opt.disabled = z > chartMax(opt.value);
+        });
+      }
+      // Active chart out of range → fall back to satellite imagery.
+      for (const nm of CHART_NAMES) {
+        if (mLayers[nm] && lmap.hasLayer(mLayers[nm]) && z > chartMax(nm)) {
+          lmap.removeLayer(mLayers[nm]);
+          if (mLayers.Satellite) lmap.addLayer(mLayers.Satellite);
+          if (sel && mLayers.Satellite) sel.value = 'Satellite';
+          break;
+        }
+      }
+    }
+    lmap.on('zoomend', syncLayerAvailability);
+    syncLayerAvailability();
+  }
+  lmap.addControl(satelliteResetControl(lmap, point, SATELLITE_EXPANDED_ZOOM));
+  // Marker on the waypoint so it stays findable after panning.
+  L.circleMarker([point.lat, point.lng], {
+    radius: 7, color: '#ffda4c', weight: 2, opacity: 0.96, fill: false,
+    className: 'satellite-marker',
+  }).addTo(lmap);
+  setTimeout(() => lmap.invalidateSize(), 0);
 }
 
 function appendSatelliteSnippet(body, point, label) {
