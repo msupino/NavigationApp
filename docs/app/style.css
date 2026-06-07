@@ -491,6 +491,8 @@ html, body {
   cursor: pointer;
   width: 100%;
   box-sizing: border-box;
+  text-align: center;
+  text-align-last: center;
 }
 #toolbar #vor-ref-row select {
   box-sizing: border-box;
