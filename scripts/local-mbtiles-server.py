@@ -218,14 +218,20 @@ class NavAidMbtilesHandler(SimpleHTTPRequestHandler):
     no_download: bool = False
 
     def do_HEAD(self) -> None:
-        if self.serve_tile_request(send_body=False):
-            return
-        super().do_HEAD()
+        try:
+            if self.serve_tile_request(send_body=False):
+                return
+            super().do_HEAD()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     def do_GET(self) -> None:
-        if self.serve_tile_request(send_body=True):
-            return
-        super().do_GET()
+        try:
+            if self.serve_tile_request(send_body=True):
+                return
+            super().do_GET()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     def _send_png(self, data: bytes, send_body: bool) -> None:
         self.send_response(200)
