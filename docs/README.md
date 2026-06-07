@@ -16,24 +16,26 @@ python3 -m http.server -d docs 8000
 # http://localhost:8000
 ```
 
-To test local Flight Maps MBTiles instead of the online chart tiles, run from
+To use local Flight Maps chart layers instead of the live CDN tiles, run from
 the repository root:
 
 ```bash
-python3 scripts/local-mbtiles-server.py --extract
+python3 scripts/local-mbtiles-server.py
 # http://127.0.0.1:8000/?localTiles=1
 ```
 
-`--extract` writes XYZ PNG tiles to `~/Downloads/flight-maps-tiles/` before
-starting the server. Existing files are skipped; use `--force-extract` to
-overwrite them, or `--extract-only` to extract and exit.
+Tile resolution order:
+1. **Pre-extracted PNGs** — `~/Downloads/flight-maps-tiles/` (populate with `--extract`)
+2. **Live download** — fetched from `flight-maps.com` on demand, cached in
+   `/tmp/navaid-tiles/` with a SHA-256 sidecar for integrity verification
+3. **MBTiles SQLite** — `~/Downloads/flight-maps-mbtiles/*.mbtiles` (optional fallback)
 
-The script expects these local files:
+MBTiles files are **not required** at startup — tiles download automatically on
+first request. Pass `--no-download` to enforce offline-only mode.
 
-- `~/Downloads/flight-maps-mbtiles/CVFR.mbtiles`
-- `~/Downloads/flight-maps-mbtiles/Israel-Navigation.mbtiles`
-- `~/Downloads/flight-maps-mbtiles/LSA-Low-Altitude.mbtiles`
-- `~/Downloads/flight-maps-mbtiles/Israel-Helicopters.mbtiles`
+Use `--extract` / `--extract-only` / `--force-extract` to bulk-extract MBTiles
+into the pre-extracted tile dir. Use `--download-cache` to override the default
+`/tmp/navaid-tiles` cache location.
 
 ## Layout
 
