@@ -327,6 +327,11 @@ class NavAidMbtilesHandler(SimpleHTTPRequestHandler):
                 write_tile(cached, tile)
                 self._send_png(tile, send_body)
                 return True
+            else:
+                print(
+                    f"[warn] download failed: {UPSTREAM_BASE}/{layer}/{z}/{x}/{y}.png",
+                    flush=True,
+                )
 
         # 3. MBTiles SQLite fallback
         db_path = self.mbtiles_dir / MBTILES_FILES[layer]
@@ -339,6 +344,10 @@ class NavAidMbtilesHandler(SimpleHTTPRequestHandler):
             if tile is not None:
                 self._send_png(tile, send_body)
                 return True
+            else:
+                print(f"[warn] tile not in MBTiles: {layer}/{z}/{x}/{y}", flush=True)
+        else:
+            print(f"[warn] MBTiles not found: {db_path}", flush=True)
 
         self.send_error(404, "Tile not found")
         return True
