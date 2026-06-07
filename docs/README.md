@@ -21,21 +21,33 @@ the repository root:
 
 ```bash
 python3 scripts/local-mbtiles-server.py
-# http://127.0.0.1:8000/?localTiles=1
+open http://127.0.0.1:8000/?localTiles=1
 ```
 
-Tile resolution order:
-1. **Pre-extracted PNGs** — `./flight-maps-tiles/` (`--tile-dir`; populate with `--extract`)
-2. **Live download** — fetched from `flight-maps.com` on demand, cached in
-   `/tmp/navaid-tiles/` with a SHA-256 sidecar for integrity verification
-3. **MBTiles SQLite** — `./flight-maps-mbtiles/*.mbtiles` (`--mbtiles-dir`; optional fallback)
+Tile resolution order (each step tried in sequence):
+1. **Pre-extracted PNGs** — `./flight-maps-tiles/` (`--tile-dir`)
+2. **Live download** — fetched from `flight-maps.com` on demand, cached in `/tmp/navaid-tiles/`
+3. **MBTiles SQLite** — `./flight-maps-mbtiles/*.mbtiles` (`--mbtiles-dir`)
 
-MBTiles files are **not required** at startup — tiles download automatically on
-first request. Pass `--no-download` to enforce offline-only mode.
+**Download MBTiles for offline use** (~500 MB total):
+
+```bash
+python3 scripts/local-mbtiles-server.py --get-mbtiles
+```
+
+**Run fully offline** (after downloading MBTiles):
+
+```bash
+python3 scripts/local-mbtiles-server.py --no-download
+open http://127.0.0.1:8000/?localTiles=1
+```
+
+404s for individual tiles are normal — those grid cells are outside the chart's
+published coverage area.
 
 Use `--extract` / `--extract-only` / `--force-extract` to bulk-extract MBTiles
-into the pre-extracted tile dir. Use `--download-cache` to override the default
-`/tmp/navaid-tiles` cache location.
+to individual PNGs for fastest serving. Use `--download-cache` to override the
+default `/tmp/navaid-tiles` cache location.
 
 ## Layout
 
