@@ -303,8 +303,12 @@
     <div class="tb-section" data-sec="export">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecExport"></div>
       <div class="tb-section-body">
-        <button id="save" data-i18n="tbExport" data-i18n-title="tbExportTitle"></button>
-        <button id="gpx" data-i18n="tbGpxExport" data-i18n-title="tbGpxExportTitle"></button>
+        <select id="export-select" data-i18n-title="tbExportTitle" data-i18n-aria="tbExportMenu">
+          <option value="" data-i18n="tbExportMenu" selected></option>
+          <option value="json" data-i18n="tbExport"></option>
+          <option value="gpx" data-i18n="tbGpxExport"></option>
+          <option value="pln" data-i18n="tbPlnExport"></option>
+        </select>
         <button id="load" data-i18n="tbImport" data-i18n-title="tbImportTitle"></button>
         <button id="share" data-i18n="tbShare" data-i18n-title="tbShareTitle"></button>
         <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>

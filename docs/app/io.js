@@ -813,6 +813,88 @@ function exportGpx() {
   URL.revokeObjectURL(a.href);
 }
 
+// --- PLN export (MSFS / FSX flight plan) -------------------------------
+// Degrees-minutes-seconds with hemisphere, e.g. N32° 0' 41.40" — the format
+// FSX/MSFS expects in <WorldPosition> and the *LLA fields.
+function fsxLatLngAlt(lat, lng, altFt) {
+  const dms = (v, pos, neg) => {
+    const hemi = v >= 0 ? pos : neg;
+    v = Math.abs(v);
+    let d = Math.floor(v);
+    let m = Math.floor((v - d) * 60);
+    let s = Math.round((((v - d) * 60 - m) * 60) * 100) / 100;
+    // Carry rounded seconds/minutes so we never emit 60.00" or 60'.
+    if (s >= 60) { s -= 60; m += 1; }
+    if (m >= 60) { m -= 60; d += 1; }
+    return hemi + d + '° ' + m + "' " + s.toFixed(2) + '"';
+  };
+  const a = Math.max(0, Math.round(Number.isFinite(altFt) ? altFt : 0));
+  const altStr = '+' + String(a).padStart(6, '0') + '.00';
+  return dms(lat, 'N', 'S') + ',' + dms(lng, 'E', 'W') + ',' + altStr;
+}
+function exportPln() {
+  if (state.waypoints.length < 2) {
+    alert(S.errNeedWps);
+    return;
+  }
+  const wps = state.waypoints;
+  const esc = s => String(s).replace(/[<>&"]/g,
+    c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+  // FSX waypoint ids must be free of spaces / punctuation.
+  const idOf = i => (wpLabel(i).replace(/[^A-Za-z0-9]/g, '').toUpperCase() ||
+    ('WP' + (i + 1))).slice(0, 12);
+  const altFt = i => {
+    const leg = state.legs[Math.min(i, state.legs.length - 1)];
+    return Number.isFinite(leg && leg.inboundAltitude) ? leg.inboundAltitude : 2000;
+  };
+  const firstAlt = altFt(0);
+  let pts = '';
+  for (let i = 0; i < wps.length; i++) {
+    const isAf = typeof isAirport === 'function' && isAirport(wps[i]);
+    pts +=
+      '        <ATCWaypoint id="' + esc(idOf(i)) + '">\n' +
+      '            <ATCWaypointType>' + (isAf ? 'Airport' : 'User') + '</ATCWaypointType>\n' +
+      '            <WorldPosition>' + fsxLatLngAlt(wps[i].lat, wps[i].lng, altFt(i)) + '</WorldPosition>\n' +
+      '            <ICAO>\n' +
+      '                <ICAOIdent>' + esc(idOf(i)) + '</ICAOIdent>\n' +
+      '            </ICAO>\n' +
+      '        </ATCWaypoint>\n';
+  }
+  const depId = esc(idOf(0));
+  const destId = esc(idOf(wps.length - 1));
+  const title = depId + ' to ' + destId;
+  const pln =
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<SimBase.Document Type="AceXML" version="1,0">\n' +
+    '    <Descr>AceXML Document</Descr>\n' +
+    '    <FlightPlan.FlightPlan>\n' +
+    '        <Title>' + title + '</Title>\n' +
+    '        <FPType>VFR</FPType>\n' +
+    '        <CruisingAlt>' + Math.round(firstAlt) + '</CruisingAlt>\n' +
+    '        <DepartureID>' + depId + '</DepartureID>\n' +
+    '        <DepartureLLA>' + fsxLatLngAlt(wps[0].lat, wps[0].lng, altFt(0)) + '</DepartureLLA>\n' +
+    '        <DestinationID>' + destId + '</DestinationID>\n' +
+    '        <DestinationLLA>' +
+      fsxLatLngAlt(wps[wps.length - 1].lat, wps[wps.length - 1].lng, altFt(wps.length - 1)) +
+      '</DestinationLLA>\n' +
+    '        <Descr>NavAid route</Descr>\n' +
+    '        <DepartureName>' + depId + '</DepartureName>\n' +
+    '        <DestinationName>' + destId + '</DestinationName>\n' +
+    '        <AppVersion>\n' +
+    '            <AppVersionMajor>11</AppVersionMajor>\n' +
+    '            <AppVersionBuild>282174</AppVersionBuild>\n' +
+    '        </AppVersion>\n' +
+    pts +
+    '    </FlightPlan.FlightPlan>\n' +
+    '</SimBase.Document>\n';
+  const blob = new Blob([pln], { type: 'application/xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'route-' + fileStamp() + '.pln';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 // --- GPX import --------------------------------------------------------
 function loadGpx(file) {
   const MAX_ROUTE_BYTES = 2 * 1024 * 1024;
