@@ -7,3 +7,7 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
+
+# Local MBTiles server — downloaded data (not part of the repo)
+flight-maps-mbtiles/
+flight-maps-tiles/
