@@ -419,7 +419,7 @@ window.S = Object.assign({
   tbUndoTitle: 'Undo the last edit, move or delete',
   tbClear: '🗑 Clear map (C)',
   tbClearTitle: 'Remove all waypoints and notes',
-  tbExportMenu: '⬇ Export…',
+  tbExportMenu: '⬇ Export',
   tbExport: '⬇ Export JSON',
   tbExportTitle: 'Export route (JSON / GPX / PLN)',
   tbImport: '⬆ Import JSON/GPX/PLN',
