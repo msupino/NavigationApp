@@ -89,6 +89,20 @@ html, body {
   white-space: nowrap;
 }
 #toolbar button:hover { background: #3c3737; }
+/* Export format picker — styled to match the toolbar buttons (e.g. Import)
+ * so the export control sits flush with the rest of the section. */
+#toolbar #export-select {
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 5px;
+  padding: 6px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#toolbar #export-select:hover { background: #3c3737; }
 #toolbar button.tool.active {
   background: #1d6fe0;
   border-color: #1d6fe0;
@@ -2104,6 +2118,7 @@ body.theme-light .modal {
   box-shadow: 0 8px 24px rgba(31, 37, 44, 0.18);
 }
 body.theme-light #toolbar button,
+body.theme-light #toolbar #export-select,
 body.theme-light #toolbar .slider-reset,
 body.theme-light #toolbar #wpname-rot,
 body.theme-light #toolbar .navtoggle select,

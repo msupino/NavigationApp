@@ -881,7 +881,7 @@ function exportPln() {
     '        <DepartureName>' + depId + '</DepartureName>\n' +
     '        <DestinationName>' + destId + '</DestinationName>\n' +
     '        <AppVersion>\n' +
-    '            <AppVersionMajor>11</AppVersionMajor>\n' +
+    '            <AppVersionMajor>12</AppVersionMajor>\n' +
     '            <AppVersionBuild>282174</AppVersionBuild>\n' +
     '        </AppVersion>\n' +
     pts +
