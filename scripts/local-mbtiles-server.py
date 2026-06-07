@@ -303,10 +303,10 @@ class NavAidMbtilesHandler(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def log_message(self, fmt: str, *args: object) -> None:
-        # Suppress per-tile noise; only log non-tile requests and errors.
-        msg = fmt % args
+        # Suppress 200 tile hits to keep the console readable.
+        first = args[0] if args else ""
         code = args[1] if len(args) > 1 else ""
-        if "/tiles/" in (args[0] if args else "") and str(code) == "200":
+        if isinstance(first, str) and "/tiles/" in first and str(code) == "200":
             return
         super().log_message(fmt, *args)
 
