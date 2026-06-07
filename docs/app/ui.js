@@ -27,27 +27,6 @@ document.getElementById('tool-add').setAttribute('aria-pressed', 'false');
 document.getElementById('tool-note').setAttribute('aria-pressed', 'false');
 document.getElementById('app-version').textContent = 'v' + NavAid.version;
 
-// base map layer picker (replaces the Leaflet layers control)
-const layerSelect = document.getElementById('layer-select');
-for (const name in layers) {
-  const opt = document.createElement('option');
-  opt.value = name;
-  opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
-  if (map.hasLayer(layers[name])) opt.selected = true;
-  layerSelect.appendChild(opt);
-}
-layerSelect.onchange = () => {
-  for (const name in layers) {
-    if (name !== layerSelect.value && map.hasLayer(layers[name])) {
-      map.removeLayer(layers[name]);
-    }
-  }
-  map.addLayer(layers[layerSelect.value]);
-  applyMapOpacity();
-  draw();                                // keep the route overlay on top
-  try { localStorage.setItem(LAYER_KEY, layerSelect.value); }
-  catch (e) { /* storage unavailable */ }
-};
 
 // --- rotate dial — a map control next to the zoom buttons -----------
 const rotateCtrl = L.control({ position: 'bottomright' });
