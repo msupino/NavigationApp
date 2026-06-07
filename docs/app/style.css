@@ -480,6 +480,20 @@ html, body {
   padding: 2px 4px;
   cursor: pointer;
 }
+#toolbar #export-select {
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 5px;
+  padding: 6px 10px;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  text-align-last: center;
+}
 #toolbar #vor-ref-row select {
   box-sizing: border-box;
   min-width: 0;
@@ -1388,45 +1402,38 @@ html, body {
   display: grid;
   gap: 8px;
 }
-.satellite-zoom-controls {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  justify-self: center;
-}
-.satellite-zoom-btn {
-  width: 30px;
-  height: 28px;
-  font: inherit;
-  font-size: 16px;
-  line-height: 1;
-  color: #e8e8e8;
-  background: #2f2b2b;
+/* Expanded view is a real Leaflet map: pan, zoom (the main map's black-on-white
+ * bottom-right control), a layer switcher, and a reset-to-centre button. */
+.satellite-preview-map {
+  width: min(82vw, 720px);
+  height: min(68vh, 480px);
   border: 1px solid #443f3f;
-  border-radius: 5px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #141212;
+}
+/* Reset-to-centre button — sits below the zoom bar, same Leaflet bar look. */
+.satellite-reset-control a {
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 30px;
+}
+/* Layer picker dropdown — mirrors the main app's view-menu selector. */
+.satellite-layer-control {
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+  padding: 3px;
+}
+.satellite-layer-select {
+  font: inherit;
+  font-size: 13px;
+  color: #222;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 2px 4px;
   cursor: pointer;
-}
-.satellite-zoom-btn:hover:not(:disabled) {
-  color: #fff;
-  background: #3a3636;
-  border-color: #1d6fe0;
-}
-.satellite-zoom-btn:disabled {
-  opacity: 0.42;
-  cursor: default;
-}
-.satellite-zoom-level {
-  min-width: 34px;
-  color: #b9b3b3;
-  font-size: 12px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-.satellite-preview-body .satellite-snippet {
-  width: var(--sat-width, 620px);
-  height: var(--sat-height, 420px);
-  cursor: zoom-in;
 }
 .satellite-caption {
   color: #b9b3b3;
@@ -2106,6 +2113,7 @@ body.theme-light .modal {
 body.theme-light #toolbar button,
 body.theme-light #toolbar .slider-reset,
 body.theme-light #toolbar #wpname-rot,
+body.theme-light #toolbar #export-select,
 body.theme-light #toolbar .navtoggle select,
 body.theme-light #toolbar .navtoggle input[type="number"],
 body.theme-light #wp-search,
@@ -2122,7 +2130,6 @@ body.theme-light .plate-chip,
 body.theme-light .runway-chip,
 body.theme-light .point-choice-option,
 body.theme-light .satellite-expand-hint,
-body.theme-light .satellite-zoom-btn,
 body.theme-light #tuning-panel button,
 body.theme-light #tuning-panel input[type="number"],
 body.theme-light #tuning-panel input[type="text"],
@@ -2135,11 +2142,11 @@ body.theme-light #tuning-panel input[type="color"] {
 body.theme-light #toolbar button:hover,
 body.theme-light #toolbar .slider-reset:hover,
 body.theme-light #toolbar #wpname-rot:hover,
+body.theme-light #toolbar #export-select:hover,
 body.theme-light .plate-chip:hover,
 body.theme-light .point-choice-option:hover,
 body.theme-light .point-choice-option:focus,
 body.theme-light .satellite-expand-hint:hover,
-body.theme-light .satellite-zoom-btn:hover:not(:disabled),
 body.theme-light #tuning-panel button:hover {
   color: #111820;
   background: #eef3f9;
@@ -2222,7 +2229,6 @@ body.theme-light .modal-close-x,
 body.theme-light .point-choice-meta,
 body.theme-light .satellite-snippet-head label,
 body.theme-light .satellite-caption,
-body.theme-light .satellite-zoom-level,
 body.theme-light #insp-close,
 body.theme-light #mag-settings-close,
 body.theme-light #search-close,

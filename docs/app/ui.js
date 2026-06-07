@@ -1044,7 +1044,15 @@ document.getElementById('tool-reset-all-wp-names').onclick = () => {
       'Reset all waypoint names to their nearest reference codes, or clear when off-grid?')) return;
   if (typeof resetAllWpNames === 'function') resetAllWpNames();
 };
-document.getElementById('save').onclick = save;
+// Export format picker: one dropdown for JSON / GPX / PLN. Resets to its
+// placeholder after firing so the same format can be re-picked.
+document.getElementById('export-select').onchange = e => {
+  const v = e.target.value;
+  e.target.value = '';
+  if (v === 'json') save();
+  else if (v === 'gpx') exportGpx();
+  else if (v === 'pln') exportPln();
+};
 document.getElementById('load').onclick = () => document.getElementById('file').click();
 document.getElementById('share').onclick = shareRoute;
 document.getElementById('route-templates').onclick = showRouteTemplatesModal;
@@ -1056,7 +1064,6 @@ document.getElementById('file').onchange = e => {
 };
 document.getElementById('fit').onclick = fitView;
 document.getElementById('fly').onclick = flyRoute;
-document.getElementById('gpx').onclick = exportGpx;
 document.getElementById('plan').onclick = showFlightPlan;
 document.getElementById('freq-table').onclick = showFreqTableModal;
 document.getElementById('alt-pairs').onclick = showAltitudePairsModal;

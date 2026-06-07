@@ -30,9 +30,10 @@ test.describe('dev squash workflow guards', () => {
     expect(yml).toContain('dev-history:');
     expect(yml).toContain("github.event_name == 'push' && github.ref == 'refs/heads/dev'");
     expect(yml).toContain('COUNT=$(git rev-list --count "$RANGE")');
-    expect(yml).toContain('MERGES=$(git rev-list --merges --count "$RANGE")');
+    expect(yml).toContain('for m in $(git rev-list --merges "$RANGE"); do');
+    expect(yml).toContain('git diff --quiet "$m^1" "$m"');
     expect(yml).not.toContain('dev must receive exactly one commit per integration');
-    expect(yml).toContain('dev received a merge commit');
-    expect(yml).toContain('dev received $COUNT non-merge commit(s)');
+    expect(yml).toContain('dev received a non-trivial merge commit');
+    expect(yml).toContain('dev received $COUNT commit(s); any merges were no-ops.');
   });
 });

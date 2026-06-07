@@ -35,13 +35,23 @@ jobs:
             RANGE="$BEFORE..$AFTER"
           fi
           COUNT=$(git rev-list --count "$RANGE")
-          MERGES=$(git rev-list --merges --count "$RANGE")
-          if [ "$MERGES" -ne 0 ]; then
-            echo "❌ dev received a merge commit. Use squash merge."
-            git rev-list --merges --oneline "$RANGE"
+          # Reject real merge commits (squash-merge policy), but tolerate
+          # no-op merges — a "Merge branch 'main' into dev" whose tree is
+          # identical to its first parent brings no changes and is harmless
+          # (happens when main is already behind dev). Such a merge has an
+          # empty diff against its first parent.
+          BAD=""
+          for m in $(git rev-list --merges "$RANGE"); do
+            if ! git diff --quiet "$m^1" "$m"; then
+              BAD="$BAD $m"
+            fi
+          done
+          if [ -n "$BAD" ]; then
+            echo "❌ dev received a non-trivial merge commit. Use squash merge."
+            for m in $BAD; do git show -s --oneline "$m"; done
             exit 1
           fi
-          echo "✅ dev received $COUNT non-merge commit(s)."
+          echo "✅ dev received $COUNT commit(s); any merges were no-ops."
 
   lint:
     runs-on: ubuntu-latest
