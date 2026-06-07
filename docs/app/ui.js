@@ -666,8 +666,6 @@ async function buildRouteFromQuery(raw) {
   return true;
 }
 
-let routeTemplates = null;
-
 function routeTemplateLabel(template) {
   const lang = (window.__navLang || document.documentElement.lang || '').toLowerCase();
   if (lang.slice(0, 2) === 'he' && template.he) return template.he;
@@ -2748,6 +2746,9 @@ loadLegAltitudes().then(() => {
     draw();
     if (state.selected) showInspector();
   }
+});
+loadRouteTemplates().then(() => {
+  draw();
 });
 // Comm-change dataset (issue #399): parallel fetch so the rings appear
 // on first paint and the inspector badge is available immediately for

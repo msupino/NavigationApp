@@ -708,6 +708,106 @@ function splitLegAt(legIndex, latlng) {
 }
 window.splitLegAt = splitLegAt;
 
+function routeTemplateWaypointKey(wp) {
+  const raw = String(wp && wp.name || '').trim();
+  if (!raw) return '';
+  if (typeof findNavWpToken === 'function') {
+    const ref = findNavWpToken(raw);
+    if (ref && ref.name) return String(ref.name).toUpperCase();
+  }
+  const canonical = typeof canonicalNavWaypointName === 'function'
+    ? canonicalNavWaypointName(raw) : raw;
+  return String(canonical || raw).trim().toUpperCase();
+}
+
+function routeTemplateSuggestionsForLeg(legIndex) {
+  if (!showNavWP || !Array.isArray(routeTemplates) || !routeTemplates.length) return [];
+  const i = Number(legIndex);
+  if (!Number.isInteger(i) || i < 0 || i >= state.legs.length) return [];
+  const from = routeTemplateWaypointKey(state.waypoints[i]);
+  const to = routeTemplateWaypointKey(state.waypoints[i + 1]);
+  if (!from || !to || from === to) return [];
+
+  const alreadyInRoute = new Set(state.waypoints.map(routeTemplateWaypointKey).filter(Boolean));
+  const out = [];
+  const seen = new Set();
+  const paths = [];
+  for (const template of routeTemplates) {
+    const points = Array.isArray(template && template.waypoints)
+      ? template.waypoints.map(p => String(p || '').trim().toUpperCase()).filter(Boolean)
+      : [];
+    for (let start = 0; start < points.length - 2; start++) {
+      if (points[start] !== from) continue;
+      for (let end = start + 2; end < points.length; end++) {
+        if (points[end] === to) {
+          paths.push({
+            templateId: template.id || '',
+            missing: points.slice(start + 1, end),
+          });
+          break;
+        }
+      }
+    }
+  }
+  paths.sort((a, b) => a.missing.length - b.missing.length);
+  for (const path of paths) {
+    for (const name of path.missing) {
+      if (alreadyInRoute.has(name) || seen.has(name)) continue;
+      seen.add(name);
+      out.push({
+        legIndex: i,
+        name,
+        templateId: path.templateId,
+        label: typeof navName === 'function' ? (navName(name) || name) : name,
+      });
+      if (out.length >= 6) return out;
+    }
+  }
+  return out;
+}
+window.routeTemplateSuggestionsForLeg = routeTemplateSuggestionsForLeg;
+
+function insertRouteTemplateSuggestion(legIndex, name) {
+  const i = Number(legIndex);
+  if (!Number.isInteger(i) || i < 0 || i >= state.legs.length) return false;
+  if (!state.waypoints[i] || !state.waypoints[i + 1]) return false;
+  if (typeof findNavWpToken !== 'function') return false;
+  const point = findNavWpToken(name);
+  if (!point || !Number.isFinite(point.lat) || !Number.isFinite(point.lng)) return false;
+
+  const source = state.legs[i];
+  const inserted = { lat: r5(point.lat), lng: r5(point.lng), name: point.name };
+  const first = splitLegCopy(source);
+  const second = splitLegCopy(source);
+  if (source && source._legAltitudeAuto) {
+    first._legAltitudeAuto = 1;
+    second._legAltitudeAuto = 1;
+  }
+  state.waypoints.splice(i + 1, 0, inserted);
+  state.legs.splice(i, 1, first, second);
+  if (state.legs.length !== Math.max(0, state.waypoints.length - 1)) syncLegs();
+  if (source && source._legAltitudeAuto &&
+      typeof applyLegAltitudesToRoute === 'function') {
+    applyLegAltitudesToRoute();
+  }
+  if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
+  state.selected = { type: 'wp', index: i + 1 };
+  draw();
+  showInspector();
+  return true;
+}
+window.insertRouteTemplateSuggestion = insertRouteTemplateSuggestion;
+
+function hitRouteTemplateSuggestion(px, py) {
+  if (!Array.isArray(templateLegSuggestions)) return null;
+  for (let i = templateLegSuggestions.length - 1; i >= 0; i--) {
+    const s = templateLegSuggestions[i];
+    if (px >= s.x && px <= s.x + s.w && py >= s.y && py <= s.y + s.h) return s;
+  }
+  return null;
+}
+window.hitRouteTemplateSuggestion = hitRouteTemplateSuggestion;
+
 function deleteSelectedWpOrNote() {
   if (state.selected.type === 'wp') {
     deleteWaypoint(state.selected.index);
@@ -2438,6 +2538,12 @@ map.on('mousedown', e => {
     showInspector(); draw();
     return;
   }
+  const suggestion = hitRouteTemplateSuggestion(p.x, p.y);
+  if (suggestion) {
+    downHit = true;
+    insertRouteTemplateSuggestion(suggestion.legIndex, suggestion.name);
+    return;
+  }
   const cum = hitCumLabel(p.x, p.y);
   if (cum) {
     downHit = true;
@@ -2753,6 +2859,7 @@ mapEl.addEventListener('dblclick', e => {
   const p = { x: e.clientX - rect.left, y: e.clientY - rect.top };
   if (hitNote(p.x, p.y) >= 0) return;
   if (hitWaypointCandidates(p.x, p.y).length) return;
+  if (hitRouteTemplateSuggestion(p.x, p.y)) return;
   if (hitCumLabel(p.x, p.y) || hitCumLabelRet(p.x, p.y) || hitLegLabel(p.x, p.y)) return;
   if (hitOverlayMarkerCandidates(p.x, p.y).length) return;
   const leg = hitLeg(p.x, p.y);

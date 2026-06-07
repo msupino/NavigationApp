@@ -848,6 +848,8 @@ var legAltitudePointIds = null; // Set of endpoint ids from the same file.
 var legAltitudeDataset = null;  // Raw validated dataset for Charts copy/view.
 var legAltitudeOriginMap = null; // Loaded JSON baseline keyed as FROM-TO.
 var legAltitudeDirectionPool = null; // Directed altitude entries, one per allowed direction.
+var routeTemplates = null;     // null = not loaded yet; [] or populated from route-templates.json.
+var templateLegSuggestions = []; // Canvas hit boxes for route-template waypoint chips.
 var showDrift = true;       // 10-degree drift reference lines
 var showWind = false;       // wind effect (#722): inputs + arrows + readout — opt-in
 var showSigmet = false;     // SIGMET hazard overlay — opt-in

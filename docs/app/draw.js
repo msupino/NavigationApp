@@ -1735,6 +1735,7 @@ window.normalizeCommChangeSuppressions = normalizeCommChangeSuppressions;
 
 function drawLegs() {
   const zoomScale = legZoomScale();
+  templateLegSuggestions = [];
 
   // Pre-compute cumulative outbound times (walk legs in reverse so each
   // entry is "total return time from the last waypoint through leg i").
@@ -1853,6 +1854,7 @@ function drawLegs() {
           cumOutArr[i], tune('inkColor'), 'rgba(255,204,214,0.80)', zoomScale);
       }
     }
+    drawTemplateLegSuggestions(i, mid.x, mid.y, dx, dy, nx, ny, zoomScale);
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
 
     // Wind arrow (#722): show the wind that applies to each leg — the
@@ -1929,6 +1931,59 @@ function drawWindArrow(x, y, latlng, wind, emphasis) {
   octx.strokeStyle = 'rgba(255,255,255,0.9)';
   octx.strokeText(label, x1 + 6, y1 + 3);
   octx.fillText(label, x1 + 6, y1 + 3);
+  octx.restore();
+}
+
+function drawTemplateLegSuggestions(legIndex, midX, midY, dx, dy, nx, ny, zoomScale) {
+  if (typeof routeTemplateSuggestionsForLeg !== 'function') return;
+  const suggestions = routeTemplateSuggestionsForLeg(legIndex);
+  if (!suggestions.length) return;
+
+  const fontPx = Math.max(11, Math.round(12 * zoomScale));
+  const padX = 7;
+  const h = fontPx + 9;
+  const gap = 4;
+  const labels = suggestions.map(s => String(s.label || s.name || '').trim()).filter(Boolean);
+  if (!labels.length) return;
+
+  octx.save();
+  octx.font = `bold ${fontPx}px sans-serif`;
+  const widths = labels.map(label => Math.ceil(octx.measureText(label).width) + padX * 2);
+  const totalW = widths.reduce((sum, w) => sum + w, 0) + gap * (widths.length - 1);
+  const perp = legDefaultLabelPerp(1) + h + 10;
+  let x = midX - totalW / 2;
+  const y = midY + ny * perp - h / 2;
+  const alongAdjust = (dy < -0.2 ? 1 : 0) * (h + 2);
+  x += dx * alongAdjust;
+  const baseY = y + dy * alongAdjust;
+
+  octx.textAlign = 'center';
+  octx.textBaseline = 'middle';
+  for (let j = 0; j < labels.length; j++) {
+    const w = widths[j];
+    const bx = x;
+    const by = baseY;
+    octx.fillStyle = 'rgba(42, 36, 29, 0.92)';
+    octx.strokeStyle = 'rgba(255, 214, 93, 0.92)';
+    octx.lineWidth = 1.5;
+    octx.beginPath();
+    if (typeof octx.roundRect === 'function') octx.roundRect(bx, by, w, h, 5);
+    else octx.rect(bx, by, w, h);
+    octx.fill();
+    octx.stroke();
+    octx.fillStyle = '#fff2a8';
+    octx.fillText(labels[j], bx + w / 2, by + h / 2 + 0.5);
+    templateLegSuggestions.push({
+      legIndex,
+      name: suggestions[j].name,
+      templateId: suggestions[j].templateId || '',
+      x: bx,
+      y: by,
+      w,
+      h,
+    });
+    x += w + gap;
+  }
   octx.restore();
 }
 

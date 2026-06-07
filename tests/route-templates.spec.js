@@ -128,6 +128,177 @@ test.describe('route templates', () => {
     ]));
   });
 
+  test('template suggestions expose missing waypoints for a direct template leg', async ({ page }) => {
+    await boot(page);
+    const out = await page.evaluate(async () => {
+      await Promise.all([loadNavWaypoints(), loadAirfields(), loadRouteTemplates()]);
+      const a = findNavWpToken('LLHZ');
+      const b = findNavWpToken('LLHA');
+      state.waypoints = [
+        { lat: a.lat, lng: a.lng, name: a.name },
+        { lat: b.lat, lng: b.lng, name: b.name },
+      ];
+      syncLegs();
+      window.showNavWP = true;
+      return routeTemplateSuggestionsForLeg(0).map(s => s.name);
+    });
+    expect(out).toEqual(['BAZRA', 'DEROR', 'SHARO', 'HADRA', 'FRDIS', 'BOREN']);
+  });
+
+  test('template suggestions follow the Show nav waypoints toggle', async ({ page }) => {
+    await boot(page);
+    const out = await page.evaluate(async () => {
+      await Promise.all([loadNavWaypoints(), loadAirfields(), loadRouteTemplates()]);
+      const a = findNavWpToken('LLHZ');
+      const b = findNavWpToken('LLHA');
+      state.waypoints = [
+        { lat: a.lat, lng: a.lng, name: a.name },
+        { lat: b.lat, lng: b.lng, name: b.name },
+      ];
+      syncLegs();
+      window.showNavWP = false;
+      const hidden = routeTemplateSuggestionsForLeg(0).length;
+      window.showNavWP = true;
+      const shown = routeTemplateSuggestionsForLeg(0).length;
+      return { hidden, shown };
+    });
+    expect(out.hidden).toBe(0);
+    expect(out.shown).toBeGreaterThan(0);
+  });
+
+  test('inserting a template suggestion preserves manual leg fields and resets markers', async ({ page }) => {
+    await boot(page);
+    const out = await page.evaluate(async () => {
+      await Promise.all([loadNavWaypoints(), loadAirfields(), loadRouteTemplates()]);
+      const a = findNavWpToken('LLHZ');
+      const b = findNavWpToken('DEROR');
+      state.waypoints = [
+        { lat: a.lat, lng: a.lng, name: a.name },
+        { lat: b.lat, lng: b.lng, name: b.name },
+      ];
+      syncLegs();
+      Object.assign(state.legs[0], {
+        inboundAltitude: 1234,
+        outboundAltitude: 2345,
+        flightSpeed: 111,
+        outboundSpeed: 122,
+        vorRef: 'NAT',
+        _legAltitudeOutboundBlocked: 1,
+        _legAltitudeOneWay: 1,
+        inLabel: { a: 9, p: 3, _m: 1 },
+        outLabel: { a: -7, p: -2, _m: 1 },
+        cumLabel: { a: 5, p: 1, _m: 1 },
+        cumLabelRet: { a: -5, p: -1, _m: 1 },
+      });
+      delete state.legs[0]._legAltitudeAuto;
+      const ok = insertRouteTemplateSuggestion(0, 'BAZRA');
+      const fields = leg => ({
+        inboundAltitude: leg.inboundAltitude,
+        outboundAltitude: leg.outboundAltitude,
+        flightSpeed: leg.flightSpeed,
+        outboundSpeed: leg.outboundSpeed,
+        vorRef: leg.vorRef,
+        outboundBlocked: Boolean(leg._legAltitudeOutboundBlocked),
+        oneWay: Boolean(leg._legAltitudeOneWay),
+        auto: Boolean(leg._legAltitudeAuto),
+        inLabel: leg.inLabel,
+        outLabel: leg.outLabel,
+        cumLabel: leg.cumLabel,
+        cumLabelRet: leg.cumLabelRet,
+      });
+      return {
+        ok,
+        waypoints: state.waypoints.map(w => w.name),
+        legs: state.legs.length,
+        selected: state.selected,
+        first: fields(state.legs[0]),
+        second: fields(state.legs[1]),
+      };
+    });
+    expect(out.ok).toBe(true);
+    expect(out.waypoints).toEqual(['LLHZ', 'BAZRA', 'DEROR']);
+    expect(out.legs).toBe(2);
+    expect(out.selected).toEqual({ type: 'wp', index: 1 });
+    for (const leg of [out.first, out.second]) {
+      expect(leg).toMatchObject({
+        inboundAltitude: 1234,
+        outboundAltitude: 2345,
+        flightSpeed: 111,
+        outboundSpeed: 122,
+        vorRef: 'NAT',
+        outboundBlocked: true,
+        oneWay: true,
+        auto: false,
+      });
+      expect(leg.inLabel).toEqual({ a: 0, _default: 1, _m: 1 });
+      expect(leg.outLabel).toEqual({ a: 0, _default: 1, _m: 1 });
+      expect(leg.cumLabel).toEqual({ a: 0, _default: 1, _m: 1 });
+      expect(leg.cumLabelRet).toEqual({ a: 0, _default: 1, _m: 1 });
+    }
+  });
+
+  test('template suggestion insert keeps automatic altitude lookup active', async ({ page }) => {
+    await boot(page);
+    const out = await page.evaluate(async () => {
+      await Promise.all([
+        loadNavWaypoints(),
+        loadAirfields(),
+        loadLegAltitudes(),
+        loadRouteTemplates(),
+      ]);
+      const a = findNavWpToken('LLHZ');
+      const b = findNavWpToken('DEROR');
+      state.waypoints = [
+        { lat: a.lat, lng: a.lng, name: a.name },
+        { lat: b.lat, lng: b.lng, name: b.name },
+      ];
+      syncLegs();
+      state.legs[0]._legAltitudeAuto = 1;
+      insertRouteTemplateSuggestion(0, 'BAZRA');
+      return {
+        waypoints: state.waypoints.map(w => w.name),
+        auto: state.legs.map(l => Boolean(l._legAltitudeAuto)),
+        keys: state.legs.map(l => l._legAltitudeKey || ''),
+        alts: state.legs.map(l => [l.inboundAltitude, l.outboundAltitude]),
+      };
+    });
+    expect(out.waypoints).toEqual(['LLHZ', 'BAZRA', 'DEROR']);
+    expect(out.auto).toEqual([true, true]);
+    expect(out.keys).toEqual(['BAZRA-LLHZ', 'BAZRA-DEROR']);
+    expect(out.alts).toEqual([[800, 1200], [800, 2000]]);
+  });
+
+  test('clicking a drawn template suggestion inserts that waypoint', async ({ page }) => {
+    await boot(page);
+    const chip = await page.evaluate(async () => {
+      await Promise.all([loadNavWaypoints(), loadAirfields(), loadRouteTemplates()]);
+      const a = findNavWpToken('LLHZ');
+      const b = findNavWpToken('DEROR');
+      state.waypoints = [
+        { lat: a.lat, lng: a.lng, name: a.name },
+        { lat: b.lat, lng: b.lng, name: b.name },
+      ];
+      syncLegs();
+      window.showNavWP = true;
+      map.setView([(a.lat + b.lat) / 2, (a.lng + b.lng) / 2], 10, { animate: false });
+      draw();
+      const suggestion = templateLegSuggestions.find(s => s.name === 'BAZRA');
+      if (!suggestion) throw new Error('BAZRA chip not drawn');
+      const rect = map.getContainer().getBoundingClientRect();
+      return {
+        x: rect.left + suggestion.x + suggestion.w / 2,
+        y: rect.top + suggestion.y + suggestion.h / 2,
+      };
+    });
+    await page.mouse.click(chip.x, chip.y);
+    const out = await page.evaluate(() => ({
+      waypoints: state.waypoints.map(w => w.name),
+      selected: state.selected,
+    }));
+    expect(out.waypoints).toEqual(['LLHZ', 'BAZRA', 'DEROR']);
+    expect(out.selected).toEqual({ type: 'wp', index: 1 });
+  });
+
   for (const templateCase of [
     {
       id: 'llhz-llib-north',
