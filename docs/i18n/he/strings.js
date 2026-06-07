@@ -174,7 +174,7 @@ window.S = {
   tbUndoTitle: 'בטל את העריכה, ההזזה או המחיקה האחרונה',
   tbClear: '🗑 נקה מפה (C)',
   tbClearTitle: 'הסר את כל ציוני הדרך וההערות',
-  tbExportMenu: '⬇ ייצוא…',
+  tbExportMenu: '⬇ ייצוא',
   tbExport: '⬇ ייצא JSON',
   tbExportTitle: 'ייצא מסלול (JSON / GPX / PLN)',
   tbImport: '⬆ ייבא',
