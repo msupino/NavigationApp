@@ -1059,7 +1059,9 @@ document.getElementById('route-templates').onclick = showRouteTemplatesModal;
 document.getElementById('file').onchange = e => {
   const f = e.target.files[0];
   if (!f) return;
-  if (/\.gpx$/i.test(f.name)) loadGpx(f); else load(f);
+  if (/\.gpx$/i.test(f.name)) loadGpx(f);
+  else if (/\.pln$/i.test(f.name)) loadPln(f);
+  else load(f);
   e.target.value = '';
 };
 document.getElementById('fit').onclick = fitView;
