@@ -193,7 +193,12 @@ def extract_all(mbtiles_dir: Path, tile_dir: Path, force: bool = False) -> None:
     for layer, filename in MBTILES_FILES.items():
         db_path = mbtiles_dir / filename
         if not db_path.is_file():
-            raise SystemExit(f"Missing MBTiles file: {db_path}")
+            print(
+                f"⚠️  Skipping {layer}: {db_path} not found "
+                f"(tiles will be downloaded on demand instead)",
+                flush=True,
+            )
+            continue
         total, written, skipped = extract_mbtiles(db_path, tile_dir, layer, force)
         print(
             f"Extracted {layer}: {written} written, {skipped} skipped, "
