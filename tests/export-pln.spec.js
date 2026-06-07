@@ -58,6 +58,8 @@ test.describe('PLN export', () => {
     expect(xml).toContain('<FPType>VFR</FPType>');
     const wpCount = (xml.match(/<ATCWaypoint /g) || []).length;
     expect(wpCount).toBe(ROUTE.waypoints.length);
+    // MSFS 2024 rejects the plan ("Wrong File Version") unless this is 12.
+    expect(xml).toContain('<AppVersionMajor>12</AppVersionMajor>');
     // DMS world position with hemisphere + altitude triple.
     expect(xml).toMatch(/<WorldPosition>N\d+° \d+' [\d.]+",E\d+° \d+' [\d.]+",\+\d{6}\.\d{2}<\/WorldPosition>/);
   });
