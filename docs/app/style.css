@@ -480,6 +480,20 @@ html, body {
   padding: 2px 4px;
   cursor: pointer;
 }
+#toolbar #export-select {
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 5px;
+  padding: 6px 10px;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  text-align-last: center;
+}
 #toolbar #vor-ref-row select {
   box-sizing: border-box;
   min-width: 0;
@@ -2099,6 +2113,7 @@ body.theme-light .modal {
 body.theme-light #toolbar button,
 body.theme-light #toolbar .slider-reset,
 body.theme-light #toolbar #wpname-rot,
+body.theme-light #toolbar #export-select,
 body.theme-light #toolbar .navtoggle select,
 body.theme-light #toolbar .navtoggle input[type="number"],
 body.theme-light #wp-search,
@@ -2127,6 +2142,7 @@ body.theme-light #tuning-panel input[type="color"] {
 body.theme-light #toolbar button:hover,
 body.theme-light #toolbar .slider-reset:hover,
 body.theme-light #toolbar #wpname-rot:hover,
+body.theme-light #toolbar #export-select:hover,
 body.theme-light .plate-chip:hover,
 body.theme-light .point-choice-option:hover,
 body.theme-light .point-choice-option:focus,
