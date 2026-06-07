@@ -302,6 +302,13 @@ class NavAidMbtilesHandler(SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         super().end_headers()
 
+    def handle_error(self, request: object, client_address: object) -> None:
+        import sys
+        exc = sys.exc_info()[1]
+        if isinstance(exc, (BrokenPipeError, ConnectionResetError)):
+            return  # client disconnected mid-request — expected, not an error
+        super().handle_error(request, client_address)
+
     def log_message(self, fmt: str, *args: object) -> None:
         # Suppress 200 tile hits to keep the console readable.
         first = args[0] if args else ""
