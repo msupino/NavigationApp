@@ -25,10 +25,10 @@ python3 scripts/local-mbtiles-server.py
 ```
 
 Tile resolution order:
-1. **Pre-extracted PNGs** — `~/Downloads/flight-maps-tiles/` (populate with `--extract`)
+1. **Pre-extracted PNGs** — `./flight-maps-tiles/` (`--tile-dir`; populate with `--extract`)
 2. **Live download** — fetched from `flight-maps.com` on demand, cached in
    `/tmp/navaid-tiles/` with a SHA-256 sidecar for integrity verification
-3. **MBTiles SQLite** — `~/Downloads/flight-maps-mbtiles/*.mbtiles` (optional fallback)
+3. **MBTiles SQLite** — `./flight-maps-mbtiles/*.mbtiles` (`--mbtiles-dir`; optional fallback)
 
 MBTiles files are **not required** at startup — tiles download automatically on
 first request. Pass `--no-download` to enforce offline-only mode.

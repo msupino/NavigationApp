@@ -2,7 +2,7 @@
 """Serve NavAid docs plus Flight Maps tiles — local or live.
 
 Tile resolution order for each request:
-  1. Extracted local tile dir (--tile-dir, default ~/Downloads/flight-maps-tiles)
+  1. Extracted local tile dir (--tile-dir, default ./flight-maps-tiles)
   2. Download from flight-maps.com → cache in --download-cache (default /tmp/navaid-tiles)
      with a SHA-256 sidecar (.sha256) so cached content can be verified.
   3. MBTiles SQLite lookup (--mbtiles-dir, optional — skipped if files are absent)
@@ -40,8 +40,8 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DOCS = ROOT / "docs"
-DEFAULT_MBTILES_DIR = Path.home() / "Downloads" / "flight-maps-mbtiles"
-DEFAULT_TILE_DIR = Path.home() / "Downloads" / "flight-maps-tiles"
+DEFAULT_MBTILES_DIR = Path("flight-maps-mbtiles")
+DEFAULT_TILE_DIR = Path("flight-maps-tiles")
 DEFAULT_DOWNLOAD_CACHE = Path("/tmp") / "navaid-tiles"
 UPSTREAM_BASE = "https://flight-maps.com/tiles"
 TILE_RE = re.compile(r"^/tiles/(cvfr|nav|la|il-hel)/(\d+)/(\d+)/(\d+)\.png$")
@@ -259,7 +259,7 @@ class NavAidMbtilesHandler(SimpleHTTPRequestHandler):
         layer, z_raw, x_raw, y_raw = match.groups()
         z, x, y = int(z_raw), int(x_raw), int(y_raw)
 
-        # 1. Pre-extracted tile dir (e.g. ~/Downloads/flight-maps-tiles)
+        # 1. Pre-extracted tile dir (--tile-dir)
         extracted = tile_path(self.tile_dir, layer, z, x, y)
         if extracted.is_file():
             self._send_file_png(extracted, send_body)
