@@ -44,6 +44,7 @@ DEFAULT_MBTILES_DIR = Path("flight-maps-mbtiles")
 DEFAULT_TILE_DIR = Path("flight-maps-tiles")
 DEFAULT_DOWNLOAD_CACHE = Path("/tmp") / "navaid-tiles"
 UPSTREAM_BASE = "https://flight-maps.com/tiles"
+MBTILES_BASE = "https://flight-maps.com/files/mbtiles"
 TILE_RE = re.compile(r"^/tiles/(cvfr|nav|la|il-hel)/(\d+)/(\d+)/(\d+)\.png$")
 MBTILES_FILES = {
     "cvfr": "CVFR.mbtiles",
@@ -88,6 +89,11 @@ def parse_args() -> argparse.Namespace:
         "--no-download",
         action="store_true",
         help="Disable live tile download from flight-maps.com.",
+    )
+    parser.add_argument(
+        "--get-mbtiles",
+        action="store_true",
+        help="Download all MBTiles files from flight-maps.com into --mbtiles-dir and exit.",
     )
     return parser.parse_args()
 
@@ -162,6 +168,39 @@ def download_tile(layer: str, z: int, x: int, y: int) -> Optional[bytes]:
 # ---------------------------------------------------------------------------
 # Bulk extract
 # ---------------------------------------------------------------------------
+
+def get_mbtiles(mbtiles_dir: Path) -> None:
+    """Download each MBTiles file from flight-maps.com into mbtiles_dir."""
+    mbtiles_dir.mkdir(parents=True, exist_ok=True)
+    for layer, filename in MBTILES_FILES.items():
+        dest = mbtiles_dir / filename
+        url = f"{MBTILES_BASE}/{filename}"
+        if dest.is_file():
+            print(f"⏭  {filename} already exists — skipping (delete to re-download)", flush=True)
+            continue
+        print(f"⬇  Downloading {filename} from {url} …", flush=True)
+        tmp = dest.with_suffix(".tmp")
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "NavAid-local-server/1.0"},
+            )
+            with urllib.request.urlopen(req) as resp, tmp.open("wb") as fh:
+                downloaded = 0
+                while True:
+                    chunk = resp.read(1 << 16)
+                    if not chunk:
+                        break
+                    fh.write(chunk)
+                    downloaded += len(chunk)
+                    print(f"\r   {downloaded // 1024 // 1024} MB", end="", flush=True)
+            os.replace(tmp, dest)
+            print(f"\r   ✅ {filename} saved ({downloaded // 1024 // 1024} MB)", flush=True)
+        except Exception as exc:
+            if tmp.exists():
+                tmp.unlink()
+            print(f"\n   ❌ Failed to download {filename}: {exc}", flush=True)
+
 
 def extract_mbtiles(
     db_path: Path,
@@ -334,6 +373,10 @@ def main() -> None:
     mbtiles_dir = Path(args.mbtiles_dir).expanduser().resolve()
     tile_dir = Path(args.tile_dir).expanduser().resolve()
     download_cache = Path(args.download_cache).expanduser().resolve()
+
+    if args.get_mbtiles:
+        get_mbtiles(mbtiles_dir)
+        return
 
     if not docs.is_dir():
         raise SystemExit(f"Docs directory not found: {docs}")
