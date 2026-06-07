@@ -392,6 +392,7 @@ window.S = Object.assign({
   satelliteAttribution: 'Imagery © Esri',
   satelliteZoomIn: 'Zoom in',
   satelliteZoomOut: 'Zoom out',
+  satelliteResetCenter: 'Recentre on waypoint',
   gotoTitle: 'Click to go to coordinates',
   gotoError: 'Type the digits, or paste a coordinate like 32°00\'17"N 34°43\'38"E',
   dialTitle: function(b) { return 'Map rotation ' + b + '° — drag to rotate, click for north up'; },
