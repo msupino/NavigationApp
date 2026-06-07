@@ -944,13 +944,24 @@ const layers = {
 };
 
 const LAYER_KEY = 'navaid.layer';
+// In local-tiles mode only chart layers are served locally; CDN-only layers
+// (Satellite, OpenStreetMap) make no sense. Fall back to CVFR if a CDN layer
+// was previously saved.
+const LOCAL_ONLY_LAYERS = new Set(['Satellite', 'OpenStreetMap']);
 let initialLayer = layers.CVFR;
 try {
   let saved = localStorage.getItem(LAYER_KEY);
   if (saved === 'OSM') { saved = 'OpenStreetMap'; localStorage.setItem(LAYER_KEY, saved); }
   if (saved === 'Nav') { saved = 'Navigation'; localStorage.setItem(LAYER_KEY, saved); }
   if (saved === 'Heli') { saved = 'Helicopters'; localStorage.setItem(LAYER_KEY, saved); }
-  if (saved && layers[saved]) initialLayer = layers[saved];
+  if (saved && layers[saved]) {
+    if (LOCAL_CHART_TILES && LOCAL_ONLY_LAYERS.has(saved)) {
+      // CDN-only layer saved — switch to CVFR for local mode.
+      saved = 'CVFR';
+      try { localStorage.setItem(LAYER_KEY, saved); } catch (e) { /* */ }
+    }
+    initialLayer = layers[saved];
+  }
 } catch (e) { /* storage unavailable */ }
 
 const map = L.map('map', {

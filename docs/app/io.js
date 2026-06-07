@@ -2042,6 +2042,7 @@ function showExportModal() {
   const layerSel = document.createElement('select');
   layerSel.style.cssText = 'font:inherit;font-size:12px;flex:1';
   for (const name in layers) {
+    if (NavAid.localChartTiles && LOCAL_ONLY_LAYERS.has(name)) continue;
     const opt = document.createElement('option');
     opt.value = name;
     opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
@@ -3373,8 +3374,9 @@ function showLayerSelectorModal() {
   const layerSelect = document.createElement('select');
   layerSelect.id = 'modal-layer-select';
   
-  // Populate layer options
+  // Populate layer options — in local-tiles mode only serve local chart layers.
   for (const name in layers) {
+    if (NavAid.localChartTiles && LOCAL_ONLY_LAYERS.has(name)) continue;
     const opt = document.createElement('option');
     opt.value = name;
     opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
