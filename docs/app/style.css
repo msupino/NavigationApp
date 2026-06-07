@@ -470,7 +470,8 @@ html, body {
 }
 .wp-search-item:hover,
 .wp-search-item.active { background: #1d6fe0; color: #fff; }
-#toolbar .navtoggle select {
+#toolbar .navtoggle select,
+#toolbar #export-select {
   font: inherit;
   font-size: 11px;
   color: #e8e8e8;
@@ -479,6 +480,10 @@ html, body {
   border-radius: 4px;
   padding: 2px 4px;
   cursor: pointer;
+}
+#toolbar #export-select {
+  width: 100%;
+  box-sizing: border-box;
 }
 #toolbar #vor-ref-row select {
   box-sizing: border-box;
