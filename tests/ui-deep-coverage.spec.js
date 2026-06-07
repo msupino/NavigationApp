@@ -108,19 +108,17 @@ test.describe('Inspector panel', () => {
     await expect(lmap).toBeVisible();
     await expect(lmap.locator('.leaflet-tile').first()).toBeVisible();
     await expect(modal.locator('.leaflet-control-zoom')).toBeVisible();
-    await expect(modal.locator('.leaflet-control-layers')).toBeVisible();
     await expect(modal.locator('.satellite-reset-control')).toBeVisible();
-    // Layer switcher offers the same base layers as the main map.
-    await expect(modal.locator('.leaflet-control-layers label', { hasText: 'Satellite' }))
-      .toHaveCount(1);
-    await expect(modal.locator('.leaflet-control-layers label', { hasText: 'CVFR' }))
-      .toHaveCount(1);
+    // Layer picker is a dropdown offering the same base layers as the main map.
+    const layerSel = modal.locator('.satellite-layer-select');
+    await expect(layerSel).toBeVisible();
+    await expect(layerSel.locator('option[value="Satellite"]')).toHaveCount(1);
+    await expect(layerSel.locator('option[value="CVFR"]')).toHaveCount(1);
     // Chart layers (flight-maps.com) are gated by zoom: disabled at the
     // close-up default zoom, selectable once zoomed out within their range.
-    const cvfr = modal.locator('.leaflet-control-layers label', { hasText: 'CVFR' });
-    await expect(cvfr).toHaveClass(/satellite-layer-disabled/);
+    await expect(layerSel.locator('option[value="CVFR"]')).toBeDisabled();
     await modal.getByRole('button', { name: 'Zoom out' }).click();
-    await expect(cvfr).not.toHaveClass(/satellite-layer-disabled/);
+    await expect(layerSel.locator('option[value="CVFR"]')).toBeEnabled();
 
     // Zoom + reset controls are reachable by their accessible names.
     await modal.getByRole('button', { name: 'Zoom in' }).click();

@@ -1404,10 +1404,22 @@ html, body {
   font-weight: bold;
   line-height: 30px;
 }
-/* Chart layers unavailable at the current zoom are dimmed in the switcher. */
-.satellite-preview-map .satellite-layer-disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+/* Layer picker dropdown — mirrors the main app's view-menu selector. */
+.satellite-layer-control {
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+  padding: 3px;
+}
+.satellite-layer-select {
+  font: inherit;
+  font-size: 13px;
+  color: #222;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 2px 4px;
+  cursor: pointer;
 }
 .satellite-caption {
   color: #b9b3b3;

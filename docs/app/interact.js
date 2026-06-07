@@ -1017,28 +1017,48 @@ function showSatellitePreviewModal(point, label) {
   });
   // Black-on-white zoom buttons, bottom-right — identical to the main map.
   L.control.zoom({ position: 'bottomright' }).addTo(lmap);
-  // Layer switcher, like the main map's layer control.
-  if (Object.keys(mLayers).length) {
-    const layerCtl = L.control.layers(mLayers, null,
-      { position: 'topright', collapsed: false }).addTo(lmap);
+  // Layer picker as a dropdown, matching the main app's view-menu selector
+  // (#layer-select) instead of Leaflet's radio list.
+  const layerNames = Object.keys(mLayers);
+  if (layerNames.length) {
     // The 4 flight-maps.com charts only publish tiles up to a limited zoom;
-    // past that they 404. Disable selecting them when zoomed in beyond their
+    // past that they 404. Disable picking them when zoomed in beyond their
     // range, and drop back to satellite if one was active.
     const CHART_NAMES = ['CVFR', 'Navigation', 'Low Alt', 'Helicopters'];
     const chartMax = nm => (mLayers[nm] && mLayers[nm].options &&
       mLayers[nm].options.maxZoom) || SATELLITE_MAX_ZOOM;
+    const LayerSelect = L.Control.extend({
+      options: { position: 'topright' },
+      onAdd: function () {
+        const c = L.DomUtil.create('div', 'satellite-layer-control');
+        const sel = L.DomUtil.create('select', 'satellite-layer-select', c);
+        sel.setAttribute('aria-label', S.exportLayer || 'Map layer');
+        for (const nm of layerNames) {
+          const opt = document.createElement('option');
+          opt.value = nm;
+          opt.textContent = (S.layerLabels && S.layerLabels[nm]) || nm;
+          if (lmap.hasLayer(mLayers[nm])) opt.selected = true;
+          sel.appendChild(opt);
+        }
+        L.DomEvent.disableClickPropagation(c);
+        L.DomEvent.on(sel, 'change', () => {
+          for (const nm of layerNames) {
+            if (lmap.hasLayer(mLayers[nm])) lmap.removeLayer(mLayers[nm]);
+          }
+          lmap.addLayer(mLayers[sel.value]);
+        });
+        this._select = sel;
+        return c;
+      },
+    });
+    const layerCtl = new LayerSelect();
+    lmap.addControl(layerCtl);
     function syncLayerAvailability() {
       const z = lmap.getZoom();
-      const container = layerCtl.getContainer && layerCtl.getContainer();
-      if (container) {
-        container.querySelectorAll('label').forEach(row => {
-          const span = row.querySelector('span');
-          const nm = span ? span.textContent.trim() : '';
-          if (CHART_NAMES.indexOf(nm) === -1) return;
-          const tooDeep = z > chartMax(nm);
-          const input = row.querySelector('input');
-          if (input) input.disabled = tooDeep;
-          row.classList.toggle('satellite-layer-disabled', tooDeep);
+      const sel = layerCtl._select;
+      if (sel) {
+        Array.from(sel.options).forEach(opt => {
+          if (CHART_NAMES.indexOf(opt.value) !== -1) opt.disabled = z > chartMax(opt.value);
         });
       }
       // Active chart out of range → fall back to satellite imagery.
@@ -1046,6 +1066,7 @@ function showSatellitePreviewModal(point, label) {
         if (mLayers[nm] && lmap.hasLayer(mLayers[nm]) && z > chartMax(nm)) {
           lmap.removeLayer(mLayers[nm]);
           if (mLayers.Satellite) lmap.addLayer(mLayers.Satellite);
+          if (sel && mLayers.Satellite) sel.value = 'Satellite';
           break;
         }
       }
