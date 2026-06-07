@@ -300,9 +300,11 @@ window.S = {
   tbSecView: '👁 תצוגה',
   tbSecCharts: '📋 דפיות',
   tbSecExport: '📤 ייצוא/ייבוא',
-  tbViewSource: 'GitHub',
-  tbWiki: 'Wiki',
-  tbIssues: 'בעיות / הצעות',
+   tbViewSource: 'GitHub',
+   tbWiki: 'ויקי',
+   tbIssues: 'בעיות / הצעות',
+   tbLayerSelector: 'בוחר שכבה',
+   tbLayerSelectorTitle: 'בחר שכבת מפה בסיסית עם בקרות זום',
 
   // --- Keyboard-shortcuts cheat-sheet (issue #420) --------------------
   shortcutsHelpTitle: 'מקשי קיצור',

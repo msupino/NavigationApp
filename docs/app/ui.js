@@ -1061,6 +1061,7 @@ document.getElementById('plan').onclick = showFlightPlan;
 document.getElementById('freq-table').onclick = showFreqTableModal;
 document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
 document.getElementById('charts').onclick = showChartsModal;
+document.getElementById('layer-selector').onclick = showLayerSelectorModal;
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
 const CUMTIME_KEY = 'navaid.showCumTime';

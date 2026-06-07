@@ -553,9 +553,11 @@ window.S = Object.assign({
   tbSecView: '👁 View',
   tbSecCharts: '📋 Charts',
   tbSecExport: '📤 Export/import',
-  tbViewSource: 'GitHub',
-  tbWiki: 'Wiki',
-  tbIssues: 'Issues / Requests',
+   tbViewSource: 'GitHub',
+   tbWiki: 'Wiki',
+   tbIssues: 'Issues / Requests',
+   tbLayerSelector: 'Layer selector',
+   tbLayerSelectorTitle: 'Select base map layer with zoom controls',
 
   // --- Keyboard-shortcuts cheat-sheet (issue #420) --------------------
   // Opens via the toolbar '?' Help link or the '?' (Shift-/) shortcut.

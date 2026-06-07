@@ -3277,6 +3277,99 @@ function altitudePairsJsonForCopy() {
   return JSON.stringify(data, null, 2);
 }
 
+function showLayerSelectorModal() {
+  if (!prepareChartModal('layer-selector')) return;
+  const modal = createDraggableModal(S.tbLayerSelector || 'Layer selector',
+    'modal wide', () => clearOpenChartModal('layer-selector'),
+    { nonBlocking: true, chartKind: 'layer-selector' });
+  const body = document.createElement('div');
+  body.className = 'layer-selector-modal-body';
+  
+  // Layer selection
+  const layerLabel = document.createElement('label');
+  layerLabel.textContent = S.tbLayerLabel || 'Layer';
+  const layerSelect = document.createElement('select');
+  layerSelect.id = 'modal-layer-select';
+  
+  // Populate layer options
+  for (const name in layers) {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
+    if (map.hasLayer(layers[name])) opt.selected = true;
+    layerSelect.appendChild(opt);
+  }
+  
+  layerSelect.onchange = () => {
+    for (const name in layers) {
+      if (name !== layerSelect.value && map.hasLayer(layers[name])) {
+        map.removeLayer(layers[name]);
+      }
+    }
+    map.addLayer(layers[layerSelect.value]);
+    applyMapOpacity();
+    draw(); // keep the route overlay on top
+    try { localStorage.setItem(LAYER_KEY, layerSelect.value); }
+    catch (e) { /* storage unavailable */ }
+  };
+  
+  // Zoom controls
+  const zoomContainer = document.createElement('div');
+  zoomContainer.className = 'satellite-zoom-controls';
+  
+  const zoomOut = document.createElement('button');
+  zoomOut.type = 'button';
+  zoomOut.className = 'satellite-zoom-btn';
+  zoomOut.textContent = '−';
+  zoomOut.title = S.satelliteZoomOut || 'Zoom out';
+  zoomOut.setAttribute('aria-label', S.satelliteZoomOut || 'Zoom out');
+  
+  const zoomLevel = document.createElement('span');
+  zoomLevel.className = 'satellite-zoom-level';
+  
+  const zoomIn = document.createElement('button');
+  zoomIn.type = 'button';
+  zoomIn.className = 'satellite-zoom-btn';
+  zoomIn.textContent = '+';
+  zoomIn.title = S.satelliteZoomIn || 'Zoom in';
+  zoomIn.setAttribute('aria-label', S.satelliteZoomIn || 'Zoom in');
+  
+  zoomContainer.appendChild(zoomOut);
+  zoomContainer.appendChild(zoomLevel);
+  zoomContainer.appendChild(zoomIn);
+  
+  // Functions for zoom controls
+  function updateZoomLevel() {
+    zoomLevel.textContent = map.getZoom() + 'z';
+    zoomOut.disabled = map.getZoom() <= map.options.minZoom;
+    zoomIn.disabled = map.getZoom() >= map.options.maxZoom;
+  }
+  
+  zoomOut.onclick = () => {
+    map.setZoom(map.getZoom() - 1);
+    updateZoomLevel();
+  };
+  
+  zoomIn.onclick = () => {
+    map.setZoom(map.getZoom() + 1);
+    updateZoomLevel();
+  };
+  
+  // Initial update
+  updateZoomLevel();
+  
+  // Assemble modal
+  const controlsContainer = document.createElement('div');
+  controlsContainer.appendChild(layerLabel);
+  controlsContainer.appendChild(layerSelect);
+  controlsContainer.appendChild(document.createElement('hr'));
+  controlsContainer.appendChild(zoomContainer);
+  
+  body.appendChild(controlsContainer);
+  modal.box.appendChild(body);
+  modal.show();
+}
+
 function normalizeAltitudePairSegment(segment) {
   normalizeLegAltitudePairSegment(segment);
 }
