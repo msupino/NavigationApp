@@ -32,6 +32,26 @@ npm run open:ios      # or: npm run open:android
 The mobile workspace is intentionally separate from the root test package so
 GitHub Pages remains a plain static deployment.
 
+## Local MBTiles tile server (dev)
+
+To test downloaded Flight Maps MBTiles for the app's chart layers:
+
+```bash
+python3 scripts/local-mbtiles-server.py --extract
+# http://127.0.0.1:8000/?localTiles=1
+```
+
+`--extract` writes XYZ PNG tiles to `~/Downloads/flight-maps-tiles/` before
+starting the server. Existing files are skipped; use `--force-extract` to
+overwrite them, or `--extract-only` to extract and exit.
+
+The script expects:
+
+- `~/Downloads/flight-maps-mbtiles/CVFR.mbtiles`
+- `~/Downloads/flight-maps-mbtiles/Israel-Navigation.mbtiles`
+- `~/Downloads/flight-maps-mbtiles/LSA-Low-Altitude.mbtiles`
+- `~/Downloads/flight-maps-mbtiles/Israel-Helicopters.mbtiles`
+
 ## Development docs
 
 - `AGENTS.md` — required rules for AI and automation agents.

@@ -1,5 +1,5 @@
 /* NavAid service worker — installable PWA + offline app shell.
-   Map tiles (cross-origin, large) are left to the network. */
+   Map tiles (cross-origin or local MBTiles-backed, large) are left to the network. */
 const CACHE = 'navaid-v6';
 // Offline chart packs (offline-tiles.js): a dedicated bucket so the activate
 // cleanup never wipes a 100+ MB user download on a service-worker upgrade.
@@ -22,6 +22,9 @@ self.addEventListener('message', e => {
 });
 
 function cacheable(url) {
+  // Local MBTiles dev tiles (?localTiles=1) are same-origin but must not be
+  // cached as app-shell assets — leave them to the network like remote tiles.
+  if (/\/tiles\/(?:cvfr|nav|la|il-hel)\//.test(url.pathname)) return false;
   // Same-origin app assets + the two pinned CDN libs the app can't run without.
   // leaflet-velocity ships from jsdelivr; without it the wind layer 404s offline.
   return url.origin === self.location.origin ||
