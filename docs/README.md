@@ -16,6 +16,25 @@ python3 -m http.server -d docs 8000
 # http://localhost:8000
 ```
 
+To test local Flight Maps MBTiles instead of the online chart tiles, run from
+the repository root:
+
+```bash
+python3 scripts/local-mbtiles-server.py --extract
+# http://127.0.0.1:8000/?localTiles=1
+```
+
+`--extract` writes XYZ PNG tiles to `~/Downloads/flight-maps-tiles/` before
+starting the server. Existing files are skipped; use `--force-extract` to
+overwrite them, or `--extract-only` to extract and exit.
+
+The script expects these local files:
+
+- `~/Downloads/flight-maps-mbtiles/CVFR.mbtiles`
+- `~/Downloads/flight-maps-mbtiles/Israel-Navigation.mbtiles`
+- `~/Downloads/flight-maps-mbtiles/LSA-Low-Altitude.mbtiles`
+- `~/Downloads/flight-maps-mbtiles/Israel-Helicopters.mbtiles`
+
 ## Layout
 
 - `index.html`, `sw.js`, `manifest.json`, `robots.txt`, `sitemap.xml`, and
