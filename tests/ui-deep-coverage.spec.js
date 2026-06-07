@@ -102,20 +102,30 @@ test.describe('Inspector panel', () => {
     await snippet.click();
     const modal = page.locator('.satellite-preview-modal');
     await expect(modal).toBeVisible();
-    await expect(modal.locator('.satellite-expanded')).toBeVisible();
-    await expect(modal.locator('.satellite-zoom-level')).toHaveText('17z');
-    await expect(modal.locator('.satellite-expanded')).toHaveAttribute('data-zoom', '17');
-
-    await modal.getByRole('button', { name: 'Zoom in' }).click();
-    await expect(modal.locator('.satellite-zoom-level')).toHaveText('18z');
-    await expect(modal.locator('.satellite-expanded')).toHaveAttribute('data-zoom', '18');
-
+    // Expanded view is a real Leaflet map: pan, zoom control, layer switcher,
+    // reset-to-centre button — mirroring the main map.
+    const lmap = modal.locator('.satellite-preview-map');
+    await expect(lmap).toBeVisible();
+    await expect(lmap.locator('.leaflet-tile').first()).toBeVisible();
+    await expect(modal.locator('.leaflet-control-zoom')).toBeVisible();
+    await expect(modal.locator('.leaflet-control-layers')).toBeVisible();
+    await expect(modal.locator('.satellite-reset-control')).toBeVisible();
+    // Layer switcher offers the same base layers as the main map.
+    await expect(modal.locator('.leaflet-control-layers label', { hasText: 'Satellite' }))
+      .toHaveCount(1);
+    await expect(modal.locator('.leaflet-control-layers label', { hasText: 'CVFR' }))
+      .toHaveCount(1);
+    // Chart layers (flight-maps.com) are gated by zoom: disabled at the
+    // close-up default zoom, selectable once zoomed out within their range.
+    const cvfr = modal.locator('.leaflet-control-layers label', { hasText: 'CVFR' });
+    await expect(cvfr).toHaveClass(/satellite-layer-disabled/);
     await modal.getByRole('button', { name: 'Zoom out' }).click();
-    await expect(modal.locator('.satellite-expanded')).toHaveAttribute('data-zoom', '17');
+    await expect(cvfr).not.toHaveClass(/satellite-layer-disabled/);
 
-    await modal.locator('.satellite-preview-viewport').dispatchEvent('wheel', { deltaY: 100 });
-    await expect(modal.locator('.satellite-zoom-level')).toHaveText('16z');
-    await expect(modal.locator('.satellite-expanded')).toHaveAttribute('data-zoom', '16');
+    // Zoom + reset controls are reachable by their accessible names.
+    await modal.getByRole('button', { name: 'Zoom in' }).click();
+    await expect(lmap.locator('.leaflet-tile').first()).toBeVisible();
+    await expect(modal.getByRole('button', { name: /recentre/i })).toBeVisible();
   });
 
   test('restores an open note inspector after refresh', async ({ page }) => {
