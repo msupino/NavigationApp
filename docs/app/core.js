@@ -456,7 +456,7 @@ window.S = Object.assign({
   tbShowDriftTitle: 'Show 10-degree drift reference lines at each leg end',
   tbShowAirfields: 'Show/pin airfields',
   tbShowAirfieldsTitle: 'Overlay published Israeli airfields (BYOP source)',
-  tbForceSnap: 'Force snap',
+  tbForceSnap: 'Snap to nearest point',
   tbForceSnapTitle: 'Always snap clicks to the nearest airfield or nav-waypoint (otherwise: 18 px radius)',
   tbShowCommChange: 'Show/Add Freq Changes',
   tbShowCommChangeTitle: 'Mark CVFR reporting points where pilots must change ATC frequency',
