@@ -987,8 +987,13 @@ function satelliteResetControl(lmap, point, zoom) {
 
 function showSatellitePreviewModal(point, label) {
   if (typeof createDraggableModal !== 'function' || typeof L === 'undefined') return;
+  // Destroy the Leaflet map on close — otherwise each open/close leaks the
+  // map instance, its zoomend listener, the cloned tile layers, and Leaflet's
+  // internal window hooks (they keep referencing the detached modal DOM).
+  let lmap = null;
   const modal = createDraggableModal(S.satelliteSnippetTitle || 'Satellite view',
-    'modal satellite-preview-modal');
+    'modal satellite-preview-modal',
+    () => { if (lmap) { lmap.remove(); lmap = null; } });
   const body = document.createElement('div');
   body.className = 'satellite-preview-body';
   const mapEl = document.createElement('div');
@@ -1007,7 +1012,7 @@ function showSatellitePreviewModal(point, label) {
   // Default to the satellite imagery (this is the "satellite view"), falling
   // back to the chart if the layer set is somehow empty.
   const startLayer = mLayers.Satellite || mLayers.CVFR || Object.values(mLayers)[0];
-  const lmap = L.map(mapEl, {
+  lmap = L.map(mapEl, {
     center: [point.lat, point.lng],
     zoom: SATELLITE_EXPANDED_ZOOM,
     minZoom: SATELLITE_MIN_ZOOM,
@@ -1080,7 +1085,7 @@ function showSatellitePreviewModal(point, label) {
     radius: 7, color: '#ffda4c', weight: 2, opacity: 0.96, fill: false,
     className: 'satellite-marker',
   }).addTo(lmap);
-  setTimeout(() => lmap.invalidateSize(), 0);
+  setTimeout(() => { if (lmap) lmap.invalidateSize(); }, 0);
 }
 
 function appendSatelliteSnippet(body, point, label) {
