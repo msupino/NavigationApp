@@ -1344,7 +1344,10 @@ document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
 document.getElementById('charts').onclick = showChartsModal;
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
-const CUMTIME_KEY = 'navaid.showCumTime';
+const CUMTIME_KEY  = 'navaid.showCumTime';
+const SIM_URL_KEY  = 'navaid.simUrl';
+const SIM_ON_KEY   = 'navaid.simOn';
+const SIM_FOLLOW_KEY = 'navaid.simFollow';
 try {
   const sr = localStorage.getItem(RETURN_KEY);
   if (sr !== null) window.showReturn =sr === '1';
@@ -1352,6 +1355,12 @@ try {
   if (sm !== null) window.showMidLeg =sm === '1';
   const sc = localStorage.getItem(CUMTIME_KEY);
   if (sc !== null) window.showCumTime = sc === '1';
+  const su = localStorage.getItem(SIM_URL_KEY);
+  if (su) window.simUrl = su;
+  const son = localStorage.getItem(SIM_ON_KEY);
+  if (son !== null) window.simOn = son === '1';
+  const sf = localStorage.getItem(SIM_FOLLOW_KEY);
+  if (sf !== null) window.simFollow = sf === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('ret-cb').checked = showReturn;
 document.getElementById('mid-cb').checked = showMidLeg;
@@ -1361,6 +1370,61 @@ document.getElementById('cumtime-cb').onchange = e => {
   try { localStorage.setItem(CUMTIME_KEY, showCumTime ? '1' : '0'); } catch (err) { /* */ }
   draw();
 };
+
+// --- Simulator wiring ------------------------------------------------
+(function () {
+  const cb     = document.getElementById('sim-connect-cb');
+  const urlInp = document.getElementById('sim-url');
+  const followCb = document.getElementById('sim-follow-cb');
+  const statusEl = document.getElementById('sim-status');
+  if (!cb || !urlInp || !followCb || !statusEl) return;
+
+  // Restore persisted state into UI controls.
+  if (simUrl) urlInp.value = simUrl;
+  followCb.checked = !!simFollow;
+
+  // io.js's _simSetStatus reads window._simStatusEl at poll time.
+  window._simStatusEl = statusEl;
+
+  const saveSimUrl = () => {
+    window.simUrl = urlInp.value.trim() || 'http://localhost:2020';
+    try { localStorage.setItem(SIM_URL_KEY, window.simUrl); } catch (e) { /* */ }
+  };
+  urlInp.oninput  = saveSimUrl;
+  urlInp.onchange = saveSimUrl;
+
+  followCb.onchange = () => {
+    window.simFollow = followCb.checked;
+    try { localStorage.setItem(SIM_FOLLOW_KEY, simFollow ? '1' : '0'); } catch (e) { /* */ }
+  };
+
+  cb.onchange = () => {
+    if (cb.checked) {
+      window.simUrl = urlInp.value.trim() || 'http://localhost:2020';
+      window._simStatusEl = statusEl;
+      if (typeof window.simStart === 'function') simStart();  // saves navaid.simOn
+    } else {
+      if (typeof window.simStop === 'function') simStop();    // saves navaid.simOn
+    }
+  };
+
+  // Auto-reconnect if sim was active before the page refreshed.
+  // Read localStorage directly — the global simOn may not yet reflect the
+  // stored value when this IIFE runs (timing with other restore code).
+  let _savedOn = false;
+  try { _savedOn = localStorage.getItem('navaid.simOn') === '1'; } catch (e) { /* */ }
+  if (_savedOn && typeof window.simStart === 'function') {
+    cb.checked = true;
+    // Open the sim section so the user can see the connected state.
+    const simSec = cb.closest('.tb-section');
+    if (simSec && !simSec.classList.contains('open')) {
+      simSec.classList.add('open');
+      try { localStorage.setItem('navaid.sec.sim', '1'); } catch (e) { /* */ }
+    }
+    simStart();
+  }
+})();
+
 document.getElementById('ret-cb').onchange = e => {
   window.showReturn =e.target.checked;
   try { localStorage.setItem(RETURN_KEY, showReturn ? '1' : '0'); } catch (err) { /* */ }
