@@ -580,7 +580,7 @@ body.theme-light #aircraft-custom input {
   unicode-bidi: plaintext;
 }
 #insp-title::placeholder { color: #8a8484; }
-#insp-title:read-only { cursor: default; }
+#insp-title:read-only { cursor: move; }
 #insp-title.editable {
   background: #241f1f;
   border: 1px solid #5a5353;

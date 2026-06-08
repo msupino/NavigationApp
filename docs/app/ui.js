@@ -1276,7 +1276,10 @@ document.getElementById('route-library').onclick = showRouteLibraryModal;
     if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyInspPos(p.x, p.y);
   } catch (e) { /* */ }
   header.addEventListener('mousedown', function (e) {
-    if (e.target.closest('#insp-title, #insp-close')) return;  // keep input/close usable
+    if (e.target.closest('#insp-close')) return;               // close button stays clickable
+    // The title line (#insp-title) is read-only for every inspector type — the
+    // waypoint name is edited via a separate row in the body — so the whole
+    // header, title included, is a drag handle.
     const r = insp.getBoundingClientRect();
     const off = { x: e.clientX - r.left, y: e.clientY - r.top };
     insp.style.right = 'auto';

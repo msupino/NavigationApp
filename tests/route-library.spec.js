@@ -90,7 +90,7 @@ test.describe('Inspector', () => {
     await page.waitForFunction(() => typeof state !== 'undefined' && typeof showInspector === 'function');
     await page.evaluate(() => {
       state.waypoints = [{ lat: 32, lng: 34.8, name: 'A' }, { lat: 32.3, lng: 34.9, name: 'B' }];
-      syncLegs(); state.selected = { type: 'wp', index: 0 }; showInspector();
+      syncLegs(); state.selected = { type: 'leg', index: 0 }; showInspector();  // read-only title
     });
     const insp = page.locator('#inspector');
     await expect(insp).toBeVisible();
