@@ -230,7 +230,7 @@ window.S = {
   tbShowDriftTitle: 'הצג קווי ייחוס סחיפה של 10 מעלות בקצה כל קטע',
   tbShowAirfields: 'הצג/נעץ שדות תעופה',
   tbShowAirfieldsTitle: 'הצג שדות תעופה ישראלים מפורסמים (מקור BYOP)',
-  tbForceSnap: 'הצמדה כפויה',
+  tbForceSnap: 'הצמדה לנקודה הקרובה',
   tbForceSnapTitle: 'תמיד הצמד לחיצות לציון הניווט / שדה התעופה הקרוב (אחרת: רדיוס 18 פיקסל)',
   tbShowCommChange: 'הצג/הוסף שינויי תדר',
   tbShowCommChangeTitle: 'סמן ציוני דיווח שבהם נדרש מעבר תדר ATC',
