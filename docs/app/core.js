@@ -573,7 +573,7 @@ window.S = Object.assign({
   tbSecDisplay: '👁 Display',
   tbSecPrint: '🖨 Print',
   tbSecBuild: '✏️ Edit',
-  tbSecView: '👁 View',
+  tbSecView: '👁 View/Set',
   tbSecCharts: '📋 Charts',
   tbSecExport: '📤 Export/import',
   tbViewSource: 'GitHub',

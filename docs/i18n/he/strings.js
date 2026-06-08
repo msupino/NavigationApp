@@ -320,7 +320,7 @@ window.S = {
   tbSecDisplay: '👁 מראה',
   tbSecPrint: '🖨 הדפסה',
   tbSecBuild: '✏️ עריכה',
-  tbSecView: '👁 תצוגה',
+  tbSecView: '👁 תצוגה/הגדרה',
   tbSecCharts: '📋 דפיות',
   tbSecExport: '📤 ייצוא/ייבוא',
   tbViewSource: 'GitHub',
