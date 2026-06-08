@@ -15,7 +15,8 @@
  * below (or set window.NAVAID_GDRIVE_CLIENT_ID before this script loads). The
  * client ID is public by design. Until it is set, the Drive UI stays hidden.
  */
-var GDRIVE_CLIENT_ID = (typeof window !== 'undefined' && window.NAVAID_GDRIVE_CLIENT_ID) || '';
+var GDRIVE_CLIENT_ID = (typeof window !== 'undefined' && window.NAVAID_GDRIVE_CLIENT_ID) ||
+  '1027636470762-lcnmpfmk4ef9rff2be3kg6qfd25vg7q1.apps.googleusercontent.com';
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 const GDRIVE_FILE = 'navaid-routes.json';
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
