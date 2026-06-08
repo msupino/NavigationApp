@@ -1344,8 +1344,10 @@ document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
 document.getElementById('charts').onclick = showChartsModal;
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
-const CUMTIME_KEY = 'navaid.showCumTime';
+const CUMTIME_KEY  = 'navaid.showCumTime';
 const SIM_URL_KEY  = 'navaid.simUrl';
+const SIM_ON_KEY   = 'navaid.simOn';
+const SIM_FOLLOW_KEY = 'navaid.simFollow';
 try {
   const sr = localStorage.getItem(RETURN_KEY);
   if (sr !== null) window.showReturn =sr === '1';
@@ -1355,6 +1357,10 @@ try {
   if (sc !== null) window.showCumTime = sc === '1';
   const su = localStorage.getItem(SIM_URL_KEY);
   if (su) window.simUrl = su;
+  const son = localStorage.getItem(SIM_ON_KEY);
+  if (son !== null) window.simOn = son === '1';
+  const sf = localStorage.getItem(SIM_FOLLOW_KEY);
+  if (sf !== null) window.simFollow = sf === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('ret-cb').checked = showReturn;
 document.getElementById('mid-cb').checked = showMidLeg;
@@ -1373,8 +1379,9 @@ document.getElementById('cumtime-cb').onchange = e => {
   const statusEl = document.getElementById('sim-status');
   if (!cb || !urlInp || !followCb || !statusEl) return;
 
-  // Restore persisted URL.
+  // Restore persisted state into UI controls.
   if (simUrl) urlInp.value = simUrl;
+  followCb.checked = !!simFollow;
 
   // io.js's _simSetStatus reads window._simStatusEl at poll time.
   window._simStatusEl = statusEl;
@@ -1386,21 +1393,26 @@ document.getElementById('cumtime-cb').onchange = e => {
 
   followCb.onchange = () => {
     window.simFollow = followCb.checked;
+    try { localStorage.setItem(SIM_FOLLOW_KEY, simFollow ? '1' : '0'); } catch (e) { /* */ }
   };
 
   cb.onchange = () => {
     if (cb.checked) {
       window.simUrl = urlInp.value.trim() || 'http://localhost:2020';
-      // Give io.js the status element reference before first poll.
-      if (typeof window.simStart === 'function') {
-        // io.js's _simStatusEl is a module-scoped let; set via exposed setter.
-        window._simStatusEl = statusEl;
-        simStart();
-      }
+      window._simStatusEl = statusEl;
+      if (typeof window.simStart === 'function') simStart();
+      try { localStorage.setItem(SIM_ON_KEY, '1'); } catch (e) { /* */ }
     } else {
       if (typeof window.simStop === 'function') simStop();
+      try { localStorage.setItem(SIM_ON_KEY, '0'); } catch (e) { /* */ }
     }
   };
+
+  // Auto-reconnect if sim was active before the page refreshed.
+  if (simOn && typeof window.simStart === 'function') {
+    cb.checked = true;
+    simStart();
+  }
 })();
 
 document.getElementById('ret-cb').onchange = e => {
