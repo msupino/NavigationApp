@@ -834,8 +834,10 @@ function showRouteLibraryModal() {
   }
   const modal = createDraggableModal(S.routeLibraryTitle || 'Saved routes',
     'modal route-library-modal',
-    typeof clearOpenChartModal === 'function'
-      ? () => clearOpenChartModal('route-library') : null,
+    () => {
+      window.refreshRouteLibrary = null;   // stop auto-sync from poking a closed modal
+      if (typeof clearOpenChartModal === 'function') clearOpenChartModal('route-library');
+    },
     { nonBlocking: true, chartKind: 'route-library' });
   const body = document.createElement('div');
   body.className = 'route-library-body';
@@ -919,7 +921,7 @@ function showRouteLibraryModal() {
 
   function render() {
     list.innerHTML = '';
-    const entries = loadRouteLibrary();
+    const entries = loadRouteLibrary().filter(e => e && e.data && !e.deleted);
     if (!entries.length) {
       const empty = document.createElement('p');
       empty.className = 'route-library-empty';
@@ -979,7 +981,12 @@ function showRouteLibraryModal() {
       del.textContent = S.routeLibraryDelete || 'Delete';
       del.onclick = () => {
         if (!confirm(S.routeLibraryDeleteConfirm || 'Delete this saved route?')) return;
-        if (persistRouteLibrary(loadRouteLibrary().filter(x => x.id !== entry.id))) render();
+        // Replace with a tombstone (deleted + fresh timestamp) so the delete
+        // wins the Drive merge instead of being resurrected from the remote.
+        const all = loadRouteLibrary().map(x => x.id === entry.id
+          ? { id: x.id, name: x.name, savedAt: new Date().toISOString(), deleted: true }
+          : x);
+        if (persistRouteLibrary(all)) render();
       };
       actions.append(loadBtn, rename, dup, del);
       row.append(main, actions);
@@ -1016,6 +1023,8 @@ function showRouteLibraryModal() {
   }
 
   render();
+  // Let a background auto-sync refresh this list while it's open.
+  window.refreshRouteLibrary = render;
   nameInput.focus();
 }
 

@@ -578,6 +578,8 @@ window.S = Object.assign({
   tbSecExport: '📤 Export/import',
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
+  tbPrivacy: 'Privacy',
+  tbTerms: 'Terms',
   tbIssues: 'Issues / Requests',
 
   // --- Keyboard-shortcuts cheat-sheet (issue #420) --------------------
