@@ -144,12 +144,19 @@ function gdriveUpload(fileId, library) {
 // Merge two route-library arrays by id, keeping the newer savedAt on conflict.
 // Pure + testable; no network. Entries without an id are kept as-is (deduped
 // by a name+savedAt signature so repeated syncs don't pile up duplicates).
+//
+// Deletes are represented as TOMBSTONES: an entry with `deleted: true` (no
+// `data`) and the deletion timestamp in `savedAt`. Because conflicts resolve
+// newest-savedAt-wins, a tombstone (deleted after the route was last saved)
+// beats the route on every device — so deletes propagate instead of being
+// resurrected by the union. Stale tombstones (older than 90 days) are pruned.
+const ROUTE_TOMBSTONE_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 function mergeRouteLibraries(a, b) {
   const byId = new Map();
   const sigSeen = new Set();
   const out = [];
   const take = (entry) => {
-    if (!entry || !entry.data) return;
+    if (!entry || (!entry.data && !entry.deleted)) return;   // keep routes + tombstones
     const sig = (entry.name || '') + '|' + (entry.savedAt || '');
     if (entry.id) {
       const prev = byId.get(entry.id);
@@ -168,9 +175,12 @@ function mergeRouteLibraries(a, b) {
   };
   (Array.isArray(a) ? a : []).forEach(take);
   (Array.isArray(b) ? b : []).forEach(take);
+  // Drop tombstones once they're old enough that every device has synced.
+  const cutoff = Date.now() - ROUTE_TOMBSTONE_TTL_MS;
+  const pruned = out.filter(e => !(e.deleted && Date.parse(e.savedAt || 0) < cutoff));
   // Newest first.
-  out.sort((x, y) => (y.savedAt || '').localeCompare(x.savedAt || ''));
-  return out;
+  pruned.sort((x, y) => (y.savedAt || '').localeCompare(x.savedAt || ''));
+  return pruned;
 }
 
 // Two-way sync: merge local + remote, write the merged set both to localStorage
@@ -181,7 +191,10 @@ function gdriveSync() {
     return remote.then(remoteArr => {
       const local = (typeof loadRouteLibrary === 'function') ? loadRouteLibrary() : [];
       const merged = mergeRouteLibraries(local, remoteArr);
-      if (typeof persistRouteLibrary === 'function') persistRouteLibrary(merged);
+      // Guard the write so persistRouteLibrary's auto-sync hook doesn't loop.
+      window._navaidSyncing = true;
+      try { if (typeof persistRouteLibrary === 'function') persistRouteLibrary(merged); }
+      finally { window._navaidSyncing = false; }
       return gdriveUpload(file && file.id, merged).then(() => merged);
     });
   });
