@@ -29,6 +29,42 @@ function legDefaultLabelPerp(legLenPx) {
 }
 
 // --- drawing ---------------------------------------------------------
+// Draw the live simulator aircraft at its current position with heading.
+// The icon is a simple filled arrow rotated to (aircraft heading − map bearing)
+// so it always points in the correct screen direction even when the map is
+// rotated. Called from draw() when simOn && simAircraft is non-null.
+function drawSimAircraft() {
+  if (!simOn || !simAircraft) return;
+  const s = proj(simAircraft);
+  const mapBearing = (typeof map !== 'undefined' && map.getBearing) ? map.getBearing() : 0;
+  const screenAngle = ((simAircraft.hdg || 0) - mapBearing) * Math.PI / 180;
+  const r = 14;  // half-height of the icon
+  octx.save();
+  octx.translate(s.x, s.y);
+  octx.rotate(screenAngle);
+  // Airplane body: filled arrow pointing up in local frame
+  octx.beginPath();
+  octx.moveTo(0, -r);              // nose
+  octx.lineTo(r * 0.5, r * 0.4);  // right wingtip
+  octx.lineTo(0, r * 0.1);        // fuselage indent
+  octx.lineTo(-r * 0.5, r * 0.4); // left wingtip
+  octx.closePath();
+  octx.fillStyle = '#e74c3c';
+  octx.fill();
+  octx.lineWidth = 1.5;
+  octx.strokeStyle = '#fff';
+  octx.stroke();
+  // Tail fins
+  octx.beginPath();
+  octx.moveTo(r * 0.2, r * 0.6);
+  octx.lineTo(0, r * 0.1);
+  octx.lineTo(-r * 0.2, r * 0.6);
+  octx.strokeStyle = '#fff';
+  octx.lineWidth = 1;
+  octx.stroke();
+  octx.restore();
+}
+
 function draw() {
   octx.clearRect(0, 0, vw(), vh());
   drawNavWaypoints();
@@ -39,6 +75,7 @@ function draw() {
   drawLegs();
   drawWaypoints();
   drawNotes();
+  drawSimAircraft();
   drawInfo();
   drawPageFrame();
   // #78: keep the Flight Plan modal live with the route. The hook is null
@@ -314,27 +351,28 @@ function applyNavSnap(latlng, currentName, excludeLl) {
     }
     if (best) {
       const name = userTyped ? currentName : best.name;
-      return { lat: best.pt.lat, lng: best.pt.lng, name };
+      return { lat: best.pt.lat, lng: best.pt.lng, name, code: best.name };
     }
     return { lat: latlng.lat, lng: latlng.lng,
-             name: autoSnapped ? '' : (currentName || '') };
+             name: autoSnapped ? '' : (currentName || ''), code: '' };
+
   }
   if (showAirfields) {
     const af = nearestAirfield(latlng, 18);
     if (af && !excluded(af)) {
       const name = userTyped ? currentName : af.name;
-      return { lat: af.lat, lng: af.lng, name };
+      return { lat: af.lat, lng: af.lng, name, code: af.name };
     }
   }
   if (showNavWP) {
     const snap = nearestNavWaypoint(latlng, 18);
     if (snap && !excluded(snap)) {
       const name = userTyped ? currentName : snap.name;
-      return { lat: snap.lat, lng: snap.lng, name };
+      return { lat: snap.lat, lng: snap.lng, name, code: snap.name };
     }
   }
   return { lat: latlng.lat, lng: latlng.lng,
-           name: autoSnapped ? '' : (currentName || '') };
+           name: autoSnapped ? '' : (currentName || ''), code: '' };
 }
 
 // --- airfield reference overlay -------------------------------------

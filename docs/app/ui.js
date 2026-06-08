@@ -1345,6 +1345,7 @@ document.getElementById('charts').onclick = showChartsModal;
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
 const CUMTIME_KEY = 'navaid.showCumTime';
+const SIM_URL_KEY  = 'navaid.simUrl';
 try {
   const sr = localStorage.getItem(RETURN_KEY);
   if (sr !== null) window.showReturn =sr === '1';
@@ -1352,6 +1353,8 @@ try {
   if (sm !== null) window.showMidLeg =sm === '1';
   const sc = localStorage.getItem(CUMTIME_KEY);
   if (sc !== null) window.showCumTime = sc === '1';
+  const su = localStorage.getItem(SIM_URL_KEY);
+  if (su) window.simUrl = su;
 } catch (e) { /* storage unavailable */ }
 document.getElementById('ret-cb').checked = showReturn;
 document.getElementById('mid-cb').checked = showMidLeg;
@@ -1361,6 +1364,45 @@ document.getElementById('cumtime-cb').onchange = e => {
   try { localStorage.setItem(CUMTIME_KEY, showCumTime ? '1' : '0'); } catch (err) { /* */ }
   draw();
 };
+
+// --- Simulator wiring ------------------------------------------------
+(function () {
+  const cb     = document.getElementById('sim-connect-cb');
+  const urlInp = document.getElementById('sim-url');
+  const followCb = document.getElementById('sim-follow-cb');
+  const statusEl = document.getElementById('sim-status');
+  if (!cb || !urlInp || !followCb || !statusEl) return;
+
+  // Restore persisted URL.
+  if (simUrl) urlInp.value = simUrl;
+
+  // io.js's _simSetStatus reads window._simStatusEl at poll time.
+  window._simStatusEl = statusEl;
+
+  urlInp.onchange = () => {
+    window.simUrl = urlInp.value.trim() || 'http://localhost:2020';
+    try { localStorage.setItem(SIM_URL_KEY, window.simUrl); } catch (e) { /* */ }
+  };
+
+  followCb.onchange = () => {
+    window.simFollow = followCb.checked;
+  };
+
+  cb.onchange = () => {
+    if (cb.checked) {
+      window.simUrl = urlInp.value.trim() || 'http://localhost:2020';
+      // Give io.js the status element reference before first poll.
+      if (typeof window.simStart === 'function') {
+        // io.js's _simStatusEl is a module-scoped let; set via exposed setter.
+        window._simStatusEl = statusEl;
+        simStart();
+      }
+    } else {
+      if (typeof window.simStop === 'function') simStop();
+    }
+  };
+})();
+
 document.getElementById('ret-cb').onchange = e => {
   window.showReturn =e.target.checked;
   try { localStorage.setItem(RETURN_KEY, showReturn ? '1' : '0'); } catch (err) { /* */ }
