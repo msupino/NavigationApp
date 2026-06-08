@@ -4753,7 +4753,7 @@ async function _simFetch() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const d = await res.json();
     if (typeof d.latitude !== 'number' || typeof d.longitude !== 'number') throw new Error('bad data');
-    simAircraft = {
+    window.simAircraft = {
       lat: d.latitude,
       lng: d.longitude,
       alt: d.altitude || 0,
@@ -4761,7 +4761,7 @@ async function _simFetch() {
       ias: d.ias || 0,
     };
     _simSetStatus(true);
-    if (simFollow) map.setView([simAircraft.lat, simAircraft.lng], map.getZoom());
+    if (simFollow) map.setView([window.simAircraft.lat, window.simAircraft.lng], map.getZoom());
     draw();
   } catch (e) {
     _simSetStatus(false);
@@ -4771,14 +4771,14 @@ async function _simFetch() {
 function simStart() {
   if (_simInterval) return;
   simOn = true;
-  simAircraft = null;
+  window.simAircraft = null;
   _simFetch();
   _simInterval = setInterval(_simFetch, 1000);
 }
 
 function simStop() {
   simOn = false;
-  simAircraft = null;
+  window.simAircraft = null;
   if (_simInterval) { clearInterval(_simInterval); _simInterval = null; }
   const _el = window._simStatusEl;
   if (_el) _el.textContent = '';
