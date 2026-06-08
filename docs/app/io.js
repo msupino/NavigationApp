@@ -4613,9 +4613,11 @@ function toggleMagnifier() {
     rebuildMagnifier();
     mag.style.left = (_magX - magCenter()) + 'px'; mag.style.top = (_magY - magCenter()) + 'px';
     applyMagnifierTransform();
+    map.dragging.disable();
     document.addEventListener('mousemove', updateMagnifier);
     document.addEventListener('click', onMagClick, true);
   } else {
+    map.dragging.enable();
     document.removeEventListener('mousemove', updateMagnifier);
     document.removeEventListener('click', onMagClick, true);
     if (_magRAF) { cancelAnimationFrame(_magRAF); _magRAF = null; }
