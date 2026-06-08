@@ -942,6 +942,71 @@ function loadGpx(file) {
   reader.readAsText(file);
 }
 
+// --- PLN import (MSFS / FSX flight plan) -------------------------------
+// Parse a DMS WorldPosition / *LLA value, e.g. N32° 0' 42.12",E34° 53' 7.08"
+// (an optional ,+002000.00 altitude tail is ignored). Also accepts a plain
+// "lat,lng" decimal pair as a fallback.
+function parsePlnLatLng(s) {
+  if (!s) return null;
+  const dms = String(s).match(
+    /([NS])\s*(\d+(?:\.\d+)?)°\s*(\d+(?:\.\d+)?)'\s*(\d+(?:\.\d+)?)"?\s*,\s*([EW])\s*(\d+(?:\.\d+)?)°\s*(\d+(?:\.\d+)?)'\s*(\d+(?:\.\d+)?)"?/);
+  if (dms) {
+    const lat = (+dms[2] + +dms[3] / 60 + +dms[4] / 3600) * (dms[1] === 'S' ? -1 : 1);
+    const lng = (+dms[6] + +dms[7] / 60 + +dms[8] / 3600) * (dms[5] === 'W' ? -1 : 1);
+    return { lat, lng };
+  }
+  const dec = String(s).match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+  if (dec) return { lat: parseFloat(dec[1]), lng: parseFloat(dec[2]) };
+  return null;
+}
+function loadPln(file) {
+  const MAX_ROUTE_BYTES = 2 * 1024 * 1024;
+  if (file && file.size > MAX_ROUTE_BYTES) {
+    alert(S.errLoadFile + 'file too large (' +
+          (file.size / 1024 / 1024).toFixed(1) + ' MB; max 2 MB)');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const xml = new DOMParser().parseFromString(reader.result, 'text/xml');
+      const parseErr = xml.querySelector('parsererror');
+      if (parseErr) throw new Error('XML parse error: ' + parseErr.textContent);
+      const atc = xml.querySelectorAll('ATCWaypoint');
+      if (!atc.length) {
+        alert(S.errLoadFile + 'no <ATCWaypoint> elements found in PLN');
+        return;
+      }
+      const wps = [];
+      for (const pt of atc) {
+        const posEl = pt.querySelector('WorldPosition');
+        const pos = parsePlnLatLng(posEl && posEl.textContent);
+        if (!pos || !Number.isFinite(pos.lat) || !Number.isFinite(pos.lng)) continue;
+        const icao = pt.querySelector('ICAOIdent');
+        const name = (icao && icao.textContent.trim()) ||
+          (pt.getAttribute('id') || '').trim();
+        wps.push({ lat: r5(pos.lat), lng: r5(pos.lng), name });
+      }
+      if (wps.length < 2) {
+        alert(S.errNeedWps);
+        return;
+      }
+      state.waypoints = wps;
+      state.legs = [];
+      state.notes = [];
+      state.commChangeSuppressions = [];
+      syncLegs();
+      state.selected = null;
+      showInspector();
+      fitView();
+      draw();
+    } catch (err) {
+      alert(S.errLoadFile + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
 function load(file) {
   // #146: hard cap on file size before we even read it. Route JSON is
   // typically <100 KB; 2 MB leaves room for big routes / future fields and

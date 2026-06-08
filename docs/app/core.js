@@ -422,7 +422,7 @@ window.S = Object.assign({
   tbExportMenu: '⬇ Export',
   tbExport: '⬇ Export JSON',
   tbExportTitle: 'Export route (JSON / GPX / PLN)',
-  tbImport: '⬆ Import JSON/GPX',
+  tbImport: '⬆ Import JSON/GPX/PLN',
   tbImportTitle: 'Import route from JSON or GPX file',
   tbShare: '🔗 Share',
   tbShareTitle: 'Copy a shareable link to this route to the clipboard',
