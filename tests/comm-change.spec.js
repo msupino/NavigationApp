@@ -573,4 +573,43 @@ test.describe('comm-change rendering (fixture-backed)', () => {
     expect(drawn).toHaveLength(0);
     expect(await page.evaluate(() => window.showNavWP)).toBe(true);
   });
+
+  test('renamed waypoint seeds freq-change note when at ICAO position (#682)', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+
+    // Place a waypoint AT TYONA with a custom (non-ICAO) name.
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: 'MY_CUSTOM_NAME' }];
+      state.notes = [];
+      syncLegs();
+    }, TYONA);
+
+    // seedCommChangeNotes should seed a note even though wp.name !== 'TYONA'.
+    const atTyona = await page.evaluate(() => {
+      seedCommChangeNotes();
+      return state.notes.some(n => n && n.cc === 'TYONA');
+    });
+    expect(atTyona).toBe(true);
+
+    // Move the waypoint far away — note should be pruned (stale).
+    await page.evaluate(() => {
+      state.waypoints[0].lat += 5;
+      state.waypoints[0].lng += 5;
+      seedCommChangeNotes();
+    });
+    const awayNote = await page.evaluate(() =>
+      state.notes.some(n => n && n.cc === 'TYONA'));
+    expect(awayNote).toBe(false);
+
+    // Move it back to TYONA's coordinates — note should re-seed.
+    await page.evaluate(t => {
+      state.waypoints[0].lat = t.lat;
+      state.waypoints[0].lng = t.lng;
+      seedCommChangeNotes();
+    }, TYONA);
+    const backNote = await page.evaluate(() =>
+      state.notes.some(n => n && n.cc === 'TYONA'));
+    expect(backNote).toBe(true);
+  });
 });
