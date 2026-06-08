@@ -807,6 +807,168 @@ function showRouteTemplatesModal() {
   });
 }
 
+function showRouteLibraryModal() {
+  if (typeof prepareChartModal === 'function') {
+    if (!prepareChartModal('route-library')) return;
+  } else {
+    if (fpOpen) closeFlightPlan();
+    if (typeof rememberOpenChartModal === 'function') rememberOpenChartModal('route-library');
+  }
+  const modal = createDraggableModal(S.routeLibraryTitle || 'Saved routes',
+    'modal route-library-modal',
+    typeof clearOpenChartModal === 'function'
+      ? () => clearOpenChartModal('route-library') : null,
+    { nonBlocking: true, chartKind: 'route-library' });
+  const body = document.createElement('div');
+  body.className = 'route-library-body';
+  modal.box.appendChild(body);
+  modal.show();
+
+  // Save-current row: name field + save button.
+  const saveRow = document.createElement('div');
+  saveRow.className = 'route-library-saverow';
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.className = 'route-library-name';
+  nameInput.placeholder = S.routeLibraryNamePlaceholder || 'Route name';
+  nameInput.maxLength = 80;
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.textContent = S.routeLibrarySaveCurrent || 'Save current route';
+  saveBtn.onclick = () => {
+    const entry = routeLibrarySaveCurrent(nameInput.value);
+    if (!entry) return;
+    nameInput.value = '';
+    render();
+    if (typeof showToast === 'function') {
+      showToast(typeof S.routeLibrarySaved === 'function'
+        ? S.routeLibrarySaved(entry.name) : entry.name + ' saved');
+    }
+  };
+  saveRow.append(nameInput, saveBtn);
+
+  const list = document.createElement('div');
+  list.className = 'route-library-list';
+
+  // Export / import the whole library as one JSON file.
+  const tools = document.createElement('div');
+  tools.className = 'modal-btns route-library-tools';
+  const exportBtn = document.createElement('button');
+  exportBtn.type = 'button';
+  exportBtn.textContent = S.routeLibraryExport || 'Export library';
+  exportBtn.onclick = () => {
+    const blob = new Blob([JSON.stringify(loadRouteLibrary(), null, 2)],
+      { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'navaid-routes-' + fileStamp() + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+  const importBtn = document.createElement('button');
+  importBtn.type = 'button';
+  importBtn.textContent = S.routeLibraryImport || 'Import library';
+  const importFile = document.createElement('input');
+  importFile.type = 'file';
+  importFile.accept = 'application/json,.json';
+  importFile.hidden = true;
+  importBtn.onclick = () => importFile.click();
+  importFile.onchange = e => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let arr;
+      try { arr = JSON.parse(reader.result); } catch (err) { alert(S.errLoadFile + err.message); return; }
+      if (!Array.isArray(arr)) { alert(S.errLoadFile + 'expected a route-library array'); return; }
+      // Merge valid entries (fresh ids) into the existing library.
+      const merged = loadRouteLibrary();
+      let added = 0;
+      for (const it of arr) {
+        if (!it || !it.data) continue;
+        if (typeof validateRoute === 'function' && validateRoute(it.data)) continue;
+        merged.unshift({ id: routeLibraryId(), name: (it.name || 'Route').toString().slice(0, 80),
+          savedAt: it.savedAt || new Date().toISOString(), data: it.data });
+        added++;
+      }
+      if (persistRouteLibrary(merged)) render();
+      if (typeof showToast === 'function') showToast(added + ' route(s) imported');
+    };
+    reader.readAsText(f);
+  };
+  tools.append(exportBtn, importBtn, importFile);
+
+  function render() {
+    list.innerHTML = '';
+    const entries = loadRouteLibrary();
+    if (!entries.length) {
+      const empty = document.createElement('p');
+      empty.className = 'route-library-empty';
+      empty.textContent = S.routeLibraryEmpty || 'No saved routes yet';
+      list.appendChild(empty);
+      return;
+    }
+    for (const entry of entries) {
+      const row = document.createElement('div');
+      row.className = 'route-library-row';
+      const main = document.createElement('button');
+      main.type = 'button';
+      main.className = 'route-library-open';
+      const wpN = (entry.data && entry.data.waypoints && entry.data.waypoints.length) || 0;
+      const when = (entry.savedAt || '').slice(0, 10);
+      main.innerHTML = '';
+      const nm = document.createElement('span');
+      nm.className = 'route-library-row-name';
+      nm.textContent = entry.name;
+      const meta = document.createElement('span');
+      meta.className = 'route-library-row-meta';
+      meta.textContent = wpN + ' WP' + (when ? ' · ' + when : '');
+      main.append(nm, meta);
+      main.onclick = () => { if (routeLibraryApply(entry)) modal.close(); };
+
+      const actions = document.createElement('div');
+      actions.className = 'route-library-actions';
+      const rename = document.createElement('button');
+      rename.type = 'button';
+      rename.textContent = S.routeLibraryRename || 'Rename';
+      rename.onclick = () => {
+        const next = prompt(S.routeLibraryNamePlaceholder || 'Route name', entry.name);
+        if (next == null) return;
+        const all = loadRouteLibrary();
+        const t = all.find(x => x.id === entry.id);
+        if (t) { t.name = next.trim().slice(0, 80) || t.name; if (persistRouteLibrary(all)) render(); }
+      };
+      const dup = document.createElement('button');
+      dup.type = 'button';
+      dup.textContent = S.routeLibraryDuplicate || 'Duplicate';
+      dup.onclick = () => {
+        const all = loadRouteLibrary();
+        const src = all.find(x => x.id === entry.id);
+        if (!src) return;
+        all.unshift({ id: routeLibraryId(), name: src.name + ' (copy)',
+          savedAt: new Date().toISOString(), data: src.data });
+        if (persistRouteLibrary(all)) render();
+      };
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'route-library-del';
+      del.textContent = S.routeLibraryDelete || 'Delete';
+      del.onclick = () => {
+        if (!confirm(S.routeLibraryDeleteConfirm || 'Delete this saved route?')) return;
+        if (persistRouteLibrary(loadRouteLibrary().filter(x => x.id !== entry.id))) render();
+      };
+      actions.append(rename, dup, del);
+      row.append(main, actions);
+      list.appendChild(row);
+    }
+  }
+
+  body.append(saveRow, list, tools);
+  render();
+  nameInput.focus();
+}
+
 function restoreOpenChartModal() {
   if (typeof readOpenChartModal !== 'function') return;
   const kind = readOpenChartModal();
@@ -825,6 +987,10 @@ function restoreOpenChartModal() {
   }
   if (kind === 'route-templates' && typeof showRouteTemplatesModal === 'function') {
     showRouteTemplatesModal();
+    return;
+  }
+  if (kind === 'route-library' && typeof showRouteLibraryModal === 'function') {
+    showRouteLibraryModal();
     return;
   }
   if (typeof clearOpenChartModal === 'function') clearOpenChartModal();
@@ -1056,6 +1222,7 @@ document.getElementById('export-select').onchange = e => {
 document.getElementById('load').onclick = () => document.getElementById('file').click();
 document.getElementById('share').onclick = shareRoute;
 document.getElementById('route-templates').onclick = showRouteTemplatesModal;
+document.getElementById('route-library').onclick = showRouteLibraryModal;
 document.getElementById('file').onchange = e => {
   const f = e.target.files[0];
   if (!f) return;

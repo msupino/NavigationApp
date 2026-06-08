@@ -1109,6 +1109,61 @@ html, body {
   min-width: 320px;
   max-width: min(440px, 92vw);
 }
+/* Route library (#677) */
+.route-library-modal {
+  min-width: 320px;
+  max-width: min(460px, 92vw);
+}
+.route-library-body {
+  display: grid;
+  gap: 10px;
+  font-size: 13px;
+}
+.route-library-saverow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.route-library-name {
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 5px 7px;
+  min-width: 0;
+}
+.route-library-list {
+  display: grid;
+  gap: 6px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.route-library-empty { color: #b9b3b3; margin: 4px 0; }
+.route-library-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid #443f3f;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+.route-library-open {
+  display: grid;
+  gap: 2px;
+  text-align: start;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #e8e8e8;
+  min-width: 0;
+}
+.route-library-row-name { font-weight: 600; }
+.route-library-row-meta { color: #b9b3b3; font-size: 12px; }
+.route-library-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.route-library-del { color: #e88; }
 .route-template-body {
   display: grid;
   gap: 10px;
