@@ -62,10 +62,48 @@ test.describe('Route library', () => {
     await expect(page.locator('.route-library-modal')).toHaveCount(0);
     await expect.poll(() => page.evaluate(() => state.waypoints.length)).toBe(3);
 
-    // Reopen, delete one entry.
+    // (continued) — delete is exercised below.
     await page.locator('#route-library').click();
     const modal2 = page.locator('.route-library-modal');    await modal2.locator('.route-library-row').first()
       .getByRole('button', { name: 'Delete' }).click();
     await expect(modal2.locator('.route-library-row')).toHaveCount(1);
+  });
+
+  test('mergeRouteLibraries keeps newest by id and dedupes', async ({ page }) => {
+    await boot(page);
+    const out = await page.evaluate(() => mergeRouteLibraries(
+      [{ id: 'a', name: 'old', savedAt: '2026-01-01', data: { waypoints: [] } },
+       { id: 'b', name: 'keep', savedAt: '2026-02-01', data: { waypoints: [] } }],
+      [{ id: 'a', name: 'new', savedAt: '2026-03-01', data: { waypoints: [] } }],
+    ));
+    const a = out.find(x => x.id === 'a');
+    expect(out.length).toBe(2);
+    expect(a.name).toBe('new');         // newer savedAt wins
+    expect(out[0].id).toBe('a');        // sorted newest-first
+  });
+});
+
+test.describe('Inspector', () => {
+  test('is draggable by its header and the position persists', async ({ page }) => {
+    await page.addInitScript(() => { try { localStorage.removeItem('navaid.inspPos'); } catch (e) {} });
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof state !== 'undefined' && typeof showInspector === 'function');
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32, lng: 34.8, name: 'A' }, { lat: 32.3, lng: 34.9, name: 'B' }];
+      syncLegs(); state.selected = { type: 'wp', index: 0 }; showInspector();
+    });
+    const insp = page.locator('#inspector');
+    await expect(insp).toBeVisible();
+    const before = await insp.boundingBox();
+    const hdr = page.locator('#insp-header');
+    const hb = await hdr.boundingBox();
+    await page.mouse.move(hb.x + 40, hb.y + 8);
+    await page.mouse.down();
+    await page.mouse.move(hb.x - 120, hb.y + 90, { steps: 6 });
+    await page.mouse.up();
+    const after = await insp.boundingBox();
+    expect(Math.abs(after.x - before.x)).toBeGreaterThan(40);
+    const pos = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.inspPos') || 'null'));
+    expect(pos && Number.isFinite(pos.x)).toBeTruthy();
   });
 });

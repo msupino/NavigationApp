@@ -970,6 +970,33 @@ function showRouteLibraryModal() {
   }
 
   body.append(saveRow, list, tools);
+
+  // Optional Google Drive sync (#677 follow-up). Only shown when an OAuth
+  // client ID is configured (gdrive.js); otherwise the feature stays dormant.
+  if (typeof gdriveConfigured === 'function' && gdriveConfigured()) {
+    const gd = document.createElement('div');
+    gd.className = 'route-library-tools route-library-gdrive';
+    const syncBtn = document.createElement('button');
+    syncBtn.type = 'button';
+    syncBtn.textContent = S.routeLibraryGdriveSync || 'Sync with Google Drive';
+    const status = document.createElement('span');
+    status.className = 'route-library-gdrive-status';
+    const setStatus = t => { status.textContent = t || ''; };
+    syncBtn.onclick = () => {
+      syncBtn.disabled = true;
+      setStatus(S.routeLibraryGdriveSyncing || 'Syncing…');
+      gdriveSync().then(() => {
+        render();
+        setStatus(S.routeLibraryGdriveSynced || 'Synced');
+      }).catch(err => {
+        setStatus((S.routeLibraryGdriveError || 'Sync failed') +
+          (err && err.message ? ': ' + err.message : ''));
+      }).then(() => { syncBtn.disabled = false; });
+    };
+    gd.append(syncBtn, status);
+    body.append(gd);
+  }
+
   render();
   nameInput.focus();
 }
@@ -1228,6 +1255,49 @@ document.getElementById('load').onclick = () => document.getElementById('file').
 document.getElementById('share').onclick = shareRoute;
 document.getElementById('route-templates').onclick = showRouteTemplatesModal;
 document.getElementById('route-library').onclick = showRouteLibraryModal;
+
+// Draggable inspector — grab the header bar (but not the editable title or the
+// close button) to reposition the panel; the spot persists across selections
+// and reloads under navaid.inspPos. Mirrors the modal/toolbar drag pattern.
+(function () {
+  const insp = document.getElementById('inspector');
+  const header = document.getElementById('insp-header');
+  if (!insp || !header) return;
+  const INSP_POS_KEY = 'navaid.inspPos';
+  function applyInspPos(x, y) {
+    const maxX = Math.max(0, window.innerWidth - 60);
+    const maxY = Math.max(0, window.innerHeight - 40);
+    insp.style.left = Math.max(0, Math.min(maxX, x)) + 'px';
+    insp.style.top = Math.max(0, Math.min(maxY, y)) + 'px';
+    insp.style.right = 'auto';
+  }
+  try {
+    const p = JSON.parse(localStorage.getItem(INSP_POS_KEY) || 'null');
+    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyInspPos(p.x, p.y);
+  } catch (e) { /* */ }
+  header.addEventListener('mousedown', function (e) {
+    if (e.target.closest('#insp-title, #insp-close')) return;  // keep input/close usable
+    const r = insp.getBoundingClientRect();
+    const off = { x: e.clientX - r.left, y: e.clientY - r.top };
+    insp.style.right = 'auto';
+    const onMove = function (ev) {
+      const x = Math.max(0, Math.min(window.innerWidth - insp.offsetWidth, ev.clientX - off.x));
+      const y = Math.max(0, Math.min(window.innerHeight - insp.offsetHeight, ev.clientY - off.y));
+      insp.style.left = x + 'px';
+      insp.style.top = y + 'px';
+    };
+    const onUp = function () {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      const r2 = insp.getBoundingClientRect();
+      try { localStorage.setItem(INSP_POS_KEY, JSON.stringify({ x: r2.left, y: r2.top })); }
+      catch (e2) { /* */ }
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  });
+})();
 document.getElementById('file').onchange = e => {
   const f = e.target.files[0];
   if (!f) return;
