@@ -738,7 +738,10 @@ function routeSnapshotForStorage() {
     commChangeSuppressions: routeCommChangeSuppressions(),
   };
 }
-function save() {
+// Serializable, schema-clean snapshot of the current route. Shared by the
+// JSON file export (save), the route library (#677), and any other route
+// persistence — keep this the single source of the on-disk route shape.
+function serializeRoute() {
   const commChangeSuppressions = routeCommChangeSuppressions();
   const data = {
     waypoints: state.waypoints.map(w => ({
@@ -764,6 +767,10 @@ function save() {
     })),
   };
   if (commChangeSuppressions.length) data.commChangeSuppressions = commChangeSuppressions;
+  return data;
+}
+function save() {
+  const data = serializeRoute();
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1034,42 +1041,96 @@ function load(file) {
       alert(S.errInvalidRoute(verr));
       return;
     }
-    state.waypoints = d.waypoints.map(w => ({
-      lat: r5(w.lat), lng: r5(w.lng), name: w.name,
-    }));
-    // Use the file's `legArrowSize` if present (forward-compat — current
-    // save() doesn't emit it). Otherwise fall back to the current setting.
-    // See _normalizeLegLabel for the migration math.
-    const legacyAS = (typeof d.legArrowSize === 'number' && d.legArrowSize > 0)
-      ? d.legArrowSize : legArrowSize;
-    state.legs = d.legs.map(l => ({
-      inboundAltitude: decodeRouteAltitude(l.inboundAltitude),
-      outboundAltitude: decodeRouteAltitude(l.outboundAltitude),
-      flightSpeed: l.flightSpeed,
-      outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
-      inLabel:  _normalizeLegLabel(l.inLabel,  legacyAS),
-      outLabel: _normalizeLegLabel(l.outLabel, legacyAS),
-      cumLabel: l.cumLabel ? _normalizeLegLabel(l.cumLabel, legacyAS)
-                           : { a: 0, _default: 1, _m: 1 },
-      cumLabelRet: l.cumLabelRet ? _normalizeLegLabel(l.cumLabelRet, legacyAS)
-                                 : { a: 0, _default: 1, _m: 1 },
-    }));
-    state.notes = d.notes.map(n => ({
-      lat: r5(n.lat), lng: r5(n.lng),
-      text: n.text, color: n.color, shape: n.shape,
-      ...(n.cc ? { cc: n.cc } : {}),   // #487: preserve comm-change seed tag
-      ...(n.freqName ? { freqName: n.freqName } : {}),
-      ...(n.freq ? { freq: n.freq } : {}),
-      ...(n.freqAuto === true ? { freqAuto: true } : {}),
-    }));
-    state.commChangeSuppressions = storedCommChangeSuppressions(d);
-    syncLegs();
-    state.selected = null;
-    showInspector();
-    fitView();
-    draw();
+    applyRouteData(d);
   };
   reader.readAsText(file);
+}
+
+// Apply a parsed, validated route blob (the shape serializeRoute() emits) to
+// the live state and redraw. Shared by file import (load) and the route
+// library (#677). Caller is responsible for validateRoute() first.
+function applyRouteData(d) {
+  state.waypoints = d.waypoints.map(w => ({
+    lat: r5(w.lat), lng: r5(w.lng), name: w.name,
+  }));
+  // Use the blob's `legArrowSize` if present (forward-compat — current
+  // serializeRoute() doesn't emit it). Otherwise fall back to the current
+  // setting. See _normalizeLegLabel for the migration math.
+  const legacyAS = (typeof d.legArrowSize === 'number' && d.legArrowSize > 0)
+    ? d.legArrowSize : legArrowSize;
+  state.legs = d.legs.map(l => ({
+    inboundAltitude: decodeRouteAltitude(l.inboundAltitude),
+    outboundAltitude: decodeRouteAltitude(l.outboundAltitude),
+    flightSpeed: l.flightSpeed,
+    outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
+    inLabel:  _normalizeLegLabel(l.inLabel,  legacyAS),
+    outLabel: _normalizeLegLabel(l.outLabel, legacyAS),
+    cumLabel: l.cumLabel ? _normalizeLegLabel(l.cumLabel, legacyAS)
+                         : { a: 0, _default: 1, _m: 1 },
+    cumLabelRet: l.cumLabelRet ? _normalizeLegLabel(l.cumLabelRet, legacyAS)
+                               : { a: 0, _default: 1, _m: 1 },
+  }));
+  state.notes = d.notes.map(n => ({
+    lat: r5(n.lat), lng: r5(n.lng),
+    text: n.text, color: n.color, shape: n.shape,
+    ...(n.cc ? { cc: n.cc } : {}),   // #487: preserve comm-change seed tag
+    ...(n.freqName ? { freqName: n.freqName } : {}),
+    ...(n.freq ? { freq: n.freq } : {}),
+    ...(n.freqAuto === true ? { freqAuto: true } : {}),
+  }));
+  state.commChangeSuppressions = storedCommChangeSuppressions(d);
+  syncLegs();
+  state.selected = null;
+  showInspector();
+  fitView();
+  draw();
+}
+
+// --- route library (#677) — multiple named routes in localStorage --------
+// Device-local only (no backend). Each entry: { id, name, savedAt, data }
+// where `data` is a serializeRoute() blob.
+const ROUTE_LIBRARY_KEY = 'navaid.routes';
+function loadRouteLibrary() {
+  try {
+    const a = JSON.parse(localStorage.getItem(ROUTE_LIBRARY_KEY) || '[]');
+    return Array.isArray(a) ? a : [];
+  } catch (e) { return []; }
+}
+function persistRouteLibrary(list) {
+  try {
+    localStorage.setItem(ROUTE_LIBRARY_KEY, JSON.stringify(list));
+    return true;
+  } catch (e) {
+    alert(S.errStorageFull || 'Storage is full — delete some saved routes or export them.');
+    return false;
+  }
+}
+function routeLibraryId() {
+  return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+// Save the current route as a new named library entry. Returns the entry or null.
+function routeLibrarySaveCurrent(name) {
+  if (state.waypoints.length < 2) { alert(S.errNeedWps); return null; }
+  const list = loadRouteLibrary();
+  const entry = {
+    id: routeLibraryId(),
+    name: (name || '').trim() || ('Route ' + (list.length + 1)),
+    savedAt: new Date().toISOString(),
+    data: serializeRoute(),
+  };
+  list.unshift(entry);
+  return persistRouteLibrary(list) ? entry : null;
+}
+// Apply a saved library entry to the live route. Returns true if applied.
+function routeLibraryApply(entry) {
+  if (!entry || !entry.data) return false;
+  const verr = typeof validateRoute === 'function' ? validateRoute(entry.data) : null;
+  if (verr) { alert(S.errInvalidRoute ? S.errInvalidRoute(verr) : verr); return false; }
+  if ((state.waypoints.length || state.notes.length) &&
+      !confirm(S.routeLibraryReplaceConfirm ||
+        S.routeTemplateReplaceConfirm || 'Replace the current route?')) return false;
+  applyRouteData(entry.data);
+  return true;
 }
 
 // --- print -----------------------------------------------------------
