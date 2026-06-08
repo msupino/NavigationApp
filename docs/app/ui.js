@@ -929,6 +929,11 @@ function showRouteLibraryModal() {
 
       const actions = document.createElement('div');
       actions.className = 'route-library-actions';
+      const loadBtn = document.createElement('button');
+      loadBtn.type = 'button';
+      loadBtn.className = 'route-library-load';
+      loadBtn.textContent = S.routeLibraryLoad || 'Load';
+      loadBtn.onclick = () => { if (routeLibraryApply(entry)) modal.close(); };
       const rename = document.createElement('button');
       rename.type = 'button';
       rename.textContent = S.routeLibraryRename || 'Rename';
@@ -958,7 +963,7 @@ function showRouteLibraryModal() {
         if (!confirm(S.routeLibraryDeleteConfirm || 'Delete this saved route?')) return;
         if (persistRouteLibrary(loadRouteLibrary().filter(x => x.id !== entry.id))) render();
       };
-      actions.append(rename, dup, del);
+      actions.append(loadBtn, rename, dup, del);
       row.append(main, actions);
       list.appendChild(row);
     }

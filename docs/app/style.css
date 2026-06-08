@@ -1195,7 +1195,17 @@ body.theme-light .route-library-tools button:hover { background: #eef3f9; }
 .route-library-row-name { font-weight: 600; }
 .route-library-row-meta { color: #b9b3b3; font-size: 12px; }
 .route-library-actions { display: flex; gap: 4px; flex-wrap: wrap; }
-.route-library-del { color: #e88; }
+/* Load is the primary row action — make it obvious (clicking the name also loads). */
+.route-library-actions .route-library-load,
+body.theme-light .route-library-actions .route-library-load {
+  color: #fff;
+  background: #1d6fe0;
+  border-color: #1d6fe0;
+}
+.route-library-actions .route-library-load:hover,
+body.theme-light .route-library-actions .route-library-load:hover {
+  background: #2f7fee;
+}
 .route-template-body {
   display: grid;
   gap: 10px;
@@ -1240,6 +1250,35 @@ body.theme-light .route-library-tools button:hover { background: #eef3f9; }
   color: #b9b3b3;
   line-height: 1.35;
 }
+/* Light theme — the route-templates modal had no light overrides, so its
+ * near-white text/inputs were invisible on the light modal. */
+body.theme-light .route-template-row { color: #647184; }
+body.theme-light .route-template-row select,
+body.theme-light .route-template-row input {
+  color: #1f252c;
+  background: #fff;
+  border-color: #b8c0cc;
+}
+body.theme-light .route-template-path { color: #1f252c; }
+body.theme-light .route-template-description,
+body.theme-light .route-template-empty { color: #647184; }
+/* Per-leg VOR override dropdown in the flight-plan table — was dark on light. */
+body.theme-light .fp-leg-vor {
+  color: #1f252c;
+  background: #fff;
+  border-color: #b8c0cc;
+}
+/* Saved-route name field — was dark on the light modal. */
+body.theme-light .route-library-name {
+  color: #1f252c;
+  background: #fff;
+  border-color: #b8c0cc;
+}
+/* Saved-route row text — near-white was too faint on the light modal. */
+body.theme-light .route-library-open { color: #1f252c; }
+body.theme-light .route-library-row-meta,
+body.theme-light .route-library-empty { color: #647184; }
+body.theme-light .route-library-row { border-color: #c6ccd6; }
 
 /* Flight-plan table modal */
 .modal.wide {
