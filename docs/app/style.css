@@ -326,7 +326,7 @@ html, body {
   align-items: center;
   gap: 3px;
 }
-.coord-readout {
+.coord-readout, .zoom-readout {
   font: bold 11px/1 monospace;
   color: #231F20;
   background: rgba(255,255,255,0.9);
@@ -339,6 +339,13 @@ html, body {
   display: none;
 }
 .coord-readout.show { display: block; }
+.zoom-readout {
+  display: block;
+  padding: 2px 4px;
+  margin-bottom: 2px;
+  text-align: center;
+  min-width: 34px;
+}
 .coord-readout.interactive { pointer-events: auto; cursor: pointer; }
 /* Float the readout to the LEFT of the bottom-right zoom +/- + rotate-dial
    column (~44px wide) instead of stacking under it (#526). The leaflet

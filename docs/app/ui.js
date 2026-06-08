@@ -157,6 +157,18 @@ coordCtrl.onAdd = function () {
 };
 coordCtrl.addTo(map);
 const coordBox = document.getElementById('coord-readout');
+
+// --- zoom level readout ---------------------------------------------
+// Sits above the zoom +/- buttons in the bottom-right corner.
+const zoomCtrl = L.control({ position: 'bottomright' });
+zoomCtrl.onAdd = function () {
+  const box = L.DomUtil.create('div', 'leaflet-control zoom-readout');
+  box.id = 'zoom-readout';
+  return box;
+};
+zoomCtrl.addTo(map);
+const zoomBox = document.getElementById('zoom-readout');
+
 const vorReadoutCtrl = L.control({ position: 'bottomright' });
 vorReadoutCtrl.onAdd = function () {
   const box = L.DomUtil.create('div', 'leaflet-control coord-readout vor-readout');
@@ -203,6 +215,10 @@ function setVorReadout(text) {
 function showVorReadout(lat, lng) {
   setVorReadout(vorReadoutText(lat, lng));
 }
+function showZoom() {
+  const z = map.getZoom();
+  zoomBox.textContent = 'z' + (z % 1 === 0 ? z : z.toFixed(2));
+}
 function showCoord(latlng) {
   if (gotoEditing) return;
   coordBox.textContent = coordReadoutText(latlng.lat, latlng.lng);
@@ -215,9 +231,11 @@ function showCenterCoord() {
   showVorReadout(c.lat, c.lng);
 }
 showCenterCoord();
+showZoom();
 map.on('mousemove', e => showCoord(e.latlng));
 map.on('mouseout', showCenterCoord);
-map.on('moveend', showCenterCoord);
+map.on('moveend zoomend', () => { showCenterCoord(); showZoom(); });
+map.on('zoom', showZoom);
 
 // --- temporary "look here" marker (not part of the route) ---------------
 let gotoMarker = null;
