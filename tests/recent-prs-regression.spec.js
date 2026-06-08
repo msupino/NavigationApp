@@ -54,11 +54,11 @@ test.describe('#218 — Show/pin label relabel', () => {
 // #238 — toolbar section order.
 // ---------------------------------------------------------------------------
 test.describe('#238 — toolbar section order', () => {
-  test('sections render in order: build, view, display, charts, export, print', async ({ page }) => {
+  test('sections render in order: build, view, display, charts, export, sim, print', async ({ page }) => {
     await boot(page);
     const order = await page.locator('#toolbar .tb-section').evaluateAll(els =>
       els.map(el => el.getAttribute('data-sec')));
-    expect(order).toEqual(['build', 'view', 'display', 'charts', 'export', 'print']);
+    expect(order).toEqual(['build', 'view', 'display', 'charts', 'export', 'sim', 'print']);
   });
 });
 
