@@ -1409,8 +1409,18 @@ document.getElementById('cumtime-cb').onchange = e => {
   };
 
   // Auto-reconnect if sim was active before the page refreshed.
-  if (simOn && typeof window.simStart === 'function') {
+  // Read localStorage directly — the global simOn may not yet reflect the
+  // stored value when this IIFE runs (timing with other restore code).
+  let _savedOn = false;
+  try { _savedOn = localStorage.getItem('navaid.simOn') === '1'; } catch (e) { /* */ }
+  if (_savedOn && typeof window.simStart === 'function') {
     cb.checked = true;
+    // Open the sim section so the user can see the connected state.
+    const simSec = cb.closest('.tb-section');
+    if (simSec && !simSec.classList.contains('open')) {
+      simSec.classList.add('open');
+      try { localStorage.setItem('navaid.sec.sim', '1'); } catch (e) { /* */ }
+    }
     simStart();
   }
 })();
