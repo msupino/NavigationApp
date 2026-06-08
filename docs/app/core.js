@@ -576,6 +576,15 @@ window.S = Object.assign({
   tbSecView: '👁 View/Set',
   tbSecCharts: '📋 Charts',
   tbSecExport: '📤 Export/import',
+  tbSecSim: '✈ Simulator',
+  tbSimConnect: 'Connect to simulator',
+  tbSimConnectTitle: 'Poll a local SimConnect bridge (e.g. Little NavMap) for live aircraft position',
+  tbSimIpLabel: 'Bridge URL',
+  tbSimIpTitle: 'HTTP URL of the SimConnect bridge — default http://localhost:2020',
+  tbSimFollow: 'Follow aircraft',
+  tbSimFollowTitle: 'Keep the map centred on the live aircraft position',
+  tbSimStatusOk: '✅ Connected',
+  tbSimStatusErr: '⚠ No data',
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
   tbPrivacy: 'Privacy',
@@ -706,6 +715,14 @@ function legZoomScale() {   // zoom + legArrowSize → pixel multiplier for offs
 var magnifierOn = false;    // magnifying-glass toggle
 var magnifierZoom = 2;      // default zoom factor
 var magnifierSize = 400;    // magnifier diameter (px)
+
+// --- Simulator live aircraft (issue #691) ----------------------------
+// Polls a local SimConnect HTTP bridge (e.g. Little NavMap / MSFS).
+// Response JSON: { latitude, longitude, altitude, heading, ias }
+var simOn = false;                        // polling active
+var simUrl = 'http://localhost:2020';     // bridge base URL
+var simAircraft = null;                   // last received {lat,lng,alt,hdg,ias} or null
+var simFollow = false;                    // keep map centred on aircraft
 let pageSize = null;        // null | 'A3' | 'A4'
 // `var` (not `let`) so window.pageOrient writes from ui.js's boot restore
 // land on the same binding the toggle reads. Default 'portrait' since most
