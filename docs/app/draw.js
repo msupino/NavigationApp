@@ -30,38 +30,84 @@ function legDefaultLabelPerp(legLenPx) {
 
 // --- drawing ---------------------------------------------------------
 // Draw the live simulator aircraft at its current position with heading.
-// The icon is a simple filled arrow rotated to (aircraft heading − map bearing)
-// so it always points in the correct screen direction even when the map is
-// rotated. Called from draw() when simOn && simAircraft is non-null.
+// Top-down airplane silhouette: nose points up in local frame, rotated to
+// (aircraft heading − map bearing) so it tracks correctly on a rotated map.
 function drawSimAircraft() {
   if (!simOn || !simAircraft) return;
   const s = proj(simAircraft);
   const mapBearing = (typeof map !== 'undefined' && map.getBearing) ? map.getBearing() : 0;
   const screenAngle = ((simAircraft.hdg || 0) - mapBearing) * Math.PI / 180;
-  const r = 14;  // half-height of the icon
+  const r = 18;
   octx.save();
   octx.translate(s.x, s.y);
   octx.rotate(screenAngle);
-  // Airplane body: filled arrow pointing up in local frame
+
+  // ── fuselage ──
   octx.beginPath();
-  octx.moveTo(0, -r);              // nose
-  octx.lineTo(r * 0.5, r * 0.4);  // right wingtip
-  octx.lineTo(0, r * 0.1);        // fuselage indent
-  octx.lineTo(-r * 0.5, r * 0.4); // left wingtip
+  octx.moveTo(0, -r);                                      // nose tip
+  octx.quadraticCurveTo( r * 0.13, -r * 0.3,  r * 0.13,  r * 0.15);  // right side
+  octx.lineTo( r * 0.13,  r * 0.6);                       // right fuselage to tail
+  octx.quadraticCurveTo( r * 0.08, r * 0.85, 0,  r * 0.9);            // right tail taper
+  octx.quadraticCurveTo(-r * 0.08, r * 0.85, -r * 0.13,  r * 0.6);
+  octx.lineTo(-r * 0.13,  r * 0.15);
+  octx.quadraticCurveTo(-r * 0.13, -r * 0.3, 0, -r);
   octx.closePath();
   octx.fillStyle = '#e74c3c';
   octx.fill();
-  octx.lineWidth = 1.5;
-  octx.strokeStyle = '#fff';
-  octx.stroke();
-  // Tail fins
+
+  // ── wings — swept back from mid-fuselage ──
   octx.beginPath();
-  octx.moveTo(r * 0.2, r * 0.6);
-  octx.lineTo(0, r * 0.1);
-  octx.lineTo(-r * 0.2, r * 0.6);
-  octx.strokeStyle = '#fff';
-  octx.lineWidth = 1;
+  octx.moveTo( r * 0.13,  r * 0.05);   // right wing root (leading edge)
+  octx.lineTo( r,          r * 0.35);  // right wingtip LE
+  octx.lineTo( r * 0.85,   r * 0.45);  // right wingtip TE
+  octx.lineTo( r * 0.13,   r * 0.22);  // right wing root (trailing edge)
+  octx.closePath();
+  octx.fillStyle = '#e74c3c';
+  octx.fill();
+
+  octx.beginPath();
+  octx.moveTo(-r * 0.13,  r * 0.05);
+  octx.lineTo(-r,          r * 0.35);
+  octx.lineTo(-r * 0.85,   r * 0.45);
+  octx.lineTo(-r * 0.13,   r * 0.22);
+  octx.closePath();
+  octx.fillStyle = '#e74c3c';
+  octx.fill();
+
+  // ── horizontal stabilisers ──
+  octx.beginPath();
+  octx.moveTo( r * 0.13,  r * 0.65);
+  octx.lineTo( r * 0.45,  r * 0.78);
+  octx.lineTo( r * 0.38,  r * 0.85);
+  octx.lineTo( r * 0.13,  r * 0.75);
+  octx.closePath();
+  octx.fillStyle = '#e74c3c';
+  octx.fill();
+
+  octx.beginPath();
+  octx.moveTo(-r * 0.13,  r * 0.65);
+  octx.lineTo(-r * 0.45,  r * 0.78);
+  octx.lineTo(-r * 0.38,  r * 0.85);
+  octx.lineTo(-r * 0.13,  r * 0.75);
+  octx.closePath();
+  octx.fillStyle = '#e74c3c';
+  octx.fill();
+
+  // ── white outline over everything ──
+  octx.lineWidth = 1.5;
+  octx.strokeStyle = 'rgba(255,255,255,0.9)';
+  // re-stroke fuselage
+  octx.beginPath();
+  octx.moveTo(0, -r);
+  octx.quadraticCurveTo( r * 0.13, -r * 0.3,  r * 0.13,  r * 0.15);
+  octx.lineTo( r * 0.13,  r * 0.6);
+  octx.quadraticCurveTo( r * 0.08, r * 0.85, 0,  r * 0.9);
+  octx.quadraticCurveTo(-r * 0.08, r * 0.85, -r * 0.13,  r * 0.6);
+  octx.lineTo(-r * 0.13,  r * 0.15);
+  octx.quadraticCurveTo(-r * 0.13, -r * 0.3, 0, -r);
+  octx.closePath();
   octx.stroke();
+
   octx.restore();
 }
 
