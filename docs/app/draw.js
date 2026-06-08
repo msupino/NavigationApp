@@ -1179,9 +1179,13 @@ function commChangeReferencePoint(name) {
 function commChangeWaypointInRange(wp, name) {
   if (!wp || typeof map === 'undefined' || !map) return false;
   const key = canonicalNavWaypointName(name);
-  if (!key || canonicalNavWaypointName(wp.name) !== key) return false;
+  if (!key) return false;
   const ref = commChangeReferencePoint(key);
-  if (!ref) return true;
+  // When there is no reference position, fall back to name equality.
+  if (!ref) return canonicalNavWaypointName(wp.name) === key;
+  // Position is authoritative — a renamed waypoint still triggers if it
+  // sits on the comm-change reference point (name check removed so renaming
+  // does not silently disable the frequency-change indicator).
   const a = map.latLngToContainerPoint([wp.lat, wp.lng]);
   const b = map.latLngToContainerPoint([ref.lat, ref.lng]);
   return Math.hypot(a.x - b.x, a.y - b.y) <= COMM_CHANGE_SNAP_PX;
@@ -1269,10 +1273,25 @@ function seedCommChangeNotes() {
   const routeDefaults = commRouteCalloutDefaultsMap();
   for (const wp of state.waypoints) {
     if (!wp) continue;
-    const nm = canonicalNavWaypointName(wp && wp.name);
-    if (!nm) continue;
-    const cc = commChangeMap[nm];
-    if (!cc || !cc.commChange) continue;
+    // Resolve comm-change key: try stored name first, then fall back to
+    // coordinate scan so a renamed waypoint at a known ICAO position still
+    // triggers (e.g. move back to DEROR after rename → freq change shows).
+    let nm = canonicalNavWaypointName(wp && wp.name);
+    let cc = nm ? commChangeMap[nm] : null;
+    if ((!cc || !cc.commChange) && Array.isArray(navWP) && typeof map !== 'undefined' && map) {
+      for (const nwp of navWP) {
+        const k = canonicalNavWaypointName(nwp.name);
+        if (!k || !commChangeMap[k] || !commChangeMap[k].commChange) continue;
+        const ref = commChangeReferencePoint(k);
+        if (!ref) continue;
+        const a = map.latLngToContainerPoint([wp.lat, wp.lng]);
+        const b = map.latLngToContainerPoint([ref.lat, ref.lng]);
+        if (Math.hypot(a.x - b.x, a.y - b.y) <= COMM_CHANGE_SNAP_PX) {
+          nm = k; cc = commChangeMap[k]; break;
+        }
+      }
+    }
+    if (!nm || !cc || !cc.commChange) continue;
     if (!commChangeWaypointInRange(wp, nm)) continue;
     const callout = routeDefaults[nm] || commStaticCalloutDefaults(nm);
     const existing = state.notes.find(n => n && canonicalNavWaypointName(n.cc) === nm);
