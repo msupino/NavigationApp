@@ -4269,108 +4269,72 @@ function rebuildMagnifier() {
   // dots / lines drifted off the terrain whenever the map was rotated.
   const _pane = _readMagPaneMatrix();
 
-  // clone tiles at current zoom (immediate fallback)
+  // #483: Leaflet can have multiple `.leaflet-tile-container` levels visible
+  // during a zoom transition or past maxNativeZoom. Each level has its own
+  // CSS transform. We must preserve this hierarchy in the loupe, otherwise
+  // tiles from different levels drift apart.
   const tilePane = document.querySelector('.leaflet-tile-pane');
-  const tiles = tilePane ? Array.from(tilePane.querySelectorAll('img')) : [];
+  if (!tilePane) return;
+  const containers = Array.from(tilePane.querySelectorAll('.leaflet-tile-container'));
 
-  // The cloned tiles' `style.transform` is LEVEL-LOCAL: it positions each
-  // tile relative to its `.leaflet-tile-container` (the per-zoom "level"
-  // element), which itself can carry a scale+translate transform (e.g.
-  // `matrix(4,0,0,4,0,2)` at zoom past maxNativeZoom, or mid zoom-animation).
-  // When zoomed out the level matrix is identity so ignoring it was harmless,
-  // but on zoomed-in views the loupe placed tiles at their level-local pixels
-  // without the level scale — so the magnified tile image drifted away from
-  // the overlay (which is captured in container space). tileWrap therefore
-  // carries `paneMatrix · levelMatrix` to map level-local clone pixels (and
-  // the level-local hi-res tiles below) all the way into CONTAINER space.
-  let _levelMatrix = new DOMMatrixReadOnly();
-  for (const img of tiles) {
-    const lvl = img.parentElement;
-    if (!lvl) continue;
-    const lc = getComputedStyle(lvl).transform;
-    if (lc && lc !== 'none') {
-      try { _levelMatrix = new DOMMatrixReadOnly(lc); } catch (e) { /* identity */ }
-    }
-    break;
-  }
-  const _wrapM = _pane.m.multiply(_levelMatrix);
-
-  const tileWrap = document.createElement('div');
-  tileWrap.style.cssText =
-    'position:absolute;left:0;top:0;width:0;height:0;' +
-    'transform-origin:0 0;transform:' + _wrapM.toString();
-  content.appendChild(tileWrap);
-
-  for (const img of tiles) {
-    const c = img.cloneNode(true);
-    c.style.visibility = 'visible';
-    tileWrap.appendChild(c);
-  }
-
-  // Adaptive hi-res overlay. Two independent dials decide the target tile
-  // zoom:
-  //   1. Slider — `ceil(log2(magnifierZoom))` keeps the optimal pixel-density
-  //      match the slider used to provide on its own.
-  //   2. Baseline — `MAG_BASELINE_Z` (=12) is the zoom at which Israeli VFR
-  //      chart labels become legible. Flooring at this value means a country-
-  //      wide z=8 view still surfaces airfield / waypoint names inside the
-  //      loupe, which the pre-adaptive code did not — the loupe just blew
-  //      z=8 source up to 2× and showed no extra detail.
-  // Clamped to the layer's `maxNativeZoom` (anything beyond just 404s) and
-  // to `MAG_MAX_EXP` so the per-rebuild sub-tile grid stays bounded.
-  //
-  // The CSS scale on the loupe content is `magnifierZoom` (the slider),
-  // independent of `sub`. Hi-res tiles (CSS size `256/sub`) therefore
-  // display at `(256/sub) * slider` screen px — slightly downsampled
-  // from native (by `sub / slider`), but still vastly crisper than
-  // upscaling the cloned base tiles by `slider`. That's what makes z=12
-  // labels legible inside the loupe at low base zoom.
-  //
-  // Fetch is centred on the cursor (not "subdivide every clone in the
-  // pane") so the tile count stays bounded by the loupe area instead of
-  // the viewport area. `updateMagnifier` schedules a refetch whenever the
-  // cursor drifts past one loupe radius, so dragging the cursor across
-  // the map updates the crisp area too.
   let activeLayer = null;
   for (const key in layers) {
     if (map.hasLayer(layers[key])) { activeLayer = layers[key]; break; }
   }
 
-  // Pick the first cloned tile with a known tile coord + transform as the
-  // coordinate-system anchor. Hi-res tiles are positioned relative to it,
-  // which sidesteps having to recompute Leaflet's tile-container origin
-  // (see commit 41fd620 — world-pixel coords are catastrophically wrong).
-  //
-  // We read the tile coords from Leaflet's `_tiles` cache (the `coords`
-  // property is the authoritative {x, y, z} for the tile, independent of
-  // the URL template's slot order). The previous URL-parsing approach
-  // assumed `{z}/{x}/{y}` and silently swapped on Satellite (Esri uses
-  // `{z}/{y}/{x}`, see core.js layers['Satellite']) — every hi-res
-  // request 404'd and the loupe stayed blurry on that base layer.
   let refX = null, refY = null, refZ = null;
   let refLocalX = 0, refLocalY = 0;
+  let refTileWrap = null;
+  let refWrapM = null;
+
+  const coordsBySrc = new Map();
   if (activeLayer) {
     const tileCache = activeLayer._tiles || {};
-    // Build a src→coords lookup from the live tile cache so we can resolve
-    // each cloned <img> back to its authoritative {x,y,z} without trusting
-    // the URL slot order.
-    const coordsBySrc = new Map();
     for (const k in tileCache) {
       const t = tileCache[k];
       if (t && t.el && t.el.src && t.coords) coordsBySrc.set(t.el.src, t.coords);
     }
-    for (const img of tiles) {
-      if (!img.src) continue;
-      const coords = coordsBySrc.get(img.src);
-      if (!coords) continue;
-      const trStr = img.style.transform;
-      if (!trStr) continue;
-      let mat;
-      try { mat = new DOMMatrixReadOnly(trStr); } catch (e) { continue; }
-      refZ = coords.z; refX = coords.x; refY = coords.y;
-      refLocalX = mat.is2D ? mat.e : mat.m41;
-      refLocalY = mat.is2D ? mat.f : mat.m42;
-      break;
+  }
+
+  for (const container of containers) {
+    const lc = getComputedStyle(container).transform;
+    let _levelMatrix = new DOMMatrixReadOnly();
+    if (lc && lc !== 'none') {
+      try { _levelMatrix = new DOMMatrixReadOnly(lc); } catch (e) { /* identity */ }
+    }
+    const _wrapM = _pane.m.multiply(_levelMatrix);
+
+    const tileWrap = document.createElement('div');
+    tileWrap.style.cssText =
+      'position:absolute;left:0;top:0;width:0;height:0;' +
+      'transform-origin:0 0;transform:' + _wrapM.toString();
+    content.appendChild(tileWrap);
+
+    const imgs = Array.from(container.querySelectorAll('img'));
+    for (const img of imgs) {
+      const c = img.cloneNode(true);
+      c.style.visibility = 'visible';
+      tileWrap.appendChild(c);
+
+      // Pick the reference tile for hi-res positioning from the most relevant
+      // level (ideally the one matching the map's current zoom).
+      if (activeLayer && img.src) {
+        const coords = coordsBySrc.get(img.src);
+        if (coords) {
+          const trStr = img.style.transform;
+          let mat;
+          try { mat = new DOMMatrixReadOnly(trStr); } catch (e) { continue; }
+          const isBetter = refZ === null ||
+            Math.abs(coords.z - map.getZoom()) < Math.abs(refZ - map.getZoom());
+          if (isBetter) {
+            refZ = coords.z; refX = coords.x; refY = coords.y;
+            refLocalX = mat.is2D ? mat.e : mat.m41;
+            refLocalY = mat.is2D ? mat.f : mat.m42;
+            refWrapM = _wrapM;
+            refTileWrap = tileWrap;
+          }
+        }
+      }
     }
   }
 
@@ -4378,13 +4342,8 @@ function rebuildMagnifier() {
   // rationale.) `sub` below is the orthogonal hi-res tile zoom step.
   _magScale = Math.max(1, magnifierZoom);
 
-  // Inverse of the combined pane·level matrix maps a CONTAINER point back
-  // into the LEVEL-LOCAL space the cloned tiles (and refLocalX/Y) live in —
-  // needed to centre the hi-res fetch on the cursor regardless of bearing or
-  // level scale.
-  const _paneInv = _wrapM.inverse();
-
-  if (activeLayer && refZ !== null) {
+  if (activeLayer && refZ !== null && refTileWrap) {
+    const _paneInv = refWrapM.inverse();
     const maxNZ = activeLayer.options.maxNativeZoom ||
                   activeLayer.options.maxZoom || 19;
     const subs = activeLayer.options.subdomains || 'abc';
@@ -4485,7 +4444,7 @@ function rebuildMagnifier() {
             if (tile.naturalWidth === 0) tile.remove();
             onSettle({ target: tile });
           }
-          tileWrap.appendChild(tile);
+          refTileWrap.appendChild(tile);
         }
       }
     }
