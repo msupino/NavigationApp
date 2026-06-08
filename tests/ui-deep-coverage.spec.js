@@ -124,6 +124,14 @@ test.describe('Inspector panel', () => {
     await modal.getByRole('button', { name: 'Zoom in' }).click();
     await expect(lmap.locator('.leaflet-tile').first()).toBeVisible();
     await expect(modal.getByRole('button', { name: /recentre/i })).toBeVisible();
+
+    // Closing destroys the Leaflet map (no leaked map instance / container),
+    // and re-opening builds a fresh one without error.
+    await modal.locator('.modal-close-x, [aria-label="Close"]').first().click();
+    await expect(page.locator('.satellite-preview-modal')).toHaveCount(0);
+    await expect(page.locator('.satellite-preview-map')).toHaveCount(0);
+    await snippet.click();
+    await expect(page.locator('.satellite-preview-modal .leaflet-tile').first()).toBeVisible();
   });
 
   test('restores an open note inspector after refresh', async ({ page }) => {
