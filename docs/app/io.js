@@ -4734,6 +4734,61 @@ map.on('move zoom moveend zoomend rotate layeradd', () => {
   scheduleMagRebuild();
 });
 
+// --- Simulator live aircraft (issue #691) ----------------------------
+let _simInterval = null;
+// Status element is set by ui.js via window._simStatusEl after DOM is ready.
+
+function _simSetStatus(ok) {
+  const el = window._simStatusEl || null;
+  if (!el) return;
+  el.textContent = ok ? (S.tbSimStatusOk || '✅ Connected')
+                      : (S.tbSimStatusErr || '⚠ No data');
+  el.style.color = ok ? '#2ecc71' : '#e67e22';
+}
+
+async function _simFetch() {
+  try {
+    const url = (typeof simUrl === 'string' && simUrl.trim()) || 'http://localhost:2020';
+    const res = await fetch(url, { signal: AbortSignal.timeout(900) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    if (typeof d.latitude !== 'number' || typeof d.longitude !== 'number') throw new Error('bad data');
+    window.simAircraft = {
+      lat: d.latitude,
+      lng: d.longitude,
+      alt: d.altitude || 0,
+      hdg: d.heading || 0,
+      ias: d.ias || 0,
+    };
+    _simSetStatus(true);
+    if (simFollow) map.setView([window.simAircraft.lat, window.simAircraft.lng], map.getZoom());
+    draw();
+  } catch (e) {
+    _simSetStatus(false);
+  }
+}
+
+function simStart() {
+  if (_simInterval) return;
+  simOn = true;
+  window.simAircraft = null;
+  try { localStorage.setItem('navaid.simOn', '1'); } catch (e) { /* */ }
+  _simFetch();
+  _simInterval = setInterval(_simFetch, 1000);
+}
+
+function simStop() {
+  simOn = false;
+  window.simAircraft = null;
+  if (_simInterval) { clearInterval(_simInterval); _simInterval = null; }
+  try { localStorage.setItem('navaid.simOn', '0'); } catch (e) { /* */ }
+  const _el = window._simStatusEl;
+  if (_el) _el.textContent = '';
+  draw();
+}
+window.simStart = simStart;
+window.simStop  = simStop;
+
 // --- Toolbar button handler — copy share URL to clipboard. ------------
 function shareRoute() {
   const r = buildShareUrl();
