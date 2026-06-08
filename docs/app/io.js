@@ -1099,11 +1099,28 @@ function loadRouteLibrary() {
 function persistRouteLibrary(list) {
   try {
     localStorage.setItem(ROUTE_LIBRARY_KEY, JSON.stringify(list));
+    scheduleRouteAutoSync();
     return true;
   } catch (e) {
     alert(S.errStorageFull || 'Storage is full — delete some saved routes or export them.');
     return false;
   }
+}
+// Auto-push the library to Google Drive (debounced) after any local change,
+// but only when Drive is connected. Suppressed while a sync is itself writing
+// the merged result back (window._navaidSyncing) so we don't loop.
+let _routeAutoSyncTimer = null;
+function scheduleRouteAutoSync() {
+  if (window._navaidSyncing) return;
+  if (typeof gdriveConnected !== 'function' || !gdriveConnected()) return;
+  if (_routeAutoSyncTimer) clearTimeout(_routeAutoSyncTimer);
+  _routeAutoSyncTimer = setTimeout(function () {
+    _routeAutoSyncTimer = null;
+    if (typeof gdriveSync !== 'function') return;
+    gdriveSync().then(function () {
+      if (typeof window.refreshRouteLibrary === 'function') window.refreshRouteLibrary();
+    }).catch(function () { /* offline / token expired — next change retries */ });
+  }, 1500);
 }
 function routeLibraryId() {
   return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);

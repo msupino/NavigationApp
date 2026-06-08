@@ -325,6 +325,8 @@ window.S = {
   tbSecExport: '📤 ייצוא/ייבוא',
   tbViewSource: 'GitHub',
   tbWiki: 'Wiki',
+  tbPrivacy: 'פרטיות',
+  tbTerms: 'תנאי שימוש',
   tbIssues: 'בעיות / הצעות',
 
   // --- Keyboard-shortcuts cheat-sheet (issue #420) --------------------

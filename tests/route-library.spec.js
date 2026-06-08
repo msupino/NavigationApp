@@ -81,6 +81,28 @@ test.describe('Route library', () => {
     expect(a.name).toBe('new');         // newer savedAt wins
     expect(out[0].id).toBe('a');        // sorted newest-first
   });
+
+  test('a tombstone removes a route across the merge (delete propagates)', async ({ page }) => {
+    await boot(page);
+    const res = await page.evaluate(() => {
+      // Local deleted route 'a' (tombstone, newer); remote still has 'a' + 'b'.
+      const fresh = new Date().toISOString();   // recent so the TTL prune keeps it
+      const merged = mergeRouteLibraries(
+        [{ id: 'a', savedAt: fresh, deleted: true },
+         { id: 'b', name: 'keep', savedAt: '2026-02-01', data: { waypoints: [] } }],
+        [{ id: 'a', name: 'old', savedAt: '2026-01-01', data: { waypoints: [] } }],
+      );
+      const visible = merged.filter(e => e && e.data && !e.deleted).map(e => e.id);
+      const aEntry = merged.find(e => e.id === 'a');
+      // A very old tombstone is pruned entirely.
+      const prunedAway = mergeRouteLibraries(
+        [{ id: 'z', savedAt: '2000-01-01', deleted: true }], []).length;
+      return { visible, aDeleted: !!(aEntry && aEntry.deleted), prunedAway };
+    });
+    expect(res.visible).toEqual(['b']);   // 'a' no longer shows
+    expect(res.aDeleted).toBe(true);      // tombstone retained (so it keeps winning)
+    expect(res.prunedAway).toBe(0);       // stale tombstone dropped
+  });
 });
 
 test.describe('Inspector', () => {

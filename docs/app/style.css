@@ -1177,7 +1177,16 @@ body.theme-light #aircraft-custom input {
   display: flex;
   gap: 8px;
   justify-content: center;
+  flex-wrap: wrap;
 }
+/* Drive sync status sits on its own line below the Sync button. */
+.route-library-gdrive-status {
+  flex-basis: 100%;
+  text-align: center;
+  color: #b9b3b3;
+  font-size: 12px;
+}
+body.theme-light .route-library-gdrive-status { color: #647184; }
 body.theme-light .route-library-saverow > button,
 body.theme-light .route-library-actions button,
 body.theme-light .route-library-tools button {
