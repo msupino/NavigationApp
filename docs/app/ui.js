@@ -1386,10 +1386,12 @@ document.getElementById('cumtime-cb').onchange = e => {
   // io.js's _simSetStatus reads window._simStatusEl at poll time.
   window._simStatusEl = statusEl;
 
-  urlInp.onchange = () => {
+  const saveSimUrl = () => {
     window.simUrl = urlInp.value.trim() || 'http://localhost:2020';
     try { localStorage.setItem(SIM_URL_KEY, window.simUrl); } catch (e) { /* */ }
   };
+  urlInp.oninput  = saveSimUrl;
+  urlInp.onchange = saveSimUrl;
 
   followCb.onchange = () => {
     window.simFollow = followCb.checked;
@@ -1400,11 +1402,9 @@ document.getElementById('cumtime-cb').onchange = e => {
     if (cb.checked) {
       window.simUrl = urlInp.value.trim() || 'http://localhost:2020';
       window._simStatusEl = statusEl;
-      if (typeof window.simStart === 'function') simStart();
-      try { localStorage.setItem(SIM_ON_KEY, '1'); } catch (e) { /* */ }
+      if (typeof window.simStart === 'function') simStart();  // saves navaid.simOn
     } else {
-      if (typeof window.simStop === 'function') simStop();
-      try { localStorage.setItem(SIM_ON_KEY, '0'); } catch (e) { /* */ }
+      if (typeof window.simStop === 'function') simStop();    // saves navaid.simOn
     }
   };
 

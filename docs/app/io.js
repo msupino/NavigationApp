@@ -4772,6 +4772,7 @@ function simStart() {
   if (_simInterval) return;
   simOn = true;
   window.simAircraft = null;
+  try { localStorage.setItem('navaid.simOn', '1'); } catch (e) { /* */ }
   _simFetch();
   _simInterval = setInterval(_simFetch, 1000);
 }
@@ -4780,6 +4781,7 @@ function simStop() {
   simOn = false;
   window.simAircraft = null;
   if (_simInterval) { clearInterval(_simInterval); _simInterval = null; }
+  try { localStorage.setItem('navaid.simOn', '0'); } catch (e) { /* */ }
   const _el = window._simStatusEl;
   if (_el) _el.textContent = '';
   draw();
