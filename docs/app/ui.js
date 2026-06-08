@@ -852,7 +852,7 @@ function showRouteLibraryModal() {
 
   // Export / import the whole library as one JSON file.
   const tools = document.createElement('div');
-  tools.className = 'modal-btns route-library-tools';
+  tools.className = 'route-library-tools';
   const exportBtn = document.createElement('button');
   exportBtn.type = 'button';
   exportBtn.textContent = S.routeLibraryExport || 'Export library';

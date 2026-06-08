@@ -1141,6 +1141,38 @@ html, body {
   overflow-y: auto;
 }
 .route-library-empty { color: #b9b3b3; margin: 4px 0; }
+/* Match every library button to the standard toolbar/app button look. */
+.route-library-saverow > button,
+.route-library-actions button,
+.route-library-tools button {
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 5px;
+  padding: 6px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.route-library-saverow > button:hover,
+.route-library-actions button:hover,
+.route-library-tools button:hover { background: #3c3737; }
+.route-library-tools {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+body.theme-light .route-library-saverow > button,
+body.theme-light .route-library-actions button,
+body.theme-light .route-library-tools button {
+  color: #1f252c;
+  background: #fff;
+  border-color: #b8c0cc;
+}
+body.theme-light .route-library-saverow > button:hover,
+body.theme-light .route-library-actions button:hover,
+body.theme-light .route-library-tools button:hover { background: #eef3f9; }
 .route-library-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
