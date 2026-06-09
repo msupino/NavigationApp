@@ -1726,6 +1726,22 @@ if (THEME_TOGGLE_EL) {
     catch (err) { /* storage unavailable */ }
   };
 }
+// Clear store: wipe every navaid.* key (routes, saved-route library, all
+// settings) from local + session storage, then reload to a clean slate.
+const CLEAR_STORE_EL = document.getElementById('clear-store');
+if (CLEAR_STORE_EL) {
+  CLEAR_STORE_EL.onclick = () => {
+    if (!confirm(S.tbClearStoreConfirm ||
+      'Delete ALL saved routes and settings stored on this device? This cannot be undone.')) return;
+    try {
+      Object.keys(localStorage).filter(k => k.indexOf('navaid.') === 0)
+        .forEach(k => localStorage.removeItem(k));
+      Object.keys(sessionStorage).filter(k => k.indexOf('navaid.') === 0)
+        .forEach(k => sessionStorage.removeItem(k));
+    } catch (e) { /* storage unavailable */ }
+    location.reload();
+  };
+}
 const ALPHA_KEY = 'navaid.yellowAlpha';
 try {
   const v = parseFloat(localStorage.getItem(ALPHA_KEY));
