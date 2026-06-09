@@ -1228,13 +1228,13 @@ function showInspector() {
       const oldVal = leg.inboundAltitude;
       leg.inboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'inboundAltitude', leg.inboundAltitude, oldVal);
-      draw();
+      draw(); showInspector();   // refresh MSA row colour
     }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'inboundAltitude') }));
     body.appendChild(numberRow(S.outboundAlt, leg.outboundAltitude, v => {
       const oldVal = leg.outboundAltitude;
       leg.outboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'outboundAltitude', leg.outboundAltitude, oldVal);
-      draw();
+      draw(); showInspector();   // refresh MSA row colour
     }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'outboundAltitude') }));
     // Minimum safe altitude (#673) — terrain max along the leg + clearance.
     // Only shown when a terrain grid is loaded; flagged red if either planned
