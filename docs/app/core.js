@@ -379,6 +379,8 @@ window.S = Object.assign({
   navLogFreqs: 'Frequencies',
   navLogPopupBlocked: 'Allow pop-ups to export the nav log.',
   fpFuel: 'Fuel',
+  fpMsa: 'MSA (ft)',
+  msaLowTitle: 'Planned altitude is below the minimum safe altitude for this leg',
   tbAircraft: 'Aircraft',
   tbGph: 'Gallons per hour',
   tbGphTitle: 'Fuel consumption, gallons per hour',

@@ -1236,6 +1236,23 @@ function showInspector() {
       propagateAlt(idx, 'outboundAltitude', leg.outboundAltitude, oldVal);
       draw();
     }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'outboundAltitude') }));
+    // Minimum safe altitude (#673) — terrain max along the leg + clearance.
+    // Only shown when a terrain grid is loaded; flagged red if either planned
+    // altitude is below it.
+    if (typeof legMsaFt === 'function' && typeof terrainHasCoverage === 'function' &&
+        terrainHasCoverage()) {
+      const msa = legMsaFt(idx);
+      if (Number.isFinite(msa)) {
+        const row = textRow(S.fpMsa || 'MSA (ft)', String(msa));
+        const planned = [leg.inboundAltitude, leg.outboundAltitude]
+          .filter(a => Number.isFinite(a));
+        if (planned.length && Math.min.apply(null, planned) < msa) {
+          row.classList.add('msa-low');
+          row.title = S.msaLowTitle || 'Planned altitude is below the minimum safe altitude';
+        }
+        body.appendChild(row);
+      }
+    }
     const reset = document.createElement('button');
     reset.className = 'insp-btn';
     // Fallback to a glyph if the locale strings haven't been loaded yet —
