@@ -995,38 +995,18 @@ function exportFdr() {
       // mach ≈ IAS / 666 (rough, sea level — good enough for replay)
       const mach = (leg.spd / 666).toFixed(3);
 
+      // V3 DATA columns: time, lon, lat, alt_ft, hdg, pitch, roll [, drefs...]
       rows.push([
-        t.toFixed(2),           // time secon
-        temp.toFixed(1),        // temp deg C
-        lng.toFixed(6),         // lon degre
-        lat.toFixed(6),         // lat degre
-        alt.toFixed(1),         // h msl ft
-        alt.toFixed(1),         // radio altft
-        '0.000',                // ailn ratio
-        '0.000',                // elev ratio
-        '0.000',                // rudd ratio
-        pitch.toFixed(2),       // ptch deg
-        roll.toFixed(2),        // roll deg
-        hdg.toFixed(2),         // hdng TRUE
-        leg.spd.toFixed(1),     // speed KIAS
-        vvi.toFixed(1),         // VVI ft/mn
-        '0.000',                // slip deg
-        (prev && secInLeg < TRANSITION_S
-          ? (angleDiff(prev.brg, leg.brg) / TRANSITION_S).toFixed(3)
-          : '0.000'),           // turn deg/s
-        mach,                   // mach #
-        '0.0',                  // AOA deg
-        '0',                    // stall warn
-        '0.000',                // flap rqst
-        '0.000',                // flap actul
-        '0.000',                // slat ratio
-        '0.000',                // sbrk ratio
-        '0',                    // gear handl (retracted — airborne)
-        '0.000',                // Ngear down
-        '0.000',                // Lgear down
-        '0.000',                // Rgear down
-        '0.000',                // elev trim
-      ].join(', '));
+        t.toFixed(2),           // time (seconds)
+        lng.toFixed(6),         // longitude
+        lat.toFixed(6),         // latitude
+        alt.toFixed(1),         // altitude MSL (ft)
+        hdg.toFixed(2),         // heading (degrees true)
+        pitch.toFixed(2),       // pitch (deg, + up)
+        roll.toFixed(2),        // roll (deg, + right)
+        leg.spd.toFixed(1),     // DREF: IAS (kts)
+        vvi.toFixed(1),         // DREF: VVI (ft/min)
+      ].join(','));
       t += 1;
     }
   }
@@ -1034,27 +1014,33 @@ function exportFdr() {
   // Final point at destination
   const lastLeg = legs[legs.length - 1];
   const lastWp  = state.waypoints[state.waypoints.length - 1];
-  rows.push([t.toFixed(2), '15', lastWp.lng.toFixed(6), lastWp.lat.toFixed(6),
-    lastLeg.alt.toFixed(1), lastLeg.alt.toFixed(1),
-    '0.000','0.000','0.000','0.00','0.00',lastLeg.brg.toFixed(2),
-    lastLeg.spd.toFixed(1),'0.0','0.000','0.000',
-    (lastLeg.spd/666).toFixed(3),'0.0','0','0.000','0.000','0.000','0.000',
-    '0','0.000','0.000','0.000','0.000'].join(', '));
+  rows.push([t.toFixed(2),
+    lastWp.lng.toFixed(6), lastWp.lat.toFixed(6),
+    lastLeg.alt.toFixed(1), lastLeg.brg.toFixed(2),
+    '0.00', '0.00',
+    lastLeg.spd.toFixed(1), '0.0'].join(','));
 
   const dep  = (state.waypoints[0].name || 'DEP').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,8);
   const dest = (lastWp.name || 'DEST').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,8);
 
-  // V3 format: VERSION,3 header; each data row prefixed DATA,
-  const fdrRows = rows.map(r => 'DATA,' + r);
+  // True V3 format: 'A\n3\n' header; DATA rows prefixed 'DATA,'
   const now = new Date();
   const dateStr = String(now.getMonth()+1).padStart(2,'0') + '/' +
                   String(now.getDate()).padStart(2,'0') + '/' + now.getFullYear();
+  const fdrRows = rows.map(r => 'DATA,' + r);
   const fdr = [
-    'VERSION,3',
-    'ACFT,Aircraft/Laminar Research/Cessna 172SP/Cessna_172SP.acf',
-    'TAIL,NAVAID',
-    'DATE,' + dateStr,
-    'COMM,NavAid CVFR route — ' + dep + ' to ' + dest,
+    'A',
+    '3',
+    '',
+    'ACFT, Aircraft/Laminar Research/Cessna 172SP/Cessna_172SP.acf',
+    'TAIL, NAVAID',
+    'DATE, ' + dateStr,
+    'COMM, NavAid CVFR route — ' + dep + ' to ' + dest,
+    '',
+    'DREF, sim/cockpit2/gauges/indicators/airspeed_kts_pilot  1.0  // IAS (kts)',
+    'DREF, sim/cockpit2/gauges/indicators/vvi_fpm_pilot       1.0  // VVI (ft/min)',
+    '',
+    'COMM, time,Longitude,Latitude,Altitude,HDG,Pitch,Roll,IAS,VVI',
     ...fdrRows,
     '',
   ].join('\n');
