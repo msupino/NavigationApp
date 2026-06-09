@@ -95,6 +95,15 @@ html, body {
   border-color: #1d6fe0;
   color: #fff;
 }
+#toolbar button.danger {
+  color: #e88;
+  border-color: #5a3a3a;
+}
+#toolbar button.danger:hover {
+  background: #c0392b;
+  border-color: #c0392b;
+  color: #fff;
+}
 #toolbar .sep {
   width: auto;
   height: 1px;

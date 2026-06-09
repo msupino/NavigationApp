@@ -1957,6 +1957,88 @@ function showFlightPlan() {
     URL.revokeObjectURL(a.href);
   }
 
+  // #674 \u2014 kneeboard nav-log: open a clean, print-ready document (header +
+  // per-leg table(s) + frequency list) in a new window and trigger print, so
+  // the pilot saves a PDF via the browser. Renders Hebrew RTL natively.
+  function exportNavLog() {
+    if (state.waypoints.length < 2) { alert(S.errNeedWps); return; }
+    const esc = s => String(s == null ? '' : s)
+      .replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+    const lang = (window.__navLang === 'he') ? 'he' : 'en';
+    const dir = lang === 'he' ? 'rtl' : 'ltr';
+    const dep = esc(wpLabel(0));
+    const dest = esc(wpLabel(state.waypoints.length - 1));
+
+    // Per-leg table(s): clone the live flight-plan tables, freeze inputs to
+    // their current values, and drop the delete column.
+    const tablesHtml = Array.from(scrollArea.querySelectorAll('.flight-table')).map(t => {
+      const clone = t.cloneNode(true);
+      clone.querySelectorAll('input, select').forEach(el => {
+        const span = document.createElement('span');
+        span.textContent = el.value || '';
+        el.replaceWith(span);
+      });
+      clone.querySelectorAll('.fp-del').forEach(el => el.remove());
+      // The delete column has no .fp-del marker in the header / Total rows —
+      // it's just an empty trailing cell. Drop it so the table has no stray
+      // box on the far side (tbody delete cells were removed above).
+      const headRow = clone.querySelector('thead tr');
+      if (headRow && headRow.lastElementChild &&
+          !headRow.lastElementChild.textContent.trim()) headRow.lastElementChild.remove();
+      clone.querySelectorAll('tfoot tr').forEach(tr => {
+        if (tr.lastElementChild && !tr.lastElementChild.textContent.trim()) {
+          tr.lastElementChild.remove();
+        }
+      });
+      return clone.outerHTML;
+    }).join('<div class="nl-gap"></div>');
+
+    // Frequency list from comm-change callout notes on the route.
+    const freqs = (state.notes || []).filter(n => n && n.cc).map(n => {
+      const wp = esc((typeof navName === 'function' ? navName(n.cc) : n.cc) || n.cc);
+      const cs = n.freqName ? ' \u2014 ' + esc(n.freqName) : '';
+      const f = n.freq ? ' \u2014 ' + esc(n.freq) + ' MHz' : '';
+      return '<li>' + wp + cs + f + '</li>';
+    }).join('');
+
+    const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: 8, taxiGal: 1.1 };
+    const today = new Date().toISOString().slice(0, 10);
+    const title = (S.navLogTitle || 'NavAid \u2014 Nav Log') + ' \u00b7 ' + dep + ' \u2192 ' + dest;
+
+    const html =
+      '<!DOCTYPE html><html lang="' + lang + '" dir="' + dir + '"><head>' +
+      '<meta charset="utf-8"><title>' + esc(title) + '</title><style>' +
+      '@page{size:A4 portrait;margin:12mm}' +
+      'body{font:13px/1.4 system-ui,Arial,sans-serif;color:#111;margin:0}' +
+      'h1{font-size:18px;margin:0 0 2px}.nl-sub{color:#555;margin:0 0 10px}' +
+      '.nl-meta{margin:0 0 12px}.nl-meta b{display:inline-block;min-width:110px}' +
+      'table{border-collapse:collapse;width:100%;font-size:12px}' +
+      'th,td{border:1px solid #999;padding:3px 5px;text-align:' +
+        (dir === 'rtl' ? 'right' : 'left') + '}' +
+      'thead th{background:#eee}.nl-gap{height:14px}' +
+      'h2{font-size:14px;margin:16px 0 4px}ul{margin:4px 0;padding-inline-start:18px}' +
+      '</style></head><body>' +
+      '<h1>' + esc(S.navLogTitle || 'NavAid \u2014 Nav Log') + '</h1>' +
+      '<p class="nl-sub">' + dep + ' \u2192 ' + dest + '</p>' +
+      '<div class="nl-meta">' +
+        '<div><b>' + esc(S.navLogDate || 'Date') + ':</b> ' + today + '</div>' +
+        '<div><b>' + esc(S.tbAircraft || 'Aircraft') + ':</b> ' +
+          esc(S.tbGph || 'GPH') + ' ' + esc(ac.gph) + ' \u00b7 ' +
+          esc(S.tbTaxiGal || 'Taxi/T.O.') + ' ' + esc(ac.taxiGal) + '</div>' +
+      '</div>' +
+      tablesHtml +
+      (freqs ? '<h2>' + esc(S.navLogFreqs || 'Frequencies') + '</h2><ul>' + freqs + '</ul>' : '') +
+      '</body></html>';
+
+    const w = window.open('', '_blank');
+    if (!w) { alert(S.navLogPopupBlocked || 'Allow pop-ups to export the nav log.'); return; }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { try { w.print(); } catch (e) { /* user can print manually */ } }, 300);
+  }
+
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
   const printBtn = document.createElement('button');
@@ -1983,6 +2065,12 @@ function showFlightPlan() {
   csvBtn.title = S.fpCsvTitle || 'Export this flight plan as CSV';
   csvBtn.onclick = exportFlightPlanCsv;
   btns.appendChild(csvBtn);
+  const navLogBtn = document.createElement('button');
+  navLogBtn.type = 'button';
+  navLogBtn.textContent = S.tbNavLog || 'Nav log (PDF)';
+  navLogBtn.title = S.tbNavLogTitle || 'Open a printable kneeboard nav log (save as PDF)';
+  navLogBtn.onclick = exportNavLog;
+  btns.appendChild(navLogBtn);
   box.appendChild(btns);
   addModalCloseX(box, closeFlightPlan);
 

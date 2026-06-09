@@ -114,6 +114,31 @@ test.describe('Sliders persist to localStorage', () => {
     await expect(page.locator('body')).not.toHaveClass(/theme-light/);
   });
 
+  test('clear store wipes all navaid.* keys and reloads', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      localStorage.setItem('navaid.theme', 'light');
+      localStorage.setItem('navaid.routes', '[{"id":"x"}]');
+      localStorage.setItem('navaid.layer', 'Satellite');
+      localStorage.setItem('keepme', '1');           // non-navaid key survives
+    });
+    page.once('dialog', d => d.accept());
+    await page.locator('#clear-store').click();
+    await page.waitForFunction(() => typeof state !== 'undefined');  // reloaded
+    // Note: the test harness re-seeds navaid.sec.* on every load, so assert the
+    // keys we set are gone rather than the whole namespace being empty.
+    const after = await page.evaluate(() => ({
+      routes: localStorage.getItem('navaid.routes'),
+      layer: localStorage.getItem('navaid.layer'),
+      theme: localStorage.getItem('navaid.theme'),
+      keepme: localStorage.getItem('keepme'),
+    }));
+    expect(after.routes).toBeNull();
+    expect(after.layer).toBeNull();
+    expect(after.theme).toBeNull();
+    expect(after.keepme).toBe('1');
+  });
+
   test('map opacity defaults to 80% and ignores the legacy storage key', async ({ page }) => {
     await boot(page);
     await expect(page.locator('#map-opacity')).toHaveValue('80');
