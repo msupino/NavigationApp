@@ -1,0 +1,18 @@
+{
+  "coverage": false,
+  "_README": "Placeholder. Replace with a real coarse DEM and set coverage:true to enable the MSA / terrain-clearance feature (#673). Until then NavAid shows no MSA (never a false 'safe' value).",
+  "_format": {
+    "coverage": "true to enable",
+    "units": "'m' or 'ft' — units of the data values",
+    "south/west/north/east": "grid bounding box in WGS84 degrees",
+    "rows/cols": "grid dimensions",
+    "data": "rows x cols array of MAX elevation per cell; data[0] = north edge row, data[r][0] = west edge column"
+  },
+  "_example": {
+    "coverage": true,
+    "units": "m",
+    "south": 29.4, "west": 34.2, "north": 33.4, "east": 35.9,
+    "rows": 2, "cols": 2,
+    "data": [[120, 900], [40, 350]]
+  }
+}

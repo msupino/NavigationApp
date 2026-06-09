@@ -2523,3 +2523,7 @@ if ('serviceWorker' in navigator) {
     watchServiceWorkerUpdates(navigator.serviceWorker);
   });
 }
+
+// Preload the terrain grid so MSA / terrain-clearance (#673) is ready when a
+// leg inspector opens. No-op (coverage:false) until a real DEM is bundled.
+if (typeof loadTerrain === "function") loadTerrain();

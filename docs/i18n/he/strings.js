@@ -134,6 +134,8 @@ window.S = {
   navLogFreqs: 'תדרים',
   navLogPopupBlocked: 'אפשר חלונות קופצים כדי לייצא את יומן הניווט.',
   fpFuel: 'דלק',
+  fpMsa: 'גובה בטוח (ft)',
+  msaLowTitle: 'הגובה המתוכנן נמוך מהגובה הבטוח המינימלי לקטע זה',
   tbAircraft: 'כלי טיס',
   tbGph: 'גלונים לשעה',
   tbGphTitle: 'צריכת דלק, גלונים לשעה',
