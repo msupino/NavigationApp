@@ -64,14 +64,17 @@ function terrainMaxAlongLeg(a, b) {
   return max;
 }
 
-// Minimum safe altitude (ft) for leg i = ceil((maxTerrain + buffer)/100)*100,
+// Minimum safe altitude (ft) for leg i = round((maxTerrain + buffer)/100)*100,
 // or null when terrain coverage is unavailable for the leg.
+// Round to the NEAREST 100 ft (not up) so the coarse grid + buffer don't push
+// MSA a full 100 ft above the charted altitude on a single foot of terrain
+// (e.g. 501 ft terrain + 1000 buffer = 1501 → 1500, not 1600).
 function legMsaFt(i) {
   if (typeof state === 'undefined' || !state.waypoints) return null;
   const A = state.waypoints[i], B = state.waypoints[i + 1];
   const t = terrainMaxAlongLeg(A, B);
   if (t == null) return null;
-  return Math.ceil((t + MSA_BUFFER_FT) / 100) * 100;
+  return Math.round((t + MSA_BUFFER_FT) / 100) * 100;
 }
 
 if (typeof window !== 'undefined') {
