@@ -989,12 +989,6 @@ function exportFdr() {
         roll = Math.atan(turnRate * leg.spd / 1092) / DEG;
       }
 
-      // ── temperature (ISA lapse -2°C/1000ft) ──
-      const temp = 15 - (alt / 1000) * 2;
-
-      // mach ≈ IAS / 666 (rough, sea level — good enough for replay)
-      const mach = (leg.spd / 666).toFixed(3);
-
       // V3 DATA columns: time, lon, lat, alt_ft, hdg, pitch, roll [, drefs...]
       rows.push([
         t.toFixed(2),           // time (seconds)
