@@ -1630,7 +1630,15 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
   gap: 4px;
 }
 /* MSA row flagged when the planned altitude is below the minimum safe alt. */
-.msa-low .val { color: #ff6b6b; font-weight: 700; }
+.msa-low .val {
+  color: #ff6b6b;
+  font-weight: 700;
+  animation: msa-blink 1s step-start infinite;
+}
+@keyframes msa-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.25; }
+}
 body.theme-light .msa-low .val { color: #c0392b; }
 .commchange-row .commchange-label {
   color: #ffb1a8;
