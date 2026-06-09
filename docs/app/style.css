@@ -558,7 +558,7 @@ body.theme-light #aircraft-custom input {
   z-index: 1100;
   top: 56px;
   right: 12px;
-  width: 240px;
+  width: 280px;
   background: rgba(20, 18, 18, 0.95);
   border: 1px solid #3a3636;
   border-radius: 8px;
@@ -1043,7 +1043,7 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   #toolbar button { padding: 9px 12px; font-size: 14px; }
   #toolbar .navtoggle { font-size: 14px; }
   #toolbar .navtoggle input { width: 18px; height: 18px; }
-  #inspector { width: 260px; }
+  #inspector { width: 300px; }
   .row input[type="number"],
   .row input[type="text"] { padding: 8px 6px; font-size: 15px; }
   #info { font-size: 12px; }
