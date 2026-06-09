@@ -89,7 +89,8 @@ html, body {
   white-space: nowrap;
 }
 #toolbar button:hover { background: #3c3737; }
-#toolbar button.tool.active {
+#toolbar button.tool.active,
+#toolbar button[aria-pressed="true"] {
   background: #1d6fe0;
   border-color: #1d6fe0;
   color: #fff;
