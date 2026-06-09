@@ -405,6 +405,7 @@ window.S = Object.assign({
   speedKt: 'Speed (kt)',
   inboundAlt: 'Inbound alt (ft)',
   outboundAlt: 'Outbound alt (ft)',
+  altResetKnown: 'Reset to charted altitude',
   shape: 'Shape',
   shapeRect: 'Rectangle',
   shapeOval: 'Oval',
