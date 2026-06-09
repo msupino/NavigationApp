@@ -1044,17 +1044,18 @@ function exportFdr() {
   const dep  = (state.waypoints[0].name || 'DEP').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,8);
   const dest = (lastWp.name || 'DEST').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,8);
 
+  // V3 format: VERSION,3 header; each data row prefixed DATA,
+  const fdrRows = rows.map(r => 'DATA,' + r);
+  const now = new Date();
+  const dateStr = String(now.getMonth()+1).padStart(2,'0') + '/' +
+                  String(now.getDate()).padStart(2,'0') + '/' + now.getFullYear();
   const fdr = [
-    'A',
-    '1',
-    '',
-    'COMM, NavAid CVFR route — ' + dep + ' to ' + dest,
-    'TAIL, NAVAID',
-    'ACFT, Aircraft/Laminar Research/Cessna 172SP/Cessna_172SP.acf',
-    '',
-    'DATA',
-    '',
-    ...rows,
+    'VERSION,3',
+    'ACFT,Aircraft/Laminar Research/Cessna 172SP/Cessna_172SP.acf',
+    'TAIL,NAVAID',
+    'DATE,' + dateStr,
+    'COMM,NavAid CVFR route — ' + dep + ' to ' + dest,
+    ...fdrRows,
     '',
   ].join('\n');
 
