@@ -8,7 +8,7 @@ async function boot(page) {
     typeof showInspector === 'function' && typeof legMsaFt === 'function');
 }
 
-// A 1-cell grid of 1000 m (~3281 ft) over central Israel → MSA = ceil((3281+
+// A 1-cell grid of 1000 m (~3281 ft) over central Israel → MSA = round((3281+
 // 1000)/100)*100 = 4300 ft.
 const GRID = { coverage: true, units: 'm', south: 31, west: 34, north: 33, east: 36,
   rows: 1, cols: 1, data: [[1000]] };
@@ -23,7 +23,7 @@ async function setup(page, alt) {
   }, { grid: GRID, a: alt });
 }
 
-test('legMsaFt = terrain max + 1000 ft buffer, rounded up', async ({ page }) => {
+test('legMsaFt = terrain max + 1000 ft buffer, rounded to nearest 100', async ({ page }) => {
   await boot(page);
   const msa = await page.evaluate(({ grid }) => {
     terrainGrid = grid;
@@ -32,6 +32,20 @@ test('legMsaFt = terrain max + 1000 ft buffer, rounded up', async ({ page }) => 
     return legMsaFt(0);
   }, { grid: GRID });
   expect(msa).toBe(4300);
+});
+
+// Softening (#705 follow-up): rounding to NEAREST 100 — terrain of ~153 m
+// (501 ft) + 1000 buffer = 1501 → 1500, not 1600 as the old ceil would give.
+test('legMsaFt rounds to nearest 100, not up (soft MSA)', async ({ page }) => {
+  await boot(page);
+  const msa = await page.evaluate(() => {
+    terrainGrid = { coverage: true, units: 'ft', south: 31, west: 34,
+      north: 33, east: 36, rows: 1, cols: 1, data: [[501]] };
+    state.waypoints = [{ lat: 32.0, lng: 34.8 }, { lat: 32.3, lng: 35.0 }];
+    state.legs = []; syncLegs();
+    return legMsaFt(0);
+  });
+  expect(msa).toBe(1500);          // 501 + 1000 = 1501 → nearest 100 = 1500
 });
 
 test('leg inspector shows MSA and flags an altitude below it', async ({ page }) => {
