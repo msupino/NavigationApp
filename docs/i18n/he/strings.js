@@ -224,6 +224,8 @@ window.S = {
   tbGpxExportTitle: 'ייצא מסלול כ-GPX ליחידות GPS ניידות',
   tbPlnExport: '🛩 ייצא PLN',
   tbPlnExportTitle: 'ייצא מסלול כתוכנית טיסה PLN ל-MSFS / FSX',
+  tbFdrExport: '🎬 ייצא FDR',
+  tbFdrExportTitle: 'ייצא מסלול כקובץ הקלטת טיסה FDR ל-X-Plane',
   tbShowReturn: 'הצג מסלול חזרה',
   tbShowReturnTitle: 'הצג מידע על מסלול חזרה',
   tbShowCumTime: 'הצג זמן מצטבר',

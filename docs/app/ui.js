@@ -1277,6 +1277,7 @@ document.getElementById('export-select').onchange = e => {
   if (v === 'json') save();
   else if (v === 'gpx') exportGpx();
   else if (v === 'pln') exportPln();
+  else if (v === 'fdr') exportFdr();
 };
 document.getElementById('load').onclick = () => document.getElementById('file').click();
 document.getElementById('share').onclick = shareRoute;

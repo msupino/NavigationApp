@@ -902,6 +902,171 @@ function exportPln() {
   URL.revokeObjectURL(a.href);
 }
 
+// --- X-Plane FDR export (issue #701) ----------------------------------------
+// Exports the route as an X-Plane Flight Data Recorder replay file.
+// Each leg is sampled at 1-second intervals; position is linearly interpolated
+// along the leg, altitude blends smoothly between legs, and roll/pitch/VVI
+// are computed from turn-rate and climb-rate geometry.
+function exportFdr() {
+  if (state.waypoints.length < 2) { alert(S.errNeedWps); return; }
+
+  const DEG = Math.PI / 180;
+  const NM_TO_FT = 6076.115;
+  // Degrees between two headings via shortest angular path.
+  function angleDiff(a, b) {
+    let d = ((b - a) % 360 + 360) % 360;
+    return d > 180 ? d - 360 : d;
+  }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function clamp01(t) { return t < 0 ? 0 : t > 1 ? 1 : t; }
+
+  // Precompute per-leg geometry
+  const legs = [];
+  for (let i = 0; i < state.legs.length; i++) {
+    const A = state.waypoints[i], B = state.waypoints[i + 1];
+    const { dist, brg } = geo(A, B);
+    const spd = Math.max(1, state.legs[i].flightSpeed || 90);
+    const alt = state.legs[i].inboundAltitude || 2000;
+    legs.push({ A, B, dist, brg, spd, alt, durS: (dist / spd) * 3600 });
+  }
+
+  // Build dense sample points
+  const TRANSITION_S = 20;   // seconds to blend heading / altitude at each turn
+  const rows = [];
+  let t = 0;
+
+  for (let li = 0; li < legs.length; li++) {
+    const leg   = legs[li];
+    const prev  = li > 0 ? legs[li - 1] : null;
+    const next  = li < legs.length - 1 ? legs[li + 1] : null;
+    const steps = Math.max(2, Math.ceil(leg.durS));   // 1 sample / second
+
+    for (let si = 0; si < steps; si++) {
+      const frac = si / steps;
+      const secInLeg = frac * leg.durS;
+
+      // ── position (linear lat/lng interpolation) ──
+      const lat = lerp(leg.A.lat, leg.B.lat, frac);
+      const lng = lerp(leg.A.lng, leg.B.lng, frac);
+
+      // ── altitude: blend from prev.alt to leg.alt at leg start,
+      //             blend from leg.alt to next.alt at leg end ──
+      let alt = leg.alt;
+      if (prev && secInLeg < TRANSITION_S) {
+        alt = lerp(prev.alt, leg.alt, clamp01(secInLeg / TRANSITION_S));
+      }
+      const secFromEnd = leg.durS - secInLeg;
+      if (next && secFromEnd < TRANSITION_S) {
+        alt = lerp(leg.alt, next.alt, clamp01(1 - secFromEnd / TRANSITION_S));
+      }
+
+      // ── heading: blend from prev bearing into this leg's bearing ──
+      let hdg = leg.brg;
+      if (prev && secInLeg < TRANSITION_S) {
+        const ta = clamp01(secInLeg / TRANSITION_S);
+        hdg = prev.brg + ta * angleDiff(prev.brg, leg.brg);
+      }
+      hdg = ((hdg % 360) + 360) % 360;
+
+      // ── pitch from current altitude-change rate ──
+      // Δalt over the next small interval to get VVI
+      const fracNext = Math.min(1, (si + 1) / steps);
+      let altNext = leg.alt;
+      if (prev && (secInLeg + 1) < TRANSITION_S)
+        altNext = lerp(prev.alt, leg.alt, clamp01((secInLeg + 1) / TRANSITION_S));
+      const sfEnd = leg.durS - (secInLeg + 1);
+      if (next && sfEnd < TRANSITION_S)
+        altNext = lerp(leg.alt, next.alt, clamp01(1 - sfEnd / TRANSITION_S));
+      const vvi = (altNext - alt) * 60;           // ft/min
+      const legDistFtPerSec = (leg.dist * NM_TO_FT) / leg.durS;
+      const pitch = Math.atan2(vvi / 60, legDistFtPerSec) / DEG;
+
+      // ── roll from turn rate (bank angle formula from the pdf) ──
+      // roll = arctan(turn_rate_deg/s × KTAS / 1092)
+      let roll = 0;
+      if (prev && secInLeg < TRANSITION_S && TRANSITION_S > 0) {
+        const totalTurn = angleDiff(prev.brg, leg.brg);
+        const turnRate  = totalTurn / TRANSITION_S;   // deg/s
+        roll = Math.atan(turnRate * leg.spd / 1092) / DEG;
+      }
+
+      // ── temperature (ISA lapse -2°C/1000ft) ──
+      const temp = 15 - (alt / 1000) * 2;
+
+      // mach ≈ IAS / 666 (rough, sea level — good enough for replay)
+      const mach = (leg.spd / 666).toFixed(3);
+
+      rows.push([
+        t.toFixed(2),           // time secon
+        temp.toFixed(1),        // temp deg C
+        lng.toFixed(6),         // lon degre
+        lat.toFixed(6),         // lat degre
+        alt.toFixed(1),         // h msl ft
+        alt.toFixed(1),         // radio altft
+        '0.000',                // ailn ratio
+        '0.000',                // elev ratio
+        '0.000',                // rudd ratio
+        pitch.toFixed(2),       // ptch deg
+        roll.toFixed(2),        // roll deg
+        hdg.toFixed(2),         // hdng TRUE
+        leg.spd.toFixed(1),     // speed KIAS
+        vvi.toFixed(1),         // VVI ft/mn
+        '0.000',                // slip deg
+        (prev && secInLeg < TRANSITION_S
+          ? (angleDiff(prev.brg, leg.brg) / TRANSITION_S).toFixed(3)
+          : '0.000'),           // turn deg/s
+        mach,                   // mach #
+        '0.0',                  // AOA deg
+        '0',                    // stall warn
+        '0.000',                // flap rqst
+        '0.000',                // flap actul
+        '0.000',                // slat ratio
+        '0.000',                // sbrk ratio
+        '0',                    // gear handl (retracted — airborne)
+        '0.000',                // Ngear down
+        '0.000',                // Lgear down
+        '0.000',                // Rgear down
+        '0.000',                // elev trim
+      ].join(', '));
+      t += 1;
+    }
+  }
+
+  // Final point at destination
+  const lastLeg = legs[legs.length - 1];
+  const lastWp  = state.waypoints[state.waypoints.length - 1];
+  rows.push([t.toFixed(2), '15', lastWp.lng.toFixed(6), lastWp.lat.toFixed(6),
+    lastLeg.alt.toFixed(1), lastLeg.alt.toFixed(1),
+    '0.000','0.000','0.000','0.00','0.00',lastLeg.brg.toFixed(2),
+    lastLeg.spd.toFixed(1),'0.0','0.000','0.000',
+    (lastLeg.spd/666).toFixed(3),'0.0','0','0.000','0.000','0.000','0.000',
+    '0','0.000','0.000','0.000','0.000'].join(', '));
+
+  const dep  = (state.waypoints[0].name || 'DEP').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,8);
+  const dest = (lastWp.name || 'DEST').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,8);
+
+  const fdr = [
+    'A',
+    '1',
+    '',
+    'COMM, NavAid CVFR route — ' + dep + ' to ' + dest,
+    'TAIL, NAVAID',
+    'ACFT, Aircraft/Laminar Research/Cessna 172SP/Cessna_172SP.acf',
+    '',
+    'DATA',
+    '',
+    ...rows,
+    '',
+  ].join('\n');
+
+  const blob = new Blob([fdr], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'route-' + fileStamp() + '.fdr';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 // --- GPX import --------------------------------------------------------
 function loadGpx(file) {
   const MAX_ROUTE_BYTES = 2 * 1024 * 1024;

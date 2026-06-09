@@ -469,6 +469,8 @@ window.S = Object.assign({
   tbGpxExportTitle: 'Export route as GPX for portable GPS units',
   tbPlnExport: '🛩 Export PLN',
   tbPlnExportTitle: 'Export route as a PLN flight plan for MSFS / FSX',
+  tbFdrExport: '🎬 Export FDR',
+  tbFdrExportTitle: 'Export route as an X-Plane Flight Data Recorder replay file',
   tbShowReturn: 'Show return path',
   tbShowReturnTitle: 'Show return-direction (outbound) info',
   tbShowCumTime: 'Show cumulative time',
