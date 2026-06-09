@@ -969,8 +969,7 @@ function exportFdr() {
       hdg = ((hdg % 360) + 360) % 360;
 
       // ── pitch from current altitude-change rate ──
-      // Δalt over the next small interval to get VVI
-      const fracNext = Math.min(1, (si + 1) / steps);
+      // Δalt over the next 1-second interval to get VVI
       let altNext = leg.alt;
       if (prev && (secInLeg + 1) < TRANSITION_S)
         altNext = lerp(prev.alt, leg.alt, clamp01((secInLeg + 1) / TRANSITION_S));
