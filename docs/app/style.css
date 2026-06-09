@@ -703,6 +703,25 @@ body.theme-light #aircraft-custom input {
   padding: 4px 6px;
 }
 .row select { cursor: pointer; }
+.row-reset {
+  flex-shrink: 0;
+  font-size: 13px;
+  line-height: 1;
+  color: #b9b3b3;
+  background: #2a2626;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+  margin-left: 2px;
+}
+.row-reset:hover { color: #fff; background: #3a3636; }
+body.theme-light .row-reset {
+  color: #555;
+  background: #f0f0f0;
+  border-color: #bbb;
+}
+body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
 .row .val {
   color: #e8e8e8;
   font-variant-numeric: tabular-nums;

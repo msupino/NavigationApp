@@ -405,6 +405,7 @@ window.S = Object.assign({
   speedKt: 'Speed (kt)',
   inboundAlt: 'Inbound alt (ft)',
   outboundAlt: 'Outbound alt (ft)',
+  altUndo: 'Revert to previous value',
   shape: 'Shape',
   shapeRect: 'Rectangle',
   shapeOval: 'Oval',

@@ -1224,18 +1224,22 @@ function showInspector() {
     body.appendChild(numberRow(S.speedKt, leg.flightSpeed, v => {
       leg.flightSpeed = v > 0 ? v : leg.flightSpeed; draw();
     }));
+    const origInAlt  = leg.inboundAltitude;
+    const origOutAlt = leg.outboundAltitude;
     body.appendChild(numberRow(S.inboundAlt, leg.inboundAltitude, v => {
       const oldVal = leg.inboundAltitude;
       leg.inboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'inboundAltitude', leg.inboundAltitude, oldVal);
       draw(); showInspector();   // refresh MSA row colour
-    }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'inboundAltitude') }));
+    }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'inboundAltitude'),
+         undoValue: origInAlt }));
     body.appendChild(numberRow(S.outboundAlt, leg.outboundAltitude, v => {
       const oldVal = leg.outboundAltitude;
       leg.outboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'outboundAltitude', leg.outboundAltitude, oldVal);
       draw(); showInspector();   // refresh MSA row colour
-    }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'outboundAltitude') }));
+    }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'outboundAltitude'),
+         undoValue: origOutAlt }));
     // Minimum safe altitude (#673) — terrain max along the leg + clearance.
     // Only shown when a terrain grid is loaded; flagged red if either planned
     // altitude is below it.
@@ -1566,6 +1570,20 @@ function numberRow(label, value, onChange, opts = {}) {
     if (!isNaN(v)) onChange(v);
   };
   row.append(l, inp);
+  // Optional undo button — restores the value the row was opened with.
+  if (opts.undoValue !== undefined) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'row-reset';
+    btn.textContent = '↩';
+    btn.title = S.altUndo || 'Revert to previous value';
+    btn.setAttribute('aria-label', btn.title);
+    btn.onclick = () => {
+      inp.value = altitudeInputValue(opts.undoValue);
+      onChange(opts.undoValue);
+    };
+    row.appendChild(btn);
+  }
   return row;
 }
 function inputRow(label, value, onChange) {
