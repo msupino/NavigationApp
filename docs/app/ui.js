@@ -1379,9 +1379,22 @@ document.getElementById('cumtime-cb').onchange = e => {
   const statusEl = document.getElementById('sim-status');
   if (!cb || !urlInp || !followCb || !statusEl) return;
 
+  // Connect + Follow are toggle BUTTONS (not checkboxes). Track their state
+  // via aria-pressed; the connect label swaps Connect ⇄ Disconnect.
+  let connected = false;
+  function setConnectLabel() {
+    cb.textContent = connected ? (S.tbSimDisconnect || 'Disconnect from simulator')
+                               : (S.tbSimConnect || 'Connect to simulator');
+    cb.setAttribute('aria-pressed', String(connected));
+  }
+  function setFollowState() {
+    followCb.setAttribute('aria-pressed', String(!!simFollow));
+  }
+
   // Restore persisted state into UI controls.
   if (simUrl) urlInp.value = simUrl;
-  followCb.checked = !!simFollow;
+  setConnectLabel();
+  setFollowState();
 
   // io.js's _simSetStatus reads window._simStatusEl at poll time.
   window._simStatusEl = statusEl;
@@ -1393,13 +1406,16 @@ document.getElementById('cumtime-cb').onchange = e => {
   urlInp.oninput  = saveSimUrl;
   urlInp.onchange = saveSimUrl;
 
-  followCb.onchange = () => {
-    window.simFollow = followCb.checked;
+  followCb.onclick = () => {
+    window.simFollow = !simFollow;
+    setFollowState();
     try { localStorage.setItem(SIM_FOLLOW_KEY, simFollow ? '1' : '0'); } catch (e) { /* */ }
   };
 
-  cb.onchange = () => {
-    if (cb.checked) {
+  cb.onclick = () => {
+    connected = !connected;
+    setConnectLabel();
+    if (connected) {
       window.simUrl = urlInp.value.trim() || 'http://localhost:2020';
       window._simStatusEl = statusEl;
       if (typeof window.simStart === 'function') simStart();  // saves navaid.simOn
@@ -1414,7 +1430,8 @@ document.getElementById('cumtime-cb').onchange = e => {
   let _savedOn = false;
   try { _savedOn = localStorage.getItem('navaid.simOn') === '1'; } catch (e) { /* */ }
   if (_savedOn && typeof window.simStart === 'function') {
-    cb.checked = true;
+    connected = true;
+    setConnectLabel();
     // Open the sim section so the user can see the connected state.
     const simSec = cb.closest('.tb-section');
     if (simSec && !simSec.classList.contains('open')) {
@@ -1688,15 +1705,27 @@ function applyDisplayTheme() {
   document.body.classList.toggle('theme-light', displayTheme === 'light');
   document.body.classList.toggle('theme-dark', displayTheme !== 'light');
 }
-const THEME_LIGHT_EL = document.getElementById('theme-light-cb');
+const THEME_TOGGLE_EL = document.getElementById('theme-toggle');
+// The button shows the mode it switches TO: in dark it offers "Light mode",
+// in light it offers "Dark mode".
+function updateThemeToggleLabel() {
+  if (!THEME_TOGGLE_EL) return;
+  const toLight = displayTheme !== 'light';
+  THEME_TOGGLE_EL.textContent = toLight
+    ? '☀️ ' + (S.tbLightMode || 'Light mode')
+    : '🌙 ' + (S.tbDarkMode || 'Dark mode');
+}
 applyDisplayTheme();
-THEME_LIGHT_EL.checked = displayTheme === 'light';
-THEME_LIGHT_EL.onchange = e => {
-  displayTheme = e.target.checked ? 'light' : 'dark';
-  applyDisplayTheme();
-  try { localStorage.setItem(THEME_KEY, displayTheme); }
-  catch (err) { /* storage unavailable */ }
-};
+updateThemeToggleLabel();
+if (THEME_TOGGLE_EL) {
+  THEME_TOGGLE_EL.onclick = () => {
+    displayTheme = displayTheme === 'light' ? 'dark' : 'light';
+    applyDisplayTheme();
+    updateThemeToggleLabel();
+    try { localStorage.setItem(THEME_KEY, displayTheme); }
+    catch (err) { /* storage unavailable */ }
+  };
+}
 const ALPHA_KEY = 'navaid.yellowAlpha';
 try {
   const v = parseFloat(localStorage.getItem(ALPHA_KEY));
