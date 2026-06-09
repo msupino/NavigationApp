@@ -1224,26 +1224,26 @@ function showInspector() {
     body.appendChild(numberRow(S.speedKt, leg.flightSpeed, v => {
       leg.flightSpeed = v > 0 ? v : leg.flightSpeed; draw();
     }));
-    // Freeze originals only on first open for this leg; survive rebuilds from onChange.
-    if (idx !== _inspLegIdx) {
-      _inspLegIdx = idx;
-      _inspOrigInAlt  = leg.inboundAltitude;
-      _inspOrigOutAlt = leg.outboundAltitude;
-    }
+    // Reset-to-known: the charted altitude from leg-altitude.json. Undefined
+    // (no entry / unknown direction) means the reset button is omitted — there
+    // is nothing authoritative to revert to.
+    const known = (typeof legAltitudeForLeg === 'function') ? legAltitudeForLeg(idx) : null;
+    const knownIn  = known && Number.isFinite(known.inboundAltitude)  ? known.inboundAltitude  : undefined;
+    const knownOut = known && Number.isFinite(known.outboundAltitude) ? known.outboundAltitude : undefined;
     body.appendChild(numberRow(S.inboundAlt, leg.inboundAltitude, v => {
       const oldVal = leg.inboundAltitude;
       leg.inboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'inboundAltitude', leg.inboundAltitude, oldVal);
       draw(); showInspector();   // refresh MSA row colour
     }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'inboundAltitude'),
-         undoValue: _inspOrigInAlt }));
+         undoValue: knownIn }));
     body.appendChild(numberRow(S.outboundAlt, leg.outboundAltitude, v => {
       const oldVal = leg.outboundAltitude;
       leg.outboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'outboundAltitude', leg.outboundAltitude, oldVal);
       draw(); showInspector();   // refresh MSA row colour
     }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'outboundAltitude'),
-         undoValue: _inspOrigOutAlt }));
+         undoValue: knownOut }));
     // Minimum safe altitude (#673) — terrain max along the leg + clearance.
     // Only shown when a terrain grid is loaded; flagged red if either planned
     // altitude is below it.
@@ -1574,13 +1574,14 @@ function numberRow(label, value, onChange, opts = {}) {
     if (!isNaN(v)) onChange(v);
   };
   row.append(l, inp);
-  // Optional undo button — restores the value the row was opened with.
+  // Optional reset button — restores the charted altitude from the dataset.
+  // Omitted when undoValue is undefined (no known/charted value to revert to).
   if (opts.undoValue !== undefined) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'row-reset';
     btn.textContent = '↻';
-    btn.title = S.altUndo || 'Revert to previous value';
+    btn.title = S.altResetKnown || 'Reset to charted altitude';
     btn.setAttribute('aria-label', btn.title);
     btn.onclick = () => {
       inp.value = altitudeInputValue(opts.undoValue);
@@ -1831,11 +1832,6 @@ function appendFreqEdit(body, note, editOptions) {
 }
 
 // --- interaction (Leaflet mouse events) ------------------------------
-// Altitude undo: frozen when the leg is first selected; reset when selection changes.
-let _inspLegIdx = -1;
-let _inspOrigInAlt = NaN;
-let _inspOrigOutAlt = NaN;
-
 let drag = null;
 let downHit = false;
 const ORIGIN_RESNAP_ARM_PX = 18;
