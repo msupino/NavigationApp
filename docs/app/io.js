@@ -1979,6 +1979,17 @@ function showFlightPlan() {
         el.replaceWith(span);
       });
       clone.querySelectorAll('.fp-del').forEach(el => el.remove());
+      // The delete column has no .fp-del marker in the header / Total rows —
+      // it's just an empty trailing cell. Drop it so the table has no stray
+      // box on the far side (tbody delete cells were removed above).
+      const headRow = clone.querySelector('thead tr');
+      if (headRow && headRow.lastElementChild &&
+          !headRow.lastElementChild.textContent.trim()) headRow.lastElementChild.remove();
+      clone.querySelectorAll('tfoot tr').forEach(tr => {
+        if (tr.lastElementChild && !tr.lastElementChild.textContent.trim()) {
+          tr.lastElementChild.remove();
+        }
+      });
       return clone.outerHTML;
     }).join('<div class="nl-gap"></div>');
 
