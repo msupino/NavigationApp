@@ -1610,6 +1610,9 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
   padding: 6px 8px;
   gap: 4px;
 }
+/* MSA row flagged when the planned altitude is below the minimum safe alt. */
+.msa-low .val { color: #ff6b6b; font-weight: 700; }
+body.theme-light .msa-low .val { color: #c0392b; }
 .commchange-row .commchange-label {
   color: #ffb1a8;
   font-weight: 700;
