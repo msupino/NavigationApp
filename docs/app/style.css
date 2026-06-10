@@ -225,48 +225,47 @@ html, body {
 .tb-section.open .tb-section-body { display: flex; }
 
 /* ============================================================
-   Layout E — bottom tab dock.
-   The toolbar docks along the bottom edge; sections lay out as a
-   horizontal row of tab-like heads, each expanding a tray above.
-   CSS-only: DOM + IDs + accordion behaviour unchanged.
+   Layout E — bottom tab dock (inline).
+   Docks at the bottom-LEFT corner: section heads form a tab row along
+   the bottom and the open section's body expands INLINE above them.
+   Capped to a narrow footprint (like the classic left column) so the
+   coord readout (bottom-right), the JS-positioned modals, and the map
+   stay clear, and open sections never overlap. `display:contents`
+   flattens each section so head + body join the toolbar's flex layout
+   (the element stays in the DOM tree, so `.tb-section` ancestry
+   queries still pass). CSS-only.
    ============================================================ */
 #toolbar {
   top: auto;
   bottom: 0;
   left: 0;
-  right: 0;
-  width: 100%;
-  max-width: none;
-  max-height: 55vh;
+  right: auto;
+  width: auto;
+  max-width: 276px;
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
   flex-direction: row;
   flex-wrap: wrap;
-  align-items: flex-end;          /* tabs line up along the bottom edge */
-  gap: 6px;
-  border-radius: 10px 10px 0 0;
-  padding: 8px 10px;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 6px 8px;
+  border-radius: 0 10px 0 0;
 }
-/* Chrome rows span the full width and sit on their own lines. */
-#toolbar > #toolbar-handle,
-#toolbar > #toolbar-toggle,
-#toolbar > #lang-toggle,
+html[dir="rtl"] #toolbar { left: auto; right: 0; border-radius: 10px 0 0 0; }
+#toolbar > #toolbar-handle { padding: 0 6px; }
+#toolbar > #lang-toggle { border-bottom: none; margin: 0; padding: 0 4px; order: 2; }
 #toolbar > #info,
 #toolbar > #app-version,
-#toolbar > #footer-links { flex-basis: 100%; }
-#toolbar > #lang-toggle { border-bottom: none; }
-.tb-section {
-  border-top: none;
-  margin: 0;
-  padding: 0;
-  flex: 0 1 176px;
-  /* column-reverse: the tab head stays at the bottom, its tray expands
-     upward above it — inline, so open sections never overlap. */
-  flex-direction: column-reverse;
-}
+#toolbar > #footer-links { display: none; }
+/* Flatten the section so head + body lay out directly; heads (order 1) form
+   the bottom tab row, bodies (order 0) stack INLINE above them. */
+.tb-section { display: contents; }
 .tb-section-head {
+  order: 1;
   border: 1px solid #443f3f;
   border-radius: 6px;
   background: #2f2b2b;
-  justify-content: center;
+  padding: 5px 9px;
 }
 .tb-section.open .tb-section-head {
   background: #1d6fe0;
@@ -274,13 +273,13 @@ html, body {
   color: #fff;
 }
 .tb-section.open .tb-section-body {
-  margin-bottom: 4px;
-  max-height: 48vh;
-  overflow-y: auto;
+  order: 0;
+  flex-basis: 100%;
+  margin: 0 0 3px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid #33302f;
   border-radius: 8px;
-  padding: 6px;
+  padding: 8px;
 }
 
 #toolbar .drag-handle {
