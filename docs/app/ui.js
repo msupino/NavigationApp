@@ -2083,6 +2083,120 @@ document.getElementById('insp-close').onclick = () => {
   }
 })();
 
+// --- command palette (layout H) --------------------------------------
+// Additive: the toolbar stays. Ctrl/Cmd-K (or the top pill) opens a search
+// box listing every checkbox toggle, base-map layer and action button in the
+// toolbar; picking one just clicks the underlying control, so all existing
+// wiring is reused and nothing about the toolbar DOM changes.
+(function makeCommandPalette() {
+  const bar = document.getElementById('toolbar');
+  if (!bar) return;
+
+  const open = document.createElement('button');
+  open.id = 'cmdk-open';
+  open.type = 'button';
+  open.innerHTML = '<span>' + (S.cmdkHint || 'Commands') + '</span><kbd>Ctrl K</kbd>';
+
+  const scrim = document.createElement('div');
+  scrim.id = 'cmdk-scrim';
+  scrim.hidden = true;
+  scrim.innerHTML = '<div id="cmdk" role="dialog" aria-modal="true">' +
+    '<input id="cmdk-input" type="text" autocomplete="off" spellcheck="false" ' +
+    'placeholder="' + (S.cmdkPlaceholder || 'Search commands…') + '">' +
+    '<ul id="cmdk-list"></ul></div>';
+  document.body.appendChild(open);
+  document.body.appendChild(scrim);
+
+  const input = scrim.querySelector('#cmdk-input');
+  const list = scrim.querySelector('#cmdk-list');
+  let sel = 0;
+
+  // Build the command set fresh each open so toggle states are current.
+  function collect() {
+    const cmds = [];
+    const labelOf = el => {
+      const lab = el.closest('label');
+      const span = lab && lab.querySelector('span[data-i18n]');
+      return (span && span.textContent.trim()) ||
+             (lab && lab.textContent.trim()) || el.id;
+    };
+    bar.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cmds.push({
+        label: labelOf(cb),
+        state: cb.checked ? (S.cmdkOn || 'on') : (S.cmdkOff || 'off'),
+        run: () => cb.click()
+      });
+    });
+    const layer = bar.querySelector('#layer-select');
+    if (layer) {
+      Array.from(layer.options).forEach(opt => {
+        cmds.push({
+          label: (S.cmdkBase || 'Base map') + ' → ' + opt.textContent,
+          state: layer.value === opt.value ? '✓' : '',
+          run: () => { layer.value = opt.value; layer.dispatchEvent(new Event('change', { bubbles: true })); }
+        });
+      });
+    }
+    bar.querySelectorAll('.tb-section-body button[id]').forEach(b => {
+      const txt = (b.textContent || '').trim();
+      if (txt) cmds.push({ label: txt, state: '', run: () => b.click() });
+    });
+    return cmds;
+  }
+
+  let all = [];
+  let filtered = [];
+  function render() {
+    const q = input.value.trim().toLowerCase();
+    filtered = q ? all.filter(c => c.label.toLowerCase().includes(q)) : all;
+    if (sel >= filtered.length) sel = Math.max(0, filtered.length - 1);
+    if (!filtered.length) {
+      list.innerHTML = '<div id="cmdk-empty">' + (S.cmdkEmpty || 'No matching command') + '</div>';
+      return;
+    }
+    list.innerHTML = '';
+    filtered.forEach((c, i) => {
+      const li = document.createElement('li');
+      if (i === sel) li.className = 'sel';
+      li.innerHTML = '<span>' + c.label + '</span>' +
+        (c.state ? '<span class="cmdk-state">' + c.state + '</span>' : '');
+      li.addEventListener('click', () => exec(i));
+      list.appendChild(li);
+    });
+  }
+  function exec(i) {
+    const c = filtered[i];
+    if (!c) return;
+    c.run();
+    close();
+  }
+  function openPalette() {
+    all = collect();
+    sel = 0;
+    input.value = '';
+    scrim.hidden = false;
+    render();
+    input.focus();
+  }
+  function close() { scrim.hidden = true; }
+
+  open.addEventListener('click', openPalette);
+  input.addEventListener('input', () => { sel = 0; render(); });
+  scrim.addEventListener('click', e => { if (e.target === scrim) close(); });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(sel + 1, filtered.length - 1); render(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(sel - 1, 0); render(); }
+    else if (e.key === 'Enter') { e.preventDefault(); exec(sel); }
+    else if (e.key === 'Escape') { e.preventDefault(); close(); }
+  });
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+      e.preventDefault();
+      if (scrim.hidden) openPalette(); else close();
+    }
+  });
+})();
+
 // --- hidden tuning panel --------------------------------------------
 // Developer-only preview surface for visual constants. It is intentionally
 // page-local: no localStorage/sessionStorage writes, and reload restores the

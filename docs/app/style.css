@@ -224,6 +224,68 @@ html, body {
 }
 .tb-section.open .tb-section-body { display: flex; }
 
+/* ============================================================
+   Layout H — command palette (Ctrl/Cmd-K). Additive: the toolbar
+   stays, this is an extra fast way to find + toggle any control.
+   ============================================================ */
+#cmdk-open {
+  position: absolute;
+  z-index: 1150;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 12px;
+  color: #cbbfbf;
+  background: rgba(20, 18, 18, 0.92);
+  border: 1px solid #3a3636;
+  border-radius: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+#cmdk-open:hover { color: #fff; border-color: #555; }
+#cmdk-open kbd {
+  font: inherit; font-size: 10px;
+  background: #2f2b2b; border: 1px solid #443f3f; border-radius: 4px;
+  padding: 1px 5px; color: #b9b3b3;
+}
+#cmdk-scrim {
+  position: fixed; inset: 0; z-index: 2000;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex; justify-content: center; align-items: flex-start;
+}
+#cmdk-scrim[hidden] { display: none; }
+#cmdk {
+  width: min(440px, 92vw);
+  margin-top: 12vh;
+  background: rgba(24, 21, 21, 0.99);
+  border: 1px solid #3a3636;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+#cmdk-input {
+  font: inherit; font-size: 15px;
+  color: #fff; background: transparent;
+  border: none; outline: none;
+  padding: 14px 16px;
+  border-bottom: 1px solid #2c2828;
+}
+#cmdk-list { list-style: none; margin: 0; padding: 4px 0; max-height: 56vh; overflow-y: auto; }
+#cmdk-list li {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 16px; font-size: 13px; color: #e0d8d8; cursor: pointer;
+}
+#cmdk-list li .cmdk-state { margin-inline-start: auto; font-size: 11px; color: #8aa; }
+#cmdk-list li.sel, #cmdk-list li:hover { background: #1d6fe0; color: #fff; }
+#cmdk-list li.sel .cmdk-state, #cmdk-list li:hover .cmdk-state { color: #d6e6ff; }
+#cmdk-empty { padding: 16px; color: #8a8484; font-size: 13px; }
+
 #toolbar .drag-handle {
   font-size: 16px;
   letter-spacing: 1px;

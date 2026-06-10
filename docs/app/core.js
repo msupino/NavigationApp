@@ -443,6 +443,12 @@ window.S = Object.assign({
   tbAddNoteTitle: 'Click map to drop a note (click button again to stop)',
   tbLayerLabel: 'Layer',
   tbLayerTitle: 'Base map layer',
+  cmdkHint: 'Commands',                 // command palette (layout H)
+  cmdkPlaceholder: 'Search commands…',
+  cmdkEmpty: 'No matching command',
+  cmdkBase: 'Base map',
+  cmdkOn: 'on',
+  cmdkOff: 'off',
   tbReverse: '⇄ Reverse route (R)',
   tbReverseTitle: 'Reverse route order',
   tbUndo: '↶ Undo (Ctrl-Z)',
