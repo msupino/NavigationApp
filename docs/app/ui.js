@@ -2083,6 +2083,61 @@ document.getElementById('insp-close').onclick = () => {
   }
 })();
 
+// --- radial / pie menu (layout I) ------------------------------------
+// Additive launcher: a hub button fans out one wedge per section. Tapping a
+// wedge opens that section in the toolbar (which stays fully functional, so
+// all wiring + tests are intact). A thumb-reachable alternative to the bar.
+(function makeRadialMenu() {
+  const bar = document.getElementById('toolbar');
+  if (!bar) return;
+  const ICON = { build: '✏️', view: '👁️', display: '🎚️', charts: '🧭',
+                 export: '⤓', sim: '🛩️', print: '🖨️' };
+  const secs = Array.from(document.querySelectorAll('.tb-section'));
+  if (!secs.length) return;
+
+  const hub = document.createElement('button');
+  hub.id = 'radial-hub';
+  hub.type = 'button';
+  hub.textContent = '＋';
+  hub.setAttribute('aria-label', S.radialTitle || 'Quick menu');
+  hub.title = S.radialTitle || 'Quick menu';
+
+  const ring = document.createElement('div');
+  ring.id = 'radial-ring';
+
+  // Fan the wedges across a quarter-arc up-and-left of the hub.
+  const n = secs.length;
+  secs.forEach((sec, i) => {
+    const w = document.createElement('button');
+    w.type = 'button';
+    w.className = 'radial-wedge';
+    const key = sec.dataset.sec;
+    w.textContent = ICON[key] || '•';
+    w.title = (sec.querySelector('.tb-section-head') || {}).textContent || key;
+    const ang = (Math.PI / 2) * (i / (n - 1)) + Math.PI;   // 180°→270°
+    const r = 96;
+    w.style.setProperty('--dx', (Math.cos(ang) * r).toFixed(1) + 'px');
+    w.style.setProperty('--dy', (Math.sin(ang) * r).toFixed(1) + 'px');
+    w.addEventListener('click', () => {
+      bar.classList.remove('collapsed');
+      if (!sec.classList.contains('open')) {
+        const head = sec.querySelector('.tb-section-head');
+        if (head) head.click();
+      }
+      sec.scrollIntoView({ block: 'nearest' });
+      close();
+    });
+    ring.appendChild(w);
+  });
+
+  function close() { document.body.classList.remove('radial-open'); }
+  hub.addEventListener('click', () => document.body.classList.toggle('radial-open'));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+  document.body.appendChild(ring);
+  document.body.appendChild(hub);
+})();
+
 // --- hidden tuning panel --------------------------------------------
 // Developer-only preview surface for visual constants. It is intentionally
 // page-local: no localStorage/sessionStorage writes, and reload restores the

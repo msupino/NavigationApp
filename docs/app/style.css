@@ -224,6 +224,70 @@ html, body {
 }
 .tb-section.open .tb-section-body { display: flex; }
 
+/* ============================================================
+   Layout I — radial / pie menu.
+   A thumb-reachable hub (bottom-right) fans out one wedge per
+   section; tapping a wedge opens that section in the toolbar.
+   Additive: the toolbar is untouched, so wiring + tests are intact.
+   ============================================================ */
+#radial-hub {
+  position: absolute;
+  z-index: 1250;
+  right: 18px;
+  bottom: 18px;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: none;
+  background: #1d6fe0;
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  transition: transform 0.18s ease;
+}
+html[dir="rtl"] #radial-hub { right: auto; left: 18px; }
+body.radial-open #radial-hub { transform: rotate(135deg); }
+#radial-ring {
+  position: absolute;
+  z-index: 1240;
+  right: 45px;   /* centred on the hub */
+  bottom: 45px;
+  width: 0;
+  height: 0;
+}
+html[dir="rtl"] #radial-ring { right: auto; left: 45px; }
+.radial-wedge {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 46px;
+  height: 46px;
+  margin: -23px;
+  border-radius: 50%;
+  border: 1px solid #3a3636;
+  background: rgba(20, 18, 18, 0.97);
+  color: #e8e8e8;
+  font-size: 19px;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(0, 0) scale(0.4);
+  transition: transform 0.2s ease, opacity 0.18s ease;
+}
+html[dir="rtl"] .radial-wedge { right: auto; left: 0; transform: translate(0, 0) scale(0.4); }
+body.radial-open .radial-wedge {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(var(--dx), var(--dy)) scale(1);
+}
+html[dir="rtl"] body.radial-open .radial-wedge {
+  transform: translate(calc(var(--dx) * -1), var(--dy)) scale(1);
+}
+.radial-wedge:hover { background: #1d6fe0; border-color: #1d6fe0; color: #fff; }
+
 #toolbar .drag-handle {
   font-size: 16px;
   letter-spacing: 1px;

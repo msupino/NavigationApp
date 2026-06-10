@@ -197,6 +197,7 @@ window.S = {
   tbAddNoteTitle: 'לחץ על המפה להוספת הערה (לחץ שוב לעצירה)',
   tbLayerLabel: 'שכבה',
   tbLayerTitle: 'שכבת מפה בסיסית',
+  radialTitle: 'תפריט מהיר',
   tbReverse: '⇄ הפוך מסלול (R)',
   tbReverseTitle: 'הפוך סדר מסלול',
   tbUndo: '↶ בטל (Ctrl-Z)',
