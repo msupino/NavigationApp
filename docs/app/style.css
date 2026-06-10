@@ -258,6 +258,10 @@ html, body {
 .tb-section[data-sec="export"]  .tb-section-head::before { content: '⤓';  }
 .tb-section[data-sec="sim"]     .tb-section-head::before { content: '🛩️'; }
 .tb-section[data-sec="print"]   .tb-section-head::before { content: '🖨️'; }
+/* The narrow rail squeezes flex:1 range inputs to ~0px wide, which makes them
+   non-actionable. Let slider rows wrap so the range takes the full row width. */
+#toolbar .navtoggle:has(input[type="range"]) { flex-wrap: wrap; }
+#toolbar .navtoggle input[type="range"] { flex: 1 1 100%; min-width: 60px; }
 
 #toolbar .drag-handle {
   font-size: 16px;
