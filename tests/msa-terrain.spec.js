@@ -16,6 +16,7 @@ const GRID = { coverage: true, units: 'm', south: 31, west: 34, north: 33, east:
 async function setup(page, alt) {
   await page.evaluate(({ grid, a }) => {
     terrainGrid = grid;                                   // force coverage
+    window.showMsa = true;                                // opt-in toggle (#673)
     state.waypoints = [{ lat: 32.0, lng: 34.8, name: 'A' }, { lat: 32.3, lng: 35.0, name: 'B' }];
     state.legs = []; syncLegs();
     state.legs[0].inboundAltitude = a; state.legs[0].outboundAltitude = a;

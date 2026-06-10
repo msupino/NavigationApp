@@ -271,6 +271,8 @@ window.S = Object.assign({
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbShowReporting: 'Show mandatory reports',        // reporting-type overlay toggle
   tbShowReportingTitle: 'Badge waypoints that are mandatory (חובה) reporting points',
+  tbShowMsa: 'Show MSA',                            // leg-inspector minimum safe altitude row
+  tbShowMsaTitle: 'Show minimum safe altitude (terrain + 1000 ft) in the leg inspector. Planning aid only.',
   report: 'Reporting',
   reportingMandatory: '📍 Mandatory report',
   reportingOnRequest: '📍 Report on request',
