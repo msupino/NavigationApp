@@ -223,6 +223,24 @@ html, body {
   padding-bottom: 4px;
 }
 .tb-section.open .tb-section-body { display: flex; }
+/* Sub-group label inside a section body (layout A): thin divider + caption. */
+.tb-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #8a8484;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 5px 2px 0;
+}
+.tb-group::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #33302f;
+}
 
 #toolbar .drag-handle {
   font-size: 16px;
