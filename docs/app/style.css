@@ -223,6 +223,19 @@ html, body {
   padding-bottom: 4px;
 }
 .tb-section.open .tb-section-body { display: flex; }
+/* Layout B: pack the View checkboxes into two compact columns. */
+.view-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 6px;
+  row-gap: 2px;
+}
+.view-grid .navtoggle {
+  padding: 0 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+.view-grid .navtoggle span { overflow: hidden; text-overflow: ellipsis; }
 
 #toolbar .drag-handle {
   font-size: 16px;
