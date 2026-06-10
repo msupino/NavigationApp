@@ -224,6 +224,87 @@ html, body {
 }
 .tb-section.open .tb-section-body { display: flex; }
 
+/* Layout C: on-map base-layer + overlays control (top-right of the map). */
+#layers-control {
+  position: absolute;
+  z-index: 1100;
+  top: 12px;
+  right: 12px;
+  width: 205px;
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px;
+  background: rgba(20, 18, 18, 0.92);
+  border: 1px solid #3a3636;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  box-sizing: border-box;
+}
+html[dir="rtl"] #layers-control { right: auto; left: 12px; }
+#layers-control-head {
+  display: flex;
+  align-items: center;
+  padding: 2px 4px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a8484;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  border-bottom: 1px solid #2c2828;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#layers-control-head::after {
+  content: '▾';
+  margin-inline-start: auto;
+  font-size: 9px;
+  transition: transform 0.15s ease;
+}
+#layers-control.collapsed #layers-control-head::after { transform: rotate(-90deg); }
+#layers-control-body { display: flex; flex-direction: column; gap: 3px; }
+#layers-control.collapsed #layers-control-body { display: none; }
+#layers-control .navtoggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: #e8e8e8;
+  padding: 0 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#layers-control .navtoggle input { cursor: pointer; margin: 0; }
+#layers-control #vor-ref-row { flex-direction: column; align-items: stretch; gap: 3px; }
+#layers-control select {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 12px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+/* Sub-group caption + divider (shared with layout A's .tb-group idea). */
+.tb-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #8a8484;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 4px 2px 0;
+}
+.tb-group::after { content: ''; flex: 1; height: 1px; background: #33302f; }
+
 #toolbar .drag-handle {
   font-size: 16px;
   letter-spacing: 1px;

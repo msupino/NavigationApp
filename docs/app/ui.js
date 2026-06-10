@@ -2083,6 +2083,26 @@ document.getElementById('insp-close').onclick = () => {
   }
 })();
 
+// --- on-map layers control collapse (layout C) -----------------------
+(function makeLayersControlToggle() {
+  const ctl = document.getElementById('layers-control');
+  const head = document.getElementById('layers-control-head');
+  if (!ctl || !head) return;
+  const KEY = 'navaid.layersControlCollapsed';
+  try {
+    if (localStorage.getItem(KEY) === '1') ctl.classList.add('collapsed');
+  } catch (e) { /* storage unavailable */ }
+  function toggle() {
+    const collapsed = ctl.classList.toggle('collapsed');
+    try { localStorage.setItem(KEY, collapsed ? '1' : '0'); }
+    catch (e) { /* storage unavailable */ }
+  }
+  head.addEventListener('click', toggle);
+  head.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+  });
+})();
+
 // --- hidden tuning panel --------------------------------------------
 // Developer-only preview surface for visual constants. It is intentionally
 // page-local: no localStorage/sessionStorage writes, and reload restores the

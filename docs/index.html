@@ -150,6 +150,39 @@
   <div id="map"></div>
   <canvas id="overlay"></canvas>
 
+  <!-- Layout C: Leaflet-style base-layer + overlays control pinned on the map.
+       Same element IDs as before, so all toggle wiring in ui.js is unchanged;
+       only the DOM location moved out of the toolbar's View section. -->
+  <div id="layers-control">
+    <div id="layers-control-head" tabindex="0" role="button" data-i18n="tbLayersTitle"></div>
+    <div id="layers-control-body">
+      <div class="tb-group" data-i18n="tbGrpBase"></div>
+      <label class="navtoggle" data-i18n-title="tbLayerTitle">
+        <select id="layer-select"></select>
+      </label>
+      <div class="tb-group" data-i18n="tbGrpOverlays"></div>
+      <label class="navtoggle" data-i18n-title="tbShowNavWpTitle">
+        <input type="checkbox" id="navwp-cb" checked> <span data-i18n="tbShowNavWp"></span>
+      </label>
+      <label class="navtoggle" data-i18n-title="tbShowAirfieldsTitle">
+        <input type="checkbox" id="airfield-cb" checked> <span data-i18n="tbShowAirfields"></span>
+      </label>
+      <label class="navtoggle" data-i18n-title="tbShowVorTitle">
+        <input type="checkbox" id="vor-cb"> <span data-i18n="tbShowVor"></span>
+      </label>
+      <label class="navtoggle" id="vor-ref-row" data-i18n-title="tbShowVorTitle">
+        <span data-i18n="vorRefLabel"></span>
+        <select id="vor-ref-select"></select>
+      </label>
+      <label class="navtoggle" data-i18n-title="tbShowMsaTitle">
+        <input type="checkbox" id="msa-cb"> <span data-i18n="tbShowMsa"></span>
+      </label>
+      <label class="navtoggle" data-i18n-title="tbShowReportingTitle">
+        <input type="checkbox" id="reporting-cb"> <span data-i18n="tbShowReporting"></span>
+      </label>
+    </div>
+  </div>
+
   <div id="toolbar">
     <span id="toolbar-handle" class="drag-handle" data-i18n-title="tbHandleTitle">⋯</span>
     <span id="toolbar-toggle" role="button" tabindex="0"><span></span><span></span><span></span></span>
@@ -198,26 +231,12 @@
     <div class="tb-section" data-sec="view">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecView"></div>
       <div class="tb-section-body">
-        <label class="navtoggle" data-i18n-title="tbLayerTitle">
-          <span data-i18n="tbLayerLabel"></span>
-          <select id="layer-select"></select>
-        </label>
+        <!-- Base layer + map overlays now live in the on-map #layers-control
+             (layout C). The View section keeps chart-appearance + route-info
+             toggles. -->
         <label class="navtoggle" data-i18n-title="tbShowWpNamesTitle">
           <input type="checkbox" id="wpname-cb" checked> <span data-i18n="tbShowWpNames"></span>
           <button id="wpname-rot" type="button">⟳</button>
-        </label>
-        <label class="navtoggle" data-i18n-title="tbShowNavWpTitle">
-          <input type="checkbox" id="navwp-cb" checked> <span data-i18n="tbShowNavWp"></span>
-        </label>
-        <label class="navtoggle" data-i18n-title="tbShowAirfieldsTitle">
-          <input type="checkbox" id="airfield-cb" checked> <span data-i18n="tbShowAirfields"></span>
-        </label>
-        <label class="navtoggle" data-i18n-title="tbShowVorTitle">
-          <input type="checkbox" id="vor-cb"> <span data-i18n="tbShowVor"></span>
-        </label>
-        <label class="navtoggle" id="vor-ref-row" data-i18n-title="tbShowVorTitle">
-          <span data-i18n="vorRefLabel"></span>
-          <select id="vor-ref-select"></select>
         </label>
         <label class="navtoggle" data-i18n-title="tbShowCumTimeTitle">
           <input type="checkbox" id="cumtime-cb" checked> <span data-i18n="tbShowCumTime"></span>
@@ -239,12 +258,6 @@
         </label>
         <label class="navtoggle" data-i18n-title="tbHighlightDiffTitle">
           <input type="checkbox" id="diff-cb"> <span data-i18n="tbHighlightDiff"></span>
-        </label>
-        <label class="navtoggle" data-i18n-title="tbShowMsaTitle">
-          <input type="checkbox" id="msa-cb"> <span data-i18n="tbShowMsa"></span>
-        </label>
-        <label class="navtoggle" data-i18n-title="tbShowReportingTitle">
-          <input type="checkbox" id="reporting-cb"> <span data-i18n="tbShowReporting"></span>
         </label>
         <button id="tool-magnifier" type="button" data-i18n="tbMagnifier" data-i18n-title="tbMagnifierTitle" style="width:100%;margin-top:4px;padding:4px 8px;font-size:12px"></button>
       </div>
