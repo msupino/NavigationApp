@@ -224,6 +224,69 @@ html, body {
 }
 .tb-section.open .tb-section-body { display: flex; }
 
+/* ============================================================
+   Layout G — top menu bar.
+   The toolbar becomes a horizontal menubar pinned to the top; each
+   section head is a menu item and its body drops as a dropdown
+   anchored under its OWN tab (so multiple-open dropdowns sit side by
+   side, never overlapping). CSS-only: DOM + IDs + accordion unchanged.
+   ============================================================ */
+#toolbar {
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 8px;
+  border-radius: 0 0 8px 8px;
+}
+/* Chrome bits stay inline in the bar. */
+#toolbar > #toolbar-handle { padding: 0 6px; }
+#toolbar > #lang-toggle { border-bottom: none; margin: 0; padding: 0 6px; }
+#toolbar > #info,
+#toolbar > #app-version { display: none; }   /* stats move out of the bar */
+#toolbar > #footer-links { margin-inline-start: auto; }
+.tb-section {
+  position: relative;
+  border-top: none;
+  margin: 0;
+  padding: 0;
+  flex: 0 0 auto;
+}
+.tb-section-head {
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+.tb-section.open .tb-section-head {
+  background: #1d6fe0;
+  border-color: #1d6fe0;
+  color: #fff;
+}
+.tb-section-head::after { content: '▾'; }
+.tb-section.open .tb-section-head::after { transform: rotate(180deg); }
+/* Dropdown: anchored under its own tab; never reflows the bar. */
+.tb-section.open .tb-section-body {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 210px;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: rgba(20, 18, 18, 0.98);
+  border: 1px solid #3a3636;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  padding: 8px;
+  z-index: 20;
+}
+html[dir="rtl"] .tb-section.open .tb-section-body { left: auto; right: 0; }
+
 #toolbar .drag-handle {
   font-size: 16px;
   letter-spacing: 1px;
