@@ -287,6 +287,10 @@ html[dir="rtl"] body.radial-open .radial-wedge {
   transform: translate(calc(var(--dx) * -1), var(--dy)) scale(1);
 }
 .radial-wedge:hover { background: #1d6fe0; border-color: #1d6fe0; color: #fff; }
+/* The magnifier settings panel shares the bottom-right corner; hide the hub
+   while it's open so it can't intercept the panel's close button. */
+#magnifier-settings:not(.hidden) ~ #radial-hub,
+#magnifier-settings:not(.hidden) ~ #radial-ring { display: none; }
 
 #toolbar .drag-handle {
   font-size: 16px;
