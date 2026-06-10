@@ -27,6 +27,8 @@ window.S = {
   tbShowNavWpTitle: 'הצג ציוני דיווח VFR ישראלים',
   tbShowReporting: 'הצג נקודות דיווח חובה',
   tbShowReportingTitle: 'סמן ציונים שהם נקודות דיווח חובה',
+  tbShowMsa: 'הצג גובה בטוח (MSA)',
+  tbShowMsaTitle: 'הצג גובה בטוח מינימלי (תבליט + 1000 רגל) בחלונית הקטע. אמצעי תכנון בלבד.',
   report: 'דיווח',
   reportingMandatory: '📍 דיווח חובה',
   reportingOnRequest: '📍 דיווח לפי דרישה',
