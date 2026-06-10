@@ -1260,7 +1260,8 @@ function showInspector() {
       draw(); refreshMsa();
     }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'outboundAltitude'),
          undoValue: knownOut, live: true }));
-    if (typeof terrainHasCoverage === 'function' && terrainHasCoverage() &&
+    if (window.showMsa &&
+        typeof terrainHasCoverage === 'function' && terrainHasCoverage() &&
         Number.isFinite(typeof legMsaFt === 'function' ? legMsaFt(idx) : NaN)) {
       msaRow = textRow(S.fpMsa || 'MSA (ft)', '');
       msaRow.title = S.msaLowTitle || 'Planned altitude is below the minimum safe altitude';
