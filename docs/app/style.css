@@ -224,6 +224,48 @@ html, body {
 }
 .tb-section.open .tb-section-body { display: flex; }
 
+/* ============================================================
+   Layout F — floating action button + control sheet.
+   The toolbar becomes a card anchored bottom-right; a round ⚙ FAB
+   shows/hides it so the map can be fully clear. CSS-only chrome +
+   a small toggle in ui.js. DOM, IDs and accordion are unchanged.
+   ============================================================ */
+#toolbar {
+  top: auto;
+  bottom: 84px;
+  left: auto;
+  right: 16px;
+  width: 264px;
+  max-height: calc(100dvh - 100px);
+  border-radius: 12px;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+html[dir="rtl"] #toolbar { right: auto; left: 16px; }
+#toolbar.sheet-hidden {
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+}
+#tb-fab {
+  position: absolute;
+  z-index: 1200;
+  right: 16px;
+  bottom: 16px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  background: #1d6fe0;
+  color: #fff;
+  font-size: 23px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+html[dir="rtl"] #tb-fab { right: auto; left: 16px; }
+#tb-fab:hover { background: #2a7bee; }
+#tb-fab:active { transform: scale(0.94); }
+
 #toolbar .drag-handle {
   font-size: 16px;
   letter-spacing: 1px;

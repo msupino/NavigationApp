@@ -2083,6 +2083,22 @@ document.getElementById('insp-close').onclick = () => {
   }
 })();
 
+// --- floating action button: show/hide the control sheet (layout F) ---
+(function makeSheetFab() {
+  const fab = document.getElementById('tb-fab');
+  const bar = document.getElementById('toolbar');
+  if (!fab || !bar) return;
+  const KEY = 'navaid.sheetHidden';
+  // Default: sheet shown. Only an explicit '1' hides it.
+  try { if (localStorage.getItem(KEY) === '1') bar.classList.add('sheet-hidden'); }
+  catch (e) { /* storage unavailable */ }
+  fab.addEventListener('click', () => {
+    const hidden = bar.classList.toggle('sheet-hidden');
+    try { localStorage.setItem(KEY, hidden ? '1' : '0'); }
+    catch (e) { /* storage unavailable */ }
+  });
+})();
+
 // --- hidden tuning panel --------------------------------------------
 // Developer-only preview surface for visual constants. It is intentionally
 // page-local: no localStorage/sessionStorage writes, and reload restores the

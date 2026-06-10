@@ -197,6 +197,7 @@ window.S = {
   tbAddNoteTitle: 'לחץ על המפה להוספת הערה (לחץ שוב לעצירה)',
   tbLayerLabel: 'שכבה',
   tbLayerTitle: 'שכבת מפה בסיסית',
+  tbFabTitle: 'הצג / הסתר את הבקרות',
   tbReverse: '⇄ הפוך מסלול (R)',
   tbReverseTitle: 'הפוך סדר מסלול',
   tbUndo: '↶ בטל (Ctrl-Z)',
