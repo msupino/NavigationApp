@@ -224,6 +224,41 @@ html, body {
 }
 .tb-section.open .tb-section-body { display: flex; }
 
+/* ============================================================
+   Layout D — compact icon rail.
+   Heads become icon-forward launcher buttons (icon on top, small
+   label below); the matching section still expands inline beneath.
+   CSS-only: DOM + IDs + accordion behaviour unchanged.
+   ============================================================ */
+#toolbar { width: 168px; }
+.tb-section-head {
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 7px 4px;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  border: 1px solid transparent;
+}
+.tb-section.open .tb-section-head {
+  background: rgba(29, 111, 224, 0.18);
+  border-color: #1d6fe0;
+  color: #e0d8d8;
+}
+.tb-section-head::after { display: none; }   /* drop the accordion arrow */
+.tb-section-head::before {
+  font-size: 19px;
+  line-height: 1;
+}
+.tb-section[data-sec="build"]   .tb-section-head::before { content: '✏️'; }
+.tb-section[data-sec="view"]    .tb-section-head::before { content: '👁️'; }
+.tb-section[data-sec="display"] .tb-section-head::before { content: '🎚️'; }
+.tb-section[data-sec="charts"]  .tb-section-head::before { content: '🧭'; }
+.tb-section[data-sec="export"]  .tb-section-head::before { content: '⤓';  }
+.tb-section[data-sec="sim"]     .tb-section-head::before { content: '🛩️'; }
+.tb-section[data-sec="print"]   .tb-section-head::before { content: '🖨️'; }
+
 #toolbar .drag-handle {
   font-size: 16px;
   letter-spacing: 1px;
