@@ -1557,6 +1557,23 @@ document.getElementById('reporting-cb').onchange = async e => {
   if (showReporting && navWP === null) await loadNavWaypoints();
   draw();
 };
+// Minimum safe altitude row in the leg inspector (#673). Off by default —
+// it is a planning aid, not a terrain-warning system, so users opt in.
+const MSA_KEY = 'navaid.showMsa';
+try {
+  const stored = localStorage.getItem(MSA_KEY);
+  if (stored !== null) window.showMsa = stored === '1';
+} catch (e) { /* storage unavailable */ }
+const msaCb = document.getElementById('msa-cb');
+if (msaCb) {
+  msaCb.checked = !!window.showMsa;
+  msaCb.onchange = e => {
+    window.showMsa = e.target.checked;
+    try { localStorage.setItem(MSA_KEY, window.showMsa ? '1' : '0'); }
+    catch (err) { /* storage unavailable */ }
+    if (state.selected) showInspector();   // rebuild so the MSA row appears/clears
+  };
+}
 const AIRFIELDS_KEY = 'navaid.showAirfields';
 try {
   const stored = localStorage.getItem(AIRFIELDS_KEY);
