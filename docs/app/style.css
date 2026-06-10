@@ -654,6 +654,14 @@ body.theme-light #aircraft-custom input {
 /* The header stays put; only the body scrolls. */
 #insp-body { overflow-y: auto; }
 #inspector.hidden { display: none; }
+/* Layout C: the on-map layers control also lives top-right, so in LTR the
+   inspector shifts left of it (control width 205 + 12 gap + 12 margin) to
+   avoid covering it. RTL keeps the control on the left, so no shift needed.
+   max-width guard keeps the inspector on-screen at any viewport width. */
+html[dir="ltr"] #inspector {
+  right: 229px;
+  max-width: calc(100vw - 241px);
+}
 
 #insp-header {
   display: flex;
