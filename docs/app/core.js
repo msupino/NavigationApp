@@ -443,6 +443,9 @@ window.S = Object.assign({
   tbAddNoteTitle: 'Click map to drop a note (click button again to stop)',
   tbLayerLabel: 'Layer',
   tbLayerTitle: 'Base map layer',
+  tbGrpOverlays: 'Overlays',          // View sub-group headings (layout A)
+  tbGrpRouteInfo: 'Route info',
+  tbGrpSafety: 'Safety',
   tbReverse: '⇄ Reverse route (R)',
   tbReverseTitle: 'Reverse route order',
   tbUndo: '↶ Undo (Ctrl-Z)',
