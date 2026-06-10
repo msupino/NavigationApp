@@ -225,43 +225,42 @@ html, body {
 .tb-section.open .tb-section-body { display: flex; }
 
 /* ============================================================
-   Layout G — top menu bar.
-   The toolbar becomes a horizontal menubar pinned to the top; each
-   section head is a menu item and its body drops as a dropdown
-   anchored under its OWN tab (so multiple-open dropdowns sit side by
-   side, never overlapping). CSS-only: DOM + IDs + accordion unchanged.
+   Layout G — top menu bar (inline).
+   Top-anchored menu: section heads form a horizontal row and the open
+   section's body expands INLINE below it. The whole cluster is capped
+   to a narrow top-LEFT footprint (like the classic left column) so the
+   JS-positioned flight-plan / chart modals clear it and open sections
+   never blanket the map. `display:contents` flattens each section so
+   head + body join the toolbar's flex layout directly (the element
+   stays in the DOM tree, so `.tb-section` ancestry queries still pass).
    ============================================================ */
 #toolbar {
   top: 0;
   left: 0;
-  right: 0;
-  width: 100%;
-  max-width: none;
-  max-height: none;
-  overflow: visible;
+  right: auto;
+  width: auto;
+  max-width: 276px;
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
   flex-direction: row;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 2px;
-  padding: 4px 8px;
-  border-radius: 0 0 8px 8px;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 5px 8px;
+  border-radius: 0 0 10px 10px;
 }
-/* Chrome bits stay inline in the bar. */
 #toolbar > #toolbar-handle { padding: 0 6px; }
-#toolbar > #lang-toggle { border-bottom: none; margin: 0; padding: 0 6px; }
+#toolbar > #lang-toggle { border-bottom: none; margin: 0; padding: 0 4px; }
 #toolbar > #info,
-#toolbar > #app-version { display: none; }   /* stats move out of the bar */
-#toolbar > #footer-links { margin-inline-start: auto; }
-.tb-section {
-  position: relative;
-  border-top: none;
-  margin: 0;
-  padding: 0;
-  flex: 0 0 auto;
-}
+#toolbar > #app-version,
+#toolbar > #footer-links { flex-basis: 100%; }
+.tb-section { display: contents; }
 .tb-section-head {
+  order: 0;
+  border: 1px solid #443f3f;
   border-radius: 6px;
-  padding: 6px 10px;
+  background: #2f2b2b;
+  padding: 5px 9px;
 }
 .tb-section.open .tb-section-head {
   background: #1d6fe0;
@@ -270,22 +269,15 @@ html, body {
 }
 .tb-section-head::after { content: '▾'; }
 .tb-section.open .tb-section-head::after { transform: rotate(180deg); }
-/* Dropdown: anchored under its own tab; never reflows the bar. */
 .tb-section.open .tb-section-body {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  min-width: 210px;
-  max-height: 70vh;
-  overflow-y: auto;
-  background: rgba(20, 18, 18, 0.98);
-  border: 1px solid #3a3636;
+  order: 1;
+  flex-basis: 100%;
+  margin: 2px 0 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid #33302f;
   border-radius: 8px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
   padding: 8px;
-  z-index: 20;
 }
-html[dir="rtl"] .tb-section.open .tb-section-body { left: auto; right: 0; }
 
 #toolbar .drag-handle {
   font-size: 16px;
