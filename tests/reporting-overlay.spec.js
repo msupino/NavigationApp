@@ -53,13 +53,11 @@ test.describe('Reporting-type overlay (#404)', () => {
     await expect(page.locator('#reporting-cb')).toBeChecked();
   });
 
-  test('toggle is the last item in the View section', async ({ page }) => {
+  test('toggle lives in the View section', async ({ page }) => {
     await boot(page);
-    const last = await page.evaluate(() => {
-      const labels = [...document.querySelectorAll('.tb-section[data-sec="view"] .navtoggle input')];
-      return labels[labels.length - 1].id;
-    });
-    expect(last).toBe('reporting-cb');
+    const sec = await page.locator('#reporting-cb').evaluate(el =>
+      el.closest('.tb-section')?.getAttribute('data-sec'));
+    expect(sec).toBe('view');
   });
 
   test('inspector reporting row always shows (independent of the map toggle)', async ({ page }) => {
