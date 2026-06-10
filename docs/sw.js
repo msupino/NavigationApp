@@ -1,6 +1,6 @@
 /* NavAid service worker — installable PWA + offline app shell.
    Map tiles (cross-origin, large) are left to the network. */
-const CACHE = 'navaid-v4';
+const CACHE = 'navaid-v5';
 
 function cacheable(url) {
   return url.origin === self.location.origin || url.host === 'unpkg.com';
