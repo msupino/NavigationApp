@@ -1230,36 +1230,42 @@ function showInspector() {
     const known = (typeof legAltitudeForLeg === 'function') ? legAltitudeForLeg(idx) : null;
     const knownIn  = known && Number.isFinite(known.inboundAltitude)  ? known.inboundAltitude  : undefined;
     const knownOut = known && Number.isFinite(known.outboundAltitude) ? known.outboundAltitude : undefined;
+    // Minimum safe altitude (#673) row, updated in place as the altitudes
+    // change — no full inspector rebuild, so the number spinner / typing keep
+    // focus while the red flag and value track live.
+    let msaRow = null;
+    const refreshMsa = () => {
+      if (!msaRow) return;
+      const msa = (typeof legMsaFt === 'function') ? legMsaFt(idx) : null;
+      if (!Number.isFinite(msa)) { msaRow.style.display = 'none'; return; }
+      msaRow.style.display = '';
+      const val = msaRow.querySelector('.val');
+      if (val) val.textContent = String(msa);
+      const planned = [leg.inboundAltitude, leg.outboundAltitude]
+        .filter(a => Number.isFinite(a));
+      msaRow.classList.toggle('msa-low',
+        planned.length > 0 && Math.min.apply(null, planned) < msa);
+    };
     body.appendChild(numberRow(S.inboundAlt, leg.inboundAltitude, v => {
       const oldVal = leg.inboundAltitude;
       leg.inboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'inboundAltitude', leg.inboundAltitude, oldVal);
-      draw(); showInspector();   // refresh MSA row colour
+      draw(); refreshMsa();
     }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'inboundAltitude'),
-         undoValue: knownIn }));
+         undoValue: knownIn, live: true }));
     body.appendChild(numberRow(S.outboundAlt, leg.outboundAltitude, v => {
       const oldVal = leg.outboundAltitude;
       leg.outboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'outboundAltitude', leg.outboundAltitude, oldVal);
-      draw(); showInspector();   // refresh MSA row colour
+      draw(); refreshMsa();
     }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'outboundAltitude'),
-         undoValue: knownOut }));
-    // Minimum safe altitude (#673) — terrain max along the leg + clearance.
-    // Only shown when a terrain grid is loaded; flagged red if either planned
-    // altitude is below it.
-    if (typeof legMsaFt === 'function' && typeof terrainHasCoverage === 'function' &&
-        terrainHasCoverage()) {
-      const msa = legMsaFt(idx);
-      if (Number.isFinite(msa)) {
-        const row = textRow(S.fpMsa || 'MSA (ft)', String(msa));
-        const planned = [leg.inboundAltitude, leg.outboundAltitude]
-          .filter(a => Number.isFinite(a));
-        if (planned.length && Math.min.apply(null, planned) < msa) {
-          row.classList.add('msa-low');
-          row.title = S.msaLowTitle || 'Planned altitude is below the minimum safe altitude';
-        }
-        body.appendChild(row);
-      }
+         undoValue: knownOut, live: true }));
+    if (typeof terrainHasCoverage === 'function' && terrainHasCoverage() &&
+        Number.isFinite(typeof legMsaFt === 'function' ? legMsaFt(idx) : NaN)) {
+      msaRow = textRow(S.fpMsa || 'MSA (ft)', '');
+      msaRow.title = S.msaLowTitle || 'Planned altitude is below the minimum safe altitude';
+      body.appendChild(msaRow);
+      refreshMsa();
     }
     const reset = document.createElement('button');
     reset.className = 'insp-btn';
@@ -1564,7 +1570,7 @@ function numberRow(label, value, onChange, opts = {}) {
   inp.type = 'number';
   inp.value = altitudeInputValue(value);
   if (opts.placeholder) inp.placeholder = opts.placeholder;
-  inp.onchange = () => {
+  const commit = () => {
     const raw = inp.value.trim();
     if (opts.allowUnknown && raw === '') {
       onChange(NaN);
@@ -1573,6 +1579,12 @@ function numberRow(label, value, onChange, opts = {}) {
     const v = parseFloat(inp.value);
     if (!isNaN(v)) onChange(v);
   };
+  inp.onchange = commit;
+  // `live` also commits on every `input` — keystrokes and the number spinner.
+  // On macOS the spinner / typing only fire `change` on blur, so without this
+  // the leg altitude (and the MSA flag) wouldn't update until the field was
+  // left or the inspector reopened.
+  if (opts.live) inp.oninput = commit;
   row.append(l, inp);
   // Optional reset button — restores the charted altitude from the dataset.
   // Omitted when undoValue is undefined (no known/charted value to revert to).
