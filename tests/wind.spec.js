@@ -176,6 +176,22 @@ test('leg wind direction wraps on blur (-395 → 325)', async ({ page }) => {
   expect(await page.evaluate(() => state.legs[0].wind.dir)).toBe(325);
 });
 
+test('leg wind direction spinner cycles endlessly through 0–359', async ({ page }) => {
+  await boot(page);
+  await seedLeg(page);
+  await page.evaluate(() => { window.showWind = true; showInspector(); });
+  const dirInput = page.locator('#insp-body .row input[type="number"]').nth(3);
+  // No min/max so the native spinner isn't clamped at the edges.
+  await expect(dirInput).not.toHaveAttribute('max', /.*/);
+  // Step up past 359 wraps to 0; step down past 0 wraps to 359.
+  await dirInput.fill('359');
+  await dirInput.press('ArrowUp');
+  await expect(dirInput).toHaveValue('0');
+  await dirInput.fill('0');
+  await dirInput.press('ArrowDown');
+  await expect(dirInput).toHaveValue('359');
+});
+
 test('route wind + per-leg overrides round-trip through serialize/apply', async ({ page }) => {
   await boot(page);
   await seedLeg(page);

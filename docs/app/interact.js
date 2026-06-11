@@ -1314,7 +1314,7 @@ function showInspector() {
         leg.wind && Number.isFinite(leg.wind.dir) ? leg.wind.dir : NaN,
         v => setLegWind('dir', v),
         { allowUnknown: true, placeholder: String(gw.dir), live: true,
-          normalize: v => ((Math.round(v) % 360) + 360) % 360,
+          normalize: v => ((Math.round(v) % 360) + 360) % 360, wrapStep: 5,
           undoValue: NaN, undoTitle: S.windResetTitle }));
       body.appendChild(numberRow(S.windSpeedKt,
         leg.wind && Number.isFinite(leg.wind.speed) ? leg.wind.speed : NaN,
@@ -1621,6 +1621,24 @@ function textareaRow(label, value, onChange) {
   row.appendChild(ta);
   return row;
 }
+// Make a number input's spinner / arrow-keys / wheel cycle endlessly through
+// 0–359 (a compass dial): stepping up past 359 wraps to 0 and down past 0
+// wraps to 359. Typing is left alone — a single-step move out of range is the
+// spinner signature, so we only wrap then (and normalize-on-blur catches the
+// rest). Removes min/max so the native spinner isn't clamped at the edges.
+function wrapDirectionInput(inp) {
+  inp.removeAttribute('min');
+  inp.removeAttribute('max');
+  const norm = v => ((v % 360) + 360) % 360;
+  inp.addEventListener('input', e => {
+    // `inputType` is set for typing / pasting and empty for spinner / arrow /
+    // wheel steps. Only wrap a spinner step — typing is left for blur-normalize
+    // so partial input (a lone "-", "36") is never yanked mid-keystroke.
+    if (e.inputType) return;
+    const v = parseInt(inp.value, 10);
+    if (Number.isFinite(v) && (v < 0 || v > 359)) inp.value = String(norm(v));
+  });
+}
 function numberRow(label, value, onChange, opts = {}) {
   const row = document.createElement('div');
   row.className = 'row';
@@ -1630,6 +1648,9 @@ function numberRow(label, value, onChange, opts = {}) {
   inp.type = 'number';
   inp.value = altitudeInputValue(value);
   if (opts.placeholder) inp.placeholder = opts.placeholder;
+  // Endless 0–359 spinner wrap (attached first so it cleans the value before
+  // the commit handler below reads it).
+  if (opts.wrapStep) wrapDirectionInput(inp);
   // Dim the field while it still holds the default value (#722 follow-up):
   // an auto/charted leg altitude reads muted so it's distinguishable from a
   // value the user typed. Recomputed on every keystroke and after each commit.
@@ -1686,6 +1707,7 @@ function numberRow(label, value, onChange, opts = {}) {
     btn.setAttribute('aria-label', btn.title);
     btn.onclick = () => {
       inp.value = altitudeInputValue(opts.undoValue);
+      updateDefaultStyle();                       // restored value → re-dim if it's the default
       onChange(opts.undoValue);
     };
     row.appendChild(btn);

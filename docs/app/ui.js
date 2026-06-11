@@ -1623,6 +1623,9 @@ function commitWind() {
   if (typeof persist === 'function') persist();
   draw();
 }
+// Endless 0–359 spinner wrap on the route-wide direction input (attached
+// before the commit handler so it cleans the value first).
+if (windDirInput && typeof wrapDirectionInput === 'function') wrapDirectionInput(windDirInput);
 if (windDirInput) windDirInput.oninput = commitWind;
 if (windSpeedInput) windSpeedInput.oninput = commitWind;
 // On blur / Enter, write the normalized value back so a typed -395 shows as

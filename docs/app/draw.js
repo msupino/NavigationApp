@@ -1587,7 +1587,12 @@ function windScreenAngle(latlng, windDirFrom) {
 // Blue wind arrow + "dir/speed" label for a per-leg wind override.
 function drawWindArrow(x, y, latlng, wind, emphasis) {
   const ang = windScreenAngle(latlng, wind.dir);
-  const len = emphasis ? 38 : 30, head = emphasis ? 10 : 8;
+  // Shaft length scales with wind speed (≈ stronger wind = longer barb),
+  // clamped so a light breeze is still visible and a gale doesn't span the
+  // whole leg. Override legs draw a touch longer/bolder.
+  const base = Math.max(16, Math.min(70, 12 + (wind.speed || 0) * 1.1));
+  const len = emphasis ? base * 1.15 : base;
+  const head = emphasis ? 11 : 9;
   const cx = Math.cos(ang), cy = Math.sin(ang);
   const x1 = x + cx * len / 2, y1 = y + cy * len / 2;
   octx.save();

@@ -205,6 +205,14 @@ test.describe('leg-altitude map wiring', () => {
     await expect(inAlt).toHaveValue('5000');
     await expect(inAlt).toHaveClass(/is-default/);
     expect(await page.evaluate(() => state.legs[0].inboundAltitude)).toBe(5000);
+    // The ↻ reset also re-dims (restores the charted default).
+    await inAlt.fill('4000');
+    await expect(inAlt).not.toHaveClass(/is-default/);
+    const reset = page.locator('#insp-body .row').filter({ hasText: 'Inbound alt' })
+      .locator('button.row-reset');
+    await reset.click();
+    await expect(inAlt).toHaveValue('5000');
+    await expect(inAlt).toHaveClass(/is-default/);
   });
 
   test('HNINA to ANATA uses the charted 4500 reverse altitude', async ({ page }) => {

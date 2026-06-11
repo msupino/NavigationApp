@@ -58,6 +58,10 @@ html, body {
   top: 12px;
   left: 12px;
   width: 240px;
+  /* Double-clicking a label/section head used to select its text — useless and
+     ugly. Inputs/textareas opt back in below. */
+  -webkit-user-select: none;
+  user-select: none;
   overflow-x: hidden;
   max-height: calc(100vh - 24px);
   max-height: calc(100dvh - 24px);       /* dynamic viewport on iOS Safari */
@@ -733,6 +737,12 @@ body.theme-light #aircraft-custom input {
   padding: 4px 6px;
 }
 .row select { cursor: pointer; }
+/* Re-enable selection inside actual text fields (the toolbar disables it). */
+#toolbar input, #toolbar textarea,
+.row input, .row textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
 /* A leg altitude still holding its charted default reads muted, so a typed
    override stands out (#722 follow-up). */
 .row input[type="number"].is-default { color: #8a8480; font-style: italic; }
