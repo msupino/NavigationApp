@@ -32,10 +32,10 @@ test('FDR DATA rows place values in the fixed X-Plane columns', async ({ page })
   // legacy layout as "Old, non-supported FDR format").
   expect(lines[0]).toBe('A');
   expect(lines[1]).toBe('3');
-  expect(text).toContain('ACFT,');
-  // TAIL must immediately follow ACFT.
-  const acftIdx = lines.findIndex(l => l.startsWith('ACFT,'));
-  expect(lines[acftIdx + 1].startsWith('TAIL,')).toBe(true);
+  // No ACFT line — replays on the loaded aircraft (an unresolved .acf path
+  // makes X-Plane error "unknown aircraft").
+  expect(text).not.toContain('ACFT,');
+  expect(text).toContain('TAIL,');
 
   const dataLines = lines.filter(l => l.startsWith('DATA,'));
   expect(dataLines.length).toBeGreaterThan(10);

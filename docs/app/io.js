@@ -1121,11 +1121,13 @@ function exportFdr() {
                   String(now.getUTCMinutes()).padStart(2,'0') + ':' +
                   String(now.getUTCSeconds()).padStart(2,'0');
   const fdrRows = rows.map(r => 'DATA, ' + r);
+  // No ACFT line: its path must resolve to an installed aircraft or X-Plane
+  // errors ("unknown aircraft"). Omitting it replays on the currently-loaded
+  // aircraft, which is robust across installs / X-Plane versions.
   const fdr = [
     'A',
     '3',
     '',
-    'ACFT, Aircraft/Laminar Research/Cessna 172SP/Cessna_172SP.acf',
     'TAIL, NAVAID',
     'DATE, ' + dateStr,
     'TIME, ' + timeStr,
