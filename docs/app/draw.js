@@ -1548,18 +1548,21 @@ function drawLegs() {
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
 
-    // Per-leg wind override arrow (#722): the route-wide wind lives in the
-    // corner readout; a leg that overrides it gets its own arrow on the map
-    // so the difference is visible at a glance. Drawn at 30% along the leg
-    // (clear of the midpoint distance badge and the minute-marker numbers).
-    if (window.showWind && leg.wind && typeof legWindFor === 'function') {
+    // Wind arrow (#722): show the wind that applies to each leg — the
+    // route-wide wind, or a per-leg override where one is set. A leg that
+    // overrides the route wind is drawn slightly bolder so the difference is
+    // visible at a glance. Drawn at 30% along the leg (clear of the midpoint
+    // distance badge and the minute-marker numbers).
+    if (window.showWind && typeof legWindFor === 'function') {
       const lw2 = legWindFor(leg);
       if (lw2) {
         const f = 0.3;
         const px = sa.x + (sb.x - sa.x) * f, py = sa.y + (sb.y - sa.y) * f;
         const pll = { lat: A.lat + (B.lat - A.lat) * f,
                       lng: A.lng + (B.lng - A.lng) * f };
-        drawWindArrow(px, py, pll, lw2);
+        const isOverride = !!(leg.wind &&
+          (Number.isFinite(leg.wind.dir) || Number.isFinite(leg.wind.speed)));
+        drawWindArrow(px, py, pll, lw2, isOverride);
       }
     }
   }
@@ -1582,18 +1585,25 @@ function windScreenAngle(latlng, windDirFrom) {
 }
 
 // Blue wind arrow + "dir/speed" label for a per-leg wind override.
-function drawWindArrow(x, y, latlng, wind) {
+function drawWindArrow(x, y, latlng, wind, emphasis) {
   const ang = windScreenAngle(latlng, wind.dir);
-  const len = 30, head = 8;
+  const len = emphasis ? 38 : 30, head = emphasis ? 10 : 8;
   const cx = Math.cos(ang), cy = Math.sin(ang);
   const x1 = x + cx * len / 2, y1 = y + cy * len / 2;
   octx.save();
   octx.strokeStyle = '#0b5ed7';
   octx.fillStyle = '#0b5ed7';
-  octx.lineWidth = 2;
+  octx.lineWidth = emphasis ? 3 : 2;
+  // White halo so the arrow reads over busy chart tiles.
+  octx.lineJoin = 'round';
   octx.beginPath();
   octx.moveTo(x - cx * len / 2, y - cy * len / 2);
   octx.lineTo(x1, y1);
+  octx.save();
+  octx.strokeStyle = 'rgba(255,255,255,0.85)';
+  octx.lineWidth = (emphasis ? 3 : 2) + 3;
+  octx.stroke();
+  octx.restore();
   octx.stroke();
   octx.beginPath();                                   // arrow head
   octx.moveTo(x1, y1);
@@ -1601,8 +1611,12 @@ function drawWindArrow(x, y, latlng, wind) {
   octx.lineTo(x1 - Math.cos(ang + 0.4) * head, y1 - Math.sin(ang + 0.4) * head);
   octx.closePath();
   octx.fill();
-  octx.font = 'bold 10px sans-serif';
-  octx.fillText(pad3(wind.dir) + '/' + wind.speed, x1 + 6, y1 + 3);
+  const label = pad3(wind.dir) + '/' + wind.speed;
+  octx.font = 'bold 11px sans-serif';
+  octx.lineWidth = 3;                                 // text halo
+  octx.strokeStyle = 'rgba(255,255,255,0.9)';
+  octx.strokeText(label, x1 + 6, y1 + 3);
+  octx.fillText(label, x1 + 6, y1 + 3);
   octx.restore();
 }
 
