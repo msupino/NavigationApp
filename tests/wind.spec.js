@@ -280,24 +280,20 @@ test('Fetch wind sets a per-leg wind for every leg (own midpoint + level)', asyn
   expect(await page.evaluate(() => state.legs[1].wind)).toEqual({ dir: 300, speed: 40 });
 });
 
-test('Fetch wind with no legs falls back to one route-wide wind', async ({ page }) => {
+test('Fetch wind with no legs alerts and fetches nothing', async ({ page }) => {
   await page.addInitScript(() => {
     try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
   });
-  await page.route('**api.open-meteo.com/**', route => {
-    const now = new Date();
-    const t = [now.toISOString().slice(0, 10) + 'T' + String(now.getUTCHours()).padStart(2, '0') + ':00'];
-    route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({ hourly: { time: t,
-        'wind_speed_900hPa': [12], 'wind_direction_900hPa': [180] } }),
-    });
-  });
+  let fetched = false;
+  await page.route('**api.open-meteo.com/**', route => { fetched = true; route.abort(); });
   await boot(page);
-  await page.evaluate(() => { window.showWind = true; });
+  await page.evaluate(() => { window.showWind = true; state.waypoints = []; state.legs = []; });
+  let alerted = '';
+  page.on('dialog', d => { alerted = d.message(); d.dismiss(); });
   await page.locator('#wind-fetch').click();
-  await page.waitForFunction(() => state.wind && state.wind.speed === 12 && state.wind.dir === 180);
-  expect(await page.evaluate(() => state.wind)).toEqual({ dir: 180, speed: 12 });
+  await page.waitForFunction(() => true);
+  expect(alerted).toMatch(/two waypoints/i);
+  expect(fetched).toBe(false);
 });
 
 test('Fetch wind surfaces an error when the request fails', async ({ page }) => {
@@ -306,7 +302,11 @@ test('Fetch wind surfaces an error when the request fails', async ({ page }) => 
   });
   await page.route('**api.open-meteo.com/**', route => route.fulfill({ status: 500, body: 'err' }));
   await boot(page);
-  await page.evaluate(() => { window.showWind = true; });
+  await page.evaluate(() => {
+    window.showWind = true;
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 35.0, name: 'B' }];
+    state.legs = []; syncLegs();
+  });
   await page.locator('#wind-fetch').click();
   await expect(page.locator('#wind-fetch-status')).toContainText('failed');
 });
