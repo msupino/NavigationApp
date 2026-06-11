@@ -345,6 +345,11 @@ window.S = Object.assign({
   vorRefNone: '— none —',
   tbShowWind: 'Show wind effect',
   tbShowWindTitle: 'Show the wind inputs, the per-leg wind arrows, and the wind-corrected readout in the leg inspector',
+  tbShowSigmet: 'Show SIGMET',
+  tbShowSigmetTitle: 'Overlay active international SIGMET hazard areas for the Israel region (source: NOAA AWC, updated periodically)',
+  sigmetReadout: function(n) { return '⚠ ' + n + ' SIGMET'; },
+  sigmetNone: 'No SIGMET in effect',
+  sigmetUpdated: function(t) { return 'SIGMET updated ' + t; },
   tbWindDir: 'Wind °',
   tbWindDirTitle: 'Route-wide wind direction (degrees true, the direction the wind blows FROM)',
   tbWindSpeed: 'Wind kt',
@@ -746,6 +751,9 @@ var legAltitudeDataset = null;  // Raw validated dataset for Charts copy/view.
 var legAltitudeDirectionPool = null; // Directed altitude entries, one per allowed direction.
 var showDrift = true;       // 10-degree drift reference lines
 var showWind = false;       // wind effect (#722): inputs + arrows + readout — opt-in
+var showSigmet = false;     // SIGMET hazard overlay — opt-in
+var sigmets = null;         // null = not loaded; [] or populated once fetched
+var sigmetMeta = null;      // { generatedAt } of the loaded SIGMET file
 var showWpNames = true;     // draw waypoint names (off = empty circle)
 var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 var yellowAlpha = 0.8;    // global multiplier for yellow label backgrounds (default 80%)
@@ -924,6 +932,21 @@ function nearestPressureLevelHpa(ft) {
     if (d < bd) { bd = d; best = lv; }
   }
   return best;
+}
+// SIGMET hazard → colour. Codes per WMO: TS thunderstorm, TURB turbulence,
+// ICE icing, MTW mountain wave, VA volcanic ash, DS/SS dust/sand storm, TC
+// tropical cyclone. Unknown hazards fall back to the thunderstorm red.
+function sigmetHazardColor(hz) {
+  switch (String(hz || '').toUpperCase()) {
+    case 'TURB': return '#e67e22';
+    case 'ICE':  return '#1ba1e2';
+    case 'MTW':  return '#8e44ad';
+    case 'VA':   return '#7f5539';
+    case 'DS':
+    case 'SS':   return '#b8860b';
+    case 'TC':   return '#c2185b';
+    default:     return '#dd1111';   // TS + anything else (6-hex for alpha fill)
+  }
 }
 const pad3 = n => String(n).padStart(3, '0');
 function toHMS(hours) {
