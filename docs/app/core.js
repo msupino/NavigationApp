@@ -428,7 +428,7 @@ window.S = Object.assign({
   },
   windUnflyable: 'Wind exceeds true airspeed',
   windResetTitle: 'Clear wind override (use the route wind)',
-  tbFetchWind: '⤓ Fetch wind',
+  tbFetchWind: '⤓ Pull Wind data',
   tbFetchWindTitle: 'Fetch a per-leg winds-aloft forecast from Open-Meteo — each leg gets its own wind at its midpoint and flight level (needs a route)',
   windFetching: 'Fetching wind…',
   windFetchOk: function(hpa, dir, spd) {
