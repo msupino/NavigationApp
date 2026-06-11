@@ -1274,14 +1274,16 @@ function showInspector() {
       propagateAlt(idx, 'inboundAltitude', leg.inboundAltitude, oldVal);
       draw(); refreshMsa();
     }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'inboundAltitude'),
-         undoValue: knownIn, live: true }));
+         undoValue: knownIn, live: true,
+         defaultValue: knownIn, mutedWhenDefault: true, emptyRestoresDefault: true }));
     body.appendChild(numberRow(S.outboundAlt, leg.outboundAltitude, v => {
       const oldVal = leg.outboundAltitude;
       leg.outboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'outboundAltitude', leg.outboundAltitude, oldVal);
       draw(); refreshMsa();
     }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'outboundAltitude'),
-         undoValue: knownOut, live: true }));
+         undoValue: knownOut, live: true,
+         defaultValue: knownOut, mutedWhenDefault: true, emptyRestoresDefault: true }));
     if (window.showMsa &&
         typeof terrainHasCoverage === 'function' && terrainHasCoverage() &&
         Number.isFinite(typeof legMsaFt === 'function' ? legMsaFt(idx) : NaN)) {
@@ -1628,14 +1630,31 @@ function numberRow(label, value, onChange, opts = {}) {
   inp.type = 'number';
   inp.value = altitudeInputValue(value);
   if (opts.placeholder) inp.placeholder = opts.placeholder;
+  // Dim the field while it still holds the default value (#722 follow-up):
+  // an auto/charted leg altitude reads muted so it's distinguishable from a
+  // value the user typed. Recomputed on every keystroke and after each commit.
+  const updateDefaultStyle = () => {
+    if (!opts.mutedWhenDefault) return;
+    const cur = parseFloat(inp.value);
+    inp.classList.toggle('is-default',
+      Number.isFinite(cur) && Number.isFinite(opts.defaultValue) && cur === opts.defaultValue);
+  };
   // `final` (blur / Enter / spinner-change) runs opts.normalize and writes the
   // cleaned value back to the field — e.g. wrapping a wind direction of -395
   // to 325. The live `input` path stays raw so normalization never fights the
   // user mid-keystroke (typing "-39" must not jump to a wrapped value).
   const commit = (final) => {
     const raw = inp.value.trim();
-    if (opts.allowUnknown && raw === '') {
-      onChange(NaN);
+    if (raw === '') {
+      // Emptying a field with a default (charted leg altitude) restores that
+      // default on blur/Enter rather than leaving it blank/unknown.
+      if (final && opts.emptyRestoresDefault && Number.isFinite(opts.defaultValue)) {
+        inp.value = altitudeInputValue(opts.defaultValue);
+        updateDefaultStyle();
+        onChange(opts.defaultValue);
+        return;
+      }
+      if (opts.allowUnknown) onChange(NaN);
       return;
     }
     let v = parseFloat(inp.value);
@@ -1644,6 +1663,7 @@ function numberRow(label, value, onChange, opts = {}) {
       v = opts.normalize(v);
       inp.value = altitudeInputValue(v);
     }
+    updateDefaultStyle();
     onChange(v);
   };
   inp.onchange = () => commit(true);
@@ -1652,6 +1672,8 @@ function numberRow(label, value, onChange, opts = {}) {
   // the leg altitude (and the MSA flag) wouldn't update until the field was
   // left or the inspector reopened.
   if (opts.live) inp.oninput = () => commit(false);
+  inp.addEventListener('input', updateDefaultStyle);
+  updateDefaultStyle();
   row.append(l, inp);
   // Optional reset button — restores the charted altitude from the dataset.
   // Omitted when undoValue is undefined (no known/charted value to revert to).

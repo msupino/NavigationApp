@@ -733,6 +733,10 @@ body.theme-light #aircraft-custom input {
   padding: 4px 6px;
 }
 .row select { cursor: pointer; }
+/* A leg altitude still holding its charted default reads muted, so a typed
+   override stands out (#722 follow-up). */
+.row input[type="number"].is-default { color: #8a8480; font-style: italic; }
+body.theme-light .row input[type="number"].is-default { color: #9aa1ab; }
 .row-reset {
   flex-shrink: 0;
   font-size: 13px;
