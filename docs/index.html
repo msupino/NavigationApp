@@ -216,6 +216,9 @@
           <span data-i18n="vorRefLabel"></span>
           <select id="vor-ref-select"></select>
         </label>
+        <label class="navtoggle" data-i18n-title="tbShowSigmetTitle">
+          <input type="checkbox" id="sigmet-cb"> <span data-i18n="tbShowSigmet"></span>
+        </label>
         <div class="tb-group" data-i18n="tbGrpRouteInfo"></div>
         <label class="navtoggle" data-i18n-title="tbShowWpNamesTitle">
           <input type="checkbox" id="wpname-cb" checked> <span data-i18n="tbShowWpNames"></span>
@@ -238,6 +241,9 @@
           <span data-i18n="tbWindSpeed"></span>
           <input type="number" id="wind-speed" min="0" step="1" value="0">
         </label>
+        <button id="wind-fetch" class="wind-input-row" type="button" style="display:none"
+                data-i18n="tbFetchWind" data-i18n-title="tbFetchWindTitle"></button>
+        <div id="wind-fetch-status" class="wind-input-row wind-fetch-status" style="display:none"></div>
         <label class="navtoggle" data-i18n-title="tbShowCommChangeTitle">
           <input type="checkbox" id="commchange-cb"> <span data-i18n="tbShowCommChange"></span>
         </label>

@@ -399,6 +399,21 @@ html, body {
   background: rgba(11, 94, 215, 0.92);   /* matches the per-leg wind arrow */
   border-color: #0b5ed7;
 }
+.leaflet-bottom.leaflet-right .sigmet-readout { bottom: 86px; }
+.sigmet-readout {
+  color: #fff;
+  background: rgba(200, 30, 30, 0.92);
+  border-color: #a11;
+  cursor: help;
+  pointer-events: auto;
+  max-width: 220px;
+  white-space: normal;
+}
+.sigmet-readout.sigmet-none {
+  background: rgba(70, 70, 70, 0.9);
+  border-color: #777;
+  cursor: default;
+}
 .coord-readout.editing { cursor: text; }
 .coord-readout.error { border-color: #c0392b; background: rgba(231, 76, 60, 0.12); }
 .coord-readout.editing .goto-num {
@@ -745,6 +760,7 @@ body.theme-light #aircraft-custom input {
 }
 /* A leg altitude still holding its charted default reads muted, so a typed
    override stands out (#722 follow-up). */
+.wind-fetch-status { font-size: 11px; color: #9a948f; padding: 0 2px; min-height: 14px; }
 .row input[type="number"].is-default { color: #8a8480; font-style: italic; }
 body.theme-light .row input[type="number"].is-default { color: #9aa1ab; }
 .row-reset {
