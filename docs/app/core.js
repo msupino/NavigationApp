@@ -422,6 +422,7 @@ window.S = Object.assign({
     return 'HDG ' + hdg + '  GS ' + gs + '  WCA ' + wca + '  ' + time;
   },
   windUnflyable: 'Wind exceeds true airspeed',
+  windResetTitle: 'Clear wind override (use the route wind)',
   inboundAlt: 'Inbound alt (ft)',
   outboundAlt: 'Outbound alt (ft)',
   altResetKnown: 'Reset to charted altitude',

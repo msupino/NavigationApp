@@ -1625,6 +1625,15 @@ function commitWind() {
 }
 if (windDirInput) windDirInput.oninput = commitWind;
 if (windSpeedInput) windSpeedInput.oninput = commitWind;
+// On blur / Enter, write the normalized value back so a typed -395 shows as
+// its wrapped 325 (commitWind already stored the normalized value).
+function writebackWindInputs() {
+  commitWind();
+  if (windDirInput) windDirInput.value = String(state.wind.dir);
+  if (windSpeedInput) windSpeedInput.value = String(state.wind.speed);
+}
+if (windDirInput) windDirInput.onchange = writebackWindInputs;
+if (windSpeedInput) windSpeedInput.onchange = writebackWindInputs;
 // "Show wind effect" toggle (#722) gates the wind inputs, the per-leg map
 // arrows, the corner readout, and the inspector wind rows. Off by default —
 // it's a planning aid, not part of the core route picture.

@@ -178,6 +178,7 @@ window.S = {
     return 'כיוון ' + hdg + '  GS ' + gs + '  WCA ' + wca + '  ' + time;
   },
   windUnflyable: 'הרוח חזקה ממהירות האוויר',
+  windResetTitle: 'נקה דריסת רוח (השתמש ברוח המסלול)',
   inboundAlt: 'גובה נכנס (ft)',
   outboundAlt: 'גובה יוצא (ft)',
   shape: 'צורה',

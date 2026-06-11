@@ -1311,11 +1311,15 @@ function showInspector() {
       body.appendChild(numberRow(S.windFromDeg,
         leg.wind && Number.isFinite(leg.wind.dir) ? leg.wind.dir : NaN,
         v => setLegWind('dir', v),
-        { allowUnknown: true, placeholder: String(gw.dir), live: true }));
+        { allowUnknown: true, placeholder: String(gw.dir), live: true,
+          normalize: v => ((Math.round(v) % 360) + 360) % 360,
+          undoValue: NaN, undoTitle: S.windResetTitle }));
       body.appendChild(numberRow(S.windSpeedKt,
         leg.wind && Number.isFinite(leg.wind.speed) ? leg.wind.speed : NaN,
         v => setLegWind('speed', v),
-        { allowUnknown: true, placeholder: String(gw.speed), live: true }));
+        { allowUnknown: true, placeholder: String(gw.speed), live: true,
+          normalize: v => Math.max(0, Math.round(v)),
+          undoValue: NaN, undoTitle: S.windResetTitle }));
       windFxRow = textRow(S.windEffect, '');
       windFxRow.classList.add('wind-fx-row');
       body.appendChild(windFxRow);
@@ -1624,21 +1628,30 @@ function numberRow(label, value, onChange, opts = {}) {
   inp.type = 'number';
   inp.value = altitudeInputValue(value);
   if (opts.placeholder) inp.placeholder = opts.placeholder;
-  const commit = () => {
+  // `final` (blur / Enter / spinner-change) runs opts.normalize and writes the
+  // cleaned value back to the field — e.g. wrapping a wind direction of -395
+  // to 325. The live `input` path stays raw so normalization never fights the
+  // user mid-keystroke (typing "-39" must not jump to a wrapped value).
+  const commit = (final) => {
     const raw = inp.value.trim();
     if (opts.allowUnknown && raw === '') {
       onChange(NaN);
       return;
     }
-    const v = parseFloat(inp.value);
-    if (!isNaN(v)) onChange(v);
+    let v = parseFloat(inp.value);
+    if (isNaN(v)) return;
+    if (final && typeof opts.normalize === 'function') {
+      v = opts.normalize(v);
+      inp.value = altitudeInputValue(v);
+    }
+    onChange(v);
   };
-  inp.onchange = commit;
+  inp.onchange = () => commit(true);
   // `live` also commits on every `input` — keystrokes and the number spinner.
   // On macOS the spinner / typing only fire `change` on blur, so without this
   // the leg altitude (and the MSA flag) wouldn't update until the field was
   // left or the inspector reopened.
-  if (opts.live) inp.oninput = commit;
+  if (opts.live) inp.oninput = () => commit(false);
   row.append(l, inp);
   // Optional reset button — restores the charted altitude from the dataset.
   // Omitted when undoValue is undefined (no known/charted value to revert to).
@@ -1647,7 +1660,7 @@ function numberRow(label, value, onChange, opts = {}) {
     btn.type = 'button';
     btn.className = 'row-reset';
     btn.textContent = '↻';
-    btn.title = S.altResetKnown || 'Reset to charted altitude';
+    btn.title = opts.undoTitle || S.altResetKnown || 'Reset to charted altitude';
     btn.setAttribute('aria-label', btn.title);
     btn.onclick = () => {
       inp.value = altitudeInputValue(opts.undoValue);

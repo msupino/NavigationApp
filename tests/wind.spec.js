@@ -145,6 +145,37 @@ test('leg inspector shows the wind-triangle readout and live-updates', async ({ 
   expect(await page.evaluate(() => state.legs[0].wind)).toEqual({ speed: 0 });
 });
 
+test('leg wind ↻ clears the override back to the route wind', async ({ page }) => {
+  await boot(page);
+  await seedLeg(page);
+  await page.evaluate(() => {
+    window.showWind = true;
+    state.wind = { dir: 270, speed: 20 };
+    state.legs[0].wind = { dir: 90, speed: 35 };
+    showInspector();
+  });
+  const dirInput = page.locator('#insp-body .row input[type="number"]').nth(3);
+  await expect(dirInput).toHaveValue('90');
+  // seedLeg has no charted altitude, so the only row-reset buttons are the two
+  // wind rows: first = wind direction, second = wind speed.
+  const dirReset = page.locator('#insp-body button.row-reset').first();
+  await dirReset.click();
+  await expect(dirInput).toHaveValue('');                 // blank → inherits route wind
+  await expect(dirInput).toHaveAttribute('placeholder', '270');
+  expect(await page.evaluate(() => state.legs[0].wind)).toEqual({ speed: 35 });
+});
+
+test('leg wind direction wraps on blur (-395 → 325)', async ({ page }) => {
+  await boot(page);
+  await seedLeg(page);
+  await page.evaluate(() => { window.showWind = true; showInspector(); });
+  const dirInput = page.locator('#insp-body .row input[type="number"]').nth(3);
+  await dirInput.fill('-395');
+  await dirInput.blur();
+  await expect(dirInput).toHaveValue('325');
+  expect(await page.evaluate(() => state.legs[0].wind.dir)).toBe(325);
+});
+
 test('route wind + per-leg overrides round-trip through serialize/apply', async ({ page }) => {
   await boot(page);
   await seedLeg(page);
