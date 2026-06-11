@@ -118,6 +118,7 @@ function draw() {
   drawCommChangeRings();
   drawAirfields();
   drawVors();
+  if (window.showSigmet && Array.isArray(sigmets) && sigmets.length) drawSigmets();
   drawLegs();
   drawWaypoints();
   drawNotes();
@@ -133,6 +134,77 @@ function draw() {
   // the debounced persist() would write the preview-state mutation to
   // localStorage if the user reopened the modal mid-export.
   if (!NavAid.exporting) persist();
+}
+
+// --- SIGMET hazard overlay (active international SIGMETs) ------------
+// A scheduled GitHub Action fetches the NOAA AWC isigmet feed, filters it to
+// the Israel region, and publishes sigmet.json to the `sigmet-data` branch —
+// served with CORS by raw.githubusercontent.com, so this static app can read
+// it directly (the AWC API itself blocks browser CORS). Same-origin
+// data/sigmet.json is the offline / first-run fallback.
+const SIGMET_URL =
+  'https://raw.githubusercontent.com/msupino/NavigationApp/sigmet-data/sigmet.json';
+async function loadSigmets(force) {
+  if (sigmets !== null && !force) return sigmets;
+  const parse = d => {
+    const list = Array.isArray(d && d.sigmets) ? d.sigmets : [];
+    sigmetMeta = { generatedAt: (d && d.generatedAt) || null };
+    return list.filter(s => s && Array.isArray(s.coords));
+  };
+  try {
+    const res = await fetch(SIGMET_URL, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    sigmets = parse(await res.json());
+    return sigmets;
+  } catch (e) {
+    try {
+      const res2 = await fetch('data/sigmet.json');
+      sigmets = parse(await res2.json());
+    } catch (e2) {
+      console.warn('Failed to load SIGMETs:', e, e2);
+      sigmets = [];
+      sigmetMeta = { generatedAt: null };
+    }
+    return sigmets;
+  }
+}
+function drawSigmets() {
+  octx.save();
+  for (const s of sigmets) {
+    const pts = (s.coords || [])
+      .filter(c => Array.isArray(c) && c.length === 2 &&
+                   Number.isFinite(c[0]) && Number.isFinite(c[1]))
+      .map(c => proj({ lat: c[0], lng: c[1] }));
+    if (pts.length < 3) continue;
+    const col = sigmetHazardColor(s.hazard);
+    octx.beginPath();
+    octx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) octx.lineTo(pts[i].x, pts[i].y);
+    octx.closePath();
+    octx.fillStyle = colorWithAlpha(col, 0.16);
+    octx.fill();
+    octx.setLineDash([8, 5]);
+    octx.lineWidth = 2;
+    octx.strokeStyle = col;
+    octx.stroke();
+    octx.setLineDash([]);
+    let cx = 0, cy = 0;
+    for (const p of pts) { cx += p.x; cy += p.y; }
+    cx /= pts.length; cy /= pts.length;
+    const label = (String(s.hazard || '') +
+                   (s.qualifier ? ' ' + s.qualifier : '')).trim();
+    if (label) {
+      octx.font = 'bold 12px sans-serif';
+      octx.textAlign = 'center';
+      octx.lineWidth = 3;
+      octx.strokeStyle = 'rgba(255,255,255,0.9)';
+      octx.strokeText(label, cx, cy);
+      octx.fillStyle = col;
+      octx.fillText(label, cx, cy);
+    }
+  }
+  octx.textAlign = 'left';
+  octx.restore();
 }
 
 // --- nav-waypoint reference overlay ---------------------------------

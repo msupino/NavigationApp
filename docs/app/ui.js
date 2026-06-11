@@ -190,6 +190,40 @@ windReadoutCtrl.onAdd = function () {
 };
 windReadoutCtrl.addTo(map);
 const windReadoutBox = document.getElementById('wind-readout');
+
+// SIGMET status readout — bottom-right, above the wind readout. Shows the
+// active count (hover for the raw texts) or a calm "no SIGMET" note.
+const sigmetReadoutCtrl = L.control({ position: 'bottomright' });
+sigmetReadoutCtrl.onAdd = function () {
+  const box = L.DomUtil.create('div', 'leaflet-control coord-readout sigmet-readout');
+  box.id = 'sigmet-readout';
+  box.setAttribute('aria-hidden', 'true');
+  return box;
+};
+sigmetReadoutCtrl.addTo(map);
+const sigmetReadoutBox = document.getElementById('sigmet-readout');
+if (sigmetReadoutBox) L.DomEvent.disableClickPropagation(sigmetReadoutBox);
+function refreshSigmetReadout() {
+  if (!sigmetReadoutBox) return;
+  if (!window.showSigmet || !Array.isArray(sigmets)) {
+    sigmetReadoutBox.classList.remove('show');
+    sigmetReadoutBox.textContent = '';
+    sigmetReadoutBox.removeAttribute('title');
+    sigmetReadoutBox.setAttribute('aria-hidden', 'true');
+    return;
+  }
+  const n = sigmets.length;
+  sigmetReadoutBox.textContent = n ? S.sigmetReadout(n) : S.sigmetNone;
+  sigmetReadoutBox.classList.toggle('sigmet-none', n === 0);
+  if (n) {
+    sigmetReadoutBox.title = sigmets.map(s => s.raw).filter(Boolean).join('\n\n');
+  } else {
+    sigmetReadoutBox.removeAttribute('title');
+  }
+  sigmetReadoutBox.classList.add('show');
+  sigmetReadoutBox.setAttribute('aria-hidden', 'false');
+}
+
 function refreshWindReadout() {
   if (!windReadoutBox) return;
   const w = state.wind;
@@ -1666,6 +1700,27 @@ if (showWindCb) {
 }
 refreshWindInputVisibility();
 refreshWindInputs();
+// --- SIGMET hazard overlay toggle -----------------------------------
+const SIGMET_KEY = 'navaid.showSigmet';
+try {
+  const stored = localStorage.getItem(SIGMET_KEY);
+  if (stored !== null) window.showSigmet = stored === '1';
+} catch (e) { /* storage unavailable */ }
+const sigmetCb = document.getElementById('sigmet-cb');
+if (sigmetCb) {
+  sigmetCb.checked = !!window.showSigmet;
+  sigmetCb.onchange = async e => {
+    window.showSigmet = e.target.checked;
+    try { localStorage.setItem(SIGMET_KEY, window.showSigmet ? '1' : '0'); }
+    catch (err) { /* storage unavailable */ }
+    if (window.showSigmet && typeof loadSigmets === 'function') await loadSigmets();
+    refreshSigmetReadout();
+    draw();
+  };
+  if (window.showSigmet && typeof loadSigmets === 'function') {
+    loadSigmets().then(() => { refreshSigmetReadout(); draw(); });
+  }
+}
 const AIRFIELDS_KEY = 'navaid.showAirfields';
 try {
   const stored = localStorage.getItem(AIRFIELDS_KEY);
