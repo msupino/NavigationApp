@@ -745,6 +745,7 @@ body.theme-light #aircraft-custom input {
 }
 /* A leg altitude still holding its charted default reads muted, so a typed
    override stands out (#722 follow-up). */
+.wind-fetch-status { font-size: 11px; color: #9a948f; padding: 0 2px; min-height: 14px; }
 .row input[type="number"].is-default { color: #8a8480; font-style: italic; }
 body.theme-light .row input[type="number"].is-default { color: #9aa1ab; }
 .row-reset {

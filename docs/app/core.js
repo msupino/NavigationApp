@@ -423,6 +423,13 @@ window.S = Object.assign({
   },
   windUnflyable: 'Wind exceeds true airspeed',
   windResetTitle: 'Clear wind override (use the route wind)',
+  tbFetchWind: '⤓ Fetch wind',
+  tbFetchWindTitle: 'Fill the route wind from the Open-Meteo winds-aloft forecast for the route area at the flight level matching the planned altitude',
+  windFetching: 'Fetching wind…',
+  windFetchOk: function(hpa, dir, spd) {
+    return hpa + ' hPa → ' + dir + '/' + spd;
+  },
+  windFetchErr: 'Wind fetch failed — check connection',
   inboundAlt: 'Inbound alt (ft)',
   outboundAlt: 'Outbound alt (ft)',
   altResetKnown: 'Reset to charted altitude',
@@ -896,6 +903,24 @@ function windTriangle(courseTrue, tas, wind) {
     hdgTrue: ((courseTrue + (wca * 180) / Math.PI) % 360 + 360) % 360,
     gs,
   };
+}
+// Winds-aloft level mapping (#722): Open-Meteo serves wind/temperature on
+// these pressure levels (hPa). Map a planned altitude to the nearest one so a
+// CVFR leg at ~3000 ft pulls ~900 hPa, ~5000 ft pulls ~850 hPa, etc.
+const OPEN_METEO_LEVELS_HPA =
+  [1000, 975, 950, 925, 900, 850, 800, 700, 600, 500, 400, 300, 250, 200, 150, 100, 70, 50, 30];
+function altitudeToPressureHpa(ft) {
+  const h = (Number.isFinite(ft) ? ft : 0) * 0.3048;        // metres
+  return 1013.25 * Math.pow(1 - 2.25577e-5 * h, 5.25588);   // ISA barometric
+}
+function nearestPressureLevelHpa(ft) {
+  const p = altitudeToPressureHpa(ft);
+  let best = OPEN_METEO_LEVELS_HPA[0], bd = Infinity;
+  for (const lv of OPEN_METEO_LEVELS_HPA) {
+    const d = Math.abs(lv - p);
+    if (d < bd) { bd = d; best = lv; }
+  }
+  return best;
 }
 const pad3 = n => String(n).padStart(3, '0');
 function toHMS(hours) {

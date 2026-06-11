@@ -179,6 +179,13 @@ window.S = {
   },
   windUnflyable: 'הרוח חזקה ממהירות האוויר',
   windResetTitle: 'נקה דריסת רוח (השתמש ברוח המסלול)',
+  tbFetchWind: '⤓ משוך רוח',
+  tbFetchWindTitle: 'מלא את רוח המסלול מתחזית רוחות הגובה של Open-Meteo עבור אזור המסלול, ברום הטיסה התואם לגובה המתוכנן',
+  windFetching: 'מושך רוח…',
+  windFetchOk: function(hpa, dir, spd) {
+    return hpa + ' hPa ← ' + dir + '/' + spd;
+  },
+  windFetchErr: 'משיכת הרוח נכשלה — בדוק חיבור',
   inboundAlt: 'גובה נכנס (ft)',
   outboundAlt: 'גובה יוצא (ft)',
   shape: 'צורה',

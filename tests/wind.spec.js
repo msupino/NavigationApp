@@ -227,6 +227,66 @@ test('validateRoute rejects malformed wind, accepts blobs without wind', async (
   expect(r.ok).toBeNull();
 });
 
+test('nearestPressureLevelHpa maps CVFR altitudes to winds-aloft levels', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => ({
+    sl: nearestPressureLevelHpa(0),
+    fl030: nearestPressureLevelHpa(3000),
+    fl050: nearestPressureLevelHpa(5000),
+    fl100: nearestPressureLevelHpa(10000),
+    fl180: nearestPressureLevelHpa(18000),
+  }));
+  expect(r.sl).toBe(1000);
+  expect(r.fl030).toBe(900);
+  expect(r.fl050).toBe(850);
+  expect(r.fl100).toBe(700);
+  expect(r.fl180).toBe(500);
+});
+
+test('Fetch wind pulls Open-Meteo winds-aloft and fills the route wind', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
+  });
+  // Stub Open-Meteo: the route sits at ~5000 ft → 850 hPa keys.
+  await page.route('**api.open-meteo.com/**', route => {
+    const now = new Date();
+    const hh = String(now.getUTCHours()).padStart(2, '0');
+    const day = now.toISOString().slice(0, 10);
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        hourly: {
+          time: [day + 'T' + hh + ':00'],
+          'wind_speed_850hPa': [32],
+          'wind_direction_850hPa': [215],
+        },
+      }),
+    });
+  });
+  await boot(page);
+  await page.evaluate(() => {
+    window.showWind = true;
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 35.0, name: 'B' }];
+    state.legs = []; syncLegs();
+    state.legs.forEach(l => { l.inboundAltitude = 5000; });
+  });
+  await page.locator('#wind-fetch').click();
+  await page.waitForFunction(() => state.wind && state.wind.speed === 32 && state.wind.dir === 215);
+  await expect(page.locator('#wind-fetch-status')).toContainText('850 hPa');
+  expect(await page.evaluate(() => state.wind)).toEqual({ dir: 215, speed: 32 });
+});
+
+test('Fetch wind surfaces an error when the request fails', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
+  });
+  await page.route('**api.open-meteo.com/**', route => route.fulfill({ status: 500, body: 'err' }));
+  await boot(page);
+  await page.evaluate(() => { window.showWind = true; });
+  await page.locator('#wind-fetch').click();
+  await expect(page.locator('#wind-fetch-status')).toContainText('failed');
+});
+
 test('calm wind is omitted from saved blobs (no schema churn)', async ({ page }) => {
   await boot(page);
   await seedLeg(page);

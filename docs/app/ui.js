@@ -1666,6 +1666,72 @@ if (showWindCb) {
 }
 refreshWindInputVisibility();
 refreshWindInputs();
+// --- Open-Meteo winds-aloft fetch (#722) ----------------------------
+// Pull a real winds-aloft forecast (free, no key, CORS-enabled) for the route
+// area at the pressure level matching the planned altitude, and fill the route
+// wind. Numeric source — the IMS aviation page only publishes chart images.
+function routeWindCenter() {
+  const wps = state.waypoints;
+  if (wps.length) {
+    let la = 0, ln = 0;
+    for (const w of wps) { la += w.lat; ln += w.lng; }
+    return { lat: la / wps.length, lng: ln / wps.length };
+  }
+  const c = map.getCenter();
+  return { lat: c.lat, lng: c.lng };
+}
+function routeRepresentativeAltitudeFt() {
+  const alts = state.legs.map(l => l.inboundAltitude).filter(Number.isFinite);
+  if (alts.length) return alts.reduce((a, b) => a + b, 0) / alts.length;
+  return 3000;                                   // typical CVFR level
+}
+const windFetchBtn = document.getElementById('wind-fetch');
+const windFetchStatus = document.getElementById('wind-fetch-status');
+async function fetchRouteWind() {
+  const c = routeWindCenter();
+  const lvl = nearestPressureLevelHpa(routeRepresentativeAltitudeFt());
+  if (windFetchStatus) windFetchStatus.textContent = S.windFetching;
+  if (windFetchBtn) windFetchBtn.disabled = true;
+  try {
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + c.lat.toFixed(3) +
+      '&longitude=' + c.lng.toFixed(3) +
+      '&hourly=wind_speed_' + lvl + 'hPa,wind_direction_' + lvl + 'hPa' +
+      '&wind_speed_unit=kn&timezone=UTC&forecast_days=1';
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(String(res.status));
+    const j = await res.json();
+    const times = j.hourly && j.hourly.time;
+    const spd = j.hourly && j.hourly['wind_speed_' + lvl + 'hPa'];
+    const dir = j.hourly && j.hourly['wind_direction_' + lvl + 'hPa'];
+    if (!Array.isArray(times) || !Array.isArray(spd) || !Array.isArray(dir)) {
+      throw new Error('no data');
+    }
+    // Pick the hourly sample closest to now (Open-Meteo UTC times have no Z).
+    const now = Date.now();
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < times.length; i++) {
+      const t = Date.parse(times[i] + 'Z');
+      const d = Math.abs(t - now);
+      if (d < bd) { bd = d; bi = i; }
+    }
+    const wd = Math.round(dir[bi]), ws = Math.round(spd[bi]);
+    if (!Number.isFinite(wd) || !Number.isFinite(ws)) throw new Error('nan');
+    state.wind = { dir: ((wd % 360) + 360) % 360, speed: Math.max(0, ws) };
+    refreshWindInputs();
+    if (state.selected && state.selected.type === 'leg') showInspector();
+    if (typeof persist === 'function') persist();
+    draw();
+    if (windFetchStatus) {
+      windFetchStatus.textContent =
+        S.windFetchOk(lvl, pad3(state.wind.dir), state.wind.speed);
+    }
+  } catch (e) {
+    if (windFetchStatus) windFetchStatus.textContent = S.windFetchErr;
+  } finally {
+    if (windFetchBtn) windFetchBtn.disabled = false;
+  }
+}
+if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
 const AIRFIELDS_KEY = 'navaid.showAirfields';
 try {
   const stored = localStorage.getItem(AIRFIELDS_KEY);
