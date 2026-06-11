@@ -271,6 +271,8 @@ window.S = Object.assign({
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbShowReporting: 'Show mandatory reports',        // reporting-type overlay toggle
   tbShowReportingTitle: 'Badge waypoints that are mandatory (חובה) reporting points',
+  tbShowMsa: 'Show MSA',                            // leg-inspector minimum safe altitude row
+  tbShowMsaTitle: 'Show minimum safe altitude (terrain + 1000 ft) in the leg inspector. Planning aid only.',
   report: 'Reporting',
   reportingMandatory: '📍 Mandatory report',
   reportingOnRequest: '📍 Report on request',
@@ -341,6 +343,20 @@ window.S = Object.assign({
   tbShowVorTitle: 'Overlay Israeli VOR/DME stations and pick a reference for radial/DME',
   vorRefLabel: 'VOR ref',
   vorRefNone: '— none —',
+  tbShowWind: 'Show wind effect',
+  tbShowWindTitle: 'Show the wind inputs, the per-leg wind arrows, and the wind-corrected readout in the leg inspector',
+  tbShowSigmet: 'Show SIGMET',
+  tbShowSigmetTitle: 'Overlay active international SIGMET hazard areas for the Israel region (source: NOAA AWC, updated periodically)',
+  sigmetReadout: function(n) { return '⚠ ' + n + ' SIGMET'; },
+  sigmetNone: 'No SIGMET in effect',
+  sigmetUpdated: function(t) { return 'SIGMET updated ' + t; },
+  tbWindDir: 'Wind °',
+  tbWindDirTitle: 'Route-wide wind direction (degrees true, the direction the wind blows FROM)',
+  tbWindSpeed: 'Wind kt',
+  tbWindSpeedTitle: 'Route-wide wind speed in knots. 0 = calm (no wind effect)',
+  windReadout: function(dir, speed) {
+    return 'Wind ' + dir + '/' + speed;
+  },
   vorName: 'Name',
   vorFreq: 'Frequency',
   vorUseRef: 'Use as reference VOR',
@@ -379,6 +395,8 @@ window.S = Object.assign({
   navLogFreqs: 'Frequencies',
   navLogPopupBlocked: 'Allow pop-ups to export the nav log.',
   fpFuel: 'Fuel',
+  fpMsa: 'MSA (ft)',
+  msaLowTitle: 'Planned altitude is below the minimum safe altitude for this leg',
   tbAircraft: 'Aircraft',
   tbGph: 'Gallons per hour',
   tbGphTitle: 'Fuel consumption, gallons per hour',
@@ -401,8 +419,28 @@ window.S = Object.assign({
   legTitle: function(n) { return 'Leg ' + n; },
   legArrow: '→',                       // direction arrow in leg inspector title (LTR)
   speedKt: 'Speed (kt)',
+  windFromDeg: 'Wind from (°)',
+  windSpeedKt: 'Wind speed (kt)',
+  windEffect: 'With wind',
+  windEffectTitle: 'Wind-corrected magnetic heading, ground speed, wind correction angle, and leg time.',
+  windEffectText: function(hdg, gs, wca, time) {
+    return 'HDG ' + hdg + '  GS ' + gs + '  WCA ' + wca + '  ' + time;
+  },
+  windUnflyable: 'Wind exceeds true airspeed',
+  windResetTitle: 'Clear wind override (use the route wind)',
+  tbFetchWind: '⤓ Pull Wind data',
+  tbFetchWindTitle: 'Fetch a per-leg winds-aloft forecast from Open-Meteo — each leg gets its own wind at its midpoint and flight level (needs a route)',
+  windFetching: 'Fetching wind…',
+  windFetchOk: function(hpa, dir, spd) {
+    return hpa + ' hPa → ' + dir + '/' + spd;
+  },
+  windFetchOkLegs: function(n) {
+    return 'Per-leg wind set (' + n + ' leg' + (n === 1 ? '' : 's') + ')';
+  },
+  windFetchErr: 'Wind fetch failed — check connection',
   inboundAlt: 'Inbound alt (ft)',
   outboundAlt: 'Outbound alt (ft)',
+  altResetKnown: 'Reset to charted altitude',
   shape: 'Shape',
   shapeRect: 'Rectangle',
   shapeOval: 'Oval',
@@ -438,6 +476,9 @@ window.S = Object.assign({
   tbAddNoteTitle: 'Click map to drop a note (click button again to stop)',
   tbLayerLabel: 'Layer',
   tbLayerTitle: 'Base map layer',
+  tbGrpOverlays: 'Overlays',          // View sub-group headings (layout A)
+  tbGrpRouteInfo: 'Route info',
+  tbGrpSafety: 'Safety',
   tbReverse: '⇄ Reverse route (R)',
   tbReverseTitle: 'Reverse route order',
   tbUndo: '↶ Undo (Ctrl-Z)',
@@ -669,6 +710,7 @@ const state = {
   commChangeSuppressions: [], // canonical comm-change callouts the user deleted
   mode: null,               // 'add' | 'note' | null (= inspect)
   selected: null,           // { type:'wp'|'leg'|'note', index }
+  wind: { dir: 270, speed: 0 }, // route-wide wind (#722): dir °true FROM, kt; 0 = calm
 };
 var showReturn = false;     // outbound (return) markers — off by default
 var showMidLeg = false;
@@ -710,6 +752,10 @@ var legAltitudePointIds = null; // Set of endpoint ids from the same file.
 var legAltitudeDataset = null;  // Raw validated dataset for Charts copy/view.
 var legAltitudeDirectionPool = null; // Directed altitude entries, one per allowed direction.
 var showDrift = true;       // 10-degree drift reference lines
+var showWind = false;       // wind effect (#722): inputs + arrows + readout — opt-in
+var showSigmet = false;     // SIGMET hazard overlay — opt-in
+var sigmets = null;         // null = not loaded; [] or populated once fetched
+var sigmetMeta = null;      // { generatedAt } of the loaded SIGMET file
 var showWpNames = true;     // draw waypoint names (off = empty circle)
 var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 var yellowAlpha = 0.8;    // global multiplier for yellow label backgrounds (default 80%)
@@ -831,6 +877,78 @@ function geo(a, b) {                   // a,b = {lat,lng} -> {dist NM, brg deg}
 function toMagnetic(deg) {
   // Magnetic = True + magVar (so −5 means "subtract 5", i.e. 5°E variation).
   return ((Math.round(deg + magVar) % 360) + 360) % 360;
+}
+// --- wind triangle (#722) -------------------------------------------
+// Resolve the wind that applies to a leg: an explicit per-leg override (with
+// either field falling back to the route wind) beats the route-wide wind.
+// Returns null for calm (speed <= 0) so callers can skip the no-op math.
+function legWindFor(leg) {
+  const g = (state.wind && typeof state.wind === 'object') ? state.wind : null;
+  const o = (leg && leg.wind && typeof leg.wind === 'object') ? leg.wind : null;
+  const dir = o && Number.isFinite(o.dir) ? o.dir
+            : (g && Number.isFinite(g.dir) ? g.dir : null);
+  const speed = o && Number.isFinite(o.speed) ? o.speed
+              : (g && Number.isFinite(g.speed) ? g.speed : null);
+  if (!Number.isFinite(dir) || !Number.isFinite(speed) || speed <= 0) return null;
+  return { dir: ((Math.round(dir) % 360) + 360) % 360, speed: Math.round(speed) };
+}
+// Classic wind triangle. Given a true course, true airspeed, and wind
+// ({ dir °true FROM, speed kt }), returns the wind correction angle,
+// resulting true heading, and ground speed. Returns null when calm, when
+// there is no airspeed, or when a crosswind exceeds TAS (no solution — the
+// aircraft cannot hold the course).
+function windTriangle(courseTrue, tas, wind) {
+  if (!wind || !(tas > 0) || !(wind.speed > 0)) return null;
+  // Angle of the wind FROM-direction relative to the course.
+  const rel = ((wind.dir - courseTrue) * Math.PI) / 180;
+  // Crosswind component (perpendicular): positive = wind from the right →
+  // crab right (positive WCA, turn into the wind).
+  const xw = wind.speed * Math.sin(rel);
+  const sinWca = xw / tas;
+  if (Math.abs(sinWca) >= 1) return null;            // unflyable crosswind
+  const wca = Math.asin(sinWca);                     // radians (toward the wind)
+  // Headwind component: positive = headwind (subtracts from GS).
+  const head = wind.speed * Math.cos(rel);
+  const gs = tas * Math.cos(wca) - head;
+  if (!(gs > 0)) return null;                         // wind overpowers TAS
+  return {
+    wcaDeg: (wca * 180) / Math.PI,
+    hdgTrue: ((courseTrue + (wca * 180) / Math.PI) % 360 + 360) % 360,
+    gs,
+  };
+}
+// Winds-aloft level mapping (#722): Open-Meteo serves wind/temperature on
+// these pressure levels (hPa). Map a planned altitude to the nearest one so a
+// CVFR leg at ~3000 ft pulls ~900 hPa, ~5000 ft pulls ~850 hPa, etc.
+const OPEN_METEO_LEVELS_HPA =
+  [1000, 975, 950, 925, 900, 850, 800, 700, 600, 500, 400, 300, 250, 200, 150, 100, 70, 50, 30];
+function altitudeToPressureHpa(ft) {
+  const h = (Number.isFinite(ft) ? ft : 0) * 0.3048;        // metres
+  return 1013.25 * Math.pow(1 - 2.25577e-5 * h, 5.25588);   // ISA barometric
+}
+function nearestPressureLevelHpa(ft) {
+  const p = altitudeToPressureHpa(ft);
+  let best = OPEN_METEO_LEVELS_HPA[0], bd = Infinity;
+  for (const lv of OPEN_METEO_LEVELS_HPA) {
+    const d = Math.abs(lv - p);
+    if (d < bd) { bd = d; best = lv; }
+  }
+  return best;
+}
+// SIGMET hazard → colour. Codes per WMO: TS thunderstorm, TURB turbulence,
+// ICE icing, MTW mountain wave, VA volcanic ash, DS/SS dust/sand storm, TC
+// tropical cyclone. Unknown hazards fall back to the thunderstorm red.
+function sigmetHazardColor(hz) {
+  switch (String(hz || '').toUpperCase()) {
+    case 'TURB': return '#e67e22';
+    case 'ICE':  return '#1ba1e2';
+    case 'MTW':  return '#8e44ad';
+    case 'VA':   return '#7f5539';
+    case 'DS':
+    case 'SS':   return '#b8860b';
+    case 'TC':   return '#c2185b';
+    default:     return '#dd1111';   // TS + anything else (6-hex for alpha fill)
+  }
 }
 const pad3 = n => String(n).padStart(3, '0');
 function toHMS(hours) {

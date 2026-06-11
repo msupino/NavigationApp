@@ -58,6 +58,10 @@ html, body {
   top: 12px;
   left: 12px;
   width: 240px;
+  /* Double-clicking a label/section head used to select its text — useless and
+     ugly. Inputs/textareas opt back in below. */
+  -webkit-user-select: none;
+  user-select: none;
   overflow-x: hidden;
   max-height: calc(100vh - 24px);
   max-height: calc(100dvh - 24px);       /* dynamic viewport on iOS Safari */
@@ -223,6 +227,24 @@ html, body {
   padding-bottom: 4px;
 }
 .tb-section.open .tb-section-body { display: flex; }
+/* Sub-group label inside a section body (layout A): thin divider + caption. */
+.tb-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #8a8484;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 5px 2px 0;
+}
+.tb-group::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #33302f;
+}
 
 #toolbar .drag-handle {
   font-size: 16px;
@@ -368,6 +390,29 @@ html, body {
 }
 .leaflet-bottom.leaflet-right .vor-readout {
   bottom: 46px;
+}
+.leaflet-bottom.leaflet-right .wind-readout {
+  bottom: 66px;
+}
+.wind-readout {
+  color: #fff;
+  background: rgba(11, 94, 215, 0.92);   /* matches the per-leg wind arrow */
+  border-color: #0b5ed7;
+}
+.leaflet-bottom.leaflet-right .sigmet-readout { bottom: 86px; }
+.sigmet-readout {
+  color: #fff;
+  background: rgba(200, 30, 30, 0.92);
+  border-color: #a11;
+  cursor: help;
+  pointer-events: auto;
+  max-width: 220px;
+  white-space: normal;
+}
+.sigmet-readout.sigmet-none {
+  background: rgba(70, 70, 70, 0.9);
+  border-color: #777;
+  cursor: default;
 }
 .coord-readout.editing { cursor: text; }
 .coord-readout.error { border-color: #c0392b; background: rgba(231, 76, 60, 0.12); }
@@ -558,7 +603,7 @@ body.theme-light #aircraft-custom input {
   z-index: 1100;
   top: 56px;
   right: 12px;
-  width: 240px;
+  width: 280px;
   background: rgba(20, 18, 18, 0.95);
   border: 1px solid #3a3636;
   border-radius: 8px;
@@ -690,6 +735,10 @@ body.theme-light #aircraft-custom input {
 }
 .row:last-child { margin-bottom: 0; }
 .row label { color: #b9b3b3; }
+/* Wind-effect readout (#722): label on its own line, value on a single
+   non-wrapping line below it (HDG/GS/WCA/time stay together). */
+.row.wind-fx-row { flex-direction: column; align-items: flex-start; gap: 2px; }
+.row.wind-fx-row .val { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .row input[type="number"],
 .row input[type="text"],
 .row select {
@@ -703,6 +752,36 @@ body.theme-light #aircraft-custom input {
   padding: 4px 6px;
 }
 .row select { cursor: pointer; }
+/* Re-enable selection inside actual text fields (the toolbar disables it). */
+#toolbar input, #toolbar textarea,
+.row input, .row textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+/* A leg altitude still holding its charted default reads muted, so a typed
+   override stands out (#722 follow-up). */
+.wind-fetch-status { font-size: 11px; color: #9a948f; padding: 0 2px; min-height: 14px; }
+.row input[type="number"].is-default { color: #8a8480; font-style: italic; }
+body.theme-light .row input[type="number"].is-default { color: #9aa1ab; }
+.row-reset {
+  flex-shrink: 0;
+  font-size: 13px;
+  line-height: 1;
+  color: #b9b3b3;
+  background: #2a2626;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+  margin-left: 2px;
+}
+.row-reset:hover { color: #fff; background: #3a3636; }
+body.theme-light .row-reset {
+  color: #555;
+  background: #f0f0f0;
+  border-color: #bbb;
+}
+body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
 .row .val {
   color: #e8e8e8;
   font-variant-numeric: tabular-nums;
@@ -1024,7 +1103,7 @@ body.theme-light #aircraft-custom input {
   #toolbar button { padding: 9px 12px; font-size: 14px; }
   #toolbar .navtoggle { font-size: 14px; }
   #toolbar .navtoggle input { width: 18px; height: 18px; }
-  #inspector { width: 260px; }
+  #inspector { width: 300px; }
   .row input[type="number"],
   .row input[type="text"] { padding: 8px 6px; font-size: 15px; }
   #info { font-size: 12px; }
@@ -1610,6 +1689,17 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
   padding: 6px 8px;
   gap: 4px;
 }
+/* MSA row flagged when the planned altitude is below the minimum safe alt. */
+.msa-low .val {
+  color: #ff6b6b;
+  font-weight: 700;
+  animation: msa-blink 1s step-start infinite;
+}
+@keyframes msa-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.25; }
+}
+body.theme-light .msa-low .val { color: #c0392b; }
 .commchange-row .commchange-label {
   color: #ffb1a8;
   font-weight: 700;

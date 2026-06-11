@@ -178,6 +178,61 @@ vorReadoutCtrl.onAdd = function () {
 };
 vorReadoutCtrl.addTo(map);
 const vorReadoutBox = document.getElementById('vor-readout');
+
+// Route-wide wind readout (#722) — bottom-right corner, above the coord/VOR
+// readouts. Shown only when the wind is non-calm.
+const windReadoutCtrl = L.control({ position: 'bottomright' });
+windReadoutCtrl.onAdd = function () {
+  const box = L.DomUtil.create('div', 'leaflet-control coord-readout wind-readout');
+  box.id = 'wind-readout';
+  box.setAttribute('aria-hidden', 'true');
+  return box;
+};
+windReadoutCtrl.addTo(map);
+const windReadoutBox = document.getElementById('wind-readout');
+
+// SIGMET status readout — bottom-right, above the wind readout. Shows the
+// active count (hover for the raw texts) or a calm "no SIGMET" note.
+const sigmetReadoutCtrl = L.control({ position: 'bottomright' });
+sigmetReadoutCtrl.onAdd = function () {
+  const box = L.DomUtil.create('div', 'leaflet-control coord-readout sigmet-readout');
+  box.id = 'sigmet-readout';
+  box.setAttribute('aria-hidden', 'true');
+  return box;
+};
+sigmetReadoutCtrl.addTo(map);
+const sigmetReadoutBox = document.getElementById('sigmet-readout');
+if (sigmetReadoutBox) L.DomEvent.disableClickPropagation(sigmetReadoutBox);
+function refreshSigmetReadout() {
+  if (!sigmetReadoutBox) return;
+  if (!window.showSigmet || !Array.isArray(sigmets)) {
+    sigmetReadoutBox.classList.remove('show');
+    sigmetReadoutBox.textContent = '';
+    sigmetReadoutBox.removeAttribute('title');
+    sigmetReadoutBox.setAttribute('aria-hidden', 'true');
+    return;
+  }
+  const n = sigmets.length;
+  sigmetReadoutBox.textContent = n ? S.sigmetReadout(n) : S.sigmetNone;
+  sigmetReadoutBox.classList.toggle('sigmet-none', n === 0);
+  if (n) {
+    sigmetReadoutBox.title = sigmets.map(s => s.raw).filter(Boolean).join('\n\n');
+  } else {
+    sigmetReadoutBox.removeAttribute('title');
+  }
+  sigmetReadoutBox.classList.add('show');
+  sigmetReadoutBox.setAttribute('aria-hidden', 'false');
+}
+
+function refreshWindReadout() {
+  if (!windReadoutBox) return;
+  const w = state.wind;
+  const on = window.showWind &&
+    w && Number.isFinite(w.speed) && w.speed > 0 && Number.isFinite(w.dir);
+  windReadoutBox.textContent = on ? S.windReadout(pad3(w.dir), w.speed) : '';
+  windReadoutBox.classList.toggle('show', !!on);
+  windReadoutBox.setAttribute('aria-hidden', on ? 'false' : 'true');
+}
 // The readout doubles as a "go to coordinates" input (issue #497): it stays
 // visible showing the map centre, follows the mouse on hover, and turns into
 // an editable field on click. Make it interactive and keep clicks/scroll from
@@ -1558,6 +1613,193 @@ document.getElementById('reporting-cb').onchange = async e => {
   if (showReporting && navWP === null) await loadNavWaypoints();
   draw();
 };
+// Minimum safe altitude row in the leg inspector (#673). Off by default —
+// it is a planning aid, not a terrain-warning system, so users opt in.
+const MSA_KEY = 'navaid.showMsa';
+try {
+  const stored = localStorage.getItem(MSA_KEY);
+  if (stored !== null) window.showMsa = stored === '1';
+} catch (e) { /* storage unavailable */ }
+const msaCb = document.getElementById('msa-cb');
+if (msaCb) {
+  msaCb.checked = !!window.showMsa;
+  msaCb.onchange = e => {
+    window.showMsa = e.target.checked;
+    try { localStorage.setItem(MSA_KEY, window.showMsa ? '1' : '0'); }
+    catch (err) { /* storage unavailable */ }
+    if (state.selected) showInspector();   // rebuild so the MSA row appears/clears
+  };
+}
+// --- route-wide wind inputs (#722) ----------------------------------
+// The wind lives in state.wind (persisted with the route, not in its own
+// localStorage key — it's a property of the flight, like speed/altitude).
+// The two View inputs drive it; the corner readout + every leg redraw react.
+const windDirInput = document.getElementById('wind-dir');
+const windSpeedInput = document.getElementById('wind-speed');
+function refreshWindInputs() {
+  const w = state.wind || { dir: 270, speed: 0 };
+  if (windDirInput && document.activeElement !== windDirInput) {
+    windDirInput.value = Number.isFinite(w.dir) ? String(w.dir) : '270';
+  }
+  if (windSpeedInput && document.activeElement !== windSpeedInput) {
+    windSpeedInput.value = Number.isFinite(w.speed) ? String(w.speed) : '0';
+  }
+  refreshWindReadout();
+}
+window.refreshWindInputs = refreshWindInputs;
+function commitWind() {
+  if (!state.wind || typeof state.wind !== 'object') state.wind = { dir: 270, speed: 0 };
+  const d = parseFloat(windDirInput && windDirInput.value);
+  const s = parseFloat(windSpeedInput && windSpeedInput.value);
+  state.wind.dir = Number.isFinite(d) ? ((Math.round(d) % 360) + 360) % 360 : state.wind.dir;
+  state.wind.speed = Number.isFinite(s) && s >= 0 ? Math.round(s) : state.wind.speed;
+  refreshWindReadout();
+  if (state.selected && state.selected.type === 'leg') showInspector();
+  if (typeof persist === 'function') persist();
+  draw();
+}
+// Endless 0–359 spinner wrap on the route-wide direction input (attached
+// before the commit handler so it cleans the value first).
+if (windDirInput && typeof wrapDirectionInput === 'function') wrapDirectionInput(windDirInput);
+if (windDirInput) windDirInput.oninput = commitWind;
+if (windSpeedInput) windSpeedInput.oninput = commitWind;
+// On blur / Enter, write the normalized value back so a typed -395 shows as
+// its wrapped 325 (commitWind already stored the normalized value).
+function writebackWindInputs() {
+  commitWind();
+  if (windDirInput) windDirInput.value = String(state.wind.dir);
+  if (windSpeedInput) windSpeedInput.value = String(state.wind.speed);
+}
+if (windDirInput) windDirInput.onchange = writebackWindInputs;
+if (windSpeedInput) windSpeedInput.onchange = writebackWindInputs;
+// "Show wind effect" toggle (#722) gates the wind inputs, the per-leg map
+// arrows, the corner readout, and the inspector wind rows. Off by default —
+// it's a planning aid, not part of the core route picture.
+const WIND_KEY = 'navaid.showWind';
+try {
+  const stored = localStorage.getItem(WIND_KEY);
+  if (stored !== null) window.showWind = stored === '1';
+} catch (e) { /* storage unavailable */ }
+const showWindCb = document.getElementById('show-wind-cb');
+const windInputRows = Array.from(document.querySelectorAll('.wind-input-row'));
+function refreshWindInputVisibility() {
+  // Inline display (not the `hidden` attribute) because `.navtoggle` sets
+  // `display:flex`, which overrides the UA `[hidden] { display:none }`.
+  for (const row of windInputRows) row.style.display = window.showWind ? '' : 'none';
+}
+if (showWindCb) {
+  showWindCb.checked = !!window.showWind;
+  showWindCb.onchange = e => {
+    window.showWind = e.target.checked;
+    try { localStorage.setItem(WIND_KEY, window.showWind ? '1' : '0'); }
+    catch (err) { /* storage unavailable */ }
+    refreshWindInputVisibility();
+    refreshWindReadout();
+    if (state.selected && state.selected.type === 'leg') showInspector();
+    draw();
+  };
+}
+refreshWindInputVisibility();
+refreshWindInputs();
+// --- Open-Meteo winds-aloft fetch (#722) ----------------------------
+// Pull a real per-leg winds-aloft forecast (free, no key, CORS-enabled) and
+// store each leg's own wind. Numeric source — the IMS aviation page only
+// publishes chart images.
+function legAltitudeFt(leg) {
+  return Number.isFinite(leg && leg.inboundAltitude) ? leg.inboundAltitude : 3000;
+}
+function legMidpoint(i) {
+  const a = state.waypoints[i], b = state.waypoints[i + 1];
+  return { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 };
+}
+// Index of the hourly sample nearest now (Open-Meteo UTC times have no Z).
+function nearestHourIndex(times) {
+  const now = Date.now();
+  let bi = 0, bd = Infinity;
+  for (let i = 0; i < times.length; i++) {
+    const d = Math.abs(Date.parse(times[i] + 'Z') - now);
+    if (d < bd) { bd = d; bi = i; }
+  }
+  return bi;
+}
+const windFetchBtn = document.getElementById('wind-fetch');
+const windFetchStatus = document.getElementById('wind-fetch-status');
+// Fetch a per-leg winds-aloft forecast: each leg gets its own wind from
+// Open-Meteo at the leg midpoint and the pressure level matching that leg's
+// altitude, stored as a per-leg override. Needs a route — with no legs it
+// alerts (like the flight plan / export paths) and does nothing.
+async function fetchRouteWind() {
+  if (!state.legs.length) {
+    if (windFetchStatus) windFetchStatus.textContent = '';
+    alert(S.errNeedWps);
+    return;
+  }
+  if (windFetchStatus) windFetchStatus.textContent = S.windFetching;
+  if (windFetchBtn) windFetchBtn.disabled = true;
+  try {
+    // One batched request: comma-joined leg midpoints + the union of the
+    // pressure-level params every leg needs; each leg reads its own level.
+    const mids = state.legs.map((l, i) => legMidpoint(i));
+    const levels = state.legs.map(l => nearestPressureLevelHpa(legAltitudeFt(l)));
+    const uniq = Array.from(new Set(levels));
+    const params = uniq.flatMap(l => ['wind_speed_' + l + 'hPa', 'wind_direction_' + l + 'hPa']);
+    const url = 'https://api.open-meteo.com/v1/forecast' +
+      '?latitude=' + mids.map(m => m.lat.toFixed(3)).join(',') +
+      '&longitude=' + mids.map(m => m.lng.toFixed(3)).join(',') +
+      '&hourly=' + params.join(',') +
+      '&wind_speed_unit=kn&timezone=UTC&forecast_days=1';
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(String(res.status));
+    const j = await res.json();
+    const locs = Array.isArray(j) ? j : [j];        // multi-location → array
+    let set = 0;
+    for (let i = 0; i < state.legs.length; i++) {
+      const loc = locs[i];
+      const lvl = levels[i];
+      const h = loc && loc.hourly;
+      const times = h && h.time;
+      const spd = h && h['wind_speed_' + lvl + 'hPa'];
+      const dir = h && h['wind_direction_' + lvl + 'hPa'];
+      if (!Array.isArray(times) || !Array.isArray(spd) || !Array.isArray(dir)) continue;
+      const bi = nearestHourIndex(times);
+      const wd = Math.round(dir[bi]), ws = Math.round(spd[bi]);
+      if (!Number.isFinite(wd) || !Number.isFinite(ws)) continue;
+      state.legs[i].wind = { dir: ((wd % 360) + 360) % 360, speed: Math.max(0, ws) };
+      set++;
+    }
+    if (!set) throw new Error('no data');
+    if (windFetchStatus) windFetchStatus.textContent = S.windFetchOkLegs(set);
+    if (state.selected && state.selected.type === 'leg') showInspector();
+    if (typeof persist === 'function') persist();
+    draw();
+  } catch (e) {
+    if (windFetchStatus) windFetchStatus.textContent = S.windFetchErr;
+  } finally {
+    if (windFetchBtn) windFetchBtn.disabled = false;
+  }
+}
+if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
+// --- SIGMET hazard overlay toggle -----------------------------------
+const SIGMET_KEY = 'navaid.showSigmet';
+try {
+  const stored = localStorage.getItem(SIGMET_KEY);
+  if (stored !== null) window.showSigmet = stored === '1';
+} catch (e) { /* storage unavailable */ }
+const sigmetCb = document.getElementById('sigmet-cb');
+if (sigmetCb) {
+  sigmetCb.checked = !!window.showSigmet;
+  sigmetCb.onchange = async e => {
+    window.showSigmet = e.target.checked;
+    try { localStorage.setItem(SIGMET_KEY, window.showSigmet ? '1' : '0'); }
+    catch (err) { /* storage unavailable */ }
+    if (window.showSigmet && typeof loadSigmets === 'function') await loadSigmets();
+    refreshSigmetReadout();
+    draw();
+  };
+  if (window.showSigmet && typeof loadSigmets === 'function') {
+    loadSigmets().then(() => { refreshSigmetReadout(); draw(); });
+  }
+}
 const AIRFIELDS_KEY = 'navaid.showAirfields';
 try {
   const stored = localStorage.getItem(AIRFIELDS_KEY);
@@ -2524,3 +2766,7 @@ if ('serviceWorker' in navigator) {
     watchServiceWorkerUpdates(navigator.serviceWorker);
   });
 }
+
+// Preload the terrain grid so MSA / terrain-clearance (#673) is ready when a
+// leg inspector opens. No-op (coverage:false) until a real DEM is bundled.
+if (typeof loadTerrain === "function") loadTerrain();
