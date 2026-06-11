@@ -1680,56 +1680,100 @@ function routeWindCenter() {
   const c = map.getCenter();
   return { lat: c.lat, lng: c.lng };
 }
-function routeRepresentativeAltitudeFt() {
-  const alts = state.legs.map(l => l.inboundAltitude).filter(Number.isFinite);
-  if (alts.length) return alts.reduce((a, b) => a + b, 0) / alts.length;
-  return 3000;                                   // typical CVFR level
+function legAltitudeFt(leg) {
+  return Number.isFinite(leg && leg.inboundAltitude) ? leg.inboundAltitude : 3000;
+}
+function legMidpoint(i) {
+  const a = state.waypoints[i], b = state.waypoints[i + 1];
+  return { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 };
+}
+// Index of the hourly sample nearest now (Open-Meteo UTC times have no Z).
+function nearestHourIndex(times) {
+  const now = Date.now();
+  let bi = 0, bd = Infinity;
+  for (let i = 0; i < times.length; i++) {
+    const d = Math.abs(Date.parse(times[i] + 'Z') - now);
+    if (d < bd) { bd = d; bi = i; }
+  }
+  return bi;
 }
 const windFetchBtn = document.getElementById('wind-fetch');
 const windFetchStatus = document.getElementById('wind-fetch-status');
+// Fetch a per-leg winds-aloft forecast: each leg gets its own wind from
+// Open-Meteo at the leg midpoint and the pressure level matching that leg's
+// altitude, stored as a per-leg override. With no legs yet, fall back to a
+// single route-wide wind at the map centre.
 async function fetchRouteWind() {
-  const c = routeWindCenter();
-  const lvl = nearestPressureLevelHpa(routeRepresentativeAltitudeFt());
   if (windFetchStatus) windFetchStatus.textContent = S.windFetching;
   if (windFetchBtn) windFetchBtn.disabled = true;
   try {
-    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + c.lat.toFixed(3) +
-      '&longitude=' + c.lng.toFixed(3) +
-      '&hourly=wind_speed_' + lvl + 'hPa,wind_direction_' + lvl + 'hPa' +
-      '&wind_speed_unit=kn&timezone=UTC&forecast_days=1';
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(String(res.status));
-    const j = await res.json();
-    const times = j.hourly && j.hourly.time;
-    const spd = j.hourly && j.hourly['wind_speed_' + lvl + 'hPa'];
-    const dir = j.hourly && j.hourly['wind_direction_' + lvl + 'hPa'];
-    if (!Array.isArray(times) || !Array.isArray(spd) || !Array.isArray(dir)) {
-      throw new Error('no data');
+    if (!state.legs.length) {
+      const c = routeWindCenter();
+      const w = await fetchWindAt(c, 3000);
+      state.wind = { dir: w.dir, speed: w.speed };
+      refreshWindInputs();
+      if (windFetchStatus) windFetchStatus.textContent = S.windFetchOk(w.hpa, pad3(w.dir), w.speed);
+    } else {
+      // One batched request: comma-joined leg midpoints + the union of the
+      // pressure-level params every leg needs; each leg reads its own level.
+      const mids = state.legs.map((l, i) => legMidpoint(i));
+      const levels = state.legs.map(l => nearestPressureLevelHpa(legAltitudeFt(l)));
+      const uniq = Array.from(new Set(levels));
+      const params = uniq.flatMap(l => ['wind_speed_' + l + 'hPa', 'wind_direction_' + l + 'hPa']);
+      const url = 'https://api.open-meteo.com/v1/forecast' +
+        '?latitude=' + mids.map(m => m.lat.toFixed(3)).join(',') +
+        '&longitude=' + mids.map(m => m.lng.toFixed(3)).join(',') +
+        '&hourly=' + params.join(',') +
+        '&wind_speed_unit=kn&timezone=UTC&forecast_days=1';
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(String(res.status));
+      const j = await res.json();
+      const locs = Array.isArray(j) ? j : [j];        // multi-location → array
+      let set = 0;
+      for (let i = 0; i < state.legs.length; i++) {
+        const loc = locs[i];
+        const lvl = levels[i];
+        const h = loc && loc.hourly;
+        const times = h && h.time;
+        const spd = h && h['wind_speed_' + lvl + 'hPa'];
+        const dir = h && h['wind_direction_' + lvl + 'hPa'];
+        if (!Array.isArray(times) || !Array.isArray(spd) || !Array.isArray(dir)) continue;
+        const bi = nearestHourIndex(times);
+        const wd = Math.round(dir[bi]), ws = Math.round(spd[bi]);
+        if (!Number.isFinite(wd) || !Number.isFinite(ws)) continue;
+        state.legs[i].wind = { dir: ((wd % 360) + 360) % 360, speed: Math.max(0, ws) };
+        set++;
+      }
+      if (!set) throw new Error('no data');
+      if (windFetchStatus) windFetchStatus.textContent = S.windFetchOkLegs(set);
     }
-    // Pick the hourly sample closest to now (Open-Meteo UTC times have no Z).
-    const now = Date.now();
-    let bi = 0, bd = Infinity;
-    for (let i = 0; i < times.length; i++) {
-      const t = Date.parse(times[i] + 'Z');
-      const d = Math.abs(t - now);
-      if (d < bd) { bd = d; bi = i; }
-    }
-    const wd = Math.round(dir[bi]), ws = Math.round(spd[bi]);
-    if (!Number.isFinite(wd) || !Number.isFinite(ws)) throw new Error('nan');
-    state.wind = { dir: ((wd % 360) + 360) % 360, speed: Math.max(0, ws) };
-    refreshWindInputs();
     if (state.selected && state.selected.type === 'leg') showInspector();
     if (typeof persist === 'function') persist();
     draw();
-    if (windFetchStatus) {
-      windFetchStatus.textContent =
-        S.windFetchOk(lvl, pad3(state.wind.dir), state.wind.speed);
-    }
   } catch (e) {
     if (windFetchStatus) windFetchStatus.textContent = S.windFetchErr;
   } finally {
     if (windFetchBtn) windFetchBtn.disabled = false;
   }
+}
+// Single-point wind for the no-legs fallback. Returns { dir, speed, hpa }.
+async function fetchWindAt(c, ft) {
+  const lvl = nearestPressureLevelHpa(ft);
+  const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + c.lat.toFixed(3) +
+    '&longitude=' + c.lng.toFixed(3) +
+    '&hourly=wind_speed_' + lvl + 'hPa,wind_direction_' + lvl + 'hPa' +
+    '&wind_speed_unit=kn&timezone=UTC&forecast_days=1';
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(String(res.status));
+  const j = await res.json();
+  const times = j.hourly && j.hourly.time;
+  const spd = j.hourly && j.hourly['wind_speed_' + lvl + 'hPa'];
+  const dir = j.hourly && j.hourly['wind_direction_' + lvl + 'hPa'];
+  if (!Array.isArray(times) || !Array.isArray(spd) || !Array.isArray(dir)) throw new Error('no data');
+  const bi = nearestHourIndex(times);
+  const wd = Math.round(dir[bi]), ws = Math.round(spd[bi]);
+  if (!Number.isFinite(wd) || !Number.isFinite(ws)) throw new Error('nan');
+  return { dir: ((wd % 360) + 360) % 360, speed: Math.max(0, ws), hpa: lvl };
 }
 if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
 const AIRFIELDS_KEY = 'navaid.showAirfields';

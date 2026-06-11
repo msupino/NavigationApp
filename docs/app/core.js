@@ -424,10 +424,13 @@ window.S = Object.assign({
   windUnflyable: 'Wind exceeds true airspeed',
   windResetTitle: 'Clear wind override (use the route wind)',
   tbFetchWind: '⤓ Fetch wind',
-  tbFetchWindTitle: 'Fill the route wind from the Open-Meteo winds-aloft forecast for the route area at the flight level matching the planned altitude',
+  tbFetchWindTitle: 'Fetch a per-leg winds-aloft forecast from Open-Meteo — each leg gets its own wind at its midpoint and flight level (no legs yet: one wind for the map area)',
   windFetching: 'Fetching wind…',
   windFetchOk: function(hpa, dir, spd) {
     return hpa + ' hPa → ' + dir + '/' + spd;
+  },
+  windFetchOkLegs: function(n) {
+    return 'Per-leg wind set (' + n + ' leg' + (n === 1 ? '' : 's') + ')';
   },
   windFetchErr: 'Wind fetch failed — check connection',
   inboundAlt: 'Inbound alt (ft)',

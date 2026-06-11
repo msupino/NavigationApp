@@ -243,37 +243,61 @@ test('nearestPressureLevelHpa maps CVFR altitudes to winds-aloft levels', async 
   expect(r.fl180).toBe(500);
 });
 
-test('Fetch wind pulls Open-Meteo winds-aloft and fills the route wind', async ({ page }) => {
+test('Fetch wind sets a per-leg wind for every leg (own midpoint + level)', async ({ page }) => {
   await page.addInitScript(() => {
     try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
   });
-  // Stub Open-Meteo: the route sits at ~5000 ft → 850 hPa keys.
+  // Two legs at different altitudes → 850 hPa (5000 ft) and 700 hPa (10000 ft).
+  // Multi-location request → Open-Meteo returns an array (one per midpoint).
   await page.route('**api.open-meteo.com/**', route => {
     const now = new Date();
-    const hh = String(now.getUTCHours()).padStart(2, '0');
-    const day = now.toISOString().slice(0, 10);
+    const t = [now.toISOString().slice(0, 10) + 'T' + String(now.getUTCHours()).padStart(2, '0') + ':00'];
+    const loc = (extra) => ({ hourly: Object.assign({ time: t }, extra) });
     route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify({
-        hourly: {
-          time: [day + 'T' + hh + ':00'],
-          'wind_speed_850hPa': [32],
-          'wind_direction_850hPa': [215],
-        },
-      }),
+      body: JSON.stringify([
+        loc({ 'wind_speed_850hPa': [20], 'wind_direction_850hPa': [200],
+              'wind_speed_700hPa': [40], 'wind_direction_700hPa': [300] }),
+        loc({ 'wind_speed_850hPa': [20], 'wind_direction_850hPa': [200],
+              'wind_speed_700hPa': [40], 'wind_direction_700hPa': [300] }),
+      ]),
     });
   });
   await boot(page);
   await page.evaluate(() => {
     window.showWind = true;
-    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 35.0, name: 'B' }];
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' },
+                       { lat: 32.3, lng: 35.0, name: 'B' },
+                       { lat: 32.6, lng: 35.1, name: 'C' }];
     state.legs = []; syncLegs();
-    state.legs.forEach(l => { l.inboundAltitude = 5000; });
+    state.legs[0].inboundAltitude = 5000;   // → 850 hPa → 200/20
+    state.legs[1].inboundAltitude = 10000;  // → 700 hPa → 300/40
   });
   await page.locator('#wind-fetch').click();
-  await page.waitForFunction(() => state.wind && state.wind.speed === 32 && state.wind.dir === 215);
-  await expect(page.locator('#wind-fetch-status')).toContainText('850 hPa');
-  expect(await page.evaluate(() => state.wind)).toEqual({ dir: 215, speed: 32 });
+  await page.waitForFunction(() => state.legs[0].wind && state.legs[1].wind);
+  await expect(page.locator('#wind-fetch-status')).toContainText('Per-leg');
+  expect(await page.evaluate(() => state.legs[0].wind)).toEqual({ dir: 200, speed: 20 });
+  expect(await page.evaluate(() => state.legs[1].wind)).toEqual({ dir: 300, speed: 40 });
+});
+
+test('Fetch wind with no legs falls back to one route-wide wind', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
+  });
+  await page.route('**api.open-meteo.com/**', route => {
+    const now = new Date();
+    const t = [now.toISOString().slice(0, 10) + 'T' + String(now.getUTCHours()).padStart(2, '0') + ':00'];
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ hourly: { time: t,
+        'wind_speed_900hPa': [12], 'wind_direction_900hPa': [180] } }),
+    });
+  });
+  await boot(page);
+  await page.evaluate(() => { window.showWind = true; });
+  await page.locator('#wind-fetch').click();
+  await page.waitForFunction(() => state.wind && state.wind.speed === 12 && state.wind.dir === 180);
+  expect(await page.evaluate(() => state.wind)).toEqual({ dir: 180, speed: 12 });
 });
 
 test('Fetch wind surfaces an error when the request fails', async ({ page }) => {

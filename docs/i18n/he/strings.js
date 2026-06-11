@@ -180,10 +180,13 @@ window.S = {
   windUnflyable: 'הרוח חזקה ממהירות האוויר',
   windResetTitle: 'נקה דריסת רוח (השתמש ברוח המסלול)',
   tbFetchWind: '⤓ משוך רוח',
-  tbFetchWindTitle: 'מלא את רוח המסלול מתחזית רוחות הגובה של Open-Meteo עבור אזור המסלול, ברום הטיסה התואם לגובה המתוכנן',
+  tbFetchWindTitle: 'משוך תחזית רוחות גובה לכל רגל מ-Open-Meteo — כל רגל מקבלת רוח משלה לפי נקודת האמצע ורום הטיסה שלה (אין רגליים: רוח אחת לאזור המפה)',
   windFetching: 'מושך רוח…',
   windFetchOk: function(hpa, dir, spd) {
     return hpa + ' hPa ← ' + dir + '/' + spd;
+  },
+  windFetchOkLegs: function(n) {
+    return 'רוח לכל רגל הוגדרה (' + n + ' רגליים)';
   },
   windFetchErr: 'משיכת הרוח נכשלה — בדוק חיבור',
   inboundAlt: 'גובה נכנס (ft)',
