@@ -178,6 +178,27 @@ vorReadoutCtrl.onAdd = function () {
 };
 vorReadoutCtrl.addTo(map);
 const vorReadoutBox = document.getElementById('vor-readout');
+
+// Route-wide wind readout (#722) — bottom-right corner, above the coord/VOR
+// readouts. Shown only when the wind is non-calm.
+const windReadoutCtrl = L.control({ position: 'bottomright' });
+windReadoutCtrl.onAdd = function () {
+  const box = L.DomUtil.create('div', 'leaflet-control coord-readout wind-readout');
+  box.id = 'wind-readout';
+  box.setAttribute('aria-hidden', 'true');
+  return box;
+};
+windReadoutCtrl.addTo(map);
+const windReadoutBox = document.getElementById('wind-readout');
+function refreshWindReadout() {
+  if (!windReadoutBox) return;
+  const w = state.wind;
+  const on = window.showWind &&
+    w && Number.isFinite(w.speed) && w.speed > 0 && Number.isFinite(w.dir);
+  windReadoutBox.textContent = on ? S.windReadout(pad3(w.dir), w.speed) : '';
+  windReadoutBox.classList.toggle('show', !!on);
+  windReadoutBox.setAttribute('aria-hidden', on ? 'false' : 'true');
+}
 // The readout doubles as a "go to coordinates" input (issue #497): it stays
 // visible showing the map centre, follows the mouse on hover, and turns into
 // an editable field on click. Make it interactive and keep clicks/scroll from
@@ -1574,6 +1595,77 @@ if (msaCb) {
     if (state.selected) showInspector();   // rebuild so the MSA row appears/clears
   };
 }
+// --- route-wide wind inputs (#722) ----------------------------------
+// The wind lives in state.wind (persisted with the route, not in its own
+// localStorage key — it's a property of the flight, like speed/altitude).
+// The two View inputs drive it; the corner readout + every leg redraw react.
+const windDirInput = document.getElementById('wind-dir');
+const windSpeedInput = document.getElementById('wind-speed');
+function refreshWindInputs() {
+  const w = state.wind || { dir: 270, speed: 0 };
+  if (windDirInput && document.activeElement !== windDirInput) {
+    windDirInput.value = Number.isFinite(w.dir) ? String(w.dir) : '270';
+  }
+  if (windSpeedInput && document.activeElement !== windSpeedInput) {
+    windSpeedInput.value = Number.isFinite(w.speed) ? String(w.speed) : '0';
+  }
+  refreshWindReadout();
+}
+window.refreshWindInputs = refreshWindInputs;
+function commitWind() {
+  if (!state.wind || typeof state.wind !== 'object') state.wind = { dir: 270, speed: 0 };
+  const d = parseFloat(windDirInput && windDirInput.value);
+  const s = parseFloat(windSpeedInput && windSpeedInput.value);
+  state.wind.dir = Number.isFinite(d) ? ((Math.round(d) % 360) + 360) % 360 : state.wind.dir;
+  state.wind.speed = Number.isFinite(s) && s >= 0 ? Math.round(s) : state.wind.speed;
+  refreshWindReadout();
+  if (state.selected && state.selected.type === 'leg') showInspector();
+  if (typeof persist === 'function') persist();
+  draw();
+}
+// Endless 0–359 spinner wrap on the route-wide direction input (attached
+// before the commit handler so it cleans the value first).
+if (windDirInput && typeof wrapDirectionInput === 'function') wrapDirectionInput(windDirInput);
+if (windDirInput) windDirInput.oninput = commitWind;
+if (windSpeedInput) windSpeedInput.oninput = commitWind;
+// On blur / Enter, write the normalized value back so a typed -395 shows as
+// its wrapped 325 (commitWind already stored the normalized value).
+function writebackWindInputs() {
+  commitWind();
+  if (windDirInput) windDirInput.value = String(state.wind.dir);
+  if (windSpeedInput) windSpeedInput.value = String(state.wind.speed);
+}
+if (windDirInput) windDirInput.onchange = writebackWindInputs;
+if (windSpeedInput) windSpeedInput.onchange = writebackWindInputs;
+// "Show wind effect" toggle (#722) gates the wind inputs, the per-leg map
+// arrows, the corner readout, and the inspector wind rows. Off by default —
+// it's a planning aid, not part of the core route picture.
+const WIND_KEY = 'navaid.showWind';
+try {
+  const stored = localStorage.getItem(WIND_KEY);
+  if (stored !== null) window.showWind = stored === '1';
+} catch (e) { /* storage unavailable */ }
+const showWindCb = document.getElementById('show-wind-cb');
+const windInputRows = Array.from(document.querySelectorAll('.wind-input-row'));
+function refreshWindInputVisibility() {
+  // Inline display (not the `hidden` attribute) because `.navtoggle` sets
+  // `display:flex`, which overrides the UA `[hidden] { display:none }`.
+  for (const row of windInputRows) row.style.display = window.showWind ? '' : 'none';
+}
+if (showWindCb) {
+  showWindCb.checked = !!window.showWind;
+  showWindCb.onchange = e => {
+    window.showWind = e.target.checked;
+    try { localStorage.setItem(WIND_KEY, window.showWind ? '1' : '0'); }
+    catch (err) { /* storage unavailable */ }
+    refreshWindInputVisibility();
+    refreshWindReadout();
+    if (state.selected && state.selected.type === 'leg') showInspector();
+    draw();
+  };
+}
+refreshWindInputVisibility();
+refreshWindInputs();
 const AIRFIELDS_KEY = 'navaid.showAirfields';
 try {
   const stored = localStorage.getItem(AIRFIELDS_KEY);
