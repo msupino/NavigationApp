@@ -1,0 +1,6 @@
+{
+ "generatedAt": null,
+ "source": "NOAA AWC isigmet",
+ "note": "Same-origin fallback. Live data is published to the sigmet-data branch by .github/workflows/sigmet.yml and fetched from raw.githubusercontent.com.",
+ "sigmets": []
+}

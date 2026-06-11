@@ -316,6 +316,15 @@ function validateRoute(d) {
       }
     }
   }
+  // Route-wide wind (#722) — optional { dir (°true, FROM), speed (kt) }.
+  if (Object.prototype.hasOwnProperty.call(d, 'wind')) {
+    if (_vKind(d.wind) !== 'object') {
+      errs.push('root.wind: expected object, got ' + _vKind(d.wind));
+    } else {
+      _v(d.wind, 'dir',   'number', 'root.wind', errs);
+      _v(d.wind, 'speed', 'number', 'root.wind', errs);
+    }
+  }
   if (wpsOk) {
     for (let i = 0; i < d.waypoints.length; i++) {
       const p = 'waypoints[' + i + ']';
@@ -344,6 +353,19 @@ function validateRoute(d) {
       // can never satisfy the optional check.
       if (Object.prototype.hasOwnProperty.call(l, 'outboundSpeed')) {
         _v(l, 'outboundSpeed', 'number', p, errs);
+      }
+      // Per-leg wind override (#722) — optional; dir / speed each optional
+      // (a partial override falls back to the route wind for the other half).
+      if (Object.prototype.hasOwnProperty.call(l, 'wind')) {
+        if (_vKind(l.wind) !== 'object') {
+          errs.push(p + '.wind: expected object, got ' + _vKind(l.wind));
+        } else {
+          for (const k of ['dir', 'speed']) {
+            if (Object.prototype.hasOwnProperty.call(l.wind, k)) {
+              _v(l.wind, k, 'number', p + '.wind', errs);
+            }
+          }
+        }
       }
       // Issue #394: `_default: 1` is the sentinel form written by
       // `_defaultLegLabels()` for an unmodified kite — its perpendicular
@@ -730,12 +752,37 @@ function altitudeMetersForExport(ft, fallbackFt = 0) {
   const v = Number.isFinite(ft) ? ft : fallbackFt;
   return Math.max(0, Math.round(v * 0.3048));
 }
+// Clean copy of a wind object ({ dir, speed }, both optional) for
+// serialization — drops anything non-numeric. Returns undefined when empty.
+function encodeWind(w) {
+  if (!w || typeof w !== 'object') return undefined;
+  const out = {};
+  if (Number.isFinite(w.dir))   out.dir   = w.dir;
+  if (Number.isFinite(w.speed)) out.speed = w.speed;
+  return (out.dir !== undefined || out.speed !== undefined) ? out : undefined;
+}
+// Route-wide wind from a stored blob — sanitized, with the calm default.
+function storedWind(d) {
+  const w = d && d.wind;
+  if (w && Number.isFinite(w.dir) && Number.isFinite(w.speed) && w.speed >= 0) {
+    return { dir: ((Math.round(w.dir) % 360) + 360) % 360,
+             speed: Math.round(w.speed) };
+  }
+  return { dir: 270, speed: 0 };
+}
 function routeSnapshotForStorage() {
+  const wind = encodeWind(state.wind);
   return {
     waypoints: state.waypoints,
-    legs: state.legs.map(encodeRouteLegAltitudes),
+    legs: state.legs.map(l => {
+      const enc = encodeRouteLegAltitudes(l);     // spreads ...l (incl. wind)
+      const w = encodeWind(l.wind);
+      if (w) enc.wind = w; else delete enc.wind;  // drop junk overrides
+      return enc;
+    }),
     notes: state.notes,
     commChangeSuppressions: routeCommChangeSuppressions(),
+    ...(wind && wind.speed > 0 ? { wind } : {}),
   };
 }
 // Serializable, schema-clean snapshot of the current route. Shared by the
@@ -756,6 +803,7 @@ function serializeRoute() {
       outLabel: l.outLabel,
       ...(l.cumLabel ? { cumLabel: l.cumLabel } : {}),
       ...(l.cumLabelRet ? { cumLabelRet: l.cumLabelRet } : {}),
+      ...(encodeWind(l.wind) ? { wind: encodeWind(l.wind) } : {}),
     })),
     notes: state.notes.map(n => ({
       lat: r5(n.lat), lng: r5(n.lng), text: n.text || '', color: n.color || '',
@@ -767,6 +815,8 @@ function serializeRoute() {
     })),
   };
   if (commChangeSuppressions.length) data.commChangeSuppressions = commChangeSuppressions;
+  const wind = encodeWind(state.wind);
+  if (wind && wind.speed > 0) data.wind = wind;     // calm = omit (#722)
   return data;
 }
 function save() {
@@ -1230,6 +1280,7 @@ function applyRouteData(d) {
                          : { a: 0, _default: 1, _m: 1 },
     cumLabelRet: l.cumLabelRet ? _normalizeLegLabel(l.cumLabelRet, legacyAS)
                                : { a: 0, _default: 1, _m: 1 },
+    ...(encodeWind(l.wind) ? { wind: encodeWind(l.wind) } : {}),
   }));
   state.notes = d.notes.map(n => ({
     lat: r5(n.lat), lng: r5(n.lng),
@@ -1240,6 +1291,8 @@ function applyRouteData(d) {
     ...(n.freqAuto === true ? { freqAuto: true } : {}),
   }));
   state.commChangeSuppressions = storedCommChangeSuppressions(d);
+  state.wind = storedWind(d);
+  if (typeof window.refreshWindInputs === 'function') window.refreshWindInputs();
   syncLegs();
   state.selected = null;
   showInspector();
@@ -3282,6 +3335,7 @@ function restoreRoute() {
     outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
     inLabel:  _normalizeLegLabel(l.inLabel,  legacyAS),
     outLabel: _normalizeLegLabel(l.outLabel, legacyAS),
+    ...(encodeWind(l.wind) ? { wind: encodeWind(l.wind) } : {}),
   }));
   state.notes = d.notes.map(n => ({
     lat: r5(n.lat), lng: r5(n.lng),
@@ -3292,6 +3346,8 @@ function restoreRoute() {
     ...(n.freqAuto === true ? { freqAuto: true } : {}),
   }));
   state.commChangeSuppressions = storedCommChangeSuppressions(d);
+  state.wind = storedWind(d);
+  if (typeof window.refreshWindInputs === 'function') window.refreshWindInputs();
   syncLegs();
   return true;
 }
