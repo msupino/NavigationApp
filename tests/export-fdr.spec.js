@@ -8,12 +8,9 @@ async function boot(page) {
     typeof exportFdr === 'function' && typeof syncLegs === 'function');
   // Capture the generated file text instead of downloading it.
   await page.evaluate(() => {
-    window.__fdr = null;
-    const realCreate = URL.createObjectURL;
     URL.createObjectURL = (blob) => { window.__fdrBlob = blob; return 'blob:stub'; };
     URL.revokeObjectURL = () => {};
-    const realClick = HTMLAnchorElement.prototype.click;
-    HTMLAnchorElement.prototype.click = function () { /* no navigation */ };
+    HTMLAnchorElement.prototype.click = function () { /* swallow download nav */ };
     window.__readFdr = async () => window.__fdrBlob ? await window.__fdrBlob.text() : null;
   });
 }
