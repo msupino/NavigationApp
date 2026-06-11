@@ -716,6 +716,10 @@ body.theme-light #aircraft-custom input {
 }
 .row:last-child { margin-bottom: 0; }
 .row label { color: #b9b3b3; }
+/* Wind-effect readout (#722): label on its own line, value on a single
+   non-wrapping line below it (HDG/GS/WCA/time stay together). */
+.row.wind-fx-row { flex-direction: column; align-items: flex-start; gap: 2px; }
+.row.wind-fx-row .val { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .row input[type="number"],
 .row input[type="text"],
 .row select {

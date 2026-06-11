@@ -1317,6 +1317,7 @@ function showInspector() {
         v => setLegWind('speed', v),
         { allowUnknown: true, placeholder: String(gw.speed), live: true }));
       windFxRow = textRow(S.windEffect, '');
+      windFxRow.classList.add('wind-fx-row');
       body.appendChild(windFxRow);
       refreshWindFx();
     }
