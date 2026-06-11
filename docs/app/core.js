@@ -343,6 +343,8 @@ window.S = Object.assign({
   tbShowVorTitle: 'Overlay Israeli VOR/DME stations and pick a reference for radial/DME',
   vorRefLabel: 'VOR ref',
   vorRefNone: '— none —',
+  tbShowWind: 'Show wind effect',
+  tbShowWindTitle: 'Show the wind inputs, the per-leg wind arrows, and the wind-corrected readout in the leg inspector',
   tbWindDir: 'Wind °',
   tbWindDirTitle: 'Route-wide wind direction (degrees true, the direction the wind blows FROM)',
   tbWindSpeed: 'Wind kt',
@@ -732,6 +734,7 @@ var legAltitudePointIds = null; // Set of endpoint ids from the same file.
 var legAltitudeDataset = null;  // Raw validated dataset for Charts copy/view.
 var legAltitudeDirectionPool = null; // Directed altitude entries, one per allowed direction.
 var showDrift = true;       // 10-degree drift reference lines
+var showWind = false;       // wind effect (#722): inputs + arrows + readout — opt-in
 var showWpNames = true;     // draw waypoint names (off = empty circle)
 var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 var yellowAlpha = 0.8;    // global multiplier for yellow label backgrounds (default 80%)

@@ -1552,7 +1552,7 @@ function drawLegs() {
     // corner readout; a leg that overrides it gets its own arrow on the map
     // so the difference is visible at a glance. Drawn at 30% along the leg
     // (clear of the midpoint distance badge and the minute-marker numbers).
-    if (leg.wind && typeof legWindFor === 'function') {
+    if (window.showWind && leg.wind && typeof legWindFor === 'function') {
       const lw2 = legWindFor(leg);
       if (lw2) {
         const f = 0.3;

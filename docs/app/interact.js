@@ -1306,18 +1306,20 @@ function showInspector() {
       else delete leg.wind;
       refreshWindFx(); draw();
     };
-    const gw = state.wind || { dir: 270, speed: 0 };
-    body.appendChild(numberRow(S.windFromDeg,
-      leg.wind && Number.isFinite(leg.wind.dir) ? leg.wind.dir : NaN,
-      v => setLegWind('dir', v),
-      { allowUnknown: true, placeholder: String(gw.dir), live: true }));
-    body.appendChild(numberRow(S.windSpeedKt,
-      leg.wind && Number.isFinite(leg.wind.speed) ? leg.wind.speed : NaN,
-      v => setLegWind('speed', v),
-      { allowUnknown: true, placeholder: String(gw.speed), live: true }));
-    windFxRow = textRow(S.windEffect, '');
-    body.appendChild(windFxRow);
-    refreshWindFx();
+    if (window.showWind) {
+      const gw = state.wind || { dir: 270, speed: 0 };
+      body.appendChild(numberRow(S.windFromDeg,
+        leg.wind && Number.isFinite(leg.wind.dir) ? leg.wind.dir : NaN,
+        v => setLegWind('dir', v),
+        { allowUnknown: true, placeholder: String(gw.dir), live: true }));
+      body.appendChild(numberRow(S.windSpeedKt,
+        leg.wind && Number.isFinite(leg.wind.speed) ? leg.wind.speed : NaN,
+        v => setLegWind('speed', v),
+        { allowUnknown: true, placeholder: String(gw.speed), live: true }));
+      windFxRow = textRow(S.windEffect, '');
+      body.appendChild(windFxRow);
+      refreshWindFx();
+    }
     const reset = document.createElement('button');
     reset.className = 'insp-btn';
     // Fallback to a glyph if the locale strings haven't been loaded yet —

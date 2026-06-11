@@ -76,13 +76,18 @@ test('legWindFor: per-leg override beats route wind; speed 0 marks calm', async 
   expect(r.allCalm).toBeNull();
 });
 
-test('View section wind inputs drive state.wind and the corner readout', async ({ page }) => {
+test('Show-wind toggle reveals the inputs; they drive state.wind + readout', async ({ page }) => {
   await page.addInitScript(() => {
     try { localStorage.setItem('navaid.sec.view', '1'); } catch (e) {}
   });
   await boot(page);
   const dir = page.locator('#wind-dir');
   const speed = page.locator('#wind-speed');
+  // Inputs hidden until the toggle is on.
+  await expect(dir).toBeHidden();
+  const toggle = page.locator('#show-wind-cb');
+  await expect(toggle).not.toBeChecked();
+  await toggle.check();
   await expect(dir).toBeVisible();
   await expect(speed).toBeVisible();
   // Calm by default — readout hidden.
@@ -98,12 +103,32 @@ test('View section wind inputs drive state.wind and the corner readout', async (
   // Back to calm hides it again.
   await speed.fill('0');
   await expect(readout).not.toHaveClass(/show/);
+  // Turning the toggle off hides the inputs and the readout again.
+  await speed.fill('18');
+  await expect(readout).toHaveClass(/show/);
+  await toggle.uncheck();
+  await expect(dir).toBeHidden();
+  await expect(readout).not.toHaveClass(/show/);
+});
+
+test('Show-wind toggle persists across reload', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.sec.view', '1'); } catch (e) {}
+  });
+  await boot(page);
+  await page.locator('#show-wind-cb').check();
+  expect(await page.evaluate(() => localStorage.getItem('navaid.showWind'))).toBe('1');
+  await page.reload();
+  await page.waitForFunction(() => typeof state !== 'undefined');
+  await expect(page.locator('#show-wind-cb')).toBeChecked();
+  expect(await page.evaluate(() => window.showWind)).toBe(true);
 });
 
 test('leg inspector shows the wind-triangle readout and live-updates', async ({ page }) => {
   await boot(page);
   await seedLeg(page);
   await page.evaluate(() => {
+    window.showWind = true;                // gate the inspector wind rows
     state.wind = { dir: 270, speed: 20 };
     showInspector();                       // rebuild with wind present
   });

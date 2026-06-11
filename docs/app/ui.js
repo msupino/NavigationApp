@@ -193,7 +193,8 @@ const windReadoutBox = document.getElementById('wind-readout');
 function refreshWindReadout() {
   if (!windReadoutBox) return;
   const w = state.wind;
-  const on = w && Number.isFinite(w.speed) && w.speed > 0 && Number.isFinite(w.dir);
+  const on = window.showWind &&
+    w && Number.isFinite(w.speed) && w.speed > 0 && Number.isFinite(w.dir);
   windReadoutBox.textContent = on ? S.windReadout(pad3(w.dir), w.speed) : '';
   windReadoutBox.classList.toggle('show', !!on);
   windReadoutBox.setAttribute('aria-hidden', on ? 'false' : 'true');
@@ -1624,6 +1625,34 @@ function commitWind() {
 }
 if (windDirInput) windDirInput.oninput = commitWind;
 if (windSpeedInput) windSpeedInput.oninput = commitWind;
+// "Show wind effect" toggle (#722) gates the wind inputs, the per-leg map
+// arrows, the corner readout, and the inspector wind rows. Off by default —
+// it's a planning aid, not part of the core route picture.
+const WIND_KEY = 'navaid.showWind';
+try {
+  const stored = localStorage.getItem(WIND_KEY);
+  if (stored !== null) window.showWind = stored === '1';
+} catch (e) { /* storage unavailable */ }
+const showWindCb = document.getElementById('show-wind-cb');
+const windInputRows = Array.from(document.querySelectorAll('.wind-input-row'));
+function refreshWindInputVisibility() {
+  // Inline display (not the `hidden` attribute) because `.navtoggle` sets
+  // `display:flex`, which overrides the UA `[hidden] { display:none }`.
+  for (const row of windInputRows) row.style.display = window.showWind ? '' : 'none';
+}
+if (showWindCb) {
+  showWindCb.checked = !!window.showWind;
+  showWindCb.onchange = e => {
+    window.showWind = e.target.checked;
+    try { localStorage.setItem(WIND_KEY, window.showWind ? '1' : '0'); }
+    catch (err) { /* storage unavailable */ }
+    refreshWindInputVisibility();
+    refreshWindReadout();
+    if (state.selected && state.selected.type === 'leg') showInspector();
+    draw();
+  };
+}
+refreshWindInputVisibility();
 refreshWindInputs();
 const AIRFIELDS_KEY = 'navaid.showAirfields';
 try {

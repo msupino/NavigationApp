@@ -100,6 +100,8 @@ window.S = {
   tbShowVorTitle: 'הצג תחנות VOR/DME ובחר תחנת ייחוס לרדיאל/DME',
   vorRefLabel: 'תחנת ייחוס',
   vorRefNone: '— ללא —',
+  tbShowWind: 'הצג השפעת רוח',
+  tbShowWindTitle: 'הצג את שדות הרוח, חצי הרוח לכל רגל, וקריאת הכיוון המתוקן במפקח הרגל',
   tbWindDir: 'רוח °',
   tbWindDirTitle: 'כיוון רוח כלל-מסלולי (מעלות אמת, הכיוון שממנו הרוח נושבת)',
   tbWindSpeed: 'רוח קשר',
