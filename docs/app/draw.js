@@ -1547,7 +1547,82 @@ function drawLegs() {
       }
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
+
+    // Wind arrow (#722): show the wind that applies to each leg — the
+    // route-wide wind, or a per-leg override where one is set. A leg that
+    // overrides the route wind is drawn slightly bolder so the difference is
+    // visible at a glance. Drawn at 30% along the leg (clear of the midpoint
+    // distance badge and the minute-marker numbers).
+    if (window.showWind && typeof legWindFor === 'function') {
+      const lw2 = legWindFor(leg);
+      if (lw2) {
+        const f = 0.3;
+        const px = sa.x + (sb.x - sa.x) * f, py = sa.y + (sb.y - sa.y) * f;
+        const pll = { lat: A.lat + (B.lat - A.lat) * f,
+                      lng: A.lng + (B.lng - A.lng) * f };
+        const isOverride = !!(leg.wind &&
+          (Number.isFinite(leg.wind.dir) || Number.isFinite(leg.wind.speed)));
+        drawWindArrow(px, py, pll, lw2, isOverride);
+      }
+    }
   }
+}
+
+// Screen angle (radians) of the direction the wind BLOWS TOWARD at a given
+// lat/lng. Computed by projecting a small geographic offset instead of using
+// the compass angle directly so it stays correct under map rotation
+// (map.setBearing) — same reasoning as the kite angles, which come from
+// projected points.
+function windScreenAngle(latlng, windDirFrom) {
+  const to = ((windDirFrom + 180) * Math.PI) / 180;
+  const eps = 0.02;                                   // ~1.2 NM; angle only
+  const p1 = proj(latlng);
+  const p2 = proj({
+    lat: latlng.lat + Math.cos(to) * eps,
+    lng: latlng.lng + Math.sin(to) * eps / Math.cos((latlng.lat * Math.PI) / 180),
+  });
+  return Math.atan2(p2.y - p1.y, p2.x - p1.x);
+}
+
+// Blue wind arrow + "dir/speed" label for a per-leg wind override.
+function drawWindArrow(x, y, latlng, wind, emphasis) {
+  const ang = windScreenAngle(latlng, wind.dir);
+  // Shaft length scales with wind speed (≈ stronger wind = longer barb),
+  // clamped so a light breeze is still visible and a gale doesn't span the
+  // whole leg. Override legs draw a touch longer/bolder.
+  const base = Math.max(16, Math.min(70, 12 + (wind.speed || 0) * 1.1));
+  const len = emphasis ? base * 1.15 : base;
+  const head = emphasis ? 11 : 9;
+  const cx = Math.cos(ang), cy = Math.sin(ang);
+  const x1 = x + cx * len / 2, y1 = y + cy * len / 2;
+  octx.save();
+  octx.strokeStyle = '#0b5ed7';
+  octx.fillStyle = '#0b5ed7';
+  octx.lineWidth = emphasis ? 3 : 2;
+  // White halo so the arrow reads over busy chart tiles.
+  octx.lineJoin = 'round';
+  octx.beginPath();
+  octx.moveTo(x - cx * len / 2, y - cy * len / 2);
+  octx.lineTo(x1, y1);
+  octx.save();
+  octx.strokeStyle = 'rgba(255,255,255,0.85)';
+  octx.lineWidth = (emphasis ? 3 : 2) + 3;
+  octx.stroke();
+  octx.restore();
+  octx.stroke();
+  octx.beginPath();                                   // arrow head
+  octx.moveTo(x1, y1);
+  octx.lineTo(x1 - Math.cos(ang - 0.4) * head, y1 - Math.sin(ang - 0.4) * head);
+  octx.lineTo(x1 - Math.cos(ang + 0.4) * head, y1 - Math.sin(ang + 0.4) * head);
+  octx.closePath();
+  octx.fill();
+  const label = pad3(wind.dir) + '/' + wind.speed;
+  octx.font = 'bold 11px sans-serif';
+  octx.lineWidth = 3;                                 // text halo
+  octx.strokeStyle = 'rgba(255,255,255,0.9)';
+  octx.strokeText(label, x1 + 6, y1 + 3);
+  octx.fillText(label, x1 + 6, y1 + 3);
+  octx.restore();
 }
 
 // Drift reference lines, one from each end, defaulting to half the leg length.

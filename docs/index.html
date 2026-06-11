@@ -227,6 +227,17 @@
         <label class="navtoggle" data-i18n-title="tbShowDriftTitle">
           <input type="checkbox" id="drift-cb" checked> <span data-i18n="tbShowDrift"></span>
         </label>
+        <label class="navtoggle" data-i18n-title="tbShowWindTitle">
+          <input type="checkbox" id="show-wind-cb"> <span data-i18n="tbShowWind"></span>
+        </label>
+        <label class="navtoggle wind-input-row" id="wind-dir-row" data-i18n-title="tbWindDirTitle" hidden>
+          <span data-i18n="tbWindDir"></span>
+          <input type="number" id="wind-dir" min="0" max="360" step="5" value="270">
+        </label>
+        <label class="navtoggle wind-input-row" id="wind-speed-row" data-i18n-title="tbWindSpeedTitle" hidden>
+          <span data-i18n="tbWindSpeed"></span>
+          <input type="number" id="wind-speed" min="0" step="1" value="0">
+        </label>
         <label class="navtoggle" data-i18n-title="tbShowCommChangeTitle">
           <input type="checkbox" id="commchange-cb"> <span data-i18n="tbShowCommChange"></span>
         </label>

@@ -1221,8 +1221,30 @@ function showInspector() {
     title.placeholder = '';
     title.readOnly = true;
     title.oninput = null;
+    // Wind (#722): per-leg override of the route-wide wind. Blank inputs
+    // fall back to state.wind (shown as the placeholder); an explicit
+    // speed of 0 marks the leg calm. The "With wind" row is a live readout
+    // of the wind-triangle result (HDG/GS/WCA/time) — updated in place,
+    // same pattern as the MSA row, so typing keeps focus.
+    let windFxRow = null;
+    const refreshWindFx = () => {
+      if (!windFxRow) return;
+      const A = state.waypoints[idx], B = state.waypoints[idx + 1];
+      const w = (typeof legWindFor === 'function') ? legWindFor(leg) : null;
+      if (!A || !B || !w) { windFxRow.style.display = 'none'; return; }
+      windFxRow.style.display = '';
+      const val = windFxRow.querySelector('.val');
+      if (!val) return;
+      const { dist, brg } = geo(A, B);
+      const fx = windTriangle(brg, leg.flightSpeed, w);
+      if (!fx || fx.gs <= 0) { val.textContent = S.windUnflyable; return; }
+      const wca = Math.round(fx.wcaDeg);
+      val.textContent = S.windEffectText(
+        pad3(toMagnetic(fx.hdgTrue)), Math.round(fx.gs),
+        (wca >= 0 ? '+' : '') + wca, toHMS(dist / fx.gs));
+    };
     body.appendChild(numberRow(S.speedKt, leg.flightSpeed, v => {
-      leg.flightSpeed = v > 0 ? v : leg.flightSpeed; draw();
+      leg.flightSpeed = v > 0 ? v : leg.flightSpeed; draw(); refreshWindFx();
     }));
     // Reset-to-known: the charted altitude from leg-altitude.json. Undefined
     // (no entry / unknown direction) means the reset button is omitted — there
@@ -1252,14 +1274,16 @@ function showInspector() {
       propagateAlt(idx, 'inboundAltitude', leg.inboundAltitude, oldVal);
       draw(); refreshMsa();
     }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'inboundAltitude'),
-         undoValue: knownIn, live: true }));
+         undoValue: knownIn, live: true,
+         defaultValue: knownIn, mutedWhenDefault: true, emptyRestoresDefault: true }));
     body.appendChild(numberRow(S.outboundAlt, leg.outboundAltitude, v => {
       const oldVal = leg.outboundAltitude;
       leg.outboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'outboundAltitude', leg.outboundAltitude, oldVal);
       draw(); refreshMsa();
     }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'outboundAltitude'),
-         undoValue: knownOut, live: true }));
+         undoValue: knownOut, live: true,
+         defaultValue: knownOut, mutedWhenDefault: true, emptyRestoresDefault: true }));
     if (window.showMsa &&
         typeof terrainHasCoverage === 'function' && terrainHasCoverage() &&
         Number.isFinite(typeof legMsaFt === 'function' ? legMsaFt(idx) : NaN)) {
@@ -1267,6 +1291,41 @@ function showInspector() {
       msaRow.title = S.msaLowTitle || 'Planned altitude is below the minimum safe altitude';
       body.appendChild(msaRow);
       refreshMsa();
+    }
+    // Per-leg wind override rows + live readout — appended AFTER the altitude
+    // rows so the long-standing number-input order (speed, in-alt, out-alt)
+    // that other specs index by stays put.
+    const setLegWind = (field, v) => {
+      const cur = Object.assign({}, leg.wind);
+      if (Number.isFinite(v)) {
+        cur[field] = field === 'dir'
+          ? ((Math.round(v) % 360) + 360) % 360
+          : Math.max(0, Math.round(v));
+      } else {
+        delete cur[field];
+      }
+      if (Number.isFinite(cur.dir) || Number.isFinite(cur.speed)) leg.wind = cur;
+      else delete leg.wind;
+      refreshWindFx(); draw();
+    };
+    if (window.showWind) {
+      const gw = state.wind || { dir: 270, speed: 0 };
+      body.appendChild(numberRow(S.windFromDeg,
+        leg.wind && Number.isFinite(leg.wind.dir) ? leg.wind.dir : NaN,
+        v => setLegWind('dir', v),
+        { allowUnknown: true, placeholder: String(gw.dir), live: true,
+          normalize: v => ((Math.round(v) % 360) + 360) % 360, wrapStep: 5,
+          undoValue: NaN, undoTitle: S.windResetTitle }));
+      body.appendChild(numberRow(S.windSpeedKt,
+        leg.wind && Number.isFinite(leg.wind.speed) ? leg.wind.speed : NaN,
+        v => setLegWind('speed', v),
+        { allowUnknown: true, placeholder: String(gw.speed), live: true,
+          normalize: v => Math.max(0, Math.round(v)),
+          undoValue: NaN, undoTitle: S.windResetTitle }));
+      windFxRow = textRow(S.windEffect, '');
+      windFxRow.classList.add('wind-fx-row');
+      body.appendChild(windFxRow);
+      refreshWindFx();
     }
     const reset = document.createElement('button');
     reset.className = 'insp-btn';
@@ -1562,6 +1621,24 @@ function textareaRow(label, value, onChange) {
   row.appendChild(ta);
   return row;
 }
+// Make a number input's spinner / arrow-keys / wheel cycle endlessly through
+// 0–359 (a compass dial): stepping up past 359 wraps to 0 and down past 0
+// wraps to 359. Typing is left alone — a single-step move out of range is the
+// spinner signature, so we only wrap then (and normalize-on-blur catches the
+// rest). Removes min/max so the native spinner isn't clamped at the edges.
+function wrapDirectionInput(inp) {
+  inp.removeAttribute('min');
+  inp.removeAttribute('max');
+  const norm = v => ((v % 360) + 360) % 360;
+  inp.addEventListener('input', e => {
+    // `inputType` is set for typing / pasting and empty for spinner / arrow /
+    // wheel steps. Only wrap a spinner step — typing is left for blur-normalize
+    // so partial input (a lone "-", "36") is never yanked mid-keystroke.
+    if (e.inputType) return;
+    const v = parseInt(inp.value, 10);
+    if (Number.isFinite(v) && (v < 0 || v > 359)) inp.value = String(norm(v));
+  });
+}
 function numberRow(label, value, onChange, opts = {}) {
   const row = document.createElement('div');
   row.className = 'row';
@@ -1571,21 +1648,53 @@ function numberRow(label, value, onChange, opts = {}) {
   inp.type = 'number';
   inp.value = altitudeInputValue(value);
   if (opts.placeholder) inp.placeholder = opts.placeholder;
-  const commit = () => {
+  // Endless 0–359 spinner wrap (attached first so it cleans the value before
+  // the commit handler below reads it).
+  if (opts.wrapStep) wrapDirectionInput(inp);
+  // Dim the field while it still holds the default value (#722 follow-up):
+  // an auto/charted leg altitude reads muted so it's distinguishable from a
+  // value the user typed. Recomputed on every keystroke and after each commit.
+  const updateDefaultStyle = () => {
+    if (!opts.mutedWhenDefault) return;
+    const cur = parseFloat(inp.value);
+    inp.classList.toggle('is-default',
+      Number.isFinite(cur) && Number.isFinite(opts.defaultValue) && cur === opts.defaultValue);
+  };
+  // `final` (blur / Enter / spinner-change) runs opts.normalize and writes the
+  // cleaned value back to the field — e.g. wrapping a wind direction of -395
+  // to 325. The live `input` path stays raw so normalization never fights the
+  // user mid-keystroke (typing "-39" must not jump to a wrapped value).
+  const commit = (final) => {
     const raw = inp.value.trim();
-    if (opts.allowUnknown && raw === '') {
-      onChange(NaN);
+    if (raw === '') {
+      // Emptying a field with a default (charted leg altitude) restores that
+      // default on blur/Enter rather than leaving it blank/unknown.
+      if (final && opts.emptyRestoresDefault && Number.isFinite(opts.defaultValue)) {
+        inp.value = altitudeInputValue(opts.defaultValue);
+        updateDefaultStyle();
+        onChange(opts.defaultValue);
+        return;
+      }
+      if (opts.allowUnknown) onChange(NaN);
       return;
     }
-    const v = parseFloat(inp.value);
-    if (!isNaN(v)) onChange(v);
+    let v = parseFloat(inp.value);
+    if (isNaN(v)) return;
+    if (final && typeof opts.normalize === 'function') {
+      v = opts.normalize(v);
+      inp.value = altitudeInputValue(v);
+    }
+    updateDefaultStyle();
+    onChange(v);
   };
-  inp.onchange = commit;
+  inp.onchange = () => commit(true);
   // `live` also commits on every `input` — keystrokes and the number spinner.
   // On macOS the spinner / typing only fire `change` on blur, so without this
   // the leg altitude (and the MSA flag) wouldn't update until the field was
   // left or the inspector reopened.
-  if (opts.live) inp.oninput = commit;
+  if (opts.live) inp.oninput = () => commit(false);
+  inp.addEventListener('input', updateDefaultStyle);
+  updateDefaultStyle();
   row.append(l, inp);
   // Optional reset button — restores the charted altitude from the dataset.
   // Omitted when undoValue is undefined (no known/charted value to revert to).
@@ -1594,10 +1703,11 @@ function numberRow(label, value, onChange, opts = {}) {
     btn.type = 'button';
     btn.className = 'row-reset';
     btn.textContent = '↻';
-    btn.title = S.altResetKnown || 'Reset to charted altitude';
+    btn.title = opts.undoTitle || S.altResetKnown || 'Reset to charted altitude';
     btn.setAttribute('aria-label', btn.title);
     btn.onclick = () => {
       inp.value = altitudeInputValue(opts.undoValue);
+      updateDefaultStyle();                       // restored value → re-dim if it's the default
       onChange(opts.undoValue);
     };
     row.appendChild(btn);
