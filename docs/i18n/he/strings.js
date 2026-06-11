@@ -102,6 +102,11 @@ window.S = {
   vorRefNone: '— ללא —',
   tbShowWind: 'הצג השפעת רוח',
   tbShowWindTitle: 'הצג את שדות הרוח, חצי הרוח לכל רגל, וקריאת הכיוון המתוקן במפקח הרגל',
+  tbShowSigmet: 'הצג SIGMET',
+  tbShowSigmetTitle: 'הצג אזורי מפגע SIGMET פעילים עבור אזור ישראל (מקור: NOAA AWC, מתעדכן מעת לעת)',
+  sigmetReadout: function(n) { return '⚠ ' + n + ' SIGMET'; },
+  sigmetNone: 'אין SIGMET בתוקף',
+  sigmetUpdated: function(t) { return 'SIGMET עודכן ' + t; },
   tbWindDir: 'רוח °',
   tbWindDirTitle: 'כיוון רוח כלל-מסלולי (מעלות אמת, הכיוון שממנו הרוח נושבת)',
   tbWindSpeed: 'רוח קשר',
@@ -179,6 +184,16 @@ window.S = {
   },
   windUnflyable: 'הרוח חזקה ממהירות האוויר',
   windResetTitle: 'נקה דריסת רוח (השתמש ברוח המסלול)',
+  tbFetchWind: '⤓ משוך רוח',
+  tbFetchWindTitle: 'משוך תחזית רוחות גובה לכל רגל מ-Open-Meteo — כל רגל מקבלת רוח משלה לפי נקודת האמצע ורום הטיסה שלה (דורש מסלול)',
+  windFetching: 'מושך רוח…',
+  windFetchOk: function(hpa, dir, spd) {
+    return hpa + ' hPa ← ' + dir + '/' + spd;
+  },
+  windFetchOkLegs: function(n) {
+    return 'רוח לכל רגל הוגדרה (' + n + ' רגליים)';
+  },
+  windFetchErr: 'משיכת הרוח נכשלה — בדוק חיבור',
   inboundAlt: 'גובה נכנס (ft)',
   outboundAlt: 'גובה יוצא (ft)',
   shape: 'צורה',

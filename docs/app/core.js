@@ -345,6 +345,11 @@ window.S = Object.assign({
   vorRefNone: '— none —',
   tbShowWind: 'Show wind effect',
   tbShowWindTitle: 'Show the wind inputs, the per-leg wind arrows, and the wind-corrected readout in the leg inspector',
+  tbShowSigmet: 'Show SIGMET',
+  tbShowSigmetTitle: 'Overlay active international SIGMET hazard areas for the Israel region (source: NOAA AWC, updated periodically)',
+  sigmetReadout: function(n) { return '⚠ ' + n + ' SIGMET'; },
+  sigmetNone: 'No SIGMET in effect',
+  sigmetUpdated: function(t) { return 'SIGMET updated ' + t; },
   tbWindDir: 'Wind °',
   tbWindDirTitle: 'Route-wide wind direction (degrees true, the direction the wind blows FROM)',
   tbWindSpeed: 'Wind kt',
@@ -423,6 +428,16 @@ window.S = Object.assign({
   },
   windUnflyable: 'Wind exceeds true airspeed',
   windResetTitle: 'Clear wind override (use the route wind)',
+  tbFetchWind: '⤓ Fetch wind',
+  tbFetchWindTitle: 'Fetch a per-leg winds-aloft forecast from Open-Meteo — each leg gets its own wind at its midpoint and flight level (needs a route)',
+  windFetching: 'Fetching wind…',
+  windFetchOk: function(hpa, dir, spd) {
+    return hpa + ' hPa → ' + dir + '/' + spd;
+  },
+  windFetchOkLegs: function(n) {
+    return 'Per-leg wind set (' + n + ' leg' + (n === 1 ? '' : 's') + ')';
+  },
+  windFetchErr: 'Wind fetch failed — check connection',
   inboundAlt: 'Inbound alt (ft)',
   outboundAlt: 'Outbound alt (ft)',
   altResetKnown: 'Reset to charted altitude',
@@ -736,6 +751,9 @@ var legAltitudeDataset = null;  // Raw validated dataset for Charts copy/view.
 var legAltitudeDirectionPool = null; // Directed altitude entries, one per allowed direction.
 var showDrift = true;       // 10-degree drift reference lines
 var showWind = false;       // wind effect (#722): inputs + arrows + readout — opt-in
+var showSigmet = false;     // SIGMET hazard overlay — opt-in
+var sigmets = null;         // null = not loaded; [] or populated once fetched
+var sigmetMeta = null;      // { generatedAt } of the loaded SIGMET file
 var showWpNames = true;     // draw waypoint names (off = empty circle)
 var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 var yellowAlpha = 0.8;    // global multiplier for yellow label backgrounds (default 80%)
@@ -896,6 +914,39 @@ function windTriangle(courseTrue, tas, wind) {
     hdgTrue: ((courseTrue + (wca * 180) / Math.PI) % 360 + 360) % 360,
     gs,
   };
+}
+// Winds-aloft level mapping (#722): Open-Meteo serves wind/temperature on
+// these pressure levels (hPa). Map a planned altitude to the nearest one so a
+// CVFR leg at ~3000 ft pulls ~900 hPa, ~5000 ft pulls ~850 hPa, etc.
+const OPEN_METEO_LEVELS_HPA =
+  [1000, 975, 950, 925, 900, 850, 800, 700, 600, 500, 400, 300, 250, 200, 150, 100, 70, 50, 30];
+function altitudeToPressureHpa(ft) {
+  const h = (Number.isFinite(ft) ? ft : 0) * 0.3048;        // metres
+  return 1013.25 * Math.pow(1 - 2.25577e-5 * h, 5.25588);   // ISA barometric
+}
+function nearestPressureLevelHpa(ft) {
+  const p = altitudeToPressureHpa(ft);
+  let best = OPEN_METEO_LEVELS_HPA[0], bd = Infinity;
+  for (const lv of OPEN_METEO_LEVELS_HPA) {
+    const d = Math.abs(lv - p);
+    if (d < bd) { bd = d; best = lv; }
+  }
+  return best;
+}
+// SIGMET hazard → colour. Codes per WMO: TS thunderstorm, TURB turbulence,
+// ICE icing, MTW mountain wave, VA volcanic ash, DS/SS dust/sand storm, TC
+// tropical cyclone. Unknown hazards fall back to the thunderstorm red.
+function sigmetHazardColor(hz) {
+  switch (String(hz || '').toUpperCase()) {
+    case 'TURB': return '#e67e22';
+    case 'ICE':  return '#1ba1e2';
+    case 'MTW':  return '#8e44ad';
+    case 'VA':   return '#7f5539';
+    case 'DS':
+    case 'SS':   return '#b8860b';
+    case 'TC':   return '#c2185b';
+    default:     return '#dd1111';   // TS + anything else (6-hex for alpha fill)
+  }
 }
 const pad3 = n => String(n).padStart(3, '0');
 function toHMS(hours) {

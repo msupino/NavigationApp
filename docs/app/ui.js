@@ -190,6 +190,40 @@ windReadoutCtrl.onAdd = function () {
 };
 windReadoutCtrl.addTo(map);
 const windReadoutBox = document.getElementById('wind-readout');
+
+// SIGMET status readout — bottom-right, above the wind readout. Shows the
+// active count (hover for the raw texts) or a calm "no SIGMET" note.
+const sigmetReadoutCtrl = L.control({ position: 'bottomright' });
+sigmetReadoutCtrl.onAdd = function () {
+  const box = L.DomUtil.create('div', 'leaflet-control coord-readout sigmet-readout');
+  box.id = 'sigmet-readout';
+  box.setAttribute('aria-hidden', 'true');
+  return box;
+};
+sigmetReadoutCtrl.addTo(map);
+const sigmetReadoutBox = document.getElementById('sigmet-readout');
+if (sigmetReadoutBox) L.DomEvent.disableClickPropagation(sigmetReadoutBox);
+function refreshSigmetReadout() {
+  if (!sigmetReadoutBox) return;
+  if (!window.showSigmet || !Array.isArray(sigmets)) {
+    sigmetReadoutBox.classList.remove('show');
+    sigmetReadoutBox.textContent = '';
+    sigmetReadoutBox.removeAttribute('title');
+    sigmetReadoutBox.setAttribute('aria-hidden', 'true');
+    return;
+  }
+  const n = sigmets.length;
+  sigmetReadoutBox.textContent = n ? S.sigmetReadout(n) : S.sigmetNone;
+  sigmetReadoutBox.classList.toggle('sigmet-none', n === 0);
+  if (n) {
+    sigmetReadoutBox.title = sigmets.map(s => s.raw).filter(Boolean).join('\n\n');
+  } else {
+    sigmetReadoutBox.removeAttribute('title');
+  }
+  sigmetReadoutBox.classList.add('show');
+  sigmetReadoutBox.setAttribute('aria-hidden', 'false');
+}
+
 function refreshWindReadout() {
   if (!windReadoutBox) return;
   const w = state.wind;
@@ -1666,6 +1700,105 @@ if (showWindCb) {
 }
 refreshWindInputVisibility();
 refreshWindInputs();
+// --- Open-Meteo winds-aloft fetch (#722) ----------------------------
+// Pull a real per-leg winds-aloft forecast (free, no key, CORS-enabled) and
+// store each leg's own wind. Numeric source — the IMS aviation page only
+// publishes chart images.
+function legAltitudeFt(leg) {
+  return Number.isFinite(leg && leg.inboundAltitude) ? leg.inboundAltitude : 3000;
+}
+function legMidpoint(i) {
+  const a = state.waypoints[i], b = state.waypoints[i + 1];
+  return { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 };
+}
+// Index of the hourly sample nearest now (Open-Meteo UTC times have no Z).
+function nearestHourIndex(times) {
+  const now = Date.now();
+  let bi = 0, bd = Infinity;
+  for (let i = 0; i < times.length; i++) {
+    const d = Math.abs(Date.parse(times[i] + 'Z') - now);
+    if (d < bd) { bd = d; bi = i; }
+  }
+  return bi;
+}
+const windFetchBtn = document.getElementById('wind-fetch');
+const windFetchStatus = document.getElementById('wind-fetch-status');
+// Fetch a per-leg winds-aloft forecast: each leg gets its own wind from
+// Open-Meteo at the leg midpoint and the pressure level matching that leg's
+// altitude, stored as a per-leg override. Needs a route — with no legs it
+// alerts (like the flight plan / export paths) and does nothing.
+async function fetchRouteWind() {
+  if (!state.legs.length) {
+    if (windFetchStatus) windFetchStatus.textContent = '';
+    alert(S.errNeedWps);
+    return;
+  }
+  if (windFetchStatus) windFetchStatus.textContent = S.windFetching;
+  if (windFetchBtn) windFetchBtn.disabled = true;
+  try {
+    // One batched request: comma-joined leg midpoints + the union of the
+    // pressure-level params every leg needs; each leg reads its own level.
+    const mids = state.legs.map((l, i) => legMidpoint(i));
+    const levels = state.legs.map(l => nearestPressureLevelHpa(legAltitudeFt(l)));
+    const uniq = Array.from(new Set(levels));
+    const params = uniq.flatMap(l => ['wind_speed_' + l + 'hPa', 'wind_direction_' + l + 'hPa']);
+    const url = 'https://api.open-meteo.com/v1/forecast' +
+      '?latitude=' + mids.map(m => m.lat.toFixed(3)).join(',') +
+      '&longitude=' + mids.map(m => m.lng.toFixed(3)).join(',') +
+      '&hourly=' + params.join(',') +
+      '&wind_speed_unit=kn&timezone=UTC&forecast_days=1';
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(String(res.status));
+    const j = await res.json();
+    const locs = Array.isArray(j) ? j : [j];        // multi-location → array
+    let set = 0;
+    for (let i = 0; i < state.legs.length; i++) {
+      const loc = locs[i];
+      const lvl = levels[i];
+      const h = loc && loc.hourly;
+      const times = h && h.time;
+      const spd = h && h['wind_speed_' + lvl + 'hPa'];
+      const dir = h && h['wind_direction_' + lvl + 'hPa'];
+      if (!Array.isArray(times) || !Array.isArray(spd) || !Array.isArray(dir)) continue;
+      const bi = nearestHourIndex(times);
+      const wd = Math.round(dir[bi]), ws = Math.round(spd[bi]);
+      if (!Number.isFinite(wd) || !Number.isFinite(ws)) continue;
+      state.legs[i].wind = { dir: ((wd % 360) + 360) % 360, speed: Math.max(0, ws) };
+      set++;
+    }
+    if (!set) throw new Error('no data');
+    if (windFetchStatus) windFetchStatus.textContent = S.windFetchOkLegs(set);
+    if (state.selected && state.selected.type === 'leg') showInspector();
+    if (typeof persist === 'function') persist();
+    draw();
+  } catch (e) {
+    if (windFetchStatus) windFetchStatus.textContent = S.windFetchErr;
+  } finally {
+    if (windFetchBtn) windFetchBtn.disabled = false;
+  }
+}
+if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
+// --- SIGMET hazard overlay toggle -----------------------------------
+const SIGMET_KEY = 'navaid.showSigmet';
+try {
+  const stored = localStorage.getItem(SIGMET_KEY);
+  if (stored !== null) window.showSigmet = stored === '1';
+} catch (e) { /* storage unavailable */ }
+const sigmetCb = document.getElementById('sigmet-cb');
+if (sigmetCb) {
+  sigmetCb.checked = !!window.showSigmet;
+  sigmetCb.onchange = async e => {
+    window.showSigmet = e.target.checked;
+    try { localStorage.setItem(SIGMET_KEY, window.showSigmet ? '1' : '0'); }
+    catch (err) { /* storage unavailable */ }
+    if (window.showSigmet && typeof loadSigmets === 'function') await loadSigmets();
+    refreshSigmetReadout();
+    draw();
+  };
+  if (window.showSigmet && typeof loadSigmets === 'function') {
+    loadSigmets().then(() => { refreshSigmetReadout(); draw(); });
+  }
+}
 const AIRFIELDS_KEY = 'navaid.showAirfields';
 try {
   const stored = localStorage.getItem(AIRFIELDS_KEY);
