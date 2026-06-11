@@ -227,6 +227,90 @@ test('validateRoute rejects malformed wind, accepts blobs without wind', async (
   expect(r.ok).toBeNull();
 });
 
+test('nearestPressureLevelHpa maps CVFR altitudes to winds-aloft levels', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => ({
+    sl: nearestPressureLevelHpa(0),
+    fl030: nearestPressureLevelHpa(3000),
+    fl050: nearestPressureLevelHpa(5000),
+    fl100: nearestPressureLevelHpa(10000),
+    fl180: nearestPressureLevelHpa(18000),
+  }));
+  expect(r.sl).toBe(1000);
+  expect(r.fl030).toBe(900);
+  expect(r.fl050).toBe(850);
+  expect(r.fl100).toBe(700);
+  expect(r.fl180).toBe(500);
+});
+
+test('Fetch wind sets a per-leg wind for every leg (own midpoint + level)', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
+  });
+  // Two legs at different altitudes → 850 hPa (5000 ft) and 700 hPa (10000 ft).
+  // Multi-location request → Open-Meteo returns an array (one per midpoint).
+  await page.route('**api.open-meteo.com/**', route => {
+    const now = new Date();
+    const t = [now.toISOString().slice(0, 10) + 'T' + String(now.getUTCHours()).padStart(2, '0') + ':00'];
+    const loc = (extra) => ({ hourly: Object.assign({ time: t }, extra) });
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify([
+        loc({ 'wind_speed_850hPa': [20], 'wind_direction_850hPa': [200],
+              'wind_speed_700hPa': [40], 'wind_direction_700hPa': [300] }),
+        loc({ 'wind_speed_850hPa': [20], 'wind_direction_850hPa': [200],
+              'wind_speed_700hPa': [40], 'wind_direction_700hPa': [300] }),
+      ]),
+    });
+  });
+  await boot(page);
+  await page.evaluate(() => {
+    window.showWind = true;
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' },
+                       { lat: 32.3, lng: 35.0, name: 'B' },
+                       { lat: 32.6, lng: 35.1, name: 'C' }];
+    state.legs = []; syncLegs();
+    state.legs[0].inboundAltitude = 5000;   // → 850 hPa → 200/20
+    state.legs[1].inboundAltitude = 10000;  // → 700 hPa → 300/40
+  });
+  await page.locator('#wind-fetch').click();
+  await page.waitForFunction(() => state.legs[0].wind && state.legs[1].wind);
+  await expect(page.locator('#wind-fetch-status')).toContainText('Per-leg');
+  expect(await page.evaluate(() => state.legs[0].wind)).toEqual({ dir: 200, speed: 20 });
+  expect(await page.evaluate(() => state.legs[1].wind)).toEqual({ dir: 300, speed: 40 });
+});
+
+test('Fetch wind with no legs alerts and fetches nothing', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
+  });
+  let fetched = false;
+  await page.route('**api.open-meteo.com/**', route => { fetched = true; route.abort(); });
+  await boot(page);
+  await page.evaluate(() => { window.showWind = true; state.waypoints = []; state.legs = []; });
+  let alerted = '';
+  page.on('dialog', d => { alerted = d.message(); d.dismiss(); });
+  await page.locator('#wind-fetch').click();
+  await page.waitForFunction(() => true);
+  expect(alerted).toMatch(/two waypoints/i);
+  expect(fetched).toBe(false);
+});
+
+test('Fetch wind surfaces an error when the request fails', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
+  });
+  await page.route('**api.open-meteo.com/**', route => route.fulfill({ status: 500, body: 'err' }));
+  await boot(page);
+  await page.evaluate(() => {
+    window.showWind = true;
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 35.0, name: 'B' }];
+    state.legs = []; syncLegs();
+  });
+  await page.locator('#wind-fetch').click();
+  await expect(page.locator('#wind-fetch-status')).toContainText('failed');
+});
+
 test('calm wind is omitted from saved blobs (no schema churn)', async ({ page }) => {
   await boot(page);
   await seedLeg(page);
