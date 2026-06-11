@@ -1089,17 +1089,18 @@ function exportFdr() {
   const dateStr = String(now.getMonth()+1).padStart(2,'0') + '/' +
                   String(now.getDate()).padStart(2,'0') + '/' + now.getFullYear();
   const fdrRows = rows.map(r => 'DATA, ' + r);
+  // No 'A'/'3' version line: that forces X-Plane's compact parser (heading at
+  // the 5th value), which mis-read our altitude as the heading ("Out of range
+  // FDR-file heading … 2000"). The documented keyword format uses the 80-col
+  // DATA order with heading in its fixed far column — see fdrDataRow().
   const fdr = [
-    'A',
-    '3',
-    '',
+    'COMM, NavAid CVFR route — ' + dep + ' to ' + dest,
     'ACFT, Aircraft/Laminar Research/Cessna 172SP/Cessna_172SP.acf',
     'TAIL, NAVAID',
     'DATE, ' + dateStr,
     'PRES, 29.92',
-    'TEMP, 15',
+    'TEMP, 59',
     'WIND, 0,0',
-    'COMM, NavAid CVFR route — ' + dep + ' to ' + dest,
     '',
     ...fdrRows,
     '',

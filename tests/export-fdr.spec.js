@@ -28,9 +28,9 @@ test('FDR DATA rows place values in the fixed X-Plane columns', async ({ page })
   });
   expect(text).toBeTruthy();
   const lines = text.split('\n');
-  // Header sanity.
-  expect(lines[0]).toBe('A');
-  expect(lines[1]).toBe('3');
+  // Keyword header, NO 'A'/'3' version line (that triggers X-Plane's compact
+  // parser and mis-reads altitude as heading).
+  expect(lines[0]).not.toBe('A');
   expect(text).toContain('ACFT,');
   // TAIL must immediately follow ACFT.
   const acftIdx = lines.findIndex(l => l.startsWith('ACFT,'));
