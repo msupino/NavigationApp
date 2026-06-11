@@ -1547,7 +1547,63 @@ function drawLegs() {
       }
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
+
+    // Per-leg wind override arrow (#722): the route-wide wind lives in the
+    // corner readout; a leg that overrides it gets its own arrow on the map
+    // so the difference is visible at a glance. Drawn at 30% along the leg
+    // (clear of the midpoint distance badge and the minute-marker numbers).
+    if (leg.wind && typeof legWindFor === 'function') {
+      const lw2 = legWindFor(leg);
+      if (lw2) {
+        const f = 0.3;
+        const px = sa.x + (sb.x - sa.x) * f, py = sa.y + (sb.y - sa.y) * f;
+        const pll = { lat: A.lat + (B.lat - A.lat) * f,
+                      lng: A.lng + (B.lng - A.lng) * f };
+        drawWindArrow(px, py, pll, lw2);
+      }
+    }
   }
+}
+
+// Screen angle (radians) of the direction the wind BLOWS TOWARD at a given
+// lat/lng. Computed by projecting a small geographic offset instead of using
+// the compass angle directly so it stays correct under map rotation
+// (map.setBearing) — same reasoning as the kite angles, which come from
+// projected points.
+function windScreenAngle(latlng, windDirFrom) {
+  const to = ((windDirFrom + 180) * Math.PI) / 180;
+  const eps = 0.02;                                   // ~1.2 NM; angle only
+  const p1 = proj(latlng);
+  const p2 = proj({
+    lat: latlng.lat + Math.cos(to) * eps,
+    lng: latlng.lng + Math.sin(to) * eps / Math.cos((latlng.lat * Math.PI) / 180),
+  });
+  return Math.atan2(p2.y - p1.y, p2.x - p1.x);
+}
+
+// Blue wind arrow + "dir/speed" label for a per-leg wind override.
+function drawWindArrow(x, y, latlng, wind) {
+  const ang = windScreenAngle(latlng, wind.dir);
+  const len = 30, head = 8;
+  const cx = Math.cos(ang), cy = Math.sin(ang);
+  const x1 = x + cx * len / 2, y1 = y + cy * len / 2;
+  octx.save();
+  octx.strokeStyle = '#0b5ed7';
+  octx.fillStyle = '#0b5ed7';
+  octx.lineWidth = 2;
+  octx.beginPath();
+  octx.moveTo(x - cx * len / 2, y - cy * len / 2);
+  octx.lineTo(x1, y1);
+  octx.stroke();
+  octx.beginPath();                                   // arrow head
+  octx.moveTo(x1, y1);
+  octx.lineTo(x1 - Math.cos(ang - 0.4) * head, y1 - Math.sin(ang - 0.4) * head);
+  octx.lineTo(x1 - Math.cos(ang + 0.4) * head, y1 - Math.sin(ang + 0.4) * head);
+  octx.closePath();
+  octx.fill();
+  octx.font = 'bold 10px sans-serif';
+  octx.fillText(pad3(wind.dir) + '/' + wind.speed, x1 + 6, y1 + 3);
+  octx.restore();
 }
 
 // Drift reference lines, one from each end, defaulting to half the leg length.

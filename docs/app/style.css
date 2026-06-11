@@ -387,6 +387,14 @@ html, body {
 .leaflet-bottom.leaflet-right .vor-readout {
   bottom: 46px;
 }
+.leaflet-bottom.leaflet-right .wind-readout {
+  bottom: 66px;
+}
+.wind-readout {
+  color: #fff;
+  background: rgba(11, 94, 215, 0.92);   /* matches the per-leg wind arrow */
+  border-color: #0b5ed7;
+}
 .coord-readout.editing { cursor: text; }
 .coord-readout.error { border-color: #c0392b; background: rgba(231, 76, 60, 0.12); }
 .coord-readout.editing .goto-num {

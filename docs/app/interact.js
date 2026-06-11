@@ -1221,8 +1221,30 @@ function showInspector() {
     title.placeholder = '';
     title.readOnly = true;
     title.oninput = null;
+    // Wind (#722): per-leg override of the route-wide wind. Blank inputs
+    // fall back to state.wind (shown as the placeholder); an explicit
+    // speed of 0 marks the leg calm. The "With wind" row is a live readout
+    // of the wind-triangle result (HDG/GS/WCA/time) — updated in place,
+    // same pattern as the MSA row, so typing keeps focus.
+    let windFxRow = null;
+    const refreshWindFx = () => {
+      if (!windFxRow) return;
+      const A = state.waypoints[idx], B = state.waypoints[idx + 1];
+      const w = (typeof legWindFor === 'function') ? legWindFor(leg) : null;
+      if (!A || !B || !w) { windFxRow.style.display = 'none'; return; }
+      windFxRow.style.display = '';
+      const val = windFxRow.querySelector('.val');
+      if (!val) return;
+      const { dist, brg } = geo(A, B);
+      const fx = windTriangle(brg, leg.flightSpeed, w);
+      if (!fx || fx.gs <= 0) { val.textContent = S.windUnflyable; return; }
+      const wca = Math.round(fx.wcaDeg);
+      val.textContent = S.windEffectText(
+        pad3(toMagnetic(fx.hdgTrue)), Math.round(fx.gs),
+        (wca >= 0 ? '+' : '') + wca, toHMS(dist / fx.gs));
+    };
     body.appendChild(numberRow(S.speedKt, leg.flightSpeed, v => {
-      leg.flightSpeed = v > 0 ? v : leg.flightSpeed; draw();
+      leg.flightSpeed = v > 0 ? v : leg.flightSpeed; draw(); refreshWindFx();
     }));
     // Reset-to-known: the charted altitude from leg-altitude.json. Undefined
     // (no entry / unknown direction) means the reset button is omitted — there
@@ -1268,6 +1290,34 @@ function showInspector() {
       body.appendChild(msaRow);
       refreshMsa();
     }
+    // Per-leg wind override rows + live readout — appended AFTER the altitude
+    // rows so the long-standing number-input order (speed, in-alt, out-alt)
+    // that other specs index by stays put.
+    const setLegWind = (field, v) => {
+      const cur = Object.assign({}, leg.wind);
+      if (Number.isFinite(v)) {
+        cur[field] = field === 'dir'
+          ? ((Math.round(v) % 360) + 360) % 360
+          : Math.max(0, Math.round(v));
+      } else {
+        delete cur[field];
+      }
+      if (Number.isFinite(cur.dir) || Number.isFinite(cur.speed)) leg.wind = cur;
+      else delete leg.wind;
+      refreshWindFx(); draw();
+    };
+    const gw = state.wind || { dir: 270, speed: 0 };
+    body.appendChild(numberRow(S.windFromDeg,
+      leg.wind && Number.isFinite(leg.wind.dir) ? leg.wind.dir : NaN,
+      v => setLegWind('dir', v),
+      { allowUnknown: true, placeholder: String(gw.dir), live: true }));
+    body.appendChild(numberRow(S.windSpeedKt,
+      leg.wind && Number.isFinite(leg.wind.speed) ? leg.wind.speed : NaN,
+      v => setLegWind('speed', v),
+      { allowUnknown: true, placeholder: String(gw.speed), live: true }));
+    windFxRow = textRow(S.windEffect, '');
+    body.appendChild(windFxRow);
+    refreshWindFx();
     const reset = document.createElement('button');
     reset.className = 'insp-btn';
     // Fallback to a glyph if the locale strings haven't been loaded yet —

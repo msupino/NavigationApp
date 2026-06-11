@@ -100,6 +100,13 @@ window.S = {
   tbShowVorTitle: 'הצג תחנות VOR/DME ובחר תחנת ייחוס לרדיאל/DME',
   vorRefLabel: 'תחנת ייחוס',
   vorRefNone: '— ללא —',
+  tbWindDir: 'רוח °',
+  tbWindDirTitle: 'כיוון רוח כלל-מסלולי (מעלות אמת, הכיוון שממנו הרוח נושבת)',
+  tbWindSpeed: 'רוח קשר',
+  tbWindSpeedTitle: 'מהירות רוח כלל-מסלולית בקשרים. 0 = רגוע (ללא השפעת רוח)',
+  windReadout: function(dir, speed) {
+    return 'רוח ' + dir + '/' + speed;
+  },
   vorName: 'שם',
   vorFreq: 'תדר',
   vorUseRef: 'הגדר כתחנת ייחוס',
@@ -161,6 +168,14 @@ window.S = {
   legArrow: '←',
 
   speedKt: 'מהירות (קשר)',
+  windFromDeg: 'רוח מ-(°)',
+  windSpeedKt: 'מהירות רוח (קשר)',
+  windEffect: 'עם רוח',
+  windEffectTitle: 'כיוון מגנטי מתוקן-רוח, מהירות קרקע, זווית תיקון רוח, וזמן רגל.',
+  windEffectText: function(hdg, gs, wca, time) {
+    return 'כיוון ' + hdg + '  GS ' + gs + '  WCA ' + wca + '  ' + time;
+  },
+  windUnflyable: 'הרוח חזקה ממהירות האוויר',
   inboundAlt: 'גובה נכנס (ft)',
   outboundAlt: 'גובה יוצא (ft)',
   shape: 'צורה',
