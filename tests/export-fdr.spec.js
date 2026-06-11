@@ -28,9 +28,10 @@ test('FDR DATA rows place values in the fixed X-Plane columns', async ({ page })
   });
   expect(text).toBeTruthy();
   const lines = text.split('\n');
-  // Keyword header, NO 'A'/'3' version line (that triggers X-Plane's compact
-  // parser and mis-reads altitude as heading).
-  expect(lines[0]).not.toBe('A');
+  // V3 header: 'A' / '3' version lines (X-Plane 12 rejects the header-less
+  // legacy layout as "Old, non-supported FDR format").
+  expect(lines[0]).toBe('A');
+  expect(lines[1]).toBe('3');
   expect(text).toContain('ACFT,');
   // TAIL must immediately follow ACFT.
   const acftIdx = lines.findIndex(l => l.startsWith('ACFT,'));
@@ -39,18 +40,17 @@ test('FDR DATA rows place values in the fixed X-Plane columns', async ({ page })
   const dataLines = lines.filter(l => l.startsWith('DATA,'));
   expect(dataLines.length).toBeGreaterThan(10);
   const cols = dataLines[0].replace(/^DATA,\s*/, '').split(',');
-  // Fixed columns (0-indexed): 1 temp, 2 lon, 3 lat, 4 h_msl, 11 hdg, 12 KIAS.
-  expect(parseFloat(cols[1])).toBeCloseTo(15, 0);          // temp °C, not lon
-  expect(parseFloat(cols[2])).toBeCloseTo(34.8, 1);        // longitude
-  expect(parseFloat(cols[3])).toBeCloseTo(32.0, 1);        // latitude
-  expect(parseFloat(cols[4])).toBeGreaterThan(2000);       // altitude MSL ft
-  expect(parseFloat(cols[12])).toBeCloseTo(110, 0);        // KIAS in column 13
-
-  // Heading (col 12) ≈ the leg bearing (~17° for this NE leg), NOT in the
-  // altitude column — the bug that made the export unusable.
-  const hdg = parseFloat(cols[11]);
+  // V3 compact columns (0-indexed): 0 time, 1 lon, 2 lat, 3 alt, 4 hdg, 5 pitch, 6 roll.
+  expect(parseFloat(cols[1])).toBeCloseTo(34.8, 1);        // longitude
+  expect(parseFloat(cols[2])).toBeCloseTo(32.0, 1);        // latitude
+  expect(parseFloat(cols[3])).toBeGreaterThan(2000);       // altitude MSL ft
+  // Heading (col 5, index 4) must be a valid 0–360 bearing, NOT the altitude —
+  // the bug X-Plane flagged as "Out of range FDR-file heading … 2000".
+  const hdg = parseFloat(cols[4]);
+  expect(hdg).toBeGreaterThanOrEqual(0);
+  expect(hdg).toBeLessThan(360);
   expect(hdg).toBeGreaterThan(0);
-  expect(hdg).toBeLessThan(90);
+  expect(hdg).toBeLessThan(90);                            // this NE leg ≈ 13°
 });
 
 test('FDR altitude rises toward the planned leg altitude', async ({ page }) => {
@@ -63,9 +63,9 @@ test('FDR altitude rises toward the planned leg altitude', async ({ page }) => {
     exportFdr();
     const text = await window.__readFdr();
     return text.split('\n').filter(l => l.startsWith('DATA,'))
-      .map(l => parseFloat(l.replace(/^DATA,\s*/, '').split(',')[4]));
+      .map(l => parseFloat(l.replace(/^DATA,\s*/, '').split(',')[3]));
   });
-  // Column 5 (index 4) is altitude MSL — should reach the planned 5000 ft.
+  // Column 4 (index 3) is altitude MSL — should reach the planned 5000 ft.
   expect(Math.max(...alts)).toBeGreaterThan(4900);
   expect(Math.max(...alts)).toBeLessThan(5100);
 });

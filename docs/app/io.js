@@ -958,32 +958,25 @@ function exportPln() {
 // along the leg, altitude blends smoothly between legs, and roll/pitch/VVI
 // are computed from turn-rate and climb-rate geometry.
 //
-// X-Plane FDR DATA rows are FIXED-COLUMN (the file format places each value by
-// position, not by header label). The order, per the X-Plane spec:
-//   1 time s, 2 temp °C, 3 lon, 4 lat, 5 h_msl ft, 6 radio_alt ft,
-//   7 aileron, 8 elevator, 9 rudder, 10 pitch°, 11 roll°, 12 hdg true,
-//   13 KIAS, 14 VVI fpm, 15 slip, 16 turn …  (X-Plane zero-fills the rest)
-// The earlier version emitted time,lon,lat,alt,hdg,pitch,roll,… which shifted
-// every value into the wrong column (#701) — heading landed in h_msl, etc.
-function fdrDataRow(time, lon, lat, hmsl, pitch, roll, hdg, kias, vvi) {
-  const c = new Array(16).fill('0');
-  c[0]  = time.toFixed(2);
-  c[1]  = '15.0';                 // temp °C (ISA placeholder)
-  c[2]  = lon.toFixed(6);
-  c[3]  = lat.toFixed(6);
-  c[4]  = hmsl.toFixed(1);        // altitude MSL (ft)
-  c[5]  = '0.0';                  // radio altitude (AGL unknown — cosmetic)
-  c[6]  = '0.000';                // aileron
-  c[7]  = '0.000';                // elevator
-  c[8]  = '0.000';                // rudder
-  c[9]  = pitch.toFixed(2);
-  c[10] = roll.toFixed(2);
-  c[11] = hdg.toFixed(2);         // heading (degrees true)
-  c[12] = kias.toFixed(1);        // indicated airspeed (kts)
-  c[13] = vvi.toFixed(1);         // vertical speed (ft/min)
-  c[14] = '0.00';                 // slip
-  c[15] = '0.00';                 // turn
-  return c.join(',');
+// X-Plane 12 FDR version 3 (the 'A'/'3' header) uses the COMPACT, positional
+// DATA order — confirmed by X-Plane's parser, which reads the heading from the
+// 5th value:
+//   1 time s, 2 longitude, 3 latitude, 4 altitude MSL ft, 5 heading true,
+//   6 pitch deg, 7 roll deg
+// (The 80-column layout — time,temp,lon,lat,h_msl,… — is the old V2/legacy
+// format X-Plane 12 rejects as "Old, non-supported FDR format"; putting those
+// columns under a V3 header made it read altitude as heading: "Out of range
+// FDR-file heading … 2000".)
+function fdrDataRow(time, lon, lat, hmsl, hdg, pitch, roll) {
+  return [
+    time.toFixed(2),
+    lon.toFixed(6),
+    lat.toFixed(6),
+    hmsl.toFixed(1),     // altitude MSL (ft)
+    hdg.toFixed(2),      // heading (degrees true)
+    pitch.toFixed(2),
+    roll.toFixed(2),
+  ].join(',');
 }
 function exportFdr() {
   if (state.waypoints.length < 2) { alert(S.errNeedWps); return; }
@@ -1067,7 +1060,7 @@ function exportFdr() {
         roll = Math.atan(turnRate * leg.spd / 1092) / DEG;
       }
 
-      rows.push(fdrDataRow(t, lng, lat, alt, pitch, roll, hdg, leg.spd, vvi));
+      rows.push(fdrDataRow(t, lng, lat, alt, hdg, pitch, roll));
       t += 1;
     }
   }
@@ -1075,32 +1068,34 @@ function exportFdr() {
   // Final point at destination
   const lastLeg = legs[legs.length - 1];
   const lastWp  = state.waypoints[state.waypoints.length - 1];
-  rows.push(fdrDataRow(t, lastWp.lng, lastWp.lat, lastLeg.alt,
-    0, 0, lastLeg.brg, lastLeg.spd, 0));
+  rows.push(fdrDataRow(t, lastWp.lng, lastWp.lat, lastLeg.alt, lastLeg.brg, 0, 0));
 
   const dep  = (state.waypoints[0].name || 'DEP').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,8);
   const dest = (lastWp.name || 'DEST').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,8);
 
-  // X-Plane FDR: 'A' line-ending marker + version '3', then keyword header
-  // lines (TAIL must immediately follow ACFT), then one 'DATA,' row per
-  // sample. DATA columns are FIXED-POSITION — fdrDataRow() places each value
-  // in its required column.
+  // X-Plane 12 FDR V3: 'A' line-ending marker, version '3', then keyword header
+  // lines (TAIL must immediately follow ACFT), then one compact 'DATA,' row per
+  // sample (see fdrDataRow). X-Plane 12 rejects the old header-less / V2 layout
+  // as "Old, non-supported FDR format", so the version line is required.
   const now = new Date();
   const dateStr = String(now.getMonth()+1).padStart(2,'0') + '/' +
                   String(now.getDate()).padStart(2,'0') + '/' + now.getFullYear();
+  const timeStr = String(now.getUTCHours()).padStart(2,'0') + ':' +
+                  String(now.getUTCMinutes()).padStart(2,'0') + ':' +
+                  String(now.getUTCSeconds()).padStart(2,'0');
   const fdrRows = rows.map(r => 'DATA, ' + r);
-  // No 'A'/'3' version line: that forces X-Plane's compact parser (heading at
-  // the 5th value), which mis-read our altitude as the heading ("Out of range
-  // FDR-file heading … 2000"). The documented keyword format uses the 80-col
-  // DATA order with heading in its fixed far column — see fdrDataRow().
   const fdr = [
-    'COMM, NavAid CVFR route — ' + dep + ' to ' + dest,
+    'A',
+    '3',
+    '',
     'ACFT, Aircraft/Laminar Research/Cessna 172SP/Cessna_172SP.acf',
     'TAIL, NAVAID',
     'DATE, ' + dateStr,
+    'TIME, ' + timeStr,
     'PRES, 29.92',
-    'TEMP, 59',
+    'TEMP, 15',
     'WIND, 0,0',
+    'COMM, NavAid CVFR route — ' + dep + ' to ' + dest,
     '',
     ...fdrRows,
     '',
