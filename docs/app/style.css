@@ -58,6 +58,10 @@ html, body {
   top: 12px;
   left: 12px;
   width: 240px;
+  /* Double-clicking a label/section head used to select its text — useless and
+     ugly. Inputs/textareas opt back in below. */
+  -webkit-user-select: none;
+  user-select: none;
   overflow-x: hidden;
   max-height: calc(100vh - 24px);
   max-height: calc(100dvh - 24px);       /* dynamic viewport on iOS Safari */
@@ -387,6 +391,14 @@ html, body {
 .leaflet-bottom.leaflet-right .vor-readout {
   bottom: 46px;
 }
+.leaflet-bottom.leaflet-right .wind-readout {
+  bottom: 66px;
+}
+.wind-readout {
+  color: #fff;
+  background: rgba(11, 94, 215, 0.92);   /* matches the per-leg wind arrow */
+  border-color: #0b5ed7;
+}
 .coord-readout.editing { cursor: text; }
 .coord-readout.error { border-color: #c0392b; background: rgba(231, 76, 60, 0.12); }
 .coord-readout.editing .goto-num {
@@ -708,6 +720,10 @@ body.theme-light #aircraft-custom input {
 }
 .row:last-child { margin-bottom: 0; }
 .row label { color: #b9b3b3; }
+/* Wind-effect readout (#722): label on its own line, value on a single
+   non-wrapping line below it (HDG/GS/WCA/time stay together). */
+.row.wind-fx-row { flex-direction: column; align-items: flex-start; gap: 2px; }
+.row.wind-fx-row .val { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .row input[type="number"],
 .row input[type="text"],
 .row select {
@@ -721,6 +737,16 @@ body.theme-light #aircraft-custom input {
   padding: 4px 6px;
 }
 .row select { cursor: pointer; }
+/* Re-enable selection inside actual text fields (the toolbar disables it). */
+#toolbar input, #toolbar textarea,
+.row input, .row textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+/* A leg altitude still holding its charted default reads muted, so a typed
+   override stands out (#722 follow-up). */
+.row input[type="number"].is-default { color: #8a8480; font-style: italic; }
+body.theme-light .row input[type="number"].is-default { color: #9aa1ab; }
 .row-reset {
   flex-shrink: 0;
   font-size: 13px;
