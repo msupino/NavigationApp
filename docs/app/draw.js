@@ -2346,54 +2346,60 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   for (let mc = 0; mc < numCols; mc++) colX[mc + 1] = colX[mc] + colW[mc];
   const totalW = colX[numCols];
   const HEADER_BG = '#e8e6e1', TOTAL_BG = '#f0eee9', STRIPE_BG = '#f7f5f0', GRID = '#7a7470', TEXT = '#1a1a1a';
-  const tableH = rowH * numRows;
+  const tableH = Math.round(rowH * numRows);
   const al = align || 'tl';
   if (al === 'tr' || al === 'br') x = x + Math.max(0, w - totalW);
   if (al === 'bl' || al === 'br') y = y + Math.max(0, h - tableH);
   if (al === 'center') { x = x + Math.max(0, (w - totalW) / 2); y = y + Math.max(0, (h - tableH) / 2); }
+  // Integer-snapped row boundaries so cell text and grid lines line up exactly
+  // (fractional row heights otherwise drift the text off its row at small
+  // sizes). Every row uses rowY[row]..rowY[row+1].
+  const rowY = new Array(numRows + 1);
+  for (let i = 0; i <= numRows; i++) rowY[i] = y + Math.round(i * rowH);
+  const tableHActual = rowY[numRows] - y;
   ctx.fillStyle = '#ffffff';
-  ctx.fillRect(x, y, totalW, tableH);
+  ctx.fillRect(x, y, totalW, tableHActual);
   function cell(row, col, text, bold, bg) {
-    const cx = x + colX[col], cy = y + row * rowH, cw = colW[col];
-    if (bg) { ctx.fillStyle = bg; ctx.fillRect(cx, cy, cw, rowH); }
+    const cx = x + colX[col], cy = rowY[row], rh = rowY[row + 1] - rowY[row], cw = colW[col];
+    if (bg) { ctx.fillStyle = bg; ctx.fillRect(cx, cy, cw, rh); }
     ctx.fillStyle = TEXT;
     ctx.font = (bold ? 'bold ' : '') + fontSize + 'px sans-serif';
     ctx.textBaseline = 'middle';
     const a = aligns[col];
     ctx.textAlign = a;
     const tx = a === 'right' ? cx + cw - padX : a === 'center' ? cx + cw / 2 : cx + padX;
-    ctx.fillText(text, tx, cy + rowH / 2);
+    ctx.fillText(text, tx, cy + rh / 2);
   }
   ctx.fillStyle = HEADER_BG;
-  ctx.fillRect(x, y, totalW, rowH);
+  ctx.fillRect(x, rowY[0], totalW, rowY[1] - rowY[0]);
   for (let c = 0; c < numCols; c++) cell(0, c, headers[c], true, null);
   for (let r = 0; r < rows.length; r++) {
     const vals = valsOf(rows[r]);
     for (let c2 = 0; c2 < numCols; c2++) cell(r + 1, c2, String(vals[c2]), false, r % 2 === 1 ? STRIPE_BG : null);
   }
-  const tr = rows.length + 1, totCY = y + tr * rowH;
+  const tr = rows.length + 1;
   ctx.fillStyle = TOTAL_BG;
-  ctx.fillRect(x, totCY, totalW, rowH);
+  ctx.fillRect(x, rowY[tr], totalW, rowY[tr + 1] - rowY[tr]);
   ctx.fillStyle = TEXT;
   ctx.font = 'bold ' + fontSize + 'px sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText(S.fpTotal, x + colX[1] + padX, totCY + rowH / 2);
+  ctx.fillText(S.fpTotal, x + colX[1] + padX, rowY[tr] + (rowY[tr + 1] - rowY[tr]) / 2);
   for (let c4 = 4; c4 < numCols; c4++) if (totVals[c4] !== undefined) cell(tr, c4, String(totVals[c4]), true, null);
   ctx.strokeStyle = GRID;
   ctx.lineWidth = 1;
-  ctx.strokeRect(x + 0.5, y + 0.5, totalW - 1, tableH - 1);
+  ctx.strokeRect(x + 0.5, y + 0.5, totalW - 1, tableHActual - 1);
   ctx.lineWidth = 0.75;
   for (let gc = 1; gc < numCols; gc++) {
     const gx = Math.round(x + colX[gc]) + 0.5;
-    ctx.beginPath(); ctx.moveTo(gx, y); ctx.lineTo(gx, y + tableH); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(gx, y); ctx.lineTo(gx, y + tableHActual); ctx.stroke();
   }
   for (let gr = 1; gr < numRows; gr++) {
-    const gy = Math.round(y + gr * rowH) + 0.5;
+    const gy = rowY[gr] + 0.5;
     ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x + totalW, gy); ctx.stroke();
   }
   ctx.restore();
-  return { x, y, w: totalW, h: tableH };
+  return { x, y, w: totalW, h: tableHActual };
 }
 
 // Draw the placed flight-plan card on the overlay (live preview + export).
