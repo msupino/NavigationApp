@@ -2322,6 +2322,12 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   // #,From,To,Hdg,Dist,Spd,Alt,Time,Fuel,CumTime,CumFuel[,Radial,DME]
   const numCols = vorActive ? 13 : 11;
   const headers = (S.fpHeaders || []).slice(0, numCols);
+  // Note which VOR the Radial / DME are measured from, in the Radial header.
+  if (numCols === 13) {
+    const refIdent = (typeof activeVor === 'function' && activeVor() && activeVor().ident) ||
+      (((state.legs || []).find(l => l && l.vorRef) || {}).vorRef) || '';
+    if (refIdent) headers[11] = headers[11] + ' ' + refIdent;
+  }
   const numRows = rows.length + 2;            // header + data + total
   // Derive the font FROM the row height (not an independent floor) so text
   // can never grow taller than its row → no vertical overlap at any size.
@@ -2371,7 +2377,9 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     const a = aligns[col];
     ctx.textAlign = a;
     const tx = a === 'right' ? cx + cw - padX : a === 'center' ? cx + cw / 2 : cx + padX;
-    ctx.fillText(text, tx, cy + rh / 2);
+    // 'middle' baseline centres the em-box, which reads slightly high; nudge
+    // down a hair so glyphs sit visually centred in the row.
+    ctx.fillText(text, tx, cy + rh / 2 + fontSize * 0.08);
   }
   ctx.fillStyle = HEADER_BG;
   ctx.fillRect(x, rowY[0], totalW, rowY[1] - rowY[0]);
@@ -2387,7 +2395,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   ctx.font = 'bold ' + fontSize + 'px sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText(S.fpTotal, x + colX[1] + padX, rowY[tr] + (rowY[tr + 1] - rowY[tr]) / 2);
+  ctx.fillText(S.fpTotal, x + colX[1] + padX, rowY[tr] + (rowY[tr + 1] - rowY[tr]) / 2 + fontSize * 0.08);
   for (let c4 = 4; c4 < numCols; c4++) if (totVals[c4] !== undefined) cell(tr, c4, String(totVals[c4]), true, null);
   ctx.strokeStyle = GRID;
   ctx.lineWidth = 1;
