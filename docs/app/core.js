@@ -379,6 +379,10 @@ window.S = Object.assign({
   errNoLegs: 'No legs yet — drop at least two waypoints first.',
   flightPlan: 'Flight plan',
   fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time', 'Fuel (gal)', 'Cum. time', 'Cum. fuel', 'Radial', 'DME', ''],
+  fpHeadersShort: ['#', 'From', 'To', 'Hdg', 'Dist', 'Spd', 'Alt', 'Time', 'Fuel'],
+  exportPlanPlace: 'Place flight plan on the map',
+  exportPlanPlaceTitle: 'Overlay the flight-plan table on the export; drag it to position it inside the page frame',
+  exportPlanNoFrame: 'Place flight plan — set an A3/A4 page first',
   fpVorLabel: 'VOR',
   fpVorRadialEmpty: '—',
   fpDel: '✕',
@@ -486,8 +490,8 @@ window.S = Object.assign({
   tbClear: '🗑 Clear map (C)',
   tbClearTitle: 'Remove all waypoints and notes',
   tbExportMenu: '⬇ Export',
-  tbExport: '⬇ Export JSON',
-  tbExportTitle: 'Export route (JSON / GPX / PLN)',
+  tbExport: '⬇ JSON — NavAid route file',
+  tbExportTitle: 'Export route (JSON / GPX / PLN / FDR)',
   tbImport: '⬆ Import JSON/GPX/PLN',
   tbImportTitle: 'Import route from JSON or GPX file',
   tbShare: '🔗 Share',
@@ -506,10 +510,12 @@ window.S = Object.assign({
   tbChartsTitle: 'Browse approach charts for all airfields',
   tbFly: '✈️ Open in Google Earth',
   tbFlyTitle: 'Save a Google Earth tour of the route at the planned leg altitudes',
-  tbGpxExport: '📍 Export GPX',
+  tbGpxExport: '📍 GPX — GPS track (Garmin, etc.)',
   tbGpxExportTitle: 'Export route as GPX for portable GPS units',
-  tbPlnExport: '🛩 Export PLN',
-  tbPlnExportTitle: 'Export route as a PLN flight plan for MSFS / FSX',
+  tbPlnExport: '🛩 PLN — MSFS / P3D flight plan',
+  tbPlnExportTitle: 'Export route as a PLN flight plan to fly in MSFS / Prepar3D / FSX',
+  tbFdrExport: '🎬 FDR — X-Plane replay',
+  tbFdrExportTitle: 'Export route as an X-Plane Flight Data Recorder file that replays the flight',
   tbShowReturn: 'Show return path',
   tbShowReturnTitle: 'Show return-direction (outbound) info',
   tbShowCumTime: 'Show cumulative time',
@@ -787,6 +793,11 @@ let pageSize = null;        // null | 'A3' | 'A4'
 var pageOrient = 'portrait';
 let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre
 var aircraft = null;               // null | {gph, taxiGal}
+// Flight-plan card placed on the PNG export (#378). null = off; otherwise
+// { x, y } top-left in container pixels. planCardRect holds the last rendered
+// bounds for hit-testing the drag.
+var planCard = null;
+var planCardRect = null;
 
 function loadAircraft() {
   try {

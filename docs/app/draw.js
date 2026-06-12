@@ -125,6 +125,7 @@ function draw() {
   drawSimAircraft();
   drawInfo();
   drawPageFrame();
+  drawPlanCard();          // flight-plan card placed for PNG export (#378)
   // #78: keep the Flight Plan modal live with the route. The hook is null
   // when the modal isn't open, or after refresh detects a structural change
   // and closes it.
@@ -2266,6 +2267,193 @@ function hitPageFrameEdge(px, py) {
 function clampPageOffset() {
   pageOffset.x = Math.max(-vw() / 2, Math.min(vw() / 2, pageOffset.x));
   pageOffset.y = Math.max(-vh() / 2, Math.min(vh() / 2, pageOffset.y));
+}
+
+// Render the flight-plan table onto a canvas at (x,y), auto-sizing columns to
+// content. `w`/`h` are the available box; the table is anchored within it per
+// `align` ('tl'|'tr'|'bl'|'br'|'center'). Returns the rendered { x, y, w, h }
+// (or null when there's no route). Paper-print look — white bg, black text.
+// Shared by the live export preview and the PNG render so they match exactly.
+function drawFlightPlanTable(ctx, x, y, w, h, align) {
+  const legs = state.legs || [];
+  const wpts = state.waypoints || [];
+  if (!legs.length || wpts.length < 2) return null;
+  // Default to 8 gph when no aircraft is configured (matches the printed
+  // flight plan) so the Fuel / Cum. fuel columns aren't just '--'.
+  const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: 8, taxiGal: 1.1 };
+  const taxiFuel = ac && ac.taxiGal && typeof isAirport === 'function' && isAirport(wpts[0]) ? ac.taxiGal : 0;
+  const empty = S.fpVorRadialEmpty || '—';
+  // Radial / DME of a waypoint from the leg's reference VOR (per-leg override,
+  // else the global reference). Blank when no VOR is selected.
+  const vorCells = (wp, lg) => {
+    const v = (lg && lg.vorRef && typeof vorByIdent === 'function' ? vorByIdent(lg.vorRef) : null) ||
+              (typeof activeVor === 'function' ? activeVor() : null);
+    if (!v || !wp || typeof vorRadialDme !== 'function') return [empty, empty];
+    const rd = vorRadialDme(v, wp.lat, wp.lng);
+    return rd ? ['R-' + rd.radial, String(rd.dme)] : [empty, empty];
+  };
+  const rows = [];
+  let totDist = 0, totTime = 0, totFuel = 0;
+  for (let i = 0; i < legs.length; i++) {
+    const A = wpts[i], B = wpts[i + 1];
+    if (!A || !B) continue;
+    const { dist, brg } = geo(A, B);
+    const hdg = toMagnetic(brg);
+    const dur = legs[i].flightSpeed > 0 ? dist / legs[i].flightSpeed : 0;
+    let fuel = ac ? dur * ac.gph : 0;
+    if (i === 0 && taxiFuel) fuel += taxiFuel;
+    totDist += dist; totTime += dur; totFuel += fuel;
+    const fLabel = ac ? fuel.toFixed(1) + (i === 0 && taxiFuel ? ' *' : '') : '--';
+    const rd = vorCells(B, legs[i]);
+    rows.push({ num: i + 1, from: navName((A.name || '').trim()) || S.wpPrefix + (i + 1),
+      to: navName((B.name || '').trim()) || S.wpPrefix + (i + 2),
+      hdg: pad3(hdg) + '°M', dist: dist.toFixed(1),
+      speed: String(legs[i].flightSpeed), alt: String(legs[i].inboundAltitude),
+      time: dur > 0 ? toHMS(dur) : '--', fuel: fLabel,
+      cumTime: totTime > 0 ? toHMS(totTime) : '--',
+      cumFuel: ac ? totFuel.toFixed(1) : '--',
+      radial: rd[0], dme: rd[1] });
+  }
+  if (!rows.length) return null;
+  // Radial / DME columns only when a reference VOR is active (global or any
+  // per-leg override) — otherwise they'd be a column of '—'.
+  const vorActive = !!((typeof activeVor === 'function' && activeVor()) ||
+                       (state.legs || []).some(l => l && l.vorRef));
+  // #,From,To,Hdg,Dist,Spd,Alt,Time,Fuel,CumTime,CumFuel[,Radial,DME]
+  const numCols = vorActive ? 13 : 11;
+  const headers = (S.fpHeaders || []).slice(0, numCols);
+  // Note which VOR the Radial / DME are measured from, in the Radial header.
+  if (numCols === 13) {
+    const refIdent = (typeof activeVor === 'function' && activeVor() && activeVor().ident) ||
+      (((state.legs || []).find(l => l && l.vorRef) || {}).vorRef) || '';
+    if (refIdent) headers[11] = headers[11] + ' ' + refIdent;
+  }
+  const numRows = rows.length + 2;            // header + data + total
+  // Derive the font FROM the row height (not an independent floor) so text
+  // can never grow taller than its row → no vertical overlap at any size.
+  const rowH = h / numRows;
+  const fontSize = Math.max(1, Math.min(rowH * 0.62, 22));
+  const padX = Math.max(2, Math.round(fontSize * 0.5));
+  const aligns = ['center', 'left', 'left', 'center', 'right', 'right', 'right', 'center', 'right', 'center', 'right', 'center', 'right'].slice(0, numCols);
+  const valsOf = rd => [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel, rd.cumTime, rd.cumFuel, rd.radial, rd.dme].slice(0, numCols);
+  ctx.save();
+  ctx.font = fontSize + 'px sans-serif';
+  const totVals = { 4: totDist.toFixed(1), 7: totTime > 0 ? toHMS(totTime) : '--', 8: ac ? totFuel.toFixed(1) : '--' };
+  const colW = new Array(numCols).fill(0);
+  ctx.font = 'bold ' + fontSize + 'px sans-serif';
+  for (let mc = 0; mc < numCols; mc++) {
+    colW[mc] = Math.max(colW[mc], ctx.measureText(String(headers[mc])).width);
+    if (totVals[mc] !== undefined) colW[mc] = Math.max(colW[mc], ctx.measureText(String(totVals[mc])).width);
+  }
+  ctx.font = fontSize + 'px sans-serif';
+  for (let mr = 0; mr < rows.length; mr++) {
+    const mvals = valsOf(rows[mr]);
+    for (let mc = 0; mc < numCols; mc++) colW[mc] = Math.max(colW[mc], ctx.measureText(String(mvals[mc])).width);
+  }
+  for (let mc = 0; mc < numCols; mc++) colW[mc] = Math.ceil(colW[mc] + 2 * padX);
+  const colX = new Array(numCols + 1).fill(0);
+  for (let mc = 0; mc < numCols; mc++) colX[mc + 1] = colX[mc] + colW[mc];
+  const totalW = colX[numCols];
+  const HEADER_BG = '#e8e6e1', TOTAL_BG = '#f0eee9', STRIPE_BG = '#f7f5f0', GRID = '#7a7470', TEXT = '#1a1a1a';
+  const tableH = Math.round(rowH * numRows);
+  const al = align || 'tl';
+  if (al === 'tr' || al === 'br') x = x + Math.max(0, w - totalW);
+  if (al === 'bl' || al === 'br') y = y + Math.max(0, h - tableH);
+  if (al === 'center') { x = x + Math.max(0, (w - totalW) / 2); y = y + Math.max(0, (h - tableH) / 2); }
+  // Integer-snapped row boundaries so cell text and grid lines line up exactly
+  // (fractional row heights otherwise drift the text off its row at small
+  // sizes). Every row uses rowY[row]..rowY[row+1].
+  const rowY = new Array(numRows + 1);
+  for (let i = 0; i <= numRows; i++) rowY[i] = y + Math.round(i * rowH);
+  const tableHActual = rowY[numRows] - y;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(x, y, totalW, tableHActual);
+  function cell(row, col, text, bold, bg) {
+    const cx = x + colX[col], cy = rowY[row], rh = rowY[row + 1] - rowY[row], cw = colW[col];
+    if (bg) { ctx.fillStyle = bg; ctx.fillRect(cx, cy, cw, rh); }
+    ctx.fillStyle = TEXT;
+    ctx.font = (bold ? 'bold ' : '') + fontSize + 'px sans-serif';
+    ctx.textBaseline = 'middle';
+    const a = aligns[col];
+    ctx.textAlign = a;
+    const tx = a === 'right' ? cx + cw - padX : a === 'center' ? cx + cw / 2 : cx + padX;
+    // 'middle' baseline centres the em-box, which reads slightly high; nudge
+    // down a hair so glyphs sit visually centred in the row.
+    ctx.fillText(text, tx, cy + rh / 2 + fontSize * 0.08);
+  }
+  ctx.fillStyle = HEADER_BG;
+  ctx.fillRect(x, rowY[0], totalW, rowY[1] - rowY[0]);
+  for (let c = 0; c < numCols; c++) cell(0, c, headers[c], true, null);
+  for (let r = 0; r < rows.length; r++) {
+    const vals = valsOf(rows[r]);
+    for (let c2 = 0; c2 < numCols; c2++) cell(r + 1, c2, String(vals[c2]), false, r % 2 === 1 ? STRIPE_BG : null);
+  }
+  const tr = rows.length + 1;
+  ctx.fillStyle = TOTAL_BG;
+  ctx.fillRect(x, rowY[tr], totalW, rowY[tr + 1] - rowY[tr]);
+  ctx.fillStyle = TEXT;
+  ctx.font = 'bold ' + fontSize + 'px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(S.fpTotal, x + colX[1] + padX, rowY[tr] + (rowY[tr + 1] - rowY[tr]) / 2 + fontSize * 0.08);
+  for (let c4 = 4; c4 < numCols; c4++) if (totVals[c4] !== undefined) cell(tr, c4, String(totVals[c4]), true, null);
+  ctx.strokeStyle = GRID;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, totalW - 1, tableHActual - 1);
+  ctx.lineWidth = 0.75;
+  for (let gc = 1; gc < numCols; gc++) {
+    const gx = Math.round(x + colX[gc]) + 0.5;
+    ctx.beginPath(); ctx.moveTo(gx, y); ctx.lineTo(gx, y + tableHActual); ctx.stroke();
+  }
+  for (let gr = 1; gr < numRows; gr++) {
+    const gy = rowY[gr] + 0.5;
+    ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x + totalW, gy); ctx.stroke();
+  }
+  ctx.restore();
+  return { x, y, w: totalW, h: tableHActual };
+}
+
+// Draw the placed flight-plan card on the overlay (live preview + export).
+// Row height scales with planCard.scale; the export scale then renders it
+// crisp at print DPI. Updates planCardRect for hit-testing drag + resize.
+const PLAN_CARD_BASE_ROW = 16;     // container px per row at scale 1
+const PLAN_CARD_GRIP = 22;         // resize grip size (px)
+function drawPlanCard() {
+  if (!planCard) { window.planCardRect = null; return; }
+  const scale = planCard.scale > 0 ? planCard.scale : 1;
+  const numRows = (state.legs ? state.legs.length : 0) + 2;
+  const h = numRows * PLAN_CARD_BASE_ROW * scale;
+  window.planCardRect = drawFlightPlanTable(octx, planCard.x, planCard.y, 1e6, h, 'tl');
+  // The resize grip is a UI handle — never bake it into the exported PNG.
+  if (!planCardRect || (window.NavAid && NavAid.exporting)) return;
+  // Resize grip — a triangle in the bottom-right corner, with diagonal ribs.
+  const r = planCardRect, g = PLAN_CARD_GRIP;
+  const ex = r.x + r.w, ey = r.y + r.h;
+  octx.save();
+  octx.fillStyle = '#0b5ed7';
+  octx.beginPath();
+  octx.moveTo(ex - g, ey);
+  octx.lineTo(ex, ey);
+  octx.lineTo(ex, ey - g);
+  octx.closePath();
+  octx.fill();
+  octx.strokeStyle = '#fff';
+  octx.lineWidth = 1.5;
+  for (let i = 1; i <= 3; i++) {
+    octx.beginPath();
+    octx.moveTo(ex - i * 5, ey - 2);
+    octx.lineTo(ex - 2, ey - i * 5);
+    octx.stroke();
+  }
+  octx.restore();
+}
+// True if (px,py) is on the card's resize grip (a forgiving corner zone).
+function planCardOnGrip(px, py) {
+  const r = planCardRect;
+  if (!r) return false;
+  const z = PLAN_CARD_GRIP + 8;     // generous hit padding
+  return px >= r.x + r.w - z && px <= r.x + r.w + 8 &&
+         py >= r.y + r.h - z && py <= r.y + r.h + 8;
 }
 
 function drawPageFrame() {
