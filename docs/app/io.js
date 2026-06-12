@@ -952,6 +952,202 @@ function exportPln() {
   URL.revokeObjectURL(a.href);
 }
 
+// --- X-Plane FDR export (issue #701) ----------------------------------------
+// Exports the route as an X-Plane Flight Data Recorder replay file.
+// Each leg is sampled at 1-second intervals; position is linearly interpolated
+// along the leg, altitude blends smoothly between legs, and roll/pitch/VVI
+// are computed from turn-rate and climb-rate geometry.
+//
+// X-Plane 12 FDR version 3 (the 'A'/'3' header) uses the COMPACT, positional
+// DATA order — confirmed by X-Plane's parser, which reads the heading from the
+// 5th value:
+//   1 time s, 2 longitude, 3 latitude, 4 altitude MSL ft, 5 heading true,
+//   6 pitch deg, 7 roll deg
+// (The 80-column layout — time,temp,lon,lat,h_msl,… — is the old V2/legacy
+// format X-Plane 12 rejects as "Old, non-supported FDR format"; putting those
+// columns under a V3 header made it read altitude as heading: "Out of range
+// FDR-file heading … 2000".)
+function fdrDataRow(time, lon, lat, hmsl, hdg, pitch, roll) {
+  return [
+    time.toFixed(2),
+    lon.toFixed(6),
+    lat.toFixed(6),
+    hmsl.toFixed(1),     // altitude MSL (ft)
+    hdg.toFixed(2),      // heading (degrees true)
+    pitch.toFixed(2),
+    roll.toFixed(2),
+  ].join(',');
+}
+function exportFdr() {
+  if (state.waypoints.length < 2) { alert(S.errNeedWps); return; }
+
+  const DEG = Math.PI / 180;
+  // Degrees between two headings via shortest angular path (returns ±deg).
+  function angleDiff(a, b) {
+    let d = ((b - a) % 360 + 360) % 360;
+    return d > 180 ? d - 360 : d;
+  }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  const KT_TO_MS = 0.514444;
+  const M_TO_FT  = 3.280840;
+  const G        = 9.80665;
+  const BANK     = 18 * DEG;          // bank angle the turns are flown at
+  // Local equirectangular projection (metres) around the first waypoint —
+  // accurate over a CVFR route's span; turns are computed as real arcs here.
+  const wp0 = state.waypoints[0];
+  const mPerLat = 110540;
+  const mPerLng = 111320 * Math.cos(wp0.lat * DEG);
+  const toXY = w => ({ x: (w.lng - wp0.lng) * mPerLng, y: (w.lat - wp0.lat) * mPerLat });
+  const toLL = p => ({ lng: wp0.lng + p.x / mPerLng, lat: wp0.lat + p.y / mPerLat });
+  const sub = (a, b) => ({ x: a.x - b.x, y: a.y - b.y });
+  const add = (a, b) => ({ x: a.x + b.x, y: a.y + b.y });
+  const mul = (a, s) => ({ x: a.x * s, y: a.y * s });
+  const hyp = a => Math.hypot(a.x, a.y);
+  const norm = a => { const m = hyp(a) || 1; return { x: a.x / m, y: a.y / m }; };
+
+  // Per-leg metres geometry + cruise speed/altitude.
+  const W = state.waypoints.map(toXY);
+  const leg = state.legs.map((l, i) => ({
+    spdMS: Math.max(1, (l.flightSpeed || 90)) * KT_TO_MS,
+    alt: Number.isFinite(l.inboundAltitude) ? l.inboundAltitude : 2000,
+    len: hyp(sub(W[i + 1], W[i])),
+  }));
+
+  // Build the flown path as a dense metres polyline, rounding each interior
+  // waypoint with a banked-turn arc (radius R = V²/(g·tanφ)). Each point
+  // carries the speed/altitude that applies there.
+  const path = [{ p: W[0], spdMS: leg[0].spdMS, alt: leg[0].alt }];
+  for (let k = 1; k < W.length - 1; k++) {
+    const uin  = norm(sub(W[k], W[k - 1]));
+    const uout = norm(sub(W[k + 1], W[k]));
+    const dot  = Math.max(-1, Math.min(1, uin.x * uout.x + uin.y * uout.y));
+    const theta = Math.acos(dot);                       // turn angle (rad)
+    const sIn = leg[k - 1].spdMS, sOut = leg[k].spdMS;
+    if (theta < 0.5 * DEG) {                             // ~straight — no arc
+      path.push({ p: W[k], spdMS: sOut, alt: leg[k].alt });
+      continue;
+    }
+    const vTurn = Math.min(sIn, sOut);                  // fly the turn at the slower speed
+    let R = (vTurn * vTurn) / (G * Math.tan(BANK));
+    let d = R * Math.tan(theta / 2);                    // tangent distance from the vertex
+    const dMax = 0.45 * Math.min(leg[k - 1].len, leg[k].len);
+    if (d > dMax) { d = dMax; R = d / Math.tan(theta / 2); }
+    const tIn  = sub(W[k], mul(uin, d));
+    const tOut = add(W[k], mul(uout, d));
+    const cross = uin.x * uout.y - uin.y * uout.x;       // >0 left turn, <0 right
+    const left = cross > 0;
+    const nIn = left ? { x: -uin.y, y: uin.x } : { x: uin.y, y: -uin.x };
+    const center = add(tIn, mul(nIn, R));
+    const a0 = Math.atan2(tIn.y - center.y, tIn.x - center.x);
+    const sweep = left ? theta : -theta;
+    const steps = Math.max(2, Math.ceil(theta / (3 * DEG)));   // ~3° per arc point
+    path.push({ p: tIn, spdMS: vTurn, alt: leg[k - 1].alt });
+    for (let s = 1; s <= steps; s++) {
+      const ang = a0 + sweep * (s / steps);
+      const p = { x: center.x + R * Math.cos(ang), y: center.y + R * Math.sin(ang) };
+      path.push({ p, spdMS: vTurn, alt: lerp(leg[k - 1].alt, leg[k].alt, s / steps) });
+    }
+    // tOut == last arc point; continue the straight from there.
+    void tOut;
+  }
+  const lastLeg = leg[leg.length - 1];
+  path.push({ p: W[W.length - 1], spdMS: lastLeg.spdMS, alt: lastLeg.alt });
+
+  // Cumulative travel time along the polyline (constant speed per segment).
+  const tcum = [0];
+  for (let i = 1; i < path.length; i++) {
+    const ds = hyp(sub(path[i].p, path[i - 1].p));
+    const v = 0.5 * (path[i].spdMS + path[i - 1].spdMS) || 1;
+    tcum.push(tcum[i - 1] + ds / v);
+  }
+  const totalT = tcum[tcum.length - 1];
+
+  // Resample the path at 1-second intervals (position + altitude).
+  const samp = [];
+  let seg = 1;
+  for (let tt = 0; tt <= totalT; tt += 1) {
+    while (seg < path.length - 1 && tcum[seg] < tt) seg++;
+    const t0 = tcum[seg - 1], t1 = tcum[seg];
+    const f = t1 > t0 ? (tt - t0) / (t1 - t0) : 0;
+    const p = { x: lerp(path[seg - 1].p.x, path[seg].p.x, f),
+                y: lerp(path[seg - 1].p.y, path[seg].p.y, f) };
+    samp.push({ p, alt: lerp(path[seg - 1].alt, path[seg].alt, f) });
+  }
+  if (samp.length < 2) samp.push({ p: W[W.length - 1], alt: lastLeg.alt });
+  // Smooth altitude (±20 s moving average) so climbs/descents are gradual.
+  const altS = samp.map((s, i) => {
+    let sum = 0, n = 0;
+    for (let j = Math.max(0, i - 20); j <= Math.min(samp.length - 1, i + 20); j++) { sum += samp[j].alt; n++; }
+    return sum / n;
+  });
+
+  // Heading from the path tangent; roll from turn rate; pitch from climb rate.
+  const rows = [];
+  for (let i = 0; i < samp.length; i++) {
+    const a = samp[Math.max(0, i - 1)].p, b = samp[Math.min(samp.length - 1, i + 1)].p;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const hdg = ((Math.atan2(dx, dy) / DEG) % 360 + 360) % 360;   // true bearing
+    const ll = toLL(samp[i].p);
+    // roll: tan(bank) = ω·V/g, ω = heading rate (rad/s), sign by turn direction.
+    let roll = 0;
+    if (i > 0 && i < samp.length - 1) {
+      const a2 = samp[i - 1].p, b2 = samp[i + 1].p;
+      const h0 = Math.atan2(samp[i].p.x - a2.x, samp[i].p.y - a2.y) / DEG;
+      const h1 = Math.atan2(b2.x - samp[i].p.x, b2.y - samp[i].p.y) / DEG;
+      const rate = angleDiff(h0, h1) * DEG;                 // rad/s
+      const ds = hyp(sub(b2, a2)) / 2;                       // m/s
+      roll = Math.atan((rate * ds) / G) / DEG;
+    }
+    // pitch from vertical vs horizontal speed.
+    const vfps = i < samp.length - 1 ? (altS[i + 1] - altS[i]) / M_TO_FT : 0;   // m/s up (alt in ft)
+    const gs = i < samp.length - 1 ? hyp(sub(samp[i + 1].p, samp[i].p)) : 1;     // m/s
+    const pitch = Math.atan2(vfps, gs || 1) / DEG;
+    rows.push(fdrDataRow(i, ll.lng, ll.lat, altS[i], hdg, pitch, roll));
+  }
+
+  const lastWp = state.waypoints[state.waypoints.length - 1];
+  const dep  = (state.waypoints[0].name || 'DEP').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,8);
+  const dest = (lastWp.name || 'DEST').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,8);
+
+  // X-Plane 12 FDR V3: 'A' line-ending marker, version '3', then keyword header
+  // lines (TAIL must immediately follow ACFT), then one compact 'DATA,' row per
+  // sample (see fdrDataRow). X-Plane 12 rejects the old header-less / V2 layout
+  // as "Old, non-supported FDR format", so the version line is required.
+  const now = new Date();
+  const dateStr = String(now.getMonth()+1).padStart(2,'0') + '/' +
+                  String(now.getDate()).padStart(2,'0') + '/' + now.getFullYear();
+  const timeStr = String(now.getUTCHours()).padStart(2,'0') + ':' +
+                  String(now.getUTCMinutes()).padStart(2,'0') + ':' +
+                  String(now.getUTCSeconds()).padStart(2,'0');
+  const fdrRows = rows.map(r => 'DATA, ' + r);
+  // No ACFT line: its path must resolve to an installed aircraft or X-Plane
+  // errors ("unknown aircraft"). Omitting it replays on the currently-loaded
+  // aircraft, which is robust across installs / X-Plane versions.
+  const fdr = [
+    'A',
+    '3',
+    '',
+    'TAIL, NAVAID',
+    'DATE, ' + dateStr,
+    'TIME, ' + timeStr,
+    'PRES, 29.92',
+    'TEMP, 15',
+    'WIND, 0,0',
+    'COMM, NavAid CVFR route — ' + dep + ' to ' + dest,
+    '',
+    ...fdrRows,
+    '',
+  ].join('\n');
+
+  const blob = new Blob([fdr], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'route-' + fileStamp() + '.fdr';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 // --- GPX import --------------------------------------------------------
 function loadGpx(file) {
   const MAX_ROUTE_BYTES = 2 * 1024 * 1024;
