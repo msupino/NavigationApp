@@ -2402,11 +2402,11 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
 const PLAN_CARD_BASE_ROW = 16;     // container px per row at scale 1
 const PLAN_CARD_GRIP = 22;         // resize grip size (px)
 function drawPlanCard() {
-  if (!planCard) { planCardRect = null; return; }
+  if (!planCard) { window.planCardRect = null; return; }
   const scale = planCard.scale > 0 ? planCard.scale : 1;
   const numRows = (state.legs ? state.legs.length : 0) + 2;
   const h = numRows * PLAN_CARD_BASE_ROW * scale;
-  planCardRect = drawFlightPlanTable(octx, planCard.x, planCard.y, 1e6, h, 'tl');
+  window.planCardRect = drawFlightPlanTable(octx, planCard.x, planCard.y, 1e6, h, 'tl');
   if (!planCardRect) return;
   // Resize grip — a triangle in the bottom-right corner, with diagonal ribs.
   const r = planCardRect, g = PLAN_CARD_GRIP;

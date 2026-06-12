@@ -2431,7 +2431,7 @@ function showExportModal() {
     }
     mapOpacity = origMapOpacity;
     applyMapOpacity();
-    planCard = null;            // drop the placed card (export already captured it)
+    window.planCard = null;            // drop the placed card (export already captured it)
     draw();
   }
 
@@ -2458,13 +2458,13 @@ function showExportModal() {
   };
 
   // Flight-plan card placement: toggle + drag on the live map.
-  planCard = null;                              // fresh each open
+  window.planCard = null;                              // fresh each open
   planCb.onchange = function () {
     const fr0 = pageFrameRect();
     if (planCb.checked) {
-      planCard = fr0 ? { x: fr0.x + 14, y: fr0.y + 14, scale: 1 } : { x: 40, y: 40, scale: 1 };
+      window.planCard = fr0 ? { x: fr0.x + 14, y: fr0.y + 14, scale: 1 } : { x: 40, y: 40, scale: 1 };
     } else {
-      planCard = null;
+      window.planCard = null;
     }
     // Open up the backdrop so the card can be dragged on the live map.
     back.classList.toggle('export-place', planCb.checked);
