@@ -1130,6 +1130,13 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   position: absolute;
   margin: 0;
 }
+/* Export modal while placing the flight-plan card: clear the backdrop so the
+   map (and the draggable card) stays reachable underneath the dialog. */
+.modal-back.export-place {
+  background: transparent;
+  pointer-events: none;
+}
+.modal-back.export-place > .modal { pointer-events: auto; }
 .modal {
   min-width: 240px;
   padding: 16px;
@@ -1137,6 +1144,15 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   border: 1px solid #3a3636;
   border-radius: 10px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  /* Double-clicking labels/table cells used to select their text — useless in
+     the export / charts dialogs. Inputs/textareas opt back in below. */
+  -webkit-user-select: none;
+  user-select: none;
+}
+.modal input, .modal textarea, .modal select,
+.modal [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
 }
 .modal-title {
   margin-bottom: 12px;
