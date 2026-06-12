@@ -79,15 +79,33 @@ test('dragging the card on the map moves it within the frame', async ({ page }) 
   await page.locator('#export-plan-cb').check();
   await page.evaluate(() => draw());
   const start = await page.evaluate(() => ({ ...planCard, rect: planCardRect, fr: pageFrameRect() }));
-  // Drag the card a modest amount down-and-right (kept on-screen).
+  // Drag the card down (the A4 frame is tall — vertical room to move).
   await page.mouse.move(start.rect.x + 15, start.rect.y + 8);
   await page.mouse.down();
-  await page.mouse.move(start.rect.x + 15 + 120, start.rect.y + 8 + 120, { steps: 8 });
+  await page.mouse.move(start.rect.x + 15, start.rect.y + 8 + 150, { steps: 8 });
   await page.mouse.up();
   const moved = await page.evaluate(() => ({ ...planCard, fr: pageFrameRect(), rect: planCardRect }));
-  expect(moved.x).toBeGreaterThan(start.x + 60);
-  expect(moved.y).toBeGreaterThan(start.y + 60);
-  // Still clamped inside the frame.
+  expect(moved.y).toBeGreaterThan(start.y + 60);   // moved down
+  // Still clamped inside the frame (both axes).
   expect(moved.x).toBeGreaterThanOrEqual(moved.fr.x - 1);
-  expect(moved.x + moved.rect.w).toBeLessThanOrEqual(moved.fr.x + moved.fr.w + 1);
+  expect(moved.y).toBeGreaterThanOrEqual(moved.fr.y - 1);
+  expect(moved.y + moved.rect.h).toBeLessThanOrEqual(moved.fr.y + moved.fr.h + 1);
+});
+
+test('the corner grip resizes the card', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 1000 });
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => { setPage('A4'); draw(); showExportModal(); });
+  await page.locator('#export-plan-cb').check();
+  await page.evaluate(() => draw());
+  const start = await page.evaluate(() => ({ scale: planCard.scale, rect: planCardRect }));
+  // Drag the bottom-right grip outward → larger scale.
+  await page.mouse.move(start.rect.x + start.rect.w - 6, start.rect.y + start.rect.h - 6);
+  await page.mouse.down();
+  await page.mouse.move(start.rect.x + start.rect.w + 200, start.rect.y + start.rect.h + 120, { steps: 8 });
+  await page.mouse.up();
+  const after = await page.evaluate(() => ({ scale: planCard.scale, rect: planCardRect }));
+  expect(after.scale).toBeGreaterThan(start.scale + 0.1);
+  expect(after.rect.w).toBeGreaterThan(start.rect.w);
 });

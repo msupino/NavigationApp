@@ -2280,6 +2280,16 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   if (!legs.length || wpts.length < 2) return null;
   const ac = aircraft;
   const taxiFuel = ac && ac.taxiGal && typeof isAirport === 'function' && isAirport(wpts[0]) ? ac.taxiGal : 0;
+  const empty = S.fpVorRadialEmpty || '—';
+  // Radial / DME of a waypoint from the leg's reference VOR (per-leg override,
+  // else the global reference). Blank when no VOR is selected.
+  const vorCells = (wp, lg) => {
+    const v = (lg && lg.vorRef && typeof vorByIdent === 'function' ? vorByIdent(lg.vorRef) : null) ||
+              (typeof activeVor === 'function' ? activeVor() : null);
+    if (!v || !wp || typeof vorRadialDme !== 'function') return [empty, empty];
+    const rd = vorRadialDme(v, wp.lat, wp.lng);
+    return rd ? ['R-' + rd.radial, String(rd.dme)] : [empty, empty];
+  };
   const rows = [];
   let totDist = 0, totTime = 0, totFuel = 0;
   for (let i = 0; i < legs.length; i++) {
@@ -2292,21 +2302,28 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     if (i === 0 && taxiFuel) fuel += taxiFuel;
     totDist += dist; totTime += dur; totFuel += fuel;
     const fLabel = ac ? fuel.toFixed(1) + (i === 0 && taxiFuel ? ' *' : '') : '--';
+    const rd = vorCells(B, legs[i]);
     rows.push({ num: i + 1, from: navName((A.name || '').trim()) || S.wpPrefix + (i + 1),
       to: navName((B.name || '').trim()) || S.wpPrefix + (i + 2),
       hdg: pad3(hdg) + '°M', dist: dist.toFixed(1),
       speed: String(legs[i].flightSpeed), alt: String(legs[i].inboundAltitude),
-      time: dur > 0 ? toHMS(dur) : '--', fuel: fLabel });
+      time: dur > 0 ? toHMS(dur) : '--', fuel: fLabel,
+      cumTime: totTime > 0 ? toHMS(totTime) : '--',
+      cumFuel: ac ? totFuel.toFixed(1) : '--',
+      radial: rd[0], dme: rd[1] });
   }
   if (!rows.length) return null;
-  const headers = S.fpHeadersShort;
+  // All columns (matches the on-screen flight plan, minus the delete column).
+  const headers = (S.fpHeaders || []).slice(0, 13);
   const numCols = headers.length;
   const numRows = rows.length + 2;            // header + data + total
   const idealRowH = h / numRows;
   const fontSize = Math.max(9, Math.min(idealRowH * 0.7, 22));
   const rowH = Math.min(idealRowH, Math.ceil(fontSize * 1.35));
   const padX = Math.max(4, Math.round(fontSize * 0.6));
-  const aligns = ['center', 'left', 'left', 'center', 'right', 'right', 'right', 'center', 'right'];
+  // #,From,To,Hdg,Dist,Spd,Alt,Time,Fuel,CumTime,CumFuel,Radial,DME
+  const aligns = ['center', 'left', 'left', 'center', 'right', 'right', 'right', 'center', 'right', 'center', 'right', 'center', 'right'];
+  const valsOf = rd => [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel, rd.cumTime, rd.cumFuel, rd.radial, rd.dme];
   ctx.save();
   ctx.font = fontSize + 'px sans-serif';
   const totVals = { 4: totDist.toFixed(1), 7: totTime > 0 ? toHMS(totTime) : '--', 8: ac ? totFuel.toFixed(1) : '--' };
@@ -2318,8 +2335,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   }
   ctx.font = fontSize + 'px sans-serif';
   for (let mr = 0; mr < rows.length; mr++) {
-    const rd = rows[mr];
-    const mvals = [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel];
+    const mvals = valsOf(rows[mr]);
     for (let mc = 0; mc < numCols; mc++) colW[mc] = Math.max(colW[mc], ctx.measureText(String(mvals[mc])).width);
   }
   for (let mc = 0; mc < numCols; mc++) colW[mc] = Math.ceil(colW[mc] + 2 * padX);
@@ -2349,8 +2365,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   ctx.fillRect(x, y, totalW, rowH);
   for (let c = 0; c < numCols; c++) cell(0, c, headers[c], true, null);
   for (let r = 0; r < rows.length; r++) {
-    const rd = rows[r];
-    const vals = [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel];
+    const vals = valsOf(rows[r]);
     for (let c2 = 0; c2 < numCols; c2++) cell(r + 1, c2, String(vals[c2]), false, r % 2 === 1 ? STRIPE_BG : null);
   }
   const tr = rows.length + 1, totCY = y + tr * rowH;
@@ -2379,13 +2394,37 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
 }
 
 // Draw the placed flight-plan card on the overlay (live preview + export).
-// Sized for ~16 px rows in container pixels; the export scale renders it
-// crisp at print DPI. Updates planCardRect for hit-testing the drag.
+// Row height scales with planCard.scale; the export scale then renders it
+// crisp at print DPI. Updates planCardRect for hit-testing drag + resize.
+const PLAN_CARD_BASE_ROW = 16;     // container px per row at scale 1
+const PLAN_CARD_GRIP = 14;         // resize grip size (px)
 function drawPlanCard() {
   if (!planCard) { planCardRect = null; return; }
+  const scale = planCard.scale > 0 ? planCard.scale : 1;
   const numRows = (state.legs ? state.legs.length : 0) + 2;
-  const h = numRows * 16;
-  planCardRect = drawFlightPlanTable(octx, planCard.x, planCard.y, 100000, h, 'tl');
+  const h = numRows * PLAN_CARD_BASE_ROW * scale;
+  planCardRect = drawFlightPlanTable(octx, planCard.x, planCard.y, 1e6, h, 'tl');
+  if (!planCardRect) return;
+  // Resize grip at the bottom-right corner.
+  const r = planCardRect, g = PLAN_CARD_GRIP;
+  octx.save();
+  octx.fillStyle = '#0b5ed7';
+  octx.fillRect(r.x + r.w - g, r.y + r.h - g, g, g);
+  octx.strokeStyle = '#fff';
+  octx.lineWidth = 1.5;
+  for (let i = 1; i <= 2; i++) {
+    octx.beginPath();
+    octx.moveTo(r.x + r.w - i * 4 - 1, r.y + r.h - 2);
+    octx.lineTo(r.x + r.w - 2, r.y + r.h - i * 4 - 1);
+    octx.stroke();
+  }
+  octx.restore();
+}
+// True if (px,py) is on the card's resize grip.
+function planCardOnGrip(px, py) {
+  const r = planCardRect, g = PLAN_CARD_GRIP;
+  return !!r && px >= r.x + r.w - g && px <= r.x + r.w &&
+               py >= r.y + r.h - g && py <= r.y + r.h;
 }
 
 function drawPageFrame() {

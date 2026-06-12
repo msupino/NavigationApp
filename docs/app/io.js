@@ -2460,15 +2460,22 @@ function showExportModal() {
   // Flight-plan card placement: toggle + drag on the live map.
   planCard = null;                              // fresh each open
   planCb.onchange = function () {
+    const fr0 = pageFrameRect();
     if (planCb.checked) {
-      const fr0 = pageFrameRect();
-      planCard = fr0 ? { x: fr0.x + 14, y: fr0.y + 14 } : { x: 40, y: 40 };
+      planCard = fr0 ? { x: fr0.x + 14, y: fr0.y + 14, scale: 1 } : { x: 40, y: 40, scale: 1 };
     } else {
       planCard = null;
     }
     // Open up the backdrop so the card can be dragged on the live map.
     back.classList.toggle('export-place', planCb.checked);
     draw();
+    // Auto-fit the default scale so the (wide, all-column) table fits the
+    // frame width — the user can still resize via the corner grip.
+    if (planCard && fr0 && planCardRect && planCardRect.w > fr0.w - 28) {
+      planCard.scale = Math.max(0.4, (fr0.w - 28) / planCardRect.w);
+      planCard.x = fr0.x + 14; planCard.y = fr0.y + 14;
+      draw();
+    }
   };
   // Drag the card inside the page frame. Listens on the map container so it
   // works over the route overlay; map panning is suspended while dragging.
@@ -2477,6 +2484,13 @@ function showExportModal() {
   function cardDown(e) {
     if (!planCard || !planCardRect) return;
     const pt = map.mouseEventToContainerPoint(e);
+    // Bottom-right grip → resize; elsewhere inside the card → move.
+    if (typeof planCardOnGrip === 'function' && planCardOnGrip(pt.x, pt.y)) {
+      cardDrag = { resize: true, baseW1: planCardRect.w / (planCard.scale || 1) };
+      if (map.dragging) map.dragging.disable();
+      e.preventDefault(); e.stopPropagation();
+      return;
+    }
     const r = planCardRect;
     if (pt.x < r.x || pt.x > r.x + r.w || pt.y < r.y || pt.y > r.y + r.h) return;
     cardDrag = { dx: pt.x - planCard.x, dy: pt.y - planCard.y };
@@ -2487,6 +2501,12 @@ function showExportModal() {
   function cardMove(e) {
     if (!cardDrag || !planCard) return;
     const pt = map.mouseEventToContainerPoint(e);
+    if (cardDrag.resize) {
+      // Scale ∝ rendered width; clamp to a sane range.
+      planCard.scale = Math.max(0.5, Math.min(5, (pt.x - planCard.x) / cardDrag.baseW1));
+      draw();
+      return;
+    }
     let nx = pt.x - cardDrag.dx, ny = pt.y - cardDrag.dy;
     const fr0 = pageFrameRect();
     const cw = planCardRect ? planCardRect.w : 0, ch = planCardRect ? planCardRect.h : 0;
