@@ -379,6 +379,10 @@ window.S = Object.assign({
   errNoLegs: 'No legs yet — drop at least two waypoints first.',
   flightPlan: 'Flight plan',
   fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time', 'Fuel (gal)', 'Cum. time', 'Cum. fuel', 'Radial', 'DME', ''],
+  fpHeadersShort: ['#', 'From', 'To', 'Hdg', 'Dist', 'Spd', 'Alt', 'Time', 'Fuel'],
+  exportPlanPlace: 'Place flight plan on the map',
+  exportPlanPlaceTitle: 'Overlay the flight-plan table on the export; drag it to position it inside the page frame',
+  exportPlanNoFrame: 'Choose A3 or A4 (page frame) to enable the flight-plan overlay.',
   fpVorLabel: 'VOR',
   fpVorRadialEmpty: '—',
   fpDel: '✕',
@@ -787,6 +791,11 @@ let pageSize = null;        // null | 'A3' | 'A4'
 var pageOrient = 'portrait';
 let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre
 var aircraft = null;               // null | {gph, taxiGal}
+// Flight-plan card placed on the PNG export (#378). null = off; otherwise
+// { x, y } top-left in container pixels. planCardRect holds the last rendered
+// bounds for hit-testing the drag.
+var planCard = null;
+var planCardRect = null;
 
 function loadAircraft() {
   try {

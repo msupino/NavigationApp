@@ -2317,6 +2317,20 @@ function showExportModal() {
   afLabel.appendChild(document.createTextNode(S.exportShowAirfields));
   body.appendChild(afLabel);
 
+  // Place flight-plan table on the export (#378). Drag it on the live map.
+  const planLabel = document.createElement('label');
+  planLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
+  planLabel.title = S.exportPlanPlaceTitle || '';
+  const planCb = document.createElement('input');
+  planCb.type = 'checkbox';
+  planCb.id = 'export-plan-cb';
+  planCb.checked = false;
+  planCb.disabled = !pageSize;                 // needs a page frame to anchor
+  planLabel.appendChild(planCb);
+  planLabel.appendChild(document.createTextNode(
+    pageSize ? S.exportPlanPlace : (S.exportPlanNoFrame || S.exportPlanPlace)));
+  body.appendChild(planLabel);
+
   // Layer selector.
   const layerRow = document.createElement('div');
   layerRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px';
@@ -2417,6 +2431,7 @@ function showExportModal() {
     }
     mapOpacity = origMapOpacity;
     applyMapOpacity();
+    planCard = null;            // drop the placed card (export already captured it)
     draw();
   }
 
@@ -2441,6 +2456,61 @@ function showExportModal() {
     showAirfields = afCb.checked;
     draw();
   };
+
+  // Flight-plan card placement: toggle + drag on the live map.
+  planCard = null;                              // fresh each open
+  planCb.onchange = function () {
+    if (planCb.checked) {
+      const fr0 = pageFrameRect();
+      planCard = fr0 ? { x: fr0.x + 14, y: fr0.y + 14 } : { x: 40, y: 40 };
+    } else {
+      planCard = null;
+    }
+    // Open up the backdrop so the card can be dragged on the live map.
+    back.classList.toggle('export-place', planCb.checked);
+    draw();
+  };
+  // Drag the card inside the page frame. Listens on the map container so it
+  // works over the route overlay; map panning is suspended while dragging.
+  const mapEl = map.getContainer();
+  let cardDrag = null;
+  function cardDown(e) {
+    if (!planCard || !planCardRect) return;
+    const pt = map.mouseEventToContainerPoint(e);
+    const r = planCardRect;
+    if (pt.x < r.x || pt.x > r.x + r.w || pt.y < r.y || pt.y > r.y + r.h) return;
+    cardDrag = { dx: pt.x - planCard.x, dy: pt.y - planCard.y };
+    if (map.dragging) map.dragging.disable();
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  function cardMove(e) {
+    if (!cardDrag || !planCard) return;
+    const pt = map.mouseEventToContainerPoint(e);
+    let nx = pt.x - cardDrag.dx, ny = pt.y - cardDrag.dy;
+    const fr0 = pageFrameRect();
+    const cw = planCardRect ? planCardRect.w : 0, ch = planCardRect ? planCardRect.h : 0;
+    if (fr0) {
+      nx = Math.max(fr0.x, Math.min(fr0.x + fr0.w - cw, nx));
+      ny = Math.max(fr0.y, Math.min(fr0.y + fr0.h - ch, ny));
+    }
+    planCard.x = nx; planCard.y = ny;
+    draw();
+  }
+  function cardUp() {
+    if (!cardDrag) return;
+    cardDrag = null;
+    if (map.dragging) map.dragging.enable();
+  }
+  mapEl.addEventListener('mousedown', cardDown, true);
+  window.addEventListener('mousemove', cardMove, true);
+  window.addEventListener('mouseup', cardUp, true);
+  function removeCardDrag() {
+    mapEl.removeEventListener('mousedown', cardDown, true);
+    window.removeEventListener('mousemove', cardMove, true);
+    window.removeEventListener('mouseup', cardUp, true);
+    if (cardDrag && map.dragging) map.dragging.enable();
+  }
   layerSel.onchange = function () {
     const chosen = layerSel.value;
     for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
@@ -2454,7 +2524,7 @@ function showExportModal() {
     applyMapOpacity();
   };
 
-  function close() { window.removeEventListener('keydown', onEsc); back.remove(); }
+  function close() { removeCardDrag(); window.removeEventListener('keydown', onEsc); back.remove(); }
   function onEsc(e) { if (e.key === 'Escape') { restoreOrig(); close(); } }
 
   exportBtn.onclick = () => {
@@ -2692,6 +2762,7 @@ function exportPNG() {
       drawLegs();
       drawWaypoints();
       drawNotes();
+      drawPlanCard();        // flight-plan card placed in the export modal (#378)
       o.restore();
     } finally {
       octx = prevOctx;

@@ -125,6 +125,7 @@ function draw() {
   drawSimAircraft();
   drawInfo();
   drawPageFrame();
+  drawPlanCard();          // flight-plan card placed for PNG export (#378)
   // #78: keep the Flight Plan modal live with the route. The hook is null
   // when the modal isn't open, or after refresh detects a structural change
   // and closes it.
@@ -2266,6 +2267,125 @@ function hitPageFrameEdge(px, py) {
 function clampPageOffset() {
   pageOffset.x = Math.max(-vw() / 2, Math.min(vw() / 2, pageOffset.x));
   pageOffset.y = Math.max(-vh() / 2, Math.min(vh() / 2, pageOffset.y));
+}
+
+// Render the flight-plan table onto a canvas at (x,y), auto-sizing columns to
+// content. `w`/`h` are the available box; the table is anchored within it per
+// `align` ('tl'|'tr'|'bl'|'br'|'center'). Returns the rendered { x, y, w, h }
+// (or null when there's no route). Paper-print look — white bg, black text.
+// Shared by the live export preview and the PNG render so they match exactly.
+function drawFlightPlanTable(ctx, x, y, w, h, align) {
+  const legs = state.legs || [];
+  const wpts = state.waypoints || [];
+  if (!legs.length || wpts.length < 2) return null;
+  const ac = aircraft;
+  const taxiFuel = ac && ac.taxiGal && typeof isAirport === 'function' && isAirport(wpts[0]) ? ac.taxiGal : 0;
+  const rows = [];
+  let totDist = 0, totTime = 0, totFuel = 0;
+  for (let i = 0; i < legs.length; i++) {
+    const A = wpts[i], B = wpts[i + 1];
+    if (!A || !B) continue;
+    const { dist, brg } = geo(A, B);
+    const hdg = toMagnetic(brg);
+    const dur = legs[i].flightSpeed > 0 ? dist / legs[i].flightSpeed : 0;
+    let fuel = ac ? dur * ac.gph : 0;
+    if (i === 0 && taxiFuel) fuel += taxiFuel;
+    totDist += dist; totTime += dur; totFuel += fuel;
+    const fLabel = ac ? fuel.toFixed(1) + (i === 0 && taxiFuel ? ' *' : '') : '--';
+    rows.push({ num: i + 1, from: navName((A.name || '').trim()) || S.wpPrefix + (i + 1),
+      to: navName((B.name || '').trim()) || S.wpPrefix + (i + 2),
+      hdg: pad3(hdg) + '°M', dist: dist.toFixed(1),
+      speed: String(legs[i].flightSpeed), alt: String(legs[i].inboundAltitude),
+      time: dur > 0 ? toHMS(dur) : '--', fuel: fLabel });
+  }
+  if (!rows.length) return null;
+  const headers = S.fpHeadersShort;
+  const numCols = headers.length;
+  const numRows = rows.length + 2;            // header + data + total
+  const idealRowH = h / numRows;
+  const fontSize = Math.max(9, Math.min(idealRowH * 0.7, 22));
+  const rowH = Math.min(idealRowH, Math.ceil(fontSize * 1.35));
+  const padX = Math.max(4, Math.round(fontSize * 0.6));
+  const aligns = ['center', 'left', 'left', 'center', 'right', 'right', 'right', 'center', 'right'];
+  ctx.save();
+  ctx.font = fontSize + 'px sans-serif';
+  const totVals = { 4: totDist.toFixed(1), 7: totTime > 0 ? toHMS(totTime) : '--', 8: ac ? totFuel.toFixed(1) : '--' };
+  const colW = new Array(numCols).fill(0);
+  ctx.font = 'bold ' + fontSize + 'px sans-serif';
+  for (let mc = 0; mc < numCols; mc++) {
+    colW[mc] = Math.max(colW[mc], ctx.measureText(String(headers[mc])).width);
+    if (totVals[mc] !== undefined) colW[mc] = Math.max(colW[mc], ctx.measureText(String(totVals[mc])).width);
+  }
+  ctx.font = fontSize + 'px sans-serif';
+  for (let mr = 0; mr < rows.length; mr++) {
+    const rd = rows[mr];
+    const mvals = [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel];
+    for (let mc = 0; mc < numCols; mc++) colW[mc] = Math.max(colW[mc], ctx.measureText(String(mvals[mc])).width);
+  }
+  for (let mc = 0; mc < numCols; mc++) colW[mc] = Math.ceil(colW[mc] + 2 * padX);
+  const colX = new Array(numCols + 1).fill(0);
+  for (let mc = 0; mc < numCols; mc++) colX[mc + 1] = colX[mc] + colW[mc];
+  const totalW = colX[numCols];
+  const HEADER_BG = '#e8e6e1', TOTAL_BG = '#f0eee9', STRIPE_BG = '#f7f5f0', GRID = '#7a7470', TEXT = '#1a1a1a';
+  const tableH = rowH * numRows;
+  const al = align || 'tl';
+  if (al === 'tr' || al === 'br') x = x + Math.max(0, w - totalW);
+  if (al === 'bl' || al === 'br') y = y + Math.max(0, h - tableH);
+  if (al === 'center') { x = x + Math.max(0, (w - totalW) / 2); y = y + Math.max(0, (h - tableH) / 2); }
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(x, y, totalW, tableH);
+  function cell(row, col, text, bold, bg) {
+    const cx = x + colX[col], cy = y + row * rowH, cw = colW[col];
+    if (bg) { ctx.fillStyle = bg; ctx.fillRect(cx, cy, cw, rowH); }
+    ctx.fillStyle = TEXT;
+    ctx.font = (bold ? 'bold ' : '') + fontSize + 'px sans-serif';
+    ctx.textBaseline = 'middle';
+    const a = aligns[col];
+    ctx.textAlign = a;
+    const tx = a === 'right' ? cx + cw - padX : a === 'center' ? cx + cw / 2 : cx + padX;
+    ctx.fillText(text, tx, cy + rowH / 2);
+  }
+  ctx.fillStyle = HEADER_BG;
+  ctx.fillRect(x, y, totalW, rowH);
+  for (let c = 0; c < numCols; c++) cell(0, c, headers[c], true, null);
+  for (let r = 0; r < rows.length; r++) {
+    const rd = rows[r];
+    const vals = [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel];
+    for (let c2 = 0; c2 < numCols; c2++) cell(r + 1, c2, String(vals[c2]), false, r % 2 === 1 ? STRIPE_BG : null);
+  }
+  const tr = rows.length + 1, totCY = y + tr * rowH;
+  ctx.fillStyle = TOTAL_BG;
+  ctx.fillRect(x, totCY, totalW, rowH);
+  ctx.fillStyle = TEXT;
+  ctx.font = 'bold ' + fontSize + 'px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(S.fpTotal, x + colX[1] + padX, totCY + rowH / 2);
+  for (let c4 = 4; c4 < numCols; c4++) if (totVals[c4] !== undefined) cell(tr, c4, String(totVals[c4]), true, null);
+  ctx.strokeStyle = GRID;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, totalW - 1, tableH - 1);
+  ctx.lineWidth = 0.75;
+  for (let gc = 1; gc < numCols; gc++) {
+    const gx = Math.round(x + colX[gc]) + 0.5;
+    ctx.beginPath(); ctx.moveTo(gx, y); ctx.lineTo(gx, y + tableH); ctx.stroke();
+  }
+  for (let gr = 1; gr < numRows; gr++) {
+    const gy = Math.round(y + gr * rowH) + 0.5;
+    ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x + totalW, gy); ctx.stroke();
+  }
+  ctx.restore();
+  return { x, y, w: totalW, h: tableH };
+}
+
+// Draw the placed flight-plan card on the overlay (live preview + export).
+// Sized for ~16 px rows in container pixels; the export scale renders it
+// crisp at print DPI. Updates planCardRect for hit-testing the drag.
+function drawPlanCard() {
+  if (!planCard) { planCardRect = null; return; }
+  const numRows = (state.legs ? state.legs.length : 0) + 2;
+  const h = numRows * 16;
+  planCardRect = drawFlightPlanTable(octx, planCard.x, planCard.y, 100000, h, 'tl');
 }
 
 function drawPageFrame() {
