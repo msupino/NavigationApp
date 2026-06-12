@@ -1144,6 +1144,15 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   border: 1px solid #3a3636;
   border-radius: 10px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  /* Double-clicking labels/table cells used to select their text — useless in
+     the export / charts dialogs. Inputs/textareas opt back in below. */
+  -webkit-user-select: none;
+  user-select: none;
+}
+.modal input, .modal textarea, .modal select,
+.modal [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
 }
 .modal-title {
   margin-bottom: 12px;

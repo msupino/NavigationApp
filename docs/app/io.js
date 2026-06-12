@@ -2332,6 +2332,47 @@ function showExportModal() {
     pageSize ? S.exportPlanPlace : (S.exportPlanNoFrame || S.exportPlanPlace)));
   body.appendChild(planLabel);
 
+  // Reference VOR selector — drives the plan card's Radial / DME columns and
+  // shares the global `vorRef` (pre-selects whatever was chosen on the map;
+  // changing it here updates the map overlay too).
+  const vorRow = document.createElement('div');
+  vorRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px';
+  const vorLbl = document.createElement('span');
+  vorLbl.textContent = (S.fpVorLabel || 'VOR') + ':';
+  vorRow.appendChild(vorLbl);
+  const vorSel = document.createElement('select');
+  vorSel.id = 'export-vor-select';
+  vorSel.style.cssText = 'font:inherit;font-size:12px;flex:1';
+  function fillExportVorSelect() {
+    vorSel.innerHTML = '';
+    const none = document.createElement('option');
+    none.value = ''; none.textContent = S.vorRefNone || '— none —';
+    vorSel.appendChild(none);
+    for (const v of (vors || [])) {
+      const opt = document.createElement('option');
+      opt.value = v.ident;
+      opt.textContent = v.ident + ' · ' + v.name;
+      vorSel.appendChild(opt);
+    }
+    vorSel.value = vorRef || '';
+  }
+  fillExportVorSelect();
+  if (vors === null && typeof loadVors === 'function') {
+    loadVors().then(() => { fillExportVorSelect(); draw(); });
+  }
+  vorSel.onchange = function () {
+    window.vorRef = vorSel.value || null;
+    try {
+      if (vorRef) localStorage.setItem('navaid.vorRef', vorRef);
+      else localStorage.removeItem('navaid.vorRef');
+    } catch (e) { /* */ }
+    const tbVor = document.getElementById('vor-ref-select');   // keep the toolbar in sync
+    if (tbVor) tbVor.value = vorRef || '';
+    draw();
+  };
+  vorRow.appendChild(vorSel);
+  body.appendChild(vorRow);
+
   // Layer selector.
   const layerRow = document.createElement('div');
   layerRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px';
@@ -2339,6 +2380,7 @@ function showExportModal() {
   layerLbl.textContent = S.exportLayer;
   layerRow.appendChild(layerLbl);
   const layerSel = document.createElement('select');
+  layerSel.id = 'export-layer-select';
   layerSel.style.cssText = 'font:inherit;font-size:12px;flex:1';
   for (const name in layers) {
     const opt = document.createElement('option');

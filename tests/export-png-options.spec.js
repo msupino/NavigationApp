@@ -51,7 +51,7 @@ test.describe('Export PNG options modal', () => {
     expect(await cbs.nth(5).isChecked()).toBe(false);  // Place flight plan
     expect(await cbs.nth(5).isDisabled()).toBe(true);  // disabled until a page frame is set
     // Layer defaults to Navigation.
-    const sel = page.locator('.modal select');
+    const sel = page.locator('#export-layer-select');
     expect(await sel.inputValue()).toBe('Navigation');
     // Buttons present.
     expect(await page.locator('.modal .modal-btns button').count()).toBe(2);
@@ -281,10 +281,10 @@ test.describe('Export PNG options modal', () => {
     const cbs = page.locator('.modal input[type="checkbox"]');
     await cbs.nth(1).check();
     await cbs.nth(0).check();
-    await page.locator('.modal select').selectOption('CVFR');
+    await page.locator('#export-layer-select').selectOption('CVFR');
     expect(await cbs.nth(1).isChecked()).toBe(true);
     expect(await cbs.nth(0).isChecked()).toBe(true);
-    expect(await page.locator('.modal select').inputValue()).toBe('CVFR');
+    expect(await page.locator('#export-layer-select').inputValue()).toBe('CVFR');
     // Click Export and verify download triggers.
     const dl = page.waitForEvent('download', { timeout: 30000 });
     await page.locator('.modal .modal-btns button').first().click();

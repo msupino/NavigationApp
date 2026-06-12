@@ -2315,18 +2315,21 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
       radial: rd[0], dme: rd[1] });
   }
   if (!rows.length) return null;
-  // All columns (matches the on-screen flight plan, minus the delete column).
-  const headers = (S.fpHeaders || []).slice(0, 13);
-  const numCols = headers.length;
+  // Radial / DME columns only when a reference VOR is active (global or any
+  // per-leg override) — otherwise they'd be a column of '—'.
+  const vorActive = !!((typeof activeVor === 'function' && activeVor()) ||
+                       (state.legs || []).some(l => l && l.vorRef));
+  // #,From,To,Hdg,Dist,Spd,Alt,Time,Fuel,CumTime,CumFuel[,Radial,DME]
+  const numCols = vorActive ? 13 : 11;
+  const headers = (S.fpHeaders || []).slice(0, numCols);
   const numRows = rows.length + 2;            // header + data + total
   // Derive the font FROM the row height (not an independent floor) so text
   // can never grow taller than its row → no vertical overlap at any size.
   const rowH = h / numRows;
   const fontSize = Math.max(1, Math.min(rowH * 0.62, 22));
   const padX = Math.max(2, Math.round(fontSize * 0.5));
-  // #,From,To,Hdg,Dist,Spd,Alt,Time,Fuel,CumTime,CumFuel,Radial,DME
-  const aligns = ['center', 'left', 'left', 'center', 'right', 'right', 'right', 'center', 'right', 'center', 'right', 'center', 'right'];
-  const valsOf = rd => [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel, rd.cumTime, rd.cumFuel, rd.radial, rd.dme];
+  const aligns = ['center', 'left', 'left', 'center', 'right', 'right', 'right', 'center', 'right', 'center', 'right', 'center', 'right'].slice(0, numCols);
+  const valsOf = rd => [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel, rd.cumTime, rd.cumFuel, rd.radial, rd.dme].slice(0, numCols);
   ctx.save();
   ctx.font = fontSize + 'px sans-serif';
   const totVals = { 4: totDist.toFixed(1), 7: totTime > 0 ? toHMS(totTime) : '--', 8: ac ? totFuel.toFixed(1) : '--' };
