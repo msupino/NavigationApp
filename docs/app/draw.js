@@ -2278,7 +2278,9 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const legs = state.legs || [];
   const wpts = state.waypoints || [];
   if (!legs.length || wpts.length < 2) return null;
-  const ac = aircraft;
+  // Default to 8 gph when no aircraft is configured (matches the printed
+  // flight plan) so the Fuel / Cum. fuel columns aren't just '--'.
+  const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: 8, taxiGal: 1.1 };
   const taxiFuel = ac && ac.taxiGal && typeof isAirport === 'function' && isAirport(wpts[0]) ? ac.taxiGal : 0;
   const empty = S.fpVorRadialEmpty || '—';
   // Radial / DME of a waypoint from the leg's reference VOR (per-leg override,
@@ -2317,13 +2319,11 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const headers = (S.fpHeaders || []).slice(0, 13);
   const numCols = headers.length;
   const numRows = rows.length + 2;            // header + data + total
-  const idealRowH = h / numRows;
-  // Low floors so a 13-column table can shrink really small (the export scale
-  // keeps it crisp). The cell padding is what really sets the minimum width,
-  // so it tracks the font down to 1 px.
-  const fontSize = Math.max(3, Math.min(idealRowH * 0.7, 22));
-  const rowH = Math.min(idealRowH, Math.ceil(fontSize * 1.35));
-  const padX = Math.max(1, Math.round(fontSize * 0.45));
+  // Derive the font FROM the row height (not an independent floor) so text
+  // can never grow taller than its row → no vertical overlap at any size.
+  const rowH = h / numRows;
+  const fontSize = Math.max(1, Math.min(rowH * 0.62, 22));
+  const padX = Math.max(2, Math.round(fontSize * 0.5));
   // #,From,To,Hdg,Dist,Spd,Alt,Time,Fuel,CumTime,CumFuel,Radial,DME
   const aligns = ['center', 'left', 'left', 'center', 'right', 'right', 'right', 'center', 'right', 'center', 'right', 'center', 'right'];
   const valsOf = rd => [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel, rd.cumTime, rd.cumFuel, rd.radial, rd.dme];
@@ -2407,7 +2407,8 @@ function drawPlanCard() {
   const numRows = (state.legs ? state.legs.length : 0) + 2;
   const h = numRows * PLAN_CARD_BASE_ROW * scale;
   window.planCardRect = drawFlightPlanTable(octx, planCard.x, planCard.y, 1e6, h, 'tl');
-  if (!planCardRect) return;
+  // The resize grip is a UI handle — never bake it into the exported PNG.
+  if (!planCardRect || (window.NavAid && NavAid.exporting)) return;
   // Resize grip — a triangle in the bottom-right corner, with diagonal ribs.
   const r = planCardRect, g = PLAN_CARD_GRIP;
   const ex = r.x + r.w, ey = r.y + r.h;

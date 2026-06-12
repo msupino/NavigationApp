@@ -2224,6 +2224,7 @@ function fileStamp() {
 // Show a pre-export modal so the user can decide which overlays and base
 // layer appear in the PNG, independently of the current screen settings.
 function showExportModal() {
+  if (!aircraft && typeof loadAircraft === 'function') loadAircraft();   // for the plan card's Fuel column
   const back = document.createElement('div');
   back.className = 'modal-back';
   const box = document.createElement('div');
