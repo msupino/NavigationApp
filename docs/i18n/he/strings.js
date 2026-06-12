@@ -137,7 +137,7 @@ window.S = {
   fpHeadersShort: ['#', 'מ-', 'אל-', 'כיוון', 'מרחק', 'מהירות', 'גובה', 'זמן', 'דלק'],
   exportPlanPlace: 'הצב תכנית טיסה על המפה',
   exportPlanPlaceTitle: 'הטבע את טבלת תכנית הטיסה בייצוא; גרור אותה למיקום בתוך מסגרת הדף',
-  exportPlanNoFrame: 'בחר A3 או A4 (מסגרת דף) כדי לאפשר את שכבת תכנית הטיסה.',
+  exportPlanNoFrame: 'הצב תכנית טיסה — בחר תחילה דף A3/A4',
   fpVorLabel: 'VOR',
   fpVorRadialEmpty: '—',
   fpDel: '✕',

@@ -2318,12 +2318,12 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const numCols = headers.length;
   const numRows = rows.length + 2;            // header + data + total
   const idealRowH = h / numRows;
-  // Floor at 5 px so a 13-column table can shrink to fit a narrow A4-portrait
-  // frame (and so resizing down actually narrows it). On export the scale
-  // factor renders it crisp regardless.
-  const fontSize = Math.max(5, Math.min(idealRowH * 0.7, 22));
+  // Low floors so a 13-column table can shrink really small (the export scale
+  // keeps it crisp). The cell padding is what really sets the minimum width,
+  // so it tracks the font down to 1 px.
+  const fontSize = Math.max(3, Math.min(idealRowH * 0.7, 22));
   const rowH = Math.min(idealRowH, Math.ceil(fontSize * 1.35));
-  const padX = Math.max(4, Math.round(fontSize * 0.6));
+  const padX = Math.max(1, Math.round(fontSize * 0.45));
   // #,From,To,Hdg,Dist,Spd,Alt,Time,Fuel,CumTime,CumFuel,Radial,DME
   const aligns = ['center', 'left', 'left', 'center', 'right', 'right', 'right', 'center', 'right', 'center', 'right', 'center', 'right'];
   const valsOf = rd => [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel, rd.cumTime, rd.cumFuel, rd.radial, rd.dme];

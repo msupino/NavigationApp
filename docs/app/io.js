@@ -2507,7 +2507,7 @@ function showExportModal() {
     const pt = map.mouseEventToContainerPoint(e);
     if (cardDrag.resize) {
       // Scale ∝ rendered width; clamp to a sane range.
-      planCard.scale = Math.max(0.5, Math.min(5, (pt.x - planCard.x) / cardDrag.baseW1));
+      planCard.scale = Math.max(0.15, Math.min(6, (pt.x - planCard.x) / cardDrag.baseW1));
       draw();
       return;
     }
