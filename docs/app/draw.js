@@ -2318,7 +2318,10 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const numCols = headers.length;
   const numRows = rows.length + 2;            // header + data + total
   const idealRowH = h / numRows;
-  const fontSize = Math.max(9, Math.min(idealRowH * 0.7, 22));
+  // Floor at 5 px so a 13-column table can shrink to fit a narrow A4-portrait
+  // frame (and so resizing down actually narrows it). On export the scale
+  // factor renders it crisp regardless.
+  const fontSize = Math.max(5, Math.min(idealRowH * 0.7, 22));
   const rowH = Math.min(idealRowH, Math.ceil(fontSize * 1.35));
   const padX = Math.max(4, Math.round(fontSize * 0.6));
   // #,From,To,Hdg,Dist,Spd,Alt,Time,Fuel,CumTime,CumFuel,Radial,DME
@@ -2397,7 +2400,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
 // Row height scales with planCard.scale; the export scale then renders it
 // crisp at print DPI. Updates planCardRect for hit-testing drag + resize.
 const PLAN_CARD_BASE_ROW = 16;     // container px per row at scale 1
-const PLAN_CARD_GRIP = 14;         // resize grip size (px)
+const PLAN_CARD_GRIP = 22;         // resize grip size (px)
 function drawPlanCard() {
   if (!planCard) { planCardRect = null; return; }
   const scale = planCard.scale > 0 ? planCard.scale : 1;
@@ -2405,26 +2408,34 @@ function drawPlanCard() {
   const h = numRows * PLAN_CARD_BASE_ROW * scale;
   planCardRect = drawFlightPlanTable(octx, planCard.x, planCard.y, 1e6, h, 'tl');
   if (!planCardRect) return;
-  // Resize grip at the bottom-right corner.
+  // Resize grip — a triangle in the bottom-right corner, with diagonal ribs.
   const r = planCardRect, g = PLAN_CARD_GRIP;
+  const ex = r.x + r.w, ey = r.y + r.h;
   octx.save();
   octx.fillStyle = '#0b5ed7';
-  octx.fillRect(r.x + r.w - g, r.y + r.h - g, g, g);
+  octx.beginPath();
+  octx.moveTo(ex - g, ey);
+  octx.lineTo(ex, ey);
+  octx.lineTo(ex, ey - g);
+  octx.closePath();
+  octx.fill();
   octx.strokeStyle = '#fff';
   octx.lineWidth = 1.5;
-  for (let i = 1; i <= 2; i++) {
+  for (let i = 1; i <= 3; i++) {
     octx.beginPath();
-    octx.moveTo(r.x + r.w - i * 4 - 1, r.y + r.h - 2);
-    octx.lineTo(r.x + r.w - 2, r.y + r.h - i * 4 - 1);
+    octx.moveTo(ex - i * 5, ey - 2);
+    octx.lineTo(ex - 2, ey - i * 5);
     octx.stroke();
   }
   octx.restore();
 }
-// True if (px,py) is on the card's resize grip.
+// True if (px,py) is on the card's resize grip (a forgiving corner zone).
 function planCardOnGrip(px, py) {
-  const r = planCardRect, g = PLAN_CARD_GRIP;
-  return !!r && px >= r.x + r.w - g && px <= r.x + r.w &&
-               py >= r.y + r.h - g && py <= r.y + r.h;
+  const r = planCardRect;
+  if (!r) return false;
+  const z = PLAN_CARD_GRIP + 8;     // generous hit padding
+  return px >= r.x + r.w - z && px <= r.x + r.w + 8 &&
+         py >= r.y + r.h - z && py <= r.y + r.h + 8;
 }
 
 function drawPageFrame() {

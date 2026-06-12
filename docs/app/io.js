@@ -2469,12 +2469,16 @@ function showExportModal() {
     // Open up the backdrop so the card can be dragged on the live map.
     back.classList.toggle('export-place', planCb.checked);
     draw();
-    // Auto-fit the default scale so the (wide, all-column) table fits the
-    // frame width — the user can still resize via the corner grip.
-    if (planCard && fr0 && planCardRect && planCardRect.w > fr0.w - 28) {
-      planCard.scale = Math.max(0.4, (fr0.w - 28) / planCardRect.w);
-      planCard.x = fr0.x + 14; planCard.y = fr0.y + 14;
-      draw();
+    // Default the card to ~70% of the frame width: small enough to drag in
+    // BOTH directions (a full-width card can only move up/down), large enough
+    // to read. The corner grip resizes it from there.
+    if (planCard && fr0 && planCardRect) {
+      const target = fr0.w * 0.7;
+      if (planCardRect.w > target) {
+        planCard.scale = Math.max(0.4, planCard.scale * target / planCardRect.w);
+        planCard.x = fr0.x + 14; planCard.y = fr0.y + 14;
+        draw();
+      }
     }
   };
   // Drag the card inside the page frame. Listens on the map container so it
