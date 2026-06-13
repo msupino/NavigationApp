@@ -490,6 +490,50 @@ html, body {
   border-top: 14px solid #9a9a9a;
 }
 
+/* Satellite-modal rotation dial — same look as the main map's dial. */
+.satellite-rotate-dial {
+  display: block;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #9a9a9a;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  touch-action: none;
+}
+.satellite-rotate-dial.dragging { cursor: grabbing; }
+.satellite-rotate-needle {
+  position: absolute;
+  inset: 0;
+  transform: rotate(0deg);
+}
+.satellite-rotate-needle::before {   /* red north triangle */
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  margin-left: -7px;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 14px solid #c0392b;
+}
+.satellite-rotate-needle::after {    /* grey south triangle */
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  margin-left: -7px;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 14px solid #9a9a9a;
+}
+
 /* nav-waypoint search */
 .navsearch { position: relative; padding: 0 6px; }
 #wp-search {
