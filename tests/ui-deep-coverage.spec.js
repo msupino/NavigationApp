@@ -99,8 +99,8 @@ test.describe('Inspector panel', () => {
     await page.evaluate(() => { state.selected = { type: 'wp', index: 0 }; showInspector(); });
     const t = await page.locator('#insp-body .satellite-snippet-tiles').first()
       .evaluate(el => getComputedStyle(el).transform);
-    // bearing 90 → rotate(-90deg) → matrix(0,-1,1,0,0,0)
-    expect(t).toMatch(/matrix\(\s*-?0?\.?0*\s*,\s*-1/);
+    // bearing 90 → rotate(90deg) → matrix(0,1,-1,0,0,0)
+    expect(t).toMatch(/matrix\(\s*-?0?\.?0*\s*,\s*1\b/);
     await page.evaluate(() => map.setBearing(0));
 
     await expect(snippet).toBeVisible();

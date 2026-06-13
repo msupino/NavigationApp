@@ -907,14 +907,13 @@ function satelliteTilePoint(lat, lng, z) {
 }
 
 // Rotate a static satellite preview's tile layer to match the main map's
-// bearing. CSS rotate is clockwise-positive; the map content turns the opposite
-// way of the bearing, so we apply -bearing.
+// bearing — same visual orientation as the live (leaflet-rotate) modal map.
 function applySatelliteSnippetRotation(snippet) {
   if (!snippet) return;
   const tiles = snippet.querySelector('.satellite-snippet-tiles');
   if (!tiles) return;
   const b = (typeof map !== 'undefined' && map.getBearing) ? map.getBearing() : 0;
-  tiles.style.transform = 'rotate(' + (-b) + 'deg)';
+  tiles.style.transform = 'rotate(' + b + 'deg)';
 }
 // One-time hook: keep any visible inspector preview aligned as the main map
 // rotates (e.g. via the dial or the satellite modal's two-way sync).
