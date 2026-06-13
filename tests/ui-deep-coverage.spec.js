@@ -93,6 +93,16 @@ test.describe('Inspector panel', () => {
 
     const snippet = page.locator('#insp-body .satellite-snippet').first();
     await expect(page.locator('#insp-body .satellite-snippet-section')).toBeVisible();
+
+    // The static preview tiles rotate to match the main map's bearing.
+    await page.evaluate(() => map.setBearing(90));
+    await page.evaluate(() => { state.selected = { type: 'wp', index: 0 }; showInspector(); });
+    const t = await page.locator('#insp-body .satellite-snippet-tiles').first()
+      .evaluate(el => getComputedStyle(el).transform);
+    // bearing 90 → rotate(-90deg) → matrix(0,-1,1,0,0,0)
+    expect(t).toMatch(/matrix\(\s*-?0?\.?0*\s*,\s*-1/);
+    await page.evaluate(() => map.setBearing(0));
+
     await expect(snippet).toBeVisible();
     await expect(snippet.locator('img')).toHaveCount(9);
     await expect(snippet.locator('.satellite-crosshair')).toBeVisible();

@@ -906,6 +906,30 @@ function satelliteTilePoint(lat, lng, z) {
   return { x, y, n };
 }
 
+// Rotate a static satellite preview's tile layer to match the main map's
+// bearing. CSS rotate is clockwise-positive; the map content turns the opposite
+// way of the bearing, so we apply -bearing.
+function applySatelliteSnippetRotation(snippet) {
+  if (!snippet) return;
+  const tiles = snippet.querySelector('.satellite-snippet-tiles');
+  if (!tiles) return;
+  const b = (typeof map !== 'undefined' && map.getBearing) ? map.getBearing() : 0;
+  tiles.style.transform = 'rotate(' + (-b) + 'deg)';
+}
+// One-time hook: keep any visible inspector preview aligned as the main map
+// rotates (e.g. via the dial or the satellite modal's two-way sync).
+let _satSnippetRotateHooked = false;
+function hookSatelliteSnippetRotation() {
+  if (_satSnippetRotateHooked || typeof map === 'undefined' || !map.on) return;
+  _satSnippetRotateHooked = true;
+  const update = () => {
+    document.querySelectorAll('.satellite-snippet:not(.satellite-expanded)')
+      .forEach(applySatelliteSnippetRotation);
+  };
+  map.on('rotate', update);
+  map.on('rotateend', update);
+}
+
 function buildSatelliteSnippet(point, opts = {}) {
   const lat = Number(point && point.lat);
   const lng = Number(point && point.lng);
@@ -924,6 +948,11 @@ function buildSatelliteSnippet(point, opts = {}) {
   snippet.dataset.zoom = String(z);
   snippet.style.setProperty('--sat-width', width + 'px');
   snippet.style.setProperty('--sat-height', height + 'px');
+  // Tiles live in their own layer so the preview can rotate to match the main
+  // map's bearing while the crosshair / attribution stay upright. The 3×3 grid
+  // overscans the visible box, so rotation never reveals corner gaps.
+  const tiles = document.createElement('div');
+  tiles.className = 'satellite-snippet-tiles';
   for (let dy = -1; dy <= 1; dy++) {
     for (let dx = -1; dx <= 1; dx++) {
       const tileX = ((centerTileX + dx) % p.n + p.n) % p.n;
@@ -935,9 +964,13 @@ function buildSatelliteSnippet(point, opts = {}) {
       img.src = satelliteTileUrl(z, tileX, tileY);
       img.style.left = ((centerTileX + dx) * SATELLITE_TILE_SIZE - globalX + width / 2) + 'px';
       img.style.top = ((centerTileY + dy) * SATELLITE_TILE_SIZE - globalY + height / 2) + 'px';
-      snippet.appendChild(img);
+      tiles.appendChild(img);
     }
   }
+  snippet.appendChild(tiles);
+  // Static preview rotates to the main map's bearing (expanded view is a live
+  // Leaflet map and handles its own rotation).
+  if (!expanded) applySatelliteSnippetRotation(snippet);
   const cross = document.createElement('span');
   cross.className = 'satellite-crosshair';
   snippet.appendChild(cross);
@@ -1187,6 +1220,7 @@ function showSatellitePreviewModal(point, label) {
 function appendSatelliteSnippet(body, point, label) {
   const snippet = buildSatelliteSnippet(point);
   if (!snippet) return;
+  hookSatelliteSnippetRotation();
   const section = document.createElement('div');
   section.className = 'satellite-snippet-section';
   const head = document.createElement('div');
