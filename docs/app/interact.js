@@ -991,7 +991,12 @@ function showSatellitePreviewModal(point, label) {
   // map instance, its zoomend listener, the cloned tile layers, and Leaflet's
   // internal window hooks (they keep referencing the detached modal DOM).
   let lmap = null;
-  const modal = createDraggableModal(S.satelliteSnippetTitle || 'Satellite view',
+  // The title bar shows the location name + coordinates (replacing the generic
+  // "Satellite view" header) so the point identity sits at the top, not below.
+  const name = label ? label + ' - ' : '';
+  const captionText = name +
+    fmtLatLng(point.lat, 'N', 'S') + ' ' + fmtLatLng(point.lng, 'E', 'W');
+  const modal = createDraggableModal(captionText,
     'modal satellite-preview-modal',
     () => { if (lmap) { lmap.remove(); lmap = null; } });
   const body = document.createElement('div');
@@ -999,12 +1004,6 @@ function showSatellitePreviewModal(point, label) {
   const mapEl = document.createElement('div');
   mapEl.className = 'satellite-preview-map';
   body.appendChild(mapEl);
-  const caption = document.createElement('div');
-  caption.className = 'satellite-caption';
-  const name = label ? label + ' - ' : '';
-  caption.textContent = name +
-    fmtLatLng(point.lat, 'N', 'S') + ' ' + fmtLatLng(point.lng, 'E', 'W');
-  body.appendChild(caption);
   modal.box.appendChild(body);
   modal.show();
   // Build the map after show() so the container has its final dimensions.

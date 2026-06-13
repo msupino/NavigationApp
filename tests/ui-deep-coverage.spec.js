@@ -102,6 +102,12 @@ test.describe('Inspector panel', () => {
     await snippet.click();
     const modal = page.locator('.satellite-preview-modal');
     await expect(modal).toBeVisible();
+    // Title shows the location name + coordinates (not the generic
+    // "Satellite view" header) — identity moved to the top of the modal.
+    const titleText = await modal.locator('.modal-title').textContent();
+    expect(titleText).toContain('LLHZ');
+    expect(titleText).toMatch(/[NS].*[EW]/);
+    expect(titleText).not.toContain('Satellite view');
     // Expanded view is a real Leaflet map: pan, zoom control, layer switcher,
     // reset-to-centre button — mirroring the main map.
     const lmap = modal.locator('.satellite-preview-map');
