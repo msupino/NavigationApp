@@ -66,15 +66,16 @@ test.describe('Service worker', () => {
 
   test('Page registers the service worker on load', async ({ page }) => {
     await page.goto('?lang=en');
-    await page.waitForFunction(
-      async () => (await navigator.serviceWorker.getRegistration()) != null,
-      null,
-      { timeout: 10000 },
-    );
-    const url = await page.evaluate(async () =>
-      (await navigator.serviceWorker.getRegistration()).active
-        ? (await navigator.serviceWorker.getRegistration()).active.scriptURL
-        : (await navigator.serviceWorker.getRegistration()).installing.scriptURL);
+    // Poll until a worker slot (active / waiting / installing) exposes a
+    // scriptURL. waitForFunction retries until the value is truthy, so this
+    // never races a transient state where the registration exists but no
+    // worker reference is populated yet (the old separate evaluate did).
+    const handle = await page.waitForFunction(async () => {
+      const reg = await navigator.serviceWorker.getRegistration();
+      const worker = reg && (reg.active || reg.waiting || reg.installing);
+      return worker ? worker.scriptURL : null;
+    }, null, { timeout: 15000 });
+    const url = await handle.jsonValue();
     expect(url).toMatch(/\/sw\.js$/);
   });
 
