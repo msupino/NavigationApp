@@ -133,6 +133,17 @@ test.describe('Inspector panel', () => {
     await expect(lmap.locator('.leaflet-tile').first()).toBeVisible();
     await expect(modal.getByRole('button', { name: /recentre/i })).toBeVisible();
 
+    // Two-way bearing sync: rotating the main map rotates the modal map…
+    await page.evaluate(() => map.setBearing(40));
+    const modalBearing = await page.evaluate(() =>
+      window.__satModalMap ? Math.round(window.__satModalMap.getBearing()) : null);
+    expect(modalBearing).toBe(40);
+    // …and rotating the modal map rotates the main map.
+    await page.evaluate(() => window.__satModalMap.setBearing(120));
+    const mainBearing = await page.evaluate(() => Math.round(map.getBearing()));
+    expect(mainBearing).toBe(120);
+    await page.evaluate(() => map.setBearing(0));
+
     // Closing destroys the Leaflet map (no leaked map instance / container),
     // and re-opening builds a fresh one without error.
     await modal.locator('.modal-close-x, [aria-label="Close"]').first().click();

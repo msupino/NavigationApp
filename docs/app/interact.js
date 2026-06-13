@@ -1048,6 +1048,11 @@ function showSatellitePreviewModal(point, label) {
   // map instance, its zoomend listener, the cloned tile layers, and Leaflet's
   // internal window hooks (they keep referencing the detached modal DOM).
   let lmap = null;
+  // Bearing is kept in sync both ways with the main map. _syncingBearing
+  // guards against the set→event→set feedback loop. mainRotateHandler is
+  // detached on close so the closed modal's map isn't poked by later rotations.
+  let _syncingBearing = false;
+  let mainRotateHandler = null;
   // The title bar shows the location name + coordinates (replacing the generic
   // "Satellite view" header) so the point identity sits at the top, not below.
   const name = label ? label + ' - ' : '';
@@ -1055,7 +1060,15 @@ function showSatellitePreviewModal(point, label) {
     fmtLatLng(point.lat, 'N', 'S') + ' ' + fmtLatLng(point.lng, 'E', 'W');
   const modal = createDraggableModal(captionText,
     'modal satellite-preview-modal',
-    () => { if (lmap) { lmap.remove(); lmap = null; } });
+    () => {
+      if (mainRotateHandler && typeof map !== 'undefined' && map.off) {
+        map.off('rotate', mainRotateHandler);
+        map.off('rotateend', mainRotateHandler);
+        mainRotateHandler = null;
+      }
+      if (lmap) { lmap.remove(); lmap = null; }
+      if (typeof window !== 'undefined') window.__satModalMap = null;
+    });
   const body = document.createElement('div');
   body.className = 'satellite-preview-body';
   const mapEl = document.createElement('div');
@@ -1086,6 +1099,25 @@ function showSatellitePreviewModal(point, label) {
   // Black-on-white zoom buttons, bottom-right — identical to the main map.
   L.control.zoom({ position: 'bottomright' }).addTo(lmap);
   lmap.addControl(satelliteRotateControl(lmap));
+  // Two-way bearing sync: rotating either map rotates the other.
+  if (lmap.setBearing && typeof map !== 'undefined' && map.setBearing) {
+    const syncToMain = () => {
+      if (_syncingBearing) return;
+      _syncingBearing = true;
+      try { map.setBearing(lmap.getBearing()); } finally { _syncingBearing = false; }
+    };
+    lmap.on('rotate', syncToMain);
+    lmap.on('rotateend', syncToMain);
+    mainRotateHandler = () => {
+      if (_syncingBearing || !lmap) return;
+      _syncingBearing = true;
+      try { lmap.setBearing(map.getBearing()); } finally { _syncingBearing = false; }
+    };
+    map.on('rotate', mainRotateHandler);
+    map.on('rotateend', mainRotateHandler);
+  }
+  // Test hook: expose the modal map (mirrors window.__commChangeRingsDrawn etc.)
+  if (typeof window !== 'undefined') window.__satModalMap = lmap;
   // Layer picker as a dropdown, matching the main app's view-menu selector
   // (#layer-select) instead of Leaflet's radio list.
   const layerNames = Object.keys(mLayers);
