@@ -115,6 +115,8 @@ test.describe('Inspector panel', () => {
     await expect(lmap.locator('.leaflet-tile').first()).toBeVisible();
     await expect(modal.locator('.leaflet-control-zoom')).toBeVisible();
     await expect(modal.locator('.satellite-reset-control')).toBeVisible();
+    // Rotation dial — mirrors the main map's bearing control.
+    await expect(modal.locator('.satellite-rotate-dial')).toBeVisible();
     // Layer picker is a dropdown offering the same base layers as the main map.
     const layerSel = modal.locator('.satellite-layer-select');
     await expect(layerSel).toBeVisible();

@@ -961,6 +961,63 @@ function satelliteModalLayers() {
   return out;
 }
 
+// Rotation dial for the satellite modal — mirrors the main map's bottom-right
+// dial: drag to rotate, tap to step 0/90/180/270, needle shows north.
+function satelliteRotateControl(lmap) {
+  const Ctl = L.Control.extend({
+    options: { position: 'bottomright' },
+    onAdd: function () {
+      const wrap = L.DomUtil.create('div', 'leaflet-control satellite-rotate-ctrl');
+      const dial = L.DomUtil.create('span', 'satellite-rotate-dial', wrap);
+      dial.setAttribute('role', 'slider');
+      dial.tabIndex = 0;
+      const needle = L.DomUtil.create('span', 'satellite-rotate-needle', dial);
+      const bearing = () => (lmap.getBearing ? lmap.getBearing() : 0);
+      const refresh = () => {
+        const b = (((360 - Math.round(bearing())) % 360) + 360) % 360;
+        needle.style.transform = 'rotate(' + b + 'deg)';
+        dial.title = (typeof S !== 'undefined' && S.dialTitle) ? S.dialTitle(b) : ('Rotation ' + b + '°');
+      };
+      const angleFrom = ev => {
+        const r = dial.getBoundingClientRect();
+        return Math.atan2(ev.clientX - (r.left + r.width / 2),
+                          -(ev.clientY - (r.top + r.height / 2))) * 180 / Math.PI;
+      };
+      let dragging = false, moved = false, sx = 0, sy = 0;
+      const DRAG_PX = 8;
+      dial.addEventListener('pointerdown', e => {
+        dragging = true; moved = false; sx = e.clientX; sy = e.clientY;
+        dial.classList.add('dragging'); dial.setPointerCapture(e.pointerId);
+      });
+      dial.addEventListener('pointermove', e => {
+        if (!dragging) return;
+        if (!moved) {
+          if (Math.hypot(e.clientX - sx, e.clientY - sy) < DRAG_PX) return;
+          moved = true;
+        }
+        if (lmap.setBearing) lmap.setBearing(((360 - angleFrom(e)) % 360 + 360) % 360);
+      });
+      const end = cycle => {
+        if (cycle && dragging && !moved && lmap.setBearing) {
+          const shown = (((360 - Math.round(bearing())) % 360) + 360) % 360;
+          const next = shown % 90 === 0 ? (shown + 90) % 360 : 0;
+          lmap.setBearing((360 - next) % 360);
+        }
+        dragging = false; dial.classList.remove('dragging');
+      };
+      dial.addEventListener('pointerup', () => end(true));
+      dial.addEventListener('pointercancel', () => end(false));
+      lmap.on('rotate', refresh);
+      lmap.on('rotateend', refresh);
+      refresh();
+      L.DomEvent.disableClickPropagation(wrap);
+      L.DomEvent.disableScrollPropagation(wrap);
+      return wrap;
+    },
+  });
+  return new Ctl();
+}
+
 // Reset-to-centre control: snaps the modal map back over the waypoint. Built
 // as a Leaflet bar so it matches the zoom control's look in the same corner.
 function satelliteResetControl(lmap, point, zoom) {
@@ -1018,9 +1075,17 @@ function showSatellitePreviewModal(point, label) {
     maxZoom: SATELLITE_MAX_ZOOM,
     layers: startLayer ? [startLayer] : [],
     zoomControl: false,
+    rotate: true,                // leaflet-rotate: enable bearing
+    rotateControl: false,        // own dial instead
+    touchRotate: true,
   });
+  // Start aligned to the main map's current orientation.
+  if (lmap.setBearing && typeof map !== 'undefined' && map.getBearing) {
+    lmap.setBearing(map.getBearing());
+  }
   // Black-on-white zoom buttons, bottom-right — identical to the main map.
   L.control.zoom({ position: 'bottomright' }).addTo(lmap);
+  lmap.addControl(satelliteRotateControl(lmap));
   // Layer picker as a dropdown, matching the main app's view-menu selector
   // (#layer-select) instead of Leaflet's radio list.
   const layerNames = Object.keys(mLayers);
