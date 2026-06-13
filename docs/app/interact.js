@@ -906,6 +906,29 @@ function satelliteTilePoint(lat, lng, z) {
   return { x, y, n };
 }
 
+// Rotate a static satellite preview's tile layer to match the main map's
+// bearing — same visual orientation as the live (leaflet-rotate) modal map.
+function applySatelliteSnippetRotation(snippet) {
+  if (!snippet) return;
+  const tiles = snippet.querySelector('.satellite-snippet-tiles');
+  if (!tiles) return;
+  const b = (typeof map !== 'undefined' && map.getBearing) ? map.getBearing() : 0;
+  tiles.style.transform = 'rotate(' + b + 'deg)';
+}
+// One-time hook: keep any visible inspector preview aligned as the main map
+// rotates (e.g. via the dial or the satellite modal's two-way sync).
+let _satSnippetRotateHooked = false;
+function hookSatelliteSnippetRotation() {
+  if (_satSnippetRotateHooked || typeof map === 'undefined' || !map.on) return;
+  _satSnippetRotateHooked = true;
+  const update = () => {
+    document.querySelectorAll('.satellite-snippet:not(.satellite-expanded)')
+      .forEach(applySatelliteSnippetRotation);
+  };
+  map.on('rotate', update);
+  map.on('rotateend', update);
+}
+
 function buildSatelliteSnippet(point, opts = {}) {
   const lat = Number(point && point.lat);
   const lng = Number(point && point.lng);
@@ -924,6 +947,11 @@ function buildSatelliteSnippet(point, opts = {}) {
   snippet.dataset.zoom = String(z);
   snippet.style.setProperty('--sat-width', width + 'px');
   snippet.style.setProperty('--sat-height', height + 'px');
+  // Tiles live in their own layer so the preview can rotate to match the main
+  // map's bearing while the crosshair / attribution stay upright. The 3×3 grid
+  // overscans the visible box, so rotation never reveals corner gaps.
+  const tiles = document.createElement('div');
+  tiles.className = 'satellite-snippet-tiles';
   for (let dy = -1; dy <= 1; dy++) {
     for (let dx = -1; dx <= 1; dx++) {
       const tileX = ((centerTileX + dx) % p.n + p.n) % p.n;
@@ -935,9 +963,13 @@ function buildSatelliteSnippet(point, opts = {}) {
       img.src = satelliteTileUrl(z, tileX, tileY);
       img.style.left = ((centerTileX + dx) * SATELLITE_TILE_SIZE - globalX + width / 2) + 'px';
       img.style.top = ((centerTileY + dy) * SATELLITE_TILE_SIZE - globalY + height / 2) + 'px';
-      snippet.appendChild(img);
+      tiles.appendChild(img);
     }
   }
+  snippet.appendChild(tiles);
+  // Static preview rotates to the main map's bearing (expanded view is a live
+  // Leaflet map and handles its own rotation).
+  if (!expanded) applySatelliteSnippetRotation(snippet);
   const cross = document.createElement('span');
   cross.className = 'satellite-crosshair';
   snippet.appendChild(cross);
@@ -1048,6 +1080,11 @@ function showSatellitePreviewModal(point, label) {
   // map instance, its zoomend listener, the cloned tile layers, and Leaflet's
   // internal window hooks (they keep referencing the detached modal DOM).
   let lmap = null;
+  // Bearing is kept in sync both ways with the main map. _syncingBearing
+  // guards against the set→event→set feedback loop. mainRotateHandler is
+  // detached on close so the closed modal's map isn't poked by later rotations.
+  let _syncingBearing = false;
+  let mainRotateHandler = null;
   // The title bar shows the location name + coordinates (replacing the generic
   // "Satellite view" header) so the point identity sits at the top, not below.
   const name = label ? label + ' - ' : '';
@@ -1055,7 +1092,15 @@ function showSatellitePreviewModal(point, label) {
     fmtLatLng(point.lat, 'N', 'S') + ' ' + fmtLatLng(point.lng, 'E', 'W');
   const modal = createDraggableModal(captionText,
     'modal satellite-preview-modal',
-    () => { if (lmap) { lmap.remove(); lmap = null; } });
+    () => {
+      if (mainRotateHandler && typeof map !== 'undefined' && map.off) {
+        map.off('rotate', mainRotateHandler);
+        map.off('rotateend', mainRotateHandler);
+        mainRotateHandler = null;
+      }
+      if (lmap) { lmap.remove(); lmap = null; }
+      if (typeof window !== 'undefined') window.__satModalMap = null;
+    });
   const body = document.createElement('div');
   body.className = 'satellite-preview-body';
   const mapEl = document.createElement('div');
@@ -1086,6 +1131,25 @@ function showSatellitePreviewModal(point, label) {
   // Black-on-white zoom buttons, bottom-right — identical to the main map.
   L.control.zoom({ position: 'bottomright' }).addTo(lmap);
   lmap.addControl(satelliteRotateControl(lmap));
+  // Two-way bearing sync: rotating either map rotates the other.
+  if (lmap.setBearing && typeof map !== 'undefined' && map.setBearing) {
+    const syncToMain = () => {
+      if (_syncingBearing) return;
+      _syncingBearing = true;
+      try { map.setBearing(lmap.getBearing()); } finally { _syncingBearing = false; }
+    };
+    lmap.on('rotate', syncToMain);
+    lmap.on('rotateend', syncToMain);
+    mainRotateHandler = () => {
+      if (_syncingBearing || !lmap) return;
+      _syncingBearing = true;
+      try { lmap.setBearing(map.getBearing()); } finally { _syncingBearing = false; }
+    };
+    map.on('rotate', mainRotateHandler);
+    map.on('rotateend', mainRotateHandler);
+  }
+  // Test hook: expose the modal map (mirrors window.__commChangeRingsDrawn etc.)
+  if (typeof window !== 'undefined') window.__satModalMap = lmap;
   // Layer picker as a dropdown, matching the main app's view-menu selector
   // (#layer-select) instead of Leaflet's radio list.
   const layerNames = Object.keys(mLayers);
@@ -1155,6 +1219,7 @@ function showSatellitePreviewModal(point, label) {
 function appendSatelliteSnippet(body, point, label) {
   const snippet = buildSatelliteSnippet(point);
   if (!snippet) return;
+  hookSatelliteSnippetRotation();
   const section = document.createElement('div');
   section.className = 'satellite-snippet-section';
   const head = document.createElement('div');
