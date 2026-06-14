@@ -128,6 +128,14 @@ window.S = {
   primary: 'ראשי',
   atis: 'ATIS',
   clearance: 'קלירנס',
+  wxTitle: 'מזג אוויר (METAR / TAF)',
+  wxLoading: 'טוען מזג אוויר…',
+  wxNone: 'אין METAR / TAF לשדה זה',
+  wxError: 'מזג אוויר לא זמין (לא מקוון או חסום)',
+  wxMetar: 'METAR',
+  wxTaf: 'TAF',
+  wxShowRaw: 'הצג גולמי',
+  wxShowDecoded: 'הצג מפוענח',
   errInvalidAirfields: function(msg) { return 'נתוני שדות תעופה לא תקינים: ' + msg; },
   errSavedRouteCorrupt: function(msg) {
     return 'לא ניתן לשחזר את המסלול השמור, לכן הנתונים המקוריים נשמרו ולא נדרסו. ' +
