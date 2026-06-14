@@ -136,6 +136,8 @@ window.S = {
   wxTaf: 'TAF',
   wxShowRaw: 'הצג גולמי',
   wxShowDecoded: 'הצג מפוענח',
+  wxRefresh: 'רענן מזג אוויר',
+  wxUpdated: 'עודכן',
   errInvalidAirfields: function(msg) { return 'נתוני שדות תעופה לא תקינים: ' + msg; },
   errSavedRouteCorrupt: function(msg) {
     return 'לא ניתן לשחזר את המסלול השמור, לכן הנתונים המקוריים נשמרו ולא נדרסו. ' +

@@ -1,6 +1,17 @@
 // #670 — airfield METAR / TAF in the inspector (decoded + raw toggle),
-// fetched via a CORS proxy.
+// served from the wx-data branch (CORS-safe) with a same-origin fallback.
 const { test, expect } = require('@playwright/test');
+
+// Mock the wx-data feed. `onHit` lets a test count fetches.
+async function mockWx(page, onHit) {
+  await page.route('**wx-data/wx.json**', r => {
+    if (onHit) onHit();
+    r.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      generatedAt: '2026-06-14T06:00:00Z',
+      stations: { LLBG: { metar: METAR[0], taf: TAF[0] } },
+    }) });
+  });
+}
 
 async function boot(page) {
   await page.goto('?lang=en');
@@ -32,8 +43,7 @@ test('decodeMetar renders wind/vis/wx/cloud/temp/QNH', async ({ page }) => {
 });
 
 test('airfield inspector shows decoded METAR/TAF with a raw toggle', async ({ page }) => {
-  await page.route('**allorigins.win/**metar**', r => r.fulfill({ contentType: 'application/json', body: JSON.stringify(METAR) }));
-  await page.route('**allorigins.win/**taf**', r => r.fulfill({ contentType: 'application/json', body: JSON.stringify(TAF) }));
+  await mockWx(page);
   await boot(page);
   await page.evaluate(() => {
     window.airfields = [{ name: 'LLBG', he: 'בן גוריון', lat: 32.0, lng: 34.88, elev_ft: 135 }];
@@ -49,6 +59,23 @@ test('airfield inspector shows decoded METAR/TAF with a raw toggle', async ({ pa
   await page.locator('.wx-toggle').click();
   await expect(wx).toContainText('27012G20KT');     // raw METAR token
   await expect(wx).toContainText('1406/1506');      // raw TAF token
+});
+
+test('refresh button re-fetches (force, bypassing cache)', async ({ page }) => {
+  let calls = 0;
+  await mockWx(page, () => { calls++; });
+  await boot(page);
+  await page.evaluate(() => {
+    window.airfields = [{ name: 'LLBG', lat: 32.0, lng: 34.88 }];
+    state.selected = { type: 'airfield', index: 0 }; showInspector();
+  });
+  await expect(page.locator('#insp-body .wx-section')).toContainText('Wind 270°');
+  const before = calls;
+  await page.locator('.wx-refresh').click();
+  await expect(page.locator('#insp-body .wx-section')).toContainText('Wind 270°');
+  expect(calls).toBeGreaterThan(before);          // re-fetched, not served from cache
+  // METAR/TAF body forced LTR regardless of UI language.
+  expect(await page.locator('.wx-body').getAttribute('dir')).toBe('ltr');
 });
 
 test('non-ICAO field shows no weather section', async ({ page }) => {
