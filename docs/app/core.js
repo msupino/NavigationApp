@@ -378,6 +378,7 @@ window.S = Object.assign({
   wxTaf: 'TAF',
   wxShowRaw: 'Show raw',
   wxShowDecoded: 'Show decoded',
+  wxRefresh: 'Refresh weather',
   errInvalidAirfields: function(msg) { return 'Invalid airfields data: ' + msg; },
   errSavedRouteCorrupt: function(msg) {
     return 'Saved route could not be restored, so the original saved data was preserved. ' +
@@ -978,11 +979,11 @@ var _wxCache = {};
 function wxProxyUrl(u) {
   return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u);
 }
-async function fetchAirfieldWx(icao) {
+async function fetchAirfieldWx(icao, force) {
   icao = String(icao || '').toUpperCase();
   if (!/^[A-Z]{4}$/.test(icao)) return { metar: null, taf: null, unsupported: true };
   const cached = _wxCache[icao];
-  if (cached && Date.now() - cached.t < 5 * 60000) return cached;
+  if (!force && cached && Date.now() - cached.t < 5 * 60000) return cached;
   const get = async kind => {
     const u = 'https://aviationweather.gov/api/data/' + kind + '?ids=' + icao + '&format=json';
     const r = await fetch(wxProxyUrl(u));
