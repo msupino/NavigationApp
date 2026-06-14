@@ -1770,6 +1770,22 @@ body.theme-light .msa-low .val { color: #c0392b; }
   white-space: nowrap;
 }
 
+/* Airfield METAR/TAF (#670) */
+.wx-section { margin: 8px 0 2px; border-top: 1px solid #3a3636; padding-top: 6px; }
+.wx-head { font-size: 12px; font-weight: 600; color: #b9b3b3; margin-bottom: 4px; }
+.wx-body { font-size: 12px; color: #e8e8e8; }
+.wx-block { margin-bottom: 6px; }
+.wx-label {
+  display: inline-block; font-size: 10px; font-weight: 700; color: #231F20;
+  background: #ffd966; border-radius: 3px; padding: 0 5px; margin-bottom: 2px;
+}
+.wx-line { line-height: 1.4; }
+.wx-line.wx-raw { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: #c9c4c4; }
+.wx-toggle {
+  font: inherit; font-size: 11px; color: #9fd0ff; background: none; border: none;
+  padding: 2px 0; cursor: pointer; text-decoration: underline;
+}
+
 /* Charts modal */
 .charts-modal-body {
   padding: 2px 0;
