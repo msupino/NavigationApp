@@ -2417,6 +2417,44 @@ function fileStamp() {
     .replace(/[-:]/g, '').replace('T', '-');
 }
 
+// Plain-language SIGMET list (clicking the corner readout). Each entry shows
+// the decoded sentence plus the raw text underneath.
+function showSigmetDecoded() {
+  if (!Array.isArray(sigmets) || !sigmets.length) return;
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  const box = document.createElement('div');
+  box.className = 'modal';
+  box.style.cssText = 'max-width:560px;max-height:80vh;overflow:auto';
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = S.sigmetModalTitle || 'Active SIGMETs';
+  box.appendChild(title);
+  function close() { window.removeEventListener('keydown', onEsc); back.remove(); }
+  function onEsc(e) { if (e.key === 'Escape') close(); }
+  addModalCloseX(box, close);
+  for (const s of sigmets) {
+    const item = document.createElement('div');
+    item.style.cssText = 'margin:10px 0;padding:8px;border-left:4px solid ' +
+      sigmetHazardColor(s.hazard) + ';background:rgba(255,255,255,0.04)';
+    const dec = document.createElement('div');
+    dec.style.cssText = 'font-size:13px;font-weight:600;margin-bottom:4px';
+    dec.textContent = decodeSigmet(s);
+    item.appendChild(dec);
+    if (s.raw) {
+      const raw = document.createElement('div');
+      raw.style.cssText = 'font:11px/1.4 monospace;color:#b9b3b3;white-space:pre-wrap';
+      raw.textContent = (S.sigmetRaw || 'Raw') + ': ' + s.raw;
+      item.appendChild(raw);
+    }
+    box.appendChild(item);
+  }
+  back.appendChild(box);
+  document.body.appendChild(back);
+  back.addEventListener('mousedown', e => { if (e.target === back) close(); });
+  window.addEventListener('keydown', onEsc);
+}
+
 // Show a pre-export modal so the user can decide which overlays and base
 // layer appear in the PNG, independently of the current screen settings.
 function showExportModal() {
