@@ -66,7 +66,7 @@ test('fetched SIGMET populates the overlay and the status readout', async ({ pag
   const readout = page.locator('#sigmet-readout');
   await expect(readout).toHaveClass(/show/);
   await expect(readout).toContainText('1 SIGMET');
-  await expect(readout).toHaveAttribute('title', /OBSC TS/);
+  await expect(readout).toHaveAttribute('title', /Obscured Thunderstorm/);
 });
 
 test('empty feed shows the calm "no SIGMET" readout', async ({ page }) => {
