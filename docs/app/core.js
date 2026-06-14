@@ -373,6 +373,16 @@ window.S = Object.assign({
   primary: 'Primary',
   atis: 'ATIS',
   clearance: 'Clearance',
+  wxTitle: 'Weather (METAR / TAF)',
+  wxLoading: 'Loading weather…',
+  wxNone: 'No METAR / TAF for this field',
+  wxError: 'Weather unavailable (offline or proxy blocked)',
+  wxMetar: 'METAR',
+  wxTaf: 'TAF',
+  wxShowRaw: 'Show raw',
+  wxShowDecoded: 'Show decoded',
+  wxRefresh: 'Refresh weather',
+  wxUpdated: 'Updated',
   errInvalidAirfields: function(msg) { return 'Invalid airfields data: ' + msg; },
   errSavedRouteCorrupt: function(msg) {
     return 'Saved route could not be restored, so the original saved data was preserved. ' +
@@ -1013,6 +1023,119 @@ function toHMS(hours) {
   m %= 60;
   if (h > 0) return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
   return m + ':' + String(s).padStart(2, '0');
+}
+
+// --- airfield METAR / TAF (#670) ---------------------------------------
+// NOAA AWC's METAR/TAF API blocks browser CORS and public proxies proved
+// unreliable, so a scheduled GitHub Action fetches it server-side and
+// publishes wx.json (all Israeli fields) to the `wx-data` branch, served with
+// CORS by raw.githubusercontent.com — same pattern as the SIGMET feed. The
+// whole file is memoised 5 min; same-origin data/wx.json is the offline /
+// first-run fallback. Decoding works off AWC's structured JSON fields.
+const WX_URL = 'https://raw.githubusercontent.com/msupino/NavigationApp/wx-data/wx.json';
+var _wxFile = null;
+async function loadWxFile(force) {
+  if (!force && _wxFile && Date.now() - _wxFile.t < 5 * 60000) return _wxFile;
+  const parse = d => ({ t: Date.now(), stations: (d && d.stations) || {}, generatedAt: (d && d.generatedAt) || null });
+  try {
+    const r = await fetch(WX_URL + '?_=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    _wxFile = parse(await r.json());
+    return _wxFile;
+  } catch (e) {
+    try {
+      const r2 = await fetch('data/wx.json');
+      _wxFile = parse(await r2.json());
+    } catch (e2) {
+      _wxFile = { t: Date.now(), stations: {}, generatedAt: null, error: true };
+    }
+    return _wxFile;
+  }
+}
+async function fetchAirfieldWx(icao, force) {
+  icao = String(icao || '').toUpperCase();
+  if (!/^[A-Z]{4}$/.test(icao)) return { metar: null, taf: null, unsupported: true };
+  const file = await loadWxFile(force);
+  const st = file.stations[icao] || {};
+  return {
+    metar: st.metar || null,
+    taf: st.taf || null,
+    generatedAt: file.generatedAt,
+    error: !!file.error && !st.metar && !st.taf,
+  };
+}
+const WX_CLOUD = {
+  SKC: 'Clear', CLR: 'Clear', NSC: 'No sig cloud', NCD: 'No cloud',
+  FEW: 'Few', SCT: 'Scattered', BKN: 'Broken', OVC: 'Overcast', VV: 'Vert vis',
+};
+const WX_PHENOM = {
+  MI: 'shallow', BC: 'patches', PR: 'partial', DR: 'low drifting', BL: 'blowing',
+  SH: 'showers', TS: 'thunderstorm', FZ: 'freezing',
+  RA: 'rain', DZ: 'drizzle', SN: 'snow', SG: 'snow grains', PL: 'ice pellets',
+  GR: 'hail', GS: 'small hail', IC: 'ice crystals', UP: 'unknown precip',
+  BR: 'mist', FG: 'fog', FU: 'smoke', VA: 'volcanic ash', DU: 'dust',
+  SA: 'sand', HZ: 'haze', PY: 'spray', PO: 'dust whirls', SQ: 'squalls',
+  FC: 'funnel cloud', DS: 'duststorm', SS: 'sandstorm',
+};
+function decodeWxString(s) {
+  return String(s || '').trim().split(/\s+/).filter(Boolean).map(tok => {
+    let pre = '';
+    if (tok[0] === '-') { pre = 'light '; tok = tok.slice(1); }
+    else if (tok[0] === '+') { pre = 'heavy '; tok = tok.slice(1); }
+    if (tok.slice(0, 2) === 'VC') { pre = 'vicinity '; tok = tok.slice(2); }
+    let out = '';
+    for (let i = 0; i < tok.length; i += 2) {
+      const w = WX_PHENOM[tok.slice(i, i + 2)];
+      if (w) out += (out ? ' ' : '') + w;
+    }
+    return (pre + out).trim() || tok;
+  }).join(', ');
+}
+function wxClouds(clouds) {
+  if (!Array.isArray(clouds) || !clouds.length) return '';
+  return clouds.map(c => (WX_CLOUD[c.cover] || c.cover) +
+    (Number.isFinite(c.base) ? ' ' + c.base + ' ft' : '')).join(', ');
+}
+function wxWind(dir, spd, gst) {
+  if (spd === 0) return 'Wind calm';
+  if (spd == null && dir == null) return '';
+  const d = (dir === 'VRB' || dir == null) ? 'variable' : pad3(dir) + '°';
+  return 'Wind ' + d + ' ' + spd + ' kt' + (gst ? ' gust ' + gst : '');
+}
+// Decode a METAR from AWC's JSON object into a plain-language line.
+function decodeMetar(m) {
+  if (!m) return '';
+  const p = [];
+  const w = wxWind(m.wdir, m.wspd, m.wgst); if (w) p.push(w);
+  if (m.visib != null) p.push('Vis ' + m.visib + (/^[0-9.]+$/.test(String(m.visib)) ? ' SM' : ''));
+  if (m.wxString) p.push(decodeWxString(m.wxString));
+  const cl = wxClouds(m.clouds); if (cl) p.push(cl);
+  if (m.temp != null) p.push('Temp ' + Math.round(m.temp) + '°C' +
+    (m.dewp != null ? ' / dew ' + Math.round(m.dewp) + '°C' : ''));
+  if (m.altim != null) p.push('QNH ' + Math.round(m.altim) + (m.altim > 900 ? ' hPa' : ' inHg'));
+  return p.join(' · ');
+}
+// Decode a TAF (AWC JSON) into one decoded line per forecast period.
+function decodeTaf(t) {
+  if (!t) return [];
+  const fc = t.fcsts || t.forecast || [];
+  const hh = u => {
+    const d = new Date((Number(u) || 0) * 1000);
+    return isNaN(d.getTime()) || !u ? '' :
+      String(d.getUTCDate()).padStart(2, '0') + ' ' +
+      String(d.getUTCHours()).padStart(2, '0') + ':' +
+      String(d.getUTCMinutes()).padStart(2, '0') + 'Z';
+  };
+  return fc.map(f => {
+    const seg = [];
+    const ch = (f.fcstChange || '').toUpperCase();
+    const tag = ch === 'TEMPO' ? 'TEMPO ' : ch === 'BECMG' ? 'BECMG ' : 'From ';
+    const w = wxWind(f.wdir, f.wspd, f.wgst); if (w) seg.push(w);
+    if (f.visib != null) seg.push('Vis ' + f.visib + (/^[0-9.]+$/.test(String(f.visib)) ? ' SM' : ''));
+    if (f.wxString) seg.push(decodeWxString(f.wxString));
+    const cl = wxClouds(f.clouds); if (cl) seg.push(cl);
+    return { when: tag + hh(f.timeFrom), text: seg.join(' · ') };
+  }).filter(s => s.text);
 }
 function sameAltitudeValue(a, b) {
   return a === b || (Number.isNaN(a) && Number.isNaN(b));

@@ -218,7 +218,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await expect(page.locator('#vor-readout')).toHaveAttribute('aria-hidden', 'true');
   });
 
-  test('nav-waypoint inspector shows the resolved name row in English too', async ({ page }) => {
+  test('nav-waypoint inspector title carries the resolved name in English too', async ({ page }) => {
     await boot(page, 'en');
     const out = await page.evaluate(async () => {
       await loadNavWaypoints();
@@ -228,10 +228,9 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       const wp = navWP[state.selected.index];
       return { code: wp.name, label: wp.en };
     });
-    await expect(page.locator('#insp-title')).toHaveValue(out.code);
-    const nameRow = page.locator('#insp-body .row').filter({ hasText: 'Waypoint name' });
-    await expect(nameRow).toHaveCount(1);
-    await expect(nameRow).toContainText(out.label);
+    // Title is "CODE / localized name" (the name moved from a row into the title).
+    const title = page.locator('#insp-title');
+    await expect(title).toHaveValue(new RegExp(out.code + '.*' + out.label));
   });
 
   test('markers are selectable outside edit mode (VOR / airfield / nav-WP)', async ({ page }) => {
@@ -646,7 +645,8 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       state.selected = { type: 'navwp', index: hadraIdx };
       showInspector();
     });
-    await expect(page.locator('#insp-body')).toContainText('חדרה');
+    // Title carries the localized name: "HADRA / חדרה".
+    await expect(page.locator('#insp-title')).toHaveValue(/HADRA.*חדרה/);
     // Route waypoint on the same nav-WP mirrors that inspector: ICAO on top,
     // localized name row below (editable), no hard-coded English "Label".
     await page.evaluate(async () => {
@@ -689,8 +689,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       state.selected = { type: 'navwp', index: hadraIdx };
       showInspector();
     });
-    await expect(page.locator('#insp-title')).toHaveValue('HADRA');
-    const navNameRow = page.locator('#insp-body .row').filter({ hasText: 'Waypoint name' });
-    await expect(navNameRow).toContainText('Hadera');
+    // Title carries the English name: "HADRA / Hadera".
+    await expect(page.locator('#insp-title')).toHaveValue(/HADRA.*Hadera/);
   });
 });
