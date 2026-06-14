@@ -51,6 +51,24 @@ test('airfield inspector shows decoded METAR/TAF with a raw toggle', async ({ pa
   await expect(wx).toContainText('1406/1506');      // raw TAF token
 });
 
+test('refresh button re-fetches (force, bypassing cache)', async ({ page }) => {
+  let calls = 0;
+  await page.route('**allorigins.win/**metar**', r => { calls++; r.fulfill({ contentType: 'application/json', body: JSON.stringify(METAR) }); });
+  await page.route('**allorigins.win/**taf**', r => r.fulfill({ contentType: 'application/json', body: JSON.stringify(TAF) }));
+  await boot(page);
+  await page.evaluate(() => {
+    window.airfields = [{ name: 'LLBG', lat: 32.0, lng: 34.88 }];
+    state.selected = { type: 'airfield', index: 0 }; showInspector();
+  });
+  await expect(page.locator('#insp-body .wx-section')).toContainText('Wind 270°');
+  const before = calls;
+  await page.locator('.wx-refresh').click();
+  await expect(page.locator('#insp-body .wx-section')).toContainText('Wind 270°');
+  expect(calls).toBeGreaterThan(before);          // re-fetched, not served from cache
+  // METAR/TAF body forced LTR regardless of UI language.
+  expect(await page.locator('.wx-body').getAttribute('dir')).toBe('ltr');
+});
+
 test('non-ICAO field shows no weather section', async ({ page }) => {
   await boot(page);
   const present = await page.evaluate(() => {
