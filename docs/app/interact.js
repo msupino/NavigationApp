@@ -1405,6 +1405,17 @@ function appendAirfieldWeather(body, af) {
     toggle.textContent = showRaw ? (S.wxShowDecoded || 'Show decoded') : (S.wxShowRaw || 'Show raw');
     toggle.onclick = () => { showRaw = !showRaw; render(); };
     bodyEl.appendChild(toggle);
+    if (data.generatedAt) {
+      const upd = new Date(data.generatedAt);
+      if (!isNaN(upd.getTime())) {
+        const age = document.createElement('div');
+        age.className = 'wx-updated';
+        age.textContent = (S.wxUpdated || 'Updated') + ' ' +
+          String(upd.getUTCHours()).padStart(2, '0') + ':' +
+          String(upd.getUTCMinutes()).padStart(2, '0') + 'Z';
+        bodyEl.appendChild(age);
+      }
+    }
   };
   load(false);
 }

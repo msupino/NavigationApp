@@ -382,6 +382,7 @@ window.S = Object.assign({
   wxShowRaw: 'Show raw',
   wxShowDecoded: 'Show decoded',
   wxRefresh: 'Refresh weather',
+  wxUpdated: 'Updated',
   errInvalidAirfields: function(msg) { return 'Invalid airfields data: ' + msg; },
   errSavedRouteCorrupt: function(msg) {
     return 'Saved route could not be restored, so the original saved data was preserved. ' +
@@ -1025,31 +1026,43 @@ function toHMS(hours) {
 }
 
 // --- airfield METAR / TAF (#670) ---------------------------------------
-// NOAA AWC's METAR/TAF API blocks browser CORS, so fetch it through a public
-// CORS proxy. Decoding works off AWC's structured JSON fields (no raw-string
-// parsing for METAR). Results memoised 5 min per ICAO.
-var _wxCache = {};
-function wxProxyUrl(u) {
-  return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u);
+// NOAA AWC's METAR/TAF API blocks browser CORS and public proxies proved
+// unreliable, so a scheduled GitHub Action fetches it server-side and
+// publishes wx.json (all Israeli fields) to the `wx-data` branch, served with
+// CORS by raw.githubusercontent.com — same pattern as the SIGMET feed. The
+// whole file is memoised 5 min; same-origin data/wx.json is the offline /
+// first-run fallback. Decoding works off AWC's structured JSON fields.
+const WX_URL = 'https://raw.githubusercontent.com/msupino/NavigationApp/wx-data/wx.json';
+var _wxFile = null;
+async function loadWxFile(force) {
+  if (!force && _wxFile && Date.now() - _wxFile.t < 5 * 60000) return _wxFile;
+  const parse = d => ({ t: Date.now(), stations: (d && d.stations) || {}, generatedAt: (d && d.generatedAt) || null });
+  try {
+    const r = await fetch(WX_URL + '?_=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    _wxFile = parse(await r.json());
+    return _wxFile;
+  } catch (e) {
+    try {
+      const r2 = await fetch('data/wx.json');
+      _wxFile = parse(await r2.json());
+    } catch (e2) {
+      _wxFile = { t: Date.now(), stations: {}, generatedAt: null, error: true };
+    }
+    return _wxFile;
+  }
 }
 async function fetchAirfieldWx(icao, force) {
   icao = String(icao || '').toUpperCase();
   if (!/^[A-Z]{4}$/.test(icao)) return { metar: null, taf: null, unsupported: true };
-  const cached = _wxCache[icao];
-  if (!force && cached && Date.now() - cached.t < 5 * 60000) return cached;
-  const get = async kind => {
-    const u = 'https://aviationweather.gov/api/data/' + kind + '?ids=' + icao + '&format=json';
-    const r = await fetch(wxProxyUrl(u));
-    if (!r.ok) throw new Error(kind + ' ' + r.status);
-    const j = await r.json();
-    return Array.isArray(j) && j.length ? j[0] : null;
+  const file = await loadWxFile(force);
+  const st = file.stations[icao] || {};
+  return {
+    metar: st.metar || null,
+    taf: st.taf || null,
+    generatedAt: file.generatedAt,
+    error: !!file.error && !st.metar && !st.taf,
   };
-  let metar = null, taf = null, error = false;
-  try { metar = await get('metar'); } catch (e) { error = true; }
-  try { taf = await get('taf'); } catch (e) { error = true; }
-  const res = { t: Date.now(), metar, taf, error: error && !metar && !taf };
-  _wxCache[icao] = res;
-  return res;
 }
 const WX_CLOUD = {
   SKC: 'Clear', CLR: 'Clear', NSC: 'No sig cloud', NCD: 'No cloud',

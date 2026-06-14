@@ -197,6 +197,7 @@ const sigmetReadoutCtrl = L.control({ position: 'bottomright' });
 sigmetReadoutCtrl.onAdd = function () {
   const box = L.DomUtil.create('div', 'leaflet-control coord-readout sigmet-readout');
   box.id = 'sigmet-readout';
+  box.dir = 'ltr';                  // SIGMET text is LTR even in Hebrew mode
   box.setAttribute('aria-hidden', 'true');
   return box;
 };

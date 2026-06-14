@@ -1,0 +1,6 @@
+{
+ "generatedAt": null,
+ "source": "NOAA AWC",
+ "note": "Same-origin fallback. Live data is published to the wx-data branch by .github/workflows/wx.yml and read from raw.githubusercontent.com.",
+ "stations": {}
+}
