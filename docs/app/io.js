@@ -1410,6 +1410,7 @@ function applyPage() {
 function setPage(size) {
   if (pageSize === size) {             // same button toggles the frame off
     pageSize = null;
+    try { localStorage.removeItem('navaid.pageSize'); } catch (e) { /* */ }
     applyPage();
     return;
   }
@@ -1419,6 +1420,7 @@ function setPage(size) {
   if (!pageOrient) pageOrient = 'landscape';
   pageSize = size;
   pageOffset = { x: 0, y: 0 };
+  try { localStorage.setItem('navaid.pageSize', pageSize); } catch (e) { /* */ }
   applyPage();
   fitPageFrame();
 }

@@ -253,7 +253,7 @@ test.describe('Inspector panel', () => {
     await page.reload();
     await page.waitForFunction(() =>
       state && state.selected && state.selected.type === 'navwp' && Array.isArray(navWP));
-    await expect(page.locator('#insp-title')).toHaveValue('HADRA');
+    await expect(page.locator('#insp-title')).toHaveValue(/HADRA/);
   });
 });
 

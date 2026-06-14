@@ -1320,10 +1320,104 @@ function appendAirfieldDetailRows(body, af, label) {
     body.appendChild(textRow(S.elevation || 'Elevation', af.elev_ft + ' ft'));
   }
   appendAirfieldFrequencyRows(body, af);
+  appendAirfieldWeather(body, af);
   appendSatelliteSnippet(body, af, label || airfieldInspectorTitle(af));
   appendVorRadialRow(body, af.lat, af.lng);
   appendAirfieldRunways(body, af);
   appendAirfieldPlates(body, af);
+}
+
+// Live METAR / TAF for an ICAO-coded airfield (#670). Fetched on demand via a
+// CORS proxy; shows decoded text with a toggle to the raw report.
+function appendAirfieldWeather(body, af) {
+  const icao = String(af && af.name || '').toUpperCase();
+  if (!/^[A-Z]{4}$/.test(icao) || typeof fetchAirfieldWx !== 'function') return;
+  const sec = document.createElement('div');
+  sec.className = 'wx-section';
+  const head = document.createElement('div');
+  head.className = 'wx-head';
+  const headLbl = document.createElement('span');
+  headLbl.textContent = S.wxTitle || 'Weather';
+  head.appendChild(headLbl);
+  // Refresh button — re-fetch bypassing the cache (recover from a failed
+  // fetch or pull newer data).
+  const refreshBtn = document.createElement('button');
+  refreshBtn.type = 'button';
+  refreshBtn.className = 'wx-refresh';
+  refreshBtn.textContent = '↻';
+  refreshBtn.title = S.wxRefresh || 'Refresh weather';
+  refreshBtn.setAttribute('aria-label', refreshBtn.title);
+  head.appendChild(refreshBtn);
+  sec.appendChild(head);
+  const bodyEl = document.createElement('div');
+  bodyEl.className = 'wx-body';
+  bodyEl.dir = 'ltr';                 // METAR/TAF codes are always left-to-right
+  bodyEl.textContent = S.wxLoading || 'Loading…';
+  sec.appendChild(bodyEl);
+  body.appendChild(sec);
+
+  let showRaw = false, data = null;
+  const load = (force) => {
+    bodyEl.textContent = S.wxLoading || 'Loading…';
+    refreshBtn.disabled = true;
+    fetchAirfieldWx(icao, force).then(d => { data = d; refreshBtn.disabled = false; render(); })
+      .catch(() => { data = { error: true }; refreshBtn.disabled = false; render(); });
+  };
+  refreshBtn.onclick = () => load(true);
+  const render = () => {
+    bodyEl.innerHTML = '';
+    if (!data || data.unsupported) { bodyEl.textContent = S.wxNone || 'No METAR/TAF'; return; }
+    if (data.error) { bodyEl.textContent = S.wxError || 'Weather unavailable'; return; }
+    if (!data.metar && !data.taf) { bodyEl.textContent = S.wxNone || 'No METAR/TAF'; return; }
+    const block = (label, lines) => {
+      const b = document.createElement('div');
+      b.className = 'wx-block';
+      const t = document.createElement('span');
+      t.className = 'wx-label';
+      t.textContent = label;
+      b.appendChild(t);
+      for (const ln of lines) {
+        const d = document.createElement('div');
+        d.className = 'wx-line' + (showRaw ? ' wx-raw' : '');
+        d.textContent = ln;
+        b.appendChild(d);
+      }
+      return b;
+    };
+    if (data.metar) {
+      const lines = showRaw ? [data.metar.rawOb || data.metar.rawText || '']
+        : [decodeMetar(data.metar)];
+      bodyEl.appendChild(block(S.wxMetar || 'METAR', lines.filter(Boolean)));
+    }
+    if (data.taf) {
+      let lines;
+      if (showRaw) {
+        lines = [data.taf.rawTAF || data.taf.rawText || ''];
+      } else {
+        const dec = decodeTaf(data.taf);
+        lines = dec.length ? dec.map(s => s.when + ': ' + s.text) : [data.taf.rawTAF || ''];
+      }
+      bodyEl.appendChild(block(S.wxTaf || 'TAF', lines.filter(Boolean)));
+    }
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'wx-toggle';
+    toggle.textContent = showRaw ? (S.wxShowDecoded || 'Show decoded') : (S.wxShowRaw || 'Show raw');
+    toggle.onclick = () => { showRaw = !showRaw; render(); };
+    bodyEl.appendChild(toggle);
+    if (data.generatedAt) {
+      const upd = new Date(data.generatedAt);
+      if (!isNaN(upd.getTime())) {
+        const age = document.createElement('div');
+        age.className = 'wx-updated';
+        age.textContent = (S.wxUpdated || 'Updated') + ' ' +
+          String(upd.getUTCHours()).padStart(2, '0') + ':' +
+          String(upd.getUTCMinutes()).padStart(2, '0') + 'Z';
+        bodyEl.appendChild(age);
+      }
+    }
+  };
+  load(false);
 }
 
 function showInspector() {
@@ -1563,12 +1657,11 @@ function showInspector() {
       clearStoredInspectorSelection();
       return;
     }
-    title.value = nw.name;
-    title.placeholder = ''; title.readOnly = true; title.oninput = null;
     const nwLocale = inspLocaleName(nw);
-    if (nwLocale) {
-      body.appendChild(textRow(S.navHebrew || 'Waypoint name', nwLocale));
-    }
+    // Title in the current UI language: "CODE / localized name" (matches the
+    // airfield inspector) so the point reads correctly in EN and HE.
+    title.value = nw.name + (nwLocale && nwLocale !== nw.name ? ' / ' + nwLocale : '');
+    title.placeholder = ''; title.readOnly = true; title.oninput = null;
     body.appendChild(textRow(S.latitude, fmtLatLng(nw.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(nw.lng, 'E', 'W')));
     appendSatelliteSnippet(body, nw, nw.name);
