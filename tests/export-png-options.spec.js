@@ -39,17 +39,19 @@ test.describe('Export PNG options modal', () => {
     await page.locator('.modal-back').waitFor();
     // Title.
     expect(await page.locator('.modal-title').textContent()).toBe('Export PNG');
-    // 5 checkboxes: Waypoint Names (on), Drift Lines (on), Cumulative time (on),
-    // Nav WPs (off), Airfields (off).
+    // 6 checkboxes: Waypoint Names (on), Drift Lines (on), Cumulative time (on),
+    // Nav WPs (off), Airfields (off), Place flight plan (off, disabled w/o frame).
     const cbs = page.locator('.modal input[type="checkbox"]');
-    expect(await cbs.count()).toBe(5);
+    expect(await cbs.count()).toBe(6);
     expect(await cbs.nth(0).isChecked()).toBe(true);   // Waypoint Names default on
     expect(await cbs.nth(1).isChecked()).toBe(true);   // Drift Lines default on
     expect(await cbs.nth(2).isChecked()).toBe(true);   // Cumulative time default on
     expect(await cbs.nth(3).isChecked()).toBe(false);  // Nav WPs
     expect(await cbs.nth(4).isChecked()).toBe(false);  // Airfields
+    expect(await cbs.nth(5).isChecked()).toBe(false);  // Place flight plan
+    expect(await cbs.nth(5).isDisabled()).toBe(true);  // disabled until a page frame is set
     // Layer defaults to Navigation.
-    const sel = page.locator('.modal select');
+    const sel = page.locator('#export-layer-select');
     expect(await sel.inputValue()).toBe('Navigation');
     // Buttons present.
     expect(await page.locator('.modal .modal-btns button').count()).toBe(2);
@@ -279,10 +281,10 @@ test.describe('Export PNG options modal', () => {
     const cbs = page.locator('.modal input[type="checkbox"]');
     await cbs.nth(1).check();
     await cbs.nth(0).check();
-    await page.locator('.modal select').selectOption('CVFR');
+    await page.locator('#export-layer-select').selectOption('CVFR');
     expect(await cbs.nth(1).isChecked()).toBe(true);
     expect(await cbs.nth(0).isChecked()).toBe(true);
-    expect(await page.locator('.modal select').inputValue()).toBe('CVFR');
+    expect(await page.locator('#export-layer-select').inputValue()).toBe('CVFR');
     // Click Export and verify download triggers.
     const dl = page.waitForEvent('download', { timeout: 30000 });
     await page.locator('.modal .modal-btns button').first().click();

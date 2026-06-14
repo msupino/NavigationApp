@@ -490,6 +490,50 @@ html, body {
   border-top: 14px solid #9a9a9a;
 }
 
+/* Satellite-modal rotation dial — same look as the main map's dial. */
+.satellite-rotate-dial {
+  display: block;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #9a9a9a;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  touch-action: none;
+}
+.satellite-rotate-dial.dragging { cursor: grabbing; }
+.satellite-rotate-needle {
+  position: absolute;
+  inset: 0;
+  transform: rotate(0deg);
+}
+.satellite-rotate-needle::before {   /* red north triangle */
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  margin-left: -7px;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 14px solid #c0392b;
+}
+.satellite-rotate-needle::after {    /* grey south triangle */
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  margin-left: -7px;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 14px solid #9a9a9a;
+}
+
 /* nav-waypoint search */
 .navsearch { position: relative; padding: 0 6px; }
 #wp-search {
@@ -1130,6 +1174,13 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   position: absolute;
   margin: 0;
 }
+/* Export modal while placing the flight-plan card: clear the backdrop so the
+   map (and the draggable card) stays reachable underneath the dialog. */
+.modal-back.export-place {
+  background: transparent;
+  pointer-events: none;
+}
+.modal-back.export-place > .modal { pointer-events: auto; }
 .modal {
   min-width: 240px;
   padding: 16px;
@@ -1137,6 +1188,15 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   border: 1px solid #3a3636;
   border-radius: 10px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  /* Double-clicking labels/table cells used to select their text — useless in
+     the export / charts dialogs. Inputs/textareas opt back in below. */
+  -webkit-user-select: none;
+  user-select: none;
+}
+.modal input, .modal textarea, .modal select,
+.modal [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
 }
 .modal-title {
   margin-bottom: 12px;
@@ -1578,6 +1638,12 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
 .satellite-snippet:focus {
   outline: 2px solid #1d6fe0;
   outline-offset: 2px;
+}
+.satellite-snippet-tiles {
+  position: absolute;
+  inset: 0;
+  transform-origin: center center;
+  will-change: transform;
 }
 .satellite-snippet img {
   position: absolute;
