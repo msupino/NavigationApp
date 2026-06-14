@@ -202,7 +202,15 @@ sigmetReadoutCtrl.onAdd = function () {
 };
 sigmetReadoutCtrl.addTo(map);
 const sigmetReadoutBox = document.getElementById('sigmet-readout');
-if (sigmetReadoutBox) L.DomEvent.disableClickPropagation(sigmetReadoutBox);
+if (sigmetReadoutBox) {
+  L.DomEvent.disableClickPropagation(sigmetReadoutBox);
+  // Click the readout → decoded SIGMET list.
+  sigmetReadoutBox.addEventListener('click', () => {
+    if (Array.isArray(sigmets) && sigmets.length && typeof showSigmetDecoded === 'function') {
+      showSigmetDecoded();
+    }
+  });
+}
 function refreshSigmetReadout() {
   if (!sigmetReadoutBox) return;
   if (!window.showSigmet || !Array.isArray(sigmets)) {
@@ -216,9 +224,14 @@ function refreshSigmetReadout() {
   sigmetReadoutBox.textContent = n ? S.sigmetReadout(n) : S.sigmetNone;
   sigmetReadoutBox.classList.toggle('sigmet-none', n === 0);
   if (n) {
-    sigmetReadoutBox.title = sigmets.map(s => s.raw).filter(Boolean).join('\n\n');
+    // Hover = decoded text; click opens the full decoded list.
+    sigmetReadoutBox.title = sigmets.map(s =>
+      (typeof decodeSigmet === 'function' ? decodeSigmet(s) : s.raw)).filter(Boolean).join('\n\n') +
+      '\n\n(' + (S.sigmetReadoutClickHint || 'Click to decode') + ')';
+    sigmetReadoutBox.style.cursor = 'pointer';
   } else {
     sigmetReadoutBox.removeAttribute('title');
+    sigmetReadoutBox.style.cursor = 'default';
   }
   sigmetReadoutBox.classList.add('show');
   sigmetReadoutBox.setAttribute('aria-hidden', 'false');
