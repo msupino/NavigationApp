@@ -2152,6 +2152,12 @@ try {
 } catch (e) { /* storage unavailable */ }
 document.getElementById('page-orient').onclick = toggleOrientation;
 refreshOrientButton();
+// Restore the A3/A4 page frame across reloads — the frame re-centres on the
+// current map view, so it reappears over the same area.
+try {
+  const sp = localStorage.getItem('navaid.pageSize');
+  if ((sp === 'A3' || sp === 'A4') && typeof setPage === 'function') setPage(sp);
+} catch (e) { /* storage unavailable */ }
 document.getElementById('print').onclick = showExportModal;
 createMagnifier();
 document.getElementById('tool-magnifier').onclick = toggleMagnifier;
