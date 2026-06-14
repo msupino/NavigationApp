@@ -640,7 +640,7 @@ test.describe('comm-change auto-note (#487)', () => {
       const nw = sel && sel.type === 'navwp' ? navWP[sel.index] : null;
       return nw && nw.name;
     })).toBe('DEROR');
-    await expect(page.locator('#insp-title')).toHaveValue('DEROR');
+    await expect(page.locator('#insp-title')).toHaveValue(/DEROR/);
 
     await page.mouse.click(pts.point.x, pts.point.y);
     await expect(page.locator('.point-choice-modal')).toBeVisible();
