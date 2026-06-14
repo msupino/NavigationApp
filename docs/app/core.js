@@ -350,6 +350,9 @@ window.S = Object.assign({
   sigmetReadout: function(n) { return '⚠ ' + n + ' SIGMET'; },
   sigmetNone: 'No SIGMET in effect',
   sigmetUpdated: function(t) { return 'SIGMET updated ' + t; },
+  sigmetReadoutClickHint: 'Click to decode',
+  sigmetModalTitle: 'Active SIGMETs',
+  sigmetRaw: 'Raw',
   tbWindDir: 'Wind °',
   tbWindDirTitle: 'Route-wide wind direction (degrees true, the direction the wind blows FROM)',
   tbWindSpeed: 'Wind kt',
@@ -949,6 +952,47 @@ function sigmetHazardColor(hz) {
     case 'TC':   return '#c2185b';
     default:     return '#dd1111';   // TS + anything else (6-hex for alpha fill)
   }
+}
+// Decode a SIGMET's coded fields into a plain-language sentence, e.g.
+// "TEL AVIV FIR — Severe Turbulence, FL080–FL180, moving SE 20 kt,
+//  valid 06:00–10:00Z". Falls back gracefully on unknown codes.
+function decodeSigmet(s) {
+  if (!s || typeof s !== 'object') return '';
+  const HAZ = {
+    TS: 'Thunderstorm', TSGR: 'Thunderstorm with hail', GR: 'Hail',
+    TURB: 'Turbulence', ICE: 'Icing', MTW: 'Mountain wave', VA: 'Volcanic ash',
+    DS: 'Duststorm', SS: 'Sandstorm', TC: 'Tropical cyclone', FC: 'Funnel cloud',
+    RDOACT: 'Radioactive cloud',
+  };
+  const QUAL = {
+    OBSC: 'Obscured', EMBD: 'Embedded', FRQ: 'Frequent', SQL: 'Squall line',
+    SEV: 'Severe', MOD: 'Moderate', ISOL: 'Isolated', OCNL: 'Occasional',
+    HVY: 'Heavy', WDSPR: 'Widespread',
+  };
+  const lvl = v => {
+    if (!Number.isFinite(v)) return null;
+    if (v <= 0) return 'SFC';
+    return 'FL' + pad3(Math.round(v / 100));   // SIGMET levels are flight levels
+  };
+  const hhmm = u => {
+    const d = new Date((Number(u) || 0) * 1000);
+    return isNaN(d.getTime()) || !u ? '' :
+      String(d.getUTCHours()).padStart(2, '0') + ':' +
+      String(d.getUTCMinutes()).padStart(2, '0') + 'Z';
+  };
+  const parts = [];
+  const q = QUAL[String(s.qualifier || '').toUpperCase()];
+  const hz = HAZ[String(s.hazard || '').toUpperCase()] || s.hazard || 'Hazard';
+  parts.push((q ? q + ' ' : '') + hz);
+  const base = lvl(s.base), top = lvl(s.top);
+  if (base || top) parts.push((base || 'SFC') + '–' + (top || '—'));
+  const dir = (s.dir === 0 || s.dir) ? String(s.dir) : '';
+  if (Number.isFinite(s.spd) && s.spd > 0) parts.push('moving ' + (dir ? dir + ' ' : '') + s.spd + ' kt');
+  else if (s.spd === 0 || (dir === '' && s.spd == null)) parts.push('stationary');
+  const from = hhmm(s.validFrom), to = hhmm(s.validTo);
+  if (from || to) parts.push('valid ' + from + '–' + to);
+  const fir = s.firName || s.firId || '';
+  return (fir ? fir + ' — ' : '') + parts.join(', ');
 }
 const pad3 = n => String(n).padStart(3, '0');
 function toHMS(hours) {
