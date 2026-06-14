@@ -93,6 +93,16 @@ test.describe('Inspector panel', () => {
 
     const snippet = page.locator('#insp-body .satellite-snippet').first();
     await expect(page.locator('#insp-body .satellite-snippet-section')).toBeVisible();
+
+    // The static preview tiles rotate to match the main map's bearing.
+    await page.evaluate(() => map.setBearing(90));
+    await page.evaluate(() => { state.selected = { type: 'wp', index: 0 }; showInspector(); });
+    const t = await page.locator('#insp-body .satellite-snippet-tiles').first()
+      .evaluate(el => getComputedStyle(el).transform);
+    // bearing 90 → rotate(90deg) → matrix(0,1,-1,0,0,0)
+    expect(t).toMatch(/matrix\(\s*-?0?\.?0*\s*,\s*1\b/);
+    await page.evaluate(() => map.setBearing(0));
+
     await expect(snippet).toBeVisible();
     await expect(snippet.locator('img')).toHaveCount(9);
     await expect(snippet.locator('.satellite-crosshair')).toBeVisible();
@@ -102,6 +112,12 @@ test.describe('Inspector panel', () => {
     await snippet.click();
     const modal = page.locator('.satellite-preview-modal');
     await expect(modal).toBeVisible();
+    // Title shows the location name + coordinates (not the generic
+    // "Satellite view" header) — identity moved to the top of the modal.
+    const titleText = await modal.locator('.modal-title').textContent();
+    expect(titleText).toContain('LLHZ');
+    expect(titleText).toMatch(/[NS].*[EW]/);
+    expect(titleText).not.toContain('Satellite view');
     // Expanded view is a real Leaflet map: pan, zoom control, layer switcher,
     // reset-to-centre button — mirroring the main map.
     const lmap = modal.locator('.satellite-preview-map');
@@ -109,6 +125,8 @@ test.describe('Inspector panel', () => {
     await expect(lmap.locator('.leaflet-tile').first()).toBeVisible();
     await expect(modal.locator('.leaflet-control-zoom')).toBeVisible();
     await expect(modal.locator('.satellite-reset-control')).toBeVisible();
+    // Rotation dial — mirrors the main map's bearing control.
+    await expect(modal.locator('.satellite-rotate-dial')).toBeVisible();
     // Layer picker is a dropdown offering the same base layers as the main map.
     const layerSel = modal.locator('.satellite-layer-select');
     await expect(layerSel).toBeVisible();
@@ -124,6 +142,17 @@ test.describe('Inspector panel', () => {
     await modal.getByRole('button', { name: 'Zoom in' }).click();
     await expect(lmap.locator('.leaflet-tile').first()).toBeVisible();
     await expect(modal.getByRole('button', { name: /recentre/i })).toBeVisible();
+
+    // Two-way bearing sync: rotating the main map rotates the modal map…
+    await page.evaluate(() => map.setBearing(40));
+    const modalBearing = await page.evaluate(() =>
+      window.__satModalMap ? Math.round(window.__satModalMap.getBearing()) : null);
+    expect(modalBearing).toBe(40);
+    // …and rotating the modal map rotates the main map.
+    await page.evaluate(() => window.__satModalMap.setBearing(120));
+    const mainBearing = await page.evaluate(() => Math.round(map.getBearing()));
+    expect(mainBearing).toBe(120);
+    await page.evaluate(() => map.setBearing(0));
 
     // Closing destroys the Leaflet map (no leaked map instance / container),
     // and re-opening builds a fresh one without error.

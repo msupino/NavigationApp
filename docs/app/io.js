@@ -2417,9 +2417,48 @@ function fileStamp() {
     .replace(/[-:]/g, '').replace('T', '-');
 }
 
+// Plain-language SIGMET list (clicking the corner readout). Each entry shows
+// the decoded sentence plus the raw text underneath.
+function showSigmetDecoded() {
+  if (!Array.isArray(sigmets) || !sigmets.length) return;
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  const box = document.createElement('div');
+  box.className = 'modal';
+  box.style.cssText = 'max-width:560px;max-height:80vh;overflow:auto';
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = S.sigmetModalTitle || 'Active SIGMETs';
+  box.appendChild(title);
+  function close() { window.removeEventListener('keydown', onEsc); back.remove(); }
+  function onEsc(e) { if (e.key === 'Escape') close(); }
+  addModalCloseX(box, close);
+  for (const s of sigmets) {
+    const item = document.createElement('div');
+    item.style.cssText = 'margin:10px 0;padding:8px;border-left:4px solid ' +
+      sigmetHazardColor(s.hazard) + ';background:rgba(255,255,255,0.04)';
+    const dec = document.createElement('div');
+    dec.style.cssText = 'font-size:13px;font-weight:600;margin-bottom:4px';
+    dec.textContent = decodeSigmet(s);
+    item.appendChild(dec);
+    if (s.raw) {
+      const raw = document.createElement('div');
+      raw.style.cssText = 'font:11px/1.4 monospace;color:#b9b3b3;white-space:pre-wrap';
+      raw.textContent = (S.sigmetRaw || 'Raw') + ': ' + s.raw;
+      item.appendChild(raw);
+    }
+    box.appendChild(item);
+  }
+  back.appendChild(box);
+  document.body.appendChild(back);
+  back.addEventListener('mousedown', e => { if (e.target === back) close(); });
+  window.addEventListener('keydown', onEsc);
+}
+
 // Show a pre-export modal so the user can decide which overlays and base
 // layer appear in the PNG, independently of the current screen settings.
 function showExportModal() {
+  if (!aircraft && typeof loadAircraft === 'function') loadAircraft();   // for the plan card's Fuel column
   const back = document.createElement('div');
   back.className = 'modal-back';
   const box = document.createElement('div');
@@ -2513,6 +2552,61 @@ function showExportModal() {
   afLabel.appendChild(document.createTextNode(S.exportShowAirfields));
   body.appendChild(afLabel);
 
+  // Place flight-plan table on the export (#378). Drag it on the live map.
+  const planLabel = document.createElement('label');
+  planLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
+  planLabel.title = S.exportPlanPlaceTitle || '';
+  const planCb = document.createElement('input');
+  planCb.type = 'checkbox';
+  planCb.id = 'export-plan-cb';
+  planCb.checked = false;
+  planCb.disabled = !pageSize;                 // needs a page frame to anchor
+  planLabel.appendChild(planCb);
+  planLabel.appendChild(document.createTextNode(
+    pageSize ? S.exportPlanPlace : (S.exportPlanNoFrame || S.exportPlanPlace)));
+  body.appendChild(planLabel);
+
+  // Reference VOR selector — drives the plan card's Radial / DME columns and
+  // shares the global `vorRef` (pre-selects whatever was chosen on the map;
+  // changing it here updates the map overlay too).
+  const vorRow = document.createElement('div');
+  vorRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px';
+  const vorLbl = document.createElement('span');
+  vorLbl.textContent = (S.fpVorLabel || 'VOR') + ':';
+  vorRow.appendChild(vorLbl);
+  const vorSel = document.createElement('select');
+  vorSel.id = 'export-vor-select';
+  vorSel.style.cssText = 'font:inherit;font-size:12px;flex:1';
+  function fillExportVorSelect() {
+    vorSel.innerHTML = '';
+    const none = document.createElement('option');
+    none.value = ''; none.textContent = S.vorRefNone || '— none —';
+    vorSel.appendChild(none);
+    for (const v of (vors || [])) {
+      const opt = document.createElement('option');
+      opt.value = v.ident;
+      opt.textContent = v.ident + ' · ' + v.name;
+      vorSel.appendChild(opt);
+    }
+    vorSel.value = vorRef || '';
+  }
+  fillExportVorSelect();
+  if (vors === null && typeof loadVors === 'function') {
+    loadVors().then(() => { fillExportVorSelect(); draw(); });
+  }
+  vorSel.onchange = function () {
+    window.vorRef = vorSel.value || null;
+    try {
+      if (vorRef) localStorage.setItem('navaid.vorRef', vorRef);
+      else localStorage.removeItem('navaid.vorRef');
+    } catch (e) { /* */ }
+    const tbVor = document.getElementById('vor-ref-select');   // keep the toolbar in sync
+    if (tbVor) tbVor.value = vorRef || '';
+    draw();
+  };
+  vorRow.appendChild(vorSel);
+  body.appendChild(vorRow);
+
   // Layer selector.
   const layerRow = document.createElement('div');
   layerRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px';
@@ -2520,6 +2614,7 @@ function showExportModal() {
   layerLbl.textContent = S.exportLayer;
   layerRow.appendChild(layerLbl);
   const layerSel = document.createElement('select');
+  layerSel.id = 'export-layer-select';
   layerSel.style.cssText = 'font:inherit;font-size:12px;flex:1';
   for (const name in layers) {
     const opt = document.createElement('option');
@@ -2613,6 +2708,7 @@ function showExportModal() {
     }
     mapOpacity = origMapOpacity;
     applyMapOpacity();
+    window.planCard = null;            // drop the placed card (export already captured it)
     draw();
   }
 
@@ -2637,6 +2733,85 @@ function showExportModal() {
     showAirfields = afCb.checked;
     draw();
   };
+
+  // Flight-plan card placement: toggle + drag on the live map.
+  window.planCard = null;                              // fresh each open
+  planCb.onchange = function () {
+    const fr0 = pageFrameRect();
+    if (planCb.checked) {
+      window.planCard = fr0 ? { x: fr0.x + 14, y: fr0.y + 14, scale: 1 } : { x: 40, y: 40, scale: 1 };
+    } else {
+      window.planCard = null;
+    }
+    // Open up the backdrop so the card can be dragged on the live map.
+    back.classList.toggle('export-place', planCb.checked);
+    draw();
+    // Default the card to ~70% of the frame width: small enough to drag in
+    // BOTH directions (a full-width card can only move up/down), large enough
+    // to read. The corner grip resizes it from there.
+    if (planCard && fr0 && planCardRect) {
+      const target = fr0.w * 0.7;
+      if (planCardRect.w > target) {
+        planCard.scale = Math.max(0.4, planCard.scale * target / planCardRect.w);
+        planCard.x = fr0.x + 14; planCard.y = fr0.y + 14;
+        draw();
+      }
+    }
+  };
+  // Drag the card inside the page frame. Listens on the map container so it
+  // works over the route overlay; map panning is suspended while dragging.
+  const mapEl = map.getContainer();
+  let cardDrag = null;
+  function cardDown(e) {
+    if (!planCard || !planCardRect) return;
+    const pt = map.mouseEventToContainerPoint(e);
+    // Bottom-right grip → resize; elsewhere inside the card → move.
+    if (typeof planCardOnGrip === 'function' && planCardOnGrip(pt.x, pt.y)) {
+      cardDrag = { resize: true, baseW1: planCardRect.w / (planCard.scale || 1) };
+      if (map.dragging) map.dragging.disable();
+      e.preventDefault(); e.stopPropagation();
+      return;
+    }
+    const r = planCardRect;
+    if (pt.x < r.x || pt.x > r.x + r.w || pt.y < r.y || pt.y > r.y + r.h) return;
+    cardDrag = { dx: pt.x - planCard.x, dy: pt.y - planCard.y };
+    if (map.dragging) map.dragging.disable();
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  function cardMove(e) {
+    if (!cardDrag || !planCard) return;
+    const pt = map.mouseEventToContainerPoint(e);
+    if (cardDrag.resize) {
+      // Scale ∝ rendered width; clamp to a sane range.
+      planCard.scale = Math.max(0.15, Math.min(6, (pt.x - planCard.x) / cardDrag.baseW1));
+      draw();
+      return;
+    }
+    let nx = pt.x - cardDrag.dx, ny = pt.y - cardDrag.dy;
+    const fr0 = pageFrameRect();
+    const cw = planCardRect ? planCardRect.w : 0, ch = planCardRect ? planCardRect.h : 0;
+    if (fr0) {
+      nx = Math.max(fr0.x, Math.min(fr0.x + fr0.w - cw, nx));
+      ny = Math.max(fr0.y, Math.min(fr0.y + fr0.h - ch, ny));
+    }
+    planCard.x = nx; planCard.y = ny;
+    draw();
+  }
+  function cardUp() {
+    if (!cardDrag) return;
+    cardDrag = null;
+    if (map.dragging) map.dragging.enable();
+  }
+  mapEl.addEventListener('mousedown', cardDown, true);
+  window.addEventListener('mousemove', cardMove, true);
+  window.addEventListener('mouseup', cardUp, true);
+  function removeCardDrag() {
+    mapEl.removeEventListener('mousedown', cardDown, true);
+    window.removeEventListener('mousemove', cardMove, true);
+    window.removeEventListener('mouseup', cardUp, true);
+    if (cardDrag && map.dragging) map.dragging.enable();
+  }
   layerSel.onchange = function () {
     const chosen = layerSel.value;
     for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
@@ -2650,7 +2825,7 @@ function showExportModal() {
     applyMapOpacity();
   };
 
-  function close() { window.removeEventListener('keydown', onEsc); back.remove(); }
+  function close() { removeCardDrag(); window.removeEventListener('keydown', onEsc); back.remove(); }
   function onEsc(e) { if (e.key === 'Escape') { restoreOrig(); close(); } }
 
   exportBtn.onclick = () => {
@@ -2888,6 +3063,7 @@ function exportPNG() {
       drawLegs();
       drawWaypoints();
       drawNotes();
+      drawPlanCard();        // flight-plan card placed in the export modal (#378)
       o.restore();
     } finally {
       octx = prevOctx;
