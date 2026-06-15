@@ -17,6 +17,13 @@ python3 -m http.server -d docs 8000
 # http://localhost:8000
 ```
 
+## Development docs
+
+- `AGENTS.md` — required rules for AI and automation agents.
+- `.ai/README.md` — AI handbook index for workflow, architecture, data,
+  UI patterns, testing, and checklists.
+- `.ai/navaid-dev.md` — detailed NavAid developer guide.
+
 ## License & data
 
 NavAid is released under the [MIT License](LICENSE) — no warranty, no liability.

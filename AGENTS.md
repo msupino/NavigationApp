@@ -12,10 +12,12 @@ Unity.
 - `docs/data/nav-waypoints.json` — 173 Israeli VFR reporting points
  (`{name, he, lat, lng}`); shipped, lazily fetched by the "Show/pin
  navigation waypoints" toggle. Sourced from the published IAA CVFR chart waypoint
- reference table (page 113, 2025 edition) — see SKILL.md for refresh
+ reference table (page 113, 2025 edition) — see `.ai/navaid-dev.md` for refresh
  procedure.
 - `.github/workflows/deploy.yml` — Pages build + deploy.
-- `.claude/skills/navaid-dev/SKILL.md` — full developer guide.
+- `.ai/` — repo-tracked AI handbook: workflow, architecture, data,
+  UI patterns, testing, and checklists.
+- `.ai/navaid-dev.md` — full developer guide.
   **Read this first** for any change to the app.
 
 ## Branches
@@ -35,9 +37,12 @@ both branches and assembles a single Pages site:
 
 ## Working rules for AI agents
 
-- Treat `.claude/skills/navaid-dev/SKILL.md` as the source of truth
+- Treat `.ai/navaid-dev.md` as the source of truth
   for architecture, state shape, persistence keys, and deploy
   mechanics.
+- Use `.ai/README.md` as the quick index for AI-specific workflow,
+  architecture, data, UI, testing, and checklist docs. Keep `.ai/`
+  updated when behavior, storage, workflow, or test expectations change.
 - **Cache-bust is automatic at deploy time.** All `?v=N` values in
   `docs/index.html` must remain equal (CI lint enforces). The deploy
   workflow rewrites them to the short commit SHA at upload time, so
@@ -72,7 +77,7 @@ both branches and assembles a single Pages site:
 - If a push to `dev` / `main` doesn't trigger `Deploy` / `CI` within
   ~30 s (admin bypass can swallow the event), dispatch manually:
   `gh workflow run Deploy --ref dev` or `gh workflow run CI --ref dev`.
-  See `.claude/skills/navaid-dev/SKILL.md` "CI / Deploy gotchas" for
+  See `.ai/navaid-dev.md` "CI / Deploy gotchas" for
   details.
 - Default deploy target during development is `dev` (staging). Only
   push to `main` when the change is reviewed and ready for
@@ -83,10 +88,10 @@ both branches and assembles a single Pages site:
   then create the PR referencing it (`Fixes #N` or `Closes #N`).
 - Persist UI state to `localStorage` only via existing `navaid.*`
   keys. The authoritative list lives in
-  `.claude/skills/navaid-dev/SKILL.md` (see the **Persistence**
+  `.ai/navaid-dev.md` (see the **Persistence**
   section); grep `localStorage.setItem` / `sessionStorage.setItem`
   in `docs/` to verify. Add new keys only with a clear reason.
-  Notable keys (see SKILL.md for the full list):
+  Notable keys (see `.ai/navaid-dev.md` for the full list):
   - `navaid.route` — route geometry (waypoints / legs / notes).
   - `navaid.view` — map center / zoom / bearing, persisted across
     reloads. `F` (no modifier) re-runs fit-to-route; the `⌖ Fit to
@@ -99,7 +104,7 @@ both branches and assembles a single Pages site:
   (`SHORTCUTS_HELP_ROWS` in `docs/app/io.js`). When you add a new global
   shortcut, append a row to that array and add the matching
   `S.shortcutXxx` strings in `docs/app/core.js` (English defaults) +
-  `docs/i18n/he/strings.js` (Hebrew). See SKILL.md "Keyboard shortcuts
+  `docs/i18n/he/strings.js` (Hebrew). See `.ai/navaid-dev.md` "Keyboard shortcuts
   cheat-sheet" for the rendering pipeline.
 - No external dependencies beyond Leaflet + `leaflet-rotate@0.2.8`
   (both loaded from `unpkg.com`) and `images.weserv.nl` (used as a
