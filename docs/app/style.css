@@ -370,6 +370,24 @@ html, body {
   pointer-events: none;
   display: none;
 }
+.zulu-clock {
+  display: block;
+  min-width: 82px;
+  padding: 5px 8px;
+  margin: 12px 12px 0 0;
+  color: #fff;
+  background: rgba(20, 18, 18, 0.88);
+  border: 1px solid #3a3636;
+  border-radius: 5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  font: 800 13px/1 monospace;
+  letter-spacing: 0;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
 .coord-readout.show { display: block; }
 .zoom-readout {
   display: block;
@@ -647,7 +665,7 @@ body.theme-light #aircraft-custom input {
 #inspector {
   position: absolute;
   z-index: 1100;
-  top: 56px;
+  top: 84px;
   right: 12px;
   width: 280px;
   background: rgba(20, 18, 18, 0.95);
@@ -659,7 +677,7 @@ body.theme-light #aircraft-custom input {
   flex-direction: column;
   /* Cap to the viewport so a tall inspector (big airports with many charts)
      scrolls instead of overflowing off-screen. */
-  max-height: calc(100dvh - 68px);
+  max-height: calc(100dvh - 96px);
 }
 /* The header stays put; only the body scrolls. */
 #insp-body { overflow-y: auto; }
