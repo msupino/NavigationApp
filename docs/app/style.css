@@ -2125,6 +2125,18 @@ body.theme-light .msa-low .val { color: #c0392b; }
   font-size: 12px;
   unicode-bidi: isolate;
 }
+.charts-alt-direction {
+  color: #a9a3a3;
+  direction: ltr;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  min-width: 112px;
+  text-align: left;
+  unicode-bidi: isolate;
+  white-space: nowrap;
+}
 .charts-alt-actions {
   width: 28px;
   text-align: center;
@@ -2816,6 +2828,9 @@ body.theme-light .charts-alt-table tbody tr.overridden:hover {
 }
 body.theme-light .charts-alt-pair {
   color: #6f4d00;
+}
+body.theme-light .charts-alt-direction {
+  color: #6b7280;
 }
 body.theme-light .charts-alt-table .blocked {
   color: #9d2b2b;
