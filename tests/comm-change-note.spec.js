@@ -1269,7 +1269,9 @@ test.describe('comm-change auto-note (#487)', () => {
     const fields = page.locator('#insp-body .freq-input');
     await expect(fields).toHaveCount(1);
     await expect(fields.nth(0)).toHaveValue('132.70');
+    await expect(fields.nth(0)).toHaveClass(/is-default/);
     await fields.nth(0).fill('133.45');
+    await expect(fields.nth(0)).not.toHaveClass(/is-default/);
     const out = await page.evaluate(() => ({
       freqName: state.notes[0].freqName,
       freq: state.notes[0].freq,
@@ -1303,12 +1305,14 @@ test.describe('comm-change auto-note (#487)', () => {
     const resetFreq = page.locator('#insp-body .commchange-freq-reset');
     await expect(fields).toHaveCount(1);
     await expect(fields.first()).toHaveValue('122.20');
+    await expect(fields.first()).toHaveClass(/is-default/);
     await expect(resetFreq).toHaveText('↻');
     await expect(resetFreq).toBeDisabled();
     await expect(resetFreq).toHaveAttribute('title', 'Reset frequency to default');
     await expect(page.locator('#insp-body .commchange-template')).toBeHidden();
 
     await fields.first().fill('125.60');
+    await expect(fields.first()).not.toHaveClass(/is-default/);
     await expect(resetFreq).toBeEnabled();
     await expect(page.locator('#insp-body .commchange-template')).toBeVisible();
     await expect(page.locator('#insp-body .commchange-template label')).toHaveText('Default');
@@ -1331,6 +1335,7 @@ test.describe('comm-change auto-note (#487)', () => {
 
     await resetFreq.click();
     await expect(fields.first()).toHaveValue('122.20');
+    await expect(fields.first()).toHaveClass(/is-default/);
     await expect(resetFreq).toBeDisabled();
     await expect(page.locator('#insp-body .commchange-template')).toBeHidden();
     const reverted = await page.evaluate(() => ({

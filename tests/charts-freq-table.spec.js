@@ -114,6 +114,7 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(herzliya).toHaveAttribute('max', '136.975');
     await expect(herzliya).toHaveAttribute('step', '0.005');
     await expect(herzliya).toHaveValue('122.20');
+    await expect(herzliya).toHaveClass(/is-default/);
     await expect(page.locator('.charts-freq-input[data-call-sign="AZAM"]'))
       .toHaveCount(0);
     await expect(page.locator('.charts-airport-header')).toHaveCount(0);
@@ -140,7 +141,9 @@ test.describe('Charts modal — frequency catalog table', () => {
     const desheInputs = desheRow.locator('.charts-alt-input');
     await expect(desheInputs.nth(0)).toHaveAttribute('type', 'number');
     await expect(desheInputs.nth(0)).toHaveValue('3000');
+    await expect(desheInputs.nth(0)).toHaveClass(/is-default/);
     await expect(desheInputs.nth(1)).toHaveValue('2500');
+    await expect(desheInputs.nth(1)).toHaveClass(/is-default/);
     await expect(desheRow).toContainText('Two way');
     const desheReset = desheRow.locator('.charts-alt-reset');
     await expect(desheReset).toHaveAttribute('title', 'Revert to origin');
@@ -174,6 +177,8 @@ test.describe('Charts modal — frequency catalog table', () => {
     await desheInputs.nth(0).blur();
     await expect(desheReset).toBeEnabled();
     await expect(desheRow).toHaveClass(/overridden/);
+    await expect(desheInputs.nth(0)).not.toHaveClass(/is-default/);
+    await expect(desheInputs.nth(1)).toHaveClass(/is-default/);
     await derorInputs.nth(0).fill('1500');
     await derorInputs.nth(0).blur();
     await derorInputs.nth(1).fill('2000');
@@ -193,7 +198,9 @@ test.describe('Charts modal — frequency catalog table', () => {
 
     await desheReset.click();
     await expect(desheInputs.nth(0)).toHaveValue('3000');
+    await expect(desheInputs.nth(0)).toHaveClass(/is-default/);
     await expect(desheInputs.nth(1)).toHaveValue('2500');
+    await expect(desheInputs.nth(1)).toHaveClass(/is-default/);
     await expect(desheReset).toBeDisabled();
     await expect(desheRow).not.toHaveClass(/overridden/);
     await expect.poll(() => page.evaluate(() => {
@@ -408,7 +415,9 @@ test.describe('Charts modal — frequency catalog table', () => {
 
     await expect(page.locator('.charts-freq-title h3')).toHaveText('Frequency defaults');
     await expect(herzliya).toHaveValue('122.20');
+    await expect(herzliya).toHaveClass(/is-default/);
     await expect(pluto).toHaveValue('118.40');
+    await expect(pluto).toHaveClass(/is-default/);
     await expect(restoreAll).toBeDisabled();
     await expect(herzliyaReset).toBeDisabled();
     await expect(herzliyaRow).not.toHaveClass(/overridden/);
@@ -416,11 +425,13 @@ test.describe('Charts modal — frequency catalog table', () => {
     await herzliya.fill('137.00');
     await herzliya.press('Enter');
     await expect(herzliya).toHaveAttribute('aria-invalid', 'true');
+    await expect(herzliya).not.toHaveClass(/is-default/);
     await expect(restoreAll).toBeDisabled();
     await expect(herzliyaReset).toBeEnabled();
     expect(await page.evaluate(() => localStorage.getItem('navaid.commFreqOverrides'))).toBeNull();
     await herzliyaReset.click();
     await expect(herzliya).toHaveValue('122.20');
+    await expect(herzliya).toHaveClass(/is-default/);
     await expect(herzliya).toHaveAttribute('aria-invalid', 'false');
     await expect(herzliyaReset).toBeDisabled();
 
@@ -429,6 +440,7 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(restoreAll).toBeEnabled();
     await expect(herzliyaReset).toBeEnabled();
     await expect(herzliya).toHaveValue('125.60');
+    await expect(herzliya).not.toHaveClass(/is-default/);
     await expect(herzliyaRow).toHaveClass(/overridden/);
 
     const edited = await page.evaluate(() => ({
@@ -448,6 +460,7 @@ test.describe('Charts modal — frequency catalog table', () => {
 
     await herzliyaReset.click();
     await expect(herzliya).toHaveValue('122.20');
+    await expect(herzliya).toHaveClass(/is-default/);
     await expect(restoreAll).toBeDisabled();
     await expect(herzliyaReset).toBeDisabled();
     await expect(herzliyaRow).not.toHaveClass(/overridden/);

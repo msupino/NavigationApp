@@ -3895,6 +3895,8 @@ function renderFreqTable(freqSection) {
         ? commNormalizeFreqInput(inp.value) : String(inp.value || '').trim();
       const invalid = normalized === null;
       inp.classList.toggle('invalid', invalid);
+      inp.classList.toggle('is-default',
+        !invalid && !!opt.templateFreq && (normalized || '') === opt.templateFreq);
       inp.setAttribute('aria-invalid', invalid ? 'true' : 'false');
       if (reset) reset.disabled = !opt.templateFreq || (!opt.overrideFreq && !invalid);
       return normalized;
@@ -3947,6 +3949,7 @@ function renderFreqTable(freqSection) {
       if (!reset.disabled) resetTableFreq();
     };
     actions.appendChild(reset);
+    syncFreqInputValidity();
     tr.append(name, template, local, actions);
     tbody.appendChild(tr);
   }
@@ -4052,6 +4055,16 @@ function altitudePairCellPlaceholder(segment, key) {
     : (S.altPairsUnknown || 'Unknown');
 }
 
+function altitudePairCellMatchesOrigin(segment, key) {
+  const origin = legAltitudeOriginSegment(segment);
+  if (!origin) return false;
+  const current = segment[key];
+  const original = origin[key];
+  if (current === null || original === null) return current === original;
+  return Number.isFinite(current) && Number.isFinite(original) &&
+    Math.round(current) === Math.round(original);
+}
+
 function updateAltitudePairRowState(tr, segment, statusCell, inputs, resetButton) {
   normalizeAltitudePairSegment(segment);
   tr.classList.toggle('one-way', segment.oneWay === true);
@@ -4064,6 +4077,8 @@ function updateAltitudePairRowState(tr, segment, statusCell, inputs, resetButton
       input.placeholder = altitudePairCellPlaceholder(segment, input.dataset.altKey);
       input.value = Number.isFinite(segment[input.dataset.altKey])
         ? String(segment[input.dataset.altKey]) : '';
+      input.classList.toggle('is-default',
+        altitudePairCellMatchesOrigin(segment, input.dataset.altKey));
     }
   }
   if (resetButton) resetButton.disabled = !legAltitudePairDiffersFromOrigin(segment);

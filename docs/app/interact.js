@@ -1958,14 +1958,19 @@ function numberRow(label, value, onChange, opts = {}) {
   // Endless 0–359 spinner wrap (attached first so it cleans the value before
   // the commit handler below reads it).
   if (opts.wrapStep) wrapDirectionInput(inp);
-  // Dim the field while it still holds the default value (#722 follow-up):
-  // an auto/charted leg altitude reads muted so it's distinguishable from a
-  // value the user typed. Recomputed on every keystroke and after each commit.
+  // Dim resettable fields while they still hold the default value (#722
+  // follow-up): charted leg altitudes and inherited wind values read muted so
+  // values the user typed stand out. Recomputed on every keystroke and reset.
+  const hasDefaultStyle = opts.mutedWhenDefault || opts.undoValue !== undefined;
+  const defaultValue = opts.defaultValue !== undefined ? opts.defaultValue : opts.undoValue;
   const updateDefaultStyle = () => {
-    if (!opts.mutedWhenDefault) return;
+    if (!hasDefaultStyle) return;
+    const raw = inp.value.trim();
     const cur = parseFloat(inp.value);
-    inp.classList.toggle('is-default',
-      Number.isFinite(cur) && Number.isFinite(opts.defaultValue) && cur === opts.defaultValue);
+    const atDefault = Number.isFinite(defaultValue)
+      ? Number.isFinite(cur) && cur === defaultValue
+      : raw === '' && defaultValue !== undefined && !Number.isFinite(defaultValue);
+    inp.classList.toggle('is-default', atDefault);
   };
   // `final` (blur / Enter / spinner-change) runs opts.normalize and writes the
   // cleaned value back to the field — e.g. wrapping a wind direction of -395
@@ -2091,6 +2096,8 @@ function appendFreqEdit(body, note, editOptions) {
     const normalized = normalizeFreqValue(freqInput ? freqInput.value : note.freq);
     const cur = normalized === null ? (note.freq || '') : (normalized || note.freq || '');
     const changed = !!(template && (freqInputInvalid() || (cur && cur !== template)));
+    if (freqInput) freqInput.classList.toggle('is-default',
+      !!template && !freqInputInvalid() && cur === template);
     templateRow.style.display = changed ? '' : 'none';
     const val = templateRow.querySelector('.val');
     if (val) val.textContent = template;

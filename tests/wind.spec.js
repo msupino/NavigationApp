@@ -156,11 +156,13 @@ test('leg wind ↻ clears the override back to the route wind', async ({ page })
   });
   const dirInput = page.locator('#insp-body .row input[type="number"]').nth(3);
   await expect(dirInput).toHaveValue('90');
+  await expect(dirInput).not.toHaveClass(/is-default/);
   // seedLeg has no charted altitude, so the only row-reset buttons are the two
   // wind rows: first = wind direction, second = wind speed.
   const dirReset = page.locator('#insp-body button.row-reset').first();
   await dirReset.click();
   await expect(dirInput).toHaveValue('');                 // blank → inherits route wind
+  await expect(dirInput).toHaveClass(/is-default/);
   await expect(dirInput).toHaveAttribute('placeholder', '270');
   expect(await page.evaluate(() => state.legs[0].wind)).toEqual({ speed: 35 });
 });

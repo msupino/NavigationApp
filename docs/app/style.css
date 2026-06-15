@@ -820,11 +820,32 @@ body.theme-light #aircraft-custom input {
   -webkit-user-select: text;
   user-select: text;
 }
-/* A leg altitude still holding its charted default reads muted, so a typed
+/* Resettable fields still holding their default read muted, so a typed
    override stands out (#722 follow-up). */
 .wind-fetch-status { font-size: 11px; color: #9a948f; padding: 0 2px; min-height: 14px; }
-.row input[type="number"].is-default { color: #8a8480; font-style: italic; }
-body.theme-light .row input[type="number"].is-default { color: #9aa1ab; }
+.row input.is-default,
+.charts-alt-input.is-default,
+.charts-freq-input.is-default {
+  color: #8a8480;
+  font-style: italic;
+}
+.row input.is-default::placeholder,
+.charts-alt-input.is-default::placeholder,
+.charts-freq-input.is-default::placeholder {
+  color: #8a8480;
+  opacity: 1;
+}
+body.theme-light .row input.is-default,
+body.theme-light .charts-alt-input.is-default,
+body.theme-light .charts-freq-input.is-default {
+  color: #9aa1ab;
+}
+body.theme-light .row input.is-default::placeholder,
+body.theme-light .charts-alt-input.is-default::placeholder,
+body.theme-light .charts-freq-input.is-default::placeholder {
+  color: #9aa1ab;
+  opacity: 1;
+}
 .row-reset {
   flex-shrink: 0;
   font-size: 13px;
