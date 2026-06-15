@@ -294,6 +294,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   lives in `NavAid.tuningDefaults` / `NavAid.tuningGroups` (`core.js`),
   values are read through `tune(key)` in drawing / hit-testing code, and
   `createTuningPanel()` (`ui.js`) renders controls into `#tuning-panel`.
+  CSS-backed chrome values use `applyTuningCssVars()` (`ui.js`) to mirror
+  Tune values into `:root` variables; the "Chrome layout" group owns the
+  Zulu clock styling and the default inspector top / viewport gap.
   Includes a "Colors" group for the last hard-coded draw colors (ink,
   selected, kite text, leg halo, airfield fill/outline, nav-WP dot).
   Each slider group has a ↻ reset button that restores the HTML default
