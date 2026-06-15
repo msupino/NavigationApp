@@ -1470,6 +1470,7 @@ function wpLabel(i) {
 // #86: Flight Plan modal state and Escape-to-close handling.
 let flightPlanBack = null;
 let refreshFlightPlan = null;
+let drawProfileStripIfOpen = null;   // set while the flight-plan modal is open (#672)
 let flightPlanEscape = null;
 let flightPlanCleanup = null;             // tears down drag listeners attached
                                           // outside the modal subtree (window).
@@ -1495,7 +1496,9 @@ function closeFlightPlan() {
     flightPlanBack = null;
   }
   refreshFlightPlan = null;
+  drawProfileStripIfOpen = null;
   fpOpen = false;
+  if (window.showProfile) { window.showProfile = false; draw(); }   // hide TOC/TOD markers
   try { sessionStorage.removeItem('navaid.fpOpen'); } catch (e) {}
 }
 
@@ -1679,6 +1682,81 @@ function showFlightPlan() {
   }
   box.appendChild(fpAircraft);
 
+  // Vertical profile strip (#672) — altitude vs distance with TOC/TOD.
+  const profWrap = document.createElement('div');
+  profWrap.className = 'fp-profile';
+  const profLbl = document.createElement('div');
+  profLbl.className = 'fp-profile-label';
+  const profTitle = document.createElement('span');
+  profTitle.textContent = S.profileTitle || 'Vertical profile';
+  profLbl.appendChild(profTitle);
+  // V/S input — vertical speed (ft/min) driving the climb/descent ramp slope.
+  // Default 500; persisted so the pilot's preferred rate sticks (#672).
+  if (!(window.profileVS > 0)) {
+    let stored = 0;
+    try { stored = parseInt(localStorage.getItem('navaid.profileVS'), 10); } catch (e) { /* ignore */ }
+    window.profileVS = stored > 0 ? stored : 500;
+  }
+  const vsLbl = document.createElement('label');
+  vsLbl.className = 'fp-profile-vs';
+  vsLbl.textContent = (S.profileVs || 'V/S (ft/min)') + ' ';
+  const vsInput = document.createElement('input');
+  vsInput.type = 'number'; vsInput.min = '50'; vsInput.step = '50';
+  vsInput.value = String(window.profileVS);
+  vsInput.className = 'fp-profile-vs-input';
+  vsInput.oninput = () => {
+    const v = parseInt(vsInput.value, 10);
+    if (v > 0) {
+      window.profileVS = v;
+      try { localStorage.setItem('navaid.profileVS', String(v)); } catch (e) { /* ignore */ }
+      draw();        // map TOC/TOD markers move with the new ramp
+      refresh();     // recompute leg times + redraw the profile strip
+    }
+  };
+  vsLbl.appendChild(vsInput);
+  profLbl.appendChild(vsLbl);
+  profWrap.appendChild(profLbl);
+  // Direction arrow above the strip — the profile/X-axis mirrors in RTL
+  // (Hebrew), so spell out the flow: departure → destination, oriented to
+  // match the axis (arrow points the way the route is flown).
+  (function () {
+    const wps = state.waypoints || [];
+    if (wps.length < 2) return;
+    const depName = navName((wps[0].name || '').trim()) || (S.wpPrefix + 1);
+    const destName = navName((wps[wps.length - 1].name || '').trim()) || (S.wpPrefix + wps.length);
+    const rtl = document.documentElement && document.documentElement.dir === 'rtl';
+    const dirRow = document.createElement('div');
+    dirRow.className = 'fp-profile-dir';
+    dirRow.dir = 'ltr';                 // fixed frame; we place ends by axis side
+    const lEnd = document.createElement('span');
+    const arrow = document.createElement('span');
+    arrow.className = 'fp-dir-arrow';
+    const rEnd = document.createElement('span');
+    const label = S.fpDirection || 'Direction';
+    // d=0 (departure) is on the left in LTR, on the right in RTL.
+    lEnd.textContent = rtl ? destName : depName;
+    rEnd.textContent = rtl ? depName : destName;
+    arrow.textContent = rtl ? ('◄ ' + label) : (label + ' ►');
+    dirRow.appendChild(lEnd); dirRow.appendChild(arrow); dirRow.appendChild(rEnd);
+    profWrap.appendChild(dirRow);
+  })();
+  const profCanvas = document.createElement('canvas');
+  profCanvas.className = 'fp-profile-canvas';
+  profCanvas.width = 600; profCanvas.height = 104;
+  profWrap.appendChild(profCanvas);
+  box.appendChild(profWrap);
+  drawProfileStripIfOpen = function () {
+    if (!profCanvas.isConnected) return;
+    const cssW = profCanvas.clientWidth || 600;
+    profCanvas.width = cssW; profCanvas.height = 104;
+    const cx = profCanvas.getContext('2d');
+    cx.clearRect(0, 0, profCanvas.width, profCanvas.height);
+    if (typeof drawVerticalProfile === 'function') drawVerticalProfile(cx, 0, 0, profCanvas.width, profCanvas.height);
+  };
+  // Show TOC/TOD markers on the map while the flight plan is open.
+  window.showProfile = true;
+  draw();
+
   const scrollArea = document.createElement('div');
   scrollArea.className = 'fp-scroll';
   box.appendChild(scrollArea);
@@ -1820,6 +1898,8 @@ function showFlightPlan() {
         draw();
         refresh();
         if (retRefresh) retRefresh();
+        // Keep an open leg inspector in sync with the edit (#672 follow-up).
+        if (state.selected && typeof showInspector === 'function') showInspector();
       }
       else inp.value = leg.flightSpeed;   // invalid — restore the real value
     });
@@ -1839,6 +1919,7 @@ function showFlightPlan() {
       draw();
       refresh();
       if (retRefresh) retRefresh();
+      if (state.selected && typeof showInspector === 'function') showInspector();
     });
     altInputs[i] = altCell.querySelector('.plan-num');
     altInputs[i].placeholder = legAltitudePlaceholder(leg, 'inboundAltitude');
@@ -1864,9 +1945,12 @@ function showFlightPlan() {
     dmeCells[i] = dmeCell;
     dmeCell.classList.add('fp-vor-col');
     tr.appendChild(dmeCell);
-    // Delete-leg button — removes the "To" waypoint and this leg, then
-    // reconnects the route. The refreshFlightPlan callback detects the
-    // leg-count change and rebuilds the modal.
+    // Delete-leg button — drops this leg and one of its endpoint waypoints,
+    // then reconnects the route. The first leg removes the departure (its
+    // "From") so peeling legs off the front trims the start (A-B-C-D → B-C-D →
+    // C-D); every other leg removes its "To", so the last leg removes the
+    // destination. The refreshFlightPlan callback detects the leg-count change
+    // and rebuilds the modal.
     (function (idx) {
       const delTd = document.createElement('td');
       delTd.className = 'fp-del';
@@ -1876,7 +1960,7 @@ function showFlightPlan() {
       delBtn.title = S.fpDelTitle || 'Delete leg';
       delBtn.onclick = function () {
         if (state.waypoints.length < 2) return;
-        state.waypoints.splice(idx + 1, 1);
+        state.waypoints.splice(idx === 0 ? 0 : idx + 1, 1);
         state.legs.splice(idx, 1);
         syncLegs();
         state.selected = null;
@@ -1924,6 +2008,10 @@ function showFlightPlan() {
     const ac = aircraft;
     const taxiFuel = ac && ac.taxiGal && isAirport(state.waypoints[0]) ? ac.taxiGal : 0;
     if (taxiFuel) tf = taxiFuel;
+    // Per-leg time/fuel accounting for climb & descent (#672); falls back to
+    // flat cruise per leg when the profile engine is unavailable.
+    const prof = typeof routeProfile === 'function' ? routeProfile(ac) : null;
+    if (typeof drawProfileStripIfOpen === 'function') drawProfileStripIfOpen();
     for (let i = 0; i < state.legs.length; i++) {
       const A = state.waypoints[i], B = state.waypoints[i + 1];
       if (!A || !B) continue;
@@ -1935,12 +2023,13 @@ function showFlightPlan() {
         radialCells[i].textContent = rc[0];
         dmeCells[i].textContent = rc[1];
       }
-      const dur = state.legs[i].flightSpeed > 0 ? dist / state.legs[i].flightSpeed : 0;
+      const dur = prof && prof.legs[i] ? prof.legs[i].timeH
+        : (state.legs[i].flightSpeed > 0 ? dist / state.legs[i].flightSpeed : 0);
       td += dist;
       th += dur;
       timeCells[i].textContent = dur > 0 ? toHMS(dur) : '--';
       if (ac) {
-        const fuel = dur * ac.gph;
+        const fuel = prof && prof.legs[i] ? prof.legs[i].fuel : dur * ac.gph;
         tf += fuel;
         const mark = i === 0 && taxiFuel;
         fuelCells[i].textContent = (mark ? fuel + taxiFuel : fuel).toFixed(1) + (mark ? ' *' : '');
@@ -2033,6 +2122,7 @@ function showFlightPlan() {
           draw();
           refresh();
           retRefresh();
+          if (state.selected && typeof showInspector === 'function') showInspector();
         }
         else inp.value = leg.outboundSpeed;
       });
@@ -2052,6 +2142,7 @@ function showFlightPlan() {
         draw();
         refresh();
         retRefresh();
+        if (state.selected && typeof showInspector === 'function') showInspector();
       });
       rAltInputs[i] = altCell.querySelector('.plan-num');
       rAltInputs[i].placeholder = legAltitudePlaceholder(leg, 'outboundAltitude');
@@ -2368,6 +2459,13 @@ function showFlightPlan() {
   // navaid.fpOpen is already cleared by closeFlightPlan(); on a fresh open
   // there's nothing to remove. The redundant call lived here for a while —
   // dropping it to keep showFlightPlan() side-effect-symmetric.
+  // refresh() ran above before the modal was mounted, so the profile canvas
+  // was still disconnected and drawProfileStripIfOpen() bailed out — the
+  // strip stayed blank until the first edit. Now that `back` is in the DOM,
+  // draw it once (rAF so the canvas has its laid-out clientWidth). #672
+  if (typeof drawProfileStripIfOpen === 'function') {
+    requestAnimationFrame(drawProfileStripIfOpen);
+  }
 }
 
 function planCell(text) {

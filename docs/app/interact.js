@@ -1565,10 +1565,13 @@ function showInspector() {
     body.appendChild(numberRow(S.speedKt, leg.flightSpeed, v => {
       leg.flightSpeed = v > 0 ? v : leg.flightSpeed; draw(); refreshWindFx();
     }));
-    // Reset-to-known: the charted altitude from leg-altitude.json. Undefined
-    // (no entry / unknown direction) means the reset button is omitted — there
-    // is nothing authoritative to revert to.
-    const known = (typeof legAltitudeForLeg === 'function') ? legAltitudeForLeg(idx) : null;
+    // Reset-to-known: the charted altitude from leg-altitude.json. Read from
+    // the pristine ORIGIN map (legAltitudeOriginForLeg), not the live lookup —
+    // a hand-edited altitude must not redefine the inspector's "charted"
+    // default / revert target. Undefined (no entry / unknown direction) means
+    // the reset button is omitted — nothing authoritative to revert to.
+    const known = (typeof legAltitudeOriginForLeg === 'function') ? legAltitudeOriginForLeg(idx)
+      : ((typeof legAltitudeForLeg === 'function') ? legAltitudeForLeg(idx) : null);
     const knownIn  = known && Number.isFinite(known.inboundAltitude)  ? known.inboundAltitude  : undefined;
     const knownOut = known && Number.isFinite(known.outboundAltitude) ? known.outboundAltitude : undefined;
     // Minimum safe altitude (#673) row, updated in place as the altitudes
