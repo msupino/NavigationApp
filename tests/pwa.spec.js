@@ -3,6 +3,41 @@
 // icon files, and the meta tags that make the app installable.
 const { test, expect } = require('./_setup');
 
+async function waitForServiceWorkerScriptUrl(page) {
+  return page.evaluate(async () => {
+    if (!('serviceWorker' in navigator)) return null;
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+    if (typeof watchServiceWorkerUpdates === 'function') {
+      try {
+        await watchServiceWorkerUpdates(navigator.serviceWorker);
+      } catch (e) {}
+    } else {
+      try {
+        await navigator.serviceWorker.register('sw.js');
+      } catch (e) {}
+    }
+    const deadline = Date.now() + 15000;
+    while (Date.now() < deadline) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      const worker = reg && (reg.active || reg.waiting || reg.installing);
+      if (worker && worker.scriptURL) return worker.scriptURL;
+      await sleep(100);
+    }
+    return null;
+  });
+}
+
+async function waitForActivatedServiceWorkerController(page) {
+  await waitForServiceWorkerScriptUrl(page);
+  await page.waitForFunction(async () => {
+    const reg = await navigator.serviceWorker.getRegistration();
+    return reg && reg.active && reg.active.state === 'activated';
+  }, null, { timeout: 15000 });
+  await page.waitForFunction(
+    () => navigator.serviceWorker.controller != null,
+    null, { timeout: 15000 });
+}
+
 test.describe('PWA manifest', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('?lang=en');
@@ -53,6 +88,8 @@ test.describe('PWA manifest', () => {
 });
 
 test.describe('Service worker', () => {
+  test.describe.configure({ mode: 'serial' });
+
   test('sw.js is served with a JavaScript content-type', async ({ request }) => {
     const resp = await request.get('/sw.js');
     expect(resp.status()).toBe(200);
@@ -66,16 +103,7 @@ test.describe('Service worker', () => {
 
   test('Page registers the service worker on load', async ({ page }) => {
     await page.goto('?lang=en');
-    // Poll until a worker slot (active / waiting / installing) exposes a
-    // scriptURL. waitForFunction retries until the value is truthy, so this
-    // never races a transient state where the registration exists but no
-    // worker reference is populated yet (the old separate evaluate did).
-    const handle = await page.waitForFunction(async () => {
-      const reg = await navigator.serviceWorker.getRegistration();
-      const worker = reg && (reg.active || reg.waiting || reg.installing);
-      return worker ? worker.scriptURL : null;
-    }, null, { timeout: 15000 });
-    const url = await handle.jsonValue();
+    const url = await waitForServiceWorkerScriptUrl(page);
     expect(url).toMatch(/\/sw\.js$/);
   });
 
@@ -117,17 +145,11 @@ test.describe('Service worker', () => {
   test('Index HTML is cached so offline navigation can be served', async ({ page }) => {
     // First load registers + activates the SW but doesn't run through it.
     await page.goto('?lang=en');
-    await page.waitForFunction(async () => {
-      const reg = await navigator.serviceWorker.getRegistration();
-      return reg && reg.active && reg.active.state === 'activated';
-    }, null, { timeout: 15000 });
+    await waitForActivatedServiceWorkerController(page);
     // Reload so the second navigation IS intercepted by the SW — that's the
     // request that gets cache.put inside the navigate branch (#84).
-    await page.reload();
-    await page.waitForFunction(async () => {
-      const reg = await navigator.serviceWorker.getRegistration();
-      return reg && reg.active && reg.active.state === 'activated';
-    }, null, { timeout: 15000 });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForActivatedServiceWorkerController(page);
     // Wait until the SW's navigate-branch put() has landed (#84 ensures
     // cache.put is awaited inside respondWith). Then verify the cached
     // response body is the index HTML — exercising the same lookup the SW

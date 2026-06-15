@@ -29,6 +29,26 @@ test.describe('Auto-snap (applyNavSnap)', () => {
     expect(r.lng).toBeCloseTo(LLHZ.lng, 5);
   });
 
+  test('applyNavSnap and nearestReference use the same airfield-first resolver', async ({ page }) => {
+    await boot(page);
+    const out = await page.evaluate(hz => {
+      window.showAirfields = true; window.showNavWP = true;
+      map.setView([hz.lat, hz.lng], 12);
+      const dropped = applyNavSnap({ lat: hz.lat, lng: hz.lng }, '');
+      const ref = nearestReference({ lat: hz.lat, lng: hz.lng }, {
+        pxThreshold: 18,
+        includeAirfields: true,
+        includeNavWaypoints: true,
+      });
+      return {
+        snapCode: dropped.code,
+        refKind: ref && ref.kind,
+        refCode: ref && ref.ref && ref.ref.name,
+      };
+    }, LLHZ);
+    expect(out).toEqual({ snapCode: 'LLHZ', refKind: 'airfield', refCode: 'LLHZ' });
+  });
+
   test('airfield wins over nav-waypoint when both overlays are on', async ({ page }) => {
     await boot(page);
     // Drop exactly on the airfield ARP with both overlays on: the result must
