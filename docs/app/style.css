@@ -370,6 +370,24 @@ html, body {
   pointer-events: none;
   display: none;
 }
+.zulu-clock {
+  display: block;
+  min-width: 82px;
+  padding: 5px 8px;
+  margin: 12px 12px 0 0;
+  color: #fff;
+  background: rgba(20, 18, 18, 0.88);
+  border: 1px solid #3a3636;
+  border-radius: 5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  font: 800 13px/1 monospace;
+  letter-spacing: 0;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
 .coord-readout.show { display: block; }
 .zoom-readout {
   display: block;
