@@ -1074,6 +1074,39 @@ function satelliteResetControl(lmap, point, zoom) {
   return new Ctl();
 }
 
+function textDirection(text) {
+  for (const ch of String(text || '')) {
+    if (/[\u0590-\u05ff]/.test(ch)) return 'rtl';
+    if (/[A-Za-z0-9]/.test(ch)) return 'ltr';
+  }
+  return 'auto';
+}
+
+function appendBidiSpan(parent, text, dir) {
+  const span = document.createElement('span');
+  span.dir = dir || textDirection(text);
+  span.style.unicodeBidi = 'isolate';
+  span.textContent = text;
+  parent.appendChild(span);
+}
+
+function setSatelliteModalTitle(title, label, point) {
+  if (!title) return;
+  title.textContent = '';
+  const labelText = String(label || '').trim();
+  if (labelText) {
+    const parts = labelText.split(' / ');
+    parts.forEach((part, i) => {
+      if (i) title.appendChild(document.createTextNode(' / '));
+      appendBidiSpan(title, part, textDirection(part));
+    });
+    title.appendChild(document.createTextNode(' - '));
+  }
+  appendBidiSpan(title,
+    fmtLatLng(point.lat, 'N', 'S') + ' ' + fmtLatLng(point.lng, 'E', 'W'),
+    'ltr');
+}
+
 function showSatellitePreviewModal(point, label) {
   if (typeof createDraggableModal !== 'function' || typeof L === 'undefined') return;
   // Destroy the Leaflet map on close — otherwise each open/close leaks the
@@ -1087,10 +1120,7 @@ function showSatellitePreviewModal(point, label) {
   let mainRotateHandler = null;
   // The title bar shows the location name + coordinates (replacing the generic
   // "Satellite view" header) so the point identity sits at the top, not below.
-  const name = label ? label + ' - ' : '';
-  const captionText = name +
-    fmtLatLng(point.lat, 'N', 'S') + ' ' + fmtLatLng(point.lng, 'E', 'W');
-  const modal = createDraggableModal(captionText,
+  const modal = createDraggableModal('',
     'modal satellite-preview-modal',
     () => {
       if (mainRotateHandler && typeof map !== 'undefined' && map.off) {
@@ -1100,7 +1130,9 @@ function showSatellitePreviewModal(point, label) {
       }
       if (lmap) { lmap.remove(); lmap = null; }
       if (typeof window !== 'undefined') window.__satModalMap = null;
-    });
+    },
+    { titleDir: 'ltr', titleBidi: 'isolate' });
+  setSatelliteModalTitle(modal.title, label, point);
   const body = document.createElement('div');
   body.className = 'satellite-preview-body';
   const mapEl = document.createElement('div');

@@ -3696,6 +3696,8 @@ function createDraggableModal(titleText, className, onClose, options = {}) {
 
   const title = document.createElement('div');
   title.className = 'modal-title';
+  if (options.titleDir) title.dir = options.titleDir;
+  if (options.titleBidi) title.style.unicodeBidi = options.titleBidi;
   title.textContent = titleText || '';
   box.appendChild(title);
 
