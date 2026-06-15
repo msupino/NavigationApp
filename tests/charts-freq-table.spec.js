@@ -288,6 +288,14 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(page.locator('.charts-alt-title h3')).toHaveText('נתיבי CVFR');
     await expect(page.locator('.charts-alt-search')).toHaveAttribute('placeholder', 'חפש נתיבים');
     await expect(page.locator('.charts-alt-table thead th').first()).toHaveText('נתיב');
+    await expect(page.locator('.charts-alt-table thead th').nth(1))
+      .toHaveText('מהראשון לשני');
+    await expect(page.locator('.charts-alt-table thead th').nth(1))
+      .toHaveAttribute('title', 'גובה בכיוון הנתיב: מהנקודה הראשונה בטור נתיב אל הנקודה השנייה');
+    await expect(page.locator('.charts-alt-table thead th').nth(2))
+      .toHaveText('מהשני לראשון');
+    await expect(page.locator('.charts-alt-table thead th').nth(2))
+      .toHaveAttribute('title', 'גובה בכיוון ההפוך: מהנקודה השנייה בטור נתיב אל הנקודה הראשונה');
   });
 
   test('Airport charts entry point stays chart-only', async ({ page }) => {

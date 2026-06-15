@@ -4232,15 +4232,25 @@ function renderAltitudePairsTable(altSection, opts) {
   table.className = 'flight-table charts-alt-table';
   const thead = document.createElement('thead');
   const headRow = document.createElement('tr');
-  for (const label of [
-    S.altPairsPair || 'Pair',
-    S.altPairsInbound || 'From → to',
-    S.altPairsOutbound || 'To → from',
-    S.altPairsStatus || 'Status',
-    S.altPairsDistance || 'NM',
+  for (const col of [
+    { label: S.altPairsPair || 'Pair' },
+    {
+      label: S.altPairsInbound || 'From → to',
+      title: S.altPairsInboundTitle || 'Altitude in the pair direction',
+    },
+    {
+      label: S.altPairsOutbound || 'To → from',
+      title: S.altPairsOutboundTitle || 'Altitude in the reverse direction',
+    },
+    { label: S.altPairsStatus || 'Status' },
+    { label: S.altPairsDistance || 'NM' },
   ]) {
     const th = document.createElement('th');
-    th.textContent = label;
+    th.textContent = col.label;
+    if (col.title) {
+      th.title = col.title;
+      th.setAttribute('aria-label', col.title);
+    }
     headRow.appendChild(th);
   }
   thead.appendChild(headRow);

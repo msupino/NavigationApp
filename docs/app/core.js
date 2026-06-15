@@ -573,6 +573,8 @@ window.S = Object.assign({
   altPairsPair: 'Pair',
   altPairsInbound: 'From → to',
   altPairsOutbound: 'To → from',
+  altPairsInboundTitle: 'Altitude in the pair direction: first point → second point',
+  altPairsOutboundTitle: 'Altitude in the reverse direction: second point → first point',
   altPairsStatus: 'Status',
   altPairsDistance: 'NM',
   altPairsBlocked: 'Blocked',
