@@ -812,6 +812,15 @@ function inspLocaleName(o) {
     ? (o.he || o.name || o.ident || '')
     : (o.en || o.name || o.ident || '');
 }
+function inspectorCodeTitle(code, locale) {
+  const c = String(code || '').trim();
+  const loc = String(locale || '').trim();
+  return c + (loc && loc !== c ? ' / ' + loc : '');
+}
+function referenceInspectorTitle(o) {
+  if (!o) return '';
+  return inspectorCodeTitle(o.name || o.ident || '', inspLocaleName(o));
+}
 
 function inspectorVorIdent() {
   return inspectorVorRef === undefined ? (vorRef || '') : (inspectorVorRef || '');
@@ -1422,8 +1431,7 @@ function appendAirfieldRunways(body, af) {
 }
 
 function airfieldInspectorTitle(af) {
-  const locale = inspLocaleName(af);
-  return af.name + (locale && locale !== af.name ? ' / ' + locale : '');
+  return referenceInspectorTitle(af);
 }
 
 function appendAirfieldDetailRows(body, af, label) {
@@ -1770,14 +1778,14 @@ function showInspector() {
       clearStoredInspectorSelection();
       return;
     }
-    const nwLocale = inspLocaleName(nw);
     // Title in the current UI language: "CODE / localized name" (matches the
-    // airfield inspector) so the point reads correctly in EN and HE.
-    title.value = nw.name + (nwLocale && nwLocale !== nw.name ? ' / ' + nwLocale : '');
+    // airfield and route-waypoint inspectors) so expanded satellite views keep
+    // the same identity whether the point is on-route or standalone.
+    title.value = referenceInspectorTitle(nw);
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     body.appendChild(textRow(S.latitude, fmtLatLng(nw.lat, 'N', 'S')));
     body.appendChild(textRow(S.longitude, fmtLatLng(nw.lng, 'E', 'W')));
-    appendSatelliteSnippet(body, nw, nw.name);
+    appendSatelliteSnippet(body, nw, title.value);
     appendVorRadialRow(body, nw.lat, nw.lng);
   } else {
     const wp = state.waypoints[state.selected.index];
@@ -1798,7 +1806,7 @@ function showInspector() {
     }
     title.value = afInsp ? airfieldInspectorTitle(afInsp)
       : (canonical
-          ? canonical + (refLocale && refLocale !== canonical ? ' / ' + refLocale : '')
+          ? inspectorCodeTitle(canonical, refLocale)
           : navName(storedName) || (S.wpPrefix + (state.selected.index + 1)));
     title.placeholder = '';
     title.readOnly = true;
