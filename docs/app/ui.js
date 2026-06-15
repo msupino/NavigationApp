@@ -126,6 +126,32 @@ function rotEnd(cycle) {
 }
 rotDial.addEventListener('pointerup', () => rotEnd(true));
 rotDial.addEventListener('pointercancel', () => rotEnd(false));   // aborted — don't rotate
+// --- Zulu clock ------------------------------------------------------
+// A compact UTC clock for flight planning. It is intentionally not localized:
+// Zulu time is always left-to-right HH:MM:SSZ.
+function formatZuluClockTime(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  const pad = n => String(n).padStart(2, '0');
+  return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds()) + 'Z';
+}
+window.formatZuluClockTime = formatZuluClockTime;
+const zuluClockCtrl = L.control({ position: 'topright' });
+zuluClockCtrl.onAdd = function () {
+  const box = L.DomUtil.create('div', 'leaflet-control zulu-clock');
+  box.id = 'zulu-clock';
+  box.dir = 'ltr';
+  box.title = 'Zulu time (UTC)';
+  box.setAttribute('aria-label', 'Zulu time (UTC)');
+  box.setAttribute('aria-live', 'off');
+  return box;
+};
+zuluClockCtrl.addTo(map);
+const zuluClockBox = document.getElementById('zulu-clock');
+function refreshZuluClock() {
+  if (zuluClockBox) zuluClockBox.textContent = formatZuluClockTime(new Date());
+}
+refreshZuluClock();
+setInterval(refreshZuluClock, 1000);
 // --- map legend (bottom-left) ---------------------------------------
 // The legend markup lives in index.html so applyI18n() fills its text at
 // boot; here we lift that element into a Leaflet control so it floats over
