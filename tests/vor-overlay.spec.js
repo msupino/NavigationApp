@@ -657,7 +657,8 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       state.selected = { type: 'wp', index: 0 };
       showInspector();
     });
-    await expect(page.locator('#insp-title')).toHaveValue('HADRA');
+    // Title carries the localized name too: "HADRA / חדרה".
+    await expect(page.locator('#insp-title')).toHaveValue(/HADRA.*חדרה/);
     const routeNameRow = page.locator('#insp-body .row').filter({ hasText: 'שם נקודה' }).first();
     await expect(routeNameRow.locator('input')).toHaveValue('חדרה');
     await expect(page.locator('#insp-body')).not.toContainText('Label');
