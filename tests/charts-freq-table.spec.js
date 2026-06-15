@@ -352,15 +352,18 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(page.locator('.charts-alt-search')).toHaveAttribute('placeholder', 'חפש נתיבים');
     await expect(page.locator('.charts-alt-table thead th').first()).toHaveText('נתיב');
     await expect(page.locator('.charts-alt-table thead th').nth(1))
-      .toHaveText('מהראשון לשני');
-    await expect(page.locator('.charts-alt-table thead th').nth(1))
-      .toHaveAttribute('title', 'גובה בכיוון הנתיב: מהנקודה הראשונה בטור נתיב אל הנקודה השנייה');
+      .toHaveText('כיוון');
     await expect(page.locator('.charts-alt-table thead th').nth(2))
-      .toHaveText('מהשני לראשון');
+      .toHaveText('גובה');
     await expect(page.locator('.charts-alt-table thead th').nth(2))
-      .toHaveAttribute('title', 'גובה בכיוון ההפוך: מהנקודה השנייה בטור נתיב אל הנקודה הראשונה');
+      .toHaveAttribute('title', 'גובה עבור הכיוון הראשון שמוצג בשורה');
     await expect(page.locator('.charts-alt-table thead th').nth(3)).toHaveText('כיוון');
-    await expect(page.locator('.charts-alt-table thead th').nth(4)).toHaveText('מ״י');
+    await expect(page.locator('.charts-alt-table thead th').nth(4)).toHaveText('גובה');
+    await expect(page.locator('.charts-alt-table thead th').nth(4))
+      .toHaveAttribute('title', 'גובה עבור הכיוון ההפוך שמוצג בשורה');
+    await expect(page.locator('.charts-alt-table thead th').nth(5)).toHaveText('סוג');
+    await expect(page.locator('.charts-alt-table thead th').nth(6)).toHaveText('מ״י');
+    await expect(page.locator('.charts-alt-direction').first()).toHaveText(/^[A-Z0-9]+ → [A-Z0-9]+$/);
   });
 
   test('Airport charts entry point stays chart-only', async ({ page }) => {
