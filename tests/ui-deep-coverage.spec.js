@@ -8,7 +8,7 @@
 const { test, expect } = require('./_setup');
 const { LLHZ } = require('./_airfieldArp');
 
-async function boot(page) {
+async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
     try {
       if (localStorage.getItem('__test_deep_init') !== '1') {
@@ -20,7 +20,7 @@ async function boot(page) {
       }
     } catch (e) {}
   });
-  await page.goto('?lang=en');
+  await page.goto('?lang=' + lang);
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof showInspector === 'function');
 }
 
@@ -161,6 +161,26 @@ test.describe('Inspector panel', () => {
     await expect(page.locator('.satellite-preview-map')).toHaveCount(0);
     await snippet.click();
     await expect(page.locator('.satellite-preview-modal .leaflet-tile').first()).toBeVisible();
+  });
+
+  test('Hebrew satellite preview title keeps name before coordinates', async ({ page }) => {
+    await boot(page, 'he');
+    const expected = await page.evaluate(() => {
+      const point = { lat: 32.21861, lng: 34.88250 };
+      const title = 'BAZRA / בצרה - ' +
+        fmtLatLng(point.lat, 'N', 'S') + ' ' +
+        fmtLatLng(point.lng, 'E', 'W');
+      showSatellitePreviewModal(point, 'BAZRA / בצרה');
+      return title;
+    });
+    const title = page.locator('.satellite-preview-modal .modal-title');
+    await expect(title).toHaveText(expected);
+    const bidi = await title.evaluate(el => ({
+      dir: getComputedStyle(el).direction,
+      unicodeBidi: getComputedStyle(el).unicodeBidi,
+    }));
+    expect(bidi.dir).toBe('ltr');
+    expect(bidi.unicodeBidi).toContain('isolate');
   });
 
   test('restores an open note inspector after refresh', async ({ page }) => {
