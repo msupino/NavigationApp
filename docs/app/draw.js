@@ -2566,7 +2566,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const colX = new Array(numCols + 1).fill(0);
   for (let mc = 0; mc < numCols; mc++) colX[mc + 1] = colX[mc] + colW[mc];
   const totalW = colX[numCols];
-  const HEADER_BG = '#e8e6e1', TOTAL_BG = '#f0eee9', STRIPE_BG = '#f7f5f0', GRID = '#7a7470', TEXT = '#1a1a1a';
+  const HEADER_BG = '#e8e6e1', TOTAL_BG = '#f0eee9', STRIPE_BG = '#dcd8cf', GRID = '#7a7470', TEXT = '#1a1a1a';
   const tableH = Math.round(rowH * numRows);
   const al = align || 'tl';
   if (al === 'tr' || al === 'br') x = x + Math.max(0, w - totalW);
