@@ -665,7 +665,7 @@ body.theme-light #aircraft-custom input {
 #inspector {
   position: absolute;
   z-index: 1100;
-  top: 56px;
+  top: 84px;
   right: 12px;
   width: 280px;
   background: rgba(20, 18, 18, 0.95);
@@ -677,7 +677,7 @@ body.theme-light #aircraft-custom input {
   flex-direction: column;
   /* Cap to the viewport so a tall inspector (big airports with many charts)
      scrolls instead of overflowing off-screen. */
-  max-height: calc(100dvh - 68px);
+  max-height: calc(100dvh - 96px);
 }
 /* The header stays put; only the body scrolls. */
 #insp-body { overflow-y: auto; }

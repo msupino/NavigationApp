@@ -43,4 +43,26 @@ test.describe('Zulu clock', () => {
     expect(result.clockDir).toBe('ltr');
     expect(result.fixed).toBe('04:03:02Z');
   });
+
+  test('fresh inspector default sits below the clock', async ({ page }) => {
+    await page.addInitScript(() => {
+      try { localStorage.removeItem('navaid.inspPos'); } catch (e) {}
+    });
+    await boot(page, 'he');
+    await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.18, lng: 34.81, name: 'BAZRA' }];
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+    });
+
+    const boxes = await page.evaluate(() => {
+      const clock = document.getElementById('zulu-clock').getBoundingClientRect();
+      const inspector = document.getElementById('inspector').getBoundingClientRect();
+      return {
+        clockBottom: clock.bottom,
+        inspectorTop: inspector.top,
+      };
+    });
+    expect(boxes.inspectorTop).toBeGreaterThanOrEqual(boxes.clockBottom + 12);
+  });
 });
