@@ -416,6 +416,7 @@ window.S = Object.assign({
   msaLowTitle: 'Planned altitude is below the minimum safe altitude for this leg',
   profileTitle: 'Vertical profile',
   profileVs: 'V/S (ft/min)',
+  fpDirection: 'Direction',
   toc: 'TOC',
   tod: 'TOD',
   tocTitle: 'Top of climb',

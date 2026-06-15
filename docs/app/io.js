@@ -1716,6 +1716,30 @@ function showFlightPlan() {
   vsLbl.appendChild(vsInput);
   profLbl.appendChild(vsLbl);
   profWrap.appendChild(profLbl);
+  // Direction arrow above the strip — the profile/X-axis mirrors in RTL
+  // (Hebrew), so spell out the flow: departure → destination, oriented to
+  // match the axis (arrow points the way the route is flown).
+  (function () {
+    const wps = state.waypoints || [];
+    if (wps.length < 2) return;
+    const depName = navName((wps[0].name || '').trim()) || (S.wpPrefix + 1);
+    const destName = navName((wps[wps.length - 1].name || '').trim()) || (S.wpPrefix + wps.length);
+    const rtl = document.documentElement && document.documentElement.dir === 'rtl';
+    const dirRow = document.createElement('div');
+    dirRow.className = 'fp-profile-dir';
+    dirRow.dir = 'ltr';                 // fixed frame; we place ends by axis side
+    const lEnd = document.createElement('span');
+    const arrow = document.createElement('span');
+    arrow.className = 'fp-dir-arrow';
+    const rEnd = document.createElement('span');
+    const label = S.fpDirection || 'Direction';
+    // d=0 (departure) is on the left in LTR, on the right in RTL.
+    lEnd.textContent = rtl ? destName : depName;
+    rEnd.textContent = rtl ? depName : destName;
+    arrow.textContent = rtl ? ('◄ ' + label) : (label + ' ►');
+    dirRow.appendChild(lEnd); dirRow.appendChild(arrow); dirRow.appendChild(rEnd);
+    profWrap.appendChild(dirRow);
+  })();
   const profCanvas = document.createElement('canvas');
   profCanvas.className = 'fp-profile-canvas';
   profCanvas.width = 600; profCanvas.height = 104;
