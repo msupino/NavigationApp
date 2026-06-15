@@ -4097,13 +4097,6 @@ function altitudePairCellMatchesOrigin(segment, key) {
     Math.round(current) === Math.round(original);
 }
 
-function altitudePairDirectionText(segment, key) {
-  if (!segment) return '';
-  return key === 'inboundAltitude'
-    ? segment.from + ' → ' + segment.to
-    : segment.to + ' → ' + segment.from;
-}
-
 function updateAltitudePairRowState(tr, segment, statusCell, inputs, resetButton,
   directionResetButtons) {
   normalizeAltitudePairSegment(segment);
@@ -4152,7 +4145,10 @@ function altitudePairNumberInput(segment, key) {
   input.dataset.altKey = key;
   input.value = Number.isFinite(segment[key]) ? String(segment[key]) : '';
   input.placeholder = altitudePairCellPlaceholder(segment, key);
-  input.setAttribute('aria-label', altitudePairDirectionText(segment, key));
+  input.setAttribute('aria-label',
+    (key === 'inboundAltitude'
+      ? (S.altPairsInbound || 'From to')
+      : (S.altPairsOutbound || 'To from')) + ' ' + segment.from + ' ' + segment.to);
   return input;
 }
 
@@ -4321,17 +4317,11 @@ function renderAltitudePairsTable(altSection, opts) {
   for (const col of [
     { label: S.altPairsPair || 'Pair' },
     {
-      label: S.altPairsDirection || 'Direction',
-    },
-    {
-      label: S.altPairsAltitude || 'Altitude',
+      label: S.altPairsInbound || 'From → to',
       title: S.altPairsInboundTitle || 'Altitude in the pair direction',
     },
     {
-      label: S.altPairsDirection || 'Direction',
-    },
-    {
-      label: S.altPairsAltitude || 'Altitude',
+      label: S.altPairsOutbound || 'To → from',
       title: S.altPairsOutboundTitle || 'Altitude in the reverse direction',
     },
     { label: S.altPairsStatus || 'Status' },
@@ -4376,11 +4366,6 @@ function renderAltitudePairsTable(altSection, opts) {
       });
     });
     pair.appendChild(pairButton);
-    const inboundDirection = document.createElement('div');
-    inboundDirection.className = 'charts-alt-direction';
-    inboundDirection.textContent = altitudePairDirectionText(segment, 'inboundAltitude');
-    const inboundDirectionCell = document.createElement('td');
-    inboundDirectionCell.appendChild(inboundDirection);
     const inbound = document.createElement('td');
     const inboundInput = altitudePairNumberInput(segment, 'inboundAltitude');
     const inboundReset = altitudePairResetButton(
@@ -4390,11 +4375,6 @@ function renderAltitudePairsTable(altSection, opts) {
     inboundControl.className = 'charts-alt-cell-control';
     inboundControl.append(inboundInput, inboundReset);
     inbound.appendChild(inboundControl);
-    const outboundDirection = document.createElement('div');
-    outboundDirection.className = 'charts-alt-direction';
-    outboundDirection.textContent = altitudePairDirectionText(segment, 'outboundAltitude');
-    const outboundDirectionCell = document.createElement('td');
-    outboundDirectionCell.appendChild(outboundDirection);
     const outbound = document.createElement('td');
     const outboundInput = altitudePairNumberInput(segment, 'outboundAltitude');
     const outboundReset = altitudePairResetButton(
@@ -4414,8 +4394,7 @@ function renderAltitudePairsTable(altSection, opts) {
     const reset = altitudePairResetButton('commchange-freq-reset charts-alt-reset',
       S.altPairsRevertOrigin || 'Revert to origin');
     actions.appendChild(reset);
-    tr.append(pair, inboundDirectionCell, inbound, outboundDirectionCell, outbound,
-      statusCell, distCell, actions);
+    tr.append(pair, inbound, outbound, statusCell, distCell, actions);
     const inputs = [inboundInput, outboundInput];
     const directionResetButtons = {
       inboundAltitude: inboundReset,
