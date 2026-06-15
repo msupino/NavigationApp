@@ -1815,3 +1815,24 @@ function legAllowsReturn(i) {
   const leg = state.legs[i];
   return !(leg && (leg._legAltitudeOutboundBlocked || leg._legAltitudeOneWay));
 }
+// The charted altitude for a leg as loaded from leg-altitude.json — read from
+// the pristine ORIGIN map, never the live (route-editable) lookup. The leg
+// inspector uses this for its default / reset-to-charted value so a hand-edited
+// altitude elsewhere doesn't redefine what "charted" means in the inspector.
+function legAltitudeOriginForLeg(i) {
+  if (!legAltitudeOriginMap || !state.waypoints[i] || !state.waypoints[i + 1]) return null;
+  const from = legAltitudePointAtWaypoint(state.waypoints[i]);
+  const to = legAltitudePointAtWaypoint(state.waypoints[i + 1]);
+  if (!from || !to || from === to) return null;
+  const resolve = (segment, reverse) => {
+    const inboundAltitude = reverse ? segment.outboundAltitude : segment.inboundAltitude;
+    const outboundAltitude = reverse ? segment.inboundAltitude : segment.outboundAltitude;
+    if (!Number.isFinite(inboundAltitude) && !Number.isFinite(outboundAltitude)) return null;
+    return { inboundAltitude, outboundAltitude };
+  };
+  const direct = legAltitudeOriginMap[legAltitudeKey(from, to)];
+  if (direct) { const m = resolve(direct, false); if (m) return m; }
+  const reverse = legAltitudeOriginMap[legAltitudeKey(to, from)];
+  if (reverse) { const m = resolve(reverse, true); if (m) return m; }
+  return null;
+}
