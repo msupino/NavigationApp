@@ -537,6 +537,8 @@ window.S = Object.assign({
   tbShowMidLegTitle: 'Show distance badge at the middle of each leg',
   tbHighlightDiff: 'Highlight alt/speed diff',
   tbHighlightDiffTitle: 'Halo legs whose altitude or speed differs from the adjacent leg',
+  tbLimitLegKites: 'Keep kites inside leg',
+  tbLimitLegKitesTitle: 'Limit dragged leg markers to the space between the leg waypoints',
   tbShowDrift: 'Show drift lines',
   tbShowDriftTitle: 'Show 10-degree drift reference lines at each leg end',
   tbShowAirfields: 'Show/pin airfields',
@@ -737,6 +739,7 @@ var showReturn = false;     // outbound (return) markers — off by default
 var showMidLeg = false;
 var showCumTime = true;     // cumulative-time kites — on by default
 var highlightDiff = false;  // purple halo on legs that change altitude
+var limitLegKites = true;   // keep dragged leg markers between their two waypoints
 var showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
 var showReporting = false;  // mandatory reporting badges (opt-in, default off) — issue #404
 var navWP = null;           // null = not loaded yet (or last fetch failed —

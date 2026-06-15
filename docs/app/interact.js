@@ -409,7 +409,37 @@ function legFrame(i) {
   const len = Math.hypot(dx, dy) || 1;
   dx /= len; dy /= len;
   return { mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2,
-           dx, dy, nx: -dy, ny: dx };
+           dx, dy, nx: -dy, ny: dx, len };
+}
+function clampLegLabelAlong(legIdx, label) {
+  if (!limitLegKites) return;
+  if (!label || !state.waypoints[legIdx] || !state.waypoints[legIdx + 1]) return;
+  if (!Number.isFinite(label.a)) label.a = 0;
+  const sc = legZoomScale() || 1;
+  const halfKite = (typeof legKiteAlongHalfPx === 'function') ? legKiteAlongHalfPx(sc) : 0;
+  const limit = Math.max(0, (legFrame(legIdx).len / 2 - halfKite) / sc);
+  label.a = Math.max(-limit, Math.min(limit, label.a));
+}
+function legLabelDragGrab(legIdx, which, px, py) {
+  const c = legLabelCenter(legIdx, which);
+  if (!c) return { grabA: 0, grabP: 0 };
+  const f = legFrame(legIdx);
+  const sc = legZoomScale() || 1;
+  return {
+    grabA: ((px - c.x) * f.dx + (py - c.y) * f.dy) / sc,
+    grabP: ((px - c.x) * f.nx + (py - c.y) * f.ny) / sc,
+  };
+}
+function setLegLabelFromPoint(dragState, px, py) {
+  const leg = state.legs[dragState.i];
+  const o = leg && (dragState.which === 'in' ? leg.inLabel : leg.outLabel);
+  if (!o) return false;                // malformed leg / label — issue #82
+  const f = legFrame(dragState.i);
+  const sc = legZoomScale() || 1;
+  o.a = ((px - f.mx) * f.dx + (py - f.my) * f.dy) / sc - (dragState.grabA || 0);
+  clampLegLabelAlong(dragState.i, o);
+  o.p = ((px - f.mx) * f.nx + (py - f.my) * f.ny) / sc - (dragState.grabP || 0);
+  return true;
 }
 function legLabelCenter(i, which) {
   if (!state.waypoints[i] || !state.waypoints[i + 1]) return null;
@@ -2355,9 +2385,8 @@ map.on('mousedown', e => {
   if (lab) {
     downHit = true;
     _materialiseDefaultLegLabel(lab.i, lab.which);
-    const f = legFrame(lab.i);
-    drag = { kind: 'label', i: lab.i, which: lab.which, lx: p.x, ly: p.y,
-             dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
+    drag = { kind: 'label', i: lab.i, which: lab.which,
+             ...legLabelDragGrab(lab.i, lab.which, p.x, p.y) };
     state.selected = { type: 'leg', index: lab.i };
     map.dragging.disable();
     showInspector(); draw();
@@ -2410,15 +2439,7 @@ map.on('mousemove', e => {
     state.notes[drag.i].lng = r5(e.latlng.lng + (drag.offLng || 0));
     draw();
   } else if (drag.kind === 'label') {
-    const ddx = p.x - drag.lx, ddy = p.y - drag.ly;
-    drag.lx = p.x; drag.ly = p.y;
-    const leg = state.legs[drag.i];
-    const o = leg && (drag.which === 'in' ? leg.inLabel : leg.outLabel);
-    if (!o) return;                    // malformed leg / label — issue #82
-    const isc = 1 / legZoomScale();
-    o.a += (ddx * drag.dx + ddy * drag.dy) * isc;
-    o.p += (ddx * drag.nx + ddy * drag.ny) * isc;
-    draw();
+    if (setLegLabelFromPoint(drag, p.x, p.y)) draw();
   } else if (drag.kind === 'cumlabel' || drag.kind === 'cumlabelret') {
     setCumLabelFromPoint(drag.i, drag.kind === 'cumlabelret', p.x, p.y);
     draw();
@@ -2725,9 +2746,8 @@ mapEl.addEventListener('touchstart', e => {
     state.selected = { type: 'wp', index: wp };
   } else if (lab) {
     _materialiseDefaultLegLabel(lab.i, lab.which);
-    const f = legFrame(lab.i);
     touchDrag = { kind: 'label', i: lab.i, which: lab.which,
-                  lx: p.x, ly: p.y, dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
+                  ...legLabelDragGrab(lab.i, lab.which, p.x, p.y) };
     state.selected = { type: 'leg', index: lab.i };
   } else if (cum) {
     _materialiseDefaultCumLabel(cum.i);
@@ -2783,15 +2803,7 @@ mapEl.addEventListener('touchmove', e => {
     state.notes[touchDrag.i].lng = r5(ll.lng + (touchDrag.offLng || 0));
     draw();
   } else if (touchDrag.kind === 'label') {
-    const ddx = p.x - touchDrag.lx, ddy = p.y - touchDrag.ly;
-    touchDrag.lx = p.x; touchDrag.ly = p.y;
-    const leg = state.legs[touchDrag.i];
-    const o = leg && (touchDrag.which === 'in' ? leg.inLabel : leg.outLabel);
-    if (!o) return;                    // malformed leg / label — issue #82
-    const isc = 1 / legZoomScale();
-    o.a += (ddx * touchDrag.dx + ddy * touchDrag.dy) * isc;
-    o.p += (ddx * touchDrag.nx + ddy * touchDrag.ny) * isc;
-    draw();
+    if (setLegLabelFromPoint(touchDrag, p.x, p.y)) draw();
   } else if (touchDrag.kind === 'cumlabel' || touchDrag.kind === 'cumlabelret') {
     setCumLabelFromPoint(touchDrag.i, touchDrag.kind === 'cumlabelret', p.x, p.y);
     draw();
