@@ -131,6 +131,7 @@ test.describe('Charts modal — frequency catalog table', () => {
 
     await button.click();
     await expect(page.locator('.charts-alt-title h3')).toHaveText('CVFR altitude pairs');
+    await expect(page.locator('.charts-alt-table thead th').nth(3)).toHaveText('Direction');
     await expect(page.locator('.charts-alt-table tbody tr')).toHaveCount(3);
     await expect(page.locator('.charts-freq-title')).toHaveCount(0);
     await expect(page.locator('.charts-airport-header')).toHaveCount(0);
@@ -296,6 +297,8 @@ test.describe('Charts modal — frequency catalog table', () => {
       .toHaveText('מהשני לראשון');
     await expect(page.locator('.charts-alt-table thead th').nth(2))
       .toHaveAttribute('title', 'גובה בכיוון ההפוך: מהנקודה השנייה בטור נתיב אל הנקודה הראשונה');
+    await expect(page.locator('.charts-alt-table thead th').nth(3)).toHaveText('כיוון');
+    await expect(page.locator('.charts-alt-table thead th').nth(4)).toHaveText('מ״י');
   });
 
   test('Airport charts entry point stays chart-only', async ({ page }) => {
