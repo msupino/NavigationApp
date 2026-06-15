@@ -145,6 +145,10 @@ function clearStoredInspectorSelection() {
   try { sessionStorage.removeItem(INSPECTOR_SELECTION_KEY); } catch (e) { /* */ }
 }
 
+function resetInspectorVorRef() {
+  window.inspectorVorRef = undefined;
+}
+
 function persistInspectorSelection() {
   const sel = normalizeInspectorSelection(state.selected);
   if (!sel) {
@@ -405,7 +409,37 @@ function legFrame(i) {
   const len = Math.hypot(dx, dy) || 1;
   dx /= len; dy /= len;
   return { mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2,
-           dx, dy, nx: -dy, ny: dx };
+           dx, dy, nx: -dy, ny: dx, len };
+}
+function clampLegLabelAlong(legIdx, label) {
+  if (!limitLegKites) return;
+  if (!label || !state.waypoints[legIdx] || !state.waypoints[legIdx + 1]) return;
+  if (!Number.isFinite(label.a)) label.a = 0;
+  const sc = legZoomScale() || 1;
+  const halfKite = (typeof legKiteAlongHalfPx === 'function') ? legKiteAlongHalfPx(sc) : 0;
+  const limit = Math.max(0, (legFrame(legIdx).len / 2 - halfKite) / sc);
+  label.a = Math.max(-limit, Math.min(limit, label.a));
+}
+function legLabelDragGrab(legIdx, which, px, py) {
+  const c = legLabelCenter(legIdx, which);
+  if (!c) return { grabA: 0, grabP: 0 };
+  const f = legFrame(legIdx);
+  const sc = legZoomScale() || 1;
+  return {
+    grabA: ((px - c.x) * f.dx + (py - c.y) * f.dy) / sc,
+    grabP: ((px - c.x) * f.nx + (py - c.y) * f.ny) / sc,
+  };
+}
+function setLegLabelFromPoint(dragState, px, py) {
+  const leg = state.legs[dragState.i];
+  const o = leg && (dragState.which === 'in' ? leg.inLabel : leg.outLabel);
+  if (!o) return false;                // malformed leg / label — issue #82
+  const f = legFrame(dragState.i);
+  const sc = legZoomScale() || 1;
+  o.a = ((px - f.mx) * f.dx + (py - f.my) * f.dy) / sc - (dragState.grabA || 0);
+  clampLegLabelAlong(dragState.i, o);
+  o.p = ((px - f.mx) * f.nx + (py - f.my) * f.ny) / sc - (dragState.grabP || 0);
+  return true;
 }
 function legLabelCenter(i, which) {
   if (!state.waypoints[i] || !state.waypoints[i + 1]) return null;
@@ -779,16 +813,61 @@ function inspLocaleName(o) {
     : (o.en || o.name || o.ident || '');
 }
 
-// Shared "From <VOR>  R-xxx° / yy.y NM" inspector row. The selected
-// reference VOR drives radial/DME readouts independently of marker visibility.
+function inspectorVorIdent() {
+  return inspectorVorRef === undefined ? (vorRef || '') : (inspectorVorRef || '');
+}
+
+function populateInspectorVorSelect(sel, selected) {
+  if (!sel) return;
+  sel.innerHTML = '';
+  const none = document.createElement('option');
+  none.value = '';
+  none.textContent = S.vorRefNone || '— none —';
+  sel.appendChild(none);
+  for (const v of (vors || [])) {
+    const opt = document.createElement('option');
+    opt.value = v.ident;
+    opt.textContent = v.ident;
+    sel.appendChild(opt);
+  }
+  sel.value = selected || '';
+}
+
+// Shared inspector-only VOR selector + "From <VOR>  R-xxx° / yy.y NM" readout.
+// Changing this selector never writes `vorRef` or localStorage; it only changes
+// the active inspector readout.
 function appendVorRadialRow(body, lat, lng) {
-  if (typeof activeVor !== 'function') return;
-  const v = activeVor();
-  if (!v) return;
-  const rd = vorRadialDme(v, lat, lng);
-  if (!rd) return;
-  const row = textRow(S.vorFrom(v.ident), S.vorRadialDme(rd.radial, rd.dme));
-  row.classList.add('vor-radial-row');
+  if (typeof vorByIdent !== 'function' || typeof vorRadialDme !== 'function') return;
+  if (vors === null && typeof loadVors === 'function') {
+    loadVors().then(() => {
+      if (state.selected) showInspector();
+    });
+  }
+  const row = document.createElement('div');
+  row.className = 'row vor-radial-row';
+  const label = document.createElement('label');
+  label.textContent = S.vorRefLabel || 'VOR ref';
+  const controls = document.createElement('div');
+  controls.className = 'vor-radial-controls';
+  const sel = document.createElement('select');
+  sel.className = 'insp-vor-ref';
+  sel.setAttribute('aria-label', S.vorRefLabel || 'VOR ref');
+  const val = document.createElement('span');
+  val.className = 'val vor-radial-val';
+  const render = () => {
+    const v = vorByIdent(sel.value);
+    const rd = v ? vorRadialDme(v, lat, lng) : null;
+    val.textContent = rd ? S.vorRadialDme(rd.radial, rd.dme) : '';
+    val.title = v && rd ? S.vorFrom(v.ident) : '';
+  };
+  populateInspectorVorSelect(sel, inspectorVorIdent());
+  sel.onchange = () => {
+    window.inspectorVorRef = sel.value || '';
+    render();
+  };
+  controls.append(sel, val);
+  row.append(label, controls);
+  render();
   body.appendChild(row);
 }
 
@@ -1074,6 +1153,39 @@ function satelliteResetControl(lmap, point, zoom) {
   return new Ctl();
 }
 
+function textDirection(text) {
+  for (const ch of String(text || '')) {
+    if (/[\u0590-\u05ff]/.test(ch)) return 'rtl';
+    if (/[A-Za-z0-9]/.test(ch)) return 'ltr';
+  }
+  return 'auto';
+}
+
+function appendBidiSpan(parent, text, dir) {
+  const span = document.createElement('span');
+  span.dir = dir || textDirection(text);
+  span.style.unicodeBidi = 'isolate';
+  span.textContent = text;
+  parent.appendChild(span);
+}
+
+function setSatelliteModalTitle(title, label, point) {
+  if (!title) return;
+  title.textContent = '';
+  const labelText = String(label || '').trim();
+  if (labelText) {
+    const parts = labelText.split(' / ');
+    parts.forEach((part, i) => {
+      if (i) title.appendChild(document.createTextNode(' / '));
+      appendBidiSpan(title, part, textDirection(part));
+    });
+    title.appendChild(document.createTextNode(' - '));
+  }
+  appendBidiSpan(title,
+    fmtLatLng(point.lat, 'N', 'S') + ' ' + fmtLatLng(point.lng, 'E', 'W'),
+    'ltr');
+}
+
 function showSatellitePreviewModal(point, label) {
   if (typeof createDraggableModal !== 'function' || typeof L === 'undefined') return;
   // Destroy the Leaflet map on close — otherwise each open/close leaks the
@@ -1087,10 +1199,7 @@ function showSatellitePreviewModal(point, label) {
   let mainRotateHandler = null;
   // The title bar shows the location name + coordinates (replacing the generic
   // "Satellite view" header) so the point identity sits at the top, not below.
-  const name = label ? label + ' - ' : '';
-  const captionText = name +
-    fmtLatLng(point.lat, 'N', 'S') + ' ' + fmtLatLng(point.lng, 'E', 'W');
-  const modal = createDraggableModal(captionText,
+  const modal = createDraggableModal('',
     'modal satellite-preview-modal',
     () => {
       if (mainRotateHandler && typeof map !== 'undefined' && map.off) {
@@ -1100,7 +1209,9 @@ function showSatellitePreviewModal(point, label) {
       }
       if (lmap) { lmap.remove(); lmap = null; }
       if (typeof window !== 'undefined') window.__satModalMap = null;
-    });
+    },
+    { titleDir: 'ltr', titleBidi: 'isolate' });
+  setSatelliteModalTitle(modal.title, label, point);
   const body = document.createElement('div');
   body.className = 'satellite-preview-body';
   const mapEl = document.createElement('div');
@@ -1432,6 +1543,7 @@ function showInspector() {
   if (!normalized) {
     state.selected = null;
     insp.classList.add('hidden');
+    resetInspectorVorRef();
     clearStoredInspectorSelection();
     return;
   }
@@ -1876,14 +1988,19 @@ function numberRow(label, value, onChange, opts = {}) {
   // Endless 0–359 spinner wrap (attached first so it cleans the value before
   // the commit handler below reads it).
   if (opts.wrapStep) wrapDirectionInput(inp);
-  // Dim the field while it still holds the default value (#722 follow-up):
-  // an auto/charted leg altitude reads muted so it's distinguishable from a
-  // value the user typed. Recomputed on every keystroke and after each commit.
+  // Dim resettable fields while they still hold the default value (#722
+  // follow-up): charted leg altitudes and inherited wind values read muted so
+  // values the user typed stand out. Recomputed on every keystroke and reset.
+  const hasDefaultStyle = opts.mutedWhenDefault || opts.undoValue !== undefined;
+  const defaultValue = opts.defaultValue !== undefined ? opts.defaultValue : opts.undoValue;
   const updateDefaultStyle = () => {
-    if (!opts.mutedWhenDefault) return;
+    if (!hasDefaultStyle) return;
+    const raw = inp.value.trim();
     const cur = parseFloat(inp.value);
-    inp.classList.toggle('is-default',
-      Number.isFinite(cur) && Number.isFinite(opts.defaultValue) && cur === opts.defaultValue);
+    const atDefault = Number.isFinite(defaultValue)
+      ? Number.isFinite(cur) && cur === defaultValue
+      : raw === '' && defaultValue !== undefined && !Number.isFinite(defaultValue);
+    inp.classList.toggle('is-default', atDefault);
   };
   // `final` (blur / Enter / spinner-change) runs opts.normalize and writes the
   // cleaned value back to the field — e.g. wrapping a wind direction of -395
@@ -2009,6 +2126,8 @@ function appendFreqEdit(body, note, editOptions) {
     const normalized = normalizeFreqValue(freqInput ? freqInput.value : note.freq);
     const cur = normalized === null ? (note.freq || '') : (normalized || note.freq || '');
     const changed = !!(template && (freqInputInvalid() || (cur && cur !== template)));
+    if (freqInput) freqInput.classList.toggle('is-default',
+      !!template && !freqInputInvalid() && cur === template);
     templateRow.style.display = changed ? '' : 'none';
     const val = templateRow.querySelector('.val');
     if (val) val.textContent = template;
@@ -2027,7 +2146,7 @@ function appendFreqEdit(body, note, editOptions) {
       selected = { id: '__custom__', label: current };
       rows.unshift(['__custom__', current]);
     }
-    body.appendChild(selectRow(S.commChangeName || 'Call sign',
+    const callSignRow = selectRow(S.commChangeName || 'Call sign',
       selected ? selected.id : opts[0].id, rows, v => {
         const opt = opts.find(o => o.id === v);
         if (!opt) return;
@@ -2044,7 +2163,9 @@ function appendFreqEdit(body, note, editOptions) {
         }
         updateTemplateHint();
         draw();
-      }));
+      });
+    callSignRow.classList.add('commchange-name-row');
+    body.appendChild(callSignRow);
   } else {
     body.appendChild(textRow(S.commChangeName || 'Call sign', commNoteName(note) || ''));
   }
@@ -2264,9 +2385,8 @@ map.on('mousedown', e => {
   if (lab) {
     downHit = true;
     _materialiseDefaultLegLabel(lab.i, lab.which);
-    const f = legFrame(lab.i);
-    drag = { kind: 'label', i: lab.i, which: lab.which, lx: p.x, ly: p.y,
-             dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
+    drag = { kind: 'label', i: lab.i, which: lab.which,
+             ...legLabelDragGrab(lab.i, lab.which, p.x, p.y) };
     state.selected = { type: 'leg', index: lab.i };
     map.dragging.disable();
     showInspector(); draw();
@@ -2319,15 +2439,7 @@ map.on('mousemove', e => {
     state.notes[drag.i].lng = r5(e.latlng.lng + (drag.offLng || 0));
     draw();
   } else if (drag.kind === 'label') {
-    const ddx = p.x - drag.lx, ddy = p.y - drag.ly;
-    drag.lx = p.x; drag.ly = p.y;
-    const leg = state.legs[drag.i];
-    const o = leg && (drag.which === 'in' ? leg.inLabel : leg.outLabel);
-    if (!o) return;                    // malformed leg / label — issue #82
-    const isc = 1 / legZoomScale();
-    o.a += (ddx * drag.dx + ddy * drag.dy) * isc;
-    o.p += (ddx * drag.nx + ddy * drag.ny) * isc;
-    draw();
+    if (setLegLabelFromPoint(drag, p.x, p.y)) draw();
   } else if (drag.kind === 'cumlabel' || drag.kind === 'cumlabelret') {
     setCumLabelFromPoint(drag.i, drag.kind === 'cumlabelret', p.x, p.y);
     draw();
@@ -2634,9 +2746,8 @@ mapEl.addEventListener('touchstart', e => {
     state.selected = { type: 'wp', index: wp };
   } else if (lab) {
     _materialiseDefaultLegLabel(lab.i, lab.which);
-    const f = legFrame(lab.i);
     touchDrag = { kind: 'label', i: lab.i, which: lab.which,
-                  lx: p.x, ly: p.y, dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
+                  ...legLabelDragGrab(lab.i, lab.which, p.x, p.y) };
     state.selected = { type: 'leg', index: lab.i };
   } else if (cum) {
     _materialiseDefaultCumLabel(cum.i);
@@ -2692,15 +2803,7 @@ mapEl.addEventListener('touchmove', e => {
     state.notes[touchDrag.i].lng = r5(ll.lng + (touchDrag.offLng || 0));
     draw();
   } else if (touchDrag.kind === 'label') {
-    const ddx = p.x - touchDrag.lx, ddy = p.y - touchDrag.ly;
-    touchDrag.lx = p.x; touchDrag.ly = p.y;
-    const leg = state.legs[touchDrag.i];
-    const o = leg && (touchDrag.which === 'in' ? leg.inLabel : leg.outLabel);
-    if (!o) return;                    // malformed leg / label — issue #82
-    const isc = 1 / legZoomScale();
-    o.a += (ddx * touchDrag.dx + ddy * touchDrag.dy) * isc;
-    o.p += (ddx * touchDrag.nx + ddy * touchDrag.ny) * isc;
-    draw();
+    if (setLegLabelFromPoint(touchDrag, p.x, p.y)) draw();
   } else if (touchDrag.kind === 'cumlabel' || touchDrag.kind === 'cumlabelret') {
     setCumLabelFromPoint(touchDrag.i, touchDrag.kind === 'cumlabelret', p.x, p.y);
     draw();

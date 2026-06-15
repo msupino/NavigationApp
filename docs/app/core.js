@@ -537,6 +537,8 @@ window.S = Object.assign({
   tbShowMidLegTitle: 'Show distance badge at the middle of each leg',
   tbHighlightDiff: 'Highlight alt/speed diff',
   tbHighlightDiffTitle: 'Halo legs whose altitude or speed differs from the adjacent leg',
+  tbLimitLegKites: 'Keep kites inside leg',
+  tbLimitLegKitesTitle: 'Limit dragged leg markers to the space between the leg waypoints',
   tbShowDrift: 'Show drift lines',
   tbShowDriftTitle: 'Show 10-degree drift reference lines at each leg end',
   tbShowAirfields: 'Show/pin airfields',
@@ -573,13 +575,17 @@ window.S = Object.assign({
   altPairsPair: 'Pair',
   altPairsInbound: 'From → to',
   altPairsOutbound: 'To → from',
-  altPairsStatus: 'Status',
+  altPairsInboundTitle: 'Altitude in the pair direction: first point → second point',
+  altPairsOutboundTitle: 'Altitude in the reverse direction: second point → first point',
+  altPairsStatus: 'Direction',
   altPairsDistance: 'NM',
   altPairsBlocked: 'Blocked',
   altitudeUnknown: 'Unknown',
   altPairsUnknown: 'Unknown',
   altPairsOneWay: 'One way',
   altPairsTwoWay: 'Two way',
+  altPairsRevertOrigin: 'Revert to origin',
+  altPairsRevertDirection: 'Revert this direction to origin',
   altPairsGoTo: function(from, to) { return 'Go to ' + from + ' ↔ ' + to; },
   altPairsLocationMissing: 'Pair endpoints not found',
   addFreqChange: 'Add freq change (Z)',
@@ -733,6 +739,7 @@ var showReturn = false;     // outbound (return) markers — off by default
 var showMidLeg = false;
 var showCumTime = true;     // cumulative-time kites — on by default
 var highlightDiff = false;  // purple halo on legs that change altitude
+var limitLegKites = true;   // keep dragged leg markers between their two waypoints
 var showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
 var showReporting = false;  // mandatory reporting badges (opt-in, default off) — issue #404
 var navWP = null;           // null = not loaded yet (or last fetch failed —
@@ -742,6 +749,7 @@ var showAirfields = true;   // Israeli airfields overlay (default on)
 var showVorStations = true; // VOR/DME station overlay (default on)
 var vors = null;            // null = not loaded yet; [] or populated once fetched
 var vorRef = null;          // ident of the selected reference VOR (radial/DME source)
+var inspectorVorRef = undefined; // undefined = follow vorRef; string/'' = inspector-only ref
 var forceSnap = false;      // #106: when on, every click snaps to the
                             // absolute nearest airfield / nav-WP regardless
                             // of click distance (otherwise: 18 px radius).
@@ -767,6 +775,7 @@ var legAltitudeMap = null; // null = not loaded yet (or last fetch failed —
                                 // `FROM-TO` for automatic fresh-leg altitudes.
 var legAltitudePointIds = null; // Set of endpoint ids from the same file.
 var legAltitudeDataset = null;  // Raw validated dataset for Charts copy/view.
+var legAltitudeOriginMap = null; // Loaded JSON baseline keyed as FROM-TO.
 var legAltitudeDirectionPool = null; // Directed altitude entries, one per allowed direction.
 var showDrift = true;       // 10-degree drift reference lines
 var showWind = false;       // wind effect (#722): inputs + arrows + readout — opt-in
@@ -1357,6 +1366,17 @@ function syncLegAltitudeDatasetDirectionPool(data) {
   if (data === legAltitudeDataset) legAltitudeDirectionPool = pool;
   return pool;
 }
+function cloneLegAltitudeOrigin(segment) {
+  return JSON.parse(JSON.stringify(segment || {}));
+}
+function resetLegAltitudeOrigins(segments) {
+  const origins = {};
+  for (const segment of segments || []) {
+    if (!segment || !segment.from || !segment.to) continue;
+    origins[legAltitudeKey(segment.from, segment.to)] = cloneLegAltitudeOrigin(segment);
+  }
+  legAltitudeOriginMap = origins;
+}
 function normalizeLegAltitudePairSegment(segment) {
   if (!segment) return;
   const nullCount = ['inboundAltitude', 'outboundAltitude']
@@ -1371,6 +1391,51 @@ function normalizeLegAltitudePairSegment(segment) {
     delete segment.oneWay;
     if (segment.status === 'unknown') segment.status = 'candidate';
   }
+}
+function syncLegAltitudeLookupSegment(segment) {
+  if (!segment || !segment.from || !segment.to || !legAltitudeMap) return;
+  const lookup = legAltitudeMap[legAltitudeKey(segment.from, segment.to)];
+  if (!lookup || lookup === segment) return;
+  lookup.from = segment.from;
+  lookup.to = segment.to;
+  lookup.distanceNm = segment.distanceNm;
+  lookup.inboundAltitude = segment.inboundAltitude;
+  lookup.outboundAltitude = segment.outboundAltitude;
+  lookup.oneWay = segment.oneWay === true;
+  lookup.status = segment.status || 'candidate';
+}
+function legAltitudeOriginSegment(segment) {
+  if (!segment || !segment.from || !segment.to || !legAltitudeOriginMap) return null;
+  return legAltitudeOriginMap[legAltitudeKey(segment.from, segment.to)] || null;
+}
+function legAltitudePairComparable(segment) {
+  if (!segment) return null;
+  return {
+    inboundAltitude: segment.inboundAltitude === null ? null :
+      (Number.isFinite(segment.inboundAltitude) ? Math.round(segment.inboundAltitude) : undefined),
+    outboundAltitude: segment.outboundAltitude === null ? null :
+      (Number.isFinite(segment.outboundAltitude) ? Math.round(segment.outboundAltitude) : undefined),
+    oneWay: segment.oneWay === true,
+    status: segment.status || '',
+  };
+}
+function legAltitudePairDiffersFromOrigin(segment) {
+  const origin = legAltitudeOriginSegment(segment);
+  if (!origin) return false;
+  return JSON.stringify(legAltitudePairComparable(segment)) !==
+    JSON.stringify(legAltitudePairComparable(origin));
+}
+function restoreLegAltitudePairOrigin(segment) {
+  const origin = legAltitudeOriginSegment(segment);
+  if (!segment || !origin) return false;
+  const before = JSON.stringify(legAltitudePairComparable(segment));
+  const restored = cloneLegAltitudeOrigin(origin);
+  for (const key of Object.keys(segment)) delete segment[key];
+  Object.assign(segment, restored);
+  normalizeLegAltitudePairSegment(segment);
+  syncLegAltitudeLookupSegment(segment);
+  syncLegAltitudeDatasetDirectionPool(legAltitudeDataset);
+  return before !== JSON.stringify(legAltitudePairComparable(segment));
 }
 function legAltitudeKnownPointName(name) {
   const raw = String(name || '').trim();
@@ -1543,6 +1608,7 @@ function setLegAltitudePairValue(segment, key, value) {
   const changed = segment[key] !== next;
   segment[key] = next;
   normalizeLegAltitudePairSegment(segment);
+  syncLegAltitudeLookupSegment(segment);
   syncLegAltitudeDatasetDirectionPool(legAltitudeDataset);
   return changed;
 }
