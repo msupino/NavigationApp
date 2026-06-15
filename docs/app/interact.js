@@ -145,6 +145,10 @@ function clearStoredInspectorSelection() {
   try { sessionStorage.removeItem(INSPECTOR_SELECTION_KEY); } catch (e) { /* */ }
 }
 
+function resetInspectorVorRef() {
+  window.inspectorVorRef = undefined;
+}
+
 function persistInspectorSelection() {
   const sel = normalizeInspectorSelection(state.selected);
   if (!sel) {
@@ -1509,6 +1513,7 @@ function showInspector() {
   if (!normalized) {
     state.selected = null;
     insp.classList.add('hidden');
+    resetInspectorVorRef();
     clearStoredInspectorSelection();
     return;
   }

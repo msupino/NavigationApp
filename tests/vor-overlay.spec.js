@@ -121,6 +121,16 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await expect(sel).toHaveValue('');
     await expect(val).toHaveText('');
     expect(await page.evaluate(() => vorRef)).toBe('NAT');
+
+    await page.locator('#insp-close').click();
+    await expect(page.locator('#inspector')).toHaveClass(/hidden/);
+    expect(await page.evaluate(() => inspectorVorRef)).toBeUndefined();
+    await page.evaluate(() => {
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+    });
+    await expect(page.locator('#insp-body .vor-radial-row select.insp-vor-ref'))
+      .toHaveValue('NAT');
   });
 
   test('flight plan: VOR picker + frequency, Radial/DME to the leg START', async ({ page }) => {
