@@ -2116,7 +2116,7 @@ function appendFreqEdit(body, note, editOptions) {
       selected = { id: '__custom__', label: current };
       rows.unshift(['__custom__', current]);
     }
-    body.appendChild(selectRow(S.commChangeName || 'Call sign',
+    const callSignRow = selectRow(S.commChangeName || 'Call sign',
       selected ? selected.id : opts[0].id, rows, v => {
         const opt = opts.find(o => o.id === v);
         if (!opt) return;
@@ -2133,7 +2133,9 @@ function appendFreqEdit(body, note, editOptions) {
         }
         updateTemplateHint();
         draw();
-      }));
+      });
+    callSignRow.classList.add('commchange-name-row');
+    body.appendChild(callSignRow);
   } else {
     body.appendChild(textRow(S.commChangeName || 'Call sign', commNoteName(note) || ''));
   }

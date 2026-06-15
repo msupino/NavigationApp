@@ -527,7 +527,7 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect.poll(() => page.evaluate(() => state.selected))
       .toEqual({ type: 'wp', index: 0, freqNoteIndex: 0 });
     await expect(page.locator('#insp-title')).toHaveValue(/TYONA/);
-    await expect(page.locator('#insp-body select')).toHaveCount(1);
+    await expect(page.locator('#insp-body .commchange-name-row select')).toHaveCount(1);
     await expect(page.locator('#insp-body .freq-input')).toHaveValue('118.40');
 
     const widths = await page.evaluate(() => {
@@ -1257,7 +1257,7 @@ test.describe('comm-change auto-note (#487)', () => {
       state.selected = { type: 'note', index: 0 };
       showInspector();
     }, TYONA);
-    const sel = page.locator('#insp-body select').first();
+    const sel = page.locator('#insp-body .commchange-name-row select').first();
     const labels = page.locator('#insp-body .row label');
     const values = page.locator('#insp-body .row .val');
     await expect(labels.nth(0)).toHaveText('Waypoint');
@@ -1378,7 +1378,7 @@ test.describe('comm-change auto-note (#487)', () => {
     const fields = page.locator('#insp-body .freq-input');
     const labels = page.locator('#insp-body .row label');
     const values = page.locator('#insp-body .row .val');
-    const sel = page.locator('#insp-body select').first();
+    const sel = page.locator('#insp-body .commchange-name-row select').first();
     await expect(labels.nth(0)).toHaveText('נקודת דיווח');
     await expect(labels.nth(1)).toHaveText('אות קריאה');
     await expect(labels.nth(2)).toHaveText('תדר');
@@ -1386,9 +1386,9 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(fields).toHaveCount(1);
     await expect(fields.nth(0)).toHaveValue('118.40');
     await expect(sel).toHaveValue('PLUTO');
-    await expect(page.locator('#insp-body select option:checked')).toHaveText('פלוטו');
+    await expect(sel.locator('option:checked')).toHaveText('פלוטו');
     await sel.selectOption('HAGAV');
-    await expect(page.locator('#insp-body select option:checked')).toHaveText('חגב');
+    await expect(sel.locator('option:checked')).toHaveText('חגב');
     await expect(fields.nth(0)).toHaveValue('132.70');
     const out = await page.evaluate(() => ({
       freqName: state.notes[0].freqName,
@@ -1425,11 +1425,11 @@ test.describe('comm-change auto-note (#487)', () => {
       };
     }, TYONA);
     const fields = page.locator('#insp-body .freq-input');
-    const sel = page.locator('#insp-body select').first();
+    const sel = page.locator('#insp-body .commchange-name-row select').first();
     await expect(fields).toHaveCount(1);
     await expect(fields.nth(0)).toHaveValue('132.70');
     await expect(sel).toHaveValue('HAGAV');
-    await expect(page.locator('#insp-body select option:checked')).toHaveText('חגב');
+    await expect(sel.locator('option:checked')).toHaveText('חגב');
     expect(out.freqName).toBe('חגב');
     expect(out.freq).toBe('132.70');
     expect(out.lines).toEqual(['חגב', '132.70']);
