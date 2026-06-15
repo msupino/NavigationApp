@@ -115,6 +115,187 @@ function drawSimAircraft() {
   octx.restore();
 }
 
+// TOC / TOD markers along the route (#672). A small dot + label at the point
+// where climb/descent meets cruise on each affected leg.
+function drawProfileMarkers() {
+  if (typeof routeProfile !== 'function' || (state.legs || []).length === 0) return;
+  const prof = routeProfile();
+  const mark = (m, label, color) => {
+    const A = state.waypoints[m.leg], B = state.waypoints[m.leg + 1];
+    if (!A || !B) return;
+    const sa = proj(A), sb = proj(B);
+    const x = sa.x + (sb.x - sa.x) * m.frac, y = sa.y + (sb.y - sa.y) * m.frac;
+    octx.save();
+    octx.fillStyle = color;
+    octx.strokeStyle = '#fff';
+    octx.lineWidth = 1.5;
+    octx.beginPath();
+    octx.arc(x, y, 4, 0, 2 * Math.PI);
+    octx.fill();
+    octx.stroke();
+    octx.font = 'bold 11px sans-serif';
+    octx.textAlign = 'left';
+    octx.textBaseline = 'middle';
+    octx.lineWidth = 3;
+    octx.strokeStyle = 'rgba(255,255,255,0.9)';
+    octx.strokeText(label, x + 7, y);
+    octx.fillStyle = color;
+    octx.fillText(label, x + 7, y);
+    octx.restore();
+  };
+  for (const t of prof.tocs) mark(t, S.toc || 'TOC', '#2e9e4f');
+  for (const t of prof.tods) mark(t, S.tod || 'TOD', '#c47f17');
+}
+
+// Render the altitude-vs-distance profile strip onto a canvas context within
+// (x,y,w,h). Used by the Flight Plan modal (#672).
+function drawVerticalProfile(ctx, x, y, w, h) {
+  if (typeof routeProfile !== 'function') return;
+  const prof = routeProfile();
+  if (!prof.pts.length || prof.totalDist <= 0) return;
+  const alts = prof.pts.map(p => p.alt);
+  const maxA = Math.max.apply(null, alts) * 1.1 + 100;
+  const minA = Math.min(0, Math.min.apply(null, alts));
+  // Reserve a strip at the bottom for the X axis (NM + time per waypoint) and
+  // a margin on the left for the altitude (Y) axis labels.
+  const axisH = 30;
+  const yPad = 34;
+  const plotH = Math.max(10, h - axisH);
+  const plotW = Math.max(10, w - yPad);
+  const x0 = x + yPad;                 // plot left edge (Y axis sits left of it)
+  const baseY = y + plotH;
+  // In RTL (Hebrew) the route reads right-to-left, so mirror the distance axis.
+  const rtl = document.documentElement && document.documentElement.dir === 'rtl';
+  const px = d => rtl ? x0 + plotW - (d / prof.totalDist) * plotW : x0 + (d / prof.totalDist) * plotW;
+  const py = a => baseY - ((a - minA) / (maxA - minA || 1)) * plotH;
+  ctx.save();
+  ctx.fillStyle = '#1d2733';
+  ctx.fillRect(x, y, w, h);
+  // Altitude (Y) axis: horizontal gridlines + ft labels at "nice" intervals.
+  const niceSteps = [100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+  const range = maxA - minA;
+  const yStep = niceSteps.find(s => range / s <= 5) || 50000;
+  ctx.textBaseline = 'middle';
+  ctx.font = '8px sans-serif';
+  for (let a = Math.ceil(minA / yStep) * yStep; a <= maxA; a += yStep) {
+    const gy = py(a);
+    ctx.strokeStyle = 'rgba(120,150,180,0.16)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x0, gy + 0.5); ctx.lineTo(x + w, gy + 0.5); ctx.stroke();
+    ctx.fillStyle = '#8aa0b4';
+    ctx.textAlign = 'right';
+    ctx.fillText(String(a), x0 - 3, gy);
+  }
+  // Y axis unit caption.
+  ctx.fillStyle = '#8aa0b4';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText('ft', x + 2, y + 2);
+  // ground line
+  ctx.strokeStyle = '#3a4654';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x0, py(minA) + 0.5); ctx.lineTo(x + w, py(minA) + 0.5); ctx.stroke();
+  // profile polyline + fill
+  ctx.beginPath();
+  ctx.moveTo(px(prof.pts[0].d), py(prof.pts[0].alt));
+  for (const p of prof.pts) ctx.lineTo(px(p.d), py(p.alt));
+  ctx.lineTo(px(prof.totalDist), py(minA));
+  ctx.lineTo(px(0), py(minA));
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(80,150,230,0.20)';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(px(prof.pts[0].d), py(prof.pts[0].alt));
+  for (const p of prof.pts) ctx.lineTo(px(p.d), py(p.alt));
+  ctx.strokeStyle = '#5a96e6';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // TOC/TOD dots
+  const dot = (m, color, label) => {
+    let cum = 0;
+    for (let i = 0; i < m.leg; i++) cum += prof.legs[i] ? prof.legs[i].dist : 0;
+    const d = cum + (prof.legs[m.leg] ? prof.legs[m.leg].dist * m.frac : 0);
+    const cx = px(d), cy = py(m.alt);
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(cx, cy, 3, 0, 2 * Math.PI); ctx.fill();
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, cx, cy - 6);
+  };
+  for (const t of prof.tocs) dot(t, '#2e9e4f', S.toc || 'TOC');
+  for (const t of prof.tods) dot(t, '#c47f17', S.tod || 'TOD');
+
+  // X axis: at each waypoint a tick + cumulative NM + cumulative time, plus a
+  // short waypoint id, with a faint gridline up through the plot so you can
+  // read where each altitude change happens along the course.
+  const cum = prof.wpCum || [];
+  const tcum = prof.wpTime || [];
+  const last = cum.length - 1;
+  const gap = last > 0 ? w / last : w;          // px between adjacent waypoints
+  const wpId = i => {
+    const wp = state.waypoints[i];
+    if (!wp) return '';
+    return String(wp.code || wp.name || '').slice(0, 4).toUpperCase();
+  };
+  const fmtT = h => {                            // hours → "7m" or "1:05"
+    const m = Math.round((h || 0) * 60);
+    return m < 60 ? m + 'm' : Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0');
+  };
+  ctx.lineWidth = 1;
+  ctx.textBaseline = 'top';
+  for (let i = 0; i < cum.length; i++) {
+    const lx = px(cum[i]);
+    ctx.strokeStyle = 'rgba(120,150,180,0.18)';
+    ctx.beginPath(); ctx.moveTo(lx, y); ctx.lineTo(lx, baseY); ctx.stroke();
+    ctx.strokeStyle = '#5a6b7d';
+    ctx.beginPath(); ctx.moveTo(lx, baseY + 0.5); ctx.lineTo(lx, baseY + 3.5); ctx.stroke();
+    ctx.textAlign = i === 0 ? 'left' : i === last ? 'right' : 'center';
+    // NM (bright) then cumulative time (dimmer) stacked under the tick.
+    ctx.fillStyle = '#cdd8e3';
+    ctx.font = '8px sans-serif';
+    ctx.fillText(String(Math.round(cum[i])), lx, baseY + 4);
+    ctx.fillStyle = '#7fa8d0';
+    ctx.font = '7px sans-serif';
+    ctx.fillText(fmtT(tcum[i]), lx, baseY + 13);
+    // Waypoint id (skip when ticks are too tight to avoid overlap).
+    if (gap >= 22) {
+      ctx.fillStyle = '#8aa0b4';
+      ctx.font = '7px sans-serif';
+      ctx.fillText(wpId(i), lx, baseY + 22);
+    }
+  }
+  // TOC/TOD also get an X-axis tick + NM/time readout in their marker colour,
+  // so their along-route position is readable on the axis (not just the dot).
+  const markAxis = (m, color) => {
+    let dcum = 0;
+    for (let k = 0; k < m.leg; k++) dcum += prof.legs[k] ? prof.legs[k].dist : 0;
+    const segD = prof.legs[m.leg] ? prof.legs[m.leg].dist : 0;
+    const segT = prof.legs[m.leg] ? prof.legs[m.leg].timeH : 0;
+    const d = dcum + segD * m.frac;
+    const t = (tcum[m.leg] || 0) + segT * m.frac;
+    const lx = px(d);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(lx, baseY + 0.5); ctx.lineTo(lx, baseY + 4); ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    ctx.font = '8px sans-serif';
+    ctx.fillText(String(Math.round(d)), lx, baseY + 4);
+    ctx.font = '7px sans-serif';
+    ctx.fillText(fmtT(t), lx, baseY + 13);
+  };
+  for (const t of prof.tocs) markAxis(t, '#2e9e4f');
+  for (const t of prof.tods) markAxis(t, '#c47f17');
+
+  // Axis unit caption.
+  ctx.fillStyle = '#8aa0b4';
+  ctx.font = '7px sans-serif';
+  ctx.textAlign = rtl ? 'left' : 'right';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('NM / time', rtl ? x + 2 : x + w - 2, y + h);
+  ctx.restore();
+}
+
 function draw() {
   octx.clearRect(0, 0, vw(), vh());
   drawNavWaypoints();
@@ -126,6 +307,7 @@ function draw() {
   drawLegs();
   drawWaypoints();
   drawNotes();
+  if (window.showProfile) drawProfileMarkers();   // TOC/TOD markers (#672)
   drawSimAircraft();
   drawInfo();
   drawPageFrame();
@@ -2384,7 +2566,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const colX = new Array(numCols + 1).fill(0);
   for (let mc = 0; mc < numCols; mc++) colX[mc + 1] = colX[mc] + colW[mc];
   const totalW = colX[numCols];
-  const HEADER_BG = '#e8e6e1', TOTAL_BG = '#f0eee9', STRIPE_BG = '#f7f5f0', GRID = '#7a7470', TEXT = '#1a1a1a';
+  const HEADER_BG = '#e8e6e1', TOTAL_BG = '#f0eee9', STRIPE_BG = '#dcd8cf', GRID = '#7a7470', TEXT = '#1a1a1a';
   const tableH = Math.round(rowH * numRows);
   const al = align || 'tl';
   if (al === 'tr' || al === 'br') x = x + Math.max(0, w - totalW);
