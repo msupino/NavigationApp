@@ -1874,6 +1874,8 @@ function showFlightPlan() {
         draw();
         refresh();
         if (retRefresh) retRefresh();
+        // Keep an open leg inspector in sync with the edit (#672 follow-up).
+        if (state.selected && typeof showInspector === 'function') showInspector();
       }
       else inp.value = leg.flightSpeed;   // invalid — restore the real value
     });
@@ -1893,6 +1895,7 @@ function showFlightPlan() {
       draw();
       refresh();
       if (retRefresh) retRefresh();
+      if (state.selected && typeof showInspector === 'function') showInspector();
     });
     altInputs[i] = altCell.querySelector('.plan-num');
     altInputs[i].placeholder = legAltitudePlaceholder(leg, 'inboundAltitude');
@@ -2095,6 +2098,7 @@ function showFlightPlan() {
           draw();
           refresh();
           retRefresh();
+          if (state.selected && typeof showInspector === 'function') showInspector();
         }
         else inp.value = leg.outboundSpeed;
       });
@@ -2114,6 +2118,7 @@ function showFlightPlan() {
         draw();
         refresh();
         retRefresh();
+        if (state.selected && typeof showInspector === 'function') showInspector();
       });
       rAltInputs[i] = altCell.querySelector('.plan-num');
       rAltInputs[i].placeholder = legAltitudePlaceholder(leg, 'outboundAltitude');

@@ -264,6 +264,29 @@ function drawVerticalProfile(ctx, x, y, w, h) {
       ctx.fillText(wpId(i), lx, baseY + 22);
     }
   }
+  // TOC/TOD also get an X-axis tick + NM/time readout in their marker colour,
+  // so their along-route position is readable on the axis (not just the dot).
+  const markAxis = (m, color) => {
+    let dcum = 0;
+    for (let k = 0; k < m.leg; k++) dcum += prof.legs[k] ? prof.legs[k].dist : 0;
+    const segD = prof.legs[m.leg] ? prof.legs[m.leg].dist : 0;
+    const segT = prof.legs[m.leg] ? prof.legs[m.leg].timeH : 0;
+    const d = dcum + segD * m.frac;
+    const t = (tcum[m.leg] || 0) + segT * m.frac;
+    const lx = px(d);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(lx, baseY + 0.5); ctx.lineTo(lx, baseY + 4); ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    ctx.font = '8px sans-serif';
+    ctx.fillText(String(Math.round(d)), lx, baseY + 4);
+    ctx.font = '7px sans-serif';
+    ctx.fillText(fmtT(t), lx, baseY + 13);
+  };
+  for (const t of prof.tocs) markAxis(t, '#2e9e4f');
+  for (const t of prof.tods) markAxis(t, '#c47f17');
+
   // Axis unit caption.
   ctx.fillStyle = '#8aa0b4';
   ctx.font = '7px sans-serif';
