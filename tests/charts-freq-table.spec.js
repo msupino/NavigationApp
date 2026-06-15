@@ -142,6 +142,9 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(desheInputs.nth(0)).toHaveValue('3000');
     await expect(desheInputs.nth(1)).toHaveValue('2500');
     await expect(desheRow).toContainText('Two way');
+    const desheReset = desheRow.locator('.charts-alt-reset');
+    await expect(desheReset).toHaveAttribute('title', 'Revert to origin');
+    await expect(desheReset).toBeDisabled();
     const eironRow = page.locator('.charts-alt-table tbody tr', { hasText: 'EIRON ↔ SDTYM' });
     await expect(eironRow.locator('.charts-alt-input').nth(0)).toHaveValue('3000');
     await expect(eironRow.locator('.charts-alt-input').nth(1))
@@ -169,6 +172,8 @@ test.describe('Charts modal — frequency catalog table', () => {
     await search.fill('');
     await desheInputs.nth(0).fill('3100');
     await desheInputs.nth(0).blur();
+    await expect(desheReset).toBeEnabled();
+    await expect(desheRow).toHaveClass(/overridden/);
     await derorInputs.nth(0).fill('1500');
     await derorInputs.nth(0).blur();
     await derorInputs.nth(1).fill('2000');
@@ -185,6 +190,34 @@ test.describe('Charts modal — frequency catalog table', () => {
       status: 'candidate',
     });
     expect(copied.segments[2]).not.toHaveProperty('oneWay');
+
+    await desheReset.click();
+    await expect(desheInputs.nth(0)).toHaveValue('3000');
+    await expect(desheInputs.nth(1)).toHaveValue('2500');
+    await expect(desheReset).toBeDisabled();
+    await expect(desheRow).not.toHaveClass(/overridden/);
+    await expect.poll(() => page.evaluate(() => {
+      const raw = legAltitudeDataset.segments
+        .find(s => s.from === 'DESHE' && s.to === 'ZALMN');
+      const lookup = legAltitudeMap['DESHE-ZALMN'];
+      return {
+        raw: [
+          raw.inboundAltitude,
+          raw.outboundAltitude,
+          raw.oneWay === true,
+          raw.status,
+        ],
+        lookup: [
+          lookup.inboundAltitude,
+          lookup.outboundAltitude,
+          lookup.oneWay === true,
+          lookup.status,
+        ],
+      };
+    })).toEqual({
+      raw: [3000, 2500, false, 'reviewed'],
+      lookup: [3000, 2500, false, 'reviewed'],
+    });
   });
 
   test('altitude pair labels focus the map on the selected leg', async ({ page }) => {

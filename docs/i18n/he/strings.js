@@ -336,6 +336,7 @@ window.S = {
   altPairsUnknown: 'Unknown',
   altPairsOneWay: 'חד-כיווני',
   altPairsTwoWay: 'דו-כיווני',
+  altPairsRevertOrigin: 'שחזר למקור',
   altPairsGoTo: function(from, to) { return 'עבור אל ' + from + ' ↔ ' + to; },
   altPairsLocationMissing: 'נקודות הזוג לא נמצאו',
   addFreqChange: 'הוסף שינוי תדר (Z)',

@@ -2036,6 +2036,10 @@ body.theme-light .msa-low .val { color: #c0392b; }
 .charts-alt-table tbody tr.unknown:hover {
   background: rgba(160, 170, 190, 0.08);
 }
+.charts-alt-table tr.overridden,
+.charts-alt-table tbody tr.overridden:hover {
+  background: rgba(255, 217, 102, 0.14);
+}
 .charts-alt-pair {
   color: #fff2a8;
   direction: ltr;
@@ -2066,6 +2070,10 @@ body.theme-light .msa-low .val { color: #c0392b; }
   direction: ltr;
   font-size: 12px;
   unicode-bidi: isolate;
+}
+.charts-alt-actions {
+  width: 28px;
+  text-align: center;
 }
 .charts-alt-table .blocked {
   color: #ffb4b4;
@@ -2737,6 +2745,10 @@ body.theme-light .charts-alt-table tbody tr.one-way:hover {
 body.theme-light .charts-alt-table tr.unknown,
 body.theme-light .charts-alt-table tbody tr.unknown:hover {
   background: rgba(70, 85, 105, 0.06);
+}
+body.theme-light .charts-alt-table tr.overridden,
+body.theme-light .charts-alt-table tbody tr.overridden:hover {
+  background: rgba(154, 107, 0, 0.14);
 }
 body.theme-light .charts-alt-pair {
   color: #6f4d00;

@@ -4052,17 +4052,21 @@ function altitudePairCellPlaceholder(segment, key) {
     : (S.altPairsUnknown || 'Unknown');
 }
 
-function updateAltitudePairRowState(tr, segment, statusCell, inputs) {
+function updateAltitudePairRowState(tr, segment, statusCell, inputs, resetButton) {
   normalizeAltitudePairSegment(segment);
   tr.classList.toggle('one-way', segment.oneWay === true);
   tr.classList.toggle('unknown',
     segment.inboundAltitude === null && segment.outboundAltitude === null);
+  tr.classList.toggle('overridden', legAltitudePairDiffersFromOrigin(segment));
   if (statusCell) statusCell.textContent = altitudePairStatus(segment);
   if (inputs) {
     for (const input of inputs) {
       input.placeholder = altitudePairCellPlaceholder(segment, input.dataset.altKey);
+      input.value = Number.isFinite(segment[input.dataset.altKey])
+        ? String(segment[input.dataset.altKey]) : '';
     }
   }
+  if (resetButton) resetButton.disabled = !legAltitudePairDiffersFromOrigin(segment);
   const fromAlt = formatAltitudePairValue(segment, 'inboundAltitude');
   const toAlt = formatAltitudePairValue(segment, 'outboundAltitude');
   const distance = Number.isFinite(segment.distanceNm)
@@ -4244,9 +4248,11 @@ function renderAltitudePairsTable(altSection, opts) {
     },
     { label: S.altPairsStatus || 'Status' },
     { label: S.altPairsDistance || 'NM' },
+    { label: '', title: S.altPairsRevertOrigin || 'Revert to origin' },
   ]) {
     const th = document.createElement('th');
     th.textContent = col.label;
+    if (!col.label) th.className = 'charts-alt-actions';
     if (col.title) {
       th.title = col.title;
       th.setAttribute('aria-label', col.title);
@@ -4293,13 +4299,30 @@ function renderAltitudePairsTable(altSection, opts) {
     const distCell = document.createElement('td');
     distCell.className = 'charts-alt-distance';
     distCell.textContent = distance;
-    tr.append(pair, inbound, outbound, statusCell, distCell);
+    const actions = document.createElement('td');
+    actions.className = 'charts-alt-actions';
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'commchange-freq-reset charts-alt-reset';
+    reset.textContent = '↻';
+    reset.title = S.altPairsRevertOrigin || 'Revert to origin';
+    reset.setAttribute('aria-label', reset.title);
+    actions.appendChild(reset);
+    tr.append(pair, inbound, outbound, statusCell, distCell, actions);
     const inputs = [inboundInput, outboundInput];
+    const syncPairEdit = () => {
+      updateAltitudePairRowState(tr, segment, statusCell, inputs, reset);
+      applySearchFilter();
+      applyLegAltitudesToRoute();
+      draw();
+      if (state.selected) showInspector();
+      if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
+    };
     const commitInput = input => {
       const raw = input.value.trim();
       if (!raw) {
         input.setAttribute('aria-invalid', 'false');
-        segment[input.dataset.altKey] = null;
+        setLegAltitudePairValue(segment, input.dataset.altKey, null);
       } else {
         const next = Number(raw);
         if (!Number.isFinite(next)) {
@@ -4307,17 +4330,33 @@ function renderAltitudePairsTable(altSection, opts) {
           return;
         }
         input.setAttribute('aria-invalid', 'false');
-        segment[input.dataset.altKey] = Math.round(next);
+        setLegAltitudePairValue(segment, input.dataset.altKey, next);
         input.value = String(segment[input.dataset.altKey]);
       }
-      updateAltitudePairRowState(tr, segment, statusCell, inputs);
-      applySearchFilter();
+      syncPairEdit();
     };
     for (const input of inputs) {
       input.addEventListener('change', () => commitInput(input));
       input.addEventListener('blur', () => commitInput(input));
     }
-    updateAltitudePairRowState(tr, segment, statusCell, inputs);
+    function resetAltitudePair() {
+      restoreLegAltitudePairOrigin(segment);
+      syncPairEdit();
+    }
+    let resetPointerHandled = false;
+    reset.onpointerdown = e => {
+      if (reset.disabled) return;
+      e.preventDefault();
+      e.stopPropagation();
+      resetPointerHandled = true;
+      resetAltitudePair();
+    };
+    reset.onclick = e => {
+      e.preventDefault();
+      if (resetPointerHandled) { resetPointerHandled = false; return; }
+      if (!reset.disabled) resetAltitudePair();
+    };
+    updateAltitudePairRowState(tr, segment, statusCell, inputs, reset);
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
