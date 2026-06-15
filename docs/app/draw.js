@@ -115,6 +115,88 @@ function drawSimAircraft() {
   octx.restore();
 }
 
+// TOC / TOD markers along the route (#672). A small dot + label at the point
+// where climb/descent meets cruise on each affected leg.
+function drawProfileMarkers() {
+  if (typeof routeProfile !== 'function' || (state.legs || []).length === 0) return;
+  const prof = routeProfile();
+  const mark = (m, label, color) => {
+    const A = state.waypoints[m.leg], B = state.waypoints[m.leg + 1];
+    if (!A || !B) return;
+    const sa = proj(A), sb = proj(B);
+    const x = sa.x + (sb.x - sa.x) * m.frac, y = sa.y + (sb.y - sa.y) * m.frac;
+    octx.save();
+    octx.fillStyle = color;
+    octx.strokeStyle = '#fff';
+    octx.lineWidth = 1.5;
+    octx.beginPath();
+    octx.arc(x, y, 4, 0, 2 * Math.PI);
+    octx.fill();
+    octx.stroke();
+    octx.font = 'bold 11px sans-serif';
+    octx.textAlign = 'left';
+    octx.textBaseline = 'middle';
+    octx.lineWidth = 3;
+    octx.strokeStyle = 'rgba(255,255,255,0.9)';
+    octx.strokeText(label, x + 7, y);
+    octx.fillStyle = color;
+    octx.fillText(label, x + 7, y);
+    octx.restore();
+  };
+  for (const t of prof.tocs) mark(t, S.toc || 'TOC', '#2e9e4f');
+  for (const t of prof.tods) mark(t, S.tod || 'TOD', '#c47f17');
+}
+
+// Render the altitude-vs-distance profile strip onto a canvas context within
+// (x,y,w,h). Used by the Flight Plan modal (#672).
+function drawVerticalProfile(ctx, x, y, w, h) {
+  if (typeof routeProfile !== 'function') return;
+  const prof = routeProfile();
+  if (!prof.pts.length || prof.totalDist <= 0) return;
+  const alts = prof.pts.map(p => p.alt);
+  const maxA = Math.max.apply(null, alts) * 1.1 + 100;
+  const minA = Math.min(0, Math.min.apply(null, alts));
+  const px = d => x + (d / prof.totalDist) * w;
+  const py = a => y + h - ((a - minA) / (maxA - minA || 1)) * h;
+  ctx.save();
+  ctx.fillStyle = '#1d2733';
+  ctx.fillRect(x, y, w, h);
+  // ground line
+  ctx.strokeStyle = '#3a4654';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x, py(minA) + 0.5); ctx.lineTo(x + w, py(minA) + 0.5); ctx.stroke();
+  // profile polyline + fill
+  ctx.beginPath();
+  ctx.moveTo(px(prof.pts[0].d), py(prof.pts[0].alt));
+  for (const p of prof.pts) ctx.lineTo(px(p.d), py(p.alt));
+  ctx.lineTo(px(prof.totalDist), py(minA));
+  ctx.lineTo(px(0), py(minA));
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(80,150,230,0.20)';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(px(prof.pts[0].d), py(prof.pts[0].alt));
+  for (const p of prof.pts) ctx.lineTo(px(p.d), py(p.alt));
+  ctx.strokeStyle = '#5a96e6';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // TOC/TOD dots
+  const dot = (m, color, label) => {
+    let cum = 0;
+    for (let i = 0; i < m.leg; i++) cum += prof.legs[i] ? prof.legs[i].dist : 0;
+    const d = cum + (prof.legs[m.leg] ? prof.legs[m.leg].dist * m.frac : 0);
+    const cx = px(d), cy = py(m.alt);
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(cx, cy, 3, 0, 2 * Math.PI); ctx.fill();
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, cx, cy - 6);
+  };
+  for (const t of prof.tocs) dot(t, '#2e9e4f', S.toc || 'TOC');
+  for (const t of prof.tods) dot(t, '#c47f17', S.tod || 'TOD');
+  ctx.restore();
+}
+
 function draw() {
   octx.clearRect(0, 0, vw(), vh());
   drawNavWaypoints();
@@ -126,6 +208,7 @@ function draw() {
   drawLegs();
   drawWaypoints();
   drawNotes();
+  if (window.showProfile) drawProfileMarkers();   // TOC/TOD markers (#672)
   drawSimAircraft();
   drawInfo();
   drawPageFrame();

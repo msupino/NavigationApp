@@ -1471,6 +1471,7 @@ function wpLabel(i) {
 // #86: Flight Plan modal state and Escape-to-close handling.
 let flightPlanBack = null;
 let refreshFlightPlan = null;
+let drawProfileStripIfOpen = null;   // set while the flight-plan modal is open (#672)
 let flightPlanEscape = null;
 let flightPlanCleanup = null;             // tears down drag listeners attached
                                           // outside the modal subtree (window).
@@ -1496,7 +1497,9 @@ function closeFlightPlan() {
     flightPlanBack = null;
   }
   refreshFlightPlan = null;
+  drawProfileStripIfOpen = null;
   fpOpen = false;
+  if (window.showProfile) { window.showProfile = false; draw(); }   // hide TOC/TOD markers
   try { sessionStorage.removeItem('navaid.fpOpen'); } catch (e) {}
 }
 
@@ -1679,6 +1682,30 @@ function showFlightPlan() {
     fillFpVorSelect();
   }
   box.appendChild(fpAircraft);
+
+  // Vertical profile strip (#672) — altitude vs distance with TOC/TOD.
+  const profWrap = document.createElement('div');
+  profWrap.className = 'fp-profile';
+  const profLbl = document.createElement('div');
+  profLbl.className = 'fp-profile-label';
+  profLbl.textContent = S.profileTitle || 'Vertical profile';
+  profWrap.appendChild(profLbl);
+  const profCanvas = document.createElement('canvas');
+  profCanvas.className = 'fp-profile-canvas';
+  profCanvas.width = 600; profCanvas.height = 90;
+  profWrap.appendChild(profCanvas);
+  box.appendChild(profWrap);
+  drawProfileStripIfOpen = function () {
+    if (!profCanvas.isConnected) return;
+    const cssW = profCanvas.clientWidth || 600;
+    profCanvas.width = cssW; profCanvas.height = 90;
+    const cx = profCanvas.getContext('2d');
+    cx.clearRect(0, 0, profCanvas.width, profCanvas.height);
+    if (typeof drawVerticalProfile === 'function') drawVerticalProfile(cx, 0, 0, profCanvas.width, profCanvas.height);
+  };
+  // Show TOC/TOD markers on the map while the flight plan is open.
+  window.showProfile = true;
+  draw();
 
   const scrollArea = document.createElement('div');
   scrollArea.className = 'fp-scroll';
@@ -1925,6 +1952,10 @@ function showFlightPlan() {
     const ac = aircraft;
     const taxiFuel = ac && ac.taxiGal && isAirport(state.waypoints[0]) ? ac.taxiGal : 0;
     if (taxiFuel) tf = taxiFuel;
+    // Per-leg time/fuel accounting for climb & descent (#672); falls back to
+    // flat cruise per leg when the profile engine is unavailable.
+    const prof = typeof routeProfile === 'function' ? routeProfile(ac) : null;
+    if (typeof drawProfileStripIfOpen === 'function') drawProfileStripIfOpen();
     for (let i = 0; i < state.legs.length; i++) {
       const A = state.waypoints[i], B = state.waypoints[i + 1];
       if (!A || !B) continue;
@@ -1936,12 +1967,13 @@ function showFlightPlan() {
         radialCells[i].textContent = rc[0];
         dmeCells[i].textContent = rc[1];
       }
-      const dur = state.legs[i].flightSpeed > 0 ? dist / state.legs[i].flightSpeed : 0;
+      const dur = prof && prof.legs[i] ? prof.legs[i].timeH
+        : (state.legs[i].flightSpeed > 0 ? dist / state.legs[i].flightSpeed : 0);
       td += dist;
       th += dur;
       timeCells[i].textContent = dur > 0 ? toHMS(dur) : '--';
       if (ac) {
-        const fuel = dur * ac.gph;
+        const fuel = prof && prof.legs[i] ? prof.legs[i].fuel : dur * ac.gph;
         tf += fuel;
         const mark = i === 0 && taxiFuel;
         fuelCells[i].textContent = (mark ? fuel + taxiFuel : fuel).toFixed(1) + (mark ? ' *' : '');

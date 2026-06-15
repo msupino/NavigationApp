@@ -1557,6 +1557,10 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
   flex: 1;
   min-height: 0;
 }
+/* Vertical profile strip (#672) */
+.fp-profile { margin: 4px 0 8px; }
+.fp-profile-label { font-size: 11px; color: #b9b3b3; margin-bottom: 2px; }
+.fp-profile-canvas { width: 100%; height: 90px; display: block; border-radius: 4px; }
 .flight-table {
   width: 100%;
   border-collapse: collapse;

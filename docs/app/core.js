@@ -414,6 +414,11 @@ window.S = Object.assign({
   fpFuel: 'Fuel',
   fpMsa: 'MSA (ft)',
   msaLowTitle: 'Planned altitude is below the minimum safe altitude for this leg',
+  profileTitle: 'Vertical profile',
+  toc: 'TOC',
+  tod: 'TOD',
+  tocTitle: 'Top of climb',
+  todTitle: 'Top of descent',
   tbAircraft: 'Aircraft',
   tbGph: 'Gallons per hour',
   tbGphTitle: 'Fuel consumption, gallons per hour',
@@ -1032,6 +1037,66 @@ function toHMS(hours) {
   m %= 60;
   if (h > 0) return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
   return m + ':' + String(s).padStart(2, '0');
+}
+
+// --- vertical profile: top-of-climb / top-of-descent (#672) -------------
+// Default GA climb/descent performance (C172-ish); overridable per aircraft.
+const WX_DEFAULT_PERF = { climbFpm: 700, descentFpm: 500, climbKt: 75, descentKt: 110 };
+// Field elevation at route endpoint waypoint i (airfield elev_ft) or null.
+function routeEndpointElev(i) {
+  const wp = state.waypoints[i];
+  if (!wp) return null;
+  const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
+  return af && Number.isFinite(af.elev_ft) ? af.elev_ft : null;
+}
+// Model each leg as: climb at the start (up to cruise) + cruise + descent at
+// the end (down to the next leg's altitude). TOC/TOD points fall where the
+// climb/descent meets cruise. Returns per-leg time/fuel (climb & descent flown
+// at their own speed, so they differ from flat cruise), the TOC/TOD markers
+// (with along-leg fraction), and the altitude-vs-distance profile vertices.
+function routeProfile(ac) {
+  ac = ac || (typeof aircraft === 'object' && aircraft) || {};
+  const climbFpm = ac.climbFpm > 0 ? ac.climbFpm : WX_DEFAULT_PERF.climbFpm;
+  const descFpm = ac.descentFpm > 0 ? ac.descentFpm : WX_DEFAULT_PERF.descentFpm;
+  const climbKt = ac.climbKt > 0 ? ac.climbKt : WX_DEFAULT_PERF.climbKt;
+  const descKt = ac.descentKt > 0 ? ac.descentKt : WX_DEFAULT_PERF.descentKt;
+  const gph = ac.gph > 0 ? ac.gph : 8;
+  const legs = state.legs || [], wps = state.waypoints || [];
+  const n = legs.length;
+  const cruise = i => Number.isFinite(legs[i].inboundAltitude) ? legs[i].inboundAltitude : 2000;
+  const out = { legs: [], pts: [], tocs: [], tods: [], totalDist: 0, totalTimeH: 0, totalFuel: 0 };
+  let cum = 0;
+  for (let i = 0; i < n; i++) {
+    const A = wps[i], B = wps[i + 1];
+    if (!A || !B) continue;
+    const { dist } = geo(A, B);
+    const cr = cruise(i);
+    const startAlt = i === 0 ? (routeEndpointElev(0) != null ? routeEndpointElev(0) : cr) : cruise(i - 1);
+    const endAlt = i === n - 1 ? (routeEndpointElev(n) != null ? routeEndpointElev(n) : cr) : cruise(i + 1);
+    let climbDist = 0, descDist = 0;
+    if (cr > startAlt) climbDist = Math.min(dist, climbKt * ((cr - startAlt) / climbFpm) / 60);
+    if (cr > endAlt) descDist = Math.min(dist - climbDist, descKt * ((cr - endAlt) / descFpm) / 60);
+    const cruiseDist = Math.max(0, dist - climbDist - descDist);
+    const climbT = climbKt > 0 ? climbDist / climbKt : 0;
+    const descT = descKt > 0 ? descDist / descKt : 0;
+    const cruiseT = legs[i].flightSpeed > 0 ? cruiseDist / legs[i].flightSpeed : 0;
+    const timeH = climbT + cruiseT + descT;
+    const fuel = timeH * gph;
+    out.legs.push({ dist, timeH, fuel, climbDist, descDist, cruiseDist, startAlt, cruiseAlt: cr, endAlt });
+    out.pts.push({ d: cum, alt: startAlt });
+    if (climbDist > 0) {
+      out.pts.push({ d: cum + climbDist, alt: cr });
+      out.tocs.push({ leg: i, frac: dist > 0 ? climbDist / dist : 0, alt: cr });
+    }
+    if (descDist > 0) {
+      out.pts.push({ d: cum + dist - descDist, alt: cr });
+      out.tods.push({ leg: i, frac: dist > 0 ? (dist - descDist) / dist : 1, alt: cr });
+    }
+    out.pts.push({ d: cum + dist, alt: endAlt });
+    cum += dist; out.totalTimeH += timeH; out.totalFuel += fuel;
+  }
+  out.totalDist = cum;
+  return out;
 }
 
 // --- airfield METAR / TAF (#670) ---------------------------------------
