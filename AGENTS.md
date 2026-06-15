@@ -27,8 +27,6 @@ Unity.
 - Any open PR → auto-deployed to
   https://msupino.github.io/NavigationApp/pr/NNN/ and
   https://msupino.github.io/NavigationApp/branch/BRANCH_NAME/
-- `original-plotter` — frozen Unity 2019 reference (renamed from
-  `master`). Don't commit web changes here.
 - `export-leg-attributes` — old draft PR branch.
 
 Each push to `main` or `dev` re-runs the workflow, which checks out
@@ -110,7 +108,7 @@ both branches and assembles a single Pages site:
   (both loaded from `unpkg.com`) and `images.weserv.nl` (used as a
   CORS proxy by `exportPNG`). No build step, no bundler, no
   transpiler — keep it plain HTML / CSS / JS.
-- Don't reintroduce Unity files. They live on `original-plotter`.
+- Don't reintroduce Unity files.
 
 ## Live + repo
 

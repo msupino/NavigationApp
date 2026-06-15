@@ -5,9 +5,8 @@
 A browser flight-route planner. Leaflet slippy map (flight-maps.com tiles)
 with a canvas overlay that draws the route, free-text notes, and an
 optional VFR-reporting-point reference layer. Plain HTML / CSS / JS, no
-build step; Leaflet from CDN is the only dependency. Re-implements the
-Unity `NavigationApp` plotter, which is preserved on the
-`original-plotter` branch.
+build step; Leaflet from CDN is the only dependency. This repository now
+carries the static web app source only.
 
 - **Live (production):** https://msupino.github.io/NavigationApp/
 - **Live (staging):** https://msupino.github.io/NavigationApp/staging/
@@ -35,8 +34,6 @@ checklists, also use the rest of the repo-tracked `.ai/` handbook:
   here (commit `53188cc`).
 - `dev` — staging. The same web app, work-in-progress. Each push to
   `dev` rebuilds the staging URL.
-- `original-plotter` — frozen Unity 2019 project (renamed from `master`).
-  Reference only; do not commit web changes here.
 
 `main` is branch-protected — no direct pushes; production changes land via
 a `dev` → `main` pull request. **Every change must go through a feature
@@ -60,8 +57,7 @@ resolve that before branching.
 clearly intended for this work (or you are unsure), **stop and ask the
 user** which branch to use — do not guess; another agent or session may
 be using a different branch. If the branch is correct, proceed. Do not
-commit on `main`, `dev`, `original-plotter`, or an unrelated feature
-branch by mistake.
+commit on `main`, `dev`, or an unrelated feature branch by mistake.
 
 ## Files (`docs/`)
 

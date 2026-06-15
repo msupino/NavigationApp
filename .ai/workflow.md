@@ -53,8 +53,8 @@ git branch --show-current
 git status --short --branch
 ```
 
-Stop and ask if the branch is `main`, `dev`, `original-plotter`, or not clearly
-the intended feature branch.
+Stop and ask if the branch is `main`, `dev`, or not clearly the intended
+feature branch.
 
 Stage only intended files. Untracked local helper directories may exist in this
 workspace; do not stage them unless the task explicitly asks for them.
