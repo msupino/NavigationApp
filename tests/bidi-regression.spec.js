@@ -200,20 +200,28 @@ test.describe('Bidi / mixed-direction UI regressions', () => {
     await page.locator('#alt-pairs').click();
     const heads = page.locator('.charts-alt-table thead th');
     await expect(heads.nth(0)).toHaveText('נתיב');
-    await expect(heads.nth(1)).toHaveText('מהראשון לשני');
-    await expect(heads.nth(1)).toHaveAttribute(
-      'title',
-      'גובה בכיוון הנתיב: מהנקודה הראשונה בטור נתיב אל הנקודה השנייה');
-    await expect(heads.nth(2)).toHaveText('מהשני לראשון');
+    await expect(heads.nth(1)).toHaveText('כיוון');
+    await expect(heads.nth(2)).toHaveText('גובה');
     await expect(heads.nth(2)).toHaveAttribute(
       'title',
-      'גובה בכיוון ההפוך: מהנקודה השנייה בטור נתיב אל הנקודה הראשונה');
+      'גובה עבור הכיוון הראשון שמוצג בשורה');
     await expect(heads.nth(3)).toHaveText('כיוון');
-    await expect(heads.nth(4)).toHaveText('מ״י');
+    await expect(heads.nth(4)).toHaveText('גובה');
+    await expect(heads.nth(4)).toHaveAttribute(
+      'title',
+      'גובה עבור הכיוון ההפוך שמוצג בשורה');
+    await expect(heads.nth(5)).toHaveText('סוג');
+    await expect(heads.nth(6)).toHaveText('מ״י');
 
     const pair = page.locator('.charts-alt-pair').first();
     await expect(pair).toContainText('AAKKO ↔ AHIUD');
     let bidi = await cssSnapshot(pair);
+    expect(bidi.direction).toBe('ltr');
+    expect(bidi.unicodeBidi).toContain('isolate');
+    const directions = page.locator('.charts-alt-direction');
+    await expect(directions.nth(0)).toHaveText('AAKKO → AHIUD');
+    await expect(directions.nth(1)).toHaveText('AHIUD → AAKKO');
+    bidi = await cssSnapshot(directions.first());
     expect(bidi.direction).toBe('ltr');
     expect(bidi.unicodeBidi).toContain('isolate');
     bidi = await cssSnapshot(page.locator('.charts-alt-input').first());
