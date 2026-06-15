@@ -58,4 +58,16 @@ test('flight plan modal renders the vertical-profile strip', async ({ page }) =>
   await expect(page.locator('.fp-profile-label')).toContainText(/profile/i);
   // TOC/TOD map markers turn on while the plan is open.
   expect(await page.evaluate(() => window.showProfile)).toBe(true);
+  // The strip must paint on first open — not only after an edit. refresh()
+  // runs before the modal is in the DOM, so the canvas was disconnected and
+  // the draw bailed; a post-mount rAF redraw fixes it (#672 regression).
+  const painted = await page.evaluate(async () => {
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const c = document.querySelector('.fp-profile-canvas');
+    const cx = c.getContext('2d');
+    const px = cx.getImageData(0, 0, c.width, c.height).data;
+    for (let i = 3; i < px.length; i += 4) if (px[i] !== 0) return true;
+    return false;
+  });
+  expect(painted).toBe(true);
 });
