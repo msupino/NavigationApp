@@ -2,7 +2,7 @@
 // rename / duplicate / delete them.
 const { test, expect } = require('@playwright/test');
 
-async function boot(page) {
+async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
     try {
       for (const s of ['build', 'view', 'display', 'charts', 'export', 'print']) {
@@ -10,7 +10,7 @@ async function boot(page) {
       }
     } catch (e) {}
   });
-  await page.goto('?lang=en');
+  await page.goto('?lang=' + lang);
   await page.waitForFunction(() =>
     typeof state !== 'undefined' && typeof showRouteLibraryModal === 'function');
 }
@@ -67,6 +67,51 @@ test.describe('Route library', () => {
     const modal2 = page.locator('.route-library-modal');    await modal2.locator('.route-library-row').first()
       .getByRole('button', { name: 'Delete' }).click();
     await expect(modal2.locator('.route-library-row')).toHaveCount(1);
+  });
+
+  test('Hebrew library rows isolate mixed route names and metadata', async ({ page }) => {
+    await boot(page, 'he');
+    await page.evaluate(() => {
+      localStorage.setItem('navaid.routes', JSON.stringify([{
+        id: 'mixed-he',
+        name: 'בדיקה BAZRA DEROR',
+        savedAt: '2026-06-15T08:00:00.000Z',
+        data: {
+          waypoints: [
+            { lat: 32.22, lng: 34.88, name: 'BAZRA' },
+            { lat: 32.24, lng: 34.92, name: 'DEROR' },
+          ],
+          legs: [{ flightSpeed: 90 }],
+          notes: [],
+        },
+      }]));
+    });
+
+    await page.locator('#route-library').click();
+    const row = page.locator('.route-library-row').first();
+    const name = row.locator('.route-library-row-name');
+    const meta = row.locator('.route-library-row-meta');
+    await expect(name).toHaveText('בדיקה BAZRA DEROR');
+    await expect(meta).toHaveText('2 WP · 2026-06-15');
+
+    const bidi = await row.evaluate(el => {
+      const nameEl = el.querySelector('.route-library-row-name');
+      const metaEl = el.querySelector('.route-library-row-meta');
+      const nameStyle = getComputedStyle(nameEl);
+      const metaStyle = getComputedStyle(metaEl);
+      return {
+        nameDir: nameEl.getAttribute('dir'),
+        nameBidi: nameStyle.unicodeBidi,
+        metaDir: metaEl.getAttribute('dir'),
+        metaCssDir: metaStyle.direction,
+        metaBidi: metaStyle.unicodeBidi,
+      };
+    });
+    expect(bidi.nameDir).toBe('auto');
+    expect(bidi.nameBidi).toBe('plaintext');
+    expect(bidi.metaDir).toBe('ltr');
+    expect(bidi.metaCssDir).toBe('ltr');
+    expect(bidi.metaBidi).toContain('isolate');
   });
 
   test('mergeRouteLibraries keeps newest by id and dedupes', async ({ page }) => {

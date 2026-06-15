@@ -301,8 +301,10 @@ async function loadLegAltitudes() {
       legAltitudeMap = {};
       legAltitudePointIds = new Set();
       legAltitudeDataset = null;
+      legAltitudeOriginMap = null;
       return legAltitudeMap;
     }
+    resetLegAltitudeOrigins(d.segments);
     const directions = Array.isArray(d.directionPool)
       ? d.directionPool
       : legAltitudeDirectionsFromSegments(d.segments);
@@ -333,6 +335,7 @@ async function loadLegAltitudes() {
     legAltitudeMap = {};             // graceful degrade — defaults remain
     legAltitudePointIds = new Set();
     legAltitudeDataset = null;
+    legAltitudeOriginMap = null;
     legAltitudeDirectionPool = null;
     return legAltitudeMap;
   }

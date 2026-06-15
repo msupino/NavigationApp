@@ -919,6 +919,7 @@ function showRouteLibraryModal() {
   const nameInput = document.createElement('input');
   nameInput.type = 'text';
   nameInput.className = 'route-library-name';
+  nameInput.dir = 'auto';
   nameInput.placeholder = S.routeLibraryNamePlaceholder || 'Route name';
   nameInput.maxLength = 80;
   const saveBtn = document.createElement('button');
@@ -1009,9 +1010,11 @@ function showRouteLibraryModal() {
       main.innerHTML = '';
       const nm = document.createElement('span');
       nm.className = 'route-library-row-name';
+      nm.dir = 'auto';
       nm.textContent = entry.name;
       const meta = document.createElement('span');
       meta.className = 'route-library-row-meta';
+      meta.dir = 'ltr';
       meta.textContent = wpN + ' WP' + (when ? ' · ' + when : '');
       main.append(nm, meta);
       main.onclick = () => { if (routeLibraryApply(entry)) modal.close(); };

@@ -798,17 +798,67 @@ body.theme-light #aircraft-custom input {
   padding: 4px 6px;
 }
 .row select { cursor: pointer; }
+.vor-radial-row {
+  justify-content: flex-start;
+  gap: 10px;
+}
+.vor-radial-row label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  unicode-bidi: isolate;
+}
+.vor-radial-controls {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  gap: 6px;
+  min-width: 0;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+.vor-radial-row select {
+  width: 58px;
+}
+.row .val.vor-radial-val {
+  min-width: 92px;
+  direction: ltr;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  unicode-bidi: isolate;
+}
 /* Re-enable selection inside actual text fields (the toolbar disables it). */
 #toolbar input, #toolbar textarea,
 .row input, .row textarea {
   -webkit-user-select: text;
   user-select: text;
 }
-/* A leg altitude still holding its charted default reads muted, so a typed
+/* Resettable fields still holding their default read muted, so a typed
    override stands out (#722 follow-up). */
 .wind-fetch-status { font-size: 11px; color: #9a948f; padding: 0 2px; min-height: 14px; }
-.row input[type="number"].is-default { color: #8a8480; font-style: italic; }
-body.theme-light .row input[type="number"].is-default { color: #9aa1ab; }
+.row input.is-default,
+.charts-alt-input.is-default,
+.charts-freq-input.is-default {
+  color: #8a8480;
+  font-style: italic;
+}
+.row input.is-default::placeholder,
+.charts-alt-input.is-default::placeholder,
+.charts-freq-input.is-default::placeholder {
+  color: #8a8480;
+  opacity: 1;
+}
+body.theme-light .row input.is-default,
+body.theme-light .charts-alt-input.is-default,
+body.theme-light .charts-freq-input.is-default {
+  color: #9aa1ab;
+}
+body.theme-light .row input.is-default::placeholder,
+body.theme-light .charts-alt-input.is-default::placeholder,
+body.theme-light .charts-freq-input.is-default::placeholder {
+  color: #9aa1ab;
+  opacity: 1;
+}
 .row-reset {
   flex-shrink: 0;
   font-size: 13px;
@@ -1299,6 +1349,7 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   border-radius: 4px;
   padding: 5px 7px;
   min-width: 0;
+  unicode-bidi: plaintext;
 }
 .route-library-list {
   display: grid;
@@ -1367,8 +1418,16 @@ body.theme-light .route-library-tools button:hover { background: #eef3f9; }
   color: #e8e8e8;
   min-width: 0;
 }
-.route-library-row-name { font-weight: 600; }
-.route-library-row-meta { color: #b9b3b3; font-size: 12px; }
+.route-library-row-name {
+  font-weight: 600;
+  unicode-bidi: plaintext;
+}
+.route-library-row-meta {
+  color: #b9b3b3;
+  direction: ltr;
+  font-size: 12px;
+  unicode-bidi: isolate;
+}
 .route-library-actions { display: flex; gap: 4px; flex-wrap: wrap; }
 /* Load is the primary row action — make it obvious (clicking the name also loads). */
 .route-library-actions .route-library-load,
@@ -2027,10 +2086,16 @@ body.theme-light .msa-low .val { color: #c0392b; }
 .charts-alt-table tbody tr.unknown:hover {
   background: rgba(160, 170, 190, 0.08);
 }
+.charts-alt-table tr.overridden,
+.charts-alt-table tbody tr.overridden:hover {
+  background: rgba(255, 217, 102, 0.14);
+}
 .charts-alt-pair {
   color: #fff2a8;
+  direction: ltr;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
+  unicode-bidi: isolate;
 }
 .charts-alt-pair-button {
   display: inline-block;
@@ -2052,7 +2117,20 @@ body.theme-light .msa-low .val { color: #c0392b; }
 .charts-alt-status,
 .charts-alt-distance {
   color: #b9b3b3;
+  direction: ltr;
   font-size: 12px;
+  unicode-bidi: isolate;
+}
+.charts-alt-actions {
+  width: 28px;
+  text-align: center;
+}
+.charts-alt-cell-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 .charts-alt-table .blocked {
   color: #ffb4b4;
@@ -2060,6 +2138,7 @@ body.theme-light .msa-low .val { color: #c0392b; }
 .charts-alt-input {
   width: 74px;
   box-sizing: border-box;
+  direction: ltr;
   font: inherit;
   font-size: 12px;
   color: #e8e8e8;
@@ -2067,6 +2146,7 @@ body.theme-light .msa-low .val { color: #c0392b; }
   border: 1px solid #443f3f;
   border-radius: 4px;
   padding: 3px 5px;
+  unicode-bidi: isolate;
 }
 .charts-alt-input::placeholder {
   color: #b9b3b3;
@@ -2078,6 +2158,9 @@ body.theme-light .msa-low .val { color: #c0392b; }
 .charts-alt-input[aria-invalid="true"] {
   border-color: #b00020;
   box-shadow: 0 0 0 1px rgba(176, 0, 32, 0.35);
+}
+.charts-alt-cell-reset {
+  flex: 0 0 auto;
 }
 .charts-freq-table tr.overridden,
 .charts-freq-table tbody tr.overridden:hover {
@@ -2095,16 +2178,21 @@ body.theme-light .msa-low .val { color: #c0392b; }
   display: block;
 }
 .charts-freq-code {
+  direction: ltr;
   margin-top: 2px;
   color: #8a8484;
   font-size: 11px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  unicode-bidi: isolate;
 }
 .charts-freq-template {
   color: #ffd966;
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 .charts-freq-input {
   width: 96px;
+  direction: ltr;
   font: inherit;
   font-size: 13px;
   color: #e8e8e8;
@@ -2112,6 +2200,7 @@ body.theme-light .msa-low .val { color: #c0392b; }
   border: 1px solid #443f3f;
   border-radius: 4px;
   padding: 2px 5px;
+  unicode-bidi: isolate;
 }
 .charts-freq-table tr.overridden .charts-freq-input {
   background: #3a3422;
@@ -2716,6 +2805,10 @@ body.theme-light .charts-alt-table tbody tr.one-way:hover {
 body.theme-light .charts-alt-table tr.unknown,
 body.theme-light .charts-alt-table tbody tr.unknown:hover {
   background: rgba(70, 85, 105, 0.06);
+}
+body.theme-light .charts-alt-table tr.overridden,
+body.theme-light .charts-alt-table tbody tr.overridden:hover {
+  background: rgba(154, 107, 0, 0.14);
 }
 body.theme-light .charts-alt-pair {
   color: #6f4d00;
