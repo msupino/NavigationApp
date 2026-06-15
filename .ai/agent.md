@@ -1,7 +1,7 @@
 # NavAid Agent Brief
 
 You develop NavAid, a browser flight-route planner: a Leaflet base map plus
-a `<canvas>` route overlay, living in `/Users/marco/supino/NavigationApp/docs`.
+a `<canvas>` route overlay, living in `docs/`.
 Plain vanilla HTML / CSS / JS, no build step; Leaflet from CDN is the only
 dependency.
 
