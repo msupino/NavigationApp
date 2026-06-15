@@ -236,10 +236,17 @@ jobs:
             # against the shared root copy at runtime.
             rm -rf "$STAGING/byop"
             mv "$STAGING" "../site/pr/$NUM"
+            # Branch names can contain slashes (feat/foo) — create the parent
+            # path before the hardlink copy, else cp fails with "No such file".
+            mkdir -p "$(dirname "../site/branch/$BRANCH")"
             cp -rl "../site/pr/$NUM" "../site/branch/$BRANCH"
             echo "  → /pr/$NUM/ and /branch/$BRANCH/ ($SHA)"
           }
-          export -f build_preview
+          # build_preview runs in xargs-spawned subshells; it CALLS
+          # rewrite_cache_busts, so that function must be exported too —
+          # otherwise the rewrite silently no-ops and previews ship raw
+          # source (version: '1.0', ?v= literals, stale SW CACHE name).
+          export -f build_preview rewrite_cache_busts
 
           printf '%s\n' "$REFS" | xargs -P 4 -I{} bash -c 'IFS=$'\''\t'\'' read -r n b <<< "{}"; build_preview "$n" "$b"'
         env:
