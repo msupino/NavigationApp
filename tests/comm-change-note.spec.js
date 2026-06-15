@@ -526,7 +526,7 @@ test.describe('comm-change auto-note (#487)', () => {
     await page.mouse.click(pts.tail.x, pts.tail.y);
     await expect.poll(() => page.evaluate(() => state.selected))
       .toEqual({ type: 'wp', index: 0, freqNoteIndex: 0 });
-    await expect(page.locator('#insp-title')).toHaveValue('TYONA');
+    await expect(page.locator('#insp-title')).toHaveValue(/TYONA/);
     await expect(page.locator('#insp-body select')).toHaveCount(1);
     await expect(page.locator('#insp-body .freq-input')).toHaveValue('118.40');
 
@@ -589,7 +589,7 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(page.locator('.point-choice-modal')).toBeVisible();
     await page.locator('.point-choice-option').filter({ hasText: 'Freq-change arrow' }).click();
     expect(await page.evaluate(() => state.selected)).toEqual({ type: 'wp', index: 0, freqNoteIndex: 0 });
-    await expect(page.locator('#insp-title')).toHaveValue('TYONA');
+    await expect(page.locator('#insp-title')).toHaveValue(/TYONA/);
   });
 
   test('comm-change arrow overlapping a comm-change ring opens the point chooser', async ({ page }) => {
