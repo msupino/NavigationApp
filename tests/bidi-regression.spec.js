@@ -149,6 +149,16 @@ test.describe('Bidi / mixed-direction UI regressions', () => {
       { text: 'בצרה', dir: 'rtl', bidi: 'isolate' },
       { text: "32°13.1'N 34°53.0'E", dir: 'ltr', bidi: 'isolate' },
     ]);
+
+    await page.locator('.satellite-preview-modal .modal-close-x').click();
+    await expect(page.locator('.satellite-preview-modal')).toHaveCount(0);
+    await page.evaluate(() => {
+      state.selected = { type: 'navwp', index: navWP.findIndex(w => w.name === 'BAZRA') };
+      showInspector();
+    });
+    await expect(page.locator('#insp-title')).toHaveValue('BAZRA / בצרה');
+    await page.locator('#insp-body .satellite-snippet').click();
+    await expect(page.locator('.satellite-preview-modal .modal-title')).toHaveText(expectedTitle);
   });
 
   test('saved routes and templates isolate mixed route names and code paths', async ({ page }) => {
