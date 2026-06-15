@@ -1688,6 +1688,7 @@ function showInspector() {
       : (canonical
           ? canonical + (refLocale && refLocale !== canonical ? ' / ' + refLocale : '')
           : navName(storedName) || (S.wpPrefix + (state.selected.index + 1)));
+    title.dir = 'auto';
     title.placeholder = '';
     title.readOnly = true;
     title.oninput = null;
