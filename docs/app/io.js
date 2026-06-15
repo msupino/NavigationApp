@@ -2401,6 +2401,13 @@ function showFlightPlan() {
   // navaid.fpOpen is already cleared by closeFlightPlan(); on a fresh open
   // there's nothing to remove. The redundant call lived here for a while —
   // dropping it to keep showFlightPlan() side-effect-symmetric.
+  // refresh() ran above before the modal was mounted, so the profile canvas
+  // was still disconnected and drawProfileStripIfOpen() bailed out — the
+  // strip stayed blank until the first edit. Now that `back` is in the DOM,
+  // draw it once (rAF so the canvas has its laid-out clientWidth). #672
+  if (typeof drawProfileStripIfOpen === 'function') {
+    requestAnimationFrame(drawProfileStripIfOpen);
+  }
 }
 
 function planCell(text) {
