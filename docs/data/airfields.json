@@ -71,7 +71,7 @@
     {
       "name": "LLBO",
       "he": "הבונים",
-      "en": "HABONIM",
+      "en": "Habonim",
       "lat": 32.65,
       "lng": 34.93278,
       "plates": [
@@ -195,7 +195,7 @@
     {
       "name": "LLHA",
       "he": "חיפה",
-      "en": "Haifa / U. Michaeli",
+      "en": "Haifa",
       "lat": 32.80833,
       "lng": 35.04278,
       "elev_ft": 28,
