@@ -893,6 +893,22 @@ const newLeg = () => {
 // reporting points. 5 dp keeps full source precision while still trimming
 // IEEE-754 noise from drags and JSON imports.
 function r5(v) { return Math.round(v * 100000) / 100000; }
+const SAME_REFERENCE_POINT_DEG = 0.0002; // ~22 m at Israel lat, matches snap / overlay suppression.
+function sameMapPoint(a, b, eps = SAME_REFERENCE_POINT_DEG) {
+  return !!(a && b &&
+    Number.isFinite(a.lat) && Number.isFinite(a.lng) &&
+    Number.isFinite(b.lat) && Number.isFinite(b.lng) &&
+    Math.abs(a.lat - b.lat) < eps &&
+    Math.abs(a.lng - b.lng) < eps);
+}
+function routeWaypointAtPoint(point, skipIdx = -1, eps = SAME_REFERENCE_POINT_DEG) {
+  if (!point || !state || !Array.isArray(state.waypoints)) return -1;
+  return state.waypoints.findIndex((wp, i) =>
+    i !== skipIdx && sameMapPoint(wp, point, eps));
+}
+function routeOccupiesPoint(point, skipIdx = -1, eps = SAME_REFERENCE_POINT_DEG) {
+  return routeWaypointAtPoint(point, skipIdx, eps) !== -1;
+}
 function geo(a, b) {                   // a,b = {lat,lng} -> {dist NM, brg deg}
   const rad = d => (d * Math.PI) / 180;
   const phi1 = rad(a.lat), phi2 = rad(b.lat);
