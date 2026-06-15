@@ -133,6 +133,37 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       .toHaveValue('NAT');
   });
 
+  test('Hebrew inspector VOR radial row keeps label separated from LTR readout', async ({ page }) => {
+    await boot(page, 'he');
+    await page.evaluate(async () => {
+      await loadVors();
+      window.vorRef = 'NAT';
+      window.inspectorVorRef = undefined;
+      state.waypoints = [{ lat: 32.46472, lng: 34.91222, name: 'HADRA' }];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+    });
+    const row = page.locator('#insp-body .vor-radial-row');
+    const label = row.locator('label');
+    const controls = row.locator('.vor-radial-controls');
+    const val = row.locator('.vor-radial-val');
+    await expect(label).toHaveText('תחנת ייחוס');
+    await expect(val).toHaveText(/R-\d{3}° \/ \d+\.\d NM/);
+    const bidi = await val.evaluate(el => {
+      const style = getComputedStyle(el);
+      return { direction: style.direction, unicodeBidi: style.unicodeBidi };
+    });
+    expect(bidi.direction).toBe('ltr');
+    expect(bidi.unicodeBidi).toContain('isolate');
+    const [labelBox, controlsBox] = await Promise.all([
+      label.boundingBox(),
+      controls.boundingBox(),
+    ]);
+    expect(labelBox && controlsBox).toBeTruthy();
+    expect(controlsBox.x + controlsBox.width).toBeLessThan(labelBox.x - 4);
+  });
+
   test('flight plan: VOR picker + frequency, Radial/DME to the leg START', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {

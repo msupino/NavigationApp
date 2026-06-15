@@ -798,21 +798,34 @@ body.theme-light #aircraft-custom input {
   padding: 4px 6px;
 }
 .row select { cursor: pointer; }
+.vor-radial-row {
+  justify-content: flex-start;
+  gap: 10px;
+}
+.vor-radial-row label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  unicode-bidi: isolate;
+}
 .vor-radial-controls {
   display: flex;
   align-items: center;
+  flex: 0 1 auto;
   gap: 6px;
+  min-width: 0;
   direction: ltr;
   unicode-bidi: isolate;
 }
 .vor-radial-row select {
   width: 58px;
 }
-.vor-radial-val {
+.row .val.vor-radial-val {
   min-width: 92px;
+  direction: ltr;
   text-align: right;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  unicode-bidi: isolate;
 }
 /* Re-enable selection inside actual text fields (the toolbar disables it). */
 #toolbar input, #toolbar textarea,
