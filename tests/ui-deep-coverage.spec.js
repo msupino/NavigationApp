@@ -251,7 +251,7 @@ test.describe('Inspector panel', () => {
     await page.reload();
     await page.waitForFunction(() =>
       state && state.selected && state.selected.type === 'vor' && Array.isArray(vors));
-    await expect(page.locator('#insp-title')).toHaveValue('NAT');
+    await expect(page.locator('#insp-title')).toHaveValue(/NAT.*Natania/);
 
     await page.evaluate(() => { state.selected = null; showInspector(); });
     await page.evaluate(async () => {

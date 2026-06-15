@@ -313,33 +313,33 @@ function pointChoiceText(c) {
   }
   if (c.type === 'wp') {
     const wp = state.waypoints[c.index] || {};
-    const primary = navName((wp.name || '').trim()) || (S.wpPrefix + (c.index + 1));
     const meta = (S.choosePointRoute || 'Route waypoint') + ' ' + (c.index + 1);
-    return { primary, meta };
+    return { primary: waypointDisplayLabel(wp, c.index), meta };
   }
   if (c.type === 'vor') {
     const v = vors && vors[c.index];
     return {
       primary: v ? v.ident : '',
-      meta: ((S.choosePointVor || 'VOR station') + (v && v.freq ? ' / ' + v.freq : '')).trim(),
+      meta: ((S.choosePointVor || 'VOR station') +
+        (v && referenceLocaleName(v, 'vor') ? ' / ' + referenceLocaleName(v, 'vor') : '') +
+        (v && v.freq ? ' / ' + v.freq : '')).trim(),
     };
   }
   if (c.type === 'airfield') {
     const af = airfields && airfields[c.index];
-    const field = S.airfieldLabelField || 'en';
-    const label = af && (af[field] || af.en || af.he || '');
+    const label = referenceLocaleName(af, 'airfield');
     return {
       primary: af ? af.name : '',
       meta: (S.choosePointAirfield || 'Airfield') + (label ? ' / ' + label : ''),
     };
   }
   const nw = navWP && navWP[c.index];
-  const field = S.navWpSearchField || 'en';
-  const label = nw && (nw[field] || nw.en || nw.he || nw.name);
+  const label = referenceOverlayLabel(nw, 'navwp');
+  const code = referenceCode(nw, 'navwp');
   return {
     primary: label || '',
     meta: (S.choosePointNavWaypoint || 'Navigation waypoint') +
-      (nw && nw.name && nw.name !== label ? ' / ' + nw.name : ''),
+      (code && code !== label ? ' / ' + code : ''),
   };
 }
 function selectPointCandidate(c) {
@@ -733,18 +733,14 @@ function deleteSelectedWpOrNote() {
 // the user's locale at render time.
 function findSnappedReference(wp) {
   if (!wp || typeof map === 'undefined' || !map) return null;
-  const ll = { lat: wp.lat, lng: wp.lng };
-  if (typeof nearestAirfield === 'function' &&
-      Array.isArray(airfields) && airfields.length) {
-    const af = nearestAirfield(ll, 18);
-    if (af) return { name: af.name, he: af.he, en: af.en };
-  }
-  if (typeof nearestNavWaypoint === 'function' &&
-      Array.isArray(navWP) && navWP.length) {
-    const nw = nearestNavWaypoint(ll, 18);
-    if (nw) return { name: nw.name, he: nw.he, en: nw.en };
-  }
-  return null;
+  const hit = typeof nearestReference === 'function'
+    ? nearestReference(wp, {
+        pxThreshold: 18,
+        includeAirfields: true,
+        includeNavWaypoints: true,
+      })
+    : null;
+  return hit && hit.ref ? Object.assign({ kind: hit.kind }, hit.ref) : null;
 }
 
 // Issue #418: inspector "↺ Reset waypoint name" handler. Restores the
@@ -788,38 +784,12 @@ function legPairTitle(idx) {
     const a = state.waypoints[idx];
     const b = state.waypoints[idx + 1];
     if (!a || !b) return S.legTitle(idx + 1);
-    const labelFor = (wp, i) => {
-      const raw = (wp.name || '').trim();
-      const loc = raw ? (navName(raw) || raw).trim() : '';
-      return loc || (S.wpPrefix + (i + 1));
-    };
     const arrow = S.legArrow || '→';
-    return labelFor(a, idx) + ' ' + arrow + ' ' + labelFor(b, idx + 1);
+    return waypointDisplayLabel(a, idx) + ' ' + arrow + ' ' +
+      waypointDisplayLabel(b, idx + 1);
   } catch (e) {
     return S.legTitle(idx + 1);
   }
-}
-
-// Current UI language for inspector labels (Hebrew uses Hebrew labels, English
-// uses English/code labels).
-function inspLang() {
-  return (window.__navLang === 'he' ||
-    (document.documentElement && document.documentElement.lang === 'he')) ? 'he' : 'en';
-}
-function inspLocaleName(o) {
-  if (!o) return '';
-  return inspLang() === 'he'
-    ? (o.he || o.name || o.ident || '')
-    : (o.en || o.name || o.ident || '');
-}
-function inspectorCodeTitle(code, locale) {
-  const c = String(code || '').trim();
-  const loc = String(locale || '').trim();
-  return c + (loc && loc !== c ? ' / ' + loc : '');
-}
-function referenceInspectorTitle(o) {
-  if (!o) return '';
-  return inspectorCodeTitle(o.name || o.ident || '', inspLocaleName(o));
 }
 
 function inspectorVorIdent() {
@@ -1430,8 +1400,13 @@ function appendAirfieldRunways(body, af) {
   body.appendChild(row);
 }
 
+function appendPointCoordinateRows(body, point) {
+  body.appendChild(textRow(S.latitude, fmtLatLng(point.lat, 'N', 'S')));
+  body.appendChild(textRow(S.longitude, fmtLatLng(point.lng, 'E', 'W')));
+}
+
 function airfieldInspectorTitle(af) {
-  return referenceInspectorTitle(af);
+  return referenceInspectorTitle(af, 'airfield');
 }
 
 function appendAirfieldDetailRows(body, af, label) {
@@ -1733,13 +1708,11 @@ function showInspector() {
       clearStoredInspectorSelection();
       return;
     }
-    title.value = v.ident;
+    title.value = referenceInspectorTitle(v, 'vor');
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
-    body.appendChild(textRow(S.vorName || 'Name', inspLocaleName(v)));
+    appendPointCoordinateRows(body, v);
     body.appendChild(textRow(S.vorFreq || 'Frequency', v.freq + ' MHz'));
-    body.appendChild(textRow(S.latitude, fmtLatLng(v.lat, 'N', 'S')));
-    body.appendChild(textRow(S.longitude, fmtLatLng(v.lng, 'E', 'W')));
-    appendSatelliteSnippet(body, v, v.ident);
+    appendSatelliteSnippet(body, v, title.value);
     const useBtn = document.createElement('button');
     useBtn.className = 'insp-btn';
     const isRef = vorRef === v.ident;
@@ -1767,8 +1740,7 @@ function showInspector() {
     }
     title.value = airfieldInspectorTitle(af);
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
-    body.appendChild(textRow(S.latitude, fmtLatLng(af.lat, 'N', 'S')));
-    body.appendChild(textRow(S.longitude, fmtLatLng(af.lng, 'E', 'W')));
+    appendPointCoordinateRows(body, af);
     appendAirfieldDetailRows(body, af, title.value);
   } else if (state.selected.type === 'navwp') {
     const nw = navWP && navWP[state.selected.index];
@@ -1781,10 +1753,9 @@ function showInspector() {
     // Title in the current UI language: "CODE / localized name" (matches the
     // airfield and route-waypoint inspectors) so expanded satellite views keep
     // the same identity whether the point is on-route or standalone.
-    title.value = referenceInspectorTitle(nw);
+    title.value = referenceInspectorTitle(nw, 'navwp');
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
-    body.appendChild(textRow(S.latitude, fmtLatLng(nw.lat, 'N', 'S')));
-    body.appendChild(textRow(S.longitude, fmtLatLng(nw.lng, 'E', 'W')));
+    appendPointCoordinateRows(body, nw);
     appendSatelliteSnippet(body, nw, title.value);
     appendVorRadialRow(body, nw.lat, nw.lng);
   } else {
@@ -1793,21 +1764,23 @@ function showInspector() {
     const afInsp = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
     const ref = typeof findSnappedReference === 'function' ? findSnappedReference(wp) : null;
     let canonical = ref ? ref.name : null;
-    let refLocale = ref ? inspLocaleName(ref) : '';
+    let refKind = ref ? ref.kind : '';
+    let refLocale = ref ? referenceLocaleName(ref, refKind) : '';
     const storedName = (wp.name || '').trim();
     if (!canonical && storedName && navWP) {
       for (const nw of navWP) {
         if (nw.name === storedName || nw.en === storedName || nw.he === storedName) {
           canonical = nw.name;
-          refLocale = inspLocaleName(nw);
+          refKind = 'navwp';
+          refLocale = referenceLocaleName(nw, refKind);
           break;
         }
       }
     }
     title.value = afInsp ? airfieldInspectorTitle(afInsp)
       : (canonical
-          ? inspectorCodeTitle(canonical, refLocale)
-          : navName(storedName) || (S.wpPrefix + (state.selected.index + 1)));
+          ? codeTitle(canonical, refLocale)
+          : waypointDisplayLabel(wp, state.selected.index));
     title.placeholder = '';
     title.readOnly = true;
     title.oninput = null;
@@ -1820,8 +1793,7 @@ function showInspector() {
       wp.name = isSequenceWaypointName((v || '').trim()) ? '' : v;
       draw();
     }));
-    body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
-    body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
+    appendPointCoordinateRows(body, wp);
     if (afInsp) {
       appendAirfieldDetailRows(body, afInsp, title.value);
     } else {
@@ -2467,12 +2439,8 @@ function endMouseDrag() {
   if (drag) {
     if (drag.kind === 'wp' && drag.moved) {
       const wp = state.waypoints[drag.i];
-      const SNAP_DEG = 0.0002;
-      const snappedToSelf = Math.abs(wp.lat - drag.origLat) < SNAP_DEG &&
-          Math.abs(wp.lng - drag.origLng) < SNAP_DEG;
-      const snappedToOther = state.waypoints.some((w, j) => j !== drag.i &&
-          Math.abs(w.lat - wp.lat) < SNAP_DEG &&
-          Math.abs(w.lng - wp.lng) < SNAP_DEG);
+      const snappedToSelf = sameMapPoint(wp, { lat: drag.origLat, lng: drag.origLng });
+      const snappedToOther = routeOccupiesPoint(wp, drag.i);
       if ((snappedToSelf && !drag.originSnapArmed) || snappedToOther) {
         state.waypoints.splice(drag.i, 1);
         state.selected = null;
@@ -2507,10 +2475,7 @@ map.on('click', e => {
     // Without this an add-mode click on a nav-WP / airfield that already has
     // a route waypoint produces a duplicate at the same coords and a leg
     // with zero distance.
-    const SNAP_DEG = 0.0002;
-    if (state.waypoints.some(
-          w => Math.abs(w.lat - r.lat) < SNAP_DEG &&
-               Math.abs(w.lng - r.lng) < SNAP_DEG)) {
+    if (routeOccupiesPoint(r)) {
       return;
     }
     state.waypoints.push({ lat: r5(r.lat), lng: r5(r.lng), name: r.name });
@@ -2828,12 +2793,8 @@ function endTouch() {
   if (touchDrag) {
     if (touchDrag.kind === 'wp' && touchDrag.moved) {
       const wp = state.waypoints[touchDrag.i];
-      const SNAP_DEG = 0.0002;
-      const snappedToSelf = Math.abs(wp.lat - touchDrag.origLat) < SNAP_DEG &&
-          Math.abs(wp.lng - touchDrag.origLng) < SNAP_DEG;
-      const snappedToOther = state.waypoints.some((w, j) => j !== touchDrag.i &&
-          Math.abs(w.lat - wp.lat) < SNAP_DEG &&
-          Math.abs(w.lng - wp.lng) < SNAP_DEG);
+      const snappedToSelf = sameMapPoint(wp, { lat: touchDrag.origLat, lng: touchDrag.origLng });
+      const snappedToOther = routeOccupiesPoint(wp, touchDrag.i);
       if ((snappedToSelf && !touchDrag.originSnapArmed) || snappedToOther) {
         state.waypoints.splice(touchDrag.i, 1);
         state.selected = null;

@@ -345,18 +345,27 @@ async function loadLegAltitudes() {
   }
 }
 
+function closestScreenReference(list, kind, latlng, pxThreshold, options = {}) {
+  if (!Array.isArray(list) || !list.length || !latlng) return null;
+  const t = map.latLngToContainerPoint([latlng.lat, latlng.lng]);
+  let bestDist = Number.isFinite(pxThreshold) ? pxThreshold : Infinity;
+  let best = null;
+  for (const ref of list) {
+    if (options.excludeLl && sameMapPoint(ref, options.excludeLl)) continue;
+    if (Number.isInteger(options.skipOccupiedRouteIndex) &&
+        routeOccupiesPoint(ref, options.skipOccupiedRouteIndex)) continue;
+    const p = map.latLngToContainerPoint([ref.lat, ref.lng]);
+    const d = Math.hypot(p.x - t.x, p.y - t.y);
+    if (d < bestDist) { bestDist = d; best = ref; }
+  }
+  return best ? { kind, ref: best, dist: bestDist } : null;
+}
+
 // Closest nav waypoint within `pxThreshold` screen pixels of `latlng`,
 // or null. Returns the {name, lat, lng} entry from the loaded JSON.
-function nearestNavWaypoint(latlng, pxThreshold) {
-  if (!navWP || !navWP.length) return null;
-  const t = map.latLngToContainerPoint([latlng.lat, latlng.lng]);
-  let bestDist = pxThreshold, best = null;
-  for (const wp of navWP) {
-    const p = map.latLngToContainerPoint([wp.lat, wp.lng]);
-    const d = Math.hypot(p.x - t.x, p.y - t.y);
-    if (d < bestDist) { bestDist = d; best = wp; }
-  }
-  return best;
+function nearestNavWaypoint(latlng, pxThreshold, excludeLl) {
+  const hit = closestScreenReference(navWP, 'navwp', latlng, pxThreshold, { excludeLl });
+  return hit && hit.ref;
 }
 
 // True if `name` matches a known nav waypoint (code, English, or Hebrew) — so we
@@ -420,6 +429,73 @@ function navName(stored) {
   return stored;
 }
 
+function isAutoSnapName(name) {
+  return isAirfieldName(name) || isNavName(name) || isSequenceWaypointName(name);
+}
+
+function referenceCode(ref, kind) {
+  if (!ref) return '';
+  if (kind === 'vor') return ref.ident || ref.name || '';
+  return ref.name || ref.ident || '';
+}
+
+function currentUiLang() {
+  return (window.__navLang === 'he' ||
+    (document.documentElement && document.documentElement.lang === 'he')) ? 'he' : 'en';
+}
+
+function referenceLocaleName(ref, kind) {
+  if (!ref) return '';
+  if (kind === 'airfield') {
+    return ref[S.airfieldLabelField] || ref.en || ref.he || ref.name || '';
+  }
+  if (kind === 'vor') {
+    return currentUiLang() === 'he'
+      ? (ref.he || ref.name || ref.ident || '')
+      : (ref.en || ref.name || ref.ident || '');
+  }
+  return ref[S.navWpSearchField] || ref.en || ref.he || ref.name || '';
+}
+
+function codeTitle(code, locale) {
+  const c = String(code || '').trim();
+  const l = String(locale || '').trim();
+  return c + (l && l !== c ? ' / ' + l : '');
+}
+
+function referenceInspectorTitle(ref, kind) {
+  return codeTitle(referenceCode(ref, kind), referenceLocaleName(ref, kind));
+}
+
+function referenceOverlayLabel(ref, kind) {
+  const code = referenceCode(ref, kind);
+  const locale = referenceLocaleName(ref, kind);
+  if (kind === 'airfield') return codeTitle(code, locale);
+  return locale || code;
+}
+
+function waypointDisplayLabel(wp, idx) {
+  const n = navName((wp && wp.name || '').trim());
+  return n || (S.wpPrefix + (idx + 1));
+}
+
+function nearestReference(latlng, options = {}) {
+  const pxThreshold = options.force ? Infinity :
+    (Number.isFinite(options.pxThreshold) ? options.pxThreshold : 18);
+  const common = {
+    excludeLl: options.excludeLl,
+    skipOccupiedRouteIndex: options.skipOccupiedRouteIndex,
+  };
+  const air = options.includeAirfields === false ? null :
+    closestScreenReference(airfields, 'airfield', latlng, pxThreshold, common);
+  const nav = options.includeNavWaypoints === false ? null :
+    closestScreenReference(navWP, 'navwp', latlng, pxThreshold, common);
+  if (options.force) {
+    return [air, nav].filter(Boolean).sort((a, b) => a.dist - b.dist)[0] || null;
+  }
+  return air || nav;
+}
+
 // Decide where a waypoint should sit + what to call it given a target
 // position and its current name. Used by both initial drop and drag.
 //  - If the current name is user-typed (non-empty, not an auto-snap or
@@ -436,19 +512,12 @@ function navName(stored) {
 // known landmarks (16 vs 172 nav-WPs); if both overlays sit on the same
 // spot the airfield name is the more meaningful identifier.
 function applyNavSnap(latlng, currentName, excludeLl) {
-  const EXCL_DEG = 0.0002;
-  const excluded = ll => excludeLl &&
-    Math.abs(ll.lat - excludeLl.lat) < EXCL_DEG &&
-    Math.abs(ll.lng - excludeLl.lng) < EXCL_DEG;
+  const autoSnapped = isAutoSnapName(currentName);
+  const userTyped = currentName && !autoSnapped;
   if (!showAirfields && !showNavWP) {
-    const autoSnapped = isAirfieldName(currentName) || isNavName(currentName) ||
-        isSequenceWaypointName(currentName);
     return { lat: latlng.lat, lng: latlng.lng,
              name: autoSnapped ? '' : (currentName || '') };
   }
-  const autoSnapped = isAirfieldName(currentName) || isNavName(currentName) ||
-      isSequenceWaypointName(currentName);
-  const userTyped = currentName && !autoSnapped;
   // #106: Force-snap mode lifts the 18 px radius so every click resolves to
   // the absolute nearest known point. Useful when the chart has many close
   // reporting points and the user wants the published coordinate regardless
@@ -458,44 +527,16 @@ function applyNavSnap(latlng, currentName, excludeLl) {
   // it would make the 16-airfield set always win and leave the 172 nav-WPs
   // unreachable. So in force-snap mode pick the globally nearest across both
   // visible sets by screen distance instead of short-circuiting on airfields.
-  if (window.forceSnap) {
-    const t = map.latLngToContainerPoint([latlng.lat, latlng.lng]);
-    const cands = [];
-    if (showAirfields) {
-      const af = nearestAirfield(latlng, Infinity);
-      if (af && !excluded(af)) cands.push({ pt: af, name: af.name });
-    }
-    if (showNavWP) {
-      const nw = nearestNavWaypoint(latlng, Infinity);
-      if (nw && !excluded(nw)) cands.push({ pt: nw, name: nw.name });
-    }
-    let best = null, bestD = Infinity;
-    for (const c of cands) {
-      const p = map.latLngToContainerPoint([c.pt.lat, c.pt.lng]);
-      const d = Math.hypot(p.x - t.x, p.y - t.y);
-      if (d < bestD) { bestD = d; best = c; }
-    }
-    if (best) {
-      const name = userTyped ? currentName : best.name;
-      return { lat: best.pt.lat, lng: best.pt.lng, name, code: best.name };
-    }
-    return { lat: latlng.lat, lng: latlng.lng,
-             name: autoSnapped ? '' : (currentName || ''), code: '' };
-
-  }
-  if (showAirfields) {
-    const af = nearestAirfield(latlng, 18);
-    if (af && !excluded(af)) {
-      const name = userTyped ? currentName : af.name;
-      return { lat: af.lat, lng: af.lng, name, code: af.name };
-    }
-  }
-  if (showNavWP) {
-    const snap = nearestNavWaypoint(latlng, 18);
-    if (snap && !excluded(snap)) {
-      const name = userTyped ? currentName : snap.name;
-      return { lat: snap.lat, lng: snap.lng, name, code: snap.name };
-    }
+  const snap = nearestReference(latlng, {
+    pxThreshold: 18,
+    force: !!window.forceSnap,
+    includeAirfields: showAirfields,
+    includeNavWaypoints: showNavWP,
+    excludeLl,
+  });
+  if (snap && snap.ref) {
+    const name = userTyped ? currentName : snap.ref.name;
+    return { lat: snap.ref.lat, lng: snap.ref.lng, name, code: snap.ref.name };
   }
   return { lat: latlng.lat, lng: latlng.lng,
            name: autoSnapped ? '' : (currentName || ''), code: '' };
@@ -586,16 +627,9 @@ function vorRadialDme(vor, lat, lng) {
 
 // Closest airfield within `pxThreshold` screen pixels of `latlng`, or null.
 // Returns the {name, he, en, lat, lng, ...} entry from the loaded JSON.
-function nearestAirfield(latlng, pxThreshold) {
-  if (!airfields || !airfields.length) return null;
-  const t = map.latLngToContainerPoint([latlng.lat, latlng.lng]);
-  let bestDist = pxThreshold, best = null;
-  for (const af of airfields) {
-    const p = map.latLngToContainerPoint([af.lat, af.lng]);
-    const d = Math.hypot(p.x - t.x, p.y - t.y);
-    if (d < bestDist) { bestDist = d; best = af; }
-  }
-  return best;
+function nearestAirfield(latlng, pxThreshold, excludeLl) {
+  const hit = closestScreenReference(airfields, 'airfield', latlng, pxThreshold, { excludeLl });
+  return hit && hit.ref;
 }
 
 // True if `name` matches a known airfield ICAO (its `name` field).
@@ -632,7 +666,6 @@ function airfieldAtWaypoint(wp) {
 // a route waypoint sits on the airfield (proximity-based, like nav-WPs).
 function drawAirfields() {
   if (!showAirfields || !airfields || airfields.length === 0) return;
-  const SNAP_DEG = 0.0002;               // ~22 m — matches nearestAirfield px threshold
   const showLabels = map.getZoom() >= 10;
   const r = tune('airfieldMarkerRadiusPx');
   const wFactor = tune('airfieldMarkerWidthFactor');
@@ -642,9 +675,7 @@ function drawAirfields() {
   octx.textAlign = 'left';
   octx.textBaseline = 'middle';
   for (const af of airfields) {
-    const occupied = state.waypoints.some(
-      w => Math.abs(w.lat - af.lat) < SNAP_DEG && Math.abs(w.lng - af.lng) < SNAP_DEG);
-    if (occupied) continue;
+    if (routeOccupiesPoint(af)) continue;
     const s = proj(af);                  // no viewport cull: also drawn into
                                          // the larger PNG-export canvas
     octx.beginPath();
@@ -658,8 +689,7 @@ function drawAirfields() {
     octx.strokeStyle = tune('airfieldOutlineColor');
     octx.stroke();
     if (showLabels) {
-      const locale = af[S.airfieldLabelField] || af.en || af.name;
-      const label = af.name + (locale && locale !== af.name ? ' / ' + locale : '');
+      const label = referenceOverlayLabel(af, 'airfield');
       octx.lineWidth = tune('airfieldLabelHaloPx');
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
       octx.strokeText(label, s.x + r + labelOffset, s.y);
@@ -683,7 +713,6 @@ function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
   // Suppress nav-WP dot when a route waypoint sits on it (by position),
   // regardless of whether the WP name was changed after snapping.
-  const SNAP_DEG = 0.0002;               // ~22 m — matches nearestNavWaypoint px threshold
   const showLabels = map.getZoom() >= 10;
   const dotRadius = tune('navWaypointRadiusPx');
   const labelOffset = tune('navWaypointLabelOffsetPx');
@@ -691,9 +720,7 @@ function drawNavWaypoints() {
   octx.textAlign = 'left';
   octx.textBaseline = 'middle';
   for (const wp of navWP) {
-    const occupied = state.waypoints.some(
-      r => Math.abs(r.lat - wp.lat) < SNAP_DEG && Math.abs(r.lng - wp.lng) < SNAP_DEG);
-    if (occupied) continue;
+    if (routeOccupiesPoint(wp)) continue;
     const s = proj(wp);                  // no viewport cull: also drawn into
                                          // the larger PNG-export canvas
     octx.fillStyle = tune('navWaypointDotColor');
@@ -704,7 +731,7 @@ function drawNavWaypoints() {
     octx.fill();
     octx.stroke();
     if (showLabels) {
-      const label = wp[S.navWpSearchField] || wp.name;
+      const label = referenceOverlayLabel(wp, 'navwp');
       octx.lineWidth = tune('navWaypointLabelHaloPx');
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
       octx.strokeText(label, s.x + labelOffset, s.y);
@@ -833,14 +860,12 @@ function drawCommChangeRings() {
     // filled disc over this ring later in the frame — and with "show waypoint
     // names" on, waypointGeom() enlarges that disc to fit its label. Grow the
     // ring to enclose the disc (+ its 3px stroke) so it stays visible outside.
-    const SNAP_DEG = 0.0002;               // ~22 m — matches the snap threshold
     for (const wp of navWP) {
       if (!commChangeMap[wp.name] || !commChangeMap[wp.name].commChange) continue;
       const s = proj(wp);                // no viewport cull: also drawn into
                                          // the larger PNG-export canvas
       let radius = tune('commChangeRingRadiusPx');
-      const wi = state.waypoints.findIndex(
-        r => Math.abs(r.lat - wp.lat) < SNAP_DEG && Math.abs(r.lng - wp.lng) < SNAP_DEG);
+      const wi = routeWaypointAtPoint(wp);
       if (wi !== -1) {
         const selected = state.selected &&
                          state.selected.type === 'wp' && state.selected.index === wi;
@@ -1915,9 +1940,7 @@ function drawDistanceBadge(cx, cy, dist) {
 function waypointGeom(i) {
   const wp = state.waypoints[i];
   // Match wpLabel() / inspector placeholder ("WP N"), not a bare digit.
-  const label = showWpNames
-    ? (navName((wp.name || '').trim()) || (S.wpPrefix + (i + 1)))
-    : '';
+  const label = showWpNames ? waypointDisplayLabel(wp, i) : '';
   const zoomScale = Math.max(tune('waypointMinZoomScale'), Math.pow(2, map.getZoom() - 12));
   const scale = wpSize * zoomScale;
   const fontPx = Math.max(4, Math.round(tune('waypointFontPx') * scale));
@@ -2312,8 +2335,8 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     totDist += dist; totTime += dur; totFuel += fuel;
     const fLabel = ac ? fuel.toFixed(1) + (i === 0 && taxiFuel ? ' *' : '') : '--';
     const rd = vorCells(B, legs[i]);
-    rows.push({ num: i + 1, from: navName((A.name || '').trim()) || S.wpPrefix + (i + 1),
-      to: navName((B.name || '').trim()) || S.wpPrefix + (i + 2),
+    rows.push({ num: i + 1, from: waypointDisplayLabel(A, i),
+      to: waypointDisplayLabel(B, i + 1),
       hdg: pad3(hdg) + '°M', dist: dist.toFixed(1),
       speed: String(legs[i].flightSpeed), alt: String(legs[i].inboundAltitude),
       time: dur > 0 ? toHMS(dur) : '--', fuel: fLabel,
