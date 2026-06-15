@@ -107,7 +107,7 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
       lat: 29.72722, lng: 35.01417,
     });
     expect(byCode.get('LLHA')).toMatchObject({
-      lat: 32.80833, lng: 35.04278,
+      en: 'Haifa', lat: 32.80833, lng: 35.04278,
     });
     expect(byCode.get('LLOV')).toMatchObject({
       lat: 29.935, lng: 34.94083,
@@ -159,7 +159,7 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     const llbo = d.airfields.find(a => a.name === 'LLBO');
     expect(llbo).toMatchObject({
       he: 'הבונים',
-      en: 'HABONIM',
+      en: 'Habonim',
     });
     expect(Array.isArray(llbo.plates)).toBe(true);
     expect(llbo.plates).toEqual(expect.arrayContaining([
@@ -185,7 +185,7 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
       LLPL: 'Palmachim',
       LLHS: 'Hatzor',
       LLHB: 'Hatzerim',
-      LLBO: 'HABONIM',
+      LLBO: 'Habonim',
     };
     for (const [code, en] of Object.entries(expectedEnglish)) {
       expect(byCode.get(code).en).toBe(en);

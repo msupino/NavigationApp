@@ -127,6 +127,7 @@ test.describe('#406 / #410 — nav-waypoints.json (chart-sourced)', () => {
     expect(byCode.get('SDTYM').en).toBe('Sdot Yam');
     expect(byCode.get('DEROR').en).toBe('Bnei Dror');
     expect(byCode.get('NMASD').en).toBe('Ashdod Port');
+    expect(byCode.get('RIDNG').en).toBe('Riding');
     expect(byCode.get('ZLHAV').en).toBe('Lehavim Junction');
   });
 
