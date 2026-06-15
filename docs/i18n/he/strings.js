@@ -124,7 +124,7 @@ window.S = {
   elevation: 'גובה',
   navHebrew: 'שם נקודה',
   vorFrom: function(id) { return 'מ-' + id + ' VOR'; },
-  vorRadialDme: function(rad, dme) { return 'R-' + rad + '° / ' + dme + ' מ״י'; },
+  vorRadialDme: function(rad, dme) { return 'R-' + rad + '° / ' + dme + ' NM'; },
   primary: 'ראשי',
   atis: 'ATIS',
   clearance: 'קלירנס',

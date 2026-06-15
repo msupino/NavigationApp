@@ -2038,8 +2038,10 @@ body.theme-light .msa-low .val { color: #c0392b; }
 }
 .charts-alt-pair {
   color: #fff2a8;
+  direction: ltr;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
+  unicode-bidi: isolate;
 }
 .charts-alt-pair-button {
   display: inline-block;
@@ -2061,7 +2063,9 @@ body.theme-light .msa-low .val { color: #c0392b; }
 .charts-alt-status,
 .charts-alt-distance {
   color: #b9b3b3;
+  direction: ltr;
   font-size: 12px;
+  unicode-bidi: isolate;
 }
 .charts-alt-table .blocked {
   color: #ffb4b4;
@@ -2069,6 +2073,7 @@ body.theme-light .msa-low .val { color: #c0392b; }
 .charts-alt-input {
   width: 74px;
   box-sizing: border-box;
+  direction: ltr;
   font: inherit;
   font-size: 12px;
   color: #e8e8e8;
@@ -2076,6 +2081,7 @@ body.theme-light .msa-low .val { color: #c0392b; }
   border: 1px solid #443f3f;
   border-radius: 4px;
   padding: 3px 5px;
+  unicode-bidi: isolate;
 }
 .charts-alt-input::placeholder {
   color: #b9b3b3;
@@ -2104,16 +2110,21 @@ body.theme-light .msa-low .val { color: #c0392b; }
   display: block;
 }
 .charts-freq-code {
+  direction: ltr;
   margin-top: 2px;
   color: #8a8484;
   font-size: 11px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  unicode-bidi: isolate;
 }
 .charts-freq-template {
   color: #ffd966;
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 .charts-freq-input {
   width: 96px;
+  direction: ltr;
   font: inherit;
   font-size: 13px;
   color: #e8e8e8;
@@ -2121,6 +2132,7 @@ body.theme-light .msa-low .val { color: #c0392b; }
   border: 1px solid #443f3f;
   border-radius: 4px;
   padding: 2px 5px;
+  unicode-bidi: isolate;
 }
 .charts-freq-table tr.overridden .charts-freq-input {
   background: #3a3422;
