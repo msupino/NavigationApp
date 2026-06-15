@@ -2,7 +2,8 @@
 // Coverage for the canvas-overlay drag + rotate maths that the pointer
 // handlers sit on top of:
 //  C2 — legLabelCenter()/hitLegLabel()/legFrame(): the kite-label hit test
-//       returns {i,which} only when the cursor is on the rendered label.
+//       returns {i,which} only when the cursor is on the rendered label,
+//       and leg-label drags stay between the waypoint perpendicular gates.
 //  C3 — hitPageFrameEdge()/clampPageOffset(): the page-frame border band is
 //       grabbable; the centre is not; the drag offset is clamped on-screen.
 //  C6 — rotEnd(cycle): a tap (drag start, no move) steps the bearing through
@@ -75,6 +76,110 @@ test.describe('Leg-label hit test (C2)', () => {
              Math.abs(f.my - (a.y + b.y) / 2) < 1e-6;
     });
     expect(ok).toBe(true);
+  });
+
+  test('dragging a leg kite follows the limit-to-leg checkbox', async ({ page }) => {
+    await boot(page);
+    await setRoute(page);
+    await page.evaluate(() => {
+      map.setZoom(12);
+      draw();
+    });
+    await page.waitForFunction(() => Math.abs(map.getZoom() - 12) < 0.01);
+
+    const dragPts = await page.evaluate(() => {
+      const c = legLabelCenter(0, 'in');
+      const f = legFrame(0);
+      const r = map.getContainer().getBoundingClientRect();
+      const perp = (c.x - f.mx) * f.nx + (c.y - f.my) * f.ny;
+      const targetAlong = f.len * 0.85;       // well beyond B's perpendicular gate
+      const target = {
+        x: f.mx + f.dx * targetAlong + f.nx * perp,
+        y: f.my + f.dy * targetAlong + f.ny * perp,
+      };
+      const fartherAlong = f.len * 1.15;
+      const farther = {
+        x: f.mx + f.dx * fartherAlong + f.nx * perp,
+        y: f.my + f.dy * fartherAlong + f.ny * perp,
+      };
+      return {
+        start: { x: r.left + c.x, y: r.top + c.y },
+        target: { x: r.left + target.x, y: r.top + target.y },
+        farther: { x: r.left + farther.x, y: r.top + farther.y },
+        targetAlong,
+      };
+    });
+
+    await page.mouse.move(dragPts.start.x, dragPts.start.y);
+    await page.mouse.down();
+    await page.mouse.move(dragPts.target.x, dragPts.target.y, { steps: 8 });
+    const clampedDuringDrag = await page.evaluate(() => {
+      const f = legFrame(0);
+      const c = legLabelCenter(0, 'in');
+      return (c.x - f.mx) * f.dx + (c.y - f.my) * f.dy;
+    });
+    await page.mouse.move(dragPts.farther.x, dragPts.farther.y, { steps: 4 });
+    const afterFurtherOvershoot = await page.evaluate(() => {
+      const f = legFrame(0);
+      const c = legLabelCenter(0, 'in');
+      return (c.x - f.mx) * f.dx + (c.y - f.my) * f.dy;
+    });
+    await page.mouse.up();
+    expect(afterFurtherOvershoot).toBeCloseTo(clampedDuringDrag, 1);
+
+    const out = await page.evaluate(() => {
+      const f = legFrame(0);
+      const c = legLabelCenter(0, 'in');
+      const sc = legZoomScale();
+      const halfKitePx = legKiteAlongHalfPx(sc);
+      const limit = Math.max(0, (f.len / 2 - halfKitePx) / sc);
+      const alongPx = (c.x - f.mx) * f.dx + (c.y - f.my) * f.dy;
+      return { label: state.legs[0].inLabel, limit, alongPx, halfPx: f.len / 2, halfKitePx };
+    });
+    expect(out.label._default).toBeUndefined();
+    expect(out.label._m).toBe(1);
+    expect(dragPts.targetAlong).toBeGreaterThan(out.halfPx + 20);
+    expect(out.label.a).toBeCloseTo(out.limit, 1);
+    expect(out.alongPx + out.halfKitePx).toBeLessThanOrEqual(out.halfPx + 1);
+
+    const symmetric = await page.evaluate(() => {
+      const leg = state.legs[0];
+      const f = legFrame(0);
+      const sc = legZoomScale();
+      const limit = Math.max(0, (f.len / 2 - legKiteAlongHalfPx(sc)) / sc);
+      leg.inLabel.a = 99999;
+      leg.outLabel = { a: -99999, p: -30, _m: 1 };
+      clampLegLabelAlong(0, leg.inLabel);
+      clampLegLabelAlong(0, leg.outLabel);
+      return { limit, inA: leg.inLabel.a, outA: leg.outLabel.a };
+    });
+    expect(symmetric.inA).toBeCloseTo(symmetric.limit, 6);
+    expect(symmetric.outA).toBeCloseTo(-symmetric.limit, 6);
+
+    await page.evaluate(() => {
+      const cb = document.getElementById('limit-kites-cb');
+      cb.checked = false;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+      const f = legFrame(0);
+      const sc = legZoomScale();
+      state.legs[0].inLabel = { a: (f.len / 2 + 40) / sc, p: 30, _m: 1 };
+      clampLegLabelAlong(0, state.legs[0].inLabel);
+      draw();
+    });
+    const free = await page.evaluate(() => {
+      const f = legFrame(0);
+      const c = legLabelCenter(0, 'in');
+      const alongPx = (c.x - f.mx) * f.dx + (c.y - f.my) * f.dy;
+      return {
+        checked: document.getElementById('limit-kites-cb').checked,
+        stored: localStorage.getItem('navaid.limitLegKites'),
+        alongPx,
+        halfPx: f.len / 2,
+      };
+    });
+    expect(free.checked).toBe(false);
+    expect(free.stored).toBe('0');
+    expect(free.alongPx).toBeGreaterThan(free.halfPx + 20);
   });
 });
 

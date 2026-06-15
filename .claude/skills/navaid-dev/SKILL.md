@@ -120,7 +120,7 @@ branch by mistake.
     `state.selected` = `{type:'wp'|'leg'|'note', index}` or `null`.
   - Top-level globals: `showReturn`, `showMidLeg`, `highlightDiff`,
     `showNavWP`, `navWP`, `showWpNames`, `wpNameAngle`,
-    `yellowAlpha`, `wpSize`, `magVar`,
+    `yellowAlpha`, `wpSize`, `limitLegKites`, `magVar`,
     `pageSize`, `pageOrient`.
 - **Interaction (mouse):** Leaflet `mousedown` → hit-test in priority
   order **waypoint > note > leg-label > leg**. On a hit,
@@ -424,6 +424,8 @@ branch by mistake.
 - `navaid.legArrowSize` — leg-arrow size slider value.
 - `navaid.showReturn` — `'0'` / `'1'` for the return-leg overlay.
 - `navaid.showMidLeg` — `'0'` / `'1'` for the mid-leg distance badge.
+- `navaid.limitLegKites` — `'0'` / `'1'` for clamping dragged
+  leg-marker kites between the two waypoints of their leg (default on).
 - `navaid.showDrift` — `'0'` / `'1'` for drift lines.
 - `navaid.highlightDiff` — `'0'` / `'1'` for altitude-diff halos.
 - `navaid.showNavWP` — `'0'` / `'1'` for the nav-waypoints overlay.

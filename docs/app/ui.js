@@ -919,6 +919,7 @@ function showRouteLibraryModal() {
   const nameInput = document.createElement('input');
   nameInput.type = 'text';
   nameInput.className = 'route-library-name';
+  nameInput.dir = 'auto';
   nameInput.placeholder = S.routeLibraryNamePlaceholder || 'Route name';
   nameInput.maxLength = 80;
   const saveBtn = document.createElement('button');
@@ -1009,9 +1010,11 @@ function showRouteLibraryModal() {
       main.innerHTML = '';
       const nm = document.createElement('span');
       nm.className = 'route-library-row-name';
+      nm.dir = 'auto';
       nm.textContent = entry.name;
       const meta = document.createElement('span');
       meta.className = 'route-library-row-meta';
+      meta.dir = 'ltr';
       meta.textContent = wpN + ' WP' + (when ? ' · ' + when : '');
       main.append(nm, meta);
       main.onclick = () => { if (routeLibraryApply(entry)) modal.close(); };
@@ -1415,6 +1418,7 @@ document.getElementById('charts').onclick = showChartsModal;
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
 const CUMTIME_KEY  = 'navaid.showCumTime';
+const LIMIT_KITES_KEY = 'navaid.limitLegKites';
 const SIM_URL_KEY  = 'navaid.simUrl';
 const SIM_ON_KEY   = 'navaid.simOn';
 const SIM_FOLLOW_KEY = 'navaid.simFollow';
@@ -1425,6 +1429,8 @@ try {
   if (sm !== null) window.showMidLeg =sm === '1';
   const sc = localStorage.getItem(CUMTIME_KEY);
   if (sc !== null) window.showCumTime = sc === '1';
+  const slk = localStorage.getItem(LIMIT_KITES_KEY);
+  if (slk !== null) window.limitLegKites = slk === '1';
   const su = localStorage.getItem(SIM_URL_KEY);
   if (su) window.simUrl = su;
   const son = localStorage.getItem(SIM_ON_KEY);
@@ -1435,9 +1441,15 @@ try {
 document.getElementById('ret-cb').checked = showReturn;
 document.getElementById('mid-cb').checked = showMidLeg;
 document.getElementById('cumtime-cb').checked = showCumTime;
+document.getElementById('limit-kites-cb').checked = limitLegKites;
 document.getElementById('cumtime-cb').onchange = e => {
   window.showCumTime = e.target.checked;
   try { localStorage.setItem(CUMTIME_KEY, showCumTime ? '1' : '0'); } catch (err) { /* */ }
+  draw();
+};
+document.getElementById('limit-kites-cb').onchange = e => {
+  window.limitLegKites = e.target.checked;
+  try { localStorage.setItem(LIMIT_KITES_KEY, limitLegKites ? '1' : '0'); } catch (err) { /* */ }
   draw();
 };
 

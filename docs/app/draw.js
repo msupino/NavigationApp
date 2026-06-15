@@ -27,6 +27,10 @@ function legDefaultLabelPerp(legLenPx) {
          tune('defaultKiteHalfWidthPx') * sc +
          tune('defaultLabelMarginPx');
 }
+function legKiteAlongHalfPx(sc) {
+  sc = sc ?? ((typeof legZoomScale === 'function') ? legZoomScale() : 1);
+  return (tune('legKiteCellWidthPx') * 2 + tune('legKiteTriangleLenPx')) * sc / 2;
+}
 
 // --- drawing ---------------------------------------------------------
 // Draw the live simulator aircraft at its current position with heading.
@@ -301,8 +305,10 @@ async function loadLegAltitudes() {
       legAltitudeMap = {};
       legAltitudePointIds = new Set();
       legAltitudeDataset = null;
+      legAltitudeOriginMap = null;
       return legAltitudeMap;
     }
+    resetLegAltitudeOrigins(d.segments);
     const directions = Array.isArray(d.directionPool)
       ? d.directionPool
       : legAltitudeDirectionsFromSegments(d.segments);
@@ -333,6 +339,7 @@ async function loadLegAltitudes() {
     legAltitudeMap = {};             // graceful degrade — defaults remain
     legAltitudePointIds = new Set();
     legAltitudeDataset = null;
+    legAltitudeOriginMap = null;
     legAltitudeDirectionPool = null;
     return legAltitudeMap;
   }
