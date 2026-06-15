@@ -44,6 +44,9 @@ async function bootWithRoute(page) {
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof syncLegs === 'function');
   await page.evaluate(route => {
     state.waypoints = route.waypoints.map(w => ({ lat: w.lat, lng: w.lng, name: w.name }));
+    state.notes = [];
+    state.selected = null;
+    state.mode = null;
     syncLegs();
     draw();
   }, ROUTE);
@@ -516,7 +519,7 @@ test.describe('Persistence', () => {
       if (!raw) return false;
       try { return JSON.parse(raw).waypoints.length === 11; } catch (e) { return false; }
     });
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() =>
       typeof state !== 'undefined' && state.waypoints && state.waypoints.length === 11);
     const names = await page.evaluate(() => state.waypoints.map(w => w.name));
@@ -595,7 +598,7 @@ test.describe('Layer picker', () => {
     await page.locator('#layer-select').selectOption('OpenStreetMap');
     await page.waitForFunction(() =>
       localStorage.getItem('navaid.layer') === 'OpenStreetMap');
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.locator('#layer-select')).toHaveValue('OpenStreetMap');
   });
 });
@@ -607,7 +610,7 @@ test.describe('Overlay toggles', () => {
     await page.locator('#navwp-cb').uncheck();
     await page.waitForFunction(() =>
       localStorage.getItem('navaid.showNavWP') === '0');
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.locator('#navwp-cb')).not.toBeChecked();
   });
 
@@ -615,7 +618,7 @@ test.describe('Overlay toggles', () => {
     await page.locator('#airfield-cb').uncheck();
     await page.waitForFunction(() =>
       localStorage.getItem('navaid.showAirfields') === '0');
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.locator('#airfield-cb')).not.toBeChecked();
   });
 
@@ -623,7 +626,7 @@ test.describe('Overlay toggles', () => {
     await page.locator('#ret-cb').check();
     await page.waitForFunction(() =>
       localStorage.getItem('navaid.showReturn') === '1');
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.locator('#ret-cb')).toBeChecked();
   });
 });

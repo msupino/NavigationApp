@@ -1585,27 +1585,19 @@ document.getElementById('drift-cb').onchange = e => {
 // nearest airfield / nav-WP. Preserves user-typed names. Priority matches
 // applyNavSnap: airfields first.
 function snapExistingWaypoints() {
-  const occupied = (lat, lng, skipIdx) => state.waypoints.some((w, j) =>
-    j !== skipIdx && w.lat === lat && w.lng === lng);
   for (let i = 0; i < state.waypoints.length; i++) {
     const wp = state.waypoints[i];
-    const autoSnapped = isAirfieldName(wp.name) || isNavName(wp.name) ||
-        isSequenceWaypointName(wp.name);
-    if (wp.name && !autoSnapped) continue;
-    if (showAirfields) {
-      const af = nearestAirfield(wp, 18);
-      if (af && !occupied(r5(af.lat), r5(af.lng), i)) {
-        wp.lat = r5(af.lat); wp.lng = r5(af.lng);
-        wp.name = af.name;
-        continue;
-      }
-    }
-    if (showNavWP) {
-      const snap = nearestNavWaypoint(wp, 18);
-      if (snap && !occupied(r5(snap.lat), r5(snap.lng), i)) {
-        wp.lat = r5(snap.lat); wp.lng = r5(snap.lng);
-        wp.name = snap.name;
-      }
+    if (wp.name && !isAutoSnapName(wp.name)) continue;
+    const snap = nearestReference(wp, {
+      pxThreshold: 18,
+      includeAirfields: showAirfields,
+      includeNavWaypoints: showNavWP,
+      skipOccupiedRouteIndex: i,
+    });
+    if (snap && snap.ref) {
+      wp.lat = r5(snap.ref.lat);
+      wp.lng = r5(snap.ref.lng);
+      wp.name = snap.ref.name;
     }
   }
 }
