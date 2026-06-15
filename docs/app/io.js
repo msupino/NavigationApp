@@ -2437,8 +2437,9 @@ function showSigmetDecoded() {
   addModalCloseX(box, close);
   for (const s of sigmets) {
     const item = document.createElement('div');
+    item.dir = 'ltr';                 // SIGMET text is LTR even in Hebrew mode
     item.style.cssText = 'margin:10px 0;padding:8px;border-left:4px solid ' +
-      sigmetHazardColor(s.hazard) + ';background:rgba(255,255,255,0.04)';
+      sigmetHazardColor(s.hazard) + ';background:rgba(255,255,255,0.04);direction:ltr;text-align:left';
     const dec = document.createElement('div');
     dec.style.cssText = 'font-size:13px;font-weight:600;margin-bottom:4px';
     dec.textContent = decodeSigmet(s);

@@ -1410,6 +1410,7 @@ function appendAirfieldWeather(body, af) {
       if (!isNaN(upd.getTime())) {
         const age = document.createElement('div');
         age.className = 'wx-updated';
+        age.dir = 'auto';      // "עודכן 18:19Z" reads correctly in RTL too
         age.textContent = (S.wxUpdated || 'Updated') + ' ' +
           String(upd.getUTCHours()).padStart(2, '0') + ':' +
           String(upd.getUTCMinutes()).padStart(2, '0') + 'Z';
@@ -1684,7 +1685,9 @@ function showInspector() {
       }
     }
     title.value = afInsp ? airfieldInspectorTitle(afInsp)
-      : canonical || navName(storedName) || (S.wpPrefix + (state.selected.index + 1));
+      : (canonical
+          ? canonical + (refLocale && refLocale !== canonical ? ' / ' + refLocale : '')
+          : navName(storedName) || (S.wpPrefix + (state.selected.index + 1)));
     title.placeholder = '';
     title.readOnly = true;
     title.oninput = null;
