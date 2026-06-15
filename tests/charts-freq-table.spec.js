@@ -145,6 +145,12 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(desheInputs.nth(1)).toHaveValue('2500');
     await expect(desheInputs.nth(1)).toHaveClass(/is-default/);
     await expect(desheRow).toContainText('Two way');
+    const desheDirectionResets = desheRow.locator('.charts-alt-cell-reset');
+    await expect(desheDirectionResets).toHaveCount(2);
+    await expect(desheDirectionResets.nth(0))
+      .toHaveAttribute('title', 'Revert this direction to origin');
+    await expect(desheDirectionResets.nth(0)).toBeDisabled();
+    await expect(desheDirectionResets.nth(1)).toBeDisabled();
     const desheReset = desheRow.locator('.charts-alt-reset');
     await expect(desheReset).toHaveAttribute('title', 'Revert to origin');
     await expect(desheReset).toBeDisabled();
@@ -179,6 +185,20 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(desheRow).toHaveClass(/overridden/);
     await expect(desheInputs.nth(0)).not.toHaveClass(/is-default/);
     await expect(desheInputs.nth(1)).toHaveClass(/is-default/);
+    await expect(desheDirectionResets.nth(0)).toBeEnabled();
+    await expect(desheDirectionResets.nth(1)).toBeDisabled();
+    await desheInputs.nth(1).fill('2600');
+    await desheInputs.nth(1).blur();
+    await expect(desheDirectionResets.nth(0)).toBeEnabled();
+    await expect(desheDirectionResets.nth(1)).toBeEnabled();
+    await desheDirectionResets.nth(1).click();
+    await expect(desheInputs.nth(0)).toHaveValue('3100');
+    await expect(desheInputs.nth(0)).not.toHaveClass(/is-default/);
+    await expect(desheInputs.nth(1)).toHaveValue('2500');
+    await expect(desheInputs.nth(1)).toHaveClass(/is-default/);
+    await expect(desheDirectionResets.nth(0)).toBeEnabled();
+    await expect(desheDirectionResets.nth(1)).toBeDisabled();
+    await expect(desheReset).toBeEnabled();
     await derorInputs.nth(0).fill('1500');
     await derorInputs.nth(0).blur();
     await derorInputs.nth(1).fill('2000');
@@ -201,6 +221,8 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(desheInputs.nth(0)).toHaveClass(/is-default/);
     await expect(desheInputs.nth(1)).toHaveValue('2500');
     await expect(desheInputs.nth(1)).toHaveClass(/is-default/);
+    await expect(desheDirectionResets.nth(0)).toBeDisabled();
+    await expect(desheDirectionResets.nth(1)).toBeDisabled();
     await expect(desheReset).toBeDisabled();
     await expect(desheRow).not.toHaveClass(/overridden/);
     await expect.poll(() => page.evaluate(() => {

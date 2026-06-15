@@ -583,6 +583,7 @@ window.S = Object.assign({
   altPairsOneWay: 'One way',
   altPairsTwoWay: 'Two way',
   altPairsRevertOrigin: 'Revert to origin',
+  altPairsRevertDirection: 'Revert this direction to origin',
   altPairsGoTo: function(from, to) { return 'Go to ' + from + ' ↔ ' + to; },
   altPairsLocationMissing: 'Pair endpoints not found',
   addFreqChange: 'Add freq change (Z)',

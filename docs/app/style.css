@@ -2112,6 +2112,13 @@ body.theme-light .msa-low .val { color: #c0392b; }
   width: 28px;
   text-align: center;
 }
+.charts-alt-cell-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
 .charts-alt-table .blocked {
   color: #ffb4b4;
 }
@@ -2138,6 +2145,9 @@ body.theme-light .msa-low .val { color: #c0392b; }
 .charts-alt-input[aria-invalid="true"] {
   border-color: #b00020;
   box-shadow: 0 0 0 1px rgba(176, 0, 32, 0.35);
+}
+.charts-alt-cell-reset {
+  flex: 0 0 auto;
 }
 .charts-freq-table tr.overridden,
 .charts-freq-table tbody tr.overridden:hover {
