@@ -56,7 +56,7 @@ Important paths:
 These preferences come from the active maintainer workflow for this repository:
 
 - Before pushing, verify the active GitHub user is `msupino`.
-- After pushing/PR work, restore the local active GitHub user to `msupinodn`.
+- After pushing/PR work, restore the previously active local GitHub user.
 - Open PRs as drafts by default.
 - Push completed changes; do not leave finished work only local.
 

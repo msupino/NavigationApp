@@ -73,10 +73,10 @@ The active user must be `msupino`. If not:
 gh auth switch -h github.com -u msupino
 ```
 
-After push/PR creation, restore the local active account:
+After push/PR creation, restore the previously active local account:
 
 ```bash
-gh auth switch -h github.com -u msupinodn
+gh auth switch -h github.com -u <previous-user>
 ```
 
 ## Local Verification

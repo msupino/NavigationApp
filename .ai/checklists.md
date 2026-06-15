@@ -42,4 +42,4 @@ Use these as quick pre-commit reminders.
 - Commit on the intended feature branch.
 - Push the branch.
 - Open a draft PR to `dev`.
-- Restore local active GitHub user to `msupinodn` after push/PR work.
+- Restore the previously active local GitHub user after push/PR work.

@@ -16,7 +16,7 @@ Rules:
 - Every PR needs a GitHub issue first and should be opened as a draft unless
   the maintainer asks otherwise.
 - Before pushing, verify the active GitHub user is `msupino`; after push/PR
-  work, restore the local active account to `msupinodn`.
+  work, restore the previously active local account.
 - The app uses ordered plain scripts sharing one global scope:
   `docs/app/core.js` → `docs/app/terrain.js` → `docs/app/draw.js` →
   `docs/app/interact.js` → `docs/app/io.js` →
