@@ -409,7 +409,14 @@ function legFrame(i) {
   const len = Math.hypot(dx, dy) || 1;
   dx /= len; dy /= len;
   return { mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2,
-           dx, dy, nx: -dy, ny: dx };
+           dx, dy, nx: -dy, ny: dx, len };
+}
+function clampLegLabelAlong(legIdx, label) {
+  if (!label || !state.waypoints[legIdx] || !state.waypoints[legIdx + 1]) return;
+  if (!Number.isFinite(label.a)) label.a = 0;
+  const sc = legZoomScale() || 1;
+  const limit = legFrame(legIdx).len / (2 * sc);
+  label.a = Math.max(-limit, Math.min(limit, label.a));
 }
 function legLabelCenter(i, which) {
   if (!state.waypoints[i] || !state.waypoints[i + 1]) return null;
@@ -2417,6 +2424,7 @@ map.on('mousemove', e => {
     if (!o) return;                    // malformed leg / label — issue #82
     const isc = 1 / legZoomScale();
     o.a += (ddx * drag.dx + ddy * drag.dy) * isc;
+    clampLegLabelAlong(drag.i, o);
     o.p += (ddx * drag.nx + ddy * drag.ny) * isc;
     draw();
   } else if (drag.kind === 'cumlabel' || drag.kind === 'cumlabelret') {
@@ -2790,6 +2798,7 @@ mapEl.addEventListener('touchmove', e => {
     if (!o) return;                    // malformed leg / label — issue #82
     const isc = 1 / legZoomScale();
     o.a += (ddx * touchDrag.dx + ddy * touchDrag.dy) * isc;
+    clampLegLabelAlong(touchDrag.i, o);
     o.p += (ddx * touchDrag.nx + ddy * touchDrag.ny) * isc;
     draw();
   } else if (touchDrag.kind === 'cumlabel' || touchDrag.kind === 'cumlabelret') {

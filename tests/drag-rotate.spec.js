@@ -2,7 +2,8 @@
 // Coverage for the canvas-overlay drag + rotate maths that the pointer
 // handlers sit on top of:
 //  C2 — legLabelCenter()/hitLegLabel()/legFrame(): the kite-label hit test
-//       returns {i,which} only when the cursor is on the rendered label.
+//       returns {i,which} only when the cursor is on the rendered label,
+//       and leg-label drags stay between the waypoint perpendicular gates.
 //  C3 — hitPageFrameEdge()/clampPageOffset(): the page-frame border band is
 //       grabbable; the centre is not; the drag offset is clamped on-screen.
 //  C6 — rotEnd(cycle): a tap (drag start, no move) steps the bearing through
@@ -75,6 +76,64 @@ test.describe('Leg-label hit test (C2)', () => {
              Math.abs(f.my - (a.y + b.y) / 2) < 1e-6;
     });
     expect(ok).toBe(true);
+  });
+
+  test('dragging a leg kite clamps along-leg movement between waypoint gates', async ({ page }) => {
+    await boot(page);
+    await setRoute(page);
+    await page.evaluate(() => {
+      map.setZoom(12);
+      draw();
+    });
+    await page.waitForFunction(() => Math.abs(map.getZoom() - 12) < 0.01);
+
+    const dragPts = await page.evaluate(() => {
+      const c = legLabelCenter(0, 'in');
+      const f = legFrame(0);
+      const r = map.getContainer().getBoundingClientRect();
+      const perp = (c.x - f.mx) * f.nx + (c.y - f.my) * f.ny;
+      const targetAlong = f.len * 0.85;       // well beyond B's perpendicular gate
+      const target = {
+        x: f.mx + f.dx * targetAlong + f.nx * perp,
+        y: f.my + f.dy * targetAlong + f.ny * perp,
+      };
+      return {
+        start: { x: r.left + c.x, y: r.top + c.y },
+        target: { x: r.left + target.x, y: r.top + target.y },
+        targetAlong,
+      };
+    });
+
+    await page.mouse.move(dragPts.start.x, dragPts.start.y);
+    await page.mouse.down();
+    await page.mouse.move(dragPts.target.x, dragPts.target.y, { steps: 8 });
+    await page.mouse.up();
+
+    const out = await page.evaluate(() => {
+      const f = legFrame(0);
+      const c = legLabelCenter(0, 'in');
+      const sc = legZoomScale();
+      const limit = f.len / (2 * sc);
+      const alongPx = (c.x - f.mx) * f.dx + (c.y - f.my) * f.dy;
+      return { label: state.legs[0].inLabel, limit, alongPx, halfPx: f.len / 2 };
+    });
+    expect(out.label._default).toBeUndefined();
+    expect(out.label._m).toBe(1);
+    expect(dragPts.targetAlong).toBeGreaterThan(out.halfPx + 20);
+    expect(out.label.a).toBeCloseTo(out.limit, 1);
+    expect(out.alongPx).toBeLessThanOrEqual(out.halfPx + 1);
+
+    const symmetric = await page.evaluate(() => {
+      const leg = state.legs[0];
+      const limit = legFrame(0).len / (2 * legZoomScale());
+      leg.inLabel.a = 99999;
+      leg.outLabel = { a: -99999, p: -30, _m: 1 };
+      clampLegLabelAlong(0, leg.inLabel);
+      clampLegLabelAlong(0, leg.outLabel);
+      return { limit, inA: leg.inLabel.a, outA: leg.outLabel.a };
+    });
+    expect(symmetric.inA).toBeCloseTo(symmetric.limit, 6);
+    expect(symmetric.outA).toBeCloseTo(-symmetric.limit, 6);
   });
 });
 
