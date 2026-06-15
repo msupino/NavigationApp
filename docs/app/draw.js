@@ -156,21 +156,45 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   const alts = prof.pts.map(p => p.alt);
   const maxA = Math.max.apply(null, alts) * 1.1 + 100;
   const minA = Math.min(0, Math.min.apply(null, alts));
-  // Reserve a strip at the bottom for the NM distance axis (waypoint ticks).
+  // Reserve a strip at the bottom for the NM distance axis (waypoint ticks)
+  // and a margin on the left for the altitude (Y) axis labels.
   const axisH = 22;
+  const yPad = 34;
   const plotH = Math.max(10, h - axisH);
+  const plotW = Math.max(10, w - yPad);
+  const x0 = x + yPad;                 // plot left edge (Y axis sits left of it)
   const baseY = y + plotH;
   // In RTL (Hebrew) the route reads right-to-left, so mirror the distance axis.
   const rtl = document.documentElement && document.documentElement.dir === 'rtl';
-  const px = d => rtl ? x + w - (d / prof.totalDist) * w : x + (d / prof.totalDist) * w;
+  const px = d => rtl ? x0 + plotW - (d / prof.totalDist) * plotW : x0 + (d / prof.totalDist) * plotW;
   const py = a => baseY - ((a - minA) / (maxA - minA || 1)) * plotH;
   ctx.save();
   ctx.fillStyle = '#1d2733';
   ctx.fillRect(x, y, w, h);
+  // Altitude (Y) axis: horizontal gridlines + ft labels at "nice" intervals.
+  const niceSteps = [100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+  const range = maxA - minA;
+  const yStep = niceSteps.find(s => range / s <= 5) || 50000;
+  ctx.textBaseline = 'middle';
+  ctx.font = '8px sans-serif';
+  for (let a = Math.ceil(minA / yStep) * yStep; a <= maxA; a += yStep) {
+    const gy = py(a);
+    ctx.strokeStyle = 'rgba(120,150,180,0.16)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x0, gy + 0.5); ctx.lineTo(x + w, gy + 0.5); ctx.stroke();
+    ctx.fillStyle = '#8aa0b4';
+    ctx.textAlign = 'right';
+    ctx.fillText(String(a), x0 - 3, gy);
+  }
+  // Y axis unit caption.
+  ctx.fillStyle = '#8aa0b4';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText('ft', x + 2, y + 2);
   // ground line
   ctx.strokeStyle = '#3a4654';
   ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(x, py(minA) + 0.5); ctx.lineTo(x + w, py(minA) + 0.5); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x0, py(minA) + 0.5); ctx.lineTo(x + w, py(minA) + 0.5); ctx.stroke();
   // profile polyline + fill
   ctx.beginPath();
   ctx.moveTo(px(prof.pts[0].d), py(prof.pts[0].alt));
