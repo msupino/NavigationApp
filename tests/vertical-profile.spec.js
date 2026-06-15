@@ -7,7 +7,9 @@ async function boot(page) {
     typeof routeProfile === 'function' && typeof showFlightPlan === 'function');
 }
 
-// 3 legs at 3000 / 8000 / 3000 ft → leg 1 climbs then descends (TOC + TOD).
+// 3 legs; cruise = first leg's altitude (5500 ft) holds for the whole route.
+// Departure/destination field elevations are stubbed low so the single climb
+// (leg 0) and single descent (last leg) actually happen; middle leg stays flat.
 async function seed(page) {
   await page.evaluate(() => {
     state.waypoints = [
@@ -15,27 +17,38 @@ async function seed(page) {
       { lat: 32.6, lng: 35.1, name: 'C' }, { lat: 32.8, lng: 35.2, name: 'D' },
     ];
     state.legs = []; syncLegs();
-    const a = [3000, 8000, 3000];
+    // Per-leg altitudes vary, but only the first (5500) drives cruise now.
+    const a = [5500, 8000, 3000];
     state.legs.forEach((l, i) => { l.flightSpeed = 110; l.inboundAltitude = a[i]; });
+    // Stub field elevations: low departure/destination so cruise > field.
+    routeEndpointElev = i => (i === 0 ? 500 : i === state.legs.length ? 800 : null);
   });
 }
 
-test('routeProfile marks TOC + TOD and segments climb/descent time', async ({ page }) => {
+test('routeProfile climbs once on leg 1, holds cruise, descends once at the end', async ({ page }) => {
   await boot(page);
   await seed(page);
   const p = await page.evaluate(() => routeProfile({ gph: 8, climbFpm: 700, descentFpm: 500, climbKt: 75, descentKt: 110 }));
-  // Leg 1 (index 1) climbs 3000→8000 at start and descends 8000→3000 at end.
-  expect(p.tocs.some(t => t.leg === 1)).toBe(true);
-  expect(p.tods.some(t => t.leg === 1)).toBe(true);
-  const toc = p.tocs.find(t => t.leg === 1);
+  const last = p.legs.length - 1;
+  // Exactly one TOC (first leg) and one TOD (last leg) — no per-leg sawtooth.
+  expect(p.tocs.length).toBe(1);
+  expect(p.tods.length).toBe(1);
+  expect(p.tocs[0].leg).toBe(0);
+  expect(p.tods[0].leg).toBe(last);
+  // Single cruise altitude = first leg's planned altitude.
+  expect(p.legs[0].cruiseAlt).toBe(5500);
+  expect(p.legs[1].cruiseAlt).toBe(5500);
+  // Climb only on leg 0, descent only on the last leg; middle leg is flat.
+  expect(p.legs[0].climbDist).toBeGreaterThan(0);
+  expect(p.legs[0].descDist).toBe(0);
+  expect(p.legs[1].climbDist).toBe(0);
+  expect(p.legs[1].descDist).toBe(0);
+  expect(p.legs[last].descDist).toBeGreaterThan(0);
+  expect(p.legs[last].climbDist).toBe(0);
+  const toc = p.tocs[0];
   expect(toc.frac).toBeGreaterThan(0);
-  expect(toc.frac).toBeLessThan(1);
+  expect(toc.alt).toBe(5500);
   expect(p.totalDist).toBeGreaterThan(0);
-  expect(p.legs[1].climbDist).toBeGreaterThan(0);
-  expect(p.legs[1].descDist).toBeGreaterThan(0);
-  // Climb/descent flown at their own speeds → leg time differs from flat cruise.
-  const flat = p.legs[1].dist / 110;
-  expect(Math.abs(p.legs[1].timeH - flat)).toBeGreaterThan(0.001);
 });
 
 test('flat route (constant altitude) has no TOC/TOD', async ({ page }) => {

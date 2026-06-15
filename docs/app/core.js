@@ -1079,19 +1079,28 @@ function routeProfile(ac) {
   const gph = ac.gph > 0 ? ac.gph : 8;
   const legs = state.legs || [], wps = state.waypoints || [];
   const n = legs.length;
-  const cruise = i => Number.isFinite(legs[i].inboundAltitude) ? legs[i].inboundAltitude : 2000;
+  // Single cruise altitude for the whole route = the first leg's planned
+  // altitude. The aircraft climbs once on leg 1 to cruise, holds it flat
+  // across every middle leg, then descends once on the final leg to the
+  // destination — one TOC, one TOD (no per-leg sawtooth).
+  const cruiseAlt = Number.isFinite(legs[0] && legs[0].inboundAltitude) ? legs[0].inboundAltitude : 2000;
+  const fieldStart = routeEndpointElev(0) != null ? routeEndpointElev(0) : cruiseAlt;
+  const fieldEnd = routeEndpointElev(n) != null ? routeEndpointElev(n) : cruiseAlt;
   const out = { legs: [], pts: [], tocs: [], tods: [], totalDist: 0, totalTimeH: 0, totalFuel: 0 };
   let cum = 0;
   for (let i = 0; i < n; i++) {
     const A = wps[i], B = wps[i + 1];
     if (!A || !B) continue;
     const { dist } = geo(A, B);
-    const cr = cruise(i);
-    const startAlt = i === 0 ? (routeEndpointElev(0) != null ? routeEndpointElev(0) : cr) : cruise(i - 1);
-    const endAlt = i === n - 1 ? (routeEndpointElev(n) != null ? routeEndpointElev(n) : cr) : cruise(i + 1);
+    const cr = cruiseAlt;
+    const isFirst = i === 0, isLast = i === n - 1;
+    // Climb only on the first leg (from field to cruise); descent only on the
+    // last leg (from cruise to field). Every other leg is level at cruise.
+    const startAlt = isFirst ? fieldStart : cr;
+    const endAlt = isLast ? fieldEnd : cr;
     let climbDist = 0, descDist = 0;
-    if (cr > startAlt) climbDist = Math.min(dist, climbKt * ((cr - startAlt) / climbFpm) / 60);
-    if (cr > endAlt) descDist = Math.min(dist - climbDist, descKt * ((cr - endAlt) / descFpm) / 60);
+    if (isFirst && cr > fieldStart) climbDist = Math.min(dist, climbKt * ((cr - fieldStart) / climbFpm) / 60);
+    if (isLast && cr > fieldEnd) descDist = Math.min(dist - climbDist, descKt * ((cr - fieldEnd) / descFpm) / 60);
     const cruiseDist = Math.max(0, dist - climbDist - descDist);
     const climbT = climbKt > 0 ? climbDist / climbKt : 0;
     const descT = descKt > 0 ? descDist / descKt : 0;
@@ -1099,10 +1108,6 @@ function routeProfile(ac) {
     const timeH = climbT + cruiseT + descT;
     const fuel = timeH * gph;
     out.legs.push({ dist, timeH, fuel, climbDist, descDist, cruiseDist, startAlt, cruiseAlt: cr, endAlt });
-    // Vertices: the leg starts at cruise unless it climbs from a lower level,
-    // and ends at cruise unless it descends to a lower next level. (Using the
-    // neighbour altitude for the end vertex caused a sawtooth — the cruise leg
-    // ramped up and the next leg dropped back to re-climb.)
     out.pts.push({ d: cum, alt: climbDist > 0 ? startAlt : cr });
     if (climbDist > 0) {
       out.pts.push({ d: cum + climbDist, alt: cr });
