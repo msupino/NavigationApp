@@ -745,6 +745,7 @@ var showAirfields = true;   // Israeli airfields overlay (default on)
 var showVorStations = true; // VOR/DME station overlay (default on)
 var vors = null;            // null = not loaded yet; [] or populated once fetched
 var vorRef = null;          // ident of the selected reference VOR (radial/DME source)
+var inspectorVorRef = undefined; // undefined = follow vorRef; string/'' = inspector-only ref
 var forceSnap = false;      // #106: when on, every click snaps to the
                             // absolute nearest airfield / nav-WP regardless
                             // of click distance (otherwise: 18 px radius).

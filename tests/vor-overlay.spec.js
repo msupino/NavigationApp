@@ -84,12 +84,14 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     expect(await page.evaluate(() => localStorage.getItem('navaid.showVor'))).toBeNull();
   });
 
-  test('inspector shows From <VOR> radial/DME when a reference is selected', async ({ page }) => {
+  test('inspector VOR selector drives radial/DME without changing global reference', async ({ page }) => {
     await boot(page);
     await page.evaluate(async () => {
       await loadVors();
       window.showVorStations = false;   // markers off — readout still works
       window.vorRef = 'NAT';
+      localStorage.setItem('navaid.vorRef', 'NAT');
+      window.inspectorVorRef = undefined;
       state.waypoints = [
         { lat: 32.46472, lng: 34.91222, name: 'HADRA' },
         { lat: 32.0, lng: 34.8, name: 'X' },
@@ -99,11 +101,26 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     });
     const row = page.locator('#insp-body .vor-radial-row');
     await expect(row).toHaveCount(1);
-    await expect(row).toContainText(/NAT/);
-    await expect(row).toContainText(/R-\d{3}° \/ \d/);
-    // No reference → no row.
-    await page.evaluate(() => { window.vorRef = null; showInspector(); });
-    await expect(page.locator('#insp-body .vor-radial-row')).toHaveCount(0);
+    const sel = row.locator('select.insp-vor-ref');
+    const val = row.locator('.vor-radial-val');
+    await expect(sel).toHaveValue('NAT');
+    await expect(sel.locator('option[value="NAT"]')).toHaveText('NAT');
+    await expect(sel.locator('option[value="BGN"]')).toHaveText('BGN');
+    await expect(val).toHaveText(/R-\d{3}° \/ \d/);
+    const bgnExpected = await page.evaluate(() => {
+      const rd = vorRadialDme(vorByIdent('BGN'), 32.46472, 34.91222);
+      return S.vorRadialDme(rd.radial, rd.dme);
+    });
+    await sel.selectOption('BGN');
+    await expect(sel).toHaveValue('BGN');
+    await expect(val).toHaveText(bgnExpected);
+    expect(await page.evaluate(() => vorRef)).toBe('NAT');
+    expect(await page.evaluate(() => localStorage.getItem('navaid.vorRef'))).toBe('NAT');
+
+    await sel.selectOption('');
+    await expect(sel).toHaveValue('');
+    await expect(val).toHaveText('');
+    expect(await page.evaluate(() => vorRef)).toBe('NAT');
   });
 
   test('flight plan: VOR picker + frequency, Radial/DME to the leg START', async ({ page }) => {

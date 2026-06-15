@@ -779,16 +779,61 @@ function inspLocaleName(o) {
     : (o.en || o.name || o.ident || '');
 }
 
-// Shared "From <VOR>  R-xxx° / yy.y NM" inspector row. The selected
-// reference VOR drives radial/DME readouts independently of marker visibility.
+function inspectorVorIdent() {
+  return inspectorVorRef === undefined ? (vorRef || '') : (inspectorVorRef || '');
+}
+
+function populateInspectorVorSelect(sel, selected) {
+  if (!sel) return;
+  sel.innerHTML = '';
+  const none = document.createElement('option');
+  none.value = '';
+  none.textContent = S.vorRefNone || '— none —';
+  sel.appendChild(none);
+  for (const v of (vors || [])) {
+    const opt = document.createElement('option');
+    opt.value = v.ident;
+    opt.textContent = v.ident;
+    sel.appendChild(opt);
+  }
+  sel.value = selected || '';
+}
+
+// Shared inspector-only VOR selector + "From <VOR>  R-xxx° / yy.y NM" readout.
+// Changing this selector never writes `vorRef` or localStorage; it only changes
+// the active inspector readout.
 function appendVorRadialRow(body, lat, lng) {
-  if (typeof activeVor !== 'function') return;
-  const v = activeVor();
-  if (!v) return;
-  const rd = vorRadialDme(v, lat, lng);
-  if (!rd) return;
-  const row = textRow(S.vorFrom(v.ident), S.vorRadialDme(rd.radial, rd.dme));
-  row.classList.add('vor-radial-row');
+  if (typeof vorByIdent !== 'function' || typeof vorRadialDme !== 'function') return;
+  if (vors === null && typeof loadVors === 'function') {
+    loadVors().then(() => {
+      if (state.selected) showInspector();
+    });
+  }
+  const row = document.createElement('div');
+  row.className = 'row vor-radial-row';
+  const label = document.createElement('label');
+  label.textContent = S.vorRefLabel || 'VOR ref';
+  const controls = document.createElement('div');
+  controls.className = 'vor-radial-controls';
+  const sel = document.createElement('select');
+  sel.className = 'insp-vor-ref';
+  sel.setAttribute('aria-label', S.vorRefLabel || 'VOR ref');
+  const val = document.createElement('span');
+  val.className = 'val vor-radial-val';
+  const render = () => {
+    const v = vorByIdent(sel.value);
+    const rd = v ? vorRadialDme(v, lat, lng) : null;
+    val.textContent = rd ? S.vorRadialDme(rd.radial, rd.dme) : '';
+    val.title = v && rd ? S.vorFrom(v.ident) : '';
+  };
+  populateInspectorVorSelect(sel, inspectorVorIdent());
+  sel.onchange = () => {
+    window.inspectorVorRef = sel.value || '';
+    render();
+  };
+  controls.append(sel, val);
+  row.append(label, controls);
+  render();
   body.appendChild(row);
 }
 

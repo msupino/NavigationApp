@@ -798,6 +798,22 @@ body.theme-light #aircraft-custom input {
   padding: 4px 6px;
 }
 .row select { cursor: pointer; }
+.vor-radial-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+.vor-radial-row select {
+  width: 58px;
+}
+.vor-radial-val {
+  min-width: 92px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
 /* Re-enable selection inside actual text fields (the toolbar disables it). */
 #toolbar input, #toolbar textarea,
 .row input, .row textarea {
