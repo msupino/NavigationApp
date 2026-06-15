@@ -156,7 +156,9 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   const alts = prof.pts.map(p => p.alt);
   const maxA = Math.max.apply(null, alts) * 1.1 + 100;
   const minA = Math.min(0, Math.min.apply(null, alts));
-  const px = d => x + (d / prof.totalDist) * w;
+  // In RTL (Hebrew) the route reads right-to-left, so mirror the distance axis.
+  const rtl = document.documentElement && document.documentElement.dir === 'rtl';
+  const px = d => rtl ? x + w - (d / prof.totalDist) * w : x + (d / prof.totalDist) * w;
   const py = a => y + h - ((a - minA) / (maxA - minA || 1)) * h;
   ctx.save();
   ctx.fillStyle = '#1d2733';

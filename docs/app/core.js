@@ -1083,7 +1083,11 @@ function routeProfile(ac) {
     const timeH = climbT + cruiseT + descT;
     const fuel = timeH * gph;
     out.legs.push({ dist, timeH, fuel, climbDist, descDist, cruiseDist, startAlt, cruiseAlt: cr, endAlt });
-    out.pts.push({ d: cum, alt: startAlt });
+    // Vertices: the leg starts at cruise unless it climbs from a lower level,
+    // and ends at cruise unless it descends to a lower next level. (Using the
+    // neighbour altitude for the end vertex caused a sawtooth — the cruise leg
+    // ramped up and the next leg dropped back to re-climb.)
+    out.pts.push({ d: cum, alt: climbDist > 0 ? startAlt : cr });
     if (climbDist > 0) {
       out.pts.push({ d: cum + climbDist, alt: cr });
       out.tocs.push({ leg: i, frac: dist > 0 ? climbDist / dist : 0, alt: cr });
@@ -1092,7 +1096,7 @@ function routeProfile(ac) {
       out.pts.push({ d: cum + dist - descDist, alt: cr });
       out.tods.push({ leg: i, frac: dist > 0 ? (dist - descDist) / dist : 1, alt: cr });
     }
-    out.pts.push({ d: cum + dist, alt: endAlt });
+    out.pts.push({ d: cum + dist, alt: descDist > 0 ? endAlt : cr });
     cum += dist; out.totalTimeH += timeH; out.totalFuel += fuel;
   }
   out.totalDist = cum;
