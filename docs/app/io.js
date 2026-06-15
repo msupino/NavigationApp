@@ -1918,9 +1918,12 @@ function showFlightPlan() {
     dmeCells[i] = dmeCell;
     dmeCell.classList.add('fp-vor-col');
     tr.appendChild(dmeCell);
-    // Delete-leg button — removes the "To" waypoint and this leg, then
-    // reconnects the route. The refreshFlightPlan callback detects the
-    // leg-count change and rebuilds the modal.
+    // Delete-leg button — drops this leg and one of its endpoint waypoints,
+    // then reconnects the route. The first leg removes the departure (its
+    // "From") so peeling legs off the front trims the start (A-B-C-D → B-C-D →
+    // C-D); every other leg removes its "To", so the last leg removes the
+    // destination. The refreshFlightPlan callback detects the leg-count change
+    // and rebuilds the modal.
     (function (idx) {
       const delTd = document.createElement('td');
       delTd.className = 'fp-del';
@@ -1930,7 +1933,7 @@ function showFlightPlan() {
       delBtn.title = S.fpDelTitle || 'Delete leg';
       delBtn.onclick = function () {
         if (state.waypoints.length < 2) return;
-        state.waypoints.splice(idx + 1, 1);
+        state.waypoints.splice(idx === 0 ? 0 : idx + 1, 1);
         state.legs.splice(idx, 1);
         syncLegs();
         state.selected = null;
