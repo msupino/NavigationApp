@@ -1687,17 +1687,44 @@ function showFlightPlan() {
   profWrap.className = 'fp-profile';
   const profLbl = document.createElement('div');
   profLbl.className = 'fp-profile-label';
-  profLbl.textContent = S.profileTitle || 'Vertical profile';
+  const profTitle = document.createElement('span');
+  profTitle.textContent = S.profileTitle || 'Vertical profile';
+  profLbl.appendChild(profTitle);
+  // V/S input — vertical speed (ft/min) driving the climb/descent ramp slope.
+  // Default 500; persisted so the pilot's preferred rate sticks (#672).
+  if (!(window.profileVS > 0)) {
+    let stored = 0;
+    try { stored = parseInt(localStorage.getItem('navaid.profileVS'), 10); } catch (e) { /* ignore */ }
+    window.profileVS = stored > 0 ? stored : 500;
+  }
+  const vsLbl = document.createElement('label');
+  vsLbl.className = 'fp-profile-vs';
+  vsLbl.textContent = (S.profileVs || 'V/S (ft/min)') + ' ';
+  const vsInput = document.createElement('input');
+  vsInput.type = 'number'; vsInput.min = '50'; vsInput.step = '50';
+  vsInput.value = String(window.profileVS);
+  vsInput.className = 'fp-profile-vs-input';
+  vsInput.oninput = () => {
+    const v = parseInt(vsInput.value, 10);
+    if (v > 0) {
+      window.profileVS = v;
+      try { localStorage.setItem('navaid.profileVS', String(v)); } catch (e) { /* ignore */ }
+      draw();        // map TOC/TOD markers move with the new ramp
+      refresh();     // recompute leg times + redraw the profile strip
+    }
+  };
+  vsLbl.appendChild(vsInput);
+  profLbl.appendChild(vsLbl);
   profWrap.appendChild(profLbl);
   const profCanvas = document.createElement('canvas');
   profCanvas.className = 'fp-profile-canvas';
-  profCanvas.width = 600; profCanvas.height = 90;
+  profCanvas.width = 600; profCanvas.height = 104;
   profWrap.appendChild(profCanvas);
   box.appendChild(profWrap);
   drawProfileStripIfOpen = function () {
     if (!profCanvas.isConnected) return;
     const cssW = profCanvas.clientWidth || 600;
-    profCanvas.width = cssW; profCanvas.height = 90;
+    profCanvas.width = cssW; profCanvas.height = 104;
     const cx = profCanvas.getContext('2d');
     cx.clearRect(0, 0, profCanvas.width, profCanvas.height);
     if (typeof drawVerticalProfile === 'function') drawVerticalProfile(cx, 0, 0, profCanvas.width, profCanvas.height);

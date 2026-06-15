@@ -172,6 +172,7 @@ window.S = {
   fpMsa: 'גובה בטוח (ft)',
   msaLowTitle: 'הגובה המתוכנן נמוך מהגובה הבטוח המינימלי לקטע זה',
   profileTitle: 'פרופיל אנכי',
+  profileVs: 'מהירות אנכית (ft/min)',
   toc: 'TOC',
   tod: 'TOD',
   tocTitle: 'תחילת שיוט (סיום טיפוס)',

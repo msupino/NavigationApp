@@ -156,9 +156,9 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   const alts = prof.pts.map(p => p.alt);
   const maxA = Math.max.apply(null, alts) * 1.1 + 100;
   const minA = Math.min(0, Math.min.apply(null, alts));
-  // Reserve a strip at the bottom for the NM distance axis (waypoint ticks)
-  // and a margin on the left for the altitude (Y) axis labels.
-  const axisH = 22;
+  // Reserve a strip at the bottom for the X axis (NM + time per waypoint) and
+  // a margin on the left for the altitude (Y) axis labels.
+  const axisH = 30;
   const yPad = 34;
   const plotH = Math.max(10, h - axisH);
   const plotW = Math.max(10, w - yPad);
@@ -225,16 +225,21 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   for (const t of prof.tocs) dot(t, '#2e9e4f', S.toc || 'TOC');
   for (const t of prof.tods) dot(t, '#c47f17', S.tod || 'TOD');
 
-  // NM distance axis: a tick + cumulative-NM label + short waypoint id at each
-  // waypoint, with a faint gridline up through the plot so you can read where
-  // each altitude change happens along the course.
+  // X axis: at each waypoint a tick + cumulative NM + cumulative time, plus a
+  // short waypoint id, with a faint gridline up through the plot so you can
+  // read where each altitude change happens along the course.
   const cum = prof.wpCum || [];
+  const tcum = prof.wpTime || [];
   const last = cum.length - 1;
   const gap = last > 0 ? w / last : w;          // px between adjacent waypoints
   const wpId = i => {
     const wp = state.waypoints[i];
     if (!wp) return '';
     return String(wp.code || wp.name || '').slice(0, 4).toUpperCase();
+  };
+  const fmtT = h => {                            // hours → "7m" or "1:05"
+    const m = Math.round((h || 0) * 60);
+    return m < 60 ? m + 'm' : Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0');
   };
   ctx.lineWidth = 1;
   ctx.textBaseline = 'top';
@@ -245,14 +250,18 @@ function drawVerticalProfile(ctx, x, y, w, h) {
     ctx.strokeStyle = '#5a6b7d';
     ctx.beginPath(); ctx.moveTo(lx, baseY + 0.5); ctx.lineTo(lx, baseY + 3.5); ctx.stroke();
     ctx.textAlign = i === 0 ? 'left' : i === last ? 'right' : 'center';
+    // NM (bright) then cumulative time (dimmer) stacked under the tick.
     ctx.fillStyle = '#cdd8e3';
     ctx.font = '8px sans-serif';
     ctx.fillText(String(Math.round(cum[i])), lx, baseY + 4);
+    ctx.fillStyle = '#7fa8d0';
+    ctx.font = '7px sans-serif';
+    ctx.fillText(fmtT(tcum[i]), lx, baseY + 13);
     // Waypoint id (skip when ticks are too tight to avoid overlap).
     if (gap >= 22) {
       ctx.fillStyle = '#8aa0b4';
       ctx.font = '7px sans-serif';
-      ctx.fillText(wpId(i), lx, baseY + 13);
+      ctx.fillText(wpId(i), lx, baseY + 22);
     }
   }
   // Axis unit caption.
@@ -260,7 +269,7 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   ctx.font = '7px sans-serif';
   ctx.textAlign = rtl ? 'left' : 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('NM', rtl ? x + 2 : x + w - 2, y + h);
+  ctx.fillText('NM / time', rtl ? x + 2 : x + w - 2, y + h);
   ctx.restore();
 }
 

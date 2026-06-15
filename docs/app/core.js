@@ -415,6 +415,7 @@ window.S = Object.assign({
   fpMsa: 'MSA (ft)',
   msaLowTitle: 'Planned altitude is below the minimum safe altitude for this leg',
   profileTitle: 'Vertical profile',
+  profileVs: 'V/S (ft/min)',
   toc: 'TOC',
   tod: 'TOD',
   tocTitle: 'Top of climb',
@@ -1076,8 +1077,11 @@ function routeEndpointElev(i) {
 // each waypoint, for the distance axis).
 function routeProfile(ac) {
   ac = ac || (typeof aircraft === 'object' && aircraft) || {};
-  const climbFpm = ac.climbFpm > 0 ? ac.climbFpm : WX_DEFAULT_PERF.climbFpm;
-  const descFpm = ac.descentFpm > 0 ? ac.descentFpm : WX_DEFAULT_PERF.descentFpm;
+  // A single vertical-speed (V/S) override drives both the climb and descent
+  // ramp slope when set (the profile's V/S input); otherwise per-aircraft perf.
+  const vs = typeof window !== 'undefined' && window.profileVS > 0 ? window.profileVS : 0;
+  const climbFpm = vs > 0 ? vs : (ac.climbFpm > 0 ? ac.climbFpm : WX_DEFAULT_PERF.climbFpm);
+  const descFpm = vs > 0 ? vs : (ac.descentFpm > 0 ? ac.descentFpm : WX_DEFAULT_PERF.descentFpm);
   const climbKt = ac.climbKt > 0 ? ac.climbKt : WX_DEFAULT_PERF.climbKt;
   const descKt = ac.descentKt > 0 ? ac.descentKt : WX_DEFAULT_PERF.descentKt;
   const gph = ac.gph > 0 ? ac.gph : 8;
@@ -1090,7 +1094,7 @@ function routeProfile(ac) {
   const destElev = routeEndpointElev(n);
   const fieldStart = depElev != null ? depElev : (n ? legAlt(0) : 2000);
   const fieldEnd = destElev != null ? destElev : (n ? legAlt(n - 1) : 2000);
-  const out = { legs: [], pts: [], tocs: [], tods: [], wpCum: [0], totalDist: 0, totalTimeH: 0, totalFuel: 0 };
+  const out = { legs: [], pts: [], tocs: [], tods: [], wpCum: [0], wpTime: [0], totalDist: 0, totalTimeH: 0, totalFuel: 0 };
 
   // Prepass: per-leg distance + cumulative NM at each waypoint.
   const dists = [];
@@ -1146,6 +1150,7 @@ function routeProfile(ac) {
       out.tods.push({ leg: i, frac: dist > 0 ? (dist - endDescDist) / dist : 1, alt: cr });
     }
     cum += dist; out.totalTimeH += timeH; out.totalFuel += fuel;
+    out.wpTime.push(out.totalTimeH);
   }
   // Drop consecutive duplicate vertices.
   out.pts = out.pts.filter((p, i, arr) => i === 0 || p.d !== arr[i - 1].d || p.alt !== arr[i - 1].alt);

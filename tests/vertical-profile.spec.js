@@ -65,6 +65,28 @@ test('flat route (constant altitude) has no TOC/TOD', async ({ page }) => {
   expect(p.tods.length).toBe(0);
 });
 
+test('non-airfield endpoints: profile starts/ends at leg altitude, no TOC/TOD', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.0, lng: 34.8, name: 'A' }, { lat: 32.2, lng: 34.9, name: 'B' },
+      { lat: 32.6, lng: 35.1, name: 'C' }, { lat: 32.8, lng: 35.2, name: 'D' },
+    ];
+    state.legs = []; syncLegs();
+    const a = [3000, 6000, 4000];
+    state.legs.forEach((l, i) => { l.flightSpeed = 110; l.inboundAltitude = a[i]; });
+    // No routeEndpointElev stub → synthetic waypoints are not airfields (null).
+  });
+  const p = await page.evaluate(() => routeProfile({ gph: 8 }));
+  // No airfield at either end → no climb-out / descent, no markers.
+  expect(p.tocs.length).toBe(0);
+  expect(p.tods.length).toBe(0);
+  // Profile begins at the first leg's altitude and ends at the last leg's.
+  expect(p.pts[0].alt).toBe(3000);
+  expect(p.pts[p.pts.length - 1].alt).toBe(4000);
+  expect(p.legs[0].climbDist).toBe(0);   // no climb-out from a (non-)field
+});
+
 test('flight plan modal renders the vertical-profile strip', async ({ page }) => {
   await boot(page);
   await seed(page);

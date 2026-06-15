@@ -1559,8 +1559,10 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
 }
 /* Vertical profile strip (#672) */
 .fp-profile { margin: 4px 0 8px; }
-.fp-profile-label { font-size: 11px; color: #b9b3b3; margin-bottom: 2px; }
-.fp-profile-canvas { width: 100%; height: 90px; display: block; border-radius: 4px; }
+.fp-profile-label { font-size: 11px; color: #b9b3b3; margin-bottom: 2px; display: flex; align-items: center; gap: 8px; }
+.fp-profile-vs { margin-inline-start: auto; display: inline-flex; align-items: center; gap: 4px; }
+.fp-profile-vs-input { width: 56px; font-size: 11px; padding: 1px 4px; }
+.fp-profile-canvas { width: 100%; height: 104px; display: block; border-radius: 4px; }
 .flight-table {
   width: 100%;
   border-collapse: collapse;
