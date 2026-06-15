@@ -156,10 +156,14 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   const alts = prof.pts.map(p => p.alt);
   const maxA = Math.max.apply(null, alts) * 1.1 + 100;
   const minA = Math.min(0, Math.min.apply(null, alts));
+  // Reserve a strip at the bottom for the NM distance axis (waypoint ticks).
+  const axisH = 22;
+  const plotH = Math.max(10, h - axisH);
+  const baseY = y + plotH;
   // In RTL (Hebrew) the route reads right-to-left, so mirror the distance axis.
   const rtl = document.documentElement && document.documentElement.dir === 'rtl';
   const px = d => rtl ? x + w - (d / prof.totalDist) * w : x + (d / prof.totalDist) * w;
-  const py = a => y + h - ((a - minA) / (maxA - minA || 1)) * h;
+  const py = a => baseY - ((a - minA) / (maxA - minA || 1)) * plotH;
   ctx.save();
   ctx.fillStyle = '#1d2733';
   ctx.fillRect(x, y, w, h);
@@ -196,6 +200,43 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   };
   for (const t of prof.tocs) dot(t, '#2e9e4f', S.toc || 'TOC');
   for (const t of prof.tods) dot(t, '#c47f17', S.tod || 'TOD');
+
+  // NM distance axis: a tick + cumulative-NM label + short waypoint id at each
+  // waypoint, with a faint gridline up through the plot so you can read where
+  // each altitude change happens along the course.
+  const cum = prof.wpCum || [];
+  const last = cum.length - 1;
+  const gap = last > 0 ? w / last : w;          // px between adjacent waypoints
+  const wpId = i => {
+    const wp = state.waypoints[i];
+    if (!wp) return '';
+    return String(wp.code || wp.name || '').slice(0, 4).toUpperCase();
+  };
+  ctx.lineWidth = 1;
+  ctx.textBaseline = 'top';
+  for (let i = 0; i < cum.length; i++) {
+    const lx = px(cum[i]);
+    ctx.strokeStyle = 'rgba(120,150,180,0.18)';
+    ctx.beginPath(); ctx.moveTo(lx, y); ctx.lineTo(lx, baseY); ctx.stroke();
+    ctx.strokeStyle = '#5a6b7d';
+    ctx.beginPath(); ctx.moveTo(lx, baseY + 0.5); ctx.lineTo(lx, baseY + 3.5); ctx.stroke();
+    ctx.textAlign = i === 0 ? 'left' : i === last ? 'right' : 'center';
+    ctx.fillStyle = '#cdd8e3';
+    ctx.font = '8px sans-serif';
+    ctx.fillText(String(Math.round(cum[i])), lx, baseY + 4);
+    // Waypoint id (skip when ticks are too tight to avoid overlap).
+    if (gap >= 22) {
+      ctx.fillStyle = '#8aa0b4';
+      ctx.font = '7px sans-serif';
+      ctx.fillText(wpId(i), lx, baseY + 13);
+    }
+  }
+  // Axis unit caption.
+  ctx.fillStyle = '#8aa0b4';
+  ctx.font = '7px sans-serif';
+  ctx.textAlign = rtl ? 'left' : 'right';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('NM', rtl ? x + 2 : x + w - 2, y + h);
   ctx.restore();
 }
 

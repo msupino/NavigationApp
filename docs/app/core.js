@@ -1057,7 +1057,7 @@ function toHMS(hours) {
 
 // --- vertical profile: top-of-climb / top-of-descent (#672) -------------
 // Default GA climb/descent performance (C172-ish); overridable per aircraft.
-const WX_DEFAULT_PERF = { climbFpm: 700, descentFpm: 500, climbKt: 75, descentKt: 110 };
+const WX_DEFAULT_PERF = { climbFpm: 500, descentFpm: 500, climbKt: 75, descentKt: 110 };
 // Field elevation at route endpoint waypoint i (airfield elev_ft) or null.
 function routeEndpointElev(i) {
   const wp = state.waypoints[i];
@@ -1065,11 +1065,17 @@ function routeEndpointElev(i) {
   const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
   return af && Number.isFinite(af.elev_ft) ? af.elev_ft : null;
 }
-// Model each leg as: climb at the start (up to cruise) + cruise + descent at
-// the end (down to the next leg's altitude). TOC/TOD points fall where the
-// climb/descent meets cruise. Returns per-leg time/fuel (climb & descent flown
-// at their own speed, so they differ from flat cruise), the TOC/TOD markers
-// (with along-leg fraction), and the altitude-vs-distance profile vertices.
+// Model the route as one continuous climb-out, a cruise that follows each
+// leg's own planned altitude (so real height changes show along the course),
+// then one continuous descent to the destination. The climb runs from the
+// departure field up to the first leg's altitude at the aircraft's climb rate
+// and ends WHERE that altitude is reached — which may be several legs in, not
+// at the first leg boundary. The descent mirrors it into the destination.
+// TOC/TOD markers are emitted only when the departure / destination is an
+// actual airfield (has a field elevation); intermediate per-leg altitude
+// changes are drawn but not marked. Returns per-leg time/fuel, altitude-vs-
+// distance vertices (pts), wpCum (cumulative NM at each waypoint for the
+// distance axis), and the TOC/TOD markers located by cumulative distance.
 function routeProfile(ac) {
   ac = ac || (typeof aircraft === 'object' && aircraft) || {};
   const climbFpm = ac.climbFpm > 0 ? ac.climbFpm : WX_DEFAULT_PERF.climbFpm;
@@ -1079,48 +1085,81 @@ function routeProfile(ac) {
   const gph = ac.gph > 0 ? ac.gph : 8;
   const legs = state.legs || [], wps = state.waypoints || [];
   const n = legs.length;
-  // Single cruise altitude for the whole route = the first leg's planned
-  // altitude. The aircraft climbs once on leg 1 to cruise, holds it flat
-  // across every middle leg, then descends once on the final leg to the
-  // destination — one TOC, one TOD (no per-leg sawtooth).
-  const cruiseAlt = Number.isFinite(legs[0] && legs[0].inboundAltitude) ? legs[0].inboundAltitude : 2000;
-  const fieldStart = routeEndpointElev(0) != null ? routeEndpointElev(0) : cruiseAlt;
-  const fieldEnd = routeEndpointElev(n) != null ? routeEndpointElev(n) : cruiseAlt;
-  const out = { legs: [], pts: [], tocs: [], tods: [], totalDist: 0, totalTimeH: 0, totalFuel: 0 };
-  let cum = 0;
+  const legAlt = i => Number.isFinite(legs[i].inboundAltitude) ? legs[i].inboundAltitude : 2000;
+  // TOC/TOD are only meaningful off/onto the ground, so they're emitted solely
+  // when the departure / destination is an actual airfield (has a field elev).
+  const depElev = routeEndpointElev(0);
+  const destElev = routeEndpointElev(n);
+  const fieldStart = depElev != null ? depElev : (n ? legAlt(0) : 2000);
+  const fieldEnd = destElev != null ? destElev : (n ? legAlt(n - 1) : 2000);
+  const out = { legs: [], pts: [], tocs: [], tods: [], wpCum: [0], totalDist: 0, totalTimeH: 0, totalFuel: 0 };
+
+  // Prepass: per-leg distance + cumulative NM at each waypoint.
+  const dists = [];
+  let total = 0;
   for (let i = 0; i < n; i++) {
     const A = wps[i], B = wps[i + 1];
-    if (!A || !B) continue;
-    const { dist } = geo(A, B);
-    const cr = cruiseAlt;
-    const isFirst = i === 0, isLast = i === n - 1;
-    // Climb only on the first leg (from field to cruise); descent only on the
-    // last leg (from cruise to field). Every other leg is level at cruise.
-    const startAlt = isFirst ? fieldStart : cr;
-    const endAlt = isLast ? fieldEnd : cr;
-    let climbDist = 0, descDist = 0;
-    if (isFirst && cr > fieldStart) climbDist = Math.min(dist, climbKt * ((cr - fieldStart) / climbFpm) / 60);
-    if (isLast && cr > fieldEnd) descDist = Math.min(dist - climbDist, descKt * ((cr - fieldEnd) / descFpm) / 60);
+    const d = A && B ? geo(A, B).dist : 0;
+    dists.push(d); total += d; out.wpCum.push(total);
+  }
+  out.totalDist = total;
+  if (!n) return out;
+
+  // Continuous climb-out / descent envelope (distance to reach the altitude at
+  // the configured rate). Each ends wherever the altitude is reached.
+  const cruise0 = legAlt(0), lastAlt = legAlt(n - 1);
+  const climbReq = depElev != null && cruise0 > fieldStart ? climbKt * ((cruise0 - fieldStart) / climbFpm) / 60 : 0;
+  const descReq = destElev != null && lastAlt > fieldEnd ? descKt * ((lastAlt - fieldEnd) / descFpm) / 60 : 0;
+  // Climb is confined to the first leg, descent to the last — TOC/TOD land on
+  // those legs even if the altitude isn't fully reached within their distance.
+  const climbEnd = Math.min(climbReq, dists[0] || 0);
+  const descStart = Math.max(climbEnd, total - Math.min(descReq, dists[n - 1] || 0));
+  // Locate a cumulative distance on a leg → { leg, frac }.
+  const locate = dd => {
+    for (let i = 0; i < n; i++) {
+      if (dd <= out.wpCum[i + 1] || i === n - 1) {
+        return { leg: i, frac: dists[i] > 0 ? Math.min(1, Math.max(0, (dd - out.wpCum[i]) / dists[i])) : 0 };
+      }
+    }
+    return { leg: 0, frac: 0 };
+  };
+  const overlap = (a, b, c, d) => Math.max(0, Math.min(b, d) - Math.max(a, c));
+
+  // Altitude-vs-distance vertices: climb ramp, per-leg cruise flats (sloped
+  // connectors between differing leg altitudes), then the descent ramp.
+  out.pts.push({ d: 0, alt: fieldStart });
+  if (climbEnd > 0) out.pts.push({ d: climbEnd, alt: cruise0 });
+  for (let i = 0; i < n; i++) {
+    const a = Math.max(climbEnd, out.wpCum[i]);
+    const b = Math.min(descStart, out.wpCum[i + 1]);
+    if (b > a) { out.pts.push({ d: a, alt: legAlt(i) }); out.pts.push({ d: b, alt: legAlt(i) }); }
+  }
+  if (descReq > 0) { out.pts.push({ d: descStart, alt: lastAlt }); out.pts.push({ d: total, alt: fieldEnd }); }
+  else out.pts.push({ d: total, alt: lastAlt });
+  // Drop consecutive duplicate vertices.
+  out.pts = out.pts.filter((p, i, arr) => i === 0 || p.d !== arr[i - 1].d || p.alt !== arr[i - 1].alt);
+
+  // Per-leg time/fuel split against the global climb/cruise/descent envelope.
+  for (let i = 0; i < n; i++) {
+    const dist = dists[i];
+    const climbDist = overlap(out.wpCum[i], out.wpCum[i + 1], 0, climbEnd);
+    const descDist = overlap(out.wpCum[i], out.wpCum[i + 1], descStart, total);
     const cruiseDist = Math.max(0, dist - climbDist - descDist);
     const climbT = climbKt > 0 ? climbDist / climbKt : 0;
     const descT = descKt > 0 ? descDist / descKt : 0;
     const cruiseT = legs[i].flightSpeed > 0 ? cruiseDist / legs[i].flightSpeed : 0;
     const timeH = climbT + cruiseT + descT;
     const fuel = timeH * gph;
-    out.legs.push({ dist, timeH, fuel, climbDist, descDist, cruiseDist, startAlt, cruiseAlt: cr, endAlt });
-    out.pts.push({ d: cum, alt: climbDist > 0 ? startAlt : cr });
-    if (climbDist > 0) {
-      out.pts.push({ d: cum + climbDist, alt: cr });
-      out.tocs.push({ leg: i, frac: dist > 0 ? climbDist / dist : 0, alt: cr });
-    }
-    if (descDist > 0) {
-      out.pts.push({ d: cum + dist - descDist, alt: cr });
-      out.tods.push({ leg: i, frac: dist > 0 ? (dist - descDist) / dist : 1, alt: cr });
-    }
-    out.pts.push({ d: cum + dist, alt: descDist > 0 ? endAlt : cr });
-    cum += dist; out.totalTimeH += timeH; out.totalFuel += fuel;
+    out.legs.push({ dist, timeH, fuel, climbDist, descDist, cruiseDist,
+      startAlt: i === 0 ? fieldStart : legAlt(i - 1), cruiseAlt: legAlt(i),
+      endAlt: i === n - 1 ? fieldEnd : legAlt(i) });
+    out.totalTimeH += timeH; out.totalFuel += fuel;
   }
-  out.totalDist = cum;
+
+  // One TOC where the climb-out reaches altitude; one TOD where the descent
+  // begins — only for airfield endpoints.
+  if (climbReq > 0) out.tocs.push(Object.assign(locate(climbEnd), { alt: cruise0 }));
+  if (descReq > 0) out.tods.push(Object.assign(locate(descStart), { alt: lastAlt }));
   return out;
 }
 
