@@ -1464,8 +1464,7 @@ function fitPageFrame() {
 function wpLabel(i) {
   const wp = state.waypoints[i];
   if (!wp) return '';
-  const n = navName((wp.name || '').trim());
-  return n || (S.wpPrefix + (i + 1));
+  return waypointDisplayLabel(wp, i);
 }
 
 // #86: Flight Plan modal state and Escape-to-close handling.

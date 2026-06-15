@@ -1,12 +1,3 @@
----
-name: navaid-dev
-description: >-
-  Continue development of NavAid, the HTML5 CVFR flight-route planner in
-  /Users/marco/NavigationApp/docs. Use when the user wants to work on the
-  map plotter web app — waypoints, legs, leg markers, notes, the Leaflet
-  base map, the nav-waypoint overlay, or the deploy pipeline.
----
-
 # NavAid — HTML5 CVFR flight-route planner — developer guide
 
 ## What this is
@@ -14,9 +5,8 @@ description: >-
 A browser flight-route planner. Leaflet slippy map (flight-maps.com tiles)
 with a canvas overlay that draws the route, free-text notes, and an
 optional VFR-reporting-point reference layer. Plain HTML / CSS / JS, no
-build step; Leaflet from CDN is the only dependency. Re-implements the
-Unity `NavigationApp` plotter, which is preserved on the
-`original-plotter` branch.
+build step; Leaflet from CDN is the only dependency. This repository now
+carries the static web app source only.
 
 - **Live (production):** https://msupino.github.io/NavigationApp/
 - **Live (staging):** https://msupino.github.io/NavigationApp/staging/
@@ -24,14 +14,26 @@ Unity `NavigationApp` plotter, which is preserved on the
 - **PR preview (by branch):** https://msupino.github.io/NavigationApp/branch/BRANCH_NAME/
 - **Repo:** https://github.com/msupino/NavigationApp (fork of liorbenhorin/NavigationApp)
 
+## AI Docs
+
+This file is the full developer guide. For fast orientation and task-specific
+checklists, also use the rest of the repo-tracked `.ai/` handbook:
+
+- `.ai/README.md` — index and non-negotiables.
+- `.ai/agent.md` — compact agent brief.
+- `.ai/workflow.md` — branches, issues, pushes, draft PRs, deploys.
+- `.ai/architecture.md` — script order, state, rendering, persistence.
+- `.ai/data.md` — JSON datasets and sources of truth.
+- `.ai/ui-patterns.md` — inspectors, charts, RTL/LTR, satellite, VOR.
+- `.ai/testing.md` — local checks, Playwright, deployed e2e behavior.
+- `.ai/checklists.md` — pre-commit and change-type checklists.
+
 ## Branches
 
 - `main` — production. The web app source. The Unity tree was stripped
   here (commit `53188cc`).
 - `dev` — staging. The same web app, work-in-progress. Each push to
   `dev` rebuilds the staging URL.
-- `original-plotter` — frozen Unity 2019 project (renamed from `master`).
-  Reference only; do not commit web changes here.
 
 `main` is branch-protected — no direct pushes; production changes land via
 a `dev` → `main` pull request. **Every change must go through a feature
@@ -55,33 +57,33 @@ resolve that before branching.
 clearly intended for this work (or you are unsure), **stop and ask the
 user** which branch to use — do not guess; another agent or session may
 be using a different branch. If the branch is correct, proceed. Do not
-commit on `main`, `dev`, `original-plotter`, or an unrelated feature
-branch by mistake.
+commit on `main`, `dev`, or an unrelated feature branch by mistake.
 
 ## Files (`docs/`)
 
-- `index.html` — page, toolbar, Leaflet + the five app scripts. Title
+- `index.html` — page, toolbar, Leaflet + the ordered app scripts. Title
   is "NavAid"; `favicon.svg` is a small plane glyph; GA4 tag
   `G-0XM5PHEK8B` and a Web App Manifest are embedded. Assets carry
   `?v=N` query strings; cache-bust is now **rewritten automatically by
   `.github/workflows/deploy.yml`** to `?v=<short-sha>` at upload time,
-  so the in-source value (currently `?v=134`) is just a static
-  placeholder and doesn't need bumping per commit. CI lint still
+  so the in-source value is just a static placeholder and doesn't need
+  bumping per commit. CI lint still
   enforces that every `?v=` in the file agrees so authors don't
   accidentally leave one stale.
-- `app/` — the app source. The app is five plain scripts loaded in order,
-  sharing one global
+- `app/` — the app source. Plain scripts load in order and share one global
   scope (no build step, no modules):
   `app/core.js` (migration, state model, geo helpers, Leaflet map,
-  overlay canvas) → `app/draw.js` (route / nav-waypoint / note rendering,
-  page frame) → `app/interact.js` (hit-testing, inspector, mouse/touch) →
+  overlay canvas) → `app/terrain.js` (terrain / MSA helpers) →
+  `app/draw.js` (route / nav-waypoint / note rendering, page frame) →
+  `app/interact.js` (hit-testing, inspector, mouse/touch) →
   `app/io.js` (save/load, page setup, flight plan, PNG export,
-  persistence) → `app/ui.js` (toolbar wiring, drag, boot, PWA). Order
-  matters — later files use globals from earlier ones. Default English
-  UI strings live in `app/core.js` (`window.S`): **sentence case** (first
-  word + proper nouns / acronyms such as BYOP, CVFR, JSON); spell
-  *waypoint* in full in prose. Hebrew overrides:
-  `i18n/he/strings.js`.
+  persistence) → `app/alt-pair-directions.js` (altitude-pair direction
+  helpers) → `app/gdrive.js` (optional Drive route library) →
+  `app/ui.js` (toolbar wiring, drag, boot, PWA). Order matters — later
+  files use globals from earlier ones. Default English UI strings live in
+  `app/core.js` (`window.S`): **sentence case** (first word + proper nouns /
+  acronyms such as BYOP, CVFR, JSON); spell *waypoint* in full in prose.
+  Hebrew overrides: `i18n/he/strings.js`.
 - `app/style.css` — dark UI + `@media print` rules.
 - `data/` — shipped JSON datasets used by the app.
 - `i18n/` — locale string bundles.
@@ -380,8 +382,8 @@ branch by mistake.
     backdrop is open)
   - **Help:** `?` — open the cheat-sheet
   When you add a new global keyboard shortcut, append a row to
-  `SHORTCUTS_HELP_ROWS` (and matching `shortcutXxx` keys in `core.js` +
-  `he/strings.js`) so the cheat-sheet stays in sync.
+  `SHORTCUTS_HELP_ROWS` (and matching `shortcutXxx` keys in `app/core.js` +
+  `i18n/he/strings.js`) so the cheat-sheet stays in sync.
 - **Save PNG (`exportPNG`):** renders the framed region (or current
   view if no frame) at native tile zoom into an off-screen canvas.
   Tiles are pulled through `images.weserv.nl` to dodge the lack of
@@ -610,11 +612,11 @@ downloadable `route.json`.
     includes a call-sign dropdown, editable frequency, and reset-callout-
     location button. When no linked note exists (overlay off or not
     seeded), a read-only badge shows the `from → to` frequency pair
-    and optional note. Styled in `style.css`
+    and optional note. Styled in `app/style.css`
     under `/* Comm-change inspector badge (issue #399) */`.
   - **i18n keys:** `tbShowCommChange`, `tbShowCommChangeTitle`,
-    `commChangeBadge` (English defaults in `core.js`, Hebrew overrides
-    in `he/strings.js`).
+    `commChangeBadge` (English defaults in `app/core.js`, Hebrew overrides
+    in `i18n/he/strings.js`).
 - `geo` distances are exact great-circle; verify against the chart's
   graticule if precision is questioned.
 - GA4 (`G-0XM5PHEK8B`) tracks page views; no event tracking yet.

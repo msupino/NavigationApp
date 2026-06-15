@@ -291,6 +291,41 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await expect(title).toHaveValue(new RegExp(out.code + '.*' + out.label));
   });
 
+  test('reference inspectors share the CODE / localized name title shape', async ({ page }) => {
+    await boot(page, 'en');
+    const titles = await page.evaluate(async () => {
+      await Promise.all([loadVors(), loadAirfields(), loadNavWaypoints()]);
+      const readTitle = () => document.getElementById('insp-title').value;
+      const natIdx = vors.findIndex(v => v.ident === 'NAT');
+      state.selected = { type: 'vor', index: natIdx };
+      showInspector();
+      const vor = readTitle();
+
+      const afIdx = airfields.findIndex(a => a.name === 'LLHA');
+      state.selected = { type: 'airfield', index: afIdx };
+      showInspector();
+      const airfield = readTitle();
+
+      const hadraIdx = navWP.findIndex(w => w.name === 'HADRA');
+      state.selected = { type: 'navwp', index: hadraIdx };
+      showInspector();
+      const navwp = readTitle();
+
+      const hadra = navWP[hadraIdx];
+      state.waypoints = [{ lat: hadra.lat, lng: hadra.lng, name: 'HADRA' }];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+      const routeWp = readTitle();
+
+      return { vor, airfield, navwp, routeWp };
+    });
+    expect(titles.vor).toMatch(/^NAT \/ Natania$/);
+    expect(titles.airfield).toMatch(/^LLHA \/ Haifa/);
+    expect(titles.navwp).toMatch(/^HADRA \/ Hadera$/);
+    expect(titles.routeWp).toBe(titles.navwp);
+  });
+
   test('markers are selectable outside edit mode (VOR / airfield / nav-WP)', async ({ page }) => {
     await boot(page);
     // VOR marker hit-test + read-only inspector + "use as reference".
@@ -303,7 +338,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     });
     expect(hit).toMatchObject({ type: 'vor' });
     await page.evaluate(t => { state.selected = t; showInspector(); }, hit);
-    await expect(page.locator('#insp-title')).toHaveValue('NAT');
+    await expect(page.locator('#insp-title')).toHaveValue(/NAT.*Natania/);
     await expect(page.locator('#insp-body')).toContainText('112.40');
     const useBtn = page.locator('#insp-body .insp-btn', { hasText: /reference/i });
     await expect(useBtn).toBeVisible();
@@ -686,8 +721,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       state.selected = { type: 'vor', index: natIdx };
       showInspector();
     });
-    await expect(page.locator('#insp-title')).toHaveValue('NAT');
-    await expect(page.locator('#insp-body')).toContainText('נתניה');
+    await expect(page.locator('#insp-title')).toHaveValue(/NAT.*נתניה/);
     // Airfield inspector — shows Hebrew name.
     await page.evaluate(async () => {
       if (typeof loadAirfields === 'function') await loadAirfields();
@@ -731,8 +765,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       state.selected = { type: 'vor', index: natIdx };
       showInspector();
     });
-    await expect(page.locator('#insp-title')).toHaveValue('NAT');
-    await expect(page.locator('#insp-body')).toContainText('Natania');
+    await expect(page.locator('#insp-title')).toHaveValue(/NAT.*Natania/);
     // Airfield inspector — shows English name.
     await page.evaluate(async () => {
       await loadAirfields();
