@@ -1299,6 +1299,7 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   border-radius: 4px;
   padding: 5px 7px;
   min-width: 0;
+  unicode-bidi: plaintext;
 }
 .route-library-list {
   display: grid;
@@ -1367,8 +1368,16 @@ body.theme-light .route-library-tools button:hover { background: #eef3f9; }
   color: #e8e8e8;
   min-width: 0;
 }
-.route-library-row-name { font-weight: 600; }
-.route-library-row-meta { color: #b9b3b3; font-size: 12px; }
+.route-library-row-name {
+  font-weight: 600;
+  unicode-bidi: plaintext;
+}
+.route-library-row-meta {
+  color: #b9b3b3;
+  direction: ltr;
+  font-size: 12px;
+  unicode-bidi: isolate;
+}
 .route-library-actions { display: flex; gap: 4px; flex-wrap: wrap; }
 /* Load is the primary row action — make it obvious (clicking the name also loads). */
 .route-library-actions .route-library-load,
