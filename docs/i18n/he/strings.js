@@ -169,6 +169,8 @@ window.S = {
   navLogTitle: 'NavAid — יומן ניווט',
   navLogDate: 'תאריך',
   navLogFreqs: 'תדרים',
+  navLogDepFreqs: 'תדרי שדה יציאה',
+  navLogArrFreqs: 'תדרי שדה נחיתה',
   navLogPopupBlocked: 'אפשר חלונות קופצים כדי לייצא את יומן הניווט.',
   fpFuel: 'דלק',
   fpMsa: 'גובה בטוח (ft)',

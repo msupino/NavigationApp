@@ -235,7 +235,7 @@ test.describe('Bidi / mixed-direction UI regressions', () => {
 
     await page.locator('#freq-table').click();
     await expect(page.locator('.charts-freq-title h3')).toHaveText('ברירות מחדל לתדרים');
-    const code = page.locator('.charts-freq-code', { hasText: 'HERZLIYA' }).first();
+    const code = page.locator('.charts-freq-code', { hasText: 'LLHZ' }).first();
     await expect(code).toBeVisible();
     bidi = await cssSnapshot(code);
     expect(bidi.direction).toBe('ltr');

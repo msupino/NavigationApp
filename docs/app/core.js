@@ -433,6 +433,8 @@ window.S = Object.assign({
   navLogTitle: 'NavAid — Nav Log',
   navLogDate: 'Date',
   navLogFreqs: 'Frequencies',
+  navLogDepFreqs: 'Departure frequencies',
+  navLogArrFreqs: 'Arrival frequencies',
   navLogPopupBlocked: 'Allow pop-ups to export the nav log.',
   fpFuel: 'Fuel',
   fpMsa: 'MSA (ft)',
