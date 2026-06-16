@@ -96,7 +96,6 @@ function dialAngle(ev) {                 // 0 = north (up), clockwise positive
 let rotDragging = false;
 let rotMoved = false;
 let rotStartX = 0, rotStartY = 0;
-const ROT_DRAG_PX = 8;                 // min movement before treating as a drag
 rotDial.addEventListener('pointerdown', e => {
   rotDragging = true;
   rotMoved = false;
@@ -108,7 +107,7 @@ rotDial.addEventListener('pointerdown', e => {
 rotDial.addEventListener('pointermove', e => {
   if (!rotDragging) return;
   if (!rotMoved) {
-    if (Math.hypot(e.clientX - rotStartX, e.clientY - rotStartY) < ROT_DRAG_PX) return;
+    if (Math.hypot(e.clientX - rotStartX, e.clientY - rotStartY) < tune('rotDragPx')) return;
     rotMoved = true;
   }
   map.setBearing(((360 - dialAngle(e)) % 360 + 360) % 360);

@@ -1022,18 +1022,14 @@ function appendAirfieldFrequencyRows(body, af) {
 }
 
 const SATELLITE_TILE_SIZE = 256;
-const SATELLITE_PREVIEW_ZOOM = 16;
-const SATELLITE_EXPANDED_ZOOM = 17;
-const SATELLITE_MIN_ZOOM = 13;
-const SATELLITE_MAX_ZOOM = 18;
 const SATELLITE_TILE_URL =
   'https://services.arcgisonline.com/ArcGIS/rest/services/' +
   'World_Imagery/MapServer/tile/';
 
 function clampSatelliteZoom(z) {
   const n = Number(z);
-  if (!Number.isFinite(n)) return SATELLITE_EXPANDED_ZOOM;
-  return Math.max(SATELLITE_MIN_ZOOM, Math.min(SATELLITE_MAX_ZOOM, Math.round(n)));
+  if (!Number.isFinite(n)) return tune('satelliteExpandedZoom');
+  return Math.max(tune('satelliteMinZoom'), Math.min(tune('satelliteMaxZoom'), Math.round(n)));
 }
 
 function satelliteTileUrl(z, x, y) {
@@ -1080,7 +1076,7 @@ function buildSatelliteSnippet(point, opts = {}) {
   const expanded = !!opts.expanded;
   const width = expanded ? Math.max(300, Math.min(620, window.innerWidth - 64)) : 214;
   const height = expanded ? Math.max(220, Math.min(420, window.innerHeight - 180)) : 118;
-  const z = expanded ? clampSatelliteZoom(opts.zoom) : SATELLITE_PREVIEW_ZOOM;
+  const z = expanded ? clampSatelliteZoom(opts.zoom) : tune('satellitePreviewZoom');
   const p = satelliteTilePoint(lat, lng, z);
   const centerTileX = Math.floor(p.x);
   const centerTileY = Math.floor(p.y);
@@ -1293,9 +1289,9 @@ function showSatellitePreviewModal(point, label) {
   const startLayer = mLayers.Satellite || mLayers.CVFR || Object.values(mLayers)[0];
   lmap = L.map(mapEl, {
     center: [point.lat, point.lng],
-    zoom: SATELLITE_EXPANDED_ZOOM,
-    minZoom: SATELLITE_MIN_ZOOM,
-    maxZoom: SATELLITE_MAX_ZOOM,
+    zoom: tune('satelliteExpandedZoom'),
+    minZoom: tune('satelliteMinZoom'),
+    maxZoom: tune('satelliteMaxZoom'),
     layers: startLayer ? [startLayer] : [],
     zoomControl: false,
     rotate: true,                // leaflet-rotate: enable bearing
@@ -1337,7 +1333,7 @@ function showSatellitePreviewModal(point, label) {
     // range, and drop back to satellite if one was active.
     const CHART_NAMES = ['CVFR', 'Navigation', 'Low Alt', 'Helicopters'];
     const chartMax = nm => (mLayers[nm] && mLayers[nm].options &&
-      mLayers[nm].options.maxZoom) || SATELLITE_MAX_ZOOM;
+      mLayers[nm].options.maxZoom) || tune('satelliteMaxZoom');
     const LayerSelect = L.Control.extend({
       options: { position: 'topright' },
       onAdd: function () {
@@ -1385,7 +1381,7 @@ function showSatellitePreviewModal(point, label) {
     lmap.on('zoomend', syncLayerAvailability);
     syncLayerAvailability();
   }
-  lmap.addControl(satelliteResetControl(lmap, point, SATELLITE_EXPANDED_ZOOM));
+  lmap.addControl(satelliteResetControl(lmap, point, tune('satelliteExpandedZoom')));
   // Marker on the waypoint so it stays findable after panning.
   L.circleMarker([point.lat, point.lng], {
     radius: 7, color: '#ffda4c', weight: 2, opacity: 0.96, fill: false,
@@ -2385,14 +2381,13 @@ function appendFreqEdit(body, note, editOptions) {
 // --- interaction (Leaflet mouse events) ------------------------------
 let drag = null;
 let downHit = false;
-const ORIGIN_RESNAP_ARM_PX = 18;
 
 function dragOriginExclude(d, latlng) {
   if (!d || d.originSnapArmed) return null;
   if (!Number.isFinite(d.origLat) || !Number.isFinite(d.origLng)) return null;
   const origin = map.latLngToContainerPoint([d.origLat, d.origLng]);
   const cur = map.latLngToContainerPoint([latlng.lat, latlng.lng]);
-  if (Math.hypot(cur.x - origin.x, cur.y - origin.y) > ORIGIN_RESNAP_ARM_PX) {
+  if (Math.hypot(cur.x - origin.x, cur.y - origin.y) > tune('originResnapArmPx')) {
     d.originSnapArmed = true;
     return null;
   }
