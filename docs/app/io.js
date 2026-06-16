@@ -2370,35 +2370,41 @@ function showFlightPlan() {
       return clone.outerHTML;
     }).join('<div class="nl-gap"></div>');
 
-    // Frequency list from comm-change callout notes on the route.
+    // Wrap LTR content (codes, frequencies) in an isolate so it doesn't
+    // reorder against surrounding Hebrew in the RTL nav log.
+    const ltr = s => '<span dir="ltr" style="unicode-bidi:isolate">' + esc(s) + '</span>';
+    // Frequency list from comm-change callout notes on the route. Use the
+    // localized call-sign name (Hebrew in he mode), not the raw catalog id.
     const freqs = (state.notes || []).filter(n => n && n.cc).map(n => {
-      const wp = esc((typeof navName === 'function' ? navName(n.cc) : n.cc) || n.cc);
-      const cs = n.freqName ? ' \u2014 ' + esc(n.freqName) : '';
-      const f = n.freq ? ' \u2014 ' + esc(n.freq) + ' MHz' : '';
-      return '<li>' + wp + cs + f + '</li>';
+      const wp = (typeof navName === 'function' ? navName(n.cc) : n.cc) || n.cc;
+      const name = typeof commNoteName === 'function' ? commNoteName(n) : (n.freqName || '');
+      const fq = typeof commNoteFreq === 'function' ? commNoteFreq(n) : (n.freq || '');
+      return '<li>' + esc(wp) + (name ? ' \u2014 ' + esc(name) : '') +
+        (fq ? ' \u2014 ' + ltr(fq + ' MHz') : '') + '</li>';
     }).join('');
 
     // Airport frequency block (tower/primary + clearance + ATIS) for the
     // departure and arrival airfields.
-    const airfieldFreqHtml = (wp, headLabel) => {
+    const airfieldFreqHtml = (wp, code, sectionLabel) => {
       const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
       if (!af) return '';
+      const item = (label, val) => '<li>' + esc(label) + ' — ' + ltr(val) + '</li>';
       const items = [];
       const primary = typeof airfieldPrimaryText === 'function' ? airfieldPrimaryText(af) : '';
-      if (primary) items.push('<li>' + esc(S.primary || 'Primary') + ' — ' + esc(primary) + '</li>');
+      if (primary) items.push(item(S.primary || 'Primary', primary));
       const clr = typeof airfieldClearanceText === 'function' ? airfieldClearanceText(af) : '';
-      if (clr) items.push('<li>' + esc(S.clearance || 'Clearance') + ' — ' + esc(clr) + '</li>');
+      if (clr) items.push(item(S.clearance || 'Clearance', clr));
       const atis = typeof airfieldAtisText === 'function' ? airfieldAtisText(af) : '';
-      if (atis) items.push('<li>' + esc(S.atis || 'ATIS') + ' — ' + esc(atis) + '</li>');
+      if (atis) items.push(item(S.atis || 'ATIS', atis));
       if (!items.length) return '';
-      return '<h2>' + headLabel + '</h2><ul>' + items.join('') + '</ul>';
+      return '<h2>' + ltr(code) + ' — ' + esc(sectionLabel) + '</h2><ul>' + items.join('') + '</ul>';
     };
     const lastIdx = state.waypoints.length - 1;
-    let depFreqHtml = airfieldFreqHtml(state.waypoints[0],
-      dep + ' — ' + esc(S.navLogDepFreqs || 'Departure frequencies'));
+    let depFreqHtml = airfieldFreqHtml(state.waypoints[0], wpLabel(0),
+      S.navLogDepFreqs || 'Departure frequencies');
     if (lastIdx > 0) {
-      depFreqHtml += airfieldFreqHtml(state.waypoints[lastIdx],
-        dest + ' — ' + esc(S.navLogArrFreqs || 'Arrival frequencies'));
+      depFreqHtml += airfieldFreqHtml(state.waypoints[lastIdx], wpLabel(lastIdx),
+        S.navLogArrFreqs || 'Arrival frequencies');
     }
 
     const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: 8, taxiGal: 1.1 };
@@ -2763,6 +2769,12 @@ function showExportModal() {
   if (vors === null && typeof loadVors === 'function') {
     loadVors().then(() => { fillExportVorSelect(); draw(); });
   }
+  // The plan card's Freq column needs the comm catalog + airfields to resolve
+  // the departure/arrival airport frequencies — load them, then redraw.
+  Promise.all([
+    typeof loadCommChange === 'function' ? loadCommChange() : null,
+    typeof loadAirfields === 'function' ? loadAirfields() : null,
+  ]).then(() => draw());
   vorSel.onchange = function () {
     window.vorRef = vorSel.value || null;
     try {
