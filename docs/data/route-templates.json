@@ -325,10 +325,10 @@
     },
     {
       "id": "llhz-llbs-south",
-      "name": "Herzliya to Teyman",
-      "he": "הרצליה לתימן",
-      "description": "CVFR route from Herzliya to Beer Sheva / Teyman.",
-      "heDescription": "מסלול CVFR מהרצליה לבאר שבע / תימן.",
+      "name": "Herzliya to Beer Sheva",
+      "he": "הרצליה לבאר שבע",
+      "description": "CVFR route from Herzliya to Beer Sheva.",
+      "heDescription": "מסלול CVFR מהרצליה לבאר שבע.",
       "defaultSpeed": 90,
       "waypoints": [
         "LLHZ",
@@ -457,10 +457,10 @@
     },
     {
       "id": "llbs-llhz-south",
-      "name": "Teyman to Herzliya",
-      "he": "תימן להרצליה",
-      "description": "CVFR route from Beer Sheva / Teyman to Herzliya.",
-      "heDescription": "מסלול CVFR מבאר שבע / תימן להרצליה.",
+      "name": "Beer Sheva to Herzliya",
+      "he": "באר שבע להרצליה",
+      "description": "CVFR route from Beer Sheva to Herzliya.",
+      "heDescription": "מסלול CVFR מבאר שבע להרצליה.",
       "defaultSpeed": 90,
       "waypoints": [
         "LLBS",
