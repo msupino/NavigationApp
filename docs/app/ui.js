@@ -1782,7 +1782,7 @@ if (showWindCb) {
 refreshWindInputVisibility();
 refreshWindInputs();
 // --- Open-Meteo winds-aloft fetch (#722) ----------------------------
-// Pull a real per-leg winds-aloft forecast (free, no key, CORS-enabled) and
+// Pull a real per-leg winds-aloft forecast (free, no key) and
 // store each leg's own wind. Numeric source — the IMS aviation page only
 // publishes chart images.
 function legAltitudeFt(leg) {
