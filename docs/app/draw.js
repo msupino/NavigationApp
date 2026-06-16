@@ -2548,21 +2548,12 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
       radial: rd[0], dme: rd[1] });
   }
   if (!rows.length) return null;
-  // Active comm frequency per leg — the most recent comm-change at or before
-  // the leg's start waypoint, carried forward until the next change.
-  const ccList = [];
-  for (const n of (state.notes || [])) {
-    if (!n || !n.cc) continue;
-    const wpi = typeof commCalloutWaypointIndex === 'function' ? commCalloutWaypointIndex(n) : -1;
-    const f = typeof commNoteFreq === 'function' ? commNoteFreq(n) : (n && n.freq) || '';
-    if (wpi >= 0 && f) ccList.push({ wpi, freq: String(f) });
-  }
-  ccList.sort((a, b) => a.wpi - b.wpi);
+  // Active comm frequency per leg — departure/arrival airfield freqs +
+  // comm-change notes, carried forward (shared core logic, matches the
+  // flight-plan modal so the printed table aligns with it).
+  const freqSources = typeof routeFreqSources === 'function' ? routeFreqSources() : [];
   for (let r = 0; r < rows.length; r++) {
-    const legIdx = rows[r].num - 1;
-    let f = '';
-    for (const c of ccList) { if (c.wpi <= legIdx) f = c.freq; else break; }
-    rows[r].freq = f;
+    rows[r].freq = typeof legActiveFreq === 'function' ? legActiveFreq(rows[r].num - 1, freqSources) : '';
   }
   const freqActive = rows.some(r => r.freq);
   // Radial / DME columns only when a reference VOR is active (global or any
