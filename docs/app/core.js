@@ -2,7 +2,7 @@
 
 /* ------------------------------------------------------------------ *
  * NavAid — HTML5 CVFR flight-route planner.
- * Leaflet base map (flight-maps.com tiles) + a canvas route overlay.
+ * Leaflet base map (Flight Maps tiles) + a canvas route overlay.
  * ------------------------------------------------------------------ */
 
 // One-time migration: the app was renamed from "Plotter" — carry over any
@@ -1287,12 +1287,12 @@ function routeProfile(ac) {
 }
 
 // --- airfield METAR / TAF (#670) ---------------------------------------
-// NOAA AWC's METAR/TAF API blocks browser CORS and public proxies proved
-// unreliable, so a scheduled GitHub Action fetches it server-side and
-// publishes wx.json (all Israeli fields) to the `wx-data` branch, served with
-// CORS by raw.githubusercontent.com — same pattern as the SIGMET feed. The
-// whole file is memoised 5 min; same-origin data/wx.json is the offline /
-// first-run fallback. Decoding works off AWC's structured JSON fields.
+// NOAA AWC's METAR/TAF API blocks direct browser fetches and public proxies
+// proved unreliable, so a scheduled GitHub Action fetches it server-side and
+// publishes wx.json (all Israeli fields) to the `wx-data` branch, served by
+// raw.githubusercontent.com — same pattern as the SIGMET feed. The whole file
+// is memoised 5 min; same-origin data/wx.json is the offline / first-run
+// fallback. Decoding works off AWC's structured JSON fields.
 const WX_URL = 'https://raw.githubusercontent.com/msupino/NavigationApp/wx-data/wx.json';
 var _wxFile = null;
 async function loadWxFile(force) {
@@ -1487,9 +1487,9 @@ function finishLatLng(lat, lng) {
 }
 
 // --- Leaflet map -----------------------------------------------------
-// Layer set mirrors ifl.flight-maps.com (excluding Israel Hiking).
-// chartBounds = the lat/lng box that flight-maps.com actually publishes
-// tiles for (Israel + adjacent VFR airspace).  exportPNG uses it to skip
+// Layer set served from the NavigationApp-tiles repository.
+// chartBounds = the lat/lng box covered by the published chart tiles
+// (Israel + adjacent VFR airspace). exportPNG uses it to skip
 // out-of-coverage tile fetches, which would otherwise return 404 and trip
 // the "X of Y map tiles failed to load" warning when the viewport extends
 // past the chart (the typical case at low zoom).
@@ -1498,21 +1498,37 @@ const TILE = { minZoom: 6, maxZoom: 16, maxNativeZoom: 13,
                chartBounds: FM_BOUNDS };
 const FM_ATTR =
   'Charts © <a href="https://flight-maps.com">flight-maps.com</a> · CAAI';
+const NAVAID_TILE_BASE = 'https://navaid-tiles.supino.org';
+
+function tileLayerUrl(layer, coords) {
+  const subs = layer.options && layer.options.subdomains ?
+    layer.options.subdomains : 'abc';
+  const sub = typeof layer._getSubdomain === 'function' ?
+    layer._getSubdomain(coords) : subs[(coords.x + coords.y) % subs.length];
+  return L.Util.template(layer._url, {
+    x: coords.x,
+    y: coords.y,
+    z: coords.z,
+    s: sub,
+    r: L.Browser.retina ? '@2x' : '',
+  });
+}
+
 const layers = {
-  'CVFR': L.tileLayer('https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png',
+  'CVFR': L.tileLayer(NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png',
     { ...TILE, attribution: FM_ATTR }),
-  'Navigation': L.tileLayer('https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
+  'Navigation': L.tileLayer(NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png',
     { ...TILE, attribution: FM_ATTR }),
-  'Low Alt': L.tileLayer('https://flight-maps.com/tiles/la/{z}/{x}/{y}.png',
+  'Low Alt': L.tileLayer(NAVAID_TILE_BASE + '/LSA-Low-Altitude/{z}/{x}/{y}.png',
     { ...TILE, attribution: FM_ATTR }),
-  'Helicopters': L.tileLayer('https://flight-maps.com/tiles/il-hel/{z}/{x}/{y}.png',
+  'Helicopters': L.tileLayer(NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png',
     { ...TILE, maxNativeZoom: 12, attribution: FM_ATTR }),
   'Satellite': L.tileLayer(
     'https://services.arcgisonline.com/ArcGIS/rest/services/' +
     'World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    { minZoom: 6, maxZoom: 18, attribution: 'Imagery © Esri', corsOk: true }),
+    { minZoom: 6, maxZoom: 18, attribution: 'Imagery © Esri' }),
   'OpenStreetMap': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    { minZoom: 6, maxZoom: 18, subdomains: 'abc', corsOk: true,
+    { minZoom: 6, maxZoom: 18, subdomains: 'abc',
       attribution: '© OpenStreetMap contributors' }),
 };
 
