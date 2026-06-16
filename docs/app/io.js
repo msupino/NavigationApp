@@ -1717,22 +1717,27 @@ function showFlightPlan() {
   profLbl.appendChild(vsLbl);
   profWrap.appendChild(profLbl);
   // Direction indicator above the strip — the profile/X-axis mirrors in RTL
-  // (Hebrew), so anchor the flow marker at the START of the flight (departure
-  // side): left in LTR, right in RTL, with the arrow pointing the way it's
-  // flown.
+  // (Hebrew), so spell out the flow: departure → destination with a centred
+  // arrow, oriented to match the axis (arrow points the way it's flown).
   (function () {
     const wps = state.waypoints || [];
     if (wps.length < 2) return;
     const depName = navName((wps[0].name || '').trim()) || (S.wpPrefix + 1);
+    const destName = navName((wps[wps.length - 1].name || '').trim()) || (S.wpPrefix + wps.length);
     const rtl = document.documentElement && document.documentElement.dir === 'rtl';
     const label = S.fpDirection || 'Direction';
     const dirRow = document.createElement('div');
     dirRow.className = 'fp-profile-dir';
-    dirRow.dir = 'ltr';                 // fixed frame; align to the start side
-    dirRow.style.textAlign = rtl ? 'right' : 'left';
-    dirRow.textContent = rtl
-      ? (depName + ' — ' + label + ' ◄')
-      : ('► ' + label + ' — ' + depName);
+    dirRow.dir = 'ltr';                 // fixed frame; place ends by axis side
+    const lEnd = document.createElement('span');
+    const arrow = document.createElement('span');
+    arrow.className = 'fp-dir-arrow';
+    const rEnd = document.createElement('span');
+    // d=0 (departure) is on the left in LTR, on the right in RTL.
+    lEnd.textContent = rtl ? destName : depName;
+    rEnd.textContent = rtl ? depName : destName;
+    arrow.textContent = rtl ? ('◄ ' + label) : (label + ' ►');
+    dirRow.appendChild(lEnd); dirRow.appendChild(arrow); dirRow.appendChild(rEnd);
     profWrap.appendChild(dirRow);
   })();
   const profCanvas = document.createElement('canvas');
@@ -3917,8 +3922,8 @@ function renderFreqTable(freqSection) {
       return key && usedIds.has(key);
     })
     .sort((a, b) => (a.label || a.id).localeCompare(b.label || b.id));
-  const hasOverride = opts.some(o => !!o.overrideFreq);
-  restoreAll.disabled = !hasOverride;
+  const updateRestoreAll = () => { restoreAll.disabled = !opts.some(o => !!o.overrideFreq); };
+  updateRestoreAll();
   restoreAll.onclick = e => {
     e.preventDefault();
     if (typeof commResetAllCallSignFreqOverrides === 'function') {
@@ -4032,10 +4037,19 @@ function renderFreqTable(freqSection) {
     inp.addEventListener('change', () => {
       const normalized = syncFreqInputValidity();
       if (normalized === null) return;
+      let eff = normalized;
       if (typeof commApplyCallSignFreqOverride === 'function') {
-        inp.value = commApplyCallSignFreqOverride(opt.id, normalized) || normalized || inp.value;
+        eff = commApplyCallSignFreqOverride(opt.id, normalized) || normalized || inp.value;
       }
-      renderFreqTable(freqSection);
+      inp.value = eff;
+      // Update this row in place rather than rebuilding the whole table — a full
+      // re-render destroys the focused input and scrolls back to the first row.
+      opt.freq = eff;
+      opt.overrideFreq = typeof commCallSignOverrideFreq === 'function'
+        ? commCallSignOverrideFreq(opt.id) : (eff !== opt.templateFreq ? eff : '');
+      tr.classList.toggle('overridden', !!opt.overrideFreq);
+      syncFreqInputValidity();
+      updateRestoreAll();
       afterFreqTableEdit();
     });
     local.appendChild(inp);
@@ -4054,7 +4068,13 @@ function renderFreqTable(freqSection) {
       } else if (opt.templateFreq && typeof commApplyCallSignFreqOverride === 'function') {
         commApplyCallSignFreqOverride(opt.id, opt.templateFreq);
       }
-      renderFreqTable(freqSection);
+      // Update in place (keep scroll position) — no full table rebuild.
+      opt.overrideFreq = '';
+      opt.freq = opt.templateFreq || '';
+      inp.value = opt.templateFreq || '';
+      tr.classList.remove('overridden');
+      syncFreqInputValidity();
+      updateRestoreAll();
       afterFreqTableEdit();
     }
     // pointerdown handles pointer activation; click handles keyboard. Suppress

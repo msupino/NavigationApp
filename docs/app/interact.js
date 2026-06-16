@@ -891,11 +891,17 @@ const AIRFIELD_CALL_SIGN_IDS = {
 function airfieldPrimaryText(af) {
   const id = af && Object.prototype.hasOwnProperty.call(AIRFIELD_CALL_SIGN_IDS, af.name)
     ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
-  const row = id && typeof commCatalogCallSignRow === 'function'
-    ? commCatalogCallSignRow(id) : null;
-  const primary = row && typeof row.primary === 'string' ? row.primary.trim() : '';
-  if (!primary) return '';
-  return (typeof commFormatFreq === 'function' ? commFormatFreq(primary) : primary) + ' MHz';
+  if (!id) return '';
+  // Effective freq honours a freq-table override, falling back to the catalog
+  // default — so an edited frequency reflects in the inspector + Freq column.
+  const eff = typeof commCallSignEffectiveFreq === 'function'
+    ? commCallSignEffectiveFreq(id)
+    : (() => {
+        const row = typeof commCatalogCallSignRow === 'function' ? commCatalogCallSignRow(id) : null;
+        const p = row && typeof row.primary === 'string' ? row.primary.trim() : '';
+        return p && typeof commFormatFreq === 'function' ? commFormatFreq(p) : p;
+      })();
+  return eff ? eff + ' MHz' : '';
 }
 
 function refreshAirfieldInspectorAfterCommCatalog(af) {
@@ -912,14 +918,73 @@ function refreshAirfieldInspectorAfterCommCatalog(af) {
   });
 }
 
+function appendAirfieldPrimaryFreqEdit(body, id) {
+  const template = typeof commCallSignTemplateFreq === 'function' ? commCallSignTemplateFreq(id) : '';
+  const effective = typeof commCallSignEffectiveFreq === 'function' ? commCallSignEffectiveFreq(id) : '';
+  const row = document.createElement('div');
+  row.className = 'row primary-row';
+  const l = document.createElement('label');
+  l.textContent = S.primary || 'Primary';
+  const v = document.createElement('span');
+  v.className = 'val';
+  const inp = document.createElement('input');
+  inp.className = 'charts-freq-input';
+  if (typeof commConfigureFreqInput === 'function') commConfigureFreqInput(inp);
+  else { inp.type = 'number'; inp.inputMode = 'decimal'; inp.step = '0.005'; }
+  inp.value = effective || template || '';
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.className = 'commchange-freq-reset';
+  reset.textContent = '↻';
+  reset.title = S.resetFreqOverride || S.sliderReset || 'Reset to default';
+  function sync() {
+    const norm = typeof commNormalizeFreqInput === 'function'
+      ? commNormalizeFreqInput(inp.value) : String(inp.value || '').trim();
+    const invalid = norm === null;
+    inp.classList.toggle('invalid', invalid);
+    inp.classList.toggle('is-default', !invalid && !!template && (norm || '') === template);
+    const over = typeof commCallSignOverrideFreq === 'function' ? commCallSignOverrideFreq(id) : '';
+    reset.disabled = !template || (!over && !invalid);
+  }
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } });
+  inp.addEventListener('input', sync);
+  inp.addEventListener('change', () => {
+    const norm = typeof commNormalizeFreqInput === 'function'
+      ? commNormalizeFreqInput(inp.value) : String(inp.value || '').trim();
+    if (norm === null) { sync(); return; }
+    if (typeof commApplyCallSignFreqOverride === 'function') {
+      inp.value = commApplyCallSignFreqOverride(id, norm) || norm || inp.value;
+    }
+    sync();
+    draw();   // update map callouts + anything reading the effective freq
+  });
+  reset.onclick = () => {
+    if (reset.disabled) return;
+    if (typeof commResetCallSignFreqOverride === 'function') commResetCallSignFreqOverride(id);
+    inp.value = template || '';
+    sync();
+    draw();
+  };
+  v.append(inp, reset);
+  row.append(l, v);
+  body.appendChild(row);
+  sync();
+}
+
 function appendAirfieldFrequencyRows(body, af) {
-  const primary = airfieldPrimaryText(af);
-  if (primary) {
-    const row = textRow(S.primary || 'Primary', primary);
-    row.classList.add('primary-row');
-    body.appendChild(row);
+  const id = af && Object.prototype.hasOwnProperty.call(AIRFIELD_CALL_SIGN_IDS, af.name)
+    ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
+  if (id) {
+    appendAirfieldPrimaryFreqEdit(body, id);
   } else {
-    refreshAirfieldInspectorAfterCommCatalog(af);
+    const primary = airfieldPrimaryText(af);
+    if (primary) {
+      const row = textRow(S.primary || 'Primary', primary);
+      row.classList.add('primary-row');
+      body.appendChild(row);
+    } else {
+      refreshAirfieldInspectorAfterCommCatalog(af);
+    }
   }
   const clearance = airfieldClearanceText(af);
   if (clearance) {

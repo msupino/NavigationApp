@@ -1068,6 +1068,38 @@ function decodeSigmet(s) {
   return (fir ? fir + ' — ' : '') + parts.join(', ');
 }
 const pad3 = n => String(n).padStart(3, '0');
+// Strip a trailing "MHz" unit from a frequency string → "121.70 MHz" → "121.70".
+function freqClean(s) { return String(s == null ? '' : s).replace(/\s*MHz\s*$/i, '').trim(); }
+// Per-leg comm-frequency sources along the route, sorted by waypoint index:
+// each airfield's primary radio frequency (active from the leg departing it)
+// plus each comm-change note (which overrides at its waypoint). Used by the
+// flight-plan + printed-plan Freq column.
+function routeFreqSources() {
+  const out = [];
+  const wps = state.waypoints || [];
+  for (let i = 0; i < wps.length; i++) {
+    const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wps[i]) : null;
+    const f = af && typeof airfieldPrimaryText === 'function' ? freqClean(airfieldPrimaryText(af)) : '';
+    if (f) out.push({ wpi: i, freq: f });
+  }
+  for (const n of (state.notes || [])) {
+    if (!n || !n.cc) continue;
+    const wpi = typeof commCalloutWaypointIndex === 'function' ? commCalloutWaypointIndex(n) : -1;
+    const f = typeof commNoteFreq === 'function' ? commNoteFreq(n) : (n.freq || '');
+    if (wpi >= 0 && f) out.push({ wpi, freq: freqClean(f) });
+  }
+  // Sort by waypoint; comm-change notes are pushed after airfields so a note at
+  // the same waypoint sorts last and wins the carry-forward.
+  out.sort((a, b) => a.wpi - b.wpi);
+  return out;
+}
+// Active frequency for leg i: the latest source at or before the leg's start.
+function legActiveFreq(i, sources) {
+  const src = sources || routeFreqSources();
+  let f = '';
+  for (const c of src) { if (c.wpi <= i) f = c.freq; else break; }
+  return f;
+}
 function toHMS(hours) {
   const tm = hours * 60;
   let m = Math.floor(tm);
