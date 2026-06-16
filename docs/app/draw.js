@@ -27,8 +27,275 @@ function legDefaultLabelPerp(legLenPx) {
          tune('defaultKiteHalfWidthPx') * sc +
          tune('defaultLabelMarginPx');
 }
+function legKiteAlongHalfPx(sc) {
+  sc = sc ?? ((typeof legZoomScale === 'function') ? legZoomScale() : 1);
+  return (tune('legKiteCellWidthPx') * 2 + tune('legKiteTriangleLenPx')) * sc / 2;
+}
 
 // --- drawing ---------------------------------------------------------
+// Draw the live simulator aircraft at its current position with heading.
+// Top-down airplane silhouette: nose points up in local frame, rotated to
+// (aircraft heading − map bearing) so it tracks correctly on a rotated map.
+function drawSimAircraft() {
+  if (!simOn || !simAircraft) return;
+  const s = proj(simAircraft);
+  const mapBearing = (typeof map !== 'undefined' && map.getBearing) ? map.getBearing() : 0;
+  const screenAngle = ((simAircraft.hdg || 0) - mapBearing) * Math.PI / 180;
+  const r = 18;
+  octx.save();
+  octx.translate(s.x, s.y);
+  octx.rotate(screenAngle);
+
+  // ── fuselage ──
+  octx.beginPath();
+  octx.moveTo(0, -r);                                      // nose tip
+  octx.quadraticCurveTo( r * 0.13, -r * 0.3,  r * 0.13,  r * 0.15);  // right side
+  octx.lineTo( r * 0.13,  r * 0.6);                       // right fuselage to tail
+  octx.quadraticCurveTo( r * 0.08, r * 0.85, 0,  r * 0.9);            // right tail taper
+  octx.quadraticCurveTo(-r * 0.08, r * 0.85, -r * 0.13,  r * 0.6);
+  octx.lineTo(-r * 0.13,  r * 0.15);
+  octx.quadraticCurveTo(-r * 0.13, -r * 0.3, 0, -r);
+  octx.closePath();
+  octx.fillStyle = '#e74c3c';
+  octx.fill();
+
+  // ── wings — swept back from mid-fuselage ──
+  octx.beginPath();
+  octx.moveTo( r * 0.13,  r * 0.05);   // right wing root (leading edge)
+  octx.lineTo( r,          r * 0.35);  // right wingtip LE
+  octx.lineTo( r * 0.85,   r * 0.45);  // right wingtip TE
+  octx.lineTo( r * 0.13,   r * 0.22);  // right wing root (trailing edge)
+  octx.closePath();
+  octx.fillStyle = '#e74c3c';
+  octx.fill();
+
+  octx.beginPath();
+  octx.moveTo(-r * 0.13,  r * 0.05);
+  octx.lineTo(-r,          r * 0.35);
+  octx.lineTo(-r * 0.85,   r * 0.45);
+  octx.lineTo(-r * 0.13,   r * 0.22);
+  octx.closePath();
+  octx.fillStyle = '#e74c3c';
+  octx.fill();
+
+  // ── horizontal stabilisers ──
+  octx.beginPath();
+  octx.moveTo( r * 0.13,  r * 0.65);
+  octx.lineTo( r * 0.45,  r * 0.78);
+  octx.lineTo( r * 0.38,  r * 0.85);
+  octx.lineTo( r * 0.13,  r * 0.75);
+  octx.closePath();
+  octx.fillStyle = '#e74c3c';
+  octx.fill();
+
+  octx.beginPath();
+  octx.moveTo(-r * 0.13,  r * 0.65);
+  octx.lineTo(-r * 0.45,  r * 0.78);
+  octx.lineTo(-r * 0.38,  r * 0.85);
+  octx.lineTo(-r * 0.13,  r * 0.75);
+  octx.closePath();
+  octx.fillStyle = '#e74c3c';
+  octx.fill();
+
+  // ── white outline over everything ──
+  octx.lineWidth = 1.5;
+  octx.strokeStyle = 'rgba(255,255,255,0.9)';
+  // re-stroke fuselage
+  octx.beginPath();
+  octx.moveTo(0, -r);
+  octx.quadraticCurveTo( r * 0.13, -r * 0.3,  r * 0.13,  r * 0.15);
+  octx.lineTo( r * 0.13,  r * 0.6);
+  octx.quadraticCurveTo( r * 0.08, r * 0.85, 0,  r * 0.9);
+  octx.quadraticCurveTo(-r * 0.08, r * 0.85, -r * 0.13,  r * 0.6);
+  octx.lineTo(-r * 0.13,  r * 0.15);
+  octx.quadraticCurveTo(-r * 0.13, -r * 0.3, 0, -r);
+  octx.closePath();
+  octx.stroke();
+
+  octx.restore();
+}
+
+// TOC / TOD markers along the route (#672). A small dot + label at the point
+// where climb/descent meets cruise on each affected leg.
+function drawProfileMarkers() {
+  if (typeof routeProfile !== 'function' || (state.legs || []).length === 0) return;
+  const prof = routeProfile();
+  const mark = (m, label, color) => {
+    const A = state.waypoints[m.leg], B = state.waypoints[m.leg + 1];
+    if (!A || !B) return;
+    const sa = proj(A), sb = proj(B);
+    const x = sa.x + (sb.x - sa.x) * m.frac, y = sa.y + (sb.y - sa.y) * m.frac;
+    octx.save();
+    octx.fillStyle = color;
+    octx.strokeStyle = '#fff';
+    octx.lineWidth = 1.5;
+    octx.beginPath();
+    octx.arc(x, y, 4, 0, 2 * Math.PI);
+    octx.fill();
+    octx.stroke();
+    octx.font = 'bold 11px sans-serif';
+    octx.textAlign = 'left';
+    octx.textBaseline = 'middle';
+    octx.lineWidth = 3;
+    octx.strokeStyle = 'rgba(255,255,255,0.9)';
+    octx.strokeText(label, x + 7, y);
+    octx.fillStyle = color;
+    octx.fillText(label, x + 7, y);
+    octx.restore();
+  };
+  for (const t of prof.tocs) mark(t, S.toc || 'TOC', '#2e9e4f');
+  for (const t of prof.tods) mark(t, S.tod || 'TOD', '#c47f17');
+}
+
+// Render the altitude-vs-distance profile strip onto a canvas context within
+// (x,y,w,h). Used by the Flight Plan modal (#672).
+function drawVerticalProfile(ctx, x, y, w, h) {
+  if (typeof routeProfile !== 'function') return;
+  const prof = routeProfile();
+  if (!prof.pts.length || prof.totalDist <= 0) return;
+  const alts = prof.pts.map(p => p.alt);
+  const maxA = Math.max.apply(null, alts) * 1.1 + 100;
+  const minA = Math.min(0, Math.min.apply(null, alts));
+  // Reserve a strip at the bottom for the X axis (NM + time per waypoint) and
+  // a margin on the left for the altitude (Y) axis labels.
+  const axisH = 30;
+  const yPad = 34;
+  const plotH = Math.max(10, h - axisH);
+  const plotW = Math.max(10, w - yPad);
+  const x0 = x + yPad;                 // plot left edge (Y axis sits left of it)
+  const baseY = y + plotH;
+  // In RTL (Hebrew) the route reads right-to-left, so mirror the distance axis.
+  const rtl = document.documentElement && document.documentElement.dir === 'rtl';
+  const px = d => rtl ? x0 + plotW - (d / prof.totalDist) * plotW : x0 + (d / prof.totalDist) * plotW;
+  const py = a => baseY - ((a - minA) / (maxA - minA || 1)) * plotH;
+  ctx.save();
+  ctx.fillStyle = '#1d2733';
+  ctx.fillRect(x, y, w, h);
+  // Altitude (Y) axis: horizontal gridlines + ft labels at "nice" intervals.
+  const niceSteps = [100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+  const range = maxA - minA;
+  const yStep = niceSteps.find(s => range / s <= 5) || 50000;
+  ctx.textBaseline = 'middle';
+  ctx.font = '8px sans-serif';
+  for (let a = Math.ceil(minA / yStep) * yStep; a <= maxA; a += yStep) {
+    const gy = py(a);
+    ctx.strokeStyle = 'rgba(120,150,180,0.16)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x0, gy + 0.5); ctx.lineTo(x + w, gy + 0.5); ctx.stroke();
+    ctx.fillStyle = '#8aa0b4';
+    ctx.textAlign = 'right';
+    ctx.fillText(String(a), x0 - 3, gy);
+  }
+  // Y axis unit caption.
+  ctx.fillStyle = '#8aa0b4';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText('ft', x + 2, y + 2);
+  // ground line
+  ctx.strokeStyle = '#3a4654';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x0, py(minA) + 0.5); ctx.lineTo(x + w, py(minA) + 0.5); ctx.stroke();
+  // profile polyline + fill
+  ctx.beginPath();
+  ctx.moveTo(px(prof.pts[0].d), py(prof.pts[0].alt));
+  for (const p of prof.pts) ctx.lineTo(px(p.d), py(p.alt));
+  ctx.lineTo(px(prof.totalDist), py(minA));
+  ctx.lineTo(px(0), py(minA));
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(80,150,230,0.20)';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(px(prof.pts[0].d), py(prof.pts[0].alt));
+  for (const p of prof.pts) ctx.lineTo(px(p.d), py(p.alt));
+  ctx.strokeStyle = '#5a96e6';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // TOC/TOD dots
+  const dot = (m, color, label) => {
+    let cum = 0;
+    for (let i = 0; i < m.leg; i++) cum += prof.legs[i] ? prof.legs[i].dist : 0;
+    const d = cum + (prof.legs[m.leg] ? prof.legs[m.leg].dist * m.frac : 0);
+    const cx = px(d), cy = py(m.alt);
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(cx, cy, 3, 0, 2 * Math.PI); ctx.fill();
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, cx, cy - 6);
+  };
+  for (const t of prof.tocs) dot(t, '#2e9e4f', S.toc || 'TOC');
+  for (const t of prof.tods) dot(t, '#c47f17', S.tod || 'TOD');
+
+  // X axis: at each waypoint a tick + cumulative NM + cumulative time, plus a
+  // short waypoint id, with a faint gridline up through the plot so you can
+  // read where each altitude change happens along the course.
+  const cum = prof.wpCum || [];
+  const tcum = prof.wpTime || [];
+  const last = cum.length - 1;
+  const gap = last > 0 ? w / last : w;          // px between adjacent waypoints
+  const wpId = i => {
+    const wp = state.waypoints[i];
+    if (!wp) return '';
+    return String(wp.code || wp.name || '').slice(0, 4).toUpperCase();
+  };
+  const fmtT = h => {                            // hours → "7m" or "1:05"
+    const m = Math.round((h || 0) * 60);
+    return m < 60 ? m + 'm' : Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0');
+  };
+  ctx.lineWidth = 1;
+  ctx.textBaseline = 'top';
+  for (let i = 0; i < cum.length; i++) {
+    const lx = px(cum[i]);
+    ctx.strokeStyle = 'rgba(120,150,180,0.18)';
+    ctx.beginPath(); ctx.moveTo(lx, y); ctx.lineTo(lx, baseY); ctx.stroke();
+    ctx.strokeStyle = '#5a6b7d';
+    ctx.beginPath(); ctx.moveTo(lx, baseY + 0.5); ctx.lineTo(lx, baseY + 3.5); ctx.stroke();
+    ctx.textAlign = i === 0 ? 'left' : i === last ? 'right' : 'center';
+    // NM (bright) then cumulative time (dimmer) stacked under the tick.
+    ctx.fillStyle = '#cdd8e3';
+    ctx.font = '8px sans-serif';
+    ctx.fillText(String(Math.round(cum[i])), lx, baseY + 4);
+    ctx.fillStyle = '#7fa8d0';
+    ctx.font = '7px sans-serif';
+    ctx.fillText(fmtT(tcum[i]), lx, baseY + 13);
+    // Waypoint id (skip when ticks are too tight to avoid overlap).
+    if (gap >= 22) {
+      ctx.fillStyle = '#8aa0b4';
+      ctx.font = '7px sans-serif';
+      ctx.fillText(wpId(i), lx, baseY + 22);
+    }
+  }
+  // TOC/TOD also get an X-axis tick + NM/time readout in their marker colour,
+  // so their along-route position is readable on the axis (not just the dot).
+  const markAxis = (m, color) => {
+    let dcum = 0;
+    for (let k = 0; k < m.leg; k++) dcum += prof.legs[k] ? prof.legs[k].dist : 0;
+    const segD = prof.legs[m.leg] ? prof.legs[m.leg].dist : 0;
+    const segT = prof.legs[m.leg] ? prof.legs[m.leg].timeH : 0;
+    const d = dcum + segD * m.frac;
+    const t = (tcum[m.leg] || 0) + segT * m.frac;
+    const lx = px(d);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(lx, baseY + 0.5); ctx.lineTo(lx, baseY + 4); ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    ctx.font = '8px sans-serif';
+    ctx.fillText(String(Math.round(d)), lx, baseY + 4);
+    ctx.font = '7px sans-serif';
+    ctx.fillText(fmtT(t), lx, baseY + 13);
+  };
+  for (const t of prof.tocs) markAxis(t, '#2e9e4f');
+  for (const t of prof.tods) markAxis(t, '#c47f17');
+
+  // Axis unit caption.
+  ctx.fillStyle = '#8aa0b4';
+  ctx.font = '7px sans-serif';
+  ctx.textAlign = rtl ? 'left' : 'right';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('NM / time', rtl ? x + 2 : x + w - 2, y + h);
+  ctx.restore();
+}
+
 function draw() {
   octx.clearRect(0, 0, vw(), vh());
   drawNavWaypoints();
@@ -36,11 +303,15 @@ function draw() {
   drawCommChangeRings();
   drawAirfields();
   drawVors();
+  if (window.showSigmet && Array.isArray(sigmets) && sigmets.length) drawSigmets();
   drawLegs();
   drawWaypoints();
   drawNotes();
+  if (window.showProfile) drawProfileMarkers();   // TOC/TOD markers (#672)
+  drawSimAircraft();
   drawInfo();
   drawPageFrame();
+  drawPlanCard();          // flight-plan card placed for PNG export (#378)
   // #78: keep the Flight Plan modal live with the route. The hook is null
   // when the modal isn't open, or after refresh detects a structural change
   // and closes it.
@@ -50,6 +321,77 @@ function draw() {
   // the debounced persist() would write the preview-state mutation to
   // localStorage if the user reopened the modal mid-export.
   if (!NavAid.exporting) persist();
+}
+
+// --- SIGMET hazard overlay (active international SIGMETs) ------------
+// A scheduled GitHub Action fetches the NOAA AWC isigmet feed, filters it to
+// the Israel region, and publishes sigmet.json to the `sigmet-data` branch —
+// served with CORS by raw.githubusercontent.com, so this static app can read
+// it directly (the AWC API itself blocks browser CORS). Same-origin
+// data/sigmet.json is the offline / first-run fallback.
+const SIGMET_URL =
+  'https://raw.githubusercontent.com/msupino/NavigationApp/sigmet-data/sigmet.json';
+async function loadSigmets(force) {
+  if (sigmets !== null && !force) return sigmets;
+  const parse = d => {
+    const list = Array.isArray(d && d.sigmets) ? d.sigmets : [];
+    sigmetMeta = { generatedAt: (d && d.generatedAt) || null };
+    return list.filter(s => s && Array.isArray(s.coords));
+  };
+  try {
+    const res = await fetch(SIGMET_URL, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    sigmets = parse(await res.json());
+    return sigmets;
+  } catch (e) {
+    try {
+      const res2 = await fetch('data/sigmet.json');
+      sigmets = parse(await res2.json());
+    } catch (e2) {
+      console.warn('Failed to load SIGMETs:', e, e2);
+      sigmets = [];
+      sigmetMeta = { generatedAt: null };
+    }
+    return sigmets;
+  }
+}
+function drawSigmets() {
+  octx.save();
+  for (const s of sigmets) {
+    const pts = (s.coords || [])
+      .filter(c => Array.isArray(c) && c.length === 2 &&
+                   Number.isFinite(c[0]) && Number.isFinite(c[1]))
+      .map(c => proj({ lat: c[0], lng: c[1] }));
+    if (pts.length < 3) continue;
+    const col = sigmetHazardColor(s.hazard);
+    octx.beginPath();
+    octx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) octx.lineTo(pts[i].x, pts[i].y);
+    octx.closePath();
+    octx.fillStyle = colorWithAlpha(col, 0.16);
+    octx.fill();
+    octx.setLineDash([8, 5]);
+    octx.lineWidth = 2;
+    octx.strokeStyle = col;
+    octx.stroke();
+    octx.setLineDash([]);
+    let cx = 0, cy = 0;
+    for (const p of pts) { cx += p.x; cy += p.y; }
+    cx /= pts.length; cy /= pts.length;
+    const label = (String(s.hazard || '') +
+                   (s.qualifier ? ' ' + s.qualifier : '')).trim();
+    if (label) {
+      octx.font = 'bold 12px sans-serif';
+      octx.textAlign = 'center';
+      octx.lineWidth = 3;
+      octx.strokeStyle = 'rgba(255,255,255,0.9)';
+      octx.strokeText(label, cx, cy);
+      octx.fillStyle = col;
+      octx.fillText(label, cx, cy);
+    }
+  }
+  octx.textAlign = 'left';
+  octx.restore();
 }
 
 // --- nav-waypoint reference overlay ---------------------------------
@@ -145,8 +487,10 @@ async function loadLegAltitudes() {
       legAltitudeMap = {};
       legAltitudePointIds = new Set();
       legAltitudeDataset = null;
+      legAltitudeOriginMap = null;
       return legAltitudeMap;
     }
+    resetLegAltitudeOrigins(d.segments);
     const directions = Array.isArray(d.directionPool)
       ? d.directionPool
       : legAltitudeDirectionsFromSegments(d.segments);
@@ -177,23 +521,33 @@ async function loadLegAltitudes() {
     legAltitudeMap = {};             // graceful degrade — defaults remain
     legAltitudePointIds = new Set();
     legAltitudeDataset = null;
+    legAltitudeOriginMap = null;
     legAltitudeDirectionPool = null;
     return legAltitudeMap;
   }
 }
 
+function closestScreenReference(list, kind, latlng, pxThreshold, options = {}) {
+  if (!Array.isArray(list) || !list.length || !latlng) return null;
+  const t = map.latLngToContainerPoint([latlng.lat, latlng.lng]);
+  let bestDist = Number.isFinite(pxThreshold) ? pxThreshold : Infinity;
+  let best = null;
+  for (const ref of list) {
+    if (options.excludeLl && sameMapPoint(ref, options.excludeLl)) continue;
+    if (Number.isInteger(options.skipOccupiedRouteIndex) &&
+        routeOccupiesPoint(ref, options.skipOccupiedRouteIndex)) continue;
+    const p = map.latLngToContainerPoint([ref.lat, ref.lng]);
+    const d = Math.hypot(p.x - t.x, p.y - t.y);
+    if (d < bestDist) { bestDist = d; best = ref; }
+  }
+  return best ? { kind, ref: best, dist: bestDist } : null;
+}
+
 // Closest nav waypoint within `pxThreshold` screen pixels of `latlng`,
 // or null. Returns the {name, lat, lng} entry from the loaded JSON.
-function nearestNavWaypoint(latlng, pxThreshold) {
-  if (!navWP || !navWP.length) return null;
-  const t = map.latLngToContainerPoint([latlng.lat, latlng.lng]);
-  let bestDist = pxThreshold, best = null;
-  for (const wp of navWP) {
-    const p = map.latLngToContainerPoint([wp.lat, wp.lng]);
-    const d = Math.hypot(p.x - t.x, p.y - t.y);
-    if (d < bestDist) { bestDist = d; best = wp; }
-  }
-  return best;
+function nearestNavWaypoint(latlng, pxThreshold, excludeLl) {
+  const hit = closestScreenReference(navWP, 'navwp', latlng, pxThreshold, { excludeLl });
+  return hit && hit.ref;
 }
 
 // True if `name` matches a known nav waypoint (code, English, or Hebrew) — so we
@@ -257,6 +611,73 @@ function navName(stored) {
   return stored;
 }
 
+function isAutoSnapName(name) {
+  return isAirfieldName(name) || isNavName(name) || isSequenceWaypointName(name);
+}
+
+function referenceCode(ref, kind) {
+  if (!ref) return '';
+  if (kind === 'vor') return ref.ident || ref.name || '';
+  return ref.name || ref.ident || '';
+}
+
+function currentUiLang() {
+  return (window.__navLang === 'he' ||
+    (document.documentElement && document.documentElement.lang === 'he')) ? 'he' : 'en';
+}
+
+function referenceLocaleName(ref, kind) {
+  if (!ref) return '';
+  if (kind === 'airfield') {
+    return ref[S.airfieldLabelField] || ref.en || ref.he || ref.name || '';
+  }
+  if (kind === 'vor') {
+    return currentUiLang() === 'he'
+      ? (ref.he || ref.name || ref.ident || '')
+      : (ref.en || ref.name || ref.ident || '');
+  }
+  return ref[S.navWpSearchField] || ref.en || ref.he || ref.name || '';
+}
+
+function codeTitle(code, locale) {
+  const c = String(code || '').trim();
+  const l = String(locale || '').trim();
+  return c + (l && l !== c ? ' / ' + l : '');
+}
+
+function referenceInspectorTitle(ref, kind) {
+  return codeTitle(referenceCode(ref, kind), referenceLocaleName(ref, kind));
+}
+
+function referenceOverlayLabel(ref, kind) {
+  const code = referenceCode(ref, kind);
+  const locale = referenceLocaleName(ref, kind);
+  if (kind === 'airfield') return codeTitle(code, locale);
+  return locale || code;
+}
+
+function waypointDisplayLabel(wp, idx) {
+  const n = navName((wp && wp.name || '').trim());
+  return n || (S.wpPrefix + (idx + 1));
+}
+
+function nearestReference(latlng, options = {}) {
+  const pxThreshold = options.force ? Infinity :
+    (Number.isFinite(options.pxThreshold) ? options.pxThreshold : 18);
+  const common = {
+    excludeLl: options.excludeLl,
+    skipOccupiedRouteIndex: options.skipOccupiedRouteIndex,
+  };
+  const air = options.includeAirfields === false ? null :
+    closestScreenReference(airfields, 'airfield', latlng, pxThreshold, common);
+  const nav = options.includeNavWaypoints === false ? null :
+    closestScreenReference(navWP, 'navwp', latlng, pxThreshold, common);
+  if (options.force) {
+    return [air, nav].filter(Boolean).sort((a, b) => a.dist - b.dist)[0] || null;
+  }
+  return air || nav;
+}
+
 // Decide where a waypoint should sit + what to call it given a target
 // position and its current name. Used by both initial drop and drag.
 //  - If the current name is user-typed (non-empty, not an auto-snap or
@@ -273,19 +694,12 @@ function navName(stored) {
 // known landmarks (16 vs 172 nav-WPs); if both overlays sit on the same
 // spot the airfield name is the more meaningful identifier.
 function applyNavSnap(latlng, currentName, excludeLl) {
-  const EXCL_DEG = 0.0002;
-  const excluded = ll => excludeLl &&
-    Math.abs(ll.lat - excludeLl.lat) < EXCL_DEG &&
-    Math.abs(ll.lng - excludeLl.lng) < EXCL_DEG;
+  const autoSnapped = isAutoSnapName(currentName);
+  const userTyped = currentName && !autoSnapped;
   if (!showAirfields && !showNavWP) {
-    const autoSnapped = isAirfieldName(currentName) || isNavName(currentName) ||
-        isSequenceWaypointName(currentName);
     return { lat: latlng.lat, lng: latlng.lng,
              name: autoSnapped ? '' : (currentName || '') };
   }
-  const autoSnapped = isAirfieldName(currentName) || isNavName(currentName) ||
-      isSequenceWaypointName(currentName);
-  const userTyped = currentName && !autoSnapped;
   // #106: Force-snap mode lifts the 18 px radius so every click resolves to
   // the absolute nearest known point. Useful when the chart has many close
   // reporting points and the user wants the published coordinate regardless
@@ -295,46 +709,19 @@ function applyNavSnap(latlng, currentName, excludeLl) {
   // it would make the 16-airfield set always win and leave the 172 nav-WPs
   // unreachable. So in force-snap mode pick the globally nearest across both
   // visible sets by screen distance instead of short-circuiting on airfields.
-  if (window.forceSnap) {
-    const t = map.latLngToContainerPoint([latlng.lat, latlng.lng]);
-    const cands = [];
-    if (showAirfields) {
-      const af = nearestAirfield(latlng, Infinity);
-      if (af && !excluded(af)) cands.push({ pt: af, name: af.name });
-    }
-    if (showNavWP) {
-      const nw = nearestNavWaypoint(latlng, Infinity);
-      if (nw && !excluded(nw)) cands.push({ pt: nw, name: nw.name });
-    }
-    let best = null, bestD = Infinity;
-    for (const c of cands) {
-      const p = map.latLngToContainerPoint([c.pt.lat, c.pt.lng]);
-      const d = Math.hypot(p.x - t.x, p.y - t.y);
-      if (d < bestD) { bestD = d; best = c; }
-    }
-    if (best) {
-      const name = userTyped ? currentName : best.name;
-      return { lat: best.pt.lat, lng: best.pt.lng, name };
-    }
-    return { lat: latlng.lat, lng: latlng.lng,
-             name: autoSnapped ? '' : (currentName || '') };
-  }
-  if (showAirfields) {
-    const af = nearestAirfield(latlng, 18);
-    if (af && !excluded(af)) {
-      const name = userTyped ? currentName : af.name;
-      return { lat: af.lat, lng: af.lng, name };
-    }
-  }
-  if (showNavWP) {
-    const snap = nearestNavWaypoint(latlng, 18);
-    if (snap && !excluded(snap)) {
-      const name = userTyped ? currentName : snap.name;
-      return { lat: snap.lat, lng: snap.lng, name };
-    }
+  const snap = nearestReference(latlng, {
+    pxThreshold: 18,
+    force: !!window.forceSnap,
+    includeAirfields: showAirfields,
+    includeNavWaypoints: showNavWP,
+    excludeLl,
+  });
+  if (snap && snap.ref) {
+    const name = userTyped ? currentName : snap.ref.name;
+    return { lat: snap.ref.lat, lng: snap.ref.lng, name, code: snap.ref.name };
   }
   return { lat: latlng.lat, lng: latlng.lng,
-           name: autoSnapped ? '' : (currentName || '') };
+           name: autoSnapped ? '' : (currentName || ''), code: '' };
 }
 
 // --- airfield reference overlay -------------------------------------
@@ -422,16 +809,9 @@ function vorRadialDme(vor, lat, lng) {
 
 // Closest airfield within `pxThreshold` screen pixels of `latlng`, or null.
 // Returns the {name, he, en, lat, lng, ...} entry from the loaded JSON.
-function nearestAirfield(latlng, pxThreshold) {
-  if (!airfields || !airfields.length) return null;
-  const t = map.latLngToContainerPoint([latlng.lat, latlng.lng]);
-  let bestDist = pxThreshold, best = null;
-  for (const af of airfields) {
-    const p = map.latLngToContainerPoint([af.lat, af.lng]);
-    const d = Math.hypot(p.x - t.x, p.y - t.y);
-    if (d < bestDist) { bestDist = d; best = af; }
-  }
-  return best;
+function nearestAirfield(latlng, pxThreshold, excludeLl) {
+  const hit = closestScreenReference(airfields, 'airfield', latlng, pxThreshold, { excludeLl });
+  return hit && hit.ref;
 }
 
 // True if `name` matches a known airfield ICAO (its `name` field).
@@ -468,7 +848,6 @@ function airfieldAtWaypoint(wp) {
 // a route waypoint sits on the airfield (proximity-based, like nav-WPs).
 function drawAirfields() {
   if (!showAirfields || !airfields || airfields.length === 0) return;
-  const SNAP_DEG = 0.0002;               // ~22 m — matches nearestAirfield px threshold
   const showLabels = map.getZoom() >= 10;
   const r = tune('airfieldMarkerRadiusPx');
   const wFactor = tune('airfieldMarkerWidthFactor');
@@ -478,9 +857,7 @@ function drawAirfields() {
   octx.textAlign = 'left';
   octx.textBaseline = 'middle';
   for (const af of airfields) {
-    const occupied = state.waypoints.some(
-      w => Math.abs(w.lat - af.lat) < SNAP_DEG && Math.abs(w.lng - af.lng) < SNAP_DEG);
-    if (occupied) continue;
+    if (routeOccupiesPoint(af)) continue;
     const s = proj(af);                  // no viewport cull: also drawn into
                                          // the larger PNG-export canvas
     octx.beginPath();
@@ -494,8 +871,7 @@ function drawAirfields() {
     octx.strokeStyle = tune('airfieldOutlineColor');
     octx.stroke();
     if (showLabels) {
-      const locale = af[S.airfieldLabelField] || af.en || af.name;
-      const label = af.name + (locale && locale !== af.name ? ' / ' + locale : '');
+      const label = referenceOverlayLabel(af, 'airfield');
       octx.lineWidth = tune('airfieldLabelHaloPx');
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
       octx.strokeText(label, s.x + r + labelOffset, s.y);
@@ -519,7 +895,6 @@ function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
   // Suppress nav-WP dot when a route waypoint sits on it (by position),
   // regardless of whether the WP name was changed after snapping.
-  const SNAP_DEG = 0.0002;               // ~22 m — matches nearestNavWaypoint px threshold
   const showLabels = map.getZoom() >= 10;
   const dotRadius = tune('navWaypointRadiusPx');
   const labelOffset = tune('navWaypointLabelOffsetPx');
@@ -527,9 +902,7 @@ function drawNavWaypoints() {
   octx.textAlign = 'left';
   octx.textBaseline = 'middle';
   for (const wp of navWP) {
-    const occupied = state.waypoints.some(
-      r => Math.abs(r.lat - wp.lat) < SNAP_DEG && Math.abs(r.lng - wp.lng) < SNAP_DEG);
-    if (occupied) continue;
+    if (routeOccupiesPoint(wp)) continue;
     const s = proj(wp);                  // no viewport cull: also drawn into
                                          // the larger PNG-export canvas
     octx.fillStyle = tune('navWaypointDotColor');
@@ -540,7 +913,7 @@ function drawNavWaypoints() {
     octx.fill();
     octx.stroke();
     if (showLabels) {
-      const label = wp[S.navWpSearchField] || wp.name;
+      const label = referenceOverlayLabel(wp, 'navwp');
       octx.lineWidth = tune('navWaypointLabelHaloPx');
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
       octx.strokeText(label, s.x + labelOffset, s.y);
@@ -584,7 +957,7 @@ function drawVors() {
     octx.arc(s.x, s.y, Math.max(1.5, r * 0.22), 0, Math.PI * 2);
     octx.fill();
     if (showLabels) {
-      const label = v.ident + '  ' + v.freq;
+      const label = v.ident + '  ' + (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : v.freq);
       const lx = s.x + r + 6, ly = s.y;
       octx.lineWidth = 2.5;
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
@@ -669,14 +1042,12 @@ function drawCommChangeRings() {
     // filled disc over this ring later in the frame — and with "show waypoint
     // names" on, waypointGeom() enlarges that disc to fit its label. Grow the
     // ring to enclose the disc (+ its 3px stroke) so it stays visible outside.
-    const SNAP_DEG = 0.0002;               // ~22 m — matches the snap threshold
     for (const wp of navWP) {
       if (!commChangeMap[wp.name] || !commChangeMap[wp.name].commChange) continue;
       const s = proj(wp);                // no viewport cull: also drawn into
                                          // the larger PNG-export canvas
       let radius = tune('commChangeRingRadiusPx');
-      const wi = state.waypoints.findIndex(
-        r => Math.abs(r.lat - wp.lat) < SNAP_DEG && Math.abs(r.lng - wp.lng) < SNAP_DEG);
+      const wi = routeWaypointAtPoint(wp);
       if (wi !== -1) {
         const selected = state.selected &&
                          state.selected.type === 'wp' && state.selected.index === wi;
@@ -741,6 +1112,28 @@ function commConfigureFreqInput(input) {
   input.min = COMM_FREQ_INPUT_MIN;
   input.max = COMM_FREQ_INPUT_MAX;
   input.step = COMM_FREQ_INPUT_STEP;
+  return input;
+}
+// VORs live in the 108–117.975 MHz VHF nav band, below the comm band — they
+// need their own validation so valid VOR freqs aren't flagged invalid.
+const VOR_FREQ_INPUT_MIN = '108';
+const VOR_FREQ_INPUT_MAX = '117.975';
+function vorNormalizeFreqInput(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  if (!/^\d{3}(?:\.\d{1,3})?$/.test(s)) return null;
+  const n = Number(s);
+  if (!Number.isFinite(n) || n < Number(VOR_FREQ_INPUT_MIN) ||
+      n > Number(VOR_FREQ_INPUT_MAX)) return null;
+  return commFormatFreq(s);
+}
+function vorConfigureFreqInput(input) {
+  if (!input) return input;
+  input.type = 'number';
+  input.inputMode = 'decimal';
+  input.min = VOR_FREQ_INPUT_MIN;
+  input.max = VOR_FREQ_INPUT_MAX;
+  input.step = '0.05';
   return input;
 }
 function commUseHebrewLabels() {
@@ -1179,9 +1572,13 @@ function commChangeReferencePoint(name) {
 function commChangeWaypointInRange(wp, name) {
   if (!wp || typeof map === 'undefined' || !map) return false;
   const key = canonicalNavWaypointName(name);
-  if (!key || canonicalNavWaypointName(wp.name) !== key) return false;
+  if (!key) return false;
   const ref = commChangeReferencePoint(key);
-  if (!ref) return true;
+  // When there is no reference position, fall back to name equality.
+  if (!ref) return canonicalNavWaypointName(wp.name) === key;
+  // Position is authoritative — a renamed waypoint still triggers if it
+  // sits on the comm-change reference point (name check removed so renaming
+  // does not silently disable the frequency-change indicator).
   const a = map.latLngToContainerPoint([wp.lat, wp.lng]);
   const b = map.latLngToContainerPoint([ref.lat, ref.lng]);
   return Math.hypot(a.x - b.x, a.y - b.y) <= COMM_CHANGE_SNAP_PX;
@@ -1269,10 +1666,25 @@ function seedCommChangeNotes() {
   const routeDefaults = commRouteCalloutDefaultsMap();
   for (const wp of state.waypoints) {
     if (!wp) continue;
-    const nm = canonicalNavWaypointName(wp && wp.name);
-    if (!nm) continue;
-    const cc = commChangeMap[nm];
-    if (!cc || !cc.commChange) continue;
+    // Resolve comm-change key: try stored name first, then fall back to
+    // coordinate scan so a renamed waypoint at a known ICAO position still
+    // triggers (e.g. move back to DEROR after rename → freq change shows).
+    let nm = canonicalNavWaypointName(wp && wp.name);
+    let cc = nm ? commChangeMap[nm] : null;
+    if ((!cc || !cc.commChange) && Array.isArray(navWP) && typeof map !== 'undefined' && map) {
+      for (const nwp of navWP) {
+        const k = canonicalNavWaypointName(nwp.name);
+        if (!k || !commChangeMap[k] || !commChangeMap[k].commChange) continue;
+        const ref = commChangeReferencePoint(k);
+        if (!ref) continue;
+        const a = map.latLngToContainerPoint([wp.lat, wp.lng]);
+        const b = map.latLngToContainerPoint([ref.lat, ref.lng]);
+        if (Math.hypot(a.x - b.x, a.y - b.y) <= COMM_CHANGE_SNAP_PX) {
+          nm = k; cc = commChangeMap[k]; break;
+        }
+      }
+    }
+    if (!nm || !cc || !cc.commChange) continue;
     if (!commChangeWaypointInRange(wp, nm)) continue;
     const callout = routeDefaults[nm] || commStaticCalloutDefaults(nm);
     const existing = state.notes.find(n => n && canonicalNavWaypointName(n.cc) === nm);
@@ -1444,7 +1856,82 @@ function drawLegs() {
       }
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
+
+    // Wind arrow (#722): show the wind that applies to each leg — the
+    // route-wide wind, or a per-leg override where one is set. A leg that
+    // overrides the route wind is drawn slightly bolder so the difference is
+    // visible at a glance. Drawn at 30% along the leg (clear of the midpoint
+    // distance badge and the minute-marker numbers).
+    if (window.showWind && typeof legWindFor === 'function') {
+      const lw2 = legWindFor(leg);
+      if (lw2) {
+        const f = 0.3;
+        const px = sa.x + (sb.x - sa.x) * f, py = sa.y + (sb.y - sa.y) * f;
+        const pll = { lat: A.lat + (B.lat - A.lat) * f,
+                      lng: A.lng + (B.lng - A.lng) * f };
+        const isOverride = !!(leg.wind &&
+          (Number.isFinite(leg.wind.dir) || Number.isFinite(leg.wind.speed)));
+        drawWindArrow(px, py, pll, lw2, isOverride);
+      }
+    }
   }
+}
+
+// Screen angle (radians) of the direction the wind BLOWS TOWARD at a given
+// lat/lng. Computed by projecting a small geographic offset instead of using
+// the compass angle directly so it stays correct under map rotation
+// (map.setBearing) — same reasoning as the kite angles, which come from
+// projected points.
+function windScreenAngle(latlng, windDirFrom) {
+  const to = ((windDirFrom + 180) * Math.PI) / 180;
+  const eps = 0.02;                                   // ~1.2 NM; angle only
+  const p1 = proj(latlng);
+  const p2 = proj({
+    lat: latlng.lat + Math.cos(to) * eps,
+    lng: latlng.lng + Math.sin(to) * eps / Math.cos((latlng.lat * Math.PI) / 180),
+  });
+  return Math.atan2(p2.y - p1.y, p2.x - p1.x);
+}
+
+// Blue wind arrow + "dir/speed" label for a per-leg wind override.
+function drawWindArrow(x, y, latlng, wind, emphasis) {
+  const ang = windScreenAngle(latlng, wind.dir);
+  // Shaft length scales with wind speed (≈ stronger wind = longer barb),
+  // clamped so a light breeze is still visible and a gale doesn't span the
+  // whole leg. Override legs draw a touch longer/bolder.
+  const base = Math.max(16, Math.min(70, 12 + (wind.speed || 0) * 1.1));
+  const len = emphasis ? base * 1.15 : base;
+  const head = emphasis ? 11 : 9;
+  const cx = Math.cos(ang), cy = Math.sin(ang);
+  const x1 = x + cx * len / 2, y1 = y + cy * len / 2;
+  octx.save();
+  octx.strokeStyle = '#0b5ed7';
+  octx.fillStyle = '#0b5ed7';
+  octx.lineWidth = emphasis ? 3 : 2;
+  // White halo so the arrow reads over busy chart tiles.
+  octx.lineJoin = 'round';
+  octx.beginPath();
+  octx.moveTo(x - cx * len / 2, y - cy * len / 2);
+  octx.lineTo(x1, y1);
+  octx.save();
+  octx.strokeStyle = 'rgba(255,255,255,0.85)';
+  octx.lineWidth = (emphasis ? 3 : 2) + 3;
+  octx.stroke();
+  octx.restore();
+  octx.stroke();
+  octx.beginPath();                                   // arrow head
+  octx.moveTo(x1, y1);
+  octx.lineTo(x1 - Math.cos(ang - 0.4) * head, y1 - Math.sin(ang - 0.4) * head);
+  octx.lineTo(x1 - Math.cos(ang + 0.4) * head, y1 - Math.sin(ang + 0.4) * head);
+  octx.closePath();
+  octx.fill();
+  const label = pad3(wind.dir) + '/' + wind.speed;
+  octx.font = 'bold 11px sans-serif';
+  octx.lineWidth = 3;                                 // text halo
+  octx.strokeStyle = 'rgba(255,255,255,0.9)';
+  octx.strokeText(label, x1 + 6, y1 + 3);
+  octx.fillText(label, x1 + 6, y1 + 3);
+  octx.restore();
 }
 
 // Drift reference lines, one from each end, defaulting to half the leg length.
@@ -1657,9 +2144,7 @@ function drawDistanceBadge(cx, cy, dist) {
 function waypointGeom(i) {
   const wp = state.waypoints[i];
   // Match wpLabel() / inspector placeholder ("WP N"), not a bare digit.
-  const label = showWpNames
-    ? (navName((wp.name || '').trim()) || (S.wpPrefix + (i + 1)))
-    : '';
+  const label = showWpNames ? waypointDisplayLabel(wp, i) : '';
   const zoomScale = Math.max(tune('waypointMinZoomScale'), Math.pow(2, map.getZoom() - 12));
   const scale = wpSize * zoomScale;
   const fontPx = Math.max(4, Math.round(tune('waypointFontPx') * scale));
@@ -2016,6 +2501,217 @@ function hitPageFrameEdge(px, py) {
 function clampPageOffset() {
   pageOffset.x = Math.max(-vw() / 2, Math.min(vw() / 2, pageOffset.x));
   pageOffset.y = Math.max(-vh() / 2, Math.min(vh() / 2, pageOffset.y));
+}
+
+// Render the flight-plan table onto a canvas at (x,y), auto-sizing columns to
+// content. `w`/`h` are the available box; the table is anchored within it per
+// `align` ('tl'|'tr'|'bl'|'br'|'center'). Returns the rendered { x, y, w, h }
+// (or null when there's no route). Paper-print look — white bg, black text.
+// Shared by the live export preview and the PNG render so they match exactly.
+function drawFlightPlanTable(ctx, x, y, w, h, align) {
+  const legs = state.legs || [];
+  const wpts = state.waypoints || [];
+  if (!legs.length || wpts.length < 2) return null;
+  // Default to 8 gph when no aircraft is configured (matches the printed
+  // flight plan) so the Fuel / Cum. fuel columns aren't just '--'.
+  const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: 8, taxiGal: 1.1 };
+  const taxiFuel = ac && ac.taxiGal && typeof isAirport === 'function' && isAirport(wpts[0]) ? ac.taxiGal : 0;
+  const empty = S.fpVorRadialEmpty || '—';
+  // Radial / DME of a waypoint from the leg's reference VOR (per-leg override,
+  // else the global reference). Blank when no VOR is selected.
+  const vorCells = (wp, lg) => {
+    const v = (lg && lg.vorRef && typeof vorByIdent === 'function' ? vorByIdent(lg.vorRef) : null) ||
+              (typeof activeVor === 'function' ? activeVor() : null);
+    if (!v || !wp || typeof vorRadialDme !== 'function') return [empty, empty];
+    const rd = vorRadialDme(v, wp.lat, wp.lng);
+    return rd ? ['R-' + rd.radial, String(rd.dme)] : [empty, empty];
+  };
+  const rows = [];
+  let totDist = 0, totTime = 0, totFuel = 0;
+  for (let i = 0; i < legs.length; i++) {
+    const A = wpts[i], B = wpts[i + 1];
+    if (!A || !B) continue;
+    const { dist, brg } = geo(A, B);
+    const hdg = toMagnetic(brg);
+    const dur = legs[i].flightSpeed > 0 ? dist / legs[i].flightSpeed : 0;
+    let fuel = ac ? dur * ac.gph : 0;
+    if (i === 0 && taxiFuel) fuel += taxiFuel;
+    totDist += dist; totTime += dur; totFuel += fuel;
+    const fLabel = ac ? fuel.toFixed(1) + (i === 0 && taxiFuel ? ' *' : '') : '--';
+    const rd = vorCells(B, legs[i]);
+    rows.push({ num: i + 1, from: waypointDisplayLabel(A, i),
+      to: waypointDisplayLabel(B, i + 1),
+      hdg: pad3(hdg) + '°M', dist: dist.toFixed(1),
+      speed: String(legs[i].flightSpeed), alt: String(legs[i].inboundAltitude),
+      time: dur > 0 ? toHMS(dur) : '--', fuel: fLabel,
+      cumTime: totTime > 0 ? toHMS(totTime) : '--',
+      cumFuel: ac ? totFuel.toFixed(1) : '--',
+      radial: rd[0], dme: rd[1] });
+  }
+  if (!rows.length) return null;
+  // Active comm frequency per leg — the most recent comm-change at or before
+  // the leg's start waypoint, carried forward until the next change.
+  const ccList = [];
+  for (const n of (state.notes || [])) {
+    if (!n || !n.cc) continue;
+    const wpi = typeof commCalloutWaypointIndex === 'function' ? commCalloutWaypointIndex(n) : -1;
+    const f = typeof commNoteFreq === 'function' ? commNoteFreq(n) : (n && n.freq) || '';
+    if (wpi >= 0 && f) ccList.push({ wpi, freq: String(f) });
+  }
+  ccList.sort((a, b) => a.wpi - b.wpi);
+  for (let r = 0; r < rows.length; r++) {
+    const legIdx = rows[r].num - 1;
+    let f = '';
+    for (const c of ccList) { if (c.wpi <= legIdx) f = c.freq; else break; }
+    rows[r].freq = f;
+  }
+  const freqActive = rows.some(r => r.freq);
+  // Radial / DME columns only when a reference VOR is active (global or any
+  // per-leg override) — otherwise they'd be a column of '—'.
+  const vorActive = !!((typeof activeVor === 'function' && activeVor()) ||
+                       (state.legs || []).some(l => l && l.vorRef));
+  // #,From,To,Hdg,Dist,Spd,Alt,Time,Fuel,CumTime,CumFuel[,Radial,DME][,Freq]
+  const baseCols = vorActive ? 13 : 11;
+  const numCols = baseCols + (freqActive ? 1 : 0);
+  const headers = (S.fpHeaders || []).slice(0, baseCols);
+  // Note which VOR the Radial / DME are measured from, in the Radial header.
+  if (vorActive) {
+    const refIdent = (typeof activeVor === 'function' && activeVor() && activeVor().ident) ||
+      (((state.legs || []).find(l => l && l.vorRef) || {}).vorRef) || '';
+    if (refIdent) headers[11] = headers[11] + ' ' + refIdent;
+  }
+  if (freqActive) headers.push(S.fpFreq || 'Freq');
+  const numRows = rows.length + 2;            // header + data + total
+  // Derive the font FROM the row height (not an independent floor) so text
+  // can never grow taller than its row → no vertical overlap at any size.
+  const rowH = h / numRows;
+  const fontSize = Math.max(1, Math.min(rowH * 0.62, 22));
+  const padX = Math.max(2, Math.round(fontSize * 0.5));
+  const aligns = ['center', 'left', 'left', 'center', 'right', 'right', 'right', 'center', 'right', 'center', 'right', 'center', 'right'].slice(0, baseCols);
+  if (freqActive) aligns.push('center');
+  const valsOf = rd => {
+    const v = [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel, rd.cumTime, rd.cumFuel, rd.radial, rd.dme].slice(0, baseCols);
+    if (freqActive) v.push(rd.freq || '');
+    return v;
+  };
+  ctx.save();
+  ctx.font = fontSize + 'px sans-serif';
+  const totVals = { 4: totDist.toFixed(1), 7: totTime > 0 ? toHMS(totTime) : '--', 8: ac ? totFuel.toFixed(1) : '--' };
+  const colW = new Array(numCols).fill(0);
+  ctx.font = 'bold ' + fontSize + 'px sans-serif';
+  for (let mc = 0; mc < numCols; mc++) {
+    colW[mc] = Math.max(colW[mc], ctx.measureText(String(headers[mc])).width);
+    if (totVals[mc] !== undefined) colW[mc] = Math.max(colW[mc], ctx.measureText(String(totVals[mc])).width);
+  }
+  ctx.font = fontSize + 'px sans-serif';
+  for (let mr = 0; mr < rows.length; mr++) {
+    const mvals = valsOf(rows[mr]);
+    for (let mc = 0; mc < numCols; mc++) colW[mc] = Math.max(colW[mc], ctx.measureText(String(mvals[mc])).width);
+  }
+  for (let mc = 0; mc < numCols; mc++) colW[mc] = Math.ceil(colW[mc] + 2 * padX);
+  const colX = new Array(numCols + 1).fill(0);
+  for (let mc = 0; mc < numCols; mc++) colX[mc + 1] = colX[mc] + colW[mc];
+  const totalW = colX[numCols];
+  const HEADER_BG = '#e8e6e1', TOTAL_BG = '#f0eee9', STRIPE_BG = '#dcd8cf', GRID = '#7a7470', TEXT = '#1a1a1a';
+  const tableH = Math.round(rowH * numRows);
+  const al = align || 'tl';
+  if (al === 'tr' || al === 'br') x = x + Math.max(0, w - totalW);
+  if (al === 'bl' || al === 'br') y = y + Math.max(0, h - tableH);
+  if (al === 'center') { x = x + Math.max(0, (w - totalW) / 2); y = y + Math.max(0, (h - tableH) / 2); }
+  // Integer-snapped row boundaries so cell text and grid lines line up exactly
+  // (fractional row heights otherwise drift the text off its row at small
+  // sizes). Every row uses rowY[row]..rowY[row+1].
+  const rowY = new Array(numRows + 1);
+  for (let i = 0; i <= numRows; i++) rowY[i] = y + Math.round(i * rowH);
+  const tableHActual = rowY[numRows] - y;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(x, y, totalW, tableHActual);
+  function cell(row, col, text, bold, bg) {
+    const cx = x + colX[col], cy = rowY[row], rh = rowY[row + 1] - rowY[row], cw = colW[col];
+    if (bg) { ctx.fillStyle = bg; ctx.fillRect(cx, cy, cw, rh); }
+    ctx.fillStyle = TEXT;
+    ctx.font = (bold ? 'bold ' : '') + fontSize + 'px sans-serif';
+    ctx.textBaseline = 'middle';
+    const a = aligns[col];
+    ctx.textAlign = a;
+    const tx = a === 'right' ? cx + cw - padX : a === 'center' ? cx + cw / 2 : cx + padX;
+    // 'middle' baseline centres the em-box, which reads slightly high; nudge
+    // down a hair so glyphs sit visually centred in the row.
+    ctx.fillText(text, tx, cy + rh / 2 + fontSize * 0.08);
+  }
+  ctx.fillStyle = HEADER_BG;
+  ctx.fillRect(x, rowY[0], totalW, rowY[1] - rowY[0]);
+  for (let c = 0; c < numCols; c++) cell(0, c, headers[c], true, null);
+  for (let r = 0; r < rows.length; r++) {
+    const vals = valsOf(rows[r]);
+    for (let c2 = 0; c2 < numCols; c2++) cell(r + 1, c2, String(vals[c2]), false, r % 2 === 1 ? STRIPE_BG : null);
+  }
+  const tr = rows.length + 1;
+  ctx.fillStyle = TOTAL_BG;
+  ctx.fillRect(x, rowY[tr], totalW, rowY[tr + 1] - rowY[tr]);
+  ctx.fillStyle = TEXT;
+  ctx.font = 'bold ' + fontSize + 'px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(S.fpTotal, x + colX[1] + padX, rowY[tr] + (rowY[tr + 1] - rowY[tr]) / 2 + fontSize * 0.08);
+  for (let c4 = 4; c4 < numCols; c4++) if (totVals[c4] !== undefined) cell(tr, c4, String(totVals[c4]), true, null);
+  ctx.strokeStyle = GRID;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, totalW - 1, tableHActual - 1);
+  ctx.lineWidth = 0.75;
+  for (let gc = 1; gc < numCols; gc++) {
+    const gx = Math.round(x + colX[gc]) + 0.5;
+    ctx.beginPath(); ctx.moveTo(gx, y); ctx.lineTo(gx, y + tableHActual); ctx.stroke();
+  }
+  for (let gr = 1; gr < numRows; gr++) {
+    const gy = rowY[gr] + 0.5;
+    ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x + totalW, gy); ctx.stroke();
+  }
+  ctx.restore();
+  return { x, y, w: totalW, h: tableHActual };
+}
+
+// Draw the placed flight-plan card on the overlay (live preview + export).
+// Row height scales with planCard.scale; the export scale then renders it
+// crisp at print DPI. Updates planCardRect for hit-testing drag + resize.
+const PLAN_CARD_BASE_ROW = 16;     // container px per row at scale 1
+const PLAN_CARD_GRIP = 22;         // resize grip size (px)
+function drawPlanCard() {
+  if (!planCard) { window.planCardRect = null; return; }
+  const scale = planCard.scale > 0 ? planCard.scale : 1;
+  const numRows = (state.legs ? state.legs.length : 0) + 2;
+  const h = numRows * PLAN_CARD_BASE_ROW * scale;
+  window.planCardRect = drawFlightPlanTable(octx, planCard.x, planCard.y, 1e6, h, 'tl');
+  // The resize grip is a UI handle — never bake it into the exported PNG.
+  if (!planCardRect || (window.NavAid && NavAid.exporting)) return;
+  // Resize grip — a triangle in the bottom-right corner, with diagonal ribs.
+  const r = planCardRect, g = PLAN_CARD_GRIP;
+  const ex = r.x + r.w, ey = r.y + r.h;
+  octx.save();
+  octx.fillStyle = '#0b5ed7';
+  octx.beginPath();
+  octx.moveTo(ex - g, ey);
+  octx.lineTo(ex, ey);
+  octx.lineTo(ex, ey - g);
+  octx.closePath();
+  octx.fill();
+  octx.strokeStyle = '#fff';
+  octx.lineWidth = 1.5;
+  for (let i = 1; i <= 3; i++) {
+    octx.beginPath();
+    octx.moveTo(ex - i * 5, ey - 2);
+    octx.lineTo(ex - 2, ey - i * 5);
+    octx.stroke();
+  }
+  octx.restore();
+}
+// True if (px,py) is on the card's resize grip (a forgiving corner zone).
+function planCardOnGrip(px, py) {
+  const r = planCardRect;
+  if (!r) return false;
+  const z = PLAN_CARD_GRIP + 8;     // generous hit padding
+  return px >= r.x + r.w - z && px <= r.x + r.w + 8 &&
+         py >= r.y + r.h - z && py <= r.y + r.h + 8;
 }
 
 function drawPageFrame() {

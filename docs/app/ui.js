@@ -105,6 +105,68 @@ function rotEnd(cycle) {
 }
 rotDial.addEventListener('pointerup', () => rotEnd(true));
 rotDial.addEventListener('pointercancel', () => rotEnd(false));   // aborted — don't rotate
+// --- Zulu clock ------------------------------------------------------
+// A compact UTC clock for flight planning. It is intentionally not localized:
+// Zulu time is always left-to-right HH:MM:SSZ.
+function formatZuluClockTime(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  const pad = n => String(n).padStart(2, '0');
+  return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds()) + 'Z';
+}
+window.formatZuluClockTime = formatZuluClockTime;
+function cssRgba(hex, alpha) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+  if (!m) return 'rgba(0, 0, 0, ' + alpha + ')';
+  const n = parseInt(m[1], 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + alpha + ')';
+}
+function applyTuningCssVars() {
+  const root = document.documentElement.style;
+  const px = (cssVar, key) => root.setProperty(cssVar, tune(key) + 'px');
+  px('--navaid-inspector-default-top', 'inspectorDefaultTopPx');
+  root.setProperty('--navaid-inspector-max-height-offset',
+    (tune('inspectorDefaultTopPx') + tune('inspectorBottomGapPx')) + 'px');
+
+  px('--navaid-zulu-clock-min-width', 'zuluClockMinWidthPx');
+  px('--navaid-zulu-clock-pad-y', 'zuluClockPadYPx');
+  px('--navaid-zulu-clock-pad-x', 'zuluClockPadXPx');
+  px('--navaid-zulu-clock-margin-top', 'zuluClockMarginTopPx');
+  px('--navaid-zulu-clock-margin-right', 'zuluClockMarginRightPx');
+  px('--navaid-zulu-clock-font-size', 'zuluClockFontPx');
+  root.setProperty('--navaid-zulu-clock-font-weight', tune('zuluClockFontWeight'));
+  root.setProperty('--navaid-zulu-clock-line-height', tune('zuluClockLineHeight'));
+  root.setProperty('--navaid-zulu-clock-text-color', tune('zuluClockTextColor'));
+  root.setProperty('--navaid-zulu-clock-bg',
+    cssRgba(tune('zuluClockBgColor'), tune('zuluClockBgAlpha')));
+  root.setProperty('--navaid-zulu-clock-border',
+    tune('zuluClockBorderWidthPx') + 'px solid ' + tune('zuluClockBorderColor'));
+  px('--navaid-zulu-clock-border-radius', 'zuluClockBorderRadiusPx');
+  root.setProperty('--navaid-zulu-clock-shadow',
+    '0 ' + tune('zuluClockShadowYPx') + 'px ' + tune('zuluClockShadowBlurPx') +
+    'px rgba(0, 0, 0, ' + tune('zuluClockShadowAlpha') + ')');
+}
+window.applyTuningCssVars = applyTuningCssVars;
+applyTuningCssVars();
+const zuluClockCtrl = L.control({ position: 'topright' });
+zuluClockCtrl.onAdd = function () {
+  const box = L.DomUtil.create('div', 'leaflet-control zulu-clock');
+  box.id = 'zulu-clock';
+  box.dir = 'ltr';
+  box.title = 'Zulu time (UTC)';
+  box.setAttribute('aria-label', 'Zulu time (UTC)');
+  box.setAttribute('aria-live', 'off');
+  return box;
+};
+zuluClockCtrl.addTo(map);
+const zuluClockBox = document.getElementById('zulu-clock');
+function refreshZuluClock() {
+  if (zuluClockBox) zuluClockBox.textContent = formatZuluClockTime(new Date());
+}
+refreshZuluClock();
+setInterval(refreshZuluClock, 1000);
 // --- map legend (bottom-left) ---------------------------------------
 // The legend markup lives in index.html so applyI18n() fills its text at
 // boot; here we lift that element into a Leaflet control so it floats over
@@ -136,6 +198,18 @@ coordCtrl.onAdd = function () {
 };
 coordCtrl.addTo(map);
 const coordBox = document.getElementById('coord-readout');
+
+// --- zoom level readout ---------------------------------------------
+// Sits above the zoom +/- buttons in the bottom-right corner.
+const zoomCtrl = L.control({ position: 'bottomright' });
+zoomCtrl.onAdd = function () {
+  const box = L.DomUtil.create('div', 'leaflet-control zoom-readout');
+  box.id = 'zoom-readout';
+  return box;
+};
+zoomCtrl.addTo(map);
+const zoomBox = document.getElementById('zoom-readout');
+
 const vorReadoutCtrl = L.control({ position: 'bottomright' });
 vorReadoutCtrl.onAdd = function () {
   const box = L.DomUtil.create('div', 'leaflet-control coord-readout vor-readout');
@@ -145,6 +219,75 @@ vorReadoutCtrl.onAdd = function () {
 };
 vorReadoutCtrl.addTo(map);
 const vorReadoutBox = document.getElementById('vor-readout');
+
+// Route-wide wind readout (#722) — bottom-right corner, above the coord/VOR
+// readouts. Shown only when the wind is non-calm.
+const windReadoutCtrl = L.control({ position: 'bottomright' });
+windReadoutCtrl.onAdd = function () {
+  const box = L.DomUtil.create('div', 'leaflet-control coord-readout wind-readout');
+  box.id = 'wind-readout';
+  box.setAttribute('aria-hidden', 'true');
+  return box;
+};
+windReadoutCtrl.addTo(map);
+const windReadoutBox = document.getElementById('wind-readout');
+
+// SIGMET status readout — bottom-right, above the wind readout. Shows the
+// active count (hover for the raw texts) or a calm "no SIGMET" note.
+const sigmetReadoutCtrl = L.control({ position: 'bottomright' });
+sigmetReadoutCtrl.onAdd = function () {
+  const box = L.DomUtil.create('div', 'leaflet-control coord-readout sigmet-readout');
+  box.id = 'sigmet-readout';
+  box.dir = 'ltr';                  // SIGMET text is LTR even in Hebrew mode
+  box.setAttribute('aria-hidden', 'true');
+  return box;
+};
+sigmetReadoutCtrl.addTo(map);
+const sigmetReadoutBox = document.getElementById('sigmet-readout');
+if (sigmetReadoutBox) {
+  L.DomEvent.disableClickPropagation(sigmetReadoutBox);
+  // Click the readout → decoded SIGMET list.
+  sigmetReadoutBox.addEventListener('click', () => {
+    if (Array.isArray(sigmets) && sigmets.length && typeof showSigmetDecoded === 'function') {
+      showSigmetDecoded();
+    }
+  });
+}
+function refreshSigmetReadout() {
+  if (!sigmetReadoutBox) return;
+  if (!window.showSigmet || !Array.isArray(sigmets)) {
+    sigmetReadoutBox.classList.remove('show');
+    sigmetReadoutBox.textContent = '';
+    sigmetReadoutBox.removeAttribute('title');
+    sigmetReadoutBox.setAttribute('aria-hidden', 'true');
+    return;
+  }
+  const n = sigmets.length;
+  sigmetReadoutBox.textContent = n ? S.sigmetReadout(n) : S.sigmetNone;
+  sigmetReadoutBox.classList.toggle('sigmet-none', n === 0);
+  if (n) {
+    // Hover = decoded text; click opens the full decoded list.
+    sigmetReadoutBox.title = sigmets.map(s =>
+      (typeof decodeSigmet === 'function' ? decodeSigmet(s) : s.raw)).filter(Boolean).join('\n\n') +
+      '\n\n(' + (S.sigmetReadoutClickHint || 'Click to decode') + ')';
+    sigmetReadoutBox.style.cursor = 'pointer';
+  } else {
+    sigmetReadoutBox.removeAttribute('title');
+    sigmetReadoutBox.style.cursor = 'default';
+  }
+  sigmetReadoutBox.classList.add('show');
+  sigmetReadoutBox.setAttribute('aria-hidden', 'false');
+}
+
+function refreshWindReadout() {
+  if (!windReadoutBox) return;
+  const w = state.wind;
+  const on = window.showWind &&
+    w && Number.isFinite(w.speed) && w.speed > 0 && Number.isFinite(w.dir);
+  windReadoutBox.textContent = on ? S.windReadout(pad3(w.dir), w.speed) : '';
+  windReadoutBox.classList.toggle('show', !!on);
+  windReadoutBox.setAttribute('aria-hidden', on ? 'false' : 'true');
+}
 // The readout doubles as a "go to coordinates" input (issue #497): it stays
 // visible showing the map centre, follows the mouse on hover, and turns into
 // an editable field on click. Make it interactive and keep clicks/scroll from
@@ -182,6 +325,10 @@ function setVorReadout(text) {
 function showVorReadout(lat, lng) {
   setVorReadout(vorReadoutText(lat, lng));
 }
+function showZoom() {
+  const z = map.getZoom();
+  zoomBox.textContent = 'z' + (z % 1 === 0 ? z : z.toFixed(2));
+}
 function showCoord(latlng) {
   if (gotoEditing) return;
   coordBox.textContent = coordReadoutText(latlng.lat, latlng.lng);
@@ -194,9 +341,11 @@ function showCenterCoord() {
   showVorReadout(c.lat, c.lng);
 }
 showCenterCoord();
+showZoom();
 map.on('mousemove', e => showCoord(e.latlng));
 map.on('mouseout', showCenterCoord);
-map.on('moveend', showCenterCoord);
+map.on('moveend zoomend', () => { showCenterCoord(); showZoom(); });
+map.on('zoom', showZoom);
 
 // --- temporary "look here" marker (not part of the route) ---------------
 let gotoMarker = null;
@@ -786,6 +935,212 @@ function showRouteTemplatesModal() {
   });
 }
 
+function showRouteLibraryModal() {
+  if (typeof prepareChartModal === 'function') {
+    if (!prepareChartModal('route-library')) return;
+  } else {
+    if (fpOpen) closeFlightPlan();
+    if (typeof rememberOpenChartModal === 'function') rememberOpenChartModal('route-library');
+  }
+  const modal = createDraggableModal(S.routeLibraryTitle || 'Saved routes',
+    'modal route-library-modal',
+    () => {
+      window.refreshRouteLibrary = null;   // stop auto-sync from poking a closed modal
+      if (typeof clearOpenChartModal === 'function') clearOpenChartModal('route-library');
+    },
+    { nonBlocking: true, chartKind: 'route-library' });
+  const body = document.createElement('div');
+  body.className = 'route-library-body';
+  modal.box.appendChild(body);
+  modal.show();
+
+  // Save-current row: name field + save button.
+  const saveRow = document.createElement('div');
+  saveRow.className = 'route-library-saverow';
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.className = 'route-library-name';
+  nameInput.dir = 'auto';
+  nameInput.placeholder = S.routeLibraryNamePlaceholder || 'Route name';
+  nameInput.maxLength = 80;
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.textContent = S.routeLibrarySaveCurrent || 'Save current route';
+  saveBtn.onclick = () => {
+    const entry = routeLibrarySaveCurrent(nameInput.value);
+    if (!entry) return;
+    nameInput.value = '';
+    render();
+    if (typeof showToast === 'function') {
+      showToast(typeof S.routeLibrarySaved === 'function'
+        ? S.routeLibrarySaved(entry.name) : entry.name + ' saved');
+    }
+  };
+  saveRow.append(nameInput, saveBtn);
+
+  const list = document.createElement('div');
+  list.className = 'route-library-list';
+
+  // Export / import the whole library as one JSON file.
+  const tools = document.createElement('div');
+  tools.className = 'route-library-tools';
+  const exportBtn = document.createElement('button');
+  exportBtn.type = 'button';
+  exportBtn.textContent = S.routeLibraryExport || 'Export library';
+  exportBtn.onclick = () => {
+    const blob = new Blob([JSON.stringify(loadRouteLibrary(), null, 2)],
+      { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'navaid-routes-' + fileStamp() + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+  const importBtn = document.createElement('button');
+  importBtn.type = 'button';
+  importBtn.textContent = S.routeLibraryImport || 'Import library';
+  const importFile = document.createElement('input');
+  importFile.type = 'file';
+  importFile.accept = 'application/json,.json';
+  importFile.hidden = true;
+  importBtn.onclick = () => importFile.click();
+  importFile.onchange = e => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let arr;
+      try { arr = JSON.parse(reader.result); } catch (err) { alert(S.errLoadFile + err.message); return; }
+      if (!Array.isArray(arr)) { alert(S.errLoadFile + 'expected a route-library array'); return; }
+      // Merge valid entries (fresh ids) into the existing library.
+      const merged = loadRouteLibrary();
+      let added = 0;
+      for (const it of arr) {
+        if (!it || !it.data) continue;
+        if (typeof validateRoute === 'function' && validateRoute(it.data)) continue;
+        merged.unshift({ id: routeLibraryId(), name: (it.name || 'Route').toString().slice(0, 80),
+          savedAt: it.savedAt || new Date().toISOString(), data: it.data });
+        added++;
+      }
+      if (persistRouteLibrary(merged)) render();
+      if (typeof showToast === 'function') showToast(added + ' route(s) imported');
+    };
+    reader.readAsText(f);
+  };
+  tools.append(exportBtn, importBtn, importFile);
+
+  function render() {
+    list.innerHTML = '';
+    const entries = loadRouteLibrary().filter(e => e && e.data && !e.deleted);
+    if (!entries.length) {
+      const empty = document.createElement('p');
+      empty.className = 'route-library-empty';
+      empty.textContent = S.routeLibraryEmpty || 'No saved routes yet';
+      list.appendChild(empty);
+      return;
+    }
+    for (const entry of entries) {
+      const row = document.createElement('div');
+      row.className = 'route-library-row';
+      const main = document.createElement('button');
+      main.type = 'button';
+      main.className = 'route-library-open';
+      const wpN = (entry.data && entry.data.waypoints && entry.data.waypoints.length) || 0;
+      const when = (entry.savedAt || '').slice(0, 10);
+      main.innerHTML = '';
+      const nm = document.createElement('span');
+      nm.className = 'route-library-row-name';
+      nm.dir = 'auto';
+      nm.textContent = entry.name;
+      const meta = document.createElement('span');
+      meta.className = 'route-library-row-meta';
+      meta.dir = 'ltr';
+      meta.textContent = wpN + ' WP' + (when ? ' · ' + when : '');
+      main.append(nm, meta);
+      main.onclick = () => { if (routeLibraryApply(entry)) modal.close(); };
+
+      const actions = document.createElement('div');
+      actions.className = 'route-library-actions';
+      const loadBtn = document.createElement('button');
+      loadBtn.type = 'button';
+      loadBtn.className = 'route-library-load';
+      loadBtn.textContent = S.routeLibraryLoad || 'Load';
+      loadBtn.onclick = () => { if (routeLibraryApply(entry)) modal.close(); };
+      const rename = document.createElement('button');
+      rename.type = 'button';
+      rename.textContent = S.routeLibraryRename || 'Rename';
+      rename.onclick = () => {
+        const next = prompt(S.routeLibraryNamePlaceholder || 'Route name', entry.name);
+        if (next == null) return;
+        const all = loadRouteLibrary();
+        const t = all.find(x => x.id === entry.id);
+        if (t) { t.name = next.trim().slice(0, 80) || t.name; if (persistRouteLibrary(all)) render(); }
+      };
+      const dup = document.createElement('button');
+      dup.type = 'button';
+      dup.textContent = S.routeLibraryDuplicate || 'Duplicate';
+      dup.onclick = () => {
+        const all = loadRouteLibrary();
+        const src = all.find(x => x.id === entry.id);
+        if (!src) return;
+        all.unshift({ id: routeLibraryId(), name: src.name + ' (copy)',
+          savedAt: new Date().toISOString(), data: src.data });
+        if (persistRouteLibrary(all)) render();
+      };
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'route-library-del';
+      del.textContent = S.routeLibraryDelete || 'Delete';
+      del.onclick = () => {
+        if (!confirm(S.routeLibraryDeleteConfirm || 'Delete this saved route?')) return;
+        // Replace with a tombstone (deleted + fresh timestamp) so the delete
+        // wins the Drive merge instead of being resurrected from the remote.
+        const all = loadRouteLibrary().map(x => x.id === entry.id
+          ? { id: x.id, name: x.name, savedAt: new Date().toISOString(), deleted: true }
+          : x);
+        if (persistRouteLibrary(all)) render();
+      };
+      actions.append(loadBtn, rename, dup, del);
+      row.append(main, actions);
+      list.appendChild(row);
+    }
+  }
+
+  body.append(saveRow, list, tools);
+
+  // Optional Google Drive sync (#677 follow-up). Only shown when an OAuth
+  // client ID is configured (gdrive.js); otherwise the feature stays dormant.
+  if (typeof gdriveConfigured === 'function' && gdriveConfigured()) {
+    const gd = document.createElement('div');
+    gd.className = 'route-library-tools route-library-gdrive';
+    const syncBtn = document.createElement('button');
+    syncBtn.type = 'button';
+    syncBtn.textContent = S.routeLibraryGdriveSync || 'Sync with Google Drive';
+    const status = document.createElement('span');
+    status.className = 'route-library-gdrive-status';
+    const setStatus = t => { status.textContent = t || ''; };
+    syncBtn.onclick = () => {
+      syncBtn.disabled = true;
+      setStatus(S.routeLibraryGdriveSyncing || 'Syncing…');
+      gdriveSync().then(() => {
+        render();
+        setStatus(S.routeLibraryGdriveSynced || 'Synced');
+      }).catch(err => {
+        setStatus((S.routeLibraryGdriveError || 'Sync failed') +
+          (err && err.message ? ': ' + err.message : ''));
+      }).then(() => { syncBtn.disabled = false; });
+    };
+    gd.append(syncBtn, status);
+    body.append(gd);
+  }
+
+  render();
+  // Let a background auto-sync refresh this list while it's open.
+  window.refreshRouteLibrary = render;
+  nameInput.focus();
+}
+
 function restoreOpenChartModal() {
   if (typeof readOpenChartModal !== 'function') return;
   const kind = readOpenChartModal();
@@ -804,6 +1159,10 @@ function restoreOpenChartModal() {
   }
   if (kind === 'route-templates' && typeof showRouteTemplatesModal === 'function') {
     showRouteTemplatesModal();
+    return;
+  }
+  if (kind === 'route-library' && typeof showRouteLibraryModal === 'function') {
+    showRouteLibraryModal();
     return;
   }
   if (typeof clearOpenChartModal === 'function') clearOpenChartModal();
@@ -1031,14 +1390,64 @@ document.getElementById('export-select').onchange = e => {
   if (v === 'json') save();
   else if (v === 'gpx') exportGpx();
   else if (v === 'pln') exportPln();
+  else if (v === 'fdr') exportFdr();
 };
 document.getElementById('load').onclick = () => document.getElementById('file').click();
 document.getElementById('share').onclick = shareRoute;
 document.getElementById('route-templates').onclick = showRouteTemplatesModal;
+document.getElementById('route-library').onclick = showRouteLibraryModal;
+
+// Draggable inspector — grab the header bar (but not the editable title or the
+// close button) to reposition the panel; the spot persists across selections
+// and reloads under navaid.inspPos. Mirrors the modal/toolbar drag pattern.
+(function () {
+  const insp = document.getElementById('inspector');
+  const header = document.getElementById('insp-header');
+  if (!insp || !header) return;
+  const INSP_POS_KEY = 'navaid.inspPos';
+  function applyInspPos(x, y) {
+    const maxX = Math.max(0, window.innerWidth - 60);
+    const maxY = Math.max(0, window.innerHeight - 40);
+    insp.style.left = Math.max(0, Math.min(maxX, x)) + 'px';
+    insp.style.top = Math.max(0, Math.min(maxY, y)) + 'px';
+    insp.style.right = 'auto';
+  }
+  try {
+    const p = JSON.parse(localStorage.getItem(INSP_POS_KEY) || 'null');
+    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyInspPos(p.x, p.y);
+  } catch (e) { /* */ }
+  header.addEventListener('mousedown', function (e) {
+    if (e.target.closest('#insp-close')) return;               // close button stays clickable
+    // The title line (#insp-title) is read-only for every inspector type — the
+    // waypoint name is edited via a separate row in the body — so the whole
+    // header, title included, is a drag handle.
+    const r = insp.getBoundingClientRect();
+    const off = { x: e.clientX - r.left, y: e.clientY - r.top };
+    insp.style.right = 'auto';
+    const onMove = function (ev) {
+      const x = Math.max(0, Math.min(window.innerWidth - insp.offsetWidth, ev.clientX - off.x));
+      const y = Math.max(0, Math.min(window.innerHeight - insp.offsetHeight, ev.clientY - off.y));
+      insp.style.left = x + 'px';
+      insp.style.top = y + 'px';
+    };
+    const onUp = function () {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      const r2 = insp.getBoundingClientRect();
+      try { localStorage.setItem(INSP_POS_KEY, JSON.stringify({ x: r2.left, y: r2.top })); }
+      catch (e2) { /* */ }
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  });
+})();
 document.getElementById('file').onchange = e => {
   const f = e.target.files[0];
   if (!f) return;
-  if (/\.gpx$/i.test(f.name)) loadGpx(f); else load(f);
+  if (/\.gpx$/i.test(f.name)) loadGpx(f);
+  else if (/\.pln$/i.test(f.name)) loadPln(f);
+  else load(f);
   e.target.value = '';
 };
 document.getElementById('fit').onclick = fitView;
@@ -1050,7 +1459,11 @@ document.getElementById('charts').onclick = showChartsModal;
 document.getElementById('layer-selector').onclick = showLayerSelectorModal;
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
-const CUMTIME_KEY = 'navaid.showCumTime';
+const CUMTIME_KEY  = 'navaid.showCumTime';
+const LIMIT_KITES_KEY = 'navaid.limitLegKites';
+const SIM_URL_KEY  = 'navaid.simUrl';
+const SIM_ON_KEY   = 'navaid.simOn';
+const SIM_FOLLOW_KEY = 'navaid.simFollow';
 try {
   const sr = localStorage.getItem(RETURN_KEY);
   if (sr !== null) window.showReturn =sr === '1';
@@ -1058,15 +1471,101 @@ try {
   if (sm !== null) window.showMidLeg =sm === '1';
   const sc = localStorage.getItem(CUMTIME_KEY);
   if (sc !== null) window.showCumTime = sc === '1';
+  const slk = localStorage.getItem(LIMIT_KITES_KEY);
+  if (slk !== null) window.limitLegKites = slk === '1';
+  const su = localStorage.getItem(SIM_URL_KEY);
+  if (su) window.simUrl = su;
+  const son = localStorage.getItem(SIM_ON_KEY);
+  if (son !== null) window.simOn = son === '1';
+  const sf = localStorage.getItem(SIM_FOLLOW_KEY);
+  if (sf !== null) window.simFollow = sf === '1';
 } catch (e) { /* storage unavailable */ }
 document.getElementById('ret-cb').checked = showReturn;
 document.getElementById('mid-cb').checked = showMidLeg;
 document.getElementById('cumtime-cb').checked = showCumTime;
+document.getElementById('limit-kites-cb').checked = limitLegKites;
 document.getElementById('cumtime-cb').onchange = e => {
   window.showCumTime = e.target.checked;
   try { localStorage.setItem(CUMTIME_KEY, showCumTime ? '1' : '0'); } catch (err) { /* */ }
   draw();
 };
+document.getElementById('limit-kites-cb').onchange = e => {
+  window.limitLegKites = e.target.checked;
+  try { localStorage.setItem(LIMIT_KITES_KEY, limitLegKites ? '1' : '0'); } catch (err) { /* */ }
+  draw();
+};
+
+// --- Simulator wiring ------------------------------------------------
+(function () {
+  const cb     = document.getElementById('sim-connect-cb');
+  const urlInp = document.getElementById('sim-url');
+  const followCb = document.getElementById('sim-follow-cb');
+  const statusEl = document.getElementById('sim-status');
+  if (!cb || !urlInp || !followCb || !statusEl) return;
+
+  // Connect + Follow are toggle BUTTONS (not checkboxes). Track their state
+  // via aria-pressed; the connect label swaps Connect ⇄ Disconnect.
+  let connected = false;
+  function setConnectLabel() {
+    cb.textContent = connected ? (S.tbSimDisconnect || 'Disconnect from simulator')
+                               : (S.tbSimConnect || 'Connect to simulator');
+    cb.setAttribute('aria-pressed', String(connected));
+  }
+  function setFollowState() {
+    followCb.setAttribute('aria-pressed', String(!!simFollow));
+  }
+
+  // Restore persisted state into UI controls.
+  if (simUrl) urlInp.value = simUrl;
+  setConnectLabel();
+  setFollowState();
+
+  // io.js's _simSetStatus reads window._simStatusEl at poll time.
+  window._simStatusEl = statusEl;
+
+  const saveSimUrl = () => {
+    window.simUrl = urlInp.value.trim() || 'http://localhost:2020';
+    try { localStorage.setItem(SIM_URL_KEY, window.simUrl); } catch (e) { /* */ }
+  };
+  urlInp.oninput  = saveSimUrl;
+  urlInp.onchange = saveSimUrl;
+
+  followCb.onclick = () => {
+    window.simFollow = !simFollow;
+    setFollowState();
+    try { localStorage.setItem(SIM_FOLLOW_KEY, simFollow ? '1' : '0'); } catch (e) { /* */ }
+  };
+
+  cb.onclick = () => {
+    connected = !connected;
+    setConnectLabel();
+    if (connected) {
+      window.simUrl = urlInp.value.trim() || 'http://localhost:2020';
+      window._simStatusEl = statusEl;
+      if (typeof window.simStart === 'function') simStart();  // saves navaid.simOn
+    } else {
+      if (typeof window.simStop === 'function') simStop();    // saves navaid.simOn
+    }
+  };
+
+  // Auto-reconnect if sim was active before the page refreshed.
+  // Read localStorage directly — the global simOn may not yet reflect the
+  // stored value when this IIFE runs (timing with other restore code).
+  let _savedOn = false;
+  try { _savedOn = localStorage.getItem('navaid.simOn') === '1'; } catch (e) { /* */ }
+  if (_savedOn && typeof window.simStart === 'function') {
+    connected = true;
+    setConnectLabel();
+    // Open the sim section so the user can see the connected state.
+    const simSec = cb.closest('.tb-section');
+    if (simSec && !simSec.classList.contains('open')) {
+      simSec.classList.add('open');
+      try { localStorage.setItem('navaid.sec.sim', '1'); } catch (e) { /* */ }
+    }
+    simStart();
+  }
+})();
+
 document.getElementById('ret-cb').onchange = e => {
   window.showReturn =e.target.checked;
   try { localStorage.setItem(RETURN_KEY, showReturn ? '1' : '0'); } catch (err) { /* */ }
@@ -1128,27 +1627,19 @@ document.getElementById('drift-cb').onchange = e => {
 // nearest airfield / nav-WP. Preserves user-typed names. Priority matches
 // applyNavSnap: airfields first.
 function snapExistingWaypoints() {
-  const occupied = (lat, lng, skipIdx) => state.waypoints.some((w, j) =>
-    j !== skipIdx && w.lat === lat && w.lng === lng);
   for (let i = 0; i < state.waypoints.length; i++) {
     const wp = state.waypoints[i];
-    const autoSnapped = isAirfieldName(wp.name) || isNavName(wp.name) ||
-        isSequenceWaypointName(wp.name);
-    if (wp.name && !autoSnapped) continue;
-    if (showAirfields) {
-      const af = nearestAirfield(wp, 18);
-      if (af && !occupied(r5(af.lat), r5(af.lng), i)) {
-        wp.lat = r5(af.lat); wp.lng = r5(af.lng);
-        wp.name = af.name;
-        continue;
-      }
-    }
-    if (showNavWP) {
-      const snap = nearestNavWaypoint(wp, 18);
-      if (snap && !occupied(r5(snap.lat), r5(snap.lng), i)) {
-        wp.lat = r5(snap.lat); wp.lng = r5(snap.lng);
-        wp.name = snap.name;
-      }
+    if (wp.name && !isAutoSnapName(wp.name)) continue;
+    const snap = nearestReference(wp, {
+      pxThreshold: 18,
+      includeAirfields: showAirfields,
+      includeNavWaypoints: showNavWP,
+      skipOccupiedRouteIndex: i,
+    });
+    if (snap && snap.ref) {
+      wp.lat = r5(snap.ref.lat);
+      wp.lng = r5(snap.ref.lng);
+      wp.name = snap.ref.name;
     }
   }
 }
@@ -1182,6 +1673,193 @@ document.getElementById('reporting-cb').onchange = async e => {
   if (showReporting && navWP === null) await loadNavWaypoints();
   draw();
 };
+// Minimum safe altitude row in the leg inspector (#673). Off by default —
+// it is a planning aid, not a terrain-warning system, so users opt in.
+const MSA_KEY = 'navaid.showMsa';
+try {
+  const stored = localStorage.getItem(MSA_KEY);
+  if (stored !== null) window.showMsa = stored === '1';
+} catch (e) { /* storage unavailable */ }
+const msaCb = document.getElementById('msa-cb');
+if (msaCb) {
+  msaCb.checked = !!window.showMsa;
+  msaCb.onchange = e => {
+    window.showMsa = e.target.checked;
+    try { localStorage.setItem(MSA_KEY, window.showMsa ? '1' : '0'); }
+    catch (err) { /* storage unavailable */ }
+    if (state.selected) showInspector();   // rebuild so the MSA row appears/clears
+  };
+}
+// --- route-wide wind inputs (#722) ----------------------------------
+// The wind lives in state.wind (persisted with the route, not in its own
+// localStorage key — it's a property of the flight, like speed/altitude).
+// The two View inputs drive it; the corner readout + every leg redraw react.
+const windDirInput = document.getElementById('wind-dir');
+const windSpeedInput = document.getElementById('wind-speed');
+function refreshWindInputs() {
+  const w = state.wind || { dir: 270, speed: 0 };
+  if (windDirInput && document.activeElement !== windDirInput) {
+    windDirInput.value = Number.isFinite(w.dir) ? String(w.dir) : '270';
+  }
+  if (windSpeedInput && document.activeElement !== windSpeedInput) {
+    windSpeedInput.value = Number.isFinite(w.speed) ? String(w.speed) : '0';
+  }
+  refreshWindReadout();
+}
+window.refreshWindInputs = refreshWindInputs;
+function commitWind() {
+  if (!state.wind || typeof state.wind !== 'object') state.wind = { dir: 270, speed: 0 };
+  const d = parseFloat(windDirInput && windDirInput.value);
+  const s = parseFloat(windSpeedInput && windSpeedInput.value);
+  state.wind.dir = Number.isFinite(d) ? ((Math.round(d) % 360) + 360) % 360 : state.wind.dir;
+  state.wind.speed = Number.isFinite(s) && s >= 0 ? Math.round(s) : state.wind.speed;
+  refreshWindReadout();
+  if (state.selected && state.selected.type === 'leg') showInspector();
+  if (typeof persist === 'function') persist();
+  draw();
+}
+// Endless 0–359 spinner wrap on the route-wide direction input (attached
+// before the commit handler so it cleans the value first).
+if (windDirInput && typeof wrapDirectionInput === 'function') wrapDirectionInput(windDirInput);
+if (windDirInput) windDirInput.oninput = commitWind;
+if (windSpeedInput) windSpeedInput.oninput = commitWind;
+// On blur / Enter, write the normalized value back so a typed -395 shows as
+// its wrapped 325 (commitWind already stored the normalized value).
+function writebackWindInputs() {
+  commitWind();
+  if (windDirInput) windDirInput.value = String(state.wind.dir);
+  if (windSpeedInput) windSpeedInput.value = String(state.wind.speed);
+}
+if (windDirInput) windDirInput.onchange = writebackWindInputs;
+if (windSpeedInput) windSpeedInput.onchange = writebackWindInputs;
+// "Show wind effect" toggle (#722) gates the wind inputs, the per-leg map
+// arrows, the corner readout, and the inspector wind rows. Off by default —
+// it's a planning aid, not part of the core route picture.
+const WIND_KEY = 'navaid.showWind';
+try {
+  const stored = localStorage.getItem(WIND_KEY);
+  if (stored !== null) window.showWind = stored === '1';
+} catch (e) { /* storage unavailable */ }
+const showWindCb = document.getElementById('show-wind-cb');
+const windInputRows = Array.from(document.querySelectorAll('.wind-input-row'));
+function refreshWindInputVisibility() {
+  // Inline display (not the `hidden` attribute) because `.navtoggle` sets
+  // `display:flex`, which overrides the UA `[hidden] { display:none }`.
+  for (const row of windInputRows) row.style.display = window.showWind ? '' : 'none';
+}
+if (showWindCb) {
+  showWindCb.checked = !!window.showWind;
+  showWindCb.onchange = e => {
+    window.showWind = e.target.checked;
+    try { localStorage.setItem(WIND_KEY, window.showWind ? '1' : '0'); }
+    catch (err) { /* storage unavailable */ }
+    refreshWindInputVisibility();
+    refreshWindReadout();
+    if (state.selected && state.selected.type === 'leg') showInspector();
+    draw();
+  };
+}
+refreshWindInputVisibility();
+refreshWindInputs();
+// --- Open-Meteo winds-aloft fetch (#722) ----------------------------
+// Pull a real per-leg winds-aloft forecast (free, no key, CORS-enabled) and
+// store each leg's own wind. Numeric source — the IMS aviation page only
+// publishes chart images.
+function legAltitudeFt(leg) {
+  return Number.isFinite(leg && leg.inboundAltitude) ? leg.inboundAltitude : 3000;
+}
+function legMidpoint(i) {
+  const a = state.waypoints[i], b = state.waypoints[i + 1];
+  return { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 };
+}
+// Index of the hourly sample nearest now (Open-Meteo UTC times have no Z).
+function nearestHourIndex(times) {
+  const now = Date.now();
+  let bi = 0, bd = Infinity;
+  for (let i = 0; i < times.length; i++) {
+    const d = Math.abs(Date.parse(times[i] + 'Z') - now);
+    if (d < bd) { bd = d; bi = i; }
+  }
+  return bi;
+}
+const windFetchBtn = document.getElementById('wind-fetch');
+const windFetchStatus = document.getElementById('wind-fetch-status');
+// Fetch a per-leg winds-aloft forecast: each leg gets its own wind from
+// Open-Meteo at the leg midpoint and the pressure level matching that leg's
+// altitude, stored as a per-leg override. Needs a route — with no legs it
+// alerts (like the flight plan / export paths) and does nothing.
+async function fetchRouteWind() {
+  if (!state.legs.length) {
+    if (windFetchStatus) windFetchStatus.textContent = '';
+    alert(S.errNeedWps);
+    return;
+  }
+  if (windFetchStatus) windFetchStatus.textContent = S.windFetching;
+  if (windFetchBtn) windFetchBtn.disabled = true;
+  try {
+    // One batched request: comma-joined leg midpoints + the union of the
+    // pressure-level params every leg needs; each leg reads its own level.
+    const mids = state.legs.map((l, i) => legMidpoint(i));
+    const levels = state.legs.map(l => nearestPressureLevelHpa(legAltitudeFt(l)));
+    const uniq = Array.from(new Set(levels));
+    const params = uniq.flatMap(l => ['wind_speed_' + l + 'hPa', 'wind_direction_' + l + 'hPa']);
+    const url = 'https://api.open-meteo.com/v1/forecast' +
+      '?latitude=' + mids.map(m => m.lat.toFixed(3)).join(',') +
+      '&longitude=' + mids.map(m => m.lng.toFixed(3)).join(',') +
+      '&hourly=' + params.join(',') +
+      '&wind_speed_unit=kn&timezone=UTC&forecast_days=1';
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(String(res.status));
+    const j = await res.json();
+    const locs = Array.isArray(j) ? j : [j];        // multi-location → array
+    let set = 0;
+    for (let i = 0; i < state.legs.length; i++) {
+      const loc = locs[i];
+      const lvl = levels[i];
+      const h = loc && loc.hourly;
+      const times = h && h.time;
+      const spd = h && h['wind_speed_' + lvl + 'hPa'];
+      const dir = h && h['wind_direction_' + lvl + 'hPa'];
+      if (!Array.isArray(times) || !Array.isArray(spd) || !Array.isArray(dir)) continue;
+      const bi = nearestHourIndex(times);
+      const wd = Math.round(dir[bi]), ws = Math.round(spd[bi]);
+      if (!Number.isFinite(wd) || !Number.isFinite(ws)) continue;
+      state.legs[i].wind = { dir: ((wd % 360) + 360) % 360, speed: Math.max(0, ws) };
+      set++;
+    }
+    if (!set) throw new Error('no data');
+    if (windFetchStatus) windFetchStatus.textContent = S.windFetchOkLegs(set);
+    if (state.selected && state.selected.type === 'leg') showInspector();
+    if (typeof persist === 'function') persist();
+    draw();
+  } catch (e) {
+    if (windFetchStatus) windFetchStatus.textContent = S.windFetchErr;
+  } finally {
+    if (windFetchBtn) windFetchBtn.disabled = false;
+  }
+}
+if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
+// --- SIGMET hazard overlay toggle -----------------------------------
+const SIGMET_KEY = 'navaid.showSigmet';
+try {
+  const stored = localStorage.getItem(SIGMET_KEY);
+  if (stored !== null) window.showSigmet = stored === '1';
+} catch (e) { /* storage unavailable */ }
+const sigmetCb = document.getElementById('sigmet-cb');
+if (sigmetCb) {
+  sigmetCb.checked = !!window.showSigmet;
+  sigmetCb.onchange = async e => {
+    window.showSigmet = e.target.checked;
+    try { localStorage.setItem(SIGMET_KEY, window.showSigmet ? '1' : '0'); }
+    catch (err) { /* storage unavailable */ }
+    if (window.showSigmet && typeof loadSigmets === 'function') await loadSigmets();
+    refreshSigmetReadout();
+    draw();
+  };
+  if (window.showSigmet && typeof loadSigmets === 'function') {
+    loadSigmets().then(() => { refreshSigmetReadout(); draw(); });
+  }
+}
 const AIRFIELDS_KEY = 'navaid.showAirfields';
 try {
   const stored = localStorage.getItem(AIRFIELDS_KEY);
@@ -1330,15 +2008,43 @@ function applyDisplayTheme() {
   document.body.classList.toggle('theme-light', displayTheme === 'light');
   document.body.classList.toggle('theme-dark', displayTheme !== 'light');
 }
-const THEME_LIGHT_EL = document.getElementById('theme-light-cb');
+const THEME_TOGGLE_EL = document.getElementById('theme-toggle');
+// The button shows the mode it switches TO: in dark it offers "Light mode",
+// in light it offers "Dark mode".
+function updateThemeToggleLabel() {
+  if (!THEME_TOGGLE_EL) return;
+  const toLight = displayTheme !== 'light';
+  THEME_TOGGLE_EL.textContent = toLight
+    ? '☀️ ' + (S.tbLightMode || 'Light mode')
+    : '🌙 ' + (S.tbDarkMode || 'Dark mode');
+}
 applyDisplayTheme();
-THEME_LIGHT_EL.checked = displayTheme === 'light';
-THEME_LIGHT_EL.onchange = e => {
-  displayTheme = e.target.checked ? 'light' : 'dark';
-  applyDisplayTheme();
-  try { localStorage.setItem(THEME_KEY, displayTheme); }
-  catch (err) { /* storage unavailable */ }
-};
+updateThemeToggleLabel();
+if (THEME_TOGGLE_EL) {
+  THEME_TOGGLE_EL.onclick = () => {
+    displayTheme = displayTheme === 'light' ? 'dark' : 'light';
+    applyDisplayTheme();
+    updateThemeToggleLabel();
+    try { localStorage.setItem(THEME_KEY, displayTheme); }
+    catch (err) { /* storage unavailable */ }
+  };
+}
+// Clear store: wipe every navaid.* key (routes, saved-route library, all
+// settings) from local + session storage, then reload to a clean slate.
+const CLEAR_STORE_EL = document.getElementById('clear-store');
+if (CLEAR_STORE_EL) {
+  CLEAR_STORE_EL.onclick = () => {
+    if (!confirm(S.tbClearStoreConfirm ||
+      'Delete ALL saved routes and settings stored on this device? This cannot be undone.')) return;
+    try {
+      Object.keys(localStorage).filter(k => k.indexOf('navaid.') === 0)
+        .forEach(k => localStorage.removeItem(k));
+      Object.keys(sessionStorage).filter(k => k.indexOf('navaid.') === 0)
+        .forEach(k => sessionStorage.removeItem(k));
+    } catch (e) { /* storage unavailable */ }
+    location.reload();
+  };
+}
 const ALPHA_KEY = 'navaid.yellowAlpha';
 try {
   const v = parseFloat(localStorage.getItem(ALPHA_KEY));
@@ -1493,6 +2199,12 @@ try {
 } catch (e) { /* storage unavailable */ }
 document.getElementById('page-orient').onclick = toggleOrientation;
 refreshOrientButton();
+// Restore the A3/A4 page frame across reloads — the frame re-centres on the
+// current map view, so it reappears over the same area.
+try {
+  const sp = localStorage.getItem('navaid.pageSize');
+  if ((sp === 'A3' || sp === 'A4') && typeof setPage === 'function') setPage(sp);
+} catch (e) { /* storage unavailable */ }
 document.getElementById('print').onclick = showExportModal;
 createMagnifier();
 document.getElementById('tool-magnifier').onclick = toggleMagnifier;
@@ -1687,6 +2399,7 @@ function formatTuneValue(spec, value) {
 }
 
 function redrawAfterTune() {
+  applyTuningCssVars();
   draw();
   if (state.selected) showInspector();
 }
@@ -2120,3 +2833,7 @@ if ('serviceWorker' in navigator) {
     watchServiceWorkerUpdates(navigator.serviceWorker);
   });
 }
+
+// Preload the terrain grid so MSA / terrain-clearance (#673) is ready when a
+// leg inspector opens. No-op (coverage:false) until a real DEM is bundled.
+if (typeof loadTerrain === "function") loadTerrain();

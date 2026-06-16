@@ -73,6 +73,12 @@ python3 scripts/local-mbtiles-server.py \
   --tile-dir    /path/to/tiles \
   --download-cache /path/to/cache
 ```
+## Development docs
+
+- `AGENTS.md` — required rules for AI and automation agents.
+- `.ai/README.md` — AI handbook index for workflow, architecture, data,
+  UI patterns, testing, and checklists.
+- `.ai/navaid-dev.md` — detailed NavAid developer guide.
 
 ## License & data
 

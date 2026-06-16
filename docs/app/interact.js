@@ -145,6 +145,10 @@ function clearStoredInspectorSelection() {
   try { sessionStorage.removeItem(INSPECTOR_SELECTION_KEY); } catch (e) { /* */ }
 }
 
+function resetInspectorVorRef() {
+  window.inspectorVorRef = undefined;
+}
+
 function persistInspectorSelection() {
   const sel = normalizeInspectorSelection(state.selected);
   if (!sel) {
@@ -309,33 +313,33 @@ function pointChoiceText(c) {
   }
   if (c.type === 'wp') {
     const wp = state.waypoints[c.index] || {};
-    const primary = navName((wp.name || '').trim()) || (S.wpPrefix + (c.index + 1));
     const meta = (S.choosePointRoute || 'Route waypoint') + ' ' + (c.index + 1);
-    return { primary, meta };
+    return { primary: waypointDisplayLabel(wp, c.index), meta };
   }
   if (c.type === 'vor') {
     const v = vors && vors[c.index];
     return {
       primary: v ? v.ident : '',
-      meta: ((S.choosePointVor || 'VOR station') + (v && v.freq ? ' / ' + v.freq : '')).trim(),
+      meta: ((S.choosePointVor || 'VOR station') +
+        (v && referenceLocaleName(v, 'vor') ? ' / ' + referenceLocaleName(v, 'vor') : '') +
+        (v && v.freq ? ' / ' + (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : v.freq) : '')).trim(),
     };
   }
   if (c.type === 'airfield') {
     const af = airfields && airfields[c.index];
-    const field = S.airfieldLabelField || 'en';
-    const label = af && (af[field] || af.en || af.he || '');
+    const label = referenceLocaleName(af, 'airfield');
     return {
       primary: af ? af.name : '',
       meta: (S.choosePointAirfield || 'Airfield') + (label ? ' / ' + label : ''),
     };
   }
   const nw = navWP && navWP[c.index];
-  const field = S.navWpSearchField || 'en';
-  const label = nw && (nw[field] || nw.en || nw.he || nw.name);
+  const label = referenceOverlayLabel(nw, 'navwp');
+  const code = referenceCode(nw, 'navwp');
   return {
     primary: label || '',
     meta: (S.choosePointNavWaypoint || 'Navigation waypoint') +
-      (nw && nw.name && nw.name !== label ? ' / ' + nw.name : ''),
+      (code && code !== label ? ' / ' + code : ''),
   };
 }
 function selectPointCandidate(c) {
@@ -405,7 +409,37 @@ function legFrame(i) {
   const len = Math.hypot(dx, dy) || 1;
   dx /= len; dy /= len;
   return { mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2,
-           dx, dy, nx: -dy, ny: dx };
+           dx, dy, nx: -dy, ny: dx, len };
+}
+function clampLegLabelAlong(legIdx, label) {
+  if (!limitLegKites) return;
+  if (!label || !state.waypoints[legIdx] || !state.waypoints[legIdx + 1]) return;
+  if (!Number.isFinite(label.a)) label.a = 0;
+  const sc = legZoomScale() || 1;
+  const halfKite = (typeof legKiteAlongHalfPx === 'function') ? legKiteAlongHalfPx(sc) : 0;
+  const limit = Math.max(0, (legFrame(legIdx).len / 2 - halfKite) / sc);
+  label.a = Math.max(-limit, Math.min(limit, label.a));
+}
+function legLabelDragGrab(legIdx, which, px, py) {
+  const c = legLabelCenter(legIdx, which);
+  if (!c) return { grabA: 0, grabP: 0 };
+  const f = legFrame(legIdx);
+  const sc = legZoomScale() || 1;
+  return {
+    grabA: ((px - c.x) * f.dx + (py - c.y) * f.dy) / sc,
+    grabP: ((px - c.x) * f.nx + (py - c.y) * f.ny) / sc,
+  };
+}
+function setLegLabelFromPoint(dragState, px, py) {
+  const leg = state.legs[dragState.i];
+  const o = leg && (dragState.which === 'in' ? leg.inLabel : leg.outLabel);
+  if (!o) return false;                // malformed leg / label — issue #82
+  const f = legFrame(dragState.i);
+  const sc = legZoomScale() || 1;
+  o.a = ((px - f.mx) * f.dx + (py - f.my) * f.dy) / sc - (dragState.grabA || 0);
+  clampLegLabelAlong(dragState.i, o);
+  o.p = ((px - f.mx) * f.nx + (py - f.my) * f.ny) / sc - (dragState.grabP || 0);
+  return true;
 }
 function legLabelCenter(i, which) {
   if (!state.waypoints[i] || !state.waypoints[i + 1]) return null;
@@ -699,18 +733,14 @@ function deleteSelectedWpOrNote() {
 // the user's locale at render time.
 function findSnappedReference(wp) {
   if (!wp || typeof map === 'undefined' || !map) return null;
-  const ll = { lat: wp.lat, lng: wp.lng };
-  if (typeof nearestAirfield === 'function' &&
-      Array.isArray(airfields) && airfields.length) {
-    const af = nearestAirfield(ll, 18);
-    if (af) return { name: af.name, he: af.he, en: af.en };
-  }
-  if (typeof nearestNavWaypoint === 'function' &&
-      Array.isArray(navWP) && navWP.length) {
-    const nw = nearestNavWaypoint(ll, 18);
-    if (nw) return { name: nw.name, he: nw.he, en: nw.en };
-  }
-  return null;
+  const hit = typeof nearestReference === 'function'
+    ? nearestReference(wp, {
+        pxThreshold: 18,
+        includeAirfields: true,
+        includeNavWaypoints: true,
+      })
+    : null;
+  return hit && hit.ref ? Object.assign({ kind: hit.kind }, hit.ref) : null;
 }
 
 // Issue #418: inspector "↺ Reset waypoint name" handler. Restores the
@@ -754,50 +784,82 @@ function legPairTitle(idx) {
     const a = state.waypoints[idx];
     const b = state.waypoints[idx + 1];
     if (!a || !b) return S.legTitle(idx + 1);
-    const labelFor = (wp, i) => {
-      const raw = (wp.name || '').trim();
-      const loc = raw ? (navName(raw) || raw).trim() : '';
-      return loc || (S.wpPrefix + (i + 1));
-    };
     const arrow = S.legArrow || '→';
-    return labelFor(a, idx) + ' ' + arrow + ' ' + labelFor(b, idx + 1);
+    return waypointDisplayLabel(a, idx) + ' ' + arrow + ' ' +
+      waypointDisplayLabel(b, idx + 1);
   } catch (e) {
     return S.legTitle(idx + 1);
   }
 }
 
-// Current UI language for inspector labels (Hebrew uses Hebrew labels, English
-// uses English/code labels).
-function inspLang() {
-  return (window.__navLang === 'he' ||
-    (document.documentElement && document.documentElement.lang === 'he')) ? 'he' : 'en';
-}
-function inspLocaleName(o) {
-  if (!o) return '';
-  return inspLang() === 'he'
-    ? (o.he || o.name || o.ident || '')
-    : (o.en || o.name || o.ident || '');
+function inspectorVorIdent() {
+  return inspectorVorRef === undefined ? (vorRef || '') : (inspectorVorRef || '');
 }
 
-// Shared "From <VOR>  R-xxx° / yy.y NM" inspector row. The selected
-// reference VOR drives radial/DME readouts independently of marker visibility.
+function populateInspectorVorSelect(sel, selected) {
+  if (!sel) return;
+  sel.innerHTML = '';
+  const none = document.createElement('option');
+  none.value = '';
+  none.textContent = S.vorRefNone || '— none —';
+  sel.appendChild(none);
+  for (const v of (vors || [])) {
+    const opt = document.createElement('option');
+    opt.value = v.ident;
+    opt.textContent = v.ident;
+    sel.appendChild(opt);
+  }
+  sel.value = selected || '';
+}
+
+// Shared inspector-only VOR selector + "From <VOR>  R-xxx° / yy.y NM" readout.
+// Changing this selector never writes `vorRef` or localStorage; it only changes
+// the active inspector readout.
 function appendVorRadialRow(body, lat, lng) {
-  if (typeof activeVor !== 'function') return;
-  const v = activeVor();
-  if (!v) return;
-  const rd = vorRadialDme(v, lat, lng);
-  if (!rd) return;
-  const row = textRow(S.vorFrom(v.ident), S.vorRadialDme(rd.radial, rd.dme));
-  row.classList.add('vor-radial-row');
+  if (typeof vorByIdent !== 'function' || typeof vorRadialDme !== 'function') return;
+  if (vors === null && typeof loadVors === 'function') {
+    loadVors().then(() => {
+      if (state.selected) showInspector();
+    });
+  }
+  const row = document.createElement('div');
+  row.className = 'row vor-radial-row';
+  const label = document.createElement('label');
+  label.textContent = S.vorRefLabel || 'VOR ref';
+  const controls = document.createElement('div');
+  controls.className = 'vor-radial-controls';
+  const sel = document.createElement('select');
+  sel.className = 'insp-vor-ref';
+  sel.setAttribute('aria-label', S.vorRefLabel || 'VOR ref');
+  const val = document.createElement('span');
+  val.className = 'val vor-radial-val';
+  const render = () => {
+    const v = vorByIdent(sel.value);
+    const rd = v ? vorRadialDme(v, lat, lng) : null;
+    val.textContent = rd ? S.vorRadialDme(rd.radial, rd.dme) : '';
+    val.title = v && rd ? S.vorFrom(v.ident) : '';
+  };
+  populateInspectorVorSelect(sel, inspectorVorIdent());
+  sel.onchange = () => {
+    window.inspectorVorRef = sel.value || '';
+    render();
+  };
+  controls.append(sel, val);
+  row.append(label, controls);
+  render();
   body.appendChild(row);
 }
 
 function airfieldAtisText(af) {
-  return af && typeof af.atis === 'string' ? af.atis.trim() : '';
+  return typeof airfieldFieldText === 'function'
+    ? airfieldFieldText(af, 'atis')
+    : (af && typeof af.atis === 'string' ? af.atis.trim() : '');
 }
 
 function airfieldClearanceText(af) {
-  return af && typeof af.clearance === 'string' ? af.clearance.trim() : '';
+  return typeof airfieldFieldText === 'function'
+    ? airfieldFieldText(af, 'clearance')
+    : (af && typeof af.clearance === 'string' ? af.clearance.trim() : '');
 }
 
 const AIRFIELD_CALL_SIGN_IDS = {
@@ -833,11 +895,17 @@ const AIRFIELD_CALL_SIGN_IDS = {
 function airfieldPrimaryText(af) {
   const id = af && Object.prototype.hasOwnProperty.call(AIRFIELD_CALL_SIGN_IDS, af.name)
     ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
-  const row = id && typeof commCatalogCallSignRow === 'function'
-    ? commCatalogCallSignRow(id) : null;
-  const primary = row && typeof row.primary === 'string' ? row.primary.trim() : '';
-  if (!primary) return '';
-  return (typeof commFormatFreq === 'function' ? commFormatFreq(primary) : primary) + ' MHz';
+  if (!id) return '';
+  // Effective freq honours a freq-table override, falling back to the catalog
+  // default — so an edited frequency reflects in the inspector + Freq column.
+  const eff = typeof commCallSignEffectiveFreq === 'function'
+    ? commCallSignEffectiveFreq(id)
+    : (() => {
+        const row = typeof commCatalogCallSignRow === 'function' ? commCatalogCallSignRow(id) : null;
+        const p = row && typeof row.primary === 'string' ? row.primary.trim() : '';
+        return p && typeof commFormatFreq === 'function' ? commFormatFreq(p) : p;
+      })();
+  return eff ? eff + ' MHz' : '';
 }
 
 function refreshAirfieldInspectorAfterCommCatalog(af) {
@@ -854,27 +922,103 @@ function refreshAirfieldInspectorAfterCommCatalog(af) {
   });
 }
 
+// Generic editable-frequency inspector row. `opts`:
+//   value      current displayed freq, def default, rowClass extra class
+//   isOverride() -> bool, commit(norm) -> displayed value, onReset()
+function freqEditRow(label, opts) {
+  const row = document.createElement('div');
+  row.className = 'row' + (opts.rowClass ? ' ' + opts.rowClass : '');
+  const l = document.createElement('label');
+  l.textContent = label;
+  const v = document.createElement('span');
+  v.className = 'val';
+  v.dir = 'ltr';                   // frequencies always read LTR, even in RTL UI
+  const inp = document.createElement('input');
+  inp.className = 'charts-freq-input';
+  inp.dir = 'ltr';
+  const configure = opts.configure || (typeof commConfigureFreqInput === 'function' ? commConfigureFreqInput : null);
+  const normalize = opts.normalize || (typeof commNormalizeFreqInput === 'function' ? commNormalizeFreqInput : null);
+  if (configure) configure(inp);
+  else { inp.type = 'number'; inp.inputMode = 'decimal'; inp.step = '0.005'; }
+  inp.value = opts.value || opts.def || '';
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.className = 'commchange-freq-reset';
+  reset.textContent = '↻';
+  reset.title = S.resetFreqOverride || S.sliderReset || 'Reset to default';
+  const norm = () => (normalize ? normalize(inp.value) : String(inp.value || '').trim());
+  function sync() {
+    const n = norm();
+    const invalid = n === null;
+    inp.classList.toggle('invalid', invalid);
+    inp.classList.toggle('is-default', !invalid && !!opts.def && (n || '') === opts.def);
+    reset.disabled = !opts.def || (!opts.isOverride() && !invalid);
+  }
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } });
+  inp.addEventListener('input', sync);
+  inp.addEventListener('change', () => {
+    const n = norm();
+    if (n === null) { sync(); return; }
+    inp.value = opts.commit(n) || n || inp.value;
+    sync();
+    draw();
+  });
+  reset.onclick = () => {
+    if (reset.disabled) return;
+    inp.value = (opts.onReset && opts.onReset()) || opts.def || '';
+    sync();
+    draw();
+  };
+  v.append(inp, reset);
+  row.append(l, v);
+  sync();
+  return row;
+}
+
 function appendAirfieldFrequencyRows(body, af) {
-  const primary = airfieldPrimaryText(af);
-  if (primary) {
-    const row = textRow(S.primary || 'Primary', primary);
-    row.classList.add('primary-row');
-    body.appendChild(row);
+  const id = af && Object.prototype.hasOwnProperty.call(AIRFIELD_CALL_SIGN_IDS, af.name)
+    ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
+  if (id) {
+    const template = typeof commCallSignTemplateFreq === 'function' ? commCallSignTemplateFreq(id) : '';
+    body.appendChild(freqEditRow(S.primary || 'Primary', {
+      value: typeof commCallSignEffectiveFreq === 'function' ? commCallSignEffectiveFreq(id) : '',
+      def: template, rowClass: 'primary-row',
+      isOverride: () => !!(typeof commCallSignOverrideFreq === 'function' && commCallSignOverrideFreq(id)),
+      commit: n => typeof commApplyCallSignFreqOverride === 'function' ? commApplyCallSignFreqOverride(id, n) : n,
+      onReset: () => { if (typeof commResetCallSignFreqOverride === 'function') commResetCallSignFreqOverride(id); return template; },
+    }));
   } else {
-    refreshAirfieldInspectorAfterCommCatalog(af);
+    const primary = airfieldPrimaryText(af);
+    if (primary) {
+      const row = textRow(S.primary || 'Primary', primary);
+      row.classList.add('primary-row');
+      body.appendChild(row);
+    } else {
+      refreshAirfieldInspectorAfterCommCatalog(af);
+    }
   }
-  const clearance = airfieldClearanceText(af);
-  if (clearance) {
-    const row = textRow(S.clearance || 'Clearance', clearance);
-    row.classList.add('clearance-row');
-    body.appendChild(row);
-  }
-  const atis = airfieldAtisText(af);
-  if (atis) {
-    const row = textRow(S.atis || 'ATIS', atis);
-    row.classList.add('atis-row');
-    body.appendChild(row);
-  }
+  // Clearance / ATIS — one editable numeric field per labelled part (#freq).
+  const appendFieldParts = (field, label, rowClass) => {
+    const parts = typeof airfieldFieldParts === 'function' ? airfieldFieldParts(af, field) : [];
+    if (!parts.length) {
+      // Show a "— None" row so every airfield inspector has the same layout.
+      const row = textRow(label, S.freqNone || 'None');
+      row.classList.add(rowClass);
+      body.appendChild(row);
+      return;
+    }
+    for (const p of parts) {
+      const rowLabel = p.label ? label + ' ' + p.label : label;
+      body.appendChild(freqEditRow(rowLabel, {
+        value: p.freq, def: p.def, rowClass,
+        isOverride: () => p.overridden,
+        commit: n => { setAirfieldFreqOverride(p.key, n === p.def ? '' : n); p.freq = n; p.overridden = n !== p.def; return n; },
+        onReset: () => { setAirfieldFreqOverride(p.key, ''); p.freq = p.def; p.overridden = false; return p.def; },
+      }));
+    }
+  };
+  appendFieldParts('clearance', S.clearance || 'Clearance', 'clearance-row');
+  appendFieldParts('atis', S.atis || 'ATIS', 'atis-row');
 }
 
 const SATELLITE_TILE_SIZE = 256;
@@ -906,6 +1050,29 @@ function satelliteTilePoint(lat, lng, z) {
   return { x, y, n };
 }
 
+// Rotate a static satellite preview's tile layer to match the main map's
+// bearing — same visual orientation as the live (leaflet-rotate) modal map.
+function applySatelliteSnippetRotation(snippet) {
+  if (!snippet) return;
+  const tiles = snippet.querySelector('.satellite-snippet-tiles');
+  if (!tiles) return;
+  const b = (typeof map !== 'undefined' && map.getBearing) ? map.getBearing() : 0;
+  tiles.style.transform = 'rotate(' + b + 'deg)';
+}
+// One-time hook: keep any visible inspector preview aligned as the main map
+// rotates (e.g. via the dial or the satellite modal's two-way sync).
+let _satSnippetRotateHooked = false;
+function hookSatelliteSnippetRotation() {
+  if (_satSnippetRotateHooked || typeof map === 'undefined' || !map.on) return;
+  _satSnippetRotateHooked = true;
+  const update = () => {
+    document.querySelectorAll('.satellite-snippet:not(.satellite-expanded)')
+      .forEach(applySatelliteSnippetRotation);
+  };
+  map.on('rotate', update);
+  map.on('rotateend', update);
+}
+
 function buildSatelliteSnippet(point, opts = {}) {
   const lat = Number(point && point.lat);
   const lng = Number(point && point.lng);
@@ -924,6 +1091,11 @@ function buildSatelliteSnippet(point, opts = {}) {
   snippet.dataset.zoom = String(z);
   snippet.style.setProperty('--sat-width', width + 'px');
   snippet.style.setProperty('--sat-height', height + 'px');
+  // Tiles live in their own layer so the preview can rotate to match the main
+  // map's bearing while the crosshair / attribution stay upright. The 3×3 grid
+  // overscans the visible box, so rotation never reveals corner gaps.
+  const tiles = document.createElement('div');
+  tiles.className = 'satellite-snippet-tiles';
   for (let dy = -1; dy <= 1; dy++) {
     for (let dx = -1; dx <= 1; dx++) {
       const tileX = ((centerTileX + dx) % p.n + p.n) % p.n;
@@ -935,9 +1107,13 @@ function buildSatelliteSnippet(point, opts = {}) {
       img.src = satelliteTileUrl(z, tileX, tileY);
       img.style.left = ((centerTileX + dx) * SATELLITE_TILE_SIZE - globalX + width / 2) + 'px';
       img.style.top = ((centerTileY + dy) * SATELLITE_TILE_SIZE - globalY + height / 2) + 'px';
-      snippet.appendChild(img);
+      tiles.appendChild(img);
     }
   }
+  snippet.appendChild(tiles);
+  // Static preview rotates to the main map's bearing (expanded view is a live
+  // Leaflet map and handles its own rotation).
+  if (!expanded) applySatelliteSnippetRotation(snippet);
   const cross = document.createElement('span');
   cross.className = 'satellite-crosshair';
   snippet.appendChild(cross);
@@ -959,6 +1135,63 @@ function satelliteModalLayers() {
     if (src && src._url) out[nm] = L.tileLayer(src._url, Object.assign({}, src.options));
   }
   return out;
+}
+
+// Rotation dial for the satellite modal — mirrors the main map's bottom-right
+// dial: drag to rotate, tap to step 0/90/180/270, needle shows north.
+function satelliteRotateControl(lmap) {
+  const Ctl = L.Control.extend({
+    options: { position: 'bottomright' },
+    onAdd: function () {
+      const wrap = L.DomUtil.create('div', 'leaflet-control satellite-rotate-ctrl');
+      const dial = L.DomUtil.create('span', 'satellite-rotate-dial', wrap);
+      dial.setAttribute('role', 'slider');
+      dial.tabIndex = 0;
+      const needle = L.DomUtil.create('span', 'satellite-rotate-needle', dial);
+      const bearing = () => (lmap.getBearing ? lmap.getBearing() : 0);
+      const refresh = () => {
+        const b = (((360 - Math.round(bearing())) % 360) + 360) % 360;
+        needle.style.transform = 'rotate(' + b + 'deg)';
+        dial.title = (typeof S !== 'undefined' && S.dialTitle) ? S.dialTitle(b) : ('Rotation ' + b + '°');
+      };
+      const angleFrom = ev => {
+        const r = dial.getBoundingClientRect();
+        return Math.atan2(ev.clientX - (r.left + r.width / 2),
+                          -(ev.clientY - (r.top + r.height / 2))) * 180 / Math.PI;
+      };
+      let dragging = false, moved = false, sx = 0, sy = 0;
+      const DRAG_PX = 8;
+      dial.addEventListener('pointerdown', e => {
+        dragging = true; moved = false; sx = e.clientX; sy = e.clientY;
+        dial.classList.add('dragging'); dial.setPointerCapture(e.pointerId);
+      });
+      dial.addEventListener('pointermove', e => {
+        if (!dragging) return;
+        if (!moved) {
+          if (Math.hypot(e.clientX - sx, e.clientY - sy) < DRAG_PX) return;
+          moved = true;
+        }
+        if (lmap.setBearing) lmap.setBearing(((360 - angleFrom(e)) % 360 + 360) % 360);
+      });
+      const end = cycle => {
+        if (cycle && dragging && !moved && lmap.setBearing) {
+          const shown = (((360 - Math.round(bearing())) % 360) + 360) % 360;
+          const next = shown % 90 === 0 ? (shown + 90) % 360 : 0;
+          lmap.setBearing((360 - next) % 360);
+        }
+        dragging = false; dial.classList.remove('dragging');
+      };
+      dial.addEventListener('pointerup', () => end(true));
+      dial.addEventListener('pointercancel', () => end(false));
+      lmap.on('rotate', refresh);
+      lmap.on('rotateend', refresh);
+      refresh();
+      L.DomEvent.disableClickPropagation(wrap);
+      L.DomEvent.disableScrollPropagation(wrap);
+      return wrap;
+    },
+  });
+  return new Ctl();
 }
 
 // Reset-to-centre control: snaps the modal map back over the waypoint. Built
@@ -985,21 +1218,70 @@ function satelliteResetControl(lmap, point, zoom) {
   return new Ctl();
 }
 
+function textDirection(text) {
+  for (const ch of String(text || '')) {
+    if (/[\u0590-\u05ff]/.test(ch)) return 'rtl';
+    if (/[A-Za-z0-9]/.test(ch)) return 'ltr';
+  }
+  return 'auto';
+}
+
+function appendBidiSpan(parent, text, dir) {
+  const span = document.createElement('span');
+  span.dir = dir || textDirection(text);
+  span.style.unicodeBidi = 'isolate';
+  span.textContent = text;
+  parent.appendChild(span);
+}
+
+function setSatelliteModalTitle(title, label, point) {
+  if (!title) return;
+  title.textContent = '';
+  const labelText = String(label || '').trim();
+  if (labelText) {
+    const parts = labelText.split(' / ');
+    parts.forEach((part, i) => {
+      if (i) title.appendChild(document.createTextNode(' / '));
+      appendBidiSpan(title, part, textDirection(part));
+    });
+    title.appendChild(document.createTextNode(' - '));
+  }
+  appendBidiSpan(title,
+    fmtLatLng(point.lat, 'N', 'S') + ' ' + fmtLatLng(point.lng, 'E', 'W'),
+    'ltr');
+}
+
 function showSatellitePreviewModal(point, label) {
   if (typeof createDraggableModal !== 'function' || typeof L === 'undefined') return;
-  const modal = createDraggableModal(S.satelliteSnippetTitle || 'Satellite view',
-    'modal satellite-preview-modal');
+  // Destroy the Leaflet map on close — otherwise each open/close leaks the
+  // map instance, its zoomend listener, the cloned tile layers, and Leaflet's
+  // internal window hooks (they keep referencing the detached modal DOM).
+  let lmap = null;
+  // Bearing is kept in sync both ways with the main map. _syncingBearing
+  // guards against the set→event→set feedback loop. mainRotateHandler is
+  // detached on close so the closed modal's map isn't poked by later rotations.
+  let _syncingBearing = false;
+  let mainRotateHandler = null;
+  // The title bar shows the location name + coordinates (replacing the generic
+  // "Satellite view" header) so the point identity sits at the top, not below.
+  const modal = createDraggableModal('',
+    'modal satellite-preview-modal',
+    () => {
+      if (mainRotateHandler && typeof map !== 'undefined' && map.off) {
+        map.off('rotate', mainRotateHandler);
+        map.off('rotateend', mainRotateHandler);
+        mainRotateHandler = null;
+      }
+      if (lmap) { lmap.remove(); lmap = null; }
+      if (typeof window !== 'undefined') window.__satModalMap = null;
+    },
+    { titleDir: 'ltr', titleBidi: 'isolate' });
+  setSatelliteModalTitle(modal.title, label, point);
   const body = document.createElement('div');
   body.className = 'satellite-preview-body';
   const mapEl = document.createElement('div');
   mapEl.className = 'satellite-preview-map';
   body.appendChild(mapEl);
-  const caption = document.createElement('div');
-  caption.className = 'satellite-caption';
-  const name = label ? label + ' - ' : '';
-  caption.textContent = name +
-    fmtLatLng(point.lat, 'N', 'S') + ' ' + fmtLatLng(point.lng, 'E', 'W');
-  body.appendChild(caption);
   modal.box.appendChild(body);
   modal.show();
   // Build the map after show() so the container has its final dimensions.
@@ -1007,16 +1289,43 @@ function showSatellitePreviewModal(point, label) {
   // Default to the satellite imagery (this is the "satellite view"), falling
   // back to the chart if the layer set is somehow empty.
   const startLayer = mLayers.Satellite || mLayers.CVFR || Object.values(mLayers)[0];
-  const lmap = L.map(mapEl, {
+  lmap = L.map(mapEl, {
     center: [point.lat, point.lng],
     zoom: SATELLITE_EXPANDED_ZOOM,
     minZoom: SATELLITE_MIN_ZOOM,
     maxZoom: SATELLITE_MAX_ZOOM,
     layers: startLayer ? [startLayer] : [],
     zoomControl: false,
+    rotate: true,                // leaflet-rotate: enable bearing
+    rotateControl: false,        // own dial instead
+    touchRotate: true,
   });
+  // Start aligned to the main map's current orientation.
+  if (lmap.setBearing && typeof map !== 'undefined' && map.getBearing) {
+    lmap.setBearing(map.getBearing());
+  }
   // Black-on-white zoom buttons, bottom-right — identical to the main map.
   L.control.zoom({ position: 'bottomright' }).addTo(lmap);
+  lmap.addControl(satelliteRotateControl(lmap));
+  // Two-way bearing sync: rotating either map rotates the other.
+  if (lmap.setBearing && typeof map !== 'undefined' && map.setBearing) {
+    const syncToMain = () => {
+      if (_syncingBearing) return;
+      _syncingBearing = true;
+      try { map.setBearing(lmap.getBearing()); } finally { _syncingBearing = false; }
+    };
+    lmap.on('rotate', syncToMain);
+    lmap.on('rotateend', syncToMain);
+    mainRotateHandler = () => {
+      if (_syncingBearing || !lmap) return;
+      _syncingBearing = true;
+      try { lmap.setBearing(map.getBearing()); } finally { _syncingBearing = false; }
+    };
+    map.on('rotate', mainRotateHandler);
+    map.on('rotateend', mainRotateHandler);
+  }
+  // Test hook: expose the modal map (mirrors window.__commChangeRingsDrawn etc.)
+  if (typeof window !== 'undefined') window.__satModalMap = lmap;
   // Layer picker as a dropdown, matching the main app's view-menu selector
   // (#layer-select) instead of Leaflet's radio list.
   const layerNames = Object.keys(mLayers);
@@ -1080,12 +1389,13 @@ function showSatellitePreviewModal(point, label) {
     radius: 7, color: '#ffda4c', weight: 2, opacity: 0.96, fill: false,
     className: 'satellite-marker',
   }).addTo(lmap);
-  setTimeout(() => lmap.invalidateSize(), 0);
+  setTimeout(() => { if (lmap) lmap.invalidateSize(); }, 0);
 }
 
 function appendSatelliteSnippet(body, point, label) {
   const snippet = buildSatelliteSnippet(point);
   if (!snippet) return;
+  hookSatelliteSnippetRotation();
   const section = document.createElement('div');
   section.className = 'satellite-snippet-section';
   const head = document.createElement('div');
@@ -1176,9 +1486,13 @@ function appendAirfieldRunways(body, af) {
   body.appendChild(row);
 }
 
+function appendPointCoordinateRows(body, point) {
+  body.appendChild(textRow(S.latitude, fmtLatLng(point.lat, 'N', 'S')));
+  body.appendChild(textRow(S.longitude, fmtLatLng(point.lng, 'E', 'W')));
+}
+
 function airfieldInspectorTitle(af) {
-  const locale = inspLocaleName(af);
-  return af.name + (locale && locale !== af.name ? ' / ' + locale : '');
+  return referenceInspectorTitle(af, 'airfield');
 }
 
 function appendAirfieldDetailRows(body, af, label) {
@@ -1186,10 +1500,105 @@ function appendAirfieldDetailRows(body, af, label) {
     body.appendChild(textRow(S.elevation || 'Elevation', af.elev_ft + ' ft'));
   }
   appendAirfieldFrequencyRows(body, af);
+  appendAirfieldWeather(body, af);
   appendSatelliteSnippet(body, af, label || airfieldInspectorTitle(af));
   appendVorRadialRow(body, af.lat, af.lng);
   appendAirfieldRunways(body, af);
   appendAirfieldPlates(body, af);
+}
+
+// Live METAR / TAF for an ICAO-coded airfield (#670). Fetched on demand via a
+// CORS proxy; shows decoded text with a toggle to the raw report.
+function appendAirfieldWeather(body, af) {
+  const icao = String(af && af.name || '').toUpperCase();
+  if (!/^[A-Z]{4}$/.test(icao) || typeof fetchAirfieldWx !== 'function') return;
+  const sec = document.createElement('div');
+  sec.className = 'wx-section';
+  const head = document.createElement('div');
+  head.className = 'wx-head';
+  const headLbl = document.createElement('span');
+  headLbl.textContent = S.wxTitle || 'Weather';
+  head.appendChild(headLbl);
+  // Refresh button — re-fetch bypassing the cache (recover from a failed
+  // fetch or pull newer data).
+  const refreshBtn = document.createElement('button');
+  refreshBtn.type = 'button';
+  refreshBtn.className = 'wx-refresh';
+  refreshBtn.textContent = '↻';
+  refreshBtn.title = S.wxRefresh || 'Refresh weather';
+  refreshBtn.setAttribute('aria-label', refreshBtn.title);
+  head.appendChild(refreshBtn);
+  sec.appendChild(head);
+  const bodyEl = document.createElement('div');
+  bodyEl.className = 'wx-body';
+  bodyEl.dir = 'ltr';                 // METAR/TAF codes are always left-to-right
+  bodyEl.textContent = S.wxLoading || 'Loading…';
+  sec.appendChild(bodyEl);
+  body.appendChild(sec);
+
+  let showRaw = false, data = null;
+  const load = (force) => {
+    bodyEl.textContent = S.wxLoading || 'Loading…';
+    refreshBtn.disabled = true;
+    fetchAirfieldWx(icao, force).then(d => { data = d; refreshBtn.disabled = false; render(); })
+      .catch(() => { data = { error: true }; refreshBtn.disabled = false; render(); });
+  };
+  refreshBtn.onclick = () => load(true);
+  const render = () => {
+    bodyEl.innerHTML = '';
+    if (!data || data.unsupported) { bodyEl.textContent = S.wxNone || 'No METAR/TAF'; return; }
+    if (data.error) { bodyEl.textContent = S.wxError || 'Weather unavailable'; return; }
+    if (!data.metar && !data.taf) { bodyEl.textContent = S.wxNone || 'No METAR/TAF'; return; }
+    const block = (label, lines) => {
+      const b = document.createElement('div');
+      b.className = 'wx-block';
+      const t = document.createElement('span');
+      t.className = 'wx-label';
+      t.textContent = label;
+      b.appendChild(t);
+      for (const ln of lines) {
+        const d = document.createElement('div');
+        d.className = 'wx-line' + (showRaw ? ' wx-raw' : '');
+        d.textContent = ln;
+        b.appendChild(d);
+      }
+      return b;
+    };
+    if (data.metar) {
+      const lines = showRaw ? [data.metar.rawOb || data.metar.rawText || '']
+        : [decodeMetar(data.metar)];
+      bodyEl.appendChild(block(S.wxMetar || 'METAR', lines.filter(Boolean)));
+    }
+    if (data.taf) {
+      let lines;
+      if (showRaw) {
+        lines = [data.taf.rawTAF || data.taf.rawText || ''];
+      } else {
+        const dec = decodeTaf(data.taf);
+        lines = dec.length ? dec.map(s => s.when + ': ' + s.text) : [data.taf.rawTAF || ''];
+      }
+      bodyEl.appendChild(block(S.wxTaf || 'TAF', lines.filter(Boolean)));
+    }
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'wx-toggle';
+    toggle.textContent = showRaw ? (S.wxShowDecoded || 'Show decoded') : (S.wxShowRaw || 'Show raw');
+    toggle.onclick = () => { showRaw = !showRaw; render(); };
+    bodyEl.appendChild(toggle);
+    if (data.generatedAt) {
+      const upd = new Date(data.generatedAt);
+      if (!isNaN(upd.getTime())) {
+        const age = document.createElement('div');
+        age.className = 'wx-updated';
+        age.dir = 'auto';      // "עודכן 18:19Z" reads correctly in RTL too
+        age.textContent = (S.wxUpdated || 'Updated') + ' ' +
+          String(upd.getUTCHours()).padStart(2, '0') + ':' +
+          String(upd.getUTCMinutes()).padStart(2, '0') + 'Z';
+        bodyEl.appendChild(age);
+      }
+    }
+  };
+  load(false);
 }
 
 function showInspector() {
@@ -1203,6 +1612,7 @@ function showInspector() {
   if (!normalized) {
     state.selected = null;
     insp.classList.add('hidden');
+    resetInspectorVorRef();
     clearStoredInspectorSelection();
     return;
   }
@@ -1216,21 +1626,115 @@ function showInspector() {
     title.placeholder = '';
     title.readOnly = true;
     title.oninput = null;
+    // Wind (#722): per-leg override of the route-wide wind. Blank inputs
+    // fall back to state.wind (shown as the placeholder); an explicit
+    // speed of 0 marks the leg calm. The "With wind" row is a live readout
+    // of the wind-triangle result (HDG/GS/WCA/time) — updated in place,
+    // same pattern as the MSA row, so typing keeps focus.
+    let windFxRow = null;
+    const refreshWindFx = () => {
+      if (!windFxRow) return;
+      const A = state.waypoints[idx], B = state.waypoints[idx + 1];
+      const w = (typeof legWindFor === 'function') ? legWindFor(leg) : null;
+      if (!A || !B || !w) { windFxRow.style.display = 'none'; return; }
+      windFxRow.style.display = '';
+      const val = windFxRow.querySelector('.val');
+      if (!val) return;
+      const { dist, brg } = geo(A, B);
+      const fx = windTriangle(brg, leg.flightSpeed, w);
+      if (!fx || fx.gs <= 0) { val.textContent = S.windUnflyable; return; }
+      const wca = Math.round(fx.wcaDeg);
+      val.textContent = S.windEffectText(
+        pad3(toMagnetic(fx.hdgTrue)), Math.round(fx.gs),
+        (wca >= 0 ? '+' : '') + wca, toHMS(dist / fx.gs));
+    };
     body.appendChild(numberRow(S.speedKt, leg.flightSpeed, v => {
-      leg.flightSpeed = v > 0 ? v : leg.flightSpeed; draw();
+      leg.flightSpeed = v > 0 ? v : leg.flightSpeed; draw(); refreshWindFx();
     }));
+    // Reset-to-known: the charted altitude from leg-altitude.json. Read from
+    // the pristine ORIGIN map (legAltitudeOriginForLeg), not the live lookup —
+    // a hand-edited altitude must not redefine the inspector's "charted"
+    // default / revert target. Undefined (no entry / unknown direction) means
+    // the reset button is omitted — nothing authoritative to revert to.
+    const known = (typeof legAltitudeOriginForLeg === 'function') ? legAltitudeOriginForLeg(idx)
+      : ((typeof legAltitudeForLeg === 'function') ? legAltitudeForLeg(idx) : null);
+    const knownIn  = known && Number.isFinite(known.inboundAltitude)  ? known.inboundAltitude  : undefined;
+    const knownOut = known && Number.isFinite(known.outboundAltitude) ? known.outboundAltitude : undefined;
+    // Minimum safe altitude (#673) row, updated in place as the altitudes
+    // change — no full inspector rebuild, so the number spinner / typing keep
+    // focus while the red flag and value track live.
+    let msaRow = null;
+    const refreshMsa = () => {
+      if (!msaRow) return;
+      const msa = (typeof legMsaFt === 'function') ? legMsaFt(idx) : null;
+      if (!Number.isFinite(msa)) { msaRow.style.display = 'none'; return; }
+      msaRow.style.display = '';
+      const val = msaRow.querySelector('.val');
+      if (val) val.textContent = String(msa);
+      const planned = [leg.inboundAltitude, leg.outboundAltitude]
+        .filter(a => Number.isFinite(a));
+      msaRow.classList.toggle('msa-low',
+        planned.length > 0 && Math.min.apply(null, planned) < msa);
+    };
     body.appendChild(numberRow(S.inboundAlt, leg.inboundAltitude, v => {
       const oldVal = leg.inboundAltitude;
       leg.inboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'inboundAltitude', leg.inboundAltitude, oldVal);
-      draw();
-    }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'inboundAltitude') }));
+      draw(); refreshMsa();
+    }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'inboundAltitude'),
+         undoValue: knownIn, live: true,
+         defaultValue: knownIn, mutedWhenDefault: true, emptyRestoresDefault: true }));
     body.appendChild(numberRow(S.outboundAlt, leg.outboundAltitude, v => {
       const oldVal = leg.outboundAltitude;
       leg.outboundAltitude = Number.isFinite(v) ? Math.round(v) : NaN;
       propagateAlt(idx, 'outboundAltitude', leg.outboundAltitude, oldVal);
-      draw();
-    }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'outboundAltitude') }));
+      draw(); refreshMsa();
+    }, { allowUnknown: true, placeholder: legAltitudePlaceholder(leg, 'outboundAltitude'),
+         undoValue: knownOut, live: true,
+         defaultValue: knownOut, mutedWhenDefault: true, emptyRestoresDefault: true }));
+    if (window.showMsa &&
+        typeof terrainHasCoverage === 'function' && terrainHasCoverage() &&
+        Number.isFinite(typeof legMsaFt === 'function' ? legMsaFt(idx) : NaN)) {
+      msaRow = textRow(S.fpMsa || 'MSA (ft)', '');
+      msaRow.title = S.msaLowTitle || 'Planned altitude is below the minimum safe altitude';
+      body.appendChild(msaRow);
+      refreshMsa();
+    }
+    // Per-leg wind override rows + live readout — appended AFTER the altitude
+    // rows so the long-standing number-input order (speed, in-alt, out-alt)
+    // that other specs index by stays put.
+    const setLegWind = (field, v) => {
+      const cur = Object.assign({}, leg.wind);
+      if (Number.isFinite(v)) {
+        cur[field] = field === 'dir'
+          ? ((Math.round(v) % 360) + 360) % 360
+          : Math.max(0, Math.round(v));
+      } else {
+        delete cur[field];
+      }
+      if (Number.isFinite(cur.dir) || Number.isFinite(cur.speed)) leg.wind = cur;
+      else delete leg.wind;
+      refreshWindFx(); draw();
+    };
+    if (window.showWind) {
+      const gw = state.wind || { dir: 270, speed: 0 };
+      body.appendChild(numberRow(S.windFromDeg,
+        leg.wind && Number.isFinite(leg.wind.dir) ? leg.wind.dir : NaN,
+        v => setLegWind('dir', v),
+        { allowUnknown: true, placeholder: String(gw.dir), live: true,
+          normalize: v => ((Math.round(v) % 360) + 360) % 360, wrapStep: 5,
+          undoValue: NaN, undoTitle: S.windResetTitle }));
+      body.appendChild(numberRow(S.windSpeedKt,
+        leg.wind && Number.isFinite(leg.wind.speed) ? leg.wind.speed : NaN,
+        v => setLegWind('speed', v),
+        { allowUnknown: true, placeholder: String(gw.speed), live: true,
+          normalize: v => Math.max(0, Math.round(v)),
+          undoValue: NaN, undoTitle: S.windResetTitle }));
+      windFxRow = textRow(S.windEffect, '');
+      windFxRow.classList.add('wind-fx-row');
+      body.appendChild(windFxRow);
+      refreshWindFx();
+    }
     const reset = document.createElement('button');
     reset.className = 'insp-btn';
     // Fallback to a glyph if the locale strings haven't been loaded yet —
@@ -1293,13 +1797,22 @@ function showInspector() {
       clearStoredInspectorSelection();
       return;
     }
-    title.value = v.ident;
+    title.value = referenceInspectorTitle(v, 'vor');
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
-    body.appendChild(textRow(S.vorName || 'Name', inspLocaleName(v)));
-    body.appendChild(textRow(S.vorFreq || 'Frequency', v.freq + ' MHz'));
-    body.appendChild(textRow(S.latitude, fmtLatLng(v.lat, 'N', 'S')));
-    body.appendChild(textRow(S.longitude, fmtLatLng(v.lng, 'E', 'W')));
-    appendSatelliteSnippet(body, v, v.ident);
+    appendPointCoordinateRows(body, v);
+    {
+      const vdef = typeof freqClean === 'function' ? freqClean(v.freq) : String(v.freq || '');
+      body.appendChild(freqEditRow(S.vorFreq || 'Frequency', {
+        value: typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : vdef,
+        def: vdef, rowClass: 'vor-freq-row',
+        configure: typeof vorConfigureFreqInput === 'function' ? vorConfigureFreqInput : null,
+        normalize: typeof vorNormalizeFreqInput === 'function' ? vorNormalizeFreqInput : null,
+        isOverride: () => !!(typeof vorFreqOverrides === 'function' && vorFreqOverrides()[v.ident]),
+        commit: n => { if (typeof setVorFreqOverride === 'function') setVorFreqOverride(v.ident, n === vdef ? '' : n); return n; },
+        onReset: () => { if (typeof setVorFreqOverride === 'function') setVorFreqOverride(v.ident, ''); return vdef; },
+      }));
+    }
+    appendSatelliteSnippet(body, v, title.value);
     const useBtn = document.createElement('button');
     useBtn.className = 'insp-btn';
     const isRef = vorRef === v.ident;
@@ -1327,8 +1840,7 @@ function showInspector() {
     }
     title.value = airfieldInspectorTitle(af);
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
-    body.appendChild(textRow(S.latitude, fmtLatLng(af.lat, 'N', 'S')));
-    body.appendChild(textRow(S.longitude, fmtLatLng(af.lng, 'E', 'W')));
+    appendPointCoordinateRows(body, af);
     appendAirfieldDetailRows(body, af, title.value);
   } else if (state.selected.type === 'navwp') {
     const nw = navWP && navWP[state.selected.index];
@@ -1338,15 +1850,13 @@ function showInspector() {
       clearStoredInspectorSelection();
       return;
     }
-    title.value = nw.name;
+    // Title in the current UI language: "CODE / localized name" (matches the
+    // airfield and route-waypoint inspectors) so expanded satellite views keep
+    // the same identity whether the point is on-route or standalone.
+    title.value = referenceInspectorTitle(nw, 'navwp');
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
-    const nwLocale = inspLocaleName(nw);
-    if (nwLocale) {
-      body.appendChild(textRow(S.navHebrew || 'Waypoint name', nwLocale));
-    }
-    body.appendChild(textRow(S.latitude, fmtLatLng(nw.lat, 'N', 'S')));
-    body.appendChild(textRow(S.longitude, fmtLatLng(nw.lng, 'E', 'W')));
-    appendSatelliteSnippet(body, nw, nw.name);
+    appendPointCoordinateRows(body, nw);
+    appendSatelliteSnippet(body, nw, title.value);
     appendVorRadialRow(body, nw.lat, nw.lng);
   } else {
     const wp = state.waypoints[state.selected.index];
@@ -1354,19 +1864,23 @@ function showInspector() {
     const afInsp = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
     const ref = typeof findSnappedReference === 'function' ? findSnappedReference(wp) : null;
     let canonical = ref ? ref.name : null;
-    let refLocale = ref ? inspLocaleName(ref) : '';
+    let refKind = ref ? ref.kind : '';
+    let refLocale = ref ? referenceLocaleName(ref, refKind) : '';
     const storedName = (wp.name || '').trim();
     if (!canonical && storedName && navWP) {
       for (const nw of navWP) {
         if (nw.name === storedName || nw.en === storedName || nw.he === storedName) {
           canonical = nw.name;
-          refLocale = inspLocaleName(nw);
+          refKind = 'navwp';
+          refLocale = referenceLocaleName(nw, refKind);
           break;
         }
       }
     }
     title.value = afInsp ? airfieldInspectorTitle(afInsp)
-      : canonical || navName(storedName) || (S.wpPrefix + (state.selected.index + 1));
+      : (canonical
+          ? codeTitle(canonical, refLocale)
+          : waypointDisplayLabel(wp, state.selected.index));
     title.placeholder = '';
     title.readOnly = true;
     title.oninput = null;
@@ -1379,8 +1893,7 @@ function showInspector() {
       wp.name = isSequenceWaypointName((v || '').trim()) ? '' : v;
       draw();
     }));
-    body.appendChild(textRow(S.latitude, fmtLatLng(wp.lat, 'N', 'S')));
-    body.appendChild(textRow(S.longitude, fmtLatLng(wp.lng, 'E', 'W')));
+    appendPointCoordinateRows(body, wp);
     if (afInsp) {
       appendAirfieldDetailRows(body, afInsp, title.value);
     } else {
@@ -1525,6 +2038,24 @@ function textareaRow(label, value, onChange) {
   row.appendChild(ta);
   return row;
 }
+// Make a number input's spinner / arrow-keys / wheel cycle endlessly through
+// 0–359 (a compass dial): stepping up past 359 wraps to 0 and down past 0
+// wraps to 359. Typing is left alone — a single-step move out of range is the
+// spinner signature, so we only wrap then (and normalize-on-blur catches the
+// rest). Removes min/max so the native spinner isn't clamped at the edges.
+function wrapDirectionInput(inp) {
+  inp.removeAttribute('min');
+  inp.removeAttribute('max');
+  const norm = v => ((v % 360) + 360) % 360;
+  inp.addEventListener('input', e => {
+    // `inputType` is set for typing / pasting and empty for spinner / arrow /
+    // wheel steps. Only wrap a spinner step — typing is left for blur-normalize
+    // so partial input (a lone "-", "36") is never yanked mid-keystroke.
+    if (e.inputType) return;
+    const v = parseInt(inp.value, 10);
+    if (Number.isFinite(v) && (v < 0 || v > 359)) inp.value = String(norm(v));
+  });
+}
 function numberRow(label, value, onChange, opts = {}) {
   const row = document.createElement('div');
   row.className = 'row';
@@ -1534,16 +2065,75 @@ function numberRow(label, value, onChange, opts = {}) {
   inp.type = 'number';
   inp.value = altitudeInputValue(value);
   if (opts.placeholder) inp.placeholder = opts.placeholder;
-  inp.onchange = () => {
+  // Endless 0–359 spinner wrap (attached first so it cleans the value before
+  // the commit handler below reads it).
+  if (opts.wrapStep) wrapDirectionInput(inp);
+  // Dim resettable fields while they still hold the default value (#722
+  // follow-up): charted leg altitudes and inherited wind values read muted so
+  // values the user typed stand out. Recomputed on every keystroke and reset.
+  const hasDefaultStyle = opts.mutedWhenDefault || opts.undoValue !== undefined;
+  const defaultValue = opts.defaultValue !== undefined ? opts.defaultValue : opts.undoValue;
+  const updateDefaultStyle = () => {
+    if (!hasDefaultStyle) return;
     const raw = inp.value.trim();
-    if (opts.allowUnknown && raw === '') {
-      onChange(NaN);
+    const cur = parseFloat(inp.value);
+    const atDefault = Number.isFinite(defaultValue)
+      ? Number.isFinite(cur) && cur === defaultValue
+      : raw === '' && defaultValue !== undefined && !Number.isFinite(defaultValue);
+    inp.classList.toggle('is-default', atDefault);
+  };
+  // `final` (blur / Enter / spinner-change) runs opts.normalize and writes the
+  // cleaned value back to the field — e.g. wrapping a wind direction of -395
+  // to 325. The live `input` path stays raw so normalization never fights the
+  // user mid-keystroke (typing "-39" must not jump to a wrapped value).
+  const commit = (final) => {
+    const raw = inp.value.trim();
+    if (raw === '') {
+      // Emptying a field with a default (charted leg altitude) restores that
+      // default on blur/Enter rather than leaving it blank/unknown.
+      if (final && opts.emptyRestoresDefault && Number.isFinite(opts.defaultValue)) {
+        inp.value = altitudeInputValue(opts.defaultValue);
+        updateDefaultStyle();
+        onChange(opts.defaultValue);
+        return;
+      }
+      if (opts.allowUnknown) onChange(NaN);
       return;
     }
-    const v = parseFloat(inp.value);
-    if (!isNaN(v)) onChange(v);
+    let v = parseFloat(inp.value);
+    if (isNaN(v)) return;
+    if (final && typeof opts.normalize === 'function') {
+      v = opts.normalize(v);
+      inp.value = altitudeInputValue(v);
+    }
+    updateDefaultStyle();
+    onChange(v);
   };
+  inp.onchange = () => commit(true);
+  // `live` also commits on every `input` — keystrokes and the number spinner.
+  // On macOS the spinner / typing only fire `change` on blur, so without this
+  // the leg altitude (and the MSA flag) wouldn't update until the field was
+  // left or the inspector reopened.
+  if (opts.live) inp.oninput = () => commit(false);
+  inp.addEventListener('input', updateDefaultStyle);
+  updateDefaultStyle();
   row.append(l, inp);
+  // Optional reset button — restores the charted altitude from the dataset.
+  // Omitted when undoValue is undefined (no known/charted value to revert to).
+  if (opts.undoValue !== undefined) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'row-reset';
+    btn.textContent = '↻';
+    btn.title = opts.undoTitle || S.altResetKnown || 'Reset to charted altitude';
+    btn.setAttribute('aria-label', btn.title);
+    btn.onclick = () => {
+      inp.value = altitudeInputValue(opts.undoValue);
+      updateDefaultStyle();                       // restored value → re-dim if it's the default
+      onChange(opts.undoValue);
+    };
+    row.appendChild(btn);
+  }
   return row;
 }
 function inputRow(label, value, onChange) {
@@ -1616,6 +2206,8 @@ function appendFreqEdit(body, note, editOptions) {
     const normalized = normalizeFreqValue(freqInput ? freqInput.value : note.freq);
     const cur = normalized === null ? (note.freq || '') : (normalized || note.freq || '');
     const changed = !!(template && (freqInputInvalid() || (cur && cur !== template)));
+    if (freqInput) freqInput.classList.toggle('is-default',
+      !!template && !freqInputInvalid() && cur === template);
     templateRow.style.display = changed ? '' : 'none';
     const val = templateRow.querySelector('.val');
     if (val) val.textContent = template;
@@ -1634,7 +2226,7 @@ function appendFreqEdit(body, note, editOptions) {
       selected = { id: '__custom__', label: current };
       rows.unshift(['__custom__', current]);
     }
-    body.appendChild(selectRow(S.commChangeName || 'Call sign',
+    const callSignRow = selectRow(S.commChangeName || 'Call sign',
       selected ? selected.id : opts[0].id, rows, v => {
         const opt = opts.find(o => o.id === v);
         if (!opt) return;
@@ -1651,7 +2243,9 @@ function appendFreqEdit(body, note, editOptions) {
         }
         updateTemplateHint();
         draw();
-      }));
+      });
+    callSignRow.classList.add('commchange-name-row');
+    body.appendChild(callSignRow);
   } else {
     body.appendChild(textRow(S.commChangeName || 'Call sign', commNoteName(note) || ''));
   }
@@ -1871,9 +2465,8 @@ map.on('mousedown', e => {
   if (lab) {
     downHit = true;
     _materialiseDefaultLegLabel(lab.i, lab.which);
-    const f = legFrame(lab.i);
-    drag = { kind: 'label', i: lab.i, which: lab.which, lx: p.x, ly: p.y,
-             dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
+    drag = { kind: 'label', i: lab.i, which: lab.which,
+             ...legLabelDragGrab(lab.i, lab.which, p.x, p.y) };
     state.selected = { type: 'leg', index: lab.i };
     map.dragging.disable();
     showInspector(); draw();
@@ -1926,15 +2519,7 @@ map.on('mousemove', e => {
     state.notes[drag.i].lng = r5(e.latlng.lng + (drag.offLng || 0));
     draw();
   } else if (drag.kind === 'label') {
-    const ddx = p.x - drag.lx, ddy = p.y - drag.ly;
-    drag.lx = p.x; drag.ly = p.y;
-    const leg = state.legs[drag.i];
-    const o = leg && (drag.which === 'in' ? leg.inLabel : leg.outLabel);
-    if (!o) return;                    // malformed leg / label — issue #82
-    const isc = 1 / legZoomScale();
-    o.a += (ddx * drag.dx + ddy * drag.dy) * isc;
-    o.p += (ddx * drag.nx + ddy * drag.ny) * isc;
-    draw();
+    if (setLegLabelFromPoint(drag, p.x, p.y)) draw();
   } else if (drag.kind === 'cumlabel' || drag.kind === 'cumlabelret') {
     setCumLabelFromPoint(drag.i, drag.kind === 'cumlabelret', p.x, p.y);
     draw();
@@ -1954,12 +2539,8 @@ function endMouseDrag() {
   if (drag) {
     if (drag.kind === 'wp' && drag.moved) {
       const wp = state.waypoints[drag.i];
-      const SNAP_DEG = 0.0002;
-      const snappedToSelf = Math.abs(wp.lat - drag.origLat) < SNAP_DEG &&
-          Math.abs(wp.lng - drag.origLng) < SNAP_DEG;
-      const snappedToOther = state.waypoints.some((w, j) => j !== drag.i &&
-          Math.abs(w.lat - wp.lat) < SNAP_DEG &&
-          Math.abs(w.lng - wp.lng) < SNAP_DEG);
+      const snappedToSelf = sameMapPoint(wp, { lat: drag.origLat, lng: drag.origLng });
+      const snappedToOther = routeOccupiesPoint(wp, drag.i);
       if ((snappedToSelf && !drag.originSnapArmed) || snappedToOther) {
         state.waypoints.splice(drag.i, 1);
         state.selected = null;
@@ -1994,10 +2575,7 @@ map.on('click', e => {
     // Without this an add-mode click on a nav-WP / airfield that already has
     // a route waypoint produces a duplicate at the same coords and a leg
     // with zero distance.
-    const SNAP_DEG = 0.0002;
-    if (state.waypoints.some(
-          w => Math.abs(w.lat - r.lat) < SNAP_DEG &&
-               Math.abs(w.lng - r.lng) < SNAP_DEG)) {
+    if (routeOccupiesPoint(r)) {
       return;
     }
     state.waypoints.push({ lat: r5(r.lat), lng: r5(r.lng), name: r.name });
@@ -2241,9 +2819,8 @@ mapEl.addEventListener('touchstart', e => {
     state.selected = { type: 'wp', index: wp };
   } else if (lab) {
     _materialiseDefaultLegLabel(lab.i, lab.which);
-    const f = legFrame(lab.i);
     touchDrag = { kind: 'label', i: lab.i, which: lab.which,
-                  lx: p.x, ly: p.y, dx: f.dx, dy: f.dy, nx: f.nx, ny: f.ny };
+                  ...legLabelDragGrab(lab.i, lab.which, p.x, p.y) };
     state.selected = { type: 'leg', index: lab.i };
   } else if (cum) {
     _materialiseDefaultCumLabel(cum.i);
@@ -2299,15 +2876,7 @@ mapEl.addEventListener('touchmove', e => {
     state.notes[touchDrag.i].lng = r5(ll.lng + (touchDrag.offLng || 0));
     draw();
   } else if (touchDrag.kind === 'label') {
-    const ddx = p.x - touchDrag.lx, ddy = p.y - touchDrag.ly;
-    touchDrag.lx = p.x; touchDrag.ly = p.y;
-    const leg = state.legs[touchDrag.i];
-    const o = leg && (touchDrag.which === 'in' ? leg.inLabel : leg.outLabel);
-    if (!o) return;                    // malformed leg / label — issue #82
-    const isc = 1 / legZoomScale();
-    o.a += (ddx * touchDrag.dx + ddy * touchDrag.dy) * isc;
-    o.p += (ddx * touchDrag.nx + ddy * touchDrag.ny) * isc;
-    draw();
+    if (setLegLabelFromPoint(touchDrag, p.x, p.y)) draw();
   } else if (touchDrag.kind === 'cumlabel' || touchDrag.kind === 'cumlabelret') {
     setCumLabelFromPoint(touchDrag.i, touchDrag.kind === 'cumlabelret', p.x, p.y);
     draw();
@@ -2324,12 +2893,8 @@ function endTouch() {
   if (touchDrag) {
     if (touchDrag.kind === 'wp' && touchDrag.moved) {
       const wp = state.waypoints[touchDrag.i];
-      const SNAP_DEG = 0.0002;
-      const snappedToSelf = Math.abs(wp.lat - touchDrag.origLat) < SNAP_DEG &&
-          Math.abs(wp.lng - touchDrag.origLng) < SNAP_DEG;
-      const snappedToOther = state.waypoints.some((w, j) => j !== touchDrag.i &&
-          Math.abs(w.lat - wp.lat) < SNAP_DEG &&
-          Math.abs(w.lng - wp.lng) < SNAP_DEG);
+      const snappedToSelf = sameMapPoint(wp, { lat: touchDrag.origLat, lng: touchDrag.origLng });
+      const snappedToOther = routeOccupiesPoint(wp, touchDrag.i);
       if ((snappedToSelf && !touchDrag.originSnapArmed) || snappedToOther) {
         state.waypoints.splice(touchDrag.i, 1);
         state.selected = null;

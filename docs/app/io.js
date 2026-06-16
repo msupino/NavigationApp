@@ -316,6 +316,15 @@ function validateRoute(d) {
       }
     }
   }
+  // Route-wide wind (#722) — optional { dir (°true, FROM), speed (kt) }.
+  if (Object.prototype.hasOwnProperty.call(d, 'wind')) {
+    if (_vKind(d.wind) !== 'object') {
+      errs.push('root.wind: expected object, got ' + _vKind(d.wind));
+    } else {
+      _v(d.wind, 'dir',   'number', 'root.wind', errs);
+      _v(d.wind, 'speed', 'number', 'root.wind', errs);
+    }
+  }
   if (wpsOk) {
     for (let i = 0; i < d.waypoints.length; i++) {
       const p = 'waypoints[' + i + ']';
@@ -344,6 +353,19 @@ function validateRoute(d) {
       // can never satisfy the optional check.
       if (Object.prototype.hasOwnProperty.call(l, 'outboundSpeed')) {
         _v(l, 'outboundSpeed', 'number', p, errs);
+      }
+      // Per-leg wind override (#722) — optional; dir / speed each optional
+      // (a partial override falls back to the route wind for the other half).
+      if (Object.prototype.hasOwnProperty.call(l, 'wind')) {
+        if (_vKind(l.wind) !== 'object') {
+          errs.push(p + '.wind: expected object, got ' + _vKind(l.wind));
+        } else {
+          for (const k of ['dir', 'speed']) {
+            if (Object.prototype.hasOwnProperty.call(l.wind, k)) {
+              _v(l.wind, k, 'number', p + '.wind', errs);
+            }
+          }
+        }
       }
       // Issue #394: `_default: 1` is the sentinel form written by
       // `_defaultLegLabels()` for an unmodified kite — its perpendicular
@@ -730,15 +752,43 @@ function altitudeMetersForExport(ft, fallbackFt = 0) {
   const v = Number.isFinite(ft) ? ft : fallbackFt;
   return Math.max(0, Math.round(v * 0.3048));
 }
+// Clean copy of a wind object ({ dir, speed }, both optional) for
+// serialization — drops anything non-numeric. Returns undefined when empty.
+function encodeWind(w) {
+  if (!w || typeof w !== 'object') return undefined;
+  const out = {};
+  if (Number.isFinite(w.dir))   out.dir   = w.dir;
+  if (Number.isFinite(w.speed)) out.speed = w.speed;
+  return (out.dir !== undefined || out.speed !== undefined) ? out : undefined;
+}
+// Route-wide wind from a stored blob — sanitized, with the calm default.
+function storedWind(d) {
+  const w = d && d.wind;
+  if (w && Number.isFinite(w.dir) && Number.isFinite(w.speed) && w.speed >= 0) {
+    return { dir: ((Math.round(w.dir) % 360) + 360) % 360,
+             speed: Math.round(w.speed) };
+  }
+  return { dir: 270, speed: 0 };
+}
 function routeSnapshotForStorage() {
+  const wind = encodeWind(state.wind);
   return {
     waypoints: state.waypoints,
-    legs: state.legs.map(encodeRouteLegAltitudes),
+    legs: state.legs.map(l => {
+      const enc = encodeRouteLegAltitudes(l);     // spreads ...l (incl. wind)
+      const w = encodeWind(l.wind);
+      if (w) enc.wind = w; else delete enc.wind;  // drop junk overrides
+      return enc;
+    }),
     notes: state.notes,
     commChangeSuppressions: routeCommChangeSuppressions(),
+    ...(wind && wind.speed > 0 ? { wind } : {}),
   };
 }
-function save() {
+// Serializable, schema-clean snapshot of the current route. Shared by the
+// JSON file export (save), the route library (#677), and any other route
+// persistence — keep this the single source of the on-disk route shape.
+function serializeRoute() {
   const commChangeSuppressions = routeCommChangeSuppressions();
   const data = {
     waypoints: state.waypoints.map(w => ({
@@ -753,6 +803,7 @@ function save() {
       outLabel: l.outLabel,
       ...(l.cumLabel ? { cumLabel: l.cumLabel } : {}),
       ...(l.cumLabelRet ? { cumLabelRet: l.cumLabelRet } : {}),
+      ...(encodeWind(l.wind) ? { wind: encodeWind(l.wind) } : {}),
     })),
     notes: state.notes.map(n => ({
       lat: r5(n.lat), lng: r5(n.lng), text: n.text || '', color: n.color || '',
@@ -764,6 +815,12 @@ function save() {
     })),
   };
   if (commChangeSuppressions.length) data.commChangeSuppressions = commChangeSuppressions;
+  const wind = encodeWind(state.wind);
+  if (wind && wind.speed > 0) data.wind = wind;     // calm = omit (#722)
+  return data;
+}
+function save() {
+  const data = serializeRoute();
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -895,6 +952,202 @@ function exportPln() {
   URL.revokeObjectURL(a.href);
 }
 
+// --- X-Plane FDR export (issue #701) ----------------------------------------
+// Exports the route as an X-Plane Flight Data Recorder replay file.
+// Each leg is sampled at 1-second intervals; position is linearly interpolated
+// along the leg, altitude blends smoothly between legs, and roll/pitch/VVI
+// are computed from turn-rate and climb-rate geometry.
+//
+// X-Plane 12 FDR version 3 (the 'A'/'3' header) uses the COMPACT, positional
+// DATA order — confirmed by X-Plane's parser, which reads the heading from the
+// 5th value:
+//   1 time s, 2 longitude, 3 latitude, 4 altitude MSL ft, 5 heading true,
+//   6 pitch deg, 7 roll deg
+// (The 80-column layout — time,temp,lon,lat,h_msl,… — is the old V2/legacy
+// format X-Plane 12 rejects as "Old, non-supported FDR format"; putting those
+// columns under a V3 header made it read altitude as heading: "Out of range
+// FDR-file heading … 2000".)
+function fdrDataRow(time, lon, lat, hmsl, hdg, pitch, roll) {
+  return [
+    time.toFixed(2),
+    lon.toFixed(6),
+    lat.toFixed(6),
+    hmsl.toFixed(1),     // altitude MSL (ft)
+    hdg.toFixed(2),      // heading (degrees true)
+    pitch.toFixed(2),
+    roll.toFixed(2),
+  ].join(',');
+}
+function exportFdr() {
+  if (state.waypoints.length < 2) { alert(S.errNeedWps); return; }
+
+  const DEG = Math.PI / 180;
+  // Degrees between two headings via shortest angular path (returns ±deg).
+  function angleDiff(a, b) {
+    let d = ((b - a) % 360 + 360) % 360;
+    return d > 180 ? d - 360 : d;
+  }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  const KT_TO_MS = 0.514444;
+  const M_TO_FT  = 3.280840;
+  const G        = 9.80665;
+  const BANK     = 18 * DEG;          // bank angle the turns are flown at
+  // Local equirectangular projection (metres) around the first waypoint —
+  // accurate over a CVFR route's span; turns are computed as real arcs here.
+  const wp0 = state.waypoints[0];
+  const mPerLat = 110540;
+  const mPerLng = 111320 * Math.cos(wp0.lat * DEG);
+  const toXY = w => ({ x: (w.lng - wp0.lng) * mPerLng, y: (w.lat - wp0.lat) * mPerLat });
+  const toLL = p => ({ lng: wp0.lng + p.x / mPerLng, lat: wp0.lat + p.y / mPerLat });
+  const sub = (a, b) => ({ x: a.x - b.x, y: a.y - b.y });
+  const add = (a, b) => ({ x: a.x + b.x, y: a.y + b.y });
+  const mul = (a, s) => ({ x: a.x * s, y: a.y * s });
+  const hyp = a => Math.hypot(a.x, a.y);
+  const norm = a => { const m = hyp(a) || 1; return { x: a.x / m, y: a.y / m }; };
+
+  // Per-leg metres geometry + cruise speed/altitude.
+  const W = state.waypoints.map(toXY);
+  const leg = state.legs.map((l, i) => ({
+    spdMS: Math.max(1, (l.flightSpeed || 90)) * KT_TO_MS,
+    alt: Number.isFinite(l.inboundAltitude) ? l.inboundAltitude : 2000,
+    len: hyp(sub(W[i + 1], W[i])),
+  }));
+
+  // Build the flown path as a dense metres polyline, rounding each interior
+  // waypoint with a banked-turn arc (radius R = V²/(g·tanφ)). Each point
+  // carries the speed/altitude that applies there.
+  const path = [{ p: W[0], spdMS: leg[0].spdMS, alt: leg[0].alt }];
+  for (let k = 1; k < W.length - 1; k++) {
+    const uin  = norm(sub(W[k], W[k - 1]));
+    const uout = norm(sub(W[k + 1], W[k]));
+    const dot  = Math.max(-1, Math.min(1, uin.x * uout.x + uin.y * uout.y));
+    const theta = Math.acos(dot);                       // turn angle (rad)
+    const sIn = leg[k - 1].spdMS, sOut = leg[k].spdMS;
+    if (theta < 0.5 * DEG) {                             // ~straight — no arc
+      path.push({ p: W[k], spdMS: sOut, alt: leg[k].alt });
+      continue;
+    }
+    const vTurn = Math.min(sIn, sOut);                  // fly the turn at the slower speed
+    let R = (vTurn * vTurn) / (G * Math.tan(BANK));
+    let d = R * Math.tan(theta / 2);                    // tangent distance from the vertex
+    const dMax = 0.45 * Math.min(leg[k - 1].len, leg[k].len);
+    if (d > dMax) { d = dMax; R = d / Math.tan(theta / 2); }
+    const tIn  = sub(W[k], mul(uin, d));
+    const tOut = add(W[k], mul(uout, d));
+    const cross = uin.x * uout.y - uin.y * uout.x;       // >0 left turn, <0 right
+    const left = cross > 0;
+    const nIn = left ? { x: -uin.y, y: uin.x } : { x: uin.y, y: -uin.x };
+    const center = add(tIn, mul(nIn, R));
+    const a0 = Math.atan2(tIn.y - center.y, tIn.x - center.x);
+    const sweep = left ? theta : -theta;
+    const steps = Math.max(2, Math.ceil(theta / (3 * DEG)));   // ~3° per arc point
+    path.push({ p: tIn, spdMS: vTurn, alt: leg[k - 1].alt });
+    for (let s = 1; s <= steps; s++) {
+      const ang = a0 + sweep * (s / steps);
+      const p = { x: center.x + R * Math.cos(ang), y: center.y + R * Math.sin(ang) };
+      path.push({ p, spdMS: vTurn, alt: lerp(leg[k - 1].alt, leg[k].alt, s / steps) });
+    }
+    // tOut == last arc point; continue the straight from there.
+    void tOut;
+  }
+  const lastLeg = leg[leg.length - 1];
+  path.push({ p: W[W.length - 1], spdMS: lastLeg.spdMS, alt: lastLeg.alt });
+
+  // Cumulative travel time along the polyline (constant speed per segment).
+  const tcum = [0];
+  for (let i = 1; i < path.length; i++) {
+    const ds = hyp(sub(path[i].p, path[i - 1].p));
+    const v = 0.5 * (path[i].spdMS + path[i - 1].spdMS) || 1;
+    tcum.push(tcum[i - 1] + ds / v);
+  }
+  const totalT = tcum[tcum.length - 1];
+
+  // Resample the path at 1-second intervals (position + altitude).
+  const samp = [];
+  let seg = 1;
+  for (let tt = 0; tt <= totalT; tt += 1) {
+    while (seg < path.length - 1 && tcum[seg] < tt) seg++;
+    const t0 = tcum[seg - 1], t1 = tcum[seg];
+    const f = t1 > t0 ? (tt - t0) / (t1 - t0) : 0;
+    const p = { x: lerp(path[seg - 1].p.x, path[seg].p.x, f),
+                y: lerp(path[seg - 1].p.y, path[seg].p.y, f) };
+    samp.push({ p, alt: lerp(path[seg - 1].alt, path[seg].alt, f) });
+  }
+  if (samp.length < 2) samp.push({ p: W[W.length - 1], alt: lastLeg.alt });
+  // Smooth altitude (±20 s moving average) so climbs/descents are gradual.
+  const altS = samp.map((s, i) => {
+    let sum = 0, n = 0;
+    for (let j = Math.max(0, i - 20); j <= Math.min(samp.length - 1, i + 20); j++) { sum += samp[j].alt; n++; }
+    return sum / n;
+  });
+
+  // Heading from the path tangent; roll from turn rate; pitch from climb rate.
+  const rows = [];
+  for (let i = 0; i < samp.length; i++) {
+    const a = samp[Math.max(0, i - 1)].p, b = samp[Math.min(samp.length - 1, i + 1)].p;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const hdg = ((Math.atan2(dx, dy) / DEG) % 360 + 360) % 360;   // true bearing
+    const ll = toLL(samp[i].p);
+    // roll: tan(bank) = ω·V/g, ω = heading rate (rad/s), sign by turn direction.
+    let roll = 0;
+    if (i > 0 && i < samp.length - 1) {
+      const a2 = samp[i - 1].p, b2 = samp[i + 1].p;
+      const h0 = Math.atan2(samp[i].p.x - a2.x, samp[i].p.y - a2.y) / DEG;
+      const h1 = Math.atan2(b2.x - samp[i].p.x, b2.y - samp[i].p.y) / DEG;
+      const rate = angleDiff(h0, h1) * DEG;                 // rad/s
+      const ds = hyp(sub(b2, a2)) / 2;                       // m/s
+      roll = Math.atan((rate * ds) / G) / DEG;
+    }
+    // pitch from vertical vs horizontal speed.
+    const vfps = i < samp.length - 1 ? (altS[i + 1] - altS[i]) / M_TO_FT : 0;   // m/s up (alt in ft)
+    const gs = i < samp.length - 1 ? hyp(sub(samp[i + 1].p, samp[i].p)) : 1;     // m/s
+    const pitch = Math.atan2(vfps, gs || 1) / DEG;
+    rows.push(fdrDataRow(i, ll.lng, ll.lat, altS[i], hdg, pitch, roll));
+  }
+
+  const lastWp = state.waypoints[state.waypoints.length - 1];
+  const dep  = (state.waypoints[0].name || 'DEP').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,8);
+  const dest = (lastWp.name || 'DEST').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,8);
+
+  // X-Plane 12 FDR V3: 'A' line-ending marker, version '3', then keyword header
+  // lines (TAIL must immediately follow ACFT), then one compact 'DATA,' row per
+  // sample (see fdrDataRow). X-Plane 12 rejects the old header-less / V2 layout
+  // as "Old, non-supported FDR format", so the version line is required.
+  const now = new Date();
+  const dateStr = String(now.getMonth()+1).padStart(2,'0') + '/' +
+                  String(now.getDate()).padStart(2,'0') + '/' + now.getFullYear();
+  const timeStr = String(now.getUTCHours()).padStart(2,'0') + ':' +
+                  String(now.getUTCMinutes()).padStart(2,'0') + ':' +
+                  String(now.getUTCSeconds()).padStart(2,'0');
+  const fdrRows = rows.map(r => 'DATA, ' + r);
+  // No ACFT line: its path must resolve to an installed aircraft or X-Plane
+  // errors ("unknown aircraft"). Omitting it replays on the currently-loaded
+  // aircraft, which is robust across installs / X-Plane versions.
+  const fdr = [
+    'A',
+    '3',
+    '',
+    'TAIL, NAVAID',
+    'DATE, ' + dateStr,
+    'TIME, ' + timeStr,
+    'PRES, 29.92',
+    'TEMP, 15',
+    'WIND, 0,0',
+    'COMM, NavAid CVFR route — ' + dep + ' to ' + dest,
+    '',
+    ...fdrRows,
+    '',
+  ].join('\n');
+
+  const blob = new Blob([fdr], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'route-' + fileStamp() + '.fdr';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 // --- GPX import --------------------------------------------------------
 function loadGpx(file) {
   const MAX_ROUTE_BYTES = 2 * 1024 * 1024;
@@ -921,6 +1174,71 @@ function loadGpx(file) {
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
         const name = (pt.querySelector('name') || {}).textContent || '';
         wps.push({ lat: r5(lat), lng: r5(lng), name: name.trim() });
+      }
+      if (wps.length < 2) {
+        alert(S.errNeedWps);
+        return;
+      }
+      state.waypoints = wps;
+      state.legs = [];
+      state.notes = [];
+      state.commChangeSuppressions = [];
+      syncLegs();
+      state.selected = null;
+      showInspector();
+      fitView();
+      draw();
+    } catch (err) {
+      alert(S.errLoadFile + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// --- PLN import (MSFS / FSX flight plan) -------------------------------
+// Parse a DMS WorldPosition / *LLA value, e.g. N32° 0' 42.12",E34° 53' 7.08"
+// (an optional ,+002000.00 altitude tail is ignored). Also accepts a plain
+// "lat,lng" decimal pair as a fallback.
+function parsePlnLatLng(s) {
+  if (!s) return null;
+  const dms = String(s).match(
+    /([NS])\s*(\d+(?:\.\d+)?)°\s*(\d+(?:\.\d+)?)'\s*(\d+(?:\.\d+)?)"?\s*,\s*([EW])\s*(\d+(?:\.\d+)?)°\s*(\d+(?:\.\d+)?)'\s*(\d+(?:\.\d+)?)"?/);
+  if (dms) {
+    const lat = (+dms[2] + +dms[3] / 60 + +dms[4] / 3600) * (dms[1] === 'S' ? -1 : 1);
+    const lng = (+dms[6] + +dms[7] / 60 + +dms[8] / 3600) * (dms[5] === 'W' ? -1 : 1);
+    return { lat, lng };
+  }
+  const dec = String(s).match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+  if (dec) return { lat: parseFloat(dec[1]), lng: parseFloat(dec[2]) };
+  return null;
+}
+function loadPln(file) {
+  const MAX_ROUTE_BYTES = 2 * 1024 * 1024;
+  if (file && file.size > MAX_ROUTE_BYTES) {
+    alert(S.errLoadFile + 'file too large (' +
+          (file.size / 1024 / 1024).toFixed(1) + ' MB; max 2 MB)');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const xml = new DOMParser().parseFromString(reader.result, 'text/xml');
+      const parseErr = xml.querySelector('parsererror');
+      if (parseErr) throw new Error('XML parse error: ' + parseErr.textContent);
+      const atc = xml.querySelectorAll('ATCWaypoint');
+      if (!atc.length) {
+        alert(S.errLoadFile + 'no <ATCWaypoint> elements found in PLN');
+        return;
+      }
+      const wps = [];
+      for (const pt of atc) {
+        const posEl = pt.querySelector('WorldPosition');
+        const pos = parsePlnLatLng(posEl && posEl.textContent);
+        if (!pos || !Number.isFinite(pos.lat) || !Number.isFinite(pos.lng)) continue;
+        const icao = pt.querySelector('ICAOIdent');
+        const name = (icao && icao.textContent.trim()) ||
+          (pt.getAttribute('id') || '').trim();
+        wps.push({ lat: r5(pos.lat), lng: r5(pos.lng), name });
       }
       if (wps.length < 2) {
         alert(S.errNeedWps);
@@ -969,42 +1287,116 @@ function load(file) {
       alert(S.errInvalidRoute(verr));
       return;
     }
-    state.waypoints = d.waypoints.map(w => ({
-      lat: r5(w.lat), lng: r5(w.lng), name: w.name,
-    }));
-    // Use the file's `legArrowSize` if present (forward-compat — current
-    // save() doesn't emit it). Otherwise fall back to the current setting.
-    // See _normalizeLegLabel for the migration math.
-    const legacyAS = (typeof d.legArrowSize === 'number' && d.legArrowSize > 0)
-      ? d.legArrowSize : legArrowSize;
-    state.legs = d.legs.map(l => ({
-      inboundAltitude: decodeRouteAltitude(l.inboundAltitude),
-      outboundAltitude: decodeRouteAltitude(l.outboundAltitude),
-      flightSpeed: l.flightSpeed,
-      outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
-      inLabel:  _normalizeLegLabel(l.inLabel,  legacyAS),
-      outLabel: _normalizeLegLabel(l.outLabel, legacyAS),
-      cumLabel: l.cumLabel ? _normalizeLegLabel(l.cumLabel, legacyAS)
-                           : { a: 0, _default: 1, _m: 1 },
-      cumLabelRet: l.cumLabelRet ? _normalizeLegLabel(l.cumLabelRet, legacyAS)
-                                 : { a: 0, _default: 1, _m: 1 },
-    }));
-    state.notes = d.notes.map(n => ({
-      lat: r5(n.lat), lng: r5(n.lng),
-      text: n.text, color: n.color, shape: n.shape,
-      ...(n.cc ? { cc: n.cc } : {}),   // #487: preserve comm-change seed tag
-      ...(n.freqName ? { freqName: n.freqName } : {}),
-      ...(n.freq ? { freq: n.freq } : {}),
-      ...(n.freqAuto === true ? { freqAuto: true } : {}),
-    }));
-    state.commChangeSuppressions = storedCommChangeSuppressions(d);
-    syncLegs();
-    state.selected = null;
-    showInspector();
-    fitView();
-    draw();
+    applyRouteData(d);
   };
   reader.readAsText(file);
+}
+
+// Apply a parsed, validated route blob (the shape serializeRoute() emits) to
+// the live state and redraw. Shared by file import (load) and the route
+// library (#677). Caller is responsible for validateRoute() first.
+function applyRouteData(d) {
+  state.waypoints = d.waypoints.map(w => ({
+    lat: r5(w.lat), lng: r5(w.lng), name: w.name,
+  }));
+  // Use the blob's `legArrowSize` if present (forward-compat — current
+  // serializeRoute() doesn't emit it). Otherwise fall back to the current
+  // setting. See _normalizeLegLabel for the migration math.
+  const legacyAS = (typeof d.legArrowSize === 'number' && d.legArrowSize > 0)
+    ? d.legArrowSize : legArrowSize;
+  state.legs = d.legs.map(l => ({
+    inboundAltitude: decodeRouteAltitude(l.inboundAltitude),
+    outboundAltitude: decodeRouteAltitude(l.outboundAltitude),
+    flightSpeed: l.flightSpeed,
+    outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
+    inLabel:  _normalizeLegLabel(l.inLabel,  legacyAS),
+    outLabel: _normalizeLegLabel(l.outLabel, legacyAS),
+    cumLabel: l.cumLabel ? _normalizeLegLabel(l.cumLabel, legacyAS)
+                         : { a: 0, _default: 1, _m: 1 },
+    cumLabelRet: l.cumLabelRet ? _normalizeLegLabel(l.cumLabelRet, legacyAS)
+                               : { a: 0, _default: 1, _m: 1 },
+    ...(encodeWind(l.wind) ? { wind: encodeWind(l.wind) } : {}),
+  }));
+  state.notes = d.notes.map(n => ({
+    lat: r5(n.lat), lng: r5(n.lng),
+    text: n.text, color: n.color, shape: n.shape,
+    ...(n.cc ? { cc: n.cc } : {}),   // #487: preserve comm-change seed tag
+    ...(n.freqName ? { freqName: n.freqName } : {}),
+    ...(n.freq ? { freq: n.freq } : {}),
+    ...(n.freqAuto === true ? { freqAuto: true } : {}),
+  }));
+  state.commChangeSuppressions = storedCommChangeSuppressions(d);
+  state.wind = storedWind(d);
+  if (typeof window.refreshWindInputs === 'function') window.refreshWindInputs();
+  syncLegs();
+  state.selected = null;
+  showInspector();
+  fitView();
+  draw();
+}
+
+// --- route library (#677) — multiple named routes in localStorage --------
+// Device-local only (no backend). Each entry: { id, name, savedAt, data }
+// where `data` is a serializeRoute() blob.
+const ROUTE_LIBRARY_KEY = 'navaid.routes';
+function loadRouteLibrary() {
+  try {
+    const a = JSON.parse(localStorage.getItem(ROUTE_LIBRARY_KEY) || '[]');
+    return Array.isArray(a) ? a : [];
+  } catch (e) { return []; }
+}
+function persistRouteLibrary(list) {
+  try {
+    localStorage.setItem(ROUTE_LIBRARY_KEY, JSON.stringify(list));
+    scheduleRouteAutoSync();
+    return true;
+  } catch (e) {
+    alert(S.errStorageFull || 'Storage is full — delete some saved routes or export them.');
+    return false;
+  }
+}
+// Auto-push the library to Google Drive (debounced) after any local change,
+// but only when Drive is connected. Suppressed while a sync is itself writing
+// the merged result back (window._navaidSyncing) so we don't loop.
+let _routeAutoSyncTimer = null;
+function scheduleRouteAutoSync() {
+  if (window._navaidSyncing) return;
+  if (typeof gdriveConnected !== 'function' || !gdriveConnected()) return;
+  if (_routeAutoSyncTimer) clearTimeout(_routeAutoSyncTimer);
+  _routeAutoSyncTimer = setTimeout(function () {
+    _routeAutoSyncTimer = null;
+    if (typeof gdriveSync !== 'function') return;
+    gdriveSync().then(function () {
+      if (typeof window.refreshRouteLibrary === 'function') window.refreshRouteLibrary();
+    }).catch(function () { /* offline / token expired — next change retries */ });
+  }, 1500);
+}
+function routeLibraryId() {
+  return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+// Save the current route as a new named library entry. Returns the entry or null.
+function routeLibrarySaveCurrent(name) {
+  if (state.waypoints.length < 2) { alert(S.errNeedWps); return null; }
+  const list = loadRouteLibrary();
+  const entry = {
+    id: routeLibraryId(),
+    name: (name || '').trim() || ('Route ' + (list.length + 1)),
+    savedAt: new Date().toISOString(),
+    data: serializeRoute(),
+  };
+  list.unshift(entry);
+  return persistRouteLibrary(list) ? entry : null;
+}
+// Apply a saved library entry to the live route. Returns true if applied.
+function routeLibraryApply(entry) {
+  if (!entry || !entry.data) return false;
+  const verr = typeof validateRoute === 'function' ? validateRoute(entry.data) : null;
+  if (verr) { alert(S.errInvalidRoute ? S.errInvalidRoute(verr) : verr); return false; }
+  if ((state.waypoints.length || state.notes.length) &&
+      !confirm(S.routeLibraryReplaceConfirm ||
+        S.routeTemplateReplaceConfirm || 'Replace the current route?')) return false;
+  applyRouteData(entry.data);
+  return true;
 }
 
 // --- print -----------------------------------------------------------
@@ -1018,6 +1410,7 @@ function applyPage() {
 function setPage(size) {
   if (pageSize === size) {             // same button toggles the frame off
     pageSize = null;
+    try { localStorage.removeItem('navaid.pageSize'); } catch (e) { /* */ }
     applyPage();
     return;
   }
@@ -1027,6 +1420,7 @@ function setPage(size) {
   if (!pageOrient) pageOrient = 'landscape';
   pageSize = size;
   pageOffset = { x: 0, y: 0 };
+  try { localStorage.setItem('navaid.pageSize', pageSize); } catch (e) { /* */ }
   applyPage();
   fitPageFrame();
 }
@@ -1070,13 +1464,13 @@ function fitPageFrame() {
 function wpLabel(i) {
   const wp = state.waypoints[i];
   if (!wp) return '';
-  const n = navName((wp.name || '').trim());
-  return n || (S.wpPrefix + (i + 1));
+  return waypointDisplayLabel(wp, i);
 }
 
 // #86: Flight Plan modal state and Escape-to-close handling.
 let flightPlanBack = null;
 let refreshFlightPlan = null;
+let drawProfileStripIfOpen = null;   // set while the flight-plan modal is open (#672)
 let flightPlanEscape = null;
 let flightPlanCleanup = null;             // tears down drag listeners attached
                                           // outside the modal subtree (window).
@@ -1102,7 +1496,9 @@ function closeFlightPlan() {
     flightPlanBack = null;
   }
   refreshFlightPlan = null;
+  drawProfileStripIfOpen = null;
   fpOpen = false;
+  if (window.showProfile) { window.showProfile = false; draw(); }   // hide TOC/TOD markers
   try { sessionStorage.removeItem('navaid.fpOpen'); } catch (e) {}
 }
 
@@ -1261,7 +1657,7 @@ function showFlightPlan() {
     }
     vorSel.value = vorRef || '';
     const cur = typeof activeVor === 'function' ? activeVor() : null;
-    vorFreqSpan.textContent = cur ? cur.freq + ' MHz' : '';
+    vorFreqSpan.textContent = cur ? (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(cur) : cur.freq) + ' MHz' : '';
   }
   vorSel.onchange = () => {
     window.vorRef = vorSel.value || null;
@@ -1286,21 +1682,116 @@ function showFlightPlan() {
   }
   box.appendChild(fpAircraft);
 
+  // Vertical profile strip (#672) — altitude vs distance with TOC/TOD.
+  const profWrap = document.createElement('div');
+  profWrap.className = 'fp-profile';
+  const profLbl = document.createElement('div');
+  profLbl.className = 'fp-profile-label';
+  const profTitle = document.createElement('span');
+  profTitle.textContent = S.profileTitle || 'Vertical profile';
+  profLbl.appendChild(profTitle);
+  // V/S input — vertical speed (ft/min) driving the climb/descent ramp slope.
+  // Default 500; persisted so the pilot's preferred rate sticks (#672).
+  if (!(window.profileVS > 0)) {
+    let stored = 0;
+    try { stored = parseInt(localStorage.getItem('navaid.profileVS'), 10); } catch (e) { /* ignore */ }
+    window.profileVS = stored > 0 ? stored : 500;
+  }
+  const vsLbl = document.createElement('label');
+  vsLbl.className = 'fp-profile-vs';
+  vsLbl.textContent = (S.profileVs || 'V/S (ft/min)') + ' ';
+  const vsInput = document.createElement('input');
+  vsInput.type = 'number'; vsInput.min = '50'; vsInput.step = '50';
+  vsInput.value = String(window.profileVS);
+  vsInput.className = 'fp-profile-vs-input';
+  vsInput.oninput = () => {
+    const v = parseInt(vsInput.value, 10);
+    if (v > 0) {
+      window.profileVS = v;
+      try { localStorage.setItem('navaid.profileVS', String(v)); } catch (e) { /* ignore */ }
+      draw();        // map TOC/TOD markers move with the new ramp
+      refresh();     // recompute leg times + redraw the profile strip
+    }
+  };
+  vsLbl.appendChild(vsInput);
+  profLbl.appendChild(vsLbl);
+  profWrap.appendChild(profLbl);
+  // Direction indicator above the strip — the profile/X-axis mirrors in RTL
+  // (Hebrew), so spell out the flow: departure → destination with a centred
+  // arrow, oriented to match the axis (arrow points the way it's flown).
+  (function () {
+    const wps = state.waypoints || [];
+    if (wps.length < 2) return;
+    const depName = navName((wps[0].name || '').trim()) || (S.wpPrefix + 1);
+    const destName = navName((wps[wps.length - 1].name || '').trim()) || (S.wpPrefix + wps.length);
+    const rtl = document.documentElement && document.documentElement.dir === 'rtl';
+    const label = S.fpDirection || 'Direction';
+    const dirRow = document.createElement('div');
+    dirRow.className = 'fp-profile-dir';
+    dirRow.dir = 'ltr';                 // fixed frame; place ends by axis side
+    const lEnd = document.createElement('span');
+    const arrow = document.createElement('span');
+    arrow.className = 'fp-dir-arrow';
+    const rEnd = document.createElement('span');
+    // d=0 (departure) is on the left in LTR, on the right in RTL.
+    lEnd.textContent = rtl ? destName : depName;
+    rEnd.textContent = rtl ? depName : destName;
+    arrow.textContent = rtl ? ('◄ ' + label) : (label + ' ►');
+    dirRow.appendChild(lEnd); dirRow.appendChild(arrow); dirRow.appendChild(rEnd);
+    profWrap.appendChild(dirRow);
+  })();
+  const profCanvas = document.createElement('canvas');
+  profCanvas.className = 'fp-profile-canvas';
+  profCanvas.width = 600; profCanvas.height = 104;
+  profWrap.appendChild(profCanvas);
+  box.appendChild(profWrap);
+  drawProfileStripIfOpen = function () {
+    if (!profCanvas.isConnected) return;
+    const cssW = profCanvas.clientWidth || 600;
+    profCanvas.width = cssW; profCanvas.height = 104;
+    const cx = profCanvas.getContext('2d');
+    cx.clearRect(0, 0, profCanvas.width, profCanvas.height);
+    if (typeof drawVerticalProfile === 'function') drawVerticalProfile(cx, 0, 0, profCanvas.width, profCanvas.height);
+  };
+  // Show TOC/TOD markers on the map while the flight plan is open.
+  window.showProfile = true;
+  draw();
+
   const scrollArea = document.createElement('div');
   scrollArea.className = 'fp-scroll';
   box.appendChild(scrollArea);
 
+  // Active comm frequency per leg (read-only) — departure airfield primary +
+  // comm-change notes, carried forward until the next change (see core.js
+  // routeFreqSources/legActiveFreq). Recomputed in refresh() once the comm
+  // catalog loads, so the first leg from an airfield shows its tower freq.
+  let freqSources = typeof routeFreqSources === 'function' ? routeFreqSources() : [];
+  const depIsAirfield = state.waypoints && state.waypoints[0] &&
+    typeof isAirport === 'function' && isAirport(state.waypoints[0]);
+  const freqActive = freqSources.length > 0 || depIsAirfield;
+  const freqCells = [];        // forward leg index -> freq cell
+  const rFreqCells = [];       // return rows -> { cell, ri }
+  const legFreqText = i => (typeof legActiveFreq === 'function' ? legActiveFreq(i, freqSources) : '');
+
   const table = document.createElement('table');
   table.className = 'flight-table';
-  const headers = S.fpHeaders;
+  // # .. DME, [Freq], delete. Freq is inserted before the delete column when
+  // the route has comm-change frequencies; VOR cols stay at fixed idx 11/12.
+  const headers = (S.fpHeaders || []).slice(0, 13);
+  if (freqActive) headers.push(S.fpFreq || 'Freq');
+  headers.push('');                     // delete-button column (no header)
+  const buildHeadRow = trEl => {
+    headers.forEach((h, idx) => {
+      const th = document.createElement('th');
+      th.textContent = h;
+      if (idx === 11 || idx === 12) th.classList.add('fp-vor-col');
+      if (freqActive && idx === 13) th.classList.add('fp-freq-col');
+      trEl.appendChild(th);
+    });
+  };
   const thead = document.createElement('thead');
   const trH = document.createElement('tr');
-  headers.forEach((h, idx) => {
-    const th = document.createElement('th');
-    th.textContent = h;
-    if (idx === headers.length - 3 || idx === headers.length - 2) th.classList.add('fp-vor-col');
-    trH.appendChild(th);
-  });
+  buildHeadRow(trH);
   thead.appendChild(trH);
   table.appendChild(thead);
 
@@ -1427,6 +1918,8 @@ function showFlightPlan() {
         draw();
         refresh();
         if (retRefresh) retRefresh();
+        // Keep an open leg inspector in sync with the edit (#672 follow-up).
+        if (state.selected && typeof showInspector === 'function') showInspector();
       }
       else inp.value = leg.flightSpeed;   // invalid — restore the real value
     });
@@ -1446,6 +1939,7 @@ function showFlightPlan() {
       draw();
       refresh();
       if (retRefresh) retRefresh();
+      if (state.selected && typeof showInspector === 'function') showInspector();
     });
     altInputs[i] = altCell.querySelector('.plan-num');
     altInputs[i].placeholder = legAltitudePlaceholder(leg, 'inboundAltitude');
@@ -1471,9 +1965,18 @@ function showFlightPlan() {
     dmeCells[i] = dmeCell;
     dmeCell.classList.add('fp-vor-col');
     tr.appendChild(dmeCell);
-    // Delete-leg button — removes the "To" waypoint and this leg, then
-    // reconnects the route. The refreshFlightPlan callback detects the
-    // leg-count change and rebuilds the modal.
+    if (freqActive) {
+      const freqCell = planCell(legFreqText(i));
+      freqCell.classList.add('fp-freq-col');
+      freqCells[i] = freqCell;
+      tr.appendChild(freqCell);
+    }
+    // Delete-leg button — drops this leg and one of its endpoint waypoints,
+    // then reconnects the route. The first leg removes the departure (its
+    // "From") so peeling legs off the front trims the start (A-B-C-D → B-C-D →
+    // C-D); every other leg removes its "To", so the last leg removes the
+    // destination. The refreshFlightPlan callback detects the leg-count change
+    // and rebuilds the modal.
     (function (idx) {
       const delTd = document.createElement('td');
       delTd.className = 'fp-del';
@@ -1483,7 +1986,7 @@ function showFlightPlan() {
       delBtn.title = S.fpDelTitle || 'Delete leg';
       delBtn.onclick = function () {
         if (state.waypoints.length < 2) return;
-        state.waypoints.splice(idx + 1, 1);
+        state.waypoints.splice(idx === 0 ? 0 : idx + 1, 1);
         state.legs.splice(idx, 1);
         syncLegs();
         state.selected = null;
@@ -1518,6 +2021,7 @@ function showFlightPlan() {
   trF.appendChild(totCumFuelCell);
   const totRadial = planCell(''); totRadial.classList.add('fp-vor-col'); trF.appendChild(totRadial);
   const totDme = planCell(''); totDme.classList.add('fp-vor-col'); trF.appendChild(totDme);
+  if (freqActive) { const tf2 = planCell(''); tf2.classList.add('fp-freq-col'); trF.appendChild(tf2); }
   trF.appendChild(planCell(''));        // Delete column (empty)
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
@@ -1531,6 +2035,10 @@ function showFlightPlan() {
     const ac = aircraft;
     const taxiFuel = ac && ac.taxiGal && isAirport(state.waypoints[0]) ? ac.taxiGal : 0;
     if (taxiFuel) tf = taxiFuel;
+    // Per-leg time/fuel accounting for climb & descent (#672); falls back to
+    // flat cruise per leg when the profile engine is unavailable.
+    const prof = typeof routeProfile === 'function' ? routeProfile(ac) : null;
+    if (typeof drawProfileStripIfOpen === 'function') drawProfileStripIfOpen();
     for (let i = 0; i < state.legs.length; i++) {
       const A = state.waypoints[i], B = state.waypoints[i + 1];
       if (!A || !B) continue;
@@ -1542,12 +2050,13 @@ function showFlightPlan() {
         radialCells[i].textContent = rc[0];
         dmeCells[i].textContent = rc[1];
       }
-      const dur = state.legs[i].flightSpeed > 0 ? dist / state.legs[i].flightSpeed : 0;
+      const dur = prof && prof.legs[i] ? prof.legs[i].timeH
+        : (state.legs[i].flightSpeed > 0 ? dist / state.legs[i].flightSpeed : 0);
       td += dist;
       th += dur;
       timeCells[i].textContent = dur > 0 ? toHMS(dur) : '--';
       if (ac) {
-        const fuel = dur * ac.gph;
+        const fuel = prof && prof.legs[i] ? prof.legs[i].fuel : dur * ac.gph;
         tf += fuel;
         const mark = i === 0 && taxiFuel;
         fuelCells[i].textContent = (mark ? fuel + taxiFuel : fuel).toFixed(1) + (mark ? ' *' : '');
@@ -1580,6 +2089,12 @@ function showFlightPlan() {
     totFuelCell.textContent = ac ? tf.toFixed(1) : '--';
     totCumTimeCell.textContent = totTimeCell.textContent;
     totCumFuelCell.textContent = totFuelCell.textContent;
+    if (freqActive) {
+      freqSources = typeof routeFreqSources === 'function' ? routeFreqSources() : freqSources;
+      for (let i = 0; i < freqCells.length; i++) {
+        if (freqCells[i]) freqCells[i].textContent = legFreqText(i);
+      }
+    }
   }
   refresh();
   scrollArea.appendChild(table);
@@ -1596,12 +2111,7 @@ function showFlightPlan() {
     rtable.className = 'flight-table';
     const rthead = document.createElement('thead');
     const rtrH = document.createElement('tr');
-    headers.forEach((h, idx) => {
-      const th = document.createElement('th');
-      th.textContent = h;
-      if (idx === headers.length - 3 || idx === headers.length - 2) th.classList.add('fp-vor-col');
-      rtrH.appendChild(th);
-    });
+    buildHeadRow(rtrH);
     rthead.appendChild(rtrH);
     rtable.appendChild(rthead);
 
@@ -1640,6 +2150,7 @@ function showFlightPlan() {
           draw();
           refresh();
           retRefresh();
+          if (state.selected && typeof showInspector === 'function') showInspector();
         }
         else inp.value = leg.outboundSpeed;
       });
@@ -1659,6 +2170,7 @@ function showFlightPlan() {
         draw();
         refresh();
         retRefresh();
+        if (state.selected && typeof showInspector === 'function') showInspector();
       });
       rAltInputs[i] = altCell.querySelector('.plan-num');
       rAltInputs[i].placeholder = legAltitudePlaceholder(leg, 'outboundAltitude');
@@ -1684,6 +2196,12 @@ function showFlightPlan() {
       rDmeCells[i] = dmeCell;
       dmeCell.classList.add('fp-vor-col');
       tr.appendChild(dmeCell);
+      if (freqActive) {
+        const freqCell = planCell(legFreqText(ri));
+        freqCell.classList.add('fp-freq-col');
+        rFreqCells.push({ cell: freqCell, ri });
+        tr.appendChild(freqCell);
+      }
       tr.appendChild(planCell(''));        // Delete column (empty — forward table only)
       rtbody.appendChild(tr);
     }
@@ -1709,6 +2227,7 @@ function showFlightPlan() {
     rtrF.appendChild(rTotCumFuelCell);
     const rTotRadial = planCell(''); rTotRadial.classList.add('fp-vor-col'); rtrF.appendChild(rTotRadial);
     const rTotDme = planCell(''); rTotDme.classList.add('fp-vor-col'); rtrF.appendChild(rTotDme);
+    if (freqActive) { const rtf = planCell(''); rtf.classList.add('fp-freq-col'); rtrF.appendChild(rtf); }
     rtrF.appendChild(planCell(''));        // Delete column (empty)
     rtfoot.appendChild(rtrF);
     rtable.appendChild(rtfoot);
@@ -1759,6 +2278,7 @@ function showFlightPlan() {
       rTotFuelCell.textContent = aircraft ? tf.toFixed(1) : '--';
       rTotCumTimeCell.textContent = rTotTimeCell.textContent;
       rTotCumFuelCell.textContent = rTotFuelCell.textContent;
+      for (const rc of rFreqCells) if (rc.cell) rc.cell.textContent = legFreqText(rc.ri);
     };
     retRefresh();
     scrollArea.appendChild(rtable);
@@ -1814,6 +2334,112 @@ function showFlightPlan() {
     URL.revokeObjectURL(a.href);
   }
 
+  // #674 \u2014 kneeboard nav-log: open a clean, print-ready document (header +
+  // per-leg table(s) + frequency list) in a new window and trigger print, so
+  // the pilot saves a PDF via the browser. Renders Hebrew RTL natively.
+  function exportNavLog() {
+    if (state.waypoints.length < 2) { alert(S.errNeedWps); return; }
+    const esc = s => String(s == null ? '' : s)
+      .replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+    const lang = (window.__navLang === 'he') ? 'he' : 'en';
+    const dir = lang === 'he' ? 'rtl' : 'ltr';
+    const dep = esc(wpLabel(0));
+    const dest = esc(wpLabel(state.waypoints.length - 1));
+
+    // Per-leg table(s): clone the live flight-plan tables, freeze inputs to
+    // their current values, and drop the delete column.
+    const tablesHtml = Array.from(scrollArea.querySelectorAll('.flight-table')).map(t => {
+      const clone = t.cloneNode(true);
+      clone.querySelectorAll('input, select').forEach(el => {
+        const span = document.createElement('span');
+        span.textContent = el.value || '';
+        el.replaceWith(span);
+      });
+      clone.querySelectorAll('.fp-del').forEach(el => el.remove());
+      // The delete column has no .fp-del marker in the header / Total rows —
+      // it's just an empty trailing cell. Drop it so the table has no stray
+      // box on the far side (tbody delete cells were removed above).
+      const headRow = clone.querySelector('thead tr');
+      if (headRow && headRow.lastElementChild &&
+          !headRow.lastElementChild.textContent.trim()) headRow.lastElementChild.remove();
+      clone.querySelectorAll('tfoot tr').forEach(tr => {
+        if (tr.lastElementChild && !tr.lastElementChild.textContent.trim()) {
+          tr.lastElementChild.remove();
+        }
+      });
+      return clone.outerHTML;
+    }).join('<div class="nl-gap"></div>');
+
+    // Frequency list from comm-change callout notes on the route.
+    const freqs = (state.notes || []).filter(n => n && n.cc).map(n => {
+      const wp = esc((typeof navName === 'function' ? navName(n.cc) : n.cc) || n.cc);
+      const cs = n.freqName ? ' \u2014 ' + esc(n.freqName) : '';
+      const f = n.freq ? ' \u2014 ' + esc(n.freq) + ' MHz' : '';
+      return '<li>' + wp + cs + f + '</li>';
+    }).join('');
+
+    // Airport frequency block (tower/primary + clearance + ATIS) for the
+    // departure and arrival airfields.
+    const airfieldFreqHtml = (wp, headLabel) => {
+      const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
+      if (!af) return '';
+      const items = [];
+      const primary = typeof airfieldPrimaryText === 'function' ? airfieldPrimaryText(af) : '';
+      if (primary) items.push('<li>' + esc(S.primary || 'Primary') + ' — ' + esc(primary) + '</li>');
+      const clr = typeof airfieldClearanceText === 'function' ? airfieldClearanceText(af) : '';
+      if (clr) items.push('<li>' + esc(S.clearance || 'Clearance') + ' — ' + esc(clr) + '</li>');
+      const atis = typeof airfieldAtisText === 'function' ? airfieldAtisText(af) : '';
+      if (atis) items.push('<li>' + esc(S.atis || 'ATIS') + ' — ' + esc(atis) + '</li>');
+      if (!items.length) return '';
+      return '<h2>' + headLabel + '</h2><ul>' + items.join('') + '</ul>';
+    };
+    const lastIdx = state.waypoints.length - 1;
+    let depFreqHtml = airfieldFreqHtml(state.waypoints[0],
+      dep + ' — ' + esc(S.navLogDepFreqs || 'Departure frequencies'));
+    if (lastIdx > 0) {
+      depFreqHtml += airfieldFreqHtml(state.waypoints[lastIdx],
+        dest + ' — ' + esc(S.navLogArrFreqs || 'Arrival frequencies'));
+    }
+
+    const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: 8, taxiGal: 1.1 };
+    const today = new Date().toISOString().slice(0, 10);
+    const title = (S.navLogTitle || 'NavAid \u2014 Nav Log') + ' \u00b7 ' + dep + ' \u2192 ' + dest;
+
+    const html =
+      '<!DOCTYPE html><html lang="' + lang + '" dir="' + dir + '"><head>' +
+      '<meta charset="utf-8"><title>' + esc(title) + '</title><style>' +
+      '@page{size:A4 portrait;margin:12mm}' +
+      'body{font:13px/1.4 system-ui,Arial,sans-serif;color:#111;margin:0}' +
+      'h1{font-size:18px;margin:0 0 2px}.nl-sub{color:#555;margin:0 0 10px}' +
+      '.nl-meta{margin:0 0 12px}.nl-meta b{display:inline-block;min-width:110px}' +
+      'table{border-collapse:collapse;width:100%;font-size:12px}' +
+      'th,td{border:1px solid #999;padding:3px 5px;text-align:' +
+        (dir === 'rtl' ? 'right' : 'left') + '}' +
+      'thead th{background:#eee}.nl-gap{height:14px}' +
+      'h2{font-size:14px;margin:16px 0 4px}ul{margin:4px 0;padding-inline-start:18px}' +
+      '</style></head><body>' +
+      '<h1>' + esc(S.navLogTitle || 'NavAid \u2014 Nav Log') + '</h1>' +
+      '<p class="nl-sub">' + dep + ' \u2192 ' + dest + '</p>' +
+      '<div class="nl-meta">' +
+        '<div><b>' + esc(S.navLogDate || 'Date') + ':</b> ' + today + '</div>' +
+        '<div><b>' + esc(S.tbAircraft || 'Aircraft') + ':</b> ' +
+          esc(S.tbGph || 'GPH') + ' ' + esc(ac.gph) + ' \u00b7 ' +
+          esc(S.tbTaxiGal || 'Taxi/T.O.') + ' ' + esc(ac.taxiGal) + '</div>' +
+      '</div>' +
+      depFreqHtml +
+      tablesHtml +
+      (freqs ? '<h2>' + esc(S.navLogFreqs || 'Frequencies') + '</h2><ul>' + freqs + '</ul>' : '') +
+      '</body></html>';
+
+    const w = window.open('', '_blank');
+    if (!w) { alert(S.navLogPopupBlocked || 'Allow pop-ups to export the nav log.'); return; }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { try { w.print(); } catch (e) { /* user can print manually */ } }, 300);
+  }
+
   const btns = document.createElement('div');
   btns.className = 'modal-btns';
   const printBtn = document.createElement('button');
@@ -1840,6 +2466,12 @@ function showFlightPlan() {
   csvBtn.title = S.fpCsvTitle || 'Export this flight plan as CSV';
   csvBtn.onclick = exportFlightPlanCsv;
   btns.appendChild(csvBtn);
+  const navLogBtn = document.createElement('button');
+  navLogBtn.type = 'button';
+  navLogBtn.textContent = S.tbNavLog || 'Nav log (PDF)';
+  navLogBtn.title = S.tbNavLogTitle || 'Open a printable kneeboard nav log (save as PDF)';
+  navLogBtn.onclick = exportNavLog;
+  btns.appendChild(navLogBtn);
   box.appendChild(btns);
   addModalCloseX(box, closeFlightPlan);
 
@@ -1887,6 +2519,22 @@ function showFlightPlan() {
   // navaid.fpOpen is already cleared by closeFlightPlan(); on a fresh open
   // there's nothing to remove. The redundant call lived here for a while —
   // dropping it to keep showFlightPlan() side-effect-symmetric.
+  // refresh() ran above before the modal was mounted, so the profile canvas
+  // was still disconnected and drawProfileStripIfOpen() bailed out — the
+  // strip stayed blank until the first edit. Now that `back` is in the DOM,
+  // draw it once (rAF so the canvas has its laid-out clientWidth). #672
+  if (typeof drawProfileStripIfOpen === 'function') {
+    requestAnimationFrame(drawProfileStripIfOpen);
+  }
+  // The Freq column's airfield primary needs the comm call-sign catalog; it's
+  // not loaded eagerly, so pull it (and airfields) then recompute the column so
+  // the first leg from an airfield shows its tower frequency.
+  if (freqActive && typeof loadCommChange === 'function') {
+    Promise.all([
+      loadCommChange(),
+      typeof loadAirfields === 'function' ? loadAirfields() : null,
+    ]).then(() => { if (fpOpen) { refresh(); if (typeof retRefresh === 'function') retRefresh(); } });
+  }
 }
 
 function planCell(text) {
@@ -1937,9 +2585,49 @@ function fileStamp() {
     .replace(/[-:]/g, '').replace('T', '-');
 }
 
+// Plain-language SIGMET list (clicking the corner readout). Each entry shows
+// the decoded sentence plus the raw text underneath.
+function showSigmetDecoded() {
+  if (!Array.isArray(sigmets) || !sigmets.length) return;
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  const box = document.createElement('div');
+  box.className = 'modal';
+  box.style.cssText = 'max-width:560px;max-height:80vh;overflow:auto';
+  const title = document.createElement('div');
+  title.className = 'modal-title';
+  title.textContent = S.sigmetModalTitle || 'Active SIGMETs';
+  box.appendChild(title);
+  function close() { window.removeEventListener('keydown', onEsc); back.remove(); }
+  function onEsc(e) { if (e.key === 'Escape') close(); }
+  addModalCloseX(box, close);
+  for (const s of sigmets) {
+    const item = document.createElement('div');
+    item.dir = 'ltr';                 // SIGMET text is LTR even in Hebrew mode
+    item.style.cssText = 'margin:10px 0;padding:8px;border-left:4px solid ' +
+      sigmetHazardColor(s.hazard) + ';background:rgba(255,255,255,0.04);direction:ltr;text-align:left';
+    const dec = document.createElement('div');
+    dec.style.cssText = 'font-size:13px;font-weight:600;margin-bottom:4px';
+    dec.textContent = decodeSigmet(s);
+    item.appendChild(dec);
+    if (s.raw) {
+      const raw = document.createElement('div');
+      raw.style.cssText = 'font:11px/1.4 monospace;color:#b9b3b3;white-space:pre-wrap';
+      raw.textContent = (S.sigmetRaw || 'Raw') + ': ' + s.raw;
+      item.appendChild(raw);
+    }
+    box.appendChild(item);
+  }
+  back.appendChild(box);
+  document.body.appendChild(back);
+  back.addEventListener('mousedown', e => { if (e.target === back) close(); });
+  window.addEventListener('keydown', onEsc);
+}
+
 // Show a pre-export modal so the user can decide which overlays and base
 // layer appear in the PNG, independently of the current screen settings.
 function showExportModal() {
+  if (!aircraft && typeof loadAircraft === 'function') loadAircraft();   // for the plan card's Fuel column
   const back = document.createElement('div');
   back.className = 'modal-back';
   const box = document.createElement('div');
@@ -2033,6 +2721,61 @@ function showExportModal() {
   afLabel.appendChild(document.createTextNode(S.exportShowAirfields));
   body.appendChild(afLabel);
 
+  // Place flight-plan table on the export (#378). Drag it on the live map.
+  const planLabel = document.createElement('label');
+  planLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
+  planLabel.title = S.exportPlanPlaceTitle || '';
+  const planCb = document.createElement('input');
+  planCb.type = 'checkbox';
+  planCb.id = 'export-plan-cb';
+  planCb.checked = false;
+  planCb.disabled = !pageSize;                 // needs a page frame to anchor
+  planLabel.appendChild(planCb);
+  planLabel.appendChild(document.createTextNode(
+    pageSize ? S.exportPlanPlace : (S.exportPlanNoFrame || S.exportPlanPlace)));
+  body.appendChild(planLabel);
+
+  // Reference VOR selector — drives the plan card's Radial / DME columns and
+  // shares the global `vorRef` (pre-selects whatever was chosen on the map;
+  // changing it here updates the map overlay too).
+  const vorRow = document.createElement('div');
+  vorRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px';
+  const vorLbl = document.createElement('span');
+  vorLbl.textContent = (S.fpVorLabel || 'VOR') + ':';
+  vorRow.appendChild(vorLbl);
+  const vorSel = document.createElement('select');
+  vorSel.id = 'export-vor-select';
+  vorSel.style.cssText = 'font:inherit;font-size:12px;flex:1';
+  function fillExportVorSelect() {
+    vorSel.innerHTML = '';
+    const none = document.createElement('option');
+    none.value = ''; none.textContent = S.vorRefNone || '— none —';
+    vorSel.appendChild(none);
+    for (const v of (vors || [])) {
+      const opt = document.createElement('option');
+      opt.value = v.ident;
+      opt.textContent = v.ident + ' · ' + v.name;
+      vorSel.appendChild(opt);
+    }
+    vorSel.value = vorRef || '';
+  }
+  fillExportVorSelect();
+  if (vors === null && typeof loadVors === 'function') {
+    loadVors().then(() => { fillExportVorSelect(); draw(); });
+  }
+  vorSel.onchange = function () {
+    window.vorRef = vorSel.value || null;
+    try {
+      if (vorRef) localStorage.setItem('navaid.vorRef', vorRef);
+      else localStorage.removeItem('navaid.vorRef');
+    } catch (e) { /* */ }
+    const tbVor = document.getElementById('vor-ref-select');   // keep the toolbar in sync
+    if (tbVor) tbVor.value = vorRef || '';
+    draw();
+  };
+  vorRow.appendChild(vorSel);
+  body.appendChild(vorRow);
+
   // Layer selector.
   const layerRow = document.createElement('div');
   layerRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px';
@@ -2040,6 +2783,7 @@ function showExportModal() {
   layerLbl.textContent = S.exportLayer;
   layerRow.appendChild(layerLbl);
   const layerSel = document.createElement('select');
+  layerSel.id = 'export-layer-select';
   layerSel.style.cssText = 'font:inherit;font-size:12px;flex:1';
   for (const name in layers) {
     if (NavAid.localChartTiles && LOCAL_ONLY_LAYERS.has(name)) continue;
@@ -2134,6 +2878,7 @@ function showExportModal() {
     }
     mapOpacity = origMapOpacity;
     applyMapOpacity();
+    window.planCard = null;            // drop the placed card (export already captured it)
     draw();
   }
 
@@ -2158,6 +2903,85 @@ function showExportModal() {
     showAirfields = afCb.checked;
     draw();
   };
+
+  // Flight-plan card placement: toggle + drag on the live map.
+  window.planCard = null;                              // fresh each open
+  planCb.onchange = function () {
+    const fr0 = pageFrameRect();
+    if (planCb.checked) {
+      window.planCard = fr0 ? { x: fr0.x + 14, y: fr0.y + 14, scale: 1 } : { x: 40, y: 40, scale: 1 };
+    } else {
+      window.planCard = null;
+    }
+    // Open up the backdrop so the card can be dragged on the live map.
+    back.classList.toggle('export-place', planCb.checked);
+    draw();
+    // Default the card to ~70% of the frame width: small enough to drag in
+    // BOTH directions (a full-width card can only move up/down), large enough
+    // to read. The corner grip resizes it from there.
+    if (planCard && fr0 && planCardRect) {
+      const target = fr0.w * 0.7;
+      if (planCardRect.w > target) {
+        planCard.scale = Math.max(0.4, planCard.scale * target / planCardRect.w);
+        planCard.x = fr0.x + 14; planCard.y = fr0.y + 14;
+        draw();
+      }
+    }
+  };
+  // Drag the card inside the page frame. Listens on the map container so it
+  // works over the route overlay; map panning is suspended while dragging.
+  const mapEl = map.getContainer();
+  let cardDrag = null;
+  function cardDown(e) {
+    if (!planCard || !planCardRect) return;
+    const pt = map.mouseEventToContainerPoint(e);
+    // Bottom-right grip → resize; elsewhere inside the card → move.
+    if (typeof planCardOnGrip === 'function' && planCardOnGrip(pt.x, pt.y)) {
+      cardDrag = { resize: true, baseW1: planCardRect.w / (planCard.scale || 1) };
+      if (map.dragging) map.dragging.disable();
+      e.preventDefault(); e.stopPropagation();
+      return;
+    }
+    const r = planCardRect;
+    if (pt.x < r.x || pt.x > r.x + r.w || pt.y < r.y || pt.y > r.y + r.h) return;
+    cardDrag = { dx: pt.x - planCard.x, dy: pt.y - planCard.y };
+    if (map.dragging) map.dragging.disable();
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  function cardMove(e) {
+    if (!cardDrag || !planCard) return;
+    const pt = map.mouseEventToContainerPoint(e);
+    if (cardDrag.resize) {
+      // Scale ∝ rendered width; clamp to a sane range.
+      planCard.scale = Math.max(0.15, Math.min(6, (pt.x - planCard.x) / cardDrag.baseW1));
+      draw();
+      return;
+    }
+    let nx = pt.x - cardDrag.dx, ny = pt.y - cardDrag.dy;
+    const fr0 = pageFrameRect();
+    const cw = planCardRect ? planCardRect.w : 0, ch = planCardRect ? planCardRect.h : 0;
+    if (fr0) {
+      nx = Math.max(fr0.x, Math.min(fr0.x + fr0.w - cw, nx));
+      ny = Math.max(fr0.y, Math.min(fr0.y + fr0.h - ch, ny));
+    }
+    planCard.x = nx; planCard.y = ny;
+    draw();
+  }
+  function cardUp() {
+    if (!cardDrag) return;
+    cardDrag = null;
+    if (map.dragging) map.dragging.enable();
+  }
+  mapEl.addEventListener('mousedown', cardDown, true);
+  window.addEventListener('mousemove', cardMove, true);
+  window.addEventListener('mouseup', cardUp, true);
+  function removeCardDrag() {
+    mapEl.removeEventListener('mousedown', cardDown, true);
+    window.removeEventListener('mousemove', cardMove, true);
+    window.removeEventListener('mouseup', cardUp, true);
+    if (cardDrag && map.dragging) map.dragging.enable();
+  }
   layerSel.onchange = function () {
     const chosen = layerSel.value;
     for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
@@ -2171,7 +2995,7 @@ function showExportModal() {
     applyMapOpacity();
   };
 
-  function close() { window.removeEventListener('keydown', onEsc); back.remove(); }
+  function close() { removeCardDrag(); window.removeEventListener('keydown', onEsc); back.remove(); }
   function onEsc(e) { if (e.key === 'Escape') { restoreOrig(); close(); } }
 
   exportBtn.onclick = () => {
@@ -2409,6 +3233,7 @@ function exportPNG() {
       drawLegs();
       drawWaypoints();
       drawNotes();
+      drawPlanCard();        // flight-plan card placed in the export modal (#378)
       o.restore();
     } finally {
       octx = prevOctx;
@@ -2891,6 +3716,7 @@ function restoreRoute() {
     outboundSpeed: l.outboundSpeed != null ? l.outboundSpeed : l.flightSpeed,
     inLabel:  _normalizeLegLabel(l.inLabel,  legacyAS),
     outLabel: _normalizeLegLabel(l.outLabel, legacyAS),
+    ...(encodeWind(l.wind) ? { wind: encodeWind(l.wind) } : {}),
   }));
   state.notes = d.notes.map(n => ({
     lat: r5(n.lat), lng: r5(n.lng),
@@ -2901,6 +3727,8 @@ function restoreRoute() {
     ...(n.freqAuto === true ? { freqAuto: true } : {}),
   }));
   state.commChangeSuppressions = storedCommChangeSuppressions(d);
+  state.wind = storedWind(d);
+  if (typeof window.refreshWindInputs === 'function') window.refreshWindInputs();
   syncLegs();
   return true;
 }
@@ -3035,6 +3863,8 @@ function createDraggableModal(titleText, className, onClose, options = {}) {
 
   const title = document.createElement('div');
   title.className = 'modal-title';
+  if (options.titleDir) title.dir = options.titleDir;
+  if (options.titleBidi) title.style.unicodeBidi = options.titleBidi;
   title.textContent = titleText || '';
   box.appendChild(title);
 
@@ -3130,8 +3960,37 @@ function renderFreqTable(freqSection) {
       return key && usedIds.has(key);
     })
     .sort((a, b) => (a.label || a.id).localeCompare(b.label || b.id));
-  const hasOverride = opts.some(o => !!o.overrideFreq);
-  restoreAll.disabled = !hasOverride;
+  // Reverse map: call-sign id (key) -> airfield ICAO, so an airfield-primary
+  // call sign reads with the airport's ICAO code + "Primary" label (consistent
+  // with that airport's Clearance / ATIS rows below) instead of its own code.
+  const idToIcao = {};
+  if (typeof AIRFIELD_CALL_SIGN_IDS === 'object' && AIRFIELD_CALL_SIGN_IDS) {
+    for (const [icao, csId] of Object.entries(AIRFIELD_CALL_SIGN_IDS)) {
+      if (!csId) continue;
+      idToIcao[typeof commCallSignIdKey === 'function' ? commCallSignIdKey(csId) : String(csId).toUpperCase()] = icao;
+    }
+  }
+  // Airfield clearance / ATIS frequencies — one row per labelled numeric part.
+  const afList = (typeof airfields !== 'undefined' && Array.isArray(airfields)) ? airfields : [];
+  const afFreqRows = [];
+  for (const af of afList) {
+    for (const fld of [['clearance', S.clearance || 'Clearance'], ['atis', S.atis || 'ATIS']]) {
+      const parts = typeof airfieldFieldParts === 'function' ? airfieldFieldParts(af, fld[0]) : [];
+      for (const part of parts) afFreqRows.push({ af, flabel: fld[1], part });
+    }
+  }
+  // VOR frequencies (one editable row each).
+  const vorList = (typeof vors !== 'undefined' && Array.isArray(vors)) ? vors : [];
+  const vorFreqRows = vorList.map(v => ({
+    v,
+    def: typeof freqClean === 'function' ? freqClean(v.freq) : String(v.freq || ''),
+    get overridden() { return !!(typeof vorFreqOverrides === 'function' && vorFreqOverrides()[v.ident]); },
+  }));
+  const updateRestoreAll = () => {
+    restoreAll.disabled = !(opts.some(o => !!o.overrideFreq) ||
+      afFreqRows.some(r => r.part.overridden) || vorFreqRows.some(r => r.overridden));
+  };
+  updateRestoreAll();
   restoreAll.onclick = e => {
     e.preventDefault();
     if (typeof commResetAllCallSignFreqOverrides === 'function') {
@@ -3143,11 +4002,13 @@ function renderFreqTable(freqSection) {
         }
       }
     }
+    try { localStorage.removeItem('navaid.airfieldFreqOverrides'); } catch (err) { /* ignore */ }
+    try { localStorage.removeItem('navaid.vorFreqOverrides'); } catch (err) { /* ignore */ }
     renderFreqTable(freqSection);
     afterFreqTableEdit();
   };
 
-  if (!opts.length) {
+  if (!opts.length && !afFreqRows.length && !vorFreqRows.length) {
     const empty = document.createElement('p');
     empty.className = 'charts-freq-empty';
     empty.textContent = S.freqTableEmpty || 'No frequency catalog available';
@@ -3188,8 +4049,13 @@ function renderFreqTable(freqSection) {
   for (const opt of opts) {
     const tr = document.createElement('tr');
     tr.className = opt.overrideFreq ? 'overridden' : '';
+    // Airfield-primary call signs show the airport ICAO as their code, so the
+    // same airport reads consistently with its Clearance / ATIS rows (LLHZ),
+    // not two codes (HERZLIYA vs LLHZ).
+    const optKey = typeof commCallSignIdKey === 'function' ? commCallSignIdKey(opt.id) : String(opt.id || '').toUpperCase();
+    const optIcao = idToIcao[optKey] || '';
     const searchText = [
-      opt.id,
+      opt.id, optIcao,
       opt.label,
       opt.templateFreq,
       opt.freq,
@@ -3202,10 +4068,11 @@ function renderFreqTable(freqSection) {
     label.className = 'charts-freq-label';
     label.textContent = opt.label || opt.id;
     name.appendChild(label);
-    if (opt.label && opt.label !== opt.id) {
+    const codeText = optIcao || ((opt.label && opt.label !== opt.id) ? opt.id : '');
+    if (codeText) {
       const code = document.createElement('span');
       code.className = 'charts-freq-code';
-      code.textContent = opt.id;
+      code.textContent = codeText;
       name.appendChild(code);
     }
     const template = document.createElement('td');
@@ -3232,6 +4099,8 @@ function renderFreqTable(freqSection) {
         ? commNormalizeFreqInput(inp.value) : String(inp.value || '').trim();
       const invalid = normalized === null;
       inp.classList.toggle('invalid', invalid);
+      inp.classList.toggle('is-default',
+        !invalid && !!opt.templateFreq && (normalized || '') === opt.templateFreq);
       inp.setAttribute('aria-invalid', invalid ? 'true' : 'false');
       if (reset) reset.disabled = !opt.templateFreq || (!opt.overrideFreq && !invalid);
       return normalized;
@@ -3243,10 +4112,19 @@ function renderFreqTable(freqSection) {
     inp.addEventListener('change', () => {
       const normalized = syncFreqInputValidity();
       if (normalized === null) return;
+      let eff = normalized;
       if (typeof commApplyCallSignFreqOverride === 'function') {
-        inp.value = commApplyCallSignFreqOverride(opt.id, normalized) || normalized || inp.value;
+        eff = commApplyCallSignFreqOverride(opt.id, normalized) || normalized || inp.value;
       }
-      renderFreqTable(freqSection);
+      inp.value = eff;
+      // Update this row in place rather than rebuilding the whole table — a full
+      // re-render destroys the focused input and scrolls back to the first row.
+      opt.freq = eff;
+      opt.overrideFreq = typeof commCallSignOverrideFreq === 'function'
+        ? commCallSignOverrideFreq(opt.id) : (eff !== opt.templateFreq ? eff : '');
+      tr.classList.toggle('overridden', !!opt.overrideFreq);
+      syncFreqInputValidity();
+      updateRestoreAll();
       afterFreqTableEdit();
     });
     local.appendChild(inp);
@@ -3265,7 +4143,13 @@ function renderFreqTable(freqSection) {
       } else if (opt.templateFreq && typeof commApplyCallSignFreqOverride === 'function') {
         commApplyCallSignFreqOverride(opt.id, opt.templateFreq);
       }
-      renderFreqTable(freqSection);
+      // Update in place (keep scroll position) — no full table rebuild.
+      opt.overrideFreq = '';
+      opt.freq = opt.templateFreq || '';
+      inp.value = opt.templateFreq || '';
+      tr.classList.remove('overridden');
+      syncFreqInputValidity();
+      updateRestoreAll();
       afterFreqTableEdit();
     }
     // pointerdown handles pointer activation; click handles keyboard. Suppress
@@ -3284,6 +4168,143 @@ function renderFreqTable(freqSection) {
       if (!reset.disabled) resetTableFreq();
     };
     actions.appendChild(reset);
+    syncFreqInputValidity();
+    tr.append(name, template, local, actions);
+    tbody.appendChild(tr);
+  }
+  // Airfield clearance / ATIS rows (editable numeric parts).
+  for (const r of afFreqRows) {
+    const part = r.part;
+    const tr = document.createElement('tr');
+    tr.className = part.overridden ? 'overridden' : '';
+    const partName = (part.label ? ' ' + part.label : '');
+    tr.dataset.search = [r.af.name, r.af.en, r.af.he, r.flabel, part.label, part.freq, part.def]
+      .filter(Boolean).join(' ').toLocaleLowerCase();
+    const name = document.createElement('td');
+    const label = document.createElement('span');
+    label.className = 'charts-freq-label';
+    label.textContent = r.flabel + partName;
+    name.appendChild(label);
+    const code = document.createElement('span');
+    code.className = 'charts-freq-code';
+    code.textContent = r.af.name;
+    name.appendChild(code);
+    const template = document.createElement('td');
+    template.className = 'charts-freq-template';
+    template.textContent = part.def || '';
+    const local = document.createElement('td');
+    const inp = document.createElement('input');
+    inp.className = 'charts-freq-input';
+    inp.dir = 'ltr';
+    if (typeof commConfigureFreqInput === 'function') commConfigureFreqInput(inp);
+    else { inp.type = 'number'; inp.inputMode = 'decimal'; inp.step = '0.005'; }
+    inp.value = part.freq || part.def || '';
+    const actions = document.createElement('td');
+    actions.className = 'charts-freq-actions';
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'commchange-freq-reset';
+    reset.textContent = '↻';
+    reset.title = S.resetFreqOverride || S.sliderReset || 'Reset to default';
+    const normOf = () => (typeof commNormalizeFreqInput === 'function'
+      ? commNormalizeFreqInput(inp.value) : String(inp.value || '').trim());
+    function syncAf() {
+      const n = normOf();
+      const invalid = n === null;
+      inp.classList.toggle('invalid', invalid);
+      inp.classList.toggle('is-default', !invalid && !!part.def && (n || '') === part.def);
+      inp.setAttribute('aria-invalid', invalid ? 'true' : 'false');
+      reset.disabled = !part.def || (!part.overridden && !invalid);
+    }
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } });
+    inp.addEventListener('input', syncAf);
+    inp.addEventListener('change', () => {
+      const n = normOf();
+      if (n === null) { syncAf(); return; }
+      setAirfieldFreqOverride(part.key, n === part.def ? '' : n);
+      part.freq = n; part.overridden = n !== part.def;
+      inp.value = n;
+      tr.classList.toggle('overridden', part.overridden);
+      syncAf(); updateRestoreAll(); afterFreqTableEdit();
+    });
+    reset.onclick = e => {
+      e.preventDefault();
+      if (reset.disabled) return;
+      setAirfieldFreqOverride(part.key, '');
+      part.freq = part.def; part.overridden = false;
+      inp.value = part.def || '';
+      tr.classList.remove('overridden');
+      syncAf(); updateRestoreAll(); afterFreqTableEdit();
+    };
+    local.appendChild(inp);
+    actions.appendChild(reset);
+    syncAf();
+    tr.append(name, template, local, actions);
+    tbody.appendChild(tr);
+  }
+  // VOR rows (editable single frequency each).
+  for (const r of vorFreqRows) {
+    const v = r.v;
+    const tr = document.createElement('tr');
+    tr.className = r.overridden ? 'overridden' : '';
+    tr.dataset.search = [v.ident, v.name, v.he, 'vor', r.def].filter(Boolean).join(' ').toLocaleLowerCase();
+    const name = document.createElement('td');
+    const label = document.createElement('span');
+    label.className = 'charts-freq-label';
+    label.textContent = (v.name || v.ident) + ' VOR';
+    name.appendChild(label);
+    const code = document.createElement('span');
+    code.className = 'charts-freq-code';
+    code.textContent = v.ident;
+    name.appendChild(code);
+    const template = document.createElement('td');
+    template.className = 'charts-freq-template';
+    template.textContent = r.def || '';
+    const local = document.createElement('td');
+    const inp = document.createElement('input');
+    inp.className = 'charts-freq-input';
+    inp.dir = 'ltr';
+    if (typeof vorConfigureFreqInput === 'function') vorConfigureFreqInput(inp);
+    else { inp.type = 'number'; inp.inputMode = 'decimal'; inp.step = '0.05'; }
+    inp.value = (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : r.def) || r.def || '';
+    const actions = document.createElement('td');
+    actions.className = 'charts-freq-actions';
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'commchange-freq-reset';
+    reset.textContent = '↻';
+    reset.title = S.resetFreqOverride || S.sliderReset || 'Reset to default';
+    const normOf = () => (typeof vorNormalizeFreqInput === 'function'
+      ? vorNormalizeFreqInput(inp.value) : String(inp.value || '').trim());
+    function syncVor() {
+      const n = normOf();
+      const invalid = n === null;
+      inp.classList.toggle('invalid', invalid);
+      inp.classList.toggle('is-default', !invalid && !!r.def && (n || '') === r.def);
+      inp.setAttribute('aria-invalid', invalid ? 'true' : 'false');
+      reset.disabled = !r.def || (!r.overridden && !invalid);
+    }
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } });
+    inp.addEventListener('input', syncVor);
+    inp.addEventListener('change', () => {
+      const n = normOf();
+      if (n === null) { syncVor(); return; }
+      if (typeof setVorFreqOverride === 'function') setVorFreqOverride(v.ident, n === r.def ? '' : n);
+      inp.value = n;
+      tr.classList.toggle('overridden', r.overridden);
+      syncVor(); updateRestoreAll(); afterFreqTableEdit();
+    });
+    reset.onclick = e => {
+      e.preventDefault();
+      if (reset.disabled) return;
+      if (typeof setVorFreqOverride === 'function') setVorFreqOverride(v.ident, '');
+      inp.value = r.def || '';
+      tr.classList.remove('overridden');
+      syncVor(); updateRestoreAll(); afterFreqTableEdit();
+    };
+    local.appendChild(inp);
+    actions.appendChild(reset);
+    syncVor();
     tr.append(name, template, local, actions);
     tbody.appendChild(tr);
   }
@@ -3326,7 +4347,12 @@ function showFreqTableModal() {
   const loadingFreq = document.createElement('p');
   loadingFreq.textContent = '…';
   freqSection.appendChild(loadingFreq);
-  loadCommChange().then(() => renderFreqTable(freqSection));
+  // Load the catalog + airfields + VORs so the table can list every frequency.
+  Promise.all([
+    loadCommChange(),
+    typeof loadAirfields === 'function' ? loadAirfields() : null,
+    typeof loadVors === 'function' ? loadVors() : null,
+  ]).then(() => renderFreqTable(freqSection));
   scrollArea.appendChild(body);
   modal.box.appendChild(scrollArea);
   modal.show();
@@ -3483,17 +4509,38 @@ function altitudePairCellPlaceholder(segment, key) {
     : (S.altPairsUnknown || 'Unknown');
 }
 
-function updateAltitudePairRowState(tr, segment, statusCell, inputs) {
+function altitudePairCellMatchesOrigin(segment, key) {
+  const origin = legAltitudeOriginSegment(segment);
+  if (!origin) return false;
+  const current = segment[key];
+  const original = origin[key];
+  if (current === null || original === null) return current === original;
+  return Number.isFinite(current) && Number.isFinite(original) &&
+    Math.round(current) === Math.round(original);
+}
+
+function updateAltitudePairRowState(tr, segment, statusCell, inputs, resetButton,
+  directionResetButtons) {
   normalizeAltitudePairSegment(segment);
+  const origin = legAltitudeOriginSegment(segment);
   tr.classList.toggle('one-way', segment.oneWay === true);
   tr.classList.toggle('unknown',
     segment.inboundAltitude === null && segment.outboundAltitude === null);
+  tr.classList.toggle('overridden', legAltitudePairDiffersFromOrigin(segment));
   if (statusCell) statusCell.textContent = altitudePairStatus(segment);
   if (inputs) {
     for (const input of inputs) {
+      const key = input.dataset.altKey;
+      const matchesOrigin = altitudePairCellMatchesOrigin(segment, key);
       input.placeholder = altitudePairCellPlaceholder(segment, input.dataset.altKey);
+      input.value = Number.isFinite(segment[input.dataset.altKey])
+        ? String(segment[input.dataset.altKey]) : '';
+      input.classList.toggle('is-default', matchesOrigin);
+      const directionReset = directionResetButtons && directionResetButtons[key];
+      if (directionReset) directionReset.disabled = !origin || matchesOrigin;
     }
   }
+  if (resetButton) resetButton.disabled = !legAltitudePairDiffersFromOrigin(segment);
   const fromAlt = formatAltitudePairValue(segment, 'inboundAltitude');
   const toAlt = formatAltitudePairValue(segment, 'outboundAltitude');
   const distance = Number.isFinite(segment.distanceNm)
@@ -3525,6 +4572,32 @@ function altitudePairNumberInput(segment, key) {
       ? (S.altPairsInbound || 'From to')
       : (S.altPairsOutbound || 'To from')) + ' ' + segment.from + ' ' + segment.to);
   return input;
+}
+
+function altitudePairResetButton(className, title) {
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.className = className;
+  reset.textContent = '↻';
+  reset.title = title;
+  reset.setAttribute('aria-label', title);
+  return reset;
+}
+
+function wireAltitudePairResetButton(reset, resetFn) {
+  let pointerHandled = false;
+  reset.onpointerdown = e => {
+    if (reset.disabled) return;
+    e.preventDefault();
+    e.stopPropagation();
+    pointerHandled = true;
+    resetFn();
+  };
+  reset.onclick = e => {
+    e.preventDefault();
+    if (pointerHandled) { pointerHandled = false; return; }
+    if (!reset.disabled) resetFn();
+  };
 }
 
 var altitudePairFocusLayer = null;
@@ -3663,15 +4736,27 @@ function renderAltitudePairsTable(altSection, opts) {
   table.className = 'flight-table charts-alt-table';
   const thead = document.createElement('thead');
   const headRow = document.createElement('tr');
-  for (const label of [
-    S.altPairsPair || 'Pair',
-    S.altPairsInbound || 'From → to',
-    S.altPairsOutbound || 'To → from',
-    S.altPairsStatus || 'Status',
-    S.altPairsDistance || 'NM',
+  for (const col of [
+    { label: S.altPairsPair || 'Pair' },
+    {
+      label: S.altPairsInbound || 'From → to',
+      title: S.altPairsInboundTitle || 'Altitude in the pair direction',
+    },
+    {
+      label: S.altPairsOutbound || 'To → from',
+      title: S.altPairsOutboundTitle || 'Altitude in the reverse direction',
+    },
+    { label: S.altPairsStatus || 'Status' },
+    { label: S.altPairsDistance || 'NM' },
+    { label: '', title: S.altPairsRevertOrigin || 'Revert to origin' },
   ]) {
     const th = document.createElement('th');
-    th.textContent = label;
+    th.textContent = col.label;
+    if (!col.label) th.className = 'charts-alt-actions';
+    if (col.title) {
+      th.title = col.title;
+      th.setAttribute('aria-label', col.title);
+    }
     headRow.appendChild(th);
   }
   thead.appendChild(headRow);
@@ -3705,22 +4790,51 @@ function renderAltitudePairsTable(altSection, opts) {
     pair.appendChild(pairButton);
     const inbound = document.createElement('td');
     const inboundInput = altitudePairNumberInput(segment, 'inboundAltitude');
-    inbound.appendChild(inboundInput);
+    const inboundReset = altitudePairResetButton(
+      'commchange-freq-reset charts-alt-cell-reset',
+      S.altPairsRevertDirection || S.altPairsRevertOrigin || 'Revert this direction to origin');
+    const inboundControl = document.createElement('div');
+    inboundControl.className = 'charts-alt-cell-control';
+    inboundControl.append(inboundInput, inboundReset);
+    inbound.appendChild(inboundControl);
     const outbound = document.createElement('td');
     const outboundInput = altitudePairNumberInput(segment, 'outboundAltitude');
-    outbound.appendChild(outboundInput);
+    const outboundReset = altitudePairResetButton(
+      'commchange-freq-reset charts-alt-cell-reset',
+      S.altPairsRevertDirection || S.altPairsRevertOrigin || 'Revert this direction to origin');
+    const outboundControl = document.createElement('div');
+    outboundControl.className = 'charts-alt-cell-control';
+    outboundControl.append(outboundInput, outboundReset);
+    outbound.appendChild(outboundControl);
     const statusCell = document.createElement('td');
     statusCell.className = 'charts-alt-status';
     const distCell = document.createElement('td');
     distCell.className = 'charts-alt-distance';
     distCell.textContent = distance;
-    tr.append(pair, inbound, outbound, statusCell, distCell);
+    const actions = document.createElement('td');
+    actions.className = 'charts-alt-actions';
+    const reset = altitudePairResetButton('commchange-freq-reset charts-alt-reset',
+      S.altPairsRevertOrigin || 'Revert to origin');
+    actions.appendChild(reset);
+    tr.append(pair, inbound, outbound, statusCell, distCell, actions);
     const inputs = [inboundInput, outboundInput];
+    const directionResetButtons = {
+      inboundAltitude: inboundReset,
+      outboundAltitude: outboundReset,
+    };
+    const syncPairEdit = () => {
+      updateAltitudePairRowState(tr, segment, statusCell, inputs, reset, directionResetButtons);
+      applySearchFilter();
+      applyLegAltitudesToRoute();
+      draw();
+      if (state.selected) showInspector();
+      if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
+    };
     const commitInput = input => {
       const raw = input.value.trim();
       if (!raw) {
         input.setAttribute('aria-invalid', 'false');
-        segment[input.dataset.altKey] = null;
+        setLegAltitudePairValue(segment, input.dataset.altKey, null);
       } else {
         const next = Number(raw);
         if (!Number.isFinite(next)) {
@@ -3728,17 +4842,31 @@ function renderAltitudePairsTable(altSection, opts) {
           return;
         }
         input.setAttribute('aria-invalid', 'false');
-        segment[input.dataset.altKey] = Math.round(next);
+        setLegAltitudePairValue(segment, input.dataset.altKey, next);
         input.value = String(segment[input.dataset.altKey]);
       }
-      updateAltitudePairRowState(tr, segment, statusCell, inputs);
-      applySearchFilter();
+      syncPairEdit();
+    };
+    const resetAltitudePairDirection = key => {
+      const origin = legAltitudeOriginSegment(segment);
+      if (!origin) return;
+      setLegAltitudePairValue(segment, key, origin[key]);
+      syncPairEdit();
     };
     for (const input of inputs) {
       input.addEventListener('change', () => commitInput(input));
       input.addEventListener('blur', () => commitInput(input));
     }
-    updateAltitudePairRowState(tr, segment, statusCell, inputs);
+    function resetAltitudePair() {
+      restoreLegAltitudePairOrigin(segment);
+      syncPairEdit();
+    }
+    wireAltitudePairResetButton(inboundReset,
+      () => resetAltitudePairDirection('inboundAltitude'));
+    wireAltitudePairResetButton(outboundReset,
+      () => resetAltitudePairDirection('outboundAltitude'));
+    wireAltitudePairResetButton(reset, resetAltitudePair);
+    updateAltitudePairRowState(tr, segment, statusCell, inputs, reset, directionResetButtons);
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
@@ -4238,108 +5366,72 @@ function rebuildMagnifier() {
   // dots / lines drifted off the terrain whenever the map was rotated.
   const _pane = _readMagPaneMatrix();
 
-  // clone tiles at current zoom (immediate fallback)
+  // #483: Leaflet can have multiple `.leaflet-tile-container` levels visible
+  // during a zoom transition or past maxNativeZoom. Each level has its own
+  // CSS transform. We must preserve this hierarchy in the loupe, otherwise
+  // tiles from different levels drift apart.
   const tilePane = document.querySelector('.leaflet-tile-pane');
-  const tiles = tilePane ? Array.from(tilePane.querySelectorAll('img')) : [];
+  if (!tilePane) return;
+  const containers = Array.from(tilePane.querySelectorAll('.leaflet-tile-container'));
 
-  // The cloned tiles' `style.transform` is LEVEL-LOCAL: it positions each
-  // tile relative to its `.leaflet-tile-container` (the per-zoom "level"
-  // element), which itself can carry a scale+translate transform (e.g.
-  // `matrix(4,0,0,4,0,2)` at zoom past maxNativeZoom, or mid zoom-animation).
-  // When zoomed out the level matrix is identity so ignoring it was harmless,
-  // but on zoomed-in views the loupe placed tiles at their level-local pixels
-  // without the level scale — so the magnified tile image drifted away from
-  // the overlay (which is captured in container space). tileWrap therefore
-  // carries `paneMatrix · levelMatrix` to map level-local clone pixels (and
-  // the level-local hi-res tiles below) all the way into CONTAINER space.
-  let _levelMatrix = new DOMMatrixReadOnly();
-  for (const img of tiles) {
-    const lvl = img.parentElement;
-    if (!lvl) continue;
-    const lc = getComputedStyle(lvl).transform;
-    if (lc && lc !== 'none') {
-      try { _levelMatrix = new DOMMatrixReadOnly(lc); } catch (e) { /* identity */ }
-    }
-    break;
-  }
-  const _wrapM = _pane.m.multiply(_levelMatrix);
-
-  const tileWrap = document.createElement('div');
-  tileWrap.style.cssText =
-    'position:absolute;left:0;top:0;width:0;height:0;' +
-    'transform-origin:0 0;transform:' + _wrapM.toString();
-  content.appendChild(tileWrap);
-
-  for (const img of tiles) {
-    const c = img.cloneNode(true);
-    c.style.visibility = 'visible';
-    tileWrap.appendChild(c);
-  }
-
-  // Adaptive hi-res overlay. Two independent dials decide the target tile
-  // zoom:
-  //   1. Slider — `ceil(log2(magnifierZoom))` keeps the optimal pixel-density
-  //      match the slider used to provide on its own.
-  //   2. Baseline — `MAG_BASELINE_Z` (=12) is the zoom at which Israeli VFR
-  //      chart labels become legible. Flooring at this value means a country-
-  //      wide z=8 view still surfaces airfield / waypoint names inside the
-  //      loupe, which the pre-adaptive code did not — the loupe just blew
-  //      z=8 source up to 2× and showed no extra detail.
-  // Clamped to the layer's `maxNativeZoom` (anything beyond just 404s) and
-  // to `MAG_MAX_EXP` so the per-rebuild sub-tile grid stays bounded.
-  //
-  // The CSS scale on the loupe content is `magnifierZoom` (the slider),
-  // independent of `sub`. Hi-res tiles (CSS size `256/sub`) therefore
-  // display at `(256/sub) * slider` screen px — slightly downsampled
-  // from native (by `sub / slider`), but still vastly crisper than
-  // upscaling the cloned base tiles by `slider`. That's what makes z=12
-  // labels legible inside the loupe at low base zoom.
-  //
-  // Fetch is centred on the cursor (not "subdivide every clone in the
-  // pane") so the tile count stays bounded by the loupe area instead of
-  // the viewport area. `updateMagnifier` schedules a refetch whenever the
-  // cursor drifts past one loupe radius, so dragging the cursor across
-  // the map updates the crisp area too.
   let activeLayer = null;
   for (const key in layers) {
     if (map.hasLayer(layers[key])) { activeLayer = layers[key]; break; }
   }
 
-  // Pick the first cloned tile with a known tile coord + transform as the
-  // coordinate-system anchor. Hi-res tiles are positioned relative to it,
-  // which sidesteps having to recompute Leaflet's tile-container origin
-  // (see commit 41fd620 — world-pixel coords are catastrophically wrong).
-  //
-  // We read the tile coords from Leaflet's `_tiles` cache (the `coords`
-  // property is the authoritative {x, y, z} for the tile, independent of
-  // the URL template's slot order). The previous URL-parsing approach
-  // assumed `{z}/{x}/{y}` and silently swapped on Satellite (Esri uses
-  // `{z}/{y}/{x}`, see core.js layers['Satellite']) — every hi-res
-  // request 404'd and the loupe stayed blurry on that base layer.
   let refX = null, refY = null, refZ = null;
   let refLocalX = 0, refLocalY = 0;
+  let refTileWrap = null;
+  let refWrapM = null;
+
+  const coordsBySrc = new Map();
   if (activeLayer) {
     const tileCache = activeLayer._tiles || {};
-    // Build a src→coords lookup from the live tile cache so we can resolve
-    // each cloned <img> back to its authoritative {x,y,z} without trusting
-    // the URL slot order.
-    const coordsBySrc = new Map();
     for (const k in tileCache) {
       const t = tileCache[k];
       if (t && t.el && t.el.src && t.coords) coordsBySrc.set(t.el.src, t.coords);
     }
-    for (const img of tiles) {
-      if (!img.src) continue;
-      const coords = coordsBySrc.get(img.src);
-      if (!coords) continue;
-      const trStr = img.style.transform;
-      if (!trStr) continue;
-      let mat;
-      try { mat = new DOMMatrixReadOnly(trStr); } catch (e) { continue; }
-      refZ = coords.z; refX = coords.x; refY = coords.y;
-      refLocalX = mat.is2D ? mat.e : mat.m41;
-      refLocalY = mat.is2D ? mat.f : mat.m42;
-      break;
+  }
+
+  for (const container of containers) {
+    const lc = getComputedStyle(container).transform;
+    let _levelMatrix = new DOMMatrixReadOnly();
+    if (lc && lc !== 'none') {
+      try { _levelMatrix = new DOMMatrixReadOnly(lc); } catch (e) { /* identity */ }
+    }
+    const _wrapM = _pane.m.multiply(_levelMatrix);
+
+    const tileWrap = document.createElement('div');
+    tileWrap.style.cssText =
+      'position:absolute;left:0;top:0;width:0;height:0;' +
+      'transform-origin:0 0;transform:' + _wrapM.toString();
+    content.appendChild(tileWrap);
+
+    const imgs = Array.from(container.querySelectorAll('img'));
+    for (const img of imgs) {
+      const c = img.cloneNode(true);
+      c.style.visibility = 'visible';
+      tileWrap.appendChild(c);
+
+      // Pick the reference tile for hi-res positioning from the most relevant
+      // level (ideally the one matching the map's current zoom).
+      if (activeLayer && img.src) {
+        const coords = coordsBySrc.get(img.src);
+        if (coords) {
+          const trStr = img.style.transform;
+          let mat;
+          try { mat = new DOMMatrixReadOnly(trStr); } catch (e) { continue; }
+          const isBetter = refZ === null ||
+            Math.abs(coords.z - map.getZoom()) < Math.abs(refZ - map.getZoom());
+          if (isBetter) {
+            refZ = coords.z; refX = coords.x; refY = coords.y;
+            refLocalX = mat.is2D ? mat.e : mat.m41;
+            refLocalY = mat.is2D ? mat.f : mat.m42;
+            refWrapM = _wrapM;
+            refTileWrap = tileWrap;
+          }
+        }
+      }
     }
   }
 
@@ -4347,13 +5439,8 @@ function rebuildMagnifier() {
   // rationale.) `sub` below is the orthogonal hi-res tile zoom step.
   _magScale = Math.max(1, magnifierZoom);
 
-  // Inverse of the combined pane·level matrix maps a CONTAINER point back
-  // into the LEVEL-LOCAL space the cloned tiles (and refLocalX/Y) live in —
-  // needed to centre the hi-res fetch on the cursor regardless of bearing or
-  // level scale.
-  const _paneInv = _wrapM.inverse();
-
-  if (activeLayer && refZ !== null) {
+  if (activeLayer && refZ !== null && refTileWrap) {
+    const _paneInv = refWrapM.inverse();
     const maxNZ = activeLayer.options.maxNativeZoom ||
                   activeLayer.options.maxZoom || 19;
     const subs = activeLayer.options.subdomains || 'abc';
@@ -4454,7 +5541,7 @@ function rebuildMagnifier() {
             if (tile.naturalWidth === 0) tile.remove();
             onSettle({ target: tile });
           }
-          tileWrap.appendChild(tile);
+          refTileWrap.appendChild(tile);
         }
       }
     }
@@ -4623,9 +5710,11 @@ function toggleMagnifier() {
     rebuildMagnifier();
     mag.style.left = (_magX - magCenter()) + 'px'; mag.style.top = (_magY - magCenter()) + 'px';
     applyMagnifierTransform();
+    map.dragging.disable();
     document.addEventListener('mousemove', updateMagnifier);
     document.addEventListener('click', onMagClick, true);
   } else {
+    map.dragging.enable();
     document.removeEventListener('mousemove', updateMagnifier);
     document.removeEventListener('click', onMagClick, true);
     if (_magRAF) { cancelAnimationFrame(_magRAF); _magRAF = null; }
@@ -4724,6 +5813,61 @@ map.on('move zoom moveend zoomend rotate layeradd', () => {
   _magDirty = true;
   scheduleMagRebuild();
 });
+
+// --- Simulator live aircraft (issue #691) ----------------------------
+let _simInterval = null;
+// Status element is set by ui.js via window._simStatusEl after DOM is ready.
+
+function _simSetStatus(ok) {
+  const el = window._simStatusEl || null;
+  if (!el) return;
+  el.textContent = ok ? (S.tbSimStatusOk || '✅ Connected')
+                      : (S.tbSimStatusErr || '⚠ No data');
+  el.style.color = ok ? '#2ecc71' : '#e67e22';
+}
+
+async function _simFetch() {
+  try {
+    const url = (typeof simUrl === 'string' && simUrl.trim()) || 'http://localhost:2020';
+    const res = await fetch(url, { signal: AbortSignal.timeout(900) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    if (typeof d.latitude !== 'number' || typeof d.longitude !== 'number') throw new Error('bad data');
+    window.simAircraft = {
+      lat: d.latitude,
+      lng: d.longitude,
+      alt: d.altitude || 0,
+      hdg: d.heading || 0,
+      ias: d.ias || 0,
+    };
+    _simSetStatus(true);
+    if (simFollow) map.setView([window.simAircraft.lat, window.simAircraft.lng], map.getZoom());
+    draw();
+  } catch (e) {
+    _simSetStatus(false);
+  }
+}
+
+function simStart() {
+  if (_simInterval) return;
+  simOn = true;
+  window.simAircraft = null;
+  try { localStorage.setItem('navaid.simOn', '1'); } catch (e) { /* */ }
+  _simFetch();
+  _simInterval = setInterval(_simFetch, 1000);
+}
+
+function simStop() {
+  simOn = false;
+  window.simAircraft = null;
+  if (_simInterval) { clearInterval(_simInterval); _simInterval = null; }
+  try { localStorage.setItem('navaid.simOn', '0'); } catch (e) { /* */ }
+  const _el = window._simStatusEl;
+  if (_el) _el.textContent = '';
+  draw();
+}
+window.simStart = simStart;
+window.simStop  = simStop;
 
 // --- Toolbar button handler — copy share URL to clipboard. ------------
 function shareRoute() {

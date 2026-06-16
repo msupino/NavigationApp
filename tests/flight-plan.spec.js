@@ -491,7 +491,7 @@ test.describe('Flight plan', () => {
     await expect(toInp).toHaveValue(displayName('FRDIS'));
   });
 
-  test('delete first leg removes waypoint 1 and reconnects', async ({ page }) => {
+  test('delete first leg removes the departure waypoint and reconnects', async ({ page }) => {
     await page.locator('#plan').click();
     const modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();
@@ -500,13 +500,11 @@ test.describe('Flight plan', () => {
     await fwdRows.nth(0).locator('.fp-del button').click();
 
     await expect(fwdRows).toHaveCount(9);
-    // Now waypoint 0 was the first in the route — waypoint 1 (BAZRA) was removed.
-    // Leg 0 connects LLHZ (idx 0) → DEROR (old idx 2, now idx 1)
-    // Actually: delete leg 0 removes waypoint[1] = BAZRA.
-    // Leg 0 becomes LLHZ(0) → DEROR(1)
+    // Deleting the first leg removes the departure (its "From") = LLHZ, so
+    // peeling legs off the front trims the start. Leg 0 is now BAZRA → DEROR.
     const fromInp = fwdRows.nth(0).locator('td').nth(1).locator('input');
     const toInp   = fwdRows.nth(0).locator('td').nth(2).locator('input');
-    await expect(fromInp).toHaveValue(displayName('LLHZ'));
+    await expect(fromInp).toHaveValue(displayName('BAZRA'));
     await expect(toInp).toHaveValue(displayName('DEROR'));
   });
 

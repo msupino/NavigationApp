@@ -171,7 +171,7 @@ test.describe('Flight-plan modal table print', () => {
     const modal = await openFlightPlan(page);
     const buttons = await modal.locator('.modal-btns button').evaluateAll(btns =>
       btns.map(btn => btn.textContent.trim()));
-    expect(buttons).toEqual(['Print', 'CSV']);
+    expect(buttons).toEqual(['Print', 'CSV', 'Nav log (PDF)']);
 
     const downloadPromise = page.waitForEvent('download');
     await modal.locator('.modal-btns button', { hasText: 'CSV' }).click();
@@ -201,7 +201,7 @@ test.describe('Flight-plan modal table print', () => {
     expect(csv.charCodeAt(0)).toBe(0xfeff);
     expect(csv).toContain('תכנית טיסה');
     expect(csv).toContain('כיוון');
-    expect(csv).toContain('מרחק (NM)');
+    expect(csv).toContain('מרחק (מ״י)');
     expect(csv).not.toContain('◊');
     expect(csv).not.toContain('¬∞');
   });

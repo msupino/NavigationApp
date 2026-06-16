@@ -54,11 +54,11 @@ test.describe('#218 — Show/pin label relabel', () => {
 // #238 — toolbar section order.
 // ---------------------------------------------------------------------------
 test.describe('#238 — toolbar section order', () => {
-  test('sections render in order: build, view, display, charts, export, print', async ({ page }) => {
+  test('sections render in order: build, view, display, charts, export, sim, print', async ({ page }) => {
     await boot(page);
     const order = await page.locator('#toolbar .tb-section').evaluateAll(els =>
       els.map(el => el.getAttribute('data-sec')));
-    expect(order).toEqual(['build', 'view', 'display', 'charts', 'export', 'print']);
+    expect(order).toEqual(['build', 'view', 'display', 'charts', 'export', 'sim', 'print']);
   });
 });
 
@@ -111,7 +111,7 @@ test.describe('#252 — Print Waypoint Names + Map Opacity in export modal', () 
     await page.locator('.modal-back').waitFor();
 
     const checkboxLabels = page.locator('.modal label:has(input[type="checkbox"])');
-    expect(await checkboxLabels.count()).toBe(5);
+    expect(await checkboxLabels.count()).toBe(6);
     const labelText = await checkboxLabels.allTextContents();
     expect(labelText).toEqual(expect.arrayContaining([
       expect.stringMatching(/waypoint names/i),
@@ -119,6 +119,7 @@ test.describe('#252 — Print Waypoint Names + Map Opacity in export modal', () 
       expect.stringMatching(/cumulative time/i),
       expect.stringMatching(/navigation waypoints/i),
       expect.stringMatching(/airfields/i),
+      expect.stringMatching(/flight plan/i),
     ]));
 
     await expect(page.locator('.modal label:has(input[type="checkbox"])', {

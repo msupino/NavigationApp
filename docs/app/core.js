@@ -173,6 +173,26 @@ NavAid.tuningDefaults = {
   reportBadgeFontPx: { value: 9, min: 4, max: 24, step: 1, label: 'Reporting badge text size' },
   reportBadgeColor: { value: '#d63b3b', type: 'color', label: 'Reporting badge fill' },
   reportBadgeTextColor: { value: '#ffffff', type: 'color', label: 'Reporting badge text color' },
+
+  inspectorDefaultTopPx: { value: 84, min: 40, max: 240, step: 1, label: 'Inspector default top' },
+  inspectorBottomGapPx: { value: 12, min: 0, max: 120, step: 1, label: 'Inspector bottom gap' },
+  zuluClockMinWidthPx: { value: 82, min: 40, max: 180, step: 1, label: 'Zulu clock min width' },
+  zuluClockPadYPx: { value: 5, min: 0, max: 24, step: 1, label: 'Zulu clock vertical padding' },
+  zuluClockPadXPx: { value: 8, min: 0, max: 36, step: 1, label: 'Zulu clock horizontal padding' },
+  zuluClockMarginTopPx: { value: 12, min: 0, max: 80, step: 1, label: 'Zulu clock top margin' },
+  zuluClockMarginRightPx: { value: 12, min: 0, max: 80, step: 1, label: 'Zulu clock right margin' },
+  zuluClockFontPx: { value: 13, min: 8, max: 28, step: 1, label: 'Zulu clock text size' },
+  zuluClockFontWeight: { value: 800, min: 100, max: 900, step: 100, label: 'Zulu clock text weight' },
+  zuluClockLineHeight: { value: 1, min: 0.8, max: 2, step: 0.05, label: 'Zulu clock line height' },
+  zuluClockTextColor: { value: '#ffffff', type: 'color', label: 'Zulu clock text color' },
+  zuluClockBgColor: { value: '#141212', type: 'color', label: 'Zulu clock background color' },
+  zuluClockBgAlpha: { value: 0.88, min: 0, max: 1, step: 0.05, label: 'Zulu clock background alpha' },
+  zuluClockBorderColor: { value: '#3a3636', type: 'color', label: 'Zulu clock border color' },
+  zuluClockBorderWidthPx: { value: 1, min: 0, max: 8, step: 0.25, label: 'Zulu clock border width' },
+  zuluClockBorderRadiusPx: { value: 5, min: 0, max: 24, step: 1, label: 'Zulu clock border radius' },
+  zuluClockShadowYPx: { value: 2, min: 0, max: 18, step: 1, label: 'Zulu clock shadow y' },
+  zuluClockShadowBlurPx: { value: 8, min: 0, max: 36, step: 1, label: 'Zulu clock shadow blur' },
+  zuluClockShadowAlpha: { value: 0.45, min: 0, max: 1, step: 0.05, label: 'Zulu clock shadow alpha' },
 };
 // Groups are ordered to mirror the route-building workflow: the route line
 // and its per-leg annotations first, then the markers you place, then the
@@ -198,6 +218,7 @@ NavAid.tuningGroups = [
   { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs'] },
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx'] },
   { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeFontPx', 'reportBadgeColor', 'reportBadgeTextColor'] },
+  { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'kiteTextColor', 'legKiteHaloColor'] },
 ];
@@ -271,6 +292,8 @@ window.S = Object.assign({
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbShowReporting: 'Show mandatory reports',        // reporting-type overlay toggle
   tbShowReportingTitle: 'Badge waypoints that are mandatory (חובה) reporting points',
+  tbShowMsa: 'Show MSA',                            // leg-inspector minimum safe altitude row
+  tbShowMsaTitle: 'Show minimum safe altitude (terrain + 1000 ft) in the leg inspector. Planning aid only.',
   report: 'Reporting',
   reportingMandatory: '📍 Mandatory report',
   reportingOnRequest: '📍 Report on request',
@@ -288,6 +311,25 @@ window.S = Object.assign({
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
   tbRouteTemplates: '🧭 Templates',
   tbRouteTemplatesTitle: 'Build a ready-made route',
+  tbRouteLibrary: '💾 Saved routes',
+  tbRouteLibraryTitle: 'Save, load and manage your routes (stored on this device)',
+  routeLibraryTitle: 'Saved routes',
+  routeLibrarySaveCurrent: 'Save current route',
+  routeLibraryNamePlaceholder: 'Route name',
+  routeLibraryEmpty: 'No saved routes yet',
+  routeLibraryLoad: 'Load',
+  routeLibraryRename: 'Rename',
+  routeLibraryDuplicate: 'Duplicate',
+  routeLibraryDelete: 'Delete',
+  routeLibraryDeleteConfirm: 'Delete this saved route?',
+  routeLibraryReplaceConfirm: 'Replace the current route with this saved route?',
+  routeLibraryExport: 'Export library',
+  routeLibraryImport: 'Import library',
+  routeLibrarySaved: function (name) { return name + ' saved'; },
+  routeLibraryGdriveSync: 'Sync with Google Drive',
+  routeLibraryGdriveSyncing: 'Syncing…',
+  routeLibraryGdriveSynced: 'Synced with Google Drive',
+  routeLibraryGdriveError: 'Drive sync failed',
   routeTemplatesTitle: 'Route templates',
   routeTemplateRoute: 'Route',
   routeTemplateSpeed: 'Speed (kt)',
@@ -322,6 +364,23 @@ window.S = Object.assign({
   tbShowVorTitle: 'Overlay Israeli VOR/DME stations and pick a reference for radial/DME',
   vorRefLabel: 'VOR ref',
   vorRefNone: '— none —',
+  tbShowWind: 'Show wind effect',
+  tbShowWindTitle: 'Show the wind inputs, the per-leg wind arrows, and the wind-corrected readout in the leg inspector',
+  tbShowSigmet: 'Show SIGMET',
+  tbShowSigmetTitle: 'Overlay active international SIGMET hazard areas for the Israel region (source: NOAA AWC, updated periodically)',
+  sigmetReadout: function(n) { return '⚠ ' + n + ' SIGMET'; },
+  sigmetNone: 'No SIGMET in effect',
+  sigmetUpdated: function(t) { return 'SIGMET updated ' + t; },
+  sigmetReadoutClickHint: 'Click to decode',
+  sigmetModalTitle: 'Active SIGMETs',
+  sigmetRaw: 'Raw',
+  tbWindDir: 'Wind °',
+  tbWindDirTitle: 'Route-wide wind direction (degrees true, the direction the wind blows FROM)',
+  tbWindSpeed: 'Wind kt',
+  tbWindSpeedTitle: 'Route-wide wind speed in knots. 0 = calm (no wind effect)',
+  windReadout: function(dir, speed) {
+    return 'Wind ' + dir + '/' + speed;
+  },
   vorName: 'Name',
   vorFreq: 'Frequency',
   vorUseRef: 'Use as reference VOR',
@@ -335,6 +394,16 @@ window.S = Object.assign({
   primary: 'Primary',
   atis: 'ATIS',
   clearance: 'Clearance',
+  wxTitle: 'Weather (METAR / TAF)',
+  wxLoading: 'Loading weather…',
+  wxNone: 'No METAR / TAF for this field',
+  wxError: 'Weather unavailable (offline or proxy blocked)',
+  wxMetar: 'METAR',
+  wxTaf: 'TAF',
+  wxShowRaw: 'Show raw',
+  wxShowDecoded: 'Show decoded',
+  wxRefresh: 'Refresh weather',
+  wxUpdated: 'Updated',
   errInvalidAirfields: function(msg) { return 'Invalid airfields data: ' + msg; },
   errSavedRouteCorrupt: function(msg) {
     return 'Saved route could not be restored, so the original saved data was preserved. ' +
@@ -344,6 +413,12 @@ window.S = Object.assign({
   errNoLegs: 'No legs yet — drop at least two waypoints first.',
   flightPlan: 'Flight plan',
   fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time', 'Fuel (gal)', 'Cum. time', 'Cum. fuel', 'Radial', 'DME', ''],
+  fpFreq: 'Freq',
+  freqNone: 'None',
+  fpHeadersShort: ['#', 'From', 'To', 'Hdg', 'Dist', 'Spd', 'Alt', 'Time', 'Fuel'],
+  exportPlanPlace: 'Place flight plan on the map',
+  exportPlanPlaceTitle: 'Overlay the flight-plan table on the export; drag it to position it inside the page frame',
+  exportPlanNoFrame: 'Place flight plan — set an A3/A4 page first',
   fpVorLabel: 'VOR',
   fpVorRadialEmpty: '—',
   fpDel: '✕',
@@ -353,7 +428,24 @@ window.S = Object.assign({
   fpPrint: 'Print',
   fpCsv: 'CSV',
   fpCsvTitle: 'Export this flight plan as CSV',
+  tbNavLog: 'Nav log (PDF)',
+  tbNavLogTitle: 'Open a printable kneeboard nav log — save as PDF',
+  navLogTitle: 'NavAid — Nav Log',
+  navLogDate: 'Date',
+  navLogFreqs: 'Frequencies',
+  navLogDepFreqs: 'Departure frequencies',
+  navLogArrFreqs: 'Arrival frequencies',
+  navLogPopupBlocked: 'Allow pop-ups to export the nav log.',
   fpFuel: 'Fuel',
+  fpMsa: 'MSA (ft)',
+  msaLowTitle: 'Planned altitude is below the minimum safe altitude for this leg',
+  profileTitle: 'Vertical profile',
+  profileVs: 'V/S (ft/min)',
+  fpDirection: 'Direction',
+  toc: 'TOC',
+  tod: 'TOD',
+  tocTitle: 'Top of climb',
+  todTitle: 'Top of descent',
   tbAircraft: 'Aircraft',
   tbGph: 'Gallons per hour',
   tbGphTitle: 'Fuel consumption, gallons per hour',
@@ -376,8 +468,28 @@ window.S = Object.assign({
   legTitle: function(n) { return 'Leg ' + n; },
   legArrow: '→',                       // direction arrow in leg inspector title (LTR)
   speedKt: 'Speed (kt)',
+  windFromDeg: 'Wind from (°)',
+  windSpeedKt: 'Wind speed (kt)',
+  windEffect: 'With wind',
+  windEffectTitle: 'Wind-corrected magnetic heading, ground speed, wind correction angle, and leg time.',
+  windEffectText: function(hdg, gs, wca, time) {
+    return 'HDG ' + hdg + '  GS ' + gs + '  WCA ' + wca + '  ' + time;
+  },
+  windUnflyable: 'Wind exceeds true airspeed',
+  windResetTitle: 'Clear wind override (use the route wind)',
+  tbFetchWind: '⤓ Pull Wind data',
+  tbFetchWindTitle: 'Fetch a per-leg winds-aloft forecast from Open-Meteo — each leg gets its own wind at its midpoint and flight level (needs a route)',
+  windFetching: 'Fetching wind…',
+  windFetchOk: function(hpa, dir, spd) {
+    return hpa + ' hPa → ' + dir + '/' + spd;
+  },
+  windFetchOkLegs: function(n) {
+    return 'Per-leg wind set (' + n + ' leg' + (n === 1 ? '' : 's') + ')';
+  },
+  windFetchErr: 'Wind fetch failed — check connection',
   inboundAlt: 'Inbound alt (ft)',
   outboundAlt: 'Outbound alt (ft)',
+  altResetKnown: 'Reset to charted altitude',
   shape: 'Shape',
   shapeRect: 'Rectangle',
   shapeOval: 'Oval',
@@ -413,16 +525,19 @@ window.S = Object.assign({
   tbAddNoteTitle: 'Click map to drop a note (click button again to stop)',
   tbLayerLabel: 'Layer',
   tbLayerTitle: 'Base map layer',
+  tbGrpOverlays: 'Overlays',          // View sub-group headings (layout A)
+  tbGrpRouteInfo: 'Route info',
+  tbGrpSafety: 'Safety',
   tbReverse: '⇄ Reverse route (R)',
   tbReverseTitle: 'Reverse route order',
   tbUndo: '↶ Undo (Ctrl-Z)',
   tbUndoTitle: 'Undo the last edit, move or delete',
   tbClear: '🗑 Clear map (C)',
   tbClearTitle: 'Remove all waypoints and notes',
-  tbExportMenu: '⬇ Export…',
-  tbExport: '⬇ Export JSON',
-  tbExportTitle: 'Export route (JSON / GPX / PLN)',
-  tbImport: '⬆ Import JSON/GPX',
+  tbExportMenu: '⬇ Export',
+  tbExport: '⬇ JSON — NavAid route file',
+  tbExportTitle: 'Export route (JSON / GPX / PLN / FDR)',
+  tbImport: '⬆ Import JSON/GPX/PLN',
   tbImportTitle: 'Import route from JSON or GPX file',
   tbShare: '🔗 Share',
   tbShareTitle: 'Copy a shareable link to this route to the clipboard',
@@ -440,10 +555,12 @@ window.S = Object.assign({
   tbChartsTitle: 'Browse approach charts for all airfields',
   tbFly: '✈️ Open in Google Earth',
   tbFlyTitle: 'Save a Google Earth tour of the route at the planned leg altitudes',
-  tbGpxExport: '📍 Export GPX',
+  tbGpxExport: '📍 GPX — GPS track (Garmin, etc.)',
   tbGpxExportTitle: 'Export route as GPX for portable GPS units',
-  tbPlnExport: '🛩 Export PLN',
-  tbPlnExportTitle: 'Export route as a PLN flight plan for MSFS / FSX',
+  tbPlnExport: '🛩 PLN — MSFS / P3D flight plan',
+  tbPlnExportTitle: 'Export route as a PLN flight plan to fly in MSFS / Prepar3D / FSX',
+  tbFdrExport: '🎬 FDR — X-Plane replay',
+  tbFdrExportTitle: 'Export route as an X-Plane Flight Data Recorder file that replays the flight',
   tbShowReturn: 'Show return path',
   tbShowReturnTitle: 'Show return-direction (outbound) info',
   tbShowCumTime: 'Show cumulative time',
@@ -452,11 +569,13 @@ window.S = Object.assign({
   tbShowMidLegTitle: 'Show distance badge at the middle of each leg',
   tbHighlightDiff: 'Highlight alt/speed diff',
   tbHighlightDiffTitle: 'Halo legs whose altitude or speed differs from the adjacent leg',
+  tbLimitLegKites: 'Keep kites inside leg',
+  tbLimitLegKitesTitle: 'Limit dragged leg markers to the space between the leg waypoints',
   tbShowDrift: 'Show drift lines',
   tbShowDriftTitle: 'Show 10-degree drift reference lines at each leg end',
   tbShowAirfields: 'Show/pin airfields',
   tbShowAirfieldsTitle: 'Overlay published Israeli airfields (BYOP source)',
-  tbForceSnap: 'Force snap',
+  tbForceSnap: 'Snap to nearest point',
   tbForceSnapTitle: 'Always snap clicks to the nearest airfield or nav-waypoint (otherwise: 18 px radius)',
   tbShowCommChange: 'Show/Add Freq Changes',
   tbShowCommChangeTitle: 'Mark CVFR reporting points where pilots must change ATC frequency',
@@ -488,13 +607,17 @@ window.S = Object.assign({
   altPairsPair: 'Pair',
   altPairsInbound: 'From → to',
   altPairsOutbound: 'To → from',
-  altPairsStatus: 'Status',
+  altPairsInboundTitle: 'Altitude in the pair direction: first point → second point',
+  altPairsOutboundTitle: 'Altitude in the reverse direction: second point → first point',
+  altPairsStatus: 'Direction',
   altPairsDistance: 'NM',
   altPairsBlocked: 'Blocked',
   altitudeUnknown: 'Unknown',
   altPairsUnknown: 'Unknown',
   altPairsOneWay: 'One way',
   altPairsTwoWay: 'Two way',
+  altPairsRevertOrigin: 'Revert to origin',
+  altPairsRevertDirection: 'Revert this direction to origin',
   altPairsGoTo: function(from, to) { return 'Go to ' + from + ' ↔ ' + to; },
   altPairsLocationMissing: 'Pair endpoints not found',
   addFreqChange: 'Add freq change (Z)',
@@ -520,7 +643,11 @@ window.S = Object.assign({
   updateReload: 'Reload',
   updateDismiss: 'Dismiss',
   tbLightMode: 'Light mode',
-  tbLightModeTitle: 'Switch toolbar and panels to a light theme',
+  tbDarkMode: 'Dark mode',
+  tbLightModeTitle: 'Switch between light and dark theme',
+  tbClearStore: '🗑 Clear store',
+  tbClearStoreTitle: 'Delete all saved routes and settings stored on this device',
+  tbClearStoreConfirm: 'Delete ALL saved routes and settings stored on this device? This cannot be undone.',
   tbTransparency: 'Label opacity',
   tbTransparencyTitle: 'Opacity of waypoint / leg / note label backgrounds',
   tbMapOpacity: 'Map opacity',
@@ -554,14 +681,24 @@ window.S = Object.assign({
   tbSecDisplay: '👁 Display',
   tbSecPrint: '🖨 Print',
   tbSecBuild: '✏️ Edit',
-  tbSecView: '👁 View',
+  tbSecView: '👁 View/Set',
   tbSecCharts: '📋 Charts',
   tbSecExport: '📤 Export/import',
-   tbViewSource: 'GitHub',
-   tbWiki: 'Wiki',
-   tbIssues: 'Issues / Requests',
-   tbLayerSelector: 'Layer selector',
-   tbLayerSelectorTitle: 'Select base map layer with zoom controls',
+  tbSecSim: '✈ Simulator',
+  tbSimConnect: 'Connect to simulator',
+  tbSimDisconnect: 'Disconnect from simulator',
+  tbSimConnectTitle: 'Poll a local SimConnect bridge (e.g. Little NavMap) for live aircraft position',
+  tbSimIpLabel: 'Bridge URL',
+  tbSimIpTitle: 'HTTP URL of the SimConnect bridge — default http://localhost:2020',
+  tbSimFollow: 'Follow aircraft',
+  tbSimFollowTitle: 'Keep the map centred on the live aircraft position',
+  tbSimStatusOk: '✅ Connected',
+  tbSimStatusErr: '⚠ No data',
+  tbViewSource: 'GitHub',
+  tbWiki: 'Wiki',
+  tbPrivacy: 'Privacy',
+  tbTerms: 'Terms',
+  tbIssues: 'Issues / Requests',
 
   // --- Keyboard-shortcuts cheat-sheet (issue #420) --------------------
   // Opens via the toolbar '?' Help link or the '?' (Shift-/) shortcut.
@@ -628,11 +765,13 @@ const state = {
   commChangeSuppressions: [], // canonical comm-change callouts the user deleted
   mode: null,               // 'add' | 'note' | null (= inspect)
   selected: null,           // { type:'wp'|'leg'|'note', index }
+  wind: { dir: 270, speed: 0 }, // route-wide wind (#722): dir °true FROM, kt; 0 = calm
 };
 var showReturn = false;     // outbound (return) markers — off by default
 var showMidLeg = false;
 var showCumTime = true;     // cumulative-time kites — on by default
 var highlightDiff = false;  // purple halo on legs that change altitude
+var limitLegKites = true;   // keep dragged leg markers between their two waypoints
 var showNavWP = true;       // Israeli VFR reporting-point overlay (default on)
 var showReporting = false;  // mandatory reporting badges (opt-in, default off) — issue #404
 var navWP = null;           // null = not loaded yet (or last fetch failed —
@@ -642,6 +781,7 @@ var showAirfields = true;   // Israeli airfields overlay (default on)
 var showVorStations = true; // VOR/DME station overlay (default on)
 var vors = null;            // null = not loaded yet; [] or populated once fetched
 var vorRef = null;          // ident of the selected reference VOR (radial/DME source)
+var inspectorVorRef = undefined; // undefined = follow vorRef; string/'' = inspector-only ref
 var forceSnap = false;      // #106: when on, every click snaps to the
                             // absolute nearest airfield / nav-WP regardless
                             // of click distance (otherwise: 18 px radius).
@@ -667,8 +807,13 @@ var legAltitudeMap = null; // null = not loaded yet (or last fetch failed —
                                 // `FROM-TO` for automatic fresh-leg altitudes.
 var legAltitudePointIds = null; // Set of endpoint ids from the same file.
 var legAltitudeDataset = null;  // Raw validated dataset for Charts copy/view.
+var legAltitudeOriginMap = null; // Loaded JSON baseline keyed as FROM-TO.
 var legAltitudeDirectionPool = null; // Directed altitude entries, one per allowed direction.
 var showDrift = true;       // 10-degree drift reference lines
+var showWind = false;       // wind effect (#722): inputs + arrows + readout — opt-in
+var showSigmet = false;     // SIGMET hazard overlay — opt-in
+var sigmets = null;         // null = not loaded; [] or populated once fetched
+var sigmetMeta = null;      // { generatedAt } of the loaded SIGMET file
 var showWpNames = true;     // draw waypoint names (off = empty circle)
 var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 var yellowAlpha = 0.8;    // global multiplier for yellow label backgrounds (default 80%)
@@ -687,6 +832,14 @@ function legZoomScale() {   // zoom + legArrowSize → pixel multiplier for offs
 var magnifierOn = false;    // magnifying-glass toggle
 var magnifierZoom = 2;      // default zoom factor
 var magnifierSize = 400;    // magnifier diameter (px)
+
+// --- Simulator live aircraft (issue #691) ----------------------------
+// Polls a local SimConnect HTTP bridge (e.g. Little NavMap / MSFS).
+// Response JSON: { latitude, longitude, altitude, heading, ias }
+var simOn = false;                        // polling active
+var simUrl = 'http://localhost:2020';     // bridge base URL
+var simAircraft = null;                   // last received {lat,lng,alt,hdg,ias} or null
+var simFollow = false;                    // keep map centred on aircraft
 let pageSize = null;        // null | 'A3' | 'A4'
 // `var` (not `let`) so window.pageOrient writes from ui.js's boot restore
 // land on the same binding the toggle reads. Default 'portrait' since most
@@ -694,6 +847,11 @@ let pageSize = null;        // null | 'A3' | 'A4'
 var pageOrient = 'portrait';
 let pageOffset = { x: 0, y: 0 };   // page-frame drag offset from viewport centre
 var aircraft = null;               // null | {gph, taxiGal}
+// Flight-plan card placed on the PNG export (#378). null = off; otherwise
+// { x, y } top-left in container pixels. planCardRect holds the last rendered
+// bounds for hit-testing the drag.
+var planCard = null;
+var planCardRect = null;
 
 function loadAircraft() {
   try {
@@ -767,6 +925,22 @@ const newLeg = () => {
 // reporting points. 5 dp keeps full source precision while still trimming
 // IEEE-754 noise from drags and JSON imports.
 function r5(v) { return Math.round(v * 100000) / 100000; }
+const SAME_REFERENCE_POINT_DEG = 0.0002; // ~22 m at Israel lat, matches snap / overlay suppression.
+function sameMapPoint(a, b, eps = SAME_REFERENCE_POINT_DEG) {
+  return !!(a && b &&
+    Number.isFinite(a.lat) && Number.isFinite(a.lng) &&
+    Number.isFinite(b.lat) && Number.isFinite(b.lng) &&
+    Math.abs(a.lat - b.lat) < eps &&
+    Math.abs(a.lng - b.lng) < eps);
+}
+function routeWaypointAtPoint(point, skipIdx = -1, eps = SAME_REFERENCE_POINT_DEG) {
+  if (!point || !state || !Array.isArray(state.waypoints)) return -1;
+  return state.waypoints.findIndex((wp, i) =>
+    i !== skipIdx && sameMapPoint(wp, point, eps));
+}
+function routeOccupiesPoint(point, skipIdx = -1, eps = SAME_REFERENCE_POINT_DEG) {
+  return routeWaypointAtPoint(point, skipIdx, eps) !== -1;
+}
 function geo(a, b) {                   // a,b = {lat,lng} -> {dist NM, brg deg}
   const rad = d => (d * Math.PI) / 180;
   const phi1 = rad(a.lat), phi2 = rad(b.lat);
@@ -783,7 +957,223 @@ function toMagnetic(deg) {
   // Magnetic = True + magVar (so −5 means "subtract 5", i.e. 5°E variation).
   return ((Math.round(deg + magVar) % 360) + 360) % 360;
 }
+// --- wind triangle (#722) -------------------------------------------
+// Resolve the wind that applies to a leg: an explicit per-leg override (with
+// either field falling back to the route wind) beats the route-wide wind.
+// Returns null for calm (speed <= 0) so callers can skip the no-op math.
+function legWindFor(leg) {
+  const g = (state.wind && typeof state.wind === 'object') ? state.wind : null;
+  const o = (leg && leg.wind && typeof leg.wind === 'object') ? leg.wind : null;
+  const dir = o && Number.isFinite(o.dir) ? o.dir
+            : (g && Number.isFinite(g.dir) ? g.dir : null);
+  const speed = o && Number.isFinite(o.speed) ? o.speed
+              : (g && Number.isFinite(g.speed) ? g.speed : null);
+  if (!Number.isFinite(dir) || !Number.isFinite(speed) || speed <= 0) return null;
+  return { dir: ((Math.round(dir) % 360) + 360) % 360, speed: Math.round(speed) };
+}
+// Classic wind triangle. Given a true course, true airspeed, and wind
+// ({ dir °true FROM, speed kt }), returns the wind correction angle,
+// resulting true heading, and ground speed. Returns null when calm, when
+// there is no airspeed, or when a crosswind exceeds TAS (no solution — the
+// aircraft cannot hold the course).
+function windTriangle(courseTrue, tas, wind) {
+  if (!wind || !(tas > 0) || !(wind.speed > 0)) return null;
+  // Angle of the wind FROM-direction relative to the course.
+  const rel = ((wind.dir - courseTrue) * Math.PI) / 180;
+  // Crosswind component (perpendicular): positive = wind from the right →
+  // crab right (positive WCA, turn into the wind).
+  const xw = wind.speed * Math.sin(rel);
+  const sinWca = xw / tas;
+  if (Math.abs(sinWca) >= 1) return null;            // unflyable crosswind
+  const wca = Math.asin(sinWca);                     // radians (toward the wind)
+  // Headwind component: positive = headwind (subtracts from GS).
+  const head = wind.speed * Math.cos(rel);
+  const gs = tas * Math.cos(wca) - head;
+  if (!(gs > 0)) return null;                         // wind overpowers TAS
+  return {
+    wcaDeg: (wca * 180) / Math.PI,
+    hdgTrue: ((courseTrue + (wca * 180) / Math.PI) % 360 + 360) % 360,
+    gs,
+  };
+}
+// Winds-aloft level mapping (#722): Open-Meteo serves wind/temperature on
+// these pressure levels (hPa). Map a planned altitude to the nearest one so a
+// CVFR leg at ~3000 ft pulls ~900 hPa, ~5000 ft pulls ~850 hPa, etc.
+const OPEN_METEO_LEVELS_HPA =
+  [1000, 975, 950, 925, 900, 850, 800, 700, 600, 500, 400, 300, 250, 200, 150, 100, 70, 50, 30];
+function altitudeToPressureHpa(ft) {
+  const h = (Number.isFinite(ft) ? ft : 0) * 0.3048;        // metres
+  return 1013.25 * Math.pow(1 - 2.25577e-5 * h, 5.25588);   // ISA barometric
+}
+function nearestPressureLevelHpa(ft) {
+  const p = altitudeToPressureHpa(ft);
+  let best = OPEN_METEO_LEVELS_HPA[0], bd = Infinity;
+  for (const lv of OPEN_METEO_LEVELS_HPA) {
+    const d = Math.abs(lv - p);
+    if (d < bd) { bd = d; best = lv; }
+  }
+  return best;
+}
+// SIGMET hazard → colour. Codes per WMO: TS thunderstorm, TURB turbulence,
+// ICE icing, MTW mountain wave, VA volcanic ash, DS/SS dust/sand storm, TC
+// tropical cyclone. Unknown hazards fall back to the thunderstorm red.
+function sigmetHazardColor(hz) {
+  switch (String(hz || '').toUpperCase()) {
+    case 'TURB': return '#e67e22';
+    case 'ICE':  return '#1ba1e2';
+    case 'MTW':  return '#8e44ad';
+    case 'VA':   return '#7f5539';
+    case 'DS':
+    case 'SS':   return '#b8860b';
+    case 'TC':   return '#c2185b';
+    default:     return '#dd1111';   // TS + anything else (6-hex for alpha fill)
+  }
+}
+// Decode a SIGMET's coded fields into a plain-language sentence, e.g.
+// "TEL AVIV FIR — Severe Turbulence, FL080–FL180, moving SE 20 kt,
+//  valid 06:00–10:00Z". Falls back gracefully on unknown codes.
+function decodeSigmet(s) {
+  if (!s || typeof s !== 'object') return '';
+  const HAZ = {
+    TS: 'Thunderstorm', TSGR: 'Thunderstorm with hail', GR: 'Hail',
+    TURB: 'Turbulence', ICE: 'Icing', MTW: 'Mountain wave', VA: 'Volcanic ash',
+    DS: 'Duststorm', SS: 'Sandstorm', TC: 'Tropical cyclone', FC: 'Funnel cloud',
+    RDOACT: 'Radioactive cloud',
+  };
+  const QUAL = {
+    OBSC: 'Obscured', EMBD: 'Embedded', FRQ: 'Frequent', SQL: 'Squall line',
+    SEV: 'Severe', MOD: 'Moderate', ISOL: 'Isolated', OCNL: 'Occasional',
+    HVY: 'Heavy', WDSPR: 'Widespread',
+  };
+  const lvl = v => {
+    if (!Number.isFinite(v)) return null;
+    if (v <= 0) return 'SFC';
+    return 'FL' + pad3(Math.round(v / 100));   // SIGMET levels are flight levels
+  };
+  const hhmm = u => {
+    const d = new Date((Number(u) || 0) * 1000);
+    return isNaN(d.getTime()) || !u ? '' :
+      String(d.getUTCHours()).padStart(2, '0') + ':' +
+      String(d.getUTCMinutes()).padStart(2, '0') + 'Z';
+  };
+  const parts = [];
+  const q = QUAL[String(s.qualifier || '').toUpperCase()];
+  const hz = HAZ[String(s.hazard || '').toUpperCase()] || s.hazard || 'Hazard';
+  parts.push((q ? q + ' ' : '') + hz);
+  const base = lvl(s.base), top = lvl(s.top);
+  if (base || top) parts.push((base || 'SFC') + '–' + (top || '—'));
+  const dir = (s.dir === 0 || s.dir) ? String(s.dir) : '';
+  if (Number.isFinite(s.spd) && s.spd > 0) parts.push('moving ' + (dir ? dir + ' ' : '') + s.spd + ' kt');
+  else if (s.spd === 0 || (dir === '' && s.spd == null)) parts.push('stationary');
+  const from = hhmm(s.validFrom), to = hhmm(s.validTo);
+  if (from || to) parts.push('valid ' + from + '–' + to);
+  const fir = s.firName || s.firId || '';
+  return (fir ? fir + ' — ' : '') + parts.join(', ');
+}
 const pad3 = n => String(n).padStart(3, '0');
+// Strip a trailing "MHz" unit from a frequency string → "121.70 MHz" → "121.70".
+function freqClean(s) { return String(s == null ? '' : s).replace(/\s*MHz\s*$/i, '').trim(); }
+// Per-leg comm-frequency sources along the route, sorted by waypoint index:
+// each airfield's primary radio frequency (active from the leg departing it)
+// plus each comm-change note (which overrides at its waypoint). Used by the
+// flight-plan + printed-plan Freq column.
+function routeFreqSources() {
+  const out = [];
+  const wps = state.waypoints || [];
+  const legCount = (state.legs || []).length;
+  // The DEPARTURE airfield (first waypoint) contributes its frequency on the
+  // first leg; airfields merely passed overhead mid-route do not.
+  if (wps.length) {
+    const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wps[0]) : null;
+    const f = af && typeof airfieldPrimaryText === 'function' ? freqClean(airfieldPrimaryText(af)) : '';
+    if (f) out.push({ wpi: 0, freq: f });
+  }
+  // The DESTINATION airfield (last waypoint) contributes its frequency on the
+  // last leg — so if no comm-change switched to it yet, the final leg still
+  // shows the arrival airport's freq. A comm-change at the same leg overrides
+  // (notes are pushed after, so they sort last in the carry-forward).
+  if (legCount > 0 && wps.length > 1) {
+    const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wps[wps.length - 1]) : null;
+    const f = af && typeof airfieldPrimaryText === 'function' ? freqClean(airfieldPrimaryText(af)) : '';
+    if (f) out.push({ wpi: legCount - 1, freq: f });
+  }
+  for (const n of (state.notes || [])) {
+    if (!n || !n.cc) continue;
+    const wpi = typeof commCalloutWaypointIndex === 'function' ? commCalloutWaypointIndex(n) : -1;
+    const f = typeof commNoteFreq === 'function' ? commNoteFreq(n) : (n.freq || '');
+    if (wpi >= 0 && f) out.push({ wpi, freq: freqClean(f) });
+  }
+  // Sort by waypoint; comm-change notes are pushed after airfields so a note at
+  // the same waypoint sorts last and wins the carry-forward.
+  out.sort((a, b) => a.wpi - b.wpi);
+  return out;
+}
+// Active frequency for leg i: the latest source at or before the leg's start.
+function legActiveFreq(i, sources) {
+  const src = sources || routeFreqSources();
+  let f = '';
+  for (const c of src) { if (c.wpi <= i) f = c.freq; else break; }
+  return f;
+}
+
+// --- editable airfield clearance / ATIS frequencies -------------------
+// Clearance/ATIS are stored as compound strings ("Arrival 132.50 MHz /
+// Departure 132.80 MHz"). Split them into labelled numeric parts so each can
+// be edited; edits are persisted as per-airfield/field/part overrides and the
+// display string is rebuilt from the (override-aware) parts.
+function parseFreqParts(str) {
+  const out = [];
+  for (const seg of String(str == null ? '' : str).split('/')) {
+    const m = seg.match(/(\d{2,3}(?:\.\d{1,3})?)/);
+    if (!m) continue;
+    const label = seg.slice(0, m.index).replace(/[^A-Za-z֐-׿ ]+/g, ' ').trim();
+    out.push({ label, freq: freqClean(m[1]) });
+  }
+  return out;
+}
+function airfieldFreqOverrides() {
+  try { return JSON.parse(localStorage.getItem('navaid.airfieldFreqOverrides') || '{}') || {}; }
+  catch (e) { return {}; }
+}
+function setAirfieldFreqOverride(key, val) {
+  const o = airfieldFreqOverrides();
+  if (val) o[key] = val; else delete o[key];
+  try { localStorage.setItem('navaid.airfieldFreqOverrides', JSON.stringify(o)); } catch (e) { /* ignore */ }
+}
+// Override-aware labelled parts for an airfield field ('clearance' | 'atis').
+function airfieldFieldParts(af, field) {
+  if (!af || typeof af[field] !== 'string') return [];
+  const parts = parseFreqParts(af[field]);
+  const ov = airfieldFreqOverrides();
+  return parts.map((p, i) => {
+    const key = af.name + '|' + field + '|' + i;
+    const o = ov[key];
+    return { label: p.label, freq: o || p.freq, def: p.freq, key, overridden: !!o && o !== p.freq };
+  });
+}
+// Override-aware display string for an airfield field.
+function airfieldFieldText(af, field) {
+  const parts = airfieldFieldParts(af, field);
+  if (!parts.length) return af && typeof af[field] === 'string' ? af[field].trim() : '';
+  return parts.map(p => (p.label ? p.label + ' ' : '') + p.freq + ' MHz').join(' / ');
+}
+
+// --- editable VOR frequencies -----------------------------------------
+function vorFreqOverrides() {
+  try { return JSON.parse(localStorage.getItem('navaid.vorFreqOverrides') || '{}') || {}; }
+  catch (e) { return {}; }
+}
+function setVorFreqOverride(ident, val) {
+  const o = vorFreqOverrides();
+  if (val) o[ident] = val; else delete o[ident];
+  try { localStorage.setItem('navaid.vorFreqOverrides', JSON.stringify(o)); } catch (e) { /* ignore */ }
+}
+// Effective (override-aware) frequency for a VOR object.
+function vorEffectiveFreq(v) {
+  if (!v) return '';
+  const def = freqClean(v.freq);
+  return (v.ident && vorFreqOverrides()[v.ident]) || def;
+}
 function toHMS(hours) {
   const tm = hours * 60;
   let m = Math.floor(tm);
@@ -793,6 +1183,220 @@ function toHMS(hours) {
   m %= 60;
   if (h > 0) return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
   return m + ':' + String(s).padStart(2, '0');
+}
+
+// --- vertical profile: top-of-climb / top-of-descent (#672) -------------
+// Default GA climb/descent performance (C172-ish); overridable per aircraft.
+const WX_DEFAULT_PERF = { climbFpm: 500, descentFpm: 500, climbKt: 75, descentKt: 110 };
+// Field elevation at route endpoint waypoint i (airfield elev_ft) or null.
+function routeEndpointElev(i) {
+  const wp = state.waypoints[i];
+  if (!wp) return null;
+  const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
+  return af && Number.isFinite(af.elev_ft) ? af.elev_ft : null;
+}
+// Model each leg at its own planned altitude. A leg ramps gradually (at the
+// climb/descent rate, over distance — not a vertical step) from its start
+// altitude to its own altitude; the first leg climbs out of the departure
+// field, the last leg descends into the destination field. The ramp is
+// confined to the leg. TOC/TOD markers are emitted only when the departure /
+// destination is an actual airfield (has a field elevation); intermediate
+// per-leg altitude changes are drawn but not marked. Returns per-leg
+// time/fuel, altitude-vs-distance vertices (pts), and wpCum (cumulative NM at
+// each waypoint, for the distance axis).
+function routeProfile(ac) {
+  ac = ac || (typeof aircraft === 'object' && aircraft) || {};
+  // A single vertical-speed (V/S) override drives both the climb and descent
+  // ramp slope when set (the profile's V/S input); otherwise per-aircraft perf.
+  const vs = typeof window !== 'undefined' && window.profileVS > 0 ? window.profileVS : 0;
+  const climbFpm = vs > 0 ? vs : (ac.climbFpm > 0 ? ac.climbFpm : WX_DEFAULT_PERF.climbFpm);
+  const descFpm = vs > 0 ? vs : (ac.descentFpm > 0 ? ac.descentFpm : WX_DEFAULT_PERF.descentFpm);
+  const climbKt = ac.climbKt > 0 ? ac.climbKt : WX_DEFAULT_PERF.climbKt;
+  const descKt = ac.descentKt > 0 ? ac.descentKt : WX_DEFAULT_PERF.descentKt;
+  const gph = ac.gph > 0 ? ac.gph : 8;
+  const legs = state.legs || [], wps = state.waypoints || [];
+  const n = legs.length;
+  const legAlt = i => Number.isFinite(legs[i].inboundAltitude) ? legs[i].inboundAltitude : 2000;
+  // TOC/TOD are only meaningful off/onto the ground, so they're emitted solely
+  // when the departure / destination is an actual airfield (has a field elev).
+  const depElev = routeEndpointElev(0);
+  const destElev = routeEndpointElev(n);
+  const fieldStart = depElev != null ? depElev : (n ? legAlt(0) : 2000);
+  const fieldEnd = destElev != null ? destElev : (n ? legAlt(n - 1) : 2000);
+  const out = { legs: [], pts: [], tocs: [], tods: [], wpCum: [0], wpTime: [0], totalDist: 0, totalTimeH: 0, totalFuel: 0 };
+
+  // Prepass: per-leg distance + cumulative NM at each waypoint.
+  const dists = [];
+  let total = 0;
+  for (let i = 0; i < n; i++) {
+    const A = wps[i], B = wps[i + 1];
+    const d = A && B ? geo(A, B).dist : 0;
+    dists.push(d); total += d; out.wpCum.push(total);
+  }
+  out.totalDist = total;
+  if (!n) return out;
+
+  let cum = 0;
+  for (let i = 0; i < n; i++) {
+    const dist = dists[i];
+    const cr = legAlt(i);
+    const isFirst = i === 0, isLast = i === n - 1;
+    // Each leg ramps from its start altitude (field on leg 1, else the previous
+    // leg's altitude) up/down to its own altitude at the climb/descent rate, so
+    // altitude changes happen gradually over distance — not as a vertical step.
+    // The ramp is confined to the leg (capped at the leg distance).
+    const startAlt = isFirst ? fieldStart : legAlt(i - 1);
+    let climbDist = 0, descDist = 0;
+    if (cr > startAlt) climbDist = Math.min(dist, climbKt * ((cr - startAlt) / climbFpm) / 60);
+    else if (cr < startAlt) descDist = Math.min(dist, descKt * ((startAlt - cr) / descFpm) / 60);
+    // The final leg also descends to the destination field at its end.
+    let endDescDist = 0, endAlt = cr;
+    if (isLast && cr > fieldEnd) {
+      endAlt = fieldEnd;
+      endDescDist = Math.min(dist - climbDist - descDist, descKt * ((cr - fieldEnd) / descFpm) / 60);
+    }
+    const cruiseDist = Math.max(0, dist - climbDist - descDist - endDescDist);
+    const climbT = climbKt > 0 ? climbDist / climbKt : 0;
+    const descT = descKt > 0 ? (descDist + endDescDist) / descKt : 0;
+    const cruiseT = legs[i].flightSpeed > 0 ? cruiseDist / legs[i].flightSpeed : 0;
+    const timeH = climbT + cruiseT + descT;
+    const fuel = timeH * gph;
+    out.legs.push({ dist, timeH, fuel, climbDist, descDist: descDist + endDescDist, cruiseDist, startAlt, cruiseAlt: cr, endAlt });
+    // Vertices: start, ramp to cr over the start transition, hold, then (last
+    // leg) ramp down to the field at the end.
+    out.pts.push({ d: cum, alt: startAlt });
+    const trans = climbDist + descDist;
+    if (trans > 0) out.pts.push({ d: cum + trans, alt: cr });
+    if (endDescDist > 0) out.pts.push({ d: cum + dist - endDescDist, alt: cr });
+    out.pts.push({ d: cum + dist, alt: endAlt });
+    // TOC only for the first leg climbing out of a departure airfield; TOD only
+    // for the last leg descending into a destination airfield. Intermediate
+    // altitude ramps are drawn but not marked.
+    if (isFirst && depElev != null && climbDist > 0) {
+      out.tocs.push({ leg: 0, frac: dist > 0 ? climbDist / dist : 0, alt: cr });
+    }
+    if (isLast && destElev != null && endDescDist > 0) {
+      out.tods.push({ leg: i, frac: dist > 0 ? (dist - endDescDist) / dist : 1, alt: cr });
+    }
+    cum += dist; out.totalTimeH += timeH; out.totalFuel += fuel;
+    out.wpTime.push(out.totalTimeH);
+  }
+  // Drop consecutive duplicate vertices.
+  out.pts = out.pts.filter((p, i, arr) => i === 0 || p.d !== arr[i - 1].d || p.alt !== arr[i - 1].alt);
+  return out;
+}
+
+// --- airfield METAR / TAF (#670) ---------------------------------------
+// NOAA AWC's METAR/TAF API blocks browser CORS and public proxies proved
+// unreliable, so a scheduled GitHub Action fetches it server-side and
+// publishes wx.json (all Israeli fields) to the `wx-data` branch, served with
+// CORS by raw.githubusercontent.com — same pattern as the SIGMET feed. The
+// whole file is memoised 5 min; same-origin data/wx.json is the offline /
+// first-run fallback. Decoding works off AWC's structured JSON fields.
+const WX_URL = 'https://raw.githubusercontent.com/msupino/NavigationApp/wx-data/wx.json';
+var _wxFile = null;
+async function loadWxFile(force) {
+  if (!force && _wxFile && Date.now() - _wxFile.t < 5 * 60000) return _wxFile;
+  const parse = d => ({ t: Date.now(), stations: (d && d.stations) || {}, generatedAt: (d && d.generatedAt) || null });
+  try {
+    const r = await fetch(WX_URL + '?_=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    _wxFile = parse(await r.json());
+    return _wxFile;
+  } catch (e) {
+    try {
+      const r2 = await fetch('data/wx.json');
+      _wxFile = parse(await r2.json());
+    } catch (e2) {
+      _wxFile = { t: Date.now(), stations: {}, generatedAt: null, error: true };
+    }
+    return _wxFile;
+  }
+}
+async function fetchAirfieldWx(icao, force) {
+  icao = String(icao || '').toUpperCase();
+  if (!/^[A-Z]{4}$/.test(icao)) return { metar: null, taf: null, unsupported: true };
+  const file = await loadWxFile(force);
+  const st = file.stations[icao] || {};
+  return {
+    metar: st.metar || null,
+    taf: st.taf || null,
+    generatedAt: file.generatedAt,
+    error: !!file.error && !st.metar && !st.taf,
+  };
+}
+const WX_CLOUD = {
+  SKC: 'Clear', CLR: 'Clear', NSC: 'No sig cloud', NCD: 'No cloud',
+  FEW: 'Few', SCT: 'Scattered', BKN: 'Broken', OVC: 'Overcast', VV: 'Vert vis',
+};
+const WX_PHENOM = {
+  MI: 'shallow', BC: 'patches', PR: 'partial', DR: 'low drifting', BL: 'blowing',
+  SH: 'showers', TS: 'thunderstorm', FZ: 'freezing',
+  RA: 'rain', DZ: 'drizzle', SN: 'snow', SG: 'snow grains', PL: 'ice pellets',
+  GR: 'hail', GS: 'small hail', IC: 'ice crystals', UP: 'unknown precip',
+  BR: 'mist', FG: 'fog', FU: 'smoke', VA: 'volcanic ash', DU: 'dust',
+  SA: 'sand', HZ: 'haze', PY: 'spray', PO: 'dust whirls', SQ: 'squalls',
+  FC: 'funnel cloud', DS: 'duststorm', SS: 'sandstorm',
+};
+function decodeWxString(s) {
+  return String(s || '').trim().split(/\s+/).filter(Boolean).map(tok => {
+    let pre = '';
+    if (tok[0] === '-') { pre = 'light '; tok = tok.slice(1); }
+    else if (tok[0] === '+') { pre = 'heavy '; tok = tok.slice(1); }
+    if (tok.slice(0, 2) === 'VC') { pre = 'vicinity '; tok = tok.slice(2); }
+    let out = '';
+    for (let i = 0; i < tok.length; i += 2) {
+      const w = WX_PHENOM[tok.slice(i, i + 2)];
+      if (w) out += (out ? ' ' : '') + w;
+    }
+    return (pre + out).trim() || tok;
+  }).join(', ');
+}
+function wxClouds(clouds) {
+  if (!Array.isArray(clouds) || !clouds.length) return '';
+  return clouds.map(c => (WX_CLOUD[c.cover] || c.cover) +
+    (Number.isFinite(c.base) ? ' ' + c.base + ' ft' : '')).join(', ');
+}
+function wxWind(dir, spd, gst) {
+  if (spd === 0) return 'Wind calm';
+  if (spd == null && dir == null) return '';
+  const d = (dir === 'VRB' || dir == null) ? 'variable' : pad3(dir) + '°';
+  return 'Wind ' + d + ' ' + spd + ' kt' + (gst ? ' gust ' + gst : '');
+}
+// Decode a METAR from AWC's JSON object into a plain-language line.
+function decodeMetar(m) {
+  if (!m) return '';
+  const p = [];
+  const w = wxWind(m.wdir, m.wspd, m.wgst); if (w) p.push(w);
+  if (m.visib != null) p.push('Vis ' + m.visib + (/^[0-9.]+$/.test(String(m.visib)) ? ' SM' : ''));
+  if (m.wxString) p.push(decodeWxString(m.wxString));
+  const cl = wxClouds(m.clouds); if (cl) p.push(cl);
+  if (m.temp != null) p.push('Temp ' + Math.round(m.temp) + '°C' +
+    (m.dewp != null ? ' / dew ' + Math.round(m.dewp) + '°C' : ''));
+  if (m.altim != null) p.push('QNH ' + Math.round(m.altim) + (m.altim > 900 ? ' hPa' : ' inHg'));
+  return p.join(' · ');
+}
+// Decode a TAF (AWC JSON) into one decoded line per forecast period.
+function decodeTaf(t) {
+  if (!t) return [];
+  const fc = t.fcsts || t.forecast || [];
+  const hh = u => {
+    const d = new Date((Number(u) || 0) * 1000);
+    return isNaN(d.getTime()) || !u ? '' :
+      String(d.getUTCDate()).padStart(2, '0') + ' ' +
+      String(d.getUTCHours()).padStart(2, '0') + ':' +
+      String(d.getUTCMinutes()).padStart(2, '0') + 'Z';
+  };
+  return fc.map(f => {
+    const seg = [];
+    const ch = (f.fcstChange || '').toUpperCase();
+    const tag = ch === 'TEMPO' ? 'TEMPO ' : ch === 'BECMG' ? 'BECMG ' : 'From ';
+    const w = wxWind(f.wdir, f.wspd, f.wgst); if (w) seg.push(w);
+    if (f.visib != null) seg.push('Vis ' + f.visib + (/^[0-9.]+$/.test(String(f.visib)) ? ' SM' : ''));
+    if (f.wxString) seg.push(decodeWxString(f.wxString));
+    const cl = wxClouds(f.clouds); if (cl) seg.push(cl);
+    return { when: tag + hh(f.timeFrom), text: seg.join(' · ') };
+  }).filter(s => s.text);
 }
 function sameAltitudeValue(a, b) {
   return a === b || (Number.isNaN(a) && Number.isNaN(b));
@@ -1056,6 +1660,17 @@ function syncLegAltitudeDatasetDirectionPool(data) {
   if (data === legAltitudeDataset) legAltitudeDirectionPool = pool;
   return pool;
 }
+function cloneLegAltitudeOrigin(segment) {
+  return JSON.parse(JSON.stringify(segment || {}));
+}
+function resetLegAltitudeOrigins(segments) {
+  const origins = {};
+  for (const segment of segments || []) {
+    if (!segment || !segment.from || !segment.to) continue;
+    origins[legAltitudeKey(segment.from, segment.to)] = cloneLegAltitudeOrigin(segment);
+  }
+  legAltitudeOriginMap = origins;
+}
 function normalizeLegAltitudePairSegment(segment) {
   if (!segment) return;
   const nullCount = ['inboundAltitude', 'outboundAltitude']
@@ -1070,6 +1685,51 @@ function normalizeLegAltitudePairSegment(segment) {
     delete segment.oneWay;
     if (segment.status === 'unknown') segment.status = 'candidate';
   }
+}
+function syncLegAltitudeLookupSegment(segment) {
+  if (!segment || !segment.from || !segment.to || !legAltitudeMap) return;
+  const lookup = legAltitudeMap[legAltitudeKey(segment.from, segment.to)];
+  if (!lookup || lookup === segment) return;
+  lookup.from = segment.from;
+  lookup.to = segment.to;
+  lookup.distanceNm = segment.distanceNm;
+  lookup.inboundAltitude = segment.inboundAltitude;
+  lookup.outboundAltitude = segment.outboundAltitude;
+  lookup.oneWay = segment.oneWay === true;
+  lookup.status = segment.status || 'candidate';
+}
+function legAltitudeOriginSegment(segment) {
+  if (!segment || !segment.from || !segment.to || !legAltitudeOriginMap) return null;
+  return legAltitudeOriginMap[legAltitudeKey(segment.from, segment.to)] || null;
+}
+function legAltitudePairComparable(segment) {
+  if (!segment) return null;
+  return {
+    inboundAltitude: segment.inboundAltitude === null ? null :
+      (Number.isFinite(segment.inboundAltitude) ? Math.round(segment.inboundAltitude) : undefined),
+    outboundAltitude: segment.outboundAltitude === null ? null :
+      (Number.isFinite(segment.outboundAltitude) ? Math.round(segment.outboundAltitude) : undefined),
+    oneWay: segment.oneWay === true,
+    status: segment.status || '',
+  };
+}
+function legAltitudePairDiffersFromOrigin(segment) {
+  const origin = legAltitudeOriginSegment(segment);
+  if (!origin) return false;
+  return JSON.stringify(legAltitudePairComparable(segment)) !==
+    JSON.stringify(legAltitudePairComparable(origin));
+}
+function restoreLegAltitudePairOrigin(segment) {
+  const origin = legAltitudeOriginSegment(segment);
+  if (!segment || !origin) return false;
+  const before = JSON.stringify(legAltitudePairComparable(segment));
+  const restored = cloneLegAltitudeOrigin(origin);
+  for (const key of Object.keys(segment)) delete segment[key];
+  Object.assign(segment, restored);
+  normalizeLegAltitudePairSegment(segment);
+  syncLegAltitudeLookupSegment(segment);
+  syncLegAltitudeDatasetDirectionPool(legAltitudeDataset);
+  return before !== JSON.stringify(legAltitudePairComparable(segment));
 }
 function legAltitudeKnownPointName(name) {
   const raw = String(name || '').trim();
@@ -1242,6 +1902,7 @@ function setLegAltitudePairValue(segment, key, value) {
   const changed = segment[key] !== next;
   segment[key] = next;
   normalizeLegAltitudePairSegment(segment);
+  syncLegAltitudeLookupSegment(segment);
   syncLegAltitudeDatasetDirectionPool(legAltitudeDataset);
   return changed;
 }
@@ -1324,4 +1985,25 @@ function markLegAltitudeManual(i) {
 function legAllowsReturn(i) {
   const leg = state.legs[i];
   return !(leg && (leg._legAltitudeOutboundBlocked || leg._legAltitudeOneWay));
+}
+// The charted altitude for a leg as loaded from leg-altitude.json — read from
+// the pristine ORIGIN map, never the live (route-editable) lookup. The leg
+// inspector uses this for its default / reset-to-charted value so a hand-edited
+// altitude elsewhere doesn't redefine what "charted" means in the inspector.
+function legAltitudeOriginForLeg(i) {
+  if (!legAltitudeOriginMap || !state.waypoints[i] || !state.waypoints[i + 1]) return null;
+  const from = legAltitudePointAtWaypoint(state.waypoints[i]);
+  const to = legAltitudePointAtWaypoint(state.waypoints[i + 1]);
+  if (!from || !to || from === to) return null;
+  const resolve = (segment, reverse) => {
+    const inboundAltitude = reverse ? segment.outboundAltitude : segment.inboundAltitude;
+    const outboundAltitude = reverse ? segment.inboundAltitude : segment.outboundAltitude;
+    if (!Number.isFinite(inboundAltitude) && !Number.isFinite(outboundAltitude)) return null;
+    return { inboundAltitude, outboundAltitude };
+  };
+  const direct = legAltitudeOriginMap[legAltitudeKey(from, to)];
+  if (direct) { const m = resolve(direct, false); if (m) return m; }
+  const reverse = legAltitudeOriginMap[legAltitudeKey(to, from)];
+  if (reverse) { const m = resolve(reverse, true); if (m) return m; }
+  return null;
 }

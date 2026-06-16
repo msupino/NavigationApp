@@ -58,6 +58,10 @@ html, body {
   top: 12px;
   left: 12px;
   width: 240px;
+  /* Double-clicking a label/section head used to select its text — useless and
+     ugly. Inputs/textareas opt back in below. */
+  -webkit-user-select: none;
+  user-select: none;
   overflow-x: hidden;
   max-height: calc(100vh - 24px);
   max-height: calc(100dvh - 24px);       /* dynamic viewport on iOS Safari */
@@ -89,9 +93,19 @@ html, body {
   white-space: nowrap;
 }
 #toolbar button:hover { background: #3c3737; }
-#toolbar button.tool.active {
+#toolbar button.tool.active,
+#toolbar button[aria-pressed="true"] {
   background: #1d6fe0;
   border-color: #1d6fe0;
+  color: #fff;
+}
+#toolbar button.danger {
+  color: #e88;
+  border-color: #5a3a3a;
+}
+#toolbar button.danger:hover {
+  background: #c0392b;
+  border-color: #c0392b;
   color: #fff;
 }
 #toolbar .sep {
@@ -213,6 +227,24 @@ html, body {
   padding-bottom: 4px;
 }
 .tb-section.open .tb-section-body { display: flex; }
+/* Sub-group label inside a section body (layout A): thin divider + caption. */
+.tb-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #8a8484;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 5px 2px 0;
+}
+.tb-group::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #33302f;
+}
 
 #toolbar .drag-handle {
   font-size: 16px;
@@ -326,7 +358,7 @@ html, body {
   align-items: center;
   gap: 3px;
 }
-.coord-readout {
+.coord-readout, .zoom-readout {
   font: bold 11px/1 monospace;
   color: #231F20;
   background: rgba(255,255,255,0.9);
@@ -338,7 +370,35 @@ html, body {
   pointer-events: none;
   display: none;
 }
+.leaflet-control.zulu-clock {
+  display: block;
+  min-width: var(--navaid-zulu-clock-min-width, 82px);
+  padding: var(--navaid-zulu-clock-pad-y, 5px) var(--navaid-zulu-clock-pad-x, 8px);
+  margin: var(--navaid-zulu-clock-margin-top, 12px) var(--navaid-zulu-clock-margin-right, 12px) 0 0;
+  color: var(--navaid-zulu-clock-text-color, #fff);
+  background: var(--navaid-zulu-clock-bg, rgba(20, 18, 18, 0.88));
+  border: var(--navaid-zulu-clock-border, 1px solid #3a3636);
+  border-radius: var(--navaid-zulu-clock-border-radius, 5px);
+  box-shadow: var(--navaid-zulu-clock-shadow, 0 2px 8px rgba(0, 0, 0, 0.45));
+  font-family: monospace;
+  font-size: var(--navaid-zulu-clock-font-size, 13px);
+  font-weight: var(--navaid-zulu-clock-font-weight, 800);
+  line-height: var(--navaid-zulu-clock-line-height, 1);
+  letter-spacing: 0;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
 .coord-readout.show { display: block; }
+.zoom-readout {
+  display: block;
+  padding: 2px 4px;
+  margin-bottom: 2px;
+  text-align: center;
+  min-width: 34px;
+}
 .coord-readout.interactive { pointer-events: auto; cursor: pointer; }
 /* Float the readout to the LEFT of the bottom-right zoom +/- + rotate-dial
    column (~44px wide) instead of stacking under it (#526). The leaflet
@@ -351,6 +411,31 @@ html, body {
 }
 .leaflet-bottom.leaflet-right .vor-readout {
   bottom: 46px;
+}
+.leaflet-bottom.leaflet-right .wind-readout {
+  bottom: 66px;
+}
+.wind-readout {
+  color: #fff;
+  background: rgba(11, 94, 215, 0.92);   /* matches the per-leg wind arrow */
+  border-color: #0b5ed7;
+}
+.leaflet-bottom.leaflet-right .sigmet-readout { bottom: 86px; }
+.sigmet-readout {
+  color: #fff;
+  background: rgba(200, 30, 30, 0.92);
+  border-color: #a11;
+  cursor: help;
+  pointer-events: auto;
+  max-width: 220px;
+  white-space: normal;
+  direction: ltr;          /* SIGMET text is always left-to-right */
+  text-align: left;
+}
+.sigmet-readout.sigmet-none {
+  background: rgba(70, 70, 70, 0.9);
+  border-color: #777;
+  cursor: default;
 }
 .coord-readout.editing { cursor: text; }
 .coord-readout.error { border-color: #c0392b; background: rgba(231, 76, 60, 0.12); }
@@ -416,6 +501,50 @@ html, body {
   border-bottom: 14px solid #c0392b;
 }
 #rotate-needle::after {             /* grey south triangle */
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  margin-left: -7px;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 14px solid #9a9a9a;
+}
+
+/* Satellite-modal rotation dial — same look as the main map's dial. */
+.satellite-rotate-dial {
+  display: block;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #9a9a9a;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  touch-action: none;
+}
+.satellite-rotate-dial.dragging { cursor: grabbing; }
+.satellite-rotate-needle {
+  position: absolute;
+  inset: 0;
+  transform: rotate(0deg);
+}
+.satellite-rotate-needle::before {   /* red north triangle */
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  margin-left: -7px;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 14px solid #c0392b;
+}
+.satellite-rotate-needle::after {    /* grey south triangle */
   content: '';
   position: absolute;
   left: 50%;
@@ -528,13 +657,20 @@ html, body {
   padding: 2px 4px;
   text-align: center;
 }
+/* Light theme — the #id selector above outranks the .fp-aircraft input
+ * light rule, so the GPH / Taxi inputs need their own light override. */
+body.theme-light #aircraft-custom input {
+  color: #1f252c;
+  background: #fff;
+  border-color: #b8c0cc;
+}
 
 #inspector {
   position: absolute;
   z-index: 1100;
-  top: 56px;
+  top: var(--navaid-inspector-default-top, 84px);
   right: 12px;
-  width: 240px;
+  width: 280px;
   background: rgba(20, 18, 18, 0.95);
   border: 1px solid #3a3636;
   border-radius: 8px;
@@ -544,7 +680,7 @@ html, body {
   flex-direction: column;
   /* Cap to the viewport so a tall inspector (big airports with many charts)
      scrolls instead of overflowing off-screen. */
-  max-height: calc(100dvh - 68px);
+  max-height: calc(100dvh - var(--navaid-inspector-max-height-offset, 96px));
 }
 /* The header stays put; only the body scrolls. */
 #insp-body { overflow-y: auto; }
@@ -557,6 +693,7 @@ html, body {
   padding: 6px 6px 6px 12px;
   background: #2f2b2b;
   border-bottom: 1px solid #3a3636;
+  cursor: move;
 }
 #insp-title {
   flex: 1;
@@ -572,7 +709,7 @@ html, body {
   unicode-bidi: plaintext;
 }
 #insp-title::placeholder { color: #8a8484; }
-#insp-title:read-only { cursor: default; }
+#insp-title:read-only { cursor: move; }
 #insp-title.editable {
   background: #241f1f;
   border: 1px solid #5a5353;
@@ -665,6 +802,10 @@ html, body {
 }
 .row:last-child { margin-bottom: 0; }
 .row label { color: #b9b3b3; }
+/* Wind-effect readout (#722): label on its own line, value on a single
+   non-wrapping line below it (HDG/GS/WCA/time stay together). */
+.row.wind-fx-row { flex-direction: column; align-items: flex-start; gap: 2px; }
+.row.wind-fx-row .val { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .row input[type="number"],
 .row input[type="text"],
 .row select {
@@ -678,6 +819,86 @@ html, body {
   padding: 4px 6px;
 }
 .row select { cursor: pointer; }
+.vor-radial-row {
+  justify-content: flex-start;
+  gap: 10px;
+}
+.vor-radial-row label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  unicode-bidi: isolate;
+}
+.vor-radial-controls {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  gap: 6px;
+  min-width: 0;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+.vor-radial-row select {
+  width: 58px;
+}
+.row .val.vor-radial-val {
+  min-width: 92px;
+  direction: ltr;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  unicode-bidi: isolate;
+}
+/* Re-enable selection inside actual text fields (the toolbar disables it). */
+#toolbar input, #toolbar textarea,
+.row input, .row textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+/* Resettable fields still holding their default read muted, so a typed
+   override stands out (#722 follow-up). */
+.wind-fetch-status { font-size: 11px; color: #9a948f; padding: 0 2px; min-height: 14px; }
+.row input.is-default,
+.charts-alt-input.is-default,
+.charts-freq-input.is-default {
+  color: #8a8480;
+  font-style: italic;
+}
+.row input.is-default::placeholder,
+.charts-alt-input.is-default::placeholder,
+.charts-freq-input.is-default::placeholder {
+  color: #8a8480;
+  opacity: 1;
+}
+body.theme-light .row input.is-default,
+body.theme-light .charts-alt-input.is-default,
+body.theme-light .charts-freq-input.is-default {
+  color: #9aa1ab;
+}
+body.theme-light .row input.is-default::placeholder,
+body.theme-light .charts-alt-input.is-default::placeholder,
+body.theme-light .charts-freq-input.is-default::placeholder {
+  color: #9aa1ab;
+  opacity: 1;
+}
+.row-reset {
+  flex-shrink: 0;
+  font-size: 13px;
+  line-height: 1;
+  color: #b9b3b3;
+  background: #2a2626;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+  margin-left: 2px;
+}
+.row-reset:hover { color: #fff; background: #3a3636; }
+body.theme-light .row-reset {
+  color: #555;
+  background: #f0f0f0;
+  border-color: #bbb;
+}
+body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
 .row .val {
   color: #e8e8e8;
   font-variant-numeric: tabular-nums;
@@ -999,7 +1220,7 @@ html, body {
   #toolbar button { padding: 9px 12px; font-size: 14px; }
   #toolbar .navtoggle { font-size: 14px; }
   #toolbar .navtoggle input { width: 18px; height: 18px; }
-  #inspector { width: 260px; }
+  #inspector { width: 300px; }
   .row input[type="number"],
   .row input[type="text"] { padding: 8px 6px; font-size: 15px; }
   #info { font-size: 12px; }
@@ -1026,6 +1247,13 @@ html, body {
   position: absolute;
   margin: 0;
 }
+/* Export modal while placing the flight-plan card: clear the backdrop so the
+   map (and the draggable card) stays reachable underneath the dialog. */
+.modal-back.export-place {
+  background: transparent;
+  pointer-events: none;
+}
+.modal-back.export-place > .modal { pointer-events: auto; }
 .modal {
   min-width: 240px;
   padding: 16px;
@@ -1033,6 +1261,15 @@ html, body {
   border: 1px solid #3a3636;
   border-radius: 10px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  /* Double-clicking labels/table cells used to select their text — useless in
+     the export / charts dialogs. Inputs/textareas opt back in below. */
+  -webkit-user-select: none;
+  user-select: none;
+}
+.modal input, .modal textarea, .modal select,
+.modal [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
 }
 .modal-title {
   margin-bottom: 12px;
@@ -1109,6 +1346,121 @@ html, body {
   min-width: 320px;
   max-width: min(440px, 92vw);
 }
+/* Route library (#677) */
+.route-library-modal {
+  min-width: 320px;
+  max-width: min(460px, 92vw);
+}
+.route-library-body {
+  display: grid;
+  gap: 10px;
+  font-size: 13px;
+}
+.route-library-saverow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.route-library-name {
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 4px;
+  padding: 5px 7px;
+  min-width: 0;
+  unicode-bidi: plaintext;
+}
+.route-library-list {
+  display: grid;
+  gap: 6px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.route-library-empty { color: #b9b3b3; margin: 4px 0; }
+/* Match every library button to the standard toolbar/app button look. */
+.route-library-saverow > button,
+.route-library-actions button,
+.route-library-tools button {
+  font: inherit;
+  font-size: 13px;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 5px;
+  padding: 6px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.route-library-saverow > button:hover,
+.route-library-actions button:hover,
+.route-library-tools button:hover { background: #3c3737; }
+.route-library-tools {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+/* Drive sync status sits on its own line below the Sync button. */
+.route-library-gdrive-status {
+  flex-basis: 100%;
+  text-align: center;
+  color: #b9b3b3;
+  font-size: 12px;
+}
+body.theme-light .route-library-gdrive-status { color: #647184; }
+body.theme-light .route-library-saverow > button,
+body.theme-light .route-library-actions button,
+body.theme-light .route-library-tools button {
+  color: #1f252c;
+  background: #fff;
+  border-color: #b8c0cc;
+}
+body.theme-light .route-library-saverow > button:hover,
+body.theme-light .route-library-actions button:hover,
+body.theme-light .route-library-tools button:hover { background: #eef3f9; }
+.route-library-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid #443f3f;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+.route-library-open {
+  display: grid;
+  gap: 2px;
+  text-align: start;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #e8e8e8;
+  min-width: 0;
+}
+.route-library-row-name {
+  font-weight: 600;
+  unicode-bidi: plaintext;
+}
+.route-library-row-meta {
+  color: #b9b3b3;
+  direction: ltr;
+  font-size: 12px;
+  unicode-bidi: isolate;
+}
+.route-library-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+/* Load is the primary row action — make it obvious (clicking the name also loads). */
+.route-library-actions .route-library-load,
+body.theme-light .route-library-actions .route-library-load {
+  color: #fff;
+  background: #1d6fe0;
+  border-color: #1d6fe0;
+}
+.route-library-actions .route-library-load:hover,
+body.theme-light .route-library-actions .route-library-load:hover {
+  background: #2f7fee;
+}
 .route-template-body {
   display: grid;
   gap: 10px;
@@ -1153,6 +1505,35 @@ html, body {
   color: #b9b3b3;
   line-height: 1.35;
 }
+/* Light theme — the route-templates modal had no light overrides, so its
+ * near-white text/inputs were invisible on the light modal. */
+body.theme-light .route-template-row { color: #647184; }
+body.theme-light .route-template-row select,
+body.theme-light .route-template-row input {
+  color: #1f252c;
+  background: #fff;
+  border-color: #b8c0cc;
+}
+body.theme-light .route-template-path { color: #1f252c; }
+body.theme-light .route-template-description,
+body.theme-light .route-template-empty { color: #647184; }
+/* Per-leg VOR override dropdown in the flight-plan table — was dark on light. */
+body.theme-light .fp-leg-vor {
+  color: #1f252c;
+  background: #fff;
+  border-color: #b8c0cc;
+}
+/* Saved-route name field — was dark on the light modal. */
+body.theme-light .route-library-name {
+  color: #1f252c;
+  background: #fff;
+  border-color: #b8c0cc;
+}
+/* Saved-route row text — near-white was too faint on the light modal. */
+body.theme-light .route-library-open { color: #1f252c; }
+body.theme-light .route-library-row-meta,
+body.theme-light .route-library-empty { color: #647184; }
+body.theme-light .route-library-row { border-color: #c6ccd6; }
 
 /* Flight-plan table modal */
 .modal.wide {
@@ -1197,6 +1578,21 @@ html, body {
   flex: 1;
   min-height: 0;
 }
+/* Vertical profile strip (#672) */
+.fp-profile { margin: 4px 0 8px; }
+.fp-profile-label { font-size: 11px; color: #b9b3b3; margin-bottom: 2px; display: flex; align-items: center; gap: 8px; }
+.fp-profile-vs { margin-inline-start: auto; display: inline-flex; align-items: center; gap: 4px; }
+.fp-profile-vs-input {
+  width: 56px; font-size: 11px; padding: 1px 4px;
+  color: #e8e8e8; background: #2f2b2b; border: 1px solid #443f3f; border-radius: 4px;
+}
+.fp-profile-vs-input:focus { outline: 1px solid #1d6fe0; }
+.fp-profile-dir {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 10px; color: #9fb3c8; margin: 2px 2px 3px;
+}
+.fp-profile-dir .fp-dir-arrow { flex: 1; text-align: center; letter-spacing: 1px; color: #7fa8d0; }
+.fp-profile-canvas { width: 100%; height: 104px; display: block; border-radius: 4px; }
 .flight-table {
   width: 100%;
   border-collapse: collapse;
@@ -1340,6 +1736,12 @@ html, body {
   outline: 2px solid #1d6fe0;
   outline-offset: 2px;
 }
+.satellite-snippet-tiles {
+  position: absolute;
+  inset: 0;
+  transform-origin: center center;
+  will-change: transform;
+}
 .satellite-snippet img {
   position: absolute;
   width: 256px;
@@ -1450,6 +1852,17 @@ html, body {
   padding: 6px 8px;
   gap: 4px;
 }
+/* MSA row flagged when the planned altitude is below the minimum safe alt. */
+.msa-low .val {
+  color: #ff6b6b;
+  font-weight: 700;
+  animation: msa-blink 1s step-start infinite;
+}
+@keyframes msa-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.25; }
+}
+body.theme-light .msa-low .val { color: #c0392b; }
 .commchange-row .commchange-label {
   color: #ffb1a8;
   font-weight: 700;
@@ -1518,6 +1931,31 @@ html, body {
   border-radius: 4px;
   padding: 2px 6px;
   white-space: nowrap;
+}
+
+/* Airfield METAR/TAF (#670) */
+.wx-section { margin: 8px 0 2px; border-top: 1px solid #3a3636; padding-top: 6px; }
+.wx-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; font-weight: 600; color: #b9b3b3; margin-bottom: 4px;
+}
+.wx-refresh {
+  font: inherit; font-size: 13px; line-height: 1; color: #9fd0ff;
+  background: none; border: none; cursor: pointer; padding: 0 2px;
+}
+.wx-refresh:disabled { opacity: 0.5; cursor: default; }
+/* METAR/TAF codes read left-to-right even in the RTL (Hebrew) layout. */
+.wx-body { font-size: 12px; color: #e8e8e8; direction: ltr; text-align: left; }
+.wx-block { margin-bottom: 6px; }
+.wx-label {
+  display: inline-block; font-size: 10px; font-weight: 700; color: #231F20;
+  background: #ffd966; border-radius: 3px; padding: 0 5px; margin-bottom: 2px;
+}
+.wx-line { line-height: 1.4; }
+.wx-line.wx-raw { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: #c9c4c4; }
+.wx-toggle {
+  font: inherit; font-size: 11px; color: #9fd0ff; background: none; border: none;
+  padding: 2px 0; cursor: pointer; text-decoration: underline;
 }
 
 /* Charts modal */
@@ -1684,10 +2122,16 @@ html, body {
 .charts-alt-table tbody tr.unknown:hover {
   background: rgba(160, 170, 190, 0.08);
 }
+.charts-alt-table tr.overridden,
+.charts-alt-table tbody tr.overridden:hover {
+  background: rgba(255, 217, 102, 0.14);
+}
 .charts-alt-pair {
   color: #fff2a8;
+  direction: ltr;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
+  unicode-bidi: isolate;
 }
 .charts-alt-pair-button {
   display: inline-block;
@@ -1709,7 +2153,20 @@ html, body {
 .charts-alt-status,
 .charts-alt-distance {
   color: #b9b3b3;
+  direction: ltr;
   font-size: 12px;
+  unicode-bidi: isolate;
+}
+.charts-alt-actions {
+  width: 28px;
+  text-align: center;
+}
+.charts-alt-cell-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 .charts-alt-table .blocked {
   color: #ffb4b4;
@@ -1717,6 +2174,7 @@ html, body {
 .charts-alt-input {
   width: 74px;
   box-sizing: border-box;
+  direction: ltr;
   font: inherit;
   font-size: 12px;
   color: #e8e8e8;
@@ -1724,6 +2182,7 @@ html, body {
   border: 1px solid #443f3f;
   border-radius: 4px;
   padding: 3px 5px;
+  unicode-bidi: isolate;
 }
 .charts-alt-input::placeholder {
   color: #b9b3b3;
@@ -1735,6 +2194,9 @@ html, body {
 .charts-alt-input[aria-invalid="true"] {
   border-color: #b00020;
   box-shadow: 0 0 0 1px rgba(176, 0, 32, 0.35);
+}
+.charts-alt-cell-reset {
+  flex: 0 0 auto;
 }
 .charts-freq-table tr.overridden,
 .charts-freq-table tbody tr.overridden:hover {
@@ -1752,16 +2214,21 @@ html, body {
   display: block;
 }
 .charts-freq-code {
+  direction: ltr;
   margin-top: 2px;
   color: #8a8484;
   font-size: 11px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  unicode-bidi: isolate;
 }
 .charts-freq-template {
   color: #ffd966;
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 .charts-freq-input {
   width: 96px;
+  direction: ltr;
   font: inherit;
   font-size: 13px;
   color: #e8e8e8;
@@ -1769,6 +2236,7 @@ html, body {
   border: 1px solid #443f3f;
   border-radius: 4px;
   padding: 2px 5px;
+  unicode-bidi: isolate;
 }
 .charts-freq-table tr.overridden .charts-freq-input {
   background: #3a3422;
@@ -2126,6 +2594,7 @@ body.theme-light .fp-aircraft select,
 body.theme-light .fp-aircraft input,
 body.theme-light .plan-name,
 body.theme-light .plan-num,
+body.theme-light .fp-profile-vs-input,
 body.theme-light .plate-chip,
 body.theme-light .runway-chip,
 body.theme-light .point-choice-option,
@@ -2373,6 +2842,10 @@ body.theme-light .charts-alt-table tbody tr.one-way:hover {
 body.theme-light .charts-alt-table tr.unknown,
 body.theme-light .charts-alt-table tbody tr.unknown:hover {
   background: rgba(70, 85, 105, 0.06);
+}
+body.theme-light .charts-alt-table tr.overridden,
+body.theme-light .charts-alt-table tbody tr.overridden:hover {
+  background: rgba(154, 107, 0, 0.14);
 }
 body.theme-light .charts-alt-pair {
   color: #6f4d00;

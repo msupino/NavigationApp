@@ -1,0 +1,89 @@
+// #670 — airfield METAR / TAF in the inspector (decoded + raw toggle),
+// served from the wx-data branch (CORS-safe) with a same-origin fallback.
+const { test, expect } = require('@playwright/test');
+
+// Mock the wx-data feed. `onHit` lets a test count fetches.
+async function mockWx(page, onHit) {
+  await page.route('**wx-data/wx.json**', r => {
+    if (onHit) onHit();
+    r.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      generatedAt: '2026-06-14T06:00:00Z',
+      stations: { LLBG: { metar: METAR[0], taf: TAF[0] } },
+    }) });
+  });
+}
+
+async function boot(page) {
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof state !== 'undefined' &&
+    typeof decodeMetar === 'function' && typeof fetchAirfieldWx === 'function' &&
+    typeof showInspector === 'function');
+}
+
+const METAR = [{
+  icaoId: 'LLBG', rawOb: 'LLBG 140650Z 27012G20KT 9999 FEW030 SCT100 24/18 Q1013',
+  wdir: 270, wspd: 12, wgst: 20, visib: '6+', wxString: '-RA BR',
+  temp: 24, dewp: 18, altim: 1013, clouds: [{ cover: 'FEW', base: 3000 }, { cover: 'SCT', base: 10000 }],
+}];
+const TAF = [{
+  icaoId: 'LLBG', rawTAF: 'TAF LLBG 140500Z 1406/1506 28010KT 9999 SCT035',
+  fcsts: [{ timeFrom: 1781503200, wdir: 280, wspd: 10, visib: '6+', clouds: [{ cover: 'SCT', base: 3500 }] }],
+}];
+
+test('decodeMetar renders wind/vis/wx/cloud/temp/QNH', async ({ page }) => {
+  await boot(page);
+  const txt = await page.evaluate(m => decodeMetar(m), METAR[0]);
+  expect(txt).toContain('Wind 270° 12 kt gust 20');
+  expect(txt).toContain('Vis 6+');
+  expect(txt).toContain('light rain');
+  expect(txt).toContain('mist');
+  expect(txt).toContain('Few 3000 ft');
+  expect(txt).toContain('Temp 24°C');
+  expect(txt).toContain('QNH 1013 hPa');
+});
+
+test('airfield inspector shows decoded METAR/TAF with a raw toggle', async ({ page }) => {
+  await mockWx(page);
+  await boot(page);
+  await page.evaluate(() => {
+    window.airfields = [{ name: 'LLBG', he: 'בן גוריון', lat: 32.0, lng: 34.88, elev_ft: 135 }];
+    state.selected = { type: 'airfield', index: 0 };
+    showInspector();
+  });
+  const wx = page.locator('#insp-body .wx-section');
+  await expect(wx).toBeVisible();
+  await expect(wx).toContainText('Wind 270° 12 kt');
+  await expect(wx).toContainText('METAR');
+  await expect(wx).toContainText('TAF');
+  // Toggle to raw.
+  await page.locator('.wx-toggle').click();
+  await expect(wx).toContainText('27012G20KT');     // raw METAR token
+  await expect(wx).toContainText('1406/1506');      // raw TAF token
+});
+
+test('refresh button re-fetches (force, bypassing cache)', async ({ page }) => {
+  let calls = 0;
+  await mockWx(page, () => { calls++; });
+  await boot(page);
+  await page.evaluate(() => {
+    window.airfields = [{ name: 'LLBG', lat: 32.0, lng: 34.88 }];
+    state.selected = { type: 'airfield', index: 0 }; showInspector();
+  });
+  await expect(page.locator('#insp-body .wx-section')).toContainText('Wind 270°');
+  const before = calls;
+  await page.locator('.wx-refresh').click();
+  await expect(page.locator('#insp-body .wx-section')).toContainText('Wind 270°');
+  expect(calls).toBeGreaterThan(before);          // re-fetched, not served from cache
+  // METAR/TAF body forced LTR regardless of UI language.
+  expect(await page.locator('.wx-body').getAttribute('dir')).toBe('ltr');
+});
+
+test('non-ICAO field shows no weather section', async ({ page }) => {
+  await boot(page);
+  const present = await page.evaluate(() => {
+    const body = document.createElement('div');
+    appendAirfieldWeather(body, { name: 'WP 3', lat: 32, lng: 34.9 });
+    return body.querySelector('.wx-section') !== null;
+  });
+  expect(present).toBe(false);
+});

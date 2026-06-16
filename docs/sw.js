@@ -1,6 +1,6 @@
 /* NavAid service worker — installable PWA + offline app shell.
-   Map tiles (cross-origin or local MBTiles-backed, large) are left to the network. */
-const CACHE = 'navaid-v4';
+   Map tiles (cross-origin, large) are left to the network. */
+const CACHE = 'navaid-v5';
 
 function cacheable(url) {
   if (/\/tiles\/(?:cvfr|nav|la|il-hel)\//.test(url.pathname)) return false;

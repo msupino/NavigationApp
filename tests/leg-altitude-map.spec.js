@@ -186,6 +186,56 @@ test.describe('leg-altitude map wiring', () => {
     expect(allowsReturn).toBe(true);
   });
 
+  test('inspector dims default alts; typing un-dims; emptying restores default', async ({ page }) => {
+    await boot(page);
+    await clickRoute(page, 'ANATA', 'HNINA');
+    await page.evaluate(() => { state.selected = { type: 'leg', index: 0 }; showInspector(); });
+    const alts = page.locator('#insp-body input[type="number"]');
+    const inAlt = alts.nth(1);            // speed(0), in-alt(1), out-alt(2)
+    // Charted default → muted (is-default) and showing the charted value.
+    await expect(inAlt).toHaveValue('5000');
+    await expect(inAlt).toHaveClass(/is-default/);
+    // Typing an override drops the muted style.
+    await inAlt.fill('4000');
+    await expect(inAlt).not.toHaveClass(/is-default/);
+    expect(await page.evaluate(() => state.legs[0].inboundAltitude)).toBe(4000);
+    // Emptying restores the charted default (and re-dims) on blur.
+    await inAlt.fill('');
+    await inAlt.blur();
+    await expect(inAlt).toHaveValue('5000');
+    await expect(inAlt).toHaveClass(/is-default/);
+    expect(await page.evaluate(() => state.legs[0].inboundAltitude)).toBe(5000);
+    // The ↻ reset also re-dims (restores the charted default).
+    await inAlt.fill('4000');
+    await expect(inAlt).not.toHaveClass(/is-default/);
+    const reset = page.locator('#insp-body .row').filter({ hasText: 'Inbound alt' })
+      .locator('button.row-reset');
+    await reset.click();
+    await expect(inAlt).toHaveValue('5000');
+    await expect(inAlt).toHaveClass(/is-default/);
+  });
+
+  test('inspector default/reset stay charted after an override edits the live map', async ({ page }) => {
+    await boot(page);
+    await clickRoute(page, 'ANATA', 'HNINA');
+    // Override the inbound altitude — this also writes 4000 into the live
+    // leg-altitude lookup map (the edit becomes the live "source of truth").
+    await page.evaluate(() => { state.selected = { type: 'leg', index: 0 }; showInspector(); });
+    await page.locator('#insp-body input[type="number"]').nth(1).fill('4000');
+    expect(await page.evaluate(() => state.legs[0].inboundAltitude)).toBe(4000);
+    // Rebuild the inspector. The charted DEFAULT must still be the JSON-origin
+    // 5000 — not the edited 4000 — so the override doesn't redefine "charted".
+    await page.evaluate(() => { state.selected = { type: 'leg', index: 0 }; showInspector(); });
+    const inAlt = page.locator('#insp-body input[type="number"]').nth(1);
+    await expect(inAlt).toHaveValue('4000');
+    await expect(inAlt).not.toHaveClass(/is-default/);
+    const reset = page.locator('#insp-body .row').filter({ hasText: 'Inbound alt' })
+      .locator('button.row-reset');
+    await reset.click();
+    await expect(inAlt).toHaveValue('5000');
+    await expect(inAlt).toHaveClass(/is-default/);
+  });
+
   test('HNINA to ANATA uses the charted 4500 reverse altitude', async ({ page }) => {
     await boot(page);
 

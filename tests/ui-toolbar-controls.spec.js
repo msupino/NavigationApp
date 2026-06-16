@@ -48,6 +48,7 @@ test.describe('Display checkbox toggles', () => {
     { id: '#ret-cb',      key: 'navaid.showReturn',     startsChecked: false },
     { id: '#mid-cb',      key: 'navaid.showMidLeg',     startsChecked: false },
     { id: '#diff-cb',     key: 'navaid.highlightDiff',  startsChecked: false },
+    { id: '#limit-kites-cb', key: 'navaid.limitLegKites', startsChecked: true },
     { id: '#drift-cb',    key: 'navaid.showDrift',      startsChecked: true  },
     { id: '#navwp-cb',    key: 'navaid.showNavWP',      startsChecked: true  },
     { id: '#airfield-cb', key: 'navaid.showAirfields',  startsChecked: true  },
@@ -92,24 +93,51 @@ test.describe('Map legend', () => {
 });
 
 test.describe('Sliders persist to localStorage', () => {
-  test('light mode toggle writes navaid.theme and persists across reload', async ({ page }) => {
+  test('theme toggle button writes navaid.theme and persists across reload', async ({ page }) => {
     await boot(page);
-    const cb = page.locator('#theme-light-cb');
+    const btn = page.locator('#theme-toggle');
+    // Dark by default → button offers to switch TO light.
     await expect(page.locator('body')).not.toHaveClass(/theme-light/);
-    await expect(cb).not.toBeChecked();
-    await expect(page.locator('label:has(#theme-light-cb)')).toContainText('Light mode');
-    await cb.click();
+    await expect(btn).toContainText('Light mode');
+    await btn.click();
     expect(await page.evaluate(() => localStorage.getItem('navaid.theme'))).toBe('light');
     await expect(page.locator('body')).toHaveClass(/theme-light/);
+    // Now in light → button offers to switch back TO dark.
+    await expect(btn).toContainText('Dark mode');
 
     await page.reload();
     await page.waitForFunction(() => typeof state !== 'undefined');
-    await expect(page.locator('#theme-light-cb')).toBeChecked();
     await expect(page.locator('body')).toHaveClass(/theme-light/);
+    await expect(page.locator('#theme-toggle')).toContainText('Dark mode');
 
-    await page.locator('#theme-light-cb').click();
+    await page.locator('#theme-toggle').click();
     expect(await page.evaluate(() => localStorage.getItem('navaid.theme'))).toBe('dark');
     await expect(page.locator('body')).not.toHaveClass(/theme-light/);
+  });
+
+  test('clear store wipes all navaid.* keys and reloads', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      localStorage.setItem('navaid.theme', 'light');
+      localStorage.setItem('navaid.routes', '[{"id":"x"}]');
+      localStorage.setItem('navaid.layer', 'Satellite');
+      localStorage.setItem('keepme', '1');           // non-navaid key survives
+    });
+    page.once('dialog', d => d.accept());
+    await page.locator('#clear-store').click();
+    await page.waitForFunction(() => typeof state !== 'undefined');  // reloaded
+    // Note: the test harness re-seeds navaid.sec.* on every load, so assert the
+    // keys we set are gone rather than the whole namespace being empty.
+    const after = await page.evaluate(() => ({
+      routes: localStorage.getItem('navaid.routes'),
+      layer: localStorage.getItem('navaid.layer'),
+      theme: localStorage.getItem('navaid.theme'),
+      keepme: localStorage.getItem('keepme'),
+    }));
+    expect(after.routes).toBeNull();
+    expect(after.layer).toBeNull();
+    expect(after.theme).toBeNull();
+    expect(after.keepme).toBe('1');
   });
 
   test('map opacity defaults to 80% and ignores the legacy storage key', async ({ page }) => {

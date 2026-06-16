@@ -84,12 +84,14 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     expect(await page.evaluate(() => localStorage.getItem('navaid.showVor'))).toBeNull();
   });
 
-  test('inspector shows From <VOR> radial/DME when a reference is selected', async ({ page }) => {
+  test('inspector VOR selector drives radial/DME without changing global reference', async ({ page }) => {
     await boot(page);
     await page.evaluate(async () => {
       await loadVors();
       window.showVorStations = false;   // markers off — readout still works
       window.vorRef = 'NAT';
+      localStorage.setItem('navaid.vorRef', 'NAT');
+      window.inspectorVorRef = undefined;
       state.waypoints = [
         { lat: 32.46472, lng: 34.91222, name: 'HADRA' },
         { lat: 32.0, lng: 34.8, name: 'X' },
@@ -99,11 +101,67 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     });
     const row = page.locator('#insp-body .vor-radial-row');
     await expect(row).toHaveCount(1);
-    await expect(row).toContainText(/NAT/);
-    await expect(row).toContainText(/R-\d{3}° \/ \d/);
-    // No reference → no row.
-    await page.evaluate(() => { window.vorRef = null; showInspector(); });
-    await expect(page.locator('#insp-body .vor-radial-row')).toHaveCount(0);
+    const sel = row.locator('select.insp-vor-ref');
+    const val = row.locator('.vor-radial-val');
+    await expect(sel).toHaveValue('NAT');
+    await expect(sel.locator('option[value="NAT"]')).toHaveText('NAT');
+    await expect(sel.locator('option[value="BGN"]')).toHaveText('BGN');
+    await expect(val).toHaveText(/R-\d{3}° \/ \d/);
+    const bgnExpected = await page.evaluate(() => {
+      const rd = vorRadialDme(vorByIdent('BGN'), 32.46472, 34.91222);
+      return S.vorRadialDme(rd.radial, rd.dme);
+    });
+    await sel.selectOption('BGN');
+    await expect(sel).toHaveValue('BGN');
+    await expect(val).toHaveText(bgnExpected);
+    expect(await page.evaluate(() => vorRef)).toBe('NAT');
+    expect(await page.evaluate(() => localStorage.getItem('navaid.vorRef'))).toBe('NAT');
+
+    await sel.selectOption('');
+    await expect(sel).toHaveValue('');
+    await expect(val).toHaveText('');
+    expect(await page.evaluate(() => vorRef)).toBe('NAT');
+
+    await page.locator('#insp-close').click();
+    await expect(page.locator('#inspector')).toHaveClass(/hidden/);
+    expect(await page.evaluate(() => inspectorVorRef)).toBeUndefined();
+    await page.evaluate(() => {
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+    });
+    await expect(page.locator('#insp-body .vor-radial-row select.insp-vor-ref'))
+      .toHaveValue('NAT');
+  });
+
+  test('Hebrew inspector VOR radial row keeps label separated from LTR readout', async ({ page }) => {
+    await boot(page, 'he');
+    await page.evaluate(async () => {
+      await loadVors();
+      window.vorRef = 'NAT';
+      window.inspectorVorRef = undefined;
+      state.waypoints = [{ lat: 32.46472, lng: 34.91222, name: 'HADRA' }];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+    });
+    const row = page.locator('#insp-body .vor-radial-row');
+    const label = row.locator('label');
+    const controls = row.locator('.vor-radial-controls');
+    const val = row.locator('.vor-radial-val');
+    await expect(label).toHaveText('תחנת ייחוס');
+    await expect(val).toHaveText(/R-\d{3}° \/ \d+\.\d NM/);
+    const bidi = await val.evaluate(el => {
+      const style = getComputedStyle(el);
+      return { direction: style.direction, unicodeBidi: style.unicodeBidi };
+    });
+    expect(bidi.direction).toBe('ltr');
+    expect(bidi.unicodeBidi).toContain('isolate');
+    const [labelBox, controlsBox] = await Promise.all([
+      label.boundingBox(),
+      controls.boundingBox(),
+    ]);
+    expect(labelBox && controlsBox).toBeTruthy();
+    expect(controlsBox.x + controlsBox.width).toBeLessThan(labelBox.x - 4);
   });
 
   test('flight plan: VOR picker + frequency, Radial/DME to the leg START', async ({ page }) => {
@@ -218,7 +276,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await expect(page.locator('#vor-readout')).toHaveAttribute('aria-hidden', 'true');
   });
 
-  test('nav-waypoint inspector shows the resolved name row in English too', async ({ page }) => {
+  test('nav-waypoint inspector title carries the resolved name in English too', async ({ page }) => {
     await boot(page, 'en');
     const out = await page.evaluate(async () => {
       await loadNavWaypoints();
@@ -228,10 +286,44 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       const wp = navWP[state.selected.index];
       return { code: wp.name, label: wp.en };
     });
-    await expect(page.locator('#insp-title')).toHaveValue(out.code);
-    const nameRow = page.locator('#insp-body .row').filter({ hasText: 'Waypoint name' });
-    await expect(nameRow).toHaveCount(1);
-    await expect(nameRow).toContainText(out.label);
+    // Title is "CODE / localized name" (the name moved from a row into the title).
+    const title = page.locator('#insp-title');
+    await expect(title).toHaveValue(new RegExp(out.code + '.*' + out.label));
+  });
+
+  test('reference inspectors share the CODE / localized name title shape', async ({ page }) => {
+    await boot(page, 'en');
+    const titles = await page.evaluate(async () => {
+      await Promise.all([loadVors(), loadAirfields(), loadNavWaypoints()]);
+      const readTitle = () => document.getElementById('insp-title').value;
+      const natIdx = vors.findIndex(v => v.ident === 'NAT');
+      state.selected = { type: 'vor', index: natIdx };
+      showInspector();
+      const vor = readTitle();
+
+      const afIdx = airfields.findIndex(a => a.name === 'LLHA');
+      state.selected = { type: 'airfield', index: afIdx };
+      showInspector();
+      const airfield = readTitle();
+
+      const hadraIdx = navWP.findIndex(w => w.name === 'HADRA');
+      state.selected = { type: 'navwp', index: hadraIdx };
+      showInspector();
+      const navwp = readTitle();
+
+      const hadra = navWP[hadraIdx];
+      state.waypoints = [{ lat: hadra.lat, lng: hadra.lng, name: 'HADRA' }];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+      const routeWp = readTitle();
+
+      return { vor, airfield, navwp, routeWp };
+    });
+    expect(titles.vor).toMatch(/^NAT \/ Natania$/);
+    expect(titles.airfield).toMatch(/^LLHA \/ Haifa/);
+    expect(titles.navwp).toMatch(/^HADRA \/ Hadera$/);
+    expect(titles.routeWp).toBe(titles.navwp);
   });
 
   test('markers are selectable outside edit mode (VOR / airfield / nav-WP)', async ({ page }) => {
@@ -246,8 +338,8 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     });
     expect(hit).toMatchObject({ type: 'vor' });
     await page.evaluate(t => { state.selected = t; showInspector(); }, hit);
-    await expect(page.locator('#insp-title')).toHaveValue('NAT');
-    await expect(page.locator('#insp-body')).toContainText('112.40');
+    await expect(page.locator('#insp-title')).toHaveValue(/NAT.*Natania/);
+    await expect(page.locator('#insp-body .vor-freq-row .charts-freq-input')).toHaveValue('112.40');
     const useBtn = page.locator('#insp-body .insp-btn', { hasText: /reference/i });
     await expect(useBtn).toBeVisible();
     await useBtn.click();
@@ -403,18 +495,18 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       showInspector();
     });
     await expect(page.locator('#insp-body .primary-row')).toContainText('Primary');
-    await expect(page.locator('#insp-body .primary-row')).toContainText('133.00 MHz');
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('133.00');
     await expect(page.locator('#insp-body .atis-row')).toContainText('ATIS');
-    await expect(page.locator('#insp-body .atis-row')).toContainText('135.40 MHz');
+    await expect(page.locator('#insp-body .atis-row .charts-freq-input')).toHaveValue('135.40');
 
     await page.evaluate(() => {
       state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLBG') };
       showInspector();
     });
-    await expect(page.locator('#insp-body .primary-row')).toContainText('134.60 MHz');
-    await expect(page.locator('#insp-body .clearance-row')).toContainText('121.55 MHz');
-    await expect(page.locator('#insp-body .atis-row')).toContainText('132.50 MHz');
-    await expect(page.locator('#insp-body .atis-row')).toContainText('132.80 MHz');
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('134.60');
+    await expect(page.locator('#insp-body .clearance-row .charts-freq-input')).toHaveValue('121.55');
+    await expect(page.locator('#insp-body .atis-row .charts-freq-input').nth(0)).toHaveValue('132.50');
+    await expect(page.locator('#insp-body .atis-row .charts-freq-input').nth(1)).toHaveValue('132.80');
     const markerOrder = await page.evaluate(() => {
       const rows = Array.from(document.querySelector('#insp-body').children);
       return {
@@ -431,31 +523,31 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLIB') };
       showInspector();
     });
-    await expect(page.locator('#insp-body .primary-row')).toContainText('118.45 MHz');
-    await expect(page.locator('#insp-body .atis-row')).toContainText('132.45 MHz');
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('118.45');
+    await expect(page.locator('#insp-body .atis-row .charts-freq-input')).toHaveValue('132.45');
 
     await page.evaluate(() => {
       state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLHZ') };
       showInspector();
     });
-    await expect(page.locator('#insp-body .primary-row')).toContainText('125.60 MHz');
-    await expect(page.locator('#insp-body .clearance-row')).toContainText('121.70 MHz');
-    await expect(page.locator('#insp-body .atis-row')).toHaveCount(0);
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('125.60');
+    await expect(page.locator('#insp-body .clearance-row .charts-freq-input')).toHaveValue('121.70');
+    await expect(page.locator('#insp-body .atis-row')).toContainText('None');
 
     await page.evaluate(() => {
       state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLPL') };
       showInspector();
     });
-    await expect(page.locator('#insp-body .primary-row')).toContainText('135.55 MHz');
-    await expect(page.locator('#insp-body .atis-row')).toContainText('126.10 MHz');
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('135.55');
+    await expect(page.locator('#insp-body .atis-row .charts-freq-input')).toHaveValue('126.10');
 
     await page.evaluate(() => {
       state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLAR') };
       showInspector();
     });
-    await expect(page.locator('#insp-body .primary-row')).toContainText('120.75 MHz');
-    await expect(page.locator('#insp-body .atis-row')).toHaveCount(0);
-    await expect(page.locator('#insp-body .clearance-row')).toHaveCount(0);
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('120.75');
+    await expect(page.locator('#insp-body .atis-row')).toContainText('None');
+    await expect(page.locator('#insp-body .clearance-row')).toContainText('None');
 
     await page.evaluate(() => {
       state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLES') };
@@ -472,9 +564,9 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     });
     await expect(page.locator('#insp-title')).toHaveValue(/LLBG/);
     await expect(page.locator('#insp-title')).toHaveValue(/Ben Gurion/);
-    await expect(page.locator('#insp-body .primary-row')).toContainText('134.60 MHz');
-    await expect(page.locator('#insp-body .clearance-row')).toContainText('121.55 MHz');
-    await expect(page.locator('#insp-body .atis-row')).toContainText('132.50 MHz');
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('134.60');
+    await expect(page.locator('#insp-body .clearance-row .charts-freq-input')).toHaveValue('121.55');
+    await expect(page.locator('#insp-body .atis-row .charts-freq-input').nth(0)).toHaveValue('132.50');
     const routeOrder = await page.evaluate(() => {
       const rows = Array.from(document.querySelector('#insp-body').children);
       return {
@@ -496,9 +588,9 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     });
     await expect(page.locator('#insp-title')).toHaveValue(/LLHZ/);
     await expect(page.locator('#insp-title')).toHaveValue(/Herzliya/);
-    await expect(page.locator('#insp-body .primary-row')).toContainText('125.60 MHz');
-    await expect(page.locator('#insp-body .clearance-row')).toContainText('121.70 MHz');
-    await expect(page.locator('#insp-body .atis-row')).toHaveCount(0);
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('125.60');
+    await expect(page.locator('#insp-body .clearance-row .charts-freq-input')).toHaveValue('121.70');
+    await expect(page.locator('#insp-body .atis-row')).toContainText('None');
   });
 
   test('Hebrew airfield inspector keeps ICAO and frequency values in reading order', async ({ page }) => {
@@ -511,8 +603,8 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await expect(page.locator('#insp-title')).toHaveValue(/LLIB/);
     await expect(page.locator('#insp-title')).toHaveValue(/ראש פינה/);
     await expect(page.locator('#insp-body .primary-row')).toContainText('ראשי');
-    await expect(page.locator('#insp-body .primary-row')).toContainText('118.45 MHz');
-    await expect(page.locator('#insp-body .atis-row')).toContainText('132.45 MHz');
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('118.45');
+    await expect(page.locator('#insp-body .atis-row .charts-freq-input')).toHaveValue('132.45');
     const bidi = await page.evaluate(() => {
       const primary = document.querySelector('#insp-body .primary-row .val');
       const atis = document.querySelector('#insp-body .atis-row .val');
@@ -629,8 +721,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       state.selected = { type: 'vor', index: natIdx };
       showInspector();
     });
-    await expect(page.locator('#insp-title')).toHaveValue('NAT');
-    await expect(page.locator('#insp-body')).toContainText('נתניה');
+    await expect(page.locator('#insp-title')).toHaveValue(/NAT.*נתניה/);
     // Airfield inspector — shows Hebrew name.
     await page.evaluate(async () => {
       if (typeof loadAirfields === 'function') await loadAirfields();
@@ -646,7 +737,8 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       state.selected = { type: 'navwp', index: hadraIdx };
       showInspector();
     });
-    await expect(page.locator('#insp-body')).toContainText('חדרה');
+    // Title carries the localized name: "HADRA / חדרה".
+    await expect(page.locator('#insp-title')).toHaveValue(/HADRA.*חדרה/);
     // Route waypoint on the same nav-WP mirrors that inspector: ICAO on top,
     // localized name row below (editable), no hard-coded English "Label".
     await page.evaluate(async () => {
@@ -657,7 +749,8 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       state.selected = { type: 'wp', index: 0 };
       showInspector();
     });
-    await expect(page.locator('#insp-title')).toHaveValue('HADRA');
+    // Title carries the localized name too: "HADRA / חדרה".
+    await expect(page.locator('#insp-title')).toHaveValue(/HADRA.*חדרה/);
     const routeNameRow = page.locator('#insp-body .row').filter({ hasText: 'שם נקודה' }).first();
     await expect(routeNameRow.locator('input')).toHaveValue('חדרה');
     await expect(page.locator('#insp-body')).not.toContainText('Label');
@@ -672,8 +765,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       state.selected = { type: 'vor', index: natIdx };
       showInspector();
     });
-    await expect(page.locator('#insp-title')).toHaveValue('NAT');
-    await expect(page.locator('#insp-body')).toContainText('Natania');
+    await expect(page.locator('#insp-title')).toHaveValue(/NAT.*Natania/);
     // Airfield inspector — shows English name.
     await page.evaluate(async () => {
       await loadAirfields();
@@ -689,8 +781,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       state.selected = { type: 'navwp', index: hadraIdx };
       showInspector();
     });
-    await expect(page.locator('#insp-title')).toHaveValue('HADRA');
-    const navNameRow = page.locator('#insp-body .row').filter({ hasText: 'Waypoint name' });
-    await expect(navNameRow).toContainText('Hadera');
+    // Title carries the English name: "HADRA / Hadera".
+    await expect(page.locator('#insp-title')).toHaveValue(/HADRA.*Hadera/);
   });
 });

@@ -114,6 +114,7 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(herzliya).toHaveAttribute('max', '136.975');
     await expect(herzliya).toHaveAttribute('step', '0.005');
     await expect(herzliya).toHaveValue('122.20');
+    await expect(herzliya).toHaveClass(/is-default/);
     await expect(page.locator('.charts-freq-input[data-call-sign="AZAM"]'))
       .toHaveCount(0);
     await expect(page.locator('.charts-airport-header')).toHaveCount(0);
@@ -131,6 +132,7 @@ test.describe('Charts modal — frequency catalog table', () => {
 
     await button.click();
     await expect(page.locator('.charts-alt-title h3')).toHaveText('CVFR altitude pairs');
+    await expect(page.locator('.charts-alt-table thead th').nth(3)).toHaveText('Direction');
     await expect(page.locator('.charts-alt-table tbody tr')).toHaveCount(3);
     await expect(page.locator('.charts-freq-title')).toHaveCount(0);
     await expect(page.locator('.charts-airport-header')).toHaveCount(0);
@@ -139,8 +141,19 @@ test.describe('Charts modal — frequency catalog table', () => {
     const desheInputs = desheRow.locator('.charts-alt-input');
     await expect(desheInputs.nth(0)).toHaveAttribute('type', 'number');
     await expect(desheInputs.nth(0)).toHaveValue('3000');
+    await expect(desheInputs.nth(0)).toHaveClass(/is-default/);
     await expect(desheInputs.nth(1)).toHaveValue('2500');
+    await expect(desheInputs.nth(1)).toHaveClass(/is-default/);
     await expect(desheRow).toContainText('Two way');
+    const desheDirectionResets = desheRow.locator('.charts-alt-cell-reset');
+    await expect(desheDirectionResets).toHaveCount(2);
+    await expect(desheDirectionResets.nth(0))
+      .toHaveAttribute('title', 'Revert this direction to origin');
+    await expect(desheDirectionResets.nth(0)).toBeDisabled();
+    await expect(desheDirectionResets.nth(1)).toBeDisabled();
+    const desheReset = desheRow.locator('.charts-alt-reset');
+    await expect(desheReset).toHaveAttribute('title', 'Revert to origin');
+    await expect(desheReset).toBeDisabled();
     const eironRow = page.locator('.charts-alt-table tbody tr', { hasText: 'EIRON ↔ SDTYM' });
     await expect(eironRow.locator('.charts-alt-input').nth(0)).toHaveValue('3000');
     await expect(eironRow.locator('.charts-alt-input').nth(1))
@@ -168,6 +181,24 @@ test.describe('Charts modal — frequency catalog table', () => {
     await search.fill('');
     await desheInputs.nth(0).fill('3100');
     await desheInputs.nth(0).blur();
+    await expect(desheReset).toBeEnabled();
+    await expect(desheRow).toHaveClass(/overridden/);
+    await expect(desheInputs.nth(0)).not.toHaveClass(/is-default/);
+    await expect(desheInputs.nth(1)).toHaveClass(/is-default/);
+    await expect(desheDirectionResets.nth(0)).toBeEnabled();
+    await expect(desheDirectionResets.nth(1)).toBeDisabled();
+    await desheInputs.nth(1).fill('2600');
+    await desheInputs.nth(1).blur();
+    await expect(desheDirectionResets.nth(0)).toBeEnabled();
+    await expect(desheDirectionResets.nth(1)).toBeEnabled();
+    await desheDirectionResets.nth(1).click();
+    await expect(desheInputs.nth(0)).toHaveValue('3100');
+    await expect(desheInputs.nth(0)).not.toHaveClass(/is-default/);
+    await expect(desheInputs.nth(1)).toHaveValue('2500');
+    await expect(desheInputs.nth(1)).toHaveClass(/is-default/);
+    await expect(desheDirectionResets.nth(0)).toBeEnabled();
+    await expect(desheDirectionResets.nth(1)).toBeDisabled();
+    await expect(desheReset).toBeEnabled();
     await derorInputs.nth(0).fill('1500');
     await derorInputs.nth(0).blur();
     await derorInputs.nth(1).fill('2000');
@@ -184,6 +215,38 @@ test.describe('Charts modal — frequency catalog table', () => {
       status: 'candidate',
     });
     expect(copied.segments[2]).not.toHaveProperty('oneWay');
+
+    await desheReset.click();
+    await expect(desheInputs.nth(0)).toHaveValue('3000');
+    await expect(desheInputs.nth(0)).toHaveClass(/is-default/);
+    await expect(desheInputs.nth(1)).toHaveValue('2500');
+    await expect(desheInputs.nth(1)).toHaveClass(/is-default/);
+    await expect(desheDirectionResets.nth(0)).toBeDisabled();
+    await expect(desheDirectionResets.nth(1)).toBeDisabled();
+    await expect(desheReset).toBeDisabled();
+    await expect(desheRow).not.toHaveClass(/overridden/);
+    await expect.poll(() => page.evaluate(() => {
+      const raw = legAltitudeDataset.segments
+        .find(s => s.from === 'DESHE' && s.to === 'ZALMN');
+      const lookup = legAltitudeMap['DESHE-ZALMN'];
+      return {
+        raw: [
+          raw.inboundAltitude,
+          raw.outboundAltitude,
+          raw.oneWay === true,
+          raw.status,
+        ],
+        lookup: [
+          lookup.inboundAltitude,
+          lookup.outboundAltitude,
+          lookup.oneWay === true,
+          lookup.status,
+        ],
+      };
+    })).toEqual({
+      raw: [3000, 2500, false, 'reviewed'],
+      lookup: [3000, 2500, false, 'reviewed'],
+    });
   });
 
   test('altitude pair labels focus the map on the selected leg', async ({ page }) => {
@@ -288,6 +351,16 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(page.locator('.charts-alt-title h3')).toHaveText('נתיבי CVFR');
     await expect(page.locator('.charts-alt-search')).toHaveAttribute('placeholder', 'חפש נתיבים');
     await expect(page.locator('.charts-alt-table thead th').first()).toHaveText('נתיב');
+    await expect(page.locator('.charts-alt-table thead th').nth(1))
+      .toHaveText('מהראשון לשני');
+    await expect(page.locator('.charts-alt-table thead th').nth(1))
+      .toHaveAttribute('title', 'גובה בכיוון הנתיב: מהנקודה הראשונה בטור נתיב אל הנקודה השנייה');
+    await expect(page.locator('.charts-alt-table thead th').nth(2))
+      .toHaveText('מהשני לראשון');
+    await expect(page.locator('.charts-alt-table thead th').nth(2))
+      .toHaveAttribute('title', 'גובה בכיוון ההפוך: מהנקודה השנייה בטור נתיב אל הנקודה הראשונה');
+    await expect(page.locator('.charts-alt-table thead th').nth(3)).toHaveText('כיוון');
+    await expect(page.locator('.charts-alt-table thead th').nth(4)).toHaveText('מ״י');
   });
 
   test('Airport charts entry point stays chart-only', async ({ page }) => {
@@ -364,7 +437,9 @@ test.describe('Charts modal — frequency catalog table', () => {
 
     await expect(page.locator('.charts-freq-title h3')).toHaveText('Frequency defaults');
     await expect(herzliya).toHaveValue('122.20');
+    await expect(herzliya).toHaveClass(/is-default/);
     await expect(pluto).toHaveValue('118.40');
+    await expect(pluto).toHaveClass(/is-default/);
     await expect(restoreAll).toBeDisabled();
     await expect(herzliyaReset).toBeDisabled();
     await expect(herzliyaRow).not.toHaveClass(/overridden/);
@@ -372,11 +447,13 @@ test.describe('Charts modal — frequency catalog table', () => {
     await herzliya.fill('137.00');
     await herzliya.press('Enter');
     await expect(herzliya).toHaveAttribute('aria-invalid', 'true');
+    await expect(herzliya).not.toHaveClass(/is-default/);
     await expect(restoreAll).toBeDisabled();
     await expect(herzliyaReset).toBeEnabled();
     expect(await page.evaluate(() => localStorage.getItem('navaid.commFreqOverrides'))).toBeNull();
     await herzliyaReset.click();
     await expect(herzliya).toHaveValue('122.20');
+    await expect(herzliya).toHaveClass(/is-default/);
     await expect(herzliya).toHaveAttribute('aria-invalid', 'false');
     await expect(herzliyaReset).toBeDisabled();
 
@@ -385,6 +462,7 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(restoreAll).toBeEnabled();
     await expect(herzliyaReset).toBeEnabled();
     await expect(herzliya).toHaveValue('125.60');
+    await expect(herzliya).not.toHaveClass(/is-default/);
     await expect(herzliyaRow).toHaveClass(/overridden/);
 
     const edited = await page.evaluate(() => ({
@@ -404,6 +482,7 @@ test.describe('Charts modal — frequency catalog table', () => {
 
     await herzliyaReset.click();
     await expect(herzliya).toHaveValue('122.20');
+    await expect(herzliya).toHaveClass(/is-default/);
     await expect(restoreAll).toBeDisabled();
     await expect(herzliyaReset).toBeDisabled();
     await expect(herzliyaRow).not.toHaveClass(/overridden/);

@@ -198,11 +198,11 @@
     <div class="tb-section" data-sec="view">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecView"></div>
       <div class="tb-section-body">
-         <button id="layer-selector" class="tool" data-i18n-title="tbLayerSelectorTitle"></button>
-        <label class="navtoggle" data-i18n-title="tbShowWpNamesTitle">
-          <input type="checkbox" id="wpname-cb" checked> <span data-i18n="tbShowWpNames"></span>
-          <button id="wpname-rot" type="button">⟳</button>
+        <label class="navtoggle" data-i18n-title="tbLayerTitle">
+          <span data-i18n="tbLayerLabel"></span>
+          <select id="layer-select"></select>
         </label>
+        <div class="tb-group" data-i18n="tbGrpOverlays"></div>
         <label class="navtoggle" data-i18n-title="tbShowNavWpTitle">
           <input type="checkbox" id="navwp-cb" checked> <span data-i18n="tbShowNavWp"></span>
         </label>
@@ -216,17 +216,36 @@
           <span data-i18n="vorRefLabel"></span>
           <select id="vor-ref-select"></select>
         </label>
+        <label class="navtoggle" data-i18n-title="tbShowSigmetTitle">
+          <input type="checkbox" id="sigmet-cb"> <span data-i18n="tbShowSigmet"></span>
+        </label>
+        <div class="tb-group" data-i18n="tbGrpRouteInfo"></div>
+        <label class="navtoggle" data-i18n-title="tbShowWpNamesTitle">
+          <input type="checkbox" id="wpname-cb" checked> <span data-i18n="tbShowWpNames"></span>
+          <button id="wpname-rot" type="button">⟳</button>
+        </label>
         <label class="navtoggle" data-i18n-title="tbShowCumTimeTitle">
           <input type="checkbox" id="cumtime-cb" checked> <span data-i18n="tbShowCumTime"></span>
         </label>
         <label class="navtoggle" data-i18n-title="tbShowDriftTitle">
           <input type="checkbox" id="drift-cb" checked> <span data-i18n="tbShowDrift"></span>
         </label>
+        <label class="navtoggle" data-i18n-title="tbShowWindTitle">
+          <input type="checkbox" id="show-wind-cb"> <span data-i18n="tbShowWind"></span>
+        </label>
+        <label class="navtoggle wind-input-row" id="wind-dir-row" data-i18n-title="tbWindDirTitle" hidden>
+          <span data-i18n="tbWindDir"></span>
+          <input type="number" id="wind-dir" min="0" max="360" step="5" value="270">
+        </label>
+        <label class="navtoggle wind-input-row" id="wind-speed-row" data-i18n-title="tbWindSpeedTitle" hidden>
+          <span data-i18n="tbWindSpeed"></span>
+          <input type="number" id="wind-speed" min="0" step="1" value="0">
+        </label>
+        <button id="wind-fetch" class="wind-input-row" type="button" style="display:none"
+                data-i18n="tbFetchWind" data-i18n-title="tbFetchWindTitle"></button>
+        <div id="wind-fetch-status" class="wind-input-row wind-fetch-status" style="display:none"></div>
         <label class="navtoggle" data-i18n-title="tbShowCommChangeTitle">
           <input type="checkbox" id="commchange-cb"> <span data-i18n="tbShowCommChange"></span>
-        </label>
-        <label class="navtoggle" data-i18n-title="tbForceSnapTitle">
-          <input type="checkbox" id="force-snap-cb"> <span data-i18n="tbForceSnap"></span>
         </label>
         <label class="navtoggle" data-i18n-title="tbShowReturnTitle">
           <input type="checkbox" id="ret-cb"> <span data-i18n="tbShowReturn"></span>
@@ -237,8 +256,18 @@
         <label class="navtoggle" data-i18n-title="tbHighlightDiffTitle">
           <input type="checkbox" id="diff-cb"> <span data-i18n="tbHighlightDiff"></span>
         </label>
+        <label class="navtoggle" data-i18n-title="tbLimitLegKitesTitle">
+          <input type="checkbox" id="limit-kites-cb" checked> <span data-i18n="tbLimitLegKites"></span>
+        </label>
+        <div class="tb-group" data-i18n="tbGrpSafety"></div>
+        <label class="navtoggle" data-i18n-title="tbShowMsaTitle">
+          <input type="checkbox" id="msa-cb"> <span data-i18n="tbShowMsa"></span>
+        </label>
         <label class="navtoggle" data-i18n-title="tbShowReportingTitle">
           <input type="checkbox" id="reporting-cb"> <span data-i18n="tbShowReporting"></span>
+        </label>
+        <label class="navtoggle" data-i18n-title="tbForceSnapTitle">
+          <input type="checkbox" id="force-snap-cb"> <span data-i18n="tbForceSnap"></span>
         </label>
         <button id="tool-magnifier" type="button" data-i18n="tbMagnifier" data-i18n-title="tbMagnifierTitle" style="width:100%;margin-top:4px;padding:4px 8px;font-size:12px"></button>
       </div>
@@ -248,9 +277,7 @@
     <div class="tb-section" data-sec="display">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecDisplay"></div>
       <div class="tb-section-body">
-        <label class="navtoggle" data-i18n-title="tbLightModeTitle">
-          <input type="checkbox" id="theme-light-cb"> <span data-i18n="tbLightMode"></span>
-        </label>
+        <button id="theme-toggle" type="button" data-i18n-title="tbLightModeTitle"></button>
         <label class="navtoggle" data-i18n-title="tbTransparencyTitle">
           <span data-i18n="tbTransparency"></span>
           <input type="range" id="yellow-alpha" value="80">
@@ -281,6 +308,8 @@
           <input type="range" id="drift-line-width" value="1">
           <span class="slider-val" id="drift-line-width-val"></span>
         </label>
+        <button id="clear-store" type="button" class="danger"
+                data-i18n="tbClearStore" data-i18n-title="tbClearStoreTitle"></button>
       </div>
     </div>
 
@@ -305,11 +334,29 @@
           <option value="json" data-i18n="tbExport"></option>
           <option value="gpx" data-i18n="tbGpxExport"></option>
           <option value="pln" data-i18n="tbPlnExport"></option>
+          <option value="fdr" data-i18n="tbFdrExport"></option>
         </select>
         <button id="load" data-i18n="tbImport" data-i18n-title="tbImportTitle"></button>
+        <button id="route-library" type="button" data-i18n="tbRouteLibrary" data-i18n-title="tbRouteLibraryTitle"></button>
         <button id="share" data-i18n="tbShare" data-i18n-title="tbShareTitle"></button>
         <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
-        <input type="file" id="file" accept="application/json,.json,.gpx,application/gpx+xml" hidden>
+        <input type="file" id="file" accept="application/json,.json,.gpx,application/gpx+xml,.pln,application/xml" hidden>
+      </div>
+    </div>
+
+    <!-- Simulator: live aircraft position from SimConnect bridge. -->
+    <div class="tb-section" data-sec="sim">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecSim"></div>
+      <div class="tb-section-body">
+        <button id="sim-connect-cb" type="button" data-i18n-title="tbSimConnectTitle"></button>
+        <label class="navtoggle" data-i18n-title="tbSimIpTitle">
+          <span data-i18n="tbSimIpLabel"></span>
+          <input type="text" id="sim-url" value="http://localhost:2020"
+                 style="flex:1;min-width:0;font:inherit;font-size:11px">
+        </label>
+        <button id="sim-follow-cb" type="button" data-i18n="tbSimFollow"
+                data-i18n-title="tbSimFollowTitle"></button>
+        <span id="sim-status" style="font-size:11px;padding:0 6px"></span>
       </div>
     </div>
 
@@ -378,6 +425,28 @@
                 d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm9 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm-.25-6.25a.75.75 0 0 0-1.5 0v3.5a.75.75 0 0 0 1.5 0v-3.5Z"/>
         </svg>
         <span class="footer-link-text" data-i18n="tbIssues"></span>
+      </a>
+      <a id="privacy-link" class="footer-link"
+         href="privacy.html"
+         target="_blank" rel="noopener noreferrer"
+         data-i18n-title="tbPrivacy">
+        <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
+             aria-hidden="true" focusable="false">
+          <path fill="currentColor" fill-rule="evenodd"
+                d="M8 0a.75.75 0 0 1 .32.072l5.5 2.5A.75.75 0 0 1 14.25 3.25v4.5c0 3.64-2.4 6.3-5.98 8.16a.75.75 0 0 1-.54 0C4.15 14.05 1.75 11.39 1.75 7.75v-4.5a.75.75 0 0 1 .43-.678l5.5-2.5A.75.75 0 0 1 8 0Zm0 1.578L3.25 3.74v4.01c0 2.86 1.83 5.04 4.75 6.64 2.92-1.6 4.75-3.78 4.75-6.64V3.74L8 1.578Z"/>
+        </svg>
+        <span class="footer-link-text" data-i18n="tbPrivacy"></span>
+      </a>
+      <a id="terms-link" class="footer-link"
+         href="terms.html"
+         target="_blank" rel="noopener noreferrer"
+         data-i18n-title="tbTerms">
+        <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
+             aria-hidden="true" focusable="false">
+          <path fill="currentColor" fill-rule="evenodd"
+                d="M3 1.75C3 .784 3.784 0 4.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237V14.25A1.75 1.75 0 0 1 14.25 16H4.75A1.75 1.75 0 0 1 3 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V5h-2.75A1.25 1.25 0 0 1 10.5 3.75V1.5Zm7.25.62V3.75c0 .138.112.25.25.25h1.63ZM5.75 7.5h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5Zm0 3h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5Z"/>
+        </svg>
+        <span class="footer-link-text" data-i18n="tbTerms"></span>
       </a>
     </div>
   </div>
@@ -448,9 +517,12 @@
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
         'i18n/' + window.__navLang + '/strings.js' + v,
         'app/core.js' + v,
+        'app/terrain.js' + v,
         'app/draw.js' + v,
         'app/interact.js' + v,
         'app/io.js' + v,
+        'app/alt-pair-directions.js' + v,
+        'app/gdrive.js' + v,
         'app/ui.js' + v
       ];
       for (var i = 0; i < srcs.length; i++) {
