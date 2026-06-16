@@ -2748,7 +2748,6 @@ const mapEl = map.getContainer();
 let touchDrag = null;
 
 mapEl.addEventListener('dblclick', e => {
-  if (state.mode === 'add' || state.mode === 'note') return;
   const rect = mapEl.getBoundingClientRect();
   const p = { x: e.clientX - rect.left, y: e.clientY - rect.top };
   if (hitNote(p.x, p.y) >= 0) return;
