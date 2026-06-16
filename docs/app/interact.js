@@ -322,7 +322,7 @@ function pointChoiceText(c) {
       primary: v ? v.ident : '',
       meta: ((S.choosePointVor || 'VOR station') +
         (v && referenceLocaleName(v, 'vor') ? ' / ' + referenceLocaleName(v, 'vor') : '') +
-        (v && v.freq ? ' / ' + v.freq : '')).trim(),
+        (v && v.freq ? ' / ' + (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : v.freq) : '')).trim(),
     };
   }
   if (c.type === 'airfield') {
@@ -851,11 +851,15 @@ function appendVorRadialRow(body, lat, lng) {
 }
 
 function airfieldAtisText(af) {
-  return af && typeof af.atis === 'string' ? af.atis.trim() : '';
+  return typeof airfieldFieldText === 'function'
+    ? airfieldFieldText(af, 'atis')
+    : (af && typeof af.atis === 'string' ? af.atis.trim() : '');
 }
 
 function airfieldClearanceText(af) {
-  return af && typeof af.clearance === 'string' ? af.clearance.trim() : '';
+  return typeof airfieldFieldText === 'function'
+    ? airfieldFieldText(af, 'clearance')
+    : (af && typeof af.clearance === 'string' ? af.clearance.trim() : '');
 }
 
 const AIRFIELD_CALL_SIGN_IDS = {
@@ -891,11 +895,17 @@ const AIRFIELD_CALL_SIGN_IDS = {
 function airfieldPrimaryText(af) {
   const id = af && Object.prototype.hasOwnProperty.call(AIRFIELD_CALL_SIGN_IDS, af.name)
     ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
-  const row = id && typeof commCatalogCallSignRow === 'function'
-    ? commCatalogCallSignRow(id) : null;
-  const primary = row && typeof row.primary === 'string' ? row.primary.trim() : '';
-  if (!primary) return '';
-  return (typeof commFormatFreq === 'function' ? commFormatFreq(primary) : primary) + ' MHz';
+  if (!id) return '';
+  // Effective freq honours a freq-table override, falling back to the catalog
+  // default — so an edited frequency reflects in the inspector + Freq column.
+  const eff = typeof commCallSignEffectiveFreq === 'function'
+    ? commCallSignEffectiveFreq(id)
+    : (() => {
+        const row = typeof commCatalogCallSignRow === 'function' ? commCatalogCallSignRow(id) : null;
+        const p = row && typeof row.primary === 'string' ? row.primary.trim() : '';
+        return p && typeof commFormatFreq === 'function' ? commFormatFreq(p) : p;
+      })();
+  return eff ? eff + ' MHz' : '';
 }
 
 function refreshAirfieldInspectorAfterCommCatalog(af) {
@@ -912,27 +922,103 @@ function refreshAirfieldInspectorAfterCommCatalog(af) {
   });
 }
 
+// Generic editable-frequency inspector row. `opts`:
+//   value      current displayed freq, def default, rowClass extra class
+//   isOverride() -> bool, commit(norm) -> displayed value, onReset()
+function freqEditRow(label, opts) {
+  const row = document.createElement('div');
+  row.className = 'row' + (opts.rowClass ? ' ' + opts.rowClass : '');
+  const l = document.createElement('label');
+  l.textContent = label;
+  const v = document.createElement('span');
+  v.className = 'val';
+  v.dir = 'ltr';                   // frequencies always read LTR, even in RTL UI
+  const inp = document.createElement('input');
+  inp.className = 'charts-freq-input';
+  inp.dir = 'ltr';
+  const configure = opts.configure || (typeof commConfigureFreqInput === 'function' ? commConfigureFreqInput : null);
+  const normalize = opts.normalize || (typeof commNormalizeFreqInput === 'function' ? commNormalizeFreqInput : null);
+  if (configure) configure(inp);
+  else { inp.type = 'number'; inp.inputMode = 'decimal'; inp.step = '0.005'; }
+  inp.value = opts.value || opts.def || '';
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.className = 'commchange-freq-reset';
+  reset.textContent = '↻';
+  reset.title = S.resetFreqOverride || S.sliderReset || 'Reset to default';
+  const norm = () => (normalize ? normalize(inp.value) : String(inp.value || '').trim());
+  function sync() {
+    const n = norm();
+    const invalid = n === null;
+    inp.classList.toggle('invalid', invalid);
+    inp.classList.toggle('is-default', !invalid && !!opts.def && (n || '') === opts.def);
+    reset.disabled = !opts.def || (!opts.isOverride() && !invalid);
+  }
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } });
+  inp.addEventListener('input', sync);
+  inp.addEventListener('change', () => {
+    const n = norm();
+    if (n === null) { sync(); return; }
+    inp.value = opts.commit(n) || n || inp.value;
+    sync();
+    draw();
+  });
+  reset.onclick = () => {
+    if (reset.disabled) return;
+    inp.value = (opts.onReset && opts.onReset()) || opts.def || '';
+    sync();
+    draw();
+  };
+  v.append(inp, reset);
+  row.append(l, v);
+  sync();
+  return row;
+}
+
 function appendAirfieldFrequencyRows(body, af) {
-  const primary = airfieldPrimaryText(af);
-  if (primary) {
-    const row = textRow(S.primary || 'Primary', primary);
-    row.classList.add('primary-row');
-    body.appendChild(row);
+  const id = af && Object.prototype.hasOwnProperty.call(AIRFIELD_CALL_SIGN_IDS, af.name)
+    ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
+  if (id) {
+    const template = typeof commCallSignTemplateFreq === 'function' ? commCallSignTemplateFreq(id) : '';
+    body.appendChild(freqEditRow(S.primary || 'Primary', {
+      value: typeof commCallSignEffectiveFreq === 'function' ? commCallSignEffectiveFreq(id) : '',
+      def: template, rowClass: 'primary-row',
+      isOverride: () => !!(typeof commCallSignOverrideFreq === 'function' && commCallSignOverrideFreq(id)),
+      commit: n => typeof commApplyCallSignFreqOverride === 'function' ? commApplyCallSignFreqOverride(id, n) : n,
+      onReset: () => { if (typeof commResetCallSignFreqOverride === 'function') commResetCallSignFreqOverride(id); return template; },
+    }));
   } else {
-    refreshAirfieldInspectorAfterCommCatalog(af);
+    const primary = airfieldPrimaryText(af);
+    if (primary) {
+      const row = textRow(S.primary || 'Primary', primary);
+      row.classList.add('primary-row');
+      body.appendChild(row);
+    } else {
+      refreshAirfieldInspectorAfterCommCatalog(af);
+    }
   }
-  const clearance = airfieldClearanceText(af);
-  if (clearance) {
-    const row = textRow(S.clearance || 'Clearance', clearance);
-    row.classList.add('clearance-row');
-    body.appendChild(row);
-  }
-  const atis = airfieldAtisText(af);
-  if (atis) {
-    const row = textRow(S.atis || 'ATIS', atis);
-    row.classList.add('atis-row');
-    body.appendChild(row);
-  }
+  // Clearance / ATIS — one editable numeric field per labelled part (#freq).
+  const appendFieldParts = (field, label, rowClass) => {
+    const parts = typeof airfieldFieldParts === 'function' ? airfieldFieldParts(af, field) : [];
+    if (!parts.length) {
+      // Show a "— None" row so every airfield inspector has the same layout.
+      const row = textRow(label, S.freqNone || 'None');
+      row.classList.add(rowClass);
+      body.appendChild(row);
+      return;
+    }
+    for (const p of parts) {
+      const rowLabel = p.label ? label + ' ' + p.label : label;
+      body.appendChild(freqEditRow(rowLabel, {
+        value: p.freq, def: p.def, rowClass,
+        isOverride: () => p.overridden,
+        commit: n => { setAirfieldFreqOverride(p.key, n === p.def ? '' : n); p.freq = n; p.overridden = n !== p.def; return n; },
+        onReset: () => { setAirfieldFreqOverride(p.key, ''); p.freq = p.def; p.overridden = false; return p.def; },
+      }));
+    }
+  };
+  appendFieldParts('clearance', S.clearance || 'Clearance', 'clearance-row');
+  appendFieldParts('atis', S.atis || 'ATIS', 'atis-row');
 }
 
 const SATELLITE_TILE_SIZE = 256;
@@ -1714,7 +1800,18 @@ function showInspector() {
     title.value = referenceInspectorTitle(v, 'vor');
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     appendPointCoordinateRows(body, v);
-    body.appendChild(textRow(S.vorFreq || 'Frequency', v.freq + ' MHz'));
+    {
+      const vdef = typeof freqClean === 'function' ? freqClean(v.freq) : String(v.freq || '');
+      body.appendChild(freqEditRow(S.vorFreq || 'Frequency', {
+        value: typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : vdef,
+        def: vdef, rowClass: 'vor-freq-row',
+        configure: typeof vorConfigureFreqInput === 'function' ? vorConfigureFreqInput : null,
+        normalize: typeof vorNormalizeFreqInput === 'function' ? vorNormalizeFreqInput : null,
+        isOverride: () => !!(typeof vorFreqOverrides === 'function' && vorFreqOverrides()[v.ident]),
+        commit: n => { if (typeof setVorFreqOverride === 'function') setVorFreqOverride(v.ident, n === vdef ? '' : n); return n; },
+        onReset: () => { if (typeof setVorFreqOverride === 'function') setVorFreqOverride(v.ident, ''); return vdef; },
+      }));
+    }
     appendSatelliteSnippet(body, v, title.value);
     const useBtn = document.createElement('button');
     useBtn.className = 'insp-btn';

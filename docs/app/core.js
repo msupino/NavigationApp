@@ -413,6 +413,8 @@ window.S = Object.assign({
   errNoLegs: 'No legs yet — drop at least two waypoints first.',
   flightPlan: 'Flight plan',
   fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time', 'Fuel (gal)', 'Cum. time', 'Cum. fuel', 'Radial', 'DME', ''],
+  fpFreq: 'Freq',
+  freqNone: 'None',
   fpHeadersShort: ['#', 'From', 'To', 'Hdg', 'Dist', 'Spd', 'Alt', 'Time', 'Fuel'],
   exportPlanPlace: 'Place flight plan on the map',
   exportPlanPlaceTitle: 'Overlay the flight-plan table on the export; drag it to position it inside the page frame',
@@ -431,6 +433,8 @@ window.S = Object.assign({
   navLogTitle: 'NavAid — Nav Log',
   navLogDate: 'Date',
   navLogFreqs: 'Frequencies',
+  navLogDepFreqs: 'Departure frequencies',
+  navLogArrFreqs: 'Arrival frequencies',
   navLogPopupBlocked: 'Allow pop-ups to export the nav log.',
   fpFuel: 'Fuel',
   fpMsa: 'MSA (ft)',
@@ -1067,6 +1071,109 @@ function decodeSigmet(s) {
   return (fir ? fir + ' — ' : '') + parts.join(', ');
 }
 const pad3 = n => String(n).padStart(3, '0');
+// Strip a trailing "MHz" unit from a frequency string → "121.70 MHz" → "121.70".
+function freqClean(s) { return String(s == null ? '' : s).replace(/\s*MHz\s*$/i, '').trim(); }
+// Per-leg comm-frequency sources along the route, sorted by waypoint index:
+// each airfield's primary radio frequency (active from the leg departing it)
+// plus each comm-change note (which overrides at its waypoint). Used by the
+// flight-plan + printed-plan Freq column.
+function routeFreqSources() {
+  const out = [];
+  const wps = state.waypoints || [];
+  const legCount = (state.legs || []).length;
+  // The DEPARTURE airfield (first waypoint) contributes its frequency on the
+  // first leg; airfields merely passed overhead mid-route do not.
+  if (wps.length) {
+    const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wps[0]) : null;
+    const f = af && typeof airfieldPrimaryText === 'function' ? freqClean(airfieldPrimaryText(af)) : '';
+    if (f) out.push({ wpi: 0, freq: f });
+  }
+  // The DESTINATION airfield (last waypoint) contributes its frequency on the
+  // last leg — so if no comm-change switched to it yet, the final leg still
+  // shows the arrival airport's freq. A comm-change at the same leg overrides
+  // (notes are pushed after, so they sort last in the carry-forward).
+  if (legCount > 0 && wps.length > 1) {
+    const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wps[wps.length - 1]) : null;
+    const f = af && typeof airfieldPrimaryText === 'function' ? freqClean(airfieldPrimaryText(af)) : '';
+    if (f) out.push({ wpi: legCount - 1, freq: f });
+  }
+  for (const n of (state.notes || [])) {
+    if (!n || !n.cc) continue;
+    const wpi = typeof commCalloutWaypointIndex === 'function' ? commCalloutWaypointIndex(n) : -1;
+    const f = typeof commNoteFreq === 'function' ? commNoteFreq(n) : (n.freq || '');
+    if (wpi >= 0 && f) out.push({ wpi, freq: freqClean(f) });
+  }
+  // Sort by waypoint; comm-change notes are pushed after airfields so a note at
+  // the same waypoint sorts last and wins the carry-forward.
+  out.sort((a, b) => a.wpi - b.wpi);
+  return out;
+}
+// Active frequency for leg i: the latest source at or before the leg's start.
+function legActiveFreq(i, sources) {
+  const src = sources || routeFreqSources();
+  let f = '';
+  for (const c of src) { if (c.wpi <= i) f = c.freq; else break; }
+  return f;
+}
+
+// --- editable airfield clearance / ATIS frequencies -------------------
+// Clearance/ATIS are stored as compound strings ("Arrival 132.50 MHz /
+// Departure 132.80 MHz"). Split them into labelled numeric parts so each can
+// be edited; edits are persisted as per-airfield/field/part overrides and the
+// display string is rebuilt from the (override-aware) parts.
+function parseFreqParts(str) {
+  const out = [];
+  for (const seg of String(str == null ? '' : str).split('/')) {
+    const m = seg.match(/(\d{2,3}(?:\.\d{1,3})?)/);
+    if (!m) continue;
+    const label = seg.slice(0, m.index).replace(/[^A-Za-z֐-׿ ]+/g, ' ').trim();
+    out.push({ label, freq: freqClean(m[1]) });
+  }
+  return out;
+}
+function airfieldFreqOverrides() {
+  try { return JSON.parse(localStorage.getItem('navaid.airfieldFreqOverrides') || '{}') || {}; }
+  catch (e) { return {}; }
+}
+function setAirfieldFreqOverride(key, val) {
+  const o = airfieldFreqOverrides();
+  if (val) o[key] = val; else delete o[key];
+  try { localStorage.setItem('navaid.airfieldFreqOverrides', JSON.stringify(o)); } catch (e) { /* ignore */ }
+}
+// Override-aware labelled parts for an airfield field ('clearance' | 'atis').
+function airfieldFieldParts(af, field) {
+  if (!af || typeof af[field] !== 'string') return [];
+  const parts = parseFreqParts(af[field]);
+  const ov = airfieldFreqOverrides();
+  return parts.map((p, i) => {
+    const key = af.name + '|' + field + '|' + i;
+    const o = ov[key];
+    return { label: p.label, freq: o || p.freq, def: p.freq, key, overridden: !!o && o !== p.freq };
+  });
+}
+// Override-aware display string for an airfield field.
+function airfieldFieldText(af, field) {
+  const parts = airfieldFieldParts(af, field);
+  if (!parts.length) return af && typeof af[field] === 'string' ? af[field].trim() : '';
+  return parts.map(p => (p.label ? p.label + ' ' : '') + p.freq + ' MHz').join(' / ');
+}
+
+// --- editable VOR frequencies -----------------------------------------
+function vorFreqOverrides() {
+  try { return JSON.parse(localStorage.getItem('navaid.vorFreqOverrides') || '{}') || {}; }
+  catch (e) { return {}; }
+}
+function setVorFreqOverride(ident, val) {
+  const o = vorFreqOverrides();
+  if (val) o[ident] = val; else delete o[ident];
+  try { localStorage.setItem('navaid.vorFreqOverrides', JSON.stringify(o)); } catch (e) { /* ignore */ }
+}
+// Effective (override-aware) frequency for a VOR object.
+function vorEffectiveFreq(v) {
+  if (!v) return '';
+  const def = freqClean(v.freq);
+  return (v.ident && vorFreqOverrides()[v.ident]) || def;
+}
 function toHMS(hours) {
   const tm = hours * 60;
   let m = Math.floor(tm);
