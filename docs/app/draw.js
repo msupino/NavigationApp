@@ -1567,16 +1567,29 @@ function commChangeReferencePoint(name) {
     : null;
   return refAf || null;
 }
+function knownRoutePointKey(name) {
+  const key = canonicalNavWaypointName(name);
+  if (!key) return '';
+  if (Array.isArray(navWP) && navWP.some(w => w && canonicalNavWaypointName(w.name) === key)) {
+    return key;
+  }
+  if (Array.isArray(airfields) && airfields.some(a => a && canonicalNavWaypointName(a.name) === key)) {
+    return key;
+  }
+  return '';
+}
 function commChangeWaypointInRange(wp, name) {
   if (!wp || typeof map === 'undefined' || !map) return false;
   const key = canonicalNavWaypointName(name);
   if (!key) return false;
+  const wpKey = canonicalNavWaypointName(wp.name);
+  if (wpKey && wpKey !== key && knownRoutePointKey(wpKey)) return false;
   const ref = commChangeReferencePoint(key);
   // When there is no reference position, fall back to name equality.
-  if (!ref) return canonicalNavWaypointName(wp.name) === key;
-  // Position is authoritative — a renamed waypoint still triggers if it
-  // sits on the comm-change reference point (name check removed so renaming
-  // does not silently disable the frequency-change indicator).
+  if (!ref) return wpKey === key;
+  // Position is authoritative only for custom / renamed points — a known
+  // route waypoint with a different code must not snap to a nearby comm point
+  // at low zoom (e.g. HTZUK must not activate KNTRY).
   const a = map.latLngToContainerPoint([wp.lat, wp.lng]);
   const b = map.latLngToContainerPoint([ref.lat, ref.lng]);
   return Math.hypot(a.x - b.x, a.y - b.y) <= tune('commChangeSnapPx');
