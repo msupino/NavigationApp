@@ -322,7 +322,7 @@ function pointChoiceText(c) {
       primary: v ? v.ident : '',
       meta: ((S.choosePointVor || 'VOR station') +
         (v && referenceLocaleName(v, 'vor') ? ' / ' + referenceLocaleName(v, 'vor') : '') +
-        (v && v.freq ? ' / ' + v.freq : '')).trim(),
+        (v && v.freq ? ' / ' + (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : v.freq) : '')).trim(),
     };
   }
   if (c.type === 'airfield') {
@@ -932,9 +932,10 @@ function freqEditRow(label, opts) {
   l.textContent = label;
   const v = document.createElement('span');
   v.className = 'val';
+  v.dir = 'ltr';                   // frequencies always read LTR, even in RTL UI
   const inp = document.createElement('input');
   inp.className = 'charts-freq-input';
-  inp.dir = 'ltr';                 // frequencies always read LTR, even in RTL UI
+  inp.dir = 'ltr';
   if (typeof commConfigureFreqInput === 'function') commConfigureFreqInput(inp);
   else { inp.type = 'number'; inp.inputMode = 'decimal'; inp.step = '0.005'; }
   inp.value = opts.value || opts.def || '';
@@ -1791,7 +1792,16 @@ function showInspector() {
     title.value = referenceInspectorTitle(v, 'vor');
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     appendPointCoordinateRows(body, v);
-    body.appendChild(textRow(S.vorFreq || 'Frequency', v.freq + ' MHz'));
+    {
+      const vdef = typeof freqClean === 'function' ? freqClean(v.freq) : String(v.freq || '');
+      body.appendChild(freqEditRow(S.vorFreq || 'Frequency', {
+        value: typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : vdef,
+        def: vdef, rowClass: 'vor-freq-row',
+        isOverride: () => !!(typeof vorFreqOverrides === 'function' && vorFreqOverrides()[v.ident]),
+        commit: n => { if (typeof setVorFreqOverride === 'function') setVorFreqOverride(v.ident, n === vdef ? '' : n); return n; },
+        onReset: () => { if (typeof setVorFreqOverride === 'function') setVorFreqOverride(v.ident, ''); return vdef; },
+      }));
+    }
     appendSatelliteSnippet(body, v, title.value);
     const useBtn = document.createElement('button');
     useBtn.className = 'insp-btn';

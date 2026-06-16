@@ -957,7 +957,7 @@ function drawVors() {
     octx.arc(s.x, s.y, Math.max(1.5, r * 0.22), 0, Math.PI * 2);
     octx.fill();
     if (showLabels) {
-      const label = v.ident + '  ' + v.freq;
+      const label = v.ident + '  ' + (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : v.freq);
       const lx = s.x + r + 6, ly = s.y;
       octx.lineWidth = 2.5;
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));

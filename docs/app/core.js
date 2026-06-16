@@ -1077,10 +1077,12 @@ function freqClean(s) { return String(s == null ? '' : s).replace(/\s*MHz\s*$/i,
 function routeFreqSources() {
   const out = [];
   const wps = state.waypoints || [];
-  for (let i = 0; i < wps.length; i++) {
-    const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wps[i]) : null;
+  // Only the DEPARTURE airfield (first waypoint) contributes its frequency —
+  // airfields merely passed overhead mid-route, or the destination, do not.
+  if (wps.length) {
+    const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wps[0]) : null;
     const f = af && typeof airfieldPrimaryText === 'function' ? freqClean(airfieldPrimaryText(af)) : '';
-    if (f) out.push({ wpi: i, freq: f });
+    if (f) out.push({ wpi: 0, freq: f });
   }
   for (const n of (state.notes || [])) {
     if (!n || !n.cc) continue;
@@ -1141,6 +1143,23 @@ function airfieldFieldText(af, field) {
   const parts = airfieldFieldParts(af, field);
   if (!parts.length) return af && typeof af[field] === 'string' ? af[field].trim() : '';
   return parts.map(p => (p.label ? p.label + ' ' : '') + p.freq + ' MHz').join(' / ');
+}
+
+// --- editable VOR frequencies -----------------------------------------
+function vorFreqOverrides() {
+  try { return JSON.parse(localStorage.getItem('navaid.vorFreqOverrides') || '{}') || {}; }
+  catch (e) { return {}; }
+}
+function setVorFreqOverride(ident, val) {
+  const o = vorFreqOverrides();
+  if (val) o[ident] = val; else delete o[ident];
+  try { localStorage.setItem('navaid.vorFreqOverrides', JSON.stringify(o)); } catch (e) { /* ignore */ }
+}
+// Effective (override-aware) frequency for a VOR object.
+function vorEffectiveFreq(v) {
+  if (!v) return '';
+  const def = freqClean(v.freq);
+  return (v.ident && vorFreqOverrides()[v.ident]) || def;
 }
 function toHMS(hours) {
   const tm = hours * 60;

@@ -1657,7 +1657,7 @@ function showFlightPlan() {
     }
     vorSel.value = vorRef || '';
     const cur = typeof activeVor === 'function' ? activeVor() : null;
-    vorFreqSpan.textContent = cur ? cur.freq + ' MHz' : '';
+    vorFreqSpan.textContent = cur ? (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(cur) : cur.freq) + ' MHz' : '';
   }
   vorSel.onchange = () => {
     window.vorRef = vorSel.value || null;
@@ -3931,8 +3931,16 @@ function renderFreqTable(freqSection) {
       for (const part of parts) afFreqRows.push({ af, flabel: fld[1], part });
     }
   }
+  // VOR frequencies (one editable row each).
+  const vorList = (typeof vors !== 'undefined' && Array.isArray(vors)) ? vors : [];
+  const vorFreqRows = vorList.map(v => ({
+    v,
+    def: typeof freqClean === 'function' ? freqClean(v.freq) : String(v.freq || ''),
+    get overridden() { return !!(typeof vorFreqOverrides === 'function' && vorFreqOverrides()[v.ident]); },
+  }));
   const updateRestoreAll = () => {
-    restoreAll.disabled = !(opts.some(o => !!o.overrideFreq) || afFreqRows.some(r => r.part.overridden));
+    restoreAll.disabled = !(opts.some(o => !!o.overrideFreq) ||
+      afFreqRows.some(r => r.part.overridden) || vorFreqRows.some(r => r.overridden));
   };
   updateRestoreAll();
   restoreAll.onclick = e => {
@@ -3947,11 +3955,12 @@ function renderFreqTable(freqSection) {
       }
     }
     try { localStorage.removeItem('navaid.airfieldFreqOverrides'); } catch (err) { /* ignore */ }
+    try { localStorage.removeItem('navaid.vorFreqOverrides'); } catch (err) { /* ignore */ }
     renderFreqTable(freqSection);
     afterFreqTableEdit();
   };
 
-  if (!opts.length && !afFreqRows.length) {
+  if (!opts.length && !afFreqRows.length && !vorFreqRows.length) {
     const empty = document.createElement('p');
     empty.className = 'charts-freq-empty';
     empty.textContent = S.freqTableEmpty || 'No frequency catalog available';
@@ -4179,6 +4188,72 @@ function renderFreqTable(freqSection) {
     tr.append(name, template, local, actions);
     tbody.appendChild(tr);
   }
+  // VOR rows (editable single frequency each).
+  for (const r of vorFreqRows) {
+    const v = r.v;
+    const tr = document.createElement('tr');
+    tr.className = r.overridden ? 'overridden' : '';
+    tr.dataset.search = [v.ident, v.name, v.he, 'vor', r.def].filter(Boolean).join(' ').toLocaleLowerCase();
+    const name = document.createElement('td');
+    const label = document.createElement('span');
+    label.className = 'charts-freq-label';
+    label.textContent = (v.name || v.ident) + ' VOR';
+    name.appendChild(label);
+    const code = document.createElement('span');
+    code.className = 'charts-freq-code';
+    code.textContent = v.ident;
+    name.appendChild(code);
+    const template = document.createElement('td');
+    template.className = 'charts-freq-template';
+    template.textContent = r.def || '';
+    const local = document.createElement('td');
+    const inp = document.createElement('input');
+    inp.className = 'charts-freq-input';
+    inp.dir = 'ltr';
+    if (typeof commConfigureFreqInput === 'function') commConfigureFreqInput(inp);
+    else { inp.type = 'number'; inp.inputMode = 'decimal'; inp.step = '0.005'; }
+    inp.value = (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : r.def) || r.def || '';
+    const actions = document.createElement('td');
+    actions.className = 'charts-freq-actions';
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'commchange-freq-reset';
+    reset.textContent = '↻';
+    reset.title = S.resetFreqOverride || S.sliderReset || 'Reset to default';
+    const normOf = () => (typeof commNormalizeFreqInput === 'function'
+      ? commNormalizeFreqInput(inp.value) : String(inp.value || '').trim());
+    function syncVor() {
+      const n = normOf();
+      const invalid = n === null;
+      inp.classList.toggle('invalid', invalid);
+      inp.classList.toggle('is-default', !invalid && !!r.def && (n || '') === r.def);
+      inp.setAttribute('aria-invalid', invalid ? 'true' : 'false');
+      reset.disabled = !r.def || (!r.overridden && !invalid);
+    }
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } });
+    inp.addEventListener('input', syncVor);
+    inp.addEventListener('change', () => {
+      const n = normOf();
+      if (n === null) { syncVor(); return; }
+      if (typeof setVorFreqOverride === 'function') setVorFreqOverride(v.ident, n === r.def ? '' : n);
+      inp.value = n;
+      tr.classList.toggle('overridden', r.overridden);
+      syncVor(); updateRestoreAll(); afterFreqTableEdit();
+    });
+    reset.onclick = e => {
+      e.preventDefault();
+      if (reset.disabled) return;
+      if (typeof setVorFreqOverride === 'function') setVorFreqOverride(v.ident, '');
+      inp.value = r.def || '';
+      tr.classList.remove('overridden');
+      syncVor(); updateRestoreAll(); afterFreqTableEdit();
+    };
+    local.appendChild(inp);
+    actions.appendChild(reset);
+    syncVor();
+    tr.append(name, template, local, actions);
+    tbody.appendChild(tr);
+  }
   table.appendChild(tbody);
   tableWrap.appendChild(table);
   freqSection.appendChild(tableWrap);
@@ -4218,7 +4293,12 @@ function showFreqTableModal() {
   const loadingFreq = document.createElement('p');
   loadingFreq.textContent = '…';
   freqSection.appendChild(loadingFreq);
-  loadCommChange().then(() => renderFreqTable(freqSection));
+  // Load the catalog + airfields + VORs so the table can list every frequency.
+  Promise.all([
+    loadCommChange(),
+    typeof loadAirfields === 'function' ? loadAirfields() : null,
+    typeof loadVors === 'function' ? loadVors() : null,
+  ]).then(() => renderFreqTable(freqSection));
   scrollArea.appendChild(body);
   modal.box.appendChild(scrollArea);
   modal.show();
