@@ -325,10 +325,9 @@ function draw() {
 
 // --- SIGMET hazard overlay (active international SIGMETs) ------------
 // A scheduled GitHub Action fetches the NOAA AWC isigmet feed, filters it to
-// the Israel region, and publishes sigmet.json to the `sigmet-data` branch —
-// served with CORS by raw.githubusercontent.com, so this static app can read
-// it directly (the AWC API itself blocks browser CORS). Same-origin
-// data/sigmet.json is the offline / first-run fallback.
+// the Israel region, and publishes sigmet.json to the `sigmet-data` branch
+// for this static app to read directly. Same-origin data/sigmet.json is the
+// offline / first-run fallback.
 const SIGMET_URL =
   'https://raw.githubusercontent.com/msupino/NavigationApp/sigmet-data/sigmet.json';
 async function loadSigmets(force) {

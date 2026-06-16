@@ -3029,10 +3029,20 @@ function showExportModal() {
   document.addEventListener('keydown', onEsc);
 }
 
+async function fetchTileBitmap(layer, coords, signal) {
+  try {
+    const r = await fetch(tileLayerUrl(layer, coords), { signal });
+    if (r.status === 404) return { bmp: null, failed: false };
+    if (!r.ok) return { bmp: null, failed: true };
+    return { bmp: await r.blob().then(b => createImageBitmap(b)),
+             failed: false };
+  } catch (e) {
+    return { bmp: null, failed: true };
+  }
+}
+
 // Save the framed map + route as a PNG, rendered at the highest practical
-// native tile zoom (not the on-screen zoom) for maximum quality. flight-maps
-// tiles are not CORS-enabled, so each tile is fetched through the weserv image
-// proxy (which adds Access-Control-Allow-Origin) to keep the canvas untainted.
+// native tile zoom (not the on-screen zoom) for maximum quality.
 function exportPNG() {
   // Export matches the screen view exactly, including map bearing.
   // Tiles are fetched north-up (axis-aligned) for a bounding box that covers
@@ -3091,22 +3101,20 @@ function exportPNG() {
   const bbSEll = { lat: Math.min(c0.lat, c1.lat, c2.lat, c3.lat),
                    lng: Math.max(c0.lng, c1.lng, c2.lng, c3.lng) };
 
-  // Choose a starting tile zoom.  Framed exports (A3 / A4) target maximum
-  // print quality at the layer's max native zoom.  Without a frame the export
+  // Choose a starting tile zoom. Framed exports (A3 / A4) target maximum
+  // print quality at the layer's max native zoom. Without a frame the export
   // covers the entire viewport; rendering that at max native zoom can balloon
-  // into hundreds of tiles, and the weserv image proxy rate-limits enough of
-  // them that the result has blank patches.  Mirror the on-screen tile zoom
-  // instead so the export matches what the user sees and the tile count stays
-  // bounded by the viewport size.
+  // into hundreds of tiles. Mirror the on-screen tile zoom instead so the
+  // export matches what the user sees and the tile count stays bounded by the
+  // viewport size.
   const nativeMax = base.options.maxNativeZoom || base.options.maxZoom || 13;
   const maxZ = framed
     ? nativeMax
     : Math.min(nativeMax, Math.max(7, Math.round(map.getZoom())));
 
   // Zoom down until the bounding box fits in one canvas AND the parallel tile
-  // count stays within what the proxy will reliably serve.  ~300 tiles ≈ a
-  // 17×17 grid which the weserv proxy handles without dropping requests; the
-  // floor of 7 keeps even very large rotated frames under the cap.
+  // count stays bounded. The floor of 7 keeps even very large rotated frames
+  // under the cap.
   const MAX_TILES = 300;
   let z = maxZ, bbNWP, bbSEP, Wbb, Hbb;
   for (z = maxZ; z >= 7; z--) {
@@ -3143,13 +3151,9 @@ function exportPNG() {
   btn.textContent = S.saving;
   btn.disabled = true;
 
-  // Gather the covering tiles. CORS-capable layers (OSM, Esri) are fetched
-  // directly; flight-maps.com tiles need the weserv proxy to add CORS headers.
-  const subs = base.options.subdomains || 'abc';
-  const corsOk = base.options.corsOk;
-
+  // Gather the covering tiles.
   // Clip the tile grid to the chart's published coverage when the layer
-  // declares one (flight-maps.com layers only cover Israel + adjacent VFR
+  // declares one (chart layers only cover Israel + adjacent VFR
   // airspace).  Tiles outside that box return 404, which used to be reported
   // as "X of Y map tiles failed to load" even though they are expected blanks
   // outside the chart.  Areas outside chartBounds simply stay as the dark
@@ -3168,19 +3172,13 @@ function exportPNG() {
     tyMax = Math.min(tyMax, Math.floor(cbSE.y / 256));
   }
   // Fetch each tile first so we can distinguish HTTP 404 (expected outside the
-  // chart's published coverage — e.g. flight-maps.com 404s on tiles outside
-  // Israel and adjacent VFR airspace) from real failures (network, CORS, 5xx,
-  // decode).  Only the latter count toward the "X of Y tiles failed" alert; a
-  // 404 just leaves the dark canvas backdrop showing in that area, matching
-  // what the user already sees on screen.
+  // chart's published coverage) from real failures (network, 5xx, decode).
+  // Only the latter count toward the "X of Y tiles failed" alert; a 404 just
+  // leaves the dark canvas backdrop showing in that area, matching what the
+  // user already sees on screen.
   const jobs = [];
   for (let tx = txMin; tx <= txMax; tx++) {
     for (let ty = tyMin; ty <= tyMax; ty++) {
-      const url = L.Util.template(base._url,
-        { z, x: tx, y: ty, s: subs[(tx + ty) % subs.length] });
-      const fetchUrl = corsOk ? url
-        : 'https://images.weserv.nl/?url=' +
-          encodeURIComponent(url.replace(/^https?:\/\//, ''));
       const job = {
         dx: Math.round(tx * 256 - bbNWP.x),
         dy: Math.round(ty * 256 - bbNWP.y),
@@ -3189,13 +3187,11 @@ function exportPNG() {
       };
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 20000);
-      job.done = fetch(fetchUrl, { signal: ctrl.signal })
-        .then(r => {
-          if (r.status === 404) return null;        // expected blank tile
-          if (!r.ok) { job.failed = true; return null; }
-          return r.blob().then(b => createImageBitmap(b));
+      job.done = fetchTileBitmap(base, { z, x: tx, y: ty }, ctrl.signal)
+        .then(result => {
+          job.bmp = result.bmp;
+          job.failed = result.failed;
         })
-        .then(bmp => { job.bmp = bmp; })
         .catch(() => { job.failed = true; })
         .then(() => clearTimeout(timer));
       jobs.push(job);
@@ -5360,7 +5356,6 @@ function rebuildMagnifier() {
     const _paneInv = refWrapM.inverse();
     const maxNZ = activeLayer.options.maxNativeZoom ||
                   activeLayer.options.maxZoom || 19;
-    const subs = activeLayer.options.subdomains || 'abc';
     // Local alias for the slider value. Named `slider` to avoid shadowing
     // the global i18n `S` (which a sibling block in this same file used
     // to read for the loading-pill label).
@@ -5444,10 +5439,9 @@ function rebuildMagnifier() {
             // Preserve the original cleanup behaviour for 404'd tiles.
             tile.remove();
             onSettle(ev);
-          }, { once: true });
-          tile.src = L.Util.template(activeLayer._url,
-            { z: tileTarget, x: tx, y: ty,
-              s: subs[(tx + ty) % subs.length] });
+          });
+          tile.src = tileLayerUrl(activeLayer,
+            { z: tileTarget, x: tx, y: ty });
           // Cached images can fire `load` before listeners are attached.
           // `complete` + `naturalWidth > 0` ⇒ already loaded; `complete`
           // alone (with `naturalWidth === 0`) ⇒ already errored. Settle

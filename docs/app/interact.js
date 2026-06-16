@@ -1132,7 +1132,9 @@ function satelliteModalLayers() {
   if (typeof layers !== 'object' || !layers) return out;
   for (const nm in layers) {
     const src = layers[nm];
-    if (src && src._url) out[nm] = L.tileLayer(src._url, Object.assign({}, src.options));
+    if (src && src._url) {
+      out[nm] = L.tileLayer(src._url, Object.assign({}, src.options));
+    }
   }
   return out;
 }
@@ -1330,7 +1332,7 @@ function showSatellitePreviewModal(point, label) {
   // (#layer-select) instead of Leaflet's radio list.
   const layerNames = Object.keys(mLayers);
   if (layerNames.length) {
-    // The 4 flight-maps.com charts only publish tiles up to a limited zoom;
+    // The 4 chart layers only publish tiles up to a limited zoom;
     // past that they 404. Disable picking them when zoomed in beyond their
     // range, and drop back to satellite if one was active.
     const CHART_NAMES = ['CVFR', 'Navigation', 'Low Alt', 'Helicopters'];
@@ -1507,8 +1509,8 @@ function appendAirfieldDetailRows(body, af, label) {
   appendAirfieldPlates(body, af);
 }
 
-// Live METAR / TAF for an ICAO-coded airfield (#670). Fetched on demand via a
-// CORS proxy; shows decoded text with a toggle to the raw report.
+// Live METAR / TAF for an ICAO-coded airfield (#670). Fetched on demand from
+// the published wx feed; shows decoded text with a toggle to the raw report.
 function appendAirfieldWeather(body, af) {
   const icao = String(af && af.name || '').toUpperCase();
   if (!/^[A-Z]{4}$/.test(icao) || typeof fetchAirfieldWx !== 'function') return;
