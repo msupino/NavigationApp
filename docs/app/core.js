@@ -29,6 +29,8 @@ window.NavAid = { exporting: false, version: '1.0' };  // cross-file export flag
 // constants without editing source. Values are page-local and reset on reload.
 NavAid.tuning = {};
 NavAid.tuningDefaults = {
+  magneticVariationDeg: { value: -5, min: -30, max: 30, step: 0.5, label: 'Magnetic variation (° — negative = E)' },
+
   routeLineWidthPx: { value: 3.5, min: 0.5, max: 12, step: 0.1, label: 'Route line width' },
   routeSelectedLineWidthPx: { value: 5, min: 0.5, max: 16, step: 0.1, label: 'Selected route line width' },
 
@@ -200,6 +202,7 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
+  { name: 'Navigation', keys: ['magneticVariationDeg'] },
   { name: 'Route line', keys: ['routeLineWidthPx', 'routeSelectedLineWidthPx'] },
   { name: 'Drift lines', keys: ['driftAngleDeg', 'driftLengthFactor', 'driftDashOnPx', 'driftDashOffPx', 'driftStrokeWidthPx', 'driftLineColor', 'driftLineAlpha'] },
   { name: 'Default marker locations', keys: ['defaultLabelMarginPx', 'defaultKiteHalfWidthPx'] },
@@ -954,8 +957,11 @@ function geo(a, b) {                   // a,b = {lat,lng} -> {dist NM, brg deg}
   return { dist, brg: ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360 };
 }
 function toMagnetic(deg) {
-  // Magnetic = True + magVar (so −5 means "subtract 5", i.e. 5°E variation).
-  return ((Math.round(deg + magVar) % 360) + 360) % 360;
+  // Magnetic = True + variation (so −5 means "subtract 5", i.e. 5°E variation).
+  // Read from the tune registry (key default -5) so it's adjustable; `magVar`
+  // remains the hardcoded fallback/default.
+  const mv = typeof tune === 'function' ? tune('magneticVariationDeg') : magVar;
+  return ((Math.round(deg + mv) % 360) + 360) % 360;
 }
 // --- wind triangle (#722) -------------------------------------------
 // Resolve the wind that applies to a leg: an explicit per-leg override (with
