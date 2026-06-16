@@ -119,12 +119,13 @@ test.describe('Bidi / mixed-direction UI regressions', () => {
       showInspector();
     });
     await expect(page.locator('#insp-title')).toHaveValue('LLIB / ראש פינה');
-    await expect(page.locator('#insp-body .primary-row .val')).toContainText('118.45 MHz');
-    await expect(page.locator('#insp-body .atis-row .val')).toContainText('132.45 MHz');
+    // Freq rows are now editable inputs (override-aware); value carries no MHz.
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('118.45');
+    await expect(page.locator('#insp-body .atis-row .charts-freq-input')).toHaveValue('132.45');
     bidi = await cssSnapshot(page.locator('#insp-title'));
     expect(bidi.direction).toBe('ltr');
-    expect((await cssSnapshot(page.locator('#insp-body .primary-row .val'))).direction).toBe('ltr');
-    expect((await cssSnapshot(page.locator('#insp-body .atis-row .val'))).direction).toBe('ltr');
+    expect((await cssSnapshot(page.locator('#insp-body .primary-row .charts-freq-input'))).direction).toBe('ltr');
+    expect((await cssSnapshot(page.locator('#insp-body .atis-row .charts-freq-input'))).direction).toBe('ltr');
 
     const expectedTitle = await page.evaluate(() => {
       const point = { lat: 32.21861, lng: 34.88250 };

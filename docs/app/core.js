@@ -1100,6 +1100,48 @@ function legActiveFreq(i, sources) {
   for (const c of src) { if (c.wpi <= i) f = c.freq; else break; }
   return f;
 }
+
+// --- editable airfield clearance / ATIS frequencies -------------------
+// Clearance/ATIS are stored as compound strings ("Arrival 132.50 MHz /
+// Departure 132.80 MHz"). Split them into labelled numeric parts so each can
+// be edited; edits are persisted as per-airfield/field/part overrides and the
+// display string is rebuilt from the (override-aware) parts.
+function parseFreqParts(str) {
+  const out = [];
+  for (const seg of String(str == null ? '' : str).split('/')) {
+    const m = seg.match(/(\d{2,3}(?:\.\d{1,3})?)/);
+    if (!m) continue;
+    const label = seg.slice(0, m.index).replace(/[^A-Za-z֐-׿ ]+/g, ' ').trim();
+    out.push({ label, freq: freqClean(m[1]) });
+  }
+  return out;
+}
+function airfieldFreqOverrides() {
+  try { return JSON.parse(localStorage.getItem('navaid.airfieldFreqOverrides') || '{}') || {}; }
+  catch (e) { return {}; }
+}
+function setAirfieldFreqOverride(key, val) {
+  const o = airfieldFreqOverrides();
+  if (val) o[key] = val; else delete o[key];
+  try { localStorage.setItem('navaid.airfieldFreqOverrides', JSON.stringify(o)); } catch (e) { /* ignore */ }
+}
+// Override-aware labelled parts for an airfield field ('clearance' | 'atis').
+function airfieldFieldParts(af, field) {
+  if (!af || typeof af[field] !== 'string') return [];
+  const parts = parseFreqParts(af[field]);
+  const ov = airfieldFreqOverrides();
+  return parts.map((p, i) => {
+    const key = af.name + '|' + field + '|' + i;
+    const o = ov[key];
+    return { label: p.label, freq: o || p.freq, def: p.freq, key, overridden: !!o && o !== p.freq };
+  });
+}
+// Override-aware display string for an airfield field.
+function airfieldFieldText(af, field) {
+  const parts = airfieldFieldParts(af, field);
+  if (!parts.length) return af && typeof af[field] === 'string' ? af[field].trim() : '';
+  return parts.map(p => (p.label ? p.label + ' ' : '') + p.freq + ' MHz').join(' / ');
+}
 function toHMS(hours) {
   const tm = hours * 60;
   let m = Math.floor(tm);
