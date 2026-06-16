@@ -132,6 +132,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   `map.on('click')` in `add` mode drops a waypoint (snapped to a nearby
   nav-waypoint within ~18 px — only while Show Nav Waypoints is on, see
   `applyNavSnap`), in `note` mode drops a note.
+  Double-clicking an existing leg splits it at the clicked map coordinate
+  in both inspect mode and edit modes; the two click events are suppressed
+  by the leg hit so add/note mode does not also create a free waypoint or
+  note.
 - **Interaction (touch):** single-finger touchstart / touchmove / touchend
   on `mapEl` mirror the mouse path. Multi-finger or empty-space falls
   through to Leaflet for pan / pinch-zoom.
