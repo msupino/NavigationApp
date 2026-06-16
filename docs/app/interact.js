@@ -936,7 +936,9 @@ function freqEditRow(label, opts) {
   const inp = document.createElement('input');
   inp.className = 'charts-freq-input';
   inp.dir = 'ltr';
-  if (typeof commConfigureFreqInput === 'function') commConfigureFreqInput(inp);
+  const configure = opts.configure || (typeof commConfigureFreqInput === 'function' ? commConfigureFreqInput : null);
+  const normalize = opts.normalize || (typeof commNormalizeFreqInput === 'function' ? commNormalizeFreqInput : null);
+  if (configure) configure(inp);
   else { inp.type = 'number'; inp.inputMode = 'decimal'; inp.step = '0.005'; }
   inp.value = opts.value || opts.def || '';
   const reset = document.createElement('button');
@@ -944,8 +946,7 @@ function freqEditRow(label, opts) {
   reset.className = 'commchange-freq-reset';
   reset.textContent = '↻';
   reset.title = S.resetFreqOverride || S.sliderReset || 'Reset to default';
-  const norm = () => (typeof commNormalizeFreqInput === 'function'
-    ? commNormalizeFreqInput(inp.value) : String(inp.value || '').trim());
+  const norm = () => (normalize ? normalize(inp.value) : String(inp.value || '').trim());
   function sync() {
     const n = norm();
     const invalid = n === null;
@@ -999,6 +1000,13 @@ function appendAirfieldFrequencyRows(body, af) {
   // Clearance / ATIS — one editable numeric field per labelled part (#freq).
   const appendFieldParts = (field, label, rowClass) => {
     const parts = typeof airfieldFieldParts === 'function' ? airfieldFieldParts(af, field) : [];
+    if (!parts.length) {
+      // Show a "— None" row so every airfield inspector has the same layout.
+      const row = textRow(label, S.freqNone || 'None');
+      row.classList.add(rowClass);
+      body.appendChild(row);
+      return;
+    }
     for (const p of parts) {
       const rowLabel = p.label ? label + ' ' + p.label : label;
       body.appendChild(freqEditRow(rowLabel, {
@@ -1797,6 +1805,8 @@ function showInspector() {
       body.appendChild(freqEditRow(S.vorFreq || 'Frequency', {
         value: typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : vdef,
         def: vdef, rowClass: 'vor-freq-row',
+        configure: typeof vorConfigureFreqInput === 'function' ? vorConfigureFreqInput : null,
+        normalize: typeof vorNormalizeFreqInput === 'function' ? vorNormalizeFreqInput : null,
         isOverride: () => !!(typeof vorFreqOverrides === 'function' && vorFreqOverrides()[v.ident]),
         commit: n => { if (typeof setVorFreqOverride === 'function') setVorFreqOverride(v.ident, n === vdef ? '' : n); return n; },
         onReset: () => { if (typeof setVorFreqOverride === 'function') setVorFreqOverride(v.ident, ''); return vdef; },

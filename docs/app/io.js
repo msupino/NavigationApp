@@ -4210,8 +4210,8 @@ function renderFreqTable(freqSection) {
     const inp = document.createElement('input');
     inp.className = 'charts-freq-input';
     inp.dir = 'ltr';
-    if (typeof commConfigureFreqInput === 'function') commConfigureFreqInput(inp);
-    else { inp.type = 'number'; inp.inputMode = 'decimal'; inp.step = '0.005'; }
+    if (typeof vorConfigureFreqInput === 'function') vorConfigureFreqInput(inp);
+    else { inp.type = 'number'; inp.inputMode = 'decimal'; inp.step = '0.05'; }
     inp.value = (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : r.def) || r.def || '';
     const actions = document.createElement('td');
     actions.className = 'charts-freq-actions';
@@ -4220,8 +4220,8 @@ function renderFreqTable(freqSection) {
     reset.className = 'commchange-freq-reset';
     reset.textContent = '↻';
     reset.title = S.resetFreqOverride || S.sliderReset || 'Reset to default';
-    const normOf = () => (typeof commNormalizeFreqInput === 'function'
-      ? commNormalizeFreqInput(inp.value) : String(inp.value || '').trim());
+    const normOf = () => (typeof vorNormalizeFreqInput === 'function'
+      ? vorNormalizeFreqInput(inp.value) : String(inp.value || '').trim());
     function syncVor() {
       const n = normOf();
       const invalid = n === null;

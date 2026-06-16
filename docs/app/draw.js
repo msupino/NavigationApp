@@ -1114,6 +1114,28 @@ function commConfigureFreqInput(input) {
   input.step = COMM_FREQ_INPUT_STEP;
   return input;
 }
+// VORs live in the 108–117.975 MHz VHF nav band, below the comm band — they
+// need their own validation so valid VOR freqs aren't flagged invalid.
+const VOR_FREQ_INPUT_MIN = '108';
+const VOR_FREQ_INPUT_MAX = '117.975';
+function vorNormalizeFreqInput(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  if (!/^\d{3}(?:\.\d{1,3})?$/.test(s)) return null;
+  const n = Number(s);
+  if (!Number.isFinite(n) || n < Number(VOR_FREQ_INPUT_MIN) ||
+      n > Number(VOR_FREQ_INPUT_MAX)) return null;
+  return commFormatFreq(s);
+}
+function vorConfigureFreqInput(input) {
+  if (!input) return input;
+  input.type = 'number';
+  input.inputMode = 'decimal';
+  input.min = VOR_FREQ_INPUT_MIN;
+  input.max = VOR_FREQ_INPUT_MAX;
+  input.step = '0.05';
+  return input;
+}
 function commUseHebrewLabels() {
   const lang = (typeof window !== 'undefined' && window.__navLang) ||
     (typeof document !== 'undefined' && document.documentElement &&

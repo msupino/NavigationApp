@@ -532,7 +532,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     });
     await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('125.60');
     await expect(page.locator('#insp-body .clearance-row .charts-freq-input')).toHaveValue('121.70');
-    await expect(page.locator('#insp-body .atis-row')).toHaveCount(0);
+    await expect(page.locator('#insp-body .atis-row')).toContainText('None');
 
     await page.evaluate(() => {
       state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLPL') };
@@ -546,8 +546,8 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       showInspector();
     });
     await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('120.75');
-    await expect(page.locator('#insp-body .atis-row')).toHaveCount(0);
-    await expect(page.locator('#insp-body .clearance-row')).toHaveCount(0);
+    await expect(page.locator('#insp-body .atis-row')).toContainText('None');
+    await expect(page.locator('#insp-body .clearance-row')).toContainText('None');
 
     await page.evaluate(() => {
       state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLES') };
@@ -590,7 +590,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await expect(page.locator('#insp-title')).toHaveValue(/Herzliya/);
     await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('125.60');
     await expect(page.locator('#insp-body .clearance-row .charts-freq-input')).toHaveValue('121.70');
-    await expect(page.locator('#insp-body .atis-row')).toHaveCount(0);
+    await expect(page.locator('#insp-body .atis-row')).toContainText('None');
   });
 
   test('Hebrew airfield inspector keeps ICAO and frequency values in reading order', async ({ page }) => {

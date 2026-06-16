@@ -414,6 +414,7 @@ window.S = Object.assign({
   flightPlan: 'Flight plan',
   fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time', 'Fuel (gal)', 'Cum. time', 'Cum. fuel', 'Radial', 'DME', ''],
   fpFreq: 'Freq',
+  freqNone: 'None',
   fpHeadersShort: ['#', 'From', 'To', 'Hdg', 'Dist', 'Spd', 'Alt', 'Time', 'Fuel'],
   exportPlanPlace: 'Place flight plan on the map',
   exportPlanPlaceTitle: 'Overlay the flight-plan table on the export; drag it to position it inside the page frame',
