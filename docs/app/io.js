@@ -1716,28 +1716,23 @@ function showFlightPlan() {
   vsLbl.appendChild(vsInput);
   profLbl.appendChild(vsLbl);
   profWrap.appendChild(profLbl);
-  // Direction arrow above the strip — the profile/X-axis mirrors in RTL
-  // (Hebrew), so spell out the flow: departure → destination, oriented to
-  // match the axis (arrow points the way the route is flown).
+  // Direction indicator above the strip — the profile/X-axis mirrors in RTL
+  // (Hebrew), so anchor the flow marker at the START of the flight (departure
+  // side): left in LTR, right in RTL, with the arrow pointing the way it's
+  // flown.
   (function () {
     const wps = state.waypoints || [];
     if (wps.length < 2) return;
     const depName = navName((wps[0].name || '').trim()) || (S.wpPrefix + 1);
-    const destName = navName((wps[wps.length - 1].name || '').trim()) || (S.wpPrefix + wps.length);
     const rtl = document.documentElement && document.documentElement.dir === 'rtl';
+    const label = S.fpDirection || 'Direction';
     const dirRow = document.createElement('div');
     dirRow.className = 'fp-profile-dir';
-    dirRow.dir = 'ltr';                 // fixed frame; we place ends by axis side
-    const lEnd = document.createElement('span');
-    const arrow = document.createElement('span');
-    arrow.className = 'fp-dir-arrow';
-    const rEnd = document.createElement('span');
-    const label = S.fpDirection || 'Direction';
-    // d=0 (departure) is on the left in LTR, on the right in RTL.
-    lEnd.textContent = rtl ? destName : depName;
-    rEnd.textContent = rtl ? depName : destName;
-    arrow.textContent = rtl ? ('◄ ' + label) : (label + ' ►');
-    dirRow.appendChild(lEnd); dirRow.appendChild(arrow); dirRow.appendChild(rEnd);
+    dirRow.dir = 'ltr';                 // fixed frame; align to the start side
+    dirRow.style.textAlign = rtl ? 'right' : 'left';
+    dirRow.textContent = rtl
+      ? (depName + ' — ' + label + ' ◄')
+      : ('► ' + label + ' — ' + depName);
     profWrap.appendChild(dirRow);
   })();
   const profCanvas = document.createElement('canvas');
@@ -1761,17 +1756,42 @@ function showFlightPlan() {
   scrollArea.className = 'fp-scroll';
   box.appendChild(scrollArea);
 
+  // Active comm frequency per leg (read-only) — the most recent comm-change at
+  // or before the leg's start waypoint, carried forward until the next change.
+  function legActiveFreq(i) {
+    const ccs = [];
+    for (const n of (state.notes || [])) {
+      if (!n || !n.cc) continue;
+      const wpi = typeof commCalloutWaypointIndex === 'function' ? commCalloutWaypointIndex(n) : -1;
+      const f = typeof commNoteFreq === 'function' ? commNoteFreq(n) : (n.freq || '');
+      if (wpi >= 0 && f) ccs.push({ wpi, freq: String(f) });
+    }
+    ccs.sort((a, b) => a.wpi - b.wpi);
+    let f = '';
+    for (const c of ccs) { if (c.wpi <= i) f = c.freq; else break; }
+    return f;
+  }
+  const freqActive = (state.legs || []).some((_, i) => legActiveFreq(i));
+
   const table = document.createElement('table');
   table.className = 'flight-table';
-  const headers = S.fpHeaders;
+  // # .. DME, [Freq], delete. Freq is inserted before the delete column when
+  // the route has comm-change frequencies; VOR cols stay at fixed idx 11/12.
+  const headers = (S.fpHeaders || []).slice(0, 13);
+  if (freqActive) headers.push(S.fpFreq || 'Freq');
+  headers.push('');                     // delete-button column (no header)
+  const buildHeadRow = trEl => {
+    headers.forEach((h, idx) => {
+      const th = document.createElement('th');
+      th.textContent = h;
+      if (idx === 11 || idx === 12) th.classList.add('fp-vor-col');
+      if (freqActive && idx === 13) th.classList.add('fp-freq-col');
+      trEl.appendChild(th);
+    });
+  };
   const thead = document.createElement('thead');
   const trH = document.createElement('tr');
-  headers.forEach((h, idx) => {
-    const th = document.createElement('th');
-    th.textContent = h;
-    if (idx === headers.length - 3 || idx === headers.length - 2) th.classList.add('fp-vor-col');
-    trH.appendChild(th);
-  });
+  buildHeadRow(trH);
   thead.appendChild(trH);
   table.appendChild(thead);
 
@@ -1945,6 +1965,11 @@ function showFlightPlan() {
     dmeCells[i] = dmeCell;
     dmeCell.classList.add('fp-vor-col');
     tr.appendChild(dmeCell);
+    if (freqActive) {
+      const freqCell = planCell(legActiveFreq(i));
+      freqCell.classList.add('fp-freq-col');
+      tr.appendChild(freqCell);
+    }
     // Delete-leg button — drops this leg and one of its endpoint waypoints,
     // then reconnects the route. The first leg removes the departure (its
     // "From") so peeling legs off the front trims the start (A-B-C-D → B-C-D →
@@ -1995,6 +2020,7 @@ function showFlightPlan() {
   trF.appendChild(totCumFuelCell);
   const totRadial = planCell(''); totRadial.classList.add('fp-vor-col'); trF.appendChild(totRadial);
   const totDme = planCell(''); totDme.classList.add('fp-vor-col'); trF.appendChild(totDme);
+  if (freqActive) { const tf2 = planCell(''); tf2.classList.add('fp-freq-col'); trF.appendChild(tf2); }
   trF.appendChild(planCell(''));        // Delete column (empty)
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
@@ -2078,12 +2104,7 @@ function showFlightPlan() {
     rtable.className = 'flight-table';
     const rthead = document.createElement('thead');
     const rtrH = document.createElement('tr');
-    headers.forEach((h, idx) => {
-      const th = document.createElement('th');
-      th.textContent = h;
-      if (idx === headers.length - 3 || idx === headers.length - 2) th.classList.add('fp-vor-col');
-      rtrH.appendChild(th);
-    });
+    buildHeadRow(rtrH);
     rthead.appendChild(rtrH);
     rtable.appendChild(rthead);
 
@@ -2168,6 +2189,11 @@ function showFlightPlan() {
       rDmeCells[i] = dmeCell;
       dmeCell.classList.add('fp-vor-col');
       tr.appendChild(dmeCell);
+      if (freqActive) {
+        const freqCell = planCell(legActiveFreq(ri));
+        freqCell.classList.add('fp-freq-col');
+        tr.appendChild(freqCell);
+      }
       tr.appendChild(planCell(''));        // Delete column (empty — forward table only)
       rtbody.appendChild(tr);
     }
@@ -2193,6 +2219,7 @@ function showFlightPlan() {
     rtrF.appendChild(rTotCumFuelCell);
     const rTotRadial = planCell(''); rTotRadial.classList.add('fp-vor-col'); rtrF.appendChild(rTotRadial);
     const rTotDme = planCell(''); rTotDme.classList.add('fp-vor-col'); rtrF.appendChild(rTotDme);
+    if (freqActive) { const rtf = planCell(''); rtf.classList.add('fp-freq-col'); rtrF.appendChild(rtf); }
     rtrF.appendChild(planCell(''));        // Delete column (empty)
     rtfoot.appendChild(rtrF);
     rtable.appendChild(rtfoot);

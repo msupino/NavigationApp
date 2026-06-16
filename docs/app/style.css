@@ -1587,11 +1587,7 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
   color: #e8e8e8; background: #2f2b2b; border: 1px solid #443f3f; border-radius: 4px;
 }
 .fp-profile-vs-input:focus { outline: 1px solid #1d6fe0; }
-.fp-profile-dir {
-  display: flex; align-items: center; justify-content: space-between;
-  font-size: 10px; color: #9fb3c8; margin: 2px 2px 3px;
-}
-.fp-profile-dir .fp-dir-arrow { flex: 1; text-align: center; letter-spacing: 1px; color: #7fa8d0; }
+.fp-profile-dir { font-size: 10px; color: #7fa8d0; margin: 2px 2px 3px; letter-spacing: 0.5px; }
 .fp-profile-canvas { width: 100%; height: 104px; display: block; border-radius: 4px; }
 .flight-table {
   width: 100%;
