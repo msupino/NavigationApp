@@ -1657,7 +1657,7 @@ function showFlightPlan() {
     }
     vorSel.value = vorRef || '';
     const cur = typeof activeVor === 'function' ? activeVor() : null;
-    vorFreqSpan.textContent = cur ? cur.freq + ' MHz' : '';
+    vorFreqSpan.textContent = cur ? (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(cur) : cur.freq) + ' MHz' : '';
   }
   vorSel.onchange = () => {
     window.vorRef = vorSel.value || null;
@@ -1716,23 +1716,23 @@ function showFlightPlan() {
   vsLbl.appendChild(vsInput);
   profLbl.appendChild(vsLbl);
   profWrap.appendChild(profLbl);
-  // Direction arrow above the strip — the profile/X-axis mirrors in RTL
-  // (Hebrew), so spell out the flow: departure → destination, oriented to
-  // match the axis (arrow points the way the route is flown).
+  // Direction indicator above the strip — the profile/X-axis mirrors in RTL
+  // (Hebrew), so spell out the flow: departure → destination with a centred
+  // arrow, oriented to match the axis (arrow points the way it's flown).
   (function () {
     const wps = state.waypoints || [];
     if (wps.length < 2) return;
     const depName = navName((wps[0].name || '').trim()) || (S.wpPrefix + 1);
     const destName = navName((wps[wps.length - 1].name || '').trim()) || (S.wpPrefix + wps.length);
     const rtl = document.documentElement && document.documentElement.dir === 'rtl';
+    const label = S.fpDirection || 'Direction';
     const dirRow = document.createElement('div');
     dirRow.className = 'fp-profile-dir';
-    dirRow.dir = 'ltr';                 // fixed frame; we place ends by axis side
+    dirRow.dir = 'ltr';                 // fixed frame; place ends by axis side
     const lEnd = document.createElement('span');
     const arrow = document.createElement('span');
     arrow.className = 'fp-dir-arrow';
     const rEnd = document.createElement('span');
-    const label = S.fpDirection || 'Direction';
     // d=0 (departure) is on the left in LTR, on the right in RTL.
     lEnd.textContent = rtl ? destName : depName;
     rEnd.textContent = rtl ? depName : destName;
@@ -1761,17 +1761,37 @@ function showFlightPlan() {
   scrollArea.className = 'fp-scroll';
   box.appendChild(scrollArea);
 
+  // Active comm frequency per leg (read-only) — departure airfield primary +
+  // comm-change notes, carried forward until the next change (see core.js
+  // routeFreqSources/legActiveFreq). Recomputed in refresh() once the comm
+  // catalog loads, so the first leg from an airfield shows its tower freq.
+  let freqSources = typeof routeFreqSources === 'function' ? routeFreqSources() : [];
+  const depIsAirfield = state.waypoints && state.waypoints[0] &&
+    typeof isAirport === 'function' && isAirport(state.waypoints[0]);
+  const freqActive = freqSources.length > 0 || depIsAirfield;
+  const freqCells = [];        // forward leg index -> freq cell
+  const rFreqCells = [];       // return rows -> { cell, ri }
+  const legFreqText = i => (typeof legActiveFreq === 'function' ? legActiveFreq(i, freqSources) : '');
+
   const table = document.createElement('table');
   table.className = 'flight-table';
-  const headers = S.fpHeaders;
+  // # .. DME, [Freq], delete. Freq is inserted before the delete column when
+  // the route has comm-change frequencies; VOR cols stay at fixed idx 11/12.
+  const headers = (S.fpHeaders || []).slice(0, 13);
+  if (freqActive) headers.push(S.fpFreq || 'Freq');
+  headers.push('');                     // delete-button column (no header)
+  const buildHeadRow = trEl => {
+    headers.forEach((h, idx) => {
+      const th = document.createElement('th');
+      th.textContent = h;
+      if (idx === 11 || idx === 12) th.classList.add('fp-vor-col');
+      if (freqActive && idx === 13) th.classList.add('fp-freq-col');
+      trEl.appendChild(th);
+    });
+  };
   const thead = document.createElement('thead');
   const trH = document.createElement('tr');
-  headers.forEach((h, idx) => {
-    const th = document.createElement('th');
-    th.textContent = h;
-    if (idx === headers.length - 3 || idx === headers.length - 2) th.classList.add('fp-vor-col');
-    trH.appendChild(th);
-  });
+  buildHeadRow(trH);
   thead.appendChild(trH);
   table.appendChild(thead);
 
@@ -1945,6 +1965,12 @@ function showFlightPlan() {
     dmeCells[i] = dmeCell;
     dmeCell.classList.add('fp-vor-col');
     tr.appendChild(dmeCell);
+    if (freqActive) {
+      const freqCell = planCell(legFreqText(i));
+      freqCell.classList.add('fp-freq-col');
+      freqCells[i] = freqCell;
+      tr.appendChild(freqCell);
+    }
     // Delete-leg button — drops this leg and one of its endpoint waypoints,
     // then reconnects the route. The first leg removes the departure (its
     // "From") so peeling legs off the front trims the start (A-B-C-D → B-C-D →
@@ -1995,6 +2021,7 @@ function showFlightPlan() {
   trF.appendChild(totCumFuelCell);
   const totRadial = planCell(''); totRadial.classList.add('fp-vor-col'); trF.appendChild(totRadial);
   const totDme = planCell(''); totDme.classList.add('fp-vor-col'); trF.appendChild(totDme);
+  if (freqActive) { const tf2 = planCell(''); tf2.classList.add('fp-freq-col'); trF.appendChild(tf2); }
   trF.appendChild(planCell(''));        // Delete column (empty)
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
@@ -2062,6 +2089,12 @@ function showFlightPlan() {
     totFuelCell.textContent = ac ? tf.toFixed(1) : '--';
     totCumTimeCell.textContent = totTimeCell.textContent;
     totCumFuelCell.textContent = totFuelCell.textContent;
+    if (freqActive) {
+      freqSources = typeof routeFreqSources === 'function' ? routeFreqSources() : freqSources;
+      for (let i = 0; i < freqCells.length; i++) {
+        if (freqCells[i]) freqCells[i].textContent = legFreqText(i);
+      }
+    }
   }
   refresh();
   scrollArea.appendChild(table);
@@ -2078,12 +2111,7 @@ function showFlightPlan() {
     rtable.className = 'flight-table';
     const rthead = document.createElement('thead');
     const rtrH = document.createElement('tr');
-    headers.forEach((h, idx) => {
-      const th = document.createElement('th');
-      th.textContent = h;
-      if (idx === headers.length - 3 || idx === headers.length - 2) th.classList.add('fp-vor-col');
-      rtrH.appendChild(th);
-    });
+    buildHeadRow(rtrH);
     rthead.appendChild(rtrH);
     rtable.appendChild(rthead);
 
@@ -2168,6 +2196,12 @@ function showFlightPlan() {
       rDmeCells[i] = dmeCell;
       dmeCell.classList.add('fp-vor-col');
       tr.appendChild(dmeCell);
+      if (freqActive) {
+        const freqCell = planCell(legFreqText(ri));
+        freqCell.classList.add('fp-freq-col');
+        rFreqCells.push({ cell: freqCell, ri });
+        tr.appendChild(freqCell);
+      }
       tr.appendChild(planCell(''));        // Delete column (empty — forward table only)
       rtbody.appendChild(tr);
     }
@@ -2193,6 +2227,7 @@ function showFlightPlan() {
     rtrF.appendChild(rTotCumFuelCell);
     const rTotRadial = planCell(''); rTotRadial.classList.add('fp-vor-col'); rtrF.appendChild(rTotRadial);
     const rTotDme = planCell(''); rTotDme.classList.add('fp-vor-col'); rtrF.appendChild(rTotDme);
+    if (freqActive) { const rtf = planCell(''); rtf.classList.add('fp-freq-col'); rtrF.appendChild(rtf); }
     rtrF.appendChild(planCell(''));        // Delete column (empty)
     rtfoot.appendChild(rtrF);
     rtable.appendChild(rtfoot);
@@ -2243,6 +2278,7 @@ function showFlightPlan() {
       rTotFuelCell.textContent = aircraft ? tf.toFixed(1) : '--';
       rTotCumTimeCell.textContent = rTotTimeCell.textContent;
       rTotCumFuelCell.textContent = rTotFuelCell.textContent;
+      for (const rc of rFreqCells) if (rc.cell) rc.cell.textContent = legFreqText(rc.ri);
     };
     retRefresh();
     scrollArea.appendChild(rtable);
@@ -2342,6 +2378,29 @@ function showFlightPlan() {
       return '<li>' + wp + cs + f + '</li>';
     }).join('');
 
+    // Airport frequency block (tower/primary + clearance + ATIS) for the
+    // departure and arrival airfields.
+    const airfieldFreqHtml = (wp, headLabel) => {
+      const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
+      if (!af) return '';
+      const items = [];
+      const primary = typeof airfieldPrimaryText === 'function' ? airfieldPrimaryText(af) : '';
+      if (primary) items.push('<li>' + esc(S.primary || 'Primary') + ' — ' + esc(primary) + '</li>');
+      const clr = typeof airfieldClearanceText === 'function' ? airfieldClearanceText(af) : '';
+      if (clr) items.push('<li>' + esc(S.clearance || 'Clearance') + ' — ' + esc(clr) + '</li>');
+      const atis = typeof airfieldAtisText === 'function' ? airfieldAtisText(af) : '';
+      if (atis) items.push('<li>' + esc(S.atis || 'ATIS') + ' — ' + esc(atis) + '</li>');
+      if (!items.length) return '';
+      return '<h2>' + headLabel + '</h2><ul>' + items.join('') + '</ul>';
+    };
+    const lastIdx = state.waypoints.length - 1;
+    let depFreqHtml = airfieldFreqHtml(state.waypoints[0],
+      dep + ' — ' + esc(S.navLogDepFreqs || 'Departure frequencies'));
+    if (lastIdx > 0) {
+      depFreqHtml += airfieldFreqHtml(state.waypoints[lastIdx],
+        dest + ' — ' + esc(S.navLogArrFreqs || 'Arrival frequencies'));
+    }
+
     const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: 8, taxiGal: 1.1 };
     const today = new Date().toISOString().slice(0, 10);
     const title = (S.navLogTitle || 'NavAid \u2014 Nav Log') + ' \u00b7 ' + dep + ' \u2192 ' + dest;
@@ -2367,6 +2426,7 @@ function showFlightPlan() {
           esc(S.tbGph || 'GPH') + ' ' + esc(ac.gph) + ' \u00b7 ' +
           esc(S.tbTaxiGal || 'Taxi/T.O.') + ' ' + esc(ac.taxiGal) + '</div>' +
       '</div>' +
+      depFreqHtml +
       tablesHtml +
       (freqs ? '<h2>' + esc(S.navLogFreqs || 'Frequencies') + '</h2><ul>' + freqs + '</ul>' : '') +
       '</body></html>';
@@ -2465,6 +2525,15 @@ function showFlightPlan() {
   // draw it once (rAF so the canvas has its laid-out clientWidth). #672
   if (typeof drawProfileStripIfOpen === 'function') {
     requestAnimationFrame(drawProfileStripIfOpen);
+  }
+  // The Freq column's airfield primary needs the comm call-sign catalog; it's
+  // not loaded eagerly, so pull it (and airfields) then recompute the column so
+  // the first leg from an airfield shows its tower frequency.
+  if (freqActive && typeof loadCommChange === 'function') {
+    Promise.all([
+      loadCommChange(),
+      typeof loadAirfields === 'function' ? loadAirfields() : null,
+    ]).then(() => { if (fpOpen) { refresh(); if (typeof retRefresh === 'function') retRefresh(); } });
   }
 }
 
@@ -3890,8 +3959,37 @@ function renderFreqTable(freqSection) {
       return key && usedIds.has(key);
     })
     .sort((a, b) => (a.label || a.id).localeCompare(b.label || b.id));
-  const hasOverride = opts.some(o => !!o.overrideFreq);
-  restoreAll.disabled = !hasOverride;
+  // Reverse map: call-sign id (key) -> airfield ICAO, so an airfield-primary
+  // call sign reads with the airport's ICAO code + "Primary" label (consistent
+  // with that airport's Clearance / ATIS rows below) instead of its own code.
+  const idToIcao = {};
+  if (typeof AIRFIELD_CALL_SIGN_IDS === 'object' && AIRFIELD_CALL_SIGN_IDS) {
+    for (const [icao, csId] of Object.entries(AIRFIELD_CALL_SIGN_IDS)) {
+      if (!csId) continue;
+      idToIcao[typeof commCallSignIdKey === 'function' ? commCallSignIdKey(csId) : String(csId).toUpperCase()] = icao;
+    }
+  }
+  // Airfield clearance / ATIS frequencies — one row per labelled numeric part.
+  const afList = (typeof airfields !== 'undefined' && Array.isArray(airfields)) ? airfields : [];
+  const afFreqRows = [];
+  for (const af of afList) {
+    for (const fld of [['clearance', S.clearance || 'Clearance'], ['atis', S.atis || 'ATIS']]) {
+      const parts = typeof airfieldFieldParts === 'function' ? airfieldFieldParts(af, fld[0]) : [];
+      for (const part of parts) afFreqRows.push({ af, flabel: fld[1], part });
+    }
+  }
+  // VOR frequencies (one editable row each).
+  const vorList = (typeof vors !== 'undefined' && Array.isArray(vors)) ? vors : [];
+  const vorFreqRows = vorList.map(v => ({
+    v,
+    def: typeof freqClean === 'function' ? freqClean(v.freq) : String(v.freq || ''),
+    get overridden() { return !!(typeof vorFreqOverrides === 'function' && vorFreqOverrides()[v.ident]); },
+  }));
+  const updateRestoreAll = () => {
+    restoreAll.disabled = !(opts.some(o => !!o.overrideFreq) ||
+      afFreqRows.some(r => r.part.overridden) || vorFreqRows.some(r => r.overridden));
+  };
+  updateRestoreAll();
   restoreAll.onclick = e => {
     e.preventDefault();
     if (typeof commResetAllCallSignFreqOverrides === 'function') {
@@ -3903,11 +4001,13 @@ function renderFreqTable(freqSection) {
         }
       }
     }
+    try { localStorage.removeItem('navaid.airfieldFreqOverrides'); } catch (err) { /* ignore */ }
+    try { localStorage.removeItem('navaid.vorFreqOverrides'); } catch (err) { /* ignore */ }
     renderFreqTable(freqSection);
     afterFreqTableEdit();
   };
 
-  if (!opts.length) {
+  if (!opts.length && !afFreqRows.length && !vorFreqRows.length) {
     const empty = document.createElement('p');
     empty.className = 'charts-freq-empty';
     empty.textContent = S.freqTableEmpty || 'No frequency catalog available';
@@ -3948,8 +4048,13 @@ function renderFreqTable(freqSection) {
   for (const opt of opts) {
     const tr = document.createElement('tr');
     tr.className = opt.overrideFreq ? 'overridden' : '';
+    // Airfield-primary call signs show the airport ICAO as their code, so the
+    // same airport reads consistently with its Clearance / ATIS rows (LLHZ),
+    // not two codes (HERZLIYA vs LLHZ).
+    const optKey = typeof commCallSignIdKey === 'function' ? commCallSignIdKey(opt.id) : String(opt.id || '').toUpperCase();
+    const optIcao = idToIcao[optKey] || '';
     const searchText = [
-      opt.id,
+      opt.id, optIcao,
       opt.label,
       opt.templateFreq,
       opt.freq,
@@ -3962,10 +4067,11 @@ function renderFreqTable(freqSection) {
     label.className = 'charts-freq-label';
     label.textContent = opt.label || opt.id;
     name.appendChild(label);
-    if (opt.label && opt.label !== opt.id) {
+    const codeText = optIcao || ((opt.label && opt.label !== opt.id) ? opt.id : '');
+    if (codeText) {
       const code = document.createElement('span');
       code.className = 'charts-freq-code';
-      code.textContent = opt.id;
+      code.textContent = codeText;
       name.appendChild(code);
     }
     const template = document.createElement('td');
@@ -4005,10 +4111,19 @@ function renderFreqTable(freqSection) {
     inp.addEventListener('change', () => {
       const normalized = syncFreqInputValidity();
       if (normalized === null) return;
+      let eff = normalized;
       if (typeof commApplyCallSignFreqOverride === 'function') {
-        inp.value = commApplyCallSignFreqOverride(opt.id, normalized) || normalized || inp.value;
+        eff = commApplyCallSignFreqOverride(opt.id, normalized) || normalized || inp.value;
       }
-      renderFreqTable(freqSection);
+      inp.value = eff;
+      // Update this row in place rather than rebuilding the whole table — a full
+      // re-render destroys the focused input and scrolls back to the first row.
+      opt.freq = eff;
+      opt.overrideFreq = typeof commCallSignOverrideFreq === 'function'
+        ? commCallSignOverrideFreq(opt.id) : (eff !== opt.templateFreq ? eff : '');
+      tr.classList.toggle('overridden', !!opt.overrideFreq);
+      syncFreqInputValidity();
+      updateRestoreAll();
       afterFreqTableEdit();
     });
     local.appendChild(inp);
@@ -4027,7 +4142,13 @@ function renderFreqTable(freqSection) {
       } else if (opt.templateFreq && typeof commApplyCallSignFreqOverride === 'function') {
         commApplyCallSignFreqOverride(opt.id, opt.templateFreq);
       }
-      renderFreqTable(freqSection);
+      // Update in place (keep scroll position) — no full table rebuild.
+      opt.overrideFreq = '';
+      opt.freq = opt.templateFreq || '';
+      inp.value = opt.templateFreq || '';
+      tr.classList.remove('overridden');
+      syncFreqInputValidity();
+      updateRestoreAll();
       afterFreqTableEdit();
     }
     // pointerdown handles pointer activation; click handles keyboard. Suppress
@@ -4047,6 +4168,142 @@ function renderFreqTable(freqSection) {
     };
     actions.appendChild(reset);
     syncFreqInputValidity();
+    tr.append(name, template, local, actions);
+    tbody.appendChild(tr);
+  }
+  // Airfield clearance / ATIS rows (editable numeric parts).
+  for (const r of afFreqRows) {
+    const part = r.part;
+    const tr = document.createElement('tr');
+    tr.className = part.overridden ? 'overridden' : '';
+    const partName = (part.label ? ' ' + part.label : '');
+    tr.dataset.search = [r.af.name, r.af.en, r.af.he, r.flabel, part.label, part.freq, part.def]
+      .filter(Boolean).join(' ').toLocaleLowerCase();
+    const name = document.createElement('td');
+    const label = document.createElement('span');
+    label.className = 'charts-freq-label';
+    label.textContent = r.flabel + partName;
+    name.appendChild(label);
+    const code = document.createElement('span');
+    code.className = 'charts-freq-code';
+    code.textContent = r.af.name;
+    name.appendChild(code);
+    const template = document.createElement('td');
+    template.className = 'charts-freq-template';
+    template.textContent = part.def || '';
+    const local = document.createElement('td');
+    const inp = document.createElement('input');
+    inp.className = 'charts-freq-input';
+    inp.dir = 'ltr';
+    if (typeof commConfigureFreqInput === 'function') commConfigureFreqInput(inp);
+    else { inp.type = 'number'; inp.inputMode = 'decimal'; inp.step = '0.005'; }
+    inp.value = part.freq || part.def || '';
+    const actions = document.createElement('td');
+    actions.className = 'charts-freq-actions';
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'commchange-freq-reset';
+    reset.textContent = '↻';
+    reset.title = S.resetFreqOverride || S.sliderReset || 'Reset to default';
+    const normOf = () => (typeof commNormalizeFreqInput === 'function'
+      ? commNormalizeFreqInput(inp.value) : String(inp.value || '').trim());
+    function syncAf() {
+      const n = normOf();
+      const invalid = n === null;
+      inp.classList.toggle('invalid', invalid);
+      inp.classList.toggle('is-default', !invalid && !!part.def && (n || '') === part.def);
+      inp.setAttribute('aria-invalid', invalid ? 'true' : 'false');
+      reset.disabled = !part.def || (!part.overridden && !invalid);
+    }
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } });
+    inp.addEventListener('input', syncAf);
+    inp.addEventListener('change', () => {
+      const n = normOf();
+      if (n === null) { syncAf(); return; }
+      setAirfieldFreqOverride(part.key, n === part.def ? '' : n);
+      part.freq = n; part.overridden = n !== part.def;
+      inp.value = n;
+      tr.classList.toggle('overridden', part.overridden);
+      syncAf(); updateRestoreAll(); afterFreqTableEdit();
+    });
+    reset.onclick = e => {
+      e.preventDefault();
+      if (reset.disabled) return;
+      setAirfieldFreqOverride(part.key, '');
+      part.freq = part.def; part.overridden = false;
+      inp.value = part.def || '';
+      tr.classList.remove('overridden');
+      syncAf(); updateRestoreAll(); afterFreqTableEdit();
+    };
+    local.appendChild(inp);
+    actions.appendChild(reset);
+    syncAf();
+    tr.append(name, template, local, actions);
+    tbody.appendChild(tr);
+  }
+  // VOR rows (editable single frequency each).
+  for (const r of vorFreqRows) {
+    const v = r.v;
+    const tr = document.createElement('tr');
+    tr.className = r.overridden ? 'overridden' : '';
+    tr.dataset.search = [v.ident, v.name, v.he, 'vor', r.def].filter(Boolean).join(' ').toLocaleLowerCase();
+    const name = document.createElement('td');
+    const label = document.createElement('span');
+    label.className = 'charts-freq-label';
+    label.textContent = (v.name || v.ident) + ' VOR';
+    name.appendChild(label);
+    const code = document.createElement('span');
+    code.className = 'charts-freq-code';
+    code.textContent = v.ident;
+    name.appendChild(code);
+    const template = document.createElement('td');
+    template.className = 'charts-freq-template';
+    template.textContent = r.def || '';
+    const local = document.createElement('td');
+    const inp = document.createElement('input');
+    inp.className = 'charts-freq-input';
+    inp.dir = 'ltr';
+    if (typeof vorConfigureFreqInput === 'function') vorConfigureFreqInput(inp);
+    else { inp.type = 'number'; inp.inputMode = 'decimal'; inp.step = '0.05'; }
+    inp.value = (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : r.def) || r.def || '';
+    const actions = document.createElement('td');
+    actions.className = 'charts-freq-actions';
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'commchange-freq-reset';
+    reset.textContent = '↻';
+    reset.title = S.resetFreqOverride || S.sliderReset || 'Reset to default';
+    const normOf = () => (typeof vorNormalizeFreqInput === 'function'
+      ? vorNormalizeFreqInput(inp.value) : String(inp.value || '').trim());
+    function syncVor() {
+      const n = normOf();
+      const invalid = n === null;
+      inp.classList.toggle('invalid', invalid);
+      inp.classList.toggle('is-default', !invalid && !!r.def && (n || '') === r.def);
+      inp.setAttribute('aria-invalid', invalid ? 'true' : 'false');
+      reset.disabled = !r.def || (!r.overridden && !invalid);
+    }
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } });
+    inp.addEventListener('input', syncVor);
+    inp.addEventListener('change', () => {
+      const n = normOf();
+      if (n === null) { syncVor(); return; }
+      if (typeof setVorFreqOverride === 'function') setVorFreqOverride(v.ident, n === r.def ? '' : n);
+      inp.value = n;
+      tr.classList.toggle('overridden', r.overridden);
+      syncVor(); updateRestoreAll(); afterFreqTableEdit();
+    });
+    reset.onclick = e => {
+      e.preventDefault();
+      if (reset.disabled) return;
+      if (typeof setVorFreqOverride === 'function') setVorFreqOverride(v.ident, '');
+      inp.value = r.def || '';
+      tr.classList.remove('overridden');
+      syncVor(); updateRestoreAll(); afterFreqTableEdit();
+    };
+    local.appendChild(inp);
+    actions.appendChild(reset);
+    syncVor();
     tr.append(name, template, local, actions);
     tbody.appendChild(tr);
   }
@@ -4089,7 +4346,12 @@ function showFreqTableModal() {
   const loadingFreq = document.createElement('p');
   loadingFreq.textContent = '…';
   freqSection.appendChild(loadingFreq);
-  loadCommChange().then(() => renderFreqTable(freqSection));
+  // Load the catalog + airfields + VORs so the table can list every frequency.
+  Promise.all([
+    loadCommChange(),
+    typeof loadAirfields === 'function' ? loadAirfields() : null,
+    typeof loadVors === 'function' ? loadVors() : null,
+  ]).then(() => renderFreqTable(freqSection));
   scrollArea.appendChild(body);
   modal.box.appendChild(scrollArea);
   modal.show();
