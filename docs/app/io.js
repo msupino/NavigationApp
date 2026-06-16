@@ -3922,7 +3922,18 @@ function renderFreqTable(freqSection) {
       return key && usedIds.has(key);
     })
     .sort((a, b) => (a.label || a.id).localeCompare(b.label || b.id));
-  const updateRestoreAll = () => { restoreAll.disabled = !opts.some(o => !!o.overrideFreq); };
+  // Airfield clearance / ATIS frequencies — one row per labelled numeric part.
+  const afList = (typeof airfields !== 'undefined' && Array.isArray(airfields)) ? airfields : [];
+  const afFreqRows = [];
+  for (const af of afList) {
+    for (const fld of [['clearance', S.clearance || 'Clearance'], ['atis', S.atis || 'ATIS']]) {
+      const parts = typeof airfieldFieldParts === 'function' ? airfieldFieldParts(af, fld[0]) : [];
+      for (const part of parts) afFreqRows.push({ af, flabel: fld[1], part });
+    }
+  }
+  const updateRestoreAll = () => {
+    restoreAll.disabled = !(opts.some(o => !!o.overrideFreq) || afFreqRows.some(r => r.part.overridden));
+  };
   updateRestoreAll();
   restoreAll.onclick = e => {
     e.preventDefault();
@@ -3935,11 +3946,12 @@ function renderFreqTable(freqSection) {
         }
       }
     }
+    try { localStorage.removeItem('navaid.airfieldFreqOverrides'); } catch (err) { /* ignore */ }
     renderFreqTable(freqSection);
     afterFreqTableEdit();
   };
 
-  if (!opts.length) {
+  if (!opts.length && !afFreqRows.length) {
     const empty = document.createElement('p');
     empty.className = 'charts-freq-empty';
     empty.textContent = S.freqTableEmpty || 'No frequency catalog available';
@@ -4094,6 +4106,76 @@ function renderFreqTable(freqSection) {
     };
     actions.appendChild(reset);
     syncFreqInputValidity();
+    tr.append(name, template, local, actions);
+    tbody.appendChild(tr);
+  }
+  // Airfield clearance / ATIS rows (editable numeric parts).
+  for (const r of afFreqRows) {
+    const part = r.part;
+    const tr = document.createElement('tr');
+    tr.className = part.overridden ? 'overridden' : '';
+    const partName = (part.label ? ' ' + part.label : '');
+    tr.dataset.search = [r.af.name, r.af.en, r.af.he, r.flabel, part.label, part.freq, part.def]
+      .filter(Boolean).join(' ').toLocaleLowerCase();
+    const name = document.createElement('td');
+    const label = document.createElement('span');
+    label.className = 'charts-freq-label';
+    label.textContent = r.flabel + partName;
+    name.appendChild(label);
+    const code = document.createElement('span');
+    code.className = 'charts-freq-code';
+    code.textContent = r.af.name;
+    name.appendChild(code);
+    const template = document.createElement('td');
+    template.className = 'charts-freq-template';
+    template.textContent = part.def || '';
+    const local = document.createElement('td');
+    const inp = document.createElement('input');
+    inp.className = 'charts-freq-input';
+    inp.dir = 'ltr';
+    if (typeof commConfigureFreqInput === 'function') commConfigureFreqInput(inp);
+    else { inp.type = 'number'; inp.inputMode = 'decimal'; inp.step = '0.005'; }
+    inp.value = part.freq || part.def || '';
+    const actions = document.createElement('td');
+    actions.className = 'charts-freq-actions';
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'commchange-freq-reset';
+    reset.textContent = '↻';
+    reset.title = S.resetFreqOverride || S.sliderReset || 'Reset to default';
+    const normOf = () => (typeof commNormalizeFreqInput === 'function'
+      ? commNormalizeFreqInput(inp.value) : String(inp.value || '').trim());
+    function syncAf() {
+      const n = normOf();
+      const invalid = n === null;
+      inp.classList.toggle('invalid', invalid);
+      inp.classList.toggle('is-default', !invalid && !!part.def && (n || '') === part.def);
+      inp.setAttribute('aria-invalid', invalid ? 'true' : 'false');
+      reset.disabled = !part.def || (!part.overridden && !invalid);
+    }
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } });
+    inp.addEventListener('input', syncAf);
+    inp.addEventListener('change', () => {
+      const n = normOf();
+      if (n === null) { syncAf(); return; }
+      setAirfieldFreqOverride(part.key, n === part.def ? '' : n);
+      part.freq = n; part.overridden = n !== part.def;
+      inp.value = n;
+      tr.classList.toggle('overridden', part.overridden);
+      syncAf(); updateRestoreAll(); afterFreqTableEdit();
+    });
+    reset.onclick = e => {
+      e.preventDefault();
+      if (reset.disabled) return;
+      setAirfieldFreqOverride(part.key, '');
+      part.freq = part.def; part.overridden = false;
+      inp.value = part.def || '';
+      tr.classList.remove('overridden');
+      syncAf(); updateRestoreAll(); afterFreqTableEdit();
+    };
+    local.appendChild(inp);
+    actions.appendChild(reset);
+    syncAf();
     tr.append(name, template, local, actions);
     tbody.appendChild(tr);
   }
