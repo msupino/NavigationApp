@@ -30,6 +30,36 @@ window.NavAid = { exporting: false, version: '1.0' };  // cross-file export flag
 NavAid.tuning = {};
 NavAid.tuningDefaults = {
   magneticVariationDeg: { value: -5, min: -30, max: 30, step: 0.5, label: 'Magnetic variation (° — negative = E)' },
+  msaBufferFt: { value: 1000, min: 0, max: 5000, step: 100, label: 'MSA clearance above terrain (ft)' },
+
+  profileClimbFpm: { value: 500, min: 100, max: 3000, step: 50, label: 'Default climb rate (fpm)' },
+  profileDescentFpm: { value: 500, min: 100, max: 3000, step: 50, label: 'Default descent rate (fpm)' },
+  profileClimbKt: { value: 75, min: 30, max: 200, step: 1, label: 'Default climb speed (kt)' },
+  profileDescentKt: { value: 110, min: 30, max: 250, step: 1, label: 'Default descent speed (kt)' },
+  defaultGph: { value: 8, min: 1, max: 60, step: 0.5, label: 'Default fuel burn (GPH)' },
+  defaultTaxiGal: { value: 1.1, min: 0, max: 10, step: 0.1, label: 'Default taxi/run-up fuel (gal)' },
+
+  legAltInferMaxHops: { value: 6, min: 1, max: 20, step: 1, label: 'Alt inference max hops' },
+  legAltInferMaxDistRatio: { value: 1.35, min: 1, max: 3, step: 0.05, label: 'Alt inference max distance ratio' },
+  legAltInferMaxExtraNm: { value: 0.8, min: 0, max: 10, step: 0.1, label: 'Alt inference max extra NM' },
+
+  commChangeSnapPx: { value: 18, min: 2, max: 60, step: 1, label: 'Comm-change snap distance (px)' },
+  originResnapArmPx: { value: 18, min: 2, max: 60, step: 1, label: 'Origin re-snap arm distance (px)' },
+
+  planCardBaseRowPx: { value: 16, min: 6, max: 48, step: 1, label: 'Plan card row height (px)' },
+  planCardGripPx: { value: 22, min: 8, max: 60, step: 1, label: 'Plan card resize grip (px)' },
+
+  satellitePreviewZoom: { value: 16, min: 10, max: 19, step: 1, label: 'Satellite preview zoom' },
+  satelliteExpandedZoom: { value: 17, min: 10, max: 20, step: 1, label: 'Satellite expanded zoom' },
+  satelliteMinZoom: { value: 13, min: 8, max: 18, step: 1, label: 'Satellite min zoom' },
+  satelliteMaxZoom: { value: 18, min: 12, max: 20, step: 1, label: 'Satellite max zoom' },
+
+  magBaselineZoom: { value: 12, min: 8, max: 18, step: 1, label: 'Magnifier baseline zoom' },
+  magMaxExp: { value: 4, min: 1, max: 6, step: 1, label: 'Magnifier max sub-tile exponent' },
+
+  undoLimit: { value: 50, min: 5, max: 500, step: 5, label: 'Undo history depth' },
+  rotDragPx: { value: 8, min: 1, max: 40, step: 1, label: 'Rotate drag threshold (px)' },
+  shareMaxWaypoints: { value: 64, min: 8, max: 256, step: 1, label: 'Share URL max waypoints' },
 
   routeLineWidthPx: { value: 3.5, min: 0.5, max: 12, step: 0.1, label: 'Route line width' },
   routeSelectedLineWidthPx: { value: 5, min: 0.5, max: 16, step: 0.1, label: 'Selected route line width' },
@@ -202,7 +232,13 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
-  { name: 'Navigation', keys: ['magneticVariationDeg'] },
+  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt'] },
+  { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileDescentFpm', 'profileClimbKt', 'profileDescentKt', 'defaultGph', 'defaultTaxiGal'] },
+  { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
+  { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx'] },
+  { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom'] },
+  { name: 'Magnifier', keys: ['magBaselineZoom', 'magMaxExp'] },
+  { name: 'Behaviour', keys: ['undoLimit', 'rotDragPx', 'shareMaxWaypoints', 'commChangeSnapPx', 'originResnapArmPx'] },
   { name: 'Route line', keys: ['routeLineWidthPx', 'routeSelectedLineWidthPx'] },
   { name: 'Drift lines', keys: ['driftAngleDeg', 'driftLengthFactor', 'driftDashOnPx', 'driftDashOffPx', 'driftStrokeWidthPx', 'driftLineColor', 'driftLineAlpha'] },
   { name: 'Default marker locations', keys: ['defaultLabelMarginPx', 'defaultKiteHalfWidthPx'] },
@@ -825,10 +861,6 @@ var legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
 var legLineWidth = 1;       // leg route line width scale (1 = default 3.5 px)
 var driftLineWidth = 1;     // drift reference line width scale (1 = default 1.5 px)
 
-const LEG_ALTITUDE_INFER_MAX_HOPS = 6;
-const LEG_ALTITUDE_INFER_MAX_DISTANCE_RATIO = 1.35;
-const LEG_ALTITUDE_INFER_MAX_EXTRA_NM = 0.8;
-
 function legZoomScale() {   // zoom + legArrowSize → pixel multiplier for offsets/sizes
   return Math.max(0.35, Math.pow(2, map.getZoom() - 12)) * legArrowSize;
 }
@@ -1192,8 +1224,8 @@ function toHMS(hours) {
 }
 
 // --- vertical profile: top-of-climb / top-of-descent (#672) -------------
-// Default GA climb/descent performance (C172-ish); overridable per aircraft.
-const WX_DEFAULT_PERF = { climbFpm: 500, descentFpm: 500, climbKt: 75, descentKt: 110 };
+// Default GA climb/descent performance (C172-ish) lives in the tune registry
+// (Performance defaults group); overridable per aircraft or via the V/S input.
 // Field elevation at route endpoint waypoint i (airfield elev_ft) or null.
 function routeEndpointElev(i) {
   const wp = state.waypoints[i];
@@ -1215,11 +1247,11 @@ function routeProfile(ac) {
   // A single vertical-speed (V/S) override drives both the climb and descent
   // ramp slope when set (the profile's V/S input); otherwise per-aircraft perf.
   const vs = typeof window !== 'undefined' && window.profileVS > 0 ? window.profileVS : 0;
-  const climbFpm = vs > 0 ? vs : (ac.climbFpm > 0 ? ac.climbFpm : WX_DEFAULT_PERF.climbFpm);
-  const descFpm = vs > 0 ? vs : (ac.descentFpm > 0 ? ac.descentFpm : WX_DEFAULT_PERF.descentFpm);
-  const climbKt = ac.climbKt > 0 ? ac.climbKt : WX_DEFAULT_PERF.climbKt;
-  const descKt = ac.descentKt > 0 ? ac.descentKt : WX_DEFAULT_PERF.descentKt;
-  const gph = ac.gph > 0 ? ac.gph : 8;
+  const climbFpm = vs > 0 ? vs : (ac.climbFpm > 0 ? ac.climbFpm : tune('profileClimbFpm'));
+  const descFpm = vs > 0 ? vs : (ac.descentFpm > 0 ? ac.descentFpm : tune('profileDescentFpm'));
+  const climbKt = ac.climbKt > 0 ? ac.climbKt : tune('profileClimbKt');
+  const descKt = ac.descentKt > 0 ? ac.descentKt : tune('profileDescentKt');
+  const gph = ac.gph > 0 ? ac.gph : tune('defaultGph');
   const legs = state.legs || [], wps = state.waypoints || [];
   const n = legs.length;
   const legAlt = i => Number.isFinite(legs[i].inboundAltitude) ? legs[i].inboundAltitude : 2000;
@@ -1770,8 +1802,8 @@ function legAltitudeDirectionalEdges() {
 function inferConsistentLegAltitude(from, to, directDistanceNm) {
   if (!from || !to || from === to || !Number.isFinite(directDistanceNm)) return null;
   const edges = legAltitudeDirectionalEdges();
-  const maxDistance = directDistanceNm * LEG_ALTITUDE_INFER_MAX_DISTANCE_RATIO +
-    LEG_ALTITUDE_INFER_MAX_EXTRA_NM;
+  const maxDistance = directDistanceNm * tune('legAltInferMaxDistRatio') +
+    tune('legAltInferMaxExtraNm');
   const queue = [{
     node: from,
     altitude: null,
@@ -1783,7 +1815,7 @@ function inferConsistentLegAltitude(from, to, directDistanceNm) {
   const foundAltitudes = new Set();
   while (queue.length) {
     const cur = queue.shift();
-    if (!cur || cur.hops >= LEG_ALTITUDE_INFER_MAX_HOPS) continue;
+    if (!cur || cur.hops >= tune('legAltInferMaxHops')) continue;
     for (const edge of edges[cur.node] || []) {
       if (cur.path.includes(edge.to)) continue;
       const altitude = cur.altitude === null ? edge.altitude : cur.altitude;

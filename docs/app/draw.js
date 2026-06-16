@@ -1077,7 +1077,6 @@ function drawCommChangeRings() {
 // draw() / load / import / undo or it would resurrect notes the user deleted.
 // Returns true if any note was added, changed, or removed so the caller can
 // persist / repaint.
-const COMM_CHANGE_SNAP_PX = 18;
 function splitCommCalloutText(raw) {
   const s = String(raw || '').trim();
   const m = s.match(/^(.*?)(?:\s+(\d{3}(?:\.\d{1,3})?))$/);
@@ -1580,7 +1579,7 @@ function commChangeWaypointInRange(wp, name) {
   // does not silently disable the frequency-change indicator).
   const a = map.latLngToContainerPoint([wp.lat, wp.lng]);
   const b = map.latLngToContainerPoint([ref.lat, ref.lng]);
-  return Math.hypot(a.x - b.x, a.y - b.y) <= COMM_CHANGE_SNAP_PX;
+  return Math.hypot(a.x - b.x, a.y - b.y) <= tune('commChangeSnapPx');
 }
 function hasActiveCommChangeWaypoint(name) {
   if (!Array.isArray(state.waypoints)) return false;
@@ -1678,7 +1677,7 @@ function seedCommChangeNotes() {
         if (!ref) continue;
         const a = map.latLngToContainerPoint([wp.lat, wp.lng]);
         const b = map.latLngToContainerPoint([ref.lat, ref.lng]);
-        if (Math.hypot(a.x - b.x, a.y - b.y) <= COMM_CHANGE_SNAP_PX) {
+        if (Math.hypot(a.x - b.x, a.y - b.y) <= tune('commChangeSnapPx')) {
           nm = k; cc = commChangeMap[k]; break;
         }
       }
@@ -2513,7 +2512,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   if (!legs.length || wpts.length < 2) return null;
   // Default to 8 gph when no aircraft is configured (matches the printed
   // flight plan) so the Fuel / Cum. fuel columns aren't just '--'.
-  const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: 8, taxiGal: 1.1 };
+  const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
   const taxiFuel = ac && ac.taxiGal && typeof isAirport === 'function' && isAirport(wpts[0]) ? ac.taxiGal : 0;
   const empty = S.fpVorRadialEmpty || '—';
   // Radial / DME of a waypoint from the leg's reference VOR (per-leg override,
@@ -2664,18 +2663,16 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
 // Draw the placed flight-plan card on the overlay (live preview + export).
 // Row height scales with planCard.scale; the export scale then renders it
 // crisp at print DPI. Updates planCardRect for hit-testing drag + resize.
-const PLAN_CARD_BASE_ROW = 16;     // container px per row at scale 1
-const PLAN_CARD_GRIP = 22;         // resize grip size (px)
 function drawPlanCard() {
   if (!planCard) { window.planCardRect = null; return; }
   const scale = planCard.scale > 0 ? planCard.scale : 1;
   const numRows = (state.legs ? state.legs.length : 0) + 2;
-  const h = numRows * PLAN_CARD_BASE_ROW * scale;
+  const h = numRows * tune('planCardBaseRowPx') * scale;
   window.planCardRect = drawFlightPlanTable(octx, planCard.x, planCard.y, 1e6, h, 'tl');
   // The resize grip is a UI handle — never bake it into the exported PNG.
   if (!planCardRect || (window.NavAid && NavAid.exporting)) return;
   // Resize grip — a triangle in the bottom-right corner, with diagonal ribs.
-  const r = planCardRect, g = PLAN_CARD_GRIP;
+  const r = planCardRect, g = tune('planCardGripPx');
   const ex = r.x + r.w, ey = r.y + r.h;
   octx.save();
   octx.fillStyle = '#0b5ed7';
@@ -2699,7 +2696,7 @@ function drawPlanCard() {
 function planCardOnGrip(px, py) {
   const r = planCardRect;
   if (!r) return false;
-  const z = PLAN_CARD_GRIP + 8;     // generous hit padding
+  const z = tune('planCardGripPx') + 8;     // generous hit padding
   return px >= r.x + r.w - z && px <= r.x + r.w + 8 &&
          py >= r.y + r.h - z && py <= r.y + r.h + 8;
 }

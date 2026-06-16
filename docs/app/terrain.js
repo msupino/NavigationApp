@@ -20,7 +20,6 @@
 var terrainGrid = null;             // null = not loaded; {coverage:false} = none
 var TERRAIN_URL = (typeof window !== 'undefined' && window.S && window.S.terrainUrl) ||
   'data/terrain.json?v=1';
-var MSA_BUFFER_FT = 1000;           // clearance added above terrain for MSA
 const M_TO_FT = 3.28084;
 
 function loadTerrain() {
@@ -74,7 +73,7 @@ function legMsaFt(i) {
   const A = state.waypoints[i], B = state.waypoints[i + 1];
   const t = terrainMaxAlongLeg(A, B);
   if (t == null) return null;
-  return Math.round((t + MSA_BUFFER_FT) / 100) * 100;
+  return Math.round((t + tune('msaBufferFt')) / 100) * 100;
 }
 
 if (typeof window !== 'undefined') {

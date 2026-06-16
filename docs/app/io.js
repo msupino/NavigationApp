@@ -1615,7 +1615,7 @@ function showFlightPlan() {
   const gphInp  = acInputDiv.querySelector('#aircraft-gph');
   const taxiInp = acInputDiv.querySelector('#aircraft-taxi');
   function syncAircraftUI() {
-    if (!aircraft) { aircraft = { gph: 8, taxiGal: 1.1 }; saveAircraft(); }
+    if (!aircraft) { aircraft = { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') }; saveAircraft(); }
     gphInp.value  = aircraft.gph;
     taxiInp.value = aircraft.taxiGal;
   }
@@ -2407,7 +2407,7 @@ function showFlightPlan() {
         S.navLogArrFreqs || 'Arrival frequencies');
     }
 
-    const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: 8, taxiGal: 1.1 };
+    const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
     const today = new Date().toISOString().slice(0, 10);
     const title = (S.navLogTitle || 'NavAid \u2014 Nav Log') + ' \u00b7 ' + dep + ' \u2192 ' + dest;
 
@@ -3625,7 +3625,6 @@ function flushPersist() {
 // previous one is pushed so undo() can return to it. The first call after
 // boot only establishes the baseline (no push). `undoing` suppresses the
 // snapshot while undo() is restoring, so an undo never becomes its own entry.
-const UNDO_LIMIT = 50;
 const undoStack = [];
 let lastCommitted = null;
 let undoing = false;
@@ -3637,7 +3636,7 @@ function recordUndoSnapshot(serialized) {
   }
   if (undoing || serialized === lastCommitted) return;
   undoStack.push(lastCommitted);
-  if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+  if (undoStack.length > tune('undoLimit')) undoStack.shift();
   lastCommitted = serialized;
   refreshUndoButton();
 }
@@ -4953,7 +4952,6 @@ function showChartsModal() {
 //                            (UTF-8 safe — Hebrew names go through)
 //   &l=<compact-legs>     — semicolon-separated `ia,oa,fs[,os]` triples
 //                            where outboundSpeed is optional
-const SHARE_MAX_WAYPOINTS = 64;        // ~1.4 KB URL, fits in WhatsApp preview
 const SHARE_NAME_SEP = '\x1f';
 
 function _polyEncodeSigned(v) {
@@ -5000,7 +4998,7 @@ function _b64UrlDecode(s) {
 // the route would exceed SHARE_MAX_WAYPOINTS.
 function buildShareUrl() {
   if (state.waypoints.length < 2) return { err: 'errNeedWps' };
-  if (state.waypoints.length > SHARE_MAX_WAYPOINTS) return { err: 'errShareTooLong' };
+  if (state.waypoints.length > tune('shareMaxWaypoints')) return { err: 'errShareTooLong' };
   const r = polylineEncode(state.waypoints.map(w => [w.lat, w.lng]));
   const n = _b64UrlEncode(state.waypoints.map(w => w.name || '').join(SHARE_NAME_SEP));
   const l = state.legs.map(leg => {
@@ -5175,11 +5173,9 @@ let _magLastX = -Infinity, _magLastY = -Infinity;
 let _magScale = 1;
 // Minimum loupe zoom — even when the base map is wide-out (z=8) the hi-res
 // overlay aims for at least this zoom so VFR chart labels stay legible.
-const MAG_BASELINE_Z = 12;
 // Hard ceiling on the per-rebuild sub-tile grid (sub = 2^MAG_MAX_EXP).
 // sub=16 → up to 4 zoom levels deeper than the displayed map tile, which is
 // what `MAG_BASELINE_Z` needs at the lowest allowed map zoom (8 → 12).
-const MAG_MAX_EXP = 4;
 // In-flight hi-res sub-tile counter for the current rebuild batch. The
 // "Perfecting…" indicator is visible while this is > 0.
 let _magPendingTiles = 0;
@@ -5361,10 +5357,10 @@ function rebuildMagnifier() {
     // to read for the loading-pill label).
     const slider = magnifierZoom;
     const sliderExp = Math.ceil(Math.log2(Math.max(1, slider)));
-    const baselineExp = MAG_BASELINE_Z - refZ;
+    const baselineExp = tune('magBaselineZoom') - refZ;
     const desiredExp = Math.max(sliderExp, baselineExp);
     const targetExp = Math.max(0,
-      Math.min(MAG_MAX_EXP, Math.min(maxNZ - refZ, desiredExp)));
+      Math.min(tune('magMaxExp'), Math.min(maxNZ - refZ, desiredExp)));
     if (targetExp > 0) {
       const tileTarget = refZ + targetExp;
       const sub = Math.pow(2, targetExp);
