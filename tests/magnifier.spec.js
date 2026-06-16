@@ -8,11 +8,40 @@ const magnifierTileReadyMs = deployedPreview ? 35_000 : 12_000;
 const magnifierCalibTestMs = deployedPreview ? 120_000 : 60_000;
 // Tile-pane readiness for z=8 (pan / margin / Perfecting tests).
 const magnifierPaneTileMs = deployedPreview ? 45_000 : 18_000;
+const NAVAID_TILE_RE = /^https?:\/\/navaid-tiles\.supino\.org\//;
+const TILE_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
+  'base64');
+
+async function fulfillTile(route, delayMs = 0) {
+  if (delayMs > 0) await new Promise(r => setTimeout(r, delayMs));
+  return route.fulfill({
+    status: 200,
+    contentType: 'image/png',
+    body: TILE_PNG,
+  });
+}
+
+function isChartTileUrl(url) {
+  try {
+    const { hostname } = new URL(url);
+    return hostname === 'navaid-tiles.supino.org';
+  } catch (_) {
+    return false;
+  }
+}
+
+function chartTileZoom(url) {
+  const m = url.match(
+    /\/(?:CVFR|Israel-Navigation|LSA-Low-Altitude|Israel-Helicopters)\/(\d+)\//);
+  return m ? parseInt(m[1], 10) : null;
+}
 
 test.describe('Magnifying glass', () => {
   test.describe.configure({ timeout: deployedPreview ? 120_000 : 60_000 });
 
   test.beforeEach(async ({ page }) => {
+    await page.route(NAVAID_TILE_RE, route => fulfillTile(route));
     await page.addInitScript(() => {
       try {
         localStorage.clear();
@@ -366,16 +395,16 @@ test.describe('Magnifying glass', () => {
   });
 
   // "Perfecting…" indicator: appears inside the loupe while hi-res sub-tiles
-  // are in flight, disappears once they all settle. Throttling the
-  // flight-maps.com responses guarantees the indicator stays visible long
-  // enough for the test to observe — otherwise a fast LAN cache hit could
-  // flip it on and off within a single frame.
+  // are in flight, disappears once they all settle. Throttling chart tile
+  // responses guarantees the indicator stays visible long enough for the test
+  // to observe — otherwise a fast LAN cache hit could flip it on and off
+  // within a single frame.
   test('shows "Perfecting…" indicator while hi-res tiles load, hides after', async ({ page }) => {
     // Default suite timeout is 15s — this test throttles tiles (1s each in
     // parallel) then waits up to 20s for the indicator to clear; under load
     // or slow runners the whole interaction can exceed 15s.
     test.setTimeout(deployedPreview ? 120_000 : 60_000);
-    // Slow every flight-maps.com tile fetch by 1000 ms so the
+    // Slow every chart tile fetch by 1000 ms so the
     // indicator's `show` class stays visible long enough for Playwright
     // to poll it. Important: the 169-tile hi-res grid is fetched in
     // parallel (HTTP/2 multiplexes; even on HTTP/1.1 each route handler
@@ -387,13 +416,8 @@ test.describe('Magnifying glass', () => {
     // 1000 ms is comfortably wider than the polling cadence while
     // staying well under the 20 s post-settle assertion below.
     //
-    // Regex (not a glob) so `flight-maps.com` apex is matched alongside
-    // any subdomain — the glob `*.flight-maps.com` requires a leading
-    // subdomain segment and missed every real tile request.
-    await page.route(/^https?:\/\/([^/]*\.)?flight-maps\.com\//, async route => {
-      await new Promise(r => setTimeout(r, 1000));
-      try { await route.continue(); } catch (e) { /* page may close */ }
-    });
+    await page.unroute(NAVAID_TILE_RE);
+    await page.route(NAVAID_TILE_RE, route => fulfillTile(route, 1000));
 
     await page.evaluate(() => map.setZoom(8));
     await page.waitForFunction(
@@ -670,12 +694,7 @@ test.describe('Magnifying glass', () => {
     const tileReqs = new Set();
     page.on('request', r => {
       const u = r.url();
-      try {
-        const { hostname } = new URL(u);
-        if (hostname === 'flight-maps.com' || hostname.endsWith('.flight-maps.com')) {
-          tileReqs.add(u);
-        }
-      } catch (_) {}
+      if (isChartTileUrl(u)) tileReqs.add(u);
     });
     await page.evaluate(() => map.setZoom(8));
     await page.waitForFunction(
@@ -697,8 +716,8 @@ test.describe('Magnifying glass', () => {
     // count hi-res (≥ z=11) requests; we don't care about cloned-zoom hits.
     let hires = 0;
     for (const u of tileReqs) {
-      const m = u.match(/tiles\/[^/]+\/(\d+)\//);
-      if (m && parseInt(m[1], 10) >= 11) hires++;
+      const z = chartTileZoom(u);
+      if (z && z >= 11) hires++;
     }
     expect(hires).toBeGreaterThan(0);
     // The loupe now opens at 1× and is bumped to 2×, so the settle window

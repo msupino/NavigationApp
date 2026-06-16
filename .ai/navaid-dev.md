@@ -2,8 +2,9 @@
 
 ## What this is
 
-A browser flight-route planner. Leaflet slippy map (flight-maps.com tiles)
-with a canvas overlay that draws the route, free-text notes, and an
+A browser flight-route planner. Leaflet slippy map (mirrored chart tiles from
+`https://navaid-tiles.supino.org`) with a canvas overlay that draws the route,
+free-text notes, and an
 optional VFR-reporting-point reference layer. Plain HTML / CSS / JS, no
 build step; Leaflet from CDN is the only dependency. This repository now
 carries the static web app source only.
@@ -104,9 +105,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 ## Architecture
 
 - **Base map:** Leaflet with six base layers in one `layers` object:
-  CVFR / Nav / Low Alt / Heli (flight-maps.com tiles) / Satellite (Esri) /
-  OSM. Selection persisted at `localStorage['navaid.layer']` and
-  restored *before* `L.map()` runs (no CVFR flash on reload).
+  CVFR / Nav / Low Alt / Heli (hosted by
+  `https://navaid-tiles.supino.org`) / Satellite (Esri) / OSM.
+  Selection persisted at `localStorage['navaid.layer']` and restored
+  *before* `L.map()` runs (no CVFR flash on reload).
 - **Route overlay:** a `<canvas id="overlay">` over the map with
   `pointer-events: none`, redrawn on every Leaflet `move` / `zoom` /
   `resize`. `proj(wp)` = `map.latLngToContainerPoint`.
@@ -294,6 +296,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   lives in `NavAid.tuningDefaults` / `NavAid.tuningGroups` (`core.js`),
   values are read through `tune(key)` in drawing / hit-testing code, and
   `createTuningPanel()` (`ui.js`) renders controls into `#tuning-panel`.
+  CSS-backed chrome values use `applyTuningCssVars()` (`ui.js`) to mirror
+  Tune values into `:root` variables; the "Chrome layout" group owns the
+  Zulu clock styling and the default inspector top / viewport gap.
   Includes a "Colors" group for the last hard-coded draw colors (ink,
   selected, kite text, leg halo, airfield fill/outline, nav-WP dot).
   Each slider group has a ↻ reset button that restores the HTML default
@@ -386,9 +391,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   `i18n/he/strings.js`) so the cheat-sheet stays in sync.
 - **Save PNG (`exportPNG`):** renders the framed region (or current
   view if no frame) at native tile zoom into an off-screen canvas.
-  Tiles are pulled through `images.weserv.nl` to dodge the lack of
-  CORS on flight-maps.com tiles. Then re-runs the canvas draws
-  scaled into the export canvas and triggers a `.png` download
+  Tiles are fetched directly from each active layer URL. Then re-runs
+  the canvas draws scaled into the export canvas and triggers a `.png` download
   named `navigation-A4.png` / `navigation-CVFR.png` etc.
   An "Include cumulative time" checkbox in the export modal (default on)
   includes the cumulative-time kite layer in the exported PNG; disabling
@@ -543,8 +547,10 @@ downloadable `route.json`.
 
 ## Notes / pending
 
-- flight-maps.com tiles are a third-party service; the CVFR data is
-  copyrighted.
+- Flight Maps chart data is copyrighted. The app-served CVFR,
+  Navigation, Low Alt, and Helicopters tile pyramids are mirrored in
+  `msupino/NavigationApp-tiles` and served from
+  `https://navaid-tiles.supino.org`.
 - `nav-waypoints.json` — 173 Israeli CVFR reporting points.
   **Source:** IAA CVFR chart waypoint reference table (page 113, 2025
   edition), supplied upstream as `113_waypoints.csv`. The CSV is the

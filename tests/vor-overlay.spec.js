@@ -339,7 +339,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     expect(hit).toMatchObject({ type: 'vor' });
     await page.evaluate(t => { state.selected = t; showInspector(); }, hit);
     await expect(page.locator('#insp-title')).toHaveValue(/NAT.*Natania/);
-    await expect(page.locator('#insp-body')).toContainText('112.40');
+    await expect(page.locator('#insp-body .vor-freq-row .charts-freq-input')).toHaveValue('112.40');
     const useBtn = page.locator('#insp-body .insp-btn', { hasText: /reference/i });
     await expect(useBtn).toBeVisible();
     await useBtn.click();
@@ -495,18 +495,18 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       showInspector();
     });
     await expect(page.locator('#insp-body .primary-row')).toContainText('Primary');
-    await expect(page.locator('#insp-body .primary-row')).toContainText('133.00 MHz');
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('133.00');
     await expect(page.locator('#insp-body .atis-row')).toContainText('ATIS');
-    await expect(page.locator('#insp-body .atis-row')).toContainText('135.40 MHz');
+    await expect(page.locator('#insp-body .atis-row .charts-freq-input')).toHaveValue('135.40');
 
     await page.evaluate(() => {
       state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLBG') };
       showInspector();
     });
-    await expect(page.locator('#insp-body .primary-row')).toContainText('134.60 MHz');
-    await expect(page.locator('#insp-body .clearance-row')).toContainText('121.55 MHz');
-    await expect(page.locator('#insp-body .atis-row')).toContainText('132.50 MHz');
-    await expect(page.locator('#insp-body .atis-row')).toContainText('132.80 MHz');
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('134.60');
+    await expect(page.locator('#insp-body .clearance-row .charts-freq-input')).toHaveValue('121.55');
+    await expect(page.locator('#insp-body .atis-row .charts-freq-input').nth(0)).toHaveValue('132.50');
+    await expect(page.locator('#insp-body .atis-row .charts-freq-input').nth(1)).toHaveValue('132.80');
     const markerOrder = await page.evaluate(() => {
       const rows = Array.from(document.querySelector('#insp-body').children);
       return {
@@ -523,31 +523,31 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLIB') };
       showInspector();
     });
-    await expect(page.locator('#insp-body .primary-row')).toContainText('118.45 MHz');
-    await expect(page.locator('#insp-body .atis-row')).toContainText('132.45 MHz');
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('118.45');
+    await expect(page.locator('#insp-body .atis-row .charts-freq-input')).toHaveValue('132.45');
 
     await page.evaluate(() => {
       state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLHZ') };
       showInspector();
     });
-    await expect(page.locator('#insp-body .primary-row')).toContainText('125.60 MHz');
-    await expect(page.locator('#insp-body .clearance-row')).toContainText('121.70 MHz');
-    await expect(page.locator('#insp-body .atis-row')).toHaveCount(0);
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('125.60');
+    await expect(page.locator('#insp-body .clearance-row .charts-freq-input')).toHaveValue('121.70');
+    await expect(page.locator('#insp-body .atis-row')).toContainText('None');
 
     await page.evaluate(() => {
       state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLPL') };
       showInspector();
     });
-    await expect(page.locator('#insp-body .primary-row')).toContainText('135.55 MHz');
-    await expect(page.locator('#insp-body .atis-row')).toContainText('126.10 MHz');
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('135.55');
+    await expect(page.locator('#insp-body .atis-row .charts-freq-input')).toHaveValue('126.10');
 
     await page.evaluate(() => {
       state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLAR') };
       showInspector();
     });
-    await expect(page.locator('#insp-body .primary-row')).toContainText('120.75 MHz');
-    await expect(page.locator('#insp-body .atis-row')).toHaveCount(0);
-    await expect(page.locator('#insp-body .clearance-row')).toHaveCount(0);
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('120.75');
+    await expect(page.locator('#insp-body .atis-row')).toContainText('None');
+    await expect(page.locator('#insp-body .clearance-row')).toContainText('None');
 
     await page.evaluate(() => {
       state.selected = { type: 'airfield', index: airfields.findIndex(a => a.name === 'LLES') };
@@ -564,9 +564,9 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     });
     await expect(page.locator('#insp-title')).toHaveValue(/LLBG/);
     await expect(page.locator('#insp-title')).toHaveValue(/Ben Gurion/);
-    await expect(page.locator('#insp-body .primary-row')).toContainText('134.60 MHz');
-    await expect(page.locator('#insp-body .clearance-row')).toContainText('121.55 MHz');
-    await expect(page.locator('#insp-body .atis-row')).toContainText('132.50 MHz');
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('134.60');
+    await expect(page.locator('#insp-body .clearance-row .charts-freq-input')).toHaveValue('121.55');
+    await expect(page.locator('#insp-body .atis-row .charts-freq-input').nth(0)).toHaveValue('132.50');
     const routeOrder = await page.evaluate(() => {
       const rows = Array.from(document.querySelector('#insp-body').children);
       return {
@@ -588,9 +588,9 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     });
     await expect(page.locator('#insp-title')).toHaveValue(/LLHZ/);
     await expect(page.locator('#insp-title')).toHaveValue(/Herzliya/);
-    await expect(page.locator('#insp-body .primary-row')).toContainText('125.60 MHz');
-    await expect(page.locator('#insp-body .clearance-row')).toContainText('121.70 MHz');
-    await expect(page.locator('#insp-body .atis-row')).toHaveCount(0);
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('125.60');
+    await expect(page.locator('#insp-body .clearance-row .charts-freq-input')).toHaveValue('121.70');
+    await expect(page.locator('#insp-body .atis-row')).toContainText('None');
   });
 
   test('Hebrew airfield inspector keeps ICAO and frequency values in reading order', async ({ page }) => {
@@ -603,8 +603,8 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await expect(page.locator('#insp-title')).toHaveValue(/LLIB/);
     await expect(page.locator('#insp-title')).toHaveValue(/ראש פינה/);
     await expect(page.locator('#insp-body .primary-row')).toContainText('ראשי');
-    await expect(page.locator('#insp-body .primary-row')).toContainText('118.45 MHz');
-    await expect(page.locator('#insp-body .atis-row')).toContainText('132.45 MHz');
+    await expect(page.locator('#insp-body .primary-row .charts-freq-input')).toHaveValue('118.45');
+    await expect(page.locator('#insp-body .atis-row .charts-freq-input')).toHaveValue('132.45');
     const bidi = await page.evaluate(() => {
       const primary = document.querySelector('#insp-body .primary-row .val');
       const atis = document.querySelector('#insp-body .atis-row .val');

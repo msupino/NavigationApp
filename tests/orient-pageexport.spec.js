@@ -83,8 +83,7 @@ test.describe('PNG export filename respects pageSize + orient', () => {
 
   test('Export with A4 set: download name matches navigation-A4-*.png', async ({ page }) => {
     await boot(page);
-    // Switch to OSM so tiles are CORS-clean and exportPNG can actually run
-    // headless without the weserv.nl proxy round-trip.
+    // Switch to OSM so this export test uses small, stable test tiles.
     await page.locator('#layer-select').selectOption('OpenStreetMap');
     await page.evaluate(wps => {
       state.waypoints = wps;

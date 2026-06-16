@@ -45,6 +45,8 @@ already preserves the invariant.
 
 Leaflet owns the base map. The app draws route geometry, labels, kites, notes,
 reference points, callouts, and overlays on `#overlay`, a canvas above the map.
+CVFR, Navigation, Low Alt, and Helicopters chart tiles load from
+`https://navaid-tiles.supino.org`.
 
 Rendering flow:
 
