@@ -2373,9 +2373,25 @@ function showFlightPlan() {
     // Wrap LTR content (codes, frequencies) in an isolate so it doesn't
     // reorder against surrounding Hebrew in the RTL nav log.
     const ltr = s => '<span dir="ltr" style="unicode-bidi:isolate">' + esc(s) + '</span>';
-    // Frequency list from comm-change callout notes on the route. Use the
-    // localized call-sign name (Hebrew in he mode), not the raw catalog id.
-    const freqs = (state.notes || []).filter(n => n && n.cc).map(n => {
+    // Frequency list from comm-change callout notes on the route. Use route
+    // waypoint order, not note insertion order, so the kneeboard reads along
+    // the flight path. The label uses the localized call-sign name (Hebrew in
+    // he mode), not the raw catalog id.
+    const routeNoteOrder = item => {
+      const wpi = item && Number.isInteger(item.wpi) && item.wpi >= 0
+        ? item.wpi : Number.MAX_SAFE_INTEGER;
+      return wpi;
+    };
+    const freqs = (state.notes || [])
+      .map((n, idx) => ({
+        n,
+        idx,
+        wpi: (n && n.cc && typeof commCalloutWaypointIndex === 'function')
+          ? commCalloutWaypointIndex(n) : -1,
+      }))
+      .filter(item => item.n && item.n.cc)
+      .sort((a, b) => routeNoteOrder(a) - routeNoteOrder(b) || a.idx - b.idx)
+      .map(({ n }) => {
       const wp = (typeof navName === 'function' ? navName(n.cc) : n.cc) || n.cc;
       const name = typeof commNoteName === 'function' ? commNoteName(n) : (n.freqName || '');
       const fq = typeof commNoteFreq === 'function' ? commNoteFreq(n) : (n.freq || '');
