@@ -2,7 +2,7 @@
 
 /* ------------------------------------------------------------------ *
  * NavAid — HTML5 CVFR flight-route planner.
- * Leaflet base map (flight-maps.com tiles) + a canvas route overlay.
+ * Leaflet base map (Flight Maps tiles) + a canvas route overlay.
  * ------------------------------------------------------------------ */
 
 // One-time migration: the app was renamed from "Plotter" — carry over any
@@ -29,6 +29,38 @@ window.NavAid = { exporting: false, version: '1.0' };  // cross-file export flag
 // constants without editing source. Values are page-local and reset on reload.
 NavAid.tuning = {};
 NavAid.tuningDefaults = {
+  magneticVariationDeg: { value: -5, min: -30, max: 30, step: 0.5, label: 'Magnetic variation (° — negative = E)' },
+  msaBufferFt: { value: 1000, min: 0, max: 5000, step: 100, label: 'MSA clearance above terrain (ft)' },
+
+  profileClimbFpm: { value: 500, min: 100, max: 3000, step: 50, label: 'Default climb rate (fpm)' },
+  profileDescentFpm: { value: 500, min: 100, max: 3000, step: 50, label: 'Default descent rate (fpm)' },
+  profileClimbKt: { value: 75, min: 30, max: 200, step: 1, label: 'Default climb speed (kt)' },
+  profileDescentKt: { value: 110, min: 30, max: 250, step: 1, label: 'Default descent speed (kt)' },
+  defaultGph: { value: 8, min: 1, max: 60, step: 0.5, label: 'Default fuel burn (GPH)' },
+  defaultTaxiGal: { value: 1.1, min: 0, max: 10, step: 0.1, label: 'Default taxi/run-up fuel (gal)' },
+
+  legAltInferMaxHops: { value: 6, min: 1, max: 20, step: 1, label: 'Alt inference max hops' },
+  legAltInferMaxDistRatio: { value: 1.35, min: 1, max: 3, step: 0.05, label: 'Alt inference max distance ratio' },
+  legAltInferMaxExtraNm: { value: 0.8, min: 0, max: 10, step: 0.1, label: 'Alt inference max extra NM' },
+
+  commChangeSnapPx: { value: 18, min: 2, max: 60, step: 1, label: 'Comm-change snap distance (px)' },
+  originResnapArmPx: { value: 18, min: 2, max: 60, step: 1, label: 'Origin re-snap arm distance (px)' },
+
+  planCardBaseRowPx: { value: 16, min: 6, max: 48, step: 1, label: 'Plan card row height (px)' },
+  planCardGripPx: { value: 22, min: 8, max: 60, step: 1, label: 'Plan card resize grip (px)' },
+
+  satellitePreviewZoom: { value: 16, min: 10, max: 19, step: 1, label: 'Satellite preview zoom' },
+  satelliteExpandedZoom: { value: 17, min: 10, max: 20, step: 1, label: 'Satellite expanded zoom' },
+  satelliteMinZoom: { value: 13, min: 8, max: 18, step: 1, label: 'Satellite min zoom' },
+  satelliteMaxZoom: { value: 18, min: 12, max: 20, step: 1, label: 'Satellite max zoom' },
+
+  magBaselineZoom: { value: 12, min: 8, max: 18, step: 1, label: 'Magnifier baseline zoom' },
+  magMaxExp: { value: 4, min: 1, max: 6, step: 1, label: 'Magnifier max sub-tile exponent' },
+
+  undoLimit: { value: 50, min: 5, max: 500, step: 5, label: 'Undo history depth' },
+  rotDragPx: { value: 8, min: 1, max: 40, step: 1, label: 'Rotate drag threshold (px)' },
+  shareMaxWaypoints: { value: 64, min: 8, max: 256, step: 1, label: 'Share URL max waypoints' },
+
   routeLineWidthPx: { value: 3.5, min: 0.5, max: 12, step: 0.1, label: 'Route line width' },
   routeSelectedLineWidthPx: { value: 5, min: 0.5, max: 16, step: 0.1, label: 'Selected route line width' },
 
@@ -173,6 +205,26 @@ NavAid.tuningDefaults = {
   reportBadgeFontPx: { value: 9, min: 4, max: 24, step: 1, label: 'Reporting badge text size' },
   reportBadgeColor: { value: '#d63b3b', type: 'color', label: 'Reporting badge fill' },
   reportBadgeTextColor: { value: '#ffffff', type: 'color', label: 'Reporting badge text color' },
+
+  inspectorDefaultTopPx: { value: 84, min: 40, max: 240, step: 1, label: 'Inspector default top' },
+  inspectorBottomGapPx: { value: 12, min: 0, max: 120, step: 1, label: 'Inspector bottom gap' },
+  zuluClockMinWidthPx: { value: 82, min: 40, max: 180, step: 1, label: 'Zulu clock min width' },
+  zuluClockPadYPx: { value: 5, min: 0, max: 24, step: 1, label: 'Zulu clock vertical padding' },
+  zuluClockPadXPx: { value: 8, min: 0, max: 36, step: 1, label: 'Zulu clock horizontal padding' },
+  zuluClockMarginTopPx: { value: 12, min: 0, max: 80, step: 1, label: 'Zulu clock top margin' },
+  zuluClockMarginRightPx: { value: 12, min: 0, max: 80, step: 1, label: 'Zulu clock right margin' },
+  zuluClockFontPx: { value: 13, min: 8, max: 28, step: 1, label: 'Zulu clock text size' },
+  zuluClockFontWeight: { value: 800, min: 100, max: 900, step: 100, label: 'Zulu clock text weight' },
+  zuluClockLineHeight: { value: 1, min: 0.8, max: 2, step: 0.05, label: 'Zulu clock line height' },
+  zuluClockTextColor: { value: '#ffffff', type: 'color', label: 'Zulu clock text color' },
+  zuluClockBgColor: { value: '#141212', type: 'color', label: 'Zulu clock background color' },
+  zuluClockBgAlpha: { value: 0.88, min: 0, max: 1, step: 0.05, label: 'Zulu clock background alpha' },
+  zuluClockBorderColor: { value: '#3a3636', type: 'color', label: 'Zulu clock border color' },
+  zuluClockBorderWidthPx: { value: 1, min: 0, max: 8, step: 0.25, label: 'Zulu clock border width' },
+  zuluClockBorderRadiusPx: { value: 5, min: 0, max: 24, step: 1, label: 'Zulu clock border radius' },
+  zuluClockShadowYPx: { value: 2, min: 0, max: 18, step: 1, label: 'Zulu clock shadow y' },
+  zuluClockShadowBlurPx: { value: 8, min: 0, max: 36, step: 1, label: 'Zulu clock shadow blur' },
+  zuluClockShadowAlpha: { value: 0.45, min: 0, max: 1, step: 0.05, label: 'Zulu clock shadow alpha' },
 };
 // Groups are ordered to mirror the route-building workflow: the route line
 // and its per-leg annotations first, then the markers you place, then the
@@ -180,6 +232,13 @@ NavAid.tuningDefaults = {
 // interaction (hit testing), tools (alt pairs, export), and finally the
 // global colour palette.
 NavAid.tuningGroups = [
+  { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt'] },
+  { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileDescentFpm', 'profileClimbKt', 'profileDescentKt', 'defaultGph', 'defaultTaxiGal'] },
+  { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
+  { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx'] },
+  { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom'] },
+  { name: 'Magnifier', keys: ['magBaselineZoom', 'magMaxExp'] },
+  { name: 'Behaviour', keys: ['undoLimit', 'rotDragPx', 'shareMaxWaypoints', 'commChangeSnapPx', 'originResnapArmPx'] },
   { name: 'Route line', keys: ['routeLineWidthPx', 'routeSelectedLineWidthPx'] },
   { name: 'Drift lines', keys: ['driftAngleDeg', 'driftLengthFactor', 'driftDashOnPx', 'driftDashOffPx', 'driftStrokeWidthPx', 'driftLineColor', 'driftLineAlpha'] },
   { name: 'Default marker locations', keys: ['defaultLabelMarginPx', 'defaultKiteHalfWidthPx'] },
@@ -198,6 +257,7 @@ NavAid.tuningGroups = [
   { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs'] },
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx'] },
   { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeFontPx', 'reportBadgeColor', 'reportBadgeTextColor'] },
+  { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'kiteTextColor', 'legKiteHaloColor'] },
 ];
@@ -392,6 +452,8 @@ window.S = Object.assign({
   errNoLegs: 'No legs yet — drop at least two waypoints first.',
   flightPlan: 'Flight plan',
   fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time', 'Fuel (gal)', 'Cum. time', 'Cum. fuel', 'Radial', 'DME', ''],
+  fpFreq: 'Freq',
+  freqNone: 'None',
   fpHeadersShort: ['#', 'From', 'To', 'Hdg', 'Dist', 'Spd', 'Alt', 'Time', 'Fuel'],
   exportPlanPlace: 'Place flight plan on the map',
   exportPlanPlaceTitle: 'Overlay the flight-plan table on the export; drag it to position it inside the page frame',
@@ -410,6 +472,8 @@ window.S = Object.assign({
   navLogTitle: 'NavAid — Nav Log',
   navLogDate: 'Date',
   navLogFreqs: 'Frequencies',
+  navLogDepFreqs: 'Departure frequencies',
+  navLogArrFreqs: 'Arrival frequencies',
   navLogPopupBlocked: 'Allow pop-ups to export the nav log.',
   fpFuel: 'Fuel',
   fpMsa: 'MSA (ft)',
@@ -797,10 +861,6 @@ var legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
 var legLineWidth = 1;       // leg route line width scale (1 = default 3.5 px)
 var driftLineWidth = 1;     // drift reference line width scale (1 = default 1.5 px)
 
-const LEG_ALTITUDE_INFER_MAX_HOPS = 6;
-const LEG_ALTITUDE_INFER_MAX_DISTANCE_RATIO = 1.35;
-const LEG_ALTITUDE_INFER_MAX_EXTRA_NM = 0.8;
-
 function legZoomScale() {   // zoom + legArrowSize → pixel multiplier for offsets/sizes
   return Math.max(0.35, Math.pow(2, map.getZoom() - 12)) * legArrowSize;
 }
@@ -929,8 +989,11 @@ function geo(a, b) {                   // a,b = {lat,lng} -> {dist NM, brg deg}
   return { dist, brg: ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360 };
 }
 function toMagnetic(deg) {
-  // Magnetic = True + magVar (so −5 means "subtract 5", i.e. 5°E variation).
-  return ((Math.round(deg + magVar) % 360) + 360) % 360;
+  // Magnetic = True + variation (so −5 means "subtract 5", i.e. 5°E variation).
+  // Read from the tune registry (key default -5) so it's adjustable; `magVar`
+  // remains the hardcoded fallback/default.
+  const mv = typeof tune === 'function' ? tune('magneticVariationDeg') : magVar;
+  return ((Math.round(deg + mv) % 360) + 360) % 360;
 }
 // --- wind triangle (#722) -------------------------------------------
 // Resolve the wind that applies to a leg: an explicit per-leg override (with
@@ -1046,6 +1109,109 @@ function decodeSigmet(s) {
   return (fir ? fir + ' — ' : '') + parts.join(', ');
 }
 const pad3 = n => String(n).padStart(3, '0');
+// Strip a trailing "MHz" unit from a frequency string → "121.70 MHz" → "121.70".
+function freqClean(s) { return String(s == null ? '' : s).replace(/\s*MHz\s*$/i, '').trim(); }
+// Per-leg comm-frequency sources along the route, sorted by waypoint index:
+// each airfield's primary radio frequency (active from the leg departing it)
+// plus each comm-change note (which overrides at its waypoint). Used by the
+// flight-plan + printed-plan Freq column.
+function routeFreqSources() {
+  const out = [];
+  const wps = state.waypoints || [];
+  const legCount = (state.legs || []).length;
+  // The DEPARTURE airfield (first waypoint) contributes its frequency on the
+  // first leg; airfields merely passed overhead mid-route do not.
+  if (wps.length) {
+    const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wps[0]) : null;
+    const f = af && typeof airfieldPrimaryText === 'function' ? freqClean(airfieldPrimaryText(af)) : '';
+    if (f) out.push({ wpi: 0, freq: f });
+  }
+  // The DESTINATION airfield (last waypoint) contributes its frequency on the
+  // last leg — so if no comm-change switched to it yet, the final leg still
+  // shows the arrival airport's freq. A comm-change at the same leg overrides
+  // (notes are pushed after, so they sort last in the carry-forward).
+  if (legCount > 0 && wps.length > 1) {
+    const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wps[wps.length - 1]) : null;
+    const f = af && typeof airfieldPrimaryText === 'function' ? freqClean(airfieldPrimaryText(af)) : '';
+    if (f) out.push({ wpi: legCount - 1, freq: f });
+  }
+  for (const n of (state.notes || [])) {
+    if (!n || !n.cc) continue;
+    const wpi = typeof commCalloutWaypointIndex === 'function' ? commCalloutWaypointIndex(n) : -1;
+    const f = typeof commNoteFreq === 'function' ? commNoteFreq(n) : (n.freq || '');
+    if (wpi >= 0 && f) out.push({ wpi, freq: freqClean(f) });
+  }
+  // Sort by waypoint; comm-change notes are pushed after airfields so a note at
+  // the same waypoint sorts last and wins the carry-forward.
+  out.sort((a, b) => a.wpi - b.wpi);
+  return out;
+}
+// Active frequency for leg i: the latest source at or before the leg's start.
+function legActiveFreq(i, sources) {
+  const src = sources || routeFreqSources();
+  let f = '';
+  for (const c of src) { if (c.wpi <= i) f = c.freq; else break; }
+  return f;
+}
+
+// --- editable airfield clearance / ATIS frequencies -------------------
+// Clearance/ATIS are stored as compound strings ("Arrival 132.50 MHz /
+// Departure 132.80 MHz"). Split them into labelled numeric parts so each can
+// be edited; edits are persisted as per-airfield/field/part overrides and the
+// display string is rebuilt from the (override-aware) parts.
+function parseFreqParts(str) {
+  const out = [];
+  for (const seg of String(str == null ? '' : str).split('/')) {
+    const m = seg.match(/(\d{2,3}(?:\.\d{1,3})?)/);
+    if (!m) continue;
+    const label = seg.slice(0, m.index).replace(/[^A-Za-z֐-׿ ]+/g, ' ').trim();
+    out.push({ label, freq: freqClean(m[1]) });
+  }
+  return out;
+}
+function airfieldFreqOverrides() {
+  try { return JSON.parse(localStorage.getItem('navaid.airfieldFreqOverrides') || '{}') || {}; }
+  catch (e) { return {}; }
+}
+function setAirfieldFreqOverride(key, val) {
+  const o = airfieldFreqOverrides();
+  if (val) o[key] = val; else delete o[key];
+  try { localStorage.setItem('navaid.airfieldFreqOverrides', JSON.stringify(o)); } catch (e) { /* ignore */ }
+}
+// Override-aware labelled parts for an airfield field ('clearance' | 'atis').
+function airfieldFieldParts(af, field) {
+  if (!af || typeof af[field] !== 'string') return [];
+  const parts = parseFreqParts(af[field]);
+  const ov = airfieldFreqOverrides();
+  return parts.map((p, i) => {
+    const key = af.name + '|' + field + '|' + i;
+    const o = ov[key];
+    return { label: p.label, freq: o || p.freq, def: p.freq, key, overridden: !!o && o !== p.freq };
+  });
+}
+// Override-aware display string for an airfield field.
+function airfieldFieldText(af, field) {
+  const parts = airfieldFieldParts(af, field);
+  if (!parts.length) return af && typeof af[field] === 'string' ? af[field].trim() : '';
+  return parts.map(p => (p.label ? p.label + ' ' : '') + p.freq + ' MHz').join(' / ');
+}
+
+// --- editable VOR frequencies -----------------------------------------
+function vorFreqOverrides() {
+  try { return JSON.parse(localStorage.getItem('navaid.vorFreqOverrides') || '{}') || {}; }
+  catch (e) { return {}; }
+}
+function setVorFreqOverride(ident, val) {
+  const o = vorFreqOverrides();
+  if (val) o[ident] = val; else delete o[ident];
+  try { localStorage.setItem('navaid.vorFreqOverrides', JSON.stringify(o)); } catch (e) { /* ignore */ }
+}
+// Effective (override-aware) frequency for a VOR object.
+function vorEffectiveFreq(v) {
+  if (!v) return '';
+  const def = freqClean(v.freq);
+  return (v.ident && vorFreqOverrides()[v.ident]) || def;
+}
 function toHMS(hours) {
   const tm = hours * 60;
   let m = Math.floor(tm);
@@ -1058,8 +1224,8 @@ function toHMS(hours) {
 }
 
 // --- vertical profile: top-of-climb / top-of-descent (#672) -------------
-// Default GA climb/descent performance (C172-ish); overridable per aircraft.
-const WX_DEFAULT_PERF = { climbFpm: 500, descentFpm: 500, climbKt: 75, descentKt: 110 };
+// Default GA climb/descent performance (C172-ish) lives in the tune registry
+// (Performance defaults group); overridable per aircraft or via the V/S input.
 // Field elevation at route endpoint waypoint i (airfield elev_ft) or null.
 function routeEndpointElev(i) {
   const wp = state.waypoints[i];
@@ -1081,11 +1247,11 @@ function routeProfile(ac) {
   // A single vertical-speed (V/S) override drives both the climb and descent
   // ramp slope when set (the profile's V/S input); otherwise per-aircraft perf.
   const vs = typeof window !== 'undefined' && window.profileVS > 0 ? window.profileVS : 0;
-  const climbFpm = vs > 0 ? vs : (ac.climbFpm > 0 ? ac.climbFpm : WX_DEFAULT_PERF.climbFpm);
-  const descFpm = vs > 0 ? vs : (ac.descentFpm > 0 ? ac.descentFpm : WX_DEFAULT_PERF.descentFpm);
-  const climbKt = ac.climbKt > 0 ? ac.climbKt : WX_DEFAULT_PERF.climbKt;
-  const descKt = ac.descentKt > 0 ? ac.descentKt : WX_DEFAULT_PERF.descentKt;
-  const gph = ac.gph > 0 ? ac.gph : 8;
+  const climbFpm = vs > 0 ? vs : (ac.climbFpm > 0 ? ac.climbFpm : tune('profileClimbFpm'));
+  const descFpm = vs > 0 ? vs : (ac.descentFpm > 0 ? ac.descentFpm : tune('profileDescentFpm'));
+  const climbKt = ac.climbKt > 0 ? ac.climbKt : tune('profileClimbKt');
+  const descKt = ac.descentKt > 0 ? ac.descentKt : tune('profileDescentKt');
+  const gph = ac.gph > 0 ? ac.gph : tune('defaultGph');
   const legs = state.legs || [], wps = state.waypoints || [];
   const n = legs.length;
   const legAlt = i => Number.isFinite(legs[i].inboundAltitude) ? legs[i].inboundAltitude : 2000;
@@ -1159,12 +1325,12 @@ function routeProfile(ac) {
 }
 
 // --- airfield METAR / TAF (#670) ---------------------------------------
-// NOAA AWC's METAR/TAF API blocks browser CORS and public proxies proved
-// unreliable, so a scheduled GitHub Action fetches it server-side and
-// publishes wx.json (all Israeli fields) to the `wx-data` branch, served with
-// CORS by raw.githubusercontent.com — same pattern as the SIGMET feed. The
-// whole file is memoised 5 min; same-origin data/wx.json is the offline /
-// first-run fallback. Decoding works off AWC's structured JSON fields.
+// NOAA AWC's METAR/TAF API blocks direct browser fetches and public proxies
+// proved unreliable, so a scheduled GitHub Action fetches it server-side and
+// publishes wx.json (all Israeli fields) to the `wx-data` branch, served by
+// raw.githubusercontent.com — same pattern as the SIGMET feed. The whole file
+// is memoised 5 min; same-origin data/wx.json is the offline / first-run
+// fallback. Decoding works off AWC's structured JSON fields.
 const WX_URL = 'https://raw.githubusercontent.com/msupino/NavigationApp/wx-data/wx.json';
 var _wxFile = null;
 async function loadWxFile(force) {
@@ -1359,9 +1525,9 @@ function finishLatLng(lat, lng) {
 }
 
 // --- Leaflet map -----------------------------------------------------
-// Layer set mirrors ifl.flight-maps.com (excluding Israel Hiking).
-// chartBounds = the lat/lng box that flight-maps.com actually publishes
-// tiles for (Israel + adjacent VFR airspace).  exportPNG uses it to skip
+// Layer set served from the NavigationApp-tiles repository.
+// chartBounds = the lat/lng box covered by the published chart tiles
+// (Israel + adjacent VFR airspace). exportPNG uses it to skip
 // out-of-coverage tile fetches, which would otherwise return 404 and trip
 // the "X of Y map tiles failed to load" warning when the viewport extends
 // past the chart (the typical case at low zoom).
@@ -1370,21 +1536,37 @@ const TILE = { minZoom: 6, maxZoom: 16, maxNativeZoom: 13,
                chartBounds: FM_BOUNDS };
 const FM_ATTR =
   'Charts © <a href="https://flight-maps.com">flight-maps.com</a> · CAAI';
+const NAVAID_TILE_BASE = 'https://navaid-tiles.supino.org';
+
+function tileLayerUrl(layer, coords) {
+  const subs = layer.options && layer.options.subdomains ?
+    layer.options.subdomains : 'abc';
+  const sub = typeof layer._getSubdomain === 'function' ?
+    layer._getSubdomain(coords) : subs[(coords.x + coords.y) % subs.length];
+  return L.Util.template(layer._url, {
+    x: coords.x,
+    y: coords.y,
+    z: coords.z,
+    s: sub,
+    r: L.Browser.retina ? '@2x' : '',
+  });
+}
+
 const layers = {
-  'CVFR': L.tileLayer('https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png',
+  'CVFR': L.tileLayer(NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png',
     { ...TILE, attribution: FM_ATTR }),
-  'Navigation': L.tileLayer('https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
+  'Navigation': L.tileLayer(NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png',
     { ...TILE, attribution: FM_ATTR }),
-  'Low Alt': L.tileLayer('https://flight-maps.com/tiles/la/{z}/{x}/{y}.png',
+  'Low Alt': L.tileLayer(NAVAID_TILE_BASE + '/LSA-Low-Altitude/{z}/{x}/{y}.png',
     { ...TILE, attribution: FM_ATTR }),
-  'Helicopters': L.tileLayer('https://flight-maps.com/tiles/il-hel/{z}/{x}/{y}.png',
+  'Helicopters': L.tileLayer(NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png',
     { ...TILE, maxNativeZoom: 12, attribution: FM_ATTR }),
   'Satellite': L.tileLayer(
     'https://services.arcgisonline.com/ArcGIS/rest/services/' +
     'World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    { minZoom: 6, maxZoom: 18, attribution: 'Imagery © Esri', corsOk: true }),
+    { minZoom: 6, maxZoom: 18, attribution: 'Imagery © Esri' }),
   'OpenStreetMap': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    { minZoom: 6, maxZoom: 18, subdomains: 'abc', corsOk: true,
+    { minZoom: 6, maxZoom: 18, subdomains: 'abc',
       attribution: '© OpenStreetMap contributors' }),
 };
 
@@ -1620,8 +1802,8 @@ function legAltitudeDirectionalEdges() {
 function inferConsistentLegAltitude(from, to, directDistanceNm) {
   if (!from || !to || from === to || !Number.isFinite(directDistanceNm)) return null;
   const edges = legAltitudeDirectionalEdges();
-  const maxDistance = directDistanceNm * LEG_ALTITUDE_INFER_MAX_DISTANCE_RATIO +
-    LEG_ALTITUDE_INFER_MAX_EXTRA_NM;
+  const maxDistance = directDistanceNm * tune('legAltInferMaxDistRatio') +
+    tune('legAltInferMaxExtraNm');
   const queue = [{
     node: from,
     altitude: null,
@@ -1633,7 +1815,7 @@ function inferConsistentLegAltitude(from, to, directDistanceNm) {
   const foundAltitudes = new Set();
   while (queue.length) {
     const cur = queue.shift();
-    if (!cur || cur.hops >= LEG_ALTITUDE_INFER_MAX_HOPS) continue;
+    if (!cur || cur.hops >= tune('legAltInferMaxHops')) continue;
     for (const edge of edges[cur.node] || []) {
       if (cur.path.includes(edge.to)) continue;
       const altitude = cur.altitude === null ? edge.altitude : cur.altitude;

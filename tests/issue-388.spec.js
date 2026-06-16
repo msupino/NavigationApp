@@ -24,7 +24,7 @@ test.describe('issue #388 — review cleanup', () => {
   test.describe.configure({ timeout: deployedPreview ? 60_000 : 30_000 });
 
   test.beforeEach(async ({ page }) => {
-    await page.route(/^https?:\/\/([^/]*\.)?flight-maps\.com\/tiles\//, route =>
+    await page.route(/^https?:\/\/navaid-tiles\.supino\.org\//, route =>
       route.fulfill({
         status: 200,
         contentType: 'image/png',

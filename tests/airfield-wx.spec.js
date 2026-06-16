@@ -1,5 +1,5 @@
 // #670 — airfield METAR / TAF in the inspector (decoded + raw toggle),
-// served from the wx-data branch (CORS-safe) with a same-origin fallback.
+// served from the wx-data branch with a same-origin fallback.
 const { test, expect } = require('@playwright/test');
 
 // Mock the wx-data feed. `onHit` lets a test count fetches.

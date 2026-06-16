@@ -104,9 +104,9 @@ both branches and assembles a single Pages site:
   `S.shortcutXxx` strings in `docs/app/core.js` (English defaults) +
   `docs/i18n/he/strings.js` (Hebrew). See `.ai/navaid-dev.md` "Keyboard shortcuts
   cheat-sheet" for the rendering pipeline.
-- No external dependencies beyond Leaflet + `leaflet-rotate@0.2.8`
-  (both loaded from `unpkg.com`) and `images.weserv.nl` (used as a
-  CORS proxy by `exportPNG`). No build step, no bundler, no
+- No external JavaScript dependencies beyond Leaflet + `leaflet-rotate@0.2.8`
+  (both loaded from `unpkg.com`). Chart tiles are served from
+  `https://navaid-tiles.supino.org`. No build step, no bundler, no
   transpiler — keep it plain HTML / CSS / JS.
 - Don't reintroduce Unity files.
 

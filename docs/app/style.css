@@ -370,17 +370,20 @@ html, body {
   pointer-events: none;
   display: none;
 }
-.zulu-clock {
+.leaflet-control.zulu-clock {
   display: block;
-  min-width: 82px;
-  padding: 5px 8px;
-  margin: 12px 12px 0 0;
-  color: #fff;
-  background: rgba(20, 18, 18, 0.88);
-  border: 1px solid #3a3636;
-  border-radius: 5px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
-  font: 800 13px/1 monospace;
+  min-width: var(--navaid-zulu-clock-min-width, 82px);
+  padding: var(--navaid-zulu-clock-pad-y, 5px) var(--navaid-zulu-clock-pad-x, 8px);
+  margin: var(--navaid-zulu-clock-margin-top, 12px) var(--navaid-zulu-clock-margin-right, 12px) 0 0;
+  color: var(--navaid-zulu-clock-text-color, #fff);
+  background: var(--navaid-zulu-clock-bg, rgba(20, 18, 18, 0.88));
+  border: var(--navaid-zulu-clock-border, 1px solid #3a3636);
+  border-radius: var(--navaid-zulu-clock-border-radius, 5px);
+  box-shadow: var(--navaid-zulu-clock-shadow, 0 2px 8px rgba(0, 0, 0, 0.45));
+  font-family: monospace;
+  font-size: var(--navaid-zulu-clock-font-size, 13px);
+  font-weight: var(--navaid-zulu-clock-font-weight, 800);
+  line-height: var(--navaid-zulu-clock-line-height, 1);
   letter-spacing: 0;
   text-align: center;
   white-space: nowrap;
@@ -665,7 +668,7 @@ body.theme-light #aircraft-custom input {
 #inspector {
   position: absolute;
   z-index: 1100;
-  top: 84px;
+  top: var(--navaid-inspector-default-top, 84px);
   right: 12px;
   width: 280px;
   background: rgba(20, 18, 18, 0.95);
@@ -677,7 +680,7 @@ body.theme-light #aircraft-custom input {
   flex-direction: column;
   /* Cap to the viewport so a tall inspector (big airports with many charts)
      scrolls instead of overflowing off-screen. */
-  max-height: calc(100dvh - 96px);
+  max-height: calc(100dvh - var(--navaid-inspector-max-height-offset, 96px));
 }
 /* The header stays put; only the body scrolls. */
 #insp-body { overflow-y: auto; }

@@ -322,7 +322,7 @@ function pointChoiceText(c) {
       primary: v ? v.ident : '',
       meta: ((S.choosePointVor || 'VOR station') +
         (v && referenceLocaleName(v, 'vor') ? ' / ' + referenceLocaleName(v, 'vor') : '') +
-        (v && v.freq ? ' / ' + v.freq : '')).trim(),
+        (v && v.freq ? ' / ' + (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : v.freq) : '')).trim(),
     };
   }
   if (c.type === 'airfield') {
@@ -851,11 +851,15 @@ function appendVorRadialRow(body, lat, lng) {
 }
 
 function airfieldAtisText(af) {
-  return af && typeof af.atis === 'string' ? af.atis.trim() : '';
+  return typeof airfieldFieldText === 'function'
+    ? airfieldFieldText(af, 'atis')
+    : (af && typeof af.atis === 'string' ? af.atis.trim() : '');
 }
 
 function airfieldClearanceText(af) {
-  return af && typeof af.clearance === 'string' ? af.clearance.trim() : '';
+  return typeof airfieldFieldText === 'function'
+    ? airfieldFieldText(af, 'clearance')
+    : (af && typeof af.clearance === 'string' ? af.clearance.trim() : '');
 }
 
 const AIRFIELD_CALL_SIGN_IDS = {
@@ -891,11 +895,17 @@ const AIRFIELD_CALL_SIGN_IDS = {
 function airfieldPrimaryText(af) {
   const id = af && Object.prototype.hasOwnProperty.call(AIRFIELD_CALL_SIGN_IDS, af.name)
     ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
-  const row = id && typeof commCatalogCallSignRow === 'function'
-    ? commCatalogCallSignRow(id) : null;
-  const primary = row && typeof row.primary === 'string' ? row.primary.trim() : '';
-  if (!primary) return '';
-  return (typeof commFormatFreq === 'function' ? commFormatFreq(primary) : primary) + ' MHz';
+  if (!id) return '';
+  // Effective freq honours a freq-table override, falling back to the catalog
+  // default — so an edited frequency reflects in the inspector + Freq column.
+  const eff = typeof commCallSignEffectiveFreq === 'function'
+    ? commCallSignEffectiveFreq(id)
+    : (() => {
+        const row = typeof commCatalogCallSignRow === 'function' ? commCatalogCallSignRow(id) : null;
+        const p = row && typeof row.primary === 'string' ? row.primary.trim() : '';
+        return p && typeof commFormatFreq === 'function' ? commFormatFreq(p) : p;
+      })();
+  return eff ? eff + ' MHz' : '';
 }
 
 function refreshAirfieldInspectorAfterCommCatalog(af) {
@@ -912,42 +922,114 @@ function refreshAirfieldInspectorAfterCommCatalog(af) {
   });
 }
 
+// Generic editable-frequency inspector row. `opts`:
+//   value      current displayed freq, def default, rowClass extra class
+//   isOverride() -> bool, commit(norm) -> displayed value, onReset()
+function freqEditRow(label, opts) {
+  const row = document.createElement('div');
+  row.className = 'row' + (opts.rowClass ? ' ' + opts.rowClass : '');
+  const l = document.createElement('label');
+  l.textContent = label;
+  const v = document.createElement('span');
+  v.className = 'val';
+  v.dir = 'ltr';                   // frequencies always read LTR, even in RTL UI
+  const inp = document.createElement('input');
+  inp.className = 'charts-freq-input';
+  inp.dir = 'ltr';
+  const configure = opts.configure || (typeof commConfigureFreqInput === 'function' ? commConfigureFreqInput : null);
+  const normalize = opts.normalize || (typeof commNormalizeFreqInput === 'function' ? commNormalizeFreqInput : null);
+  if (configure) configure(inp);
+  else { inp.type = 'number'; inp.inputMode = 'decimal'; inp.step = '0.005'; }
+  inp.value = opts.value || opts.def || '';
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.className = 'commchange-freq-reset';
+  reset.textContent = '↻';
+  reset.title = S.resetFreqOverride || S.sliderReset || 'Reset to default';
+  const norm = () => (normalize ? normalize(inp.value) : String(inp.value || '').trim());
+  function sync() {
+    const n = norm();
+    const invalid = n === null;
+    inp.classList.toggle('invalid', invalid);
+    inp.classList.toggle('is-default', !invalid && !!opts.def && (n || '') === opts.def);
+    reset.disabled = !opts.def || (!opts.isOverride() && !invalid);
+  }
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } });
+  inp.addEventListener('input', sync);
+  inp.addEventListener('change', () => {
+    const n = norm();
+    if (n === null) { sync(); return; }
+    inp.value = opts.commit(n) || n || inp.value;
+    sync();
+    draw();
+  });
+  reset.onclick = () => {
+    if (reset.disabled) return;
+    inp.value = (opts.onReset && opts.onReset()) || opts.def || '';
+    sync();
+    draw();
+  };
+  v.append(inp, reset);
+  row.append(l, v);
+  sync();
+  return row;
+}
+
 function appendAirfieldFrequencyRows(body, af) {
-  const primary = airfieldPrimaryText(af);
-  if (primary) {
-    const row = textRow(S.primary || 'Primary', primary);
-    row.classList.add('primary-row');
-    body.appendChild(row);
+  const id = af && Object.prototype.hasOwnProperty.call(AIRFIELD_CALL_SIGN_IDS, af.name)
+    ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
+  if (id) {
+    const template = typeof commCallSignTemplateFreq === 'function' ? commCallSignTemplateFreq(id) : '';
+    body.appendChild(freqEditRow(S.primary || 'Primary', {
+      value: typeof commCallSignEffectiveFreq === 'function' ? commCallSignEffectiveFreq(id) : '',
+      def: template, rowClass: 'primary-row',
+      isOverride: () => !!(typeof commCallSignOverrideFreq === 'function' && commCallSignOverrideFreq(id)),
+      commit: n => typeof commApplyCallSignFreqOverride === 'function' ? commApplyCallSignFreqOverride(id, n) : n,
+      onReset: () => { if (typeof commResetCallSignFreqOverride === 'function') commResetCallSignFreqOverride(id); return template; },
+    }));
   } else {
-    refreshAirfieldInspectorAfterCommCatalog(af);
+    const primary = airfieldPrimaryText(af);
+    if (primary) {
+      const row = textRow(S.primary || 'Primary', primary);
+      row.classList.add('primary-row');
+      body.appendChild(row);
+    } else {
+      refreshAirfieldInspectorAfterCommCatalog(af);
+    }
   }
-  const clearance = airfieldClearanceText(af);
-  if (clearance) {
-    const row = textRow(S.clearance || 'Clearance', clearance);
-    row.classList.add('clearance-row');
-    body.appendChild(row);
-  }
-  const atis = airfieldAtisText(af);
-  if (atis) {
-    const row = textRow(S.atis || 'ATIS', atis);
-    row.classList.add('atis-row');
-    body.appendChild(row);
-  }
+  // Clearance / ATIS — one editable numeric field per labelled part (#freq).
+  const appendFieldParts = (field, label, rowClass) => {
+    const parts = typeof airfieldFieldParts === 'function' ? airfieldFieldParts(af, field) : [];
+    if (!parts.length) {
+      // Show a "— None" row so every airfield inspector has the same layout.
+      const row = textRow(label, S.freqNone || 'None');
+      row.classList.add(rowClass);
+      body.appendChild(row);
+      return;
+    }
+    for (const p of parts) {
+      const rowLabel = p.label ? label + ' ' + p.label : label;
+      body.appendChild(freqEditRow(rowLabel, {
+        value: p.freq, def: p.def, rowClass,
+        isOverride: () => p.overridden,
+        commit: n => { setAirfieldFreqOverride(p.key, n === p.def ? '' : n); p.freq = n; p.overridden = n !== p.def; return n; },
+        onReset: () => { setAirfieldFreqOverride(p.key, ''); p.freq = p.def; p.overridden = false; return p.def; },
+      }));
+    }
+  };
+  appendFieldParts('clearance', S.clearance || 'Clearance', 'clearance-row');
+  appendFieldParts('atis', S.atis || 'ATIS', 'atis-row');
 }
 
 const SATELLITE_TILE_SIZE = 256;
-const SATELLITE_PREVIEW_ZOOM = 16;
-const SATELLITE_EXPANDED_ZOOM = 17;
-const SATELLITE_MIN_ZOOM = 13;
-const SATELLITE_MAX_ZOOM = 18;
 const SATELLITE_TILE_URL =
   'https://services.arcgisonline.com/ArcGIS/rest/services/' +
   'World_Imagery/MapServer/tile/';
 
 function clampSatelliteZoom(z) {
   const n = Number(z);
-  if (!Number.isFinite(n)) return SATELLITE_EXPANDED_ZOOM;
-  return Math.max(SATELLITE_MIN_ZOOM, Math.min(SATELLITE_MAX_ZOOM, Math.round(n)));
+  if (!Number.isFinite(n)) return tune('satelliteExpandedZoom');
+  return Math.max(tune('satelliteMinZoom'), Math.min(tune('satelliteMaxZoom'), Math.round(n)));
 }
 
 function satelliteTileUrl(z, x, y) {
@@ -994,7 +1076,7 @@ function buildSatelliteSnippet(point, opts = {}) {
   const expanded = !!opts.expanded;
   const width = expanded ? Math.max(300, Math.min(620, window.innerWidth - 64)) : 214;
   const height = expanded ? Math.max(220, Math.min(420, window.innerHeight - 180)) : 118;
-  const z = expanded ? clampSatelliteZoom(opts.zoom) : SATELLITE_PREVIEW_ZOOM;
+  const z = expanded ? clampSatelliteZoom(opts.zoom) : tune('satellitePreviewZoom');
   const p = satelliteTilePoint(lat, lng, z);
   const centerTileX = Math.floor(p.x);
   const centerTileY = Math.floor(p.y);
@@ -1046,7 +1128,9 @@ function satelliteModalLayers() {
   if (typeof layers !== 'object' || !layers) return out;
   for (const nm in layers) {
     const src = layers[nm];
-    if (src && src._url) out[nm] = L.tileLayer(src._url, Object.assign({}, src.options));
+    if (src && src._url) {
+      out[nm] = L.tileLayer(src._url, Object.assign({}, src.options));
+    }
   }
   return out;
 }
@@ -1205,9 +1289,9 @@ function showSatellitePreviewModal(point, label) {
   const startLayer = mLayers.Satellite || mLayers.CVFR || Object.values(mLayers)[0];
   lmap = L.map(mapEl, {
     center: [point.lat, point.lng],
-    zoom: SATELLITE_EXPANDED_ZOOM,
-    minZoom: SATELLITE_MIN_ZOOM,
-    maxZoom: SATELLITE_MAX_ZOOM,
+    zoom: tune('satelliteExpandedZoom'),
+    minZoom: tune('satelliteMinZoom'),
+    maxZoom: tune('satelliteMaxZoom'),
     layers: startLayer ? [startLayer] : [],
     zoomControl: false,
     rotate: true,                // leaflet-rotate: enable bearing
@@ -1244,12 +1328,12 @@ function showSatellitePreviewModal(point, label) {
   // (#layer-select) instead of Leaflet's radio list.
   const layerNames = Object.keys(mLayers);
   if (layerNames.length) {
-    // The 4 flight-maps.com charts only publish tiles up to a limited zoom;
+    // The 4 chart layers only publish tiles up to a limited zoom;
     // past that they 404. Disable picking them when zoomed in beyond their
     // range, and drop back to satellite if one was active.
     const CHART_NAMES = ['CVFR', 'Navigation', 'Low Alt', 'Helicopters'];
     const chartMax = nm => (mLayers[nm] && mLayers[nm].options &&
-      mLayers[nm].options.maxZoom) || SATELLITE_MAX_ZOOM;
+      mLayers[nm].options.maxZoom) || tune('satelliteMaxZoom');
     const LayerSelect = L.Control.extend({
       options: { position: 'topright' },
       onAdd: function () {
@@ -1297,7 +1381,7 @@ function showSatellitePreviewModal(point, label) {
     lmap.on('zoomend', syncLayerAvailability);
     syncLayerAvailability();
   }
-  lmap.addControl(satelliteResetControl(lmap, point, SATELLITE_EXPANDED_ZOOM));
+  lmap.addControl(satelliteResetControl(lmap, point, tune('satelliteExpandedZoom')));
   // Marker on the waypoint so it stays findable after panning.
   L.circleMarker([point.lat, point.lng], {
     radius: 7, color: '#ffda4c', weight: 2, opacity: 0.96, fill: false,
@@ -1421,8 +1505,8 @@ function appendAirfieldDetailRows(body, af, label) {
   appendAirfieldPlates(body, af);
 }
 
-// Live METAR / TAF for an ICAO-coded airfield (#670). Fetched on demand via a
-// CORS proxy; shows decoded text with a toggle to the raw report.
+// Live METAR / TAF for an ICAO-coded airfield (#670). Fetched on demand from
+// the published wx feed; shows decoded text with a toggle to the raw report.
 function appendAirfieldWeather(body, af) {
   const icao = String(af && af.name || '').toUpperCase();
   if (!/^[A-Z]{4}$/.test(icao) || typeof fetchAirfieldWx !== 'function') return;
@@ -1714,7 +1798,18 @@ function showInspector() {
     title.value = referenceInspectorTitle(v, 'vor');
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     appendPointCoordinateRows(body, v);
-    body.appendChild(textRow(S.vorFreq || 'Frequency', v.freq + ' MHz'));
+    {
+      const vdef = typeof freqClean === 'function' ? freqClean(v.freq) : String(v.freq || '');
+      body.appendChild(freqEditRow(S.vorFreq || 'Frequency', {
+        value: typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : vdef,
+        def: vdef, rowClass: 'vor-freq-row',
+        configure: typeof vorConfigureFreqInput === 'function' ? vorConfigureFreqInput : null,
+        normalize: typeof vorNormalizeFreqInput === 'function' ? vorNormalizeFreqInput : null,
+        isOverride: () => !!(typeof vorFreqOverrides === 'function' && vorFreqOverrides()[v.ident]),
+        commit: n => { if (typeof setVorFreqOverride === 'function') setVorFreqOverride(v.ident, n === vdef ? '' : n); return n; },
+        onReset: () => { if (typeof setVorFreqOverride === 'function') setVorFreqOverride(v.ident, ''); return vdef; },
+      }));
+    }
     appendSatelliteSnippet(body, v, title.value);
     const useBtn = document.createElement('button');
     useBtn.className = 'insp-btn';
@@ -2286,14 +2381,13 @@ function appendFreqEdit(body, note, editOptions) {
 // --- interaction (Leaflet mouse events) ------------------------------
 let drag = null;
 let downHit = false;
-const ORIGIN_RESNAP_ARM_PX = 18;
 
 function dragOriginExclude(d, latlng) {
   if (!d || d.originSnapArmed) return null;
   if (!Number.isFinite(d.origLat) || !Number.isFinite(d.origLng)) return null;
   const origin = map.latLngToContainerPoint([d.origLat, d.origLng]);
   const cur = map.latLngToContainerPoint([latlng.lat, latlng.lng]);
-  if (Math.hypot(cur.x - origin.x, cur.y - origin.y) > ORIGIN_RESNAP_ARM_PX) {
+  if (Math.hypot(cur.x - origin.x, cur.y - origin.y) > tune('originResnapArmPx')) {
     d.originSnapArmed = true;
     return null;
   }

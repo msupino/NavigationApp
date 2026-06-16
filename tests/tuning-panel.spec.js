@@ -183,6 +183,129 @@ test.describe('Hidden tuning panel', () => {
     expect(out.persisted).toEqual([]);
   });
 
+  test('chrome layout controls drive the inspector and Zulu clock CSS', async ({ page }) => {
+    await boot(page);
+    await openTuneGroup(page, 'Chrome layout');
+    await page.locator('#tune-inspectorDefaultTopPx-number').fill('110');
+    await page.locator('#tune-inspectorBottomGapPx-number').fill('20');
+    await page.locator('#tune-zuluClockMinWidthPx-number').fill('120');
+    await page.locator('#tune-zuluClockPadYPx-number').fill('7');
+    await page.locator('#tune-zuluClockPadXPx-number').fill('13');
+    await page.locator('#tune-zuluClockMarginTopPx-number').fill('16');
+    await page.locator('#tune-zuluClockMarginRightPx-number').fill('18');
+    await page.locator('#tune-zuluClockFontPx-number').fill('16');
+    await page.locator('#tune-zuluClockFontWeight-number').fill('600');
+    await page.locator('#tune-zuluClockLineHeight-number').fill('1.4');
+    await page.locator('#tune-zuluClockTextColor-text').fill('#ffeeaa');
+    await page.locator('#tune-zuluClockBgColor-text').fill('#224466');
+    await page.locator('#tune-zuluClockBgAlpha-number').fill('0.5');
+    await page.locator('#tune-zuluClockBorderColor-text').fill('#778899');
+    await page.locator('#tune-zuluClockBorderWidthPx-number').fill('3');
+    await page.locator('#tune-zuluClockBorderRadiusPx-number').fill('9');
+    await page.locator('#tune-zuluClockShadowYPx-number').fill('4');
+    await page.locator('#tune-zuluClockShadowBlurPx-number').fill('14');
+    await page.locator('#tune-zuluClockShadowAlpha-number').fill('0.8');
+
+    const out = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.18, lng: 34.81, name: 'BAZRA' }];
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+      const root = getComputedStyle(document.documentElement);
+      const clock = getComputedStyle(document.getElementById('zulu-clock'));
+      const inspector = getComputedStyle(document.getElementById('inspector'));
+      const rootVar = name => root.getPropertyValue(name).trim();
+      return {
+        tuneValues: {
+          inspectorDefaultTopPx: tune('inspectorDefaultTopPx'),
+          inspectorBottomGapPx: tune('inspectorBottomGapPx'),
+          zuluClockMinWidthPx: tune('zuluClockMinWidthPx'),
+          zuluClockPadYPx: tune('zuluClockPadYPx'),
+          zuluClockPadXPx: tune('zuluClockPadXPx'),
+          zuluClockMarginTopPx: tune('zuluClockMarginTopPx'),
+          zuluClockMarginRightPx: tune('zuluClockMarginRightPx'),
+          zuluClockFontPx: tune('zuluClockFontPx'),
+          zuluClockFontWeight: tune('zuluClockFontWeight'),
+          zuluClockLineHeight: tune('zuluClockLineHeight'),
+          zuluClockTextColor: tune('zuluClockTextColor'),
+          zuluClockBgColor: tune('zuluClockBgColor'),
+          zuluClockBgAlpha: tune('zuluClockBgAlpha'),
+          zuluClockBorderColor: tune('zuluClockBorderColor'),
+          zuluClockBorderWidthPx: tune('zuluClockBorderWidthPx'),
+          zuluClockBorderRadiusPx: tune('zuluClockBorderRadiusPx'),
+          zuluClockShadowYPx: tune('zuluClockShadowYPx'),
+          zuluClockShadowBlurPx: tune('zuluClockShadowBlurPx'),
+          zuluClockShadowAlpha: tune('zuluClockShadowAlpha'),
+        },
+        vars: {
+          inspectorTop: rootVar('--navaid-inspector-default-top'),
+          inspectorMaxHeightOffset: rootVar('--navaid-inspector-max-height-offset'),
+          bg: rootVar('--navaid-zulu-clock-bg'),
+          border: rootVar('--navaid-zulu-clock-border'),
+          shadow: rootVar('--navaid-zulu-clock-shadow'),
+        },
+        styles: {
+          inspectorTop: inspector.top,
+          minWidth: clock.minWidth,
+          paddingTop: clock.paddingTop,
+          paddingRight: clock.paddingRight,
+          marginTop: clock.marginTop,
+          marginRight: clock.marginRight,
+          fontSize: clock.fontSize,
+          fontWeight: clock.fontWeight,
+          color: clock.color,
+          backgroundColor: clock.backgroundColor,
+          borderTopWidth: clock.borderTopWidth,
+          borderTopColor: clock.borderTopColor,
+          borderTopLeftRadius: clock.borderTopLeftRadius,
+        },
+        persisted: Object.keys(localStorage).filter(k => k.indexOf('navaid.tune') === 0),
+      };
+    });
+
+    expect(out.tuneValues).toEqual({
+      inspectorDefaultTopPx: 110,
+      inspectorBottomGapPx: 20,
+      zuluClockMinWidthPx: 120,
+      zuluClockPadYPx: 7,
+      zuluClockPadXPx: 13,
+      zuluClockMarginTopPx: 16,
+      zuluClockMarginRightPx: 18,
+      zuluClockFontPx: 16,
+      zuluClockFontWeight: 600,
+      zuluClockLineHeight: 1.4,
+      zuluClockTextColor: '#ffeeaa',
+      zuluClockBgColor: '#224466',
+      zuluClockBgAlpha: 0.5,
+      zuluClockBorderColor: '#778899',
+      zuluClockBorderWidthPx: 3,
+      zuluClockBorderRadiusPx: 9,
+      zuluClockShadowYPx: 4,
+      zuluClockShadowBlurPx: 14,
+      zuluClockShadowAlpha: 0.8,
+    });
+    expect(out.vars).toEqual({
+      inspectorTop: '110px',
+      inspectorMaxHeightOffset: '130px',
+      bg: 'rgba(34, 68, 102, 0.5)',
+      border: '3px solid #778899',
+      shadow: '0 4px 14px rgba(0, 0, 0, 0.8)',
+    });
+    expect(out.styles.inspectorTop).toBe('110px');
+    expect(out.styles.minWidth).toBe('120px');
+    expect(out.styles.paddingTop).toBe('7px');
+    expect(out.styles.paddingRight).toBe('13px');
+    expect(out.styles.marginTop).toBe('16px');
+    expect(out.styles.marginRight).toBe('18px');
+    expect(out.styles.fontSize).toBe('16px');
+    expect(out.styles.fontWeight).toBe('600');
+    expect(out.styles.color).toBe('rgb(255, 238, 170)');
+    expect(out.styles.backgroundColor).toBe('rgba(34, 68, 102, 0.5)');
+    expect(out.styles.borderTopWidth).toBe('3px');
+    expect(out.styles.borderTopColor).toBe('rgb(119, 136, 153)');
+    expect(out.styles.borderTopLeftRadius).toBe('9px');
+    expect(out.persisted).toEqual([]);
+  });
+
   test('close button hides the panel', async ({ page }) => {
     await boot(page);
     await expect(page.locator('#tuning-panel')).toBeVisible();

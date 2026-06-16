@@ -96,7 +96,6 @@ function dialAngle(ev) {                 // 0 = north (up), clockwise positive
 let rotDragging = false;
 let rotMoved = false;
 let rotStartX = 0, rotStartY = 0;
-const ROT_DRAG_PX = 8;                 // min movement before treating as a drag
 rotDial.addEventListener('pointerdown', e => {
   rotDragging = true;
   rotMoved = false;
@@ -108,7 +107,7 @@ rotDial.addEventListener('pointerdown', e => {
 rotDial.addEventListener('pointermove', e => {
   if (!rotDragging) return;
   if (!rotMoved) {
-    if (Math.hypot(e.clientX - rotStartX, e.clientY - rotStartY) < ROT_DRAG_PX) return;
+    if (Math.hypot(e.clientX - rotStartX, e.clientY - rotStartY) < tune('rotDragPx')) return;
     rotMoved = true;
   }
   map.setBearing(((360 - dialAngle(e)) % 360 + 360) % 360);
@@ -135,6 +134,42 @@ function formatZuluClockTime(date) {
   return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds()) + 'Z';
 }
 window.formatZuluClockTime = formatZuluClockTime;
+function cssRgba(hex, alpha) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+  if (!m) return 'rgba(0, 0, 0, ' + alpha + ')';
+  const n = parseInt(m[1], 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + alpha + ')';
+}
+function applyTuningCssVars() {
+  const root = document.documentElement.style;
+  const px = (cssVar, key) => root.setProperty(cssVar, tune(key) + 'px');
+  px('--navaid-inspector-default-top', 'inspectorDefaultTopPx');
+  root.setProperty('--navaid-inspector-max-height-offset',
+    (tune('inspectorDefaultTopPx') + tune('inspectorBottomGapPx')) + 'px');
+
+  px('--navaid-zulu-clock-min-width', 'zuluClockMinWidthPx');
+  px('--navaid-zulu-clock-pad-y', 'zuluClockPadYPx');
+  px('--navaid-zulu-clock-pad-x', 'zuluClockPadXPx');
+  px('--navaid-zulu-clock-margin-top', 'zuluClockMarginTopPx');
+  px('--navaid-zulu-clock-margin-right', 'zuluClockMarginRightPx');
+  px('--navaid-zulu-clock-font-size', 'zuluClockFontPx');
+  root.setProperty('--navaid-zulu-clock-font-weight', tune('zuluClockFontWeight'));
+  root.setProperty('--navaid-zulu-clock-line-height', tune('zuluClockLineHeight'));
+  root.setProperty('--navaid-zulu-clock-text-color', tune('zuluClockTextColor'));
+  root.setProperty('--navaid-zulu-clock-bg',
+    cssRgba(tune('zuluClockBgColor'), tune('zuluClockBgAlpha')));
+  root.setProperty('--navaid-zulu-clock-border',
+    tune('zuluClockBorderWidthPx') + 'px solid ' + tune('zuluClockBorderColor'));
+  px('--navaid-zulu-clock-border-radius', 'zuluClockBorderRadiusPx');
+  root.setProperty('--navaid-zulu-clock-shadow',
+    '0 ' + tune('zuluClockShadowYPx') + 'px ' + tune('zuluClockShadowBlurPx') +
+    'px rgba(0, 0, 0, ' + tune('zuluClockShadowAlpha') + ')');
+}
+window.applyTuningCssVars = applyTuningCssVars;
+applyTuningCssVars();
 const zuluClockCtrl = L.control({ position: 'topright' });
 zuluClockCtrl.onAdd = function () {
   const box = L.DomUtil.create('div', 'leaflet-control zulu-clock');
@@ -1746,7 +1781,7 @@ if (showWindCb) {
 refreshWindInputVisibility();
 refreshWindInputs();
 // --- Open-Meteo winds-aloft fetch (#722) ----------------------------
-// Pull a real per-leg winds-aloft forecast (free, no key, CORS-enabled) and
+// Pull a real per-leg winds-aloft forecast (free, no key) and
 // store each leg's own wind. Numeric source — the IMS aviation page only
 // publishes chart images.
 function legAltitudeFt(leg) {
@@ -2383,6 +2418,7 @@ function formatTuneValue(spec, value) {
 }
 
 function redrawAfterTune() {
+  applyTuningCssVars();
   draw();
   if (state.selected) showInspector();
 }

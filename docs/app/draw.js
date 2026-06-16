@@ -325,10 +325,9 @@ function draw() {
 
 // --- SIGMET hazard overlay (active international SIGMETs) ------------
 // A scheduled GitHub Action fetches the NOAA AWC isigmet feed, filters it to
-// the Israel region, and publishes sigmet.json to the `sigmet-data` branch —
-// served with CORS by raw.githubusercontent.com, so this static app can read
-// it directly (the AWC API itself blocks browser CORS). Same-origin
-// data/sigmet.json is the offline / first-run fallback.
+// the Israel region, and publishes sigmet.json to the `sigmet-data` branch
+// for this static app to read directly. Same-origin data/sigmet.json is the
+// offline / first-run fallback.
 const SIGMET_URL =
   'https://raw.githubusercontent.com/msupino/NavigationApp/sigmet-data/sigmet.json';
 async function loadSigmets(force) {
@@ -957,7 +956,7 @@ function drawVors() {
     octx.arc(s.x, s.y, Math.max(1.5, r * 0.22), 0, Math.PI * 2);
     octx.fill();
     if (showLabels) {
-      const label = v.ident + '  ' + v.freq;
+      const label = v.ident + '  ' + (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : v.freq);
       const lx = s.x + r + 6, ly = s.y;
       octx.lineWidth = 2.5;
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
@@ -1078,7 +1077,6 @@ function drawCommChangeRings() {
 // draw() / load / import / undo or it would resurrect notes the user deleted.
 // Returns true if any note was added, changed, or removed so the caller can
 // persist / repaint.
-const COMM_CHANGE_SNAP_PX = 18;
 function splitCommCalloutText(raw) {
   const s = String(raw || '').trim();
   const m = s.match(/^(.*?)(?:\s+(\d{3}(?:\.\d{1,3})?))$/);
@@ -1112,6 +1110,28 @@ function commConfigureFreqInput(input) {
   input.min = COMM_FREQ_INPUT_MIN;
   input.max = COMM_FREQ_INPUT_MAX;
   input.step = COMM_FREQ_INPUT_STEP;
+  return input;
+}
+// VORs live in the 108–117.975 MHz VHF nav band, below the comm band — they
+// need their own validation so valid VOR freqs aren't flagged invalid.
+const VOR_FREQ_INPUT_MIN = '108';
+const VOR_FREQ_INPUT_MAX = '117.975';
+function vorNormalizeFreqInput(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  if (!/^\d{3}(?:\.\d{1,3})?$/.test(s)) return null;
+  const n = Number(s);
+  if (!Number.isFinite(n) || n < Number(VOR_FREQ_INPUT_MIN) ||
+      n > Number(VOR_FREQ_INPUT_MAX)) return null;
+  return commFormatFreq(s);
+}
+function vorConfigureFreqInput(input) {
+  if (!input) return input;
+  input.type = 'number';
+  input.inputMode = 'decimal';
+  input.min = VOR_FREQ_INPUT_MIN;
+  input.max = VOR_FREQ_INPUT_MAX;
+  input.step = '0.05';
   return input;
 }
 function commUseHebrewLabels() {
@@ -1559,7 +1579,7 @@ function commChangeWaypointInRange(wp, name) {
   // does not silently disable the frequency-change indicator).
   const a = map.latLngToContainerPoint([wp.lat, wp.lng]);
   const b = map.latLngToContainerPoint([ref.lat, ref.lng]);
-  return Math.hypot(a.x - b.x, a.y - b.y) <= COMM_CHANGE_SNAP_PX;
+  return Math.hypot(a.x - b.x, a.y - b.y) <= tune('commChangeSnapPx');
 }
 function hasActiveCommChangeWaypoint(name) {
   if (!Array.isArray(state.waypoints)) return false;
@@ -1657,7 +1677,7 @@ function seedCommChangeNotes() {
         if (!ref) continue;
         const a = map.latLngToContainerPoint([wp.lat, wp.lng]);
         const b = map.latLngToContainerPoint([ref.lat, ref.lng]);
-        if (Math.hypot(a.x - b.x, a.y - b.y) <= COMM_CHANGE_SNAP_PX) {
+        if (Math.hypot(a.x - b.x, a.y - b.y) <= tune('commChangeSnapPx')) {
           nm = k; cc = commChangeMap[k]; break;
         }
       }
@@ -2492,7 +2512,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   if (!legs.length || wpts.length < 2) return null;
   // Default to 8 gph when no aircraft is configured (matches the printed
   // flight plan) so the Fuel / Cum. fuel columns aren't just '--'.
-  const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: 8, taxiGal: 1.1 };
+  const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
   const taxiFuel = ac && ac.taxiGal && typeof isAirport === 'function' && isAirport(wpts[0]) ? ac.taxiGal : 0;
   const empty = S.fpVorRadialEmpty || '—';
   // Radial / DME of a waypoint from the leg's reference VOR (per-leg override,
@@ -2527,27 +2547,42 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
       radial: rd[0], dme: rd[1] });
   }
   if (!rows.length) return null;
+  // Active comm frequency per leg — departure/arrival airfield freqs +
+  // comm-change notes, carried forward (shared core logic, matches the
+  // flight-plan modal so the printed table aligns with it).
+  const freqSources = typeof routeFreqSources === 'function' ? routeFreqSources() : [];
+  for (let r = 0; r < rows.length; r++) {
+    rows[r].freq = typeof legActiveFreq === 'function' ? legActiveFreq(rows[r].num - 1, freqSources) : '';
+  }
+  const freqActive = rows.some(r => r.freq);
   // Radial / DME columns only when a reference VOR is active (global or any
   // per-leg override) — otherwise they'd be a column of '—'.
   const vorActive = !!((typeof activeVor === 'function' && activeVor()) ||
                        (state.legs || []).some(l => l && l.vorRef));
-  // #,From,To,Hdg,Dist,Spd,Alt,Time,Fuel,CumTime,CumFuel[,Radial,DME]
-  const numCols = vorActive ? 13 : 11;
-  const headers = (S.fpHeaders || []).slice(0, numCols);
+  // #,From,To,Hdg,Dist,Spd,Alt,Time,Fuel,CumTime,CumFuel[,Radial,DME][,Freq]
+  const baseCols = vorActive ? 13 : 11;
+  const numCols = baseCols + (freqActive ? 1 : 0);
+  const headers = (S.fpHeaders || []).slice(0, baseCols);
   // Note which VOR the Radial / DME are measured from, in the Radial header.
-  if (numCols === 13) {
+  if (vorActive) {
     const refIdent = (typeof activeVor === 'function' && activeVor() && activeVor().ident) ||
       (((state.legs || []).find(l => l && l.vorRef) || {}).vorRef) || '';
     if (refIdent) headers[11] = headers[11] + ' ' + refIdent;
   }
+  if (freqActive) headers.push(S.fpFreq || 'Freq');
   const numRows = rows.length + 2;            // header + data + total
   // Derive the font FROM the row height (not an independent floor) so text
   // can never grow taller than its row → no vertical overlap at any size.
   const rowH = h / numRows;
   const fontSize = Math.max(1, Math.min(rowH * 0.62, 22));
   const padX = Math.max(2, Math.round(fontSize * 0.5));
-  const aligns = ['center', 'left', 'left', 'center', 'right', 'right', 'right', 'center', 'right', 'center', 'right', 'center', 'right'].slice(0, numCols);
-  const valsOf = rd => [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel, rd.cumTime, rd.cumFuel, rd.radial, rd.dme].slice(0, numCols);
+  const aligns = ['center', 'left', 'left', 'center', 'right', 'right', 'right', 'center', 'right', 'center', 'right', 'center', 'right'].slice(0, baseCols);
+  if (freqActive) aligns.push('center');
+  const valsOf = rd => {
+    const v = [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel, rd.cumTime, rd.cumFuel, rd.radial, rd.dme].slice(0, baseCols);
+    if (freqActive) v.push(rd.freq || '');
+    return v;
+  };
   ctx.save();
   ctx.font = fontSize + 'px sans-serif';
   const totVals = { 4: totDist.toFixed(1), 7: totTime > 0 ? toHMS(totTime) : '--', 8: ac ? totFuel.toFixed(1) : '--' };
@@ -2628,18 +2663,16 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
 // Draw the placed flight-plan card on the overlay (live preview + export).
 // Row height scales with planCard.scale; the export scale then renders it
 // crisp at print DPI. Updates planCardRect for hit-testing drag + resize.
-const PLAN_CARD_BASE_ROW = 16;     // container px per row at scale 1
-const PLAN_CARD_GRIP = 22;         // resize grip size (px)
 function drawPlanCard() {
   if (!planCard) { window.planCardRect = null; return; }
   const scale = planCard.scale > 0 ? planCard.scale : 1;
   const numRows = (state.legs ? state.legs.length : 0) + 2;
-  const h = numRows * PLAN_CARD_BASE_ROW * scale;
+  const h = numRows * tune('planCardBaseRowPx') * scale;
   window.planCardRect = drawFlightPlanTable(octx, planCard.x, planCard.y, 1e6, h, 'tl');
   // The resize grip is a UI handle — never bake it into the exported PNG.
   if (!planCardRect || (window.NavAid && NavAid.exporting)) return;
   // Resize grip — a triangle in the bottom-right corner, with diagonal ribs.
-  const r = planCardRect, g = PLAN_CARD_GRIP;
+  const r = planCardRect, g = tune('planCardGripPx');
   const ex = r.x + r.w, ey = r.y + r.h;
   octx.save();
   octx.fillStyle = '#0b5ed7';
@@ -2663,7 +2696,7 @@ function drawPlanCard() {
 function planCardOnGrip(px, py) {
   const r = planCardRect;
   if (!r) return false;
-  const z = PLAN_CARD_GRIP + 8;     // generous hit padding
+  const z = tune('planCardGripPx') + 8;     // generous hit padding
   return px >= r.x + r.w - z && px <= r.x + r.w + 8 &&
          py >= r.y + r.h - z && py <= r.y + r.h + 8;
 }

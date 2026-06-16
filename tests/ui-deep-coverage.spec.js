@@ -132,7 +132,7 @@ test.describe('Inspector panel', () => {
     await expect(layerSel).toBeVisible();
     await expect(layerSel.locator('option[value="Satellite"]')).toHaveCount(1);
     await expect(layerSel.locator('option[value="CVFR"]')).toHaveCount(1);
-    // Chart layers (flight-maps.com) are gated by zoom: disabled at the
+    // Chart layers are gated by zoom: disabled at the
     // close-up default zoom, selectable once zoomed out within their range.
     await expect(layerSel.locator('option[value="CVFR"]')).toBeDisabled();
     await modal.getByRole('button', { name: 'Zoom out' }).click();
