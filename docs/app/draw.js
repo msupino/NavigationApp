@@ -957,7 +957,7 @@ function drawVors() {
     octx.arc(s.x, s.y, Math.max(1.5, r * 0.22), 0, Math.PI * 2);
     octx.fill();
     if (showLabels) {
-      const label = v.ident + '  ' + v.freq;
+      const label = v.ident + '  ' + (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : v.freq);
       const lx = s.x + r + 6, ly = s.y;
       octx.lineWidth = 2.5;
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
@@ -1112,6 +1112,28 @@ function commConfigureFreqInput(input) {
   input.min = COMM_FREQ_INPUT_MIN;
   input.max = COMM_FREQ_INPUT_MAX;
   input.step = COMM_FREQ_INPUT_STEP;
+  return input;
+}
+// VORs live in the 108–117.975 MHz VHF nav band, below the comm band — they
+// need their own validation so valid VOR freqs aren't flagged invalid.
+const VOR_FREQ_INPUT_MIN = '108';
+const VOR_FREQ_INPUT_MAX = '117.975';
+function vorNormalizeFreqInput(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  if (!/^\d{3}(?:\.\d{1,3})?$/.test(s)) return null;
+  const n = Number(s);
+  if (!Number.isFinite(n) || n < Number(VOR_FREQ_INPUT_MIN) ||
+      n > Number(VOR_FREQ_INPUT_MAX)) return null;
+  return commFormatFreq(s);
+}
+function vorConfigureFreqInput(input) {
+  if (!input) return input;
+  input.type = 'number';
+  input.inputMode = 'decimal';
+  input.min = VOR_FREQ_INPUT_MIN;
+  input.max = VOR_FREQ_INPUT_MAX;
+  input.step = '0.05';
   return input;
 }
 function commUseHebrewLabels() {
@@ -2527,27 +2549,51 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
       radial: rd[0], dme: rd[1] });
   }
   if (!rows.length) return null;
+  // Active comm frequency per leg — the most recent comm-change at or before
+  // the leg's start waypoint, carried forward until the next change.
+  const ccList = [];
+  for (const n of (state.notes || [])) {
+    if (!n || !n.cc) continue;
+    const wpi = typeof commCalloutWaypointIndex === 'function' ? commCalloutWaypointIndex(n) : -1;
+    const f = typeof commNoteFreq === 'function' ? commNoteFreq(n) : (n && n.freq) || '';
+    if (wpi >= 0 && f) ccList.push({ wpi, freq: String(f) });
+  }
+  ccList.sort((a, b) => a.wpi - b.wpi);
+  for (let r = 0; r < rows.length; r++) {
+    const legIdx = rows[r].num - 1;
+    let f = '';
+    for (const c of ccList) { if (c.wpi <= legIdx) f = c.freq; else break; }
+    rows[r].freq = f;
+  }
+  const freqActive = rows.some(r => r.freq);
   // Radial / DME columns only when a reference VOR is active (global or any
   // per-leg override) — otherwise they'd be a column of '—'.
   const vorActive = !!((typeof activeVor === 'function' && activeVor()) ||
                        (state.legs || []).some(l => l && l.vorRef));
-  // #,From,To,Hdg,Dist,Spd,Alt,Time,Fuel,CumTime,CumFuel[,Radial,DME]
-  const numCols = vorActive ? 13 : 11;
-  const headers = (S.fpHeaders || []).slice(0, numCols);
+  // #,From,To,Hdg,Dist,Spd,Alt,Time,Fuel,CumTime,CumFuel[,Radial,DME][,Freq]
+  const baseCols = vorActive ? 13 : 11;
+  const numCols = baseCols + (freqActive ? 1 : 0);
+  const headers = (S.fpHeaders || []).slice(0, baseCols);
   // Note which VOR the Radial / DME are measured from, in the Radial header.
-  if (numCols === 13) {
+  if (vorActive) {
     const refIdent = (typeof activeVor === 'function' && activeVor() && activeVor().ident) ||
       (((state.legs || []).find(l => l && l.vorRef) || {}).vorRef) || '';
     if (refIdent) headers[11] = headers[11] + ' ' + refIdent;
   }
+  if (freqActive) headers.push(S.fpFreq || 'Freq');
   const numRows = rows.length + 2;            // header + data + total
   // Derive the font FROM the row height (not an independent floor) so text
   // can never grow taller than its row → no vertical overlap at any size.
   const rowH = h / numRows;
   const fontSize = Math.max(1, Math.min(rowH * 0.62, 22));
   const padX = Math.max(2, Math.round(fontSize * 0.5));
-  const aligns = ['center', 'left', 'left', 'center', 'right', 'right', 'right', 'center', 'right', 'center', 'right', 'center', 'right'].slice(0, numCols);
-  const valsOf = rd => [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel, rd.cumTime, rd.cumFuel, rd.radial, rd.dme].slice(0, numCols);
+  const aligns = ['center', 'left', 'left', 'center', 'right', 'right', 'right', 'center', 'right', 'center', 'right', 'center', 'right'].slice(0, baseCols);
+  if (freqActive) aligns.push('center');
+  const valsOf = rd => {
+    const v = [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel, rd.cumTime, rd.cumFuel, rd.radial, rd.dme].slice(0, baseCols);
+    if (freqActive) v.push(rd.freq || '');
+    return v;
+  };
   ctx.save();
   ctx.font = fontSize + 'px sans-serif';
   const totVals = { 4: totDist.toFixed(1), 7: totTime > 0 ? toHMS(totTime) : '--', 8: ac ? totFuel.toFixed(1) : '--' };
