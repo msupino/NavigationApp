@@ -1080,12 +1080,22 @@ function freqClean(s) { return String(s == null ? '' : s).replace(/\s*MHz\s*$/i,
 function routeFreqSources() {
   const out = [];
   const wps = state.waypoints || [];
-  // Only the DEPARTURE airfield (first waypoint) contributes its frequency —
-  // airfields merely passed overhead mid-route, or the destination, do not.
+  const legCount = (state.legs || []).length;
+  // The DEPARTURE airfield (first waypoint) contributes its frequency on the
+  // first leg; airfields merely passed overhead mid-route do not.
   if (wps.length) {
     const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wps[0]) : null;
     const f = af && typeof airfieldPrimaryText === 'function' ? freqClean(airfieldPrimaryText(af)) : '';
     if (f) out.push({ wpi: 0, freq: f });
+  }
+  // The DESTINATION airfield (last waypoint) contributes its frequency on the
+  // last leg — so if no comm-change switched to it yet, the final leg still
+  // shows the arrival airport's freq. A comm-change at the same leg overrides
+  // (notes are pushed after, so they sort last in the carry-forward).
+  if (legCount > 0 && wps.length > 1) {
+    const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wps[wps.length - 1]) : null;
+    const f = af && typeof airfieldPrimaryText === 'function' ? freqClean(airfieldPrimaryText(af)) : '';
+    if (f) out.push({ wpi: legCount - 1, freq: f });
   }
   for (const n of (state.notes || [])) {
     if (!n || !n.cc) continue;

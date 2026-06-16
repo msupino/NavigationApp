@@ -2533,7 +2533,7 @@ function showFlightPlan() {
     Promise.all([
       loadCommChange(),
       typeof loadAirfields === 'function' ? loadAirfields() : null,
-    ]).then(() => { if (fpOpen) { refresh(); if (typeof retRefresh === 'function' && retRefresh) retRefresh(); } });
+    ]).then(() => { if (fpOpen) { refresh(); if (typeof retRefresh === 'function') retRefresh(); } });
   }
 }
 
