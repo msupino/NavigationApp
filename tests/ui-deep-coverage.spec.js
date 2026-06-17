@@ -135,6 +135,8 @@ test.describe('Inspector panel', () => {
     await expect(layerSel.locator('option[value="CVFR"]')).toBeEnabled();
     await layerSel.selectOption('CVFR');
     await expect(layerSel).toHaveValue('CVFR');
+    await page.waitForFunction(() =>
+      window.__satModalMap && window.__satModalMap.getZoom() === 14);
     const chartLayer = await page.evaluate(() => {
       if (!window.__satModalMap) return null;
       let out = null;
@@ -149,11 +151,31 @@ test.describe('Inspector panel', () => {
       });
       return out;
     });
-    expect(chartLayer).toEqual({ zoom: 17, maxZoom: 18, maxNativeZoom: 13 });
+    expect(chartLayer).toEqual({ zoom: 14, maxZoom: 14, maxNativeZoom: 13 });
 
-    // Zoom + reset controls are reachable by their accessible names.
-    await modal.getByRole('button', { name: 'Zoom in' }).click();
+    // Chart layers use their own close-up cap: z16+ only overscales the same
+    // native chart tile into blur, so switching from Satellite z17 snaps CVFR
+    // back into a readable range.
+    const chartZoomBounds = await page.evaluate(() => ({
+      zoom: window.__satModalMap.getZoom(),
+      minZoom: window.__satModalMap.getMinZoom(),
+      maxZoom: window.__satModalMap.getMaxZoom(),
+    }));
+    expect(chartZoomBounds).toEqual({ zoom: 14, minZoom: 13, maxZoom: 14 });
+
+    // Zoom + reset controls are reachable by their accessible names. At the
+    // readable chart cap, zoom-in is disabled; zooming out and back in stays
+    // within the chart range.
+    const zoomIn = modal.getByRole('button', { name: 'Zoom in' });
+    await expect(zoomIn).toHaveAttribute('aria-disabled', 'true');
+    await modal.getByRole('button', { name: 'Zoom out' }).click();
+    await page.waitForFunction(() =>
+      window.__satModalMap && window.__satModalMap.getZoom() === 13);
+    await zoomIn.click();
+    await page.waitForFunction(() =>
+      window.__satModalMap && window.__satModalMap.getZoom() === 14);
     await expect(lmap.locator('.leaflet-tile').first()).toBeVisible();
+    expect(await page.evaluate(() => window.__satModalMap.getZoom())).toBe(14);
     await expect(modal.getByRole('button', { name: /recentre/i })).toBeVisible();
 
     // Two-way bearing sync: rotating the main map rotates the modal map…

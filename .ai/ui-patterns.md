@@ -65,8 +65,10 @@ Rules:
 
 The inspector preview is a static tile snippet. Expanded satellite view is a
 Leaflet modal map with zoom, layer picker, reset-to-center, and rotation sync.
-All base layers remain selectable at close-up zooms; chart layers overscale
-their native tiles in this modal instead of being disabled.
+All base layers remain selectable, but chart layers use a tighter readable
+zoom range in this modal. Switching from high-zoom satellite imagery to CVFR /
+Navigation / Low Alt / Helicopters snaps back near the chart's native tile
+zoom instead of overscaling into blur.
 
 Title rules:
 
