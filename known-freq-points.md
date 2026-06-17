@@ -32,7 +32,7 @@ are comm-change points that do not have `points[].callSigns` assigned yet.
 | ZUKIM | פלוטו מזרח (`PLUTO_EAST`), חגב דרומי (`HAGAV_SOUTH`) | 123.85 / 134.65; 121.15 / 122.90 |
 | ZASHD | פלמחים (`PALMACHIM`) | 135.55 / 118.25 |
 | NMASD | פלמחים (`PALMACHIM`), חגב צפוני (`HAGAV_NORTH`) | 135.55 / 118.25; 128.35 / 129.25 |
-| ZDAFA | חגב דרומי (`HAGAV_SOUTH`), חצור (`HATZOR`) | 121.15 / 122.90; 133.20 |
+| ZDAFA | חגב צפוני (`HAGAV_NORTH`), חצור (`HATZOR`) | 128.35 / 129.25; 133.20 |
 | HODYA | חגב דרומי (`HAGAV_SOUTH`), חצור (`HATZOR`) | 121.15 / 122.90; 133.20 |
 | ZURIM | חגב צפוני (`HAGAV_NORTH`) | 128.35 / 129.25 |
 | NOAAM | חגב צפוני (`HAGAV_NORTH`), תל-נוף (`TEL_NOF`) | 128.35 / 129.25; 129.05 / 134.30 |

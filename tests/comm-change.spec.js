@@ -63,6 +63,25 @@ const FIXTURE = {
   ],
 };
 
+const KNOWN_FREQ_POINT_FREQ_FIELDS = [
+  'primary', 'alternate', 'secondary', 'secondaryAlternate',
+];
+
+function knownFreqPointFrequencyText(row) {
+  return KNOWN_FREQ_POINT_FREQ_FIELDS.map(field => row[field]).filter(Boolean).join(' / ') || 'TBD';
+}
+
+function expectedKnownFreqPointRow(point, catalog) {
+  const ids = Array.isArray(point.callSigns) ? point.callSigns.filter(Boolean) : [];
+  if (!ids.length) return `| ${point.name} | TBD | TBD |`;
+  const callSigns = ids.map(id => {
+    const row = catalog[id];
+    return `${row.he} (\`${id}\`)`;
+  }).join(', ');
+  const frequencies = ids.map(id => knownFreqPointFrequencyText(catalog[id])).join('; ');
+  return `| ${point.name} | ${callSigns} | ${frequencies} |`;
+}
+
 // Install a route handler for the comm-change.json request. Matches the
 // shipped URL pattern `comm-change.json?v=...` regardless of query string.
 // MUST be called before `boot(page)` (i.e. before any page.goto) so the
@@ -282,12 +301,12 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(missingFrequencies).toEqual([]);
   });
 
-  test('known-freq-points.md lists every comm-change point', async ({ page }) => {
-    await boot(page);
-    const keys = await page.evaluate(() => Object.keys(window.commChangeMap).sort());
+  test('known-freq-points.md mirrors every comm-change point row from JSON', async () => {
+    const comm = JSON.parse(fs.readFileSync('docs/data/comm-change.json', 'utf8'));
     const md = fs.readFileSync('known-freq-points.md', 'utf8');
-    const missing = keys.filter(k => !md.includes(`| ${k} |`));
-    expect(missing).toEqual([]);
+    const actual = md.split('\n').filter(line => /^\| (?:[A-Z]{5}|LL[A-Z0-9]{2}) \|/.test(line));
+    const expected = comm.points.map(point => expectedKnownFreqPointRow(point, comm.callSigns));
+    expect(actual).toEqual(expected);
   });
 
   test('route template comm-change call signs have route-context hints', async () => {
