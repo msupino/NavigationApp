@@ -809,6 +809,38 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(page.locator('#insp-body .commchange-name-row select')).toHaveCount(1);
   });
 
+  test('linked comm-change callout and unnamed route waypoint collapse to one choice', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    const out = await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng }];
+      syncLegs();
+      seedCommChangeNotes();
+      draw();
+      state.selected = null;
+      const navIndex = navWP.findIndex(w => w.name === t.name);
+      const shown = showPointChoice([
+        { type: 'commcallout', index: 0 },
+        { type: 'wp', index: 0 },
+        { type: 'navwp', index: navIndex },
+      ]);
+      return {
+        shown,
+        selected: state.selected,
+        modalCount: document.querySelectorAll('.point-choice-modal').length,
+        title: document.querySelector('#insp-title').value,
+        storedName: state.waypoints[0].name || '',
+      };
+    }, TYONA);
+
+    expect(out.shown).toBe(true);
+    expect(out.modalCount).toBe(0);
+    expect(out.selected).toEqual({ type: 'wp', index: 0, freqNoteIndex: 0 });
+    expect(out.storedName).toBe('');
+    expect(out.title).toContain('TYONA');
+    await expect(page.locator('#insp-body .commchange-name-row select')).toHaveCount(1);
+  });
+
   test('comm-change arrow overlapping a route waypoint opens the point chooser', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);

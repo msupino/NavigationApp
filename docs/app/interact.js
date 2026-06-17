@@ -61,13 +61,16 @@ function commCalloutWaypointIndex(note) {
   const key = typeof canonicalNavWaypointName === 'function'
     ? canonicalNavWaypointName(note.cc) : String(note.cc || '').trim();
   if (!key) return -1;
-  return state.waypoints.findIndex(w => {
+  const namedIndex = state.waypoints.findIndex(w => {
     const name = typeof canonicalNavWaypointName === 'function'
       ? canonicalNavWaypointName(w && w.name) : String(w && w.name || '').trim();
     if (name !== key) return false;
     return typeof commChangeWaypointInRange === 'function'
       ? commChangeWaypointInRange(w, key) : true;
   });
+  if (namedIndex >= 0) return namedIndex;
+  return state.waypoints.findIndex(w => typeof commChangeWaypointInRange === 'function' &&
+    commChangeWaypointInRange(w, key));
 }
 function selectionForNoteHit(noteIndex) {
   const note = state.notes[noteIndex];
@@ -1997,10 +2000,19 @@ function showInspector() {
     // Comm-change badge/editor (issue #399 + manual callouts). Known
     // comm-change points show the chart badge; any named waypoint without a
     // linked callout can still add a manual frequency-change arrow.
-    if (showCommChange && wp.name) {
-      const ccKey = waypointFreqChangeKey(wp);
+    if (showCommChange) {
+      let ccKey = waypointFreqChangeKey(wp);
+      let linkedNote = ccKey ? freqChangeNoteForKey(ccKey) : null;
+      if (!linkedNote) {
+        const linkedIndex = selectedFreqNoteIndex();
+        linkedNote = linkedIndex >= 0 ? state.notes[linkedIndex] : null;
+        if (linkedNote && linkedNote.cc) {
+          ccKey = typeof canonicalNavWaypointName === 'function'
+            ? canonicalNavWaypointName(linkedNote.cc)
+            : String(linkedNote.cc || '').trim();
+        }
+      }
       const cc = commChangeMap && ccKey ? commChangeMap[ccKey] : null;
-      const linkedNote = freqChangeNoteForKey(ccKey);
       if (linkedNote && typeof appendFreqEdit === 'function') {
         appendFreqEdit(body, linkedNote, { deleteButton: true });
       } else if (cc && cc.commChange) {
