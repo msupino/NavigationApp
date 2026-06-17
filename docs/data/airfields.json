@@ -292,16 +292,16 @@
       "name": "LLKS",
       "he": "קרית שמונה",
       "en": "Kiryat Shmona",
-      "lat": 33.21167,
-      "lng": 35.59639,
-      "elev_ft": 386,
+      "lat": 33.21417,
+      "lng": 35.59417,
+      "elev_ft": 376,
       "plates": [
         "LLKS_Ground_Diagram.pdf",
         "LLKS_airport_CVFR.pdf",
         "LLKS_airport_Chart.pdf"
       ],
       "runways": [
-        "01/19"
+        "03/21"
       ]
     },
     {
