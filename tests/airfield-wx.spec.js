@@ -45,9 +45,11 @@ test('decodeMetar renders wind/vis/wx/cloud/temp/QNH', async ({ page }) => {
 test('airfield inspector shows decoded METAR/TAF with a raw toggle', async ({ page }) => {
   await mockWx(page);
   await boot(page);
-  await page.evaluate(() => {
-    window.airfields = [{ name: 'LLBG', he: 'בן גוריון', lat: 32.0, lng: 34.88, elev_ft: 135 }];
-    state.selected = { type: 'airfield', index: 0 };
+  await page.evaluate(async () => {
+    if (airfields === null) await loadAirfields();
+    const index = airfields.findIndex(a => a.name === 'LLBG');
+    if (index < 0) throw new Error('LLBG missing from airfields.json');
+    state.selected = { type: 'airfield', index };
     showInspector();
   });
   const wx = page.locator('#insp-body .wx-section');
@@ -65,9 +67,12 @@ test('refresh button re-fetches (force, bypassing cache)', async ({ page }) => {
   let calls = 0;
   await mockWx(page, () => { calls++; });
   await boot(page);
-  await page.evaluate(() => {
-    window.airfields = [{ name: 'LLBG', lat: 32.0, lng: 34.88 }];
-    state.selected = { type: 'airfield', index: 0 }; showInspector();
+  await page.evaluate(async () => {
+    if (airfields === null) await loadAirfields();
+    const index = airfields.findIndex(a => a.name === 'LLBG');
+    if (index < 0) throw new Error('LLBG missing from airfields.json');
+    state.selected = { type: 'airfield', index };
+    showInspector();
   });
   await expect(page.locator('#insp-body .wx-section')).toContainText('Wind 270°');
   const before = calls;

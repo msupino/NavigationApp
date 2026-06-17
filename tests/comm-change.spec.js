@@ -370,6 +370,30 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(drawn).toContain('TYONA');
   });
 
+  test('map waypoint inspector lists comm-change call-sign options for DALIA', async ({ page }) => {
+    await boot(page);
+    const out = await page.evaluate(() => {
+      window.showCommChange = true;
+      const index = navWP.findIndex(w => w.name === 'DALIA');
+      state.selected = { type: 'navwp', index };
+      showInspector();
+      const items = Array.from(document.querySelectorAll('#inspector .commchange-option'));
+      return {
+        title: document.querySelector('#insp-title').value,
+        ids: items.map(el => el.dataset.callSign),
+        text: items.map(el => el.textContent),
+        hasAddButton: !!document.querySelector('#inspector .add-freq-change-btn'),
+      };
+    });
+    expect(out.title).toContain('DALIA');
+    expect(out.ids).toEqual(['RAMAT_DAVID', 'PLUTO_WEST']);
+    expect(out.text[0]).toMatch(/Ramat David/);
+    expect(out.text[0]).toMatch(/130\.50/);
+    expect(out.text[1]).toMatch(/Pluto West/);
+    expect(out.text[1]).toMatch(/118\.40/);
+    expect(out.hasAddButton).toBe(false);
+  });
+
   test('a waypoint whose name is not in the dataset shows no badge', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => {

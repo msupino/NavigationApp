@@ -1883,6 +1883,39 @@ body.theme-light .msa-low .val { color: #c0392b; }
   white-space: normal;
   line-height: 1.35;
 }
+.commchange-options-title {
+  color: #d8d8d8;
+  font-size: 11px;
+  font-weight: 700;
+}
+.commchange-options {
+  display: grid;
+  gap: 4px;
+}
+.commchange-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+}
+.commchange-option-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+.commchange-option-code {
+  color: #b9b3b3;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+}
+.commchange-option-freq {
+  grid-column: 1 / -1;
+  color: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+}
 .commchange-template {
   margin-top: -3px;
   font-size: 11px;
@@ -2796,6 +2829,18 @@ body.theme-light .commchange-row .commchange-freq {
 }
 body.theme-light .commchange-row .commchange-note {
   color: #4b5563;
+}
+body.theme-light .commchange-options-title {
+  color: #4b5563;
+}
+body.theme-light .commchange-option {
+  background: rgba(31, 37, 44, 0.06);
+}
+body.theme-light .commchange-option-code {
+  color: #6b7280;
+}
+body.theme-light .commchange-option-freq {
+  color: #1f252c;
 }
 body.theme-light .commchange-template {
   color: #6b7280;
