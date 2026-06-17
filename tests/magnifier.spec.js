@@ -8,7 +8,7 @@ const magnifierTileReadyMs = deployedPreview ? 35_000 : 12_000;
 const magnifierCalibTestMs = deployedPreview ? 120_000 : 60_000;
 // Tile-pane readiness for z=8 (pan / margin / Perfecting tests).
 const magnifierPaneTileMs = deployedPreview ? 45_000 : 18_000;
-const NAVAID_TILE_RE = /^https?:\/\/navaid-tiles\.supino\.org\//;
+const CHART_TILE_RE = /^https?:\/\/([^/]*\.)?flight-maps\.com\/tiles\//;
 const TILE_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
   'base64');
@@ -25,15 +25,14 @@ async function fulfillTile(route, delayMs = 0) {
 function isChartTileUrl(url) {
   try {
     const { hostname } = new URL(url);
-    return hostname === 'navaid-tiles.supino.org';
+    return hostname === 'flight-maps.com' || hostname.endsWith('.flight-maps.com');
   } catch (_) {
     return false;
   }
 }
 
 function chartTileZoom(url) {
-  const m = url.match(
-    /\/(?:CVFR|Israel-Navigation|LSA-Low-Altitude|Israel-Helicopters)\/(\d+)\//);
+  const m = url.match(/\/tiles\/[^/]+\/(\d+)\//);
   return m ? parseInt(m[1], 10) : null;
 }
 
@@ -41,7 +40,7 @@ test.describe('Magnifying glass', () => {
   test.describe.configure({ timeout: deployedPreview ? 120_000 : 60_000 });
 
   test.beforeEach(async ({ page }) => {
-    await page.route(NAVAID_TILE_RE, route => fulfillTile(route));
+    await page.route(CHART_TILE_RE, route => fulfillTile(route));
     await page.addInitScript(() => {
       try {
         localStorage.clear();
@@ -416,8 +415,8 @@ test.describe('Magnifying glass', () => {
     // 1000 ms is comfortably wider than the polling cadence while
     // staying well under the 20 s post-settle assertion below.
     //
-    await page.unroute(NAVAID_TILE_RE);
-    await page.route(NAVAID_TILE_RE, route => fulfillTile(route, 1000));
+    await page.unroute(CHART_TILE_RE);
+    await page.route(CHART_TILE_RE, route => fulfillTile(route, 1000));
 
     await page.evaluate(() => map.setZoom(8));
     await page.waitForFunction(
