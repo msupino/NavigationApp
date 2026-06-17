@@ -1274,6 +1274,8 @@ function buildSatelliteSnippet(point, opts = {}) {
   return snippet;
 }
 
+const SATELLITE_MODAL_CHART_LAYERS = ['CVFR', 'Navigation', 'Low Alt', 'Helicopters'];
+
 // Fresh, independent copies of the main map's base layers. Leaflet attaches a
 // tile layer to a single map, so the modal must NOT reuse the live instances
 // from core.js (that would yank them off the main map) — clone url + options.
@@ -1283,7 +1285,11 @@ function satelliteModalLayers() {
   for (const nm in layers) {
     const src = layers[nm];
     if (src && src._url) {
-      out[nm] = L.tileLayer(src._url, Object.assign({}, src.options));
+      const opts = Object.assign({}, src.options);
+      if (SATELLITE_MODAL_CHART_LAYERS.indexOf(nm) !== -1) {
+        opts.maxZoom = Math.max(opts.maxZoom || 0, tune('satelliteMaxZoom'));
+      }
+      out[nm] = L.tileLayer(src._url, opts);
     }
   }
   return out;
@@ -1482,12 +1488,6 @@ function showSatellitePreviewModal(point, label) {
   // (#layer-select) instead of Leaflet's radio list.
   const layerNames = Object.keys(mLayers);
   if (layerNames.length) {
-    // The 4 chart layers only publish tiles up to a limited zoom;
-    // past that they 404. Disable picking them when zoomed in beyond their
-    // range, and drop back to satellite if one was active.
-    const CHART_NAMES = ['CVFR', 'Navigation', 'Low Alt', 'Helicopters'];
-    const chartMax = nm => (mLayers[nm] && mLayers[nm].options &&
-      mLayers[nm].options.maxZoom) || tune('satelliteMaxZoom');
     const LayerSelect = L.Control.extend({
       options: { position: 'topright' },
       onAdd: function () {
@@ -1512,28 +1512,7 @@ function showSatellitePreviewModal(point, label) {
         return c;
       },
     });
-    const layerCtl = new LayerSelect();
-    lmap.addControl(layerCtl);
-    function syncLayerAvailability() {
-      const z = lmap.getZoom();
-      const sel = layerCtl._select;
-      if (sel) {
-        Array.from(sel.options).forEach(opt => {
-          if (CHART_NAMES.indexOf(opt.value) !== -1) opt.disabled = z > chartMax(opt.value);
-        });
-      }
-      // Active chart out of range → fall back to satellite imagery.
-      for (const nm of CHART_NAMES) {
-        if (mLayers[nm] && lmap.hasLayer(mLayers[nm]) && z > chartMax(nm)) {
-          lmap.removeLayer(mLayers[nm]);
-          if (mLayers.Satellite) lmap.addLayer(mLayers.Satellite);
-          if (sel && mLayers.Satellite) sel.value = 'Satellite';
-          break;
-        }
-      }
-    }
-    lmap.on('zoomend', syncLayerAvailability);
-    syncLayerAvailability();
+    lmap.addControl(new LayerSelect());
   }
   lmap.addControl(satelliteResetControl(lmap, point, tune('satelliteExpandedZoom')));
   // Marker on the waypoint so it stays findable after panning.
