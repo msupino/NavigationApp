@@ -1276,6 +1276,25 @@ function buildSatelliteSnippet(point, opts = {}) {
 
 const SATELLITE_MODAL_CHART_LAYERS = ['CVFR', 'Navigation', 'Low Alt', 'Helicopters'];
 
+function satelliteModalIsChartLayer(name) {
+  return SATELLITE_MODAL_CHART_LAYERS.indexOf(name) !== -1;
+}
+
+function satelliteModalLayerZoomBounds(name, layer) {
+  const modalMin = tune('satelliteMinZoom');
+  const modalMax = tune('satelliteMaxZoom');
+  if (!satelliteModalIsChartLayer(name) || !layer) {
+    return { minZoom: modalMin, maxZoom: modalMax };
+  }
+  const nativeMax = Number(layer.options && (layer.options.maxNativeZoom || layer.options.maxZoom));
+  if (!Number.isFinite(nativeMax)) return { minZoom: modalMin, maxZoom: modalMax };
+  const maxZoom = Math.min(modalMax, nativeMax + tune('satelliteChartOverscale'));
+  return {
+    minZoom: Math.min(modalMin, maxZoom),
+    maxZoom,
+  };
+}
+
 // Fresh, independent copies of the main map's base layers. Leaflet attaches a
 // tile layer to a single map, so the modal must NOT reuse the live instances
 // from core.js (that would yank them off the main map) — clone url + options.
@@ -1287,7 +1306,7 @@ function satelliteModalLayers() {
     if (src && src._url) {
       const opts = Object.assign({}, src.options);
       if (SATELLITE_MODAL_CHART_LAYERS.indexOf(nm) !== -1) {
-        opts.maxZoom = Math.max(opts.maxZoom || 0, tune('satelliteMaxZoom'));
+        opts.maxZoom = satelliteModalLayerZoomBounds(nm, src).maxZoom;
       }
       out[nm] = L.tileLayer(src._url, opts);
     }
@@ -1367,7 +1386,8 @@ function satelliteResetControl(lmap, point, zoom) {
       a.setAttribute('aria-label', S.satelliteResetCenter || 'Recentre on waypoint');
       L.DomEvent.on(a, 'click', function (e) {
         L.DomEvent.stop(e);
-        lmap.setView([point.lat, point.lng], zoom);
+        const z = typeof zoom === 'function' ? zoom() : zoom;
+        lmap.setView([point.lat, point.lng], z);
       });
       L.DomEvent.disableClickPropagation(c);
       return c;
@@ -1487,6 +1507,21 @@ function showSatellitePreviewModal(point, label) {
   // Layer picker as a dropdown, matching the main app's view-menu selector
   // (#layer-select) instead of Leaflet's radio list.
   const layerNames = Object.keys(mLayers);
+  let activeLayerName = layerNames.find(nm => lmap.hasLayer(mLayers[nm])) || '';
+  const applyLayerZoomBounds = name => {
+    const bounds = satelliteModalLayerZoomBounds(name, mLayers[name]);
+    const z = Math.max(bounds.minZoom, Math.min(bounds.maxZoom, lmap.getZoom()));
+    if (z !== lmap.getZoom()) lmap.setZoom(z, { animate: false });
+    lmap.setMinZoom(bounds.minZoom);
+    lmap.setMaxZoom(bounds.maxZoom);
+  };
+  const resetZoomForActiveLayer = () => {
+    const bounds = satelliteModalLayerZoomBounds(activeLayerName, mLayers[activeLayerName]);
+    return satelliteModalIsChartLayer(activeLayerName)
+      ? bounds.maxZoom
+      : Math.max(bounds.minZoom, Math.min(bounds.maxZoom, tune('satelliteExpandedZoom')));
+  };
+  if (activeLayerName) applyLayerZoomBounds(activeLayerName);
   if (layerNames.length) {
     const LayerSelect = L.Control.extend({
       options: { position: 'topright' },
@@ -1506,7 +1541,9 @@ function showSatellitePreviewModal(point, label) {
           for (const nm of layerNames) {
             if (lmap.hasLayer(mLayers[nm])) lmap.removeLayer(mLayers[nm]);
           }
-          lmap.addLayer(mLayers[sel.value]);
+          activeLayerName = sel.value;
+          applyLayerZoomBounds(activeLayerName);
+          lmap.addLayer(mLayers[activeLayerName]);
         });
         this._select = sel;
         return c;
@@ -1514,7 +1551,7 @@ function showSatellitePreviewModal(point, label) {
     });
     lmap.addControl(new LayerSelect());
   }
-  lmap.addControl(satelliteResetControl(lmap, point, tune('satelliteExpandedZoom')));
+  lmap.addControl(satelliteResetControl(lmap, point, resetZoomForActiveLayer));
   // Marker on the waypoint so it stays findable after panning.
   L.circleMarker([point.lat, point.lng], {
     radius: 7, color: '#ffda4c', weight: 2, opacity: 0.96, fill: false,
