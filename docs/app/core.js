@@ -883,6 +883,16 @@ var driftLineWidth = 1;     // drift reference line width scale (1 = default 1.5
 function legZoomScale() {   // zoom + legArrowSize → pixel multiplier for offsets/sizes
   return Math.max(0.35, Math.pow(2, map.getZoom() - 12)) * legArrowSize;
 }
+// Readout for a Leaflet zoom level: the raw level plus a linear scale
+// multiplier. Zoom is logarithmic — each whole level doubles on-screen
+// scale — so the multiplier is anchored at z12 (= 1×, the chart-tile
+// baseline the app already uses for kite/label scaling): mult = 2^(z-12).
+// e.g. z12.75 → "z12.75 · 1.68×".
+function zoomReadoutText(z) {
+  const zPart = z % 1 === 0 ? String(z) : z.toFixed(2);
+  const mPart = Math.pow(2, z - 12).toFixed(2).replace(/\.?0+$/, '');
+  return 'z' + zPart + ' · ' + mPart + '×';
+}
 var magnifierOn = false;    // magnifying-glass toggle
 var magnifierZoom = 2;      // default zoom factor
 var magnifierSize = 400;    // magnifier diameter (px)

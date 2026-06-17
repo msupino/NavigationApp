@@ -346,8 +346,7 @@ function showVorReadout(lat, lng) {
   setVorReadout(vorReadoutText(lat, lng));
 }
 function showZoom() {
-  const z = map.getZoom();
-  zoomBox.textContent = 'z' + (z % 1 === 0 ? z : z.toFixed(2));
+  zoomBox.textContent = zoomReadoutText(map.getZoom());
 }
 function showCoord(latlng) {
   if (gotoEditing) return;
