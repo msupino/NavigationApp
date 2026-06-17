@@ -274,7 +274,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   that call sign's reference sector. Ambiguous geometry falls back to the
   normal route graph. Shipped route-template comm-change notes are used as
   regression evidence for these hints; `tests/comm-change.spec.js` verifies
-  that every template `cc` frequency has a matching `from` / `to` entry.
+  that every template `cc` call sign has a matching name-only `from` / `to`
+  entry, with frequencies kept in the call-sign catalog instead of the hint.
   Defaults are
   route-aware: `commRouteCalloutDefaultsMap()` treats
   each comm-change waypoint's call-sign list as a boundary in an ATC graph,

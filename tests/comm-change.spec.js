@@ -286,32 +286,33 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(missing).toEqual([]);
   });
 
-  test('route template comm-change frequencies have directional hints', async () => {
+  test('route template comm-change call signs have name-only directional hints', async () => {
     const comm = JSON.parse(fs.readFileSync('docs/data/comm-change.json', 'utf8'));
     const templates = JSON.parse(fs.readFileSync('docs/data/route-templates.json', 'utf8'));
     const catalog = comm.callSigns || {};
     const byName = new Map((comm.points || []).map(point => [point.name, point]));
     const key = raw => String(raw || '').trim().toLocaleLowerCase()
       .replace(/[^0-9a-z\u0590-\u05ff]+/g, '');
-    const formatFreq = raw => {
-      const s = String(raw || '').trim();
-      if (/^\d{3}$/.test(s)) return s + '.00';
-      if (/^\d{3}\.\d$/.test(s)) return s + '0';
-      return s;
-    };
-    const hintMatches = (hint, id, freq) => {
+    const hintMatches = (hint, id) => {
       if (typeof hint !== 'string' || !hint.trim()) return false;
       const row = catalog[id] || {};
       const names = [id, row.label, row.he].filter(v => typeof v === 'string' && v.trim());
       const hintKey = key(hint);
-      const labelOk = names.some(name => {
+      return names.some(name => {
         const nameKey = key(name);
         return nameKey && (hintKey.includes(nameKey) || nameKey.includes(hintKey));
       });
-      const freqs = hint.match(/\b\d{3}(?:\.\d{1,3})?\b/g) || [];
-      return labelOk && freqs.map(formatFreq).includes(formatFreq(freq));
     };
     const missing = [];
+    const hintsWithFreq = [];
+    for (const point of comm.points || []) {
+      for (const field of ['from', 'to']) {
+        const hint = point && point[field];
+        if (typeof hint === 'string' && /\b\d{3}(?:\.\d{1,3})?\b/.test(hint)) {
+          hintsWithFreq.push(`${point.name}.${field}=${hint}`);
+        }
+      }
+    }
     for (const tpl of templates.templates || []) {
       for (const note of tpl.notes || []) {
         if (!note || !note.cc || !note.freqName || !note.freq) continue;
@@ -319,11 +320,12 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
         const callSigns = point && Array.isArray(point.callSigns) ? point.callSigns : [];
         const hints = point ? [point.from, point.to] : [];
         if (!point || !callSigns.includes(note.freqName) ||
-            !hints.some(h => hintMatches(h, note.freqName, note.freq))) {
+            !hints.some(h => hintMatches(h, note.freqName))) {
           missing.push(`${tpl.id}: ${note.cc} -> ${note.freqName} ${note.freq}`);
         }
       }
     }
+    expect(hintsWithFreq).toEqual([]);
     expect(missing).toEqual([]);
   });
 
