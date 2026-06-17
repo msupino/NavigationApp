@@ -3047,7 +3047,7 @@ function showExportModal() {
 
 async function fetchTileBitmap(layer, coords, signal) {
   try {
-    const r = await fetch(tileLayerUrl(layer, coords), { signal });
+    const r = await fetch(exportTileLayerUrl(layer, coords), { signal });
     if (r.status === 404) return { bmp: null, failed: false };
     if (!r.ok) return { bmp: null, failed: true };
     return { bmp: await r.blob().then(b => createImageBitmap(b)),

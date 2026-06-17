@@ -2,7 +2,8 @@
 
 ## What this is
 
-A browser flight-route planner. Leaflet slippy map (mirrored chart tiles from
+A browser flight-route planner. Leaflet slippy map (live chart tiles from
+`https://flight-maps.com`, export/download tiles from
 `https://navaid-tiles.supino.org`) with a canvas overlay that draws the route,
 free-text notes, and an
 optional VFR-reporting-point reference layer. Plain HTML / CSS / JS, no
@@ -105,8 +106,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 ## Architecture
 
 - **Base map:** Leaflet with six base layers in one `layers` object:
-  CVFR / Nav / Low Alt / Heli (hosted by
-  `https://navaid-tiles.supino.org`) / Satellite (Esri) / OSM.
+  CVFR / Nav / Low Alt / Heli (live from `https://flight-maps.com`,
+  with `exportUrl` entries on `https://navaid-tiles.supino.org` for PNG
+  download rendering) / Satellite (Esri) / OSM.
   Selection persisted at `localStorage['navaid.layer']` and restored
   *before* `L.map()` runs (no CVFR flash on reload).
 - **Route overlay:** a `<canvas id="overlay">` over the map with
@@ -122,10 +124,13 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
     annotation boxes; `shape` is `'rect'` or `'oval'`.
   - `state.mode` = `'add' | 'note' | null` (null = inspect);
     `state.selected` = `{type:'wp'|'leg'|'note', index}` or `null`.
-  - Top-level globals: `showReturn`, `showMidLeg`, `highlightDiff`,
-    `showNavWP`, `navWP`, `showWpNames`, `wpNameAngle`,
-    `yellowAlpha`, `wpSize`, `limitLegKites`, `magVar`,
-    `pageSize`, `pageOrient`.
+  - Top-level globals: `showReturn`, `showMidLeg`, `showCumTime`,
+    `highlightDiff`, `showNavWP`, `navWP`, `showWpNames`,
+    `wpNameAngle`, `showAirfields`, `showVorStations`, `vorRef`,
+    `showReporting`, `showMsa`, `showWind`, `showSigmet`,
+    `yellowAlpha`, `wpSize`, `legArrowSize`, `legLineWidth`,
+    `driftLineWidth`, `limitLegKites`, `forceSnap`, `magVar`,
+    `pageSize`, `pageOrient`, `simUrl`, `simOn`, `simFollow`.
 - **Interaction (mouse):** Leaflet `mousedown` → hit-test in priority
   order **waypoint > note > leg-label > leg**. On a hit,
   `map.dragging.disable()` and own the drag; otherwise let Leaflet pan.
@@ -279,9 +284,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   arrows only for matching
   waypoints already present in the route, never for unrelated reference
   points. The default callout tail starts east/right of the waypoint via
-  `commChangeNoteLngOffset`. Turning the layer off hides tagged callout
-  notes and disables their hit-testing without deleting them, so toggling
-  back on restores the same editable callouts. These fields are saved in the
+  `commChangeNoteLngOffset`. Turning the layer off hides red rings, tagged
+  callout notes, their hit-testing, and route-waypoint inspector
+  comm-change badge/details without deleting the saved callout notes, so
+  toggling back on restores the same editable callouts. These fields are saved in the
   existing `navaid.route` note payload (`cc`, `freqName`, `freq`, optional
   `freqAuto`), not in a separate storage key. Deleted callouts are tracked
   in `navaid.route.suppressedCC` (an array of canonical waypoint names);
@@ -427,21 +433,37 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.toolbarPos` — `{x, y}` of the toolbar.
 - `navaid.toolbarCollapsed` — `'0'` / `'1'` for the collapsed toolbar.
 - `navaid.sec.<sectionId>` — `'0'` / `'1'` per accordion section
-  (`build`, `view`, `display`, `charts`, `export`, `print`).
+  (`build`, `view`, `display`, `charts`, `export`, `print`, `sim`, etc.).
+- `navaid.inspPos` — `{x, y}` of the dragged inspector panel.
+- `navaid.tunePanelPos` — `{x, y}` of the hidden tuning panel.
 - `navaid.bearing` — map bearing in degrees (rotated-map support).
 - `navaid.theme` — `'dark'` / `'light'` for toolbar and panel chrome.
 - `navaid.yellowAlpha` — Transparency slider value.
 - `navaid.mapOpacity.v2` — base-map opacity slider value.
 - `navaid.wpSize` — Text-size slider value.
 - `navaid.legArrowSize` — leg-arrow size slider value.
+- `navaid.legLineWidth` — route-line width scale.
+- `navaid.driftLineWidth` — drift-line width scale.
 - `navaid.showReturn` — `'0'` / `'1'` for the return-leg overlay.
 - `navaid.showMidLeg` — `'0'` / `'1'` for the mid-leg distance badge.
+- `navaid.showCumTime` — `'0'` / `'1'` for cumulative-time kites.
 - `navaid.limitLegKites` — `'0'` / `'1'` for clamping dragged
   leg-marker kites between the two waypoints of their leg (default on).
 - `navaid.showDrift` — `'0'` / `'1'` for drift lines.
 - `navaid.highlightDiff` — `'0'` / `'1'` for altitude-diff halos.
 - `navaid.showNavWP` — `'0'` / `'1'` for the nav-waypoints overlay.
 - `navaid.showAirfields` — `'0'` / `'1'` for the airfield overlay.
+- `navaid.showReporting` — `'0'` / `'1'` for mandatory-reporting badges.
+- `navaid.showMsa` — `'0'` / `'1'` for the leg-inspector MSA row.
+- `navaid.showWind` — `'0'` / `'1'` for wind inputs, arrows, and readout.
+- `navaid.showSigmet` — `'0'` / `'1'` for the SIGMET overlay.
+- `navaid.showVorStations` — `'0'` / `'1'` for VOR/DME station markers.
+- `navaid.showVor` — legacy VOR marker key, migrated once to
+  `navaid.showVorStations` and removed.
+- `navaid.vorRef` — selected global reference VOR ident for radial/DME
+  readouts.
+- `navaid.forceSnap` — `'0'` / `'1'` for forcing new waypoint clicks to
+  snap to the nearest reference point.
 - `navaid.showFreqChanges` — `'0'` / `'1'` for the Show/Add Freq Changes
   overlay and callouts (default on). Replaces the legacy
   `navaid.showCommChange` key, which is intentionally ignored so older
@@ -449,17 +471,29 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.commFreqOverrides` — object keyed by comm call-sign id
   (`HERZLIYA`, `PLUTO_WEST`, etc.) containing locally edited frequency
   defaults. Empty / template-matching edits remove the key.
+- `navaid.airfieldFreqOverrides` — object keyed by airfield frequency id
+  for locally edited airport frequency defaults.
+- `navaid.vorFreqOverrides` — object keyed by VOR ident for locally edited
+  VOR frequency defaults.
 - `navaid.showWpNames` — `'0'` / `'1'` for waypoint-name display.
 - `navaid.wpNameAngle` — waypoint-name rotation (`0`/`90`/`180`/`270`).
 - `navaid.aircraft` — last-used aircraft profile JSON (fuel planner).
+- `navaid.profileVS` — vertical-profile climb/descent rate input.
+- `navaid.routes` — saved-route library entries and tombstones.
+- `navaid.pageSize` — selected page frame size (`A3` / `A4`) or cleared.
 - `navaid.pageOrient` — `'portrait'` / `'landscape'` for page export.
 - `navaid.fpPos` — `{x, y}` of the dragged Flight Plan modal.
+- `navaid.simUrl` — simulator bridge base URL.
+- `navaid.simOn` — `'0'` / `'1'` for simulator auto-reconnect state.
+- `navaid.simFollow` — `'0'` / `'1'` for simulator-follow mode.
 
 `sessionStorage` (cleared on tab close — used to survive a language
 re-load that does a full page navigation):
 
 - `navaid.selected` — `state.selected` round-trip.
 - `navaid.fpOpen` — `'1'` if the Flight Plan modal was open pre-reload.
+- `navaid.openChartModal` — chart/frequency modal kind to reopen after a
+  language reload.
 
 `magVar` is hardcoded at `-5` in `core.js`; the obsolete
 `navaid.magVar` key is no longer written. A one-time migration at the
@@ -502,12 +536,12 @@ downloadable `route.json`.
   branch-protected; the merge triggers the same workflow).
   **Before merging**: delete `REVIEW.md` from repo root if it exists
   (`git rm REVIEW.md && git commit`). It must not land in production.
-- **Cache-bust is automatic.** `.github/workflows/deploy.yml` runs
-  `sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g"` against each branch's
-  `docs/index.html` after checkout, using that branch's short commit
-  SHA. The source-HTML `?v=N` value is just a placeholder; you don't
-  need to bump it per commit. CI lint still enforces that every `?v=`
-  value in the source HTML agrees.
+- **Cache-bust is automatic.** `.github/workflows/deploy.yml` rewrites
+  each branch's `docs/index.html` `?v=N` markers, `NavAid.version`,
+  every app/i18n `data/*.json?v=N` literal, and the service-worker cache
+  name to that branch's short commit SHA after checkout. Source `?v=N`
+  values are just placeholders; you don't need to bump them per commit.
+  CI lint still enforces that every `?v=` value in the source HTML agrees.
 - **Toolbar version SHA suffix is automatic.** The same Deploy step
   also rewrites `version: '1.0'` → `version: '1.0-<short-sha>'` in
   `docs/app/core.js`, so the toolbar identifies the exact deployed commit.
@@ -553,10 +587,12 @@ downloadable `route.json`.
 
 ## Notes / pending
 
-- Flight Maps chart data is copyrighted. The app-served CVFR,
-  Navigation, Low Alt, and Helicopters tile pyramids are mirrored in
-  `msupino/NavigationApp-tiles` and served from
-  `https://navaid-tiles.supino.org`.
+- Flight Maps chart data is copyrighted. Realtime chart display uses
+  `https://flight-maps.com`. PNG export/download rendering uses the
+  mirrored CVFR, Navigation, Low Alt, and Helicopters tile pyramids in
+  `msupino/NavigationApp-tiles`, served from
+  `https://navaid-tiles.supino.org`, so canvas tile fetches remain
+  readable without the old proxy path.
 - `nav-waypoints.json` — 173 Israeli CVFR reporting points.
   **Source:** IAA CVFR chart waypoint reference table (page 113, 2025
   edition), supplied upstream as `113_waypoints.csv`. The CSV is the
