@@ -475,8 +475,10 @@ function validateVors(d) {
 // secondaryAlternate?, atis?, atisDeparture?, ground?, groundWest?,
 // groundEast?, clearance?, appPrimary?, appSecondary?, tmaPrimary?,
 // tmaSecondary?, phone?, source? } }, points:[{ name, commChange,
-// callSigns?, from?, to?,
-// note?, source? }] }. Only `points[].name` and
+// callSigns?, routeHints?,
+// note?, source? }] }. Optional routeHints entries are
+// {before?, after?, callSign}, matching adjacent route waypoint names around
+// the comm-change point to a call-sign ID. Only `points[].name` and
 // `points[].commChange` are required for the renderer; everything else is
 // metadata / inspector content. Unknown keys at any level are tolerated
 // (forward-compat). Issue #399.
@@ -527,6 +529,28 @@ function validateCommChange(d) {
         for (let j = 0; j < pt.callSigns.length; j++) {
           if (typeof pt.callSigns[j] !== 'string') {
             errs.push(p + '.callSigns[' + j + ']: expected string, got ' + _vKind(pt.callSigns[j]));
+          }
+        }
+      }
+    }
+    if ('routeHints' in pt) {
+      if (!Array.isArray(pt.routeHints)) {
+        errs.push(p + '.routeHints: expected array, got ' + _vKind(pt.routeHints));
+      } else {
+        for (let j = 0; j < pt.routeHints.length; j++) {
+          const h = pt.routeHints[j];
+          const hp = p + '.routeHints[' + j + ']';
+          if (_vKind(h) !== 'object') {
+            errs.push(hp + ': expected object, got ' + _vKind(h));
+            continue;
+          }
+          for (const k of ['before', 'after', 'callSign']) {
+            if (k in h && typeof h[k] !== 'string') {
+              errs.push(hp + '.' + k + ': expected string, got ' + _vKind(h[k]));
+            }
+          }
+          if (!h.callSign) {
+            errs.push(hp + '.callSign: expected non-empty string, got ' + _vKind(h.callSign));
           }
         }
       }
