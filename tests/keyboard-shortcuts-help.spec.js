@@ -86,6 +86,16 @@ test.describe('Keyboard-shortcuts cheat-sheet (#420)', () => {
     expect(descs.some(t => /[\u0590-\u05FF]/.test(t))).toBe(true);
   });
 
+  test('Hebrew locale still shows English shortcut keys', async ({ page }) => {
+    await boot(page, 'he');
+    await page.evaluate(() => showShortcutsHelp());
+    const keyRows = await page.locator('.shortcuts-help-keys').allTextContents();
+    expect(keyRows).toContain('A');
+    expect(keyRows).toContain('N');
+    expect(keyRows).toContain('C');
+    expect(keyRows.some(t => t.includes('Ctrl') && t.includes('F') && t.includes('⌘'))).toBe(true);
+  });
+
   test('? is suppressed when focused in #wp-search (search input)', async ({ page }) => {
     await boot(page);
     await page.locator('#search-trigger').click();

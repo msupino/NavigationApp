@@ -322,7 +322,7 @@ window.S = {
   commChangeCallSign: 'נקודת דיווח',
   commChangeName: 'אות קריאה',
   commChangeFreq: 'תדר',
-  commChangeAuto: 'Auto',
+  commChangeAuto: 'אוט׳',
   commChangeTemplateFreq: 'ברירת מחדל',
   freqTableTitle: 'ברירות מחדל לתדרים',
   freqTableCallSign: 'אות קריאה',
