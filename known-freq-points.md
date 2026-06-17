@@ -43,7 +43,7 @@ are comm-change points that do not have `points[].callSigns` assigned yet.
 | NCITY | חגב צפוני (`HAGAV_NORTH`), קדם (`KEDEM`) | 128.35 / 129.25; 134.70 / 118.35 |
 | SOKET | נגב (`NEGEV`), חגב צפוני (`HAGAV_NORTH`) | 132.40; 128.35 / 129.25 |
 | ARRAD | חגב דרומי (`HAGAV_SOUTH`), חגב צפוני (`HAGAV_NORTH`), נגב (`NEGEV`) | 121.15 / 122.90; 128.35 / 129.25; 132.40 |
-| HATRU | נגב (`NEGEV`), חגב דרומי (`HAGAV_SOUTH`) | 132.40; 121.15 / 122.90 |
+| HATRU | נגב (`NEGEV`) | 132.40 |
 | HOVAV | נגב (`NEGEV`), חגב צפוני (`HAGAV_NORTH`), חגב דרומי (`HAGAV_SOUTH`) | 132.40; 128.35 / 129.25; 121.15 / 122.90 |
 | KTORA | חגב דרומי (`HAGAV_SOUTH`), רמון (`RAMON`) | 121.15 / 122.90; 124.60 |
 | SHRUT | רמון (`RAMON`), עובדה (`OVDA`) | 124.60; 129.90 |
