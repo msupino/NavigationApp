@@ -1280,12 +1280,12 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.notes).toEqual([]);
     expect(out.suppressions).toEqual(['TYONA']);
     expect(out.selected).toEqual({ type: 'wp', index: 0 });
-    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ })).toBeVisible();
+    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ })).toBeVisible();
 
     await page.mouse.click(center.x, center.y);
     await expect.poll(() => page.evaluate(() => state.notes.filter(n => n && n.cc).length)).toBe(0);
 
-    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ }).click();
+    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ }).click();
     await expect.poll(() => page.evaluate(() => ({
       selected: state.selected,
       suppressions: state.commChangeSuppressions.slice(),
@@ -1346,9 +1346,9 @@ test.describe('comm-change auto-note (#487)', () => {
       notes: [],
       suppressions: ['TYONA'],
     });
-    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ })).toBeVisible();
+    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ })).toBeVisible();
 
-    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ }).click();
+    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ }).click();
     await expect.poll(() => page.evaluate(() => ({
       notes: state.notes.map(n => ({
         cc: n.cc || '',
@@ -1360,6 +1360,33 @@ test.describe('comm-change auto-note (#487)', () => {
       notes: [{ cc: 'TYONA', hasFreqName: true, hasFreq: true }],
       suppressions: [],
     });
+  });
+
+  test('waypoint inspector adds a manual frequency-change callout to non-dataset points', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat + 0.5, lng: t.lng + 0.5, name: 'NOPEX' }];
+      state.notes = [];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+      draw();
+    }, TYONA);
+
+    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ })).toBeVisible();
+    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ }).click();
+    await expect(page.locator('#insp-body .commchange-name-row input')).toHaveValue('NOPEX');
+    await expect(page.locator('#insp-body .commchange-freq-edit input')).toHaveValue('');
+
+    await page.locator('#insp-body .commchange-name-row input').fill('Manual Control');
+    await page.locator('#insp-body .commchange-freq-edit input').fill('123.45');
+    await expect.poll(() => page.evaluate(() => state.notes.map(n => ({
+      cc: n.cc || '',
+      freqName: n.freqName || '',
+      freq: n.freq || '',
+    })))).toEqual([{ cc: 'NOPEX', freqName: 'Manual Control', freq: '123.45' }]);
+    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Delete freq change/ })).toBeVisible();
   });
 
   test('comm-change note inspector edits frequency without a free-text call-sign field', async ({ page }) => {

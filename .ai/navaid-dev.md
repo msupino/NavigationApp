@@ -302,8 +302,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   existing `navaid.route` note payload (`cc`, `freqName`, `freq`, optional
   `freqAuto`), not in a separate storage key. Deleted callouts are tracked
   in `navaid.route.suppressedCC` (an array of canonical waypoint names);
-  the auto-seed pass skips suppressed names. "Add freq change" in the
-  waypoint inspector clears the suppression and re-creates the callout.
+  the auto-seed pass skips suppressed names. "Add frequency change" in the
+  waypoint inspector clears the suppression and re-creates the callout for
+  known comm-change points; for other named route waypoints it creates a
+  manual callout with editable call-sign text and frequency.
   Suppressions are cleared when the waypoint is removed, moves away from
   the comm-change point, the route is cleared, or a new file is loaded.
 - **Map legend:** a Leaflet control (bottom-left, floating over the map) with

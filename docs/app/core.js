@@ -661,7 +661,7 @@ window.S = Object.assign({
   altPairsRevertDirection: 'Revert this direction to origin',
   altPairsGoTo: function(from, to) { return 'Go to ' + from + ' ↔ ' + to; },
   altPairsLocationMissing: 'Pair endpoints not found',
-  addFreqChange: 'Add freq change (Z)',
+  addFreqChange: 'Add frequency change (Z)',
   deleteFreqChange: '🗑 Delete freq change (X)',
   resetFreqLocation: '↻ Reset callout location',
   resetFreqLocationTitle: 'Reset callout location',

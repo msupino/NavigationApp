@@ -229,7 +229,7 @@ test.describe('X / Z / Delete freq-change keyboard shortcuts', () => {
     expect(out.selected).toEqual({ type: 'wp', index: 0, freqNoteIndex: 0 });
   });
 
-  test('Z on a waypoint with no comm-change data is a no-op', async ({ page }) => {
+  test('Z adds a manual freq-change callout to a waypoint with no comm-change data', async ({ page }) => {
     await bootWithCC(page);
     await page.evaluate(t => {
       state.waypoints = [{ lat: t.lat + 0.5, lng: t.lng + 0.5, name: 'NOPEX' }];
@@ -238,7 +238,20 @@ test.describe('X / Z / Delete freq-change keyboard shortcuts', () => {
       showInspector(); draw();
     }, TYONA);
     await page.keyboard.press('z');
-    expect(await page.evaluate(() => state.notes.length)).toBe(0);
+    const out = await page.evaluate(() => ({
+      notes: state.notes.filter(n => n && n.cc).length,
+      cc: state.notes[0]?.cc,
+      freqName: state.notes[0]?.freqName,
+      freq: state.notes[0]?.freq,
+      selected: state.selected,
+    }));
+    expect(out).toEqual({
+      notes: 1,
+      cc: 'NOPEX',
+      freqName: 'NOPEX',
+      freq: '',
+      selected: { type: 'wp', index: 0, freqNoteIndex: 0 },
+    });
   });
 
   test('Z on a waypoint that already has a freq callout is a no-op', async ({ page }) => {

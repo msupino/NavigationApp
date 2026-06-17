@@ -175,11 +175,10 @@ function tryRestoreInspectorSelection(sel) {
 }
 function addCommChangeNoteForWaypoint(wp, ccKey) {
   if (!wp || !ccKey || !Array.isArray(state.notes)) return -1;
-  if (typeof unsuppressCommChange === 'function') unsuppressCommChange(ccKey);
-  const existing = state.notes.findIndex(n => n && n.cc &&
-    (typeof canonicalNavWaypointName === 'function'
-      ? canonicalNavWaypointName(n.cc) === ccKey
-      : n.cc === ccKey));
+  if (isKnownCommChangeKey(ccKey) && typeof unsuppressCommChange === 'function') {
+    unsuppressCommChange(ccKey);
+  }
+  const existing = state.notes.findIndex(n => linkedCommChangeNoteForKey(n, ccKey));
   if (existing >= 0) return existing;
   const tail = typeof commCalloutDefaultTail === 'function'
     ? commCalloutDefaultTail(wp) : { lat: r5(wp.lat), lng: r5(wp.lng) };
@@ -197,6 +196,40 @@ function addCommChangeNoteForWaypoint(wp, ccKey) {
     freqAuto: true,
   });
   return state.notes.length - 1;
+}
+function waypointFreqChangeKey(wp) {
+  if (!wp) return '';
+  const raw = String(wp.name || '').trim();
+  if (!raw || (typeof isSequenceWaypointName === 'function' && isSequenceWaypointName(raw))) return '';
+  return typeof canonicalNavWaypointName === 'function' ? canonicalNavWaypointName(raw) : raw;
+}
+function linkedCommChangeNoteForKey(note, ccKey) {
+  if (!note || !note.cc || !ccKey) return false;
+  return (typeof canonicalNavWaypointName === 'function'
+    ? canonicalNavWaypointName(note.cc) === ccKey
+    : note.cc === ccKey);
+}
+function freqChangeNoteForKey(ccKey) {
+  if (!ccKey || !Array.isArray(state.notes)) return null;
+  return state.notes.find(n => linkedCommChangeNoteForKey(n, ccKey)) || null;
+}
+function isKnownCommChangeKey(ccKey) {
+  const cc = commChangeMap && ccKey ? commChangeMap[ccKey] : null;
+  return !!(cc && cc.commChange);
+}
+function appendAddFreqChangeButton(body, wp, ccKey) {
+  if (!body || !wp || !ccKey || !showCommChange) return;
+  const add = document.createElement('button');
+  add.className = 'insp-btn';
+  add.textContent = S.addFreqChange || 'Add frequency change';
+  add.onclick = () => {
+    const idx = addCommChangeNoteForWaypoint(wp, ccKey);
+    if (idx >= 0 && state.selected && state.selected.type === 'wp') {
+      state.selected.freqNoteIndex = idx;
+    }
+    draw(); showInspector();
+  };
+  body.appendChild(add);
 }
 function hitWaypoint(px, py) {
   const hits = hitWaypointCandidates(px, py);
@@ -1913,20 +1946,16 @@ function showInspector() {
         body.appendChild(row);
       }
     }
-    // Comm-change badge (issue #399). Surfaces the sector / CTR / TMA
-    // frequency change associated with a known comm-change reporting
-    // point. Looked up by the canonical ICAO name so it works for both
-    // auto-snapped nav-WP waypoints and routes built via the search
-    // overlay, regardless of locale (the badge text itself is i18n'd).
-    if (showCommChange && commChangeMap && wp.name) {
-      // Resolve to the canonical ICAO key first: in Hebrew locale snapped
-      // waypoints store the he label as wp.name, and commChangeMap is keyed
-      // by canonical English — a raw lookup would miss the badge in Hebrew
-      // even though the on-map callout (which canonicalises) shows.
-      const ccKey = typeof canonicalNavWaypointName === 'function'
-        ? canonicalNavWaypointName(wp.name) : wp.name.trim();
-      const cc = commChangeMap[ccKey];
-      if (cc && cc.commChange) {
+    // Comm-change badge/editor (issue #399 + manual callouts). Known
+    // comm-change points show the chart badge; any named waypoint without a
+    // linked callout can still add a manual frequency-change arrow.
+    if (showCommChange && wp.name) {
+      const ccKey = waypointFreqChangeKey(wp);
+      const cc = commChangeMap && ccKey ? commChangeMap[ccKey] : null;
+      const linkedNote = freqChangeNoteForKey(ccKey);
+      if (linkedNote && typeof appendFreqEdit === 'function') {
+        appendFreqEdit(body, linkedNote, { deleteButton: true });
+      } else if (cc && cc.commChange) {
         const row = document.createElement('div');
         row.className = 'row col commchange-row';
         const lbl = document.createElement('label');
@@ -1934,44 +1963,22 @@ function showInspector() {
         lbl.textContent = S.commChangeBadge || '📡 Freq change';
         row.appendChild(lbl);
         body.appendChild(row);
-        // #530 — united inspector: if a freq callout note exists for this
-        // point, edit it right here (call sign + frequency + reset location)
-        // instead of a read-only badge. Legacy from/to summaries still render
-        // for older datasets when no callout note is present.
-        const linkedNote = state.notes.find(n => n && n.cc &&
-          (typeof canonicalNavWaypointName === 'function'
-            ? canonicalNavWaypointName(n.cc) === ccKey
-            : n.cc === ccKey));
-        if (showCommChange && linkedNote && typeof appendFreqEdit === 'function') {
-          appendFreqEdit(body, linkedNote, { deleteButton: true });
-        } else {
-          if (cc.from || cc.to) {
-            const freq = document.createElement('span');
-            freq.className = 'val commchange-freq';
-            const arrow = (S.legArrow || '→');
-            freq.textContent = (cc.from || '?') + ' ' + arrow + ' ' + (cc.to || '?');
-            row.appendChild(freq);
-          }
-          if (cc.note) {
-            const note = document.createElement('span');
-            note.className = 'val commchange-note';
-            note.textContent = cc.note;
-            row.appendChild(note);
-          }
-          if (showCommChange) {
-            const add = document.createElement('button');
-            add.className = 'insp-btn';
-            add.textContent = S.addFreqChange || 'Add freq change';
-            add.onclick = () => {
-              const idx = addCommChangeNoteForWaypoint(wp, ccKey);
-              if (idx >= 0 && state.selected && state.selected.type === 'wp') {
-                state.selected.freqNoteIndex = idx;
-              }
-              draw(); showInspector();
-            };
-            body.appendChild(add);
-          }
+        if (cc.from || cc.to) {
+          const freq = document.createElement('span');
+          freq.className = 'val commchange-freq';
+          const arrow = (S.legArrow || '→');
+          freq.textContent = (cc.from || '?') + ' ' + arrow + ' ' + (cc.to || '?');
+          row.appendChild(freq);
         }
+        if (cc.note) {
+          const note = document.createElement('span');
+          note.className = 'val commchange-note';
+          note.textContent = cc.note;
+          row.appendChild(note);
+        }
+        appendAddFreqChangeButton(body, wp, ccKey);
+      } else if (ccKey) {
+        appendAddFreqChangeButton(body, wp, ccKey);
       }
     }
     const del = document.createElement('button');
@@ -2314,7 +2321,16 @@ function appendFreqEdit(body, note, editOptions) {
     callSignSelect = callSignRow.querySelector('select');
     body.appendChild(callSignRow);
   } else {
-    body.appendChild(textRow(S.commChangeName || 'Call sign', commNoteName(note) || ''));
+    const callSignRow = inputRow(S.commChangeName || 'Call sign', commNoteName(note) || '', v => {
+      note.freqName = String(v || '').trim();
+      note.freqAuto = false;
+      updateTemplateHint();
+      draw();
+    });
+    callSignRow.classList.add('commchange-name-row');
+    const callSignInput = callSignRow.querySelector('input');
+    if (callSignInput) callSignInput.dir = 'auto';
+    body.appendChild(callSignRow);
   }
   const freqRow = document.createElement('div');
   freqRow.className = 'row';
@@ -2437,7 +2453,10 @@ function appendFreqEdit(body, note, editOptions) {
     del.className = 'insp-btn';
     del.textContent = S.deleteFreqChange || S.deleteNote;
     del.onclick = () => {
-      if (note.cc && typeof suppressCommChange === 'function') suppressCommChange(note.cc);
+      if (note.cc && isKnownCommChangeKey(waypointFreqChangeKey({ name: note.cc })) &&
+          typeof suppressCommChange === 'function') {
+        suppressCommChange(note.cc);
+      }
       const idx = state.notes.indexOf(note);
       if (idx >= 0) state.notes.splice(idx, 1);
       if (state.selected && state.selected.type === 'wp') {
@@ -2770,20 +2789,13 @@ window.addEventListener('keydown', e => {
     }
     return;
   }
-  // Z (no modifier): add a freq-change callout to a comm-change waypoint.
+  // Z (no modifier): add a freq-change callout to a selected named waypoint.
   if ((e.key === 'z' || e.key === 'Z') && !e.ctrlKey && !e.metaKey && !e.altKey) {
     if (!state.selected || state.selected.type !== 'wp') return;
     const wp = state.waypoints[state.selected.index];
-    if (!wp || !wp.name || !commChangeMap || !showCommChange) return;
-    const ccKey = typeof canonicalNavWaypointName === 'function'
-      ? canonicalNavWaypointName(wp.name) : wp.name.trim();
-    const cc = commChangeMap[ccKey];
-    if (!cc || !cc.commChange) return;
-    const linkedNote = state.notes.find(n => n && n.cc &&
-      (typeof canonicalNavWaypointName === 'function'
-        ? canonicalNavWaypointName(n.cc) === ccKey
-        : n.cc === ccKey));
-    if (linkedNote) return;
+    if (!wp || !wp.name || !showCommChange) return;
+    const ccKey = waypointFreqChangeKey(wp);
+    if (!ccKey || freqChangeNoteForKey(ccKey)) return;
     const idx = addCommChangeNoteForWaypoint(wp, ccKey);
     if (idx >= 0) state.selected.freqNoteIndex = idx;
     draw(); showInspector();
