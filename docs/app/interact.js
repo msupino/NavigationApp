@@ -2768,7 +2768,7 @@ window.addEventListener('keydown', e => {
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) t.blur();
       return;
     }
-    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+    if (shortcutTypingTarget(t)) {
       return;
     }
     if (state.mode === 'add' || state.mode === 'note') {
@@ -2778,12 +2778,12 @@ window.addEventListener('keydown', e => {
     }
     return;
   }
-  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+  if (shortcutTypingTarget(t)) {
     return;                              // typing in a field — leave the WP alone
   }
   // Ctrl/Cmd-Z undoes the last committed edit. Shift-Ctrl-Z (redo) is left
   // alone — there is no redo, so don't swallow it.
-  if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey) &&
+  if (shortcutKey(e, 'KeyZ', 'z') && (e.ctrlKey || e.metaKey) &&
       !e.altKey && !e.shiftKey) {
     e.preventDefault();
     if (typeof undo === 'function') undo();
@@ -2796,14 +2796,14 @@ window.addEventListener('keydown', e => {
   // automation harnesses fire `e.key === '/'` with `shiftKey: true`, so
   // accept both.
   if (!e.ctrlKey && !e.metaKey && !e.altKey &&
-      (e.key === '?' || (e.key === '/' && e.shiftKey))) {
+      (e.key === '?' || ((e.key === '/' || e.code === 'Slash') && e.shiftKey))) {
     e.preventDefault();
     if (typeof showShortcutsHelp === 'function') showShortcutsHelp();
     return;
   }
   // Issue #413: F (no modifier) re-runs fit-to-route. Ctrl/Cmd-F is the
   // search-overlay shortcut handled in ui.js — bail out so we don't shadow it.
-  if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+  if (shortcutPlain(e, 'KeyF', 'f')) {
     e.preventDefault();
     fitView();
     return;
@@ -2827,7 +2827,7 @@ window.addEventListener('keydown', e => {
       }
       return;
     }
-    if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (shortcutPlain(e, 'KeyM', 'm')) {
       e.preventDefault();
       toggleMagnifier();
       return;
@@ -2835,17 +2835,17 @@ window.addEventListener('keydown', e => {
     // A / N toggle the add-waypoint / add-note placement modes (same as the
     // toolbar buttons); C clears the map. Pressing the active mode's key
     // again toggles back to inspect, mirroring setMode()'s button behaviour.
-    if ((e.key === 'a' || e.key === 'A') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (shortcutPlain(e, 'KeyA', 'a')) {
       e.preventDefault();
       if (typeof setMode === 'function') setMode('add');
       return;
     }
-    if ((e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (shortcutPlain(e, 'KeyN', 'n')) {
       e.preventDefault();
       if (typeof setMode === 'function') setMode('note');
       return;
     }
-    if ((e.key === 'c' || e.key === 'C') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (shortcutPlain(e, 'KeyC', 'c')) {
       e.preventDefault();
       const clearBtn = document.getElementById('clear');
       if (clearBtn) clearBtn.click();   // reuse the button's confirm + reset
@@ -2853,7 +2853,7 @@ window.addEventListener('keydown', e => {
     }
   }
   // X (no modifier): delete the freq-change callout linked to the selected waypoint.
-  if ((e.key === 'x' || e.key === 'X') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+  if (shortcutPlain(e, 'KeyX', 'x')) {
     if (!state.selected) return;
     const freqNote = selectedFreqNoteIndex();
     if (freqNote >= 0) {
@@ -2864,7 +2864,7 @@ window.addEventListener('keydown', e => {
     return;
   }
   // Z (no modifier): add a freq-change callout to a selected named waypoint.
-  if ((e.key === 'z' || e.key === 'Z') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+  if (shortcutPlain(e, 'KeyZ', 'z')) {
     if (!state.selected || state.selected.type !== 'wp') return;
     const wp = state.waypoints[state.selected.index];
     if (!wp || !wp.name || !showCommChange) return;
@@ -2876,7 +2876,7 @@ window.addEventListener('keydown', e => {
     return;
   }
   // D (no modifier): delete the selected waypoint or note (freq callout goes with its waypoint).
-  if ((e.key === 'd' || e.key === 'D') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+  if (shortcutPlain(e, 'KeyD', 'd')) {
     if (!state.selected) return;
     deleteSelectedWpOrNote();
     return;

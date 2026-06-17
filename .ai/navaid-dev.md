@@ -398,6 +398,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   Tab/Shift-Tab focus trap, and closes via Esc / backdrop / ✕ button.
   `?` is suppressed inside inputs / textareas / contenteditable so users
   can still type a literal question mark in waypoint names or notes.
+  Letter shortcuts are English-key shortcuts in every locale: the
+  cheat-sheet keeps `A`, `N`, `C`, etc. as key labels, and the handlers
+  match physical `KeyboardEvent.code` values so the same English keys work
+  while the OS keyboard layout is Hebrew.
   Current global shortcuts surfaced:
   - **Navigation:** `F` — fit route to view; `+`/`=` / numpad `+` — zoom
     map in (loupe zoom in when magnifier is on); `−`/`-` / numpad `−` —
