@@ -339,7 +339,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     }
     for (const tpl of templates.templates || []) {
       for (const note of tpl.notes || []) {
-        if (!note || !note.cc || !note.freqName || !note.freq) continue;
+        if (!note || !note.cc || !note.freqName) continue;
         const point = byName.get(note.cc);
         const callSigns = point && Array.isArray(point.callSigns) ? point.callSigns : [];
         const waypoints = Array.isArray(tpl.waypoints) ? tpl.waypoints : [];
@@ -353,7 +353,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
           (after === undefined ? !h.after : h.after === after));
         if (!point || !callSigns.includes(note.freqName) ||
             index < 0 || !hasRouteHint) {
-          missing.push(`${tpl.id}: ${note.cc} -> ${note.freqName} ${note.freq}`);
+          missing.push(`${tpl.id}: ${note.cc} -> ${note.freqName}`);
         }
       }
     }

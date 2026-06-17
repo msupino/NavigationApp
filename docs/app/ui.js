@@ -781,10 +781,23 @@ function routeTemplateLeg(templateLeg, speed) {
   };
 }
 
+function routeTemplateNoteFreq(note) {
+  if (!note || typeof note !== 'object') return '';
+  if (typeof note.freq === 'string' && note.freq.trim()) return note.freq;
+  if (!note.cc || !note.freqName ||
+      typeof commCallSignOptions !== 'function' ||
+      typeof commCallSignOptionMatches !== 'function') return '';
+  const opt = commCallSignOptions(note.cc)
+    .find(o => commCallSignOptionMatches(o, note.freqName));
+  return opt && opt.freq ? opt.freq : '';
+}
+
 async function routeFromTemplate(template, speed) {
   if (navWP === null) await loadNavWaypoints();
   if (airfields === null) await loadAirfields();
   if (legAltitudeMap === null) await loadLegAltitudes();
+  if (typeof loadCommChange === 'function' && typeof commChangeMap !== 'undefined' &&
+      commChangeMap === null) await loadCommChange();
   const waypoints = [];
   for (const code of template.waypoints) {
     const point = findNavWpToken(code);
@@ -803,6 +816,7 @@ async function routeFromTemplate(template, speed) {
       // Lean comm-change notes carry only `cc` — derive the callout position
       // from that waypoint (same default offset seedCommChangeNotes uses).
       let lat = note.lat, lng = note.lng;
+      const freq = routeTemplateNoteFreq(note);
       if (!(Number.isFinite(lat) && Number.isFinite(lng)) && note.cc) {
         const key = typeof canonicalNavWaypointName === 'function'
           ? canonicalNavWaypointName(note.cc) : String(note.cc).trim().toUpperCase();
@@ -821,7 +835,7 @@ async function routeFromTemplate(template, speed) {
         shape: note.shape || 'rect',
         ...(note.cc ? { cc: note.cc } : {}),
         ...(note.freqName ? { freqName: note.freqName } : {}),
-        ...(note.freq ? { freq: note.freq } : {}),
+        ...(freq ? { freq } : {}),
         ...(note.freqAuto === true ? { freqAuto: true } : {}),
       };
     }).filter(n => Number.isFinite(n.lat) && Number.isFinite(n.lng)),
