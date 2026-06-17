@@ -2538,7 +2538,9 @@ function createTuningPanel() {
   const resetAll = document.createElement('button');
   resetAll.type = 'button';
   resetAll.id = 'tune-reset-all';
-  resetAll.textContent = 'Reset all';
+  resetAll.textContent = '↻';
+  resetAll.title = 'Reset all tuning values';
+  resetAll.setAttribute('aria-label', resetAll.title);
   const copy = document.createElement('button');
   copy.type = 'button';
   copy.id = 'tune-copy-json';
@@ -2609,8 +2611,9 @@ function createTuningPanel() {
       reset.type = 'button';
       reset.id = 'tune-' + key + '-reset';
       reset.className = 'tune-reset';
-      reset.textContent = 'Reset';
+      reset.textContent = '↻';
       reset.title = 'Reset ' + (spec.label || key);
+      reset.setAttribute('aria-label', reset.title);
 
       const set = {};
       if (spec.type === 'color') {
