@@ -154,11 +154,16 @@ test.describe('comm-change auto-note (#487)', () => {
     ]);
   });
 
-  test('uses comm-change to hint when outbound azimuth points to that sector', async ({ page }) => {
+  test('uses route context to hint the matching comm-change call sign', async ({ page }) => {
     const routeFixture = {
       ...FIXTURE,
       points: [
-        { name: 'TYONA', commChange: true, callSigns: ['PALMACHIM', 'PLUTO_WEST'], to: 'Pluto West 118.40' },
+        {
+          name: 'TYONA',
+          commChange: true,
+          callSigns: ['PALMACHIM', 'PLUTO_WEST'],
+          routeHints: [{ after: 'CLORE', callSign: 'PLUTO_WEST' }],
+        },
         { name: 'PWREF', commChange: true, callSigns: ['PLUTO_WEST'], lat: 32.8, lng: 34.73 },
       ],
     };
@@ -179,11 +184,16 @@ test.describe('comm-change auto-note (#487)', () => {
     });
   });
 
-  test('ignores comm-change to hint when outbound azimuth points away', async ({ page }) => {
+  test('ignores route-context hints when the adjacent leg does not match', async ({ page }) => {
     const routeFixture = {
       ...FIXTURE,
       points: [
-        { name: 'TYONA', commChange: true, callSigns: ['PALMACHIM', 'PLUTO_WEST'], to: 'Pluto West 118.40' },
+        {
+          name: 'TYONA',
+          commChange: true,
+          callSigns: ['PALMACHIM', 'PLUTO_WEST'],
+          routeHints: [{ after: 'CLORE', callSign: 'PLUTO_WEST' }],
+        },
         { name: 'PWREF', commChange: true, callSigns: ['PLUTO_WEST'], lat: 32.8, lng: 34.73 },
       ],
     };

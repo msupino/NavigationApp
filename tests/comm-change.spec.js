@@ -118,7 +118,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(keys.length).toBeGreaterThan(0);
     // Every shipped entry is either a 5-letter reporting point or a 4-letter
     // airfield ICAO destination, and is flagged commChange.
-    const allowedPointKeys = ['callSigns', 'commChange', 'from', 'name', 'note', 'source', 'to'];
+    const allowedPointKeys = ['callSigns', 'commChange', 'name', 'note', 'routeHints', 'source'];
     for (const k of keys) {
       expect(k).toMatch(/^(?:[A-Z]{5}|LL[A-Z0-9]{2})$/);
       expect(map[k].commChange).toBe(true);
@@ -286,22 +286,31 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(missing).toEqual([]);
   });
 
-  test('route template comm-change call signs have id-only directional hints', async () => {
+  test('route template comm-change call signs have route-context hints', async () => {
     const comm = JSON.parse(fs.readFileSync('docs/data/comm-change.json', 'utf8'));
     const templates = JSON.parse(fs.readFileSync('docs/data/route-templates.json', 'utf8'));
     const byName = new Map((comm.points || []).map(point => [point.name, point]));
     const missing = [];
     const invalidHints = [];
-    const hintsWithFreq = [];
+    const legacyHints = [];
     for (const point of comm.points || []) {
       const callSigns = Array.isArray(point.callSigns) ? point.callSigns : [];
-      for (const field of ['from', 'to']) {
-        const hint = point && point[field];
-        if (typeof hint === 'string' && /\b\d{3}(?:\.\d{1,3})?\b/.test(hint)) {
-          hintsWithFreq.push(`${point.name}.${field}=${hint}`);
+      if (Object.prototype.hasOwnProperty.call(point, 'from') ||
+          Object.prototype.hasOwnProperty.call(point, 'to')) {
+        legacyHints.push(point.name);
+      }
+      for (const hint of point.routeHints || []) {
+        if (!hint || typeof hint !== 'object') {
+          invalidHints.push(`${point.name}.routeHints[]`);
+          continue;
         }
-        if (typeof hint === 'string' && hint.trim() && !callSigns.includes(hint)) {
-          invalidHints.push(`${point.name}.${field}=${hint}`);
+        if (!callSigns.includes(hint.callSign)) {
+          invalidHints.push(`${point.name}.routeHints.callSign=${hint.callSign}`);
+        }
+        for (const field of ['before', 'after']) {
+          if (field in hint && (typeof hint[field] !== 'string' || !hint[field].trim())) {
+            invalidHints.push(`${point.name}.routeHints.${field}=${hint[field]}`);
+          }
         }
       }
     }
@@ -310,14 +319,22 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
         if (!note || !note.cc || !note.freqName || !note.freq) continue;
         const point = byName.get(note.cc);
         const callSigns = point && Array.isArray(point.callSigns) ? point.callSigns : [];
-        const hints = point ? [point.from, point.to] : [];
+        const waypoints = Array.isArray(tpl.waypoints) ? tpl.waypoints : [];
+        const index = waypoints.indexOf(note.cc);
+        const before = index > 0 ? waypoints[index - 1] : undefined;
+        const after = index >= 0 && index < waypoints.length - 1 ? waypoints[index + 1] : undefined;
+        const hints = point && Array.isArray(point.routeHints) ? point.routeHints : [];
+        const hasRouteHint = hints.some(h =>
+          h && h.callSign === note.freqName &&
+          (before === undefined ? !h.before : h.before === before) &&
+          (after === undefined ? !h.after : h.after === after));
         if (!point || !callSigns.includes(note.freqName) ||
-            !hints.includes(note.freqName)) {
+            index < 0 || !hasRouteHint) {
           missing.push(`${tpl.id}: ${note.cc} -> ${note.freqName} ${note.freq}`);
         }
       }
     }
-    expect(hintsWithFreq).toEqual([]);
+    expect(legacyHints).toEqual([]);
     expect(invalidHints).toEqual([]);
     expect(missing).toEqual([]);
   });

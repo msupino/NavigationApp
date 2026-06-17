@@ -6,7 +6,7 @@
   "_frequencySource": "AirMapRadioFrequencies PDF, generated 2026-06-06",
   "_frequencySourceFile": "AirMapRadioFrequencies (1).pdf",
   "_militaryFrequencySource": "Maintainer-provided military unit / call-sign table, 2026-06-01",
-  "_callSignsUsage": "Root callSigns is the reusable frequency catalog. Add call-sign ids to a comm-change waypoint's points[].callSigns array to expose those choices in the frequency-callout inspector. Optional points[].from / points[].to values must be ids from that same point's callSigns array; labels and frequencies are derived from the catalog. The first id becomes the default; the frequency remains editable on the note.",
+  "_callSignsUsage": "Root callSigns is the reusable frequency catalog. Add call-sign ids to a comm-change waypoint's points[].callSigns array to expose those choices in the frequency-callout inspector. Optional points[].routeHints entries map route context to a call-sign id from that same point's callSigns array: before/after are adjacent route waypoint names around the comm-change point, and callSign is the suggested frequency owner. Labels/frequencies are derived from the catalog. The first id becomes the default; the frequency remains editable on the note.",
   "_TODO": [
     "Assign points[].callSigns per comm-change waypoint as each point is confirmed against the chart.",
     "Attach a public-document citation (IAA AIP supplement / PAMAT chapter B-03 page) per point where one exists, in the per-entry `source` field.",
@@ -60,35 +60,79 @@
   },
   "points": [
     { "name": "BASAN", "commChange": true, "callSigns": ["KIRYAT_SHMONA", "PLUTO_EAST"] },
-    { "name": "DESHE", "commChange": true, "callSigns": ["ROSH_PINA", "PLUTO_EAST"], "from": "PLUTO_EAST", "to": "ROSH_PINA" },
+    { "name": "DESHE", "commChange": true, "callSigns": ["ROSH_PINA", "PLUTO_EAST"], "routeHints": [
+      { "before": "TAVOR", "after": "AMNON", "callSign": "ROSH_PINA" },
+      { "before": "AMNON", "after": "TAVOR", "callSign": "PLUTO_EAST" }
+    ] },
     { "name": "HAROV", "commChange": true, "callSigns": ["PLUTO_EAST", "PIK"] },
     { "name": "AAKKO", "commChange": true, "callSigns": ["PLUTO_EAST", "HAIFA"] },
     { "name": "GILAM", "commChange": true, "callSigns": ["HAIFA", "PLUTO_EAST"] },
     { "name": "MOVIL", "commChange": true, "callSigns": ["RAMAT_DAVID", "PLUTO_EAST"] },
     { "name": "HASID", "commChange": true, "callSigns": ["PLUTO_EAST", "PLUTO_WEST", "RAMAT_DAVID", "HAIFA"] },
-    { "name": "DAROM", "commChange": true, "callSigns": ["HAIFA", "PLUTO_WEST"], "from": "PLUTO_WEST", "to": "HAIFA" },
+    { "name": "DAROM", "commChange": true, "callSigns": ["HAIFA", "PLUTO_WEST"], "routeHints": [
+      { "before": "HOTRM", "after": "GALIM", "callSign": "HAIFA" },
+      { "before": "GALIM", "after": "HOTRM", "callSign": "PLUTO_WEST" }
+    ] },
     { "name": "AFULA", "commChange": true, "callSigns": ["PLUTO_EAST", "RAMAT_DAVID", "MEGIDDO"] },
-    { "name": "ZMGID", "commChange": true, "callSigns": ["PLUTO_EAST", "PLUTO_WEST", "MEGIDDO"], "from": "PLUTO_WEST", "to": "PLUTO_EAST" },
+    { "name": "ZMGID", "commChange": true, "callSigns": ["PLUTO_EAST", "PLUTO_WEST", "MEGIDDO"], "routeHints": [
+      { "before": "EIRON", "after": "AFULA", "callSign": "PLUTO_EAST" },
+      { "before": "AFULA", "after": "EIRON", "callSign": "PLUTO_WEST" }
+    ] },
     { "name": "DALIA", "commChange": true, "callSigns": ["RAMAT_DAVID", "PLUTO_WEST"] },
-    { "name": "DEROR", "commChange": true, "callSigns": ["HERZLIYA", "PLUTO_WEST"], "from": "HERZLIYA", "to": "PLUTO_WEST" },
-    { "name": "SFAIM", "commChange": true, "callSigns": ["PLUTO_WEST"], "to": "PLUTO_WEST" },
+    { "name": "DEROR", "commChange": true, "callSigns": ["HERZLIYA", "PLUTO_WEST"], "routeHints": [
+      { "before": "BAZRA", "after": "SHARO", "callSign": "PLUTO_WEST" },
+      { "before": "SHARO", "after": "BAZRA", "callSign": "HERZLIYA" }
+    ] },
+    { "name": "SFAIM", "commChange": true, "callSigns": ["PLUTO_WEST"], "routeHints": [
+      { "before": "LLHZ", "after": "RIDNG", "callSign": "PLUTO_WEST" },
+      { "before": "LLHZ", "after": "HTZUK", "callSign": "PLUTO_WEST" }
+    ] },
     { "name": "GNYAM", "commChange": true, "callSigns": ["HERZLIYA", "BEN_GURION"] },
-    { "name": "KNTRY", "commChange": true, "callSigns": ["HERZLIYA"], "to": "HERZLIYA" },
+    { "name": "KNTRY", "commChange": true, "callSigns": ["HERZLIYA"], "routeHints": [
+      { "before": "HTZUK", "after": "LLHZ", "callSign": "HERZLIYA" }
+    ] },
     { "name": "PARDS", "commChange": true, "callSigns": ["BEN_GURION", "PLUTO_WEST"] },
-    { "name": "TYONA", "commChange": true, "callSigns": ["PLUTO_WEST", "PALMACHIM"], "from": "PALMACHIM", "to": "PLUTO_WEST" },
-    { "name": "NTAIM", "commChange": true, "callSigns": ["BEN_GURION", "PALMACHIM", "TEL_NOF"], "to": "TEL_NOF" },
+    { "name": "TYONA", "commChange": true, "callSigns": ["PLUTO_WEST", "PALMACHIM"], "routeHints": [
+      { "before": "CLORE", "after": "NTAIM", "callSign": "PALMACHIM" },
+      { "before": "NTAIM", "after": "CLORE", "callSign": "PLUTO_WEST" }
+    ] },
+    { "name": "NTAIM", "commChange": true, "callSigns": ["BEN_GURION", "PALMACHIM", "TEL_NOF"], "routeHints": [
+      { "before": "TYONA", "after": "SIRNI", "callSign": "TEL_NOF" },
+      { "before": "TYONA", "after": "BOVED", "callSign": "TEL_NOF" },
+      { "before": "SIRNI", "after": "TYONA", "callSign": "TEL_NOF" }
+    ] },
     { "name": "NSHRM", "commChange": true, "callSigns": ["BEN_GURION"] },
-    { "name": "AYLON", "commChange": true, "callSigns": ["BEN_GURION", "TEL_NOF"], "to": "TEL_NOF" },
-    { "name": "SORES", "commChange": true, "callSigns": ["PLUTO_EAST", "TEL_NOF"], "to": "PLUTO_EAST" },
-    { "name": "ZUKIM", "commChange": true, "callSigns": ["PLUTO_EAST", "HAGAV_SOUTH"], "from": "PLUTO_EAST", "to": "HAGAV_SOUTH" },
-    { "name": "ZASHD", "commChange": true, "callSigns": ["PALMACHIM"], "to": "PALMACHIM" },
-    { "name": "NMASD", "commChange": true, "callSigns": ["PALMACHIM", "HAGAV_NORTH"], "from": "PALMACHIM", "to": "HAGAV_NORTH" },
+    { "name": "AYLON", "commChange": true, "callSigns": ["BEN_GURION", "TEL_NOF"], "routeHints": [
+      { "before": "LTRUN", "after": "NSHRM", "callSign": "TEL_NOF" }
+    ] },
+    { "name": "SORES", "commChange": true, "callSigns": ["PLUTO_EAST", "TEL_NOF"], "routeHints": [
+      { "before": "SHARG", "after": "HAREL", "callSign": "PLUTO_EAST" },
+      { "before": "HAREL", "after": "SHARG", "callSign": "PLUTO_EAST" }
+    ] },
+    { "name": "ZUKIM", "commChange": true, "callSigns": ["PLUTO_EAST", "HAGAV_SOUTH"], "routeHints": [
+      { "before": "ALMOG", "after": "SHALM", "callSign": "HAGAV_SOUTH" },
+      { "before": "SHALM", "after": "ALMOG", "callSign": "PLUTO_EAST" }
+    ] },
+    { "name": "ZASHD", "commChange": true, "callSigns": ["PALMACHIM"], "routeHints": [
+      { "before": "NMASD", "after": "YAVNE", "callSign": "PALMACHIM" }
+    ] },
+    { "name": "NMASD", "commChange": true, "callSigns": ["PALMACHIM", "HAGAV_NORTH"], "routeHints": [
+      { "before": "ZASHD", "after": "NITZA", "callSign": "HAGAV_NORTH" },
+      { "before": "NITZA", "after": "ZASHD", "callSign": "PALMACHIM" }
+    ] },
     { "name": "ZDAFA", "commChange": true, "callSigns": ["HAGAV_NORTH", "HATZOR"] },
-    { "name": "HODYA", "commChange": true, "callSigns": ["HAGAV_SOUTH", "HATZOR"], "to": "HAGAV_SOUTH" },
+    { "name": "HODYA", "commChange": true, "callSigns": ["HAGAV_SOUTH", "HATZOR"], "routeHints": [
+      { "before": "REVAH", "after": "NITZA", "callSign": "HAGAV_SOUTH" }
+    ] },
     { "name": "ZURIM", "commChange": true, "callSigns": ["HAGAV_NORTH"] },
-    { "name": "NOAAM", "commChange": true, "callSigns": ["HAGAV_NORTH", "TEL_NOF"], "to": "HAGAV_NORTH" },
+    { "name": "NOAAM", "commChange": true, "callSigns": ["HAGAV_NORTH", "TEL_NOF"], "routeHints": [
+      { "before": "BKAMA", "after": "REVAH", "callSign": "HAGAV_NORTH" }
+    ] },
     { "name": "SDROT", "commChange": true, "callSigns": ["HAGAV_NORTH", "KEDEM"] },
-    { "name": "SOVAL", "commChange": true, "callSigns": ["HAGAV_NORTH", "KEDEM"], "from": "HAGAV_NORTH", "to": "KEDEM" },
+    { "name": "SOVAL", "commChange": true, "callSigns": ["HAGAV_NORTH", "KEDEM"], "routeHints": [
+      { "before": "BKAMA", "after": "MINGV", "callSign": "KEDEM" },
+      { "before": "MINGV", "after": "BKAMA", "callSign": "HAGAV_NORTH" }
+    ] },
     { "name": "ZMGEN", "commChange": true, "callSigns": ["HAGAV_NORTH", "KEDEM"] },
     { "name": "SIGAL", "commChange": true, "callSigns": ["HAGAV_NORTH", "HAGAV_SOUTH"] },
     { "name": "NCITY", "commChange": true, "callSigns": ["HAGAV_NORTH", "KEDEM"] },
@@ -105,7 +149,13 @@
     { "name": "OVDAT", "commChange": true, "callSigns": ["HAGAV_SOUTH"] },
     { "name": "BOKER", "commChange": true, "callSigns": ["RAMON", "HAGAV_SOUTH"] },
     { "name": "DIMON", "commChange": true, "callSigns": ["NEGEV", "HAGAV_SOUTH"] },
-    { "name": "LLBS", "commChange": true, "callSigns": ["TEYMAN"], "to": "TEYMAN" },
-    { "name": "LLMZ", "commChange": true, "callSigns": ["MASADA"], "to": "MASADA" }
+    { "name": "LLBS", "commChange": true, "callSigns": ["TEYMAN"], "routeHints": [
+      { "before": "NASIH", "callSign": "TEYMAN" },
+      { "after": "NASIH", "callSign": "TEYMAN" }
+    ] },
+    { "name": "LLMZ", "commChange": true, "callSigns": ["MASADA"], "routeHints": [
+      { "before": "ENGDI", "callSign": "MASADA" },
+      { "after": "ENGDI", "callSign": "MASADA" }
+    ] }
   ]
 }
