@@ -252,4 +252,80 @@ test.describe('Service worker', () => {
     await page.locator('#build-update-notice .update-dismiss').click();
     await expect(page.locator('#build-update-notice')).toHaveCount(0);
   });
+
+  test('Service-worker update checks are throttled after registration', async ({ page }) => {
+    await page.goto('?lang=en');
+    const updates = await page.evaluate(async () => {
+      const originalNow = Date.now;
+      let now = 100000;
+      let updateCalls = 0;
+      Date.now = () => now;
+      const fakeSw = {
+        controller: {},
+        addEventListener() {},
+        register() {
+          return Promise.resolve({
+            installing: null,
+            waiting: null,
+            addEventListener() {},
+            update() {
+              updateCalls++;
+              return Promise.resolve();
+            },
+          });
+        },
+      };
+      try {
+        await watchServiceWorkerUpdates(fakeSw);
+        await requestBuildUpdateCheck('too-soon');
+        now += (5 * 60 * 1000) + 1;
+        await requestBuildUpdateCheck('after-throttle');
+        return updateCalls;
+      } finally {
+        Date.now = originalNow;
+      }
+    });
+    expect(updates).toBe(2);
+  });
+
+  test('Focus and toolbar activity request a throttled update check', async ({ page }) => {
+    await page.goto('?lang=en');
+    const updates = await page.evaluate(async () => {
+      const originalNow = Date.now;
+      let now = 200000;
+      let updateCalls = 0;
+      Date.now = () => now;
+      const fakeSw = {
+        controller: {},
+        addEventListener() {},
+        register() {
+          return Promise.resolve({
+            installing: null,
+            waiting: null,
+            addEventListener() {},
+            update() {
+              updateCalls++;
+              return Promise.resolve();
+            },
+          });
+        },
+      };
+      const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+      try {
+        await watchServiceWorkerUpdates(fakeSw);
+        now += (5 * 60 * 1000) + 1;
+        window.dispatchEvent(new Event('focus'));
+        await flush();
+        document.querySelector('.tb-section-head').click();
+        await flush();
+        now += (5 * 60 * 1000) + 1;
+        document.querySelector('.tb-section-head').click();
+        await flush();
+        return updateCalls;
+      } finally {
+        Date.now = originalNow;
+      }
+    });
+    expect(updates).toBe(3);
+  });
 });
