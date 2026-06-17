@@ -236,10 +236,11 @@ function appendAddFreqChangeButton(body, wp, ccKey) {
 }
 
 function appendNavWaypointCommChangeInfo(body, name) {
-  if (!showCommChange || !name || !commChangeMap) return false;
+  if (!showCommChange || !commChangeMap) return false;
   const ccKey = typeof canonicalNavWaypointName === 'function'
     ? canonicalNavWaypointName(name) : String(name || '').trim();
-  const cc = ccKey ? commChangeMap[ccKey] : null;
+  if (!ccKey) return false;
+  const cc = commChangeMap[ccKey];
   if (!cc || !cc.commChange) return false;
 
   const row = document.createElement('div');
