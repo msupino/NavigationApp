@@ -375,6 +375,54 @@ function pointChoiceText(c) {
       (code && code !== label ? ' / ' + code : ''),
   };
 }
+function pointCandidateCanonicalKey(c) {
+  if (!c || !Number.isInteger(c.index)) return '';
+  if (c.type === 'commcallout') {
+    const note = state.notes[c.index];
+    return note && note.cc
+      ? (typeof canonicalNavWaypointName === 'function'
+          ? canonicalNavWaypointName(note.cc)
+          : String(note.cc || '').trim())
+      : '';
+  }
+  if (c.type === 'wp') return waypointFreqChangeKey(state.waypoints[c.index]);
+  if (c.type === 'navwp') {
+    const nw = navWP && navWP[c.index];
+    return nw && nw.name
+      ? (typeof canonicalNavWaypointName === 'function'
+          ? canonicalNavWaypointName(nw.name)
+          : String(nw.name || '').trim())
+      : '';
+  }
+  if (c.type === 'airfield') {
+    const af = airfields && airfields[c.index];
+    return af && af.name ? String(af.name).trim() : '';
+  }
+  return '';
+}
+function collapseLinkedCommRouteCandidates(items) {
+  const linkedRouteIndexes = new Set();
+  const linkedKeys = new Set();
+  for (const c of items || []) {
+    if (!c || c.type !== 'commcallout') continue;
+    const note = state.notes[c.index];
+    const wpIndex = commCalloutWaypointIndex(note);
+    if (wpIndex < 0) continue;
+    const hasLinkedWaypoint = items.some(item =>
+      item && item.type === 'wp' && item.index === wpIndex);
+    if (!hasLinkedWaypoint) continue;
+    linkedRouteIndexes.add(wpIndex);
+    const key = pointCandidateCanonicalKey(c) || waypointFreqChangeKey(state.waypoints[wpIndex]);
+    if (key) linkedKeys.add(key);
+  }
+  if (!linkedRouteIndexes.size) return items;
+  return items.filter(c => {
+    if (!c || c.type === 'commcallout') return true;
+    if (c.type === 'wp' && linkedRouteIndexes.has(c.index)) return false;
+    const key = pointCandidateCanonicalKey(c);
+    return !(key && linkedKeys.has(key));
+  });
+}
 function selectPointCandidate(c) {
   state.selected = c.type === 'commcallout'
     ? selectionForNoteHit(c.index)
@@ -383,7 +431,7 @@ function selectPointCandidate(c) {
   draw();
 }
 function showPointChoice(candidates) {
-  const items = dedupePointCandidates(candidates);
+  const items = collapseLinkedCommRouteCandidates(dedupePointCandidates(candidates));
   if (!items.length) return false;
   if (items.length === 1) {
     selectPointCandidate(items[0]);
