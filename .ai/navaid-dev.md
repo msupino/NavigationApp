@@ -289,9 +289,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   arrows only for matching
   waypoints already present in the route, never for unrelated reference
   points. The default callout tail starts east/right of the waypoint via
-  `commChangeNoteLngOffset`. Turning the layer off hides tagged callout
-  notes and disables their hit-testing without deleting them, so toggling
-  back on restores the same editable callouts. These fields are saved in the
+  `commChangeNoteLngOffset`. Turning the layer off hides red rings, tagged
+  callout notes, their hit-testing, and route-waypoint inspector
+  comm-change badge/details without deleting the saved callout notes, so
+  toggling back on restores the same editable callouts. These fields are saved in the
   existing `navaid.route` note payload (`cc`, `freqName`, `freq`, optional
   `freqAuto`), not in a separate storage key. Deleted callouts are tracked
   in `navaid.route.suppressedCC` (an array of canonical waypoint names);
