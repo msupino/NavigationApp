@@ -273,10 +273,12 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   (`before`, `after`) and the `callSign` ID to use for that context. Display
   labels and frequencies are derived from the call-sign catalog. Ambiguous or
   unmatched routes fall back to the normal route graph. Shipped route-template
-  comm-change notes are used as regression evidence for these hints;
-  `tests/comm-change.spec.js` verifies that every template `cc` call sign has
-  a matching `{before, after, callSign}` route hint, with frequencies kept in
-  the call-sign catalog instead of the hint.
+  comm-change notes are used as regression evidence for these hints and keep
+  only `cc` / `freqName` / optional `freqAuto`; `routeFromTemplate()` expands
+  them into full saved-route notes with a concrete `freq`. `tests/comm-change.spec.js`
+  verifies that every template `cc` call sign has a matching `{before, after,
+  callSign}` route hint, with frequencies kept in the call-sign catalog instead
+  of the hint.
   Defaults are
   route-aware: `commRouteCalloutDefaultsMap()` treats
   each comm-change waypoint's call-sign list as a boundary in an ATC graph,

@@ -97,6 +97,11 @@ test.describe('route templates', () => {
       expect(template.waypoints.length).toBeGreaterThan(1);
       expect(Object.prototype.hasOwnProperty.call(template, 'legs')).toBe(false);
       for (const code of template.waypoints) expect(known.has(code)).toBe(true);
+      for (const note of (template.notes || [])) {
+        expect(note).not.toHaveProperty('lat');
+        expect(note).not.toHaveProperty('lng');
+        expect(note).not.toHaveProperty('freq');
+      }
     }
   });
 

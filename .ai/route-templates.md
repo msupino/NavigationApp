@@ -17,9 +17,10 @@ notes, wind, and comm-change suppressions. A template intentionally does not.
   coordinates and not localized labels. Coordinates are resolved from
   `nav-waypoints.json` / `airfields.json` at build time.
 - `notes` — **lean** freq-change callouts keyed by `cc` (waypoint code) with
-  `freqName` / `freq` (+ optional `freqAuto`). No `lat`/`lng` — the callout
-  position is derived from that waypoint at build time (same default offset as
-  auto-seeding). `text`/`color`/`shape` default to the standard freq-change box.
+  `freqName` (+ optional `freqAuto`). No `freq`, `lat`, or `lng` — frequency
+  is derived from `comm-change.json`, and the callout position is derived from
+  that waypoint at build time (same default offset as auto-seeding).
+  `text`/`color`/`shape` default to the standard freq-change box.
 - `commChangeSuppressions` — array of waypoint codes whose auto comm-change note
   should be suppressed on build (so seeding doesn't re-add them).
 
@@ -40,7 +41,8 @@ notes, wind, and comm-change suppressions. A template intentionally does not.
    waypoint order, freq-change notes, and which comm points to suppress.
 2. Edit the matching entry in `docs/data/route-templates.json`:
    - Set `waypoints` to the code list.
-   - Set `notes` to the freq-change callouts (keep `cc` / `freqName` / `freq`).
+   - Set `notes` to the freq-change callouts (keep `cc` / `freqName`; add
+     `freqAuto` only when the callout should keep following route defaults).
    - Set `commChangeSuppressions` for points that should stay silent.
    - Leave `legs` out so altitudes track `leg-altitude.json`.
 3. If a waypoint code is missing from `nav-waypoints.json` / `airfields.json`,
