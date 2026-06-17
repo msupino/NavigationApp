@@ -345,8 +345,8 @@
         },
         {
           "cc": "HODYA",
-          "freqName": "HAGAV_SOUTH",
-          "freq": "121.15",
+          "freqName": "HAGAV_NORTH",
+          "freq": "128.35",
           "freqAuto": true
         },
         {
