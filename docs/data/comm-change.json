@@ -141,7 +141,7 @@
     { "name": "NCITY", "commChange": true, "callSigns": ["HAGAV_NORTH", "KEDEM"] },
     { "name": "SOKET", "commChange": true, "callSigns": ["NEGEV", "HAGAV_NORTH"] },
     { "name": "ARRAD", "commChange": true, "callSigns": ["HAGAV_SOUTH", "HAGAV_NORTH", "NEGEV"] },
-    { "name": "HATRU", "commChange": true, "callSigns": ["NEGEV", "HAGAV_SOUTH"] },
+    { "name": "HATRU", "commChange": true, "callSigns": ["NEGEV"] },
     { "name": "HOVAV", "commChange": true, "callSigns": ["NEGEV", "HAGAV_NORTH", "HAGAV_SOUTH"] },
     { "name": "KTORA", "commChange": true, "callSigns": ["HAGAV_SOUTH", "RAMON"] },
     { "name": "SHRUT", "commChange": true, "callSigns": ["RAMON", "OVDA"] },
