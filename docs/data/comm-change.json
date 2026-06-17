@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "source": "Comm-change reporting points populated from maintainer visual inspection of the printed IAA CVFR chart symbology ('נקודת מעבר קשר' — comm-transfer point legend), 2026-05-31. Call-sign frequency options are enriched from the maintainer-provided AirMapRadioFrequencies PDF generated 2026-06-06; assign available options per waypoint in points[].callSigns. Earlier desk-research sources (Israel eAIP 2025-10-02, PAMAT edition 1/24) did not yield OCR-extractable per-point data — see _NOTE.",
+  "source": "Comm-change reporting points populated from maintainer visual inspection of the printed IAA CVFR chart symbology ('נקודת מעבר קשר' — comm-transfer point legend), 2026-05-31, with a full waypoint tile audit follow-up on 2026-06-17. Call-sign frequency options are enriched from the maintainer-provided AirMapRadioFrequencies PDF generated 2026-06-06; assign available options per waypoint in points[].callSigns. Earlier desk-research sources (Israel eAIP 2025-10-02, PAMAT edition 1/24) did not yield OCR-extractable per-point data — see _NOTE.",
   "_definition": "Each entry marks a CVFR reporting point where pilots are expected to switch ATC frequencies because the point sits on (or at) a sector / CTR / TMA boundary. The chart annotation may be on the boundary line itself rather than directly at the point — the dataset records the *point of change*, not the chart-text position.",
   "_NOTE": "Reporting-type (חובה / דרישה — mandatory vs. on-request) is NOT comm-change and is tracked separately (PR #405). The points below come from maintainer inspection of the printed IAA CVFR chart's 'נקודת מעבר קשר' symbology, which supersedes the earlier citation bar that left this file empty. Points are matched to nav-waypoints.json by 5-letter ICAO `name` only — never by Hebrew text.",
   "_frequencySource": "AirMapRadioFrequencies PDF, generated 2026-06-06",
@@ -60,6 +60,7 @@
   },
   "points": [
     { "name": "BASAN", "commChange": true, "callSigns": ["KIRYAT_SHMONA", "PLUTO_EAST"] },
+    { "name": "HULAT", "commChange": true, "callSigns": ["PLUTO_EAST", "ROSH_PINA"] },
     { "name": "DESHE", "commChange": true, "callSigns": ["ROSH_PINA", "PLUTO_EAST"], "routeHints": [
       { "before": "TAVOR", "after": "AMNON", "callSign": "ROSH_PINA" },
       { "before": "AMNON", "after": "TAVOR", "callSign": "PLUTO_EAST" }
@@ -96,6 +97,8 @@
       { "before": "CLORE", "after": "NTAIM", "callSign": "PALMACHIM" },
       { "before": "NTAIM", "after": "CLORE", "callSign": "PLUTO_WEST" }
     ] },
+    { "name": "LIAAD", "commChange": true, "callSigns": ["PLUTO_WEST", "HAGAV_NORTH"] },
+    { "name": "YAPAL", "commChange": true, "callSigns": ["PLUTO_WEST", "HAGAV_NORTH"] },
     { "name": "NTAIM", "commChange": true, "callSigns": ["BEN_GURION", "PALMACHIM", "TEL_NOF"], "routeHints": [
       { "before": "TYONA", "after": "SIRNI", "callSign": "TEL_NOF" },
       { "before": "TYONA", "after": "BOVED", "callSign": "TEL_NOF" },
@@ -138,6 +141,7 @@
     { "name": "NCITY", "commChange": true, "callSigns": ["HAGAV_NORTH", "KEDEM"] },
     { "name": "SOKET", "commChange": true, "callSigns": ["NEGEV", "HAGAV_NORTH"] },
     { "name": "ARRAD", "commChange": true, "callSigns": ["HAGAV_SOUTH", "HAGAV_NORTH", "NEGEV"] },
+    { "name": "HATRU", "commChange": true, "callSigns": ["NEGEV"] },
     { "name": "HOVAV", "commChange": true, "callSigns": ["NEGEV", "HAGAV_NORTH", "HAGAV_SOUTH"] },
     { "name": "KTORA", "commChange": true, "callSigns": ["HAGAV_SOUTH", "RAMON"] },
     { "name": "SHRUT", "commChange": true, "callSigns": ["RAMON", "OVDA"] },
