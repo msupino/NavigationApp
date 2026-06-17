@@ -1525,7 +1525,8 @@ function finishLatLng(lat, lng) {
 }
 
 // --- Leaflet map -----------------------------------------------------
-// Layer set served from the NavigationApp-tiles repository.
+// Live chart layers use Flight Maps directly. Export/download rendering uses
+// the NavigationApp tile mirror via each chart layer's exportUrl.
 // chartBounds = the lat/lng box covered by the published chart tiles
 // (Israel + adjacent VFR airspace). exportPNG uses it to skip
 // out-of-coverage tile fetches, which would otherwise return 404 and trip
@@ -1552,15 +1553,25 @@ function tileLayerUrl(layer, coords) {
   });
 }
 
+function exportTileLayerUrl(layer, coords) {
+  const src = layer.options && layer.options.exportUrl ?
+    Object.assign({}, layer, { _url: layer.options.exportUrl }) : layer;
+  return tileLayerUrl(src, coords);
+}
+
 const layers = {
-  'CVFR': L.tileLayer(NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png',
-    { ...TILE, attribution: FM_ATTR }),
-  'Navigation': L.tileLayer(NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png',
-    { ...TILE, attribution: FM_ATTR }),
-  'Low Alt': L.tileLayer(NAVAID_TILE_BASE + '/LSA-Low-Altitude/{z}/{x}/{y}.png',
-    { ...TILE, attribution: FM_ATTR }),
-  'Helicopters': L.tileLayer(NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png',
-    { ...TILE, maxNativeZoom: 12, attribution: FM_ATTR }),
+  'CVFR': L.tileLayer('https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png',
+    { ...TILE, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png' }),
+  'Navigation': L.tileLayer('https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
+    { ...TILE, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png' }),
+  'Low Alt': L.tileLayer('https://flight-maps.com/tiles/la/{z}/{x}/{y}.png',
+    { ...TILE, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/LSA-Low-Altitude/{z}/{x}/{y}.png' }),
+  'Helicopters': L.tileLayer('https://flight-maps.com/tiles/il-hel/{z}/{x}/{y}.png',
+    { ...TILE, maxNativeZoom: 12, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png' }),
   'Satellite': L.tileLayer(
     'https://services.arcgisonline.com/ArcGIS/rest/services/' +
     'World_Imagery/MapServer/tile/{z}/{y}/{x}',

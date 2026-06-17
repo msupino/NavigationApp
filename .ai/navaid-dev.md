@@ -2,7 +2,8 @@
 
 ## What this is
 
-A browser flight-route planner. Leaflet slippy map (mirrored chart tiles from
+A browser flight-route planner. Leaflet slippy map (live chart tiles from
+`https://flight-maps.com`, export/download tiles from
 `https://navaid-tiles.supino.org`) with a canvas overlay that draws the route,
 free-text notes, and an
 optional VFR-reporting-point reference layer. Plain HTML / CSS / JS, no
@@ -105,8 +106,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 ## Architecture
 
 - **Base map:** Leaflet with six base layers in one `layers` object:
-  CVFR / Nav / Low Alt / Heli (hosted by
-  `https://navaid-tiles.supino.org`) / Satellite (Esri) / OSM.
+  CVFR / Nav / Low Alt / Heli (live from `https://flight-maps.com`,
+  with `exportUrl` entries on `https://navaid-tiles.supino.org` for PNG
+  download rendering) / Satellite (Esri) / OSM.
   Selection persisted at `localStorage['navaid.layer']` and restored
   *before* `L.map()` runs (no CVFR flash on reload).
 - **Route overlay:** a `<canvas id="overlay">` over the map with
@@ -584,10 +586,12 @@ downloadable `route.json`.
 
 ## Notes / pending
 
-- Flight Maps chart data is copyrighted. The app-served CVFR,
-  Navigation, Low Alt, and Helicopters tile pyramids are mirrored in
-  `msupino/NavigationApp-tiles` and served from
-  `https://navaid-tiles.supino.org`.
+- Flight Maps chart data is copyrighted. Realtime chart display uses
+  `https://flight-maps.com`. PNG export/download rendering uses the
+  mirrored CVFR, Navigation, Low Alt, and Helicopters tile pyramids in
+  `msupino/NavigationApp-tiles`, served from
+  `https://navaid-tiles.supino.org`, so canvas tile fetches remain
+  readable without the old proxy path.
 - `nav-waypoints.json` — 173 Israeli CVFR reporting points.
   **Source:** IAA CVFR chart waypoint reference table (page 113, 2025
   edition), supplied upstream as `113_waypoints.csv`. The CSV is the
