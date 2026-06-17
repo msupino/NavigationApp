@@ -560,6 +560,12 @@ downloadable `route.json`.
   name to that branch's short commit SHA after checkout. Source `?v=N`
   values are just placeholders; you don't need to bump them per commit.
   CI lint still enforces that every `?v=` value in the source HTML agrees.
+  At runtime, `ui.js` registers `sw.js`, forces one update check on load,
+  then re-checks on window focus, visible-tab restore, toolbar/menu
+  activity, layer/input changes, and a visible-tab 10 minute interval.
+  Those follow-up checks are throttled to once every 5 minutes; the
+  existing "New NavAid build available" notice appears only when the
+  service worker actually reports a newer installed build.
 - **Toolbar version SHA suffix is automatic.** The same Deploy step
   also rewrites `version: '1.0'` → `version: '1.0-<short-sha>'` in
   `docs/app/core.js`, so the toolbar identifies the exact deployed commit.
