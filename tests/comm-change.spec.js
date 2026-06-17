@@ -436,6 +436,26 @@ test.describe('comm-change rendering (fixture-backed)', () => {
     expect(freqText).toMatch(/Pluto West/);
   });
 
+  test('inspector hides comm-change badge/details when the layer is off', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    await page.locator('#commchange-cb').uncheck();
+    await page.waitForFunction(() => window.showCommChange === false);
+
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      state.legs = [];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+      draw();
+    }, TYONA);
+
+    await expect(page.locator('#inspector .commchange-row')).toHaveCount(0);
+    await expect(page.locator('#inspector')).not.toContainText(/Freq change point/i);
+    await expect(page.locator('#inspector')).not.toContainText(/Pluto West/);
+  });
+
   test('united inspector: a freq-change waypoint edits the linked callout (call sign + frequency)', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);

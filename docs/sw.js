@@ -6,6 +6,35 @@ function cacheable(url) {
   return url.origin === self.location.origin || url.host === 'unpkg.com';
 }
 
+function scopeRootUrl() {
+  return new URL('./', (self.registration && self.registration.scope) || self.location.href);
+}
+
+async function cachedAppShell(request) {
+  const cache = await caches.open(CACHE);
+  const exact = await cache.match(request);
+  if (exact) return exact;
+
+  const root = scopeRootUrl();
+  const scopedRoot = await cache.match(root.href, { ignoreSearch: true });
+  if (scopedRoot) return scopedRoot;
+
+  const scopedIndex = await cache.match(new URL('index.html', root).href, { ignoreSearch: true });
+  if (scopedIndex) return scopedIndex;
+
+  const keys = await cache.keys();
+  for (const key of keys) {
+    const u = new URL(key.url);
+    const acceptsHtml = key.mode === 'navigate' ||
+      ((key.headers.get('accept') || '').indexOf('text/html') >= 0);
+    if (acceptsHtml && u.origin === root.origin && u.pathname.indexOf(root.pathname) === 0) {
+      const resp = await cache.match(key);
+      if (resp) return resp;
+    }
+  }
+  return null;
+}
+
 self.addEventListener('install', () => self.skipWaiting());
 
 self.addEventListener('activate', e => {
@@ -35,7 +64,10 @@ self.addEventListener('fetch', e => {
           }
           return resp;
         })
-        .catch(() => caches.match(e.request).then(m => m || caches.match('/'))));
+        .catch(async () => {
+          const shell = await cachedAppShell(e.request);
+          return shell || Response.error();
+        }));
     return;
   }
 
