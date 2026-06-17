@@ -320,6 +320,7 @@ window.S = {
   commChangeBadge: '📡 נקודת שינוי תדר',
   commChangeNoteText: 'שינוי תדר',
   commChangeCallSign: 'נקודת דיווח',
+  commChangeCallSigns: 'אותות קריאה',
   commChangeName: 'אות קריאה',
   commChangeFreq: 'תדר',
   commChangeAuto: 'אוט׳',
