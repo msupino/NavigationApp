@@ -14,6 +14,8 @@ and which local conventions matter.
    - `.ai/workflow.md` - branches, issues, commits, pushes, PRs, deploys.
    - `.ai/architecture.md` - app layout, globals, state, render pipeline.
    - `.ai/data.md` - shipped JSON datasets, sources of truth, update rules.
+   - `.ai/route-templates.md` - how to update a template; what it keeps vs
+     drops (and how that differs from "Save route").
    - `.ai/ui-patterns.md` - inspector, charts, RTL/LTR, modals, map gestures.
    - `.ai/testing.md` - local checks, Playwright suites, CI/e2e behavior.
    - `.ai/checklists.md` - change-specific checklists before commit/PR.

@@ -143,7 +143,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(map.GNYAM.callSigns).toEqual(['HERZLIYA', 'BEN_GURION']);
     expect(map.HAROV.callSigns).toEqual(['PLUTO_EAST', 'PIK']);
     expect(map.HASID.callSigns).toEqual(['PLUTO_EAST', 'PLUTO_WEST', 'RAMAT_DAVID', 'HAIFA']);
-    expect(map.HODYA.callSigns).toEqual(['HAGAV_SOUTH', 'HATZOR']);
+    expect(map.HODYA.callSigns).toEqual(['HATZOR', 'HAGAV_NORTH']);
     expect(map.HOVAV.callSigns).toEqual(['NEGEV', 'HAGAV_NORTH', 'HAGAV_SOUTH']);
     expect(map.KNTRY.callSigns).toEqual(['HERZLIYA']);
     expect(map.KTORA.callSigns).toEqual(['HAGAV_SOUTH', 'RAMON']);

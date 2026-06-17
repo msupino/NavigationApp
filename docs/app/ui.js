@@ -806,6 +806,8 @@ async function routeFromTemplate(template, speed) {
       ...(note.freq ? { freq: note.freq } : {}),
       ...(note.freqAuto === true ? { freqAuto: true } : {}),
     })),
+    commChangeSuppressions: Array.isArray(template.commChangeSuppressions)
+      ? template.commChangeSuppressions.filter(s => typeof s === 'string') : [],
   };
 }
 
@@ -820,7 +822,8 @@ async function applyRouteTemplate(template, speed, closeModal) {
   state.waypoints = route.waypoints;
   state.legs = route.legs;
   state.notes = route.notes;
-  state.commChangeSuppressions = [];
+  state.commChangeSuppressions = Array.isArray(route.commChangeSuppressions)
+    ? route.commChangeSuppressions.slice() : [];
   state.selected = null;
   syncLegs();
   if (showCommChange && typeof loadCommChange === 'function') {
