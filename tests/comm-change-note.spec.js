@@ -1555,6 +1555,11 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(labels.nth(2)).toHaveText('Frequency');
     await expect(values.nth(0)).toHaveText('Tel Yona');
     await expect(autoInline).toHaveText('Auto');
+    expect(await page.evaluate(() => {
+      const autoRect = document.querySelector('#insp-body .commchange-auto-inline').getBoundingClientRect();
+      const selectRect = document.querySelector('#insp-body .commchange-name-row select').getBoundingClientRect();
+      return autoRect.right <= selectRect.left;
+    })).toBe(true);
     await expect(auto).toBeChecked();
     await expect(sel).toHaveValue('PLUTO');
     await expect(sel.locator('option:checked')).toHaveText('Pluto');
@@ -1680,7 +1685,12 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(labels.nth(1)).toHaveText('אות קריאה');
     await expect(labels.nth(2)).toHaveText('תדר');
     await expect(values.nth(0)).toHaveText('תל יונה');
-    await expect(autoInline).toHaveText('Auto');
+    await expect(autoInline).toHaveText('אוט׳');
+    expect(await page.evaluate(() => {
+      const autoRect = document.querySelector('#insp-body .commchange-auto-inline').getBoundingClientRect();
+      const selectRect = document.querySelector('#insp-body .commchange-name-row select').getBoundingClientRect();
+      return autoRect.left >= selectRect.right;
+    })).toBe(true);
     await expect(fields).toHaveCount(1);
     await expect(fields.nth(0)).toHaveValue('118.40');
     await expect(auto).toBeChecked();

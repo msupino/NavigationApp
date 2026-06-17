@@ -1895,8 +1895,6 @@ body.theme-light .msa-low .val { color: #c0392b; }
   display: flex;
   align-items: center;
   gap: 8px;
-  direction: ltr;
-  unicode-bidi: isolate;
 }
 .commchange-auto-inline {
   display: inline-flex;
