@@ -710,12 +710,16 @@ function normalizeRouteTemplateData(data) {
       }
     }
     if (!ok) continue;
+    // A template note is either a full positioned note, or a lean comm-change
+    // note keyed only by `cc` (waypoint code) — its position is derived from
+    // that waypoint at build time, so templates don't store lat/lng.
     const notes = Array.isArray(template.notes) ? template.notes.filter(note =>
-      note && typeof note === 'object' &&
-      Number.isFinite(note.lat) && Number.isFinite(note.lng) &&
-      typeof note.text === 'string' &&
-      typeof note.color === 'string' &&
-      (note.shape === 'rect' || note.shape === 'oval')) : [];
+      note && typeof note === 'object' && (
+        (Number.isFinite(note.lat) && Number.isFinite(note.lng) &&
+          typeof note.text === 'string' && typeof note.color === 'string' &&
+          (note.shape === 'rect' || note.shape === 'oval')) ||
+        (typeof note.cc === 'string' && note.cc.trim())
+      )) : [];
     const { legs: _templateLegs, ...templateRest } = template;
     out.push({
       ...templateRest,
@@ -795,17 +799,34 @@ async function routeFromTemplate(template, speed) {
   return {
     waypoints,
     legs,
-    notes: (template.notes || []).map(note => ({
-      lat: r5(note.lat),
-      lng: r5(note.lng),
-      text: note.text,
-      color: note.color,
-      shape: note.shape,
-      ...(note.cc ? { cc: note.cc } : {}),
-      ...(note.freqName ? { freqName: note.freqName } : {}),
-      ...(note.freq ? { freq: note.freq } : {}),
-      ...(note.freqAuto === true ? { freqAuto: true } : {}),
-    })),
+    notes: (template.notes || []).map(note => {
+      // Lean comm-change notes carry only `cc` — derive the callout position
+      // from that waypoint (same default offset seedCommChangeNotes uses).
+      let lat = note.lat, lng = note.lng;
+      if (!(Number.isFinite(lat) && Number.isFinite(lng)) && note.cc) {
+        const key = typeof canonicalNavWaypointName === 'function'
+          ? canonicalNavWaypointName(note.cc) : String(note.cc).trim().toUpperCase();
+        const wp = waypoints.find(w => (typeof canonicalNavWaypointName === 'function'
+          ? canonicalNavWaypointName(w.name) : String(w.name).trim().toUpperCase()) === key);
+        if (wp) {
+          lat = wp.lat + (typeof tune === 'function' ? tune('commChangeNoteLatOffset') : 0);
+          lng = wp.lng + (typeof tune === 'function' ? tune('commChangeNoteLngOffset') : 0);
+        }
+      }
+      return {
+        lat: r5(lat),
+        lng: r5(lng),
+        text: note.text || 'Freq change',
+        color: note.color || '#fff6aa',
+        shape: note.shape || 'rect',
+        ...(note.cc ? { cc: note.cc } : {}),
+        ...(note.freqName ? { freqName: note.freqName } : {}),
+        ...(note.freq ? { freq: note.freq } : {}),
+        ...(note.freqAuto === true ? { freqAuto: true } : {}),
+      };
+    }).filter(n => Number.isFinite(n.lat) && Number.isFinite(n.lng)),
+    commChangeSuppressions: Array.isArray(template.commChangeSuppressions)
+      ? template.commChangeSuppressions.filter(s => typeof s === 'string') : [],
   };
 }
 
@@ -820,7 +841,8 @@ async function applyRouteTemplate(template, speed, closeModal) {
   state.waypoints = route.waypoints;
   state.legs = route.legs;
   state.notes = route.notes;
-  state.commChangeSuppressions = [];
+  state.commChangeSuppressions = Array.isArray(route.commChangeSuppressions)
+    ? route.commChangeSuppressions.slice() : [];
   state.selected = null;
   syncLegs();
   if (showCommChange && typeof loadCommChange === 'function') {
@@ -2524,6 +2546,16 @@ function createTuningPanel() {
   actions.append(resetAll, copy);
   panel.appendChild(actions);
 
+  // Find box — filters rows/groups by label or key (the registry is large).
+  const find = document.createElement('input');
+  find.type = 'search';
+  find.id = 'tune-find';
+  find.className = 'tune-find';
+  find.placeholder = 'Find…';
+  find.setAttribute('aria-label', 'Find tuning parameter');
+  panel.appendChild(find);
+  const filterGroups = [];   // { details, rows: [{ el, text }] }
+
   const controlSets = {};
   const syncControl = key => {
     const spec = NavAid.tuningDefaults[key];
@@ -2559,6 +2591,8 @@ function createTuningPanel() {
     const summary = document.createElement('summary');
     summary.textContent = group.name;
     details.appendChild(summary);
+    const groupEntry = { details, name: group.name.toLowerCase(), rows: [] };
+    filterGroups.push(groupEntry);
 
     for (const key of group.keys) {
       const spec = NavAid.tuningDefaults[key];
@@ -2635,6 +2669,7 @@ function createTuningPanel() {
         row.append(name, range, number, reset);
       }
 
+      groupEntry.rows.push({ el: row, text: ((spec.label || key) + ' ' + key).toLowerCase() });
       controlSets[key] = set;
       syncControl(key);
       reset.addEventListener('click', e => {
@@ -2649,6 +2684,20 @@ function createTuningPanel() {
 
     panel.appendChild(details);
   }
+
+  find.addEventListener('input', () => {
+    const q = find.value.trim().toLowerCase();
+    for (const g of filterGroups) {
+      let shown = 0;
+      for (const r of g.rows) {
+        const hit = !q || r.text.includes(q) || g.name.includes(q);
+        r.el.style.display = hit ? '' : 'none';
+        if (hit) shown++;
+      }
+      g.details.style.display = shown ? '' : 'none';
+      if (q) g.details.open = shown > 0;   // auto-expand matching groups while searching
+    }
+  });
 
   resetAll.addEventListener('click', () => {
     resetTune();

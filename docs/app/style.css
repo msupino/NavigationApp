@@ -2485,6 +2485,13 @@ body.theme-light .msa-low .val { color: #c0392b; }
   gap: 6px;
   margin-bottom: 8px;
 }
+#tuning-panel .tune-find {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+  padding: 4px 6px;
+  font: inherit;
+}
 #tuning-panel button {
   font: inherit;
   color: #e8e8e8;
