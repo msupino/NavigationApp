@@ -25,13 +25,11 @@
         {
           "cc": "DEROR",
           "freqName": "PLUTO_WEST",
-          "freq": "118.40",
           "freqAuto": true
         },
         {
           "cc": "DAROM",
           "freqName": "HAIFA",
-          "freq": "133.00",
           "freqAuto": true
         }
       ]
@@ -60,13 +58,11 @@
         {
           "cc": "DAROM",
           "freqName": "PLUTO_WEST",
-          "freq": "118.40",
           "freqAuto": true
         },
         {
           "cc": "DEROR",
           "freqName": "HERZLIYA",
-          "freq": "125.60",
           "freqAuto": true
         }
       ]
@@ -96,18 +92,15 @@
         {
           "cc": "DEROR",
           "freqName": "PLUTO_WEST",
-          "freq": "118.40",
           "freqAuto": true
         },
         {
           "cc": "ZMGID",
-          "freqName": "PLUTO_EAST",
-          "freq": "123.85"
+          "freqName": "PLUTO_EAST"
         },
         {
           "cc": "DESHE",
           "freqName": "ROSH_PINA",
-          "freq": "118.45",
           "freqAuto": true
         }
       ]
@@ -137,18 +130,15 @@
         {
           "cc": "DEROR",
           "freqName": "HERZLIYA",
-          "freq": "125.60",
           "freqAuto": true
         },
         {
           "cc": "ZMGID",
-          "freqName": "PLUTO_WEST",
-          "freq": "118.40"
+          "freqName": "PLUTO_WEST"
         },
         {
           "cc": "DESHE",
           "freqName": "PLUTO_EAST",
-          "freq": "123.85",
           "freqAuto": true
         }
       ]
@@ -188,34 +178,28 @@
         {
           "cc": "SFAIM",
           "freqName": "PLUTO_WEST",
-          "freq": "118.40",
           "freqAuto": true
         },
         {
           "cc": "TYONA",
-          "freqName": "PALMACHIM",
-          "freq": "135.55"
+          "freqName": "PALMACHIM"
         },
         {
           "cc": "NTAIM",
-          "freqName": "TEL_NOF",
-          "freq": "129.05"
+          "freqName": "TEL_NOF"
         },
         {
           "cc": "SORES",
           "freqName": "PLUTO_EAST",
-          "freq": "123.85",
           "freqAuto": true
         },
         {
           "cc": "ZUKIM",
-          "freqName": "HAGAV_SOUTH",
-          "freq": "121.15"
+          "freqName": "HAGAV_SOUTH"
         },
         {
           "cc": "LLMZ",
           "freqName": "MASADA",
-          "freq": "122.55",
           "freqAuto": true
         }
       ],
@@ -258,33 +242,27 @@
         {
           "cc": "SFAIM",
           "freqName": "PLUTO_WEST",
-          "freq": "118.40",
           "freqAuto": true
         },
         {
           "cc": "TYONA",
-          "freqName": "PALMACHIM",
-          "freq": "135.55"
+          "freqName": "PALMACHIM"
         },
         {
           "cc": "NTAIM",
-          "freqName": "TEL_NOF",
-          "freq": "129.05"
+          "freqName": "TEL_NOF"
         },
         {
           "cc": "NMASD",
-          "freqName": "HAGAV_NORTH",
-          "freq": "128.35"
+          "freqName": "HAGAV_NORTH"
         },
         {
           "cc": "SOVAL",
-          "freqName": "KEDEM",
-          "freq": "134.70"
+          "freqName": "KEDEM"
         },
         {
           "cc": "LLBS",
           "freqName": "TEYMAN",
-          "freq": "122.50",
           "freqAuto": true
         }
       ],
@@ -328,49 +306,41 @@
         {
           "cc": "TYONA",
           "freqName": "PLUTO_WEST",
-          "freq": "118.40",
           "freqAuto": true
         },
         {
           "cc": "ZASHD",
           "freqName": "PALMACHIM",
-          "freq": "135.55",
           "freqAuto": true
         },
         {
           "cc": "NMASD",
           "freqName": "PALMACHIM",
-          "freq": "135.55",
           "freqAuto": true
         },
         {
           "cc": "HODYA",
           "freqName": "HAGAV_NORTH",
-          "freq": "128.35",
           "freqAuto": true
         },
         {
           "cc": "NOAAM",
           "freqName": "HAGAV_NORTH",
-          "freq": "128.35",
           "freqAuto": true
         },
         {
           "cc": "SOVAL",
           "freqName": "HAGAV_NORTH",
-          "freq": "128.35",
           "freqAuto": true
         },
         {
           "cc": "LLBS",
           "freqName": "TEYMAN",
-          "freq": "122.50",
           "freqAuto": true
         },
         {
           "cc": "KNTRY",
           "freqName": "HERZLIYA",
-          "freq": "125.60",
           "freqAuto": true
         }
       ]
@@ -410,41 +380,34 @@
       "notes": [
         {
           "cc": "TYONA",
-          "freqName": "PLUTO_WEST",
-          "freq": "118.40"
+          "freqName": "PLUTO_WEST"
         },
         {
           "cc": "NTAIM",
-          "freqName": "TEL_NOF",
-          "freq": "129.05"
+          "freqName": "TEL_NOF"
         },
         {
           "cc": "AYLON",
-          "freqName": "TEL_NOF",
-          "freq": "129.05"
+          "freqName": "TEL_NOF"
         },
         {
           "cc": "SORES",
           "freqName": "PLUTO_EAST",
-          "freq": "123.85",
           "freqAuto": true
         },
         {
           "cc": "ZUKIM",
           "freqName": "PLUTO_EAST",
-          "freq": "123.85",
           "freqAuto": true
         },
         {
           "cc": "LLMZ",
           "freqName": "MASADA",
-          "freq": "122.55",
           "freqAuto": true
         },
         {
           "cc": "KNTRY",
           "freqName": "HERZLIYA",
-          "freq": "125.60",
           "freqAuto": true
         }
       ]
