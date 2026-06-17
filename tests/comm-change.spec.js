@@ -118,7 +118,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(keys.length).toBeGreaterThan(0);
     // Every shipped entry is either a 5-letter reporting point or a 4-letter
     // airfield ICAO destination, and is flagged commChange.
-    const allowedPointKeys = ['callSigns', 'commChange', 'from', 'name', 'note', 'source', 'to'];
+    const allowedPointKeys = ['callSigns', 'commChange', 'name', 'note', 'routeHints', 'source'];
     for (const k of keys) {
       expect(k).toMatch(/^(?:[A-Z]{5}|LL[A-Z0-9]{2})$/);
       expect(map[k].commChange).toBe(true);
@@ -143,7 +143,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(map.GNYAM.callSigns).toEqual(['HERZLIYA', 'BEN_GURION']);
     expect(map.HAROV.callSigns).toEqual(['PLUTO_EAST', 'PIK']);
     expect(map.HASID.callSigns).toEqual(['PLUTO_EAST', 'PLUTO_WEST', 'RAMAT_DAVID', 'HAIFA']);
-    expect(map.HODYA.callSigns).toEqual(['HATZOR', 'HAGAV_NORTH']);
+    expect(map.HODYA.callSigns).toEqual(['HAGAV_SOUTH', 'HATZOR']);
     expect(map.HOVAV.callSigns).toEqual(['NEGEV', 'HAGAV_NORTH', 'HAGAV_SOUTH']);
     expect(map.KNTRY.callSigns).toEqual(['HERZLIYA']);
     expect(map.KTORA.callSigns).toEqual(['HAGAV_SOUTH', 'RAMON']);
@@ -283,6 +283,59 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     const keys = await page.evaluate(() => Object.keys(window.commChangeMap).sort());
     const md = fs.readFileSync('known-freq-points.md', 'utf8');
     const missing = keys.filter(k => !md.includes(`| ${k} |`));
+    expect(missing).toEqual([]);
+  });
+
+  test('route template comm-change call signs have route-context hints', async () => {
+    const comm = JSON.parse(fs.readFileSync('docs/data/comm-change.json', 'utf8'));
+    const templates = JSON.parse(fs.readFileSync('docs/data/route-templates.json', 'utf8'));
+    const byName = new Map((comm.points || []).map(point => [point.name, point]));
+    const missing = [];
+    const invalidHints = [];
+    const legacyHints = [];
+    for (const point of comm.points || []) {
+      const callSigns = Array.isArray(point.callSigns) ? point.callSigns : [];
+      if (Object.prototype.hasOwnProperty.call(point, 'from') ||
+          Object.prototype.hasOwnProperty.call(point, 'to')) {
+        legacyHints.push(point.name);
+      }
+      for (const hint of point.routeHints || []) {
+        if (!hint || typeof hint !== 'object') {
+          invalidHints.push(`${point.name}.routeHints[]`);
+          continue;
+        }
+        if (!callSigns.includes(hint.callSign)) {
+          invalidHints.push(`${point.name}.routeHints.callSign=${hint.callSign}`);
+        }
+        for (const field of ['before', 'after']) {
+          if (field in hint && (typeof hint[field] !== 'string' || !hint[field].trim())) {
+            invalidHints.push(`${point.name}.routeHints.${field}=${hint[field]}`);
+          }
+        }
+      }
+    }
+    for (const tpl of templates.templates || []) {
+      for (const note of tpl.notes || []) {
+        if (!note || !note.cc || !note.freqName || !note.freq) continue;
+        const point = byName.get(note.cc);
+        const callSigns = point && Array.isArray(point.callSigns) ? point.callSigns : [];
+        const waypoints = Array.isArray(tpl.waypoints) ? tpl.waypoints : [];
+        const index = waypoints.indexOf(note.cc);
+        const before = index > 0 ? waypoints[index - 1] : undefined;
+        const after = index >= 0 && index < waypoints.length - 1 ? waypoints[index + 1] : undefined;
+        const hints = point && Array.isArray(point.routeHints) ? point.routeHints : [];
+        const hasRouteHint = hints.some(h =>
+          h && h.callSign === note.freqName &&
+          (before === undefined ? !h.before : h.before === before) &&
+          (after === undefined ? !h.after : h.after === after));
+        if (!point || !callSigns.includes(note.freqName) ||
+            index < 0 || !hasRouteHint) {
+          missing.push(`${tpl.id}: ${note.cc} -> ${note.freqName} ${note.freq}`);
+        }
+      }
+    }
+    expect(legacyHints).toEqual([]);
+    expect(invalidHints).toEqual([]);
     expect(missing).toEqual([]);
   });
 
