@@ -1891,7 +1891,22 @@ body.theme-light .msa-low .val { color: #c0392b; }
 .commchange-template .val {
   color: #ffd966;
 }
-.commchange-auto-row .commchange-auto-checkbox {
+.commchange-name-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+.commchange-auto-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #b9b3b3;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.commchange-auto-inline .commchange-auto-checkbox {
   width: 18px;
   height: 18px;
   margin: 0;

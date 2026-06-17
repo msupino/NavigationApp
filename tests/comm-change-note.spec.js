@@ -299,7 +299,8 @@ test.describe('comm-change auto-note (#487)', () => {
 
     const sel = page.locator('#insp-body .commchange-name-row select').first();
     const field = page.locator('#insp-body .freq-input').first();
-    const auto = page.locator('#insp-body .commchange-auto-checkbox');
+    const auto = page.locator('#insp-body .commchange-name-row .commchange-auto-checkbox');
+    await expect(page.locator('#insp-body .commchange-auto-row')).toHaveCount(0);
     await expect(auto).toBeChecked();
     await expect(sel).toHaveValue('PLUTO_WEST');
     await expect(sel.locator('option:checked')).toHaveText('Pluto West');
@@ -1547,12 +1548,13 @@ test.describe('comm-change auto-note (#487)', () => {
     const sel = page.locator('#insp-body .commchange-name-row select').first();
     const labels = page.locator('#insp-body .row label');
     const values = page.locator('#insp-body .row .val');
-    const auto = page.locator('#insp-body .commchange-auto-checkbox');
+    const auto = page.locator('#insp-body .commchange-name-row .commchange-auto-checkbox');
+    const autoInline = page.locator('#insp-body .commchange-name-row .commchange-auto-inline');
     await expect(labels.nth(0)).toHaveText('Waypoint');
-    await expect(labels.nth(1)).toHaveText('Auto');
-    await expect(labels.nth(2)).toHaveText('Call sign');
-    await expect(labels.nth(3)).toHaveText('Frequency');
+    await expect(labels.nth(1)).toHaveText('Call sign');
+    await expect(labels.nth(2)).toHaveText('Frequency');
     await expect(values.nth(0)).toHaveText('Tel Yona');
+    await expect(autoInline).toHaveText('Auto');
     await expect(auto).toBeChecked();
     await expect(sel).toHaveValue('PLUTO');
     await expect(sel.locator('option:checked')).toHaveText('Pluto');
@@ -1672,12 +1674,13 @@ test.describe('comm-change auto-note (#487)', () => {
     const labels = page.locator('#insp-body .row label');
     const values = page.locator('#insp-body .row .val');
     const sel = page.locator('#insp-body .commchange-name-row select').first();
-    const auto = page.locator('#insp-body .commchange-auto-checkbox');
+    const auto = page.locator('#insp-body .commchange-name-row .commchange-auto-checkbox');
+    const autoInline = page.locator('#insp-body .commchange-name-row .commchange-auto-inline');
     await expect(labels.nth(0)).toHaveText('נקודת דיווח');
-    await expect(labels.nth(1)).toHaveText('Auto');
-    await expect(labels.nth(2)).toHaveText('אות קריאה');
-    await expect(labels.nth(3)).toHaveText('תדר');
+    await expect(labels.nth(1)).toHaveText('אות קריאה');
+    await expect(labels.nth(2)).toHaveText('תדר');
     await expect(values.nth(0)).toHaveText('תל יונה');
+    await expect(autoInline).toHaveText('Auto');
     await expect(fields).toHaveCount(1);
     await expect(fields.nth(0)).toHaveValue('118.40');
     await expect(auto).toBeChecked();

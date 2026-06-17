@@ -2334,27 +2334,6 @@ function appendFreqEdit(body, note, editOptions) {
       rows.push(['__custom__', current]);
     }
     rows.push(...opts.map(o => [o.id, o.label]));
-    if (autoDefault()) {
-      const autoRow = document.createElement('div');
-      autoRow.className = 'row commchange-auto-row';
-      const autoLabel = document.createElement('label');
-      autoLabel.textContent = S.commChangeAuto || 'Auto';
-      autoCheckbox = document.createElement('input');
-      autoCheckbox.type = 'checkbox';
-      autoCheckbox.className = 'commchange-auto-checkbox';
-      autoCheckbox.checked = isRouteAutoSelected();
-      autoCheckbox.onchange = () => {
-        if (autoCheckbox.checked) {
-          resetFreqToAuto();
-          return;
-        }
-        note.freqAuto = false;
-        updateTemplateHint();
-        draw();
-      };
-      autoRow.append(autoLabel, autoCheckbox);
-      body.appendChild(autoRow);
-    }
     const callSignRow = selectRow(S.commChangeName || 'Call sign',
       selected ? selected.id : opts[0].id,
       rows, v => {
@@ -2376,6 +2355,32 @@ function appendFreqEdit(body, note, editOptions) {
       });
     callSignRow.classList.add('commchange-name-row');
     callSignSelect = callSignRow.querySelector('select');
+    if (autoDefault() && callSignSelect) {
+      const controls = document.createElement('div');
+      controls.className = 'commchange-name-controls';
+      const autoInline = document.createElement('span');
+      autoInline.className = 'commchange-auto-inline';
+      autoCheckbox = document.createElement('input');
+      autoCheckbox.type = 'checkbox';
+      autoCheckbox.className = 'commchange-auto-checkbox';
+      autoCheckbox.setAttribute('aria-label', S.commChangeAuto || 'Auto');
+      autoCheckbox.checked = isRouteAutoSelected();
+      autoCheckbox.onchange = () => {
+        if (autoCheckbox.checked) {
+          resetFreqToAuto();
+          return;
+        }
+        note.freqAuto = false;
+        updateTemplateHint();
+        draw();
+      };
+      const autoText = document.createElement('span');
+      autoText.textContent = S.commChangeAuto || 'Auto';
+      autoInline.append(autoCheckbox, autoText);
+      callSignSelect.remove();
+      controls.append(autoInline, callSignSelect);
+      callSignRow.appendChild(controls);
+    }
     body.appendChild(callSignRow);
   } else {
     const callSignRow = inputRow(S.commChangeName || 'Call sign', commNoteName(note) || '', v => {
