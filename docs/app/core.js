@@ -381,13 +381,14 @@ window.S = Object.assign({
     return name + ' template loaded at ' + speed + ' kt';
   },
   deleteWp: '🗑 Delete waypoint (D)',                  // inspector button
-  resetWpName: '↺ Reset waypoint name',             // inspector — reference snap or clear (placeholder)
+  resetWpName: '↻ Reset waypoint name',             // inspector — reference snap or clear (placeholder)
   resetWpNameTitle: 'Set name to the nearest reference (airfield / nav-WP), or clear when off-grid (dimmed sequence label)',
-  tbResetAllWpNames: '↺ Reset all waypoint names',
+  tbResetAllWpNames: '↻ Reset all waypoint names',
   tbResetAllWpNamesTitle: 'Set each name to its nearest reference, or clear when off-grid',
   resetAllWpNamesConfirm: 'Reset all waypoint names to their nearest reference codes, or clear when off-grid (sequence placeholders)?',
-  resetLegMarkers: '↺ Reset marker position',       // inspector leg button — reset label offsets
-  resetAllLegMarkers: '↺ Reset all marker positions', // inspector leg button — reset every leg
+  resetLegMarkers: '↻ Reset marker position',       // inspector leg button — reset label offsets
+  resetLegMarkersTitle: 'Reset marker position',
+  resetAllLegMarkers: '↻ Reset all marker positions', // inspector leg button — reset every leg
   resetAllConfirm: 'Reset all leg marker positions to default? This will clear any manual adjustments.',
   clearConfirm: 'Remove all waypoints and notes?',
   errBadCoords: 'file has invalid waypoint coordinates',
@@ -627,6 +628,7 @@ window.S = Object.assign({
   commChangeCallSign: 'Waypoint',
   commChangeName: 'Call sign',
   commChangeFreq: 'Frequency',
+  commChangeAuto: 'Auto',
   commChangeTemplateFreq: 'Default',
   freqTableTitle: 'Frequency defaults',
   freqTableCallSign: 'Call sign',
@@ -661,8 +663,10 @@ window.S = Object.assign({
   altPairsLocationMissing: 'Pair endpoints not found',
   addFreqChange: 'Add freq change (Z)',
   deleteFreqChange: '🗑 Delete freq change (X)',
-  resetFreqLocation: '↺ Reset callout location',
+  resetFreqLocation: '↻ Reset callout location',
+  resetFreqLocationTitle: 'Reset callout location',
   resetFreqOverride: 'Reset frequency to default',
+  resetFreqAuto: 'Reset call sign and frequency to Auto',
   plates: 'Charts',
   runways: 'Runways',
   plateCategoryApproach: 'Approach',
@@ -710,7 +714,7 @@ window.S = Object.assign({
   magZoomLabel: 'Zoom',
   magZoomTitle: 'Magnifier zoom factor',
   magLoading: 'Perfecting…',
-  tbResetAllMarkers: '↺ Reset all marker positions',
+  tbResetAllMarkers: '↻ Reset all marker positions',
   tbResetAllMarkersTitle: 'Reset all leg marker offsets to default positions',
   inspCloseTitle: 'Close',
   inspCloseLabel: 'Close',

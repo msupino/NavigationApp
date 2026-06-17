@@ -943,7 +943,11 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   margin-top: 4px;
 }
 .insp-btn:hover { background: #c44141; }
-
+.insp-btn:disabled {
+  opacity: 0.48;
+  cursor: default;
+}
+.insp-btn:disabled:hover { background: #b03636; }
 /* Route summary — a footer section at the bottom of the toolbar. */
 #info {
   margin-top: 4px;

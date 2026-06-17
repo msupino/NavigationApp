@@ -214,6 +214,173 @@ test.describe('comm-change auto-note (#487)', () => {
     });
   });
 
+  test('reverse route updates existing auto callout from route-context hints', async ({ page }) => {
+    const routeFixture = {
+      ...FIXTURE,
+      points: [
+        {
+          name: 'TYONA',
+          commChange: true,
+          callSigns: ['PALMACHIM', 'PLUTO_WEST'],
+          routeHints: [
+            { before: 'NTAIM', after: 'CLORE', callSign: 'PLUTO_WEST' },
+            { before: 'CLORE', after: 'NTAIM', callSign: 'PALMACHIM' },
+          ],
+        },
+      ],
+    };
+    await installCommChangeFixture(page, routeFixture);
+    await boot(page);
+    const before = await page.evaluate(({ ntaim, tyona, clore }) => {
+      state.waypoints = [ntaim, tyona, clore];
+      state.notes = [];
+      syncLegs();
+      seedCommChangeNotes();
+      draw();
+      return state.notes
+        .filter(n => n.cc)
+        .map(n => ({ cc: n.cc, freqName: n.freqName, freq: n.freq, freqAuto: n.freqAuto }));
+    }, { ntaim: NTAIM, tyona: TYONA, clore: CLORE });
+    expect(before).toEqual([
+      { cc: 'TYONA', freqName: 'PLUTO_WEST', freq: '118.40', freqAuto: true },
+    ]);
+
+    await page.locator('#reverse').click();
+    const after = await page.evaluate(() => ({
+      waypoints: state.waypoints.map(w => w.name),
+      notes: state.notes
+        .filter(n => n.cc)
+        .map(n => ({
+          cc: n.cc,
+          freqName: n.freqName,
+          freq: n.freq,
+          freqAuto: n.freqAuto,
+          lines: noteLines(n),
+        })),
+    }));
+    expect(after).toEqual({
+      waypoints: ['CLORE', 'TYONA', 'NTAIM'],
+      notes: [{
+        cc: 'TYONA',
+        freqName: 'PALMACHIM',
+        freq: '135.55',
+        freqAuto: true,
+        lines: ['PALMACHIM', '135.55'],
+      }],
+    });
+  });
+
+  test('Auto reset returns a manual comm-change callout to route updates', async ({ page }) => {
+    const routeFixture = {
+      ...FIXTURE,
+      points: [
+        {
+          name: 'TYONA',
+          commChange: true,
+          callSigns: ['PALMACHIM', 'PLUTO_WEST', 'HAGAV'],
+          routeHints: [
+            { before: 'NTAIM', after: 'CLORE', callSign: 'PLUTO_WEST' },
+            { before: 'CLORE', after: 'NTAIM', callSign: 'PALMACHIM' },
+          ],
+        },
+      ],
+    };
+    await installCommChangeFixture(page, routeFixture);
+    await boot(page);
+    await page.evaluate(({ ntaim, tyona, clore }) => {
+      state.waypoints = [ntaim, tyona, clore];
+      state.notes = [];
+      syncLegs();
+      seedCommChangeNotes();
+      state.selected = { type: 'note', index: 0 };
+      draw();
+      showInspector();
+    }, { ntaim: NTAIM, tyona: TYONA, clore: CLORE });
+
+    const sel = page.locator('#insp-body .commchange-name-row select').first();
+    const field = page.locator('#insp-body .freq-input').first();
+    const auto = page.locator('#insp-body .commchange-auto-reset');
+    await expect(sel).toHaveValue('__auto__');
+    await expect(sel.locator('option:checked')).toHaveText('Auto: Pluto West');
+    await expect(sel.locator('option').first()).toHaveText('Auto: Pluto West');
+    await expect(field).toHaveValue('118.40');
+    await expect(auto).toHaveCount(0);
+
+    await sel.selectOption('HAGAV');
+    await expect(field).toHaveValue('132.70');
+    await expect(sel).toHaveValue('HAGAV');
+    expect(await page.evaluate(() => ({
+      freqName: state.notes[0].freqName,
+      freq: state.notes[0].freq,
+      freqAuto: state.notes[0].freqAuto,
+      lines: noteLines(state.notes[0]),
+    }))).toEqual({
+      freqName: 'HAGAV',
+      freq: '132.70',
+      freqAuto: false,
+      lines: ['HAGAV', '132.70'],
+    });
+
+    await page.locator('#reverse').click();
+    expect(await page.evaluate(() => ({
+      waypoints: state.waypoints.map(w => w.name),
+      note: {
+        freqName: state.notes[0].freqName,
+        freq: state.notes[0].freq,
+        freqAuto: state.notes[0].freqAuto,
+        lines: noteLines(state.notes[0]),
+      },
+    }))).toEqual({
+      waypoints: ['CLORE', 'TYONA', 'NTAIM'],
+      note: {
+        freqName: 'HAGAV',
+        freq: '132.70',
+        freqAuto: false,
+        lines: ['HAGAV', '132.70'],
+      },
+    });
+
+    await page.evaluate(() => {
+      state.selected = { type: 'note', index: 0 };
+      showInspector();
+    });
+    await expect(sel).toHaveValue('HAGAV');
+    await sel.selectOption('__auto__');
+    await expect(sel).toHaveValue('__auto__');
+    await expect(sel.locator('option:checked')).toHaveText('Auto: Palmachim');
+    await expect(field).toHaveValue('135.55');
+    expect(await page.evaluate(() => ({
+      freqName: state.notes[0].freqName,
+      freq: state.notes[0].freq,
+      freqAuto: state.notes[0].freqAuto,
+      lines: noteLines(state.notes[0]),
+    }))).toEqual({
+      freqName: 'PALMACHIM',
+      freq: '135.55',
+      freqAuto: true,
+      lines: ['PALMACHIM', '135.55'],
+    });
+
+    await page.locator('#reverse').click();
+    expect(await page.evaluate(() => ({
+      waypoints: state.waypoints.map(w => w.name),
+      note: {
+        freqName: state.notes[0].freqName,
+        freq: state.notes[0].freq,
+        freqAuto: state.notes[0].freqAuto,
+        lines: noteLines(state.notes[0]),
+      },
+    }))).toEqual({
+      waypoints: ['NTAIM', 'TYONA', 'CLORE'],
+      note: {
+        freqName: 'PLUTO_WEST',
+        freq: '118.40',
+        freqAuto: true,
+        lines: ['PLUTO WEST', '118.40'],
+      },
+    });
+  });
+
   test('Reverse route updates existing auto frequency callouts', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
@@ -1325,8 +1492,10 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(labels.nth(1)).toHaveText('Call sign');
     await expect(labels.nth(2)).toHaveText('Frequency');
     await expect(values.nth(0)).toHaveText('Tel Yona');
-    await expect(sel).toHaveValue('PLUTO');
+    await expect(sel).toHaveValue('__auto__');
+    await expect(sel.locator('option:checked')).toHaveText('Auto: Pluto');
     await sel.selectOption('HAGAV');
+    await expect(sel).toHaveValue('HAGAV');
     const fields = page.locator('#insp-body .freq-input');
     await expect(fields).toHaveCount(1);
     await expect(fields.nth(0)).toHaveValue('132.70');
@@ -1446,8 +1615,8 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(values.nth(0)).toHaveText('תל יונה');
     await expect(fields).toHaveCount(1);
     await expect(fields.nth(0)).toHaveValue('118.40');
-    await expect(sel).toHaveValue('PLUTO');
-    await expect(sel.locator('option:checked')).toHaveText('פלוטו');
+    await expect(sel).toHaveValue('__auto__');
+    await expect(sel.locator('option:checked')).toHaveText('Auto: פלוטו');
     await sel.selectOption('HAGAV');
     await expect(sel.locator('option:checked')).toHaveText('חגב');
     await expect(fields.nth(0)).toHaveValue('132.70');
