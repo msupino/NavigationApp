@@ -341,6 +341,12 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   (5°E variation for Israel). The user-facing Mag-var input was
   removed; the `navaid.magVar` localStorage key is no longer written
   or read.
+- **Satellite inspector preview:** the small inspector snippet is static
+  Esri imagery; expanding it opens a live Leaflet modal with zoom, layer
+  picker, reset-to-centre, and rotation sync. Chart layers remain selectable
+  there, but switching to CVFR / Navigation / Low Alt / Helicopters clamps the
+  modal to a readable chart zoom near each layer's native tile level instead
+  of overscaling into blur.
 - **Altitude propagation:** editing a leg's altitude updates the
   adjacent legs that currently share the old value, stopping at the
   first different leg. Inbound walks forward, outbound walks backward.
