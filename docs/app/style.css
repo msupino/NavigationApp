@@ -400,6 +400,21 @@ html, body {
   min-width: 34px;
 }
 .coord-readout.interactive { pointer-events: auto; cursor: pointer; }
+/* Satellite-modal zoom readout — same chip as the main map's .zoom-readout,
+   sat as a bottom-left Leaflet control. */
+.satellite-zoom-readout {
+  font: bold 11px/1 monospace;
+  color: #231F20;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid #9a9a9a;
+  border-radius: 3px;
+  padding: 3px 6px;
+  margin: 0 0 10px 10px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  pointer-events: none;
+  direction: ltr;
+}
 /* Float the readout to the LEFT of the bottom-right zoom +/- + rotate-dial
    column (~44px wide) instead of stacking under it (#526). The leaflet
    corner div is the positioning context. */
