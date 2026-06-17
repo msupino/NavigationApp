@@ -1934,8 +1934,8 @@ function showInspector() {
         body.appendChild(row);
         // #530 — united inspector: if a freq callout note exists for this
         // point, edit it right here (call sign + frequency + reset location)
-        // instead of a read-only badge. Falls back to the read-only from/to
-        // summary when no callout note is present (e.g. overlay off).
+        // instead of a read-only badge. Legacy from/to summaries still render
+        // for older datasets when no callout note is present.
         const linkedNote = state.notes.find(n => n && n.cc &&
           (typeof canonicalNavWaypointName === 'function'
             ? canonicalNavWaypointName(n.cc) === ccKey
