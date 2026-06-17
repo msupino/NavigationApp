@@ -1394,8 +1394,11 @@ function commRouteBearingAt(index) {
 }
 function commHintCallSignOption(name, raw) {
   if (typeof raw !== 'string' || !raw.trim()) return null;
-  const d = splitCommCalloutText(raw);
   const opts = commCallSignOptions(name);
+  const idKey = commCallSignIdKey(raw);
+  const direct = opts.find(opt => commCallSignIdKey(opt.id) === idKey);
+  if (direct) return direct;
+  const d = splitCommCalloutText(raw);
   const label = d.name || raw;
   for (const opt of opts) {
     if (commCallSignOptionNames(opt).some(v => commNamesMatch(label, v))) return opt;

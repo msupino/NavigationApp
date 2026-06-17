@@ -268,13 +268,14 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   `navaid.commFreqOverrides` keyed by call-sign id; new and auto-generated
   callouts for that call sign use the override, and the inspector shows the
   catalog template frequency when the active value differs. Optional
-  `from` / `to` strings on a comm-change point are directional frequency
-  hints: the app matches the string to one of that point's `callSigns` and
+  `from` / `to` strings on a comm-change point are directional call-sign ID
+  hints: the app resolves the ID against one of that point's `callSigns` and
   uses it only when the route azimuth through the waypoint points toward
-  that call sign's reference sector. Ambiguous geometry falls back to the
+  that call sign's reference sector. Display labels and frequencies are
+  derived from the call-sign catalog. Ambiguous geometry falls back to the
   normal route graph. Shipped route-template comm-change notes are used as
   regression evidence for these hints; `tests/comm-change.spec.js` verifies
-  that every template `cc` call sign has a matching name-only `from` / `to`
+  that every template `cc` call sign has a matching ID-only `from` / `to`
   entry, with frequencies kept in the call-sign catalog instead of the hint.
   Defaults are
   route-aware: `commRouteCalloutDefaultsMap()` treats
@@ -639,14 +640,16 @@ downloadable `route.json`.
 - `comm-change.json` — dataset of CVFR reporting points where pilots
   must change ATC frequency (the `מע.` / `מז.` Hebrew sector callouts
   on the IAA CVFR chart, indicating PLUTO West / PLUTO East / etc.).
-  Schema: `{version, source, _definition, _NOTE, _TODO, points:
-  [{name, commChange, from, to, note, verified, source}]}`. `name`
-  matches an ICAO 5-letter code in `nav-waypoints.json`. **Source:**
-  Israel AIP (AD 2.22 LLHA, ENR 2.1, GEN 3.4) for documented FIR/CTR
-  transitions; GitHub issue msupino/NavigationApp#399 for the chart
-  fragment near `TYONA`. Currently a 2-point seed (TYONA, GALIM)
-  verified against published AIP text; the bulk of the chart `מע.`
-  markers require manual visual chart review to extract.
+  Schema: `{version, source, _definition, _NOTE, _TODO, callSigns,
+  points:[{name, commChange, callSigns, from, to, note, source}]}`.
+  `name` matches an ICAO 5-letter code in `nav-waypoints.json`; airfield
+  endpoints may use 4-letter LLxx ICAO codes where the frequency point is
+  the field itself. A point's `callSigns` array contains catalog IDs from
+  the root `callSigns` object. Optional `from` / `to` values are also
+  call-sign IDs from that same point array, never display labels or
+  frequencies. **Source:** maintainer visual inspection of the printed IAA
+  CVFR chart's `נקודת מעבר קשר` symbology, enriched with frequency options
+  from the maintainer-provided AirMapRadioFrequencies PDF.
   - **Loader:** `loadCommChange()` in `draw.js` lazy-fetches the file
     at boot (parallel with `loadNavWaypoints` / `loadAirfields` in
     `ui.js`), validates it with `validateCommChange()` in `io.js`, and
@@ -668,7 +671,7 @@ downloadable `route.json`.
     The editor (shared with the note inspector via `appendFreqEdit()`)
     includes a call-sign dropdown, editable frequency, and reset-callout-
     location button. When no linked note exists (overlay off or not
-    seeded), a read-only badge shows the `from → to` frequency pair
+    seeded), a read-only badge shows the resolved `from → to` call-sign pair
     and optional note. Styled in `app/style.css`
     under `/* Comm-change inspector badge (issue #399) */`.
   - **i18n keys:** `tbShowCommChange`, `tbShowCommChangeTitle`,

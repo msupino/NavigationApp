@@ -286,30 +286,22 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(missing).toEqual([]);
   });
 
-  test('route template comm-change call signs have name-only directional hints', async () => {
+  test('route template comm-change call signs have id-only directional hints', async () => {
     const comm = JSON.parse(fs.readFileSync('docs/data/comm-change.json', 'utf8'));
     const templates = JSON.parse(fs.readFileSync('docs/data/route-templates.json', 'utf8'));
-    const catalog = comm.callSigns || {};
     const byName = new Map((comm.points || []).map(point => [point.name, point]));
-    const key = raw => String(raw || '').trim().toLocaleLowerCase()
-      .replace(/[^0-9a-z\u0590-\u05ff]+/g, '');
-    const hintMatches = (hint, id) => {
-      if (typeof hint !== 'string' || !hint.trim()) return false;
-      const row = catalog[id] || {};
-      const names = [id, row.label, row.he].filter(v => typeof v === 'string' && v.trim());
-      const hintKey = key(hint);
-      return names.some(name => {
-        const nameKey = key(name);
-        return nameKey && (hintKey.includes(nameKey) || nameKey.includes(hintKey));
-      });
-    };
     const missing = [];
+    const invalidHints = [];
     const hintsWithFreq = [];
     for (const point of comm.points || []) {
+      const callSigns = Array.isArray(point.callSigns) ? point.callSigns : [];
       for (const field of ['from', 'to']) {
         const hint = point && point[field];
         if (typeof hint === 'string' && /\b\d{3}(?:\.\d{1,3})?\b/.test(hint)) {
           hintsWithFreq.push(`${point.name}.${field}=${hint}`);
+        }
+        if (typeof hint === 'string' && hint.trim() && !callSigns.includes(hint)) {
+          invalidHints.push(`${point.name}.${field}=${hint}`);
         }
       }
     }
@@ -320,12 +312,13 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
         const callSigns = point && Array.isArray(point.callSigns) ? point.callSigns : [];
         const hints = point ? [point.from, point.to] : [];
         if (!point || !callSigns.includes(note.freqName) ||
-            !hints.some(h => hintMatches(h, note.freqName))) {
+            !hints.includes(note.freqName)) {
           missing.push(`${tpl.id}: ${note.cc} -> ${note.freqName} ${note.freq}`);
         }
       }
     }
     expect(hintsWithFreq).toEqual([]);
+    expect(invalidHints).toEqual([]);
     expect(missing).toEqual([]);
   });
 
