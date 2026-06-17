@@ -267,7 +267,12 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   `label`. Editing a call-sign frequency stores a local override in
   `navaid.commFreqOverrides` keyed by call-sign id; new and auto-generated
   callouts for that call sign use the override, and the inspector shows the
-  catalog template frequency when the active value differs. Defaults are
+  catalog template frequency when the active value differs. Optional
+  `from` / `to` strings on a comm-change point are directional frequency
+  hints: the app matches the string to one of that point's `callSigns` and
+  uses it only when the route azimuth through the waypoint points toward
+  that call sign's reference sector. Ambiguous geometry falls back to the
+  normal route graph. Defaults are
   route-aware: `commRouteCalloutDefaultsMap()` treats
   each comm-change waypoint's call-sign list as a boundary in an ATC graph,
   then picks the sector after crossing based on route order, neighboring

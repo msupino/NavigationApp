@@ -476,7 +476,8 @@ function validateVors(d) {
 // groundEast?, clearance?, appPrimary?, appSecondary?, tmaPrimary?,
 // tmaSecondary?, phone?, source? } }, points:[{ name, commChange,
 // callSigns?, from?, to?,
-// note?, source? }] }. Only `points[].name` and
+// note?, source? }] }. Optional from/to strings are directional
+// frequency hints matched to callSigns and route azimuth. Only `points[].name` and
 // `points[].commChange` are required for the renderer; everything else is
 // metadata / inspector content. Unknown keys at any level are tolerated
 // (forward-compat). Issue #399.

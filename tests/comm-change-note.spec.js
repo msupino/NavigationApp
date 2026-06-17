@@ -19,6 +19,7 @@ const LLHZ = { lat: 32.17944, lng: 34.83444, name: 'LLHZ' };
 const DEROR = { lat: 32.25722, lng: 34.89111, name: 'DEROR' };
 const DAROM = { lat: 32.79611, lng: 34.94333, name: 'DAROM' };
 const LLHA = { lat: 32.80833, lng: 35.04278, name: 'LLHA' };
+const CLORE = { lat: 32.05306, lng: 34.73583, name: 'CLORE' };
 const NTAIM = { lat: 31.94361, lng: 34.78083, name: 'NTAIM' };
 const NAGID = { lat: 31.88972, lng: 34.75583, name: 'NAGID' };
 const NOTE_LAT_OFFSET = 0;      // keep in sync with commChangeNoteLatOffset
@@ -151,6 +152,56 @@ test.describe('comm-change auto-note (#487)', () => {
       { cc: 'DAROM', freqName: 'PLUTO_WEST', freq: '118.40', lines: ['PLUTO WEST', '118.40'] },
       { cc: 'DEROR', freqName: 'HERZLIYA', freq: '122.20', lines: ['HERZLIYA', '122.20'] },
     ]);
+  });
+
+  test('uses comm-change to hint when outbound azimuth points to that sector', async ({ page }) => {
+    const routeFixture = {
+      ...FIXTURE,
+      points: [
+        { name: 'TYONA', commChange: true, callSigns: ['PALMACHIM', 'PLUTO_WEST'], to: 'Pluto West 118.40' },
+        { name: 'PWREF', commChange: true, callSigns: ['PLUTO_WEST'], lat: 32.8, lng: 34.73 },
+      ],
+    };
+    await installCommChangeFixture(page, routeFixture);
+    await boot(page);
+    const note = await page.evaluate(({ tyona, clore }) => {
+      state.waypoints = [tyona, clore];
+      state.notes = [];
+      syncLegs();
+      seedCommChangeNotes();
+      return state.notes.find(n => n.cc === 'TYONA');
+    }, { tyona: TYONA, clore: CLORE });
+    expect(note).toMatchObject({
+      cc: 'TYONA',
+      freqName: 'PLUTO_WEST',
+      freq: '118.40',
+      freqAuto: true,
+    });
+  });
+
+  test('ignores comm-change to hint when outbound azimuth points away', async ({ page }) => {
+    const routeFixture = {
+      ...FIXTURE,
+      points: [
+        { name: 'TYONA', commChange: true, callSigns: ['PALMACHIM', 'PLUTO_WEST'], to: 'Pluto West 118.40' },
+        { name: 'PWREF', commChange: true, callSigns: ['PLUTO_WEST'], lat: 32.8, lng: 34.73 },
+      ],
+    };
+    await installCommChangeFixture(page, routeFixture);
+    await boot(page);
+    const note = await page.evaluate(({ tyona, ntaim }) => {
+      state.waypoints = [tyona, ntaim];
+      state.notes = [];
+      syncLegs();
+      seedCommChangeNotes();
+      return state.notes.find(n => n.cc === 'TYONA');
+    }, { tyona: TYONA, ntaim: NTAIM });
+    expect(note).toMatchObject({
+      cc: 'TYONA',
+      freqName: 'PALMACHIM',
+      freq: '135.55',
+      freqAuto: true,
+    });
   });
 
   test('Reverse route updates existing auto frequency callouts', async ({ page }) => {

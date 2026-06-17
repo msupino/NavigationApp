@@ -1377,6 +1377,78 @@ function commCallSignReferenceDistance(wp, opt, excludedNames) {
   }
   return best;
 }
+function commBearingDelta(a, b) {
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return Infinity;
+  return Math.abs((((a - b) % 360) + 540) % 360 - 180);
+}
+function commRouteBearingAt(index) {
+  if (typeof state === 'undefined' || !Array.isArray(state.waypoints)) return null;
+  const cur = state.waypoints[index];
+  const bearing = (a, b) => {
+    if (!a || !b) return null;
+    const g = geo(a, b);
+    return Number.isFinite(g.dist) && g.dist > 0.05 && Number.isFinite(g.brg) ? g.brg : null;
+  };
+  return bearing(cur, state.waypoints[index + 1]) ??
+    bearing(state.waypoints[index - 1], cur);
+}
+function commHintCallSignOption(name, raw) {
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  const d = splitCommCalloutText(raw);
+  const opts = commCallSignOptions(name);
+  const label = d.name || raw;
+  for (const opt of opts) {
+    if (commCallSignOptionNames(opt).some(v => commNamesMatch(label, v))) return opt;
+  }
+  if (d.freq) {
+    return opts.find(opt =>
+      commFormatFreq(opt.freq) === d.freq ||
+      commFormatFreq(opt.templateFreq) === d.freq) || null;
+  }
+  return null;
+}
+function commCallSignBearingDelta(wp, opt, bearing, excludedNames) {
+  if (!wp || !opt || !Number.isFinite(bearing)) return Infinity;
+  let best = Infinity;
+  for (const ref of commCallSignReferencePoints(opt, excludedNames)) {
+    if (!ref || !Number.isFinite(ref.lat) || !Number.isFinite(ref.lng)) continue;
+    const g = geo(wp, ref);
+    if (!Number.isFinite(g.dist) || g.dist < 0.1 || !Number.isFinite(g.brg)) continue;
+    best = Math.min(best, commBearingDelta(bearing, g.brg));
+  }
+  return best;
+}
+function commCallSignDefaultFromOption(opt) {
+  return opt ? { freqName: opt.id, freq: opt.freq || '' } : null;
+}
+function commDirectionalHintDefault(entry) {
+  if (!entry || !commChangeMap || typeof state === 'undefined' ||
+      !Array.isArray(state.waypoints)) return null;
+  const row = commChangeMap[entry.name];
+  const wp = state.waypoints[entry.index];
+  const bearing = commRouteBearingAt(entry.index);
+  if (!row || !wp || !Number.isFinite(bearing)) return null;
+  const candidates = [];
+  for (const field of ['to', 'from']) {
+    const opt = commHintCallSignOption(entry.name, row[field]);
+    if (!opt) continue;
+    const delta = commCallSignBearingDelta(wp, opt, bearing, [entry.name]);
+    if (Number.isFinite(delta)) candidates.push({ opt, delta });
+  }
+  if (!candidates.length) return null;
+  candidates.sort((a, b) => a.delta - b.delta);
+  const best = candidates[0];
+  let nextBest = candidates[1] ? candidates[1].delta : Infinity;
+  const hinted = new Set(candidates.map(c => commCallSignIdKey(c.opt.id)));
+  for (const opt of commCallSignOptions(entry.name)) {
+    if (hinted.has(commCallSignIdKey(opt.id))) continue;
+    nextBest = Math.min(nextBest,
+      commCallSignBearingDelta(wp, opt, bearing, [entry.name]));
+  }
+  if (best.delta > 70) return null;
+  if (Number.isFinite(nextBest) && nextBest - best.delta < 15) return null;
+  return commCallSignDefaultFromOption(best.opt);
+}
 function commInferRouteContextCallSignId(points, allowedIds, excludedNames) {
   const opts = commOptionPool(allowedIds);
   const pts = (Array.isArray(points) ? points : []).filter(Boolean);
@@ -1483,9 +1555,14 @@ function commSolveRouteCallSigns(entries) {
 function commRouteCalloutDefaultsMap() {
   const entries = commRouteChangeEntries();
   const path = commSolveRouteCallSigns(entries);
-  if (!path.length) return {};
   const out = {};
   for (let i = 0; i < entries.length; i++) {
+    const directional = commDirectionalHintDefault(entries[i]);
+    if (directional) {
+      out[entries[i].name] = directional;
+      continue;
+    }
+    if (!path.length) continue;
     const id = path[i + 1];
     const opt = commCallSignOptionById(entries[i].name, id);
     if (opt) out[entries[i].name] = { freqName: opt.id, freq: opt.freq || '' };
