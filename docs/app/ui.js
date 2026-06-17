@@ -2858,6 +2858,71 @@ function showBuildUpdateNotice() {
   document.body.appendChild(el);
 }
 
+const BUILD_UPDATE_CHECK_MIN_MS = 5 * 60 * 1000;
+const BUILD_UPDATE_CHECK_INTERVAL_MS = 10 * 60 * 1000;
+let buildUpdateRegistration = null;
+let buildUpdateCheckInFlight = null;
+let lastBuildUpdateCheckAt = -Infinity;
+let buildUpdateCheckTriggersBound = false;
+
+function requestBuildUpdateCheck(reason, opts) {
+  opts = opts || {};
+  const sw = opts.serviceWorker ||
+    (typeof navigator !== 'undefined' && 'serviceWorker' in navigator
+      ? navigator.serviceWorker
+      : null);
+  if (!sw && !buildUpdateRegistration) return Promise.resolve(null);
+
+  const now = Date.now();
+  if (!opts.force && now - lastBuildUpdateCheckAt < BUILD_UPDATE_CHECK_MIN_MS) {
+    return buildUpdateCheckInFlight || Promise.resolve(buildUpdateRegistration);
+  }
+  lastBuildUpdateCheckAt = now;
+
+  const regPromise = buildUpdateRegistration
+    ? Promise.resolve(buildUpdateRegistration)
+    : (sw && typeof sw.getRegistration === 'function'
+      ? sw.getRegistration()
+      : Promise.resolve(null));
+
+  buildUpdateCheckInFlight = regPromise.then(reg => {
+    if (!reg) return null;
+    buildUpdateRegistration = reg;
+    if (typeof reg.update !== 'function') return reg;
+    return Promise.resolve(reg.update()).then(() => reg);
+  }).catch(() => null).finally(() => {
+    buildUpdateCheckInFlight = null;
+  });
+  return buildUpdateCheckInFlight;
+}
+
+function watchBuildUpdateCheckTriggers() {
+  if (buildUpdateCheckTriggersBound) return;
+  buildUpdateCheckTriggersBound = true;
+  const request = reason => requestBuildUpdateCheck(reason);
+
+  window.addEventListener('focus', () => request('focus'));
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) request('visible');
+  });
+
+  const toolbar = document.getElementById('toolbar');
+  if (toolbar) {
+    toolbar.addEventListener('click', e => {
+      if (e.target && e.target.closest('button, .tb-section-head, #toolbar-toggle')) {
+        request('toolbar');
+      }
+    });
+    toolbar.addEventListener('change', e => {
+      if (e.target && e.target.closest('select, input')) request('toolbar-change');
+    });
+  }
+
+  window.setInterval(() => {
+    if (!document.hidden) request('interval');
+  }, BUILD_UPDATE_CHECK_INTERVAL_MS);
+}
+
 function watchServiceWorkerUpdates(sw) {
   if (!sw || typeof sw.register !== 'function') return Promise.resolve(null);
   const controlledAtStart = !!sw.controller;
@@ -2886,11 +2951,12 @@ function watchServiceWorkerUpdates(sw) {
       showBuildUpdateNotice();
     }
     if (reg) {
+      buildUpdateRegistration = reg;
       watchWorker(reg.installing);
       if (typeof reg.addEventListener === 'function') {
         reg.addEventListener('updatefound', () => watchWorker(reg.installing));
       }
-      if (typeof reg.update === 'function') reg.update().catch(() => {});
+      requestBuildUpdateCheck('load', { force: true, serviceWorker: sw });
     }
     return reg;
   }).catch(() => null);
@@ -2900,6 +2966,7 @@ function watchServiceWorkerUpdates(sw) {
 // Registering the worker makes the app installable; the browser shows
 // the install control in the address bar — no in-app button needed.
 if ('serviceWorker' in navigator) {
+  watchBuildUpdateCheckTriggers();
   window.addEventListener('load', () => {
     watchServiceWorkerUpdates(navigator.serviceWorker);
   });
