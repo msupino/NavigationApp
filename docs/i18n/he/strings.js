@@ -77,13 +77,14 @@ window.S = {
     return 'תבנית ' + name + ' נטענה במהירות ' + speed + ' קשר';
   },
   deleteWp: '🗑 מחק ציון דרך (D)',                      // כפתור באינספקטור
-  resetWpName: '↺ אפס שם נקודה',                     // כפתור באינספקטור — שם לפי ייחוס או ניקוי (תווית אוטומטית)
+  resetWpName: '↻',                                  // כפתור באינספקטור — שם לפי ייחוס או ניקוי (תווית אוטומטית)
   resetWpNameTitle: 'הגדר שם לפי נקודת הייחוס הקרובה (שדה תעופה / ציון ניווט), או נקה כשאין ייחוס סמוך',
-  tbResetAllWpNames: '↺ אפס את כל שמות ציוני הדרך',
+  tbResetAllWpNames: '↻',
   tbResetAllWpNamesTitle: 'הגדר כל שם לפי ייחוס או נקה כשאין ייחוס סמוך',
   resetAllWpNamesConfirm: 'לאפס את כל שמות ציוני הדרך לפי נקודות ייחוס, או לנקות כשאין ייחוס סמוך?',
-  resetLegMarkers: '↺ אפס מיקום סמן',                // כפתור איפוס מיקום סמן הקטע באינספקטור
-  tbResetAllMarkers: '↺ אפס מיקום כל הסמנים',         // כפתור בסרגל לאיפוס מיקום כל סמני הקטעים
+  resetLegMarkers: '↻',                              // כפתור איפוס מיקום סמן הקטע באינספקטור
+  resetLegMarkersTitle: 'איפוס מיקום סמן הקטע',
+  tbResetAllMarkers: '↻',                            // כפתור בסרגל לאיפוס מיקום כל סמני הקטעים
   tbResetAllMarkersTitle: 'איפוס מיקום סמני הקטעים למיקומי ברירת המחדל',
   tbLimitLegKites: 'הגבל סמנים בתוך הקטע',
   tbLimitLegKitesTitle: 'הגבל גרירת סמני הקטעים לשטח שבין שני ציוני הדרך של הקטע',
@@ -356,7 +357,8 @@ window.S = {
   altPairsLocationMissing: 'נקודות הזוג לא נמצאו',
   addFreqChange: 'הוסף שינוי תדר (Z)',
   deleteFreqChange: '🗑 מחק שינוי תדר (X)',
-  resetFreqLocation: '↺ אפס מיקום תווית',
+  resetFreqLocation: '↻',
+  resetFreqLocationTitle: 'איפוס מיקום תווית שינוי התדר',
   resetFreqOverride: 'שחזר לברירת המחדל',
   resetFreqAuto: 'שחזר אות קריאה ותדר לפי המסלול',
   plates: 'דפיות',

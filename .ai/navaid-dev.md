@@ -195,8 +195,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
     `_normalizeLegLabel` preserves `_default` across reload / import.
     The validator (`validateRoute`) accepts either shape (`a` only when
     `_default: 1`, else `a` + `p`).
-  - **Reset buttons:** inspector "↺ Reset marker position" (per leg) and
-    toolbar `#tool-reset-all-markers` "↺ Reset all marker positions"
+  - **Reset buttons:** inspector `↻` (per leg, titled "Reset marker
+    position") and toolbar `#tool-reset-all-markers` `↻`
     (all legs, prompts `confirm()`). Both call `_defaultLegLabels()`.
 - **Cumulative-time kites:** `cumLabel` (inbound, anchored at the leg's
   destination waypoint) and `cumLabelRet` (return, anchored at the leg's
@@ -669,8 +669,8 @@ downloadable `route.json`.
     freq-change editor to the waypoint pane whenever the selected
     waypoint has a linked callout note (matched by canonical name).
     The editor (shared with the note inspector via `appendFreqEdit()`)
-    includes a call-sign dropdown, editable frequency, and reset-callout-
-    location button. When no linked note exists (overlay off or not
+    includes a call-sign dropdown, editable frequency, route Auto reset,
+    and reset-callout-location `↻` button. When no linked note exists (overlay off or not
     seeded), legacy datasets with `from` / `to` strings still show that
     read-only pair
     and optional note. Styled in `app/style.css`

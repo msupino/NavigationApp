@@ -743,7 +743,7 @@ function findSnappedReference(wp) {
   return hit && hit.ref ? Object.assign({ kind: hit.kind }, hit.ref) : null;
 }
 
-// Issue #418: inspector "↺ Reset waypoint name" handler. Restores the
+// Issue #418: inspector waypoint-name reset handler. Restores the
 // snapped reference code if the waypoint sits on one; otherwise clears
 // the name so the dimmed sequence placeholder (`S.wpPrefix` + N) shows.
 function resetWpName(idx) {
@@ -1738,7 +1738,9 @@ function showInspector() {
     // Fallback to a glyph if the locale strings haven't been loaded yet —
     // Hebrew users used to see literal "undefined" on this button until
     // resetLegMarkers landed in he/strings.js (PR review #4).
-    reset.textContent = S.resetLegMarkers || '↺';
+    reset.textContent = S.resetLegMarkers || '↻';
+    reset.title = S.resetLegMarkersTitle || 'Reset marker position';
+    reset.setAttribute('aria-label', reset.title);
     reset.onclick = () => {
       const d = _defaultLegLabels();
       leg.inLabel = d.inLabel;
@@ -1981,11 +1983,11 @@ function showInspector() {
       draw(); showInspector();
     };
     body.appendChild(del);
-    // Issue #418: ↺ Reset waypoint name — snaps the stored name back to
+    // Issue #418: waypoint-name reset — snaps the stored name back to
     // the nearest reference code, or clears it when off-grid (placeholder).
     const resetName = document.createElement('button');
     resetName.className = 'insp-btn';
-    resetName.textContent = S.resetWpName || '↺ Reset waypoint name';
+    resetName.textContent = S.resetWpName || '↻';
     if (S.resetWpNameTitle) resetName.title = S.resetWpNameTitle;
     resetName.onclick = () => resetWpName(state.selected.index);
     body.appendChild(resetName);
@@ -2409,7 +2411,9 @@ function appendFreqEdit(body, note, editOptions) {
   if (target && typeof commCalloutDefaultTail === 'function') {
     const reset = document.createElement('button');
     reset.className = 'insp-btn';
-    reset.textContent = S.resetFreqLocation || S.resetLegMarkers || '↺';
+    reset.textContent = S.resetFreqLocation || S.resetLegMarkers || '↻';
+    reset.title = S.resetFreqLocationTitle || 'Reset callout location';
+    reset.setAttribute('aria-label', reset.title);
     reset.onclick = () => {
       const tail = commCalloutDefaultTail(target);
       note.lat = tail.lat;

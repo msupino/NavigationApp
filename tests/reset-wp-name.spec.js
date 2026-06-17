@@ -1,5 +1,5 @@
 // @ts-check
-// Issue #418 — Inspector "↺ Reset waypoint name", toolbar reset-all, and
+// Issue #418 — Inspector waypoint-name reset, toolbar reset-all, and
 // sequence-placeholder naming (draw.js / io.js / ui.js).
 //
 // Behaviour:
@@ -50,7 +50,7 @@ async function boot(page, lang = 'en') {
   { timeout: bootDataTimeout });
 }
 
-test.describe('#418 — Reset waypoint name button', () => {
+test.describe('#418 — waypoint-name reset button', () => {
   test.describe.configure(
     onDeployedPreview ? { timeout: 180_000 } : { timeout: 90_000 },
   );
@@ -61,7 +61,7 @@ test.describe('#418 — Reset waypoint name button', () => {
       state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     });
-    await page.locator('.insp-btn').filter({ hasText: /Reset waypoint name/ }).click();
+    await page.locator('#insp-body .insp-btn[title*="nearest reference"]').click();
     const name = await page.evaluate(() => state.waypoints[0].name);
     expect(name).toBe('TYONA');
   });
@@ -73,7 +73,7 @@ test.describe('#418 — Reset waypoint name button', () => {
       state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     }, LLBG);
-    await page.locator('.insp-btn').filter({ hasText: /Reset waypoint name/ }).click();
+    await page.locator('#insp-body .insp-btn[title*="nearest reference"]').click();
     const name = await page.evaluate(() => state.waypoints[0].name);
     expect(name).toBe('LLBG');
   });
@@ -85,7 +85,7 @@ test.describe('#418 — Reset waypoint name button', () => {
       state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     });
-    await page.locator('.insp-btn').filter({ hasText: /Reset waypoint name/ }).click();
+    await page.locator('#insp-body .insp-btn[title*="nearest reference"]').click();
     const { stored, titleVal, ph } = await page.evaluate(() => ({
       stored: state.waypoints[0].name,
       titleVal: document.getElementById('insp-title').value,
@@ -108,7 +108,7 @@ test.describe('#418 — Reset waypoint name button', () => {
       state.selected = { type: 'wp', index: 2 };
       syncLegs(); draw(); showInspector();
     }, [LLHZ, LLHA]);
-    await page.locator('.insp-btn').filter({ hasText: /Reset waypoint name/ }).click();
+    await page.locator('#insp-body .insp-btn[title*="nearest reference"]').click();
     const names = await page.evaluate(() => state.waypoints.map(w => w.name));
     expect(names[0]).toBe('LLHZ');
     expect(names[1]).toBe('LLHA');
@@ -124,7 +124,7 @@ test.describe('#418 — Reset waypoint name button', () => {
       state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     });
-    await page.locator('.insp-btn').filter({ hasText: /Reset waypoint name/ }).click();
+    await page.locator('#insp-body .insp-btn[title*="nearest reference"]').click();
     await page.waitForFunction(() => {
       try {
         const blob = JSON.parse(localStorage.getItem('navaid.route') || '{}');
@@ -133,16 +133,15 @@ test.describe('#418 — Reset waypoint name button', () => {
     }, { timeout: bootDataTimeout });
   });
 
-  test('Hebrew locale: button label is "↺ אפס שם נקודה"', async ({ page }) => {
+  test('Hebrew locale: reset button label is the ↻ glyph', async ({ page }) => {
     await boot(page, 'he');
     await page.evaluate(() => {
       state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'הבדיקה' }];
       state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     });
-    const text = await page.locator('.insp-btn')
-      .filter({ hasText: /אפס שם נקודה/ }).textContent();
-    expect(text).toMatch(/↺ אפס שם נקודה/);
+    const btn = page.locator('#insp-body .insp-btn[title*="נקודת הייחוס"]');
+    await expect(btn).toHaveText('↻');
   });
 
   test('button is positioned directly below Delete waypoint', async ({ page }) => {
@@ -152,11 +151,10 @@ test.describe('#418 — Reset waypoint name button', () => {
       state.selected = { type: 'wp', index: 0 };
       syncLegs(); draw(); showInspector();
     });
-    const texts = await page.locator('#insp-body .insp-btn').allTextContents();
-    const di = texts.findIndex(t => /Delete waypoint/i.test(t));
-    const ri = texts.findIndex(t => /Reset waypoint name/i.test(t));
-    expect(di).toBeGreaterThanOrEqual(0);
-    expect(ri).toBe(di + 1);
+    const buttons = page.locator('#insp-body .insp-btn');
+    await expect(buttons.nth(0)).toHaveText(/Delete waypoint/i);
+    await expect(buttons.nth(1)).toHaveText('↻');
+    await expect(buttons.nth(1)).toHaveAttribute('title', /nearest reference/i);
   });
 
   test('inspector Delete waypoint label includes trash icon', async ({ page }) => {
@@ -318,7 +316,7 @@ test.describe('#418 — Reset waypoint name button', () => {
   test('Hebrew toolbar reset-all label and delete-note pattern', async ({ page }) => {
     await boot(page, 'he');
     const tb = await page.locator('#tool-reset-all-wp-names').textContent();
-    expect(tb).toMatch(/אפס את כל שמות ציוני הדרך/);
+    expect(tb).toBe('↻');
     const delNoteStr = await page.evaluate(() => S.deleteNote);
     expect(delNoteStr).toMatch(/🗑/);
     await page.evaluate(() => {
