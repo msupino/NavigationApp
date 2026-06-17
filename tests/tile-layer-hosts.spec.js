@@ -1,6 +1,10 @@
 // @ts-check
 const { test, expect } = require('./_setup');
 
+const TILE_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
+  'base64');
+
 async function boot(page) {
   await page.addInitScript(() => {
     try {
@@ -13,13 +17,14 @@ async function boot(page) {
 }
 
 test.describe('Base map tile hosts', () => {
-  test('chart layers use the hosted tile repo only', async ({ page }) => {
+  test('chart layers use Flight Maps live URLs with hosted export URLs', async ({ page }) => {
     await boot(page);
     const tileLayers = await page.evaluate(() => {
       const out = {};
       for (const name of ['CVFR', 'Navigation', 'Low Alt', 'Helicopters']) {
         out[name] = {
           url: layers[name]._url,
+          exportUrl: layers[name].options.exportUrl,
           optionKeys: Object.keys(layers[name].options),
         };
       }
@@ -27,24 +32,33 @@ test.describe('Base map tile hosts', () => {
     });
 
     expect(tileLayers.CVFR.url).toBe(
-      'https://navaid-tiles.supino.org/CVFR/{z}/{x}/{y}.png');
+      'https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png');
     expect(tileLayers.Navigation.url).toBe(
-      'https://navaid-tiles.supino.org/Israel-Navigation/{z}/{x}/{y}.png');
+      'https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png');
     expect(tileLayers['Low Alt'].url).toBe(
-      'https://navaid-tiles.supino.org/LSA-Low-Altitude/{z}/{x}/{y}.png');
+      'https://flight-maps.com/tiles/la/{z}/{x}/{y}.png');
     expect(tileLayers.Helicopters.url).toBe(
+      'https://flight-maps.com/tiles/il-hel/{z}/{x}/{y}.png');
+
+    expect(tileLayers.CVFR.exportUrl).toBe(
+      'https://navaid-tiles.supino.org/CVFR/{z}/{x}/{y}.png');
+    expect(tileLayers.Navigation.exportUrl).toBe(
+      'https://navaid-tiles.supino.org/Israel-Navigation/{z}/{x}/{y}.png');
+    expect(tileLayers['Low Alt'].exportUrl).toBe(
+      'https://navaid-tiles.supino.org/LSA-Low-Altitude/{z}/{x}/{y}.png');
+    expect(tileLayers.Helicopters.exportUrl).toBe(
       'https://navaid-tiles.supino.org/Israel-Helicopters/{z}/{x}/{y}.png');
 
     const removedOptionKeys = ['fallbackUrl', ['c', 'orsOk'].join('')];
     for (const info of Object.values(tileLayers)) {
-      expect(info.url).not.toContain('flight-maps.com');
+      expect(info.url).not.toContain('navaid-tiles.supino.org');
       for (const key of removedOptionKeys) {
         expect(info.optionKeys).not.toContain(key);
       }
     }
   });
 
-  test('tile URL helper templates direct hosted URLs', async ({ page }) => {
+  test('tile URL helpers split live and export hosts', async ({ page }) => {
     await boot(page);
     const urls = await page.evaluate(() => {
       const coords = { z: 9, x: 304, y: 205 };
@@ -53,16 +67,65 @@ test.describe('Base map tile hosts', () => {
         navigation: tileLayerUrl(layers.Navigation, coords),
         lowAlt: tileLayerUrl(layers['Low Alt'], coords),
         helicopters: tileLayerUrl(layers.Helicopters, coords),
+        exportCvfr: exportTileLayerUrl(layers.CVFR, coords),
+        exportNavigation: exportTileLayerUrl(layers.Navigation, coords),
+        exportLowAlt: exportTileLayerUrl(layers['Low Alt'], coords),
+        exportHelicopters: exportTileLayerUrl(layers.Helicopters, coords),
         hasProxyHelper: typeof window[['tile', 'Export', 'Fetch', 'Url'].join('')] !== 'undefined',
       };
     });
 
     expect(urls).toEqual({
-      cvfr: 'https://navaid-tiles.supino.org/CVFR/9/304/205.png',
-      navigation: 'https://navaid-tiles.supino.org/Israel-Navigation/9/304/205.png',
-      lowAlt: 'https://navaid-tiles.supino.org/LSA-Low-Altitude/9/304/205.png',
-      helicopters: 'https://navaid-tiles.supino.org/Israel-Helicopters/9/304/205.png',
+      cvfr: 'https://flight-maps.com/tiles/cvfr/9/304/205.png',
+      navigation: 'https://flight-maps.com/tiles/nav/9/304/205.png',
+      lowAlt: 'https://flight-maps.com/tiles/la/9/304/205.png',
+      helicopters: 'https://flight-maps.com/tiles/il-hel/9/304/205.png',
+      exportCvfr: 'https://navaid-tiles.supino.org/CVFR/9/304/205.png',
+      exportNavigation: 'https://navaid-tiles.supino.org/Israel-Navigation/9/304/205.png',
+      exportLowAlt: 'https://navaid-tiles.supino.org/LSA-Low-Altitude/9/304/205.png',
+      exportHelicopters: 'https://navaid-tiles.supino.org/Israel-Helicopters/9/304/205.png',
       hasProxyHelper: false,
     });
+  });
+
+  test('export tile fetch uses hosted mirror instead of live Flight Maps', async ({ page }) => {
+    let liveHits = 0;
+    let exportHits = 0;
+    await page.route(/^https?:\/\/([^/]*\.)?flight-maps\.com\/tiles\//, route => {
+      liveHits++;
+      return route.fulfill({
+        status: 200,
+        contentType: 'image/png',
+        body: TILE_PNG,
+      });
+    });
+    await page.route(/^https?:\/\/navaid-tiles\.supino\.org\//, route => {
+      exportHits++;
+      return route.fulfill({
+        status: 200,
+        contentType: 'image/png',
+        headers: { 'Access-Control-Allow-Origin': '*' },
+        body: TILE_PNG,
+      });
+    });
+
+    await boot(page);
+    liveHits = 0;
+    exportHits = 0;
+
+    const result = await page.evaluate(async () => {
+      const realCreateImageBitmap = window.createImageBitmap;
+      window.createImageBitmap = async () => ({});
+      try {
+        const out = await fetchTileBitmap(layers.CVFR, { z: 9, x: 304, y: 205 });
+        return { failed: out.failed, hasBitmap: !!out.bmp };
+      } finally {
+        window.createImageBitmap = realCreateImageBitmap;
+      }
+    });
+
+    expect(result).toEqual({ failed: false, hasBitmap: true });
+    expect(exportHits).toBeGreaterThan(0);
+    expect(liveHits).toBe(0);
   });
 });
