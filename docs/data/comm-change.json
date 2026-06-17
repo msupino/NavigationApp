@@ -97,8 +97,8 @@
       { "before": "CLORE", "after": "NTAIM", "callSign": "PALMACHIM" },
       { "before": "NTAIM", "after": "CLORE", "callSign": "PLUTO_WEST" }
     ] },
-    { "name": "LIAAD", "commChange": true, "callSigns": ["TEL_AVIV_CONTROL", "SOUTH_CONTROL"] },
-    { "name": "YAPAL", "commChange": true, "callSigns": ["TEL_AVIV_CONTROL", "SOUTH_CONTROL"] },
+    { "name": "LIAAD", "commChange": true, "callSigns": ["PLUTO_WEST", "HAGAV_NORTH"] },
+    { "name": "YAPAL", "commChange": true, "callSigns": ["PLUTO_WEST", "HAGAV_NORTH"] },
     { "name": "NTAIM", "commChange": true, "callSigns": ["BEN_GURION", "PALMACHIM", "TEL_NOF"], "routeHints": [
       { "before": "TYONA", "after": "SIRNI", "callSign": "TEL_NOF" },
       { "before": "TYONA", "after": "BOVED", "callSign": "TEL_NOF" },

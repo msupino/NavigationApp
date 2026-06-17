@@ -149,7 +149,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(map.HOVAV.callSigns).toEqual(['NEGEV', 'HAGAV_NORTH', 'HAGAV_SOUTH']);
     expect(map.KNTRY.callSigns).toEqual(['HERZLIYA']);
     expect(map.KTORA.callSigns).toEqual(['HAGAV_SOUTH', 'RAMON']);
-    expect(map.LIAAD.callSigns).toEqual(['TEL_AVIV_CONTROL', 'SOUTH_CONTROL']);
+    expect(map.LIAAD.callSigns).toEqual(['PLUTO_WEST', 'HAGAV_NORTH']);
     expect(map.LLBS.callSigns).toEqual(['TEYMAN']);
     expect(map.LLMZ.callSigns).toEqual(['MASADA']);
     expect(map.MOVIL.callSigns).toEqual(['RAMAT_DAVID', 'PLUTO_EAST']);
@@ -171,7 +171,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(map.SORES.callSigns).toEqual(['PLUTO_EAST', 'TEL_NOF']);
     expect(map.SOVAL.callSigns).toEqual(['HAGAV_NORTH', 'KEDEM']);
     expect(map.RUHOT.callSigns).toEqual(['RAMON', 'HAGAV_SOUTH']);
-    expect(map.YAPAL.callSigns).toEqual(['TEL_AVIV_CONTROL', 'SOUTH_CONTROL']);
+    expect(map.YAPAL.callSigns).toEqual(['PLUTO_WEST', 'HAGAV_NORTH']);
     expect(map.ZMGID.callSigns).toEqual(['PLUTO_EAST', 'PLUTO_WEST', 'MEGIDDO']);
     expect(map.ZASHD.callSigns).toEqual(['PALMACHIM']);
     expect(map.ZDAFA.callSigns).toEqual(['HAGAV_NORTH', 'HATZOR']);

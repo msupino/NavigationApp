@@ -30,8 +30,6 @@ known frequency point yet.
 | RAMAT_DAVID | רמת דוד | Ramat David | 130.50 | 119.80 | unit: רמת דוד; phone: 04-6092960 |
 | TEYMAN | תימן | Teyman | 122.50 |  | phone: 08-6434810 |
 | TEL_NOF | תל-נוף | Tel Nof | 129.05 | 134.30 | phone: 073-3636954 |
-| TEL_AVIV_CONTROL | פיקוח ת"א | Tel Aviv Control | 121.40 | 122.15 |  |
-| SOUTH_CONTROL | פיקוח דרום | South Control | 120.90 | 134.875 | phone: 08-6833222 |
 
 ## Not Assigned To Frequency Points
 
@@ -56,5 +54,7 @@ known frequency point yet.
 | HABONIM | הבונים | Habonim | 129.15 |  | phone: 04-6391068 |
 | EIN_VERED | עין ורד | Ein Vered | 123.70 |  | phone: 050-5365946 |
 | EIN_YAHAV | עין יהב | Ein Yahav | 122.10 |  | phone: 03-5080005 |
+| TEL_AVIV_CONTROL | פיקוח ת"א | Tel Aviv Control | 121.40 | 122.15 |  |
+| SOUTH_CONTROL | פיקוח דרום | South Control | 120.90 | 134.875 | phone: 08-6833222 |
 | TLV_ID | TLV ID | TLV ID | 124.30 | 135.025 |  |
 | TLV_DEP | TLV dep | TLV dep | 122.95 |  |  |

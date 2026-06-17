@@ -23,8 +23,8 @@ are comm-change points that do not have `points[].callSigns` assigned yet.
 | KNTRY | הרצליה (`HERZLIYA`) | 125.60 / 122.20 / 129.40 / 118.55 |
 | PARDS | בן גוריון (`BEN_GURION`), פלוטו מערב (`PLUTO_WEST`) | 134.60 / 132.10; 118.40 / 119.15 |
 | TYONA | פלוטו מערב (`PLUTO_WEST`), פלמחים (`PALMACHIM`) | 118.40 / 119.15; 135.55 / 118.25 |
-| LIAAD | פיקוח ת"א (`TEL_AVIV_CONTROL`), פיקוח דרום (`SOUTH_CONTROL`) | 121.40 / 122.15; 120.90 / 134.875 |
-| YAPAL | פיקוח ת"א (`TEL_AVIV_CONTROL`), פיקוח דרום (`SOUTH_CONTROL`) | 121.40 / 122.15; 120.90 / 134.875 |
+| LIAAD | פלוטו מערב (`PLUTO_WEST`), חגב צפוני (`HAGAV_NORTH`) | 118.40 / 119.15; 128.35 / 129.25 |
+| YAPAL | פלוטו מערב (`PLUTO_WEST`), חגב צפוני (`HAGAV_NORTH`) | 118.40 / 119.15; 128.35 / 129.25 |
 | NTAIM | בן גוריון (`BEN_GURION`), פלמחים (`PALMACHIM`), תל-נוף (`TEL_NOF`) | 134.60 / 132.10; 135.55 / 118.25; 129.05 / 134.30 |
 | NSHRM | בן גוריון (`BEN_GURION`) | 134.60 / 132.10 |
 | AYLON | בן גוריון (`BEN_GURION`), תל-נוף (`TEL_NOF`) | 134.60 / 132.10; 129.05 / 134.30 |
