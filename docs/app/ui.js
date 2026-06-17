@@ -710,12 +710,16 @@ function normalizeRouteTemplateData(data) {
       }
     }
     if (!ok) continue;
+    // A template note is either a full positioned note, or a lean comm-change
+    // note keyed only by `cc` (waypoint code) — its position is derived from
+    // that waypoint at build time, so templates don't store lat/lng.
     const notes = Array.isArray(template.notes) ? template.notes.filter(note =>
-      note && typeof note === 'object' &&
-      Number.isFinite(note.lat) && Number.isFinite(note.lng) &&
-      typeof note.text === 'string' &&
-      typeof note.color === 'string' &&
-      (note.shape === 'rect' || note.shape === 'oval')) : [];
+      note && typeof note === 'object' && (
+        (Number.isFinite(note.lat) && Number.isFinite(note.lng) &&
+          typeof note.text === 'string' && typeof note.color === 'string' &&
+          (note.shape === 'rect' || note.shape === 'oval')) ||
+        (typeof note.cc === 'string' && note.cc.trim())
+      )) : [];
     const { legs: _templateLegs, ...templateRest } = template;
     out.push({
       ...templateRest,
@@ -795,17 +799,32 @@ async function routeFromTemplate(template, speed) {
   return {
     waypoints,
     legs,
-    notes: (template.notes || []).map(note => ({
-      lat: r5(note.lat),
-      lng: r5(note.lng),
-      text: note.text,
-      color: note.color,
-      shape: note.shape,
-      ...(note.cc ? { cc: note.cc } : {}),
-      ...(note.freqName ? { freqName: note.freqName } : {}),
-      ...(note.freq ? { freq: note.freq } : {}),
-      ...(note.freqAuto === true ? { freqAuto: true } : {}),
-    })),
+    notes: (template.notes || []).map(note => {
+      // Lean comm-change notes carry only `cc` — derive the callout position
+      // from that waypoint (same default offset seedCommChangeNotes uses).
+      let lat = note.lat, lng = note.lng;
+      if (!(Number.isFinite(lat) && Number.isFinite(lng)) && note.cc) {
+        const key = typeof canonicalNavWaypointName === 'function'
+          ? canonicalNavWaypointName(note.cc) : String(note.cc).trim().toUpperCase();
+        const wp = waypoints.find(w => (typeof canonicalNavWaypointName === 'function'
+          ? canonicalNavWaypointName(w.name) : String(w.name).trim().toUpperCase()) === key);
+        if (wp) {
+          lat = wp.lat + (typeof tune === 'function' ? tune('commChangeNoteLatOffset') : 0);
+          lng = wp.lng + (typeof tune === 'function' ? tune('commChangeNoteLngOffset') : 0);
+        }
+      }
+      return {
+        lat: r5(lat),
+        lng: r5(lng),
+        text: note.text || 'Freq change',
+        color: note.color || '#fff6aa',
+        shape: note.shape || 'rect',
+        ...(note.cc ? { cc: note.cc } : {}),
+        ...(note.freqName ? { freqName: note.freqName } : {}),
+        ...(note.freq ? { freq: note.freq } : {}),
+        ...(note.freqAuto === true ? { freqAuto: true } : {}),
+      };
+    }).filter(n => Number.isFinite(n.lat) && Number.isFinite(n.lng)),
     commChangeSuppressions: Array.isArray(template.commChangeSuppressions)
       ? template.commChangeSuppressions.filter(s => typeof s === 'string') : [],
   };

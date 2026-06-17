@@ -16,9 +16,10 @@ notes, wind, and comm-change suppressions. A template intentionally does not.
 - `waypoints` — an array of **canonical codes** (e.g. `"LLHZ"`, `"SFAIM"`), not
   coordinates and not localized labels. Coordinates are resolved from
   `nav-waypoints.json` / `airfields.json` at build time.
-- `notes` — full freq-change callouts (`lat`, `lng`, `text`, `color`, `shape`,
-  `cc`, `freqName`, `freq`, optional `freqAuto`). These carry the per-point
-  frequencies and the callout positions, so the radio plan is preserved.
+- `notes` — **lean** freq-change callouts keyed by `cc` (waypoint code) with
+  `freqName` / `freq` (+ optional `freqAuto`). No `lat`/`lng` — the callout
+  position is derived from that waypoint at build time (same default offset as
+  auto-seeding). `text`/`color`/`shape` default to the standard freq-change box.
 - `commChangeSuppressions` — array of waypoint codes whose auto comm-change note
   should be suppressed on build (so seeding doesn't re-add them).
 
@@ -29,7 +30,8 @@ notes, wind, and comm-change suppressions. A template intentionally does not.
   truth). `defaultSpeed` sets the speed; altitudes are inferred. (`legs` is
   accepted by the loader for the rare custom-altitude template, but prefer
   leaving it out.)
-- **Exact waypoint coordinates** — re-resolved from the datasets by code.
+- **Coordinates** — neither waypoints nor notes store `lat`/`lng`; both are
+  resolved/derived from the datasets by name/code at build time.
 - **Marker label offsets, wind, selection, view** — not persisted.
 
 ## How to update a template

@@ -23,22 +23,12 @@
       ],
       "notes": [
         {
-          "lat": 32.25722,
-          "lng": 34.98111,
-          "text": "שינוי תדר",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "DEROR",
           "freqName": "PLUTO_WEST",
           "freq": "118.40",
           "freqAuto": true
         },
         {
-          "lat": 32.7913,
-          "lng": 34.83327,
-          "text": "שינוי תדר",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "DAROM",
           "freqName": "HAIFA",
           "freq": "133.00",
@@ -68,22 +58,12 @@
       ],
       "notes": [
         {
-          "lat": 32.79611,
-          "lng": 35.03333,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "DAROM",
           "freqName": "PLUTO_WEST",
           "freq": "118.40",
           "freqAuto": true
         },
         {
-          "lat": 32.25722,
-          "lng": 34.98111,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "DEROR",
           "freqName": "HERZLIYA",
           "freq": "125.60",
@@ -114,32 +94,17 @@
       ],
       "notes": [
         {
-          "lat": 32.25549,
-          "lng": 34.98029,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "DEROR",
           "freqName": "PLUTO_WEST",
           "freq": "118.40",
           "freqAuto": true
         },
         {
-          "lat": 32.52667,
-          "lng": 35.26968,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "ZMGID",
           "freqName": "PLUTO_EAST",
           "freq": "123.85"
         },
         {
-          "lat": 32.87,
-          "lng": 35.6225,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "DESHE",
           "freqName": "ROSH_PINA",
           "freq": "118.45",
@@ -170,32 +135,17 @@
       ],
       "notes": [
         {
-          "lat": 32.25549,
-          "lng": 34.98029,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "DEROR",
           "freqName": "HERZLIYA",
           "freq": "125.60",
           "freqAuto": true
         },
         {
-          "lat": 32.52667,
-          "lng": 35.26968,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "ZMGID",
           "freqName": "PLUTO_WEST",
           "freq": "118.40"
         },
         {
-          "lat": 32.87,
-          "lng": 35.6225,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "DESHE",
           "freqName": "PLUTO_EAST",
           "freq": "123.85",
@@ -236,63 +186,33 @@
       ],
       "notes": [
         {
-          "lat": 32.21569,
-          "lng": 34.75114,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "SFAIM",
           "freqName": "PLUTO_WEST",
           "freq": "118.40",
           "freqAuto": true
         },
         {
-          "lat": 32.00925,
-          "lng": 34.79513,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "TYONA",
           "freqName": "PALMACHIM",
           "freq": "135.55"
         },
         {
-          "lat": 31.96501,
-          "lng": 34.86695,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "NTAIM",
           "freqName": "TEL_NOF",
           "freq": "129.05"
         },
         {
-          "lat": 31.84521,
-          "lng": 35.09657,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "SORES",
           "freqName": "PLUTO_EAST",
           "freq": "123.85",
           "freqAuto": true
         },
         {
-          "lat": 31.71611,
-          "lng": 35.53972,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "ZUKIM",
           "freqName": "HAGAV_SOUTH",
           "freq": "121.15"
         },
         {
-          "lat": 31.32917,
-          "lng": 35.47833,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "LLMZ",
           "freqName": "MASADA",
           "freq": "122.55",
@@ -336,62 +256,32 @@
       ],
       "notes": [
         {
-          "lat": 32.21056,
-          "lng": 34.89722,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "SFAIM",
           "freqName": "PLUTO_WEST",
           "freq": "118.40",
           "freqAuto": true
         },
         {
-          "lat": 32.00472,
-          "lng": 34.81722,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "TYONA",
           "freqName": "PALMACHIM",
           "freq": "135.55"
         },
         {
-          "lat": 31.94361,
-          "lng": 34.87083,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "NTAIM",
           "freqName": "TEL_NOF",
           "freq": "129.05"
         },
         {
-          "lat": 31.83931,
-          "lng": 34.58005,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "NMASD",
           "freqName": "HAGAV_NORTH",
           "freq": "128.35"
         },
         {
-          "lat": 31.41139,
-          "lng": 34.83639,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "SOVAL",
           "freqName": "KEDEM",
           "freq": "134.70"
         },
         {
-          "lat": 31.28694,
-          "lng": 34.81278,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "LLBS",
           "freqName": "TEYMAN",
           "freq": "122.50",
@@ -436,88 +326,48 @@
       ],
       "notes": [
         {
-          "lat": 32.02851,
-          "lng": 34.68406,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "TYONA",
           "freqName": "PLUTO_WEST",
           "freq": "118.40",
           "freqAuto": true
         },
         {
-          "lat": 31.82714,
-          "lng": 34.66262,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "ZASHD",
           "freqName": "PALMACHIM",
           "freq": "135.55",
           "freqAuto": true
         },
         {
-          "lat": 31.83168,
-          "lng": 34.55748,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "NMASD",
           "freqName": "PALMACHIM",
           "freq": "135.55",
           "freqAuto": true
         },
         {
-          "lat": 31.68278,
-          "lng": 34.7425,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "HODYA",
           "freqName": "HAGAV_SOUTH",
           "freq": "121.15",
           "freqAuto": true
         },
         {
-          "lat": 31.57139,
-          "lng": 34.86583,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "NOAAM",
           "freqName": "HAGAV_NORTH",
           "freq": "128.35",
           "freqAuto": true
         },
         {
-          "lat": 31.41126,
-          "lng": 34.83971,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "SOVAL",
           "freqName": "HAGAV_NORTH",
           "freq": "128.35",
           "freqAuto": true
         },
         {
-          "lat": 31.28225,
-          "lng": 34.62155,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "LLBS",
           "freqName": "TEYMAN",
           "freq": "122.50",
           "freqAuto": true
         },
         {
-          "lat": 32.14108,
-          "lng": 34.71298,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "KNTRY",
           "freqName": "HERZLIYA",
           "freq": "125.60",
@@ -559,74 +409,39 @@
       ],
       "notes": [
         {
-          "lat": 32.00925,
-          "lng": 34.79513,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "TYONA",
           "freqName": "PLUTO_WEST",
           "freq": "118.40"
         },
         {
-          "lat": 31.96501,
-          "lng": 34.86695,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "NTAIM",
           "freqName": "TEL_NOF",
           "freq": "129.05"
         },
         {
-          "lat": 31.87167,
-          "lng": 35.03361,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "AYLON",
           "freqName": "TEL_NOF",
           "freq": "129.05"
         },
         {
-          "lat": 31.84521,
-          "lng": 35.09657,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "SORES",
           "freqName": "PLUTO_EAST",
           "freq": "123.85",
           "freqAuto": true
         },
         {
-          "lat": 31.71611,
-          "lng": 35.53972,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "ZUKIM",
           "freqName": "PLUTO_EAST",
           "freq": "123.85",
           "freqAuto": true
         },
         {
-          "lat": 31.32917,
-          "lng": 35.47833,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "LLMZ",
           "freqName": "MASADA",
           "freq": "122.55",
           "freqAuto": true
         },
         {
-          "lat": 32.14083,
-          "lng": 34.89139,
-          "text": "Freq change",
-          "color": "#fff6aa",
-          "shape": "rect",
           "cc": "KNTRY",
           "freqName": "HERZLIYA",
           "freq": "125.60",
