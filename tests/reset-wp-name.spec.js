@@ -152,9 +152,13 @@ test.describe('#418 — waypoint-name reset button', () => {
       syncLegs(); draw(); showInspector();
     });
     const buttons = page.locator('#insp-body .insp-btn');
-    await expect(buttons.nth(0)).toHaveText(/Delete waypoint/i);
-    await expect(buttons.nth(1)).toHaveText(/↻ Reset waypoint name/i);
-    await expect(buttons.nth(1)).toHaveAttribute('title', /nearest reference/i);
+    const labels = await buttons.evaluateAll(btns => btns.map(b => b.textContent || ''));
+    const deleteIndex = labels.findIndex(t => /Delete waypoint/i.test(t));
+    const resetIndex = labels.findIndex(t => /Reset waypoint name/i.test(t));
+    expect(deleteIndex).toBeGreaterThanOrEqual(0);
+    expect(resetIndex).toBe(deleteIndex + 1);
+    await expect(buttons.nth(resetIndex)).toHaveText(/↻ Reset waypoint name/i);
+    await expect(buttons.nth(resetIndex)).toHaveAttribute('title', /nearest reference/i);
   });
 
   test('inspector Delete waypoint label includes trash icon', async ({ page }) => {

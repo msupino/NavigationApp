@@ -549,11 +549,14 @@ test.describe('comm-change rendering (fixture-backed)', () => {
       const insp = document.getElementById('inspector');
       // A frequency input means the editor (not the read-only badge) rendered.
       const inputs = insp.querySelectorAll('.freq-input');
+      const callSignEditors = insp.querySelectorAll('.commchange-name-row select, .commchange-name-row input');
       return { noteCount, hasFreqInput: inputs.length > 0,
-               hasBadge: !!insp.querySelector('.commchange-row') };
+               hasCallSignEditor: callSignEditors.length > 0,
+               hasReadOnlyBadge: !!insp.querySelector('.commchange-row') };
     }, TYONA);
     expect(out.noteCount).toBeGreaterThan(0);   // a callout note was seeded
-    expect(out.hasBadge).toBe(true);            // freq-change row present
+    expect(out.hasReadOnlyBadge).toBe(false);   // united inspector edits instead of duplicating badge
+    expect(out.hasCallSignEditor).toBe(true);   // call-sign editor present
     expect(out.hasFreqInput).toBe(true);        // editable, not read-only
   });
 

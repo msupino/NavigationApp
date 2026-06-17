@@ -25,6 +25,19 @@ try {
 // unchanged, which is fine.
 window.NavAid = { exporting: false, version: '1.0' };  // cross-file export flag (read by ui.js/io.js)
 
+function shortcutTypingTarget(t) {
+  return !!(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable));
+}
+
+function shortcutKey(e, code, key) {
+  const k = String(e && e.key || '');
+  return e && (e.code === code || k === key || k === String(key || '').toUpperCase());
+}
+
+function shortcutPlain(e, code, key) {
+  return shortcutKey(e, code, key) && !e.ctrlKey && !e.metaKey && !e.altKey;
+}
+
 // Hidden developer tuning registry. Open with `?tune=1` to preview visual
 // constants without editing source. Values are page-local and reset on reload.
 NavAid.tuning = {};
@@ -661,7 +674,7 @@ window.S = Object.assign({
   altPairsRevertDirection: 'Revert this direction to origin',
   altPairsGoTo: function(from, to) { return 'Go to ' + from + ' ↔ ' + to; },
   altPairsLocationMissing: 'Pair endpoints not found',
-  addFreqChange: 'Add freq change (Z)',
+  addFreqChange: 'Add frequency change (Z)',
   deleteFreqChange: '🗑 Delete freq change (X)',
   resetFreqLocation: '↻ Reset callout location',
   resetFreqLocationTitle: 'Reset callout location',
