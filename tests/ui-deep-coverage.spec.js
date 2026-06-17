@@ -176,6 +176,18 @@ test.describe('Inspector panel', () => {
       window.__satModalMap && window.__satModalMap.getZoom() === 14);
     await expect(lmap.locator('.leaflet-tile').first()).toBeVisible();
     expect(await page.evaluate(() => window.__satModalMap.getZoom())).toBe(14);
+    // Zoom readout chip mirrors the main map: `z<level> · <mult>×`, z12 = 1×
+    // (mult = 2^(z-12), so z14 → 4×). It tracks the zoom buttons live.
+    const satZoom = modal.locator('.satellite-zoom-readout');
+    await expect(satZoom).toBeVisible();
+    await expect(satZoom).toHaveText('z14 · 4×');
+    await modal.getByRole('button', { name: 'Zoom out' }).click();
+    await page.waitForFunction(() =>
+      window.__satModalMap && window.__satModalMap.getZoom() === 13);
+    await expect(satZoom).toHaveText('z13 · 2×');
+    await zoomIn.click();
+    await page.waitForFunction(() =>
+      window.__satModalMap && window.__satModalMap.getZoom() === 14);
     await expect(modal.getByRole('button', { name: /recentre/i })).toBeVisible();
 
     // Two-way bearing sync: rotating the main map rotates the modal map…
@@ -196,6 +208,28 @@ test.describe('Inspector panel', () => {
     await expect(page.locator('.satellite-preview-map')).toHaveCount(0);
     await snippet.click();
     await expect(page.locator('.satellite-preview-modal .leaflet-tile').first()).toBeVisible();
+  });
+
+  test('zoom readout shows level plus a z12-anchored multiplier', async ({ page }) => {
+    await boot(page, 'en');
+    // Pure helper: each whole zoom doubles scale, anchored at z12 = 1×.
+    const cases = await page.evaluate(() => ({
+      z12: zoomReadoutText(12),
+      z13: zoomReadoutText(13),
+      z11: zoomReadoutText(11),
+      frac: zoomReadoutText(12.75),
+      z16: zoomReadoutText(16),
+    }));
+    expect(cases.z12).toBe('z12 · 1×');
+    expect(cases.z13).toBe('z13 · 2×');
+    expect(cases.z11).toBe('z11 · 0.5×');
+    expect(cases.frac).toBe('z12.75 · 1.68×');
+    expect(cases.z16).toBe('z16 · 16×');
+    // The on-map readout uses the same helper.
+    await page.evaluate(() => map.setZoom(13));
+    await page.waitForFunction(() => map.getZoom() === 13);
+    await page.evaluate(() => showZoom());
+    await expect(page.locator('#zoom-readout')).toHaveText('z13 · 2×');
   });
 
   test('Hebrew satellite preview title keeps name before coordinates', async ({ page }) => {
