@@ -2524,6 +2524,16 @@ function createTuningPanel() {
   actions.append(resetAll, copy);
   panel.appendChild(actions);
 
+  // Find box — filters rows/groups by label or key (the registry is large).
+  const find = document.createElement('input');
+  find.type = 'search';
+  find.id = 'tune-find';
+  find.className = 'tune-find';
+  find.placeholder = 'Find…';
+  find.setAttribute('aria-label', 'Find tuning parameter');
+  panel.appendChild(find);
+  const filterGroups = [];   // { details, rows: [{ el, text }] }
+
   const controlSets = {};
   const syncControl = key => {
     const spec = NavAid.tuningDefaults[key];
@@ -2559,6 +2569,8 @@ function createTuningPanel() {
     const summary = document.createElement('summary');
     summary.textContent = group.name;
     details.appendChild(summary);
+    const groupEntry = { details, name: group.name.toLowerCase(), rows: [] };
+    filterGroups.push(groupEntry);
 
     for (const key of group.keys) {
       const spec = NavAid.tuningDefaults[key];
@@ -2635,6 +2647,7 @@ function createTuningPanel() {
         row.append(name, range, number, reset);
       }
 
+      groupEntry.rows.push({ el: row, text: ((spec.label || key) + ' ' + key).toLowerCase() });
       controlSets[key] = set;
       syncControl(key);
       reset.addEventListener('click', e => {
@@ -2649,6 +2662,20 @@ function createTuningPanel() {
 
     panel.appendChild(details);
   }
+
+  find.addEventListener('input', () => {
+    const q = find.value.trim().toLowerCase();
+    for (const g of filterGroups) {
+      let shown = 0;
+      for (const r of g.rows) {
+        const hit = !q || r.text.includes(q) || g.name.includes(q);
+        r.el.style.display = hit ? '' : 'none';
+        if (hit) shown++;
+      }
+      g.details.style.display = shown ? '' : 'none';
+      if (q) g.details.open = shown > 0;   // auto-expand matching groups while searching
+    }
+  });
 
   resetAll.addEventListener('click', () => {
     resetTune();
