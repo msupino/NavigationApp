@@ -1916,7 +1916,7 @@ function showInspector() {
     // point. Looked up by the canonical ICAO name so it works for both
     // auto-snapped nav-WP waypoints and routes built via the search
     // overlay, regardless of locale (the badge text itself is i18n'd).
-    if (commChangeMap && wp.name) {
+    if (showCommChange && commChangeMap && wp.name) {
       // Resolve to the canonical ICAO key first: in Hebrew locale snapped
       // waypoints store the he label as wp.name, and commChangeMap is keyed
       // by canonical English — a raw lookup would miss the badge in Hebrew
