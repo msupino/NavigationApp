@@ -143,7 +143,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(map.GNYAM.callSigns).toEqual(['HERZLIYA', 'BEN_GURION']);
     expect(map.HAROV.callSigns).toEqual(['PLUTO_EAST', 'PIK']);
     expect(map.HASID.callSigns).toEqual(['PLUTO_EAST', 'PLUTO_WEST', 'RAMAT_DAVID', 'HAIFA']);
-    expect(map.HODYA.callSigns).toEqual(['HATZOR', 'HAGAV_NORTH']);
+    expect(map.HODYA.callSigns).toEqual(['HAGAV_SOUTH', 'HATZOR']);
     expect(map.HOVAV.callSigns).toEqual(['NEGEV', 'HAGAV_NORTH', 'HAGAV_SOUTH']);
     expect(map.KNTRY.callSigns).toEqual(['HERZLIYA']);
     expect(map.KTORA.callSigns).toEqual(['HAGAV_SOUTH', 'RAMON']);
@@ -283,6 +283,47 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     const keys = await page.evaluate(() => Object.keys(window.commChangeMap).sort());
     const md = fs.readFileSync('known-freq-points.md', 'utf8');
     const missing = keys.filter(k => !md.includes(`| ${k} |`));
+    expect(missing).toEqual([]);
+  });
+
+  test('route template comm-change frequencies have directional hints', async () => {
+    const comm = JSON.parse(fs.readFileSync('docs/data/comm-change.json', 'utf8'));
+    const templates = JSON.parse(fs.readFileSync('docs/data/route-templates.json', 'utf8'));
+    const catalog = comm.callSigns || {};
+    const byName = new Map((comm.points || []).map(point => [point.name, point]));
+    const key = raw => String(raw || '').trim().toLocaleLowerCase()
+      .replace(/[^0-9a-z\u0590-\u05ff]+/g, '');
+    const formatFreq = raw => {
+      const s = String(raw || '').trim();
+      if (/^\d{3}$/.test(s)) return s + '.00';
+      if (/^\d{3}\.\d$/.test(s)) return s + '0';
+      return s;
+    };
+    const hintMatches = (hint, id, freq) => {
+      if (typeof hint !== 'string' || !hint.trim()) return false;
+      const row = catalog[id] || {};
+      const names = [id, row.label, row.he].filter(v => typeof v === 'string' && v.trim());
+      const hintKey = key(hint);
+      const labelOk = names.some(name => {
+        const nameKey = key(name);
+        return nameKey && (hintKey.includes(nameKey) || nameKey.includes(hintKey));
+      });
+      const freqs = hint.match(/\b\d{3}(?:\.\d{1,3})?\b/g) || [];
+      return labelOk && freqs.map(formatFreq).includes(formatFreq(freq));
+    };
+    const missing = [];
+    for (const tpl of templates.templates || []) {
+      for (const note of tpl.notes || []) {
+        if (!note || !note.cc || !note.freqName || !note.freq) continue;
+        const point = byName.get(note.cc);
+        const callSigns = point && Array.isArray(point.callSigns) ? point.callSigns : [];
+        const hints = point ? [point.from, point.to] : [];
+        if (!point || !callSigns.includes(note.freqName) ||
+            !hints.some(h => hintMatches(h, note.freqName, note.freq))) {
+          missing.push(`${tpl.id}: ${note.cc} -> ${note.freqName} ${note.freq}`);
+        }
+      }
+    }
     expect(missing).toEqual([]);
   });
 

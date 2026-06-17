@@ -272,7 +272,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   hints: the app matches the string to one of that point's `callSigns` and
   uses it only when the route azimuth through the waypoint points toward
   that call sign's reference sector. Ambiguous geometry falls back to the
-  normal route graph. Defaults are
+  normal route graph. Shipped route-template comm-change notes are used as
+  regression evidence for these hints; `tests/comm-change.spec.js` verifies
+  that every template `cc` frequency has a matching `from` / `to` entry.
+  Defaults are
   route-aware: `commRouteCalloutDefaultsMap()` treats
   each comm-change waypoint's call-sign list as a boundary in an ATC graph,
   then picks the sector after crossing based on route order, neighboring
