@@ -743,7 +743,7 @@ function findSnappedReference(wp) {
   return hit && hit.ref ? Object.assign({ kind: hit.kind }, hit.ref) : null;
 }
 
-// Issue #418: inspector "↺ Reset waypoint name" handler. Restores the
+// Issue #418: inspector waypoint-name reset handler. Restores the
 // snapped reference code if the waypoint sits on one; otherwise clears
 // the name so the dimmed sequence placeholder (`S.wpPrefix` + N) shows.
 function resetWpName(idx) {
@@ -1738,7 +1738,9 @@ function showInspector() {
     // Fallback to a glyph if the locale strings haven't been loaded yet —
     // Hebrew users used to see literal "undefined" on this button until
     // resetLegMarkers landed in he/strings.js (PR review #4).
-    reset.textContent = S.resetLegMarkers || '↺';
+    reset.textContent = S.resetLegMarkers || '↻';
+    reset.title = S.resetLegMarkersTitle || 'Reset marker position';
+    reset.setAttribute('aria-label', reset.title);
     reset.onclick = () => {
       const d = _defaultLegLabels();
       leg.inLabel = d.inLabel;
@@ -1981,11 +1983,11 @@ function showInspector() {
       draw(); showInspector();
     };
     body.appendChild(del);
-    // Issue #418: ↺ Reset waypoint name — snaps the stored name back to
+    // Issue #418: waypoint-name reset — snaps the stored name back to
     // the nearest reference code, or clears it when off-grid (placeholder).
     const resetName = document.createElement('button');
     resetName.className = 'insp-btn';
-    resetName.textContent = S.resetWpName || '↺ Reset waypoint name';
+    resetName.textContent = S.resetWpName || '↻';
     if (S.resetWpNameTitle) resetName.title = S.resetWpNameTitle;
     resetName.onclick = () => resetWpName(state.selected.index);
     body.appendChild(resetName);
@@ -2171,10 +2173,12 @@ function appendFreqEdit(body, note, editOptions) {
   if (!note.freq) note.freq = commNoteFreq(note);
   const opts = typeof commCallSignOptions === 'function'
     ? commCallSignOptions(note.cc) : [];
+  let callSignSelect = null;
   let freqInput = null;
   let resetFreq = null;
   let templateRow = null;
   let lastValidFreq = '';
+  const AUTO_OPTION_VALUE = '__auto__';
   function normalizeFreqValue(raw) {
     if (typeof commNormalizeFreqInput === 'function') return commNormalizeFreqInput(raw);
     const s = String(raw || '').trim();
@@ -2196,6 +2200,62 @@ function appendFreqEdit(body, note, editOptions) {
     }
     return value;
   }
+  function autoDefault() {
+    if (!note || !note.cc || typeof commCalloutDefaults !== 'function') return null;
+    const def = commCalloutDefaults(note.cc);
+    return def && def.freqName ? def : null;
+  }
+  function normalizedFreq(value) {
+    return typeof commFormatFreq === 'function'
+      ? commFormatFreq(value || '') : String(value || '').trim();
+  }
+  function callSignOptionFor(id) {
+    return opts.find(o => typeof commCallSignOptionMatches === 'function'
+      ? commCallSignOptionMatches(o, id)
+      : String(o.id || o.label || '') === String(id || '')) || null;
+  }
+  function callSignOptionId(id) {
+    const found = callSignOptionFor(id);
+    return found ? found.id : '';
+  }
+  function autoOptionLabel() {
+    const label = S.commChangeAuto || 'Auto';
+    const def = autoDefault();
+    if (!def) return label;
+    const opt = callSignOptionFor(def.freqName);
+    const callSign = (opt && opt.label) || def.freqName || '';
+    return callSign ? label + ': ' + callSign : label;
+  }
+  function isRouteAutoSelected() {
+    const def = autoDefault();
+    return !!(def && note.freqAuto === true &&
+      callSignOptionId(def.freqName) === callSignOptionId(note.freqName) &&
+      normalizedFreq(note.freq) === normalizedFreq(def.freq));
+  }
+  function syncCallSignSelect() {
+    if (!callSignSelect) return;
+    if (isRouteAutoSelected()) {
+      callSignSelect.value = AUTO_OPTION_VALUE;
+      return;
+    }
+    const id = callSignOptionId(note.freqName);
+    if (id) callSignSelect.value = id;
+  }
+  function resetFreqToAuto() {
+    const def = autoDefault();
+    if (!def) return;
+    note.freqName = def.freqName;
+    note.freq = def.freq || '';
+    note.freqAuto = true;
+    syncCallSignSelect();
+    if (freqInput) {
+      freqInput.value = commNoteFreq(note) || note.freq || '';
+      lastValidFreq = freqInput.value;
+      setFreqInputValid(true);
+    }
+    updateTemplateHint();
+    draw();
+  }
   function updateTemplateHint() {
     if (!templateRow) return;
     const opt = typeof commNoteCallSignOption === 'function'
@@ -2213,19 +2273,27 @@ function appendFreqEdit(body, note, editOptions) {
       resetFreq.hidden = !template;
       resetFreq.disabled = !changed;
     }
+    syncCallSignSelect();
   }
   if (opts.length) {
     const current = (note.freqName || '').trim();
     let selected = opts.find(o => typeof commCallSignOptionMatches === 'function'
       ? commCallSignOptionMatches(o, current)
       : o.label === current);
-    const rows = opts.map(o => [o.id, o.label]);
+    const rows = [];
+    if (autoDefault()) rows.push([AUTO_OPTION_VALUE, autoOptionLabel()]);
     if (!selected && current) {
       selected = { id: '__custom__', label: current };
-      rows.unshift(['__custom__', current]);
+      rows.push(['__custom__', current]);
     }
+    rows.push(...opts.map(o => [o.id, o.label]));
     const callSignRow = selectRow(S.commChangeName || 'Call sign',
-      selected ? selected.id : opts[0].id, rows, v => {
+      isRouteAutoSelected() ? AUTO_OPTION_VALUE : (selected ? selected.id : opts[0].id),
+      rows, v => {
+        if (v === AUTO_OPTION_VALUE) {
+          resetFreqToAuto();
+          return;
+        }
         const opt = opts.find(o => o.id === v);
         if (!opt) return;
         note.freqName = opt.id;
@@ -2243,6 +2311,7 @@ function appendFreqEdit(body, note, editOptions) {
         draw();
       });
     callSignRow.classList.add('commchange-name-row');
+    callSignSelect = callSignRow.querySelector('select');
     body.appendChild(callSignRow);
   } else {
     body.appendChild(textRow(S.commChangeName || 'Call sign', commNoteName(note) || ''));
@@ -2352,7 +2421,9 @@ function appendFreqEdit(body, note, editOptions) {
   if (target && typeof commCalloutDefaultTail === 'function') {
     const reset = document.createElement('button');
     reset.className = 'insp-btn';
-    reset.textContent = S.resetFreqLocation || S.resetLegMarkers || '↺';
+    reset.textContent = S.resetFreqLocation || S.resetLegMarkers || '↻';
+    reset.title = S.resetFreqLocationTitle || 'Reset callout location';
+    reset.setAttribute('aria-label', reset.title);
     reset.onclick = () => {
       const tail = commCalloutDefaultTail(target);
       note.lat = tail.lat;
