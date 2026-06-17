@@ -223,7 +223,7 @@ function isKnownCommChangeKey(ccKey) {
 function appendAddFreqChangeButton(body, wp, ccKey) {
   if (!body || !wp || !ccKey || !showCommChange) return;
   const add = document.createElement('button');
-  add.className = 'insp-btn';
+  add.className = 'insp-btn add-freq-change-btn';
   add.textContent = S.addFreqChange || 'Add frequency change';
   add.onclick = () => {
     const idx = addCommChangeNoteForWaypoint(wp, ccKey);
@@ -233,6 +233,76 @@ function appendAddFreqChangeButton(body, wp, ccKey) {
     draw(); showInspector();
   };
   body.appendChild(add);
+}
+
+function appendNavWaypointCommChangeInfo(body, name) {
+  if (!showCommChange || !commChangeMap) return false;
+  const ccKey = typeof canonicalNavWaypointName === 'function'
+    ? canonicalNavWaypointName(name) : String(name || '').trim();
+  if (!ccKey) return false;
+  const cc = commChangeMap[ccKey];
+  if (!cc || !cc.commChange) return false;
+
+  const row = document.createElement('div');
+  row.className = 'row col commchange-row commchange-map-row';
+  const lbl = document.createElement('label');
+  lbl.className = 'commchange-label';
+  lbl.textContent = S.commChangeBadge || '📡 Freq change point';
+  row.appendChild(lbl);
+
+  const opts = typeof commCallSignOptions === 'function'
+    ? commCallSignOptions(ccKey) : [];
+  if (opts.length) {
+    const title = document.createElement('span');
+    title.className = 'commchange-options-title';
+    title.textContent = S.commChangeCallSigns || S.commChangeName || 'Call signs';
+    row.appendChild(title);
+
+    const list = document.createElement('div');
+    list.className = 'commchange-options';
+    for (const opt of opts) {
+      const item = document.createElement('span');
+      item.className = 'val commchange-option';
+      item.dataset.callSign = opt.id || '';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'commchange-option-name';
+      nameSpan.textContent = opt.label || opt.id || '';
+      item.appendChild(nameSpan);
+
+      if (opt.id) {
+        const code = document.createElement('span');
+        code.className = 'commchange-option-code';
+        code.textContent = opt.id;
+        item.appendChild(code);
+      }
+
+      if (opt.freq) {
+        const freq = document.createElement('span');
+        freq.className = 'commchange-option-freq';
+        freq.dir = 'ltr';
+        freq.textContent = opt.freq + ' MHz';
+        item.appendChild(freq);
+      }
+      list.appendChild(item);
+    }
+    row.appendChild(list);
+  } else if (cc.from || cc.to) {
+    const freq = document.createElement('span');
+    freq.className = 'val commchange-freq';
+    const arrow = (S.legArrow || '→');
+    freq.textContent = (cc.from || '?') + ' ' + arrow + ' ' + (cc.to || '?');
+    row.appendChild(freq);
+  }
+
+  if (cc.note) {
+    const note = document.createElement('span');
+    note.className = 'val commchange-note';
+    note.textContent = cc.note;
+    row.appendChild(note);
+  }
+  body.appendChild(row);
+  return true;
 }
 function hitWaypoint(px, py) {
   const hits = hitWaypointCandidates(px, py);
@@ -1940,6 +2010,7 @@ function showInspector() {
     title.value = referenceInspectorTitle(nw, 'navwp');
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     appendPointCoordinateRows(body, nw);
+    appendNavWaypointCommChangeInfo(body, nw.name);
     appendSatelliteSnippet(body, nw, title.value);
     appendVorRadialRow(body, nw.lat, nw.lng);
   } else {
