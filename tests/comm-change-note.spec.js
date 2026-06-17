@@ -214,6 +214,62 @@ test.describe('comm-change auto-note (#487)', () => {
     });
   });
 
+  test('reverse route updates existing auto callout from route-context hints', async ({ page }) => {
+    const routeFixture = {
+      ...FIXTURE,
+      points: [
+        {
+          name: 'TYONA',
+          commChange: true,
+          callSigns: ['PALMACHIM', 'PLUTO_WEST'],
+          routeHints: [
+            { before: 'NTAIM', after: 'CLORE', callSign: 'PLUTO_WEST' },
+            { before: 'CLORE', after: 'NTAIM', callSign: 'PALMACHIM' },
+          ],
+        },
+      ],
+    };
+    await installCommChangeFixture(page, routeFixture);
+    await boot(page);
+    const before = await page.evaluate(({ ntaim, tyona, clore }) => {
+      state.waypoints = [ntaim, tyona, clore];
+      state.notes = [];
+      syncLegs();
+      seedCommChangeNotes();
+      draw();
+      return state.notes
+        .filter(n => n.cc)
+        .map(n => ({ cc: n.cc, freqName: n.freqName, freq: n.freq, freqAuto: n.freqAuto }));
+    }, { ntaim: NTAIM, tyona: TYONA, clore: CLORE });
+    expect(before).toEqual([
+      { cc: 'TYONA', freqName: 'PLUTO_WEST', freq: '118.40', freqAuto: true },
+    ]);
+
+    await page.locator('#reverse').click();
+    const after = await page.evaluate(() => ({
+      waypoints: state.waypoints.map(w => w.name),
+      notes: state.notes
+        .filter(n => n.cc)
+        .map(n => ({
+          cc: n.cc,
+          freqName: n.freqName,
+          freq: n.freq,
+          freqAuto: n.freqAuto,
+          lines: noteLines(n),
+        })),
+    }));
+    expect(after).toEqual({
+      waypoints: ['CLORE', 'TYONA', 'NTAIM'],
+      notes: [{
+        cc: 'TYONA',
+        freqName: 'PALMACHIM',
+        freq: '135.55',
+        freqAuto: true,
+        lines: ['PALMACHIM', '135.55'],
+      }],
+    });
+  });
+
   test('Reverse route updates existing auto frequency callouts', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
