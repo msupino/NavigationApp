@@ -299,16 +299,17 @@ test.describe('comm-change auto-note (#487)', () => {
 
     const sel = page.locator('#insp-body .commchange-name-row select').first();
     const field = page.locator('#insp-body .freq-input').first();
-    const auto = page.locator('#insp-body .commchange-auto-reset');
-    await expect(sel).toHaveValue('__auto__');
-    await expect(sel.locator('option:checked')).toHaveText('Auto: Pluto West');
-    await expect(sel.locator('option').first()).toHaveText('Auto: Pluto West');
+    const auto = page.locator('#insp-body .commchange-auto-checkbox');
+    await expect(auto).toBeChecked();
+    await expect(sel).toHaveValue('PLUTO_WEST');
+    await expect(sel.locator('option:checked')).toHaveText('Pluto West');
+    await expect(sel.locator('option').first()).toHaveText('Palmachim');
     await expect(field).toHaveValue('118.40');
-    await expect(auto).toHaveCount(0);
 
     await sel.selectOption('HAGAV');
     await expect(field).toHaveValue('132.70');
     await expect(sel).toHaveValue('HAGAV');
+    await expect(auto).not.toBeChecked();
     expect(await page.evaluate(() => ({
       freqName: state.notes[0].freqName,
       freq: state.notes[0].freq,
@@ -345,9 +346,11 @@ test.describe('comm-change auto-note (#487)', () => {
       showInspector();
     });
     await expect(sel).toHaveValue('HAGAV');
-    await sel.selectOption('__auto__');
-    await expect(sel).toHaveValue('__auto__');
-    await expect(sel.locator('option:checked')).toHaveText('Auto: Palmachim');
+    await expect(auto).not.toBeChecked();
+    await auto.check();
+    await expect(auto).toBeChecked();
+    await expect(sel).toHaveValue('PALMACHIM');
+    await expect(sel.locator('option:checked')).toHaveText('Palmachim');
     await expect(field).toHaveValue('135.55');
     expect(await page.evaluate(() => ({
       freqName: state.notes[0].freqName,
@@ -1544,13 +1547,17 @@ test.describe('comm-change auto-note (#487)', () => {
     const sel = page.locator('#insp-body .commchange-name-row select').first();
     const labels = page.locator('#insp-body .row label');
     const values = page.locator('#insp-body .row .val');
+    const auto = page.locator('#insp-body .commchange-auto-checkbox');
     await expect(labels.nth(0)).toHaveText('Waypoint');
-    await expect(labels.nth(1)).toHaveText('Call sign');
-    await expect(labels.nth(2)).toHaveText('Frequency');
+    await expect(labels.nth(1)).toHaveText('Auto');
+    await expect(labels.nth(2)).toHaveText('Call sign');
+    await expect(labels.nth(3)).toHaveText('Frequency');
     await expect(values.nth(0)).toHaveText('Tel Yona');
-    await expect(sel).toHaveValue('__auto__');
-    await expect(sel.locator('option:checked')).toHaveText('Auto: Pluto');
+    await expect(auto).toBeChecked();
+    await expect(sel).toHaveValue('PLUTO');
+    await expect(sel.locator('option:checked')).toHaveText('Pluto');
     await sel.selectOption('HAGAV');
+    await expect(auto).not.toBeChecked();
     await expect(sel).toHaveValue('HAGAV');
     const fields = page.locator('#insp-body .freq-input');
     await expect(fields).toHaveCount(1);
@@ -1665,15 +1672,19 @@ test.describe('comm-change auto-note (#487)', () => {
     const labels = page.locator('#insp-body .row label');
     const values = page.locator('#insp-body .row .val');
     const sel = page.locator('#insp-body .commchange-name-row select').first();
+    const auto = page.locator('#insp-body .commchange-auto-checkbox');
     await expect(labels.nth(0)).toHaveText('נקודת דיווח');
-    await expect(labels.nth(1)).toHaveText('אות קריאה');
-    await expect(labels.nth(2)).toHaveText('תדר');
+    await expect(labels.nth(1)).toHaveText('Auto');
+    await expect(labels.nth(2)).toHaveText('אות קריאה');
+    await expect(labels.nth(3)).toHaveText('תדר');
     await expect(values.nth(0)).toHaveText('תל יונה');
     await expect(fields).toHaveCount(1);
     await expect(fields.nth(0)).toHaveValue('118.40');
-    await expect(sel).toHaveValue('__auto__');
-    await expect(sel.locator('option:checked')).toHaveText('Auto: פלוטו');
+    await expect(auto).toBeChecked();
+    await expect(sel).toHaveValue('PLUTO');
+    await expect(sel.locator('option:checked')).toHaveText('פלוטו');
     await sel.selectOption('HAGAV');
+    await expect(auto).not.toBeChecked();
     await expect(sel.locator('option:checked')).toHaveText('חגב');
     await expect(fields.nth(0)).toHaveValue('132.70');
     const out = await page.evaluate(() => ({

@@ -2229,11 +2229,11 @@ function appendFreqEdit(body, note, editOptions) {
   const opts = typeof commCallSignOptions === 'function'
     ? commCallSignOptions(note.cc) : [];
   let callSignSelect = null;
+  let autoCheckbox = null;
   let freqInput = null;
   let resetFreq = null;
   let templateRow = null;
   let lastValidFreq = '';
-  const AUTO_OPTION_VALUE = '__auto__';
   function normalizeFreqValue(raw) {
     if (typeof commNormalizeFreqInput === 'function') return commNormalizeFreqInput(raw);
     const s = String(raw || '').trim();
@@ -2273,28 +2273,21 @@ function appendFreqEdit(body, note, editOptions) {
     const found = callSignOptionFor(id);
     return found ? found.id : '';
   }
-  function autoOptionLabel() {
-    const label = S.commChangeAuto || 'Auto';
-    const def = autoDefault();
-    if (!def) return label;
-    const opt = callSignOptionFor(def.freqName);
-    const callSign = (opt && opt.label) || def.freqName || '';
-    return callSign ? label + ': ' + callSign : label;
-  }
   function isRouteAutoSelected() {
     const def = autoDefault();
     return !!(def && note.freqAuto === true &&
       callSignOptionId(def.freqName) === callSignOptionId(note.freqName) &&
       normalizedFreq(note.freq) === normalizedFreq(def.freq));
   }
+  function syncAutoCheckbox() {
+    if (autoCheckbox) autoCheckbox.checked = isRouteAutoSelected();
+  }
   function syncCallSignSelect() {
-    if (!callSignSelect) return;
-    if (isRouteAutoSelected()) {
-      callSignSelect.value = AUTO_OPTION_VALUE;
-      return;
+    if (callSignSelect) {
+      const id = callSignOptionId(note.freqName);
+      if (id) callSignSelect.value = id;
     }
-    const id = callSignOptionId(note.freqName);
-    if (id) callSignSelect.value = id;
+    syncAutoCheckbox();
   }
   function resetFreqToAuto() {
     const def = autoDefault();
@@ -2336,19 +2329,35 @@ function appendFreqEdit(body, note, editOptions) {
       ? commCallSignOptionMatches(o, current)
       : o.label === current);
     const rows = [];
-    if (autoDefault()) rows.push([AUTO_OPTION_VALUE, autoOptionLabel()]);
     if (!selected && current) {
       selected = { id: '__custom__', label: current };
       rows.push(['__custom__', current]);
     }
     rows.push(...opts.map(o => [o.id, o.label]));
-    const callSignRow = selectRow(S.commChangeName || 'Call sign',
-      isRouteAutoSelected() ? AUTO_OPTION_VALUE : (selected ? selected.id : opts[0].id),
-      rows, v => {
-        if (v === AUTO_OPTION_VALUE) {
+    if (autoDefault()) {
+      const autoRow = document.createElement('div');
+      autoRow.className = 'row commchange-auto-row';
+      const autoLabel = document.createElement('label');
+      autoLabel.textContent = S.commChangeAuto || 'Auto';
+      autoCheckbox = document.createElement('input');
+      autoCheckbox.type = 'checkbox';
+      autoCheckbox.className = 'commchange-auto-checkbox';
+      autoCheckbox.checked = isRouteAutoSelected();
+      autoCheckbox.onchange = () => {
+        if (autoCheckbox.checked) {
           resetFreqToAuto();
           return;
         }
+        note.freqAuto = false;
+        updateTemplateHint();
+        draw();
+      };
+      autoRow.append(autoLabel, autoCheckbox);
+      body.appendChild(autoRow);
+    }
+    const callSignRow = selectRow(S.commChangeName || 'Call sign',
+      selected ? selected.id : opts[0].id,
+      rows, v => {
         const opt = opts.find(o => o.id === v);
         if (!opt) return;
         note.freqName = opt.id;
