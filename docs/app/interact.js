@@ -2171,8 +2171,10 @@ function appendFreqEdit(body, note, editOptions) {
   if (!note.freq) note.freq = commNoteFreq(note);
   const opts = typeof commCallSignOptions === 'function'
     ? commCallSignOptions(note.cc) : [];
+  let callSignSelect = null;
   let freqInput = null;
   let resetFreq = null;
+  let resetAuto = null;
   let templateRow = null;
   let lastValidFreq = '';
   function normalizeFreqValue(raw) {
@@ -2196,6 +2198,49 @@ function appendFreqEdit(body, note, editOptions) {
     }
     return value;
   }
+  function autoDefault() {
+    if (!note || !note.cc || typeof commCalloutDefaults !== 'function') return null;
+    const def = commCalloutDefaults(note.cc);
+    return def && def.freqName ? def : null;
+  }
+  function normalizedFreq(value) {
+    return typeof commFormatFreq === 'function'
+      ? commFormatFreq(value || '') : String(value || '').trim();
+  }
+  function callSignOptionId(id) {
+    const found = opts.find(o => typeof commCallSignOptionMatches === 'function'
+      ? commCallSignOptionMatches(o, id)
+      : String(o.id || o.label || '') === String(id || ''));
+    return found ? found.id : '';
+  }
+  function syncCallSignSelect() {
+    if (!callSignSelect) return;
+    const id = callSignOptionId(note.freqName);
+    if (id) callSignSelect.value = id;
+  }
+  function updateAutoReset() {
+    if (!resetAuto) return;
+    const def = autoDefault();
+    const isDefault = !!(def && note.freqAuto === true &&
+      callSignOptionId(def.freqName) === callSignOptionId(note.freqName) &&
+      normalizedFreq(note.freq) === normalizedFreq(def.freq));
+    resetAuto.disabled = !def || isDefault;
+  }
+  function resetFreqToAuto() {
+    const def = autoDefault();
+    if (!def) return;
+    note.freqName = def.freqName;
+    note.freq = def.freq || '';
+    note.freqAuto = true;
+    syncCallSignSelect();
+    if (freqInput) {
+      freqInput.value = commNoteFreq(note) || note.freq || '';
+      lastValidFreq = freqInput.value;
+      setFreqInputValid(true);
+    }
+    updateTemplateHint();
+    draw();
+  }
   function updateTemplateHint() {
     if (!templateRow) return;
     const opt = typeof commNoteCallSignOption === 'function'
@@ -2213,6 +2258,7 @@ function appendFreqEdit(body, note, editOptions) {
       resetFreq.hidden = !template;
       resetFreq.disabled = !changed;
     }
+    updateAutoReset();
   }
   if (opts.length) {
     const current = (note.freqName || '').trim();
@@ -2243,6 +2289,7 @@ function appendFreqEdit(body, note, editOptions) {
         draw();
       });
     callSignRow.classList.add('commchange-name-row');
+    callSignSelect = callSignRow.querySelector('select');
     body.appendChild(callSignRow);
   } else {
     body.appendChild(textRow(S.commChangeName || 'Call sign', commNoteName(note) || ''));
@@ -2346,6 +2393,16 @@ function appendFreqEdit(body, note, editOptions) {
   templateRow = textRow(S.commChangeTemplateFreq || 'Default', '');
   templateRow.classList.add('commchange-template');
   body.appendChild(templateRow);
+  resetAuto = document.createElement('button');
+  resetAuto.type = 'button';
+  resetAuto.className = 'insp-btn commchange-auto-reset';
+  resetAuto.textContent = S.commChangeAuto || 'Auto';
+  resetAuto.title = S.resetFreqAuto || 'Reset call sign and frequency to Auto';
+  resetAuto.setAttribute('aria-label', resetAuto.title);
+  resetAuto.onclick = () => {
+    if (!resetAuto.disabled) resetFreqToAuto();
+  };
+  body.appendChild(resetAuto);
   updateTemplateHint();
   // Reset the callout to its default tail position beside the waypoint.
   const target = typeof commCalloutTarget === 'function' ? commCalloutTarget(note) : null;
