@@ -1396,6 +1396,26 @@ function satelliteResetControl(lmap, point, zoom) {
   return new Ctl();
 }
 
+// Live zoom readout for the satellite modal, matching the main map's
+// `z<level> \u00b7 <mult>\u00d7` box. Self-refreshes on zoom so it tracks both the
+// zoom buttons and any layer-driven zoom clamp.
+function satelliteZoomControl(lmap) {
+  const Ctl = L.Control.extend({
+    options: { position: 'bottomleft' },
+    onAdd: function () {
+      const c = L.DomUtil.create('div', 'satellite-zoom-readout');
+      c.dir = 'ltr';
+      const refresh = () => { c.textContent = zoomReadoutText(lmap.getZoom()); };
+      refresh();
+      lmap.on('zoom', refresh);
+      lmap.on('zoomend', refresh);
+      L.DomEvent.disableClickPropagation(c);
+      return c;
+    },
+  });
+  return new Ctl();
+}
+
 function textDirection(text) {
   for (const ch of String(text || '')) {
     if (/[\u0590-\u05ff]/.test(ch)) return 'rtl';
@@ -1484,6 +1504,7 @@ function showSatellitePreviewModal(point, label) {
   }
   // Black-on-white zoom buttons, bottom-right — identical to the main map.
   L.control.zoom({ position: 'bottomright' }).addTo(lmap);
+  lmap.addControl(satelliteZoomControl(lmap));
   lmap.addControl(satelliteRotateControl(lmap));
   // Two-way bearing sync: rotating either map rotates the other.
   if (lmap.setBearing && typeof map !== 'undefined' && map.setBearing) {
