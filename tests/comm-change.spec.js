@@ -63,6 +63,25 @@ const FIXTURE = {
   ],
 };
 
+const KNOWN_FREQ_POINT_FREQ_FIELDS = [
+  'primary', 'alternate', 'secondary', 'secondaryAlternate',
+];
+
+function knownFreqPointFrequencyText(row) {
+  return KNOWN_FREQ_POINT_FREQ_FIELDS.map(field => row[field]).filter(Boolean).join(' / ') || 'TBD';
+}
+
+function expectedKnownFreqPointRow(point, catalog) {
+  const ids = Array.isArray(point.callSigns) ? point.callSigns.filter(Boolean) : [];
+  if (!ids.length) return `| ${point.name} | TBD | TBD |`;
+  const callSigns = ids.map(id => {
+    const row = catalog[id];
+    return `${row.he} (\`${id}\`)`;
+  }).join(', ');
+  const frequencies = ids.map(id => knownFreqPointFrequencyText(catalog[id])).join('; ');
+  return `| ${point.name} | ${callSigns} | ${frequencies} |`;
+}
+
 // Install a route handler for the comm-change.json request. Matches the
 // shipped URL pattern `comm-change.json?v=...` regardless of query string.
 // MUST be called before `boot(page)` (i.e. before any page.goto) so the
@@ -143,10 +162,13 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(map.GNYAM.callSigns).toEqual(['HERZLIYA', 'BEN_GURION']);
     expect(map.HAROV.callSigns).toEqual(['PLUTO_EAST', 'PIK']);
     expect(map.HASID.callSigns).toEqual(['PLUTO_EAST', 'PLUTO_WEST', 'RAMAT_DAVID', 'HAIFA']);
+    expect(map.HATRU.callSigns).toEqual(['NEGEV']);
+    expect(map.HULAT.callSigns).toEqual(['PLUTO_EAST', 'ROSH_PINA']);
     expect(map.HODYA.callSigns).toEqual(['HAGAV_SOUTH', 'HATZOR']);
     expect(map.HOVAV.callSigns).toEqual(['NEGEV', 'HAGAV_NORTH', 'HAGAV_SOUTH']);
     expect(map.KNTRY.callSigns).toEqual(['HERZLIYA']);
     expect(map.KTORA.callSigns).toEqual(['HAGAV_SOUTH', 'RAMON']);
+    expect(map.LIAAD.callSigns).toEqual(['PLUTO_WEST', 'HAGAV_NORTH']);
     expect(map.LLBS.callSigns).toEqual(['TEYMAN']);
     expect(map.LLMZ.callSigns).toEqual(['MASADA']);
     expect(map.MOVIL.callSigns).toEqual(['RAMAT_DAVID', 'PLUTO_EAST']);
@@ -168,6 +190,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(map.SORES.callSigns).toEqual(['PLUTO_EAST', 'TEL_NOF']);
     expect(map.SOVAL.callSigns).toEqual(['HAGAV_NORTH', 'KEDEM']);
     expect(map.RUHOT.callSigns).toEqual(['RAMON', 'HAGAV_SOUTH']);
+    expect(map.YAPAL.callSigns).toEqual(['PLUTO_WEST', 'HAGAV_NORTH']);
     expect(map.ZMGID.callSigns).toEqual(['PLUTO_EAST', 'PLUTO_WEST', 'MEGIDDO']);
     expect(map.ZASHD.callSigns).toEqual(['PALMACHIM']);
     expect(map.ZDAFA.callSigns).toEqual(['HAGAV_NORTH', 'HATZOR']);
@@ -278,12 +301,12 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(missingFrequencies).toEqual([]);
   });
 
-  test('known-freq-points.md lists every comm-change point', async ({ page }) => {
-    await boot(page);
-    const keys = await page.evaluate(() => Object.keys(window.commChangeMap).sort());
+  test('known-freq-points.md mirrors every comm-change point row from JSON', async () => {
+    const comm = JSON.parse(fs.readFileSync('docs/data/comm-change.json', 'utf8'));
     const md = fs.readFileSync('known-freq-points.md', 'utf8');
-    const missing = keys.filter(k => !md.includes(`| ${k} |`));
-    expect(missing).toEqual([]);
+    const actual = md.split('\n').filter(line => /^\| (?:[A-Z]{5}|LL[A-Z0-9]{2}) \|/.test(line));
+    const expected = comm.points.map(point => expectedKnownFreqPointRow(point, comm.callSigns));
+    expect(actual).toEqual(expected);
   });
 
   test('route template comm-change call signs have route-context hints', async () => {
@@ -526,11 +549,14 @@ test.describe('comm-change rendering (fixture-backed)', () => {
       const insp = document.getElementById('inspector');
       // A frequency input means the editor (not the read-only badge) rendered.
       const inputs = insp.querySelectorAll('.freq-input');
+      const callSignEditors = insp.querySelectorAll('.commchange-name-row select, .commchange-name-row input');
       return { noteCount, hasFreqInput: inputs.length > 0,
-               hasBadge: !!insp.querySelector('.commchange-row') };
+               hasCallSignEditor: callSignEditors.length > 0,
+               hasReadOnlyBadge: !!insp.querySelector('.commchange-row') };
     }, TYONA);
     expect(out.noteCount).toBeGreaterThan(0);   // a callout note was seeded
-    expect(out.hasBadge).toBe(true);            // freq-change row present
+    expect(out.hasReadOnlyBadge).toBe(false);   // united inspector edits instead of duplicating badge
+    expect(out.hasCallSignEditor).toBe(true);   // call-sign editor present
     expect(out.hasFreqInput).toBe(true);        // editable, not read-only
   });
 

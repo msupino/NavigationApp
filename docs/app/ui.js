@@ -1336,23 +1336,23 @@ document.getElementById('search-close').onclick = hideSearchOverlay;
   }
 }
 document.addEventListener('keydown', e => {
-  if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+  if ((e.ctrlKey || e.metaKey) && shortcutKey(e, 'KeyF', 'f')) {
     const t = e.target;
     // Allow native find-in-page when the user is already typing somewhere.
-    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+    if (shortcutTypingTarget(t)) {
       if (t !== wpSearch) return;
     }
     e.preventDefault();
     showSearchOverlay();
   } else if (e.key === 'Escape' && !searchOverlay.classList.contains('hidden')) {
     hideSearchOverlay();
-  } else if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+  } else if (shortcutPlain(e, 'KeyR', 'r')) {
     const t = e.target;
-    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (shortcutTypingTarget(t)) return;
     document.getElementById('reverse').click();
-  } else if ((e.key === 'b' || e.key === 'B') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+  } else if (shortcutPlain(e, 'KeyB', 'b')) {
     const t = e.target;
-    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (shortcutTypingTarget(t)) return;
     // Toggling the checkbox fires its onchange (persist + redraw).
     document.getElementById('ret-cb').click();
   }
