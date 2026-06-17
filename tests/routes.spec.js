@@ -323,6 +323,57 @@ test.describe('Split leg', () => {
     expect(after.inspectorName).toBe(`WP ${pos.legIndex + 2}`);
   });
 
+  test('double-clicking a leg over a visible map waypoint still splits it', async ({ page }) => {
+    const pos = await page.evaluate(async () => {
+      await loadNavWaypoints();
+      showNavWP = true;
+      const point = navWP.find(w => w.name === 'DEROR');
+      if (!point) throw new Error('DEROR not loaded');
+      state.waypoints = [
+        { lat: r5(point.lat - 0.08), lng: r5(point.lng), name: 'WP A' },
+        { lat: r5(point.lat + 0.08), lng: r5(point.lng), name: 'WP B' },
+      ];
+      state.notes = [];
+      state.selected = null;
+      state.mode = null;
+      syncLegs();
+      map.setView([point.lat, point.lng], 10);
+      draw();
+      const p = proj(point);
+      const ll = map.containerPointToLatLng([p.x, p.y]);
+      const rect = map.getContainer().getBoundingClientRect();
+      return {
+        x: rect.left + p.x,
+        y: rect.top + p.y,
+        lat: r5(ll.lat),
+        lng: r5(ll.lng),
+        legIndex: hitLeg(p.x, p.y),
+        routeHits: hitWaypointCandidates(p.x, p.y).length,
+        overlayHits: hitOverlayMarkerCandidates(p.x, p.y).map(h => h.type),
+        before: { waypoints: state.waypoints.length, legs: state.legs.length },
+      };
+    });
+    expect(pos.legIndex).toBe(0);
+    expect(pos.routeHits).toBe(0);
+    expect(pos.overlayHits).toContain('navwp');
+
+    await page.mouse.dblclick(pos.x, pos.y);
+    const after = await page.evaluate(() => ({
+      waypoints: state.waypoints.length,
+      legs: state.legs.length,
+      inserted: state.waypoints[1],
+      selected: state.selected,
+      inspectorName: document.querySelector('#insp-body .row input[type="text"]')?.value || '',
+    }));
+    expect(after.waypoints).toBe(pos.before.waypoints + 1);
+    expect(after.legs).toBe(pos.before.legs + 1);
+    expect(after.legs).toBe(after.waypoints - 1);
+    expect(after.inserted).toMatchObject({ lat: pos.lat, lng: pos.lng, name: '' });
+    expect(after.inserted._defaultWpName).toBe(1);
+    expect(after.selected).toEqual({ type: 'wp', index: 1 });
+    expect(after.inspectorName).toBe('WP 2');
+  });
+
   for (const mode of ['add', 'note']) {
     test(`double-clicking a leg splits it while ${mode} mode is active`, async ({ page }) => {
       await page.evaluate(nextMode => { state.mode = nextMode; }, mode);

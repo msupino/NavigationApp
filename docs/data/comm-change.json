@@ -83,7 +83,7 @@
     { "name": "ZUKIM", "commChange": true, "callSigns": ["PLUTO_EAST", "HAGAV_SOUTH"] },
     { "name": "ZASHD", "commChange": true, "callSigns": ["PALMACHIM"] },
     { "name": "NMASD", "commChange": true, "callSigns": ["PALMACHIM", "HAGAV_NORTH"] },
-    { "name": "ZDAFA", "commChange": true, "callSigns": ["HAGAV_SOUTH", "HATZOR"] },
+    { "name": "ZDAFA", "commChange": true, "callSigns": ["HAGAV_NORTH", "HATZOR"] },
     { "name": "HODYA", "commChange": true, "callSigns": ["HATZOR", "HAGAV_NORTH"] },
     { "name": "ZURIM", "commChange": true, "callSigns": ["HAGAV_NORTH"] },
     { "name": "NOAAM", "commChange": true, "callSigns": ["HAGAV_NORTH", "TEL_NOF"] },

@@ -2753,7 +2753,6 @@ mapEl.addEventListener('dblclick', e => {
   if (hitNote(p.x, p.y) >= 0) return;
   if (hitWaypointCandidates(p.x, p.y).length) return;
   if (hitCumLabel(p.x, p.y) || hitCumLabelRet(p.x, p.y) || hitLegLabel(p.x, p.y)) return;
-  if (hitOverlayMarkerCandidates(p.x, p.y).length) return;
   const leg = hitLeg(p.x, p.y);
   if (leg < 0) return;
   e.preventDefault();
