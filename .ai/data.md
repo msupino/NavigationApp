@@ -88,8 +88,9 @@ Rules:
 - Keep speed/profile defaults in the template.
 - Store leg altitudes in `leg-altitude.json`, not in the template, when the leg
   is a known CVFR segment.
-- A template also keeps `notes` (freq-change callouts) and
-  `commChangeSuppressions`; it does not store coordinates or per-leg altitudes.
+- A template also keeps minimal `notes` (freq-change callouts: `cc`,
+  `freqName`, optional `freqAuto`) and `commChangeSuppressions`; it does not
+  store coordinates, literal frequencies, or per-leg altitudes.
   See `.ai/route-templates.md` for the full keeps-vs-drops list and the
   contrast with "Save route" (which keeps everything).
 

@@ -164,7 +164,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(map.HASID.callSigns).toEqual(['PLUTO_EAST', 'PLUTO_WEST', 'RAMAT_DAVID', 'HAIFA']);
     expect(map.HATRU.callSigns).toEqual(['NEGEV']);
     expect(map.HULAT.callSigns).toEqual(['PLUTO_EAST', 'ROSH_PINA']);
-    expect(map.HODYA.callSigns).toEqual(['HAGAV_SOUTH', 'HATZOR']);
+    expect(map.HODYA.callSigns).toEqual(['HAGAV_NORTH', 'HATZOR']);
     expect(map.HOVAV.callSigns).toEqual(['NEGEV', 'HAGAV_NORTH', 'HAGAV_SOUTH']);
     expect(map.KNTRY.callSigns).toEqual(['HERZLIYA']);
     expect(map.KTORA.callSigns).toEqual(['HAGAV_SOUTH', 'RAMON']);
@@ -339,7 +339,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     }
     for (const tpl of templates.templates || []) {
       for (const note of tpl.notes || []) {
-        if (!note || !note.cc || !note.freqName || !note.freq) continue;
+        if (!note || !note.cc || !note.freqName) continue;
         const point = byName.get(note.cc);
         const callSigns = point && Array.isArray(point.callSigns) ? point.callSigns : [];
         const waypoints = Array.isArray(tpl.waypoints) ? tpl.waypoints : [];
@@ -353,7 +353,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
           (after === undefined ? !h.after : h.after === after));
         if (!point || !callSigns.includes(note.freqName) ||
             index < 0 || !hasRouteHint) {
-          missing.push(`${tpl.id}: ${note.cc} -> ${note.freqName} ${note.freq}`);
+          missing.push(`${tpl.id}: ${note.cc} -> ${note.freqName}`);
         }
       }
     }

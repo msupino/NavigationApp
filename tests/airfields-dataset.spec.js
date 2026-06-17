@@ -123,9 +123,11 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     expect(byCode.get('LLMG')).toMatchObject({
       lat: 32.59722, lng: 35.23472,
     });
-    // LLKS: legacy (33.216275, 35.59622) → chart (33.21167, 35.59639), Δ ≈ 513 m
+    // LLKS: AIP aerodrome chart (update 2/22, 19 May 2022) ARP 33°12'51"N
+    // 035°35'39"E = 33.21417, 35.59417 supersedes the earlier CVFR-read
+    // (33.21167, 35.59639) after the 2026 reopening, Δ ≈ 345 m.
     expect(byCode.get('LLKS')).toMatchObject({
-      lat: 33.21167, lng: 35.59639,
+      lat: 33.21417, lng: 35.59417,
     });
     // LLES: legacy (32.4408,  35.007702) → chart (32.44139, 35.00333), Δ ≈ 416 m
     expect(byCode.get('LLES')).toMatchObject({
