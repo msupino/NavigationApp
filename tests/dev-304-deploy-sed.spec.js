@@ -38,7 +38,7 @@ test.describe('#304 — deploy sed bumps every cache-bust marker', () => {
     const yml = deployYml();
     expect(yml).toMatch(/sed -i -E "s\/\\\?v=\[A-Za-z0-9\]\+\/\?v=/);
     expect(yml).toMatch(/version: '\\1-\$\{SHA[^}]*\}'/);
-    expect(yml).toMatch(/nav-waypoints\|airfields\|leg-altitude\|route-templates/);
+    expect(yml).toMatch(/data\/\[A-Za-z0-9_-\]\+\\\.json/);
     expect(yml).toMatch(/const CACHE = 'navaid-/);
   });
 
@@ -54,25 +54,38 @@ test.describe('#304 — deploy sed bumps every cache-bust marker', () => {
     const file = tmpCopy(path.join(__dirname, '..', 'docs', 'app', 'core.js'));
     const SHA = 'abc1234';
     run(`s/version: '([0-9]+\\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\\1-${SHA}'/g`, file);
-    run(`s/(nav-waypoints|airfields|leg-altitude|route-templates)\\.json\\?v=[A-Za-z0-9]+/\\1.json?v=${SHA}/g`, file);
+    run(`s|(data/[A-Za-z0-9_-]+\\.json)\\?v=[A-Za-z0-9]+|\\1?v=${SHA}|g`, file);
     const out = fs.readFileSync(file, 'utf8');
     expect(out).toMatch(new RegExp(`version: '1\\.0-${SHA}'`));
     expect(out).toMatch(new RegExp(`data/nav-waypoints\\.json\\?v=${SHA}`));
     expect(out).toMatch(new RegExp(`data/airfields\\.json\\?v=${SHA}`));
+    expect(out).toMatch(new RegExp(`data/comm-change\\.json\\?v=${SHA}`));
     expect(out).toMatch(new RegExp(`data/leg-altitude\\.json\\?v=${SHA}`));
     expect(out).toMatch(new RegExp(`data/route-templates\\.json\\?v=${SHA}`));
+    expect(out).toMatch(new RegExp(`data/vor\\.json\\?v=${SHA}`));
     fs.unlinkSync(file);
   });
 
   test('sed rewrites i18n/he/strings.js data-file ?v= too', async () => {
     const file = tmpCopy(path.join(__dirname, '..', 'docs', 'i18n', 'he', 'strings.js'));
     const SHA = 'def5678';
-    run(`s/(nav-waypoints|airfields|leg-altitude|route-templates)\\.json\\?v=[A-Za-z0-9]+/\\1.json?v=${SHA}/g`, file);
+    run(`s|(data/[A-Za-z0-9_-]+\\.json)\\?v=[A-Za-z0-9]+|\\1?v=${SHA}|g`, file);
     const out = fs.readFileSync(file, 'utf8');
     expect(out).toMatch(new RegExp(`data/nav-waypoints\\.json\\?v=${SHA}`));
     expect(out).toMatch(new RegExp(`data/airfields\\.json\\?v=${SHA}`));
+    expect(out).toMatch(new RegExp(`data/comm-change\\.json\\?v=${SHA}`));
     expect(out).toMatch(new RegExp(`data/leg-altitude\\.json\\?v=${SHA}`));
     expect(out).toMatch(new RegExp(`data/route-templates\\.json\\?v=${SHA}`));
+    expect(out).toMatch(new RegExp(`data/vor\\.json\\?v=${SHA}`));
+    fs.unlinkSync(file);
+  });
+
+  test('sed rewrites app/terrain.js data-file ?v= too', async () => {
+    const file = tmpCopy(path.join(__dirname, '..', 'docs', 'app', 'terrain.js'));
+    const SHA = 'feed123';
+    run(`s|(data/[A-Za-z0-9_-]+\\.json)\\?v=[A-Za-z0-9]+|\\1?v=${SHA}|g`, file);
+    const out = fs.readFileSync(file, 'utf8');
+    expect(out).toMatch(new RegExp(`data/terrain\\.json\\?v=${SHA}`));
     fs.unlinkSync(file);
   });
 
