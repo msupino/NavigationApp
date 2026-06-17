@@ -560,6 +560,12 @@ downloadable `route.json`.
   name to that branch's short commit SHA after checkout. Source `?v=N`
   values are just placeholders; you don't need to bump them per commit.
   CI lint still enforces that every `?v=` value in the source HTML agrees.
+  At runtime, `ui.js` registers `sw.js`, forces one update check on load,
+  then re-checks on window focus, visible-tab restore, toolbar/menu
+  activity, layer/input changes, and a visible-tab 10 minute interval.
+  Those follow-up checks are throttled to once every 5 minutes; the
+  existing "New NavAid build available" notice appears only when the
+  service worker actually reports a newer installed build.
 - **Toolbar version SHA suffix is automatic.** The same Deploy step
   also rewrites `version: '1.0'` → `version: '1.0-<short-sha>'` in
   `docs/app/core.js`, so the toolbar identifies the exact deployed commit.
@@ -683,9 +689,14 @@ downloadable `route.json`.
     read-only pair
     and optional note. Styled in `app/style.css`
     under `/* Comm-change inspector badge (issue #399) */`.
+    Standalone map/nav waypoint inspectors are read-only: when the selected
+    `navwp` is a comm-change point and the layer is visible, they show the
+    point's call-sign options and effective catalog frequencies (for example
+    DALIA lists RAMAT_DAVID and PLUTO_WEST) without creating or editing route
+    callouts.
   - **i18n keys:** `tbShowCommChange`, `tbShowCommChangeTitle`,
-    `commChangeBadge` (English defaults in `app/core.js`, Hebrew overrides
-    in `i18n/he/strings.js`).
+    `commChangeBadge`, `commChangeCallSigns` (English defaults in
+    `app/core.js`, Hebrew overrides in `i18n/he/strings.js`).
 - `geo` distances are exact great-circle; verify against the chart's
   graticule if precision is questioned.
 - GA4 (`G-0XM5PHEK8B`) tracks page views; no event tracking yet.

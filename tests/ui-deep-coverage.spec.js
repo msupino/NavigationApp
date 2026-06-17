@@ -132,11 +132,24 @@ test.describe('Inspector panel', () => {
     await expect(layerSel).toBeVisible();
     await expect(layerSel.locator('option[value="Satellite"]')).toHaveCount(1);
     await expect(layerSel.locator('option[value="CVFR"]')).toHaveCount(1);
-    // Chart layers are gated by zoom: disabled at the
-    // close-up default zoom, selectable once zoomed out within their range.
-    await expect(layerSel.locator('option[value="CVFR"]')).toBeDisabled();
-    await modal.getByRole('button', { name: 'Zoom out' }).click();
     await expect(layerSel.locator('option[value="CVFR"]')).toBeEnabled();
+    await layerSel.selectOption('CVFR');
+    await expect(layerSel).toHaveValue('CVFR');
+    const chartLayer = await page.evaluate(() => {
+      if (!window.__satModalMap) return null;
+      let out = null;
+      window.__satModalMap.eachLayer(layer => {
+        if (layer && layer._url && layer._url.indexOf('/tiles/cvfr/') !== -1) {
+          out = {
+            zoom: window.__satModalMap.getZoom(),
+            maxZoom: layer.options.maxZoom,
+            maxNativeZoom: layer.options.maxNativeZoom,
+          };
+        }
+      });
+      return out;
+    });
+    expect(chartLayer).toEqual({ zoom: 17, maxZoom: 18, maxNativeZoom: 13 });
 
     // Zoom + reset controls are reachable by their accessible names.
     await modal.getByRole('button', { name: 'Zoom in' }).click();
