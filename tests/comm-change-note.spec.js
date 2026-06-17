@@ -299,16 +299,18 @@ test.describe('comm-change auto-note (#487)', () => {
 
     const sel = page.locator('#insp-body .commchange-name-row select').first();
     const field = page.locator('#insp-body .freq-input').first();
-    const auto = page.locator('#insp-body .commchange-auto-reset');
-    await expect(sel).toHaveValue('__auto__');
-    await expect(sel.locator('option:checked')).toHaveText('Auto: Pluto West');
-    await expect(sel.locator('option').first()).toHaveText('Auto: Pluto West');
+    const auto = page.locator('#insp-body .commchange-name-row .commchange-auto-checkbox');
+    await expect(page.locator('#insp-body .commchange-auto-row')).toHaveCount(0);
+    await expect(auto).toBeChecked();
+    await expect(sel).toHaveValue('PLUTO_WEST');
+    await expect(sel.locator('option:checked')).toHaveText('Pluto West');
+    await expect(sel.locator('option').first()).toHaveText('Palmachim');
     await expect(field).toHaveValue('118.40');
-    await expect(auto).toHaveCount(0);
 
     await sel.selectOption('HAGAV');
     await expect(field).toHaveValue('132.70');
     await expect(sel).toHaveValue('HAGAV');
+    await expect(auto).not.toBeChecked();
     expect(await page.evaluate(() => ({
       freqName: state.notes[0].freqName,
       freq: state.notes[0].freq,
@@ -345,9 +347,11 @@ test.describe('comm-change auto-note (#487)', () => {
       showInspector();
     });
     await expect(sel).toHaveValue('HAGAV');
-    await sel.selectOption('__auto__');
-    await expect(sel).toHaveValue('__auto__');
-    await expect(sel.locator('option:checked')).toHaveText('Auto: Palmachim');
+    await expect(auto).not.toBeChecked();
+    await auto.check();
+    await expect(auto).toBeChecked();
+    await expect(sel).toHaveValue('PALMACHIM');
+    await expect(sel.locator('option:checked')).toHaveText('Palmachim');
     await expect(field).toHaveValue('135.55');
     expect(await page.evaluate(() => ({
       freqName: state.notes[0].freqName,
@@ -774,6 +778,67 @@ test.describe('comm-change auto-note (#487)', () => {
       };
     });
     expect(widths.seen).toContain(widths.selectedWidth);
+  });
+
+  test('linked comm-change callout and its route waypoint collapse to one choice', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    const out = await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      syncLegs();
+      seedCommChangeNotes();
+      draw();
+      state.selected = null;
+      const navIndex = navWP.findIndex(w => w.name === t.name);
+      const shown = showPointChoice([
+        { type: 'commcallout', index: 0 },
+        { type: 'wp', index: 0 },
+        { type: 'navwp', index: navIndex },
+      ]);
+      return {
+        shown,
+        selected: state.selected,
+        modalCount: document.querySelectorAll('.point-choice-modal').length,
+      };
+    }, TYONA);
+
+    expect(out.shown).toBe(true);
+    expect(out.modalCount).toBe(0);
+    expect(out.selected).toEqual({ type: 'wp', index: 0, freqNoteIndex: 0 });
+    await expect(page.locator('#insp-title')).toHaveValue(/TYONA/);
+    await expect(page.locator('#insp-body .commchange-name-row select')).toHaveCount(1);
+  });
+
+  test('linked comm-change callout and unnamed route waypoint collapse to one choice', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    const out = await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng }];
+      syncLegs();
+      seedCommChangeNotes();
+      draw();
+      state.selected = null;
+      const navIndex = navWP.findIndex(w => w.name === t.name);
+      const shown = showPointChoice([
+        { type: 'commcallout', index: 0 },
+        { type: 'wp', index: 0 },
+        { type: 'navwp', index: navIndex },
+      ]);
+      return {
+        shown,
+        selected: state.selected,
+        modalCount: document.querySelectorAll('.point-choice-modal').length,
+        title: document.querySelector('#insp-title').value,
+        storedName: state.waypoints[0].name || '',
+      };
+    }, TYONA);
+
+    expect(out.shown).toBe(true);
+    expect(out.modalCount).toBe(0);
+    expect(out.selected).toEqual({ type: 'wp', index: 0, freqNoteIndex: 0 });
+    expect(out.storedName).toBe('');
+    expect(out.title).toContain('TYONA');
+    await expect(page.locator('#insp-body .commchange-name-row select')).toHaveCount(1);
   });
 
   test('comm-change arrow overlapping a route waypoint opens the point chooser', async ({ page }) => {
@@ -1280,12 +1345,12 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.notes).toEqual([]);
     expect(out.suppressions).toEqual(['TYONA']);
     expect(out.selected).toEqual({ type: 'wp', index: 0 });
-    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ })).toBeVisible();
+    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ })).toBeVisible();
 
     await page.mouse.click(center.x, center.y);
     await expect.poll(() => page.evaluate(() => state.notes.filter(n => n && n.cc).length)).toBe(0);
 
-    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ }).click();
+    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ }).click();
     await expect.poll(() => page.evaluate(() => ({
       selected: state.selected,
       suppressions: state.commChangeSuppressions.slice(),
@@ -1346,9 +1411,9 @@ test.describe('comm-change auto-note (#487)', () => {
       notes: [],
       suppressions: ['TYONA'],
     });
-    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ })).toBeVisible();
+    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ })).toBeVisible();
 
-    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add freq change/ }).click();
+    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ }).click();
     await expect.poll(() => page.evaluate(() => ({
       notes: state.notes.map(n => ({
         cc: n.cc || '',
@@ -1360,6 +1425,33 @@ test.describe('comm-change auto-note (#487)', () => {
       notes: [{ cc: 'TYONA', hasFreqName: true, hasFreq: true }],
       suppressions: [],
     });
+  });
+
+  test('waypoint inspector adds a manual frequency-change callout to non-dataset points', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat + 0.5, lng: t.lng + 0.5, name: 'NOPEX' }];
+      state.notes = [];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+      draw();
+    }, TYONA);
+
+    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ })).toBeVisible();
+    await page.locator('#insp-body .insp-btn').filter({ hasText: /Add frequency change/ }).click();
+    await expect(page.locator('#insp-body .commchange-name-row input')).toHaveValue('NOPEX');
+    await expect(page.locator('#insp-body .commchange-freq-edit input')).toHaveValue('');
+
+    await page.locator('#insp-body .commchange-name-row input').fill('Manual Control');
+    await page.locator('#insp-body .commchange-freq-edit input').fill('123.45');
+    await expect.poll(() => page.evaluate(() => state.notes.map(n => ({
+      cc: n.cc || '',
+      freqName: n.freqName || '',
+      freq: n.freq || '',
+    })))).toEqual([{ cc: 'NOPEX', freqName: 'Manual Control', freq: '123.45' }]);
+    await expect(page.locator('#insp-body .insp-btn').filter({ hasText: /Delete freq change/ })).toBeVisible();
   });
 
   test('comm-change note inspector edits frequency without a free-text call-sign field', async ({ page }) => {
@@ -1488,13 +1580,23 @@ test.describe('comm-change auto-note (#487)', () => {
     const sel = page.locator('#insp-body .commchange-name-row select').first();
     const labels = page.locator('#insp-body .row label');
     const values = page.locator('#insp-body .row .val');
+    const auto = page.locator('#insp-body .commchange-name-row .commchange-auto-checkbox');
+    const autoInline = page.locator('#insp-body .commchange-name-row .commchange-auto-inline');
     await expect(labels.nth(0)).toHaveText('Waypoint');
     await expect(labels.nth(1)).toHaveText('Call sign');
     await expect(labels.nth(2)).toHaveText('Frequency');
     await expect(values.nth(0)).toHaveText('Tel Yona');
-    await expect(sel).toHaveValue('__auto__');
-    await expect(sel.locator('option:checked')).toHaveText('Auto: Pluto');
+    await expect(autoInline).toHaveText('Auto');
+    expect(await page.evaluate(() => {
+      const autoRect = document.querySelector('#insp-body .commchange-auto-inline').getBoundingClientRect();
+      const selectRect = document.querySelector('#insp-body .commchange-name-row select').getBoundingClientRect();
+      return autoRect.right <= selectRect.left;
+    })).toBe(true);
+    await expect(auto).toBeChecked();
+    await expect(sel).toHaveValue('PLUTO');
+    await expect(sel.locator('option:checked')).toHaveText('Pluto');
     await sel.selectOption('HAGAV');
+    await expect(auto).not.toBeChecked();
     await expect(sel).toHaveValue('HAGAV');
     const fields = page.locator('#insp-body .freq-input');
     await expect(fields).toHaveCount(1);
@@ -1609,15 +1711,25 @@ test.describe('comm-change auto-note (#487)', () => {
     const labels = page.locator('#insp-body .row label');
     const values = page.locator('#insp-body .row .val');
     const sel = page.locator('#insp-body .commchange-name-row select').first();
+    const auto = page.locator('#insp-body .commchange-name-row .commchange-auto-checkbox');
+    const autoInline = page.locator('#insp-body .commchange-name-row .commchange-auto-inline');
     await expect(labels.nth(0)).toHaveText('נקודת דיווח');
     await expect(labels.nth(1)).toHaveText('אות קריאה');
     await expect(labels.nth(2)).toHaveText('תדר');
     await expect(values.nth(0)).toHaveText('תל יונה');
+    await expect(autoInline).toHaveText('אוט׳');
+    expect(await page.evaluate(() => {
+      const autoRect = document.querySelector('#insp-body .commchange-auto-inline').getBoundingClientRect();
+      const selectRect = document.querySelector('#insp-body .commchange-name-row select').getBoundingClientRect();
+      return autoRect.left >= selectRect.right;
+    })).toBe(true);
     await expect(fields).toHaveCount(1);
     await expect(fields.nth(0)).toHaveValue('118.40');
-    await expect(sel).toHaveValue('__auto__');
-    await expect(sel.locator('option:checked')).toHaveText('Auto: פלוטו');
+    await expect(auto).toBeChecked();
+    await expect(sel).toHaveValue('PLUTO');
+    await expect(sel.locator('option:checked')).toHaveText('פלוטו');
     await sel.selectOption('HAGAV');
+    await expect(auto).not.toBeChecked();
     await expect(sel.locator('option:checked')).toHaveText('חגב');
     await expect(fields.nth(0)).toHaveValue('132.70');
     const out = await page.evaluate(() => ({

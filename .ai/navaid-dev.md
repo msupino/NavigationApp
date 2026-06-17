@@ -289,8 +289,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   then HAIFA at DAROM; the reverse route suggests PLUTO_WEST at DAROM, then
   HERZLIYA at DEROR. Auto-suggested
   notes carry `freqAuto: true` so route direction changes can refresh them;
-  the call-sign dropdown shows `Auto: <resolved call sign>` while a callout is
-  following that route default. Choosing a named call sign or editing the frequency clears that
+  an inline Auto checkbox beside the call-sign dropdown stays checked while a callout is
+  following that route default, and the call-sign dropdown selects the resolved
+  call sign itself. Choosing a named call sign or editing the frequency clears that
   flag and preserves the user's manual choice. Turning the layer on seeds lightning
   arrows only for matching
   waypoints already present in the route, never for unrelated reference
@@ -302,8 +303,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   existing `navaid.route` note payload (`cc`, `freqName`, `freq`, optional
   `freqAuto`), not in a separate storage key. Deleted callouts are tracked
   in `navaid.route.suppressedCC` (an array of canonical waypoint names);
-  the auto-seed pass skips suppressed names. "Add freq change" in the
-  waypoint inspector clears the suppression and re-creates the callout.
+  the auto-seed pass skips suppressed names. "Add frequency change" in the
+  waypoint inspector clears the suppression and re-creates the callout for
+  known comm-change points; for other named route waypoints it creates a
+  manual callout with editable call-sign text and frequency.
   Suppressions are cleared when the waypoint is removed, moves away from
   the comm-change point, the route is cleared, or a new file is loaded.
 - **Map legend:** a Leaflet control (bottom-left, floating over the map) with
@@ -395,6 +398,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   Tab/Shift-Tab focus trap, and closes via Esc / backdrop / ✕ button.
   `?` is suppressed inside inputs / textareas / contenteditable so users
   can still type a literal question mark in waypoint names or notes.
+  Letter shortcuts are English-key shortcuts in every locale: the
+  cheat-sheet keeps `A`, `N`, `C`, etc. as key labels, and the handlers
+  match physical `KeyboardEvent.code` values so the same English keys work
+  while the OS keyboard layout is Hebrew.
   Current global shortcuts surfaced:
   - **Navigation:** `F` — fit route to view; `+`/`=` / numpad `+` — zoom
     map in (loupe zoom in when magnifier is on); `−`/`-` / numpad `−` —
@@ -670,7 +677,7 @@ downloadable `route.json`.
     freq-change editor to the waypoint pane whenever the selected
     waypoint has a linked callout note (matched by canonical name).
     The editor (shared with the note inspector via `appendFreqEdit()`)
-    includes a call-sign dropdown with an `Auto: <resolved call sign>` route-default option, editable frequency,
+    includes an inline Auto checkbox, a call-sign dropdown that selects the resolved route-default call sign when Auto is checked, editable frequency,
     and `↻ Reset callout location` button. When no linked note exists (overlay off or not
     seeded), legacy datasets with `from` / `to` strings still show that
     read-only pair
