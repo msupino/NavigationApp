@@ -149,9 +149,9 @@ jobs:
           SHA_M=$(git -C m rev-parse --short HEAD)
           SHA_D=$(git -C d rev-parse --short HEAD)
           # Bump every cache-bust marker (index.html ?v=, core.js version:,
-          # data-file ?v= literals in core.js + he/strings.js, and the SW
-          # CACHE name) so a single deploy invalidates everything that may
-          # have changed in this commit.
+          # data-file ?v= literals in app/i18n scripts, and the SW CACHE name)
+          # so a single deploy invalidates everything that may have changed in
+          # this commit.
           rewrite_cache_busts() {
             ROOT=$1
             SHA=$2
@@ -165,9 +165,12 @@ jobs:
             fi
             sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g" "$ROOT/index.html"
             sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" "$CORE"
-            DATA_FILES="$CORE"
-            if [ -f "$HE_STRINGS" ]; then DATA_FILES="$DATA_FILES $HE_STRINGS"; fi
-            sed -i -E "s/(nav-waypoints|airfields|leg-altitude|route-templates)\.json\?v=[A-Za-z0-9]+/\1.json?v=${SHA}/g" $DATA_FILES
+            DATA_FILES=$(find "$ROOT/app" "$ROOT/i18n" -type f -name '*.js' 2>/dev/null || true)
+            if [ -z "$DATA_FILES" ]; then
+              DATA_FILES="$CORE"
+              if [ -f "$HE_STRINGS" ]; then DATA_FILES="$DATA_FILES $HE_STRINGS"; fi
+            fi
+            sed -i -E "s|(data/[A-Za-z0-9_-]+\.json)\?v=[A-Za-z0-9]+|\1?v=${SHA}|g" $DATA_FILES
             sed -i -E "s/const CACHE = 'navaid-[A-Za-z0-9_-]+'/const CACHE = 'navaid-${SHA}'/" "$ROOT/sw.js"
           }
           for ROOT in "site" "site/staging"; do
@@ -210,11 +213,9 @@ jobs:
             if [ -f "$CORE" ]; then
               sed -i -E "s/version: '([0-9]+\.[0-9]+)(-[A-Za-z0-9]+)?'/version: '\1-${SHA}'/g" "$CORE" 2>/dev/null || true
             fi
-            DATA_FILES=""
-            if [ -f "$CORE" ]; then DATA_FILES="$DATA_FILES $CORE"; fi
-            if [ -f "$HE_STRINGS" ]; then DATA_FILES="$DATA_FILES $HE_STRINGS"; fi
+            DATA_FILES=$(find "$ROOT/app" "$ROOT/i18n" -type f -name '*.js' 2>/dev/null || true)
             if [ -n "$DATA_FILES" ]; then
-              sed -i -E "s/(nav-waypoints|airfields|leg-altitude|route-templates)\.json\?v=[A-Za-z0-9]+/\1.json?v=${SHA}/g" $DATA_FILES 2>/dev/null || true
+              sed -i -E "s|(data/[A-Za-z0-9_-]+\.json)\?v=[A-Za-z0-9]+|\1?v=${SHA}|g" $DATA_FILES 2>/dev/null || true
             fi
             if [ -f "$ROOT/sw.js" ]; then
               sed -i -E "s/const CACHE = 'navaid-[A-Za-z0-9_-]+'/const CACHE = 'navaid-${SHA}'/" "$ROOT/sw.js" 2>/dev/null || true
