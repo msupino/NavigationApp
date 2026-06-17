@@ -6,6 +6,7 @@ are comm-change points that do not have `points[].callSigns` assigned yet.
 | Waypoint / destination | Call signs | Frequencies |
 | --- | --- | --- |
 | BASAN | קריית שמונה (`KIRYAT_SHMONA`), פלוטו מזרח (`PLUTO_EAST`) | 126.90; 123.85 / 134.65 |
+| HULAT | פלוטו מזרח (`PLUTO_EAST`), ראש פינה (`ROSH_PINA`) | 123.85 / 134.65; 118.45 / 119.65 |
 | DESHE | ראש פינה (`ROSH_PINA`), פלוטו מזרח (`PLUTO_EAST`) | 118.45 / 119.65; 123.85 / 134.65 |
 | HAROV | פלוטו מזרח (`PLUTO_EAST`), פיק (`PIK`) | 123.85 / 134.65; 122.55 |
 | AAKKO | פלוטו מזרח (`PLUTO_EAST`), חיפה (`HAIFA`) | 123.85 / 134.65; 133.00 / 127.80 |
@@ -22,6 +23,8 @@ are comm-change points that do not have `points[].callSigns` assigned yet.
 | KNTRY | הרצליה (`HERZLIYA`) | 125.60 / 122.20 / 129.40 / 118.55 |
 | PARDS | בן גוריון (`BEN_GURION`), פלוטו מערב (`PLUTO_WEST`) | 134.60 / 132.10; 118.40 / 119.15 |
 | TYONA | פלוטו מערב (`PLUTO_WEST`), פלמחים (`PALMACHIM`) | 118.40 / 119.15; 135.55 / 118.25 |
+| LIAAD | פלוטו מערב (`PLUTO_WEST`), חגב צפוני (`HAGAV_NORTH`) | 118.40 / 119.15; 128.35 / 129.25 |
+| YAPAL | פלוטו מערב (`PLUTO_WEST`), חגב צפוני (`HAGAV_NORTH`) | 118.40 / 119.15; 128.35 / 129.25 |
 | NTAIM | בן גוריון (`BEN_GURION`), פלמחים (`PALMACHIM`), תל-נוף (`TEL_NOF`) | 134.60 / 132.10; 135.55 / 118.25; 129.05 / 134.30 |
 | NSHRM | בן גוריון (`BEN_GURION`) | 134.60 / 132.10 |
 | AYLON | בן גוריון (`BEN_GURION`), תל-נוף (`TEL_NOF`) | 134.60 / 132.10; 129.05 / 134.30 |
@@ -29,7 +32,7 @@ are comm-change points that do not have `points[].callSigns` assigned yet.
 | ZUKIM | פלוטו מזרח (`PLUTO_EAST`), חגב דרומי (`HAGAV_SOUTH`) | 123.85 / 134.65; 121.15 / 122.90 |
 | ZASHD | פלמחים (`PALMACHIM`) | 135.55 / 118.25 |
 | NMASD | פלמחים (`PALMACHIM`), חגב צפוני (`HAGAV_NORTH`) | 135.55 / 118.25; 128.35 / 129.25 |
-| ZDAFA | חגב דרומי (`HAGAV_SOUTH`), חצור (`HATZOR`) | 121.15 / 122.90; 133.20 |
+| ZDAFA | חגב צפוני (`HAGAV_NORTH`), חצור (`HATZOR`) | 128.35 / 129.25; 133.20 |
 | HODYA | חגב דרומי (`HAGAV_SOUTH`), חצור (`HATZOR`) | 121.15 / 122.90; 133.20 |
 | ZURIM | חגב צפוני (`HAGAV_NORTH`) | 128.35 / 129.25 |
 | NOAAM | חגב צפוני (`HAGAV_NORTH`), תל-נוף (`TEL_NOF`) | 128.35 / 129.25; 129.05 / 134.30 |
@@ -40,6 +43,7 @@ are comm-change points that do not have `points[].callSigns` assigned yet.
 | NCITY | חגב צפוני (`HAGAV_NORTH`), קדם (`KEDEM`) | 128.35 / 129.25; 134.70 / 118.35 |
 | SOKET | נגב (`NEGEV`), חגב צפוני (`HAGAV_NORTH`) | 132.40; 128.35 / 129.25 |
 | ARRAD | חגב דרומי (`HAGAV_SOUTH`), חגב צפוני (`HAGAV_NORTH`), נגב (`NEGEV`) | 121.15 / 122.90; 128.35 / 129.25; 132.40 |
+| HATRU | נגב (`NEGEV`) | 132.40 |
 | HOVAV | נגב (`NEGEV`), חגב צפוני (`HAGAV_NORTH`), חגב דרומי (`HAGAV_SOUTH`) | 132.40; 128.35 / 129.25; 121.15 / 122.90 |
 | KTORA | חגב דרומי (`HAGAV_SOUTH`), רמון (`RAMON`) | 121.15 / 122.90; 124.60 |
 | SHRUT | רמון (`RAMON`), עובדה (`OVDA`) | 124.60; 129.90 |
