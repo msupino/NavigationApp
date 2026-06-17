@@ -639,6 +639,7 @@ window.S = Object.assign({
   commChangeBadge: '📡 Freq change point',
   commChangeNoteText: 'Freq change',
   commChangeCallSign: 'Waypoint',
+  commChangeCallSigns: 'Call signs',
   commChangeName: 'Call sign',
   commChangeFreq: 'Frequency',
   commChangeAuto: 'Auto',
