@@ -398,6 +398,11 @@ html, body {
   margin-bottom: 2px;
   text-align: center;
   min-width: 34px;
+  /* Always LTR so the `z… · …×` readout reads the same in Hebrew as in
+     English (otherwise RTL reorders the × / middle dot). Matches
+     .satellite-zoom-readout. */
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 .coord-readout.interactive { pointer-events: auto; cursor: pointer; }
 /* Satellite-modal zoom readout — same chip as the main map's .zoom-readout,

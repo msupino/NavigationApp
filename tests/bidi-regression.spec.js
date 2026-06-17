@@ -275,4 +275,26 @@ test.describe('Bidi / mixed-direction UI regressions', () => {
     expect(exportTitleBidi.direction).toBe('rtl');
     expect(exportTitleBidi.unicodeBidi).toContain('isolate');
   });
+
+  test('Hebrew zoom readouts stay LTR (z … · …× reads like English)', async ({ page }) => {
+    await boot(page, 'he');
+    // Main-map readout: same `z<level> · <mult>×` order as English, not RTL —
+    // otherwise the × / middle dot get reordered to the wrong side.
+    await page.evaluate(() => { map.setZoom(13); showZoom(); });
+    await page.waitForFunction(() => map.getZoom() === 13);
+    const main = page.locator('#zoom-readout');
+    await expect(main).toHaveText('z13 · 2×');
+    const mainBidi = await cssSnapshot(main);
+    expect(mainBidi.direction).toBe('ltr');
+    expect(mainBidi.unicodeBidi).toContain('isolate');
+
+    // Satellite-modal readout matches.
+    await page.evaluate(() =>
+      showSatellitePreviewModal({ lat: 32.17944, lng: 34.83444 }, 'LLHZ'));
+    await page.waitForFunction(() => window.__satModalMap);
+    const sat = page.locator('.satellite-zoom-readout');
+    await expect(sat).toBeVisible();
+    expect((await cssSnapshot(sat)).direction).toBe('ltr');
+    await expect(sat).toHaveText(/^z[\d.]+ · [\d.]+×$/);
+  });
 });
