@@ -195,8 +195,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
     `_normalizeLegLabel` preserves `_default` across reload / import.
     The validator (`validateRoute`) accepts either shape (`a` only when
     `_default: 1`, else `a` + `p`).
-  - **Reset buttons:** inspector `↻` (per leg, titled "Reset marker
-    position") and toolbar `#tool-reset-all-markers` `↻`
+  - **Reset buttons:** inspector `↻ Reset marker position` (per leg)
+    and toolbar `#tool-reset-all-markers` `↻ Reset all marker positions`
     (all legs, prompts `confirm()`). Both call `_defaultLegLabels()`.
 - **Cumulative-time kites:** `cumLabel` (inbound, anchored at the leg's
   destination waypoint) and `cumLabelRet` (return, anchored at the leg's
@@ -289,8 +289,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   then HAIFA at DAROM; the reverse route suggests PLUTO_WEST at DAROM, then
   HERZLIYA at DEROR. Auto-suggested
   notes carry `freqAuto: true` so route direction changes can refresh them;
-  changing the call sign or frequency in the inspector clears that flag and
-  preserves the user's manual choice. Turning the layer on seeds lightning
+  the call-sign dropdown shows `Auto` while a callout is following that route
+  default. Choosing a named call sign or editing the frequency clears that
+  flag and preserves the user's manual choice. Turning the layer on seeds lightning
   arrows only for matching
   waypoints already present in the route, never for unrelated reference
   points. The default callout tail starts east/right of the waypoint via
@@ -669,8 +670,8 @@ downloadable `route.json`.
     freq-change editor to the waypoint pane whenever the selected
     waypoint has a linked callout note (matched by canonical name).
     The editor (shared with the note inspector via `appendFreqEdit()`)
-    includes a call-sign dropdown, editable frequency, route Auto reset,
-    and reset-callout-location `↻` button. When no linked note exists (overlay off or not
+    includes a call-sign dropdown with an `Auto` route-default option, editable frequency,
+    and `↻ Reset callout location` button. When no linked note exists (overlay off or not
     seeded), legacy datasets with `from` / `to` strings still show that
     read-only pair
     and optional note. Styled in `app/style.css`

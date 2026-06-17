@@ -2176,9 +2176,9 @@ function appendFreqEdit(body, note, editOptions) {
   let callSignSelect = null;
   let freqInput = null;
   let resetFreq = null;
-  let resetAuto = null;
   let templateRow = null;
   let lastValidFreq = '';
+  const AUTO_OPTION_VALUE = '__auto__';
   function normalizeFreqValue(raw) {
     if (typeof commNormalizeFreqInput === 'function') return commNormalizeFreqInput(raw);
     const s = String(raw || '').trim();
@@ -2215,18 +2215,20 @@ function appendFreqEdit(body, note, editOptions) {
       : String(o.id || o.label || '') === String(id || ''));
     return found ? found.id : '';
   }
-  function syncCallSignSelect() {
-    if (!callSignSelect) return;
-    const id = callSignOptionId(note.freqName);
-    if (id) callSignSelect.value = id;
-  }
-  function updateAutoReset() {
-    if (!resetAuto) return;
+  function isRouteAutoSelected() {
     const def = autoDefault();
-    const isDefault = !!(def && note.freqAuto === true &&
+    return !!(def && note.freqAuto === true &&
       callSignOptionId(def.freqName) === callSignOptionId(note.freqName) &&
       normalizedFreq(note.freq) === normalizedFreq(def.freq));
-    resetAuto.disabled = !def || isDefault;
+  }
+  function syncCallSignSelect() {
+    if (!callSignSelect) return;
+    if (isRouteAutoSelected()) {
+      callSignSelect.value = AUTO_OPTION_VALUE;
+      return;
+    }
+    const id = callSignOptionId(note.freqName);
+    if (id) callSignSelect.value = id;
   }
   function resetFreqToAuto() {
     const def = autoDefault();
@@ -2260,20 +2262,27 @@ function appendFreqEdit(body, note, editOptions) {
       resetFreq.hidden = !template;
       resetFreq.disabled = !changed;
     }
-    updateAutoReset();
+    syncCallSignSelect();
   }
   if (opts.length) {
     const current = (note.freqName || '').trim();
     let selected = opts.find(o => typeof commCallSignOptionMatches === 'function'
       ? commCallSignOptionMatches(o, current)
       : o.label === current);
-    const rows = opts.map(o => [o.id, o.label]);
+    const rows = [];
+    if (autoDefault()) rows.push([AUTO_OPTION_VALUE, S.commChangeAuto || 'Auto']);
     if (!selected && current) {
       selected = { id: '__custom__', label: current };
-      rows.unshift(['__custom__', current]);
+      rows.push(['__custom__', current]);
     }
+    rows.push(...opts.map(o => [o.id, o.label]));
     const callSignRow = selectRow(S.commChangeName || 'Call sign',
-      selected ? selected.id : opts[0].id, rows, v => {
+      isRouteAutoSelected() ? AUTO_OPTION_VALUE : (selected ? selected.id : opts[0].id),
+      rows, v => {
+        if (v === AUTO_OPTION_VALUE) {
+          resetFreqToAuto();
+          return;
+        }
         const opt = opts.find(o => o.id === v);
         if (!opt) return;
         note.freqName = opt.id;
@@ -2395,16 +2404,6 @@ function appendFreqEdit(body, note, editOptions) {
   templateRow = textRow(S.commChangeTemplateFreq || 'Default', '');
   templateRow.classList.add('commchange-template');
   body.appendChild(templateRow);
-  resetAuto = document.createElement('button');
-  resetAuto.type = 'button';
-  resetAuto.className = 'insp-btn commchange-auto-reset';
-  resetAuto.textContent = S.commChangeAuto || 'Auto';
-  resetAuto.title = S.resetFreqAuto || 'Reset call sign and frequency to Auto';
-  resetAuto.setAttribute('aria-label', resetAuto.title);
-  resetAuto.onclick = () => {
-    if (!resetAuto.disabled) resetFreqToAuto();
-  };
-  body.appendChild(resetAuto);
   updateTemplateHint();
   // Reset the callout to its default tail position beside the waypoint.
   const target = typeof commCalloutTarget === 'function' ? commCalloutTarget(note) : null;

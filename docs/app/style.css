@@ -948,16 +948,6 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   cursor: default;
 }
 .insp-btn:disabled:hover { background: #b03636; }
-.insp-btn.commchange-auto-reset {
-  background: #2f5f73;
-}
-.insp-btn.commchange-auto-reset:hover:not(:disabled) {
-  background: #3a748c;
-}
-.insp-btn.commchange-auto-reset:disabled:hover {
-  background: #2f5f73;
-}
-
 /* Route summary — a footer section at the bottom of the toolbar. */
 #info {
   margin-top: 4px;
@@ -2801,15 +2791,6 @@ body.theme-light .commchange-freq-reset {
 body.theme-light .commchange-freq-reset:hover:not(:disabled) {
   color: #111820;
   background: #eef3f9;
-}
-body.theme-light .insp-btn.commchange-auto-reset {
-  background: #2f6f8d;
-}
-body.theme-light .insp-btn.commchange-auto-reset:hover:not(:disabled) {
-  background: #275e78;
-}
-body.theme-light .insp-btn.commchange-auto-reset:disabled:hover {
-  background: #2f6f8d;
 }
 body.theme-light .charts-freq-section {
   border-color: #c6ccd6;

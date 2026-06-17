@@ -300,15 +300,15 @@ test.describe('comm-change auto-note (#487)', () => {
     const sel = page.locator('#insp-body .commchange-name-row select').first();
     const field = page.locator('#insp-body .freq-input').first();
     const auto = page.locator('#insp-body .commchange-auto-reset');
-    await expect(sel).toHaveValue('PLUTO_WEST');
+    await expect(sel).toHaveValue('__auto__');
+    await expect(sel.locator('option:checked')).toHaveText('Auto');
+    await expect(sel.locator('option').first()).toHaveText('Auto');
     await expect(field).toHaveValue('118.40');
-    await expect(auto).toHaveText('Auto');
-    await expect(auto).toBeDisabled();
-    await expect(auto).toHaveAttribute('title', 'Reset call sign and frequency to Auto');
+    await expect(auto).toHaveCount(0);
 
     await sel.selectOption('HAGAV');
     await expect(field).toHaveValue('132.70');
-    await expect(auto).toBeEnabled();
+    await expect(sel).toHaveValue('HAGAV');
     expect(await page.evaluate(() => ({
       freqName: state.notes[0].freqName,
       freq: state.notes[0].freq,
@@ -344,11 +344,11 @@ test.describe('comm-change auto-note (#487)', () => {
       state.selected = { type: 'note', index: 0 };
       showInspector();
     });
-    await expect(auto).toBeEnabled();
-    await auto.click();
-    await expect(sel).toHaveValue('PALMACHIM');
+    await expect(sel).toHaveValue('HAGAV');
+    await sel.selectOption('__auto__');
+    await expect(sel).toHaveValue('__auto__');
+    await expect(sel.locator('option:checked')).toHaveText('Auto');
     await expect(field).toHaveValue('135.55');
-    await expect(auto).toBeDisabled();
     expect(await page.evaluate(() => ({
       freqName: state.notes[0].freqName,
       freq: state.notes[0].freq,
@@ -1492,8 +1492,10 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(labels.nth(1)).toHaveText('Call sign');
     await expect(labels.nth(2)).toHaveText('Frequency');
     await expect(values.nth(0)).toHaveText('Tel Yona');
-    await expect(sel).toHaveValue('PLUTO');
+    await expect(sel).toHaveValue('__auto__');
+    await expect(sel.locator('option:checked')).toHaveText('Auto');
     await sel.selectOption('HAGAV');
+    await expect(sel).toHaveValue('HAGAV');
     const fields = page.locator('#insp-body .freq-input');
     await expect(fields).toHaveCount(1);
     await expect(fields.nth(0)).toHaveValue('132.70');
@@ -1613,8 +1615,8 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(values.nth(0)).toHaveText('תל יונה');
     await expect(fields).toHaveCount(1);
     await expect(fields.nth(0)).toHaveValue('118.40');
-    await expect(sel).toHaveValue('PLUTO');
-    await expect(sel.locator('option:checked')).toHaveText('פלוטו');
+    await expect(sel).toHaveValue('__auto__');
+    await expect(sel.locator('option:checked')).toHaveText('Auto');
     await sel.selectOption('HAGAV');
     await expect(sel.locator('option:checked')).toHaveText('חגב');
     await expect(fields.nth(0)).toHaveValue('132.70');

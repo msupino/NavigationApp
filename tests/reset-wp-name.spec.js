@@ -133,7 +133,7 @@ test.describe('#418 — waypoint-name reset button', () => {
     }, { timeout: bootDataTimeout });
   });
 
-  test('Hebrew locale: reset button label is the ↻ glyph', async ({ page }) => {
+  test('Hebrew locale: reset button label keeps text with the ↻ glyph', async ({ page }) => {
     await boot(page, 'he');
     await page.evaluate(() => {
       state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'הבדיקה' }];
@@ -141,7 +141,7 @@ test.describe('#418 — waypoint-name reset button', () => {
       syncLegs(); draw(); showInspector();
     });
     const btn = page.locator('#insp-body .insp-btn[title*="נקודת הייחוס"]');
-    await expect(btn).toHaveText('↻');
+    await expect(btn).toHaveText('↻ אפס שם נקודה');
   });
 
   test('button is positioned directly below Delete waypoint', async ({ page }) => {
@@ -153,7 +153,7 @@ test.describe('#418 — waypoint-name reset button', () => {
     });
     const buttons = page.locator('#insp-body .insp-btn');
     await expect(buttons.nth(0)).toHaveText(/Delete waypoint/i);
-    await expect(buttons.nth(1)).toHaveText('↻');
+    await expect(buttons.nth(1)).toHaveText(/↻ Reset waypoint name/i);
     await expect(buttons.nth(1)).toHaveAttribute('title', /nearest reference/i);
   });
 
@@ -316,7 +316,7 @@ test.describe('#418 — waypoint-name reset button', () => {
   test('Hebrew toolbar reset-all label and delete-note pattern', async ({ page }) => {
     await boot(page, 'he');
     const tb = await page.locator('#tool-reset-all-wp-names').textContent();
-    expect(tb).toBe('↻');
+    expect(tb).toMatch(/↻ אפס את כל שמות ציוני הדרך/);
     const delNoteStr = await page.evaluate(() => S.deleteNote);
     expect(delNoteStr).toMatch(/🗑/);
     await page.evaluate(() => {
