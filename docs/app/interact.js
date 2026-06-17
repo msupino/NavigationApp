@@ -2209,11 +2209,22 @@ function appendFreqEdit(body, note, editOptions) {
     return typeof commFormatFreq === 'function'
       ? commFormatFreq(value || '') : String(value || '').trim();
   }
-  function callSignOptionId(id) {
-    const found = opts.find(o => typeof commCallSignOptionMatches === 'function'
+  function callSignOptionFor(id) {
+    return opts.find(o => typeof commCallSignOptionMatches === 'function'
       ? commCallSignOptionMatches(o, id)
-      : String(o.id || o.label || '') === String(id || ''));
+      : String(o.id || o.label || '') === String(id || '')) || null;
+  }
+  function callSignOptionId(id) {
+    const found = callSignOptionFor(id);
     return found ? found.id : '';
+  }
+  function autoOptionLabel() {
+    const label = S.commChangeAuto || 'Auto';
+    const def = autoDefault();
+    if (!def) return label;
+    const opt = callSignOptionFor(def.freqName);
+    const callSign = (opt && opt.label) || def.freqName || '';
+    return callSign ? label + ': ' + callSign : label;
   }
   function isRouteAutoSelected() {
     const def = autoDefault();
@@ -2270,7 +2281,7 @@ function appendFreqEdit(body, note, editOptions) {
       ? commCallSignOptionMatches(o, current)
       : o.label === current);
     const rows = [];
-    if (autoDefault()) rows.push([AUTO_OPTION_VALUE, S.commChangeAuto || 'Auto']);
+    if (autoDefault()) rows.push([AUTO_OPTION_VALUE, autoOptionLabel()]);
     if (!selected && current) {
       selected = { id: '__custom__', label: current };
       rows.push(['__custom__', current]);

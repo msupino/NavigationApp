@@ -289,8 +289,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   then HAIFA at DAROM; the reverse route suggests PLUTO_WEST at DAROM, then
   HERZLIYA at DEROR. Auto-suggested
   notes carry `freqAuto: true` so route direction changes can refresh them;
-  the call-sign dropdown shows `Auto` while a callout is following that route
-  default. Choosing a named call sign or editing the frequency clears that
+  the call-sign dropdown shows `Auto: <resolved call sign>` while a callout is
+  following that route default. Choosing a named call sign or editing the frequency clears that
   flag and preserves the user's manual choice. Turning the layer on seeds lightning
   arrows only for matching
   waypoints already present in the route, never for unrelated reference
@@ -670,7 +670,7 @@ downloadable `route.json`.
     freq-change editor to the waypoint pane whenever the selected
     waypoint has a linked callout note (matched by canonical name).
     The editor (shared with the note inspector via `appendFreqEdit()`)
-    includes a call-sign dropdown with an `Auto` route-default option, editable frequency,
+    includes a call-sign dropdown with an `Auto: <resolved call sign>` route-default option, editable frequency,
     and `↻ Reset callout location` button. When no linked note exists (overlay off or not
     seeded), legacy datasets with `from` / `to` strings still show that
     read-only pair

@@ -301,8 +301,8 @@ test.describe('comm-change auto-note (#487)', () => {
     const field = page.locator('#insp-body .freq-input').first();
     const auto = page.locator('#insp-body .commchange-auto-reset');
     await expect(sel).toHaveValue('__auto__');
-    await expect(sel.locator('option:checked')).toHaveText('Auto');
-    await expect(sel.locator('option').first()).toHaveText('Auto');
+    await expect(sel.locator('option:checked')).toHaveText('Auto: Pluto West');
+    await expect(sel.locator('option').first()).toHaveText('Auto: Pluto West');
     await expect(field).toHaveValue('118.40');
     await expect(auto).toHaveCount(0);
 
@@ -347,7 +347,7 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(sel).toHaveValue('HAGAV');
     await sel.selectOption('__auto__');
     await expect(sel).toHaveValue('__auto__');
-    await expect(sel.locator('option:checked')).toHaveText('Auto');
+    await expect(sel.locator('option:checked')).toHaveText('Auto: Palmachim');
     await expect(field).toHaveValue('135.55');
     expect(await page.evaluate(() => ({
       freqName: state.notes[0].freqName,
@@ -1493,7 +1493,7 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(labels.nth(2)).toHaveText('Frequency');
     await expect(values.nth(0)).toHaveText('Tel Yona');
     await expect(sel).toHaveValue('__auto__');
-    await expect(sel.locator('option:checked')).toHaveText('Auto');
+    await expect(sel.locator('option:checked')).toHaveText('Auto: Pluto');
     await sel.selectOption('HAGAV');
     await expect(sel).toHaveValue('HAGAV');
     const fields = page.locator('#insp-body .freq-input');
@@ -1616,7 +1616,7 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(fields).toHaveCount(1);
     await expect(fields.nth(0)).toHaveValue('118.40');
     await expect(sel).toHaveValue('__auto__');
-    await expect(sel.locator('option:checked')).toHaveText('Auto');
+    await expect(sel.locator('option:checked')).toHaveText('Auto: פלוטו');
     await sel.selectOption('HAGAV');
     await expect(sel.locator('option:checked')).toHaveText('חגב');
     await expect(fields.nth(0)).toHaveValue('132.70');
