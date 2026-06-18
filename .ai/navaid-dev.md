@@ -325,8 +325,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   CSS-backed chrome values use `applyTuningCssVars()` (`ui.js`) to mirror
   Tune values into `:root` variables; the "Chrome layout" group owns the
   Zulu clock styling and the default inspector top / viewport gap.
-  Includes a "Colors" group for the last hard-coded draw colors (ink,
-  selected, kite text, leg halo, airfield fill/outline, nav-WP dot).
+  Canvas/map drawing colours live in the feature group that owns the
+  shape (for example kite fills with "Leg kites", page scrim with "Page
+  frame", and profile colours with "Vertical profile"), with shared
+  draw palette values in "Global palette".
   Each slider group has a ↻ reset button that restores the HTML default
   via the slider's own input handler. Preview values are page-local
   only: no `localStorage` / `sessionStorage` writes, and reload restores

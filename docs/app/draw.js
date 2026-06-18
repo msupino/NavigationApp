@@ -56,7 +56,7 @@ function drawSimAircraft() {
   octx.lineTo(-r * 0.13,  r * 0.15);
   octx.quadraticCurveTo(-r * 0.13, -r * 0.3, 0, -r);
   octx.closePath();
-  octx.fillStyle = '#e74c3c';
+  octx.fillStyle = tune('liveAircraftFillColor');
   octx.fill();
 
   // ── wings — swept back from mid-fuselage ──
@@ -66,7 +66,7 @@ function drawSimAircraft() {
   octx.lineTo( r * 0.85,   r * 0.45);  // right wingtip TE
   octx.lineTo( r * 0.13,   r * 0.22);  // right wing root (trailing edge)
   octx.closePath();
-  octx.fillStyle = '#e74c3c';
+  octx.fillStyle = tune('liveAircraftFillColor');
   octx.fill();
 
   octx.beginPath();
@@ -75,7 +75,7 @@ function drawSimAircraft() {
   octx.lineTo(-r * 0.85,   r * 0.45);
   octx.lineTo(-r * 0.13,   r * 0.22);
   octx.closePath();
-  octx.fillStyle = '#e74c3c';
+  octx.fillStyle = tune('liveAircraftFillColor');
   octx.fill();
 
   // ── horizontal stabilisers ──
@@ -85,7 +85,7 @@ function drawSimAircraft() {
   octx.lineTo( r * 0.38,  r * 0.85);
   octx.lineTo( r * 0.13,  r * 0.75);
   octx.closePath();
-  octx.fillStyle = '#e74c3c';
+  octx.fillStyle = tune('liveAircraftFillColor');
   octx.fill();
 
   octx.beginPath();
@@ -94,12 +94,12 @@ function drawSimAircraft() {
   octx.lineTo(-r * 0.38,  r * 0.85);
   octx.lineTo(-r * 0.13,  r * 0.75);
   octx.closePath();
-  octx.fillStyle = '#e74c3c';
+  octx.fillStyle = tune('liveAircraftFillColor');
   octx.fill();
 
   // ── white outline over everything ──
   octx.lineWidth = 1.5;
-  octx.strokeStyle = 'rgba(255,255,255,0.9)';
+  octx.strokeStyle = colorWithAlpha(tune('liveAircraftOutlineColor'), 0.9);
   // re-stroke fuselage
   octx.beginPath();
   octx.moveTo(0, -r);
@@ -127,7 +127,7 @@ function drawProfileMarkers() {
     const x = sa.x + (sb.x - sa.x) * m.frac, y = sa.y + (sb.y - sa.y) * m.frac;
     octx.save();
     octx.fillStyle = color;
-    octx.strokeStyle = '#fff';
+    octx.strokeStyle = tune('profileMarkerHaloColor');
     octx.lineWidth = 1.5;
     octx.beginPath();
     octx.arc(x, y, 4, 0, 2 * Math.PI);
@@ -137,14 +137,14 @@ function drawProfileMarkers() {
     octx.textAlign = 'left';
     octx.textBaseline = 'middle';
     octx.lineWidth = 3;
-    octx.strokeStyle = 'rgba(255,255,255,0.9)';
+    octx.strokeStyle = colorWithAlpha(tune('profileMarkerHaloColor'), 0.9);
     octx.strokeText(label, x + 7, y);
     octx.fillStyle = color;
     octx.fillText(label, x + 7, y);
     octx.restore();
   };
-  for (const t of prof.tocs) mark(t, S.toc || 'TOC', '#2e9e4f');
-  for (const t of prof.tods) mark(t, S.tod || 'TOD', '#c47f17');
+  for (const t of prof.tocs) mark(t, S.toc || 'TOC', tune('profileTocColor'));
+  for (const t of prof.tods) mark(t, S.tod || 'TOD', tune('profileTodColor'));
 }
 
 // Render the altitude-vs-distance profile strip onto a canvas context within
@@ -169,7 +169,7 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   const px = d => rtl ? x0 + plotW - (d / prof.totalDist) * plotW : x0 + (d / prof.totalDist) * plotW;
   const py = a => baseY - ((a - minA) / (maxA - minA || 1)) * plotH;
   ctx.save();
-  ctx.fillStyle = '#1d2733';
+  ctx.fillStyle = tune('profileBgColor');
   ctx.fillRect(x, y, w, h);
   // Altitude (Y) axis: horizontal gridlines + ft labels at "nice" intervals.
   const niceSteps = [100, 200, 500, 1000, 2000, 5000, 10000, 20000];
@@ -179,20 +179,20 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   ctx.font = '8px sans-serif';
   for (let a = Math.ceil(minA / yStep) * yStep; a <= maxA; a += yStep) {
     const gy = py(a);
-    ctx.strokeStyle = 'rgba(120,150,180,0.16)';
+    ctx.strokeStyle = colorWithAlpha(tune('profileGridColor'), 0.16);
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(x0, gy + 0.5); ctx.lineTo(x + w, gy + 0.5); ctx.stroke();
-    ctx.fillStyle = '#8aa0b4';
+    ctx.fillStyle = tune('profileTextColor');
     ctx.textAlign = 'right';
     ctx.fillText(String(a), x0 - 3, gy);
   }
   // Y axis unit caption.
-  ctx.fillStyle = '#8aa0b4';
+  ctx.fillStyle = tune('profileTextColor');
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.fillText('ft', x + 2, y + 2);
   // ground line
-  ctx.strokeStyle = '#3a4654';
+  ctx.strokeStyle = tune('profileGroundColor');
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(x0, py(minA) + 0.5); ctx.lineTo(x + w, py(minA) + 0.5); ctx.stroke();
   // profile polyline + fill
@@ -202,12 +202,12 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   ctx.lineTo(px(prof.totalDist), py(minA));
   ctx.lineTo(px(0), py(minA));
   ctx.closePath();
-  ctx.fillStyle = 'rgba(80,150,230,0.20)';
+  ctx.fillStyle = colorWithAlpha(tune('profileAreaColor'), 0.2);
   ctx.fill();
   ctx.beginPath();
   ctx.moveTo(px(prof.pts[0].d), py(prof.pts[0].alt));
   for (const p of prof.pts) ctx.lineTo(px(p.d), py(p.alt));
-  ctx.strokeStyle = '#5a96e6';
+  ctx.strokeStyle = tune('profileLineColor');
   ctx.lineWidth = 2;
   ctx.stroke();
   // TOC/TOD dots
@@ -222,8 +222,8 @@ function drawVerticalProfile(ctx, x, y, w, h) {
     ctx.textAlign = 'center';
     ctx.fillText(label, cx, cy - 6);
   };
-  for (const t of prof.tocs) dot(t, '#2e9e4f', S.toc || 'TOC');
-  for (const t of prof.tods) dot(t, '#c47f17', S.tod || 'TOD');
+  for (const t of prof.tocs) dot(t, tune('profileTocColor'), S.toc || 'TOC');
+  for (const t of prof.tods) dot(t, tune('profileTodColor'), S.tod || 'TOD');
 
   // X axis: at each waypoint a tick + cumulative NM + cumulative time, plus a
   // short waypoint id, with a faint gridline up through the plot so you can
@@ -245,21 +245,21 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   ctx.textBaseline = 'top';
   for (let i = 0; i < cum.length; i++) {
     const lx = px(cum[i]);
-    ctx.strokeStyle = 'rgba(120,150,180,0.18)';
+    ctx.strokeStyle = colorWithAlpha(tune('profileGridColor'), 0.18);
     ctx.beginPath(); ctx.moveTo(lx, y); ctx.lineTo(lx, baseY); ctx.stroke();
-    ctx.strokeStyle = '#5a6b7d';
+    ctx.strokeStyle = tune('profileAxisColor');
     ctx.beginPath(); ctx.moveTo(lx, baseY + 0.5); ctx.lineTo(lx, baseY + 3.5); ctx.stroke();
     ctx.textAlign = i === 0 ? 'left' : i === last ? 'right' : 'center';
     // NM (bright) then cumulative time (dimmer) stacked under the tick.
-    ctx.fillStyle = '#cdd8e3';
+    ctx.fillStyle = tune('profileNmTextColor');
     ctx.font = '8px sans-serif';
     ctx.fillText(String(Math.round(cum[i])), lx, baseY + 4);
-    ctx.fillStyle = '#7fa8d0';
+    ctx.fillStyle = tune('profileTimeTextColor');
     ctx.font = '7px sans-serif';
     ctx.fillText(fmtT(tcum[i]), lx, baseY + 13);
     // Waypoint id (skip when ticks are too tight to avoid overlap).
     if (gap >= 22) {
-      ctx.fillStyle = '#8aa0b4';
+      ctx.fillStyle = tune('profileTextColor');
       ctx.font = '7px sans-serif';
       ctx.fillText(wpId(i), lx, baseY + 22);
     }
@@ -284,11 +284,11 @@ function drawVerticalProfile(ctx, x, y, w, h) {
     ctx.font = '7px sans-serif';
     ctx.fillText(fmtT(t), lx, baseY + 13);
   };
-  for (const t of prof.tocs) markAxis(t, '#2e9e4f');
-  for (const t of prof.tods) markAxis(t, '#c47f17');
+  for (const t of prof.tocs) markAxis(t, tune('profileTocColor'));
+  for (const t of prof.tods) markAxis(t, tune('profileTodColor'));
 
   // Axis unit caption.
-  ctx.fillStyle = '#8aa0b4';
+  ctx.fillStyle = tune('profileTextColor');
   ctx.font = '7px sans-serif';
   ctx.textAlign = rtl ? 'left' : 'right';
   ctx.textBaseline = 'bottom';
@@ -383,7 +383,7 @@ function drawSigmets() {
       octx.font = 'bold 12px sans-serif';
       octx.textAlign = 'center';
       octx.lineWidth = 3;
-      octx.strokeStyle = 'rgba(255,255,255,0.9)';
+      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), 0.9);
       octx.strokeText(label, cx, cy);
       octx.fillStyle = col;
       octx.fillText(label, cx, cy);
@@ -881,15 +881,6 @@ function drawAirfields() {
   octx.lineWidth = 1;
 }
 
-// Comm-change ring styling (issue #399). Drawn around the white nav-WP dot
-// when `commChangeMap[name].commChange` is true and the toggle is on. The
-// red is distinct from every other overlay glyph: nav-WP dots are white,
-// airfields blue, route waypoints yellow-on-black, leg kites yellow/pink —
-// so the bright red ring reads as "watch out, frequency boundary" against
-// all base layers (CVFR, OSM, Satellite). Sized just outside the 3.5 px
-// dot so it visually augments rather than replaces it.
-const COMM_CHANGE_RING_COLOR = '#e74c3c';
-
 function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
   // Suppress nav-WP dot when a route waypoint sits on it (by position),
@@ -1035,7 +1026,7 @@ function drawCommChangeRings() {
   // paint can't NPE before loadCommChange resolves.
   if (showCommChange && commChangeMap && navWP && navWP.length) {
     const ringWidth = tune('commChangeRingWidthPx');
-    octx.strokeStyle = COMM_CHANGE_RING_COLOR;
+    octx.strokeStyle = tune('commChangeRingColor');
     octx.lineWidth = ringWidth;
     // #488: if a route waypoint sits on the point, drawWaypoints() paints a
     // filled disc over this ring later in the frame — and with "show waypoint
@@ -1868,7 +1859,7 @@ function drawLegs() {
     drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, formatAltitudeValue(leg.inboundAltitude, leg, 'inboundAltitude'),
-      tune('inkColor'), yellowFill(0.80), needsHalo(i, 'in'), zoomScale);
+      tune('inkColor'), tintFill(tune('legKiteFillColor')), needsHalo(i, 'in'), zoomScale);
     // Cumulative inbound time: < [time], position driven by leg.cumLabel
     // (default: at B waypoint, same perpendicular side as main kite).
     const defCum = { a: 0, _default: 1, _m: 1 };
@@ -1880,14 +1871,14 @@ function drawLegs() {
       const cumY = sb.y + dy * cumAlong + ny * cumPerp;
       drawCumTimeArrow(cumX, cumY,
         Math.atan2(sb.y - cumY, sb.x - cumX),
-        cumInStr, tune('inkColor'), yellowFill(0.80), zoomScale);
+        cumInStr, tune('inkColor'), tintFill(tune('cumKiteFillColor')), zoomScale);
     }
 
     if (showReturn && legAllowsReturn(i)) {
       drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, formatAltitudeValue(leg.outboundAltitude, leg, 'outboundAltitude'),
-        tune('inkColor'), 'rgba(255,204,214,0.80)', needsHalo(i, 'out'), zoomScale);
+        tune('inkColor'), tintFill(tune('returnKiteFillColor')), needsHalo(i, 'out'), zoomScale);
       if (showCumTime) {
         // Cumulative return time kite at A waypoint (return destination).
         // Own offset (cumLabelRet), anchored at A with the same +dx/+nx frame
@@ -1900,7 +1891,7 @@ function drawLegs() {
         const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;
         drawCumTimeArrow(cumRetX, cumRetY,
           Math.atan2(sa.y - cumRetY, sa.x - cumRetX),
-          cumOutArr[i], tune('inkColor'), 'rgba(255,204,214,0.80)', zoomScale);
+          cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor')), zoomScale);
       }
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
@@ -1953,8 +1944,8 @@ function drawWindArrow(x, y, latlng, wind, emphasis) {
   const cx = Math.cos(ang), cy = Math.sin(ang);
   const x1 = x + cx * len / 2, y1 = y + cy * len / 2;
   octx.save();
-  octx.strokeStyle = '#0b5ed7';
-  octx.fillStyle = '#0b5ed7';
+  octx.strokeStyle = tune('windArrowColor');
+  octx.fillStyle = tune('windArrowColor');
   octx.lineWidth = emphasis ? 3 : 2;
   // White halo so the arrow reads over busy chart tiles.
   octx.lineJoin = 'round';
@@ -1962,7 +1953,7 @@ function drawWindArrow(x, y, latlng, wind, emphasis) {
   octx.moveTo(x - cx * len / 2, y - cy * len / 2);
   octx.lineTo(x1, y1);
   octx.save();
-  octx.strokeStyle = 'rgba(255,255,255,0.85)';
+  octx.strokeStyle = colorWithAlpha(tune('windArrowHaloColor'), 0.85);
   octx.lineWidth = (emphasis ? 3 : 2) + 3;
   octx.stroke();
   octx.restore();
@@ -1976,7 +1967,7 @@ function drawWindArrow(x, y, latlng, wind, emphasis) {
   const label = pad3(wind.dir) + '/' + wind.speed;
   octx.font = 'bold 11px sans-serif';
   octx.lineWidth = 3;                                 // text halo
-  octx.strokeStyle = 'rgba(255,255,255,0.9)';
+  octx.strokeStyle = colorWithAlpha(tune('windTextHaloColor'), 0.9);
   octx.strokeText(label, x1 + 6, y1 + 3);
   octx.fillText(label, x1 + 6, y1 + 3);
   octx.restore();
@@ -2173,7 +2164,7 @@ function drawRotText(x, y, ang, text, font, color) {
 function drawDistanceBadge(cx, cy, dist) {
   octx.beginPath();
   octx.arc(cx, cy, tune('distanceBadgeRadiusPx'), 0, Math.PI * 2);
-  octx.fillStyle = yellowFill(0.90);
+  octx.fillStyle = tintFill(tune('distanceBadgeFillColor'));
   octx.fill();
   octx.lineWidth = tune('distanceBadgeBorderPx');
   octx.strokeStyle = tune('inkColor');
@@ -2221,7 +2212,7 @@ function drawWaypoints() {
 
     octx.beginPath();
     octx.arc(s.x, s.y, radius, 0, Math.PI * 2);
-    octx.fillStyle = selected ? tune('selectedColor') : yellowFill(0.60);
+    octx.fillStyle = selected ? tune('selectedColor') : tintFill(tune('waypointFillColor'));
     octx.fill();
     octx.lineWidth = tune('waypointStrokeWidthPx');
     octx.strokeStyle = tune('inkColor');
@@ -2467,7 +2458,7 @@ function drawNotes() {
       : state.selected &&
         state.selected.type === 'note' &&
         state.selected.index === i;
-    const color = n.color || NOTE_DEFAULT_COLOR;
+    const color = n.color || tune('noteDefaultFillColor') || NOTE_DEFAULT_COLOR;
     if (n.cc) {
       drawCommCallout(n, selected);
       continue;
@@ -2658,7 +2649,11 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const colX = new Array(numCols + 1).fill(0);
   for (let mc = 0; mc < numCols; mc++) colX[mc + 1] = colX[mc] + colW[mc];
   const totalW = colX[numCols];
-  const HEADER_BG = '#e8e6e1', TOTAL_BG = '#f0eee9', STRIPE_BG = '#dcd8cf', GRID = '#7a7470', TEXT = '#1a1a1a';
+  const HEADER_BG = tune('planCardHeaderBgColor');
+  const TOTAL_BG = tune('planCardTotalBgColor');
+  const STRIPE_BG = tune('planCardStripeBgColor');
+  const GRID = tune('planCardGridColor');
+  const TEXT = tune('planCardTextColor');
   const tableH = Math.round(rowH * numRows);
   const al = align || 'tl';
   if (al === 'tr' || al === 'br') x = x + Math.max(0, w - totalW);
@@ -2670,7 +2665,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const rowY = new Array(numRows + 1);
   for (let i = 0; i <= numRows; i++) rowY[i] = y + Math.round(i * rowH);
   const tableHActual = rowY[numRows] - y;
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = tune('planCardBgColor');
   ctx.fillRect(x, y, totalW, tableHActual);
   function cell(row, col, text, bold, bg) {
     const cx = x + colX[col], cy = rowY[row], rh = rowY[row + 1] - rowY[row], cw = colW[col];
@@ -2732,14 +2727,14 @@ function drawPlanCard() {
   const r = planCardRect, g = tune('planCardGripPx');
   const ex = r.x + r.w, ey = r.y + r.h;
   octx.save();
-  octx.fillStyle = '#0b5ed7';
+  octx.fillStyle = tune('planCardGripColor');
   octx.beginPath();
   octx.moveTo(ex - g, ey);
   octx.lineTo(ex, ey);
   octx.lineTo(ex, ey - g);
   octx.closePath();
   octx.fill();
-  octx.strokeStyle = '#fff';
+  octx.strokeStyle = tune('planCardGripLineColor');
   octx.lineWidth = 1.5;
   for (let i = 1; i <= 3; i++) {
     octx.beginPath();
@@ -2762,7 +2757,7 @@ function drawPageFrame() {
   const r = pageFrameRect();
   if (!r) return;
   octx.save();
-  octx.fillStyle = `rgba(20,18,18,${tune('pageFrameScrimAlpha')})`;
+  octx.fillStyle = colorWithAlpha(tune('pageFrameScrimColor'), tune('pageFrameScrimAlpha'));
   octx.beginPath();
   octx.rect(0, 0, vw(), vh());
   octx.rect(r.x, r.y, r.w, r.h);
