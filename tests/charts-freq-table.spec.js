@@ -27,6 +27,14 @@ const ALTITUDE_FIXTURE = {
   source: 'test altitude fixture',
   segments: [
     {
+      from: 'AAKKO',
+      to: 'SMRAT',
+      distanceNm: 3.2,
+      inboundAltitude: 2500,
+      outboundAltitude: 2000,
+      status: 'reviewed',
+    },
+    {
       from: 'DESHE',
       to: 'ZALMN',
       distanceNm: 6.1,
@@ -137,10 +145,11 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(resetAll).toHaveAttribute('title', 'Revert all altitude pairs to origin');
     await expect(resetAll).toBeDisabled();
     await expect(page.locator('.charts-alt-table thead th').nth(3)).toHaveText('Direction');
-    await expect(page.locator('.charts-alt-table tbody tr')).toHaveCount(3);
+    await expect(page.locator('.charts-alt-table tbody tr')).toHaveCount(4);
     await expect(page.locator('.charts-freq-title')).toHaveCount(0);
     await expect(page.locator('.charts-airport-header')).toHaveCount(0);
 
+    const aakkoRow = page.locator('.charts-alt-table tbody tr', { hasText: 'AAKKO ↔ SMRAT' });
     const desheRow = page.locator('.charts-alt-table tbody tr', { hasText: 'DESHE ↔ ZALMN' });
     const desheInputs = desheRow.locator('.charts-alt-input');
     await expect(desheInputs.nth(0)).toHaveAttribute('type', 'number');
@@ -171,6 +180,23 @@ test.describe('Charts modal — frequency catalog table', () => {
 
     const search = page.locator('.charts-alt-search');
     await expect(search).toHaveAttribute('placeholder', 'Search altitude pairs');
+    await search.fill('smrat aakko');
+    await expect(aakkoRow).toBeVisible();
+    await expect(desheRow).toBeHidden();
+    await expect(eironRow).toBeHidden();
+    await expect(derorRow).toBeHidden();
+    await expect.poll(() => page.evaluate(() => {
+      const layer = window.altitudePairFocusLayer;
+      return Boolean(layer && map.hasLayer(layer) && window.altitudePairFocusSource === 'search');
+    })).toBe(true);
+    await search.fill('smrat');
+    await expect(aakkoRow).toBeVisible();
+    await expect.poll(() => page.evaluate(() => window.altitudePairFocusLayer === null)).toBe(true);
+    await search.fill('zalmn deshe');
+    await expect(aakkoRow).toBeHidden();
+    await expect(desheRow).toBeVisible();
+    await expect(eironRow).toBeHidden();
+    await expect(derorRow).toBeHidden();
     await search.fill('eiron');
     await expect(eironRow).toBeVisible();
     await expect(desheRow).toBeHidden();
@@ -211,15 +237,17 @@ test.describe('Charts modal — frequency catalog table', () => {
     await page.locator('.charts-alt-copy').click();
     const clip = await page.evaluate(() => navigator.clipboard.readText());
     const copied = JSON.parse(clip);
-    expect(copied.segments[0].inboundAltitude).toBe(3100);
-    expect(copied.segments[2]).toMatchObject({
+    const copiedDeshe = copied.segments.find(s => s.from === 'DESHE' && s.to === 'ZALMN');
+    const copiedDeror = copied.segments.find(s => s.from === 'DEROR' && s.to === 'SHARO');
+    expect(copiedDeshe.inboundAltitude).toBe(3100);
+    expect(copiedDeror).toMatchObject({
       from: 'DEROR',
       to: 'SHARO',
       inboundAltitude: 1500,
       outboundAltitude: 2000,
       status: 'candidate',
     });
-    expect(copied.segments[2]).not.toHaveProperty('oneWay');
+    expect(copiedDeror).not.toHaveProperty('oneWay');
 
     await desheReset.click();
     await expect(desheInputs.nth(0)).toHaveValue('3000');
@@ -291,7 +319,19 @@ test.describe('Charts modal — frequency catalog table', () => {
     await boot(page);
     await page.locator('#alt-pairs').click();
 
+    const modal = page.locator('.charts-alt-modal');
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('.modal-close-actions .modal-close-x')).toHaveCount(1);
+    await expect(modal.locator('.charts-alt-title-actions .charts-alt-pin')).toHaveCount(0);
+    expect(await modal.evaluate(el => {
+      const style = getComputedStyle(el);
+      return { resize: style.resize, overflow: style.overflow, minHeight: style.minHeight };
+    })).toEqual({ resize: 'both', overflow: 'hidden', minHeight: '220px' });
     const desheRow = page.locator('.charts-alt-table tbody tr', { hasText: 'DESHE ↔ ZALMN' });
+    const pin = modal.locator('.modal-close-actions .charts-alt-pin');
+    await expect(pin).toHaveText('📌');
+    await expect(pin).toHaveAttribute('title', 'Keep Alt pairs open when focusing a pair');
+    await expect(pin).toHaveAttribute('aria-pressed', 'false');
     await expect(desheRow.locator('.charts-alt-pair-button'))
       .toHaveAttribute('aria-label', 'Go to DESHE ↔ ZALMN');
     await desheRow.locator('.charts-alt-pair-button').click();
@@ -306,11 +346,20 @@ test.describe('Charts modal — frequency catalog table', () => {
       const fromVisible = bounds.contains([from.lat, from.lng]);
       const toVisible = bounds.contains([to.lat, to.lng]);
       const hasFocusLayer = Boolean(layer && map.hasLayer(layer));
-      if (!fromVisible || !toVisible || !hasFocusLayer) return null;
+      const focusMembers = layer ? Object.values(layer._layers || {}) : [];
+      const focusLine = focusMembers.find(item =>
+        String(item.options && item.options.className || '').includes('alt-pair-focus-line'));
+      const focusDots = focusMembers.filter(item =>
+        String(item.options && item.options.className || '').includes('alt-pair-focus-dot'));
+      if (!fromVisible || !toVisible || !hasFocusLayer || !focusLine || focusDots.length !== 2) return null;
       return {
         fromVisible,
         toVisible,
         hasFocusLayer,
+        focusLineColor: focusLine.options.color,
+        focusLineClass: focusLine.options.className,
+        focusDotColors: focusDots.map(item => item.options.fillColor),
+        focusDotClasses: focusDots.map(item => item.options.className),
         routeWaypoints: state.waypoints.length,
         routeLegs: state.legs.length,
       };
@@ -320,9 +369,35 @@ test.describe('Charts modal — frequency catalog table', () => {
       fromVisible: true,
       toVisible: true,
       hasFocusLayer: true,
+      focusLineColor: '#ff3030',
+      focusLineClass: 'alt-pair-focus-line alt-pair-focus-blink',
+      focusDotColors: ['#ff3030', '#ff3030'],
+      focusDotClasses: [
+        'alt-pair-focus-dot alt-pair-focus-blink',
+        'alt-pair-focus-dot alt-pair-focus-blink',
+      ],
       routeWaypoints: 0,
       routeLegs: 0,
     });
+
+    await page.locator('#alt-pairs').click();
+    await expect(pin).toHaveAttribute('aria-pressed', 'false');
+    await pin.click();
+    await expect(pin).toHaveAttribute('aria-pressed', 'true');
+    await expect(pin).toHaveAttribute('title', 'Alt pairs stays open when focusing a pair');
+    await expect(pin).toHaveClass(/is-pinned/);
+    await page.evaluate(() => setTune('altPairFocusMs', 1000));
+    await desheRow.locator('.charts-alt-pair-button').click();
+    await expect(page.locator('.charts-alt-title')).toBeVisible();
+    await expect(pin).toHaveAttribute('aria-pressed', 'true');
+    await page.waitForTimeout(1200);
+    await expect.poll(() => page.evaluate(() => {
+      const layer = window.altitudePairFocusLayer;
+      return Boolean(layer && map.hasLayer(layer));
+    })).toBe(true);
+    await modal.locator('.modal-close-actions .modal-close-x').click();
+    await expect(page.locator('.charts-alt-title')).toHaveCount(0);
+    await expect.poll(() => page.evaluate(() => window.altitudePairFocusLayer === null)).toBe(true);
   });
 
   test('leg inspector altitude edits refresh the open altitude pairs chart', async ({ page }) => {
@@ -385,6 +460,8 @@ test.describe('Charts modal — frequency catalog table', () => {
 
     await button.click();
     await expect(page.locator('.charts-alt-title h3')).toHaveText('נתיבי CVFR');
+    await expect(page.locator('.modal-close-actions .charts-alt-pin'))
+      .toHaveAttribute('title', 'השאר את חלון הנתיבים פתוח במיקוד נתיב');
     await expect(page.locator('.charts-alt-search')).toHaveAttribute('placeholder', 'חפש נתיבים');
     await expect(page.locator('.charts-alt-table thead th').first()).toHaveText('נתיב');
     await expect(page.locator('.charts-alt-table thead th').nth(1))
