@@ -74,7 +74,7 @@ test.describe('Flight plan', () => {
 
   test('one-way flight plan — forward table only', async ({ page }) => {
     await page.evaluate(() => { window.showReturn = false; });
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     const modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();
 
@@ -99,7 +99,7 @@ test.describe('Flight plan', () => {
 
   test('column selector hides columns in table and CSV and persists', async ({ page }) => {
     await page.evaluate(() => { window.showReturn = true; });
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     let modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();
 
@@ -128,7 +128,7 @@ test.describe('Flight plan', () => {
     expect(csv).toContain('Flight plan\r\n#,From,To,Hdg,Speed (kt),Alt (ft),Time,Cum. time');
 
     await modal.locator('.modal-close-x').click();
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();
     await expect(modal.locator('.flight-table').first().locator('thead th.fp-col-fuel')).toBeHidden();
@@ -144,7 +144,7 @@ test.describe('Flight plan', () => {
 
   test('both-ways flight plan — forward + return tables', async ({ page }) => {
     await page.evaluate(() => { window.showReturn = true; });
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     const modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();
 
@@ -179,7 +179,7 @@ test.describe('Flight plan', () => {
 
   test('return headings are reciprocal of forward headings (±180°)', async ({ page }) => {
     await page.evaluate(() => { window.showReturn = true; });
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     const modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();
 
@@ -208,7 +208,7 @@ test.describe('Flight plan', () => {
 
   test('return toggle while modal is open updates the table', async ({ page }) => {
     await page.evaluate(() => { window.showReturn = false; });
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     const modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();
 
@@ -228,7 +228,7 @@ test.describe('Flight plan', () => {
   });
 
   test('flight plan stays open on data refresh (waypoint drag)', async ({ page }) => {
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     const modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();
 
@@ -248,7 +248,7 @@ test.describe('Flight plan', () => {
   });
 
   test('adding a waypoint while flight plan is open rebuilds the table', async ({ page }) => {
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     const modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();
 
@@ -264,7 +264,7 @@ test.describe('Flight plan', () => {
   });
 
   test('altitude propagation updates forward table display and state — no close needed', async ({ page }) => {
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     const modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();
 
@@ -289,7 +289,7 @@ test.describe('Flight plan', () => {
 
   test('speed propagation updates forward table display and state — no close needed', async ({ page }) => {
     await page.evaluate(() => { window.showReturn = true; });
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     const modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();
 
@@ -324,7 +324,7 @@ test.describe('Flight plan', () => {
 
   test('return-table speed change propagates forward through return route — not backward', async ({ page }) => {
     await page.evaluate(() => { window.showReturn = true; });
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     const modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();
 
@@ -358,7 +358,7 @@ test.describe('Flight plan', () => {
 
   test('return-table altitude propagates backward and updates display — no close needed', async ({ page }) => {
     await page.evaluate(() => { window.showReturn = true; });
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     const modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();
 
@@ -515,7 +515,7 @@ test.describe('Flight plan', () => {
   });
 
   test('delete-leg button exists on every forward row', async ({ page }) => {
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     const modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();
 
@@ -528,7 +528,7 @@ test.describe('Flight plan', () => {
   });
 
   test('delete middle leg (index 3) removes waypoint and reconnects', async ({ page }) => {
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     const modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();
 
@@ -547,7 +547,7 @@ test.describe('Flight plan', () => {
   });
 
   test('delete first leg removes the departure waypoint and reconnects', async ({ page }) => {
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     const modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();
 
@@ -564,7 +564,7 @@ test.describe('Flight plan', () => {
   });
 
   test('delete last leg removes final waypoint shortens route by 1', async ({ page }) => {
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     const modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();
 
@@ -584,7 +584,7 @@ test.describe('Flight plan', () => {
   });
 
   test('delete leg updates state correctly (waypoints + legs trimmed)', async ({ page }) => {
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     const fwdRows = page.locator('.modal-back.flight-plan .flight-table').first().locator('tbody tr');
     await fwdRows.nth(5).locator('.fp-del button').click();
 
@@ -597,7 +597,7 @@ test.describe('Flight plan', () => {
 
   test('delete-leg with return route: both tables rebuild correctly', async ({ page }) => {
     await page.evaluate(() => { window.showReturn = true; });
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     const modal = page.locator('.modal-back.flight-plan');
     await expect(modal).toBeVisible();
 
