@@ -1,6 +1,7 @@
 // Route library (#677): save multiple named routes locally, then load /
 // rename / duplicate / delete them.
 const { test, expect } = require('@playwright/test');
+const { clickToolbarControl, hideToolbarMenus } = require('./_toolbar');
 
 async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
@@ -33,7 +34,7 @@ test.describe('Route library', () => {
     page.on('dialog', d => d.accept());   // accept any confirm/prompt
     await setRoute(page, ['LLSD', 'BAZRA', 'LLHA']);
 
-    await page.locator('#route-library').click();
+    await clickToolbarControl(page, '#route-library');
     const modal = page.locator('.route-library-modal');
     await expect(modal).toBeVisible();
     await expect(modal.locator('.route-library-empty')).toBeVisible();
@@ -58,12 +59,14 @@ test.describe('Route library', () => {
     await expect(modal.locator('.route-library-row')).toHaveCount(2);
 
     // Clear the live route, then load the saved one back.
-    await page.evaluate(() => { state.waypoints = []; state.legs = []; syncLegs(); draw(); });    await modal.locator('.route-library-open').first().click();
+    await page.evaluate(() => { state.waypoints = []; state.legs = []; syncLegs(); draw(); });
+    await hideToolbarMenus(page);
+    await modal.locator('.route-library-open').first().click();
     await expect(page.locator('.route-library-modal')).toHaveCount(0);
     await expect.poll(() => page.evaluate(() => state.waypoints.length)).toBe(3);
 
     // (continued) — delete is exercised below.
-    await page.locator('#route-library').click();
+    await clickToolbarControl(page, '#route-library');
     const modal2 = page.locator('.route-library-modal');    await modal2.locator('.route-library-row').first()
       .getByRole('button', { name: 'Delete' }).click();
     await expect(modal2.locator('.route-library-row')).toHaveCount(1);

@@ -45,14 +45,12 @@ always target `dev` as the PR base branch.
 enhancement. Reference it in the PR body with `Fixes #N` or `Closes #N`.
 
 **Before creating a feature branch from `dev`:** update local `dev`
-first, then bring production back into it while keeping `dev` linear.
-Fetch `origin`, check out `dev`, fast-forward it to `origin/dev`, and
-integrate `origin/main` into `dev` without leaving a merge commit
-(fast-forward when possible; otherwise reapply/squash the `dev` delta
-onto `origin/main`). Resolve and push that linear `dev` update before
-creating or switching to the feature branch. If `dev` cannot
-fast-forward or `origin/main` cannot be integrated cleanly, stop and
-resolve that before branching.
+first, then bring production back into it. Fetch `origin`, check out
+`dev`, fast-forward it to `origin/dev`, and integrate `origin/main`
+when possible. Resolve and push that `dev` update before creating or
+switching to the feature branch. If `dev` cannot fast-forward or
+`origin/main` cannot be integrated cleanly, stop and resolve that
+before branching.
 
 **Before any `git commit`:** run `git branch --show-current` (and
 `git status` when in doubt). If the branch is not the one the user
@@ -144,9 +142,15 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - **Interaction (touch):** single-finger touchstart / touchmove / touchend
   on `mapEl` mirror the mouse path. Multi-finger or empty-space falls
   through to Leaflet for pan / pinch-zoom.
-- **Toolbar:** vertical column, absolute-positioned, with a `⋯` drag
-  handle (`#toolbar-handle`); position persisted at
-  `navaid.toolbarPos`, re-clamped on `window resize`.
+- **Toolbar:** on phones / narrow viewports (`max-width: 680px`) the
+  toolbar is the original floating vertical column with a `⋯` drag handle
+  (`#toolbar-handle`) and hamburger collapse control. Position is persisted
+  at `navaid.toolbarPos`, re-clamped on `window resize`; collapsed state is
+  persisted at `navaid.toolbarCollapsed`. On desktop (`min-width: 681px`)
+  those same `.tb-section` groups render as a fixed top menubar with
+  Windows-like dropdown panels. Desktop ignores saved mobile drag/collapse
+  state, offsets the map/overlay below the menu strip, and closes dropdowns
+  on outside click or Escape.
 - **geo():** great-circle distance (NM) + bearing. Magnetic = true +
   `magVar` (signed offset; Israel ≈ −5, equiv. 5°E variation).
 
@@ -325,8 +329,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   CSS-backed chrome values use `applyTuningCssVars()` (`ui.js`) to mirror
   Tune values into `:root` variables; the "Chrome layout" group owns the
   Zulu clock styling and the default inspector top / viewport gap.
-  Includes a "Colors" group for the last hard-coded draw colors (ink,
-  selected, kite text, leg halo, airfield fill/outline, nav-WP dot).
+  Canvas/map drawing colours live in the feature group that owns the
+  shape (for example kite fills with "Leg kites", page scrim with "Page
+  frame", and profile colours with "Vertical profile"), with shared
+  draw palette values in "Global palette".
   Each slider group has a ↻ reset button that restores the HTML default
   via the slider's own input handler. Preview values are page-local
   only: no `localStorage` / `sessionStorage` writes, and reload restores
@@ -371,7 +377,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - **Waypoint-name rotation:** the `⟳` button by "Show waypoint names"
   cycles `wpNameAngle` 0/90/180/270; all names draw at that angle.
 - **Plan table:** `📋 Plan` opens a modal with a per-leg flight plan
-  (`#`, From, To, Hdg, Dist, Speed, Alt, Time) plus totals. From/To
+  (`#`, From, To, Hdg, Dist, Speed, Alt, Time) plus totals; the per-leg
+  distance column is hidden by default and can be re-enabled from Columns.
+  From/To
   names and Speed/Alt are editable inputs; the rest is `textContent`
   only — user names / notes can't inject HTML. The Print button switches to
   a print stylesheet that hides modal chrome and controls, then prints the
@@ -474,8 +482,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.layer` — selected base layer name.
 - `navaid.lang` — `'en'` / `'he'`; bootstrap script in `index.html`
   reads this before the app loads.
-- `navaid.toolbarPos` — `{x, y}` of the toolbar.
-- `navaid.toolbarCollapsed` — `'0'` / `'1'` for the collapsed toolbar.
+- `navaid.toolbarPos` — `{x, y}` of the floating mobile toolbar.
+- `navaid.toolbarCollapsed` — `'0'` / `'1'` for the collapsed floating
+  mobile toolbar. Desktop menubar view ignores this value.
 - `navaid.sec.<sectionId>` — `'0'` / `'1'` per accordion section
   (`build`, `view`, `display`, `charts`, `export`, `print`, `sim`, etc.).
 - `navaid.inspPos` — `{x, y}` of the dragged inspector panel.
@@ -528,6 +537,12 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.pageSize` — selected page frame size (`A3` / `A4`) or cleared.
 - `navaid.pageOrient` — `'portrait'` / `'landscape'` for page export.
 - `navaid.fpPos` — `{x, y}` of the dragged Flight Plan modal.
+- `navaid.fpColumns` — JSON array of hidden Flight Plan table column keys
+  (`seq`, `from`, `to`, `hdg`, `dist`, `speed`, `alt`, `time`, `fuel`,
+  `cumTime`, `cumFuel`, `radial`, `dme`, optional `freq`). When the key is
+  absent, `dist` is hidden by default; an explicit empty array means the user
+  chose All columns. Missing keys are shown, so newly added columns default
+  visible.
 - `navaid.simUrl` — simulator bridge base URL.
 - `navaid.simOn` — `'0'` / `'1'` for simulator auto-reconnect state.
 - `navaid.simFollow` — `'0'` / `'1'` for simulator-follow mode.
