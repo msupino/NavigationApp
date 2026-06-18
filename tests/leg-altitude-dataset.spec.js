@@ -120,7 +120,7 @@ test.describe('leg-altitude.json scaffold', () => {
     expect(byName.get('SHRUT-YOTVT')).toMatchObject({
       inboundAltitude: 2500,
       outboundAltitude: 3000,
-      status: 'candidate',
+      status: 'reviewed',
     });
     expect(byName.get('SMRAT-SZION')).toMatchObject({
       inboundAltitude: 1500,

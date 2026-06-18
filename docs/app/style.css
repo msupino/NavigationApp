@@ -1602,6 +1602,13 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
   flex: 1;
   min-height: 0;
 }
+.modal.wide.charts-alt-modal {
+  width: min(760px, 92vw);
+  height: min(560px, 84vh);
+  min-height: 220px;
+  resize: both;
+  overflow: hidden;
+}
 /* Vertical profile strip (#672) */
 .fp-profile { margin: 4px 0 8px; }
 .fp-profile-label { font-size: 11px; color: #b9b3b3; margin-bottom: 2px; display: flex; align-items: center; gap: 8px; }
@@ -2121,6 +2128,11 @@ body.theme-light .msa-low .val { color: #c0392b; }
   color: #fff;
   background: #3a3636;
 }
+.charts-alt-pin.is-pinned {
+  color: #ffd966;
+  background: rgba(255, 217, 102, 0.16);
+  border-color: #b8941f;
+}
 .charts-freq-restore-all:disabled,
 .charts-alt-reset-all:disabled {
   opacity: 0.45;
@@ -2449,6 +2461,41 @@ body.theme-light .msa-low .val { color: #c0392b; }
   cursor: pointer;
 }
 .modal-close-x:hover { background: #443f3f; color: #fff; }
+.modal-close-actions {
+  position: absolute;
+  top: 6px;
+  inset-inline-end: 6px;
+  z-index: 2;
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+.modal-close-actions .modal-close-x {
+  position: static;
+}
+.modal-close-action {
+  width: 28px;
+  height: 28px;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  color: #b9b3b3;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.modal-close-action:hover {
+  color: #fff;
+  background: #443f3f;
+}
+.alt-pair-focus-blink {
+  animation: alt-pair-focus-blink 0.9s ease-in-out infinite;
+}
+@keyframes alt-pair-focus-blink {
+  0%, 100% { opacity: 0.95; }
+  50% { opacity: 0.22; }
+}
 
 /* Floating search overlay — Ctrl/Cmd-F shows this top-center panel so the
  * user can find a nav-waypoint without expanding the Build section. */
@@ -2788,6 +2835,7 @@ body.theme-light .charts-cat-label,
 body.theme-light .plate-loading,
 body.theme-light .plate-attribution,
 body.theme-light .modal-close-x,
+body.theme-light .modal-close-action,
 body.theme-light .point-choice-meta,
 body.theme-light .satellite-snippet-head label,
 body.theme-light .satellite-caption,
@@ -2805,6 +2853,7 @@ body.theme-light #toolbar-toggle:hover,
 body.theme-light #toolbar .footer-link:hover,
 body.theme-light .charts-airport-header:hover,
 body.theme-light #insp-close:hover,
+body.theme-light .modal-close-action:hover,
 body.theme-light #mag-settings-close:hover,
 body.theme-light #search-close:hover,
 body.theme-light #tuning-panel .tune-close:hover {
@@ -2920,6 +2969,11 @@ body.theme-light .charts-alt-copy:hover:not(:disabled),
 body.theme-light .charts-alt-reset-all:hover:not(:disabled) {
   color: #111820;
   background: #eef3f9;
+}
+body.theme-light .charts-alt-pin.is-pinned {
+  color: #7a5600;
+  background: #fff3c4;
+  border-color: #d0a420;
 }
 body.theme-light .charts-freq-empty,
 body.theme-light .charts-freq-code {
