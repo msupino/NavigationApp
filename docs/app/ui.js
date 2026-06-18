@@ -187,6 +187,128 @@ function refreshZuluClock() {
 }
 refreshZuluClock();
 setInterval(refreshZuluClock, 1000);
+
+// --- realtime own-position (GPS) ------------------------------------
+// A topright toggle that tracks the device location via the Geolocation API
+// and shows a blue dot + accuracy circle as Leaflet layers (independent of the
+// route overlay). First fix pans to the position; it does not keep following.
+let _locWatch = null, _locMarker = null, _locAccuracy = null, _locFollowed = false;
+let _locTrack = null, _locRecording = false;
+function liveLocationBtn() { return document.getElementById('navaid-loc-btn'); }
+function recordTrackBtn() { return document.getElementById('navaid-rec-btn'); }
+function stopLiveLocation() {
+  if (_locWatch != null && navigator.geolocation) navigator.geolocation.clearWatch(_locWatch);
+  _locWatch = null;
+  if (_locMarker) { map.removeLayer(_locMarker); _locMarker = null; }
+  if (_locAccuracy) { map.removeLayer(_locAccuracy); _locAccuracy = null; }
+  if (_locTrack) { map.removeLayer(_locTrack); _locTrack = null; }
+  const ro = document.getElementById('navaid-loc-readout');
+  if (ro) { ro.textContent = ''; ro.style.display = 'none'; }
+  _locRecording = false;
+  const b = liveLocationBtn();
+  if (b) { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); }
+  const r = recordTrackBtn();
+  if (r) { r.classList.remove('active'); r.setAttribute('aria-pressed', 'false'); }
+}
+function onLiveLocationFix(pos) {
+  const lat = pos.coords.latitude, lng = pos.coords.longitude;
+  const acc = Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : 0;
+  const ll = [lat, lng];
+  if (!_locMarker) {
+    _locAccuracy = L.circle(ll, { radius: acc, color: '#1d6fe0', weight: 1,
+      fillColor: '#1d6fe0', fillOpacity: 0.12, interactive: false }).addTo(map);
+    _locMarker = L.circleMarker(ll, { radius: 6, color: '#fff', weight: 2,
+      fillColor: '#1d6fe0', fillOpacity: 1, interactive: false }).addTo(map);
+  } else {
+    _locMarker.setLatLng(ll);
+    _locAccuracy.setLatLng(ll).setRadius(acc);
+  }
+  // GPS altitude (m → ft) + ground speed (m/s → kt) readout, when available.
+  const ro = document.getElementById('navaid-loc-readout');
+  if (ro) {
+    const parts = [];
+    if (Number.isFinite(pos.coords.altitude)) parts.push(Math.round(pos.coords.altitude * 3.28084) + ' ft');
+    if (Number.isFinite(pos.coords.speed) && pos.coords.speed >= 0) parts.push(Math.round(pos.coords.speed * 1.94384) + ' kt');
+    ro.textContent = parts.join('  ·  ');
+    ro.style.display = parts.length ? 'block' : 'none';
+  }
+  if (_locRecording) {
+    if (!_locTrack) {
+      _locTrack = L.polyline([ll], { color: '#e23b3b', weight: 3, opacity: 0.85, interactive: false }).addTo(map);
+    } else {
+      _locTrack.addLatLng(ll);
+    }
+  }
+  if (!_locFollowed) { _locFollowed = true; map.panTo(ll); }
+}
+function onLiveLocationError(e) {
+  if (typeof showToast === 'function') {
+    showToast((S.geoError || 'Location unavailable') + (e && e.message ? ': ' + e.message : ''));
+  }
+  stopLiveLocation();
+}
+function toggleLiveLocation() {
+  if (_locWatch != null) { stopLiveLocation(); return; }
+  if (!navigator.geolocation) {
+    if (typeof showToast === 'function') showToast(S.geoUnsupported || 'Geolocation not supported');
+    return;
+  }
+  _locFollowed = false;
+  const b = liveLocationBtn();
+  if (b) { b.classList.add('active'); b.setAttribute('aria-pressed', 'true'); }
+  _locWatch = navigator.geolocation.watchPosition(onLiveLocationFix, onLiveLocationError,
+    { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 });
+}
+// Record toggle — appends each GPS fix to a breadcrumb polyline. Turning it on
+// also starts location tracking if it isn't already running.
+function toggleRecordTrack() {
+  _locRecording = !_locRecording;
+  const r = recordTrackBtn();
+  if (r) { r.classList.toggle('active', _locRecording); r.setAttribute('aria-pressed', _locRecording ? 'true' : 'false'); }
+  if (_locRecording && _locWatch == null) toggleLiveLocation();
+  if (!_locRecording && _locTrack) { map.removeLayer(_locTrack); _locTrack = null; }
+}
+window.toggleLiveLocation = toggleLiveLocation;
+window.toggleRecordTrack = toggleRecordTrack;
+const liveLocationCtrl = L.control({ position: 'topright' });
+liveLocationCtrl.onAdd = function () {
+  const b = L.DomUtil.create('button', 'leaflet-control navaid-loc-btn');
+  b.id = 'navaid-loc-btn';
+  b.type = 'button';
+  b.textContent = '📍';
+  b.title = S.tbMyLocation || 'Show my location';
+  b.setAttribute('aria-label', S.tbMyLocation || 'Show my location');
+  b.setAttribute('aria-pressed', 'false');
+  L.DomEvent.disableClickPropagation(b);
+  L.DomEvent.on(b, 'click', e => { L.DomEvent.preventDefault(e); toggleLiveLocation(); });
+  return b;
+};
+liveLocationCtrl.addTo(map);
+const recordTrackCtrl = L.control({ position: 'topright' });
+recordTrackCtrl.onAdd = function () {
+  const b = L.DomUtil.create('button', 'leaflet-control navaid-rec-btn');
+  b.id = 'navaid-rec-btn';
+  b.type = 'button';
+  b.textContent = '⏺';
+  b.title = S.tbRecordTrack || 'Record track';
+  b.setAttribute('aria-label', S.tbRecordTrack || 'Record track');
+  b.setAttribute('aria-pressed', 'false');
+  L.DomEvent.disableClickPropagation(b);
+  L.DomEvent.on(b, 'click', e => { L.DomEvent.preventDefault(e); toggleRecordTrack(); });
+  return b;
+};
+recordTrackCtrl.addTo(map);
+const locReadoutCtrl = L.control({ position: 'topright' });
+locReadoutCtrl.onAdd = function () {
+  const box = L.DomUtil.create('div', 'leaflet-control navaid-loc-readout');
+  box.id = 'navaid-loc-readout';
+  box.dir = 'ltr';
+  box.style.display = 'none';
+  box.setAttribute('aria-live', 'off');
+  return box;
+};
+locReadoutCtrl.addTo(map);
+
 // --- map legend (bottom-left) ---------------------------------------
 // The legend markup lives in index.html so applyI18n() fills its text at
 // boot; here we lift that element into a Leaflet control so it floats over

@@ -370,6 +370,38 @@ html, body {
   pointer-events: none;
   display: none;
 }
+.leaflet-control.navaid-loc-btn,
+.leaflet-control.navaid-rec-btn {
+  display: block;
+  width: 34px;
+  height: 34px;
+  margin: 8px 12px 0 0;
+  padding: 0;
+  font-size: 17px;
+  line-height: 32px;
+  text-align: center;
+  cursor: pointer;
+  color: #fff;
+  background: rgba(20, 18, 18, 0.88);
+  border: 1px solid #3a3636;
+  border-radius: 5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+.leaflet-control.navaid-loc-btn.active { background: #1d6fe0; border-color: #1d6fe0; }
+.leaflet-control.navaid-rec-btn.active { background: #e23b3b; border-color: #e23b3b; }
+.leaflet-control.navaid-loc-readout {
+  margin: 8px 12px 0 0;
+  padding: 4px 8px;
+  font: 700 13px/1 monospace;
+  color: #fff;
+  background: rgba(20, 18, 18, 0.88);
+  border: 1px solid #3a3636;
+  border-radius: 5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
 .leaflet-control.zulu-clock {
   display: block;
   min-width: var(--navaid-zulu-clock-min-width, 82px);
