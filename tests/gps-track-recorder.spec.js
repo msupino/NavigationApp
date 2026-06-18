@@ -91,3 +91,24 @@ test('stop saves a kind:gps library entry with simplified route + raw track', as
   expect(persisted.id).toBe(entry.id);
   expect(await page.evaluate((d) => (typeof validateRoute === 'function' ? validateRoute(d) : null), entry.data)).toBeNull();
 });
+
+test('breadcrumb + own-ship are drawn while recording', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__geoCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 1; };
+    navigator.geolocation.clearWatch = () => {};
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof startGpsRecording === 'function' && typeof drawGpsTrack === 'function');
+  const drawn = await page.evaluate(() => {
+    window.__gpsBreadcrumbDrawn = 0;
+    startGpsRecording();
+    const fix = (lat, lng) => window.__geoCb({ coords: { latitude: lat, longitude: lng, accuracy: 8, heading: 90, altitude: null }, timestamp: Date.now() });
+    fix(32.05, 34.80); fix(32.06, 34.81); fix(32.07, 34.82);
+    draw();
+    return { points: gpsTrack.length, ownHdg: gpsOwn && gpsOwn.hdg, breadcrumb: window.__gpsBreadcrumbDrawn };
+  });
+  expect(drawn.points).toBe(3);
+  expect(drawn.ownHdg).toBe(90);
+  expect(drawn.breadcrumb).toBeGreaterThan(0);
+});

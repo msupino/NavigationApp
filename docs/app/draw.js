@@ -36,11 +36,12 @@ function legKiteAlongHalfPx(sc) {
 // Draw the live simulator aircraft at its current position with heading.
 // Top-down airplane silhouette: nose points up in local frame, rotated to
 // (aircraft heading − map bearing) so it tracks correctly on a rotated map.
-function drawSimAircraft() {
-  if (!simOn || !simAircraft) return;
-  const s = proj(simAircraft);
+// Draws an own-ship arrow at pos {lat,lng} with true heading `hdg`.
+function drawOwnShip(pos, hdg) {
+  if (!pos) return;
+  const s = proj(pos);
   const mapBearing = (typeof map !== 'undefined' && map.getBearing) ? map.getBearing() : 0;
-  const screenAngle = ((simAircraft.hdg || 0) - mapBearing) * Math.PI / 180;
+  const screenAngle = ((hdg || 0) - mapBearing) * Math.PI / 180;
   const r = 18;
   octx.save();
   octx.translate(s.x, s.y);
@@ -308,7 +309,8 @@ function draw() {
   drawWaypoints();
   drawNotes();
   if (window.showProfile) drawProfileMarkers();   // TOC/TOD markers (#672)
-  drawSimAircraft();
+  if (typeof drawGpsTrack === 'function') drawGpsTrack();   // GPS breadcrumb + own-ship while recording
+  if (!gpsRecording && simOn && simAircraft) drawOwnShip(simAircraft, simAircraft.hdg);  // sim own-ship
   drawInfo();
   drawPageFrame();
   drawPlanCard();          // flight-plan card placed for PNG export (#378)

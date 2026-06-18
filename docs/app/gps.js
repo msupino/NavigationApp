@@ -160,6 +160,25 @@ function stopGpsRecordingAndSave() {
   return persistRouteLibrary(list) ? entry : null;
 }
 
+// Breadcrumb of the in-progress recording, drawn on the overlay.
+function drawGpsTrack() {
+  if (!gpsRecording || gpsTrack.length < 1) return;
+  if (gpsTrack.length > 1) {
+    octx.save();
+    octx.beginPath();
+    for (let i = 0; i < gpsTrack.length; i++) {
+      const s = proj(gpsTrack[i]);
+      if (i === 0) octx.moveTo(s.x, s.y); else octx.lineTo(s.x, s.y);
+    }
+    octx.lineWidth = 3;
+    octx.strokeStyle = '#1e88e5';
+    octx.stroke();
+    octx.restore();
+    if (typeof window !== 'undefined') window.__gpsBreadcrumbDrawn = (window.__gpsBreadcrumbDrawn || 0) + 1;
+  }
+  if (gpsOwn) drawOwnShip(gpsOwn, gpsOwn.hdg);
+}
+
 // Stop watching without saving. (Save handled in a later task.)
 function stopGpsRecording() {
   if (gpsWatchId != null && navigator.geolocation) navigator.geolocation.clearWatch(gpsWatchId);
