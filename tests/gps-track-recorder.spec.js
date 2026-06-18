@@ -119,11 +119,13 @@ test('toolbar GPS button toggles recording and updates its label', async ({ page
     navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 5; };
     navigator.geolocation.clearWatch = () => {};
     try { localStorage.removeItem('navaid.routes'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); } catch (e) {}
   });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof startGpsRecording === 'function');
   const btn = page.locator('#gps-record');
   await expect(btn).toHaveCount(1);
+  await expect(btn).toBeVisible();
   await btn.click();
   expect(await page.evaluate(() => gpsRecording)).toBe(true);
   await expect(btn).toContainText('Stop');
