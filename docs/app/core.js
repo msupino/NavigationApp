@@ -1257,16 +1257,7 @@ function toHMS(hours) {
 }
 
 // --- vertical profile: top-of-climb / top-of-descent (#672) -------------
-// Endpoint TOC/TOD markers use CVFR planning shortcuts: 0.5 NM per 100 ft
-// climb (200 ft/NM) and 0.3 NM per 100 ft descent (~3 NM per 1000 ft).
-const PROFILE_TOC_NM_PER_100FT = 0.5;
-const PROFILE_TOD_NM_PER_100FT = 0.3;
-function profileGradientDistanceNm(altDiffFt, nmPer100Ft) {
-  return Math.max(0, altDiffFt) / 100 * nmPer100Ft;
-}
 // Default GA climb/descent performance (C172-ish) lives in the tune registry.
-// It still drives non-endpoint ramps and timing; endpoint TOC/TOD use the
-// gradient shortcuts above.
 // Field elevation at route endpoint waypoint i (airfield elev_ft) or null.
 function routeEndpointElev(i) {
   const wp = state.waypoints[i];
@@ -1275,10 +1266,9 @@ function routeEndpointElev(i) {
   return af && Number.isFinite(af.elev_ft) ? af.elev_ft : null;
 }
 // Model each leg at its own planned altitude. A leg ramps gradually from its
-// start altitude to its own altitude; intermediate ramps use the configured
-// performance, while departure TOC and final TOD use the fixed CVFR gradient
-// shortcuts above. The ramp is confined to the leg. TOC/TOD markers are emitted
-// only when the departure / destination is an actual airfield (has a field
+// start altitude to its own altitude at the configured climb/descent
+// performance. The ramp is confined to the leg. TOC/TOD markers are emitted only
+// when the departure / destination is an actual airfield (has a field
 // elevation); intermediate per-leg altitude changes are drawn but not marked.
 // Returns per-leg
 // time/fuel, altitude-vs-distance vertices (pts), and wpCum (cumulative NM at
@@ -1326,19 +1316,14 @@ function routeProfile(ac) {
     // The ramp is confined to the leg (capped at the leg distance).
     const startAlt = isFirst ? fieldStart : legAlt(i - 1);
     let climbDist = 0, descDist = 0;
-    if (cr > startAlt) {
-      const d = isFirst && depElev != null
-        ? profileGradientDistanceNm(cr - startAlt, PROFILE_TOC_NM_PER_100FT)
-        : climbKt * ((cr - startAlt) / climbFpm) / 60;
-      climbDist = Math.min(dist, d);
-    }
+    if (cr > startAlt) climbDist = Math.min(dist, climbKt * ((cr - startAlt) / climbFpm) / 60);
     else if (cr < startAlt) descDist = Math.min(dist, descKt * ((startAlt - cr) / descFpm) / 60);
     // The final leg also descends to the destination field at its end.
     let endDescDist = 0, endAlt = cr;
     if (isLast && cr > fieldEnd) {
       endAlt = fieldEnd;
       const availableDist = Math.max(0, dist - climbDist - descDist);
-      endDescDist = Math.min(availableDist, profileGradientDistanceNm(cr - fieldEnd, PROFILE_TOD_NM_PER_100FT));
+      endDescDist = Math.min(availableDist, descKt * ((cr - fieldEnd) / descFpm) / 60);
     }
     const cruiseDist = Math.max(0, dist - climbDist - descDist - endDescDist);
     const climbT = climbKt > 0 ? climbDist / climbKt : 0;
