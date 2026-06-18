@@ -3,8 +3,8 @@
 Browser-based CVFR / Israel-area flight-route planner. Plain HTML +
 CSS + JavaScript on top of Leaflet, no build step.
 
-- **Live (production):** https://msupino.github.io/NavigationApp/
-- **Live (staging):** https://msupino.github.io/NavigationApp/staging/
+- **Live (production):** https://navaid.supino.org/
+- **Live (staging):** https://navaid.supino.org/staging/
 - **Wiki:** https://github.com/msupino/NavigationApp/wiki — full documentation / תיעוד מלא
 
 ## Run locally

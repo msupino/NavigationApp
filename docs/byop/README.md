@@ -42,7 +42,7 @@ PDFs are stored as regular git blobs under `docs/byop/` and served directly by *
 The PDFs are accessible at:
 
 ```
-https://msupino.github.io/NavigationApp/byop/<file>.pdf
+https://navaid.supino.org/byop/<file>.pdf
 ```
 
 ## License & attribution
