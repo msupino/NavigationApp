@@ -61,6 +61,14 @@ NavAid.tuningDefaults = {
 
   planCardBaseRowPx: { value: 16, min: 6, max: 48, step: 1, label: 'Plan card row height (px)' },
   planCardGripPx: { value: 22, min: 8, max: 60, step: 1, label: 'Plan card resize grip (px)' },
+  planCardBgColor: { value: '#ffffff', type: 'color', label: 'Plan card background color' },
+  planCardHeaderBgColor: { value: '#e8e6e1', type: 'color', label: 'Plan card header color' },
+  planCardTotalBgColor: { value: '#f0eee9', type: 'color', label: 'Plan card total color' },
+  planCardStripeBgColor: { value: '#dcd8cf', type: 'color', label: 'Plan card stripe color' },
+  planCardGridColor: { value: '#7a7470', type: 'color', label: 'Plan card grid color' },
+  planCardTextColor: { value: '#1a1a1a', type: 'color', label: 'Plan card text color' },
+  planCardGripColor: { value: '#0b5ed7', type: 'color', label: 'Plan card grip color' },
+  planCardGripLineColor: { value: '#ffffff', type: 'color', label: 'Plan card grip line color' },
 
   satellitePreviewZoom: { value: 16, min: 10, max: 19, step: 1, label: 'Satellite preview zoom' },
   satelliteExpandedZoom: { value: 17, min: 10, max: 20, step: 1, label: 'Satellite expanded zoom' },
@@ -83,10 +91,15 @@ NavAid.tuningDefaults = {
   driftDashOnPx: { value: 12, min: 1, max: 60, step: 1, label: 'Drift dash on' },
   driftDashOffPx: { value: 8, min: 0, max: 60, step: 1, label: 'Drift dash gap' },
   driftStrokeWidthPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Drift stroke width' },
+  windArrowColor: { value: '#0b5ed7', type: 'color', label: 'Wind arrow color' },
+  windArrowHaloColor: { value: '#ffffff', type: 'color', label: 'Wind arrow halo color' },
+  windTextHaloColor: { value: '#ffffff', type: 'color', label: 'Wind text halo color' },
 
   defaultLabelMarginPx: { value: 20, min: 0, max: 80, step: 1, label: 'Default marker margin' },
   defaultKiteHalfWidthPx: { value: 23, min: 1, max: 80, step: 1, label: 'Default kite half-width' },
 
+  legKiteFillColor: { value: '#fff6aa', type: 'color', label: 'Leg kite fill color' },
+  returnKiteFillColor: { value: '#ffccd6', type: 'color', label: 'Return kite fill color' },
   legKiteHeightPx: { value: 47, min: 8, max: 120, step: 1, label: 'Leg kite height' },
   legKiteCellWidthPx: { value: 24, min: 8, max: 80, step: 1, label: 'Leg kite cell width' },
   legKiteTriangleLenPx: { value: 35, min: 8, max: 100, step: 1, label: 'Leg kite triangle length' },
@@ -97,6 +110,8 @@ NavAid.tuningDefaults = {
   legKiteHeadingTextPx: { value: 13, min: 4, max: 40, step: 1, label: 'Leg kite heading text size' },
   legKiteHeadingAnchor: { value: 0.25, min: -0.5, max: 1, step: 0.01, label: 'Leg kite heading anchor' },
 
+  cumKiteFillColor: { value: '#fff6aa', type: 'color', label: 'Cum kite fill color' },
+  returnCumKiteFillColor: { value: '#ffccd6', type: 'color', label: 'Return cum kite fill color' },
   cumKiteHeightPx: { value: 23, min: 8, max: 100, step: 1, label: 'Cum kite height' },
   cumKiteCellWidthPx: { value: 43, min: 10, max: 120, step: 1, label: 'Cum kite cell width' },
   cumKiteTriangleLenPx: { value: 20, min: 6, max: 100, step: 1, label: 'Cum kite triangle length' },
@@ -113,13 +128,15 @@ NavAid.tuningDefaults = {
   distanceBadgeRadiusPx: { value: 15, min: 4, max: 50, step: 1, label: 'Distance badge radius' },
   distanceBadgeBorderPx: { value: 2.5, min: 0.25, max: 10, step: 0.25, label: 'Distance badge border width' },
   distanceBadgeFontPx: { value: 11, min: 4, max: 30, step: 1, label: 'Distance badge text size' },
+  distanceBadgeFillColor: { value: '#fff6aa', type: 'color', label: 'Distance badge fill color' },
 
   waypointBaseRadiusPx: { value: 13, min: 2, max: 60, step: 1, label: 'Waypoint base radius' },
   waypointFontPx: { value: 13, min: 4, max: 40, step: 1, label: 'Waypoint text size' },
-  waypointTextPadFactor: { value: 0.7, min: 0, max: 2, step: 0.05, label: 'Waypoint text pad factor' },
+  waypointTextFitFactor: { value: 0.85, min: 0.3, max: 1, step: 0.05, label: 'Waypoint text fit (fraction of diameter)' },
   waypointMinZoomScale: { value: 0.35, min: 0.1, max: 2, step: 0.05, label: 'Waypoint min zoom scale' },
   waypointSelectedRadiusAddPx: { value: 2, min: 0, max: 20, step: 0.5, label: 'Selected waypoint radius add' },
   waypointStrokeWidthPx: { value: 3, min: 0.25, max: 10, step: 0.25, label: 'Waypoint stroke width' },
+  waypointFillColor: { value: '#fff6aa', type: 'color', label: 'Waypoint fill color' },
 
   airfieldMarkerRadiusPx: { value: 7, min: 2, max: 40, step: 1, label: 'Airfield triangle radius' },
   airfieldMarkerWidthFactor: { value: 0.95, min: 0.1, max: 2, step: 0.05, label: 'Airfield triangle width factor' },
@@ -137,6 +154,7 @@ NavAid.tuningDefaults = {
 
   commChangeRingRadiusPx: { value: 6, min: 1, max: 40, step: 0.5, label: 'Comm-change ring radius' },
   commChangeRingWidthPx: { value: 1.8, min: 0.25, max: 10, step: 0.1, label: 'Comm-change ring width' },
+  commChangeRingColor: { value: '#e74c3c', type: 'color', label: 'Comm-change ring color' },
   commChangeNoteLatOffset: { value: 0, min: -0.15, max: 0.15, step: 0.001, label: 'Comm-change arrow tail lat offset' },
   commChangeNoteLngOffset: { value: 0.09, min: -0.25, max: 0.25, step: 0.001, label: 'Comm-change arrow tail lng offset' },
   commChangeArrowStartGapPx: { value: 3, min: 0, max: 50, step: 0.5, label: 'Comm-change arrow start gap' },
@@ -172,10 +190,12 @@ NavAid.tuningDefaults = {
   noteMinWidthPx: { value: 56, min: 1, max: 240, step: 1, label: 'Note min width' },
   noteStrokeWidthPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Note stroke width' },
   noteSelectedStrokeWidthPx: { value: 2.5, min: 0.25, max: 10, step: 0.25, label: 'Selected note stroke width' },
+  noteDefaultFillColor: { value: '#fff6aa', type: 'color', label: 'Default note fill color' },
 
   pageFrameLineWidthPx: { value: 2, min: 0.25, max: 10, step: 0.25, label: 'Page frame line width' },
   pageFrameDashOnPx: { value: 8, min: 1, max: 60, step: 1, label: 'Page frame dash on' },
   pageFrameDashOffPx: { value: 5, min: 0, max: 60, step: 1, label: 'Page frame dash gap' },
+  pageFrameScrimColor: { value: '#141212', type: 'color', label: 'Page frame scrim color' },
   pageFrameScrimAlpha: { value: 0.4, min: 0, max: 1, step: 0.05, label: 'Page frame scrim alpha' },
   pageFrameHitPx: { value: 14, min: 1, max: 80, step: 1, label: 'Page frame drag band' },
 
@@ -188,6 +208,7 @@ NavAid.tuningDefaults = {
 
   inkColor: { value: '#161412', type: 'color', label: 'Ink color (lines, kites, text strokes)' },
   selectedColor: { value: '#ffcc33', type: 'color', label: 'Selected highlight color' },
+  labelFillColor: { value: '#fff6aa', type: 'color', label: 'Default label fill color' },
   kiteTextColor: { value: '#000000', type: 'color', label: 'Kite text color' },
   legKiteHaloColor: { value: '#8e44ad', type: 'color', label: 'Leg kite halo color' },
   airfieldFillColor: { value: '#2f6fd0', type: 'color', label: 'Airfield fill color' },
@@ -211,6 +232,30 @@ NavAid.tuningDefaults = {
 
   exportBgColor: { value: '#231f20', type: 'color', label: 'PNG export background color' },
 
+  liveAircraftFillColor: { value: '#e74c3c', type: 'color', label: 'Live aircraft fill color' },
+  liveAircraftOutlineColor: { value: '#ffffff', type: 'color', label: 'Live aircraft outline color' },
+
+  profileBgColor: { value: '#1d2733', type: 'color', label: 'Profile background color' },
+  profileGridColor: { value: '#7896b4', type: 'color', label: 'Profile grid color' },
+  profileAxisColor: { value: '#5a6b7d', type: 'color', label: 'Profile axis color' },
+  profileGroundColor: { value: '#3a4654', type: 'color', label: 'Profile ground line color' },
+  profileTextColor: { value: '#8aa0b4', type: 'color', label: 'Profile axis text color' },
+  profileNmTextColor: { value: '#cdd8e3', type: 'color', label: 'Profile NM text color' },
+  profileTimeTextColor: { value: '#7fa8d0', type: 'color', label: 'Profile time text color' },
+  profileAreaColor: { value: '#5096e6', type: 'color', label: 'Profile area color' },
+  profileLineColor: { value: '#5a96e6', type: 'color', label: 'Profile line color' },
+  profileTocColor: { value: '#2e9e4f', type: 'color', label: 'TOC marker color' },
+  profileTodColor: { value: '#c47f17', type: 'color', label: 'TOD marker color' },
+  profileMarkerHaloColor: { value: '#ffffff', type: 'color', label: 'TOC/TOD halo color' },
+
+  sigmetTurbColor: { value: '#e67e22', type: 'color', label: 'SIGMET turbulence color' },
+  sigmetIceColor: { value: '#1ba1e2', type: 'color', label: 'SIGMET icing color' },
+  sigmetMtwColor: { value: '#8e44ad', type: 'color', label: 'SIGMET mountain wave color' },
+  sigmetVaColor: { value: '#7f5539', type: 'color', label: 'SIGMET volcanic ash color' },
+  sigmetDustColor: { value: '#b8860b', type: 'color', label: 'SIGMET dust/sand color' },
+  sigmetTcColor: { value: '#c2185b', type: 'color', label: 'SIGMET cyclone color' },
+  sigmetDefaultColor: { value: '#dd1111', type: 'color', label: 'SIGMET default/TS color' },
+
   vorMarkerRadiusPx: { value: 9, min: 3, max: 30, step: 0.5, label: 'VOR marker radius' },
   vorMarkerWidthPx: { value: 2, min: 0.25, max: 8, step: 0.25, label: 'VOR marker stroke width' },
   vorMarkerColor: { value: '#127a7a', type: 'color', label: 'VOR marker color' },
@@ -227,7 +272,7 @@ NavAid.tuningDefaults = {
   zuluClockMinWidthPx: { value: 82, min: 40, max: 180, step: 1, label: 'Zulu clock min width' },
   zuluClockPadYPx: { value: 5, min: 0, max: 24, step: 1, label: 'Zulu clock vertical padding' },
   zuluClockPadXPx: { value: 8, min: 0, max: 36, step: 1, label: 'Zulu clock horizontal padding' },
-  zuluClockMarginTopPx: { value: 12, min: 0, max: 80, step: 1, label: 'Zulu clock top margin' },
+  zuluClockMarginTopPx: { value: 4, min: 0, max: 80, step: 1, label: 'Zulu clock top margin' },
   zuluClockMarginRightPx: { value: 12, min: 0, max: 80, step: 1, label: 'Zulu clock right margin' },
   zuluClockFontPx: { value: 13, min: 8, max: 28, step: 1, label: 'Zulu clock text size' },
   zuluClockFontWeight: { value: 800, min: 100, max: 900, step: 100, label: 'Zulu clock text weight' },
@@ -251,32 +296,36 @@ NavAid.tuningGroups = [
   { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt'] },
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileDescentFpm', 'profileClimbKt', 'profileDescentKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
-  { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx'] },
+  { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },
   { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom', 'satelliteChartOverscale'] },
   { name: 'Magnifier', keys: ['magBaselineZoom', 'magMaxExp'] },
   { name: 'Behaviour', keys: ['undoLimit', 'rotDragPx', 'shareMaxWaypoints', 'commChangeSnapPx', 'originResnapArmPx'] },
   { name: 'Route line', keys: ['routeLineWidthPx', 'routeSelectedLineWidthPx'] },
   { name: 'Drift lines', keys: ['driftAngleDeg', 'driftLengthFactor', 'driftDashOnPx', 'driftDashOffPx', 'driftStrokeWidthPx', 'driftLineColor', 'driftLineAlpha'] },
   { name: 'GPS track', keys: ['gpsBreadcrumbColor', 'gpsBreadcrumbWidthPx'] },
+  { name: 'Wind arrows', keys: ['windArrowColor', 'windArrowHaloColor', 'windTextHaloColor'] },
   { name: 'Default marker locations', keys: ['defaultLabelMarginPx', 'defaultKiteHalfWidthPx'] },
-  { name: 'Leg kites', keys: ['legKiteHeightPx', 'legKiteCellWidthPx', 'legKiteTriangleLenPx', 'legKiteBorderPx', 'legKiteDividerPx', 'legKiteHaloPx', 'legKiteTextPx', 'legKiteHeadingTextPx', 'legKiteHeadingAnchor'] },
-  { name: 'Cumulative kites', keys: ['cumKiteHeightPx', 'cumKiteCellWidthPx', 'cumKiteTriangleLenPx', 'cumKiteBorderPx', 'cumKiteTextPx'] },
+  { name: 'Leg kites', keys: ['legKiteFillColor', 'returnKiteFillColor', 'legKiteHeightPx', 'legKiteCellWidthPx', 'legKiteTriangleLenPx', 'legKiteBorderPx', 'legKiteDividerPx', 'legKiteHaloPx', 'legKiteTextPx', 'legKiteHeadingTextPx', 'legKiteHeadingAnchor'] },
+  { name: 'Cumulative kites', keys: ['cumKiteFillColor', 'returnCumKiteFillColor', 'cumKiteHeightPx', 'cumKiteCellWidthPx', 'cumKiteTriangleLenPx', 'cumKiteBorderPx', 'cumKiteTextPx'] },
   { name: 'Minute markers', keys: ['minuteMarkerFontPx', 'minuteTickEvenPx', 'minuteTickOddPx', 'minuteTickEvenWidthPx', 'minuteTickOddWidthPx', 'minuteLabelOffsetPx'] },
-  { name: 'Distance badges', keys: ['distanceBadgeRadiusPx', 'distanceBadgeBorderPx', 'distanceBadgeFontPx'] },
-  { name: 'Route waypoints', keys: ['waypointBaseRadiusPx', 'waypointFontPx', 'waypointTextPadFactor', 'waypointMinZoomScale', 'waypointSelectedRadiusAddPx', 'waypointStrokeWidthPx'] },
+  { name: 'Distance badges', keys: ['distanceBadgeRadiusPx', 'distanceBadgeBorderPx', 'distanceBadgeFontPx', 'distanceBadgeFillColor'] },
+  { name: 'Route waypoints', keys: ['waypointBaseRadiusPx', 'waypointFontPx', 'waypointTextFitFactor', 'waypointMinZoomScale', 'waypointSelectedRadiusAddPx', 'waypointStrokeWidthPx', 'waypointFillColor'] },
   { name: 'Airfields', keys: ['airfieldMarkerRadiusPx', 'airfieldMarkerWidthFactor', 'airfieldMarkerBaseFactor', 'airfieldStrokeWidthPx', 'airfieldLabelFontPx', 'airfieldLabelOffsetPx', 'airfieldLabelHaloPx', 'airfieldFillColor', 'airfieldOutlineColor'] },
   { name: 'Nav waypoints', keys: ['navWaypointRadiusPx', 'navWaypointStrokeWidthPx', 'navWaypointLabelFontPx', 'navWaypointLabelOffsetPx', 'navWaypointLabelHaloPx', 'navWaypointDotColor'] },
   { name: 'Overlay labels', keys: ['overlayLabelHaloColor', 'overlayLabelHaloAlpha'] },
-  { name: 'Frequency changes', keys: ['commChangeRingRadiusPx', 'commChangeRingWidthPx', 'commChangeNoteLatOffset', 'commChangeNoteLngOffset', 'commChangeArrowStartGapPx', 'commChangeArrowWidthPx', 'commChangeArrowColor', 'commChangeArrowLineCap', 'commChangeArrowLineJoin', 'commChangeArrowMiterLimit', 'commChangeArrowHaloPx', 'commChangeArrowHaloColor', 'commChangeArrowHaloAlpha', 'commChangeSelectedColor', 'commChangeSelectedAlpha', 'commChangeSelectedWidthAddPx', 'commChangeArrowBoltPx', 'commChangeArrowBoltAngleDeg', 'commChangeArrowBend1Along', 'commChangeArrowBend2Along', 'commChangeNameFontPx', 'commChangeFreqFontPx', 'commChangeTextColor', 'commChangeTextHaloColor', 'commChangeTextHaloAlpha', 'commChangeTextAlong', 'commChangeTextGapPx', 'commChangeNameHaloWidthPx', 'commChangeFreqHaloWidthPx'] },
-  { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx'] },
-  { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimAlpha', 'pageFrameHitPx'] },
+  { name: 'Frequency changes', keys: ['commChangeRingRadiusPx', 'commChangeRingWidthPx', 'commChangeRingColor', 'commChangeNoteLatOffset', 'commChangeNoteLngOffset', 'commChangeArrowStartGapPx', 'commChangeArrowWidthPx', 'commChangeArrowColor', 'commChangeArrowLineCap', 'commChangeArrowLineJoin', 'commChangeArrowMiterLimit', 'commChangeArrowHaloPx', 'commChangeArrowHaloColor', 'commChangeArrowHaloAlpha', 'commChangeSelectedColor', 'commChangeSelectedAlpha', 'commChangeSelectedWidthAddPx', 'commChangeArrowBoltPx', 'commChangeArrowBoltAngleDeg', 'commChangeArrowBend1Along', 'commChangeArrowBend2Along', 'commChangeNameFontPx', 'commChangeFreqFontPx', 'commChangeTextColor', 'commChangeTextHaloColor', 'commChangeTextHaloAlpha', 'commChangeTextAlong', 'commChangeTextGapPx', 'commChangeNameHaloWidthPx', 'commChangeFreqHaloWidthPx'] },
+  { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx', 'noteDefaultFillColor'] },
+  { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimColor', 'pageFrameScrimAlpha', 'pageFrameHitPx'] },
   { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitLegPx', 'hitLegLabelMinPx', 'hitLegLabelScalePx', 'hitCumLabelMinPx', 'hitCumLabelScalePx'] },
   { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs'] },
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx'] },
   { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeFontPx', 'reportBadgeColor', 'reportBadgeTextColor'] },
+  { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor'] },
+  { name: 'Vertical profile', keys: ['profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileTodColor', 'profileMarkerHaloColor'] },
+  { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor'] },
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
   { name: 'Export', keys: ['exportBgColor'] },
-  { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'kiteTextColor', 'legKiteHaloColor'] },
+  { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor'] },
 ];
 function tune(key) {
   const spec = NavAid.tuningDefaults && NavAid.tuningDefaults[key];
@@ -473,6 +522,8 @@ window.S = Object.assign({
   fpFreq: 'Freq',
   freqNone: 'None',
   fpHeadersShort: ['#', 'From', 'To', 'Hdg', 'Dist', 'Spd', 'Alt', 'Time', 'Fuel'],
+  fpColumns: 'Columns',
+  fpColumnsAll: 'All columns',
   exportPlanPlace: 'Place flight plan on the map',
   exportPlanPlaceTitle: 'Overlay the flight-plan table on the export; drag it to position it inside the page frame',
   exportPlanNoFrame: 'Place flight plan — set an A3/A4 page first',
@@ -941,20 +992,22 @@ function saveAircraft() {
   try { localStorage.setItem('navaid.aircraft', JSON.stringify(aircraft)); } catch (e) {}
 }
 
-// Yellow text-background colour. yellowAlpha directly controls opacity (0–1).
-const yellowFill = (_) => `rgba(255,246,170,${yellowAlpha})`;
+const DEFAULT_LABEL_FILL_COLOR = '#fff6aa';
 
 // Tinted fill from any "#rrggbb" hex — yellowAlpha controls the alpha.
 function tintFill(hex) {
-  const h = (hex || '').replace('#', '');
-  if (h.length !== 6) return yellowFill();
+  let h = (hex || DEFAULT_LABEL_FILL_COLOR).replace('#', '');
+  if (!/^[0-9a-f]{6}$/i.test(h)) h = DEFAULT_LABEL_FILL_COLOR.replace('#', '');
   const r = parseInt(h.slice(0, 2), 16);
   const g = parseInt(h.slice(2, 4), 16);
   const b = parseInt(h.slice(4, 6), 16);
   return `rgba(${r},${g},${b},${yellowAlpha})`;
 }
 
-const NOTE_DEFAULT_COLOR = '#fff6aa';   // matches the existing yellow fill
+// Default text-background colour. yellowAlpha directly controls opacity.
+const yellowFill = (_) => tintFill(tune('labelFillColor'));
+
+const NOTE_DEFAULT_COLOR = DEFAULT_LABEL_FILL_COLOR;   // matches the existing yellow fill
 
 // Default leg-marker offsets. Single source of truth used by newLeg(),
 // the inspector "Reset marker position" button (interact.js), the toolbar
@@ -1099,14 +1152,14 @@ function nearestPressureLevelHpa(ft) {
 // tropical cyclone. Unknown hazards fall back to the thunderstorm red.
 function sigmetHazardColor(hz) {
   switch (String(hz || '').toUpperCase()) {
-    case 'TURB': return '#e67e22';
-    case 'ICE':  return '#1ba1e2';
-    case 'MTW':  return '#8e44ad';
-    case 'VA':   return '#7f5539';
+    case 'TURB': return tune('sigmetTurbColor');
+    case 'ICE':  return tune('sigmetIceColor');
+    case 'MTW':  return tune('sigmetMtwColor');
+    case 'VA':   return tune('sigmetVaColor');
     case 'DS':
-    case 'SS':   return '#b8860b';
-    case 'TC':   return '#c2185b';
-    default:     return '#dd1111';   // TS + anything else (6-hex for alpha fill)
+    case 'SS':   return tune('sigmetDustColor');
+    case 'TC':   return tune('sigmetTcColor');
+    default:     return tune('sigmetDefaultColor');   // TS + anything else
   }
 }
 // Decode a SIGMET's coded fields into a plain-language sentence, e.g.
