@@ -2851,7 +2851,15 @@ map.on('click', e => {
     syncLegs();
     if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();  // #487
     state.selected = { type: 'wp', index: state.waypoints.length - 1 };
-    showInspector(); draw();
+    // On phones the inspector is a near-full-screen panel that blankets the
+    // map, so auto-opening it after every add-mode tap hides the chart while
+    // you're still placing waypoints. Keep it closed on narrow viewports —
+    // the new waypoint is still selected; tap it to open the inspector and
+    // edit its name. (Note mode below still opens it: typing the note needs it.)
+    if (!(window.matchMedia && window.matchMedia('(max-width: 680px)').matches)) {
+      showInspector();
+    }
+    draw();
   } else if (state.mode === 'note') {
     state.notes.push({ lat: r5(e.latlng.lat), lng: r5(e.latlng.lng),
                        text: S.noteDefault, color: NOTE_DEFAULT_COLOR,

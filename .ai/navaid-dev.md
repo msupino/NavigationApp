@@ -383,14 +383,12 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   order, not by note insertion order.
 - **Vertical profile / TOC / TOD:** `routeProfile()` in `core.js`
   draws per-leg altitude ramps in the flight-plan modal and emits map markers
-  while the plan is open. Departure TOC uses the CVFR shortcut `0.5 NM per
-  100 ft` of climb from the departure field elevation to the first leg's
-  planned altitude (200 ft/NM). Final TOD uses `0.3 NM per 100 ft` of descent
-  from the last leg altitude to the destination field elevation (~3 NM per
-  1000 ft). Both are capped to the available leg distance and are emitted only
-  when the route endpoint resolves to an airfield elevation. The V/S input
-  still persists at `navaid.profileVS` for vertical-profile timing /
-  non-endpoint ramp behavior; it does not move the endpoint TOC/TOD markers.
+  while the plan is open. Departure TOC and final TOD use the aircraft/profile
+  climb and descent performance (speed plus ft/min vertical speed), capped to
+  the available leg distance, and are emitted only when the route endpoint
+  resolves to an airfield elevation. The V/S input persists at
+  `navaid.profileVS` and moves the climb/descent ramp, including endpoint
+  TOC/TOD markers.
 - **Show Nav Waypoints** (default **on**): `nav-waypoints.json` is
   fetched once at boot; renders 173 white-fill / black-stroke 3.5 px
   dots; the 5-letter ID label appears at zoom ≥ 10. Captured in PNG
@@ -524,9 +522,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.showWpNames` — `'0'` / `'1'` for waypoint-name display.
 - `navaid.wpNameAngle` — waypoint-name rotation (`0`/`90`/`180`/`270`).
 - `navaid.aircraft` — last-used aircraft profile JSON (fuel planner).
-- `navaid.profileVS` — vertical-profile climb/descent rate input for timing /
-  non-endpoint ramps (endpoint TOC/TOD markers use fixed CVFR gradient
-  shortcuts).
+- `navaid.profileVS` — vertical-profile climb/descent rate input for timing and
+  TOC/TOD ramp distance.
 - `navaid.routes` — saved-route library entries and tombstones.
 - `navaid.pageSize` — selected page frame size (`A3` / `A4`) or cleared.
 - `navaid.pageOrient` — `'portrait'` / `'landscape'` for page export.
