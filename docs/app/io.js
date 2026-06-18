@@ -1791,10 +1791,6 @@ function showFlightPlan() {
   window.showProfile = true;
   draw();
 
-  const scrollArea = document.createElement('div');
-  scrollArea.className = 'fp-scroll';
-  box.appendChild(scrollArea);
-
   // Active comm frequency per leg (read-only) — departure airfield primary +
   // comm-change notes, carried forward until the next change (see core.js
   // routeFreqSources/legActiveFreq). Recomputed in refresh() once the comm
@@ -1807,20 +1803,135 @@ function showFlightPlan() {
   const rFreqCells = [];       // return rows -> { cell, ri }
   const legFreqText = i => (typeof legActiveFreq === 'function' ? legActiveFreq(i, freqSources) : '');
 
+  // Flight-plan columns are tagged once so the selector, CSV export, print
+  // view, and nav-log clone all read the same visibility state.
+  const baseHeaders = (S.fpHeaders || []).slice(0, 13);
+  const fpColumns = [
+    { key: 'seq', label: baseHeaders[0] || '#' },
+    { key: 'from', label: baseHeaders[1] || 'From' },
+    { key: 'to', label: baseHeaders[2] || 'To' },
+    { key: 'hdg', label: baseHeaders[3] || 'Hdg' },
+    { key: 'dist', label: baseHeaders[4] || 'Dist (NM)' },
+    { key: 'speed', label: baseHeaders[5] || 'Speed (kt)' },
+    { key: 'alt', label: baseHeaders[6] || 'Alt (ft)' },
+    { key: 'time', label: baseHeaders[7] || 'Time' },
+    { key: 'fuel', label: baseHeaders[8] || 'Fuel (gal)' },
+    { key: 'cumTime', label: baseHeaders[9] || 'Cum. time' },
+    { key: 'cumFuel', label: baseHeaders[10] || 'Cum. fuel' },
+    { key: 'radial', label: baseHeaders[11] || 'Radial', className: 'fp-vor-col' },
+    { key: 'dme', label: baseHeaders[12] || 'DME', className: 'fp-vor-col' },
+  ];
+  if (freqActive) fpColumns.push({ key: 'freq', label: S.fpFreq || 'Freq', className: 'fp-freq-col' });
+  fpColumns.push({ key: 'delete', label: '', className: 'fp-del-col', control: true });
+  const fpColumnMap = Object.fromEntries(fpColumns.map(col => [col.key, col]));
+  const fpSelectableColumns = fpColumns.filter(col => !col.control);
+  const fpSelectableKeys = new Set(fpSelectableColumns.map(col => col.key));
+  const fpHiddenColumns = new Set();
+  const fpColumnsKey = 'navaid.fpColumns';
+  const fpDefaultHiddenColumns = ['dist'];
+  let savedFpColumns = fpDefaultHiddenColumns;
+  try {
+    const rawColumns = localStorage.getItem(fpColumnsKey);
+    savedFpColumns = rawColumns === null ? fpDefaultHiddenColumns : JSON.parse(rawColumns);
+  } catch (e) { /* ignore corrupt prefs */ }
+  if (Array.isArray(savedFpColumns)) {
+    savedFpColumns.forEach(key => { if (fpSelectableKeys.has(key)) fpHiddenColumns.add(key); });
+  }
+  if (fpHiddenColumns.size >= fpSelectableColumns.length) fpHiddenColumns.clear();
+  const fpVisibleColumns = new Set(fpSelectableColumns
+    .filter(col => !fpHiddenColumns.has(col.key))
+    .map(col => col.key));
+  const fpTotalLabels = [];
+  function saveFpColumnPrefs() {
+    const hidden = fpSelectableColumns
+      .filter(col => !fpVisibleColumns.has(col.key))
+      .map(col => col.key);
+    try {
+      localStorage.setItem(fpColumnsKey, JSON.stringify(hidden));
+    } catch (e) { /* ignore storage errors */ }
+  }
+  function markFpColumn(el, key) {
+    const col = fpColumnMap[key];
+    if (!el || !col) return el;
+    el.dataset.fpCol = key;
+    el.classList.add('fp-col-' + key);
+    if (col.className) col.className.split(/\s+/).forEach(cls => { if (cls) el.classList.add(cls); });
+    return el;
+  }
+  function fpCell(key, cell) {
+    return markFpColumn(cell, key);
+  }
+  function syncFpColumnVisibility() {
+    for (const col of fpSelectableColumns) {
+      const hidden = !fpVisibleColumns.has(col.key);
+      box.querySelectorAll('[data-fp-col="' + col.key + '"]').forEach(el => {
+        el.classList.toggle('fp-col-hidden', hidden);
+      });
+    }
+    const leadKeys = ['seq', 'from', 'to', 'hdg'];
+    const leadVisible = leadKeys.filter(key => fpVisibleColumns.has(key)).length;
+    for (const label of fpTotalLabels) {
+      label.colSpan = Math.max(1, leadVisible);
+      label.classList.toggle('fp-col-hidden', leadVisible === 0);
+    }
+  }
+  const colWrap = document.createElement('details');
+  colWrap.className = 'fp-columns';
+  const colSummary = document.createElement('summary');
+  colSummary.textContent = S.fpColumns || 'Columns';
+  colWrap.appendChild(colSummary);
+  const colMenu = document.createElement('div');
+  colMenu.className = 'fp-columns-menu';
+  const colAll = document.createElement('button');
+  colAll.type = 'button';
+  colAll.className = 'fp-columns-all';
+  colAll.textContent = S.fpColumnsAll || 'All columns';
+  colMenu.appendChild(colAll);
+  const colChecks = [];
+  for (const col of fpSelectableColumns) {
+    const lbl = document.createElement('label');
+    lbl.className = 'fp-column-option';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = fpVisibleColumns.has(col.key);
+    cb.dataset.fpCol = col.key;
+    const text = document.createElement('span');
+    text.textContent = col.label;
+    lbl.append(cb, text);
+    colMenu.appendChild(lbl);
+    colChecks.push(cb);
+    cb.onchange = () => {
+      if (!cb.checked && fpVisibleColumns.size <= 1) {
+        cb.checked = true;
+        return;
+      }
+      if (cb.checked) fpVisibleColumns.add(col.key);
+      else fpVisibleColumns.delete(col.key);
+      saveFpColumnPrefs();
+      syncFpColumnVisibility();
+    };
+  }
+  colAll.onclick = () => {
+    fpVisibleColumns.clear();
+    fpSelectableColumns.forEach(col => fpVisibleColumns.add(col.key));
+    colChecks.forEach(cb => { cb.checked = true; });
+    saveFpColumnPrefs();
+    syncFpColumnVisibility();
+  };
+  colWrap.appendChild(colMenu);
+  box.appendChild(colWrap);
+
+  const scrollArea = document.createElement('div');
+  scrollArea.className = 'fp-scroll';
+  box.appendChild(scrollArea);
+
   const table = document.createElement('table');
   table.className = 'flight-table';
-  // # .. DME, [Freq], delete. Freq is inserted before the delete column when
-  // the route has comm-change frequencies; VOR cols stay at fixed idx 11/12.
-  const headers = (S.fpHeaders || []).slice(0, 13);
-  if (freqActive) headers.push(S.fpFreq || 'Freq');
-  headers.push('');                     // delete-button column (no header)
   const buildHeadRow = trEl => {
-    headers.forEach((h, idx) => {
+    fpColumns.forEach(col => {
       const th = document.createElement('th');
-      th.textContent = h;
-      if (idx === 11 || idx === 12) th.classList.add('fp-vor-col');
-      if (freqActive && idx === 13) th.classList.add('fp-freq-col');
-      trEl.appendChild(th);
+      th.textContent = col.label;
+      trEl.appendChild(markFpColumn(th, col.key));
     });
   };
   const thead = document.createElement('thead');
@@ -1936,13 +2047,13 @@ function showFlightPlan() {
     const leg = state.legs[i];
     const { dist, brg } = geo(A, B);
     const tr = document.createElement('tr');
-    tr.appendChild(planCell(String(i + 1)));
-    tr.appendChild(nameCell(i));
-    tr.appendChild(nameCell(i + 1));
+    tr.appendChild(fpCell('seq', planCell(String(i + 1))));
+    tr.appendChild(fpCell('from', nameCell(i)));
+    tr.appendChild(fpCell('to', nameCell(i + 1)));
     const hdgCell = planCell(pad3(toMagnetic(brg)) + '°M');
-    tr.appendChild(hdgCell);
+    tr.appendChild(fpCell('hdg', hdgCell));
     const distCell = planCell(dist.toFixed(1));
-    tr.appendChild(distCell);
+    tr.appendChild(fpCell('dist', distCell));
     const speedCell = numCell(leg.flightSpeed, 1, inp => {
       const v = +inp.value;
       if (v > 0) {
@@ -1958,7 +2069,7 @@ function showFlightPlan() {
       else inp.value = leg.flightSpeed;   // invalid — restore the real value
     });
     speedInputs[i] = speedCell.querySelector('.plan-num');
-    tr.appendChild(speedCell);
+    tr.appendChild(fpCell('speed', speedCell));
     const altCell = numCell(leg.inboundAltitude, -2000, inp => {
       const raw = inp.value.trim();
       const oldVal = leg.inboundAltitude;
@@ -1977,33 +2088,33 @@ function showFlightPlan() {
     });
     altInputs[i] = altCell.querySelector('.plan-num');
     altInputs[i].placeholder = legAltitudePlaceholder(leg, 'inboundAltitude');
-    tr.appendChild(altCell);
+    tr.appendChild(fpCell('alt', altCell));
     const timeCell = planCell('');
     timeCells[i] = timeCell;
     distCells[i] = distCell;
     hdgCells[i] = hdgCell;
-    tr.appendChild(timeCell);
+    tr.appendChild(fpCell('time', timeCell));
     const fuelCell = planCell('');
     fuelCells[i] = fuelCell;
-    tr.appendChild(fuelCell);
+    tr.appendChild(fpCell('fuel', fuelCell));
     const cumTimeCell = planCell('');
     cumTimeCells[i] = cumTimeCell;
-    tr.appendChild(cumTimeCell);
+    tr.appendChild(fpCell('cumTime', cumTimeCell));
     const cumFuelCell = planCell('');
     cumFuelCells[i] = cumFuelCell;
-    tr.appendChild(cumFuelCell);
+    tr.appendChild(fpCell('cumFuel', cumFuelCell));
     const radial = radialCellWithPicker(i);
     radialCells[i] = radial.val;
-    tr.appendChild(radial.td);
+    tr.appendChild(fpCell('radial', radial.td));
     const dmeCell = planCell('');
     dmeCells[i] = dmeCell;
     dmeCell.classList.add('fp-vor-col');
-    tr.appendChild(dmeCell);
+    tr.appendChild(fpCell('dme', dmeCell));
     if (freqActive) {
       const freqCell = planCell(legFreqText(i));
       freqCell.classList.add('fp-freq-col');
       freqCells[i] = freqCell;
-      tr.appendChild(freqCell);
+      tr.appendChild(fpCell('freq', freqCell));
     }
     // Delete-leg button — drops this leg and one of its endpoint waypoints,
     // then reconnects the route. The first leg removes the departure (its
@@ -2029,7 +2140,7 @@ function showFlightPlan() {
         if (refreshFlightPlan) refreshFlightPlan();
       };
       delTd.appendChild(delBtn);
-      tr.appendChild(delTd);
+      tr.appendChild(fpCell('delete', delTd));
     })(i);
     tbody.appendChild(tr);
   }
@@ -2039,24 +2150,26 @@ function showFlightPlan() {
   const trF = document.createElement('tr');
   const tdLabel = document.createElement('td');
   tdLabel.colSpan = 4;
+  tdLabel.className = 'fp-total-label';
   tdLabel.textContent = S.fpTotal;
+  fpTotalLabels.push(tdLabel);
   trF.appendChild(tdLabel);
-  totDistCell = planCell('');
+  totDistCell = fpCell('dist', planCell(''));
   trF.appendChild(totDistCell);
-  trF.appendChild(planCell(''));        // Speed column
-  trF.appendChild(planCell(''));        // Alt column
+  trF.appendChild(fpCell('speed', planCell('')));        // Speed column
+  trF.appendChild(fpCell('alt', planCell('')));          // Alt column
   totTimeCell = planCell('');
-  trF.appendChild(totTimeCell);
+  trF.appendChild(fpCell('time', totTimeCell));
   totFuelCell = planCell('');
-  trF.appendChild(totFuelCell);
+  trF.appendChild(fpCell('fuel', totFuelCell));
   totCumTimeCell = planCell('');
-  trF.appendChild(totCumTimeCell);
+  trF.appendChild(fpCell('cumTime', totCumTimeCell));
   totCumFuelCell = planCell('');
-  trF.appendChild(totCumFuelCell);
-  const totRadial = planCell(''); totRadial.classList.add('fp-vor-col'); trF.appendChild(totRadial);
-  const totDme = planCell(''); totDme.classList.add('fp-vor-col'); trF.appendChild(totDme);
-  if (freqActive) { const tf2 = planCell(''); tf2.classList.add('fp-freq-col'); trF.appendChild(tf2); }
-  trF.appendChild(planCell(''));        // Delete column (empty)
+  trF.appendChild(fpCell('cumFuel', totCumFuelCell));
+  const totRadial = planCell(''); totRadial.classList.add('fp-vor-col'); trF.appendChild(fpCell('radial', totRadial));
+  const totDme = planCell(''); totDme.classList.add('fp-vor-col'); trF.appendChild(fpCell('dme', totDme));
+  if (freqActive) { const tf2 = planCell(''); tf2.classList.add('fp-freq-col'); trF.appendChild(fpCell('freq', tf2)); }
+  trF.appendChild(fpCell('delete', planCell('')));        // Delete column (empty)
   tfoot.appendChild(trF);
   table.appendChild(tfoot);
 
@@ -2168,13 +2281,13 @@ function showFlightPlan() {
       const A = state.waypoints[ri + 1], B = state.waypoints[ri];
       const { dist, brg } = geo(A, B);
       const tr = document.createElement('tr');
-      tr.appendChild(planCell(String(i + 1)));
-      tr.appendChild(nameCell(ri + 1));
-      tr.appendChild(nameCell(ri));
+      tr.appendChild(fpCell('seq', planCell(String(i + 1))));
+      tr.appendChild(fpCell('from', nameCell(ri + 1)));
+      tr.appendChild(fpCell('to', nameCell(ri)));
       const hdgCell = planCell(pad3(toMagnetic(brg)) + '°M');
-      tr.appendChild(hdgCell);
+      tr.appendChild(fpCell('hdg', hdgCell));
       const distCell = planCell(dist.toFixed(1));
-      tr.appendChild(distCell);
+      tr.appendChild(fpCell('dist', distCell));
       const speedCell = numCell(leg.outboundSpeed, 1, inp => {
         const v = +inp.value;
         if (v > 0) {
@@ -2189,7 +2302,7 @@ function showFlightPlan() {
         else inp.value = leg.outboundSpeed;
       });
       rSpeedInputs[i] = speedCell.querySelector('.plan-num');
-      tr.appendChild(speedCell);
+      tr.appendChild(fpCell('speed', speedCell));
       const altCell = numCell(leg.outboundAltitude, -2000, inp => {
         const raw = inp.value.trim();
         const oldVal = leg.outboundAltitude;
@@ -2208,35 +2321,35 @@ function showFlightPlan() {
       });
       rAltInputs[i] = altCell.querySelector('.plan-num');
       rAltInputs[i].placeholder = legAltitudePlaceholder(leg, 'outboundAltitude');
-      tr.appendChild(altCell);
+      tr.appendChild(fpCell('alt', altCell));
       const timeCell = planCell('');
       rTimeCells[i] = timeCell;
       rDistCells[i] = distCell;
       rHdgCells[i] = hdgCell;
-      tr.appendChild(timeCell);
+      tr.appendChild(fpCell('time', timeCell));
       const fuelCell = planCell('');
       rFuelCells[i] = fuelCell;
-      tr.appendChild(fuelCell);
+      tr.appendChild(fpCell('fuel', fuelCell));
       const cumTimeCell = planCell('');
       rCumTimeCells[i] = cumTimeCell;
-      tr.appendChild(cumTimeCell);
+      tr.appendChild(fpCell('cumTime', cumTimeCell));
       const cumFuelCell = planCell('');
       rCumFuelCells[i] = cumFuelCell;
-      tr.appendChild(cumFuelCell);
+      tr.appendChild(fpCell('cumFuel', cumFuelCell));
       const radial = radialCellWithPicker(ri);
       rRadialCells[i] = radial.val;
-      tr.appendChild(radial.td);
+      tr.appendChild(fpCell('radial', radial.td));
       const dmeCell = planCell('');
       rDmeCells[i] = dmeCell;
       dmeCell.classList.add('fp-vor-col');
-      tr.appendChild(dmeCell);
+      tr.appendChild(fpCell('dme', dmeCell));
       if (freqActive) {
         const freqCell = planCell(legFreqText(ri));
         freqCell.classList.add('fp-freq-col');
         rFreqCells.push({ cell: freqCell, ri });
-        tr.appendChild(freqCell);
+        tr.appendChild(fpCell('freq', freqCell));
       }
-      tr.appendChild(planCell(''));        // Delete column (empty — forward table only)
+      tr.appendChild(fpCell('delete', planCell('')));        // Delete column (empty — forward table only)
       rtbody.appendChild(tr);
     }
     rtable.appendChild(rtbody);
@@ -2245,24 +2358,26 @@ function showFlightPlan() {
     const rtrF = document.createElement('tr');
     const rtdLabel = document.createElement('td');
     rtdLabel.colSpan = 4;
+    rtdLabel.className = 'fp-total-label';
     rtdLabel.textContent = S.fpTotal;
+    fpTotalLabels.push(rtdLabel);
     rtrF.appendChild(rtdLabel);
-    rTotDistCell = planCell('');
+    rTotDistCell = fpCell('dist', planCell(''));
     rtrF.appendChild(rTotDistCell);
-    rtrF.appendChild(planCell(''));
-    rtrF.appendChild(planCell(''));
+    rtrF.appendChild(fpCell('speed', planCell('')));
+    rtrF.appendChild(fpCell('alt', planCell('')));
     rTotTimeCell = planCell('');
-    rtrF.appendChild(rTotTimeCell);
+    rtrF.appendChild(fpCell('time', rTotTimeCell));
     rTotFuelCell = planCell('');
-    rtrF.appendChild(rTotFuelCell);
+    rtrF.appendChild(fpCell('fuel', rTotFuelCell));
     rTotCumTimeCell = planCell('');
-    rtrF.appendChild(rTotCumTimeCell);
+    rtrF.appendChild(fpCell('cumTime', rTotCumTimeCell));
     rTotCumFuelCell = planCell('');
-    rtrF.appendChild(rTotCumFuelCell);
-    const rTotRadial = planCell(''); rTotRadial.classList.add('fp-vor-col'); rtrF.appendChild(rTotRadial);
-    const rTotDme = planCell(''); rTotDme.classList.add('fp-vor-col'); rtrF.appendChild(rTotDme);
-    if (freqActive) { const rtf = planCell(''); rtf.classList.add('fp-freq-col'); rtrF.appendChild(rtf); }
-    rtrF.appendChild(planCell(''));        // Delete column (empty)
+    rtrF.appendChild(fpCell('cumFuel', rTotCumFuelCell));
+    const rTotRadial = planCell(''); rTotRadial.classList.add('fp-vor-col'); rtrF.appendChild(fpCell('radial', rTotRadial));
+    const rTotDme = planCell(''); rTotDme.classList.add('fp-vor-col'); rtrF.appendChild(fpCell('dme', rTotDme));
+    if (freqActive) { const rtf = planCell(''); rtf.classList.add('fp-freq-col'); rtrF.appendChild(fpCell('freq', rtf)); }
+    rtrF.appendChild(fpCell('delete', planCell('')));        // Delete column (empty)
     rtfoot.appendChild(rtrF);
     rtable.appendChild(rtfoot);
 
@@ -2317,9 +2432,11 @@ function showFlightPlan() {
     retRefresh();
     scrollArea.appendChild(rtable);
   }
+  syncFpColumnVisibility();
 
   function flightPlanCsv() {
     const visibleHeaders = Array.from(table.querySelectorAll('thead th'))
+      .filter(th => !(th.classList && th.classList.contains('fp-col-hidden')))
       .map(th => th.textContent || '')
       .filter(h => h.trim() !== '');
     const columnCount = visibleHeaders.length;
@@ -2331,6 +2448,7 @@ function showFlightPlan() {
       const values = [];
       for (const cell of row.children) {
         if (cell.classList && cell.classList.contains('fp-del')) continue;
+        if (cell.classList && cell.classList.contains('fp-col-hidden')) continue;
         const span = Math.max(1, cell.colSpan || 1);
         const input = cell.querySelector('input');
         const radialVal = cell.querySelector('.fp-radial-val');
@@ -2389,7 +2507,8 @@ function showFlightPlan() {
         span.textContent = el.value || '';
         el.replaceWith(span);
       });
-      clone.querySelectorAll('.fp-del').forEach(el => el.remove());
+      clone.querySelectorAll('.fp-col-hidden').forEach(el => el.remove());
+      clone.querySelectorAll('[data-fp-col="delete"], .fp-del').forEach(el => el.remove());
       // The delete column has no .fp-del marker in the header / Total rows —
       // it's just an empty trailing cell. Drop it so the table has no stray
       // box on the far side (tbody delete cells were removed above).
