@@ -777,6 +777,7 @@ window.S = Object.assign({
   tbDriftLineWidthTitle: 'Drift reference line thickness',
   tbPageA3Title: 'A3 print page',
   tbPageA4Title: 'A4 print page',
+  tbPrintPageSize: 'Page size',
   tbOrientTitle: 'Orientation — click to toggle landscape / portrait',
   modalCloseTitle: 'Close',
   tbPrint: '⬇ Save PNG',
