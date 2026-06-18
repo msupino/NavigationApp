@@ -135,7 +135,7 @@ function startGpsRecording() {
   if (!navigator.geolocation) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsRecording = true;
   gpsTrack = [];
-  gpsOwn = null;
+  if (!gpsLiveOn) gpsOwn = null;
   gpsStartT = Date.now();
   gpsWatchId = navigator.geolocation.watchPosition(onGpsPosition, onGpsError, { enableHighAccuracy: true });
   gpsUpdateReadout();
@@ -218,7 +218,7 @@ function stopGpsRecording() {
   if (gpsWatchId != null && navigator.geolocation) navigator.geolocation.clearWatch(gpsWatchId);
   gpsWatchId = null;
   gpsRecording = false;
-  gpsOwn = null;
+  if (!gpsLiveOn) gpsOwn = null;
   gpsUpdateReadout();
   scheduleDraw();
 }

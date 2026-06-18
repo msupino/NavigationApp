@@ -309,7 +309,7 @@ function draw() {
   drawWaypoints();
   drawNotes();
   if (window.showProfile) drawProfileMarkers();   // TOC/TOD markers (#672)
-  if (typeof drawGpsTrack === 'function') drawGpsTrack();   // GPS breadcrumb + own-ship while recording
+  if (typeof drawGpsTrack === 'function') drawGpsTrack();   // GPS breadcrumb + own-ship (recording or live location)
   if (!gpsRecording && !gpsLiveOn && simOn && simAircraft) drawOwnShip(simAircraft, simAircraft.hdg);  // sim own-ship
   drawInfo();
   drawPageFrame();

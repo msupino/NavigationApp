@@ -210,3 +210,44 @@ test('Show my location shows own-ship without recording or saving a track', asyn
   expect(await page.evaluate(() => gpsLiveOn)).toBe(false);
   expect(await page.evaluate(() => gpsOwn)).toBeNull(); // own-ship cleared (no recording active)
 });
+
+test('stopping a recording keeps own-ship when live location is still on', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__recCb = null; window.__liveCb = null; let n = 0;
+    navigator.geolocation.watchPosition = (cb) => { n++; if (n === 1) window.__recCb = cb; else window.__liveCb = cb; return n; };
+    navigator.geolocation.clearWatch = () => {};
+    try { localStorage.removeItem('navaid.routes'); localStorage.setItem('navaid.sec.view', '1'); } catch (e) {}
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof startGpsRecording === 'function' && typeof startLiveLocation === 'function');
+  const out = await page.evaluate(() => {
+    startGpsRecording();                 // watch #1 -> __recCb
+    startLiveLocation();                 // watch #2 -> __liveCb
+    window.__recCb({ coords: { latitude: 32.0, longitude: 34.8, accuracy: 8, heading: 10, altitude: null }, timestamp: Date.now() });
+    window.__liveCb({ coords: { latitude: 32.1, longitude: 34.9, accuracy: 8, heading: 20, altitude: null }, timestamp: Date.now() });
+    stopGpsRecordingAndSave();           // stop recording; live still on
+    return { live: gpsLiveOn, recording: gpsRecording, ownAfter: gpsOwn };
+  });
+  expect(out.recording).toBe(false);
+  expect(out.live).toBe(true);
+  expect(out.ownAfter).not.toBeNull();   // own-ship preserved because live is on
+});
+
+test('GPS error resets the live-location button too', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__errCb = null;
+    navigator.geolocation.watchPosition = (cb, err) => { window.__errCb = err; return 4; };
+    navigator.geolocation.clearWatch = () => {};
+    try { localStorage.setItem('navaid.sec.view', '1'); } catch (e) {}
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof startLiveLocation === 'function');
+  page.on('dialog', d => d.dismiss().catch(() => {}));
+  const btn = page.locator('#gps-live');
+  await btn.click();
+  expect(await page.evaluate(() => gpsLiveOn)).toBe(true);
+  await page.evaluate(() => window.__errCb && window.__errCb({ code: 1, message: 'denied' }));
+  expect(await page.evaluate(() => gpsLiveOn)).toBe(false);
+  await expect(btn).toHaveAttribute('aria-pressed', 'false');
+  await expect(btn).toContainText('Show');
+});
