@@ -2195,11 +2195,18 @@ function waypointGeom(i) {
   const label = showWpNames ? waypointDisplayLabel(wp, i) : '';
   const zoomScale = Math.max(tune('waypointMinZoomScale'), Math.pow(2, map.getZoom() - 12));
   const scale = wpSize * zoomScale;
-  const fontPx = Math.max(4, Math.round(tune('waypointFontPx') * scale));
-  octx.font = `bold ${fontPx}px sans-serif`;
-  const w = octx.measureText(label).width;
-  const minR = tune('waypointBaseRadiusPx') * scale;
-  return { label, fontPx, r: Math.max(minR, w / 2 + fontPx * tune('waypointTextPadFactor')) };
+  // Every waypoint circle is the SAME size (radius depends only on the wpSize
+  // slider × zoom, never on the label). The text shrinks to fit instead of the
+  // circle growing — so a 5-letter code and a single digit share one disc.
+  const r = tune('waypointBaseRadiusPx') * scale;
+  let fontPx = Math.max(4, Math.round(tune('waypointFontPx') * scale));
+  if (label) {
+    octx.font = `bold ${fontPx}px sans-serif`;
+    const w = octx.measureText(label).width;
+    const maxW = 2 * r * tune('waypointTextFitFactor');   // usable text width inside the disc
+    if (w > maxW && maxW > 0) fontPx = Math.max(4, Math.floor(fontPx * maxW / w));
+  }
+  return { label, fontPx, r };
 }
 
 function drawWaypoints() {
