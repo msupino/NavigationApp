@@ -63,4 +63,33 @@ test.describe('Desktop menubar layout', () => {
     await page.keyboard.press('Escape');
     await expect(build).not.toHaveClass(/open/);
   });
+
+  test('print menu groups page controls and shows orientation text', async ({ page }) => {
+    await bootDesktop(page);
+
+    const print = page.locator('.tb-section[data-sec="print"]');
+    await print.locator('.tb-section-head').click();
+    await expect(print).toHaveClass(/open/);
+
+    const label = print.locator('.tb-print-label');
+    await expect(label).toBeVisible();
+    await expect(label).toHaveText('Page size');
+
+    const pageButtons = print.locator('#page-buttons');
+    await expect(pageButtons.locator('#page-a3')).toBeVisible();
+    await expect(pageButtons.locator('#page-a4')).toBeVisible();
+    await expect(pageButtons.locator('#page-orient')).toContainText('Portrait');
+
+    const menuBox = await print.locator('.tb-section-body').boundingBox();
+    const orientBox = await print.locator('#page-orient').boundingBox();
+    const a3Box = await print.locator('#page-a3').boundingBox();
+    expect(menuBox).not.toBeNull();
+    expect(orientBox).not.toBeNull();
+    expect(a3Box).not.toBeNull();
+    expect(orientBox.width).toBeGreaterThan(a3Box.width * 1.5);
+    expect(orientBox.x).toBeGreaterThanOrEqual(menuBox.x);
+
+    await print.locator('#page-orient').click();
+    await expect(print.locator('#page-orient')).toContainText('Landscape');
+  });
 });

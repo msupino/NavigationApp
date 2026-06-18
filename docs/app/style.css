@@ -476,6 +476,56 @@ html, body {
     left: 0;
   }
 
+  .tb-section[data-sec="print"] .tb-section-body {
+    min-width: 260px;
+    gap: 6px;
+  }
+
+  .tb-print-submenu {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    padding: 2px 4px;
+  }
+
+  .tb-section[data-sec="print"] .tb-print-label {
+    display: block;
+    color: #b9b3b3;
+    font-size: 12px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .tb-section[data-sec="print"] .tb-print-separator {
+    display: block;
+    height: 1px;
+    margin: 1px 4px;
+    background: #33302f;
+  }
+
+  .tb-section[data-sec="print"] #page-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .tb-section[data-sec="print"] #page-orient {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    min-height: 30px;
+    font-size: 15px;
+  }
+
+  .tb-section[data-sec="print"] .page-orient-label {
+    display: inline;
+  }
+
+  html[dir="rtl"] .tb-section[data-sec="print"] #page-orient {
+    justify-content: flex-start;
+  }
+
   #toolbar.multi-open .tb-section-body {
     position: fixed;
     top: 34px;
@@ -3246,6 +3296,14 @@ body.theme-light .point-choice-option:focus .point-choice-meta {
   body.theme-light #toolbar .tb-section-body .navtoggle:hover {
     background: rgba(29, 111, 224, 0.08);
   }
+
+  body.theme-light .tb-section[data-sec="print"] .tb-print-label {
+    color: #647184;
+  }
+
+  body.theme-light .tb-section[data-sec="print"] .tb-print-separator {
+    background: #d8dde5;
+  }
 }
 body.theme-light .map-legend {
   background: rgba(250, 252, 255, 0.88);
@@ -3466,6 +3524,10 @@ body.theme-light #tuning-panel summary {
 }
 
 /* Print-section orientation toggle (button next to A3 / A4). */
+.tb-print-label,
+.tb-print-separator {
+  display: none;
+}
 #page-buttons {
   display: flex;
   gap: 4px;
@@ -3473,9 +3535,26 @@ body.theme-light #tuning-panel summary {
 }
 #page-buttons > * { flex: 1; }
 #page-orient {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   font-size: 16px;
   line-height: 1;
   padding: 4px 8px;
+}
+.page-orient-icon {
+  display: inline-flex;
+  flex: 0 0 1.1em;
+  justify-content: center;
+  width: 1.1em;
+  font-size: 15px;
+  line-height: 1;
+}
+.page-orient-label {
+  display: none;
+  font-size: 13px;
+  line-height: 1.1;
 }
 #page-orient.portrait { opacity: 0.9; }
 
