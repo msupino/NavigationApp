@@ -388,7 +388,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   `showChartsModal()`, which lists every airfield in
   `airfields.json` that carries a non-empty `plates[]` as a
   collapsible section (header `ICAO — English name`, plate chips
-  grouped by `plateCategory()`).
+  grouped by `plateCategory()`). `🧭 Alt pairs` opens the
+  `leg-altitude.json` editing table; each direction, each row, and the full
+  page have reset controls that restore values to the loaded origin data.
   **Airfields are listed alphabetically by ICAO** — `renderList()` sorts `withPlates` via
   `a.name.localeCompare(b.name)` before rendering, so JSON row order
   never leaks into the UI. Keep that sort when touching the list.

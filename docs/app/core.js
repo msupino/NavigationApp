@@ -657,6 +657,8 @@ window.S = Object.assign({
   altPairsCopyJson: 'Copy JSON',
   altPairsCopied: 'Copied',
   altPairsCopyFailed: 'Copy failed',
+  altPairsResetAll: '↻ Reset all',
+  altPairsResetAllTitle: 'Revert all altitude pairs to origin',
   altPairsEmpty: 'No altitude-pair data available',
   altPairsSearch: 'Search altitude pairs',
   altPairsNoMatches: 'No matching altitude pairs',

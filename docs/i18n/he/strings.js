@@ -337,6 +337,8 @@ window.S = {
   altPairsCopyJson: 'העתק JSON',
   altPairsCopied: 'הועתק',
   altPairsCopyFailed: 'העתקה נכשלה',
+  altPairsResetAll: '↻ אפס הכל',
+  altPairsResetAllTitle: 'שחזר את כל נתיבי הגובה למקור',
   altPairsEmpty: 'אין נתוני נתיבים זמינים',
   altPairsSearch: 'חפש נתיבים',
   altPairsNoMatches: 'אין נתיבים תואמים',
