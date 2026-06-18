@@ -468,8 +468,7 @@ function showVorReadout(lat, lng) {
   setVorReadout(vorReadoutText(lat, lng));
 }
 function showZoom() {
-  const z = map.getZoom();
-  zoomBox.textContent = 'z' + (z % 1 === 0 ? z : z.toFixed(2));
+  zoomBox.textContent = zoomReadoutText(map.getZoom());
 }
 function showCoord(latlng) {
   if (gotoEditing) return;
@@ -903,10 +902,23 @@ function routeTemplateLeg(templateLeg, speed) {
   };
 }
 
+function routeTemplateNoteFreq(note) {
+  if (!note || typeof note !== 'object') return '';
+  if (typeof note.freq === 'string' && note.freq.trim()) return note.freq;
+  if (!note.cc || !note.freqName ||
+      typeof commCallSignOptions !== 'function' ||
+      typeof commCallSignOptionMatches !== 'function') return '';
+  const opt = commCallSignOptions(note.cc)
+    .find(o => commCallSignOptionMatches(o, note.freqName));
+  return opt && opt.freq ? opt.freq : '';
+}
+
 async function routeFromTemplate(template, speed) {
   if (navWP === null) await loadNavWaypoints();
   if (airfields === null) await loadAirfields();
   if (legAltitudeMap === null) await loadLegAltitudes();
+  if (typeof loadCommChange === 'function' && typeof commChangeMap !== 'undefined' &&
+      commChangeMap === null) await loadCommChange();
   const waypoints = [];
   for (const code of template.waypoints) {
     const point = findNavWpToken(code);
@@ -925,6 +937,7 @@ async function routeFromTemplate(template, speed) {
       // Lean comm-change notes carry only `cc` — derive the callout position
       // from that waypoint (same default offset seedCommChangeNotes uses).
       let lat = note.lat, lng = note.lng;
+      const freq = routeTemplateNoteFreq(note);
       if (!(Number.isFinite(lat) && Number.isFinite(lng)) && note.cc) {
         const key = typeof canonicalNavWaypointName === 'function'
           ? canonicalNavWaypointName(note.cc) : String(note.cc).trim().toUpperCase();
@@ -943,7 +956,7 @@ async function routeFromTemplate(template, speed) {
         shape: note.shape || 'rect',
         ...(note.cc ? { cc: note.cc } : {}),
         ...(note.freqName ? { freqName: note.freqName } : {}),
-        ...(note.freq ? { freq: note.freq } : {}),
+        ...(freq ? { freq } : {}),
         ...(note.freqAuto === true ? { freqAuto: true } : {}),
       };
     }).filter(n => Number.isFinite(n.lat) && Number.isFinite(n.lng)),
@@ -1458,23 +1471,23 @@ document.getElementById('search-close').onclick = hideSearchOverlay;
   }
 }
 document.addEventListener('keydown', e => {
-  if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+  if ((e.ctrlKey || e.metaKey) && shortcutKey(e, 'KeyF', 'f')) {
     const t = e.target;
     // Allow native find-in-page when the user is already typing somewhere.
-    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+    if (shortcutTypingTarget(t)) {
       if (t !== wpSearch) return;
     }
     e.preventDefault();
     showSearchOverlay();
   } else if (e.key === 'Escape' && !searchOverlay.classList.contains('hidden')) {
     hideSearchOverlay();
-  } else if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+  } else if (shortcutPlain(e, 'KeyR', 'r')) {
     const t = e.target;
-    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (shortcutTypingTarget(t)) return;
     document.getElementById('reverse').click();
-  } else if ((e.key === 'b' || e.key === 'B') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+  } else if (shortcutPlain(e, 'KeyB', 'b')) {
     const t = e.target;
-    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (shortcutTypingTarget(t)) return;
     // Toggling the checkbox fires its onchange (persist + redraw).
     document.getElementById('ret-cb').click();
   }
@@ -2660,7 +2673,9 @@ function createTuningPanel() {
   const resetAll = document.createElement('button');
   resetAll.type = 'button';
   resetAll.id = 'tune-reset-all';
-  resetAll.textContent = 'Reset all';
+  resetAll.textContent = '↻';
+  resetAll.title = 'Reset all tuning values';
+  resetAll.setAttribute('aria-label', resetAll.title);
   const copy = document.createElement('button');
   copy.type = 'button';
   copy.id = 'tune-copy-json';
@@ -2731,8 +2746,9 @@ function createTuningPanel() {
       reset.type = 'button';
       reset.id = 'tune-' + key + '-reset';
       reset.className = 'tune-reset';
-      reset.textContent = 'Reset';
+      reset.textContent = '↻';
       reset.title = 'Reset ' + (spec.label || key);
+      reset.setAttribute('aria-label', reset.title);
 
       const set = {};
       if (spec.type === 'color') {
@@ -2977,6 +2993,71 @@ function showBuildUpdateNotice() {
   document.body.appendChild(el);
 }
 
+const BUILD_UPDATE_CHECK_MIN_MS = 5 * 60 * 1000;
+const BUILD_UPDATE_CHECK_INTERVAL_MS = 10 * 60 * 1000;
+let buildUpdateRegistration = null;
+let buildUpdateCheckInFlight = null;
+let lastBuildUpdateCheckAt = -Infinity;
+let buildUpdateCheckTriggersBound = false;
+
+function requestBuildUpdateCheck(reason, opts) {
+  opts = opts || {};
+  const sw = opts.serviceWorker ||
+    (typeof navigator !== 'undefined' && 'serviceWorker' in navigator
+      ? navigator.serviceWorker
+      : null);
+  if (!sw && !buildUpdateRegistration) return Promise.resolve(null);
+
+  const now = Date.now();
+  if (!opts.force && now - lastBuildUpdateCheckAt < BUILD_UPDATE_CHECK_MIN_MS) {
+    return buildUpdateCheckInFlight || Promise.resolve(buildUpdateRegistration);
+  }
+  lastBuildUpdateCheckAt = now;
+
+  const regPromise = buildUpdateRegistration
+    ? Promise.resolve(buildUpdateRegistration)
+    : (sw && typeof sw.getRegistration === 'function'
+      ? sw.getRegistration()
+      : Promise.resolve(null));
+
+  buildUpdateCheckInFlight = regPromise.then(reg => {
+    if (!reg) return null;
+    buildUpdateRegistration = reg;
+    if (typeof reg.update !== 'function') return reg;
+    return Promise.resolve(reg.update()).then(() => reg);
+  }).catch(() => null).finally(() => {
+    buildUpdateCheckInFlight = null;
+  });
+  return buildUpdateCheckInFlight;
+}
+
+function watchBuildUpdateCheckTriggers() {
+  if (buildUpdateCheckTriggersBound) return;
+  buildUpdateCheckTriggersBound = true;
+  const request = reason => requestBuildUpdateCheck(reason);
+
+  window.addEventListener('focus', () => request('focus'));
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) request('visible');
+  });
+
+  const toolbar = document.getElementById('toolbar');
+  if (toolbar) {
+    toolbar.addEventListener('click', e => {
+      if (e.target && e.target.closest('button, .tb-section-head, #toolbar-toggle')) {
+        request('toolbar');
+      }
+    });
+    toolbar.addEventListener('change', e => {
+      if (e.target && e.target.closest('select, input')) request('toolbar-change');
+    });
+  }
+
+  window.setInterval(() => {
+    if (!document.hidden) request('interval');
+  }, BUILD_UPDATE_CHECK_INTERVAL_MS);
+}
+
 function watchServiceWorkerUpdates(sw) {
   if (!sw || typeof sw.register !== 'function') return Promise.resolve(null);
   const controlledAtStart = !!sw.controller;
@@ -3005,11 +3086,12 @@ function watchServiceWorkerUpdates(sw) {
       showBuildUpdateNotice();
     }
     if (reg) {
+      buildUpdateRegistration = reg;
       watchWorker(reg.installing);
       if (typeof reg.addEventListener === 'function') {
         reg.addEventListener('updatefound', () => watchWorker(reg.installing));
       }
-      if (typeof reg.update === 'function') reg.update().catch(() => {});
+      requestBuildUpdateCheck('load', { force: true, serviceWorker: sw });
     }
     return reg;
   }).catch(() => null);
@@ -3019,6 +3101,7 @@ function watchServiceWorkerUpdates(sw) {
 // Registering the worker makes the app installable; the browser shows
 // the install control in the address bar — no in-app button needed.
 if ('serviceWorker' in navigator) {
+  watchBuildUpdateCheckTriggers();
   window.addEventListener('load', () => {
     watchServiceWorkerUpdates(navigator.serviceWorker);
   });

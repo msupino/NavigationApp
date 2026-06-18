@@ -2,7 +2,8 @@
 
 ## What this is
 
-A browser flight-route planner. Leaflet slippy map (mirrored chart tiles from
+A browser flight-route planner. Leaflet slippy map (live chart tiles from
+`https://flight-maps.com`, export/download tiles from
 `https://navaid-tiles.supino.org`) with a canvas overlay that draws the route,
 free-text notes, and an
 optional VFR-reporting-point reference layer. Plain HTML / CSS / JS, no
@@ -105,8 +106,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 ## Architecture
 
 - **Base map:** Leaflet with six base layers in one `layers` object:
-  CVFR / Nav / Low Alt / Heli (hosted by
-  `https://navaid-tiles.supino.org`) / Satellite (Esri) / OSM.
+  CVFR / Nav / Low Alt / Heli (live from `https://flight-maps.com`,
+  with `exportUrl` entries on `https://navaid-tiles.supino.org` for PNG
+  download rendering) / Satellite (Esri) / OSM.
   Selection persisted at `localStorage['navaid.layer']` and restored
   *before* `L.map()` runs (no CVFR flash on reload).
 - **Route overlay:** a `<canvas id="overlay">` over the map with
@@ -122,10 +124,13 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
     annotation boxes; `shape` is `'rect'` or `'oval'`.
   - `state.mode` = `'add' | 'note' | null` (null = inspect);
     `state.selected` = `{type:'wp'|'leg'|'note', index}` or `null`.
-  - Top-level globals: `showReturn`, `showMidLeg`, `highlightDiff`,
-    `showNavWP`, `navWP`, `showWpNames`, `wpNameAngle`,
-    `yellowAlpha`, `wpSize`, `limitLegKites`, `magVar`,
-    `pageSize`, `pageOrient`.
+  - Top-level globals: `showReturn`, `showMidLeg`, `showCumTime`,
+    `highlightDiff`, `showNavWP`, `navWP`, `showWpNames`,
+    `wpNameAngle`, `showAirfields`, `showVorStations`, `vorRef`,
+    `showReporting`, `showMsa`, `showWind`, `showSigmet`,
+    `yellowAlpha`, `wpSize`, `legArrowSize`, `legLineWidth`,
+    `driftLineWidth`, `limitLegKites`, `forceSnap`, `magVar`,
+    `pageSize`, `pageOrient`, `simUrl`, `simOn`, `simFollow`.
 - **Interaction (mouse):** Leaflet `mousedown` → hit-test in priority
   order **waypoint > note > leg-label > leg**. On a hit,
   `map.dragging.disable()` and own the drag; otherwise let Leaflet pan.
@@ -190,8 +195,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
     `_normalizeLegLabel` preserves `_default` across reload / import.
     The validator (`validateRoute`) accepts either shape (`a` only when
     `_default: 1`, else `a` + `p`).
-  - **Reset buttons:** inspector "↺ Reset marker position" (per leg) and
-    toolbar `#tool-reset-all-markers` "↺ Reset all marker positions"
+  - **Reset buttons:** inspector `↻ Reset marker position` (per leg)
+    and toolbar `#tool-reset-all-markers` `↻ Reset all marker positions`
     (all legs, prompts `confirm()`). Both call `_defaultLegLabels()`.
 - **Cumulative-time kites:** `cumLabel` (inbound, anchored at the leg's
   destination waypoint) and `cumLabelRet` (return, anchored at the leg's
@@ -262,7 +267,19 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   `label`. Editing a call-sign frequency stores a local override in
   `navaid.commFreqOverrides` keyed by call-sign id; new and auto-generated
   callouts for that call sign use the override, and the inspector shows the
-  catalog template frequency when the active value differs. Defaults are
+  catalog template frequency when the active value differs. Optional
+  `routeHints` entries on a comm-change point are route-context call-sign
+  hints: each entry stores optional adjacent route waypoint names
+  (`before`, `after`) and the `callSign` ID to use for that context. Display
+  labels and frequencies are derived from the call-sign catalog. Ambiguous or
+  unmatched routes fall back to the normal route graph. Shipped route-template
+  comm-change notes are used as regression evidence for these hints and keep
+  only `cc` / `freqName` / optional `freqAuto`; `routeFromTemplate()` expands
+  them into full saved-route notes with a concrete `freq`. `tests/comm-change.spec.js`
+  verifies that every template `cc` call sign has a matching `{before, after,
+  callSign}` route hint, with frequencies kept in the call-sign catalog instead
+  of the hint.
+  Defaults are
   route-aware: `commRouteCalloutDefaultsMap()` treats
   each comm-change waypoint's call-sign list as a boundary in an ATC graph,
   then picks the sector after crossing based on route order, neighboring
@@ -274,19 +291,24 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   then HAIFA at DAROM; the reverse route suggests PLUTO_WEST at DAROM, then
   HERZLIYA at DEROR. Auto-suggested
   notes carry `freqAuto: true` so route direction changes can refresh them;
-  changing the call sign or frequency in the inspector clears that flag and
-  preserves the user's manual choice. Turning the layer on seeds lightning
+  an inline Auto checkbox beside the call-sign dropdown stays checked while a callout is
+  following that route default, and the call-sign dropdown selects the resolved
+  call sign itself. Choosing a named call sign or editing the frequency clears that
+  flag and preserves the user's manual choice. Turning the layer on seeds lightning
   arrows only for matching
   waypoints already present in the route, never for unrelated reference
   points. The default callout tail starts east/right of the waypoint via
-  `commChangeNoteLngOffset`. Turning the layer off hides tagged callout
-  notes and disables their hit-testing without deleting them, so toggling
-  back on restores the same editable callouts. These fields are saved in the
+  `commChangeNoteLngOffset`. Turning the layer off hides red rings, tagged
+  callout notes, their hit-testing, and route-waypoint inspector
+  comm-change badge/details without deleting the saved callout notes, so
+  toggling back on restores the same editable callouts. These fields are saved in the
   existing `navaid.route` note payload (`cc`, `freqName`, `freq`, optional
   `freqAuto`), not in a separate storage key. Deleted callouts are tracked
   in `navaid.route.suppressedCC` (an array of canonical waypoint names);
-  the auto-seed pass skips suppressed names. "Add freq change" in the
-  waypoint inspector clears the suppression and re-creates the callout.
+  the auto-seed pass skips suppressed names. "Add frequency change" in the
+  waypoint inspector clears the suppression and re-creates the callout for
+  known comm-change points; for other named route waypoints it creates a
+  manual callout with editable call-sign text and frequency.
   Suppressions are cleared when the waypoint is removed, moves away from
   the comm-change point, the route is cleared, or a new file is loaded.
 - **Map legend:** a Leaflet control (bottom-left, floating over the map) with
@@ -321,9 +343,23 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   (5°E variation for Israel). The user-facing Mag-var input was
   removed; the `navaid.magVar` localStorage key is no longer written
   or read.
+- **Satellite inspector preview:** the small inspector snippet is static
+  Esri imagery; expanding it opens a live Leaflet modal with zoom, layer
+  picker, reset-to-centre, and rotation sync. Chart layers remain selectable
+  there, but switching to CVFR / Navigation / Low Alt / Helicopters clamps the
+  modal to a readable chart zoom near each layer's native tile level instead
+  of overscaling into blur.
 - **Altitude propagation:** editing a leg's altitude updates the
   adjacent legs that currently share the old value, stopping at the
   first different leg. Inbound walks forward, outbound walks backward.
+- **Altitude pairs modal:** pair labels focus the corresponding chart leg.
+  By default the modal closes after focus; the 📌 toggle beside the close
+  button keeps the resizable table open while focusing additional legs,
+  and keeps the blinking red leg highlight visible until another pair is
+  focused or the modal is closed. The pair search is token-based, so
+  endpoint names match in either order; an exact two-endpoint search
+  auto-focuses the chart leg without clicking the result. The modal can
+  be resized down to a compact few-row view for filtered results.
 - **Route templates never carry altitudes.** `route-templates.json`
   entries define only waypoints + `defaultSpeed`; leg altitudes are
   resolved from `leg-altitude.json` (the charted/inferred CVFR pairs).
@@ -345,6 +381,14 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   and delete buttons. The Nav log button opens a print-ready kneeboard
   document; its comm-change radio-frequency list is sorted by route waypoint
   order, not by note insertion order.
+- **Vertical profile / TOC / TOD:** `routeProfile()` in `core.js`
+  draws per-leg altitude ramps in the flight-plan modal and emits map markers
+  while the plan is open. Departure TOC and final TOD use the aircraft/profile
+  climb and descent performance (speed plus ft/min vertical speed), capped to
+  the available leg distance, and are emitted only when the route endpoint
+  resolves to an airfield elevation. The V/S input persists at
+  `navaid.profileVS` and moves the climb/descent ramp, including endpoint
+  TOC/TOD markers.
 - **Show Nav Waypoints** (default **on**): `nav-waypoints.json` is
   fetched once at boot; renders 173 white-fill / black-stroke 3.5 px
   dots; the 5-letter ID label appears at zoom ≥ 10. Captured in PNG
@@ -360,7 +404,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   `showChartsModal()`, which lists every airfield in
   `airfields.json` that carries a non-empty `plates[]` as a
   collapsible section (header `ICAO — English name`, plate chips
-  grouped by `plateCategory()`).
+  grouped by `plateCategory()`). `🧭 Alt pairs` opens the
+  `leg-altitude.json` editing table; each direction, each row, and the full
+  page have reset controls that restore values to the loaded origin data.
   **Airfields are listed alphabetically by ICAO** — `renderList()` sorts `withPlates` via
   `a.name.localeCompare(b.name)` before rendering, so JSON row order
   never leaks into the UI. Keep that sort when touching the list.
@@ -378,6 +424,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   Tab/Shift-Tab focus trap, and closes via Esc / backdrop / ✕ button.
   `?` is suppressed inside inputs / textareas / contenteditable so users
   can still type a literal question mark in waypoint names or notes.
+  Letter shortcuts are English-key shortcuts in every locale: the
+  cheat-sheet keeps `A`, `N`, `C`, etc. as key labels, and the handlers
+  match physical `KeyboardEvent.code` values so the same English keys work
+  while the OS keyboard layout is Hebrew.
   Current global shortcuts surfaced:
   - **Navigation:** `F` — fit route to view; `+`/`=` / numpad `+` — zoom
     map in (loupe zoom in when magnifier is on); `−`/`-` / numpad `−` —
@@ -427,21 +477,37 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.toolbarPos` — `{x, y}` of the toolbar.
 - `navaid.toolbarCollapsed` — `'0'` / `'1'` for the collapsed toolbar.
 - `navaid.sec.<sectionId>` — `'0'` / `'1'` per accordion section
-  (`build`, `view`, `display`, `charts`, `export`, `print`).
+  (`build`, `view`, `display`, `charts`, `export`, `print`, `sim`, etc.).
+- `navaid.inspPos` — `{x, y}` of the dragged inspector panel.
+- `navaid.tunePanelPos` — `{x, y}` of the hidden tuning panel.
 - `navaid.bearing` — map bearing in degrees (rotated-map support).
 - `navaid.theme` — `'dark'` / `'light'` for toolbar and panel chrome.
 - `navaid.yellowAlpha` — Transparency slider value.
 - `navaid.mapOpacity.v2` — base-map opacity slider value.
 - `navaid.wpSize` — Text-size slider value.
 - `navaid.legArrowSize` — leg-arrow size slider value.
+- `navaid.legLineWidth` — route-line width scale.
+- `navaid.driftLineWidth` — drift-line width scale.
 - `navaid.showReturn` — `'0'` / `'1'` for the return-leg overlay.
 - `navaid.showMidLeg` — `'0'` / `'1'` for the mid-leg distance badge.
+- `navaid.showCumTime` — `'0'` / `'1'` for cumulative-time kites.
 - `navaid.limitLegKites` — `'0'` / `'1'` for clamping dragged
   leg-marker kites between the two waypoints of their leg (default on).
 - `navaid.showDrift` — `'0'` / `'1'` for drift lines.
 - `navaid.highlightDiff` — `'0'` / `'1'` for altitude-diff halos.
 - `navaid.showNavWP` — `'0'` / `'1'` for the nav-waypoints overlay.
 - `navaid.showAirfields` — `'0'` / `'1'` for the airfield overlay.
+- `navaid.showReporting` — `'0'` / `'1'` for mandatory-reporting badges.
+- `navaid.showMsa` — `'0'` / `'1'` for the leg-inspector MSA row.
+- `navaid.showWind` — `'0'` / `'1'` for wind inputs, arrows, and readout.
+- `navaid.showSigmet` — `'0'` / `'1'` for the SIGMET overlay.
+- `navaid.showVorStations` — `'0'` / `'1'` for VOR/DME station markers.
+- `navaid.showVor` — legacy VOR marker key, migrated once to
+  `navaid.showVorStations` and removed.
+- `navaid.vorRef` — selected global reference VOR ident for radial/DME
+  readouts.
+- `navaid.forceSnap` — `'0'` / `'1'` for forcing new waypoint clicks to
+  snap to the nearest reference point.
 - `navaid.showFreqChanges` — `'0'` / `'1'` for the Show/Add Freq Changes
   overlay and callouts (default on). Replaces the legacy
   `navaid.showCommChange` key, which is intentionally ignored so older
@@ -449,17 +515,30 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.commFreqOverrides` — object keyed by comm call-sign id
   (`HERZLIYA`, `PLUTO_WEST`, etc.) containing locally edited frequency
   defaults. Empty / template-matching edits remove the key.
+- `navaid.airfieldFreqOverrides` — object keyed by airfield frequency id
+  for locally edited airport frequency defaults.
+- `navaid.vorFreqOverrides` — object keyed by VOR ident for locally edited
+  VOR frequency defaults.
 - `navaid.showWpNames` — `'0'` / `'1'` for waypoint-name display.
 - `navaid.wpNameAngle` — waypoint-name rotation (`0`/`90`/`180`/`270`).
 - `navaid.aircraft` — last-used aircraft profile JSON (fuel planner).
+- `navaid.profileVS` — vertical-profile climb/descent rate input for timing and
+  TOC/TOD ramp distance.
+- `navaid.routes` — saved-route library entries and tombstones.
+- `navaid.pageSize` — selected page frame size (`A3` / `A4`) or cleared.
 - `navaid.pageOrient` — `'portrait'` / `'landscape'` for page export.
 - `navaid.fpPos` — `{x, y}` of the dragged Flight Plan modal.
+- `navaid.simUrl` — simulator bridge base URL.
+- `navaid.simOn` — `'0'` / `'1'` for simulator auto-reconnect state.
+- `navaid.simFollow` — `'0'` / `'1'` for simulator-follow mode.
 
 `sessionStorage` (cleared on tab close — used to survive a language
 re-load that does a full page navigation):
 
 - `navaid.selected` — `state.selected` round-trip.
 - `navaid.fpOpen` — `'1'` if the Flight Plan modal was open pre-reload.
+- `navaid.openChartModal` — chart/frequency modal kind to reopen after a
+  language reload.
 
 `magVar` is hardcoded at `-5` in `core.js`; the obsolete
 `navaid.magVar` key is no longer written. A one-time migration at the
@@ -502,12 +581,18 @@ downloadable `route.json`.
   branch-protected; the merge triggers the same workflow).
   **Before merging**: delete `REVIEW.md` from repo root if it exists
   (`git rm REVIEW.md && git commit`). It must not land in production.
-- **Cache-bust is automatic.** `.github/workflows/deploy.yml` runs
-  `sed -i -E "s/\?v=[A-Za-z0-9]+/?v=${SHA}/g"` against each branch's
-  `docs/index.html` after checkout, using that branch's short commit
-  SHA. The source-HTML `?v=N` value is just a placeholder; you don't
-  need to bump it per commit. CI lint still enforces that every `?v=`
-  value in the source HTML agrees.
+- **Cache-bust is automatic.** `.github/workflows/deploy.yml` rewrites
+  each branch's `docs/index.html` `?v=N` markers, `NavAid.version`,
+  every app/i18n `data/*.json?v=N` literal, and the service-worker cache
+  name to that branch's short commit SHA after checkout. Source `?v=N`
+  values are just placeholders; you don't need to bump them per commit.
+  CI lint still enforces that every `?v=` value in the source HTML agrees.
+  At runtime, `ui.js` registers `sw.js`, forces one update check on load,
+  then re-checks on window focus, visible-tab restore, toolbar/menu
+  activity, layer/input changes, and a visible-tab 10 minute interval.
+  Those follow-up checks are throttled to once every 5 minutes; the
+  existing "New NavAid build available" notice appears only when the
+  service worker actually reports a newer installed build.
 - **Toolbar version SHA suffix is automatic.** The same Deploy step
   also rewrites `version: '1.0'` → `version: '1.0-<short-sha>'` in
   `docs/app/core.js`, so the toolbar identifies the exact deployed commit.
@@ -553,10 +638,12 @@ downloadable `route.json`.
 
 ## Notes / pending
 
-- Flight Maps chart data is copyrighted. The app-served CVFR,
-  Navigation, Low Alt, and Helicopters tile pyramids are mirrored in
-  `msupino/NavigationApp-tiles` and served from
-  `https://navaid-tiles.supino.org`.
+- Flight Maps chart data is copyrighted. Realtime chart display uses
+  `https://flight-maps.com`. PNG export/download rendering uses the
+  mirrored CVFR, Navigation, Low Alt, and Helicopters tile pyramids in
+  `msupino/NavigationApp-tiles`, served from
+  `https://navaid-tiles.supino.org`, so canvas tile fetches remain
+  readable without the old proxy path.
 - `nav-waypoints.json` — 173 Israeli CVFR reporting points.
   **Source:** IAA CVFR chart waypoint reference table (page 113, 2025
   edition), supplied upstream as `113_waypoints.csv`. The CSV is the
@@ -594,14 +681,16 @@ downloadable `route.json`.
 - `comm-change.json` — dataset of CVFR reporting points where pilots
   must change ATC frequency (the `מע.` / `מז.` Hebrew sector callouts
   on the IAA CVFR chart, indicating PLUTO West / PLUTO East / etc.).
-  Schema: `{version, source, _definition, _NOTE, _TODO, points:
-  [{name, commChange, from, to, note, verified, source}]}`. `name`
-  matches an ICAO 5-letter code in `nav-waypoints.json`. **Source:**
-  Israel AIP (AD 2.22 LLHA, ENR 2.1, GEN 3.4) for documented FIR/CTR
-  transitions; GitHub issue msupino/NavigationApp#399 for the chart
-  fragment near `TYONA`. Currently a 2-point seed (TYONA, GALIM)
-  verified against published AIP text; the bulk of the chart `מע.`
-  markers require manual visual chart review to extract.
+  Schema: `{version, source, _definition, _NOTE, _TODO, callSigns,
+  points:[{name, commChange, callSigns, routeHints, note, source}]}`.
+  `name` matches an ICAO 5-letter code in `nav-waypoints.json`; airfield
+  endpoints may use 4-letter LLxx ICAO codes where the frequency point is
+  the field itself. A point's `callSigns` array contains catalog IDs from
+  the root `callSigns` object. Optional `routeHints` entries map adjacent
+  route waypoint context to a `callSign` ID from that same point array, never
+  display labels or frequencies. **Source:** maintainer visual inspection of the printed IAA
+  CVFR chart's `נקודת מעבר קשר` symbology, enriched with frequency options
+  from the maintainer-provided AirMapRadioFrequencies PDF.
   - **Loader:** `loadCommChange()` in `draw.js` lazy-fetches the file
     at boot (parallel with `loadNavWaypoints` / `loadAirfields` in
     `ui.js`), validates it with `validateCommChange()` in `io.js`, and
@@ -621,14 +710,20 @@ downloadable `route.json`.
     freq-change editor to the waypoint pane whenever the selected
     waypoint has a linked callout note (matched by canonical name).
     The editor (shared with the note inspector via `appendFreqEdit()`)
-    includes a call-sign dropdown, editable frequency, and reset-callout-
-    location button. When no linked note exists (overlay off or not
-    seeded), a read-only badge shows the `from → to` frequency pair
+    includes an inline Auto checkbox, a call-sign dropdown that selects the resolved route-default call sign when Auto is checked, editable frequency,
+    and `↻ Reset callout location` button. When no linked note exists (overlay off or not
+    seeded), legacy datasets with `from` / `to` strings still show that
+    read-only pair
     and optional note. Styled in `app/style.css`
     under `/* Comm-change inspector badge (issue #399) */`.
+    Standalone map/nav waypoint inspectors are read-only: when the selected
+    `navwp` is a comm-change point and the layer is visible, they show the
+    point's call-sign options and effective catalog frequencies (for example
+    DALIA lists RAMAT_DAVID and PLUTO_WEST) without creating or editing route
+    callouts.
   - **i18n keys:** `tbShowCommChange`, `tbShowCommChangeTitle`,
-    `commChangeBadge` (English defaults in `app/core.js`, Hebrew overrides
-    in `i18n/he/strings.js`).
+    `commChangeBadge`, `commChangeCallSigns` (English defaults in
+    `app/core.js`, Hebrew overrides in `i18n/he/strings.js`).
 - `geo` distances are exact great-circle; verify against the chart's
   graticule if precision is questioned.
 - GA4 (`G-0XM5PHEK8B`) tracks page views; no event tracking yet.

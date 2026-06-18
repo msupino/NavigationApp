@@ -8,11 +8,29 @@
 // while a modal backdrop is open.
 const { test, expect } = require('./_setup');
 
-async function boot(page) {
-  await page.goto('?lang=en');
+async function boot(page, lang = 'en') {
+  await page.goto('?lang=' + lang);
   await page.waitForFunction(() =>
     typeof state !== 'undefined' && typeof map !== 'undefined' &&
     typeof setMode === 'function');
+}
+
+async function pressPhysical(page, code, key, modifiers = {}) {
+  await page.evaluate(({ code, key, modifiers }) => {
+    const target = document.activeElement && document.activeElement !== document.documentElement
+      ? document.activeElement
+      : document.body;
+    target.dispatchEvent(new KeyboardEvent('keydown', {
+      key,
+      code,
+      bubbles: true,
+      cancelable: true,
+      ctrlKey: !!modifiers.ctrlKey,
+      metaKey: !!modifiers.metaKey,
+      altKey: !!modifiers.altKey,
+      shiftKey: !!modifiers.shiftKey,
+    }));
+  }, { code, key, modifiers });
 }
 
 test.describe('A / N / C keyboard shortcuts', () => {
@@ -143,6 +161,70 @@ test.describe('A / N / C keyboard shortcuts', () => {
     await expect(page.locator('#tool-note')).toHaveText(/\(N\)/);
     await expect(page.locator('#clear')).toHaveText(/\(C\)/);
   });
+
+  test('English A / N / C shortcuts work while the keyboard layout is Hebrew', async ({ page }) => {
+    await boot(page, 'he');
+    expect(await page.evaluate(() => state.mode)).toBeNull();
+
+    await pressPhysical(page, 'KeyA', 'ש');
+    expect(await page.evaluate(() => state.mode)).toBe('add');
+    await pressPhysical(page, 'KeyN', 'מ');
+    expect(await page.evaluate(() => state.mode)).toBe('note');
+
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.0, lng: 34.9, name: 'A' },
+        { lat: 32.2, lng: 35.0, name: 'B' },
+      ];
+      state.notes = [{ lat: 32.1, lng: 34.95, text: 'X', color: '#fff6aa', shape: 'rect' }];
+      syncLegs(); draw();
+    });
+    page.once('dialog', d => d.accept());      // clearConfirm
+    await pressPhysical(page, 'KeyC', 'ב');
+    const counts = await page.evaluate(() => ({
+      wp: state.waypoints.length, legs: state.legs.length, notes: state.notes.length,
+    }));
+    expect(counts).toEqual({ wp: 0, legs: 0, notes: 0 });
+  });
+
+  test('English app shortcuts work while the keyboard layout is Hebrew', async ({ page }) => {
+    await boot(page, 'he');
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.0, lng: 34.9, name: 'A' },
+        { lat: 32.2, lng: 35.0, name: 'B' },
+      ];
+      syncLegs();
+      window.__fitCount = 0;
+      window.__undoCount = 0;
+      window.fitView = () => { window.__fitCount += 1; };
+      window.undo = () => { window.__undoCount += 1; };
+    });
+
+    await pressPhysical(page, 'KeyF', 'כ');
+    await pressPhysical(page, 'KeyR', 'ר');
+    await pressPhysical(page, 'KeyB', 'נ');
+    await pressPhysical(page, 'KeyZ', 'ז', { ctrlKey: true });
+
+    expect(await page.evaluate(() => ({
+      fitCount: window.__fitCount,
+      undoCount: window.__undoCount,
+      names: state.waypoints.map(w => w.name),
+      showReturn,
+      retChecked: document.getElementById('ret-cb').checked,
+    }))).toEqual({
+      fitCount: 1,
+      undoCount: 1,
+      names: ['B', 'A'],
+      showReturn: true,
+      retChecked: true,
+    });
+
+    await pressPhysical(page, 'KeyF', 'כ', { ctrlKey: true });
+    await expect(page.locator('#wp-search')).toBeFocused();
+    await pressPhysical(page, 'KeyA', 'ש');
+    expect(await page.evaluate(() => state.mode)).toBeNull();
+  });
 });
 
 const TYONA = { lat: 32.00472, lng: 34.72722, name: 'TYONA' };
@@ -229,7 +311,7 @@ test.describe('X / Z / Delete freq-change keyboard shortcuts', () => {
     expect(out.selected).toEqual({ type: 'wp', index: 0, freqNoteIndex: 0 });
   });
 
-  test('Z on a waypoint with no comm-change data is a no-op', async ({ page }) => {
+  test('Z adds a manual freq-change callout to a waypoint with no comm-change data', async ({ page }) => {
     await bootWithCC(page);
     await page.evaluate(t => {
       state.waypoints = [{ lat: t.lat + 0.5, lng: t.lng + 0.5, name: 'NOPEX' }];
@@ -238,7 +320,20 @@ test.describe('X / Z / Delete freq-change keyboard shortcuts', () => {
       showInspector(); draw();
     }, TYONA);
     await page.keyboard.press('z');
-    expect(await page.evaluate(() => state.notes.length)).toBe(0);
+    const out = await page.evaluate(() => ({
+      notes: state.notes.filter(n => n && n.cc).length,
+      cc: state.notes[0]?.cc,
+      freqName: state.notes[0]?.freqName,
+      freq: state.notes[0]?.freq,
+      selected: state.selected,
+    }));
+    expect(out).toEqual({
+      notes: 1,
+      cc: 'NOPEX',
+      freqName: 'NOPEX',
+      freq: '',
+      selected: { type: 'wp', index: 0, freqNoteIndex: 0 },
+    });
   });
 
   test('Z on a waypoint that already has a freq callout is a no-op', async ({ page }) => {
@@ -315,5 +410,35 @@ test.describe('X / Z / Delete freq-change keyboard shortcuts', () => {
     expect(out.wp).toBe(0);
     expect(out.notes).toBe(0);
     expect(out.selected).toBeNull();
+  });
+
+  test('English X / Z / D shortcuts work while the keyboard layout is Hebrew', async ({ page }) => {
+    await bootWithCC(page);
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector(); draw();
+    }, TYONA);
+
+    await pressPhysical(page, 'KeyZ', 'ז');
+    expect(await page.evaluate(() => ({
+      notes: state.notes.filter(n => n && n.cc).length,
+      selected: state.selected,
+    }))).toEqual({ notes: 1, selected: { type: 'wp', index: 0, freqNoteIndex: 0 } });
+
+    await pressPhysical(page, 'KeyX', 'ס');
+    expect(await page.evaluate(() => ({
+      wp: state.waypoints.length,
+      notes: state.notes.filter(n => n && n.cc).length,
+      selected: state.selected,
+    }))).toEqual({ wp: 1, notes: 0, selected: { type: 'wp', index: 0 } });
+
+    await pressPhysical(page, 'KeyD', 'ג');
+    expect(await page.evaluate(() => ({
+      wp: state.waypoints.length,
+      notes: state.notes.filter(n => n && n.cc).length,
+      selected: state.selected,
+    }))).toEqual({ wp: 0, notes: 0, selected: null });
   });
 });

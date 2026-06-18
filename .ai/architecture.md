@@ -45,8 +45,10 @@ already preserves the invariant.
 
 Leaflet owns the base map. The app draws route geometry, labels, kites, notes,
 reference points, callouts, and overlays on `#overlay`, a canvas above the map.
-CVFR, Navigation, Low Alt, and Helicopters chart tiles load from
-`https://navaid-tiles.supino.org`.
+CVFR, Navigation, Low Alt, and Helicopters chart tiles load live from
+`https://flight-maps.com`. Their `exportUrl` layer options point at
+`https://navaid-tiles.supino.org` so PNG export/download can fetch readable
+mirror tiles for canvas composition.
 
 Rendering flow:
 

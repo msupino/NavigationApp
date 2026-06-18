@@ -22,11 +22,11 @@ Unity.
 
 ## Branches
 
-- `main` — production (https://msupino.github.io/NavigationApp/).
-- `dev` — staging (https://msupino.github.io/NavigationApp/staging/).
+- `main` — production (https://navaid.supino.org/).
+- `dev` — staging (https://navaid.supino.org/staging/).
 - Any open PR → auto-deployed to
-  https://msupino.github.io/NavigationApp/pr/NNN/ and
-  https://msupino.github.io/NavigationApp/branch/BRANCH_NAME/
+  https://navaid.supino.org/pr/NNN/ and
+  https://navaid.supino.org/branch/BRANCH_NAME/
 - `export-leg-attributes` — old draft PR branch.
 
 Each push to `main` or `dev` re-runs the workflow, which checks out
@@ -112,6 +112,6 @@ both branches and assembles a single Pages site:
 
 ## Live + repo
 
-- App (production): https://msupino.github.io/NavigationApp/
-- App (staging):    https://msupino.github.io/NavigationApp/staging/
+- App (production): https://navaid.supino.org/
+- App (staging):    https://navaid.supino.org/staging/
 - Repo: https://github.com/msupino/NavigationApp

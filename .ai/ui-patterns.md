@@ -45,6 +45,13 @@ Patterns:
 - Undo/revert actions should exist per edited value when values are
   directional.
 - Global reset is useful, but it should not replace per-direction reset.
+- Altitude pairs has a 📌 toggle beside the modal close button. Unpinned
+  pair clicks focus the leg and close the modal; pinned pair clicks focus
+  the leg while keeping the resizable table and blinking red focus
+  highlight open until the next focus or modal close.
+- Altitude-pair search should match endpoint tokens in either order.
+  An exact two-endpoint query should auto-focus the chart leg without
+  requiring a row click.
 - In Hebrew, direction labels must make `from -> to` and `to -> from` clear.
 
 ## Route And Leg UI
@@ -65,6 +72,10 @@ Rules:
 
 The inspector preview is a static tile snippet. Expanded satellite view is a
 Leaflet modal map with zoom, layer picker, reset-to-center, and rotation sync.
+All base layers remain selectable, but chart layers use a tighter readable
+zoom range in this modal. Switching from high-zoom satellite imagery to CVFR /
+Navigation / Low Alt / Helicopters snaps back near the chart's native tile
+zoom instead of overscaling into blur.
 
 Title rules:
 

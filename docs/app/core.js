@@ -25,6 +25,19 @@ try {
 // unchanged, which is fine.
 window.NavAid = { exporting: false, version: '1.0' };  // cross-file export flag (read by ui.js/io.js)
 
+function shortcutTypingTarget(t) {
+  return !!(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable));
+}
+
+function shortcutKey(e, code, key) {
+  const k = String(e && e.key || '');
+  return e && (e.code === code || k === key || k === String(key || '').toUpperCase());
+}
+
+function shortcutPlain(e, code, key) {
+  return shortcutKey(e, code, key) && !e.ctrlKey && !e.metaKey && !e.altKey;
+}
+
 // Hidden developer tuning registry. Open with `?tune=1` to preview visual
 // constants without editing source. Values are page-local and reset on reload.
 NavAid.tuning = {};
@@ -53,6 +66,7 @@ NavAid.tuningDefaults = {
   satelliteExpandedZoom: { value: 17, min: 10, max: 20, step: 1, label: 'Satellite expanded zoom' },
   satelliteMinZoom: { value: 13, min: 8, max: 18, step: 1, label: 'Satellite min zoom' },
   satelliteMaxZoom: { value: 18, min: 12, max: 20, step: 1, label: 'Satellite max zoom' },
+  satelliteChartOverscale: { value: 1, min: 0, max: 3, step: 1, label: 'Satellite chart overscale levels' },
 
   magBaselineZoom: { value: 12, min: 8, max: 18, step: 1, label: 'Magnifier baseline zoom' },
   magMaxExp: { value: 4, min: 1, max: 6, step: 1, label: 'Magnifier max sub-tile exponent' },
@@ -185,12 +199,12 @@ NavAid.tuningDefaults = {
   overlayLabelHaloColor: { value: '#ffffff', type: 'color', label: 'Overlay label halo color' },
   overlayLabelHaloAlpha: { value: 0.85, min: 0, max: 1, step: 0.05, label: 'Overlay label halo alpha' },
 
-  altPairFocusColor: { value: '#fff2a8', type: 'color', label: 'Alt-pair focus line color' },
+  altPairFocusColor: { value: '#ff3030', type: 'color', label: 'Alt-pair focus line color' },
   altPairFocusWidthPx: { value: 5, min: 0.5, max: 16, step: 0.5, label: 'Alt-pair focus line width' },
   altPairFocusDashOnPx: { value: 10, min: 0, max: 40, step: 1, label: 'Alt-pair focus dash on' },
   altPairFocusDashOffPx: { value: 8, min: 0, max: 40, step: 1, label: 'Alt-pair focus dash gap' },
   altPairFocusDotRadiusPx: { value: 7, min: 1, max: 30, step: 0.5, label: 'Alt-pair focus endpoint radius' },
-  altPairFocusDotColor: { value: '#1d6fe0', type: 'color', label: 'Alt-pair focus endpoint fill' },
+  altPairFocusDotColor: { value: '#ff3030', type: 'color', label: 'Alt-pair focus endpoint fill' },
   altPairFocusMs: { value: 10000, min: 1000, max: 60000, step: 500, label: 'Alt-pair focus duration (ms)' },
 
   exportBgColor: { value: '#231f20', type: 'color', label: 'PNG export background color' },
@@ -236,7 +250,7 @@ NavAid.tuningGroups = [
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileDescentFpm', 'profileClimbKt', 'profileDescentKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx'] },
-  { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom'] },
+  { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom', 'satelliteChartOverscale'] },
   { name: 'Magnifier', keys: ['magBaselineZoom', 'magMaxExp'] },
   { name: 'Behaviour', keys: ['undoLimit', 'rotDragPx', 'shareMaxWaypoints', 'commChangeSnapPx', 'originResnapArmPx'] },
   { name: 'Route line', keys: ['routeLineWidthPx', 'routeSelectedLineWidthPx'] },
@@ -381,13 +395,14 @@ window.S = Object.assign({
     return name + ' template loaded at ' + speed + ' kt';
   },
   deleteWp: '🗑 Delete waypoint (D)',                  // inspector button
-  resetWpName: '↺ Reset waypoint name',             // inspector — reference snap or clear (placeholder)
+  resetWpName: '↻ Reset waypoint name',             // inspector — reference snap or clear (placeholder)
   resetWpNameTitle: 'Set name to the nearest reference (airfield / nav-WP), or clear when off-grid (dimmed sequence label)',
-  tbResetAllWpNames: '↺ Reset all waypoint names',
+  tbResetAllWpNames: '↻ Reset all waypoint names',
   tbResetAllWpNamesTitle: 'Set each name to its nearest reference, or clear when off-grid',
   resetAllWpNamesConfirm: 'Reset all waypoint names to their nearest reference codes, or clear when off-grid (sequence placeholders)?',
-  resetLegMarkers: '↺ Reset marker position',       // inspector leg button — reset label offsets
-  resetAllLegMarkers: '↺ Reset all marker positions', // inspector leg button — reset every leg
+  resetLegMarkers: '↻ Reset marker position',       // inspector leg button — reset label offsets
+  resetLegMarkersTitle: 'Reset marker position',
+  resetAllLegMarkers: '↻ Reset all marker positions', // inspector leg button — reset every leg
   resetAllConfirm: 'Reset all leg marker positions to default? This will clear any manual adjustments.',
   clearConfirm: 'Remove all waypoints and notes?',
   errBadCoords: 'file has invalid waypoint coordinates',
@@ -629,8 +644,10 @@ window.S = Object.assign({
   commChangeBadge: '📡 Freq change point',
   commChangeNoteText: 'Freq change',
   commChangeCallSign: 'Waypoint',
+  commChangeCallSigns: 'Call signs',
   commChangeName: 'Call sign',
   commChangeFreq: 'Frequency',
+  commChangeAuto: 'Auto',
   commChangeTemplateFreq: 'Default',
   freqTableTitle: 'Frequency defaults',
   freqTableCallSign: 'Call sign',
@@ -644,6 +661,10 @@ window.S = Object.assign({
   altPairsCopyJson: 'Copy JSON',
   altPairsCopied: 'Copied',
   altPairsCopyFailed: 'Copy failed',
+  altPairsResetAll: '↻ Reset all',
+  altPairsResetAllTitle: 'Revert all altitude pairs to origin',
+  altPairsPinTitle: 'Keep Alt pairs open when focusing a pair',
+  altPairsPinnedTitle: 'Alt pairs stays open when focusing a pair',
   altPairsEmpty: 'No altitude-pair data available',
   altPairsSearch: 'Search altitude pairs',
   altPairsNoMatches: 'No matching altitude pairs',
@@ -663,10 +684,12 @@ window.S = Object.assign({
   altPairsRevertDirection: 'Revert this direction to origin',
   altPairsGoTo: function(from, to) { return 'Go to ' + from + ' ↔ ' + to; },
   altPairsLocationMissing: 'Pair endpoints not found',
-  addFreqChange: 'Add freq change (Z)',
+  addFreqChange: 'Add frequency change (Z)',
   deleteFreqChange: '🗑 Delete freq change (X)',
-  resetFreqLocation: '↺ Reset callout location',
+  resetFreqLocation: '↻ Reset callout location',
+  resetFreqLocationTitle: 'Reset callout location',
   resetFreqOverride: 'Reset frequency to default',
+  resetFreqAuto: 'Reset call sign and frequency to Auto',
   plates: 'Charts',
   runways: 'Runways',
   plateCategoryApproach: 'Approach',
@@ -714,7 +737,7 @@ window.S = Object.assign({
   magZoomLabel: 'Zoom',
   magZoomTitle: 'Magnifier zoom factor',
   magLoading: 'Perfecting…',
-  tbResetAllMarkers: '↺ Reset all marker positions',
+  tbResetAllMarkers: '↻ Reset all marker positions',
   tbResetAllMarkersTitle: 'Reset all leg marker offsets to default positions',
   inspCloseTitle: 'Close',
   inspCloseLabel: 'Close',
@@ -867,6 +890,16 @@ var driftLineWidth = 1;     // drift reference line width scale (1 = default 1.5
 
 function legZoomScale() {   // zoom + legArrowSize → pixel multiplier for offsets/sizes
   return Math.max(0.35, Math.pow(2, map.getZoom() - 12)) * legArrowSize;
+}
+// Readout for a Leaflet zoom level: the raw level plus a linear scale
+// multiplier. Zoom is logarithmic — each whole level doubles on-screen
+// scale — so the multiplier is anchored at z12 (= 1×, the chart-tile
+// baseline the app already uses for kite/label scaling): mult = 2^(z-12).
+// e.g. z12.75 → "z12.75 · 1.68×".
+function zoomReadoutText(z) {
+  const zPart = z % 1 === 0 ? String(z) : z.toFixed(2);
+  const mPart = Math.pow(2, z - 12).toFixed(2).replace(/\.?0+$/, '');
+  return 'z' + zPart + ' · ' + mPart + '×';
 }
 var magnifierOn = false;    // magnifying-glass toggle
 var magnifierZoom = 2;      // default zoom factor
@@ -1228,8 +1261,7 @@ function toHMS(hours) {
 }
 
 // --- vertical profile: top-of-climb / top-of-descent (#672) -------------
-// Default GA climb/descent performance (C172-ish) lives in the tune registry
-// (Performance defaults group); overridable per aircraft or via the V/S input.
+// Default GA climb/descent performance (C172-ish) lives in the tune registry.
 // Field elevation at route endpoint waypoint i (airfield elev_ft) or null.
 function routeEndpointElev(i) {
   const wp = state.waypoints[i];
@@ -1237,13 +1269,12 @@ function routeEndpointElev(i) {
   const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
   return af && Number.isFinite(af.elev_ft) ? af.elev_ft : null;
 }
-// Model each leg at its own planned altitude. A leg ramps gradually (at the
-// climb/descent rate, over distance — not a vertical step) from its start
-// altitude to its own altitude; the first leg climbs out of the departure
-// field, the last leg descends into the destination field. The ramp is
-// confined to the leg. TOC/TOD markers are emitted only when the departure /
-// destination is an actual airfield (has a field elevation); intermediate
-// per-leg altitude changes are drawn but not marked. Returns per-leg
+// Model each leg at its own planned altitude. A leg ramps gradually from its
+// start altitude to its own altitude at the configured climb/descent
+// performance. The ramp is confined to the leg. TOC/TOD markers are emitted only
+// when the departure / destination is an actual airfield (has a field
+// elevation); intermediate per-leg altitude changes are drawn but not marked.
+// Returns per-leg
 // time/fuel, altitude-vs-distance vertices (pts), and wpCum (cumulative NM at
 // each waypoint, for the distance axis).
 function routeProfile(ac) {
@@ -1295,7 +1326,8 @@ function routeProfile(ac) {
     let endDescDist = 0, endAlt = cr;
     if (isLast && cr > fieldEnd) {
       endAlt = fieldEnd;
-      endDescDist = Math.min(dist - climbDist - descDist, descKt * ((cr - fieldEnd) / descFpm) / 60);
+      const availableDist = Math.max(0, dist - climbDist - descDist);
+      endDescDist = Math.min(availableDist, descKt * ((cr - fieldEnd) / descFpm) / 60);
     }
     const cruiseDist = Math.max(0, dist - climbDist - descDist - endDescDist);
     const climbT = climbKt > 0 ? climbDist / climbKt : 0;
@@ -1529,7 +1561,8 @@ function finishLatLng(lat, lng) {
 }
 
 // --- Leaflet map -----------------------------------------------------
-// Layer set served from the NavigationApp-tiles repository.
+// Live chart layers use Flight Maps directly. Export/download rendering uses
+// the NavigationApp tile mirror via each chart layer's exportUrl.
 // chartBounds = the lat/lng box covered by the published chart tiles
 // (Israel + adjacent VFR airspace). exportPNG uses it to skip
 // out-of-coverage tile fetches, which would otherwise return 404 and trip
@@ -1556,15 +1589,25 @@ function tileLayerUrl(layer, coords) {
   });
 }
 
+function exportTileLayerUrl(layer, coords) {
+  const src = layer.options && layer.options.exportUrl ?
+    Object.assign({}, layer, { _url: layer.options.exportUrl }) : layer;
+  return tileLayerUrl(src, coords);
+}
+
 const layers = {
-  'CVFR': L.tileLayer(NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png',
-    { ...TILE, attribution: FM_ATTR }),
-  'Navigation': L.tileLayer(NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png',
-    { ...TILE, attribution: FM_ATTR }),
-  'Low Alt': L.tileLayer(NAVAID_TILE_BASE + '/LSA-Low-Altitude/{z}/{x}/{y}.png',
-    { ...TILE, attribution: FM_ATTR }),
-  'Helicopters': L.tileLayer(NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png',
-    { ...TILE, maxNativeZoom: 12, attribution: FM_ATTR }),
+  'CVFR': L.tileLayer('https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png',
+    { ...TILE, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png' }),
+  'Navigation': L.tileLayer('https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
+    { ...TILE, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png' }),
+  'Low Alt': L.tileLayer('https://flight-maps.com/tiles/la/{z}/{x}/{y}.png',
+    { ...TILE, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/LSA-Low-Altitude/{z}/{x}/{y}.png' }),
+  'Helicopters': L.tileLayer('https://flight-maps.com/tiles/il-hel/{z}/{x}/{y}.png',
+    { ...TILE, maxNativeZoom: 12, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png' }),
   'Satellite': L.tileLayer(
     'https://services.arcgisonline.com/ArcGIS/rest/services/' +
     'World_Imagery/MapServer/tile/{z}/{y}/{x}',

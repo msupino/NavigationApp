@@ -53,6 +53,48 @@ test('routeProfile: per-leg altitudes, one TOC on leg 1, one TOD on the last leg
   expect(p.totalDist).toBeGreaterThan(0);
 });
 
+test('TOC/TOD endpoint distances follow aircraft climb/descent performance', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.0, lng: 34.8, name: 'DEP' },
+      { lat: 32.5, lng: 34.8, name: 'MID' },
+      { lat: 33.0, lng: 34.8, name: 'DEST' },
+    ];
+    state.legs = []; syncLegs();
+    state.legs.forEach(l => { l.flightSpeed = 110; l.inboundAltitude = 3000; });
+    routeEndpointElev = i => (i === 0 ? 1000 : i === state.legs.length ? 1000 : null);
+
+    window.profileVS = 0;
+    const slow = routeProfile({ gph: 8, climbFpm: 100, descentFpm: 100, climbKt: 30, descentKt: 30 });
+    window.profileVS = 1400;
+    const fast = routeProfile({ gph: 8, climbFpm: 2000, descentFpm: 2000, climbKt: 200, descentKt: 200 });
+    window.profileVS = 0;
+    return {
+      slowToc: slow.legs[0].climbDist,
+      slowTod: slow.legs[1].descDist,
+      fastToc: fast.legs[0].climbDist,
+      fastTod: fast.legs[1].descDist,
+      tocFrac: slow.tocs[0].frac,
+      todFrac: slow.tods[0].frac,
+      firstLegDist: slow.legs[0].dist,
+      lastLegDist: slow.legs[1].dist,
+    };
+  });
+
+  // Slow profile: 2000 ft at 100 fpm = 20 min; 30 kt for 20 min = 10 NM.
+  expect(result.slowToc).toBeCloseTo(10, 5);
+  expect(result.slowTod).toBeCloseTo(10, 5);
+  expect(result.tocFrac).toBeCloseTo(10 / result.firstLegDist, 5);
+  expect(result.todFrac).toBeCloseTo((result.lastLegDist - 10) / result.lastLegDist, 5);
+
+  // Faster V/S and speed change endpoint marker distances too.
+  expect(result.fastToc).toBeLessThan(result.slowToc);
+  expect(result.fastTod).toBeLessThan(result.slowTod);
+  expect(result.fastToc).toBeCloseTo(200 * (2000 / 1400) / 60, 5);
+  expect(result.fastTod).toBeCloseTo(200 * (2000 / 1400) / 60, 5);
+});
+
 test('flat route (constant altitude) has no TOC/TOD', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {

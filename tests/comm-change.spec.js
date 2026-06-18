@@ -63,6 +63,25 @@ const FIXTURE = {
   ],
 };
 
+const KNOWN_FREQ_POINT_FREQ_FIELDS = [
+  'primary', 'alternate', 'secondary', 'secondaryAlternate',
+];
+
+function knownFreqPointFrequencyText(row) {
+  return KNOWN_FREQ_POINT_FREQ_FIELDS.map(field => row[field]).filter(Boolean).join(' / ') || 'TBD';
+}
+
+function expectedKnownFreqPointRow(point, catalog) {
+  const ids = Array.isArray(point.callSigns) ? point.callSigns.filter(Boolean) : [];
+  if (!ids.length) return `| ${point.name} | TBD | TBD |`;
+  const callSigns = ids.map(id => {
+    const row = catalog[id];
+    return `${row.he} (\`${id}\`)`;
+  }).join(', ');
+  const frequencies = ids.map(id => knownFreqPointFrequencyText(catalog[id])).join('; ');
+  return `| ${point.name} | ${callSigns} | ${frequencies} |`;
+}
+
 // Install a route handler for the comm-change.json request. Matches the
 // shipped URL pattern `comm-change.json?v=...` regardless of query string.
 // MUST be called before `boot(page)` (i.e. before any page.goto) so the
@@ -118,7 +137,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(keys.length).toBeGreaterThan(0);
     // Every shipped entry is either a 5-letter reporting point or a 4-letter
     // airfield ICAO destination, and is flagged commChange.
-    const allowedPointKeys = ['callSigns', 'commChange', 'from', 'name', 'note', 'source', 'to'];
+    const allowedPointKeys = ['callSigns', 'commChange', 'name', 'note', 'routeHints', 'source'];
     for (const k of keys) {
       expect(k).toMatch(/^(?:[A-Z]{5}|LL[A-Z0-9]{2})$/);
       expect(map[k].commChange).toBe(true);
@@ -143,10 +162,13 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(map.GNYAM.callSigns).toEqual(['HERZLIYA', 'BEN_GURION']);
     expect(map.HAROV.callSigns).toEqual(['PLUTO_EAST', 'PIK']);
     expect(map.HASID.callSigns).toEqual(['PLUTO_EAST', 'PLUTO_WEST', 'RAMAT_DAVID', 'HAIFA']);
-    expect(map.HODYA.callSigns).toEqual(['HATZOR', 'HAGAV_NORTH']);
+    expect(map.HATRU.callSigns).toEqual(['NEGEV']);
+    expect(map.HULAT.callSigns).toEqual(['PLUTO_EAST', 'ROSH_PINA']);
+    expect(map.HODYA.callSigns).toEqual(['HAGAV_NORTH', 'HATZOR']);
     expect(map.HOVAV.callSigns).toEqual(['NEGEV', 'HAGAV_NORTH', 'HAGAV_SOUTH']);
     expect(map.KNTRY.callSigns).toEqual(['HERZLIYA']);
     expect(map.KTORA.callSigns).toEqual(['HAGAV_SOUTH', 'RAMON']);
+    expect(map.LIAAD.callSigns).toEqual(['PLUTO_WEST', 'HAGAV_NORTH']);
     expect(map.LLBS.callSigns).toEqual(['TEYMAN']);
     expect(map.LLMZ.callSigns).toEqual(['MASADA']);
     expect(map.MOVIL.callSigns).toEqual(['RAMAT_DAVID', 'PLUTO_EAST']);
@@ -168,9 +190,10 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(map.SORES.callSigns).toEqual(['PLUTO_EAST', 'TEL_NOF']);
     expect(map.SOVAL.callSigns).toEqual(['HAGAV_NORTH', 'KEDEM']);
     expect(map.RUHOT.callSigns).toEqual(['RAMON', 'HAGAV_SOUTH']);
+    expect(map.YAPAL.callSigns).toEqual(['PLUTO_WEST', 'HAGAV_NORTH']);
     expect(map.ZMGID.callSigns).toEqual(['PLUTO_EAST', 'PLUTO_WEST', 'MEGIDDO']);
     expect(map.ZASHD.callSigns).toEqual(['PALMACHIM']);
-    expect(map.ZDAFA.callSigns).toEqual(['HAGAV_SOUTH', 'HATZOR']);
+    expect(map.ZDAFA.callSigns).toEqual(['HAGAV_NORTH', 'HATZOR']);
     expect(map.ZMGEN.callSigns).toEqual(['HAGAV_NORTH', 'KEDEM']);
     expect(map.ZUKIM.callSigns).toEqual(['PLUTO_EAST', 'HAGAV_SOUTH']);
     expect(map.ZURIM.callSigns).toEqual(['HAGAV_NORTH']);
@@ -278,11 +301,64 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(missingFrequencies).toEqual([]);
   });
 
-  test('known-freq-points.md lists every comm-change point', async ({ page }) => {
-    await boot(page);
-    const keys = await page.evaluate(() => Object.keys(window.commChangeMap).sort());
+  test('known-freq-points.md mirrors every comm-change point row from JSON', async () => {
+    const comm = JSON.parse(fs.readFileSync('docs/data/comm-change.json', 'utf8'));
     const md = fs.readFileSync('known-freq-points.md', 'utf8');
-    const missing = keys.filter(k => !md.includes(`| ${k} |`));
+    const actual = md.split('\n').filter(line => /^\| (?:[A-Z]{5}|LL[A-Z0-9]{2}) \|/.test(line));
+    const expected = comm.points.map(point => expectedKnownFreqPointRow(point, comm.callSigns));
+    expect(actual).toEqual(expected);
+  });
+
+  test('route template comm-change call signs have route-context hints', async () => {
+    const comm = JSON.parse(fs.readFileSync('docs/data/comm-change.json', 'utf8'));
+    const templates = JSON.parse(fs.readFileSync('docs/data/route-templates.json', 'utf8'));
+    const byName = new Map((comm.points || []).map(point => [point.name, point]));
+    const missing = [];
+    const invalidHints = [];
+    const legacyHints = [];
+    for (const point of comm.points || []) {
+      const callSigns = Array.isArray(point.callSigns) ? point.callSigns : [];
+      if (Object.prototype.hasOwnProperty.call(point, 'from') ||
+          Object.prototype.hasOwnProperty.call(point, 'to')) {
+        legacyHints.push(point.name);
+      }
+      for (const hint of point.routeHints || []) {
+        if (!hint || typeof hint !== 'object') {
+          invalidHints.push(`${point.name}.routeHints[]`);
+          continue;
+        }
+        if (!callSigns.includes(hint.callSign)) {
+          invalidHints.push(`${point.name}.routeHints.callSign=${hint.callSign}`);
+        }
+        for (const field of ['before', 'after']) {
+          if (field in hint && (typeof hint[field] !== 'string' || !hint[field].trim())) {
+            invalidHints.push(`${point.name}.routeHints.${field}=${hint[field]}`);
+          }
+        }
+      }
+    }
+    for (const tpl of templates.templates || []) {
+      for (const note of tpl.notes || []) {
+        if (!note || !note.cc || !note.freqName) continue;
+        const point = byName.get(note.cc);
+        const callSigns = point && Array.isArray(point.callSigns) ? point.callSigns : [];
+        const waypoints = Array.isArray(tpl.waypoints) ? tpl.waypoints : [];
+        const index = waypoints.indexOf(note.cc);
+        const before = index > 0 ? waypoints[index - 1] : undefined;
+        const after = index >= 0 && index < waypoints.length - 1 ? waypoints[index + 1] : undefined;
+        const hints = point && Array.isArray(point.routeHints) ? point.routeHints : [];
+        const hasRouteHint = hints.some(h =>
+          h && h.callSign === note.freqName &&
+          (before === undefined ? !h.before : h.before === before) &&
+          (after === undefined ? !h.after : h.after === after));
+        if (!point || !callSigns.includes(note.freqName) ||
+            index < 0 || !hasRouteHint) {
+          missing.push(`${tpl.id}: ${note.cc} -> ${note.freqName}`);
+        }
+      }
+    }
+    expect(legacyHints).toEqual([]);
+    expect(invalidHints).toEqual([]);
     expect(missing).toEqual([]);
   });
 
@@ -292,6 +368,30 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     const drawn = await page.evaluate(() =>
       Array.from(window.__commChangeRingsDrawn || []));
     expect(drawn).toContain('TYONA');
+  });
+
+  test('map waypoint inspector lists comm-change call-sign options for DALIA', async ({ page }) => {
+    await boot(page);
+    const out = await page.evaluate(() => {
+      window.showCommChange = true;
+      const index = navWP.findIndex(w => w.name === 'DALIA');
+      state.selected = { type: 'navwp', index };
+      showInspector();
+      const items = Array.from(document.querySelectorAll('#inspector .commchange-option'));
+      return {
+        title: document.querySelector('#insp-title').value,
+        ids: items.map(el => el.dataset.callSign),
+        text: items.map(el => el.textContent),
+        hasAddButton: !!document.querySelector('#inspector .add-freq-change-btn'),
+      };
+    });
+    expect(out.title).toContain('DALIA');
+    expect(out.ids).toEqual(['RAMAT_DAVID', 'PLUTO_WEST']);
+    expect(out.text[0]).toMatch(/Ramat David/);
+    expect(out.text[0]).toMatch(/130\.50/);
+    expect(out.text[1]).toMatch(/Pluto West/);
+    expect(out.text[1]).toMatch(/118\.40/);
+    expect(out.hasAddButton).toBe(false);
   });
 
   test('a waypoint whose name is not in the dataset shows no badge', async ({ page }) => {
@@ -436,6 +536,26 @@ test.describe('comm-change rendering (fixture-backed)', () => {
     expect(freqText).toMatch(/Pluto West/);
   });
 
+  test('inspector hides comm-change badge/details when the layer is off', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    await page.locator('#commchange-cb').uncheck();
+    await page.waitForFunction(() => window.showCommChange === false);
+
+    await page.evaluate(t => {
+      state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
+      state.legs = [];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+      draw();
+    }, TYONA);
+
+    await expect(page.locator('#inspector .commchange-row')).toHaveCount(0);
+    await expect(page.locator('#inspector')).not.toContainText(/Freq change point/i);
+    await expect(page.locator('#inspector')).not.toContainText(/Pluto West/);
+  });
+
   test('united inspector: a freq-change waypoint edits the linked callout (call sign + frequency)', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
@@ -453,11 +573,14 @@ test.describe('comm-change rendering (fixture-backed)', () => {
       const insp = document.getElementById('inspector');
       // A frequency input means the editor (not the read-only badge) rendered.
       const inputs = insp.querySelectorAll('.freq-input');
+      const callSignEditors = insp.querySelectorAll('.commchange-name-row select, .commchange-name-row input');
       return { noteCount, hasFreqInput: inputs.length > 0,
-               hasBadge: !!insp.querySelector('.commchange-row') };
+               hasCallSignEditor: callSignEditors.length > 0,
+               hasReadOnlyBadge: !!insp.querySelector('.commchange-row') };
     }, TYONA);
     expect(out.noteCount).toBeGreaterThan(0);   // a callout note was seeded
-    expect(out.hasBadge).toBe(true);            // freq-change row present
+    expect(out.hasReadOnlyBadge).toBe(false);   // united inspector edits instead of duplicating badge
+    expect(out.hasCallSignEditor).toBe(true);   // call-sign editor present
     expect(out.hasFreqInput).toBe(true);        // editable, not read-only
   });
 

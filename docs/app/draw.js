@@ -433,7 +433,7 @@ async function loadNavWaypoints() {
 }
 
 // Lazy-loads docs/data/comm-change.json — { callSigns:{...},
-// points:[{name, commChange, callSigns, from, to, note, source}] }.
+// points:[{name, commChange, callSigns, routeHints, note, source}] }.
 // Builds an O(1) map keyed by ICAO `name` for the nav-waypoint overlay ring
 // + inspector badge. On 404 or schema error we install an EMPTY map ({})
 // instead of leaving commChangeMap null — the dataset is intentionally
@@ -1377,6 +1377,38 @@ function commCallSignReferenceDistance(wp, opt, excludedNames) {
   }
   return best;
 }
+function commRouteContextName(index) {
+  if (typeof state === 'undefined' || !Array.isArray(state.waypoints)) return '';
+  const wp = state.waypoints[index];
+  return canonicalNavWaypointName(wp && wp.name);
+}
+function commRouteHintName(raw) {
+  return canonicalNavWaypointName(raw);
+}
+function commCallSignDefaultFromOption(opt) {
+  return opt ? { freqName: opt.id, freq: opt.freq || '' } : null;
+}
+function commRouteHintDefault(entry) {
+  if (!entry || !commChangeMap || typeof state === 'undefined' ||
+      !Array.isArray(state.waypoints)) return null;
+  const row = commChangeMap[entry.name];
+  if (!row || !Array.isArray(row.routeHints) || !row.routeHints.length) return null;
+  const before = commRouteContextName(entry.index - 1);
+  const after = commRouteContextName(entry.index + 1);
+  const candidates = [];
+  const seen = new Set();
+  for (const hint of row.routeHints) {
+    if (!hint || typeof hint !== 'object') continue;
+    if (hint.before && commRouteHintName(hint.before) !== before) continue;
+    if (hint.after && commRouteHintName(hint.after) !== after) continue;
+    const opt = commCallSignOptionById(entry.name, hint.callSign);
+    const key = opt && commCallSignIdKey(opt.id);
+    if (!opt || !key || seen.has(key)) continue;
+    seen.add(key);
+    candidates.push(opt);
+  }
+  return candidates.length === 1 ? commCallSignDefaultFromOption(candidates[0]) : null;
+}
 function commInferRouteContextCallSignId(points, allowedIds, excludedNames) {
   const opts = commOptionPool(allowedIds);
   const pts = (Array.isArray(points) ? points : []).filter(Boolean);
@@ -1483,9 +1515,14 @@ function commSolveRouteCallSigns(entries) {
 function commRouteCalloutDefaultsMap() {
   const entries = commRouteChangeEntries();
   const path = commSolveRouteCallSigns(entries);
-  if (!path.length) return {};
   const out = {};
   for (let i = 0; i < entries.length; i++) {
+    const routeHint = commRouteHintDefault(entries[i]);
+    if (routeHint) {
+      out[entries[i].name] = routeHint;
+      continue;
+    }
+    if (!path.length) continue;
     const id = path[i + 1];
     const opt = commCallSignOptionById(entries[i].name, id);
     if (opt) out[entries[i].name] = { freqName: opt.id, freq: opt.freq || '' };

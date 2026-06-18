@@ -52,6 +52,8 @@ Use this map to choose focused coverage:
   behavior.
 - `ui-deep-coverage.spec.js` - inspector, satellite, modal, and UI edge cases.
 - `flight-plan*.spec.js` - flight plan table, print/export behavior.
+- `vertical-profile.spec.js` - flight-plan profile strip plus TOC/TOD marker
+  distance rules.
 - `route-templates.spec.js` - template routes and template modal behavior.
 - `alt-pair-direction-columns.spec.js` - altitude pair columns and direction
   labels.
