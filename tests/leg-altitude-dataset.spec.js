@@ -85,6 +85,15 @@ test.describe('leg-altitude.json scaffold', () => {
     expect(segment.status).toBe('reviewed');
   });
 
+  test('keeps BOREN / HOTRM outbound at the corrected 2000 ft altitude', () => {
+    const data = readJson(ALTITUDE_PATH);
+    const segment = data.segments.find(s => s.from === 'BOREN' && s.to === 'HOTRM');
+
+    expect(segment).toBeTruthy();
+    expect(segment.inboundAltitude).toBe(1500);
+    expect(segment.outboundAltitude).toBe(2000);
+  });
+
   test('fills candidate altitudes or marks one-way blocked directions', () => {
     const data = readJson(ALTITUDE_PATH);
     const byName = new Map(data.segments.map(s => [`${s.from}-${s.to}`, s]));

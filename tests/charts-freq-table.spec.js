@@ -132,6 +132,10 @@ test.describe('Charts modal — frequency catalog table', () => {
 
     await button.click();
     await expect(page.locator('.charts-alt-title h3')).toHaveText('CVFR altitude pairs');
+    const resetAll = page.locator('.charts-alt-reset-all');
+    await expect(resetAll).toHaveText('↻ Reset all');
+    await expect(resetAll).toHaveAttribute('title', 'Revert all altitude pairs to origin');
+    await expect(resetAll).toBeDisabled();
     await expect(page.locator('.charts-alt-table thead th').nth(3)).toHaveText('Direction');
     await expect(page.locator('.charts-alt-table tbody tr')).toHaveCount(3);
     await expect(page.locator('.charts-freq-title')).toHaveCount(0);
@@ -181,6 +185,7 @@ test.describe('Charts modal — frequency catalog table', () => {
     await search.fill('');
     await desheInputs.nth(0).fill('3100');
     await desheInputs.nth(0).blur();
+    await expect(resetAll).toBeEnabled();
     await expect(desheReset).toBeEnabled();
     await expect(desheRow).toHaveClass(/overridden/);
     await expect(desheInputs.nth(0)).not.toHaveClass(/is-default/);
@@ -225,6 +230,7 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(desheDirectionResets.nth(1)).toBeDisabled();
     await expect(desheReset).toBeDisabled();
     await expect(desheRow).not.toHaveClass(/overridden/);
+    await expect(resetAll).toBeEnabled();
     await expect.poll(() => page.evaluate(() => {
       const raw = legAltitudeDataset.segments
         .find(s => s.from === 'DESHE' && s.to === 'ZALMN');
@@ -246,6 +252,36 @@ test.describe('Charts modal — frequency catalog table', () => {
     })).toEqual({
       raw: [3000, 2500, false, 'reviewed'],
       lookup: [3000, 2500, false, 'reviewed'],
+    });
+
+    await resetAll.click();
+    await expect(resetAll).toBeDisabled();
+    await expect(derorInputs.nth(0)).toHaveValue('');
+    await expect(derorInputs.nth(0)).toHaveAttribute('placeholder', 'Unknown');
+    await expect(derorInputs.nth(1)).toHaveValue('');
+    await expect(derorInputs.nth(1)).toHaveAttribute('placeholder', 'Unknown');
+    await expect(derorRow).not.toHaveClass(/overridden/);
+    await expect.poll(() => page.evaluate(() => {
+      const raw = legAltitudeDataset.segments
+        .find(s => s.from === 'DEROR' && s.to === 'SHARO');
+      const lookup = legAltitudeMap['DEROR-SHARO'];
+      return {
+        raw: [
+          raw.inboundAltitude,
+          raw.outboundAltitude,
+          raw.oneWay === true,
+          raw.status,
+        ],
+        lookup: [
+          lookup.inboundAltitude,
+          lookup.outboundAltitude,
+          lookup.oneWay === true,
+          lookup.status,
+        ],
+      };
+    })).toEqual({
+      raw: [null, null, false, 'unknown'],
+      lookup: [null, null, false, 'unknown'],
     });
   });
 

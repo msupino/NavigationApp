@@ -5,8 +5,8 @@ CSS + JavaScript on top of Leaflet, no build step.
 
 ## Links
 
-- **Live (production):** https://msupino.github.io/NavigationApp/
-- **Live (staging):** https://msupino.github.io/NavigationApp/staging/
+- **Live (production):** https://navaid.supino.org/
+- **Live (staging):** https://navaid.supino.org/staging/
 - **Repo:** https://github.com/msupino/NavigationApp
 - **Wiki:** https://github.com/msupino/NavigationApp/wiki — full documentation / תיעוד מלא
 

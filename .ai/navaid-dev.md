@@ -373,6 +373,16 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   and delete buttons. The Nav log button opens a print-ready kneeboard
   document; its comm-change radio-frequency list is sorted by route waypoint
   order, not by note insertion order.
+- **Vertical profile / TOC / TOD:** `routeProfile()` in `core.js`
+  draws per-leg altitude ramps in the flight-plan modal and emits map markers
+  while the plan is open. Departure TOC uses the CVFR shortcut `0.5 NM per
+  100 ft` of climb from the departure field elevation to the first leg's
+  planned altitude (200 ft/NM). Final TOD uses `0.3 NM per 100 ft` of descent
+  from the last leg altitude to the destination field elevation (~3 NM per
+  1000 ft). Both are capped to the available leg distance and are emitted only
+  when the route endpoint resolves to an airfield elevation. The V/S input
+  still persists at `navaid.profileVS` for vertical-profile timing /
+  non-endpoint ramp behavior; it does not move the endpoint TOC/TOD markers.
 - **Show Nav Waypoints** (default **on**): `nav-waypoints.json` is
   fetched once at boot; renders 173 white-fill / black-stroke 3.5 px
   dots; the 5-letter ID label appears at zoom ≥ 10. Captured in PNG
@@ -388,7 +398,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   `showChartsModal()`, which lists every airfield in
   `airfields.json` that carries a non-empty `plates[]` as a
   collapsible section (header `ICAO — English name`, plate chips
-  grouped by `plateCategory()`).
+  grouped by `plateCategory()`). `🧭 Alt pairs` opens the
+  `leg-altitude.json` editing table; each direction, each row, and the full
+  page have reset controls that restore values to the loaded origin data.
   **Airfields are listed alphabetically by ICAO** — `renderList()` sorts `withPlates` via
   `a.name.localeCompare(b.name)` before rendering, so JSON row order
   never leaks into the UI. Keep that sort when touching the list.
@@ -504,7 +516,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.showWpNames` — `'0'` / `'1'` for waypoint-name display.
 - `navaid.wpNameAngle` — waypoint-name rotation (`0`/`90`/`180`/`270`).
 - `navaid.aircraft` — last-used aircraft profile JSON (fuel planner).
-- `navaid.profileVS` — vertical-profile climb/descent rate input.
+- `navaid.profileVS` — vertical-profile climb/descent rate input for timing /
+  non-endpoint ramps (endpoint TOC/TOD markers use fixed CVFR gradient
+  shortcuts).
 - `navaid.routes` — saved-route library entries and tombstones.
 - `navaid.pageSize` — selected page frame size (`A3` / `A4`) or cleared.
 - `navaid.pageOrient` — `'portrait'` / `'landscape'` for page export.

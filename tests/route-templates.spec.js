@@ -126,7 +126,7 @@ test.describe('route templates', () => {
     expect(route.speeds.every(([a, b]) => a === 115 && b === 115)).toBe(true);
     expect(route.auto.every(Boolean)).toBe(true);
     expect(route.alts[0]).toEqual([800, 1200]);
-    expect(route.alts[6]).toEqual([1500, 1000]);
+    expect(route.alts[6]).toEqual([1500, 2000]);
     expect(route.notes).toEqual(expect.arrayContaining([
       { cc: 'DEROR', freqName: 'PLUTO_WEST', freq: '118.40' },
       { cc: 'DAROM', freqName: 'HAIFA', freq: '133.00' },
@@ -184,7 +184,7 @@ test.describe('route templates', () => {
       ],
       alts: {
         0: [2000, 1500],
-        3: [1000, 1500],
+        3: [2000, 1500],
         8: [2000, 800],
         9: [1200, 800],
       },

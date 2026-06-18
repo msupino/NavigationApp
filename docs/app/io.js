@@ -1733,7 +1733,7 @@ function showFlightPlan() {
     if (v > 0) {
       window.profileVS = v;
       try { localStorage.setItem('navaid.profileVS', String(v)); } catch (e) { /* ignore */ }
-      draw();        // map TOC/TOD markers move with the new ramp
+      draw();        // keep any open profile overlay in sync
       refresh();     // recompute leg times + redraw the profile strip
     }
   };
@@ -4641,7 +4641,16 @@ function renderAltitudePairsTable(altSection, opts) {
   copy.textContent = S.altPairsCopyJson || 'Copy JSON';
   copy.title = copy.textContent;
   copy.setAttribute('aria-label', copy.title);
-  titleRow.append(heading, copy);
+  const resetAll = document.createElement('button');
+  resetAll.type = 'button';
+  resetAll.className = 'charts-alt-reset-all';
+  resetAll.textContent = S.altPairsResetAll || '↻ Reset all';
+  resetAll.title = S.altPairsResetAllTitle || resetAll.textContent;
+  resetAll.setAttribute('aria-label', resetAll.title);
+  const actions = document.createElement('div');
+  actions.className = 'charts-alt-title-actions';
+  actions.append(resetAll, copy);
+  titleRow.append(heading, actions);
   altSection.appendChild(titleRow);
 
   copy.onclick = async e => {
@@ -4663,6 +4672,29 @@ function renderAltitudePairsTable(altSection, opts) {
   const segments = altitudePairSegmentsForChart()
     .filter(segment => segment && segment.from && segment.to)
     .sort((a, b) => (a.from + '-' + a.to).localeCompare(b.from + '-' + b.to));
+  const syncAltitudePairsAfterEdit = () => {
+    applyLegAltitudesToRoute();
+    draw();
+    if (state.selected) showInspector();
+    if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
+  };
+  const updateResetAll = () => {
+    resetAll.disabled = !segments.some(segment => legAltitudePairDiffersFromOrigin(segment));
+  };
+  resetAll.onclick = e => {
+    e.preventDefault();
+    let changed = false;
+    for (const segment of segments) {
+      changed = restoreLegAltitudePairOrigin(segment) || changed;
+    }
+    if (!changed) {
+      updateResetAll();
+      return;
+    }
+    syncAltitudePairsAfterEdit();
+    renderAltitudePairsTable(altSection, opts);
+  };
+  updateResetAll();
   if (!segments.length) {
     const empty = document.createElement('p');
     empty.className = 'charts-alt-empty';
@@ -4776,11 +4808,9 @@ function renderAltitudePairsTable(altSection, opts) {
     };
     const syncPairEdit = () => {
       updateAltitudePairRowState(tr, segment, statusCell, inputs, reset, directionResetButtons);
+      updateResetAll();
       applySearchFilter();
-      applyLegAltitudesToRoute();
-      draw();
-      if (state.selected) showInspector();
-      if (typeof refreshFlightPlan === 'function' && refreshFlightPlan) refreshFlightPlan();
+      syncAltitudePairsAfterEdit();
     };
     const commitInput = input => {
       const raw = input.value.trim();
