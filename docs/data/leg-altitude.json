@@ -252,7 +252,7 @@
       "distanceNm": 2.1,
       "inboundAltitude": 2500,
       "outboundAltitude": 3000,
-      "status": "candidate",
+      "status": "reviewed",
       "detection": {
         "greenScore": 0.759,
         "maxGap": 4,
@@ -286,7 +286,7 @@
       "distanceNm": 7.6,
       "inboundAltitude": 3000,
       "outboundAltitude": 2500,
-      "status": "candidate",
+      "status": "reviewed",
       "detection": {
         "greenScore": 0.778,
         "maxGap": 10,
@@ -561,7 +561,7 @@
       "distanceNm": 12.8,
       "inboundAltitude": 3500,
       "outboundAltitude": 4500,
-      "status": "candidate",
+      "status": "reviewed",
       "detection": {
         "greenScore": 0.889,
         "maxGap": 9,
@@ -730,7 +730,7 @@
       "distanceNm": 6.2,
       "inboundAltitude": 3500,
       "outboundAltitude": 4000,
-      "status": "candidate",
+      "status": "reviewed",
       "detection": {
         "greenScore": 0.716,
         "maxGap": 9,
@@ -918,7 +918,7 @@
       "distanceNm": 3.4,
       "inboundAltitude": 2500,
       "outboundAltitude": 3000,
-      "status": "candidate",
+      "status": "reviewed",
       "detection": {
         "greenScore": 0.978,
         "maxGap": 1,
@@ -966,7 +966,7 @@
       "distanceNm": 4.6,
       "inboundAltitude": 3000,
       "outboundAltitude": 2500,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency"
     },
     {
@@ -985,7 +985,7 @@
       "distanceNm": 8.7,
       "inboundAltitude": 4500,
       "outboundAltitude": 4000,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "armyAirway": true
     },
@@ -995,7 +995,7 @@
       "distanceNm": 7.7,
       "inboundAltitude": 3500,
       "outboundAltitude": 3000,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "armyAirway": true
     },
@@ -1005,7 +1005,7 @@
       "distanceNm": 3.6,
       "inboundAltitude": 2500,
       "outboundAltitude": 3000,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "armyAirway": true
     },
@@ -1194,7 +1194,7 @@
       "distanceNm": 9.4,
       "inboundAltitude": 4000,
       "outboundAltitude": 3500,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency"
     },
     {
@@ -1212,7 +1212,7 @@
       "distanceNm": 11.8,
       "inboundAltitude": 4500,
       "outboundAltitude": 3500,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "onAtcApproval": true
     },
@@ -1222,7 +1222,7 @@
       "distanceNm": 14.1,
       "inboundAltitude": 3000,
       "outboundAltitude": 4000,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "onAtcApproval": true
     },
@@ -1232,7 +1232,7 @@
       "distanceNm": 6.7,
       "inboundAltitude": 4000,
       "outboundAltitude": null,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "oneWay": true,
       "armyAirway": true
@@ -1253,7 +1253,7 @@
       "distanceNm": 5.4,
       "inboundAltitude": 3500,
       "outboundAltitude": 3000,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "armyAirway": true,
       "onAtcApproval": true
@@ -1297,7 +1297,7 @@
       "distanceNm": 12.5,
       "inboundAltitude": 3500,
       "outboundAltitude": 3000,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "armyAirway": true,
       "onAtcApproval": true
@@ -2765,7 +2765,7 @@
       "distanceNm": 3.1,
       "inboundAltitude": 2500,
       "outboundAltitude": 3000,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "route template correction"
     },
     {
