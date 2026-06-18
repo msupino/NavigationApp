@@ -9,6 +9,7 @@
 //  C6 — rotEnd(cycle): a tap (drag start, no move) steps the bearing through
 //       0 -> 270 -> 180 -> 90 -> 0 (shown 0/90/180/270).
 const { test, expect } = require('./_setup');
+const { hideToolbarMenus } = require('./_toolbar');
 
 async function boot(page) {
   await page.goto('?lang=en');
@@ -81,7 +82,11 @@ test.describe('Leg-label hit test (C2)', () => {
   test('dragging a leg kite follows the limit-to-leg checkbox', async ({ page }) => {
     await boot(page);
     await setRoute(page);
+    await hideToolbarMenus(page);
     await page.evaluate(() => {
+      const cb = document.getElementById('limit-kites-cb');
+      cb.checked = true;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
       map.setZoom(12);
       draw();
     });
@@ -92,21 +97,26 @@ test.describe('Leg-label hit test (C2)', () => {
       const f = legFrame(0);
       const r = map.getContainer().getBoundingClientRect();
       const perp = (c.x - f.mx) * f.nx + (c.y - f.my) * f.ny;
-      const targetAlong = f.len * 0.85;       // well beyond B's perpendicular gate
-      const target = {
-        x: f.mx + f.dx * targetAlong + f.nx * perp,
-        y: f.my + f.dy * targetAlong + f.ny * perp,
-      };
-      const fartherAlong = f.len * 1.15;
-      const farther = {
-        x: f.mx + f.dx * fartherAlong + f.nx * perp,
-        y: f.my + f.dy * fartherAlong + f.ny * perp,
-      };
+      const mapSize = map.getSize();
+      const makeTarget = along => ({
+        x: f.mx + f.dx * along + f.nx * perp,
+        y: f.my + f.dy * along + f.ny * perp,
+      });
+      const withinMap = p =>
+        p.x > 40 && p.y > 40 && p.x < mapSize.x - 40 && p.y < mapSize.y - 40;
+      const overshootAlong = f.len / 2 + 40;
+      const candidates = [overshootAlong, -overshootAlong];
+      const targetAlong = candidates.find(along => withinMap(makeTarget(along))) || candidates[0];
+      const fartherCandidate = Math.sign(targetAlong || 1) * (f.len / 2 + 70);
+      const fartherAlong = withinMap(makeTarget(fartherCandidate)) ? fartherCandidate : targetAlong;
+      const target = makeTarget(targetAlong);
+      const farther = makeTarget(fartherAlong);
       return {
         start: { x: r.left + c.x, y: r.top + c.y },
         target: { x: r.left + target.x, y: r.top + target.y },
         farther: { x: r.left + farther.x, y: r.top + farther.y },
         targetAlong,
+        targetSign: Math.sign(targetAlong || 1),
       };
     });
 
@@ -138,9 +148,9 @@ test.describe('Leg-label hit test (C2)', () => {
     });
     expect(out.label._default).toBeUndefined();
     expect(out.label._m).toBe(1);
-    expect(dragPts.targetAlong).toBeGreaterThan(out.halfPx + 20);
-    expect(out.label.a).toBeCloseTo(out.limit, 1);
-    expect(out.alongPx + out.halfKitePx).toBeLessThanOrEqual(out.halfPx + 1);
+    expect(Math.abs(dragPts.targetAlong)).toBeGreaterThan(out.halfPx + 20);
+    expect(out.label.a).toBeCloseTo(dragPts.targetSign * out.limit, 1);
+    expect(Math.abs(out.alongPx) + out.halfKitePx).toBeLessThanOrEqual(out.halfPx + 1);
 
     const symmetric = await page.evaluate(() => {
       const leg = state.legs[0];

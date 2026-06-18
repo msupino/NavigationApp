@@ -3,6 +3,7 @@
 // Users can set local call-sign frequencies there, and the overrides should
 // use the same navaid.commFreqOverrides store as the inspector editor.
 const { test, expect } = require('./_setup');
+const { clickToolbarControl, hideToolbarMenus } = require('./_toolbar');
 
 const DEROR = { lat: 32.25722, lng: 34.89111, name: 'DEROR' };
 const DAROM = { lat: 32.79611, lng: 34.94333, name: 'DAROM' };
@@ -317,7 +318,7 @@ test.describe('Charts modal — frequency catalog table', () => {
     await installCommChangeFixture(page);
     await installAltitudeFixture(page);
     await boot(page);
-    await page.locator('#alt-pairs').click();
+    await clickToolbarControl(page, '#alt-pairs');
 
     const modal = page.locator('.charts-alt-modal');
     await expect(modal).toBeVisible();
@@ -334,6 +335,7 @@ test.describe('Charts modal — frequency catalog table', () => {
     await expect(pin).toHaveAttribute('aria-pressed', 'false');
     await expect(desheRow.locator('.charts-alt-pair-button'))
       .toHaveAttribute('aria-label', 'Go to DESHE ↔ ZALMN');
+    await hideToolbarMenus(page);
     await desheRow.locator('.charts-alt-pair-button').click();
 
     await expect(page.locator('.charts-alt-title')).toHaveCount(0);
@@ -380,13 +382,14 @@ test.describe('Charts modal — frequency catalog table', () => {
       routeLegs: 0,
     });
 
-    await page.locator('#alt-pairs').click();
+    await clickToolbarControl(page, '#alt-pairs');
     await expect(pin).toHaveAttribute('aria-pressed', 'false');
     await pin.click();
     await expect(pin).toHaveAttribute('aria-pressed', 'true');
     await expect(pin).toHaveAttribute('title', 'Alt pairs stays open when focusing a pair');
     await expect(pin).toHaveClass(/is-pinned/);
     await page.evaluate(() => setTune('altPairFocusMs', 1000));
+    await hideToolbarMenus(page);
     await desheRow.locator('.charts-alt-pair-button').click();
     await expect(page.locator('.charts-alt-title')).toBeVisible();
     await expect(pin).toHaveAttribute('aria-pressed', 'true');
@@ -416,7 +419,7 @@ test.describe('Charts modal — frequency catalog table', () => {
       draw();
     });
 
-    await page.locator('#alt-pairs').click();
+    await clickToolbarControl(page, '#alt-pairs');
     const desheRow = page.locator('.charts-alt-table tbody tr', { hasText: 'DESHE ↔ ZALMN' });
     await expect(desheRow.locator('.charts-alt-input').nth(0)).toHaveValue('3000');
     await page.locator('#insp-body input[type=number]').nth(1)

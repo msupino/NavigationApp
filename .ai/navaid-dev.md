@@ -144,9 +144,15 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - **Interaction (touch):** single-finger touchstart / touchmove / touchend
   on `mapEl` mirror the mouse path. Multi-finger or empty-space falls
   through to Leaflet for pan / pinch-zoom.
-- **Toolbar:** vertical column, absolute-positioned, with a `⋯` drag
-  handle (`#toolbar-handle`); position persisted at
-  `navaid.toolbarPos`, re-clamped on `window resize`.
+- **Toolbar:** on phones / narrow viewports (`max-width: 680px`) the
+  toolbar is the original floating vertical column with a `⋯` drag handle
+  (`#toolbar-handle`) and hamburger collapse control. Position is persisted
+  at `navaid.toolbarPos`, re-clamped on `window resize`; collapsed state is
+  persisted at `navaid.toolbarCollapsed`. On desktop (`min-width: 681px`)
+  those same `.tb-section` groups render as a fixed top menubar with
+  Windows-like dropdown panels. Desktop ignores saved mobile drag/collapse
+  state, offsets the map/overlay below the menu strip, and closes dropdowns
+  on outside click or Escape.
 - **geo():** great-circle distance (NM) + bearing. Magnetic = true +
   `magVar` (signed offset; Israel ≈ −5, equiv. 5°E variation).
 
@@ -478,8 +484,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.layer` — selected base layer name.
 - `navaid.lang` — `'en'` / `'he'`; bootstrap script in `index.html`
   reads this before the app loads.
-- `navaid.toolbarPos` — `{x, y}` of the toolbar.
-- `navaid.toolbarCollapsed` — `'0'` / `'1'` for the collapsed toolbar.
+- `navaid.toolbarPos` — `{x, y}` of the floating mobile toolbar.
+- `navaid.toolbarCollapsed` — `'0'` / `'1'` for the collapsed floating
+  mobile toolbar. Desktop menubar view ignores this value.
 - `navaid.sec.<sectionId>` — `'0'` / `'1'` per accordion section
   (`build`, `view`, `display`, `charts`, `export`, `print`, `sim`, etc.).
 - `navaid.inspPos` — `{x, y}` of the dragged inspector panel.

@@ -3,6 +3,7 @@
 // printing waypoints/airports and layer dropdown, defaults, restore.
 const { test, expect } = require('./_setup');
 const { pairLLHZ_LLHA } = require('./_airfieldArp');
+const { clickToolbarControl } = require('./_toolbar');
 
 async function boot(page) {
   await page.addInitScript(() => {
@@ -167,8 +168,8 @@ test.describe('Export PNG options modal', () => {
     await expect(page.locator('.modal-back')).toHaveCount(0);
 
     // Select A3 and reopen — warning should be gone.
-    await page.locator('#page-a3').click();
-    await page.locator('#print').click();
+    await clickToolbarControl(page, '#page-a3');
+    await clickToolbarControl(page, '#print');
     await page.locator('.modal-back').waitFor();
     await expect(page.locator('.modal-back').getByText(/no page size/i)).not.toBeVisible();
     await page.locator('.modal .modal-cancel').click();
