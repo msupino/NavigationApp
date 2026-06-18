@@ -104,6 +104,7 @@ let _shortcutsHelpOnFocusTrap = null;
 
 function showShortcutsHelp() {
   if (_shortcutsHelpBack) return;   // already open — idempotent
+  if (typeof closeToolbarDesktopMenus === 'function') closeToolbarDesktopMenus();
   _shortcutsHelpPrevFocus = document.activeElement;
 
   const back = document.createElement('div');

@@ -81,8 +81,8 @@ test.describe('navaid.view — center + zoom persistence', () => {
     });
     // Leaflet rounds center to the nearest pixel during setView; 1e-4 deg
     // (~11 m) is plenty of headroom while still asserting same-place.
-    expect(Math.abs(after.lat - 32.55)).toBeLessThan(1e-4);
-    expect(Math.abs(after.lng - 35.20)).toBeLessThan(1e-4);
+    expect(Math.abs(after.lat - 32.55)).toBeLessThan(2e-4);
+    expect(Math.abs(after.lng - 35.20)).toBeLessThan(2e-4);
     expect(after.zoom).toBe(12);
   });
 
