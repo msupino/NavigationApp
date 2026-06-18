@@ -22,6 +22,7 @@ async function boot(page, lang = 'en') {
   });
   await page.goto('?lang=' + lang);
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof showInspector === 'function');
+  await hideToolbarMenus(page);
 }
 
 async function bootWithSavedSelection(page, route, selected) {
@@ -37,6 +38,49 @@ async function bootWithSavedSelection(page, route, selected) {
   }, { route, selected });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof showInspector === 'function');
+  await hideToolbarMenus(page);
+}
+
+async function showToolbarControl(page, selector) {
+  const section = await page.locator(selector).evaluate(el =>
+    el.closest('.tb-section')?.getAttribute('data-sec'));
+  if (!section) return;
+  await page.evaluate(sec => {
+    for (const el of document.querySelectorAll('.tb-section')) {
+      const open = el.getAttribute('data-sec') === sec;
+      el.classList.toggle('open', open);
+      el.querySelector('.tb-section-head')?.setAttribute('aria-expanded', open ? 'true' : 'false');
+      try { localStorage.setItem('navaid.sec.' + el.getAttribute('data-sec'), open ? '1' : '0'); }
+      catch (e) {}
+    }
+    const toolbar = document.getElementById('toolbar');
+    if (toolbar) {
+      toolbar.classList.remove('multi-open');
+      toolbar.dataset.openCount = '1';
+    }
+  }, section);
+}
+
+async function hideToolbarMenus(page) {
+  await page.evaluate(() => {
+    for (const el of document.querySelectorAll('.tb-section.open')) {
+      el.classList.remove('open');
+      el.querySelector('.tb-section-head')?.setAttribute('aria-expanded', 'false');
+      try { localStorage.setItem('navaid.sec.' + el.getAttribute('data-sec'), '0'); }
+      catch (e) {}
+    }
+    const toolbar = document.getElementById('toolbar');
+    if (toolbar) {
+      toolbar.classList.remove('multi-open');
+      toolbar.dataset.openCount = '0';
+    }
+  });
+}
+
+async function clickToolbarControl(page, selector) {
+  await showToolbarControl(page, selector);
+  await page.locator(selector).click();
+  await hideToolbarMenus(page);
 }
 
 // ---------------------------------------------------------------------------
@@ -353,7 +397,7 @@ test.describe('Charts modal navigation', () => {
   test('opens with at least one airport row', async ({ page }) => {
     await boot(page);
     await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
-    await page.locator('#charts').click();
+    await clickToolbarControl(page, '#charts');
     await page.locator('.modal-back').waitFor({ timeout: 5000 });
 
     const rows = page.locator('.charts-airport-header');
@@ -363,7 +407,7 @@ test.describe('Charts modal navigation', () => {
   test('clicking an airport header toggles its body open', async ({ page }) => {
     await boot(page);
     await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
-    await page.locator('#charts').click();
+    await clickToolbarControl(page, '#charts');
     await page.locator('.modal-back').waitFor();
 
     const head = page.locator('.charts-airport-header').first();
@@ -374,7 +418,7 @@ test.describe('Charts modal navigation', () => {
   test('clicking a plate chip opens the plate viewer', async ({ page }) => {
     await boot(page);
     await page.waitForFunction(() => Array.isArray(window.airfields) && window.airfields.length > 0);
-    await page.locator('#charts').click();
+    await clickToolbarControl(page, '#charts');
     await page.locator('.modal-back').waitFor();
 
     // Find an airport with plates and open it.
@@ -400,7 +444,7 @@ test.describe('Charts modal navigation', () => {
       { button: '#route-templates', marker: '.route-template-modal' },
     ];
     for (const c of cases) {
-      await page.locator(c.button).click();
+      await clickToolbarControl(page, c.button);
       await expect(page.locator(c.marker).first()).toBeVisible();
       await page.reload();
       await expect(page.locator(c.marker).first()).toBeVisible();
@@ -435,7 +479,7 @@ test.describe('Charts modal navigation', () => {
       { button: '#route-templates', kind: 'route-templates', marker: '.route-template-modal' },
     ];
     for (const c of cases) {
-      await page.locator(c.button).click();
+      await clickToolbarControl(page, c.button);
       await expect(page.locator(c.marker).first()).toBeVisible();
       const open = await page.evaluate(() => ({
         charts: Array.from(document.querySelectorAll('.modal-back[data-chart-modal]'))
@@ -465,7 +509,7 @@ test.describe('Charts modal navigation', () => {
       await page.waitForFunction(() => typeof state !== 'undefined' &&
         typeof showChartsModal === 'function' &&
         typeof showRouteTemplatesModal === 'function');
-      await page.locator(c.button).click();
+      await clickToolbarControl(page, c.button);
       await expect(page.locator(c.marker).first()).toBeVisible();
       await expect(page.locator('.modal-back.flight-plan')).toHaveCount(1);
       await Promise.all([
@@ -484,6 +528,8 @@ test.describe('Charts modal navigation', () => {
 // Toolbar drag (#toolbar-handle → navaid.toolbarPos)
 // ---------------------------------------------------------------------------
 test.describe('Toolbar drag', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
   test('dragging the handle writes navaid.toolbarPos to localStorage', async ({ page }) => {
     await boot(page);
     const handle = page.locator('#toolbar-handle');
@@ -539,32 +585,32 @@ test.describe('Page frame A3 / A4', () => {
   test('A4 button enables the page frame (button gets .active)', async ({ page }) => {
     await boot(page);
     const a4 = page.locator('#page-a4');
-    await a4.click();
+    await clickToolbarControl(page, '#page-a4');
     await expect(a4).toHaveClass(/active/);
   });
 
   test('clicking the same size button again toggles the frame off', async ({ page }) => {
     await boot(page);
     const a4 = page.locator('#page-a4');
-    await a4.click();
+    await clickToolbarControl(page, '#page-a4');
     await expect(a4).toHaveClass(/active/);
-    await a4.click();
+    await clickToolbarControl(page, '#page-a4');
     await expect(a4).not.toHaveClass(/active/);
   });
 
   test('switching from A4 to A3 transfers the .active marker', async ({ page }) => {
     await boot(page);
-    await page.locator('#page-a4').click();
-    await page.locator('#page-a3').click();
+    await clickToolbarControl(page, '#page-a4');
+    await clickToolbarControl(page, '#page-a3');
     await expect(page.locator('#page-a4')).not.toHaveClass(/active/);
     await expect(page.locator('#page-a3')).toHaveClass(/active/);
   });
 
   test('toggling orientation persists navaid.pageOrient', async ({ page }) => {
     await boot(page);
-    await page.locator('#page-a4').click();
+    await clickToolbarControl(page, '#page-a4');
     const before = await page.evaluate(() => window.pageOrient);
-    await page.locator('#page-orient').click();
+    await clickToolbarControl(page, '#page-orient');
     const after = await page.evaluate(() => window.pageOrient);
     expect(after).not.toBe(before);
     const stored = await page.evaluate(() => localStorage.getItem('navaid.pageOrient'));

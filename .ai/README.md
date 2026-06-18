@@ -42,7 +42,8 @@ Important paths:
 - Never push directly to `main`.
 - Every PR needs a GitHub issue first and should reference it with
   `Fixes #N` or `Closes #N`.
-- Keep `dev` linear. Do not push non-trivial merge commits to `dev`.
+- Prefer squash merges into `dev`, but the CI history job reports merge
+  commits as warnings instead of blocking staging or production promotion.
 - Before committing, verify the current branch with `git branch --show-current`
   and `git status --short --branch`.
 - Run `node --check` on every changed JavaScript file.

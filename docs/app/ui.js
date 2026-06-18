@@ -1325,6 +1325,7 @@ wpSearch.addEventListener('keydown', e => {
 // requires the section to be expanded.
 const searchOverlay = document.getElementById('search-overlay');
 function showSearchOverlay() {
+  if (typeof closeToolbarDesktopMenus === 'function') closeToolbarDesktopMenus();
   searchOverlay.classList.remove('hidden');
   wpSearch.focus();
   wpSearch.select();
@@ -1344,6 +1345,7 @@ document.getElementById('search-close').onclick = hideSearchOverlay;
   const helpBtn = document.getElementById('help-trigger');
   if (helpBtn) {
     helpBtn.onclick = () => {
+      if (typeof closeToolbarDesktopMenus === 'function') closeToolbarDesktopMenus();
       if (typeof showShortcutsHelp === 'function') showShortcutsHelp();
     };
   }
@@ -1467,9 +1469,12 @@ document.getElementById('route-library').onclick = showRouteLibraryModal;
     insp.style.top = Math.max(0, Math.min(maxY, y)) + 'px';
     insp.style.right = 'auto';
   }
+  const isNarrow = () => !!(window.matchMedia && window.matchMedia('(max-width: 680px)').matches);
   try {
+    // On phones the inspector is a fixed bottom sheet (see the mobile block in
+    // style.css); a saved drag position would override that, so ignore it there.
     const p = JSON.parse(localStorage.getItem(INSP_POS_KEY) || 'null');
-    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyInspPos(p.x, p.y);
+    if (!isNarrow() && p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyInspPos(p.x, p.y);
   } catch (e) { /* */ }
   header.addEventListener('mousedown', function (e) {
     if (e.target.closest('#insp-close')) return;               // close button stays clickable
@@ -2290,11 +2295,40 @@ document.getElementById('insp-close').onclick = () => {
   showInspector(); draw();
 };
 
-// --- toolbar drag ----------------------------------------------------
+// --- toolbar drag / responsive menu mode -----------------------------
+const toolbarDesktopMenuQuery = window.matchMedia
+  ? window.matchMedia('(min-width: 681px)')
+  : null;
+
+function toolbarUsesDesktopMenu() {
+  return !!(toolbarDesktopMenuQuery && toolbarDesktopMenuQuery.matches);
+}
+
+function onToolbarDesktopMenuChange(fn) {
+  if (!toolbarDesktopMenuQuery) return;
+  if (toolbarDesktopMenuQuery.addEventListener) {
+    toolbarDesktopMenuQuery.addEventListener('change', fn);
+  } else if (toolbarDesktopMenuQuery.addListener) {
+    toolbarDesktopMenuQuery.addListener(fn);
+  }
+}
+
+function refreshMapAfterToolbarModeChange() {
+  requestAnimationFrame(() => {
+    try { if (map && typeof map.invalidateSize === 'function') map.invalidateSize(); }
+    catch (e) { /* map not ready */ }
+    try { if (typeof resizeOverlay === 'function') resizeOverlay(); }
+    catch (e) { /* overlay not ready */ }
+    try { if (typeof draw === 'function') draw(); }
+    catch (e) { /* draw not ready */ }
+  });
+}
+
 (function makeToolbarDraggable() {
   const bar = document.getElementById('toolbar');
   const handle = document.getElementById('toolbar-handle');
   const KEY = 'navaid.toolbarPos';
+  const COLLAPSED_KEY = 'navaid.toolbarCollapsed';
   let dx = 0, dy = 0, dragging = false;
 
   function clampPos(x, y) {
@@ -2305,21 +2339,32 @@ document.getElementById('insp-close').onclick = () => {
     };
   }
   function setPos(x, y) {
+    if (toolbarUsesDesktopMenu()) return;
     const c = clampPos(x, y);
     bar.style.left = c.x + 'px';
     bar.style.top = c.y + 'px';
     bar.style.right = 'auto';
   }
 
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) {
-      const p = JSON.parse(raw);
-      requestAnimationFrame(() => setPos(p.x, p.y));
-    }
-  } catch (e) { /* storage unavailable */ }
+  function restorePos() {
+    if (toolbarUsesDesktopMenu()) return;
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) {
+        const p = JSON.parse(raw);
+        requestAnimationFrame(() => setPos(p.x, p.y));
+      }
+    } catch (e) { /* storage unavailable */ }
+  }
+
+  function clearInlineDesktopPos() {
+    bar.style.left = '';
+    bar.style.top = '';
+    bar.style.right = '';
+  }
 
   function start(cx, cy) {
+    if (toolbarUsesDesktopMenu()) return;
     const r = bar.getBoundingClientRect();
     dx = cx - r.left;
     dy = cy - r.top;
@@ -2367,14 +2412,15 @@ document.getElementById('insp-close').onclick = () => {
   window.addEventListener('touchend', end);
   window.addEventListener('touchcancel', end);
 
-  const COLLAPSED_KEY = 'navaid.toolbarCollapsed';
-
   // collapse / expand the toolbar (keeps just the handle + toggle)
   const toggle = document.getElementById('toolbar-toggle');
-  function setCollapsed(on) {
-    bar.classList.toggle('collapsed', on);
-    toggle.title = on ? S.expandMenu : S.collapseMenu;
-    try { localStorage.setItem(COLLAPSED_KEY, on ? '1' : '0'); } catch (e) { /* */ }
+  function setCollapsed(on, opts = {}) {
+    const effective = toolbarUsesDesktopMenu() ? false : !!on;
+    bar.classList.toggle('collapsed', effective);
+    toggle.title = effective ? S.expandMenu : S.collapseMenu;
+    if (opts.persist !== false && !toolbarUsesDesktopMenu()) {
+      try { localStorage.setItem(COLLAPSED_KEY, effective ? '1' : '0'); } catch (e) { /* */ }
+    }
     if (bar.style.left) {                 // size changed -> keep on screen
       requestAnimationFrame(() =>
         setPos(parseFloat(bar.style.left), parseFloat(bar.style.top)));
@@ -2388,17 +2434,77 @@ document.getElementById('insp-close').onclick = () => {
       setCollapsed(!bar.classList.contains('collapsed'));
     }
   });
-  const sc = localStorage.getItem(COLLAPSED_KEY);
-  setCollapsed(sc === null ? false : sc === '1');
+
+  function applyResponsiveToolbarMode() {
+    if (toolbarUsesDesktopMenu()) {
+      dragging = false;
+      bar.classList.remove('dragging');
+      clearInlineDesktopPos();
+      setCollapsed(false, { persist: false });
+      refreshMapAfterToolbarModeChange();
+      return;
+    }
+    restorePos();
+    let sc = null;
+    try { sc = localStorage.getItem(COLLAPSED_KEY); } catch (e) { /* storage unavailable */ }
+    // Default collapsed on phones — an expanded toolbar column covers ~half the
+    // map on a narrow screen. A saved phone choice wins.
+    const narrowDefault = !!(window.matchMedia && window.matchMedia('(max-width: 680px)').matches);
+    setCollapsed(sc === null ? narrowDefault : sc === '1', { persist: sc !== null });
+    refreshMapAfterToolbarModeChange();
+  }
 
   window.addEventListener('resize', () => {
+    if (toolbarUsesDesktopMenu()) {
+      clearInlineDesktopPos();
+      setCollapsed(false, { persist: false });
+      return;
+    }
     if (bar.style.left) setPos(parseFloat(bar.style.left), parseFloat(bar.style.top));
   });
+
+  onToolbarDesktopMenuChange(applyResponsiveToolbarMode);
+  applyResponsiveToolbarMode();
 })();
 
 // --- section toggles -------------------------------------------------
 (function makeSectionToggle() {
   const sections = Array.from(document.querySelectorAll('.tb-section'));
+  const toolbar = document.getElementById('toolbar');
+  function updateToolbarOpenCount() {
+    const count = sections.filter(sec => sec.classList.contains('open')).length;
+    if (!toolbar) return;
+    toolbar.classList.toggle('multi-open', toolbarUsesDesktopMenu() && count > 1);
+    toolbar.dataset.openCount = String(count);
+  }
+  function persist(sec, open) {
+    try { localStorage.setItem('navaid.sec.' + sec.dataset.sec, open ? '1' : '0'); }
+    catch (e) { /* storage unavailable */ }
+  }
+  function setSectionOpen(sec, open) {
+    sec.classList.toggle('open', open);
+    const head = sec.querySelector('.tb-section-head');
+    if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+    persist(sec, open);
+    updateToolbarOpenCount();
+  }
+  function closeOthers(sec) {
+    for (const other of sections) {
+      if (other !== sec && other.classList.contains('open')) {
+        setSectionOpen(other, false);
+      }
+    }
+  }
+  function anySectionOpen() {
+    return sections.some(sec => sec.classList.contains('open'));
+  }
+  function closeDesktopMenus() {
+    if (!toolbarUsesDesktopMenu()) return;
+    for (const sec of sections) {
+      if (sec.classList.contains('open')) setSectionOpen(sec, false);
+    }
+  }
+
   for (const sec of sections) {
     const head = sec.querySelector('.tb-section-head');
     if (!head) continue;
@@ -2406,27 +2512,75 @@ document.getElementById('insp-close').onclick = () => {
     try {
       if (localStorage.getItem(key) === '1') sec.classList.add('open');
     } catch (e) { /* storage unavailable */ }
+    head.setAttribute('aria-expanded', sec.classList.contains('open') ? 'true' : 'false');
     function toggle() {
       const willOpen = !sec.classList.contains('open');
       // Accordion behaviour: opening a section closes the others.
-      if (willOpen) {
-        for (const other of sections) {
-          if (other !== sec && other.classList.contains('open')) {
-            other.classList.remove('open');
-            try { localStorage.setItem('navaid.sec.' + other.dataset.sec, '0'); }
-            catch (e) { /* storage unavailable */ }
-          }
-        }
-      }
-      sec.classList.toggle('open', willOpen);
-      try { localStorage.setItem(key, willOpen ? '1' : '0'); }
-      catch (e) { /* storage unavailable */ }
+      if (willOpen) closeOthers(sec);
+      setSectionOpen(sec, willOpen);
     }
     head.addEventListener('click', toggle);
     head.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+      if (toolbarUsesDesktopMenu() && e.key === 'ArrowDown') {
+        e.preventDefault();
+        closeOthers(sec);
+        setSectionOpen(sec, true);
+      }
+      if (toolbarUsesDesktopMenu() && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+        e.preventDefault();
+        const dir = (e.key === 'ArrowRight') === (document.documentElement.dir !== 'rtl') ? 1 : -1;
+        const idx = sections.indexOf(sec);
+        const next = sections[(idx + dir + sections.length) % sections.length];
+        next?.querySelector('.tb-section-head')?.focus();
+        if (sec.classList.contains('open') || anySectionOpen()) {
+          closeOthers(next);
+          setSectionOpen(next, true);
+        }
+      }
+      if (toolbarUsesDesktopMenu() && e.key === 'Escape') {
+        e.preventDefault();
+        closeDesktopMenus();
+        head.focus();
+      }
     });
   }
+  document.addEventListener('pointerdown', e => {
+    if (!toolbarUsesDesktopMenu()) return;
+    if (toolbar && toolbar.classList.contains('multi-open')) return;
+    if (e.target && e.target.closest && e.target.closest('#toolbar')) return;
+    closeDesktopMenus();
+  });
+  document.addEventListener('keydown', e => {
+    if (toolbarUsesDesktopMenu() && e.key === 'Escape') closeDesktopMenus();
+  });
+  if (toolbar) {
+    const closeAfterCommandIds = new Set([
+      'search-trigger',
+      'route-templates',
+      'plan',
+      'freq-table',
+      'alt-pairs',
+      'charts',
+      'load',
+      'route-library',
+      'share',
+      'fly',
+      'print',
+    ]);
+    toolbar.addEventListener('click', e => {
+      if (!toolbarUsesDesktopMenu()) return;
+      const command = e.target && e.target.closest
+        ? e.target.closest('.tb-section-body button')
+        : null;
+      if (!command) return;
+      if (!closeAfterCommandIds.has(command.id)) return;
+      window.setTimeout(closeDesktopMenus, 0);
+    });
+  }
+  onToolbarDesktopMenuChange(updateToolbarOpenCount);
+  window.closeToolbarDesktopMenus = closeDesktopMenus;
+  updateToolbarOpenCount();
 })();
 
 // --- hidden tuning panel --------------------------------------------
@@ -2919,17 +3073,16 @@ function watchBuildUpdateCheckTriggers() {
     if (!document.hidden) request('visible');
   });
 
-  const toolbar = document.getElementById('toolbar');
-  if (toolbar) {
-    toolbar.addEventListener('click', e => {
-      if (e.target && e.target.closest('button, .tb-section-head, #toolbar-toggle')) {
-        request('toolbar');
-      }
-    });
-    toolbar.addEventListener('change', e => {
-      if (e.target && e.target.closest('select, input')) request('toolbar-change');
-    });
-  }
+  document.addEventListener('click', e => {
+    const target = e.target && e.target.closest ? e.target : null;
+    if (!target || !target.closest('#toolbar')) return;
+    if (target.closest('button, .tb-section-head, #toolbar-toggle')) request('toolbar');
+  });
+  document.addEventListener('change', e => {
+    const target = e.target && e.target.closest ? e.target : null;
+    if (!target || !target.closest('#toolbar')) return;
+    if (target.closest('select, input')) request('toolbar-change');
+  });
 
   window.setInterval(() => {
     if (!document.hidden) request('interval');

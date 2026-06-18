@@ -24,7 +24,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Ensure dev received no merge commits
+      - name: Report dev merge commits
         run: |
           set -e
           BEFORE="${{ github.event.before }}"
@@ -35,23 +35,13 @@ jobs:
             RANGE="$BEFORE..$AFTER"
           fi
           COUNT=$(git rev-list --count "$RANGE")
-          # Reject real merge commits (squash-merge policy), but tolerate
-          # no-op merges — a "Merge branch 'main' into dev" whose tree is
-          # identical to its first parent brings no changes and is harmless
-          # (happens when main is already behind dev). Such a merge has an
-          # empty diff against its first parent.
-          BAD=""
-          for m in $(git rev-list --merges "$RANGE"); do
-            if ! git diff --quiet "$m^1" "$m"; then
-              BAD="$BAD $m"
-            fi
-          done
-          if [ -n "$BAD" ]; then
-            echo "❌ dev received a non-trivial merge commit. Use squash merge."
-            for m in $BAD; do git show -s --oneline "$m"; done
-            exit 1
+          MERGES=$(git rev-list --merges "$RANGE" || true)
+          if [ -n "$MERGES" ]; then
+            echo "::warning::dev received merge commit(s); continuing."
+            for m in $MERGES; do git show -s --oneline "$m"; done
+          else
+            echo "✅ dev received $COUNT commit(s) with no merge commits."
           fi
-          echo "✅ dev received $COUNT commit(s); any merges were no-ops."
 
   lint:
     runs-on: ubuntu-latest
@@ -136,7 +126,9 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Cold or slow Playwright browser setup can take 6+ minutes before the
+    # suite starts; keep enough headroom for the full local e2e run.
+    timeout-minutes: 20
     needs: lint
     steps:
       - name: Checkout

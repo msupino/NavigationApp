@@ -3,6 +3,7 @@
 // the showCumTime toggle) and the leg line-width slider.
 const { test, expect } = require('./_setup');
 const { LLHZ, LLHA } = require('./_airfieldArp');
+const { hideToolbarMenus } = require('./_toolbar');
 
 const ROUTE = {
   waypoints: [
@@ -239,6 +240,7 @@ test.describe('Cumulative-time kite', () => {
   test('dragging the cumulative-time kite orbits it around the waypoint anchor', async ({ page }) => {
     await boot(page);
     await loadRoute(page);
+    await hideToolbarMenus(page);
     const dragPts = await page.evaluate(() => {
       window.showCumTime = true;
       draw();
