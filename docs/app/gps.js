@@ -24,20 +24,26 @@ function _perpDeg(p, a, b) {
 }
 
 // Douglas–Peucker simplification. eps in degrees. Endpoints always kept.
+// Iterative (explicit-stack) implementation — overflow-safe for up to GPS_MAX_POINTS.
 function simplifyTrack(points, eps) {
   if (!Array.isArray(points) || points.length < 3) return (points || []).slice();
-  let maxD = -1, idx = -1;
-  const a = points[0], b = points[points.length - 1];
-  for (let i = 1; i < points.length - 1; i++) {
-    const d = _perpDeg(points[i], a, b);
-    if (d > maxD) { maxD = d; idx = i; }
+  const keep = new Array(points.length).fill(false);
+  keep[0] = keep[points.length - 1] = true;
+  const stack = [[0, points.length - 1]];
+  while (stack.length) {
+    const [lo, hi] = stack.pop();
+    if (hi - lo < 2) continue;
+    let maxD = -1, idx = -1;
+    const a = points[lo], b = points[hi];
+    for (let i = lo + 1; i < hi; i++) {
+      const d = _perpDeg(points[i], a, b);
+      if (d > maxD) { maxD = d; idx = i; }
+    }
+    if (maxD > eps) { keep[idx] = true; stack.push([lo, idx], [idx, hi]); }
   }
-  if (maxD > eps) {
-    const left = simplifyTrack(points.slice(0, idx + 1), eps);
-    const right = simplifyTrack(points.slice(idx), eps);
-    return left.slice(0, -1).concat(right);
-  }
-  return [a, b];
+  const out = [];
+  for (let i = 0; i < points.length; i++) if (keep[i]) out.push(points[i]);
+  return out;
 }
 
 // Great-circle distance in metres between two {lat,lng}.
@@ -98,6 +104,50 @@ function startGpsRecording() {
   gpsWatchId = navigator.geolocation.watchPosition(onGpsPosition, onGpsError, { enableHighAccuracy: true });
   gpsUpdateReadout();
   scheduleDraw();
+}
+
+function gpsTrackName() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return 'Track ' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate())
+       + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+// Build a validateRoute-passing route `data` from simplified points by reusing
+// the canonical serializer with a guarded temporary state swap.
+function gpsRouteDataFromPoints(points) {
+  const saved = { waypoints: state.waypoints, legs: state.legs, notes: state.notes };
+  try {
+    state.waypoints = points.map(p => ({ lat: r5(p.lat), lng: r5(p.lng), name: '' }));
+    state.notes = [];
+    syncLegs();
+    return serializeRoute();
+  } finally {
+    state.waypoints = saved.waypoints; state.legs = saved.legs; state.notes = saved.notes;
+    syncLegs();
+  }
+}
+
+// Stop recording AND save. Returns the new library entry, or null.
+function stopGpsRecordingAndSave() {
+  const raw = gpsTrack.slice();
+  stopGpsRecording();
+  if (raw.length < 2) { alert(S.gpsNoTrack || 'No track recorded.'); return null; }
+  const simp = simplifyTrack(raw.map(p => ({ lat: p.lat, lng: p.lng })), GPS_SIMPLIFY_EPS_DEG);
+  const data = gpsRouteDataFromPoints(simp);
+  const entry = {
+    id: routeLibraryId(),
+    name: gpsTrackName(),
+    savedAt: new Date().toISOString(),
+    kind: 'gps',
+    data,
+    track: raw.map(p => ({ lat: r5(p.lat), lng: r5(p.lng), t: p.t,
+      ...(p.alt != null ? { alt: Math.round(p.alt) } : {}),
+      ...(p.acc != null ? { acc: Math.round(p.acc) } : {}) })),
+  };
+  const list = loadRouteLibrary();
+  list.unshift(entry);
+  return persistRouteLibrary(list) ? entry : null;
 }
 
 // Stop watching without saving. (Save handled in a later task.)
