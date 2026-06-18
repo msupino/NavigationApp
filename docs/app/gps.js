@@ -170,8 +170,10 @@ function drawGpsTrack() {
       const s = proj(gpsTrack[i]);
       if (i === 0) octx.moveTo(s.x, s.y); else octx.lineTo(s.x, s.y);
     }
-    octx.lineWidth = 3;
-    octx.strokeStyle = '#1e88e5';
+    octx.lineWidth = tune('gpsBreadcrumbWidthPx');
+    octx.strokeStyle = tune('gpsBreadcrumbColor');
+    octx.lineCap = 'round';
+    octx.lineJoin = 'round';
     octx.stroke();
     octx.restore();
     if (typeof window !== 'undefined') window.__gpsBreadcrumbDrawn = (window.__gpsBreadcrumbDrawn || 0) + 1;

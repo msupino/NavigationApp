@@ -33,10 +33,10 @@ function legKiteAlongHalfPx(sc) {
 }
 
 // --- drawing ---------------------------------------------------------
-// Draw the live simulator aircraft at its current position with heading.
-// Top-down airplane silhouette: nose points up in local frame, rotated to
-// (aircraft heading − map bearing) so it tracks correctly on a rotated map.
-// Draws an own-ship arrow at pos {lat,lng} with true heading `hdg`.
+// Draws the own-ship symbol at pos {lat,lng} with true heading `hdg` (used for
+// both the simulator aircraft and the live GPS position). Top-down airplane
+// silhouette: nose up in local frame, rotated to (heading − map bearing) so it
+// tracks correctly on a rotated map.
 function drawOwnShip(pos, hdg) {
   if (!pos) return;
   const s = proj(pos);
