@@ -1795,7 +1795,7 @@
       "from": "BOREN",
       "to": "HOTRM",
       "inboundAltitude": 1500,
-      "outboundAltitude": 1000,
+      "outboundAltitude": 2000,
       "status": "candidate",
       "distanceNm": 2.9,
       "crop": "/tmp/navaid-altitude-extract/BOREN_HOTRM.png",
