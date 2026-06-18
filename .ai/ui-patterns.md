@@ -45,6 +45,13 @@ Patterns:
 - Undo/revert actions should exist per edited value when values are
   directional.
 - Global reset is useful, but it should not replace per-direction reset.
+- Altitude pairs has a 📌 toggle beside the modal close button. Unpinned
+  pair clicks focus the leg and close the modal; pinned pair clicks focus
+  the leg while keeping the resizable table and blinking red focus
+  highlight open until the next focus or modal close.
+- Altitude-pair search should match endpoint tokens in either order.
+  An exact two-endpoint query should auto-focus the chart leg without
+  requiring a row click.
 - In Hebrew, direction labels must make `from -> to` and `to -> from` clear.
 
 ## Route And Leg UI
