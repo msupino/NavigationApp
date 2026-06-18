@@ -352,6 +352,14 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - **Altitude propagation:** editing a leg's altitude updates the
   adjacent legs that currently share the old value, stopping at the
   first different leg. Inbound walks forward, outbound walks backward.
+- **Altitude pairs modal:** pair labels focus the corresponding chart leg.
+  By default the modal closes after focus; the 📌 toggle beside the close
+  button keeps the resizable table open while focusing additional legs,
+  and keeps the blinking red leg highlight visible until another pair is
+  focused or the modal is closed. The pair search is token-based, so
+  endpoint names match in either order; an exact two-endpoint search
+  auto-focuses the chart leg without clicking the result. The modal can
+  be resized down to a compact few-row view for filtered results.
 - **Route templates never carry altitudes.** `route-templates.json`
   entries define only waypoints + `defaultSpeed`; leg altitudes are
   resolved from `leg-altitude.json` (the charted/inferred CVFR pairs).
