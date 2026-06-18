@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>NavAid — Privacy Policy</title>
   <link rel="canonical" href="https://navaid.supino.org/privacy.html">
+  <!-- Resolve language the same way index.html does: ?lang wins, then the
+       stored navaid.lang (shared per-origin with the app), else English.
+       Runs before <body> so there's no flash of the wrong language. -->
+  <script>
+    (function () {
+      var p = new URLSearchParams(location.search).get('lang');
+      var stored = '';
+      try { stored = localStorage.getItem('navaid.lang') || ''; } catch (e) {}
+      var lang = (p === 'en' || p === 'he') ? p : (stored === 'he' ? 'he' : 'en');
+      try { localStorage.setItem('navaid.lang', lang); } catch (e) {}
+      var h = document.documentElement;
+      h.lang = lang; h.dir = lang === 'he' ? 'rtl' : 'ltr';
+      document.title = lang === 'he' ? 'NavAid — מדיניות פרטיות' : 'NavAid — Privacy Policy';
+    }());
+  </script>
   <style>
     body { max-width: 760px; margin: 2rem auto; padding: 0 1rem;
            font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: #1f252c; }
@@ -12,57 +27,125 @@
     code { background: #f0f2f5; padding: 0 .25em; border-radius: 3px; }
     a { color: #1d6fe0; }
     .muted { color: #647184; font-size: .9rem; }
+    /* Show only the active language's block (html[lang] is set above). */
+    html[lang="en"] [data-lang="he"], html[lang="he"] [data-lang="en"] { display: none; }
+    .lang-switch { font-size: .9rem; margin-bottom: 1.5rem; }
+    .lang-switch a { text-decoration: none; }
+    html[lang="en"] .lang-switch a[hreflang="en"],
+    html[lang="he"] .lang-switch a[hreflang="he"] { font-weight: 700; color: #1f252c; }
+    /* Keep Latin code/URLs/email LTR inside Hebrew prose. */
+    [data-lang="he"] code, [data-lang="he"] a[href^="mailto"],
+    [data-lang="he"] a[href^="http"] { unicode-bidi: isolate; direction: ltr; }
   </style>
 </head>
 <body>
-  <h1>NavAid — Privacy Policy</h1>
-  <p class="muted">Last updated: 8 June 2026</p>
+  <nav class="lang-switch" aria-label="Language / שפה">
+    <a href="?lang=en" hreflang="en">English</a> ·
+    <a href="?lang=he" hreflang="he">עברית</a>
+  </nav>
 
-  <p><strong>NavAid</strong> is a free, open-source CVFR flight-route planner that runs
-  entirely in your web browser. There is no NavAid server and no NavAid account — the
-  app is static files served from GitHub Pages.</p>
+  <!-- English -->
+  <div data-lang="en">
+    <h1>NavAid — Privacy Policy</h1>
+    <p class="muted">Last updated: 8 June 2026</p>
 
-  <h2>What we collect</h2>
-  <p><strong>Nothing is sent to us.</strong> NavAid has no backend and no analytics
-  operated by NavAid. Your routes, waypoints, notes and settings are stored only in your
-  browser's local storage on your own device.</p>
+    <p><strong>NavAid</strong> is a free, open-source CVFR flight-route planner that runs
+    entirely in your web browser. There is no NavAid server and no NavAid account — the
+    app is static files served from GitHub Pages.</p>
 
-  <h2>Google Drive (optional)</h2>
-  <p>If — and only if — you choose to connect Google Drive, NavAid uses the
-  <code>drive.appdata</code> permission to store a single file
-  (<code>navaid-routes.json</code>) containing your saved routes in a hidden,
-  application-specific folder in <em>your own</em> Google Drive.</p>
-  <ul>
-    <li>This permission gives NavAid access <strong>only</strong> to the file it creates
-      in that hidden app folder. NavAid <strong>cannot see, read, or modify any other
-      files</strong> in your Google Drive.</li>
-    <li>The data stays in your Google account. NavAid does not transmit it to any
-      NavAid-operated server or any third party.</li>
-    <li>Authorization happens through Google's standard sign-in; NavAid never sees your
-      Google password. Access tokens are kept in memory for the session only.</li>
-    <li>You can disconnect at any time, and you can delete the stored data from
-      <a href="https://drive.google.com/drive/settings">Google Drive → Settings →
-      Manage apps</a> ("Delete hidden app data").</li>
-  </ul>
-  <p>NavAid's use of information received from Google APIs adheres to the
-  <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API
-  Services User Data Policy</a>, including the Limited Use requirements.</p>
+    <h2>What we collect</h2>
+    <p><strong>Nothing is sent to us.</strong> NavAid has no backend and no analytics
+    operated by NavAid. Your routes, waypoints, notes and settings are stored only in your
+    browser's local storage on your own device.</p>
 
-  <h2>Map and chart data</h2>
-  <p>Map tiles and aeronautical charts are loaded directly from their providers
-  (flight-maps.com, Esri, OpenStreetMap). Those providers may receive standard web
-  requests (e.g. your IP address) as part of serving tiles, governed by their own
-  privacy policies. NavAid is not affiliated with them.</p>
+    <h2>Google Drive (optional)</h2>
+    <p>If — and only if — you choose to connect Google Drive, NavAid uses the
+    <code>drive.appdata</code> permission to store a single file
+    (<code>navaid-routes.json</code>) containing your saved routes in a hidden,
+    application-specific folder in <em>your own</em> Google Drive.</p>
+    <ul>
+      <li>This permission gives NavAid access <strong>only</strong> to the file it creates
+        in that hidden app folder. NavAid <strong>cannot see, read, or modify any other
+        files</strong> in your Google Drive.</li>
+      <li>The data stays in your Google account. NavAid does not transmit it to any
+        NavAid-operated server or any third party.</li>
+      <li>Authorization happens through Google's standard sign-in; NavAid never sees your
+        Google password. Access tokens are kept in memory for the session only.</li>
+      <li>You can disconnect at any time, and you can delete the stored data from
+        <a href="https://drive.google.com/drive/settings">Google Drive → Settings →
+        Manage apps</a> ("Delete hidden app data").</li>
+    </ul>
+    <p>NavAid's use of information received from Google APIs adheres to the
+    <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API
+    Services User Data Policy</a>, including the Limited Use requirements.</p>
 
-  <h2>Children</h2>
-  <p>NavAid is a general-audience aviation tool and is not directed at children.</p>
+    <h2>Map and chart data</h2>
+    <p>Map tiles and aeronautical charts are loaded directly from their providers
+    (flight-maps.com, Esri, OpenStreetMap). Those providers may receive standard web
+    requests (e.g. your IP address) as part of serving tiles, governed by their own
+    privacy policies. NavAid is not affiliated with them.</p>
 
-  <h2>Changes</h2>
-  <p>This policy may be updated; the "Last updated" date above reflects the latest
-  revision.</p>
+    <h2>Children</h2>
+    <p>NavAid is a general-audience aviation tool and is not directed at children.</p>
 
-  <h2>Contact</h2>
-  <p>Questions: <a href="mailto:marco@supino.org">marco@supino.org</a> ·
-  Source code: <a href="https://github.com/msupino/NavigationApp">github.com/msupino/NavigationApp</a></p>
+    <h2>Changes</h2>
+    <p>This policy may be updated; the "Last updated" date above reflects the latest
+    revision.</p>
+
+    <h2>Contact</h2>
+    <p>Questions: <a href="mailto:marco@supino.org">marco@supino.org</a> ·
+    Source code: <a href="https://github.com/msupino/NavigationApp">github.com/msupino/NavigationApp</a></p>
+  </div>
+
+  <!-- Hebrew -->
+  <div data-lang="he" dir="rtl">
+    <h1>NavAid — מדיניות פרטיות</h1>
+    <p class="muted">עודכן לאחרונה: 8 ביוני 2026</p>
+
+    <p><strong>NavAid</strong> הוא מתכנן מסלולי טיסה CVFR חופשי ובקוד פתוח, הפועל כולו
+    בדפדפן שלך. אין שרת של NavAid ואין חשבון NavAid — האפליקציה מורכבת מקבצים סטטיים
+    המוגשים מ-GitHub Pages.</p>
+
+    <h2>מה אנו אוספים</h2>
+    <p><strong>שום דבר אינו נשלח אלינו.</strong> ל-NavAid אין צד-שרת ואין כלי ניתוח
+    נתונים (analytics) המופעל על ידי NavAid. המסלולים, נקודות הציון, ההערות וההגדרות שלך
+    נשמרים אך ורק באחסון המקומי של הדפדפן, על המכשיר שלך.</p>
+
+    <h2>Google Drive (אופציונלי)</h2>
+    <p>אם — ורק אם — תבחר לחבר את Google Drive, ‏NavAid משתמשת בהרשאת
+    <code>drive.appdata</code> כדי לשמור קובץ יחיד (<code>navaid-routes.json</code>)
+    המכיל את המסלולים השמורים שלך, בתיקייה מוסתרת וייעודית לאפליקציה בתוך
+    Google Drive <em>שלך</em>.</p>
+    <ul>
+      <li>הרשאה זו מעניקה ל-NavAid גישה <strong>אך ורק</strong> לקובץ שהיא יוצרת באותה
+        תיקיית אפליקציה מוסתרת. ‏NavAid <strong>אינה יכולה לראות, לקרוא או לשנות קבצים
+        אחרים</strong> ב-Google Drive שלך.</li>
+      <li>הנתונים נשארים בחשבון Google שלך. ‏NavAid אינה מעבירה אותם לשום שרת המופעל על
+        ידי NavAid ולא לצד שלישי כלשהו.</li>
+      <li>האימות מתבצע דרך מנגנון ההתחברות הסטנדרטי של Google; ‏NavAid לעולם אינה רואה את
+        סיסמת Google שלך. אסימוני הגישה נשמרים בזיכרון למשך ההפעלה (session) בלבד.</li>
+      <li>ניתן לנתק בכל עת, וניתן למחוק את הנתונים השמורים דרך
+        <a href="https://drive.google.com/drive/settings">Google Drive ‏← הגדרות ‏←
+        ניהול אפליקציות</a> ("מחיקת נתוני אפליקציה מוסתרים").</li>
+    </ul>
+    <p>השימוש של NavAid במידע המתקבל מ-Google APIs תואם ל-<a href="https://developers.google.com/terms/api-services-user-data-policy">Google
+    API Services User Data Policy</a>, לרבות דרישות השימוש המוגבל (Limited Use).</p>
+
+    <h2>נתוני מפה ותרשימים</h2>
+    <p>אריחי המפה והתרשימים האווירונאוטיים נטענים ישירות מהספקים שלהם
+    (flight-maps.com, ‏Esri, ‏OpenStreetMap). ספקים אלה עשויים לקבל בקשות אינטרנט
+    סטנדרטיות (למשל כתובת ה-IP שלך) כחלק מהגשת האריחים, בכפוף למדיניות הפרטיות שלהם.
+    ‏NavAid אינה קשורה אליהם.</p>
+
+    <h2>ילדים</h2>
+    <p>NavAid הוא כלי תעופה לקהל הרחב ואינו מיועד לילדים.</p>
+
+    <h2>שינויים</h2>
+    <p>מדיניות זו עשויה להתעדכן; תאריך "עודכן לאחרונה" שלמעלה משקף את הגרסה האחרונה.</p>
+
+    <h2>יצירת קשר</h2>
+    <p>שאלות: <a href="mailto:marco@supino.org">marco@supino.org</a> ·
+    קוד מקור: <a href="https://github.com/msupino/NavigationApp">github.com/msupino/NavigationApp</a></p>
+  </div>
 </body>
 </html>
