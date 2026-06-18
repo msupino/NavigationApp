@@ -2141,15 +2141,6 @@
       "source": "cvfr-map airway adjacency"
     },
     {
-      "from": "DUMIM",
-      "to": "HNINA",
-      "distanceNm": 6.2,
-      "inboundAltitude": 5000,
-      "outboundAltitude": 4500,
-      "status": "candidate",
-      "source": "cvfr-map airway adjacency"
-    },
-    {
       "from": "ESTOL",
       "to": "SORES",
       "distanceNm": 3.5,
@@ -5406,20 +5397,6 @@
       "to": "HAREL",
       "altitude": 5000,
       "segment": "HAREL-HNINA",
-      "field": "outboundAltitude"
-    },
-    {
-      "from": "DUMIM",
-      "to": "HNINA",
-      "altitude": 5000,
-      "segment": "DUMIM-HNINA",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "HNINA",
-      "to": "DUMIM",
-      "altitude": 4500,
-      "segment": "DUMIM-HNINA",
       "field": "outboundAltitude"
     },
     {

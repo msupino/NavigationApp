@@ -2220,17 +2220,6 @@
       "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
     },
     {
-      "segment": "DUMIM-HNINA",
-      "from": "DUMIM",
-      "to": "HNINA",
-      "inboundAltitude": 5000,
-      "outboundAltitude": 4500,
-      "status": "candidate",
-      "distanceNm": 6.2,
-      "crop": "/tmp/navaid-altitude-extract/DUMIM_HNINA.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
-    },
-    {
       "segment": "ESTOL-SORES",
       "from": "ESTOL",
       "to": "SORES",
