@@ -373,7 +373,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - **Waypoint-name rotation:** the `⟳` button by "Show waypoint names"
   cycles `wpNameAngle` 0/90/180/270; all names draw at that angle.
 - **Plan table:** `📋 Plan` opens a modal with a per-leg flight plan
-  (`#`, From, To, Hdg, Dist, Speed, Alt, Time) plus totals. From/To
+  (`#`, From, To, Hdg, Dist, Speed, Alt, Time) plus totals; the per-leg
+  distance column is hidden by default and can be re-enabled from Columns.
+  From/To
   names and Speed/Alt are editable inputs; the rest is `textContent`
   only — user names / notes can't inject HTML. The Print button switches to
   a print stylesheet that hides modal chrome and controls, then prints the
@@ -530,6 +532,12 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.pageSize` — selected page frame size (`A3` / `A4`) or cleared.
 - `navaid.pageOrient` — `'portrait'` / `'landscape'` for page export.
 - `navaid.fpPos` — `{x, y}` of the dragged Flight Plan modal.
+- `navaid.fpColumns` — JSON array of hidden Flight Plan table column keys
+  (`seq`, `from`, `to`, `hdg`, `dist`, `speed`, `alt`, `time`, `fuel`,
+  `cumTime`, `cumFuel`, `radial`, `dme`, optional `freq`). When the key is
+  absent, `dist` is hidden by default; an explicit empty array means the user
+  chose All columns. Missing keys are shown, so newly added columns default
+  visible.
 - `navaid.simUrl` — simulator bridge base URL.
 - `navaid.simOn` — `'0'` / `'1'` for simulator auto-reconnect state.
 - `navaid.simFollow` — `'0'` / `'1'` for simulator-follow mode.
