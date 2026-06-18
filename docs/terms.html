@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>NavAid — Terms of Service</title>
   <link rel="canonical" href="https://navaid.supino.org/terms.html">
+  <!-- Resolve language the same way index.html does: ?lang wins, then the
+       stored navaid.lang (shared per-origin with the app), else English.
+       Runs before <body> so there's no flash of the wrong language. -->
+  <script>
+    (function () {
+      var p = new URLSearchParams(location.search).get('lang');
+      var stored = '';
+      try { stored = localStorage.getItem('navaid.lang') || ''; } catch (e) {}
+      var lang = (p === 'en' || p === 'he') ? p : (stored === 'he' ? 'he' : 'en');
+      try { localStorage.setItem('navaid.lang', lang); } catch (e) {}
+      var h = document.documentElement;
+      h.lang = lang; h.dir = lang === 'he' ? 'rtl' : 'ltr';
+      document.title = lang === 'he' ? 'NavAid — תנאי שימוש' : 'NavAid — Terms of Service';
+    }());
+  </script>
   <style>
     body { max-width: 760px; margin: 2rem auto; padding: 0 1rem;
            font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: #1f252c; }
@@ -12,55 +27,120 @@
     a { color: #1d6fe0; }
     .muted { color: #647184; font-size: .9rem; }
     .warn { background: #fff4f4; border: 1px solid #f0c0c0; border-radius: 6px; padding: .75rem 1rem; }
+    /* Show only the active language's block (html[lang] is set above). */
+    html[lang="en"] [data-lang="he"], html[lang="he"] [data-lang="en"] { display: none; }
+    .lang-switch { font-size: .9rem; margin-bottom: 1.5rem; }
+    .lang-switch a { text-decoration: none; }
+    html[lang="en"] .lang-switch a[hreflang="en"],
+    html[lang="he"] .lang-switch a[hreflang="he"] { font-weight: 700; color: #1f252c; }
+    /* Keep Latin abbreviations/URLs/email LTR inside Hebrew prose. */
+    [data-lang="he"] a[href^="mailto"], [data-lang="he"] a[href^="http"] {
+      unicode-bidi: isolate; direction: ltr; }
   </style>
 </head>
 <body>
-  <h1>NavAid — Terms of Service</h1>
-  <p class="muted">Last updated: 8 June 2026</p>
+  <nav class="lang-switch" aria-label="Language / שפה">
+    <a href="?lang=en" hreflang="en">English</a> ·
+    <a href="?lang=he" hreflang="he">עברית</a>
+  </nav>
 
-  <p><strong>NavAid</strong> is a free, open-source CVFR flight-route planning tool that
-  runs entirely in your web browser. By using NavAid you agree to these terms.</p>
+  <!-- English -->
+  <div data-lang="en">
+    <h1>NavAid — Terms of Service</h1>
+    <p class="muted">Last updated: 8 June 2026</p>
 
-  <h2 class="warn">Not for operational navigation</h2>
-  <p class="warn"><strong>NavAid is a planning aid only. It is NOT certified for
-  navigation and must not be used as a primary means of navigation or for in-flight
-  decision-making.</strong> Always plan and fly using current official aeronautical
-  charts, publications (AIP), NOTAMs and weather from authoritative sources, and comply
-  with all applicable aviation regulations and ATC instructions. The pilot in command is
-  solely responsible for the safe conduct of every flight.</p>
+    <p><strong>NavAid</strong> is a free, open-source CVFR flight-route planning tool that
+    runs entirely in your web browser. By using NavAid you agree to these terms.</p>
 
-  <h2>No warranty</h2>
-  <p>NavAid is provided "as is", without warranty of any kind, express or implied,
-  including but not limited to merchantability, fitness for a particular purpose, and
-  accuracy or completeness of data. Aeronautical data, charts and calculations may be
-  outdated, incomplete or incorrect.</p>
+    <h2 class="warn">Not for operational navigation</h2>
+    <p class="warn"><strong>NavAid is a planning aid only. It is NOT certified for
+    navigation and must not be used as a primary means of navigation or for in-flight
+    decision-making.</strong> Always plan and fly using current official aeronautical
+    charts, publications (AIP), NOTAMs and weather from authoritative sources, and comply
+    with all applicable aviation regulations and ATC instructions. The pilot in command is
+    solely responsible for the safe conduct of every flight.</p>
 
-  <h2>Limitation of liability</h2>
-  <p>To the maximum extent permitted by law, the author shall not be liable for any
-  direct, indirect, incidental or consequential damages arising from the use of, or
-  inability to use, NavAid.</p>
+    <h2>No warranty</h2>
+    <p>NavAid is provided "as is", without warranty of any kind, express or implied,
+    including but not limited to merchantability, fitness for a particular purpose, and
+    accuracy or completeness of data. Aeronautical data, charts and calculations may be
+    outdated, incomplete or incorrect.</p>
 
-  <h2>Your data</h2>
-  <p>Your routes and settings are stored locally in your browser, and — only if you
-  choose to connect Google Drive — in your own Google Drive's hidden app folder. See the
-  <a href="privacy.html">Privacy Policy</a> for details. You are responsible for keeping
-  your own backups of any data that matters to you.</p>
+    <h2>Limitation of liability</h2>
+    <p>To the maximum extent permitted by law, the author shall not be liable for any
+    direct, indirect, incidental or consequential damages arising from the use of, or
+    inability to use, NavAid.</p>
 
-  <h2>Third-party data</h2>
-  <p>Map tiles and charts are provided by third parties (flight-maps.com, Esri,
-  OpenStreetMap, CAAI / Israeli Ministry of Transport) and remain subject to their own
-  terms and copyrights. NavAid is not affiliated with these providers.</p>
+    <h2>Your data</h2>
+    <p>Your routes and settings are stored locally in your browser, and — only if you
+    choose to connect Google Drive — in your own Google Drive's hidden app folder. See the
+    <a href="privacy.html">Privacy Policy</a> for details. You are responsible for keeping
+    your own backups of any data that matters to you.</p>
 
-  <h2>Licence</h2>
-  <p>NavAid is open-source software; the source is available at
-  <a href="https://github.com/msupino/NavigationApp">github.com/msupino/NavigationApp</a>
-  under its published licence.</p>
+    <h2>Third-party data</h2>
+    <p>Map tiles and charts are provided by third parties (flight-maps.com, Esri,
+    OpenStreetMap, CAAI / Israeli Ministry of Transport) and remain subject to their own
+    terms and copyrights. NavAid is not affiliated with these providers.</p>
 
-  <h2>Changes</h2>
-  <p>These terms may be updated; the "Last updated" date above reflects the latest
-  revision. Continued use after changes constitutes acceptance.</p>
+    <h2>Licence</h2>
+    <p>NavAid is open-source software; the source is available at
+    <a href="https://github.com/msupino/NavigationApp">github.com/msupino/NavigationApp</a>
+    under its published licence.</p>
 
-  <h2>Contact</h2>
-  <p><a href="mailto:marco@supino.org">marco@supino.org</a></p>
+    <h2>Changes</h2>
+    <p>These terms may be updated; the "Last updated" date above reflects the latest
+    revision. Continued use after changes constitutes acceptance.</p>
+
+    <h2>Contact</h2>
+    <p><a href="mailto:marco@supino.org">marco@supino.org</a></p>
+  </div>
+
+  <!-- Hebrew -->
+  <div data-lang="he" dir="rtl">
+    <h1>NavAid — תנאי שימוש</h1>
+    <p class="muted">עודכן לאחרונה: 8 ביוני 2026</p>
+
+    <p><strong>NavAid</strong> הוא כלי חופשי ובקוד פתוח לתכנון מסלולי טיסה CVFR, הפועל
+    כולו בדפדפן שלך. השימוש ב-NavAid מהווה הסכמה לתנאים אלה.</p>
+
+    <h2 class="warn">לא לניווט מבצעי</h2>
+    <p class="warn"><strong>NavAid הוא כלי תכנון בלבד. הוא אינו מאושר לניווט, ואין
+    להשתמש בו כאמצעי ניווט עיקרי או לקבלת החלטות תוך כדי טיסה.</strong> תכנן וטוס תמיד
+    באמצעות תרשימים אווירונאוטיים רשמיים ועדכניים, פרסומים (AIP), הודעות NOTAM ומזג אוויר
+    ממקורות מוסמכים, ופעל בהתאם לכל תקנות התעופה והוראות ה-ATC. הטייס המפקד (PIC) אחראי
+    באופן בלעדי לניהולה הבטוח של כל טיסה.</p>
+
+    <h2>ללא אחריות</h2>
+    <p>NavAid מסופק "כמות שהוא" (as is), ללא אחריות מכל סוג, מפורשת או משתמעת, לרבות אך
+    לא רק סחירות, התאמה למטרה מסוימת, ודיוק או שלמות הנתונים. נתונים אווירונאוטיים,
+    תרשימים וחישובים עשויים להיות לא מעודכנים, חלקיים או שגויים.</p>
+
+    <h2>הגבלת אחריות</h2>
+    <p>במידה המרבית המותרת בחוק, המחבר לא יישא באחריות לכל נזק ישיר, עקיף, מקרי או תוצאתי
+    הנובע מהשימוש ב-NavAid או מאי-היכולת להשתמש בו.</p>
+
+    <h2>הנתונים שלך</h2>
+    <p>המסלולים וההגדרות שלך נשמרים מקומית בדפדפן, ו — רק אם תבחר לחבר את Google Drive —
+    בתיקיית האפליקציה המוסתרת ב-Google Drive שלך. לפרטים, ראה את
+    <a href="privacy.html">מדיניות הפרטיות</a>. אתה אחראי לשמירת גיבויים משלך לכל נתון
+    החשוב לך.</p>
+
+    <h2>נתוני צד שלישי</h2>
+    <p>אריחי המפה והתרשימים מסופקים על ידי צדדים שלישיים (flight-maps.com, ‏Esri,
+    ‏OpenStreetMap, ‏רשות התעופה האזרחית / משרד התחבורה) ונותרים כפופים לתנאים ולזכויות
+    היוצרים שלהם. ‏NavAid אינה קשורה לספקים אלה.</p>
+
+    <h2>רישיון</h2>
+    <p>NavAid היא תוכנה בקוד פתוח; הקוד זמין בכתובת
+    <a href="https://github.com/msupino/NavigationApp">github.com/msupino/NavigationApp</a>
+    תחת הרישיון שפורסם.</p>
+
+    <h2>שינויים</h2>
+    <p>תנאים אלה עשויים להתעדכן; תאריך "עודכן לאחרונה" שלמעלה משקף את הגרסה האחרונה.
+    המשך השימוש לאחר שינויים מהווה הסכמה.</p>
+
+    <h2>יצירת קשר</h2>
+    <p><a href="mailto:marco@supino.org">marco@supino.org</a></p>
+  </div>
 </body>
 </html>
