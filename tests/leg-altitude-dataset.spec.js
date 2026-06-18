@@ -204,6 +204,16 @@ test.describe('leg-altitude.json scaffold', () => {
       outboundAltitude: 1200,
       source: 'route template correction',
     });
+    expect(byName.get('SFAIM-HTZUK')).toMatchObject({
+      inboundAltitude: 800,
+      outboundAltitude: 1600,
+      source: 'route template correction',
+    });
+    expect(byName.get('SFAIM-RIDNG')).toMatchObject({
+      inboundAltitude: 800,
+      outboundAltitude: 1600,
+      source: 'route template correction',
+    });
     expect(byName.get('MRISN-NTAIM')).toMatchObject({
       inboundAltitude: 1200,
       outboundAltitude: 1200,

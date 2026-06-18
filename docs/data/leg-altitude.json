@@ -89,7 +89,7 @@
       "distanceNm": 3.3,
       "inboundAltitude": 5000,
       "outboundAltitude": 4500,
-      "status": "candidate",
+      "status": "reviewed",
       "detection": {
         "greenScore": 1,
         "maxGap": 0,
@@ -102,7 +102,7 @@
       "distanceNm": 2.9,
       "inboundAltitude": 4500,
       "outboundAltitude": 5000,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "maintainer correction"
     },
     {
@@ -2266,7 +2266,7 @@
       "distanceNm": 3.5,
       "inboundAltitude": 1500,
       "outboundAltitude": 2000,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "armyAirway": true,
       "onAtcApproval": true
@@ -2307,7 +2307,7 @@
       "distanceNm": 4.2,
       "inboundAltitude": 1200,
       "outboundAltitude": null,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "oneWay": true,
       "armyAirway": true
@@ -2318,7 +2318,7 @@
       "distanceNm": 3.4,
       "inboundAltitude": 1600,
       "outboundAltitude": 2000,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "armyAirway": true,
       "onAtcApproval": true
@@ -2378,7 +2378,7 @@
       "distanceNm": 9.7,
       "inboundAltitude": 2500,
       "outboundAltitude": 3000,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "onAtcApproval": true
     },
@@ -2388,7 +2388,7 @@
       "distanceNm": 2.4,
       "inboundAltitude": 2000,
       "outboundAltitude": 1500,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "onAtcApproval": true
     },
@@ -2409,7 +2409,7 @@
       "distanceNm": 5.7,
       "inboundAltitude": 1500,
       "outboundAltitude": 2000,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "onAtcApproval": true
     },
@@ -2619,7 +2619,7 @@
       "distanceNm": 5,
       "inboundAltitude": 2000,
       "outboundAltitude": 1600,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "armyAirway": true,
       "onAtcApproval": true
@@ -2630,7 +2630,7 @@
       "distanceNm": 7,
       "inboundAltitude": 2000,
       "outboundAltitude": 1500,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "armyAirway": true,
       "onAtcApproval": true
@@ -2692,7 +2692,7 @@
       "distanceNm": 5,
       "inboundAltitude": 3000,
       "outboundAltitude": 2500,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency"
     },
     {
@@ -2710,7 +2710,7 @@
       "distanceNm": 4.9,
       "inboundAltitude": 2000,
       "outboundAltitude": 1500,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "route template correction"
     },
     {
@@ -2728,6 +2728,24 @@
       "distanceNm": 4.6,
       "inboundAltitude": 800,
       "outboundAltitude": 1200,
+      "status": "candidate",
+      "source": "route template correction"
+    },
+    {
+      "from": "SFAIM",
+      "to": "RIDNG",
+      "distanceNm": 6.4,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1600,
+      "status": "candidate",
+      "source": "route template correction"
+    },
+    {
+      "from": "SFAIM",
+      "to": "HTZUK",
+      "distanceNm": 4.2,
+      "inboundAltitude": 800,
+      "outboundAltitude": 1600,
       "status": "candidate",
       "source": "route template correction"
     }
@@ -6161,6 +6179,34 @@
       "to": "TYONA",
       "altitude": 1200,
       "segment": "TYONA-NTAIM",
+      "field": "outboundAltitude"
+    },
+    {
+      "from": "SFAIM",
+      "to": "RIDNG",
+      "altitude": 800,
+      "segment": "SFAIM-RIDNG",
+      "field": "inboundAltitude"
+    },
+    {
+      "from": "RIDNG",
+      "to": "SFAIM",
+      "altitude": 1600,
+      "segment": "SFAIM-RIDNG",
+      "field": "outboundAltitude"
+    },
+    {
+      "from": "SFAIM",
+      "to": "HTZUK",
+      "altitude": 800,
+      "segment": "SFAIM-HTZUK",
+      "field": "inboundAltitude"
+    },
+    {
+      "from": "HTZUK",
+      "to": "SFAIM",
+      "altitude": 1600,
+      "segment": "SFAIM-HTZUK",
       "field": "outboundAltitude"
     }
   ]
