@@ -182,3 +182,31 @@ test('GPS error resets recording state and button label', async ({ page }) => {
   expect(await page.evaluate(() => gpsRecording)).toBe(false);
   await expect(btn).toContainText('Record');
 });
+
+test('Show my location shows own-ship without recording or saving a track', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__liveCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
+    navigator.geolocation.clearWatch = () => {};
+    try { localStorage.removeItem('navaid.routes'); localStorage.setItem('navaid.sec.view', '1'); } catch (e) {}
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof startLiveLocation === 'function');
+  const btn = page.locator('#gps-live');
+  await expect(btn).toBeVisible();
+  await btn.click();
+  const st = await page.evaluate(() => {
+    const f = (a, b) => window.__liveCb({ coords: { latitude: a, longitude: b, accuracy: 8, heading: 45, altitude: null }, timestamp: Date.now() });
+    f(32.0, 34.8); f(32.1, 34.9);
+    draw();
+    return { live: gpsLiveOn, recording: gpsRecording, track: gpsTrack.length, own: gpsOwn && gpsOwn.hdg };
+  });
+  expect(st.live).toBe(true);
+  expect(st.recording).toBe(false);   // NOT recording
+  expect(st.track).toBe(0);           // NOT collecting a track
+  expect(st.own).toBe(45);            // own-ship updated
+  expect(await page.evaluate(() => localStorage.getItem('navaid.routes'))).toBeNull(); // nothing saved
+  await btn.click();
+  expect(await page.evaluate(() => gpsLiveOn)).toBe(false);
+  expect(await page.evaluate(() => gpsOwn)).toBeNull(); // own-ship cleared (no recording active)
+});

@@ -1528,6 +1528,19 @@ if (gpsBtn) {
     }
   });
 }
+const liveBtn = document.getElementById('gps-live');
+if (liveBtn) {
+  if (!navigator.geolocation) { liveBtn.disabled = true; }
+  liveBtn.addEventListener('click', () => {
+    if (gpsLiveOn) {
+      stopLiveLocation();
+      liveBtn.textContent = S.tbGpsLive; liveBtn.setAttribute('aria-pressed', 'false');
+    } else {
+      startLiveLocation();
+      if (gpsLiveOn) { liveBtn.textContent = S.tbGpsLiveStop; liveBtn.setAttribute('aria-pressed', 'true'); }
+    }
+  });
+}
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
 const CUMTIME_KEY  = 'navaid.showCumTime';

@@ -54,6 +54,40 @@ function _gpsMetres(a, b) {
   return 2 * R * Math.asin(Math.sqrt(Math.min(1, h)));
 }
 
+var gpsLiveOn = false;
+var gpsLiveWatchId = null;
+var _gpsLivePrev = null;
+
+function onLivePosition(pos) {
+  if (!gpsLiveOn || !pos || !pos.coords) return;
+  const c = pos.coords;
+  if (c.accuracy != null && c.accuracy > GPS_MAX_ACC_M) return;
+  const p = { lat: r5(c.latitude), lng: r5(c.longitude) };
+  const hdg = (c.heading != null && !isNaN(c.heading)) ? c.heading
+            : (_gpsLivePrev ? geo(_gpsLivePrev, p).brg : 0);
+  _gpsLivePrev = p;
+  gpsOwn = { lat: p.lat, lng: p.lng, hdg };
+  scheduleDraw();
+  if (gpsFollow && typeof map !== 'undefined') map.setView([p.lat, p.lng], map.getZoom());
+}
+
+function startLiveLocation() {
+  if (gpsLiveOn) return;
+  if (!navigator.geolocation) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
+  gpsLiveOn = true; _gpsLivePrev = null;
+  gpsLiveWatchId = navigator.geolocation.watchPosition(onLivePosition, onGpsError, { enableHighAccuracy: true });
+  scheduleDraw();
+}
+
+function stopLiveLocation() {
+  if (gpsLiveWatchId != null && navigator.geolocation) navigator.geolocation.clearWatch(gpsLiveWatchId);
+  gpsLiveWatchId = null;
+  gpsLiveOn = false;
+  _gpsLivePrev = null;
+  if (!gpsRecording) gpsOwn = null;   // keep own-ship if a recording is still running
+  scheduleDraw();
+}
+
 var gpsFollow = true;  // recenter on own-ship while recording
 var gpsStartT = 0;
 
@@ -90,8 +124,9 @@ function onGpsPosition(pos) {
 
 function onGpsError(err) {
   stopGpsRecording();
-  const btn = document.getElementById('gps-record');
-  if (btn) btn.textContent = S.tbGpsRecord;
+  stopLiveLocation();
+  const rb = document.getElementById('gps-record'); if (rb) rb.textContent = S.tbGpsRecord;
+  const lb = document.getElementById('gps-live'); if (lb) { lb.textContent = S.tbGpsLive; lb.setAttribute('aria-pressed', 'false'); }
   alert((S.gpsError || 'GPS error: ') + (err && err.message ? err.message : ''));
 }
 
@@ -167,23 +202,15 @@ function stopGpsRecordingAndSave() {
 
 // Breadcrumb of the in-progress recording, drawn on the overlay.
 function drawGpsTrack() {
-  if (!gpsRecording || gpsTrack.length < 1) return;
-  if (gpsTrack.length > 1) {
-    octx.save();
-    octx.beginPath();
-    for (let i = 0; i < gpsTrack.length; i++) {
-      const s = proj(gpsTrack[i]);
-      if (i === 0) octx.moveTo(s.x, s.y); else octx.lineTo(s.x, s.y);
-    }
-    octx.lineWidth = tune('gpsBreadcrumbWidthPx');
-    octx.strokeStyle = tune('gpsBreadcrumbColor');
-    octx.lineCap = 'round';
-    octx.lineJoin = 'round';
-    octx.stroke();
-    octx.restore();
+  if (!gpsRecording && !gpsLiveOn) return;
+  if (gpsRecording && gpsTrack.length > 1) {
+    octx.save(); octx.beginPath();
+    for (let i = 0; i < gpsTrack.length; i++) { const s = proj(gpsTrack[i]); if (i === 0) octx.moveTo(s.x, s.y); else octx.lineTo(s.x, s.y); }
+    octx.lineWidth = tune('gpsBreadcrumbWidthPx'); octx.strokeStyle = tune('gpsBreadcrumbColor');
+    octx.lineCap = 'round'; octx.lineJoin = 'round'; octx.stroke(); octx.restore();
     if (typeof window !== 'undefined') window.__gpsBreadcrumbDrawn = (window.__gpsBreadcrumbDrawn || 0) + 1;
   }
-  if (gpsOwn) drawOwnShip(gpsOwn, gpsOwn.hdg);
+  if (gpsOwn && (gpsRecording || gpsLiveOn)) drawOwnShip(gpsOwn, gpsOwn.hdg);
 }
 
 // Stop watching without saving. (Save handled in a later task.)

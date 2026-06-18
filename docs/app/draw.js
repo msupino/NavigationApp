@@ -310,7 +310,7 @@ function draw() {
   drawNotes();
   if (window.showProfile) drawProfileMarkers();   // TOC/TOD markers (#672)
   if (typeof drawGpsTrack === 'function') drawGpsTrack();   // GPS breadcrumb + own-ship while recording
-  if (!gpsRecording && simOn && simAircraft) drawOwnShip(simAircraft, simAircraft.hdg);  // sim own-ship
+  if (!gpsRecording && !gpsLiveOn && simOn && simAircraft) drawOwnShip(simAircraft, simAircraft.hdg);  // sim own-ship
   drawInfo();
   drawPageFrame();
   drawPlanCard();          // flight-plan card placed for PNG export (#378)
