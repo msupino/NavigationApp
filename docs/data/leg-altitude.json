@@ -1572,15 +1572,6 @@
       "source": "cvfr-map airway adjacency"
     },
     {
-      "from": "ALMOG",
-      "to": "DUMIM",
-      "distanceNm": 6.8,
-      "inboundAltitude": 4000,
-      "outboundAltitude": 3500,
-      "status": "candidate",
-      "source": "cvfr-map airway adjacency"
-    },
-    {
       "from": "ARGMN",
       "to": "TIRAT",
       "distanceNm": 15.1,
@@ -4604,20 +4595,6 @@
       "to": "ALLON",
       "altitude": 4000,
       "segment": "ALLON-SHAHR",
-      "field": "outboundAltitude"
-    },
-    {
-      "from": "ALMOG",
-      "to": "DUMIM",
-      "altitude": 4000,
-      "segment": "ALMOG-DUMIM",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "DUMIM",
-      "to": "ALMOG",
-      "altitude": 3500,
-      "segment": "ALMOG-DUMIM",
       "field": "outboundAltitude"
     },
     {

@@ -1560,17 +1560,6 @@
       "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
     },
     {
-      "segment": "ALMOG-DUMIM",
-      "from": "ALMOG",
-      "to": "DUMIM",
-      "inboundAltitude": 4000,
-      "outboundAltitude": 3500,
-      "status": "candidate",
-      "distanceNm": 6.8,
-      "crop": "/tmp/navaid-altitude-extract/ALMOG_DUMIM.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
-    },
-    {
       "segment": "ARGMN-TIRAT",
       "from": "ARGMN",
       "to": "TIRAT",
