@@ -932,7 +932,8 @@ body.theme-light #aircraft-custom input {
 
 #inspector {
   position: absolute;
-  z-index: 1100;
+  /* Stay above desktop dropdown panels restored from old open-section state. */
+  z-index: 2320;
   top: var(--navaid-inspector-default-top, 84px);
   right: 12px;
   width: 280px;
@@ -1565,7 +1566,7 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
 .modal-back {
   position: fixed;
   inset: 0;
-  z-index: 2000;
+  z-index: 2400;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1574,6 +1575,7 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
 /* Flight Plan variant: transparent backdrop that doesn't capture events,
    so the map underneath stays draggable / pannable while the plan is open. */
 .modal-back.flight-plan {
+  z-index: 2000;
   background: transparent;
   pointer-events: none;
 }
@@ -1585,6 +1587,7 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
 /* Export modal while placing the flight-plan card: clear the backdrop so the
    map (and the draggable card) stays reachable underneath the dialog. */
 .modal-back.export-place {
+  z-index: 2000;
   background: transparent;
   pointer-events: none;
 }

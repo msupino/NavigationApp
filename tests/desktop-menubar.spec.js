@@ -11,6 +11,9 @@ async function bootDesktop(page, opts = {}) {
       sessionStorage.clear();
       if (options.collapsed) localStorage.setItem('navaid.toolbarCollapsed', '1');
       if (options.pos) localStorage.setItem('navaid.toolbarPos', JSON.stringify(options.pos));
+      for (const sec of options.openSections || []) {
+        localStorage.setItem('navaid.sec.' + sec, '1');
+      }
     } catch (e) {}
   }, opts);
   await page.goto('?lang=en');
@@ -62,6 +65,37 @@ test.describe('Desktop menubar layout', () => {
     await expect(build).toHaveClass(/open/);
     await page.keyboard.press('Escape');
     await expect(build).not.toHaveClass(/open/);
+  });
+
+  test('keeps the inspector clickable above restored multi-open menus', async ({ page }) => {
+    await bootDesktop(page, {
+      openSections: ['build', 'view', 'display', 'charts', 'export', 'sim', 'print'],
+    });
+
+    await expect(page.locator('#toolbar')).toHaveClass(/multi-open/);
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.0, lng: 34.8, name: 'A' },
+        { lat: 32.2, lng: 35.0, name: 'B' },
+      ];
+      syncLegs();
+      state.selected = { type: 'wp', index: 0 };
+      showInspector();
+      draw();
+    });
+
+    const close = page.locator('#insp-close');
+    await expect(close).toBeVisible();
+    const box = await close.boundingBox();
+    expect(box).not.toBeNull();
+    const hitId = await page.evaluate(({ x, y }) => {
+      const el = document.elementFromPoint(x, y);
+      return el?.id || el?.closest('#inspector')?.id || '';
+    }, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+    expect(hitId).toBe('insp-close');
+
+    await close.click();
+    expect(await page.evaluate(() => state.selected)).toBeNull();
   });
 
   test('print menu groups page controls and shows orientation text', async ({ page }) => {
