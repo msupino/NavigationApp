@@ -1827,12 +1827,15 @@ function showFlightPlan() {
   const fpSelectableKeys = new Set(fpSelectableColumns.map(col => col.key));
   const fpHiddenColumns = new Set();
   const fpColumnsKey = 'navaid.fpColumns';
+  const fpDefaultHiddenColumns = ['dist'];
+  let savedFpColumns = fpDefaultHiddenColumns;
   try {
-    const saved = JSON.parse(localStorage.getItem(fpColumnsKey) || '[]');
-    if (Array.isArray(saved)) {
-      saved.forEach(key => { if (fpSelectableKeys.has(key)) fpHiddenColumns.add(key); });
-    }
+    const rawColumns = localStorage.getItem(fpColumnsKey);
+    savedFpColumns = rawColumns === null ? fpDefaultHiddenColumns : JSON.parse(rawColumns);
   } catch (e) { /* ignore corrupt prefs */ }
+  if (Array.isArray(savedFpColumns)) {
+    savedFpColumns.forEach(key => { if (fpSelectableKeys.has(key)) fpHiddenColumns.add(key); });
+  }
   if (fpHiddenColumns.size >= fpSelectableColumns.length) fpHiddenColumns.clear();
   const fpVisibleColumns = new Set(fpSelectableColumns
     .filter(col => !fpHiddenColumns.has(col.key))
@@ -1843,8 +1846,7 @@ function showFlightPlan() {
       .filter(col => !fpVisibleColumns.has(col.key))
       .map(col => col.key);
     try {
-      if (hidden.length) localStorage.setItem(fpColumnsKey, JSON.stringify(hidden));
-      else localStorage.removeItem(fpColumnsKey);
+      localStorage.setItem(fpColumnsKey, JSON.stringify(hidden));
     } catch (e) { /* ignore storage errors */ }
   }
   function markFpColumn(el, key) {

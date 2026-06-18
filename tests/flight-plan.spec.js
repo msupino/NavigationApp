@@ -108,19 +108,23 @@ test.describe('Flight plan', () => {
 
     const fwdTable = modal.locator('.fp-scroll > .flight-table').first();
     const retTable = modal.locator('.fp-scroll > .flight-table').nth(1);
+    await expect(fwdTable.locator('thead th.fp-col-dist')).toBeHidden();
+    await expect(modal.locator('.fp-columns input[data-fp-col="dist"]')).not.toBeChecked();
+
     await expect(fwdTable.locator('thead th.fp-col-fuel')).toBeHidden();
     await expect(fwdTable.locator('thead th.fp-col-cumFuel')).toBeHidden();
     await expect(retTable.locator('thead th.fp-col-fuel')).toBeHidden();
 
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.fpColumns') || '[]'));
-    expect(saved).toEqual(expect.arrayContaining(['fuel', 'cumFuel']));
+    expect(saved).toEqual(expect.arrayContaining(['dist', 'fuel', 'cumFuel']));
 
     const downloadPromise = page.waitForEvent('download');
     await modal.locator('.modal-btns button', { hasText: 'CSV' }).click();
     const csv = await downloadText(await downloadPromise);
+    expect(csv).not.toContain('Dist (NM)');
     expect(csv).not.toContain('Fuel (gal)');
     expect(csv).not.toContain('Cum. fuel');
-    expect(csv).toContain('Flight plan\r\n#,From,To,Hdg,Dist (NM),Speed (kt),Alt (ft),Time,Cum. time');
+    expect(csv).toContain('Flight plan\r\n#,From,To,Hdg,Speed (kt),Alt (ft),Time,Cum. time');
 
     await modal.locator('.modal-close-x').click();
     await page.locator('#plan').click();
@@ -131,9 +135,10 @@ test.describe('Flight plan', () => {
 
     await modal.locator('.fp-columns summary').click();
     await modal.locator('.fp-columns-all').click();
+    await expect(modal.locator('.flight-table').first().locator('thead th.fp-col-dist')).toBeVisible();
     await expect(modal.locator('.flight-table').first().locator('thead th.fp-col-fuel')).toBeVisible();
-    const cleared = await page.evaluate(() => localStorage.getItem('navaid.fpColumns'));
-    expect(cleared).toBeNull();
+    const allColumns = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.fpColumns') || 'null'));
+    expect(allColumns).toEqual([]);
   });
 
   test('both-ways flight plan — forward + return tables', async ({ page }) => {
