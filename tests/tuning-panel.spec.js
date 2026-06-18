@@ -298,7 +298,7 @@ test.describe('Hidden tuning panel', () => {
 
         simOn = true;
         simAircraft = { lat: 32.12, lng: 34.82, hdg: 90 };
-        drawSimAircraft();
+        drawOwnShip(simAircraft, simAircraft.hdg);
 
         navWP = [{ lat: 32.12, lng: 34.82, name: 'TEST' }];
         commChangeMap = { TEST: { commChange: true } };
