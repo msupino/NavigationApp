@@ -2418,17 +2418,6 @@
       "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
     },
     {
-      "segment": "BEZRA-ZASHD",
-      "from": "BEZRA",
-      "to": "ZASHD",
-      "inboundAltitude": 800,
-      "outboundAltitude": 1200,
-      "status": "candidate",
-      "distanceNm": 6,
-      "crop": "/tmp/navaid-altitude-extract/BEZRA_ZASHD.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
-    },
-    {
       "segment": "BEZRA-ZDAFA",
       "from": "BEZRA",
       "to": "ZDAFA",

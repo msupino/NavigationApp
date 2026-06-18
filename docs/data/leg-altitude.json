@@ -2323,16 +2323,6 @@
     },
     {
       "from": "BEZRA",
-      "to": "ZASHD",
-      "distanceNm": 6,
-      "inboundAltitude": 800,
-      "outboundAltitude": 1200,
-      "status": "candidate",
-      "source": "cvfr-map airway adjacency",
-      "armyAirway": true
-    },
-    {
-      "from": "BEZRA",
       "to": "ZDAFA",
       "distanceNm": 3.4,
       "inboundAltitude": 1600,
@@ -5648,20 +5638,6 @@
       "altitude": 1200,
       "segment": "LLHS-ZASHD",
       "field": "inboundAltitude"
-    },
-    {
-      "from": "BEZRA",
-      "to": "ZASHD",
-      "altitude": 800,
-      "segment": "BEZRA-ZASHD",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "ZASHD",
-      "to": "BEZRA",
-      "altitude": 1200,
-      "segment": "BEZRA-ZASHD",
-      "field": "outboundAltitude"
     },
     {
       "from": "BEZRA",
