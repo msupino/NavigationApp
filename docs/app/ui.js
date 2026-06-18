@@ -1467,9 +1467,12 @@ document.getElementById('route-library').onclick = showRouteLibraryModal;
     insp.style.top = Math.max(0, Math.min(maxY, y)) + 'px';
     insp.style.right = 'auto';
   }
+  const isNarrow = () => !!(window.matchMedia && window.matchMedia('(max-width: 680px)').matches);
   try {
+    // On phones the inspector is a fixed bottom sheet (see the mobile block in
+    // style.css); a saved drag position would override that, so ignore it there.
     const p = JSON.parse(localStorage.getItem(INSP_POS_KEY) || 'null');
-    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyInspPos(p.x, p.y);
+    if (!isNarrow() && p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyInspPos(p.x, p.y);
   } catch (e) { /* */ }
   header.addEventListener('mousedown', function (e) {
     if (e.target.closest('#insp-close')) return;               // close button stays clickable
@@ -2389,7 +2392,10 @@ document.getElementById('insp-close').onclick = () => {
     }
   });
   const sc = localStorage.getItem(COLLAPSED_KEY);
-  setCollapsed(sc === null ? false : sc === '1');
+  // Default collapsed on phones — an expanded toolbar column covers ~half the
+  // map on a narrow screen. Desktop defaults expanded. A saved choice wins.
+  const narrowDefault = !!(window.matchMedia && window.matchMedia('(max-width: 680px)').matches);
+  setCollapsed(sc === null ? narrowDefault : sc === '1');
 
   window.addEventListener('resize', () => {
     if (bar.style.left) setPos(parseFloat(bar.style.left), parseFloat(bar.style.top));

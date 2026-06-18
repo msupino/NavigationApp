@@ -1244,10 +1244,23 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   #toolbar button { padding: 9px 12px; font-size: 14px; }
   #toolbar .navtoggle { font-size: 14px; }
   #toolbar .navtoggle input { width: 18px; height: 18px; }
-  #inspector { width: 300px; }
+  /* Inspector as a bottom sheet: full width, capped height, so the map stays
+     visible above it instead of a tall side panel blanketing the chart. */
+  #inspector {
+    left: 8px; right: 8px; width: auto;
+    top: auto; bottom: 8px;
+    max-height: 45dvh;
+  }
   .row input[type="number"],
   .row input[type="text"] { padding: 8px 6px; font-size: 15px; }
   #info { font-size: 12px; }
+  /* Flight-plan table is wider than a phone — scroll sideways instead of
+     truncating columns. */
+  .fp-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  /* While a modal is open, the floating map legend and toolbar would overlap
+     it on a small screen — hide them until it closes. */
+  body:has(.modal-back) .map-legend,
+  body:has(.modal-back) #toolbar { display: none; }
 }
 
 /* Orientation picker modal */
