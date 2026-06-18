@@ -3073,17 +3073,16 @@ function watchBuildUpdateCheckTriggers() {
     if (!document.hidden) request('visible');
   });
 
-  const toolbar = document.getElementById('toolbar');
-  if (toolbar) {
-    toolbar.addEventListener('click', e => {
-      if (e.target && e.target.closest('button, .tb-section-head, #toolbar-toggle')) {
-        request('toolbar');
-      }
-    });
-    toolbar.addEventListener('change', e => {
-      if (e.target && e.target.closest('select, input')) request('toolbar-change');
-    });
-  }
+  document.addEventListener('click', e => {
+    const target = e.target && e.target.closest ? e.target : null;
+    if (!target || !target.closest('#toolbar')) return;
+    if (target.closest('button, .tb-section-head, #toolbar-toggle')) request('toolbar');
+  });
+  document.addEventListener('change', e => {
+    const target = e.target && e.target.closest ? e.target : null;
+    if (!target || !target.closest('#toolbar')) return;
+    if (target.closest('select, input')) request('toolbar-change');
+  });
 
   window.setInterval(() => {
     if (!document.hidden) request('interval');
