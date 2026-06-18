@@ -45,7 +45,7 @@ function _gpsMetres(a, b) {
   const R = 6371000, rad = x => x * Math.PI / 180;
   const dLa = rad(b.lat - a.lat), dLo = rad(b.lng - a.lng);
   const h = Math.sin(dLa / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLo / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
+  return 2 * R * Math.asin(Math.sqrt(Math.min(1, h)));
 }
 
 var gpsFollow = true;  // recenter on own-ship while recording
