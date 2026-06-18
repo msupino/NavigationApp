@@ -39,3 +39,74 @@ function simplifyTrack(points, eps) {
   }
   return [a, b];
 }
+
+// Great-circle distance in metres between two {lat,lng}.
+function _gpsMetres(a, b) {
+  const R = 6371000, rad = x => x * Math.PI / 180;
+  const dLa = rad(b.lat - a.lat), dLo = rad(b.lng - a.lng);
+  const h = Math.sin(dLa / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLo / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+var gpsFollow = true;  // recenter on own-ship while recording
+var gpsStartT = 0;
+
+// Live readout next to the toolbar button (points · elapsed). No-op if absent.
+function gpsUpdateReadout() {
+  const el = document.getElementById('gps-readout');
+  if (!el) return;
+  if (!gpsRecording) { el.textContent = ''; return; }
+  const secs = gpsStartT ? Math.round((Date.now() - gpsStartT) / 1000) : 0;
+  const mm = String(Math.floor(secs / 60)).padStart(2, '0');
+  const ss = String(secs % 60).padStart(2, '0');
+  el.textContent = gpsTrack.length + ' pts · ' + mm + ':' + ss;
+}
+
+function onGpsPosition(pos) {
+  if (!gpsRecording || !pos || !pos.coords) return;
+  const c = pos.coords;
+  if (c.accuracy != null && c.accuracy > GPS_MAX_ACC_M) return;       // too imprecise
+  const pt = { lat: r5(c.latitude), lng: r5(c.longitude), t: pos.timestamp || Date.now(),
+               alt: c.altitude != null ? c.altitude : null,
+               acc: c.accuracy != null ? c.accuracy : null };
+  const prev = gpsTrack[gpsTrack.length - 1];
+  if (prev && _gpsMetres(prev, pt) < GPS_MIN_MOVE_M) return;          // de-jitter
+  if (gpsTrack.length >= GPS_MAX_POINTS) return;
+  gpsTrack.push(pt);
+  // heading: device value when moving, else bearing from the previous point.
+  let hdg = (c.heading != null && !isNaN(c.heading)) ? c.heading
+            : (prev ? geo(prev, pt).brg : 0);
+  gpsOwn = { lat: pt.lat, lng: pt.lng, hdg };
+  try { sessionStorage.setItem('navaid.gpsTrack', JSON.stringify(gpsTrack)); } catch (e) { /* */ }
+  gpsUpdateReadout();
+  scheduleDraw();
+  if (gpsFollow && typeof map !== 'undefined') map.setView([pt.lat, pt.lng], map.getZoom());
+}
+
+function onGpsError(err) {
+  stopGpsRecording();
+  alert((S.gpsError || 'GPS error: ') + (err && err.message ? err.message : ''));
+}
+
+function startGpsRecording() {
+  if (gpsRecording) return;
+  if (!navigator.geolocation) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
+  gpsRecording = true;
+  gpsTrack = [];
+  gpsOwn = null;
+  gpsStartT = Date.now();
+  gpsWatchId = navigator.geolocation.watchPosition(onGpsPosition, onGpsError, { enableHighAccuracy: true });
+  gpsUpdateReadout();
+  scheduleDraw();
+}
+
+// Stop watching without saving. (Save handled in a later task.)
+function stopGpsRecording() {
+  if (gpsWatchId != null && navigator.geolocation) navigator.geolocation.clearWatch(gpsWatchId);
+  gpsWatchId = null;
+  gpsRecording = false;
+  gpsOwn = null;
+  try { sessionStorage.removeItem('navaid.gpsTrack'); } catch (e) { /* */ }
+  gpsUpdateReadout();
+  scheduleDraw();
+}
