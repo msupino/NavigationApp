@@ -1,6 +1,7 @@
 // @ts-check
 const { test, expect } = require('./_setup');
 const { LLHZ, LLHA } = require('./_airfieldArp');
+const { clickToolbarControl, hideToolbarMenus, showToolbarControl } = require('./_toolbar');
 const NAV_WAYPOINTS = require('../docs/data/nav-waypoints.json').waypoints;
 
 const NAV_EN = new Map(NAV_WAYPOINTS.map(w => [w.name, w.en]));
@@ -163,6 +164,7 @@ test.describe('Flight plan', () => {
     await expect(modal.locator('.flight-plan-sub')).toHaveCount(0);
 
     // Toggle return on
+    await showToolbarControl(page, '#ret-cb');
     await page.locator('#ret-cb').check();
     await expect(modal).toBeVisible();
     await expect(modal.locator('.flight-plan-sub')).toHaveCount(1);
@@ -338,9 +340,9 @@ test.describe('Flight plan', () => {
 
   test('Flight Plan button keeps the chart window open on a second click', async ({ page }) => {
     const modal = page.locator('.modal-back.flight-plan');
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     await expect(modal).toBeVisible();
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     await expect(modal).toBeVisible();
     await expect(modal).toHaveCount(1);
   });
@@ -452,7 +454,8 @@ test.describe('Flight plan', () => {
       };
     });
     for (let i = 0; i < 5; i++) {
-      await page.locator('#plan').click();
+      await clickToolbarControl(page, '#plan');
+      await hideToolbarMenus(page);
       await page.locator('.modal-back.flight-plan .modal-close-x').click();
     }
     const leftover = await page.evaluate(() => window.__touchCount);

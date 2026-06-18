@@ -3,6 +3,7 @@
 // places where browser bidi heuristics have previously reordered codes,
 // coordinates, dates, and units in confusing ways.
 const { test, expect } = require('./_setup');
+const { clickToolbarControl, hideToolbarMenus } = require('./_toolbar');
 
 const ALTITUDE_FIXTURE = {
   version: 1,
@@ -151,6 +152,7 @@ test.describe('Bidi / mixed-direction UI regressions', () => {
       { text: "32°13.1'N 34°53.0'E", dir: 'ltr', bidi: 'isolate' },
     ]);
 
+    await hideToolbarMenus(page);
     await page.locator('.satellite-preview-modal .modal-close-x').click();
     await expect(page.locator('.satellite-preview-modal')).toHaveCount(0);
     await page.evaluate(() => {
@@ -179,7 +181,7 @@ test.describe('Bidi / mixed-direction UI regressions', () => {
       }],
     });
 
-    await page.locator('#route-library').click();
+    await clickToolbarControl(page, '#route-library');
     const row = page.locator('.route-library-row').first();
     await expect(row.locator('.route-library-row-name')).toHaveText('בדיקה BAZRA DEROR');
     await expect(row.locator('.route-library-row-meta')).toHaveText('2 WP · 2026-06-15');
@@ -191,8 +193,9 @@ test.describe('Bidi / mixed-direction UI regressions', () => {
     expect(bidi.direction).toBe('ltr');
     expect(bidi.unicodeBidi).toContain('isolate');
 
+    await hideToolbarMenus(page);
     await page.locator('.route-library-modal .modal-close-x').click();
-    await page.locator('#route-templates').click();
+    await clickToolbarControl(page, '#route-templates');
     const path = page.locator('.route-template-path');
     await expect(path).toBeVisible();
     await expect(path).toContainText('→');
@@ -208,7 +211,7 @@ test.describe('Bidi / mixed-direction UI regressions', () => {
       await Promise.all([loadLegAltitudes(), loadCommChange()]);
     });
 
-    await page.locator('#alt-pairs').click();
+    await clickToolbarControl(page, '#alt-pairs');
     const heads = page.locator('.charts-alt-table thead th');
     await expect(heads.nth(0)).toHaveText('נתיב');
     await expect(heads.nth(1)).toHaveText('מהראשון לשני');
@@ -233,7 +236,7 @@ test.describe('Bidi / mixed-direction UI regressions', () => {
     bidi = await cssSnapshot(page.locator('.charts-alt-distance').first());
     expect(bidi.direction).toBe('ltr');
 
-    await page.locator('#freq-table').click();
+    await clickToolbarControl(page, '#freq-table');
     await expect(page.locator('.charts-freq-title h3')).toHaveText('ברירות מחדל לתדרים');
     const code = page.locator('.charts-freq-code', { hasText: 'LLHZ' }).first();
     await expect(code).toBeVisible();
