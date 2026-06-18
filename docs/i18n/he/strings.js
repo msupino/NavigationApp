@@ -153,6 +153,8 @@ window.S = {
   fpFreq: 'תדר',
   freqNone: 'אין',
   fpHeadersShort: ['#', 'מ-', 'אל-', 'כיוון', 'מרחק', 'מהירות', 'גובה', 'זמן', 'דלק'],
+  fpColumns: 'עמודות',
+  fpColumnsAll: 'כל העמודות',
   exportPlanPlace: 'הצב תכנית טיסה על המפה',
   exportPlanPlaceTitle: 'הטבע את טבלת תכנית הטיסה בייצוא; גרור אותה למיקום בתוך מסגרת הדף',
   exportPlanNoFrame: 'הצב תכנית טיסה — בחר תחילה דף A3/A4',
