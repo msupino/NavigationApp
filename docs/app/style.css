@@ -351,6 +351,200 @@ html, body {
 }
 #toolbar #wpname-rot:hover { color: #fff; }
 
+/* Desktop menu bar: the same toolbar sections become top-level dropdown
+   menus. Phone/tablet-narrow viewports keep the floating column below. */
+@media (min-width: 681px) {
+  #map,
+  #overlay {
+    top: 34px;
+  }
+
+  #toolbar {
+    position: fixed;
+    z-index: 2300;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0;
+    width: auto;
+    height: 34px;
+    max-height: none;
+    min-height: 34px;
+    overflow: visible;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0;
+    padding: 0 8px;
+    border-width: 0 0 1px;
+    border-radius: 0;
+    background: rgba(20, 18, 18, 0.97);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.38);
+    touch-action: auto;
+  }
+
+  #toolbar-handle,
+  #toolbar-toggle,
+  #info,
+  #app-version {
+    display: none;
+  }
+
+  #toolbar > #lang-toggle {
+    order: 30;
+    align-self: stretch;
+    margin: 0;
+    margin-inline-start: auto;
+    padding: 0 0 0 10px;
+    border-bottom: 0;
+    border-inline-start: 1px solid #3a3636;
+  }
+
+  #toolbar > #lang-toggle select {
+    max-width: 96px;
+  }
+
+  .tb-section {
+    position: relative;
+    flex: 0 0 auto;
+    border-top: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  .tb-section:first-of-type {
+    margin-inline-start: 0;
+  }
+
+  .tb-section-head {
+    height: 33px;
+    padding: 0 12px;
+    justify-content: center;
+    border-radius: 0;
+    color: #e8e8e8;
+    font-size: 13px;
+    font-weight: 650;
+    letter-spacing: 0;
+    line-height: 33px;
+    text-transform: none;
+  }
+
+  .tb-section-head::after {
+    display: none;
+  }
+
+  .tb-section-head:hover,
+  .tb-section.open .tb-section-head {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .tb-section-body {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 2310;
+    min-width: 238px;
+    max-width: min(340px, calc(100vw - 16px));
+    max-height: calc(100vh - 42px);
+    max-height: calc(100dvh - 42px);
+    overflow-y: auto;
+    gap: 2px;
+    padding: 6px;
+    border: 1px solid #3a3636;
+    border-top: 0;
+    border-radius: 0 0 6px 6px;
+    background: rgba(20, 18, 18, 0.98);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  }
+
+  .tb-section[data-sec="export"] .tb-section-body,
+  .tb-section[data-sec="sim"] .tb-section-body,
+  .tb-section[data-sec="print"] .tb-section-body {
+    right: 0;
+    left: auto;
+  }
+
+  html[dir="rtl"] .tb-section-body {
+    right: 0;
+    left: auto;
+  }
+
+  html[dir="rtl"] .tb-section[data-sec="export"] .tb-section-body,
+  html[dir="rtl"] .tb-section[data-sec="sim"] .tb-section-body,
+  html[dir="rtl"] .tb-section[data-sec="print"] .tb-section-body {
+    right: auto;
+    left: 0;
+  }
+
+  #toolbar.multi-open .tb-section-body {
+    position: fixed;
+    top: 34px;
+    right: auto;
+    left: auto;
+    width: calc(14.285vw - 2px);
+    min-width: 0;
+    max-width: none;
+    border-top: 1px solid #3a3636;
+    border-radius: 0 0 6px 6px;
+    pointer-events: none;
+  }
+
+  #toolbar.multi-open .tb-section-body > * {
+    pointer-events: auto;
+  }
+
+  #toolbar.multi-open .tb-section[data-sec="build"] .tb-section-body { left: 8px; }
+  #toolbar.multi-open .tb-section[data-sec="view"] .tb-section-body { left: calc(14.285vw + 6px); }
+  #toolbar.multi-open .tb-section[data-sec="display"] .tb-section-body { left: calc(28.57vw + 4px); }
+  #toolbar.multi-open .tb-section[data-sec="charts"] .tb-section-body { left: calc(42.855vw + 2px); }
+  #toolbar.multi-open .tb-section[data-sec="export"] .tb-section-body { left: 57.14vw; }
+  #toolbar.multi-open .tb-section[data-sec="sim"] .tb-section-body { left: calc(71.425vw - 2px); }
+  #toolbar.multi-open .tb-section[data-sec="print"] .tb-section-body { left: calc(85.71vw - 4px); }
+
+  #toolbar .tb-section-body button,
+  #toolbar #export-select {
+    width: 100%;
+    min-height: 28px;
+    padding: 5px 10px;
+    border-color: transparent;
+    border-radius: 3px;
+    background: transparent;
+    text-align: start;
+  }
+
+  #toolbar .tb-section-body button:hover,
+  #toolbar #export-select:hover,
+  #toolbar .tb-section-body .navtoggle:hover {
+    background: rgba(255, 255, 255, 0.10);
+  }
+
+  #toolbar button.tool.active,
+  #toolbar button[aria-pressed="true"] {
+    background: #1d6fe0;
+    border-color: #1d6fe0;
+  }
+
+  #toolbar .tb-section-body .navtoggle {
+    min-height: 28px;
+    padding: 4px 8px;
+    border-radius: 3px;
+  }
+
+  #toolbar .tb-section-body .navtoggle select,
+  #toolbar .tb-section-body .navtoggle input[type="number"],
+  #toolbar .tb-section-body .navtoggle input[type="text"] {
+    min-height: 24px;
+  }
+
+  #toolbar .tb-section-body input[type="range"] {
+    min-width: 96px;
+  }
+
+  .tb-group {
+    margin-top: 7px;
+  }
+
+}
+
 /* rotate dial — Google-Maps-style compass needle by the zoom buttons */
 .rotate-ctrl {
   display: flex;
@@ -1028,11 +1222,60 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   color: #e8e8e8;
 }
 
+@media (min-width: 681px) {
+  #info,
+  #app-version {
+    display: none;
+  }
+
+  #toolbar > #footer-links {
+    order: 40;
+    display: flex;
+    flex: 0 0 auto;
+    align-self: stretch;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0;
+    margin: 0;
+    margin-inline-start: 4px;
+    padding: 0 0 0 4px;
+    border-top: 0;
+    border-inline-start: 1px solid #3a3636;
+  }
+
+  #toolbar .footer-link {
+    width: 30px;
+    height: 33px;
+    justify-content: center;
+    gap: 0;
+    border-radius: 0;
+    color: #c6c0c0;
+  }
+
+  #toolbar button.footer-link {
+    width: 30px;
+    height: 33px;
+  }
+
+  #toolbar .footer-link:hover,
+  #toolbar button.footer-link:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+  }
+
+  #toolbar .footer-link-text {
+    display: none;
+  }
+}
+
 /* Keyboard-shortcuts cheat-sheet (issue #420) ---------------------- */
 .shortcuts-help-modal {
   min-width: 320px;
   max-width: min(420px, 92vw);
   padding: 18px 20px 16px;
+}
+.modal-back.shortcuts-help {
+  z-index: 2400;
 }
 .shortcuts-help-list {
   display: grid;
@@ -2711,6 +2954,18 @@ body.theme-light .msa-low .val { color: #c0392b; }
   font-size: 11px;
 }
 
+@media (min-width: 681px) {
+  #search-overlay {
+    top: 46px;
+  }
+
+  #tuning-panel {
+    top: 46px;
+    max-height: calc(100vh - 58px);
+    max-height: calc(100dvh - 58px);
+  }
+}
+
 /* Light mode: UI chrome only. The selected map/chart layer is unchanged. */
 body.theme-light {
   background: #eef1f5;
@@ -2879,6 +3134,38 @@ body.theme-light #tuning-panel .tune-close:hover {
 body.theme-light .point-choice-option:hover .point-choice-meta,
 body.theme-light .point-choice-option:focus .point-choice-meta {
   color: #4b5563;
+}
+@media (min-width: 681px) {
+  body.theme-light #toolbar {
+    background: rgba(250, 252, 255, 0.98);
+    box-shadow: 0 2px 12px rgba(31, 37, 44, 0.16);
+  }
+
+  body.theme-light #toolbar > #lang-toggle {
+    border-color: #cfd5df;
+  }
+
+  body.theme-light .tb-section-body {
+    background: rgba(250, 252, 255, 0.99);
+    border-color: #c6ccd6;
+    box-shadow: 0 10px 24px rgba(31, 37, 44, 0.18);
+  }
+
+  body.theme-light .tb-section-head {
+    color: #26313d;
+  }
+
+  body.theme-light .tb-section-head:hover,
+  body.theme-light .tb-section.open .tb-section-head {
+    color: #111820;
+    background: rgba(29, 111, 224, 0.10);
+  }
+
+  body.theme-light #toolbar .tb-section-body button:hover,
+  body.theme-light #toolbar #export-select:hover,
+  body.theme-light #toolbar .tb-section-body .navtoggle:hover {
+    background: rgba(29, 111, 224, 0.08);
+  }
 }
 body.theme-light .map-legend {
   background: rgba(250, 252, 255, 0.88);

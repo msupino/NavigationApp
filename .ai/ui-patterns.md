@@ -5,7 +5,10 @@ marketing-style layouts.
 
 ## Toolbar
 
-- Toolbar sections are accordions.
+- Toolbar sections are accordions in the floating mobile column and top-level
+  dropdown menus in the fixed desktop menubar.
+- Desktop menubar changes must also be checked at phone width to confirm the
+  existing collapsed/draggable mobile toolbar still behaves the same.
 - Only one chart/modal-style panel should be open when the UI already follows
   that pattern.
 - Hebrew layout moves the menu to the right; verify both `?lang=en` and

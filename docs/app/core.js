@@ -225,7 +225,7 @@ NavAid.tuningDefaults = {
   zuluClockMinWidthPx: { value: 82, min: 40, max: 180, step: 1, label: 'Zulu clock min width' },
   zuluClockPadYPx: { value: 5, min: 0, max: 24, step: 1, label: 'Zulu clock vertical padding' },
   zuluClockPadXPx: { value: 8, min: 0, max: 36, step: 1, label: 'Zulu clock horizontal padding' },
-  zuluClockMarginTopPx: { value: 12, min: 0, max: 80, step: 1, label: 'Zulu clock top margin' },
+  zuluClockMarginTopPx: { value: 4, min: 0, max: 80, step: 1, label: 'Zulu clock top margin' },
   zuluClockMarginRightPx: { value: 12, min: 0, max: 80, step: 1, label: 'Zulu clock right margin' },
   zuluClockFontPx: { value: 13, min: 8, max: 28, step: 1, label: 'Zulu clock text size' },
   zuluClockFontWeight: { value: 800, min: 100, max: 900, step: 100, label: 'Zulu clock text weight' },
