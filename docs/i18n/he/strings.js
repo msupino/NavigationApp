@@ -405,6 +405,7 @@ window.S = {
   tbDriftLineWidthTitle: 'עובי קו ייחוס הסחיפה',
   tbPageA3Title: 'עמוד A3 להדפסה',
   tbPageA4Title: 'עמוד A4 להדפסה',
+  tbPrintPageSize: 'גודל עמוד',
   tbOrientTitle: 'כיוון — לחץ למעבר בין לרוחב / לאורך',
   modalCloseTitle: 'סגור',
   tbPrint: '⬇ שמור PNG',
