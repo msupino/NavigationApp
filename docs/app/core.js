@@ -657,6 +657,8 @@ window.S = Object.assign({
   altPairsCopyJson: 'Copy JSON',
   altPairsCopied: 'Copied',
   altPairsCopyFailed: 'Copy failed',
+  altPairsResetAll: '↻ Reset all',
+  altPairsResetAllTitle: 'Revert all altitude pairs to origin',
   altPairsEmpty: 'No altitude-pair data available',
   altPairsSearch: 'Search altitude pairs',
   altPairsNoMatches: 'No matching altitude pairs',
@@ -1253,8 +1255,16 @@ function toHMS(hours) {
 }
 
 // --- vertical profile: top-of-climb / top-of-descent (#672) -------------
-// Default GA climb/descent performance (C172-ish) lives in the tune registry
-// (Performance defaults group); overridable per aircraft or via the V/S input.
+// Endpoint TOC/TOD markers use CVFR planning shortcuts: 0.5 NM per 100 ft
+// climb (200 ft/NM) and 0.3 NM per 100 ft descent (~3 NM per 1000 ft).
+const PROFILE_TOC_NM_PER_100FT = 0.5;
+const PROFILE_TOD_NM_PER_100FT = 0.3;
+function profileGradientDistanceNm(altDiffFt, nmPer100Ft) {
+  return Math.max(0, altDiffFt) / 100 * nmPer100Ft;
+}
+// Default GA climb/descent performance (C172-ish) lives in the tune registry.
+// It still drives non-endpoint ramps and timing; endpoint TOC/TOD use the
+// gradient shortcuts above.
 // Field elevation at route endpoint waypoint i (airfield elev_ft) or null.
 function routeEndpointElev(i) {
   const wp = state.waypoints[i];
@@ -1262,13 +1272,13 @@ function routeEndpointElev(i) {
   const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
   return af && Number.isFinite(af.elev_ft) ? af.elev_ft : null;
 }
-// Model each leg at its own planned altitude. A leg ramps gradually (at the
-// climb/descent rate, over distance — not a vertical step) from its start
-// altitude to its own altitude; the first leg climbs out of the departure
-// field, the last leg descends into the destination field. The ramp is
-// confined to the leg. TOC/TOD markers are emitted only when the departure /
-// destination is an actual airfield (has a field elevation); intermediate
-// per-leg altitude changes are drawn but not marked. Returns per-leg
+// Model each leg at its own planned altitude. A leg ramps gradually from its
+// start altitude to its own altitude; intermediate ramps use the configured
+// performance, while departure TOC and final TOD use the fixed CVFR gradient
+// shortcuts above. The ramp is confined to the leg. TOC/TOD markers are emitted
+// only when the departure / destination is an actual airfield (has a field
+// elevation); intermediate per-leg altitude changes are drawn but not marked.
+// Returns per-leg
 // time/fuel, altitude-vs-distance vertices (pts), and wpCum (cumulative NM at
 // each waypoint, for the distance axis).
 function routeProfile(ac) {
@@ -1314,13 +1324,19 @@ function routeProfile(ac) {
     // The ramp is confined to the leg (capped at the leg distance).
     const startAlt = isFirst ? fieldStart : legAlt(i - 1);
     let climbDist = 0, descDist = 0;
-    if (cr > startAlt) climbDist = Math.min(dist, climbKt * ((cr - startAlt) / climbFpm) / 60);
+    if (cr > startAlt) {
+      const d = isFirst && depElev != null
+        ? profileGradientDistanceNm(cr - startAlt, PROFILE_TOC_NM_PER_100FT)
+        : climbKt * ((cr - startAlt) / climbFpm) / 60;
+      climbDist = Math.min(dist, d);
+    }
     else if (cr < startAlt) descDist = Math.min(dist, descKt * ((startAlt - cr) / descFpm) / 60);
     // The final leg also descends to the destination field at its end.
     let endDescDist = 0, endAlt = cr;
     if (isLast && cr > fieldEnd) {
       endAlt = fieldEnd;
-      endDescDist = Math.min(dist - climbDist - descDist, descKt * ((cr - fieldEnd) / descFpm) / 60);
+      const availableDist = Math.max(0, dist - climbDist - descDist);
+      endDescDist = Math.min(availableDist, profileGradientDistanceNm(cr - fieldEnd, PROFILE_TOD_NM_PER_100FT));
     }
     const cruiseDist = Math.max(0, dist - climbDist - descDist - endDescDist);
     const climbT = climbKt > 0 ? climbDist / climbKt : 0;

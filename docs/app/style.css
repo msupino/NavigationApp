@@ -2083,6 +2083,12 @@ body.theme-light .msa-low .val { color: #c0392b; }
   font-size: 13px;
   color: #e8e8e8;
 }
+.charts-alt-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
 .charts-freq-restore-all {
   flex-shrink: 0;
   font: inherit;
@@ -2094,7 +2100,8 @@ body.theme-light .msa-low .val { color: #c0392b; }
   padding: 4px 8px;
   cursor: pointer;
 }
-.charts-alt-copy {
+.charts-alt-copy,
+.charts-alt-reset-all {
   flex-shrink: 0;
   font: inherit;
   font-size: 12px;
@@ -2109,11 +2116,13 @@ body.theme-light .msa-low .val { color: #c0392b; }
   color: #fff;
   background: #3a3636;
 }
-.charts-alt-copy:hover {
+.charts-alt-copy:hover:not(:disabled),
+.charts-alt-reset-all:hover:not(:disabled) {
   color: #fff;
   background: #3a3636;
 }
-.charts-freq-restore-all:disabled {
+.charts-freq-restore-all:disabled,
+.charts-alt-reset-all:disabled {
   opacity: 0.45;
   cursor: default;
 }
@@ -2897,6 +2906,7 @@ body.theme-light .charts-freq-input {
   border-color: #b8c0cc;
 }
 body.theme-light .charts-alt-copy,
+body.theme-light .charts-alt-reset-all,
 body.theme-light .charts-alt-search {
   color: #1f252c;
   background: #fff;
@@ -2906,7 +2916,8 @@ body.theme-light .charts-freq-restore-all:hover:not(:disabled) {
   color: #111820;
   background: #eef3f9;
 }
-body.theme-light .charts-alt-copy:hover {
+body.theme-light .charts-alt-copy:hover:not(:disabled),
+body.theme-light .charts-alt-reset-all:hover:not(:disabled) {
   color: #111820;
   background: #eef3f9;
 }

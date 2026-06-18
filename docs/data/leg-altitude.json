@@ -1774,7 +1774,7 @@
       "to": "HOTRM",
       "distanceNm": 2.9,
       "inboundAltitude": 1500,
-      "outboundAltitude": 1000,
+      "outboundAltitude": 2000,
       "status": "candidate",
       "source": "cvfr-map airway adjacency"
     },
@@ -4938,7 +4938,7 @@
     {
       "from": "HOTRM",
       "to": "BOREN",
-      "altitude": 1000,
+      "altitude": 2000,
       "segment": "BOREN-HOTRM",
       "field": "outboundAltitude"
     },
