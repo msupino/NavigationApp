@@ -1467,8 +1467,18 @@ function toggleOrientation() {
 function refreshOrientButton() {
   const btn = document.getElementById('page-orient');
   if (!btn) return;
-  btn.textContent = pageOrient === 'portrait' ? '▯' : '▭';
-  btn.classList.toggle('portrait', pageOrient === 'portrait');
+  const isPortrait = pageOrient === 'portrait';
+  const icon = isPortrait ? '▯' : '▭';
+  const label = isPortrait ? (S.portrait || 'Portrait') : (S.landscape || 'Landscape');
+  const iconEl = btn.querySelector('.page-orient-icon');
+  const labelEl = btn.querySelector('.page-orient-label');
+  if (iconEl && labelEl) {
+    iconEl.textContent = icon;
+    labelEl.textContent = label;
+  } else {
+    btn.textContent = icon + ' ' + label;
+  }
+  btn.classList.toggle('portrait', isPortrait);
 }
 
 function fitPageFrame() {
