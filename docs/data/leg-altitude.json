@@ -111,7 +111,7 @@
       "distanceNm": 2.4,
       "inboundAltitude": 800,
       "outboundAltitude": 2000,
-      "status": "candidate",
+      "status": "reviewed",
       "detection": {
         "greenScore": 1,
         "maxGap": 0,
@@ -299,7 +299,7 @@
       "distanceNm": 3.7,
       "inboundAltitude": 1200,
       "outboundAltitude": 800,
-      "status": "candidate",
+      "status": "reviewed",
       "detection": {
         "greenScore": 0.635,
         "maxGap": 7,
@@ -743,7 +743,7 @@
       "distanceNm": 2.1,
       "inboundAltitude": 1200,
       "outboundAltitude": 1200,
-      "status": "candidate",
+      "status": "reviewed",
       "detection": {
         "greenScore": 0.621,
         "maxGap": 7,
@@ -1927,7 +1927,7 @@
       "distanceNm": 4,
       "inboundAltitude": 1500,
       "outboundAltitude": 2000,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency"
     },
     {
@@ -1936,7 +1936,7 @@
       "distanceNm": 5.2,
       "inboundAltitude": 1500,
       "outboundAltitude": 2000,
-      "status": "candidate"
+      "status": "reviewed"
     },
     {
       "from": "ZYAAR",
@@ -1952,7 +1952,7 @@
       "distanceNm": 2.7,
       "inboundAltitude": 1600,
       "outboundAltitude": 800,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency"
     },
     {
@@ -1989,7 +1989,7 @@
       "distanceNm": 2.9,
       "inboundAltitude": 1200,
       "outboundAltitude": null,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "oneWay": true
     },
@@ -2189,11 +2189,12 @@
       "from": "NCSHN",
       "to": "NSHRM",
       "distanceNm": 5.8,
-      "inboundAltitude": 1600,
-      "outboundAltitude": 800,
-      "status": "candidate",
+      "inboundAltitude": null,
+      "outboundAltitude": 1600,
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
-      "onAtcApproval": true
+      "onAtcApproval": true,
+      "oneWay": true
     },
     {
       "from": "AYLON",
@@ -2211,7 +2212,7 @@
       "distanceNm": 5.7,
       "inboundAltitude": 2000,
       "outboundAltitude": 1500,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "armyAirway": true,
       "onAtcApproval": true
@@ -2552,7 +2553,7 @@
       "distanceNm": 16.6,
       "inboundAltitude": 2000,
       "outboundAltitude": 1500,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "armyAirway": true,
       "onAtcApproval": true
@@ -2709,15 +2710,6 @@
       "distanceNm": 4.9,
       "inboundAltitude": 2000,
       "outboundAltitude": 1500,
-      "status": "candidate",
-      "source": "route template correction"
-    },
-    {
-      "from": "SFAIM",
-      "to": "HTZUK",
-      "distanceNm": 4.2,
-      "inboundAltitude": 800,
-      "outboundAltitude": 1600,
       "status": "candidate",
       "source": "route template correction"
     },
@@ -5458,16 +5450,9 @@
       "field": "outboundAltitude"
     },
     {
-      "from": "NCSHN",
-      "to": "NSHRM",
-      "altitude": 1600,
-      "segment": "NCSHN-NSHRM",
-      "field": "inboundAltitude"
-    },
-    {
       "from": "NSHRM",
       "to": "NCSHN",
-      "altitude": 800,
+      "altitude": 1600,
       "segment": "NCSHN-NSHRM",
       "field": "outboundAltitude"
     },
@@ -6148,20 +6133,6 @@
       "to": "HODYA",
       "altitude": 1500,
       "segment": "HODYA-NITZA",
-      "field": "outboundAltitude"
-    },
-    {
-      "from": "SFAIM",
-      "to": "HTZUK",
-      "altitude": 800,
-      "segment": "SFAIM-HTZUK",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "HTZUK",
-      "to": "SFAIM",
-      "altitude": 1600,
-      "segment": "SFAIM-HTZUK",
       "field": "outboundAltitude"
     },
     {
