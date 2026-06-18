@@ -119,10 +119,10 @@
       "to": "HNINA",
       "inboundAltitude": 5000,
       "outboundAltitude": 4500,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 3.3,
       "crop": "/tmp/navaid-altitude-extract/ANATA_HNINA.png",
-      "evidence": "CVFR North 2025 crop shows the ANATA/HNINA same-route yellow pair: 5000 from ANATA toward HNINA and 4500 from HNINA toward ANATA."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "ANATA-DUMIM",
@@ -130,10 +130,10 @@
       "to": "DUMIM",
       "inboundAltitude": 4500,
       "outboundAltitude": 5000,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 2.9,
       "crop": "/tmp/navaid-altitude-extract/ANATA_DUMIM.png",
-      "evidence": "Maintainer correction from CVFR North: ANATA toward DUMIM is 4500 and DUMIM toward ANATA is 5000."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "BAZRA-DEROR",
@@ -141,10 +141,10 @@
       "to": "DEROR",
       "inboundAltitude": 800,
       "outboundAltitude": 2000,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 2.4,
       "crop": "/tmp/navaid-altitude-extract/BAZRA_DEROR.png",
-      "evidence": "Maintainer correction from CVFR North 2025: BAZRA toward DEROR is 800 and DEROR toward BAZRA is 2000."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "BAZRA-LLHZ",
@@ -185,10 +185,10 @@
       "to": "HTZUK",
       "inboundAltitude": 800,
       "outboundAltitude": 1600,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 1.2,
       "crop": "/tmp/navaid-altitude-extract/ARENA_HTZUK.png",
-      "evidence": "Short Herzliya coast segment. Use the coastal ARENA/HTZUK pair, 800 northbound and 1600 southbound; the nearby 1200 belongs to the HTZUK/KNTRY continuation."
+      "evidence": "Maintainer-confirmed via the RIDNG-HTZUK-ARENA-APOLN-SFAIM route (SFAIM-RIDNG is not a direct leg); this constituent legs altitudes are correct. Promoted candidate -> reviewed."
     },
     {
       "segment": "ARRAD-LLMZ",
@@ -264,10 +264,10 @@
       "to": "SOVAL",
       "inboundAltitude": 2500,
       "outboundAltitude": 3000,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 2.1,
       "crop": "/tmp/navaid-altitude-extract/BKAMA_SOVAL.png",
-      "evidence": "Altitude pair was selected from same-route yellow CVFR altitude arrows in the segment crop and sign-sheet review. Verify the crop before promoting this row from candidate to reviewed."
+      "evidence": "Maintainer-confirmed against CVFR South 2023: published inbound/outbound altitudes are correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "BMNUH-YAHEL",
@@ -297,10 +297,10 @@
       "to": "SAMAR",
       "inboundAltitude": 3000,
       "outboundAltitude": 2500,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 7.6,
       "crop": "/tmp/navaid-altitude-extract/BRORA_SAMAR.png",
-      "evidence": "Altitude pair was selected from same-route yellow CVFR altitude arrows in the segment crop and sign-sheet review. Verify the crop before promoting this row from candidate to reviewed."
+      "evidence": "Maintainer-confirmed against CVFR South 2023: published inbound/outbound altitudes are correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "CLORE-RIDNG",
@@ -308,10 +308,10 @@
       "to": "RIDNG",
       "inboundAltitude": 1200,
       "outboundAltitude": 800,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 3.7,
       "crop": "/tmp/navaid-altitude-extract/CLORE_RIDNG.png",
-      "evidence": "Altitude pair was selected from same-route yellow CVFR altitude arrows in the segment crop and sign-sheet review. Verify the crop before promoting this row from candidate to reviewed."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "DESHE-TAVOR",
@@ -375,10 +375,10 @@
       "inboundAltitude": 3000,
       "outboundAltitude": null,
       "oneWay": true,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 7.1,
       "crop": "/tmp/navaid-altitude-extract/EIRON_SDTYM.png",
-      "evidence": "One-way EIRON->SDTYM row: extraction metadata and cvfr_airways.js both identify 3000 with no allowed reverse altitude."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "EITAN-KOYAR",
@@ -450,13 +450,13 @@
       "segment": "FRDIS-SDTYM",
       "from": "FRDIS",
       "to": "SDTYM",
-      "inboundAltitude": 2000,
+      "inboundAltitude": 3000,
       "outboundAltitude": null,
       "oneWay": true,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 6.5,
       "crop": "/tmp/navaid-altitude-extract/FRDIS_SDTYM.png",
-      "evidence": "One-way FRDIS->SDTYM row: cvfr_airways.js lists 2000/null; nearby reverse-looking signs belong to other coastal branches."
+      "evidence": "Maintainer-confirmed: FRDIS->SDTYM 3000; SDTYM->FRDIS blocked (one-way). Corrected inbound 2000->3000; promoted candidate -> reviewed."
     },
     {
       "segment": "GOVRN-NOAAM",
@@ -541,10 +541,10 @@
       "to": "ZOFAR",
       "inboundAltitude": 3500,
       "outboundAltitude": 4500,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 12.8,
       "crop": "/tmp/navaid-altitude-extract/HRGVS_ZOFAR.png",
-      "evidence": "Altitude pair was selected from same-route yellow CVFR altitude arrows in the segment crop and sign-sheet review. Verify the crop before promoting this row from candidate to reviewed."
+      "evidence": "Maintainer-confirmed against CVFR South 2023: published inbound/outbound altitudes are correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "HTZUK-KNTRY",
@@ -684,10 +684,10 @@
       "to": "ZOHAR",
       "inboundAltitude": 3500,
       "outboundAltitude": 4000,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 6.2,
       "crop": "/tmp/navaid-altitude-extract/MMORR_ZOHAR.png",
-      "evidence": "Altitude pair was selected from same-route yellow CVFR altitude arrows in the segment crop and sign-sheet review. Verify the crop before promoting this row from candidate to reviewed."
+      "evidence": "Maintainer-confirmed against CVFR South 2023: published inbound/outbound altitudes are correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "MRISN-NTAIM",
@@ -695,10 +695,10 @@
       "to": "NTAIM",
       "inboundAltitude": 1200,
       "outboundAltitude": 1200,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 2.1,
       "crop": "/tmp/navaid-altitude-extract/MRISN_NTAIM.png",
-      "evidence": "Rishon/NTAIM area. The direct MRISN/NTAIM leg uses the same-route 1200 marker in both directions; nearby 800 labels belong to adjacent NTAIM/SUPER and local-airport branches."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "MYTAR-SOKET",
@@ -795,10 +795,10 @@
       "inboundAltitude": null,
       "outboundAltitude": 800,
       "oneWay": true,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 4,
       "crop": "/tmp/navaid-altitude-extract/OLGAH_SDTYM.png",
-      "evidence": "One-way SDTYM->OLGAH row: cvfr_airways.js lists 800/null for SDTYM->OLGAH, so the stored OLGAH-SDTYM segment keeps only outboundAltitude=800."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "OVDAT-RUHOT",
@@ -850,10 +850,10 @@
       "to": "YOTVT",
       "inboundAltitude": 2500,
       "outboundAltitude": 3000,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 3.4,
       "crop": "/tmp/navaid-altitude-extract/SHRUT_YOTVT.png",
-      "evidence": "Altitude pair was selected from same-route yellow CVFR altitude arrows in the segment crop and sign-sheet review. Verify the crop before promoting this row from candidate to reviewed."
+      "evidence": "Maintainer-confirmed against CVFR South 2023: published inbound/outbound altitudes are correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "SMRAT-SZION",
@@ -861,10 +861,10 @@
       "to": "SZION",
       "inboundAltitude": 1500,
       "outboundAltitude": 2000,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 1.7,
       "crop": "/tmp/navaid-altitude-extract/SMRAT_SZION.png",
-      "evidence": "Altitude pair was selected from same-route yellow CVFR altitude arrows in the segment crop and sign-sheet review. Verify the crop before promoting this row from candidate to reviewed."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "YAVNE-ZASHD",
@@ -894,10 +894,10 @@
       "to": "YOTVT",
       "inboundAltitude": 3000,
       "outboundAltitude": 2500,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 4.6,
       "crop": "/tmp/navaid-altitude-extract/SAMAR_YOTVT.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR South 2023: published inbound/outbound altitudes are correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "BEREC-BRORA",
@@ -916,10 +916,10 @@
       "to": "LLOV",
       "inboundAltitude": 4500,
       "outboundAltitude": 4000,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 8.7,
       "crop": "/tmp/navaid-altitude-extract/BEREC_LLOV.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR South 2023: published inbound/outbound altitudes are correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "LLOV-SAMAR",
@@ -927,10 +927,10 @@
       "to": "SAMAR",
       "inboundAltitude": 3500,
       "outboundAltitude": 3000,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 7.7,
       "crop": "/tmp/navaid-altitude-extract/LLOV_SAMAR.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR South 2023: published inbound/outbound altitudes are correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "LLOV-SHRUT",
@@ -938,10 +938,10 @@
       "to": "SHRUT",
       "inboundAltitude": 2500,
       "outboundAltitude": 3000,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 3.6,
       "crop": "/tmp/navaid-altitude-extract/LLOV_SHRUT.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR South 2023: published inbound/outbound altitudes are correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "LLOV-SIZFN",
@@ -1147,10 +1147,10 @@
       "to": "YRUHM",
       "inboundAltitude": 4000,
       "outboundAltitude": 3500,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 9.4,
       "crop": "/tmp/navaid-altitude-extract/BOKER_YRUHM.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR South 2023: published inbound/outbound altitudes are correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "DIMON-YRUHM",
@@ -1169,10 +1169,10 @@
       "to": "RUHOT",
       "inboundAltitude": 4500,
       "outboundAltitude": 3500,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 11.8,
       "crop": "/tmp/navaid-altitude-extract/MESAR_RUHOT.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR South 2023: published inbound/outbound altitudes are correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "MESAR-ZZHOR",
@@ -1180,10 +1180,10 @@
       "to": "ZZHOR",
       "inboundAltitude": 3000,
       "outboundAltitude": 4000,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 14.1,
       "crop": "/tmp/navaid-altitude-extract/MESAR_ZZHOR.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR South 2023: published inbound/outbound altitudes are correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "LLRM-OVDAT",
@@ -1191,10 +1191,10 @@
       "to": "OVDAT",
       "inboundAltitude": 4000,
       "outboundAltitude": null,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 6.7,
       "crop": "/tmp/navaid-altitude-extract/LLRM_OVDAT.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR South 2023: published inbound/outbound altitudes are correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "BOKER-LLRM",
@@ -1213,10 +1213,10 @@
       "to": "NIZAN",
       "inboundAltitude": 3500,
       "outboundAltitude": 3000,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 5.4,
       "crop": "/tmp/navaid-altitude-extract/LLRM_NIZAN.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR South 2023: published inbound/outbound altitudes are correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "AZOOZ-NIZAN",
@@ -1257,10 +1257,10 @@
       "to": "SIGAL",
       "inboundAltitude": 3500,
       "outboundAltitude": 3000,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 12.5,
       "crop": "/tmp/navaid-altitude-extract/HOLOT_SIGAL.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR South 2023: published inbound/outbound altitudes are correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "SIGAL-YATED",
@@ -1560,17 +1560,6 @@
       "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
     },
     {
-      "segment": "ALMOG-DUMIM",
-      "from": "ALMOG",
-      "to": "DUMIM",
-      "inboundAltitude": 4000,
-      "outboundAltitude": 3500,
-      "status": "candidate",
-      "distanceNm": 6.8,
-      "crop": "/tmp/navaid-altitude-extract/ALMOG_DUMIM.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
-    },
-    {
       "segment": "ARGMN-TIRAT",
       "from": "ARGMN",
       "to": "TIRAT",
@@ -1697,10 +1686,10 @@
       "to": "EVLYM",
       "inboundAltitude": 2000,
       "outboundAltitude": 1500,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 5.5,
       "crop": "/tmp/navaid-altitude-extract/AHIUD_EVLYM.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "EVLYM-HASID",
@@ -1719,10 +1708,10 @@
       "to": "LLHA",
       "inboundAltitude": 2500,
       "outboundAltitude": 1500,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 4.1,
       "crop": "/tmp/navaid-altitude-extract/HASID_LLHA.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "DUGIT-LLHA",
@@ -1752,10 +1741,10 @@
       "to": "SMRAT",
       "inboundAltitude": 1500,
       "outboundAltitude": 2000,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 2,
       "crop": "/tmp/navaid-altitude-extract/AAKKO_SMRAT.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "GALIM-LLHA",
@@ -1785,10 +1774,10 @@
       "to": "HOTRM",
       "inboundAltitude": 2000,
       "outboundAltitude": 1500,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 2.6,
       "crop": "/tmp/navaid-altitude-extract/DAROM_HOTRM.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "BOREN-HOTRM",
@@ -1851,10 +1840,10 @@
       "to": "LLRD",
       "inboundAltitude": 1500,
       "outboundAltitude": null,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 3.8,
       "crop": "/tmp/navaid-altitude-extract/EMMEK_LLRD.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "DALIA-EMMEK",
@@ -1905,11 +1894,11 @@
       "from": "LLRD",
       "to": "ZMGID",
       "inboundAltitude": 3000,
-      "outboundAltitude": null,
-      "status": "candidate",
+      "outboundAltitude": 2500,
+      "status": "reviewed",
       "distanceNm": 5.8,
       "crop": "/tmp/navaid-altitude-extract/LLRD_ZMGID.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against the CVFR chart: LLRD->ZMGID 3000, ZMGID->LLRD 2500; bidirectional. Promoted candidate -> reviewed."
     },
     {
       "segment": "AFULA-TAVOR",
@@ -1961,10 +1950,10 @@
       "to": "SHARO",
       "inboundAltitude": 1500,
       "outboundAltitude": 2000,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 4,
       "crop": "/tmp/navaid-altitude-extract/DEROR_SHARO.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "SHARO-ZYAAR",
@@ -1972,10 +1961,10 @@
       "to": "ZYAAR",
       "inboundAltitude": 1500,
       "outboundAltitude": 2000,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 5.2,
       "crop": "/tmp/navaid-altitude-extract/SHARO_ZYAAR.png",
-      "evidence": "Maintainer correction: SHARO->ZYAAR is 1500, while ZYAAR->SHARO is 2000."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "ZYAAR-HADRA",
@@ -1994,10 +1983,10 @@
       "to": "VINGT",
       "inboundAltitude": 1600,
       "outboundAltitude": 800,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 2.7,
       "crop": "/tmp/navaid-altitude-extract/SFAIM_VINGT.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "LLHZ-SFAIM",
@@ -2016,10 +2005,10 @@
       "to": "SFAIM",
       "inboundAltitude": 1600,
       "outboundAltitude": 800,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 1.3,
       "crop": "/tmp/navaid-altitude-extract/APOLN_SFAIM.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed via the RIDNG-HTZUK-ARENA-APOLN-SFAIM route (SFAIM-RIDNG is not a direct leg); this constituent legs altitudes are correct. Promoted candidate -> reviewed."
     },
     {
       "segment": "GNYAM-LLHZ",
@@ -2038,10 +2027,10 @@
       "to": "LLHZ",
       "inboundAltitude": 1200,
       "outboundAltitude": null,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 2.9,
       "crop": "/tmp/navaid-altitude-extract/KNTRY_LLHZ.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "GNYAM-PARDS",
@@ -2060,10 +2049,10 @@
       "to": "ARENA",
       "inboundAltitude": 800,
       "outboundAltitude": 1600,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 1.7,
       "crop": "/tmp/navaid-altitude-extract/APOLN_ARENA.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed via the RIDNG-HTZUK-ARENA-APOLN-SFAIM route (SFAIM-RIDNG is not a direct leg); this constituent legs altitudes are correct. Promoted candidate -> reviewed."
     },
     {
       "segment": "HTZUK-RIDNG",
@@ -2071,10 +2060,10 @@
       "to": "RIDNG",
       "inboundAltitude": 800,
       "outboundAltitude": 1200,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 2.3,
       "crop": "/tmp/navaid-altitude-extract/HTZUK_RIDNG.png",
-      "evidence": "Promoted from maintainer route-template altitude payloads before stripping embedded template legs. Current route direction values are authoritative; return-side values fill only directions that were not already known in the shared altitude table."
+      "evidence": "Maintainer-confirmed via the RIDNG-HTZUK-ARENA-APOLN-SFAIM route (SFAIM-RIDNG is not a direct leg); this constituent legs altitudes are correct. Promoted candidate -> reviewed."
     },
     {
       "segment": "CLORE-TYONA",
@@ -2124,12 +2113,12 @@
       "segment": "AYLON-LLBG",
       "from": "AYLON",
       "to": "LLBG",
-      "inboundAltitude": 300,
+      "inboundAltitude": 3000,
       "outboundAltitude": 2500,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 8.8,
       "crop": "/tmp/navaid-altitude-extract/AYLON_LLBG.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed: AYLON->LLBG 3000 (corrected from bad seed 300), LLBG->AYLON 2500. Promoted candidate -> reviewed."
     },
     {
       "segment": "NTAIM-SIRNI",
@@ -2220,17 +2209,6 @@
       "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
     },
     {
-      "segment": "DUMIM-HNINA",
-      "from": "DUMIM",
-      "to": "HNINA",
-      "inboundAltitude": 5000,
-      "outboundAltitude": 4500,
-      "status": "candidate",
-      "distanceNm": 6.2,
-      "crop": "/tmp/navaid-altitude-extract/DUMIM_HNINA.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
-    },
-    {
       "segment": "ESTOL-SORES",
       "from": "ESTOL",
       "to": "SORES",
@@ -2289,12 +2267,12 @@
       "segment": "NCSHN-NSHRM",
       "from": "NCSHN",
       "to": "NSHRM",
-      "inboundAltitude": 1600,
-      "outboundAltitude": 800,
-      "status": "candidate",
+      "inboundAltitude": null,
+      "outboundAltitude": 1600,
+      "status": "reviewed",
       "distanceNm": 5.8,
       "crop": "/tmp/navaid-altitude-extract/NCSHN_NSHRM.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed: NCSHN->NSHRM blocked (one-way); NSHRM->NCSHN 1600. Corrected; promoted candidate -> reviewed."
     },
     {
       "segment": "AYLON-LLEK",
@@ -2313,10 +2291,10 @@
       "to": "NSHRM",
       "inboundAltitude": 2000,
       "outboundAltitude": 1500,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 5.7,
       "crop": "/tmp/navaid-altitude-extract/LLEK_NSHRM.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "LLEK-NTAIM",
@@ -2368,10 +2346,10 @@
       "to": "LLHS",
       "inboundAltitude": 1500,
       "outboundAltitude": 2000,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 3.5,
       "crop": "/tmp/navaid-altitude-extract/KANOT_LLHS.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "NAHEM-NAHLA",
@@ -2412,21 +2390,10 @@
       "to": "ZASHD",
       "inboundAltitude": 1200,
       "outboundAltitude": null,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 4.2,
       "crop": "/tmp/navaid-altitude-extract/LLHS_ZASHD.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
-    },
-    {
-      "segment": "BEZRA-ZASHD",
-      "from": "BEZRA",
-      "to": "ZASHD",
-      "inboundAltitude": 800,
-      "outboundAltitude": 1200,
-      "status": "candidate",
-      "distanceNm": 6,
-      "crop": "/tmp/navaid-altitude-extract/BEZRA_ZASHD.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "BEZRA-ZDAFA",
@@ -2434,10 +2401,10 @@
       "to": "ZDAFA",
       "inboundAltitude": 1600,
       "outboundAltitude": 2000,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 3.4,
       "crop": "/tmp/navaid-altitude-extract/BEZRA_ZDAFA.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "LLPL-NAGID",
@@ -2467,10 +2434,10 @@
       "to": "KRYON",
       "inboundAltitude": 2000,
       "outboundAltitude": 1500,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 4.5,
       "crop": "/tmp/navaid-altitude-extract/AAKKO_KRYON.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "GILAM-LLHA",
@@ -2500,10 +2467,10 @@
       "to": "BKAMA",
       "inboundAltitude": 2500,
       "outboundAltitude": 3000,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 9.7,
       "crop": "/tmp/navaid-altitude-extract/BHAIL_BKAMA.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "BHAIL-GVARM",
@@ -2511,10 +2478,10 @@
       "to": "GVARM",
       "inboundAltitude": 2000,
       "outboundAltitude": 1500,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 2.4,
       "crop": "/tmp/navaid-altitude-extract/BHAIL_GVARM.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "GVARM-NTVOT",
@@ -2533,10 +2500,10 @@
       "to": "GVARM",
       "inboundAltitude": 1500,
       "outboundAltitude": 2000,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 5.7,
       "crop": "/tmp/navaid-altitude-extract/ASKLN_GVARM.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "ASKLN-NITZA",
@@ -2698,10 +2665,10 @@
       "to": "YASFA",
       "inboundAltitude": 2000,
       "outboundAltitude": 1500,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 16.6,
       "crop": "/tmp/navaid-altitude-extract/LIAAD_YASFA.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "DEENA-RIDNG",
@@ -2764,10 +2731,10 @@
       "to": "ZDAFA",
       "inboundAltitude": 2000,
       "outboundAltitude": 1600,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 5,
       "crop": "/tmp/navaid-altitude-extract/OSNAT_ZDAFA.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "NITZA-OSNAT",
@@ -2775,10 +2742,10 @@
       "to": "OSNAT",
       "inboundAltitude": 2000,
       "outboundAltitude": 1500,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 7,
       "crop": "/tmp/navaid-altitude-extract/NITZA_OSNAT.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "ASKLN-OSNAT",
@@ -2836,26 +2803,15 @@
       "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
     },
     {
-      "segment": "FRDIS-LLBO",
-      "from": "FRDIS",
-      "to": "LLBO",
-      "inboundAltitude": 0,
-      "outboundAltitude": 0,
-      "status": "candidate",
-      "distanceNm": 3.6,
-      "crop": "/tmp/navaid-altitude-extract/FRDIS_LLBO.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
-    },
-    {
       "segment": "NOAAM-REVAH",
       "from": "NOAAM",
       "to": "REVAH",
       "inboundAltitude": 3000,
       "outboundAltitude": 2500,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 5,
       "crop": "/tmp/navaid-altitude-extract/NOAAM_REVAH.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
       "segment": "HODYA-REVAH",
@@ -2874,20 +2830,31 @@
       "to": "NITZA",
       "inboundAltitude": 2000,
       "outboundAltitude": 1500,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 4.9,
       "crop": "/tmp/navaid-altitude-extract/HODYA_NITZA.png",
-      "evidence": "Promoted from maintainer route-template altitude payloads before stripping embedded template legs. Current route direction values are authoritative; return-side values fill only directions that were not already known in the shared altitude table."
+      "evidence": "Maintainer-confirmed against CVFR chart: published altitudes correct as-is; promoted candidate -> reviewed."
     },
     {
-      "segment": "SFAIM-HTZUK",
-      "crop": "/tmp/navaid-altitude-extract/SFAIM_HTZUK.png",
-      "from": "SFAIM",
-      "to": "HTZUK",
+      "segment": "SOVAL-MINGV",
+      "crop": "/tmp/navaid-altitude-extract/SOVAL_MINGV.png",
+      "from": "SOVAL",
+      "to": "MINGV",
+      "inboundAltitude": 2500,
+      "outboundAltitude": 3000,
+      "status": "reviewed",
+      "distanceNm": 3.1,
+      "evidence": "Maintainer-confirmed against CVFR South 2023: published inbound/outbound altitudes are correct as-is; promoted candidate -> reviewed."
+    },
+    {
+      "segment": "TYONA-NTAIM",
+      "crop": "/tmp/navaid-altitude-extract/TYONA_NTAIM.png",
+      "from": "TYONA",
+      "to": "NTAIM",
       "inboundAltitude": 800,
-      "outboundAltitude": 1600,
+      "outboundAltitude": 1200,
       "status": "candidate",
-      "distanceNm": 4.2,
+      "distanceNm": 4.6,
       "evidence": "Promoted from maintainer route-template altitude payloads before stripping embedded template legs. Current route direction values are authoritative; return-side values fill only directions that were not already known in the shared altitude table."
     },
     {
@@ -2902,25 +2869,14 @@
       "evidence": "Promoted from maintainer route-template altitude payloads before stripping embedded template legs. Current route direction values are authoritative; return-side values fill only directions that were not already known in the shared altitude table."
     },
     {
-      "segment": "SOVAL-MINGV",
-      "crop": "/tmp/navaid-altitude-extract/SOVAL_MINGV.png",
-      "from": "SOVAL",
-      "to": "MINGV",
-      "inboundAltitude": 2500,
-      "outboundAltitude": 3000,
-      "status": "candidate",
-      "distanceNm": 3.1,
-      "evidence": "Promoted from maintainer route-template altitude payloads before stripping embedded template legs. Current route direction values are authoritative; return-side values fill only directions that were not already known in the shared altitude table."
-    },
-    {
-      "segment": "TYONA-NTAIM",
-      "crop": "/tmp/navaid-altitude-extract/TYONA_NTAIM.png",
-      "from": "TYONA",
-      "to": "NTAIM",
+      "segment": "SFAIM-HTZUK",
+      "crop": "/tmp/navaid-altitude-extract/SFAIM_HTZUK.png",
+      "from": "SFAIM",
+      "to": "HTZUK",
       "inboundAltitude": 800,
-      "outboundAltitude": 1200,
+      "outboundAltitude": 1600,
       "status": "candidate",
-      "distanceNm": 4.6,
+      "distanceNm": 4.2,
       "evidence": "Promoted from maintainer route-template altitude payloads before stripping embedded template legs. Current route direction values are authoritative; return-side values fill only directions that were not already known in the shared altitude table."
     }
   ]
