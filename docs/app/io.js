@@ -1742,7 +1742,7 @@ function showFlightPlan() {
     if (v > 0) {
       window.profileVS = v;
       try { localStorage.setItem('navaid.profileVS', String(v)); } catch (e) { /* ignore */ }
-      draw();        // keep any open profile overlay in sync
+      draw();        // map TOC/TOD markers move with the new ramp
       refresh();     // recompute leg times + redraw the profile strip
     }
   };
