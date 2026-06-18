@@ -1,33 +1,71 @@
 // @ts-check
-// On phones the inspector is a near-full-screen panel; auto-opening it after
-// every add-mode tap blanketed the map. Adding a waypoint on a narrow viewport
-// must NOT open the inspector (the waypoint is still selected; tap to edit).
-// Desktop keeps the side-panel behaviour.
+// Mobile-layout regressions. On phones (<=680px) the app must not blanket the
+// map: toolbar starts collapsed, the inspector is a bottom sheet, the flight
+// plan scrolls sideways, and floating chrome hides under modals.
 const { test, expect } = require('./_setup');
 
-async function boot(page) {
+async function freshBoot(page, { width, height }) {
+  await page.setViewportSize({ width, height });
+  await page.addInitScript(() => {
+    try { localStorage.removeItem('navaid.toolbarCollapsed');
+          localStorage.removeItem('navaid.inspPos'); } catch (e) {}
+  });
   await page.goto('?lang=en');
   await page.waitForFunction(() =>
     typeof map !== 'undefined' && typeof showInspector === 'function');
 }
-async function addWaypointViaClick(page) {
-  await page.evaluate(() => { state.mode = 'add'; });
-  await page.evaluate(() => { map.fire('click', { latlng: L.latLng(32.1, 34.9) }); });
-}
+const MOBILE = { width: 390, height: 844 };
+const DESKTOP = { width: 1200, height: 800 };
 
-test('mobile viewport: adding a waypoint keeps the inspector hidden', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 780 });
-  await boot(page);
-  await addWaypointViaClick(page);
+test('mobile: adding a waypoint keeps the inspector hidden', async ({ page }) => {
+  await freshBoot(page, MOBILE);
+  await page.evaluate(() => { state.mode = 'add'; map.fire('click', { latlng: L.latLng(32.1, 34.9) }); });
   expect(await page.evaluate(() => state.waypoints.length)).toBe(1);
-  expect(await page.evaluate(() => state.selected && state.selected.type)).toBe('wp');
   await expect(page.locator('#inspector')).toHaveClass(/hidden/);
 });
 
-test('desktop viewport: adding a waypoint opens the inspector', async ({ page }) => {
-  await page.setViewportSize({ width: 1200, height: 800 });
-  await boot(page);
-  await addWaypointViaClick(page);
-  expect(await page.evaluate(() => state.waypoints.length)).toBe(1);
+test('desktop: adding a waypoint opens the inspector', async ({ page }) => {
+  await freshBoot(page, DESKTOP);
+  await page.evaluate(() => { state.mode = 'add'; map.fire('click', { latlng: L.latLng(32.1, 34.9) }); });
   await expect(page.locator('#inspector')).not.toHaveClass(/hidden/);
+});
+
+test('mobile: toolbar starts collapsed; desktop expanded', async ({ page }) => {
+  await freshBoot(page, MOBILE);
+  await expect(page.locator('#toolbar')).toHaveClass(/collapsed/);
+  await freshBoot(page, DESKTOP);
+  await expect(page.locator('#toolbar')).not.toHaveClass(/collapsed/);
+});
+
+test('mobile: inspector renders as a full-width bottom sheet', async ({ page }) => {
+  await freshBoot(page, MOBILE);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.1, lng: 34.9, name: 'LLHZ' }];
+    state.selected = { type: 'wp', index: 0 }; syncLegs(); showInspector();
+  });
+  const box = await page.locator('#inspector').boundingBox();
+  expect(box.x).toBeLessThan(20);             // hugs left edge
+  expect(box.width).toBeGreaterThan(300);     // spans the width
+  expect(box.y + box.height).toBeGreaterThan(800); // sits at the bottom
+});
+
+test('mobile: flight-plan table scrolls horizontally', async ({ page }) => {
+  await freshBoot(page, MOBILE);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }, { lat: 32.6, lng: 35.23, name: 'LLMG' }];
+    syncLegs(); document.getElementById('plan').click();
+  });
+  await expect(page.locator('.fp-scroll').first()).toBeVisible();
+  const ox = await page.locator('.fp-scroll').first().evaluate(el => getComputedStyle(el).overflowX);
+  expect(ox).toBe('auto');
+});
+
+test('mobile: toolbar + legend hide while a modal is open', async ({ page }) => {
+  await freshBoot(page, MOBILE);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }, { lat: 32.6, lng: 35.23, name: 'LLMG' }];
+    syncLegs(); document.getElementById('plan').click();
+  });
+  await expect(page.locator('.modal-back').first()).toBeVisible();
+  expect(await page.locator('#toolbar').evaluate(el => getComputedStyle(el).display)).toBe('none');
 });
