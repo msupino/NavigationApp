@@ -932,7 +932,8 @@ body.theme-light #aircraft-custom input {
 
 #inspector {
   position: absolute;
-  z-index: 1100;
+  /* Stay above desktop dropdown panels restored from old open-section state. */
+  z-index: 2320;
   top: var(--navaid-inspector-default-top, 84px);
   right: 12px;
   width: 280px;
