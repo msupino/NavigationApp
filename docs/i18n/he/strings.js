@@ -474,4 +474,10 @@ window.S = {
   magZoomLabel: 'תקריב',
   magZoomTitle: 'גורם התקריב של הזכוכית המגדלת',
   magLoading: 'משכלל…',
+  tbGpsRecord: '📍 הקלטת מסלול GPS',
+  tbGpsRecordTitle: 'הקלטת המסלול בפועל מ-GPS המכשיר ושמירתו',
+  tbGpsStop: '■ עצור ושמור',
+  gpsUnsupported: 'GPS אינו זמין בדפדפן זה.',
+  gpsNoTrack: 'לא הוקלט מסלול.',
+  gpsError: 'שגיאת GPS: ',
 };

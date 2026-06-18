@@ -1514,6 +1514,20 @@ document.getElementById('plan').onclick = showFlightPlan;
 document.getElementById('freq-table').onclick = showFreqTableModal;
 document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
 document.getElementById('charts').onclick = showChartsModal;
+const gpsBtn = document.getElementById('gps-record');
+if (gpsBtn) {
+  if (!navigator.geolocation) { gpsBtn.disabled = true; }
+  gpsBtn.addEventListener('click', () => {
+    if (gpsRecording) {
+      stopGpsRecordingAndSave();
+      gpsBtn.textContent = S.tbGpsRecord;
+      if (typeof window.refreshRouteLibrary === 'function') window.refreshRouteLibrary();
+    } else {
+      startGpsRecording();
+      if (gpsRecording) gpsBtn.textContent = S.tbGpsStop;
+    }
+  });
+}
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
 const CUMTIME_KEY  = 'navaid.showCumTime';

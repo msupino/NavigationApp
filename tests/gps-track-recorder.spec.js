@@ -112,3 +112,22 @@ test('breadcrumb + own-ship are drawn while recording', async ({ page }) => {
   expect(drawn.ownHdg).toBe(90);
   expect(drawn.breadcrumb).toBeGreaterThan(0);
 });
+
+test('toolbar GPS button toggles recording and updates its label', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__geoCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 5; };
+    navigator.geolocation.clearWatch = () => {};
+    try { localStorage.removeItem('navaid.routes'); } catch (e) {}
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof startGpsRecording === 'function');
+  const btn = page.locator('#gps-record');
+  await expect(btn).toHaveCount(1);
+  await btn.click();
+  expect(await page.evaluate(() => gpsRecording)).toBe(true);
+  await expect(btn).toContainText('Stop');
+  await page.evaluate(() => { const f=(a,b)=>window.__geoCb({coords:{latitude:a,longitude:b,accuracy:8,heading:null,altitude:null},timestamp:Date.now()}); f(32.0,34.0); f(32.1,34.0); });
+  await btn.click();
+  expect(await page.evaluate(() => gpsRecording)).toBe(false);
+});
