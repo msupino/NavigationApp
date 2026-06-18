@@ -199,12 +199,12 @@ NavAid.tuningDefaults = {
   overlayLabelHaloColor: { value: '#ffffff', type: 'color', label: 'Overlay label halo color' },
   overlayLabelHaloAlpha: { value: 0.85, min: 0, max: 1, step: 0.05, label: 'Overlay label halo alpha' },
 
-  altPairFocusColor: { value: '#fff2a8', type: 'color', label: 'Alt-pair focus line color' },
+  altPairFocusColor: { value: '#ff3030', type: 'color', label: 'Alt-pair focus line color' },
   altPairFocusWidthPx: { value: 5, min: 0.5, max: 16, step: 0.5, label: 'Alt-pair focus line width' },
   altPairFocusDashOnPx: { value: 10, min: 0, max: 40, step: 1, label: 'Alt-pair focus dash on' },
   altPairFocusDashOffPx: { value: 8, min: 0, max: 40, step: 1, label: 'Alt-pair focus dash gap' },
   altPairFocusDotRadiusPx: { value: 7, min: 1, max: 30, step: 0.5, label: 'Alt-pair focus endpoint radius' },
-  altPairFocusDotColor: { value: '#1d6fe0', type: 'color', label: 'Alt-pair focus endpoint fill' },
+  altPairFocusDotColor: { value: '#ff3030', type: 'color', label: 'Alt-pair focus endpoint fill' },
   altPairFocusMs: { value: 10000, min: 1000, max: 60000, step: 500, label: 'Alt-pair focus duration (ms)' },
 
   exportBgColor: { value: '#231f20', type: 'color', label: 'PNG export background color' },
@@ -659,6 +659,8 @@ window.S = Object.assign({
   altPairsCopyFailed: 'Copy failed',
   altPairsResetAll: '↻ Reset all',
   altPairsResetAllTitle: 'Revert all altitude pairs to origin',
+  altPairsPinTitle: 'Keep Alt pairs open when focusing a pair',
+  altPairsPinnedTitle: 'Alt pairs stays open when focusing a pair',
   altPairsEmpty: 'No altitude-pair data available',
   altPairsSearch: 'Search altitude pairs',
   altPairsNoMatches: 'No matching altitude pairs',
