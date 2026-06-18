@@ -339,6 +339,8 @@ window.S = {
   altPairsCopyFailed: 'העתקה נכשלה',
   altPairsResetAll: '↻ אפס הכל',
   altPairsResetAllTitle: 'שחזר את כל נתיבי הגובה למקור',
+  altPairsPinTitle: 'השאר את חלון הנתיבים פתוח במיקוד נתיב',
+  altPairsPinnedTitle: 'חלון הנתיבים נשאר פתוח במיקוד נתיב',
   altPairsEmpty: 'אין נתוני נתיבים זמינים',
   altPairsSearch: 'חפש נתיבים',
   altPairsNoMatches: 'אין נתיבים תואמים',
