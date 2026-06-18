@@ -135,6 +135,36 @@ test('toolbar GPS button toggles recording and updates its label', async ({ page
   await expect(btn).toContainText('Record');
 });
 
+test('saving a GPS track does not mutate the currently-loaded routes legs', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__geoCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 3; };
+    navigator.geolocation.clearWatch = () => {};
+    try { localStorage.removeItem('navaid.routes'); } catch (e) {}
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof stopGpsRecordingAndSave === 'function');
+  const before = await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.0, lng: 34.8, name: 'A' }, { lat: 32.2, lng: 34.9, name: 'B' }, { lat: 32.4, lng: 35.0, name: 'C' },
+    ];
+    syncLegs();
+    state.legs[0].flightSpeed = 137;            // custom edit on a leg
+    state.legs[1].inboundAltitude = 4500;
+    draw();
+    startGpsRecording();
+    const f = (a, b) => window.__geoCb({ coords: { latitude: a, longitude: b, accuracy: 8, heading: null, altitude: null }, timestamp: Date.now() });
+    f(31.0, 34.0); f(31.5, 34.2); f(31.9, 34.6);
+    return { speed: state.legs[0].flightSpeed, alt: state.legs[1].inboundAltitude, nLegs: state.legs.length };
+  });
+  await page.evaluate(() => stopGpsRecordingAndSave());
+  const after = await page.evaluate(() => ({ speed: state.legs[0].flightSpeed, alt: state.legs[1].inboundAltitude, nLegs: state.legs.length, wps: state.waypoints.map(w => w.name) }));
+  expect(after.nLegs).toBe(before.nLegs);          // 2 legs, not regrown/truncated
+  expect(after.speed).toBe(137);                   // custom speed preserved
+  expect(after.alt).toBe(4500);                    // custom altitude preserved
+  expect(after.wps).toEqual(['A', 'B', 'C']);      // live waypoints untouched
+});
+
 test('GPS error resets recording state and button label', async ({ page }) => {
   await page.addInitScript(() => {
     window.__errCb = null;

@@ -548,7 +548,6 @@ re-load that does a full page navigation):
 - `navaid.fpOpen` — `'1'` if the Flight Plan modal was open pre-reload.
 - `navaid.openChartModal` — chart/frequency modal kind to reopen after a
   language reload.
-- `navaid.gpsTrack` — in-progress GPS recording checkpoint (best-effort; cleared on save/discard).
 
 `magVar` is hardcoded at `-5` in `core.js`; the obsolete
 `navaid.magVar` key is no longer written. A one-time migration at the

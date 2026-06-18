@@ -54,9 +54,6 @@ Public functions: `startGpsRecording()`, `stopGpsRecordingAndSave()`,
 - **Append** `{lat, lng, t, alt, acc}` (lat/lng rounded 5 dp).
 - Safety cap ~50 000 points.
 - Update `gpsOwn`, then `scheduleDraw()`; if follow is on, recenter the map.
-- **Checkpoint:** mirror the in-progress track to `sessionStorage`
-  (`navaid.gpsTrack`) so an accidental reload mid-recording can resume
-  (best-effort).
 - **Errors:** permission denied / position error → stop recording, surface a
   notice, save nothing.
 
@@ -109,8 +106,8 @@ Public functions: `startGpsRecording()`, `stopGpsRecordingAndSave()`,
 ### 7. Persistence keys
 - `navaid.routes` — existing route library; entries gain optional `kind` +
   `track` fields (back-compatible).
-- `navaid.gpsTrack` (`sessionStorage`) — best-effort in-progress checkpoint;
-  cleared on save/discard.
+- `navaid.gpsTrack` (`sessionStorage`) — deferred/not in v1; resume-on-reload
+  was not implemented and the checkpoint key is unused.
 
 ## Testing
 - Playwright stubs `navigator.geolocation.watchPosition` (via `addInitScript`)

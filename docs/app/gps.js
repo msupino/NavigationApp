@@ -83,7 +83,6 @@ function onGpsPosition(pos) {
   let hdg = (c.heading != null && !isNaN(c.heading)) ? c.heading
             : (prev ? geo(prev, pt).brg : 0);
   gpsOwn = { lat: pt.lat, lng: pt.lng, hdg };
-  try { sessionStorage.setItem('navaid.gpsTrack', JSON.stringify(gpsTrack)); } catch (e) { /* */ }
   gpsUpdateReadout();
   scheduleDraw();
   if (gpsFollow && typeof map !== 'undefined') map.setView([pt.lat, pt.lng], map.getZoom());
@@ -127,6 +126,7 @@ function gpsRouteDataFromPoints(points) {
   };
   try {
     state.waypoints = points.map(p => ({ lat: r5(p.lat), lng: r5(p.lng), name: '' }));
+    state.legs = [];
     state.notes = [];
     state.commChangeSuppressions = [];
     state.wind = { dir: 270, speed: 0 };  // calm — encodeWind omits speed:0
@@ -136,7 +136,10 @@ function gpsRouteDataFromPoints(points) {
     state.waypoints = saved.waypoints; state.legs = saved.legs; state.notes = saved.notes;
     state.commChangeSuppressions = saved.commChangeSuppressions;
     state.wind = saved.wind;
-    syncLegs();
+    // Do NOT call syncLegs() here — saved.legs already has the correct length
+    // for saved.waypoints, and syncLegs() would call applyLegAltitudesToRoute()
+    // which overwrites any _legAltitudeAuto leg values (e.g. custom altitudes
+    // the user set) with NaN when the waypoint names don't match the dataset.
   }
 }
 
@@ -189,7 +192,6 @@ function stopGpsRecording() {
   gpsWatchId = null;
   gpsRecording = false;
   gpsOwn = null;
-  try { sessionStorage.removeItem('navaid.gpsTrack'); } catch (e) { /* */ }
   gpsUpdateReadout();
   scheduleDraw();
 }
