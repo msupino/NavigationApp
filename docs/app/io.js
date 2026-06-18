@@ -4,7 +4,7 @@
 // inspector's #insp-close already uses this pattern; modals now match it
 // (plate viewer, charts modal, flight plan) — see issue thread on toolbar
 // cleanup. `onClose` is invoked when the user clicks the X.
-function addModalCloseX(box, onClose) {
+function addModalCloseX(box, onClose, options = {}) {
   const x = document.createElement('button');
   x.className = 'modal-close-x';
   x.type = 'button';
@@ -12,6 +12,15 @@ function addModalCloseX(box, onClose) {
   x.setAttribute('aria-label', (window.S && S.modalCloseTitle) || 'Close');
   x.title = (window.S && S.modalCloseTitle) || 'Close';
   x.onclick = onClose;
+  const actions = Array.isArray(options.actions) ? options.actions.filter(Boolean) : [];
+  if (actions.length) {
+    const actionWrap = document.createElement('div');
+    actionWrap.className = 'modal-close-actions';
+    for (const action of actions) actionWrap.appendChild(action);
+    actionWrap.appendChild(x);
+    box.appendChild(actionWrap);
+    return;
+  }
   box.appendChild(x);
 }
 
@@ -3923,7 +3932,7 @@ function createDraggableModal(titleText, className, onClose, options = {}) {
     if (typeof onClose === 'function') onClose();
   }
   back._navaidClose = close;
-  addModalCloseX(box, close);
+  addModalCloseX(box, close, { actions: options.closeActions || [] });
 
   let drag = null;
   title.addEventListener('mousedown', function (e) {
@@ -4553,6 +4562,29 @@ function wireAltitudePairResetButton(reset, resetFn) {
 }
 
 var altitudePairFocusLayer = null;
+var altitudePairFocusSource = null;
+
+function clearAltitudePairFocus(source) {
+  if (source && altitudePairFocusSource !== source) return false;
+  if (altitudePairFocusLayer && map && map.removeLayer) {
+    map.removeLayer(altitudePairFocusLayer);
+  }
+  altitudePairFocusLayer = null;
+  altitudePairFocusSource = null;
+  return true;
+}
+
+function altitudePairSearchPairKey(segment) {
+  return String(segment && segment.from || '').trim().toLocaleLowerCase()
+    + '\u001f' + String(segment && segment.to || '').trim().toLocaleLowerCase();
+}
+
+function altitudePairMatchesExactSearch(segment, terms) {
+  if (!segment || terms.length !== 2) return false;
+  const from = String(segment.from || '').trim().toLocaleLowerCase();
+  const to = String(segment.to || '').trim().toLocaleLowerCase();
+  return (terms[0] === from && terms[1] === to) || (terms[0] === to && terms[1] === from);
+}
 
 function altitudePairEndpoint(name) {
   const code = String(name || '').trim();
@@ -4569,15 +4601,14 @@ function altitudePairEndpoint(name) {
   return null;
 }
 
-function showAltitudePairFocus(from, to) {
-  if (altitudePairFocusLayer && map && map.removeLayer) {
-    map.removeLayer(altitudePairFocusLayer);
-  }
+function showAltitudePairFocus(from, to, keepVisible, source) {
+  clearAltitudePairFocus();
   const latlngs = [[from.lat, from.lng], [to.lat, to.lng]];
   const lineColor = tune('altPairFocusColor');
   const dotColor = tune('altPairFocusDotColor');
   const dotRadius = tune('altPairFocusDotRadiusPx');
   const dot = ll => L.circleMarker(ll, {
+    className: 'alt-pair-focus-dot alt-pair-focus-blink',
     radius: dotRadius,
     color: lineColor,
     weight: 3,
@@ -4587,6 +4618,7 @@ function showAltitudePairFocus(from, to) {
   });
   const layer = L.layerGroup([
     L.polyline(latlngs, {
+      className: 'alt-pair-focus-line alt-pair-focus-blink',
       color: lineColor,
       weight: tune('altPairFocusWidthPx'),
       opacity: 0.95,
@@ -4597,15 +4629,18 @@ function showAltitudePairFocus(from, to) {
     dot(latlngs[1]),
   ]).addTo(map);
   altitudePairFocusLayer = layer;
+  altitudePairFocusSource = source || null;
+  if (keepVisible) return;
   window.setTimeout(() => {
     if (altitudePairFocusLayer === layer && map && map.hasLayer(layer)) {
       map.removeLayer(layer);
       altitudePairFocusLayer = null;
+      altitudePairFocusSource = null;
     }
   }, tune('altPairFocusMs'));
 }
 
-async function focusAltitudePairSegment(segment, closeModal) {
+async function focusAltitudePairSegment(segment, closeModal, keepFocusVisible, focusSource) {
   if (!segment) return false;
   if (navWP === null && typeof loadNavWaypoints === 'function') await loadNavWaypoints();
   if (airfields === null && typeof loadAirfields === 'function') await loadAirfields();
@@ -4620,12 +4655,40 @@ async function focusAltitudePairSegment(segment, closeModal) {
   if (typeof closeModal === 'function') closeModal();
   const bounds = L.latLngBounds([[from.lat, from.lng], [to.lat, to.lng]]);
   map.fitBounds(bounds, { padding: [80, 80], maxZoom: 12, animate: false });
-  showAltitudePairFocus(from, to);
+  showAltitudePairFocus(from, to, keepFocusVisible, focusSource);
   return true;
+}
+
+function createAltitudePairsPinButton(opts) {
+  opts = opts || {};
+  if (typeof opts.keepOpenOnFocus !== 'boolean') opts.keepOpenOnFocus = false;
+  const pin = document.createElement('button');
+  pin.type = 'button';
+  pin.className = 'modal-close-action charts-alt-pin';
+  pin.textContent = '📌';
+  const updatePinButton = () => {
+    const title = opts.keepOpenOnFocus
+      ? (S.altPairsPinnedTitle || S.altPairsPinTitle || 'Alt pairs stays open')
+      : (S.altPairsPinTitle || 'Keep Alt pairs open');
+    pin.title = title;
+    pin.setAttribute('aria-label', title);
+    pin.setAttribute('aria-pressed', opts.keepOpenOnFocus ? 'true' : 'false');
+    pin.classList.toggle('is-pinned', opts.keepOpenOnFocus);
+  };
+  opts.updatePinButton = updatePinButton;
+  updatePinButton();
+  pin.onclick = e => {
+    e.preventDefault();
+    opts.keepOpenOnFocus = !opts.keepOpenOnFocus;
+    updatePinButton();
+  };
+  return pin;
 }
 
 function renderAltitudePairsTable(altSection, opts) {
   opts = opts || altSection._altitudePairsRenderOpts || {};
+  if (typeof opts.keepOpenOnFocus !== 'boolean') opts.keepOpenOnFocus = false;
+  if (typeof opts.updatePinButton === 'function') opts.updatePinButton();
   altSection._altitudePairsRenderOpts = opts;
   const existingSearch = altSection.querySelector('.charts-alt-search');
   const searchQuery = existingSearch ? existingSearch.value : '';
@@ -4764,7 +4827,9 @@ function renderAltitudePairsTable(altSection, opts) {
     pairButton.setAttribute('aria-label', pairButton.title);
     pairButton.addEventListener('click', e => {
       e.preventDefault();
-      focusAltitudePairSegment(segment, opts.closeModal).catch(err => {
+      const closeModal = opts.keepOpenOnFocus ? null : opts.closeModal;
+      focusAltitudePairSegment(segment, closeModal, opts.keepOpenOnFocus,
+        opts.keepOpenOnFocus ? 'pinned' : 'manual').catch(err => {
         console.warn('Failed to focus leg-altitude pair:', err);
         if (typeof showToast === 'function') {
           showToast(S.altPairsLocationMissing || 'Pair endpoints not found');
@@ -4854,6 +4919,10 @@ function renderAltitudePairsTable(altSection, opts) {
   table.appendChild(tbody);
   tableWrap.appendChild(table);
   altSection.appendChild(tableWrap);
+  const renderedRows = Array.from(tbody.querySelectorAll('tr')).map((tr, index) => ({
+    tr,
+    segment: segments[index],
+  }));
 
   const noMatches = document.createElement('p');
   noMatches.className = 'charts-alt-empty charts-alt-no-matches';
@@ -4862,14 +4931,30 @@ function renderAltitudePairsTable(altSection, opts) {
   altSection.appendChild(noMatches);
 
   function applySearchFilter() {
-    const q = search.value.trim().toLocaleLowerCase();
+    const terms = search.value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
     let shown = 0;
-    for (const tr of tbody.querySelectorAll('tr')) {
-      const hit = !q || (tr.dataset.search || '').includes(q);
+    let exactMatch = null;
+    for (const row of renderedRows) {
+      const tr = row.tr;
+      const rowSearch = tr.dataset.search || '';
+      const hit = !terms.length || terms.every(term => rowSearch.includes(term));
       tr.hidden = !hit;
       if (hit) shown += 1;
+      if (!exactMatch && altitudePairMatchesExactSearch(row.segment, terms)) exactMatch = row.segment;
     }
     noMatches.hidden = shown > 0;
+    const exactKey = exactMatch ? altitudePairSearchPairKey(exactMatch) : '';
+    if (exactMatch && opts.autoSearchFocusKey !== exactKey) {
+      opts.autoSearchFocusKey = exactKey;
+      focusAltitudePairSegment(exactMatch, null, true, 'search').then(ok => {
+        if (ok && opts.autoSearchFocusKey !== exactKey) clearAltitudePairFocus('search');
+      }).catch(err => {
+        console.warn('Failed to focus exact leg-altitude search:', err);
+      });
+    } else if (!exactMatch && opts.autoSearchFocusKey) {
+      opts.autoSearchFocusKey = '';
+      clearAltitudePairFocus('search');
+    }
   }
   search.addEventListener('input', applySearchFilter);
   applySearchFilter();
@@ -4883,9 +4968,15 @@ function refreshAltitudePairsTableIfOpen() {
 
 function showAltitudePairsModal() {
   if (!prepareChartModal('alt-pairs')) return;
+  const renderOpts = { keepOpenOnFocus: false };
+  const pin = createAltitudePairsPinButton(renderOpts);
   const modal = createDraggableModal(S.tbAltPairs || S.altPairsTitle || 'Alt pairs',
-    'modal wide', () => clearOpenChartModal('alt-pairs'),
-    { nonBlocking: true, chartKind: 'alt-pairs' });
+    'modal wide charts-alt-modal', () => {
+      clearOpenChartModal('alt-pairs');
+      clearAltitudePairFocus();
+    },
+    { nonBlocking: true, chartKind: 'alt-pairs', closeActions: [pin] });
+  renderOpts.closeModal = modal.close;
   const scrollArea = document.createElement('div');
   scrollArea.className = 'fp-scroll';
   const body = document.createElement('div');
@@ -4896,9 +4987,7 @@ function showAltitudePairsModal() {
   const loading = document.createElement('p');
   loading.textContent = '…';
   altSection.appendChild(loading);
-  loadLegAltitudes().then(() => renderAltitudePairsTable(altSection, {
-    closeModal: modal.close,
-  }));
+  loadLegAltitudes().then(() => renderAltitudePairsTable(altSection, renderOpts));
   scrollArea.appendChild(body);
   modal.box.appendChild(scrollArea);
   modal.show();
