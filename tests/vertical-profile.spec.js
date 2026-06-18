@@ -53,7 +53,7 @@ test('routeProfile: per-leg altitudes, one TOC on leg 1, one TOD on the last leg
   expect(p.totalDist).toBeGreaterThan(0);
 });
 
-test('TOC/TOD endpoint distances use fixed CVFR gradient shortcuts', async ({ page }) => {
+test('TOC/TOD endpoint distances follow aircraft climb/descent performance', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(() => {
     state.waypoints = [
@@ -69,6 +69,7 @@ test('TOC/TOD endpoint distances use fixed CVFR gradient shortcuts', async ({ pa
     const slow = routeProfile({ gph: 8, climbFpm: 100, descentFpm: 100, climbKt: 30, descentKt: 30 });
     window.profileVS = 1400;
     const fast = routeProfile({ gph: 8, climbFpm: 2000, descentFpm: 2000, climbKt: 200, descentKt: 200 });
+    window.profileVS = 0;
     return {
       slowToc: slow.legs[0].climbDist,
       slowTod: slow.legs[1].descDist,
@@ -81,15 +82,17 @@ test('TOC/TOD endpoint distances use fixed CVFR gradient shortcuts', async ({ pa
     };
   });
 
-  // 2000 ft climb: 0.5 NM per 100 ft = 10 NM.
+  // Slow profile: 2000 ft at 100 fpm = 20 min; 30 kt for 20 min = 10 NM.
   expect(result.slowToc).toBeCloseTo(10, 5);
-  expect(result.fastToc).toBeCloseTo(result.slowToc, 5);
+  expect(result.slowTod).toBeCloseTo(10, 5);
   expect(result.tocFrac).toBeCloseTo(10 / result.firstLegDist, 5);
+  expect(result.todFrac).toBeCloseTo((result.lastLegDist - 10) / result.lastLegDist, 5);
 
-  // 2000 ft descent: 0.3 NM per 100 ft = 6 NM.
-  expect(result.slowTod).toBeCloseTo(6, 5);
-  expect(result.fastTod).toBeCloseTo(result.slowTod, 5);
-  expect(result.todFrac).toBeCloseTo((result.lastLegDist - 6) / result.lastLegDist, 5);
+  // Faster V/S and speed change endpoint marker distances too.
+  expect(result.fastToc).toBeLessThan(result.slowToc);
+  expect(result.fastTod).toBeLessThan(result.slowTod);
+  expect(result.fastToc).toBeCloseTo(200 * (2000 / 1400) / 60, 5);
+  expect(result.fastTod).toBeCloseTo(200 * (2000 / 1400) / 60, 5);
 });
 
 test('flat route (constant altitude) has no TOC/TOD', async ({ page }) => {
