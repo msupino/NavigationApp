@@ -132,4 +132,23 @@ test('toolbar GPS button toggles recording and updates its label', async ({ page
   await page.evaluate(() => { const f=(a,b)=>window.__geoCb({coords:{latitude:a,longitude:b,accuracy:8,heading:null,altitude:null},timestamp:Date.now()}); f(32.0,34.0); f(32.1,34.0); });
   await btn.click();
   expect(await page.evaluate(() => gpsRecording)).toBe(false);
+  await expect(btn).toContainText('Record');
+});
+
+test('GPS error resets recording state and button label', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__errCb = null;
+    navigator.geolocation.watchPosition = (cb, err) => { window.__errCb = err; return 9; };
+    navigator.geolocation.clearWatch = () => {};
+    try { localStorage.setItem('navaid.sec.view', '1'); } catch (e) {}
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof startGpsRecording === 'function');
+  page.on('dialog', d => d.dismiss().catch(() => {}));   // swallow the alert
+  const btn = page.locator('#gps-record');
+  await btn.click();
+  expect(await page.evaluate(() => gpsRecording)).toBe(true);
+  await page.evaluate(() => window.__errCb && window.__errCb({ code: 1, message: 'denied' }));
+  expect(await page.evaluate(() => gpsRecording)).toBe(false);
+  await expect(btn).toContainText('Record');
 });

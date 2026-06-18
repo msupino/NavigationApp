@@ -91,6 +91,8 @@ function onGpsPosition(pos) {
 
 function onGpsError(err) {
   stopGpsRecording();
+  const btn = document.getElementById('gps-record');
+  if (btn) btn.textContent = S.tbGpsRecord;
   alert((S.gpsError || 'GPS error: ') + (err && err.message ? err.message : ''));
 }
 
