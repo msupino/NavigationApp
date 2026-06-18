@@ -185,10 +185,10 @@
       "to": "HTZUK",
       "inboundAltitude": 800,
       "outboundAltitude": 1600,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 1.2,
       "crop": "/tmp/navaid-altitude-extract/ARENA_HTZUK.png",
-      "evidence": "Short Herzliya coast segment. Use the coastal ARENA/HTZUK pair, 800 northbound and 1600 southbound; the nearby 1200 belongs to the HTZUK/KNTRY continuation."
+      "evidence": "Maintainer-confirmed via the RIDNG-HTZUK-ARENA-APOLN-SFAIM route (SFAIM-RIDNG is not a direct leg); this constituent legs altitudes are correct. Promoted candidate -> reviewed."
     },
     {
       "segment": "ARRAD-LLMZ",
@@ -2016,10 +2016,10 @@
       "to": "SFAIM",
       "inboundAltitude": 1600,
       "outboundAltitude": 800,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 1.3,
       "crop": "/tmp/navaid-altitude-extract/APOLN_SFAIM.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed via the RIDNG-HTZUK-ARENA-APOLN-SFAIM route (SFAIM-RIDNG is not a direct leg); this constituent legs altitudes are correct. Promoted candidate -> reviewed."
     },
     {
       "segment": "GNYAM-LLHZ",
@@ -2060,10 +2060,10 @@
       "to": "ARENA",
       "inboundAltitude": 800,
       "outboundAltitude": 1600,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 1.7,
       "crop": "/tmp/navaid-altitude-extract/APOLN_ARENA.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed via the RIDNG-HTZUK-ARENA-APOLN-SFAIM route (SFAIM-RIDNG is not a direct leg); this constituent legs altitudes are correct. Promoted candidate -> reviewed."
     },
     {
       "segment": "HTZUK-RIDNG",
@@ -2071,10 +2071,10 @@
       "to": "RIDNG",
       "inboundAltitude": 800,
       "outboundAltitude": 1200,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 2.3,
       "crop": "/tmp/navaid-altitude-extract/HTZUK_RIDNG.png",
-      "evidence": "Promoted from maintainer route-template altitude payloads before stripping embedded template legs. Current route direction values are authoritative; return-side values fill only directions that were not already known in the shared altitude table."
+      "evidence": "Maintainer-confirmed via the RIDNG-HTZUK-ARENA-APOLN-SFAIM route (SFAIM-RIDNG is not a direct leg); this constituent legs altitudes are correct. Promoted candidate -> reviewed."
     },
     {
       "segment": "CLORE-TYONA",
@@ -2124,12 +2124,12 @@
       "segment": "AYLON-LLBG",
       "from": "AYLON",
       "to": "LLBG",
-      "inboundAltitude": 300,
+      "inboundAltitude": 3000,
       "outboundAltitude": 2500,
-      "status": "candidate",
+      "status": "reviewed",
       "distanceNm": 8.8,
       "crop": "/tmp/navaid-altitude-extract/AYLON_LLBG.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed: AYLON->LLBG 3000 (corrected from bad seed 300), LLBG->AYLON 2500. Promoted candidate -> reviewed."
     },
     {
       "segment": "NTAIM-SIRNI",
@@ -2855,17 +2855,6 @@
       "outboundAltitude": 1600,
       "status": "candidate",
       "distanceNm": 4.2,
-      "evidence": "Promoted from maintainer route-template altitude payloads before stripping embedded template legs. Current route direction values are authoritative; return-side values fill only directions that were not already known in the shared altitude table."
-    },
-    {
-      "segment": "SFAIM-RIDNG",
-      "crop": "/tmp/navaid-altitude-extract/SFAIM_RIDNG.png",
-      "from": "SFAIM",
-      "to": "RIDNG",
-      "inboundAltitude": 800,
-      "outboundAltitude": 1600,
-      "status": "candidate",
-      "distanceNm": 6.4,
       "evidence": "Promoted from maintainer route-template altitude payloads before stripping embedded template legs. Current route direction values are authoritative; return-side values fill only directions that were not already known in the shared altitude table."
     },
     {
