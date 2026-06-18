@@ -528,6 +528,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.pageSize` — selected page frame size (`A3` / `A4`) or cleared.
 - `navaid.pageOrient` — `'portrait'` / `'landscape'` for page export.
 - `navaid.fpPos` — `{x, y}` of the dragged Flight Plan modal.
+- `navaid.fpColumns` — JSON array of hidden Flight Plan table column keys
+  (`seq`, `from`, `to`, `hdg`, `dist`, `speed`, `alt`, `time`, `fuel`,
+  `cumTime`, `cumFuel`, `radial`, `dme`, optional `freq`). Missing keys
+  are shown, so newly added columns default visible.
 - `navaid.simUrl` — simulator bridge base URL.
 - `navaid.simOn` — `'0'` / `'1'` for simulator auto-reconnect state.
 - `navaid.simFollow` — `'0'` / `'1'` for simulator-follow mode.

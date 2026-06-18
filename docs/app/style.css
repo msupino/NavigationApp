@@ -37,6 +37,7 @@ html, body {
 #map.leaflet-dragging .leaflet-grab { cursor: grabbing; }
 /* Flight-plan VOR Radial/DME columns collapse when no reference VOR is set. */
 .flight-table.no-vor .fp-vor-col { display: none; }
+.flight-table .fp-col-hidden { display: none !important; }
 .fp-vor { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
 .fp-vor-freq { color: #9ad; font-size: 12px; }
 .fp-leg-vor { font-size: 10px; max-width: 56px; margin-inline-end: 3px; vertical-align: middle;
@@ -1140,7 +1141,8 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   }
   body.printing-plan .modal-btns,
   body.printing-plan .modal-close-x,
-  body.printing-plan .fp-aircraft { display: none !important; }
+  body.printing-plan .fp-aircraft,
+  body.printing-plan .fp-columns { display: none !important; }
   body.printing-plan .modal.wide .fp-scroll {
     display: block;
     overflow: visible;
@@ -1199,6 +1201,9 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
     display: table-cell !important;
     font-size: inherit;
     padding: 1px 2px;
+  }
+  body.printing-plan .flight-table .fp-col-hidden {
+    display: none !important;
   }
   body.printing-plan .flight-table .fp-vor-col select {
     display: none !important;
@@ -1637,6 +1642,79 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
 }
 .fp-profile-dir .fp-dir-arrow { flex: 1; text-align: center; letter-spacing: 1px; color: #7fa8d0; }
 .fp-profile-canvas { width: 100%; height: 104px; display: block; border-radius: 4px; }
+.fp-columns {
+  position: relative;
+  align-self: flex-start;
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #b9b3b3;
+}
+.fp-columns summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+  color: #e8e8e8;
+  background: #2f2b2b;
+  border: 1px solid #443f3f;
+  border-radius: 5px;
+  padding: 5px 9px;
+  cursor: pointer;
+  user-select: none;
+}
+.fp-columns summary::-webkit-details-marker { display: none; }
+.fp-columns summary::after {
+  content: '▾';
+  font-size: 10px;
+  color: #b9b3b3;
+}
+.fp-columns[open] summary {
+  border-color: #1d6fe0;
+  background: #332f2f;
+}
+.fp-columns-menu {
+  position: absolute;
+  z-index: 1600;
+  inset-block-start: calc(100% + 4px);
+  inset-inline-start: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 4px 8px;
+  min-width: 300px;
+  max-width: min(440px, calc(92vw - 28px));
+  padding: 8px;
+  color: #e8e8e8;
+  background: #2b2727;
+  border: 1px solid #443f3f;
+  border-radius: 6px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+.fp-columns-all {
+  grid-column: 1 / -1;
+  justify-self: start;
+  font: inherit;
+  font-size: 12px;
+  color: #e8e8e8;
+  background: #342f2f;
+  border: 1px solid #4a4444;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.fp-columns-all:hover { background: #3d3737; }
+.fp-column-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 3px 4px;
+  white-space: nowrap;
+}
+.fp-column-option input {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
 .flight-table {
   width: 100%;
   border-collapse: collapse;
@@ -2745,6 +2823,8 @@ body.theme-light .row select,
 body.theme-light .row textarea,
 body.theme-light .fp-aircraft select,
 body.theme-light .fp-aircraft input,
+body.theme-light .fp-columns summary,
+body.theme-light .fp-columns-all,
 body.theme-light .plan-name,
 body.theme-light .plan-num,
 body.theme-light .fp-profile-vs-input,
@@ -2894,6 +2974,22 @@ body.theme-light .wp-search-item:hover {
 body.theme-light .flight-table tbody tr:hover,
 body.theme-light .flight-table tfoot td {
   background: rgba(29, 111, 224, 0.07);
+}
+body.theme-light .fp-columns { color: #647184; }
+body.theme-light .fp-columns summary::after { color: #647184; }
+body.theme-light .fp-columns[open] summary {
+  background: #eef3f9;
+  border-color: #1d6fe0;
+}
+body.theme-light .fp-columns-menu {
+  color: #1f252c;
+  background: #fff;
+  border-color: #c6ccd6;
+  box-shadow: 0 8px 20px rgba(31, 37, 44, 0.18);
+}
+body.theme-light .fp-columns-all:hover {
+  color: #111820;
+  background: #eef3f9;
 }
 body.theme-light .modal-back {
   background: rgba(240, 244, 248, 0.62);
