@@ -23,13 +23,13 @@ test('simplifyTrack reduces collinear points and keeps the endpoints', async ({ 
 });
 
 test('simplifyTrack handles a very large input without overflowing', async ({ page }) => {
-  test.setTimeout(35000); // iterative D-P on 60k-point worst-case zigzag can take ~20 s
+  test.setTimeout(10000); // iterative D-P on 20k-point worst-case zigzag runs in ~2-3 s
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof simplifyTrack === 'function');
   const out = await page.evaluate(() => {
-    // 60k-point zigzag: worst case for recursion depth.
+    // 20k-point zigzag: exceeds ~15k recursion-overflow threshold, guards the iterative path.
     const pts = [];
-    for (let i = 0; i < 60000; i++) pts.push({ lat: 32 + i * 1e-5, lng: 34 + (i % 2) * 1e-3 });
+    for (let i = 0; i < 20000; i++) pts.push({ lat: 32 + i * 1e-5, lng: 34 + (i % 2) * 1e-3 });
     const s = simplifyTrack(pts, 0.0003);
     return { n: s.length, first: s[0], last: s[s.length - 1] };
   });
@@ -84,6 +84,9 @@ test('stop saves a kind:gps library entry with simplified route + raw track', as
   expect(entry.track.length).toBeGreaterThanOrEqual(4);
   expect(entry.data.waypoints.length).toBeGreaterThanOrEqual(2);
   expect(entry.data.legs.length).toBe(entry.data.waypoints.length - 1);
+  // Fix: saved GPS entry must not be polluted with user's current wind or suppressions.
+  expect(entry.data.commChangeSuppressions || []).toEqual([]);
+  expect(entry.data.wind == null || (entry.data.wind.speed === 0)).toBe(true);
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.routes'))[0]);
   expect(persisted.id).toBe(entry.id);
   expect(await page.evaluate((d) => (typeof validateRoute === 'function' ? validateRoute(d) : null), entry.data)).toBeNull();

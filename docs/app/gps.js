@@ -115,15 +115,25 @@ function gpsTrackName() {
 
 // Build a validateRoute-passing route `data` from simplified points by reusing
 // the canonical serializer with a guarded temporary state swap.
+// Also neutralizes state.commChangeSuppressions and state.wind so the saved GPS
+// entry is not polluted with the user's current comm-change suppressions or wind.
 function gpsRouteDataFromPoints(points) {
-  const saved = { waypoints: state.waypoints, legs: state.legs, notes: state.notes };
+  const saved = {
+    waypoints: state.waypoints, legs: state.legs, notes: state.notes,
+    commChangeSuppressions: state.commChangeSuppressions,
+    wind: state.wind,
+  };
   try {
     state.waypoints = points.map(p => ({ lat: r5(p.lat), lng: r5(p.lng), name: '' }));
     state.notes = [];
+    state.commChangeSuppressions = [];
+    state.wind = { dir: 270, speed: 0 };  // calm — encodeWind omits speed:0
     syncLegs();
     return serializeRoute();
   } finally {
     state.waypoints = saved.waypoints; state.legs = saved.legs; state.notes = saved.notes;
+    state.commChangeSuppressions = saved.commChangeSuppressions;
+    state.wind = saved.wind;
     syncLegs();
   }
 }
