@@ -1276,10 +1276,23 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   #toolbar button { padding: 9px 12px; font-size: 14px; }
   #toolbar .navtoggle { font-size: 14px; }
   #toolbar .navtoggle input { width: 18px; height: 18px; }
-  #inspector { width: 300px; }
+  /* Inspector as a bottom sheet: full width, capped height, so the map stays
+     visible above it instead of a tall side panel blanketing the chart. */
+  #inspector {
+    left: 8px; right: 8px; width: auto;
+    top: auto; bottom: 8px;
+    max-height: 45dvh;
+  }
   .row input[type="number"],
   .row input[type="text"] { padding: 8px 6px; font-size: 15px; }
   #info { font-size: 12px; }
+  /* Flight-plan table is wider than a phone — scroll sideways instead of
+     truncating columns. */
+  .fp-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  /* While a modal is open, the floating map legend and toolbar would overlap
+     it on a small screen — hide them until it closes. */
+  body:has(.modal-back) .map-legend,
+  body:has(.modal-back) #toolbar { display: none; }
 }
 
 /* Orientation picker modal */
@@ -2815,6 +2828,7 @@ body.theme-light .flight-table tfoot td,
 body.theme-light .flight-plan-sub,
 body.theme-light .plates-section,
 body.theme-light .satellite-snippet-section,
+body.theme-light .wx-section,
 body.theme-light .charts-airport + .charts-airport,
 body.theme-light #tuning-panel .tune-group {
   border-color: #cfd5df;
@@ -2871,6 +2885,8 @@ body.theme-light .modal-close-action,
 body.theme-light .point-choice-meta,
 body.theme-light .satellite-snippet-head label,
 body.theme-light .satellite-caption,
+body.theme-light .wx-head,
+body.theme-light .wx-updated,
 body.theme-light #insp-close,
 body.theme-light #mag-settings-close,
 body.theme-light #search-close,
@@ -2966,6 +2982,20 @@ body.theme-light .commchange-freq-reset {
 body.theme-light .commchange-freq-reset:hover:not(:disabled) {
   color: #111820;
   background: #eef3f9;
+}
+body.theme-light .wx-body {
+  color: #1f252c;
+}
+body.theme-light .wx-line.wx-raw {
+  color: #374151;
+}
+body.theme-light .wx-refresh,
+body.theme-light .wx-toggle {
+  color: #165fc7;
+}
+body.theme-light .wx-refresh:hover:not(:disabled),
+body.theme-light .wx-toggle:hover {
+  color: #0b4fb3;
 }
 body.theme-light .charts-freq-section {
   border-color: #c6ccd6;
