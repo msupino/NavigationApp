@@ -30,7 +30,8 @@ Rules:
   published builds show values like `v1.0-abc1234`.
 - Verify UI changes with Playwright or browser screenshots against a local
   `python3 -m http.server -d docs 8000`.
-- Keep `dev` linear; squash PR integrations into `dev`.
+- Prefer squash PR integrations into `dev`; CI reports merge commits as
+  warnings so promotion is not blocked by GitHub merge commits.
 - Open PRs are auto-deployed to `/pr/NNN/` and `/branch/BRANCH_NAME/` on
   the Pages site. Include the preview URL in every PR you create.
 
