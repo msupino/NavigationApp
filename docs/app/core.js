@@ -470,6 +470,8 @@ window.S = Object.assign({
   fpFreq: 'Freq',
   freqNone: 'None',
   fpHeadersShort: ['#', 'From', 'To', 'Hdg', 'Dist', 'Spd', 'Alt', 'Time', 'Fuel'],
+  fpColumns: 'Columns',
+  fpColumnsAll: 'All columns',
   exportPlanPlace: 'Place flight plan on the map',
   exportPlanPlaceTitle: 'Overlay the flight-plan table on the export; drag it to position it inside the page frame',
   exportPlanNoFrame: 'Place flight plan — set an A3/A4 page first',
