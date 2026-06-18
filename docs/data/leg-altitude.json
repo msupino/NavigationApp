@@ -1878,10 +1878,9 @@
       "to": "ZMGID",
       "distanceNm": 5.8,
       "inboundAltitude": 3000,
-      "outboundAltitude": null,
-      "status": "candidate",
+      "outboundAltitude": 2500,
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
-      "oneWay": true,
       "armyAirway": true,
       "onAtcApproval": true
     },
@@ -5027,6 +5026,13 @@
       "altitude": 3000,
       "segment": "LLRD-ZMGID",
       "field": "inboundAltitude"
+    },
+    {
+      "from": "ZMGID",
+      "to": "LLRD",
+      "altitude": 2500,
+      "segment": "LLRD-ZMGID",
+      "field": "outboundAltitude"
     },
     {
       "from": "AFULA",

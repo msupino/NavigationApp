@@ -1905,11 +1905,11 @@
       "from": "LLRD",
       "to": "ZMGID",
       "inboundAltitude": 3000,
-      "outboundAltitude": null,
-      "status": "candidate",
+      "outboundAltitude": 2500,
+      "status": "reviewed",
       "distanceNm": 5.8,
       "crop": "/tmp/navaid-altitude-extract/LLRD_ZMGID.png",
-      "evidence": "Seeded from the cvfr-map airway adjacency table so sibling CVFR legs appear in the editable altitude-pair chart. Verify against the official CVFR chart before promoting this row."
+      "evidence": "Maintainer-confirmed against the CVFR chart: LLRD->ZMGID 3000, ZMGID->LLRD 2500; bidirectional. Promoted candidate -> reviewed."
     },
     {
       "segment": "AFULA-TAVOR",
