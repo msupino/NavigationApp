@@ -30,6 +30,25 @@ const TAF = [{
   fcsts: [{ timeFrom: 1781503200, wdir: 280, wspd: 10, visib: '6+', clouds: [{ cover: 'SCT', base: 3500 }] }],
 }];
 
+function rgbParts(cssColor) {
+  const nums = String(cssColor).match(/[\d.]+/g).map(Number);
+  return nums.slice(0, 3);
+}
+
+function contrastAgainstWhite(cssColor) {
+  const lum = rgbParts(cssColor).map(v => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  const l = 0.2126 * lum[0] + 0.7152 * lum[1] + 0.0722 * lum[2];
+  return 1.05 / (l + 0.05);
+}
+
+async function expectReadableOnLight(locator) {
+  const color = await locator.evaluate(el => getComputedStyle(el).color);
+  expect(contrastAgainstWhite(color)).toBeGreaterThanOrEqual(4.5);
+}
+
 test('decodeMetar renders wind/vis/wx/cloud/temp/QNH', async ({ page }) => {
   await boot(page);
   const txt = await page.evaluate(m => decodeMetar(m), METAR[0]);
@@ -61,6 +80,32 @@ test('airfield inspector shows decoded METAR/TAF with a raw toggle', async ({ pa
   await page.locator('.wx-toggle').click();
   await expect(wx).toContainText('27012G20KT');     // raw METAR token
   await expect(wx).toContainText('1406/1506');      // raw TAF token
+});
+
+test('light theme keeps decoded and raw METAR/TAF readable', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('navaid.theme', 'light'));
+  await mockWx(page);
+  await boot(page);
+  await page.evaluate(async () => {
+    if (airfields === null) await loadAirfields();
+    const index = airfields.findIndex(a => a.name === 'LLBG');
+    if (index < 0) throw new Error('LLBG missing from airfields.json');
+    state.selected = { type: 'airfield', index };
+    showInspector();
+  });
+
+  const wx = page.locator('#insp-body .wx-section');
+  await expect(wx).toBeVisible();
+  await expect(wx.locator('.wx-line').first()).toContainText('Wind 270°');
+
+  await expectReadableOnLight(wx.locator('.wx-line').first());
+  await expectReadableOnLight(wx.locator('.wx-updated'));
+  await expectReadableOnLight(wx.locator('.wx-refresh'));
+
+  await page.locator('.wx-toggle').click();
+  await expect(wx).toContainText('27012G20KT');
+  await expectReadableOnLight(wx.locator('.wx-line.wx-raw').first());
+  await expectReadableOnLight(wx.locator('.wx-toggle'));
 });
 
 test('refresh button re-fetches (force, bypassing cache)', async ({ page }) => {
