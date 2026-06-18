@@ -366,11 +366,18 @@
     <div class="tb-section" data-sec="print">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecPrint"></div>
       <div class="tb-section-body">
-        <div id="page-buttons">
-          <button id="page-a3" data-i18n-title="tbPageA3Title">A3</button>
-          <button id="page-a4" data-i18n-title="tbPageA4Title">A4</button>
-          <button id="page-orient" type="button" data-i18n-title="tbOrientTitle">▭</button>
+        <div class="tb-print-submenu">
+          <span class="tb-print-label" data-i18n="tbPrintPageSize"></span>
+          <div id="page-buttons">
+            <button id="page-a3" data-i18n-title="tbPageA3Title">A3</button>
+            <button id="page-a4" data-i18n-title="tbPageA4Title">A4</button>
+            <button id="page-orient" type="button" data-i18n-title="tbOrientTitle">
+              <span class="page-orient-icon" aria-hidden="true">▭</span>
+              <span class="page-orient-label"></span>
+            </button>
+          </div>
         </div>
+        <div class="tb-print-separator" aria-hidden="true"></div>
         <button id="print" data-i18n="tbPrint" data-i18n-title="tbPrintTitle"></button>
       </div>
     </div>

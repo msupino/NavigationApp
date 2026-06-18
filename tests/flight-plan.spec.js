@@ -1,11 +1,19 @@
 // @ts-check
 const { test, expect } = require('./_setup');
 const { LLHZ, LLHA } = require('./_airfieldArp');
+const { clickToolbarControl, hideToolbarMenus, showToolbarControl } = require('./_toolbar');
 const NAV_WAYPOINTS = require('../docs/data/nav-waypoints.json').waypoints;
 
 const NAV_EN = new Map(NAV_WAYPOINTS.map(w => [w.name, w.en]));
 function displayName(code) {
   return NAV_EN.get(code) || code;
+}
+
+async function downloadText(download) {
+  const stream = await download.createReadStream();
+  const chunks = [];
+  for await (const chunk of stream) chunks.push(chunk);
+  return Buffer.concat(chunks).toString('utf8');
 }
 
 // Endpoints from `docs/data/airfields.json` via `tests/_airfieldArp.js`; CVFR
@@ -89,6 +97,51 @@ test.describe('Flight plan', () => {
     await expect(modal.locator('.flight-plan-sub')).toHaveCount(0);
   });
 
+  test('column selector hides columns in table and CSV and persists', async ({ page }) => {
+    await page.evaluate(() => { window.showReturn = true; });
+    await page.locator('#plan').click();
+    let modal = page.locator('.modal-back.flight-plan');
+    await expect(modal).toBeVisible();
+
+    await modal.locator('.fp-columns summary').click();
+    await modal.locator('.fp-columns input[data-fp-col="fuel"]').uncheck();
+    await modal.locator('.fp-columns input[data-fp-col="cumFuel"]').uncheck();
+
+    const fwdTable = modal.locator('.fp-scroll > .flight-table').first();
+    const retTable = modal.locator('.fp-scroll > .flight-table').nth(1);
+    await expect(fwdTable.locator('thead th.fp-col-dist')).toBeHidden();
+    await expect(modal.locator('.fp-columns input[data-fp-col="dist"]')).not.toBeChecked();
+
+    await expect(fwdTable.locator('thead th.fp-col-fuel')).toBeHidden();
+    await expect(fwdTable.locator('thead th.fp-col-cumFuel')).toBeHidden();
+    await expect(retTable.locator('thead th.fp-col-fuel')).toBeHidden();
+
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.fpColumns') || '[]'));
+    expect(saved).toEqual(expect.arrayContaining(['dist', 'fuel', 'cumFuel']));
+
+    const downloadPromise = page.waitForEvent('download');
+    await modal.locator('.modal-btns button', { hasText: 'CSV' }).click();
+    const csv = await downloadText(await downloadPromise);
+    expect(csv).not.toContain('Dist (NM)');
+    expect(csv).not.toContain('Fuel (gal)');
+    expect(csv).not.toContain('Cum. fuel');
+    expect(csv).toContain('Flight plan\r\n#,From,To,Hdg,Speed (kt),Alt (ft),Time,Cum. time');
+
+    await modal.locator('.modal-close-x').click();
+    await page.locator('#plan').click();
+    modal = page.locator('.modal-back.flight-plan');
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('.flight-table').first().locator('thead th.fp-col-fuel')).toBeHidden();
+    await expect(modal.locator('.fp-columns input[data-fp-col="fuel"]')).not.toBeChecked();
+
+    await modal.locator('.fp-columns summary').click();
+    await modal.locator('.fp-columns-all').click();
+    await expect(modal.locator('.flight-table').first().locator('thead th.fp-col-dist')).toBeVisible();
+    await expect(modal.locator('.flight-table').first().locator('thead th.fp-col-fuel')).toBeVisible();
+    const allColumns = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.fpColumns') || 'null'));
+    expect(allColumns).toEqual([]);
+  });
+
   test('both-ways flight plan — forward + return tables', async ({ page }) => {
     await page.evaluate(() => { window.showReturn = true; });
     await page.locator('#plan').click();
@@ -163,6 +216,7 @@ test.describe('Flight plan', () => {
     await expect(modal.locator('.flight-plan-sub')).toHaveCount(0);
 
     // Toggle return on
+    await showToolbarControl(page, '#ret-cb');
     await page.locator('#ret-cb').check();
     await expect(modal).toBeVisible();
     await expect(modal.locator('.flight-plan-sub')).toHaveCount(1);
@@ -338,9 +392,9 @@ test.describe('Flight plan', () => {
 
   test('Flight Plan button keeps the chart window open on a second click', async ({ page }) => {
     const modal = page.locator('.modal-back.flight-plan');
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     await expect(modal).toBeVisible();
-    await page.locator('#plan').click();
+    await clickToolbarControl(page, '#plan');
     await expect(modal).toBeVisible();
     await expect(modal).toHaveCount(1);
   });
@@ -452,7 +506,8 @@ test.describe('Flight plan', () => {
       };
     });
     for (let i = 0; i < 5; i++) {
-      await page.locator('#plan').click();
+      await clickToolbarControl(page, '#plan');
+      await hideToolbarMenus(page);
       await page.locator('.modal-back.flight-plan .modal-close-x').click();
     }
     const leftover = await page.evaluate(() => window.__touchCount);

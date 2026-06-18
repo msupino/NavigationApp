@@ -236,24 +236,38 @@ test.describe('Layer selector', () => {
   });
 });
 
-test.describe('Toolbar collapse', () => {
-  test('hamburger toggles toolbar visibility and persists navaid.toolbarCollapsed', async ({ page }) => {
+test.describe('Toolbar collapse on mobile', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('hamburger expands/collapses the floating toolbar and persists navaid.toolbarCollapsed', async ({ page }) => {
     await boot(page);
+    await expect(page.locator('#toolbar')).toHaveClass(/collapsed/);
+
     await page.locator('#toolbar-toggle').click();
-    const stored = await page.evaluate(() => localStorage.getItem('navaid.toolbarCollapsed'));
+    await expect(page.locator('#toolbar')).not.toHaveClass(/collapsed/);
+    let stored = await page.evaluate(() => localStorage.getItem('navaid.toolbarCollapsed'));
+    expect(stored).toBe('0');
+
+    await page.locator('#toolbar-toggle').click();
+    await expect(page.locator('#toolbar')).toHaveClass(/collapsed/);
+    stored = await page.evaluate(() => localStorage.getItem('navaid.toolbarCollapsed'));
     expect(stored).toBe('1');
 
     await page.reload();
     await page.waitForFunction(() => typeof state !== 'undefined');
+    await expect(page.locator('#toolbar')).toHaveClass(/collapsed/);
     const reloaded = await page.evaluate(() => localStorage.getItem('navaid.toolbarCollapsed'));
     expect(reloaded).toBe('1');
   });
 
-  test('clicking hamburger again expands the toolbar', async ({ page }) => {
+  test('expanded mobile toolbar persists across reload', async ({ page }) => {
     await boot(page);
     await page.locator('#toolbar-toggle').click();
-    await page.locator('#toolbar-toggle').click();
     const stored = await page.evaluate(() => localStorage.getItem('navaid.toolbarCollapsed'));
-    expect(stored === null || stored === '0').toBeTruthy();
+    expect(stored).toBe('0');
+
+    await page.reload();
+    await page.waitForFunction(() => typeof state !== 'undefined');
+    await expect(page.locator('#toolbar')).not.toHaveClass(/collapsed/);
   });
 });
