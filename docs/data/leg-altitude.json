@@ -374,7 +374,7 @@
       "inboundAltitude": 3000,
       "outboundAltitude": null,
       "oneWay": true,
-      "status": "candidate",
+      "status": "reviewed",
       "detection": {
         "greenScore": 0.644,
         "maxGap": 11,
@@ -459,10 +459,10 @@
       "from": "FRDIS",
       "to": "SDTYM",
       "distanceNm": 6.5,
-      "inboundAltitude": 2000,
+      "inboundAltitude": 3000,
       "outboundAltitude": null,
       "oneWay": true,
-      "status": "candidate",
+      "status": "reviewed",
       "detection": {
         "greenScore": 0.756,
         "maxGap": 12,
@@ -853,7 +853,7 @@
       "inboundAltitude": null,
       "outboundAltitude": 800,
       "oneWay": true,
-      "status": "candidate",
+      "status": "reviewed",
       "detection": {
         "greenScore": 0.793,
         "maxGap": 12,
@@ -931,7 +931,7 @@
       "distanceNm": 1.7,
       "inboundAltitude": 1500,
       "outboundAltitude": 2000,
-      "status": "candidate",
+      "status": "reviewed",
       "detection": {
         "greenScore": 0.625,
         "maxGap": 5,
@@ -1690,7 +1690,7 @@
       "distanceNm": 5.5,
       "inboundAltitude": 2000,
       "outboundAltitude": 1500,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency"
     },
     {
@@ -1709,7 +1709,7 @@
       "distanceNm": 4.1,
       "inboundAltitude": 2500,
       "outboundAltitude": 1500,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "onAtcApproval": true
     },
@@ -1739,7 +1739,7 @@
       "distanceNm": 2,
       "inboundAltitude": 1500,
       "outboundAltitude": 2000,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency"
     },
     {
@@ -1766,7 +1766,7 @@
       "distanceNm": 2.6,
       "inboundAltitude": 2000,
       "outboundAltitude": 1500,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency"
     },
     {
@@ -1824,7 +1824,7 @@
       "distanceNm": 3.8,
       "inboundAltitude": 1500,
       "outboundAltitude": null,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency",
       "oneWay": true,
       "armyAirway": true
@@ -2350,7 +2350,7 @@
       "distanceNm": 4.5,
       "inboundAltitude": 2000,
       "outboundAltitude": 1500,
-      "status": "candidate",
+      "status": "reviewed",
       "source": "cvfr-map airway adjacency"
     },
     {
@@ -2682,15 +2682,6 @@
       "distanceNm": 6.2,
       "inboundAltitude": 1500,
       "outboundAltitude": 1000,
-      "status": "candidate",
-      "source": "cvfr-map airway adjacency"
-    },
-    {
-      "from": "FRDIS",
-      "to": "LLBO",
-      "distanceNm": 3.6,
-      "inboundAltitude": 0,
-      "outboundAltitude": 0,
       "status": "candidate",
       "source": "cvfr-map airway adjacency"
     },
@@ -3224,7 +3215,7 @@
     {
       "from": "FRDIS",
       "to": "SDTYM",
-      "altitude": 2000,
+      "altitude": 3000,
       "segment": "FRDIS-SDTYM",
       "field": "inboundAltitude"
     },
@@ -6124,20 +6115,6 @@
       "to": "HOTRM",
       "altitude": 1000,
       "segment": "HOTRM-LLBO",
-      "field": "outboundAltitude"
-    },
-    {
-      "from": "FRDIS",
-      "to": "LLBO",
-      "altitude": 0,
-      "segment": "FRDIS-LLBO",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "LLBO",
-      "to": "FRDIS",
-      "altitude": 0,
-      "segment": "FRDIS-LLBO",
       "field": "outboundAltitude"
     },
     {
