@@ -453,6 +453,12 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   An "Include cumulative time" checkbox in the export modal (default on)
   includes the cumulative-time kite layer in the exported PNG; disabling
   it still renders leg markers but hides cumulative kites.
+- **GPS track recorder:** the `📍 Record GPS track` toggle in the View/Set
+  toolbar section records the flown path from the device GPS (live own-ship
+  dot + breadcrumb trail on the map). On Stop it auto-saves a timestamped
+  `kind:'gps'` saved-route entry containing simplified waypoints plus the raw
+  `track[]` breadcrumb, carried by the existing Drive sync. Requires HTTPS;
+  backgrounded phones may leave gaps (no wake-lock).
 
 ## Persistence (`localStorage` + `sessionStorage`, all keyed `navaid.*`)
 
@@ -524,7 +530,10 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.aircraft` — last-used aircraft profile JSON (fuel planner).
 - `navaid.profileVS` — vertical-profile climb/descent rate input for timing and
   TOC/TOD ramp distance.
-- `navaid.routes` — saved-route library entries and tombstones.
+- `navaid.routes` — saved-route library entries and tombstones. An entry
+  may carry `kind: 'gps'` plus a raw `track[]` (the recorded GPS
+  breadcrumb: `{lat,lng,t,alt?,acc?}`); loading applies the simplified
+  waypoint route, the raw track is retained for fidelity.
 - `navaid.pageSize` — selected page frame size (`A3` / `A4`) or cleared.
 - `navaid.pageOrient` — `'portrait'` / `'landscape'` for page export.
 - `navaid.fpPos` — `{x, y}` of the dragged Flight Plan modal.
@@ -539,6 +548,7 @@ re-load that does a full page navigation):
 - `navaid.fpOpen` — `'1'` if the Flight Plan modal was open pre-reload.
 - `navaid.openChartModal` — chart/frequency modal kind to reopen after a
   language reload.
+- `navaid.gpsTrack` — in-progress GPS recording checkpoint (best-effort; cleared on save/discard).
 
 `magVar` is hardcoded at `-5` in `core.js`; the obsolete
 `navaid.magVar` key is no longer written. A one-time migration at the
