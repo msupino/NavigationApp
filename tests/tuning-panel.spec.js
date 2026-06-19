@@ -63,7 +63,8 @@ test.describe('Hidden tuning panel', () => {
     await expect(page.locator('#tuning-panel')).toBeVisible();
     const params = new URL(page.url()).searchParams;
     expect(params.get('tune')).toBe('1');
-    expect(params.get('lang')).toBe('en');
+    // First-time default is Hebrew (no stored/param lang).
+    expect(params.get('lang')).toBe('he');
   });
 
   test('groups start collapsed', async ({ page }) => {

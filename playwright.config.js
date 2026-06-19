@@ -5,9 +5,17 @@ module.exports = defineConfig({
   testDir: './tests',
   timeout: 15 * 1000,
   fullyParallel: true,
-  // e2e-deployed: one live origin — cap workers so the log keeps moving and
-  // the preview is not flooded (avoids long “silent” stretches + timeouts).
-  ...(process.env.EXPECTED_SHA ? { workers: 4 } : {}),
+  // Worker count:
+  // - EXPECTED_SHA hits one live preview origin — cap at 4 so the log keeps
+  //   moving and the preview is not flooded (long “silent” stretches/timeouts).
+  // - CI e2e hits a private threaded static server on a dedicated runner, so
+  //   use every vCPU ('100%' = 4 on ubuntu-latest) instead of Playwright's
+  //   50%-of-cores default (2 workers), which roughly halves wall-clock time.
+  //   Requires the multi-threaded server in ci.yml, else extra workers starve
+  //   sw.js fetches and the service-worker tests time out. Validated stable.
+  // - Local dev keeps the default; '100%' on a busy 8–16 core dev box
+  //   oversubscribes CPU (browsers are CPU-bound) and causes timeout flakes.
+  workers: process.env.EXPECTED_SHA ? 4 : (process.env.CI ? '100%' : undefined),
   forbidOnly: !!process.env.CI,
   retries: 0,
   reporter: process.env.CI ? 'github' : 'list',

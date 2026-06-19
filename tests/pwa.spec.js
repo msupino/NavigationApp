@@ -290,6 +290,17 @@ test.describe('Service worker', () => {
 
   test('Focus and toolbar activity request a throttled update check', async ({ page }) => {
     await page.goto('?lang=en');
+    // On load the page registers the real service worker, which writes the
+    // module-global registration that the focus/toolbar update-check handlers
+    // read. Let that settle first so the fake registration installed below is
+    // the last writer; otherwise the real registration can resolve mid-test
+    // and hijack the update() calls we count, leaving updateCalls short. This
+    // race — not microtask timing — is what made the test flaky in CI.
+    await page.evaluate(() =>
+      Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise(resolve => setTimeout(resolve, 3000)),
+      ]).catch(() => {}));
     const updates = await page.evaluate(async () => {
       const originalNow = Date.now;
       let now = 200000;
@@ -310,17 +321,27 @@ test.describe('Service worker', () => {
           });
         },
       };
-      const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+      // performance.now() is not mocked, so it gives a real wall-clock
+      // timeout while Date.now stays frozen for the throttle logic.
+      const waitFor = async (predicate, timeout = 2000) => {
+        const start = performance.now();
+        while (!predicate()) {
+          if (performance.now() - start > timeout) {
+            throw new Error('waitFor timed out at updateCalls=' + updateCalls);
+          }
+          await new Promise(resolve => setTimeout(resolve, 5));
+        }
+      };
       try {
         await watchServiceWorkerUpdates(fakeSw);
+        await waitFor(() => updateCalls >= 1); // forced 'load' check
         now += (5 * 60 * 1000) + 1;
         window.dispatchEvent(new Event('focus'));
-        await flush();
-        document.querySelector('.tb-section-head').click();
-        await flush();
+        await waitFor(() => updateCalls >= 2); // 'focus' check after throttle
+        document.querySelector('.tb-section-head').click(); // throttled, no-op
         now += (5 * 60 * 1000) + 1;
         document.querySelector('.tb-section-head').click();
-        await flush();
+        await waitFor(() => updateCalls >= 3); // 'toolbar' check after throttle
         return updateCalls;
       } finally {
         Date.now = originalNow;

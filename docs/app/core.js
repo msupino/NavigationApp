@@ -98,7 +98,7 @@ NavAid.tuningDefaults = {
   defaultLabelMarginPx: { value: 20, min: 0, max: 80, step: 1, label: 'Default marker margin' },
   defaultKiteHalfWidthPx: { value: 23, min: 1, max: 80, step: 1, label: 'Default kite half-width' },
 
-  legKiteFillColor: { value: '#fff6aa', type: 'color', label: 'Leg kite fill color' },
+  legKiteFillColor: { value: '#00ff00', type: 'color', label: 'Leg kite fill color' },
   returnKiteFillColor: { value: '#ffccd6', type: 'color', label: 'Return kite fill color' },
   legKiteHeightPx: { value: 47, min: 8, max: 120, step: 1, label: 'Leg kite height' },
   legKiteCellWidthPx: { value: 24, min: 8, max: 80, step: 1, label: 'Leg kite cell width' },
@@ -110,7 +110,7 @@ NavAid.tuningDefaults = {
   legKiteHeadingTextPx: { value: 13, min: 4, max: 40, step: 1, label: 'Leg kite heading text size' },
   legKiteHeadingAnchor: { value: 0.25, min: -0.5, max: 1, step: 0.01, label: 'Leg kite heading anchor' },
 
-  cumKiteFillColor: { value: '#fff6aa', type: 'color', label: 'Cum kite fill color' },
+  cumKiteFillColor: { value: '#00ff00', type: 'color', label: 'Cum kite fill color' },
   returnCumKiteFillColor: { value: '#ffccd6', type: 'color', label: 'Return cum kite fill color' },
   cumKiteHeightPx: { value: 23, min: 8, max: 100, step: 1, label: 'Cum kite height' },
   cumKiteCellWidthPx: { value: 43, min: 10, max: 120, step: 1, label: 'Cum kite cell width' },
@@ -265,7 +265,7 @@ NavAid.tuningDefaults = {
   reportBadgeColor: { value: '#d63b3b', type: 'color', label: 'Reporting badge fill' },
   reportBadgeTextColor: { value: '#ffffff', type: 'color', label: 'Reporting badge text color' },
 
-  inspectorDefaultTopPx: { value: 84, min: 40, max: 240, step: 1, label: 'Inspector default top' },
+  inspectorDefaultTopPx: { value: 96, min: 40, max: 240, step: 1, label: 'Inspector default top' },
   inspectorBottomGapPx: { value: 12, min: 0, max: 120, step: 1, label: 'Inspector bottom gap' },
   zuluClockMinWidthPx: { value: 82, min: 40, max: 180, step: 1, label: 'Zulu clock min width' },
   zuluClockPadYPx: { value: 5, min: 0, max: 24, step: 1, label: 'Zulu clock vertical padding' },
@@ -792,7 +792,7 @@ window.S = Object.assign({
   tbSecEdit: '✏️ Edit',
   tbSecMap: '🗺 Map',
   tbSecRoute: '📋 Route',
-  tbSecDisplay: '👁 Display',
+  tbSecDisplay: '🎚️ Display',
   tbSecPrint: '🖨 Print',
   tbSecBuild: '✏️ Edit',
   tbSecView: '👁 View/Set',
