@@ -405,8 +405,10 @@ html, body {
   }
 
   /* Drag grip at the leading edge of the bar (left in LTR, right in RTL —
-     flex row order flips with direction). Drag it to reposition the bar. */
-  #toolbar-handle {
+     flex row order flips with direction). Drag it to reposition the bar.
+     Double-id selector to outrank `#toolbar .drag-handle` (the mobile ⋯
+     styling) so font-size:0 hides the original glyph and only ⠿ shows. */
+  #toolbar #toolbar-handle {
     display: flex;
     align-items: center;
     order: -1;
