@@ -193,6 +193,60 @@ function refreshZuluClock() {
 }
 refreshZuluClock();
 setInterval(refreshZuluClock, 1000);
+
+// Draggable Zulu clock — drag it anywhere; the spot persists across reloads
+// under navaid.clockPos. Mirrors the inspector/toolbar drag pattern. Dragging
+// pins it with position:fixed (and clears the desktop translateY offset) so it
+// leaves the Leaflet top-right control flow.
+(function makeClockDraggable() {
+  const box = document.getElementById('zulu-clock');
+  if (!box) return;
+  const KEY = 'navaid.clockPos';
+  if (window.L && L.DomEvent) {
+    L.DomEvent.disableClickPropagation(box);
+    L.DomEvent.disableScrollPropagation(box);
+  }
+  function applyPos(x, y) {
+    const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
+    const maxY = Math.max(0, window.innerHeight - box.offsetHeight);
+    box.style.position = 'fixed';
+    box.style.left = Math.max(0, Math.min(maxX, x)) + 'px';
+    box.style.top = Math.max(0, Math.min(maxY, y)) + 'px';
+    box.style.right = 'auto';
+    box.style.margin = '0';
+    box.style.transform = 'none';   // cancel the desktop below-the-bar offset
+  }
+  try {
+    const p = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyPos(p.x, p.y);
+  } catch (e) { /* storage unavailable */ }
+  function start(cx, cy) {
+    const r = box.getBoundingClientRect();
+    const off = { x: cx - r.left, y: cy - r.top };
+    box.classList.add('dragging');
+    const move = (mx, my) => applyPos(mx - off.x, my - off.y);
+    const mm = ev => move(ev.clientX, ev.clientY);
+    const tm = ev => { if (ev.touches.length === 1) { ev.preventDefault(); move(ev.touches[0].clientX, ev.touches[0].clientY); } };
+    const end = () => {
+      box.classList.remove('dragging');
+      const r2 = box.getBoundingClientRect();
+      try { localStorage.setItem(KEY, JSON.stringify({ x: r2.left, y: r2.top })); }
+      catch (e) { /* storage unavailable */ }
+      document.removeEventListener('mousemove', mm);
+      document.removeEventListener('mouseup', end);
+      window.removeEventListener('touchmove', tm);
+      window.removeEventListener('touchend', end);
+    };
+    document.addEventListener('mousemove', mm);
+    document.addEventListener('mouseup', end);
+    window.addEventListener('touchmove', tm, { passive: false });
+    window.addEventListener('touchend', end);
+  }
+  box.addEventListener('mousedown', e => { e.preventDefault(); start(e.clientX, e.clientY); });
+  box.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) { e.preventDefault(); start(e.touches[0].clientX, e.touches[0].clientY); }
+  }, { passive: false });
+})();
 // --- map legend (bottom-left) ---------------------------------------
 // The legend markup lives in index.html so applyI18n() fills its text at
 // boot; here we lift that element into a Leaflet control so it floats over
@@ -209,6 +263,54 @@ legendCtrl.onAdd = function () {
   return wrap;
 };
 legendCtrl.addTo(map);
+
+// Draggable legend — drag it anywhere; the spot persists under
+// navaid.legendPos. Same pattern as the Zulu clock above.
+(function makeLegendDraggable() {
+  const box = document.getElementById('map-legend');
+  if (!box) return;
+  const KEY = 'navaid.legendPos';
+  function applyPos(x, y) {
+    const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
+    const maxY = Math.max(0, window.innerHeight - box.offsetHeight);
+    box.style.position = 'fixed';
+    box.style.left = Math.max(0, Math.min(maxX, x)) + 'px';
+    box.style.top = Math.max(0, Math.min(maxY, y)) + 'px';
+    box.style.right = 'auto';
+    box.style.bottom = 'auto';
+    box.style.margin = '0';
+  }
+  try {
+    const p = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyPos(p.x, p.y);
+  } catch (e) { /* storage unavailable */ }
+  function start(cx, cy) {
+    const r = box.getBoundingClientRect();
+    const off = { x: cx - r.left, y: cy - r.top };
+    box.classList.add('dragging');
+    const move = (mx, my) => applyPos(mx - off.x, my - off.y);
+    const mm = ev => move(ev.clientX, ev.clientY);
+    const tm = ev => { if (ev.touches.length === 1) { ev.preventDefault(); move(ev.touches[0].clientX, ev.touches[0].clientY); } };
+    const end = () => {
+      box.classList.remove('dragging');
+      const r2 = box.getBoundingClientRect();
+      try { localStorage.setItem(KEY, JSON.stringify({ x: r2.left, y: r2.top })); }
+      catch (e) { /* storage unavailable */ }
+      document.removeEventListener('mousemove', mm);
+      document.removeEventListener('mouseup', end);
+      window.removeEventListener('touchmove', tm);
+      window.removeEventListener('touchend', end);
+    };
+    document.addEventListener('mousemove', mm);
+    document.addEventListener('mouseup', end);
+    window.addEventListener('touchmove', tm, { passive: false });
+    window.addEventListener('touchend', end);
+  }
+  box.addEventListener('mousedown', e => { e.preventDefault(); start(e.clientX, e.clientY); });
+  box.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) { e.preventDefault(); start(e.touches[0].clientX, e.touches[0].clientY); }
+  }, { passive: false });
+})();
 
 // --- live mouse coordinate readout ---------------------------------
 // Bottom-right, sat to the LEFT of the zoom +/- + rotate-dial column (CSS
