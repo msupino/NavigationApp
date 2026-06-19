@@ -78,14 +78,16 @@
     ]
   }
   </script>
-  <!-- Language bootstrap: param > localStorage > 'en'. Sets window.__navLang;
-       the body-end loader (below) uses it to pick the right strings.js. -->
+  <!-- Language bootstrap: param > localStorage > 'he' (default). The audience
+       is Israeli pilots, so first-time visitors get Hebrew; a returning user's
+       explicit 'en' choice still sticks. Sets window.__navLang; the body-end
+       loader (below) uses it to pick the right strings.js. -->
   <script>
     (function () {
       var p = new URLSearchParams(location.search).get('lang');
       var stored = '';
       try { stored = localStorage.getItem('navaid.lang') || ''; } catch (e) {}
-      var lang = (p === 'en' || p === 'he') ? p : (stored === 'he' ? 'he' : 'en');
+      var lang = (p === 'en' || p === 'he') ? p : (stored === 'en' ? 'en' : 'he');
       try { localStorage.setItem('navaid.lang', lang); } catch (e) {}
       var h = document.documentElement;
       h.lang = lang; h.dir = lang === 'he' ? 'rtl' : 'ltr';

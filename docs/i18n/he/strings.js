@@ -415,7 +415,7 @@ window.S = {
   tbSecEdit: '✏️ עריכה',
   tbSecMap: '🗺 מפה',
   tbSecRoute: '📋 מסלול',
-  tbSecDisplay: '👁 מראה',
+  tbSecDisplay: '🎚️ מראה',
   tbSecPrint: '🖨 הדפסה',
   tbSecBuild: '✏️ עריכה',
   tbSecView: '👁 תצוגה/הגדרה',
