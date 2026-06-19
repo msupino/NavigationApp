@@ -32,7 +32,9 @@ function structuredNode(nodes, type) {
 test.describe('SEO URLs', () => {
 
   test('indexable metadata includes CVFR Israel map navigation aid phrase', async ({ page }) => {
-    await page.goto('.');
+    // Pin English: the default UI language is now Hebrew (which localizes the
+    // <title>); this asserts the English indexable variant.
+    await page.goto('?lang=en');
     const target = /CVFR Israel Map Navigation Aid/i;
     await expect(page).toHaveTitle(target);
     await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', target);
