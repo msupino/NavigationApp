@@ -140,6 +140,20 @@ html, body {
   color: #e8e8e8;
   font-size: 12px;
 }
+/* App version under the legend — only on the desktop layout (mobile shows it
+   in the toolbar via #app-version). */
+.map-legend-version {
+  display: none;
+  margin-top: 1px;
+  padding-top: 5px;
+  border-top: 1px solid #3a3636;
+  color: #8a8484;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+}
+@media (min-width: 681px) {
+  .map-legend-version { display: block; }
+}
 .legend-symbol {
   position: relative;
   display: inline-block;
