@@ -207,8 +207,8 @@ setInterval(refreshZuluClock, 1000);
     L.DomEvent.disableScrollPropagation(box);
   }
   function applyPos(x, y) {
-    const maxX = Math.max(0, window.innerWidth - 40);
-    const maxY = Math.max(0, window.innerHeight - 20);
+    const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
+    const maxY = Math.max(0, window.innerHeight - box.offsetHeight);
     box.style.position = 'fixed';
     box.style.left = Math.max(0, Math.min(maxX, x)) + 'px';
     box.style.top = Math.max(0, Math.min(maxY, y)) + 'px';
@@ -271,8 +271,8 @@ legendCtrl.addTo(map);
   if (!box) return;
   const KEY = 'navaid.legendPos';
   function applyPos(x, y) {
-    const maxX = Math.max(0, window.innerWidth - 40);
-    const maxY = Math.max(0, window.innerHeight - 20);
+    const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
+    const maxY = Math.max(0, window.innerHeight - box.offsetHeight);
     box.style.position = 'fixed';
     box.style.left = Math.max(0, Math.min(maxX, x)) + 'px';
     box.style.top = Math.max(0, Math.min(maxY, y)) + 'px';
