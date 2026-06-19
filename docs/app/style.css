@@ -365,7 +365,8 @@ html, body {
      hovering over the map (not a docked, full-width Windows-style bar). */
   #toolbar {
     position: fixed;
-    z-index: 2300;
+    /* Above the inspector (z 2320) so an open menu covers it, not vice-versa. */
+    z-index: 2330;
     top: 12px;
     left: 12px;
     right: auto;
@@ -482,7 +483,7 @@ html, body {
     position: absolute;
     top: 100%;
     left: 0;
-    z-index: 2310;
+    z-index: 2340;
     min-width: 238px;
     max-width: min(340px, calc(100vw - 16px));
     max-height: calc(100vh - 42px);
@@ -972,7 +973,8 @@ body.theme-light #aircraft-custom input {
 
 #inspector {
   position: absolute;
-  /* Stay above desktop dropdown panels restored from old open-section state. */
+  /* Below the desktop menu bar + its dropdowns (z 2330/2340): an open menu
+     should cover the inspector, not sit behind it. */
   z-index: 2320;
   top: var(--navaid-inspector-default-top, 96px);
   right: 12px;
