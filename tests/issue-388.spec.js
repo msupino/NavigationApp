@@ -287,11 +287,14 @@ test.describe('issue #388 — review cleanup', () => {
       // A new rebuild must have happened (otherwise we're not actually
       // exercising the hot path).
       expect(result.after).toBeGreaterThan(result.before);
-      // Loose ceiling: 60 local/CI panBys + final settle should land well
-      // under 10 s. The deployed-preview job runs on a shared Pages artifact
-      // runner, so it keeps this as a smoke of the hot path rather than the
-      // strict perf gate.
-      expect(result.elapsed).toBeLessThan(deployedPreview ? 12_000 : 10_000);
+      // Loose ceiling — a smoke of the hot path, not a strict perf gate (see
+      // above). CI runs the suite at full worker parallelism
+      // (playwright.config.js workers:'100%'), so the panBy rAF frames contend
+      // for CPU and wall-clock stretches past the single-worker time; give CI a
+      // generous ceiling. The deployed-preview job shares a Pages artifact
+      // runner. Local single-worker runs keep the tight budget.
+      const budgetMs = deployedPreview ? 12_000 : (process.env.CI ? 25_000 : 10_000);
+      expect(result.elapsed).toBeLessThan(budgetMs);
     });
 
   // M2 — cached `<img>` tiles synchronously satisfy `tile.complete` and
