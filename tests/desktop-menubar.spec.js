@@ -227,4 +227,33 @@ test.describe('Desktop menubar layout', () => {
     await page.setViewportSize({ width: 390, height: 800 });
     await expect(page.locator('#legend-version')).toBeHidden();
   });
+
+  test('inspector defaults to the right in English, the left in Hebrew', async ({ page }) => {
+    const showWp = () => {
+      // eslint-disable-next-line no-undef
+      state.waypoints = [{ lat: 32.0, lng: 34.8, name: 'A' }];
+      // eslint-disable-next-line no-undef
+      state.selected = { type: 'wp', index: 0 };
+      // eslint-disable-next-line no-undef
+      showInspector();
+    };
+
+    // English — right-anchored.
+    await bootDesktop(page);
+    await page.evaluate(showWp);
+    let box = await page.locator('#inspector').boundingBox();
+    const vw = 1280;
+    if (!box) throw new Error('no box');
+    expect(box.x + box.width).toBeGreaterThan(vw - 40);
+    expect(box.x).toBeGreaterThan(vw / 2);
+
+    // Hebrew — left-anchored.
+    await page.addInitScript(() => { try { localStorage.clear(); sessionStorage.clear(); } catch (e) {} });
+    await page.goto('?lang=he');
+    await page.waitForFunction(() => typeof state !== 'undefined' && typeof showInspector === 'function');
+    await page.evaluate(showWp);
+    box = await page.locator('#inspector').boundingBox();
+    if (!box) throw new Error('no box');
+    expect(box.x).toBeLessThan(40);
+  });
 });

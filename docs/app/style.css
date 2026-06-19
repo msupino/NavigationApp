@@ -419,6 +419,14 @@ html, body {
     right: 12px;
   }
 
+  /* Hebrew (RTL): default the inspector to the LEFT (English keeps it on the
+     right). Keeps it clear of the right-side menu bar + clock in RTL. Desktop
+     only — on mobile the inspector is a full-width bottom sheet. */
+  html[dir="rtl"] #inspector {
+    right: auto;
+    left: 12px;
+  }
+
   /* Drag grip at the leading edge of the bar (left in LTR, right in RTL —
      flex row order flips with direction). Drag it to reposition the bar.
      Double-id selector to outrank `#toolbar .drag-handle` (the mobile ⋯
