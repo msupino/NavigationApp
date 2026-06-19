@@ -122,4 +122,23 @@ test.describe('Zulu clock', () => {
     expect(Math.abs(reloaded.x - after.x)).toBeLessThan(3);
     expect(Math.abs(reloaded.y - after.y)).toBeLessThan(3);
   });
+
+  test('a dragged widget is clamped fully inside the viewport', async ({ page }) => {
+    await boot(page);
+    const clock = page.locator('#zulu-clock');
+    const cb = await clock.boundingBox();
+    if (!cb) throw new Error('no box');
+    // Drag far past the bottom-right corner.
+    await page.mouse.move(cb.x + cb.width / 2, cb.y + cb.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(5000, 5000, { steps: 8 });
+    await page.mouse.up();
+    const after = await clock.boundingBox();
+    const vp = page.viewportSize();
+    if (!after || !vp) throw new Error('no box');
+    expect(after.x).toBeGreaterThanOrEqual(-1);
+    expect(after.y).toBeGreaterThanOrEqual(-1);
+    expect(after.x + after.width).toBeLessThanOrEqual(vp.width + 1);
+    expect(after.y + after.height).toBeLessThanOrEqual(vp.height + 1);
+  });
 });
