@@ -573,6 +573,7 @@ window.S = Object.assign({
   legTitle: function(n) { return 'Leg ' + n; },
   legArrow: '→',                       // direction arrow in leg inspector title (LTR)
   speedKt: 'Speed (kt)',
+  legDirection: 'Direction',
   windFromDeg: 'Wind from (°)',
   windSpeedKt: 'Wind speed (kt)',
   windEffect: 'With wind',
