@@ -33,6 +33,7 @@ Important paths:
 - `docs/data/` - shipped JSON aviation datasets.
 - `docs/i18n/` - locale string bundles.
 - `docs/byop/` - stable public chart/plate PDF URL space.
+- `mobile/` - Capacitor native iOS / Android wrapper around `docs/`.
 - `tests/` - Playwright and dataset regression coverage.
 - `.github/workflows/` - CI, deploy, review, data refresh, and PR automation.
 
@@ -66,6 +67,8 @@ These preferences come from the active maintainer workflow for this repository:
 ## Editing Style
 
 - Keep app code plain JavaScript in the existing global-script style.
+- Keep Capacitor and native mobile tooling isolated in `mobile/`; do not move
+  the web app away from static files under `docs/`.
 - Prefer small helpers that match nearby code over broad refactors.
 - Keep UI text localized in `window.S` defaults plus `docs/i18n/he/strings.js`.
 - Be careful with Hebrew/English mixed text. Use the existing bidi isolation

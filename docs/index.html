@@ -105,7 +105,8 @@
        (GitHub Pages serves the site under that path) followed by any
        of `staging/`, `pr/`, `branch/`. -->
   <script>
-    if (!location.pathname.match(/^(?:\/[^/]+)?\/(?:staging|pr|branch)\//)) {
+    if (location.hostname !== 'app.navaid.local' &&
+        !location.pathname.match(/^(?:\/[^/]+)?\/(?:staging|pr|branch)\//)) {
       (function(w,d,s){var f=d.getElementsByTagName(s)[0],j=d.createElement(s);
       j.async=true;j.src='https://www.googletagmanager.com/gtag/js?id=G-0XM5PHEK8B';
       f.parentNode.insertBefore(j,f);})(window,document,'script');

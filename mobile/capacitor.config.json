@@ -1,0 +1,9 @@
+{
+  "appId": "org.supino.navaid",
+  "appName": "NavAid",
+  "webDir": "../docs",
+  "server": {
+    "hostname": "app.navaid.local",
+    "androidScheme": "https"
+  }
+}

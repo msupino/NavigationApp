@@ -3131,7 +3131,15 @@ function watchServiceWorkerUpdates(sw) {
 // --- PWA: service worker --------------------------------------------
 // Registering the worker makes the app installable; the browser shows
 // the install control in the address bar — no in-app button needed.
-if ('serviceWorker' in navigator) {
+function isNativeCapacitorShell() {
+  return location.hostname === 'app.navaid.local' ||
+    location.protocol === 'capacitor:' ||
+    !!(window.Capacitor &&
+      typeof window.Capacitor.isNativePlatform === 'function' &&
+      window.Capacitor.isNativePlatform());
+}
+
+if ('serviceWorker' in navigator && !isNativeCapacitorShell()) {
   watchBuildUpdateCheckTriggers();
   window.addEventListener('load', () => {
     watchServiceWorkerUpdates(navigator.serviceWorker);
