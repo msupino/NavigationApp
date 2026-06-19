@@ -125,7 +125,12 @@ html, body {
   border: 1px solid #3a3636;
   border-radius: 5px;
   background: rgba(47, 43, 43, 0.72);
+  cursor: grab;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
 }
+.map-legend.dragging { cursor: grabbing; }
 .map-legend-title {
   color: #b9b3b3;
   font-size: 11px;
@@ -695,10 +700,16 @@ html, body {
   letter-spacing: 0;
   text-align: center;
   white-space: nowrap;
-  pointer-events: none;
+  /* Draggable: must receive pointer events (was none). */
+  pointer-events: auto;
+  cursor: grab;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
   direction: ltr;
   unicode-bidi: isolate;
 }
+.leaflet-control.zulu-clock.dragging { cursor: grabbing; }
 .coord-readout.show { display: block; }
 .zoom-readout {
   display: block;
