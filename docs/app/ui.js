@@ -26,6 +26,12 @@ document.getElementById('tool-note').onclick = () => setMode('note');
 document.getElementById('tool-add').setAttribute('aria-pressed', 'false');
 document.getElementById('tool-note').setAttribute('aria-pressed', 'false');
 document.getElementById('app-version').textContent = 'v' + NavAid.version;
+// Mirror the version under the map legend (shown on the desktop layout, where
+// the menu bar hides #app-version).
+{
+  const lv = document.getElementById('legend-version');
+  if (lv) lv.textContent = 'v' + NavAid.version;
+}
 
 // base map layer picker (replaces the Leaflet layers control)
 const layerSelect = document.getElementById('layer-select');
@@ -187,6 +193,60 @@ function refreshZuluClock() {
 }
 refreshZuluClock();
 setInterval(refreshZuluClock, 1000);
+
+// Draggable Zulu clock — drag it anywhere; the spot persists across reloads
+// under navaid.clockPos. Mirrors the inspector/toolbar drag pattern. Dragging
+// pins it with position:fixed (and clears the desktop translateY offset) so it
+// leaves the Leaflet top-right control flow.
+(function makeClockDraggable() {
+  const box = document.getElementById('zulu-clock');
+  if (!box) return;
+  const KEY = 'navaid.clockPos';
+  if (window.L && L.DomEvent) {
+    L.DomEvent.disableClickPropagation(box);
+    L.DomEvent.disableScrollPropagation(box);
+  }
+  function applyPos(x, y) {
+    const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
+    const maxY = Math.max(0, window.innerHeight - box.offsetHeight);
+    box.style.position = 'fixed';
+    box.style.left = Math.max(0, Math.min(maxX, x)) + 'px';
+    box.style.top = Math.max(0, Math.min(maxY, y)) + 'px';
+    box.style.right = 'auto';
+    box.style.margin = '0';
+    box.style.transform = 'none';   // cancel the desktop below-the-bar offset
+  }
+  try {
+    const p = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyPos(p.x, p.y);
+  } catch (e) { /* storage unavailable */ }
+  function start(cx, cy) {
+    const r = box.getBoundingClientRect();
+    const off = { x: cx - r.left, y: cy - r.top };
+    box.classList.add('dragging');
+    const move = (mx, my) => applyPos(mx - off.x, my - off.y);
+    const mm = ev => move(ev.clientX, ev.clientY);
+    const tm = ev => { if (ev.touches.length === 1) { ev.preventDefault(); move(ev.touches[0].clientX, ev.touches[0].clientY); } };
+    const end = () => {
+      box.classList.remove('dragging');
+      const r2 = box.getBoundingClientRect();
+      try { localStorage.setItem(KEY, JSON.stringify({ x: r2.left, y: r2.top })); }
+      catch (e) { /* storage unavailable */ }
+      document.removeEventListener('mousemove', mm);
+      document.removeEventListener('mouseup', end);
+      window.removeEventListener('touchmove', tm);
+      window.removeEventListener('touchend', end);
+    };
+    document.addEventListener('mousemove', mm);
+    document.addEventListener('mouseup', end);
+    window.addEventListener('touchmove', tm, { passive: false });
+    window.addEventListener('touchend', end);
+  }
+  box.addEventListener('mousedown', e => { e.preventDefault(); start(e.clientX, e.clientY); });
+  box.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) { e.preventDefault(); start(e.touches[0].clientX, e.touches[0].clientY); }
+  }, { passive: false });
+})();
 // --- map legend (bottom-left) ---------------------------------------
 // The legend markup lives in index.html so applyI18n() fills its text at
 // boot; here we lift that element into a Leaflet control so it floats over
@@ -203,6 +263,54 @@ legendCtrl.onAdd = function () {
   return wrap;
 };
 legendCtrl.addTo(map);
+
+// Draggable legend — drag it anywhere; the spot persists under
+// navaid.legendPos. Same pattern as the Zulu clock above.
+(function makeLegendDraggable() {
+  const box = document.getElementById('map-legend');
+  if (!box) return;
+  const KEY = 'navaid.legendPos';
+  function applyPos(x, y) {
+    const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
+    const maxY = Math.max(0, window.innerHeight - box.offsetHeight);
+    box.style.position = 'fixed';
+    box.style.left = Math.max(0, Math.min(maxX, x)) + 'px';
+    box.style.top = Math.max(0, Math.min(maxY, y)) + 'px';
+    box.style.right = 'auto';
+    box.style.bottom = 'auto';
+    box.style.margin = '0';
+  }
+  try {
+    const p = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) applyPos(p.x, p.y);
+  } catch (e) { /* storage unavailable */ }
+  function start(cx, cy) {
+    const r = box.getBoundingClientRect();
+    const off = { x: cx - r.left, y: cy - r.top };
+    box.classList.add('dragging');
+    const move = (mx, my) => applyPos(mx - off.x, my - off.y);
+    const mm = ev => move(ev.clientX, ev.clientY);
+    const tm = ev => { if (ev.touches.length === 1) { ev.preventDefault(); move(ev.touches[0].clientX, ev.touches[0].clientY); } };
+    const end = () => {
+      box.classList.remove('dragging');
+      const r2 = box.getBoundingClientRect();
+      try { localStorage.setItem(KEY, JSON.stringify({ x: r2.left, y: r2.top })); }
+      catch (e) { /* storage unavailable */ }
+      document.removeEventListener('mousemove', mm);
+      document.removeEventListener('mouseup', end);
+      window.removeEventListener('touchmove', tm);
+      window.removeEventListener('touchend', end);
+    };
+    document.addEventListener('mousemove', mm);
+    document.addEventListener('mouseup', end);
+    window.addEventListener('touchmove', tm, { passive: false });
+    window.addEventListener('touchend', end);
+  }
+  box.addEventListener('mousedown', e => { e.preventDefault(); start(e.clientX, e.clientY); });
+  box.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) { e.preventDefault(); start(e.touches[0].clientX, e.touches[0].clientY); }
+  }, { passive: false });
+})();
 
 // --- live mouse coordinate readout ---------------------------------
 // Bottom-right, sat to the LEFT of the zoom +/- + rotate-dial column (CSS
@@ -2355,7 +2463,12 @@ function refreshMapAfterToolbarModeChange() {
   const bar = document.getElementById('toolbar');
   const handle = document.getElementById('toolbar-handle');
   const KEY = 'navaid.toolbarPos';
+  // Desktop menu-bar position is stored separately from the mobile column
+  // position — they mean different things and must not clobber each other
+  // when the viewport crosses the breakpoint.
+  const KEY_DESKTOP = 'navaid.toolbarPosDesktop';
   const COLLAPSED_KEY = 'navaid.toolbarCollapsed';
+  const posKey = () => (toolbarUsesDesktopMenu() ? KEY_DESKTOP : KEY);
   let dx = 0, dy = 0, dragging = false;
 
   function clampPos(x, y) {
@@ -2366,7 +2479,6 @@ function refreshMapAfterToolbarModeChange() {
     };
   }
   function setPos(x, y) {
-    if (toolbarUsesDesktopMenu()) return;
     const c = clampPos(x, y);
     bar.style.left = c.x + 'px';
     bar.style.top = c.y + 'px';
@@ -2374,9 +2486,8 @@ function refreshMapAfterToolbarModeChange() {
   }
 
   function restorePos() {
-    if (toolbarUsesDesktopMenu()) return;
     try {
-      const raw = localStorage.getItem(KEY);
+      const raw = localStorage.getItem(posKey());
       if (raw) {
         const p = JSON.parse(raw);
         requestAnimationFrame(() => setPos(p.x, p.y));
@@ -2391,7 +2502,6 @@ function refreshMapAfterToolbarModeChange() {
   }
 
   function start(cx, cy) {
-    if (toolbarUsesDesktopMenu()) return;
     const r = bar.getBoundingClientRect();
     dx = cx - r.left;
     dy = cy - r.top;
@@ -2407,7 +2517,7 @@ function refreshMapAfterToolbarModeChange() {
     dragging = false;
     bar.classList.remove('dragging');
     const r = bar.getBoundingClientRect();
-    try { localStorage.setItem(KEY, JSON.stringify({ x: r.left, y: r.top })); }
+    try { localStorage.setItem(posKey(), JSON.stringify({ x: r.left, y: r.top })); }
     catch (e) { /* storage unavailable */ }
   }
 
@@ -2466,8 +2576,9 @@ function refreshMapAfterToolbarModeChange() {
     if (toolbarUsesDesktopMenu()) {
       dragging = false;
       bar.classList.remove('dragging');
-      clearInlineDesktopPos();
+      clearInlineDesktopPos();       // drop any leftover mobile-column position
       setCollapsed(false, { persist: false });
+      restorePos();                  // re-apply a saved desktop position, if any
       refreshMapAfterToolbarModeChange();
       return;
     }
@@ -2482,8 +2593,8 @@ function refreshMapAfterToolbarModeChange() {
   }
 
   window.addEventListener('resize', () => {
-    if (toolbarUsesDesktopMenu()) {
-      clearInlineDesktopPos();
+    // Keep a dragged bar (mobile or desktop) on-screen after a resize.
+    if (toolbarUsesDesktopMenu() && !bar.style.left) {
       setCollapsed(false, { persist: false });
       return;
     }
