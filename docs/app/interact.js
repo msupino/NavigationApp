@@ -1840,6 +1840,12 @@ function showInspector() {
     body.appendChild(numberRow(S.speedKt, leg.flightSpeed, v => {
       leg.flightSpeed = v > 0 ? v : leg.flightSpeed; draw(); refreshWindFx();
     }));
+    // Leg magnetic heading (read-only) — sits between speed and altitude.
+    const _dirA = state.waypoints[idx], _dirB = state.waypoints[idx + 1];
+    if (_dirA && _dirB) {
+      body.appendChild(textRow(S.legDirection || 'Direction',
+        pad3(toMagnetic(geo(_dirA, _dirB).brg)) + '°'));
+    }
     // Reset-to-known: the charted altitude from leg-altitude.json. Read from
     // the pristine ORIGIN map (legAltitudeOriginForLeg), not the live lookup —
     // a hand-edited altitude must not redefine the inspector's "charted"
