@@ -1,5 +1,6 @@
 // @ts-check
-// Desktop toolbar layout: wide viewports use a fixed top menubar with
+// Desktop toolbar layout: wide viewports use a floating top menubar (a
+// rounded bar detached from the screen edges, hovering over the map) with
 // dropdown panels, while mobile keeps the floating draggable column.
 const { test, expect } = require('./_setup');
 
@@ -27,9 +28,12 @@ test.describe('Desktop menubar layout', () => {
     const toolbar = page.locator('#toolbar');
     const box = await toolbar.boundingBox();
     expect(box).not.toBeNull();
-    expect(Math.round(box.x)).toBe(0);
-    expect(Math.round(box.y)).toBe(0);
-    expect(box.width).toBeGreaterThan(1200);
+    // Floating bar: detached from the top-left corner, not docked.
+    expect(Math.round(box.x)).toBe(12);
+    expect(Math.round(box.y)).toBe(12);
+    // Content-width, detached from the right edge (not full-width).
+    expect(box.width).toBeGreaterThan(400);
+    expect(box.width).toBeLessThan(1280 - 12);
     expect(box.height).toBeLessThanOrEqual(36);
     await expect(toolbar).not.toHaveClass(/collapsed/);
     await expect(page.locator('#toolbar-handle')).toBeHidden();
@@ -37,7 +41,8 @@ test.describe('Desktop menubar layout', () => {
 
     const mapBox = await page.locator('#map').boundingBox();
     expect(mapBox).not.toBeNull();
-    expect(Math.round(mapBox.y)).toBeGreaterThanOrEqual(33);
+    // Map fills the viewport behind the floating bar.
+    expect(Math.round(mapBox.y)).toBeLessThanOrEqual(1);
   });
 
   test('opens one dropdown at a time and closes from the map or Escape', async ({ page }) => {
