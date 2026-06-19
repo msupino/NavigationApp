@@ -66,4 +66,60 @@ test.describe('Zulu clock', () => {
     });
     expect(boxes.inspectorTop).toBeGreaterThanOrEqual(boxes.clockBottom + 12);
   });
+
+  test('the clock can be dragged and the position persists across reload', async ({ page }) => {
+    // Fresh context starts with empty localStorage — don't clear via
+    // addInitScript (that would also wipe the saved pos on the reload below).
+    await boot(page);
+    const clock = page.locator('#zulu-clock');
+    const before = await clock.boundingBox();
+    if (!before) throw new Error('no box');
+
+    await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(before.x - 200, before.y + 220, { steps: 6 });
+    await page.mouse.up();
+
+    const after = await clock.boundingBox();
+    if (!after) throw new Error('no box');
+    expect(after.x).toBeLessThan(before.x - 100);
+    expect(after.y).toBeGreaterThan(before.y + 120);
+    const stored = await page.evaluate(() => localStorage.getItem('navaid.clockPos'));
+    expect(stored).toBeTruthy();
+
+    await page.reload();
+    await page.waitForFunction(() =>
+      typeof map !== 'undefined' && document.getElementById('zulu-clock') !== null);
+    const reloaded = await clock.boundingBox();
+    if (!reloaded) throw new Error('no box');
+    expect(Math.abs(reloaded.x - after.x)).toBeLessThan(3);
+    expect(Math.abs(reloaded.y - after.y)).toBeLessThan(3);
+  });
+
+  test('the legend can be dragged and the position persists across reload', async ({ page }) => {
+    await boot(page);
+    const legend = page.locator('#map-legend');
+    await expect(legend).toBeVisible();
+    const before = await legend.boundingBox();
+    if (!before) throw new Error('no box');
+
+    await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(before.x + 260, before.y - 200, { steps: 6 });
+    await page.mouse.up();
+
+    const after = await legend.boundingBox();
+    if (!after) throw new Error('no box');
+    expect(after.x).toBeGreaterThan(before.x + 140);
+    expect(after.y).toBeLessThan(before.y - 100);
+    expect(await page.evaluate(() => localStorage.getItem('navaid.legendPos'))).toBeTruthy();
+
+    await page.reload();
+    await page.waitForFunction(() =>
+      typeof map !== 'undefined' && document.getElementById('map-legend') !== null);
+    const reloaded = await legend.boundingBox();
+    if (!reloaded) throw new Error('no box');
+    expect(Math.abs(reloaded.x - after.x)).toBeLessThan(3);
+    expect(Math.abs(reloaded.y - after.y)).toBeLessThan(3);
+  });
 });
