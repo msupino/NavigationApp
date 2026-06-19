@@ -25,7 +25,8 @@ test.describe('Zulu clock', () => {
     expect(viewport).not.toBeNull();
     if (box && viewport) {
       expect(box.x + box.width).toBeGreaterThan(viewport.width - 24);
-      expect(box.y).toBeLessThan(40);
+      // Top-right, but dropped below the floating desktop menu bar (~46px).
+      expect(box.y).toBeLessThan(80);
     }
 
     const initial = await clock.textContent();

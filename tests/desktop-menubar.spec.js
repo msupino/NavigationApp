@@ -36,13 +36,78 @@ test.describe('Desktop menubar layout', () => {
     expect(box.width).toBeLessThan(1280 - 12);
     expect(box.height).toBeLessThanOrEqual(36);
     await expect(toolbar).not.toHaveClass(/collapsed/);
-    await expect(page.locator('#toolbar-handle')).toBeHidden();
+    // The drag grip is shown on desktop (the bar is draggable); the
+    // collapse toggle stays hidden.
+    await expect(page.locator('#toolbar-handle')).toBeVisible();
     await expect(page.locator('#toolbar-toggle')).toBeHidden();
 
     const mapBox = await page.locator('#map').boundingBox();
     expect(mapBox).not.toBeNull();
     // Map fills the viewport behind the floating bar.
     expect(Math.round(mapBox.y)).toBeLessThanOrEqual(1);
+  });
+
+  test('drag grip repositions the floating bar and persists the position', async ({ page }) => {
+    await bootDesktop(page);
+    const bar = page.locator('#toolbar');
+    const grip = page.locator('#toolbar-handle');
+    await expect(grip).toBeVisible();
+    const before = await bar.boundingBox();
+    const g = await grip.boundingBox();
+    if (!g || !before) throw new Error('no box');
+
+    await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(g.x + 220, g.y + 160, { steps: 6 });
+    await page.mouse.up();
+
+    const after = await bar.boundingBox();
+    if (!after) throw new Error('no box');
+    expect(after.x).toBeGreaterThan(before.x + 120);
+    expect(after.y).toBeGreaterThan(before.y + 90);
+    const stored = await page.evaluate(() => localStorage.getItem('navaid.toolbarPosDesktop'));
+    expect(stored).toBeTruthy();
+    const pos = JSON.parse(stored);
+    expect(Math.abs(pos.x - after.x)).toBeLessThan(3);
+    expect(Math.abs(pos.y - after.y)).toBeLessThan(3);
+  });
+
+  test('a saved desktop bar position is restored on load', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.addInitScript(() => {
+      try {
+        localStorage.clear(); sessionStorage.clear();
+        localStorage.setItem('navaid.toolbarPosDesktop', JSON.stringify({ x: 240, y: 180 }));
+      } catch (e) {}
+    });
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof state !== 'undefined');
+    // Position is re-applied via requestAnimationFrame after load — wait for it.
+    await page.waitForFunction(() => {
+      const t = document.getElementById('toolbar');
+      return !!(t && t.style.left && parseFloat(t.style.left) > 100);
+    });
+    const box = await page.locator('#toolbar').boundingBox();
+    if (!box) throw new Error('no box');
+    expect(Math.abs(box.x - 240)).toBeLessThan(4);
+    expect(Math.abs(box.y - 180)).toBeLessThan(4);
+  });
+
+  test('Hebrew (RTL) floats the bar at the top-right, above the clock', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.addInitScript(() => { try { localStorage.clear(); sessionStorage.clear(); } catch (e) {} });
+    await page.goto('?lang=he');
+    await page.waitForFunction(() => typeof state !== 'undefined' && document.getElementById('zulu-clock'));
+    const bar = await page.locator('#toolbar').boundingBox();
+    if (!bar) throw new Error('no box');
+    expect(Math.round(bar.y)).toBe(12);
+    // Right-anchored: right edge near the viewport edge, left edge well off 12.
+    expect(bar.x + bar.width).toBeGreaterThan(1280 - 20);
+    expect(bar.x).toBeGreaterThan(100);
+    // Clock sits below the bar.
+    const clock = await page.locator('#zulu-clock').boundingBox();
+    if (!clock) throw new Error('no box');
+    expect(clock.y).toBeGreaterThanOrEqual(bar.y + bar.height);
   });
 
   test('opens one dropdown at a time and closes from the map or Escape', async ({ page }) => {
