@@ -366,8 +366,8 @@ html, body {
   #toolbar {
     position: fixed;
     z-index: 2300;
-    top: 12px !important;
-    left: 12px !important;
+    top: 12px;
+    left: 12px;
     right: auto;
     width: auto;
     height: 34px;
@@ -385,12 +385,47 @@ html, body {
     touch-action: auto;
   }
 
-  #toolbar-handle,
+  /* The floating menu bar sits in the top band (top 12px, ~36px tall). Shift
+     the Zulu clock below it so the bar never covers it at narrow desktop widths
+     or in RTL. transform (not margin) keeps the tunable clock margin intact. */
+  .leaflet-control.zulu-clock {
+    transform: translateY(46px);
+  }
+
   #toolbar-toggle,
   #info,
   #app-version {
     display: none;
   }
+
+  /* Hebrew (RTL): float the menu to the top-right, above the clock. */
+  html[dir="rtl"] #toolbar {
+    left: auto;
+    right: 12px;
+  }
+
+  /* Drag grip at the leading edge of the bar (left in LTR, right in RTL —
+     flex row order flips with direction). Drag it to reposition the bar. */
+  #toolbar-handle {
+    display: flex;
+    align-items: center;
+    order: -1;
+    height: 100%;
+    margin: 0;
+    padding: 0 8px;
+    font-size: 0;
+    border-bottom: 0;
+    border-inline-end: 1px solid #3a3636;
+    cursor: grab;
+  }
+  #toolbar-handle::before {
+    content: '⠿';
+    font-size: 15px;
+    line-height: 1;
+    color: #8a8484;
+  }
+  #toolbar-handle:hover::before { color: #e8e8e8; }
+  #toolbar.dragging #toolbar-handle { cursor: grabbing; }
 
   #toolbar > #lang-toggle {
     order: 30;
@@ -937,7 +972,7 @@ body.theme-light #aircraft-custom input {
   position: absolute;
   /* Stay above desktop dropdown panels restored from old open-section state. */
   z-index: 2320;
-  top: var(--navaid-inspector-default-top, 84px);
+  top: var(--navaid-inspector-default-top, 96px);
   right: 12px;
   width: 280px;
   background: rgba(20, 18, 18, 0.95);

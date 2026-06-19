@@ -265,7 +265,7 @@ NavAid.tuningDefaults = {
   reportBadgeColor: { value: '#d63b3b', type: 'color', label: 'Reporting badge fill' },
   reportBadgeTextColor: { value: '#ffffff', type: 'color', label: 'Reporting badge text color' },
 
-  inspectorDefaultTopPx: { value: 84, min: 40, max: 240, step: 1, label: 'Inspector default top' },
+  inspectorDefaultTopPx: { value: 96, min: 40, max: 240, step: 1, label: 'Inspector default top' },
   inspectorBottomGapPx: { value: 12, min: 0, max: 120, step: 1, label: 'Inspector bottom gap' },
   zuluClockMinWidthPx: { value: 82, min: 40, max: 180, step: 1, label: 'Zulu clock min width' },
   zuluClockPadYPx: { value: 5, min: 0, max: 24, step: 1, label: 'Zulu clock vertical padding' },
