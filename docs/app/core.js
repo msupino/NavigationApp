@@ -792,7 +792,7 @@ window.S = Object.assign({
   tbSecEdit: '✏️ Edit',
   tbSecMap: '🗺 Map',
   tbSecRoute: '📋 Route',
-  tbSecDisplay: '👁 Display',
+  tbSecDisplay: '🎚️ Display',
   tbSecPrint: '🖨 Print',
   tbSecBuild: '✏️ Edit',
   tbSecView: '👁 View/Set',
