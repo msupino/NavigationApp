@@ -98,7 +98,7 @@ NavAid.tuningDefaults = {
   defaultLabelMarginPx: { value: 20, min: 0, max: 80, step: 1, label: 'Default marker margin' },
   defaultKiteHalfWidthPx: { value: 23, min: 1, max: 80, step: 1, label: 'Default kite half-width' },
 
-  legKiteFillColor: { value: '#fff6aa', type: 'color', label: 'Leg kite fill color' },
+  legKiteFillColor: { value: '#00ff00', type: 'color', label: 'Leg kite fill color' },
   returnKiteFillColor: { value: '#ffccd6', type: 'color', label: 'Return kite fill color' },
   legKiteHeightPx: { value: 47, min: 8, max: 120, step: 1, label: 'Leg kite height' },
   legKiteCellWidthPx: { value: 24, min: 8, max: 80, step: 1, label: 'Leg kite cell width' },
@@ -110,7 +110,7 @@ NavAid.tuningDefaults = {
   legKiteHeadingTextPx: { value: 13, min: 4, max: 40, step: 1, label: 'Leg kite heading text size' },
   legKiteHeadingAnchor: { value: 0.25, min: -0.5, max: 1, step: 0.01, label: 'Leg kite heading anchor' },
 
-  cumKiteFillColor: { value: '#fff6aa', type: 'color', label: 'Cum kite fill color' },
+  cumKiteFillColor: { value: '#00ff00', type: 'color', label: 'Cum kite fill color' },
   returnCumKiteFillColor: { value: '#ffccd6', type: 'color', label: 'Return cum kite fill color' },
   cumKiteHeightPx: { value: 23, min: 8, max: 100, step: 1, label: 'Cum kite height' },
   cumKiteCellWidthPx: { value: 43, min: 10, max: 120, step: 1, label: 'Cum kite cell width' },

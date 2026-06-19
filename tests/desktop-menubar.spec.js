@@ -137,7 +137,7 @@ test.describe('Desktop menubar layout', () => {
     await expect(build).not.toHaveClass(/open/);
   });
 
-  test('keeps the inspector clickable above restored multi-open menus', async ({ page }) => {
+  test('the menu and its dropdowns render above the inspector', async ({ page }) => {
     await bootDesktop(page, {
       openSections: ['build', 'view', 'display', 'charts', 'export', 'sim', 'print'],
     });
@@ -154,18 +154,35 @@ test.describe('Desktop menubar layout', () => {
       draw();
     });
 
-    const close = page.locator('#insp-close');
-    await expect(close).toBeVisible();
-    const box = await close.boundingBox();
-    expect(box).not.toBeNull();
-    const hitId = await page.evaluate(({ x, y }) => {
-      const el = document.elementFromPoint(x, y);
-      return el?.id || el?.closest('#inspector')?.id || '';
-    }, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
-    expect(hitId).toBe('insp-close');
+    // The menu bar and an open dropdown stack above the inspector — an open
+    // menu should cover the inspector, not be hidden behind it.
+    const z = await page.evaluate(() => {
+      const zi = el => parseInt(getComputedStyle(el).zIndex, 10);
+      return {
+        bar: zi(document.getElementById('toolbar')),
+        dropdown: zi(document.querySelector('.tb-section.open .tb-section-body')),
+        inspector: zi(document.getElementById('inspector')),
+      };
+    });
+    expect(z.bar).toBeGreaterThan(z.inspector);
+    expect(z.dropdown).toBeGreaterThan(z.inspector);
 
-    await close.click();
-    expect(await page.evaluate(() => state.selected)).toBeNull();
+    // Functional check: where an open dropdown actually overlaps the inspector,
+    // the dropdown wins the hit-test.
+    const overlapHit = await page.evaluate(() => {
+      const insp = document.getElementById('inspector').getBoundingClientRect();
+      for (const body of document.querySelectorAll('.tb-section.open .tb-section-body')) {
+        const b = body.getBoundingClientRect();
+        const l = Math.max(insp.left, b.left), r = Math.min(insp.right, b.right);
+        const t = Math.max(insp.top, b.top), bot = Math.min(insp.bottom, b.bottom);
+        if (l < r && t < bot) {
+          const el = document.elementFromPoint((l + r) / 2, (t + bot) / 2);
+          return !!(el && el.closest('#toolbar'));
+        }
+      }
+      return null; // no overlap on this layout — z-index assertions above suffice
+    });
+    if (overlapHit !== null) expect(overlapHit).toBe(true);
   });
 
   test('print menu groups page controls and shows orientation text', async ({ page }) => {
@@ -209,5 +226,34 @@ test.describe('Desktop menubar layout', () => {
     // Mobile keeps the version in the toolbar; the legend copy is hidden.
     await page.setViewportSize({ width: 390, height: 800 });
     await expect(page.locator('#legend-version')).toBeHidden();
+  });
+
+  test('inspector defaults to the right in English, the left in Hebrew', async ({ page }) => {
+    const showWp = () => {
+      // eslint-disable-next-line no-undef
+      state.waypoints = [{ lat: 32.0, lng: 34.8, name: 'A' }];
+      // eslint-disable-next-line no-undef
+      state.selected = { type: 'wp', index: 0 };
+      // eslint-disable-next-line no-undef
+      showInspector();
+    };
+
+    // English — right-anchored.
+    await bootDesktop(page);
+    await page.evaluate(showWp);
+    let box = await page.locator('#inspector').boundingBox();
+    const vw = 1280;
+    if (!box) throw new Error('no box');
+    expect(box.x + box.width).toBeGreaterThan(vw - 40);
+    expect(box.x).toBeGreaterThan(vw / 2);
+
+    // Hebrew — left-anchored.
+    await page.addInitScript(() => { try { localStorage.clear(); sessionStorage.clear(); } catch (e) {} });
+    await page.goto('?lang=he');
+    await page.waitForFunction(() => typeof state !== 'undefined' && typeof showInspector === 'function');
+    await page.evaluate(showWp);
+    box = await page.locator('#inspector').boundingBox();
+    if (!box) throw new Error('no box');
+    expect(box.x).toBeLessThan(40);
   });
 });
