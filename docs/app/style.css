@@ -355,17 +355,20 @@ html, body {
 /* Desktop menu bar: the same toolbar sections become top-level dropdown
    menus. Phone/tablet-narrow viewports keep the floating column below. */
 @media (min-width: 681px) {
+  /* Map fills the whole viewport; the menu bar floats over it. */
   #map,
   #overlay {
-    top: 34px;
+    top: 0;
   }
 
+  /* Floating menu bar: a rounded pill detached from the screen edges,
+     hovering over the map (not a docked, full-width Windows-style bar). */
   #toolbar {
     position: fixed;
     z-index: 2300;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0;
+    top: 12px !important;
+    left: 12px !important;
+    right: auto;
     width: auto;
     height: 34px;
     max-height: none;
@@ -374,11 +377,11 @@ html, body {
     flex-direction: row;
     align-items: stretch;
     gap: 0;
-    padding: 0 8px;
-    border-width: 0 0 1px;
-    border-radius: 0;
-    background: rgba(20, 18, 18, 0.97);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.38);
+    padding: 0 4px;
+    border-width: 1px;
+    border-radius: 9px;
+    background: rgba(20, 18, 18, 0.92);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
     touch-action: auto;
   }
 
