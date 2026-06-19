@@ -15,9 +15,9 @@ git merge-base --is-ancestor origin/main HEAD || git merge --ff-only origin/main
 ```
 
 If `origin/main` cannot fast-forward into `dev`, stop and resolve the branch
-relationship deliberately; do not create a merge commit and do not force-push
-`dev` without explicit maintainer approval. If `dev` did fast-forward, push the
-linear update to `origin/dev` before branching.
+relationship deliberately; do not force-push `dev` without explicit maintainer
+approval. If `dev` did fast-forward, push the update to `origin/dev` before
+branching.
 
 Create feature branches with the `codex/` prefix unless the user requested a
 specific branch:
@@ -123,5 +123,7 @@ history reviewable.
 
 ## Squash Policy
 
-Changes entering `dev` should be squash-merged or otherwise arrive as one
-linear integration commit. CI rejects non-trivial merge commits on `dev`.
+Changes entering `dev` should still prefer squash merges for readable history.
+The CI history job reports merge commits on `dev` as warnings instead of
+failing, so production promotion is not blocked when GitHub lands a PR with a
+merge commit.
