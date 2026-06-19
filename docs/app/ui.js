@@ -26,6 +26,12 @@ document.getElementById('tool-note').onclick = () => setMode('note');
 document.getElementById('tool-add').setAttribute('aria-pressed', 'false');
 document.getElementById('tool-note').setAttribute('aria-pressed', 'false');
 document.getElementById('app-version').textContent = 'v' + NavAid.version;
+// Mirror the version under the map legend (shown on the desktop layout, where
+// the menu bar hides #app-version).
+{
+  const lv = document.getElementById('legend-version');
+  if (lv) lv.textContent = 'v' + NavAid.version;
+}
 
 // base map layer picker (replaces the Leaflet layers control)
 const layerSelect = document.getElementById('layer-select');

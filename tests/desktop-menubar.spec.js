@@ -196,4 +196,18 @@ test.describe('Desktop menubar layout', () => {
     await print.locator('#page-orient').click();
     await expect(print.locator('#page-orient')).toContainText('Landscape');
   });
+
+  test('shows the app version under the legend (menu bar hides it on desktop)', async ({ page }) => {
+    await bootDesktop(page);
+    // Toolbar version is hidden on desktop...
+    await expect(page.locator('#app-version')).toBeHidden();
+    // ...and surfaced under the legend instead.
+    const lv = page.locator('#legend-version');
+    await expect(lv).toBeVisible();
+    await expect(lv).toHaveText(/^v\d/);
+
+    // Mobile keeps the version in the toolbar; the legend copy is hidden.
+    await page.setViewportSize({ width: 390, height: 800 });
+    await expect(page.locator('#legend-version')).toBeHidden();
+  });
 });
