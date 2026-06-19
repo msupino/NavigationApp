@@ -26,6 +26,12 @@ document.getElementById('tool-note').onclick = () => setMode('note');
 document.getElementById('tool-add').setAttribute('aria-pressed', 'false');
 document.getElementById('tool-note').setAttribute('aria-pressed', 'false');
 document.getElementById('app-version').textContent = 'v' + NavAid.version;
+// Mirror the version under the map legend (shown on the desktop layout, where
+// the menu bar hides #app-version).
+{
+  const lv = document.getElementById('legend-version');
+  if (lv) lv.textContent = 'v' + NavAid.version;
+}
 
 // base map layer picker (replaces the Leaflet layers control)
 const layerSelect = document.getElementById('layer-select');
@@ -2328,7 +2334,12 @@ function refreshMapAfterToolbarModeChange() {
   const bar = document.getElementById('toolbar');
   const handle = document.getElementById('toolbar-handle');
   const KEY = 'navaid.toolbarPos';
+  // Desktop menu-bar position is stored separately from the mobile column
+  // position — they mean different things and must not clobber each other
+  // when the viewport crosses the breakpoint.
+  const KEY_DESKTOP = 'navaid.toolbarPosDesktop';
   const COLLAPSED_KEY = 'navaid.toolbarCollapsed';
+  const posKey = () => (toolbarUsesDesktopMenu() ? KEY_DESKTOP : KEY);
   let dx = 0, dy = 0, dragging = false;
 
   function clampPos(x, y) {
@@ -2339,7 +2350,6 @@ function refreshMapAfterToolbarModeChange() {
     };
   }
   function setPos(x, y) {
-    if (toolbarUsesDesktopMenu()) return;
     const c = clampPos(x, y);
     bar.style.left = c.x + 'px';
     bar.style.top = c.y + 'px';
@@ -2347,9 +2357,8 @@ function refreshMapAfterToolbarModeChange() {
   }
 
   function restorePos() {
-    if (toolbarUsesDesktopMenu()) return;
     try {
-      const raw = localStorage.getItem(KEY);
+      const raw = localStorage.getItem(posKey());
       if (raw) {
         const p = JSON.parse(raw);
         requestAnimationFrame(() => setPos(p.x, p.y));
@@ -2364,7 +2373,6 @@ function refreshMapAfterToolbarModeChange() {
   }
 
   function start(cx, cy) {
-    if (toolbarUsesDesktopMenu()) return;
     const r = bar.getBoundingClientRect();
     dx = cx - r.left;
     dy = cy - r.top;
@@ -2380,7 +2388,7 @@ function refreshMapAfterToolbarModeChange() {
     dragging = false;
     bar.classList.remove('dragging');
     const r = bar.getBoundingClientRect();
-    try { localStorage.setItem(KEY, JSON.stringify({ x: r.left, y: r.top })); }
+    try { localStorage.setItem(posKey(), JSON.stringify({ x: r.left, y: r.top })); }
     catch (e) { /* storage unavailable */ }
   }
 
@@ -2439,8 +2447,9 @@ function refreshMapAfterToolbarModeChange() {
     if (toolbarUsesDesktopMenu()) {
       dragging = false;
       bar.classList.remove('dragging');
-      clearInlineDesktopPos();
+      clearInlineDesktopPos();       // drop any leftover mobile-column position
       setCollapsed(false, { persist: false });
+      restorePos();                  // re-apply a saved desktop position, if any
       refreshMapAfterToolbarModeChange();
       return;
     }
@@ -2455,8 +2464,8 @@ function refreshMapAfterToolbarModeChange() {
   }
 
   window.addEventListener('resize', () => {
-    if (toolbarUsesDesktopMenu()) {
-      clearInlineDesktopPos();
+    // Keep a dragged bar (mobile or desktop) on-screen after a resize.
+    if (toolbarUsesDesktopMenu() && !bar.style.left) {
       setCollapsed(false, { persist: false });
       return;
     }

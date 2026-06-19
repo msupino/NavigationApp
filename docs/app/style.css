@@ -140,6 +140,20 @@ html, body {
   color: #e8e8e8;
   font-size: 12px;
 }
+/* App version under the legend — only on the desktop layout (mobile shows it
+   in the toolbar via #app-version). */
+.map-legend-version {
+  display: none;
+  margin-top: 1px;
+  padding-top: 5px;
+  border-top: 1px solid #3a3636;
+  color: #8a8484;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+}
+@media (min-width: 681px) {
+  .map-legend-version { display: block; }
+}
 .legend-symbol {
   position: relative;
   display: inline-block;
@@ -365,9 +379,10 @@ html, body {
      hovering over the map (not a docked, full-width Windows-style bar). */
   #toolbar {
     position: fixed;
-    z-index: 2300;
-    top: 12px !important;
-    left: 12px !important;
+    /* Above the inspector (z 2320) so an open menu covers it, not vice-versa. */
+    z-index: 2330;
+    top: 12px;
+    left: 12px;
     right: auto;
     width: auto;
     height: 34px;
@@ -385,12 +400,57 @@ html, body {
     touch-action: auto;
   }
 
-  #toolbar-handle,
+  /* The floating menu bar sits in the top band (top 12px, ~36px tall). Shift
+     the Zulu clock below it so the bar never covers it at narrow desktop widths
+     or in RTL. transform (not margin) keeps the tunable clock margin intact. */
+  .leaflet-control.zulu-clock {
+    transform: translateY(46px);
+  }
+
   #toolbar-toggle,
   #info,
   #app-version {
     display: none;
   }
+
+  /* Hebrew (RTL): float the menu to the top-right, above the clock. */
+  html[dir="rtl"] #toolbar {
+    left: auto;
+    right: 12px;
+  }
+
+  /* Hebrew (RTL): default the inspector to the LEFT (English keeps it on the
+     right). Keeps it clear of the right-side menu bar + clock in RTL. Desktop
+     only — on mobile the inspector is a full-width bottom sheet. */
+  html[dir="rtl"] #inspector {
+    right: auto;
+    left: 12px;
+  }
+
+  /* Drag grip at the leading edge of the bar (left in LTR, right in RTL —
+     flex row order flips with direction). Drag it to reposition the bar.
+     Double-id selector to outrank `#toolbar .drag-handle` (the mobile ⋯
+     styling) so font-size:0 hides the original glyph and only ⠿ shows. */
+  #toolbar #toolbar-handle {
+    display: flex;
+    align-items: center;
+    order: -1;
+    height: 100%;
+    margin: 0;
+    padding: 0 8px;
+    font-size: 0;
+    border-bottom: 0;
+    border-inline-end: 1px solid #3a3636;
+    cursor: grab;
+  }
+  #toolbar-handle::before {
+    content: '⠿';
+    font-size: 15px;
+    line-height: 1;
+    color: #8a8484;
+  }
+  #toolbar-handle:hover::before { color: #e8e8e8; }
+  #toolbar.dragging #toolbar-handle { cursor: grabbing; }
 
   #toolbar > #lang-toggle {
     order: 30;
@@ -445,7 +505,7 @@ html, body {
     position: absolute;
     top: 100%;
     left: 0;
-    z-index: 2310;
+    z-index: 2340;
     min-width: 238px;
     max-width: min(340px, calc(100vw - 16px));
     max-height: calc(100vh - 42px);
@@ -935,9 +995,10 @@ body.theme-light #aircraft-custom input {
 
 #inspector {
   position: absolute;
-  /* Stay above desktop dropdown panels restored from old open-section state. */
+  /* Below the desktop menu bar + its dropdowns (z 2330/2340): an open menu
+     should cover the inspector, not sit behind it. */
   z-index: 2320;
-  top: var(--navaid-inspector-default-top, 84px);
+  top: var(--navaid-inspector-default-top, 96px);
   right: 12px;
   width: 280px;
   background: rgba(20, 18, 18, 0.95);
