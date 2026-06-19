@@ -1526,7 +1526,14 @@ document.getElementById('reverse').onclick = () => {
     };
   });
   applyLegAltitudesToRoute();
-  state.selected = null;
+  // Keep the inspector open on the same leg/waypoint after the reversal — the
+  // item moves to the mirrored index (count is unchanged).
+  const sel = state.selected;
+  if (sel && sel.type === 'leg' && Number.isFinite(sel.index)) {
+    state.selected = Object.assign({}, sel, { index: state.legs.length - 1 - sel.index });
+  } else if (sel && sel.type === 'wp' && Number.isFinite(sel.index)) {
+    state.selected = Object.assign({}, sel, { index: state.waypoints.length - 1 - sel.index });
+  }
   if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   showInspector(); draw();
 };
