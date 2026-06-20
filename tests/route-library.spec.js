@@ -1,6 +1,6 @@
 // Route library (#677): save multiple named routes locally, then load /
 // rename / duplicate / delete them.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 const { clickToolbarControl, hideToolbarMenus } = require('./_toolbar');
 
 async function boot(page, lang = 'en') {

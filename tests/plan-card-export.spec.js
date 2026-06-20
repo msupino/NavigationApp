@@ -2,7 +2,7 @@
 // drawFlightPlanTable() renders the live preview and the exported PNG, so the
 // card is true WYSIWYG. Tests cover the renderer, the modal toggle (gated on a
 // page frame), placement + drag, and cleanup.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 const { hideToolbarMenus } = require('./_toolbar');
 
 async function boot(page) {

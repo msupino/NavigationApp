@@ -1,6 +1,6 @@
 // PLN (MSFS / FSX) import: parses ATCWaypoint WorldPosition DMS into route
 // waypoints, and round-trips with the PLN export.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 
 const ROUTE = [
   { lat: 32.0117, lng: 34.8853, name: 'LLSD' },
