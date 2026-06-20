@@ -710,6 +710,19 @@ html, body {
   unicode-bidi: isolate;
 }
 .leaflet-control.zulu-clock.dragging { cursor: grabbing; }
+
+/* Hebrew (RTL): the floating menu bar lives top-right on desktop, so default
+   the Zulu clock to the top-LEFT corner instead of stacking beneath the bar.
+   (English keeps it in the Leaflet top-right control flow.) A saved drag
+   position or an active drag still overrides this via inline styles. */
+html[dir="rtl"] .leaflet-control.zulu-clock {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  right: auto;
+  margin: 0;
+  transform: none;
+}
 .coord-readout.show { display: block; }
 .zoom-readout {
   display: block;
@@ -1612,6 +1625,10 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
 
 /* Mobile: bigger touch targets, roomier toolbar. */
 @media (max-width: 680px) {
+  /* Hebrew small screens: the menu bar sits top-left, so push the top-left
+     clock down below it so it never covers the bar. */
+  html[dir="rtl"] .leaflet-control.zulu-clock { transform: translateY(46px); }
+
   #toolbar { gap: 6px; top: 8px; left: 8px;
              max-height: calc(100vh - 16px);
              max-height: calc(100dvh - 16px); }
