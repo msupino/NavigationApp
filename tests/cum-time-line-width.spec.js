@@ -41,29 +41,29 @@ test.describe('Leg line-width slider', () => {
   test('slider min/max/step come from the JS constants', async ({ page }) => {
     await boot(page);
     const s = page.locator('#leg-line-width');
-    expect(await s.getAttribute('min')).toBe('0.5');
-    expect(await s.getAttribute('max')).toBe('6');
-    expect(await s.getAttribute('step')).toBe('0.5');
+    expect(await s.getAttribute('min')).toBe('0.1');
+    expect(await s.getAttribute('max')).toBe('2');
+    expect(await s.getAttribute('step')).toBe('0.1');
   });
 
   test('dragging the slider sets legLineWidth and persists it', async ({ page }) => {
     await boot(page);
-    await page.locator('#leg-line-width').fill('3');
+    await page.locator('#leg-line-width').fill('1.5');
     await page.locator('#leg-line-width').dispatchEvent('input');
     const live = await page.evaluate(() => window.legLineWidth);
-    expect(live).toBeCloseTo(3, 1);
-    const stored = await page.evaluate(() => localStorage.getItem('navaid.legLineWidth'));
-    expect(parseFloat(stored)).toBeCloseTo(3, 1);
+    expect(live).toBeCloseTo(1.5, 1);
+    const stored = await page.evaluate(() => localStorage.getItem('navaid.legLineWidth2'));
+    expect(parseFloat(stored)).toBeCloseTo(1.5, 1);
   });
 
   test('stored line width restores on reload', async ({ page }) => {
     await boot(page);
-    await page.locator('#leg-line-width').fill('4.5');
+    await page.locator('#leg-line-width').fill('1.8');
     await page.locator('#leg-line-width').dispatchEvent('input');
     await page.reload();
     await page.waitForFunction(() => typeof state !== 'undefined');
-    expect(await page.locator('#leg-line-width').inputValue()).toBe('4.5');
-    expect(await page.evaluate(() => window.legLineWidth)).toBeCloseTo(4.5, 1);
+    expect(await page.locator('#leg-line-width').inputValue()).toBe('1.8');
+    expect(await page.evaluate(() => window.legLineWidth)).toBeCloseTo(1.8, 1);
   });
 
   test('the stroke width scales with legLineWidth', async ({ page }) => {

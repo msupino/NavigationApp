@@ -942,7 +942,7 @@ var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 var yellowAlpha = 0.8;    // global multiplier for yellow label backgrounds (default 80%)
 var wpSize = 1;             // waypoint name / number text size scale
 var legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
-var legLineWidth = 1;       // leg route line width scale (1 = default 3.5 px)
+var legLineWidth = 0.5;     // leg route line width scale (0.5 ≈ 1.75 px of the 3.5 px route width)
 var driftLineWidth = 1;     // drift reference line width scale (1 = default 1.5 px)
 
 function legZoomScale() {   // zoom + legArrowSize → pixel multiplier for offsets/sizes
