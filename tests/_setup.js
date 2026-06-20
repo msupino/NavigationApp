@@ -36,6 +36,13 @@ exports.test = base.test.extend({
             host.endsWith('.google-analytics.com')) {
           return route.abort();
         }
+        // Block the remote tuning gist so tests boot with deterministic
+        // baked-in defaults, never the live gist. Specs that exercise the
+        // remote config register their own page.route for this URL, which
+        // takes precedence (later registration wins).
+        if (host === 'gist.githubusercontent.com') {
+          return route.abort();
+        }
       } catch (e) { /* relative URLs etc. */ }
       return route.continue();
     });
