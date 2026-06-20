@@ -2324,8 +2324,10 @@ LEGARROW_EL.oninput = e => {
   draw();
 };
 
-const LEGLINEWIDTH_KEY = 'navaid.legLineWidth';
-const LEGLINEWIDTH_MIN = 0.5, LEGLINEWIDTH_MAX = 6, LEGLINEWIDTH_STEP = 0.5;
+// Key bumped to v2 so existing users pick up the new 0.5 default + 0.1–2.0
+// range instead of a stale saved value from the old 0.5–6 slider.
+const LEGLINEWIDTH_KEY = 'navaid.legLineWidth2';
+const LEGLINEWIDTH_MIN = 0.1, LEGLINEWIDTH_MAX = 2, LEGLINEWIDTH_STEP = 0.1;
 try {
   const v = parseFloat(localStorage.getItem(LEGLINEWIDTH_KEY));
   if (!isNaN(v)) window.legLineWidth = Math.max(LEGLINEWIDTH_MIN, Math.min(LEGLINEWIDTH_MAX, v));
