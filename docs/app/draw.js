@@ -2573,7 +2573,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     return rd ? ['R-' + rd.radial, String(rd.dme)] : [empty, empty];
   };
   const rows = [];
-  let totDist = 0, totTime = 0, totFuel = 0;
+  let totTime = 0, totFuel = 0;
   for (let i = 0; i < legs.length; i++) {
     const A = wpts[i], B = wpts[i + 1];
     if (!A || !B) continue;
@@ -2582,7 +2582,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     const dur = legs[i].flightSpeed > 0 ? dist / legs[i].flightSpeed : 0;
     let fuel = ac ? dur * ac.gph : 0;
     if (i === 0 && taxiFuel) fuel += taxiFuel;
-    totDist += dist; totTime += dur; totFuel += fuel;
+    totTime += dur; totFuel += fuel;
     const fLabel = ac ? fuel.toFixed(1) + (i === 0 && taxiFuel ? ' *' : '') : '--';
     const rd = vorCells(B, legs[i]);
     rows.push({ num: i + 1, from: waypointDisplayLabel(A, i),
