@@ -364,7 +364,12 @@ NavAid.configUrl = 'https://gist.githubusercontent.com/msupino/12c6e9d9dfcd783ff
 async function loadRemoteConfig() {
   if (!NavAid.configUrl) return 0;
   try {
-    const r = await fetch(NavAid.configUrl, { cache: 'no-store' });
+    // The gist raw host (Fastly) caches the URL ~5 min, so a fresh gist edit
+    // wouldn't show up until the TTL lapses. A unique query param is a new cache
+    // key → always a cache MISS → newest content. (cache:'no-store' only covers
+    // the browser cache, not the CDN.)
+    const url = NavAid.configUrl + (NavAid.configUrl.indexOf('?') === -1 ? '?' : '&') + 't=' + Date.now();
+    const r = await fetch(url, { cache: 'no-store' });
     if (!r.ok) return 0;
     const o = await r.json();
     if (!o || typeof o !== 'object') return 0;
