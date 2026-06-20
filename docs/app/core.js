@@ -355,6 +355,31 @@ function resetTune(key) {
   else NavAid.tuning = {};
 }
 
+// Optional remote config: a JSON map of { tuningKey: value } served from a gist
+// (or any CORS-enabled URL). Fetched once at boot and applied over the baked-in
+// defaults via setTune(), which validates + clamps each value per its spec.
+// Unknown keys are ignored. Any failure (offline, blocked, bad JSON) falls back
+// silently to the baked-in defaults so the app always boots.
+NavAid.configUrl = 'https://gist.githubusercontent.com/msupino/12c6e9d9dfcd783ffbeaa06246783840/raw/navaid-config.json';
+async function loadRemoteConfig() {
+  if (!NavAid.configUrl) return 0;
+  try {
+    const r = await fetch(NavAid.configUrl, { cache: 'no-store' });
+    if (!r.ok) return 0;
+    const o = await r.json();
+    if (!o || typeof o !== 'object') return 0;
+    let n = 0;
+    for (const k in o) {
+      if (!NavAid.tuningDefaults[k]) continue;   // ignore keys we don't know
+      setTune(k, o[k]);                          // per-spec validation + clamp
+      if (NavAid.tuning[k] !== undefined) n++;
+    }
+    return n;
+  } catch (e) {
+    return 0;                                    // network/parse error → defaults
+  }
+}
+
 const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
 // Mutable globals are declared with `var` (not `let`) so that they're a true
 // property on the global object. ui.js writes to them via `window.foo = …` —

@@ -3261,3 +3261,11 @@ if ('serviceWorker' in navigator) {
 // Preload the terrain grid so MSA / terrain-clearance (#673) is ready when a
 // leg inspector opens. No-op (coverage:false) until a real DEM is bundled.
 if (typeof loadTerrain === "function") loadTerrain();
+
+// Pull optional remote tuning overrides (gist) over the baked-in defaults, then
+// repaint so they take effect. Silent fallback to defaults if the fetch fails.
+if (typeof loadRemoteConfig === "function") {
+  loadRemoteConfig().then(n => {
+    if (n && typeof scheduleDraw === "function") scheduleDraw();
+  });
+}
