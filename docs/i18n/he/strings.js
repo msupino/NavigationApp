@@ -157,6 +157,8 @@ window.S = {
   planColSpeed: 'מהירות',
   planColLegTime: 'זמן קטע',
   planColLegFuel: 'דלק קטע',
+  planColRadial: 'רדיאל',
+  planColDme: 'DME',
   planColComm: 'תדר קשר',
   fpFreq: 'תדר',
   freqNone: 'אין',
