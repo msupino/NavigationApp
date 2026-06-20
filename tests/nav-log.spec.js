@@ -100,3 +100,29 @@ test('Herzliya to Beer Sheva nav log does not include the reverse Country Club f
   expect(freqs.at(-1)).toMatch(/Teyman/i);
   expect(freqs.at(-1)).toEqual(expect.stringContaining('122.50'));
 });
+
+test('Nav log uses the fixed kneeboard column set in order', async ({ page, context }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.0, lng: 34.8, name: 'LLSD' },
+                       { lat: 32.2, lng: 34.9, name: 'MID' },
+                       { lat: 32.4, lng: 35.0, name: 'LLHA' }];
+    syncLegs(); draw(); showFlightPlan();
+  });
+  const popup = await openNavLog(page, context);
+  const out = await popup.evaluate(() => {
+    const t = document.querySelector('table.flight-table');
+    return {
+      head: [...t.querySelectorAll('thead th, thead td')].map(c => c.textContent.trim()),
+      destCol: [...t.querySelectorAll('tbody tr')].map(tr => tr.children[0].textContent.trim()),
+      hasFoot: !!t.querySelector('tfoot'),
+    };
+  });
+  // Exactly these columns, in this order — nothing else (no #, From, Dist, Cum, Radial, DME).
+  expect(out.head).toEqual(['Destination', 'Direction', 'Altitude', 'Speed', 'Time of leg', 'Fuel of leg', 'Comm freq']);
+  // Destination column carries the per-leg destination waypoint.
+  expect(out.destCol).toContain('MID');
+  expect(out.destCol).toContain('LLHA');
+  // No totals row.
+  expect(out.hasFoot).toBe(false);
+});

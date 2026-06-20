@@ -2509,7 +2509,20 @@ function showFlightPlan() {
     const dest = esc(wpLabel(state.waypoints.length - 1));
 
     // Per-leg table(s): clone the live flight-plan tables, freeze inputs to
-    // their current values, and drop the delete column.
+    // their current values, then reduce to a fixed kneeboard column set in a
+    // fixed order — Destination, Direction, Altitude, Speed, Time of leg,
+    // Fuel of leg, Comm freq — regardless of the on-screen column selector.
+    // The totals row is dropped; the nav log lists per-leg values only.
+    const NAV_COLS = ['to', 'hdg', 'alt', 'speed', 'time', 'fuel', 'freq'];
+    const NAV_LABELS = {
+      to: S.navLogColDest || 'Destination',
+      hdg: S.navLogColDir || 'Direction',
+      alt: S.navLogColAlt || 'Altitude',
+      speed: S.navLogColSpeed || 'Speed',
+      time: S.navLogColLegTime || 'Time of leg',
+      fuel: S.navLogColLegFuel || 'Fuel of leg',
+      freq: S.navLogColComm || 'Comm freq',
+    };
     const tablesHtml = Array.from(scrollArea.querySelectorAll('.flight-table')).map(t => {
       const clone = t.cloneNode(true);
       clone.querySelectorAll('input, select').forEach(el => {
@@ -2517,18 +2530,19 @@ function showFlightPlan() {
         span.textContent = el.value || '';
         el.replaceWith(span);
       });
-      clone.querySelectorAll('.fp-col-hidden').forEach(el => el.remove());
-      clone.querySelectorAll('[data-fp-col="delete"], .fp-del').forEach(el => el.remove());
-      // The delete column has no .fp-del marker in the header / Total rows —
-      // it's just an empty trailing cell. Drop it so the table has no stray
-      // box on the far side (tbody delete cells were removed above).
-      const headRow = clone.querySelector('thead tr');
-      if (headRow && headRow.lastElementChild &&
-          !headRow.lastElementChild.textContent.trim()) headRow.lastElementChild.remove();
-      clone.querySelectorAll('tfoot tr').forEach(tr => {
-        if (tr.lastElementChild && !tr.lastElementChild.textContent.trim()) {
-          tr.lastElementChild.remove();
-        }
+      clone.querySelectorAll('tfoot').forEach(el => el.remove());   // drop totals row
+      // Per row: keep only the fixed columns, in the fixed order.
+      clone.querySelectorAll('tr').forEach(tr => {
+        const cells = {};
+        tr.querySelectorAll('[data-fp-col]').forEach(c => { cells[c.getAttribute('data-fp-col')] = c; });
+        tr.querySelectorAll('[data-fp-col]').forEach(c => {
+          if (!NAV_COLS.includes(c.getAttribute('data-fp-col'))) c.remove();
+        });
+        NAV_COLS.forEach(k => { if (cells[k]) tr.appendChild(cells[k]); });  // reorder
+      });
+      clone.querySelectorAll('thead [data-fp-col]').forEach(th => {
+        const key = th.getAttribute('data-fp-col');
+        if (NAV_LABELS[key]) th.textContent = NAV_LABELS[key];
       });
       return clone.outerHTML;
     }).join('<div class="nl-gap"></div>');
