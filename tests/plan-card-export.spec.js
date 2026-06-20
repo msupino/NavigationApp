@@ -148,3 +148,16 @@ test('resizing is clamped to the page frame (no overflow)', async ({ page }) => 
   expect(res.withinW).toBe(true);
   expect(res.withinH).toBe(true);
 });
+
+test('export VOR selector shows only when the flight-plan card is added', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 1000 });
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => { setPage('A4'); draw(); showExportModal(); });
+  // Hidden until the plan-card checkbox is on.
+  await expect(page.locator('#export-vor-select')).toBeHidden();
+  await page.locator('#export-plan-cb').check();
+  await expect(page.locator('#export-vor-select')).toBeVisible();
+  await page.locator('#export-plan-cb').uncheck();
+  await expect(page.locator('#export-vor-select')).toBeHidden();
+});

@@ -2959,6 +2959,9 @@ function showExportModal() {
     draw();
   };
   vorRow.appendChild(vorSel);
+  // VOR only affects the plan card's Radial/DME columns — show it only when the
+  // flight-plan card is being added.
+  vorRow.style.display = planCb.checked ? '' : 'none';
   body.appendChild(vorRow);
 
   // The plan card's Freq column needs the comm catalog + airfields to resolve
@@ -3106,6 +3109,7 @@ function showExportModal() {
     }
     // Open up the backdrop so the card can be dragged on the live map.
     back.classList.toggle('export-place', planCb.checked);
+    vorRow.style.display = planCb.checked ? '' : 'none';   // VOR drives plan-card columns only
     draw();
     // Default the card to ~70% of the frame width: small enough to drag in
     // BOTH directions (a full-width card can only move up/down), large enough
