@@ -2677,8 +2677,17 @@ map.on('mousedown', e => {
   // Hit-test priority matches paint order so the topmost element wins:
   // notes are drawn above waypoints (draw.js), so test notes first (issue #71).
   const includeOverlayChoices = state.mode !== 'add' && state.mode !== 'note';
-  const commHits = hitCommCalloutCandidates(p.x, p.y);
   const wpHits = hitWaypointCandidates(p.x, p.y);
+  // A click inside a waypoint dot is unambiguously that waypoint, even though
+  // the comm-callout arrow is anchored at the dot's (stroke-dependent) edge and
+  // can nominally reach the centre at thin stroke widths. Drop a callout choice
+  // for its own waypoint — mirrors hitNote()'s guard (top of file) so dead-centre
+  // selects the dot while arrow/tail clicks still pick the callout.
+  const wpHitSet = new Set(wpHits.map(h => h.index));
+  const commHits = hitCommCalloutCandidates(p.x, p.y).filter(c => {
+    const wi = commCalloutWaypointIndex(state.notes[c.index]);
+    return !(wi >= 0 && wpHitSet.has(wi));
+  });
   const ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
   const commChoiceHits = commHits.concat(wpHits, ovHits);
   if (commHits.length && commChoiceHits.length > 1) {
@@ -3052,8 +3061,17 @@ mapEl.addEventListener('touchstart', e => {
   // Hit-test priority matches paint order so the topmost element wins:
   // notes are drawn above waypoints (draw.js), so test notes first (issue #71).
   const includeOverlayChoices = state.mode !== 'add' && state.mode !== 'note';
-  const commHits = hitCommCalloutCandidates(p.x, p.y);
   const wpHits = hitWaypointCandidates(p.x, p.y);
+  // A click inside a waypoint dot is unambiguously that waypoint, even though
+  // the comm-callout arrow is anchored at the dot's (stroke-dependent) edge and
+  // can nominally reach the centre at thin stroke widths. Drop a callout choice
+  // for its own waypoint — mirrors hitNote()'s guard (top of file) so dead-centre
+  // selects the dot while arrow/tail clicks still pick the callout.
+  const wpHitSet = new Set(wpHits.map(h => h.index));
+  const commHits = hitCommCalloutCandidates(p.x, p.y).filter(c => {
+    const wi = commCalloutWaypointIndex(state.notes[c.index]);
+    return !(wi >= 0 && wpHitSet.has(wi));
+  });
   const ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
   const commChoiceHits = commHits.concat(wpHits, ovHits);
   if (commHits.length && commChoiceHits.length > 1) {
