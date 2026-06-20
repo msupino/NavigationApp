@@ -785,3 +785,20 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await expect(page.locator('#insp-title')).toHaveValue(/HADRA.*Hadera/);
   });
 });
+
+test('selecting a reference VOR draws radial lines on the overlay (export/preview)', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    if (typeof loadVors === 'function') { try { await loadVors(); } catch (e) {} }
+    state.waypoints = [{ lat: 32.0, lng: 34.8, name: 'A' }, { lat: 32.3, lng: 35.0, name: 'B' }];
+    if (typeof syncLegs === 'function') syncLegs();
+    const real = octx.stroke.bind(octx);
+    let n = 0; octx.stroke = function () { n++; return real(); };
+    window.vorRef = null; draw(); const base = n;
+    n = 0; window.vorRef = ((vors || [])[0] || {}).ident || null; draw(); const withRef = n;
+    octx.stroke = real;
+    return { base, withRef, vor: window.vorRef };
+  });
+  expect(r.vor).toBeTruthy();
+  expect(r.withRef).toBeGreaterThan(r.base);   // radial lines add strokes
+});

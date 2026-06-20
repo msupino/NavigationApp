@@ -303,6 +303,7 @@ function draw() {
   drawCommChangeRings();
   drawAirfields();
   drawVors();
+  drawVorReference();
   if (window.showSigmet && Array.isArray(sigmets) && sigmets.length) drawSigmets();
   drawLegs();
   drawWaypoints();
@@ -956,6 +957,50 @@ function drawVors() {
       octx.fillText(label, lx, ly);
     }
   }
+  octx.restore();
+  octx.lineWidth = 1;
+}
+
+// Reference-VOR overlay: when a reference VOR is selected (vorRef), draw its
+// station plus dashed radial/DME lines to every route waypoint, labelled
+// R-xxx°/dd.d. Shown on the live map, the export preview, and the printed PNG
+// (selecting a VOR in the export modal reflects here). Drawn even when the
+// "Show VOR" layer is off, so the chosen reference is always visible.
+function drawVorReference() {
+  const v = typeof activeVor === 'function' ? activeVor() : null;
+  if (!v || !state.waypoints || !state.waypoints.length) return;
+  const col = tune('vorSelectedColor');
+  const halo = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
+  const sv = proj(v);
+  octx.save();
+  octx.textBaseline = 'middle';
+  octx.font = `bold ${tune('vorLabelFontPx')}px sans-serif`;
+  for (const wp of state.waypoints) {
+    const s = proj(wp);
+    octx.save();
+    octx.setLineDash([6, 4]);
+    octx.lineWidth = 1.5;
+    octx.strokeStyle = colorWithAlpha(col, 0.85);
+    octx.beginPath(); octx.moveTo(sv.x, sv.y); octx.lineTo(s.x, s.y); octx.stroke();
+    octx.restore();
+    const rd = typeof vorRadialDme === 'function' ? vorRadialDme(v, wp.lat, wp.lng) : null;
+    if (rd) {
+      const mx = (sv.x + s.x) / 2, my = (sv.y + s.y) / 2;
+      const t = 'R-' + rd.radial + '°/' + rd.dme;
+      octx.textAlign = 'center';
+      octx.lineWidth = 2.5; octx.strokeStyle = halo; octx.strokeText(t, mx, my);
+      octx.fillStyle = col; octx.fillText(t, mx, my);
+    }
+  }
+  // Reference VOR station (in case the Show-VOR layer is off).
+  const r = tune('vorMarkerRadiusPx');
+  octx.strokeStyle = col; octx.fillStyle = col; octx.lineWidth = tune('vorMarkerWidthPx') * 1.6;
+  octx.beginPath(); octx.arc(sv.x, sv.y, r, 0, Math.PI * 2); octx.stroke();
+  octx.beginPath(); octx.arc(sv.x, sv.y, Math.max(1.5, r * 0.22), 0, Math.PI * 2); octx.fill();
+  octx.textAlign = 'left';
+  const lbl = v.ident + '  ' + (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : v.freq);
+  octx.lineWidth = 2.5; octx.strokeStyle = halo; octx.strokeText(lbl, sv.x + r + 6, sv.y);
+  octx.fillStyle = col; octx.fillText(lbl, sv.x + r + 6, sv.y);
   octx.restore();
   octx.lineWidth = 1;
 }
