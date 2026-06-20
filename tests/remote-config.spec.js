@@ -3,7 +3,9 @@
 // and falls back silently to those defaults when the fetch fails.
 const { test, expect } = require('./_setup');
 
-const CONFIG_RE = /gist\.githubusercontent\.com\/.*navaid-config\.json/;
+// Anchored at both ends so it can only match the gist host + filename, never a
+// look-alike host embedded elsewhere in a URL (CodeQL js/regex/missing-anchor).
+const CONFIG_RE = /^https:\/\/gist\.githubusercontent\.com\/[^?#]*\/navaid-config\.json(?:[?#].*)?$/;
 
 async function boot(page) {
   await page.goto('?lang=en');
