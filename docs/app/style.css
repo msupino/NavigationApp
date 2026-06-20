@@ -717,11 +717,13 @@ html, body {
    position or an active drag still overrides this via inline styles. */
 html[dir="rtl"] .leaflet-control.zulu-clock {
   position: fixed;
-  top: 12px;
+  top: var(--navaid-zulu-clock-margin-top, 12px);
   left: 12px;
   right: auto;
   margin: 0;
-  transform: none;
+  /* Same vertical drop English uses (below the top band) so it clears the menu
+     bar and matches the English placement. */
+  transform: translateY(46px);
 }
 .coord-readout.show { display: block; }
 .zoom-readout {
@@ -1625,10 +1627,6 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
 
 /* Mobile: bigger touch targets, roomier toolbar. */
 @media (max-width: 680px) {
-  /* Hebrew small screens: the menu bar sits top-left, so push the top-left
-     clock down below it so it never covers the bar. */
-  html[dir="rtl"] .leaflet-control.zulu-clock { transform: translateY(46px); }
-
   #toolbar { gap: 6px; top: 8px; left: 8px;
              max-height: calc(100vh - 16px);
              max-height: calc(100dvh - 16px); }

@@ -21,10 +21,12 @@ test('English keeps the clock top-right (desktop)', async ({ page }) => {
   expect(b.left).toBeGreaterThan(400);
 });
 
-test('Hebrew defaults the clock to the top-left corner (desktop)', async ({ page }) => {
-  const b = await clockBox(page, 'he', 1280, 800);
-  expect(b.left).toBeLessThan(40);            // left corner
-  expect(b.top).toBeLessThan(40);             // at the top (no below-bar offset)
+test('Hebrew defaults the clock to the left, dropped down like English (desktop)', async ({ page }) => {
+  const en = await clockBox(page, 'en', 1280, 800);
+  const he = await clockBox(page, 'he', 1280, 800);
+  expect(he.left).toBeLessThan(40);              // left side (vs English right)
+  expect(he.top).toBeGreaterThan(40);           // dropped below the top band
+  expect(Math.abs(he.top - en.top)).toBeLessThan(4);  // same vertical drop as English
 });
 
 test('Hebrew clock stays top-left but below the menu bar on small screens', async ({ page }) => {
