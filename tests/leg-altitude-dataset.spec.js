@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 
 const ALTITUDE_PATH = path.join(__dirname, '..', 'docs', 'data', 'leg-altitude.json');
 const NAV_PATH = path.join(__dirname, '..', 'docs', 'data', 'nav-waypoints.json');

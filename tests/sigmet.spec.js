@@ -1,6 +1,6 @@
 // SIGMET hazard overlay — toggle, fetch (raw branch with same-origin
 // fallback), polygon draw, and the corner status readout.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 
 async function boot(page) {
   await page.addInitScript(() => {

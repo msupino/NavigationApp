@@ -1,6 +1,6 @@
 // SIGMET decoder — turns coded fields into plain language, plus the
 // click-to-open decoded list on the corner readout.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 
 async function boot(page) {
   await page.addInitScript(() => {
