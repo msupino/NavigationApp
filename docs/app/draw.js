@@ -1023,8 +1023,10 @@ function drawCommChangeRings() {
   const ringsDrawn = new Set();
   const ringRadii = {};                  // #488 test hook: name -> drawn radius
   // commChangeMap may be null briefly during boot — guard so a fast first
-  // paint can't NPE before loadCommChange resolves.
-  if (showCommChange && commChangeMap && navWP && navWP.length) {
+  // paint can't NPE before loadCommChange resolves. The red rings are an
+  // on-screen affordance only — omit them from the PNG export (NavAid.exporting).
+  if (showCommChange && commChangeMap && navWP && navWP.length &&
+      !(window.NavAid && NavAid.exporting)) {
     const ringWidth = tune('commChangeRingWidthPx');
     octx.strokeStyle = tune('commChangeRingColor');
     octx.lineWidth = ringWidth;

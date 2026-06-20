@@ -135,7 +135,7 @@ NavAid.tuningDefaults = {
   waypointTextFitFactor: { value: 0.85, min: 0.3, max: 1, step: 0.05, label: 'Waypoint text fit (fraction of diameter)' },
   waypointMinZoomScale: { value: 0.35, min: 0.1, max: 2, step: 0.05, label: 'Waypoint min zoom scale' },
   waypointSelectedRadiusAddPx: { value: 2, min: 0, max: 20, step: 0.5, label: 'Selected waypoint radius add' },
-  waypointStrokeWidthPx: { value: 3, min: 0.25, max: 10, step: 0.25, label: 'Waypoint stroke width' },
+  waypointStrokeWidthPx: { value: 1, min: 0.25, max: 10, step: 0.25, label: 'Waypoint stroke width' },
   waypointFillColor: { value: '#fff6aa', type: 'color', label: 'Waypoint fill color' },
 
   airfieldMarkerRadiusPx: { value: 7, min: 2, max: 40, step: 1, label: 'Airfield triangle radius' },
@@ -353,6 +353,36 @@ function setTune(key, value) {
 function resetTune(key) {
   if (key) delete NavAid.tuning[key];
   else NavAid.tuning = {};
+}
+
+// Optional remote config: a JSON map of { tuningKey: value } served from a gist
+// (or any CORS-enabled URL). Fetched once at boot and applied over the baked-in
+// defaults via setTune(), which validates + clamps each value per its spec.
+// Unknown keys are ignored. Any failure (offline, blocked, bad JSON) falls back
+// silently to the baked-in defaults so the app always boots.
+NavAid.configUrl = 'https://gist.githubusercontent.com/msupino/12c6e9d9dfcd783ffbeaa06246783840/raw/navaid-config.json';
+async function loadRemoteConfig() {
+  if (!NavAid.configUrl) return 0;
+  try {
+    // The gist raw host (Fastly) caches the URL ~5 min, so a fresh gist edit
+    // wouldn't show up until the TTL lapses. A unique query param is a new cache
+    // key → always a cache MISS → newest content. (cache:'no-store' only covers
+    // the browser cache, not the CDN.)
+    const url = NavAid.configUrl + (NavAid.configUrl.indexOf('?') === -1 ? '?' : '&') + 't=' + Date.now();
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) return 0;
+    const o = await r.json();
+    if (!o || typeof o !== 'object') return 0;
+    let n = 0;
+    for (const k in o) {
+      if (!NavAid.tuningDefaults[k]) continue;   // ignore keys we don't know
+      setTune(k, o[k]);                          // per-spec validation + clamp
+      if (NavAid.tuning[k] !== undefined) n++;
+    }
+    return n;
+  } catch (e) {
+    return 0;                                    // network/parse error → defaults
+  }
 }
 
 const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
