@@ -1441,11 +1441,23 @@ function applyPage() {
   draw();
 }
 
+// Reflect the active page size on the A3/A4 buttons (.active + aria-pressed →
+// the toolbar's active highlight) so it's clear which is selected.
+function refreshPageButtons() {
+  for (const [id, sz] of [['page-a3', 'A3'], ['page-a4', 'A4']]) {
+    const b = document.getElementById(id);
+    if (!b) continue;
+    const on = pageSize === sz;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+}
 function setPage(size) {
   if (pageSize === size) {             // same button toggles the frame off
     pageSize = null;
     try { localStorage.removeItem('navaid.pageSize'); } catch (e) { /* */ }
     applyPage();
+    refreshPageButtons();
     return;
   }
   // Orientation is no longer a per-click modal — the toolbar Landscape/
@@ -1457,6 +1469,7 @@ function setPage(size) {
   try { localStorage.setItem('navaid.pageSize', pageSize); } catch (e) { /* */ }
   applyPage();
   fitPageFrame();
+  refreshPageButtons();
 }
 function toggleOrientation() {
   pageOrient = pageOrient === 'portrait' ? 'landscape' : 'portrait';
