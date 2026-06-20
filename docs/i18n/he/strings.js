@@ -150,6 +150,14 @@ window.S = {
   errNoLegs: 'אין קטעים עדיין — הוסף לפחות שני ציוני דרך תחילה.',
   flightPlan: 'תכנית טיסה',
   fpHeaders: ['#', 'מ-', 'אל-', 'כיוון', 'מרחק (מ״י)', 'מהירות (קשר)', 'גובה (ft)', 'זמן', 'דלק (גאל)', 'זמן מצטבר', 'דלק מצטבר', 'רדיאל', 'DME', ''],
+  // כותרות עמודות כרטיס התכנית המודפס (PNG) — סט קבוע ללוח ברכיים.
+  planColDestination: 'יעד',
+  planColDirection: 'כיוון',
+  planColAltitude: 'גובה',
+  planColSpeed: 'מהירות',
+  planColLegTime: 'זמן קטע',
+  planColLegFuel: 'דלק קטע',
+  planColComm: 'תדר קשר',
   fpFreq: 'תדר',
   freqNone: 'אין',
   fpHeadersShort: ['#', 'מ-', 'אל-', 'כיוון', 'מרחק', 'מהירות', 'גובה', 'זמן', 'דלק'],
@@ -208,6 +216,7 @@ window.S = {
   legArrow: '←',
 
   speedKt: 'מהירות (קשר)',
+  legDirection: 'כיוון',
   windFromDeg: 'רוח מ-(°)',
   windSpeedKt: 'מהירות רוח (קשר)',
   windEffect: 'עם רוח',

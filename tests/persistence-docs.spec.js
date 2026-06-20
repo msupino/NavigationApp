@@ -21,7 +21,7 @@ test('developer guide documents persisted navaid.* keys used by app code', () =>
     'navaid.showVorStations',
     'navaid.vorRef',
     'navaid.forceSnap',
-    'navaid.legLineWidth',
+    'navaid.legLineWidth2',
     'navaid.driftLineWidth',
     'navaid.airfieldFreqOverrides',
     'navaid.vorFreqOverrides',

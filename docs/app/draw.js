@@ -2575,7 +2575,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     return rd ? ['R-' + rd.radial, String(rd.dme)] : [empty, empty];
   };
   const rows = [];
-  let totDist = 0, totTime = 0, totFuel = 0;
+  let totTime = 0, totFuel = 0;
   for (let i = 0; i < legs.length; i++) {
     const A = wpts[i], B = wpts[i + 1];
     if (!A || !B) continue;
@@ -2584,7 +2584,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     const dur = legs[i].flightSpeed > 0 ? dist / legs[i].flightSpeed : 0;
     let fuel = ac ? dur * ac.gph : 0;
     if (i === 0 && taxiFuel) fuel += taxiFuel;
-    totDist += dist; totTime += dur; totFuel += fuel;
+    totTime += dur; totFuel += fuel;
     const fLabel = ac ? fuel.toFixed(1) + (i === 0 && taxiFuel ? ' *' : '') : '--';
     const rd = vorCells(B, legs[i]);
     rows.push({ num: i + 1, from: waypointDisplayLabel(A, i),
@@ -2605,37 +2605,36 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     rows[r].freq = typeof legActiveFreq === 'function' ? legActiveFreq(rows[r].num - 1, freqSources) : '';
   }
   const freqActive = rows.some(r => r.freq);
-  // Radial / DME columns only when a reference VOR is active (global or any
-  // per-leg override) — otherwise they'd be a column of '—'.
-  const vorActive = !!((typeof activeVor === 'function' && activeVor()) ||
-                       (state.legs || []).some(l => l && l.vorRef));
-  // #,From,To,Hdg,Dist,Spd,Alt,Time,Fuel,CumTime,CumFuel[,Radial,DME][,Freq]
-  const baseCols = vorActive ? 13 : 11;
-  const numCols = baseCols + (freqActive ? 1 : 0);
-  const headers = (S.fpHeaders || []).slice(0, baseCols);
-  // Note which VOR the Radial / DME are measured from, in the Radial header.
-  if (vorActive) {
-    const refIdent = (typeof activeVor === 'function' && activeVor() && activeVor().ident) ||
-      (((state.legs || []).find(l => l && l.vorRef) || {}).vorRef) || '';
-    if (refIdent) headers[11] = headers[11] + ' ' + refIdent;
-  }
-  if (freqActive) headers.push(S.fpFreq || 'Freq');
+  // Fixed kneeboard column set: Destination, Direction, Altitude, Speed,
+  // Time of leg, Fuel of leg, [Comm freq]. (Was #,From,To,Hdg,Dist,Spd,Alt,
+  // Time,Fuel,CumTime,CumFuel,Radial,DME — trimmed to what a pilot reads.)
+  const headers = [
+    S.planColDestination || 'Destination',
+    S.planColDirection || 'Direction',
+    S.planColAltitude || 'Altitude',
+    S.planColSpeed || 'Speed',
+    S.planColLegTime || 'Time of leg',
+    S.planColLegFuel || 'Fuel of leg',
+  ];
+  if (freqActive) headers.push(S.planColComm || 'Comm freq');
+  const numCols = headers.length;
   const numRows = rows.length + 2;            // header + data + total
   // Derive the font FROM the row height (not an independent floor) so text
   // can never grow taller than its row → no vertical overlap at any size.
   const rowH = h / numRows;
   const fontSize = Math.max(1, Math.min(rowH * 0.62, 22));
   const padX = Math.max(2, Math.round(fontSize * 0.5));
-  const aligns = ['center', 'left', 'left', 'center', 'right', 'right', 'right', 'center', 'right', 'center', 'right', 'center', 'right'].slice(0, baseCols);
+  const aligns = ['left', 'center', 'right', 'right', 'center', 'right'];
   if (freqActive) aligns.push('center');
   const valsOf = rd => {
-    const v = [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel, rd.cumTime, rd.cumFuel, rd.radial, rd.dme].slice(0, baseCols);
+    const v = [rd.to, rd.hdg, rd.alt, rd.speed, rd.time, rd.fuel];
     if (freqActive) v.push(rd.freq || '');
     return v;
   };
   ctx.save();
   ctx.font = fontSize + 'px sans-serif';
-  const totVals = { 4: totDist.toFixed(1), 7: totTime > 0 ? toHMS(totTime) : '--', 8: ac ? totFuel.toFixed(1) : '--' };
+  // Totals row: total time (Time-of-leg col) + total fuel (Fuel-of-leg col).
+  const totVals = { 4: totTime > 0 ? toHMS(totTime) : '--', 5: ac ? totFuel.toFixed(1) : '--' };
   const colW = new Array(numCols).fill(0);
   ctx.font = 'bold ' + fontSize + 'px sans-serif';
   for (let mc = 0; mc < numCols; mc++) {
@@ -2651,6 +2650,12 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const colX = new Array(numCols + 1).fill(0);
   for (let mc = 0; mc < numCols; mc++) colX[mc + 1] = colX[mc] + colW[mc];
   const totalW = colX[numCols];
+  // Hebrew: render the table right-to-left — column 0 (Destination) on the
+  // right, text alignment mirrored.
+  const rtl = (typeof window !== 'undefined' && window.__navLang === 'he') ||
+    (typeof document !== 'undefined' && document.documentElement &&
+     document.documentElement.dir === 'rtl');
+  const colLeft = c => (rtl ? totalW - colX[c] - colW[c] : colX[c]);
   const HEADER_BG = tune('planCardHeaderBgColor');
   const TOTAL_BG = tune('planCardTotalBgColor');
   const STRIPE_BG = tune('planCardStripeBgColor');
@@ -2670,12 +2675,13 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   ctx.fillStyle = tune('planCardBgColor');
   ctx.fillRect(x, y, totalW, tableHActual);
   function cell(row, col, text, bold, bg) {
-    const cx = x + colX[col], cy = rowY[row], rh = rowY[row + 1] - rowY[row], cw = colW[col];
+    const cx = x + colLeft(col), cy = rowY[row], rh = rowY[row + 1] - rowY[row], cw = colW[col];
     if (bg) { ctx.fillStyle = bg; ctx.fillRect(cx, cy, cw, rh); }
     ctx.fillStyle = TEXT;
     ctx.font = (bold ? 'bold ' : '') + fontSize + 'px sans-serif';
     ctx.textBaseline = 'middle';
-    const a = aligns[col];
+    let a = aligns[col];
+    if (rtl) a = a === 'left' ? 'right' : a === 'right' ? 'left' : a;
     ctx.textAlign = a;
     const tx = a === 'right' ? cx + cw - padX : a === 'center' ? cx + cw / 2 : cx + padX;
     // 'middle' baseline centres the em-box, which reads slightly high; nudge
@@ -2694,16 +2700,18 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   ctx.fillRect(x, rowY[tr], totalW, rowY[tr + 1] - rowY[tr]);
   ctx.fillStyle = TEXT;
   ctx.font = 'bold ' + fontSize + 'px sans-serif';
-  ctx.textAlign = 'left';
+  ctx.textAlign = rtl ? 'right' : 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText(S.fpTotal, x + colX[1] + padX, rowY[tr] + (rowY[tr + 1] - rowY[tr]) / 2 + fontSize * 0.08);
+  ctx.fillText(S.fpTotal,
+    x + colLeft(0) + (rtl ? colW[0] - padX : padX),
+    rowY[tr] + (rowY[tr + 1] - rowY[tr]) / 2 + fontSize * 0.08);
   for (let c4 = 4; c4 < numCols; c4++) if (totVals[c4] !== undefined) cell(tr, c4, String(totVals[c4]), true, null);
   ctx.strokeStyle = GRID;
   ctx.lineWidth = 1;
   ctx.strokeRect(x + 0.5, y + 0.5, totalW - 1, tableHActual - 1);
   ctx.lineWidth = 0.75;
   for (let gc = 1; gc < numCols; gc++) {
-    const gx = Math.round(x + colX[gc]) + 0.5;
+    const gx = Math.round(x + (rtl ? totalW - colX[gc] : colX[gc])) + 0.5;
     ctx.beginPath(); ctx.moveTo(gx, y); ctx.lineTo(gx, y + tableHActual); ctx.stroke();
   }
   for (let gr = 1; gr < numRows; gr++) {
