@@ -2648,6 +2648,12 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const colX = new Array(numCols + 1).fill(0);
   for (let mc = 0; mc < numCols; mc++) colX[mc + 1] = colX[mc] + colW[mc];
   const totalW = colX[numCols];
+  // Hebrew: render the table right-to-left — column 0 (Destination) on the
+  // right, text alignment mirrored.
+  const rtl = (typeof window !== 'undefined' && window.__navLang === 'he') ||
+    (typeof document !== 'undefined' && document.documentElement &&
+     document.documentElement.dir === 'rtl');
+  const colLeft = c => (rtl ? totalW - colX[c] - colW[c] : colX[c]);
   const HEADER_BG = tune('planCardHeaderBgColor');
   const TOTAL_BG = tune('planCardTotalBgColor');
   const STRIPE_BG = tune('planCardStripeBgColor');
@@ -2667,12 +2673,13 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   ctx.fillStyle = tune('planCardBgColor');
   ctx.fillRect(x, y, totalW, tableHActual);
   function cell(row, col, text, bold, bg) {
-    const cx = x + colX[col], cy = rowY[row], rh = rowY[row + 1] - rowY[row], cw = colW[col];
+    const cx = x + colLeft(col), cy = rowY[row], rh = rowY[row + 1] - rowY[row], cw = colW[col];
     if (bg) { ctx.fillStyle = bg; ctx.fillRect(cx, cy, cw, rh); }
     ctx.fillStyle = TEXT;
     ctx.font = (bold ? 'bold ' : '') + fontSize + 'px sans-serif';
     ctx.textBaseline = 'middle';
-    const a = aligns[col];
+    let a = aligns[col];
+    if (rtl) a = a === 'left' ? 'right' : a === 'right' ? 'left' : a;
     ctx.textAlign = a;
     const tx = a === 'right' ? cx + cw - padX : a === 'center' ? cx + cw / 2 : cx + padX;
     // 'middle' baseline centres the em-box, which reads slightly high; nudge
@@ -2691,16 +2698,18 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   ctx.fillRect(x, rowY[tr], totalW, rowY[tr + 1] - rowY[tr]);
   ctx.fillStyle = TEXT;
   ctx.font = 'bold ' + fontSize + 'px sans-serif';
-  ctx.textAlign = 'left';
+  ctx.textAlign = rtl ? 'right' : 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText(S.fpTotal, x + colX[0] + padX, rowY[tr] + (rowY[tr + 1] - rowY[tr]) / 2 + fontSize * 0.08);
+  ctx.fillText(S.fpTotal,
+    x + colLeft(0) + (rtl ? colW[0] - padX : padX),
+    rowY[tr] + (rowY[tr + 1] - rowY[tr]) / 2 + fontSize * 0.08);
   for (let c4 = 4; c4 < numCols; c4++) if (totVals[c4] !== undefined) cell(tr, c4, String(totVals[c4]), true, null);
   ctx.strokeStyle = GRID;
   ctx.lineWidth = 1;
   ctx.strokeRect(x + 0.5, y + 0.5, totalW - 1, tableHActual - 1);
   ctx.lineWidth = 0.75;
   for (let gc = 1; gc < numCols; gc++) {
-    const gx = Math.round(x + colX[gc]) + 0.5;
+    const gx = Math.round(x + (rtl ? totalW - colX[gc] : colX[gc])) + 0.5;
     ctx.beginPath(); ctx.moveTo(gx, y); ctx.lineTo(gx, y + tableHActual); ctx.stroke();
   }
   for (let gr = 1; gr < numRows; gr++) {
