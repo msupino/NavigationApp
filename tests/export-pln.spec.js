@@ -1,7 +1,7 @@
 // Verify the PLN (MSFS / FSX flight plan) export: valid envelope, one
 // ATCWaypoint per route waypoint, DMS world positions, and departure /
 // destination metadata mirroring the route endpoints.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 
 const ROUTE = {
   waypoints: [

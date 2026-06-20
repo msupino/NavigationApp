@@ -1,6 +1,6 @@
 // #674 — kneeboard nav-log PDF: the Nav log button opens a print-ready
 // window with a header, the per-leg table, and a frequency list.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 
 async function boot(page) {
   await page.addInitScript(() => {
