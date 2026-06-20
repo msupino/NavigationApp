@@ -786,19 +786,30 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
   });
 });
 
-test('selecting a reference VOR draws radial lines on the overlay (export/preview)', async ({ page }) => {
+test('printed plan card shows Radial/DME columns only when a VOR is selected', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
     if (typeof loadVors === 'function') { try { await loadVors(); } catch (e) {} }
-    state.waypoints = [{ lat: 32.0, lng: 34.8, name: 'A' }, { lat: 32.3, lng: 35.0, name: 'B' }];
+    state.waypoints = [{ lat: 32.0, lng: 34.8, name: 'A' }, { lat: 32.46472, lng: 34.91222, name: 'HADRA' }];
     if (typeof syncLegs === 'function') syncLegs();
-    const real = octx.stroke.bind(octx);
-    let n = 0; octx.stroke = function () { n++; return real(); };
-    window.vorRef = null; draw(); const base = n;
-    n = 0; window.vorRef = ((vors || [])[0] || {}).ident || null; draw(); const withRef = n;
-    octx.stroke = real;
-    return { base, withRef, vor: window.vorRef };
+    const cap = () => {
+      const c = document.createElement('canvas').getContext('2d');
+      const t = []; const real = c.fillText.bind(c);
+      c.fillText = function (s, x, y) { t.push(String(s)); return real(s, x, y); };
+      drawFlightPlanTable(c, 0, 0, 1200, 300, 'tl');
+      return t;
+    };
+    window.vorRef = null; const off = cap();
+    window.vorRef = 'NAT'; const on = cap();
+    return {
+      offDME: off.some(s => /DME/.test(s)),
+      onDME: on.some(s => /DME/.test(s)),
+      onRadialHdr: on.some(s => /Radial/.test(s)),
+      onRval: on.some(s => /^R-\d{3}/.test(s)),
+    };
   });
-  expect(r.vor).toBeTruthy();
-  expect(r.withRef).toBeGreaterThan(r.base);   // radial lines add strokes
+  expect(r.offDME).toBe(false);     // no VOR → no Radial/DME columns
+  expect(r.onDME).toBe(true);       // VOR → DME column header
+  expect(r.onRadialHdr).toBe(true); // Radial header (with ident)
+  expect(r.onRval).toBe(true);      // R-xxx values
 });
