@@ -2603,37 +2603,36 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     rows[r].freq = typeof legActiveFreq === 'function' ? legActiveFreq(rows[r].num - 1, freqSources) : '';
   }
   const freqActive = rows.some(r => r.freq);
-  // Radial / DME columns only when a reference VOR is active (global or any
-  // per-leg override) — otherwise they'd be a column of '—'.
-  const vorActive = !!((typeof activeVor === 'function' && activeVor()) ||
-                       (state.legs || []).some(l => l && l.vorRef));
-  // #,From,To,Hdg,Dist,Spd,Alt,Time,Fuel,CumTime,CumFuel[,Radial,DME][,Freq]
-  const baseCols = vorActive ? 13 : 11;
-  const numCols = baseCols + (freqActive ? 1 : 0);
-  const headers = (S.fpHeaders || []).slice(0, baseCols);
-  // Note which VOR the Radial / DME are measured from, in the Radial header.
-  if (vorActive) {
-    const refIdent = (typeof activeVor === 'function' && activeVor() && activeVor().ident) ||
-      (((state.legs || []).find(l => l && l.vorRef) || {}).vorRef) || '';
-    if (refIdent) headers[11] = headers[11] + ' ' + refIdent;
-  }
-  if (freqActive) headers.push(S.fpFreq || 'Freq');
+  // Fixed kneeboard column set: Destination, Direction, Altitude, Speed,
+  // Time of leg, Fuel of leg, [Comm freq]. (Was #,From,To,Hdg,Dist,Spd,Alt,
+  // Time,Fuel,CumTime,CumFuel,Radial,DME — trimmed to what a pilot reads.)
+  const headers = [
+    S.planColDestination || 'Destination',
+    S.planColDirection || 'Direction',
+    S.planColAltitude || 'Altitude',
+    S.planColSpeed || 'Speed',
+    S.planColLegTime || 'Time of leg',
+    S.planColLegFuel || 'Fuel of leg',
+  ];
+  if (freqActive) headers.push(S.planColComm || 'Comm freq');
+  const numCols = headers.length;
   const numRows = rows.length + 2;            // header + data + total
   // Derive the font FROM the row height (not an independent floor) so text
   // can never grow taller than its row → no vertical overlap at any size.
   const rowH = h / numRows;
   const fontSize = Math.max(1, Math.min(rowH * 0.62, 22));
   const padX = Math.max(2, Math.round(fontSize * 0.5));
-  const aligns = ['center', 'left', 'left', 'center', 'right', 'right', 'right', 'center', 'right', 'center', 'right', 'center', 'right'].slice(0, baseCols);
+  const aligns = ['left', 'center', 'right', 'right', 'center', 'right'];
   if (freqActive) aligns.push('center');
   const valsOf = rd => {
-    const v = [rd.num, rd.from, rd.to, rd.hdg, rd.dist, rd.speed, rd.alt, rd.time, rd.fuel, rd.cumTime, rd.cumFuel, rd.radial, rd.dme].slice(0, baseCols);
+    const v = [rd.to, rd.hdg, rd.alt, rd.speed, rd.time, rd.fuel];
     if (freqActive) v.push(rd.freq || '');
     return v;
   };
   ctx.save();
   ctx.font = fontSize + 'px sans-serif';
-  const totVals = { 4: totDist.toFixed(1), 7: totTime > 0 ? toHMS(totTime) : '--', 8: ac ? totFuel.toFixed(1) : '--' };
+  // Totals row: total time (Time-of-leg col) + total fuel (Fuel-of-leg col).
+  const totVals = { 4: totTime > 0 ? toHMS(totTime) : '--', 5: ac ? totFuel.toFixed(1) : '--' };
   const colW = new Array(numCols).fill(0);
   ctx.font = 'bold ' + fontSize + 'px sans-serif';
   for (let mc = 0; mc < numCols; mc++) {
@@ -2694,7 +2693,7 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   ctx.font = 'bold ' + fontSize + 'px sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText(S.fpTotal, x + colX[1] + padX, rowY[tr] + (rowY[tr + 1] - rowY[tr]) / 2 + fontSize * 0.08);
+  ctx.fillText(S.fpTotal, x + colX[0] + padX, rowY[tr] + (rowY[tr + 1] - rowY[tr]) / 2 + fontSize * 0.08);
   for (let c4 = 4; c4 < numCols; c4++) if (totVals[c4] !== undefined) cell(tr, c4, String(totVals[c4]), true, null);
   ctx.strokeStyle = GRID;
   ctx.lineWidth = 1;
