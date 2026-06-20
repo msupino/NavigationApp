@@ -1,5 +1,5 @@
 // #672 — top-of-climb / top-of-descent + vertical profile.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 
 async function boot(page) {
   await page.goto('?lang=en');

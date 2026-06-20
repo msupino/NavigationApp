@@ -1,6 +1,6 @@
 // #673 — minimum safe altitude / terrain clearance. Engine + leg-inspector
 // MSA row (gated on terrain coverage; flagged when planned alt is below MSA).
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 
 async function boot(page) {
   await page.goto('?lang=en');

@@ -2,7 +2,7 @@
 // Wind-triangle engine (windTriangle / legWindFor), route-wide wind inputs
 // in the View section + corner readout, per-leg override rows and the live
 // "With wind" readout in the leg inspector, and round-trip persistence.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 
 async function boot(page) {
   await page.goto('?lang=en');

@@ -6,6 +6,22 @@ const { test, expect } = require('./_setup');
 
 const GA_RE = /(googletagmanager|google-analytics|analytics\.google|doubleclick)\.(com|net)/;
 
+// Static guard: every spec must import test/expect from ./_setup, not straight
+// from @playwright/test. The GA-blocking route lives in the _setup `page`
+// fixture, so a spec importing @playwright/test directly runs UNPROTECTED and
+// fires real GA hits against the local server root (index.html loads GA there).
+test.describe('GA-block coverage', () => {
+  test('no spec imports @playwright/test directly', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const offenders = fs.readdirSync(__dirname)
+      .filter(f => f.endsWith('.spec.js'))
+      .filter(f => /require\((['"])@playwright\/test\1\)/.test(
+        fs.readFileSync(path.join(__dirname, f), 'utf8')));
+    expect(offenders).toEqual([]);
+  });
+});
+
 test.describe('Google Analytics blocking', () => {
   test('no GA / GTM request completes successfully', async ({ page }) => {
     const completed = [];

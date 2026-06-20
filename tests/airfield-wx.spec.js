@@ -1,6 +1,6 @@
 // #670 — airfield METAR / TAF in the inspector (decoded + raw toggle),
 // served from the wx-data branch with a same-origin fallback.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 
 // Mock the wx-data feed. `onHit` lets a test count fetches.
 async function mockWx(page, onHit) {

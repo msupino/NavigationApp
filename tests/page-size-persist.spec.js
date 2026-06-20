@@ -1,5 +1,5 @@
 // The A3/A4 page frame should survive a reload (re-centres on the map view).
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 
 async function boot(page) {
   await page.goto('?lang=en');
