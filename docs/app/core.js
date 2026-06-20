@@ -523,6 +523,8 @@ window.S = Object.assign({
   planColSpeed: 'Speed',
   planColLegTime: 'Time of leg',
   planColLegFuel: 'Fuel of leg',
+  planColRadial: 'Radial',
+  planColDme: 'DME',
   planColComm: 'Comm freq',
   fpFreq: 'Freq',
   freqNone: 'None',
