@@ -7,8 +7,8 @@ const { test, expect } = require('./_setup');
 // look-alike host embedded elsewhere in a URL (CodeQL js/regex/missing-anchor).
 const CONFIG_RE = /^https:\/\/gist\.githubusercontent\.com\/[^?#]*\/navaid-config\.json(?:[?#].*)?$/;
 
-async function boot(page) {
-  await page.goto('?lang=en');
+async function boot(page, query = '?lang=en') {
+  await page.goto(query);
   await page.waitForFunction(
     () => typeof tune === 'function' && typeof loadRemoteConfig === 'function');
 }
@@ -43,6 +43,19 @@ test('invalid / out-of-range remote values are rejected, defaults kept', async (
   expect(v).toBeLessThanOrEqual(10);                       // clamped to spec.max
   // invalid colour rejected → baked-in default stands
   expect(await page.evaluate(() => tune('planCardBgColor'))).toBe('#ffffff');
+});
+
+test('tuning panel reflects the gist values once they load', async ({ page }) => {
+  await page.route(CONFIG_RE, route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ waypointStrokeWidthPx: 7 }),
+  }));
+  await boot(page, '?lang=en&tune=1');                 // open the hidden tune panel
+  // Panel is built synchronously with baked-in defaults; the gist lands async
+  // and should push its value into the control.
+  await expect(page.locator('#tune-waypointStrokeWidthPx-number')).toHaveValue('7.00');
+  await expect(page.locator('#tune-subtitle')).toContainText('from gist');
 });
 
 test('fetch failure falls back to baked-in defaults', async ({ page }) => {

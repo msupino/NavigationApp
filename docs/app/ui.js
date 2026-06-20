@@ -2749,6 +2749,7 @@ function createTuningPanel() {
   const title = document.createElement('strong');
   title.textContent = 'Tuning';
   const subtitle = document.createElement('span');
+  subtitle.id = 'tune-subtitle';
   subtitle.textContent = 'Preview only. Resets on reload.';
   const left = document.createElement('div');
   left.style.cssText = 'display:flex;gap:12px;align-items:baseline';
@@ -3010,6 +3011,11 @@ function createTuningPanel() {
 
   document.body.appendChild(panel);
   NavAid.tuningPanel = panel;
+  // Lets a late source of overrides (e.g. the remote gist config, which lands
+  // asynchronously after the panel is built) push its values into the controls.
+  NavAid.syncTuningPanel = () => {
+    for (const key of Object.keys(controlSets)) syncControl(key);
+  };
 }
 createTuningPanel();
 
@@ -3266,6 +3272,12 @@ if (typeof loadTerrain === "function") loadTerrain();
 // repaint so they take effect. Silent fallback to defaults if the fetch fails.
 if (typeof loadRemoteConfig === "function") {
   loadRemoteConfig().then(n => {
-    if (n && typeof scheduleDraw === "function") scheduleDraw();
+    if (!n) return;
+    if (typeof applyTuningCssVars === "function") applyTuningCssVars();
+    if (typeof scheduleDraw === "function") scheduleDraw();
+    // Reflect the loaded gist values in the tuning panel if it's open (?tune=1).
+    if (NavAid && typeof NavAid.syncTuningPanel === "function") NavAid.syncTuningPanel();
+    const sub = document.getElementById("tune-subtitle");
+    if (sub) sub.textContent = "Loaded " + n + " value(s) from gist. Resets on reload.";
   });
 }
