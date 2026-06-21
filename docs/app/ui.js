@@ -2730,6 +2730,9 @@ function redrawAfterTune() {
   applyTuningCssVars();
   draw();
   if (state.selected) showInspector();
+  // The IMS overlay is a Leaflet layer (not part of draw()) — refresh it so
+  // tuning its opacity / lat-lng offset updates it live.
+  if (window.NavAid && typeof NavAid.refreshImsPwx === 'function') NavAid.refreshImsPwx();
 }
 
 function createTuningPanel() {
@@ -3275,6 +3278,9 @@ if (typeof loadRemoteConfig === "function") {
     if (!n) return;
     if (typeof applyTuningCssVars === "function") applyTuningCssVars();
     if (typeof scheduleDraw === "function") scheduleDraw();
+    // Apply gist overrides to the IMS overlay too (opacity / lat-lng offset),
+    // so alignment + opacity can be tuned from the gist without a redeploy.
+    if (NavAid && typeof NavAid.refreshImsPwx === "function") NavAid.refreshImsPwx();
     // Reflect the loaded gist values in the tuning panel if it's open (?tune=1).
     if (NavAid && typeof NavAid.syncTuningPanel === "function") NavAid.syncTuningPanel();
     const sub = document.getElementById("tune-subtitle");
@@ -3296,7 +3302,7 @@ if (typeof loadRemoteConfig === "function") {
   const timeSel = document.getElementById('ims-pwx-time');
   const opacity = document.getElementById('ims-pwx-opacity');
   const opacityReset = document.getElementById('ims-pwx-opacity-reset');
-  const DEFAULT_OPACITY = opacity ? opacity.value : '0.7';
+  const DEFAULT_OPACITY = String(typeof tune === 'function' ? tune('imsPwxOpacity') : 1);
   if (!box || !cb || !levelSel || !timeSel || !opacity || typeof map === 'undefined') return;
 
   let manifest = null;
@@ -3311,12 +3317,21 @@ if (typeof loadRemoteConfig === "function") {
   function removeLayer() {
     if (layer) { map.removeLayer(layer); layer = null; }
   }
+  const off = k => (typeof tune === 'function' ? tune(k) : 0) || 0;
+  const sc = k => { const v = typeof tune === 'function' ? tune(k) : 1; return v > 0 ? v : 1; };
   function updateLayer() {
     if (!cb.checked || !manifest) { removeLayer(); return; }
     const t = currentTime();
     if (!t) { removeLayer(); return; }
     const b = manifest.bounds;
-    const bounds = [[b.s, b.w], [b.n, b.e]];
+    // Tunable (?tune=1 → Weather (IMS)) for fine-aligning the overlay:
+    // scale the span about its centre (zoom), then nudge lat/lng.
+    const cLat = (b.s + b.n) / 2, cLng = (b.w + b.e) / 2;
+    const hLat = (b.n - b.s) / 2 * sc('imsPwxLatScale');
+    const hLng = (b.e - b.w) / 2 * sc('imsPwxLngScale');
+    const dLat = off('imsPwxLatOffset'), dLng = off('imsPwxLngOffset');
+    const bounds = [[cLat - hLat + dLat, cLng - hLng + dLng],
+                    [cLat + hLat + dLat, cLng + hLng + dLng]];
     const url = RAW + t.png + '?t=' + (manifest.generatedAt || '');
     if (!layer) {
       layer = L.imageOverlay(url, bounds, { opacity: +opacity.value, interactive: false, pane: 'overlayPane' });
@@ -3335,37 +3350,74 @@ if (typeof loadRemoteConfig === "function") {
     for (const t of lv.times) {
       const o = document.createElement('option');
       o.value = t.valid;
-      o.textContent = t.valid + (t.day ? ' (' + t.day + ')' : '');
+      o.textContent = t.valid + 'Z' + (t.day ? ' (' + t.day + ')' : '');   // Zulu
       timeSel.appendChild(o);
     }
     // Re-select the same valid time if the newly chosen level also has it.
     if (prev && lv.times.some(t => t.valid === prev)) timeSel.value = prev;
   }
 
+  // Persist the on/off + selections so a reload keeps the overlay as it was.
+  const KEY = 'navaid.imsPwx';
+  const persist = () => {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({
+        on: cb.checked, level: levelSel.value, valid: timeSel.value,
+        opacity: +opacity.value,
+      }));
+    } catch (e) { /* storage unavailable */ }
+  };
+  // Let the tuning panel live-refresh the overlay when the offset/opacity
+  // defaults change (the overlay isn't part of the canvas draw()).
+  NavAid.refreshImsPwx = updateLayer;
+
   cb.addEventListener('change', () => {
     controls.hidden = !cb.checked;
-    updateLayer();
+    updateLayer(); persist();
   });
-  levelSel.addEventListener('change', () => { fillTimes(); updateLayer(); });
-  timeSel.addEventListener('change', updateLayer);
-  opacity.addEventListener('input', () => { if (layer) layer.setOpacity(+opacity.value); });
+  levelSel.addEventListener('change', () => { fillTimes(); updateLayer(); persist(); });
+  timeSel.addEventListener('change', () => { updateLayer(); persist(); });
+  const showOpacity = () => updateSliderVal(opacity, Math.round(+opacity.value * 100) + '%');
+  opacity.addEventListener('input', () => {
+    if (layer) layer.setOpacity(+opacity.value);
+    showOpacity(); persist();
+  });
   if (opacityReset) opacityReset.addEventListener('click', () => {
     opacity.value = DEFAULT_OPACITY;
     if (layer) layer.setOpacity(+opacity.value);
+    showOpacity(); persist();
   });
+  opacity.value = DEFAULT_OPACITY;   // apply the (tunable) default + show it
+  showOpacity();
 
   fetch(RAW + 'ims/pwx.json?t=' + Date.now(), { cache: 'no-store' })
     .then(r => (r.ok ? r.json() : null))
     .then(m => {
       if (!m || !Array.isArray(m.levels) || !m.levels.length || !m.bounds) return;
       manifest = m;
-      for (const lv of m.levels) {
+      // List levels lowest-altitude first (FL030 before FL050) so the default
+      // selection is the lowest CVFR level — higher hPa number = lower altitude.
+      const ordered = m.levels.slice().sort((a, b) => Number(b.level) - Number(a.level));
+      for (const lv of ordered) {
         const o = document.createElement('option');
         o.value = lv.level;
         o.textContent = lv.label || (lv.level + ' hPa');
         levelSel.appendChild(o);
       }
       fillTimes();
+      // Restore the saved selection + on/off so a reload keeps the overlay.
+      try {
+        const sv = JSON.parse(localStorage.getItem(KEY) || 'null');
+        if (sv) {
+          if (sv.level && [...levelSel.options].some(o => o.value === sv.level)) {
+            levelSel.value = sv.level; fillTimes();
+          }
+          if (sv.valid && [...timeSel.options].some(o => o.value === sv.valid)) timeSel.value = sv.valid;
+          if (Number.isFinite(sv.opacity)) { opacity.value = sv.opacity; showOpacity(); }
+          if (sv.on) { cb.checked = true; controls.hidden = false; }
+        }
+      } catch (e) { /* storage unavailable */ }
+      updateLayer();
       box.hidden = false;          // reveal the control now that data exists
     })
     .catch(() => { /* no ims-data branch yet → stay hidden */ });
