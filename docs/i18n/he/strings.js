@@ -31,7 +31,7 @@ window.S = {
   tbImsPwxTitle: 'הצג על המפה את תחזית הרוח והטמפרטורה (PWX) של השירות המטאורולוגי',
   tbImsPwxLevel: 'גובה המפה',
   tbImsPwxTime: 'זמן תוקף',
-  tbImsPwxOpacity: 'שקיפות',
+  tbImsPwxOpacity: 'בהירות סימנים',
   tbImsPwxOpacityReset: 'אפס שקיפות',
   tbImsPwxRun: 'ריצת מודל',
   tbSigwx: '🌐 מפות SIGWX',
