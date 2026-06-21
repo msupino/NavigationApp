@@ -4,7 +4,7 @@ const { test, expect } = require('./_setup');
 
 async function boot(page) {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.showSigmet', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); localStorage.setItem('navaid.showSigmet', '1'); } catch (e) {}
   });
   await page.route('**raw.githubusercontent.com/**sigmet-data/**', r => r.fulfill({
     contentType: 'application/json',
