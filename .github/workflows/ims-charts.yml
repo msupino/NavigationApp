@@ -49,7 +49,7 @@ jobs:
           const LABELS = { '85': 'FL050', '90': 'FL030' };
           const pwx = { generatedAt: new Date().toISOString(),
             source: 'IMS wind_and_temperature_maps',
-            bounds: { s: 29.201, n: 33.959, w: 32.914, e: 37.096 }, levels: [] };
+            bounds: { s: 29.2, n: 34.03, w: 32.95, e: 37.05 }, levels: [] };
           const pdata = await get('https://ims.gov.il/he/wind_and_temperature_maps');
           for (const lvl of Object.keys(pdata)) {
             if (!LABELS[lvl]) continue;
