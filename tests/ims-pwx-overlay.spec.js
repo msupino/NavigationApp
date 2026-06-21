@@ -87,12 +87,16 @@ test('opacity reset restores the default opacity', async ({ page }) => {
     const def = s.value;
     s.value = '0.3'; s.dispatchEvent(new Event('input'));
     const mid = document.querySelector('.leaflet-overlay-pane img.leaflet-image-layer').style.opacity;
+    const midLabel = document.getElementById('ims-pwx-opacity-val').textContent;
     document.getElementById('ims-pwx-opacity-reset').click();
     return { def, after: s.value,
-      midOp: parseFloat(mid),
+      midOp: parseFloat(mid), midLabel,
+      resetLabel: document.getElementById('ims-pwx-opacity-val').textContent,
       resetOp: parseFloat(document.querySelector('.leaflet-overlay-pane img.leaflet-image-layer').style.opacity) };
   });
   expect(r.midOp).toBeCloseTo(0.3, 2);        // slider drove the overlay
+  expect(r.midLabel).toBe('30%');             // value shown as percent
   expect(r.after).toBe(r.def);                // reset restored the slider
+  expect(r.resetLabel).toBe(Math.round(parseFloat(r.def) * 100) + '%');
   expect(r.resetOp).toBeCloseTo(parseFloat(r.def), 2);  // and the overlay
 });

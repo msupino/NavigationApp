@@ -3296,7 +3296,7 @@ if (typeof loadRemoteConfig === "function") {
   const timeSel = document.getElementById('ims-pwx-time');
   const opacity = document.getElementById('ims-pwx-opacity');
   const opacityReset = document.getElementById('ims-pwx-opacity-reset');
-  const DEFAULT_OPACITY = opacity ? opacity.value : '0.7';
+  const DEFAULT_OPACITY = String(typeof tune === 'function' ? tune('imsPwxOpacity') : 1);
   if (!box || !cb || !levelSel || !timeSel || !opacity || typeof map === 'undefined') return;
 
   let manifest = null;
@@ -3335,7 +3335,7 @@ if (typeof loadRemoteConfig === "function") {
     for (const t of lv.times) {
       const o = document.createElement('option');
       o.value = t.valid;
-      o.textContent = t.valid + (t.day ? ' (' + t.day + ')' : '');
+      o.textContent = t.valid + 'Z' + (t.day ? ' (' + t.day + ')' : '');   // Zulu
       timeSel.appendChild(o);
     }
     // Re-select the same valid time if the newly chosen level also has it.
@@ -3348,11 +3348,18 @@ if (typeof loadRemoteConfig === "function") {
   });
   levelSel.addEventListener('change', () => { fillTimes(); updateLayer(); });
   timeSel.addEventListener('change', updateLayer);
-  opacity.addEventListener('input', () => { if (layer) layer.setOpacity(+opacity.value); });
+  const showOpacity = () => updateSliderVal(opacity, Math.round(+opacity.value * 100) + '%');
+  opacity.addEventListener('input', () => {
+    if (layer) layer.setOpacity(+opacity.value);
+    showOpacity();
+  });
   if (opacityReset) opacityReset.addEventListener('click', () => {
     opacity.value = DEFAULT_OPACITY;
     if (layer) layer.setOpacity(+opacity.value);
+    showOpacity();
   });
+  opacity.value = DEFAULT_OPACITY;   // apply the (tunable) default + show it
+  showOpacity();
 
   fetch(RAW + 'ims/pwx.json?t=' + Date.now(), { cache: 'no-store' })
     .then(r => (r.ok ? r.json() : null))
