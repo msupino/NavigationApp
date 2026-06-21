@@ -48,7 +48,7 @@ test('manifest reveals the control and populates levels', async ({ page }) => {
   await boot(page);
   await expect(page.locator('#ims-pwx')).toBeVisible();
   const levels = await page.locator('#ims-pwx-level option').allTextContents();
-  expect(levels).toEqual(['FL180', 'FL030']);
+  expect(levels).toEqual(['FL030', 'FL180']);   // lowest altitude first (default)
   // Times follow the selected level.
   const times = await page.locator('#ims-pwx-time option').allTextContents();
   expect(times.length).toBe(2);
@@ -63,7 +63,7 @@ test('toggling on adds a georeferenced image overlay at the manifest bounds', as
   // Leaflet renders an <img class="leaflet-image-layer"> in the overlay pane.
   const img = page.locator('.leaflet-overlay-pane img.leaflet-image-layer');
   await expect(img).toHaveCount(1);
-  await expect(img).toHaveAttribute('src', /ims\/pwx\/50\/1200\.png/);
+  await expect(img).toHaveAttribute('src', /ims\/pwx\/90\/1200\.png/);   // default FL030
   // Toggling off removes it.
   await page.locator('#ims-pwx-cb').uncheck();
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer')).toHaveCount(0);
@@ -73,10 +73,53 @@ test('changing the level keeps the selected valid time', async ({ page }) => {
   await boot(page);
   await page.locator('#ims-pwx-cb').check();
   await page.locator('#ims-pwx-time').selectOption('18:00');   // pick a non-default period
-  await page.locator('#ims-pwx-level').selectOption('90');      // switch FL (also has 18:00)
+  await page.locator('#ims-pwx-level').selectOption('50');      // switch FL (FL180 also has 18:00)
   expect(await page.locator('#ims-pwx-time').inputValue()).toBe('18:00');
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer'))
-    .toHaveAttribute('src', /ims\/pwx\/90\/1800\.png/);
+    .toHaveAttribute('src', /ims\/pwx\/50\/1800\.png/);
+});
+
+test('overlay on/off + selection persists across reload', async ({ page }) => {
+  await boot(page);
+  await page.locator('#ims-pwx-cb').check();
+  await page.locator('#ims-pwx-level').selectOption('50');
+  await page.locator('#ims-pwx-time').selectOption('18:00');
+  await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer')).toHaveCount(1);
+  await page.reload();
+  await page.waitForFunction(() => document.getElementById('ims-pwx') && !document.getElementById('ims-pwx').hidden);
+  // Restored: toggle on, same level/time, overlay re-added.
+  await expect(page.locator('#ims-pwx-cb')).toBeChecked();
+  expect(await page.locator('#ims-pwx-level').inputValue()).toBe('50');
+  expect(await page.locator('#ims-pwx-time').inputValue()).toBe('18:00');
+  await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer'))
+    .toHaveAttribute('src', /ims\/pwx\/50\/1800\.png/);
+});
+
+test('lat/lng tune offset nudges the overlay bounds', async ({ page }) => {
+  await boot(page);
+  await page.locator('#ims-pwx-cb').check();
+  const shifted = await page.evaluate(() => {
+    const layer = () => { let f = null; map.eachLayer(l => { if (l.getBounds && l._url) f = l; }); return f; };
+    const before = layer().getBounds().getSouth();
+    setTune('imsPwxLatOffset', 0.1);
+    NavAid.refreshImsPwx();
+    return { before, after: layer().getBounds().getSouth() };
+  });
+  expect(shifted.after - shifted.before).toBeCloseTo(0.1, 3);
+});
+
+test('lat/lng tune scale zooms the overlay bounds', async ({ page }) => {
+  await boot(page);
+  await page.locator('#ims-pwx-cb').check();
+  const r = await page.evaluate(() => {
+    const layer = () => { let f = null; map.eachLayer(l => { if (l.getBounds && l._url) f = l; }); return f; };
+    const span = () => { const b = layer().getBounds(); return b.getNorth() - b.getSouth(); };
+    const before = span();
+    setTune('imsPwxLatScale', 1.1);
+    NavAid.refreshImsPwx();
+    return { before, after: span() };
+  });
+  expect(r.after / r.before).toBeCloseTo(1.1, 2);   // span scaled ~10%
 });
 
 test('opacity reset restores the default opacity', async ({ page }) => {
@@ -87,12 +130,16 @@ test('opacity reset restores the default opacity', async ({ page }) => {
     const def = s.value;
     s.value = '0.3'; s.dispatchEvent(new Event('input'));
     const mid = document.querySelector('.leaflet-overlay-pane img.leaflet-image-layer').style.opacity;
+    const midLabel = document.getElementById('ims-pwx-opacity-val').textContent;
     document.getElementById('ims-pwx-opacity-reset').click();
     return { def, after: s.value,
-      midOp: parseFloat(mid),
+      midOp: parseFloat(mid), midLabel,
+      resetLabel: document.getElementById('ims-pwx-opacity-val').textContent,
       resetOp: parseFloat(document.querySelector('.leaflet-overlay-pane img.leaflet-image-layer').style.opacity) };
   });
   expect(r.midOp).toBeCloseTo(0.3, 2);        // slider drove the overlay
+  expect(r.midLabel).toBe('30%');             // value shown as percent
   expect(r.after).toBe(r.def);                // reset restored the slider
+  expect(r.resetLabel).toBe(Math.round(parseFloat(r.def) * 100) + '%');
   expect(r.resetOp).toBeCloseTo(parseFloat(r.def), 2);  // and the overlay
 });
