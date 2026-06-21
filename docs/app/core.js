@@ -434,6 +434,7 @@ window.S = Object.assign({
   tbSigwxTitle: 'View IMS significant-weather (SIGWX) charts by valid time',
   tbSigwxTime: 'Valid time',
   sigwxModalTitle: 'Significant weather charts (SIGWX)',
+  sigwxMissing: 'Chart not available for this time yet.',
   tbShowMsa: 'Show MSA',                            // leg-inspector minimum safe altitude row
   tbShowMsaTitle: 'Show minimum safe altitude (terrain + 1000 ft) in the leg inspector. Planning aid only.',
   report: 'Reporting',
