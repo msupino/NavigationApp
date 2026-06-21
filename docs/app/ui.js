@@ -2730,6 +2730,9 @@ function redrawAfterTune() {
   applyTuningCssVars();
   draw();
   if (state.selected) showInspector();
+  // The IMS overlay is a Leaflet layer (not part of draw()) — refresh it so
+  // tuning its opacity / lat-lng offset updates it live.
+  if (window.NavAid && typeof NavAid.refreshImsPwx === 'function') NavAid.refreshImsPwx();
 }
 
 function createTuningPanel() {
@@ -3311,12 +3314,15 @@ if (typeof loadRemoteConfig === "function") {
   function removeLayer() {
     if (layer) { map.removeLayer(layer); layer = null; }
   }
+  const off = k => (typeof tune === 'function' ? tune(k) : 0) || 0;
   function updateLayer() {
     if (!cb.checked || !manifest) { removeLayer(); return; }
     const t = currentTime();
     if (!t) { removeLayer(); return; }
     const b = manifest.bounds;
-    const bounds = [[b.s, b.w], [b.n, b.e]];
+    // Tunable nudge (?tune=1 → Weather (IMS)) for fine-aligning the overlay.
+    const dLat = off('imsPwxLatOffset'), dLng = off('imsPwxLngOffset');
+    const bounds = [[b.s + dLat, b.w + dLng], [b.n + dLat, b.e + dLng]];
     const url = RAW + t.png + '?t=' + (manifest.generatedAt || '');
     if (!layer) {
       layer = L.imageOverlay(url, bounds, { opacity: +opacity.value, interactive: false, pane: 'overlayPane' });
@@ -3342,21 +3348,35 @@ if (typeof loadRemoteConfig === "function") {
     if (prev && lv.times.some(t => t.valid === prev)) timeSel.value = prev;
   }
 
+  // Persist the on/off + selections so a reload keeps the overlay as it was.
+  const KEY = 'navaid.imsPwx';
+  const persist = () => {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({
+        on: cb.checked, level: levelSel.value, valid: timeSel.value,
+        opacity: +opacity.value,
+      }));
+    } catch (e) { /* storage unavailable */ }
+  };
+  // Let the tuning panel live-refresh the overlay when the offset/opacity
+  // defaults change (the overlay isn't part of the canvas draw()).
+  NavAid.refreshImsPwx = updateLayer;
+
   cb.addEventListener('change', () => {
     controls.hidden = !cb.checked;
-    updateLayer();
+    updateLayer(); persist();
   });
-  levelSel.addEventListener('change', () => { fillTimes(); updateLayer(); });
-  timeSel.addEventListener('change', updateLayer);
+  levelSel.addEventListener('change', () => { fillTimes(); updateLayer(); persist(); });
+  timeSel.addEventListener('change', () => { updateLayer(); persist(); });
   const showOpacity = () => updateSliderVal(opacity, Math.round(+opacity.value * 100) + '%');
   opacity.addEventListener('input', () => {
     if (layer) layer.setOpacity(+opacity.value);
-    showOpacity();
+    showOpacity(); persist();
   });
   if (opacityReset) opacityReset.addEventListener('click', () => {
     opacity.value = DEFAULT_OPACITY;
     if (layer) layer.setOpacity(+opacity.value);
-    showOpacity();
+    showOpacity(); persist();
   });
   opacity.value = DEFAULT_OPACITY;   // apply the (tunable) default + show it
   showOpacity();
@@ -3376,6 +3396,19 @@ if (typeof loadRemoteConfig === "function") {
         levelSel.appendChild(o);
       }
       fillTimes();
+      // Restore the saved selection + on/off so a reload keeps the overlay.
+      try {
+        const sv = JSON.parse(localStorage.getItem(KEY) || 'null');
+        if (sv) {
+          if (sv.level && [...levelSel.options].some(o => o.value === sv.level)) {
+            levelSel.value = sv.level; fillTimes();
+          }
+          if (sv.valid && [...timeSel.options].some(o => o.value === sv.valid)) timeSel.value = sv.valid;
+          if (Number.isFinite(sv.opacity)) { opacity.value = sv.opacity; showOpacity(); }
+          if (sv.on) { cb.checked = true; controls.hidden = false; }
+        }
+      } catch (e) { /* storage unavailable */ }
+      updateLayer();
       box.hidden = false;          // reveal the control now that data exists
     })
     .catch(() => { /* no ims-data branch yet → stay hidden */ });

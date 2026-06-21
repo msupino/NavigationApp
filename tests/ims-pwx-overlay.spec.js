@@ -79,6 +79,35 @@ test('changing the level keeps the selected valid time', async ({ page }) => {
     .toHaveAttribute('src', /ims\/pwx\/50\/1800\.png/);
 });
 
+test('overlay on/off + selection persists across reload', async ({ page }) => {
+  await boot(page);
+  await page.locator('#ims-pwx-cb').check();
+  await page.locator('#ims-pwx-level').selectOption('50');
+  await page.locator('#ims-pwx-time').selectOption('18:00');
+  await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer')).toHaveCount(1);
+  await page.reload();
+  await page.waitForFunction(() => document.getElementById('ims-pwx') && !document.getElementById('ims-pwx').hidden);
+  // Restored: toggle on, same level/time, overlay re-added.
+  await expect(page.locator('#ims-pwx-cb')).toBeChecked();
+  expect(await page.locator('#ims-pwx-level').inputValue()).toBe('50');
+  expect(await page.locator('#ims-pwx-time').inputValue()).toBe('18:00');
+  await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer'))
+    .toHaveAttribute('src', /ims\/pwx\/50\/1800\.png/);
+});
+
+test('lat/lng tune offset nudges the overlay bounds', async ({ page }) => {
+  await boot(page);
+  await page.locator('#ims-pwx-cb').check();
+  const shifted = await page.evaluate(() => {
+    const layer = () => { let f = null; map.eachLayer(l => { if (l.getBounds && l._url) f = l; }); return f; };
+    const before = layer().getBounds().getSouth();
+    setTune('imsPwxLatOffset', 0.1);
+    NavAid.refreshImsPwx();
+    return { before, after: layer().getBounds().getSouth() };
+  });
+  expect(shifted.after - shifted.before).toBeCloseTo(0.1, 3);
+});
+
 test('opacity reset restores the default opacity', async ({ page }) => {
   await boot(page);
   await page.locator('#ims-pwx-cb').check();
