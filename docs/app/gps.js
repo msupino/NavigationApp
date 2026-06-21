@@ -12,37 +12,43 @@ const GPS_MIN_MOVE_M = 10;             // de-jitter: drop sub-10 m steps
 const GPS_MAX_ACC_M = 100;             // drop low-accuracy fixes
 const GPS_MAX_POINTS = 50000;
 
-// Perpendicular distance (in degrees) of point p from segment a->b.
-function _perpDeg(p, a, b) {
-  const x = p.lng, y = p.lat, x1 = a.lng, y1 = a.lat, x2 = b.lng, y2 = b.lat;
-  const dx = x2 - x1, dy = y2 - y1;
-  const L2 = dx * dx + dy * dy;
-  if (L2 === 0) return Math.hypot(x - x1, y - y1);
-  let t = ((x - x1) * dx + (y - y1) * dy) / L2;
-  t = Math.max(0, Math.min(1, t));
-  return Math.hypot(x - (x1 + t * dx), y - (y1 + t * dy));
-}
-
 // Douglas–Peucker simplification. eps in degrees. Endpoints always kept.
 // Iterative (explicit-stack) implementation — overflow-safe for up to GPS_MAX_POINTS.
 function simplifyTrack(points, eps) {
   if (!Array.isArray(points) || points.length < 3) return (points || []).slice();
-  const keep = new Array(points.length).fill(false);
-  keep[0] = keep[points.length - 1] = true;
-  const stack = [[0, points.length - 1]];
+  const n = points.length;
+  const keep = new Uint8Array(n);
+  keep[0] = keep[n - 1] = 1;
+  const eps2 = eps * eps;
+  // Flat lo/hi stack (no per-split tuple allocation). Squared perpendicular
+  // distances in the inner loop — no sqrt/hypot per point (it ran O(n²) times
+  // and dominated the worst-case zigzag). d > eps ⇔ d² > eps², so the kept set
+  // is identical to the hypot version.
+  const stack = [0, n - 1];
   while (stack.length) {
-    const [lo, hi] = stack.pop();
+    const hi = stack.pop(), lo = stack.pop();
     if (hi - lo < 2) continue;
-    let maxD = -1, idx = -1;
-    const a = points[lo], b = points[hi];
+    const x1 = points[lo].lng, y1 = points[lo].lat;
+    const dx = points[hi].lng - x1, dy = points[hi].lat - y1;
+    const L2 = dx * dx + dy * dy;
+    let maxD2 = -1, idx = -1;
     for (let i = lo + 1; i < hi; i++) {
-      const d = _perpDeg(points[i], a, b);
-      if (d > maxD) { maxD = d; idx = i; }
+      const px = points[i].lng - x1, py = points[i].lat - y1;
+      let d2;
+      if (L2 === 0) {
+        d2 = px * px + py * py;
+      } else {
+        let t = (px * dx + py * dy) / L2;
+        t = t < 0 ? 0 : (t > 1 ? 1 : t);
+        const ex = px - t * dx, ey = py - t * dy;
+        d2 = ex * ex + ey * ey;
+      }
+      if (d2 > maxD2) { maxD2 = d2; idx = i; }
     }
-    if (maxD > eps) { keep[idx] = true; stack.push([lo, idx], [idx, hi]); }
+    if (maxD2 > eps2) { keep[idx] = 1; stack.push(lo, idx, idx, hi); }
   }
   const out = [];
-  for (let i = 0; i < points.length; i++) if (keep[i]) out.push(points[i]);
+  for (let i = 0; i < n; i++) if (keep[i]) out.push(points[i]);
   return out;
 }
 
