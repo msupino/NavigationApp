@@ -3404,18 +3404,23 @@ if (typeof loadRemoteConfig === "function") {
     const sel = document.createElement('select');
     sel.className = 'sigwx-time';
     sel.setAttribute('aria-label', S.tbSigwxTime || 'Valid time');
-    for (const t of manifest.times) {
+    manifest.times.forEach((t, i) => {
       const o = document.createElement('option');
-      o.value = t.png;
+      o.value = String(i);
       o.textContent = (t.day ? t.day + ' ' : '') + t.valid + 'Z';
       sel.appendChild(o);
-    }
+    });
     box.appendChild(sel);
 
     const img = document.createElement('img');
     img.className = 'sigwx-img';
     img.alt = S.sigwxModalTitle || 'SIGWX chart';
-    const load = () => { img.src = RAW + sel.value + '?t=' + (manifest.generatedAt || ''); };
+    // Read the png path from the trusted manifest by index — never from the
+    // DOM-held select value (avoids CodeQL js/xss-through-dom #64).
+    const load = () => {
+      const t = manifest.times[sel.selectedIndex];
+      if (t) img.src = RAW + t.png + '?t=' + (manifest.generatedAt || '');
+    };
     sel.addEventListener('change', load);
     load();
     box.appendChild(img);
