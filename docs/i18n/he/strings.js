@@ -32,6 +32,7 @@ window.S = {
   tbImsPwxLevel: 'גובה המפה',
   tbImsPwxTime: 'זמן תוקף',
   tbImsPwxOpacity: 'שקיפות',
+  tbImsPwxOpacityReset: 'אפס שקיפות',
   tbSigwx: '🌐 מפות SIGWX',
   tbSigwxTitle: 'הצג מפות מזג אוויר סיגניפיקנטי (SIGWX) לפי זמן תוקף',
   tbSigwxTime: 'זמן תוקף',

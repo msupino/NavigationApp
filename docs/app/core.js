@@ -429,6 +429,7 @@ window.S = Object.assign({
   tbImsPwxLevel: 'Chart level',
   tbImsPwxTime: 'Valid time',
   tbImsPwxOpacity: 'Opacity',
+  tbImsPwxOpacityReset: 'Reset opacity',
   tbSigwx: '🌐 SIGWX charts',                       // significant-weather viewer button
   tbSigwxTitle: 'View IMS significant-weather (SIGWX) charts by valid time',
   tbSigwxTime: 'Valid time',

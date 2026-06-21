@@ -3295,6 +3295,8 @@ if (typeof loadRemoteConfig === "function") {
   const levelSel = document.getElementById('ims-pwx-level');
   const timeSel = document.getElementById('ims-pwx-time');
   const opacity = document.getElementById('ims-pwx-opacity');
+  const opacityReset = document.getElementById('ims-pwx-opacity-reset');
+  const DEFAULT_OPACITY = opacity ? opacity.value : '0.7';
   if (!box || !cb || !levelSel || !timeSel || !opacity || typeof map === 'undefined') return;
 
   let manifest = null;
@@ -3344,6 +3346,10 @@ if (typeof loadRemoteConfig === "function") {
   levelSel.addEventListener('change', () => { fillTimes(); updateLayer(); });
   timeSel.addEventListener('change', updateLayer);
   opacity.addEventListener('input', () => { if (layer) layer.setOpacity(+opacity.value); });
+  if (opacityReset) opacityReset.addEventListener('click', () => {
+    opacity.value = DEFAULT_OPACITY;
+    if (layer) layer.setOpacity(+opacity.value);
+  });
 
   fetch(RAW + 'ims/pwx.json?t=' + Date.now(), { cache: 'no-store' })
     .then(r => (r.ok ? r.json() : null))
