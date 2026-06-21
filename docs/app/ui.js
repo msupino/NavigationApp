@@ -3318,14 +3318,20 @@ if (typeof loadRemoteConfig === "function") {
     if (layer) { map.removeLayer(layer); layer = null; }
   }
   const off = k => (typeof tune === 'function' ? tune(k) : 0) || 0;
+  const sc = k => { const v = typeof tune === 'function' ? tune(k) : 1; return v > 0 ? v : 1; };
   function updateLayer() {
     if (!cb.checked || !manifest) { removeLayer(); return; }
     const t = currentTime();
     if (!t) { removeLayer(); return; }
     const b = manifest.bounds;
-    // Tunable nudge (?tune=1 → Weather (IMS)) for fine-aligning the overlay.
+    // Tunable (?tune=1 → Weather (IMS)) for fine-aligning the overlay:
+    // scale the span about its centre (zoom), then nudge lat/lng.
+    const cLat = (b.s + b.n) / 2, cLng = (b.w + b.e) / 2;
+    const hLat = (b.n - b.s) / 2 * sc('imsPwxLatScale');
+    const hLng = (b.e - b.w) / 2 * sc('imsPwxLngScale');
     const dLat = off('imsPwxLatOffset'), dLng = off('imsPwxLngOffset');
-    const bounds = [[b.s + dLat, b.w + dLng], [b.n + dLat, b.e + dLng]];
+    const bounds = [[cLat - hLat + dLat, cLng - hLng + dLng],
+                    [cLat + hLat + dLat, cLng + hLng + dLng]];
     const url = RAW + t.png + '?t=' + (manifest.generatedAt || '');
     if (!layer) {
       layer = L.imageOverlay(url, bounds, { opacity: +opacity.value, interactive: false, pane: 'overlayPane' });
