@@ -361,10 +361,15 @@
             <select id="ims-pwx-time" data-i18n-aria="tbImsPwxTime" style="width:100%;font:inherit;font-size:11px;margin-top:3px"></select>
             <label class="navtoggle" style="margin-top:3px">
               <span data-i18n="tbImsPwxOpacity" style="font-size:11px"></span>
-              <input type="range" id="ims-pwx-opacity" min="0.2" max="1" step="0.05" value="0.7" style="flex:1;min-width:0">
+              <input type="range" id="ims-pwx-opacity" min="0.2" max="1" step="0.05" value="1" style="flex:1 1 80px;min-width:70px">
+              <button id="ims-pwx-opacity-reset" type="button" data-i18n-title="tbImsPwxOpacityReset" style="flex:0 0 auto;width:26px;padding:2px 0">↻</button>
             </label>
           </div>
         </div>
+        <!-- SIGWX significant-weather charts — in-app image viewer (no overlay).
+             Hidden until the ims-data sigwx manifest loads. -->
+        <button id="sigwx-btn" type="button" hidden
+                data-i18n="tbSigwx" data-i18n-title="tbSigwxTitle"></button>
       </div>
     </div>
 

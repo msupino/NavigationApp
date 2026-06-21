@@ -3295,6 +3295,8 @@ if (typeof loadRemoteConfig === "function") {
   const levelSel = document.getElementById('ims-pwx-level');
   const timeSel = document.getElementById('ims-pwx-time');
   const opacity = document.getElementById('ims-pwx-opacity');
+  const opacityReset = document.getElementById('ims-pwx-opacity-reset');
+  const DEFAULT_OPACITY = opacity ? opacity.value : '0.7';
   if (!box || !cb || !levelSel || !timeSel || !opacity || typeof map === 'undefined') return;
 
   let manifest = null;
@@ -3327,6 +3329,7 @@ if (typeof loadRemoteConfig === "function") {
   }
   function fillTimes() {
     const lv = currentLevel();
+    const prev = timeSel.value;            // keep the chosen period across FL changes
     timeSel.innerHTML = '';
     if (!lv) return;
     for (const t of lv.times) {
@@ -3335,6 +3338,8 @@ if (typeof loadRemoteConfig === "function") {
       o.textContent = t.valid + (t.day ? ' (' + t.day + ')' : '');
       timeSel.appendChild(o);
     }
+    // Re-select the same valid time if the newly chosen level also has it.
+    if (prev && lv.times.some(t => t.valid === prev)) timeSel.value = prev;
   }
 
   cb.addEventListener('change', () => {
@@ -3344,6 +3349,10 @@ if (typeof loadRemoteConfig === "function") {
   levelSel.addEventListener('change', () => { fillTimes(); updateLayer(); });
   timeSel.addEventListener('change', updateLayer);
   opacity.addEventListener('input', () => { if (layer) layer.setOpacity(+opacity.value); });
+  if (opacityReset) opacityReset.addEventListener('click', () => {
+    opacity.value = DEFAULT_OPACITY;
+    if (layer) layer.setOpacity(+opacity.value);
+  });
 
   fetch(RAW + 'ims/pwx.json?t=' + Date.now(), { cache: 'no-store' })
     .then(r => (r.ok ? r.json() : null))
@@ -3360,4 +3369,81 @@ if (typeof loadRemoteConfig === "function") {
       box.hidden = false;          // reveal the control now that data exists
     })
     .catch(() => { /* no ims-data branch yet → stay hidden */ });
+})();
+
+// --- IMS SIGWX significant-weather charts (in-app image viewer) ------
+// No map overlay — these are wide-area prognostic charts. The button opens a
+// modal with a valid-time dropdown and the chart image. Hidden until the
+// ims-data sigwx manifest loads.
+(function imsSigwxViewer() {
+  const RAW = 'https://raw.githubusercontent.com/msupino/NavigationApp/ims-data/';
+  const btn = document.getElementById('sigwx-btn');
+  if (!btn) return;
+  let manifest = null;
+  let back = null;
+
+  function close() {
+    if (back) { back.remove(); back = null; }
+    document.removeEventListener('keydown', onEsc, true);
+  }
+  function onEsc(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }
+
+  function open() {
+    if (back || !manifest || !manifest.times.length) return;
+    if (typeof closeToolbarDesktopMenus === 'function') closeToolbarDesktopMenus();
+    back = document.createElement('div');
+    back.className = 'modal-back';
+    const box = document.createElement('div');
+    box.className = 'modal wide sigwx-modal';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+
+    const title = document.createElement('div');
+    title.className = 'modal-title';
+    title.style.cursor = 'default';
+    title.textContent = S.sigwxModalTitle || 'Significant weather (SIGWX)';
+    box.appendChild(title);
+
+    const sel = document.createElement('select');
+    sel.className = 'sigwx-time';
+    sel.setAttribute('aria-label', S.tbSigwxTime || 'Valid time');
+    manifest.times.forEach((t, i) => {
+      const o = document.createElement('option');
+      o.value = String(i);
+      o.textContent = (t.day ? t.day + ' ' : '') + t.valid + 'Z';
+      sel.appendChild(o);
+    });
+    box.appendChild(sel);
+
+    const img = document.createElement('img');
+    img.className = 'sigwx-img';
+    img.alt = S.sigwxModalTitle || 'SIGWX chart';
+    // Read the png path from the trusted manifest by index — never from the
+    // DOM-held select value (avoids CodeQL js/xss-through-dom #64).
+    const load = () => {
+      const t = manifest.times[sel.selectedIndex];
+      if (t) img.src = RAW + t.png + '?t=' + (manifest.generatedAt || '');
+    };
+    sel.addEventListener('change', load);
+    load();
+    box.appendChild(img);
+
+    if (typeof addModalCloseX === 'function') addModalCloseX(box, close);
+    back.appendChild(box);
+    back.addEventListener('click', e => { if (e.target === back) close(); });
+    document.addEventListener('keydown', onEsc, true);
+    document.body.appendChild(back);
+    sel.focus();
+  }
+
+  btn.addEventListener('click', open);
+
+  fetch(RAW + 'ims/sigwx.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(r => (r.ok ? r.json() : null))
+    .then(m => {
+      if (!m || !Array.isArray(m.times) || !m.times.length) return;
+      manifest = m;
+      btn.hidden = false;
+    })
+    .catch(() => { /* no sigwx data yet → stay hidden */ });
 })();
