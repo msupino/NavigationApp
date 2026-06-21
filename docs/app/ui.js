@@ -3329,6 +3329,7 @@ if (typeof loadRemoteConfig === "function") {
   }
   function fillTimes() {
     const lv = currentLevel();
+    const prev = timeSel.value;            // keep the chosen period across FL changes
     timeSel.innerHTML = '';
     if (!lv) return;
     for (const t of lv.times) {
@@ -3337,6 +3338,8 @@ if (typeof loadRemoteConfig === "function") {
       o.textContent = t.valid + (t.day ? ' (' + t.day + ')' : '');
       timeSel.appendChild(o);
     }
+    // Re-select the same valid time if the newly chosen level also has it.
+    if (prev && lv.times.some(t => t.valid === prev)) timeSel.value = prev;
   }
 
   cb.addEventListener('change', () => {
