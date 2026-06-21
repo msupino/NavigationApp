@@ -1870,19 +1870,20 @@ if (msaCb) {
 // The two View inputs drive it; the corner readout + every leg redraw react.
 const windDirInput = document.getElementById('wind-dir');
 const windSpeedInput = document.getElementById('wind-speed');
+function windDefault() { return { dir: tune('windDir'), speed: tune('windSpeed') }; }
 function refreshWindInputs() {
-  const w = state.wind || { dir: 270, speed: 0 };
+  const w = state.wind || windDefault();
   if (windDirInput && document.activeElement !== windDirInput) {
-    windDirInput.value = Number.isFinite(w.dir) ? String(w.dir) : '270';
+    windDirInput.value = Number.isFinite(w.dir) ? String(w.dir) : String(tune('windDir'));
   }
   if (windSpeedInput && document.activeElement !== windSpeedInput) {
-    windSpeedInput.value = Number.isFinite(w.speed) ? String(w.speed) : '0';
+    windSpeedInput.value = Number.isFinite(w.speed) ? String(w.speed) : String(tune('windSpeed'));
   }
   refreshWindReadout();
 }
 window.refreshWindInputs = refreshWindInputs;
 function commitWind() {
-  if (!state.wind || typeof state.wind !== 'object') state.wind = { dir: 270, speed: 0 };
+  if (!state.wind || typeof state.wind !== 'object') state.wind = windDefault();
   const d = parseFloat(windDirInput && windDirInput.value);
   const s = parseFloat(windSpeedInput && windSpeedInput.value);
   state.wind.dir = Number.isFinite(d) ? ((Math.round(d) % 360) + 360) % 360 : state.wind.dir;

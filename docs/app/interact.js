@@ -1912,7 +1912,7 @@ function showInspector() {
       refreshWindFx(); draw();
     };
     if (window.showWind) {
-      const gw = state.wind || { dir: 270, speed: 0 };
+      const gw = state.wind || { dir: tune('windDir'), speed: tune('windSpeed') };
       body.appendChild(numberRow(S.windFromDeg,
         leg.wind && Number.isFinite(leg.wind.dir) ? leg.wind.dir : NaN,
         v => setLegWind('dir', v),
