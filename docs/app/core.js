@@ -429,6 +429,11 @@ window.S = Object.assign({
   tbImsPwxLevel: 'Chart level',
   tbImsPwxTime: 'Valid time',
   tbImsPwxOpacity: 'Opacity',
+  tbImsPwxOpacityReset: 'Reset opacity',
+  tbSigwx: '🌐 SIGWX charts',                       // significant-weather viewer button
+  tbSigwxTitle: 'View IMS significant-weather (SIGWX) charts by valid time',
+  tbSigwxTime: 'Valid time',
+  sigwxModalTitle: 'Significant weather charts (SIGWX)',
   tbShowMsa: 'Show MSA',                            // leg-inspector minimum safe altitude row
   tbShowMsaTitle: 'Show minimum safe altitude (terrain + 1000 ft) in the leg inspector. Planning aid only.',
   report: 'Reporting',

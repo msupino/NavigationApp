@@ -1426,6 +1426,21 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
 .modal-back.shortcuts-help {
   z-index: 2400;
 }
+/* SIGWX significant-weather chart viewer. */
+.sigwx-modal .sigwx-time {
+  margin: 4px 0 8px;
+  font: inherit;
+  font-size: 13px;
+}
+.sigwx-modal .sigwx-img {
+  display: block;
+  max-width: min(90vw, 900px);
+  max-height: 78vh;
+  width: auto;
+  height: auto;
+  background: #fff;
+  border-radius: 4px;
+}
 .shortcuts-help-list {
   display: grid;
   grid-template-columns: minmax(120px, auto) 1fr;

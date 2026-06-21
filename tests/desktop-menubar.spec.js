@@ -139,7 +139,7 @@ test.describe('Desktop menubar layout', () => {
 
   test('the menu and its dropdowns render above the inspector', async ({ page }) => {
     await bootDesktop(page, {
-      openSections: ['build', 'view', 'display', 'charts', 'export', 'sim', 'print'],
+      openSections: ['build', 'view', 'display', 'charts', 'export', 'weather', 'sim', 'print'],
     });
 
     await expect(page.locator('#toolbar')).toHaveClass(/multi-open/);

@@ -22,6 +22,7 @@ const MANIFEST = {
     ] },
     { level: '90', label: 'FL030', times: [
       { valid: '12:00', day: '21/06/2026', png: 'ims/pwx/90/1200.png' },
+      { valid: '18:00', day: '21/06/2026', png: 'ims/pwx/90/1800.png' },
     ] },
   ],
 };
@@ -66,4 +67,32 @@ test('toggling on adds a georeferenced image overlay at the manifest bounds', as
   // Toggling off removes it.
   await page.locator('#ims-pwx-cb').uncheck();
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer')).toHaveCount(0);
+});
+
+test('changing the level keeps the selected valid time', async ({ page }) => {
+  await boot(page);
+  await page.locator('#ims-pwx-cb').check();
+  await page.locator('#ims-pwx-time').selectOption('18:00');   // pick a non-default period
+  await page.locator('#ims-pwx-level').selectOption('90');      // switch FL (also has 18:00)
+  expect(await page.locator('#ims-pwx-time').inputValue()).toBe('18:00');
+  await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer'))
+    .toHaveAttribute('src', /ims\/pwx\/90\/1800\.png/);
+});
+
+test('opacity reset restores the default opacity', async ({ page }) => {
+  await boot(page);
+  await page.locator('#ims-pwx-cb').check();
+  const r = await page.evaluate(() => {
+    const s = document.getElementById('ims-pwx-opacity');
+    const def = s.value;
+    s.value = '0.3'; s.dispatchEvent(new Event('input'));
+    const mid = document.querySelector('.leaflet-overlay-pane img.leaflet-image-layer').style.opacity;
+    document.getElementById('ims-pwx-opacity-reset').click();
+    return { def, after: s.value,
+      midOp: parseFloat(mid),
+      resetOp: parseFloat(document.querySelector('.leaflet-overlay-pane img.leaflet-image-layer').style.opacity) };
+  });
+  expect(r.midOp).toBeCloseTo(0.3, 2);        // slider drove the overlay
+  expect(r.after).toBe(r.def);                // reset restored the slider
+  expect(r.resetOp).toBeCloseTo(parseFloat(r.def), 2);  // and the overlay
 });
