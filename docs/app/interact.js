@@ -2722,7 +2722,9 @@ map.on('mousedown', e => {
              origLat: state.waypoints[wp].lat, origLng: state.waypoints[wp].lng,
              originSnapArmed: false };
     map.dragging.disable();
-    showInspector(); draw();
+    // Highlight now, but defer the inspector to release-without-move so you can
+    // drag a waypoint (or grab one while panning) without the panel popping up.
+    draw();
     return;
   }
   const cum = hitCumLabel(p.x, p.y);
@@ -2797,7 +2799,8 @@ map.on('mousemove', e => {
     const wp = state.waypoints[drag.i];
     const r = applyNavSnap(e.latlng, wp.name || '', dragOriginExclude(drag, e.latlng));
     wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
-    draw(); showInspector();
+    draw();   // move silently — but keep an already-open inspector in sync
+    if (!document.getElementById('inspector').classList.contains('hidden')) showInspector();
   } else if (drag.kind === 'note') {
     state.notes[drag.i].lat = r5(e.latlng.lat + (drag.offLat || 0));
     state.notes[drag.i].lng = r5(e.latlng.lng + (drag.offLng || 0));
@@ -2842,7 +2845,14 @@ function endMouseDrag() {
       changed = applyLegAltitudesToRoute();
       if (typeof seedCommChangeNotes === 'function' && seedCommChangeNotes()) changed = true;
     }
-    if (changed) { draw(); showInspector(); }
+    if (changed) draw();
+    // Open the inspector on a clean waypoint click (released without a move);
+    // a drag-to-reposition leaves a closed inspector closed, but refreshes one
+    // that was already open (e.g. snapping onto a comm-change point).
+    if (drag.kind === 'wp') {
+      const inspOpen = !document.getElementById('inspector').classList.contains('hidden');
+      if (!drag.moved || inspOpen) showInspector();
+    }
     map.dragging.enable();
     drag = null;
   }
