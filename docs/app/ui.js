@@ -3423,6 +3423,13 @@ if (typeof loadRemoteConfig === "function") {
         }
       } catch (e) { /* storage unavailable */ }
       updateLayer();
+      // Show the model run time (cropped off the chart's bottom band).
+      const runEl = document.getElementById('ims-pwx-run');
+      if (runEl && /^\d{12}$/.test(m.run || '')) {
+        const r = m.run;
+        runEl.textContent = (S.tbImsPwxRun || 'Model run') + ': ' +
+          r.slice(6, 8) + '/' + r.slice(4, 6) + ' ' + r.slice(8, 10) + ':' + r.slice(10, 12) + 'Z';
+      }
       box.hidden = false;          // reveal the control now that data exists
     })
     .catch(() => { /* no ims-data branch yet → stay hidden */ });
