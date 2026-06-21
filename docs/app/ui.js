@@ -3359,7 +3359,10 @@ if (typeof loadRemoteConfig === "function") {
     .then(m => {
       if (!m || !Array.isArray(m.levels) || !m.levels.length || !m.bounds) return;
       manifest = m;
-      for (const lv of m.levels) {
+      // List levels lowest-altitude first (FL030 before FL050) so the default
+      // selection is the lowest CVFR level — higher hPa number = lower altitude.
+      const ordered = m.levels.slice().sort((a, b) => Number(b.level) - Number(a.level));
+      for (const lv of ordered) {
         const o = document.createElement('option');
         o.value = lv.level;
         o.textContent = lv.label || (lv.level + ' hPa');
