@@ -2211,6 +2211,9 @@ if (CLEAR_STORE_EL) {
   CLEAR_STORE_EL.onclick = () => {
     if (!confirm(S.tbClearStoreConfirm ||
       'Delete ALL saved routes and settings stored on this device? This cannot be undone.')) return;
+    // Suppress the beforeunload/visibilitychange autosave so reload() can't
+    // re-persist the in-memory route right after we wipe storage.
+    window.__clearingStore = true;
     try {
       Object.keys(localStorage).filter(k => k.indexOf('navaid.') === 0)
         .forEach(k => localStorage.removeItem(k));
@@ -3125,6 +3128,7 @@ if (!restoredFlightPlan) restoreOpenChartModal();
 
 // Save selected waypoint and flight-plan state on refresh / tab-close.
 window.addEventListener('beforeunload', function () {
+  if (window.__clearingStore) return;   // clear-store wiped storage; don't re-save
   if (typeof flushPersist === 'function') flushPersist();
   if (typeof persistInspectorSelection === 'function') persistInspectorSelection();
   if (window.fpOpen) {
