@@ -43,10 +43,8 @@ jobs:
           if (!r.ok) throw new Error('ims list ' + r.status);
           const j = await r.json();
           const data = (j && j.data) || {};
-          const LABELS = {
-            '50': '500 hPa · FL180', '70': '700 hPa · FL100',
-            '85': '850 hPa · FL050', '90': '900 hPa · FL030',
-          };
+          // IMS labels these by flight level (see ims.gov.il/he/aviation).
+          const LABELS = { '50': 'FL180', '70': 'FL100', '85': 'FL050', '90': 'FL030' };
           const manifest = { generatedAt: new Date().toISOString(),
             source: 'IMS wind_and_temperature_maps',
             bounds: { s: 29.88, n: 33.82, w: 33.31, e: 36.69 },

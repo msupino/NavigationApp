@@ -16,11 +16,11 @@ const MANIFEST = {
   generatedAt: '2026-06-21T09:00:00Z',
   bounds: { s: 29.88, n: 33.82, w: 33.31, e: 36.69 },
   levels: [
-    { level: '50', label: '500 hPa · FL180', times: [
+    { level: '50', label: 'FL180', times: [
       { valid: '12:00', day: '21/06/2026', png: 'ims/pwx/50/1200.png' },
       { valid: '18:00', day: '21/06/2026', png: 'ims/pwx/50/1800.png' },
     ] },
-    { level: '90', label: '900 hPa · FL030', times: [
+    { level: '90', label: 'FL030', times: [
       { valid: '12:00', day: '21/06/2026', png: 'ims/pwx/90/1200.png' },
     ] },
   ],
@@ -47,7 +47,7 @@ test('manifest reveals the control and populates levels', async ({ page }) => {
   await boot(page);
   await expect(page.locator('#ims-pwx')).toBeVisible();
   const levels = await page.locator('#ims-pwx-level option').allTextContents();
-  expect(levels).toEqual(['500 hPa · FL180', '900 hPa · FL030']);
+  expect(levels).toEqual(['FL180', 'FL030']);
   // Times follow the selected level.
   const times = await page.locator('#ims-pwx-time option').allTextContents();
   expect(times.length).toBe(2);
