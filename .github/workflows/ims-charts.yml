@@ -1,0 +1,100 @@
+name: Update IMS PWX charts
+
+# Mirrors the IMS (Israel Meteorological Service) PWX wind/temperature charts —
+# which the browser can't fetch directly (no CORS) — into the `ims-data` orphan
+# branch as georeferenced transparent PNGs the app overlays on the map.
+#   source list:  https://ims.gov.il/he/wind_and_temperature_maps  (JSON)
+#   PDFs:         https://ims.gov.il/.../map_images/PWX/PWX_<run>_<lvl>_<valid>.pdf
+#   published:    ims-data/ims/pwx/<lvl>/<valid>.png  +  ims-data/ims/pwx.json
+
+on:
+  schedule:
+    - cron: '17 */3 * * *'      # every 3 hours (a few min past the hour)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ims-charts
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install poppler + imagemagick
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils imagemagick
+
+      - name: Build PWX PNGs + manifest
+        run: |
+          mkdir -p ims/ims/pwx
+          # Geographic bounds of the cropped PWX map frame (equirectangular),
+          # solved from the LLHA (32.81N/35.04E) and LLIB (32.98N/35.57E)
+          # station markers. Same frame for every level/time.
+          BOUNDS_S=29.88; BOUNDS_N=33.82; BOUNDS_W=33.31; BOUNDS_E=36.69
+          # PDF->PNG crop (150 dpi): drop the outer margin + the bottom title band
+          # so the PNG edges are the map frame.
+          CROP="-r 150 -x 14 -y 15 -W 1212 -H 1622"
+
+          node --input-type=module <<'NODE' > /tmp/jobs.tsv
+          const r = await fetch('https://ims.gov.il/he/wind_and_temperature_maps',
+            { headers: { 'User-Agent': 'NavAid-ims-bot' } });
+          if (!r.ok) throw new Error('ims list ' + r.status);
+          const j = await r.json();
+          const data = (j && j.data) || {};
+          const LABELS = {
+            '50': '500 hPa · FL180', '70': '700 hPa · FL100',
+            '85': '850 hPa · FL050', '90': '900 hPa · FL030',
+          };
+          const manifest = { generatedAt: new Date().toISOString(),
+            source: 'IMS wind_and_temperature_maps',
+            bounds: { s: 29.88, n: 33.82, w: 33.31, e: 36.69 },
+            levels: [] };
+          const lines = [];
+          for (const lvl of Object.keys(data)) {
+            const times = data[lvl] || {};
+            const entry = { level: lvl, label: LABELS[lvl] || (lvl + ' hPa'), times: [] };
+            for (const t of Object.keys(times)) {
+              const f = times[t] && times[t].file;
+              if (!f) continue;
+              const url = f.startsWith('http') ? f : 'https://ims.gov.il' + f;
+              const out = `ims/ims/pwx/${lvl}/${t.replace(':', '')}.png`;
+              entry.times.push({ valid: t, day: times[t].day || '', png: `ims/pwx/${lvl}/${t.replace(':', '')}.png` });
+              lines.push([url, out].join('\t'));
+            }
+            entry.times.sort((a, b) => a.valid.localeCompare(b.valid));
+            if (entry.times.length) manifest.levels.push(entry);
+          }
+          manifest.levels.sort((a, b) => Number(a.level) - Number(b.level));
+          const { writeFileSync } = await import('node:fs');
+          writeFileSync('ims/ims/pwx.json', JSON.stringify(manifest, null, 1));
+          console.error('levels:', manifest.levels.map(l => l.level + '×' + l.times.length).join(' '));
+          process.stdout.write(lines.join('\n'));
+          NODE
+
+          # Download each PDF -> crop to PNG -> white to transparent.
+          while IFS=$'\t' read -r url out; do
+            [ -z "$url" ] && continue
+            mkdir -p "$(dirname "$out")"
+            if curl -fsS -A 'NavAid-ims-bot' "$url" -o /tmp/c.pdf; then
+              pdftoppm -png $CROP /tmp/c.pdf /tmp/cpng && \
+              convert /tmp/cpng-1.png -fuzz 18% -transparent white "$out" && \
+              echo "ok  $out" || echo "conv-fail $out"
+            else
+              echo "dl-fail $url"
+            fi
+          done < /tmp/jobs.tsv
+          echo "PNG count: $(find ims -name '*.png' | wc -l)"
+
+      - name: Publish ims-data branch
+        run: |
+          ( cd ims
+            git init -q
+            git checkout -q -b ims-data
+            git add .
+            git -c user.email='actions@github.com' -c user.name='ims-bot' \
+                commit -q -m "ims: update $(date -u +%FT%TZ)"
+            git push -q -f \
+                "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
+                ims-data )
