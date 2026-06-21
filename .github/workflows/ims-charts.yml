@@ -22,7 +22,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
       - name: Install poppler + imagemagick
         run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils imagemagick
@@ -91,7 +91,10 @@ jobs:
           while IFS=$'\t' read -r url out mode; do
             [ -z "$url" ] && continue
             mkdir -p "$(dirname "$out")"
-            if curl -fsS --connect-timeout 15 --max-time 45 --retry 2 --retry-delay 3 \
+            # IMS is slow/throttly from CI IPs — generous timeout + retries, and
+            # space requests so we don't get rate-limited (which showed up as
+            # dl-fail and emptied the SIGWX manifest).
+            if curl -fsS --connect-timeout 20 --max-time 90 --retry 4 --retry-delay 5 --retry-all-errors \
                  -A 'NavAid-ims-bot' "$url" -o /tmp/c.pdf; then
               if [ "$mode" = "pwx" ]; then
                 pdftoppm -png $PWX_CROP /tmp/c.pdf /tmp/cpng && \
@@ -104,6 +107,7 @@ jobs:
             else
               echo "dl-fail $url"
             fi
+            sleep 1
           done < /tmp/jobs.tsv
           echo "PNG count: $(find ims -name '*.png' | wc -l)"
 
