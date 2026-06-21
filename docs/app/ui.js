@@ -3453,7 +3453,7 @@ if (typeof loadRemoteConfig === "function") {
   function onEsc(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }
 
   function open() {
-    if (back || !manifest || !manifest.times.length) return;
+    if (back || !manifest) return;   // open even with zero times (show broken)
     if (typeof closeToolbarDesktopMenus === 'function') closeToolbarDesktopMenus();
     back = document.createElement('div');
     back.className = 'modal-back';
@@ -3498,7 +3498,15 @@ if (typeof loadRemoteConfig === "function") {
     // instead of a broken-image icon.
     img.addEventListener('error', () => { img.hidden = true; note.hidden = false; });
     sel.addEventListener('change', load);
-    load();
+    if (manifest.times.length) {
+      load();
+    } else {
+      // Charts exist as a feature but none are currently published (a run that
+      // couldn't fetch them) — show it's broken, not hidden.
+      sel.hidden = true; img.hidden = true;
+      note.hidden = false;
+      note.textContent = S.sigwxUnavailable || 'SIGWX charts are temporarily unavailable.';
+    }
     box.appendChild(img);
     box.appendChild(note);
 
@@ -3515,9 +3523,12 @@ if (typeof loadRemoteConfig === "function") {
   fetch(RAW + 'ims/sigwx.json?t=' + Date.now(), { cache: 'no-store' })
     .then(r => (r.ok ? r.json() : null))
     .then(m => {
-      if (!m || !Array.isArray(m.times) || !m.times.length) return;
+      // Reveal the button whenever the manifest exists — even with zero times —
+      // so a broken/empty run is visible (button opens to an "unavailable" note)
+      // rather than the whole feature silently disappearing.
+      if (!m || !Array.isArray(m.times)) return;
       manifest = m;
       btn.hidden = false;
     })
-    .catch(() => { /* no sigwx data yet → stay hidden */ });
+    .catch(() => { /* manifest unreachable → stay hidden */ });
 })();
