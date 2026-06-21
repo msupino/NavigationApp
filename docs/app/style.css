@@ -710,6 +710,21 @@ html, body {
   unicode-bidi: isolate;
 }
 .leaflet-control.zulu-clock.dragging { cursor: grabbing; }
+
+/* Hebrew (RTL): the floating menu bar lives top-right on desktop, so default
+   the Zulu clock to the top-LEFT corner instead of stacking beneath the bar.
+   (English keeps it in the Leaflet top-right control flow.) A saved drag
+   position or an active drag still overrides this via inline styles. */
+html[dir="rtl"] .leaflet-control.zulu-clock {
+  position: fixed;
+  top: var(--navaid-zulu-clock-margin-top, 12px);
+  left: 12px;
+  right: auto;
+  margin: 0;
+  /* Same vertical drop English uses (below the top band) so it clears the menu
+     bar and matches the English placement. */
+  transform: translateY(46px);
+}
 .coord-readout.show { display: block; }
 .zoom-readout {
   display: block;
