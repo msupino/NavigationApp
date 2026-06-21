@@ -32,7 +32,7 @@ jobs:
           # Geographic bounds of the cropped PWX map frame (equirectangular),
           # solved from the LLHA (32.81N/35.04E) and LLIB (32.98N/35.57E)
           # station markers. Same frame for every level/time.
-          BOUNDS_S=29.88; BOUNDS_N=33.82; BOUNDS_W=33.31; BOUNDS_E=36.69
+          BOUNDS_S=29.20; BOUNDS_N=34.03; BOUNDS_W=32.95; BOUNDS_E=37.05
           # PDF->PNG crop (150 dpi): drop the outer margin + the bottom title band
           # so the PNG edges are the map frame.
           CROP="-r 150 -x 14 -y 15 -W 1212 -H 1622"
@@ -47,7 +47,7 @@ jobs:
           const LABELS = { '50': 'FL180', '70': 'FL100', '85': 'FL050', '90': 'FL030' };
           const manifest = { generatedAt: new Date().toISOString(),
             source: 'IMS wind_and_temperature_maps',
-            bounds: { s: 29.88, n: 33.82, w: 33.31, e: 36.69 },
+            bounds: { s: 29.20, n: 34.03, w: 32.95, e: 37.05 },
             levels: [] };
           const lines = [];
           for (const lvl of Object.keys(data)) {
