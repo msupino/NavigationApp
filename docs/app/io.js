@@ -4770,7 +4770,7 @@ function showAltitudePairFocus(from, to, keepVisible, source) {
     color: lineColor,
     weight: 3,
     fillColor: dotColor,
-    fillOpacity: 0.95,
+    fillOpacity: tune('altPairFocusDotAlpha'),
     interactive: false,
   });
   const layer = L.layerGroup([
@@ -4778,7 +4778,7 @@ function showAltitudePairFocus(from, to, keepVisible, source) {
       className: 'alt-pair-focus-line alt-pair-focus-blink',
       color: lineColor,
       weight: tune('altPairFocusWidthPx'),
-      opacity: 0.95,
+      opacity: tune('altPairFocusLineAlpha'),
       dashArray: tune('altPairFocusDashOnPx') + ' ' + tune('altPairFocusDashOffPx'),
       interactive: false,
     }),

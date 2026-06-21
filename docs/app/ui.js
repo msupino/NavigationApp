@@ -482,8 +482,8 @@ function clearGotoMarker() {
 function dropGotoMarker(lat, lng) {
   clearGotoMarker();
   gotoMarker = L.circleMarker([lat, lng], {
-    radius: 7, color: '#c0392b', weight: 2,
-    fillColor: '#e74c3c', fillOpacity: 0.85,
+    radius: tune('gotoMarkerRadiusPx'), color: tune('gotoMarkerColor'), weight: tune('gotoMarkerWeightPx'),
+    fillColor: tune('gotoMarkerFillColor'), fillOpacity: tune('gotoMarkerFillAlpha'),
     interactive: false, className: 'goto-marker',
   }).addTo(map);
 }
