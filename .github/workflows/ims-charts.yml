@@ -36,9 +36,9 @@ jobs:
             "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" ims \
             2>/dev/null && rm -rf ims/.git || mkdir -p ims
           mkdir -p ims/ims/pwx ims/ims/sigwx
-          # PWX crop (150 dpi): drop the outer margin + bottom title band so the
-          # PNG edges are the map frame (for the georeferenced overlay).
-          PWX_CROP="-r 150 -x 14 -y 15 -W 1212 -H 1622"
+          # PWX is rendered full-page (no crop) so the chart's title band + frame
+          # show on the overlay; the bounds below are extended to the full page
+          # so the inner map frame still aligns (margins L14/R14/T15/B118 @150dpi).
 
           node --input-type=module <<'NODE' > /tmp/jobs.tsv
           const { writeFileSync } = await import('node:fs');
@@ -55,7 +55,7 @@ jobs:
           const LABELS = { '85': 'FL050', '90': 'FL030' };
           const pwx = { generatedAt: new Date().toISOString(),
             source: 'IMS wind_and_temperature_maps', run: '',
-            bounds: { s: 29.2, n: 34.03, w: 32.95, e: 37.05 }, levels: [] };
+            bounds: { s: 28.849, n: 34.075, w: 32.903, e: 37.097 }, levels: [] };
           const pdata = await get('https://ims.gov.il/he/wind_and_temperature_maps');
           for (const lvl of Object.keys(pdata)) {
             if (!LABELS[lvl]) continue;
@@ -107,7 +107,7 @@ jobs:
             if curl -fsS --connect-timeout 20 --max-time 90 --retry 6 --retry-delay 5 --retry-all-errors \
                  -A 'NavAid-ims-bot' "$url" -o /tmp/c.pdf; then
               if [ "$mode" = "pwx" ]; then
-                pdftoppm -png $PWX_CROP /tmp/c.pdf /tmp/cpng && \
+                pdftoppm -png -r 150 /tmp/c.pdf /tmp/cpng && \
                 convert /tmp/cpng-1.png -fuzz 18% -transparent white "$out" && \
                 echo "ok  $out" || echo "conv-fail $out"
               else
