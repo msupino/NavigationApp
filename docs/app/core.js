@@ -279,7 +279,7 @@ NavAid.tuningDefaults = {
   airfieldLabelMinZoom: { value: 10, min: 5, max: 16, step: 1, label: 'Airfield label min zoom' },
   navWpLabelMinZoom: { value: 10, min: 5, max: 16, step: 1, label: 'Nav-waypoint label min zoom' },
   vorLabelMinZoom: { value: 8, min: 5, max: 16, step: 1, label: 'VOR label min zoom' },
-  windDir: { value: 270, min: 0, max: 360, step: 5, label: 'Default wind direction (°true FROM)' },
+  windDir: { value: 0, min: 0, max: 360, step: 5, label: 'Default wind direction (°true FROM)' },
   windSpeed: { value: 0, min: 0, max: 200, step: 1, label: 'Default wind speed (kt; 0 = calm)' },
 
   vorMarkerRadiusPx: { value: 9, min: 3, max: 30, step: 0.5, label: 'VOR marker radius' },
