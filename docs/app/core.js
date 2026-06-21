@@ -424,6 +424,11 @@ window.S = Object.assign({
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbShowReporting: 'Show mandatory reports',        // reporting-type overlay toggle
   tbShowReportingTitle: 'Badge waypoints that are mandatory (חובה) reporting points',
+  tbImsPwx: 'IMS wind/temp chart',                  // IMS PWX overlay toggle
+  tbImsPwxTitle: 'Overlay the IMS PWX wind & temperature forecast chart on the map',
+  tbImsPwxLevel: 'Chart level',
+  tbImsPwxTime: 'Valid time',
+  tbImsPwxOpacity: 'Opacity',
   tbShowMsa: 'Show MSA',                            // leg-inspector minimum safe altitude row
   tbShowMsaTitle: 'Show minimum safe altitude (terrain + 1000 ft) in the leg inspector. Planning aid only.',
   report: 'Reporting',

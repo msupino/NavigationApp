@@ -3281,3 +3281,83 @@ if (typeof loadRemoteConfig === "function") {
     if (sub) sub.textContent = "Loaded " + n + " value(s) from gist. Resets on reload.";
   });
 }
+
+// --- IMS PWX wind/temperature chart overlay --------------------------
+// Manifest + PNGs are published by .github/workflows/ims-charts.yml to the
+// ims-data orphan branch (the browser can't fetch ims.gov.il directly — no
+// CORS). The control stays hidden until the manifest loads, so nothing shows
+// before the first Action run.
+(function imsPwxOverlay() {
+  const RAW = 'https://raw.githubusercontent.com/msupino/NavigationApp/ims-data/';
+  const box = document.getElementById('ims-pwx');
+  const cb = document.getElementById('ims-pwx-cb');
+  const controls = document.getElementById('ims-pwx-controls');
+  const levelSel = document.getElementById('ims-pwx-level');
+  const timeSel = document.getElementById('ims-pwx-time');
+  const opacity = document.getElementById('ims-pwx-opacity');
+  if (!box || !cb || !levelSel || !timeSel || !opacity || typeof map === 'undefined') return;
+
+  let manifest = null;
+  let layer = null;
+
+  const currentLevel = () => (manifest && manifest.levels.find(l => l.level === levelSel.value)) || null;
+  const currentTime = () => {
+    const lv = currentLevel();
+    return lv && lv.times.find(t => t.valid === timeSel.value);
+  };
+
+  function removeLayer() {
+    if (layer) { map.removeLayer(layer); layer = null; }
+  }
+  function updateLayer() {
+    if (!cb.checked || !manifest) { removeLayer(); return; }
+    const t = currentTime();
+    if (!t) { removeLayer(); return; }
+    const b = manifest.bounds;
+    const bounds = [[b.s, b.w], [b.n, b.e]];
+    const url = RAW + t.png + '?t=' + (manifest.generatedAt || '');
+    if (!layer) {
+      layer = L.imageOverlay(url, bounds, { opacity: +opacity.value, interactive: false, pane: 'overlayPane' });
+      layer.addTo(map);
+    } else {
+      layer.setUrl(url);
+      layer.setBounds(bounds);
+      layer.setOpacity(+opacity.value);
+    }
+  }
+  function fillTimes() {
+    const lv = currentLevel();
+    timeSel.innerHTML = '';
+    if (!lv) return;
+    for (const t of lv.times) {
+      const o = document.createElement('option');
+      o.value = t.valid;
+      o.textContent = t.valid + (t.day ? ' (' + t.day + ')' : '');
+      timeSel.appendChild(o);
+    }
+  }
+
+  cb.addEventListener('change', () => {
+    controls.hidden = !cb.checked;
+    updateLayer();
+  });
+  levelSel.addEventListener('change', () => { fillTimes(); updateLayer(); });
+  timeSel.addEventListener('change', updateLayer);
+  opacity.addEventListener('input', () => { if (layer) layer.setOpacity(+opacity.value); });
+
+  fetch(RAW + 'ims/pwx.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(r => (r.ok ? r.json() : null))
+    .then(m => {
+      if (!m || !Array.isArray(m.levels) || !m.levels.length || !m.bounds) return;
+      manifest = m;
+      for (const lv of m.levels) {
+        const o = document.createElement('option');
+        o.value = lv.level;
+        o.textContent = lv.label || (lv.level + ' hPa');
+        levelSel.appendChild(o);
+      }
+      fillTimes();
+      box.hidden = false;          // reveal the control now that data exists
+    })
+    .catch(() => { /* no ims-data branch yet → stay hidden */ });
+})();
