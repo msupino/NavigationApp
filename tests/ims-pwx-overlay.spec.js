@@ -108,6 +108,20 @@ test('lat/lng tune offset nudges the overlay bounds', async ({ page }) => {
   expect(shifted.after - shifted.before).toBeCloseTo(0.1, 3);
 });
 
+test('lat/lng tune scale zooms the overlay bounds', async ({ page }) => {
+  await boot(page);
+  await page.locator('#ims-pwx-cb').check();
+  const r = await page.evaluate(() => {
+    const layer = () => { let f = null; map.eachLayer(l => { if (l.getBounds && l._url) f = l; }); return f; };
+    const span = () => { const b = layer().getBounds(); return b.getNorth() - b.getSouth(); };
+    const before = span();
+    setTune('imsPwxLatScale', 1.1);
+    NavAid.refreshImsPwx();
+    return { before, after: span() };
+  });
+  expect(r.after / r.before).toBeCloseTo(1.1, 2);   // span scaled ~10%
+});
+
 test('opacity reset restores the default opacity', async ({ page }) => {
   await boot(page);
   await page.locator('#ims-pwx-cb').check();
