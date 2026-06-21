@@ -26,59 +26,79 @@ jobs:
       - name: Install poppler + imagemagick
         run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils imagemagick
 
-      - name: Build PWX PNGs + manifest
+      - name: Build PWX + SIGWX PNGs + manifests
         run: |
-          mkdir -p ims/ims/pwx
-          # Geographic bounds of the cropped PWX map frame (equirectangular),
-          # solved from the LLHA (32.81N/35.04E) and LLIB (32.98N/35.57E)
-          # station markers. Same frame for every level/time.
-          BOUNDS_S=29.20; BOUNDS_N=34.03; BOUNDS_W=32.95; BOUNDS_E=37.05
-          # PDF->PNG crop (150 dpi): drop the outer margin + the bottom title band
-          # so the PNG edges are the map frame.
-          CROP="-r 150 -x 14 -y 15 -W 1212 -H 1622"
+          mkdir -p ims/ims/pwx ims/ims/sigwx
+          # PWX crop (150 dpi): drop the outer margin + bottom title band so the
+          # PNG edges are the map frame (for the georeferenced overlay).
+          PWX_CROP="-r 150 -x 14 -y 15 -W 1212 -H 1622"
 
           node --input-type=module <<'NODE' > /tmp/jobs.tsv
-          const r = await fetch('https://ims.gov.il/he/wind_and_temperature_maps',
-            { headers: { 'User-Agent': 'NavAid-ims-bot' } });
-          if (!r.ok) throw new Error('ims list ' + r.status);
-          const j = await r.json();
-          const data = (j && j.data) || {};
-          // IMS labels these by flight level (see ims.gov.il/he/aviation).
-          const LABELS = { '50': 'FL180', '70': 'FL100', '85': 'FL050', '90': 'FL030' };
-          const manifest = { generatedAt: new Date().toISOString(),
-            source: 'IMS wind_and_temperature_maps',
-            bounds: { s: 29.20, n: 34.03, w: 32.95, e: 37.05 },
-            levels: [] };
+          const { writeFileSync } = await import('node:fs');
           const lines = [];
-          for (const lvl of Object.keys(data)) {
-            const times = data[lvl] || {};
-            const entry = { level: lvl, label: LABELS[lvl] || (lvl + ' hPa'), times: [] };
+          const get = async u => {
+            const r = await fetch(u, { headers: { 'User-Agent': 'NavAid-ims-bot' } });
+            if (!r.ok) throw new Error(u + ' ' + r.status);
+            return (await r.json()).data || {};
+          };
+          const abs = f => (f.startsWith('http') ? f : 'https://ims.gov.il' + f);
+
+          // --- PWX wind/temperature (georeferenced map overlay) ---
+          // IMS labels by flight level; only the low levels matter for CVFR.
+          const LABELS = { '85': 'FL050', '90': 'FL030' };
+          const pwx = { generatedAt: new Date().toISOString(),
+            source: 'IMS wind_and_temperature_maps',
+            bounds: { s: 29.20, n: 34.03, w: 32.95, e: 37.05 }, levels: [] };
+          const pdata = await get('https://ims.gov.il/he/wind_and_temperature_maps');
+          for (const lvl of Object.keys(pdata)) {
+            if (!LABELS[lvl]) continue;
+            const times = pdata[lvl] || {};
+            const entry = { level: lvl, label: LABELS[lvl], times: [] };
             for (const t of Object.keys(times)) {
-              const f = times[t] && times[t].file;
-              if (!f) continue;
-              const url = f.startsWith('http') ? f : 'https://ims.gov.il' + f;
-              const out = `ims/ims/pwx/${lvl}/${t.replace(':', '')}.png`;
-              entry.times.push({ valid: t, day: times[t].day || '', png: `ims/pwx/${lvl}/${t.replace(':', '')}.png` });
-              lines.push([url, out].join('\t'));
+              const f = times[t] && times[t].file; if (!f) continue;
+              const png = `ims/pwx/${lvl}/${t.replace(':', '')}.png`;
+              entry.times.push({ valid: t, day: times[t].day || '', png });
+              lines.push([abs(f), 'ims/' + png, 'pwx'].join('\t'));
             }
             entry.times.sort((a, b) => a.valid.localeCompare(b.valid));
-            if (entry.times.length) manifest.levels.push(entry);
+            if (entry.times.length) pwx.levels.push(entry);
           }
-          manifest.levels.sort((a, b) => Number(a.level) - Number(b.level));
-          const { writeFileSync } = await import('node:fs');
-          writeFileSync('ims/ims/pwx.json', JSON.stringify(manifest, null, 1));
-          console.error('levels:', manifest.levels.map(l => l.level + '×' + l.times.length).join(' '));
+          pwx.levels.sort((a, b) => Number(a.level) - Number(b.level));
+          writeFileSync('ims/ims/pwx.json', JSON.stringify(pwx, null, 1));
+
+          // --- SIGWX significant weather (full-page chart, viewer only) ---
+          const sigwx = { generatedAt: new Date().toISOString(),
+            source: 'IMS significantly_weather_maps', times: [] };
+          const sdata = await get('https://ims.gov.il/he/significantly_weather_maps');
+          for (const t of Object.keys(sdata)) {
+            const f = sdata[t] && sdata[t].file; if (!f) continue;
+            const png = `ims/sigwx/${t.replace(':', '')}.png`;
+            sigwx.times.push({ valid: t, day: sdata[t].day || '', png });
+            lines.push([abs(f), 'ims/' + png, 'sigwx'].join('\t'));
+          }
+          // Order by day then valid time so the dropdown reads chronologically.
+          sigwx.times.sort((a, b) => (a.day + a.valid).localeCompare(b.day + b.valid));
+          writeFileSync('ims/ims/sigwx.json', JSON.stringify(sigwx, null, 1));
+
+          console.error('pwx levels:', pwx.levels.map(l => l.level + '×' + l.times.length).join(' '),
+            '| sigwx:', sigwx.times.length);
           process.stdout.write(lines.join('\n'));
           NODE
 
-          # Download each PDF -> crop to PNG -> white to transparent.
-          while IFS=$'\t' read -r url out; do
+          # Download each PDF -> PNG. PWX: crop to frame + white→transparent (overlay).
+          # SIGWX: full page as-is (in-app viewer).
+          while IFS=$'\t' read -r url out mode; do
             [ -z "$url" ] && continue
             mkdir -p "$(dirname "$out")"
             if curl -fsS -A 'NavAid-ims-bot' "$url" -o /tmp/c.pdf; then
-              pdftoppm -png $CROP /tmp/c.pdf /tmp/cpng && \
-              convert /tmp/cpng-1.png -fuzz 18% -transparent white "$out" && \
-              echo "ok  $out" || echo "conv-fail $out"
+              if [ "$mode" = "pwx" ]; then
+                pdftoppm -png $PWX_CROP /tmp/c.pdf /tmp/cpng && \
+                convert /tmp/cpng-1.png -fuzz 18% -transparent white "$out" && \
+                echo "ok  $out" || echo "conv-fail $out"
+              else
+                pdftoppm -png -r 150 /tmp/c.pdf /tmp/cpng && \
+                cp /tmp/cpng-1.png "$out" && echo "ok  $out" || echo "conv-fail $out"
+              fi
             else
               echo "dl-fail $url"
             fi
