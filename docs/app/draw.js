@@ -1801,7 +1801,7 @@ function drawLegs() {
     if (!A || !B) continue;
     const leg = state.legs[i];
     const sa = proj(A), sb = proj(B);
-    const selected = state.selected &&
+    const selected = selectionVisible() && state.selected &&
                      state.selected.type === 'leg' &&
                      state.selected.index === i;
 
@@ -2202,11 +2202,17 @@ function waypointGeom(i) {
   return { label, fontPx, r };
 }
 
+// Selection highlight (stronger colour / thicker stroke) is an on-screen
+// affordance only — never bake it into the PNG export (NavAid.exporting), so a
+// selected waypoint/leg/note prints identically to the rest.
+function selectionVisible() {
+  return !(window.NavAid && NavAid.exporting);
+}
 function drawWaypoints() {
   for (let i = 0; i < state.waypoints.length; i++) {
     const wp = state.waypoints[i];
     const s = proj(wp);
-    const selected = state.selected &&
+    const selected = selectionVisible() && state.selected &&
                      state.selected.type === 'wp' &&
                      state.selected.index === i;
     const { label, fontPx, r } = waypointGeom(i);
@@ -2455,11 +2461,11 @@ function drawNotes() {
     const n = state.notes[i];
     if (n && n.cc && !showCommChange) continue;
     const r = noteRect(i);
-    const selected = n && n.cc
+    const selected = selectionVisible() && (n && n.cc
       ? selectedCommCallout(i)
       : state.selected &&
         state.selected.type === 'note' &&
-        state.selected.index === i;
+        state.selected.index === i);
     const color = n.color || tune('noteDefaultFillColor') || NOTE_DEFAULT_COLOR;
     if (n.cc) {
       drawCommCallout(n, selected);
