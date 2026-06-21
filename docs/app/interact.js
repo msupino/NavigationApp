@@ -1228,8 +1228,8 @@ function buildSatelliteSnippet(point, opts = {}) {
   const lng = Number(point && point.lng);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   const expanded = !!opts.expanded;
-  const width = expanded ? Math.max(300, Math.min(620, window.innerWidth - 64)) : 214;
-  const height = expanded ? Math.max(220, Math.min(420, window.innerHeight - 180)) : 118;
+  const width = expanded ? Math.max(300, Math.min(620, window.innerWidth - 64)) : tune('satellitePreviewWidthPx');
+  const height = expanded ? Math.max(220, Math.min(420, window.innerHeight - 180)) : tune('satellitePreviewHeightPx');
   const z = expanded ? clampSatelliteZoom(opts.zoom) : tune('satellitePreviewZoom');
   const p = satelliteTilePoint(lat, lng, z);
   const centerTileX = Math.floor(p.x);
@@ -1575,7 +1575,7 @@ function showSatellitePreviewModal(point, label) {
   lmap.addControl(satelliteResetControl(lmap, point, resetZoomForActiveLayer));
   // Marker on the waypoint so it stays findable after panning.
   L.circleMarker([point.lat, point.lng], {
-    radius: 7, color: '#ffda4c', weight: 2, opacity: 0.96, fill: false,
+    radius: tune('satelliteMarkerRadiusPx'), color: tune('satelliteMarkerColor'), weight: tune('satelliteMarkerWeightPx'), opacity: tune('satelliteMarkerAlpha'), fill: false,
     className: 'satellite-marker',
   }).addTo(lmap);
   setTimeout(() => { if (lmap) lmap.invalidateSize(); }, 0);
@@ -1912,7 +1912,7 @@ function showInspector() {
       refreshWindFx(); draw();
     };
     if (window.showWind) {
-      const gw = state.wind || { dir: 270, speed: 0 };
+      const gw = state.wind || { dir: tune('windDir'), speed: tune('windSpeed') };
       body.appendChild(numberRow(S.windFromDeg,
         leg.wind && Number.isFinite(leg.wind.dir) ? leg.wind.dir : NaN,
         v => setLegWind('dir', v),
@@ -2722,7 +2722,9 @@ map.on('mousedown', e => {
              origLat: state.waypoints[wp].lat, origLng: state.waypoints[wp].lng,
              originSnapArmed: false };
     map.dragging.disable();
-    showInspector(); draw();
+    // Highlight now, but defer the inspector to release-without-move so you can
+    // drag a waypoint (or grab one while panning) without the panel popping up.
+    draw();
     return;
   }
   const cum = hitCumLabel(p.x, p.y);
@@ -2797,7 +2799,8 @@ map.on('mousemove', e => {
     const wp = state.waypoints[drag.i];
     const r = applyNavSnap(e.latlng, wp.name || '', dragOriginExclude(drag, e.latlng));
     wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
-    draw(); showInspector();
+    draw();   // move silently — but keep an already-open inspector in sync
+    if (!document.getElementById('inspector').classList.contains('hidden')) showInspector();
   } else if (drag.kind === 'note') {
     state.notes[drag.i].lat = r5(e.latlng.lat + (drag.offLat || 0));
     state.notes[drag.i].lng = r5(e.latlng.lng + (drag.offLng || 0));
@@ -2842,7 +2845,14 @@ function endMouseDrag() {
       changed = applyLegAltitudesToRoute();
       if (typeof seedCommChangeNotes === 'function' && seedCommChangeNotes()) changed = true;
     }
-    if (changed) { draw(); showInspector(); }
+    if (changed) draw();
+    // Open the inspector on a clean waypoint click (released without a move);
+    // a drag-to-reposition leaves a closed inspector closed, but refreshes one
+    // that was already open (e.g. snapping onto a comm-change point).
+    if (drag.kind === 'wp') {
+      const inspOpen = !document.getElementById('inspector').classList.contains('hidden');
+      if (!drag.moved || inspOpen) showInspector();
+    }
     map.dragging.enable();
     drag = null;
   }
