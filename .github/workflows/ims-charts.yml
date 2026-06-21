@@ -107,6 +107,25 @@ jobs:
           done < /tmp/jobs.tsv
           echo "PNG count: $(find ims -name '*.png' | wc -l)"
 
+          # Drop manifest entries whose PNG didn't actually download/convert
+          # (e.g. a far-out forecast IMS hasn't published yet) so the app never
+          # points at a missing image.
+          node --input-type=module <<'PRUNE'
+          const { existsSync, writeFileSync, readFileSync } = await import('node:fs');
+          const has = png => existsSync('ims/' + png);
+          const pwx = JSON.parse(readFileSync('ims/ims/pwx.json', 'utf8'));
+          pwx.levels = pwx.levels
+            .map(l => ({ ...l, times: l.times.filter(t => has(t.png)) }))
+            .filter(l => l.times.length);
+          writeFileSync('ims/ims/pwx.json', JSON.stringify(pwx, null, 1));
+          const sig = JSON.parse(readFileSync('ims/ims/sigwx.json', 'utf8'));
+          sig.times = sig.times.filter(t => has(t.png));
+          writeFileSync('ims/ims/sigwx.json', JSON.stringify(sig, null, 1));
+          console.error('after prune — pwx:',
+            pwx.levels.map(l => l.level + '×' + l.times.length).join(' '),
+            '| sigwx:', sig.times.length);
+          PRUNE
+
       - name: Publish ims-data branch
         run: |
           ( cd ims

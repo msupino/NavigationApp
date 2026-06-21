@@ -424,6 +424,17 @@ window.S = Object.assign({
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbShowReporting: 'Show mandatory reports',        // reporting-type overlay toggle
   tbShowReportingTitle: 'Badge waypoints that are mandatory (חובה) reporting points',
+  tbImsPwx: 'IMS wind/temp chart',                  // IMS PWX overlay toggle
+  tbImsPwxTitle: 'Overlay the IMS PWX wind & temperature forecast chart on the map',
+  tbImsPwxLevel: 'Chart level',
+  tbImsPwxTime: 'Valid time',
+  tbImsPwxOpacity: 'Opacity',
+  tbImsPwxOpacityReset: 'Reset opacity',
+  tbSigwx: '🌐 SIGWX charts',                       // significant-weather viewer button
+  tbSigwxTitle: 'View IMS significant-weather (SIGWX) charts by valid time',
+  tbSigwxTime: 'Valid time',
+  sigwxModalTitle: 'Significant weather charts (SIGWX)',
+  sigwxMissing: 'Chart not available for this time yet.',
   tbShowMsa: 'Show MSA',                            // leg-inspector minimum safe altitude row
   tbShowMsaTitle: 'Show minimum safe altitude (terrain + 1000 ft) in the leg inspector. Planning aid only.',
   report: 'Reporting',
@@ -839,6 +850,7 @@ window.S = Object.assign({
   tbSecView: '👁 View/Set',
   tbSecCharts: '📋 Charts',
   tbSecExport: '📤 Export/import',
+  tbSecWeather: '🌦 Weather',
   tbSecSim: '✈ Simulator',
   tbSimConnect: 'Connect to simulator',
   tbSimDisconnect: 'Disconnect from simulator',
