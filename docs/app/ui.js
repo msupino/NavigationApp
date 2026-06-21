@@ -3278,6 +3278,9 @@ if (typeof loadRemoteConfig === "function") {
     if (!n) return;
     if (typeof applyTuningCssVars === "function") applyTuningCssVars();
     if (typeof scheduleDraw === "function") scheduleDraw();
+    // Apply gist overrides to the IMS overlay too (opacity / lat-lng offset),
+    // so alignment + opacity can be tuned from the gist without a redeploy.
+    if (NavAid && typeof NavAid.refreshImsPwx === "function") NavAid.refreshImsPwx();
     // Reflect the loaded gist values in the tuning panel if it's open (?tune=1).
     if (NavAid && typeof NavAid.syncTuningPanel === "function") NavAid.syncTuningPanel();
     const sub = document.getElementById("tune-subtitle");
