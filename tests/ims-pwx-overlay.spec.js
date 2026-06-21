@@ -32,7 +32,7 @@ async function boot(page, { withManifest } = { withManifest: true }) {
     ? r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MANIFEST) })
     : r.fulfill({ status: 404, body: '' }));
   // Keep the "view" toolbar section expanded so the control is interactable.
-  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.view', '1'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof map !== 'undefined' && document.getElementById('ims-pwx'));
 }

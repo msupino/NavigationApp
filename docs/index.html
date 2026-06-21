@@ -218,9 +218,6 @@
           <span data-i18n="vorRefLabel"></span>
           <select id="vor-ref-select"></select>
         </label>
-        <label class="navtoggle" data-i18n-title="tbShowSigmetTitle">
-          <input type="checkbox" id="sigmet-cb"> <span data-i18n="tbShowSigmet"></span>
-        </label>
         <div class="tb-group" data-i18n="tbGrpRouteInfo"></div>
         <label class="navtoggle" data-i18n-title="tbShowWpNamesTitle">
           <input type="checkbox" id="wpname-cb" checked> <span data-i18n="tbShowWpNames"></span>
@@ -232,20 +229,6 @@
         <label class="navtoggle" data-i18n-title="tbShowDriftTitle">
           <input type="checkbox" id="drift-cb" checked> <span data-i18n="tbShowDrift"></span>
         </label>
-        <label class="navtoggle" data-i18n-title="tbShowWindTitle">
-          <input type="checkbox" id="show-wind-cb"> <span data-i18n="tbShowWind"></span>
-        </label>
-        <label class="navtoggle wind-input-row" id="wind-dir-row" data-i18n-title="tbWindDirTitle" hidden>
-          <span data-i18n="tbWindDir"></span>
-          <input type="number" id="wind-dir" min="0" max="360" step="5" value="270">
-        </label>
-        <label class="navtoggle wind-input-row" id="wind-speed-row" data-i18n-title="tbWindSpeedTitle" hidden>
-          <span data-i18n="tbWindSpeed"></span>
-          <input type="number" id="wind-speed" min="0" step="1" value="0">
-        </label>
-        <button id="wind-fetch" class="wind-input-row" type="button" style="display:none"
-                data-i18n="tbFetchWind" data-i18n-title="tbFetchWindTitle"></button>
-        <div id="wind-fetch-status" class="wind-input-row wind-fetch-status" style="display:none"></div>
         <label class="navtoggle" data-i18n-title="tbShowCommChangeTitle">
           <input type="checkbox" id="commchange-cb"> <span data-i18n="tbShowCommChange"></span>
         </label>
@@ -271,21 +254,6 @@
         <label class="navtoggle" data-i18n-title="tbForceSnapTitle">
           <input type="checkbox" id="force-snap-cb"> <span data-i18n="tbForceSnap"></span>
         </label>
-        <!-- IMS PWX wind/temperature chart overlay (hidden until the ims-data
-             manifest loads). -->
-        <div id="ims-pwx" class="tb-group-box" hidden>
-          <label class="navtoggle" data-i18n-title="tbImsPwxTitle">
-            <input type="checkbox" id="ims-pwx-cb"> <span data-i18n="tbImsPwx"></span>
-          </label>
-          <div id="ims-pwx-controls" hidden>
-            <select id="ims-pwx-level" data-i18n-aria="tbImsPwxLevel" style="width:100%;font:inherit;font-size:11px;margin-top:3px"></select>
-            <select id="ims-pwx-time" data-i18n-aria="tbImsPwxTime" style="width:100%;font:inherit;font-size:11px;margin-top:3px"></select>
-            <label class="navtoggle" style="margin-top:3px">
-              <span data-i18n="tbImsPwxOpacity" style="font-size:11px"></span>
-              <input type="range" id="ims-pwx-opacity" min="0.2" max="1" step="0.05" value="0.7" style="flex:1;min-width:0">
-            </label>
-          </div>
-        </div>
         <button id="tool-magnifier" type="button" data-i18n="tbMagnifier" data-i18n-title="tbMagnifierTitle" style="width:100%;margin-top:4px;padding:4px 8px;font-size:12px"></button>
       </div>
     </div>
@@ -358,6 +326,45 @@
         <button id="share" data-i18n="tbShare" data-i18n-title="tbShareTitle"></button>
         <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
         <input type="file" id="file" accept="application/json,.json,.gpx,application/gpx+xml,.pln,application/xml" hidden>
+      </div>
+    </div>
+
+    <!-- Weather: SIGMET, wind, and the IMS PWX wind/temperature chart overlay. -->
+    <div class="tb-section" data-sec="weather">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecWeather"></div>
+      <div class="tb-section-body">
+        <label class="navtoggle" data-i18n-title="tbShowSigmetTitle">
+          <input type="checkbox" id="sigmet-cb"> <span data-i18n="tbShowSigmet"></span>
+        </label>
+        <label class="navtoggle" data-i18n-title="tbShowWindTitle">
+          <input type="checkbox" id="show-wind-cb"> <span data-i18n="tbShowWind"></span>
+        </label>
+        <label class="navtoggle wind-input-row" id="wind-dir-row" data-i18n-title="tbWindDirTitle" hidden>
+          <span data-i18n="tbWindDir"></span>
+          <input type="number" id="wind-dir" min="0" max="360" step="5" value="270">
+        </label>
+        <label class="navtoggle wind-input-row" id="wind-speed-row" data-i18n-title="tbWindSpeedTitle" hidden>
+          <span data-i18n="tbWindSpeed"></span>
+          <input type="number" id="wind-speed" min="0" step="1" value="0">
+        </label>
+        <button id="wind-fetch" class="wind-input-row" type="button" style="display:none"
+                data-i18n="tbFetchWind" data-i18n-title="tbFetchWindTitle"></button>
+        <div id="wind-fetch-status" class="wind-input-row wind-fetch-status" style="display:none"></div>
+        <!-- IMS PWX wind/temperature chart overlay (hidden until the ims-data
+             manifest loads). -->
+        <div id="ims-pwx" class="tb-group-box" hidden>
+          <label class="navtoggle" data-i18n-title="tbImsPwxTitle">
+            <input type="checkbox" id="ims-pwx-cb"> <span data-i18n="tbImsPwx"></span>
+          </label>
+          <div id="ims-pwx-controls" hidden>
+            <select id="ims-pwx-level" data-i18n-aria="tbImsPwxLevel" style="width:100%;font:inherit;font-size:11px;margin-top:3px"></select>
+            <select id="ims-pwx-time" data-i18n-aria="tbImsPwxTime" style="width:100%;font:inherit;font-size:11px;margin-top:3px"></select>
+            <label class="navtoggle" style="margin-top:3px">
+              <span data-i18n="tbImsPwxOpacity" style="font-size:11px"></span>
+              <input type="range" id="ims-pwx-opacity" min="0.2" max="1" step="0.05" value="0.7" style="flex:1;min-width:0">
+            </label>
+          </div>
+        </div>
       </div>
     </div>
 
