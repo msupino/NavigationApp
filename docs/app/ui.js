@@ -3361,3 +3361,75 @@ if (typeof loadRemoteConfig === "function") {
     })
     .catch(() => { /* no ims-data branch yet → stay hidden */ });
 })();
+
+// --- IMS SIGWX significant-weather charts (in-app image viewer) ------
+// No map overlay — these are wide-area prognostic charts. The button opens a
+// modal with a valid-time dropdown and the chart image. Hidden until the
+// ims-data sigwx manifest loads.
+(function imsSigwxViewer() {
+  const RAW = 'https://raw.githubusercontent.com/msupino/NavigationApp/ims-data/';
+  const btn = document.getElementById('sigwx-btn');
+  if (!btn) return;
+  let manifest = null;
+  let back = null;
+
+  function close() {
+    if (back) { back.remove(); back = null; }
+    document.removeEventListener('keydown', onEsc, true);
+  }
+  function onEsc(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }
+
+  function open() {
+    if (back || !manifest || !manifest.times.length) return;
+    if (typeof closeToolbarDesktopMenus === 'function') closeToolbarDesktopMenus();
+    back = document.createElement('div');
+    back.className = 'modal-back';
+    const box = document.createElement('div');
+    box.className = 'modal wide sigwx-modal';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+
+    const title = document.createElement('div');
+    title.className = 'modal-title';
+    title.style.cursor = 'default';
+    title.textContent = S.sigwxModalTitle || 'Significant weather (SIGWX)';
+    box.appendChild(title);
+
+    const sel = document.createElement('select');
+    sel.className = 'sigwx-time';
+    sel.setAttribute('aria-label', S.tbSigwxTime || 'Valid time');
+    for (const t of manifest.times) {
+      const o = document.createElement('option');
+      o.value = t.png;
+      o.textContent = (t.day ? t.day + ' ' : '') + t.valid + 'Z';
+      sel.appendChild(o);
+    }
+    box.appendChild(sel);
+
+    const img = document.createElement('img');
+    img.className = 'sigwx-img';
+    img.alt = S.sigwxModalTitle || 'SIGWX chart';
+    const load = () => { img.src = RAW + sel.value + '?t=' + (manifest.generatedAt || ''); };
+    sel.addEventListener('change', load);
+    load();
+    box.appendChild(img);
+
+    if (typeof addModalCloseX === 'function') addModalCloseX(box, close);
+    back.appendChild(box);
+    back.addEventListener('click', e => { if (e.target === back) close(); });
+    document.addEventListener('keydown', onEsc, true);
+    document.body.appendChild(back);
+    sel.focus();
+  }
+
+  btn.addEventListener('click', open);
+
+  fetch(RAW + 'ims/sigwx.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(r => (r.ok ? r.json() : null))
+    .then(m => {
+      if (!m || !Array.isArray(m.times) || !m.times.length) return;
+      manifest = m;
+      btn.hidden = false;
+    })
+    .catch(() => { /* no sigwx data yet → stay hidden */ });
+})();
