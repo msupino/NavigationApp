@@ -437,6 +437,7 @@ window.S = {
   tbSecView: '👁 תצוגה/הגדרה',
   tbSecCharts: '📋 דפיות',
   tbSecExport: '📤 ייצוא/ייבוא',
+  tbSecWeather: '🌦 מזג אוויר',
   tbSecSim: '✈ סימולטור',
   tbSimConnect: 'התחבר לסימולטור',
   tbSimDisconnect: 'התנתק מהסימולטור',

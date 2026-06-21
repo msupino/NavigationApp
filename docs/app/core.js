@@ -844,6 +844,7 @@ window.S = Object.assign({
   tbSecView: '👁 View/Set',
   tbSecCharts: '📋 Charts',
   tbSecExport: '📤 Export/import',
+  tbSecWeather: '🌦 Weather',
   tbSecSim: '✈ Simulator',
   tbSimConnect: 'Connect to simulator',
   tbSimDisconnect: 'Disconnect from simulator',
