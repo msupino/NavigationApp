@@ -41,7 +41,7 @@ function drawSimAircraft() {
   const s = proj(simAircraft);
   const mapBearing = (typeof map !== 'undefined' && map.getBearing) ? map.getBearing() : 0;
   const screenAngle = ((simAircraft.hdg || 0) - mapBearing) * Math.PI / 180;
-  const r = 18;
+  const r = tune('liveAircraftRadiusPx');
   octx.save();
   octx.translate(s.x, s.y);
   octx.rotate(screenAngle);
@@ -158,8 +158,8 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   const minA = Math.min(0, Math.min.apply(null, alts));
   // Reserve a strip at the bottom for the X axis (NM + time per waypoint) and
   // a margin on the left for the altitude (Y) axis labels.
-  const axisH = 30;
-  const yPad = 34;
+  const axisH = tune('profileAxisHeightPx');
+  const yPad = tune('profileYPadPx');
   const plotH = Math.max(10, h - axisH);
   const plotW = Math.max(10, w - yPad);
   const x0 = x + yPad;                 // plot left edge (Y axis sits left of it)
@@ -847,7 +847,7 @@ function airfieldAtWaypoint(wp) {
 // a route waypoint sits on the airfield (proximity-based, like nav-WPs).
 function drawAirfields() {
   if (!showAirfields || !airfields || airfields.length === 0) return;
-  const showLabels = map.getZoom() >= 10;
+  const showLabels = map.getZoom() >= tune('airfieldLabelMinZoom');
   const r = tune('airfieldMarkerRadiusPx');
   const wFactor = tune('airfieldMarkerWidthFactor');
   const bFactor = tune('airfieldMarkerBaseFactor');
@@ -885,7 +885,7 @@ function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
   // Suppress nav-WP dot when a route waypoint sits on it (by position),
   // regardless of whether the WP name was changed after snapping.
-  const showLabels = map.getZoom() >= 10;
+  const showLabels = map.getZoom() >= tune('navWpLabelMinZoom');
   const dotRadius = tune('navWaypointRadiusPx');
   const labelOffset = tune('navWaypointLabelOffsetPx');
   octx.font = `bold ${tune('navWaypointLabelFontPx')}px sans-serif`;
@@ -921,7 +921,7 @@ function drawNavWaypoints() {
 function drawVors() {
   if (!showVorStations || !vors || !vors.length) return;
   const r = tune('vorMarkerRadiusPx');
-  const showLabels = map.getZoom() >= 8;
+  const showLabels = map.getZoom() >= tune('vorLabelMinZoom');
   octx.save();
   octx.textAlign = 'left';
   octx.textBaseline = 'middle';

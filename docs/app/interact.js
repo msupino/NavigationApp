@@ -1228,8 +1228,8 @@ function buildSatelliteSnippet(point, opts = {}) {
   const lng = Number(point && point.lng);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   const expanded = !!opts.expanded;
-  const width = expanded ? Math.max(300, Math.min(620, window.innerWidth - 64)) : 214;
-  const height = expanded ? Math.max(220, Math.min(420, window.innerHeight - 180)) : 118;
+  const width = expanded ? Math.max(300, Math.min(620, window.innerWidth - 64)) : tune('satellitePreviewWidthPx');
+  const height = expanded ? Math.max(220, Math.min(420, window.innerHeight - 180)) : tune('satellitePreviewHeightPx');
   const z = expanded ? clampSatelliteZoom(opts.zoom) : tune('satellitePreviewZoom');
   const p = satelliteTilePoint(lat, lng, z);
   const centerTileX = Math.floor(p.x);
@@ -1575,7 +1575,7 @@ function showSatellitePreviewModal(point, label) {
   lmap.addControl(satelliteResetControl(lmap, point, resetZoomForActiveLayer));
   // Marker on the waypoint so it stays findable after panning.
   L.circleMarker([point.lat, point.lng], {
-    radius: 7, color: '#ffda4c', weight: 2, opacity: 0.96, fill: false,
+    radius: tune('satelliteMarkerRadiusPx'), color: tune('satelliteMarkerColor'), weight: tune('satelliteMarkerWeightPx'), opacity: tune('satelliteMarkerAlpha'), fill: false,
     className: 'satellite-marker',
   }).addTo(lmap);
   setTimeout(() => { if (lmap) lmap.invalidateSize(); }, 0);
@@ -1912,7 +1912,7 @@ function showInspector() {
       refreshWindFx(); draw();
     };
     if (window.showWind) {
-      const gw = state.wind || { dir: 270, speed: 0 };
+      const gw = state.wind || { dir: tune('windDir'), speed: tune('windSpeed') };
       body.appendChild(numberRow(S.windFromDeg,
         leg.wind && Number.isFinite(leg.wind.dir) ? leg.wind.dir : NaN,
         v => setLegWind('dir', v),
