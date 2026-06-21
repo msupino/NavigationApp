@@ -3418,15 +3418,25 @@ if (typeof loadRemoteConfig === "function") {
     const img = document.createElement('img');
     img.className = 'sigwx-img';
     img.alt = S.sigwxModalTitle || 'SIGWX chart';
+    const note = document.createElement('div');
+    note.className = 'sigwx-missing';
+    note.hidden = true;
+    note.textContent = S.sigwxMissing || 'Chart not available for this time yet.';
     // Read the png path from the trusted manifest by index — never from the
     // DOM-held select value (avoids CodeQL js/xss-through-dom #64).
     const load = () => {
       const t = manifest.times[sel.selectedIndex];
-      if (t) img.src = RAW + t.png + '?t=' + (manifest.generatedAt || '');
+      if (!t) return;
+      note.hidden = true; img.hidden = false;
+      img.src = RAW + t.png + '?t=' + (manifest.generatedAt || '');
     };
+    // If the PNG is missing (a forecast hour not yet published), show a note
+    // instead of a broken-image icon.
+    img.addEventListener('error', () => { img.hidden = true; note.hidden = false; });
     sel.addEventListener('change', load);
     load();
     box.appendChild(img);
+    box.appendChild(note);
 
     if (typeof addModalCloseX === 'function') addModalCloseX(box, close);
     back.appendChild(box);
