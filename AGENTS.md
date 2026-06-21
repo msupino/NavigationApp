@@ -9,6 +9,9 @@ Unity.
 - `docs/` — the deployed app, with browser-root files at the top level
  and source/data grouped below (`app/`, `data/`, `i18n/`, `assets/`,
  `legacy/`; `byop/` remains a stable public chart-PDF URL).
+- `mobile/` — Capacitor workspace for native iOS / Android packaging.
+  It points `webDir` at `../docs` and keeps native tooling out of the
+  static Pages app.
 - `docs/data/nav-waypoints.json` — 173 Israeli VFR reporting points
  (`{name, he, lat, lng}`); shipped, lazily fetched by the "Show/pin
  navigation waypoints" toggle. Sourced from the published IAA CVFR chart waypoint
@@ -104,10 +107,11 @@ both branches and assembles a single Pages site:
   `S.shortcutXxx` strings in `docs/app/core.js` (English defaults) +
   `docs/i18n/he/strings.js` (Hebrew). See `.ai/navaid-dev.md` "Keyboard shortcuts
   cheat-sheet" for the rendering pipeline.
-- No external JavaScript dependencies beyond Leaflet + `leaflet-rotate@0.2.8`
+- No web-app JavaScript dependencies beyond Leaflet + `leaflet-rotate@0.2.8`
   (both loaded from `unpkg.com`). Chart tiles are served from
   `https://navaid-tiles.supino.org`. No build step, no bundler, no
-  transpiler — keep it plain HTML / CSS / JS.
+  transpiler — keep `docs/` plain HTML / CSS / JS. Capacitor dependencies
+  live only under `mobile/`.
 - Don't reintroduce Unity files.
 
 ## Live + repo

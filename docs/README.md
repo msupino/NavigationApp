@@ -28,6 +28,8 @@ python3 -m http.server -d docs 8000
 - `byop/` keeps the published chart PDFs at their stable public URL.
 - `legacy/` holds the old static-map generator artifacts.
 - `../scripts/` holds build tools (e.g. `build_terrain.py`).
+- `../mobile/` holds the Capacitor native iOS / Android wrapper that bundles
+  this static app as its web payload.
 - `../.ai/` holds the AI handbook for workflow, architecture, data, UI
   patterns, testing, and checklists.
 
