@@ -271,6 +271,21 @@
         <label class="navtoggle" data-i18n-title="tbForceSnapTitle">
           <input type="checkbox" id="force-snap-cb"> <span data-i18n="tbForceSnap"></span>
         </label>
+        <!-- IMS PWX wind/temperature chart overlay (hidden until the ims-data
+             manifest loads). -->
+        <div id="ims-pwx" class="tb-group-box" hidden>
+          <label class="navtoggle" data-i18n-title="tbImsPwxTitle">
+            <input type="checkbox" id="ims-pwx-cb"> <span data-i18n="tbImsPwx"></span>
+          </label>
+          <div id="ims-pwx-controls" hidden>
+            <select id="ims-pwx-level" data-i18n-aria="tbImsPwxLevel" style="width:100%;font:inherit;font-size:11px;margin-top:3px"></select>
+            <select id="ims-pwx-time" data-i18n-aria="tbImsPwxTime" style="width:100%;font:inherit;font-size:11px;margin-top:3px"></select>
+            <label class="navtoggle" style="margin-top:3px">
+              <span data-i18n="tbImsPwxOpacity" style="font-size:11px"></span>
+              <input type="range" id="ims-pwx-opacity" min="0.2" max="1" step="0.05" value="0.7" style="flex:1;min-width:0">
+            </label>
+          </div>
+        </div>
         <button id="tool-magnifier" type="button" data-i18n="tbMagnifier" data-i18n-title="tbMagnifierTitle" style="width:100%;margin-top:4px;padding:4px 8px;font-size:12px"></button>
       </div>
     </div>

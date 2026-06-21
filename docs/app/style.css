@@ -248,6 +248,13 @@ html, body {
 }
 .tb-section.open .tb-section-body { display: flex; }
 /* Sub-group label inside a section body (layout A): thin divider + caption. */
+/* Grouping box for a toggle + its dependent controls (e.g. IMS PWX overlay). */
+.tb-group-box {
+  border: 1px solid #3a3636;
+  border-radius: 6px;
+  padding: 4px 6px;
+  margin-top: 4px;
+}
 .tb-group {
   display: flex;
   align-items: center;
