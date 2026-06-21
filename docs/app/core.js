@@ -460,7 +460,7 @@ window.S = Object.assign({
   tbImsPwxTitle: 'Overlay the IMS PWX wind & temperature forecast chart on the map',
   tbImsPwxLevel: 'Chart level',
   tbImsPwxTime: 'Valid time',
-  tbImsPwxOpacity: 'Opacity',
+  tbImsPwxOpacity: 'Sign opacity',
   tbImsPwxOpacityReset: 'Reset opacity',
   tbImsPwxRun: 'Model run',
   tbSigwx: '🌐 SIGWX charts',                       // significant-weather viewer button
