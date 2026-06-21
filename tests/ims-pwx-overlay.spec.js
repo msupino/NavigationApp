@@ -14,6 +14,7 @@ const PNG = Buffer.from(
 
 const MANIFEST = {
   generatedAt: '2026-06-21T09:00:00Z',
+  run: '202606210912',
   bounds: { s: 29.88, n: 33.82, w: 33.31, e: 36.69 },
   levels: [
     { level: '50', label: 'FL180', times: [
@@ -53,6 +54,8 @@ test('manifest reveals the control and populates levels', async ({ page }) => {
   const times = await page.locator('#ims-pwx-time option').allTextContents();
   expect(times.length).toBe(2);
   expect(times[0]).toContain('12:00');
+  // Model run time (from the chart filename) shown in the control.
+  await expect(page.locator('#ims-pwx-run')).toContainText('21/06 09:12Z');
 });
 
 test('toggling on adds a georeferenced image overlay at the manifest bounds', async ({ page }) => {

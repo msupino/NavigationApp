@@ -33,6 +33,7 @@ window.S = {
   tbImsPwxTime: 'זמן תוקף',
   tbImsPwxOpacity: 'שקיפות',
   tbImsPwxOpacityReset: 'אפס שקיפות',
+  tbImsPwxRun: 'ריצת מודל',
   tbSigwx: '🌐 מפות SIGWX',
   tbSigwxTitle: 'הצג מפות מזג אוויר משמעותי (SIGWX) לפי זמן תוקף',
   tbSigwxTime: 'זמן תוקף',

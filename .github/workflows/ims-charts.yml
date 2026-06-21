@@ -48,7 +48,7 @@ jobs:
           // IMS labels by flight level; only the low levels matter for CVFR.
           const LABELS = { '85': 'FL050', '90': 'FL030' };
           const pwx = { generatedAt: new Date().toISOString(),
-            source: 'IMS wind_and_temperature_maps',
+            source: 'IMS wind_and_temperature_maps', run: '',
             bounds: { s: 29.2, n: 34.03, w: 32.95, e: 37.05 }, levels: [] };
           const pdata = await get('https://ims.gov.il/he/wind_and_temperature_maps');
           for (const lvl of Object.keys(pdata)) {
@@ -58,6 +58,10 @@ jobs:
             for (const t of Object.keys(times)) {
               const f = times[t] && times[t].file; if (!f) continue;
               const png = `ims/pwx/${lvl}/${t.replace(':', '')}.png`;
+              // Model run time is the first YYYYMMDDHHMM in the filename
+              // (PWX_<run>_<lvl>_<valid>.pdf) — the cropped-off "BASED ON MODEL
+              // RUN" line. Same for every chart.
+              if (!pwx.run) { const mr = f.match(/_(\d{12})_/); if (mr) pwx.run = mr[1]; }
               entry.times.push({ valid: t, day: times[t].day || '', png });
               lines.push([abs(f), 'ims/' + png, 'pwx'].join('\t'));
             }
