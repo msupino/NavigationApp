@@ -44,13 +44,16 @@ jobs:
           const j = await r.json();
           const data = (j && j.data) || {};
           // IMS labels these by flight level (see ims.gov.il/he/aviation).
-          const LABELS = { '50': 'FL180', '70': 'FL100', '85': 'FL050', '90': 'FL030' };
+          // Only the low levels matter for CVFR — skip FL180 (50) / FL100 (70).
+          const LABELS = { '85': 'FL050', '90': 'FL030' };
+          const WANT = new Set(Object.keys(LABELS));
           const manifest = { generatedAt: new Date().toISOString(),
             source: 'IMS wind_and_temperature_maps',
             bounds: { s: 29.20, n: 34.03, w: 32.95, e: 37.05 },
             levels: [] };
           const lines = [];
           for (const lvl of Object.keys(data)) {
+            if (!WANT.has(lvl)) continue;        // only the wanted flight levels
             const times = data[lvl] || {};
             const entry = { level: lvl, label: LABELS[lvl] || (lvl + ' hPa'), times: [] };
             for (const t of Object.keys(times)) {
