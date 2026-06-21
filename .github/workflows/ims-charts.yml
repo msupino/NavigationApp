@@ -9,7 +9,7 @@ name: Update IMS PWX charts
 
 on:
   schedule:
-    - cron: '17 */3 * * *'      # every 3 hours (a few min past the hour)
+    - cron: '17 * * * *'        # hourly (retries pick up charts a slow run missed)
   workflow_dispatch:
 
 permissions:
@@ -29,6 +29,12 @@ jobs:
 
       - name: Build PWX + SIGWX PNGs + manifests
         run: |
+          # Start from the existing ims-data so a chart a slow run can't fetch
+          # keeps its last-good file (and stays in the pruned manifest) instead
+          # of vanishing. New downloads overwrite; misses retain the old PNG.
+          git clone --depth 1 --branch ims-data \
+            "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" ims \
+            2>/dev/null && rm -rf ims/.git || mkdir -p ims
           mkdir -p ims/ims/pwx ims/ims/sigwx
           # PWX crop (150 dpi): drop the outer margin + bottom title band so the
           # PNG edges are the map frame (for the georeferenced overlay).
@@ -98,7 +104,7 @@ jobs:
             # IMS is slow/throttly from CI IPs — generous timeout + retries, and
             # space requests so we don't get rate-limited (which showed up as
             # dl-fail and emptied the SIGWX manifest).
-            if curl -fsS --connect-timeout 20 --max-time 90 --retry 4 --retry-delay 5 --retry-all-errors \
+            if curl -fsS --connect-timeout 20 --max-time 90 --retry 6 --retry-delay 5 --retry-all-errors \
                  -A 'NavAid-ims-bot' "$url" -o /tmp/c.pdf; then
               if [ "$mode" = "pwx" ]; then
                 pdftoppm -png $PWX_CROP /tmp/c.pdf /tmp/cpng && \

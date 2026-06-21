@@ -39,6 +39,7 @@ window.S = {
   tbSigwxTime: 'זמן תוקף',
   sigwxModalTitle: 'מפות מזג אוויר משמעותי (SIGWX)',
   sigwxMissing: 'המפה אינה זמינה עדיין לזמן זה.',
+  sigwxUnavailable: 'מפות SIGWX אינן זמינות כעת.',
   tbShowMsa: 'הצג גובה בטוח (MSA)',
   tbShowMsaTitle: 'הצג גובה בטוח מינימלי (תבליט + 1000 רגל) בחלונית הקטע. אמצעי תכנון בלבד.',
   report: 'דיווח',
