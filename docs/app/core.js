@@ -254,7 +254,7 @@ NavAid.tuningDefaults = {
   sigmetTcColor: { value: '#c2185b', type: 'color', label: 'SIGMET cyclone color' },
   sigmetDefaultColor: { value: '#dd1111', type: 'color', label: 'SIGMET default/TS color' },
 
-  imsPwxOpacity: { value: 1, min: 0.2, max: 1, step: 0.05, label: 'IMS PWX overlay default opacity' },
+  imsPwxOpacity: { value: 0.6, min: 0.2, max: 1, step: 0.05, label: 'IMS PWX overlay default opacity' },
   imsPwxLatOffset: { value: 0, min: -0.5, max: 0.5, step: 0.005, label: 'IMS PWX overlay latitude nudge (°)' },
   imsPwxLngOffset: { value: 0, min: -0.5, max: 0.5, step: 0.005, label: 'IMS PWX overlay longitude nudge (°)' },
   imsPwxLatScale: { value: 1, min: 0.8, max: 1.2, step: 0.005, label: 'IMS PWX overlay vertical zoom' },
@@ -460,7 +460,7 @@ window.S = Object.assign({
   tbImsPwxTitle: 'Overlay the IMS PWX wind & temperature forecast chart on the map',
   tbImsPwxLevel: 'Chart level',
   tbImsPwxTime: 'Valid time',
-  tbImsPwxOpacity: 'Opacity',
+  tbImsPwxOpacity: 'Sign opacity',
   tbImsPwxOpacityReset: 'Reset opacity',
   tbImsPwxRun: 'Model run',
   tbSigwx: '🌐 SIGWX charts',                       // significant-weather viewer button
