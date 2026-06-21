@@ -125,6 +125,17 @@ test('lat/lng tune scale zooms the overlay bounds', async ({ page }) => {
   expect(r.after / r.before).toBeCloseTo(1.1, 2);   // span scaled ~10%
 });
 
+test('rotation tune rotates the overlay image', async ({ page }) => {
+  await boot(page);
+  await page.locator('#ims-pwx-cb').check();
+  const t = await page.evaluate(() => {
+    setTune('imsPwxRotationDeg', 5);
+    NavAid.refreshImsPwx();
+    return document.querySelector('.leaflet-overlay-pane img.leaflet-image-layer').style.transform;
+  });
+  expect(t).toMatch(/rotate\(5deg\)/);
+});
+
 test('opacity reset restores the default opacity', async ({ page }) => {
   await boot(page);
   await page.locator('#ims-pwx-cb').check();
