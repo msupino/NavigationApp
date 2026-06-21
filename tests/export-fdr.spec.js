@@ -1,6 +1,6 @@
 // #701 — X-Plane FDR export. DATA rows are fixed-column; verify each value
 // lands in its required position (regression: the first version shifted them).
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 
 async function boot(page) {
   await page.goto('?lang=en');

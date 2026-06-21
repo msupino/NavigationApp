@@ -1441,11 +1441,23 @@ function applyPage() {
   draw();
 }
 
+// Reflect the active page size on the A3/A4 buttons (.active + aria-pressed →
+// the toolbar's active highlight) so it's clear which is selected.
+function refreshPageButtons() {
+  for (const [id, sz] of [['page-a3', 'A3'], ['page-a4', 'A4']]) {
+    const b = document.getElementById(id);
+    if (!b) continue;
+    const on = pageSize === sz;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+}
 function setPage(size) {
   if (pageSize === size) {             // same button toggles the frame off
     pageSize = null;
     try { localStorage.removeItem('navaid.pageSize'); } catch (e) { /* */ }
     applyPage();
+    refreshPageButtons();
     return;
   }
   // Orientation is no longer a per-click modal — the toolbar Landscape/
@@ -1457,6 +1469,7 @@ function setPage(size) {
   try { localStorage.setItem('navaid.pageSize', pageSize); } catch (e) { /* */ }
   applyPage();
   fitPageFrame();
+  refreshPageButtons();
 }
 function toggleOrientation() {
   pageOrient = pageOrient === 'portrait' ? 'landscape' : 'portrait';
@@ -2920,9 +2933,9 @@ function showExportModal() {
     pageSize ? S.exportPlanPlace : (S.exportPlanNoFrame || S.exportPlanPlace)));
   body.appendChild(planLabel);
 
-  // Reference VOR selector — drives the plan card's Radial / DME columns and
-  // shares the global `vorRef` (pre-selects whatever was chosen on the map;
-  // changing it here updates the map overlay too).
+  // Reference VOR selector — pick a VOR; its station + radial/DME lines to the
+  // route waypoints are drawn on the map (preview + exported PNG). Shares the
+  // global vorRef with the map / flight-plan.
   const vorRow = document.createElement('div');
   vorRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px';
   const vorLbl = document.createElement('span');
@@ -2948,12 +2961,6 @@ function showExportModal() {
   if (vors === null && typeof loadVors === 'function') {
     loadVors().then(() => { fillExportVorSelect(); draw(); });
   }
-  // The plan card's Freq column needs the comm catalog + airfields to resolve
-  // the departure/arrival airport frequencies — load them, then redraw.
-  Promise.all([
-    typeof loadCommChange === 'function' ? loadCommChange() : null,
-    typeof loadAirfields === 'function' ? loadAirfields() : null,
-  ]).then(() => draw());
   vorSel.onchange = function () {
     window.vorRef = vorSel.value || null;
     try {
@@ -2965,7 +2972,17 @@ function showExportModal() {
     draw();
   };
   vorRow.appendChild(vorSel);
+  // VOR only affects the plan card's Radial/DME columns — show it only when the
+  // flight-plan card is being added.
+  vorRow.style.display = planCb.checked ? '' : 'none';
   body.appendChild(vorRow);
+
+  // The plan card's Freq column needs the comm catalog + airfields to resolve
+  // the departure/arrival airport frequencies — load them, then redraw.
+  Promise.all([
+    typeof loadCommChange === 'function' ? loadCommChange() : null,
+    typeof loadAirfields === 'function' ? loadAirfields() : null,
+  ]).then(() => draw());
 
   // Layer selector.
   const layerRow = document.createElement('div');
@@ -3105,6 +3122,7 @@ function showExportModal() {
     }
     // Open up the backdrop so the card can be dragged on the live map.
     back.classList.toggle('export-place', planCb.checked);
+    vorRow.style.display = planCb.checked ? '' : 'none';   // VOR drives plan-card columns only
     draw();
     // Default the card to ~70% of the frame width: small enough to drag in
     // BOTH directions (a full-width card can only move up/down), large enough
@@ -3143,8 +3161,17 @@ function showExportModal() {
     if (!cardDrag || !planCard) return;
     const pt = map.mouseEventToContainerPoint(e);
     if (cardDrag.resize) {
-      // Scale ∝ rendered width; clamp to a sane range.
-      planCard.scale = Math.max(0.15, Math.min(6, (pt.x - planCard.x) / cardDrag.baseW1));
+      // Scale ∝ rendered width. Clamp so the card never grows past the page
+      // frame (prevents overflow + the snap-back that follows it).
+      let s = Math.max(0.15, (pt.x - planCard.x) / cardDrag.baseW1);
+      const fr = pageFrameRect();
+      if (fr && planCardRect && planCardRect.w) {
+        const ratio = planCardRect.h / planCardRect.w;   // table aspect (scale-invariant)
+        const maxW = (fr.x + fr.w) - planCard.x;
+        const maxH = (fr.y + fr.h) - planCard.y;
+        s = Math.min(s, maxW / cardDrag.baseW1, maxH / (cardDrag.baseW1 * ratio));
+      }
+      planCard.scale = Math.max(0.15, Math.min(6, s));
       draw();
       return;
     }
@@ -3213,8 +3240,8 @@ async function fetchTileBitmap(layer, coords, signal) {
     const r = await fetch(exportTileLayerUrl(layer, coords), { signal });
     if (r.status === 404) return { bmp: null, failed: false };
     if (!r.ok) return { bmp: null, failed: true };
-    return { bmp: await r.blob().then(b => createImageBitmap(b)),
-             failed: false };
+    const blob = await r.blob();
+    return { bmp: await createImageBitmap(blob), failed: false };
   } catch (e) {
     return { bmp: null, failed: true };
   }
@@ -4743,7 +4770,7 @@ function showAltitudePairFocus(from, to, keepVisible, source) {
     color: lineColor,
     weight: 3,
     fillColor: dotColor,
-    fillOpacity: 0.95,
+    fillOpacity: tune('altPairFocusDotAlpha'),
     interactive: false,
   });
   const layer = L.layerGroup([
@@ -4751,7 +4778,7 @@ function showAltitudePairFocus(from, to, keepVisible, source) {
       className: 'alt-pair-focus-line alt-pair-focus-blink',
       color: lineColor,
       weight: tune('altPairFocusWidthPx'),
-      opacity: 0.95,
+      opacity: tune('altPairFocusLineAlpha'),
       dashArray: tune('altPairFocusDashOnPx') + ' ' + tune('altPairFocusDashOffPx'),
       interactive: false,
     }),

@@ -42,7 +42,7 @@ function drawOwnShip(pos, hdg) {
   const s = proj(pos);
   const mapBearing = (typeof map !== 'undefined' && map.getBearing) ? map.getBearing() : 0;
   const screenAngle = ((hdg || 0) - mapBearing) * Math.PI / 180;
-  const r = 18;
+  const r = tune('liveAircraftRadiusPx');
   octx.save();
   octx.translate(s.x, s.y);
   octx.rotate(screenAngle);
@@ -159,8 +159,8 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   const minA = Math.min(0, Math.min.apply(null, alts));
   // Reserve a strip at the bottom for the X axis (NM + time per waypoint) and
   // a margin on the left for the altitude (Y) axis labels.
-  const axisH = 30;
-  const yPad = 34;
+  const axisH = tune('profileAxisHeightPx');
+  const yPad = tune('profileYPadPx');
   const plotH = Math.max(10, h - axisH);
   const plotW = Math.max(10, w - yPad);
   const x0 = x + yPad;                 // plot left edge (Y axis sits left of it)
@@ -849,7 +849,7 @@ function airfieldAtWaypoint(wp) {
 // a route waypoint sits on the airfield (proximity-based, like nav-WPs).
 function drawAirfields() {
   if (!showAirfields || !airfields || airfields.length === 0) return;
-  const showLabels = map.getZoom() >= 10;
+  const showLabels = map.getZoom() >= tune('airfieldLabelMinZoom');
   const r = tune('airfieldMarkerRadiusPx');
   const wFactor = tune('airfieldMarkerWidthFactor');
   const bFactor = tune('airfieldMarkerBaseFactor');
@@ -887,7 +887,7 @@ function drawNavWaypoints() {
   if (!showNavWP || !navWP || navWP.length === 0) return;
   // Suppress nav-WP dot when a route waypoint sits on it (by position),
   // regardless of whether the WP name was changed after snapping.
-  const showLabels = map.getZoom() >= 10;
+  const showLabels = map.getZoom() >= tune('navWpLabelMinZoom');
   const dotRadius = tune('navWaypointRadiusPx');
   const labelOffset = tune('navWaypointLabelOffsetPx');
   octx.font = `bold ${tune('navWaypointLabelFontPx')}px sans-serif`;
@@ -923,7 +923,7 @@ function drawNavWaypoints() {
 function drawVors() {
   if (!showVorStations || !vors || !vors.length) return;
   const r = tune('vorMarkerRadiusPx');
-  const showLabels = map.getZoom() >= 8;
+  const showLabels = map.getZoom() >= tune('vorLabelMinZoom');
   octx.save();
   octx.textAlign = 'left';
   octx.textBaseline = 'middle';
@@ -1025,8 +1025,10 @@ function drawCommChangeRings() {
   const ringsDrawn = new Set();
   const ringRadii = {};                  // #488 test hook: name -> drawn radius
   // commChangeMap may be null briefly during boot — guard so a fast first
-  // paint can't NPE before loadCommChange resolves.
-  if (showCommChange && commChangeMap && navWP && navWP.length) {
+  // paint can't NPE before loadCommChange resolves. The red rings are an
+  // on-screen affordance only — omit them from the PNG export (NavAid.exporting).
+  if (showCommChange && commChangeMap && navWP && navWP.length &&
+      !(window.NavAid && NavAid.exporting)) {
     const ringWidth = tune('commChangeRingWidthPx');
     octx.strokeStyle = tune('commChangeRingColor');
     octx.lineWidth = ringWidth;
@@ -1801,7 +1803,7 @@ function drawLegs() {
     if (!A || !B) continue;
     const leg = state.legs[i];
     const sa = proj(A), sb = proj(B);
-    const selected = state.selected &&
+    const selected = selectionVisible() && state.selected &&
                      state.selected.type === 'leg' &&
                      state.selected.index === i;
 
@@ -2202,11 +2204,17 @@ function waypointGeom(i) {
   return { label, fontPx, r };
 }
 
+// Selection highlight (stronger colour / thicker stroke) is an on-screen
+// affordance only — never bake it into the PNG export (NavAid.exporting), so a
+// selected waypoint/leg/note prints identically to the rest.
+function selectionVisible() {
+  return !(window.NavAid && NavAid.exporting);
+}
 function drawWaypoints() {
   for (let i = 0; i < state.waypoints.length; i++) {
     const wp = state.waypoints[i];
     const s = proj(wp);
-    const selected = state.selected &&
+    const selected = selectionVisible() && state.selected &&
                      state.selected.type === 'wp' &&
                      state.selected.index === i;
     const { label, fontPx, r } = waypointGeom(i);
@@ -2455,11 +2463,11 @@ function drawNotes() {
     const n = state.notes[i];
     if (n && n.cc && !showCommChange) continue;
     const r = noteRect(i);
-    const selected = n && n.cc
+    const selected = selectionVisible() && (n && n.cc
       ? selectedCommCallout(i)
       : state.selected &&
         state.selected.type === 'note' &&
-        state.selected.index === i;
+        state.selected.index === i);
     const color = n.color || tune('noteDefaultFillColor') || NOTE_DEFAULT_COLOR;
     if (n.cc) {
       drawCommCallout(n, selected);
@@ -2608,7 +2616,12 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   // Fixed kneeboard column set: Destination, Direction, Altitude, Speed,
   // Time of leg, Fuel of leg, [Comm freq]. (Was #,From,To,Hdg,Dist,Spd,Alt,
   // Time,Fuel,CumTime,CumFuel,Radial,DME — trimmed to what a pilot reads.)
+  // Radial / DME columns appear only when a reference VOR is selected (global
+  // or any per-leg). The Radial header carries the reference VOR ident.
+  const refVor = typeof activeVor === 'function' ? activeVor() : null;
+  const vorActive = !!refVor || legs.some(l => l && l.vorRef);
   const headers = [
+    '#',
     S.planColDestination || 'Destination',
     S.planColDirection || 'Direction',
     S.planColAltitude || 'Altitude',
@@ -2616,6 +2629,8 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     S.planColLegTime || 'Time of leg',
     S.planColLegFuel || 'Fuel of leg',
   ];
+  if (vorActive) headers.push((S.planColRadial || 'Radial') + (refVor ? ' ' + refVor.ident : ''),
+    S.planColDme || 'DME');
   if (freqActive) headers.push(S.planColComm || 'Comm freq');
   const numCols = headers.length;
   const numRows = rows.length + 2;            // header + data + total
@@ -2624,17 +2639,19 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   const rowH = h / numRows;
   const fontSize = Math.max(1, Math.min(rowH * 0.62, 22));
   const padX = Math.max(2, Math.round(fontSize * 0.5));
-  const aligns = ['left', 'center', 'right', 'right', 'center', 'right'];
+  const aligns = ['center', 'left', 'center', 'right', 'right', 'center', 'right'];
+  if (vorActive) aligns.push('center', 'right');
   if (freqActive) aligns.push('center');
   const valsOf = rd => {
-    const v = [rd.to, rd.hdg, rd.alt, rd.speed, rd.time, rd.fuel];
+    const v = [String(rd.num), rd.to, rd.hdg, rd.alt, rd.speed, rd.time, rd.fuel];
+    if (vorActive) v.push(rd.radial, rd.dme);
     if (freqActive) v.push(rd.freq || '');
     return v;
   };
   ctx.save();
   ctx.font = fontSize + 'px sans-serif';
-  // Totals row: total time (Time-of-leg col) + total fuel (Fuel-of-leg col).
-  const totVals = { 4: totTime > 0 ? toHMS(totTime) : '--', 5: ac ? totFuel.toFixed(1) : '--' };
+  // Totals row: total time (Time-of-leg col 5) + total fuel (Fuel-of-leg col 6).
+  const totVals = { 5: totTime > 0 ? toHMS(totTime) : '--', 6: ac ? totFuel.toFixed(1) : '--' };
   const colW = new Array(numCols).fill(0);
   ctx.font = 'bold ' + fontSize + 'px sans-serif';
   for (let mc = 0; mc < numCols; mc++) {
@@ -2703,9 +2720,9 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
   ctx.textAlign = rtl ? 'right' : 'left';
   ctx.textBaseline = 'middle';
   ctx.fillText(S.fpTotal,
-    x + colLeft(0) + (rtl ? colW[0] - padX : padX),
+    x + colLeft(1) + (rtl ? colW[1] - padX : padX),
     rowY[tr] + (rowY[tr + 1] - rowY[tr]) / 2 + fontSize * 0.08);
-  for (let c4 = 4; c4 < numCols; c4++) if (totVals[c4] !== undefined) cell(tr, c4, String(totVals[c4]), true, null);
+  for (let c4 = 0; c4 < numCols; c4++) if (totVals[c4] !== undefined) cell(tr, c4, String(totVals[c4]), true, null);
   ctx.strokeStyle = GRID;
   ctx.lineWidth = 1;
   ctx.strokeRect(x + 0.5, y + 0.5, totalW - 1, tableHActual - 1);

@@ -77,7 +77,7 @@ test.describe('Desktop menubar layout', () => {
     await page.addInitScript(() => {
       try {
         localStorage.clear(); sessionStorage.clear();
-        localStorage.setItem('navaid.toolbarPosDesktop', JSON.stringify({ x: 240, y: 180 }));
+        localStorage.setItem('navaid.toolbarPosDesktop', JSON.stringify({ x: 150, y: 180 }));
       } catch (e) {}
     });
     await page.goto('?lang=en');
@@ -89,7 +89,7 @@ test.describe('Desktop menubar layout', () => {
     });
     const box = await page.locator('#toolbar').boundingBox();
     if (!box) throw new Error('no box');
-    expect(Math.abs(box.x - 240)).toBeLessThan(4);
+    expect(Math.abs(box.x - 150)).toBeLessThan(4);
     expect(Math.abs(box.y - 180)).toBeLessThan(4);
   });
 
@@ -139,7 +139,7 @@ test.describe('Desktop menubar layout', () => {
 
   test('the menu and its dropdowns render above the inspector', async ({ page }) => {
     await bootDesktop(page, {
-      openSections: ['build', 'view', 'display', 'charts', 'export', 'sim', 'print'],
+      openSections: ['build', 'view', 'display', 'charts', 'export', 'weather', 'sim', 'print'],
     });
 
     await expect(page.locator('#toolbar')).toHaveClass(/multi-open/);

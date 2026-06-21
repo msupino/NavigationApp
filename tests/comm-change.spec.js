@@ -370,6 +370,24 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
     expect(drawn).toContain('TYONA');
   });
 
+  test('comm-change rings are omitted from the PNG export', async ({ page }) => {
+    await boot(page);
+    // Sanity: rings draw on-screen.
+    const onScreen = await page.evaluate(() => {
+      window.showCommChange = true; draw();
+      return Array.from(window.__commChangeRingsDrawn || []);
+    });
+    expect(onScreen).toContain('TYONA');
+    // During export (NavAid.exporting) no rings are drawn.
+    const exported = await page.evaluate(() => {
+      NavAid.exporting = true; draw();
+      const out = Array.from(window.__commChangeRingsDrawn || []);
+      NavAid.exporting = false; draw();
+      return out;
+    });
+    expect(exported).toEqual([]);
+  });
+
   test('map waypoint inspector lists comm-change call-sign options for DALIA', async ({ page }) => {
     await boot(page);
     const out = await page.evaluate(() => {

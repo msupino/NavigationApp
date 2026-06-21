@@ -2,7 +2,7 @@
 // Wind-triangle engine (windTriangle / legWindFor), route-wide wind inputs
 // in the View section + corner readout, per-leg override rows and the live
 // "With wind" readout in the leg inspector, and round-trip persistence.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 
 async function boot(page) {
   await page.goto('?lang=en');
@@ -78,7 +78,7 @@ test('legWindFor: per-leg override beats route wind; speed 0 marks calm', async 
 
 test('Show-wind toggle reveals the inputs; they drive state.wind + readout', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   await boot(page);
   const dir = page.locator('#wind-dir');
@@ -113,7 +113,7 @@ test('Show-wind toggle reveals the inputs; they drive state.wind + readout', asy
 
 test('Show-wind toggle persists across reload', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   await boot(page);
   await page.locator('#show-wind-cb').check();
@@ -247,7 +247,7 @@ test('nearestPressureLevelHpa maps CVFR altitudes to winds-aloft levels', async 
 
 test('Fetch wind sets a per-leg wind for every leg (own midpoint + level)', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
   });
   // Two legs at different altitudes → 850 hPa (5000 ft) and 700 hPa (10000 ft).
   // Multi-location request → Open-Meteo returns an array (one per midpoint).
@@ -284,7 +284,7 @@ test('Fetch wind sets a per-leg wind for every leg (own midpoint + level)', asyn
 
 test('Fetch wind with no legs alerts and fetches nothing', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
   });
   let fetched = false;
   await page.route('**api.open-meteo.com/**', route => { fetched = true; route.abort(); });
@@ -300,7 +300,7 @@ test('Fetch wind with no legs alerts and fetches nothing', async ({ page }) => {
 
 test('Fetch wind surfaces an error when the request fails', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
   });
   await page.route('**api.open-meteo.com/**', route => route.fulfill({ status: 500, body: 'err' }));
   await boot(page);

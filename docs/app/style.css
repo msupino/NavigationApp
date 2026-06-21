@@ -248,6 +248,13 @@ html, body {
 }
 .tb-section.open .tb-section-body { display: flex; }
 /* Sub-group label inside a section body (layout A): thin divider + caption. */
+/* Grouping box for a toggle + its dependent controls (e.g. IMS PWX overlay). */
+.tb-group-box {
+  border: 1px solid #3a3636;
+  border-radius: 6px;
+  padding: 4px 6px;
+  margin-top: 4px;
+}
 .tb-group {
   display: flex;
   align-items: center;
@@ -710,6 +717,21 @@ html, body {
   unicode-bidi: isolate;
 }
 .leaflet-control.zulu-clock.dragging { cursor: grabbing; }
+
+/* Hebrew (RTL): the floating menu bar lives top-right on desktop, so default
+   the Zulu clock to the top-LEFT corner instead of stacking beneath the bar.
+   (English keeps it in the Leaflet top-right control flow.) A saved drag
+   position or an active drag still overrides this via inline styles. */
+html[dir="rtl"] .leaflet-control.zulu-clock {
+  position: fixed;
+  top: var(--navaid-zulu-clock-margin-top, 12px);
+  left: 12px;
+  right: auto;
+  margin: 0;
+  /* Same vertical drop English uses (below the top band) so it clears the menu
+     bar and matches the English placement. */
+  transform: translateY(46px);
+}
 .coord-readout.show { display: block; }
 .gps-readout { display: block; font-size: 11px; opacity: 0.75; margin-top: 2px; }
 .zoom-readout {
@@ -1404,6 +1426,21 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
 }
 .modal-back.shortcuts-help {
   z-index: 2400;
+}
+/* SIGWX significant-weather chart viewer. */
+.sigwx-modal .sigwx-time {
+  margin: 4px 0 8px;
+  font: inherit;
+  font-size: 13px;
+}
+.sigwx-modal .sigwx-img {
+  display: block;
+  max-width: min(90vw, 900px);
+  max-height: 78vh;
+  width: auto;
+  height: auto;
+  background: #fff;
+  border-radius: 4px;
 }
 .shortcuts-help-list {
   display: grid;

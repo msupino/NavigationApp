@@ -787,3 +787,31 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
     await expect(page.locator('#insp-title')).toHaveValue(/HADRA.*Hadera/);
   });
 });
+
+test('printed plan card shows Radial/DME columns only when a VOR is selected', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    if (typeof loadVors === 'function') { try { await loadVors(); } catch (e) {} }
+    state.waypoints = [{ lat: 32.0, lng: 34.8, name: 'A' }, { lat: 32.46472, lng: 34.91222, name: 'HADRA' }];
+    if (typeof syncLegs === 'function') syncLegs();
+    const cap = () => {
+      const c = document.createElement('canvas').getContext('2d');
+      const t = []; const real = c.fillText.bind(c);
+      c.fillText = function (s, x, y) { t.push(String(s)); return real(s, x, y); };
+      drawFlightPlanTable(c, 0, 0, 1200, 300, 'tl');
+      return t;
+    };
+    window.vorRef = null; const off = cap();
+    window.vorRef = 'NAT'; const on = cap();
+    return {
+      offDME: off.some(s => /DME/.test(s)),
+      onDME: on.some(s => /DME/.test(s)),
+      onRadialHdr: on.some(s => /Radial/.test(s)),
+      onRval: on.some(s => /^R-\d{3}/.test(s)),
+    };
+  });
+  expect(r.offDME).toBe(false);     // no VOR → no Radial/DME columns
+  expect(r.onDME).toBe(true);       // VOR → DME column header
+  expect(r.onRadialHdr).toBe(true); // Radial header (with ident)
+  expect(r.onRval).toBe(true);      // R-xxx values
+});

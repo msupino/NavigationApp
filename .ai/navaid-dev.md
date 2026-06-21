@@ -89,6 +89,9 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `i18n/` — locale string bundles.
 - `assets/` — icons and social preview images.
 - `manifest.json`, `sw.js` — PWA manifest + offline app-shell service worker.
+- `../mobile/` — Capacitor native iOS / Android wrapper. It keeps its own
+  `package.json` and `package-lock.json`, points `webDir` at `../docs`, and
+  must not introduce a build step for the GitHub Pages app.
 - `data/nav-waypoints.json` — 173 published Israeli VFR reporting points
   (`{name, he, lat, lng}`). Fetched once at boot. **Source:** IAA CVFR
   chart waypoint reference table (page 113, 2025 edition), shipped as
@@ -751,3 +754,23 @@ downloadable `route.json`.
 - `geo` distances are exact great-circle; verify against the chart's
   graticule if precision is questioned.
 - GA4 (`G-0XM5PHEK8B`) tracks page views; no event tracking yet.
+  The native Capacitor shell uses host `app.navaid.local`; `index.html` skips
+  production GA and `ui.js` skips browser PWA service-worker registration on
+  that host so native app launches do not behave like production web sessions.
+
+## Native mobile packaging
+
+- The native app workspace lives in `mobile/` and uses Capacitor. Run
+  `cd mobile && npm install && npm run sync` to copy the current `docs/` app
+  into the generated native projects.
+- `mobile/capacitor.config.json` owns the native app metadata:
+  `appId: org.supino.navaid`, `appName: NavAid`, `webDir: ../docs`, and
+  host `app.navaid.local`.
+- Keep Capacitor packages in `mobile/package.json`; the root package remains
+  only the Playwright/static-check tooling for the web app.
+- `mobile/scripts/validate-capacitor.mjs` and
+  `tests/capacitor-mobile.spec.js` guard the wrapper configuration in CI.
+- Current limitation: the mobile shell bundles the static app but still loads
+  Leaflet / leaflet-rotate from `unpkg.com` and live chart tiles from their
+  network hosts. True offline native use needs a later PR to vendor Leaflet and
+  add native tile download/storage.

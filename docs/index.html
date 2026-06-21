@@ -107,7 +107,8 @@
        (GitHub Pages serves the site under that path) followed by any
        of `staging/`, `pr/`, `branch/`. -->
   <script>
-    if (!location.pathname.match(/^(?:\/[^/]+)?\/(?:staging|pr|branch)\//)) {
+    if (location.hostname !== 'app.navaid.local' &&
+        !location.pathname.match(/^(?:\/[^/]+)?\/(?:staging|pr|branch)\//)) {
       (function(w,d,s){var f=d.getElementsByTagName(s)[0],j=d.createElement(s);
       j.async=true;j.src='https://www.googletagmanager.com/gtag/js?id=G-0XM5PHEK8B';
       f.parentNode.insertBefore(j,f);})(window,document,'script');
@@ -193,6 +194,8 @@
     <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
     <button id="tool-reset-all-markers" type="button" data-i18n="tbResetAllMarkers" data-i18n-title="tbResetAllMarkersTitle"></button>
     <button id="tool-reset-all-wp-names" type="button" data-i18n="tbResetAllWpNames" data-i18n-title="tbResetAllWpNamesTitle"></button>
+    <button id="clear-store" type="button" class="danger"
+            data-i18n="tbClearStore" data-i18n-title="tbClearStoreTitle"></button>
   </div>
     </div>
 
@@ -218,9 +221,6 @@
           <span data-i18n="vorRefLabel"></span>
           <select id="vor-ref-select"></select>
         </label>
-        <label class="navtoggle" data-i18n-title="tbShowSigmetTitle">
-          <input type="checkbox" id="sigmet-cb"> <span data-i18n="tbShowSigmet"></span>
-        </label>
         <div class="tb-group" data-i18n="tbGrpRouteInfo"></div>
         <label class="navtoggle" data-i18n-title="tbShowWpNamesTitle">
           <input type="checkbox" id="wpname-cb" checked> <span data-i18n="tbShowWpNames"></span>
@@ -232,20 +232,6 @@
         <label class="navtoggle" data-i18n-title="tbShowDriftTitle">
           <input type="checkbox" id="drift-cb" checked> <span data-i18n="tbShowDrift"></span>
         </label>
-        <label class="navtoggle" data-i18n-title="tbShowWindTitle">
-          <input type="checkbox" id="show-wind-cb"> <span data-i18n="tbShowWind"></span>
-        </label>
-        <label class="navtoggle wind-input-row" id="wind-dir-row" data-i18n-title="tbWindDirTitle" hidden>
-          <span data-i18n="tbWindDir"></span>
-          <input type="number" id="wind-dir" min="0" max="360" step="5" value="270">
-        </label>
-        <label class="navtoggle wind-input-row" id="wind-speed-row" data-i18n-title="tbWindSpeedTitle" hidden>
-          <span data-i18n="tbWindSpeed"></span>
-          <input type="number" id="wind-speed" min="0" step="1" value="0">
-        </label>
-        <button id="wind-fetch" class="wind-input-row" type="button" style="display:none"
-                data-i18n="tbFetchWind" data-i18n-title="tbFetchWindTitle"></button>
-        <div id="wind-fetch-status" class="wind-input-row wind-fetch-status" style="display:none"></div>
         <label class="navtoggle" data-i18n-title="tbShowCommChangeTitle">
           <input type="checkbox" id="commchange-cb"> <span data-i18n="tbShowCommChange"></span>
         </label>
@@ -313,8 +299,6 @@
           <input type="range" id="drift-line-width" value="1">
           <span class="slider-val" id="drift-line-width-val"></span>
         </label>
-        <button id="clear-store" type="button" class="danger"
-                data-i18n="tbClearStore" data-i18n-title="tbClearStoreTitle"></button>
       </div>
     </div>
 
@@ -346,6 +330,52 @@
         <button id="share" data-i18n="tbShare" data-i18n-title="tbShareTitle"></button>
         <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
         <input type="file" id="file" accept="application/json,.json,.gpx,application/gpx+xml,.pln,application/xml" hidden>
+      </div>
+    </div>
+
+    <!-- Weather: SIGMET, wind, and the IMS PWX wind/temperature chart overlay. -->
+    <div class="tb-section" data-sec="weather">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecWeather"></div>
+      <div class="tb-section-body">
+        <label class="navtoggle" data-i18n-title="tbShowSigmetTitle">
+          <input type="checkbox" id="sigmet-cb"> <span data-i18n="tbShowSigmet"></span>
+        </label>
+        <label class="navtoggle" data-i18n-title="tbShowWindTitle">
+          <input type="checkbox" id="show-wind-cb"> <span data-i18n="tbShowWind"></span>
+        </label>
+        <label class="navtoggle wind-input-row" id="wind-dir-row" data-i18n-title="tbWindDirTitle" hidden>
+          <span data-i18n="tbWindDir"></span>
+          <input type="number" id="wind-dir" min="0" max="360" step="5" value="0">
+        </label>
+        <label class="navtoggle wind-input-row" id="wind-speed-row" data-i18n-title="tbWindSpeedTitle" hidden>
+          <span data-i18n="tbWindSpeed"></span>
+          <input type="number" id="wind-speed" min="0" step="1" value="0">
+        </label>
+        <button id="wind-fetch" class="wind-input-row" type="button" style="display:none"
+                data-i18n="tbFetchWind" data-i18n-title="tbFetchWindTitle"></button>
+        <div id="wind-fetch-status" class="wind-input-row wind-fetch-status" style="display:none"></div>
+        <!-- IMS PWX wind/temperature chart overlay (hidden until the ims-data
+             manifest loads). -->
+        <div id="ims-pwx" class="tb-group-box" hidden>
+          <label class="navtoggle" data-i18n-title="tbImsPwxTitle">
+            <input type="checkbox" id="ims-pwx-cb"> <span data-i18n="tbImsPwx"></span>
+          </label>
+          <div id="ims-pwx-controls" hidden>
+            <select id="ims-pwx-level" data-i18n-aria="tbImsPwxLevel" style="width:100%;font:inherit;font-size:11px;margin-top:3px"></select>
+            <select id="ims-pwx-time" data-i18n-aria="tbImsPwxTime" style="width:100%;font:inherit;font-size:11px;margin-top:3px"></select>
+            <label class="navtoggle" style="margin-top:3px">
+              <span data-i18n="tbImsPwxOpacity" style="font-size:11px"></span>
+              <input type="range" id="ims-pwx-opacity" min="0.2" max="1" step="0.05" value="0.6" style="flex:1 1 70px;min-width:60px">
+              <span class="slider-val" id="ims-pwx-opacity-val" style="flex:0 0 auto"></span>
+              <button id="ims-pwx-opacity-reset" type="button" data-i18n-title="tbImsPwxOpacityReset" style="flex:0 0 auto;width:26px;padding:2px 0">↻</button>
+            </label>
+            <div id="ims-pwx-run" style="font-size:10px;opacity:0.75;margin-top:3px"></div>
+          </div>
+        </div>
+        <!-- SIGWX significant-weather charts — in-app image viewer (no overlay).
+             Hidden until the ims-data sigwx manifest loads. -->
+        <button id="sigwx-btn" type="button" hidden
+                data-i18n="tbSigwx" data-i18n-title="tbSigwxTitle"></button>
       </div>
     </div>
 

@@ -482,8 +482,8 @@ function clearGotoMarker() {
 function dropGotoMarker(lat, lng) {
   clearGotoMarker();
   gotoMarker = L.circleMarker([lat, lng], {
-    radius: 7, color: '#c0392b', weight: 2,
-    fillColor: '#e74c3c', fillOpacity: 0.85,
+    radius: tune('gotoMarkerRadiusPx'), color: tune('gotoMarkerColor'), weight: tune('gotoMarkerWeightPx'),
+    fillColor: tune('gotoMarkerFillColor'), fillOpacity: tune('gotoMarkerFillAlpha'),
     interactive: false, className: 'goto-marker',
   }).addTo(map);
 }
@@ -1897,19 +1897,20 @@ if (msaCb) {
 // The two View inputs drive it; the corner readout + every leg redraw react.
 const windDirInput = document.getElementById('wind-dir');
 const windSpeedInput = document.getElementById('wind-speed');
+function windDefault() { return { dir: tune('windDir'), speed: tune('windSpeed') }; }
 function refreshWindInputs() {
-  const w = state.wind || { dir: 270, speed: 0 };
+  const w = state.wind || windDefault();
   if (windDirInput && document.activeElement !== windDirInput) {
-    windDirInput.value = Number.isFinite(w.dir) ? String(w.dir) : '270';
+    windDirInput.value = Number.isFinite(w.dir) ? String(w.dir) : String(tune('windDir'));
   }
   if (windSpeedInput && document.activeElement !== windSpeedInput) {
-    windSpeedInput.value = Number.isFinite(w.speed) ? String(w.speed) : '0';
+    windSpeedInput.value = Number.isFinite(w.speed) ? String(w.speed) : String(tune('windSpeed'));
   }
   refreshWindReadout();
 }
 window.refreshWindInputs = refreshWindInputs;
 function commitWind() {
-  if (!state.wind || typeof state.wind !== 'object') state.wind = { dir: 270, speed: 0 };
+  if (!state.wind || typeof state.wind !== 'object') state.wind = windDefault();
   const d = parseFloat(windDirInput && windDirInput.value);
   const s = parseFloat(windSpeedInput && windSpeedInput.value);
   state.wind.dir = Number.isFinite(d) ? ((Math.round(d) % 360) + 360) % 360 : state.wind.dir;
@@ -2237,6 +2238,9 @@ if (CLEAR_STORE_EL) {
   CLEAR_STORE_EL.onclick = () => {
     if (!confirm(S.tbClearStoreConfirm ||
       'Delete ALL saved routes and settings stored on this device? This cannot be undone.')) return;
+    // Suppress the beforeunload/visibilitychange autosave so reload() can't
+    // re-persist the in-memory route right after we wipe storage.
+    window.__clearingStore = true;
     try {
       Object.keys(localStorage).filter(k => k.indexOf('navaid.') === 0)
         .forEach(k => localStorage.removeItem(k));
@@ -2757,6 +2761,9 @@ function redrawAfterTune() {
   applyTuningCssVars();
   draw();
   if (state.selected) showInspector();
+  // The IMS overlay is a Leaflet layer (not part of draw()) — refresh it so
+  // tuning its opacity / lat-lng offset updates it live.
+  if (window.NavAid && typeof NavAid.refreshImsPwx === 'function') NavAid.refreshImsPwx();
 }
 
 function createTuningPanel() {
@@ -2776,6 +2783,7 @@ function createTuningPanel() {
   const title = document.createElement('strong');
   title.textContent = 'Tuning';
   const subtitle = document.createElement('span');
+  subtitle.id = 'tune-subtitle';
   subtitle.textContent = 'Preview only. Resets on reload.';
   const left = document.createElement('div');
   left.style.cssText = 'display:flex;gap:12px;align-items:baseline';
@@ -3037,6 +3045,11 @@ function createTuningPanel() {
 
   document.body.appendChild(panel);
   NavAid.tuningPanel = panel;
+  // Lets a late source of overrides (e.g. the remote gist config, which lands
+  // asynchronously after the panel is built) push its values into the controls.
+  NavAid.syncTuningPanel = () => {
+    for (const key of Object.keys(controlSets)) syncControl(key);
+  };
 }
 createTuningPanel();
 
@@ -3142,6 +3155,7 @@ if (!restoredFlightPlan) restoreOpenChartModal();
 
 // Save selected waypoint and flight-plan state on refresh / tab-close.
 window.addEventListener('beforeunload', function () {
+  if (window.__clearingStore) return;   // clear-store wiped storage; don't re-save
   if (typeof flushPersist === 'function') flushPersist();
   if (typeof persistInspectorSelection === 'function') persistInspectorSelection();
   if (window.fpOpen) {
@@ -3278,7 +3292,15 @@ function watchServiceWorkerUpdates(sw) {
 // --- PWA: service worker --------------------------------------------
 // Registering the worker makes the app installable; the browser shows
 // the install control in the address bar — no in-app button needed.
-if ('serviceWorker' in navigator) {
+function isNativeCapacitorShell() {
+  return location.hostname === 'app.navaid.local' ||
+    location.protocol === 'capacitor:' ||
+    !!(window.Capacitor &&
+      typeof window.Capacitor.isNativePlatform === 'function' &&
+      window.Capacitor.isNativePlatform());
+}
+
+if ('serviceWorker' in navigator && !isNativeCapacitorShell()) {
   watchBuildUpdateCheckTriggers();
   window.addEventListener('load', () => {
     watchServiceWorkerUpdates(navigator.serviceWorker);
@@ -3288,3 +3310,260 @@ if ('serviceWorker' in navigator) {
 // Preload the terrain grid so MSA / terrain-clearance (#673) is ready when a
 // leg inspector opens. No-op (coverage:false) until a real DEM is bundled.
 if (typeof loadTerrain === "function") loadTerrain();
+
+// Pull optional remote tuning overrides (gist) over the baked-in defaults, then
+// repaint so they take effect. Silent fallback to defaults if the fetch fails.
+if (typeof loadRemoteConfig === "function") {
+  loadRemoteConfig().then(n => {
+    if (!n) return;
+    if (typeof applyTuningCssVars === "function") applyTuningCssVars();
+    if (typeof scheduleDraw === "function") scheduleDraw();
+    // Apply gist overrides to the IMS overlay too (opacity / lat-lng offset),
+    // so alignment + opacity can be tuned from the gist without a redeploy.
+    if (NavAid && typeof NavAid.refreshImsPwx === "function") NavAid.refreshImsPwx();
+    // Reflect the loaded gist values in the tuning panel if it's open (?tune=1).
+    if (NavAid && typeof NavAid.syncTuningPanel === "function") NavAid.syncTuningPanel();
+    const sub = document.getElementById("tune-subtitle");
+    if (sub) sub.textContent = "Loaded " + n + " value(s) from gist. Resets on reload.";
+  });
+}
+
+// --- IMS PWX wind/temperature chart overlay --------------------------
+// Manifest + PNGs are published by .github/workflows/ims-charts.yml to the
+// ims-data orphan branch (the browser can't fetch ims.gov.il directly — no
+// CORS). The control stays hidden until the manifest loads, so nothing shows
+// before the first Action run.
+(function imsPwxOverlay() {
+  const RAW = 'https://raw.githubusercontent.com/msupino/NavigationApp/ims-data/';
+  const box = document.getElementById('ims-pwx');
+  const cb = document.getElementById('ims-pwx-cb');
+  const controls = document.getElementById('ims-pwx-controls');
+  const levelSel = document.getElementById('ims-pwx-level');
+  const timeSel = document.getElementById('ims-pwx-time');
+  const opacity = document.getElementById('ims-pwx-opacity');
+  const opacityReset = document.getElementById('ims-pwx-opacity-reset');
+  const DEFAULT_OPACITY = String(typeof tune === 'function' ? tune('imsPwxOpacity') : 1);
+  if (!box || !cb || !levelSel || !timeSel || !opacity || typeof map === 'undefined') return;
+
+  let manifest = null;
+  let layer = null;
+
+  const currentLevel = () => (manifest && manifest.levels.find(l => l.level === levelSel.value)) || null;
+  const currentTime = () => {
+    const lv = currentLevel();
+    return lv && lv.times.find(t => t.valid === timeSel.value);
+  };
+
+  function removeLayer() {
+    if (layer) { map.removeLayer(layer); layer = null; }
+  }
+  const off = k => (typeof tune === 'function' ? tune(k) : 0) || 0;
+  const sc = k => { const v = typeof tune === 'function' ? tune(k) : 1; return v > 0 ? v : 1; };
+  function updateLayer() {
+    if (!cb.checked || !manifest) { removeLayer(); return; }
+    const t = currentTime();
+    if (!t) { removeLayer(); return; }
+    const b = manifest.bounds;
+    // Tunable (?tune=1 → Weather (IMS)) for fine-aligning the overlay:
+    // scale the span about its centre (zoom), then nudge lat/lng.
+    const cLat = (b.s + b.n) / 2, cLng = (b.w + b.e) / 2;
+    const hLat = (b.n - b.s) / 2 * sc('imsPwxLatScale');
+    const hLng = (b.e - b.w) / 2 * sc('imsPwxLngScale');
+    const dLat = off('imsPwxLatOffset'), dLng = off('imsPwxLngOffset');
+    const bounds = [[cLat - hLat + dLat, cLng - hLng + dLng],
+                    [cLat + hLat + dLat, cLng + hLng + dLng]];
+    const url = RAW + t.png + '?t=' + (manifest.generatedAt || '');
+    if (!layer) {
+      layer = L.imageOverlay(url, bounds, { opacity: +opacity.value, interactive: false, pane: 'overlayPane' });
+      layer.addTo(map);
+    } else {
+      layer.setUrl(url);
+      layer.setBounds(bounds);
+      layer.setOpacity(+opacity.value);
+    }
+  }
+  function fillTimes() {
+    const lv = currentLevel();
+    const prev = timeSel.value;            // keep the chosen period across FL changes
+    timeSel.innerHTML = '';
+    if (!lv) return;
+    for (const t of lv.times) {
+      const o = document.createElement('option');
+      o.value = t.valid;
+      o.textContent = t.valid + 'Z' + (t.day ? ' (' + t.day + ')' : '');   // Zulu
+      timeSel.appendChild(o);
+    }
+    // Re-select the same valid time if the newly chosen level also has it.
+    if (prev && lv.times.some(t => t.valid === prev)) timeSel.value = prev;
+  }
+
+  // Persist the on/off + selections so a reload keeps the overlay as it was.
+  const KEY = 'navaid.imsPwx';
+  const persist = () => {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({
+        on: cb.checked, level: levelSel.value, valid: timeSel.value,
+        opacity: +opacity.value,
+      }));
+    } catch (e) { /* storage unavailable */ }
+  };
+  // Let the tuning panel live-refresh the overlay when the offset/opacity
+  // defaults change (the overlay isn't part of the canvas draw()).
+  NavAid.refreshImsPwx = updateLayer;
+
+  cb.addEventListener('change', () => {
+    controls.hidden = !cb.checked;
+    updateLayer(); persist();
+  });
+  levelSel.addEventListener('change', () => { fillTimes(); updateLayer(); persist(); });
+  timeSel.addEventListener('change', () => { updateLayer(); persist(); });
+  const showOpacity = () => updateSliderVal(opacity, Math.round(+opacity.value * 100) + '%');
+  opacity.addEventListener('input', () => {
+    if (layer) layer.setOpacity(+opacity.value);
+    showOpacity(); persist();
+  });
+  if (opacityReset) opacityReset.addEventListener('click', () => {
+    opacity.value = DEFAULT_OPACITY;
+    if (layer) layer.setOpacity(+opacity.value);
+    showOpacity(); persist();
+  });
+  opacity.value = DEFAULT_OPACITY;   // apply the (tunable) default + show it
+  showOpacity();
+
+  fetch(RAW + 'ims/pwx.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(r => (r.ok ? r.json() : null))
+    .then(m => {
+      if (!m || !Array.isArray(m.levels) || !m.levels.length || !m.bounds) return;
+      manifest = m;
+      // List levels lowest-altitude first (FL030 before FL050) so the default
+      // selection is the lowest CVFR level — higher hPa number = lower altitude.
+      const ordered = m.levels.slice().sort((a, b) => Number(b.level) - Number(a.level));
+      for (const lv of ordered) {
+        const o = document.createElement('option');
+        o.value = lv.level;
+        o.textContent = lv.label || (lv.level + ' hPa');
+        levelSel.appendChild(o);
+      }
+      fillTimes();
+      // Restore the saved selection + on/off so a reload keeps the overlay.
+      try {
+        const sv = JSON.parse(localStorage.getItem(KEY) || 'null');
+        if (sv) {
+          if (sv.level && [...levelSel.options].some(o => o.value === sv.level)) {
+            levelSel.value = sv.level; fillTimes();
+          }
+          if (sv.valid && [...timeSel.options].some(o => o.value === sv.valid)) timeSel.value = sv.valid;
+          if (Number.isFinite(sv.opacity)) { opacity.value = sv.opacity; showOpacity(); }
+          if (sv.on) { cb.checked = true; controls.hidden = false; }
+        }
+      } catch (e) { /* storage unavailable */ }
+      updateLayer();
+      // Show the model run time (cropped off the chart's bottom band).
+      const runEl = document.getElementById('ims-pwx-run');
+      if (runEl && /^\d{12}$/.test(m.run || '')) {
+        const r = m.run;
+        runEl.textContent = (S.tbImsPwxRun || 'Model run') + ': ' +
+          r.slice(6, 8) + '/' + r.slice(4, 6) + ' ' + r.slice(8, 10) + ':' + r.slice(10, 12) + 'Z';
+      }
+      box.hidden = false;          // reveal the control now that data exists
+    })
+    .catch(() => { /* no ims-data branch yet → stay hidden */ });
+})();
+
+// --- IMS SIGWX significant-weather charts (in-app image viewer) ------
+// No map overlay — these are wide-area prognostic charts. The button opens a
+// modal with a valid-time dropdown and the chart image. Hidden until the
+// ims-data sigwx manifest loads.
+(function imsSigwxViewer() {
+  const RAW = 'https://raw.githubusercontent.com/msupino/NavigationApp/ims-data/';
+  const btn = document.getElementById('sigwx-btn');
+  if (!btn) return;
+  let manifest = null;
+  let back = null;
+
+  function close() {
+    if (back) { back.remove(); back = null; }
+    document.removeEventListener('keydown', onEsc, true);
+  }
+  function onEsc(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }
+
+  function open() {
+    if (back || !manifest) return;   // open even with zero times (show broken)
+    if (typeof closeToolbarDesktopMenus === 'function') closeToolbarDesktopMenus();
+    back = document.createElement('div');
+    back.className = 'modal-back';
+    const box = document.createElement('div');
+    box.className = 'modal wide sigwx-modal';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+
+    const title = document.createElement('div');
+    title.className = 'modal-title';
+    title.style.cursor = 'default';
+    title.textContent = S.sigwxModalTitle || 'Significant weather (SIGWX)';
+    box.appendChild(title);
+
+    const sel = document.createElement('select');
+    sel.className = 'sigwx-time';
+    sel.setAttribute('aria-label', S.tbSigwxTime || 'Valid time');
+    manifest.times.forEach((t, i) => {
+      const o = document.createElement('option');
+      o.value = String(i);
+      o.textContent = (t.day ? t.day + ' ' : '') + t.valid + 'Z';
+      sel.appendChild(o);
+    });
+    box.appendChild(sel);
+
+    const img = document.createElement('img');
+    img.className = 'sigwx-img';
+    img.alt = S.sigwxModalTitle || 'SIGWX chart';
+    const note = document.createElement('div');
+    note.className = 'sigwx-missing';
+    note.hidden = true;
+    note.textContent = S.sigwxMissing || 'Chart not available for this time yet.';
+    // Read the png path from the trusted manifest by index — never from the
+    // DOM-held select value (avoids CodeQL js/xss-through-dom #64).
+    const load = () => {
+      const t = manifest.times[sel.selectedIndex];
+      if (!t) return;
+      note.hidden = true; img.hidden = false;
+      img.src = RAW + t.png + '?t=' + (manifest.generatedAt || '');
+    };
+    // If the PNG is missing (a forecast hour not yet published), show a note
+    // instead of a broken-image icon.
+    img.addEventListener('error', () => { img.hidden = true; note.hidden = false; });
+    sel.addEventListener('change', load);
+    if (manifest.times.length) {
+      load();
+    } else {
+      // Charts exist as a feature but none are currently published (a run that
+      // couldn't fetch them) — show it's broken, not hidden.
+      sel.hidden = true; img.hidden = true;
+      note.hidden = false;
+      note.textContent = S.sigwxUnavailable || 'SIGWX charts are temporarily unavailable.';
+    }
+    box.appendChild(img);
+    box.appendChild(note);
+
+    if (typeof addModalCloseX === 'function') addModalCloseX(box, close);
+    back.appendChild(box);
+    back.addEventListener('click', e => { if (e.target === back) close(); });
+    document.addEventListener('keydown', onEsc, true);
+    document.body.appendChild(back);
+    sel.focus();
+  }
+
+  btn.addEventListener('click', open);
+
+  fetch(RAW + 'ims/sigwx.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(r => (r.ok ? r.json() : null))
+    .then(m => {
+      // Reveal the button whenever the manifest exists — even with zero times —
+      // so a broken/empty run is visible (button opens to an "unavailable" note)
+      // rather than the whole feature silently disappearing.
+      if (!m || !Array.isArray(m.times)) return;
+      manifest = m;
+      btn.hidden = false;
+    })
+    .catch(() => { /* manifest unreachable → stay hidden */ });
+})();

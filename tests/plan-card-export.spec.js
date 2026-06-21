@@ -2,7 +2,7 @@
 // drawFlightPlanTable() renders the live preview and the exported PNG, so the
 // card is true WYSIWYG. Tests cover the renderer, the modal toggle (gated on a
 // page frame), placement + drag, and cleanup.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./_setup');
 const { hideToolbarMenus } = require('./_toolbar');
 
 async function boot(page) {
@@ -119,4 +119,45 @@ test('the corner grip resizes the card', async ({ page }) => {
   const after = await page.evaluate(() => ({ scale: planCard.scale, rect: planCardRect }));
   expect(after.scale).toBeGreaterThan(start.scale + 0.1);
   expect(after.rect.w).toBeGreaterThan(start.rect.w);
+});
+
+test('resizing is clamped to the page frame (no overflow)', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 1000 });
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => { setPage('A4'); draw(); showExportModal(); });
+  await page.locator('#export-plan-cb').check();
+  await page.evaluate(() => draw());
+  await hideToolbarMenus(page);
+  const start = await page.evaluate(() => {
+    const mb = map.getContainer().getBoundingClientRect();
+    return { rect: planCardRect, mapBox: { x: mb.left, y: mb.top } };
+  });
+  // Drag the grip far past the page edge.
+  await page.mouse.move(start.mapBox.x + start.rect.x + start.rect.w - 6,
+    start.mapBox.y + start.rect.y + start.rect.h - 6);
+  await page.mouse.down();
+  await page.mouse.move(start.mapBox.x + start.rect.x + start.rect.w + 2000,
+    start.mapBox.y + start.rect.y + start.rect.h + 2000, { steps: 10 });
+  await page.mouse.up();
+  const res = await page.evaluate(() => {
+    const fr = pageFrameRect(), r = planCardRect;
+    return { ok: !!(fr && r), withinW: r.x + r.w <= fr.x + fr.w + 1, withinH: r.y + r.h <= fr.y + fr.h + 1 };
+  });
+  expect(res.ok).toBe(true);
+  expect(res.withinW).toBe(true);
+  expect(res.withinH).toBe(true);
+});
+
+test('export VOR selector shows only when the flight-plan card is added', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 1000 });
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => { setPage('A4'); draw(); showExportModal(); });
+  // Hidden until the plan-card checkbox is on.
+  await expect(page.locator('#export-vor-select')).toBeHidden();
+  await page.locator('#export-plan-cb').check();
+  await expect(page.locator('#export-vor-select')).toBeVisible();
+  await page.locator('#export-plan-cb').uncheck();
+  await expect(page.locator('#export-vor-select')).toBeHidden();
 });

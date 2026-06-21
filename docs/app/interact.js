@@ -1228,8 +1228,8 @@ function buildSatelliteSnippet(point, opts = {}) {
   const lng = Number(point && point.lng);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   const expanded = !!opts.expanded;
-  const width = expanded ? Math.max(300, Math.min(620, window.innerWidth - 64)) : 214;
-  const height = expanded ? Math.max(220, Math.min(420, window.innerHeight - 180)) : 118;
+  const width = expanded ? Math.max(300, Math.min(620, window.innerWidth - 64)) : tune('satellitePreviewWidthPx');
+  const height = expanded ? Math.max(220, Math.min(420, window.innerHeight - 180)) : tune('satellitePreviewHeightPx');
   const z = expanded ? clampSatelliteZoom(opts.zoom) : tune('satellitePreviewZoom');
   const p = satelliteTilePoint(lat, lng, z);
   const centerTileX = Math.floor(p.x);
@@ -1575,7 +1575,7 @@ function showSatellitePreviewModal(point, label) {
   lmap.addControl(satelliteResetControl(lmap, point, resetZoomForActiveLayer));
   // Marker on the waypoint so it stays findable after panning.
   L.circleMarker([point.lat, point.lng], {
-    radius: 7, color: '#ffda4c', weight: 2, opacity: 0.96, fill: false,
+    radius: tune('satelliteMarkerRadiusPx'), color: tune('satelliteMarkerColor'), weight: tune('satelliteMarkerWeightPx'), opacity: tune('satelliteMarkerAlpha'), fill: false,
     className: 'satellite-marker',
   }).addTo(lmap);
   setTimeout(() => { if (lmap) lmap.invalidateSize(); }, 0);
@@ -1912,7 +1912,7 @@ function showInspector() {
       refreshWindFx(); draw();
     };
     if (window.showWind) {
-      const gw = state.wind || { dir: 270, speed: 0 };
+      const gw = state.wind || { dir: tune('windDir'), speed: tune('windSpeed') };
       body.appendChild(numberRow(S.windFromDeg,
         leg.wind && Number.isFinite(leg.wind.dir) ? leg.wind.dir : NaN,
         v => setLegWind('dir', v),
@@ -2677,8 +2677,17 @@ map.on('mousedown', e => {
   // Hit-test priority matches paint order so the topmost element wins:
   // notes are drawn above waypoints (draw.js), so test notes first (issue #71).
   const includeOverlayChoices = state.mode !== 'add' && state.mode !== 'note';
-  const commHits = hitCommCalloutCandidates(p.x, p.y);
   const wpHits = hitWaypointCandidates(p.x, p.y);
+  // A click inside a waypoint dot is unambiguously that waypoint, even though
+  // the comm-callout arrow is anchored at the dot's (stroke-dependent) edge and
+  // can nominally reach the centre at thin stroke widths. Drop a callout choice
+  // for its own waypoint — mirrors hitNote()'s guard (top of file) so dead-centre
+  // selects the dot while arrow/tail clicks still pick the callout.
+  const wpHitSet = new Set(wpHits.map(h => h.index));
+  const commHits = hitCommCalloutCandidates(p.x, p.y).filter(c => {
+    const wi = commCalloutWaypointIndex(state.notes[c.index]);
+    return !(wi >= 0 && wpHitSet.has(wi));
+  });
   const ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
   const commChoiceHits = commHits.concat(wpHits, ovHits);
   if (commHits.length && commChoiceHits.length > 1) {
@@ -2713,7 +2722,9 @@ map.on('mousedown', e => {
              origLat: state.waypoints[wp].lat, origLng: state.waypoints[wp].lng,
              originSnapArmed: false };
     map.dragging.disable();
-    showInspector(); draw();
+    // Highlight now, but defer the inspector to release-without-move so you can
+    // drag a waypoint (or grab one while panning) without the panel popping up.
+    draw();
     return;
   }
   const cum = hitCumLabel(p.x, p.y);
@@ -2788,7 +2799,8 @@ map.on('mousemove', e => {
     const wp = state.waypoints[drag.i];
     const r = applyNavSnap(e.latlng, wp.name || '', dragOriginExclude(drag, e.latlng));
     wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
-    draw(); showInspector();
+    draw();   // move silently — but keep an already-open inspector in sync
+    if (!document.getElementById('inspector').classList.contains('hidden')) showInspector();
   } else if (drag.kind === 'note') {
     state.notes[drag.i].lat = r5(e.latlng.lat + (drag.offLat || 0));
     state.notes[drag.i].lng = r5(e.latlng.lng + (drag.offLng || 0));
@@ -2833,7 +2845,14 @@ function endMouseDrag() {
       changed = applyLegAltitudesToRoute();
       if (typeof seedCommChangeNotes === 'function' && seedCommChangeNotes()) changed = true;
     }
-    if (changed) { draw(); showInspector(); }
+    if (changed) draw();
+    // Open the inspector on a clean waypoint click (released without a move);
+    // a drag-to-reposition leaves a closed inspector closed, but refreshes one
+    // that was already open (e.g. snapping onto a comm-change point).
+    if (drag.kind === 'wp') {
+      const inspOpen = !document.getElementById('inspector').classList.contains('hidden');
+      if (!drag.moved || inspOpen) showInspector();
+    }
     map.dragging.enable();
     drag = null;
   }
@@ -3052,8 +3071,17 @@ mapEl.addEventListener('touchstart', e => {
   // Hit-test priority matches paint order so the topmost element wins:
   // notes are drawn above waypoints (draw.js), so test notes first (issue #71).
   const includeOverlayChoices = state.mode !== 'add' && state.mode !== 'note';
-  const commHits = hitCommCalloutCandidates(p.x, p.y);
   const wpHits = hitWaypointCandidates(p.x, p.y);
+  // A click inside a waypoint dot is unambiguously that waypoint, even though
+  // the comm-callout arrow is anchored at the dot's (stroke-dependent) edge and
+  // can nominally reach the centre at thin stroke widths. Drop a callout choice
+  // for its own waypoint — mirrors hitNote()'s guard (top of file) so dead-centre
+  // selects the dot while arrow/tail clicks still pick the callout.
+  const wpHitSet = new Set(wpHits.map(h => h.index));
+  const commHits = hitCommCalloutCandidates(p.x, p.y).filter(c => {
+    const wi = commCalloutWaypointIndex(state.notes[c.index]);
+    return !(wi >= 0 && wpHitSet.has(wi));
+  });
   const ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
   const commChoiceHits = commHits.concat(wpHits, ovHits);
   if (commHits.length && commChoiceHits.length > 1) {

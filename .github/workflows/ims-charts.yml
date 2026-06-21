@@ -1,0 +1,153 @@
+name: Update IMS PWX charts
+
+# Mirrors the IMS (Israel Meteorological Service) PWX wind/temperature charts —
+# which the browser can't fetch directly (no CORS) — into the `ims-data` orphan
+# branch as georeferenced transparent PNGs the app overlays on the map.
+#   source list:  https://ims.gov.il/he/wind_and_temperature_maps  (JSON)
+#   PDFs:         https://ims.gov.il/.../map_images/PWX/PWX_<run>_<lvl>_<valid>.pdf
+#   published:    ims-data/ims/pwx/<lvl>/<valid>.png  +  ims-data/ims/pwx.json
+
+on:
+  schedule:
+    - cron: '17 * * * *'        # hourly (retries pick up charts a slow run missed)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ims-charts
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Install poppler + imagemagick
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils imagemagick
+
+      - name: Build PWX + SIGWX PNGs + manifests
+        run: |
+          # Start from the existing ims-data so a chart a slow run can't fetch
+          # keeps its last-good file (and stays in the pruned manifest) instead
+          # of vanishing. New downloads overwrite; misses retain the old PNG.
+          git clone --depth 1 --branch ims-data \
+            "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" ims \
+            2>/dev/null && rm -rf ims/.git || mkdir -p ims
+          mkdir -p ims/ims/pwx ims/ims/sigwx
+          # PWX is rendered full-page (no crop) so the chart's title band + frame
+          # show on the overlay; the bounds below are extended to the full page
+          # so the inner map frame still aligns (margins L14/R14/T15/B118 @150dpi).
+
+          node --input-type=module <<'NODE' > /tmp/jobs.tsv
+          const { writeFileSync } = await import('node:fs');
+          const lines = [];
+          const get = async u => {
+            const r = await fetch(u, { headers: { 'User-Agent': 'NavAid-ims-bot' } });
+            if (!r.ok) throw new Error(u + ' ' + r.status);
+            return (await r.json()).data || {};
+          };
+          const abs = f => (f.startsWith('http') ? f : 'https://ims.gov.il' + f);
+
+          // --- PWX wind/temperature (georeferenced map overlay) ---
+          // IMS labels by flight level; only the low levels matter for CVFR.
+          const LABELS = { '85': 'FL050', '90': 'FL030' };
+          const pwx = { generatedAt: new Date().toISOString(),
+            source: 'IMS wind_and_temperature_maps', run: '',
+            bounds: { s: 28.849, n: 34.075, w: 32.903, e: 37.097 }, levels: [] };
+          const pdata = await get('https://ims.gov.il/he/wind_and_temperature_maps');
+          for (const lvl of Object.keys(pdata)) {
+            if (!LABELS[lvl]) continue;
+            const times = pdata[lvl] || {};
+            const entry = { level: lvl, label: LABELS[lvl], times: [] };
+            for (const t of Object.keys(times)) {
+              const f = times[t] && times[t].file; if (!f) continue;
+              const png = `ims/pwx/${lvl}/${t.replace(':', '')}.png`;
+              // Model run time is the first YYYYMMDDHHMM in the filename
+              // (PWX_<run>_<lvl>_<valid>.pdf) — the cropped-off "BASED ON MODEL
+              // RUN" line. Same for every chart.
+              if (!pwx.run) { const mr = f.match(/_(\d{12})_/); if (mr) pwx.run = mr[1]; }
+              entry.times.push({ valid: t, day: times[t].day || '', png });
+              lines.push([abs(f), 'ims/' + png, 'pwx'].join('\t'));
+            }
+            entry.times.sort((a, b) => a.valid.localeCompare(b.valid));
+            if (entry.times.length) pwx.levels.push(entry);
+          }
+          pwx.levels.sort((a, b) => Number(a.level) - Number(b.level));
+          writeFileSync('ims/ims/pwx.json', JSON.stringify(pwx, null, 1));
+
+          // --- SIGWX significant weather (full-page chart, viewer only) ---
+          const sigwx = { generatedAt: new Date().toISOString(),
+            source: 'IMS significantly_weather_maps', times: [] };
+          const sdata = await get('https://ims.gov.il/he/significantly_weather_maps');
+          for (const t of Object.keys(sdata)) {
+            const f = sdata[t] && sdata[t].file; if (!f) continue;
+            const png = `ims/sigwx/${t.replace(':', '')}.png`;
+            sigwx.times.push({ valid: t, day: sdata[t].day || '', png });
+            lines.push([abs(f), 'ims/' + png, 'sigwx'].join('\t'));
+          }
+          // Order by day then valid time so the dropdown reads chronologically.
+          sigwx.times.sort((a, b) => (a.day + a.valid).localeCompare(b.day + b.valid));
+          writeFileSync('ims/ims/sigwx.json', JSON.stringify(sigwx, null, 1));
+
+          console.error('pwx levels:', pwx.levels.map(l => l.level + '×' + l.times.length).join(' '),
+            '| sigwx:', sigwx.times.length);
+          process.stdout.write(lines.join('\n'));
+          NODE
+
+          # Download each PDF -> PNG. PWX: crop to frame + white→transparent (overlay).
+          # SIGWX: full page as-is (in-app viewer).
+          while IFS=$'\t' read -r url out mode; do
+            [ -z "$url" ] && continue
+            mkdir -p "$(dirname "$out")"
+            # IMS is slow/throttly from CI IPs — generous timeout + retries, and
+            # space requests so we don't get rate-limited (which showed up as
+            # dl-fail and emptied the SIGWX manifest).
+            if curl -fsS --connect-timeout 20 --max-time 90 --retry 6 --retry-delay 5 --retry-all-errors \
+                 -A 'NavAid-ims-bot' "$url" -o /tmp/c.pdf; then
+              if [ "$mode" = "pwx" ]; then
+                pdftoppm -png -r 150 /tmp/c.pdf /tmp/cpng && \
+                convert /tmp/cpng-1.png -fuzz 18% -transparent white "$out" && \
+                echo "ok  $out" || echo "conv-fail $out"
+              else
+                pdftoppm -png -r 150 /tmp/c.pdf /tmp/cpng && \
+                cp /tmp/cpng-1.png "$out" && echo "ok  $out" || echo "conv-fail $out"
+              fi
+            else
+              echo "dl-fail $url"
+            fi
+            sleep 1
+          done < /tmp/jobs.tsv
+          echo "PNG count: $(find ims -name '*.png' | wc -l)"
+
+          # Drop manifest entries whose PNG didn't actually download/convert
+          # (e.g. a far-out forecast IMS hasn't published yet) so the app never
+          # points at a missing image.
+          node --input-type=module <<'PRUNE'
+          const { existsSync, writeFileSync, readFileSync } = await import('node:fs');
+          const has = png => existsSync('ims/' + png);
+          const pwx = JSON.parse(readFileSync('ims/ims/pwx.json', 'utf8'));
+          pwx.levels = pwx.levels
+            .map(l => ({ ...l, times: l.times.filter(t => has(t.png)) }))
+            .filter(l => l.times.length);
+          writeFileSync('ims/ims/pwx.json', JSON.stringify(pwx, null, 1));
+          const sig = JSON.parse(readFileSync('ims/ims/sigwx.json', 'utf8'));
+          sig.times = sig.times.filter(t => has(t.png));
+          writeFileSync('ims/ims/sigwx.json', JSON.stringify(sig, null, 1));
+          console.error('after prune — pwx:',
+            pwx.levels.map(l => l.level + '×' + l.times.length).join(' '),
+            '| sigwx:', sig.times.length);
+          PRUNE
+
+      - name: Publish ims-data branch
+        run: |
+          ( cd ims
+            git init -q
+            git checkout -q -b ims-data
+            git add .
+            git -c user.email='actions@github.com' -c user.name='ims-bot' \
+                commit -q -m "ims: update $(date -u +%FT%TZ)"
+            git push -q -f \
+                "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
+                ims-data )

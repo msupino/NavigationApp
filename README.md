@@ -3,6 +3,9 @@
 Browser-based CVFR / Israel-area flight-route planner. Plain HTML +
 CSS + JavaScript on top of Leaflet, no build step.
 
+The repository also includes a Capacitor native wrapper under `mobile/` for
+building iOS and Android apps from the same static `docs/` app.
+
 ## Links
 
 - **Live (production):** https://navaid.supino.org/
@@ -16,6 +19,18 @@ CSS + JavaScript on top of Leaflet, no build step.
 python3 -m http.server -d docs 8000
 # http://localhost:8000
 ```
+
+## Native mobile wrapper
+
+```bash
+cd mobile
+npm install
+npm run sync
+npm run open:ios      # or: npm run open:android
+```
+
+The mobile workspace is intentionally separate from the root test package so
+GitHub Pages remains a plain static deployment.
 
 ## Development docs
 

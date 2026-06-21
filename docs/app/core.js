@@ -135,7 +135,7 @@ NavAid.tuningDefaults = {
   waypointTextFitFactor: { value: 0.85, min: 0.3, max: 1, step: 0.05, label: 'Waypoint text fit (fraction of diameter)' },
   waypointMinZoomScale: { value: 0.35, min: 0.1, max: 2, step: 0.05, label: 'Waypoint min zoom scale' },
   waypointSelectedRadiusAddPx: { value: 2, min: 0, max: 20, step: 0.5, label: 'Selected waypoint radius add' },
-  waypointStrokeWidthPx: { value: 3, min: 0.25, max: 10, step: 0.25, label: 'Waypoint stroke width' },
+  waypointStrokeWidthPx: { value: 1, min: 0.25, max: 10, step: 0.25, label: 'Waypoint stroke width' },
   waypointFillColor: { value: '#fff6aa', type: 'color', label: 'Waypoint fill color' },
 
   airfieldMarkerRadiusPx: { value: 7, min: 2, max: 40, step: 1, label: 'Airfield triangle radius' },
@@ -256,6 +256,34 @@ NavAid.tuningDefaults = {
   sigmetTcColor: { value: '#c2185b', type: 'color', label: 'SIGMET cyclone color' },
   sigmetDefaultColor: { value: '#dd1111', type: 'color', label: 'SIGMET default/TS color' },
 
+  imsPwxOpacity: { value: 0.6, min: 0.2, max: 1, step: 0.05, label: 'IMS PWX overlay default opacity' },
+  imsPwxLatOffset: { value: 0, min: -0.5, max: 0.5, step: 0.005, label: 'IMS PWX overlay latitude nudge (°)' },
+  imsPwxLngOffset: { value: 0, min: -0.5, max: 0.5, step: 0.005, label: 'IMS PWX overlay longitude nudge (°)' },
+  imsPwxLatScale: { value: 1, min: 0.8, max: 1.2, step: 0.005, label: 'IMS PWX overlay vertical zoom' },
+  imsPwxLngScale: { value: 1, min: 0.8, max: 1.2, step: 0.005, label: 'IMS PWX overlay horizontal zoom' },
+
+  liveAircraftRadiusPx: { value: 18, min: 6, max: 48, step: 1, label: 'Live aircraft size' },
+  gotoMarkerColor: { value: '#c0392b', type: 'color', label: 'Go-to marker outline' },
+  gotoMarkerFillColor: { value: '#e74c3c', type: 'color', label: 'Go-to marker fill' },
+  gotoMarkerRadiusPx: { value: 7, min: 2, max: 24, step: 1, label: 'Go-to marker radius' },
+  gotoMarkerWeightPx: { value: 2, min: 0.5, max: 8, step: 0.5, label: 'Go-to marker stroke width' },
+  gotoMarkerFillAlpha: { value: 0.85, min: 0, max: 1, step: 0.05, label: 'Go-to marker fill opacity' },
+  altPairFocusLineAlpha: { value: 0.95, min: 0, max: 1, step: 0.05, label: 'Alt-pair focus line opacity' },
+  altPairFocusDotAlpha: { value: 0.95, min: 0, max: 1, step: 0.05, label: 'Alt-pair focus dot opacity' },
+  satellitePreviewWidthPx: { value: 214, min: 120, max: 480, step: 2, label: 'Satellite preview width' },
+  satellitePreviewHeightPx: { value: 118, min: 80, max: 360, step: 2, label: 'Satellite preview height' },
+  satelliteMarkerRadiusPx: { value: 7, min: 2, max: 24, step: 1, label: 'Satellite marker radius' },
+  satelliteMarkerColor: { value: '#ffda4c', type: 'color', label: 'Satellite marker color' },
+  satelliteMarkerWeightPx: { value: 2, min: 0.5, max: 8, step: 0.5, label: 'Satellite marker stroke width' },
+  satelliteMarkerAlpha: { value: 0.96, min: 0, max: 1, step: 0.02, label: 'Satellite marker opacity' },
+  profileAxisHeightPx: { value: 30, min: 12, max: 80, step: 1, label: 'Vertical profile axis height' },
+  profileYPadPx: { value: 34, min: 8, max: 80, step: 1, label: 'Vertical profile side padding' },
+  airfieldLabelMinZoom: { value: 10, min: 5, max: 16, step: 1, label: 'Airfield label min zoom' },
+  navWpLabelMinZoom: { value: 10, min: 5, max: 16, step: 1, label: 'Nav-waypoint label min zoom' },
+  vorLabelMinZoom: { value: 8, min: 5, max: 16, step: 1, label: 'VOR label min zoom' },
+  windDir: { value: 0, min: 0, max: 360, step: 5, label: 'Default wind direction (°true FROM)' },
+  windSpeed: { value: 0, min: 0, max: 200, step: 1, label: 'Default wind speed (kt; 0 = calm)' },
+
   vorMarkerRadiusPx: { value: 9, min: 3, max: 30, step: 0.5, label: 'VOR marker radius' },
   vorMarkerWidthPx: { value: 2, min: 0.25, max: 8, step: 0.25, label: 'VOR marker stroke width' },
   vorMarkerColor: { value: '#127a7a', type: 'color', label: 'VOR marker color' },
@@ -297,7 +325,10 @@ NavAid.tuningGroups = [
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileDescentFpm', 'profileClimbKt', 'profileDescentKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },
-  { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom', 'satelliteChartOverscale'] },
+  { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom', 'satelliteChartOverscale', 'satellitePreviewWidthPx', 'satellitePreviewHeightPx', 'satelliteMarkerRadiusPx', 'satelliteMarkerColor', 'satelliteMarkerWeightPx', 'satelliteMarkerAlpha'] },
+  { name: 'Go-to marker', keys: ['gotoMarkerColor', 'gotoMarkerFillColor', 'gotoMarkerRadiusPx', 'gotoMarkerWeightPx', 'gotoMarkerFillAlpha'] },
+  { name: 'Map label zoom', keys: ['airfieldLabelMinZoom', 'navWpLabelMinZoom', 'vorLabelMinZoom'] },
+  { name: 'Wind', keys: ['windDir', 'windSpeed'] },
   { name: 'Magnifier', keys: ['magBaselineZoom', 'magMaxExp'] },
   { name: 'Behaviour', keys: ['undoLimit', 'rotDragPx', 'shareMaxWaypoints', 'commChangeSnapPx', 'originResnapArmPx'] },
   { name: 'Route line', keys: ['routeLineWidthPx', 'routeSelectedLineWidthPx'] },
@@ -317,12 +348,13 @@ NavAid.tuningGroups = [
   { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx', 'noteDefaultFillColor'] },
   { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimColor', 'pageFrameScrimAlpha', 'pageFrameHitPx'] },
   { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitLegPx', 'hitLegLabelMinPx', 'hitLegLabelScalePx', 'hitCumLabelMinPx', 'hitCumLabelScalePx'] },
-  { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs'] },
+  { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs', 'altPairFocusLineAlpha', 'altPairFocusDotAlpha'] },
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx'] },
   { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeFontPx', 'reportBadgeColor', 'reportBadgeTextColor'] },
-  { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor'] },
-  { name: 'Vertical profile', keys: ['profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileTodColor', 'profileMarkerHaloColor'] },
+  { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx'] },
+  { name: 'Vertical profile', keys: ['profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileTodColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor'] },
+  { name: 'Weather (IMS)', keys: ['imsPwxOpacity', 'imsPwxLatOffset', 'imsPwxLngOffset', 'imsPwxLatScale', 'imsPwxLngScale'] },
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor'] },
@@ -356,6 +388,36 @@ function setTune(key, value) {
 function resetTune(key) {
   if (key) delete NavAid.tuning[key];
   else NavAid.tuning = {};
+}
+
+// Optional remote config: a JSON map of { tuningKey: value } served from a gist
+// (or any CORS-enabled URL). Fetched once at boot and applied over the baked-in
+// defaults via setTune(), which validates + clamps each value per its spec.
+// Unknown keys are ignored. Any failure (offline, blocked, bad JSON) falls back
+// silently to the baked-in defaults so the app always boots.
+NavAid.configUrl = 'https://gist.githubusercontent.com/msupino/12c6e9d9dfcd783ffbeaa06246783840/raw/navaid-config.json';
+async function loadRemoteConfig() {
+  if (!NavAid.configUrl) return 0;
+  try {
+    // The gist raw host (Fastly) caches the URL ~5 min, so a fresh gist edit
+    // wouldn't show up until the TTL lapses. A unique query param is a new cache
+    // key → always a cache MISS → newest content. (cache:'no-store' only covers
+    // the browser cache, not the CDN.)
+    const url = NavAid.configUrl + (NavAid.configUrl.indexOf('?') === -1 ? '?' : '&') + 't=' + Date.now();
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) return 0;
+    const o = await r.json();
+    if (!o || typeof o !== 'object') return 0;
+    let n = 0;
+    for (const k in o) {
+      if (!NavAid.tuningDefaults[k]) continue;   // ignore keys we don't know
+      setTune(k, o[k]);                          // per-spec validation + clamp
+      if (NavAid.tuning[k] !== undefined) n++;
+    }
+    return n;
+  } catch (e) {
+    return 0;                                    // network/parse error → defaults
+  }
 }
 
 const EARTH_NM = 3440.065;             // mean Earth radius, nautical miles
@@ -397,6 +459,19 @@ window.S = Object.assign({
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbShowReporting: 'Show mandatory reports',        // reporting-type overlay toggle
   tbShowReportingTitle: 'Badge waypoints that are mandatory (חובה) reporting points',
+  tbImsPwx: 'IMS wind/temp chart',                  // IMS PWX overlay toggle
+  tbImsPwxTitle: 'Overlay the IMS PWX wind & temperature forecast chart on the map',
+  tbImsPwxLevel: 'Chart level',
+  tbImsPwxTime: 'Valid time',
+  tbImsPwxOpacity: 'Sign opacity',
+  tbImsPwxOpacityReset: 'Reset opacity',
+  tbImsPwxRun: 'Model run',
+  tbSigwx: '🌐 SIGWX charts',                       // significant-weather viewer button
+  tbSigwxTitle: 'View IMS significant-weather (SIGWX) charts by valid time',
+  tbSigwxTime: 'Valid time',
+  sigwxModalTitle: 'Significant weather charts (SIGWX)',
+  sigwxMissing: 'Chart not available for this time yet.',
+  sigwxUnavailable: 'SIGWX charts are temporarily unavailable.',
   tbShowMsa: 'Show MSA',                            // leg-inspector minimum safe altitude row
   tbShowMsaTitle: 'Show minimum safe altitude (terrain + 1000 ft) in the leg inspector. Planning aid only.',
   report: 'Reporting',
@@ -526,6 +601,8 @@ window.S = Object.assign({
   planColSpeed: 'Speed',
   planColLegTime: 'Time of leg',
   planColLegFuel: 'Fuel of leg',
+  planColRadial: 'Radial',
+  planColDme: 'DME',
   planColComm: 'Comm freq',
   fpFreq: 'Freq',
   freqNone: 'None',
@@ -819,6 +896,7 @@ window.S = Object.assign({
   tbSecView: '👁 View/Set',
   tbSecCharts: '📋 Charts',
   tbSecExport: '📤 Export/import',
+  tbSecWeather: '🌦 Weather',
   tbSecSim: '✈ Simulator',
   tbSimConnect: 'Connect to simulator',
   tbSimDisconnect: 'Disconnect from simulator',
@@ -900,7 +978,7 @@ const state = {
   commChangeSuppressions: [], // canonical comm-change callouts the user deleted
   mode: null,               // 'add' | 'note' | null (= inspect)
   selected: null,           // { type:'wp'|'leg'|'note', index }
-  wind: { dir: 270, speed: 0 }, // route-wide wind (#722): dir °true FROM, kt; 0 = calm
+  wind: { dir: tune('windDir'), speed: tune('windSpeed') }, // route-wide wind (#722): dir °true FROM, kt; 0 = calm; default is tunable
 };
 var showReturn = false;     // outbound (return) markers — off by default
 var showMidLeg = false;
