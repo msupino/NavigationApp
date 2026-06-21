@@ -36,6 +36,21 @@ test('SIGWX button stays hidden when no manifest exists', async ({ page }) => {
   await expect(page.locator('#sigwx-btn')).toBeHidden();
 });
 
+test('SIGWX button shows (and reports unavailable) when manifest has no charts', async ({ page }) => {
+  await page.route(PNG_RE, r => r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+  await page.route(MANIFEST_RE, r => r.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ generatedAt: 'x', times: [] }),
+  }));
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => document.getElementById('sigwx-btn'));
+  await expect(page.locator('#sigwx-btn')).toBeVisible();   // exists, not hidden
+  await page.locator('#sigwx-btn').click();
+  await expect(page.locator('.sigwx-modal .sigwx-missing')).toContainText('unavailable');
+  await expect(page.locator('.sigwx-modal select.sigwx-time')).toBeHidden();
+});
+
 test('SIGWX button opens a viewer with valid-time options and the chart image', async ({ page }) => {
   await boot(page);
   await expect(page.locator('#sigwx-btn')).toBeVisible();
