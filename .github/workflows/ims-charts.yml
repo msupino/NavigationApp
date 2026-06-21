@@ -22,6 +22,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
       - name: Install poppler + imagemagick
         run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils imagemagick
@@ -90,7 +91,8 @@ jobs:
           while IFS=$'\t' read -r url out mode; do
             [ -z "$url" ] && continue
             mkdir -p "$(dirname "$out")"
-            if curl -fsS -A 'NavAid-ims-bot' "$url" -o /tmp/c.pdf; then
+            if curl -fsS --connect-timeout 15 --max-time 45 --retry 2 --retry-delay 3 \
+                 -A 'NavAid-ims-bot' "$url" -o /tmp/c.pdf; then
               if [ "$mode" = "pwx" ]; then
                 pdftoppm -png $PWX_CROP /tmp/c.pdf /tmp/cpng && \
                 convert /tmp/cpng-1.png -fuzz 18% -transparent white "$out" && \
