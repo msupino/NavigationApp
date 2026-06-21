@@ -3354,7 +3354,21 @@ if (typeof loadRemoteConfig === "function") {
       layer.setBounds(bounds);
       layer.setOpacity(+opacity.value);
     }
+    applyRotation();
   }
+  // L.imageOverlay has no native rotation — append a CSS rotate() to the image
+  // (about its centre) on top of Leaflet's positioning transform, re-applied
+  // whenever Leaflet repositions it (pan/zoom) so the rotation sticks.
+  function applyRotation() {
+    if (!layer || typeof layer.getElement !== 'function') return;
+    const el = layer.getElement();
+    if (!el) return;
+    const deg = off('imsPwxRotationDeg');
+    const base = el.style.transform.replace(/\s*rotate\([^)]*\)/g, '');
+    el.style.transformOrigin = '50% 50%';
+    el.style.transform = deg ? (base + ' rotate(' + deg + 'deg)') : base;
+  }
+  map.on('move zoom zoomend viewreset', applyRotation);
   function fillTimes() {
     const lv = currentLevel();
     const prev = timeSel.value;            // keep the chosen period across FL changes
