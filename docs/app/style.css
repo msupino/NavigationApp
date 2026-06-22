@@ -3280,6 +3280,11 @@ body.theme-light #tuning-panel button:hover {
   background: #eef3f9;
 }
 body.theme-light #toolbar button.tool.active,
+/* Toggle buttons without the .tool class (e.g. the A3/A4 page-size buttons)
+   signal "selected" only via aria-pressed — match that too, or they render as
+   plain white in light mode with no visible selected state. Mirrors the dark
+   theme's `#toolbar button[aria-pressed="true"]` rule. */
+body.theme-light #toolbar button[aria-pressed="true"],
 body.theme-light #toolbar .wp-search-item.active {
   color: #fff;
   background: #1d6fe0;
