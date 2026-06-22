@@ -4,6 +4,7 @@
   "import": ["@cspell/dict-he/cspell-ext.json"],
   "words": [
     "atis",
+    "nogist",
     "dphi",
     "dlam",
     "hemi",
