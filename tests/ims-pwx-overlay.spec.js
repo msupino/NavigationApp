@@ -103,6 +103,8 @@ test('lat/lng tune offset nudges the overlay bounds', async ({ page }) => {
   await page.locator('#ims-pwx-cb').check();
   const shifted = await page.evaluate(() => {
     const layer = () => { let f = null; map.eachLayer(l => { if (l.getBounds && l._url) f = l; }); return f; };
+    resetTune('imsPwxLatOffset');
+    NavAid.refreshImsPwx();
     const before = layer().getBounds().getSouth();
     setTune('imsPwxLatOffset', 0.1);
     NavAid.refreshImsPwx();
@@ -117,6 +119,8 @@ test('lat/lng tune scale zooms the overlay bounds', async ({ page }) => {
   const r = await page.evaluate(() => {
     const layer = () => { let f = null; map.eachLayer(l => { if (l.getBounds && l._url) f = l; }); return f; };
     const span = () => { const b = layer().getBounds(); return b.getNorth() - b.getSouth(); };
+    resetTune('imsPwxLatScale');
+    NavAid.refreshImsPwx();
     const before = span();
     setTune('imsPwxLatScale', 1.1);
     NavAid.refreshImsPwx();
