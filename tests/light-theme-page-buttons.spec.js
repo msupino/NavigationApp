@@ -54,6 +54,22 @@ test('hovering a selected page button keeps a solid fill (not white-on-white)', 
   expect(s.bg).toBe('rgb(25, 95, 194)');     // #195fc2, fully opaque
 });
 
+test('modal close (×) stays readable on hover in light mode', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await boot(page);
+  await page.evaluate(() => showExportModal && showExportModal());
+  await page.locator('.modal-back').waitFor();
+  const x = page.locator('.modal-close-x').first();
+  await x.hover({ force: true });
+  const s = await x.evaluate(node => {
+    const c = getComputedStyle(node);
+    return { color: c.color, bg: c.backgroundColor };
+  });
+  // Light hover: dark text on a pale wash — not the dark-theme #443f3f leftover.
+  expect(s.color).toBe('rgb(17, 24, 32)');             // #111820
+  expect(s.bg).toBe('rgba(29, 111, 224, 0.08)');       // pale, not dark grey
+});
+
 test('unselected page button is not highlighted in light mode', async ({ page }) => {
   await boot(page);
   const bg = await page.evaluate(() => {
