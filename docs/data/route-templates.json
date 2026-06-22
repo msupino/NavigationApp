@@ -249,10 +249,6 @@
           "freqName": "PALMACHIM"
         },
         {
-          "cc": "NTAIM",
-          "freqName": "TEL_NOF"
-        },
-        {
           "cc": "NMASD",
           "freqName": "HAGAV_NORTH"
         },
@@ -264,12 +260,17 @@
           "cc": "LLBS",
           "freqName": "TEYMAN",
           "freqAuto": true
+        },
+        {
+          "cc": "LLHZ",
+          "freqName": "LLHZ"
         }
       ],
       "commChangeSuppressions": [
         "ZASHD",
         "HODYA",
-        "NOAAM"
+        "NOAAM",
+        "NTAIM"
       ]
     },
     {
