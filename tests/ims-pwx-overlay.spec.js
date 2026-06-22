@@ -133,6 +133,34 @@ test('lat/lng tune scale zooms the overlay bounds', async ({ page }) => {
   expect(r.after / r.before).toBeCloseTo(1.1, 2);   // span scaled ~10%
 });
 
+test('dark mode gives the overlay a translucent white backdrop', async ({ page }) => {
+  await boot(page);                                   // default (dark) theme
+  await page.locator('#ims-pwx-cb').check();
+  const bg = await page.locator('.leaflet-overlay-pane img.leaflet-image-layer')
+    .evaluate(el => getComputedStyle(el).backgroundColor);
+  expect(bg).toBe('rgba(255, 255, 255, 0.5)');        // restores footer contrast
+});
+
+test('light mode leaves the overlay backdrop transparent', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.theme', 'light'); } catch (e) {} });
+  await boot(page);
+  await page.locator('#ims-pwx-cb').check();
+  const bg = await page.locator('.leaflet-overlay-pane img.leaflet-image-layer')
+    .evaluate(el => getComputedStyle(el).backgroundColor);
+  expect(bg).toBe('rgba(0, 0, 0, 0)');                // transparent — light map suffices
+});
+
+test('imsPwxDarkBackdropAlpha=0 disables the backdrop', async ({ page }) => {
+  await boot(page);
+  await page.locator('#ims-pwx-cb').check();
+  const bg = await page.evaluate(() => {
+    setTune('imsPwxDarkBackdropAlpha', 0);
+    applyTuningCssVars();
+    return getComputedStyle(document.querySelector('.leaflet-image-layer')).backgroundColor;
+  });
+  expect(bg).toMatch(/,\s*0\)$/);                     // alpha 0 → fully off
+});
+
 test('rotation tune rotates the overlay image', async ({ page }) => {
   await boot(page);
   await page.locator('#ims-pwx-cb').check();

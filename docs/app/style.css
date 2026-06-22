@@ -116,6 +116,17 @@ html, body {
   margin: 4px 2px;
 }
 
+/* IMS PWX wind/temp overlay: the chart's white background is made transparent
+   in the data pipeline, so its dark footer text/strokes disappear against the
+   dark map. A translucent white plate behind the image restores contrast.
+   Off in light mode, where the light map already provides it. */
+.leaflet-image-layer.ims-pwx-layer {
+  background: var(--navaid-ims-pwx-backdrop, rgba(255, 255, 255, 0.5));
+}
+body.theme-light .leaflet-image-layer.ims-pwx-layer {
+  background: transparent;
+}
+
 .map-legend {
   display: flex;
   flex-direction: column;
@@ -3280,6 +3291,11 @@ body.theme-light #tuning-panel button:hover {
   background: #eef3f9;
 }
 body.theme-light #toolbar button.tool.active,
+/* Toggle buttons without the .tool class (e.g. the A3/A4 page-size buttons)
+   signal "selected" only via aria-pressed — match that too, or they render as
+   plain white in light mode with no visible selected state. Mirrors the dark
+   theme's `#toolbar button[aria-pressed="true"]` rule. */
+body.theme-light #toolbar button[aria-pressed="true"],
 body.theme-light #toolbar .wp-search-item.active {
   color: #fff;
   background: #1d6fe0;
@@ -3375,6 +3391,7 @@ body.theme-light #toolbar-toggle:hover,
 body.theme-light #toolbar .footer-link:hover,
 body.theme-light .charts-airport-header:hover,
 body.theme-light #insp-close:hover,
+body.theme-light .modal-close-x:hover,
 body.theme-light .modal-close-action:hover,
 body.theme-light #mag-settings-close:hover,
 body.theme-light #search-close:hover,
@@ -3416,6 +3433,16 @@ body.theme-light .point-choice-option:focus .point-choice-meta {
   body.theme-light #toolbar #export-select:hover,
   body.theme-light #toolbar .tb-section-body .navtoggle:hover {
     background: rgba(29, 111, 224, 0.08);
+  }
+
+  /* …but a *selected* button (white text) must keep a solid fill on hover —
+     the translucent wash above would otherwise leave white-on-near-white (the
+     A3/A4 page buttons). Slightly darker blue gives hover feedback. */
+  body.theme-light #toolbar .tb-section-body button.tool.active:hover,
+  body.theme-light #toolbar .tb-section-body button[aria-pressed="true"]:hover {
+    color: #fff;
+    background: #195fc2;
+    border-color: #195fc2;
   }
 
   body.theme-light .tb-section[data-sec="print"] .tb-print-label {
