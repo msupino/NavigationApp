@@ -260,10 +260,6 @@
           "cc": "LLBS",
           "freqName": "TEYMAN",
           "freqAuto": true
-        },
-        {
-          "cc": "LLHZ",
-          "freqName": "LLHZ"
         }
       ],
       "commChangeSuppressions": [
