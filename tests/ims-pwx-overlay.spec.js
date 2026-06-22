@@ -103,6 +103,10 @@ test('lat/lng tune offset nudges the overlay bounds', async ({ page }) => {
   await page.locator('#ims-pwx-cb').check();
   const shifted = await page.evaluate(() => {
     const layer = () => { let f = null; map.eachLayer(l => { if (l.getBounds && l._url) f = l; }); return f; };
+    // Pin a zero baseline — the baked-in default offset is non-zero, so
+    // resetTune would leave it offset and the measured delta would be wrong.
+    setTune('imsPwxLatOffset', 0);
+    NavAid.refreshImsPwx();
     const before = layer().getBounds().getSouth();
     setTune('imsPwxLatOffset', 0.1);
     NavAid.refreshImsPwx();
@@ -117,6 +121,10 @@ test('lat/lng tune scale zooms the overlay bounds', async ({ page }) => {
   const r = await page.evaluate(() => {
     const layer = () => { let f = null; map.eachLayer(l => { if (l.getBounds && l._url) f = l; }); return f; };
     const span = () => { const b = layer().getBounds(); return b.getNorth() - b.getSouth(); };
+    // Pin scale=1 — the baked-in default is non-unity, so resetTune would
+    // leave it scaled and the measured ratio would be wrong.
+    setTune('imsPwxLatScale', 1);
+    NavAid.refreshImsPwx();
     const before = span();
     setTune('imsPwxLatScale', 1.1);
     NavAid.refreshImsPwx();
