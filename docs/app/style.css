@@ -815,6 +815,15 @@ html[dir="rtl"] .leaflet-control.zulu-clock {
   border-color: #777;
   cursor: default;
 }
+/* The count badge ("⚠ n SIGMET") stays LTR (rule above). But the "no SIGMET in
+   effect" message is a full sentence — in Hebrew the forced direction:ltr made
+   it read backwards. Flip just that message to RTL on Hebrew pages (the literal
+   "SIGMET" token stays LTR via bidi). CSS direction overrides the dir attribute,
+   so this must be done here, not only in JS. */
+html[dir="rtl"] .sigmet-readout.sigmet-none {
+  direction: rtl;
+  text-align: right;
+}
 .coord-readout.editing { cursor: text; }
 .coord-readout.error { border-color: #c0392b; background: rgba(231, 76, 60, 0.12); }
 .coord-readout.editing .goto-num {
