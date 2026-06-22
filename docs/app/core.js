@@ -394,8 +394,17 @@ function resetTune(key) {
 // Unknown keys are ignored. Any failure (offline, blocked, bad JSON) falls back
 // silently to the baked-in defaults so the app always boots.
 NavAid.configUrl = 'https://gist.githubusercontent.com/msupino/12c6e9d9dfcd783ffbeaa06246783840/raw/navaid-config.json';
+// `?nogist` (or `?gist=0`) skips the remote fetch entirely, so the app runs on
+// the baked-in defaults alone — handy for reproducing a bug without the live
+// gist's overrides, or testing the shipped defaults.
+NavAid.gistDisabled = (function () {
+  try {
+    const p = new URLSearchParams(location.search);
+    return p.has('nogist') || p.get('gist') === '0';
+  } catch (e) { return false; }
+}());
 async function loadRemoteConfig() {
-  if (!NavAid.configUrl) return 0;
+  if (!NavAid.configUrl || NavAid.gistDisabled) return 0;
   try {
     // The gist raw host (Fastly) caches the URL ~5 min, so a fresh gist edit
     // wouldn't show up until the TTL lapses. A unique query param is a new cache
