@@ -18,30 +18,37 @@ test('Hebrew "no SIGMET" message follows page direction (rtl)', async ({ page })
     window.sigmets = [];
     refreshSigmetReadout();
     const b = document.getElementById('sigmet-readout');
-    return { dir: b.dir, text: b.textContent };
+    // Computed direction is what actually drives rendering — a CSS rule used to
+    // force ltr and override the dir attribute.
+    return { dir: b.dir, css: getComputedStyle(b).direction, text: b.textContent };
   });
   expect(r.text).toContain('אין');           // the "no SIGMET in effect" string
   expect(r.dir).toBe('rtl');
+  expect(r.css).toBe('rtl');                 // CSS no longer forces ltr
 });
 
 test('count badge stays LTR even in Hebrew', async ({ page }) => {
   await boot(page, 'he');
-  const dir = await page.evaluate(() => {
+  const r = await page.evaluate(() => {
     window.showSigmet = true;
     window.sigmets = [{ raw: 'LLLL SIGMET 1 VALID' }];
     refreshSigmetReadout();
-    return document.getElementById('sigmet-readout').dir;
+    const b = document.getElementById('sigmet-readout');
+    return { dir: b.dir, css: getComputedStyle(b).direction };
   });
-  expect(dir).toBe('ltr');
+  expect(r.dir).toBe('ltr');
+  expect(r.css).toBe('ltr');
 });
 
 test('English "no SIGMET" message stays ltr', async ({ page }) => {
   await boot(page, 'en');
-  const dir = await page.evaluate(() => {
+  const r = await page.evaluate(() => {
     window.showSigmet = true;
     window.sigmets = [];
     refreshSigmetReadout();
-    return document.getElementById('sigmet-readout').dir;
+    const b = document.getElementById('sigmet-readout');
+    return { dir: b.dir, css: getComputedStyle(b).direction };
   });
-  expect(dir).toBe('ltr');
+  expect(r.dir).toBe('ltr');
+  expect(r.css).toBe('ltr');
 });
