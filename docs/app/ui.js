@@ -392,6 +392,11 @@ function refreshSigmetReadout() {
   }
   const n = sigmets.length;
   sigmetReadoutBox.textContent = n ? S.sigmetReadout(n) : S.sigmetNone;
+  // The count badge ("⚠ n SIGMET") is Latin/numeric — keep it LTR. The "no
+  // SIGMET in effect" message is a full sentence: follow the page direction so
+  // the Hebrew reads right-to-left (the literal "SIGMET" token stays LTR via
+  // bidi). Forcing the whole box LTR scrambled the Hebrew word order.
+  sigmetReadoutBox.dir = n ? 'ltr' : (document.documentElement.dir || 'ltr');
   sigmetReadoutBox.classList.toggle('sigmet-none', n === 0);
   if (n) {
     // Hover = decoded text; click opens the full decoded list.
