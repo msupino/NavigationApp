@@ -35,6 +35,25 @@ test('selected A4 page button is highlighted in light mode', async ({ page }) =>
   expect(bg).toBe(BLUE);
 });
 
+test('hovering a selected page button keeps a solid fill (not white-on-white)', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });   // desktop hover rules
+  await boot(page);
+  // Open the Print section so the page buttons are interactable.
+  await page.evaluate(() => {
+    const h = document.querySelector('[data-sec="print"] .tb-section-head');
+    if (h && h.parentElement.dataset.open !== '1') h.click();
+  });
+  await page.evaluate(() => setPage('A3'));
+  await page.locator('#page-a3').hover({ force: true });
+  const s = await page.evaluate(() => {
+    const c = getComputedStyle(document.getElementById('page-a3'));
+    return { bg: c.backgroundColor, color: c.color };
+  });
+  // White text → the background must stay opaque blue, not a translucent wash.
+  expect(s.color).toBe('rgb(255, 255, 255)');
+  expect(s.bg).toBe('rgb(25, 95, 194)');     // #195fc2, fully opaque
+});
+
 test('unselected page button is not highlighted in light mode', async ({ page }) => {
   await boot(page);
   const bg = await page.evaluate(() => {

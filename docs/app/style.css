@@ -3423,6 +3423,16 @@ body.theme-light .point-choice-option:focus .point-choice-meta {
     background: rgba(29, 111, 224, 0.08);
   }
 
+  /* …but a *selected* button (white text) must keep a solid fill on hover —
+     the translucent wash above would otherwise leave white-on-near-white (the
+     A3/A4 page buttons). Slightly darker blue gives hover feedback. */
+  body.theme-light #toolbar .tb-section-body button.tool.active:hover,
+  body.theme-light #toolbar .tb-section-body button[aria-pressed="true"]:hover {
+    color: #fff;
+    background: #195fc2;
+    border-color: #195fc2;
+  }
+
   body.theme-light .tb-section[data-sec="print"] .tb-print-label {
     color: #647184;
   }
