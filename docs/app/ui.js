@@ -173,6 +173,13 @@ function applyTuningCssVars() {
   root.setProperty('--navaid-zulu-clock-shadow',
     '0 ' + tune('zuluClockShadowYPx') + 'px ' + tune('zuluClockShadowBlurPx') +
     'px rgba(0, 0, 0, ' + tune('zuluClockShadowAlpha') + ')');
+
+  // Dark-mode backdrop behind the IMS PWX overlay: the chart's white background
+  // is made transparent in the pipeline, so its dark footer text/strokes vanish
+  // against the dark map. A translucent white plate restores contrast (off in
+  // light mode — see style.css).
+  root.setProperty('--navaid-ims-pwx-backdrop',
+    cssRgba('#ffffff', tune('imsPwxDarkBackdropAlpha')));
 }
 window.applyTuningCssVars = applyTuningCssVars;
 applyTuningCssVars();
@@ -3347,7 +3354,7 @@ if (typeof loadRemoteConfig === "function") {
                     [cLat + hLat + dLat, cLng + hLng + dLng]];
     const url = RAW + t.png + '?t=' + (manifest.generatedAt || '');
     if (!layer) {
-      layer = L.imageOverlay(url, bounds, { opacity: +opacity.value, interactive: false, pane: 'overlayPane' });
+      layer = L.imageOverlay(url, bounds, { opacity: +opacity.value, interactive: false, pane: 'overlayPane', className: 'ims-pwx-layer' });
       layer.addTo(map);
     } else {
       layer.setUrl(url);
