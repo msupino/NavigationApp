@@ -397,11 +397,17 @@ html, body {
     left: 12px;
     right: auto;
     width: auto;
-    height: 34px;
+    /* Never wider than the viewport: on narrow desktops the section heads would
+       otherwise run off the right edge and disappear (overflow is visible for
+       the dropdowns, so there's no scrollbar to reach them). Cap the width and
+       let the bar wrap onto a second row instead of clipping. */
+    max-width: calc(100vw - 24px);
+    height: auto;
     max-height: none;
     min-height: 34px;
     overflow: visible;
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: stretch;
     gap: 0;
     padding: 0 4px;
