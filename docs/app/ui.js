@@ -2105,13 +2105,13 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
     try {
       const g = gridPoints();
       const lv = level();
-      // forecast_days=2 → 48 hourly samples so the slider can scrub a full 24h
-      // forward from the current hour.
+      // Fetch a few forecast days of hourly samples so the slider can scrub
+      // forward from the current hour (tunable horizon).
       const url = 'https://api.open-meteo.com/v1/forecast' +
         '?latitude=' + g.lats.map(v => v.toFixed(2)).join(',') +
         '&longitude=' + g.lngs.map(v => v.toFixed(2)).join(',') +
         '&hourly=wind_speed_' + lv + 'hPa,wind_direction_' + lv + 'hPa' +
-        '&wind_speed_unit=ms&timezone=UTC&forecast_days=2';
+        '&wind_speed_unit=ms&timezone=UTC&forecast_days=' + tn('windFieldForecastDays', 2);
       const res = await fetch(url);
       if (!res.ok) throw new Error(String(res.status));
       const j = await res.json();
@@ -2134,7 +2134,7 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
         data: frameData(),
         // Colour particles by speed with a *saturated* ramp (no pale mids that
         // vanish on the light chart) so the motion reads over the busy base.
-        minVelocity: 0, maxVelocity: tn('windFieldMaxVelocity', 24),
+        minVelocity: tn('windFieldMinVelocity', 0), maxVelocity: tn('windFieldMaxVelocity', 24),
         colorScale: ['#00429d', '#1d6fd0', '#00b4d8', '#00d49b', '#7cd800',
                      '#ffd000', '#ff8800', '#ff2a00', '#c4000b'],
         velocityScale: tn('windFieldVelocityScale', 0.028),
@@ -2189,6 +2189,7 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
   }
 
   if (timeSlider) {
+    timeSlider.max = String(tn('windFieldHoursAhead', 24));   // tunable scrub range
     timeSlider.oninput = () => {
       applyTimeLabel();
       if (layer && store && typeof layer.setData === 'function') layer.setData(frameData());

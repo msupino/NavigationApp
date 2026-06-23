@@ -275,6 +275,9 @@ NavAid.tuningDefaults = {
   windFieldLineWidth: { value: 1.8, min: 0.5, max: 4, step: 0.1, label: 'Wind field particle line width' },
   windFieldMaxVelocity: { value: 24, min: 5, max: 60, step: 1, label: 'Wind field max velocity (m/s)' },
   windFieldFrameRate: { value: 22, min: 10, max: 60, step: 1, label: 'Wind field frame rate (fps)' },
+  windFieldMinVelocity: { value: 0, min: 0, max: 20, step: 1, label: 'Wind field min velocity (m/s)' },
+  windFieldHoursAhead: { value: 24, min: 1, max: 48, step: 1, label: 'Wind field forecast slider range (h)' },
+  windFieldForecastDays: { value: 2, min: 1, max: 7, step: 1, label: 'Wind field forecast fetch days' },
 
   liveAircraftRadiusPx: { value: 18, min: 6, max: 48, step: 1, label: 'Live aircraft size' },
   gotoMarkerColor: { value: '#c0392b', type: 'color', label: 'Go-to marker outline' },
@@ -370,7 +373,7 @@ NavAid.tuningGroups = [
   { name: 'Weather (IMS)', keys: ['imsPwxOpacity', 'imsPwxLatOffset', 'imsPwxLngOffset', 'imsPwxLatScale', 'imsPwxLngScale', 'imsPwxRotationDeg', 'imsPwxDarkBackdropAlpha'] },
   // Wind-field render params + grid + defaults. The altitude/time/opacity
   // sliders are live menu controls; their defaults live here.
-  { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldFrameRate'] },
+  { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor'] },
