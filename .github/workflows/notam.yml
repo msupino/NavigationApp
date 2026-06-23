@@ -32,28 +32,34 @@ jobs:
             'LLBO','LLEV','LLKZ','LLPL','LLRD','LLHB','LLAR'];
           const out = { generatedAt: new Date().toISOString(), source: 'SkyLink (FAA SWIM)', fir: 'LLLL', notams: [] };
 
-          // Parse ICAO coordinate tokens from NOTAM text → decimal degrees.
-          // Handles DDMMSS[NS]DDDMMSS[EW] and DDMM[NS]DDDMM[EW].
-          const toDeg = (tok) => {
-            const m = tok.match(/^(\d{2})(\d{2})(\d{2})?([NS])(\d{3})(\d{2})(\d{2})?([EW])$/);
+          // DDMMSS[NS]DDDMMSS[EW] → decimal (body polygon points).
+          const toDegSec = (tok) => {
+            const m = tok.match(/^(\d{2})(\d{2})(\d{2})([NS])(\d{3})(\d{2})(\d{2})([EW])$/);
             if (!m) return null;
-            const lat = (+m[1]) + (+m[2]) / 60 + (m[3] ? +m[3] / 3600 : 0);
-            const lng = (+m[5]) + (+m[6]) / 60 + (m[7] ? +m[7] / 3600 : 0);
+            const lat = +m[1] + +m[2] / 60 + +m[3] / 3600;
+            const lng = +m[5] + +m[6] / 60 + +m[7] / 3600;
             return [m[4] === 'S' ? -lat : lat, m[8] === 'W' ? -lng : lng];
           };
-          const geomFromText = (txt) => {
-            const toks = (String(txt).toUpperCase().match(/\d{4,6}[NS]\d{5,7}[EW]/g) || []);
-            const pts = toks.map(toDeg).filter(Boolean);
-            if (pts.length >= 3) return { type: 'polygon', coords: pts };
-            if (pts.length === 1) {
-              const r = String(txt).toUpperCase().match(/(\d+(?:\.\d+)?)\s*NM/);
-              return { type: 'circle', lat: pts[0][0], lng: pts[0][1], radiusNm: r ? +r[1] : 2 };
+          // Geometry: the Q-line carries a centre+radius (DDMM[NS]DDDMM[EW]RRR,
+          // RRR = radius NM; 000 = whole FIR → skip). Area NOTAMs instead list
+          // DDMMSS points in the body → polygon.
+          const geomFromNotam = (n) => {
+            const q = String(n.qline || '').match(/(\d{2})(\d{2})([NS])(\d{3})(\d{2})([EW])(\d{3})/);
+            if (q) {
+              const rNm = +q[7];
+              if (rNm > 0) {
+                const lat = +q[1] + +q[2] / 60, lng = +q[4] + +q[5] / 60;
+                return { type: 'circle', lat: q[3] === 'S' ? -lat : lat, lng: q[6] === 'W' ? -lng : lng, radiusNm: rNm };
+              }
             }
+            const toks = String(n.raw || n.body || '').toUpperCase().match(/\d{6}[NS]\d{7}[EW]/g) || [];
+            const pts = toks.map(toDegSec).filter(Boolean);
+            if (pts.length >= 3) return { type: 'polygon', coords: pts };
             return null;
           };
 
           async function fetchIcao(icao) {
-            const r = await fetch('https://' + HOST + '/v3/notams/' + icao,
+            const r = await fetch('https://' + HOST + '/notams/' + icao,
               { headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': HOST } });
             if (!r.ok) { console.error(icao + ': HTTP ' + r.status); return []; }
             const j = await r.json();
@@ -69,9 +75,9 @@ jobs:
               for (const n of list) {
                 const id = n.notam_id || n.id; if (!id || seen.has(id)) continue;
                 seen.add(id);
-                const body = n.body || n.raw || n.text || '';
-                out.notams.push({ id, icao, type: n.type || '', text: body.trim(),
-                  end: n.expiration || '', geom: geomFromText(body) });
+                out.notams.push({ id, icao, type: n.type || '',
+                  text: String(n.raw || n.body || '').trim(),
+                  end: n.expiration || '', geom: geomFromNotam(n) });
               }
               await new Promise(s => setTimeout(s, 400));   // be gentle on the quota/host
             }
