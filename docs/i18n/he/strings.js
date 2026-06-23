@@ -251,6 +251,7 @@ window.S = {
     return 'רוח לכל מקטע הוגדרה (' + n + ' מקטעים)';
   },
   windFetchErr: 'משיכת הרוח נכשלה — בדוק חיבור',
+  windUpdatedLabel: 'עדכון רוח (Z)',
   inboundAlt: 'גובה נכנס (ft)',
   outboundAlt: 'גובה יוצא (ft)',
   shape: 'צורה',
