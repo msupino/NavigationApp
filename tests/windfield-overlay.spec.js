@@ -4,7 +4,9 @@
 // and adds a canvas overlay; unchecking removes it.
 const { test, expect } = require('./_setup');
 
-const OM_RE = /api\.open-meteo\.com/;
+// Anchored to the Open-Meteo API origin so it can't match a look-alike host
+// embedded elsewhere in a URL (CodeQL js/regex/missing-anchor).
+const OM_RE = /^https:\/\/api\.open-meteo\.com\//;
 
 // 48 hourly samples (forecast_days=2) starting today 00:00Z — uniform 10 m/s
 // from 270°, so the time slider has a full 24h-forward range to scrub.
