@@ -240,9 +240,15 @@ test('Fetch wind sets a per-leg wind for every leg (own midpoint + level)', asyn
   });
   await page.locator('#wind-fetch').click();
   await page.waitForFunction(() => state.legs[0].wind && state.legs[1].wind);
+  // Status shows the count and the Zulu update stamp (HH:MMZ).
   await expect(page.locator('#wind-fetch-status')).toContainText('Per-leg');
+  await expect(page.locator('#wind-fetch-status')).toContainText(/\d{2}:\d{2}Z/);
   expect(await page.evaluate(() => state.legs[0].wind)).toEqual({ dir: 200, speed: 20 });
   expect(await page.evaluate(() => state.legs[1].wind)).toEqual({ dir: 300, speed: 40 });
+  // The leg inspector shows the same Zulu update time, read-only.
+  await page.evaluate(() => { state.selected = { type: 'leg', index: 0 }; showInspector(); });
+  const joined = (await page.locator('#insp-body .row').allTextContents()).join('\n');
+  expect(joined).toMatch(/\d{2}:\d{2}Z/);
 });
 
 test('Fetch wind with no legs alerts and fetches nothing', async ({ page }) => {

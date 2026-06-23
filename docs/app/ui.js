@@ -140,6 +140,13 @@ function formatZuluClockTime(date) {
   return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds()) + 'Z';
 }
 window.formatZuluClockTime = formatZuluClockTime;
+// HH:MMZ — used for the "wind updated" stamp (Zulu, never localized).
+function formatZuluHM(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  const pad = n => String(n).padStart(2, '0');
+  return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + 'Z';
+}
+window.formatZuluHM = formatZuluHM;
 function cssRgba(hex, alpha) {
   const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
   if (!m) return 'rgba(0, 0, 0, ' + alpha + ')';
@@ -1983,7 +1990,10 @@ async function fetchRouteWind() {
       set++;
     }
     if (!set) throw new Error('no data');
-    if (windFetchStatus) windFetchStatus.textContent = S.windFetchOkLegs(set);
+    state.windUpdated = Date.now();          // Zulu stamp for the readout
+    if (windFetchStatus) {
+      windFetchStatus.textContent = S.windFetchOkLegs(set) + ' · ' + formatZuluHM(state.windUpdated);
+    }
     if (state.selected && state.selected.type === 'leg') showInspector();
     if (typeof persist === 'function') persist();
     draw();
