@@ -1990,9 +1990,9 @@ async function fetchRouteWind() {
       set++;
     }
     if (!set) throw new Error('no data');
-    state.windUpdated = Date.now();          // Zulu stamp for the readout
+    state.windFetched = Date.now();          // Zulu stamp for the readout
     if (windFetchStatus) {
-      windFetchStatus.textContent = S.windFetchOkLegs(set) + ' · ' + formatZuluHM(state.windUpdated);
+      windFetchStatus.textContent = S.windFetchOkLegs(set) + ' · ' + formatZuluHM(state.windFetched);
     }
     if (state.selected && state.selected.type === 'leg') showInspector();
     if (typeof persist === 'function') persist();
