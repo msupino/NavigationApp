@@ -262,6 +262,20 @@ NavAid.tuningDefaults = {
   imsPwxRotationDeg: { value: -0.5, min: -15, max: 15, step: 0.1, label: 'IMS PWX overlay rotation (°)' },
   imsPwxDarkBackdropAlpha: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'IMS PWX dark-mode backdrop (white, 0 = off)' },
 
+  windFieldDefaultAltFt: { value: 1500, min: 1000, max: 18000, step: 500, label: 'Wind field default altitude (ft)' },
+  windFieldDefaultOpacity: { value: 0.7, min: 0.2, max: 1, step: 0.05, label: 'Wind field default opacity' },
+  windFieldGridDeg: { value: 0.25, min: 0.1, max: 1, step: 0.05, label: 'Wind field grid spacing (°)' },
+  windFieldWest: { value: 34.2, min: 33, max: 37, step: 0.05, label: 'Wind field grid west (°)' },
+  windFieldEast: { value: 35.95, min: 33, max: 37, step: 0.05, label: 'Wind field grid east (°)' },
+  windFieldSouth: { value: 29.45, min: 28, max: 34, step: 0.05, label: 'Wind field grid south (°)' },
+  windFieldNorth: { value: 33.45, min: 28, max: 34, step: 0.05, label: 'Wind field grid north (°)' },
+  windFieldVelocityScale: { value: 0.028, min: 0.005, max: 0.08, step: 0.001, label: 'Wind field particle speed scale' },
+  windFieldParticleAge: { value: 80, min: 20, max: 200, step: 5, label: 'Wind field particle age (frames)' },
+  windFieldParticleMultiplier: { value: 0.0032, min: 0.0005, max: 0.01, step: 0.0001, label: 'Wind field particle density' },
+  windFieldLineWidth: { value: 1.8, min: 0.5, max: 4, step: 0.1, label: 'Wind field particle line width' },
+  windFieldMaxVelocity: { value: 24, min: 5, max: 60, step: 1, label: 'Wind field max velocity (m/s)' },
+  windFieldFrameRate: { value: 22, min: 10, max: 60, step: 1, label: 'Wind field frame rate (fps)' },
+
   liveAircraftRadiusPx: { value: 18, min: 6, max: 48, step: 1, label: 'Live aircraft size' },
   gotoMarkerColor: { value: '#c0392b', type: 'color', label: 'Go-to marker outline' },
   gotoMarkerFillColor: { value: '#e74c3c', type: 'color', label: 'Go-to marker fill' },
@@ -354,6 +368,9 @@ NavAid.tuningGroups = [
   { name: 'Vertical profile', keys: ['profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileTodColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor'] },
   { name: 'Weather (IMS)', keys: ['imsPwxOpacity', 'imsPwxLatOffset', 'imsPwxLngOffset', 'imsPwxLatScale', 'imsPwxLngScale', 'imsPwxRotationDeg', 'imsPwxDarkBackdropAlpha'] },
+  // Wind-field render params + grid + defaults. The altitude/time/opacity
+  // sliders are live menu controls; their defaults live here.
+  { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldFrameRate'] },
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor'] },

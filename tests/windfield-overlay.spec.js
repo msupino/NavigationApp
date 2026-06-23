@@ -52,8 +52,7 @@ test('the grid request covers many points over Israel in m/s', async ({ page }) 
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
   await page.locator('#windfield-cb').check();
-  await page.waitForFunction(() => true);
-  await expect.poll(() => url).toContain('wind_speed_900hPa');
+  await expect.poll(() => url).toMatch(/wind_speed_\d+hPa/);
   const lats = new URLSearchParams(url.split('?')[1]).get('latitude').split(',');
   expect(lats.length).toBeGreaterThan(50);             // a real grid, not a point
   expect(url).toContain('wind_speed_unit=ms');
@@ -94,14 +93,16 @@ test('altitude slider refetches at the matching pressure level', async ({ page }
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
   await page.locator('#windfield-cb').check();
-  await expect.poll(() => url).toContain('wind_speed_900hPa');   // default 3000 ft → 900 hPa
+  await expect.poll(() => url).toMatch(/wind_speed_\d+hPa/);
+  const lvlOf = u => (u.match(/wind_speed_(\d+)hPa/) || [])[1];
+  const lowAltLevel = lvlOf(url);                  // default 1500 ft
   // Raise to 10 000 ft → a higher level (lower hPa); the field refetches.
   const alt = page.locator('#windfield-alt');
   await alt.fill('10000');
   await alt.dispatchEvent('change');
   await expect(page.locator('#windfield-alt-val')).toHaveText('10,000 ft');
-  await expect.poll(() => url).not.toContain('wind_speed_900hPa');
-  expect(url).toMatch(/wind_speed_\d+hPa/);
+  await expect.poll(() => lvlOf(url)).not.toBe(lowAltLevel);
+  expect(Number(lvlOf(url))).toBeLessThan(Number(lowAltLevel));   // higher alt → lower hPa
 });
 
 test('opacity reset restores the default', async ({ page }) => {

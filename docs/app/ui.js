@@ -2017,7 +2017,6 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
   const opacity = document.getElementById('windfield-opacity');
   const opacityVal = document.getElementById('windfield-opacity-val');
   const opacityReset = document.getElementById('windfield-opacity-reset');
-  const DEFAULT_OPACITY = opacity ? opacity.value : '0.7';   // HTML default, pre-override
   const timeSlider = document.getElementById('windfield-time');
   const timeVal = document.getElementById('windfield-time-val');
   const altSlider = document.getElementById('windfield-alt');
@@ -2026,33 +2025,41 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
   const KEY = 'navaid.windField';
   const OPACITY_KEY = 'navaid.windFieldOpacity';
   const ALT_KEY = 'navaid.windFieldAlt';
+  const tn = (k, d) => (typeof tune === 'function' ? tune(k) : d);
+  function defaultAltFt() { return tn('windFieldDefaultAltFt', 1500); }
   // Pressure level (hPa) for the chosen altitude — drives the fetch + parse.
-  function altFt() { return altSlider ? (parseInt(altSlider.value, 10) || 3000) : 3000; }
+  function altFt() { return altSlider ? (parseInt(altSlider.value, 10) || defaultAltFt()) : defaultAltFt(); }
   function level() {
     return (typeof nearestPressureLevelHpa === 'function') ? nearestPressureLevelHpa(altFt()) : 900;
   }
-  // Grid over Israel (+margin). leaflet-velocity scans la1(N)→S, lo1(W)→E.
-  const GRID = { west: 34.2, east: 35.95, north: 33.45, south: 29.45, d: 0.25 };
+  // Grid over Israel (+margin), tunable. leaflet-velocity scans la1(N)→S, lo1(W)→E.
+  function gridBounds() {
+    return { west: tn('windFieldWest', 34.2), east: tn('windFieldEast', 35.95),
+             north: tn('windFieldNorth', 33.45), south: tn('windFieldSouth', 29.45),
+             d: tn('windFieldGridDeg', 0.25) };
+  }
   let layer = null;
   let busy = false;
   let store = null;     // { g, times, sp[k][], di[k][], baseIdx } — all 48 fetched hours
 
   function gridPoints() {
-    const nx = Math.round((GRID.east - GRID.west) / GRID.d) + 1;
-    const ny = Math.round((GRID.north - GRID.south) / GRID.d) + 1;
+    const b = gridBounds();
+    const nx = Math.round((b.east - b.west) / b.d) + 1;
+    const ny = Math.round((b.north - b.south) / b.d) + 1;
     const lats = [], lngs = [];
     for (let j = 0; j < ny; j++) {
-      const lat = GRID.north - j * GRID.d;
-      for (let i = 0; i < nx; i++) { lats.push(lat); lngs.push(GRID.west + i * GRID.d); }
+      const lat = b.north - j * b.d;
+      for (let i = 0; i < nx; i++) { lats.push(lat); lngs.push(b.west + i * b.d); }
     }
     return { nx, ny, lats, lngs };
   }
 
   function velocityData(g, U, V) {
+    const b = gridBounds();
     const base = {
       parameterUnit: 'm.s-1', parameterCategory: 2,
-      lo1: GRID.west, la1: GRID.north, lo2: GRID.east, la2: GRID.south,
-      nx: g.nx, ny: g.ny, dx: GRID.d, dy: GRID.d,
+      lo1: b.west, la1: b.north, lo2: b.east, la2: b.south,
+      nx: g.nx, ny: g.ny, dx: b.d, dy: b.d,
       refTime: new Date().toISOString(), forecastTime: 0,
     };
     return [
@@ -2127,11 +2134,14 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
         data: frameData(),
         // Colour particles by speed with a *saturated* ramp (no pale mids that
         // vanish on the light chart) so the motion reads over the busy base.
-        minVelocity: 0, maxVelocity: 24,
+        minVelocity: 0, maxVelocity: tn('windFieldMaxVelocity', 24),
         colorScale: ['#00429d', '#1d6fd0', '#00b4d8', '#00d49b', '#7cd800',
                      '#ffd000', '#ff8800', '#ff2a00', '#c4000b'],
-        velocityScale: 0.028, particleAge: 80, particleMultiplier: 0.0032,
-        lineWidth: 1.8, frameRate: 22,
+        velocityScale: tn('windFieldVelocityScale', 0.028),
+        particleAge: tn('windFieldParticleAge', 80),
+        particleMultiplier: tn('windFieldParticleMultiplier', 0.0032),
+        lineWidth: tn('windFieldLineWidth', 1.8),
+        frameRate: tn('windFieldFrameRate', 22),
       });
       layer.addTo(map);
       applyOpacity();
@@ -2161,7 +2171,9 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
   function showControls(on) { if (controls) controls.hidden = !on; }
 
   if (opacity) {
-    try { const sv = localStorage.getItem(OPACITY_KEY); if (sv !== null) opacity.value = sv; } catch (e) { /* */ }
+    let saved = null;
+    try { saved = localStorage.getItem(OPACITY_KEY); } catch (e) { /* */ }
+    opacity.value = (saved !== null) ? saved : String(tn('windFieldDefaultOpacity', 0.7));
     opacity.oninput = () => {
       try { localStorage.setItem(OPACITY_KEY, opacity.value); } catch (e) { /* */ }
       applyOpacity();
@@ -2170,7 +2182,7 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
   if (opacityReset) {
     opacityReset.onclick = () => {
       if (!opacity) return;
-      opacity.value = DEFAULT_OPACITY;
+      opacity.value = String(tn('windFieldDefaultOpacity', 0.7));   // tunable default
       try { localStorage.setItem(OPACITY_KEY, opacity.value); } catch (e) { /* */ }
       applyOpacity();
     };
@@ -2185,7 +2197,9 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
 
   function applyAltLabel() { if (altVal) altVal.textContent = altFt().toLocaleString() + ' ft'; }
   if (altSlider) {
-    try { const sv = localStorage.getItem(ALT_KEY); if (sv !== null) altSlider.value = sv; } catch (e) { /* */ }
+    let saved = null;
+    try { saved = localStorage.getItem(ALT_KEY); } catch (e) { /* */ }
+    altSlider.value = (saved !== null) ? saved : String(defaultAltFt());   // tunable default
     applyAltLabel();
     altSlider.oninput = applyAltLabel;
     // Changing altitude means a different pressure level → refetch (on release,
@@ -2931,6 +2945,7 @@ function redrawAfterTune() {
   // The IMS overlay is a Leaflet layer (not part of draw()) — refresh it so
   // tuning its opacity / lat-lng offset updates it live.
   if (window.NavAid && typeof NavAid.refreshImsPwx === 'function') NavAid.refreshImsPwx();
+  if (window.NavAid && typeof NavAid.refreshWindField === 'function') NavAid.refreshWindField();
 }
 
 function createTuningPanel() {
