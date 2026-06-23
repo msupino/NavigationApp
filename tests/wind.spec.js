@@ -76,38 +76,28 @@ test('legWindFor: per-leg override beats route wind; speed 0 marks calm', async 
   expect(r.allCalm).toBeNull();
 });
 
-test('Show-wind toggle reveals the inputs; they drive state.wind + readout', async ({ page }) => {
+test('Show-wind toggle reveals the realtime fetch button; no manual wind inputs', async ({ page }) => {
   await page.addInitScript(() => {
     try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   await boot(page);
-  const dir = page.locator('#wind-dir');
-  const speed = page.locator('#wind-speed');
-  // Inputs hidden until the toggle is on.
-  await expect(dir).toBeHidden();
+  // The manual wind dir/speed inputs are gone — wind only comes from the fetch.
+  await expect(page.locator('#wind-dir')).toHaveCount(0);
+  await expect(page.locator('#wind-speed')).toHaveCount(0);
+  const fetchBtn = page.locator('#wind-fetch');
+  await expect(fetchBtn).toBeHidden();
   const toggle = page.locator('#show-wind-cb');
   await expect(toggle).not.toBeChecked();
   await toggle.check();
-  await expect(dir).toBeVisible();
-  await expect(speed).toBeVisible();
-  // Calm by default — readout hidden.
-  await expect(page.locator('#wind-readout')).not.toHaveClass(/show/);
-  await dir.fill('300');
-  await speed.fill('18');
-  await page.waitForFunction(() =>
-    state.wind && state.wind.dir === 300 && state.wind.speed === 18);
+  await expect(fetchBtn).toBeVisible();
+  // The corner readout still reflects a route-wide wind when one is present.
+  await page.evaluate(() => { state.wind = { dir: 300, speed: 18 }; refreshWindInputs(); });
   const readout = page.locator('#wind-readout');
   await expect(readout).toHaveClass(/show/);
   await expect(readout).toContainText('300');
   await expect(readout).toContainText('18');
-  // Back to calm hides it again.
-  await speed.fill('0');
-  await expect(readout).not.toHaveClass(/show/);
-  // Turning the toggle off hides the inputs and the readout again.
-  await speed.fill('18');
-  await expect(readout).toHaveClass(/show/);
   await toggle.uncheck();
-  await expect(dir).toBeHidden();
+  await expect(fetchBtn).toBeHidden();
   await expect(readout).not.toHaveClass(/show/);
 });
 
@@ -137,61 +127,34 @@ test('leg inspector shows the wind-triangle readout and live-updates', async ({ 
   await expect(fxVal).toContainText('343');
   await expect(fxVal).toContainText('GS 98');
   await expect(fxVal).toContainText('-12');
-  // Override the leg to calm — readout row hides.
-  const windInputs = page.locator('#insp-body .row input[type="number"]');
-  // Input order: speed, in-alt, out-alt, wind dir, wind speed.
-  await windInputs.nth(4).fill('0');
+  // A calm per-leg wind (from the fetch) hides the readout row.
+  await page.evaluate(() => { state.legs[0].wind = { speed: 0 }; showInspector(); });
   await expect(fxVal).toBeHidden();
-  expect(await page.evaluate(() => state.legs[0].wind)).toEqual({ speed: 0 });
 });
 
-test('leg wind ↻ clears the override back to the route wind', async ({ page }) => {
+test('leg inspector shows wind dir/speed read-only (no manual inputs)', async ({ page }) => {
   await boot(page);
   await seedLeg(page);
   await page.evaluate(() => {
     window.showWind = true;
-    state.wind = { dir: 270, speed: 20 };
-    state.legs[0].wind = { dir: 90, speed: 35 };
+    state.legs[0].wind = { dir: 90, speed: 35 };   // as set by the realtime fetch
     showInspector();
   });
-  const dirInput = page.locator('#insp-body .row input[type="number"]').nth(3);
-  await expect(dirInput).toHaveValue('90');
-  await expect(dirInput).not.toHaveClass(/is-default/);
-  // seedLeg has no charted altitude, so the only row-reset buttons are the two
-  // wind rows: first = wind direction, second = wind speed.
-  const dirReset = page.locator('#insp-body button.row-reset').first();
-  await dirReset.click();
-  await expect(dirInput).toHaveValue('');                 // blank → inherits route wind
-  await expect(dirInput).toHaveClass(/is-default/);
-  await expect(dirInput).toHaveAttribute('placeholder', '270');
-  expect(await page.evaluate(() => state.legs[0].wind)).toEqual({ speed: 35 });
+  // No editable wind inputs — only the leg speed / altitude number inputs remain.
+  await expect(page.locator('#insp-body .row input[type="number"]')).toHaveCount(3);
+  const rowText = await page.locator('#insp-body .row').allTextContents();
+  const joined = rowText.join('\n');
+  expect(joined).toMatch(/090°/);                  // wind direction, read-only
+  expect(joined).toMatch(/\b35\b/);                // wind speed, read-only
 });
 
-test('leg wind direction wraps on blur (-395 → 325)', async ({ page }) => {
+test('leg inspector shows "—" when there is no wind', async ({ page }) => {
   await boot(page);
   await seedLeg(page);
   await page.evaluate(() => { window.showWind = true; showInspector(); });
-  const dirInput = page.locator('#insp-body .row input[type="number"]').nth(3);
-  await dirInput.fill('-395');
-  await dirInput.blur();
-  await expect(dirInput).toHaveValue('325');
-  expect(await page.evaluate(() => state.legs[0].wind.dir)).toBe(325);
-});
-
-test('leg wind direction spinner cycles endlessly through 0–359', async ({ page }) => {
-  await boot(page);
-  await seedLeg(page);
-  await page.evaluate(() => { window.showWind = true; showInspector(); });
-  const dirInput = page.locator('#insp-body .row input[type="number"]').nth(3);
-  // No min/max so the native spinner isn't clamped at the edges.
-  await expect(dirInput).not.toHaveAttribute('max', /.*/);
-  // Step up past 359 wraps to 0; step down past 0 wraps to 359.
-  await dirInput.fill('359');
-  await dirInput.press('ArrowUp');
-  await expect(dirInput).toHaveValue('0');
-  await dirInput.fill('0');
-  await dirInput.press('ArrowDown');
-  await expect(dirInput).toHaveValue('359');
+  await expect(page.locator('#insp-body .row input[type="number"]')).toHaveCount(3);
+  const joined = (await page.locator('#insp-body .row').allTextContents()).join('\n');
+  expect(joined).toContain('—');                   // calm / no fetched wind
 });
 
 test('route wind + per-leg overrides round-trip through serialize/apply', async ({ page }) => {
@@ -277,9 +240,15 @@ test('Fetch wind sets a per-leg wind for every leg (own midpoint + level)', asyn
   });
   await page.locator('#wind-fetch').click();
   await page.waitForFunction(() => state.legs[0].wind && state.legs[1].wind);
+  // Status shows the count and the Zulu update stamp (HH:MMZ).
   await expect(page.locator('#wind-fetch-status')).toContainText('Per-leg');
+  await expect(page.locator('#wind-fetch-status')).toContainText(/\d{2}:\d{2}Z/);
   expect(await page.evaluate(() => state.legs[0].wind)).toEqual({ dir: 200, speed: 20 });
   expect(await page.evaluate(() => state.legs[1].wind)).toEqual({ dir: 300, speed: 40 });
+  // The leg inspector shows the same Zulu update time, read-only.
+  await page.evaluate(() => { state.selected = { type: 'leg', index: 0 }; showInspector(); });
+  const joined = (await page.locator('#insp-body .row').allTextContents()).join('\n');
+  expect(joined).toMatch(/\d{2}:\d{2}Z/);
 });
 
 test('Fetch wind with no legs alerts and fetches nothing', async ({ page }) => {
