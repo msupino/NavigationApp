@@ -2080,13 +2080,14 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
       layer = L.velocityLayer({
         displayValues: false,
         data: velocityData(g, U, V),
-        // Colour particles by speed (spectral ramp) so they read over the busy
-        // chart base; denser + longer trails so the flow is legible.
-        minVelocity: 0, maxVelocity: 28,
-        colorScale: ['#4575b4', '#74add1', '#abd9e9', '#e0f3f8', '#fee090',
-                     '#fdae61', '#f46d43', '#d73027'],
-        velocityScale: 0.02, particleAge: 90, particleMultiplier: 0.0026,
-        lineWidth: 1.8, frameRate: 20,
+        // Colour particles by speed with a *saturated* ramp (no pale mids that
+        // vanish on the light chart), long fast trails + high density so the
+        // motion reads clearly over the busy base.
+        minVelocity: 0, maxVelocity: 24,
+        colorScale: ['#00429d', '#1d6fd0', '#00b4d8', '#00d49b', '#7cd800',
+                     '#ffd000', '#ff8800', '#ff2a00', '#c4000b'],
+        velocityScale: 0.04, particleAge: 70, particleMultiplier: 0.005,
+        lineWidth: 2.4, frameRate: 24,
       });
       layer.addTo(map);
       if (statusEl) statusEl.style.display = 'none';
