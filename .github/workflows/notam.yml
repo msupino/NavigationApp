@@ -86,24 +86,47 @@ jobs:
             if (g.type === 'GeometryCollection' && Array.isArray(g.geometries)) { for (const s of g.geometries) { const x = faaGeometry(s); if (x) return x; } }
             return null;
           };
+          // FAA NMS-API base (Staging/Pre-Prod by default; set FAA_NMS_BASE to
+          // https://api-nms.aim.faa.gov for production).
+          const FAA_BASE = (process.env.FAA_NMS_BASE || 'https://api-staging.cgifederal-aim.com').replace(/\/+$/, '');
+          // Pull the NOTAM number + geometry out of a GeoJSON Feature, probing
+          // the property keys the API may use.
+          const faaFeatureId = (f) => {
+            const p = (f && f.properties) || {};
+            const core = (p.coreNOTAMData && p.coreNOTAMData.notam) || {};
+            return p.notamNumber || p.number || core.number || p.id || core.id || '';
+          };
           async function faaGeomMap() {
             const map = new Map();
             if (!FAA_ID || !FAA_SECRET) { console.error('No FAA creds — SkyLink geometry only.'); return map; }
-            let page = 1, pages = 1;
-            do {
-              const url = 'https://external-api.faa.gov/notamapi/v1/notams?icaoLocation=LLLL&pageSize=1000&pageNum=' + page;
-              const r = await fetch(url, { headers: { client_id: FAA_ID, client_secret: FAA_SECRET, Accept: 'application/json' } });
-              if (!r.ok) { console.error('FAA HTTP ' + r.status); break; }
+            // 1) OAuth2 client-credentials → bearer token.
+            let token = '';
+            try {
+              const auth = Buffer.from(FAA_ID + ':' + FAA_SECRET).toString('base64');
+              const tr = await fetch(FAA_BASE + '/v1/auth/token', {
+                method: 'POST',
+                headers: { Authorization: 'Basic ' + auth, 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'grant_type=client_credentials',
+              });
+              if (!tr.ok) { console.error('FAA token HTTP ' + tr.status); return map; }
+              token = (await tr.json()).access_token || '';
+            } catch (e) { console.error('FAA token failed:', e.message); return map; }
+            if (!token) { console.error('FAA: no access_token'); return map; }
+            // 2) GeoJSON NOTAMs for the Israel FIR.
+            try {
+              const r = await fetch(FAA_BASE + '/nmsapi/v1/notams?location=LLLL', {
+                headers: { Authorization: 'Bearer ' + token, nmsResponseFormat: 'GEOJSON', Accept: 'application/json' },
+              });
+              if (!r.ok) { console.error('FAA notams HTTP ' + r.status); return map; }
               const j = await r.json();
-              pages = j.totalPages || 1;
-              for (const it of (j.items || [])) {
-                const n = it && it.properties && it.properties.coreNOTAMData && it.properties.coreNOTAMData.notam;
-                const g = faaGeometry(it.geometry);
-                if (n && g) map.set(normId(n.number || n.id), g);
+              const feats = Array.isArray(j.features) ? j.features : (Array.isArray(j.items) ? j.items : []);
+              for (const f of feats) {
+                const g = faaGeometry(f.geometry);
+                const id = faaFeatureId(f);
+                if (g && id) map.set(normId(id), g);
               }
-              page++;
-            } while (page <= pages && page <= 10);
-            console.error('FAA geometry entries:', map.size);
+              console.error('FAA features:', feats.length, '| geometry entries:', map.size);
+            } catch (e) { console.error('FAA notams failed:', e.message); }
             return map;
           }
 
