@@ -304,6 +304,7 @@ function draw() {
   drawAirfields();
   drawVors();
   if (window.showSigmet && Array.isArray(sigmets) && sigmets.length) drawSigmets();
+  if (window.showNotam && Array.isArray(notams) && notams.length) drawNotams();
   drawLegs();
   drawWaypoints();
   drawNotes();
@@ -330,6 +331,33 @@ function draw() {
 // offline / first-run fallback.
 const SIGMET_URL =
   'https://raw.githubusercontent.com/msupino/NavigationApp/sigmet-data/sigmet.json';
+// NOTAMs: a scheduled Action queries the FAA NOTAM API for the Israel FIR
+// (LLLL), normalises geometry, and publishes notam.json to the `notam-data`
+// branch. data/notam.json is the offline / first-run fallback.
+const NOTAM_URL =
+  'https://raw.githubusercontent.com/msupino/NavigationApp/notam-data/notam.json';
+async function loadNotam(force) {
+  if (notams !== null && !force) return notams;
+  const parse = d => {
+    notamMeta = { generatedAt: (d && d.generatedAt) || null };
+    return Array.isArray(d && d.notams) ? d.notams.filter(n => n && n.id) : [];
+  };
+  try {
+    const res = await fetch(NOTAM_URL, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    notams = parse(await res.json());
+    return notams;
+  } catch (e) {
+    try {
+      const res2 = await fetch('data/notam.json');
+      notams = parse(await res2.json());
+    } catch (e2) {
+      notams = [];
+      notamMeta = { generatedAt: null };
+    }
+    return notams;
+  }
+}
 async function loadSigmets(force) {
   if (sigmets !== null && !force) return sigmets;
   const parse = d => {
@@ -387,6 +415,65 @@ function drawSigmets() {
       octx.strokeText(label, cx, cy);
       octx.fillStyle = col;
       octx.fillText(label, cx, cy);
+    }
+  }
+  octx.textAlign = 'left';
+  octx.restore();
+}
+
+// A ring of lat/lng points approximating a circle of radius `nm` around a
+// centre — lets a point+radius NOTAM draw with the same polygon path as an
+// area NOTAM.
+function notamCirclePoints(lat, lng, nm, steps = 36) {
+  const dLat = nm / 60;                          // 1 NM ≈ 1/60°
+  const dLng = nm / 60 / Math.max(0.2, Math.cos(lat * Math.PI / 180));
+  const out = [];
+  for (let i = 0; i < steps; i++) {
+    const a = (i / steps) * 2 * Math.PI;
+    out.push([lat + dLat * Math.cos(a), lng + dLng * Math.sin(a)]);
+  }
+  return out;
+}
+
+// NOTAM areas: filled, dashed-outline polygons (point+radius → ring) with the
+// NOTAM id labelled at the centroid. Free-text / FIR-wide NOTAMs without
+// geometry are not drawn here — they live in the NOTAM list modal.
+function drawNotams() {
+  octx.save();
+  const col = tune('notamColor');
+  for (const n of notams) {
+    const g = n && n.geom;
+    let ll = null;
+    if (g && g.type === 'polygon' && Array.isArray(g.coords)) ll = g.coords;
+    else if (g && g.type === 'circle' && Number.isFinite(g.lat) && Number.isFinite(g.lng) &&
+             Number.isFinite(g.radiusNm)) ll = notamCirclePoints(g.lat, g.lng, g.radiusNm);
+    if (!ll) continue;
+    const pts = ll
+      .filter(c => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+      .map(c => proj({ lat: c[0], lng: c[1] }));
+    if (pts.length < 3) continue;
+    octx.beginPath();
+    octx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) octx.lineTo(pts[i].x, pts[i].y);
+    octx.closePath();
+    octx.fillStyle = colorWithAlpha(col, tune('notamFillAlpha'));
+    octx.fill();
+    octx.setLineDash([6, 4]);
+    octx.lineWidth = tune('notamLineWidthPx');
+    octx.strokeStyle = col;
+    octx.stroke();
+    octx.setLineDash([]);
+    let cx = 0, cy = 0;
+    for (const p of pts) { cx += p.x; cy += p.y; }
+    cx /= pts.length; cy /= pts.length;
+    if (n.id) {
+      octx.font = 'bold 11px sans-serif';
+      octx.textAlign = 'center';
+      octx.lineWidth = 3;
+      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), 0.9);
+      octx.strokeText(n.id, cx, cy);
+      octx.fillStyle = col;
+      octx.fillText(n.id, cx, cy);
     }
   }
   octx.textAlign = 'left';

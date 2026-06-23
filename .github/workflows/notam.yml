@@ -1,0 +1,84 @@
+name: Update NOTAMs (FAA → notam-data)
+
+# Queries the FAA NOTAM API for the Israel FIR (LLLL), normalises each NOTAM to
+# { id, text, end, geom }, and publishes notam.json to the orphan `notam-data`
+# branch for the static app to read. Requires repo secrets:
+#   FAA_NOTAM_CLIENT_ID / FAA_NOTAM_CLIENT_SECRET  (free FAA API registration)
+# Without them the job publishes an empty list (the app simply shows nothing).
+
+on:
+  schedule:
+    - cron: '23 * * * *'        # hourly, offset from the IMS job
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch + normalise NOTAMs
+        env:
+          FAA_ID: ${{ secrets.FAA_NOTAM_CLIENT_ID }}
+          FAA_SECRET: ${{ secrets.FAA_NOTAM_CLIENT_SECRET }}
+        run: |
+          mkdir -p out
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          const id = process.env.FAA_ID, secret = process.env.FAA_SECRET;
+          const out = { generatedAt: new Date().toISOString(), source: 'FAA NOTAM API', fir: 'LLLL', notams: [] };
+
+          // DDMMSS(.s) → decimal degrees not needed: FAA GeoJSON is already decimal [lng,lat].
+          const polyFromGeometry = g => {
+            if (!g) return null;
+            const ring = co => Array.isArray(co) && co.length >= 3
+              ? co.map(p => [p[1], p[0]]).filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1])) : null;
+            if (g.type === 'Polygon' && g.coordinates) return { type: 'polygon', coords: ring(g.coordinates[0]) };
+            if (g.type === 'Point' && Array.isArray(g.coordinates))
+              return { type: 'circle', lat: g.coordinates[1], lng: g.coordinates[0], radiusNm: 2 };
+            if (g.type === 'GeometryCollection' && Array.isArray(g.geometries)) {
+              for (const sub of g.geometries) { const p = polyFromGeometry(sub); if (p) return p; }
+            }
+            return null;
+          };
+
+          async function run() {
+            if (!id || !secret) { console.error('No FAA creds — publishing empty list.'); return; }
+            let page = 1, pages = 1;
+            do {
+              const url = 'https://external-api.faa.gov/notamapi/v1/notams' +
+                '?icaoLocation=LLLL&pageSize=1000&pageNum=' + page;
+              const r = await fetch(url, { headers: { client_id: id, client_secret: secret, Accept: 'application/json' } });
+              if (!r.ok) { console.error('FAA HTTP ' + r.status); break; }
+              const j = await r.json();
+              pages = j.totalPages || 1;
+              for (const it of (j.items || [])) {
+                const core = it && it.properties && it.properties.coreNOTAMData;
+                const n = core && core.notam; if (!n) continue;
+                const tr = (core.notamTranslation || []).find(t => t.formattedText) || {};
+                out.notams.push({
+                  id: n.number || n.id || '',
+                  text: (tr.formattedText || n.text || '').trim(),
+                  end: n.effectiveEnd || '',
+                  geom: polyFromGeometry(it.geometry),
+                });
+              }
+              page++;
+            } while (page <= pages && page <= 10);
+            out.notams = out.notams.filter(n => n.id);
+            console.error('NOTAMs:', out.notams.length, '| with geom:', out.notams.filter(n => n.geom).length);
+          }
+          await run().catch(e => console.error('fetch failed:', e.message));
+          writeFileSync('out/notam.json', JSON.stringify(out, null, 1));
+          NODE
+
+      - name: Publish notam-data branch
+        run: |
+          ( cd out
+            git init -q
+            git checkout -q -b notam-data
+            git add .
+            git -c user.email='actions@github.com' -c user.name='notam-bot' \
+                commit -q -m "notam: update $(date -u +%FT%TZ)"
+            git push -q -f \
+                "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
+                notam-data )

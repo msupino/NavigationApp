@@ -2243,6 +2243,82 @@ if (sigmetCb) {
     loadSigmets().then(() => { refreshSigmetReadout(); draw(); });
   }
 }
+
+// --- NOTAM overlay + list (FAA NOTAM API, Israel FIR LLLL) ----------
+const NOTAM_KEY = 'navaid.showNotam';
+try { const s = localStorage.getItem(NOTAM_KEY); if (s !== null) window.showNotam = s === '1'; } catch (e) { /* */ }
+const notamCb = document.getElementById('notam-cb');
+const notamListBtn = document.getElementById('notam-list-btn');
+function refreshNotamListBtn() {
+  if (notamListBtn) notamListBtn.hidden = !(Array.isArray(notams) && notams.length);
+}
+async function ensureNotams() {
+  if (typeof loadNotam === 'function' && notams === null) await loadNotam();
+  refreshNotamListBtn();
+}
+function showNotamModal() {
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  const box = document.createElement('div');
+  box.className = 'modal wide notam-modal';
+  const close = document.createElement('button');
+  close.className = 'modal-close-x'; close.type = 'button'; close.textContent = '×';
+  close.setAttribute('aria-label', 'Close');
+  box.appendChild(close);
+  const h = document.createElement('h3');
+  h.textContent = S.notamModalTitle || 'Active NOTAMs';
+  box.appendChild(h);
+  if (notamMeta && notamMeta.generatedAt) {
+    const u = document.createElement('div');
+    u.className = 'notam-updated'; u.dir = 'ltr';
+    const t = new Date(notamMeta.generatedAt);
+    if (!isNaN(t)) u.textContent = (S.notamUpdated ? S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z') : '');
+    box.appendChild(u);
+  }
+  const list = document.createElement('div');
+  list.className = 'notam-list';
+  if (!Array.isArray(notams) || !notams.length) {
+    const e = document.createElement('div');
+    e.className = 'notam-empty';
+    e.textContent = S.notamNone || 'No active NOTAMs.';
+    list.appendChild(e);
+  } else {
+    for (const n of notams) {
+      const it = document.createElement('div');
+      it.className = 'notam-item';
+      const id = document.createElement('div');
+      id.className = 'notam-id'; id.dir = 'ltr';
+      id.textContent = n.id + (n.end ? '  ·  ' + n.end : '');
+      const tx = document.createElement('pre');
+      tx.className = 'notam-text'; tx.dir = 'ltr';
+      tx.textContent = n.text || '';
+      it.appendChild(id); it.appendChild(tx);
+      list.appendChild(it);
+    }
+  }
+  box.appendChild(list);
+  back.appendChild(box);
+  document.body.appendChild(back);
+  const dismiss = () => { back.remove(); document.removeEventListener('keydown', onKey); };
+  function onKey(ev) { if (ev.key === 'Escape') dismiss(); }
+  close.onclick = dismiss;
+  back.addEventListener('click', e => { if (e.target === back) dismiss(); });
+  document.addEventListener('keydown', onKey);
+}
+if (notamCb) {
+  notamCb.checked = !!window.showNotam;
+  notamCb.onchange = async e => {
+    window.showNotam = e.target.checked;
+    try { localStorage.setItem(NOTAM_KEY, window.showNotam ? '1' : '0'); } catch (err) { /* */ }
+    if (window.showNotam) await ensureNotams();
+    draw();
+  };
+  // Load on boot so the list button can reveal (and the overlay restore) even
+  // if the toggle is off — the JSON is small.
+  ensureNotams().then(() => { if (window.showNotam) draw(); });
+}
+if (notamListBtn) notamListBtn.onclick = () => { ensureNotams().then(showNotamModal); };
+
 const AIRFIELDS_KEY = 'navaid.showAirfields';
 try {
   const stored = localStorage.getItem(AIRFIELDS_KEY);
