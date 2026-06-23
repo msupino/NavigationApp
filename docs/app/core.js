@@ -262,7 +262,7 @@ NavAid.tuningDefaults = {
   imsPwxRotationDeg: { value: -0.5, min: -15, max: 15, step: 0.1, label: 'IMS PWX overlay rotation (°)' },
   imsPwxDarkBackdropAlpha: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'IMS PWX dark-mode backdrop (white, 0 = off)' },
 
-  windFieldDefaultAltFt: { value: 1500, min: 1000, max: 18000, step: 500, label: 'Wind field default altitude (ft)' },
+  windFieldDefaultAltFt: { value: 1500, min: 1000, max: 5000, step: 500, label: 'Wind field default altitude (ft)' },
   windFieldDefaultOpacity: { value: 0.7, min: 0.2, max: 1, step: 0.05, label: 'Wind field default opacity' },
   windFieldGridDeg: { value: 0.25, min: 0.1, max: 1, step: 0.05, label: 'Wind field grid spacing (°)' },
   windFieldWest: { value: 34.2, min: 33, max: 37, step: 0.05, label: 'Wind field grid west (°)' },

@@ -96,11 +96,11 @@ test('altitude slider refetches at the matching pressure level', async ({ page }
   await expect.poll(() => url).toMatch(/wind_speed_\d+hPa/);
   const lvlOf = u => (u.match(/wind_speed_(\d+)hPa/) || [])[1];
   const lowAltLevel = lvlOf(url);                  // default 1500 ft
-  // Raise to 10 000 ft → a higher level (lower hPa); the field refetches.
+  // Raise to the 5000 ft cap → a higher level (lower hPa); the field refetches.
   const alt = page.locator('#windfield-alt');
-  await alt.fill('10000');
+  await alt.fill('5000');
   await alt.dispatchEvent('change');
-  await expect(page.locator('#windfield-alt-val')).toHaveText('10,000 ft');
+  await expect(page.locator('#windfield-alt-val')).toHaveText('5,000 ft');
   await expect.poll(() => lvlOf(url)).not.toBe(lowAltLevel);
   expect(Number(lvlOf(url))).toBeLessThan(Number(lowAltLevel));   // higher alt → lower hPa
 });
