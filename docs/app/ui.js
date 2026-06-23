@@ -2016,6 +2016,8 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
   const controls = document.getElementById('windfield-controls');
   const opacity = document.getElementById('windfield-opacity');
   const opacityVal = document.getElementById('windfield-opacity-val');
+  const timeSlider = document.getElementById('windfield-time');
+  const timeVal = document.getElementById('windfield-time-val');
   if (!cb) return;
   const KEY = 'navaid.windField';
   const OPACITY_KEY = 'navaid.windFieldOpacity';
@@ -2024,6 +2026,7 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
   const GRID = { west: 34.2, east: 35.95, north: 33.45, south: 29.45, d: 0.25 };
   let layer = null;
   let busy = false;
+  let store = null;     // { g, times, sp[k][], di[k][], baseIdx } — all 48 fetched hours
 
   function gridPoints() {
     const nx = Math.round((GRID.east - GRID.west) / GRID.d) + 1;
@@ -2049,6 +2052,33 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
     ];
   }
 
+  // Absolute hour index for the current slider offset (0 = now, +24 forward).
+  function absIndex() {
+    if (!store) return 0;
+    const off = timeSlider ? (parseInt(timeSlider.value, 10) || 0) : 0;
+    return Math.min(store.times.length - 1, store.baseIdx + off);
+  }
+  // Build the velocity grid (U/V) for the selected hour from the stored frames.
+  function frameData() {
+    const idx = absIndex(), g = store.g, n = g.lats.length;
+    const U = new Array(n).fill(0), V = new Array(n).fill(0);
+    for (let k = 0; k < n; k++) {
+      const spd = store.sp[k] && store.sp[k][idx], dir = store.di[k] && store.di[k][idx];
+      if (!Number.isFinite(spd) || !Number.isFinite(dir)) continue;
+      const r = dir * Math.PI / 180;                  // met direction = FROM
+      U[k] = -spd * Math.sin(r);
+      V[k] = -spd * Math.cos(r);
+    }
+    return velocityData(g, U, V);
+  }
+  function applyTimeLabel() {
+    if (!timeVal || !store) return;
+    const off = timeSlider ? (parseInt(timeSlider.value, 10) || 0) : 0;
+    const t = store.times[absIndex()];                // 'YYYY-MM-DDThh:00' UTC
+    const hh = t ? t.slice(11, 16) + 'Z' : '';
+    timeVal.textContent = (off === 0 ? hh : hh + ' +' + off + 'h');
+  }
+
   async function addLayer() {
     if (typeof L === 'undefined' || typeof L.velocityLayer !== 'function') {
       if (statusEl) statusEl.textContent = S.windFieldErr || 'Wind field unavailable';
@@ -2058,35 +2088,35 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
     if (statusEl) { statusEl.style.display = ''; statusEl.textContent = S.windFieldLoading || 'Loading wind field…'; }
     try {
       const g = gridPoints();
+      // forecast_days=2 → 48 hourly samples so the slider can scrub a full 24h
+      // forward from the current hour.
       const url = 'https://api.open-meteo.com/v1/forecast' +
         '?latitude=' + g.lats.map(v => v.toFixed(2)).join(',') +
         '&longitude=' + g.lngs.map(v => v.toFixed(2)).join(',') +
         '&hourly=wind_speed_' + LEVEL + 'hPa,wind_direction_' + LEVEL + 'hPa' +
-        '&wind_speed_unit=ms&timezone=UTC&forecast_days=1';
+        '&wind_speed_unit=ms&timezone=UTC&forecast_days=2';
       const res = await fetch(url);
       if (!res.ok) throw new Error(String(res.status));
       const j = await res.json();
       const locs = Array.isArray(j) ? j : [j];
       const n = g.lats.length;
-      const U = new Array(n).fill(0), V = new Array(n).fill(0);
+      const sp = new Array(n), di = new Array(n);
+      let times = [];
       for (let k = 0; k < n; k++) {
         const h = locs[k] && locs[k].hourly;
-        const t = h && h.time, sp = h && h['wind_speed_' + LEVEL + 'hPa'], di = h && h['wind_direction_' + LEVEL + 'hPa'];
-        if (!Array.isArray(t) || !Array.isArray(sp) || !Array.isArray(di)) continue;
-        const bi = nearestHourIndex(t);
-        const spd = sp[bi], dir = di[bi];
-        if (!Number.isFinite(spd) || !Number.isFinite(dir)) continue;
-        const r = dir * Math.PI / 180;                // met direction = FROM
-        U[k] = -spd * Math.sin(r);
-        V[k] = -spd * Math.cos(r);
+        if (h && Array.isArray(h.time) && h.time.length > times.length) times = h.time;
+        sp[k] = (h && h['wind_speed_' + LEVEL + 'hPa']) || [];
+        di[k] = (h && h['wind_direction_' + LEVEL + 'hPa']) || [];
       }
+      if (!times.length) throw new Error('no data');
+      store = { g, times, sp, di, baseIdx: nearestHourIndex(times) };
+      if (timeSlider) { timeSlider.value = '0'; }
       if (layer) { map.removeLayer(layer); layer = null; }
       layer = L.velocityLayer({
         displayValues: false,
-        data: velocityData(g, U, V),
+        data: frameData(),
         // Colour particles by speed with a *saturated* ramp (no pale mids that
-        // vanish on the light chart), long fast trails + high density so the
-        // motion reads clearly over the busy base.
+        // vanish on the light chart) so the motion reads over the busy base.
         minVelocity: 0, maxVelocity: 24,
         colorScale: ['#00429d', '#1d6fd0', '#00b4d8', '#00d49b', '#7cd800',
                      '#ffd000', '#ff8800', '#ff2a00', '#c4000b'],
@@ -2095,6 +2125,7 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
       });
       layer.addTo(map);
       applyOpacity();
+      applyTimeLabel();
       if (statusEl) statusEl.style.display = 'none';
     } catch (e) {
       if (statusEl) { statusEl.style.display = ''; statusEl.textContent = S.windFieldErr || 'Wind field fetch failed'; }
@@ -2124,6 +2155,13 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
     opacity.oninput = () => {
       try { localStorage.setItem(OPACITY_KEY, opacity.value); } catch (e) { /* */ }
       applyOpacity();
+    };
+  }
+
+  if (timeSlider) {
+    timeSlider.oninput = () => {
+      applyTimeLabel();
+      if (layer && store && typeof layer.setData === 'function') layer.setData(frameData());
     };
   }
 

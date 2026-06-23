@@ -6,11 +6,16 @@ const { test, expect } = require('./_setup');
 
 const OM_RE = /api\.open-meteo\.com/;
 
-// One hourly sample at the current UTC hour, uniform 10 m/s from 270°.
+// 48 hourly samples (forecast_days=2) starting today 00:00Z — uniform 10 m/s
+// from 270°, so the time slider has a full 24h-forward range to scrub.
 function gridBody() {
-  const now = new Date();
-  const t = now.toISOString().slice(0, 13) + ':00';
-  const loc = { hourly: { time: [t], 'wind_speed_900hPa': [10], 'wind_direction_900hPa': [270] } };
+  const day0 = new Date().toISOString().slice(0, 10);
+  const day1 = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
+  const time = [];
+  for (let h = 0; h < 24; h++) time.push(day0 + 'T' + String(h).padStart(2, '0') + ':00');
+  for (let h = 0; h < 24; h++) time.push(day1 + 'T' + String(h).padStart(2, '0') + ':00');
+  const n = time.length;
+  const loc = { hourly: { time, 'wind_speed_900hPa': new Array(n).fill(10), 'wind_direction_900hPa': new Array(n).fill(270) } };
   return JSON.stringify(new Array(600).fill(loc));   // ≥ grid point count
 }
 
@@ -60,6 +65,20 @@ test('opacity slider shows with the field and drives the canvas opacity', async 
   const canvasOpacity = await page.locator('.leaflet-overlay-pane canvas').evaluate(c => c.style.opacity);
   expect(parseFloat(canvasOpacity)).toBeCloseTo(0.4, 2);
   await expect(page.locator('#windfield-opacity-val')).toHaveText('40%');
+});
+
+test('time slider scrubs the forecast hour (0..24 forward) and labels it in Zulu', async ({ page }) => {
+  await boot(page);
+  await page.locator('#windfield-cb').check();
+  await expect(page.locator('.leaflet-overlay-pane canvas')).toHaveCount(1, { timeout: 10000 });
+  const slider = page.locator('#windfield-time');
+  await expect(slider).toHaveAttribute('max', '24');     // 24h forward
+  await expect(slider).toHaveValue('0');                 // starts at "now"
+  // Move +6h → label shows a Zulu time with a +6h offset, layer stays.
+  await slider.fill('6');
+  await slider.dispatchEvent('input');
+  await expect(page.locator('#windfield-time-val')).toHaveText(/\d{2}:\d{2}Z \+6h/);
+  await expect(page.locator('.leaflet-overlay-pane canvas')).toHaveCount(1);
 });
 
 test('wind-field toggle persists across reload', async ({ page }) => {

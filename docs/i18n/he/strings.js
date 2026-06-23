@@ -254,6 +254,7 @@ window.S = {
   tbWindField: '🌬 שדה רוח (חי)',
   tbWindFieldTitle: 'שדה רוחות עיליות מונפש (~3000 רגל) ממקור Open-Meteo חי',
   tbWindFieldOpacity: 'בהירות שדה',
+  tbWindFieldTime: 'תחזית +ש',
   windFieldLoading: 'טוען שדה רוח…',
   windFieldErr: 'שדה הרוח אינו זמין',
   windUpdatedLabel: 'עדכון רוח (Z)',

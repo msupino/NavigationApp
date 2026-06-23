@@ -692,6 +692,7 @@ window.S = Object.assign({
   tbWindField: '🌬 Wind field (live)',
   tbWindFieldTitle: 'Animated winds-aloft field (~3000 ft) from a live Open-Meteo grid',
   tbWindFieldOpacity: 'Field opacity',
+  tbWindFieldTime: 'Forecast +h',
   windFieldLoading: 'Loading wind field…',
   windFieldErr: 'Wind field unavailable',
   windUpdatedLabel: 'Wind updated (Z)',
