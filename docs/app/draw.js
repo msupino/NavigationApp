@@ -476,8 +476,43 @@ function drawNotams() {
       octx.fillText(n.id, cx, cy);
     }
   }
+  drawNotamAirportMarkers();
   octx.textAlign = 'left';
   octx.restore();
+}
+
+// Most NOTAMs carry no coordinates (airport-procedural / FIR-wide) — the source
+// gives none. For ones tied to a known airport, drop a count badge at the field
+// so they're visible on the map; the full text is in the NOTAM list.
+function drawNotamAirportMarkers() {
+  if (!Array.isArray(airfields) || !airfields.length) return;
+  const byIcao = {};
+  for (const n of notams) {
+    if (n && n.geom) continue;                 // already drawn as an area
+    const c = n && n.icao;
+    if (!c) continue;
+    (byIcao[c] = byIcao[c] || []).push(n);
+  }
+  const col = tune('notamColor');
+  for (const code in byIcao) {
+    const af = airfields.find(a => a.name === code);
+    if (!af || !Number.isFinite(af.lat) || !Number.isFinite(af.lng)) continue;   // FIR (LLLL) etc. → list only
+    const p = proj({ lat: af.lat, lng: af.lng });
+    octx.beginPath();
+    octx.arc(p.x, p.y + 14, 9, 0, 2 * Math.PI);    // offset below the field marker
+    octx.fillStyle = colorWithAlpha(col, 0.92);
+    octx.fill();
+    octx.lineWidth = 1.5;
+    octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), 0.9);
+    octx.stroke();
+    octx.fillStyle = '#fff';
+    octx.font = 'bold 11px sans-serif';
+    octx.textAlign = 'center';
+    octx.textBaseline = 'middle';
+    octx.fillText(String(byIcao[code].length), p.x, p.y + 14);
+    octx.textBaseline = 'alphabetic';
+  }
+  octx.textAlign = 'left';
 }
 
 // --- nav-waypoint reference overlay ---------------------------------
