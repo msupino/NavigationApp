@@ -2004,6 +2004,224 @@ async function fetchRouteWind() {
   }
 }
 if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
+
+// --- Animated wind-field overlay (live Open-Meteo grid) -------------
+// Windy-style animated wind particles, free: fetch a coarse winds-aloft grid
+// over Israel from Open-Meteo (same live source as the per-leg fetch) and feed
+// it to the leaflet-velocity layer. Prototype: a single fixed level (~3000 ft /
+// 900 hPa); level/opacity controls can follow.
+(function windFieldOverlay() {
+  const cb = document.getElementById('windfield-cb');
+  const statusEl = document.getElementById('windfield-status');
+  const controls = document.getElementById('windfield-controls');
+  const opacity = document.getElementById('windfield-opacity');
+  const opacityVal = document.getElementById('windfield-opacity-val');
+  const opacityReset = document.getElementById('windfield-opacity-reset');
+  const timeSlider = document.getElementById('windfield-time');
+  const timeVal = document.getElementById('windfield-time-val');
+  const altSlider = document.getElementById('windfield-alt');
+  const altVal = document.getElementById('windfield-alt-val');
+  if (!cb) return;
+  const KEY = 'navaid.windField';
+  const OPACITY_KEY = 'navaid.windFieldOpacity';
+  const ALT_KEY = 'navaid.windFieldAlt';
+  const tn = (k, d) => (typeof tune === 'function' ? tune(k) : d);
+  function defaultAltFt() { return tn('windFieldDefaultAltFt', 1500); }
+  // Pressure level (hPa) for the chosen altitude — drives the fetch + parse.
+  function altFt() { return altSlider ? (parseInt(altSlider.value, 10) || defaultAltFt()) : defaultAltFt(); }
+  function level() {
+    return (typeof nearestPressureLevelHpa === 'function') ? nearestPressureLevelHpa(altFt()) : 900;
+  }
+  // Grid over Israel (+margin), tunable. leaflet-velocity scans la1(N)→S, lo1(W)→E.
+  function gridBounds() {
+    return { west: tn('windFieldWest', 34.2), east: tn('windFieldEast', 35.95),
+             north: tn('windFieldNorth', 33.45), south: tn('windFieldSouth', 29.45),
+             d: tn('windFieldGridDeg', 0.25) };
+  }
+  let layer = null;
+  let busy = false;
+  let store = null;     // { g, times, sp[k][], di[k][], baseIdx } — all 48 fetched hours
+
+  function gridPoints() {
+    const b = gridBounds();
+    const nx = Math.round((b.east - b.west) / b.d) + 1;
+    const ny = Math.round((b.north - b.south) / b.d) + 1;
+    const lats = [], lngs = [];
+    for (let j = 0; j < ny; j++) {
+      const lat = b.north - j * b.d;
+      for (let i = 0; i < nx; i++) { lats.push(lat); lngs.push(b.west + i * b.d); }
+    }
+    return { nx, ny, lats, lngs };
+  }
+
+  function velocityData(g, U, V) {
+    const b = gridBounds();
+    const base = {
+      parameterUnit: 'm.s-1', parameterCategory: 2,
+      lo1: b.west, la1: b.north, lo2: b.east, la2: b.south,
+      nx: g.nx, ny: g.ny, dx: b.d, dy: b.d,
+      refTime: new Date().toISOString(), forecastTime: 0,
+    };
+    return [
+      { header: Object.assign({ parameterNumber: 2, parameterNumberName: 'Eastward wind' }, base), data: U },
+      { header: Object.assign({ parameterNumber: 3, parameterNumberName: 'Northward wind' }, base), data: V },
+    ];
+  }
+
+  // Absolute hour index for the current slider offset (0 = now, +24 forward).
+  function absIndex() {
+    if (!store) return 0;
+    const off = timeSlider ? (parseInt(timeSlider.value, 10) || 0) : 0;
+    return Math.min(store.times.length - 1, store.baseIdx + off);
+  }
+  // Build the velocity grid (U/V) for the selected hour from the stored frames.
+  function frameData() {
+    const idx = absIndex(), g = store.g, n = g.lats.length;
+    const U = new Array(n).fill(0), V = new Array(n).fill(0);
+    for (let k = 0; k < n; k++) {
+      const spd = store.sp[k] && store.sp[k][idx], dir = store.di[k] && store.di[k][idx];
+      if (!Number.isFinite(spd) || !Number.isFinite(dir)) continue;
+      const r = dir * Math.PI / 180;                  // met direction = FROM
+      U[k] = -spd * Math.sin(r);
+      V[k] = -spd * Math.cos(r);
+    }
+    return velocityData(g, U, V);
+  }
+  function applyTimeLabel() {
+    if (!timeVal || !store) return;
+    const off = timeSlider ? (parseInt(timeSlider.value, 10) || 0) : 0;
+    const t = store.times[absIndex()];                // 'YYYY-MM-DDThh:00' UTC
+    const hh = t ? t.slice(11, 16) + 'Z' : '';
+    timeVal.textContent = (off === 0 ? hh : hh + ' +' + off + 'h');
+  }
+
+  async function addLayer() {
+    if (typeof L === 'undefined' || typeof L.velocityLayer !== 'function') {
+      if (statusEl) statusEl.textContent = S.windFieldErr || 'Wind field unavailable';
+      return;
+    }
+    busy = true;
+    if (statusEl) { statusEl.style.display = ''; statusEl.textContent = S.windFieldLoading || 'Loading wind field…'; }
+    try {
+      const g = gridPoints();
+      const lv = level();
+      // forecast_days=2 → 48 hourly samples so the slider can scrub a full 24h
+      // forward from the current hour.
+      const url = 'https://api.open-meteo.com/v1/forecast' +
+        '?latitude=' + g.lats.map(v => v.toFixed(2)).join(',') +
+        '&longitude=' + g.lngs.map(v => v.toFixed(2)).join(',') +
+        '&hourly=wind_speed_' + lv + 'hPa,wind_direction_' + lv + 'hPa' +
+        '&wind_speed_unit=ms&timezone=UTC&forecast_days=2';
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(String(res.status));
+      const j = await res.json();
+      const locs = Array.isArray(j) ? j : [j];
+      const n = g.lats.length;
+      const sp = new Array(n), di = new Array(n);
+      let times = [];
+      for (let k = 0; k < n; k++) {
+        const h = locs[k] && locs[k].hourly;
+        if (h && Array.isArray(h.time) && h.time.length > times.length) times = h.time;
+        sp[k] = (h && h['wind_speed_' + lv + 'hPa']) || [];
+        di[k] = (h && h['wind_direction_' + lv + 'hPa']) || [];
+      }
+      if (!times.length) throw new Error('no data');
+      store = { g, times, sp, di, baseIdx: nearestHourIndex(times) };
+      if (timeSlider) { timeSlider.value = '0'; }
+      if (layer) { map.removeLayer(layer); layer = null; }
+      layer = L.velocityLayer({
+        displayValues: false,
+        data: frameData(),
+        // Colour particles by speed with a *saturated* ramp (no pale mids that
+        // vanish on the light chart) so the motion reads over the busy base.
+        minVelocity: 0, maxVelocity: tn('windFieldMaxVelocity', 24),
+        colorScale: ['#00429d', '#1d6fd0', '#00b4d8', '#00d49b', '#7cd800',
+                     '#ffd000', '#ff8800', '#ff2a00', '#c4000b'],
+        velocityScale: tn('windFieldVelocityScale', 0.028),
+        particleAge: tn('windFieldParticleAge', 80),
+        particleMultiplier: tn('windFieldParticleMultiplier', 0.0032),
+        lineWidth: tn('windFieldLineWidth', 1.8),
+        frameRate: tn('windFieldFrameRate', 22),
+      });
+      layer.addTo(map);
+      applyOpacity();
+      applyTimeLabel();
+      if (statusEl) statusEl.style.display = 'none';
+    } catch (e) {
+      if (statusEl) { statusEl.style.display = ''; statusEl.textContent = S.windFieldErr || 'Wind field fetch failed'; }
+      cb.checked = false;
+    } finally { busy = false; }
+  }
+
+  function removeLayer() {
+    if (layer) { map.removeLayer(layer); layer = null; }
+    if (statusEl) statusEl.style.display = 'none';
+  }
+
+  // leaflet-velocity draws into a canvas in the overlay pane; set its element
+  // opacity so the field can be dialled down against the chart base.
+  function velocityCanvas() {
+    return (layer && layer._canvasLayer && layer._canvasLayer._canvas) || null;
+  }
+  function applyOpacity() {
+    const c = velocityCanvas();
+    if (c && opacity) c.style.opacity = String(opacity.value);
+    if (opacity && opacityVal) opacityVal.textContent = Math.round(parseFloat(opacity.value) * 100) + '%';
+  }
+  function showControls(on) { if (controls) controls.hidden = !on; }
+
+  if (opacity) {
+    let saved = null;
+    try { saved = localStorage.getItem(OPACITY_KEY); } catch (e) { /* */ }
+    opacity.value = (saved !== null) ? saved : String(tn('windFieldDefaultOpacity', 0.7));
+    opacity.oninput = () => {
+      try { localStorage.setItem(OPACITY_KEY, opacity.value); } catch (e) { /* */ }
+      applyOpacity();
+    };
+  }
+  if (opacityReset) {
+    opacityReset.onclick = () => {
+      if (!opacity) return;
+      opacity.value = String(tn('windFieldDefaultOpacity', 0.7));   // tunable default
+      try { localStorage.setItem(OPACITY_KEY, opacity.value); } catch (e) { /* */ }
+      applyOpacity();
+    };
+  }
+
+  if (timeSlider) {
+    timeSlider.oninput = () => {
+      applyTimeLabel();
+      if (layer && store && typeof layer.setData === 'function') layer.setData(frameData());
+    };
+  }
+
+  function applyAltLabel() { if (altVal) altVal.textContent = altFt().toLocaleString() + ' ft'; }
+  if (altSlider) {
+    let saved = null;
+    try { saved = localStorage.getItem(ALT_KEY); } catch (e) { /* */ }
+    altSlider.value = (saved !== null) ? saved : String(defaultAltFt());   // tunable default
+    applyAltLabel();
+    altSlider.oninput = applyAltLabel;
+    // Changing altitude means a different pressure level → refetch (on release,
+    // not every tick) so the field shows winds at the selected altitude.
+    altSlider.onchange = () => {
+      try { localStorage.setItem(ALT_KEY, altSlider.value); } catch (e) { /* */ }
+      applyAltLabel();
+      if (cb.checked && !busy) addLayer();
+    };
+  }
+
+  try { if (localStorage.getItem(KEY) === '1') cb.checked = true; } catch (e) { /* */ }
+  showControls(cb.checked);
+  cb.onchange = () => {
+    try { localStorage.setItem(KEY, cb.checked ? '1' : '0'); } catch (e) { /* */ }
+    showControls(cb.checked);
+    if (cb.checked) { if (!busy) addLayer(); } else removeLayer();
+  };
+  if (cb.checked && !busy) addLayer();
+  NavAid.refreshWindField = () => { if (cb.checked && !busy) addLayer(); };
+})();
+
 // --- SIGMET hazard overlay toggle -----------------------------------
 const SIGMET_KEY = 'navaid.showSigmet';
 try {
@@ -2727,6 +2945,7 @@ function redrawAfterTune() {
   // The IMS overlay is a Leaflet layer (not part of draw()) — refresh it so
   // tuning its opacity / lat-lng offset updates it live.
   if (window.NavAid && typeof NavAid.refreshImsPwx === 'function') NavAid.refreshImsPwx();
+  if (window.NavAid && typeof NavAid.refreshWindField === 'function') NavAid.refreshWindField();
 }
 
 function createTuningPanel() {
