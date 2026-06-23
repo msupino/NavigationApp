@@ -2020,10 +2020,17 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
   const DEFAULT_OPACITY = opacity ? opacity.value : '0.7';   // HTML default, pre-override
   const timeSlider = document.getElementById('windfield-time');
   const timeVal = document.getElementById('windfield-time-val');
+  const altSlider = document.getElementById('windfield-alt');
+  const altVal = document.getElementById('windfield-alt-val');
   if (!cb) return;
   const KEY = 'navaid.windField';
   const OPACITY_KEY = 'navaid.windFieldOpacity';
-  const LEVEL = 900;                                  // hPa (~3000 ft)
+  const ALT_KEY = 'navaid.windFieldAlt';
+  // Pressure level (hPa) for the chosen altitude — drives the fetch + parse.
+  function altFt() { return altSlider ? (parseInt(altSlider.value, 10) || 3000) : 3000; }
+  function level() {
+    return (typeof nearestPressureLevelHpa === 'function') ? nearestPressureLevelHpa(altFt()) : 900;
+  }
   // Grid over Israel (+margin). leaflet-velocity scans la1(N)→S, lo1(W)→E.
   const GRID = { west: 34.2, east: 35.95, north: 33.45, south: 29.45, d: 0.25 };
   let layer = null;
@@ -2090,12 +2097,13 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
     if (statusEl) { statusEl.style.display = ''; statusEl.textContent = S.windFieldLoading || 'Loading wind field…'; }
     try {
       const g = gridPoints();
+      const lv = level();
       // forecast_days=2 → 48 hourly samples so the slider can scrub a full 24h
       // forward from the current hour.
       const url = 'https://api.open-meteo.com/v1/forecast' +
         '?latitude=' + g.lats.map(v => v.toFixed(2)).join(',') +
         '&longitude=' + g.lngs.map(v => v.toFixed(2)).join(',') +
-        '&hourly=wind_speed_' + LEVEL + 'hPa,wind_direction_' + LEVEL + 'hPa' +
+        '&hourly=wind_speed_' + lv + 'hPa,wind_direction_' + lv + 'hPa' +
         '&wind_speed_unit=ms&timezone=UTC&forecast_days=2';
       const res = await fetch(url);
       if (!res.ok) throw new Error(String(res.status));
@@ -2107,8 +2115,8 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
       for (let k = 0; k < n; k++) {
         const h = locs[k] && locs[k].hourly;
         if (h && Array.isArray(h.time) && h.time.length > times.length) times = h.time;
-        sp[k] = (h && h['wind_speed_' + LEVEL + 'hPa']) || [];
-        di[k] = (h && h['wind_direction_' + LEVEL + 'hPa']) || [];
+        sp[k] = (h && h['wind_speed_' + lv + 'hPa']) || [];
+        di[k] = (h && h['wind_direction_' + lv + 'hPa']) || [];
       }
       if (!times.length) throw new Error('no data');
       store = { g, times, sp, di, baseIdx: nearestHourIndex(times) };
@@ -2172,6 +2180,20 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
     timeSlider.oninput = () => {
       applyTimeLabel();
       if (layer && store && typeof layer.setData === 'function') layer.setData(frameData());
+    };
+  }
+
+  function applyAltLabel() { if (altVal) altVal.textContent = altFt().toLocaleString() + ' ft'; }
+  if (altSlider) {
+    try { const sv = localStorage.getItem(ALT_KEY); if (sv !== null) altSlider.value = sv; } catch (e) { /* */ }
+    applyAltLabel();
+    altSlider.oninput = applyAltLabel;
+    // Changing altitude means a different pressure level → refetch (on release,
+    // not every tick) so the field shows winds at the selected altitude.
+    altSlider.onchange = () => {
+      try { localStorage.setItem(ALT_KEY, altSlider.value); } catch (e) { /* */ }
+      applyAltLabel();
+      if (cb.checked && !busy) addLayer();
     };
   }
 

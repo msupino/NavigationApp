@@ -9,20 +9,24 @@ const { test, expect } = require('./_setup');
 const OM_RE = /^https:\/\/api\.open-meteo\.com\//;
 
 // 48 hourly samples (forecast_days=2) starting today 00:00Z — uniform 10 m/s
-// from 270°, so the time slider has a full 24h-forward range to scrub.
-function gridBody() {
+// from 270°. Echoes whatever pressure level the request asked for so the same
+// mock serves any altitude.
+function gridBody(url) {
   const day0 = new Date().toISOString().slice(0, 10);
   const day1 = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
   const time = [];
   for (let h = 0; h < 24; h++) time.push(day0 + 'T' + String(h).padStart(2, '0') + ':00');
   for (let h = 0; h < 24; h++) time.push(day1 + 'T' + String(h).padStart(2, '0') + ':00');
   const n = time.length;
-  const loc = { hourly: { time, 'wind_speed_900hPa': new Array(n).fill(10), 'wind_direction_900hPa': new Array(n).fill(270) } };
-  return JSON.stringify(new Array(600).fill(loc));   // ≥ grid point count
+  const lv = (String(url || '').match(/wind_speed_(\d+)hPa/) || [])[1] || '900';
+  const hourly = { time };
+  hourly['wind_speed_' + lv + 'hPa'] = new Array(n).fill(10);
+  hourly['wind_direction_' + lv + 'hPa'] = new Array(n).fill(270);
+  return JSON.stringify(new Array(600).fill({ hourly }));   // ≥ grid point count
 }
 
 async function boot(page) {
-  await page.route(OM_RE, r => r.fulfill({ status: 200, contentType: 'application/json', body: gridBody() }));
+  await page.route(OM_RE, r => r.fulfill({ status: 200, contentType: 'application/json', body: gridBody(r.request().url()) }));
   await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof map !== 'undefined' && document.getElementById('windfield-cb'));
@@ -43,7 +47,7 @@ test('toggling the wind field adds a velocity canvas; untoggling removes it', as
 
 test('the grid request covers many points over Israel in m/s', async ({ page }) => {
   let url = '';
-  await page.route(OM_RE, r => { url = r.request().url(); return r.fulfill({ status: 200, contentType: 'application/json', body: gridBody() }); });
+  await page.route(OM_RE, r => { url = r.request().url(); return r.fulfill({ status: 200, contentType: 'application/json', body: gridBody(url) }); });
   await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
@@ -81,6 +85,23 @@ test('time slider scrubs the forecast hour (0..24 forward) and labels it in Zulu
   await slider.dispatchEvent('input');
   await expect(page.locator('#windfield-time-val')).toHaveText(/\d{2}:\d{2}Z \+6h/);
   await expect(page.locator('.leaflet-overlay-pane canvas')).toHaveCount(1);
+});
+
+test('altitude slider refetches at the matching pressure level', async ({ page }) => {
+  let url = '';
+  await page.route(OM_RE, r => { url = r.request().url(); return r.fulfill({ status: 200, contentType: 'application/json', body: gridBody(url) }); });
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
+  await page.locator('#windfield-cb').check();
+  await expect.poll(() => url).toContain('wind_speed_900hPa');   // default 3000 ft → 900 hPa
+  // Raise to 10 000 ft → a higher level (lower hPa); the field refetches.
+  const alt = page.locator('#windfield-alt');
+  await alt.fill('10000');
+  await alt.dispatchEvent('change');
+  await expect(page.locator('#windfield-alt-val')).toHaveText('10,000 ft');
+  await expect.poll(() => url).not.toContain('wind_speed_900hPa');
+  expect(url).toMatch(/wind_speed_\d+hPa/);
 });
 
 test('opacity reset restores the default', async ({ page }) => {
