@@ -27,7 +27,7 @@ jobs:
           const key = process.env.SKYLINK_KEY;
           const HOST = 'skylink-api.p.rapidapi.com';
           // Israel airports (ICAO). Tweak as needed; quota = airports × runs/mo.
-          const ICAOS = ['LLBG','LLHA','LLER','LLOV','LLIB','LLHZ','LLMG','LLES',
+          const ICAOS = ['LLLL','LLBG','LLHA','LLER','LLOV','LLIB','LLHZ','LLMG','LLES',
             'LLBS','LLEY','LLKS','LLRS','LLNV','LLRM','LLMZ','LLEK','LLHS','LLFK',
             'LLBO','LLEV','LLKZ','LLPL','LLRD','LLHB','LLAR'];
           const out = { generatedAt: new Date().toISOString(), source: 'SkyLink (FAA SWIM)', fir: 'LLLL', notams: [] };
