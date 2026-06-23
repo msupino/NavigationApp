@@ -689,6 +689,10 @@ window.S = Object.assign({
     return 'Per-leg wind set (' + n + ' leg' + (n === 1 ? '' : 's') + ')';
   },
   windFetchErr: 'Wind fetch failed — check connection',
+  tbWindField: '🌬 Wind field (live)',
+  tbWindFieldTitle: 'Animated winds-aloft field (~3000 ft) from a live Open-Meteo grid',
+  windFieldLoading: 'Loading wind field…',
+  windFieldErr: 'Wind field unavailable',
   windUpdatedLabel: 'Wind updated (Z)',
   inboundAlt: 'Inbound alt (ft)',
   outboundAlt: 'Outbound alt (ft)',

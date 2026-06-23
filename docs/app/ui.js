@@ -2004,6 +2004,106 @@ async function fetchRouteWind() {
   }
 }
 if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
+
+// --- Animated wind-field overlay (live Open-Meteo grid) -------------
+// Windy-style animated wind particles, free: fetch a coarse winds-aloft grid
+// over Israel from Open-Meteo (same live source as the per-leg fetch) and feed
+// it to the leaflet-velocity layer. Prototype: a single fixed level (~3000 ft /
+// 900 hPa); level/opacity controls can follow.
+(function windFieldOverlay() {
+  const cb = document.getElementById('windfield-cb');
+  const statusEl = document.getElementById('windfield-status');
+  if (!cb) return;
+  const KEY = 'navaid.windField';
+  const LEVEL = 900;                                  // hPa (~3000 ft)
+  // Grid over Israel (+margin). leaflet-velocity scans la1(N)→S, lo1(W)→E.
+  const GRID = { west: 34.2, east: 35.95, north: 33.45, south: 29.45, d: 0.25 };
+  let layer = null;
+  let busy = false;
+
+  function gridPoints() {
+    const nx = Math.round((GRID.east - GRID.west) / GRID.d) + 1;
+    const ny = Math.round((GRID.north - GRID.south) / GRID.d) + 1;
+    const lats = [], lngs = [];
+    for (let j = 0; j < ny; j++) {
+      const lat = GRID.north - j * GRID.d;
+      for (let i = 0; i < nx; i++) { lats.push(lat); lngs.push(GRID.west + i * GRID.d); }
+    }
+    return { nx, ny, lats, lngs };
+  }
+
+  function velocityData(g, U, V) {
+    const base = {
+      parameterUnit: 'm.s-1', parameterCategory: 2,
+      lo1: GRID.west, la1: GRID.north, lo2: GRID.east, la2: GRID.south,
+      nx: g.nx, ny: g.ny, dx: GRID.d, dy: GRID.d,
+      refTime: new Date().toISOString(), forecastTime: 0,
+    };
+    return [
+      { header: Object.assign({ parameterNumber: 2, parameterNumberName: 'Eastward wind' }, base), data: U },
+      { header: Object.assign({ parameterNumber: 3, parameterNumberName: 'Northward wind' }, base), data: V },
+    ];
+  }
+
+  async function addLayer() {
+    if (typeof L === 'undefined' || typeof L.velocityLayer !== 'function') {
+      if (statusEl) statusEl.textContent = S.windFieldErr || 'Wind field unavailable';
+      return;
+    }
+    busy = true;
+    if (statusEl) { statusEl.style.display = ''; statusEl.textContent = S.windFieldLoading || 'Loading wind field…'; }
+    try {
+      const g = gridPoints();
+      const url = 'https://api.open-meteo.com/v1/forecast' +
+        '?latitude=' + g.lats.map(v => v.toFixed(2)).join(',') +
+        '&longitude=' + g.lngs.map(v => v.toFixed(2)).join(',') +
+        '&hourly=wind_speed_' + LEVEL + 'hPa,wind_direction_' + LEVEL + 'hPa' +
+        '&wind_speed_unit=ms&timezone=UTC&forecast_days=1';
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(String(res.status));
+      const j = await res.json();
+      const locs = Array.isArray(j) ? j : [j];
+      const n = g.lats.length;
+      const U = new Array(n).fill(0), V = new Array(n).fill(0);
+      for (let k = 0; k < n; k++) {
+        const h = locs[k] && locs[k].hourly;
+        const t = h && h.time, sp = h && h['wind_speed_' + LEVEL + 'hPa'], di = h && h['wind_direction_' + LEVEL + 'hPa'];
+        if (!Array.isArray(t) || !Array.isArray(sp) || !Array.isArray(di)) continue;
+        const bi = nearestHourIndex(t);
+        const spd = sp[bi], dir = di[bi];
+        if (!Number.isFinite(spd) || !Number.isFinite(dir)) continue;
+        const r = dir * Math.PI / 180;                // met direction = FROM
+        U[k] = -spd * Math.sin(r);
+        V[k] = -spd * Math.cos(r);
+      }
+      if (layer) { map.removeLayer(layer); layer = null; }
+      layer = L.velocityLayer({
+        displayValues: false,
+        data: velocityData(g, U, V),
+        maxVelocity: 30, velocityScale: 0.012, particleAge: 64, lineWidth: 1.2,
+      });
+      layer.addTo(map);
+      if (statusEl) statusEl.style.display = 'none';
+    } catch (e) {
+      if (statusEl) { statusEl.style.display = ''; statusEl.textContent = S.windFieldErr || 'Wind field fetch failed'; }
+      cb.checked = false;
+    } finally { busy = false; }
+  }
+
+  function removeLayer() {
+    if (layer) { map.removeLayer(layer); layer = null; }
+    if (statusEl) statusEl.style.display = 'none';
+  }
+
+  try { if (localStorage.getItem(KEY) === '1') cb.checked = true; } catch (e) { /* */ }
+  cb.onchange = () => {
+    try { localStorage.setItem(KEY, cb.checked ? '1' : '0'); } catch (e) { /* */ }
+    if (cb.checked) { if (!busy) addLayer(); } else removeLayer();
+  };
+  if (cb.checked && !busy) addLayer();
+  NavAid.refreshWindField = () => { if (cb.checked && !busy) addLayer(); };
+})();
+
 // --- SIGMET hazard overlay toggle -----------------------------------
 const SIGMET_KEY = 'navaid.showSigmet';
 try {

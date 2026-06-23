@@ -251,6 +251,10 @@ window.S = {
     return 'רוח לכל מקטע הוגדרה (' + n + ' מקטעים)';
   },
   windFetchErr: 'משיכת הרוח נכשלה — בדוק חיבור',
+  tbWindField: '🌬 שדה רוח (חי)',
+  tbWindFieldTitle: 'שדה רוחות עיליות מונפש (~3000 רגל) ממקור Open-Meteo חי',
+  windFieldLoading: 'טוען שדה רוח…',
+  windFieldErr: 'שדה הרוח אינו זמין',
   windUpdatedLabel: 'עדכון רוח (Z)',
   inboundAlt: 'גובה נכנס (ft)',
   outboundAlt: 'גובה יוצא (ft)',
