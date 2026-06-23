@@ -117,14 +117,17 @@ html, body {
 }
 
 /* IMS PWX wind/temp overlay: the chart's white background is made transparent
-   in the data pipeline, so its dark footer text/strokes disappear against the
-   dark map. A translucent white plate behind the image restores contrast.
-   Off in light mode, where the light map already provides it. */
+   in the data pipeline, so its dark footer (valid time / model run) disappears
+   against the dark map. Plate only the bottom band (the footer) with a white
+   gradient — set in JS so it tracks the tune — leaving the rest of the (larger-
+   than-map) image un-greyed. Off in light mode, where the map already provides
+   contrast. */
 .leaflet-image-layer.ims-pwx-layer {
-  background: var(--navaid-ims-pwx-backdrop, rgba(255, 255, 255, 0.5));
+  background-image: var(--navaid-ims-pwx-backdrop, none);
+  background-repeat: no-repeat;
 }
 body.theme-light .leaflet-image-layer.ims-pwx-layer {
-  background: transparent;
+  background-image: none;
 }
 
 .map-legend {
