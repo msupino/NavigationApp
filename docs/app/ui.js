@@ -182,11 +182,15 @@ function applyTuningCssVars() {
     'px rgba(0, 0, 0, ' + tune('zuluClockShadowAlpha') + ')');
 
   // Dark-mode backdrop behind the IMS PWX overlay: the chart's white background
-  // is made transparent in the pipeline, so its dark footer text/strokes vanish
-  // against the dark map. A translucent white plate restores contrast (off in
-  // light mode — see style.css).
-  root.setProperty('--navaid-ims-pwx-backdrop',
-    cssRgba('#ffffff', tune('imsPwxDarkBackdropAlpha')));
+  // is made transparent in the pipeline, so its dark footer (valid time / model
+  // run) vanishes against the dark map. Plate ONLY the bottom band (the footer)
+  // with white — not the whole oversized image — so the surrounding map isn't
+  // greyed. Off in light mode (see style.css). Tunable alpha + band height.
+  const bdA = tune('imsPwxDarkBackdropAlpha');
+  const bdBand = tune('imsPwxBackdropBandPct');
+  root.setProperty('--navaid-ims-pwx-backdrop', bdA > 0
+    ? `linear-gradient(to top, rgba(255,255,255,${bdA}) 0, rgba(255,255,255,${bdA}) ${bdBand}%, rgba(255,255,255,0) ${bdBand}%)`
+    : 'none');
 }
 window.applyTuningCssVars = applyTuningCssVars;
 applyTuningCssVars();
