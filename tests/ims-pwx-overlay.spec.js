@@ -133,40 +133,33 @@ test('lat/lng tune scale zooms the overlay bounds', async ({ page }) => {
   expect(r.after / r.before).toBeCloseTo(1.1, 2);   // span scaled ~10%
 });
 
-test('dark backdrop is off by default, but can be enabled via tune', async ({ page }) => {
+test('dark mode plates only the footer band (gradient), not the whole image', async ({ page }) => {
   await boot(page);                                   // default (dark) theme
   await page.locator('#ims-pwx-cb').check();
-  const sel = '.leaflet-overlay-pane img.leaflet-image-layer';
-  // Off by default — no brightness change (the overlay is larger than the chart
-  // card, so a backdrop greys the surrounding map unevenly).
-  expect(await page.locator(sel).evaluate(el => getComputedStyle(el).backgroundColor)).toMatch(/,\s*0\)$/);
-  // Opt in via tune → translucent white backdrop returns.
-  const bg = await page.evaluate(() => {
-    setTune('imsPwxDarkBackdropAlpha', 0.5);
-    applyTuningCssVars();
-    return getComputedStyle(document.querySelector('.leaflet-image-layer')).backgroundColor;
-  });
-  expect(bg).toBe('rgba(255, 255, 255, 0.5)');
+  const bgi = await page.locator('.leaflet-overlay-pane img.leaflet-image-layer')
+    .evaluate(el => getComputedStyle(el).backgroundImage);
+  expect(bgi).toContain('linear-gradient');           // a bottom band, not a full fill
+  expect(bgi).toMatch(/rgba\(255,\s*255,\s*255/);     // white footer plate
 });
 
-test('light mode leaves the overlay backdrop transparent', async ({ page }) => {
+test('light mode leaves the overlay backdrop off', async ({ page }) => {
   await page.addInitScript(() => { try { localStorage.setItem('navaid.theme', 'light'); } catch (e) {} });
   await boot(page);
   await page.locator('#ims-pwx-cb').check();
-  const bg = await page.locator('.leaflet-overlay-pane img.leaflet-image-layer')
-    .evaluate(el => getComputedStyle(el).backgroundColor);
-  expect(bg).toBe('rgba(0, 0, 0, 0)');                // transparent — light map suffices
+  const bgi = await page.locator('.leaflet-overlay-pane img.leaflet-image-layer')
+    .evaluate(el => getComputedStyle(el).backgroundImage);
+  expect(bgi).toBe('none');                           // light map suffices
 });
 
 test('imsPwxDarkBackdropAlpha=0 disables the backdrop', async ({ page }) => {
   await boot(page);
   await page.locator('#ims-pwx-cb').check();
-  const bg = await page.evaluate(() => {
+  const bgi = await page.evaluate(() => {
     setTune('imsPwxDarkBackdropAlpha', 0);
     applyTuningCssVars();
-    return getComputedStyle(document.querySelector('.leaflet-image-layer')).backgroundColor;
+    return getComputedStyle(document.querySelector('.leaflet-image-layer')).backgroundImage;
   });
-  expect(bg).toMatch(/,\s*0\)$/);                     // alpha 0 → fully off
+  expect(bgi).toBe('none');                           // off
 });
 
 test('rotation tune rotates the overlay image', async ({ page }) => {
