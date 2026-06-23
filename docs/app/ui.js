@@ -2016,6 +2016,8 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
   const controls = document.getElementById('windfield-controls');
   const opacity = document.getElementById('windfield-opacity');
   const opacityVal = document.getElementById('windfield-opacity-val');
+  const opacityReset = document.getElementById('windfield-opacity-reset');
+  const DEFAULT_OPACITY = opacity ? opacity.value : '0.7';   // HTML default, pre-override
   const timeSlider = document.getElementById('windfield-time');
   const timeVal = document.getElementById('windfield-time-val');
   if (!cb) return;
@@ -2153,6 +2155,14 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
   if (opacity) {
     try { const sv = localStorage.getItem(OPACITY_KEY); if (sv !== null) opacity.value = sv; } catch (e) { /* */ }
     opacity.oninput = () => {
+      try { localStorage.setItem(OPACITY_KEY, opacity.value); } catch (e) { /* */ }
+      applyOpacity();
+    };
+  }
+  if (opacityReset) {
+    opacityReset.onclick = () => {
+      if (!opacity) return;
+      opacity.value = DEFAULT_OPACITY;
       try { localStorage.setItem(OPACITY_KEY, opacity.value); } catch (e) { /* */ }
       applyOpacity();
     };

@@ -83,6 +83,21 @@ test('time slider scrubs the forecast hour (0..24 forward) and labels it in Zulu
   await expect(page.locator('.leaflet-overlay-pane canvas')).toHaveCount(1);
 });
 
+test('opacity reset restores the default', async ({ page }) => {
+  await boot(page);
+  await page.locator('#windfield-cb').check();
+  await expect(page.locator('.leaflet-overlay-pane canvas')).toHaveCount(1, { timeout: 10000 });
+  const op = page.locator('#windfield-opacity');
+  const def = await op.inputValue();                 // HTML default (0.7)
+  await op.fill('0.3'); await op.dispatchEvent('input');
+  await expect(page.locator('#windfield-opacity-val')).toHaveText('30%');
+  await page.locator('#windfield-opacity-reset').click();
+  expect(await op.inputValue()).toBe(def);
+  await expect(page.locator('#windfield-opacity-val')).toHaveText(Math.round(parseFloat(def) * 100) + '%');
+  const o = await page.locator('.leaflet-overlay-pane canvas').evaluate(c => c.style.opacity);
+  expect(parseFloat(o)).toBeCloseTo(parseFloat(def), 2);
+});
+
 test('wind-field toggle persists across reload', async ({ page }) => {
   await boot(page);
   await page.locator('#windfield-cb').check();
