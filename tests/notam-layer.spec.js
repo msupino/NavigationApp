@@ -57,3 +57,18 @@ test('no NOTAMs → list button stays hidden', async ({ page }) => {
   await page.waitForTimeout(400);
   await expect(page.locator('#notam-list-btn')).toBeHidden();
 });
+
+test('expired NOTAMs are filtered out; modal shows the active count', async ({ page }) => {
+  const past = new Date(Date.now() - 864e5).toISOString();      // yesterday
+  const future = new Date(Date.now() + 864e5).toISOString();
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'X1/26', text: 'active', end: future, geom: null, icao: 'LLBG' },
+    { id: 'X2/26', text: 'expired', end: past, geom: null, icao: 'LLBG' },
+    { id: 'X3/26', text: 'perm', end: 'PERM', geom: null, icao: 'LLHA' },
+  ] });
+  await page.locator('#notam-list-btn').click();
+  const modal = page.locator('.modal-back .notam-modal');
+  await expect(modal.locator('.notam-item')).toHaveCount(2);    // expired dropped
+  await expect(modal.locator('h3')).toContainText('2');         // active count in title
+  await expect(modal).not.toContainText('X2/26');
+});
