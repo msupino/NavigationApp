@@ -56,6 +56,8 @@ test('manifest reveals the control and populates levels', async ({ page }) => {
   expect(times[0]).toContain('12:00');
   // Model run time (from the chart filename) shown in the control.
   await expect(page.locator('#ims-pwx-run')).toContainText('21/06 09:12Z');
+  // …and the GitHub Action's publish time (generatedAt), in Zulu.
+  await expect(page.locator('#ims-pwx-run')).toContainText('Updated: 21/06 09:00Z');
 });
 
 test('toggling on adds a georeferenced image overlay at the manifest bounds', async ({ page }) => {

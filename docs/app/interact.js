@@ -1911,10 +1911,6 @@ function showInspector() {
       windFxRow.classList.add('wind-fx-row');
       body.appendChild(windFxRow);
       refreshWindFx();
-      // When the wind came from the realtime fetch, stamp its update time (Zulu).
-      if (Number.isFinite(state.windUpdated) && typeof formatZuluHM === 'function') {
-        body.appendChild(textRow(S.windUpdatedLabel, formatZuluHM(state.windUpdated)));
-      }
     }
     const reset = document.createElement('button');
     reset.className = 'insp-btn';

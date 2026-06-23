@@ -1990,10 +1990,7 @@ async function fetchRouteWind() {
       set++;
     }
     if (!set) throw new Error('no data');
-    state.windUpdated = Date.now();          // Zulu stamp for the readout
-    if (windFetchStatus) {
-      windFetchStatus.textContent = S.windFetchOkLegs(set) + ' · ' + formatZuluHM(state.windUpdated);
-    }
+    if (windFetchStatus) windFetchStatus.textContent = S.windFetchOkLegs(set);
     if (state.selected && state.selected.type === 'leg') showInspector();
     if (typeof persist === 'function') persist();
     draw();
@@ -3435,12 +3432,24 @@ if (typeof loadRemoteConfig === "function") {
         }
       } catch (e) { /* storage unavailable */ }
       updateLayer();
-      // Show the model run time (cropped off the chart's bottom band).
+      // Show the IMS model run time and when the GitHub Action last published
+      // the data (generatedAt) — both in Zulu.
       const runEl = document.getElementById('ims-pwx-run');
-      if (runEl && /^\d{12}$/.test(m.run || '')) {
-        const r = m.run;
-        runEl.textContent = (S.tbImsPwxRun || 'Model run') + ': ' +
-          r.slice(6, 8) + '/' + r.slice(4, 6) + ' ' + r.slice(8, 10) + ':' + r.slice(10, 12) + 'Z';
+      if (runEl) {
+        const parts = [];
+        if (/^\d{12}$/.test(m.run || '')) {
+          const r = m.run;
+          parts.push((S.tbImsPwxRun || 'Model run') + ': ' +
+            r.slice(6, 8) + '/' + r.slice(4, 6) + ' ' + r.slice(8, 10) + ':' + r.slice(10, 12) + 'Z');
+        }
+        const g = m.generatedAt ? new Date(m.generatedAt) : null;
+        if (g && !isNaN(g)) {
+          const p = n => String(n).padStart(2, '0');
+          parts.push((S.tbImsPwxUpdated || 'Updated') + ': ' +
+            p(g.getUTCDate()) + '/' + p(g.getUTCMonth() + 1) + ' ' +
+            p(g.getUTCHours()) + ':' + p(g.getUTCMinutes()) + 'Z');
+        }
+        runEl.textContent = parts.join(' · ');
       }
       box.hidden = false;          // reveal the control now that data exists
     })

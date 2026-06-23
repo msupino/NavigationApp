@@ -474,6 +474,7 @@ window.S = Object.assign({
   tbImsPwxOpacity: 'Sign opacity',
   tbImsPwxOpacityReset: 'Reset opacity',
   tbImsPwxRun: 'Model run',
+  tbImsPwxUpdated: 'Updated',
   tbSigwx: '🌐 SIGWX charts',                       // significant-weather viewer button
   tbSigwxTitle: 'View IMS significant-weather (SIGWX) charts by valid time',
   tbSigwxTime: 'Valid time',
@@ -689,7 +690,6 @@ window.S = Object.assign({
     return 'Per-leg wind set (' + n + ' leg' + (n === 1 ? '' : 's') + ')';
   },
   windFetchErr: 'Wind fetch failed — check connection',
-  windUpdatedLabel: 'Wind updated (Z)',
   inboundAlt: 'Inbound alt (ft)',
   outboundAlt: 'Outbound alt (ft)',
   altResetKnown: 'Reset to charted altitude',
