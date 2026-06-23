@@ -20,6 +20,8 @@ jobs:
       - name: Fetch + normalise NOTAMs
         env:
           SKYLINK_KEY: ${{ secrets.SKYLINK_KEY }}
+          FAA_ID: ${{ secrets.FAA_NOTAM_CLIENT_ID }}
+          FAA_SECRET: ${{ secrets.FAA_NOTAM_CLIENT_SECRET }}
         run: |
           mkdir -p out
           node --input-type=module <<'NODE'
@@ -69,6 +71,42 @@ jobs:
             return Number.isFinite(d) ? new Date(d).toISOString() : s;
           };
 
+          // FAA NOTAM API (GeoJSON) — richer geometry incl. route LineStrings +
+          // area polygons. Optional: only runs when FAA creds are set. We merge
+          // its geometry into the SkyLink text by normalised NOTAM id.
+          const FAA_ID = process.env.FAA_ID, FAA_SECRET = process.env.FAA_SECRET;
+          const normId = s => String(s || '').toUpperCase().replace(/\s+/g, '')
+            .replace(/^([A-Z])0*(\d+)\/\d*(\d\d)$/, '$1$2/$3');   // A0154/2026 → A154/26
+          const faaGeometry = (g) => {
+            if (!g) return null;
+            const ll = co => co.map(p => [p[1], p[0]]).filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1]));
+            if (g.type === 'LineString' && Array.isArray(g.coordinates)) { const c = ll(g.coordinates); return c.length >= 2 ? { type: 'line', coords: c } : null; }
+            if (g.type === 'Polygon' && Array.isArray(g.coordinates)) { const c = ll(g.coordinates[0] || []); return c.length >= 3 ? { type: 'polygon', coords: c } : null; }
+            if (g.type === 'Point' && Array.isArray(g.coordinates)) return { type: 'circle', lat: g.coordinates[1], lng: g.coordinates[0], radiusNm: 2 };
+            if (g.type === 'GeometryCollection' && Array.isArray(g.geometries)) { for (const s of g.geometries) { const x = faaGeometry(s); if (x) return x; } }
+            return null;
+          };
+          async function faaGeomMap() {
+            const map = new Map();
+            if (!FAA_ID || !FAA_SECRET) { console.error('No FAA creds — SkyLink geometry only.'); return map; }
+            let page = 1, pages = 1;
+            do {
+              const url = 'https://external-api.faa.gov/notamapi/v1/notams?icaoLocation=LLLL&pageSize=1000&pageNum=' + page;
+              const r = await fetch(url, { headers: { client_id: FAA_ID, client_secret: FAA_SECRET, Accept: 'application/json' } });
+              if (!r.ok) { console.error('FAA HTTP ' + r.status); break; }
+              const j = await r.json();
+              pages = j.totalPages || 1;
+              for (const it of (j.items || [])) {
+                const n = it && it.properties && it.properties.coreNOTAMData && it.properties.coreNOTAMData.notam;
+                const g = faaGeometry(it.geometry);
+                if (n && g) map.set(normId(n.number || n.id), g);
+              }
+              page++;
+            } while (page <= pages && page <= 10);
+            console.error('FAA geometry entries:', map.size);
+            return map;
+          }
+
           async function fetchIcao(icao) {
             const r = await fetch('https://' + HOST + '/notams/' + icao,
               { headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': HOST } });
@@ -79,6 +117,7 @@ jobs:
 
           async function run() {
             if (!key) { console.error('No SKYLINK_KEY — publishing empty list.'); return; }
+            const faa = await faaGeomMap().catch(e => { console.error('FAA fetch failed:', e.message); return new Map(); });
             const seen = new Set();
             for (const icao of ICAOS) {
               let list = [];
@@ -86,13 +125,17 @@ jobs:
               for (const n of list) {
                 const id = n.notam_id || n.id; if (!id || seen.has(id)) continue;
                 seen.add(id);
+                // Prefer FAA geometry (route lines / polygons) when available,
+                // else the SkyLink Q-line circle / body polygon.
+                const geom = faa.get(normId(id)) || geomFromNotam(n);
                 out.notams.push({ id, icao, type: n.type || '',
                   text: String(n.raw || n.body || '').trim(),
-                  start: toIso(n.effective), end: toIso(n.expiration), geom: geomFromNotam(n) });
+                  start: toIso(n.effective), end: toIso(n.expiration), geom });
               }
               await new Promise(s => setTimeout(s, 400));   // be gentle on the quota/host
             }
-            console.error('NOTAMs:', out.notams.length, '| with geom:', out.notams.filter(n => n.geom).length);
+            console.error('NOTAMs:', out.notams.length, '| with geom:', out.notams.filter(n => n.geom).length,
+              '| FAA-matched:', out.notams.filter(n => faa.has(normId(n.id))).length);
           }
           await run().catch(e => console.error('fetch failed:', e.message));
           writeFileSync('out/notam.json', JSON.stringify(out, null, 1));
