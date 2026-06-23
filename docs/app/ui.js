@@ -2274,8 +2274,9 @@ function showNotamModal() {
   close.className = 'modal-close-x'; close.type = 'button'; close.textContent = '×';
   close.setAttribute('aria-label', 'Close');
   box.appendChild(close);
+  const shown = (typeof activeNotams === 'function') ? activeNotams() : (Array.isArray(notams) ? notams : []);
   const h = document.createElement('h3');
-  h.textContent = S.notamModalTitle || 'Active NOTAMs';
+  h.textContent = (S.notamModalTitle || 'Active NOTAMs') + ' — ' + shown.length;
   box.appendChild(h);
   if (notamMeta && notamMeta.generatedAt) {
     const u = document.createElement('div');
@@ -2286,13 +2287,13 @@ function showNotamModal() {
   }
   const list = document.createElement('div');
   list.className = 'notam-list';
-  if (!Array.isArray(notams) || !notams.length) {
+  if (!shown.length) {
     const e = document.createElement('div');
     e.className = 'notam-empty';
     e.textContent = S.notamNone || 'No active NOTAMs.';
     list.appendChild(e);
   } else {
-    for (const n of notams) {
+    for (const n of shown) {
       const it = document.createElement('div');
       it.className = 'notam-item';
       const id = document.createElement('div');

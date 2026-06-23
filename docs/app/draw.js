@@ -438,11 +438,42 @@ function notamCirclePoints(lat, lng, nm, steps = 36) {
 // NOTAM areas: filled, dashed-outline polygons (point+radius → ring) with the
 // NOTAM id labelled at the centroid. Free-text / FIR-wide NOTAMs without
 // geometry are not drawn here — they live in the NOTAM list modal.
+// A NOTAM is "active" within the displayed window if it hasn't expired (PERM /
+// blank end = open-ended) and has already started. Used to filter the map +
+// list so expired/future NOTAMs don't clutter.
+function notamActive(n, now) {
+  const t = Number.isFinite(now) ? now : Date.now();
+  const ms = s => { const d = Date.parse(s); return Number.isFinite(d) ? d : NaN; };
+  const end = n && n.end;
+  if (end && !/PERM/i.test(end)) { const e = ms(end); if (Number.isFinite(e) && e < t) return false; }
+  const start = n && n.start;
+  if (start) { const s = ms(start); if (Number.isFinite(s) && s > t) return false; }
+  return true;
+}
+function activeNotams() {
+  const now = Date.now();
+  return Array.isArray(notams) ? notams.filter(n => notamActive(n, now)) : [];
+}
 function drawNotams() {
   octx.save();
   const col = tune('notamColor');
-  for (const n of notams) {
+  for (const n of activeNotams()) {
     const g = n && n.geom;
+    // Route closures (FAA LineString) → a thick dashed polyline, not a fill.
+    if (g && g.type === 'line' && Array.isArray(g.coords)) {
+      const lp = g.coords.filter(c => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+        .map(c => proj({ lat: c[0], lng: c[1] }));
+      if (lp.length < 2) continue;
+      octx.beginPath();
+      octx.moveTo(lp[0].x, lp[0].y);
+      for (let i = 1; i < lp.length; i++) octx.lineTo(lp[i].x, lp[i].y);
+      octx.setLineDash([10, 5]);
+      octx.lineWidth = tune('notamLineWidthPx') + 1;
+      octx.strokeStyle = col;
+      octx.stroke();
+      octx.setLineDash([]);
+      continue;
+    }
     let ll = null;
     if (g && g.type === 'polygon' && Array.isArray(g.coords)) ll = g.coords;
     else if (g && g.type === 'circle' && Number.isFinite(g.lat) && Number.isFinite(g.lng) &&
@@ -487,7 +518,7 @@ function drawNotams() {
 function drawNotamAirportMarkers() {
   if (!Array.isArray(airfields) || !airfields.length) return;
   const byIcao = {};
-  for (const n of notams) {
+  for (const n of activeNotams()) {
     if (n && n.geom) continue;                 // already drawn as an area
     const c = n && n.icao;
     if (!c) continue;
