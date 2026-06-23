@@ -133,12 +133,20 @@ test('lat/lng tune scale zooms the overlay bounds', async ({ page }) => {
   expect(r.after / r.before).toBeCloseTo(1.1, 2);   // span scaled ~10%
 });
 
-test('dark mode gives the overlay a translucent white backdrop', async ({ page }) => {
+test('dark backdrop is off by default, but can be enabled via tune', async ({ page }) => {
   await boot(page);                                   // default (dark) theme
   await page.locator('#ims-pwx-cb').check();
-  const bg = await page.locator('.leaflet-overlay-pane img.leaflet-image-layer')
-    .evaluate(el => getComputedStyle(el).backgroundColor);
-  expect(bg).toBe('rgba(255, 255, 255, 0.5)');        // restores footer contrast
+  const sel = '.leaflet-overlay-pane img.leaflet-image-layer';
+  // Off by default — no brightness change (the overlay is larger than the chart
+  // card, so a backdrop greys the surrounding map unevenly).
+  expect(await page.locator(sel).evaluate(el => getComputedStyle(el).backgroundColor)).toMatch(/,\s*0\)$/);
+  // Opt in via tune → translucent white backdrop returns.
+  const bg = await page.evaluate(() => {
+    setTune('imsPwxDarkBackdropAlpha', 0.5);
+    applyTuningCssVars();
+    return getComputedStyle(document.querySelector('.leaflet-image-layer')).backgroundColor;
+  });
+  expect(bg).toBe('rgba(255, 255, 255, 0.5)');
 });
 
 test('light mode leaves the overlay backdrop transparent', async ({ page }) => {
