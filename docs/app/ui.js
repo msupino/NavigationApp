@@ -2254,6 +2254,10 @@ function refreshNotamListBtn() {
 }
 async function ensureNotams() {
   if (typeof loadNotam === 'function' && notams === null) await loadNotam();
+  // Airport NOTAM markers need the airfield coords even if that layer is off.
+  if (typeof loadAirfields === 'function' && typeof airfields !== 'undefined' && airfields === null) {
+    try { await loadAirfields(); } catch (e) { /* */ }
+  }
   refreshNotamListBtn();
 }
 function showNotamModal() {
