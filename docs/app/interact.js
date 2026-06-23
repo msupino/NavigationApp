@@ -1898,33 +1898,15 @@ function showInspector() {
     // Per-leg wind override rows + live readout — appended AFTER the altitude
     // rows so the long-standing number-input order (speed, in-alt, out-alt)
     // that other specs index by stays put.
-    const setLegWind = (field, v) => {
-      const cur = Object.assign({}, leg.wind);
-      if (Number.isFinite(v)) {
-        cur[field] = field === 'dir'
-          ? ((Math.round(v) % 360) + 360) % 360
-          : Math.max(0, Math.round(v));
-      } else {
-        delete cur[field];
-      }
-      if (Number.isFinite(cur.dir) || Number.isFinite(cur.speed)) leg.wind = cur;
-      else delete leg.wind;
-      refreshWindFx(); draw();
-    };
     if (window.showWind) {
-      const gw = state.wind || { dir: tune('windDir'), speed: tune('windSpeed') };
-      body.appendChild(numberRow(S.windFromDeg,
-        leg.wind && Number.isFinite(leg.wind.dir) ? leg.wind.dir : NaN,
-        v => setLegWind('dir', v),
-        { allowUnknown: true, placeholder: String(gw.dir), live: true,
-          normalize: v => ((Math.round(v) % 360) + 360) % 360, wrapStep: 5,
-          undoValue: NaN, undoTitle: S.windResetTitle }));
-      body.appendChild(numberRow(S.windSpeedKt,
-        leg.wind && Number.isFinite(leg.wind.speed) ? leg.wind.speed : NaN,
-        v => setLegWind('speed', v),
-        { allowUnknown: true, placeholder: String(gw.speed), live: true,
-          normalize: v => Math.max(0, Math.round(v)),
-          undoValue: NaN, undoTitle: S.windResetTitle }));
+      // Read-only: the per-leg wind comes from the realtime winds-aloft fetch
+      // (leg.wind) or a loaded route's route-wide wind — there is no manual
+      // wind entry. Show "—" when no wind is available / it's calm.
+      const w = (typeof legWindFor === 'function') ? legWindFor(leg) : null;
+      body.appendChild(textRow(S.windFromDeg,
+        w && Number.isFinite(w.dir) ? pad3(w.dir) + '°' : '—'));
+      body.appendChild(textRow(S.windSpeedKt,
+        w && Number.isFinite(w.speed) ? String(w.speed) : '—'));
       windFxRow = textRow(S.windEffect, '');
       windFxRow.classList.add('wind-fx-row');
       body.appendChild(windFxRow);

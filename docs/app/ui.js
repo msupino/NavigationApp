@@ -1880,45 +1880,13 @@ if (msaCb) {
 // The wind lives in state.wind (persisted with the route, not in its own
 // localStorage key — it's a property of the flight, like speed/altitude).
 // The two View inputs drive it; the corner readout + every leg redraw react.
-const windDirInput = document.getElementById('wind-dir');
-const windSpeedInput = document.getElementById('wind-speed');
+// There is no manual wind UI: route-wide wind (state.wind) only comes from a
+// loaded route, and per-leg wind (leg.wind) only from the realtime winds-aloft
+// fetch. The inspector shows it read-only. refreshWindInputs is kept (and
+// exported) purely as the post-load hook io.js calls — it refreshes the readout.
 function windDefault() { return { dir: tune('windDir'), speed: tune('windSpeed') }; }
-function refreshWindInputs() {
-  const w = state.wind || windDefault();
-  if (windDirInput && document.activeElement !== windDirInput) {
-    windDirInput.value = Number.isFinite(w.dir) ? String(w.dir) : String(tune('windDir'));
-  }
-  if (windSpeedInput && document.activeElement !== windSpeedInput) {
-    windSpeedInput.value = Number.isFinite(w.speed) ? String(w.speed) : String(tune('windSpeed'));
-  }
-  refreshWindReadout();
-}
+function refreshWindInputs() { refreshWindReadout(); }
 window.refreshWindInputs = refreshWindInputs;
-function commitWind() {
-  if (!state.wind || typeof state.wind !== 'object') state.wind = windDefault();
-  const d = parseFloat(windDirInput && windDirInput.value);
-  const s = parseFloat(windSpeedInput && windSpeedInput.value);
-  state.wind.dir = Number.isFinite(d) ? ((Math.round(d) % 360) + 360) % 360 : state.wind.dir;
-  state.wind.speed = Number.isFinite(s) && s >= 0 ? Math.round(s) : state.wind.speed;
-  refreshWindReadout();
-  if (state.selected && state.selected.type === 'leg') showInspector();
-  if (typeof persist === 'function') persist();
-  draw();
-}
-// Endless 0–359 spinner wrap on the route-wide direction input (attached
-// before the commit handler so it cleans the value first).
-if (windDirInput && typeof wrapDirectionInput === 'function') wrapDirectionInput(windDirInput);
-if (windDirInput) windDirInput.oninput = commitWind;
-if (windSpeedInput) windSpeedInput.oninput = commitWind;
-// On blur / Enter, write the normalized value back so a typed -395 shows as
-// its wrapped 325 (commitWind already stored the normalized value).
-function writebackWindInputs() {
-  commitWind();
-  if (windDirInput) windDirInput.value = String(state.wind.dir);
-  if (windSpeedInput) windSpeedInput.value = String(state.wind.speed);
-}
-if (windDirInput) windDirInput.onchange = writebackWindInputs;
-if (windSpeedInput) windSpeedInput.onchange = writebackWindInputs;
 // "Show wind effect" toggle (#722) gates the wind inputs, the per-leg map
 // arrows, the corner readout, and the inspector wind rows. Off by default —
 // it's a planning aid, not part of the core route picture.
