@@ -249,10 +249,6 @@
           "freqName": "PALMACHIM"
         },
         {
-          "cc": "NTAIM",
-          "freqName": "TEL_NOF"
-        },
-        {
           "cc": "NMASD",
           "freqName": "HAGAV_NORTH"
         },
@@ -269,7 +265,8 @@
       "commChangeSuppressions": [
         "ZASHD",
         "HODYA",
-        "NOAAM"
+        "NOAAM",
+        "NTAIM"
       ]
     },
     {
@@ -309,23 +306,8 @@
           "freqAuto": true
         },
         {
-          "cc": "ZASHD",
-          "freqName": "PALMACHIM",
-          "freqAuto": true
-        },
-        {
           "cc": "NMASD",
           "freqName": "PALMACHIM",
-          "freqAuto": true
-        },
-        {
-          "cc": "HODYA",
-          "freqName": "HAGAV_NORTH",
-          "freqAuto": true
-        },
-        {
-          "cc": "NOAAM",
-          "freqName": "HAGAV_NORTH",
           "freqAuto": true
         },
         {
@@ -343,6 +325,12 @@
           "freqName": "HERZLIYA",
           "freqAuto": true
         }
+      ],
+      "commChangeSuppressions": [
+        "NOAAM",
+        "HODYA",
+        "ZASHD",
+        "NTAIM"
       ]
     },
     {
