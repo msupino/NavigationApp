@@ -69,3 +69,35 @@ test('fetch failure falls back to baked-in defaults', async ({ page }) => {
   }));
   expect(got).toBe(def);
 });
+
+test('?nogist skips the gist fetch and keeps baked-in defaults', async ({ page }) => {
+  // Serve a valid override — but the param should stop us from ever fetching it.
+  let fetched = false;
+  await page.route(CONFIG_RE, route => { fetched = true; route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ waypointStrokeWidthPx: 7 }),
+  }); });
+  await boot(page, '?lang=en&nogist');
+  await page.waitForTimeout(300);
+  expect(fetched).toBe(false);                              // never requested
+  const { got, def, disabled } = await page.evaluate(() => ({
+    got: tune('waypointStrokeWidthPx'),
+    def: NavAid.tuningDefaults.waypointStrokeWidthPx.value,
+    disabled: NavAid.gistDisabled,
+  }));
+  expect(disabled).toBe(true);
+  expect(got).toBe(def);                                    // override not applied
+});
+
+test('?gist=0 also skips the gist fetch', async ({ page }) => {
+  let fetched = false;
+  await page.route(CONFIG_RE, route => { fetched = true; route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ waypointStrokeWidthPx: 7 }),
+  }); });
+  await boot(page, '?lang=en&gist=0');
+  await page.waitForTimeout(300);
+  expect(fetched).toBe(false);
+  expect(await page.evaluate(() => tune('waypointStrokeWidthPx')))
+    .toBe(await page.evaluate(() => NavAid.tuningDefaults.waypointStrokeWidthPx.value));
+});

@@ -255,11 +255,12 @@ NavAid.tuningDefaults = {
   sigmetDefaultColor: { value: '#dd1111', type: 'color', label: 'SIGMET default/TS color' },
 
   imsPwxOpacity: { value: 0.6, min: 0.2, max: 1, step: 0.05, label: 'IMS PWX overlay default opacity' },
-  imsPwxLatOffset: { value: 0, min: -0.5, max: 0.5, step: 0.005, label: 'IMS PWX overlay latitude nudge (°)' },
-  imsPwxLngOffset: { value: 0, min: -0.5, max: 0.5, step: 0.005, label: 'IMS PWX overlay longitude nudge (°)' },
-  imsPwxLatScale: { value: 1, min: 0.8, max: 1.2, step: 0.005, label: 'IMS PWX overlay vertical zoom' },
-  imsPwxLngScale: { value: 1, min: 0.8, max: 1.2, step: 0.005, label: 'IMS PWX overlay horizontal zoom' },
-  imsPwxRotationDeg: { value: 0, min: -15, max: 15, step: 0.1, label: 'IMS PWX overlay rotation (°)' },
+  imsPwxLatOffset: { value: 0.005, min: -0.5, max: 0.5, step: 0.005, label: 'IMS PWX overlay latitude nudge (°)' },
+  imsPwxLngOffset: { value: -0.015, min: -0.5, max: 0.5, step: 0.005, label: 'IMS PWX overlay longitude nudge (°)' },
+  imsPwxLatScale: { value: 0.98, min: 0.8, max: 1.2, step: 0.005, label: 'IMS PWX overlay vertical zoom' },
+  imsPwxLngScale: { value: 1.02, min: 0.8, max: 1.2, step: 0.005, label: 'IMS PWX overlay horizontal zoom' },
+  imsPwxRotationDeg: { value: -0.5, min: -15, max: 15, step: 0.1, label: 'IMS PWX overlay rotation (°)' },
+  imsPwxDarkBackdropAlpha: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'IMS PWX dark-mode backdrop (white, 0 = off)' },
 
   liveAircraftRadiusPx: { value: 18, min: 6, max: 48, step: 1, label: 'Live aircraft size' },
   gotoMarkerColor: { value: '#c0392b', type: 'color', label: 'Go-to marker outline' },
@@ -353,9 +354,9 @@ NavAid.tuningGroups = [
   { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx'] },
   { name: 'Vertical profile', keys: ['profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileTodColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor'] },
-  // imsPwxOpacity is set via the weather section's opacity slider; only the
-  // georeferencing-alignment keys (no menu control) are exposed here.
-  { name: 'Weather (IMS)', keys: ['imsPwxLatOffset', 'imsPwxLngOffset', 'imsPwxLatScale', 'imsPwxLngScale', 'imsPwxRotationDeg'] },
+  // imsPwxOpacity is set via the weather section's opacity slider; only keys
+  // without a menu control (alignment + dark backdrop) are exposed here.
+  { name: 'Weather (IMS)', keys: ['imsPwxLatOffset', 'imsPwxLngOffset', 'imsPwxLatScale', 'imsPwxLngScale', 'imsPwxRotationDeg', 'imsPwxDarkBackdropAlpha'] },
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor'] },
@@ -397,8 +398,17 @@ function resetTune(key) {
 // Unknown keys are ignored. Any failure (offline, blocked, bad JSON) falls back
 // silently to the baked-in defaults so the app always boots.
 NavAid.configUrl = 'https://gist.githubusercontent.com/msupino/12c6e9d9dfcd783ffbeaa06246783840/raw/navaid-config.json';
+// `?nogist` (or `?gist=0`) skips the remote fetch entirely, so the app runs on
+// the baked-in defaults alone — handy for reproducing a bug without the live
+// gist's overrides, or testing the shipped defaults.
+NavAid.gistDisabled = (function () {
+  try {
+    const p = new URLSearchParams(location.search);
+    return p.has('nogist') || p.get('gist') === '0';
+  } catch (e) { return false; }
+}());
 async function loadRemoteConfig() {
-  if (!NavAid.configUrl) return 0;
+  if (!NavAid.configUrl || NavAid.gistDisabled) return 0;
   try {
     // The gist raw host (Fastly) caches the URL ~5 min, so a fresh gist edit
     // wouldn't show up until the TTL lapses. A unique query param is a new cache
@@ -682,6 +692,7 @@ window.S = Object.assign({
     return 'Per-leg wind set (' + n + ' leg' + (n === 1 ? '' : 's') + ')';
   },
   windFetchErr: 'Wind fetch failed — check connection',
+  windUpdatedLabel: 'Wind updated (Z)',
   inboundAlt: 'Inbound alt (ft)',
   outboundAlt: 'Outbound alt (ft)',
   altResetKnown: 'Reset to charted altitude',
