@@ -12,19 +12,26 @@ const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMCAYAAAB7P3qAAAAAAElFTkSuQmCC',
   'base64');
 
+// Time-relative manifest: NEAR is the current hour (the overlay defaults to the
+// chart nearest "now"), FAR is +6h. Two levels, each carrying both times.
+const z = n => String(n).padStart(2, '0');
+const NEAR = new Date(Math.floor(Date.now() / 3600e3) * 3600e3);
+const FAR = new Date(NEAR.getTime() + 6 * 3600e3);
+const hhmm = d => z(d.getUTCHours()) + z(d.getUTCMinutes());
+const valid = d => z(d.getUTCHours()) + ':' + z(d.getUTCMinutes());
+const dmy = d => z(d.getUTCDate()) + '/' + z(d.getUTCMonth() + 1) + '/' + d.getUTCFullYear();
+const label = d => valid(d) + 'Z (' + dmy(d) + ')';
+const lvlTimes = code => [
+  { valid: valid(NEAR), day: dmy(NEAR), png: `ims/pwx/${code}/${hhmm(NEAR)}.png` },
+  { valid: valid(FAR), day: dmy(FAR), png: `ims/pwx/${code}/${hhmm(FAR)}.png` },
+];
 const MANIFEST = {
   generatedAt: '2026-06-21T09:00:00Z',
   run: '202606210912',
   bounds: { s: 29.88, n: 33.82, w: 33.31, e: 36.69 },
   levels: [
-    { level: '50', label: 'FL180', times: [
-      { valid: '12:00', day: '21/06/2026', png: 'ims/pwx/50/1200.png' },
-      { valid: '18:00', day: '21/06/2026', png: 'ims/pwx/50/1800.png' },
-    ] },
-    { level: '90', label: 'FL030', times: [
-      { valid: '12:00', day: '21/06/2026', png: 'ims/pwx/90/1200.png' },
-      { valid: '18:00', day: '21/06/2026', png: 'ims/pwx/90/1800.png' },
-    ] },
+    { level: '50', label: 'FL180', times: lvlTimes('50') },
+    { level: '90', label: 'FL030', times: lvlTimes('90') },
   ],
 };
 
@@ -53,7 +60,7 @@ test('manifest reveals the control and populates levels', async ({ page }) => {
   // Times follow the selected level.
   const times = await page.locator('#ims-pwx-time option').allTextContents();
   expect(times.length).toBe(2);
-  expect(times[0]).toContain('12:00');
+  expect(times[0]).toContain(valid(NEAR));         // chronological: NEAR first
   // Model run time (from the chart filename) shown in the control.
   await expect(page.locator('#ims-pwx-run')).toContainText('21/06 09:12Z');
 });
@@ -66,36 +73,60 @@ test('toggling on adds a georeferenced image overlay at the manifest bounds', as
   // Leaflet renders an <img class="leaflet-image-layer"> in the overlay pane.
   const img = page.locator('.leaflet-overlay-pane img.leaflet-image-layer');
   await expect(img).toHaveCount(1);
-  await expect(img).toHaveAttribute('src', /ims\/pwx\/90\/1200\.png/);   // default FL030
+  await expect(img).toHaveAttribute('src', new RegExp('ims/pwx/90/' + hhmm(NEAR) + '\\.png'));   // default FL030, nearest now
   // Toggling off removes it.
   await page.locator('#ims-pwx-cb').uncheck();
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer')).toHaveCount(0);
 });
 
+test('history: same valid time on different days are distinct; default is nearest now', async ({ page }) => {
+  // A past chart and a near chart that share the SAME valid HH:MM but differ by
+  // day — they must produce two separate options, and the overlay must default
+  // to the near one, not the 24h-old collision.
+  const past = new Date(NEAR.getTime() - 24 * 3600e3);   // same HH:MM, yesterday
+  const hist = {
+    ...MANIFEST,
+    levels: [{ level: '90', label: 'FL030', times: [
+      { valid: valid(past), day: dmy(past), png: `ims/pwx/90/${hhmm(past)}-old.png` },
+      { valid: valid(NEAR), day: dmy(NEAR), png: `ims/pwx/90/${hhmm(NEAR)}.png` },
+    ] }],
+  };
+  await page.route(PNG_RE, r => r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+  await page.route(MANIFEST_RE, r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(hist) }));
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof map !== 'undefined' && document.getElementById('ims-pwx'));
+  await expect(page.locator('#ims-pwx-time option')).toHaveCount(2);   // not collapsed to 1
+  await page.locator('#ims-pwx-cb').check();
+  // Defaults to the near chart, not the 24h-old one.
+  await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer'))
+    .toHaveAttribute('src', new RegExp('ims/pwx/90/' + hhmm(NEAR) + '\\.png'));
+});
+
 test('changing the level keeps the selected valid time', async ({ page }) => {
   await boot(page);
   await page.locator('#ims-pwx-cb').check();
-  await page.locator('#ims-pwx-time').selectOption('18:00');   // pick a non-default period
-  await page.locator('#ims-pwx-level').selectOption('50');      // switch FL (FL180 also has 18:00)
-  expect(await page.locator('#ims-pwx-time').inputValue()).toBe('18:00');
+  await page.locator('#ims-pwx-time').selectOption({ label: label(FAR) });   // non-default period
+  await page.locator('#ims-pwx-level').selectOption('50');                    // switch FL (FL180 also has it)
+  expect(await page.locator('#ims-pwx-time').inputValue()).toBe(valid(FAR) + '|' + dmy(FAR));
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer'))
-    .toHaveAttribute('src', /ims\/pwx\/50\/1800\.png/);
+    .toHaveAttribute('src', new RegExp('ims/pwx/50/' + hhmm(FAR) + '\\.png'));
 });
 
 test('overlay on/off + selection persists across reload', async ({ page }) => {
   await boot(page);
   await page.locator('#ims-pwx-cb').check();
   await page.locator('#ims-pwx-level').selectOption('50');
-  await page.locator('#ims-pwx-time').selectOption('18:00');
+  await page.locator('#ims-pwx-time').selectOption({ label: label(FAR) });
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer')).toHaveCount(1);
   await page.reload();
   await page.waitForFunction(() => document.getElementById('ims-pwx') && !document.getElementById('ims-pwx').hidden);
   // Restored: toggle on, same level/time, overlay re-added.
   await expect(page.locator('#ims-pwx-cb')).toBeChecked();
   expect(await page.locator('#ims-pwx-level').inputValue()).toBe('50');
-  expect(await page.locator('#ims-pwx-time').inputValue()).toBe('18:00');
+  expect(await page.locator('#ims-pwx-time').inputValue()).toBe(valid(FAR) + '|' + dmy(FAR));
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer'))
-    .toHaveAttribute('src', /ims\/pwx\/50\/1800\.png/);
+    .toHaveAttribute('src', new RegExp('ims/pwx/50/' + hhmm(FAR) + '\\.png'));
 });
 
 test('lat/lng tune offset nudges the overlay bounds', async ({ page }) => {

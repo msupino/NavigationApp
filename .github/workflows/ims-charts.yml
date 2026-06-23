@@ -49,6 +49,11 @@ jobs:
             return (await r.json()).data || {};
           };
           const abs = f => (f.startsWith('http') ? f : 'https://ims.gov.il' + f);
+          // Date-key PNGs (YYYYMMDDHHMM) so charts don't collide day-to-day and a
+          // rolling history can be retained. `day` is DD/MM/YYYY; fall back to today.
+          const todayUTC = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+          const dpart = d => { const m = String(d || '').match(/(\d{2})\/(\d{2})\/(\d{4})/); return m ? m[3] + m[2] + m[1] : todayUTC; };
+          const stamp = (day, t) => dpart(day) + t.replace(':', '');
 
           // --- PWX wind/temperature (georeferenced map overlay) ---
           // IMS labels by flight level; only the low levels matter for CVFR.
@@ -63,7 +68,7 @@ jobs:
             const entry = { level: lvl, label: LABELS[lvl], times: [] };
             for (const t of Object.keys(times)) {
               const f = times[t] && times[t].file; if (!f) continue;
-              const png = `ims/pwx/${lvl}/${t.replace(':', '')}.png`;
+              const png = `ims/pwx/${lvl}/${stamp(times[t].day, t)}.png`;
               // Model run time is the first YYYYMMDDHHMM in the filename
               // (PWX_<run>_<lvl>_<valid>.pdf) — the cropped-off "BASED ON MODEL
               // RUN" line. Same for every chart.
@@ -83,7 +88,7 @@ jobs:
           const sdata = await get('https://ims.gov.il/he/significantly_weather_maps');
           for (const t of Object.keys(sdata)) {
             const f = sdata[t] && sdata[t].file; if (!f) continue;
-            const png = `ims/sigwx/${t.replace(':', '')}.png`;
+            const png = `ims/sigwx/${stamp(sdata[t].day, t)}.png`;
             sigwx.times.push({ valid: t, day: sdata[t].day || '', png });
             lines.push([abs(f), 'ims/' + png, 'sigwx'].join('\t'));
           }
@@ -121,21 +126,51 @@ jobs:
           done < /tmp/jobs.tsv
           echo "PNG count: $(find ims -name '*.png' | wc -l)"
 
-          # Drop manifest entries whose PNG didn't actually download/convert
-          # (e.g. a far-out forecast IMS hasn't published yet) so the app never
-          # points at a missing image.
+          # Rebuild the manifests from the dated PNGs actually on disk (new
+          # downloads + the retained clone), keeping a rolling 12h of past charts
+          # and pruning anything older. This both drops failed/missing downloads
+          # and trims history. Filename = YYYYMMDDHHMM.png → valid time + day.
           node --input-type=module <<'PRUNE'
-          const { existsSync, writeFileSync, readFileSync } = await import('node:fs');
-          const has = png => existsSync('ims/' + png);
-          const pwx = JSON.parse(readFileSync('ims/ims/pwx.json', 'utf8'));
-          pwx.levels = pwx.levels
-            .map(l => ({ ...l, times: l.times.filter(t => has(t.png)) }))
-            .filter(l => l.times.length);
-          writeFileSync('ims/ims/pwx.json', JSON.stringify(pwx, null, 1));
-          const sig = JSON.parse(readFileSync('ims/ims/sigwx.json', 'utf8'));
-          sig.times = sig.times.filter(t => has(t.png));
-          writeFileSync('ims/ims/sigwx.json', JSON.stringify(sig, null, 1));
-          console.error('after prune — pwx:',
+          const fs = await import('node:fs');
+          const path = await import('node:path');
+          const LABELS = { '85': 'FL050', '90': 'FL030' };
+          const CUTOFF = Date.now() - 12 * 3600 * 1000;     // keep last 12h of past charts
+          const parseTs = name => {
+            const m = name.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})\.png$/);
+            if (!m) return null;
+            const [, Y, Mo, D, H, Mi] = m;
+            return { ms: Date.UTC(+Y, +Mo - 1, +D, +H, +Mi), valid: H + ':' + Mi, day: D + '/' + Mo + '/' + Y };
+          };
+          // Delete files older than CUTOFF; return the survivors (oldest→newest).
+          const sweep = dir => {
+            const out = [];
+            if (!fs.existsSync(dir)) return out;
+            for (const f of fs.readdirSync(dir)) {
+              const p = parseTs(f);
+              if (!p) continue;
+              if (p.ms < CUTOFF) { fs.rmSync(path.join(dir, f), { force: true }); continue; }
+              out.push({ file: f, valid: p.valid, day: p.day, ms: p.ms });
+            }
+            return out.sort((a, b) => a.ms - b.ms);
+          };
+          const pwx = JSON.parse(fs.readFileSync('ims/ims/pwx.json', 'utf8'));
+          const levels = [];
+          const root = 'ims/ims/pwx';
+          if (fs.existsSync(root)) {
+            for (const lvl of fs.readdirSync(root).sort()) {
+              const dir = path.join(root, lvl);
+              if (!fs.statSync(dir).isDirectory()) continue;
+              const files = sweep(dir);
+              if (files.length) levels.push({ level: lvl, label: LABELS[lvl] || ('FL' + lvl),
+                times: files.map(x => ({ valid: x.valid, day: x.day, png: `ims/pwx/${lvl}/${x.file}` })) });
+            }
+          }
+          pwx.levels = levels.sort((a, b) => Number(a.level) - Number(b.level));
+          fs.writeFileSync('ims/ims/pwx.json', JSON.stringify(pwx, null, 1));
+          const sig = JSON.parse(fs.readFileSync('ims/ims/sigwx.json', 'utf8'));
+          sig.times = sweep('ims/ims/sigwx').map(x => ({ valid: x.valid, day: x.day, png: `ims/sigwx/${x.file}` }));
+          fs.writeFileSync('ims/ims/sigwx.json', JSON.stringify(sig, null, 1));
+          console.error('after 12h prune — pwx:',
             pwx.levels.map(l => l.level + '×' + l.times.length).join(' '),
             '| sigwx:', sig.times.length);
           PRUNE

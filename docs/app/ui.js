@@ -3312,9 +3312,18 @@ if (typeof loadRemoteConfig === "function") {
   let layer = null;
 
   const currentLevel = () => (manifest && manifest.levels.find(l => l.level === levelSel.value)) || null;
+  // History means the same valid HH:MM can recur on different days, so a time is
+  // identified by valid + day (the png differs per level, but the time identity
+  // is shared so it survives a level change).
+  const timeId = t => t.valid + (t.day ? '|' + t.day : '');
+  const timeMs = t => {
+    const m = String(t.day || '').match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    const hm = String(t.valid || '').split(':');
+    return m ? Date.UTC(+m[3], +m[2] - 1, +m[1], +hm[0] || 0, +hm[1] || 0) : NaN;
+  };
   const currentTime = () => {
     const lv = currentLevel();
-    return lv && lv.times.find(t => t.valid === timeSel.value);
+    return lv && lv.times.find(t => timeId(t) === timeSel.value);
   };
 
   function removeLayer() {
@@ -3366,12 +3375,17 @@ if (typeof loadRemoteConfig === "function") {
     if (!lv) return;
     for (const t of lv.times) {
       const o = document.createElement('option');
-      o.value = t.valid;
+      o.value = timeId(t);
       o.textContent = t.valid + 'Z' + (t.day ? ' (' + t.day + ')' : '');   // Zulu
       timeSel.appendChild(o);
     }
-    // Re-select the same valid time if the newly chosen level also has it.
-    if (prev && lv.times.some(t => t.valid === prev)) timeSel.value = prev;
+    // Re-select the same time if the newly chosen level also has it…
+    if (prev && lv.times.some(t => timeId(t) === prev)) { timeSel.value = prev; return; }
+    // …otherwise default to the chart nearest "now" (not the oldest in history).
+    const now = Date.now();
+    let bi = 0, bd = Infinity;
+    lv.times.forEach((t, i) => { const d = Math.abs(timeMs(t) - now); if (d < bd) { bd = d; bi = i; } });
+    if (lv.times[bi]) timeSel.value = timeId(lv.times[bi]);
   }
 
   // Persist the on/off + selections so a reload keeps the overlay as it was.
