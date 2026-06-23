@@ -248,9 +248,10 @@ window.S = {
     return hpa + ' hPa ← ' + dir + '/' + spd;
   },
   windFetchOkLegs: function(n) {
-    return 'רוח לכל רגל הוגדרה (' + n + ' רגליים)';
+    return 'רוח לכל מקטע הוגדרה (' + n + ' מקטעים)';
   },
   windFetchErr: 'משיכת הרוח נכשלה — בדוק חיבור',
+  windUpdatedLabel: 'עדכון רוח (Z)',
   inboundAlt: 'גובה נכנס (ft)',
   outboundAlt: 'גובה יוצא (ft)',
   shape: 'צורה',

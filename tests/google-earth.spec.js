@@ -254,8 +254,13 @@ test.describe('Google Earth KML export', () => {
         { lat: end.lat, lng: end.lng, name: end.name },
       ];
       syncLegs();
-      state.legs[0].inboundAltitude = 4300;
-      state.legs[1].inboundAltitude = 5200;
+      // Hand-edited altitudes: mark the legs manual so the leg-altitude dataset
+      // auto-fill (which runs on draw) doesn't overwrite them. BAZRA is a
+      // synthetic point with no charted leg, so an auto leg would reset to NaN.
+      state.legs[0].inboundAltitude = 2000;
+      markLegAltitudeManual(0);
+      state.legs[1].inboundAltitude = 2500;
+      markLegAltitudeManual(1);
       draw();
     }, { start: LLHZ, end: LLHA });
     const kml = await captureKml(page);
@@ -267,7 +272,7 @@ test.describe('Google Earth KML export', () => {
     ]);
     expect(waypointCams).toHaveLength(3);
     expect(waypointCams[0].alt).toBe(airfieldElevationM('LLHZ'));
-    expect(waypointCams[1].alt).toBe(Math.round(5200 * 0.3048));
+    expect(waypointCams[1].alt).toBe(Math.round(2500 * 0.3048));
     expect(waypointCams[2].alt).toBe(airfieldElevationM('LLHA'));
   });
 

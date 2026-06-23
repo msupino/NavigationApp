@@ -140,6 +140,13 @@ function formatZuluClockTime(date) {
   return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds()) + 'Z';
 }
 window.formatZuluClockTime = formatZuluClockTime;
+// HH:MMZ — used for the "wind updated" stamp (Zulu, never localized).
+function formatZuluHM(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  const pad = n => String(n).padStart(2, '0');
+  return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + 'Z';
+}
+window.formatZuluHM = formatZuluHM;
 function cssRgba(hex, alpha) {
   const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
   if (!m) return 'rgba(0, 0, 0, ' + alpha + ')';
@@ -173,6 +180,13 @@ function applyTuningCssVars() {
   root.setProperty('--navaid-zulu-clock-shadow',
     '0 ' + tune('zuluClockShadowYPx') + 'px ' + tune('zuluClockShadowBlurPx') +
     'px rgba(0, 0, 0, ' + tune('zuluClockShadowAlpha') + ')');
+
+  // Dark-mode backdrop behind the IMS PWX overlay: the chart's white background
+  // is made transparent in the pipeline, so its dark footer text/strokes vanish
+  // against the dark map. A translucent white plate restores contrast (off in
+  // light mode — see style.css).
+  root.setProperty('--navaid-ims-pwx-backdrop',
+    cssRgba('#ffffff', tune('imsPwxDarkBackdropAlpha')));
 }
 window.applyTuningCssVars = applyTuningCssVars;
 applyTuningCssVars();
@@ -392,6 +406,11 @@ function refreshSigmetReadout() {
   }
   const n = sigmets.length;
   sigmetReadoutBox.textContent = n ? S.sigmetReadout(n) : S.sigmetNone;
+  // The count badge ("⚠ n SIGMET") is Latin/numeric — keep it LTR. The "no
+  // SIGMET in effect" message is a full sentence: follow the page direction so
+  // the Hebrew reads right-to-left (the literal "SIGMET" token stays LTR via
+  // bidi). Forcing the whole box LTR scrambled the Hebrew word order.
+  sigmetReadoutBox.dir = n ? 'ltr' : (document.documentElement.dir || 'ltr');
   sigmetReadoutBox.classList.toggle('sigmet-none', n === 0);
   if (n) {
     // Hover = decoded text; click opens the full decoded list.
@@ -1895,45 +1914,13 @@ if (msaCb) {
 // The wind lives in state.wind (persisted with the route, not in its own
 // localStorage key — it's a property of the flight, like speed/altitude).
 // The two View inputs drive it; the corner readout + every leg redraw react.
-const windDirInput = document.getElementById('wind-dir');
-const windSpeedInput = document.getElementById('wind-speed');
+// There is no manual wind UI: route-wide wind (state.wind) only comes from a
+// loaded route, and per-leg wind (leg.wind) only from the realtime winds-aloft
+// fetch. The inspector shows it read-only. refreshWindInputs is kept (and
+// exported) purely as the post-load hook io.js calls — it refreshes the readout.
 function windDefault() { return { dir: tune('windDir'), speed: tune('windSpeed') }; }
-function refreshWindInputs() {
-  const w = state.wind || windDefault();
-  if (windDirInput && document.activeElement !== windDirInput) {
-    windDirInput.value = Number.isFinite(w.dir) ? String(w.dir) : String(tune('windDir'));
-  }
-  if (windSpeedInput && document.activeElement !== windSpeedInput) {
-    windSpeedInput.value = Number.isFinite(w.speed) ? String(w.speed) : String(tune('windSpeed'));
-  }
-  refreshWindReadout();
-}
+function refreshWindInputs() { refreshWindReadout(); }
 window.refreshWindInputs = refreshWindInputs;
-function commitWind() {
-  if (!state.wind || typeof state.wind !== 'object') state.wind = windDefault();
-  const d = parseFloat(windDirInput && windDirInput.value);
-  const s = parseFloat(windSpeedInput && windSpeedInput.value);
-  state.wind.dir = Number.isFinite(d) ? ((Math.round(d) % 360) + 360) % 360 : state.wind.dir;
-  state.wind.speed = Number.isFinite(s) && s >= 0 ? Math.round(s) : state.wind.speed;
-  refreshWindReadout();
-  if (state.selected && state.selected.type === 'leg') showInspector();
-  if (typeof persist === 'function') persist();
-  draw();
-}
-// Endless 0–359 spinner wrap on the route-wide direction input (attached
-// before the commit handler so it cleans the value first).
-if (windDirInput && typeof wrapDirectionInput === 'function') wrapDirectionInput(windDirInput);
-if (windDirInput) windDirInput.oninput = commitWind;
-if (windSpeedInput) windSpeedInput.oninput = commitWind;
-// On blur / Enter, write the normalized value back so a typed -395 shows as
-// its wrapped 325 (commitWind already stored the normalized value).
-function writebackWindInputs() {
-  commitWind();
-  if (windDirInput) windDirInput.value = String(state.wind.dir);
-  if (windSpeedInput) windSpeedInput.value = String(state.wind.speed);
-}
-if (windDirInput) windDirInput.onchange = writebackWindInputs;
-if (windSpeedInput) windSpeedInput.onchange = writebackWindInputs;
 // "Show wind effect" toggle (#722) gates the wind inputs, the per-leg map
 // arrows, the corner readout, and the inspector wind rows. Off by default —
 // it's a planning aid, not part of the core route picture.
@@ -2030,7 +2017,10 @@ async function fetchRouteWind() {
       set++;
     }
     if (!set) throw new Error('no data');
-    if (windFetchStatus) windFetchStatus.textContent = S.windFetchOkLegs(set);
+    state.windUpdated = Date.now();          // Zulu stamp for the readout
+    if (windFetchStatus) {
+      windFetchStatus.textContent = S.windFetchOkLegs(set) + ' · ' + formatZuluHM(state.windUpdated);
+    }
     if (state.selected && state.selected.type === 'leg') showInspector();
     if (typeof persist === 'function') persist();
     draw();
@@ -3374,7 +3364,7 @@ if (typeof loadRemoteConfig === "function") {
                     [cLat + hLat + dLat, cLng + hLng + dLng]];
     const url = RAW + t.png + '?t=' + (manifest.generatedAt || '');
     if (!layer) {
-      layer = L.imageOverlay(url, bounds, { opacity: +opacity.value, interactive: false, pane: 'overlayPane' });
+      layer = L.imageOverlay(url, bounds, { opacity: +opacity.value, interactive: false, pane: 'overlayPane', className: 'ims-pwx-layer' });
       layer.addTo(map);
     } else {
       layer.setUrl(url);
