@@ -691,6 +691,7 @@ window.S = Object.assign({
   windFetchErr: 'Wind fetch failed — check connection',
   tbWindField: '🌬 Wind field (live)',
   tbWindFieldTitle: 'Animated winds-aloft field (~3000 ft) from a live Open-Meteo grid',
+  tbWindFieldOpacity: 'Field opacity',
   windFieldLoading: 'Loading wind field…',
   windFieldErr: 'Wind field unavailable',
   windUpdatedLabel: 'Wind updated (Z)',

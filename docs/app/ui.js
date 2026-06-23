@@ -2013,8 +2013,12 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
 (function windFieldOverlay() {
   const cb = document.getElementById('windfield-cb');
   const statusEl = document.getElementById('windfield-status');
+  const controls = document.getElementById('windfield-controls');
+  const opacity = document.getElementById('windfield-opacity');
+  const opacityVal = document.getElementById('windfield-opacity-val');
   if (!cb) return;
   const KEY = 'navaid.windField';
+  const OPACITY_KEY = 'navaid.windFieldOpacity';
   const LEVEL = 900;                                  // hPa (~3000 ft)
   // Grid over Israel (+margin). leaflet-velocity scans la1(N)→S, lo1(W)→E.
   const GRID = { west: 34.2, east: 35.95, north: 33.45, south: 29.45, d: 0.25 };
@@ -2086,10 +2090,11 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
         minVelocity: 0, maxVelocity: 24,
         colorScale: ['#00429d', '#1d6fd0', '#00b4d8', '#00d49b', '#7cd800',
                      '#ffd000', '#ff8800', '#ff2a00', '#c4000b'],
-        velocityScale: 0.04, particleAge: 70, particleMultiplier: 0.005,
-        lineWidth: 2.4, frameRate: 24,
+        velocityScale: 0.028, particleAge: 80, particleMultiplier: 0.0032,
+        lineWidth: 1.8, frameRate: 22,
       });
       layer.addTo(map);
+      applyOpacity();
       if (statusEl) statusEl.style.display = 'none';
     } catch (e) {
       if (statusEl) { statusEl.style.display = ''; statusEl.textContent = S.windFieldErr || 'Wind field fetch failed'; }
@@ -2102,9 +2107,31 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
     if (statusEl) statusEl.style.display = 'none';
   }
 
+  // leaflet-velocity draws into a canvas in the overlay pane; set its element
+  // opacity so the field can be dialled down against the chart base.
+  function velocityCanvas() {
+    return (layer && layer._canvasLayer && layer._canvasLayer._canvas) || null;
+  }
+  function applyOpacity() {
+    const c = velocityCanvas();
+    if (c && opacity) c.style.opacity = String(opacity.value);
+    if (opacity && opacityVal) opacityVal.textContent = Math.round(parseFloat(opacity.value) * 100) + '%';
+  }
+  function showControls(on) { if (controls) controls.hidden = !on; }
+
+  if (opacity) {
+    try { const sv = localStorage.getItem(OPACITY_KEY); if (sv !== null) opacity.value = sv; } catch (e) { /* */ }
+    opacity.oninput = () => {
+      try { localStorage.setItem(OPACITY_KEY, opacity.value); } catch (e) { /* */ }
+      applyOpacity();
+    };
+  }
+
   try { if (localStorage.getItem(KEY) === '1') cb.checked = true; } catch (e) { /* */ }
+  showControls(cb.checked);
   cb.onchange = () => {
     try { localStorage.setItem(KEY, cb.checked ? '1' : '0'); } catch (e) { /* */ }
+    showControls(cb.checked);
     if (cb.checked) { if (!busy) addLayer(); } else removeLayer();
   };
   if (cb.checked && !busy) addLayer();

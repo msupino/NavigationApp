@@ -48,6 +48,20 @@ test('the grid request covers many points over Israel in m/s', async ({ page }) 
   expect(url).toContain('wind_speed_unit=ms');
 });
 
+test('opacity slider shows with the field and drives the canvas opacity', async ({ page }) => {
+  await boot(page);
+  await expect(page.locator('#windfield-controls')).toBeHidden();
+  await page.locator('#windfield-cb').check();
+  await expect(page.locator('#windfield-controls')).toBeVisible();
+  await expect(page.locator('.leaflet-overlay-pane canvas')).toHaveCount(1, { timeout: 10000 });
+  const op = page.locator('#windfield-opacity');
+  await op.fill('0.4');
+  await op.dispatchEvent('input');
+  const canvasOpacity = await page.locator('.leaflet-overlay-pane canvas').evaluate(c => c.style.opacity);
+  expect(parseFloat(canvasOpacity)).toBeCloseTo(0.4, 2);
+  await expect(page.locator('#windfield-opacity-val')).toHaveText('40%');
+});
+
 test('wind-field toggle persists across reload', async ({ page }) => {
   await boot(page);
   await page.locator('#windfield-cb').check();

@@ -253,6 +253,7 @@ window.S = {
   windFetchErr: 'משיכת הרוח נכשלה — בדוק חיבור',
   tbWindField: '🌬 שדה רוח (חי)',
   tbWindFieldTitle: 'שדה רוחות עיליות מונפש (~3000 רגל) ממקור Open-Meteo חי',
+  tbWindFieldOpacity: 'בהירות שדה',
   windFieldLoading: 'טוען שדה רוח…',
   windFieldErr: 'שדה הרוח אינו זמין',
   windUpdatedLabel: 'עדכון רוח (Z)',
