@@ -3918,6 +3918,116 @@ if (typeof loadRemoteConfig === "function") {
     .catch(() => { /* manifest unreachable → stay hidden */ });
 })();
 
+// --- IMS wind/temperature (PWX) original-chart viewer ----------------
+// Same image-modal pattern as the SIGWX viewer, but the PWX manifest is keyed
+// by flight level → valid time. Shows the original IMS chart full-size; the
+// on-map PWX overlay is a separate control in the Information section.
+(function imsPwxChartsViewer() {
+  const RAW = 'https://raw.githubusercontent.com/msupino/NavigationApp/ims-data/';
+  const btn = document.getElementById('pwx-btn');
+  if (!btn) return;
+  let manifest = null, back = null;
+
+  function close() {
+    if (back) { back.remove(); back = null; }
+    document.removeEventListener('keydown', onEsc, true);
+  }
+  function onEsc(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }
+
+  function open() {
+    if (back || !manifest) return;
+    if (typeof closeToolbarDesktopMenus === 'function') closeToolbarDesktopMenus();
+    back = document.createElement('div');
+    back.className = 'modal-back';
+    const box = document.createElement('div');
+    box.className = 'modal wide sigwx-modal';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+
+    const title = document.createElement('div');
+    title.className = 'modal-title';
+    title.style.cursor = 'default';
+    title.textContent = S.pwxModalTitle || 'Wind / temperature charts (PWX)';
+    box.appendChild(title);
+
+    const levels = manifest.levels.slice().sort((a, b) => Number(b.level) - Number(a.level));
+    const lvlSel = document.createElement('select');
+    lvlSel.className = 'sigwx-time';
+    lvlSel.setAttribute('aria-label', S.tbImsPwxLevel || 'Level');
+    levels.forEach((lv, i) => {
+      const o = document.createElement('option');
+      o.value = String(i);
+      o.textContent = lv.label || (lv.level + ' hPa');
+      lvlSel.appendChild(o);
+    });
+    box.appendChild(lvlSel);
+
+    const timeSel = document.createElement('select');
+    timeSel.className = 'sigwx-time';
+    timeSel.setAttribute('aria-label', S.tbImsPwxTime || 'Valid time');
+    box.appendChild(timeSel);
+
+    const img = document.createElement('img');
+    img.className = 'sigwx-img';
+    img.alt = S.pwxModalTitle || 'PWX chart';
+    const note = document.createElement('div');
+    note.className = 'sigwx-missing';
+    note.hidden = true;
+    note.textContent = S.pwxMissing || 'Chart not available for this level/time yet.';
+
+    // Read png paths from the trusted manifest by index, never the DOM value
+    // (avoids js/xss-through-dom).
+    const curLevel = () => levels[lvlSel.selectedIndex];
+    function fillTimes() {
+      const lv = curLevel(); const prev = timeSel.value;
+      timeSel.innerHTML = '';
+      if (!lv || !Array.isArray(lv.times)) return;
+      lv.times.forEach((t, i) => {
+        const o = document.createElement('option');
+        o.value = String(i);
+        o.textContent = (t.day ? t.day + ' ' : '') + t.valid + 'Z';
+        timeSel.appendChild(o);
+      });
+      if (prev && [...timeSel.options].some(o => o.value === prev)) timeSel.value = prev;
+    }
+    function load() {
+      const lv = curLevel(); const t = lv && lv.times[timeSel.selectedIndex];
+      if (!t) { img.hidden = true; note.hidden = false; return; }
+      note.hidden = true; img.hidden = false;
+      img.src = RAW + t.png + '?t=' + (manifest.generatedAt || '');
+    }
+    img.addEventListener('error', () => { img.hidden = true; note.hidden = false; });
+    lvlSel.addEventListener('change', () => { fillTimes(); load(); });
+    timeSel.addEventListener('change', load);
+    if (levels.length) { fillTimes(); load(); }
+    else {
+      lvlSel.hidden = true; timeSel.hidden = true; img.hidden = true;
+      note.hidden = false;
+      note.textContent = S.pwxUnavailable || 'Wind/temp charts are temporarily unavailable.';
+    }
+    box.appendChild(img);
+    box.appendChild(note);
+
+    if (typeof addModalCloseX === 'function') addModalCloseX(box, close);
+    back.appendChild(box);
+    back.addEventListener('click', e => { if (e.target === back) close(); });
+    document.addEventListener('keydown', onEsc, true);
+    document.body.appendChild(back);
+    lvlSel.focus();
+  }
+
+  btn.addEventListener('click', open);
+
+  fetch(RAW + 'ims/pwx.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(r => (r.ok ? r.json() : null))
+    .then(m => {
+      if (!m || !Array.isArray(m.levels) || !m.levels.length) return;
+      manifest = m;
+      btn.hidden = false;
+    })
+    .catch(() => { /* manifest unreachable → stay hidden */ });
+})();
+
 // --- SIGWX significant-weather MAP overlay --------------------------
 // Overlays the low-level prog chart's map panel on the map (georeferenced like
 // PWX). The chart is a rotated, projected regional chart with its own basemap,

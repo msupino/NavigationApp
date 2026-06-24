@@ -522,6 +522,11 @@ window.S = Object.assign({
   sigwxModalTitle: 'Significant weather charts (SIGWX)',
   sigwxMissing: 'Chart not available for this time yet.',
   sigwxUnavailable: 'SIGWX charts are temporarily unavailable.',
+  tbPwxCharts: '🌬 Wind/temp charts',               // IMS PWX original-chart viewer button
+  tbPwxChartsTitle: 'View the IMS wind/temperature (PWX) charts by flight level and valid time',
+  pwxModalTitle: 'Wind / temperature charts (PWX)',
+  pwxMissing: 'Chart not available for this level/time yet.',
+  pwxUnavailable: 'Wind/temp charts are temporarily unavailable.',
   tbShowMsa: 'Show MSA',                            // leg-inspector minimum safe altitude row
   tbShowMsaTitle: 'Show minimum safe altitude (terrain + 1000 ft) in the leg inspector. Planning aid only.',
   report: 'Reporting',
