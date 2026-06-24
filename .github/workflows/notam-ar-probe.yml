@@ -29,12 +29,13 @@ jobs:
           if (!token) process.exit(0);
           const H = { Authorization: 'Bearer ' + token, Accept: 'application/json' };
           const tries = [
-            '/v1.0/notam',
-            '/v1.0/notam?airport=LLBG',
-            '/v1.0/notam?itemf=LLLL',
-            '/v1.0/notam/LLBG',
-            '/v1.0/notamlist?airports=LLBG,LLLL',
-            '/v1.0/notams/locations',
+            '/v1.0/notam?lonmin=34&lonmax=36&latmin=29.4&latmax=33.5',
+            '/v1.0/notam?lonmin=34&lonmax=36&latmin=29.4&latmax=33.5&offset=0&count=5',
+            '/v1.0/notam?airports=LLLL',
+            '/v1.0/notam?airports=LLBG',
+            '/v1.0/notam?fir=LLLL',
+            '/v1.0/notam?itemq=LLLL',
+            '/v1.0/notam?bbox=34,29.4,36,33.5',
           ];
           for (const p of tries) {
             try {
