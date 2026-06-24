@@ -3098,6 +3098,7 @@ function redrawAfterTune() {
   // The IMS overlay is a Leaflet layer (not part of draw()) — refresh it so
   // tuning its opacity / lat-lng offset updates it live.
   if (window.NavAid && typeof NavAid.refreshImsPwx === 'function') NavAid.refreshImsPwx();
+  if (window.NavAid && typeof NavAid.refreshSigwxOv === 'function') NavAid.refreshSigwxOv();
   if (window.NavAid && typeof NavAid.refreshWindField === 'function') NavAid.refreshWindField();
 }
 
@@ -3913,6 +3914,304 @@ if (typeof loadRemoteConfig === "function") {
       if (!m || !Array.isArray(m.times)) return;
       manifest = m;
       btn.hidden = false;
+    })
+    .catch(() => { /* manifest unreachable → stay hidden */ });
+})();
+
+// --- IMS wind/temperature (PWX) original-chart viewer ----------------
+// Same image-modal pattern as the SIGWX viewer, but the PWX manifest is keyed
+// by flight level → valid time. Shows the original IMS chart full-size; the
+// on-map PWX overlay is a separate control in the Information section.
+(function imsPwxChartsViewer() {
+  const RAW = 'https://raw.githubusercontent.com/msupino/NavigationApp/ims-data/';
+  const btn = document.getElementById('pwx-btn');
+  if (!btn) return;
+  let manifest = null, back = null;
+
+  function close() {
+    if (back) { back.remove(); back = null; }
+    document.removeEventListener('keydown', onEsc, true);
+  }
+  function onEsc(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }
+
+  function open() {
+    if (back || !manifest) return;
+    if (typeof closeToolbarDesktopMenus === 'function') closeToolbarDesktopMenus();
+    back = document.createElement('div');
+    back.className = 'modal-back';
+    const box = document.createElement('div');
+    box.className = 'modal wide sigwx-modal';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+
+    const title = document.createElement('div');
+    title.className = 'modal-title';
+    title.style.cursor = 'default';
+    title.textContent = S.pwxModalTitle || 'Wind / temperature charts (PWX)';
+    box.appendChild(title);
+
+    const levels = manifest.levels.slice().sort((a, b) => Number(b.level) - Number(a.level));
+    const lvlSel = document.createElement('select');
+    lvlSel.className = 'sigwx-time';
+    lvlSel.setAttribute('aria-label', S.tbImsPwxLevel || 'Level');
+    levels.forEach((lv, i) => {
+      const o = document.createElement('option');
+      o.value = String(i);
+      o.textContent = lv.label || (lv.level + ' hPa');
+      lvlSel.appendChild(o);
+    });
+    box.appendChild(lvlSel);
+
+    const timeSel = document.createElement('select');
+    timeSel.className = 'sigwx-time';
+    timeSel.setAttribute('aria-label', S.tbImsPwxTime || 'Valid time');
+    box.appendChild(timeSel);
+
+    const img = document.createElement('img');
+    img.className = 'sigwx-img';
+    img.alt = S.pwxModalTitle || 'PWX chart';
+    const note = document.createElement('div');
+    note.className = 'sigwx-missing';
+    note.hidden = true;
+    note.textContent = S.pwxMissing || 'Chart not available for this level/time yet.';
+
+    // Read png paths from the trusted manifest by index, never the DOM value
+    // (avoids js/xss-through-dom).
+    const curLevel = () => levels[lvlSel.selectedIndex];
+    function fillTimes() {
+      const lv = curLevel(); const prev = timeSel.value;
+      timeSel.innerHTML = '';
+      if (!lv || !Array.isArray(lv.times)) return;
+      lv.times.forEach((t, i) => {
+        const o = document.createElement('option');
+        o.value = String(i);
+        o.textContent = (t.day ? t.day + ' ' : '') + t.valid + 'Z';
+        timeSel.appendChild(o);
+      });
+      if (prev && [...timeSel.options].some(o => o.value === prev)) timeSel.value = prev;
+    }
+    function load() {
+      const lv = curLevel(); const t = lv && lv.times[timeSel.selectedIndex];
+      if (!t) { img.hidden = true; note.hidden = false; return; }
+      note.hidden = true; img.hidden = false;
+      img.src = RAW + t.png + '?t=' + (manifest.generatedAt || '');
+    }
+    img.addEventListener('error', () => { img.hidden = true; note.hidden = false; });
+    lvlSel.addEventListener('change', () => { fillTimes(); load(); });
+    timeSel.addEventListener('change', load);
+    if (levels.length) { fillTimes(); load(); }
+    else {
+      lvlSel.hidden = true; timeSel.hidden = true; img.hidden = true;
+      note.hidden = false;
+      note.textContent = S.pwxUnavailable || 'Wind/temp charts are temporarily unavailable.';
+    }
+    box.appendChild(img);
+    box.appendChild(note);
+
+    if (typeof addModalCloseX === 'function') addModalCloseX(box, close);
+    back.appendChild(box);
+    back.addEventListener('click', e => { if (e.target === back) close(); });
+    document.addEventListener('keydown', onEsc, true);
+    document.body.appendChild(back);
+    lvlSel.focus();
+  }
+
+  btn.addEventListener('click', open);
+
+  fetch(RAW + 'ims/pwx.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(r => (r.ok ? r.json() : null))
+    .then(m => {
+      if (!m || !Array.isArray(m.levels) || !m.levels.length) return;
+      manifest = m;
+      btn.hidden = false;
+    })
+    .catch(() => { /* manifest unreachable → stay hidden */ });
+})();
+
+// --- SIGWX significant-weather MAP overlay --------------------------
+// Overlays the low-level prog chart's map panel on the map (georeferenced like
+// PWX). The chart is a rotated, projected regional chart with its own basemap,
+// so alignment is approximate and fine-tuned via ?tune (SIGWX overlay group).
+// We crop the IMS PNG to its map frame (drop the side table) before overlaying.
+(function imsSigwxOverlay() {
+  const RAW = 'https://raw.githubusercontent.com/msupino/NavigationApp/ims-data/';
+  const box = document.getElementById('sigwx-ov');
+  const cb = document.getElementById('sigwx-ov-cb');
+  const controls = document.getElementById('sigwx-ov-controls');
+  const timeSel = document.getElementById('sigwx-ov-time');
+  const opacity = document.getElementById('sigwx-ov-opacity');
+  const opacityReset = document.getElementById('sigwx-ov-opacity-reset');
+  if (!box || !cb || !timeSel || !opacity || typeof map === 'undefined' || typeof L === 'undefined') return;
+  const DEFAULT_OPACITY = String(typeof tune === 'function' ? tune('sigwxOpacity') : 0.55);
+  // Three panels of the 1755x1240 IMS chart: the full-width title/valid-time
+  // HEADER strip, the left MAP frame, and the right weather TABLE. The MAP and
+  // TABLE crops both start BELOW the header (y0=0.105); the header is shown as
+  // its own strip shrunk to the table's width and parked above the table.
+  const CROP_HEADER = { x0: 0.00000, x1: 0.99200, y0: 0.02258, y1: 0.10484 };
+  const CROP_MAP = { x0: 0.01595, x1: 0.38860, y0: 0.10484, y1: 0.91774 };
+  const CROP_TABLE = { x0: 0.39000, x1: 0.99200, y0: 0.10484, y1: 0.91774 };
+  // Header strip aspect (height/width in source px) — used to size it when it's
+  // scaled to the table's width.
+  const HEADER_ASPECT = (CROP_HEADER.y1 - CROP_HEADER.y0) / (CROP_HEADER.x1 - CROP_HEADER.x0)
+    * (1240 / 1755);
+  // Map-panel geographic extent (re-solved for the header-trimmed crop) as a
+  // similarity fit over three airfields shared with our own layers — LLHA, LLBS
+  // and LLIB; LLIB constrains the longitude scale. ~-0.8° tilt → sigwxRotationDeg.
+  const BOUNDS_MAP = { n: 33.97, s: 29.37, w: 33.29, e: 36.80 };
+  // The TABLE isn't geographic — park it just east of Israel (over Jordan) so it
+  // sits to the right of the map; position/size are tunable.
+  const BOUNDS_TABLE = { n: 34.20, s: 29.60, w: 37.10, e: 40.60 };
+
+  let manifest = null, mapLayer = null, tblLayer = null, hdrLayer = null;
+  const off = k => (typeof tune === 'function' ? tune(k) : 0) || 0;
+  const sc = k => { const v = typeof tune === 'function' ? tune(k) : 1; return v > 0 ? v : 1; };
+  const cropCache = {};                      // key → cropped dataURL
+
+  function removeLayers() {
+    if (mapLayer) { map.removeLayer(mapLayer); mapLayer = null; }
+    if (tblLayer) { map.removeLayer(tblLayer); tblLayer = null; }
+    if (hdrLayer) { map.removeLayer(hdrLayer); hdrLayer = null; }
+  }
+  // Crop a panel of the chart PNG client-side. `knockWhite` (map panel only)
+  // makes the chart's white paper transparent so it doesn't read as a glaring
+  // print sheet over a dark-mode map (the table keeps its white, for legibility).
+  // raw.githubusercontent serves CORS so the canvas isn't tainted.
+  function cropPanel(url, crop, knockWhite) {
+    // Map panel: drop the chart's pale paper AND terrain/sea (light + low
+    // saturation) so the selected base layer (CVFR, etc.) shows through; the
+    // saturated hazard areas + dark lines/labels stay. Table/header keep white.
+    const thr = knockWhite ? Math.round(off('sigwxWhiteKnockout') || 170) : 999;
+    const satThr = Math.round(off('sigwxKnockoutSat'));
+    const key = url + '|' + crop.x0 + '|' + crop.y0 + '|' + thr + '|' + satThr;
+    if (cropCache[key]) return Promise.resolve(cropCache[key]);
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const W = img.naturalWidth, H = img.naturalHeight;
+          const sx = Math.round(W * crop.x0), sy = Math.round(H * crop.y0);
+          const sw = Math.round(W * (crop.x1 - crop.x0)), sh = Math.round(H * (crop.y1 - crop.y0));
+          const c = document.createElement('canvas');
+          c.width = sw; c.height = sh;
+          const ctx = c.getContext('2d');
+          ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+          if (knockWhite && thr <= 255) {
+            const im = ctx.getImageData(0, 0, sw, sh), d = im.data;
+            for (let i = 0; i < d.length; i += 4) {
+              const r = d[i], g = d[i + 1], b = d[i + 2];
+              const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+              if (mx >= thr && (mx - mn) <= satThr) d[i + 3] = 0;
+            }
+            ctx.putImageData(im, 0, 0);
+          }
+          const data = c.toDataURL('image/png');
+          cropCache[key] = data;
+          resolve(data);
+        } catch (e) { reject(e); }
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+  function currentTime() {
+    const i = timeSel.selectedIndex;
+    return manifest && manifest.times[i];      // by index — never trust DOM value (xss)
+  }
+  function boundsFrom(B, latOff, lngOff, latSc, lngSc) {
+    const cLat = (B.s + B.n) / 2, cLng = (B.w + B.e) / 2;
+    const hLat = (B.n - B.s) / 2 * sc(latSc), hLng = (B.e - B.w) / 2 * sc(lngSc);
+    const dLat = off(latOff), dLng = off(lngOff);
+    return [[cLat - hLat + dLat, cLng - hLng + dLng], [cLat + hLat + dLat, cLng + hLng + dLng]];
+  }
+  function applyRotation() {       // only the map panel is tilted; the table is upright
+    if (!mapLayer || typeof mapLayer.getElement !== 'function') return;
+    const el = mapLayer.getElement(); if (!el) return;
+    const deg = off('sigwxRotationDeg');
+    const base = el.style.transform.replace(/\s*rotate\([^)]*\)/g, '');
+    el.style.transformOrigin = '50% 50%';
+    el.style.transform = deg ? (base + ' rotate(' + deg + 'deg)') : base;
+  }
+  map.on('move zoom zoomend viewreset', applyRotation);
+  function place(which, data, bounds, op) {
+    const ref = which === 'map' ? mapLayer : (which === 'header' ? hdrLayer : tblLayer);
+    if (!ref) {
+      const lyr = L.imageOverlay(data, bounds, { opacity: op, interactive: false, pane: 'overlayPane', className: 'sigwx-ov-layer' });
+      lyr.addTo(map);
+      if (which === 'map') mapLayer = lyr; else if (which === 'header') hdrLayer = lyr; else tblLayer = lyr;
+    } else {
+      ref.setUrl(data); ref.setBounds(bounds); ref.setOpacity(op);
+    }
+  }
+  function updateLayer() {
+    if (!cb.checked || !manifest) { removeLayers(); return; }
+    const t = currentTime();
+    if (!t) { removeLayers(); return; }
+    const url = RAW + t.png + '?t=' + (manifest.generatedAt || '');
+    cropPanel(url, CROP_MAP, true).then(data => {
+      if (!cb.checked) { removeLayers(); return; }
+      place('map', data, boundsFrom(BOUNDS_MAP, 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale'), +opacity.value);
+      applyRotation();
+    }).catch(() => removeLayers());
+    const tblOp = off('sigwxTblOpacity') || 0.92;
+    const tblBounds = boundsFrom(BOUNDS_TABLE, 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale', 'sigwxTblScale');
+    cropPanel(url, CROP_TABLE, false).then(data => {
+      if (!cb.checked) return;
+      place('table', data, tblBounds, tblOp);
+    }).catch(() => { /* table optional */ });
+    // Title header: full-width strip shrunk to the table's width, parked just
+    // above the table (height keeps the strip's aspect at that width).
+    cropPanel(url, CROP_HEADER, false).then(data => {
+      if (!cb.checked) return;
+      const w = tblBounds[0][1], e = tblBounds[1][1], nT = tblBounds[1][0];
+      const midLat = (tblBounds[0][0] + nT) / 2;
+      const hLat = (e - w) * Math.cos(midLat * Math.PI / 180) * HEADER_ASPECT;
+      place('header', data, [[nT, w], [nT + hLat, e]], tblOp);
+    }).catch(() => { /* header optional */ });
+  }
+  function fillTimes() {
+    timeSel.innerHTML = '';
+    if (!manifest) return;
+    manifest.times.forEach((t, i) => {
+      const o = document.createElement('option');
+      o.value = String(i);
+      o.textContent = (t.day ? t.day + ' ' : '') + t.valid + 'Z';
+      timeSel.appendChild(o);
+    });
+  }
+  const KEY = 'navaid.sigwxOv';
+  const persist = () => {
+    try { localStorage.setItem(KEY, JSON.stringify({ on: cb.checked, valid: timeSel.value, opacity: +opacity.value })); }
+    catch (e) { /* */ }
+  };
+  NavAid.refreshSigwxOv = updateLayer;
+
+  cb.addEventListener('change', () => { controls.hidden = !cb.checked; updateLayer(); persist(); });
+  timeSel.addEventListener('change', () => { updateLayer(); persist(); });
+  function setOpacityLabel() {
+    const el = document.getElementById('sigwx-ov-opacity-val');
+    if (el) el.textContent = Math.round(+opacity.value * 100) + '%';
+  }
+  opacity.addEventListener('input', () => { setOpacityLabel(); updateLayer(); persist(); });
+  if (opacityReset) opacityReset.addEventListener('click', () => { opacity.value = DEFAULT_OPACITY; setOpacityLabel(); updateLayer(); persist(); });
+
+  fetch(RAW + 'ims/sigwx.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(r => (r.ok ? r.json() : null))
+    .then(m => {
+      if (!m || !Array.isArray(m.times) || !m.times.length) return;
+      manifest = m;
+      fillTimes();
+      box.hidden = false;
+      // Restore persisted state.
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { /* */ }
+      opacity.value = saved && Number.isFinite(saved.opacity) ? String(saved.opacity) : DEFAULT_OPACITY;
+      setOpacityLabel();
+      if (saved && saved.valid != null) {
+        const o = Array.from(timeSel.options).find(op => op.value === String(saved.valid));
+        if (o) timeSel.value = o.value;
+      }
+      if (saved && saved.on) { cb.checked = true; controls.hidden = false; updateLayer(); }
     })
     .catch(() => { /* manifest unreachable → stay hidden */ });
 })();

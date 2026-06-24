@@ -267,6 +267,18 @@ NavAid.tuningDefaults = {
   imsPwxRotationDeg: { value: -0.5, min: -15, max: 15, step: 0.1, label: 'IMS PWX overlay rotation (°)' },
   imsPwxDarkBackdropAlpha: { value: 0.6, min: 0, max: 1, step: 0.05, label: 'IMS PWX dark-mode footer backdrop (white, 0 = off)' },
   imsPwxBackdropBandPct: { value: 6, min: 0, max: 50, step: 1, label: 'IMS PWX footer backdrop band (% of image height)' },
+  sigwxLatOffset: { value: -0.03, min: -2, max: 2, step: 0.01, label: 'SIGWX overlay latitude nudge (°)' },
+  sigwxLngOffset: { value: 0, min: -2, max: 2, step: 0.01, label: 'SIGWX overlay longitude nudge (°)' },
+  sigwxLatScale: { value: 1, min: 0.7, max: 1.3, step: 0.005, label: 'SIGWX overlay vertical zoom' },
+  sigwxLngScale: { value: 1.02, min: 0.7, max: 1.3, step: 0.005, label: 'SIGWX overlay horizontal zoom' },
+  sigwxRotationDeg: { value: 0, min: -45, max: 45, step: 0.1, label: 'SIGWX overlay rotation (°)' },
+  sigwxOpacity: { value: 0.55, min: 0.2, max: 1, step: 0.05, label: 'SIGWX overlay default opacity' },
+  sigwxWhiteKnockout: { value: 170, min: 120, max: 256, step: 1, label: 'SIGWX map-panel knockout lightness (drops paper+terrain so the base layer shows; 256 = off)' },
+  sigwxKnockoutSat: { value: 45, min: 0, max: 120, step: 1, label: 'SIGWX map-panel knockout max saturation (keeps coloured hazard areas)' },
+  sigwxTblLatOffset: { value: 0, min: -3, max: 3, step: 0.02, label: 'SIGWX table latitude nudge (°)' },
+  sigwxTblLngOffset: { value: 0, min: -4, max: 6, step: 0.02, label: 'SIGWX table longitude nudge (°)' },
+  sigwxTblScale: { value: 1, min: 0.4, max: 2, step: 0.02, label: 'SIGWX table size' },
+  sigwxTblOpacity: { value: 0.92, min: 0.2, max: 1, step: 0.05, label: 'SIGWX table opacity' },
 
   windFieldDefaultAltFt: { value: 1500, min: 1000, max: 5000, step: 500, label: 'Wind field default altitude (ft)' },
   windFieldDefaultOpacity: { value: 0.7, min: 0.2, max: 1, step: 0.05, label: 'Wind field default opacity' },
@@ -378,6 +390,7 @@ NavAid.tuningGroups = [
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor'] },
   { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor'] },
   { name: 'Weather (IMS)', keys: ['imsPwxOpacity', 'imsPwxLatOffset', 'imsPwxLngOffset', 'imsPwxLatScale', 'imsPwxLngScale', 'imsPwxRotationDeg', 'imsPwxDarkBackdropAlpha', 'imsPwxBackdropBandPct'] },
+  { name: 'SIGWX overlay', keys: ['sigwxOpacity', 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale', 'sigwxRotationDeg', 'sigwxWhiteKnockout', 'sigwxKnockoutSat', 'sigwxTblOpacity', 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale'] },
   // Wind-field render params + grid + defaults. The altitude/time/opacity
   // sliders are live menu controls; their defaults live here.
   { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
@@ -494,9 +507,9 @@ window.S = Object.assign({
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbShowReporting: 'Show mandatory reports',        // reporting-type overlay toggle
   tbShowReportingTitle: 'Badge waypoints that are mandatory (חובה) reporting points',
-  tbImsPwx: 'IMS wind/temp chart',                  // IMS PWX overlay toggle
-  tbImsPwxTitle: 'Overlay the IMS PWX wind & temperature forecast chart on the map',
-  tbImsPwxLevel: 'Chart level',
+  tbImsPwx: 'Show wind/temp',                       // IMS PWX overlay toggle
+  tbImsPwxTitle: 'Overlay the IMS PWX wind & temperature forecast on the map',
+  tbImsPwxLevel: 'Level',
   tbImsPwxTime: 'Valid time',
   tbImsPwxOpacity: 'Sign opacity',
   tbImsPwxOpacityReset: 'Reset opacity',
@@ -504,9 +517,16 @@ window.S = Object.assign({
   tbSigwx: '🌐 SIGWX charts',                       // significant-weather viewer button
   tbSigwxTitle: 'View IMS significant-weather (SIGWX) charts by valid time',
   tbSigwxTime: 'Valid time',
+  tbSigwxOverlay: 'Show SIGWX',
+  tbSigwxOverlayTitle: 'Overlay the low-level significant-weather (SIGWX) prog chart on the map by valid time. Approximate alignment — fine-tune with ?tune. Planning aid only.',
   sigwxModalTitle: 'Significant weather charts (SIGWX)',
   sigwxMissing: 'Chart not available for this time yet.',
   sigwxUnavailable: 'SIGWX charts are temporarily unavailable.',
+  tbPwxCharts: '🌬 Wind/temp charts',               // IMS PWX original-chart viewer button
+  tbPwxChartsTitle: 'View the IMS wind/temperature (PWX) charts by flight level and valid time',
+  pwxModalTitle: 'Wind / temperature charts (PWX)',
+  pwxMissing: 'Chart not available for this level/time yet.',
+  pwxUnavailable: 'Wind/temp charts are temporarily unavailable.',
   tbShowMsa: 'Show MSA',                            // leg-inspector minimum safe altitude row
   tbShowMsaTitle: 'Show minimum safe altitude (terrain + 1000 ft) in the leg inspector. Planning aid only.',
   report: 'Reporting',
@@ -731,7 +751,7 @@ window.S = Object.assign({
     return 'Per-leg wind set (' + n + ' leg' + (n === 1 ? '' : 's') + ')';
   },
   windFetchErr: 'Wind fetch failed — check connection',
-  tbWindField: '🌬 Wind field (live)',
+  tbWindField: 'Show wind field',
   tbWindFieldTitle: 'Animated winds-aloft field (~3000 ft) from a live Open-Meteo grid',
   tbWindFieldAlt: 'Altitude',
   tbWindFieldOpacity: 'Field opacity',
