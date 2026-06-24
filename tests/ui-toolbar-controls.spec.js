@@ -96,23 +96,23 @@ test.describe('Sliders persist to localStorage', () => {
   test('theme toggle button writes navaid.theme and persists across reload', async ({ page }) => {
     await boot(page);
     const btn = page.locator('#theme-toggle');
-    // Dark by default → button offers to switch TO light.
-    await expect(page.locator('body')).not.toHaveClass(/theme-light/);
-    await expect(btn).toContainText('Light mode');
-    await btn.click();
-    expect(await page.evaluate(() => localStorage.getItem('navaid.theme'))).toBe('light');
+    // Light by default → button offers to switch TO dark.
     await expect(page.locator('body')).toHaveClass(/theme-light/);
-    // Now in light → button offers to switch back TO dark.
     await expect(btn).toContainText('Dark mode');
+    await btn.click();
+    expect(await page.evaluate(() => localStorage.getItem('navaid.theme'))).toBe('dark');
+    await expect(page.locator('body')).not.toHaveClass(/theme-light/);
+    // Now in dark → button offers to switch back TO light.
+    await expect(btn).toContainText('Light mode');
 
     await page.reload();
     await page.waitForFunction(() => typeof state !== 'undefined');
-    await expect(page.locator('body')).toHaveClass(/theme-light/);
-    await expect(page.locator('#theme-toggle')).toContainText('Dark mode');
+    await expect(page.locator('body')).not.toHaveClass(/theme-light/);
+    await expect(page.locator('#theme-toggle')).toContainText('Light mode');
 
     await page.locator('#theme-toggle').click();
-    expect(await page.evaluate(() => localStorage.getItem('navaid.theme'))).toBe('dark');
-    await expect(page.locator('body')).not.toHaveClass(/theme-light/);
+    expect(await page.evaluate(() => localStorage.getItem('navaid.theme'))).toBe('light');
+    await expect(page.locator('body')).toHaveClass(/theme-light/);
   });
 
   test('clear store wipes all navaid.* keys and reloads', async ({ page }) => {

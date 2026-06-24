@@ -2534,7 +2534,7 @@ document.getElementById('commchange-cb').onchange = async e => {
   if (state.selected && (changed || state.selected.type === 'wp')) showInspector();
 };
 const THEME_KEY = 'navaid.theme';
-let displayTheme = 'dark';
+let displayTheme = 'light';                 // default light; a stored choice wins below
 try {
   const stored = localStorage.getItem(THEME_KEY);
   if (stored === 'light' || stored === 'dark') displayTheme = stored;
@@ -3665,6 +3665,25 @@ if (typeof loadRemoteConfig === "function") {
 }
 
 // --- IMS PWX wind/temperature chart overlay --------------------------
+// Index of the forecast time closest to "now" (Zulu) in an IMS times array —
+// entries carry { valid:'HH:MM', day:'DD/MM/YYYY' } (UTC). Used so the PWX /
+// SIGWX overlays default to the current valid time instead of the first one.
+function imsNearestTimeIndex(times) {
+  if (!Array.isArray(times) || !times.length) return 0;
+  const now = Date.now();
+  let best = 0, bestD = Infinity;
+  for (let i = 0; i < times.length; i++) {
+    const tm = /^(\d{1,2}):(\d{2})$/.exec(times[i].valid || '');
+    if (!tm) continue;
+    const dm = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(times[i].day || '');
+    let ms;
+    if (dm) ms = Date.UTC(+dm[3], +dm[2] - 1, +dm[1], +tm[1], +tm[2]);
+    else { const d = new Date(); ms = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), +tm[1], +tm[2]); }
+    const diff = Math.abs(ms - now);
+    if (diff < bestD) { bestD = diff; best = i; }
+  }
+  return best;
+}
 // Manifest + PNGs are published by .github/workflows/ims-charts.yml to the
 // ims-data orphan branch (the browser can't fetch ims.gov.il directly — no
 // CORS). The control stays hidden until the manifest loads, so nothing shows
@@ -3802,11 +3821,15 @@ if (typeof loadRemoteConfig === "function") {
           if (sv.level && [...levelSel.options].some(o => o.value === sv.level)) {
             levelSel.value = sv.level; fillTimes();
           }
-          if (sv.valid && [...timeSel.options].some(o => o.value === sv.valid)) timeSel.value = sv.valid;
           if (Number.isFinite(sv.opacity)) { opacity.value = sv.opacity; showOpacity(); }
           if (sv.on) { cb.checked = true; controls.hidden = false; }
         }
       } catch (e) { /* storage unavailable */ }
+      // Default the valid time to the chart closest to now (Zulu), not the first.
+      const lv0 = currentLevel();
+      if (lv0 && Array.isArray(lv0.times) && lv0.times.length) {
+        timeSel.value = lv0.times[imsNearestTimeIndex(lv0.times)].valid;
+      }
       updateLayer();
       // Show the model run time (cropped off the chart's bottom band).
       const runEl = document.getElementById('ims-pwx-run');
@@ -4207,10 +4230,8 @@ if (typeof loadRemoteConfig === "function") {
       try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { /* */ }
       opacity.value = saved && Number.isFinite(saved.opacity) ? String(saved.opacity) : DEFAULT_OPACITY;
       setOpacityLabel();
-      if (saved && saved.valid != null) {
-        const o = Array.from(timeSel.options).find(op => op.value === String(saved.valid));
-        if (o) timeSel.value = o.value;
-      }
+      // Default the valid time to the chart closest to now (Zulu).
+      timeSel.value = String(imsNearestTimeIndex(manifest.times));
       if (saved && saved.on) { cb.checked = true; controls.hidden = false; updateLayer(); }
     })
     .catch(() => { /* manifest unreachable → stay hidden */ });

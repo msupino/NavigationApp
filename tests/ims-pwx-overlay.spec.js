@@ -66,7 +66,7 @@ test('toggling on adds a georeferenced image overlay at the manifest bounds', as
   // Leaflet renders an <img class="leaflet-image-layer"> in the overlay pane.
   const img = page.locator('.leaflet-overlay-pane img.leaflet-image-layer');
   await expect(img).toHaveCount(1);
-  await expect(img).toHaveAttribute('src', /ims\/pwx\/90\/1200\.png/);   // default FL030
+  await expect(img).toHaveAttribute('src', /ims\/pwx\/90\//);   // default FL030 (time auto-set to nearest now)
   // Toggling off removes it.
   await page.locator('#ims-pwx-cb').uncheck();
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer')).toHaveCount(0);
@@ -134,7 +134,8 @@ test('lat/lng tune scale zooms the overlay bounds', async ({ page }) => {
 });
 
 test('dark mode plates only the footer band (gradient), not the whole image', async ({ page }) => {
-  await boot(page);                                   // default (dark) theme
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.theme', 'dark'); } catch (e) {} });
+  await boot(page);                                   // force dark (default is now light)
   await page.locator('#ims-pwx-cb').check();
   const bgi = await page.locator('.leaflet-overlay-pane img.leaflet-image-layer')
     .evaluate(el => getComputedStyle(el).backgroundImage);
