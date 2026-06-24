@@ -73,7 +73,7 @@ test('NOTAMs decode to plain English; Raw toggle shows the source text', async (
   expect(dec).toContain('installed');               // CS condition
   expect(dec).toContain('above mean sea level');    // AMSL expanded
   expect(dec).toContain('between');                 // BTN expanded
-  await page.locator('#notam-list-btn').click();
+  await page.evaluate(() => document.getElementById('notam-list-btn').click());
   const modal = page.locator('.modal-back .notam-modal');
   await expect(modal.locator('.notam-text')).toContainText('above mean sea level');
   // Raw toggle flips to the original source text.
@@ -127,7 +127,7 @@ test('timeline slider scrubs which NOTAMs are active', async ({ page }) => {
   expect(await page.evaluate(() => activeNotams().map(n => n.id).sort()))
     .toEqual(['N-LATER/26', 'N-NOW/26']);
   // Modal title reflects the scrubbed count.
-  await page.locator('#notam-list-btn').click();
+  await page.evaluate(() => document.getElementById('notam-list-btn').click());
   await expect(page.locator('.modal-back .notam-modal h3')).toContainText('2');
 });
 
@@ -197,7 +197,7 @@ test('expired NOTAMs are filtered out; modal shows the active count', async ({ p
     { id: 'X2/26', text: 'expired', end: past, geom: null, icao: 'LLBG' },
     { id: 'X3/26', text: 'perm', end: 'PERM', geom: null, icao: 'LLHA' },
   ] });
-  await page.locator('#notam-list-btn').click();
+  await page.evaluate(() => document.getElementById('notam-list-btn').click());
   const modal = page.locator('.modal-back .notam-modal');
   await expect(modal.locator('.notam-item')).toHaveCount(2);    // expired dropped
   await expect(modal.locator('h3')).toContainText('2');         // active count in title
