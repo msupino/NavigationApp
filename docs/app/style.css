@@ -1468,11 +1468,14 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
 .notam-text { margin: 0; font: 12px/1.35 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
 .notam-empty { opacity: 0.7; }
 .notam-raw-toggle {
-  position: absolute; top: 10px; right: 44px;
+  position: absolute; top: 10px; right: 44px;   /* clear the close X (top-right in LTR) */
   font: inherit; font-size: 12px; font-weight: 600;
   padding: 3px 10px; border-radius: 5px;
   border: 1px solid #4a4545; background: #2b2727; color: #ddd; cursor: pointer;
 }
+/* RTL: the close X moves to the top-left (inset-inline-end), so pin the Raw
+   button snug to the right edge instead of leaving the LTR gap. */
+html[dir="rtl"] .notam-raw-toggle { right: 8px; }
 .notam-raw-toggle:hover { background: #443f3f; color: #fff; }
 body.theme-light .notam-item { border-color: #c6ccd6; background: #f4f6fa; }
 body.theme-light .notam-raw-toggle {
