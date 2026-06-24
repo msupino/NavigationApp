@@ -358,6 +358,72 @@ async function loadNotam(force) {
     return notams;
   }
 }
+// Israel international border arcs (per neighbour), used to geocode prose
+// "border buffer" NOTAMs ("FM LEBANON BOUNDARY TO 8KM SB") that carry no
+// coordinates. The source NOTAM defines the area verbally against a national
+// border, so we trace the border ourselves and offset it inland. Planning
+// aid only; not survey-accurate.
+async function loadNotamBorders() {
+  if (notamBorders !== null) return notamBorders;
+  try {
+    const res = await fetch('data/notam-borders.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    notamBorders = (d && d.borders) || {};
+  } catch (e) {
+    console.warn('Failed to load NOTAM borders:', e);
+    notamBorders = {};
+  }
+  return notamBorders;
+}
+// Build a closed buffer polygon by offsetting a border arc inland (toward the
+// Israel interior) by km. Mirrors the offset fpl.co.il applies server-side.
+const NOTAM_BORDER_INTERIOR = [31.4, 34.9];     // reference point inside Israel
+function notamBorderBuffer(arc, km) {
+  if (!Array.isArray(arc) || arc.length < 2 || !(km > 0)) return null;
+  const off = [];
+  for (let i = 0; i < arc.length; i++) {
+    const la = arc[i][0], ln = arc[i][1];
+    const a = arc[Math.max(0, i - 1)], b = arc[Math.min(arc.length - 1, i + 1)];
+    const cosl = Math.cos(la * Math.PI / 180) || 1e-6;
+    // local tangent in an equal-distance frame, then unit normal
+    const tlat = b[0] - a[0], tlng = (b[1] - a[1]) * cosl;
+    const L = Math.hypot(tlat, tlng) || 1;
+    let nlat = -tlng / L, nlng = tlat / L;
+    // flip the normal to point inland (toward the interior reference)
+    const vlat = NOTAM_BORDER_INTERIOR[0] - la, vlng = (NOTAM_BORDER_INTERIOR[1] - ln) * cosl;
+    if (nlat * vlat + nlng * vlng < 0) { nlat = -nlat; nlng = -nlng; }
+    const dlat = km / 110.57, dlng = km / (111.32 * cosl);
+    off.push([la + nlat * dlat, ln + nlng * dlng]);
+  }
+  const ring = arc.concat(off.reverse());
+  ring.push(arc[0]);
+  return ring;
+}
+// Parse a prose border NOTAM → buffer polygon. Matches e.g.
+// "FM LEBANON BOUNDRAY TO 8KM SB" (BOUNDRAY is the source's spelling).
+const NOTAM_BORDER_RE = /\b(LEBANON|SYRIA|EGYPT|JORDAN)\b\s+BOUND\w*\s+TO\s+(\d+(?:\.\d+)?)\s*KM/i;
+function notamBorderArea(n) {
+  if (!n || n.geom || !notamBorders) return null;
+  const m = NOTAM_BORDER_RE.exec(String(n.text || ''));
+  if (!m) return null;
+  const arcs = notamBorders[m[1].toUpperCase()];
+  if (!Array.isArray(arcs) || !arcs.length) return null;
+  // Largest arc covers the main border stretch (some borders are split by
+  // the West Bank / Dead Sea into several arcs).
+  let arc = arcs[0];
+  for (const a of arcs) if (a.length > arc.length) arc = a;
+  const ring = notamBorderBuffer(arc, parseFloat(m[2]));
+  return ring ? { type: 'polygon', coords: ring, _border: m[1].toUpperCase() } : null;
+}
+function buildNotamBorderAreas() {
+  if (!Array.isArray(notams) || !notamBorders) return;
+  for (const n of notams) {
+    if (!n || n.geom) continue;
+    const g = notamBorderArea(n);
+    if (g) n.geom = g;
+  }
+}
 async function loadSigmets(force) {
   if (sigmets !== null && !force) return sigmets;
   const parse = d => {
