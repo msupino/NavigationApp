@@ -507,9 +507,9 @@ window.S = Object.assign({
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbShowReporting: 'Show mandatory reports',        // reporting-type overlay toggle
   tbShowReportingTitle: 'Badge waypoints that are mandatory (חובה) reporting points',
-  tbImsPwx: 'IMS wind/temp chart',                  // IMS PWX overlay toggle
-  tbImsPwxTitle: 'Overlay the IMS PWX wind & temperature forecast chart on the map',
-  tbImsPwxLevel: 'Chart level',
+  tbImsPwx: 'Show wind/temp',                       // IMS PWX overlay toggle
+  tbImsPwxTitle: 'Overlay the IMS PWX wind & temperature forecast on the map',
+  tbImsPwxLevel: 'Level',
   tbImsPwxTime: 'Valid time',
   tbImsPwxOpacity: 'Sign opacity',
   tbImsPwxOpacityReset: 'Reset opacity',
@@ -517,7 +517,7 @@ window.S = Object.assign({
   tbSigwx: '🌐 SIGWX charts',                       // significant-weather viewer button
   tbSigwxTitle: 'View IMS significant-weather (SIGWX) charts by valid time',
   tbSigwxTime: 'Valid time',
-  tbSigwxOverlay: 'SIGWX on map',
+  tbSigwxOverlay: 'Show SIGWX',
   tbSigwxOverlayTitle: 'Overlay the low-level significant-weather (SIGWX) prog chart on the map by valid time. Approximate alignment — fine-tune with ?tune. Planning aid only.',
   sigwxModalTitle: 'Significant weather charts (SIGWX)',
   sigwxMissing: 'Chart not available for this time yet.',
@@ -751,7 +751,7 @@ window.S = Object.assign({
     return 'Per-leg wind set (' + n + ' leg' + (n === 1 ? '' : 's') + ')';
   },
   windFetchErr: 'Wind fetch failed — check connection',
-  tbWindField: '🌬 Wind field (live)',
+  tbWindField: 'Show wind field',
   tbWindFieldTitle: 'Animated winds-aloft field (~3000 ft) from a live Open-Meteo grid',
   tbWindFieldAlt: 'Altitude',
   tbWindFieldOpacity: 'Field opacity',
