@@ -2281,6 +2281,13 @@ function showNotamModal(only) {
   const h = document.createElement('h3');
   h.textContent = (S.notamModalTitle || 'Active NOTAMs') + ' — ' + shown.length;
   box.appendChild(h);
+  // Raw toggle: NOTAM texts show decoded (Q-code + expanded abbreviations) by
+  // default; this flips every item to the original source text and back.
+  let rawMode = false;
+  const rawBtn = document.createElement('button');
+  rawBtn.type = 'button'; rawBtn.className = 'notam-raw-toggle';
+  rawBtn.textContent = S.notamRaw || 'Raw';
+  box.appendChild(rawBtn);
   if (notamMeta && notamMeta.generatedAt) {
     const u = document.createElement('div');
     u.className = 'notam-updated'; u.dir = 'ltr';
@@ -2304,11 +2311,20 @@ function showNotamModal(only) {
       id.textContent = n.id + (n.end ? '  ·  ' + n.end : '');
       const tx = document.createElement('pre');
       tx.className = 'notam-text'; tx.dir = 'ltr';
-      tx.textContent = n.text || '';
+      tx._raw = n.text || '';
+      tx._decoded = (typeof decodeNotam === 'function') ? decodeNotam(n) : tx._raw;
+      tx.textContent = tx._decoded;
       it.appendChild(id); it.appendChild(tx);
       list.appendChild(it);
     }
   }
+  rawBtn.onclick = () => {
+    rawMode = !rawMode;
+    rawBtn.textContent = rawMode ? (S.notamDecoded || 'Decoded') : (S.notamRaw || 'Raw');
+    list.querySelectorAll('.notam-text').forEach(tx => {
+      tx.textContent = rawMode ? tx._raw : tx._decoded;
+    });
+  };
   box.appendChild(list);
   back.appendChild(box);
   document.body.appendChild(back);

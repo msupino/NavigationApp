@@ -58,6 +58,27 @@ test('no NOTAMs → list button stays hidden', async ({ page }) => {
   await expect(page.locator('#notam-list-btn')).toBeHidden();
 });
 
+test('NOTAMs decode to plain English; Raw toggle shows the source text', async ({ page }) => {
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'C0003/26', type: 'RDCS', end: 'PERM', geom: null, icao: 'LLLL',
+      text: 'LLD41 ESTABLISHED BTN 2,000-8,000FT AMSL.\n   OPS WITH PPR FM ATC.\n   CTN ADZ.' },
+  ] });
+  // decodeNotam: Q-code head + expanded abbreviations.
+  const dec = await page.evaluate(() => decodeNotam({
+    type: 'RDCS', text: 'LLD41 ESTABLISHED BTN 2,000-8,000FT AMSL.\n   OPS WITH PPR FM ATC.' }));
+  expect(dec).toContain('Danger area');             // RD subject
+  expect(dec).toContain('installed');               // CS condition
+  expect(dec).toContain('above mean sea level');    // AMSL expanded
+  expect(dec).toContain('between');                 // BTN expanded
+  await page.locator('#notam-list-btn').click();
+  const modal = page.locator('.modal-back .notam-modal');
+  await expect(modal.locator('.notam-text')).toContainText('above mean sea level');
+  // Raw toggle flips to the original source text.
+  await modal.locator('.notam-raw-toggle').click();
+  await expect(modal.locator('.notam-text')).toContainText('AMSL');
+  await expect(modal.locator('.notam-text')).not.toContainText('above mean sea level');
+});
+
 test('clicking a NOTAM area on the map opens just that NOTAM', async ({ page }) => {
   await boot(page);
   await page.locator('#notam-cb').check();

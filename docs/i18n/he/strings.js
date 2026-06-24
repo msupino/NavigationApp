@@ -128,6 +128,8 @@ window.S = {
   notamNone: 'אין NOTAM פעילים.',
   notamUnavailable: 'NOTAM אינם זמינים.',
   notamUpdated: function(t) { return 'עודכן ' + t; },
+  notamRaw: 'גולמי',
+  notamDecoded: 'מפוענח',
   sigmetReadout: function(n) { return '⚠ ' + n + ' SIGMET'; },
   sigmetNone: 'אין SIGMET בתוקף',
   sigmetUpdated: function(t) { return 'SIGMET עודכן ' + t; },
