@@ -2263,6 +2263,15 @@ async function ensureNotams() {
   if (typeof loadAirfields === 'function' && typeof airfields !== 'undefined' && airfields === null) {
     try { await loadAirfields(); } catch (e) { /* */ }
   }
+  // Route-closure NOTAMs name fixes instead of coords; resolving them to lines
+  // needs the nav-waypoint / VOR databases. Load, then build the route lines.
+  if (typeof loadNavWaypoints === 'function' && typeof navWP !== 'undefined' && navWP === null) {
+    try { await loadNavWaypoints(); } catch (e) { /* */ }
+  }
+  if (typeof loadVors === 'function' && typeof vors !== 'undefined' && vors === null) {
+    try { await loadVors(); } catch (e) { /* */ }
+  }
+  if (typeof buildNotamRouteLines === 'function') buildNotamRouteLines();
   refreshNotamListBtn();
 }
 function showNotamModal(only) {
