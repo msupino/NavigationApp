@@ -2257,11 +2257,21 @@ const notamListBtn = document.getElementById('notam-list-btn');
 const notamControls = document.getElementById('notam-controls');
 const notamTimeEl = document.getElementById('notam-time');
 const notamTimeVal = document.getElementById('notam-time-val');
+const notamUpdatedEl = document.getElementById('notam-updated');
 function refreshNotamListBtn() {
   const have = Array.isArray(notams) && notams.length;
   if (notamListBtn) notamListBtn.hidden = !have;
   // The timeline slider only makes sense with the overlay on and data present.
   if (notamControls) notamControls.hidden = !(window.showNotam && have);
+  // Feed freshness, shown in the panel (not just the list modal).
+  if (notamUpdatedEl) {
+    let txt = '';
+    if (notamMeta && notamMeta.generatedAt) {
+      const t = new Date(notamMeta.generatedAt);
+      if (!isNaN(t) && S.notamUpdated) txt = S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z');
+    }
+    notamUpdatedEl.textContent = txt;
+  }
 }
 // Slider readout: 0 = live "now", otherwise "+Nh · MM-DD HH:MMZ".
 function notamTimeLabel(h) {
