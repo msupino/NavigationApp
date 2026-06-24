@@ -522,6 +522,7 @@ window.S = Object.assign({
   choosePointNavWaypoint: 'Navigation waypoint',
   choosePointVor: 'VOR station',
   choosePointCommChange: 'Freq-change arrow',
+  choosePointNotam: 'NOTAM',
   tbSearchOpen: '🔍 Find (Ctrl-F)',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
   tbRouteTemplates: '🧭 Templates',
