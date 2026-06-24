@@ -3788,11 +3788,14 @@ if (typeof loadRemoteConfig === "function") {
   // Map-frame crop (fractions of the 1755x1240 IMS chart) and its approximate
   // geographic extent (axis-aligned). Both are alignable via the tunables.
   const CROP = { x0: 0.01595, x1: 0.38860, y0: 0.02258, y1: 0.91774 };
-  // Geographic extent of the cropped map panel. Solved so two airfields shared
-  // with our own layers — LLHA (32.808,35.043) and LLBS (31.287,34.723), whose
-  // chart dots sit at cropped fractions (0.483,0.321) and (0.413,0.620) — line
-  // up between layers. Other points are within ~0.1° (slight chart rotation).
-  const BOUNDS = { n: 34.44, s: 29.35, w: 32.85, e: 37.39 };
+  // Geographic extent of the cropped map panel. Solved as a similarity fit
+  // (scale + small rotation) over three airfields shared with our own layers —
+  // LLHA (32.808,35.043), LLBS (31.287,34.723), LLIB (32.981,35.571) — whose
+  // chart dots sit at cropped fractions (0.483,0.321), (0.413,0.620) and
+  // (0.654,0.286). LLIB constrains the longitude scale (LLHA/LLBS alone were
+  // nearly the same lng); the ~-0.8° tilt is applied via sigwxRotationDeg.
+  // All three land within ~2.5'.
+  const BOUNDS = { n: 34.43, s: 29.37, w: 33.29, e: 36.80 };
 
   let manifest = null, layer = null;
   const off = k => (typeof tune === 'function' ? tune(k) : 0) || 0;

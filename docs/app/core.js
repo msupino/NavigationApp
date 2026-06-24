@@ -266,7 +266,7 @@ NavAid.tuningDefaults = {
   sigwxLngOffset: { value: 0, min: -2, max: 2, step: 0.01, label: 'SIGWX overlay longitude nudge (°)' },
   sigwxLatScale: { value: 1, min: 0.7, max: 1.3, step: 0.005, label: 'SIGWX overlay vertical zoom' },
   sigwxLngScale: { value: 1, min: 0.7, max: 1.3, step: 0.005, label: 'SIGWX overlay horizontal zoom' },
-  sigwxRotationDeg: { value: 0, min: -45, max: 45, step: 0.5, label: 'SIGWX overlay rotation (°)' },
+  sigwxRotationDeg: { value: -0.8, min: -45, max: 45, step: 0.1, label: 'SIGWX overlay rotation (°)' },
   sigwxOpacity: { value: 0.55, min: 0.2, max: 1, step: 0.05, label: 'SIGWX overlay default opacity' },
 
   windFieldDefaultAltFt: { value: 1500, min: 1000, max: 5000, step: 500, label: 'Wind field default altitude (ft)' },
