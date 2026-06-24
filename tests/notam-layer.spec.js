@@ -170,6 +170,25 @@ test('clicking a NOTAM area on the map opens just that NOTAM', async ({ page }) 
   await expect(modal).not.toContainText('A0483/26');
 });
 
+test('NOTAM appears in the multi-select point picker', async ({ page }) => {
+  await boot(page);
+  await page.locator('#notam-cb').check();
+  await page.evaluate(() => loadAirfields && loadAirfields());
+  // A spot where a NOTAM overlaps another marker offers both in the picker.
+  await page.evaluate(() => {
+    const n = activeNotams().find(x => x.id === 'C1337/26');
+    showPointChoice([{ type: 'airfield', index: 0 }, { type: 'notam', notam: n }]);
+  });
+  const picker = page.locator('.point-choice-modal');
+  await expect(picker).toBeVisible();
+  await expect(picker.locator('.point-choice-option')).toHaveCount(2);
+  await expect(picker).toContainText('C1337/26');
+  // Choosing the NOTAM option opens its text.
+  await picker.locator('.point-choice-option', { hasText: 'C1337/26' }).click();
+  await expect(page.locator('.notam-modal')).toBeVisible();
+  await expect(page.locator('.notam-modal .notam-item')).toHaveCount(1);
+});
+
 test('expired NOTAMs are filtered out; modal shows the active count', async ({ page }) => {
   const past = new Date(Date.now() - 864e5).toISOString();      // yesterday
   const future = new Date(Date.now() + 864e5).toISOString();
