@@ -2950,6 +2950,7 @@ function redrawAfterTune() {
   // The IMS overlay is a Leaflet layer (not part of draw()) — refresh it so
   // tuning its opacity / lat-lng offset updates it live.
   if (window.NavAid && typeof NavAid.refreshImsPwx === 'function') NavAid.refreshImsPwx();
+  if (window.NavAid && typeof NavAid.refreshSigwxOv === 'function') NavAid.refreshSigwxOv();
   if (window.NavAid && typeof NavAid.refreshWindField === 'function') NavAid.refreshWindField();
 }
 
@@ -3765,6 +3766,140 @@ if (typeof loadRemoteConfig === "function") {
       if (!m || !Array.isArray(m.times)) return;
       manifest = m;
       btn.hidden = false;
+    })
+    .catch(() => { /* manifest unreachable → stay hidden */ });
+})();
+
+// --- SIGWX significant-weather MAP overlay --------------------------
+// Overlays the low-level prog chart's map panel on the map (georeferenced like
+// PWX). The chart is a rotated, projected regional chart with its own basemap,
+// so alignment is approximate and fine-tuned via ?tune (SIGWX overlay group).
+// We crop the IMS PNG to its map frame (drop the side table) before overlaying.
+(function imsSigwxOverlay() {
+  const RAW = 'https://raw.githubusercontent.com/msupino/NavigationApp/ims-data/';
+  const box = document.getElementById('sigwx-ov');
+  const cb = document.getElementById('sigwx-ov-cb');
+  const controls = document.getElementById('sigwx-ov-controls');
+  const timeSel = document.getElementById('sigwx-ov-time');
+  const opacity = document.getElementById('sigwx-ov-opacity');
+  const opacityReset = document.getElementById('sigwx-ov-opacity-reset');
+  if (!box || !cb || !timeSel || !opacity || typeof map === 'undefined' || typeof L === 'undefined') return;
+  const DEFAULT_OPACITY = String(typeof tune === 'function' ? tune('sigwxOpacity') : 0.55);
+  // Map-frame crop (fractions of the 1755x1240 IMS chart) and its approximate
+  // geographic extent (axis-aligned). Both are alignable via the tunables.
+  const CROP = { x0: 0.01595, x1: 0.38860, y0: 0.02258, y1: 0.91774 };
+  const BOUNDS = { n: 34.30, s: 28.27, w: 33.15, e: 36.97 };
+
+  let manifest = null, layer = null;
+  const off = k => (typeof tune === 'function' ? tune(k) : 0) || 0;
+  const sc = k => { const v = typeof tune === 'function' ? tune(k) : 1; return v > 0 ? v : 1; };
+  const cropCache = {};                      // png url → cropped dataURL
+
+  function removeLayer() { if (layer) { map.removeLayer(layer); layer = null; } }
+  // Crop the chart PNG to its map frame, client-side, so only the map panel
+  // (not the side weather table) is overlaid. raw.githubusercontent serves CORS.
+  function cropPanel(url) {
+    if (cropCache[url]) return Promise.resolve(cropCache[url]);
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const W = img.naturalWidth, H = img.naturalHeight;
+          const sx = Math.round(W * CROP.x0), sy = Math.round(H * CROP.y0);
+          const sw = Math.round(W * (CROP.x1 - CROP.x0)), sh = Math.round(H * (CROP.y1 - CROP.y0));
+          const c = document.createElement('canvas');
+          c.width = sw; c.height = sh;
+          c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+          const data = c.toDataURL('image/png');
+          cropCache[url] = data;
+          resolve(data);
+        } catch (e) { reject(e); }
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+  function currentTime() {
+    const i = timeSel.selectedIndex;
+    return manifest && manifest.times[i];      // by index — never trust DOM value (xss)
+  }
+  function boundsNow() {
+    const cLat = (BOUNDS.s + BOUNDS.n) / 2, cLng = (BOUNDS.w + BOUNDS.e) / 2;
+    const hLat = (BOUNDS.n - BOUNDS.s) / 2 * sc('sigwxLatScale');
+    const hLng = (BOUNDS.e - BOUNDS.w) / 2 * sc('sigwxLngScale');
+    const dLat = off('sigwxLatOffset'), dLng = off('sigwxLngOffset');
+    return [[cLat - hLat + dLat, cLng - hLng + dLng], [cLat + hLat + dLat, cLng + hLng + dLng]];
+  }
+  function applyRotation() {
+    if (!layer || typeof layer.getElement !== 'function') return;
+    const el = layer.getElement(); if (!el) return;
+    const deg = off('sigwxRotationDeg');
+    const base = el.style.transform.replace(/\s*rotate\([^)]*\)/g, '');
+    el.style.transformOrigin = '50% 50%';
+    el.style.transform = deg ? (base + ' rotate(' + deg + 'deg)') : base;
+  }
+  map.on('move zoom zoomend viewreset', applyRotation);
+  function updateLayer() {
+    if (!cb.checked || !manifest) { removeLayer(); return; }
+    const t = currentTime();
+    if (!t) { removeLayer(); return; }
+    const url = RAW + t.png + '?t=' + (manifest.generatedAt || '');
+    cropPanel(url).then(data => {
+      if (!cb.checked) { removeLayer(); return; }
+      const bounds = boundsNow();
+      if (!layer) {
+        layer = L.imageOverlay(data, bounds, { opacity: +opacity.value, interactive: false, pane: 'overlayPane', className: 'sigwx-ov-layer' });
+        layer.addTo(map);
+      } else {
+        layer.setUrl(data); layer.setBounds(bounds); layer.setOpacity(+opacity.value);
+      }
+      applyRotation();
+    }).catch(() => removeLayer());
+  }
+  function fillTimes() {
+    timeSel.innerHTML = '';
+    if (!manifest) return;
+    manifest.times.forEach((t, i) => {
+      const o = document.createElement('option');
+      o.value = String(i);
+      o.textContent = (t.day ? t.day + ' ' : '') + t.valid + 'Z';
+      timeSel.appendChild(o);
+    });
+  }
+  const KEY = 'navaid.sigwxOv';
+  const persist = () => {
+    try { localStorage.setItem(KEY, JSON.stringify({ on: cb.checked, valid: timeSel.value, opacity: +opacity.value })); }
+    catch (e) { /* */ }
+  };
+  NavAid.refreshSigwxOv = updateLayer;
+
+  cb.addEventListener('change', () => { controls.hidden = !cb.checked; updateLayer(); persist(); });
+  timeSel.addEventListener('change', () => { updateLayer(); persist(); });
+  function setOpacityLabel() {
+    const el = document.getElementById('sigwx-ov-opacity-val');
+    if (el) el.textContent = Math.round(+opacity.value * 100) + '%';
+  }
+  opacity.addEventListener('input', () => { setOpacityLabel(); updateLayer(); persist(); });
+  if (opacityReset) opacityReset.addEventListener('click', () => { opacity.value = DEFAULT_OPACITY; setOpacityLabel(); updateLayer(); persist(); });
+
+  fetch(RAW + 'ims/sigwx.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(r => (r.ok ? r.json() : null))
+    .then(m => {
+      if (!m || !Array.isArray(m.times) || !m.times.length) return;
+      manifest = m;
+      fillTimes();
+      box.hidden = false;
+      // Restore persisted state.
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { /* */ }
+      opacity.value = saved && Number.isFinite(saved.opacity) ? String(saved.opacity) : DEFAULT_OPACITY;
+      setOpacityLabel();
+      if (saved && saved.valid != null) {
+        const o = Array.from(timeSel.options).find(op => op.value === String(saved.valid));
+        if (o) timeSel.value = o.value;
+      }
+      if (saved && saved.on) { cb.checked = true; controls.hidden = false; updateLayer(); }
     })
     .catch(() => { /* manifest unreachable → stay hidden */ });
 })();

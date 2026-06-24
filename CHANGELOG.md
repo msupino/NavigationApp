@@ -4,6 +4,15 @@ Browser-based CVFR flight-route planner (Israel area). HTML5 + Leaflet,
 no build step. Hosted on GitHub Pages. Summary is drawn from the merged
 pull requests; production is the `main` branch, staging is `dev`.
 
+## SIGWX significant-weather map overlay
+
+- **SIGWX on the map** — overlay the low-level significant-weather prog-chart
+  map panel (areas + fronts) on the map by valid time, like the PWX wind/temp
+  layer: toggle, time selector, opacity. The IMS chart is cropped to its map
+  frame (the side table is dropped) and georeferenced — aligned to the LLHA and
+  LLBS airfields shared with our own layers; fine-tune via `?tune` → SIGWX
+  overlay (offset / scale / rotation).
+
 ## Cumulative-time kites, frequency-change callouts, tuning panel
 
 - **Cumulative-time kites** per leg — inbound kite at B, optional return
