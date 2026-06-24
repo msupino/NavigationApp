@@ -1476,6 +1476,10 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
 /* RTL: the close X moves to the top-left (inset-inline-end), so pin the Raw
    button snug to the right edge instead of leaving the LTR gap. */
 html[dir="rtl"] .notam-raw-toggle { right: 8px; }
+/* Reserve room so the title never runs under the corner controls (close X +
+   Raw toggle). The Raw button is always on the right; the X is on the right in
+   LTR and left in RTL — pad both sides to clear either. */
+.notam-modal h3 { padding-left: 96px; padding-right: 96px; }
 .notam-raw-toggle:hover { background: #443f3f; color: #fff; }
 body.theme-light .notam-item { border-color: #c6ccd6; background: #f4f6fa; }
 body.theme-light .notam-raw-toggle {
