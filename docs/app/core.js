@@ -1079,6 +1079,7 @@ var sigmetMeta = null;      // { generatedAt } of the loaded SIGMET file
 var showNotam = false;      // NOTAM overlay — opt-in
 var notams = null;          // null = not loaded; [] or populated once fetched
 var notamMeta = null;       // { generatedAt } of the loaded NOTAM file
+var notamBorders = null;    // null = not loaded; { LEBANON:[[ [lat,lng]... ]], ... } border arcs
 var showWpNames = true;     // draw waypoint names (off = empty circle)
 var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 var yellowAlpha = 0.8;    // global multiplier for yellow label backgrounds (default 80%)

@@ -79,6 +79,32 @@ test('NOTAMs decode to plain English; Raw toggle shows the source text', async (
   await expect(modal.locator('.notam-text')).not.toContainText('above mean sea level');
 });
 
+test('prose border NOTAMs are geocoded to buffer polygons', async ({ page }) => {
+  // Borders served from the real data/notam-borders.json (not mocked).
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'C1158/26', type: 'AELC', end: 'PERM', geom: null, icao: 'LLLL',
+      text: 'AN AREA FM LEBANON BOUNDRAY TO 8KM SB CLSD TO ALL DOM FLT.' },
+  ] });
+  await page.locator('#notam-cb').check();
+  const g = await page.evaluate(() => {
+    if (typeof buildNotamBorderAreas === 'function') buildNotamBorderAreas();
+    const n = notams.find(x => x.id === 'C1158/26');
+    if (!n.geom || n.geom.type !== 'polygon') return null;
+    const lat = n.geom.coords.map(c => c[0]), lng = n.geom.coords.map(c => c[1]);
+    return { border: n.geom._border, pts: n.geom.coords.length,
+      latMin: Math.min(...lat), latMax: Math.max(...lat),
+      lngMin: Math.min(...lng), lngMax: Math.max(...lng) };
+  });
+  expect(g).not.toBeNull();
+  expect(g.border).toBe('LEBANON');
+  expect(g.pts).toBeGreaterThan(20);
+  // Buffer sits along the northern (Lebanon) border, offset ~8km south.
+  expect(g.latMin).toBeGreaterThan(32.8);
+  expect(g.latMax).toBeLessThan(33.45);
+  expect(g.lngMin).toBeGreaterThan(34.9);
+  expect(g.lngMax).toBeLessThan(35.95);
+});
+
 test('timeline slider scrubs which NOTAMs are active', async ({ page }) => {
   const started = new Date(Date.now() - 36e5).toISOString();     // -1h (already active)
   const startIn48 = new Date(Date.now() + 48 * 3600e3).toISOString();

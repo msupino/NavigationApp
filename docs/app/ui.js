@@ -2285,6 +2285,12 @@ async function ensureNotams() {
   if (typeof loadAirfields === 'function' && typeof airfields !== 'undefined' && airfields === null) {
     try { await loadAirfields(); } catch (e) { /* */ }
   }
+  // Prose "border buffer" NOTAMs (no coords) → polygons traced from the
+  // national border. Build before route lines so geom is set first.
+  if (typeof loadNotamBorders === 'function' && typeof notamBorders !== 'undefined' && notamBorders === null) {
+    try { await loadNotamBorders(); } catch (e) { /* */ }
+  }
+  if (typeof buildNotamBorderAreas === 'function') buildNotamBorderAreas();
   // Route-closure NOTAMs name fixes instead of coords; resolving them to lines
   // needs the nav-waypoint / VOR databases. Load, then build the route lines.
   if (typeof loadNavWaypoints === 'function' && typeof navWP !== 'undefined' && navWP === null) {
