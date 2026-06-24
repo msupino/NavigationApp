@@ -342,6 +342,13 @@
           <input type="checkbox" id="notam-cb"> <span data-i18n="tbShowNotam"></span>
         </label>
         <button id="notam-list-btn" type="button" hidden data-i18n="tbNotamList" data-i18n-title="tbNotamListTitle"></button>
+        <div id="notam-controls" hidden>
+          <label class="navtoggle" style="margin-top:3px" data-i18n-title="tbNotamTimeTitle">
+            <span data-i18n="tbNotamTime" style="font-size:11px"></span>
+            <input type="range" id="notam-time" min="0" max="72" step="1" value="0" style="flex:1 1 70px;min-width:60px">
+            <span class="slider-val" id="notam-time-val" style="flex:0 0 auto"></span>
+          </label>
+        </div>
         <label class="navtoggle" data-i18n-title="tbShowWindTitle">
           <input type="checkbox" id="show-wind-cb"> <span data-i18n="tbShowWind"></span>
         </label>
