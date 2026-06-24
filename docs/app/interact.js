@@ -2778,7 +2778,14 @@ map.on('mousedown', e => {
 });
 
 map.on('mousemove', e => {
-  if (!drag) return;
+  if (!drag) {
+    // Pointer cursor over clickable NOTAM areas/badges (select mode only).
+    if (window.showNotam && state.mode !== 'add' && state.mode !== 'note' &&
+        typeof notamsAtLatLng === 'function') {
+      map.getContainer().style.cursor = notamsAtLatLng(e.latlng).length ? 'pointer' : '';
+    }
+    return;
+  }
   const p = e.containerPoint;
   if (drag.kind === 'wp') {
     drag.moved = true;
@@ -2849,6 +2856,14 @@ window.addEventListener('pointercancel', endMouseDrag);
 
 map.on('click', e => {
   if (downHit) { downHit = false; return; }
+  // NOTAM areas / lines / airport badges are clickable to view their text.
+  // Only in select mode — add/note clicks place points, and a waypoint hit
+  // (downHit, above) already took priority.
+  if (window.showNotam && state.mode !== 'add' && state.mode !== 'note' &&
+      typeof notamsAtLatLng === 'function' && typeof showNotamModal === 'function') {
+    const hits = notamsAtLatLng(e.latlng);
+    if (hits.length) { showNotamModal(hits); return; }
+  }
   if (state.mode === 'add') {
     const r = applyNavSnap(e.latlng, '');
     // #104: ignore the click if a waypoint already sits at the snap target.

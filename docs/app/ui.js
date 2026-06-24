@@ -2265,7 +2265,7 @@ async function ensureNotams() {
   }
   refreshNotamListBtn();
 }
-function showNotamModal() {
+function showNotamModal(only) {
   const back = document.createElement('div');
   back.className = 'modal-back';
   const box = document.createElement('div');
@@ -2274,7 +2274,10 @@ function showNotamModal() {
   close.className = 'modal-close-x'; close.type = 'button'; close.textContent = '×';
   close.setAttribute('aria-label', 'Close');
   box.appendChild(close);
-  const shown = (typeof activeNotams === 'function') ? activeNotams() : (Array.isArray(notams) ? notams : []);
+  // `only` = subset clicked on the map. Empty/absent → full active list.
+  const shown = (Array.isArray(only) && only.length)
+    ? only
+    : ((typeof activeNotams === 'function') ? activeNotams() : (Array.isArray(notams) ? notams : []));
   const h = document.createElement('h3');
   h.textContent = (S.notamModalTitle || 'Active NOTAMs') + ' — ' + shown.length;
   box.appendChild(h);
