@@ -88,7 +88,7 @@ jobs:
           };
           // FAA NMS-API base (Staging/Pre-Prod by default; set FAA_NMS_BASE to
           // https://api-nms.aim.faa.gov for production).
-          const FAA_BASE = (process.env.FAA_NMS_BASE || 'https://api-staging.cgifederal-aim.com').replace(/\/+$/, '');
+          const FAA_BASE = (process.env.FAA_NMS_BASE || 'https://api-nms.aim.faa.gov').replace(/\/+$/, '');
           // Pull the NOTAM number + geometry out of a GeoJSON Feature, probing
           // the property keys the API may use.
           const faaFeatureId = (f) => {
