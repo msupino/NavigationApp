@@ -35,15 +35,15 @@ test('toggling adds a cropped image overlay; persists across reload', async ({ p
   await boot(page);
   await page.locator('#sigwx-ov-cb').check();
   await expect(page.locator('#sigwx-ov-controls')).toBeVisible();
-  // Two cropped overlays appear (map panel + weather table), both data: URLs.
+  // Three cropped overlays appear (map panel + table + title header), data: URLs.
   const img = page.locator('img.sigwx-ov-layer');
-  await expect(img).toHaveCount(2);
+  await expect(img).toHaveCount(3);
   await expect(img.first()).toHaveAttribute('src', /^data:image\/png/);
   // Persisted on; restored after reload.
   await page.reload();
   await page.waitForFunction(() => document.getElementById('sigwx-ov-cb'));
   await expect(page.locator('#sigwx-ov-cb')).toBeChecked();
-  await expect(page.locator('img.sigwx-ov-layer')).toHaveCount(2);
+  await expect(page.locator('img.sigwx-ov-layer')).toHaveCount(3);
 });
 
 test('no SIGWX times → overlay box stays hidden', async ({ page }) => {

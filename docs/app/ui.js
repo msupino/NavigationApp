@@ -3933,13 +3933,17 @@ if (typeof loadRemoteConfig === "function") {
   const opacityReset = document.getElementById('sigwx-ov-opacity-reset');
   if (!box || !cb || !timeSel || !opacity || typeof map === 'undefined' || typeof L === 'undefined') return;
   const DEFAULT_OPACITY = String(typeof tune === 'function' ? tune('sigwxOpacity') : 0.55);
-  // The chart has two panels: the left MAP frame and the right weather TABLE.
-  // Crop fractions of the 1755x1240 IMS chart for each. The MAP crop starts
-  // BELOW the full-width title/valid-time header (y0=0.105) so that header
-  // doesn't sit over the map; the TABLE crop keeps the top, so the header
-  // travels with the legend.
+  // Three panels of the 1755x1240 IMS chart: the full-width title/valid-time
+  // HEADER strip, the left MAP frame, and the right weather TABLE. The MAP and
+  // TABLE crops both start BELOW the header (y0=0.105); the header is shown as
+  // its own strip shrunk to the table's width and parked above the table.
+  const CROP_HEADER = { x0: 0.00000, x1: 0.99200, y0: 0.02258, y1: 0.10484 };
   const CROP_MAP = { x0: 0.01595, x1: 0.38860, y0: 0.10484, y1: 0.91774 };
-  const CROP_TABLE = { x0: 0.39000, x1: 0.99200, y0: 0.02258, y1: 0.91774 };
+  const CROP_TABLE = { x0: 0.39000, x1: 0.99200, y0: 0.10484, y1: 0.91774 };
+  // Header strip aspect (height/width in source px) — used to size it when it's
+  // scaled to the table's width.
+  const HEADER_ASPECT = (CROP_HEADER.y1 - CROP_HEADER.y0) / (CROP_HEADER.x1 - CROP_HEADER.x0)
+    * (1240 / 1755);
   // Map-panel geographic extent (re-solved for the header-trimmed crop) as a
   // similarity fit over three airfields shared with our own layers — LLHA, LLBS
   // and LLIB; LLIB constrains the longitude scale. ~-0.8° tilt → sigwxRotationDeg.
@@ -3948,7 +3952,7 @@ if (typeof loadRemoteConfig === "function") {
   // sits to the right of the map; position/size are tunable.
   const BOUNDS_TABLE = { n: 34.20, s: 29.60, w: 37.10, e: 40.60 };
 
-  let manifest = null, mapLayer = null, tblLayer = null;
+  let manifest = null, mapLayer = null, tblLayer = null, hdrLayer = null;
   const off = k => (typeof tune === 'function' ? tune(k) : 0) || 0;
   const sc = k => { const v = typeof tune === 'function' ? tune(k) : 1; return v > 0 ? v : 1; };
   const cropCache = {};                      // key → cropped dataURL
@@ -3956,6 +3960,7 @@ if (typeof loadRemoteConfig === "function") {
   function removeLayers() {
     if (mapLayer) { map.removeLayer(mapLayer); mapLayer = null; }
     if (tblLayer) { map.removeLayer(tblLayer); tblLayer = null; }
+    if (hdrLayer) { map.removeLayer(hdrLayer); hdrLayer = null; }
   }
   // Crop a panel of the chart PNG client-side. `knockWhite` (map panel only)
   // makes the chart's white paper transparent so it doesn't read as a glaring
@@ -3963,7 +3968,7 @@ if (typeof loadRemoteConfig === "function") {
   // raw.githubusercontent serves CORS so the canvas isn't tainted.
   function cropPanel(url, crop, knockWhite) {
     const thr = knockWhite ? Math.round(off('sigwxWhiteKnockout') || 248) : 999;
-    const key = url + '|' + crop.x0 + '|' + thr;
+    const key = url + '|' + crop.x0 + '|' + crop.y0 + '|' + thr;
     if (cropCache[key]) return Promise.resolve(cropCache[key]);
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -4013,11 +4018,11 @@ if (typeof loadRemoteConfig === "function") {
   }
   map.on('move zoom zoomend viewreset', applyRotation);
   function place(which, data, bounds, op) {
-    const ref = which === 'map' ? mapLayer : tblLayer;
+    const ref = which === 'map' ? mapLayer : (which === 'header' ? hdrLayer : tblLayer);
     if (!ref) {
       const lyr = L.imageOverlay(data, bounds, { opacity: op, interactive: false, pane: 'overlayPane', className: 'sigwx-ov-layer' });
       lyr.addTo(map);
-      if (which === 'map') mapLayer = lyr; else tblLayer = lyr;
+      if (which === 'map') mapLayer = lyr; else if (which === 'header') hdrLayer = lyr; else tblLayer = lyr;
     } else {
       ref.setUrl(data); ref.setBounds(bounds); ref.setOpacity(op);
     }
@@ -4032,11 +4037,21 @@ if (typeof loadRemoteConfig === "function") {
       place('map', data, boundsFrom(BOUNDS_MAP, 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale'), +opacity.value);
       applyRotation();
     }).catch(() => removeLayers());
+    const tblOp = off('sigwxTblOpacity') || 0.92;
+    const tblBounds = boundsFrom(BOUNDS_TABLE, 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale', 'sigwxTblScale');
     cropPanel(url, CROP_TABLE, false).then(data => {
       if (!cb.checked) return;
-      const tblOp = off('sigwxTblOpacity') || 0.92;
-      place('table', data, boundsFrom(BOUNDS_TABLE, 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale', 'sigwxTblScale'), tblOp);
+      place('table', data, tblBounds, tblOp);
     }).catch(() => { /* table optional */ });
+    // Title header: full-width strip shrunk to the table's width, parked just
+    // above the table (height keeps the strip's aspect at that width).
+    cropPanel(url, CROP_HEADER, false).then(data => {
+      if (!cb.checked) return;
+      const w = tblBounds[0][1], e = tblBounds[1][1], nT = tblBounds[1][0];
+      const midLat = (tblBounds[0][0] + nT) / 2;
+      const hLat = (e - w) * Math.cos(midLat * Math.PI / 180) * HEADER_ASPECT;
+      place('header', data, [[nT, w], [nT + hLat, e]], tblOp);
+    }).catch(() => { /* header optional */ });
   }
   function fillTimes() {
     timeSel.innerHTML = '';
