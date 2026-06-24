@@ -304,6 +304,7 @@ function draw() {
   drawAirfields();
   drawVors();
   if (window.showSigmet && Array.isArray(sigmets) && sigmets.length) drawSigmets();
+  if (window.showNotam && Array.isArray(notams) && notams.length) drawNotams();
   drawLegs();
   drawWaypoints();
   drawNotes();
@@ -330,6 +331,141 @@ function draw() {
 // offline / first-run fallback.
 const SIGMET_URL =
   'https://raw.githubusercontent.com/msupino/NavigationApp/sigmet-data/sigmet.json';
+// NOTAMs: a scheduled Action queries the FAA NOTAM API for the Israel FIR
+// (LLLL), normalises geometry, and publishes notam.json to the `notam-data`
+// branch. data/notam.json is the offline / first-run fallback.
+const NOTAM_URL =
+  'https://raw.githubusercontent.com/msupino/NavigationApp/notam-data/notam.json';
+async function loadNotam(force) {
+  if (notams !== null && !force) return notams;
+  const parse = d => {
+    notamMeta = { generatedAt: (d && d.generatedAt) || null };
+    return Array.isArray(d && d.notams) ? d.notams.filter(n => n && n.id) : [];
+  };
+  try {
+    const res = await fetch(NOTAM_URL, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    notams = parse(await res.json());
+    return notams;
+  } catch (e) {
+    try {
+      const res2 = await fetch('data/notam.json');
+      notams = parse(await res2.json());
+    } catch (e2) {
+      notams = [];
+      notamMeta = { generatedAt: null };
+    }
+    return notams;
+  }
+}
+// Israel international border arcs (per neighbour), used to geocode prose
+// "border buffer" NOTAMs ("FM LEBANON BOUNDARY TO 8KM SB") that carry no
+// coordinates. The source NOTAM defines the area verbally against a national
+// border, so we trace the border ourselves and offset it inland. Planning
+// aid only; not survey-accurate.
+async function loadNotamBorders() {
+  if (notamBorders !== null) return notamBorders;
+  try {
+    const res = await fetch('data/notam-borders.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    notamBorders = (d && d.borders) || {};
+  } catch (e) {
+    console.warn('Failed to load NOTAM borders:', e);
+    notamBorders = {};
+  }
+  return notamBorders;
+}
+// Build a closed buffer polygon by offsetting a border arc inland (toward the
+// Israel interior) by km. Mirrors the offset fpl.co.il applies server-side.
+const NOTAM_BORDER_INTERIOR = [31.4, 34.9];     // reference point inside Israel
+const NOTAM_BORDER_SIMPLIFY_KM = 3;             // drop sub-buffer wiggles that fold the offset
+function notamKmBetween(p, q) {
+  const latr = (p[0] + q[0]) / 2 * Math.PI / 180;
+  return Math.hypot((q[0] - p[0]) * 110.57, (q[1] - p[1]) * 111.32 * Math.cos(latr));
+}
+function notamPerpKm(p, a, b) {                  // point→segment distance in km
+  const kx = 111.32 * Math.cos(p[0] * Math.PI / 180), ky = 110.57;
+  const ax = a[1] * kx, ay = a[0] * ky, bx = b[1] * kx, by = b[0] * ky, px = p[1] * kx, py = p[0] * ky;
+  const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+  const t = L ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / L)) : 0;
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+// Ramer–Douglas–Peucker: a 6–8km buffer offset on a noisy border self-folds at
+// every sub-buffer wiggle. Simplifying the arc first keeps the shape but removes
+// the kinks that produce spikes.
+function notamSimplify(pts, tolKm) {
+  if (pts.length < 3) return pts.slice();
+  let dmax = 0, idx = 0;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const d = notamPerpKm(pts[i], pts[0], pts[pts.length - 1]);
+    if (d > dmax) { dmax = d; idx = i; }
+  }
+  if (dmax > tolKm) {
+    const l = notamSimplify(pts.slice(0, idx + 1), tolKm);
+    const r = notamSimplify(pts.slice(idx), tolKm);
+    return l.slice(0, -1).concat(r);
+  }
+  return [pts[0], pts[pts.length - 1]];
+}
+function notamBorderBuffer(arc, km) {
+  if (!Array.isArray(arc) || arc.length < 2 || !(km > 0)) return null;
+  // Drop near-duplicate vertices (zero-length tangents), then simplify.
+  const dedup = [arc[0]];
+  for (let i = 1; i < arc.length; i++) if (notamKmBetween(dedup[dedup.length - 1], arc[i]) > 0.05) dedup.push(arc[i]);
+  arc = notamSimplify(dedup, NOTAM_BORDER_SIMPLIFY_KM);
+  if (arc.length < 2) return null;
+  // Unit normals with CONSISTENT handedness (left of travel). Deciding inland
+  // per-vertex against a far reference flips the side on wiggly borders and
+  // self-intersects; instead pick one global side for the whole arc.
+  const norm = [];
+  let vote = 0;
+  for (let i = 0; i < arc.length; i++) {
+    const la = arc[i][0], ln = arc[i][1];
+    const a = arc[Math.max(0, i - 1)], b = arc[Math.min(arc.length - 1, i + 1)];
+    const cosl = Math.cos(la * Math.PI / 180) || 1e-6;
+    const tlat = b[0] - a[0], tlng = (b[1] - a[1]) * cosl;
+    const L = Math.hypot(tlat, tlng) || 1;
+    const nlat = -tlng / L, nlng = tlat / L;     // rotate tangent +90° (fixed handedness)
+    norm.push([nlat, nlng, cosl]);
+    // accumulate which side points inland (toward the interior reference)
+    vote += nlat * (NOTAM_BORDER_INTERIOR[0] - la) + nlng * (NOTAM_BORDER_INTERIOR[1] - ln) * cosl;
+  }
+  const s = vote >= 0 ? 1 : -1;                   // single inland side for the arc
+  const off = [];
+  for (let i = 0; i < arc.length; i++) {
+    const [nlat, nlng, cosl] = norm[i];
+    const dlat = km / 110.57, dlng = km / (111.32 * cosl);
+    off.push([arc[i][0] + s * nlat * dlat, arc[i][1] + s * nlng * dlng]);
+  }
+  const ring = arc.concat(off.reverse());
+  ring.push(arc[0]);
+  return ring;
+}
+// Parse a prose border NOTAM → buffer polygon. Matches e.g.
+// "FM LEBANON BOUNDRAY TO 8KM SB" (BOUNDRAY is the source's spelling).
+const NOTAM_BORDER_RE = /\b(LEBANON|SYRIA|EGYPT|JORDAN)\b\s+BOUND\w*\s+TO\s+(\d+(?:\.\d+)?)\s*KM/i;
+function notamBorderArea(n) {
+  if (!n || n.geom || !notamBorders) return null;
+  const m = NOTAM_BORDER_RE.exec(String(n.text || ''));
+  if (!m) return null;
+  const arcs = notamBorders[m[1].toUpperCase()];
+  if (!Array.isArray(arcs) || !arcs.length) return null;
+  // Largest arc covers the main border stretch (some borders are split by
+  // the West Bank / Dead Sea into several arcs).
+  let arc = arcs[0];
+  for (const a of arcs) if (a.length > arc.length) arc = a;
+  const ring = notamBorderBuffer(arc, parseFloat(m[2]));
+  return ring ? { type: 'polygon', coords: ring, _border: m[1].toUpperCase() } : null;
+}
+function buildNotamBorderAreas() {
+  if (!Array.isArray(notams) || !notamBorders) return;
+  for (const n of notams) {
+    if (!n || n.geom) continue;
+    const g = notamBorderArea(n);
+    if (g) n.geom = g;
+  }
+}
 async function loadSigmets(force) {
   if (sigmets !== null && !force) return sigmets;
   const parse = d => {
@@ -391,6 +527,295 @@ function drawSigmets() {
   }
   octx.textAlign = 'left';
   octx.restore();
+}
+
+// A ring of lat/lng points approximating a circle of radius `nm` around a
+// centre — lets a point+radius NOTAM draw with the same polygon path as an
+// area NOTAM.
+function notamCirclePoints(lat, lng, nm, steps = 36) {
+  const dLat = nm / 60;                          // 1 NM ≈ 1/60°
+  const dLng = nm / 60 / Math.max(0.2, Math.cos(lat * Math.PI / 180));
+  const out = [];
+  for (let i = 0; i < steps; i++) {
+    const a = (i / steps) * 2 * Math.PI;
+    out.push([lat + dLat * Math.cos(a), lng + dLng * Math.sin(a)]);
+  }
+  return out;
+}
+
+// NOTAM areas: filled, dashed-outline polygons (point+radius → ring) with the
+// NOTAM id labelled at the centroid. Free-text / FIR-wide NOTAMs without
+// geometry are not drawn here — they live in the NOTAM list modal.
+// A NOTAM is "active" within the displayed window if it hasn't expired (PERM /
+// blank end = open-ended) and has already started. Used to filter the map +
+// list so expired/future NOTAMs don't clutter.
+function notamActive(n, now) {
+  const t = Number.isFinite(now) ? now : Date.now();
+  const ms = s => { const d = Date.parse(s); return Number.isFinite(d) ? d : NaN; };
+  const end = n && n.end;
+  if (end && !/PERM/i.test(end)) { const e = ms(end); if (Number.isFinite(e) && e < t) return false; }
+  const start = n && n.start;
+  if (start) { const s = ms(start); if (Number.isFinite(s) && s > t) return false; }
+  return true;
+}
+function activeNotams() {
+  // The timeline slider scrubs a look-ahead time; null = live "now".
+  const now = Number.isFinite(window.notamViewTime) ? window.notamViewTime : Date.now();
+  return Array.isArray(notams) ? notams.filter(n => notamActive(n, now)) : [];
+}
+// Resolve a NOTAM fix name (CVFR reporting point / airfield / VOR) → coords.
+// Route-closure NOTAMs name fixes ("BTN NEGEV-HOVAV") instead of giving
+// coordinates, so we look each one up in our own databases to draw a line.
+function notamResolveFix(name) {
+  const k = String(name || '').toUpperCase();
+  if (!k) return null;
+  if (Array.isArray(navWP)) {
+    const w = navWP.find(p => String(p.name).toUpperCase() === k);
+    if (w && Number.isFinite(w.lat) && Number.isFinite(w.lng)) return [w.lat, w.lng];
+  }
+  if (Array.isArray(airfields)) {
+    const a = airfields.find(p => String(p.name).toUpperCase() === k);
+    if (a && Number.isFinite(a.lat) && Number.isFinite(a.lng)) return [a.lat, a.lng];
+  }
+  if (Array.isArray(vors)) {
+    const v = vors.find(p => String(p.ident).toUpperCase() === k);
+    if (v && Number.isFinite(v.lat) && Number.isFinite(v.lng)) return [v.lat, v.lng];
+  }
+  return null;
+}
+// Parse route-closure / reroute lines out of a NOTAM's text. Fix chains are
+// runs of name tokens joined by '-' (≥2 fixes). Chains before a DIVERTED/REROUTE
+// marker are closures (only when the NOTAM says CLSD — availability/limit NOTAMs
+// name routes too but aren't closed); chains after it are diversions. A chain is
+// drawn only if ≥2 of its fixes resolve in our databases (IFR airway fixes that
+// we don't carry are skipped). Result cached on n._routeLines.
+const NOTAM_FIX_CHAIN = /\b([A-Z][A-Z0-9]{2,4}(?:-[A-Z][A-Z0-9]{2,4})+)\b/g;
+function notamRouteLines(n) {
+  if (!n || n._routeLines) return n && n._routeLines || [];
+  n._routeLines = [];
+  const txt = String(n.text || '');
+  if (!/\bRTE\b|\bROUTE\b|\bAWY\b|\bAIRWAY\b/.test(txt)) return n._routeLines;
+  const closed = /\bCLSD\b|\bCLOSED\b/.test(txt);
+  const divIdx = txt.search(/DIVERT|RE-?ROUTE/i);
+  let m;
+  NOTAM_FIX_CHAIN.lastIndex = 0;
+  while ((m = NOTAM_FIX_CHAIN.exec(txt))) {
+    const diverted = divIdx >= 0 && m.index >= divIdx;
+    if (!diverted && !closed) continue;            // availability/limit-only → no line
+    const coords = m[1].split('-').map(notamResolveFix).filter(Boolean);
+    if (coords.length >= 2) n._routeLines.push({ coords, kind: diverted ? 'diverted' : 'closed' });
+  }
+  return n._routeLines;
+}
+// Build route lines for all loaded NOTAMs (call once fix databases are ready).
+function buildNotamRouteLines() {
+  if (!Array.isArray(notams)) return;
+  for (const n of notams) { if (n) { n._routeLines = null; notamRouteLines(n); } }
+}
+function drawNotams() {
+  octx.save();
+  const col = tune('notamColor');
+  const divCol = tune('notamDivertColor');
+  for (const n of activeNotams()) {
+    // Resolved route lines (named-fix closures / diversions). Closed = solid
+    // NOTAM colour; diverted = dashed divert colour, drawn distinctly.
+    const rls = (n && Array.isArray(n._routeLines)) ? n._routeLines : [];
+    for (const rl of rls) {
+      const lp = rl.coords
+        .filter(c => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+        .map(c => proj({ lat: c[0], lng: c[1] }));
+      if (lp.length < 2) continue;
+      octx.beginPath();
+      octx.moveTo(lp[0].x, lp[0].y);
+      for (let i = 1; i < lp.length; i++) octx.lineTo(lp[i].x, lp[i].y);
+      if (rl.kind === 'diverted') {
+        octx.setLineDash([4, 6]); octx.strokeStyle = divCol;
+        octx.lineWidth = tune('notamLineWidthPx');
+      } else {
+        octx.setLineDash([]); octx.strokeStyle = col;
+        octx.lineWidth = tune('notamRouteWidthPx');
+      }
+      octx.lineJoin = 'round'; octx.lineCap = 'round';
+      octx.stroke();
+      octx.setLineDash([]);
+      if (n.id) {
+        const mid = lp[Math.floor(lp.length / 2)];
+        octx.font = 'bold 11px sans-serif';
+        octx.textAlign = 'center';
+        octx.lineWidth = 3;
+        octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), 0.9);
+        octx.strokeText(n.id, mid.x, mid.y - 6);
+        octx.fillStyle = rl.kind === 'diverted' ? divCol : col;
+        octx.fillText(n.id, mid.x, mid.y - 6);
+      }
+    }
+    const g = n && n.geom;
+    // Route closures (FAA LineString) → a thick dashed polyline, not a fill.
+    if (g && g.type === 'line' && Array.isArray(g.coords)) {
+      const lp = g.coords.filter(c => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+        .map(c => proj({ lat: c[0], lng: c[1] }));
+      if (lp.length < 2) continue;
+      octx.beginPath();
+      octx.moveTo(lp[0].x, lp[0].y);
+      for (let i = 1; i < lp.length; i++) octx.lineTo(lp[i].x, lp[i].y);
+      octx.setLineDash([10, 5]);
+      octx.lineWidth = tune('notamLineWidthPx') + 1;
+      octx.strokeStyle = col;
+      octx.stroke();
+      octx.setLineDash([]);
+      continue;
+    }
+    let ll = null;
+    if (g && g.type === 'polygon' && Array.isArray(g.coords)) ll = g.coords;
+    else if (g && g.type === 'circle' && Number.isFinite(g.lat) && Number.isFinite(g.lng) &&
+             Number.isFinite(g.radiusNm)) ll = notamCirclePoints(g.lat, g.lng, g.radiusNm);
+    if (!ll) continue;
+    const pts = ll
+      .filter(c => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+      .map(c => proj({ lat: c[0], lng: c[1] }));
+    if (pts.length < 3) continue;
+    octx.beginPath();
+    octx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) octx.lineTo(pts[i].x, pts[i].y);
+    octx.closePath();
+    octx.fillStyle = colorWithAlpha(col, tune('notamFillAlpha'));
+    octx.fill();
+    octx.setLineDash([6, 4]);
+    octx.lineWidth = tune('notamLineWidthPx');
+    octx.strokeStyle = col;
+    octx.stroke();
+    octx.setLineDash([]);
+    let cx = 0, cy = 0;
+    for (const p of pts) { cx += p.x; cy += p.y; }
+    cx /= pts.length; cy /= pts.length;
+    if (n.id) {
+      octx.font = 'bold 11px sans-serif';
+      octx.textAlign = 'center';
+      octx.lineWidth = 3;
+      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), 0.9);
+      octx.strokeText(n.id, cx, cy);
+      octx.fillStyle = col;
+      octx.fillText(n.id, cx, cy);
+    }
+  }
+  drawNotamAirportMarkers();
+  octx.textAlign = 'left';
+  octx.restore();
+}
+
+// Most NOTAMs carry no coordinates (airport-procedural / FIR-wide) — the source
+// gives none. For ones tied to a known airport, drop a count badge at the field
+// so they're visible on the map; the full text is in the NOTAM list.
+function drawNotamAirportMarkers() {
+  if (!Array.isArray(airfields) || !airfields.length) return;
+  const byIcao = {};
+  for (const n of activeNotams()) {
+    if (n && n.geom) continue;                 // already drawn as an area
+    if (n && Array.isArray(n._routeLines) && n._routeLines.length) continue;  // drawn as a route line
+    const c = n && n.icao;
+    if (!c) continue;
+    (byIcao[c] = byIcao[c] || []).push(n);
+  }
+  const col = tune('notamColor');
+  for (const code in byIcao) {
+    const af = airfields.find(a => a.name === code);
+    if (!af || !Number.isFinite(af.lat) || !Number.isFinite(af.lng)) continue;   // FIR (LLLL) etc. → list only
+    const p = proj({ lat: af.lat, lng: af.lng });
+    octx.beginPath();
+    octx.arc(p.x, p.y + 14, 9, 0, 2 * Math.PI);    // offset below the field marker
+    octx.fillStyle = colorWithAlpha(col, 0.92);
+    octx.fill();
+    octx.lineWidth = 1.5;
+    octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), 0.9);
+    octx.stroke();
+    octx.fillStyle = '#fff';
+    octx.font = 'bold 11px sans-serif';
+    octx.textAlign = 'center';
+    octx.textBaseline = 'middle';
+    octx.fillText(String(byIcao[code].length), p.x, p.y + 14);
+    octx.textBaseline = 'alphabetic';
+  }
+  octx.textAlign = 'left';
+}
+
+// Hit-test a map click against drawn NOTAMs, so areas/lines/badges open their
+// text (#959 follow-up: "notam on map should be clickable to view its info").
+// All tests run in canvas/screen space via proj(), matching how drawNotams()
+// renders, so what you see is what you can click.
+function notamPointInPoly(pt, poly) {       // poly: [{x,y}], ray-cast
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
+    if (((yi > pt.y) !== (yj > pt.y)) &&
+        (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+function notamDistToSeg(p, a, b) {           // point→segment distance (px)
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const l2 = dx * dx + dy * dy;
+  let t = l2 ? ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+function notamsAtLatLng(latlng) {
+  if (!window.showNotam || !latlng) return [];
+  const act = (typeof activeNotams === 'function') ? activeNotams() : [];
+  if (!act.length) return [];
+  const pt = proj(latlng);
+  const out = [];
+  for (const n of act) {
+    // Resolved route lines (closed/diverted) — near any segment counts.
+    const rls = (n && Array.isArray(n._routeLines)) ? n._routeLines : [];
+    let routeHit = false;
+    for (const rl of rls) {
+      const lp = rl.coords
+        .filter(c => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+        .map(c => proj({ lat: c[0], lng: c[1] }));
+      for (let i = 1; i < lp.length; i++) {
+        if (notamDistToSeg(pt, lp[i - 1], lp[i]) <= 6) { routeHit = true; break; }
+      }
+      if (routeHit) break;
+    }
+    if (routeHit) { out.push(n); continue; }
+    const g = n && n.geom;
+    if (g && g.type === 'line' && Array.isArray(g.coords)) {
+      const lp = g.coords
+        .filter(c => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+        .map(c => proj({ lat: c[0], lng: c[1] }));
+      for (let i = 1; i < lp.length; i++) {
+        if (notamDistToSeg(pt, lp[i - 1], lp[i]) <= 6) { out.push(n); break; }
+      }
+      continue;
+    }
+    let ll = null;
+    if (g && g.type === 'polygon' && Array.isArray(g.coords)) ll = g.coords;
+    else if (g && g.type === 'circle' && Number.isFinite(g.lat) && Number.isFinite(g.lng) &&
+             Number.isFinite(g.radiusNm)) ll = notamCirclePoints(g.lat, g.lng, g.radiusNm);
+    if (!ll) continue;
+    const pts = ll
+      .filter(c => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+      .map(c => proj({ lat: c[0], lng: c[1] }));
+    if (pts.length >= 3 && notamPointInPoly(pt, pts)) out.push(n);
+  }
+  // Airport count badges (no-geom NOTAMs grouped by ICAO) — see
+  // drawNotamAirportMarkers(): a r=9 disc at proj(field) offset +14px down.
+  if (Array.isArray(airfields) && airfields.length) {
+    const byIcao = {};
+    for (const n of act) {
+      if (n && n.geom) continue;
+      if (n && Array.isArray(n._routeLines) && n._routeLines.length) continue;
+      const c = n && n.icao;
+      if (c) (byIcao[c] = byIcao[c] || []).push(n);
+    }
+    for (const code in byIcao) {
+      const af = airfields.find(a => a.name === code);
+      if (!af || !Number.isFinite(af.lat) || !Number.isFinite(af.lng)) continue;
+      const p = proj({ lat: af.lat, lng: af.lng });
+      if (Math.hypot(pt.x - p.x, pt.y - (p.y + 14)) <= 11) out.push(...byIcao[code]);
+    }
+  }
+  return out;
 }
 
 // --- nav-waypoint reference overlay ---------------------------------

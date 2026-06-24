@@ -120,7 +120,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=153">
+  <link rel="stylesheet" href="app/style.css?v=167">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -309,6 +309,16 @@
         <button id="freq-table" data-i18n="tbFreqTable" data-i18n-title="tbFreqTableTitle"></button>
         <button id="alt-pairs" data-i18n="tbAltPairs" data-i18n-title="tbAltPairsTitle"></button>
         <button id="charts" data-i18n="tbCharts" data-i18n-title="tbChartsTitle"></button>
+        <!-- SIGWX significant-weather chart viewer (image modal). Hidden until
+             the ims-data sigwx manifest loads. The on-map overlay lives in the
+             Information section. -->
+        <button id="sigwx-btn" type="button" hidden
+                data-i18n="tbSigwx" data-i18n-title="tbSigwxTitle"></button>
+        <!-- IMS wind/temperature (PWX) original chart viewer (image modal),
+             by flight level + valid time. The on-map overlay lives in the
+             Information section. Hidden until the ims-data pwx manifest loads. -->
+        <button id="pwx-btn" type="button" hidden
+                data-i18n="tbPwxCharts" data-i18n-title="tbPwxChartsTitle"></button>
       </div>
     </div>
 
@@ -338,6 +348,18 @@
         <label class="navtoggle" data-i18n-title="tbShowSigmetTitle">
           <input type="checkbox" id="sigmet-cb"> <span data-i18n="tbShowSigmet"></span>
         </label>
+        <label class="navtoggle" data-i18n-title="tbShowNotamTitle">
+          <input type="checkbox" id="notam-cb"> <span data-i18n="tbShowNotam"></span>
+        </label>
+        <div id="notam-controls" hidden>
+          <label class="navtoggle" style="margin-top:3px" data-i18n-title="tbNotamTimeTitle">
+            <span data-i18n="tbNotamTime" style="font-size:11px"></span>
+            <input type="range" id="notam-time" min="0" max="72" step="1" value="0" style="flex:1 1 70px;min-width:60px">
+            <span class="slider-val" id="notam-time-val" style="flex:0 0 auto"></span>
+          </label>
+          <div id="notam-updated" class="notam-updated" dir="ltr"></div>
+        </div>
+        <button id="notam-list-btn" type="button" hidden data-i18n="tbNotamList" data-i18n-title="tbNotamListTitle"></button>
         <label class="navtoggle" data-i18n-title="tbShowWindTitle">
           <input type="checkbox" id="show-wind-cb"> <span data-i18n="tbShowWind"></span>
         </label>
@@ -385,10 +407,23 @@
             <div id="ims-pwx-run" style="font-size:10px;opacity:0.75;margin-top:3px"></div>
           </div>
         </div>
-        <!-- SIGWX significant-weather charts — in-app image viewer (no overlay).
-             Hidden until the ims-data sigwx manifest loads. -->
-        <button id="sigwx-btn" type="button" hidden
-                data-i18n="tbSigwx" data-i18n-title="tbSigwxTitle"></button>
+        <!-- SIGWX significant-weather map overlay (low-level prog chart panel,
+             georeferenced like PWX). Hidden until the sigwx manifest loads.
+             (The SIGWX chart viewer button lives in the Charts section.) -->
+        <div id="sigwx-ov" class="tb-group-box" hidden>
+          <label class="navtoggle" data-i18n-title="tbSigwxOverlayTitle">
+            <input type="checkbox" id="sigwx-ov-cb"> <span data-i18n="tbSigwxOverlay"></span>
+          </label>
+          <div id="sigwx-ov-controls" hidden>
+            <select id="sigwx-ov-time" data-i18n-aria="tbSigwxTime" style="width:100%;font:inherit;font-size:11px;margin-top:3px"></select>
+            <label class="navtoggle" style="margin-top:3px">
+              <span data-i18n="tbImsPwxOpacity" style="font-size:11px"></span>
+              <input type="range" id="sigwx-ov-opacity" min="0.2" max="1" step="0.05" value="0.55" style="flex:1 1 70px;min-width:60px">
+              <span class="slider-val" id="sigwx-ov-opacity-val" style="flex:0 0 auto"></span>
+              <button id="sigwx-ov-opacity-reset" type="button" data-i18n-title="tbImsPwxOpacityReset" style="flex:0 0 auto;width:26px;padding:2px 0">↻</button>
+            </label>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -569,7 +604,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=153';
+      var v = '?v=167';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
