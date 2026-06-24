@@ -546,6 +546,72 @@ function drawNotamAirportMarkers() {
   octx.textAlign = 'left';
 }
 
+// Hit-test a map click against drawn NOTAMs, so areas/lines/badges open their
+// text (#959 follow-up: "notam on map should be clickable to view its info").
+// All tests run in canvas/screen space via proj(), matching how drawNotams()
+// renders, so what you see is what you can click.
+function notamPointInPoly(pt, poly) {       // poly: [{x,y}], ray-cast
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
+    if (((yi > pt.y) !== (yj > pt.y)) &&
+        (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+function notamDistToSeg(p, a, b) {           // point→segment distance (px)
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const l2 = dx * dx + dy * dy;
+  let t = l2 ? ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+function notamsAtLatLng(latlng) {
+  if (!window.showNotam || !latlng) return [];
+  const act = (typeof activeNotams === 'function') ? activeNotams() : [];
+  if (!act.length) return [];
+  const pt = proj(latlng);
+  const out = [];
+  for (const n of act) {
+    const g = n && n.geom;
+    if (g && g.type === 'line' && Array.isArray(g.coords)) {
+      const lp = g.coords
+        .filter(c => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+        .map(c => proj({ lat: c[0], lng: c[1] }));
+      for (let i = 1; i < lp.length; i++) {
+        if (notamDistToSeg(pt, lp[i - 1], lp[i]) <= 6) { out.push(n); break; }
+      }
+      continue;
+    }
+    let ll = null;
+    if (g && g.type === 'polygon' && Array.isArray(g.coords)) ll = g.coords;
+    else if (g && g.type === 'circle' && Number.isFinite(g.lat) && Number.isFinite(g.lng) &&
+             Number.isFinite(g.radiusNm)) ll = notamCirclePoints(g.lat, g.lng, g.radiusNm);
+    if (!ll) continue;
+    const pts = ll
+      .filter(c => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+      .map(c => proj({ lat: c[0], lng: c[1] }));
+    if (pts.length >= 3 && notamPointInPoly(pt, pts)) out.push(n);
+  }
+  // Airport count badges (no-geom NOTAMs grouped by ICAO) — see
+  // drawNotamAirportMarkers(): a r=9 disc at proj(field) offset +14px down.
+  if (Array.isArray(airfields) && airfields.length) {
+    const byIcao = {};
+    for (const n of act) {
+      if (n && n.geom) continue;
+      const c = n && n.icao;
+      if (c) (byIcao[c] = byIcao[c] || []).push(n);
+    }
+    for (const code in byIcao) {
+      const af = airfields.find(a => a.name === code);
+      if (!af || !Number.isFinite(af.lat) || !Number.isFinite(af.lng)) continue;
+      const p = proj({ lat: af.lat, lng: af.lng });
+      if (Math.hypot(pt.x - p.x, pt.y - (p.y + 14)) <= 11) out.push(...byIcao[code]);
+    }
+  }
+  return out;
+}
+
 // --- nav-waypoint reference overlay ---------------------------------
 // Lazy-loads docs/data/nav-waypoints.json on first activation. Format:
 // { waypoints:[{ name, en, he, lat, lng }] } — 172 published reporting

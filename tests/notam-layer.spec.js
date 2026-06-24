@@ -58,6 +58,25 @@ test('no NOTAMs → list button stays hidden', async ({ page }) => {
   await expect(page.locator('#notam-list-btn')).toBeHidden();
 });
 
+test('clicking a NOTAM area on the map opens just that NOTAM', async ({ page }) => {
+  await boot(page);
+  await page.locator('#notam-cb').check();
+  // notamsAtLatLng hit-tests in canvas space via proj(); a point inside the
+  // C1337/26 circle (centre 31.96/34.8) should resolve to that NOTAM alone.
+  const hit = await page.evaluate(() => {
+    const got = notamsAtLatLng({ lat: 31.96, lng: 34.8 });
+    return { ids: got.map(n => n.id) };
+  });
+  expect(hit.ids).toContain('C1337/26');
+  // The single-NOTAM modal shows the clicked subset, not the full list.
+  await page.evaluate(() => showNotamModal(notamsAtLatLng({ lat: 31.96, lng: 34.8 })));
+  const modal = page.locator('.modal-back .notam-modal');
+  await expect(modal).toBeVisible();
+  await expect(modal.locator('.notam-item')).toHaveCount(1);
+  await expect(modal).toContainText('C1337/26');
+  await expect(modal).not.toContainText('A0483/26');
+});
+
 test('expired NOTAMs are filtered out; modal shows the active count', async ({ page }) => {
   const past = new Date(Date.now() - 864e5).toISOString();      // yesterday
   const future = new Date(Date.now() + 864e5).toISOString();
