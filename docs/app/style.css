@@ -1467,7 +1467,18 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
 .notam-id { font-weight: 700; font-size: 12px; margin-bottom: 3px; }
 .notam-text { margin: 0; font: 12px/1.35 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
 .notam-empty { opacity: 0.7; }
+.notam-raw-toggle {
+  position: absolute; top: 10px; right: 44px;
+  font: inherit; font-size: 12px; font-weight: 600;
+  padding: 3px 10px; border-radius: 5px;
+  border: 1px solid #4a4545; background: #2b2727; color: #ddd; cursor: pointer;
+}
+.notam-raw-toggle:hover { background: #443f3f; color: #fff; }
 body.theme-light .notam-item { border-color: #c6ccd6; background: #f4f6fa; }
+body.theme-light .notam-raw-toggle {
+  border-color: #c6ccd6; background: #eef1f6; color: #2b3340;
+}
+body.theme-light .notam-raw-toggle:hover { background: #dfe4ec; color: #000; }
 .sigwx-modal .sigwx-img {
   display: block;
   max-width: min(90vw, 900px);
