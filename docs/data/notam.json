@@ -1,6 +1,6 @@
 {
   "generatedAt": null,
-  "source": "FAA NOTAM API",
+  "source": "autorouter (Eurocontrol EAD)",
   "fir": "LLLL",
   "notams": []
 }
