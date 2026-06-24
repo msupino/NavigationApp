@@ -273,7 +273,8 @@ NavAid.tuningDefaults = {
   sigwxLngScale: { value: 1.02, min: 0.7, max: 1.3, step: 0.005, label: 'SIGWX overlay horizontal zoom' },
   sigwxRotationDeg: { value: 0, min: -45, max: 45, step: 0.1, label: 'SIGWX overlay rotation (°)' },
   sigwxOpacity: { value: 0.55, min: 0.2, max: 1, step: 0.05, label: 'SIGWX overlay default opacity' },
-  sigwxWhiteKnockout: { value: 248, min: 200, max: 256, step: 1, label: 'SIGWX map-panel white→transparent threshold (256 = off)' },
+  sigwxWhiteKnockout: { value: 170, min: 120, max: 256, step: 1, label: 'SIGWX map-panel knockout lightness (drops paper+terrain so the base layer shows; 256 = off)' },
+  sigwxKnockoutSat: { value: 45, min: 0, max: 120, step: 1, label: 'SIGWX map-panel knockout max saturation (keeps coloured hazard areas)' },
   sigwxTblLatOffset: { value: 0, min: -3, max: 3, step: 0.02, label: 'SIGWX table latitude nudge (°)' },
   sigwxTblLngOffset: { value: 0, min: -4, max: 6, step: 0.02, label: 'SIGWX table longitude nudge (°)' },
   sigwxTblScale: { value: 1, min: 0.4, max: 2, step: 0.02, label: 'SIGWX table size' },
@@ -389,7 +390,7 @@ NavAid.tuningGroups = [
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor'] },
   { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor'] },
   { name: 'Weather (IMS)', keys: ['imsPwxOpacity', 'imsPwxLatOffset', 'imsPwxLngOffset', 'imsPwxLatScale', 'imsPwxLngScale', 'imsPwxRotationDeg', 'imsPwxDarkBackdropAlpha', 'imsPwxBackdropBandPct'] },
-  { name: 'SIGWX overlay', keys: ['sigwxOpacity', 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale', 'sigwxRotationDeg', 'sigwxWhiteKnockout', 'sigwxTblOpacity', 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale'] },
+  { name: 'SIGWX overlay', keys: ['sigwxOpacity', 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale', 'sigwxRotationDeg', 'sigwxWhiteKnockout', 'sigwxKnockoutSat', 'sigwxTblOpacity', 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale'] },
   // Wind-field render params + grid + defaults. The altitude/time/opacity
   // sliders are live menu controls; their defaults live here.
   { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },

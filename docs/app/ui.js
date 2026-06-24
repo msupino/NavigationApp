@@ -3967,8 +3967,12 @@ if (typeof loadRemoteConfig === "function") {
   // print sheet over a dark-mode map (the table keeps its white, for legibility).
   // raw.githubusercontent serves CORS so the canvas isn't tainted.
   function cropPanel(url, crop, knockWhite) {
-    const thr = knockWhite ? Math.round(off('sigwxWhiteKnockout') || 248) : 999;
-    const key = url + '|' + crop.x0 + '|' + crop.y0 + '|' + thr;
+    // Map panel: drop the chart's pale paper AND terrain/sea (light + low
+    // saturation) so the selected base layer (CVFR, etc.) shows through; the
+    // saturated hazard areas + dark lines/labels stay. Table/header keep white.
+    const thr = knockWhite ? Math.round(off('sigwxWhiteKnockout') || 170) : 999;
+    const satThr = Math.round(off('sigwxKnockoutSat'));
+    const key = url + '|' + crop.x0 + '|' + crop.y0 + '|' + thr + '|' + satThr;
     if (cropCache[key]) return Promise.resolve(cropCache[key]);
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -3985,7 +3989,9 @@ if (typeof loadRemoteConfig === "function") {
           if (knockWhite && thr <= 255) {
             const im = ctx.getImageData(0, 0, sw, sh), d = im.data;
             for (let i = 0; i < d.length; i += 4) {
-              if (d[i] >= thr && d[i + 1] >= thr && d[i + 2] >= thr) d[i + 3] = 0;
+              const r = d[i], g = d[i + 1], b = d[i + 2];
+              const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+              if (mx >= thr && (mx - mn) <= satThr) d[i + 3] = 0;
             }
             ctx.putImageData(im, 0, 0);
           }
