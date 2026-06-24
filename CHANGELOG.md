@@ -4,6 +4,25 @@ Browser-based CVFR flight-route planner (Israel area). HTML5 + Leaflet,
 no build step. Hosted on GitHub Pages. Summary is drawn from the merged
 pull requests; production is the `main` branch, staging is `dev`.
 
+## NOTAM layer + Information (weather) overlays
+
+- **NOTAM layer** (Israel FIR, LLLL) — active-NOTAM areas on the map plus a
+  full-text list. Source: autorouter (Eurocontrol EAD), refreshed daily by a
+  scheduled Action to the `notam-data` branch.
+  - Map geometry: polygons, circles, route-closure lines, and airport count
+    badges for coordinate-less airport NOTAMs.
+  - **Click / hover** any area, line, or badge to read its text.
+  - **Decoded view** — ICAO Q-code (subject + condition) and standard
+    abbreviations expanded to plain English; **Raw** toggle for source text.
+  - **CVFR route closures** drawn as lines by resolving named fixes against the
+    nav-waypoint / airfield / VOR data; diversions drawn distinctly.
+  - **Border-buffer NOTAMs** ("FM LEBANON BOUNDARY TO 8KM") geocoded to polygons
+    from an Israel border dataset (`notam-borders.json`).
+  - **Timeline slider** (0–72h) scrubs which NOTAMs are active at a future time.
+- **Weather / Information overlays** — SIGMET hazard areas, route-wide wind
+  effect, animated wind field, IMS PWX wind/temperature, and SIGWX charts.
+- **"Weather" section renamed "Information"** now that it also holds NOTAMs.
+
 ## Cumulative-time kites, frequency-change callouts, tuning panel
 
 - **Cumulative-time kites** per leg — inbound kite at B, optional return
