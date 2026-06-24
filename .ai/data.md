@@ -17,6 +17,29 @@ separate from UI refactors when possible.
 - `terrain.json` - coarse elevation grid for MSA warnings.
 - `wx.json` - weather metadata/source configuration.
 - `sigmet.json` - SIGMET/FIR display data.
+- `notam.json` - offline fallback for the NOTAM layer (empty stub). Live data is
+  the `notam-data` orphan branch, published daily by
+  `.github/workflows/notam.yml` from autorouter (Eurocontrol EAD) for the Israel
+  FIR (LLLL). The app fetches the branch first and falls back to this file.
+- `notam-borders.json` - Israel international border arcs (per neighbour:
+  Lebanon/Syria/Egypt/Jordan; Israel-side `[lat,lng]` vertices, from
+  geoBoundaries ADM0). Used to geocode prose "border buffer" NOTAMs
+  ("FM LEBANON BOUNDARY TO 8KM") into polygons. Planning-grade, not survey.
+
+## NOTAMs
+
+The NOTAM layer is fed by a scheduled Action, not a hand-maintained file:
+
+- `.github/workflows/notam.yml` pulls Israel-FIR NOTAMs from autorouter
+  (Eurocontrol EAD) and force-pushes `notam.json` to the `notam-data` branch.
+- The app reads that branch (raw.githubusercontent) and renders areas from each
+  NOTAM's `geom` (polygon / circle / line), with airport count badges for
+  coordinate-less airport NOTAMs and a full-text list modal.
+- Geometry the source omits is derived client-side: CVFR route closures resolve
+  named fixes against `nav-waypoints.json` / `airfields.json` / `vor.json`;
+  prose border NOTAMs are buffered from `notam-borders.json`.
+- The list modal decodes the ICAO Q-code + abbreviations (Raw toggle for source
+  text); a timeline slider scrubs which NOTAMs are active at a future time.
 
 ## Naming Rules
 

@@ -1461,6 +1461,31 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   font: inherit;
   font-size: 13px;
 }
+.notam-updated { font-size: 11px; opacity: 0.7; margin: 0 0 8px; }
+.notam-list { max-height: 72vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.notam-item { border: 1px solid #3a3636; border-radius: 6px; padding: 6px 8px; background: rgba(255, 255, 255, 0.03); }
+.notam-id { font-weight: 700; font-size: 12px; margin-bottom: 3px; }
+.notam-text { margin: 0; font: 12px/1.35 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
+.notam-empty { opacity: 0.7; }
+.notam-raw-toggle {
+  position: absolute; top: 10px; right: 44px;   /* clear the close X (top-right in LTR) */
+  font: inherit; font-size: 12px; font-weight: 600;
+  padding: 3px 10px; border-radius: 5px;
+  border: 1px solid #4a4545; background: #2b2727; color: #ddd; cursor: pointer;
+}
+/* RTL: the close X moves to the top-left (inset-inline-end), so pin the Raw
+   button snug to the right edge instead of leaving the LTR gap. */
+html[dir="rtl"] .notam-raw-toggle { right: 8px; }
+/* Reserve room so the title never runs under the corner controls (close X +
+   Raw toggle). The Raw button is always on the right; the X is on the right in
+   LTR and left in RTL — pad both sides to clear either. */
+.notam-modal h3 { padding-left: 96px; padding-right: 96px; }
+.notam-raw-toggle:hover { background: #443f3f; color: #fff; }
+body.theme-light .notam-item { border-color: #c6ccd6; background: #f4f6fa; }
+body.theme-light .notam-raw-toggle {
+  border-color: #c6ccd6; background: #eef1f6; color: #2b3340;
+}
+body.theme-light .notam-raw-toggle:hover { background: #dfe4ec; color: #000; }
 .sigwx-modal .sigwx-img {
   display: block;
   max-width: min(90vw, 900px);

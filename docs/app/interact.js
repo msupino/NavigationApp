@@ -394,8 +394,10 @@ function dedupePointCandidates(candidates) {
   const seen = new Set();
   const out = [];
   for (const c of candidates || []) {
-    if (!c || !Number.isInteger(c.index)) continue;
-    const key = c.type + ':' + c.index;
+    if (!c) continue;
+    let key;
+    if (c.type === 'notam') key = 'notam:' + (c.notam && c.notam.id);
+    else { if (!Number.isInteger(c.index)) continue; key = c.type + ':' + c.index; }
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(c);
@@ -403,6 +405,13 @@ function dedupePointCandidates(candidates) {
   return out;
 }
 function pointChoiceText(c) {
+  if (c.type === 'notam') {
+    const n = c.notam || {};
+    return {
+      primary: n.id || 'NOTAM',
+      meta: (S.choosePointNotam || 'NOTAM') + (n.end ? ' / ' + n.end : ''),
+    };
+  }
   if (c.type === 'commcallout') {
     const note = state.notes[c.index] || {};
     const name = typeof commNoteName === 'function' ? commNoteName(note) : (note.freqName || '');
@@ -497,6 +506,10 @@ function collapseLinkedCommRouteCandidates(items) {
   });
 }
 function selectPointCandidate(c) {
+  if (c.type === 'notam') {
+    if (typeof showNotamModal === 'function') showNotamModal([c.notam]);
+    return;
+  }
   state.selected = c.type === 'commcallout'
     ? selectionForNoteHit(c.index)
     : { type: c.type, index: c.index };
@@ -2675,7 +2688,14 @@ map.on('mousedown', e => {
     return !(wi >= 0 && wpHitSet.has(wi));
   });
   const ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
-  const commChoiceHits = commHits.concat(wpHits, ovHits);
+  // NOTAM areas / lines / badges are clickable too — include them as overlay
+  // choices so an overlap surfaces the multi-selector. Waypoints stay higher
+  // priority (so they remain draggable inside large NOTAM areas); a NOTAM-only
+  // click opens its text.
+  const notamHits = (includeOverlayChoices && window.showNotam && typeof notamsAtLatLng === 'function')
+    ? notamsAtLatLng(e.latlng).map(n => ({ type: 'notam', notam: n })) : [];
+  const ovAll = ovHits.concat(notamHits);
+  const commChoiceHits = commHits.concat(wpHits, ovAll);
   if (commHits.length && commChoiceHits.length > 1) {
     downHit = true;
     showPointChoice(commChoiceHits);
@@ -2756,15 +2776,19 @@ map.on('mousedown', e => {
   // Outside edit mode, a click on a VOR / airfield / nav-WP marker opens its
   // read-only inspector. Not draggable, so leave map panning enabled.
   if (includeOverlayChoices) {
-    if (ovHits.length > 1) {
+    if (ovAll.length > 1) {
       downHit = true;
-      showPointChoice(ovHits);
+      showPointChoice(ovAll);
       return;
     }
-    if (ovHits.length) {
+    if (ovAll.length) {
       downHit = true;
-      state.selected = ovHits[0];
-      showInspector(); draw();
+      if (ovAll[0].type === 'notam') {
+        if (typeof showNotamModal === 'function') showNotamModal([ovAll[0].notam]);
+      } else {
+        state.selected = ovAll[0];
+        showInspector(); draw();
+      }
       return;
     }
   }
@@ -2778,7 +2802,14 @@ map.on('mousedown', e => {
 });
 
 map.on('mousemove', e => {
-  if (!drag) return;
+  if (!drag) {
+    // Pointer cursor over clickable NOTAM areas/badges (select mode only).
+    if (window.showNotam && state.mode !== 'add' && state.mode !== 'note' &&
+        typeof notamsAtLatLng === 'function') {
+      map.getContainer().style.cursor = notamsAtLatLng(e.latlng).length ? 'pointer' : '';
+    }
+    return;
+  }
   const p = e.containerPoint;
   if (drag.kind === 'wp') {
     drag.moved = true;
@@ -2849,6 +2880,7 @@ window.addEventListener('pointercancel', endMouseDrag);
 
 map.on('click', e => {
   if (downHit) { downHit = false; return; }
+  // NOTAM clicks are handled in mousedown (as overlay choices); see there.
   if (state.mode === 'add') {
     const r = applyNavSnap(e.latlng, '');
     // #104: ignore the click if a waypoint already sits at the snap target.
@@ -3069,7 +3101,11 @@ mapEl.addEventListener('touchstart', e => {
     return !(wi >= 0 && wpHitSet.has(wi));
   });
   const ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
-  const commChoiceHits = commHits.concat(wpHits, ovHits);
+  // NOTAM areas/lines/badges as overlay choices (see the mousedown handler).
+  const notamHits = (includeOverlayChoices && window.showNotam && typeof notamsAtLatLng === 'function')
+    ? notamsAtLatLng(map.containerPointToLatLng([p.x, p.y])).map(n => ({ type: 'notam', notam: n })) : [];
+  const ovAll = ovHits.concat(notamHits);
+  const commChoiceHits = commHits.concat(wpHits, ovAll);
   if (commHits.length && commChoiceHits.length > 1) {
     e.preventDefault();
     showPointChoice(commChoiceHits);
@@ -3077,7 +3113,7 @@ mapEl.addEventListener('touchstart', e => {
   }
   const note = hitNote(p.x, p.y);
   const activeWpHits = note < 0 ? wpHits : [];
-  const activeOvHits = note < 0 ? ovHits : [];
+  const activeOvHits = note < 0 ? ovAll : [];
   const wpAmbiguous = activeWpHits.length > 1;
   const wp = activeWpHits.length ? activeWpHits[0].index : -1;
   const cum = (!wpAmbiguous && wp < 0 && note < 0) ? hitCumLabel(p.x, p.y) : null;
@@ -3134,9 +3170,13 @@ mapEl.addEventListener('touchstart', e => {
       return;
     }
     if (activeOvHits.length) {
-      state.selected = activeOvHits[0];
       e.preventDefault();
-      showInspector(); draw();
+      if (activeOvHits[0].type === 'notam') {
+        if (typeof showNotamModal === 'function') showNotamModal([activeOvHits[0].notam]);
+      } else {
+        state.selected = activeOvHits[0];
+        showInspector(); draw();
+      }
       return;
     }
   }
