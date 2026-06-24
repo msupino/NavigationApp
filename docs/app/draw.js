@@ -454,10 +454,92 @@ function activeNotams() {
   const now = Date.now();
   return Array.isArray(notams) ? notams.filter(n => notamActive(n, now)) : [];
 }
+// Resolve a NOTAM fix name (CVFR reporting point / airfield / VOR) → coords.
+// Route-closure NOTAMs name fixes ("BTN NEGEV-HOVAV") instead of giving
+// coordinates, so we look each one up in our own databases to draw a line.
+function notamResolveFix(name) {
+  const k = String(name || '').toUpperCase();
+  if (!k) return null;
+  if (Array.isArray(navWP)) {
+    const w = navWP.find(p => String(p.name).toUpperCase() === k);
+    if (w && Number.isFinite(w.lat) && Number.isFinite(w.lng)) return [w.lat, w.lng];
+  }
+  if (Array.isArray(airfields)) {
+    const a = airfields.find(p => String(p.name).toUpperCase() === k);
+    if (a && Number.isFinite(a.lat) && Number.isFinite(a.lng)) return [a.lat, a.lng];
+  }
+  if (Array.isArray(vors)) {
+    const v = vors.find(p => String(p.ident).toUpperCase() === k);
+    if (v && Number.isFinite(v.lat) && Number.isFinite(v.lng)) return [v.lat, v.lng];
+  }
+  return null;
+}
+// Parse route-closure / reroute lines out of a NOTAM's text. Fix chains are
+// runs of name tokens joined by '-' (≥2 fixes). Chains before a DIVERTED/REROUTE
+// marker are closures (only when the NOTAM says CLSD — availability/limit NOTAMs
+// name routes too but aren't closed); chains after it are diversions. A chain is
+// drawn only if ≥2 of its fixes resolve in our databases (IFR airway fixes that
+// we don't carry are skipped). Result cached on n._routeLines.
+const NOTAM_FIX_CHAIN = /\b([A-Z][A-Z0-9]{2,4}(?:-[A-Z][A-Z0-9]{2,4})+)\b/g;
+function notamRouteLines(n) {
+  if (!n || n._routeLines) return n && n._routeLines || [];
+  n._routeLines = [];
+  const txt = String(n.text || '');
+  if (!/\bRTE\b|\bROUTE\b|\bAWY\b|\bAIRWAY\b/.test(txt)) return n._routeLines;
+  const closed = /\bCLSD\b|\bCLOSED\b/.test(txt);
+  const divIdx = txt.search(/DIVERT|RE-?ROUTE/i);
+  let m;
+  NOTAM_FIX_CHAIN.lastIndex = 0;
+  while ((m = NOTAM_FIX_CHAIN.exec(txt))) {
+    const diverted = divIdx >= 0 && m.index >= divIdx;
+    if (!diverted && !closed) continue;            // availability/limit-only → no line
+    const coords = m[1].split('-').map(notamResolveFix).filter(Boolean);
+    if (coords.length >= 2) n._routeLines.push({ coords, kind: diverted ? 'diverted' : 'closed' });
+  }
+  return n._routeLines;
+}
+// Build route lines for all loaded NOTAMs (call once fix databases are ready).
+function buildNotamRouteLines() {
+  if (!Array.isArray(notams)) return;
+  for (const n of notams) { if (n) { n._routeLines = null; notamRouteLines(n); } }
+}
 function drawNotams() {
   octx.save();
   const col = tune('notamColor');
+  const divCol = tune('notamDivertColor');
   for (const n of activeNotams()) {
+    // Resolved route lines (named-fix closures / diversions). Closed = solid
+    // NOTAM colour; diverted = dashed divert colour, drawn distinctly.
+    const rls = (n && Array.isArray(n._routeLines)) ? n._routeLines : [];
+    for (const rl of rls) {
+      const lp = rl.coords
+        .filter(c => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+        .map(c => proj({ lat: c[0], lng: c[1] }));
+      if (lp.length < 2) continue;
+      octx.beginPath();
+      octx.moveTo(lp[0].x, lp[0].y);
+      for (let i = 1; i < lp.length; i++) octx.lineTo(lp[i].x, lp[i].y);
+      if (rl.kind === 'diverted') {
+        octx.setLineDash([4, 6]); octx.strokeStyle = divCol;
+        octx.lineWidth = tune('notamLineWidthPx');
+      } else {
+        octx.setLineDash([]); octx.strokeStyle = col;
+        octx.lineWidth = tune('notamRouteWidthPx');
+      }
+      octx.lineJoin = 'round'; octx.lineCap = 'round';
+      octx.stroke();
+      octx.setLineDash([]);
+      if (n.id) {
+        const mid = lp[Math.floor(lp.length / 2)];
+        octx.font = 'bold 11px sans-serif';
+        octx.textAlign = 'center';
+        octx.lineWidth = 3;
+        octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), 0.9);
+        octx.strokeText(n.id, mid.x, mid.y - 6);
+        octx.fillStyle = rl.kind === 'diverted' ? divCol : col;
+        octx.fillText(n.id, mid.x, mid.y - 6);
+      }
+    }
     const g = n && n.geom;
     // Route closures (FAA LineString) → a thick dashed polyline, not a fill.
     if (g && g.type === 'line' && Array.isArray(g.coords)) {
@@ -520,6 +602,7 @@ function drawNotamAirportMarkers() {
   const byIcao = {};
   for (const n of activeNotams()) {
     if (n && n.geom) continue;                 // already drawn as an area
+    if (n && Array.isArray(n._routeLines) && n._routeLines.length) continue;  // drawn as a route line
     const c = n && n.icao;
     if (!c) continue;
     (byIcao[c] = byIcao[c] || []).push(n);
@@ -573,6 +656,19 @@ function notamsAtLatLng(latlng) {
   const pt = proj(latlng);
   const out = [];
   for (const n of act) {
+    // Resolved route lines (closed/diverted) — near any segment counts.
+    const rls = (n && Array.isArray(n._routeLines)) ? n._routeLines : [];
+    let routeHit = false;
+    for (const rl of rls) {
+      const lp = rl.coords
+        .filter(c => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+        .map(c => proj({ lat: c[0], lng: c[1] }));
+      for (let i = 1; i < lp.length; i++) {
+        if (notamDistToSeg(pt, lp[i - 1], lp[i]) <= 6) { routeHit = true; break; }
+      }
+      if (routeHit) break;
+    }
+    if (routeHit) { out.push(n); continue; }
     const g = n && n.geom;
     if (g && g.type === 'line' && Array.isArray(g.coords)) {
       const lp = g.coords
@@ -599,6 +695,7 @@ function notamsAtLatLng(latlng) {
     const byIcao = {};
     for (const n of act) {
       if (n && n.geom) continue;
+      if (n && Array.isArray(n._routeLines) && n._routeLines.length) continue;
       const c = n && n.icao;
       if (c) (byIcao[c] = byIcao[c] || []).push(n);
     }

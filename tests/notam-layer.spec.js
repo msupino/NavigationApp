@@ -79,6 +79,26 @@ test('NOTAMs decode to plain English; Raw toggle shows the source text', async (
   await expect(modal.locator('.notam-text')).not.toContainText('above mean sea level');
 });
 
+test('CVFR route closures resolve named fixes to closed + diverted lines', async ({ page }) => {
+  // Fix names are resolved against the real nav-waypoints.json (not mocked).
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'C1320/26', type: 'ARLC', end: 'PERM', geom: null, icao: 'LLLL',
+      text: 'CVFR RTE CLSD:\n   NEGEV-HOVAV-OHLIM-OMMER-ZGOAL.\n   HOVAV-SOKET.\n'
+          + '   TFC WILL BE DIVERTED VIA BKAMA-SOKET-ARRAD-ZOHAR' },
+  ] });
+  await page.locator('#notam-cb').check();
+  const rl = await page.evaluate(() => {
+    if (typeof buildNotamRouteLines === 'function') buildNotamRouteLines();
+    const n = notams.find(x => x.id === 'C1320/26');
+    return (n._routeLines || []).map(l => ({ kind: l.kind, pts: l.coords.length }));
+  });
+  const closed = rl.filter(l => l.kind === 'closed');
+  const diverted = rl.filter(l => l.kind === 'diverted');
+  expect(closed.length).toBeGreaterThanOrEqual(2);   // multiple closed segments
+  expect(diverted.length).toBe(1);                   // one reroute
+  expect(closed.every(l => l.pts >= 2)).toBe(true);
+});
+
 test('clicking a NOTAM area on the map opens just that NOTAM', async ({ page }) => {
   await boot(page);
   await page.locator('#notam-cb').check();
