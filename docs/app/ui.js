@@ -3934,13 +3934,16 @@ if (typeof loadRemoteConfig === "function") {
   if (!box || !cb || !timeSel || !opacity || typeof map === 'undefined' || typeof L === 'undefined') return;
   const DEFAULT_OPACITY = String(typeof tune === 'function' ? tune('sigwxOpacity') : 0.55);
   // The chart has two panels: the left MAP frame and the right weather TABLE.
-  // Crop fractions of the 1755x1240 IMS chart for each.
-  const CROP_MAP = { x0: 0.01595, x1: 0.38860, y0: 0.02258, y1: 0.91774 };
+  // Crop fractions of the 1755x1240 IMS chart for each. The MAP crop starts
+  // BELOW the full-width title/valid-time header (y0=0.105) so that header
+  // doesn't sit over the map; the TABLE crop keeps the top, so the header
+  // travels with the legend.
+  const CROP_MAP = { x0: 0.01595, x1: 0.38860, y0: 0.10484, y1: 0.91774 };
   const CROP_TABLE = { x0: 0.39000, x1: 0.99200, y0: 0.02258, y1: 0.91774 };
-  // Map-panel geographic extent. Solved as a similarity fit (scale + small
-  // rotation) over three airfields shared with our own layers — LLHA, LLBS and
-  // LLIB; LLIB constrains the longitude scale. ~-0.8° tilt → sigwxRotationDeg.
-  const BOUNDS_MAP = { n: 34.43, s: 29.37, w: 33.29, e: 36.80 };
+  // Map-panel geographic extent (re-solved for the header-trimmed crop) as a
+  // similarity fit over three airfields shared with our own layers — LLHA, LLBS
+  // and LLIB; LLIB constrains the longitude scale. ~-0.8° tilt → sigwxRotationDeg.
+  const BOUNDS_MAP = { n: 33.97, s: 29.37, w: 33.29, e: 36.80 };
   // The TABLE isn't geographic — park it just east of Israel (over Jordan) so it
   // sits to the right of the map; position/size are tunable.
   const BOUNDS_TABLE = { n: 34.20, s: 29.60, w: 37.10, e: 40.60 };
