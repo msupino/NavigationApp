@@ -3788,7 +3788,11 @@ if (typeof loadRemoteConfig === "function") {
   // Map-frame crop (fractions of the 1755x1240 IMS chart) and its approximate
   // geographic extent (axis-aligned). Both are alignable via the tunables.
   const CROP = { x0: 0.01595, x1: 0.38860, y0: 0.02258, y1: 0.91774 };
-  const BOUNDS = { n: 34.30, s: 28.27, w: 33.15, e: 36.97 };
+  // Geographic extent of the cropped map panel. Solved so two airfields shared
+  // with our own layers — LLHA (32.808,35.043) and LLBS (31.287,34.723), whose
+  // chart dots sit at cropped fractions (0.483,0.321) and (0.413,0.620) — line
+  // up between layers. Other points are within ~0.1° (slight chart rotation).
+  const BOUNDS = { n: 34.44, s: 29.35, w: 32.85, e: 37.39 };
 
   let manifest = null, layer = null;
   const off = k => (typeof tune === 'function' ? tune(k) : 0) || 0;
