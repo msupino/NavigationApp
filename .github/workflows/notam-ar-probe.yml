@@ -41,11 +41,13 @@ jobs:
               if (v && typeof v === 'object') console.error('  obj field', k, '=', JSON.stringify(v).slice(0, 200));
             }
           }
-          // decode coords: print a few rows' lat/lon/radius under candidate scales
-          for (const row of (j.rows || []).slice(0, 8)) {
-            console.error('id', row.id, 'itema', JSON.stringify(row.itema),
-              '| lat', row.lat, '→/1e7', (row.lat/1e7).toFixed(4),
-              '| lon', row.lon, '→/1e7', (row.lon/1e7).toFixed(4),
-              '| radius', row.radius);
+          // decode coords against a KNOWN airport (LLBG ≈ 32.01N 34.89E)
+          const rb = await fetch('https://api.autorouter.aero/v1.0/notam?itemas=' + encodeURIComponent('["LLBG"]') + '&limit=6', { headers: H });
+          const jb = await rb.json();
+          console.error('LLBG total', jb.total);
+          for (const row of (jb.rows || []).slice(0, 6)) {
+            console.error('id', row.id, 'lat', row.lat, 'lon', row.lon, 'radius', row.radius,
+              '| /1e7', (row.lat/1e7).toFixed(4), (row.lon/1e7).toFixed(4),
+              '| DMS', (row.lat/1e4|0)/100, (row.lon/1e4|0)/100);
           }
           NODE
