@@ -41,9 +41,11 @@ jobs:
               if (v && typeof v === 'object') console.error('  obj field', k, '=', JSON.stringify(v).slice(0, 200));
             }
           }
-          // also try all Israel airports + FIR
-          const all = encodeURIComponent(JSON.stringify(['LLLL','LLBG','LLHA','LLOV','LLNV','LLIB','LLHZ','LLER','LLMG','LLES','LLBS','LLRM','LLMZ']));
-          const r2 = await fetch('https://api.autorouter.aero/v1.0/notam?itemas=' + all + '&offset=0&limit=100', { headers: H });
-          const j2 = await r2.json();
-          console.error('[' + r2.status + '] all-Israel total=' + j2.total);
+          // decode coords: print a few rows' lat/lon/radius under candidate scales
+          for (const row of (j.rows || []).slice(0, 8)) {
+            console.error('id', row.id, 'itema', JSON.stringify(row.itema),
+              '| lat', row.lat, '→/1e7', (row.lat/1e7).toFixed(4),
+              '| lon', row.lon, '→/1e7', (row.lon/1e7).toFixed(4),
+              '| radius', row.radius);
+          }
           NODE
