@@ -6,12 +6,15 @@ pull requests; production is the `main` branch, staging is `dev`.
 
 ## SIGWX significant-weather map overlay
 
-- **SIGWX on the map** — overlay the low-level significant-weather prog-chart
-  map panel (areas + fronts) on the map by valid time, like the PWX wind/temp
-  layer: toggle, time selector, opacity. The IMS chart is cropped to its map
-  frame (the side table is dropped) and georeferenced — aligned to the LLHA and
-  LLBS airfields shared with our own layers; fine-tune via `?tune` → SIGWX
-  overlay (offset / scale / rotation).
+- **SIGWX on the map** — overlay the low-level significant-weather prog chart on
+  the map by valid time, like the PWX wind/temp layer: toggle, time selector,
+  opacity. The IMS chart is split into its two panels — the **map frame** is
+  georeferenced over Israel (aligned to the LLHA, LLBS and LLIB airfields shared
+  with our layers, with a small rotation), and the **weather table** is parked
+  just east of Israel. In dark mode the map panel's white paper is knocked out so
+  it no longer reads as a print sheet (the table keeps its white for legibility).
+  Everything is alignable via `?tune` → SIGWX overlay (panel + table offset /
+  scale / rotation / opacity / white-knockout).
 
 ## Cumulative-time kites, frequency-change callouts, tuning panel
 

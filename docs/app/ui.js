@@ -3785,41 +3785,56 @@ if (typeof loadRemoteConfig === "function") {
   const opacityReset = document.getElementById('sigwx-ov-opacity-reset');
   if (!box || !cb || !timeSel || !opacity || typeof map === 'undefined' || typeof L === 'undefined') return;
   const DEFAULT_OPACITY = String(typeof tune === 'function' ? tune('sigwxOpacity') : 0.55);
-  // Map-frame crop (fractions of the 1755x1240 IMS chart) and its approximate
-  // geographic extent (axis-aligned). Both are alignable via the tunables.
-  const CROP = { x0: 0.01595, x1: 0.38860, y0: 0.02258, y1: 0.91774 };
-  // Geographic extent of the cropped map panel. Solved as a similarity fit
-  // (scale + small rotation) over three airfields shared with our own layers —
-  // LLHA (32.808,35.043), LLBS (31.287,34.723), LLIB (32.981,35.571) — whose
-  // chart dots sit at cropped fractions (0.483,0.321), (0.413,0.620) and
-  // (0.654,0.286). LLIB constrains the longitude scale (LLHA/LLBS alone were
-  // nearly the same lng); the ~-0.8° tilt is applied via sigwxRotationDeg.
-  // All three land within ~2.5'.
-  const BOUNDS = { n: 34.43, s: 29.37, w: 33.29, e: 36.80 };
+  // The chart has two panels: the left MAP frame and the right weather TABLE.
+  // Crop fractions of the 1755x1240 IMS chart for each.
+  const CROP_MAP = { x0: 0.01595, x1: 0.38860, y0: 0.02258, y1: 0.91774 };
+  const CROP_TABLE = { x0: 0.39000, x1: 0.99200, y0: 0.02258, y1: 0.91774 };
+  // Map-panel geographic extent. Solved as a similarity fit (scale + small
+  // rotation) over three airfields shared with our own layers — LLHA, LLBS and
+  // LLIB; LLIB constrains the longitude scale. ~-0.8° tilt → sigwxRotationDeg.
+  const BOUNDS_MAP = { n: 34.43, s: 29.37, w: 33.29, e: 36.80 };
+  // The TABLE isn't geographic — park it just east of Israel (over Jordan) so it
+  // sits to the right of the map; position/size are tunable.
+  const BOUNDS_TABLE = { n: 34.20, s: 29.60, w: 37.10, e: 40.60 };
 
-  let manifest = null, layer = null;
+  let manifest = null, mapLayer = null, tblLayer = null;
   const off = k => (typeof tune === 'function' ? tune(k) : 0) || 0;
   const sc = k => { const v = typeof tune === 'function' ? tune(k) : 1; return v > 0 ? v : 1; };
-  const cropCache = {};                      // png url → cropped dataURL
+  const cropCache = {};                      // key → cropped dataURL
 
-  function removeLayer() { if (layer) { map.removeLayer(layer); layer = null; } }
-  // Crop the chart PNG to its map frame, client-side, so only the map panel
-  // (not the side weather table) is overlaid. raw.githubusercontent serves CORS.
-  function cropPanel(url) {
-    if (cropCache[url]) return Promise.resolve(cropCache[url]);
+  function removeLayers() {
+    if (mapLayer) { map.removeLayer(mapLayer); mapLayer = null; }
+    if (tblLayer) { map.removeLayer(tblLayer); tblLayer = null; }
+  }
+  // Crop a panel of the chart PNG client-side. `knockWhite` (map panel only)
+  // makes the chart's white paper transparent so it doesn't read as a glaring
+  // print sheet over a dark-mode map (the table keeps its white, for legibility).
+  // raw.githubusercontent serves CORS so the canvas isn't tainted.
+  function cropPanel(url, crop, knockWhite) {
+    const thr = knockWhite ? Math.round(off('sigwxWhiteKnockout') || 248) : 999;
+    const key = url + '|' + crop.x0 + '|' + thr;
+    if (cropCache[key]) return Promise.resolve(cropCache[key]);
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
         try {
           const W = img.naturalWidth, H = img.naturalHeight;
-          const sx = Math.round(W * CROP.x0), sy = Math.round(H * CROP.y0);
-          const sw = Math.round(W * (CROP.x1 - CROP.x0)), sh = Math.round(H * (CROP.y1 - CROP.y0));
+          const sx = Math.round(W * crop.x0), sy = Math.round(H * crop.y0);
+          const sw = Math.round(W * (crop.x1 - crop.x0)), sh = Math.round(H * (crop.y1 - crop.y0));
           const c = document.createElement('canvas');
           c.width = sw; c.height = sh;
-          c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+          const ctx = c.getContext('2d');
+          ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+          if (knockWhite && thr <= 255) {
+            const im = ctx.getImageData(0, 0, sw, sh), d = im.data;
+            for (let i = 0; i < d.length; i += 4) {
+              if (d[i] >= thr && d[i + 1] >= thr && d[i + 2] >= thr) d[i + 3] = 0;
+            }
+            ctx.putImageData(im, 0, 0);
+          }
           const data = c.toDataURL('image/png');
-          cropCache[url] = data;
+          cropCache[key] = data;
           resolve(data);
         } catch (e) { reject(e); }
       };
@@ -3831,38 +3846,46 @@ if (typeof loadRemoteConfig === "function") {
     const i = timeSel.selectedIndex;
     return manifest && manifest.times[i];      // by index — never trust DOM value (xss)
   }
-  function boundsNow() {
-    const cLat = (BOUNDS.s + BOUNDS.n) / 2, cLng = (BOUNDS.w + BOUNDS.e) / 2;
-    const hLat = (BOUNDS.n - BOUNDS.s) / 2 * sc('sigwxLatScale');
-    const hLng = (BOUNDS.e - BOUNDS.w) / 2 * sc('sigwxLngScale');
-    const dLat = off('sigwxLatOffset'), dLng = off('sigwxLngOffset');
+  function boundsFrom(B, latOff, lngOff, latSc, lngSc) {
+    const cLat = (B.s + B.n) / 2, cLng = (B.w + B.e) / 2;
+    const hLat = (B.n - B.s) / 2 * sc(latSc), hLng = (B.e - B.w) / 2 * sc(lngSc);
+    const dLat = off(latOff), dLng = off(lngOff);
     return [[cLat - hLat + dLat, cLng - hLng + dLng], [cLat + hLat + dLat, cLng + hLng + dLng]];
   }
-  function applyRotation() {
-    if (!layer || typeof layer.getElement !== 'function') return;
-    const el = layer.getElement(); if (!el) return;
+  function applyRotation() {       // only the map panel is tilted; the table is upright
+    if (!mapLayer || typeof mapLayer.getElement !== 'function') return;
+    const el = mapLayer.getElement(); if (!el) return;
     const deg = off('sigwxRotationDeg');
     const base = el.style.transform.replace(/\s*rotate\([^)]*\)/g, '');
     el.style.transformOrigin = '50% 50%';
     el.style.transform = deg ? (base + ' rotate(' + deg + 'deg)') : base;
   }
   map.on('move zoom zoomend viewreset', applyRotation);
+  function place(which, data, bounds, op) {
+    const ref = which === 'map' ? mapLayer : tblLayer;
+    if (!ref) {
+      const lyr = L.imageOverlay(data, bounds, { opacity: op, interactive: false, pane: 'overlayPane', className: 'sigwx-ov-layer' });
+      lyr.addTo(map);
+      if (which === 'map') mapLayer = lyr; else tblLayer = lyr;
+    } else {
+      ref.setUrl(data); ref.setBounds(bounds); ref.setOpacity(op);
+    }
+  }
   function updateLayer() {
-    if (!cb.checked || !manifest) { removeLayer(); return; }
+    if (!cb.checked || !manifest) { removeLayers(); return; }
     const t = currentTime();
-    if (!t) { removeLayer(); return; }
+    if (!t) { removeLayers(); return; }
     const url = RAW + t.png + '?t=' + (manifest.generatedAt || '');
-    cropPanel(url).then(data => {
-      if (!cb.checked) { removeLayer(); return; }
-      const bounds = boundsNow();
-      if (!layer) {
-        layer = L.imageOverlay(data, bounds, { opacity: +opacity.value, interactive: false, pane: 'overlayPane', className: 'sigwx-ov-layer' });
-        layer.addTo(map);
-      } else {
-        layer.setUrl(data); layer.setBounds(bounds); layer.setOpacity(+opacity.value);
-      }
+    cropPanel(url, CROP_MAP, true).then(data => {
+      if (!cb.checked) { removeLayers(); return; }
+      place('map', data, boundsFrom(BOUNDS_MAP, 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale'), +opacity.value);
       applyRotation();
-    }).catch(() => removeLayer());
+    }).catch(() => removeLayers());
+    cropPanel(url, CROP_TABLE, false).then(data => {
+      if (!cb.checked) return;
+      const tblOp = off('sigwxTblOpacity') || 0.92;
+      place('table', data, boundsFrom(BOUNDS_TABLE, 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale', 'sigwxTblScale'), tblOp);
+    }).catch(() => { /* table optional */ });
   }
   function fillTimes() {
     timeSel.innerHTML = '';
