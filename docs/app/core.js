@@ -253,6 +253,11 @@ NavAid.tuningDefaults = {
   sigmetDustColor: { value: '#b8860b', type: 'color', label: 'SIGMET dust/sand color' },
   sigmetTcColor: { value: '#c2185b', type: 'color', label: 'SIGMET cyclone color' },
   sigmetDefaultColor: { value: '#dd1111', type: 'color', label: 'SIGMET default/TS color' },
+  notamColor: { value: '#c026d3', type: 'color', label: 'NOTAM area color' },
+  notamFillAlpha: { value: 0.14, min: 0, max: 1, step: 0.02, label: 'NOTAM area fill alpha' },
+  notamLineWidthPx: { value: 2, min: 0.5, max: 5, step: 0.5, label: 'NOTAM area line width (px)' },
+  notamRouteWidthPx: { value: 3, min: 1, max: 6, step: 0.5, label: 'NOTAM closed-route line width (px)' },
+  notamDivertColor: { value: '#0891b2', type: 'color', label: 'NOTAM diverted-route color' },
 
   imsPwxOpacity: { value: 0.6, min: 0.2, max: 1, step: 0.05, label: 'IMS PWX overlay default opacity' },
   imsPwxLatOffset: { value: 0.005, min: -0.5, max: 0.5, step: 0.005, label: 'IMS PWX overlay latitude nudge (°)' },
@@ -382,6 +387,7 @@ NavAid.tuningGroups = [
   { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx'] },
   { name: 'Vertical profile', keys: ['profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileTodColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor'] },
+  { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor'] },
   { name: 'Weather (IMS)', keys: ['imsPwxOpacity', 'imsPwxLatOffset', 'imsPwxLngOffset', 'imsPwxLatScale', 'imsPwxLngScale', 'imsPwxRotationDeg', 'imsPwxDarkBackdropAlpha', 'imsPwxBackdropBandPct'] },
   { name: 'SIGWX overlay', keys: ['sigwxOpacity', 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale', 'sigwxRotationDeg', 'sigwxWhiteKnockout', 'sigwxTblOpacity', 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale'] },
   // Wind-field render params + grid + defaults. The altitude/time/opacity
@@ -530,6 +536,7 @@ window.S = Object.assign({
   choosePointNavWaypoint: 'Navigation waypoint',
   choosePointVor: 'VOR station',
   choosePointCommChange: 'Freq-change arrow',
+  choosePointNotam: 'NOTAM',
   tbSearchOpen: '🔍 Find (Ctrl-F)',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
   tbRouteTemplates: '🧭 Templates',
@@ -592,6 +599,20 @@ window.S = Object.assign({
   tbShowWindTitle: 'Show the wind inputs, the per-leg wind arrows, and the wind-corrected readout in the leg inspector',
   tbShowSigmet: 'Show SIGMET',
   tbShowSigmetTitle: 'Overlay active international SIGMET hazard areas for the Israel region (source: NOAA AWC, updated periodically)',
+  tbShowNotam: 'Show NOTAMs',
+  tbShowNotamTitle: 'Overlay active NOTAM areas for the Israel FIR (LLLL). Click “NOTAM list” for the full texts. Planning aid only.',
+  tbNotamList: '📋 NOTAM list',
+  tbNotamListTitle: 'Show all active NOTAMs for the Israel FIR as text',
+  tbNotamTime: 'Time',
+  tbNotamTimeTitle: 'Scrub forward to see which NOTAMs are active at a future time (hours from now)',
+  notamTimeNow: 'Now',
+  notamTimeAt: function(h, t) { return '+' + h + 'h · ' + t; },
+  notamModalTitle: 'Active NOTAMs (LLLL)',
+  notamNone: 'No active NOTAMs.',
+  notamUnavailable: 'NOTAMs unavailable.',
+  notamUpdated: function(t) { return 'Updated ' + t; },
+  notamRaw: 'Raw',
+  notamDecoded: 'Decoded',
   sigmetReadout: function(n) { return '⚠ ' + n + ' SIGMET'; },
   sigmetNone: 'No SIGMET in effect',
   sigmetUpdated: function(t) { return 'SIGMET updated ' + t; },
@@ -939,7 +960,7 @@ window.S = Object.assign({
   tbSecView: '👁 View/Set',
   tbSecCharts: '📋 Charts',
   tbSecExport: '📤 Export/import',
-  tbSecWeather: '🌦 Weather',
+  tbSecWeather: 'ℹ️ Information',
   tbSecSim: '✈ Simulator',
   tbSimConnect: 'Connect to simulator',
   tbSimDisconnect: 'Disconnect from simulator',
@@ -1070,6 +1091,10 @@ var showWind = false;       // wind effect (#722): inputs + arrows + readout —
 var showSigmet = false;     // SIGMET hazard overlay — opt-in
 var sigmets = null;         // null = not loaded; [] or populated once fetched
 var sigmetMeta = null;      // { generatedAt } of the loaded SIGMET file
+var showNotam = false;      // NOTAM overlay — opt-in
+var notams = null;          // null = not loaded; [] or populated once fetched
+var notamMeta = null;       // { generatedAt } of the loaded NOTAM file
+var notamBorders = null;    // null = not loaded; { LEBANON:[[ [lat,lng]... ]], ... } border arcs
 var showWpNames = true;     // draw waypoint names (off = empty circle)
 var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 var yellowAlpha = 0.8;    // global multiplier for yellow label backgrounds (default 80%)
@@ -1338,6 +1363,119 @@ function decodeSigmet(s) {
   return (fir ? fir + ' — ' : '') + parts.join(', ');
 }
 const pad3 = n => String(n).padStart(3, '0');
+
+// --- NOTAM decoder ---------------------------------------------------
+// NOTAMs are terse: a 4-letter ICAO Q-code (subject + condition) plus a free
+// text body packed with standard abbreviations. decodeNotam() turns that into
+// a plain-English line + an expanded body; the modal keeps a Raw toggle for the
+// original. Source: ICAO Annex 15 / Doc 8126 NOTAM Code (subset covering the
+// codes the Israel FIR feed emits, plus common extras).
+const NOTAM_SUBJ = {            // Q-code letters 2-3 (subject)
+  AC: 'Class B/C/D/E surface area', AD: 'Air defence identification zone (ADIZ)',
+  AE: 'Control area (CTA)', AF: 'Flight information region (FIR)',
+  AH: 'Upper control area (UTA)', AN: 'Area navigation (RNAV) route',
+  AP: 'Reporting point', AR: 'ATS route', AT: 'Terminal control area (TMA)',
+  AU: 'Upper flight information region (UIR)', AX: 'Intersection',
+  AZ: 'Aerodrome traffic zone (ATZ)',
+  CA: 'Air/ground facility', CE: 'En-route surveillance radar',
+  CG: 'Ground controlled approach (GCA)', CM: 'Surface movement radar',
+  CP: 'Precision approach radar (PAR)', CS: 'Secondary surveillance radar (SSR)',
+  CT: 'Terminal area radar',
+  FA: 'Aerodrome', FF: 'Fire fighting & rescue', FM: 'Meteorological service',
+  FP: 'Heliport', FU: 'Fuel availability',
+  IC: 'ILS', IG: 'ILS glide path', IL: 'ILS localizer',
+  IS: 'ILS Category I', IT: 'ILS Category II', IU: 'ILS Category III',
+  LA: 'Approach lighting system', LB: 'Aerodrome beacon',
+  LC: 'Runway centre-line lights', LP: 'Precision approach path indicator (PAPI)',
+  LT: 'Visual approach slope indicator (VASIS)',
+  MA: 'Movement area', MK: 'Parking area', MP: 'Aircraft stands',
+  MR: 'Runway', MT: 'Threshold', MX: 'Taxiway',
+  NA: 'All radio nav aids', NB: 'Non-directional beacon (NDB)', ND: 'DME',
+  NM: 'VOR/DME', NN: 'TACAN', NV: 'VOR', NX: 'Direction-finding station',
+  OA: 'Aeronautical information service (AIS)', OB: 'Obstacle',
+  OE: 'Aircraft entry requirements', OR: 'Rescue coordination centre',
+  PA: 'Standard instrument arrival (STAR)', PD: 'Standard instrument departure (SID)',
+  PH: 'Holding procedure', PI: 'Instrument approach procedure',
+  PL: 'Flight-plan processing', PM: 'Aerodrome operating minima',
+  PR: 'Radio failure procedure', PT: 'Transition altitude/level',
+  PU: 'Missed approach procedure',
+  RA: 'Airspace reservation', RD: 'Danger area', RM: 'Military operating area',
+  RP: 'Prohibited area', RR: 'Restricted area', RT: 'Temporary restricted area',
+  SA: 'Automatic terminal information service (ATIS)', SB: 'ATS reporting office',
+  SC: 'Area control centre (ACC)', SE: 'Flight information service (FIS)',
+  SF: 'Aerodrome flight information service (AFIS)', SP: 'Approach control',
+  SS: 'Flight service station', ST: 'Aerodrome control tower (TWR)',
+  SV: 'VOLMET broadcast',
+  WA: 'Air display', WB: 'Aerobatics', WC: 'Captive balloon or kite',
+  WD: 'Demolition of explosives', WE: 'Military exercise', WF: 'Air refuelling',
+  WG: 'Glider flying', WJ: 'Banner/target towing', WL: 'Free balloon ascent',
+  WM: 'Missile/gun/rocket firing', WP: 'Parachute jumping exercise (PJE)',
+  WR: 'Radioactive/toxic materials release', WS: 'Burning or blowing gas',
+  WT: 'Mass aircraft movement', WU: 'Unmanned aircraft (UAS/drone) activity',
+  WV: 'Formation flight', WW: 'Significant volcanic activity', WZ: 'Model flying',
+  GA: 'GNSS (aerodrome-specific)', GW: 'GNSS (area-wide)',
+  KK: 'Checklist',
+};
+const NOTAM_COND = {            // Q-code letters 4-5 (condition/status)
+  AC: 'withdrawn for maintenance', AD: 'available for daytime ops',
+  AF: 'flight-checked, reliable', AH: 'hours of service changed',
+  AK: 'resumed normal ops', AL: 'operative with published limitations',
+  AM: 'military ops only', AN: 'available for night ops', AO: 'operational',
+  AP: 'available, prior permission required', AR: 'available on request',
+  AS: 'unserviceable', AU: 'not available', AW: 'withdrawn',
+  CA: 'activated', CC: 'completed', CD: 'deactivated', CE: 'erected',
+  CF: 'frequency changed', CG: 'downgraded', CH: 'changed',
+  CI: 'identification/call-sign changed', CL: 'realigned', CM: 'displaced',
+  CN: 'cancelled', CO: 'operating', CP: 'operating on reduced power',
+  CR: 'temporarily replaced', CS: 'installed', CT: 'on test — do not use',
+  HW: 'work in progress', HV: 'work completed', HX: 'concentration of birds',
+  LC: 'closed', LD: 'unsafe', LI: 'closed to IFR', LL: 'usable (length/width)',
+  LN: 'closed at night', LP: 'prohibited', LR: 'restricted to runways/taxiways',
+  LS: 'subject to interruption', LT: 'limited to', LV: 'closed to VFR',
+  LW: 'will take place', LX: 'operating — caution advised',
+  TT: 'trigger NOTAM (AIP amendment)',
+  KK: 'checklist',
+};
+const NOTAM_ABBR = {
+  ACFT: 'aircraft', ACT: 'active', ADZ: 'advised', AGL: 'above ground level',
+  ALT: 'altitude', AMSL: 'above mean sea level', APCH: 'approach', APRX: 'approximately',
+  ARP: 'aerodrome reference point', ATC: 'air traffic control', AUTH: 'authorized',
+  AVBL: 'available', AWY: 'airway', BLW: 'below', BTN: 'between', CTC: 'contact',
+  CLSD: 'closed', CTN: 'caution', DEP: 'departure', DRG: 'during', EXC: 'except',
+  FIR: 'flight information region', FLW: 'following', FM: 'from', FREQ: 'frequency',
+  FT: 'feet', GND: 'ground', HGT: 'height', HOL: 'holiday', HR: 'hours',
+  LMT: 'local mean time', MAX: 'maximum', MNM: 'minimum', NM: 'nautical miles',
+  OPS: 'operations', PJE: 'parachute jumping exercise', PPR: 'prior permission required',
+  PSN: 'position', RTE: 'route', RWY: 'runway', SR: 'sunrise', SS: 'sunset',
+  TFC: 'traffic', TWR: 'tower', UAS: 'unmanned aircraft system',
+  UAV: 'unmanned aerial vehicle', VOR: 'VOR', WEF: 'with effect from', WI: 'within',
+  WIP: 'work in progress', WX: 'weather', CHG: 'changed', REF: 'reference',
+  AIP: 'AIP', AIC: 'AIC', DOM: 'domestic', REESTABLISHED: 'reestablished',
+  MON: 'Monday', TUE: 'Tuesday', WED: 'Wednesday', THU: 'Thursday', FRI: 'Friday',
+  SAT: 'Saturday', SUN: 'Sunday', DLY: 'daily',
+};
+// Expand the standard abbreviations in a NOTAM body, tidying the source's
+// 3-space wrap indentation. Coordinate tokens (digits+N/E/S/W) carry no word
+// boundary around their letters, so they pass through untouched.
+function expandNotamAbbr(s) {
+  let out = String(s == null ? '' : s).replace(/\r/g, '');
+  out = out.split('\n').map(l => l.trim()).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return out.replace(/\b[A-Z]{2,5}\b/g, m => NOTAM_ABBR[m] || m);
+}
+function decodeNotam(n) {
+  if (!n || typeof n !== 'object') return '';
+  const t = String(n.type || '').toUpperCase();
+  let head = '';
+  if (t.length === 4) {
+    const subj = NOTAM_SUBJ[t.slice(0, 2)];
+    const cond = NOTAM_COND[t.slice(2)];
+    if (subj || cond) head = [subj, cond].filter(Boolean).join(' — ');
+  }
+  const body = expandNotamAbbr(n.text || '');
+  return (head ? head + '\n' : '') + body;
+}
+// --- end NOTAM decoder -----------------------------------------------
+
 // Strip a trailing "MHz" unit from a frequency string → "121.70 MHz" → "121.70".
 function freqClean(s) { return String(s == null ? '' : s).replace(/\s*MHz\s*$/i, '').trim(); }
 // Per-leg comm-frequency sources along the route, sorted by waypoint index:
