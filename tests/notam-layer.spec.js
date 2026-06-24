@@ -20,7 +20,7 @@ const DATA = {
 
 async function boot(page, body) {
   await page.route(NOTAM_RE, r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body || DATA) }));
-  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); localStorage.setItem('navaid.sec.charts', '1'); } catch (e) {} });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof draw === 'function' && document.getElementById('notam-cb'));
 }
