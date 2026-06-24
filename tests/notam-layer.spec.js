@@ -97,7 +97,7 @@ test('prose border NOTAMs are geocoded to buffer polygons', async ({ page }) => 
   });
   expect(g).not.toBeNull();
   expect(g.border).toBe('LEBANON');
-  expect(g.pts).toBeGreaterThan(20);
+  expect(g.pts).toBeGreaterThan(8);   // simplified arc + its offset, closed
   // Buffer sits along the northern (Lebanon) border, offset ~8km south.
   expect(g.latMin).toBeGreaterThan(32.8);
   expect(g.latMax).toBeLessThan(33.45);

@@ -379,22 +379,64 @@ async function loadNotamBorders() {
 // Build a closed buffer polygon by offsetting a border arc inland (toward the
 // Israel interior) by km. Mirrors the offset fpl.co.il applies server-side.
 const NOTAM_BORDER_INTERIOR = [31.4, 34.9];     // reference point inside Israel
+const NOTAM_BORDER_SIMPLIFY_KM = 3;             // drop sub-buffer wiggles that fold the offset
+function notamKmBetween(p, q) {
+  const latr = (p[0] + q[0]) / 2 * Math.PI / 180;
+  return Math.hypot((q[0] - p[0]) * 110.57, (q[1] - p[1]) * 111.32 * Math.cos(latr));
+}
+function notamPerpKm(p, a, b) {                  // point→segment distance in km
+  const kx = 111.32 * Math.cos(p[0] * Math.PI / 180), ky = 110.57;
+  const ax = a[1] * kx, ay = a[0] * ky, bx = b[1] * kx, by = b[0] * ky, px = p[1] * kx, py = p[0] * ky;
+  const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+  const t = L ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / L)) : 0;
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+// Ramer–Douglas–Peucker: a 6–8km buffer offset on a noisy border self-folds at
+// every sub-buffer wiggle. Simplifying the arc first keeps the shape but removes
+// the kinks that produce spikes.
+function notamSimplify(pts, tolKm) {
+  if (pts.length < 3) return pts.slice();
+  let dmax = 0, idx = 0;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const d = notamPerpKm(pts[i], pts[0], pts[pts.length - 1]);
+    if (d > dmax) { dmax = d; idx = i; }
+  }
+  if (dmax > tolKm) {
+    const l = notamSimplify(pts.slice(0, idx + 1), tolKm);
+    const r = notamSimplify(pts.slice(idx), tolKm);
+    return l.slice(0, -1).concat(r);
+  }
+  return [pts[0], pts[pts.length - 1]];
+}
 function notamBorderBuffer(arc, km) {
   if (!Array.isArray(arc) || arc.length < 2 || !(km > 0)) return null;
-  const off = [];
+  // Drop near-duplicate vertices (zero-length tangents), then simplify.
+  const dedup = [arc[0]];
+  for (let i = 1; i < arc.length; i++) if (notamKmBetween(dedup[dedup.length - 1], arc[i]) > 0.05) dedup.push(arc[i]);
+  arc = notamSimplify(dedup, NOTAM_BORDER_SIMPLIFY_KM);
+  if (arc.length < 2) return null;
+  // Unit normals with CONSISTENT handedness (left of travel). Deciding inland
+  // per-vertex against a far reference flips the side on wiggly borders and
+  // self-intersects; instead pick one global side for the whole arc.
+  const norm = [];
+  let vote = 0;
   for (let i = 0; i < arc.length; i++) {
     const la = arc[i][0], ln = arc[i][1];
     const a = arc[Math.max(0, i - 1)], b = arc[Math.min(arc.length - 1, i + 1)];
     const cosl = Math.cos(la * Math.PI / 180) || 1e-6;
-    // local tangent in an equal-distance frame, then unit normal
     const tlat = b[0] - a[0], tlng = (b[1] - a[1]) * cosl;
     const L = Math.hypot(tlat, tlng) || 1;
-    let nlat = -tlng / L, nlng = tlat / L;
-    // flip the normal to point inland (toward the interior reference)
-    const vlat = NOTAM_BORDER_INTERIOR[0] - la, vlng = (NOTAM_BORDER_INTERIOR[1] - ln) * cosl;
-    if (nlat * vlat + nlng * vlng < 0) { nlat = -nlat; nlng = -nlng; }
+    const nlat = -tlng / L, nlng = tlat / L;     // rotate tangent +90° (fixed handedness)
+    norm.push([nlat, nlng, cosl]);
+    // accumulate which side points inland (toward the interior reference)
+    vote += nlat * (NOTAM_BORDER_INTERIOR[0] - la) + nlng * (NOTAM_BORDER_INTERIOR[1] - ln) * cosl;
+  }
+  const s = vote >= 0 ? 1 : -1;                   // single inland side for the arc
+  const off = [];
+  for (let i = 0; i < arc.length; i++) {
+    const [nlat, nlng, cosl] = norm[i];
     const dlat = km / 110.57, dlng = km / (111.32 * cosl);
-    off.push([la + nlat * dlat, ln + nlng * dlng]);
+    off.push([arc[i][0] + s * nlat * dlat, arc[i][1] + s * nlng * dlng]);
   }
   const ring = arc.concat(off.reverse());
   ring.push(arc[0]);
