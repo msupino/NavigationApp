@@ -2254,8 +2254,30 @@ const NOTAM_KEY = 'navaid.showNotam';
 try { const s = localStorage.getItem(NOTAM_KEY); if (s !== null) window.showNotam = s === '1'; } catch (e) { /* */ }
 const notamCb = document.getElementById('notam-cb');
 const notamListBtn = document.getElementById('notam-list-btn');
+const notamControls = document.getElementById('notam-controls');
+const notamTimeEl = document.getElementById('notam-time');
+const notamTimeVal = document.getElementById('notam-time-val');
 function refreshNotamListBtn() {
-  if (notamListBtn) notamListBtn.hidden = !(Array.isArray(notams) && notams.length);
+  const have = Array.isArray(notams) && notams.length;
+  if (notamListBtn) notamListBtn.hidden = !have;
+  // The timeline slider only makes sense with the overlay on and data present.
+  if (notamControls) notamControls.hidden = !(window.showNotam && have);
+}
+// Slider readout: 0 = live "now", otherwise "+Nh · MM-DD HH:MMZ".
+function notamTimeLabel(h) {
+  if (!h) return S.notamTimeNow || 'Now';
+  const d = new Date(Date.now() + h * 3600e3);
+  const t = d.toISOString().slice(5, 16).replace('T', ' ') + 'Z';
+  return S.notamTimeAt ? S.notamTimeAt(h, t) : ('+' + h + 'h ' + t);
+}
+function syncNotamTime() {
+  const h = notamTimeEl ? (parseInt(notamTimeEl.value, 10) || 0) : 0;
+  window.notamViewTime = h ? (Date.now() + h * 3600e3) : null;
+  if (notamTimeVal) notamTimeVal.textContent = notamTimeLabel(h);
+}
+if (notamTimeEl) {
+  notamTimeEl.oninput = () => { syncNotamTime(); refreshNotamListBtn(); draw(); };
+  syncNotamTime();
 }
 async function ensureNotams() {
   if (typeof loadNotam === 'function' && notams === null) await loadNotam();
@@ -2349,6 +2371,7 @@ if (notamCb) {
     window.showNotam = e.target.checked;
     try { localStorage.setItem(NOTAM_KEY, window.showNotam ? '1' : '0'); } catch (err) { /* */ }
     if (window.showNotam) await ensureNotams();
+    refreshNotamListBtn();   // toggle the timeline slider's visibility too
     draw();
   };
   // Load on boot so the list button can reveal (and the overlay restore) even

@@ -451,7 +451,8 @@ function notamActive(n, now) {
   return true;
 }
 function activeNotams() {
-  const now = Date.now();
+  // The timeline slider scrubs a look-ahead time; null = live "now".
+  const now = Number.isFinite(window.notamViewTime) ? window.notamViewTime : Date.now();
   return Array.isArray(notams) ? notams.filter(n => notamActive(n, now)) : [];
 }
 // Resolve a NOTAM fix name (CVFR reporting point / airfield / VOR) → coords.

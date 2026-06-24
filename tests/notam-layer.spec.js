@@ -79,6 +79,29 @@ test('NOTAMs decode to plain English; Raw toggle shows the source text', async (
   await expect(modal.locator('.notam-text')).not.toContainText('above mean sea level');
 });
 
+test('timeline slider scrubs which NOTAMs are active', async ({ page }) => {
+  const started = new Date(Date.now() - 36e5).toISOString();     // -1h (already active)
+  const startIn48 = new Date(Date.now() + 48 * 3600e3).toISOString();
+  const farEnd = new Date(Date.now() + 30 * 864e5).toISOString();
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'N-NOW/26', text: 'active now', start: started, end: farEnd, geom: null, icao: 'LLBG' },
+    { id: 'N-LATER/26', text: 'starts in 48h', start: startIn48, end: farEnd, geom: null, icao: 'LLHA' },
+  ] });
+  await page.locator('#notam-cb').check();
+  // Slider hidden until overlay on; now visible with data.
+  await expect(page.locator('#notam-controls')).toBeVisible();
+  // At "now" only the started NOTAM is active.
+  expect(await page.evaluate(() => activeNotams().length)).toBe(1);
+  // Scrub to +60h → the later NOTAM is now active too.
+  await page.locator('#notam-time').fill('60');
+  await page.locator('#notam-time').dispatchEvent('input');
+  expect(await page.evaluate(() => activeNotams().map(n => n.id).sort()))
+    .toEqual(['N-LATER/26', 'N-NOW/26']);
+  // Modal title reflects the scrubbed count.
+  await page.locator('#notam-list-btn').click();
+  await expect(page.locator('.modal-back .notam-modal h3')).toContainText('2');
+});
+
 test('CVFR route closures resolve named fixes to closed + diverted lines', async ({ page }) => {
   // Fix names are resolved against the real nav-waypoints.json (not mocked).
   await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
