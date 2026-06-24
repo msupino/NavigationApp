@@ -28,24 +28,22 @@ jobs:
           console.error('token keys:', Object.keys(tj).join(','), '| len', token.length);
           if (!token) process.exit(0);
           const H = { Authorization: 'Bearer ' + token, Accept: 'application/json' };
-          const tries = [
-            '/v1.0/notam?lonmin=34&lonmax=36&latmin=29.4&latmax=33.5',
-            '/v1.0/notam?lonmin=34&lonmax=36&latmin=29.4&latmax=33.5&offset=0&count=5',
-            '/v1.0/notam?airports=LLLL',
-            '/v1.0/notam?airports=LLBG',
-            '/v1.0/notam?fir=LLLL',
-            '/v1.0/notam?itemq=LLLL',
-            '/v1.0/notam?bbox=34,29.4,36,33.5',
-          ];
-          for (const p of tries) {
-            try {
-              const r = await fetch('https://api.autorouter.aero' + p, { headers: H });
-              const txt = await r.text();
-              let shape = '';
-              try { const j = JSON.parse(txt); shape = Array.isArray(j) ? ('array['+j.length+'] '+JSON.stringify(j[0]||'').slice(0,180))
-                : ('obj{'+Object.keys(j).slice(0,8).join(',')+'} '+JSON.stringify(j).slice(0,180)); }
-              catch { shape = txt.slice(0, 160); }
-              console.error(`\n[${r.status}] ${p}\n  ${shape}`);
-            } catch (e) { console.error(p, 'ERR', e.message); }
+          const q = encodeURIComponent('["LLLL"]');
+          const r = await fetch('https://api.autorouter.aero/v1.0/notam?itemas=' + q + '&offset=0&limit=100', { headers: H });
+          const j = await r.json();
+          console.error('[' + r.status + '] itemas=["LLLL"] total=' + j.total + ' rows=' + (j.rows||[]).length);
+          if (j.rows && j.rows[0]) {
+            console.error('row keys:', Object.keys(j.rows[0]).join(','));
+            console.error('FULL row 0:', JSON.stringify(j.rows[0]).slice(0, 1200));
+            // geometry-bearing keys?
+            for (const k of Object.keys(j.rows[0])) {
+              const v = j.rows[0][k];
+              if (v && typeof v === 'object') console.error('  obj field', k, '=', JSON.stringify(v).slice(0, 200));
+            }
           }
+          // also try all Israel airports + FIR
+          const all = encodeURIComponent(JSON.stringify(['LLLL','LLBG','LLHA','LLOV','LLNV','LLIB','LLHZ','LLER','LLMG','LLES','LLBS','LLRM','LLMZ']));
+          const r2 = await fetch('https://api.autorouter.aero/v1.0/notam?itemas=' + all + '&offset=0&limit=100', { headers: H });
+          const j2 = await r2.json();
+          console.error('[' + r2.status + '] all-Israel total=' + j2.total);
           NODE
