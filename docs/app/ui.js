@@ -1753,14 +1753,29 @@ document.getElementById('limit-kites-cb').onchange = e => {
   if (_savedOn && typeof window.simStart === 'function') {
     connected = true;
     setConnectLabel();
-    // Open the sim section so the user can see the connected state.
-    const simSec = cb.closest('.tb-section');
-    if (simSec && !simSec.classList.contains('open')) {
-      simSec.classList.add('open');
-      try { localStorage.setItem('navaid.sec.sim', '1'); } catch (e) { /* */ }
-    }
+    // The sim panel now lives behind the footer icon (#sim-modal); the
+    // connected status shows when the user opens it. Just resume polling.
     simStart();
   }
+})();
+
+// Footer plane icon ⇄ simulator panel modal (#sim-modal).
+(function () {
+  const trigger = document.getElementById('sim-trigger');
+  const modal = document.getElementById('sim-modal');
+  const closeBtn = document.getElementById('sim-modal-close');
+  if (!trigger || !modal) return;
+  const open = () => {
+    if (typeof closeToolbarDesktopMenus === 'function') closeToolbarDesktopMenus();
+    modal.classList.remove('hidden');
+  };
+  const close = () => modal.classList.add('hidden');
+  trigger.addEventListener('click', open);
+  if (closeBtn) closeBtn.addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) close();
+  });
 })();
 
 document.getElementById('ret-cb').onchange = e => {

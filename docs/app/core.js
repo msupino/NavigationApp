@@ -1385,7 +1385,7 @@ function navLangPosKey(base) {
 // original. Source: ICAO Annex 15 / Doc 8126 NOTAM Code (subset covering the
 // codes the Israel FIR feed emits, plus common extras).
 const NOTAM_SUBJ = {            // Q-code letters 2-3 (subject)
-  AC: 'Class B/C/D/E surface area', AD: 'Air defence identification zone (ADIZ)',
+  AC: 'Class B/C/D/E surface area', AD: 'Air defense identification zone (ADIZ)',
   AE: 'Control area (CTA)', AF: 'Flight information region (FIR)',
   AH: 'Upper control area (UTA)', AN: 'Area navigation (RNAV) route',
   AP: 'Reporting point', AR: 'ATS route', AT: 'Terminal control area (TMA)',

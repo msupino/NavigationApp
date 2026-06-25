@@ -1738,6 +1738,19 @@ body.theme-light .notam-raw-toggle:hover { background: #dfe4ec; color: #000; }
   justify-content: center;
   background: rgba(0, 0, 0, 0.5);
 }
+.modal-back.hidden { display: none; }
+/* Simulator panel overlay — a standalone (non-.modal-back) backdrop so the
+   global Escape-removes-.modal-back handler doesn't destroy this static node. */
+.sim-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+}
+.sim-overlay.hidden { display: none; }
 /* Flight Plan variant: transparent backdrop that doesn't capture events,
    so the map underneath stays draggable / pannable while the plan is open. */
 .modal-back.flight-plan {
