@@ -1777,6 +1777,13 @@ body.theme-light .notam-raw-toggle:hover { background: #dfe4ec; color: #000; }
   0% { background: #2e7d32; border-color: #2e7d32; color: #fff; }
   100% { }
 }
+.modal.sim-modal > button.sim-flash-nodata {
+  animation: sim-flash-nodata 0.5s ease-out;
+}
+@keyframes sim-flash-nodata {
+  0% { background: #8a6d3b; border-color: #8a6d3b; color: #fff; }
+  100% { }
+}
 /* Flight Plan variant: transparent backdrop that doesn't capture events,
    so the map underneath stays draggable / pannable while the plan is open. */
 .modal-back.flight-plan {
