@@ -444,7 +444,7 @@ window.S = {
   tbLightMode: 'מצב בהיר',
   tbDarkMode: 'מצב כהה',
   tbLightModeTitle: 'החלף בין מצב בהיר לכהה',
-  tbClearStore: '🗑 נקה אחסון',
+  tbClearStore: '🗑 נקה אחסון מקומי',
   tbClearStoreTitle: 'מחק את כל המסלולים השמורים וההגדרות במכשיר זה',
   tbClearStoreConfirm: 'למחוק את כל המסלולים השמורים וההגדרות במכשיר זה? לא ניתן לבטל.',
   tbTransparency: 'שקיפות תוויות',

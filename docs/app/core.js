@@ -926,7 +926,7 @@ window.S = Object.assign({
   tbLightMode: 'Light mode',
   tbDarkMode: 'Dark mode',
   tbLightModeTitle: 'Switch between light and dark theme',
-  tbClearStore: '🗑 Clear store',
+  tbClearStore: '🗑 Clear local store',
   tbClearStoreTitle: 'Delete all saved routes and settings stored on this device',
   tbClearStoreConfirm: 'Delete ALL saved routes and settings stored on this device? This cannot be undone.',
   tbTransparency: 'Label opacity',
