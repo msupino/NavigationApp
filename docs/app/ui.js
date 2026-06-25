@@ -1737,7 +1737,14 @@ document.getElementById('limit-kites-cb').onchange = e => {
   const centerBtn = document.getElementById('sim-center');
   if (centerBtn) centerBtn.onclick = () => {
     const a = window.simAircraft;
-    if (a && Number.isFinite(a.lat) && Number.isFinite(a.lng)) map.setView([a.lat, a.lng], map.getZoom());
+    if (a && Number.isFinite(a.lat) && Number.isFinite(a.lng)) {
+      map.setView([a.lat, a.lng], map.getZoom());
+      // Brief flash so the one-shot action gives visible feedback.
+      centerBtn.classList.remove('sim-flash');
+      void centerBtn.offsetWidth;                 // restart the animation
+      centerBtn.classList.add('sim-flash');
+      setTimeout(() => centerBtn.classList.remove('sim-flash'), 600);
+    }
   };
 
   cb.onclick = () => {

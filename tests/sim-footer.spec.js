@@ -19,11 +19,19 @@ test('footer sim icon opens the simulator panel; Esc closes it', async ({ page }
   await trigger.click();
   await expect(page.locator('#sim-modal')).toBeVisible();
   // Three stacked buttons: connect, follow, center.
-  await expect(page.locator('#sim-modal .modal.sim-modal > button:not(.modal-close-x)')).toHaveCount(3);
+  await expect(page.locator('#sim-modal .modal.sim-modal > button:not(.sim-modal-close)')).toHaveCount(3);
   await expect(page.locator('#sim-modal #sim-connect-cb')).toBeVisible();
   await expect(page.locator('#sim-modal #sim-follow-cb')).toBeVisible();
   await expect(page.locator('#sim-modal #sim-center')).toBeVisible();
   await expect(page.locator('#sim-modal #sim-url')).toBeVisible();
+
+  // Follow is a toggle with a visible active (aria-pressed) state.
+  const follow = page.locator('#sim-modal #sim-follow-cb');
+  await expect(follow).toHaveAttribute('aria-pressed', 'false');
+  await follow.click();
+  await expect(follow).toHaveAttribute('aria-pressed', 'true');
+  await follow.click();
+  await expect(follow).toHaveAttribute('aria-pressed', 'false');
 
   // Esc closes.
   await page.keyboard.press('Escape');

@@ -120,7 +120,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=172">
+  <link rel="stylesheet" href="app/style.css?v=173">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -543,7 +543,7 @@
        than a top-level toolbar section. -->
   <div id="sim-modal" class="sim-overlay hidden">
     <div class="modal sim-modal" role="dialog" aria-modal="true">
-      <button class="modal-close-x" id="sim-modal-close" type="button" aria-label="Close">×</button>
+      <button class="sim-modal-close" id="sim-modal-close" type="button" aria-label="Close">×</button>
       <h3 data-i18n="tbSecSim">Simulator</h3>
       <button id="sim-connect-cb" type="button" data-i18n-title="tbSimConnectTitle"></button>
       <label class="navtoggle" data-i18n-title="tbSimIpTitle">
@@ -622,7 +622,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=172';
+      var v = '?v=173';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
