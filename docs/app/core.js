@@ -926,7 +926,7 @@ window.S = Object.assign({
   tbLightMode: 'Light mode',
   tbDarkMode: 'Dark mode',
   tbLightModeTitle: 'Switch between light and dark theme',
-  tbClearStore: '🗑 Clear store',
+  tbClearStore: '🗑 Clear local store',
   tbClearStoreTitle: 'Delete all saved routes and settings stored on this device',
   tbClearStoreConfirm: 'Delete ALL saved routes and settings stored on this device? This cannot be undone.',
   tbTransparency: 'Label opacity',
@@ -975,6 +975,8 @@ window.S = Object.assign({
   tbSimIpTitle: 'HTTP URL of the SimConnect bridge — default http://localhost:2020',
   tbSimFollow: 'Follow aircraft',
   tbSimFollowTitle: 'Keep the map centred on the live aircraft position',
+  tbSimCenter: 'Center on aircraft',
+  tbSimCenterTitle: 'Recenter the map on the live aircraft once',
   tbSimStatusOk: '✅ Connected',
   tbSimStatusErr: '⚠ No data',
   tbViewSource: 'GitHub',
@@ -1370,6 +1372,14 @@ function decodeSigmet(s) {
 }
 const pad3 = n => String(n).padStart(3, '0');
 
+// Per-language localStorage key for draggable menu/panel POSITIONS. The RTL
+// (Hebrew) layout mirrors the LTR (English) one, so a spot dragged in one
+// language is wrong in the other — store each language's position separately.
+function navLangPosKey(base) {
+  const lang = (document.documentElement && document.documentElement.lang === 'he') ? 'he' : 'en';
+  return base + '.' + lang;
+}
+
 // --- NOTAM decoder ---------------------------------------------------
 // NOTAMs are terse: a 4-letter ICAO Q-code (subject + condition) plus a free
 // text body packed with standard abbreviations. decodeNotam() turns that into
@@ -1377,7 +1387,7 @@ const pad3 = n => String(n).padStart(3, '0');
 // original. Source: ICAO Annex 15 / Doc 8126 NOTAM Code (subset covering the
 // codes the Israel FIR feed emits, plus common extras).
 const NOTAM_SUBJ = {            // Q-code letters 2-3 (subject)
-  AC: 'Class B/C/D/E surface area', AD: 'Air defence identification zone (ADIZ)',
+  AC: 'Class B/C/D/E surface area', AD: 'Air defense identification zone (ADIZ)',
   AE: 'Control area (CTA)', AF: 'Flight information region (FIR)',
   AH: 'Upper control area (UTA)', AN: 'Area navigation (RNAV) route',
   AP: 'Reporting point', AR: 'ATS route', AT: 'Terminal control area (TMA)',
