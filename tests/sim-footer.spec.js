@@ -25,6 +25,11 @@ test('footer sim icon opens the simulator panel; Esc closes it', async ({ page }
   await expect(page.locator('#sim-modal #sim-center')).toBeVisible();
   await expect(page.locator('#sim-modal #sim-url')).toBeVisible();
 
+  // Center is a one-shot — clicking flashes for feedback even with no live
+  // aircraft (muted no-data flash).
+  await page.locator('#sim-modal #sim-center').click();
+  await expect(page.locator('#sim-modal #sim-center')).toHaveClass(/sim-flash/);
+
   // Follow is a toggle with a visible active (aria-pressed) state.
   const follow = page.locator('#sim-modal #sim-follow-cb');
   await expect(follow).toHaveAttribute('aria-pressed', 'false');
