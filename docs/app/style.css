@@ -1738,6 +1738,45 @@ body.theme-light .notam-raw-toggle:hover { background: #dfe4ec; color: #000; }
   justify-content: center;
   background: rgba(0, 0, 0, 0.5);
 }
+.modal-back.hidden { display: none; }
+/* Simulator panel overlay — a standalone (non-.modal-back) backdrop so the
+   global Escape-removes-.modal-back handler doesn't destroy this static node. */
+.sim-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+}
+.sim-overlay.hidden { display: none; }
+/* Sim panel: a tidy vertical menu — full-width stacked controls. */
+.modal.sim-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 220px;
+}
+.modal.sim-modal > button:not(.sim-modal-close),
+.modal.sim-modal > label,
+.modal.sim-modal > #sim-status { width: 100%; }
+.modal.sim-modal > button:not(.sim-modal-close) { text-align: center; }
+/* Active state for the toggle buttons (Connect / Follow) + a brief flash for
+   the one-shot Center button, so it's clear when they fire. */
+.modal.sim-modal > button[aria-pressed="true"] {
+  background: #2e7d32;
+  border-color: #2e7d32;
+  color: #fff;
+  font-weight: 700;
+}
+.modal.sim-modal > button.sim-flash {
+  animation: sim-flash 0.5s ease-out;
+}
+@keyframes sim-flash {
+  0% { background: #2e7d32; border-color: #2e7d32; color: #fff; }
+  100% { }
+}
 /* Flight Plan variant: transparent backdrop that doesn't capture events,
    so the map underneath stays draggable / pannable while the plan is open. */
 .modal-back.flight-plan {
@@ -2998,7 +3037,8 @@ body.theme-light .msa-low .val { color: #c0392b; }
 .modal {
   position: relative;             /* anchor for the absolute X */
 }
-.modal-close-x {
+.modal-close-x,
+.sim-modal-close {
   position: absolute;
   top: 6px;
   inset-inline-end: 6px;
@@ -3013,7 +3053,8 @@ body.theme-light .msa-low .val { color: #c0392b; }
   border-radius: 4px;
   cursor: pointer;
 }
-.modal-close-x:hover { background: #443f3f; color: #fff; }
+.modal-close-x:hover,
+.sim-modal-close:hover { background: #443f3f; color: #fff; }
 .modal-close-actions {
   position: absolute;
   top: 6px;
@@ -3408,6 +3449,7 @@ body.theme-light .charts-cat-label,
 body.theme-light .plate-loading,
 body.theme-light .plate-attribution,
 body.theme-light .modal-close-x,
+body.theme-light .sim-modal-close,
 body.theme-light .modal-close-action,
 body.theme-light .point-choice-meta,
 body.theme-light .satellite-snippet-head label,
@@ -3429,6 +3471,7 @@ body.theme-light #toolbar .footer-link:hover,
 body.theme-light .charts-airport-header:hover,
 body.theme-light #insp-close:hover,
 body.theme-light .modal-close-x:hover,
+body.theme-light .sim-modal-close:hover,
 body.theme-light .modal-close-action:hover,
 body.theme-light #mag-settings-close:hover,
 body.theme-light #search-close:hover,
