@@ -1751,6 +1751,17 @@ body.theme-light .notam-raw-toggle:hover { background: #dfe4ec; color: #000; }
   background: rgba(0, 0, 0, 0.5);
 }
 .sim-overlay.hidden { display: none; }
+/* Sim panel: a tidy vertical menu — full-width stacked controls. */
+.modal.sim-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 220px;
+}
+.modal.sim-modal > button:not(.modal-close-x),
+.modal.sim-modal > label,
+.modal.sim-modal > #sim-status { width: 100%; }
+.modal.sim-modal > button:not(.modal-close-x) { text-align: center; }
 /* Flight Plan variant: transparent backdrop that doesn't capture events,
    so the map underneath stays draggable / pannable while the plan is open. */
 .modal-back.flight-plan {

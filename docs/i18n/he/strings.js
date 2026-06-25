@@ -485,6 +485,8 @@ window.S = {
   tbSimIpTitle: 'כתובת HTTP של גשר SimConnect — ברירת מחדל http://localhost:2020',
   tbSimFollow: 'עקוב אחר המטוס',
   tbSimFollowTitle: 'שמור את המפה ממורכזת על מיקום המטוס',
+  tbSimCenter: 'מרכז על המטוס',
+  tbSimCenterTitle: 'מרכז את המפה על המטוס פעם אחת',
   tbSimStatusOk: '✅ מחובר',
   tbSimStatusErr: '⚠ אין נתונים',
   tbViewSource: 'GitHub',

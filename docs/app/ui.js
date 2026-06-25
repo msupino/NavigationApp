@@ -1733,6 +1733,13 @@ document.getElementById('limit-kites-cb').onchange = e => {
     try { localStorage.setItem(SIM_FOLLOW_KEY, simFollow ? '1' : '0'); } catch (e) { /* */ }
   };
 
+  // One-shot recenter on the live aircraft (distinct from continuous Follow).
+  const centerBtn = document.getElementById('sim-center');
+  if (centerBtn) centerBtn.onclick = () => {
+    const a = window.simAircraft;
+    if (a && Number.isFinite(a.lat) && Number.isFinite(a.lng)) map.setView([a.lat, a.lng], map.getZoom());
+  };
+
   cb.onclick = () => {
     connected = !connected;
     setConnectLabel();

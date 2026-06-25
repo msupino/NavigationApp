@@ -975,6 +975,8 @@ window.S = Object.assign({
   tbSimIpTitle: 'HTTP URL of the SimConnect bridge — default http://localhost:2020',
   tbSimFollow: 'Follow aircraft',
   tbSimFollowTitle: 'Keep the map centred on the live aircraft position',
+  tbSimCenter: 'Center on aircraft',
+  tbSimCenterTitle: 'Recenter the map on the live aircraft once',
   tbSimStatusOk: '✅ Connected',
   tbSimStatusErr: '⚠ No data',
   tbViewSource: 'GitHub',

@@ -18,7 +18,11 @@ test('footer sim icon opens the simulator panel; Esc closes it', async ({ page }
   // Opening reveals the sim controls.
   await trigger.click();
   await expect(page.locator('#sim-modal')).toBeVisible();
+  // Three stacked buttons: connect, follow, center.
+  await expect(page.locator('#sim-modal .modal.sim-modal > button:not(.modal-close-x)')).toHaveCount(3);
   await expect(page.locator('#sim-modal #sim-connect-cb')).toBeVisible();
+  await expect(page.locator('#sim-modal #sim-follow-cb')).toBeVisible();
+  await expect(page.locator('#sim-modal #sim-center')).toBeVisible();
   await expect(page.locator('#sim-modal #sim-url')).toBeVisible();
 
   // Esc closes.

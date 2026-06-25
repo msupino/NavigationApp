@@ -120,7 +120,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=169">
+  <link rel="stylesheet" href="app/style.css?v=170">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -553,6 +553,8 @@
       </label>
       <button id="sim-follow-cb" type="button" data-i18n="tbSimFollow"
               data-i18n-title="tbSimFollowTitle"></button>
+      <button id="sim-center" type="button" data-i18n="tbSimCenter"
+              data-i18n-title="tbSimCenterTitle"></button>
       <span id="sim-status" style="font-size:11px;padding:0 6px"></span>
     </div>
   </div>
@@ -620,7 +622,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=169';
+      var v = '?v=170';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
