@@ -1733,6 +1733,20 @@ document.getElementById('limit-kites-cb').onchange = e => {
     try { localStorage.setItem(SIM_FOLLOW_KEY, simFollow ? '1' : '0'); } catch (e) { /* */ }
   };
 
+  // One-shot recenter on the live aircraft (distinct from continuous Follow).
+  const centerBtn = document.getElementById('sim-center');
+  if (centerBtn) centerBtn.onclick = () => {
+    const a = window.simAircraft;
+    const have = a && Number.isFinite(a.lat) && Number.isFinite(a.lng);
+    if (have) map.setView([a.lat, a.lng], map.getZoom());
+    // Always flash so the one-shot click gives visible feedback — green when it
+    // recentered, a muted "no-data" flash when there's no live position yet.
+    centerBtn.classList.remove('sim-flash', 'sim-flash-nodata');
+    void centerBtn.offsetWidth;                   // restart the animation
+    centerBtn.classList.add(have ? 'sim-flash' : 'sim-flash-nodata');
+    setTimeout(() => centerBtn.classList.remove('sim-flash', 'sim-flash-nodata'), 600);
+  };
+
   cb.onclick = () => {
     connected = !connected;
     setConnectLabel();
@@ -1753,14 +1767,29 @@ document.getElementById('limit-kites-cb').onchange = e => {
   if (_savedOn && typeof window.simStart === 'function') {
     connected = true;
     setConnectLabel();
-    // Open the sim section so the user can see the connected state.
-    const simSec = cb.closest('.tb-section');
-    if (simSec && !simSec.classList.contains('open')) {
-      simSec.classList.add('open');
-      try { localStorage.setItem('navaid.sec.sim', '1'); } catch (e) { /* */ }
-    }
+    // The sim panel now lives behind the footer icon (#sim-modal); the
+    // connected status shows when the user opens it. Just resume polling.
     simStart();
   }
+})();
+
+// Footer plane icon ⇄ simulator panel modal (#sim-modal).
+(function () {
+  const trigger = document.getElementById('sim-trigger');
+  const modal = document.getElementById('sim-modal');
+  const closeBtn = document.getElementById('sim-modal-close');
+  if (!trigger || !modal) return;
+  const open = () => {
+    if (typeof closeToolbarDesktopMenus === 'function') closeToolbarDesktopMenus();
+    modal.classList.remove('hidden');
+  };
+  const close = () => modal.classList.add('hidden');
+  trigger.addEventListener('click', open);
+  if (closeBtn) closeBtn.addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) close();
+  });
 })();
 
 document.getElementById('ret-cb').onchange = e => {
@@ -2815,7 +2844,8 @@ function refreshMapAfterToolbarModeChange() {
   // when the viewport crosses the breakpoint.
   const KEY_DESKTOP = 'navaid.toolbarPosDesktop';
   const COLLAPSED_KEY = 'navaid.toolbarCollapsed';
-  const posKey = () => (toolbarUsesDesktopMenu() ? KEY_DESKTOP : KEY);
+  // Position is per-language (RTL mirrors LTR, so the spot differs by language).
+  const posKey = () => navLangPosKey(toolbarUsesDesktopMenu() ? KEY_DESKTOP : KEY);
   let dx = 0, dy = 0, dragging = false;
 
   function clampPos(x, y) {

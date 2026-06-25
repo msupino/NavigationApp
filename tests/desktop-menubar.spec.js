@@ -65,7 +65,7 @@ test.describe('Desktop menubar layout', () => {
     if (!after) throw new Error('no box');
     expect(after.x).toBeGreaterThan(before.x + 120);
     expect(after.y).toBeGreaterThan(before.y + 90);
-    const stored = await page.evaluate(() => localStorage.getItem('navaid.toolbarPosDesktop'));
+    const stored = await page.evaluate(() => localStorage.getItem('navaid.toolbarPosDesktop.en'));
     expect(stored).toBeTruthy();
     const pos = JSON.parse(stored);
     expect(Math.abs(pos.x - after.x)).toBeLessThan(3);
@@ -77,7 +77,7 @@ test.describe('Desktop menubar layout', () => {
     await page.addInitScript(() => {
       try {
         localStorage.clear(); sessionStorage.clear();
-        localStorage.setItem('navaid.toolbarPosDesktop', JSON.stringify({ x: 150, y: 180 }));
+        localStorage.setItem('navaid.toolbarPosDesktop.en', JSON.stringify({ x: 150, y: 180 }));
       } catch (e) {}
     });
     await page.goto('?lang=en');
