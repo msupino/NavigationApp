@@ -1737,14 +1737,14 @@ document.getElementById('limit-kites-cb').onchange = e => {
   const centerBtn = document.getElementById('sim-center');
   if (centerBtn) centerBtn.onclick = () => {
     const a = window.simAircraft;
-    if (a && Number.isFinite(a.lat) && Number.isFinite(a.lng)) {
-      map.setView([a.lat, a.lng], map.getZoom());
-      // Brief flash so the one-shot action gives visible feedback.
-      centerBtn.classList.remove('sim-flash');
-      void centerBtn.offsetWidth;                 // restart the animation
-      centerBtn.classList.add('sim-flash');
-      setTimeout(() => centerBtn.classList.remove('sim-flash'), 600);
-    }
+    const have = a && Number.isFinite(a.lat) && Number.isFinite(a.lng);
+    if (have) map.setView([a.lat, a.lng], map.getZoom());
+    // Always flash so the one-shot click gives visible feedback — green when it
+    // recentered, a muted "no-data" flash when there's no live position yet.
+    centerBtn.classList.remove('sim-flash', 'sim-flash-nodata');
+    void centerBtn.offsetWidth;                   // restart the animation
+    centerBtn.classList.add(have ? 'sim-flash' : 'sim-flash-nodata');
+    setTimeout(() => centerBtn.classList.remove('sim-flash', 'sim-flash-nodata'), 600);
   };
 
   cb.onclick = () => {
