@@ -1370,6 +1370,14 @@ function decodeSigmet(s) {
 }
 const pad3 = n => String(n).padStart(3, '0');
 
+// Per-language localStorage key for draggable menu/panel POSITIONS. The RTL
+// (Hebrew) layout mirrors the LTR (English) one, so a spot dragged in one
+// language is wrong in the other — store each language's position separately.
+function navLangPosKey(base) {
+  const lang = (document.documentElement && document.documentElement.lang === 'he') ? 'he' : 'en';
+  return base + '.' + lang;
+}
+
 // --- NOTAM decoder ---------------------------------------------------
 // NOTAMs are terse: a 4-letter ICAO Q-code (subject + condition) plus a free
 // text body packed with standard abbreviations. decodeNotam() turns that into

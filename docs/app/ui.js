@@ -2815,7 +2815,8 @@ function refreshMapAfterToolbarModeChange() {
   // when the viewport crosses the breakpoint.
   const KEY_DESKTOP = 'navaid.toolbarPosDesktop';
   const COLLAPSED_KEY = 'navaid.toolbarCollapsed';
-  const posKey = () => (toolbarUsesDesktopMenu() ? KEY_DESKTOP : KEY);
+  // Position is per-language (RTL mirrors LTR, so the spot differs by language).
+  const posKey = () => navLangPosKey(toolbarUsesDesktopMenu() ? KEY_DESKTOP : KEY);
   let dx = 0, dy = 0, dragging = false;
 
   function clampPos(x, y) {
