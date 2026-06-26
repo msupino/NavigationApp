@@ -120,7 +120,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=180">
+  <link rel="stylesheet" href="app/style.css?v=181">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -357,7 +357,7 @@
         <div id="notam-controls" hidden>
           <label class="navtoggle" style="margin-top:3px" data-i18n-title="tbNotamTimeTitle">
             <span data-i18n="tbNotamTime" style="font-size:11px"></span>
-            <input type="range" id="notam-time" min="0" max="72" step="1" value="0" style="flex:1 1 70px;min-width:60px">
+            <input type="range" id="notam-time" min="0" max="72" step="1" value="0">
             <span class="slider-val" id="notam-time-val" style="flex:0 0 auto"></span>
           </label>
           <div id="notam-updated" class="notam-updated" dir="ltr"></div>
@@ -375,17 +375,17 @@
         <div id="windfield-controls" hidden>
           <label class="navtoggle" style="margin-top:3px">
             <span data-i18n="tbWindFieldAlt" style="font-size:11px"></span>
-            <input type="range" id="windfield-alt" min="1000" max="5000" step="500" value="1500" style="flex:1 1 70px;min-width:60px">
+            <input type="range" id="windfield-alt" min="1000" max="5000" step="500" value="1500">
             <span class="slider-val" id="windfield-alt-val" style="flex:0 0 auto"></span>
           </label>
           <label class="navtoggle" style="margin-top:3px">
             <span data-i18n="tbWindFieldTime" style="font-size:11px"></span>
-            <input type="range" id="windfield-time" min="0" max="24" step="1" value="0" style="flex:1 1 70px;min-width:60px">
+            <input type="range" id="windfield-time" min="0" max="24" step="1" value="0">
             <span class="slider-val" id="windfield-time-val" style="flex:0 0 auto"></span>
           </label>
           <label class="navtoggle" style="margin-top:3px">
             <span data-i18n="tbWindFieldOpacity" style="font-size:11px"></span>
-            <input type="range" id="windfield-opacity" min="0.2" max="1" step="0.05" value="0.7" style="flex:1 1 70px;min-width:60px">
+            <input type="range" id="windfield-opacity" min="0.2" max="1" step="0.05" value="0.7">
             <span class="slider-val" id="windfield-opacity-val" style="flex:0 0 auto"></span>
             <button id="windfield-opacity-reset" type="button" data-i18n-title="tbWindFieldOpacityReset" style="flex:0 0 auto;width:26px;padding:2px 0">↻</button>
           </label>
@@ -402,7 +402,7 @@
             <select id="ims-pwx-time" data-i18n-aria="tbImsPwxTime" style="width:100%;font:inherit;font-size:11px;margin-top:3px"></select>
             <label class="navtoggle" style="margin-top:3px">
               <span data-i18n="tbImsPwxOpacity" style="font-size:11px"></span>
-              <input type="range" id="ims-pwx-opacity" min="0.2" max="1" step="0.05" value="0.6" style="flex:1 1 70px;min-width:60px">
+              <input type="range" id="ims-pwx-opacity" min="0.2" max="1" step="0.05" value="0.6">
               <span class="slider-val" id="ims-pwx-opacity-val" style="flex:0 0 auto"></span>
               <button id="ims-pwx-opacity-reset" type="button" data-i18n-title="tbImsPwxOpacityReset" style="flex:0 0 auto;width:26px;padding:2px 0">↻</button>
             </label>
@@ -420,7 +420,7 @@
             <select id="sigwx-ov-time" data-i18n-aria="tbSigwxTime" style="width:100%;font:inherit;font-size:11px;margin-top:3px"></select>
             <label class="navtoggle" style="margin-top:3px">
               <span data-i18n="tbImsPwxOpacity" style="font-size:11px"></span>
-              <input type="range" id="sigwx-ov-opacity" min="0.2" max="1" step="0.05" value="0.55" style="flex:1 1 70px;min-width:60px">
+              <input type="range" id="sigwx-ov-opacity" min="0.2" max="1" step="0.05" value="0.55">
               <span class="slider-val" id="sigwx-ov-opacity-val" style="flex:0 0 auto"></span>
               <button id="sigwx-ov-opacity-reset" type="button" data-i18n-title="tbImsPwxOpacityReset" style="flex:0 0 auto;width:26px;padding:2px 0">↻</button>
             </label>
@@ -622,7 +622,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=180';
+      var v = '?v=181';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
