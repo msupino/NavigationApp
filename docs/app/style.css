@@ -1464,6 +1464,15 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   font-size: 13px;
 }
 .notam-updated { font-size: 11px; opacity: 0.7; margin: 0 0 8px; }
+.notam-filter { margin: 0 0 8px; }
+.notam-filter-sel {
+  font: inherit; font-size: 12px; padding: 4px 8px; border-radius: 5px;
+  border: 1px solid #4a4545; background: #2b2727; color: #ddd; cursor: pointer;
+  max-width: 100%;
+}
+body.theme-light .notam-filter-sel {
+  border-color: #c6ccd6; background: #eef1f6; color: #2b3340;
+}
 .notam-list { max-height: 72vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
 .notam-item { border: 1px solid #3a3636; border-radius: 6px; padding: 6px 8px; background: rgba(255, 255, 255, 0.03); }
 .notam-id { font-weight: 700; font-size: 12px; margin-bottom: 3px; }
