@@ -8,7 +8,7 @@ name: Update NOTAMs (autorouter → notam-data)
 
 on:
   schedule:
-    - cron: '23 5 * * *'        # daily (UTC)
+    - cron: '23 * * * *'        # hourly (UTC) — keep NOTAMs fresh like the other feeds
   workflow_dispatch:
 
 jobs:
