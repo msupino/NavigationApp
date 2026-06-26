@@ -215,6 +215,11 @@ test('clicking a NOTAM in the list closes the modal and blinks it on the map', a
   expect(await page.evaluate(() => typeof flashNotam === 'function')).toBe(true);
   expect(await page.evaluate(() => window.notamMappable(
     activeNotams().find(n => n.id === 'C1337/26')))).toBe(true);
+  // The view is framed on the NOTAM (circle centred at 31.96/34.8).
+  await expect.poll(async () => page.evaluate(() => {
+    const c = map.getCenter();
+    return Math.abs(c.lat - 31.96) < 0.5 && Math.abs(c.lng - 34.8) < 0.5;
+  })).toBe(true);
 });
 
 test('NOTAM appears in the multi-select point picker', async ({ page }) => {
