@@ -103,3 +103,32 @@ test('Information section sliders + values stay inside the menu', async ({ page 
     Math.round(document.getElementById('notam-time').getBoundingClientRect().width));
   expect(after).toBe(before);                           // stable while value changes
 });
+
+test('multi-open dropdowns get distinct columns (Extra layers ≠ Charts overlap)', async ({ page }) => {
+  // Opening two sections at once (here Extra layers + Charts) must tile them
+  // into separate columns; a missing offset once let the Extra-layers menu
+  // land on top of Charts and swallow #notam-list-btn clicks.
+  await boot(page, 1280);
+  await page.evaluate(() => {
+    for (const sec of ['charts', 'weather']) {
+      const el = document.querySelector('.tb-section[data-sec="' + sec + '"]');
+      el.classList.add('open');
+      el.querySelector('.tb-section-head')?.setAttribute('aria-expanded', 'true');
+    }
+    const tb = document.getElementById('toolbar');
+    tb.classList.add('multi-open');
+    tb.dataset.openCount = '2';
+  });
+  const rects = await page.evaluate(() => {
+    const r = sec => {
+      const b = document.querySelector('.tb-section[data-sec="' + sec + '"] .tb-section-body')
+        .getBoundingClientRect();
+      return { left: b.left, right: b.right };
+    };
+    return { charts: r('charts'), weather: r('weather') };
+  });
+  // The two bodies must not horizontally overlap.
+  const overlap = Math.min(rects.charts.right, rects.weather.right) -
+    Math.max(rects.charts.left, rects.weather.left);
+  expect(overlap).toBeLessThanOrEqual(0);
+});
