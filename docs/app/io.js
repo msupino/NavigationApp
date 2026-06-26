@@ -3771,6 +3771,18 @@ async function flyRoute() {
 const STORE_KEY = 'navaid.route';
 let persistTimer = null;
 let quotaWarned = false;                // #80: stop scheduling after a quota fail
+// An empty route is stored as the *absence* of the key, not an empty object, so
+// a fresh boot (or a clear-store reload) leaves navaid.route truly cleared
+// rather than re-writing "{waypoints:[]…}".
+function routeIsEmpty() {
+  return state.waypoints.length === 0 &&
+    state.legs.length === 0 &&
+    state.notes.length === 0;
+}
+function writeRoute() {
+  if (routeIsEmpty()) localStorage.removeItem(STORE_KEY);
+  else localStorage.setItem(STORE_KEY, JSON.stringify(routeSnapshotForStorage()));
+}
 function persist() {
   // When boot detected a corrupt saved blob (issue #73), refuse to overwrite
   // it with the empty in-memory state — that's silent data loss. Once the
@@ -3789,7 +3801,7 @@ function persist() {
     persistTimer = null;
     try {
       // center / zoom are not restored (load fits the route) — not saved.
-      localStorage.setItem(STORE_KEY, JSON.stringify(routeSnapshotForStorage()));
+      writeRoute();
     } catch (e) {
       // #80: a full quota used to fail silently. Surface it once so the
       // user knows to export the route; other storage-unavailable errors
@@ -3814,7 +3826,7 @@ function flushPersist() {
   }
   if (quotaWarned) return;
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(routeSnapshotForStorage()));
+    writeRoute();
   } catch (e) {
     if (e && (e.name === 'QuotaExceededError' || e.code === 22 ||
               e.code === 1014 /* NS_ERROR_DOM_QUOTA_REACHED */)) {
