@@ -120,7 +120,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=182">
+  <link rel="stylesheet" href="app/style.css?v=184">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -347,50 +347,60 @@
     <!-- Weather: SIGMET, wind, and the IMS PWX wind/temperature chart overlay. -->
     <div class="tb-section" data-sec="weather">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecWeather"></div>
+      <!-- Each map layer is a uniform .tb-group-box: a toggle on top, its
+           controls (sliders / selects) below, same spacing + widths for all. -->
       <div class="tb-section-body">
-        <label class="navtoggle" data-i18n-title="tbShowSigmetTitle">
-          <input type="checkbox" id="sigmet-cb"> <span data-i18n="tbShowSigmet"></span>
-        </label>
-        <label class="navtoggle" data-i18n-title="tbShowNotamTitle">
-          <input type="checkbox" id="notam-cb"> <span data-i18n="tbShowNotam"></span>
-        </label>
-        <div id="notam-controls" hidden>
-          <label class="navtoggle" style="margin-top:3px" data-i18n-title="tbNotamTimeTitle">
-            <span data-i18n="tbNotamTime" style="font-size:11px"></span>
-            <input type="range" id="notam-time" min="0" max="72" step="1" value="0">
-            <span class="slider-val" id="notam-time-val" style="flex:0 0 auto"></span>
+        <div class="tb-group-box">
+          <label class="navtoggle" data-i18n-title="tbShowSigmetTitle">
+            <input type="checkbox" id="sigmet-cb"> <span data-i18n="tbShowSigmet"></span>
           </label>
-          <div id="notam-updated" class="notam-updated" dir="ltr"></div>
         </div>
-        <label class="navtoggle" data-i18n-title="tbShowWindTitle">
-          <input type="checkbox" id="show-wind-cb"> <span data-i18n="tbShowWind"></span>
-        </label>
-        <button id="wind-fetch" class="wind-input-row" type="button" style="display:none"
-                data-i18n="tbFetchWind" data-i18n-title="tbFetchWindTitle"></button>
-        <div id="wind-fetch-status" class="wind-input-row wind-fetch-status" style="display:none"></div>
+        <div class="tb-group-box">
+          <label class="navtoggle" data-i18n-title="tbShowNotamTitle">
+            <input type="checkbox" id="notam-cb"> <span data-i18n="tbShowNotam"></span>
+          </label>
+          <div id="notam-controls" hidden>
+            <label class="navtoggle" data-i18n-title="tbNotamTimeTitle">
+              <span data-i18n="tbNotamTime"></span>
+              <input type="range" id="notam-time" min="0" max="72" step="1" value="0">
+              <span class="slider-val" id="notam-time-val"></span>
+            </label>
+            <div id="notam-updated" class="notam-updated" dir="ltr"></div>
+          </div>
+        </div>
+        <div class="tb-group-box">
+          <label class="navtoggle" data-i18n-title="tbShowWindTitle">
+            <input type="checkbox" id="show-wind-cb"> <span data-i18n="tbShowWind"></span>
+          </label>
+          <button id="wind-fetch" class="wind-input-row" type="button" style="display:none"
+                  data-i18n="tbFetchWind" data-i18n-title="tbFetchWindTitle"></button>
+          <div id="wind-fetch-status" class="wind-input-row wind-fetch-status" style="display:none"></div>
+        </div>
         <!-- Animated wind-field overlay (live Open-Meteo grid → leaflet-velocity). -->
-        <label class="navtoggle" data-i18n-title="tbWindFieldTitle">
-          <input type="checkbox" id="windfield-cb"> <span data-i18n="tbWindField"></span>
-        </label>
-        <div id="windfield-controls" hidden>
-          <label class="navtoggle" style="margin-top:3px">
-            <span data-i18n="tbWindFieldAlt" style="font-size:11px"></span>
-            <input type="range" id="windfield-alt" min="1000" max="5000" step="500" value="1500">
-            <span class="slider-val" id="windfield-alt-val" style="flex:0 0 auto"></span>
+        <div class="tb-group-box">
+          <label class="navtoggle" data-i18n-title="tbWindFieldTitle">
+            <input type="checkbox" id="windfield-cb"> <span data-i18n="tbWindField"></span>
           </label>
-          <label class="navtoggle" style="margin-top:3px">
-            <span data-i18n="tbWindFieldTime" style="font-size:11px"></span>
-            <input type="range" id="windfield-time" min="0" max="24" step="1" value="0">
-            <span class="slider-val" id="windfield-time-val" style="flex:0 0 auto"></span>
-          </label>
-          <label class="navtoggle" style="margin-top:3px">
-            <span data-i18n="tbWindFieldOpacity" style="font-size:11px"></span>
-            <input type="range" id="windfield-opacity" min="0.2" max="1" step="0.05" value="0.7">
-            <span class="slider-val" id="windfield-opacity-val" style="flex:0 0 auto"></span>
-            <button id="windfield-opacity-reset" type="button" data-i18n-title="tbWindFieldOpacityReset" style="flex:0 0 auto;width:26px;padding:2px 0">↻</button>
-          </label>
+          <div id="windfield-controls" hidden>
+            <label class="navtoggle">
+              <span data-i18n="tbWindFieldAlt"></span>
+              <input type="range" id="windfield-alt" min="1000" max="5000" step="500" value="1500">
+              <span class="slider-val" id="windfield-alt-val"></span>
+            </label>
+            <label class="navtoggle">
+              <span data-i18n="tbWindFieldTime"></span>
+              <input type="range" id="windfield-time" min="0" max="24" step="1" value="0">
+              <span class="slider-val" id="windfield-time-val"></span>
+            </label>
+            <label class="navtoggle">
+              <span data-i18n="tbWindFieldOpacity"></span>
+              <input type="range" id="windfield-opacity" min="0.2" max="1" step="0.05" value="0.7">
+              <span class="slider-val" id="windfield-opacity-val"></span>
+              <button id="windfield-opacity-reset" class="slider-reset" type="button" data-i18n-title="tbWindFieldOpacityReset">↻</button>
+            </label>
+          </div>
+          <div id="windfield-status" class="wind-fetch-status" style="display:none"></div>
         </div>
-        <div id="windfield-status" class="wind-fetch-status" style="display:none"></div>
         <!-- IMS PWX wind/temperature chart overlay (hidden until the ims-data
              manifest loads). -->
         <div id="ims-pwx" class="tb-group-box" hidden>
@@ -398,15 +408,15 @@
             <input type="checkbox" id="ims-pwx-cb"> <span data-i18n="tbImsPwx"></span>
           </label>
           <div id="ims-pwx-controls" hidden>
-            <select id="ims-pwx-level" data-i18n-aria="tbImsPwxLevel" style="width:100%;font:inherit;font-size:11px;margin-top:3px"></select>
-            <select id="ims-pwx-time" data-i18n-aria="tbImsPwxTime" style="width:100%;font:inherit;font-size:11px;margin-top:3px"></select>
-            <label class="navtoggle" style="margin-top:3px">
-              <span data-i18n="tbImsPwxOpacity" style="font-size:11px"></span>
+            <select id="ims-pwx-level" data-i18n-aria="tbImsPwxLevel"></select>
+            <select id="ims-pwx-time" data-i18n-aria="tbImsPwxTime"></select>
+            <label class="navtoggle">
+              <span data-i18n="tbImsPwxOpacity"></span>
               <input type="range" id="ims-pwx-opacity" min="0.2" max="1" step="0.05" value="0.6">
-              <span class="slider-val" id="ims-pwx-opacity-val" style="flex:0 0 auto"></span>
-              <button id="ims-pwx-opacity-reset" type="button" data-i18n-title="tbImsPwxOpacityReset" style="flex:0 0 auto;width:26px;padding:2px 0">↻</button>
+              <span class="slider-val" id="ims-pwx-opacity-val"></span>
+              <button id="ims-pwx-opacity-reset" class="slider-reset" type="button" data-i18n-title="tbImsPwxOpacityReset">↻</button>
             </label>
-            <div id="ims-pwx-run" style="font-size:10px;opacity:0.75;margin-top:3px"></div>
+            <div id="ims-pwx-run" style="font-size:10px;opacity:0.75"></div>
           </div>
         </div>
         <!-- SIGWX significant-weather map overlay (low-level prog chart panel,
@@ -417,12 +427,12 @@
             <input type="checkbox" id="sigwx-ov-cb"> <span data-i18n="tbSigwxOverlay"></span>
           </label>
           <div id="sigwx-ov-controls" hidden>
-            <select id="sigwx-ov-time" data-i18n-aria="tbSigwxTime" style="width:100%;font:inherit;font-size:11px;margin-top:3px"></select>
-            <label class="navtoggle" style="margin-top:3px">
-              <span data-i18n="tbImsPwxOpacity" style="font-size:11px"></span>
+            <select id="sigwx-ov-time" data-i18n-aria="tbSigwxTime"></select>
+            <label class="navtoggle">
+              <span data-i18n="tbImsPwxOpacity"></span>
               <input type="range" id="sigwx-ov-opacity" min="0.2" max="1" step="0.05" value="0.55">
-              <span class="slider-val" id="sigwx-ov-opacity-val" style="flex:0 0 auto"></span>
-              <button id="sigwx-ov-opacity-reset" type="button" data-i18n-title="tbImsPwxOpacityReset" style="flex:0 0 auto;width:26px;padding:2px 0">↻</button>
+              <span class="slider-val" id="sigwx-ov-opacity-val"></span>
+              <button id="sigwx-ov-opacity-reset" class="slider-reset" type="button" data-i18n-title="tbImsPwxOpacityReset">↻</button>
             </label>
           </div>
         </div>
@@ -622,7 +632,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=182';
+      var v = '?v=184';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
