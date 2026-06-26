@@ -906,6 +906,8 @@ window.S = Object.assign({
   resetFreqOverride: 'Reset frequency to default',
   resetFreqAuto: 'Reset call sign and frequency to Auto',
   plates: 'Charts',
+  inspOpenCharts: '🗺️ Airport charts',
+  inspOpenChartsTitle: 'Open this airfield in the Charts window',
   runways: 'Runways',
   plateCategoryApproach: 'Approach',
   plateCategorySid: 'SID',

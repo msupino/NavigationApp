@@ -481,9 +481,9 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       await expect(page.locator('#insp-body .runway-chip').first()).toBeVisible();
       await expect(page.locator('#insp-body .runway-chip').first()).toHaveText(af.runways[0]);
     }
-    // Plates section with category grouping.
+    // Charts button (the full plate list lives in the Charts modal now).
     if (af && Array.isArray(af.plates) && af.plates.length) {
-      await expect(page.locator('#insp-body .plate-chip').first()).toBeVisible();
+      await expect(page.locator('#insp-body .insp-charts-btn')).toBeVisible();
     }
   });
 
