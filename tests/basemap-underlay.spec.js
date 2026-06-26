@@ -17,7 +17,7 @@ test('OSM underlay is present under the CVFR chart, gone for full-coverage layer
     const tp = document.querySelector('.leaflet-tile-pane');
     return p && tp ? (parseInt(getComputedStyle(p).zIndex) < parseInt(getComputedStyle(tp).zIndex)) : false;
   })).toBe(true);
-  await expect(page.locator(`${PANE} img`).first()).toHaveAttribute('src', /tile\.openstreetmap\.org/);
+  await expect(page.locator(`${PANE} img`).first()).toHaveAttribute('src', /^https:\/\/[a-c]\.tile\.openstreetmap\.org\//);
 
   // Switch to OpenStreetMap (global) → underlay removed (redundant).
   await page.locator('#layer-select').selectOption('OpenStreetMap');
@@ -25,5 +25,5 @@ test('OSM underlay is present under the CVFR chart, gone for full-coverage layer
 
   // Back to a chart layer → underlay returns.
   await page.locator('#layer-select').selectOption('Navigation');
-  await expect(page.locator(`${PANE} img`).first()).toHaveAttribute('src', /tile\.openstreetmap\.org/);
+  await expect(page.locator(`${PANE} img`).first()).toHaveAttribute('src', /^https:\/\/[a-c]\.tile\.openstreetmap\.org\//);
 });
