@@ -66,7 +66,7 @@ test('toggling on adds a georeferenced image overlay at the manifest bounds', as
   // Leaflet renders an <img class="leaflet-image-layer"> in the overlay pane.
   const img = page.locator('.leaflet-overlay-pane img.leaflet-image-layer');
   await expect(img).toHaveCount(1);
-  await expect(img).toHaveAttribute('src', /ims\/pwx\/90\/1200\.png/);   // default FL030
+  await expect(img).toHaveAttribute('src', /ims\/pwx\/90\//);   // default FL030 (time auto-set to nearest now)
   // Toggling off removes it.
   await page.locator('#ims-pwx-cb').uncheck();
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer')).toHaveCount(0);
@@ -133,32 +133,34 @@ test('lat/lng tune scale zooms the overlay bounds', async ({ page }) => {
   expect(r.after / r.before).toBeCloseTo(1.1, 2);   // span scaled ~10%
 });
 
-test('dark mode gives the overlay a translucent white backdrop', async ({ page }) => {
-  await boot(page);                                   // default (dark) theme
+test('dark mode plates only the footer band (gradient), not the whole image', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.theme', 'dark'); } catch (e) {} });
+  await boot(page);                                   // force dark (default is now light)
   await page.locator('#ims-pwx-cb').check();
-  const bg = await page.locator('.leaflet-overlay-pane img.leaflet-image-layer')
-    .evaluate(el => getComputedStyle(el).backgroundColor);
-  expect(bg).toBe('rgba(255, 255, 255, 0.5)');        // restores footer contrast
+  const bgi = await page.locator('.leaflet-overlay-pane img.leaflet-image-layer')
+    .evaluate(el => getComputedStyle(el).backgroundImage);
+  expect(bgi).toContain('linear-gradient');           // a bottom band, not a full fill
+  expect(bgi).toMatch(/rgba\(255,\s*255,\s*255/);     // white footer plate
 });
 
-test('light mode leaves the overlay backdrop transparent', async ({ page }) => {
+test('light mode leaves the overlay backdrop off', async ({ page }) => {
   await page.addInitScript(() => { try { localStorage.setItem('navaid.theme', 'light'); } catch (e) {} });
   await boot(page);
   await page.locator('#ims-pwx-cb').check();
-  const bg = await page.locator('.leaflet-overlay-pane img.leaflet-image-layer')
-    .evaluate(el => getComputedStyle(el).backgroundColor);
-  expect(bg).toBe('rgba(0, 0, 0, 0)');                // transparent — light map suffices
+  const bgi = await page.locator('.leaflet-overlay-pane img.leaflet-image-layer')
+    .evaluate(el => getComputedStyle(el).backgroundImage);
+  expect(bgi).toBe('none');                           // light map suffices
 });
 
 test('imsPwxDarkBackdropAlpha=0 disables the backdrop', async ({ page }) => {
   await boot(page);
   await page.locator('#ims-pwx-cb').check();
-  const bg = await page.evaluate(() => {
+  const bgi = await page.evaluate(() => {
     setTune('imsPwxDarkBackdropAlpha', 0);
     applyTuningCssVars();
-    return getComputedStyle(document.querySelector('.leaflet-image-layer')).backgroundColor;
+    return getComputedStyle(document.querySelector('.leaflet-image-layer')).backgroundImage;
   });
-  expect(bg).toMatch(/,\s*0\)$/);                     // alpha 0 → fully off
+  expect(bgi).toBe('none');                           // off
 });
 
 test('rotation tune rotates the overlay image', async ({ page }) => {

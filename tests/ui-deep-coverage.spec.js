@@ -542,7 +542,7 @@ test.describe('Toolbar drag', () => {
     await page.mouse.move(handleBox.x + 80, handleBox.y + 60, { steps: 4 });
     await page.mouse.up();
 
-    const stored = await page.evaluate(() => localStorage.getItem('navaid.toolbarPos'));
+    const stored = await page.evaluate(() => localStorage.getItem('navaid.toolbarPos.en'));
     expect(stored).toBeTruthy();
     const pos = JSON.parse(stored);
     expect(typeof pos.x).toBe('number');

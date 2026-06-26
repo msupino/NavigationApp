@@ -119,7 +119,8 @@
     }
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="app/style.css?v=153">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
+  <link rel="stylesheet" href="app/style.css?v=176">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -311,6 +312,19 @@
         <button id="freq-table" data-i18n="tbFreqTable" data-i18n-title="tbFreqTableTitle"></button>
         <button id="alt-pairs" data-i18n="tbAltPairs" data-i18n-title="tbAltPairsTitle"></button>
         <button id="charts" data-i18n="tbCharts" data-i18n-title="tbChartsTitle"></button>
+        <!-- SIGWX significant-weather chart viewer (image modal). Hidden until
+             the ims-data sigwx manifest loads. The on-map overlay lives in the
+             Information section. -->
+        <button id="sigwx-btn" type="button" hidden
+                data-i18n="tbSigwx" data-i18n-title="tbSigwxTitle"></button>
+        <!-- IMS wind/temperature (PWX) original chart viewer (image modal),
+             by flight level + valid time. The on-map overlay lives in the
+             Information section. Hidden until the ims-data pwx manifest loads. -->
+        <button id="pwx-btn" type="button" hidden
+                data-i18n="tbPwxCharts" data-i18n-title="tbPwxChartsTitle"></button>
+        <!-- Active-NOTAM text list (modal). Hidden until notam data loads; the
+             on-map NOTAM layer + timeline live in the Information section. -->
+        <button id="notam-list-btn" type="button" hidden data-i18n="tbNotamList" data-i18n-title="tbNotamListTitle"></button>
       </div>
     </div>
 
@@ -340,12 +354,46 @@
         <label class="navtoggle" data-i18n-title="tbShowSigmetTitle">
           <input type="checkbox" id="sigmet-cb"> <span data-i18n="tbShowSigmet"></span>
         </label>
+        <label class="navtoggle" data-i18n-title="tbShowNotamTitle">
+          <input type="checkbox" id="notam-cb"> <span data-i18n="tbShowNotam"></span>
+        </label>
+        <div id="notam-controls" hidden>
+          <label class="navtoggle" style="margin-top:3px" data-i18n-title="tbNotamTimeTitle">
+            <span data-i18n="tbNotamTime" style="font-size:11px"></span>
+            <input type="range" id="notam-time" min="0" max="72" step="1" value="0" style="flex:1 1 70px;min-width:60px">
+            <span class="slider-val" id="notam-time-val" style="flex:0 0 auto"></span>
+          </label>
+          <div id="notam-updated" class="notam-updated" dir="ltr"></div>
+        </div>
         <label class="navtoggle" data-i18n-title="tbShowWindTitle">
           <input type="checkbox" id="show-wind-cb"> <span data-i18n="tbShowWind"></span>
         </label>
         <button id="wind-fetch" class="wind-input-row" type="button" style="display:none"
                 data-i18n="tbFetchWind" data-i18n-title="tbFetchWindTitle"></button>
         <div id="wind-fetch-status" class="wind-input-row wind-fetch-status" style="display:none"></div>
+        <!-- Animated wind-field overlay (live Open-Meteo grid → leaflet-velocity). -->
+        <label class="navtoggle" data-i18n-title="tbWindFieldTitle">
+          <input type="checkbox" id="windfield-cb"> <span data-i18n="tbWindField"></span>
+        </label>
+        <div id="windfield-controls" hidden>
+          <label class="navtoggle" style="margin-top:3px">
+            <span data-i18n="tbWindFieldAlt" style="font-size:11px"></span>
+            <input type="range" id="windfield-alt" min="1000" max="5000" step="500" value="1500" style="flex:1 1 70px;min-width:60px">
+            <span class="slider-val" id="windfield-alt-val" style="flex:0 0 auto"></span>
+          </label>
+          <label class="navtoggle" style="margin-top:3px">
+            <span data-i18n="tbWindFieldTime" style="font-size:11px"></span>
+            <input type="range" id="windfield-time" min="0" max="24" step="1" value="0" style="flex:1 1 70px;min-width:60px">
+            <span class="slider-val" id="windfield-time-val" style="flex:0 0 auto"></span>
+          </label>
+          <label class="navtoggle" style="margin-top:3px">
+            <span data-i18n="tbWindFieldOpacity" style="font-size:11px"></span>
+            <input type="range" id="windfield-opacity" min="0.2" max="1" step="0.05" value="0.7" style="flex:1 1 70px;min-width:60px">
+            <span class="slider-val" id="windfield-opacity-val" style="flex:0 0 auto"></span>
+            <button id="windfield-opacity-reset" type="button" data-i18n-title="tbWindFieldOpacityReset" style="flex:0 0 auto;width:26px;padding:2px 0">↻</button>
+          </label>
+        </div>
+        <div id="windfield-status" class="wind-fetch-status" style="display:none"></div>
         <!-- IMS PWX wind/temperature chart overlay (hidden until the ims-data
              manifest loads). -->
         <div id="ims-pwx" class="tb-group-box" hidden>
@@ -364,28 +412,27 @@
             <div id="ims-pwx-run" style="font-size:10px;opacity:0.75;margin-top:3px"></div>
           </div>
         </div>
-        <!-- SIGWX significant-weather charts — in-app image viewer (no overlay).
-             Hidden until the ims-data sigwx manifest loads. -->
-        <button id="sigwx-btn" type="button" hidden
-                data-i18n="tbSigwx" data-i18n-title="tbSigwxTitle"></button>
+        <!-- SIGWX significant-weather map overlay (low-level prog chart panel,
+             georeferenced like PWX). Hidden until the sigwx manifest loads.
+             (The SIGWX chart viewer button lives in the Charts section.) -->
+        <div id="sigwx-ov" class="tb-group-box" hidden>
+          <label class="navtoggle" data-i18n-title="tbSigwxOverlayTitle">
+            <input type="checkbox" id="sigwx-ov-cb"> <span data-i18n="tbSigwxOverlay"></span>
+          </label>
+          <div id="sigwx-ov-controls" hidden>
+            <select id="sigwx-ov-time" data-i18n-aria="tbSigwxTime" style="width:100%;font:inherit;font-size:11px;margin-top:3px"></select>
+            <label class="navtoggle" style="margin-top:3px">
+              <span data-i18n="tbImsPwxOpacity" style="font-size:11px"></span>
+              <input type="range" id="sigwx-ov-opacity" min="0.2" max="1" step="0.05" value="0.55" style="flex:1 1 70px;min-width:60px">
+              <span class="slider-val" id="sigwx-ov-opacity-val" style="flex:0 0 auto"></span>
+              <button id="sigwx-ov-opacity-reset" type="button" data-i18n-title="tbImsPwxOpacityReset" style="flex:0 0 auto;width:26px;padding:2px 0">↻</button>
+            </label>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Simulator: live aircraft position from SimConnect bridge. -->
-    <div class="tb-section" data-sec="sim">
-      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecSim"></div>
-      <div class="tb-section-body">
-        <button id="sim-connect-cb" type="button" data-i18n-title="tbSimConnectTitle"></button>
-        <label class="navtoggle" data-i18n-title="tbSimIpTitle">
-          <span data-i18n="tbSimIpLabel"></span>
-          <input type="text" id="sim-url" value="http://localhost:2020"
-                 style="flex:1;min-width:0;font:inherit;font-size:11px">
-        </label>
-        <button id="sim-follow-cb" type="button" data-i18n="tbSimFollow"
-                data-i18n-title="tbSimFollowTitle"></button>
-        <span id="sim-status" style="font-size:11px;padding:0 6px"></span>
-      </div>
-    </div>
+    <!-- Simulator (SimConnect bridge) moved to a small footer icon → #sim-modal. -->
 
     <div class="tb-section" data-sec="print">
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecPrint"></div>
@@ -482,6 +529,36 @@
         </svg>
         <span class="footer-link-text" data-i18n="tbTerms"></span>
       </a>
+      <button id="sim-trigger" type="button" class="footer-link footer-link-button"
+              data-i18n-title="tbSecSim" data-i18n-aria="tbSecSim">
+        <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
+             aria-hidden="true" focusable="false">
+          <path fill="currentColor"
+                d="M8 1a.9.9 0 0 1 .9.9v4.06l5.1 3.02v1.2L8.9 9.1v3.0l1.5 1.0v1.0L8 13.4l-2.4.7v-1.0l1.5-1.0v-3.0L2 10.18v-1.2l5.1-3.02V1.9A.9.9 0 0 1 8 1Z"/>
+        </svg>
+        <span class="footer-link-text" data-i18n="tbSecSim"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Simulator (SimConnect bridge) panel — opened from the footer plane icon.
+       A niche developer/sim feature, so it lives behind a small icon rather
+       than a top-level toolbar section. -->
+  <div id="sim-modal" class="sim-overlay hidden">
+    <div class="modal sim-modal" role="dialog" aria-modal="true">
+      <button class="sim-modal-close" id="sim-modal-close" type="button" aria-label="Close">×</button>
+      <h3 data-i18n="tbSecSim">Simulator</h3>
+      <button id="sim-connect-cb" type="button" data-i18n-title="tbSimConnectTitle"></button>
+      <label class="navtoggle" data-i18n-title="tbSimIpTitle">
+        <span data-i18n="tbSimIpLabel"></span>
+        <input type="text" id="sim-url" value="http://localhost:2020"
+               style="flex:1;min-width:0;font:inherit;font-size:11px">
+      </label>
+      <button id="sim-follow-cb" type="button" data-i18n="tbSimFollow"
+              data-i18n-title="tbSimFollowTitle"></button>
+      <button id="sim-center" type="button" data-i18n="tbSimCenter"
+              data-i18n-title="tbSimCenterTitle"></button>
+      <span id="sim-status" style="font-size:11px;padding:0 6px"></span>
     </div>
   </div>
 
@@ -548,10 +625,11 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=153';
+      var v = '?v=176';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
+        'https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.js',
         'i18n/' + window.__navLang + '/strings.js' + v,
         'app/core.js' + v,
         'app/terrain.js' + v,

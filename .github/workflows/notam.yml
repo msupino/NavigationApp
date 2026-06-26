@@ -1,0 +1,108 @@
+name: Update NOTAMs (autorouter → notam-data)
+
+# Pulls Israel NOTAMs from autorouter (Eurocontrol EAD source) for the FIR +
+# airports, parses geometry from the NOTAM item-E text (polygons + radius
+# circles), and publishes notam.json to the orphan `notam-data` branch.
+# Requires repo secrets AR_CLIENT_ID (account email) + AR_CLIENT_SECRET
+# (password). Without them the job publishes an empty list.
+
+on:
+  schedule:
+    - cron: '23 * * * *'        # hourly (UTC) — keep NOTAMs fresh like the other feeds
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch + normalise NOTAMs
+        env:
+          AR_ID: ${{ secrets.AR_CLIENT_ID }}
+          AR_SECRET: ${{ secrets.AR_CLIENT_SECRET }}
+        run: |
+          mkdir -p out
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          const id = process.env.AR_ID, secret = process.env.AR_SECRET;
+          // FIR + Israel airports to query (item-A identifiers).
+          const ITEMAS = ['LLLL','LLBG','LLHA','LLOV','LLNV','LLIB','LLHZ','LLER',
+            'LLMG','LLES','LLBS','LLEY','LLKS','LLRS','LLRM','LLMZ','LLEK','LLHS',
+            'LLFK','LLBO','LLEV','LLKZ','LLPL','LLRD','LLHB','LLAR'];
+          const out = { generatedAt: new Date().toISOString(), source: 'autorouter (Eurocontrol EAD)', fir: 'LLLL', notams: [] };
+
+          // DDMMSS / DDMM [NS] DDDMMSS / DDDMM [EW] → [lat, lng] decimal.
+          const toDeg = (tok) => {
+            const m = String(tok).match(/^(\d{2})(\d{2})(\d{2})?([NS])(\d{3})(\d{2})(\d{2})?([EW])$/);
+            if (!m) return null;
+            const lat = +m[1] + +m[2] / 60 + (m[3] ? +m[3] / 3600 : 0);
+            const lng = +m[5] + +m[6] / 60 + (m[7] ? +m[7] / 3600 : 0);
+            return [m[4] === 'S' ? -lat : lat, m[8] === 'W' ? -lng : lng];
+          };
+          // Geometry from the NOTAM item-E text: a list of ≥3 coords → polygon;
+          // a single coord + an "x NM RADIUS" → circle.
+          const geomFromText = (txt) => {
+            const T = String(txt || '').toUpperCase();
+            const toks = T.match(/\d{4,6}[NS]\d{5,7}[EW]/g) || [];
+            const pts = toks.map(toDeg).filter(Boolean);
+            if (pts.length >= 3) return { type: 'polygon', coords: pts };
+            const rad = T.match(/(\d+(?:\.\d+)?)\s*NM\s*RADIUS|RADIUS\s*(?:OF\s+)?(\d+(?:\.\d+)?)\s*NM/);
+            if (pts.length >= 1 && rad) return { type: 'circle', lat: pts[0][0], lng: pts[0][1], radiusNm: +(rad[1] || rad[2]) };
+            return null;
+          };
+          const PERM = 2147483647;   // endvalidity sentinel = permanent/UFN
+          const iso = (sec) => (Number.isFinite(sec) && sec > 0 && sec < PERM) ? new Date(sec * 1000).toISOString() : '';
+
+          async function token() {
+            const body = new URLSearchParams({ grant_type: 'client_credentials', client_id: id, client_secret: secret });
+            const r = await fetch('https://api.autorouter.aero/v1.0/oauth2/token', {
+              method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+            if (!r.ok) throw new Error('token HTTP ' + r.status);
+            return (await r.json()).access_token;
+          }
+
+          async function run() {
+            if (!id || !secret) { console.error('No AR creds — publishing empty list.'); return; }
+            const tok = await token();
+            const H = { Authorization: 'Bearer ' + tok, Accept: 'application/json' };
+            const q = encodeURIComponent(JSON.stringify(ITEMAS));
+            const seen = new Set();
+            for (let offset = 0; offset < 1000; offset += 100) {
+              const r = await fetch(`https://api.autorouter.aero/v1.0/notam?itemas=${q}&offset=${offset}&limit=100`, { headers: H });
+              if (!r.ok) { console.error('notam HTTP ' + r.status); break; }
+              const j = await r.json();
+              const rows = j.rows || [];
+              for (const n of rows) {
+                const num = String(n.number == null ? '' : n.number).padStart(4, '0');
+                const idStr = `${n.series || ''}${num}/${n.year == null ? '' : n.year}`;
+                if (seen.has(idStr)) continue;
+                seen.add(idStr);
+                out.notams.push({
+                  id: idStr,
+                  icao: (Array.isArray(n.itema) && n.itema[0]) || n.fir || '',
+                  type: ((n.code23 || '') + (n.code45 || '')).trim(),
+                  text: String(n.iteme || '').trim(),
+                  start: iso(n.startvalidity),
+                  end: n.endvalidity >= PERM ? 'PERM' : iso(n.endvalidity),
+                  geom: geomFromText(n.iteme),
+                });
+              }
+              if (offset + 100 >= (j.total || rows.length)) break;
+            }
+            console.error('NOTAMs:', out.notams.length, '| with geom:', out.notams.filter(n => n.geom).length);
+          }
+          await run().catch(e => console.error('fetch failed:', e.message));
+          writeFileSync('out/notam.json', JSON.stringify(out, null, 1));
+          NODE
+
+      - name: Publish notam-data branch
+        run: |
+          ( cd out
+            git init -q
+            git checkout -q -b notam-data
+            git add .
+            git -c user.email='actions@github.com' -c user.name='notam-bot' \
+                commit -q -m "notam: update $(date -u +%FT%TZ)"
+            git push -q -f \
+                "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
+                notam-data )

@@ -255,6 +255,11 @@ NavAid.tuningDefaults = {
   sigmetDustColor: { value: '#b8860b', type: 'color', label: 'SIGMET dust/sand color' },
   sigmetTcColor: { value: '#c2185b', type: 'color', label: 'SIGMET cyclone color' },
   sigmetDefaultColor: { value: '#dd1111', type: 'color', label: 'SIGMET default/TS color' },
+  notamColor: { value: '#c026d3', type: 'color', label: 'NOTAM area color' },
+  notamFillAlpha: { value: 0.14, min: 0, max: 1, step: 0.02, label: 'NOTAM area fill alpha' },
+  notamLineWidthPx: { value: 2, min: 0.5, max: 5, step: 0.5, label: 'NOTAM area line width (px)' },
+  notamRouteWidthPx: { value: 3, min: 1, max: 6, step: 0.5, label: 'NOTAM closed-route line width (px)' },
+  notamDivertColor: { value: '#0891b2', type: 'color', label: 'NOTAM diverted-route color' },
 
   imsPwxOpacity: { value: 0.6, min: 0.2, max: 1, step: 0.05, label: 'IMS PWX overlay default opacity' },
   imsPwxLatOffset: { value: 0.005, min: -0.5, max: 0.5, step: 0.005, label: 'IMS PWX overlay latitude nudge (°)' },
@@ -262,7 +267,37 @@ NavAid.tuningDefaults = {
   imsPwxLatScale: { value: 0.98, min: 0.8, max: 1.2, step: 0.005, label: 'IMS PWX overlay vertical zoom' },
   imsPwxLngScale: { value: 1.02, min: 0.8, max: 1.2, step: 0.005, label: 'IMS PWX overlay horizontal zoom' },
   imsPwxRotationDeg: { value: -0.5, min: -15, max: 15, step: 0.1, label: 'IMS PWX overlay rotation (°)' },
-  imsPwxDarkBackdropAlpha: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'IMS PWX dark-mode backdrop (white, 0 = off)' },
+  imsPwxDarkBackdropAlpha: { value: 0.6, min: 0, max: 1, step: 0.05, label: 'IMS PWX dark-mode footer backdrop (white, 0 = off)' },
+  imsPwxBackdropBandPct: { value: 6, min: 0, max: 50, step: 1, label: 'IMS PWX footer backdrop band (% of image height)' },
+  sigwxLatOffset: { value: -0.03, min: -2, max: 2, step: 0.01, label: 'SIGWX overlay latitude nudge (°)' },
+  sigwxLngOffset: { value: 0, min: -2, max: 2, step: 0.01, label: 'SIGWX overlay longitude nudge (°)' },
+  sigwxLatScale: { value: 1, min: 0.7, max: 1.3, step: 0.005, label: 'SIGWX overlay vertical zoom' },
+  sigwxLngScale: { value: 1.02, min: 0.7, max: 1.3, step: 0.005, label: 'SIGWX overlay horizontal zoom' },
+  sigwxRotationDeg: { value: 0, min: -45, max: 45, step: 0.1, label: 'SIGWX overlay rotation (°)' },
+  sigwxOpacity: { value: 0.55, min: 0.2, max: 1, step: 0.05, label: 'SIGWX overlay default opacity' },
+  sigwxWhiteKnockout: { value: 170, min: 120, max: 256, step: 1, label: 'SIGWX map-panel knockout lightness (drops paper+terrain so the base layer shows; 256 = off)' },
+  sigwxKnockoutSat: { value: 45, min: 0, max: 120, step: 1, label: 'SIGWX map-panel knockout max saturation (keeps coloured hazard areas)' },
+  sigwxTblLatOffset: { value: 0, min: -3, max: 3, step: 0.02, label: 'SIGWX table latitude nudge (°)' },
+  sigwxTblLngOffset: { value: 0, min: -4, max: 6, step: 0.02, label: 'SIGWX table longitude nudge (°)' },
+  sigwxTblScale: { value: 1, min: 0.4, max: 2, step: 0.02, label: 'SIGWX table size' },
+  sigwxTblOpacity: { value: 0.92, min: 0.2, max: 1, step: 0.05, label: 'SIGWX table opacity' },
+
+  windFieldDefaultAltFt: { value: 1500, min: 1000, max: 5000, step: 500, label: 'Wind field default altitude (ft)' },
+  windFieldDefaultOpacity: { value: 0.7, min: 0.2, max: 1, step: 0.05, label: 'Wind field default opacity' },
+  windFieldGridDeg: { value: 0.25, min: 0.1, max: 1, step: 0.05, label: 'Wind field grid spacing (°)' },
+  windFieldWest: { value: 34.2, min: 33, max: 37, step: 0.05, label: 'Wind field grid west (°)' },
+  windFieldEast: { value: 35.95, min: 33, max: 37, step: 0.05, label: 'Wind field grid east (°)' },
+  windFieldSouth: { value: 29.45, min: 28, max: 34, step: 0.05, label: 'Wind field grid south (°)' },
+  windFieldNorth: { value: 33.45, min: 28, max: 34, step: 0.05, label: 'Wind field grid north (°)' },
+  windFieldVelocityScale: { value: 0.028, min: 0.005, max: 0.08, step: 0.001, label: 'Wind field particle speed scale' },
+  windFieldParticleAge: { value: 80, min: 20, max: 200, step: 5, label: 'Wind field particle age (frames)' },
+  windFieldParticleMultiplier: { value: 0.0032, min: 0.0005, max: 0.01, step: 0.0001, label: 'Wind field particle density' },
+  windFieldLineWidth: { value: 1.8, min: 0.5, max: 4, step: 0.1, label: 'Wind field particle line width' },
+  windFieldMaxVelocity: { value: 24, min: 5, max: 60, step: 1, label: 'Wind field max velocity (m/s)' },
+  windFieldFrameRate: { value: 22, min: 10, max: 60, step: 1, label: 'Wind field frame rate (fps)' },
+  windFieldMinVelocity: { value: 0, min: 0, max: 20, step: 1, label: 'Wind field min velocity (m/s)' },
+  windFieldHoursAhead: { value: 24, min: 1, max: 48, step: 1, label: 'Wind field forecast slider range (h)' },
+  windFieldForecastDays: { value: 2, min: 1, max: 7, step: 1, label: 'Wind field forecast fetch days' },
 
   liveAircraftRadiusPx: { value: 18, min: 6, max: 48, step: 1, label: 'Live aircraft size' },
   gotoMarkerColor: { value: '#c0392b', type: 'color', label: 'Go-to marker outline' },
@@ -356,7 +391,12 @@ NavAid.tuningGroups = [
   { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx'] },
   { name: 'Vertical profile', keys: ['profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileTodColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor'] },
-  { name: 'Weather (IMS)', keys: ['imsPwxOpacity', 'imsPwxLatOffset', 'imsPwxLngOffset', 'imsPwxLatScale', 'imsPwxLngScale', 'imsPwxRotationDeg', 'imsPwxDarkBackdropAlpha'] },
+  { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor'] },
+  { name: 'Weather (IMS)', keys: ['imsPwxOpacity', 'imsPwxLatOffset', 'imsPwxLngOffset', 'imsPwxLatScale', 'imsPwxLngScale', 'imsPwxRotationDeg', 'imsPwxDarkBackdropAlpha', 'imsPwxBackdropBandPct'] },
+  { name: 'SIGWX overlay', keys: ['sigwxOpacity', 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale', 'sigwxRotationDeg', 'sigwxWhiteKnockout', 'sigwxKnockoutSat', 'sigwxTblOpacity', 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale'] },
+  // Wind-field render params + grid + defaults. The altitude/time/opacity
+  // sliders are live menu controls; their defaults live here.
+  { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor'] },
@@ -470,19 +510,26 @@ window.S = Object.assign({
   tbShowNavWpTitle: 'Overlay published Israeli VFR reporting points',
   tbShowReporting: 'Show mandatory reports',        // reporting-type overlay toggle
   tbShowReportingTitle: 'Badge waypoints that are mandatory (חובה) reporting points',
-  tbImsPwx: 'IMS wind/temp chart',                  // IMS PWX overlay toggle
-  tbImsPwxTitle: 'Overlay the IMS PWX wind & temperature forecast chart on the map',
-  tbImsPwxLevel: 'Chart level',
+  tbImsPwx: 'Show wind/temp',                       // IMS PWX overlay toggle
+  tbImsPwxTitle: 'Overlay the IMS PWX wind & temperature forecast on the map',
+  tbImsPwxLevel: 'Level',
   tbImsPwxTime: 'Valid time',
   tbImsPwxOpacity: 'Sign opacity',
   tbImsPwxOpacityReset: 'Reset opacity',
   tbImsPwxRun: 'Model run',
-  tbSigwx: '🌐 SIGWX charts',                       // significant-weather viewer button
-  tbSigwxTitle: 'View IMS significant-weather (SIGWX) charts by valid time',
+  tbSigwx: '🌐 Significant weather',                // significant-weather viewer button
+  tbSigwxTitle: 'View IMS significant-weather charts by valid time',
   tbSigwxTime: 'Valid time',
-  sigwxModalTitle: 'Significant weather charts (SIGWX)',
+  tbSigwxOverlay: 'Show significant weather',
+  tbSigwxOverlayTitle: 'Overlay the low-level significant-weather prog chart on the map by valid time. Approximate alignment — fine-tune with ?tune. Planning aid only.',
+  sigwxModalTitle: 'Significant weather charts',
   sigwxMissing: 'Chart not available for this time yet.',
-  sigwxUnavailable: 'SIGWX charts are temporarily unavailable.',
+  sigwxUnavailable: 'Significant-weather charts are temporarily unavailable.',
+  tbPwxCharts: '🌬 Wind/temp charts',               // IMS PWX original-chart viewer button
+  tbPwxChartsTitle: 'View the IMS wind/temperature (PWX) charts by flight level and valid time',
+  pwxModalTitle: 'Wind / temperature charts (PWX)',
+  pwxMissing: 'Chart not available for this level/time yet.',
+  pwxUnavailable: 'Wind/temp charts are temporarily unavailable.',
   tbShowMsa: 'Show MSA',                            // leg-inspector minimum safe altitude row
   tbShowMsaTitle: 'Show minimum safe altitude (terrain + 1000 ft) in the leg inspector. Planning aid only.',
   report: 'Reporting',
@@ -498,6 +545,7 @@ window.S = Object.assign({
   choosePointNavWaypoint: 'Navigation waypoint',
   choosePointVor: 'VOR station',
   choosePointCommChange: 'Freq-change arrow',
+  choosePointNotam: 'NOTAM',
   tbSearchOpen: '🔍 Find (Ctrl-F)',
   tbSearchOpenTitle: 'Open the search overlay (Ctrl/Cmd-F)',
   tbRouteTemplates: '🧭 Templates',
@@ -560,6 +608,20 @@ window.S = Object.assign({
   tbShowWindTitle: 'Show the wind inputs, the per-leg wind arrows, and the wind-corrected readout in the leg inspector',
   tbShowSigmet: 'Show SIGMET',
   tbShowSigmetTitle: 'Overlay active international SIGMET hazard areas for the Israel region (source: NOAA AWC, updated periodically)',
+  tbShowNotam: 'Show NOTAMs',
+  tbShowNotamTitle: 'Overlay active NOTAM areas for the Israel FIR (LLLL). Click “NOTAM list” for the full texts. Planning aid only.',
+  tbNotamList: '📋 NOTAM list',
+  tbNotamListTitle: 'Show all active NOTAMs for the Israel FIR as text',
+  tbNotamTime: 'Time',
+  tbNotamTimeTitle: 'Scrub forward to see which NOTAMs are active at a future time (hours from now)',
+  notamTimeNow: 'Now',
+  notamTimeAt: function(h, t) { return '+' + h + 'h · ' + t; },
+  notamModalTitle: 'Active NOTAMs (LLLL)',
+  notamNone: 'No active NOTAMs.',
+  notamUnavailable: 'NOTAMs unavailable.',
+  notamUpdated: function(t) { return 'Updated ' + t; },
+  notamRaw: 'Raw',
+  notamDecoded: 'Decoded',
   sigmetReadout: function(n) { return '⚠ ' + n + ' SIGMET'; },
   sigmetNone: 'No SIGMET in effect',
   sigmetUpdated: function(t) { return 'SIGMET updated ' + t; },
@@ -692,6 +754,14 @@ window.S = Object.assign({
     return 'Per-leg wind set (' + n + ' leg' + (n === 1 ? '' : 's') + ')';
   },
   windFetchErr: 'Wind fetch failed — check connection',
+  tbWindField: 'Show wind field',
+  tbWindFieldTitle: 'Animated winds-aloft field (~3000 ft) from a live Open-Meteo grid',
+  tbWindFieldAlt: 'Altitude',
+  tbWindFieldOpacity: 'Field opacity',
+  tbWindFieldOpacityReset: 'Reset opacity',
+  tbWindFieldTime: 'Forecast +h',
+  windFieldLoading: 'Loading wind field…',
+  windFieldErr: 'Wind field unavailable',
   windUpdatedLabel: 'Wind updated (Z)',
   inboundAlt: 'Inbound alt (ft)',
   outboundAlt: 'Outbound alt (ft)',
@@ -839,6 +909,8 @@ window.S = Object.assign({
   resetFreqOverride: 'Reset frequency to default',
   resetFreqAuto: 'Reset call sign and frequency to Auto',
   plates: 'Charts',
+  inspOpenCharts: '🗺️ Airport charts',
+  inspOpenChartsTitle: 'Open this airfield in the Charts window',
   runways: 'Runways',
   plateCategoryApproach: 'Approach',
   plateCategorySid: 'SID',
@@ -859,7 +931,7 @@ window.S = Object.assign({
   tbLightMode: 'Light mode',
   tbDarkMode: 'Dark mode',
   tbLightModeTitle: 'Switch between light and dark theme',
-  tbClearStore: '🗑 Clear store',
+  tbClearStore: '🗑 Clear local store',
   tbClearStoreTitle: 'Delete all saved routes and settings stored on this device',
   tbClearStoreConfirm: 'Delete ALL saved routes and settings stored on this device? This cannot be undone.',
   tbTransparency: 'Label opacity',
@@ -908,7 +980,7 @@ window.S = Object.assign({
   tbSecView: '👁 View/Set',
   tbSecCharts: '📋 Charts',
   tbSecExport: '📤 Export/import',
-  tbSecWeather: '🌦 Weather',
+  tbSecWeather: 'ℹ️ Information',
   tbSecSim: '✈ Simulator',
   tbSimConnect: 'Connect to simulator',
   tbSimDisconnect: 'Disconnect from simulator',
@@ -917,6 +989,8 @@ window.S = Object.assign({
   tbSimIpTitle: 'HTTP URL of the SimConnect bridge — default http://localhost:2020',
   tbSimFollow: 'Follow aircraft',
   tbSimFollowTitle: 'Keep the map centred on the live aircraft position',
+  tbSimCenter: 'Center on aircraft',
+  tbSimCenterTitle: 'Recenter the map on the live aircraft once',
   tbSimStatusOk: '✅ Connected',
   tbSimStatusErr: '⚠ No data',
   tbViewSource: 'GitHub',
@@ -1039,6 +1113,10 @@ var showWind = false;       // wind effect (#722): inputs + arrows + readout —
 var showSigmet = false;     // SIGMET hazard overlay — opt-in
 var sigmets = null;         // null = not loaded; [] or populated once fetched
 var sigmetMeta = null;      // { generatedAt } of the loaded SIGMET file
+var showNotam = false;      // NOTAM overlay — opt-in
+var notams = null;          // null = not loaded; [] or populated once fetched
+var notamMeta = null;       // { generatedAt } of the loaded NOTAM file
+var notamBorders = null;    // null = not loaded; { LEBANON:[[ [lat,lng]... ]], ... } border arcs
 var showWpNames = true;     // draw waypoint names (off = empty circle)
 var wpNameAngle = 0;        // waypoint-name rotation: 0 / 90 / 180 / 270 deg
 var yellowAlpha = 0.8;    // global multiplier for yellow label backgrounds (default 80%)
@@ -1307,6 +1385,127 @@ function decodeSigmet(s) {
   return (fir ? fir + ' — ' : '') + parts.join(', ');
 }
 const pad3 = n => String(n).padStart(3, '0');
+
+// Per-language localStorage key for draggable menu/panel POSITIONS. The RTL
+// (Hebrew) layout mirrors the LTR (English) one, so a spot dragged in one
+// language is wrong in the other — store each language's position separately.
+function navLangPosKey(base) {
+  const lang = (document.documentElement && document.documentElement.lang === 'he') ? 'he' : 'en';
+  return base + '.' + lang;
+}
+
+// --- NOTAM decoder ---------------------------------------------------
+// NOTAMs are terse: a 4-letter ICAO Q-code (subject + condition) plus a free
+// text body packed with standard abbreviations. decodeNotam() turns that into
+// a plain-English line + an expanded body; the modal keeps a Raw toggle for the
+// original. Source: ICAO Annex 15 / Doc 8126 NOTAM Code (subset covering the
+// codes the Israel FIR feed emits, plus common extras).
+const NOTAM_SUBJ = {            // Q-code letters 2-3 (subject)
+  AC: 'Class B/C/D/E surface area', AD: 'Air defense identification zone (ADIZ)',
+  AE: 'Control area (CTA)', AF: 'Flight information region (FIR)',
+  AH: 'Upper control area (UTA)', AN: 'Area navigation (RNAV) route',
+  AP: 'Reporting point', AR: 'ATS route', AT: 'Terminal control area (TMA)',
+  AU: 'Upper flight information region (UIR)', AX: 'Intersection',
+  AZ: 'Aerodrome traffic zone (ATZ)',
+  CA: 'Air/ground facility', CE: 'En-route surveillance radar',
+  CG: 'Ground controlled approach (GCA)', CM: 'Surface movement radar',
+  CP: 'Precision approach radar (PAR)', CS: 'Secondary surveillance radar (SSR)',
+  CT: 'Terminal area radar',
+  FA: 'Aerodrome', FF: 'Fire fighting & rescue', FM: 'Meteorological service',
+  FP: 'Heliport', FU: 'Fuel availability',
+  IC: 'ILS', IG: 'ILS glide path', IL: 'ILS localizer',
+  IS: 'ILS Category I', IT: 'ILS Category II', IU: 'ILS Category III',
+  LA: 'Approach lighting system', LB: 'Aerodrome beacon',
+  LC: 'Runway centre-line lights', LP: 'Precision approach path indicator (PAPI)',
+  LT: 'Visual approach slope indicator (VASIS)',
+  MA: 'Movement area', MK: 'Parking area', MP: 'Aircraft stands',
+  MR: 'Runway', MT: 'Threshold', MX: 'Taxiway',
+  NA: 'All radio nav aids', NB: 'Non-directional beacon (NDB)', ND: 'DME',
+  NM: 'VOR/DME', NN: 'TACAN', NV: 'VOR', NX: 'Direction-finding station',
+  OA: 'Aeronautical information service (AIS)', OB: 'Obstacle',
+  OE: 'Aircraft entry requirements', OR: 'Rescue coordination centre',
+  PA: 'Standard instrument arrival (STAR)', PD: 'Standard instrument departure (SID)',
+  PH: 'Holding procedure', PI: 'Instrument approach procedure',
+  PL: 'Flight-plan processing', PM: 'Aerodrome operating minima',
+  PR: 'Radio failure procedure', PT: 'Transition altitude/level',
+  PU: 'Missed approach procedure',
+  RA: 'Airspace reservation', RD: 'Danger area', RM: 'Military operating area',
+  RP: 'Prohibited area', RR: 'Restricted area', RT: 'Temporary restricted area',
+  SA: 'Automatic terminal information service (ATIS)', SB: 'ATS reporting office',
+  SC: 'Area control centre (ACC)', SE: 'Flight information service (FIS)',
+  SF: 'Aerodrome flight information service (AFIS)', SP: 'Approach control',
+  SS: 'Flight service station', ST: 'Aerodrome control tower (TWR)',
+  SV: 'VOLMET broadcast',
+  WA: 'Air display', WB: 'Aerobatics', WC: 'Captive balloon or kite',
+  WD: 'Demolition of explosives', WE: 'Military exercise', WF: 'Air refuelling',
+  WG: 'Glider flying', WJ: 'Banner/target towing', WL: 'Free balloon ascent',
+  WM: 'Missile/gun/rocket firing', WP: 'Parachute jumping exercise (PJE)',
+  WR: 'Radioactive/toxic materials release', WS: 'Burning or blowing gas',
+  WT: 'Mass aircraft movement', WU: 'Unmanned aircraft (UAS/drone) activity',
+  WV: 'Formation flight', WW: 'Significant volcanic activity', WZ: 'Model flying',
+  GA: 'GNSS (aerodrome-specific)', GW: 'GNSS (area-wide)',
+  KK: 'Checklist',
+};
+const NOTAM_COND = {            // Q-code letters 4-5 (condition/status)
+  AC: 'withdrawn for maintenance', AD: 'available for daytime ops',
+  AF: 'flight-checked, reliable', AH: 'hours of service changed',
+  AK: 'resumed normal ops', AL: 'operative with published limitations',
+  AM: 'military ops only', AN: 'available for night ops', AO: 'operational',
+  AP: 'available, prior permission required', AR: 'available on request',
+  AS: 'unserviceable', AU: 'not available', AW: 'withdrawn',
+  CA: 'activated', CC: 'completed', CD: 'deactivated', CE: 'erected',
+  CF: 'frequency changed', CG: 'downgraded', CH: 'changed',
+  CI: 'identification/call-sign changed', CL: 'realigned', CM: 'displaced',
+  CN: 'cancelled', CO: 'operating', CP: 'operating on reduced power',
+  CR: 'temporarily replaced', CS: 'installed', CT: 'on test — do not use',
+  HW: 'work in progress', HV: 'work completed', HX: 'concentration of birds',
+  LC: 'closed', LD: 'unsafe', LI: 'closed to IFR', LL: 'usable (length/width)',
+  LN: 'closed at night', LP: 'prohibited', LR: 'restricted to runways/taxiways',
+  LS: 'subject to interruption', LT: 'limited to', LV: 'closed to VFR',
+  LW: 'will take place', LX: 'operating — caution advised',
+  TT: 'trigger NOTAM (AIP amendment)',
+  KK: 'checklist',
+};
+const NOTAM_ABBR = {
+  ACFT: 'aircraft', ACT: 'active', ADZ: 'advised', AGL: 'above ground level',
+  ALT: 'altitude', AMSL: 'above mean sea level', APCH: 'approach', APRX: 'approximately',
+  ARP: 'aerodrome reference point', ATC: 'air traffic control', AUTH: 'authorized',
+  AVBL: 'available', AWY: 'airway', BLW: 'below', BTN: 'between', CTC: 'contact',
+  CLSD: 'closed', CTN: 'caution', DEP: 'departure', DRG: 'during', EXC: 'except',
+  FIR: 'flight information region', FLW: 'following', FM: 'from', FREQ: 'frequency',
+  FT: 'feet', GND: 'ground', HGT: 'height', HOL: 'holiday', HR: 'hours',
+  LMT: 'local mean time', MAX: 'maximum', MNM: 'minimum', NM: 'nautical miles',
+  OPS: 'operations', PJE: 'parachute jumping exercise', PPR: 'prior permission required',
+  PSN: 'position', RTE: 'route', RWY: 'runway', SR: 'sunrise', SS: 'sunset',
+  TFC: 'traffic', TWR: 'tower', UAS: 'unmanned aircraft system',
+  UAV: 'unmanned aerial vehicle', VOR: 'VOR', WEF: 'with effect from', WI: 'within',
+  WIP: 'work in progress', WX: 'weather', CHG: 'changed', REF: 'reference',
+  AIP: 'AIP', AIC: 'AIC', DOM: 'domestic', REESTABLISHED: 'reestablished',
+  MON: 'Monday', TUE: 'Tuesday', WED: 'Wednesday', THU: 'Thursday', FRI: 'Friday',
+  SAT: 'Saturday', SUN: 'Sunday', DLY: 'daily',
+};
+// Expand the standard abbreviations in a NOTAM body, tidying the source's
+// 3-space wrap indentation. Coordinate tokens (digits+N/E/S/W) carry no word
+// boundary around their letters, so they pass through untouched.
+function expandNotamAbbr(s) {
+  let out = String(s == null ? '' : s).replace(/\r/g, '');
+  out = out.split('\n').map(l => l.trim()).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return out.replace(/\b[A-Z]{2,5}\b/g, m => NOTAM_ABBR[m] || m);
+}
+function decodeNotam(n) {
+  if (!n || typeof n !== 'object') return '';
+  const t = String(n.type || '').toUpperCase();
+  let head = '';
+  if (t.length === 4) {
+    const subj = NOTAM_SUBJ[t.slice(0, 2)];
+    const cond = NOTAM_COND[t.slice(2)];
+    if (subj || cond) head = [subj, cond].filter(Boolean).join(' — ');
+  }
+  const body = expandNotamAbbr(n.text || '');
+  return (head ? head + '\n' : '') + body;
+}
+// --- end NOTAM decoder -----------------------------------------------
+
 // Strip a trailing "MHz" unit from a frequency string → "121.70 MHz" → "121.70".
 function freqClean(s) { return String(s == null ? '' : s).replace(/\s*MHz\s*$/i, '').trim(); }
 // Per-leg comm-frequency sources along the route, sorted by waypoint index:
@@ -1807,6 +2006,29 @@ const map = L.map('map', {
 });
 L.control.zoom({ position: 'bottomright' }).addTo(map);
 // Base layer is chosen from the toolbar (#layer-select, wired in ui.js).
+
+// --- OpenStreetMap underlay -----------------------------------------
+// The Israel chart tiles (CVFR / Nav / Low Alt / Heli) cover only the FIR, so
+// the area around it is blank. Render OSM in a pane BELOW the chart tiles to
+// fill the surroundings; the chart shows on top wherever it has coverage. Not
+// needed for the already-global layers (Satellite / OpenStreetMap).
+map.createPane('basemapUnderlay');
+map.getPane('basemapUnderlay').style.zIndex = 150;        // below tilePane (200)
+const osmUnderlay = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  { pane: 'basemapUnderlay', minZoom: 6, maxZoom: 18, subdomains: 'abc',
+    opacity: 0.7, attribution: '© OpenStreetMap contributors' });
+const FULL_COVERAGE_LAYERS = { Satellite: 1, OpenStreetMap: 1 };
+function updateBasemapUnderlay() {
+  let cur = null;
+  for (const n in layers) if (map.hasLayer(layers[n])) cur = n;
+  if (cur && !FULL_COVERAGE_LAYERS[cur]) {
+    if (!map.hasLayer(osmUnderlay)) osmUnderlay.addTo(map);
+  } else if (map.hasLayer(osmUnderlay)) {
+    map.removeLayer(osmUnderlay);
+  }
+}
+window.updateBasemapUnderlay = updateBasemapUnderlay;
+updateBasemapUnderlay();
 
 // --- route overlay canvas -------------------------------------------
 const overlay = document.getElementById('overlay');

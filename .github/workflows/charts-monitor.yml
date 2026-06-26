@@ -1,0 +1,93 @@
+name: Monitor chart data freshness
+
+# Watches the data feeds published by the other scheduled Actions and flags
+# stale ones (an upstream job stopped publishing). On staleness it opens (and
+# keeps updated) a single tracking issue assigned to the repo owner, and fails
+# the run; when everything is fresh again it closes that issue. Notification is
+# the issue assignment + the workflow-failure email.
+#
+# Feeds + the producing workflow's cadence → freshness budget:
+#   sigmet-data/sigmet.json   aviation-data.yml  every 20m  -> 2h
+#   ims-data/ims/pwx.json     ims-charts.yml     hourly*    -> 5h
+#   ims-data/ims/sigwx.json   ims-charts.yml     hourly*    -> 6h
+#   (*GitHub often skips scheduled runs, so the real cadence is 2-3h — the
+#    budgets allow for a couple of skipped/failed runs before alerting.)
+#   notam-data/notam.json     notam.yml          hourly*    -> 6h
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'      # every 3 hours
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check feed freshness
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const RAW = `https://raw.githubusercontent.com/${context.repo.owner}/${context.repo.repo}/`;
+            const feeds = [
+              { label: 'SIGMET (sigmet-data/sigmet.json)', url: 'sigmet-data/sigmet.json', maxHours: 2 },
+              { label: 'PWX charts (ims-data/ims/pwx.json)', url: 'ims-data/ims/pwx.json', maxHours: 5 },
+              { label: 'SIGWX charts (ims-data/ims/sigwx.json)', url: 'ims-data/ims/sigwx.json', maxHours: 6 },
+              { label: 'NOTAMs (notam-data/notam.json)', url: 'notam-data/notam.json', maxHours: 6 },
+            ];
+            const now = Date.now();
+            const stale = [], ok = [];
+            for (const f of feeds) {
+              let ts = null, err = null;
+              try {
+                const r = await fetch(RAW + f.url + '?t=' + now, { cache: 'no-store' });
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                const j = await r.json();
+                ts = j.generatedAt || null;
+                if (!ts && /^\d{12}$/.test(j.run || '')) {
+                  const m = j.run;
+                  ts = `${m.slice(0,4)}-${m.slice(4,6)}-${m.slice(6,8)}T${m.slice(8,10)}:${m.slice(10,12)}:00Z`;
+                }
+              } catch (e) { err = e.message; }
+              const age = ts ? (now - Date.parse(ts)) / 3.6e6 : null;
+              if (err || age === null || !isFinite(age) || age > f.maxHours) {
+                stale.push(`- **${f.label}** — ${err ? ('fetch failed: ' + err) : (age === null ? 'no timestamp' : age.toFixed(1) + 'h old (budget ' + f.maxHours + 'h)')}`);
+              } else {
+                ok.push(`- ${f.label} — ${age.toFixed(1)}h old`);
+              }
+            }
+
+            const { owner, repo } = context.repo;
+            const TITLE = '⚠️ Stale chart data feed(s)';
+            // Find an existing open tracking issue by exact title.
+            const q = `repo:${owner}/${repo} is:issue is:open in:title "${TITLE}"`;
+            const existing = (await github.rest.search.issuesAndPullRequests({ q })).data.items[0];
+            const stamp = new Date().toISOString();
+
+            if (stale.length) {
+              const body = [
+                'The scheduled monitor detected stale published chart data — an upstream',
+                'publishing Action may have stopped or failed.', '',
+                '### Stale', stale.join('\n'), '',
+                '### OK', (ok.join('\n') || '_(none)_'), '',
+                `_Last checked: ${stamp}_`,
+              ].join('\n');
+              if (existing) {
+                await github.rest.issues.update({ owner, repo, issue_number: existing.number, body });
+                await github.rest.issues.createComment({ owner, repo, issue_number: existing.number,
+                  body: `Still stale at ${stamp}:\n${stale.join('\n')}` });
+              } else {
+                await github.rest.issues.create({ owner, repo, title: TITLE, body, assignees: [owner] });
+              }
+              core.setFailed('Stale chart data:\n' + stale.join('\n'));
+            } else if (existing) {
+              await github.rest.issues.createComment({ owner, repo, issue_number: existing.number,
+                body: `All feeds fresh again at ${stamp}. Closing.\n\n${ok.join('\n')}` });
+              await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: 'closed' });
+              core.info('Feeds fresh; closed the stale-data issue.');
+            } else {
+              core.info('All feeds fresh:\n' + ok.join('\n'));
+            }

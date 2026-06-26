@@ -43,16 +43,29 @@ jobs:
           node --input-type=module <<'NODE' > /tmp/jobs.tsv
           const { writeFileSync } = await import('node:fs');
           const lines = [];
+          // ims.gov.il is slow/throttly from CI IPs — undici's 10s connect
+          // timeout + no retry meant a single slow connect failed the whole run.
+          // Retry with backoff and a generous per-attempt timeout.
+          const sleep = ms => new Promise(r => setTimeout(r, ms));
           const get = async u => {
-            const r = await fetch(u, { headers: { 'User-Agent': 'NavAid-ims-bot' } });
-            if (!r.ok) throw new Error(u + ' ' + r.status);
-            return (await r.json()).data || {};
+            let lastErr;
+            for (let i = 0; i < 4; i++) {
+              try {
+                const r = await fetch(u, { headers: { 'User-Agent': 'NavAid-ims-bot' },
+                  signal: AbortSignal.timeout(30000) });
+                if (!r.ok) throw new Error(u + ' ' + r.status);
+                return (await r.json()).data || {};
+              } catch (e) { lastErr = e; await sleep(3000 * (i + 1)); }
+            }
+            throw lastErr;
           };
           const abs = f => (f.startsWith('http') ? f : 'https://ims.gov.il' + f);
 
           // --- PWX wind/temperature (georeferenced map overlay) ---
-          // IMS labels by flight level; only the low levels matter for CVFR.
-          const LABELS = { '85': 'FL050', '90': 'FL030' };
+          // IMS pressure-level code → flight level (900/850/700/500 hPa). The
+          // app sorts these by code descending = FL030 → FL180 (low to high),
+          // defaulting to the lowest (FL030).
+          const LABELS = { '90': 'FL030', '85': 'FL050', '70': 'FL100', '50': 'FL180' };
           const pwx = { generatedAt: new Date().toISOString(),
             source: 'IMS wind_and_temperature_maps', run: '',
             bounds: { s: 28.849, n: 34.075, w: 32.903, e: 37.097 }, levels: [] };
