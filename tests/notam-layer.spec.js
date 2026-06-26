@@ -96,10 +96,13 @@ test('NOTAM list filters by airfield or global (LLLL)', async ({ page }) => {
   await expect(sel).toBeVisible();
   // Options: All + Global(FIR) + LLBG + LLHA, global first after All.
   await expect(sel.locator('option')).toHaveCount(4);
+  // List height is frozen to the unfiltered size so the modal doesn't jump.
+  const listH = await modal.locator('.notam-list').evaluate(el => el.offsetHeight);
   // Filter to one airfield.
   await sel.selectOption('LLBG');
   await expect(modal.locator('.notam-item')).toHaveCount(1);
   await expect(modal).toContainText('Ben Gurion');
+  expect(await modal.locator('.notam-list').evaluate(el => el.offsetHeight)).toBe(listH);
   // Globals only.
   await sel.selectOption('LLLL');
   await expect(modal.locator('.notam-item')).toHaveCount(2);

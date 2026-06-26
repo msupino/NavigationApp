@@ -2443,6 +2443,9 @@ function showNotamModal(only) {
   box.appendChild(list);
   back.appendChild(box);
   document.body.appendChild(back);
+  // Freeze the list to its unfiltered height so picking an airfield (fewer
+  // items) doesn't shrink the modal and make it jump.
+  if (codes.length > 1) list.style.height = list.offsetHeight + 'px';
   const dismiss = () => { back.remove(); document.removeEventListener('keydown', onKey); };
   function onKey(ev) { if (ev.key === 'Escape') dismiss(); }
   close.onclick = dismiss;
