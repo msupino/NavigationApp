@@ -497,6 +497,9 @@ test.describe('Charts modal navigation', () => {
   });
 
   test('Charts section modals allow toolbar language change', async ({ page }) => {
+    // Four full reloads + language switches in one test — the default 15s is
+    // tight under parallel-worker load, so give it room.
+    test.setTimeout(45_000);
     await boot(page);
     const cases = [
       { button: '#charts', marker: '.charts-airport-header' },
