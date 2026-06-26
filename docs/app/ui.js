@@ -2404,6 +2404,21 @@ function showNotamModal(only) {
       tx._decoded = (typeof decodeNotam === 'function') ? decodeNotam(n) : tx._raw;
       tx.textContent = rawMode ? tx._raw : tx._decoded;
       it.appendChild(id); it.appendChild(tx);
+      // Clicking a NOTAM that has a map presence closes the modal, turns the
+      // overlay on if needed, and blinks it on the map.
+      if (typeof notamMappable === 'function' && notamMappable(n)) {
+        it.classList.add('notam-item-clickable');
+        it.title = S.notamShowOnMap || 'Show on map';
+        it.onclick = () => {
+          if (!window.showNotam) {
+            window.showNotam = true;
+            try { localStorage.setItem(NOTAM_KEY, '1'); } catch (err) { /* */ }
+            if (notamCb) notamCb.checked = true;
+          }
+          dismiss();
+          if (typeof flashNotam === 'function') flashNotam(n.id);
+        };
+      }
       list.appendChild(it);
     }
   };

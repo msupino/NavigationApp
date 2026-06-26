@@ -145,6 +145,7 @@ window.S = {
   notamFilterLabel: 'סינון NOTAM לפי שדה תעופה',
   notamFilterAll: 'הכול',
   notamFilterGlobal: 'כללי (FIR)',
+  notamShowOnMap: 'הצג על המפה',
   sigmetReadout: function(n) { return '⚠ ' + n + ' SIGMET'; },
   sigmetNone: 'אין SIGMET בתוקף',
   sigmetUpdated: function(t) { return 'SIGMET עודכן ' + t; },
