@@ -79,10 +79,10 @@ test('time slider scrubs the forecast hour (0..24 forward) and labels it in Zulu
   const slider = page.locator('#windfield-time');
   await expect(slider).toHaveAttribute('max', '24');     // 24h forward
   await expect(slider).toHaveValue('0');                 // starts at "now"
-  // Move +6h → label shows a Zulu time with a +6h offset, layer stays.
+  // Move +6h → label shows the offset then a Zulu time, layer stays.
   await slider.fill('6');
   await slider.dispatchEvent('input');
-  await expect(page.locator('#windfield-time-val')).toHaveText(/\d{2}:\d{2}Z \+6h/);
+  await expect(page.locator('#windfield-time-val')).toHaveText(/\+6h · (\d{2}-\d{2} )?\d{2}:\d{2}Z/);
   await expect(page.locator('.leaflet-overlay-pane canvas')).toHaveCount(1);
 });
 
