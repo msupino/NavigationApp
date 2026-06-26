@@ -1995,6 +1995,29 @@ const map = L.map('map', {
 L.control.zoom({ position: 'bottomright' }).addTo(map);
 // Base layer is chosen from the toolbar (#layer-select, wired in ui.js).
 
+// --- OpenStreetMap underlay -----------------------------------------
+// The Israel chart tiles (CVFR / Nav / Low Alt / Heli) cover only the FIR, so
+// the area around it is blank. Render OSM in a pane BELOW the chart tiles to
+// fill the surroundings; the chart shows on top wherever it has coverage. Not
+// needed for the already-global layers (Satellite / OpenStreetMap).
+map.createPane('basemapUnderlay');
+map.getPane('basemapUnderlay').style.zIndex = 150;        // below tilePane (200)
+const osmUnderlay = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  { pane: 'basemapUnderlay', minZoom: 6, maxZoom: 18, subdomains: 'abc',
+    opacity: 0.7, attribution: '© OpenStreetMap contributors' });
+const FULL_COVERAGE_LAYERS = { Satellite: 1, OpenStreetMap: 1 };
+function updateBasemapUnderlay() {
+  let cur = null;
+  for (const n in layers) if (map.hasLayer(layers[n])) cur = n;
+  if (cur && !FULL_COVERAGE_LAYERS[cur]) {
+    if (!map.hasLayer(osmUnderlay)) osmUnderlay.addTo(map);
+  } else if (map.hasLayer(osmUnderlay)) {
+    map.removeLayer(osmUnderlay);
+  }
+}
+window.updateBasemapUnderlay = updateBasemapUnderlay;
+updateBasemapUnderlay();
+
 // --- route overlay canvas -------------------------------------------
 const overlay = document.getElementById('overlay');
 // `var` (not `let`) so the binding is a real `window` property — same pattern
