@@ -84,4 +84,22 @@ test('Information section sliders + values stay inside the menu', async ({ page 
     return bad;
   });
   expect(overflow).toEqual([]);
+
+  // All sliders in the menu share one width, and it doesn't change when a
+  // value label grows/shrinks (e.g. dragging the NOTAM timeline).
+  const widths = await page.evaluate(() => {
+    const sel = '.tb-section[data-sec="weather"] .tb-section-body .navtoggle input[type="range"]';
+    return [...document.querySelectorAll(sel)]
+      .filter(el => el.offsetParent !== null)
+      .map(el => Math.round(el.getBoundingClientRect().width));
+  });
+  expect(widths.length).toBeGreaterThan(1);
+  expect(new Set(widths).size).toBe(1);                 // uniform width
+
+  const before = await page.evaluate(() =>
+    Math.round(document.getElementById('notam-time').getBoundingClientRect().width));
+  await page.evaluate(() => { document.getElementById('notam-time-val').textContent = '0'; });
+  const after = await page.evaluate(() =>
+    Math.round(document.getElementById('notam-time').getBoundingClientRect().width));
+  expect(after).toBe(before);                           // stable while value changes
 });
