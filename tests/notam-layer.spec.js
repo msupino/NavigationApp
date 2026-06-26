@@ -82,6 +82,35 @@ test('NOTAMs decode to plain English; Raw toggle shows the source text', async (
   await expect(modal.locator('.notam-text')).not.toContainText('above mean sea level');
 });
 
+test('NOTAM list filters by airfield or global (LLLL)', async ({ page }) => {
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'A0001/26', icao: 'LLLL', end: '', geom: null, text: 'A0001/26 LLLL global one.' },
+    { id: 'A0002/26', icao: 'LLLL', end: '', geom: null, text: 'A0002/26 LLLL global two.' },
+    { id: 'B0001/26', icao: 'LLBG', end: '', geom: null, text: 'B0001/26 LLBG Ben Gurion RWY.' },
+    { id: 'H0001/26', icao: 'LLHA', end: '', geom: null, text: 'H0001/26 LLHA Haifa apron.' },
+  ] });
+  await page.evaluate(() => document.getElementById('notam-list-btn').click());
+  const modal = page.locator('.modal-back .notam-modal');
+  await expect(modal.locator('.notam-item')).toHaveCount(4);
+  const sel = modal.locator('.notam-filter-sel');
+  await expect(sel).toBeVisible();
+  // Options: All + Global(FIR) + LLBG + LLHA, global first after All.
+  await expect(sel.locator('option')).toHaveCount(4);
+  // List height is frozen to the unfiltered size so the modal doesn't jump.
+  const listH = await modal.locator('.notam-list').evaluate(el => el.offsetHeight);
+  // Filter to one airfield.
+  await sel.selectOption('LLBG');
+  await expect(modal.locator('.notam-item')).toHaveCount(1);
+  await expect(modal).toContainText('Ben Gurion');
+  expect(await modal.locator('.notam-list').evaluate(el => el.offsetHeight)).toBe(listH);
+  // Globals only.
+  await sel.selectOption('LLLL');
+  await expect(modal.locator('.notam-item')).toHaveCount(2);
+  // Back to all.
+  await sel.selectOption('');
+  await expect(modal.locator('.notam-item')).toHaveCount(4);
+});
+
 test('prose border NOTAMs are geocoded to buffer polygons', async ({ page }) => {
   // Borders served from the real data/notam-borders.json (not mocked).
   await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
