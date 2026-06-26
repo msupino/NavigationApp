@@ -49,3 +49,39 @@ test('narrow desktop RTL: bar stays within the viewport', async ({ page }) => {
   expect(s.left).toBeGreaterThanOrEqual(-0.5);
   expect(s.right).toBeLessThanOrEqual(s.vw + 0.5);
 });
+
+test('Information section sliders + values stay inside the menu', async ({ page }) => {
+  await boot(page, 1000);
+  // Open the Information (weather) section and reveal the wind-field + NOTAM
+  // timeline sliders. The NOTAM time value ("+72h · 12:00Z") is the long one
+  // that used to spill outside the menu.
+  await page.evaluate(() => {
+    const sec = document.querySelector('.tb-section[data-sec="weather"]');
+    sec.classList.add('open');
+    document.getElementById('windfield-controls').hidden = false;
+    document.getElementById('notam-controls').hidden = false;
+    document.getElementById('notam-time-val').textContent = '+72h · 12:00Z';
+  });
+  const overflow = await page.evaluate(() => {
+    const body = document.querySelector('.tb-section[data-sec="weather"] .tb-section-body');
+    const br = body.getBoundingClientRect();
+    const bad = [];
+    body.querySelectorAll('.navtoggle').forEach(row => {
+      row.querySelectorAll('input[type="range"], .slider-val').forEach(el => {
+        if (el.offsetParent === null) return;          // skip hidden controls
+        const r = el.getBoundingClientRect();
+        if (r.width === 0) return;
+        // Right edge must not spill past the menu body (small tolerance).
+        if (r.right > br.right + 0.5 || r.left < br.left - 0.5) {
+          bad.push({ id: el.id || el.className, reason: 'box', right: r.right, bodyRight: br.right });
+        }
+        // The value must fit its own box (no text painting outside it).
+        if (el.scrollWidth > el.clientWidth + 1) {
+          bad.push({ id: el.id || el.className, reason: 'text', scrollW: el.scrollWidth, clientW: el.clientWidth });
+        }
+      });
+    });
+    return bad;
+  });
+  expect(overflow).toEqual([]);
+});
