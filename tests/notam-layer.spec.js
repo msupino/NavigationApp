@@ -199,6 +199,24 @@ test('clicking a NOTAM area on the map opens just that NOTAM', async ({ page }) 
   await expect(modal).not.toContainText('A0483/26');
 });
 
+test('clicking a NOTAM in the list closes the modal and blinks it on the map', async ({ page }) => {
+  await boot(page);
+  // Overlay off to start; clicking a list item should also turn it on.
+  await page.evaluate(() => document.getElementById('notam-list-btn').click());
+  const modal = page.locator('.modal-back .notam-modal');
+  await expect(modal).toBeVisible();
+  // C1337/26 is a circle area → mappable → clickable.
+  const item = modal.locator('.notam-item.notam-item-clickable', { hasText: 'C1337/26' });
+  await expect(item).toHaveCount(1);
+  await item.click();
+  // Modal closes, overlay turns on, and the NOTAM is flashing.
+  await expect(page.locator('.modal-back .notam-modal')).toHaveCount(0);
+  expect(await page.evaluate(() => window.showNotam)).toBe(true);
+  expect(await page.evaluate(() => typeof flashNotam === 'function')).toBe(true);
+  expect(await page.evaluate(() => window.notamMappable(
+    activeNotams().find(n => n.id === 'C1337/26')))).toBe(true);
+});
+
 test('NOTAM appears in the multi-select point picker', async ({ page }) => {
   await boot(page);
   await page.locator('#notam-cb').check();
