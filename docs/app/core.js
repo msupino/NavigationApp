@@ -514,14 +514,14 @@ window.S = Object.assign({
   tbImsPwxOpacity: 'Sign opacity',
   tbImsPwxOpacityReset: 'Reset opacity',
   tbImsPwxRun: 'Model run',
-  tbSigwx: '🌐 SIGWX charts',                       // significant-weather viewer button
-  tbSigwxTitle: 'View IMS significant-weather (SIGWX) charts by valid time',
+  tbSigwx: '🌐 Significant weather',                // significant-weather viewer button
+  tbSigwxTitle: 'View IMS significant-weather charts by valid time',
   tbSigwxTime: 'Valid time',
-  tbSigwxOverlay: 'Show SIGWX',
-  tbSigwxOverlayTitle: 'Overlay the low-level significant-weather (SIGWX) prog chart on the map by valid time. Approximate alignment — fine-tune with ?tune. Planning aid only.',
-  sigwxModalTitle: 'Significant weather charts (SIGWX)',
+  tbSigwxOverlay: 'Show significant weather',
+  tbSigwxOverlayTitle: 'Overlay the low-level significant-weather prog chart on the map by valid time. Approximate alignment — fine-tune with ?tune. Planning aid only.',
+  sigwxModalTitle: 'Significant weather charts',
   sigwxMissing: 'Chart not available for this time yet.',
-  sigwxUnavailable: 'SIGWX charts are temporarily unavailable.',
+  sigwxUnavailable: 'Significant-weather charts are temporarily unavailable.',
   tbPwxCharts: '🌬 Wind/temp charts',               // IMS PWX original-chart viewer button
   tbPwxChartsTitle: 'View the IMS wind/temperature (PWX) charts by flight level and valid time',
   pwxModalTitle: 'Wind / temperature charts (PWX)',
