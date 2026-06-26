@@ -5150,7 +5150,7 @@ function showAltitudePairsModal() {
   modal.show();
 }
 
-function showChartsModal() {
+function showChartsModal(focusIcao) {
   if (!prepareChartModal('airport-charts')) return;
   const modal = createDraggableModal(S.plates, 'modal wide',
     () => clearOpenChartModal('airport-charts'),
@@ -5173,7 +5173,7 @@ function showChartsModal() {
     other: S.plateCategoryOther,
   };
 
-  function renderList(afs) {
+  function renderList(afs, focusIcao) {
     platesSection.innerHTML = '';
     const withPlates = afs.filter(af => af.plates && af.plates.length)
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -5183,9 +5183,11 @@ function showChartsModal() {
       platesSection.appendChild(none);
       return;
     }
+    let focusSection = null;
     for (const af of withPlates) {
       const section = document.createElement('div');
       section.className = 'charts-airport';
+      section.dataset.icao = af.name;
       const header = document.createElement('div');
       header.className = 'charts-airport-header';
       header.textContent = af.name + (af.en ? ' — ' + af.en : '');
@@ -5232,18 +5234,26 @@ function showChartsModal() {
         }
         pane.appendChild(catDiv);
       }
+      // Auto-expand + remember the airfield opened from the inspector button.
+      if (focusIcao && af.name === focusIcao) {
+        pane.classList.add('open');
+        header.classList.add('open');
+        header.setAttribute('aria-expanded', 'true');
+        focusSection = section;
+      }
       section.appendChild(pane);
       platesSection.appendChild(section);
     }
+    if (focusSection) requestAnimationFrame(() => focusSection.scrollIntoView({ block: 'start' }));
   }
 
   if (airfields) {
-    renderList(airfields);
+    renderList(airfields, focusIcao);
   } else {
     const loading = document.createElement('p');
     loading.textContent = '…';
     platesSection.appendChild(loading);
-    loadAirfields().then(() => { if (airfields) renderList(airfields); });
+    loadAirfields().then(() => { if (airfields) renderList(airfields, focusIcao); });
   }
 
   scrollArea.appendChild(body);

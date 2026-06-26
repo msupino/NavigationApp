@@ -1626,47 +1626,20 @@ function appendSatelliteSnippet(body, point, label) {
   body.appendChild(section);
 }
 
-// Grouped, clickable BYOP plate chips for an airfield (read-only inspector).
+// A single button that opens this airfield in the Charts modal — the full
+// plate list lives there, so the inspector doesn't duplicate it.
 function appendAirfieldPlates(body, af) {
   if (!af || !Array.isArray(af.plates) || !af.plates.length) return;
-  const section = document.createElement('div');
-  section.className = 'plates-section';
-  const label = document.createElement('div');
-  label.className = 'row';
-  const l = document.createElement('label');
-  l.textContent = S.plates;
-  label.appendChild(l);
-  section.appendChild(label);
-  const groups = {};
-  const catOrder = ['approach', 'sid', 'star', 'ground', 'vfr', 'other'];
-  const catLabel = {
-    approach: S.plateCategoryApproach, sid: S.plateCategorySid,
-    star: S.plateCategoryStar, ground: S.plateCategoryGround,
-    vfr: S.plateCategoryVfr, other: S.plateCategoryOther,
-  };
-  for (const fn of af.plates) {
-    const cat = plateCategory(fn);
-    (groups[cat] || (groups[cat] = [])).push(fn);
-  }
-  for (const cat of catOrder) {
-    if (!groups[cat]) continue;
-    const row = document.createElement('div');
-    row.className = 'row';
-    const catLbl = document.createElement('label');
-    catLbl.textContent = catLabel[cat];
-    row.appendChild(catLbl);
-    const chips = document.createElement('span');
-    for (const fn of groups[cat]) {
-      const chip = document.createElement('button');
-      chip.className = 'plate-chip';
-      chip.textContent = prettyPlateLabel(fn);
-      chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
-      chips.appendChild(chip);
-    }
-    row.appendChild(chips);
-    section.appendChild(row);
-  }
-  body.appendChild(section);
+  const row = document.createElement('div');
+  row.className = 'row plates-section';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'insp-charts-btn';
+  btn.textContent = S.inspOpenCharts || '🗺️ Airport charts';
+  btn.title = S.inspOpenChartsTitle || '';
+  btn.onclick = () => { if (typeof showChartsModal === 'function') showChartsModal(af.name); };
+  row.appendChild(btn);
+  body.appendChild(row);
 }
 
 function appendAirfieldRunways(body, af) {
