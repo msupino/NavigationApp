@@ -111,6 +111,18 @@ test('NOTAM list filters by airfield or global (LLLL)', async ({ page }) => {
   await expect(modal.locator('.notam-item')).toHaveCount(4);
 });
 
+test('NOTAM time-slider label matches the unified look-ahead format', async ({ page }) => {
+  await boot(page);
+  const labels = await page.evaluate(() => ({
+    base: notamTimeLabel(0),
+    ahead: notamTimeLabel(5),
+  }));
+  // Base = a bare Zulu clock; offset = "+Nh · <clock>" (same as the windfield
+  // time slider).
+  expect(labels.base).toMatch(/^(\d{2}-\d{2} )?\d{2}:\d{2}Z$/);
+  expect(labels.ahead).toMatch(/^\+5h · (\d{2}-\d{2} )?\d{2}:\d{2}Z$/);
+});
+
 test('prose border NOTAMs are geocoded to buffer polygons', async ({ page }) => {
   // Borders served from the real data/notam-borders.json (not mocked).
   await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [

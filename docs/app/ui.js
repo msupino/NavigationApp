@@ -2125,8 +2125,8 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
     if (!timeVal || !store) return;
     const off = timeSlider ? (parseInt(timeSlider.value, 10) || 0) : 0;
     const t = store.times[absIndex()];                // 'YYYY-MM-DDThh:00' UTC
-    const hh = t ? t.slice(11, 16) + 'Z' : '';
-    timeVal.textContent = (off === 0 ? hh : hh + ' +' + off + 'h');
+    const clock = t ? fmtViewClock(new Date(t + 'Z')) : '';
+    timeVal.textContent = fmtViewTime(off, clock);
   }
 
   async function addLayer() {
@@ -2303,12 +2303,26 @@ function refreshNotamListBtn() {
     notamUpdatedEl.textContent = txt;
   }
 }
-// Slider readout: 0 = live "now", otherwise "+Nh · MM-DD HH:MMZ".
+// Shared time-slider clock: "HH:MMZ", prefixed with "MM-DD " when the instant
+// falls on a different UTC date than today. Used by every look-ahead slider so
+// they read identically.
+function fmtViewClock(d) {
+  if (!d || isNaN(d)) return '';
+  const iso = d.toISOString();
+  const hm = iso.slice(11, 16) + 'Z';
+  return iso.slice(0, 10) === new Date().toISOString().slice(0, 10)
+    ? hm
+    : iso.slice(5, 10) + ' ' + hm;
+}
+// Unified look-ahead readout: base (0) shows the clock; an offset shows
+// "+Nh · <clock>".
+function fmtViewTime(h, clock) {
+  if (!h) return clock;
+  return S.notamTimeAt ? S.notamTimeAt(h, clock) : ('+' + h + 'h · ' + clock);
+}
+// Slider readout: 0 = clock of now, otherwise "+Nh · HH:MMZ".
 function notamTimeLabel(h) {
-  if (!h) return S.notamTimeNow || 'Now';
-  const d = new Date(Date.now() + h * 3600e3);
-  const t = d.toISOString().slice(5, 16).replace('T', ' ') + 'Z';
-  return S.notamTimeAt ? S.notamTimeAt(h, t) : ('+' + h + 'h ' + t);
+  return fmtViewTime(h, fmtViewClock(new Date(Date.now() + h * 3600e3)));
 }
 function syncNotamTime() {
   const h = notamTimeEl ? (parseInt(notamTimeEl.value, 10) || 0) : 0;
