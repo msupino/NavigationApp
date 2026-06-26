@@ -356,7 +356,7 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   gap: 3px;
   min-width: 0;
 }
-#toolbar .slider-val { width: 3em; text-align: right; font-size: 11px; color: #ccc; flex-shrink: 0; }
+#toolbar .slider-val { min-width: 3em; text-align: right; font-size: 11px; color: #ccc; flex-shrink: 0; white-space: nowrap; }
 #toolbar .slider-reset {
   flex-shrink: 0;
   font-size: 12px;
@@ -683,8 +683,13 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
     min-height: 24px;
   }
 
-  #toolbar .tb-section-body input[type="range"] {
-    min-width: 96px;
+  /* Fixed slider width inside the dropdown so a slider never resizes when its
+     value label changes length (e.g. dragging the NOTAM timeline). The menu
+     sizes to content (≤340px); the value column sizes to its own text. */
+  #toolbar .tb-section-body .navtoggle input[type="range"] {
+    flex: 0 0 96px;
+    width: 96px;
+    min-width: 0;
   }
 
   .tb-group {
