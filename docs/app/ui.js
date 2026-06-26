@@ -49,6 +49,7 @@ layerSelect.onchange = () => {
     }
   }
   map.addLayer(layers[layerSelect.value]);
+  if (typeof updateBasemapUnderlay === 'function') updateBasemapUnderlay();
   applyMapOpacity();
   draw();                                // keep the route overlay on top
   try { localStorage.setItem(LAYER_KEY, layerSelect.value); }

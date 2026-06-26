@@ -424,6 +424,8 @@ window.S = {
   resetFreqOverride: 'שחזר לברירת המחדל',
   resetFreqAuto: 'שחזר אות קריאה ותדר לפי המסלול',
   plates: 'דפיות',
+  inspOpenCharts: '🗺️ דפי שדה',
+  inspOpenChartsTitle: 'פתח את שדה התעופה הזה בחלון הדפיות',
   runways: 'מסלולים',
   plateCategoryApproach: 'גישה',
   plateCategorySid: 'SID',
