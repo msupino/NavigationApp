@@ -25,7 +25,9 @@ html, body {
 #map {
   position: absolute;
   inset: 0;
-  background: #231F20;
+  /* Theme-independent map backdrop: dark mode restyles the menus/panels only,
+     not the map itself (the chart + OSM underlay look the same in both). */
+  background: #e7ebf0;
 }
 #map.add { cursor: crosshair; }
 /* Non-edit (select) mode reads as an arrow — markers are clickable, not a
@@ -51,7 +53,7 @@ html, body {
   z-index: 400;
 }
 
-.leaflet-container { background: #231F20; }
+.leaflet-container { background: #e7ebf0; }   /* same in light + dark — see #map */
 
 #toolbar {
   position: absolute;
@@ -3315,10 +3317,6 @@ body.theme-light .msa-low .val { color: #c0392b; }
 body.theme-light {
   background: #eef1f5;
   color: #1f252c;
-}
-body.theme-light #map,
-body.theme-light .leaflet-container {
-  background: #e7ebf0;
 }
 body.theme-light #toolbar,
 body.theme-light #inspector,
