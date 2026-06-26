@@ -2372,15 +2372,27 @@ function showNotamModal(only) {
     if (!isNaN(t)) u.textContent = (S.notamUpdated ? S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z') : '');
     box.appendChild(u);
   }
+  // Airfield/global filter. Every NOTAM carries an ICAO: LLLL = FIR-wide
+  // (global); anything else is aerodrome-specific. Build a dropdown of the
+  // codes present so the list can be narrowed to one airfield (or globals).
+  let filterIcao = '';
+  const codes = Array.from(new Set(
+    shown.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
   const list = document.createElement('div');
   list.className = 'notam-list';
-  if (!shown.length) {
-    const e = document.createElement('div');
-    e.className = 'notam-empty';
-    e.textContent = S.notamNone || 'No active NOTAMs.';
-    list.appendChild(e);
-  } else {
-    for (const n of shown) {
+  const renderList = () => {
+    list.textContent = '';
+    const subset = filterIcao
+      ? shown.filter(n => String(n.icao || '').toUpperCase() === filterIcao)
+      : shown;
+    if (!subset.length) {
+      const e = document.createElement('div');
+      e.className = 'notam-empty';
+      e.textContent = S.notamNone || 'No active NOTAMs.';
+      list.appendChild(e);
+      return;
+    }
+    for (const n of subset) {
       const it = document.createElement('div');
       it.className = 'notam-item';
       const id = document.createElement('div');
@@ -2390,10 +2402,50 @@ function showNotamModal(only) {
       tx.className = 'notam-text'; tx.dir = 'ltr';
       tx._raw = n.text || '';
       tx._decoded = (typeof decodeNotam === 'function') ? decodeNotam(n) : tx._raw;
-      tx.textContent = tx._decoded;
+      tx.textContent = rawMode ? tx._raw : tx._decoded;
       it.appendChild(id); it.appendChild(tx);
+      // Clicking a NOTAM that has a map presence closes the modal, turns the
+      // overlay on if needed, and blinks it on the map.
+      if (typeof notamMappable === 'function' && notamMappable(n)) {
+        it.classList.add('notam-item-clickable');
+        it.title = S.notamShowOnMap || 'Show on map';
+        it.onclick = () => {
+          if (!window.showNotam) {
+            window.showNotam = true;
+            try { localStorage.setItem(NOTAM_KEY, '1'); } catch (err) { /* */ }
+            if (notamCb) notamCb.checked = true;
+          }
+          dismiss();
+          if (typeof flashNotam === 'function') flashNotam(n.id);
+        };
+      }
       list.appendChild(it);
     }
+  };
+  if (codes.length > 1) {
+    const fw = document.createElement('div');
+    fw.className = 'notam-filter';
+    const sel = document.createElement('select');
+    sel.className = 'notam-filter-sel'; sel.dir = 'ltr';
+    sel.setAttribute('aria-label', S.notamFilterLabel || 'Filter NOTAMs by airfield');
+    const optAll = document.createElement('option');
+    optAll.value = '';
+    optAll.textContent = (S.notamFilterAll || 'All') + ' (' + shown.length + ')';
+    sel.appendChild(optAll);
+    // Global (LLLL) first, then aerodromes alphabetically.
+    const ordered = codes.slice().sort((a, b) =>
+      (a === 'LLLL' ? -1 : b === 'LLLL' ? 1 : a.localeCompare(b)));
+    for (const c of ordered) {
+      const cnt = shown.filter(n => String(n.icao || '').toUpperCase() === c).length;
+      const o = document.createElement('option');
+      o.value = c;
+      o.textContent = (c === 'LLLL' ? (S.notamFilterGlobal || 'Global (FIR)') : c)
+        + ' (' + cnt + ')';
+      sel.appendChild(o);
+    }
+    sel.onchange = () => { filterIcao = sel.value; renderList(); };
+    fw.appendChild(sel);
+    box.appendChild(fw);
   }
   rawBtn.onclick = () => {
     rawMode = !rawMode;
@@ -2402,9 +2454,13 @@ function showNotamModal(only) {
       tx.textContent = rawMode ? tx._raw : tx._decoded;
     });
   };
+  renderList();
   box.appendChild(list);
   back.appendChild(box);
   document.body.appendChild(back);
+  // Freeze the list to its unfiltered height so picking an airfield (fewer
+  // items) doesn't shrink the modal and make it jump.
+  if (codes.length > 1) list.style.height = list.offsetHeight + 'px';
   const dismiss = () => { back.remove(); document.removeEventListener('keydown', onKey); };
   function onKey(ev) { if (ev.key === 'Escape') dismiss(); }
   close.onclick = dismiss;
