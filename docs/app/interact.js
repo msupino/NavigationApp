@@ -1706,7 +1706,9 @@ function appendAirfieldWeather(body, af) {
   sec.appendChild(head);
   const bodyEl = document.createElement('div');
   bodyEl.className = 'wx-body';
-  bodyEl.dir = 'ltr';                 // METAR/TAF codes are always left-to-right
+  // Follow content direction: prose messages (loading / no-data / error) read
+  // RTL in Hebrew, while METAR/TAF code blocks force LTR on themselves.
+  bodyEl.dir = 'auto';
   bodyEl.textContent = S.wxLoading || 'Loading…';
   sec.appendChild(bodyEl);
   body.appendChild(sec);
@@ -1727,6 +1729,7 @@ function appendAirfieldWeather(body, af) {
     const block = (label, lines) => {
       const b = document.createElement('div');
       b.className = 'wx-block';
+      b.dir = 'ltr';                   // METAR/TAF codes are always left-to-right
       const t = document.createElement('span');
       t.className = 'wx-label';
       t.textContent = label;
