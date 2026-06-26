@@ -635,8 +635,32 @@ function notamMappable(n) {
   }
   return false;
 }
+// Collect a NOTAM's map points (polygon/line/circle perimeter, route lines, or
+// its airport) so the view can be framed on it.
+function notamLatLngs(n) {
+  const out = [];
+  const push = (lat, lng) => { if (Number.isFinite(lat) && Number.isFinite(lng)) out.push([lat, lng]); };
+  const g = n && n.geom;
+  if (g && g.type === 'polygon' && Array.isArray(g.coords)) g.coords.forEach(c => push(c[0], c[1]));
+  else if (g && g.type === 'line' && Array.isArray(g.coords)) g.coords.forEach(c => push(c[0], c[1]));
+  else if (g && g.type === 'circle' && Number.isFinite(g.lat) && Number.isFinite(g.lng) &&
+           Number.isFinite(g.radiusNm)) notamCirclePoints(g.lat, g.lng, g.radiusNm).forEach(c => push(c[0], c[1]));
+  if (Array.isArray(n && n._routeLines)) n._routeLines.forEach(rl => (rl.coords || []).forEach(c => push(c[0], c[1])));
+  if (!out.length && n && n.icao && Array.isArray(airfields)) {
+    const af = airfields.find(a => a.name === n.icao);
+    if (af) push(af.lat, af.lng);
+  }
+  return out;
+}
 function flashNotam(id) {
   if (!id) return;
+  // Frame the map on the NOTAM so the highlight is actually in view.
+  const n = Array.isArray(notams) ? notams.find(x => x && x.id === id) : null;
+  const pts = n ? notamLatLngs(n) : [];
+  if (typeof map !== 'undefined' && map && pts.length) {
+    if (pts.length === 1) map.setView(pts[0], Math.max(map.getZoom(), 10), { animate: true });
+    else map.fitBounds(L.latLngBounds(pts), { padding: [80, 80], maxZoom: 11, animate: true });
+  }
   notamFlashId = id;
   notamFlashStart = performance.now();
   if (notamFlashRAF) cancelAnimationFrame(notamFlashRAF);
