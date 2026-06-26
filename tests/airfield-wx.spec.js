@@ -124,8 +124,31 @@ test('refresh button re-fetches (force, bypassing cache)', async ({ page }) => {
   await page.locator('.wx-refresh').click();
   await expect(page.locator('#insp-body .wx-section')).toContainText('Wind 270°');
   expect(calls).toBeGreaterThan(before);          // re-fetched, not served from cache
-  // METAR/TAF body forced LTR regardless of UI language.
-  expect(await page.locator('.wx-body').getAttribute('dir')).toBe('ltr');
+  // METAR/TAF code blocks forced LTR regardless of UI language.
+  expect(await page.locator('.wx-block').first().getAttribute('dir')).toBe('ltr');
+});
+
+test('Hebrew no-data message reads RTL, not garbled LTR', async ({ page }) => {
+  // No stations in the feed → every field falls back to the no-data message.
+  await page.route('**wx-data/wx.json**', r => r.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({ generatedAt: '2026-06-14T06:00:00Z', stations: {} }),
+  }));
+  await page.goto('?lang=he');
+  await page.waitForFunction(() => typeof state !== 'undefined' &&
+    typeof showInspector === 'function' && typeof fetchAirfieldWx === 'function');
+  await page.evaluate(async () => {
+    if (airfields === null) await loadAirfields();
+    const index = airfields.findIndex(a => a.name === 'LLBG');
+    if (index < 0) throw new Error('LLBG missing from airfields.json');
+    state.selected = { type: 'airfield', index };
+    showInspector();
+  });
+  const body = page.locator('#insp-body .wx-body');
+  await expect(body).toContainText('אין METAR / TAF לשדה זה');
+  // Body follows content direction (dir=auto) so the Hebrew prose resolves RTL
+  // from its first strong char instead of being forced LTR and reordered.
+  expect(await body.getAttribute('dir')).toBe('auto');
 });
 
 test('non-ICAO field shows no weather section', async ({ page }) => {
