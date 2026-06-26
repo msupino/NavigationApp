@@ -622,6 +622,7 @@ window.S = Object.assign({
   notamFilterLabel: 'Filter NOTAMs by airfield',
   notamFilterAll: 'All',
   notamFilterGlobal: 'Global (FIR)',
+  notamShowOnMap: 'Show on map',
   sigmetReadout: function(n) { return '⚠ ' + n + ' SIGMET'; },
   sigmetNone: 'No SIGMET in effect',
   sigmetUpdated: function(t) { return 'SIGMET updated ' + t; },
