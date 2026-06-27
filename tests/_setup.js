@@ -43,6 +43,17 @@ exports.test = base.test.extend({
         if (host === 'gist.githubusercontent.com') {
           return route.abort();
         }
+        // Block the live NOTAM feed (notam-data branch on raw.githubusercontent)
+        // so UI tests never pull the real ~90 active NOTAMs — that made the
+        // NOTAM list button appear and intercept map clicks (e.g. magnifier).
+        // CI runners can't reach it (so it silently fell back), but local runs
+        // and e2e-deployed can. The app falls back to the empty same-origin
+        // data/notam.json. Specs that need NOTAMs (notam-layer) register their
+        // own route, which wins by later registration.
+        if (host === 'raw.githubusercontent.com' &&
+            /\/notam-data\/|notam\.json$/.test(new URL(url).pathname)) {
+          return route.abort();
+        }
       } catch (e) { /* relative URLs etc. */ }
       return route.continue();
     });
