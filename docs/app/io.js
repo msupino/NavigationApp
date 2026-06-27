@@ -4137,6 +4137,8 @@ function createDraggableModal(titleText, className, onClose, options = {}) {
   function show() {
     if (!box.parentNode) back.appendChild(box);
     document.body.appendChild(back);
+    // Opening any modal closes the toolbar dropdowns so they don't overlap it.
+    if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
     window.addEventListener('keydown', onEsc);
   }
   return { back, box, title, close, show };
