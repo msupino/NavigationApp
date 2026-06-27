@@ -8,6 +8,11 @@
 const { test, expect } = require('./_setup');
 const { LLHZ } = require('./_airfieldArp');
 
+// These specs reload the page and drive heavy modals; the default 15s is tight
+// under parallel-worker CI load and flakes with page-closed timeouts. Give the
+// whole file room.
+test.describe.configure({ timeout: 45_000 });
+
 async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
     try {
