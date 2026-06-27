@@ -266,8 +266,8 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
 /* Sub-group label inside a section body (layout A): thin divider + caption. */
 /* Grouping box for a toggle + its dependent controls (e.g. IMS PWX overlay). */
 .tb-group-box {
-  border: 1px solid #3a3636;
-  border-radius: 6px;
+  border: 1px solid #443f3f;            /* match the section buttons' border */
+  border-radius: 5px;
   padding: 4px 6px;
   margin-top: 4px;
   display: flex;
@@ -669,7 +669,7 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   #toolbar.multi-open .tb-section[data-sec="print"] .tb-section-body { left: calc(85.71vw - 4px); }
 
   #toolbar .tb-section-body button,
-  #toolbar #export-select {
+  #toolbar .tb-section-body #export-select {
     width: 100%;
     min-height: 28px;
     padding: 5px 10px;
@@ -677,10 +677,11 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
     border-radius: 3px;
     background: transparent;
     text-align: start;
+    text-align-last: start;
   }
 
   #toolbar .tb-section-body button:hover,
-  #toolbar #export-select:hover,
+  #toolbar .tb-section-body #export-select:hover,
   #toolbar .tb-section-body .navtoggle:hover {
     background: rgba(255, 255, 255, 0.10);
   }
@@ -1037,8 +1038,9 @@ html[dir="rtl"] .sigmet-readout.sigmet-none {
   cursor: pointer;
   width: 100%;
   box-sizing: border-box;
-  text-align: center;
-  text-align-last: center;
+  /* Match the other section buttons (left-aligned), not centred. */
+  text-align: start;
+  text-align-last: start;
 }
 #toolbar #vor-ref-row select {
   box-sizing: border-box;
@@ -3397,6 +3399,8 @@ body.theme-light #tuning-panel input[type="color"] {
   background: #fff;
   border-color: #b8c0cc;
 }
+/* Extra-layers cards share the buttons' light-theme border. */
+body.theme-light .tb-group-box { border-color: #b8c0cc; }
 body.theme-light #toolbar button:hover,
 body.theme-light #toolbar .slider-reset:hover,
 body.theme-light #toolbar #wpname-rot:hover,
