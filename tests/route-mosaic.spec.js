@@ -69,6 +69,21 @@ test('mosaic size slider resizes the previews', async ({ page }) => {
   await expect.poll(async () => (await cell.boundingBox()).width).toBeGreaterThan(before + 50);
 });
 
+test('mosaic layer selector uses Hebrew labels in the Hebrew UI', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.charts', '1'); } catch (e) {} });
+  await page.goto('?lang=he');
+  await page.waitForFunction(() => typeof state !== 'undefined' && typeof showRouteMosaicModal === 'function');
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }];
+    if (typeof syncLegs === 'function') syncLegs();
+  });
+  await page.evaluate(() => document.getElementById('mosaic-btn').click());
+  const sel = page.locator('.route-mosaic-modal .route-mosaic-layer');
+  // Value stays the English key; the visible label is Hebrew.
+  await expect(sel.locator('option[value="Navigation"]')).toHaveText('ניווט');
+  await expect(sel.locator('option[value="Satellite"]')).toHaveText('לוויין');
+});
+
 test('pressing the mosaic button twice does not stack a second modal', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {

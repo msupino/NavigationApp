@@ -1656,7 +1656,8 @@ function showRouteMosaicModal() {
   sel.setAttribute('aria-label', S.mosaicLayer || 'Mosaic layer');
   for (const nm of names) {
     const o = document.createElement('option');
-    o.value = nm; o.textContent = nm;
+    o.value = nm;
+    o.textContent = (S.layerLabels && S.layerLabels[nm]) || nm;
     if (nm === 'Satellite') o.selected = true;
     sel.appendChild(o);
   }
