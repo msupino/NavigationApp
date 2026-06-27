@@ -1651,7 +1651,10 @@ document.getElementById('file').onchange = e => {
 };
 document.getElementById('fit').onclick = fitView;
 document.getElementById('fly').onclick = flyRoute;
-document.getElementById('plan').onclick = showFlightPlan;
+document.getElementById('plan').onclick = () => {
+  if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
+  showFlightPlan();
+};
 document.getElementById('freq-table').onclick = showFreqTableModal;
 document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
 document.getElementById('charts').onclick = showChartsModal;
@@ -2361,15 +2364,14 @@ async function ensureNotams() {
   refreshNotamListBtn();
 }
 function showNotamModal(only) {
-  // Dedupe — a repeat open (button or map click) replaces the existing list
-  // instead of stacking a second copy; also close the toolbar dropdowns.
-  document.querySelectorAll('.modal-back .notam-modal').forEach(b => {
-    const bk = b.closest('.modal-back');
-    if (bk) bk.remove();
-  });
+  // Behave like every other chart modal: opening closes any other open chart
+  // modal (and a prior NOTAM list, since it's tagged below) + the toolbar
+  // dropdowns. One chart on screen at a time.
+  if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
   if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
   const back = document.createElement('div');
   back.className = 'modal-back';
+  back.dataset.chartModal = 'notam-list';
   const box = document.createElement('div');
   box.className = 'modal wide notam-modal';
   const close = document.createElement('button');
@@ -2487,6 +2489,8 @@ function showNotamModal(only) {
   // items) doesn't shrink the modal and make it jump.
   if (codes.length > 1) list.style.height = list.offsetHeight + 'px';
   const dismiss = () => { back.remove(); document.removeEventListener('keydown', onKey); };
+  // Let closeOpenChartModals() (other charts opening) close this one too.
+  back._navaidClose = dismiss;
   function onKey(ev) { if (ev.key === 'Escape') dismiss(); }
   close.onclick = dismiss;
   back.addEventListener('click', e => { if (e.target === back) dismiss(); });
@@ -3981,9 +3985,13 @@ function imsNearestTimeIndex(times) {
 
   function open() {
     if (back || !manifest) return;   // open even with zero times (show broken)
-    if (typeof closeToolbarDesktopMenus === 'function') closeToolbarDesktopMenus();
+    // Behave like every chart: close other open charts + the toolbar dropdowns.
+    if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
+    if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
     back = document.createElement('div');
     back.className = 'modal-back';
+    back.dataset.chartModal = 'sigwx';
+    back._navaidClose = close;
     const box = document.createElement('div');
     box.className = 'modal wide sigwx-modal';
     box.setAttribute('role', 'dialog');
@@ -4078,9 +4086,12 @@ function imsNearestTimeIndex(times) {
 
   function open() {
     if (back || !manifest) return;
-    if (typeof closeToolbarDesktopMenus === 'function') closeToolbarDesktopMenus();
+    if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
+    if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
     back = document.createElement('div');
     back.className = 'modal-back';
+    back.dataset.chartModal = 'pwx';
+    back._navaidClose = close;
     const box = document.createElement('div');
     box.className = 'modal wide sigwx-modal';
     box.setAttribute('role', 'dialog');

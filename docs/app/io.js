@@ -48,6 +48,11 @@ function closeOpenChartModals() {
     if (typeof back._navaidClose === 'function') back._navaidClose();
     else back.remove();
   }
+  // The flight plan is a chart too (non-blocking backdrop, no data-chart-modal);
+  // close it as well so only one chart is ever on screen.
+  if (typeof fpOpen !== 'undefined' && fpOpen && typeof closeFlightPlan === 'function') {
+    closeFlightPlan();
+  }
 }
 
 function isChartModalOpen(kind) {

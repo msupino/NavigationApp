@@ -52,6 +52,38 @@ test('mosaic zoom slider re-renders previews at the chosen zoom', async ({ page 
     .getAttribute('src')).toContain('/tile/11/');
 });
 
+test('mosaic size slider resizes the previews', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }];
+    if (typeof syncLegs === 'function') syncLegs();
+  });
+  await page.evaluate(() => document.getElementById('mosaic-btn').click());
+  const modal = page.locator('.route-mosaic-modal');
+  const size = modal.locator('.route-mosaic-size input[type="range"]');
+  await expect(size).toBeVisible();
+  const cell = modal.locator('.route-mosaic-cell').first();
+  const before = (await cell.boundingBox()).width;
+  await size.fill('400');
+  await size.dispatchEvent('input');
+  await expect.poll(async () => (await cell.boundingBox()).width).toBeGreaterThan(before + 50);
+});
+
+test('mosaic layer selector uses Hebrew labels in the Hebrew UI', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.charts', '1'); } catch (e) {} });
+  await page.goto('?lang=he');
+  await page.waitForFunction(() => typeof state !== 'undefined' && typeof showRouteMosaicModal === 'function');
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }];
+    if (typeof syncLegs === 'function') syncLegs();
+  });
+  await page.evaluate(() => document.getElementById('mosaic-btn').click());
+  const sel = page.locator('.route-mosaic-modal .route-mosaic-layer');
+  // Value stays the English key; the visible label is Hebrew.
+  await expect(sel.locator('option[value="Navigation"]')).toHaveText('ניווט');
+  await expect(sel.locator('option[value="Satellite"]')).toHaveText('לוויין');
+});
+
 test('pressing the mosaic button twice does not stack a second modal', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
@@ -61,6 +93,24 @@ test('pressing the mosaic button twice does not stack a second modal', async ({ 
   await page.evaluate(() => document.getElementById('mosaic-btn').click());
   await page.evaluate(() => document.getElementById('mosaic-btn').click());
   await expect(page.locator('.route-mosaic-modal')).toHaveCount(1);
+});
+
+test('opening another chart closes the mosaic (one chart at a time)', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }];
+    if (typeof syncLegs === 'function') syncLegs();
+  });
+  await page.evaluate(() => document.getElementById('mosaic-btn').click());
+  await expect(page.locator('.route-mosaic-modal')).toBeVisible();
+  // Open the NOTAM list → mosaic closes.
+  await page.evaluate(() => showNotamModal());
+  await expect(page.locator('.notam-modal')).toBeVisible();
+  await expect(page.locator('.route-mosaic-modal')).toHaveCount(0);
+  // Re-open the mosaic → the NOTAM list closes.
+  await page.evaluate(() => document.getElementById('mosaic-btn').click());
+  await expect(page.locator('.route-mosaic-modal')).toBeVisible();
+  await expect(page.locator('.notam-modal')).toHaveCount(0);
 });
 
 test('opening the mosaic closes the toolbar dropdown', async ({ page }) => {
