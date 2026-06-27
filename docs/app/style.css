@@ -2398,6 +2398,38 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
   background: #3a3636;
   border-color: #1d6fe0;
 }
+/* Route satellite mosaic (Charts → Satellite mosaic) */
+.route-mosaic-body { padding: 4px 2px 2px; }
+.route-mosaic-empty { padding: 16px; opacity: 0.7; }
+.route-mosaic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(214px, 1fr));
+  gap: 12px;
+  max-height: 74vh;
+  overflow-y: auto;
+}
+.route-mosaic-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+  font: inherit;
+  text-align: start;
+}
+.route-mosaic-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e8e8e8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.theme-light .route-mosaic-label { color: #1f252c; }
+.route-mosaic-cell .satellite-snippet { margin: 0; cursor: zoom-in; }
+
 .satellite-snippet {
   position: relative;
   width: min(100%, var(--sat-width, 214px));

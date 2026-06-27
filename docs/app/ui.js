@@ -1655,6 +1655,10 @@ document.getElementById('plan').onclick = showFlightPlan;
 document.getElementById('freq-table').onclick = showFreqTableModal;
 document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
 document.getElementById('charts').onclick = showChartsModal;
+(function () {
+  const mb = document.getElementById('mosaic-btn');
+  if (mb) mb.onclick = () => { if (typeof showRouteMosaicModal === 'function') showRouteMosaicModal(); };
+}());
 const RETURN_KEY = 'navaid.showReturn';
 const MIDLEG_KEY = 'navaid.showMidLeg';
 const CUMTIME_KEY  = 'navaid.showCumTime';

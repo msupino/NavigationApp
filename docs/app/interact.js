@@ -1594,6 +1594,50 @@ function showSatellitePreviewModal(point, label) {
   setTimeout(() => { if (lmap) lmap.invalidateSize(); }, 0);
 }
 
+// Charts → "Satellite mosaic": a grid of static satellite previews, one per
+// route waypoint, each labelled and clickable to open the full satellite modal.
+function showRouteMosaicModal() {
+  if (typeof createDraggableModal !== 'function') return;
+  const wps = (Array.isArray(state.waypoints) ? state.waypoints : [])
+    .map((w, i) => ({ w, i }))
+    .filter(({ w }) => w && Number.isFinite(Number(w.lat)) && Number.isFinite(Number(w.lng)));
+  const modal = createDraggableModal(S.mosaicTitle || 'Route satellite mosaic',
+    'modal wide route-mosaic-modal', null, { nonBlocking: true });
+  const body = document.createElement('div');
+  body.className = 'route-mosaic-body';
+  if (!wps.length) {
+    const empty = document.createElement('div');
+    empty.className = 'route-mosaic-empty';
+    empty.textContent = S.mosaicEmpty || 'Add route waypoints first.';
+    body.appendChild(empty);
+  } else {
+    const grid = document.createElement('div');
+    grid.className = 'route-mosaic-grid';
+    for (const { w, i } of wps) {
+      const label = (typeof wpLabel === 'function') ? wpLabel(i) : (w.name || ('WP ' + (i + 1)));
+      const point = { lat: Number(w.lat), lng: Number(w.lng) };
+      const cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = 'route-mosaic-cell';
+      cell.title = (S.mosaicOpen || 'Open satellite view') + ' — ' + label;
+      const cap = document.createElement('div');
+      cap.className = 'route-mosaic-label'; cap.dir = 'auto';
+      cap.textContent = label;
+      cell.appendChild(cap);
+      const snippet = buildSatelliteSnippet(point);
+      if (snippet) cell.appendChild(snippet);
+      cell.onclick = () => {
+        if (typeof showSatellitePreviewModal === 'function') showSatellitePreviewModal(point, label);
+      };
+      grid.appendChild(cell);
+    }
+    body.appendChild(grid);
+  }
+  modal.box.appendChild(body);
+  modal.show();
+}
+window.showRouteMosaicModal = showRouteMosaicModal;
+
 function appendSatelliteSnippet(body, point, label) {
   const snippet = buildSatelliteSnippet(point);
   if (!snippet) return;
