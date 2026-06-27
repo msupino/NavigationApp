@@ -1258,8 +1258,12 @@ function buildSatelliteSnippet(point, opts = {}) {
   const layer = opts.layer || (typeof layers !== 'undefined' ? layers.Satellite : null);
   const layerMaxZoom = (layer && layer.options &&
     (layer.options.maxNativeZoom || layer.options.maxZoom)) || tune('satellitePreviewZoom');
-  const width = expanded ? Math.max(300, Math.min(620, window.innerWidth - 64)) : tune('satellitePreviewWidthPx');
-  const height = expanded ? Math.max(220, Math.min(420, window.innerHeight - 180)) : tune('satellitePreviewHeightPx');
+  // Non-expanded previews honour an explicit opts.width/height (mosaic size
+  // slider), keeping the default aspect ratio.
+  const width = expanded ? Math.max(300, Math.min(620, window.innerWidth - 64))
+    : (Number.isFinite(opts.width) ? opts.width : tune('satellitePreviewWidthPx'));
+  const height = expanded ? Math.max(220, Math.min(420, window.innerHeight - 180))
+    : (Number.isFinite(opts.height) ? opts.height : tune('satellitePreviewHeightPx'));
   // Non-expanded previews honour an explicit opts.zoom (mosaic zoom slider),
   // capped at the layer's max native zoom.
   const baseZoom = Number.isFinite(opts.zoom) ? opts.zoom : tune('satellitePreviewZoom');
@@ -1670,6 +1674,18 @@ function showRouteMosaicModal() {
   zoomVal.textContent = zoom.value;
   zoomWrap.appendChild(zoomLbl); zoomWrap.appendChild(zoom); zoomWrap.appendChild(zoomVal);
   bar.appendChild(zoomWrap);
+  // Size slider — scales every preview (keeps the default aspect ratio).
+  const baseW = tune('satellitePreviewWidthPx');
+  const baseH = tune('satellitePreviewHeightPx');
+  const sizeWrap = document.createElement('label');
+  sizeWrap.className = 'route-mosaic-size';
+  const sizeLbl = document.createElement('span');
+  sizeLbl.textContent = S.mosaicSize || 'Size';
+  const size = document.createElement('input');
+  size.type = 'range'; size.min = '140'; size.max = '440'; size.step = '2';
+  size.value = String(baseW);
+  sizeWrap.appendChild(sizeLbl); sizeWrap.appendChild(size);
+  bar.appendChild(sizeWrap);
   const printBtn = document.createElement('button');
   printBtn.type = 'button';
   printBtn.className = 'route-mosaic-print';
@@ -1700,18 +1716,21 @@ function showRouteMosaicModal() {
     }
     const layer = (typeof layers !== 'undefined') ? layers[sel.value] : null;
     const zoomLevel = parseInt(zoom.value, 10) || tune('satellitePreviewZoom');
+    const cellW = parseInt(size.value, 10) || baseW;
+    const cellH = Math.round(cellW * baseH / baseW);
     wps.forEach(({ w, i }, idx) => {
       const label = (typeof wpLabel === 'function') ? wpLabel(i) : (w.name || ('WP ' + (i + 1)));
       const point = { lat: Number(w.lat), lng: Number(w.lng) };
       const cell = document.createElement('button');
       cell.type = 'button';
       cell.className = 'route-mosaic-cell';
+      cell.style.width = cellW + 'px';
       cell.title = (S.mosaicOpen || 'Open satellite view') + ' — ' + label;
       const cap = document.createElement('div');
       cap.className = 'route-mosaic-label'; cap.dir = 'auto';
       cap.textContent = label;
       cell.appendChild(cap);
-      const snippet = buildSatelliteSnippet(point, { layer, zoom: zoomLevel });
+      const snippet = buildSatelliteSnippet(point, { layer, zoom: zoomLevel, width: cellW, height: cellH });
       if (snippet) cell.appendChild(snippet);
       cell.onclick = () => {
         if (typeof showSatellitePreviewModal === 'function') showSatellitePreviewModal(point, label);
@@ -1729,6 +1748,7 @@ function showRouteMosaicModal() {
   };
   sel.onchange = render;
   zoom.oninput = () => { zoomVal.textContent = zoom.value; render(); };
+  size.oninput = render;
   render();
   body.appendChild(grid);
   modal.box.appendChild(body);
