@@ -1684,7 +1684,10 @@ function showRouteMosaicModal() {
   const size = document.createElement('input');
   size.type = 'range'; size.min = '140'; size.max = '440'; size.step = '2';
   size.value = String(baseW);
-  sizeWrap.appendChild(sizeLbl); sizeWrap.appendChild(size);
+  const sizeVal = document.createElement('span');
+  sizeVal.className = 'route-mosaic-zoom-val';
+  sizeVal.textContent = size.value + 'px';
+  sizeWrap.appendChild(sizeLbl); sizeWrap.appendChild(size); sizeWrap.appendChild(sizeVal);
   bar.appendChild(sizeWrap);
   const printBtn = document.createElement('button');
   printBtn.type = 'button';
@@ -1748,7 +1751,7 @@ function showRouteMosaicModal() {
   };
   sel.onchange = render;
   zoom.oninput = () => { zoomVal.textContent = zoom.value; render(); };
-  size.oninput = render;
+  size.oninput = () => { sizeVal.textContent = size.value + 'px'; render(); };
   render();
   body.appendChild(grid);
   modal.box.appendChild(body);
