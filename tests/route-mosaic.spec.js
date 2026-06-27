@@ -95,6 +95,24 @@ test('pressing the mosaic button twice does not stack a second modal', async ({ 
   await expect(page.locator('.route-mosaic-modal')).toHaveCount(1);
 });
 
+test('opening another chart closes the mosaic (one chart at a time)', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }];
+    if (typeof syncLegs === 'function') syncLegs();
+  });
+  await page.evaluate(() => document.getElementById('mosaic-btn').click());
+  await expect(page.locator('.route-mosaic-modal')).toBeVisible();
+  // Open the NOTAM list → mosaic closes.
+  await page.evaluate(() => showNotamModal());
+  await expect(page.locator('.notam-modal')).toBeVisible();
+  await expect(page.locator('.route-mosaic-modal')).toHaveCount(0);
+  // Re-open the mosaic → the NOTAM list closes.
+  await page.evaluate(() => document.getElementById('mosaic-btn').click());
+  await expect(page.locator('.route-mosaic-modal')).toBeVisible();
+  await expect(page.locator('.notam-modal')).toHaveCount(0);
+});
+
 test('opening the mosaic closes the toolbar dropdown', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {
