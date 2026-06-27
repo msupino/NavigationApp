@@ -615,6 +615,7 @@ window.S = Object.assign({
   mosaicEmpty: 'Add route waypoints first.',
   mosaicOpen: 'Open satellite view',
   mosaicLayer: 'Mosaic layer',
+  mosaicPrint: '🖨 Print',
   tbNotamTime: 'Time',
   tbNotamTimeTitle: 'Scrub forward to see which NOTAMs are active at a future time (hours from now)',
   notamTimeNow: 'Now',

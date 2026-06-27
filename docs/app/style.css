@@ -2400,17 +2400,21 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
 }
 /* Route satellite mosaic (Charts → Satellite mosaic) */
 .route-mosaic-body { padding: 4px 2px 2px; }
-.route-mosaic-bar { margin: 0 2px 8px; }
-.route-mosaic-layer {
+.route-mosaic-bar { margin: 0 2px 8px; display: flex; gap: 8px; align-items: center; }
+.route-mosaic-layer,
+.route-mosaic-print {
   font: inherit; font-size: 12px; padding: 4px 8px; border-radius: 5px;
   border: 1px solid #4a4545; background: #2b2727; color: #ddd; cursor: pointer;
 }
-body.theme-light .route-mosaic-layer { border-color: #c6ccd6; background: #eef1f6; color: #2b3340; }
+.route-mosaic-print:hover { background: #3c3737; }
+body.theme-light .route-mosaic-layer,
+body.theme-light .route-mosaic-print { border-color: #c6ccd6; background: #eef1f6; color: #2b3340; }
 .route-mosaic-empty { padding: 16px; opacity: 0.7; }
 .route-mosaic-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(214px, 1fr));
-  gap: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 6px;
   max-height: 74vh;
   overflow-y: auto;
 }
@@ -2418,12 +2422,20 @@ body.theme-light .route-mosaic-layer { border-color: #c6ccd6; background: #eef1f
   display: flex;
   flex-direction: column;
   gap: 4px;
+  width: var(--sat-width, 214px);
   padding: 0;
   border: 0;
   background: transparent;
   cursor: zoom-in;
   font: inherit;
   text-align: start;
+}
+.route-mosaic-arrow {
+  font-size: 22px;
+  line-height: 1;
+  color: #9aa3ad;
+  align-self: center;
+  user-select: none;
 }
 .route-mosaic-label {
   font-size: 12px;
@@ -2435,6 +2447,27 @@ body.theme-light .route-mosaic-layer { border-color: #c6ccd6; background: #eef1f
 }
 body.theme-light .route-mosaic-label { color: #1f252c; }
 .route-mosaic-cell .satellite-snippet { margin: 0; cursor: zoom-in; }
+
+/* Print the mosaic fitted to A4: hide everything except the mosaic modal,
+   reset its positioning, drop the toolbar, and wrap previews two-up. */
+@media print {
+  @page { size: A4; margin: 10mm; }
+  body.mosaic-print > * { display: none !important; }
+  body.mosaic-print .modal-back[data-chart-modal="mosaic"] {
+    display: block !important;
+    position: static; background: none; box-shadow: none; inset: auto;
+  }
+  body.mosaic-print .route-mosaic-modal {
+    position: static; box-shadow: none; width: auto; max-width: none;
+    max-height: none; margin: 0; border: 0;
+  }
+  body.mosaic-print .modal-close-x,
+  body.mosaic-print .route-mosaic-bar { display: none !important; }
+  body.mosaic-print .route-mosaic-grid {
+    max-height: none; overflow: visible; gap: 6px 4px;
+  }
+  body.mosaic-print .satellite-snippet { break-inside: avoid; }
+}
 
 .satellite-snippet {
   position: relative;

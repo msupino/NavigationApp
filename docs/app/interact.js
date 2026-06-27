@@ -1475,6 +1475,12 @@ function setSatelliteModalTitle(title, label, point) {
 
 function showSatellitePreviewModal(point, label) {
   if (typeof createDraggableModal !== 'function' || typeof L === 'undefined') return;
+  // Only one satellite view at a time — a repeat open replaces the previous.
+  document.querySelectorAll('.modal-back .satellite-preview-modal').forEach(box => {
+    const back = box.closest('.modal-back');
+    if (back && typeof back._navaidClose === 'function') back._navaidClose();
+    else if (back) back.remove();
+  });
   // Destroy the Leaflet map on close — otherwise each open/close leaks the
   // map instance, its zoomend listener, the cloned tile layers, and Leaflet's
   // internal window hooks (they keep referencing the detached modal DOM).
@@ -1609,15 +1615,21 @@ function showSatellitePreviewModal(point, label) {
 // route waypoint, each labelled and clickable to open the full satellite modal.
 function showRouteMosaicModal() {
   if (typeof createDraggableModal !== 'function') return;
+  // Dedupe like the other chart modals — a second press must not stack a copy.
+  if (typeof prepareChartModal === 'function') {
+    if (!prepareChartModal('mosaic')) return;
+  }
   const wps = (Array.isArray(state.waypoints) ? state.waypoints : [])
     .map((w, i) => ({ w, i }))
     .filter(({ w }) => w && Number.isFinite(Number(w.lat)) && Number.isFinite(Number(w.lng)));
   const modal = createDraggableModal(S.mosaicTitle || 'Route satellite mosaic',
-    'modal wide route-mosaic-modal', null, { nonBlocking: true });
+    'modal wide route-mosaic-modal',
+    typeof clearOpenChartModal === 'function' ? () => clearOpenChartModal('mosaic') : null,
+    { nonBlocking: true, chartKind: 'mosaic' });
   const body = document.createElement('div');
   body.className = 'route-mosaic-body';
 
-  // Layer picker (CVFR / Satellite / …) — defaults to satellite imagery.
+  // Toolbar: layer picker (CVFR / Satellite / …) + Print.
   const names = (typeof layers !== 'undefined') ? Object.keys(layers) : ['Satellite'];
   const bar = document.createElement('div');
   bar.className = 'route-mosaic-bar';
@@ -1631,10 +1643,24 @@ function showRouteMosaicModal() {
     sel.appendChild(o);
   }
   bar.appendChild(sel);
+  const printBtn = document.createElement('button');
+  printBtn.type = 'button';
+  printBtn.className = 'route-mosaic-print';
+  printBtn.textContent = S.mosaicPrint || '🖨 Print';
+  printBtn.onclick = () => {
+    document.body.classList.add('mosaic-print');
+    const cleanup = () => { document.body.classList.remove('mosaic-print'); window.removeEventListener('afterprint', cleanup); };
+    window.addEventListener('afterprint', cleanup);
+    window.print();
+    setTimeout(cleanup, 1000);   // fallback if afterprint never fires
+  };
+  bar.appendChild(printBtn);
   if (wps.length) body.appendChild(bar);
 
+  // LTR sequence regardless of UI language so the route order + arrows read
+  // left-to-right.
   const grid = document.createElement('div');
-  grid.className = 'route-mosaic-grid';
+  grid.className = 'route-mosaic-grid'; grid.dir = 'ltr';
 
   const render = () => {
     grid.textContent = '';
@@ -1646,7 +1672,7 @@ function showRouteMosaicModal() {
       return;
     }
     const layer = (typeof layers !== 'undefined') ? layers[sel.value] : null;
-    for (const { w, i } of wps) {
+    wps.forEach(({ w, i }, idx) => {
       const label = (typeof wpLabel === 'function') ? wpLabel(i) : (w.name || ('WP ' + (i + 1)));
       const point = { lat: Number(w.lat), lng: Number(w.lng) };
       const cell = document.createElement('button');
@@ -1663,7 +1689,15 @@ function showRouteMosaicModal() {
         if (typeof showSatellitePreviewModal === 'function') showSatellitePreviewModal(point, label);
       };
       grid.appendChild(cell);
-    }
+      // Direction arrow between consecutive waypoints.
+      if (idx < wps.length - 1) {
+        const arrow = document.createElement('span');
+        arrow.className = 'route-mosaic-arrow';
+        arrow.setAttribute('aria-hidden', 'true');
+        arrow.textContent = '→';
+        grid.appendChild(arrow);
+      }
+    });
   };
   sel.onchange = render;
   render();

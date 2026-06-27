@@ -2361,6 +2361,13 @@ async function ensureNotams() {
   refreshNotamListBtn();
 }
 function showNotamModal(only) {
+  // Dedupe — a repeat open (button or map click) replaces the existing list
+  // instead of stacking a second copy; also close the toolbar dropdowns.
+  document.querySelectorAll('.modal-back .notam-modal').forEach(b => {
+    const bk = b.closest('.modal-back');
+    if (bk) bk.remove();
+  });
+  if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
   const back = document.createElement('div');
   back.className = 'modal-back';
   const box = document.createElement('div');
@@ -3094,6 +3101,13 @@ function refreshMapAfterToolbarModeChange() {
       if (sec.classList.contains('open')) setSectionOpen(sec, false);
     }
   }
+  // Close every open section (any layout) — called when a modal opens so the
+  // toolbar dropdown doesn't sit on top of it.
+  window.closeToolbarMenus = function () {
+    for (const sec of sections) {
+      if (sec.classList.contains('open')) setSectionOpen(sec, false);
+    }
+  };
 
   for (const sec of sections) {
     const head = sec.querySelector('.tb-section-head');

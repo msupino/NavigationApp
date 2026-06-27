@@ -30,6 +30,31 @@ test('mosaic shows one labelled satellite preview per waypoint', async ({ page }
   await expect(modal.locator('.route-mosaic-cell .satellite-snippet')).toHaveCount(3);
   await expect(modal.locator('.route-mosaic-cell').first()
     .locator('.satellite-snippet img')).toHaveCount(9);
+  // Direction arrows between consecutive waypoints (n-1) + a print button.
+  await expect(modal.locator('.route-mosaic-arrow')).toHaveCount(2);
+  await expect(modal.locator('.route-mosaic-print')).toBeVisible();
+});
+
+test('pressing the mosaic button twice does not stack a second modal', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }];
+    if (typeof syncLegs === 'function') syncLegs();
+  });
+  await page.evaluate(() => document.getElementById('mosaic-btn').click());
+  await page.evaluate(() => document.getElementById('mosaic-btn').click());
+  await expect(page.locator('.route-mosaic-modal')).toHaveCount(1);
+});
+
+test('opening the mosaic closes the toolbar dropdown', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    const sec = document.querySelector('.tb-section[data-sec="charts"]');
+    sec.classList.add('open');
+  });
+  await page.evaluate(() => document.getElementById('mosaic-btn').click());
+  await expect(page.locator('.tb-section[data-sec="charts"].open')).toHaveCount(0);
+  await expect(page.locator('.route-mosaic-modal')).toBeVisible();
 });
 
 test('mosaic layer selector switches the preview tile source', async ({ page }) => {
