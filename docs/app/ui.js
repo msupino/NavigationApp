@@ -1651,7 +1651,10 @@ document.getElementById('file').onchange = e => {
 };
 document.getElementById('fit').onclick = fitView;
 document.getElementById('fly').onclick = flyRoute;
-document.getElementById('plan').onclick = showFlightPlan;
+document.getElementById('plan').onclick = () => {
+  if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
+  showFlightPlan();
+};
 document.getElementById('freq-table').onclick = showFreqTableModal;
 document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
 document.getElementById('charts').onclick = showChartsModal;
@@ -3982,9 +3985,13 @@ function imsNearestTimeIndex(times) {
 
   function open() {
     if (back || !manifest) return;   // open even with zero times (show broken)
-    if (typeof closeToolbarDesktopMenus === 'function') closeToolbarDesktopMenus();
+    // Behave like every chart: close other open charts + the toolbar dropdowns.
+    if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
+    if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
     back = document.createElement('div');
     back.className = 'modal-back';
+    back.dataset.chartModal = 'sigwx';
+    back._navaidClose = close;
     const box = document.createElement('div');
     box.className = 'modal wide sigwx-modal';
     box.setAttribute('role', 'dialog');
@@ -4079,9 +4086,12 @@ function imsNearestTimeIndex(times) {
 
   function open() {
     if (back || !manifest) return;
-    if (typeof closeToolbarDesktopMenus === 'function') closeToolbarDesktopMenus();
+    if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
+    if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
     back = document.createElement('div');
     back.className = 'modal-back';
+    back.dataset.chartModal = 'pwx';
+    back._navaidClose = close;
     const box = document.createElement('div');
     box.className = 'modal wide sigwx-modal';
     box.setAttribute('role', 'dialog');
