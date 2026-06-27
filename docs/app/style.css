@@ -680,6 +680,14 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
     text-align-last: start;
   }
 
+  /* Extra-layers cards mirror the buttons: flat (no border/fill) in the desktop
+     dropdown; the light-theme override below re-adds the same border buttons
+     get in light mode. Keeps every menu looking identical. */
+  #toolbar .tb-section-body .tb-group-box {
+    border-color: transparent;
+    background: transparent;
+  }
+
   #toolbar .tb-section-body button:hover,
   #toolbar .tb-section-body #export-select:hover,
   #toolbar .tb-section-body .navtoggle:hover {
@@ -3399,8 +3407,9 @@ body.theme-light #tuning-panel input[type="color"] {
   background: #fff;
   border-color: #b8c0cc;
 }
-/* Extra-layers cards share the buttons' light-theme border. */
-body.theme-light .tb-group-box { border-color: #b8c0cc; }
+/* Extra-layers cards share the buttons' light-theme border (specificity must
+   beat the desktop media rule that flattens them in dark). */
+body.theme-light #toolbar .tb-group-box { border-color: #b8c0cc; }
 body.theme-light #toolbar button:hover,
 body.theme-light #toolbar .slider-reset:hover,
 body.theme-light #toolbar #wpname-rot:hover,
