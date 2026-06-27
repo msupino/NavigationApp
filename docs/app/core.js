@@ -616,6 +616,7 @@ window.S = Object.assign({
   mosaicOpen: 'Open map view',
   mosaicLayer: 'Mosaic layer',
   mosaicZoom: 'Zoom',
+  mosaicSize: 'Size',
   mosaicPrint: '🖨 Print',
   tbNotamTime: 'Time',
   tbNotamTimeTitle: 'Scrub forward to see which NOTAMs are active at a future time (hours from now)',

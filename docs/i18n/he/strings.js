@@ -139,6 +139,7 @@ window.S = {
   mosaicOpen: 'פתח תצוגת מפה',
   mosaicLayer: 'שכבת הפסיפס',
   mosaicZoom: 'זום',
+  mosaicSize: 'גודל',
   mosaicPrint: '🖨 הדפס',
   tbNotamTime: 'זמן',
   tbNotamTimeTitle: 'הזז קדימה כדי לראות אילו NOTAM פעילים בזמן עתידי (שעות מעכשיו)',
