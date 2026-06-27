@@ -2409,10 +2409,34 @@ function applyLegAltitudeToLeg(i) {
   delete leg._legAltitudeOneWay;
   return changed;
 }
+// Identity of a leg's two endpoints (rounded coords). Used to detect when a
+// waypoint was moved/snapped to a different point so a hand-edited altitude
+// doesn't carry the old leg's in/out onto the new one.
+function legEndpointSig(i) {
+  const a = state.waypoints[i], b = state.waypoints[i + 1];
+  if (!a || !b) return '';
+  return r5(a.lat) + ',' + r5(a.lng) + '|' + r5(b.lat) + ',' + r5(b.lng);
+}
 function applyLegAltitudesToRoute() {
   let changed = false;
   for (let i = 0; i < state.legs.length; i++) {
+    const leg = state.legs[i];
+    const sig = legEndpointSig(i);
+    if (leg && !leg._legAltitudeAuto) {
+      // Manual altitude: keep it — unless the leg's endpoints changed (a
+      // waypoint moved/snapped elsewhere), in which case re-derive from the
+      // dataset rather than keeping the previous leg's in/out.
+      if (leg._altSig === undefined) {
+        leg._altSig = sig;                 // adopt current; don't clobber on load
+      } else if (leg._altSig !== sig) {
+        leg._legAltitudeAuto = 1;          // endpoints changed → back to auto
+        if (applyLegAltitudeToLeg(i)) changed = true;
+        leg._altSig = sig;
+      }
+      continue;
+    }
     if (applyLegAltitudeToLeg(i)) changed = true;
+    if (leg) leg._altSig = sig;
   }
   return changed;
 }
@@ -2424,6 +2448,7 @@ function markLegAltitudeManual(i) {
   delete leg._legAltitudeInboundBlocked;
   delete leg._legAltitudeOutboundBlocked;
   delete leg._legAltitudeOneWay;
+  leg._altSig = legEndpointSig(i);         // remember which endpoints this value is for
 }
 function legAllowsReturn(i) {
   const leg = state.legs[i];
