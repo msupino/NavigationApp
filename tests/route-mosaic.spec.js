@@ -35,6 +35,23 @@ test('mosaic shows one labelled satellite preview per waypoint', async ({ page }
   await expect(modal.locator('.route-mosaic-print')).toBeVisible();
 });
 
+test('mosaic zoom slider re-renders previews at the chosen zoom', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }];
+    if (typeof syncLegs === 'function') syncLegs();
+  });
+  await page.evaluate(() => document.getElementById('mosaic-btn').click());
+  const modal = page.locator('.route-mosaic-modal');
+  const zoom = modal.locator('.route-mosaic-zoom input[type="range"]');
+  await expect(zoom).toBeVisible();
+  await zoom.fill('11');
+  await zoom.dispatchEvent('input');
+  // Esri tile URLs embed the zoom: .../tile/{z}/{y}/{x}.
+  await expect.poll(async () => modal.locator('.satellite-snippet img').first()
+    .getAttribute('src')).toContain('/tile/11/');
+});
+
 test('pressing the mosaic button twice does not stack a second modal', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {

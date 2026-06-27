@@ -1236,6 +1236,17 @@ function hookSatelliteSnippetRotation() {
   map.on('rotateend', update);
 }
 
+// Plain-text attribution from a (possibly HTML) Leaflet attribution string.
+// DOMParser extracts text without executing anything — avoids fragile regex
+// tag-stripping (CodeQL: incomplete multi-character sanitization).
+function attributionText(html) {
+  try {
+    return (new DOMParser().parseFromString(String(html), 'text/html')
+      .body.textContent || '').trim();
+  } catch (e) {
+    return '';
+  }
+}
 function buildSatelliteSnippet(point, opts = {}) {
   const lat = Number(point && point.lat);
   const lng = Number(point && point.lng);
@@ -1249,8 +1260,11 @@ function buildSatelliteSnippet(point, opts = {}) {
     (layer.options.maxNativeZoom || layer.options.maxZoom)) || tune('satellitePreviewZoom');
   const width = expanded ? Math.max(300, Math.min(620, window.innerWidth - 64)) : tune('satellitePreviewWidthPx');
   const height = expanded ? Math.max(220, Math.min(420, window.innerHeight - 180)) : tune('satellitePreviewHeightPx');
+  // Non-expanded previews honour an explicit opts.zoom (mosaic zoom slider),
+  // capped at the layer's max native zoom.
+  const baseZoom = Number.isFinite(opts.zoom) ? opts.zoom : tune('satellitePreviewZoom');
   const z = expanded ? clampSatelliteZoom(opts.zoom)
-    : Math.min(tune('satellitePreviewZoom'), layerMaxZoom);
+    : Math.max(1, Math.min(baseZoom, layerMaxZoom));
   const p = satelliteTilePoint(lat, lng, z);
   const centerTileX = Math.floor(p.x);
   const centerTileY = Math.floor(p.y);
@@ -1292,7 +1306,7 @@ function buildSatelliteSnippet(point, opts = {}) {
   const attr = document.createElement('span');
   attr.className = 'satellite-attribution';
   attr.textContent = (layer && layer.options && layer.options.attribution)
-    ? String(layer.options.attribution).replace(/<[^>]*>/g, '').trim()
+    ? attributionText(layer.options.attribution)
     : (S.satelliteAttribution || 'Imagery © Esri');
   snippet.appendChild(attr);
   return snippet;
@@ -1643,6 +1657,19 @@ function showRouteMosaicModal() {
     sel.appendChild(o);
   }
   bar.appendChild(sel);
+  // Zoom slider — same close-in zoom applied to every preview.
+  const zoomWrap = document.createElement('label');
+  zoomWrap.className = 'route-mosaic-zoom';
+  const zoomLbl = document.createElement('span');
+  zoomLbl.textContent = S.mosaicZoom || 'Zoom';
+  const zoom = document.createElement('input');
+  zoom.type = 'range'; zoom.min = '8'; zoom.max = '18'; zoom.step = '1';
+  zoom.value = String(tune('satellitePreviewZoom'));
+  const zoomVal = document.createElement('span');
+  zoomVal.className = 'route-mosaic-zoom-val';
+  zoomVal.textContent = zoom.value;
+  zoomWrap.appendChild(zoomLbl); zoomWrap.appendChild(zoom); zoomWrap.appendChild(zoomVal);
+  bar.appendChild(zoomWrap);
   const printBtn = document.createElement('button');
   printBtn.type = 'button';
   printBtn.className = 'route-mosaic-print';
@@ -1672,6 +1699,7 @@ function showRouteMosaicModal() {
       return;
     }
     const layer = (typeof layers !== 'undefined') ? layers[sel.value] : null;
+    const zoomLevel = parseInt(zoom.value, 10) || tune('satellitePreviewZoom');
     wps.forEach(({ w, i }, idx) => {
       const label = (typeof wpLabel === 'function') ? wpLabel(i) : (w.name || ('WP ' + (i + 1)));
       const point = { lat: Number(w.lat), lng: Number(w.lng) };
@@ -1683,7 +1711,7 @@ function showRouteMosaicModal() {
       cap.className = 'route-mosaic-label'; cap.dir = 'auto';
       cap.textContent = label;
       cell.appendChild(cap);
-      const snippet = buildSatelliteSnippet(point, { layer });
+      const snippet = buildSatelliteSnippet(point, { layer, zoom: zoomLevel });
       if (snippet) cell.appendChild(snippet);
       cell.onclick = () => {
         if (typeof showSatellitePreviewModal === 'function') showSatellitePreviewModal(point, label);
@@ -1700,6 +1728,7 @@ function showRouteMosaicModal() {
     });
   };
   sel.onchange = render;
+  zoom.oninput = () => { zoomVal.textContent = zoom.value; render(); };
   render();
   body.appendChild(grid);
   modal.box.appendChild(body);
