@@ -2400,6 +2400,12 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
 }
 /* Route satellite mosaic (Charts → Satellite mosaic) */
 .route-mosaic-body { padding: 4px 2px 2px; }
+.route-mosaic-bar { margin: 0 2px 8px; }
+.route-mosaic-layer {
+  font: inherit; font-size: 12px; padding: 4px 8px; border-radius: 5px;
+  border: 1px solid #4a4545; background: #2b2727; color: #ddd; cursor: pointer;
+}
+body.theme-light .route-mosaic-layer { border-color: #c6ccd6; background: #eef1f6; color: #2b3340; }
 .route-mosaic-empty { padding: 16px; opacity: 0.7; }
 .route-mosaic-grid {
   display: grid;

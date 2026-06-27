@@ -137,6 +137,7 @@ window.S = {
   mosaicTitle: 'פסיפס לוויין של המסלול',
   mosaicEmpty: 'הוסיפו תחילה נקודות מסלול.',
   mosaicOpen: 'פתח תצוגת לוויין',
+  mosaicLayer: 'שכבת הפסיפס',
   tbNotamTime: 'זמן',
   tbNotamTimeTitle: 'הזז קדימה כדי לראות אילו NOTAM פעילים בזמן עתידי (שעות מעכשיו)',
   notamTimeNow: 'עכשיו',

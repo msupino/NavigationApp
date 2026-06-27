@@ -32,6 +32,26 @@ test('mosaic shows one labelled satellite preview per waypoint', async ({ page }
     .locator('.satellite-snippet img')).toHaveCount(9);
 });
 
+test('mosaic layer selector switches the preview tile source', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }];
+    if (typeof syncLegs === 'function') syncLegs();
+  });
+  await page.evaluate(() => document.getElementById('mosaic-btn').click());
+  const modal = page.locator('.route-mosaic-modal');
+  const sel = modal.locator('.route-mosaic-layer');
+  await expect(sel).toBeVisible();
+  // Defaults to Satellite (Esri imagery).
+  await expect(sel).toHaveValue('Satellite');
+  expect(await modal.locator('.satellite-snippet img').first().getAttribute('src'))
+    .toContain('World_Imagery');
+  // Switch to CVFR → previews load flight-maps chart tiles instead.
+  await sel.selectOption('CVFR');
+  await expect.poll(async () => modal.locator('.satellite-snippet img').first()
+    .getAttribute('src')).toContain('flight-maps.com/tiles/cvfr');
+});
+
 test('clicking a mosaic cell opens the satellite view for that waypoint', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => {

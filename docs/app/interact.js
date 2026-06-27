@@ -1241,9 +1241,16 @@ function buildSatelliteSnippet(point, opts = {}) {
   const lng = Number(point && point.lng);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   const expanded = !!opts.expanded;
+  // Optional base layer (CVFR / Navigation / Satellite / …) — defaults to the
+  // satellite imagery. Any Leaflet tileLayer from `layers` works via
+  // tileLayerUrl(); chart layers cap out lower (maxNativeZoom 12–13).
+  const layer = opts.layer || (typeof layers !== 'undefined' ? layers.Satellite : null);
+  const layerMaxZoom = (layer && layer.options &&
+    (layer.options.maxNativeZoom || layer.options.maxZoom)) || tune('satellitePreviewZoom');
   const width = expanded ? Math.max(300, Math.min(620, window.innerWidth - 64)) : tune('satellitePreviewWidthPx');
   const height = expanded ? Math.max(220, Math.min(420, window.innerHeight - 180)) : tune('satellitePreviewHeightPx');
-  const z = expanded ? clampSatelliteZoom(opts.zoom) : tune('satellitePreviewZoom');
+  const z = expanded ? clampSatelliteZoom(opts.zoom)
+    : Math.min(tune('satellitePreviewZoom'), layerMaxZoom);
   const p = satelliteTilePoint(lat, lng, z);
   const centerTileX = Math.floor(p.x);
   const centerTileY = Math.floor(p.y);
@@ -1267,7 +1274,9 @@ function buildSatelliteSnippet(point, opts = {}) {
       img.alt = '';
       img.loading = 'lazy';
       img.decoding = 'async';
-      img.src = satelliteTileUrl(z, tileX, tileY);
+      img.src = (layer && typeof tileLayerUrl === 'function')
+        ? tileLayerUrl(layer, { x: tileX, y: tileY, z })
+        : satelliteTileUrl(z, tileX, tileY);
       img.style.left = ((centerTileX + dx) * SATELLITE_TILE_SIZE - globalX + width / 2) + 'px';
       img.style.top = ((centerTileY + dy) * SATELLITE_TILE_SIZE - globalY + height / 2) + 'px';
       tiles.appendChild(img);
@@ -1282,7 +1291,9 @@ function buildSatelliteSnippet(point, opts = {}) {
   snippet.appendChild(cross);
   const attr = document.createElement('span');
   attr.className = 'satellite-attribution';
-  attr.textContent = S.satelliteAttribution || 'Imagery © Esri';
+  attr.textContent = (layer && layer.options && layer.options.attribution)
+    ? String(layer.options.attribution).replace(/<[^>]*>/g, '').trim()
+    : (S.satelliteAttribution || 'Imagery © Esri');
   snippet.appendChild(attr);
   return snippet;
 }
@@ -1605,14 +1616,36 @@ function showRouteMosaicModal() {
     'modal wide route-mosaic-modal', null, { nonBlocking: true });
   const body = document.createElement('div');
   body.className = 'route-mosaic-body';
-  if (!wps.length) {
-    const empty = document.createElement('div');
-    empty.className = 'route-mosaic-empty';
-    empty.textContent = S.mosaicEmpty || 'Add route waypoints first.';
-    body.appendChild(empty);
-  } else {
-    const grid = document.createElement('div');
-    grid.className = 'route-mosaic-grid';
+
+  // Layer picker (CVFR / Satellite / …) — defaults to satellite imagery.
+  const names = (typeof layers !== 'undefined') ? Object.keys(layers) : ['Satellite'];
+  const bar = document.createElement('div');
+  bar.className = 'route-mosaic-bar';
+  const sel = document.createElement('select');
+  sel.className = 'route-mosaic-layer'; sel.dir = 'ltr';
+  sel.setAttribute('aria-label', S.mosaicLayer || 'Mosaic layer');
+  for (const nm of names) {
+    const o = document.createElement('option');
+    o.value = nm; o.textContent = nm;
+    if (nm === 'Satellite') o.selected = true;
+    sel.appendChild(o);
+  }
+  bar.appendChild(sel);
+  if (wps.length) body.appendChild(bar);
+
+  const grid = document.createElement('div');
+  grid.className = 'route-mosaic-grid';
+
+  const render = () => {
+    grid.textContent = '';
+    if (!wps.length) {
+      const empty = document.createElement('div');
+      empty.className = 'route-mosaic-empty';
+      empty.textContent = S.mosaicEmpty || 'Add route waypoints first.';
+      grid.appendChild(empty);
+      return;
+    }
+    const layer = (typeof layers !== 'undefined') ? layers[sel.value] : null;
     for (const { w, i } of wps) {
       const label = (typeof wpLabel === 'function') ? wpLabel(i) : (w.name || ('WP ' + (i + 1)));
       const point = { lat: Number(w.lat), lng: Number(w.lng) };
@@ -1624,15 +1657,17 @@ function showRouteMosaicModal() {
       cap.className = 'route-mosaic-label'; cap.dir = 'auto';
       cap.textContent = label;
       cell.appendChild(cap);
-      const snippet = buildSatelliteSnippet(point);
+      const snippet = buildSatelliteSnippet(point, { layer });
       if (snippet) cell.appendChild(snippet);
       cell.onclick = () => {
         if (typeof showSatellitePreviewModal === 'function') showSatellitePreviewModal(point, label);
       };
       grid.appendChild(cell);
     }
-    body.appendChild(grid);
-  }
+  };
+  sel.onchange = render;
+  render();
+  body.appendChild(grid);
   modal.box.appendChild(body);
   modal.show();
 }
