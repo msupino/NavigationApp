@@ -614,10 +614,77 @@ function buildNotamRouteLines() {
   if (!Array.isArray(notams)) return;
   for (const n of notams) { if (n) { n._routeLines = null; notamRouteLines(n); } }
 }
+// --- NOTAM "flash" (blink a single NOTAM on the map) --------------------
+// Clicking a NOTAM in the list pulses its area/line/airport badge for a couple
+// of seconds so the eye can find it. State lives here; drawNotams reads it.
+let notamFlashId = null, notamFlashStart = 0, notamFlashRAF = 0;
+const NOTAM_FLASH_MS = 2600;
+// Pulse alpha 0..1 for the currently flashing NOTAM, or 0 when idle.
+function notamFlashPulse() {
+  if (!notamFlashId) return 0;
+  const t = performance.now() - notamFlashStart;
+  return 0.35 + 0.65 * Math.abs(Math.sin(t / 170));
+}
+// Does a NOTAM have anything to show on the map (area / route line / a known
+// airport for its ICAO)? FIR-wide (LLLL) ones don't.
+function notamMappable(n) {
+  if (!n) return false;
+  if (n.geom) return true;
+  if (Array.isArray(n._routeLines) && n._routeLines.length) return true;
+  if (n.icao && Array.isArray(airfields)) {
+    const af = airfields.find(a => a.name === n.icao);
+    if (af && Number.isFinite(af.lat) && Number.isFinite(af.lng)) return true;
+  }
+  return false;
+}
+// Collect a NOTAM's map points (polygon/line/circle perimeter, route lines, or
+// its airport) so the view can be framed on it.
+function notamLatLngs(n) {
+  const out = [];
+  const push = (lat, lng) => { if (Number.isFinite(lat) && Number.isFinite(lng)) out.push([lat, lng]); };
+  const g = n && n.geom;
+  if (g && g.type === 'polygon' && Array.isArray(g.coords)) g.coords.forEach(c => push(c[0], c[1]));
+  else if (g && g.type === 'line' && Array.isArray(g.coords)) g.coords.forEach(c => push(c[0], c[1]));
+  else if (g && g.type === 'circle' && Number.isFinite(g.lat) && Number.isFinite(g.lng) &&
+           Number.isFinite(g.radiusNm)) notamCirclePoints(g.lat, g.lng, g.radiusNm).forEach(c => push(c[0], c[1]));
+  if (Array.isArray(n && n._routeLines)) n._routeLines.forEach(rl => (rl.coords || []).forEach(c => push(c[0], c[1])));
+  if (!out.length && n && n.icao && Array.isArray(airfields)) {
+    const af = airfields.find(a => a.name === n.icao);
+    if (af) push(af.lat, af.lng);
+  }
+  return out;
+}
+function flashNotam(id) {
+  if (!id) return;
+  // Frame the map on the NOTAM so the highlight is actually in view.
+  const n = Array.isArray(notams) ? notams.find(x => x && x.id === id) : null;
+  const pts = n ? notamLatLngs(n) : [];
+  if (typeof map !== 'undefined' && map && pts.length) {
+    if (pts.length === 1) map.setView(pts[0], Math.max(map.getZoom(), 10), { animate: true });
+    else map.fitBounds(L.latLngBounds(pts), { padding: [80, 80], maxZoom: 11, animate: true });
+  }
+  notamFlashId = id;
+  notamFlashStart = performance.now();
+  if (notamFlashRAF) cancelAnimationFrame(notamFlashRAF);
+  const step = () => {
+    draw();
+    if (performance.now() - notamFlashStart < NOTAM_FLASH_MS) {
+      notamFlashRAF = requestAnimationFrame(step);
+    } else {
+      notamFlashId = null; notamFlashRAF = 0; draw();
+    }
+  };
+  notamFlashRAF = requestAnimationFrame(step);
+}
+window.flashNotam = flashNotam;
+window.notamMappable = notamMappable;
 function drawNotams() {
   octx.save();
   const col = tune('notamColor');
   const divCol = tune('notamDivertColor');
+  const flashId = notamFlashId;
+  const flashPulse = notamFlashPulse();
+  const flashCol = '#ffd400';
   for (const n of activeNotams()) {
     // Resolved route lines (named-fix closures / diversions). Closed = solid
     // NOTAM colour; diverted = dashed divert colour, drawn distinctly.
@@ -640,6 +707,11 @@ function drawNotams() {
       octx.lineJoin = 'round'; octx.lineCap = 'round';
       octx.stroke();
       octx.setLineDash([]);
+      if (flashId && n.id === flashId) {
+        octx.lineWidth = tune('notamRouteWidthPx') + 5;
+        octx.strokeStyle = colorWithAlpha(flashCol, flashPulse);
+        octx.stroke();
+      }
       if (n.id) {
         const mid = lp[Math.floor(lp.length / 2)];
         octx.font = 'bold 11px sans-serif';
@@ -665,6 +737,11 @@ function drawNotams() {
       octx.strokeStyle = col;
       octx.stroke();
       octx.setLineDash([]);
+      if (flashId && n.id === flashId) {
+        octx.lineWidth = tune('notamLineWidthPx') + 5;
+        octx.strokeStyle = colorWithAlpha(flashCol, flashPulse);
+        octx.stroke();
+      }
       continue;
     }
     let ll = null;
@@ -687,6 +764,11 @@ function drawNotams() {
     octx.strokeStyle = col;
     octx.stroke();
     octx.setLineDash([]);
+    if (flashId && n.id === flashId) {
+      octx.lineWidth = tune('notamLineWidthPx') + 5;
+      octx.strokeStyle = colorWithAlpha(flashCol, flashPulse);
+      octx.stroke();
+    }
     let cx = 0, cy = 0;
     for (const p of pts) { cx += p.x; cy += p.y; }
     cx /= pts.length; cy /= pts.length;
@@ -719,10 +801,19 @@ function drawNotamAirportMarkers() {
     (byIcao[c] = byIcao[c] || []).push(n);
   }
   const col = tune('notamColor');
+  const flashId = notamFlashId;
+  const flashPulse = notamFlashPulse();
   for (const code in byIcao) {
     const af = airfields.find(a => a.name === code);
     if (!af || !Number.isFinite(af.lat) || !Number.isFinite(af.lng)) continue;   // FIR (LLLL) etc. → list only
     const p = proj({ lat: af.lat, lng: af.lng });
+    if (flashId && byIcao[code].some(n => n.id === flashId)) {
+      octx.beginPath();
+      octx.arc(p.x, p.y + 14, 15, 0, 2 * Math.PI);   // pulsing halo around the badge
+      octx.lineWidth = 4;
+      octx.strokeStyle = colorWithAlpha('#ffd400', flashPulse);
+      octx.stroke();
+    }
     octx.beginPath();
     octx.arc(p.x, p.y + 14, 9, 0, 2 * Math.PI);    // offset below the field marker
     octx.fillStyle = colorWithAlpha(col, 0.92);

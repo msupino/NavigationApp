@@ -612,6 +612,15 @@ window.S = Object.assign({
   tbShowNotamTitle: 'Overlay active NOTAM areas for the Israel FIR (LLLL). Click “NOTAM list” for the full texts. Planning aid only.',
   tbNotamList: '📋 NOTAM list',
   tbNotamListTitle: 'Show all active NOTAMs for the Israel FIR as text',
+  tbMosaic: '🛰 Mosaic',
+  tbMosaicTitle: 'A grid of map previews, one per route waypoint',
+  mosaicTitle: 'Route mosaic',
+  mosaicEmpty: 'Add route waypoints first.',
+  mosaicOpen: 'Open map view',
+  mosaicLayer: 'Mosaic layer',
+  mosaicZoom: 'Zoom',
+  mosaicSize: 'Size',
+  mosaicPrint: '🖨 Print',
   tbNotamTime: 'Time',
   tbNotamTimeTitle: 'Scrub forward to see which NOTAMs are active at a future time (hours from now)',
   notamTimeNow: 'Now',
@@ -622,6 +631,10 @@ window.S = Object.assign({
   notamUpdated: function(t) { return 'Updated ' + t; },
   notamRaw: 'Raw',
   notamDecoded: 'Decoded',
+  notamFilterLabel: 'Filter NOTAMs by airfield',
+  notamFilterAll: 'All',
+  notamFilterGlobal: 'Global (FIR)',
+  notamShowOnMap: 'Show on map',
   sigmetReadout: function(n) { return '⚠ ' + n + ' SIGMET'; },
   sigmetNone: 'No SIGMET in effect',
   sigmetUpdated: function(t) { return 'SIGMET updated ' + t; },
@@ -980,7 +993,7 @@ window.S = Object.assign({
   tbSecView: '👁 View/Set',
   tbSecCharts: '📋 Charts',
   tbSecExport: '📤 Export/import',
-  tbSecWeather: 'ℹ️ Information',
+  tbSecWeather: '🗂 Extra layers',
   tbSecSim: '✈ Simulator',
   tbSimConnect: 'Connect to simulator',
   tbSimDisconnect: 'Disconnect from simulator',
@@ -2408,10 +2421,34 @@ function applyLegAltitudeToLeg(i) {
   delete leg._legAltitudeOneWay;
   return changed;
 }
+// Identity of a leg's two endpoints (rounded coords). Used to detect when a
+// waypoint was moved/snapped to a different point so a hand-edited altitude
+// doesn't carry the old leg's in/out onto the new one.
+function legEndpointSig(i) {
+  const a = state.waypoints[i], b = state.waypoints[i + 1];
+  if (!a || !b) return '';
+  return r5(a.lat) + ',' + r5(a.lng) + '|' + r5(b.lat) + ',' + r5(b.lng);
+}
 function applyLegAltitudesToRoute() {
   let changed = false;
   for (let i = 0; i < state.legs.length; i++) {
+    const leg = state.legs[i];
+    const sig = legEndpointSig(i);
+    if (leg && !leg._legAltitudeAuto) {
+      // Manual altitude: keep it — unless the leg's endpoints changed (a
+      // waypoint moved/snapped elsewhere), in which case re-derive from the
+      // dataset rather than keeping the previous leg's in/out.
+      if (leg._altSig === undefined) {
+        leg._altSig = sig;                 // adopt current; don't clobber on load
+      } else if (leg._altSig !== sig) {
+        leg._legAltitudeAuto = 1;          // endpoints changed → back to auto
+        if (applyLegAltitudeToLeg(i)) changed = true;
+        leg._altSig = sig;
+      }
+      continue;
+    }
     if (applyLegAltitudeToLeg(i)) changed = true;
+    if (leg) leg._altSig = sig;
   }
   return changed;
 }
@@ -2423,6 +2460,7 @@ function markLegAltitudeManual(i) {
   delete leg._legAltitudeInboundBlocked;
   delete leg._legAltitudeOutboundBlocked;
   delete leg._legAltitudeOneWay;
+  leg._altSig = legEndpointSig(i);         // remember which endpoints this value is for
 }
 function legAllowsReturn(i) {
   const leg = state.legs[i];

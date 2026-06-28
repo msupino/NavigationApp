@@ -1651,10 +1651,17 @@ document.getElementById('file').onchange = e => {
 };
 document.getElementById('fit').onclick = fitView;
 document.getElementById('fly').onclick = flyRoute;
-document.getElementById('plan').onclick = showFlightPlan;
+document.getElementById('plan').onclick = () => {
+  if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
+  showFlightPlan();
+};
 document.getElementById('freq-table').onclick = showFreqTableModal;
 document.getElementById('alt-pairs').onclick = showAltitudePairsModal;
 document.getElementById('charts').onclick = showChartsModal;
+(function () {
+  const mb = document.getElementById('mosaic-btn');
+  if (mb) mb.onclick = () => { if (typeof showRouteMosaicModal === 'function') showRouteMosaicModal(); };
+}());
 const gpsBtn = document.getElementById('gps-record');
 if (gpsBtn) {
   if (!navigator.geolocation) { gpsBtn.disabled = true; }
@@ -2152,8 +2159,8 @@ if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
     if (!timeVal || !store) return;
     const off = timeSlider ? (parseInt(timeSlider.value, 10) || 0) : 0;
     const t = store.times[absIndex()];                // 'YYYY-MM-DDThh:00' UTC
-    const hh = t ? t.slice(11, 16) + 'Z' : '';
-    timeVal.textContent = (off === 0 ? hh : hh + ' +' + off + 'h');
+    const clock = t ? fmtViewClock(new Date(t + 'Z')) : '';
+    timeVal.textContent = fmtViewTime(off, clock);
   }
 
   async function addLayer() {
@@ -2330,12 +2337,26 @@ function refreshNotamListBtn() {
     notamUpdatedEl.textContent = txt;
   }
 }
-// Slider readout: 0 = live "now", otherwise "+Nh · MM-DD HH:MMZ".
+// Shared time-slider clock: "HH:MMZ", prefixed with "MM-DD " when the instant
+// falls on a different UTC date than today. Used by every look-ahead slider so
+// they read identically.
+function fmtViewClock(d) {
+  if (!d || isNaN(d)) return '';
+  const iso = d.toISOString();
+  const hm = iso.slice(11, 16) + 'Z';
+  return iso.slice(0, 10) === new Date().toISOString().slice(0, 10)
+    ? hm
+    : iso.slice(5, 10) + ' ' + hm;
+}
+// Unified look-ahead readout: base (0) shows the clock; an offset shows
+// "+Nh · <clock>".
+function fmtViewTime(h, clock) {
+  if (!h) return clock;
+  return S.notamTimeAt ? S.notamTimeAt(h, clock) : ('+' + h + 'h · ' + clock);
+}
+// Slider readout: 0 = clock of now, otherwise "+Nh · HH:MMZ".
 function notamTimeLabel(h) {
-  if (!h) return S.notamTimeNow || 'Now';
-  const d = new Date(Date.now() + h * 3600e3);
-  const t = d.toISOString().slice(5, 16).replace('T', ' ') + 'Z';
-  return S.notamTimeAt ? S.notamTimeAt(h, t) : ('+' + h + 'h ' + t);
+  return fmtViewTime(h, fmtViewClock(new Date(Date.now() + h * 3600e3)));
 }
 function syncNotamTime() {
   const h = notamTimeEl ? (parseInt(notamTimeEl.value, 10) || 0) : 0;
@@ -2370,8 +2391,14 @@ async function ensureNotams() {
   refreshNotamListBtn();
 }
 function showNotamModal(only) {
+  // Behave like every other chart modal: opening closes any other open chart
+  // modal (and a prior NOTAM list, since it's tagged below) + the toolbar
+  // dropdowns. One chart on screen at a time.
+  if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
+  if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
   const back = document.createElement('div');
   back.className = 'modal-back';
+  back.dataset.chartModal = 'notam-list';
   const box = document.createElement('div');
   box.className = 'modal wide notam-modal';
   const close = document.createElement('button');
@@ -2399,15 +2426,27 @@ function showNotamModal(only) {
     if (!isNaN(t)) u.textContent = (S.notamUpdated ? S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z') : '');
     box.appendChild(u);
   }
+  // Airfield/global filter. Every NOTAM carries an ICAO: LLLL = FIR-wide
+  // (global); anything else is aerodrome-specific. Build a dropdown of the
+  // codes present so the list can be narrowed to one airfield (or globals).
+  let filterIcao = '';
+  const codes = Array.from(new Set(
+    shown.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
   const list = document.createElement('div');
   list.className = 'notam-list';
-  if (!shown.length) {
-    const e = document.createElement('div');
-    e.className = 'notam-empty';
-    e.textContent = S.notamNone || 'No active NOTAMs.';
-    list.appendChild(e);
-  } else {
-    for (const n of shown) {
+  const renderList = () => {
+    list.textContent = '';
+    const subset = filterIcao
+      ? shown.filter(n => String(n.icao || '').toUpperCase() === filterIcao)
+      : shown;
+    if (!subset.length) {
+      const e = document.createElement('div');
+      e.className = 'notam-empty';
+      e.textContent = S.notamNone || 'No active NOTAMs.';
+      list.appendChild(e);
+      return;
+    }
+    for (const n of subset) {
       const it = document.createElement('div');
       it.className = 'notam-item';
       const id = document.createElement('div');
@@ -2417,10 +2456,50 @@ function showNotamModal(only) {
       tx.className = 'notam-text'; tx.dir = 'ltr';
       tx._raw = n.text || '';
       tx._decoded = (typeof decodeNotam === 'function') ? decodeNotam(n) : tx._raw;
-      tx.textContent = tx._decoded;
+      tx.textContent = rawMode ? tx._raw : tx._decoded;
       it.appendChild(id); it.appendChild(tx);
+      // Clicking a NOTAM that has a map presence closes the modal, turns the
+      // overlay on if needed, and blinks it on the map.
+      if (typeof notamMappable === 'function' && notamMappable(n)) {
+        it.classList.add('notam-item-clickable');
+        it.title = S.notamShowOnMap || 'Show on map';
+        it.onclick = () => {
+          if (!window.showNotam) {
+            window.showNotam = true;
+            try { localStorage.setItem(NOTAM_KEY, '1'); } catch (err) { /* */ }
+            if (notamCb) notamCb.checked = true;
+          }
+          dismiss();
+          if (typeof flashNotam === 'function') flashNotam(n.id);
+        };
+      }
       list.appendChild(it);
     }
+  };
+  if (codes.length > 1) {
+    const fw = document.createElement('div');
+    fw.className = 'notam-filter';
+    const sel = document.createElement('select');
+    sel.className = 'notam-filter-sel'; sel.dir = 'ltr';
+    sel.setAttribute('aria-label', S.notamFilterLabel || 'Filter NOTAMs by airfield');
+    const optAll = document.createElement('option');
+    optAll.value = '';
+    optAll.textContent = (S.notamFilterAll || 'All') + ' (' + shown.length + ')';
+    sel.appendChild(optAll);
+    // Global (LLLL) first, then aerodromes alphabetically.
+    const ordered = codes.slice().sort((a, b) =>
+      (a === 'LLLL' ? -1 : b === 'LLLL' ? 1 : a.localeCompare(b)));
+    for (const c of ordered) {
+      const cnt = shown.filter(n => String(n.icao || '').toUpperCase() === c).length;
+      const o = document.createElement('option');
+      o.value = c;
+      o.textContent = (c === 'LLLL' ? (S.notamFilterGlobal || 'Global (FIR)') : c)
+        + ' (' + cnt + ')';
+      sel.appendChild(o);
+    }
+    sel.onchange = () => { filterIcao = sel.value; renderList(); };
+    fw.appendChild(sel);
+    box.appendChild(fw);
   }
   rawBtn.onclick = () => {
     rawMode = !rawMode;
@@ -2429,10 +2508,18 @@ function showNotamModal(only) {
       tx.textContent = rawMode ? tx._raw : tx._decoded;
     });
   };
+  renderList();
   box.appendChild(list);
   back.appendChild(box);
   document.body.appendChild(back);
+  // Lock the modal's height (capped to the viewport) so filtering doesn't
+  // resize it AND the list scrolls inside instead of overflowing the screen —
+  // a long single-airfield list (e.g. LLBG) stays fully scrollable.
+  const hCap = Math.round(window.innerHeight * 0.84);
+  box.style.height = Math.min(box.offsetHeight, hCap) + 'px';
   const dismiss = () => { back.remove(); document.removeEventListener('keydown', onKey); };
+  // Let closeOpenChartModals() (other charts opening) close this one too.
+  back._navaidClose = dismiss;
   function onKey(ev) { if (ev.key === 'Escape') dismiss(); }
   close.onclick = dismiss;
   back.addEventListener('click', e => { if (e.target === back) dismiss(); });
@@ -3047,6 +3134,13 @@ function refreshMapAfterToolbarModeChange() {
       if (sec.classList.contains('open')) setSectionOpen(sec, false);
     }
   }
+  // Close every open section (any layout) — called when a modal opens so the
+  // toolbar dropdown doesn't sit on top of it.
+  window.closeToolbarMenus = function () {
+    for (const sec of sections) {
+      if (sec.classList.contains('open')) setSectionOpen(sec, false);
+    }
+  };
 
   for (const sec of sections) {
     const head = sec.querySelector('.tb-section-head');
@@ -3920,9 +4014,13 @@ function imsNearestTimeIndex(times) {
 
   function open() {
     if (back || !manifest) return;   // open even with zero times (show broken)
-    if (typeof closeToolbarDesktopMenus === 'function') closeToolbarDesktopMenus();
+    // Behave like every chart: close other open charts + the toolbar dropdowns.
+    if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
+    if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
     back = document.createElement('div');
     back.className = 'modal-back';
+    back.dataset.chartModal = 'sigwx';
+    back._navaidClose = close;
     const box = document.createElement('div');
     box.className = 'modal wide sigwx-modal';
     box.setAttribute('role', 'dialog');
@@ -4017,9 +4115,12 @@ function imsNearestTimeIndex(times) {
 
   function open() {
     if (back || !manifest) return;
-    if (typeof closeToolbarDesktopMenus === 'function') closeToolbarDesktopMenus();
+    if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
+    if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
     back = document.createElement('div');
     back.className = 'modal-back';
+    back.dataset.chartModal = 'pwx';
+    back._navaidClose = close;
     const box = document.createElement('div');
     box.className = 'modal wide sigwx-modal';
     box.setAttribute('role', 'dialog');

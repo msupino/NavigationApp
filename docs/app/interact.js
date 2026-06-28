@@ -1236,14 +1236,39 @@ function hookSatelliteSnippetRotation() {
   map.on('rotateend', update);
 }
 
+// Plain-text attribution from a (possibly HTML) Leaflet attribution string.
+// DOMParser extracts text without executing anything — avoids fragile regex
+// tag-stripping (CodeQL: incomplete multi-character sanitization).
+function attributionText(html) {
+  try {
+    return (new DOMParser().parseFromString(String(html), 'text/html')
+      .body.textContent || '').trim();
+  } catch (e) {
+    return '';
+  }
+}
 function buildSatelliteSnippet(point, opts = {}) {
   const lat = Number(point && point.lat);
   const lng = Number(point && point.lng);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   const expanded = !!opts.expanded;
-  const width = expanded ? Math.max(300, Math.min(620, window.innerWidth - 64)) : tune('satellitePreviewWidthPx');
-  const height = expanded ? Math.max(220, Math.min(420, window.innerHeight - 180)) : tune('satellitePreviewHeightPx');
-  const z = expanded ? clampSatelliteZoom(opts.zoom) : tune('satellitePreviewZoom');
+  // Optional base layer (CVFR / Navigation / Satellite / …) — defaults to the
+  // satellite imagery. Any Leaflet tileLayer from `layers` works via
+  // tileLayerUrl(); chart layers cap out lower (maxNativeZoom 12–13).
+  const layer = opts.layer || (typeof layers !== 'undefined' ? layers.Satellite : null);
+  const layerMaxZoom = (layer && layer.options &&
+    (layer.options.maxNativeZoom || layer.options.maxZoom)) || tune('satellitePreviewZoom');
+  // Non-expanded previews honour an explicit opts.width/height (mosaic size
+  // slider), keeping the default aspect ratio.
+  const width = expanded ? Math.max(300, Math.min(620, window.innerWidth - 64))
+    : (Number.isFinite(opts.width) ? opts.width : tune('satellitePreviewWidthPx'));
+  const height = expanded ? Math.max(220, Math.min(420, window.innerHeight - 180))
+    : (Number.isFinite(opts.height) ? opts.height : tune('satellitePreviewHeightPx'));
+  // Non-expanded previews honour an explicit opts.zoom (mosaic zoom slider),
+  // capped at the layer's max native zoom.
+  const baseZoom = Number.isFinite(opts.zoom) ? opts.zoom : tune('satellitePreviewZoom');
+  const z = expanded ? clampSatelliteZoom(opts.zoom)
+    : Math.max(1, Math.min(baseZoom, layerMaxZoom));
   const p = satelliteTilePoint(lat, lng, z);
   const centerTileX = Math.floor(p.x);
   const centerTileY = Math.floor(p.y);
@@ -1267,7 +1292,9 @@ function buildSatelliteSnippet(point, opts = {}) {
       img.alt = '';
       img.loading = 'lazy';
       img.decoding = 'async';
-      img.src = satelliteTileUrl(z, tileX, tileY);
+      img.src = (layer && typeof tileLayerUrl === 'function')
+        ? tileLayerUrl(layer, { x: tileX, y: tileY, z })
+        : satelliteTileUrl(z, tileX, tileY);
       img.style.left = ((centerTileX + dx) * SATELLITE_TILE_SIZE - globalX + width / 2) + 'px';
       img.style.top = ((centerTileY + dy) * SATELLITE_TILE_SIZE - globalY + height / 2) + 'px';
       tiles.appendChild(img);
@@ -1282,7 +1309,9 @@ function buildSatelliteSnippet(point, opts = {}) {
   snippet.appendChild(cross);
   const attr = document.createElement('span');
   attr.className = 'satellite-attribution';
-  attr.textContent = S.satelliteAttribution || 'Imagery © Esri';
+  attr.textContent = (layer && layer.options && layer.options.attribution)
+    ? attributionText(layer.options.attribution)
+    : (S.satelliteAttribution || 'Imagery © Esri');
   snippet.appendChild(attr);
   return snippet;
 }
@@ -1464,6 +1493,12 @@ function setSatelliteModalTitle(title, label, point) {
 
 function showSatellitePreviewModal(point, label) {
   if (typeof createDraggableModal !== 'function' || typeof L === 'undefined') return;
+  // Only one satellite view at a time — a repeat open replaces the previous.
+  document.querySelectorAll('.modal-back .satellite-preview-modal').forEach(box => {
+    const back = box.closest('.modal-back');
+    if (back && typeof back._navaidClose === 'function') back._navaidClose();
+    else if (back) back.remove();
+  });
   // Destroy the Leaflet map on close — otherwise each open/close leaks the
   // map instance, its zoomend listener, the cloned tile layers, and Leaflet's
   // internal window hooks (they keep referencing the detached modal DOM).
@@ -1594,6 +1629,137 @@ function showSatellitePreviewModal(point, label) {
   setTimeout(() => { if (lmap) lmap.invalidateSize(); }, 0);
 }
 
+// Charts → "Satellite mosaic": a grid of static satellite previews, one per
+// route waypoint, each labelled and clickable to open the full satellite modal.
+function showRouteMosaicModal() {
+  if (typeof createDraggableModal !== 'function') return;
+  // Dedupe like the other chart modals — a second press must not stack a copy.
+  if (typeof prepareChartModal === 'function') {
+    if (!prepareChartModal('mosaic')) return;
+  }
+  const wps = (Array.isArray(state.waypoints) ? state.waypoints : [])
+    .map((w, i) => ({ w, i }))
+    .filter(({ w }) => w && Number.isFinite(Number(w.lat)) && Number.isFinite(Number(w.lng)));
+  const modal = createDraggableModal(S.mosaicTitle || 'Route satellite mosaic',
+    'modal wide route-mosaic-modal',
+    typeof clearOpenChartModal === 'function' ? () => clearOpenChartModal('mosaic') : null,
+    { nonBlocking: true, chartKind: 'mosaic' });
+  const body = document.createElement('div');
+  body.className = 'route-mosaic-body';
+
+  // Toolbar: layer picker (CVFR / Satellite / …) + Print.
+  const names = (typeof layers !== 'undefined') ? Object.keys(layers) : ['Satellite'];
+  const bar = document.createElement('div');
+  bar.className = 'route-mosaic-bar';
+  const sel = document.createElement('select');
+  sel.className = 'route-mosaic-layer'; sel.dir = 'ltr';
+  sel.setAttribute('aria-label', S.mosaicLayer || 'Mosaic layer');
+  for (const nm of names) {
+    const o = document.createElement('option');
+    o.value = nm;
+    o.textContent = (S.layerLabels && S.layerLabels[nm]) || nm;
+    if (nm === 'Satellite') o.selected = true;
+    sel.appendChild(o);
+  }
+  bar.appendChild(sel);
+  // Zoom slider — same close-in zoom applied to every preview.
+  const zoomWrap = document.createElement('label');
+  zoomWrap.className = 'route-mosaic-zoom';
+  const zoomLbl = document.createElement('span');
+  zoomLbl.textContent = S.mosaicZoom || 'Zoom';
+  const zoom = document.createElement('input');
+  zoom.type = 'range'; zoom.min = '8'; zoom.max = '18'; zoom.step = '1';
+  zoom.value = String(tune('satellitePreviewZoom'));
+  const zoomVal = document.createElement('span');
+  zoomVal.className = 'route-mosaic-zoom-val';
+  zoomVal.textContent = zoom.value;
+  zoomWrap.appendChild(zoomLbl); zoomWrap.appendChild(zoom); zoomWrap.appendChild(zoomVal);
+  bar.appendChild(zoomWrap);
+  // Size slider — scales every preview (keeps the default aspect ratio).
+  const baseW = tune('satellitePreviewWidthPx');
+  const baseH = tune('satellitePreviewHeightPx');
+  const sizeWrap = document.createElement('label');
+  sizeWrap.className = 'route-mosaic-size';
+  const sizeLbl = document.createElement('span');
+  sizeLbl.textContent = S.mosaicSize || 'Size';
+  const size = document.createElement('input');
+  size.type = 'range'; size.min = '140'; size.max = '440'; size.step = '2';
+  size.value = String(baseW);
+  const sizeVal = document.createElement('span');
+  sizeVal.className = 'route-mosaic-zoom-val';
+  sizeVal.textContent = size.value + 'px';
+  sizeWrap.appendChild(sizeLbl); sizeWrap.appendChild(size); sizeWrap.appendChild(sizeVal);
+  bar.appendChild(sizeWrap);
+  const printBtn = document.createElement('button');
+  printBtn.type = 'button';
+  printBtn.className = 'route-mosaic-print';
+  printBtn.textContent = S.mosaicPrint || '🖨 Print';
+  printBtn.onclick = () => {
+    document.body.classList.add('mosaic-print');
+    const cleanup = () => { document.body.classList.remove('mosaic-print'); window.removeEventListener('afterprint', cleanup); };
+    window.addEventListener('afterprint', cleanup);
+    window.print();
+    setTimeout(cleanup, 1000);   // fallback if afterprint never fires
+  };
+  bar.appendChild(printBtn);
+  if (wps.length) body.appendChild(bar);
+
+  // LTR sequence regardless of UI language so the route order + arrows read
+  // left-to-right.
+  const grid = document.createElement('div');
+  grid.className = 'route-mosaic-grid'; grid.dir = 'ltr';
+
+  const render = () => {
+    grid.textContent = '';
+    if (!wps.length) {
+      const empty = document.createElement('div');
+      empty.className = 'route-mosaic-empty';
+      empty.textContent = S.mosaicEmpty || 'Add route waypoints first.';
+      grid.appendChild(empty);
+      return;
+    }
+    const layer = (typeof layers !== 'undefined') ? layers[sel.value] : null;
+    const zoomLevel = parseInt(zoom.value, 10) || tune('satellitePreviewZoom');
+    const cellW = parseInt(size.value, 10) || baseW;
+    const cellH = Math.round(cellW * baseH / baseW);
+    wps.forEach(({ w, i }, idx) => {
+      const label = (typeof wpLabel === 'function') ? wpLabel(i) : (w.name || ('WP ' + (i + 1)));
+      const point = { lat: Number(w.lat), lng: Number(w.lng) };
+      const cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = 'route-mosaic-cell';
+      cell.style.width = cellW + 'px';
+      cell.title = (S.mosaicOpen || 'Open satellite view') + ' — ' + label;
+      const cap = document.createElement('div');
+      cap.className = 'route-mosaic-label'; cap.dir = 'auto';
+      cap.textContent = label;
+      cell.appendChild(cap);
+      const snippet = buildSatelliteSnippet(point, { layer, zoom: zoomLevel, width: cellW, height: cellH });
+      if (snippet) cell.appendChild(snippet);
+      cell.onclick = () => {
+        if (typeof showSatellitePreviewModal === 'function') showSatellitePreviewModal(point, label);
+      };
+      grid.appendChild(cell);
+      // Direction arrow between consecutive waypoints.
+      if (idx < wps.length - 1) {
+        const arrow = document.createElement('span');
+        arrow.className = 'route-mosaic-arrow';
+        arrow.setAttribute('aria-hidden', 'true');
+        arrow.textContent = '→';
+        grid.appendChild(arrow);
+      }
+    });
+  };
+  sel.onchange = render;
+  zoom.oninput = () => { zoomVal.textContent = zoom.value; render(); };
+  size.oninput = () => { sizeVal.textContent = size.value + 'px'; render(); };
+  render();
+  body.appendChild(grid);
+  modal.box.appendChild(body);
+  modal.show();
+}
+window.showRouteMosaicModal = showRouteMosaicModal;
+
 function appendSatelliteSnippet(body, point, label) {
   const snippet = buildSatelliteSnippet(point);
   if (!snippet) return;
@@ -1706,7 +1872,9 @@ function appendAirfieldWeather(body, af) {
   sec.appendChild(head);
   const bodyEl = document.createElement('div');
   bodyEl.className = 'wx-body';
-  bodyEl.dir = 'ltr';                 // METAR/TAF codes are always left-to-right
+  // Follow content direction: prose messages (loading / no-data / error) read
+  // RTL in Hebrew, while METAR/TAF code blocks force LTR on themselves.
+  bodyEl.dir = 'auto';
   bodyEl.textContent = S.wxLoading || 'Loading…';
   sec.appendChild(bodyEl);
   body.appendChild(sec);
@@ -1727,6 +1895,7 @@ function appendAirfieldWeather(body, af) {
     const block = (label, lines) => {
       const b = document.createElement('div');
       b.className = 'wx-block';
+      b.dir = 'ltr';                   // METAR/TAF codes are always left-to-right
       const t = document.createElement('span');
       t.className = 'wx-label';
       t.textContent = label;
@@ -2749,6 +2918,13 @@ map.on('mousedown', e => {
   // Outside edit mode, a click on a VOR / airfield / nav-WP marker opens its
   // read-only inspector. Not draggable, so leave map panning enabled.
   if (includeOverlayChoices) {
+    // Many stacked NOTAMs (e.g. an airport badge) → open the scrollable NOTAM
+    // list directly instead of the point picker, which doesn't scroll.
+    if (ovAll.length > 1 && ovAll.every(c => c.type === 'notam')) {
+      downHit = true;
+      if (typeof showNotamModal === 'function') showNotamModal(ovAll.map(c => c.notam));
+      return;
+    }
     if (ovAll.length > 1) {
       downHit = true;
       showPointChoice(ovAll);
@@ -3137,6 +3313,11 @@ mapEl.addEventListener('touchstart', e => {
   // Outside edit mode, a tap on a VOR / airfield / nav-WP marker opens its
   // read-only inspector (no drag).
   if (!touchDrag && includeOverlayChoices) {
+    if (activeOvHits.length > 1 && activeOvHits.every(c => c.type === 'notam')) {
+      e.preventDefault();
+      if (typeof showNotamModal === 'function') showNotamModal(activeOvHits.map(c => c.notam));
+      return;
+    }
     if (activeOvHits.length > 1) {
       e.preventDefault();
       showPointChoice(activeOvHits);

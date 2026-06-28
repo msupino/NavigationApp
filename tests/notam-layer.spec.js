@@ -82,6 +82,100 @@ test('NOTAMs decode to plain English; Raw toggle shows the source text', async (
   await expect(modal.locator('.notam-text')).not.toContainText('above mean sea level');
 });
 
+test('clicking an airport NOTAM badge opens the (scrollable) list, not the picker', async ({ page }) => {
+  const many = [];
+  for (let i = 0; i < 17; i++) {
+    many.push({ id: 'B' + i + '/26', icao: 'LLBG', end: '', geom: null, text: 'B' + i + ' LLBG notam line.' });
+  }
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: many });
+  await page.locator('#notam-cb').check();
+  await page.evaluate(() => loadAirfields && loadAirfields());
+  await page.waitForFunction(() => Array.isArray(window.airfields) && airfields.length > 0);
+  // Click the LLBG count badge (disc at proj(field) offset +14px down).
+  const box = await page.locator('#map').boundingBox();
+  const pt = await page.evaluate(() => {
+    const af = airfields.find(a => a.name === 'LLBG');
+    const p = proj({ lat: af.lat, lng: af.lng });
+    return { x: p.x, y: p.y + 14 };
+  });
+  await page.mouse.click(box.x + pt.x, box.y + pt.y);
+  // Opens the NOTAM list (all 17), not the point-choice picker.
+  await expect(page.locator('.notam-modal')).toBeVisible();
+  await expect(page.locator('.point-choice-modal')).toHaveCount(0);
+  await expect(page.locator('.notam-modal .notam-item')).toHaveCount(17);
+  const canScroll = await page.evaluate(() => {
+    const l = document.querySelector('.notam-list');
+    return l.scrollHeight > l.clientHeight + 2;
+  });
+  expect(canScroll).toBe(true);
+});
+
+test('a long single-airfield NOTAM list scrolls within the viewport', async ({ page }) => {
+  const many = [];
+  for (let i = 0; i < 40; i++) {
+    many.push({ id: 'B' + i + '/26', icao: 'LLBG', end: '', geom: null, text: 'B' + i + ' LLBG notam line of text.' });
+  }
+  many.push({ id: 'A1/26', icao: 'LLLL', end: '', geom: null, text: 'global' });
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: many });
+  await page.evaluate(() => document.getElementById('notam-list-btn').click());
+  await page.locator('.notam-modal .notam-filter-sel').selectOption('LLBG');
+  const info = await page.evaluate(() => {
+    const m = document.querySelector('.notam-modal');
+    const l = document.querySelector('.notam-list');
+    return {
+      modalInView: m.getBoundingClientRect().bottom <= innerHeight + 1,
+      canScroll: l.scrollHeight > l.clientHeight + 2,
+    };
+  });
+  expect(info.modalInView).toBe(true);
+  expect(info.canScroll).toBe(true);
+  // The last item is reachable by scrolling the list.
+  await page.locator('.notam-item').last().scrollIntoViewIfNeeded();
+  await expect(page.locator('.notam-item').last()).toBeInViewport();
+});
+
+test('NOTAM list filters by airfield or global (LLLL)', async ({ page }) => {
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'A0001/26', icao: 'LLLL', end: '', geom: null, text: 'A0001/26 LLLL global one.' },
+    { id: 'A0002/26', icao: 'LLLL', end: '', geom: null, text: 'A0002/26 LLLL global two.' },
+    { id: 'B0001/26', icao: 'LLBG', end: '', geom: null, text: 'B0001/26 LLBG Ben Gurion RWY.' },
+    { id: 'H0001/26', icao: 'LLHA', end: '', geom: null, text: 'H0001/26 LLHA Haifa apron.' },
+  ] });
+  await page.evaluate(() => document.getElementById('notam-list-btn').click());
+  const modal = page.locator('.modal-back .notam-modal');
+  await expect(modal.locator('.notam-item')).toHaveCount(4);
+  const sel = modal.locator('.notam-filter-sel');
+  await expect(sel).toBeVisible();
+  // Options: All + Global(FIR) + LLBG + LLHA, global first after All.
+  await expect(sel.locator('option')).toHaveCount(4);
+  // Modal height is locked so filtering doesn't make it jump (the list scrolls
+  // inside it).
+  const modalH = await modal.evaluate(el => Math.round(el.getBoundingClientRect().height));
+  // Filter to one airfield.
+  await sel.selectOption('LLBG');
+  await expect(modal.locator('.notam-item')).toHaveCount(1);
+  await expect(modal).toContainText('Ben Gurion');
+  expect(await modal.evaluate(el => Math.round(el.getBoundingClientRect().height))).toBe(modalH);
+  // Globals only.
+  await sel.selectOption('LLLL');
+  await expect(modal.locator('.notam-item')).toHaveCount(2);
+  // Back to all.
+  await sel.selectOption('');
+  await expect(modal.locator('.notam-item')).toHaveCount(4);
+});
+
+test('NOTAM time-slider label matches the unified look-ahead format', async ({ page }) => {
+  await boot(page);
+  const labels = await page.evaluate(() => ({
+    base: notamTimeLabel(0),
+    ahead: notamTimeLabel(5),
+  }));
+  // Base = a bare Zulu clock; offset = "+Nh · <clock>" (same as the windfield
+  // time slider).
+  expect(labels.base).toMatch(/^(\d{2}-\d{2} )?\d{2}:\d{2}Z$/);
+  expect(labels.ahead).toMatch(/^\+5h · (\d{2}-\d{2} )?\d{2}:\d{2}Z$/);
+});
+
 test('prose border NOTAMs are geocoded to buffer polygons', async ({ page }) => {
   // Borders served from the real data/notam-borders.json (not mocked).
   await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
@@ -168,6 +262,29 @@ test('clicking a NOTAM area on the map opens just that NOTAM', async ({ page }) 
   await expect(modal.locator('.notam-item')).toHaveCount(1);
   await expect(modal).toContainText('C1337/26');
   await expect(modal).not.toContainText('A0483/26');
+});
+
+test('clicking a NOTAM in the list closes the modal and blinks it on the map', async ({ page }) => {
+  await boot(page);
+  // Overlay off to start; clicking a list item should also turn it on.
+  await page.evaluate(() => document.getElementById('notam-list-btn').click());
+  const modal = page.locator('.modal-back .notam-modal');
+  await expect(modal).toBeVisible();
+  // C1337/26 is a circle area → mappable → clickable.
+  const item = modal.locator('.notam-item.notam-item-clickable', { hasText: 'C1337/26' });
+  await expect(item).toHaveCount(1);
+  await item.click();
+  // Modal closes, overlay turns on, and the NOTAM is flashing.
+  await expect(page.locator('.modal-back .notam-modal')).toHaveCount(0);
+  expect(await page.evaluate(() => window.showNotam)).toBe(true);
+  expect(await page.evaluate(() => typeof flashNotam === 'function')).toBe(true);
+  expect(await page.evaluate(() => window.notamMappable(
+    activeNotams().find(n => n.id === 'C1337/26')))).toBe(true);
+  // The view is framed on the NOTAM (circle centred at 31.96/34.8).
+  await expect.poll(async () => page.evaluate(() => {
+    const c = map.getCenter();
+    return Math.abs(c.lat - 31.96) < 0.5 && Math.abs(c.lng - 34.8) < 0.5;
+  })).toBe(true);
 });
 
 test('NOTAM appears in the multi-select point picker', async ({ page }) => {

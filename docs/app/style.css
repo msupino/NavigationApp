@@ -266,10 +266,30 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
 /* Sub-group label inside a section body (layout A): thin divider + caption. */
 /* Grouping box for a toggle + its dependent controls (e.g. IMS PWX overlay). */
 .tb-group-box {
-  border: 1px solid #3a3636;
-  border-radius: 6px;
+  border: 1px solid #443f3f;            /* match the section buttons' border */
+  border-radius: 5px;
   padding: 4px 6px;
   margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+/* Uniform layout for every layer card: stacked controls with even spacing,
+   small sub-control labels, and full-width selects. */
+.tb-group-box [id$="-controls"] {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+/* The display:flex above must not defeat the `hidden` attribute (equal
+   specificity, later rule) — keep hidden boxes/controls hidden. */
+.tb-group-box[hidden],
+.tb-group-box [id$="-controls"][hidden] { display: none; }
+.tb-group-box .navtoggle > span:first-child { font-size: 11px; }   /* sub-control row labels */
+.tb-group-box select {
+  width: 100%;
+  font: inherit;
+  font-size: 11px;
 }
 .tb-group {
   display: flex;
@@ -356,7 +376,7 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   gap: 3px;
   min-width: 0;
 }
-#toolbar .slider-val { width: 3em; text-align: right; font-size: 11px; color: #ccc; flex-shrink: 0; }
+#toolbar .slider-val { min-width: 3em; text-align: right; font-size: 11px; color: #ccc; flex-shrink: 0; white-space: nowrap; }
 #toolbar .slider-reset {
   flex-shrink: 0;
   font-size: 12px;
@@ -555,7 +575,7 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   }
 
   .tb-section[data-sec="export"] .tb-section-body,
-  .tb-section[data-sec="sim"] .tb-section-body,
+  .tb-section[data-sec="weather"] .tb-section-body,
   .tb-section[data-sec="print"] .tb-section-body {
     right: 0;
     left: auto;
@@ -567,7 +587,7 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   }
 
   html[dir="rtl"] .tb-section[data-sec="export"] .tb-section-body,
-  html[dir="rtl"] .tb-section[data-sec="sim"] .tb-section-body,
+  html[dir="rtl"] .tb-section[data-sec="weather"] .tb-section-body,
   html[dir="rtl"] .tb-section[data-sec="print"] .tb-section-body {
     right: auto;
     left: 0;
@@ -645,11 +665,11 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   #toolbar.multi-open .tb-section[data-sec="display"] .tb-section-body { left: calc(28.57vw + 4px); }
   #toolbar.multi-open .tb-section[data-sec="charts"] .tb-section-body { left: calc(42.855vw + 2px); }
   #toolbar.multi-open .tb-section[data-sec="export"] .tb-section-body { left: 57.14vw; }
-  #toolbar.multi-open .tb-section[data-sec="sim"] .tb-section-body { left: calc(71.425vw - 2px); }
+  #toolbar.multi-open .tb-section[data-sec="weather"] .tb-section-body { left: calc(71.425vw - 2px); }
   #toolbar.multi-open .tb-section[data-sec="print"] .tb-section-body { left: calc(85.71vw - 4px); }
 
   #toolbar .tb-section-body button,
-  #toolbar #export-select {
+  #toolbar .tb-section-body #export-select {
     width: 100%;
     min-height: 28px;
     padding: 5px 10px;
@@ -657,10 +677,19 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
     border-radius: 3px;
     background: transparent;
     text-align: start;
+    text-align-last: start;
+  }
+
+  /* Extra-layers cards mirror the buttons: flat (no border/fill) in the desktop
+     dropdown; the light-theme override below re-adds the same border buttons
+     get in light mode. Keeps every menu looking identical. */
+  #toolbar .tb-section-body .tb-group-box {
+    border-color: transparent;
+    background: transparent;
   }
 
   #toolbar .tb-section-body button:hover,
-  #toolbar #export-select:hover,
+  #toolbar .tb-section-body #export-select:hover,
   #toolbar .tb-section-body .navtoggle:hover {
     background: rgba(255, 255, 255, 0.10);
   }
@@ -683,8 +712,13 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
     min-height: 24px;
   }
 
-  #toolbar .tb-section-body input[type="range"] {
-    min-width: 96px;
+  /* Fixed slider width inside the dropdown so a slider never resizes when its
+     value label changes length (e.g. dragging the NOTAM timeline). The menu
+     sizes to content (≤340px); the value column sizes to its own text. */
+  #toolbar .tb-section-body .navtoggle input[type="range"] {
+    flex: 0 0 96px;
+    width: 96px;
+    min-width: 0;
   }
 
   .tb-group {
@@ -1013,8 +1047,9 @@ html[dir="rtl"] .sigmet-readout.sigmet-none {
   cursor: pointer;
   width: 100%;
   box-sizing: border-box;
-  text-align: center;
-  text-align-last: center;
+  /* Match the other section buttons (left-aligned), not centred. */
+  text-align: start;
+  text-align-last: start;
 }
 #toolbar #vor-ref-row select {
   box-sizing: border-box;
@@ -1465,8 +1500,19 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   font-size: 13px;
 }
 .notam-updated { font-size: 11px; opacity: 0.7; margin: 0 0 8px; }
-.notam-list { max-height: 72vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.notam-filter { margin: 0 0 8px; }
+.notam-filter-sel {
+  font: inherit; font-size: 12px; padding: 4px 8px; border-radius: 5px;
+  border: 1px solid #4a4545; background: #2b2727; color: #ddd; cursor: pointer;
+  max-width: 100%;
+}
+body.theme-light .notam-filter-sel {
+  border-color: #c6ccd6; background: #eef1f6; color: #2b3340;
+}
+.notam-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
 .notam-item { border: 1px solid #3a3636; border-radius: 6px; padding: 6px 8px; background: rgba(255, 255, 255, 0.03); }
+.notam-item-clickable { cursor: pointer; }
+.notam-item-clickable:hover { border-color: #c9a227; background: rgba(255, 212, 0, 0.08); }
 .notam-id { font-weight: 700; font-size: 12px; margin-bottom: 3px; }
 .notam-text { margin: 0; font: 12px/1.35 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
 .notam-empty { opacity: 0.7; }
@@ -1504,6 +1550,8 @@ body.theme-light .notam-raw-toggle:hover { background: #dfe4ec; color: #000; }
   gap: 6px 14px;
   margin-top: 6px;
   font-size: 13px;
+  max-height: 76vh;
+  overflow-y: auto;
 }
 .shortcuts-help-group {
   grid-column: 1 / -1;
@@ -1808,7 +1856,10 @@ body.theme-light .notam-raw-toggle:hover { background: #dfe4ec; color: #000; }
 }
 .modal-back.export-place > .modal { pointer-events: auto; }
 .modal {
-  min-width: 240px;
+  position: relative;        /* anchor the close-✕ to the modal box, not the viewport */
+  min-width: min(240px, 92vw);
+  max-width: 96vw;           /* never wider than the screen (mobile) */
+  box-sizing: border-box;
   padding: 16px;
   background: #2a2626;
   border: 1px solid #3a3636;
@@ -1861,6 +1912,8 @@ body.theme-light .notam-raw-toggle:hover { background: #dfe4ec; color: #000; }
 .point-choice-list {
   display: grid;
   gap: 8px;
+  max-height: 70vh;
+  overflow-y: auto;
 }
 .point-choice-option {
   display: grid;
@@ -2018,6 +2071,8 @@ body.theme-light .route-library-actions .route-library-load:hover {
   display: grid;
   gap: 10px;
   font-size: 13px;
+  max-height: 74vh;
+  overflow-y: auto;
 }
 .route-template-row {
   display: grid;
@@ -2092,7 +2147,7 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
 .modal.wide {
   display: flex;
   flex-direction: column;
-  min-width: 520px;
+  min-width: min(520px, 92vw);   /* fit narrow phones instead of overflowing */
   max-width: 92vw;
   max-height: 84vh;
   padding: 14px;
@@ -2353,6 +2408,85 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
   background: #3a3636;
   border-color: #1d6fe0;
 }
+/* Route satellite mosaic (Charts → Satellite mosaic) */
+.route-mosaic-body { padding: 4px 2px 2px; }
+.route-mosaic-bar { margin: 0 2px 8px; display: flex; gap: 8px; align-items: center; }
+.route-mosaic-layer,
+.route-mosaic-print {
+  font: inherit; font-size: 12px; padding: 4px 8px; border-radius: 5px;
+  border: 1px solid #4a4545; background: #2b2727; color: #ddd; cursor: pointer;
+}
+.route-mosaic-print:hover { background: #3c3737; }
+.route-mosaic-zoom,
+.route-mosaic-size { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #ddd; }
+.route-mosaic-zoom input[type="range"],
+.route-mosaic-size input[type="range"] { width: 90px; }
+.route-mosaic-zoom-val { min-width: 1.5em; text-align: right; font-size: 11px; color: #ccc; }
+body.theme-light .route-mosaic-zoom,
+body.theme-light .route-mosaic-size { color: #2b3340; }
+body.theme-light .route-mosaic-zoom-val { color: #2b3340; }
+body.theme-light .route-mosaic-layer,
+body.theme-light .route-mosaic-print { border-color: #c6ccd6; background: #eef1f6; color: #2b3340; }
+.route-mosaic-empty { padding: 16px; opacity: 0.7; }
+.route-mosaic-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 6px;
+  max-height: 74vh;
+  overflow-y: auto;
+}
+.route-mosaic-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: var(--sat-width, 214px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+  font: inherit;
+  text-align: start;
+}
+.route-mosaic-arrow {
+  font-size: 22px;
+  line-height: 1;
+  color: #9aa3ad;
+  align-self: center;
+  user-select: none;
+}
+.route-mosaic-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e8e8e8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.theme-light .route-mosaic-label { color: #1f252c; }
+.route-mosaic-cell .satellite-snippet { margin: 0; cursor: zoom-in; }
+
+/* Print the mosaic fitted to A4: hide everything except the mosaic modal,
+   reset its positioning, drop the toolbar, and wrap previews two-up. */
+@media print {
+  @page { size: A4; margin: 10mm; }
+  body.mosaic-print > * { display: none !important; }
+  body.mosaic-print .modal-back[data-chart-modal="mosaic"] {
+    display: block !important;
+    position: static; background: none; box-shadow: none; inset: auto;
+  }
+  body.mosaic-print .route-mosaic-modal {
+    position: static; box-shadow: none; width: auto; max-width: none;
+    max-height: none; margin: 0; border: 0;
+  }
+  body.mosaic-print .modal-close-x,
+  body.mosaic-print .route-mosaic-bar { display: none !important; }
+  body.mosaic-print .route-mosaic-grid {
+    max-height: none; overflow: visible; gap: 6px 4px;
+  }
+  body.mosaic-print .satellite-snippet { break-inside: avoid; }
+}
+
 .satellite-snippet {
   position: relative;
   width: min(100%, var(--sat-width, 214px));
@@ -3362,6 +3496,9 @@ body.theme-light #tuning-panel input[type="color"] {
   background: #fff;
   border-color: #b8c0cc;
 }
+/* Extra-layers cards share the buttons' light-theme border (specificity must
+   beat the desktop media rule that flattens them in dark). */
+body.theme-light #toolbar .tb-group-box { border-color: #b8c0cc; }
 body.theme-light #toolbar button:hover,
 body.theme-light #toolbar .slider-reset:hover,
 body.theme-light #toolbar #wpname-rot:hover,
