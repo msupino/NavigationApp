@@ -753,7 +753,10 @@ function drawNotams() {
     octx.closePath();
     octx.fillStyle = colorWithAlpha(col, tune('notamFillAlpha'));
     octx.fill();
-    octx.setLineDash([6, 4]);
+    // Border-buffer areas (FM <NEIGHBOUR> BOUNDARY TO NKM) trace the
+    // international border, so draw their outline as a continuous solid line;
+    // ordinary point/area NOTAMs keep the dashed outline.
+    if (!(g && g._border)) octx.setLineDash([6, 4]);
     octx.lineWidth = tune('notamLineWidthPx');
     octx.strokeStyle = col;
     octx.stroke();
