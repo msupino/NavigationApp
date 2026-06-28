@@ -1,0 +1,500 @@
+{
+  "_comment": "Israel ultralight (PAMAT/פמ\"ת) prohibited & restricted areas — LLU series. Each is a CIRCLE: center (WGS-84, converted from the published DMS to decimal degrees) + radius in metres. NOT the activity \"bubbles\" (those are graphical on the CVFR chart and have no published coordinate polygons). Planning aid only; not survey-accurate. Verify against current AIP/NOTAM before flight.",
+  "source": "CAAI PAMAT internal chart, appendix A-17 (gov.il aip_א-17.pdf, update 3/24, 31 Oct 2024)",
+  "grid": "WGS-84",
+  "shape": "circle",
+  "generatedAt": "2026-06-28",
+  "count": 70,
+  "areas": [
+    {
+      "code": "LLU01",
+      "name": "איילון-מעשיהו",
+      "lat": 31.935,
+      "lng": 34.88056,
+      "radius_m": 1000
+    },
+    {
+      "code": "LLU02",
+      "name": "אשל",
+      "lat": 31.20667,
+      "lng": 34.81028,
+      "radius_m": 1500
+    },
+    {
+      "code": "LLU03",
+      "name": "אשקלון",
+      "lat": 31.66556,
+      "lng": 34.56194,
+      "radius_m": 1000
+    },
+    {
+      "code": "LLU04",
+      "name": "דמון",
+      "lat": 32.73278,
+      "lng": 35.02194,
+      "radius_m": 1500
+    },
+    {
+      "code": "LLU05",
+      "name": "השרון",
+      "lat": 32.24083,
+      "lng": 34.88417,
+      "radius_m": 1000
+    },
+    {
+      "code": "LLU06",
+      "name": "חיפה",
+      "lat": 32.825,
+      "lng": 34.99028,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU07",
+      "name": "ירושלים",
+      "lat": 31.78139,
+      "lng": 35.22333,
+      "radius_m": 1000
+    },
+    {
+      "code": "LLU08",
+      "name": "ירושלים-משטרת גילה",
+      "lat": 31.73167,
+      "lng": 35.19694,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU09",
+      "name": "כרמל",
+      "lat": 32.71333,
+      "lng": 34.96806,
+      "radius_m": 1000
+    },
+    {
+      "code": "LLU10",
+      "name": "מגידו",
+      "lat": 32.57056,
+      "lng": 35.18917,
+      "radius_m": 1500
+    },
+    {
+      "code": "LLU11",
+      "name": "גנות",
+      "lat": 30.72861,
+      "lng": 34.77111,
+      "radius_m": 2000
+    },
+    {
+      "code": "LLU12",
+      "name": "נתניה",
+      "lat": 32.33,
+      "lng": 34.92306,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU13",
+      "name": "עופר",
+      "lat": 31.87167,
+      "lng": 35.17944,
+      "radius_m": 1500
+    },
+    {
+      "code": "LLU14",
+      "name": "פתח-תקווה",
+      "lat": 32.09222,
+      "lng": 34.88833,
+      "radius_m": 1000
+    },
+    {
+      "code": "LLU15",
+      "name": "צלמון",
+      "lat": 32.87111,
+      "lng": 35.44694,
+      "radius_m": 1500
+    },
+    {
+      "code": "LLU16",
+      "name": "קישון",
+      "lat": 32.7275,
+      "lng": 35.08722,
+      "radius_m": 1500
+    },
+    {
+      "code": "LLU17",
+      "name": "קציעות",
+      "lat": 30.88667,
+      "lng": 34.45222,
+      "radius_m": 2000
+    },
+    {
+      "code": "LLU18",
+      "name": "שיטה-גלבוע",
+      "lat": 32.54667,
+      "lng": 35.41667,
+      "radius_m": 1500
+    },
+    {
+      "code": "LLU19",
+      "name": "שיקמה",
+      "lat": 31.66361,
+      "lng": 34.595,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU20",
+      "name": "תל אביב",
+      "lat": 32.10583,
+      "lng": 34.8025,
+      "radius_m": 1000
+    },
+    {
+      "code": "LLU21",
+      "name": "גלילות",
+      "lat": 32.14389,
+      "lng": 34.805,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU23",
+      "name": "נגבה",
+      "lat": 31.63972,
+      "lng": 34.74,
+      "radius_m": 300
+    },
+    {
+      "code": "LLU24",
+      "name": "מפקדת מגב ירושלים",
+      "lat": 31.79417,
+      "lng": 35.22806,
+      "radius_m": 100
+    },
+    {
+      "code": "LLU25",
+      "name": "מרחב אילת",
+      "lat": 29.55778,
+      "lng": 34.95528,
+      "radius_m": 100
+    },
+    {
+      "code": "LLU26",
+      "name": "מרחב דוד",
+      "lat": 31.77528,
+      "lng": 35.22833,
+      "radius_m": 100
+    },
+    {
+      "code": "LLU27",
+      "name": "מחוז מרכז",
+      "lat": 31.93,
+      "lng": 34.86917,
+      "radius_m": 150
+    },
+    {
+      "code": "LLU28",
+      "name": "תחנת ראשון לציון",
+      "lat": 31.97472,
+      "lng": 34.79722,
+      "radius_m": 100
+    },
+    {
+      "code": "LLU29",
+      "name": "מרחב נתבג",
+      "lat": 31.99389,
+      "lng": 34.89667,
+      "radius_m": 100
+    },
+    {
+      "code": "LLU30",
+      "name": "נקודת גשר אלנבי",
+      "lat": 31.86944,
+      "lng": 35.53167,
+      "radius_m": 200
+    },
+    {
+      "code": "LLU31",
+      "name": "מחוז דרום",
+      "lat": 31.24583,
+      "lng": 34.78167,
+      "radius_m": 150
+    },
+    {
+      "code": "LLU32",
+      "name": "מחוז תל אביב",
+      "lat": 32.05361,
+      "lng": 34.76222,
+      "radius_m": 100
+    },
+    {
+      "code": "LLU33",
+      "name": "מחוז צפון",
+      "lat": 32.71028,
+      "lng": 35.30333,
+      "radius_m": 100
+    },
+    {
+      "code": "LLU34",
+      "name": "מחוז שי",
+      "lat": 31.79806,
+      "lng": 35.29194,
+      "radius_m": 150
+    },
+    {
+      "code": "LLU35",
+      "name": "מחוז ירושלים",
+      "lat": 31.78167,
+      "lng": 35.22194,
+      "radius_m": 100
+    },
+    {
+      "code": "LLU36",
+      "name": "אגף התנועה",
+      "lat": 32.00056,
+      "lng": 34.82333,
+      "radius_m": 200
+    },
+    {
+      "code": "LLU37",
+      "name": "מחוז חוף",
+      "lat": 32.805,
+      "lng": 35.01028,
+      "radius_m": 150
+    },
+    {
+      "code": "LLU38",
+      "name": "להב 433",
+      "lat": 31.96722,
+      "lng": 34.89889,
+      "radius_m": 150
+    },
+    {
+      "code": "LLU40",
+      "name": "",
+      "lat": 31.73722,
+      "lng": 34.94944,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU41",
+      "name": "",
+      "lat": 29.71472,
+      "lng": 35.00194,
+      "radius_m": 100
+    },
+    {
+      "code": "LLU42",
+      "name": "מטה מגב לוד",
+      "lat": 31.94889,
+      "lng": 34.89778,
+      "radius_m": 150
+    },
+    {
+      "code": "LLU43",
+      "name": "בהד מגב בית חורון",
+      "lat": 31.87361,
+      "lng": 35.13444,
+      "radius_m": 250
+    },
+    {
+      "code": "LLU44",
+      "name": "קריית הממשלה",
+      "lat": 31.78,
+      "lng": 35.20056,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU45",
+      "name": "מעון בלפור",
+      "lat": 31.77361,
+      "lng": 35.21722,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU46",
+      "name": "אזור סחר תל אביב",
+      "lat": 32.07278,
+      "lng": 34.77944,
+      "radius_m": 200
+    },
+    {
+      "code": "LLU47",
+      "name": "אזור סחר ראש העין",
+      "lat": 32.09444,
+      "lng": 34.97444,
+      "radius_m": 200
+    },
+    {
+      "code": "LLU48",
+      "name": "תעשייה מודיעין",
+      "lat": 31.90639,
+      "lng": 35.00611,
+      "radius_m": 200
+    },
+    {
+      "code": "LLU49",
+      "name": "עיריית רעננה",
+      "lat": 32.18528,
+      "lng": 34.88472,
+      "radius_m": 200
+    },
+    {
+      "code": "LLU50",
+      "name": "אזור סחר תל אביב",
+      "lat": 32.12806,
+      "lng": 34.79889,
+      "radius_m": 200
+    },
+    {
+      "code": "LLU51",
+      "name": "מחנה זיקים",
+      "lat": 31.59611,
+      "lng": 34.51361,
+      "radius_m": 300
+    },
+    {
+      "code": "LLU52",
+      "name": "אשל הנשיא",
+      "lat": 31.3325,
+      "lng": 34.69444,
+      "radius_m": 300
+    },
+    {
+      "code": "LLU53",
+      "name": "",
+      "lat": 32.00611,
+      "lng": 34.81444,
+      "radius_m": 300
+    },
+    {
+      "code": "LLU54",
+      "name": "מחנה בית ליד",
+      "lat": 32.33056,
+      "lng": 34.92194,
+      "radius_m": 300
+    },
+    {
+      "code": "LLU56",
+      "name": "מתחם אשמורת",
+      "lat": 32.32278,
+      "lng": 34.90278,
+      "radius_m": 1000
+    },
+    {
+      "code": "LLU57",
+      "name": "אילת",
+      "lat": 29.56944,
+      "lng": 34.95111,
+      "radius_m": 1000
+    },
+    {
+      "code": "LLU58",
+      "name": "",
+      "lat": 31.76167,
+      "lng": 34.79389,
+      "radius_m": 1000
+    },
+    {
+      "code": "LLU59",
+      "name": "מישר",
+      "lat": 32.99083,
+      "lng": 35.51722,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU60",
+      "name": "ירקון",
+      "lat": 31.31083,
+      "lng": 34.54361,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU61",
+      "name": "צניפים",
+      "lat": 31.75833,
+      "lng": 35.15361,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU62",
+      "name": "ארסוף",
+      "lat": 32.145,
+      "lng": 34.82056,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU63",
+      "name": "הרצים",
+      "lat": 32.14333,
+      "lng": 34.81333,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU64",
+      "name": "ברקאי",
+      "lat": 32.46944,
+      "lng": 35.02361,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU65",
+      "name": "רמות",
+      "lat": 31.28,
+      "lng": 34.81972,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU66",
+      "name": "מפרסית",
+      "lat": 30.90556,
+      "lng": 34.52333,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU67",
+      "name": "שישים",
+      "lat": 32.06472,
+      "lng": 34.80139,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU68",
+      "name": "צפריר",
+      "lat": 32.08389,
+      "lng": 34.92333,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU69",
+      "name": "מעריב",
+      "lat": 32.06694,
+      "lng": 34.78472,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU70",
+      "name": "לינקולן",
+      "lat": 32.06778,
+      "lng": 34.78083,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU71",
+      "name": "סרדין",
+      "lat": 32.12889,
+      "lng": 34.79917,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU72",
+      "name": "תמנע",
+      "lat": 31.6325,
+      "lng": 34.75111,
+      "radius_m": 500
+    },
+    {
+      "code": "LLU73",
+      "name": "תחנת אגירה כוכב הירדן",
+      "lat": 32.59806,
+      "lng": 35.54111,
+      "radius_m": 200
+    }
+  ]
+}
