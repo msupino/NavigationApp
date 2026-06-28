@@ -2333,6 +2333,30 @@ function drawLegs() {
 
   let cumInH = 0;  // running inbound cumulative time (hours)
 
+  const lw = (typeof legLineWidth === 'number' && legLineWidth > 0) ? legLineWidth : 1;
+
+  // Stroke the whole route as ONE continuous polyline (round joins) so the
+  // line never breaks between legs. Per-leg strokes could leave a visual gap
+  // at a joint; a single path with round line-joins is seamless. The selected
+  // leg's highlight + all kites/labels are drawn over this below. A waypoint
+  // with non-finite coords lifts the pen so one bad fix can't corrupt the path.
+  octx.strokeStyle = tune('inkColor');
+  octx.lineWidth = tune('routeLineWidthPx') * lw;
+  octx.lineJoin = 'round';
+  octx.lineCap = 'round';
+  octx.beginPath();
+  let _penDown = false;
+  for (let i = 0; i < state.waypoints.length; i++) {
+    const w = state.waypoints[i];
+    if (!w || !Number.isFinite(w.lat) || !Number.isFinite(w.lng)) { _penDown = false; continue; }
+    const s = proj(w);
+    if (!_penDown) { octx.moveTo(s.x, s.y); _penDown = true; }
+    else octx.lineTo(s.x, s.y);
+  }
+  octx.stroke();
+  octx.lineJoin = 'miter';
+  octx.lineCap = 'butt';
+
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     if (!A || !B) continue;
@@ -2342,15 +2366,18 @@ function drawLegs() {
                      state.selected.type === 'leg' &&
                      state.selected.index === i;
 
-    const lw = (typeof legLineWidth === 'number' && legLineWidth > 0) ? legLineWidth : 1;
-    octx.lineCap = 'round';
-    octx.strokeStyle = selected ? tune('selectedColor') : tune('inkColor');
-    octx.lineWidth = selected ? tune('routeSelectedLineWidthPx') * lw : tune('routeLineWidthPx') * lw;
-    octx.beginPath();
-    octx.moveTo(sa.x, sa.y);
-    octx.lineTo(sb.x, sb.y);
-    octx.stroke();
-    octx.lineCap = 'butt';
+    // Base line is drawn in the continuous pass above; here only the selected
+    // leg gets its highlight stroked over the top.
+    if (selected) {
+      octx.lineCap = 'round';
+      octx.strokeStyle = tune('selectedColor');
+      octx.lineWidth = tune('routeSelectedLineWidthPx') * lw;
+      octx.beginPath();
+      octx.moveTo(sa.x, sa.y);
+      octx.lineTo(sb.x, sb.y);
+      octx.stroke();
+      octx.lineCap = 'butt';
+    }
 
     if (showDrift) drawDriftLines(sa, sb);
 

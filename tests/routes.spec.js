@@ -728,3 +728,34 @@ test.describe('syncLegs invariant', () => {
     expect(await after()).toBe(true);
   });
 });
+
+test.describe('Route line continuity', () => {
+  // Count how many separate sub-paths the base route line is stroked as, by
+  // spying on the one stroke whose join+cap are both round, width is
+  // routeLineWidthPx, and colour is inkColor — i.e. the continuous-polyline pass.
+  async function countBaseSubpaths(page) {
+    return page.evaluate(() => {
+      const lw = (typeof legLineWidth === 'number' && legLineWidth > 0) ? legLineWidth : 1;
+      const route = tune('routeLineWidthPx') * lw;
+      const ink = tune('inkColor').toLowerCase();
+      let count = 0;
+      const orig = octx.moveTo;
+      octx.moveTo = function (x, y) {
+        if (octx.lineJoin === 'round' && octx.lineCap === 'round' &&
+            Math.abs(octx.lineWidth - route) < 1e-6 &&
+            String(octx.strokeStyle).toLowerCase() === ink) count++;
+        return orig.call(this, x, y);
+      };
+      state.selected = null;
+      draw();
+      octx.moveTo = orig;
+      return count;
+    });
+  }
+
+  test('an all-valid route strokes as a single continuous polyline', async ({ page }) => {
+    await bootWithRoute(page);
+    // 11 valid waypoints → exactly one base sub-path (no per-leg gaps).
+    expect(await countBaseSubpaths(page)).toBe(1);
+  });
+});
