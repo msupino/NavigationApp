@@ -1549,6 +1549,8 @@ body.theme-light .notam-raw-toggle:hover { background: #dfe4ec; color: #000; }
   gap: 6px 14px;
   margin-top: 6px;
   font-size: 13px;
+  max-height: 76vh;
+  overflow-y: auto;
 }
 .shortcuts-help-group {
   grid-column: 1 / -1;
@@ -2068,6 +2070,8 @@ body.theme-light .route-library-actions .route-library-load:hover {
   display: grid;
   gap: 10px;
   font-size: 13px;
+  max-height: 74vh;
+  overflow-y: auto;
 }
 .route-template-row {
   display: grid;
