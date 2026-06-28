@@ -100,7 +100,7 @@ test('stop saves a kind:gps library entry with simplified route + raw track', as
   const entry = await page.evaluate(() => stopGpsRecordingAndSave());
   expect(entry).toBeTruthy();
   expect(entry.kind).toBe('gps');
-  expect(entry.name).toMatch(/^Track /);
+  expect(entry.name).toMatch(/^Record - /);
   expect(Array.isArray(entry.track)).toBe(true);
   expect(entry.track.length).toBeGreaterThanOrEqual(4);
   expect(entry.data.waypoints.length).toBeGreaterThanOrEqual(2);
