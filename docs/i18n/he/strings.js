@@ -145,7 +145,7 @@ window.S = {
   tbNotamTimeTitle: 'הזז קדימה כדי לראות אילו NOTAM פעילים בזמן עתידי (שעות מעכשיו)',
   notamTimeNow: 'עכשיו',
   notamTimeAt: function(h, t) { return '+' + h + 'ש · ' + t; },
-  notamModalTitle: 'NOTAM פעילים (LLLL)',
+  notamModalTitle: 'NOTAM פעילים',
   notamNone: 'אין NOTAM פעילים.',
   notamUnavailable: 'NOTAM אינם זמינים.',
   notamUpdated: function(t) { return 'עודכן ' + t; },
