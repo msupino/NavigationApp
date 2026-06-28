@@ -96,8 +96,11 @@ function stopLiveLocation() {
 
 var gpsFollow = true;  // recenter on own-ship while recording
 var gpsStartT = 0;
+var gpsLastGS = null;   // current ground speed (kt), null if unknown
+var gpsLastAlt = null;  // current GPS altitude (ft), null if unknown
 
-// Live readout next to the toolbar button (points · elapsed). No-op if absent.
+// Live readout next to the toolbar button: points · elapsed · ground speed ·
+// altitude (the last two only when the fix provides them). No-op if absent.
 function gpsUpdateReadout() {
   const el = document.getElementById('gps-readout');
   if (!el) return;
@@ -105,7 +108,10 @@ function gpsUpdateReadout() {
   const secs = gpsStartT ? Math.round((Date.now() - gpsStartT) / 1000) : 0;
   const mm = String(Math.floor(secs / 60)).padStart(2, '0');
   const ss = String(secs % 60).padStart(2, '0');
-  el.textContent = gpsTrack.length + ' pts · ' + mm + ':' + ss;
+  let s = gpsTrack.length + ' pts · ' + mm + ':' + ss;
+  if (gpsLastGS != null) s += ' · ' + Math.round(gpsLastGS) + ' kt';
+  if (gpsLastAlt != null) s += ' · ' + Math.round(gpsLastAlt) + ' ft';
+  el.textContent = s;
 }
 
 function onGpsPosition(pos) {
@@ -119,6 +125,15 @@ function onGpsPosition(pos) {
   if (prev && _gpsMetres(prev, pt) < GPS_MIN_MOVE_M) return;          // de-jitter
   if (gpsTrack.length >= GPS_MAX_POINTS) return;
   gpsTrack.push(pt);
+  // Ground speed: device value (m/s) when present, else derived from the last
+  // fix; altitude in feet. Both feed the live readout.
+  let gsMs = (c.speed != null && !isNaN(c.speed) && c.speed >= 0) ? c.speed : null;
+  if (gsMs == null && prev) {
+    const dt = (pt.t - prev.t) / 1000;
+    if (dt > 0) gsMs = _gpsMetres(prev, pt) / dt;
+  }
+  gpsLastGS = gsMs != null ? gsMs * 1.94384 : null;            // m/s → kt
+  gpsLastAlt = c.altitude != null ? c.altitude * 3.28084 : null;  // m → ft
   // heading: device value when moving, else bearing from the previous point.
   let hdg = (c.heading != null && !isNaN(c.heading)) ? c.heading
             : (prev ? geo(prev, pt).brg : 0);
@@ -235,6 +250,7 @@ function stopGpsRecording() {
   if (gpsWatchId != null && navigator.geolocation) navigator.geolocation.clearWatch(gpsWatchId);
   gpsWatchId = null;
   gpsRecording = false;
+  gpsLastGS = null; gpsLastAlt = null;
   if (!gpsLiveOn) gpsOwn = null;
   gpsUpdateReadout();
   scheduleDraw();

@@ -37,6 +37,27 @@ test('simplifyTrack handles a very large input without overflowing', async ({ pa
   expect(out.first).toMatchObject({ lat: 32, lng: 34 });
 });
 
+test('readout shows realtime ground speed + altitude while recording', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__geoCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 7; };
+    navigator.geolocation.clearWatch = () => {};
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof startGpsRecording === 'function');
+  await page.evaluate(() => {
+    startGpsRecording();
+    // speed 50 m/s ≈ 97 kt; altitude 304.8 m = 1000 ft.
+    window.__geoCb({ coords: { latitude: 32.0, longitude: 34.0, accuracy: 8, heading: null, speed: 50, altitude: 304.8 }, timestamp: Date.now() });
+  });
+  const readout = page.locator('#gps-readout');
+  await expect(readout).toContainText('97 kt');
+  await expect(readout).toContainText('1000 ft');
+  // Stopping clears the live values.
+  await page.evaluate(() => stopGpsRecording());
+  await expect(readout).toHaveText('');
+});
+
 test('recording collects filtered fixes and stops cleanly', async ({ page }) => {
   await page.addInitScript(() => {
     window.__geoCb = null; window.__cleared = 0;
@@ -119,7 +140,6 @@ test('toolbar GPS button toggles recording and updates its label', async ({ page
     navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 5; };
     navigator.geolocation.clearWatch = () => {};
     try { localStorage.removeItem('navaid.routes'); } catch (e) {}
-    try { localStorage.setItem('navaid.sec.view', '1'); } catch (e) {}
   });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof startGpsRecording === 'function');
@@ -170,7 +190,6 @@ test('GPS error resets recording state and button label', async ({ page }) => {
     window.__errCb = null;
     navigator.geolocation.watchPosition = (cb, err) => { window.__errCb = err; return 9; };
     navigator.geolocation.clearWatch = () => {};
-    try { localStorage.setItem('navaid.sec.view', '1'); } catch (e) {}
   });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof startGpsRecording === 'function');
@@ -188,7 +207,6 @@ test('Show my location shows own-ship without recording or saving a track', asyn
     window.__liveCb = null;
     navigator.geolocation.watchPosition = (cb) => { window.__liveCb = cb; return 11; };
     navigator.geolocation.clearWatch = () => {};
-    try { localStorage.removeItem('navaid.routes'); localStorage.setItem('navaid.sec.view', '1'); } catch (e) {}
   });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof startLiveLocation === 'function');
@@ -216,7 +234,6 @@ test('stopping a recording keeps own-ship when live location is still on', async
     window.__recCb = null; window.__liveCb = null; let n = 0;
     navigator.geolocation.watchPosition = (cb) => { n++; if (n === 1) window.__recCb = cb; else window.__liveCb = cb; return n; };
     navigator.geolocation.clearWatch = () => {};
-    try { localStorage.removeItem('navaid.routes'); localStorage.setItem('navaid.sec.view', '1'); } catch (e) {}
   });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof startGpsRecording === 'function' && typeof startLiveLocation === 'function');
@@ -238,7 +255,6 @@ test('GPS error resets the live-location button too', async ({ page }) => {
     window.__errCb = null;
     navigator.geolocation.watchPosition = (cb, err) => { window.__errCb = err; return 4; };
     navigator.geolocation.clearWatch = () => {};
-    try { localStorage.setItem('navaid.sec.view', '1'); } catch (e) {}
   });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof startLiveLocation === 'function');
