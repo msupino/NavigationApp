@@ -82,6 +82,30 @@ test('NOTAMs decode to plain English; Raw toggle shows the source text', async (
   await expect(modal.locator('.notam-text')).not.toContainText('above mean sea level');
 });
 
+test('a long single-airfield NOTAM list scrolls within the viewport', async ({ page }) => {
+  const many = [];
+  for (let i = 0; i < 40; i++) {
+    many.push({ id: 'B' + i + '/26', icao: 'LLBG', end: '', geom: null, text: 'B' + i + ' LLBG notam line of text.' });
+  }
+  many.push({ id: 'A1/26', icao: 'LLLL', end: '', geom: null, text: 'global' });
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: many });
+  await page.evaluate(() => document.getElementById('notam-list-btn').click());
+  await page.locator('.notam-modal .notam-filter-sel').selectOption('LLBG');
+  const info = await page.evaluate(() => {
+    const m = document.querySelector('.notam-modal');
+    const l = document.querySelector('.notam-list');
+    return {
+      modalInView: m.getBoundingClientRect().bottom <= innerHeight + 1,
+      canScroll: l.scrollHeight > l.clientHeight + 2,
+    };
+  });
+  expect(info.modalInView).toBe(true);
+  expect(info.canScroll).toBe(true);
+  // The last item is reachable by scrolling the list.
+  await page.locator('.notam-item').last().scrollIntoViewIfNeeded();
+  await expect(page.locator('.notam-item').last()).toBeInViewport();
+});
+
 test('NOTAM list filters by airfield or global (LLLL)', async ({ page }) => {
   await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
     { id: 'A0001/26', icao: 'LLLL', end: '', geom: null, text: 'A0001/26 LLLL global one.' },
@@ -96,13 +120,14 @@ test('NOTAM list filters by airfield or global (LLLL)', async ({ page }) => {
   await expect(sel).toBeVisible();
   // Options: All + Global(FIR) + LLBG + LLHA, global first after All.
   await expect(sel.locator('option')).toHaveCount(4);
-  // List height is frozen to the unfiltered size so the modal doesn't jump.
-  const listH = await modal.locator('.notam-list').evaluate(el => el.offsetHeight);
+  // Modal height is locked so filtering doesn't make it jump (the list scrolls
+  // inside it).
+  const modalH = await modal.evaluate(el => Math.round(el.getBoundingClientRect().height));
   // Filter to one airfield.
   await sel.selectOption('LLBG');
   await expect(modal.locator('.notam-item')).toHaveCount(1);
   await expect(modal).toContainText('Ben Gurion');
-  expect(await modal.locator('.notam-list').evaluate(el => el.offsetHeight)).toBe(listH);
+  expect(await modal.evaluate(el => Math.round(el.getBoundingClientRect().height))).toBe(modalH);
   // Globals only.
   await sel.selectOption('LLLL');
   await expect(modal.locator('.notam-item')).toHaveCount(2);
