@@ -25,6 +25,35 @@ async function boot(page, body) {
   await page.waitForFunction(() => typeof draw === 'function' && document.getElementById('notam-cb'));
 }
 
+test('airfield inspector links to its NOTAMs, or shows N/A when none', async ({ page }) => {
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'B1/26', icao: 'LLBG', end: '', geom: null, text: 'B1 LLBG one.' },
+    { id: 'B2/26', icao: 'LLBG', end: '', geom: null, text: 'B2 LLBG two.' },
+  ] });
+  await page.evaluate(() => loadAirfields && loadAirfields());
+  await page.waitForFunction(() => Array.isArray(window.airfields) && airfields.length > 0);
+  // LLBG has NOTAMs → a link with the count.
+  await page.evaluate(() => {
+    const i = airfields.findIndex(a => a.name === 'LLBG');
+    state.selected = { type: 'airfield', index: i };
+    showInspector();
+  });
+  const link = page.locator('#insp-body .insp-notam-link');
+  await expect(link).toBeVisible();          // loads NOTAMs on demand, then renders
+  await expect(link).toContainText('2');
+  await link.click();
+  await expect(page.locator('.notam-modal .notam-item')).toHaveCount(2);
+  await page.locator('.notam-modal .modal-close-x').click();
+  // An airfield with no NOTAMs → N/A.
+  await page.evaluate(() => {
+    const i = airfields.findIndex(a => a.name === 'LLHA');
+    state.selected = { type: 'airfield', index: i };
+    showInspector();
+  });
+  await expect(page.locator('#insp-body .notam-insp-row')).toContainText('N/A');
+  await expect(page.locator('#insp-body .insp-notam-link')).toHaveCount(0);
+});
+
 test('NOTAM list button reveals when data loads and lists all NOTAMs', async ({ page }) => {
   await boot(page);
   const btn = page.locator('#notam-list-btn');
@@ -102,12 +131,41 @@ test('clicking an airport NOTAM badge opens the (scrollable) list, not the picke
   // Opens the NOTAM list (all 17), not the point-choice picker.
   await expect(page.locator('.notam-modal')).toBeVisible();
   await expect(page.locator('.point-choice-modal')).toHaveCount(0);
+  // Title names the airfield, not the generic LLLL.
+  await expect(page.locator('.notam-modal h3')).toContainText('LLBG');
+  await expect(page.locator('.notam-modal h3')).not.toContainText('LLLL');
   await expect(page.locator('.notam-modal .notam-item')).toHaveCount(17);
   const canScroll = await page.evaluate(() => {
     const l = document.querySelector('.notam-list');
     return l.scrollHeight > l.clientHeight + 2;
   });
   expect(canScroll).toBe(true);
+});
+
+test('a NOTAM badge under a route waypoint stays selectable (drawn on top)', async ({ page }) => {
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'B1/26', icao: 'LLBG', end: '', geom: null, text: 'B1 LLBG one.' },
+    { id: 'B2/26', icao: 'LLBG', end: '', geom: null, text: 'B2 LLBG two.' },
+  ] });
+  await page.locator('#notam-cb').check();
+  await page.evaluate(() => loadAirfields && loadAirfields());
+  await page.waitForFunction(() => Array.isArray(window.airfields) && airfields.length > 0);
+  // Put a route waypoint right on the LLBG field, then click the count badge.
+  const pt = await page.evaluate(() => {
+    const af = airfields.find(a => a.name === 'LLBG');
+    state.waypoints = [{ lat: af.lat, lng: af.lng, name: 'LLBG' }];
+    state.selected = null;
+    if (typeof syncLegs === 'function') syncLegs();
+    draw();
+    const p = proj({ lat: af.lat, lng: af.lng });
+    return { x: p.x, y: p.y + 14 };
+  });
+  const box = await page.locator('#map').boundingBox();
+  await page.mouse.click(box.x + pt.x, box.y + pt.y);
+  // The badge wins over the waypoint: NOTAM list opens, waypoint not selected.
+  await expect(page.locator('.notam-modal')).toBeVisible();
+  await expect(page.locator('.notam-modal .notam-item')).toHaveCount(2);
+  expect(await page.evaluate(() => state.selected)).toBeNull();
 });
 
 test('a long single-airfield NOTAM list scrolls within the viewport', async ({ page }) => {
@@ -155,6 +213,8 @@ test('NOTAM list filters by airfield or global (LLLL)', async ({ page }) => {
   await sel.selectOption('LLBG');
   await expect(modal.locator('.notam-item')).toHaveCount(1);
   await expect(modal).toContainText('Ben Gurion');
+  // Title scope follows the filter (airfield code, not LLLL).
+  await expect(modal.locator('h3')).toContainText('(LLBG)');
   expect(await modal.evaluate(el => Math.round(el.getBoundingClientRect().height))).toBe(modalH);
   // Globals only.
   await sel.selectOption('LLLL');

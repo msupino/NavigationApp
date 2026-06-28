@@ -2410,7 +2410,14 @@ function showNotamModal(only) {
     ? only
     : ((typeof activeNotams === 'function') ? activeNotams() : (Array.isArray(notams) ? notams : []));
   const h = document.createElement('h3');
-  h.textContent = (S.notamModalTitle || 'Active NOTAMs') + ' — ' + shown.length;
+  // Title scope: when the shown set is one airfield, name it; otherwise LLLL
+  // (FIR-wide / mixed). Updates when the filter narrows the list.
+  const updateTitle = (subset) => {
+    const ic = Array.from(new Set(subset.map(n => String(n.icao || '').toUpperCase()).filter(Boolean)));
+    const scope = ic.length === 1 ? ic[0] : 'LLLL';
+    h.textContent = (S.notamModalTitle || 'Active NOTAMs') + ' (' + scope + ') — ' + subset.length;
+  };
+  updateTitle(shown);
   box.appendChild(h);
   // Raw toggle: NOTAM texts show decoded (Q-code + expanded abbreviations) by
   // default; this flips every item to the original source text and back.
@@ -2439,6 +2446,7 @@ function showNotamModal(only) {
     const subset = filterIcao
       ? shown.filter(n => String(n.icao || '').toUpperCase() === filterIcao)
       : shown;
+    updateTitle(subset);
     if (!subset.length) {
       const e = document.createElement('div');
       e.className = 'notam-empty';
