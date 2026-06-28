@@ -232,7 +232,7 @@ NavAid.tuningDefaults = {
 
   exportBgColor: { value: '#231f20', type: 'color', label: 'PNG export background color' },
 
-  liveAircraftFillColor: { value: '#e74c3c', type: 'color', label: 'Live aircraft fill color' },
+  liveAircraftFillColor: { value: '#000000', type: 'color', label: 'Live aircraft fill color' },
   liveAircraftOutlineColor: { value: '#ffffff', type: 'color', label: 'Live aircraft outline color' },
 
   profileBgColor: { value: '#1d2733', type: 'color', label: 'Profile background color' },

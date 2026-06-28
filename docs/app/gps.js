@@ -71,10 +71,14 @@ function onLivePosition(pos) {
   const p = { lat: r5(c.latitude), lng: r5(c.longitude) };
   const hdg = (c.heading != null && !isNaN(c.heading)) ? c.heading
             : (_gpsLivePrev ? geo(_gpsLivePrev, p).brg : 0);
+  const isFirst = (_gpsLivePrev === null);
   _gpsLivePrev = p;
   gpsOwn = { lat: p.lat, lng: p.lng, hdg };
   scheduleDraw();
-  if (gpsFollow && typeof map !== 'undefined') map.setView([p.lat, p.lng], map.getZoom());
+  if (typeof map !== 'undefined') {
+    if (isFirst) map.setView([p.lat, p.lng], map.getZoom());
+    else if (gpsFollow) map.setView([p.lat, p.lng], map.getZoom());
+  }
 }
 
 function startLiveLocation() {
