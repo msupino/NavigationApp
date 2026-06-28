@@ -854,6 +854,10 @@ function splitLegCopy(source) {
   for (const key of ['_legAltitudeInboundBlocked', '_legAltitudeOutboundBlocked', '_legAltitudeOneWay']) {
     if (source && source[key]) leg[key] = source[key];
   }
+  // If the source leg was auto (charted from the dataset, not hand-edited), keep
+  // the new sub-legs auto so they re-derive their own charted altitudes for the
+  // new endpoint pairs instead of freezing at the parent's value.
+  if (!source || source._legAltitudeAuto) leg._legAltitudeAuto = 1;
   return leg;
 }
 
@@ -1694,9 +1698,16 @@ function showRouteMosaicModal() {
   printBtn.type = 'button';
   printBtn.className = 'route-mosaic-print';
   printBtn.textContent = S.mosaicPrint || '🖨 Print';
+  let printing = false;
   printBtn.onclick = () => {
+    if (printing) return;                 // ignore re-press while a print is in flight
+    printing = true;
     document.body.classList.add('mosaic-print');
-    const cleanup = () => { document.body.classList.remove('mosaic-print'); window.removeEventListener('afterprint', cleanup); };
+    const cleanup = () => {
+      printing = false;
+      document.body.classList.remove('mosaic-print');
+      window.removeEventListener('afterprint', cleanup);
+    };
     window.addEventListener('afterprint', cleanup);
     window.print();
     setTimeout(cleanup, 1000);   // fallback if afterprint never fires
@@ -1750,9 +1761,20 @@ function showRouteMosaicModal() {
       }
     });
   };
-  sel.onchange = render;
+  // Cap the zoom slider to the selected layer's effective max (chart layers top
+  // out at ~12–13) so the number can't keep climbing while the tiles don't.
+  const syncZoomMax = () => {
+    const layer = (typeof layers !== 'undefined') ? layers[sel.value] : null;
+    const max = (layer && layer.options && (layer.options.maxNativeZoom || layer.options.maxZoom))
+      || tune('satellitePreviewZoom');
+    zoom.max = String(max);
+    if (parseInt(zoom.value, 10) > max) zoom.value = String(max);
+    zoomVal.textContent = zoom.value;
+  };
+  sel.onchange = () => { syncZoomMax(); render(); };
   zoom.oninput = () => { zoomVal.textContent = zoom.value; render(); };
   size.oninput = () => { sizeVal.textContent = size.value + 'px'; render(); };
+  syncZoomMax();
   render();
   body.appendChild(grid);
   modal.box.appendChild(body);
@@ -1822,7 +1844,10 @@ function appendAirfieldNotams(body, af) {
   const m = matchesNow();
   render(m);
   if (m === null && typeof ensureNotams === 'function') {
-    ensureNotams().then(() => render(matchesNow())).catch(() => render([]));
+    // Guard against the inspector being closed / switched to another airfield
+    // before the load resolves — don't write into a detached/stale row.
+    ensureNotams().then(() => { if (val.isConnected) render(matchesNow()); })
+      .catch(() => { if (val.isConnected) render([]); });
   }
   row.append(lbl, val);
   body.appendChild(row);
