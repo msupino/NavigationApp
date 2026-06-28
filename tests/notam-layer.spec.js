@@ -262,6 +262,29 @@ test('prose border NOTAMs are geocoded to buffer polygons', async ({ page }) => 
   expect(g.lngMax).toBeLessThan(35.95);
 });
 
+test('border NOTAM outline is solid, ordinary area outline is dashed', async ({ page }) => {
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'BORDER/26', type: 'AELC', end: 'PERM', geom: null, icao: 'LLLL',
+      text: 'AN AREA FM LEBANON BOUNDRAY TO 8KM SB CLSD TO ALL DOM FLT.' },
+    { id: 'AREA/26', end: 'PERM', icao: 'LLLL', text: 'AREA CLSD.',
+      geom: { type: 'polygon', coords: [[32.0, 34.8], [32.2, 34.9], [31.9, 35.1]] } },
+  ] });
+  await page.locator('#notam-cb').check();
+  // Spy on setLineDash during a draw: a border area must stroke with no dash
+  // ([] / empty), the ordinary polygon must stroke dashed ([6,4]).
+  const dashes = await page.evaluate(() => {
+    if (typeof buildNotamBorderAreas === 'function') buildNotamBorderAreas();
+    const seen = [];
+    const orig = octx.setLineDash;
+    octx.setLineDash = function (d) { seen.push((d || []).join(',')); return orig.call(this, d); };
+    draw();
+    octx.setLineDash = orig;
+    return seen;
+  });
+  // The dashed-area pattern is set once per ordinary area (here: exactly one).
+  expect(dashes.filter(d => d === '6,4').length).toBe(1);
+});
+
 test('timeline slider scrubs which NOTAMs are active', async ({ page }) => {
   const started = new Date(Date.now() - 36e5).toISOString();     // -1h (already active)
   const startIn48 = new Date(Date.now() + 48 * 3600e3).toISOString();
