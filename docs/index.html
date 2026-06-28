@@ -120,7 +120,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=207">
+  <link rel="stylesheet" href="app/style.css?v=208">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -259,9 +259,6 @@
           <input type="checkbox" id="force-snap-cb"> <span data-i18n="tbForceSnap"></span>
         </label>
         <button id="tool-magnifier" type="button" data-i18n="tbMagnifier" data-i18n-title="tbMagnifierTitle" style="width:100%;margin-top:4px;padding:4px 8px;font-size:12px"></button>
-        <button id="gps-record" type="button" data-i18n="tbGpsRecord" data-i18n-title="tbGpsRecordTitle" style="width:100%;margin-top:4px;padding:4px 8px;font-size:12px"></button>
-        <button id="gps-live" type="button" style="width:100%;margin-top:4px;padding:4px 8px;font-size:12px" data-i18n="tbGpsLive" data-i18n-title="tbGpsLiveTitle" aria-pressed="false"></button>
-        <span id="gps-readout" class="gps-readout"></span>
       </div>
     </div>
 
@@ -541,6 +538,17 @@
         </svg>
         <span class="footer-link-text" data-i18n="tbTerms"></span>
       </a>
+      <button id="gps-record" type="button" class="footer-link footer-link-button gps-footer-btn"
+              data-i18n-title="tbGpsRecordTitle" data-i18n-aria="tbGpsRecord">
+        <span class="footer-link-icon gps-footer-icon" aria-hidden="true">⏺</span>
+        <span class="footer-link-text" data-i18n="tbGpsRecord"></span>
+      </button>
+      <button id="gps-live" type="button" class="footer-link footer-link-button gps-footer-btn" aria-pressed="false"
+              data-i18n-title="tbGpsLiveTitle" data-i18n-aria="tbGpsLive">
+        <span class="footer-link-icon gps-footer-icon" aria-hidden="true">📍</span>
+        <span class="footer-link-text" data-i18n="tbGpsLive"></span>
+      </button>
+      <span id="gps-readout" class="gps-readout footer-gps-readout"></span>
       <button id="sim-trigger" type="button" class="footer-link footer-link-button"
               data-i18n-title="tbSecSim" data-i18n-aria="tbSecSim">
         <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
@@ -637,7 +645,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=207';
+      var v = '?v=208';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',

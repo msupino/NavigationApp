@@ -1662,17 +1662,28 @@ document.getElementById('charts').onclick = showChartsModal;
   const mb = document.getElementById('mosaic-btn');
   if (mb) mb.onclick = () => { if (typeof showRouteMosaicModal === 'function') showRouteMosaicModal(); };
 }());
+// Footer GPS buttons render as compact icons (label hidden at desktop), so set
+// the icon glyph + the (hidden) text label rather than replacing the button's
+// content.
+function setFooterBtn(btn, label, icon) {
+  if (!btn) return;
+  const t = btn.querySelector('.footer-link-text');
+  if (t) t.textContent = label; else btn.textContent = label;
+  const ic = btn.querySelector('.footer-link-icon');
+  if (ic && icon) ic.textContent = icon;
+}
 const gpsBtn = document.getElementById('gps-record');
 if (gpsBtn) {
   if (!navigator.geolocation) { gpsBtn.disabled = true; }
   gpsBtn.addEventListener('click', () => {
     if (gpsRecording) {
       stopGpsRecordingAndSave();
-      gpsBtn.textContent = S.tbGpsRecord;
+      setFooterBtn(gpsBtn, S.tbGpsRecord, '⏺');
+      gpsBtn.setAttribute('aria-pressed', 'false');
       if (typeof window.refreshRouteLibrary === 'function') window.refreshRouteLibrary();
     } else {
       startGpsRecording();
-      if (gpsRecording) gpsBtn.textContent = S.tbGpsStop;
+      if (gpsRecording) { setFooterBtn(gpsBtn, S.tbGpsStop, '⏹'); gpsBtn.setAttribute('aria-pressed', 'true'); }
     }
   });
 }
@@ -1682,10 +1693,10 @@ if (liveBtn) {
   liveBtn.addEventListener('click', () => {
     if (gpsLiveOn) {
       stopLiveLocation();
-      liveBtn.textContent = S.tbGpsLive; liveBtn.setAttribute('aria-pressed', 'false');
+      setFooterBtn(liveBtn, S.tbGpsLive, '📍'); liveBtn.setAttribute('aria-pressed', 'false');
     } else {
       startLiveLocation();
-      if (gpsLiveOn) { liveBtn.textContent = S.tbGpsLiveStop; liveBtn.setAttribute('aria-pressed', 'true'); }
+      if (gpsLiveOn) { setFooterBtn(liveBtn, S.tbGpsLiveStop, '📍'); liveBtn.setAttribute('aria-pressed', 'true'); }
     }
   });
 }

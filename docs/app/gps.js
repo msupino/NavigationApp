@@ -128,11 +128,22 @@ function onGpsPosition(pos) {
   if (gpsFollow && typeof map !== 'undefined') map.setView([pt.lat, pt.lng], map.getZoom());
 }
 
+// Reset a footer GPS button's (hidden) label + icon without wiping its icon
+// span — mirrors setFooterBtn() in ui.js.
+function resetGpsFooterBtn(id, label, icon) {
+  const b = document.getElementById(id);
+  if (!b) return;
+  const t = b.querySelector('.footer-link-text');
+  if (t) t.textContent = label; else b.textContent = label;
+  const ic = b.querySelector('.footer-link-icon');
+  if (ic) ic.textContent = icon;
+  b.setAttribute('aria-pressed', 'false');
+}
 function onGpsError(err) {
   stopGpsRecording();
   stopLiveLocation();
-  const rb = document.getElementById('gps-record'); if (rb) rb.textContent = S.tbGpsRecord;
-  const lb = document.getElementById('gps-live'); if (lb) { lb.textContent = S.tbGpsLive; lb.setAttribute('aria-pressed', 'false'); }
+  resetGpsFooterBtn('gps-record', S.tbGpsRecord, '⏺');
+  resetGpsFooterBtn('gps-live', S.tbGpsLive, '📍');
   alert((S.gpsError || 'GPS error: ') + (err && err.message ? err.message : ''));
 }
 
