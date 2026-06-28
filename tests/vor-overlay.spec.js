@@ -3,6 +3,7 @@
 // a selectable reference VOR, and magnetic radial + DME of any point shown in
 // its own bottom readout and the waypoint inspector.
 const { test, expect } = require('./_setup');
+const { hideToolbarMenus } = require('./_toolbar');
 
 async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
@@ -99,6 +100,7 @@ test.describe('VOR overlay + radial/DME (#404)', () => {
       syncLegs();
       state.selected = { type: 'wp', index: 0 }; showInspector();
     });
+    await hideToolbarMenus(page);
     const row = page.locator('#insp-body .vor-radial-row');
     await expect(row).toHaveCount(1);
     const sel = row.locator('select.insp-vor-ref');

@@ -217,6 +217,8 @@ NavAid.tuningDefaults = {
 
   driftLineColor: { value: '#141414', type: 'color', label: 'Drift line color' },
   driftLineAlpha: { value: 0.6, min: 0, max: 1, step: 0.05, label: 'Drift line alpha' },
+  gpsBreadcrumbColor: { value: '#1e88e5', type: 'color', label: 'GPS breadcrumb color' },
+  gpsBreadcrumbWidthPx: { value: 3, min: 1, max: 10, step: 0.5, label: 'GPS breadcrumb width' },
   overlayLabelHaloColor: { value: '#ffffff', type: 'color', label: 'Overlay label halo color' },
   overlayLabelHaloAlpha: { value: 0.85, min: 0, max: 1, step: 0.05, label: 'Overlay label halo alpha' },
 
@@ -230,7 +232,7 @@ NavAid.tuningDefaults = {
 
   exportBgColor: { value: '#231f20', type: 'color', label: 'PNG export background color' },
 
-  liveAircraftFillColor: { value: '#e74c3c', type: 'color', label: 'Live aircraft fill color' },
+  liveAircraftFillColor: { value: '#000000', type: 'color', label: 'Live aircraft fill color' },
   liveAircraftOutlineColor: { value: '#ffffff', type: 'color', label: 'Live aircraft outline color' },
 
   profileBgColor: { value: '#1d2733', type: 'color', label: 'Profile background color' },
@@ -368,6 +370,7 @@ NavAid.tuningGroups = [
   { name: 'Behaviour', keys: ['undoLimit', 'rotDragPx', 'shareMaxWaypoints', 'commChangeSnapPx', 'originResnapArmPx'] },
   { name: 'Route line', keys: ['routeLineWidthPx', 'routeSelectedLineWidthPx'] },
   { name: 'Drift lines', keys: ['driftAngleDeg', 'driftLengthFactor', 'driftDashOnPx', 'driftDashOffPx', 'driftStrokeWidthPx', 'driftLineColor', 'driftLineAlpha'] },
+  { name: 'GPS track', keys: ['gpsBreadcrumbColor', 'gpsBreadcrumbWidthPx'] },
   { name: 'Wind arrows', keys: ['windArrowColor', 'windArrowHaloColor', 'windTextHaloColor'] },
   { name: 'Default marker locations', keys: ['defaultLabelMarginPx', 'defaultKiteHalfWidthPx'] },
   { name: 'Leg kites', keys: ['legKiteFillColor', 'returnKiteFillColor', 'legKiteHeightPx', 'legKiteCellWidthPx', 'legKiteTriangleLenPx', 'legKiteBorderPx', 'legKiteDividerPx', 'legKiteHaloPx', 'legKiteTextPx', 'legKiteHeadingTextPx', 'legKiteHeadingAnchor'] },
@@ -967,6 +970,15 @@ window.S = Object.assign({
   tbPrintTitle: 'Save the framed map + route as a PNG',
   tbMagnifier: '🔍 Magnifying glass (M)',
   tbMagnifierTitle: 'Magnifying glass (M) — zoomed view at cursor; +/− adjust loupe zoom while open',
+  tbGpsRecord: '📍 Record GPS track',
+  tbGpsRecordTitle: 'Record your flown track from the device GPS and save it',
+  tbGpsStop: '■ Stop & save',
+  tbGpsLive: '📍 Show my location',
+  tbGpsLiveTitle: 'Show your live position on the map (device GPS, no recording)',
+  tbGpsLiveStop: '■ Hide my location',
+  gpsUnsupported: 'GPS is not available in this browser.',
+  gpsNoTrack: 'No track recorded.',
+  gpsError: 'GPS error: ',
   magSettingsTitle: 'Magnifier',
   magZoomLabel: 'Zoom',
   magZoomTitle: 'Magnifier zoom factor',

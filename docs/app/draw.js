@@ -33,84 +33,63 @@ function legKiteAlongHalfPx(sc) {
 }
 
 // --- drawing ---------------------------------------------------------
-// Draw the live simulator aircraft at its current position with heading.
-// Top-down airplane silhouette: nose points up in local frame, rotated to
-// (aircraft heading − map bearing) so it tracks correctly on a rotated map.
-function drawSimAircraft() {
-  if (!simOn || !simAircraft) return;
-  const s = proj(simAircraft);
+// Draws the own-ship symbol at pos {lat,lng} with true heading `hdg` (used for
+// both the simulator aircraft and the live GPS position). Top-down airplane
+// silhouette: nose up in local frame, rotated to (heading − map bearing) so it
+// tracks correctly on a rotated map.
+function drawOwnShip(pos, hdg) {
+  if (!pos) return;
+  const s = proj(pos);
   const mapBearing = (typeof map !== 'undefined' && map.getBearing) ? map.getBearing() : 0;
-  const screenAngle = ((simAircraft.hdg || 0) - mapBearing) * Math.PI / 180;
+  const screenAngle = ((hdg || 0) - mapBearing) * Math.PI / 180;
   const r = tune('liveAircraftRadiusPx');
   octx.save();
   octx.translate(s.x, s.y);
   octx.rotate(screenAngle);
 
-  // ── fuselage ──
-  octx.beginPath();
-  octx.moveTo(0, -r);                                      // nose tip
-  octx.quadraticCurveTo( r * 0.13, -r * 0.3,  r * 0.13,  r * 0.15);  // right side
-  octx.lineTo( r * 0.13,  r * 0.6);                       // right fuselage to tail
-  octx.quadraticCurveTo( r * 0.08, r * 0.85, 0,  r * 0.9);            // right tail taper
-  octx.quadraticCurveTo(-r * 0.08, r * 0.85, -r * 0.13,  r * 0.6);
-  octx.lineTo(-r * 0.13,  r * 0.15);
-  octx.quadraticCurveTo(-r * 0.13, -r * 0.3, 0, -r);
-  octx.closePath();
-  octx.fillStyle = tune('liveAircraftFillColor');
-  octx.fill();
+  const fc = tune('liveAircraftFillColor');
+  const oc = colorWithAlpha(tune('liveAircraftOutlineColor'), 0.9);
 
-  // ── wings — swept back from mid-fuselage ──
-  octx.beginPath();
-  octx.moveTo( r * 0.13,  r * 0.05);   // right wing root (leading edge)
-  octx.lineTo( r,          r * 0.35);  // right wingtip LE
-  octx.lineTo( r * 0.85,   r * 0.45);  // right wingtip TE
-  octx.lineTo( r * 0.13,   r * 0.22);  // right wing root (trailing edge)
-  octx.closePath();
-  octx.fillStyle = tune('liveAircraftFillColor');
-  octx.fill();
+  function roundRect(x, y, w, h, radius) {
+    const rx = Math.min(radius, w / 2, h / 2);
+    octx.beginPath();
+    octx.moveTo(x + rx, y);
+    octx.lineTo(x + w - rx, y);
+    octx.quadraticCurveTo(x + w, y, x + w, y + rx);
+    octx.lineTo(x + w, y + h - rx);
+    octx.quadraticCurveTo(x + w, y + h, x + w - rx, y + h);
+    octx.lineTo(x + rx, y + h);
+    octx.quadraticCurveTo(x, y + h, x, y + h - rx);
+    octx.lineTo(x, y + rx);
+    octx.quadraticCurveTo(x, y, x + rx, y);
+    octx.closePath();
+  }
 
-  octx.beginPath();
-  octx.moveTo(-r * 0.13,  r * 0.05);
-  octx.lineTo(-r,          r * 0.35);
-  octx.lineTo(-r * 0.85,   r * 0.45);
-  octx.lineTo(-r * 0.13,   r * 0.22);
-  octx.closePath();
-  octx.fillStyle = tune('liveAircraftFillColor');
-  octx.fill();
+  // Cessna-style: straight full-span wing, slim fuselage, tailplane, spinner.
+  // Proportions match the footer SVG (viewBox 0 0 16 16, fuselage half-length = r).
+  const fw = r * 0.24;   // fuselage half-width
+  const wr = r * 0.14;   // rounded corner radius
 
-  // ── horizontal stabilisers ──
-  octx.beginPath();
-  octx.moveTo( r * 0.13,  r * 0.65);
-  octx.lineTo( r * 0.45,  r * 0.78);
-  octx.lineTo( r * 0.38,  r * 0.85);
-  octx.lineTo( r * 0.13,  r * 0.75);
-  octx.closePath();
-  octx.fillStyle = tune('liveAircraftFillColor');
-  octx.fill();
+  // fuselage
+  roundRect(-fw, -r, fw * 2, r * 2, wr);
+  octx.fillStyle = fc; octx.fill();
+  octx.lineWidth = 1.5; octx.strokeStyle = oc; octx.stroke();
 
-  octx.beginPath();
-  octx.moveTo(-r * 0.13,  r * 0.65);
-  octx.lineTo(-r * 0.45,  r * 0.78);
-  octx.lineTo(-r * 0.38,  r * 0.85);
-  octx.lineTo(-r * 0.13,  r * 0.75);
-  octx.closePath();
-  octx.fillStyle = tune('liveAircraftFillColor');
-  octx.fill();
+  // full-span straight wing (at ~-0.14r from center)
+  roundRect(-r * 1.13, -r * 0.27, r * 2.26, r * 0.27, wr);
+  octx.fillStyle = fc; octx.fill();
+  octx.lineWidth = 1; octx.strokeStyle = oc; octx.stroke();
 
-  // ── white outline over everything ──
-  octx.lineWidth = 1.5;
-  octx.strokeStyle = colorWithAlpha(tune('liveAircraftOutlineColor'), 0.9);
-  // re-stroke fuselage
+  // tailplane (shorter, near tail)
+  roundRect(-r * 0.55, r * 0.63, r * 1.1, r * 0.22, wr * 0.5);
+  octx.fillStyle = fc; octx.fill();
+  octx.lineWidth = 1; octx.strokeStyle = oc; octx.stroke();
+
+  // spinner (nose circle)
   octx.beginPath();
-  octx.moveTo(0, -r);
-  octx.quadraticCurveTo( r * 0.13, -r * 0.3,  r * 0.13,  r * 0.15);
-  octx.lineTo( r * 0.13,  r * 0.6);
-  octx.quadraticCurveTo( r * 0.08, r * 0.85, 0,  r * 0.9);
-  octx.quadraticCurveTo(-r * 0.08, r * 0.85, -r * 0.13,  r * 0.6);
-  octx.lineTo(-r * 0.13,  r * 0.15);
-  octx.quadraticCurveTo(-r * 0.13, -r * 0.3, 0, -r);
-  octx.closePath();
-  octx.stroke();
+  octx.arc(0, -r, r * 0.14, 0, Math.PI * 2);
+  octx.fillStyle = fc; octx.fill();
+  octx.lineWidth = 1; octx.strokeStyle = oc; octx.stroke();
 
   octx.restore();
 }
@@ -312,7 +291,8 @@ function draw() {
   if (window.showNotam && Array.isArray(notams) && notams.length) drawNotamAirportMarkers();
   drawNotes();
   if (window.showProfile) drawProfileMarkers();   // TOC/TOD markers (#672)
-  drawSimAircraft();
+  if (typeof drawGpsTrack === 'function') drawGpsTrack();   // GPS breadcrumb + own-ship (recording or live location)
+  if (!gpsRecording && !gpsLiveOn && simOn && simAircraft) drawOwnShip(simAircraft, simAircraft.hdg);  // sim own-ship
   drawInfo();
   drawPageFrame();
   drawPlanCard();          // flight-plan card placed for PNG export (#378)
