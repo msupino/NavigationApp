@@ -2918,6 +2918,13 @@ map.on('mousedown', e => {
   // Outside edit mode, a click on a VOR / airfield / nav-WP marker opens its
   // read-only inspector. Not draggable, so leave map panning enabled.
   if (includeOverlayChoices) {
+    // Many stacked NOTAMs (e.g. an airport badge) → open the scrollable NOTAM
+    // list directly instead of the point picker, which doesn't scroll.
+    if (ovAll.length > 1 && ovAll.every(c => c.type === 'notam')) {
+      downHit = true;
+      if (typeof showNotamModal === 'function') showNotamModal(ovAll.map(c => c.notam));
+      return;
+    }
     if (ovAll.length > 1) {
       downHit = true;
       showPointChoice(ovAll);
@@ -3306,6 +3313,11 @@ mapEl.addEventListener('touchstart', e => {
   // Outside edit mode, a tap on a VOR / airfield / nav-WP marker opens its
   // read-only inspector (no drag).
   if (!touchDrag && includeOverlayChoices) {
+    if (activeOvHits.length > 1 && activeOvHits.every(c => c.type === 'notam')) {
+      e.preventDefault();
+      if (typeof showNotamModal === 'function') showNotamModal(activeOvHits.map(c => c.notam));
+      return;
+    }
     if (activeOvHits.length > 1) {
       e.preventDefault();
       showPointChoice(activeOvHits);
