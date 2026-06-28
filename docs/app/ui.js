@@ -2485,9 +2485,11 @@ function showNotamModal(only) {
   box.appendChild(list);
   back.appendChild(box);
   document.body.appendChild(back);
-  // Freeze the list to its unfiltered height so picking an airfield (fewer
-  // items) doesn't shrink the modal and make it jump.
-  if (codes.length > 1) list.style.height = list.offsetHeight + 'px';
+  // Lock the modal's height (capped to the viewport) so filtering doesn't
+  // resize it AND the list scrolls inside instead of overflowing the screen —
+  // a long single-airfield list (e.g. LLBG) stays fully scrollable.
+  const hCap = Math.round(window.innerHeight * 0.84);
+  box.style.height = Math.min(box.offsetHeight, hCap) + 'px';
   const dismiss = () => { back.remove(); document.removeEventListener('keydown', onKey); };
   // Let closeOpenChartModals() (other charts opening) close this one too.
   back._navaidClose = dismiss;
