@@ -267,3 +267,40 @@ test('GPS error resets the live-location button too', async ({ page }) => {
   await expect(btn).toHaveAttribute('aria-pressed', 'false');
   await expect(btn).toContainText('Show');
 });
+
+test('recording holds a screen wake lock, releases on stop, re-arms on visibility', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__geoCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 9; };
+    navigator.geolocation.clearWatch = () => {};
+    window.__wlReq = 0; window.__wlRel = 0; window.__wlDrop = null;
+    const makeSentinel = () => {
+      let onRelease = null;
+      return {
+        release() { window.__wlRel++; if (onRelease) onRelease(); return Promise.resolve(); },
+        addEventListener(t, fn) { if (t === 'release') { onRelease = fn; window.__wlDrop = () => { window.__wlRel++; fn(); }; } },
+      };
+    };
+    Object.defineProperty(navigator, 'wakeLock', {
+      configurable: true,
+      value: { request() { window.__wlReq++; return Promise.resolve(makeSentinel()); } },
+    });
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof startGpsRecording === 'function');
+
+  await page.evaluate(() => startGpsRecording());
+  await page.waitForFunction(() => window.__wlReq === 1 && gpsWakeLock != null);
+
+  // Browser drops the lock when backgrounded; coming back to foreground re-arms it.
+  await page.evaluate(() => window.__wlDrop());
+  await page.waitForFunction(() => gpsWakeLock == null);
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await page.waitForFunction(() => window.__wlReq === 2 && gpsWakeLock != null);
+
+  await page.evaluate(() => stopGpsRecording());
+  await page.waitForFunction(() => gpsWakeLock == null);
+  const counts = await page.evaluate(() => ({ req: window.__wlReq, rel: window.__wlRel }));
+  expect(counts.req).toBe(2);   // initial + re-arm
+  expect(counts.rel).toBe(2);   // OS drop + stop
+});
