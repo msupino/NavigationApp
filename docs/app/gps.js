@@ -6,6 +6,27 @@ var gpsRecording = false;
 var gpsTrack = [];          // [{lat,lng,t,alt,acc}]
 var gpsWatchId = null;
 var gpsOwn = null;          // {lat,lng,hdg} last fix for own-ship rendering
+var gpsWakeLock = null;     // Screen Wake Lock sentinel held while recording
+
+// Keep the screen awake while recording so the phone doesn't sleep mid-track.
+// Wake Lock is auto-released by the browser when the tab is hidden; we re-acquire
+// on visibilitychange (see listener at end of file). Best-effort: silently
+// no-op where unsupported (older Safari) or denied by policy.
+function gpsAcquireWakeLock() {
+  if (gpsWakeLock || !gpsRecording) return;
+  if (typeof navigator === 'undefined' || !('wakeLock' in navigator)) return;
+  navigator.wakeLock.request('screen').then(function (wl) {
+    if (!gpsRecording) { wl.release().catch(function () {}); return; }
+    gpsWakeLock = wl;
+    wl.addEventListener('release', function () { gpsWakeLock = null; });
+  }).catch(function () { /* denied / no user gesture — ignore */ });
+}
+
+function gpsReleaseWakeLock() {
+  if (!gpsWakeLock) return;
+  var wl = gpsWakeLock; gpsWakeLock = null;
+  wl.release().catch(function () {});
+}
 
 const GPS_SIMPLIFY_EPS_DEG = 0.0003;   // ~30 m
 const GPS_MIN_MOVE_M = 10;             // de-jitter: drop sub-10 m steps
@@ -187,6 +208,7 @@ function startGpsRecording() {
   if (!gpsLiveOn) gpsOwn = null;
   gpsStartT = Date.now();
   gpsWatchId = navigator.geolocation.watchPosition(onGpsPosition, onGpsRecError, { enableHighAccuracy: true });
+  gpsAcquireWakeLock();
   gpsUpdateReadout();
   scheduleDraw();
 }
@@ -267,8 +289,17 @@ function stopGpsRecording() {
   if (gpsWatchId != null && navigator.geolocation) navigator.geolocation.clearWatch(gpsWatchId);
   gpsWatchId = null;
   gpsRecording = false;
+  gpsReleaseWakeLock();
   gpsLastGS = null; gpsLastAlt = null;
   if (!gpsLiveOn) gpsOwn = null;
   gpsUpdateReadout();
   scheduleDraw();
+}
+
+// The browser drops the wake lock whenever the tab is backgrounded; re-arm it
+// when the page becomes visible again and a recording is still in progress.
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && gpsRecording) gpsAcquireWakeLock();
+  });
 }
