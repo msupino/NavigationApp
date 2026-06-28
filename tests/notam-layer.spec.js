@@ -25,6 +25,35 @@ async function boot(page, body) {
   await page.waitForFunction(() => typeof draw === 'function' && document.getElementById('notam-cb'));
 }
 
+test('airfield inspector links to its NOTAMs, or shows N/A when none', async ({ page }) => {
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'B1/26', icao: 'LLBG', end: '', geom: null, text: 'B1 LLBG one.' },
+    { id: 'B2/26', icao: 'LLBG', end: '', geom: null, text: 'B2 LLBG two.' },
+  ] });
+  await page.evaluate(() => loadAirfields && loadAirfields());
+  await page.waitForFunction(() => Array.isArray(window.airfields) && airfields.length > 0);
+  // LLBG has NOTAMs → a link with the count.
+  await page.evaluate(() => {
+    const i = airfields.findIndex(a => a.name === 'LLBG');
+    state.selected = { type: 'airfield', index: i };
+    showInspector();
+  });
+  const link = page.locator('#insp-body .insp-notam-link');
+  await expect(link).toBeVisible();          // loads NOTAMs on demand, then renders
+  await expect(link).toContainText('2');
+  await link.click();
+  await expect(page.locator('.notam-modal .notam-item')).toHaveCount(2);
+  await page.locator('.notam-modal .modal-close-x').click();
+  // An airfield with no NOTAMs → N/A.
+  await page.evaluate(() => {
+    const i = airfields.findIndex(a => a.name === 'LLHA');
+    state.selected = { type: 'airfield', index: i };
+    showInspector();
+  });
+  await expect(page.locator('#insp-body .notam-insp-row')).toContainText('N/A');
+  await expect(page.locator('#insp-body .insp-notam-link')).toHaveCount(0);
+});
+
 test('NOTAM list button reveals when data loads and lists all NOTAMs', async ({ page }) => {
   await boot(page);
   const btn = page.locator('#notam-list-btn');

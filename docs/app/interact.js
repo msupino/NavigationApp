@@ -1794,6 +1794,40 @@ function appendSatelliteSnippet(body, point, label) {
 
 // A single button that opens this airfield in the Charts modal — the full
 // plate list lives there, so the inspector doesn't duplicate it.
+// NOTAM row for an ICAO airfield: a link to its active NOTAMs, or "N/A" when
+// it has none. NOTAM data is loaded on demand if the overlay was never on.
+function appendAirfieldNotams(body, af) {
+  const icao = String(af && af.name || '').toUpperCase();
+  if (!/^[A-Z]{4}$/.test(icao)) return;
+  const matchesNow = () => (Array.isArray(notams) && typeof activeNotams === 'function')
+    ? activeNotams().filter(n => String(n.icao || '').toUpperCase() === icao)
+    : null;
+  const row = document.createElement('div');
+  row.className = 'row notam-insp-row';
+  const lbl = document.createElement('label');
+  lbl.textContent = S.notamInspLabel || 'NOTAMs';
+  const val = document.createElement('span');
+  val.className = 'val';
+  const render = matches => {
+    val.textContent = '';
+    if (matches === null) { val.textContent = '…'; return; }
+    if (!matches.length) { val.textContent = S.notamInspNone || 'N/A'; return; }
+    const link = document.createElement('button');
+    link.type = 'button';
+    link.className = 'insp-notam-link';
+    link.textContent = S.notamInspView ? S.notamInspView(matches.length) : ('View ' + matches.length);
+    link.onclick = () => { if (typeof showNotamModal === 'function') showNotamModal(matches); };
+    val.appendChild(link);
+  };
+  const m = matchesNow();
+  render(m);
+  if (m === null && typeof ensureNotams === 'function') {
+    ensureNotams().then(() => render(matchesNow())).catch(() => render([]));
+  }
+  row.append(lbl, val);
+  body.appendChild(row);
+}
+
 function appendAirfieldPlates(body, af) {
   if (!af || !Array.isArray(af.plates) || !af.plates.length) return;
   const row = document.createElement('div');
@@ -1845,6 +1879,7 @@ function appendAirfieldDetailRows(body, af, label) {
   appendSatelliteSnippet(body, af, label || airfieldInspectorTitle(af));
   appendVorRadialRow(body, af.lat, af.lng);
   appendAirfieldRunways(body, af);
+  appendAirfieldNotams(body, af);
   appendAirfieldPlates(body, af);
 }
 
