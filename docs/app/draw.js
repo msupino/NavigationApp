@@ -607,13 +607,20 @@ function notamFlashPulse() {
   return 0.35 + 0.65 * Math.abs(Math.sin(t / 170));
 }
 // Does a NOTAM have anything to show on the map (area / route line / a known
+// Find an airfield by ICAO, case-insensitively — the NOTAM modal normalises
+// icao with toUpperCase(), so the map side must too or the list/map disagree.
+function airfieldByIcao(code) {
+  const u = String(code || '').toUpperCase();
+  if (!u || !Array.isArray(airfields)) return null;
+  return airfields.find(a => String(a.name || '').toUpperCase() === u) || null;
+}
 // airport for its ICAO)? FIR-wide (LLLL) ones don't.
 function notamMappable(n) {
   if (!n) return false;
   if (n.geom) return true;
   if (Array.isArray(n._routeLines) && n._routeLines.length) return true;
   if (n.icao && Array.isArray(airfields)) {
-    const af = airfields.find(a => a.name === n.icao);
+    const af = airfieldByIcao(n.icao);
     if (af && Number.isFinite(af.lat) && Number.isFinite(af.lng)) return true;
   }
   return false;
@@ -630,16 +637,22 @@ function notamLatLngs(n) {
            Number.isFinite(g.radiusNm)) notamCirclePoints(g.lat, g.lng, g.radiusNm).forEach(c => push(c[0], c[1]));
   if (Array.isArray(n && n._routeLines)) n._routeLines.forEach(rl => (rl.coords || []).forEach(c => push(c[0], c[1])));
   if (!out.length && n && n.icao && Array.isArray(airfields)) {
-    const af = airfields.find(a => a.name === n.icao);
+    const af = airfieldByIcao(n.icao);
     if (af) push(af.lat, af.lng);
   }
   return out;
 }
 function flashNotam(id) {
   if (!id) return;
+  // Only flash a NOTAM that's currently drawn (active at the timeline position).
+  // drawNotams iterates activeNotams(), so flashing an inactive one would pan
+  // the map and spin the redraw loop with nothing to pulse.
+  const act = (typeof activeNotams === 'function') ? activeNotams()
+    : (Array.isArray(notams) ? notams : []);
+  const n = act.find(x => x && x.id === id);
+  if (!n) return;
   // Frame the map on the NOTAM so the highlight is actually in view.
-  const n = Array.isArray(notams) ? notams.find(x => x && x.id === id) : null;
-  const pts = n ? notamLatLngs(n) : [];
+  const pts = notamLatLngs(n);
   if (typeof map !== 'undefined' && map && pts.length) {
     if (pts.length === 1) map.setView(pts[0], Math.max(map.getZoom(), 10), { animate: true });
     else map.fitBounds(L.latLngBounds(pts), { padding: [80, 80], maxZoom: 11, animate: true });
@@ -786,7 +799,7 @@ function drawNotamAirportMarkers() {
   const flashId = notamFlashId;
   const flashPulse = notamFlashPulse();
   for (const code in byIcao) {
-    const af = airfields.find(a => a.name === code);
+    const af = airfieldByIcao(code);
     if (!af || !Number.isFinite(af.lat) || !Number.isFinite(af.lng)) continue;   // FIR (LLLL) etc. → list only
     const p = proj({ lat: af.lat, lng: af.lng });
     if (flashId && byIcao[code].some(n => n.id === flashId)) {
@@ -884,7 +897,7 @@ function notamsAtLatLng(latlng) {
       if (c) (byIcao[c] = byIcao[c] || []).push(n);
     }
     for (const code in byIcao) {
-      const af = airfields.find(a => a.name === code);
+      const af = airfieldByIcao(code);
       if (!af || !Number.isFinite(af.lat) || !Number.isFinite(af.lng)) continue;
       const p = proj({ lat: af.lat, lng: af.lng });
       if (Math.hypot(pt.x - p.x, pt.y - (p.y + 14)) <= 11) out.push(...byIcao[code]);
@@ -908,7 +921,7 @@ function notamBadgeNotamsAt(latlng) {
   }
   const pt = proj(latlng);
   for (const code in byIcao) {
-    const af = airfields.find(a => a.name === code);
+    const af = airfieldByIcao(code);
     if (!af || !Number.isFinite(af.lat) || !Number.isFinite(af.lng)) continue;
     const p = proj({ lat: af.lat, lng: af.lng });
     if (Math.hypot(pt.x - p.x, pt.y - (p.y + 14)) <= 11) return byIcao[code];
