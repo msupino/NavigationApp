@@ -1555,6 +1555,7 @@ test.describe('comm-change auto-note (#487)', () => {
     await expect(field).toHaveAttribute('aria-invalid', 'true');
     await expect(resetFreq).toBeEnabled();
     expect(await page.evaluate(() => state.notes[0].freq)).toBe('118.40');
+    await expect(resetFreq).toBeEnabled();
     await resetFreq.click();
     await expect(field).toHaveValue('118.40');
     await expect(field).toHaveAttribute('aria-invalid', 'false');
