@@ -5,6 +5,7 @@
 // inside inputs, and existing global shortcuts (F, Ctrl-F, Esc, Backspace)
 // keep working after the change.
 const { test, expect } = require('./_setup');
+const { hideToolbarMenus } = require('./_toolbar');
 
 async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
@@ -122,6 +123,9 @@ test.describe('Keyboard-shortcuts cheat-sheet (#420)', () => {
       showInspector();
       draw();
     });
+    // Desktop menubar dropdowns overlap the inspector; close them so the
+    // input is clickable.
+    await hideToolbarMenus(page);
     const nameInput = page.locator('#insp-body .row input[type="text"]').first();
     await nameInput.click();
     await nameInput.focus();

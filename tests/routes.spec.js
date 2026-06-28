@@ -4,6 +4,7 @@
 // LLHZ → LLHA fixture as tests/flight-plan.spec.js and tests/share-route.spec.js.
 const { test, expect } = require('./_setup');
 const { LLHZ, LLHA } = require('./_airfieldArp');
+const { hideToolbarMenus } = require('./_toolbar');
 
 const ROUTE = {
   waypoints: [
@@ -661,6 +662,7 @@ test.describe('Inspector close behaviour', () => {
       state.selected = { type: 'wp', index: 3 };
       showInspector();
     });
+    await hideToolbarMenus(page);
     await page.locator('#insp-close').click();
     expect(await page.evaluate(() => state.selected)).toBeNull();
   });
