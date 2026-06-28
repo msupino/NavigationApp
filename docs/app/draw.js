@@ -307,6 +307,9 @@ function draw() {
   if (window.showNotam && Array.isArray(notams) && notams.length) drawNotams();
   drawLegs();
   drawWaypoints();
+  // NOTAM airport count badges on top of waypoints so a route waypoint on the
+  // field doesn't cover them (and they stay clickable).
+  if (window.showNotam && Array.isArray(notams) && notams.length) drawNotamAirportMarkers();
   drawNotes();
   if (window.showProfile) drawProfileMarkers();   // TOC/TOD markers (#672)
   drawSimAircraft();
@@ -780,9 +783,10 @@ function drawNotams() {
       octx.fillText(n.id, cx, cy);
     }
   }
-  drawNotamAirportMarkers();
   octx.textAlign = 'left';
   octx.restore();
+  // Airport count badges are drawn separately (after waypoints) so a route
+  // waypoint sitting on the field doesn't hide / block them — see draw().
 }
 
 // Most NOTAMs carry no coordinates (airport-procedural / FIR-wide) — the source
@@ -908,6 +912,30 @@ function notamsAtLatLng(latlng) {
   }
   return out;
 }
+
+// Just the airport count-badge NOTAMs under a point (the r=11 disc at
+// proj(field)+14px). Used to let the badge win a click over a route waypoint
+// sitting on the same field, without area NOTAMs stealing waypoint clicks.
+function notamBadgeNotamsAt(latlng) {
+  if (!window.showNotam || !latlng || !Array.isArray(airfields) || !airfields.length) return [];
+  const act = (typeof activeNotams === 'function') ? activeNotams() : [];
+  if (!act.length) return [];
+  const byIcao = {};
+  for (const n of act) {
+    if (n && n.geom) continue;
+    if (n && Array.isArray(n._routeLines) && n._routeLines.length) continue;
+    if (n && n.icao) (byIcao[n.icao] = byIcao[n.icao] || []).push(n);
+  }
+  const pt = proj(latlng);
+  for (const code in byIcao) {
+    const af = airfields.find(a => a.name === code);
+    if (!af || !Number.isFinite(af.lat) || !Number.isFinite(af.lng)) continue;
+    const p = proj({ lat: af.lat, lng: af.lng });
+    if (Math.hypot(pt.x - p.x, pt.y - (p.y + 14)) <= 11) return byIcao[code];
+  }
+  return [];
+}
+window.notamBadgeNotamsAt = notamBadgeNotamsAt;
 
 // --- nav-waypoint reference overlay ---------------------------------
 // Lazy-loads docs/data/nav-waypoints.json on first activation. Format:

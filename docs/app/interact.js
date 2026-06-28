@@ -1794,6 +1794,40 @@ function appendSatelliteSnippet(body, point, label) {
 
 // A single button that opens this airfield in the Charts modal — the full
 // plate list lives there, so the inspector doesn't duplicate it.
+// NOTAM row for an ICAO airfield: a link to its active NOTAMs, or "N/A" when
+// it has none. NOTAM data is loaded on demand if the overlay was never on.
+function appendAirfieldNotams(body, af) {
+  const icao = String(af && af.name || '').toUpperCase();
+  if (!/^[A-Z]{4}$/.test(icao)) return;
+  const matchesNow = () => (Array.isArray(notams) && typeof activeNotams === 'function')
+    ? activeNotams().filter(n => String(n.icao || '').toUpperCase() === icao)
+    : null;
+  const row = document.createElement('div');
+  row.className = 'row notam-insp-row';
+  const lbl = document.createElement('label');
+  lbl.textContent = S.notamInspLabel || 'NOTAMs';
+  const val = document.createElement('span');
+  val.className = 'val';
+  const render = matches => {
+    val.textContent = '';
+    if (matches === null) { val.textContent = '…'; return; }
+    if (!matches.length) { val.textContent = S.notamInspNone || 'N/A'; return; }
+    const link = document.createElement('button');
+    link.type = 'button';
+    link.className = 'insp-notam-link';
+    link.textContent = S.notamInspView ? S.notamInspView(matches.length) : ('View ' + matches.length);
+    link.onclick = () => { if (typeof showNotamModal === 'function') showNotamModal(matches); };
+    val.appendChild(link);
+  };
+  const m = matchesNow();
+  render(m);
+  if (m === null && typeof ensureNotams === 'function') {
+    ensureNotams().then(() => render(matchesNow())).catch(() => render([]));
+  }
+  row.append(lbl, val);
+  body.appendChild(row);
+}
+
 function appendAirfieldPlates(body, af) {
   if (!af || !Array.isArray(af.plates) || !af.plates.length) return;
   const row = document.createElement('div');
@@ -1845,6 +1879,7 @@ function appendAirfieldDetailRows(body, af, label) {
   appendSatelliteSnippet(body, af, label || airfieldInspectorTitle(af));
   appendVorRadialRow(body, af.lat, af.lng);
   appendAirfieldRunways(body, af);
+  appendAirfieldNotams(body, af);
   appendAirfieldPlates(body, af);
 }
 
@@ -2837,6 +2872,17 @@ map.on('mousedown', e => {
   const notamHits = (includeOverlayChoices && window.showNotam && typeof notamsAtLatLng === 'function')
     ? notamsAtLatLng(e.latlng).map(n => ({ type: 'notam', notam: n })) : [];
   const ovAll = ovHits.concat(notamHits);
+  // A NOTAM airport count-badge sits just below the field; when a route waypoint
+  // is on the same field it used to cover/block the badge. The badge now draws
+  // on top, and wins the click here so its NOTAMs stay selectable.
+  if (includeOverlayChoices && typeof notamBadgeNotamsAt === 'function') {
+    const badge = notamBadgeNotamsAt(e.latlng);
+    if (badge.length) {
+      downHit = true;
+      if (typeof showNotamModal === 'function') showNotamModal(badge);
+      return;
+    }
+  }
   const commChoiceHits = commHits.concat(wpHits, ovAll);
   if (commHits.length && commChoiceHits.length > 1) {
     downHit = true;
@@ -3254,6 +3300,15 @@ mapEl.addEventListener('touchstart', e => {
   const notamHits = (includeOverlayChoices && window.showNotam && typeof notamsAtLatLng === 'function')
     ? notamsAtLatLng(map.containerPointToLatLng([p.x, p.y])).map(n => ({ type: 'notam', notam: n })) : [];
   const ovAll = ovHits.concat(notamHits);
+  // Airport count-badge wins over a waypoint on the same field (see mousedown).
+  if (includeOverlayChoices && typeof notamBadgeNotamsAt === 'function') {
+    const badge = notamBadgeNotamsAt(map.containerPointToLatLng([p.x, p.y]));
+    if (badge.length) {
+      e.preventDefault();
+      if (typeof showNotamModal === 'function') showNotamModal(badge);
+      return;
+    }
+  }
   const commChoiceHits = commHits.concat(wpHits, ovAll);
   if (commHits.length && commChoiceHits.length > 1) {
     e.preventDefault();
