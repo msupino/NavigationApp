@@ -100,7 +100,7 @@ test('stop saves a kind:gps library entry with simplified route + raw track', as
   const entry = await page.evaluate(() => stopGpsRecordingAndSave());
   expect(entry).toBeTruthy();
   expect(entry.kind).toBe('gps');
-  expect(entry.name).toMatch(/^Track /);
+  expect(entry.name).toMatch(/^Record - /);
   expect(Array.isArray(entry.track)).toBe(true);
   expect(entry.track.length).toBeGreaterThanOrEqual(4);
   expect(entry.data.waypoints.length).toBeGreaterThanOrEqual(2);
@@ -108,9 +108,41 @@ test('stop saves a kind:gps library entry with simplified route + raw track', as
   // Fix: saved GPS entry must not be polluted with user's current wind or suppressions.
   expect(entry.data.commChangeSuppressions || []).toEqual([]);
   expect(entry.data.wind == null || (entry.data.wind.speed === 0)).toBe(true);
+  // Recorded GPS altitude flows into the leg's inbound (forward) altitude, nearest
+  // 100 ft: 100 m ≈ 328 ft → 300. Outbound (return) stays unknown.
+  expect(entry.data.legs.every(l => l.inboundAltitude === 300)).toBe(true);
+  expect(entry.data.legs.every(l => l.outboundAltitude === 'NaN')).toBe(true);
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.routes'))[0]);
   expect(persisted.id).toBe(entry.id);
   expect(await page.evaluate((d) => (typeof validateRoute === 'function' ? validateRoute(d) : null), entry.data)).toBeNull();
+});
+
+test('leg altitudes come from recorded GPS altitude (nearest 100 ft); gaps stay unknown', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__geoCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 7; };
+    navigator.geolocation.clearWatch = () => {};
+    try { localStorage.removeItem('navaid.routes'); } catch (e) {}
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof stopGpsRecordingAndSave === 'function');
+  await page.evaluate(() => {
+    startGpsRecording();
+    // Far-apart, non-collinear points so simplifyTrack keeps all four as waypoints.
+    const fix = (lat, lng, altM) => window.__geoCb({ coords: { latitude: lat, longitude: lng, accuracy: 8, heading: null, altitude: altM }, timestamp: Date.now() });
+    fix(32.00, 34.00, 305);    // ~1000 ft
+    fix(32.20, 34.05, 610);    // ~2001 ft
+    fix(32.10, 34.40, null);   // no altitude
+    fix(32.40, 34.20, 915);    // ~3002 ft
+  });
+  const entry = await page.evaluate(() => stopGpsRecordingAndSave());
+  const legs = entry.data.legs;
+  expect(legs.length).toBe(entry.data.waypoints.length - 1);
+  // Leg 0: avg(1000.7, 2001.4) ft = 1501 → 1500. Legs touching the null-alt
+  // point (leg 1 and leg 2) cannot be derived → stay 'NaN' (unknown).
+  expect(legs[0].inboundAltitude).toBe(1500);
+  expect(legs[1].inboundAltitude).toBe('NaN');
+  expect(legs[2].inboundAltitude).toBe('NaN');
 });
 
 test('breadcrumb + own-ship are drawn while recording', async ({ page }) => {

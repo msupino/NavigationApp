@@ -216,7 +216,7 @@ function startGpsRecording() {
 function gpsTrackName() {
   const d = new Date();
   const p = n => String(n).padStart(2, '0');
-  return 'Track ' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate())
+  return 'Record - ' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate())
        + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
 
@@ -237,6 +237,19 @@ function gpsRouteDataFromPoints(points) {
     state.commChangeSuppressions = [];
     state.wind = { dir: 270, speed: 0 };  // calm — encodeWind omits speed:0
     syncLegs();
+    // Carry the recorded GPS altitude into each leg as the flown cruise altitude
+    // (inbound = forward direction; the return/outbound leg stays unknown since
+    // we only flew it once). Per leg: nearest-100-ft average of its two endpoint
+    // altitudes (GPS metres → ft). Mark manual so applyLegAltitudesToRoute won't
+    // clobber it. Without this, every saved-route leg altitude reads "unknown".
+    const altFt = i => (points[i] && points[i].alt != null && !isNaN(points[i].alt))
+      ? points[i].alt * 3.28084 : null;
+    for (let i = 0; i < state.legs.length; i++) {
+      const a = altFt(i), b = altFt(i + 1);
+      if (a == null || b == null) continue;
+      state.legs[i].inboundAltitude = Math.round((a + b) / 2 / 100) * 100;
+      state.legs[i]._legAltitudeAuto = 0;
+    }
     return serializeRoute();
   } finally {
     state.waypoints = saved.waypoints; state.legs = saved.legs; state.notes = saved.notes;
@@ -254,7 +267,7 @@ function stopGpsRecordingAndSave() {
   const raw = gpsTrack.slice();
   stopGpsRecording();
   if (raw.length < 2) { alert(S.gpsNoTrack || 'No track recorded.'); return null; }
-  const simp = simplifyTrack(raw.map(p => ({ lat: p.lat, lng: p.lng })), GPS_SIMPLIFY_EPS_DEG);
+  const simp = simplifyTrack(raw.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt })), GPS_SIMPLIFY_EPS_DEG);
   const data = gpsRouteDataFromPoints(simp);
   const entry = {
     id: routeLibraryId(),

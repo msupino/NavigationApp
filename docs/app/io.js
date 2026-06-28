@@ -1413,13 +1413,20 @@ function scheduleRouteAutoSync() {
 function routeLibraryId() {
   return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
+// Default name for a manually-saved route: "Saved - YYYY-MM-DD HH:MM".
+function defaultSavedRouteName() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return 'Saved - ' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate())
+       + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
 // Save the current route as a new named library entry. Returns the entry or null.
 function routeLibrarySaveCurrent(name) {
   if (state.waypoints.length < 2) { alert(S.errNeedWps); return null; }
   const list = loadRouteLibrary();
   const entry = {
     id: routeLibraryId(),
-    name: (name || '').trim() || ('Route ' + (list.length + 1)),
+    name: (name || '').trim() || defaultSavedRouteName(),
     savedAt: new Date().toISOString(),
     data: serializeRoute(),
   };
