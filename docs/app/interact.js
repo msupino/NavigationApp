@@ -2837,6 +2837,17 @@ map.on('mousedown', e => {
   const notamHits = (includeOverlayChoices && window.showNotam && typeof notamsAtLatLng === 'function')
     ? notamsAtLatLng(e.latlng).map(n => ({ type: 'notam', notam: n })) : [];
   const ovAll = ovHits.concat(notamHits);
+  // A NOTAM airport count-badge sits just below the field; when a route waypoint
+  // is on the same field it used to cover/block the badge. The badge now draws
+  // on top, and wins the click here so its NOTAMs stay selectable.
+  if (includeOverlayChoices && typeof notamBadgeNotamsAt === 'function') {
+    const badge = notamBadgeNotamsAt(e.latlng);
+    if (badge.length) {
+      downHit = true;
+      if (typeof showNotamModal === 'function') showNotamModal(badge);
+      return;
+    }
+  }
   const commChoiceHits = commHits.concat(wpHits, ovAll);
   if (commHits.length && commChoiceHits.length > 1) {
     downHit = true;
@@ -3254,6 +3265,15 @@ mapEl.addEventListener('touchstart', e => {
   const notamHits = (includeOverlayChoices && window.showNotam && typeof notamsAtLatLng === 'function')
     ? notamsAtLatLng(map.containerPointToLatLng([p.x, p.y])).map(n => ({ type: 'notam', notam: n })) : [];
   const ovAll = ovHits.concat(notamHits);
+  // Airport count-badge wins over a waypoint on the same field (see mousedown).
+  if (includeOverlayChoices && typeof notamBadgeNotamsAt === 'function') {
+    const badge = notamBadgeNotamsAt(map.containerPointToLatLng([p.x, p.y]));
+    if (badge.length) {
+      e.preventDefault();
+      if (typeof showNotamModal === 'function') showNotamModal(badge);
+      return;
+    }
+  }
   const commChoiceHits = commHits.concat(wpHits, ovAll);
   if (commHits.length && commChoiceHits.length > 1) {
     e.preventDefault();
