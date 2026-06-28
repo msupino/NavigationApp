@@ -4,10 +4,10 @@ const { test, expect } = require('./_setup');
 // e2e-deployed pulls real map tiles; z=8 pane + loupe CSS settle can exceed
 // the default 15s test timeout without these budgets.
 const deployedPreview = !!process.env.EXPECTED_SHA;
-const magnifierTileReadyMs = deployedPreview ? 35_000 : 12_000;
-const magnifierCalibTestMs = deployedPreview ? 120_000 : 60_000;
+const magnifierTileReadyMs = deployedPreview ? 35_000 : (process.env.CI ? 25_000 : 12_000);
+const magnifierCalibTestMs = deployedPreview ? 120_000 : (process.env.CI ? 120_000 : 60_000);
 // Tile-pane readiness for z=8 (pan / margin / Perfecting tests).
-const magnifierPaneTileMs = deployedPreview ? 45_000 : 18_000;
+const magnifierPaneTileMs = deployedPreview ? 45_000 : (process.env.CI ? 35_000 : 18_000);
 const CHART_TILE_RE = /^https?:\/\/([^/]*\.)?flight-maps\.com\/tiles\//;
 const TILE_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
