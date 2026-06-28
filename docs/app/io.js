@@ -3780,9 +3780,14 @@ let quotaWarned = false;                // #80: stop scheduling after a quota fa
 // a fresh boot (or a clear-store reload) leaves navaid.route truly cleared
 // rather than re-writing "{waypoints:[]…}".
 function routeIsEmpty() {
-  return state.waypoints.length === 0 &&
-    state.legs.length === 0 &&
-    state.notes.length === 0;
+  if (state.waypoints.length || state.legs.length || state.notes.length) return false;
+  // Also persist when only suppressions / a non-calm wind remain, so the
+  // empty-route key-removal doesn't silently drop them (both are in the snapshot).
+  const sup = (typeof routeCommChangeSuppressions === 'function') ? routeCommChangeSuppressions() : null;
+  if (sup && sup.length) return false;
+  const w = (typeof encodeWind === 'function') ? encodeWind(state.wind) : null;
+  if (w && w.speed > 0) return false;
+  return true;
 }
 function writeRoute() {
   if (routeIsEmpty()) localStorage.removeItem(STORE_KEY);
