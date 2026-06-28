@@ -82,6 +82,34 @@ test('NOTAMs decode to plain English; Raw toggle shows the source text', async (
   await expect(modal.locator('.notam-text')).not.toContainText('above mean sea level');
 });
 
+test('clicking an airport NOTAM badge opens the (scrollable) list, not the picker', async ({ page }) => {
+  const many = [];
+  for (let i = 0; i < 17; i++) {
+    many.push({ id: 'B' + i + '/26', icao: 'LLBG', end: '', geom: null, text: 'B' + i + ' LLBG notam line.' });
+  }
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: many });
+  await page.locator('#notam-cb').check();
+  await page.evaluate(() => loadAirfields && loadAirfields());
+  await page.waitForFunction(() => Array.isArray(window.airfields) && airfields.length > 0);
+  // Click the LLBG count badge (disc at proj(field) offset +14px down).
+  const box = await page.locator('#map').boundingBox();
+  const pt = await page.evaluate(() => {
+    const af = airfields.find(a => a.name === 'LLBG');
+    const p = proj({ lat: af.lat, lng: af.lng });
+    return { x: p.x, y: p.y + 14 };
+  });
+  await page.mouse.click(box.x + pt.x, box.y + pt.y);
+  // Opens the NOTAM list (all 17), not the point-choice picker.
+  await expect(page.locator('.notam-modal')).toBeVisible();
+  await expect(page.locator('.point-choice-modal')).toHaveCount(0);
+  await expect(page.locator('.notam-modal .notam-item')).toHaveCount(17);
+  const canScroll = await page.evaluate(() => {
+    const l = document.querySelector('.notam-list');
+    return l.scrollHeight > l.clientHeight + 2;
+  });
+  expect(canScroll).toBe(true);
+});
+
 test('a long single-airfield NOTAM list scrolls within the viewport', async ({ page }) => {
   const many = [];
   for (let i = 0; i < 40; i++) {

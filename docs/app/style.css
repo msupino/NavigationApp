@@ -1909,6 +1909,8 @@ body.theme-light .notam-raw-toggle:hover { background: #dfe4ec; color: #000; }
 .point-choice-list {
   display: grid;
   gap: 8px;
+  max-height: 70vh;
+  overflow-y: auto;
 }
 .point-choice-option {
   display: grid;
