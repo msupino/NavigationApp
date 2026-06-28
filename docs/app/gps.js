@@ -66,6 +66,7 @@ var _gpsLivePrev = null;
 
 function onLivePosition(pos) {
   if (!gpsLiveOn || !pos || !pos.coords) return;
+  if (gpsRecording) return;   // recording drives own-ship + recenter; avoid dueling
   const c = pos.coords;
   if (c.accuracy != null && c.accuracy > GPS_MAX_ACC_M) return;
   const p = { lat: r5(c.latitude), lng: r5(c.longitude) };
@@ -85,7 +86,7 @@ function startLiveLocation() {
   if (gpsLiveOn) return;
   if (!navigator.geolocation) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsLiveOn = true; _gpsLivePrev = null;
-  gpsLiveWatchId = navigator.geolocation.watchPosition(onLivePosition, onGpsError, { enableHighAccuracy: true });
+  gpsLiveWatchId = navigator.geolocation.watchPosition(onLivePosition, onGpsLiveError, { enableHighAccuracy: true });
   scheduleDraw();
 }
 
@@ -127,8 +128,9 @@ function onGpsPosition(pos) {
                acc: c.accuracy != null ? c.accuracy : null };
   const prev = gpsTrack[gpsTrack.length - 1];
   if (prev && _gpsMetres(prev, pt) < GPS_MIN_MOVE_M) return;          // de-jitter
-  if (gpsTrack.length >= GPS_MAX_POINTS) return;
-  gpsTrack.push(pt);
+  // At the cap, stop growing the track but keep the live display (own-ship,
+  // GS/alt, readout, recenter) updating instead of freezing.
+  if (gpsTrack.length < GPS_MAX_POINTS) gpsTrack.push(pt);
   // Ground speed: device value (m/s) when present, else derived from the last
   // fix; altitude in feet. Both feed the live readout.
   let gsMs = (c.speed != null && !isNaN(c.speed) && c.speed >= 0) ? c.speed : null;
@@ -158,12 +160,23 @@ function resetGpsFooterBtn(id, label, icon) {
   if (ic) ic.textContent = icon;
   b.setAttribute('aria-pressed', 'false');
 }
-function onGpsError(err) {
+function gpsErrMsg(err) {
+  return (S.gpsError || 'GPS error: ') + (err && err.message ? err.message : '');
+}
+// Per-watch error handlers: an error on one mode must not tear down the other
+// (a transient live-watch error used to also kill — and discard — an active
+// recording).
+function onGpsRecError(err) {
+  if (!gpsRecording) return;
   stopGpsRecording();
-  stopLiveLocation();
   resetGpsFooterBtn('gps-record', S.tbGpsRecord, '⏺');
+  alert(gpsErrMsg(err));
+}
+function onGpsLiveError(err) {
+  if (!gpsLiveOn) return;
+  stopLiveLocation();
   resetGpsFooterBtn('gps-live', S.tbGpsLive, '📍');
-  alert((S.gpsError || 'GPS error: ') + (err && err.message ? err.message : ''));
+  alert(gpsErrMsg(err));
 }
 
 function startGpsRecording() {
@@ -173,7 +186,7 @@ function startGpsRecording() {
   gpsTrack = [];
   if (!gpsLiveOn) gpsOwn = null;
   gpsStartT = Date.now();
-  gpsWatchId = navigator.geolocation.watchPosition(onGpsPosition, onGpsError, { enableHighAccuracy: true });
+  gpsWatchId = navigator.geolocation.watchPosition(onGpsPosition, onGpsRecError, { enableHighAccuracy: true });
   gpsUpdateReadout();
   scheduleDraw();
 }
