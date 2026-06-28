@@ -622,7 +622,7 @@ window.S = Object.assign({
   tbNotamTimeTitle: 'Scrub forward to see which NOTAMs are active at a future time (hours from now)',
   notamTimeNow: 'Now',
   notamTimeAt: function(h, t) { return '+' + h + 'h · ' + t; },
-  notamModalTitle: 'Active NOTAMs (LLLL)',
+  notamModalTitle: 'Active NOTAMs',
   notamNone: 'No active NOTAMs.',
   notamUnavailable: 'NOTAMs unavailable.',
   notamUpdated: function(t) { return 'Updated ' + t; },
