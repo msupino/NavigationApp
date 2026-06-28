@@ -131,6 +131,9 @@ test('clicking an airport NOTAM badge opens the (scrollable) list, not the picke
   // Opens the NOTAM list (all 17), not the point-choice picker.
   await expect(page.locator('.notam-modal')).toBeVisible();
   await expect(page.locator('.point-choice-modal')).toHaveCount(0);
+  // Title names the airfield, not the generic LLLL.
+  await expect(page.locator('.notam-modal h3')).toContainText('LLBG');
+  await expect(page.locator('.notam-modal h3')).not.toContainText('LLLL');
   await expect(page.locator('.notam-modal .notam-item')).toHaveCount(17);
   const canScroll = await page.evaluate(() => {
     const l = document.querySelector('.notam-list');
@@ -210,6 +213,8 @@ test('NOTAM list filters by airfield or global (LLLL)', async ({ page }) => {
   await sel.selectOption('LLBG');
   await expect(modal.locator('.notam-item')).toHaveCount(1);
   await expect(modal).toContainText('Ben Gurion');
+  // Title scope follows the filter (airfield code, not LLLL).
+  await expect(modal.locator('h3')).toContainText('(LLBG)');
   expect(await modal.evaluate(el => Math.round(el.getBoundingClientRect().height))).toBe(modalH);
   // Globals only.
   await sel.selectOption('LLLL');
