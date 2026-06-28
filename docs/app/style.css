@@ -1853,7 +1853,10 @@ body.theme-light .notam-raw-toggle:hover { background: #dfe4ec; color: #000; }
 }
 .modal-back.export-place > .modal { pointer-events: auto; }
 .modal {
-  min-width: 240px;
+  position: relative;        /* anchor the close-✕ to the modal box, not the viewport */
+  min-width: min(240px, 92vw);
+  max-width: 96vw;           /* never wider than the screen (mobile) */
+  box-sizing: border-box;
   padding: 16px;
   background: #2a2626;
   border: 1px solid #3a3636;
@@ -2137,7 +2140,7 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
 .modal.wide {
   display: flex;
   flex-direction: column;
-  min-width: 520px;
+  min-width: min(520px, 92vw);   /* fit narrow phones instead of overflowing */
   max-width: 92vw;
   max-height: 84vh;
   padding: 14px;
