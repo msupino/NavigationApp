@@ -48,12 +48,16 @@
 
   // ---- markers / shapes -------------------------------------------------
   function marker(p, i) {
-    var fill = p.report === 'mandatory' ? COLOR : 'none';
-    var html = '<svg width="20" height="20" viewBox="0 0 20 20"><polygon points="10,2 18,17 2,17" fill="' +
-      fill + '" stroke="' + COLOR + '" stroke-width="2"/></svg>';
-    // Unnamed points pulse so they're easy to spot and label.
-    var cls = 'editor-icon' + (p.name ? '' : ' editor-flash');
-    var icon = L.divIcon({ className: cls, html: html, iconSize: [20, 20], iconAnchor: [10, 13] });
+    // Named points: small cyan triangle. Unnamed: big red pulsing triangle so
+    // they're impossible to miss and quick to label.
+    var named = !!p.name;
+    var col = named ? COLOR : '#ff2020';
+    var sz = named ? 20 : 40;
+    var fill = p.report === 'mandatory' ? col : 'none';
+    var html = '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 20 20"><polygon points="10,2 18,17 2,17" fill="' +
+      fill + '" stroke="' + col + '" stroke-width="2"/></svg>';
+    var cls = 'editor-icon' + (named ? '' : ' editor-flash');
+    var icon = L.divIcon({ className: cls, html: html, iconSize: [sz, sz], iconAnchor: [sz / 2, sz * 0.65] });
     var m = L.marker([p.lat, p.lng], { icon: icon, keyboard: false, draggable: true });
     if (p.name) m.bindTooltip(String(p.name), { direction: 'right', offset: [8, 0] });
     m.on('click', function (ev) {                 // click to name (blank = delete)
