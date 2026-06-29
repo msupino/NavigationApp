@@ -962,7 +962,7 @@ const _CVFR_DATA_URL = {
   'nav-waypoints': () => S.navWpUrl,
   'comm-change': () => S.commChangeUrl,
   'leg-altitude': () => S.legAltitudeUrl,
-  'route-templates': () => S.routeTemplatesUrl,
+  // route-templates is a single shared file; templates self-tag with a `layer`.
 };
 function _verOf(url) { const m = /\?v=([^&]+)/.exec(url || ''); return m ? m[1] : '1'; }
 // Fetch the active layer's file for `kind`; if that layer has no such file

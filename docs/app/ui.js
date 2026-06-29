@@ -65,7 +65,8 @@ function reloadLayerDatasets() {
   commChangeMap = null;
   commChangeCallSigns = {};
   legAltitudeMap = null;
-  routeTemplates = null;
+  // routeTemplates is a single shared list filtered per layer at render time —
+  // no reload needed on layer switch.
   const jobs = [];
   if (showNavWP || showReporting) jobs.push(loadNavWaypoints());
   if (showCommChange || showReporting) jobs.push(loadCommChange());
@@ -885,13 +886,21 @@ function normalizeRouteTemplateData(data) {
 async function loadRouteTemplates() {
   if (routeTemplates !== null) return routeTemplates;
   try {
-    const { data } = await fetchLayerData('route-templates');
-    routeTemplates = normalizeRouteTemplateData(data);
+    const res = await fetch(S.routeTemplatesUrl || 'data/route-templates.json?v=1');
+    if (!res.ok) throw new Error(String(res.status));
+    routeTemplates = normalizeRouteTemplateData(await res.json());
   } catch (e) {
     routeTemplates = [];
     console.warn('Failed to load route templates:', e);
   }
   return routeTemplates;
+}
+
+// Templates visible on the active base layer: those tagged for this layer's
+// prefix plus untagged / 'any' templates.
+function templatesForCurrentLayer(templates) {
+  const pfx = (typeof layerDataPrefix === 'function') ? layerDataPrefix() : 'cvfr';
+  return templates.filter(t => !t.layer || t.layer === 'any' || t.layer === pfx);
 }
 
 function routeTemplateLeg(templateLeg, speed) {
@@ -1045,7 +1054,8 @@ function showRouteTemplatesModal() {
   modal.box.appendChild(body);
   modal.show();
 
-  loadRouteTemplates().then(templates => {
+  loadRouteTemplates().then(all => {
+    const templates = templatesForCurrentLayer(all);
     body.innerHTML = '';
     if (!templates.length) {
       const empty = document.createElement('p');

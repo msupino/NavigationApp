@@ -61,7 +61,7 @@ test.describe('#304 — deploy sed bumps every cache-bust marker', () => {
     expect(out).toMatch(new RegExp(`data/airfields\\.json\\?v=${SHA}`));
     expect(out).toMatch(new RegExp(`data/cvfr-comm-change\\.json\\?v=${SHA}`));
     expect(out).toMatch(new RegExp(`data/cvfr-leg-altitude\\.json\\?v=${SHA}`));
-    expect(out).toMatch(new RegExp(`data/cvfr-route-templates\\.json\\?v=${SHA}`));
+    expect(out).toMatch(new RegExp(`data/route-templates\\.json\\?v=${SHA}`));
     expect(out).toMatch(new RegExp(`data/vor\\.json\\?v=${SHA}`));
     fs.unlinkSync(file);
   });
@@ -75,7 +75,7 @@ test.describe('#304 — deploy sed bumps every cache-bust marker', () => {
     expect(out).toMatch(new RegExp(`data/airfields\\.json\\?v=${SHA}`));
     expect(out).toMatch(new RegExp(`data/cvfr-comm-change\\.json\\?v=${SHA}`));
     expect(out).toMatch(new RegExp(`data/cvfr-leg-altitude\\.json\\?v=${SHA}`));
-    expect(out).toMatch(new RegExp(`data/cvfr-route-templates\\.json\\?v=${SHA}`));
+    expect(out).toMatch(new RegExp(`data/route-templates\\.json\\?v=${SHA}`));
     expect(out).toMatch(new RegExp(`data/vor\\.json\\?v=${SHA}`));
     fs.unlinkSync(file);
   });

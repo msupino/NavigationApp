@@ -3,7 +3,7 @@ const { test, expect } = require('./_setup');
 const fs = require('fs');
 const path = require('path');
 
-const TEMPLATES_PATH = path.join(__dirname, '..', 'docs', 'data', 'cvfr-route-templates.json');
+const TEMPLATES_PATH = path.join(__dirname, '..', 'docs', 'data', 'route-templates.json');
 const AIRFIELDS_PATH = path.join(__dirname, '..', 'docs', 'data', 'airfields.json');
 const NAV_WP_PATH = path.join(__dirname, '..', 'docs', 'data', 'cvfr-nav-waypoints.json');
 
@@ -66,6 +66,25 @@ test.describe('route templates', () => {
     const names = await page.locator('.route-template-select option').allTextContents();
     const sorted = [...names].sort((a, b) => a.localeCompare(b));
     expect(names).toEqual(sorted);
+  });
+
+  test('templates are filtered by the active base layer (layer tag)', async ({ page }) => {
+    await boot(page);
+    const r = await page.evaluate(async () => {
+      const all = await loadRouteTemplates();
+      const setL = k => { for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]); map.addLayer(layers[k]); };
+      setL('CVFR');  const onCvfr = templatesForCurrentLayer(all).length;
+      setL('Low Alt'); const onLsa = templatesForCurrentLayer(all).length;
+      setL('Helicopters'); const onHeli = templatesForCurrentLayer(all).length;
+      // an 'any'-tagged template shows on every layer
+      const anyShows = templatesForCurrentLayer([{ id: 'x', layer: 'any' }]).length;
+      return { all: all.length, onCvfr, onLsa, onHeli, anyShows };
+    });
+    expect(r.all).toBeGreaterThan(0);
+    expect(r.onCvfr).toBe(r.all);   // all current templates tagged cvfr
+    expect(r.onLsa).toBe(0);        // none tagged lsa
+    expect(r.onHeli).toBe(0);
+    expect(r.anyShows).toBe(1);     // 'any' shows regardless of layer
   });
 
   test('dataset templates reference known points and keep altitude data shared', async () => {
