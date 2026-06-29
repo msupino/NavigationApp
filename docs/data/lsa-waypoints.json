@@ -1,5 +1,5 @@
 {
-  "_comment": "Israel LSA reporting points, hand-digitized on the LSA-Low-Altitude raster chart via the capture tool (?capture=1). report: mandatory (filled triangle) / onRequest (hollow). WGS-84. Names blank — add as needed.",
+  "_comment": "Israel LSA reporting points, hand-digitized on the LSA-Low-Altitude raster chart via the editor tool (?editor=1). report: mandatory (filled triangle) / onRequest (hollow). WGS-84. Names blank — add as needed.",
   "source": "hand-digitized (capture tool) on LSA-Low-Altitude chart",
   "grid": "WGS-84",
   "count": 88,
