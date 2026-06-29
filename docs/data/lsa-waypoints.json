@@ -1,0 +1,1224 @@
+{
+  "_comment": "Israel LSA reporting points digitized from the LSA-Low-Altitude raster chart (mbtiles z13). Triangle-symbol detection: filled triangle = mandatory report point (נקודת דווח חובה), hollow triangle = on-request (נקודת דווח לפי דרישה); all are VFR fly-over. Coordinates = symbol-center, exact from tile pixel (WGS-84). Names taken from the matching CVFR nav-waypoint (nearest within 800 m, one-to-one); blank = unlabelled. Best-effort raster extraction; may miss/duplicate a few. Verify against AIP.",
+  "source": "LSA-Low-Altitude.mbtiles z13 (raster), triangle symbol detection",
+  "grid": "WGS-84",
+  "count": 170,
+  "points": [
+    {
+      "lat": 29.49822,
+      "lng": 34.49039,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 29.7668,
+      "lng": 35.57528,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.06057,
+      "lng": 35.11073,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.16505,
+      "lng": 34.72219,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.20824,
+      "lng": 34.4515,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.29537,
+      "lng": 35.13417,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.33719,
+      "lng": 34.36846,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.38427,
+      "lng": 34.63938,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.56361,
+      "lng": 35.18631,
+      "report": "mandatory",
+      "name": "ZOFAR",
+      "he": "צופר",
+      "en": "Tzofar"
+    },
+    {
+      "lat": 30.62066,
+      "lng": 34.34354,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.62076,
+      "lng": 34.35005,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.6297,
+      "lng": 34.81869,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.76961,
+      "lng": 34.78558,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.79728,
+      "lng": 34.8153,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.83436,
+      "lng": 34.76646,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.85938,
+      "lng": 34.69738,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.86295,
+      "lng": 34.73575,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.95466,
+      "lng": 34.70315,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.97034,
+      "lng": 35.40921,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.97914,
+      "lng": 34.70596,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.03342,
+      "lng": 34.22818,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.12154,
+      "lng": 34.79611,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.14564,
+      "lng": 35.26751,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.1987,
+      "lng": 34.81496,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.2577,
+      "lng": 34.62346,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.26415,
+      "lng": 34.4426,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.26598,
+      "lng": 35.16612,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.30079,
+      "lng": 34.81536,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.30592,
+      "lng": 34.907,
+      "report": "onRequest",
+      "name": "SOKET",
+      "he": "צומת שוקת",
+      "en": "Shoket Junction"
+    },
+    {
+      "lat": 31.32512,
+      "lng": 34.52482,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.32535,
+      "lng": 35.38412,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.33538,
+      "lng": 34.6676,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.35968,
+      "lng": 34.48841,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.36033,
+      "lng": 35.09784,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.36511,
+      "lng": 34.90566,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.49234,
+      "lng": 35.71371,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.59755,
+      "lng": 34.77678,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.61375,
+      "lng": 35.39179,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.66635,
+      "lng": 34.59079,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.72136,
+      "lng": 35.2237,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.73923,
+      "lng": 35.17629,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.73977,
+      "lng": 35.13099,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.77149,
+      "lng": 35.15218,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.78323,
+      "lng": 35.10823,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.78681,
+      "lng": 35.27138,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.78772,
+      "lng": 35.19915,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.80662,
+      "lng": 35.1636,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.80829,
+      "lng": 34.62728,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.8181,
+      "lng": 34.58971,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.83432,
+      "lng": 35.52503,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.85943,
+      "lng": 35.03058,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.86887,
+      "lng": 34.94203,
+      "report": "onRequest",
+      "name": "AYLON",
+      "he": "איילון",
+      "en": "Ayalon"
+    },
+    {
+      "lat": 31.87333,
+      "lng": 34.33188,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.90525,
+      "lng": 35.45969,
+      "report": "onRequest",
+      "name": "NAAMA",
+      "he": "נעמה",
+      "en": "Naama"
+    },
+    {
+      "lat": 31.91999,
+      "lng": 34.79458,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.9276,
+      "lng": 34.83064,
+      "report": "onRequest",
+      "name": "SIRNI",
+      "he": "נצר סירני",
+      "en": "Netzer Sireni"
+    },
+    {
+      "lat": 31.93845,
+      "lng": 34.81624,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.93954,
+      "lng": 34.70475,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.94939,
+      "lng": 34.76999,
+      "report": "onRequest",
+      "name": "IKKEA",
+      "he": "איקאה",
+      "en": "IKEA"
+    },
+    {
+      "lat": 31.95359,
+      "lng": 35.5424,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.9547,
+      "lng": 35.33891,
+      "report": "onRequest",
+      "name": "SHAHR",
+      "he": "כוכב השחר",
+      "en": "Kokhav HaShahar"
+    },
+    {
+      "lat": 31.96037,
+      "lng": 34.76389,
+      "report": "onRequest",
+      "name": "MEHOL",
+      "he": "משולש חולית",
+      "en": "Holit Triangle"
+    },
+    {
+      "lat": 31.97572,
+      "lng": 34.74065,
+      "report": "onRequest",
+      "name": "SUPER",
+      "he": "סופרלנד",
+      "en": "Superland"
+    },
+    {
+      "lat": 32.04046,
+      "lng": 35.46238,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.10297,
+      "lng": 34.99755,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.13572,
+      "lng": 35.46721,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.14514,
+      "lng": 35.42561,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.1535,
+      "lng": 34.92722,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.20523,
+      "lng": 34.95618,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.22647,
+      "lng": 35.02942,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.22839,
+      "lng": 34.80675,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.24612,
+      "lng": 35.12411,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.25204,
+      "lng": 34.99929,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.2524,
+      "lng": 35.1292,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.27871,
+      "lng": 34.83406,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.29161,
+      "lng": 34.82707,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.36435,
+      "lng": 35.5619,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.37798,
+      "lng": 34.83785,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.45375,
+      "lng": 34.9266,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.46614,
+      "lng": 34.94437,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.47688,
+      "lng": 35.00603,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.50059,
+      "lng": 35.06603,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.51986,
+      "lng": 35.40902,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.53785,
+      "lng": 35.37981,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.61835,
+      "lng": 35.29267,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.6676,
+      "lng": 34.9284,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.68228,
+      "lng": 34.91888,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.70696,
+      "lng": 34.92216,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.70715,
+      "lng": 34.9301,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.70944,
+      "lng": 34.93935,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.74574,
+      "lng": 35.76221,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.75231,
+      "lng": 35.09771,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.75857,
+      "lng": 35.63524,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.76326,
+      "lng": 35.37795,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.78237,
+      "lng": 35.07309,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.80703,
+      "lng": 35.00965,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.80706,
+      "lng": 35.02048,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.81171,
+      "lng": 35.00393,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.8487,
+      "lng": 35.50954,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.86939,
+      "lng": 35.5321,
+      "report": "onRequest",
+      "name": "DESHE",
+      "he": "כרי דשא",
+      "en": "Karei Deshe"
+    },
+    {
+      "lat": 32.90584,
+      "lng": 35.46998,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.9438,
+      "lng": 35.27243,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.94861,
+      "lng": 34.99852,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.99146,
+      "lng": 35.48244,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 33.02127,
+      "lng": 35.6489,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 33.04649,
+      "lng": 35.71281,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 33.08841,
+      "lng": 35.57019,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 33.12307,
+      "lng": 35.67162,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 33.12371,
+      "lng": 35.66828,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 33.15661,
+      "lng": 35.63619,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 33.16113,
+      "lng": 35.79518,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 33.25093,
+      "lng": 34.26944,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 33.29804,
+      "lng": 34.55659,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 33.29822,
+      "lng": 34.59843,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 33.32622,
+      "lng": 34.56288,
+      "report": "onRequest",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 29.73301,
+      "lng": 35.00465,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 29.88171,
+      "lng": 35.0467,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 29.88754,
+      "lng": 35.05562,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 29.88935,
+      "lng": 35.05831,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 29.89223,
+      "lng": 35.06214,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 29.98872,
+      "lng": 35.07607,
+      "report": "mandatory",
+      "name": "KTORA",
+      "he": "צומת קטורה",
+      "en": "Ketura Junction"
+    },
+    {
+      "lat": 30.2891,
+      "lng": 35.0869,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.3501,
+      "lng": 35.17021,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.38008,
+      "lng": 34.95607,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.42224,
+      "lng": 35.15153,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.46702,
+      "lng": 35.69246,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.55287,
+      "lng": 35.18525,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.13506,
+      "lng": 34.80392,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.13509,
+      "lng": 34.80531,
+      "report": "mandatory",
+      "name": "HOVAV",
+      "he": "רמת חובב",
+      "en": "Ramat Hovav"
+    },
+    {
+      "lat": 31.20541,
+      "lng": 34.51059,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.21839,
+      "lng": 35.24795,
+      "report": "mandatory",
+      "name": "HATRU",
+      "he": "צומת חתרורים",
+      "en": "Hatrurim Junction"
+    },
+    {
+      "lat": 31.23117,
+      "lng": 34.82863,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.26434,
+      "lng": 34.83834,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.27229,
+      "lng": 34.77743,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.27346,
+      "lng": 34.49266,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.27824,
+      "lng": 35.11807,
+      "report": "mandatory",
+      "name": "TARAD",
+      "he": "תל ערד",
+      "en": "Tel Arad"
+    },
+    {
+      "lat": 31.29124,
+      "lng": 35.05315,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.3027,
+      "lng": 34.81044,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.30528,
+      "lng": 34.80317,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.30878,
+      "lng": 34.85142,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.30906,
+      "lng": 34.84239,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.44094,
+      "lng": 34.76549,
+      "report": "mandatory",
+      "name": "BKAMA",
+      "he": "בית קמה",
+      "en": "Beit Kama"
+    },
+    {
+      "lat": 31.59879,
+      "lng": 34.81102,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.6236,
+      "lng": 34.75545,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.71445,
+      "lng": 35.44958,
+      "report": "mandatory",
+      "name": "ZUKIM",
+      "he": "עינות צוקים",
+      "en": "Einot Tzukim"
+    },
+    {
+      "lat": 31.78351,
+      "lng": 34.6667,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.79771,
+      "lng": 35.07562,
+      "report": "mandatory",
+      "name": "SORES",
+      "he": "שורש",
+      "en": "Shoresh"
+    },
+    {
+      "lat": 31.82411,
+      "lng": 34.70743,
+      "report": "mandatory",
+      "name": "ZASHD",
+      "he": "צומת אשדוד",
+      "en": "Ashdod Junction"
+    },
+    {
+      "lat": 31.87626,
+      "lng": 35.02345,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.87636,
+      "lng": 35.02491,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.92017,
+      "lng": 34.76966,
+      "report": "mandatory",
+      "name": "BOVED",
+      "he": "בית עובד",
+      "en": "Beit Oved"
+    },
+    {
+      "lat": 31.94155,
+      "lng": 34.75114,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.94164,
+      "lng": 35.8126,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.94991,
+      "lng": 34.80202,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.00425,
+      "lng": 34.72601,
+      "report": "mandatory",
+      "name": "TYONA",
+      "he": "תל יונה",
+      "en": "Tel Yona"
+    },
+    {
+      "lat": 32.205,
+      "lng": 34.96255,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.21659,
+      "lng": 34.80976,
+      "report": "mandatory",
+      "name": "SFAIM",
+      "he": "שפיים",
+      "en": "Shefayim"
+    },
+    {
+      "lat": 32.57156,
+      "lng": 35.19144,
+      "report": "mandatory",
+      "name": "ZMGID",
+      "he": "צומת מגידו",
+      "en": "Megiddo Junction"
+    },
+    {
+      "lat": 32.74481,
+      "lng": 35.0774,
+      "report": "mandatory",
+      "name": "HASID",
+      "he": "כפר חסידים",
+      "en": "Kfar Hasidim"
+    },
+    {
+      "lat": 32.79395,
+      "lng": 34.94203,
+      "report": "mandatory",
+      "name": "DAROM",
+      "he": "מחלף דרום",
+      "en": "Darom Interchange"
+    },
+    {
+      "lat": 32.81926,
+      "lng": 35.13198,
+      "report": "mandatory",
+      "name": "GILAM",
+      "he": "גילעם",
+      "en": "Gil'am"
+    },
+    {
+      "lat": 32.90163,
+      "lng": 35.63249,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.91089,
+      "lng": 35.54175,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.91606,
+      "lng": 35.09566,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.91727,
+      "lng": 35.0957,
+      "report": "mandatory",
+      "name": "AAKKO",
+      "he": "עכו",
+      "en": "Akko"
+    },
+    {
+      "lat": 32.98693,
+      "lng": 35.48244,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 33.00949,
+      "lng": 35.6496,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 33.0437,
+      "lng": 35.57018,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 33.20887,
+      "lng": 35.59023,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 33.22043,
+      "lng": 35.59976,
+      "report": "mandatory",
+      "name": "",
+      "he": ""
+    }
+  ]
+}

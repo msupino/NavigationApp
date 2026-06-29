@@ -81,6 +81,24 @@ test('dragging a captured triangle updates its coordinates', async ({ page }) =>
   expect(p).toMatchObject({ lat: 32.15, lng: 34.85 });
 });
 
+test('Load known fills the editor with the selected layer dataset', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.goto('?lang=en&capture=1');
+  await page.waitForSelector('#capture-panel');
+  await page.waitForFunction(() => typeof layers !== 'undefined');
+  page.on('dialog', d => d.accept());
+  await page.evaluate(() => { for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]); map.addLayer(layers['CVFR']); });
+  await page.click('#cap-load');
+  await page.waitForFunction(() => JSON.parse(document.getElementById('cap-json').value).length > 100);
+  const out = await page.evaluate(() => {
+    const j = JSON.parse(document.getElementById('cap-json').value);
+    return { n: j.length, hasName: !!j[0].name, hasReport: !!j[0].report };
+  });
+  expect(out.n).toBeGreaterThan(150);    // ~172 CVFR nav-waypoints
+  expect(out.hasName).toBe(true);
+  expect(out.hasReport).toBe(true);
+});
+
 test('undo and clear work', async ({ page }) => {
   await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
   await page.goto('?lang=en&capture=1');

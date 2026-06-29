@@ -14,6 +14,12 @@
   if (!enabled()) return;
 
   var KEY = 'navaid.capture.points';
+  // Known waypoint sources per base layer — loaded into the editor for editing.
+  var KNOWN = {
+    'CVFR': 'data/nav-waypoints.json',
+    'Navigation': 'data/nav-waypoints.json',
+    'Low Alt': 'data/lsa-waypoints.json'
+  };
   var r5 = function (x) { return Math.round(x * 1e5) / 1e5; };
   var points = [];
   try { points = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { points = []; }
@@ -39,6 +45,7 @@
       '" stroke-width="2"/></svg>';
     var icon = L.divIcon({ className: 'capture-icon', html: html, iconSize: [20, 20], iconAnchor: [10, 13] });
     var m = L.marker([p.lat, p.lng], { icon: icon, keyboard: false, draggable: true });
+    if (p.name) m.bindTooltip(String(p.name), { direction: 'right', offset: [8, 0] });
     m.on('click', function (ev) {                 // click a marker to delete it
       L.DomEvent.stopPropagation(ev);
       points.splice(i, 1); save(); render(); redraw();
@@ -68,8 +75,28 @@
   // Export the selected layer's points only.
   function json() {
     return JSON.stringify(curPoints().map(function (p) {
-      return { lat: p.lat, lng: p.lng, report: p.report };
+      var o = { lat: p.lat, lng: p.lng, report: p.report };
+      if (p.name) o.name = p.name;
+      if (p.he) o.he = p.he;
+      return o;
     }), null, 2);
+  }
+
+  // Replace the current layer's points with its known waypoint set, for editing.
+  function loadKnown() {
+    var lyr = currentLayer();
+    var url = KNOWN[lyr];
+    if (!url) { alert('No known waypoint set for ' + (lyr || 'this layer')); return; }
+    if (curPoints().length && !confirm('Replace ' + curPoints().length + ' point(s) on ' + lyr + ' with the known set?')) return;
+    fetch(url).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(function (d) {
+      var arr = Array.isArray(d) ? d : (d.points || d.waypoints || []);
+      var loaded = arr.filter(function (p) { return p && isFinite(p.lat) && isFinite(p.lng); }).map(function (p) {
+        var rep = p.report === 'mandatory' ? 'mandatory' : (p.report === 'onRequest' ? 'onRequest' : curType);
+        return { lat: r5(p.lat), lng: r5(p.lng), report: rep, layer: lyr, name: p.name || '', he: p.he || '' };
+      });
+      points = points.filter(function (p) { return (p.layer || '') !== lyr; }).concat(loaded);
+      save(); render(); redraw();
+    }).catch(function (e) { alert('Failed to load known set: ' + e); });
   }
 
   var countEl, taEl;
@@ -97,8 +124,10 @@
       '<label><input type="radio" name="cap-t" value="onRequest"> on-request</label></div>' +
       '<div style="opacity:.8;margin-bottom:6px">Click map to add · click a marker to delete</div>' +
       '<div style="display:flex;gap:6px;margin-bottom:6px">' +
+      '<button id="cap-load" type="button">Load known</button>' +
       '<button id="cap-undo" type="button">Undo</button>' +
-      '<button id="cap-clear" type="button">Clear</button>' +
+      '<button id="cap-clear" type="button">Clear</button></div>' +
+      '<div style="display:flex;gap:6px;margin-bottom:6px">' +
       '<button id="cap-copy" type="button">Copy JSON</button>' +
       '<button id="cap-dl" type="button">Download</button></div>' +
       '<textarea id="cap-json" readonly style="width:100%;height:120px;font:11px monospace;background:#0b0a0a;color:#bfe;border:1px solid #3a3636;border-radius:4px"></textarea>';
@@ -108,6 +137,7 @@
     box.querySelectorAll('input[name=cap-t]').forEach(function (r) {
       r.addEventListener('change', function () { curType = r.value; });
     });
+    box.querySelector('#cap-load').onclick = loadKnown;
     box.querySelector('#cap-undo').onclick = function () {
       var cur = currentLayer();
       for (var i = points.length - 1; i >= 0; i--) { if ((points[i].layer || '') === cur) { points.splice(i, 1); break; } }
