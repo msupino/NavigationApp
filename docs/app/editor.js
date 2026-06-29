@@ -6,12 +6,13 @@
 (function () {
   'use strict';
   function enabled() {
-    try {
-      if (/[?&]editor=1\b/.test(location.search)) { localStorage.setItem('navaid.editor.on', '1'); return true; }
-      return localStorage.getItem('navaid.editor.on') === '1';
-    } catch (e) { return /[?&]editor=1\b/.test(location.search); }
+    // URL param only — do NOT persist, or it would auto-open on every later visit.
+    return /[?&]editor=1\b/.test(location.search);
   }
-  if (!enabled()) return;
+  if (!enabled()) {
+    try { localStorage.removeItem('navaid.editor.on'); } catch (e) {}   // clear stale flag from older builds
+    return;
+  }
 
   var KEY = 'navaid.editor.points';
   // Known waypoint sources per base layer — loaded into the editor for editing.
