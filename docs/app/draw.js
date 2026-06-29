@@ -1421,7 +1421,13 @@ function drawAirfields() {
   octx.lineWidth = 1;
 }
 
+// True when the LSA ("Low Alt") base layer is the active one.
+function lowAltLayerActive() {
+  return typeof layers !== 'undefined' && layers['Low Alt'] &&
+         typeof map !== 'undefined' && map.hasLayer(layers['Low Alt']);
+}
 function drawNavWaypoints() {
+  if (lowAltLayerActive()) return;      // CVFR reporting points hidden on the LSA layer
   if (!showNavWP || !navWP || navWP.length === 0) return;
   // Suppress nav-WP dot when a route waypoint sits on it (by position),
   // regardless of whether the WP name was changed after snapping.
@@ -1524,6 +1530,7 @@ function reportingFor(name) {
 // points are not badged (they are the common case); the inspector still
 // reports both classes for any selected waypoint.
 function drawReportingBadges() {
+  if (lowAltLayerActive()) return;      // CVFR reporting badges hidden on the LSA layer
   if (!showReporting || !navWP || !navWP.length) return;
   const r = tune('reportBadgeRadiusPx');
   const off = tune('reportBadgeOffsetPx');
