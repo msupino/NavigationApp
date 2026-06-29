@@ -14,9 +14,9 @@ async function boot(page) {
 const setLayer = async (page, name) => page.evaluate(async (n) => {
   for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
   map.addLayer(layers[n]);
-  navWP = null;                      // mimic reloadLayerDatasets()
+  window.navWP = null;                      // mimic reloadLayerDatasets()
   await loadNavWaypoints();
-  return navWP.length;
+  return window.navWP.length;
 }, name);
 
 test('waypoint dataset follows the active base layer', async ({ page }) => {
@@ -37,7 +37,7 @@ test('LSA waypoints draw via the shared nav-waypoint overlay', async ({ page }) 
   const drawn = await page.evaluate(async () => {
     for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
     map.addLayer(layers['Low Alt']);
-    navWP = null; showNavWP = true; await loadNavWaypoints();
+    window.navWP = null; window.showNavWP = true; await loadNavWaypoints();
     map.setView([32.0, 34.9], 9);
     let n = 0; const orig = octx.arc;
     octx.arc = function (...a) { n++; return orig.apply(this, a); };
@@ -52,10 +52,10 @@ test('an LSA waypoint selects + opens the inspector, same as CVFR', async ({ pag
   const r = await page.evaluate(async () => {
     for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
     map.addLayer(layers['Low Alt']);
-    navWP = null; showNavWP = true; await loadNavWaypoints();
-    map.setView([navWP[0].lat, navWP[0].lng], 13);
+    window.navWP = null; window.showNavWP = true; await loadNavWaypoints();
+    map.setView([window.navWP[0].lat, window.navWP[0].lng], 13);
     // hit-test at the first LSA waypoint's pixel — the same code CVFR clicks use
-    const s = proj(navWP[0]);
+    const s = proj(window.navWP[0]);
     const hit = hitNavWpMarker(s.x, s.y);   // returns the navWP index, or -1
     state.selected = { type: 'navwp', index: hit };
     showInspector();
