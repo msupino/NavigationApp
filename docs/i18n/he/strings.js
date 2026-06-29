@@ -97,6 +97,11 @@ window.S = {
   routeTemplateReady: function(name, speed) {
     return 'תבנית ' + name + ' נטענה במהירות ' + speed + ' קשר';
   },
+  routeTemplateWrongLayer: function(name, current, need) {
+    return 'לא ניתן לטעון את "' + name + '" בשכבת ' + current + '. עבור לשכבת ' +
+      need + ', טען את המסלול, ושנה שכבה לאחר מכן במידת הצורך.';
+  },
+  layerNames: { cvfr: 'CVFR', lsa: 'Low Alt', heli: 'Helicopters' },
   deleteWp: '🗑 מחק ציון דרך (D)',                      // כפתור באינספקטור
   resetWpName: '↻ אפס שם נקודה',                     // כפתור באינספקטור — שם לפי ייחוס או ניקוי (תווית אוטומטית)
   resetWpNameTitle: 'הגדר שם לפי נקודת הייחוס הקרובה (שדה תעופה / ציון ניווט), או נקה כשאין ייחוס סמוך',

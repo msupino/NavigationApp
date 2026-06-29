@@ -896,13 +896,6 @@ async function loadRouteTemplates() {
   return routeTemplates;
 }
 
-// Templates visible on the active base layer: those tagged for this layer's
-// prefix plus untagged / 'any' templates.
-function templatesForCurrentLayer(templates) {
-  const pfx = (typeof layerDataPrefix === 'function') ? layerDataPrefix() : 'cvfr';
-  return templates.filter(t => !t.layer || t.layer === 'any' || t.layer === pfx);
-}
-
 function routeTemplateLeg(templateLeg, speed) {
   const hasExplicitAltitudes = templateLeg && typeof templateLeg === 'object' &&
     Object.prototype.hasOwnProperty.call(templateLeg, 'inboundAltitude') &&
@@ -1001,6 +994,17 @@ async function routeFromTemplate(template, speed) {
 }
 
 async function applyRouteTemplate(template, speed, closeModal) {
+  // A template's waypoints live in its own layer's dataset; loading it on a
+  // different base layer would miss those points. Warn instead of failing.
+  const pfx = (typeof layerDataPrefix === 'function') ? layerDataPrefix() : 'cvfr';
+  if (template.layer && template.layer !== 'any' && template.layer !== pfx) {
+    const names = S.layerNames || { cvfr: 'CVFR', lsa: 'Low Alt', heli: 'Helicopters' };
+    const msg = typeof S.routeTemplateWrongLayer === 'function'
+      ? S.routeTemplateWrongLayer(routeTemplateLabel(template), names[pfx] || pfx, names[template.layer] || template.layer)
+      : 'Can\'t load this route on this layer.';
+    alert(msg);
+    return false;
+  }
   const route = await routeFromTemplate(template, speed);
   const verr = typeof validateRoute === 'function' ? validateRoute(route) : null;
   if (verr) throw new Error(verr);
@@ -1054,8 +1058,7 @@ function showRouteTemplatesModal() {
   modal.box.appendChild(body);
   modal.show();
 
-  loadRouteTemplates().then(all => {
-    const templates = templatesForCurrentLayer(all);
+  loadRouteTemplates().then(templates => {
     body.innerHTML = '';
     if (!templates.length) {
       const empty = document.createElement('p');

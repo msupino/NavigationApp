@@ -580,6 +580,11 @@ window.S = Object.assign({
   routeTemplateReady: function(name, speed) {
     return name + ' template loaded at ' + speed + ' kt';
   },
+  routeTemplateWrongLayer: function(name, current, need) {
+    return 'Can\'t load "' + name + '" on the ' + current + ' layer. Switch to the ' +
+      need + ' layer, load the route, then change layer after if required.';
+  },
+  layerNames: { cvfr: 'CVFR', lsa: 'Low Alt', heli: 'Helicopters' },
   deleteWp: '🗑 Delete waypoint (D)',                  // inspector button
   resetWpName: '↻ Reset waypoint name',             // inspector — reference snap or clear (placeholder)
   resetWpNameTitle: 'Set name to the nearest reference (airfield / nav-WP), or clear when off-grid (dimmed sequence label)',

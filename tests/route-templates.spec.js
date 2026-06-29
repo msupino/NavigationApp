@@ -68,23 +68,25 @@ test.describe('route templates', () => {
     expect(names).toEqual(sorted);
   });
 
-  test('templates are filtered by the active base layer (layer tag)', async ({ page }) => {
+  test('loading a CVFR template on a non-matching layer warns instead of loading', async ({ page }) => {
     await boot(page);
+    const dialogs = [];
+    page.on('dialog', d => { dialogs.push(d.message()); d.dismiss(); });
     const r = await page.evaluate(async () => {
       const all = await loadRouteTemplates();
+      const tpl = all.find(t => t.layer === 'cvfr') || all[0];
       const setL = k => { for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]); map.addLayer(layers[k]); };
-      setL('CVFR');  const onCvfr = templatesForCurrentLayer(all).length;
-      setL('Low Alt'); const onLsa = templatesForCurrentLayer(all).length;
-      setL('Helicopters'); const onHeli = templatesForCurrentLayer(all).length;
-      // an 'any'-tagged template shows on every layer
-      const anyShows = templatesForCurrentLayer([{ id: 'x', layer: 'any' }]).length;
-      return { all: all.length, onCvfr, onLsa, onHeli, anyShows };
+      // matching layer (CVFR) loads
+      setL('CVFR');
+      const okCvfr = await applyRouteTemplate(tpl, 90, null);
+      // wrong layer (Low Alt) is blocked
+      setL('Low Alt');
+      const okLsa = await applyRouteTemplate(tpl, 90, null);
+      return { okCvfr, okLsa, tplName: tpl.name };
     });
-    expect(r.all).toBeGreaterThan(0);
-    expect(r.onCvfr).toBe(r.all);   // all current templates tagged cvfr
-    expect(r.onLsa).toBe(0);        // none tagged lsa
-    expect(r.onHeli).toBe(0);
-    expect(r.anyShows).toBe(1);     // 'any' shows regardless of layer
+    expect(r.okCvfr).toBe(true);     // loads on its own layer
+    expect(r.okLsa).toBe(false);     // blocked on Low Alt
+    expect(dialogs.some(m => /Low Alt/.test(m) && new RegExp(r.tplName).test(m))).toBe(true);
   });
 
   test('dataset templates reference known points and keep altitude data shared', async () => {
