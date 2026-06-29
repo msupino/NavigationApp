@@ -19,7 +19,7 @@
   var KNOWN = {
     'CVFR': 'data/cvfr-nav-waypoints.json',
     'Navigation': 'data/cvfr-nav-waypoints.json',
-    'Low Alt': 'data/lsa-waypoints.json'
+    'Low Alt': 'data/lsa-nav-waypoints.json'
   };
   var r5 = function (x) { return Math.round(x * 1e5) / 1e5; };
   var points = [];

@@ -1461,7 +1461,7 @@ function drawNavWaypoints() {
   octx.lineWidth = 1;
 }
 
-// LSA reporting-point overlay (data/lsa-waypoints.json). Shown only on the
+// LSA reporting-point overlay (data/lsa-nav-waypoints.json). Shown only on the
 // "Low Alt" base layer. Cyan triangle: filled = mandatory, hollow = on-request.
 var lsaWP = null;            // null = not loaded; [] or populated = loaded
 var _lsaWPLoading = false;
@@ -1469,7 +1469,7 @@ async function loadLsaWaypoints() {
   if (lsaWP !== null || _lsaWPLoading) return lsaWP;
   _lsaWPLoading = true;
   try {
-    const res = await fetch('data/lsa-waypoints.json');
+    const res = await fetch('data/lsa-nav-waypoints.json');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const d = await res.json();
     const pts = Array.isArray(d) ? d : (d.points || []);

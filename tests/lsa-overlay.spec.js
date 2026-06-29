@@ -1,5 +1,5 @@
 // @ts-check
-// LSA reporting-point overlay: renders data/lsa-waypoints.json as cyan
+// LSA reporting-point overlay: renders data/lsa-nav-waypoints.json as cyan
 // triangles, only on the Low Alt base layer.
 const { test, expect } = require('./_setup');
 
