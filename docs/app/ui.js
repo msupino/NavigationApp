@@ -51,10 +51,27 @@ layerSelect.onchange = () => {
   map.addLayer(layers[layerSelect.value]);
   if (typeof updateBasemapUnderlay === 'function') updateBasemapUnderlay();
   applyMapOpacity();
+  reloadLayerDatasets();                  // swap waypoints/comm/leg to the new layer's source
   draw();                                // keep the route overlay on top
   try { localStorage.setItem(LAYER_KEY, layerSelect.value); }
   catch (e) { /* storage unavailable */ }
 };
+
+// The active base layer decides which data files feed the overlays. On a layer
+// switch, drop the per-layer caches and reload whatever is currently shown, so
+// e.g. the LSA layer shows LSA waypoints while CVFR shows CVFR waypoints.
+function reloadLayerDatasets() {
+  navWP = null;
+  commChangeMap = null;
+  commChangeCallSigns = {};
+  legAltitudeMap = null;
+  routeTemplates = null;
+  const jobs = [];
+  if (showNavWP || showReporting) jobs.push(loadNavWaypoints());
+  if (showCommChange || showReporting) jobs.push(loadCommChange());
+  jobs.push(loadLegAltitudes());
+  Promise.all(jobs).then(() => draw());
+}
 
 // --- rotate dial — a map control next to the zoom buttons -----------
 const rotateCtrl = L.control({ position: 'bottomright' });
@@ -868,9 +885,8 @@ function normalizeRouteTemplateData(data) {
 async function loadRouteTemplates() {
   if (routeTemplates !== null) return routeTemplates;
   try {
-    const res = await fetch(S.routeTemplatesUrl || 'data/cvfr-route-templates.json?v=1');
-    if (!res.ok) throw new Error(String(res.status));
-    routeTemplates = normalizeRouteTemplateData(await res.json());
+    const { data } = await fetchLayerData('route-templates');
+    routeTemplates = normalizeRouteTemplateData(data);
   } catch (e) {
     routeTemplates = [];
     console.warn('Failed to load route templates:', e);

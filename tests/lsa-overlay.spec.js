@@ -1,27 +1,67 @@
 // @ts-check
-// LSA reporting-point overlay: renders data/lsa-nav-waypoints.json as cyan
-// triangles, only on the Low Alt base layer.
+// Per-layer waypoint datasets: the active base layer decides which file feeds
+// navWP. Low Alt -> lsa-nav-waypoints.json, Helicopters -> heli-* (empty),
+// everything else -> cvfr-nav-waypoints.json (fallback). Same overlay + click/
+// inspector behaviour for all; only the data source differs.
 const { test, expect } = require('./_setup');
 
-test('LSA waypoints draw only on the Low Alt layer', async ({ page }) => {
+async function boot(page) {
   await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
   await page.goto('?lang=en');
-  await page.waitForFunction(() => typeof map !== 'undefined' && typeof loadLsaWaypoints === 'function');
-  const r = await page.evaluate(async () => {
-    await loadLsaWaypoints();
+  await page.waitForFunction(() => typeof map !== 'undefined' &&
+    typeof layers !== 'undefined' && typeof loadNavWaypoints === 'function');
+}
+const setLayer = async (page, name) => page.evaluate(async (n) => {
+  for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+  map.addLayer(layers[n]);
+  navWP = null;                      // mimic reloadLayerDatasets()
+  await loadNavWaypoints();
+  return navWP.length;
+}, name);
+
+test('waypoint dataset follows the active base layer', async ({ page }) => {
+  await boot(page);
+  const cvfr = await setLayer(page, 'CVFR');
+  const lsa = await setLayer(page, 'Low Alt');
+  const nav = await setLayer(page, 'Navigation');   // no own file -> cvfr fallback
+  const heli = await setLayer(page, 'Helicopters');  // own (empty) file
+  expect(cvfr).toBeGreaterThan(150);     // ~172 CVFR
+  expect(lsa).toBeGreaterThan(100);      // ~142 LSA
+  expect(lsa).not.toBe(cvfr);
+  expect(nav).toBe(cvfr);                // fallback to CVFR
+  expect(heli).toBe(0);                  // empty heli file
+});
+
+test('LSA waypoints draw via the shared nav-waypoint overlay', async ({ page }) => {
+  await boot(page);
+  const drawn = await page.evaluate(async () => {
+    for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+    map.addLayer(layers['Low Alt']);
+    navWP = null; showNavWP = true; await loadNavWaypoints();
     map.setView([32.0, 34.9], 9);
-    const drawn = () => {
-      let n = 0; const orig = octx.arc;
-      octx.arc = function (...a) { n++; return orig.apply(this, a); };
-      drawLsaWaypoints();
-      octx.arc = orig; return n;
-    };
-    const setL = k => { for (const x in layers) if (map.hasLayer(layers[x])) map.removeLayer(layers[x]); map.addLayer(layers[k]); };
-    setL('CVFR'); const onCvfr = drawn();
-    setL('Low Alt'); const onLsa = drawn();
-    return { onCvfr, onLsa, count: lsaWP.length };
+    let n = 0; const orig = octx.arc;
+    octx.arc = function (...a) { n++; return orig.apply(this, a); };
+    drawNavWaypoints();
+    octx.arc = orig; return n;
   });
-  expect(r.count).toBeGreaterThan(50);   // ~88 points
-  expect(r.onLsa).toBeGreaterThan(0);    // triangles drawn on Low Alt
-  expect(r.onCvfr).toBe(0);              // nothing off the LSA layer
+  expect(drawn).toBeGreaterThan(0);
+});
+
+test('an LSA waypoint selects + opens the inspector, same as CVFR', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+    map.addLayer(layers['Low Alt']);
+    navWP = null; showNavWP = true; await loadNavWaypoints();
+    map.setView([navWP[0].lat, navWP[0].lng], 13);
+    // hit-test at the first LSA waypoint's pixel — the same code CVFR clicks use
+    const s = proj(navWP[0]);
+    const hit = hitNavWpMarker(s.x, s.y);   // returns the navWP index, or -1
+    state.selected = { type: 'navwp', index: hit };
+    showInspector();
+    const insp = document.getElementById('inspector');
+    return { hit, open: insp && !insp.classList.contains('hidden') };
+  });
+  expect(r.hit).toBe(0);          // LSA dot is hit-testable (index 0)
+  expect(r.open).toBe(true);      // inspector opened, same path as CVFR
 });

@@ -99,30 +99,6 @@ test('Load known fills the editor with the selected layer dataset', async ({ pag
   expect(out.hasReport).toBe(true);
 });
 
-test('CVFR nav-waypoints are hidden on the Low Alt layer', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
-  await page.goto('?lang=en&editor=1');
-  await page.waitForSelector('#editor-panel');
-  await page.waitForFunction(() => typeof layers !== 'undefined' && typeof loadNavWaypoints === 'function');
-  const r = await page.evaluate(async () => {
-    showNavWP = true;
-    await loadNavWaypoints();
-    map.setView([32.1, 34.85], 11);
-    const drawn = () => {
-      let m = 0; const orig = octx.arc;
-      octx.arc = function (...a) { m++; return orig.apply(this, a); };
-      drawNavWaypoints();
-      octx.arc = orig; return m;
-    };
-    const setL = k => { for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]); map.addLayer(layers[k]); };
-    setL('CVFR'); const onCvfr = drawn();
-    setL('Low Alt'); const onLsa = drawn();
-    return { onCvfr, onLsa };
-  });
-  expect(r.onCvfr).toBeGreaterThan(0);
-  expect(r.onLsa).toBe(0);
-});
-
 test('undo and clear work', async ({ page }) => {
   await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
   await page.goto('?lang=en&editor=1');

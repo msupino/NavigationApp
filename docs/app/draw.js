@@ -282,7 +282,6 @@ function draw() {
   drawCommChangeRings();
   drawAirfields();
   drawVors();
-  drawLsaWaypoints();
   if (window.showSigmet && Array.isArray(sigmets) && sigmets.length) drawSigmets();
   if (window.showNotam && Array.isArray(notams) && notams.length) drawNotams();
   drawLegs();
@@ -942,28 +941,73 @@ window.notamBadgeNotamsAt = notamBadgeNotamsAt;
 // issue #406. Validated strictly by validateNavWaypoints() (issue
 // #101): every documented field must be present and well-typed;
 // extras are silently allowed for forward-compat.
+// --- per-layer dataset resolution ----------------------------------
+// Each base layer can have its own data files (waypoints, comm-change, …).
+// Naming: <prefix>-<kind>.json. Prefix by layer: 'Low Alt' -> lsa,
+// 'Heli' -> heli, everything else -> cvfr. A layer without its own file for
+// a given kind falls back to the cvfr file (see fetchLayerData).
+function currentLayerName() {
+  if (typeof layers === 'undefined' || typeof map === 'undefined') return '';
+  for (const k in layers) if (map.hasLayer(layers[k])) return k;
+  return '';
+}
+function layerDataPrefix() {
+  const l = currentLayerName();
+  if (l === 'Low Alt') return 'lsa';
+  if (l === 'Helicopters') return 'heli';
+  return 'cvfr';   // Navigation / Satellite / OSM etc. share the CVFR datasets
+}
+// Map a data kind to its canonical cvfr URL (carries the ?v cache-bust).
+const _CVFR_DATA_URL = {
+  'nav-waypoints': () => S.navWpUrl,
+  'comm-change': () => S.commChangeUrl,
+  'leg-altitude': () => S.legAltitudeUrl,
+  'route-templates': () => S.routeTemplatesUrl,
+};
+function _verOf(url) { const m = /\?v=([^&]+)/.exec(url || ''); return m ? m[1] : '1'; }
+// Fetch the active layer's file for `kind`; if that layer has no such file
+// (HTTP not-ok / network error), fall back to the cvfr file. Returns
+// { data, prefix } where prefix is the source actually used.
+async function fetchLayerData(kind) {
+  const cvfrUrl = (_CVFR_DATA_URL[kind] || (() => 'data/cvfr-' + kind + '.json'))();
+  const v = _verOf(cvfrUrl);
+  const pfx = layerDataPrefix();
+  if (pfx !== 'cvfr') {
+    try {
+      const r = await fetch('data/' + pfx + '-' + kind + '.json?v=' + v);
+      if (r.ok) return { data: await r.json(), prefix: pfx };
+    } catch (e) { /* fall through to cvfr */ }
+  }
+  const r = await fetch(cvfrUrl);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return { data: await r.json(), prefix: 'cvfr' };
+}
+
 async function loadNavWaypoints() {
   if (navWP !== null) return navWP;
   try {
-    // ?v bumped whenever cvfr-nav-waypoints.json changes — the service worker
-    // caches it cache-first, so a new URL is needed to pick up edits.
-    const res = await fetch(S.navWpUrl);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const d = await res.json();
-    const verr = validateNavWaypoints(d);
-    if (verr) {
-      console.warn('nav-waypoints schema error:', verr);
-      alert(S.errInvalidNavWaypoints(verr));
-      return [];
+    const { data: d, prefix } = await fetchLayerData('nav-waypoints');
+    // Strict schema check only for the canonical CVFR dataset; layer datasets
+    // (lsa/heli) use the looser { points:[…] } shape.
+    if (prefix === 'cvfr') {
+      const verr = validateNavWaypoints(d);
+      if (verr) {
+        console.warn('nav-waypoints schema error:', verr);
+        alert(S.errInvalidNavWaypoints(verr));
+        return [];
+      }
     }
-    navWP = d.waypoints.map(w => ({
-      name: w.name,
-      en: w.en,                          // English label (name stays canonical code)
-      he: w.he,                          // Hebrew label
-      lat: w.lat,
-      lng: w.lng,
-      report: w.report,                  // 'mandatory' | 'onRequest' (issue #404)
-    }));
+    const arr = Array.isArray(d) ? d : (d.waypoints || d.points || []);
+    navWP = arr
+      .filter(w => w && Number.isFinite(w.lat) && Number.isFinite(w.lng))
+      .map(w => ({
+        name: w.name || '',
+        en: w.en || w.name || '',         // English label (name stays canonical code)
+        he: w.he || '',                   // Hebrew label
+        lat: w.lat,
+        lng: w.lng,
+        report: w.report || '',           // 'mandatory' | 'onRequest' | 'optional'
+      }));
     return navWP;
   } catch (e) {
     // Leave navWP === null so a subsequent toggle / search / snap call can
@@ -986,9 +1030,7 @@ async function loadNavWaypoints() {
 async function loadCommChange() {
   if (commChangeMap !== null) return commChangeMap;
   try {
-    const res = await fetch(S.commChangeUrl);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const d = await res.json();
+    const { data: d } = await fetchLayerData('comm-change');
     const verr = validateCommChange(d);
     if (verr) {
       console.warn('comm-change schema error:', verr);
@@ -1019,9 +1061,7 @@ async function loadCommChange() {
 async function loadLegAltitudes() {
   if (legAltitudeMap !== null) return legAltitudeMap;
   try {
-    const res = await fetch(S.legAltitudeUrl);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const d = await res.json();
+    const { data: d } = await fetchLayerData('leg-altitude');
     const verr = validateLegAltitudes(d);
     if (verr) {
       console.warn('leg-altitude schema error:', verr);
@@ -1423,13 +1463,7 @@ function drawAirfields() {
   octx.lineWidth = 1;
 }
 
-// True when the LSA ("Low Alt") base layer is the active one.
-function lowAltLayerActive() {
-  return typeof layers !== 'undefined' && layers['Low Alt'] &&
-         typeof map !== 'undefined' && map.hasLayer(layers['Low Alt']);
-}
 function drawNavWaypoints() {
-  if (lowAltLayerActive()) return;      // CVFR reporting points hidden on the LSA layer
   if (!showNavWP || !navWP || navWP.length === 0) return;
   // Suppress nav-WP dot when a route waypoint sits on it (by position),
   // regardless of whether the WP name was changed after snapping.
@@ -1452,61 +1486,6 @@ function drawNavWaypoints() {
     octx.stroke();
     if (showLabels) {
       const label = referenceOverlayLabel(wp, 'navwp');
-      octx.lineWidth = tune('navWaypointLabelHaloPx');
-      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
-      octx.strokeText(label, s.x + labelOffset, s.y);
-      octx.fillStyle = tune('inkColor');
-      octx.fillText(label, s.x + labelOffset, s.y);
-    }
-  }
-  octx.lineWidth = 1;
-}
-
-// LSA reporting-point overlay (data/lsa-nav-waypoints.json). Shown only on the
-// "Low Alt" base layer. Cyan triangle: filled = mandatory, hollow = on-request.
-var lsaWP = null;            // null = not loaded; [] or populated = loaded
-var _lsaWPLoading = false;
-async function loadLsaWaypoints() {
-  if (lsaWP !== null || _lsaWPLoading) return lsaWP;
-  _lsaWPLoading = true;
-  try {
-    const res = await fetch('data/lsa-nav-waypoints.json');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const d = await res.json();
-    const pts = Array.isArray(d) ? d : (d.points || []);
-    lsaWP = pts.filter(p => p && Number.isFinite(p.lat) && Number.isFinite(p.lng))
-      .map(p => ({ name: p.name || '', he: p.he || '', lat: p.lat, lng: p.lng, report: p.report || '' }));
-  } catch (e) {
-    console.warn('Failed to load LSA waypoints:', e);
-    lsaWP = null;            // allow retry on next layer switch
-  } finally {
-    _lsaWPLoading = false;
-  }
-  if (lsaWP) scheduleDraw();
-  return lsaWP;
-}
-function drawLsaWaypoints() {
-  if (!lowAltLayerActive()) return;
-  if (lsaWP === null) { loadLsaWaypoints(); return; }   // lazy-load on first LSA view
-  if (!lsaWP.length) return;
-  // Same round-dot style as the CVFR nav-waypoint overlay (drawNavWaypoints).
-  const showLabels = map.getZoom() >= tune('navWpLabelMinZoom');
-  const dotRadius = tune('navWaypointRadiusPx');
-  const labelOffset = tune('navWaypointLabelOffsetPx');
-  octx.font = `bold ${tune('navWaypointLabelFontPx')}px sans-serif`;
-  octx.textAlign = 'left';
-  octx.textBaseline = 'middle';
-  for (const wp of lsaWP) {
-    const s = proj(wp);
-    octx.fillStyle = tune('navWaypointDotColor');
-    octx.strokeStyle = tune('inkColor');
-    octx.lineWidth = tune('navWaypointStrokeWidthPx');
-    octx.beginPath();
-    octx.arc(s.x, s.y, dotRadius, 0, Math.PI * 2);
-    octx.fill();
-    octx.stroke();
-    const label = wp.he || wp.name;
-    if (showLabels && label) {
       octx.lineWidth = tune('navWaypointLabelHaloPx');
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
       octx.strokeText(label, s.x + labelOffset, s.y);
@@ -1587,7 +1566,6 @@ function reportingFor(name) {
 // points are not badged (they are the common case); the inspector still
 // reports both classes for any selected waypoint.
 function drawReportingBadges() {
-  if (lowAltLayerActive()) return;      // CVFR reporting badges hidden on the LSA layer
   if (!showReporting || !navWP || !navWP.length) return;
   const r = tune('reportBadgeRadiusPx');
   const off = tune('reportBadgeOffsetPx');
