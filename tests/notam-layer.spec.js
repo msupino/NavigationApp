@@ -262,6 +262,49 @@ test('prose border NOTAMs are geocoded to buffer polygons', async ({ page }) => 
   expect(g.lngMax).toBeLessThan(35.95);
 });
 
+test('a point within the border buffer is detected as inside the NOTAM', async ({ page }) => {
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'BORDER/26', type: 'AELC', end: 'PERM', geom: null, icao: 'LLLL',
+      text: 'AN AREA FM LEBANON BOUNDRAY TO 8KM SB CLSD TO ALL DOM FLT.' },
+  ] });
+  await page.locator('#notam-cb').check();
+  const hits = await page.evaluate(() => {
+    if (typeof buildNotamBorderAreas === 'function') buildNotamBorderAreas();
+    map.setView([33.15, 35.55], 10); draw();
+    return {
+      // A few km inland from the Lebanon border → inside the 8 km buffer.
+      near: notamsAtLatLng({ lat: 33.2083, lng: 35.6333 }).map(n => n.id),
+      // Well inside Israel, far from any border → outside.
+      far: notamsAtLatLng({ lat: 32.20, lng: 34.90 }).map(n => n.id),
+    };
+  });
+  expect(hits.near).toContain('BORDER/26');
+  expect(hits.far).not.toContain('BORDER/26');
+});
+
+test('border NOTAM outline is solid, ordinary area outline is dashed', async ({ page }) => {
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
+    { id: 'BORDER/26', type: 'AELC', end: 'PERM', geom: null, icao: 'LLLL',
+      text: 'AN AREA FM LEBANON BOUNDRAY TO 8KM SB CLSD TO ALL DOM FLT.' },
+    { id: 'AREA/26', end: 'PERM', icao: 'LLLL', text: 'AREA CLSD.',
+      geom: { type: 'polygon', coords: [[32.0, 34.8], [32.2, 34.9], [31.9, 35.1]] } },
+  ] });
+  await page.locator('#notam-cb').check();
+  // Spy on setLineDash during a draw: a border area must stroke with no dash
+  // ([] / empty), the ordinary polygon must stroke dashed ([6,4]).
+  const dashes = await page.evaluate(() => {
+    if (typeof buildNotamBorderAreas === 'function') buildNotamBorderAreas();
+    const seen = [];
+    const orig = octx.setLineDash;
+    octx.setLineDash = function (d) { seen.push((d || []).join(',')); return orig.call(this, d); };
+    draw();
+    octx.setLineDash = orig;
+    return seen;
+  });
+  // The dashed-area pattern is set once per ordinary area (here: exactly one).
+  expect(dashes.filter(d => d === '6,4').length).toBe(1);
+});
+
 test('timeline slider scrubs which NOTAMs are active', async ({ page }) => {
   const started = new Date(Date.now() - 36e5).toISOString();     // -1h (already active)
   const startIn48 = new Date(Date.now() + 48 * 3600e3).toISOString();
