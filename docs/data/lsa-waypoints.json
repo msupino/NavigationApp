@@ -1,0 +1,302 @@
+{
+  "_comment": "Israel LSA/CVFR reporting points (triangle+magenta-dot symbol) digitized from the LSA-Low-Altitude raster chart (mbtiles, z13). Coordinates = symbol-center, exact from tile pixel (WGS-84). Names auto-filled from nav-waypoints.json where a known point is within 400 m; blank names need manual labelling from the chart. Partial: hollow-triangle reporting points (no magenta dot) are NOT included. Planning aid, verify against AIP.",
+  "source": "LSA-Low-Altitude.mbtiles z13 (raster), symbol detection",
+  "grid": "WGS-84",
+  "count": 49,
+  "points": [
+    {
+      "lat": 29.73301,
+      "lng": 35.00465,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 29.88171,
+      "lng": 35.0467,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 29.88754,
+      "lng": 35.05562,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 29.89223,
+      "lng": 35.06214,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 29.98872,
+      "lng": 35.07607,
+      "name": "KTORA",
+      "he": "צומת קטורה"
+    },
+    {
+      "lat": 30.2891,
+      "lng": 35.0869,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.3501,
+      "lng": 35.17021,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.38008,
+      "lng": 34.95607,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.42224,
+      "lng": 35.15153,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.46702,
+      "lng": 35.69246,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 30.55287,
+      "lng": 35.18525,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.13506,
+      "lng": 34.80392,
+      "name": "HOVAV",
+      "he": "רמת חובב"
+    },
+    {
+      "lat": 31.20541,
+      "lng": 34.51059,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.21839,
+      "lng": 35.24795,
+      "name": "HATRU",
+      "he": "צומת חתרורים"
+    },
+    {
+      "lat": 31.23117,
+      "lng": 34.82863,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.26434,
+      "lng": 34.83834,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.27229,
+      "lng": 34.77743,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.27346,
+      "lng": 34.49266,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.27824,
+      "lng": 35.11807,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.3027,
+      "lng": 34.81044,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.30878,
+      "lng": 34.85142,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.30906,
+      "lng": 34.84239,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.44094,
+      "lng": 34.76549,
+      "name": "BKAMA",
+      "he": "בית קמה"
+    },
+    {
+      "lat": 31.59879,
+      "lng": 34.81102,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.6236,
+      "lng": 34.75545,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.71445,
+      "lng": 35.44958,
+      "name": "ZUKIM",
+      "he": "עינות צוקים"
+    },
+    {
+      "lat": 31.78351,
+      "lng": 34.6667,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.79771,
+      "lng": 35.07562,
+      "name": "SORES",
+      "he": "שורש"
+    },
+    {
+      "lat": 31.82411,
+      "lng": 34.70743,
+      "name": "ZASHD",
+      "he": "צומת אשדוד"
+    },
+    {
+      "lat": 31.87626,
+      "lng": 35.02345,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.92017,
+      "lng": 34.76966,
+      "name": "BOVED",
+      "he": "בית עובד"
+    },
+    {
+      "lat": 31.94155,
+      "lng": 34.75114,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.94164,
+      "lng": 35.8126,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 31.94991,
+      "lng": 34.80202,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.00425,
+      "lng": 34.72601,
+      "name": "TYONA",
+      "he": "תל יונה"
+    },
+    {
+      "lat": 32.205,
+      "lng": 34.96255,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.21659,
+      "lng": 34.80976,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.57156,
+      "lng": 35.19144,
+      "name": "ZMGID",
+      "he": "צומת מגידו"
+    },
+    {
+      "lat": 32.74481,
+      "lng": 35.0774,
+      "name": "HASID",
+      "he": "כפר חסידים"
+    },
+    {
+      "lat": 32.79395,
+      "lng": 34.94203,
+      "name": "DAROM",
+      "he": "מחלף דרום"
+    },
+    {
+      "lat": 32.81926,
+      "lng": 35.13198,
+      "name": "GILAM",
+      "he": "גילעם"
+    },
+    {
+      "lat": 32.90163,
+      "lng": 35.63249,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.91089,
+      "lng": 35.54175,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 32.91606,
+      "lng": 35.09566,
+      "name": "AAKKO",
+      "he": "עכו"
+    },
+    {
+      "lat": 32.98693,
+      "lng": 35.48244,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 33.00949,
+      "lng": 35.6496,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 33.0437,
+      "lng": 35.57018,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 33.20887,
+      "lng": 35.59023,
+      "name": "",
+      "he": ""
+    },
+    {
+      "lat": 33.22043,
+      "lng": 35.59976,
+      "name": "",
+      "he": ""
+    }
+  ]
+}
