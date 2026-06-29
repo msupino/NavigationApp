@@ -24,12 +24,14 @@ test('waypoint dataset follows the active base layer', async ({ page }) => {
   const cvfr = await setLayer(page, 'CVFR');
   const lsa = await setLayer(page, 'Low Alt');
   const nav = await setLayer(page, 'Navigation');   // no own file -> cvfr fallback
-  const heli = await setLayer(page, 'Helicopters');  // own (empty) file
+  const heli = await setLayer(page, 'Helicopters');  // own heli dataset
   expect(cvfr).toBeGreaterThan(150);     // ~172 CVFR
-  expect(lsa).toBeGreaterThan(100);      // ~142 LSA
+  expect(lsa).toBeGreaterThan(100);      // ~148 LSA
   expect(lsa).not.toBe(cvfr);
   expect(nav).toBe(cvfr);                // fallback to CVFR
-  expect(heli).toBe(0);                  // empty heli file
+  expect(heli).toBeGreaterThan(100);     // ~205 heli, its own dataset
+  expect(heli).not.toBe(cvfr);
+  expect(heli).not.toBe(lsa);
 });
 
 test('LSA waypoints draw via the shared nav-waypoint overlay', async ({ page }) => {
