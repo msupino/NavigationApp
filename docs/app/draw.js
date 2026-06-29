@@ -362,7 +362,7 @@ async function loadNotamBorders() {
 // Build a closed buffer polygon by offsetting a border arc inland (toward the
 // Israel interior) by km. Mirrors the offset fpl.co.il applies server-side.
 const NOTAM_BORDER_INTERIOR = [31.4, 34.9];     // reference point inside Israel
-const NOTAM_BORDER_SIMPLIFY_KM = 3;             // drop sub-buffer wiggles that fold the offset
+const NOTAM_BORDER_SIMPLIFY_KM = 1.5;           // follow the border closely; small enough that the inland offset rarely self-folds
 function notamKmBetween(p, q) {
   const latr = (p[0] + q[0]) / 2 * Math.PI / 180;
   return Math.hypot((q[0] - p[0]) * 110.57, (q[1] - p[1]) * 111.32 * Math.cos(latr));
@@ -753,7 +753,10 @@ function drawNotams() {
     octx.closePath();
     octx.fillStyle = colorWithAlpha(col, tune('notamFillAlpha'));
     octx.fill();
-    octx.setLineDash([6, 4]);
+    // Border-buffer areas (FM <NEIGHBOUR> BOUNDARY TO NKM) trace the
+    // international border, so draw their outline as a continuous solid line;
+    // ordinary point/area NOTAMs keep the dashed outline.
+    if (!(g && g._border)) octx.setLineDash([6, 4]);
     octx.lineWidth = tune('notamLineWidthPx');
     octx.strokeStyle = col;
     octx.stroke();
