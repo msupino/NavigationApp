@@ -4,7 +4,7 @@ const { test, expect } = require('./_setup');
 const { LLHZ, LLHA } = require('./_airfieldArp');
 
 // Same 11-waypoint LLHZ → LLHA fixture as tests/flight-plan.spec.js (PR #153),
-// endpoints from `tests/_airfieldArp.js`, interior points from nav-waypoints.json.
+// endpoints from `tests/_airfieldArp.js`, interior points from cvfr-nav-waypoints.json.
 const ROUTE = {
   waypoints: [
     { lat: LLHZ.lat, lng: LLHZ.lng, name: 'LLHZ' },

@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('./_setup');
 
-const ALTITUDE_PATH = path.join(__dirname, '..', 'docs', 'data', 'leg-altitude.json');
-const NAV_PATH = path.join(__dirname, '..', 'docs', 'data', 'nav-waypoints.json');
+const ALTITUDE_PATH = path.join(__dirname, '..', 'docs', 'data', 'cvfr-leg-altitude.json');
+const NAV_PATH = path.join(__dirname, '..', 'docs', 'data', 'cvfr-nav-waypoints.json');
 const AIRFIELDS_PATH = path.join(__dirname, '..', 'docs', 'data', 'airfields.json');
 const EXTRACTION_NOTES_PATH = path.join(
   __dirname, '..', 'scripts', 'cvfr-altitude-extraction-notes.json');
@@ -37,7 +37,7 @@ function directionPoolFromSegments(segments) {
   return out;
 }
 
-test.describe('leg-altitude.json scaffold', () => {
+test.describe('cvfr-leg-altitude.json scaffold', () => {
   test('keeps route endpoints in the source waypoint datasets', () => {
     const data = readJson(ALTITUDE_PATH);
 
@@ -320,7 +320,7 @@ test.describe('leg-altitude.json scaffold', () => {
     const segments = data.segments.map(segment => `${segment.from}-${segment.to}`);
     const notesByName = new Map(notes.segments.map(segment => [segment.segment, segment]));
 
-    expect(notes.relatedDataset).toBe('docs/data/leg-altitude.json');
+    expect(notes.relatedDataset).toBe('docs/data/cvfr-leg-altitude.json');
     expect(notes.sourceCharts.map(chart => chart.id)).toEqual(['north', 'south']);
     expect(notes.sourceCharts.map(chart => chart.region)).toEqual(['north', 'south']);
     expect(notes.sourceCharts.every(chart => chart.url.includes('gov.il'))).toBe(true);

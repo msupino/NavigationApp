@@ -3,7 +3,7 @@
 //
 // This file was rebuilt from the published IAA CVFR chart waypoint
 // reference table (page 113, 2025 edition, same screenshot that fed
-// PR #411's nav-waypoints.json rebuild). The chart's 26 ARP rows are
+// PR #411's cvfr-nav-waypoints.json rebuild). The chart's 26 ARP rows are
 // now the canonical airfield list, replacing the legacy 16-entry JSON
 // that drifted from the chart in three places by 400–555 m (LLMG,
 // LLKS, LLES — the chart-vs-JSON drift originally identified during
@@ -296,7 +296,7 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     expect(llnvRows[0].lng).toBe(35.01833);
   });
 
-  // Cross-reference: every ARP in nav-waypoints.json's exclusion list
+  // Cross-reference: every ARP in cvfr-nav-waypoints.json's exclusion list
   // (the codes #411 deliberately filtered out as airfields) MUST be
   // present here. Anything missing means a chart ARP got dropped on
   // the airfields side too — the renderer would then lose its blue
