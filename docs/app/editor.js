@@ -54,7 +54,14 @@
     var icon = L.divIcon({ className: 'editor-icon', html: html, iconSize: [20, 20], iconAnchor: [10, 13] });
     var m = L.marker([p.lat, p.lng], { icon: icon, keyboard: false, draggable: true });
     if (p.name) m.bindTooltip(String(p.name), { direction: 'right', offset: [8, 0] });
-    m.on('click', function (ev) { L.DomEvent.stopPropagation(ev); points.splice(i, 1); savePoints(); render(); redraw(); });
+    m.on('click', function (ev) {                 // click to name (blank = delete)
+      L.DomEvent.stopPropagation(ev);
+      var name = prompt('Waypoint name (blank to delete):', points[i].name || '');
+      if (name === null) return;                  // cancel — no change
+      name = name.trim();
+      if (name) points[i].name = name; else points.splice(i, 1);
+      savePoints(); render(); redraw();           // name lands in the exported JSON
+    });
     m.on('dragend', function (ev) { var ll = ev.target.getLatLng(); points[i].lat = r5(ll.lat); points[i].lng = r5(ll.lng); savePoints(); render(); });
     return m;
   }
@@ -172,7 +179,7 @@
       '<div id="ed-type" style="margin-bottom:6px">' +
       '<label style="margin-right:8px"><input type="radio" name="ed-t" value="mandatory"> mandatory</label>' +
       '<label><input type="radio" name="ed-t" value="onRequest" checked> on-request</label></div>' +
-      '<div style="opacity:.8;margin-bottom:6px">Point: click add · marker to delete.<br>Polygon: click vertices · dbl-click / Finish / click 1st vertex to close · polygon to delete.</div>' +
+      '<div style="opacity:.8;margin-bottom:6px">Point: click add · marker to name (blank deletes).<br>Polygon: click vertices · dbl-click / Finish / click 1st vertex to close · polygon to delete.</div>' +
       '<div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">' +
       '<button id="ed-finish" type="button">Finish</button>' +
       '<button id="ed-load" type="button">Load known</button>' +

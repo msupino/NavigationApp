@@ -160,3 +160,21 @@ test('polygon undo removes the last vertex, then the last polygon', async ({ pag
   expect(r.after).toBe(1);
   expect(r.afterUndo).toBe(0);
 });
+
+test('clicking a point marker names it (applied to JSON)', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.goto('?lang=en&editor=1');
+  await page.waitForSelector('#editor-panel');
+  await page.waitForFunction(() => typeof map !== 'undefined');
+  page.on('dialog', d => d.accept('SFAIM'));     // prompt → enter a name
+  const r = await page.evaluate(async () => {
+    map.setView([32.0, 34.9], 11);
+    map.fire('click', { latlng: L.latLng(32.0, 34.8) });
+    let mk = null;
+    map.eachLayer(l => { if (l instanceof L.Marker && l.options.draggable) mk = l; });
+    mk.fire('click', {});
+    await new Promise(r => setTimeout(r, 30));
+    return JSON.parse(document.getElementById('ed-json').value)[0];
+  });
+  expect(r.name).toBe('SFAIM');
+});
