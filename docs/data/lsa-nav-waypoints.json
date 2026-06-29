@@ -1,5 +1,5 @@
 {
-  "_comment": "Israel LSA reporting points, hand-digitized via the editor tool (?editor=1). name=code or Hebrew label; he=Hebrew where a code is present. WGS-84.",
+  "_comment": "Israel LSA reporting points, hand-digitized via the editor tool (?editor=1). All on-request. name=code or Hebrew label; he=Hebrew where a code is present. WGS-84.",
   "source": "hand-digitized (editor tool) on LSA-Low-Altitude chart",
   "grid": "WGS-84",
   "count": 148,
@@ -7,22 +7,26 @@
     {
       "lat": 33.22121,
       "lng": 35.63094,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "הגושרים"
     },
     {
       "lat": 33.16636,
       "lng": 35.56976,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צומת גומא"
     },
     {
       "lat": 33.23055,
       "lng": 35.75062,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צומת מסעדה"
     },
     {
       "lat": 33.14746,
       "lng": 35.78704,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "בנטל"
     },
     {
       "lat": 33.14359,
@@ -34,27 +38,32 @@
     {
       "lat": 33.08526,
       "lng": 35.78595,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צומת אביטל"
     },
     {
       "lat": 33.05516,
       "lng": 35.73409,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "נפח"
     },
     {
       "lat": 33.12382,
       "lng": 35.56856,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צומת כח"
     },
     {
       "lat": 33.00938,
       "lng": 35.64969,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צומת בית המכס"
     },
     {
       "lat": 33.04351,
       "lng": 35.57058,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "שדה אליעזר"
     },
     {
       "lat": 32.95029,
@@ -80,22 +89,26 @@
     {
       "lat": 32.91132,
       "lng": 35.15658,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צומת יאסיף"
     },
     {
       "lat": 32.90692,
       "lng": 35.47271,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צומת קדרים"
     },
     {
       "lat": 32.90995,
       "lng": 35.54186,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צומת עמיעד"
     },
     {
       "lat": 32.90134,
       "lng": 35.63265,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צומת בית צידה"
     },
     {
       "lat": 32.72606,
@@ -112,7 +125,8 @@
     {
       "lat": 32.75812,
       "lng": 35.34611,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "כפר כנא"
     },
     {
       "lat": 32.75754,
@@ -180,12 +194,14 @@
     {
       "lat": 32.59491,
       "lng": 35.31249,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "מרחביה"
     },
     {
       "lat": 32.55283,
       "lng": 35.38148,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "עין חרוד"
     },
     {
       "lat": 32.47908,
@@ -260,11 +276,6 @@
       "name": "צומת קדומים"
     },
     {
-      "lat": 32.24649,
-      "lng": 35.02991,
-      "report": "onRequest"
-    },
-    {
       "lat": 32.25125,
       "lng": 34.97984,
       "report": "onRequest",
@@ -294,7 +305,7 @@
       "lat": 32.1695,
       "lng": 34.95751,
       "report": "onRequest",
-      "name": "צומת נווה ימים"
+      "name": "צומת נווה ימין"
     },
     {
       "lat": 32.14812,
@@ -372,7 +383,8 @@
     {
       "lat": 31.94896,
       "lng": 34.80297,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "ראשונים"
     },
     {
       "lat": 31.9274,
@@ -384,7 +396,8 @@
     {
       "lat": 31.91895,
       "lng": 34.79404,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "א״ת נס ציונה"
     },
     {
       "lat": 31.91866,
@@ -410,17 +423,20 @@
     {
       "lat": 31.84857,
       "lng": 35.02888,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "מבוא חורון"
     },
     {
       "lat": 31.87599,
       "lng": 35.02329,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "רעות"
     },
     {
       "lat": 31.91433,
       "lng": 35.02621,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "לפיד"
     },
     {
       "lat": 31.97159,
@@ -478,7 +494,8 @@
     {
       "lat": 31.7423,
       "lng": 34.87059,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "גפן"
     },
     {
       "lat": 31.74313,
@@ -490,7 +507,8 @@
     {
       "lat": 31.81412,
       "lng": 34.63123,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "נמל אשדוד"
     },
     {
       "lat": 31.82423,
@@ -516,12 +534,13 @@
       "lat": 31.59891,
       "lng": 34.8116,
       "report": "onRequest",
-      "name": "מחלף קרית גת"
+      "name": "מחלף קרית גם"
     },
     {
       "lat": 31.51141,
       "lng": 34.7832,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "מחלף מאחז"
     },
     {
       "lat": 31.43956,
@@ -678,7 +697,8 @@
     {
       "lat": 31.14105,
       "lng": 35.21288,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "אפעה"
     },
     {
       "lat": 31.14995,
@@ -772,7 +792,8 @@
     {
       "lat": 31.26008,
       "lng": 34.83209,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "חטיבת הנגב"
     },
     {
       "lat": 31.32018,
@@ -900,7 +921,8 @@
     {
       "lat": 32.506,
       "lng": 34.92966,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "אור עקיבא"
     },
     {
       "lat": 32.49789,
@@ -911,22 +933,26 @@
     {
       "lat": 32.59484,
       "lng": 35.08244,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "דליה"
     },
     {
       "lat": 32.63475,
       "lng": 35.0639,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "אליקים"
     },
     {
       "lat": 32.59629,
       "lng": 35.00416,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "בת שלמה"
     },
     {
       "lat": 32.56475,
       "lng": 35.24929,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "ניר יפה"
     },
     {
       "lat": 32.23749,
@@ -941,10 +967,16 @@
       "name": "יצהר מערב"
     },
     {
-      "lat": 32.60697,
-      "lng": 34.91065,
+      "lat": 33.23565,
+      "lng": 35.67449,
       "report": "onRequest",
-      "name": "דור"
+      "name": "שניר"
+    },
+    {
+      "lat": 32.78035,
+      "lng": 35.63896,
+      "report": "onRequest",
+      "name": "עין גב"
     }
   ]
 }
