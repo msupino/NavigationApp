@@ -74,7 +74,7 @@ async function installCommChangeFixture(page) {
 }
 
 async function installAltitudeFixture(page) {
-  await page.route('**/leg-altitude.json*', route => route.fulfill({
+  await page.route('**/cvfr-leg-altitude.json*', route => route.fulfill({
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify(ALTITUDE_FIXTURE),

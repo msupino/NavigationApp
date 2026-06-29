@@ -317,7 +317,8 @@ const SIGMET_URL =
   'https://raw.githubusercontent.com/msupino/NavigationApp/sigmet-data/sigmet.json';
 // NOTAMs: a scheduled Action queries the FAA NOTAM API for the Israel FIR
 // (LLLL), normalises geometry, and publishes notam.json to the `notam-data`
-// branch. data/notam.json is the offline / first-run fallback.
+// branch (filename unchanged there). data/cvfr-notam.json is the offline /
+// first-run fallback.
 const NOTAM_URL =
   'https://raw.githubusercontent.com/msupino/NavigationApp/notam-data/notam.json';
 async function loadNotam(force) {
@@ -333,7 +334,7 @@ async function loadNotam(force) {
     return notams;
   } catch (e) {
     try {
-      const res2 = await fetch('data/notam.json');
+      const res2 = await fetch('data/cvfr-notam.json');
       notams = parse(await res2.json());
     } catch (e2) {
       notams = [];
@@ -1011,7 +1012,7 @@ async function loadCommChange() {
   }
 }
 
-// Lazy-loads docs/data/leg-altitude.json — { segments:[{from,to,
+// Lazy-loads docs/data/cvfr-leg-altitude.json — { segments:[{from,to,
 // inboundAltitude,outboundAltitude,status,oneWay,...}], directionPool:[...] }.
 // The app uses it only as a reference table for freshly-created legs;
 // saved/imported route JSON stays authoritative for existing leg values.

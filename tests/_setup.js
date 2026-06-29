@@ -48,7 +48,7 @@ exports.test = base.test.extend({
         // NOTAM list button appear and intercept map clicks (e.g. magnifier).
         // CI runners can't reach it (so it silently fell back), but local runs
         // and e2e-deployed can. The app falls back to the empty same-origin
-        // data/notam.json. Specs that need NOTAMs (notam-layer) register their
+        // data/cvfr-notam.json. Specs that need NOTAMs (notam-layer) register their
         // own route, which wins by later registration.
         if (host === 'raw.githubusercontent.com' &&
             /\/notam-data\/|notam\.json$/.test(new URL(url).pathname)) {

@@ -868,7 +868,7 @@ function normalizeRouteTemplateData(data) {
 async function loadRouteTemplates() {
   if (routeTemplates !== null) return routeTemplates;
   try {
-    const res = await fetch(S.routeTemplatesUrl || 'data/route-templates.json?v=1');
+    const res = await fetch(S.routeTemplatesUrl || 'data/cvfr-route-templates.json?v=1');
     if (!res.ok) throw new Error(String(res.status));
     routeTemplates = normalizeRouteTemplateData(await res.json());
   } catch (e) {

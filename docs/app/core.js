@@ -489,8 +489,8 @@ window.S = Object.assign({
   airfieldsUrl: 'data/airfields.json?v=3',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   commChangeUrl: 'data/cvfr-comm-change.json?v=1', // CVFR comm-change reporting points (issue #399)
-  legAltitudeUrl: 'data/leg-altitude.json?v=1', // CVFR green-route leg altitude table
-  routeTemplatesUrl: 'data/route-templates.json?v=1', // ready-made route templates
+  legAltitudeUrl: 'data/cvfr-leg-altitude.json?v=1', // CVFR green-route leg altitude table
+  routeTemplatesUrl: 'data/cvfr-route-templates.json?v=1', // ready-made route templates
   vorUrl: 'data/vor.json?v=1',              // Israeli VOR/DME stations (#404 follow-up)
 
   // --- English UI copy (default locale) -------------------------------
@@ -1118,7 +1118,7 @@ var commChangeCallSigns = {}; // Frequency catalog keyed by call-sign id
                               // (loaded from cvfr-comm-change.json `callSigns`).
 var legAltitudeMap = null; // null = not loaded yet (or last fetch failed —
                                 // retry on next call); {} or populated =
-                                // leg-altitude.json segments keyed as
+                                // cvfr-leg-altitude.json segments keyed as
                                 // `FROM-TO` for automatic fresh-leg altitudes.
 var legAltitudePointIds = null; // Set of endpoint ids from the same file.
 var legAltitudeDataset = null;  // Raw validated dataset for Charts copy/view.
@@ -2469,7 +2469,7 @@ function legAllowsReturn(i) {
   const leg = state.legs[i];
   return !(leg && (leg._legAltitudeOutboundBlocked || leg._legAltitudeOneWay));
 }
-// The charted altitude for a leg as loaded from leg-altitude.json — read from
+// The charted altitude for a leg as loaded from cvfr-leg-altitude.json — read from
 // the pristine ORIGIN map, never the live (route-editable) lookup. The leg
 // inspector uses this for its default / reset-to-charted value so a hand-edited
 // altitude elsewhere doesn't redefine what "charted" means in the inspector.

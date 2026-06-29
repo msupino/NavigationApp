@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
-const file = path.join(root, 'docs', 'data', 'leg-altitude.json');
+const file = path.join(root, 'docs', 'data', 'cvfr-leg-altitude.json');
 
 function directionPoolFromSegments(segments) {
   const out = [];

@@ -311,7 +311,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
 
   test('route template comm-change call signs have route-context hints', async () => {
     const comm = JSON.parse(fs.readFileSync('docs/data/cvfr-comm-change.json', 'utf8'));
-    const templates = JSON.parse(fs.readFileSync('docs/data/route-templates.json', 'utf8'));
+    const templates = JSON.parse(fs.readFileSync('docs/data/cvfr-route-templates.json', 'utf8'));
     const byName = new Map((comm.points || []).map(point => [point.name, point]));
     const missing = [];
     const invalidHints = [];

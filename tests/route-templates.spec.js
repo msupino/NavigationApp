@@ -3,7 +3,7 @@ const { test, expect } = require('./_setup');
 const fs = require('fs');
 const path = require('path');
 
-const TEMPLATES_PATH = path.join(__dirname, '..', 'docs', 'data', 'route-templates.json');
+const TEMPLATES_PATH = path.join(__dirname, '..', 'docs', 'data', 'cvfr-route-templates.json');
 const AIRFIELDS_PATH = path.join(__dirname, '..', 'docs', 'data', 'airfields.json');
 const NAV_WP_PATH = path.join(__dirname, '..', 'docs', 'data', 'cvfr-nav-waypoints.json');
 
@@ -44,7 +44,7 @@ async function boot(page, lang = 'en') {
 }
 
 test.describe('route templates', () => {
-  test('templates carry NO altitude data (altitudes come from leg-altitude.json)', async () => {
+  test('templates carry NO altitude data (altitudes come from cvfr-leg-altitude.json)', async () => {
     const data = readJson(TEMPLATES_PATH);
     for (const t of data.templates) {
       // No leg/altitude fields at the template level.
