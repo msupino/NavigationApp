@@ -1488,31 +1488,32 @@ function drawLsaWaypoints() {
   if (!lowAltLayerActive()) return;
   if (lsaWP === null) { loadLsaWaypoints(); return; }   // lazy-load on first LSA view
   if (!lsaWP.length) return;
+  // Same round-dot style as the CVFR nav-waypoint overlay (drawNavWaypoints).
   const showLabels = map.getZoom() >= tune('navWpLabelMinZoom');
-  const col = '#0aa3c2';                  // cyan — distinct from chart's black/magenta
-  octx.save();
-  octx.textAlign = 'left'; octx.textBaseline = 'middle';
+  const dotRadius = tune('navWaypointRadiusPx');
+  const labelOffset = tune('navWaypointLabelOffsetPx');
   octx.font = `bold ${tune('navWaypointLabelFontPx')}px sans-serif`;
+  octx.textAlign = 'left';
+  octx.textBaseline = 'middle';
   for (const wp of lsaWP) {
     const s = proj(wp);
-    const r = 7;
-    octx.beginPath();                     // upward triangle (filled = mandatory, hollow = on-request)
-    octx.moveTo(s.x, s.y - r);
-    octx.lineTo(s.x + r * 0.9, s.y + r * 0.7);
-    octx.lineTo(s.x - r * 0.9, s.y + r * 0.7);
-    octx.closePath();
-    octx.lineWidth = 2; octx.strokeStyle = col; octx.stroke();
-    if (wp.report === 'mandatory') { octx.fillStyle = col; octx.fill(); }
+    octx.fillStyle = tune('navWaypointDotColor');
+    octx.strokeStyle = tune('inkColor');
+    octx.lineWidth = tune('navWaypointStrokeWidthPx');
+    octx.beginPath();
+    octx.arc(s.x, s.y, dotRadius, 0, Math.PI * 2);
+    octx.fill();
+    octx.stroke();
     const label = wp.he || wp.name;
     if (showLabels && label) {
       octx.lineWidth = tune('navWaypointLabelHaloPx');
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
-      octx.strokeText(label, s.x + r + 2, s.y);
-      octx.fillStyle = col;
-      octx.fillText(label, s.x + r + 2, s.y);
+      octx.strokeText(label, s.x + labelOffset, s.y);
+      octx.fillStyle = tune('inkColor');
+      octx.fillText(label, s.x + labelOffset, s.y);
     }
   }
-  octx.restore();
+  octx.lineWidth = 1;
 }
 
 // VOR/DME station overlay. Each station draws a compass-rose glyph (ring +

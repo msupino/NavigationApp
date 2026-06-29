@@ -11,10 +11,10 @@ test('LSA waypoints draw only on the Low Alt layer', async ({ page }) => {
     await loadLsaWaypoints();
     map.setView([32.0, 34.9], 9);
     const drawn = () => {
-      let n = 0; const orig = octx.moveTo;
-      octx.moveTo = function (...a) { n++; return orig.apply(this, a); };
+      let n = 0; const orig = octx.arc;
+      octx.arc = function (...a) { n++; return orig.apply(this, a); };
       drawLsaWaypoints();
-      octx.moveTo = orig; return n;
+      octx.arc = orig; return n;
     };
     const setL = k => { for (const x in layers) if (map.hasLayer(layers[x])) map.removeLayer(layers[x]); map.addLayer(layers[k]); };
     setL('CVFR'); const onCvfr = drawn();
