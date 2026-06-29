@@ -24,12 +24,14 @@ test('waypoint dataset follows the active base layer', async ({ page }) => {
   const cvfr = await setLayer(page, 'CVFR');
   const lsa = await setLayer(page, 'Low Alt');
   const nav = await setLayer(page, 'Navigation');   // no own file -> cvfr fallback
-  const heli = await setLayer(page, 'Helicopters');  // own (empty) file
+  const heli = await setLayer(page, 'Helicopters');  // own heli dataset
   expect(cvfr).toBeGreaterThan(150);     // ~172 CVFR
-  expect(lsa).toBeGreaterThan(100);      // ~142 LSA
+  expect(lsa).toBeGreaterThan(100);      // ~148 LSA
   expect(lsa).not.toBe(cvfr);
   expect(nav).toBe(cvfr);                // fallback to CVFR
-  expect(heli).toBe(0);                  // empty heli file
+  expect(heli).toBeGreaterThan(100);     // ~205 heli, its own dataset
+  expect(heli).not.toBe(cvfr);
+  expect(heli).not.toBe(lsa);
 });
 
 test('LSA waypoints draw via the shared nav-waypoint overlay', async ({ page }) => {
@@ -64,4 +66,24 @@ test('an LSA waypoint selects + opens the inspector, same as CVFR', async ({ pag
   });
   expect(r.hit).toBe(0);          // LSA dot is hit-testable (index 0)
   expect(r.open).toBe(true);      // inspector opened, same path as CVFR
+});
+
+test('LSA areas (bubbles) load + draw on Low Alt, none on CVFR', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const setL = k => { for (const x in layers) if (map.hasLayer(layers[x])) map.removeLayer(layers[x]); map.addLayer(layers[k]); };
+    setL('Low Alt'); window.areas = null; await loadAreas();
+    const lsaCount = window.areas.length;
+    map.setView([32.1, 35.0], 9);
+    let fills = 0; const orig = octx.fill;
+    octx.fill = function (...a) { fills++; return orig.apply(this, a); };
+    drawAreas();
+    octx.fill = orig;
+    setL('CVFR'); window.areas = null; await loadAreas();
+    const cvfrCount = window.areas.length;
+    return { lsaCount, fills, cvfrCount };
+  });
+  expect(r.lsaCount).toBeGreaterThan(0);   // 6 bubbles
+  expect(r.fills).toBeGreaterThan(0);      // drawn on Low Alt
+  expect(r.cvfrCount).toBe(0);             // no cvfr-areas file
 });
