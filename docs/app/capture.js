@@ -38,10 +38,15 @@
       '<polygon points="10,2 18,17 2,17" fill="' + fill + '" stroke="' + color +
       '" stroke-width="2"/></svg>';
     var icon = L.divIcon({ className: 'capture-icon', html: html, iconSize: [20, 20], iconAnchor: [10, 13] });
-    var m = L.marker([p.lat, p.lng], { icon: icon, keyboard: false });
+    var m = L.marker([p.lat, p.lng], { icon: icon, keyboard: false, draggable: true });
     m.on('click', function (ev) {                 // click a marker to delete it
       L.DomEvent.stopPropagation(ev);
       points.splice(i, 1); save(); render(); redraw();
+    });
+    m.on('dragend', function (ev) {               // drag to fine-tune position
+      var ll = ev.target.getLatLng();
+      points[i].lat = r5(ll.lat); points[i].lng = r5(ll.lng);
+      save(); render();                           // update JSON; marker stays where dropped
     });
     return m;
   }

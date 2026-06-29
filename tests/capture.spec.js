@@ -64,6 +64,23 @@ test('captured points are scoped to the base layer they were made on', async ({ 
   expect(r.cvfrBack).toBe(2);      // CVFR still has its two
 });
 
+test('dragging a captured triangle updates its coordinates', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.goto('?lang=en&capture=1');
+  await page.waitForSelector('#capture-panel');
+  await page.waitForFunction(() => typeof map !== 'undefined');
+  const p = await page.evaluate(() => {
+    map.setView([32.0, 34.9], 11);
+    map.fire('click', { latlng: L.latLng(32.10, 34.80) });
+    let mk = null;
+    map.eachLayer(l => { if (l instanceof L.Marker && l.options.draggable) mk = l; });
+    mk.setLatLng(L.latLng(32.15, 34.85));
+    mk.fire('dragend', { target: mk });
+    return JSON.parse(document.getElementById('cap-json').value)[0];
+  });
+  expect(p).toMatchObject({ lat: 32.15, lng: 34.85 });
+});
+
 test('undo and clear work', async ({ page }) => {
   await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
   await page.goto('?lang=en&capture=1');
