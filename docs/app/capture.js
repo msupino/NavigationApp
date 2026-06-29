@@ -118,7 +118,7 @@
       'font:12px/1.4 sans-serif;padding:10px;border-radius:8px;width:230px;' +
       'box-shadow:0 2px 10px rgba(0,0,0,.5);direction:ltr';
     box.innerHTML =
-      '<div id="cap-head" style="font-weight:700;margin-bottom:6px;cursor:move;user-select:none">⠿ Capture <span id="cap-count" style="float:right;font-weight:400;opacity:.8"></span></div>' +
+      '<div id="cap-head" style="font-weight:700;margin-bottom:6px;cursor:move;user-select:none">⠿ Editor <span id="cap-count" style="float:right;font-weight:400;opacity:.8"></span></div>' +
       '<div style="margin-bottom:6px">' +
       '<label style="margin-right:8px"><input type="radio" name="cap-t" value="mandatory" checked> mandatory</label>' +
       '<label><input type="radio" name="cap-t" value="onRequest"> on-request</label></div>' +
