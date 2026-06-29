@@ -65,3 +65,23 @@ test('an LSA waypoint selects + opens the inspector, same as CVFR', async ({ pag
   expect(r.hit).toBe(0);          // LSA dot is hit-testable (index 0)
   expect(r.open).toBe(true);      // inspector opened, same path as CVFR
 });
+
+test('LSA areas (bubbles) load + draw on Low Alt, none on CVFR', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const setL = k => { for (const x in layers) if (map.hasLayer(layers[x])) map.removeLayer(layers[x]); map.addLayer(layers[k]); };
+    setL('Low Alt'); window.areas = null; await loadAreas();
+    const lsaCount = window.areas.length;
+    map.setView([32.1, 35.0], 9);
+    let fills = 0; const orig = octx.fill;
+    octx.fill = function (...a) { fills++; return orig.apply(this, a); };
+    drawAreas();
+    octx.fill = orig;
+    setL('CVFR'); window.areas = null; await loadAreas();
+    const cvfrCount = window.areas.length;
+    return { lsaCount, fills, cvfrCount };
+  });
+  expect(r.lsaCount).toBeGreaterThan(0);   // 6 bubbles
+  expect(r.fills).toBeGreaterThan(0);      // drawn on Low Alt
+  expect(r.cvfrCount).toBe(0);             // no cvfr-areas file
+});
