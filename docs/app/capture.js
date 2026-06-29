@@ -23,6 +23,13 @@
 
   function save() { try { localStorage.setItem(KEY, JSON.stringify(points)); } catch (e) {} }
 
+  // Current base layer name (CVFR / Navigation / Low Alt / …); '' if unknown.
+  function currentLayer() {
+    if (typeof layers === 'undefined' || typeof map === 'undefined') return '';
+    for (var k in layers) if (map.hasLayer(layers[k])) return k;
+    return '';
+  }
+
   function marker(p, i) {
     var color = '#0aa3c2';
     var fill = p.report === 'mandatory' ? color : 'none';
@@ -38,26 +45,36 @@
     });
     return m;
   }
+  var _redrawing = false;
   function redraw() {
     if (!group) { group = L.layerGroup().addTo(map); }
+    _redrawing = true;                 // suppress our own layeradd/remove events
     group.clearLayers();
-    points.forEach(function (p, i) { group.addLayer(marker(p, i)); });
+    var cur = currentLayer();
+    // Show only points captured on the currently selected base layer.
+    points.forEach(function (p, i) { if ((p.layer || '') === cur) group.addLayer(marker(p, i)); });
+    _redrawing = false;
   }
 
+  function curPoints() {
+    var cur = currentLayer();
+    return points.filter(function (p) { return (p.layer || '') === cur; });
+  }
+  // Export the selected layer's points only.
   function json() {
-    return JSON.stringify(points.map(function (p) {
+    return JSON.stringify(curPoints().map(function (p) {
       return { lat: p.lat, lng: p.lng, report: p.report };
     }), null, 2);
   }
 
   var countEl, taEl;
   function render() {
-    if (countEl) countEl.textContent = points.length + ' pts';
+    if (countEl) countEl.textContent = curPoints().length + ' / ' + points.length + ' pts (' + (currentLayer() || '—') + ')';
     if (taEl) taEl.value = json();
   }
 
   function addPoint(latlng) {
-    points.push({ lat: r5(latlng.lat), lng: r5(latlng.lng), report: curType });
+    points.push({ lat: r5(latlng.lat), lng: r5(latlng.lng), report: curType, layer: currentLayer() });
     save(); render(); redraw();
   }
 
@@ -69,7 +86,7 @@
       'font:12px/1.4 sans-serif;padding:10px;border-radius:8px;width:230px;' +
       'box-shadow:0 2px 10px rgba(0,0,0,.5);direction:ltr';
     box.innerHTML =
-      '<div style="font-weight:700;margin-bottom:6px">Capture <span id="cap-count" style="float:right;font-weight:400;opacity:.8"></span></div>' +
+      '<div id="cap-head" style="font-weight:700;margin-bottom:6px;cursor:move;user-select:none">⠿ Capture <span id="cap-count" style="float:right;font-weight:400;opacity:.8"></span></div>' +
       '<div style="margin-bottom:6px">' +
       '<label style="margin-right:8px"><input type="radio" name="cap-t" value="mandatory" checked> mandatory</label>' +
       '<label><input type="radio" name="cap-t" value="onRequest"> on-request</label></div>' +
@@ -86,11 +103,18 @@
     box.querySelectorAll('input[name=cap-t]').forEach(function (r) {
       r.addEventListener('change', function () { curType = r.value; });
     });
-    box.querySelector('#cap-undo').onclick = function () { points.pop(); save(); render(); redraw(); };
-    box.querySelector('#cap-clear').onclick = function () {
-      if (points.length && !confirm('Clear all captured points?')) return;
-      points = []; save(); render(); redraw();
+    box.querySelector('#cap-undo').onclick = function () {
+      var cur = currentLayer();
+      for (var i = points.length - 1; i >= 0; i--) { if ((points[i].layer || '') === cur) { points.splice(i, 1); break; } }
+      save(); render(); redraw();
     };
+    box.querySelector('#cap-clear').onclick = function () {
+      var cur = currentLayer();
+      if (curPoints().length && !confirm('Clear captured points on this layer?')) return;
+      points = points.filter(function (p) { return (p.layer || '') !== cur; });
+      save(); render(); redraw();
+    };
+    makeDraggable(box, box.querySelector('#cap-head'));
     box.querySelector('#cap-copy').onclick = function () {
       taEl.select();
       if (navigator.clipboard) navigator.clipboard.writeText(json()).catch(function () { document.execCommand('copy'); });
@@ -105,11 +129,31 @@
     render();
   }
 
+  // Drag the panel by its header (pointer-based; keeps it within the viewport).
+  function makeDraggable(box, handle) {
+    var sx, sy, ox, oy, dragging = false;
+    handle.addEventListener('pointerdown', function (e) {
+      dragging = true; sx = e.clientX; sy = e.clientY;
+      var r = box.getBoundingClientRect(); ox = r.left; oy = r.top;
+      box.style.right = 'auto'; box.style.left = ox + 'px'; box.style.top = oy + 'px';
+      handle.setPointerCapture(e.pointerId); e.preventDefault();
+    });
+    handle.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      var nx = Math.max(0, Math.min(window.innerWidth - 40, ox + e.clientX - sx));
+      var ny = Math.max(0, Math.min(window.innerHeight - 20, oy + e.clientY - sy));
+      box.style.left = nx + 'px'; box.style.top = ny + 'px';
+    });
+    handle.addEventListener('pointerup', function () { dragging = false; });
+  }
+
   function init() {
     if (typeof map === 'undefined' || typeof L === 'undefined') { setTimeout(init, 200); return; }
     buildPanel();
     redraw();
     map.on('click', function (e) { addPoint(e.latlng); });
+    // Base-layer switches change which captured points are shown.
+    map.on('layeradd layerremove baselayerchange', function () { if (_redrawing) return; render(); redraw(); });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

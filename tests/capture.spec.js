@@ -38,6 +38,32 @@ test('clicking the map adds typed points and exports JSON', async ({ page }) => 
   expect(await page.evaluate(() => JSON.parse(document.getElementById('cap-json').value).length)).toBe(2);
 });
 
+test('captured points are scoped to the base layer they were made on', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.goto('?lang=en&capture=1');
+  await page.waitForSelector('#capture-panel');
+  await page.waitForFunction(() => typeof layers !== 'undefined');
+  const r = await page.evaluate(() => {
+    const setLayer = k => { for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]); map.addLayer(layers[k]); };
+    const exported = () => JSON.parse(document.getElementById('cap-json').value).length;
+    setLayer('CVFR');
+    map.fire('click', { latlng: L.latLng(32.1, 34.8) });
+    map.fire('click', { latlng: L.latLng(32.2, 34.9) });
+    const cvfr = exported();
+    setLayer('Low Alt');
+    const lowAltEmpty = exported();
+    map.fire('click', { latlng: L.latLng(31.5, 34.7) });
+    const lowAlt = exported();
+    setLayer('CVFR');
+    const cvfrBack = exported();
+    return { cvfr, lowAltEmpty, lowAlt, cvfrBack };
+  });
+  expect(r.cvfr).toBe(2);          // two captured on CVFR
+  expect(r.lowAltEmpty).toBe(0);   // none shown on Low Alt
+  expect(r.lowAlt).toBe(1);        // one captured on Low Alt
+  expect(r.cvfrBack).toBe(2);      // CVFR still has its two
+});
+
 test('undo and clear work', async ({ page }) => {
   await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
   await page.goto('?lang=en&capture=1');
