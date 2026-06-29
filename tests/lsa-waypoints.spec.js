@@ -51,3 +51,24 @@ test('overlay draws triangles only on the Low Alt layer', async ({ page }) => {
   expect(r.onLowAlt).toBeGreaterThan(0);   // triangles drawn
   expect(r.onCvfr).toBe(0);                // nothing drawn off the LSA layer
 });
+
+test('CVFR nav-waypoints are hidden on the LSA layer', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    showNavWP = true;
+    await (typeof loadNavWaypoints === 'function' ? loadNavWaypoints() : null);
+    map.setView([32.1, 34.85], 11);
+    const drawn = () => {
+      let m = 0; const orig = octx.arc;
+      octx.arc = function (...a) { m++; return orig.apply(this, a); };
+      drawNavWaypoints();
+      octx.arc = orig; return m;
+    };
+    for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+    map.addLayer(layers['CVFR']); const onCvfr = drawn();
+    map.removeLayer(layers['CVFR']); map.addLayer(layers['Low Alt']); const onLsa = drawn();
+    return { onCvfr, onLsa };
+  });
+  expect(r.onCvfr).toBeGreaterThan(0);     // CVFR dots drawn on the CVFR layer
+  expect(r.onLsa).toBe(0);                 // suppressed on the LSA layer
+});

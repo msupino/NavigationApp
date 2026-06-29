@@ -1423,6 +1423,7 @@ function drawAirfields() {
 }
 
 function drawNavWaypoints() {
+  if (lsaViewActive()) return;          // on the LSA layer only the detected LSA points show
   if (!showNavWP || !navWP || navWP.length === 0) return;
   // Suppress nav-WP dot when a route waypoint sits on it (by position),
   // regardless of whether the WP name was changed after snapping.
@@ -1470,7 +1471,7 @@ async function loadLsaWaypoints() {
     const d = await res.json();
     const pts = Array.isArray(d) ? d : (d.points || []);
     lsaWP = pts.filter(p => p && Number.isFinite(p.lat) && Number.isFinite(p.lng))
-      .map(p => ({ name: p.name || '', he: p.he || '', lat: p.lat, lng: p.lng }));
+      .map(p => ({ name: p.name || '', he: p.he || '', lat: p.lat, lng: p.lng, report: p.report || '' }));
   } catch (e) {
     console.warn('Failed to load LSA waypoints:', e);
     lsaWP = null;            // allow retry on next layer switch
@@ -1496,14 +1497,13 @@ function drawLsaWaypoints() {
   for (const wp of lsaWP) {
     const s = proj(wp);
     const r = 7;
-    octx.beginPath();                     // upward triangle outline
+    octx.beginPath();                     // upward triangle (filled = mandatory, hollow = on-request)
     octx.moveTo(s.x, s.y - r);
     octx.lineTo(s.x + r * 0.9, s.y + r * 0.7);
     octx.lineTo(s.x - r * 0.9, s.y + r * 0.7);
     octx.closePath();
     octx.lineWidth = 2; octx.strokeStyle = col; octx.stroke();
-    octx.beginPath(); octx.arc(s.x, s.y, 2, 0, Math.PI * 2);
-    octx.fillStyle = col; octx.fill();
+    if (wp.report === 'mandatory') { octx.fillStyle = col; octx.fill(); }
     const label = wp.he || wp.name;
     if (showLabels && label) {
       octx.lineWidth = tune('navWaypointLabelHaloPx');
@@ -1586,6 +1586,7 @@ function reportingFor(name) {
 // points are not badged (they are the common case); the inspector still
 // reports both classes for any selected waypoint.
 function drawReportingBadges() {
+  if (lsaViewActive()) return;          // CVFR reporting badges hidden on the LSA layer
   if (!showReporting || !navWP || !navWP.length) return;
   const r = tune('reportBadgeRadiusPx');
   const off = tune('reportBadgeOffsetPx');
