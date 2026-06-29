@@ -329,7 +329,7 @@ test('timeline slider scrubs which NOTAMs are active', async ({ page }) => {
 });
 
 test('CVFR route closures resolve named fixes to closed + diverted lines', async ({ page }) => {
-  // Fix names are resolved against the real nav-waypoints.json (not mocked).
+  // Fix names are resolved against the real cvfr-nav-waypoints.json (not mocked).
   await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
     { id: 'C1320/26', type: 'ARLC', end: 'PERM', geom: null, icao: 'LLLL',
       text: 'CVFR RTE CLSD:\n   NEGEV-HOVAV-OHLIM-OMMER-ZGOAL.\n   HOVAV-SOKET.\n'

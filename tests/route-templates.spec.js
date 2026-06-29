@@ -5,7 +5,7 @@ const path = require('path');
 
 const TEMPLATES_PATH = path.join(__dirname, '..', 'docs', 'data', 'route-templates.json');
 const AIRFIELDS_PATH = path.join(__dirname, '..', 'docs', 'data', 'airfields.json');
-const NAV_WP_PATH = path.join(__dirname, '..', 'docs', 'data', 'nav-waypoints.json');
+const NAV_WP_PATH = path.join(__dirname, '..', 'docs', 'data', 'cvfr-nav-waypoints.json');
 
 function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));

@@ -17,8 +17,8 @@
   var KEY = 'navaid.editor.points';
   // Known waypoint sources per base layer — loaded into the editor for editing.
   var KNOWN = {
-    'CVFR': 'data/nav-waypoints.json',
-    'Navigation': 'data/nav-waypoints.json',
+    'CVFR': 'data/cvfr-nav-waypoints.json',
+    'Navigation': 'data/cvfr-nav-waypoints.json',
     'Low Alt': 'data/lsa-waypoints.json'
   };
   var r5 = function (x) { return Math.round(x * 1e5) / 1e5; };

@@ -65,7 +65,7 @@ async function installBidiFixtures(page) {
     contentType: 'application/json',
     body: JSON.stringify(ALTITUDE_FIXTURE),
   }));
-  await page.route('**/comm-change.json*', route => route.fulfill({
+  await page.route('**/cvfr-comm-change.json*', route => route.fulfill({
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify(COMM_CHANGE_FIXTURE),

@@ -3,7 +3,7 @@ const path = require('path');
 const { test, expect } = require('./_setup');
 
 const ALTITUDE_PATH = path.join(__dirname, '..', 'docs', 'data', 'leg-altitude.json');
-const NAV_PATH = path.join(__dirname, '..', 'docs', 'data', 'nav-waypoints.json');
+const NAV_PATH = path.join(__dirname, '..', 'docs', 'data', 'cvfr-nav-waypoints.json');
 const AIRFIELDS_PATH = path.join(__dirname, '..', 'docs', 'data', 'airfields.json');
 const EXTRACTION_NOTES_PATH = path.join(
   __dirname, '..', 'scripts', 'cvfr-altitude-extraction-notes.json');

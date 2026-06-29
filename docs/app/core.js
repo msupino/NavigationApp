@@ -484,11 +484,11 @@ var magVar = -5;                       // signed offset added to true heading
 // (full locale or just navWpUrl). Object.assign merges: defaults first,
 // then any pre-set keys win, so a partial override doesn't erase the rest.
 window.S = Object.assign({
-  navWpUrl: 'data/nav-waypoints.json?v=3',  // resolved relative to index.html (docs/)
+  navWpUrl: 'data/cvfr-nav-waypoints.json?v=3',  // resolved relative to index.html (docs/)
   navWpSearchField: 'en',              // which locale label to show/search in results
   airfieldsUrl: 'data/airfields.json?v=3',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
-  commChangeUrl: 'data/comm-change.json?v=1', // CVFR comm-change reporting points (issue #399)
+  commChangeUrl: 'data/cvfr-comm-change.json?v=1', // CVFR comm-change reporting points (issue #399)
   legAltitudeUrl: 'data/leg-altitude.json?v=1', // CVFR green-route leg altitude table
   routeTemplatesUrl: 'data/route-templates.json?v=1', // ready-made route templates
   vorUrl: 'data/vor.json?v=1',              // Israeli VOR/DME stations (#404 follow-up)
@@ -1115,7 +1115,7 @@ var commChangeMap = null;   // null = not loaded yet (or last fetch failed —
                             // O(1) lookup, value is the raw point entry
                             // `{commChange, callSigns, from, to, note, ...}`.
 var commChangeCallSigns = {}; // Frequency catalog keyed by call-sign id
-                              // (loaded from comm-change.json `callSigns`).
+                              // (loaded from cvfr-comm-change.json `callSigns`).
 var legAltitudeMap = null; // null = not loaded yet (or last fetch failed —
                                 // retry on next call); {} or populated =
                                 // leg-altitude.json segments keyed as

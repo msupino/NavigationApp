@@ -66,7 +66,7 @@ const ALTITUDE_FIXTURE = {
 };
 
 async function installCommChangeFixture(page) {
-  await page.route('**/comm-change.json*', route => route.fulfill({
+  await page.route('**/cvfr-comm-change.json*', route => route.fulfill({
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify(FIXTURE),

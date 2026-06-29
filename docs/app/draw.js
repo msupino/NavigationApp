@@ -935,7 +935,7 @@ function notamBadgeNotamsAt(latlng) {
 window.notamBadgeNotamsAt = notamBadgeNotamsAt;
 
 // --- nav-waypoint reference overlay ---------------------------------
-// Lazy-loads docs/data/nav-waypoints.json on first activation. Format:
+// Lazy-loads docs/data/cvfr-nav-waypoints.json on first activation. Format:
 // { waypoints:[{ name, en, he, lat, lng }] } — 172 published reporting
 // points sourced from the IAA CVFR chart page 113 (2025 edition); see
 // issue #406. Validated strictly by validateNavWaypoints() (issue
@@ -944,7 +944,7 @@ window.notamBadgeNotamsAt = notamBadgeNotamsAt;
 async function loadNavWaypoints() {
   if (navWP !== null) return navWP;
   try {
-    // ?v bumped whenever nav-waypoints.json changes — the service worker
+    // ?v bumped whenever cvfr-nav-waypoints.json changes — the service worker
     // caches it cache-first, so a new URL is needed to pick up edits.
     const res = await fetch(S.navWpUrl);
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -973,7 +973,7 @@ async function loadNavWaypoints() {
   }
 }
 
-// Lazy-loads docs/data/comm-change.json — { callSigns:{...},
+// Lazy-loads docs/data/cvfr-comm-change.json — { callSigns:{...},
 // points:[{name, commChange, callSigns, routeHints, note, source}] }.
 // Builds an O(1) map keyed by ICAO `name` for the nav-waypoint overlay ring
 // + inspector badge. On 404 or schema error we install an EMPTY map ({})

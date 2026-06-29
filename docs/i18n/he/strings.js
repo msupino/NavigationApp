@@ -1,11 +1,11 @@
 'use strict';
 /* Hebrew localisation — loaded before core.js so the || in core.js keeps this. */
 window.S = {
-  navWpUrl: 'data/nav-waypoints.json?v=3',
+  navWpUrl: 'data/cvfr-nav-waypoints.json?v=3',
   navWpSearchField: 'he',
   airfieldsUrl: 'data/airfields.json?v=3',
   airfieldLabelField: 'he',
-  commChangeUrl: 'data/comm-change.json?v=1',
+  commChangeUrl: 'data/cvfr-comm-change.json?v=1',
   legAltitudeUrl: 'data/leg-altitude.json?v=1',
   vorUrl: 'data/vor.json?v=1',
   routeTemplatesUrl: 'data/route-templates.json?v=1',

@@ -2665,7 +2665,7 @@ document.getElementById('force-snap-cb').onchange = e => {
   catch (err) { /* storage unavailable */ }
 };
 // Comm-change overlay toggle (issue #399). The dataset lives in
-// docs/data/comm-change.json and rings are drawn on top of the nav-WP dots
+// docs/data/cvfr-comm-change.json and rings are drawn on top of the nav-WP dots
 // in draw.js. This key intentionally replaced the legacy
 // navaid.showCommChange key so users who had stored the old default-off
 // state get the new default-on behavior.
