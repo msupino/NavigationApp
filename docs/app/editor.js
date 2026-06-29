@@ -60,6 +60,9 @@
     var icon = L.divIcon({ className: cls, html: html, iconSize: [sz, sz], iconAnchor: [sz / 2, sz * 0.65] });
     var m = L.marker([p.lat, p.lng], { icon: icon, keyboard: false, draggable: true });
     if (p.name) m.bindTooltip(String(p.name), { direction: 'right', offset: [8, 0] });
+    // Unnamed points: swallow mousedown so the app's nav-WP hit-test (inspector)
+    // underneath doesn't fire — clicking one should ONLY open the name setter.
+    if (!named) m.on('mousedown', function (ev) { L.DomEvent.stopPropagation(ev); });
     m.on('click', function (ev) {                 // click to name (blank = delete)
       L.DomEvent.stopPropagation(ev);
       var name = prompt('Waypoint name (blank to delete):', points[i].name || '');
