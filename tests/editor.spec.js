@@ -19,17 +19,17 @@ test('clicking the map adds typed points and exports JSON', async ({ page }) => 
   await page.waitForFunction(() => typeof map !== 'undefined');
   const out = await page.evaluate(() => {
     map.setView([32.0, 34.9], 11);
-    map.fire('click', { latlng: L.latLng(32.10, 34.80) });
+    map.fire('click', { latlng: L.latLng(32.10, 34.80) });   // default type = on-request
     // switch type then add another
-    document.querySelector('input[name=ed-t][value=onRequest]').click();
+    document.querySelector('input[name=ed-t][value=mandatory]').click();
     map.fire('click', { latlng: L.latLng(32.20, 34.95) });
     const json = JSON.parse(document.getElementById('ed-json').value);
     const stored = JSON.parse(localStorage.getItem('navaid.editor.points') || '[]');
     return { json, count: document.getElementById('ed-count').textContent, stored: stored.length };
   });
   expect(out.json.length).toBe(2);
-  expect(out.json[0]).toMatchObject({ lat: 32.1, lng: 34.8, report: 'mandatory' });
-  expect(out.json[1]).toMatchObject({ lat: 32.2, lng: 34.95, report: 'onRequest' });
+  expect(out.json[0]).toMatchObject({ lat: 32.1, lng: 34.8, report: 'onRequest' });
+  expect(out.json[1]).toMatchObject({ lat: 32.2, lng: 34.95, report: 'mandatory' });
   expect(out.count).toContain('2');
   expect(out.stored).toBe(2);
   // persists across reload
@@ -115,4 +115,81 @@ test('undo and clear work', async ({ page }) => {
   });
   expect(r.afterUndo).toBe(1);
   expect(r.afterClear).toBe(0);
+});
+
+test('polygon mode: draw vertices, finish, export ring', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.goto('?lang=en&editor=1');
+  await page.waitForSelector('#editor-panel');
+  await page.waitForFunction(() => typeof map !== 'undefined');
+  const r = await page.evaluate(async () => {
+    map.setView([32.0, 34.9], 11);
+    document.querySelector('input[name=ed-m][value=polygon]').click();
+    map.fire('click', { latlng: L.latLng(32.0, 34.8) });
+    map.fire('click', { latlng: L.latLng(32.1, 34.8) });
+    map.fire('click', { latlng: L.latLng(32.1, 34.9) });
+    const beforeFinish = JSON.parse(document.getElementById('ed-json').value).length;
+    document.getElementById('ed-finish').click();
+    const out = JSON.parse(document.getElementById('ed-json').value);
+    const stored = JSON.parse(localStorage.getItem('navaid.editor.polys') || '[]');
+    return { beforeFinish, out, stored: stored.length };
+  });
+  expect(r.beforeFinish).toBe(0);            // not exported until finished
+  expect(r.out.length).toBe(1);
+  expect(r.out[0].type).toBe('polygon');
+  expect(r.out[0].coords.length).toBe(3);
+  expect(r.stored).toBe(1);
+});
+
+test('polygon undo removes the last vertex, then the last polygon', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.goto('?lang=en&editor=1');
+  await page.waitForSelector('#editor-panel');
+  await page.waitForFunction(() => typeof map !== 'undefined');
+  page.on('dialog', d => d.accept());
+  const r = await page.evaluate(async () => {
+    map.setView([32.0, 34.9], 11);
+    document.querySelector('input[name=ed-m][value=polygon]').click();
+    [[32, 34.8], [32.1, 34.8], [32.1, 34.9], [32.0, 34.9]].forEach(c => map.fire('click', { latlng: L.latLng(c[0], c[1]) }));
+    document.getElementById('ed-finish').click();
+    const after = JSON.parse(document.getElementById('ed-json').value).length;   // 1 polygon
+    document.getElementById('ed-undo').click();                                  // removes the polygon
+    const afterUndo = JSON.parse(document.getElementById('ed-json').value).length;
+    return { after, afterUndo };
+  });
+  expect(r.after).toBe(1);
+  expect(r.afterUndo).toBe(0);
+});
+
+test('clicking a point marker names it (applied to JSON)', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.goto('?lang=en&editor=1');
+  await page.waitForSelector('#editor-panel');
+  await page.waitForFunction(() => typeof map !== 'undefined');
+  page.on('dialog', d => d.accept('SFAIM'));     // prompt → enter a name
+  const r = await page.evaluate(async () => {
+    map.setView([32.0, 34.9], 11);
+    map.fire('click', { latlng: L.latLng(32.0, 34.8) });
+    let mk = null;
+    map.eachLayer(l => { if (l instanceof L.Marker && l.options.draggable) mk = l; });
+    mk.fire('click', {});
+    await new Promise(r => setTimeout(r, 30));
+    return JSON.parse(document.getElementById('ed-json').value)[0];
+  });
+  expect(r.name).toBe('SFAIM');
+});
+
+test('unnamed point markers flash; naming stops the flash', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.goto('?lang=en&editor=1');
+  await page.waitForSelector('#editor-panel');
+  await page.waitForFunction(() => typeof map !== 'undefined');
+  await page.evaluate(() => { map.setView([32.0, 34.9], 11); map.fire('click', { latlng: L.latLng(32.0, 34.8) }); });
+  await expect(page.locator('.editor-flash')).toHaveCount(1);     // unnamed → flashing
+  page.on('dialog', d => d.accept('NAMED'));
+  await page.evaluate(async () => {
+    let mk = null; map.eachLayer(l => { if (l instanceof L.Marker && l.options.draggable) mk = l; });
+    mk.fire('click', {}); await new Promise(r => setTimeout(r, 30));
+  });
+  await expect(page.locator('.editor-flash')).toHaveCount(0);     // named → static
 });

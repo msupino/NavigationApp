@@ -277,6 +277,7 @@ function drawVerticalProfile(ctx, x, y, w, h) {
 
 function draw() {
   octx.clearRect(0, 0, vw(), vh());
+  drawAreas();                  // airspace bubbles under the waypoints
   drawNavWaypoints();
   drawReportingBadges();
   drawCommChangeRings();
@@ -1016,6 +1017,44 @@ async function loadNavWaypoints() {
     console.warn('Failed to load nav waypoints:', e);
     return [];
   }
+}
+
+// LSA airspace areas ("bubbles") overlay — filled rings drawn under the
+// waypoints. Layer-aware via fetchLayerData('areas'): the Low Alt layer has
+// data/lsa-areas.json; layers without an areas file simply draw nothing.
+var areas = null;            // null = not loaded; [] or populated = loaded
+async function loadAreas() {
+  if (areas !== null) return areas;
+  try {
+    const { data: d } = await fetchLayerData('areas');
+    const arr = Array.isArray(d) ? d : (d.areas || []);
+    areas = arr
+      .filter(a => a && Array.isArray(a.coords) && a.coords.length >= 3)
+      .map(a => ({ coords: a.coords, name: a.name || '' }));
+  } catch (e) {
+    areas = [];               // no areas file for this layer (or fetch failed)
+  }
+  if (areas && areas.length) scheduleDraw();
+  return areas;
+}
+function drawAreas() {
+  if (areas === null) { loadAreas(); return; }   // lazy-load on first draw
+  if (!areas.length) return;
+  octx.save();
+  octx.lineWidth = 2;
+  octx.strokeStyle = '#0aa3c2';
+  octx.fillStyle = 'rgba(10,163,194,0.10)';
+  for (const a of areas) {
+    octx.beginPath();
+    for (let i = 0; i < a.coords.length; i++) {
+      const s = proj({ lat: a.coords[i][0], lng: a.coords[i][1] });
+      if (i === 0) octx.moveTo(s.x, s.y); else octx.lineTo(s.x, s.y);
+    }
+    octx.closePath();
+    octx.fill();
+    octx.stroke();
+  }
+  octx.restore();
 }
 
 // Lazy-loads docs/data/cvfr-comm-change.json — { callSigns:{...},
