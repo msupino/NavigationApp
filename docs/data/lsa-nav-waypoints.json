@@ -1,5 +1,5 @@
 {
-  "_comment": "Israel LSA reporting points, hand-digitized on the LSA-Low-Altitude raster chart via the editor tool (?editor=1). name/he set where the point matches a known waypoint. WGS-84.",
+  "_comment": "Israel LSA reporting points, hand-digitized on the LSA-Low-Altitude raster chart via the editor tool (?editor=1). All on-request (report: onRequest). name=code or Hebrew label; he=Hebrew where a code is present. WGS-84.",
   "source": "hand-digitized (editor tool) on LSA-Low-Altitude chart",
   "grid": "WGS-84",
   "count": 148,
@@ -105,11 +105,6 @@
     {
       "lat": 32.70151,
       "lng": 35.58403,
-      "report": "onRequest"
-    },
-    {
-      "lat": 32.77255,
-      "lng": 35.40688,
       "report": "onRequest"
     },
     {
@@ -250,21 +245,18 @@
     {
       "lat": 32.25078,
       "lng": 35.08656,
-      "report": "onRequest"
-    },
-    {
-      "lat": 32.23697,
-      "lng": 35.17107,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "כור"
     },
     {
       "lat": 32.21417,
       "lng": 35.17638,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צומת קדומים"
     },
     {
-      "lat": 32.19269,
-      "lng": 35.18863,
+      "lat": 32.24649,
+      "lng": 35.02991,
       "report": "onRequest"
     },
     {
@@ -289,32 +281,38 @@
     {
       "lat": 32.18965,
       "lng": 34.95509,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "ניר אליהו"
     },
     {
       "lat": 32.1695,
       "lng": 34.95751,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צומת נווה ימין"
     },
     {
       "lat": 32.14812,
       "lng": 34.9711,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "ירחיב"
     },
     {
       "lat": 32.10454,
       "lng": 34.99586,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "שער שומרון"
     },
     {
       "lat": 32.16539,
       "lng": 35.26485,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "יצהר מזרח"
     },
     {
       "lat": 32.14483,
       "lng": 35.42362,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "מכורה"
     },
     {
       "lat": 32.04694,
@@ -421,7 +419,8 @@
     {
       "lat": 31.97159,
       "lng": 35.03252,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "מחצבה"
     },
     {
       "lat": 31.81763,
@@ -498,11 +497,6 @@
       "report": "onRequest",
       "name": "NITZA",
       "he": "ניצן"
-    },
-    {
-      "lat": 31.66506,
-      "lng": 34.60452,
-      "report": "onRequest"
     },
     {
       "lat": 31.6231,
@@ -872,7 +866,8 @@
     {
       "lat": 32.2045,
       "lng": 34.96244,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "מחלף אייל"
     },
     {
       "lat": 32.12328,
@@ -915,6 +910,23 @@
       "lat": 32.56475,
       "lng": 35.24929,
       "report": "onRequest"
+    },
+    {
+      "lat": 32.17082,
+      "lng": 34.95953,
+      "report": "onRequest"
+    },
+    {
+      "lat": 32.23749,
+      "lng": 35.17065,
+      "report": "onRequest",
+      "name": "בראון"
+    },
+    {
+      "lat": 32.19251,
+      "lng": 35.1891,
+      "report": "onRequest",
+      "name": "יצהר מערב"
     }
   ]
 }
