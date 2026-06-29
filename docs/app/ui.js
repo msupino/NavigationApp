@@ -35,8 +35,17 @@ document.getElementById('app-version').textContent = 'v' + NavAid.version;
 
 // base map layer picker (replaces the Leaflet layers control)
 const layerSelect = document.getElementById('layer-select');
-for (const name in layers) {
+// Flight charts first (CVFR / LSA / Heli), then a separator, then base maps.
+// '---' is a non-selectable divider. Any layer not listed is appended after.
+const LAYER_ORDER = ['CVFR', 'Low Alt', 'Helicopters', '---',
+                     'Navigation', 'Satellite', 'OpenStreetMap'];
+const orderedLayerNames = [
+  ...LAYER_ORDER.filter(n => n === '---' || layers[n]),
+  ...Object.keys(layers).filter(n => !LAYER_ORDER.includes(n)),
+];
+for (const name of orderedLayerNames) {
   const opt = document.createElement('option');
+  if (name === '---') { opt.disabled = true; opt.textContent = '──────────'; layerSelect.appendChild(opt); continue; }
   opt.value = name;
   opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
   if (map.hasLayer(layers[name])) opt.selected = true;
@@ -51,10 +60,28 @@ layerSelect.onchange = () => {
   map.addLayer(layers[layerSelect.value]);
   if (typeof updateBasemapUnderlay === 'function') updateBasemapUnderlay();
   applyMapOpacity();
+  reloadLayerDatasets();                  // swap waypoints/comm/leg to the new layer's source
   draw();                                // keep the route overlay on top
   try { localStorage.setItem(LAYER_KEY, layerSelect.value); }
   catch (e) { /* storage unavailable */ }
 };
+
+// The active base layer decides which data files feed the overlays. On a layer
+// switch, drop the per-layer caches and reload whatever is currently shown, so
+// e.g. the LSA layer shows LSA waypoints while CVFR shows CVFR waypoints.
+function reloadLayerDatasets() {
+  navWP = null;
+  commChangeMap = null;
+  commChangeCallSigns = {};
+  legAltitudeMap = null;
+  // routeTemplates is a single shared list filtered per layer at render time —
+  // no reload needed on layer switch.
+  const jobs = [];
+  if (showNavWP || showReporting) jobs.push(loadNavWaypoints());
+  if (showCommChange || showReporting) jobs.push(loadCommChange());
+  jobs.push(loadLegAltitudes());
+  Promise.all(jobs).then(() => draw());
+}
 
 // --- rotate dial — a map control next to the zoom buttons -----------
 const rotateCtrl = L.control({ position: 'bottomright' });
@@ -976,6 +1003,17 @@ async function routeFromTemplate(template, speed) {
 }
 
 async function applyRouteTemplate(template, speed, closeModal) {
+  // A template's waypoints live in its own layer's dataset; loading it on a
+  // different base layer would miss those points. Warn instead of failing.
+  const pfx = (typeof layerDataPrefix === 'function') ? layerDataPrefix() : 'cvfr';
+  if (template.layer && template.layer !== 'any' && template.layer !== pfx) {
+    const names = S.layerNames || { cvfr: 'CVFR', lsa: 'Low Alt', heli: 'Helicopters' };
+    const msg = typeof S.routeTemplateWrongLayer === 'function'
+      ? S.routeTemplateWrongLayer(routeTemplateLabel(template), names[pfx] || pfx, names[template.layer] || template.layer)
+      : 'Can\'t load this route on this layer.';
+    alert(msg);
+    return false;
+  }
   const route = await routeFromTemplate(template, speed);
   const verr = typeof validateRoute === 'function' ? validateRoute(route) : null;
   if (verr) throw new Error(verr);
@@ -2665,7 +2703,7 @@ document.getElementById('force-snap-cb').onchange = e => {
   catch (err) { /* storage unavailable */ }
 };
 // Comm-change overlay toggle (issue #399). The dataset lives in
-// docs/data/comm-change.json and rings are drawn on top of the nav-WP dots
+// docs/data/cvfr-comm-change.json and rings are drawn on top of the nav-WP dots
 // in draw.js. This key intentionally replaced the legacy
 // navaid.showCommChange key so users who had stored the old default-off
 // state get the new default-on behavior.

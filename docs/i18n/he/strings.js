@@ -1,12 +1,12 @@
 'use strict';
 /* Hebrew localisation — loaded before core.js so the || in core.js keeps this. */
 window.S = {
-  navWpUrl: 'data/nav-waypoints.json?v=3',
+  navWpUrl: 'data/cvfr-nav-waypoints.json?v=3',
   navWpSearchField: 'he',
   airfieldsUrl: 'data/airfields.json?v=3',
   airfieldLabelField: 'he',
-  commChangeUrl: 'data/comm-change.json?v=1',
-  legAltitudeUrl: 'data/leg-altitude.json?v=1',
+  commChangeUrl: 'data/cvfr-comm-change.json?v=1',
+  legAltitudeUrl: 'data/cvfr-leg-altitude.json?v=1',
   vorUrl: 'data/vor.json?v=1',
   routeTemplatesUrl: 'data/route-templates.json?v=1',
 
@@ -97,6 +97,11 @@ window.S = {
   routeTemplateReady: function(name, speed) {
     return 'תבנית ' + name + ' נטענה במהירות ' + speed + ' קשר';
   },
+  routeTemplateWrongLayer: function(name, current, need) {
+    return 'לא ניתן לטעון את "' + name + '" בשכבת ' + current + '. עבור לשכבת ' +
+      need + ', טען את המסלול, ושנה שכבה לאחר מכן במידת הצורך.';
+  },
+  layerNames: { cvfr: 'CVFR', lsa: 'Low Alt', heli: 'Helicopters' },
   deleteWp: '🗑 מחק ציון דרך (D)',                      // כפתור באינספקטור
   resetWpName: '↻ אפס שם נקודה',                     // כפתור באינספקטור — שם לפי ייחוס או ניקוי (תווית אוטומטית)
   resetWpNameTitle: 'הגדר שם לפי נקודת הייחוס הקרובה (שדה תעופה / ציון ניווט), או נקה כשאין ייחוס סמוך',
