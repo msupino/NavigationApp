@@ -103,7 +103,9 @@
     {
       "lat": 32.83551,
       "lng": 35.51077,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "מגדל",
+      "he": "מגדל"
     },
     {
       "lat": 32.86937,
@@ -247,7 +249,9 @@
     {
       "lat": 32.77429,
       "lng": 35.40791,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צומת גולני",
+      "he": "צומת גולני"
     },
     {
       "lat": 32.68938,
