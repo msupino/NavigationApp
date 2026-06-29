@@ -1,5 +1,5 @@
 {
-  "_comment": "Israel LSA reporting points digitized from the LSA-Low-Altitude raster chart (mbtiles z13). Triangle-symbol detection: filled triangle = mandatory report point (נקודת דווח חובה), hollow triangle = on-request (נקודת דווח לפי דרישה); all are VFR fly-over. Coordinates = symbol-center, exact from tile pixel (WGS-84). Names auto-filled from nav-waypoints.json within 400 m; blank = unlabelled. Best-effort raster extraction; may miss/duplicate a few. Verify against AIP.",
+  "_comment": "Israel LSA reporting points digitized from the LSA-Low-Altitude raster chart (mbtiles z13). Triangle-symbol detection: filled triangle = mandatory report point (נקודת דווח חובה), hollow triangle = on-request (נקודת דווח לפי דרישה); all are VFR fly-over. Coordinates = symbol-center, exact from tile pixel (WGS-84). Names taken from the matching CVFR nav-waypoint (nearest within 800 m, one-to-one); blank = unlabelled. Best-effort raster extraction; may miss/duplicate a few. Verify against AIP.",
   "source": "LSA-Low-Altitude.mbtiles z13 (raster), triangle symbol detection",
   "grid": "WGS-84",
   "count": 170,
@@ -64,8 +64,9 @@
       "lat": 30.56361,
       "lng": 35.18631,
       "report": "mandatory",
-      "name": "",
-      "he": ""
+      "name": "ZOFAR",
+      "he": "צופר",
+      "en": "Tzofar"
     },
     {
       "lat": 30.62066,
@@ -204,8 +205,9 @@
       "lat": 31.30592,
       "lng": 34.907,
       "report": "onRequest",
-      "name": "",
-      "he": ""
+      "name": "SOKET",
+      "he": "צומת שוקת",
+      "en": "Shoket Junction"
     },
     {
       "lat": 31.32512,
@@ -366,7 +368,8 @@
       "lng": 34.94203,
       "report": "onRequest",
       "name": "AYLON",
-      "he": "איילון"
+      "he": "איילון",
+      "en": "Ayalon"
     },
     {
       "lat": 31.87333,
@@ -379,8 +382,9 @@
       "lat": 31.90525,
       "lng": 35.45969,
       "report": "onRequest",
-      "name": "",
-      "he": ""
+      "name": "NAAMA",
+      "he": "נעמה",
+      "en": "Naama"
     },
     {
       "lat": 31.91999,
@@ -394,7 +398,8 @@
       "lng": 34.83064,
       "report": "onRequest",
       "name": "SIRNI",
-      "he": "נצר סירני"
+      "he": "נצר סירני",
+      "en": "Netzer Sireni"
     },
     {
       "lat": 31.93845,
@@ -415,7 +420,8 @@
       "lng": 34.76999,
       "report": "onRequest",
       "name": "IKKEA",
-      "he": "איקאה"
+      "he": "איקאה",
+      "en": "IKEA"
     },
     {
       "lat": 31.95359,
@@ -429,21 +435,24 @@
       "lng": 35.33891,
       "report": "onRequest",
       "name": "SHAHR",
-      "he": "כוכב השחר"
+      "he": "כוכב השחר",
+      "en": "Kokhav HaShahar"
     },
     {
       "lat": 31.96037,
       "lng": 34.76389,
       "report": "onRequest",
       "name": "MEHOL",
-      "he": "משולש חולית"
+      "he": "משולש חולית",
+      "en": "Holit Triangle"
     },
     {
       "lat": 31.97572,
       "lng": 34.74065,
       "report": "onRequest",
       "name": "SUPER",
-      "he": "סופרלנד"
+      "he": "סופרלנד",
+      "en": "Superland"
     },
     {
       "lat": 32.04046,
@@ -702,7 +711,8 @@
       "lng": 35.5321,
       "report": "onRequest",
       "name": "DESHE",
-      "he": "כרי דשא"
+      "he": "כרי דשא",
+      "en": "Karei Deshe"
     },
     {
       "lat": 32.90584,
@@ -849,7 +859,8 @@
       "lng": 35.07607,
       "report": "mandatory",
       "name": "KTORA",
-      "he": "צומת קטורה"
+      "he": "צומת קטורה",
+      "en": "Ketura Junction"
     },
     {
       "lat": 30.2891,
@@ -897,15 +908,16 @@
       "lat": 31.13506,
       "lng": 34.80392,
       "report": "mandatory",
-      "name": "HOVAV",
-      "he": "רמת חובב"
+      "name": "",
+      "he": ""
     },
     {
       "lat": 31.13509,
       "lng": 34.80531,
       "report": "mandatory",
       "name": "HOVAV",
-      "he": "רמת חובב"
+      "he": "רמת חובב",
+      "en": "Ramat Hovav"
     },
     {
       "lat": 31.20541,
@@ -919,7 +931,8 @@
       "lng": 35.24795,
       "report": "mandatory",
       "name": "HATRU",
-      "he": "צומת חתרורים"
+      "he": "צומת חתרורים",
+      "en": "Hatrurim Junction"
     },
     {
       "lat": 31.23117,
@@ -953,8 +966,9 @@
       "lat": 31.27824,
       "lng": 35.11807,
       "report": "mandatory",
-      "name": "",
-      "he": ""
+      "name": "TARAD",
+      "he": "תל ערד",
+      "en": "Tel Arad"
     },
     {
       "lat": 31.29124,
@@ -996,7 +1010,8 @@
       "lng": 34.76549,
       "report": "mandatory",
       "name": "BKAMA",
-      "he": "בית קמה"
+      "he": "בית קמה",
+      "en": "Beit Kama"
     },
     {
       "lat": 31.59879,
@@ -1017,7 +1032,8 @@
       "lng": 35.44958,
       "report": "mandatory",
       "name": "ZUKIM",
-      "he": "עינות צוקים"
+      "he": "עינות צוקים",
+      "en": "Einot Tzukim"
     },
     {
       "lat": 31.78351,
@@ -1031,14 +1047,16 @@
       "lng": 35.07562,
       "report": "mandatory",
       "name": "SORES",
-      "he": "שורש"
+      "he": "שורש",
+      "en": "Shoresh"
     },
     {
       "lat": 31.82411,
       "lng": 34.70743,
       "report": "mandatory",
       "name": "ZASHD",
-      "he": "צומת אשדוד"
+      "he": "צומת אשדוד",
+      "en": "Ashdod Junction"
     },
     {
       "lat": 31.87626,
@@ -1059,7 +1077,8 @@
       "lng": 34.76966,
       "report": "mandatory",
       "name": "BOVED",
-      "he": "בית עובד"
+      "he": "בית עובד",
+      "en": "Beit Oved"
     },
     {
       "lat": 31.94155,
@@ -1087,7 +1106,8 @@
       "lng": 34.72601,
       "report": "mandatory",
       "name": "TYONA",
-      "he": "תל יונה"
+      "he": "תל יונה",
+      "en": "Tel Yona"
     },
     {
       "lat": 32.205,
@@ -1100,36 +1120,41 @@
       "lat": 32.21659,
       "lng": 34.80976,
       "report": "mandatory",
-      "name": "",
-      "he": ""
+      "name": "SFAIM",
+      "he": "שפיים",
+      "en": "Shefayim"
     },
     {
       "lat": 32.57156,
       "lng": 35.19144,
       "report": "mandatory",
       "name": "ZMGID",
-      "he": "צומת מגידו"
+      "he": "צומת מגידו",
+      "en": "Megiddo Junction"
     },
     {
       "lat": 32.74481,
       "lng": 35.0774,
       "report": "mandatory",
       "name": "HASID",
-      "he": "כפר חסידים"
+      "he": "כפר חסידים",
+      "en": "Kfar Hasidim"
     },
     {
       "lat": 32.79395,
       "lng": 34.94203,
       "report": "mandatory",
       "name": "DAROM",
-      "he": "מחלף דרום"
+      "he": "מחלף דרום",
+      "en": "Darom Interchange"
     },
     {
       "lat": 32.81926,
       "lng": 35.13198,
       "report": "mandatory",
       "name": "GILAM",
-      "he": "גילעם"
+      "he": "גילעם",
+      "en": "Gil'am"
     },
     {
       "lat": 32.90163,
@@ -1149,15 +1174,16 @@
       "lat": 32.91606,
       "lng": 35.09566,
       "report": "mandatory",
-      "name": "AAKKO",
-      "he": "עכו"
+      "name": "",
+      "he": ""
     },
     {
       "lat": 32.91727,
       "lng": 35.0957,
       "report": "mandatory",
       "name": "AAKKO",
-      "he": "עכו"
+      "he": "עכו",
+      "en": "Akko"
     },
     {
       "lat": 32.98693,
