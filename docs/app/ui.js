@@ -74,9 +74,10 @@ function reloadLayerDatasets() {
   commChangeMap = null;
   commChangeCallSigns = {};
   legAltitudeMap = null;
+  areas = null;
   // routeTemplates is a single shared list filtered per layer at render time —
   // no reload needed on layer switch.
-  const jobs = [];
+  const jobs = [loadAreas()];
   if (showNavWP || showReporting) jobs.push(loadNavWaypoints());
   if (showCommChange || showReporting) jobs.push(loadCommChange());
   jobs.push(loadLegAltitudes());
