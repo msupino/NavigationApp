@@ -1386,7 +1386,6 @@ function airfieldAtWaypoint(wp) {
 // localised name appear next to the marker at zoom ≥ 10. Suppressed when
 // a route waypoint sits on the airfield (proximity-based, like nav-WPs).
 function drawAirfields() {
-  if (lowAltLayerActive()) return;      // airfields hidden on the LSA layer
   if (!showAirfields || !airfields || airfields.length === 0) return;
   const showLabels = map.getZoom() >= tune('airfieldLabelMinZoom');
   const r = tune('airfieldMarkerRadiusPx');
