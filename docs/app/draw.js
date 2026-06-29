@@ -278,6 +278,7 @@ function drawVerticalProfile(ctx, x, y, w, h) {
 function draw() {
   octx.clearRect(0, 0, vw(), vh());
   drawNavWaypoints();
+  drawLsaWaypoints();
   drawReportingBadges();
   drawCommChangeRings();
   drawAirfields();
@@ -1452,6 +1453,67 @@ function drawNavWaypoints() {
     }
   }
   octx.lineWidth = 1;
+}
+
+// LSA reporting-point overlay (docs/data/lsa-waypoints.json). Shown only on the
+// "Low Alt" (LSA) base layer, drawn as a distinct cyan triangle + dot + label so
+// they're easy to compare against the chart's own printed triangles. Digitized
+// set is partial (some entries have no name yet).
+var lsaWP = null;            // null = not loaded; [] or populated = loaded
+var _lsaWPLoading = false;
+async function loadLsaWaypoints() {
+  if (lsaWP !== null || _lsaWPLoading) return lsaWP;
+  _lsaWPLoading = true;
+  try {
+    const res = await fetch('data/lsa-waypoints.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    const pts = Array.isArray(d) ? d : (d.points || []);
+    lsaWP = pts.filter(p => p && Number.isFinite(p.lat) && Number.isFinite(p.lng))
+      .map(p => ({ name: p.name || '', he: p.he || '', lat: p.lat, lng: p.lng }));
+  } catch (e) {
+    console.warn('Failed to load LSA waypoints:', e);
+    lsaWP = null;            // allow retry on next layer switch
+  } finally {
+    _lsaWPLoading = false;
+  }
+  if (lsaWP) scheduleDraw();
+  return lsaWP;
+}
+function lsaViewActive() {
+  return typeof layers !== 'undefined' && layers['Low Alt'] &&
+         typeof map !== 'undefined' && map.hasLayer(layers['Low Alt']);
+}
+function drawLsaWaypoints() {
+  if (!lsaViewActive()) return;
+  if (lsaWP === null) { loadLsaWaypoints(); return; }   // lazy-load on first LSA view
+  if (!lsaWP.length) return;
+  const showLabels = map.getZoom() >= tune('navWpLabelMinZoom');
+  const col = '#0aa3c2';                  // cyan — distinct from chart's black/magenta
+  octx.save();
+  octx.textAlign = 'left'; octx.textBaseline = 'middle';
+  octx.font = `bold ${tune('navWaypointLabelFontPx')}px sans-serif`;
+  for (const wp of lsaWP) {
+    const s = proj(wp);
+    const r = 7;
+    octx.beginPath();                     // upward triangle outline
+    octx.moveTo(s.x, s.y - r);
+    octx.lineTo(s.x + r * 0.9, s.y + r * 0.7);
+    octx.lineTo(s.x - r * 0.9, s.y + r * 0.7);
+    octx.closePath();
+    octx.lineWidth = 2; octx.strokeStyle = col; octx.stroke();
+    octx.beginPath(); octx.arc(s.x, s.y, 2, 0, Math.PI * 2);
+    octx.fillStyle = col; octx.fill();
+    const label = wp.he || wp.name;
+    if (showLabels && label) {
+      octx.lineWidth = tune('navWaypointLabelHaloPx');
+      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
+      octx.strokeText(label, s.x + r + 2, s.y);
+      octx.fillStyle = col;
+      octx.fillText(label, s.x + r + 2, s.y);
+    }
+  }
+  octx.restore();
 }
 
 // VOR/DME station overlay. Each station draws a compass-rose glyph (ring +
