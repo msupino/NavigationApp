@@ -5,7 +5,7 @@ const path = require('path');
 
 const TEMPLATES_PATH = path.join(__dirname, '..', 'docs', 'data', 'route-templates.json');
 const AIRFIELDS_PATH = path.join(__dirname, '..', 'docs', 'data', 'airfields.json');
-const NAV_WP_PATH = path.join(__dirname, '..', 'docs', 'data', 'nav-waypoints.json');
+const NAV_WP_PATH = path.join(__dirname, '..', 'docs', 'data', 'cvfr-nav-waypoints.json');
 
 function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -44,7 +44,7 @@ async function boot(page, lang = 'en') {
 }
 
 test.describe('route templates', () => {
-  test('templates carry NO altitude data (altitudes come from leg-altitude.json)', async () => {
+  test('templates carry NO altitude data (altitudes come from cvfr-leg-altitude.json)', async () => {
     const data = readJson(TEMPLATES_PATH);
     for (const t of data.templates) {
       // No leg/altitude fields at the template level.
@@ -66,6 +66,27 @@ test.describe('route templates', () => {
     const names = await page.locator('.route-template-select option').allTextContents();
     const sorted = [...names].sort((a, b) => a.localeCompare(b));
     expect(names).toEqual(sorted);
+  });
+
+  test('loading a CVFR template on a non-matching layer warns instead of loading', async ({ page }) => {
+    await boot(page);
+    const dialogs = [];
+    page.on('dialog', d => { dialogs.push(d.message()); d.dismiss(); });
+    const r = await page.evaluate(async () => {
+      const all = await loadRouteTemplates();
+      const tpl = all.find(t => t.layer === 'cvfr') || all[0];
+      const setL = k => { for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]); map.addLayer(layers[k]); };
+      // matching layer (CVFR) loads
+      setL('CVFR');
+      const okCvfr = await applyRouteTemplate(tpl, 90, null);
+      // wrong layer (Low Alt) is blocked
+      setL('Low Alt');
+      const okLsa = await applyRouteTemplate(tpl, 90, null);
+      return { okCvfr, okLsa, tplName: tpl.name };
+    });
+    expect(r.okCvfr).toBe(true);     // loads on its own layer
+    expect(r.okLsa).toBe(false);     // blocked on Low Alt
+    expect(dialogs.some(m => /Low Alt/.test(m) && new RegExp(r.tplName).test(m))).toBe(true);
   });
 
   test('dataset templates reference known points and keep altitude data shared', async () => {
