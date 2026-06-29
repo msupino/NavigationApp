@@ -35,8 +35,17 @@ document.getElementById('app-version').textContent = 'v' + NavAid.version;
 
 // base map layer picker (replaces the Leaflet layers control)
 const layerSelect = document.getElementById('layer-select');
-for (const name in layers) {
+// Flight charts first (CVFR / LSA / Heli), then a separator, then base maps.
+// '---' is a non-selectable divider. Any layer not listed is appended after.
+const LAYER_ORDER = ['CVFR', 'Low Alt', 'Helicopters', '---',
+                     'Navigation', 'Satellite', 'OpenStreetMap'];
+const orderedLayerNames = [
+  ...LAYER_ORDER.filter(n => n === '---' || layers[n]),
+  ...Object.keys(layers).filter(n => !LAYER_ORDER.includes(n)),
+];
+for (const name of orderedLayerNames) {
   const opt = document.createElement('option');
+  if (name === '---') { opt.disabled = true; opt.textContent = '──────────'; layerSelect.appendChild(opt); continue; }
   opt.value = name;
   opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
   if (map.hasLayer(layers[name])) opt.selected = true;
