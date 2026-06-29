@@ -178,3 +178,18 @@ test('clicking a point marker names it (applied to JSON)', async ({ page }) => {
   });
   expect(r.name).toBe('SFAIM');
 });
+
+test('unnamed point markers flash; naming stops the flash', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.goto('?lang=en&editor=1');
+  await page.waitForSelector('#editor-panel');
+  await page.waitForFunction(() => typeof map !== 'undefined');
+  await page.evaluate(() => { map.setView([32.0, 34.9], 11); map.fire('click', { latlng: L.latLng(32.0, 34.8) }); });
+  await expect(page.locator('.editor-flash')).toHaveCount(1);     // unnamed → flashing
+  page.on('dialog', d => d.accept('NAMED'));
+  await page.evaluate(async () => {
+    let mk = null; map.eachLayer(l => { if (l instanceof L.Marker && l.options.draggable) mk = l; });
+    mk.fire('click', {}); await new Promise(r => setTimeout(r, 30));
+  });
+  await expect(page.locator('.editor-flash')).toHaveCount(0);     // named → static
+});

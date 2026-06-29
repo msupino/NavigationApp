@@ -51,7 +51,9 @@
     var fill = p.report === 'mandatory' ? COLOR : 'none';
     var html = '<svg width="20" height="20" viewBox="0 0 20 20"><polygon points="10,2 18,17 2,17" fill="' +
       fill + '" stroke="' + COLOR + '" stroke-width="2"/></svg>';
-    var icon = L.divIcon({ className: 'editor-icon', html: html, iconSize: [20, 20], iconAnchor: [10, 13] });
+    // Unnamed points pulse so they're easy to spot and label.
+    var cls = 'editor-icon' + (p.name ? '' : ' editor-flash');
+    var icon = L.divIcon({ className: cls, html: html, iconSize: [20, 20], iconAnchor: [10, 13] });
     var m = L.marker([p.lat, p.lng], { icon: icon, keyboard: false, draggable: true });
     if (p.name) m.bindTooltip(String(p.name), { direction: 'right', offset: [8, 0] });
     m.on('click', function (ev) {                 // click to name (blank = delete)
@@ -254,6 +256,9 @@
 
   function init() {
     if (typeof map === 'undefined' || typeof L === 'undefined') { setTimeout(init, 200); return; }
+    var st = document.createElement('style');
+    st.textContent = '@keyframes edFlash{0%,100%{opacity:1}50%{opacity:.15}} .editor-flash{animation:edFlash 1s ease-in-out infinite}';
+    document.head.appendChild(st);
     buildPanel();
     redraw();
     map.on('click', function (e) { if (mode === 'polygon') addVertex(e.latlng); else addPoint(e.latlng); });
