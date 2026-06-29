@@ -1,5 +1,5 @@
-// capture.js — hidden point-capture tool for digitizing map features by hand.
-// Enable with ?capture=1 (or localStorage 'navaid.capture.on'='1'). A small
+// editor.js — hidden point-editor tool for digitizing map features by hand.
+// Enable with ?editor=1 (or localStorage 'navaid.editor.on'='1'). A small
 // floating panel lets you pick a point type, click the map to drop points, and
 // export them as JSON to paste back for processing. Fully self-contained: no
 // coupling to the route/state model, so it can't corrupt a real route.
@@ -7,13 +7,13 @@
   'use strict';
   function enabled() {
     try {
-      if (/[?&]capture=1\b/.test(location.search)) { localStorage.setItem('navaid.capture.on', '1'); return true; }
-      return localStorage.getItem('navaid.capture.on') === '1';
-    } catch (e) { return /[?&]capture=1\b/.test(location.search); }
+      if (/[?&]editor=1\b/.test(location.search)) { localStorage.setItem('navaid.editor.on', '1'); return true; }
+      return localStorage.getItem('navaid.editor.on') === '1';
+    } catch (e) { return /[?&]editor=1\b/.test(location.search); }
   }
   if (!enabled()) return;
 
-  var KEY = 'navaid.capture.points';
+  var KEY = 'navaid.editor.points';
   // Known waypoint sources per base layer — loaded into the editor for editing.
   var KNOWN = {
     'CVFR': 'data/nav-waypoints.json',
@@ -43,7 +43,7 @@
       '<svg width="20" height="20" viewBox="0 0 20 20">' +
       '<polygon points="10,2 18,17 2,17" fill="' + fill + '" stroke="' + color +
       '" stroke-width="2"/></svg>';
-    var icon = L.divIcon({ className: 'capture-icon', html: html, iconSize: [20, 20], iconAnchor: [10, 13] });
+    var icon = L.divIcon({ className: 'editor-icon', html: html, iconSize: [20, 20], iconAnchor: [10, 13] });
     var m = L.marker([p.lat, p.lng], { icon: icon, keyboard: false, draggable: true });
     if (p.name) m.bindTooltip(String(p.name), { direction: 'right', offset: [8, 0] });
     m.on('click', function (ev) {                 // click a marker to delete it
@@ -112,53 +112,53 @@
 
   function buildPanel() {
     var box = document.createElement('div');
-    box.id = 'capture-panel';
+    box.id = 'editor-panel';
     box.style.cssText =
       'position:fixed;top:60px;right:12px;z-index:100000;background:#141212;color:#fff;' +
       'font:12px/1.4 sans-serif;padding:10px;border-radius:8px;width:230px;' +
       'box-shadow:0 2px 10px rgba(0,0,0,.5);direction:ltr';
     box.innerHTML =
-      '<div id="cap-head" style="font-weight:700;margin-bottom:6px;cursor:move;user-select:none">⠿ Editor <span id="cap-count" style="float:right;font-weight:400;opacity:.8"></span></div>' +
+      '<div id="ed-head" style="font-weight:700;margin-bottom:6px;cursor:move;user-select:none">⠿ Editor <span id="ed-count" style="float:right;font-weight:400;opacity:.8"></span></div>' +
       '<div style="margin-bottom:6px">' +
-      '<label style="margin-right:8px"><input type="radio" name="cap-t" value="mandatory" checked> mandatory</label>' +
-      '<label><input type="radio" name="cap-t" value="onRequest"> on-request</label></div>' +
+      '<label style="margin-right:8px"><input type="radio" name="ed-t" value="mandatory" checked> mandatory</label>' +
+      '<label><input type="radio" name="ed-t" value="onRequest"> on-request</label></div>' +
       '<div style="opacity:.8;margin-bottom:6px">Click map to add · click a marker to delete</div>' +
       '<div style="display:flex;gap:6px;margin-bottom:6px">' +
-      '<button id="cap-load" type="button">Load known</button>' +
-      '<button id="cap-undo" type="button">Undo</button>' +
-      '<button id="cap-clear" type="button">Clear</button></div>' +
+      '<button id="ed-load" type="button">Load known</button>' +
+      '<button id="ed-undo" type="button">Undo</button>' +
+      '<button id="ed-clear" type="button">Clear</button></div>' +
       '<div style="display:flex;gap:6px;margin-bottom:6px">' +
-      '<button id="cap-copy" type="button">Copy JSON</button>' +
-      '<button id="cap-dl" type="button">Download</button></div>' +
-      '<textarea id="cap-json" readonly style="width:100%;height:120px;font:11px monospace;background:#0b0a0a;color:#bfe;border:1px solid #3a3636;border-radius:4px"></textarea>';
+      '<button id="ed-copy" type="button">Copy JSON</button>' +
+      '<button id="ed-dl" type="button">Download</button></div>' +
+      '<textarea id="ed-json" readonly style="width:100%;height:120px;font:11px monospace;background:#0b0a0a;color:#bfe;border:1px solid #3a3636;border-radius:4px"></textarea>';
     document.body.appendChild(box);
-    countEl = box.querySelector('#cap-count');
-    taEl = box.querySelector('#cap-json');
-    box.querySelectorAll('input[name=cap-t]').forEach(function (r) {
+    countEl = box.querySelector('#ed-count');
+    taEl = box.querySelector('#ed-json');
+    box.querySelectorAll('input[name=ed-t]').forEach(function (r) {
       r.addEventListener('change', function () { curType = r.value; });
     });
-    box.querySelector('#cap-load').onclick = loadKnown;
-    box.querySelector('#cap-undo').onclick = function () {
+    box.querySelector('#ed-load').onclick = loadKnown;
+    box.querySelector('#ed-undo').onclick = function () {
       var cur = currentLayer();
       for (var i = points.length - 1; i >= 0; i--) { if ((points[i].layer || '') === cur) { points.splice(i, 1); break; } }
       save(); render(); redraw();
     };
-    box.querySelector('#cap-clear').onclick = function () {
+    box.querySelector('#ed-clear').onclick = function () {
       var cur = currentLayer();
       if (curPoints().length && !confirm('Clear captured points on this layer?')) return;
       points = points.filter(function (p) { return (p.layer || '') !== cur; });
       save(); render(); redraw();
     };
-    makeDraggable(box, box.querySelector('#cap-head'));
-    box.querySelector('#cap-copy').onclick = function () {
+    makeDraggable(box, box.querySelector('#ed-head'));
+    box.querySelector('#ed-copy').onclick = function () {
       taEl.select();
       if (navigator.clipboard) navigator.clipboard.writeText(json()).catch(function () { document.execCommand('copy'); });
       else document.execCommand('copy');
     };
-    box.querySelector('#cap-dl').onclick = function () {
+    box.querySelector('#ed-dl').onclick = function () {
       var a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([json()], { type: 'application/json' }));
-      a.download = 'capture-' + Date.now() + '.json'; a.click();
+      a.download = 'editor-' + Date.now() + '.json'; a.click();
       URL.revokeObjectURL(a.href);
     };
     render();
