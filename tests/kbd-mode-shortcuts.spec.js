@@ -237,7 +237,7 @@ const CC_FIXTURE = {
 };
 
 async function bootWithCC(page) {
-  await page.route('**/comm-change.json*', route => route.fulfill({
+  await page.route('**/cvfr-comm-change.json*', route => route.fulfill({
     status: 200, contentType: 'application/json', body: JSON.stringify(CC_FIXTURE),
   }));
   await page.goto('?lang=en');

@@ -316,7 +316,8 @@ const SIGMET_URL =
   'https://raw.githubusercontent.com/msupino/NavigationApp/sigmet-data/sigmet.json';
 // NOTAMs: a scheduled Action queries the FAA NOTAM API for the Israel FIR
 // (LLLL), normalises geometry, and publishes notam.json to the `notam-data`
-// branch. data/notam.json is the offline / first-run fallback.
+// branch (filename unchanged there). data/notam.json is the offline /
+// first-run fallback.
 const NOTAM_URL =
   'https://raw.githubusercontent.com/msupino/NavigationApp/notam-data/notam.json';
 async function loadNotam(force) {
@@ -934,34 +935,79 @@ function notamBadgeNotamsAt(latlng) {
 window.notamBadgeNotamsAt = notamBadgeNotamsAt;
 
 // --- nav-waypoint reference overlay ---------------------------------
-// Lazy-loads docs/data/nav-waypoints.json on first activation. Format:
+// Lazy-loads docs/data/cvfr-nav-waypoints.json on first activation. Format:
 // { waypoints:[{ name, en, he, lat, lng }] } — 172 published reporting
 // points sourced from the IAA CVFR chart page 113 (2025 edition); see
 // issue #406. Validated strictly by validateNavWaypoints() (issue
 // #101): every documented field must be present and well-typed;
 // extras are silently allowed for forward-compat.
+// --- per-layer dataset resolution ----------------------------------
+// Each base layer can have its own data files (waypoints, comm-change, …).
+// Naming: <prefix>-<kind>.json. Prefix by layer: 'Low Alt' -> lsa,
+// 'Heli' -> heli, everything else -> cvfr. A layer without its own file for
+// a given kind falls back to the cvfr file (see fetchLayerData).
+function currentLayerName() {
+  if (typeof layers === 'undefined' || typeof map === 'undefined') return '';
+  for (const k in layers) if (map.hasLayer(layers[k])) return k;
+  return '';
+}
+function layerDataPrefix() {
+  const l = currentLayerName();
+  if (l === 'Low Alt') return 'lsa';
+  if (l === 'Helicopters') return 'heli';
+  return 'cvfr';   // Navigation / Satellite / OSM etc. share the CVFR datasets
+}
+// Map a data kind to its canonical cvfr URL (carries the ?v cache-bust).
+const _CVFR_DATA_URL = {
+  'nav-waypoints': () => S.navWpUrl,
+  'comm-change': () => S.commChangeUrl,
+  'leg-altitude': () => S.legAltitudeUrl,
+  // route-templates is a single shared file; templates self-tag with a `layer`.
+};
+function _verOf(url) { const m = /\?v=([^&]+)/.exec(url || ''); return m ? m[1] : '1'; }
+// Fetch the active layer's file for `kind`; if that layer has no such file
+// (HTTP not-ok / network error), fall back to the cvfr file. Returns
+// { data, prefix } where prefix is the source actually used.
+async function fetchLayerData(kind) {
+  const cvfrUrl = (_CVFR_DATA_URL[kind] || (() => 'data/cvfr-' + kind + '.json'))();
+  const v = _verOf(cvfrUrl);
+  const pfx = layerDataPrefix();
+  if (pfx !== 'cvfr') {
+    try {
+      const r = await fetch('data/' + pfx + '-' + kind + '.json?v=' + v);
+      if (r.ok) return { data: await r.json(), prefix: pfx };
+    } catch (e) { /* fall through to cvfr */ }
+  }
+  const r = await fetch(cvfrUrl);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return { data: await r.json(), prefix: 'cvfr' };
+}
+
 async function loadNavWaypoints() {
   if (navWP !== null) return navWP;
   try {
-    // ?v bumped whenever nav-waypoints.json changes — the service worker
-    // caches it cache-first, so a new URL is needed to pick up edits.
-    const res = await fetch(S.navWpUrl);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const d = await res.json();
-    const verr = validateNavWaypoints(d);
-    if (verr) {
-      console.warn('nav-waypoints schema error:', verr);
-      alert(S.errInvalidNavWaypoints(verr));
-      return [];
+    const { data: d, prefix } = await fetchLayerData('nav-waypoints');
+    // Strict schema check only for the canonical CVFR dataset; layer datasets
+    // (lsa/heli) use the looser { points:[…] } shape.
+    if (prefix === 'cvfr') {
+      const verr = validateNavWaypoints(d);
+      if (verr) {
+        console.warn('nav-waypoints schema error:', verr);
+        alert(S.errInvalidNavWaypoints(verr));
+        return [];
+      }
     }
-    navWP = d.waypoints.map(w => ({
-      name: w.name,
-      en: w.en,                          // English label (name stays canonical code)
-      he: w.he,                          // Hebrew label
-      lat: w.lat,
-      lng: w.lng,
-      report: w.report,                  // 'mandatory' | 'onRequest' (issue #404)
-    }));
+    const arr = Array.isArray(d) ? d : (d.waypoints || d.points || []);
+    navWP = arr
+      .filter(w => w && Number.isFinite(w.lat) && Number.isFinite(w.lng))
+      .map(w => ({
+        name: w.name || '',
+        en: w.en || w.name || '',         // English label (name stays canonical code)
+        he: w.he || '',                   // Hebrew label
+        lat: w.lat,
+        lng: w.lng,
+        report: w.report || '',           // 'mandatory' | 'onRequest' | 'optional'
+      }));
     return navWP;
   } catch (e) {
     // Leave navWP === null so a subsequent toggle / search / snap call can
@@ -972,7 +1018,7 @@ async function loadNavWaypoints() {
   }
 }
 
-// Lazy-loads docs/data/comm-change.json — { callSigns:{...},
+// Lazy-loads docs/data/cvfr-comm-change.json — { callSigns:{...},
 // points:[{name, commChange, callSigns, routeHints, note, source}] }.
 // Builds an O(1) map keyed by ICAO `name` for the nav-waypoint overlay ring
 // + inspector badge. On 404 or schema error we install an EMPTY map ({})
@@ -984,9 +1030,7 @@ async function loadNavWaypoints() {
 async function loadCommChange() {
   if (commChangeMap !== null) return commChangeMap;
   try {
-    const res = await fetch(S.commChangeUrl);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const d = await res.json();
+    const { data: d } = await fetchLayerData('comm-change');
     const verr = validateCommChange(d);
     if (verr) {
       console.warn('comm-change schema error:', verr);
@@ -1010,16 +1054,14 @@ async function loadCommChange() {
   }
 }
 
-// Lazy-loads docs/data/leg-altitude.json — { segments:[{from,to,
+// Lazy-loads docs/data/cvfr-leg-altitude.json — { segments:[{from,to,
 // inboundAltitude,outboundAltitude,status,oneWay,...}], directionPool:[...] }.
 // The app uses it only as a reference table for freshly-created legs;
 // saved/imported route JSON stays authoritative for existing leg values.
 async function loadLegAltitudes() {
   if (legAltitudeMap !== null) return legAltitudeMap;
   try {
-    const res = await fetch(S.legAltitudeUrl);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const d = await res.json();
+    const { data: d } = await fetchLayerData('leg-altitude');
     const verr = validateLegAltitudes(d);
     if (verr) {
       console.warn('leg-altitude schema error:', verr);

@@ -2,7 +2,7 @@
 const { test, expect } = require('./_setup');
 const { LLHZ, LLHA } = require('./_airfieldArp');
 const { clickToolbarControl, hideToolbarMenus, showToolbarControl } = require('./_toolbar');
-const NAV_WAYPOINTS = require('../docs/data/nav-waypoints.json').waypoints;
+const NAV_WAYPOINTS = require('../docs/data/cvfr-nav-waypoints.json').waypoints;
 
 const NAV_EN = new Map(NAV_WAYPOINTS.map(w => [w.name, w.en]));
 function displayName(code) {
@@ -17,7 +17,7 @@ async function downloadText(download) {
 }
 
 // Endpoints from `docs/data/airfields.json` via `tests/_airfieldArp.js`; CVFR
-// reporting points between them from `docs/data/nav-waypoints.json` (5 dp).
+// reporting points between them from `docs/data/cvfr-nav-waypoints.json` (5 dp).
 const ROUTE = {
   waypoints: [
     { lat: LLHZ.lat, lng: LLHZ.lng, name: 'LLHZ' },

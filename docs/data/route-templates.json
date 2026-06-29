@@ -32,7 +32,8 @@
           "freqName": "HAIFA",
           "freqAuto": true
         }
-      ]
+      ],
+      "layer": "cvfr"
     },
     {
       "id": "llha-llhz-coastal",
@@ -65,7 +66,8 @@
           "freqName": "HERZLIYA",
           "freqAuto": true
         }
-      ]
+      ],
+      "layer": "cvfr"
     },
     {
       "id": "llhz-llib-north",
@@ -103,7 +105,8 @@
           "freqName": "ROSH_PINA",
           "freqAuto": true
         }
-      ]
+      ],
+      "layer": "cvfr"
     },
     {
       "id": "llib-llhz-north",
@@ -141,7 +144,8 @@
           "freqName": "PLUTO_EAST",
           "freqAuto": true
         }
-      ]
+      ],
+      "layer": "cvfr"
     },
     {
       "id": "llhz-llmz-dead-sea",
@@ -206,7 +210,8 @@
       "commChangeSuppressions": [
         "NSHRM",
         "AYLON"
-      ]
+      ],
+      "layer": "cvfr"
     },
     {
       "id": "llhz-llbs-south",
@@ -267,7 +272,8 @@
         "HODYA",
         "NOAAM",
         "NTAIM"
-      ]
+      ],
+      "layer": "cvfr"
     },
     {
       "id": "llbs-llhz-south",
@@ -331,7 +337,8 @@
         "HODYA",
         "ZASHD",
         "NTAIM"
-      ]
+      ],
+      "layer": "cvfr"
     },
     {
       "id": "llmz-llhz-dead-sea",
@@ -398,7 +405,9 @@
           "freqName": "HERZLIYA",
           "freqAuto": true
         }
-      ]
+      ],
+      "layer": "cvfr"
     }
-  ]
+  ],
+  "_comment": "Route templates (shared). Each template carries a \"layer\" tag (cvfr|lsa|heli|any); the app shows templates matching the active base layer (plus any)."
 }

@@ -1,7 +1,7 @@
 // @ts-check
 // Issue #399 — CVFR comm-change rendering on top of the nav-waypoint overlay.
 //
-// As of PR #401 the shipped dataset (docs/data/comm-change.json) is intentionally
+// As of PR #401 the shipped dataset (docs/data/cvfr-comm-change.json) is intentionally
 // empty (`points: []`) — the schema + rendering + toolbar toggle merge as
 // plumbing, but no points are listed until a chart-specific source surfaces
 // (PAMAT chapter B-03 / IAA AIP supplement / printed CVFR chart). Earlier
@@ -10,14 +10,14 @@
 // These tests therefore split into two groups:
 //
 //   1. SHIPPED-FILE TESTS: assert the toolbar/checkbox/dom presence and the
-//      graceful-empty behaviour against the real docs/data/comm-change.json
+//      graceful-empty behaviour against the real docs/data/cvfr-comm-change.json
 //      (commChangeMap is {} — no rings, no badges).
 //
-//   2. FIXTURE-BACKED TESTS: stub the comm-change.json fetch with a small
+//   2. FIXTURE-BACKED TESTS: stub the cvfr-comm-change.json fetch with a small
 //      synthetic dataset (TYONA + SORES + BAZRA) so we still exercise the
 //      load + ring-draw + inspector-badge code paths without depending on
 //      real chart data. Uses Playwright's page.route to intercept the
-//      `comm-change.json?v=...` request before the app fetches it.
+//      `cvfr-comm-change.json?v=...` request before the app fetches it.
 //
 // The renderer exposes `window.__commChangeRingsDrawn` (a Set of names drawn
 // this frame) so the tests can assert visibility without snapshotting overlay
@@ -25,10 +25,10 @@
 const { test, expect } = require('./_setup');
 const fs = require('fs');
 
-// TYONA reporting point — coords lifted from docs/data/nav-waypoints.json.
+// TYONA reporting point — coords lifted from docs/data/cvfr-nav-waypoints.json.
 const TYONA = { lat: 32.0047, lng: 34.7272, name: 'TYONA' };
 
-// Synthetic fixture matching docs/data/comm-change.json's schema. Three entries
+// Synthetic fixture matching docs/data/cvfr-comm-change.json's schema. Three entries
 // cover every branch the renderer + inspector care about:
 //   * TYONA  — from/to present (full badge incl. freq row)
 //   * SORES  — from/to present (alternate entry still draws)
@@ -82,12 +82,12 @@ function expectedKnownFreqPointRow(point, catalog) {
   return `| ${point.name} | ${callSigns} | ${frequencies} |`;
 }
 
-// Install a route handler for the comm-change.json request. Matches the
-// shipped URL pattern `comm-change.json?v=...` regardless of query string.
+// Install a route handler for the cvfr-comm-change.json request. Matches the
+// shipped URL pattern `cvfr-comm-change.json?v=...` regardless of query string.
 // MUST be called before `boot(page)` (i.e. before any page.goto) so the
 // stub is registered before the app's first fetch.
 async function installCommChangeFixture(page, fixture = FIXTURE) {
-  await page.route('**/comm-change.json*', route => {
+  await page.route('**/cvfr-comm-change.json*', route => {
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -128,7 +128,7 @@ async function boot(page) {
 }
 
 test.describe('comm-change schema + UI plumbing (shipped populated dataset)', () => {
-  test('shipped docs/data/comm-change.json parses and loads commChange points', async ({ page }) => {
+  test('shipped docs/data/cvfr-comm-change.json parses and loads commChange points', async ({ page }) => {
     await boot(page);
     const map = await page.evaluate(() => window.commChangeMap);
     expect(map).toBeTruthy();
@@ -302,7 +302,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
   });
 
   test('known-freq-points.md mirrors every comm-change point row from JSON', async () => {
-    const comm = JSON.parse(fs.readFileSync('docs/data/comm-change.json', 'utf8'));
+    const comm = JSON.parse(fs.readFileSync('docs/data/cvfr-comm-change.json', 'utf8'));
     const md = fs.readFileSync('known-freq-points.md', 'utf8');
     const actual = md.split('\n').filter(line => /^\| (?:[A-Z]{5}|LL[A-Z0-9]{2}) \|/.test(line));
     const expected = comm.points.map(point => expectedKnownFreqPointRow(point, comm.callSigns));
@@ -310,7 +310,7 @@ test.describe('comm-change schema + UI plumbing (shipped populated dataset)', ()
   });
 
   test('route template comm-change call signs have route-context hints', async () => {
-    const comm = JSON.parse(fs.readFileSync('docs/data/comm-change.json', 'utf8'));
+    const comm = JSON.parse(fs.readFileSync('docs/data/cvfr-comm-change.json', 'utf8'));
     const templates = JSON.parse(fs.readFileSync('docs/data/route-templates.json', 'utf8'));
     const byName = new Map((comm.points || []).map(point => [point.name, point]));
     const missing = [];

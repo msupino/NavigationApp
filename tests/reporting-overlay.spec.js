@@ -1,6 +1,6 @@
 // @ts-check
 // Reporting-type overlay (issue #404): the IAA chart's סוג דיווח class
-// (mandatory חובה / on-request דרישה) carried inline on nav-waypoints.json
+// (mandatory חובה / on-request דרישה) carried inline on cvfr-nav-waypoints.json
 // as `report`, surfaced as a map "M" badge + inspector row + View toggle.
 const { test, expect } = require('./_setup');
 

@@ -1,5 +1,5 @@
 // @ts-check
-// Regression coverage for the docs/data/nav-waypoints.json content
+// Regression coverage for the docs/data/cvfr-nav-waypoints.json content
 // (issues #406 and #408 — and now #410, the image-based rebuild).
 //
 // The dataset was originally rebuilt from the published IAA CVFR chart
@@ -9,7 +9,7 @@
 // handful of reporting points with chart-disagreeing coords — notably
 // BEZRA (~752 m) and KUVSH (~648 m), the heading-drift culprits.
 //
-// PR #410 then rebuilt nav-waypoints.json a second time directly from a
+// PR #410 then rebuilt cvfr-nav-waypoints.json a second time directly from a
 // high-resolution screenshot of the published chart, replacing the CSV
 // extraction that had introduced typesetting artefacts (digit `2` where
 // Hebrew samekh `ס` belonged, missing final-letter forms, and a few
@@ -25,13 +25,13 @@ const { test, expect } = require('./_setup');
 const fs = require('fs');
 const path = require('path');
 
-const JSON_PATH = path.join(__dirname, '..', 'docs', 'data', 'nav-waypoints.json');
+const JSON_PATH = path.join(__dirname, '..', 'docs', 'data', 'cvfr-nav-waypoints.json');
 
 function loadData() {
   return JSON.parse(fs.readFileSync(JSON_PATH, 'utf8'));
 }
 
-test.describe('#406 / #410 — nav-waypoints.json (chart-sourced)', () => {
+test.describe('#406 / #410 — cvfr-nav-waypoints.json (chart-sourced)', () => {
   test('parses and exposes the expected entry count', async () => {
     const d = loadData();
     expect(Array.isArray(d.waypoints)).toBe(true);
@@ -110,7 +110,7 @@ test.describe('#406 / #410 — nav-waypoints.json (chart-sourced)', () => {
     const d = loadData();
     const bezra = d.waypoints.find(w => w.name === 'BEZRA');
     const kuvsh = d.waypoints.find(w => w.name === 'KUVSH');
-    // Chart values (rounded to 5 dp). Pre-#406 nav-waypoints.json had
+    // Chart values (rounded to 5 dp). Pre-#406 cvfr-nav-waypoints.json had
     // BEZRA at (31.73525, 34.64917) — ~752 m south of the chart — and
     // KUVSH at (31.26444, 34.76361) — ~648 m north of the chart. Both
     // shifts caused ~1° heading drift on cross-country legs that pass
