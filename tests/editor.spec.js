@@ -19,17 +19,17 @@ test('clicking the map adds typed points and exports JSON', async ({ page }) => 
   await page.waitForFunction(() => typeof map !== 'undefined');
   const out = await page.evaluate(() => {
     map.setView([32.0, 34.9], 11);
-    map.fire('click', { latlng: L.latLng(32.10, 34.80) });
+    map.fire('click', { latlng: L.latLng(32.10, 34.80) });   // default type = on-request
     // switch type then add another
-    document.querySelector('input[name=ed-t][value=onRequest]').click();
+    document.querySelector('input[name=ed-t][value=mandatory]').click();
     map.fire('click', { latlng: L.latLng(32.20, 34.95) });
     const json = JSON.parse(document.getElementById('ed-json').value);
     const stored = JSON.parse(localStorage.getItem('navaid.editor.points') || '[]');
     return { json, count: document.getElementById('ed-count').textContent, stored: stored.length };
   });
   expect(out.json.length).toBe(2);
-  expect(out.json[0]).toMatchObject({ lat: 32.1, lng: 34.8, report: 'mandatory' });
-  expect(out.json[1]).toMatchObject({ lat: 32.2, lng: 34.95, report: 'onRequest' });
+  expect(out.json[0]).toMatchObject({ lat: 32.1, lng: 34.8, report: 'onRequest' });
+  expect(out.json[1]).toMatchObject({ lat: 32.2, lng: 34.95, report: 'mandatory' });
   expect(out.count).toContain('2');
   expect(out.stored).toBe(2);
   // persists across reload

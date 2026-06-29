@@ -32,7 +32,7 @@
   var polys = load(PKEY);
   var draft = [];               // in-progress polygon: array of L.latLng
   var mode = 'point';           // 'point' | 'polygon'
-  var curType = 'mandatory';
+  var curType = 'onRequest';
   var group = null;
 
   function savePoints() { try { localStorage.setItem(KEY, JSON.stringify(points)); } catch (e) {} }
@@ -170,8 +170,8 @@
       '<label style="margin-right:8px"><input type="radio" name="ed-m" value="point" checked> point</label>' +
       '<label><input type="radio" name="ed-m" value="polygon"> polygon</label></div>' +
       '<div id="ed-type" style="margin-bottom:6px">' +
-      '<label style="margin-right:8px"><input type="radio" name="ed-t" value="mandatory" checked> mandatory</label>' +
-      '<label><input type="radio" name="ed-t" value="onRequest"> on-request</label></div>' +
+      '<label style="margin-right:8px"><input type="radio" name="ed-t" value="mandatory"> mandatory</label>' +
+      '<label><input type="radio" name="ed-t" value="onRequest" checked> on-request</label></div>' +
       '<div style="opacity:.8;margin-bottom:6px">Point: click add · marker to delete.<br>Polygon: click vertices · dbl-click / Finish / click 1st vertex to close · polygon to delete.</div>' +
       '<div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">' +
       '<button id="ed-finish" type="button">Finish</button>' +
