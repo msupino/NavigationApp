@@ -83,12 +83,12 @@ test('recording collects filtered fixes and stops cleanly', async ({ page }) => 
   expect(after.watch).toBeNull();
 });
 
-test('stop saves a kind:gps library entry with simplified route + raw track', async ({ page }) => {
+test('stop saves a kind:gps TRACK entry (a line, not a waypoint route) and shows it', async ({ page }) => {
   await page.addInitScript(() => {
     window.__geoCb = null;
     navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 7; };
     navigator.geolocation.clearWatch = () => {};
-    try { localStorage.removeItem('navaid.routes'); } catch (e) {}
+    try { localStorage.removeItem('navaid.routes'); localStorage.removeItem('navaid.tracks.shown'); } catch (e) {}
   });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof stopGpsRecordingAndSave === 'function');
@@ -97,52 +97,53 @@ test('stop saves a kind:gps library entry with simplified route + raw track', as
     const fix = (lat, lng) => window.__geoCb({ coords: { latitude: lat, longitude: lng, accuracy: 8, heading: null, altitude: 100 }, timestamp: Date.now() });
     fix(32.00, 34.00); fix(32.05, 34.00); fix(32.10, 34.02); fix(32.15, 34.10);
   });
-  const entry = await page.evaluate(() => stopGpsRecordingAndSave());
-  expect(entry).toBeTruthy();
-  expect(entry.kind).toBe('gps');
-  expect(entry.name).toMatch(/^Record - /);
-  expect(Array.isArray(entry.track)).toBe(true);
-  expect(entry.track.length).toBeGreaterThanOrEqual(4);
-  expect(entry.data.waypoints.length).toBeGreaterThanOrEqual(2);
-  expect(entry.data.legs.length).toBe(entry.data.waypoints.length - 1);
-  // Fix: saved GPS entry must not be polluted with user's current wind or suppressions.
-  expect(entry.data.commChangeSuppressions || []).toEqual([]);
-  expect(entry.data.wind == null || (entry.data.wind.speed === 0)).toBe(true);
-  // Recorded GPS altitude flows into the leg's inbound (forward) altitude, nearest
-  // 100 ft: 100 m ≈ 328 ft → 300. Outbound (return) stays unknown.
-  expect(entry.data.legs.every(l => l.inboundAltitude === 300)).toBe(true);
-  expect(entry.data.legs.every(l => l.outboundAltitude === 'NaN')).toBe(true);
+  const r = await page.evaluate(() => {
+    const e = stopGpsRecordingAndSave();
+    return { entry: e, shown: typeof isTrackShown === 'function' && isTrackShown(e.id),
+             wpUntouched: state.waypoints.length };
+  });
+  expect(r.entry.kind).toBe('gps');
+  expect(r.entry.name).toMatch(/^Record - /);
+  expect(Array.isArray(r.entry.track)).toBe(true);
+  expect(r.entry.track.length).toBeGreaterThanOrEqual(4);
+  // It's a TRACK: no synthetic waypoint route, and the working route is untouched.
+  expect(r.entry.data).toBeUndefined();
+  expect(r.wpUntouched).toBe(0);
+  // Altitude is kept per track point (rounded ft), not on legs.
+  expect(r.entry.track[0].alt).toBe(100);
+  // Saved + auto-shown as an overlay.
+  expect(r.shown).toBe(true);
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.routes'))[0]);
-  expect(persisted.id).toBe(entry.id);
-  expect(await page.evaluate((d) => (typeof validateRoute === 'function' ? validateRoute(d) : null), entry.data)).toBeNull();
+  expect(persisted.id).toBe(r.entry.id);
+  const shownIds = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.tracks.shown') || '[]'));
+  expect(shownIds).toContain(r.entry.id);
 });
 
-test('leg altitudes come from recorded GPS altitude (nearest 100 ft); gaps stay unknown', async ({ page }) => {
+test('a saved track draws as an overlay polyline, independent of the route', async ({ page }) => {
   await page.addInitScript(() => {
     window.__geoCb = null;
     navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 7; };
     navigator.geolocation.clearWatch = () => {};
-    try { localStorage.removeItem('navaid.routes'); } catch (e) {}
+    try { localStorage.removeItem('navaid.routes'); localStorage.removeItem('navaid.tracks.shown'); } catch (e) {}
   });
   await page.goto('?lang=en');
-  await page.waitForFunction(() => typeof stopGpsRecordingAndSave === 'function');
-  await page.evaluate(() => {
+  await page.waitForFunction(() => typeof stopGpsRecordingAndSave === 'function' && typeof drawTracks === 'function');
+  const out = await page.evaluate(() => {
     startGpsRecording();
-    // Far-apart, non-collinear points so simplifyTrack keeps all four as waypoints.
-    const fix = (lat, lng, altM) => window.__geoCb({ coords: { latitude: lat, longitude: lng, accuracy: 8, heading: null, altitude: altM }, timestamp: Date.now() });
-    fix(32.00, 34.00, 305);    // ~1000 ft
-    fix(32.20, 34.05, 610);    // ~2001 ft
-    fix(32.10, 34.40, null);   // no altitude
-    fix(32.40, 34.20, 915);    // ~3002 ft
+    const fix = (lat, lng) => window.__geoCb({ coords: { latitude: lat, longitude: lng, accuracy: 8, heading: 90, altitude: null }, timestamp: Date.now() });
+    fix(32.05, 34.80); fix(32.06, 34.81); fix(32.07, 34.82);
+    stopGpsRecordingAndSave();
+    // count moveTo calls issued by the overlay (one sub-path per shown track)
+    let moveTos = 0;
+    const orig = octx.moveTo;
+    octx.moveTo = function (x, y) { moveTos++; return orig.call(this, x, y); };
+    draw();
+    octx.moveTo = orig;
+    return { tracks: window.__tracksDrawn || 0, moveTos, shown: shownTracks.length };
   });
-  const entry = await page.evaluate(() => stopGpsRecordingAndSave());
-  const legs = entry.data.legs;
-  expect(legs.length).toBe(entry.data.waypoints.length - 1);
-  // Leg 0: avg(1000.7, 2001.4) ft = 1501 → 1500. Legs touching the null-alt
-  // point (leg 1 and leg 2) cannot be derived → stay 'NaN' (unknown).
-  expect(legs[0].inboundAltitude).toBe(1500);
-  expect(legs[1].inboundAltitude).toBe('NaN');
-  expect(legs[2].inboundAltitude).toBe('NaN');
+  expect(out.shown).toBe(1);
+  expect(out.tracks).toBe(1);
+  expect(out.moveTos).toBeGreaterThan(0);
 });
 
 test('breadcrumb + own-ship are drawn while recording', async ({ page }) => {
