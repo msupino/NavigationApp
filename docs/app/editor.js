@@ -1,80 +1,98 @@
-// editor.js — hidden point-editor tool for digitizing map features by hand.
-// Enable with ?editor=1 (or localStorage 'navaid.editor.on'='1'). A small
-// floating panel lets you pick a point type, click the map to drop points, and
-// export them as JSON to paste back for processing. Fully self-contained: no
-// coupling to the route/state model, so it can't corrupt a real route.
+// editor.js — hidden map-data editor for digitizing features by hand.
+// Enable with ?editor=1. A small floating panel offers two modes:
+//   • Point   — click to drop draggable point markers (waypoints).
+//   • Polygon — click to add vertices; finish to close a ring (LSA bubbles,
+//               airspace areas). Double-click or "Finish" closes the ring.
+// Exports JSON to paste back. Fully self-contained: a separate Leaflet layer +
+// localStorage, no coupling to the route/state model, so it can't corrupt a
+// real route. Points and polygons are tagged with the active base layer and
+// only shown / exported for that layer.
 (function () {
   'use strict';
   function enabled() {
-    // URL param only — do NOT persist, or it would auto-open on every later visit.
-    return /[?&]editor=1\b/.test(location.search);
+    return /[?&]editor=1\b/.test(location.search);   // URL param only — never persisted
   }
   if (!enabled()) {
-    try { localStorage.removeItem('navaid.editor.on'); } catch (e) {}   // clear stale flag from older builds
+    try { localStorage.removeItem('navaid.editor.on'); } catch (e) {}
     return;
   }
 
   var KEY = 'navaid.editor.points';
-  // Known waypoint sources per base layer — loaded into the editor for editing.
+  var PKEY = 'navaid.editor.polys';
   var KNOWN = {
     'CVFR': 'data/cvfr-nav-waypoints.json',
     'Navigation': 'data/cvfr-nav-waypoints.json',
     'Low Alt': 'data/lsa-nav-waypoints.json'
   };
+  var COLOR = '#0aa3c2';
   var r5 = function (x) { return Math.round(x * 1e5) / 1e5; };
-  var points = [];
-  try { points = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { points = []; }
-  if (!Array.isArray(points)) points = [];
+
+  function load(key) { try { var a = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  var points = load(KEY);
+  var polys = load(PKEY);
+  var draft = [];               // in-progress polygon: array of L.latLng
+  var mode = 'point';           // 'point' | 'polygon'
   var curType = 'mandatory';
-  var group = null;     // L.layerGroup of markers
+  var group = null;
 
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(points)); } catch (e) {} }
+  function savePoints() { try { localStorage.setItem(KEY, JSON.stringify(points)); } catch (e) {} }
+  function savePolys() { try { localStorage.setItem(PKEY, JSON.stringify(polys)); } catch (e) {} }
 
-  // Current base layer name (CVFR / Navigation / Low Alt / …); '' if unknown.
   function currentLayer() {
     if (typeof layers === 'undefined' || typeof map === 'undefined') return '';
     for (var k in layers) if (map.hasLayer(layers[k])) return k;
     return '';
   }
+  function curPoints() { var c = currentLayer(); return points.filter(function (p) { return (p.layer || '') === c; }); }
+  function curPolys() { var c = currentLayer(); return polys.filter(function (p) { return (p.layer || '') === c; }); }
 
+  // ---- markers / shapes -------------------------------------------------
   function marker(p, i) {
-    var color = '#0aa3c2';
-    var fill = p.report === 'mandatory' ? color : 'none';
-    var html =
-      '<svg width="20" height="20" viewBox="0 0 20 20">' +
-      '<polygon points="10,2 18,17 2,17" fill="' + fill + '" stroke="' + color +
-      '" stroke-width="2"/></svg>';
+    var fill = p.report === 'mandatory' ? COLOR : 'none';
+    var html = '<svg width="20" height="20" viewBox="0 0 20 20"><polygon points="10,2 18,17 2,17" fill="' +
+      fill + '" stroke="' + COLOR + '" stroke-width="2"/></svg>';
     var icon = L.divIcon({ className: 'editor-icon', html: html, iconSize: [20, 20], iconAnchor: [10, 13] });
     var m = L.marker([p.lat, p.lng], { icon: icon, keyboard: false, draggable: true });
     if (p.name) m.bindTooltip(String(p.name), { direction: 'right', offset: [8, 0] });
-    m.on('click', function (ev) {                 // click a marker to delete it
-      L.DomEvent.stopPropagation(ev);
-      points.splice(i, 1); save(); render(); redraw();
-    });
-    m.on('dragend', function (ev) {               // drag to fine-tune position
-      var ll = ev.target.getLatLng();
-      points[i].lat = r5(ll.lat); points[i].lng = r5(ll.lng);
-      save(); render();                           // update JSON; marker stays where dropped
-    });
+    m.on('click', function (ev) { L.DomEvent.stopPropagation(ev); points.splice(i, 1); savePoints(); render(); redraw(); });
+    m.on('dragend', function (ev) { var ll = ev.target.getLatLng(); points[i].lat = r5(ll.lat); points[i].lng = r5(ll.lng); savePoints(); render(); });
     return m;
   }
+
   var _redrawing = false;
   function redraw() {
-    if (!group) { group = L.layerGroup().addTo(map); }
-    _redrawing = true;                 // suppress our own layeradd/remove events
+    if (!group) group = L.layerGroup().addTo(map);
+    _redrawing = true;
     group.clearLayers();
     var cur = currentLayer();
-    // Show only points captured on the currently selected base layer.
     points.forEach(function (p, i) { if ((p.layer || '') === cur) group.addLayer(marker(p, i)); });
+    polys.forEach(function (pg, i) {
+      if ((pg.layer || '') !== cur) return;
+      var poly = L.polygon(pg.coords, { color: COLOR, weight: 2, fillColor: COLOR, fillOpacity: 0.12 });
+      if (pg.name) poly.bindTooltip(String(pg.name), { sticky: true });
+      poly.on('click', function (ev) {            // click a polygon to delete it
+        L.DomEvent.stopPropagation(ev);
+        if (!confirm('Delete this polygon?')) return;
+        polys.splice(i, 1); savePolys(); render(); redraw();
+      });
+      group.addLayer(poly);
+    });
+    if (draft.length) {                            // in-progress ring
+      group.addLayer(L.polyline(draft, { color: COLOR, weight: 2, dashArray: '5,5' }));
+      draft.forEach(function (ll) { group.addLayer(L.circleMarker(ll, { radius: 4, color: COLOR, fillColor: '#fff', fillOpacity: 1, weight: 2 })); });
+    }
     _redrawing = false;
   }
 
-  function curPoints() {
-    var cur = currentLayer();
-    return points.filter(function (p) { return (p.layer || '') === cur; });
-  }
-  // Export the selected layer's points only.
+  // ---- export -----------------------------------------------------------
   function json() {
+    if (mode === 'polygon') {
+      return JSON.stringify(curPolys().map(function (pg) {
+        var o = { type: 'polygon', coords: pg.coords };
+        if (pg.name) o.name = pg.name;
+        return o;
+      }), null, 2);
+    }
     return JSON.stringify(curPoints().map(function (p) {
       var o = { lat: p.lat, lng: p.lng, report: p.report };
       if (p.name) o.name = p.name;
@@ -83,7 +101,6 @@
     }), null, 2);
   }
 
-  // Replace the current layer's points with its known waypoint set, for editing.
   function loadKnown() {
     var lyr = currentLayer();
     var url = KNOWN[lyr];
@@ -96,19 +113,48 @@
         return { lat: r5(p.lat), lng: r5(p.lng), report: rep, layer: lyr, name: p.name || '', he: p.he || '' };
       });
       points = points.filter(function (p) { return (p.layer || '') !== lyr; }).concat(loaded);
-      save(); render(); redraw();
+      savePoints(); render(); redraw();
     }).catch(function (e) { alert('Failed to load known set: ' + e); });
   }
 
-  var countEl, taEl;
-  function render() {
-    if (countEl) countEl.textContent = curPoints().length + ' / ' + points.length + ' pts (' + (currentLayer() || '—') + ')';
-    if (taEl) taEl.value = json();
-  }
-
+  // ---- actions ----------------------------------------------------------
   function addPoint(latlng) {
     points.push({ lat: r5(latlng.lat), lng: r5(latlng.lng), report: curType, layer: currentLayer() });
-    save(); render(); redraw();
+    savePoints(); render(); redraw();
+  }
+  function addVertex(latlng) {
+    // Click near the first vertex (>=3 placed) closes the ring.
+    if (draft.length >= 3) {
+      var a = map.latLngToContainerPoint(latlng);
+      var b = map.latLngToContainerPoint(draft[0]);
+      if (a.distanceTo(b) <= 12) { finishPoly(); return; }
+    }
+    draft.push(latlng); render(); redraw();
+  }
+  function finishPoly() {
+    if (draft.length < 3) { draft = []; render(); redraw(); return; }
+    polys.push({ coords: draft.map(function (ll) { return [r5(ll.lat), r5(ll.lng)]; }), layer: currentLayer(), name: '' });
+    draft = []; savePolys(); render(); redraw();
+  }
+
+  // ---- panel ------------------------------------------------------------
+  var countEl, taEl, finishBtn, typeRow;
+  function render() {
+    if (countEl) {
+      countEl.textContent = mode === 'polygon'
+        ? curPolys().length + ' / ' + polys.length + ' polys' + (draft.length ? ' (+' + draft.length + ')' : '') + ' (' + (currentLayer() || '—') + ')'
+        : curPoints().length + ' / ' + points.length + ' pts (' + (currentLayer() || '—') + ')';
+    }
+    if (taEl) taEl.value = json();
+    if (finishBtn) finishBtn.style.display = mode === 'polygon' ? '' : 'none';
+    if (typeRow) typeRow.style.display = mode === 'polygon' ? 'none' : '';
+  }
+
+  function setMode(m) {
+    mode = m;
+    draft = [];                                   // discard any half-drawn ring
+    if (map && map.doubleClickZoom) { if (m === 'polygon') map.doubleClickZoom.disable(); else map.doubleClickZoom.enable(); }
+    render(); redraw();
   }
 
   function buildPanel() {
@@ -116,15 +162,19 @@
     box.id = 'editor-panel';
     box.style.cssText =
       'position:fixed;top:60px;right:12px;z-index:100000;background:#141212;color:#fff;' +
-      'font:12px/1.4 sans-serif;padding:10px;border-radius:8px;width:230px;' +
+      'font:12px/1.4 sans-serif;padding:10px;border-radius:8px;width:240px;' +
       'box-shadow:0 2px 10px rgba(0,0,0,.5);direction:ltr';
     box.innerHTML =
       '<div id="ed-head" style="font-weight:700;margin-bottom:6px;cursor:move;user-select:none">⠿ Editor <span id="ed-count" style="float:right;font-weight:400;opacity:.8"></span></div>' +
-      '<div style="margin-bottom:6px">' +
+      '<div style="margin-bottom:6px">Mode: ' +
+      '<label style="margin-right:8px"><input type="radio" name="ed-m" value="point" checked> point</label>' +
+      '<label><input type="radio" name="ed-m" value="polygon"> polygon</label></div>' +
+      '<div id="ed-type" style="margin-bottom:6px">' +
       '<label style="margin-right:8px"><input type="radio" name="ed-t" value="mandatory" checked> mandatory</label>' +
       '<label><input type="radio" name="ed-t" value="onRequest"> on-request</label></div>' +
-      '<div style="opacity:.8;margin-bottom:6px">Click map to add · click a marker to delete</div>' +
-      '<div style="display:flex;gap:6px;margin-bottom:6px">' +
+      '<div style="opacity:.8;margin-bottom:6px">Point: click add · marker to delete.<br>Polygon: click vertices · dbl-click / Finish / click 1st vertex to close · polygon to delete.</div>' +
+      '<div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">' +
+      '<button id="ed-finish" type="button">Finish</button>' +
       '<button id="ed-load" type="button">Load known</button>' +
       '<button id="ed-undo" type="button">Undo</button>' +
       '<button id="ed-clear" type="button">Clear</button></div>' +
@@ -135,22 +185,34 @@
     document.body.appendChild(box);
     countEl = box.querySelector('#ed-count');
     taEl = box.querySelector('#ed-json');
-    box.querySelectorAll('input[name=ed-t]').forEach(function (r) {
-      r.addEventListener('change', function () { curType = r.value; });
-    });
+    finishBtn = box.querySelector('#ed-finish');
+    typeRow = box.querySelector('#ed-type');
+    box.querySelectorAll('input[name=ed-m]').forEach(function (r) { r.addEventListener('change', function () { setMode(r.value); }); });
+    box.querySelectorAll('input[name=ed-t]').forEach(function (r) { r.addEventListener('change', function () { curType = r.value; }); });
+    finishBtn.onclick = finishPoly;
     box.querySelector('#ed-load').onclick = loadKnown;
     box.querySelector('#ed-undo').onclick = function () {
       var cur = currentLayer();
-      for (var i = points.length - 1; i >= 0; i--) { if ((points[i].layer || '') === cur) { points.splice(i, 1); break; } }
-      save(); render(); redraw();
+      if (mode === 'polygon') {
+        if (draft.length) draft.pop();
+        else { for (var j = polys.length - 1; j >= 0; j--) { if ((polys[j].layer || '') === cur) { polys.splice(j, 1); break; } } savePolys(); }
+      } else {
+        for (var i = points.length - 1; i >= 0; i--) { if ((points[i].layer || '') === cur) { points.splice(i, 1); break; } }
+        savePoints();
+      }
+      render(); redraw();
     };
     box.querySelector('#ed-clear').onclick = function () {
       var cur = currentLayer();
-      if (curPoints().length && !confirm('Clear captured points on this layer?')) return;
-      points = points.filter(function (p) { return (p.layer || '') !== cur; });
-      save(); render(); redraw();
+      if (mode === 'polygon') {
+        if ((curPolys().length || draft.length) && !confirm('Clear polygons on this layer?')) return;
+        draft = []; polys = polys.filter(function (p) { return (p.layer || '') !== cur; }); savePolys();
+      } else {
+        if (curPoints().length && !confirm('Clear points on this layer?')) return;
+        points = points.filter(function (p) { return (p.layer || '') !== cur; }); savePoints();
+      }
+      render(); redraw();
     };
-    makeDraggable(box, box.querySelector('#ed-head'));
     box.querySelector('#ed-copy').onclick = function () {
       taEl.select();
       if (navigator.clipboard) navigator.clipboard.writeText(json()).catch(function () { document.execCommand('copy'); });
@@ -162,10 +224,10 @@
       a.download = 'editor-' + Date.now() + '.json'; a.click();
       URL.revokeObjectURL(a.href);
     };
+    makeDraggable(box, box.querySelector('#ed-head'));
     render();
   }
 
-  // Drag the panel by its header (pointer-based; keeps it within the viewport).
   function makeDraggable(box, handle) {
     var sx, sy, ox, oy, dragging = false;
     handle.addEventListener('pointerdown', function (e) {
@@ -187,8 +249,8 @@
     if (typeof map === 'undefined' || typeof L === 'undefined') { setTimeout(init, 200); return; }
     buildPanel();
     redraw();
-    map.on('click', function (e) { addPoint(e.latlng); });
-    // Base-layer switches change which captured points are shown.
+    map.on('click', function (e) { if (mode === 'polygon') addVertex(e.latlng); else addPoint(e.latlng); });
+    map.on('dblclick', function (e) { if (mode === 'polygon') { L.DomEvent.stop(e); finishPoly(); } });
     map.on('layeradd layerremove baselayerchange', function () { if (_redrawing) return; render(); redraw(); });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

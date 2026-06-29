@@ -116,3 +116,47 @@ test('undo and clear work', async ({ page }) => {
   expect(r.afterUndo).toBe(1);
   expect(r.afterClear).toBe(0);
 });
+
+test('polygon mode: draw vertices, finish, export ring', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.goto('?lang=en&editor=1');
+  await page.waitForSelector('#editor-panel');
+  await page.waitForFunction(() => typeof map !== 'undefined');
+  const r = await page.evaluate(async () => {
+    map.setView([32.0, 34.9], 11);
+    document.querySelector('input[name=ed-m][value=polygon]').click();
+    map.fire('click', { latlng: L.latLng(32.0, 34.8) });
+    map.fire('click', { latlng: L.latLng(32.1, 34.8) });
+    map.fire('click', { latlng: L.latLng(32.1, 34.9) });
+    const beforeFinish = JSON.parse(document.getElementById('ed-json').value).length;
+    document.getElementById('ed-finish').click();
+    const out = JSON.parse(document.getElementById('ed-json').value);
+    const stored = JSON.parse(localStorage.getItem('navaid.editor.polys') || '[]');
+    return { beforeFinish, out, stored: stored.length };
+  });
+  expect(r.beforeFinish).toBe(0);            // not exported until finished
+  expect(r.out.length).toBe(1);
+  expect(r.out[0].type).toBe('polygon');
+  expect(r.out[0].coords.length).toBe(3);
+  expect(r.stored).toBe(1);
+});
+
+test('polygon undo removes the last vertex, then the last polygon', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.goto('?lang=en&editor=1');
+  await page.waitForSelector('#editor-panel');
+  await page.waitForFunction(() => typeof map !== 'undefined');
+  page.on('dialog', d => d.accept());
+  const r = await page.evaluate(async () => {
+    map.setView([32.0, 34.9], 11);
+    document.querySelector('input[name=ed-m][value=polygon]').click();
+    [[32, 34.8], [32.1, 34.8], [32.1, 34.9], [32.0, 34.9]].forEach(c => map.fire('click', { latlng: L.latLng(c[0], c[1]) }));
+    document.getElementById('ed-finish').click();
+    const after = JSON.parse(document.getElementById('ed-json').value).length;   // 1 polygon
+    document.getElementById('ed-undo').click();                                  // removes the polygon
+    const afterUndo = JSON.parse(document.getElementById('ed-json').value).length;
+    return { after, afterUndo };
+  });
+  expect(r.after).toBe(1);
+  expect(r.afterUndo).toBe(0);
+});
