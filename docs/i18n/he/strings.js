@@ -320,7 +320,6 @@ window.S = {
   gotoTitle: 'לחץ כדי לנווט לקואורדינטות',
   gotoError: 'הקלד ספרות או הדבק קואורדינטה כמו 32°00\'17"N 34°43\'38"E',
   dialTitle: function(b) { return 'סיבוב מפה ' + b + '° — גרור לסיבוב, לחץ לצפון'; },
-  wpnameRotTitle: function(a) { return 'סובב שמות ציוני דרך (עכשיו ' + a + '°)'; },
   expandMenu: 'פתח תפריט',
   collapseMenu: 'כווץ תפריט',
   summaryLegs: 'קטעים',
