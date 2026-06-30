@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "source": "Leg altitudes auto-extracted (EasyOCR) from the LSA-Low-Altitude raster chart yellow tags. status=ocr-candidate = UNVERIFIED (direction inbound=to-side / outbound=from-side is a heuristic). Verify against the chart before relying on these.",
+  "source": "Leg altitudes auto-extracted (EasyOCR) from the LSA-Low-Altitude raster chart yellow tags. status=ocr-candidate = UNVERIFIED; a single OCR value is mirrored to both directions. status=unknown = no value read. Verify against the chart before relying.",
   "schema": {
     "segments": "Candidate direct green CVFR route segments. Endpoint coordinates are looked up by from/to in docs/data/cvfr-nav-waypoints.json or docs/data/airfields.json. inboundAltitude is from -> to; outboundAltitude is to -> from. Altitudes are feet MSL. A single null means that direction is not allowed and requires oneWay=true; two nulls require status=unknown and mean the row is an editable placeholder. Candidate values may come from chart-read yellow CVFR altitude arrows/markers or from source=cvfr-map airway adjacency sibling coverage. Double-ended same-route markers may apply the same altitude both directions. status=reviewed marks rows confirmed from maintainer-provided evidence."
   },
@@ -9,9 +9,9 @@
       "from": "AAKKO",
       "to": "AHIUD",
       "distanceNm": 4.3,
-      "inboundAltitude": null,
+      "inboundAltitude": 1300,
       "outboundAltitude": 1300,
-      "oneWay": true,
+      "oneWay": false,
       "status": "ocr-candidate"
     },
     {
@@ -21,7 +21,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "ARAVA",
@@ -30,7 +30,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "ARRAD",
@@ -39,7 +39,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "BMNUH",
@@ -48,7 +48,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "BOKER",
@@ -57,13 +57,13 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "DUMIM",
       "to": "SHAHR",
       "distanceNm": 9.2,
-      "inboundAltitude": null,
+      "inboundAltitude": 3000,
       "outboundAltitude": 3000,
       "oneWay": false,
       "status": "ocr-candidate"
@@ -73,7 +73,7 @@
       "to": "HADRA",
       "distanceNm": 5.8,
       "inboundAltitude": 700,
-      "outboundAltitude": null,
+      "outboundAltitude": 700,
       "oneWay": false,
       "status": "ocr-candidate"
     },
@@ -82,8 +82,8 @@
       "to": "SDTYM",
       "distanceNm": 7.1,
       "inboundAltitude": 700,
-      "outboundAltitude": null,
-      "oneWay": true,
+      "outboundAltitude": 700,
+      "oneWay": false,
       "status": "ocr-candidate"
     },
     {
@@ -93,7 +93,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "FAZEL",
@@ -102,7 +102,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "HADRA",
@@ -111,15 +111,15 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "FRDIS",
       "to": "SDTYM",
       "distanceNm": 6.5,
-      "inboundAltitude": null,
+      "inboundAltitude": 400,
       "outboundAltitude": 400,
-      "oneWay": true,
+      "oneWay": false,
       "status": "ocr-candidate"
     },
     {
@@ -127,7 +127,7 @@
       "to": "ZOHAR",
       "distanceNm": 7.6,
       "inboundAltitude": 2600,
-      "outboundAltitude": null,
+      "outboundAltitude": 2600,
       "oneWay": false,
       "status": "ocr-candidate"
     },
@@ -135,7 +135,7 @@
       "from": "KTORA",
       "to": "YAHEL",
       "distanceNm": 6.3,
-      "inboundAltitude": null,
+      "inboundAltitude": 1700,
       "outboundAltitude": 1700,
       "oneWay": false,
       "status": "ocr-candidate"
@@ -147,7 +147,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "MEHOL",
@@ -156,7 +156,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "MINGV",
@@ -165,7 +165,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "MYTAR",
@@ -174,7 +174,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "MYTAR",
@@ -183,7 +183,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "NCITY",
@@ -192,7 +192,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "ZGOAL",
@@ -201,7 +201,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "NTAIM",
@@ -210,7 +210,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "OLGAH",
@@ -219,7 +219,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "OLGAH",
@@ -227,15 +227,15 @@
       "distanceNm": 4,
       "inboundAltitude": null,
       "outboundAltitude": null,
-      "oneWay": true,
-      "status": "candidate"
+      "oneWay": false,
+      "status": "unknown"
     },
     {
       "from": "OVDAT",
       "to": "RUHOT",
       "distanceNm": 8.6,
       "inboundAltitude": 3500,
-      "outboundAltitude": null,
+      "outboundAltitude": 3500,
       "oneWay": false,
       "status": "ocr-candidate"
     },
@@ -246,13 +246,13 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "SHALM",
       "to": "ZUKIM",
       "distanceNm": 9.8,
-      "inboundAltitude": null,
+      "inboundAltitude": 800,
       "outboundAltitude": 800,
       "oneWay": false,
       "status": "ocr-candidate"
@@ -261,7 +261,7 @@
       "from": "BRORA",
       "to": "EILAT",
       "distanceNm": 9.2,
-      "inboundAltitude": null,
+      "inboundAltitude": 500,
       "outboundAltitude": 500,
       "oneWay": false,
       "status": "ocr-candidate"
@@ -273,13 +273,13 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "BMNUH",
       "to": "ZZHOR",
       "distanceNm": 6.1,
-      "inboundAltitude": null,
+      "inboundAltitude": 1400,
       "outboundAltitude": 1400,
       "oneWay": false,
       "status": "ocr-candidate"
@@ -288,7 +288,7 @@
       "from": "KTORA",
       "to": "YOTVT",
       "distanceNm": 5.3,
-      "inboundAltitude": null,
+      "inboundAltitude": 1000,
       "outboundAltitude": 1000,
       "oneWay": false,
       "status": "ocr-candidate"
@@ -300,13 +300,13 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "ARRAD",
       "to": "HATRU",
       "distanceNm": 2.9,
-      "inboundAltitude": null,
+      "inboundAltitude": 2300,
       "outboundAltitude": 2300,
       "oneWay": false,
       "status": "ocr-candidate"
@@ -318,7 +318,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "NEGEV",
@@ -327,7 +327,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "BOKER",
@@ -336,7 +336,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "BOKER",
@@ -345,7 +345,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "DIMON",
@@ -354,7 +354,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "MESAR",
@@ -363,7 +363,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "MESAR",
@@ -372,7 +372,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "HOVAV",
@@ -381,13 +381,13 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "BKAMA",
       "to": "ZLHAV",
       "distanceNm": 4.4,
-      "inboundAltitude": null,
+      "inboundAltitude": 1700,
       "outboundAltitude": 1700,
       "oneWay": false,
       "status": "ocr-candidate"
@@ -399,13 +399,13 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "ALMOG",
       "to": "ZUKIM",
       "distanceNm": 4.4,
-      "inboundAltitude": null,
+      "inboundAltitude": 500,
       "outboundAltitude": 500,
       "oneWay": false,
       "status": "ocr-candidate"
@@ -417,14 +417,14 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "ARGMN",
       "to": "FAZEL",
       "distanceNm": 8.3,
       "inboundAltitude": 500,
-      "outboundAltitude": null,
+      "outboundAltitude": 500,
       "oneWay": false,
       "status": "ocr-candidate"
     },
@@ -435,7 +435,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "ALLON",
@@ -444,14 +444,14 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "ARGMN",
       "to": "TIRAT",
       "distanceNm": 15.1,
       "inboundAltitude": 800,
-      "outboundAltitude": null,
+      "outboundAltitude": 800,
       "oneWay": false,
       "status": "ocr-candidate"
     },
@@ -462,14 +462,14 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "AAKKO",
       "to": "SMRAT",
       "distanceNm": 2,
       "inboundAltitude": 700,
-      "outboundAltitude": null,
+      "outboundAltitude": 700,
       "oneWay": false,
       "status": "ocr-candidate"
     },
@@ -478,7 +478,7 @@
       "to": "HOTRM",
       "distanceNm": 2.6,
       "inboundAltitude": 700,
-      "outboundAltitude": null,
+      "outboundAltitude": 700,
       "oneWay": false,
       "status": "ocr-candidate"
     },
@@ -489,7 +489,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "BOREN",
@@ -498,14 +498,14 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "FRDIS",
       "to": "HASID",
       "distanceNm": 11.4,
       "inboundAltitude": 2200,
-      "outboundAltitude": null,
+      "outboundAltitude": 2200,
       "oneWay": false,
       "status": "ocr-candidate"
     },
@@ -514,7 +514,7 @@
       "to": "HADRA",
       "distanceNm": 11.7,
       "inboundAltitude": 700,
-      "outboundAltitude": null,
+      "outboundAltitude": 700,
       "oneWay": false,
       "status": "ocr-candidate"
     },
@@ -522,7 +522,7 @@
       "from": "EIRON",
       "to": "ZMGID",
       "distanceNm": 10.1,
-      "inboundAltitude": null,
+      "inboundAltitude": 2000,
       "outboundAltitude": 2000,
       "oneWay": false,
       "status": "ocr-candidate"
@@ -533,8 +533,8 @@
       "distanceNm": 3.1,
       "inboundAltitude": null,
       "outboundAltitude": null,
-      "oneWay": true,
-      "status": "candidate"
+      "oneWay": false,
+      "status": "unknown"
     },
     {
       "from": "SFAIM",
@@ -543,7 +543,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "SUPER",
@@ -552,7 +552,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "NTAIM",
@@ -561,7 +561,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "NSHRM",
@@ -570,7 +570,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "AYLON",
@@ -588,7 +588,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "LTRUN",
@@ -597,7 +597,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "BSEMS",
@@ -615,15 +615,15 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "NCSHN",
       "to": "NSHRM",
       "distanceNm": 5.8,
       "inboundAltitude": 800,
-      "outboundAltitude": null,
-      "oneWay": true,
+      "outboundAltitude": 800,
+      "oneWay": false,
       "status": "ocr-candidate"
     },
     {
@@ -633,7 +633,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "BOVED",
@@ -642,7 +642,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "NMASD",
@@ -651,7 +651,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "NMASD",
@@ -669,7 +669,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
+      "status": "unknown"
     },
     {
       "from": "TYONA",
@@ -678,212 +678,7 @@
       "inboundAltitude": null,
       "outboundAltitude": null,
       "oneWay": false,
-      "status": "candidate"
-    }
-  ],
-  "directionPool": [
-    {
-      "from": "AHIUD",
-      "to": "AAKKO",
-      "altitude": 1300,
-      "segment": "AAKKO-AHIUD",
-      "field": "outboundAltitude"
-    },
-    {
-      "from": "SHAHR",
-      "to": "DUMIM",
-      "altitude": 3000,
-      "segment": "DUMIM-SHAHR",
-      "field": "outboundAltitude"
-    },
-    {
-      "from": "EIRON",
-      "to": "HADRA",
-      "altitude": 700,
-      "segment": "EIRON-HADRA",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "EIRON",
-      "to": "SDTYM",
-      "altitude": 700,
-      "segment": "EIRON-SDTYM",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "SDTYM",
-      "to": "FRDIS",
-      "altitude": 400,
-      "segment": "FRDIS-SDTYM",
-      "field": "outboundAltitude"
-    },
-    {
-      "from": "HATRU",
-      "to": "ZOHAR",
-      "altitude": 2600,
-      "segment": "HATRU-ZOHAR",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "YAHEL",
-      "to": "KTORA",
-      "altitude": 1700,
-      "segment": "KTORA-YAHEL",
-      "field": "outboundAltitude"
-    },
-    {
-      "from": "OVDAT",
-      "to": "RUHOT",
-      "altitude": 3500,
-      "segment": "OVDAT-RUHOT",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "ZUKIM",
-      "to": "SHALM",
-      "altitude": 800,
-      "segment": "SHALM-ZUKIM",
-      "field": "outboundAltitude"
-    },
-    {
-      "from": "EILAT",
-      "to": "BRORA",
-      "altitude": 500,
-      "segment": "BRORA-EILAT",
-      "field": "outboundAltitude"
-    },
-    {
-      "from": "ZZHOR",
-      "to": "BMNUH",
-      "altitude": 1400,
-      "segment": "BMNUH-ZZHOR",
-      "field": "outboundAltitude"
-    },
-    {
-      "from": "YOTVT",
-      "to": "KTORA",
-      "altitude": 1000,
-      "segment": "KTORA-YOTVT",
-      "field": "outboundAltitude"
-    },
-    {
-      "from": "HATRU",
-      "to": "ARRAD",
-      "altitude": 2300,
-      "segment": "ARRAD-HATRU",
-      "field": "outboundAltitude"
-    },
-    {
-      "from": "ZLHAV",
-      "to": "BKAMA",
-      "altitude": 1700,
-      "segment": "BKAMA-ZLHAV",
-      "field": "outboundAltitude"
-    },
-    {
-      "from": "ZUKIM",
-      "to": "ALMOG",
-      "altitude": 500,
-      "segment": "ALMOG-ZUKIM",
-      "field": "outboundAltitude"
-    },
-    {
-      "from": "ARGMN",
-      "to": "FAZEL",
-      "altitude": 500,
-      "segment": "ARGMN-FAZEL",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "ARGMN",
-      "to": "TIRAT",
-      "altitude": 800,
-      "segment": "ARGMN-TIRAT",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "AAKKO",
-      "to": "SMRAT",
-      "altitude": 700,
-      "segment": "AAKKO-SMRAT",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "DAROM",
-      "to": "HOTRM",
-      "altitude": 700,
-      "segment": "DAROM-HOTRM",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "FRDIS",
-      "to": "HASID",
-      "altitude": 2200,
-      "segment": "FRDIS-HASID",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "DALIA",
-      "to": "HADRA",
-      "altitude": 700,
-      "segment": "DALIA-HADRA",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "ZMGID",
-      "to": "EIRON",
-      "altitude": 2000,
-      "segment": "EIRON-ZMGID",
-      "field": "outboundAltitude"
-    },
-    {
-      "from": "AYLON",
-      "to": "NSHRM",
-      "altitude": 800,
-      "segment": "AYLON-NSHRM",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "NSHRM",
-      "to": "AYLON",
-      "altitude": 1200,
-      "segment": "AYLON-NSHRM",
-      "field": "outboundAltitude"
-    },
-    {
-      "from": "BSEMS",
-      "to": "LTRUN",
-      "altitude": 2200,
-      "segment": "BSEMS-LTRUN",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "LTRUN",
-      "to": "BSEMS",
-      "altitude": 1700,
-      "segment": "BSEMS-LTRUN",
-      "field": "outboundAltitude"
-    },
-    {
-      "from": "NCSHN",
-      "to": "NSHRM",
-      "altitude": 800,
-      "segment": "NCSHN-NSHRM",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "NMASD",
-      "to": "TYONA",
-      "altitude": 400,
-      "segment": "NMASD-TYONA",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "TYONA",
-      "to": "NMASD",
-      "altitude": 1700,
-      "segment": "NMASD-TYONA",
-      "field": "outboundAltitude"
+      "status": "unknown"
     }
   ]
 }
