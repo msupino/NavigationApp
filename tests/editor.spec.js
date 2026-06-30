@@ -193,3 +193,18 @@ test('unnamed point markers flash; naming stops the flash', async ({ page }) => 
   });
   await expect(page.locator('.editor-flash')).toHaveCount(0);     // named → static
 });
+
+test('Load known works on the Helicopters layer', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.goto('?lang=en&editor=1');
+  await page.waitForSelector('#editor-panel');
+  await page.waitForFunction(() => typeof layers !== 'undefined');
+  let alerted = false;
+  page.on('dialog', d => { if (d.type() === 'alert') alerted = true; d.accept(); });
+  await page.evaluate(() => { for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]); map.addLayer(layers['Helicopters']); });
+  await page.click('#ed-load');
+  await page.waitForFunction(() => JSON.parse(document.getElementById('ed-json').value).length > 100);
+  const n = await page.evaluate(() => JSON.parse(document.getElementById('ed-json').value).length);
+  expect(n).toBeGreaterThan(150);     // ~205 heli points
+  expect(alerted).toBe(false);        // no "no known set" alert
+});

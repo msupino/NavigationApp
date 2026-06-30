@@ -22,7 +22,8 @@
   var KNOWN = {
     'CVFR': 'data/cvfr-nav-waypoints.json',
     'Navigation': 'data/cvfr-nav-waypoints.json',
-    'Low Alt': 'data/lsa-nav-waypoints.json'
+    'Low Alt': 'data/lsa-nav-waypoints.json',
+    'Helicopters': 'data/heli-nav-waypoints.json'
   };
   var COLOR = '#0aa3c2';
   var r5 = function (x) { return Math.round(x * 1e5) / 1e5; };
