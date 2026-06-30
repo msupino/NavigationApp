@@ -2,7 +2,7 @@
   "_comment": "Israel LSA reporting points, hand-digitized via the editor tool (?editor=1). All on-request. name=code or Hebrew label; he=Hebrew. WGS-84.",
   "source": "hand-digitized (editor tool) on LSA-Low-Altitude chart",
   "grid": "WGS-84",
-  "count": 151,
+  "count": 155,
   "points": [
     {
       "lat": 33.22121,
@@ -1060,6 +1060,34 @@
       "report": "onRequest",
       "name": "צומת גולני",
       "he": "צומת גולני"
+    },
+    {
+      "lat": 30.72602,
+      "lng": 34.77435,
+      "report": "onRequest",
+      "name": "כלא נפחא",
+      "he": "כלא נפחא"
+    },
+    {
+      "lat": 30.62148,
+      "lng": 34.94988,
+      "report": "onRequest",
+      "name": "הר גבס",
+      "he": "הר גבס"
+    },
+    {
+      "lat": 30.17368,
+      "lng": 35.01307,
+      "report": "onRequest",
+      "name": "שיטים",
+      "he": "שיטים"
+    },
+    {
+      "lat": 29.82859,
+      "lng": 35.02981,
+      "report": "onRequest",
+      "name": "סמר",
+      "he": "סמר"
     }
   ]
 }
