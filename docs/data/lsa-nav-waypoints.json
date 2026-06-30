@@ -2,7 +2,7 @@
   "_comment": "Israel LSA reporting points, hand-digitized via the editor tool (?editor=1). All on-request. name=code or Hebrew label; he=Hebrew. WGS-84.",
   "source": "hand-digitized (editor tool) on LSA-Low-Altitude chart",
   "grid": "WGS-84",
-  "count": 158,
+  "count": 160,
   "points": [
     {
       "lat": 33.22121,
@@ -1109,6 +1109,20 @@
       "report": "onRequest",
       "name": "כפר כמא",
       "he": "כפר כמא"
+    },
+    {
+      "lat": 31.71195,
+      "lng": 34.62831,
+      "report": "onRequest",
+      "name": "ניצנים",
+      "he": "ניצנים"
+    },
+    {
+      "lat": 31.66444,
+      "lng": 34.60477,
+      "report": "onRequest",
+      "name": "צומת בכריה",
+      "he": "צומת בכריה"
     }
   ]
 }
