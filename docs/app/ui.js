@@ -81,7 +81,12 @@ function reloadLayerDatasets() {
   if (showNavWP || showReporting) jobs.push(loadNavWaypoints());
   if (showCommChange || showReporting) jobs.push(loadCommChange());
   jobs.push(loadLegAltitudes());
-  Promise.all(jobs).then(() => draw());
+  Promise.all(jobs).then(() => {
+    // Refresh an open alt-pairs chart so it reflects the new layer's leg data.
+    const altSec = document.querySelector('.charts-alt-section');
+    if (altSec && typeof renderAltitudePairsTable === 'function') renderAltitudePairsTable(altSec);
+    draw();
+  });
 }
 
 // --- rotate dial — a map control next to the zoom buttons -----------
