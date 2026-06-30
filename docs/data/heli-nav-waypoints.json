@@ -839,7 +839,8 @@
     {
       "lat": 31.34748,
       "lng": 35.28088,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צפירה"
     },
     {
       "lat": 31.43189,
@@ -857,7 +858,8 @@
     {
       "lat": 31.3381,
       "lng": 35.03265,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "הית היערן"
     },
     {
       "lat": 31.31346,
@@ -876,27 +878,32 @@
     {
       "lat": 31.28794,
       "lng": 34.93206,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "חורא"
     },
     {
       "lat": 31.32813,
       "lng": 34.87507,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צ. לקיה"
     },
     {
       "lat": 31.34367,
       "lng": 34.81396,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "באר פחר"
     },
     {
       "lat": 31.35745,
       "lng": 34.75662,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "גבעות בר"
     },
     {
       "lat": 31.35774,
       "lng": 34.70821,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "משמר הנגב"
     },
     {
       "lat": 31.33663,
@@ -908,7 +915,8 @@
     {
       "lat": 31.32901,
       "lng": 34.63165,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "בטוחה"
     },
     {
       "lat": 31.32989,
@@ -920,22 +928,26 @@
     {
       "lat": 31.31933,
       "lng": 34.60659,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "מרחבים"
     },
     {
       "lat": 31.31786,
       "lng": 34.54994,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "פטיש"
     },
     {
       "lat": 31.31551,
       "lng": 34.52625,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "אורים"
     },
     {
       "lat": 31.3117,
       "lng": 34.43871,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צ. מעון"
     },
     {
       "lat": 31.42808,
