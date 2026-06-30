@@ -2,7 +2,7 @@
   "_comment": "Israel helicopter-route reporting points, hand-digitized via the editor tool (?editor=1, Helicopters layer). All on-request. name=code or Hebrew label; he=Hebrew where present. WGS-84.",
   "source": "hand-digitized (editor tool) on Israel-Helicopters chart",
   "grid": "WGS-84",
-  "count": 206,
+  "count": 209,
   "points": [
     {
       "lat": 33.07594,
@@ -959,7 +959,8 @@
     {
       "lat": 31.38149,
       "lng": 34.61689,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "תדהר"
     },
     {
       "lat": 31.44067,
@@ -985,22 +986,26 @@
     {
       "lat": 31.21104,
       "lng": 34.53106,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צאלים"
     },
     {
       "lat": 31.28237,
       "lng": 34.54411,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "מערבית"
     },
     {
       "lat": 31.27268,
       "lng": 34.64367,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צוקים"
     },
     {
       "lat": 31.12144,
       "lng": 34.64195,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "גשר אירי"
     },
     {
       "lat": 31.19048,
@@ -1012,7 +1017,8 @@
     {
       "lat": 31.22484,
       "lng": 34.82975,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "עמק שרה"
     },
     {
       "lat": 31.26036,
@@ -1024,7 +1030,8 @@
     {
       "lat": 31.26359,
       "lng": 34.75044,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "כובשים"
     },
     {
       "lat": 31.22484,
@@ -1043,12 +1050,14 @@
     {
       "lat": 31.20781,
       "lng": 34.90974,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "נחל נבטים"
     },
     {
       "lat": 31.25537,
       "lng": 35.12672,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צ. תל ערד"
     },
     {
       "lat": 31.25449,
@@ -1060,7 +1069,8 @@
     {
       "lat": 31.2762,
       "lng": 35.22766,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "הר כידוד"
     },
     {
       "lat": 31.14965,
@@ -1079,7 +1089,8 @@
     {
       "lat": 31.08558,
       "lng": 35.20535,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "רותם"
     },
     {
       "lat": 30.9885,
@@ -1098,7 +1109,8 @@
     {
       "lat": 31.1185,
       "lng": 35.13908,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "אפעה"
     },
     {
       "lat": 31.06705,
@@ -1124,12 +1136,14 @@
     {
       "lat": 30.89221,
       "lng": 34.42223,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "ניצנה"
     },
     {
       "lat": 30.94405,
       "lng": 34.59595,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צ. שבטה"
     },
     {
       "lat": 30.99085,
@@ -1148,12 +1162,14 @@
     {
       "lat": 30.97025,
       "lng": 34.97223,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "אבנון"
     },
     {
       "lat": 30.92343,
       "lng": 35.1408,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "מעלה עקרבים"
     },
     {
       "lat": 30.77252,
@@ -1165,22 +1181,26 @@
     {
       "lat": 30.82,
       "lng": 34.91592,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "נחל נחש"
     },
     {
       "lat": 30.7911,
       "lng": 34.76898,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "בורות רמליה"
     },
     {
       "lat": 30.85449,
       "lng": 34.7707,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צ. מדרשה"
     },
     {
       "lat": 30.74685,
       "lng": 34.4981,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "בארותיים"
     },
     {
       "lat": 30.79906,
@@ -1192,27 +1212,32 @@
     {
       "lat": 30.85773,
       "lng": 34.44283,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "מנחת קציעות"
     },
     {
       "lat": 30.68516,
       "lng": 34.56196,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "הר חמרן"
     },
     {
       "lat": 30.66331,
       "lng": 34.53449,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "חורשה"
     },
     {
       "lat": 30.72738,
       "lng": 34.77551,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "כלא נפחא"
     },
     {
       "lat": 30.61546,
       "lng": 35.20363,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "עין יהב"
     },
     {
       "lat": 30.5596,
@@ -1238,12 +1263,14 @@
     {
       "lat": 30.62137,
       "lng": 34.54342,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "מצפור"
     },
     {
       "lat": 30.50164,
       "lng": 34.59183,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "הר רומם"
     },
     {
       "lat": 30.50105,
@@ -1269,27 +1296,32 @@
     {
       "lat": 30.28812,
       "lng": 34.6756,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "דלעת"
     },
     {
       "lat": 30.38531,
       "lng": 34.63749,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "בקעת חיסון"
     },
     {
       "lat": 30.05156,
       "lng": 34.76452,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "פחמי"
     },
     {
       "lat": 29.98081,
       "lng": 34.7937,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "אנדרטה"
     },
     {
       "lat": 29.78762,
       "lng": 34.87026,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "בטמים"
     },
     {
       "lat": 29.55882,
@@ -1345,6 +1377,24 @@
       "lng": 34.92651,
       "report": "onRequest",
       "name": "קסם מערב"
+    },
+    {
+      "lat": 31.26417,
+      "lng": 34.69997,
+      "report": "onRequest",
+      "name": "משק"
+    },
+    {
+      "lat": 31.29208,
+      "lng": 34.66218,
+      "report": "onRequest",
+      "name": "מאגר"
+    },
+    {
+      "lat": 31.29633,
+      "lng": 34.60768,
+      "report": "onRequest",
+      "name": "עץ"
     }
   ]
 }
