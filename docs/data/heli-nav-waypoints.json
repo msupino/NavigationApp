@@ -1,8 +1,8 @@
 {
-  "_comment": "Israel helicopter-route reporting points, hand-digitized via the editor tool (?editor=1, Helicopters layer). All on-request. WGS-84. Names to be added.",
+  "_comment": "Israel helicopter-route reporting points, hand-digitized via the editor tool (?editor=1, Helicopters layer). All on-request. name=code or Hebrew label; he=Hebrew where present. WGS-84.",
   "source": "hand-digitized (editor tool) on Israel-Helicopters chart",
   "grid": "WGS-84",
-  "count": 205,
+  "count": 206,
   "points": [
     {
       "lat": 33.07594,
@@ -124,7 +124,8 @@
     {
       "lat": 32.98796,
       "lng": 35.48382,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "עין זיתים"
     },
     {
       "lat": 32.90871,
@@ -136,12 +137,14 @@
     {
       "lat": 32.92685,
       "lng": 35.40565,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צ. חנניה"
     },
     {
       "lat": 32.92318,
       "lng": 35.30005,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "כרמיאל"
     },
     {
       "lat": 32.91116,
@@ -270,7 +273,8 @@
     {
       "lat": 32.6547,
       "lng": 35.5624,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "מנחמיה"
     },
     {
       "lat": 32.59716,
@@ -322,7 +326,8 @@
     {
       "lat": 32.65961,
       "lng": 35.29495,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צ. עדשים"
     },
     {
       "lat": 32.59744,
@@ -362,7 +367,8 @@
     {
       "lat": 32.48399,
       "lng": 35.03368,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "עירון"
     },
     {
       "lat": 32.55405,
@@ -374,7 +380,8 @@
     {
       "lat": 32.51381,
       "lng": 35.49511,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "בית שאן"
     },
     {
       "lat": 32.42431,
@@ -386,7 +393,8 @@
     {
       "lat": 32.31151,
       "lng": 35.01274,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "מ. ניצני עוז"
     },
     {
       "lat": 32.32892,
@@ -405,7 +413,8 @@
     {
       "lat": 32.23458,
       "lng": 34.98047,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "טירה"
     },
     {
       "lat": 32.21774,
@@ -438,7 +447,8 @@
     {
       "lat": 32.13841,
       "lng": 34.82151,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "גלילות מזרח"
     },
     {
       "lat": 32.14509,
@@ -455,14 +465,16 @@
       "he": "מחלף אייל"
     },
     {
-      "lat": 32.09595,
-      "lng": 34.93378,
-      "report": "onRequest"
+      "lat": 32.09527,
+      "lng": 34.93325,
+      "report": "onRequest",
+      "name": "ראש העין"
     },
     {
-      "lat": 32.07937,
-      "lng": 34.93412,
-      "report": "onRequest"
+      "lat": 32.07849,
+      "lng": 34.93407,
+      "report": "onRequest",
+      "name": "עינת"
     },
     {
       "lat": 32.10846,
@@ -558,7 +570,8 @@
     {
       "lat": 31.93818,
       "lng": 34.81533,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "מ. נס ציונה"
     },
     {
       "lat": 31.97575,
@@ -605,7 +618,8 @@
     {
       "lat": 31.93847,
       "lng": 34.70581,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "שפך"
     },
     {
       "lat": 31.90846,
@@ -701,7 +715,8 @@
     {
       "lat": 31.68874,
       "lng": 35.00244,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "עציונה"
     },
     {
       "lat": 31.69984,
@@ -762,12 +777,14 @@
     {
       "lat": 31.66478,
       "lng": 34.60659,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צ. ברכיה"
     },
     {
       "lat": 31.65367,
       "lng": 34.66255,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "צ. גבעתי"
     },
     {
       "lat": 31.62415,
@@ -793,12 +810,14 @@
     {
       "lat": 31.59754,
       "lng": 35.228,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "מעלה עמוס"
     },
     {
       "lat": 31.51007,
       "lng": 35.33821,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "ארנון"
     },
     {
       "lat": 31.55864,
@@ -820,9 +839,10 @@
       "report": "onRequest"
     },
     {
-      "lat": 31.43335,
-      "lng": 35.1796,
-      "report": "onRequest"
+      "lat": 31.43189,
+      "lng": 35.17891,
+      "report": "onRequest",
+      "name": "כרמל"
     },
     {
       "lat": 31.3551,
@@ -1304,6 +1324,12 @@
       "report": "onRequest",
       "name": "SITIM",
       "he": "שיטים"
+    },
+    {
+      "lat": 32.11515,
+      "lng": 34.92651,
+      "report": "onRequest",
+      "name": "קסם מערב"
     }
   ]
 }
