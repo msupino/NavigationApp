@@ -1,8 +1,8 @@
 {
-  "_comment": "Israel LSA reporting points, hand-digitized via the editor tool (?editor=1). All on-request. name=code or Hebrew label; he=Hebrew where a code is present. WGS-84.",
+  "_comment": "Israel LSA reporting points, hand-digitized via the editor tool (?editor=1). All on-request. name=code or Hebrew label; he=Hebrew. WGS-84.",
   "source": "hand-digitized (editor tool) on LSA-Low-Altitude chart",
   "grid": "WGS-84",
-  "count": 148,
+  "count": 151,
   "points": [
     {
       "lat": 33.22121,
@@ -1039,6 +1039,27 @@
       "report": "onRequest",
       "name": "עין גב",
       "he": "עין גב"
+    },
+    {
+      "lat": 32.86777,
+      "lng": 35.53281,
+      "report": "onRequest",
+      "name": "כרי דשא",
+      "he": "כרי דשא"
+    },
+    {
+      "lat": 32.8345,
+      "lng": 35.50872,
+      "report": "onRequest",
+      "name": "מגדל",
+      "he": "מגדל"
+    },
+    {
+      "lat": 32.77308,
+      "lng": 35.40665,
+      "report": "onRequest",
+      "name": "צומת גולני",
+      "he": "צומת גולני"
     }
   ]
 }
