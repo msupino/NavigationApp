@@ -2,7 +2,7 @@
   "_comment": "Israel LSA reporting points, hand-digitized via the editor tool (?editor=1). All on-request. name=code or Hebrew label; he=Hebrew. WGS-84.",
   "source": "hand-digitized (editor tool) on LSA-Low-Altitude chart",
   "grid": "WGS-84",
-  "count": 155,
+  "count": 158,
   "points": [
     {
       "lat": 33.22121,
@@ -1088,6 +1088,27 @@
       "report": "onRequest",
       "name": "סמר",
       "he": "סמר"
+    },
+    {
+      "lat": 32.6067,
+      "lng": 34.9118,
+      "report": "onRequest",
+      "name": "דור",
+      "he": "דור"
+    },
+    {
+      "lat": 32.63909,
+      "lng": 34.97738,
+      "report": "onRequest",
+      "name": "כרם מהר״ל",
+      "he": "כרם מהר״ל"
+    },
+    {
+      "lat": 32.71798,
+      "lng": 35.44464,
+      "report": "onRequest",
+      "name": "כפר כמא",
+      "he": "כפר כמא"
     }
   ]
 }
