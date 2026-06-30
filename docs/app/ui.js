@@ -1889,25 +1889,14 @@ document.getElementById('mid-cb').onchange = e => {
   draw();
 };
 const WPNAME_KEY = 'navaid.showWpNames';
-const WPANGLE_KEY = 'navaid.wpNameAngle';
 try {
   const sn = localStorage.getItem(WPNAME_KEY);
   if (sn !== null) window.showWpNames =sn === '1';
-  const sa = parseInt(localStorage.getItem(WPANGLE_KEY), 10);
-  if (sa === 90 || sa === 180 || sa === 270) window.wpNameAngle =sa;
 } catch (e) { /* storage unavailable */ }
 document.getElementById('wpname-cb').checked = showWpNames;
 document.getElementById('wpname-cb').onchange = e => {
   window.showWpNames =e.target.checked;
   try { localStorage.setItem(WPNAME_KEY, showWpNames ? '1' : '0'); }
-  catch (err) { /* storage unavailable */ }
-  draw();
-};
-document.getElementById('wpname-rot').onclick = e => {
-  e.stopPropagation();                  // don't toggle the checkbox
-  window.wpNameAngle =(wpNameAngle + 90) % 360;
-  e.currentTarget.title = S.wpnameRotTitle(wpNameAngle);
-  try { localStorage.setItem(WPANGLE_KEY, String(wpNameAngle)); }
   catch (err) { /* storage unavailable */ }
   draw();
 };

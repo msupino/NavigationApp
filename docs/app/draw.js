@@ -2847,15 +2847,11 @@ function drawWaypoints() {
     octx.strokeStyle = tune('inkColor');
     octx.stroke();
 
-    octx.save();
-    octx.translate(s.x, s.y);
-    if (wpNameAngle) octx.rotate(wpNameAngle * Math.PI / 180);
     octx.font = `bold ${fontPx}px sans-serif`;
     octx.fillStyle = tune('inkColor');
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
-    octx.fillText(label, 0, 0);
-    octx.restore();
+    octx.fillText(label, s.x, s.y);
     octx.textAlign = 'left';
   }
 }
