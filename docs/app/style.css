@@ -401,18 +401,6 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   padding: 2px 4px;
   cursor: text;
 }
-#toolbar #wpname-rot {
-  font-size: 13px;
-  line-height: 1;
-  color: #b9b3b3;
-  background: #2f2b2b;
-  border: 1px solid #443f3f;
-  border-radius: 4px;
-  padding: 1px 6px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-#toolbar #wpname-rot:hover { color: #fff; }
 
 /* Desktop menu bar: the same toolbar sections become top-level dropdown
    menus. Phone/tablet-narrow viewports keep the floating column below. */
@@ -3487,7 +3475,6 @@ body.theme-light .modal {
 }
 body.theme-light #toolbar button,
 body.theme-light #toolbar .slider-reset,
-body.theme-light #toolbar #wpname-rot,
 body.theme-light #toolbar #export-select,
 body.theme-light #toolbar .navtoggle select,
 body.theme-light #toolbar .navtoggle input[type="number"],
@@ -3522,7 +3509,6 @@ body.theme-light #tuning-panel input[type="color"] {
 body.theme-light #toolbar .tb-group-box { border-color: #b8c0cc; }
 body.theme-light #toolbar button:hover,
 body.theme-light #toolbar .slider-reset:hover,
-body.theme-light #toolbar #wpname-rot:hover,
 body.theme-light #toolbar #export-select:hover,
 body.theme-light .plate-chip:hover,
 body.theme-light .point-choice-option:hover,

@@ -120,7 +120,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=241">
+  <link rel="stylesheet" href="app/style.css?v=242">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -225,7 +225,6 @@
         <div class="tb-group" data-i18n="tbGrpRouteInfo"></div>
         <label class="navtoggle" data-i18n-title="tbShowWpNamesTitle">
           <input type="checkbox" id="wpname-cb" checked> <span data-i18n="tbShowWpNames"></span>
-          <button id="wpname-rot" type="button">⟳</button>
         </label>
         <label class="navtoggle" data-i18n-title="tbShowCumTimeTitle">
           <input type="checkbox" id="cumtime-cb" checked> <span data-i18n="tbShowCumTime"></span>
@@ -645,7 +644,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=241';
+      var v = '?v=242';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
