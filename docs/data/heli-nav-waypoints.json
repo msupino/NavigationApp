@@ -7,7 +7,8 @@
     {
       "lat": 33.07594,
       "lng": 35.1153,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "מצת"
     },
     {
       "lat": 33.12455,
@@ -226,7 +227,8 @@
     {
       "lat": 32.72924,
       "lng": 34.93378,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "עתלית"
     },
     {
       "lat": 32.71278,
@@ -321,7 +323,8 @@
     {
       "lat": 32.66626,
       "lng": 35.11677,
-      "report": "onRequest"
+      "report": "onRequest",
+      "name": "יקנעם"
     },
     {
       "lat": 32.65961,
