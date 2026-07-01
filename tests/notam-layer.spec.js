@@ -10,9 +10,9 @@ const DATA = {
   generatedAt: '2026-06-23T09:00:00Z',
   source: 'FAA NOTAM API', fir: 'LLLL',
   notams: [
-    { id: 'A0483/26', text: 'A0483/26 LLLL E) ATS RTE J14 CLSD BTN ZACCI-MEGID.', end: '2026-12-31T23:59:00Z',
+    { id: 'A0483/26', text: 'A0483/26 LLLL E) ATS RTE J14 CLSD BTN ZACCI-MEGID.', end: '2035-12-31T23:59:00Z',
       geom: { type: 'polygon', coords: [[32.0, 34.8], [32.2, 34.9], [31.9, 35.1]] } },
-    { id: 'C1337/26', text: 'C1337/26 LLLL E) AREA AT RISHON LE-ZION CLSD DUE FIREFIGHTING.', end: '2026-07-01T00:00:00Z',
+    { id: 'C1337/26', text: 'C1337/26 LLLL E) AREA AT RISHON LE-ZION CLSD DUE FIREFIGHTING.', end: '2035-07-01T00:00:00Z',
       geom: { type: 'circle', lat: 31.96, lng: 34.8, radiusNm: 3 } },
     { id: 'C1333/26', text: 'C1333/26 LLLL E) PJE AIRSPACE METZADA ACT FM 8000FT AMSL.', end: '', geom: null },
   ],
