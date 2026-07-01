@@ -19,12 +19,6 @@
 
   var KEY = 'navaid.editor.points';
   var PKEY = 'navaid.editor.polys';
-  var KNOWN = {
-    'CVFR': 'data/cvfr-nav-waypoints.json',
-    'Navigation': 'data/cvfr-nav-waypoints.json',
-    'Low Alt': 'data/lsa-nav-waypoints.json',
-    'Helicopters': 'data/heli-nav-waypoints.json'
-  };
   var COLOR = '#0aa3c2';
   var r5 = function (x) { return Math.round(x * 1e5) / 1e5; };
 
@@ -39,11 +33,9 @@
   function savePoints() { try { localStorage.setItem(KEY, JSON.stringify(points)); } catch (e) {} }
   function savePolys() { try { localStorage.setItem(PKEY, JSON.stringify(polys)); } catch (e) {} }
 
-  function currentLayer() {
-    if (typeof layers === 'undefined' || typeof map === 'undefined') return '';
-    for (var k in layers) if (map.hasLayer(layers[k])) return k;
-    return '';
-  }
+  // Reuses the shared active-layer lookup from draw.js (loaded before this
+  // script) instead of keeping a second, independently-maintained copy.
+  function currentLayer() { return typeof currentLayerName === 'function' ? currentLayerName() : ''; }
   function curPoints() { var c = currentLayer(); return points.filter(function (p) { return (p.layer || '') === c; }); }
   function curPolys() { var c = currentLayer(); return polys.filter(function (p) { return (p.layer || '') === c; }); }
 
@@ -120,10 +112,12 @@
 
   function loadKnown() {
     var lyr = currentLayer();
-    var url = KNOWN[lyr];
-    if (!url) { alert('No known waypoint set for ' + (lyr || 'this layer')); return; }
     if (curPoints().length && !confirm('Replace ' + curPoints().length + ' point(s) on ' + lyr + ' with the known set?')) return;
-    fetch(url).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(function (d) {
+    // Reuse the shared per-layer resolver (draw.js) instead of a separate,
+    // hand-maintained layer->file map that could silently drift out of sync
+    // with it (e.g. a renamed/added layer file updated in one place only).
+    fetchLayerData('nav-waypoints').then(function (res) {
+      var d = res.data;
       var arr = Array.isArray(d) ? d : (d.points || d.waypoints || []);
       var loaded = arr.filter(function (p) { return p && isFinite(p.lat) && isFinite(p.lng); }).map(function (p) {
         var rep = p.report === 'mandatory' ? 'mandatory' : (p.report === 'onRequest' ? 'onRequest' : curType);
