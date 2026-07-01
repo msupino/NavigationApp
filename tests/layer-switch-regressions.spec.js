@@ -16,10 +16,6 @@ async function boot(page) {
   await page.waitForFunction(() => typeof map !== 'undefined' && typeof layers !== 'undefined' &&
     typeof reloadLayerDatasets === 'function');
 }
-const setLayer = (page, name) => page.evaluate((n) => {
-  for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
-  map.addLayer(layers[n]);
-}, name);
 
 test('switching the base layer does not rewrite the current route\'s leg altitudes', async ({ page }) => {
   await boot(page);
@@ -27,7 +23,7 @@ test('switching the base layer does not rewrite the current route\'s leg altitud
     // Build a two-waypoint route on CVFR with an auto-derived leg.
     state.waypoints = [{ lat: 32.917, lng: 35.097, name: 'AAKKO' }, { lat: 32.911, lng: 35.180, name: 'AHIUD' }];
     syncLegs();
-    legAltitudeMap = null;
+    window.legAltitudeMap = null;
     await loadLegAltitudes();
     const before = { in: state.legs[0].inboundAltitude, out: state.legs[0].outboundAltitude };
     // Switch to Low Alt (mirrors what the layer <select>'s onchange does) and
@@ -45,11 +41,11 @@ test('switching the base layer does not rewrite the current route\'s leg altitud
 test('comm-change rings survive a layer switch when only "show comm-change" is on', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
-    showNavWP = false; showReporting = false; showCommChange = true;
-    navWP = null; commChangeMap = null;
+    window.showNavWP = false; window.showReporting = false; window.showCommChange = true;
+    window.navWP = null; window.commChangeMap = null;
     reloadLayerDatasets();
     await new Promise(r => setTimeout(r, 400));
-    return { navWP: Array.isArray(navWP) ? navWP.length : navWP, commChangeMap: commChangeMap === null ? null : Object.keys(commChangeMap).length };
+    return { navWP: Array.isArray(window.navWP) ? window.navWP.length : window.navWP, commChangeMap: window.commChangeMap === null ? null : Object.keys(window.commChangeMap).length };
   });
   expect(r.navWP).not.toBeNull();      // navWP must be (re)loaded, not left null
   expect(r.navWP).toBeGreaterThan(0);
@@ -61,13 +57,13 @@ test('a stale in-flight fetch from a previous layer does not overwrite the activ
     // Simulate: reloadLayerDatasets() runs (bumping the generation + starting
     // a fetch), then a second layer switch happens before the first fetch's
     // continuation runs. The first continuation must detect it is stale.
-    navWP = null;
-    const genAtStart = _layerGen;
+    window.navWP = null;
+    const genAtStart = window._layerGen;
     const p = loadNavWaypoints();   // "old" layer's in-flight load
-    _layerGen++;                    // a newer layer switch supersedes it
-    navWP = ['sentinel-for-new-layer'];   // the "new" layer's own load already finished
+    window._layerGen++;              // a newer layer switch supersedes it
+    window.navWP = ['sentinel-for-new-layer'];   // the "new" layer's own load already finished
     await p;
-    return { stillSentinel: Array.isArray(navWP) && navWP[0] === 'sentinel-for-new-layer', genAtStart, genNow: _layerGen };
+    return { stillSentinel: Array.isArray(window.navWP) && window.navWP[0] === 'sentinel-for-new-layer', genAtStart, genNow: window._layerGen };
   });
   expect(r.genNow).toBeGreaterThan(r.genAtStart);
   expect(r.stillSentinel).toBe(true);   // the stale fetch must not have clobbered navWP
@@ -80,7 +76,7 @@ test('loadAreas() does not fetch a network resource on the CVFR layer', async ({
   await page.evaluate(async () => {
     for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
     map.addLayer(layers['CVFR']);
-    areas = null;
+    window.areas = null;
     await loadAreas();
   });
   expect(reqs.length).toBe(0);         // no cvfr-areas.json exists — must not be requested
@@ -91,9 +87,9 @@ test('loadAreas() still fetches on the Low Alt layer', async ({ page }) => {
   const r = await page.evaluate(async () => {
     for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
     map.addLayer(layers['Low Alt']);
-    areas = null;
+    window.areas = null;
     await loadAreas();
-    return areas.length;
+    return window.areas.length;
   });
   expect(r).toBeGreaterThan(0);
 });
