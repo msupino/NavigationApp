@@ -952,11 +952,24 @@ function currentLayerName() {
   for (const k in layers) if (map.hasLayer(layers[k])) return k;
   return '';
 }
+// Bumped by reloadLayerDatasets() on every base-layer switch. Each per-layer
+// loader captures this at call time and re-checks it before committing its
+// result — a fetch that resolves after a *later* layer switch has started is
+// stale and must not overwrite state for the now-active layer.
+var _layerGen = 0;
 function layerDataPrefix() {
   const l = currentLayerName();
   if (l === 'Low Alt') return 'lsa';
   if (l === 'Helicopters') return 'heli';
   return 'cvfr';   // Navigation / Satellite / OSM etc. share the CVFR datasets
+}
+// Display label for a data-prefix ('cvfr'/'lsa'/'heli'), reusing the already
+// -translated S.layerLabels dict (keyed by full layer name) instead of a
+// second hand-written map that would need its own translations kept in sync.
+const _PREFIX_LAYER_NAME = { cvfr: 'CVFR', lsa: 'Low Alt', heli: 'Helicopters' };
+function layerLabelForPrefix(pfx) {
+  const layerName = _PREFIX_LAYER_NAME[pfx] || pfx;
+  return (S.layerLabels && S.layerLabels[layerName]) || layerName;
 }
 // Map a data kind to its canonical cvfr URL (carries the ?v cache-bust).
 const _CVFR_DATA_URL = {
@@ -986,6 +999,7 @@ async function fetchLayerData(kind) {
 
 async function loadNavWaypoints() {
   if (navWP !== null) return navWP;
+  const gen = _layerGen;
   try {
     const { data: d, prefix } = await fetchLayerData('nav-waypoints');
     // Strict schema check only for the canonical CVFR dataset; layer datasets
@@ -999,7 +1013,7 @@ async function loadNavWaypoints() {
       }
     }
     const arr = Array.isArray(d) ? d : (d.waypoints || d.points || []);
-    navWP = arr
+    const mapped = arr
       .filter(w => w && Number.isFinite(w.lat) && Number.isFinite(w.lng))
       .map(w => ({
         name: w.name || '',
@@ -1009,6 +1023,20 @@ async function loadNavWaypoints() {
         lng: w.lng,
         report: w.report || '',           // 'mandatory' | 'onRequest' | 'optional'
       }));
+    if (prefix !== 'cvfr') {
+      // No strict validator on this path — still surface the two defects
+      // that would otherwise silently collide points in name-keyed lookups
+      // (e.g. reportingFor()'s _reportIndex).
+      const blank = mapped.filter(w => !w.name).length;
+      const seen = new Set(); const dupes = new Set();
+      for (const w of mapped) { if (w.name) { if (seen.has(w.name)) dupes.add(w.name); seen.add(w.name); } }
+      if (blank || dupes.size) {
+        console.warn('nav-waypoints (' + prefix + '): ' + blank + ' point(s) with a blank name, ' +
+          dupes.size + ' duplicate name(s): ' + [...dupes].join(', '));
+      }
+    }
+    if (gen !== _layerGen) return navWP;    // a newer layer switch superseded this fetch
+    navWP = mapped;
     return navWP;
   } catch (e) {
     // Leave navWP === null so a subsequent toggle / search / snap call can
@@ -1025,14 +1053,25 @@ async function loadNavWaypoints() {
 var areas = null;            // null = not loaded; [] or populated = loaded
 async function loadAreas() {
   if (areas !== null) return areas;
+  const gen = _layerGen;
+  // No cvfr-areas.json exists (areas are an lsa/heli-only overlay) and
+  // _CVFR_DATA_URL has no 'areas' entry, so fetchLayerData would otherwise
+  // waste a guaranteed-404 request every time the cvfr-prefixed layers
+  // (CVFR/Navigation/Satellite/OSM) are selected. Skip the network call.
+  if (layerDataPrefix() === 'cvfr') {
+    areas = [];
+    return areas;
+  }
   try {
     const { data: d } = await fetchLayerData('areas');
     const arr = Array.isArray(d) ? d : (d.areas || []);
-    areas = arr
+    const mapped = arr
       .filter(a => a && Array.isArray(a.coords) && a.coords.length >= 3)
       .map(a => ({ coords: a.coords, name: a.name || '' }));
+    if (gen !== _layerGen) return areas;    // a newer layer switch superseded this fetch
+    areas = mapped;
   } catch (e) {
-    areas = [];               // no areas file for this layer (or fetch failed)
+    if (gen === _layerGen) areas = [];      // no areas file for this layer (or fetch failed)
   }
   if (areas && areas.length) scheduleDraw();
   return areas;
@@ -1068,27 +1107,31 @@ function drawAreas() {
 // 404 doesn't trigger retry storms.
 async function loadCommChange() {
   if (commChangeMap !== null) return commChangeMap;
+  const gen = _layerGen;
   try {
     const { data: d } = await fetchLayerData('comm-change');
     const verr = validateCommChange(d);
     if (verr) {
       console.warn('comm-change schema error:', verr);
-      commChangeMap = {};
-      commChangeCallSigns = {};
+      if (gen === _layerGen) { commChangeMap = {}; commChangeCallSigns = {}; }
       return commChangeMap;
     }
-    commChangeCallSigns = (d.callSigns && typeof d.callSigns === 'object' &&
+    const callSigns = (d.callSigns && typeof d.callSigns === 'object' &&
       !Array.isArray(d.callSigns)) ? d.callSigns : {};
     const m = {};
     for (const pt of d.points) {
       if (pt && pt.name && pt.commChange) m[pt.name] = pt;
     }
+    if (gen !== _layerGen) return commChangeMap;   // superseded by a newer layer switch
+    commChangeCallSigns = callSigns;
     commChangeMap = m;
     return commChangeMap;
   } catch (e) {
     console.warn('Failed to load comm-change dataset:', e);
-    commChangeCallSigns = {};
-    commChangeMap = {};                    // graceful degrade — no rings, no retry
+    if (gen === _layerGen) {
+      commChangeCallSigns = {};
+      commChangeMap = {};                  // graceful degrade — no rings, no retry
+    }
     return commChangeMap;
   }
 }
@@ -1097,20 +1140,28 @@ async function loadCommChange() {
 // inboundAltitude,outboundAltitude,status,oneWay,...}], directionPool:[...] }.
 // The app uses it only as a reference table for freshly-created legs;
 // saved/imported route JSON stays authoritative for existing leg values.
-async function loadLegAltitudes() {
+// `skipApply` — when the reload is triggered by switching the *displayed*
+// base layer (reloadLayerDatasets), the reference table should refresh (so
+// e.g. the alt-pairs chart shows the new layer's data) but the currently
+// built route must NOT be silently rewritten just because the user looked at
+// a different chart. Pass skipApply=true from that path; the default (direct
+// calls, e.g. before building/loading a route) still auto-applies.
+async function loadLegAltitudes(skipApply) {
   if (legAltitudeMap !== null) return legAltitudeMap;
+  const gen = _layerGen;
   try {
     const { data: d } = await fetchLayerData('leg-altitude');
     const verr = validateLegAltitudes(d);
     if (verr) {
       console.warn('leg-altitude schema error:', verr);
-      legAltitudeMap = {};
-      legAltitudePointIds = new Set();
-      legAltitudeDataset = null;
-      legAltitudeOriginMap = null;
+      if (gen === _layerGen) {
+        legAltitudeMap = {};
+        legAltitudePointIds = new Set();
+        legAltitudeDataset = null;
+        legAltitudeOriginMap = null;
+      }
       return legAltitudeMap;
     }
-    resetLegAltitudeOrigins(d.segments);
     const directions = Array.isArray(d.directionPool)
       ? d.directionPool
       : legAltitudeDirectionsFromSegments(d.segments);
@@ -1130,19 +1181,23 @@ async function loadLegAltitudes() {
       ids.add(segment.from);
       ids.add(segment.to);
     }
+    if (gen !== _layerGen) return legAltitudeMap;   // superseded by a newer layer switch
+    resetLegAltitudeOrigins(d.segments);
     legAltitudeMap = m;
     legAltitudePointIds = ids;
     legAltitudeDataset = d;
     legAltitudeDirectionPool = directions;
-    applyLegAltitudesToRoute();
+    if (!skipApply) applyLegAltitudesToRoute();
     return legAltitudeMap;
   } catch (e) {
     console.warn('Failed to load leg-altitude dataset:', e);
-    legAltitudeMap = {};             // graceful degrade — defaults remain
-    legAltitudePointIds = new Set();
-    legAltitudeDataset = null;
-    legAltitudeOriginMap = null;
-    legAltitudeDirectionPool = null;
+    if (gen === _layerGen) {
+      legAltitudeMap = {};             // graceful degrade — defaults remain
+      legAltitudePointIds = new Set();
+      legAltitudeDataset = null;
+      legAltitudeOriginMap = null;
+      legAltitudeDirectionPool = null;
+    }
     return legAltitudeMap;
   }
 }

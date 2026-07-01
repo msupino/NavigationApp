@@ -4887,8 +4887,10 @@ function renderAltitudePairsTable(altSection, opts) {
   const heading = document.createElement('h3');
   // Reflect the active base layer (CVFR / LSA / Helicopters) in the heading.
   const _apPfx = (typeof layerDataPrefix === 'function') ? layerDataPrefix() : 'cvfr';
-  const _apLabel = (S.layerNames && S.layerNames[_apPfx]) || 'CVFR';
-  heading.textContent = (S.altPairsTitle || 'CVFR altitude pairs').replace('CVFR', _apLabel);
+  const _apLabel = typeof layerLabelForPrefix === 'function' ? layerLabelForPrefix(_apPfx) : 'CVFR';
+  heading.textContent = typeof S.altPairsTitleFor === 'function'
+    ? S.altPairsTitleFor(_apLabel)
+    : (S.altPairsTitle || 'CVFR altitude pairs');
   const copy = document.createElement('button');
   copy.type = 'button';
   copy.className = 'charts-alt-copy';
