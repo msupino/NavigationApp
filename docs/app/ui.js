@@ -70,6 +70,7 @@ layerSelect.onchange = () => {
 // switch, drop the per-layer caches and reload whatever is currently shown, so
 // e.g. the LSA layer shows LSA waypoints while CVFR shows CVFR waypoints.
 function reloadLayerDatasets() {
+  _layerGen++;               // invalidate any in-flight fetch from the previous layer
   navWP = null;
   commChangeMap = null;
   commChangeCallSigns = {};
@@ -78,9 +79,15 @@ function reloadLayerDatasets() {
   // routeTemplates is a single shared list filtered per layer at render time —
   // no reload needed on layer switch.
   const jobs = [loadAreas()];
-  if (showNavWP || showReporting) jobs.push(loadNavWaypoints());
+  // drawCommChangeRings() needs navWP even when only "show comm-change" is on
+  // (not nav-waypoints/reporting) — include it here too, or rings silently
+  // stop drawing after a layer switch until the user toggles nav-waypoints.
+  if (showNavWP || showReporting || showCommChange) jobs.push(loadNavWaypoints());
   if (showCommChange || showReporting) jobs.push(loadCommChange());
-  jobs.push(loadLegAltitudes());
+  // skipApply=true: refresh the reference table (e.g. for an open alt-pairs
+  // chart) without silently rewriting the current route's leg altitudes just
+  // because the user switched which chart is displayed underneath it.
+  jobs.push(loadLegAltitudes(true));
   Promise.all(jobs).then(() => {
     // Refresh an open alt-pairs chart so it reflects the new layer's leg data.
     const altSec = document.querySelector('.charts-alt-section');
@@ -1013,9 +1020,9 @@ async function applyRouteTemplate(template, speed, closeModal) {
   // different base layer would miss those points. Warn instead of failing.
   const pfx = (typeof layerDataPrefix === 'function') ? layerDataPrefix() : 'cvfr';
   if (template.layer && template.layer !== 'any' && template.layer !== pfx) {
-    const names = S.layerNames || { cvfr: 'CVFR', lsa: 'Low Alt', heli: 'Helicopters' };
+    const label = typeof layerLabelForPrefix === 'function' ? layerLabelForPrefix : (p => p);
     const msg = typeof S.routeTemplateWrongLayer === 'function'
-      ? S.routeTemplateWrongLayer(routeTemplateLabel(template), names[pfx] || pfx, names[template.layer] || template.layer)
+      ? S.routeTemplateWrongLayer(routeTemplateLabel(template), label(pfx), label(template.layer))
       : 'Can\'t load this route on this layer.';
     alert(msg);
     return false;
