@@ -236,7 +236,12 @@ test.describe('Keyboard-shortcuts cheat-sheet (#420)', () => {
 
   test('+ / − adjust loupe zoom when magnifier is on (map zoom unchanged)', async ({ page }) => {
     await boot(page);
-    await page.locator('#tool-magnifier').click();
+    // Toggle the magnifier via its keyboard shortcut instead of the toolbar
+    // button: in desktop-menubar mode the button lives inside the View
+    // dropdown, and menu/modal churn hiding that dropdown made the click
+    // flaky (same family as the mosaic-modal incident in magnifier.spec.js).
+    await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
+    await page.keyboard.press('m');
     await expect(page.locator('#magnifier')).toBeVisible();
     const mapZ0 = await page.evaluate(() => map.getZoom());
     const magZ0 = await page.evaluate(() => window.magnifierZoom);
