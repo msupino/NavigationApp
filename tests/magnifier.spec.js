@@ -109,16 +109,22 @@ test.describe('Magnifying glass', () => {
     // move to a position
     const mapBox = await page.locator('#map').boundingBox();
     if (!mapBox) { test.skip(true, 'map not found'); return; }
-    // first, add a couple waypoints so there's something to select. Click
-    // coordinates must clear the toolbar (x ≈ 12..252 in the default viewport):
-    // clicking inside the toolbar lands on a `.tb-section-head` and the
-    // accordion collapses Build, hiding `#tool-add` for the rest of the test.
-    await page.locator('#tool-add').click();
+    // first, add a couple waypoints so there's something to select. In
+    // desktop-menubar mode the preset-open section dropdowns overlay the map,
+    // so a "map" click can land on a dropdown button instead — this test used
+    // to flakily hit the Charts dropdown's Mosaic button, whose modal then
+    // closed all menus and hid #tool-add (60s click timeout). Close the menus
+    // and toggle add-mode via its keyboard shortcut, no dropdowns involved.
+    await page.evaluate(() => window.closeToolbarMenus && window.closeToolbarMenus());
+    await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
+    await page.keyboard.press('a');
+    await page.waitForFunction(() => state.mode === 'add');
     const wp1x = mapBox.x + 400, wp1y = mapBox.y + 300;
     const wp2x = mapBox.x + 600, wp2y = mapBox.y + 300;
     await page.mouse.click(wp1x, wp1y);
     await page.mouse.click(wp2x, wp2y);
-    await page.locator('#tool-add').click(); // exit add mode — magnifier stays on
+    await page.keyboard.press('a'); // exit add mode — magnifier stays on
+    await page.waitForFunction(() => state.mode !== 'add');
     // move to first waypoint and click to lock
     await page.mouse.move(wp1x, wp1y);
     const boxBefore = await mag.boundingBox();

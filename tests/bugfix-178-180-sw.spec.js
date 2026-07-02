@@ -74,6 +74,11 @@ test.describe('#179 ?v= pruning awaits cache.delete', () => {
 
 test.describe('#180 navigation fallback to cached app shell', () => {
   test('Offline navigation to uncached URL serves the cached / HTML', async ({ page, context }) => {
+    // SW install + double reload + async shell caching is timing-sensitive
+    // under full-suite parallel load (all workers hammering one static
+    // server): passes reliably in isolation, but the fixed 10s budgets flake
+    // when the machine is saturated. Triple the test budget + inner waits.
+    test.slow();
     await page.goto('?lang=en');
     await waitForSW(page);
     await page.reload();
@@ -91,12 +96,12 @@ test.describe('#180 navigation fallback to cached app shell', () => {
         }
       }
       return false;
-    }, null, { timeout: 10000 });
+    }, null, { timeout: 30000 });
 
     await context.setOffline(true);
     try {
       const resp = await page.goto('/never-visited-deep-link',
-        { waitUntil: 'domcontentloaded', timeout: 10000 });
+        { waitUntil: 'domcontentloaded', timeout: 30000 });
       expect(resp && resp.ok()).toBe(true);
       await expect(page).toHaveTitle(/NavAid/);
       await expect(page.locator('#map')).toBeVisible();
