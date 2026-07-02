@@ -110,13 +110,25 @@
     }), null, 2);
   }
 
+  // Only chart layers have a known waypoint set worth importing into the
+  // editor; base maps (Satellite/OSM) don't — even though fetchLayerData
+  // would happily hand back the CVFR file for them.
+  var KNOWN_LAYERS = { 'CVFR': 1, 'Navigation': 1, 'Low Alt': 1, 'Helicopters': 1 };
   function loadKnown() {
     var lyr = currentLayer();
+    if (!KNOWN_LAYERS[lyr]) { alert('No known waypoint set for ' + (lyr || 'this layer')); return; }
     if (curPoints().length && !confirm('Replace ' + curPoints().length + ' point(s) on ' + lyr + ' with the known set?')) return;
-    // Reuse the shared per-layer resolver (draw.js) instead of a separate,
-    // hand-maintained layer->file map that could silently drift out of sync
-    // with it (e.g. a renamed/added layer file updated in one place only).
+    // Reuse the shared per-layer resolver (draw.js) for the URL/prefix logic,
+    // but REFUSE its silent cvfr fallback: if the layer's own file failed to
+    // load (404/network), importing CVFR points tagged as this layer would
+    // corrupt the dataset on paste-back. Surface the failure instead.
     fetchLayerData('nav-waypoints').then(function (res) {
+      var expected = (typeof layerDataPrefix === 'function') ? layerDataPrefix() : 'cvfr';
+      if (res.prefix !== expected) {
+        alert('The ' + lyr + ' waypoint set failed to load (got the ' + res.prefix +
+          ' fallback instead) — not importing. Try again.');
+        return;
+      }
       var d = res.data;
       var arr = Array.isArray(d) ? d : (d.points || d.waypoints || []);
       var loaded = arr.filter(function (p) { return p && isFinite(p.lat) && isFinite(p.lng); }).map(function (p) {

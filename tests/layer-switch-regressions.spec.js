@@ -1,13 +1,16 @@
 // @ts-check
-// Regressions found in a full-codebase review of the per-layer dataset
-// architecture (layerDataPrefix/fetchLayerData/reloadLayerDatasets):
-//  1. Switching the base layer must not silently rewrite the current route's
-//     auto-derived leg altitudes.
+// Regressions in the per-layer dataset architecture (layerDataPrefix /
+// fetchLayerData / reloadLayerDatasets / routeAltPrefix pin):
+//  1. A passive base-layer switch must not rewrite the route's auto leg
+//     altitudes — and neither may the NEXT route edit after the switch
+//     (syncLegs re-applies from the table; the routeAltPrefix pin gates it).
 //  2. Comm-change rings must survive a layer switch when only "show
 //     comm-change" is on (not nav-waypoints/reporting).
 //  3. A stale in-flight fetch from a layer the user has since switched away
 //     from must not overwrite state for the now-active layer.
 //  4. loadAreas() must not issue a request for a layer with no areas file.
+//  5. Clearing the route unpins it, so a fresh route re-derives from the
+//     then-active layer's table.
 const { test, expect } = require('./_setup');
 
 async function boot(page) {
@@ -17,56 +20,85 @@ async function boot(page) {
     typeof reloadLayerDatasets === 'function');
 }
 
-test('switching the base layer does not rewrite the current route\'s leg altitudes', async ({ page }) => {
+test('layer switch + subsequent edit never rewrite a pinned route\'s altitudes', async ({ page }) => {
   await boot(page);
-  const r = await page.evaluate(async () => {
-    // Build a two-waypoint route on CVFR with an auto-derived leg.
-    state.waypoints = [{ lat: 32.917, lng: 35.097, name: 'AAKKO' }, { lat: 32.911, lng: 35.180, name: 'AHIUD' }];
-    syncLegs();
-    window.legAltitudeMap = null;
+  // Build a CVFR route whose leg exists in the CVFR table (AAKKO-AHIUD).
+  await page.evaluate(async () => {
+    for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+    map.addLayer(layers['CVFR']);
+    window.legAltitudeMap = null; window.routeAltPrefix = null;
     await loadLegAltitudes();
-    const before = { in: state.legs[0].inboundAltitude, out: state.legs[0].outboundAltitude };
-    // Switch to Low Alt (mirrors what the layer <select>'s onchange does) and
-    // wait for the backgrounded reload to settle.
+    state.waypoints = [{ lat: 32.917, lng: 35.097, name: 'AAKKO' }, { lat: 32.911, lng: 35.180, name: 'AHIUD' }];
+    syncLegs();                       // applies + pins the route to 'cvfr'
+  });
+  const before = await page.evaluate(() =>
+    ({ in: state.legs[0].inboundAltitude, out: state.legs[0].outboundAltitude, pin: window.routeAltPrefix }));
+  expect(before.pin).toBe('cvfr');
+  expect(Number.isFinite(before.in) || Number.isFinite(before.out)).toBe(true);  // table applied
+
+  // Passive switch to Low Alt, wait for the reload to fully settle.
+  await page.evaluate(() => {
     for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
     map.addLayer(layers['Low Alt']);
     reloadLayerDatasets();
-    await new Promise(r => setTimeout(r, 400));
-    const after = { in: state.legs[0].inboundAltitude, out: state.legs[0].outboundAltitude };
-    return { before, after };
   });
-  expect(r.after).toEqual(r.before);   // unchanged by the passive layer switch
+  await page.waitForFunction(() => window.legAltitudeMap !== null && window.legAltitudeMapPrefix === 'lsa');
+
+  // Neither the switch itself NOR a route edit afterwards may re-derive.
+  const after = await page.evaluate(() => {
+    syncLegs();                       // the edit path that used to rewrite
+    applyLegAltitudesToRoute();       // belt-and-braces: direct apply attempt
+    return { in: state.legs[0].inboundAltitude, out: state.legs[0].outboundAltitude, pin: window.routeAltPrefix };
+  });
+  expect(after.pin).toBe('cvfr');     // still pinned to the layer it was built on
+  expect(String(after.in)).toBe(String(before.in));
+  expect(String(after.out)).toBe(String(before.out));
+});
+
+test('clearing the route unpins it; a fresh route repins to the active layer', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+    map.addLayer(layers['CVFR']);
+    window.legAltitudeMap = null; window.routeAltPrefix = null;
+    await loadLegAltitudes();
+    state.waypoints = [{ lat: 32.917, lng: 35.097, name: 'AAKKO' }, { lat: 32.911, lng: 35.180, name: 'AHIUD' }];
+    syncLegs();
+    const pinned = window.routeAltPrefix;
+    state.waypoints = []; syncLegs();          // emptying the route unpins
+    const unpinned = window.routeAltPrefix;
+    return { pinned, unpinned };
+  });
+  expect(r.pinned).toBe('cvfr');
+  expect(r.unpinned).toBeNull();
 });
 
 test('comm-change rings survive a layer switch when only "show comm-change" is on', async ({ page }) => {
   await boot(page);
-  const r = await page.evaluate(async () => {
+  await page.evaluate(() => {
     window.showNavWP = false; window.showReporting = false; window.showCommChange = true;
     window.navWP = null; window.commChangeMap = null;
     reloadLayerDatasets();
-    await new Promise(r => setTimeout(r, 400));
-    return { navWP: Array.isArray(window.navWP) ? window.navWP.length : window.navWP, commChangeMap: window.commChangeMap === null ? null : Object.keys(window.commChangeMap).length };
   });
-  expect(r.navWP).not.toBeNull();      // navWP must be (re)loaded, not left null
-  expect(r.navWP).toBeGreaterThan(0);
+  await page.waitForFunction(() => Array.isArray(window.navWP) && window.navWP.length > 0 &&
+    window.commChangeMap !== null);
+  const n = await page.evaluate(() => window.navWP.length);
+  expect(n).toBeGreaterThan(0);
 });
 
 test('a stale in-flight fetch from a previous layer does not overwrite the active layer\'s data', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
-    // Simulate: reloadLayerDatasets() runs (bumping the generation + starting
-    // a fetch), then a second layer switch happens before the first fetch's
-    // continuation runs. The first continuation must detect it is stale.
     window.navWP = null;
     const genAtStart = window._layerGen;
-    const p = loadNavWaypoints();   // "old" layer's in-flight load
-    window._layerGen++;              // a newer layer switch supersedes it
+    const p = loadNavWaypoints();          // "old" layer's in-flight load
+    window._layerGen++;                    // a newer layer switch supersedes it
     window.navWP = ['sentinel-for-new-layer'];   // the "new" layer's own load already finished
     await p;
     return { stillSentinel: Array.isArray(window.navWP) && window.navWP[0] === 'sentinel-for-new-layer', genAtStart, genNow: window._layerGen };
   });
   expect(r.genNow).toBeGreaterThan(r.genAtStart);
-  expect(r.stillSentinel).toBe(true);   // the stale fetch must not have clobbered navWP
+  expect(r.stillSentinel).toBe(true);      // the stale fetch must not have clobbered navWP
 });
 
 test('loadAreas() does not fetch a network resource on the CVFR layer', async ({ page }) => {
@@ -79,7 +111,7 @@ test('loadAreas() does not fetch a network resource on the CVFR layer', async ({
     window.areas = null;
     await loadAreas();
   });
-  expect(reqs.length).toBe(0);         // no cvfr-areas.json exists — must not be requested
+  expect(reqs.length).toBe(0);             // no cvfr-areas.json exists — must not be requested
 });
 
 test('loadAreas() still fetches on the Low Alt layer', async ({ page }) => {
@@ -92,4 +124,39 @@ test('loadAreas() still fetches on the Low Alt layer', async ({ page }) => {
     return window.areas.length;
   });
   expect(r).toBeGreaterThan(0);
+});
+
+test('editor "Load known" refuses layers without a known set and refuses the cvfr fallback', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.goto('?lang=en&editor=1');
+  await page.waitForSelector('#editor-panel');
+  await page.waitForFunction(() => typeof layers !== 'undefined');
+  const alerts = [];
+  page.on('dialog', d => { alerts.push(d.message()); d.accept(); });
+  // Satellite: no known set — must alert and import nothing.
+  await page.evaluate(() => {
+    for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+    map.addLayer(layers['Satellite']);
+  });
+  await page.click('#ed-load');
+  await page.waitForFunction(() => true);
+  await page.waitForTimeout(200);
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.editor.points') || '[]').length);
+  expect(alerts.some(m => /No known waypoint set/.test(m))).toBe(true);
+  expect(stored).toBe(0);
+  // Low Alt whose own dataset failed (fetchLayerData returned the cvfr
+  // fallback): must alert, not import CVFR points tagged as Low Alt.
+  // Stub fetchLayerData directly — the service worker bypasses page.route().
+  await page.evaluate(() => {
+    window.fetchLayerData = () => Promise.resolve({
+      data: { points: [{ lat: 32.0, lng: 34.8, name: 'X' }] }, prefix: 'cvfr',
+    });
+    for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+    map.addLayer(layers['Low Alt']);
+  });
+  await page.click('#ed-load');
+  await page.waitForTimeout(300);
+  const stored2 = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.editor.points') || '[]').length);
+  expect(alerts.some(m => /failed to load|fallback/i.test(m))).toBe(true);
+  expect(stored2).toBe(0);                 // CVFR points must NOT be imported as Low Alt
 });
