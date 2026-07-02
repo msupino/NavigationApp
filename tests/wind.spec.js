@@ -342,7 +342,9 @@ test('departure slider shifts every leg\'s sampled forecast hour', async ({ page
     try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
   });
   // 30 hourly samples, hour index encoded in the wind speed (10 + idx).
+  let fetchCount = 0;
   await page.route('**api.open-meteo.com/**', route => {
+    fetchCount++;
     const now = new Date();
     const t = [], spd = [], dir = [];
     for (let i = 0; i < 30; i++) {
@@ -365,14 +367,15 @@ test('departure slider shifts every leg\'s sampled forecast hour', async ({ page
   await page.waitForFunction(() => state.legs[0].wind);
   const nowSpeed = await page.evaluate(() => state.legs[0].wind.speed);
   expect(nowSpeed).toBeLessThanOrEqual(11);              // idx 0-1
-  // Depart +6 h → the sampled hour moves with the slider.
+  // Move the slider to +6 h and release: the wind updates BY ITSELF from the
+  // cached hourly data — no second click, no second network request.
   const depart = page.locator('#wind-depart');
   await depart.fill('6');
   await depart.dispatchEvent('input');
   await expect(page.locator('#wind-depart-val')).toContainText('+6 h');
-  await page.evaluate(() => { state.legs[0].wind = null; });
-  await page.locator('#wind-fetch').click();
-  await page.waitForFunction(() => state.legs[0].wind);
+  await depart.dispatchEvent('change');
+  await page.waitForFunction(ns => state.legs[0].wind.speed !== ns, nowSpeed);
   const laterSpeed = await page.evaluate(() => state.legs[0].wind.speed);
   expect(laterSpeed - nowSpeed).toBe(6);                 // exactly +6 forecast hours
+  expect(fetchCount).toBe(1);                            // re-sampled from cache
 });
