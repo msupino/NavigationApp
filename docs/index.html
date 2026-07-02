@@ -375,6 +375,11 @@
           </label>
           <button id="wind-fetch" class="wind-input-row" type="button" style="display:none"
                   data-i18n="tbFetchWind" data-i18n-title="tbFetchWindTitle"></button>
+          <label class="navtoggle wind-input-row" style="display:none" data-i18n-title="tbWindDepartTitle">
+            <span data-i18n="tbWindDepart"></span>
+            <input type="range" id="wind-depart" min="0" max="24" step="1" value="0">
+            <span class="slider-val" id="wind-depart-val"></span>
+          </label>
           <div id="wind-fetch-status" class="wind-input-row wind-fetch-status" style="display:none"></div>
         </div>
         <!-- Animated wind-field overlay (live Open-Meteo grid → leaflet-velocity). -->
