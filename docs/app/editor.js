@@ -56,8 +56,14 @@
     // Unnamed points: swallow mousedown so the app's nav-WP hit-test (inspector)
     // underneath doesn't fire — clicking one should ONLY open the name setter.
     if (!named) m.on('mousedown', function (ev) { L.DomEvent.stopPropagation(ev); });
-    m.on('click', function (ev) {                 // click to name (blank = delete)
+    m.on('click', function (ev) {                 // click = name · shift-click = delete
       L.DomEvent.stopPropagation(ev);
+      var oe = ev.originalEvent;
+      if (oe && oe.shiftKey) {                    // instant delete, no prompt round-trip
+        points.splice(i, 1);
+        savePoints(); render(); redraw();
+        return;
+      }
       var name = prompt('Waypoint name (blank to delete):', points[i].name || '');
       if (name === null) return;                  // cancel — no change
       name = name.trim();
@@ -195,7 +201,7 @@
       '<div id="ed-type" style="margin-bottom:6px">' +
       '<label style="margin-right:8px"><input type="radio" name="ed-t" value="mandatory"> mandatory</label>' +
       '<label><input type="radio" name="ed-t" value="onRequest" checked> on-request</label></div>' +
-      '<div style="opacity:.8;margin-bottom:6px">Point: click add · marker to name (blank deletes).<br>Polygon: click vertices · dbl-click / Finish / click 1st vertex to close · polygon to delete.</div>' +
+      '<div style="opacity:.8;margin-bottom:6px">Point: click add · click marker to name (blank deletes) · shift-click marker to delete.<br>Polygon: click vertices · dbl-click / Finish / click 1st vertex to close · polygon to delete.</div>' +
       '<div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">' +
       '<button id="ed-finish" type="button">Finish</button>' +
       '<button id="ed-load" type="button">Load known</button>' +

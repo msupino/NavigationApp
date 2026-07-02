@@ -208,3 +208,23 @@ test('Load known works on the Helicopters layer', async ({ page }) => {
   expect(n).toBeGreaterThan(150);     // ~205 heli points
   expect(alerted).toBe(false);        // no "no known set" alert
 });
+
+test('shift-clicking a point marker deletes it instantly (no prompt)', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.goto('?lang=en&editor=1');
+  await page.waitForSelector('#editor-panel');
+  await page.waitForFunction(() => typeof map !== 'undefined');
+  let prompted = false;
+  page.on('dialog', d => { prompted = true; d.dismiss(); });
+  const n = await page.evaluate(async () => {
+    map.setView([32.0, 34.9], 11);
+    map.fire('click', { latlng: L.latLng(32.0, 34.8) });
+    let mk = null;
+    map.eachLayer(l => { if (l instanceof L.Marker && l.options.draggable) mk = l; });
+    mk.fire('click', { originalEvent: { shiftKey: true } });
+    await new Promise(r => setTimeout(r, 30));
+    return JSON.parse(document.getElementById('ed-json').value).length;
+  });
+  expect(n).toBe(0);           // deleted
+  expect(prompted).toBe(false); // without any prompt
+});
