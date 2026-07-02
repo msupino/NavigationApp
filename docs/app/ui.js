@@ -85,7 +85,9 @@ function reloadLayerDatasets() {
   if (showNavWP || showReporting || showCommChange) jobs.push(loadNavWaypoints());
   if (showCommChange || showReporting) jobs.push(loadCommChange());
   jobs.push(loadLegAltitudes());
-  Promise.all(jobs).then(() => {
+  // Returned so callers (and tests) can await the reload settling instead of
+  // polling globals or sleeping fixed intervals.
+  return Promise.all(jobs).then(() => {
     // Refresh an open alt-pairs chart so it reflects the new layer's leg data.
     const altSec = document.querySelector('.charts-alt-section');
     if (altSec && typeof renderAltitudePairsTable === 'function') renderAltitudePairsTable(altSec);
@@ -823,6 +825,7 @@ async function buildRouteFromQuery(raw) {
   // display time. Without this, HE-locale autofill would store the
   // Hebrew label for clicked tokens and the English ICAO for typed
   // tokens — producing the mixed-locale route the user reported.
+  routeAltPrefix = null;    // replacing the route unpins its altitude layer
   state.waypoints = resolved.map(w => ({
     lat: w.lat, lng: w.lng, name: w.name,
   }));

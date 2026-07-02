@@ -45,4 +45,18 @@ async function hideToolbarMenus(page) {
   });
 }
 
-module.exports = { clickToolbarControl, hideToolbarMenus, showToolbarControl };
+// Drive a tool via its keyboard shortcut instead of its toolbar button.
+// Use this when a test presets toolbar sections open: in desktop-menubar
+// mode the open dropdowns overlay the map, so menu/modal churn can hide the
+// button mid-click (the "mosaic-modal incident" flake family). Closes the
+// menus (via the app's own closeToolbarMenus when present) and blurs any
+// focused element first so the plain-key shortcut isn't swallowed.
+async function pressShortcut(page, key) {
+  await page.evaluate(() => {
+    if (window.closeToolbarMenus) window.closeToolbarMenus();
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  });
+  await page.keyboard.press(key);
+}
+
+module.exports = { clickToolbarControl, hideToolbarMenus, pressShortcut, showToolbarControl };

@@ -2394,6 +2394,13 @@ function applyLegAltitudeToLeg(i) {
   const leg = state.legs[i];
   if (!leg || !leg._legAltitudeAuto) return false;
   if (legAltitudeMap === null) return false;
+  // Pin gate at the deepest fill point: a route pinned to another layer's
+  // prefix never takes values from the loaded table — not even for legs
+  // freshly pushed by syncLegs' grow loop, which calls this directly and
+  // used to bypass the route-level gate (mixing two layers' altitudes in
+  // one route). Unfilled legs heal when the pinned layer's table returns.
+  if (routeAltPrefix !== null && legAltitudeMapPrefix &&
+      legAltitudeMapPrefix !== routeAltPrefix) return false;
   const match = legAltitudeForLeg(i);
   if (match) {
     const nextInbound = Number.isFinite(match.inboundAltitude)
@@ -2447,8 +2454,9 @@ function legEndpointSig(i) {
 function applyLegAltitudesToRoute() {
   // Pin: an emptied route unpins; a route pins to the prefix of the first
   // table applied to it; a table from any OTHER layer prefix never applies.
-  // This single gate covers every apply path (syncLegs, inspector edits,
-  // boot chain, layer-switch reload, chart modals) — see routeAltPrefix.
+  // The per-leg gate lives in applyLegAltitudeToLeg (covers direct callers
+  // like syncLegs' grow loop); this early-return is the route-level fast
+  // path plus pin adoption/unpin bookkeeping — see routeAltPrefix.
   if (!state.legs.length) { routeAltPrefix = null; return false; }
   if (legAltitudeMap === null) return false;
   if (routeAltPrefix === null) {

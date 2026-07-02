@@ -228,3 +228,28 @@ test('shift-clicking a point marker deletes it instantly (no prompt)', async ({ 
   expect(n).toBe(0);           // deleted
   expect(prompted).toBe(false); // without any prompt
 });
+
+test('Load known refuses to import when the base layer changes mid-fetch', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.goto('?lang=en&editor=1');
+  await page.waitForSelector('#editor-panel');
+  await page.waitForFunction(() => typeof layers !== 'undefined' && typeof fetchLayerData === 'function');
+  const alerts = [];
+  page.on('dialog', d => { alerts.push(d.message()); d.accept(); });
+  await page.evaluate(() => {
+    for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+    map.addLayer(layers['Low Alt']);
+    // Simulate a mid-fetch layer switch: fetchLayerData follows the active
+    // layer by design, so it resolves with heli data — the guard must refuse
+    // to tag those points as Low Alt.
+    window.fetchLayerData = () => {
+      for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+      map.addLayer(layers['Helicopters']);
+      return Promise.resolve({ data: { points: [{ lat: 32.0, lng: 34.8, name: 'X' }] }, prefix: 'heli' });
+    };
+  });
+  await page.click('#ed-load');
+  await expect.poll(() => alerts.some(m => /Layer changed/i.test(m))).toBe(true);
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.editor.points') || '[]').length);
+  expect(stored).toBe(0);      // nothing imported under the wrong layer tag
+});

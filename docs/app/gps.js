@@ -229,6 +229,9 @@ function gpsRouteDataFromPoints(points) {
     waypoints: state.waypoints, legs: state.legs, notes: state.notes,
     commChangeSuppressions: state.commChangeSuppressions,
     wind: state.wind,
+    // syncLegs on the temp route pins routeAltPrefix as a side effect —
+    // save/restore it or the pin of a route that never existed leaks out.
+    altPin: routeAltPrefix,
   };
   try {
     state.waypoints = points.map(p => ({ lat: r5(p.lat), lng: r5(p.lng), name: '' }));
@@ -255,6 +258,7 @@ function gpsRouteDataFromPoints(points) {
     state.waypoints = saved.waypoints; state.legs = saved.legs; state.notes = saved.notes;
     state.commChangeSuppressions = saved.commChangeSuppressions;
     state.wind = saved.wind;
+    routeAltPrefix = saved.altPin;
     // Do NOT call syncLegs() here — saved.legs already has the correct length
     // for saved.waypoints, and syncLegs() would call applyLegAltitudesToRoute()
     // which overwrites any _legAltitudeAuto leg values (e.g. custom altitudes

@@ -5,7 +5,7 @@
 // inside inputs, and existing global shortcuts (F, Ctrl-F, Esc, Backspace)
 // keep working after the change.
 const { test, expect } = require('./_setup');
-const { hideToolbarMenus } = require('./_toolbar');
+const { hideToolbarMenus, pressShortcut } = require('./_toolbar');
 
 async function boot(page, lang = 'en') {
   await page.addInitScript(() => {
@@ -243,8 +243,7 @@ test.describe('Keyboard-shortcuts cheat-sheet (#420)', () => {
     // button: in desktop-menubar mode the button lives inside the View
     // dropdown, and menu/modal churn hiding that dropdown made the click
     // flaky (same family as the mosaic-modal incident in magnifier.spec.js).
-    await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
-    await page.keyboard.press('m');
+    await pressShortcut(page, 'm');
     await expect(page.locator('#magnifier')).toBeVisible();
     const mapZ0 = await page.evaluate(() => map.getZoom());
     const magZ0 = await page.evaluate(() => window.magnifierZoom);
