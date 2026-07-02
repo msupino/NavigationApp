@@ -762,7 +762,10 @@ window.S = Object.assign({
   windUnflyable: 'Wind exceeds true airspeed',
   windResetTitle: 'Clear wind override (use the route wind)',
   tbFetchWind: '⤓ Pull Wind data',
-  tbFetchWindTitle: 'Fetch a per-leg winds-aloft forecast from Open-Meteo — each leg gets its own wind at its midpoint and flight level (needs a route)',
+  tbFetchWindTitle: 'Fetch a per-leg winds-aloft forecast from Open-Meteo — each leg gets its own wind at its midpoint, flight level and forecast ETA, assuming departure now (needs a route)',
+  tbWindDepart: 'Departure +h',
+  tbWindDepartTitle: 'Forecast departure offset: 0 = depart now; +N = depart in N hours. Pull Wind samples each leg at its ETA from this departure.',
+  windDepartNow: 'now',
   windFetching: 'Fetching wind…',
   windFetchOk: function(hpa, dir, spd) {
     return hpa + ' hPa → ' + dir + '/' + spd;
@@ -2394,6 +2397,13 @@ function applyLegAltitudeToLeg(i) {
   const leg = state.legs[i];
   if (!leg || !leg._legAltitudeAuto) return false;
   if (legAltitudeMap === null) return false;
+  // Pin gate at the deepest fill point: a route pinned to another layer's
+  // prefix never takes values from the loaded table — not even for legs
+  // freshly pushed by syncLegs' grow loop, which calls this directly and
+  // used to bypass the route-level gate (mixing two layers' altitudes in
+  // one route). Unfilled legs heal when the pinned layer's table returns.
+  if (routeAltPrefix !== null && legAltitudeMapPrefix &&
+      legAltitudeMapPrefix !== routeAltPrefix) return false;
   const match = legAltitudeForLeg(i);
   if (match) {
     const nextInbound = Number.isFinite(match.inboundAltitude)
@@ -2447,8 +2457,9 @@ function legEndpointSig(i) {
 function applyLegAltitudesToRoute() {
   // Pin: an emptied route unpins; a route pins to the prefix of the first
   // table applied to it; a table from any OTHER layer prefix never applies.
-  // This single gate covers every apply path (syncLegs, inspector edits,
-  // boot chain, layer-switch reload, chart modals) — see routeAltPrefix.
+  // The per-leg gate lives in applyLegAltitudeToLeg (covers direct callers
+  // like syncLegs' grow loop); this early-return is the route-level fast
+  // path plus pin adoption/unpin bookkeeping — see routeAltPrefix.
   if (!state.legs.length) { routeAltPrefix = null; return false; }
   if (legAltitudeMap === null) return false;
   if (routeAltPrefix === null) {

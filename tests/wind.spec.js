@@ -292,3 +292,90 @@ test('calm wind is omitted from saved blobs (no schema churn)', async ({ page })
   expect(blob.wind).toBeUndefined();
   expect(blob.legs[0].wind).toBeUndefined();
 });
+
+test('Fetch wind samples each leg at its forecast ETA, not "now" (#leg-wind-forecast)', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
+  });
+  // 8 hourly samples from the current hour; wind speed encodes the hour index
+  // (10 + idx) so the chosen forecast hour is readable from the leg wind.
+  let reqUrl = '';
+  await page.route('**api.open-meteo.com/**', route => {
+    reqUrl = route.request().url();
+    const now = new Date();
+    const t = [], spd = [], dir = [];
+    for (let i = 0; i < 8; i++) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours() + i));
+      t.push(d.toISOString().slice(0, 13) + ':00');
+      spd.push(10 + i); dir.push(100 + 10 * i);
+    }
+    const loc = () => ({ hourly: { time: t, 'wind_speed_850hPa': spd, 'wind_direction_850hPa': dir } });
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify([loc(), loc()]) });
+  });
+  await boot(page);
+  await page.evaluate(() => {
+    window.showWind = true;
+    // Leg 1: ~6 NM at 120 kt (3 min — midpoint ETA ≈ now).
+    // Leg 2: ~120 NM at 15 kt (8 h — midpoint ETA ≈ now + 4 h).
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' },
+                       { lat: 32.1, lng: 34.9, name: 'B' },
+                       { lat: 34.1, lng: 34.9, name: 'C' }];
+    state.legs = []; syncLegs();
+    state.legs[0].inboundAltitude = 5000; state.legs[0].flightSpeed = 120;
+    state.legs[1].inboundAltitude = 5000; state.legs[1].flightSpeed = 15;
+  });
+  await page.locator('#wind-fetch').click();
+  await page.waitForFunction(() => state.legs[0].wind && state.legs[1].wind);
+  const w = await page.evaluate(() => ({ w0: state.legs[0].wind, w1: state.legs[1].wind }));
+  // Leg 1 gets an early hour (idx 0-1), leg 2 a much later one (idx 4-5):
+  // ETA-based sampling, robust to where "now" falls inside the hour.
+  expect(w.w0.speed).toBeLessThanOrEqual(11);
+  expect(w.w1.speed).toBeGreaterThanOrEqual(14);
+  expect(w.w1.speed - w.w0.speed).toBeGreaterThanOrEqual(3);
+  // Three forecast days requested so the +24 h departure slider plus route
+  // time can't clamp at the last fetched hour.
+  expect(reqUrl).toContain('forecast_days=3');
+});
+
+test('departure slider shifts every leg\'s sampled forecast hour', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
+  });
+  // 30 hourly samples, hour index encoded in the wind speed (10 + idx).
+  let fetchCount = 0;
+  await page.route('**api.open-meteo.com/**', route => {
+    fetchCount++;
+    const now = new Date();
+    const t = [], spd = [], dir = [];
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours() + i));
+      t.push(d.toISOString().slice(0, 13) + ':00');
+      spd.push(10 + i); dir.push(100 + i);
+    }
+    const loc = () => ({ hourly: { time: t, 'wind_speed_850hPa': spd, 'wind_direction_850hPa': dir } });
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify([loc()]) });
+  });
+  await boot(page);
+  await page.evaluate(() => {
+    window.showWind = true;
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.1, lng: 34.9, name: 'B' }];
+    state.legs = []; syncLegs();
+    state.legs[0].inboundAltitude = 5000; state.legs[0].flightSpeed = 120;  // ~3 min leg
+  });
+  // Depart now → early hour.
+  await page.locator('#wind-fetch').click();
+  await page.waitForFunction(() => state.legs[0].wind);
+  const nowSpeed = await page.evaluate(() => state.legs[0].wind.speed);
+  expect(nowSpeed).toBeLessThanOrEqual(11);              // idx 0-1
+  // Move the slider to +6 h: the wind updates IMMEDIATELY on the input tick
+  // (mid-drag, before release) from the cached hourly data — no second
+  // click, no second network request.
+  const depart = page.locator('#wind-depart');
+  await depart.fill('6');
+  await depart.dispatchEvent('input');
+  await expect(page.locator('#wind-depart-val')).toContainText('+6 h');
+  await page.waitForFunction(ns => state.legs[0].wind.speed !== ns, nowSpeed);
+  const laterSpeed = await page.evaluate(() => state.legs[0].wind.speed);
+  expect(laterSpeed - nowSpeed).toBe(6);                 // exactly +6 forecast hours
+  expect(fetchCount).toBe(1);                            // re-sampled from cache
+});
