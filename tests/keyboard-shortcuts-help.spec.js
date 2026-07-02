@@ -235,6 +235,9 @@ test.describe('Keyboard-shortcuts cheat-sheet (#420)', () => {
   });
 
   test('+ / − adjust loupe zoom when magnifier is on (map zoom unchanged)', async ({ page }) => {
+    // Boot + magnifier init + several evaluate round-trips can exceed the
+    // 15s default budget on a saturated CI runner (timed out there twice).
+    test.slow();
     await boot(page);
     // Toggle the magnifier via its keyboard shortcut instead of the toolbar
     // button: in desktop-menubar mode the button lives inside the View
