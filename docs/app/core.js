@@ -608,7 +608,7 @@ window.S = Object.assign({
   tbShowVorTitle: 'Overlay Israeli VOR/DME stations and pick a reference for radial/DME',
   vorRefLabel: 'VOR ref',
   vorRefNone: '— none —',
-  tbShowWind: 'Show wind effect',
+  tbShowWind: 'Show per-leg wind effect',
   tbShowWindTitle: 'Show the wind inputs, the per-leg wind arrows, and the wind-corrected readout in the leg inspector',
   tbShowSigmet: 'Show SIGMET',
   tbShowSigmetTitle: 'Overlay active international SIGMET hazard areas for the Israel region (source: NOAA AWC, updated periodically)',
@@ -625,8 +625,7 @@ window.S = Object.assign({
   mosaicZoom: 'Zoom',
   mosaicSize: 'Size',
   mosaicPrint: '🖨 Print',
-  tbNotamTime: 'Time',
-  tbNotamTimeTitle: 'Scrub forward to see which NOTAMs are active at a future time (hours from now)',
+  tbLookAheadTitle: 'Look ahead: 0 = now; +N = N hours from now',
   notamTimeNow: 'Now',
   notamTimeAt: function(h, t) { return '+' + h + 'h · ' + t; },
   notamModalTitle: 'Active NOTAMs',
@@ -761,11 +760,6 @@ window.S = Object.assign({
   },
   windUnflyable: 'Wind exceeds true airspeed',
   windResetTitle: 'Clear wind override (use the route wind)',
-  tbFetchWind: '⤓ Pull Wind data',
-  tbFetchWindTitle: 'Fetch a per-leg winds-aloft forecast from Open-Meteo — each leg gets its own wind at its midpoint, flight level and forecast ETA, assuming departure now (needs a route)',
-  tbWindDepart: 'Departure +h',
-  tbWindDepartTitle: 'Forecast departure offset: 0 = depart now; +N = depart in N hours. Pull Wind samples each leg at its ETA from this departure.',
-  windDepartNow: 'now',
   windFetching: 'Fetching wind…',
   windFetchOk: function(hpa, dir, spd) {
     return hpa + ' hPa → ' + dir + '/' + spd;
@@ -779,7 +773,7 @@ window.S = Object.assign({
   tbWindFieldAlt: 'Altitude',
   tbWindFieldOpacity: 'Field opacity',
   tbWindFieldOpacityReset: 'Reset opacity',
-  tbWindFieldTime: 'Forecast +h',
+  tbWindFieldTime: 'Time',
   windFieldLoading: 'Loading wind field…',
   windFieldErr: 'Wind field unavailable',
   windUpdatedLabel: 'Wind updated (Z)',
@@ -2088,6 +2082,7 @@ function proj(wp) {
 
 // --- leg bookkeeping -------------------------------------------------
 function syncLegs() {
+  const before = state.legs.length;
   const need = Math.max(0, state.waypoints.length - 1);
   while (state.legs.length < need) {
     const i = state.legs.length;
@@ -2096,6 +2091,9 @@ function syncLegs() {
   }
   while (state.legs.length > need) state.legs.pop();
   applyLegAltitudesToRoute();
+  // A newly added leg should pick up live wind when the wind display is on
+  // (the handler is debounced and no-ops when the wind display is off).
+  if (state.legs.length > before && typeof onRouteLegsGrown === 'function') onRouteLegsGrown();
 }
 
 function legAltitudeKey(from, to) {
