@@ -608,7 +608,7 @@ window.S = Object.assign({
   tbShowVorTitle: 'Overlay Israeli VOR/DME stations and pick a reference for radial/DME',
   vorRefLabel: 'VOR ref',
   vorRefNone: '— none —',
-  tbShowWind: 'Show wind effect',
+  tbShowWind: 'Show per-leg wind effect',
   tbShowWindTitle: 'Show the wind inputs, the per-leg wind arrows, and the wind-corrected readout in the leg inspector',
   tbShowSigmet: 'Show SIGMET',
   tbShowSigmetTitle: 'Overlay active international SIGMET hazard areas for the Israel region (source: NOAA AWC, updated periodically)',
