@@ -120,7 +120,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=252">
+  <link rel="stylesheet" href="app/style.css?v=253">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -373,8 +373,6 @@
           <label class="navtoggle" data-i18n-title="tbShowWindTitle">
             <input type="checkbox" id="show-wind-cb"> <span data-i18n="tbShowWind"></span>
           </label>
-          <button id="wind-fetch" class="wind-input-row" type="button" style="display:none"
-                  data-i18n="tbFetchWind" data-i18n-title="tbFetchWindTitle"></button>
           <label class="navtoggle wind-input-row" style="display:none" data-i18n-title="tbLookAheadTitle">
             <span data-i18n="tbWindFieldTime"></span>
             <input type="range" id="wind-depart" min="0" max="24" step="1" value="0">
@@ -649,7 +647,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=252';
+      var v = '?v=253';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
