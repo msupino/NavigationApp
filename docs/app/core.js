@@ -760,8 +760,6 @@ window.S = Object.assign({
   },
   windUnflyable: 'Wind exceeds true airspeed',
   windResetTitle: 'Clear wind override (use the route wind)',
-  tbFetchWind: '⤓ Pull Wind data',
-  tbFetchWindTitle: 'Fetch a per-leg winds-aloft forecast from Open-Meteo — each leg gets its own wind at its midpoint, flight level and forecast ETA from the departure set on the slider (needs a route)',
   windFetching: 'Fetching wind…',
   windFetchOk: function(hpa, dir, spd) {
     return hpa + ' hPa → ' + dir + '/' + spd;
@@ -2084,6 +2082,7 @@ function proj(wp) {
 
 // --- leg bookkeeping -------------------------------------------------
 function syncLegs() {
+  const before = state.legs.length;
   const need = Math.max(0, state.waypoints.length - 1);
   while (state.legs.length < need) {
     const i = state.legs.length;
@@ -2092,6 +2091,9 @@ function syncLegs() {
   }
   while (state.legs.length > need) state.legs.pop();
   applyLegAltitudesToRoute();
+  // A newly added leg should pick up live wind when the wind display is on
+  // (the handler is debounced and no-ops when the wind display is off).
+  if (state.legs.length > before && typeof onRouteLegsGrown === 'function') onRouteLegsGrown();
 }
 
 function legAltitudeKey(from, to) {

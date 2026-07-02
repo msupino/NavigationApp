@@ -279,8 +279,6 @@ window.S = {
   },
   windUnflyable: 'הרוח חזקה ממהירות האוויר',
   windResetTitle: 'נקה דריסת רוח (השתמש ברוח המסלול)',
-  tbFetchWind: '⤓ משוך נתוני רוח',
-  tbFetchWindTitle: 'משוך תחזית רוחות גובה לכל רגל מ-Open-Meteo — כל רגל מקבלת רוח משלה לפי נקודת האמצע, רום הטיסה וזמן ההגעה הצפוי אליה מהמראה שנקבעה במחוון (דורש מסלול)',
   windFetching: 'מושך רוח…',
   windFetchOk: function(hpa, dir, spd) {
     return hpa + ' hPa ← ' + dir + '/' + spd;

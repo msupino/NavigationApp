@@ -2094,7 +2094,6 @@ function legMidpointEtas(departMs) {
   }
   return etas;
 }
-const windFetchBtn = document.getElementById('wind-fetch');
 const windFetchStatus = document.getElementById('wind-fetch-status');
 // Departure-offset slider: forecast departure = now + N hours (0 = now).
 // Session-only — a planned departure is flight-specific, not a setting.
@@ -2165,7 +2164,6 @@ async function fetchRouteWind() {
     return;
   }
   if (windFetchStatus) windFetchStatus.textContent = S.windFetching;
-  if (windFetchBtn) windFetchBtn.disabled = true;
   try {
     // One batched request: comma-joined leg midpoints + the union of the
     // pressure-level params every leg needs; each leg reads its own level.
@@ -2189,11 +2187,17 @@ async function fetchRouteWind() {
     windFetchCache = { locs, levels, sig: windRouteSig() };
   } catch (e) {
     if (windFetchStatus) windFetchStatus.textContent = S.windFetchErr;
-  } finally {
-    if (windFetchBtn) windFetchBtn.disabled = false;
   }
 }
-if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
+// A new leg added while the wind display is on gets its wind too: the route
+// signature changed, so this refetches (cache miss) and fills the new leg.
+// Debounced — several quick waypoint adds coalesce into one request.
+let windLegGrowTimer = null;
+window.onRouteLegsGrown = function () {
+  if (!window.showWind) return;
+  clearTimeout(windLegGrowTimer);
+  windLegGrowTimer = setTimeout(() => { if (state.legs.length) fetchRouteWind(); }, 400);
+};
 if (windDepartSlider) {
   // The wind updates immediately while dragging: every input tick re-samples
   // the cached hourly data locally (no network) and redraws; persistence
