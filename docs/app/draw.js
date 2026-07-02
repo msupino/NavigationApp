@@ -957,16 +957,21 @@ function currentLayerName() {
 // result — a fetch that resolves after a *later* layer switch has started is
 // stale and must not overwrite state for the now-active layer.
 var _layerGen = 0;
+// Single authoritative prefix<->layer table; layerDataPrefix() derives the
+// reverse direction from it rather than keeping a second hand-maintained
+// inverse map that could drift. Layers not named here (Navigation /
+// Satellite / OSM) share the CVFR datasets.
+const _PREFIX_LAYER_NAME = { cvfr: 'CVFR', lsa: 'Low Alt', heli: 'Helicopters' };
 function layerDataPrefix() {
   const l = currentLayerName();
-  if (l === 'Low Alt') return 'lsa';
-  if (l === 'Helicopters') return 'heli';
-  return 'cvfr';   // Navigation / Satellite / OSM etc. share the CVFR datasets
+  for (const p in _PREFIX_LAYER_NAME) {
+    if (p !== 'cvfr' && _PREFIX_LAYER_NAME[p] === l) return p;
+  }
+  return 'cvfr';
 }
 // Display label for a data-prefix ('cvfr'/'lsa'/'heli'), reusing the already
 // -translated S.layerLabels dict (keyed by full layer name) instead of a
 // second hand-written map that would need its own translations kept in sync.
-const _PREFIX_LAYER_NAME = { cvfr: 'CVFR', lsa: 'Low Alt', heli: 'Helicopters' };
 function layerLabelForPrefix(pfx) {
   const layerName = _PREFIX_LAYER_NAME[pfx] || pfx;
   return (S.layerLabels && S.layerLabels[layerName]) || layerName;
@@ -981,7 +986,11 @@ const _CVFR_DATA_URL = {
 function _verOf(url) { const m = /\?v=([^&]+)/.exec(url || ''); return m ? m[1] : '1'; }
 // Fetch the active layer's file for `kind`; if that layer has no such file
 // (HTTP not-ok / network error), fall back to the cvfr file. Returns
-// { data, prefix } where prefix is the source actually used.
+// { data, prefix } where prefix is the source actually used. If the user
+// switches base layers while the fetch is in flight, the result would be for
+// the wrong layer — detect that (the active prefix changed) and re-fetch, so
+// every caller always receives data matching the layer active at resolve
+// time without needing its own staleness handling.
 async function fetchLayerData(kind) {
   const cvfrUrl = (_CVFR_DATA_URL[kind] || (() => 'data/cvfr-' + kind + '.json'))();
   const v = _verOf(cvfrUrl);
@@ -989,10 +998,12 @@ async function fetchLayerData(kind) {
   if (pfx !== 'cvfr') {
     try {
       const r = await fetch('data/' + pfx + '-' + kind + '.json?v=' + v);
+      if (layerDataPrefix() !== pfx) return fetchLayerData(kind);   // layer switched mid-fetch
       if (r.ok) return { data: await r.json(), prefix: pfx };
     } catch (e) { /* fall through to cvfr */ }
   }
   const r = await fetch(cvfrUrl);
+  if (layerDataPrefix() !== pfx) return fetchLayerData(kind);       // layer switched mid-fetch
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return { data: await r.json(), prefix: 'cvfr' };
 }
@@ -1035,7 +1046,10 @@ async function loadNavWaypoints() {
           dupes.size + ' duplicate name(s): ' + [...dupes].join(', '));
       }
     }
-    if (gen !== _layerGen) return navWP;    // a newer layer switch superseded this fetch
+    // Superseded by a newer layer switch: retry so the caller settles
+    // against the now-active layer instead of resolving while the globals
+    // are still null (awaiting callers read the global right after).
+    if (gen !== _layerGen) return loadNavWaypoints();
     navWP = mapped;
     return navWP;
   } catch (e) {
@@ -1068,7 +1082,7 @@ async function loadAreas() {
     const mapped = arr
       .filter(a => a && Array.isArray(a.coords) && a.coords.length >= 3)
       .map(a => ({ coords: a.coords, name: a.name || '' }));
-    if (gen !== _layerGen) return areas;    // a newer layer switch superseded this fetch
+    if (gen !== _layerGen) return loadAreas();   // superseded — retry for the active layer
     areas = mapped;
   } catch (e) {
     if (gen === _layerGen) areas = [];      // no areas file for this layer (or fetch failed)
@@ -1122,7 +1136,7 @@ async function loadCommChange() {
     for (const pt of d.points) {
       if (pt && pt.name && pt.commChange) m[pt.name] = pt;
     }
-    if (gen !== _layerGen) return commChangeMap;   // superseded by a newer layer switch
+    if (gen !== _layerGen) return loadCommChange();   // superseded — retry for the active layer
     commChangeCallSigns = callSigns;
     commChangeMap = m;
     return commChangeMap;
@@ -1140,26 +1154,30 @@ async function loadCommChange() {
 // inboundAltitude,outboundAltitude,status,oneWay,...}], directionPool:[...] }.
 // The app uses it only as a reference table for freshly-created legs;
 // saved/imported route JSON stays authoritative for existing leg values.
-// `skipApply` — when the reload is triggered by switching the *displayed*
-// base layer (reloadLayerDatasets), the reference table should refresh (so
-// e.g. the alt-pairs chart shows the new layer's data) but the currently
-// built route must NOT be silently rewritten just because the user looked at
-// a different chart. Pass skipApply=true from that path; the default (direct
-// calls, e.g. before building/loading a route) still auto-applies.
-async function loadLegAltitudes(skipApply) {
+// The loader itself never touches the route: applying the table to legs is
+// applyLegAltitudesToRoute()'s job, and that function gates every apply on
+// the route's pinned altitude prefix (routeAltPrefix, see core.js) — so a
+// passive layer switch or chart-modal open can never rewrite a route built
+// against another layer's table, regardless of which call path loaded it.
+// Empty-string degrade: on schema error / fetch failure the table becomes {}
+// via resetLegAltitudeState so legs keep their defaults without retry storms.
+function resetLegAltitudeState(prefix) {
+  legAltitudeMap = {};
+  legAltitudePointIds = new Set();
+  legAltitudeDataset = null;
+  legAltitudeOriginMap = null;
+  legAltitudeDirectionPool = null;
+  legAltitudeMapPrefix = prefix || null;
+}
+async function loadLegAltitudes() {
   if (legAltitudeMap !== null) return legAltitudeMap;
   const gen = _layerGen;
   try {
-    const { data: d } = await fetchLayerData('leg-altitude');
+    const { data: d, prefix } = await fetchLayerData('leg-altitude');
     const verr = validateLegAltitudes(d);
     if (verr) {
       console.warn('leg-altitude schema error:', verr);
-      if (gen === _layerGen) {
-        legAltitudeMap = {};
-        legAltitudePointIds = new Set();
-        legAltitudeDataset = null;
-        legAltitudeOriginMap = null;
-      }
+      if (gen === _layerGen) resetLegAltitudeState(prefix);
       return legAltitudeMap;
     }
     const directions = Array.isArray(d.directionPool)
@@ -1181,23 +1199,17 @@ async function loadLegAltitudes(skipApply) {
       ids.add(segment.from);
       ids.add(segment.to);
     }
-    if (gen !== _layerGen) return legAltitudeMap;   // superseded by a newer layer switch
+    if (gen !== _layerGen) return loadLegAltitudes();   // superseded — retry for the active layer
     resetLegAltitudeOrigins(d.segments);
     legAltitudeMap = m;
     legAltitudePointIds = ids;
     legAltitudeDataset = d;
     legAltitudeDirectionPool = directions;
-    if (!skipApply) applyLegAltitudesToRoute();
+    legAltitudeMapPrefix = prefix;
     return legAltitudeMap;
   } catch (e) {
     console.warn('Failed to load leg-altitude dataset:', e);
-    if (gen === _layerGen) {
-      legAltitudeMap = {};             // graceful degrade — defaults remain
-      legAltitudePointIds = new Set();
-      legAltitudeDataset = null;
-      legAltitudeOriginMap = null;
-      legAltitudeDirectionPool = null;
-    }
+    if (gen === _layerGen) resetLegAltitudeState(layerDataPrefix());
     return legAltitudeMap;
   }
 }
