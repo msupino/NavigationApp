@@ -379,3 +379,43 @@ test('departure slider shifts every leg\'s sampled forecast hour', async ({ page
   expect(laterSpeed - nowSpeed).toBe(6);                 // exactly +6 forecast hours
   expect(fetchCount).toBe(1);                            // re-sampled from cache
 });
+
+test('checking "show wind" pulls the forecast automatically when a route exists', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
+  });
+  let fetched = 0;
+  await page.route('**api.open-meteo.com/**', route => {
+    fetched++;
+    const now = new Date();
+    const t = [now.toISOString().slice(0, 13) + ':00'];
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify([
+      { hourly: { time: t, 'wind_speed_850hPa': [17], 'wind_direction_850hPa': [210] } },
+    ]) });
+  });
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.1, lng: 34.9, name: 'B' }];
+    state.legs = []; syncLegs();
+    state.legs[0].inboundAltitude = 5000;
+  });
+  await page.locator('#show-wind-cb').check();
+  await page.waitForFunction(() => state.legs[0].wind);
+  expect(await page.evaluate(() => state.legs[0].wind)).toEqual({ dir: 210, speed: 17 });
+  expect(fetched).toBe(1);
+});
+
+test('checking "show wind" with no route does not fetch and does not alert', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
+  });
+  let fetched = false;
+  await page.route('**api.open-meteo.com/**', route => { fetched = true; route.abort(); });
+  let alerted = false;
+  page.on('dialog', d => { alerted = true; d.dismiss(); });
+  await boot(page);
+  await page.locator('#show-wind-cb').check();
+  await page.waitForTimeout(150);
+  expect(fetched).toBe(false);
+  expect(alerted).toBe(false);
+});

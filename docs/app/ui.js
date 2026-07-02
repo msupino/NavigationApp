@@ -2045,6 +2045,13 @@ if (showWindCb) {
     refreshWindReadout();
     if (state.selected && state.selected.type === 'leg') showInspector();
     draw();
+    // Turning the wind display ON pulls the forecast by itself when a route
+    // exists — no separate Pull Wind click needed. Toggle-only (not boot
+    // restore): an auto-fetch on every load would silently overwrite wind
+    // values the user set by hand.
+    if (window.showWind && state.legs.length && typeof fetchRouteWind === 'function') {
+      fetchRouteWind();
+    }
   };
 }
 refreshWindInputVisibility();
