@@ -2045,6 +2045,13 @@ if (showWindCb) {
     refreshWindReadout();
     if (state.selected && state.selected.type === 'leg') showInspector();
     draw();
+    // Turning the wind display ON pulls the forecast by itself when a route
+    // exists — no separate Pull Wind click needed. Toggle-only (not boot
+    // restore): an auto-fetch on every load would silently overwrite wind
+    // values the user set by hand.
+    if (window.showWind && state.legs.length && typeof fetchRouteWind === 'function') {
+      fetchRouteWind();
+    }
   };
 }
 refreshWindInputVisibility();
@@ -2087,7 +2094,6 @@ function legMidpointEtas(departMs) {
   }
   return etas;
 }
-const windFetchBtn = document.getElementById('wind-fetch');
 const windFetchStatus = document.getElementById('wind-fetch-status');
 // Departure-offset slider: forecast departure = now + N hours (0 = now).
 // Session-only — a planned departure is flight-specific, not a setting.
@@ -2098,10 +2104,9 @@ function windDepartOffsetH() {
 }
 function refreshWindDepartLabel() {
   if (!windDepartVal) return;
-  const off = windDepartOffsetH();
-  windDepartVal.textContent = off === 0
-    ? (S.windDepartNow || 'now')
-    : '+' + off + ' h · ' + formatZuluHM(Date.now() + off * 3600e3);
+  // Same readout as the NOTAM and wind-field look-ahead sliders:
+  // 0 shows the clock of now, otherwise '+Nh · <clock>' (fmtViewTime).
+  windDepartVal.textContent = notamTimeLabel(windDepartOffsetH());
 }
 // Fetch a per-leg winds-aloft forecast: each leg gets its own wind from
 // Open-Meteo at the leg midpoint, the pressure level matching that leg's
@@ -2159,7 +2164,6 @@ async function fetchRouteWind() {
     return;
   }
   if (windFetchStatus) windFetchStatus.textContent = S.windFetching;
-  if (windFetchBtn) windFetchBtn.disabled = true;
   try {
     // One batched request: comma-joined leg midpoints + the union of the
     // pressure-level params every leg needs; each leg reads its own level.
@@ -2183,11 +2187,17 @@ async function fetchRouteWind() {
     windFetchCache = { locs, levels, sig: windRouteSig() };
   } catch (e) {
     if (windFetchStatus) windFetchStatus.textContent = S.windFetchErr;
-  } finally {
-    if (windFetchBtn) windFetchBtn.disabled = false;
   }
 }
-if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
+// A new leg added while the wind display is on gets its wind too: the route
+// signature changed, so this refetches (cache miss) and fills the new leg.
+// Debounced — several quick waypoint adds coalesce into one request.
+let windLegGrowTimer = null;
+window.onRouteLegsGrown = function () {
+  if (!window.showWind) return;
+  clearTimeout(windLegGrowTimer);
+  windLegGrowTimer = setTimeout(() => { if (state.legs.length) fetchRouteWind(); }, 400);
+};
 if (windDepartSlider) {
   // The wind updates immediately while dragging: every input tick re-samples
   // the cached hourly data locally (no network) and redraws; persistence
@@ -2496,9 +2506,17 @@ function fmtViewTime(h, clock) {
   if (!h) return clock;
   return S.notamTimeAt ? S.notamTimeAt(h, clock) : ('+' + h + 'h · ' + clock);
 }
-// Slider readout: 0 = clock of now, otherwise "+Nh · HH:MMZ".
+// Slider readout: 0 = clock of the current hour, otherwise "+Nh · HH:00Z".
+// Rounded to the top of the hour so every look-ahead slider reads round
+// clock times like the wind-field slider (whose clock is the hourly forecast
+// timestamp) — these sliders step in whole hours over hourly data.
+function topOfHour(ms) {
+  const d = new Date(ms);
+  d.setUTCMinutes(0, 0, 0);
+  return d.getTime();
+}
 function notamTimeLabel(h) {
-  return fmtViewTime(h, fmtViewClock(new Date(Date.now() + h * 3600e3)));
+  return fmtViewTime(h, fmtViewClock(new Date(topOfHour(Date.now()) + h * 3600e3)));
 }
 function syncNotamTime() {
   const h = notamTimeEl ? (parseInt(notamTimeEl.value, 10) || 0) : 0;
