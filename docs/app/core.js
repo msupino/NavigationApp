@@ -1128,6 +1128,15 @@ var legAltitudePointIds = null; // Set of endpoint ids from the same file.
 var legAltitudeDataset = null;  // Raw validated dataset for Charts copy/view.
 var legAltitudeOriginMap = null; // Loaded JSON baseline keyed as FROM-TO.
 var legAltitudeDirectionPool = null; // Directed altitude entries, one per allowed direction.
+var legAltitudeMapPrefix = null; // Which layer prefix ('cvfr'/'lsa'/'heli') the loaded table came from.
+// The route's altitude table is PINNED to the layer prefix that first filled
+// its auto legs: switching the displayed chart (or opening the alt-pairs
+// modal, or a boot race) must never silently re-derive a route built against
+// another layer's table. The pin resets when the route empties, when a route
+// template replaces it, or when a saved route is loaded — those repin to the
+// then-active layer on the next apply. Not persisted: after a reload the
+// route repins to the restored layer, matching pre-existing boot behavior.
+var routeAltPrefix = null;
 var showDrift = true;       // 10-degree drift reference lines
 var showWind = false;       // wind effect (#722): inputs + arrows + readout — opt-in
 var showSigmet = false;     // SIGMET hazard overlay — opt-in
@@ -2436,6 +2445,17 @@ function legEndpointSig(i) {
   return r5(a.lat) + ',' + r5(a.lng) + '|' + r5(b.lat) + ',' + r5(b.lng);
 }
 function applyLegAltitudesToRoute() {
+  // Pin: an emptied route unpins; a route pins to the prefix of the first
+  // table applied to it; a table from any OTHER layer prefix never applies.
+  // This single gate covers every apply path (syncLegs, inspector edits,
+  // boot chain, layer-switch reload, chart modals) — see routeAltPrefix.
+  if (!state.legs.length) { routeAltPrefix = null; return false; }
+  if (legAltitudeMap === null) return false;
+  if (routeAltPrefix === null) {
+    if (legAltitudeMapPrefix) routeAltPrefix = legAltitudeMapPrefix;
+  } else if (legAltitudeMapPrefix && legAltitudeMapPrefix !== routeAltPrefix) {
+    return false;                       // wrong layer's table — leave the route alone
+  }
   let changed = false;
   for (let i = 0; i < state.legs.length; i++) {
     const leg = state.legs[i];
