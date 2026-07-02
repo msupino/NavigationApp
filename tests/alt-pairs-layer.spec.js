@@ -10,17 +10,15 @@ test('alt-pairs heading + data follow the chosen layer', async ({ page }) => {
     const head = () => { const h = document.querySelector('.charts-alt-title h3'); return h ? h.textContent : null; };
     const rows = () => document.querySelectorAll('.charts-alt-table tbody tr').length;
     const setL = k => { for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]); map.addLayer(layers[k]); };
-    // reloadLayerDatasets() does not return its Promise.all chain, so
-    // awaiting it is a no-op — poll until the heading actually flips instead
-    // of sleeping a fixed 300ms (too short under CI load).
-    const until = async cond => { const t0 = Date.now(); while (!cond() && Date.now() - t0 < 15000) await new Promise(r => setTimeout(r, 100)); };
     setL('CVFR'); legAltitudeMap = null; await loadLegAltitudes();
     showAltitudePairsModal();
-    await until(() => head() && head().includes('CVFR') && rows() > 0);
+    // The modal body renders in loadLegAltitudes().then(...) — yield one
+    // task so that continuation runs before reading the DOM.
+    await new Promise(r => setTimeout(r, 0));
     const cvfrHead = head(), cvfrRows = rows();
-    // switch to Low Alt + refresh open modal
-    setL('Low Alt'); reloadLayerDatasets();
-    await until(() => head() && head().includes('Low Alt'));
+    // switch to Low Alt + refresh open modal — reloadLayerDatasets resolves
+    // after its .then refreshes the open chart, so awaiting it suffices.
+    setL('Low Alt'); await reloadLayerDatasets();
     const lsaHead = head(), lsaRows = rows();
     return { cvfrHead, cvfrRows, lsaHead, lsaRows };
   });

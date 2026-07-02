@@ -822,6 +822,10 @@ function routeSnapshotForStorage() {
     notes: state.notes,
     commChangeSuppressions: routeCommChangeSuppressions(),
     ...(wind && wind.speed > 0 ? { wind } : {}),
+    // The route's altitude-layer pin travels with undo/session snapshots so
+    // an undone or reloaded route keeps deriving from its original layer
+    // instead of re-pinning to whichever layer happens to be displayed.
+    ...(routeAltPrefix ? { altPin: routeAltPrefix } : {}),
   };
 }
 // Serializable, schema-clean snapshot of the current route. Shared by the
@@ -1218,6 +1222,7 @@ function loadGpx(file) {
         alert(S.errNeedWps);
         return;
       }
+      routeAltPrefix = null;   // replacing the route unpins its altitude layer
       state.waypoints = wps;
       state.legs = [];
       state.notes = [];
@@ -1283,6 +1288,7 @@ function loadPln(file) {
         alert(S.errNeedWps);
         return;
       }
+      routeAltPrefix = null;   // replacing the route unpins its altitude layer
       state.waypoints = wps;
       state.legs = [];
       state.notes = [];
@@ -3896,6 +3902,10 @@ function undo() {
     })) : [];
   state.notes = Array.isArray(snap.notes) ? snap.notes : [];
   state.commChangeSuppressions = storedCommChangeSuppressions(snap);
+  // Restore the snapshot's altitude-layer pin (null for pre-pin snapshots)
+  // so the restored route is not re-pinned to — and rewritten from —
+  // whichever layer happens to be displayed at undo time.
+  routeAltPrefix = typeof snap.altPin === 'string' ? snap.altPin : null;
   state.selected = null;
   undoing = true;
   lastCommitted = prev;            // align baseline so the redraw won't re-push
@@ -3970,6 +3980,9 @@ function restoreRoute() {
   }));
   state.commChangeSuppressions = storedCommChangeSuppressions(d);
   state.wind = storedWind(d);
+  // Restore the altitude-layer pin before syncLegs so the restored route
+  // derives (and re-derives on endpoint changes) only from its own layer.
+  routeAltPrefix = typeof d.altPin === 'string' ? d.altPin : null;
   if (typeof window.refreshWindInputs === 'function') window.refreshWindInputs();
   syncLegs();
   return true;

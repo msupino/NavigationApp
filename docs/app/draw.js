@@ -965,9 +965,9 @@ const _PREFIX_LAYER_NAME = { cvfr: 'CVFR', lsa: 'Low Alt', heli: 'Helicopters' }
 function layerDataPrefix() {
   const l = currentLayerName();
   for (const p in _PREFIX_LAYER_NAME) {
-    if (p !== 'cvfr' && _PREFIX_LAYER_NAME[p] === l) return p;
+    if (_PREFIX_LAYER_NAME[p] === l) return p;
   }
-  return 'cvfr';
+  return 'cvfr';   // Navigation / Satellite / OSM share the CVFR datasets
 }
 // Display label for a data-prefix ('cvfr'/'lsa'/'heli'), reusing the already
 // -translated S.layerLabels dict (keyed by full layer name) instead of a
@@ -986,24 +986,48 @@ const _CVFR_DATA_URL = {
 function _verOf(url) { const m = /\?v=([^&]+)/.exec(url || ''); return m ? m[1] : '1'; }
 // Fetch the active layer's file for `kind`; if that layer has no such file
 // (HTTP not-ok / network error), fall back to the cvfr file. Returns
-// { data, prefix } where prefix is the source actually used. If the user
-// switches base layers while the fetch is in flight, the result would be for
-// the wrong layer — detect that (the active prefix changed) and re-fetch, so
-// every caller always receives data matching the layer active at resolve
-// time without needing its own staleness handling.
-async function fetchLayerData(kind) {
+// { data, prefix } where prefix is the source actually used.
+//
+// Staleness is generation-based and lives entirely here: the settle handler
+// re-checks _layerGen after the whole chain (fetch AND body parse — a switch
+// during r.json() is caught too) and re-dispatches for the now-active layer.
+// Unlike the earlier prefix comparison this also catches alias switches
+// (Navigation→CVFR keeps prefix 'cvfr' but bumps the generation) and
+// A→B→A round trips. Callers therefore always settle with data current for
+// the active layer; the loaders' own gen re-enter is only a no-stomp guard
+// for their global commit, not a second fetch (it joins via the memo).
+//
+// The memo keeps one network chain per (kind, generation): a superseded
+// call's retry JOINS the new generation's in-flight fetch instead of racing
+// it with a duplicate request.
+const _layerFetchMemo = {};   // kind -> { gen, promise }
+function fetchLayerData(kind) {
+  const memo = _layerFetchMemo[kind];
+  if (memo && memo.gen === _layerGen) return memo.promise;
+  const gen = _layerGen;
+  const settle = pass => res => {
+    if (_layerFetchMemo[kind] && _layerFetchMemo[kind].promise === promise) {
+      delete _layerFetchMemo[kind];
+    }
+    if (gen !== _layerGen) return fetchLayerData(kind);   // superseded — retry
+    if (!pass) throw res;
+    return res;
+  };
+  const promise = _fetchLayerDataRaw(kind).then(settle(true), settle(false));
+  _layerFetchMemo[kind] = { gen, promise };
+  return promise;
+}
+async function _fetchLayerDataRaw(kind) {
   const cvfrUrl = (_CVFR_DATA_URL[kind] || (() => 'data/cvfr-' + kind + '.json'))();
   const v = _verOf(cvfrUrl);
   const pfx = layerDataPrefix();
   if (pfx !== 'cvfr') {
     try {
       const r = await fetch('data/' + pfx + '-' + kind + '.json?v=' + v);
-      if (layerDataPrefix() !== pfx) return fetchLayerData(kind);   // layer switched mid-fetch
       if (r.ok) return { data: await r.json(), prefix: pfx };
     } catch (e) { /* fall through to cvfr */ }
   }
   const r = await fetch(cvfrUrl);
-  if (layerDataPrefix() !== pfx) return fetchLayerData(kind);       // layer switched mid-fetch
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return { data: await r.json(), prefix: 'cvfr' };
 }
@@ -1046,9 +1070,10 @@ async function loadNavWaypoints() {
           dupes.size + ' duplicate name(s): ' + [...dupes].join(', '));
       }
     }
-    // Superseded by a newer layer switch: retry so the caller settles
-    // against the now-active layer instead of resolving while the globals
-    // are still null (awaiting callers read the global right after).
+    // Superseded by a newer layer switch: don't stomp the new generation's
+    // committed value — re-enter, which either returns it (memo-check above)
+    // or joins the new generation's in-flight fetch (fetchLayerData memo),
+    // so no duplicate request is issued.
     if (gen !== _layerGen) return loadNavWaypoints();
     navWP = mapped;
     return navWP;
@@ -1082,7 +1107,7 @@ async function loadAreas() {
     const mapped = arr
       .filter(a => a && Array.isArray(a.coords) && a.coords.length >= 3)
       .map(a => ({ coords: a.coords, name: a.name || '' }));
-    if (gen !== _layerGen) return loadAreas();   // superseded — retry for the active layer
+    if (gen !== _layerGen) return loadAreas();   // superseded — don't stomp; re-enter (joins via memo)
     areas = mapped;
   } catch (e) {
     if (gen === _layerGen) areas = [];      // no areas file for this layer (or fetch failed)
@@ -1136,7 +1161,7 @@ async function loadCommChange() {
     for (const pt of d.points) {
       if (pt && pt.name && pt.commChange) m[pt.name] = pt;
     }
-    if (gen !== _layerGen) return loadCommChange();   // superseded — retry for the active layer
+    if (gen !== _layerGen) return loadCommChange();   // superseded — don't stomp; re-enter (joins via memo)
     commChangeCallSigns = callSigns;
     commChangeMap = m;
     return commChangeMap;
@@ -1199,7 +1224,7 @@ async function loadLegAltitudes() {
       ids.add(segment.from);
       ids.add(segment.to);
     }
-    if (gen !== _layerGen) return loadLegAltitudes();   // superseded — retry for the active layer
+    if (gen !== _layerGen) return loadLegAltitudes();   // superseded — don't stomp; re-enter (joins via memo)
     resetLegAltitudeOrigins(d.segments);
     legAltitudeMap = m;
     legAltitudePointIds = ids;

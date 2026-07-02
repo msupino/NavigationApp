@@ -118,18 +118,33 @@
 
   // Only chart layers have a known waypoint set worth importing into the
   // editor; base maps (Satellite/OSM) don't — even though fetchLayerData
-  // would happily hand back the CVFR file for them.
-  var KNOWN_LAYERS = { 'CVFR': 1, 'Navigation': 1, 'Low Alt': 1, 'Helicopters': 1 };
+  // would happily hand back the CVFR file for them. The chart-layer
+  // predicate is shared with the satellite modal (interact.js).
+  function prefixForLayer(name) {
+    if (typeof _PREFIX_LAYER_NAME === 'object') {
+      for (var p in _PREFIX_LAYER_NAME) if (_PREFIX_LAYER_NAME[p] === name) return p;
+    }
+    return 'cvfr';   // Navigation shares the CVFR dataset
+  }
   function loadKnown() {
     var lyr = currentLayer();
-    if (!KNOWN_LAYERS[lyr]) { alert('No known waypoint set for ' + (lyr || 'this layer')); return; }
+    if (!satelliteModalIsChartLayer(lyr)) { alert('No known waypoint set for ' + (lyr || 'this layer')); return; }
     if (curPoints().length && !confirm('Replace ' + curPoints().length + ' point(s) on ' + lyr + ' with the known set?')) return;
     // Reuse the shared per-layer resolver (draw.js) for the URL/prefix logic,
     // but REFUSE its silent cvfr fallback: if the layer's own file failed to
     // load (404/network), importing CVFR points tagged as this layer would
     // corrupt the dataset on paste-back. Surface the failure instead.
+    // `expected` derives from the layer captured at CLICK time — comparing
+    // against layerDataPrefix() at resolve time is tautological, because
+    // fetchLayerData itself retries to follow the active layer, so a
+    // mid-fetch layer switch would import the new layer's points tagged
+    // with the old layer's name.
+    var expected = prefixForLayer(lyr);
     fetchLayerData('nav-waypoints').then(function (res) {
-      var expected = (typeof layerDataPrefix === 'function') ? layerDataPrefix() : 'cvfr';
+      if (currentLayer() !== lyr) {
+        alert('Layer changed while loading — not importing. Try again on ' + lyr + '.');
+        return;
+      }
       if (res.prefix !== expected) {
         alert('The ' + lyr + ' waypoint set failed to load (got the ' + res.prefix +
           ' fallback instead) — not importing. Try again.');
