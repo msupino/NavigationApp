@@ -2057,22 +2057,42 @@ function legMidpoint(i) {
   const a = state.waypoints[i], b = state.waypoints[i + 1];
   return { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 };
 }
-// Index of the hourly sample nearest now (Open-Meteo UTC times have no Z).
-function nearestHourIndex(times) {
-  const now = Date.now();
+// Index of the hourly sample nearest `atMs` (default: now). Open-Meteo UTC
+// times carry no Z suffix.
+function nearestHourIndex(times, atMs) {
+  const target = Number.isFinite(atMs) ? atMs : Date.now();
   let bi = 0, bd = Infinity;
   for (let i = 0; i < times.length; i++) {
-    const d = Math.abs(Date.parse(times[i] + 'Z') - now);
+    const d = Math.abs(Date.parse(times[i] + 'Z') - target);
     if (d < bd) { bd = d; bi = i; }
   }
   return bi;
 }
+// Forecast ETA (ms since epoch) of each leg's midpoint, departure = now:
+// legs are flown in sequence, so leg i's midpoint is reached after the sum
+// of the prior legs' ETEs plus half its own. Legs without a usable speed
+// contribute no time — their midpoint ETA falls back to the running total.
+function legMidpointEtas() {
+  const now = Date.now();
+  const etas = [];
+  let tH = 0;
+  for (let i = 0; i < state.legs.length; i++) {
+    const { dist } = geo(state.waypoints[i], state.waypoints[i + 1]);
+    const legH = state.legs[i].flightSpeed > 0 ? dist / state.legs[i].flightSpeed : 0;
+    etas.push(now + (tH + legH / 2) * 3600e3);
+    tH += legH;
+  }
+  return etas;
+}
 const windFetchBtn = document.getElementById('wind-fetch');
 const windFetchStatus = document.getElementById('wind-fetch-status');
 // Fetch a per-leg winds-aloft forecast: each leg gets its own wind from
-// Open-Meteo at the leg midpoint and the pressure level matching that leg's
-// altitude, stored as a per-leg override. Needs a route — with no legs it
-// alerts (like the flight plan / export paths) and does nothing.
+// Open-Meteo at the leg midpoint, the pressure level matching that leg's
+// altitude, AND the forecast hour matching that leg's ETA (departure = fetch
+// time) — so a two-hour route's last legs get the wind expected when the
+// aircraft actually reaches them, not the wind blowing there now. Stored as
+// a per-leg override. Needs a route — with no legs it alerts (like the
+// flight plan / export paths) and does nothing.
 async function fetchRouteWind() {
   if (!state.legs.length) {
     if (windFetchStatus) windFetchStatus.textContent = '';
@@ -2086,13 +2106,16 @@ async function fetchRouteWind() {
     // pressure-level params every leg needs; each leg reads its own level.
     const mids = state.legs.map((l, i) => legMidpoint(i));
     const levels = state.legs.map(l => nearestPressureLevelHpa(legAltitudeFt(l)));
+    const etas = legMidpointEtas();
     const uniq = Array.from(new Set(levels));
     const params = uniq.flatMap(l => ['wind_speed_' + l + 'hPa', 'wind_direction_' + l + 'hPa']);
+    // forecast_days=2: a late-UTC departure plus route time can cross into
+    // the next UTC day; day 1 alone would clamp those legs to 23:00Z.
     const url = 'https://api.open-meteo.com/v1/forecast' +
       '?latitude=' + mids.map(m => m.lat.toFixed(3)).join(',') +
       '&longitude=' + mids.map(m => m.lng.toFixed(3)).join(',') +
       '&hourly=' + params.join(',') +
-      '&wind_speed_unit=kn&timezone=UTC&forecast_days=1';
+      '&wind_speed_unit=kn&timezone=UTC&forecast_days=2';
     const res = await fetch(url);
     if (!res.ok) throw new Error(String(res.status));
     const j = await res.json();
@@ -2106,7 +2129,7 @@ async function fetchRouteWind() {
       const spd = h && h['wind_speed_' + lvl + 'hPa'];
       const dir = h && h['wind_direction_' + lvl + 'hPa'];
       if (!Array.isArray(times) || !Array.isArray(spd) || !Array.isArray(dir)) continue;
-      const bi = nearestHourIndex(times);
+      const bi = nearestHourIndex(times, etas[i]);   // this leg's forecast ETA
       const wd = Math.round(dir[bi]), ws = Math.round(spd[bi]);
       if (!Number.isFinite(wd) || !Number.isFinite(ws)) continue;
       state.legs[i].wind = { dir: ((wd % 360) + 360) % 360, speed: Math.max(0, ws) };
