@@ -2118,8 +2118,10 @@ function windRouteSig() {
 }
 // Write each leg's wind from the fetched hourly data at the current slider
 // departure. Returns the number of legs set; on success stamps windUpdated,
-// refreshes the status/inspector, persists and redraws.
-function applyRouteWindSamples(locs, levels) {
+// refreshes the status/inspector, persists and redraws. `skipPersist` is for
+// live slider drags: every tick re-samples and redraws, but only the release
+// persists — otherwise each dragged hour would pile up an undo step.
+function applyRouteWindSamples(locs, levels, skipPersist) {
   const etas = legMidpointEtas(Date.now() + windDepartOffsetH() * 3600e3);
   let set = 0;
   for (let i = 0; i < state.legs.length; i++) {
@@ -2142,7 +2144,7 @@ function applyRouteWindSamples(locs, levels) {
       windFetchStatus.textContent = S.windFetchOkLegs(set) + ' · ' + formatZuluHM(state.windUpdated);
     }
     if (state.selected && state.selected.type === 'leg') showInspector();
-    if (typeof persist === 'function') persist();
+    if (!skipPersist && typeof persist === 'function') persist();
     draw();
   }
   return set;
@@ -2184,11 +2186,20 @@ async function fetchRouteWind() {
 }
 if (windFetchBtn) windFetchBtn.onclick = fetchRouteWind;
 if (windDepartSlider) {
-  windDepartSlider.oninput = refreshWindDepartLabel;   // label tracks the drag live
-  // On release, the wind updates by itself: re-sample the cached hourly data
-  // for the new departure; if the route changed since the fetch (different
-  // waypoints/speeds/altitudes), refetch instead — but only when wind was
-  // already pulled once (no surprise network calls before the first pull).
+  // The wind updates immediately while dragging: every input tick re-samples
+  // the cached hourly data locally (no network) and redraws; persistence
+  // waits for the release so the drag collapses into one undo step.
+  windDepartSlider.oninput = () => {
+    refreshWindDepartLabel();
+    if (!state.legs.length) return;
+    if (windFetchCache && windFetchCache.sig === windRouteSig()) {
+      applyRouteWindSamples(windFetchCache.locs, windFetchCache.levels, true);
+    }
+  };
+  // Release: persist the final sampling; if the route changed since the
+  // fetch (different waypoints/speeds/altitudes) refetch instead — but only
+  // when wind was already pulled once (no surprise network calls before the
+  // first pull).
   windDepartSlider.onchange = () => {
     refreshWindDepartLabel();
     if (!state.legs.length) return;

@@ -367,13 +367,13 @@ test('departure slider shifts every leg\'s sampled forecast hour', async ({ page
   await page.waitForFunction(() => state.legs[0].wind);
   const nowSpeed = await page.evaluate(() => state.legs[0].wind.speed);
   expect(nowSpeed).toBeLessThanOrEqual(11);              // idx 0-1
-  // Move the slider to +6 h and release: the wind updates BY ITSELF from the
-  // cached hourly data — no second click, no second network request.
+  // Move the slider to +6 h: the wind updates IMMEDIATELY on the input tick
+  // (mid-drag, before release) from the cached hourly data — no second
+  // click, no second network request.
   const depart = page.locator('#wind-depart');
   await depart.fill('6');
   await depart.dispatchEvent('input');
   await expect(page.locator('#wind-depart-val')).toContainText('+6 h');
-  await depart.dispatchEvent('change');
   await page.waitForFunction(ns => state.legs[0].wind.speed !== ns, nowSpeed);
   const laterSpeed = await page.evaluate(() => state.legs[0].wind.speed);
   expect(laterSpeed - nowSpeed).toBe(6);                 // exactly +6 forecast hours
