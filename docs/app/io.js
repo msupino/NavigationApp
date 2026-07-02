@@ -1335,6 +1335,7 @@ function load(file) {
 // the live state and redraw. Shared by file import (load) and the route
 // library (#677). Caller is responsible for validateRoute() first.
 function applyRouteData(d) {
+  routeAltPrefix = null;    // replacing the route unpins its altitude layer
   state.waypoints = d.waypoints.map(w => ({
     lat: r5(w.lat), lng: r5(w.lng), name: w.name,
   }));

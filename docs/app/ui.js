@@ -84,14 +84,16 @@ function reloadLayerDatasets() {
   // stop drawing after a layer switch until the user toggles nav-waypoints.
   if (showNavWP || showReporting || showCommChange) jobs.push(loadNavWaypoints());
   if (showCommChange || showReporting) jobs.push(loadCommChange());
-  // skipApply=true: refresh the reference table (e.g. for an open alt-pairs
-  // chart) without silently rewriting the current route's leg altitudes just
-  // because the user switched which chart is displayed underneath it.
-  jobs.push(loadLegAltitudes(true));
+  jobs.push(loadLegAltitudes());
   Promise.all(jobs).then(() => {
     // Refresh an open alt-pairs chart so it reflects the new layer's leg data.
     const altSec = document.querySelector('.charts-alt-section');
     if (altSec && typeof renderAltitudePairsTable === 'function') renderAltitudePairsTable(altSec);
+    // Heal legs created while the reload was in flight (applyLegAltitudeToLeg
+    // bails on a null table). Safe: applyLegAltitudesToRoute is pin-gated —
+    // it only fills when the loaded table's prefix matches the route's pinned
+    // layer, so a route built against another layer is never rewritten here.
+    applyLegAltitudesToRoute();
     draw();
   });
 }
@@ -1034,6 +1036,7 @@ async function applyRouteTemplate(template, speed, closeModal) {
       !confirm(S.routeTemplateReplaceConfirm ||
         S.searchReplaceConfirm ||
         'Replace the current route?')) return false;
+  routeAltPrefix = null;    // template replaces the route — repin to its layer
   state.waypoints = route.waypoints;
   state.legs = route.legs;
   state.notes = route.notes;
@@ -1621,6 +1624,7 @@ document.getElementById('clear').onclick = () => {
   state.notes = [];
   state.commChangeSuppressions = [];
   state.selected = null;
+  routeAltPrefix = null;    // empty route unpins its altitude layer
   showInspector(); draw();
 };
 document.getElementById('tool-reset-all-wp-names').onclick = () => {

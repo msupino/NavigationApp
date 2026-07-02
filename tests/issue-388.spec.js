@@ -246,12 +246,23 @@ test.describe('issue #388 — review cleanup', () => {
   // the work that the regression would actually slow down.
   test('H1 (perf) — magnifier survives pan frames inside a loose budget',
     async ({ page }) => {
+      // 60 awaited rAF frames on a CPU-saturated CI runner stretch wall-clock
+      // well past the default test budget (the elapsed assertion below has its
+      // own generous ceiling — the test just needs to live long enough).
+      test.slow();
       const mapBox = await page.locator('#map').boundingBox();
       if (!mapBox) { test.skip(true, 'map not found'); return; }
       const cx = mapBox.x + mapBox.width / 2;
       const cy = mapBox.y + mapBox.height / 2;
       await page.mouse.move(cx, cy);
-      await page.locator('#tool-magnifier').click();
+      // Toggle via the keyboard shortcut, not the #tool-magnifier button: the
+      // beforeEach presets every toolbar section open, and in desktop-menubar
+      // mode menu churn can hide the View dropdown mid-click (same family as
+      // the mosaic-modal incident in magnifier.spec.js).
+      await page.evaluate(() => window.closeToolbarMenus && window.closeToolbarMenus());
+      await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
+      await page.keyboard.press('m');
+      await expect(page.locator('#magnifier')).toBeVisible();
       await page.waitForTimeout(600);
 
       const result = await page.evaluate(async isDeployedPreview => {

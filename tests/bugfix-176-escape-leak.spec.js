@@ -23,6 +23,17 @@ async function installListenerCounter(page) {
   });
 }
 
+// App boot keeps adding keydown listeners asynchronously (deferred dataset
+// loads etc.); under full-suite parallel load those adds can land between the
+// baseline and final snapshots and skew the add/remove delta. Wait until the
+// add counter has been quiet for 300ms before taking the baseline.
+async function waitForListenerQuiescence(page) {
+  await page.waitForFunction(() => new Promise(res => {
+    const a = window.__keyAdds;
+    setTimeout(() => res(window.__keyAdds === a), 300);
+  }), null, { timeout: 15000 });
+}
+
 test.describe('#176 Escape listener leak in modals', () => {
   test('charts modal: open / ✕ / open / ✕ — keydown adds match removes', async ({ page }) => {
     await installListenerCounter(page);
@@ -31,6 +42,7 @@ test.describe('#176 Escape listener leak in modals', () => {
     await page.evaluate(() => { window.airfields = window.airfields || []; });
 
     // Baseline counter: bumps from app boot (we only care about the delta).
+    await waitForListenerQuiescence(page);
     const base = await page.evaluate(() => ({ a: window.__keyAdds, r: window.__keyRems }));
 
     for (let i = 0; i < 5; i++) {
@@ -54,6 +66,7 @@ test.describe('#176 Escape listener leak in modals', () => {
     // Block the network fetch so the viewer doesn't try to load a real PDF.
     await page.route('**/byop/**', r => r.fulfill({ status: 404, body: '' }));
 
+    await waitForListenerQuiescence(page);
     const base = await page.evaluate(() => ({ a: window.__keyAdds, r: window.__keyRems }));
 
     for (let i = 0; i < 3; i++) {
