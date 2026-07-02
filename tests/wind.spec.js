@@ -76,7 +76,7 @@ test('legWindFor: per-leg override beats route wind; speed 0 marks calm', async 
   expect(r.allCalm).toBeNull();
 });
 
-test('Show-wind toggle reveals the realtime fetch button; no manual wind inputs', async ({ page }) => {
+test('Show-wind toggle reveals the departure slider; no manual wind inputs, no fetch button', async ({ page }) => {
   await page.addInitScript(() => {
     try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
@@ -84,12 +84,14 @@ test('Show-wind toggle reveals the realtime fetch button; no manual wind inputs'
   // The manual wind dir/speed inputs are gone — wind only comes from the fetch.
   await expect(page.locator('#wind-dir')).toHaveCount(0);
   await expect(page.locator('#wind-speed')).toHaveCount(0);
-  const fetchBtn = page.locator('#wind-fetch');
-  await expect(fetchBtn).toBeHidden();
+  // The manual "Pull Wind data" button is gone — fetch is automatic on toggle.
+  await expect(page.locator('#wind-fetch')).toHaveCount(0);
+  const depart = page.locator('#wind-depart');
+  await expect(depart).toBeHidden();
   const toggle = page.locator('#show-wind-cb');
   await expect(toggle).not.toBeChecked();
   await toggle.check();
-  await expect(fetchBtn).toBeVisible();
+  await expect(depart).toBeVisible();
   // The corner readout still reflects a route-wide wind when one is present.
   await page.evaluate(() => { state.wind = { dir: 300, speed: 18 }; refreshWindInputs(); });
   const readout = page.locator('#wind-readout');
@@ -97,7 +99,7 @@ test('Show-wind toggle reveals the realtime fetch button; no manual wind inputs'
   await expect(readout).toContainText('300');
   await expect(readout).toContainText('18');
   await toggle.uncheck();
-  await expect(fetchBtn).toBeHidden();
+  await expect(depart).toBeHidden();
   await expect(readout).not.toHaveClass(/show/);
 });
 
@@ -210,7 +212,7 @@ test('nearestPressureLevelHpa maps CVFR altitudes to winds-aloft levels', async 
 
 test('Fetch wind sets a per-leg wind for every leg (own midpoint + level)', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   // Two legs at different altitudes → 850 hPa (5000 ft) and 700 hPa (10000 ft).
   // Multi-location request → Open-Meteo returns an array (one per midpoint).
@@ -230,7 +232,6 @@ test('Fetch wind sets a per-leg wind for every leg (own midpoint + level)', asyn
   });
   await boot(page);
   await page.evaluate(() => {
-    window.showWind = true;
     state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' },
                        { lat: 32.3, lng: 35.0, name: 'B' },
                        { lat: 32.6, lng: 35.1, name: 'C' }];
@@ -238,7 +239,7 @@ test('Fetch wind sets a per-leg wind for every leg (own midpoint + level)', asyn
     state.legs[0].inboundAltitude = 5000;   // → 850 hPa → 200/20
     state.legs[1].inboundAltitude = 10000;  // → 700 hPa → 300/40
   });
-  await page.locator('#wind-fetch').click();
+  await page.locator('#show-wind-cb').check();   // auto-fetches (route exists)
   await page.waitForFunction(() => state.legs[0].wind && state.legs[1].wind);
   // Status shows the count and the Zulu update stamp (HH:MMZ).
   await expect(page.locator('#wind-fetch-status')).toContainText('Per-leg');
@@ -251,34 +252,17 @@ test('Fetch wind sets a per-leg wind for every leg (own midpoint + level)', asyn
   expect(joined).toMatch(/\d{2}:\d{2}Z/);
 });
 
-test('Fetch wind with no legs alerts and fetches nothing', async ({ page }) => {
-  await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
-  });
-  let fetched = false;
-  await page.route('**api.open-meteo.com/**', route => { fetched = true; route.abort(); });
-  await boot(page);
-  await page.evaluate(() => { window.showWind = true; state.waypoints = []; state.legs = []; });
-  let alerted = '';
-  page.on('dialog', d => { alerted = d.message(); d.dismiss(); });
-  await page.locator('#wind-fetch').click();
-  await page.waitForFunction(() => true);
-  expect(alerted).toMatch(/two waypoints/i);
-  expect(fetched).toBe(false);
-});
-
 test('Fetch wind surfaces an error when the request fails', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   await page.route('**api.open-meteo.com/**', route => route.fulfill({ status: 500, body: 'err' }));
   await boot(page);
   await page.evaluate(() => {
-    window.showWind = true;
     state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 35.0, name: 'B' }];
     state.legs = []; syncLegs();
   });
-  await page.locator('#wind-fetch').click();
+  await page.locator('#show-wind-cb').check();   // auto-fetches (route exists)
   await expect(page.locator('#wind-fetch-status')).toContainText('failed');
 });
 
@@ -295,7 +279,7 @@ test('calm wind is omitted from saved blobs (no schema churn)', async ({ page })
 
 test('Fetch wind samples each leg at its forecast ETA, not "now" (#leg-wind-forecast)', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   // 8 hourly samples from the current hour; wind speed encodes the hour index
   // (10 + idx) so the chosen forecast hour is readable from the leg wind.
@@ -314,7 +298,6 @@ test('Fetch wind samples each leg at its forecast ETA, not "now" (#leg-wind-fore
   });
   await boot(page);
   await page.evaluate(() => {
-    window.showWind = true;
     // Leg 1: ~6 NM at 120 kt (3 min — midpoint ETA ≈ now).
     // Leg 2: ~120 NM at 15 kt (8 h — midpoint ETA ≈ now + 4 h).
     state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' },
@@ -324,7 +307,7 @@ test('Fetch wind samples each leg at its forecast ETA, not "now" (#leg-wind-fore
     state.legs[0].inboundAltitude = 5000; state.legs[0].flightSpeed = 120;
     state.legs[1].inboundAltitude = 5000; state.legs[1].flightSpeed = 15;
   });
-  await page.locator('#wind-fetch').click();
+  await page.locator('#show-wind-cb').check();   // auto-fetches (route exists)
   await page.waitForFunction(() => state.legs[0].wind && state.legs[1].wind);
   const w = await page.evaluate(() => ({ w0: state.legs[0].wind, w1: state.legs[1].wind }));
   // Leg 1 gets an early hour (idx 0-1), leg 2 a much later one (idx 4-5):
@@ -339,7 +322,7 @@ test('Fetch wind samples each leg at its forecast ETA, not "now" (#leg-wind-fore
 
 test('departure slider shifts every leg\'s sampled forecast hour', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   // 30 hourly samples, hour index encoded in the wind speed (10 + idx).
   let fetchCount = 0;
@@ -357,13 +340,12 @@ test('departure slider shifts every leg\'s sampled forecast hour', async ({ page
   });
   await boot(page);
   await page.evaluate(() => {
-    window.showWind = true;
     state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.1, lng: 34.9, name: 'B' }];
     state.legs = []; syncLegs();
     state.legs[0].inboundAltitude = 5000; state.legs[0].flightSpeed = 120;  // ~3 min leg
   });
-  // Depart now → early hour.
-  await page.locator('#wind-fetch').click();
+  // Depart now → early hour. Checking the toggle auto-fetches (route exists).
+  await page.locator('#show-wind-cb').check();
   await page.waitForFunction(() => state.legs[0].wind);
   const nowSpeed = await page.evaluate(() => state.legs[0].wind.speed);
   expect(nowSpeed).toBeLessThanOrEqual(11);              // idx 0-1
@@ -373,9 +355,82 @@ test('departure slider shifts every leg\'s sampled forecast hour', async ({ page
   const depart = page.locator('#wind-depart');
   await depart.fill('6');
   await depart.dispatchEvent('input');
-  await expect(page.locator('#wind-depart-val')).toContainText('+6 h');
+  await expect(page.locator('#wind-depart-val')).toContainText('+6h');   // shared fmtViewTime readout
+  // Round clock times like the wind-field slider — top of the hour, ':00Z'.
+  await expect(page.locator('#wind-depart-val')).toContainText(':00Z');
   await page.waitForFunction(ns => state.legs[0].wind.speed !== ns, nowSpeed);
   const laterSpeed = await page.evaluate(() => state.legs[0].wind.speed);
   expect(laterSpeed - nowSpeed).toBe(6);                 // exactly +6 forecast hours
   expect(fetchCount).toBe(1);                            // re-sampled from cache
+});
+
+test('checking "show wind" pulls the forecast automatically when a route exists', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
+  });
+  let fetched = 0;
+  await page.route('**api.open-meteo.com/**', route => {
+    fetched++;
+    const now = new Date();
+    const t = [now.toISOString().slice(0, 13) + ':00'];
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify([
+      { hourly: { time: t, 'wind_speed_850hPa': [17], 'wind_direction_850hPa': [210] } },
+    ]) });
+  });
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.1, lng: 34.9, name: 'B' }];
+    state.legs = []; syncLegs();
+    state.legs[0].inboundAltitude = 5000;
+  });
+  await page.locator('#show-wind-cb').check();
+  await page.waitForFunction(() => state.legs[0].wind);
+  expect(await page.evaluate(() => state.legs[0].wind)).toEqual({ dir: 210, speed: 17 });
+  expect(fetched).toBe(1);
+});
+
+test('adding a leg while "show wind" is on fetches wind for the new leg', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
+  });
+  let fetched = 0;
+  await page.route('**api.open-meteo.com/**', route => {
+    fetched++;
+    const now = new Date();
+    const t = [now.toISOString().slice(0, 13) + ':00'];
+    const loc = () => ({ hourly: { time: t, 'wind_speed_850hPa': [23], 'wind_direction_850hPa': [140] } });
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify([loc(), loc(), loc()]) });
+  });
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.2, lng: 34.9, name: 'B' }];
+    state.legs = []; syncLegs();
+    state.legs[0].inboundAltitude = 5000;
+  });
+  await page.locator('#show-wind-cb').check();          // fetch #1 — leg 0
+  await page.waitForFunction(() => state.legs[0].wind);
+  // Add a third waypoint → a new leg. It must get its own wind automatically.
+  await page.evaluate(() => {
+    state.waypoints.push({ lat: 32.4, lng: 34.9, name: 'C' });
+    syncLegs();                                          // grows legs → onRouteLegsGrown
+    state.legs[1].inboundAltitude = 5000;
+  });
+  await page.waitForFunction(() => state.legs[1] && state.legs[1].wind, null, { timeout: 5000 });
+  expect(await page.evaluate(() => state.legs[1].wind)).toEqual({ dir: 140, speed: 23 });
+  expect(fetched).toBeGreaterThanOrEqual(2);            // a second fetch covered the new leg
+});
+
+test('checking "show wind" with no route does not fetch and does not alert', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
+  });
+  let fetched = false;
+  await page.route('**api.open-meteo.com/**', route => { fetched = true; route.abort(); });
+  let alerted = false;
+  page.on('dialog', d => { alerted = true; d.dismiss(); });
+  await boot(page);
+  await page.locator('#show-wind-cb').check();
+  await page.waitForTimeout(150);
+  expect(fetched).toBe(false);
+  expect(alerted).toBe(false);
 });

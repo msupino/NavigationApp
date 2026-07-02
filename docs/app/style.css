@@ -656,7 +656,11 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   #toolbar.multi-open .tb-section[data-sec="weather"] .tb-section-body { left: calc(71.425vw - 2px); }
   #toolbar.multi-open .tb-section[data-sec="print"] .tb-section-body { left: calc(85.71vw - 4px); }
 
-  #toolbar .tb-section-body button,
+  /* Full-width flat menu buttons — but NOT the inline slider-reset (↻), which
+     is a small trailing control inside a flex slider row; width:100% there
+     blows it up to the full row and pushes it out of the group-box frame
+     (visible in RTL, where it overflows left). It keeps its base styling. */
+  #toolbar .tb-section-body button:not(.slider-reset),
   #toolbar .tb-section-body #export-select {
     width: 100%;
     min-height: 28px;
