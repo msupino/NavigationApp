@@ -2105,10 +2105,9 @@ function windDepartOffsetH() {
 }
 function refreshWindDepartLabel() {
   if (!windDepartVal) return;
-  const off = windDepartOffsetH();
-  windDepartVal.textContent = off === 0
-    ? (S.windDepartNow || 'now')
-    : '+' + off + ' h · ' + formatZuluHM(Date.now() + off * 3600e3);
+  // Same readout as the NOTAM and wind-field look-ahead sliders:
+  // 0 shows the clock of now, otherwise '+Nh · <clock>' (fmtViewTime).
+  windDepartVal.textContent = notamTimeLabel(windDepartOffsetH());
 }
 // Fetch a per-leg winds-aloft forecast: each leg gets its own wind from
 // Open-Meteo at the leg midpoint, the pressure level matching that leg's

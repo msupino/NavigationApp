@@ -145,7 +145,6 @@ window.S = {
   mosaicZoom: 'זום',
   mosaicSize: 'גודל',
   mosaicPrint: '🖨 הדפס',
-  tbNotamTime: 'זמן',
   tbLookAheadTitle: 'תחזית קדימה: 0 = עכשיו; ‎+N = בעוד N שעות',
   notamTimeNow: 'עכשיו',
   notamTimeAt: function(h, t) { return '+' + h + 'ש · ' + t; },
@@ -282,8 +281,6 @@ window.S = {
   windResetTitle: 'נקה דריסת רוח (השתמש ברוח המסלול)',
   tbFetchWind: '⤓ משוך נתוני רוח',
   tbFetchWindTitle: 'משוך תחזית רוחות גובה לכל רגל מ-Open-Meteo — כל רגל מקבלת רוח משלה לפי נקודת האמצע, רום הטיסה וזמן ההגעה הצפוי אליה מהמראה שנקבעה במחוון (דורש מסלול)',
-  tbWindDepart: 'המראה +ש',
-  windDepartNow: 'עכשיו',
   windFetching: 'מושך רוח…',
   windFetchOk: function(hpa, dir, spd) {
     return hpa + ' hPa ← ' + dir + '/' + spd;

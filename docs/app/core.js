@@ -625,7 +625,6 @@ window.S = Object.assign({
   mosaicZoom: 'Zoom',
   mosaicSize: 'Size',
   mosaicPrint: '🖨 Print',
-  tbNotamTime: 'Time',
   tbLookAheadTitle: 'Forecast look-ahead: 0 = now; +N = N hours from now',
   notamTimeNow: 'Now',
   notamTimeAt: function(h, t) { return '+' + h + 'h · ' + t; },
@@ -763,8 +762,6 @@ window.S = Object.assign({
   windResetTitle: 'Clear wind override (use the route wind)',
   tbFetchWind: '⤓ Pull Wind data',
   tbFetchWindTitle: 'Fetch a per-leg winds-aloft forecast from Open-Meteo — each leg gets its own wind at its midpoint, flight level and forecast ETA from the departure set on the slider (needs a route)',
-  tbWindDepart: 'Departure +h',
-  windDepartNow: 'now',
   windFetching: 'Fetching wind…',
   windFetchOk: function(hpa, dir, spd) {
     return hpa + ' hPa → ' + dir + '/' + spd;
