@@ -332,6 +332,47 @@ test('Fetch wind samples each leg at its forecast ETA, not "now" (#leg-wind-fore
   expect(w.w0.speed).toBeLessThanOrEqual(11);
   expect(w.w1.speed).toBeGreaterThanOrEqual(14);
   expect(w.w1.speed - w.w0.speed).toBeGreaterThanOrEqual(3);
-  // Two forecast days requested so late-UTC departures don't clamp at 23:00Z.
-  expect(reqUrl).toContain('forecast_days=2');
+  // Three forecast days requested so the +24 h departure slider plus route
+  // time can't clamp at the last fetched hour.
+  expect(reqUrl).toContain('forecast_days=3');
+});
+
+test('departure slider shifts every leg\'s sampled forecast hour', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); localStorage.setItem('navaid.showWind', '1'); } catch (e) {}
+  });
+  // 30 hourly samples, hour index encoded in the wind speed (10 + idx).
+  await page.route('**api.open-meteo.com/**', route => {
+    const now = new Date();
+    const t = [], spd = [], dir = [];
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours() + i));
+      t.push(d.toISOString().slice(0, 13) + ':00');
+      spd.push(10 + i); dir.push(100 + i);
+    }
+    const loc = () => ({ hourly: { time: t, 'wind_speed_850hPa': spd, 'wind_direction_850hPa': dir } });
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify([loc()]) });
+  });
+  await boot(page);
+  await page.evaluate(() => {
+    window.showWind = true;
+    state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.1, lng: 34.9, name: 'B' }];
+    state.legs = []; syncLegs();
+    state.legs[0].inboundAltitude = 5000; state.legs[0].flightSpeed = 120;  // ~3 min leg
+  });
+  // Depart now → early hour.
+  await page.locator('#wind-fetch').click();
+  await page.waitForFunction(() => state.legs[0].wind);
+  const nowSpeed = await page.evaluate(() => state.legs[0].wind.speed);
+  expect(nowSpeed).toBeLessThanOrEqual(11);              // idx 0-1
+  // Depart +6 h → the sampled hour moves with the slider.
+  const depart = page.locator('#wind-depart');
+  await depart.fill('6');
+  await depart.dispatchEvent('input');
+  await expect(page.locator('#wind-depart-val')).toContainText('+6 h');
+  await page.evaluate(() => { state.legs[0].wind = null; });
+  await page.locator('#wind-fetch').click();
+  await page.waitForFunction(() => state.legs[0].wind);
+  const laterSpeed = await page.evaluate(() => state.legs[0].wind.speed);
+  expect(laterSpeed - nowSpeed).toBe(6);                 // exactly +6 forecast hours
 });

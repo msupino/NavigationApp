@@ -763,6 +763,9 @@ window.S = Object.assign({
   windResetTitle: 'Clear wind override (use the route wind)',
   tbFetchWind: '⤓ Pull Wind data',
   tbFetchWindTitle: 'Fetch a per-leg winds-aloft forecast from Open-Meteo — each leg gets its own wind at its midpoint, flight level and forecast ETA, assuming departure now (needs a route)',
+  tbWindDepart: 'Departure +h',
+  tbWindDepartTitle: 'Forecast departure offset: 0 = depart now; +N = depart in N hours. Pull Wind samples each leg at its ETA from this departure.',
+  windDepartNow: 'now',
   windFetching: 'Fetching wind…',
   windFetchOk: function(hpa, dir, spd) {
     return hpa + ' hPa → ' + dir + '/' + spd;

@@ -2068,24 +2068,42 @@ function nearestHourIndex(times, atMs) {
   }
   return bi;
 }
-// Forecast ETA (ms since epoch) of each leg's midpoint, departure = now:
+// Forecast ETA (ms since epoch) of each leg's midpoint from `departMs`:
 // legs are flown in sequence, so leg i's midpoint is reached after the sum
 // of the prior legs' ETEs plus half its own. Legs without a usable speed
 // contribute no time — their midpoint ETA falls back to the running total.
-function legMidpointEtas() {
-  const now = Date.now();
+function legMidpointEtas(departMs) {
+  const t0 = Number.isFinite(departMs) ? departMs : Date.now();
   const etas = [];
   let tH = 0;
   for (let i = 0; i < state.legs.length; i++) {
     const { dist } = geo(state.waypoints[i], state.waypoints[i + 1]);
     const legH = state.legs[i].flightSpeed > 0 ? dist / state.legs[i].flightSpeed : 0;
-    etas.push(now + (tH + legH / 2) * 3600e3);
+    etas.push(t0 + (tH + legH / 2) * 3600e3);
     tH += legH;
   }
   return etas;
 }
 const windFetchBtn = document.getElementById('wind-fetch');
 const windFetchStatus = document.getElementById('wind-fetch-status');
+// Departure-offset slider: forecast departure = now + N hours (0 = now).
+// Session-only — a planned departure is flight-specific, not a setting.
+const windDepartSlider = document.getElementById('wind-depart');
+const windDepartVal = document.getElementById('wind-depart-val');
+function windDepartOffsetH() {
+  return windDepartSlider ? (parseInt(windDepartSlider.value, 10) || 0) : 0;
+}
+function refreshWindDepartLabel() {
+  if (!windDepartVal) return;
+  const off = windDepartOffsetH();
+  windDepartVal.textContent = off === 0
+    ? (S.windDepartNow || 'now')
+    : '+' + off + ' h · ' + formatZuluHM(Date.now() + off * 3600e3);
+}
+if (windDepartSlider) {
+  windDepartSlider.oninput = refreshWindDepartLabel;
+  refreshWindDepartLabel();
+}
 // Fetch a per-leg winds-aloft forecast: each leg gets its own wind from
 // Open-Meteo at the leg midpoint, the pressure level matching that leg's
 // altitude, AND the forecast hour matching that leg's ETA (departure = fetch
@@ -2106,16 +2124,17 @@ async function fetchRouteWind() {
     // pressure-level params every leg needs; each leg reads its own level.
     const mids = state.legs.map((l, i) => legMidpoint(i));
     const levels = state.legs.map(l => nearestPressureLevelHpa(legAltitudeFt(l)));
-    const etas = legMidpointEtas();
+    const etas = legMidpointEtas(Date.now() + windDepartOffsetH() * 3600e3);
     const uniq = Array.from(new Set(levels));
     const params = uniq.flatMap(l => ['wind_speed_' + l + 'hPa', 'wind_direction_' + l + 'hPa']);
-    // forecast_days=2: a late-UTC departure plus route time can cross into
-    // the next UTC day; day 1 alone would clamp those legs to 23:00Z.
+    // forecast_days=3: the departure slider reaches +24 h, plus route time,
+    // plus a late-UTC "now" can cross two UTC-day boundaries; fewer days
+    // would clamp those legs to the last fetched hour.
     const url = 'https://api.open-meteo.com/v1/forecast' +
       '?latitude=' + mids.map(m => m.lat.toFixed(3)).join(',') +
       '&longitude=' + mids.map(m => m.lng.toFixed(3)).join(',') +
       '&hourly=' + params.join(',') +
-      '&wind_speed_unit=kn&timezone=UTC&forecast_days=2';
+      '&wind_speed_unit=kn&timezone=UTC&forecast_days=3';
     const res = await fetch(url);
     if (!res.ok) throw new Error(String(res.status));
     const j = await res.json();
