@@ -374,6 +374,8 @@ test('departure slider shifts every leg\'s sampled forecast hour', async ({ page
   await depart.fill('6');
   await depart.dispatchEvent('input');
   await expect(page.locator('#wind-depart-val')).toContainText('+6h');   // shared fmtViewTime readout
+  // Round clock times like the wind-field slider — top of the hour, ':00Z'.
+  await expect(page.locator('#wind-depart-val')).toContainText(':00Z');
   await page.waitForFunction(ns => state.legs[0].wind.speed !== ns, nowSpeed);
   const laterSpeed = await page.evaluate(() => state.legs[0].wind.speed);
   expect(laterSpeed - nowSpeed).toBe(6);                 // exactly +6 forecast hours
