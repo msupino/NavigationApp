@@ -243,7 +243,10 @@ test('prose border NOTAMs are geocoded to buffer polygons', async ({ page }) => 
       text: 'AN AREA FM LEBANON BOUNDRAY TO 8KM SB CLSD TO ALL DOM FLT.' },
   ] });
   await page.locator('#notam-cb').check();
-  const g = await page.evaluate(() => {
+  const g = await page.evaluate(async () => {
+    // buildNotamBorderAreas silently no-ops until the async notam-borders
+    // fetch resolves — await it first or this flakes under CI load.
+    if (typeof loadNotamBorders === 'function') await loadNotamBorders();
     if (typeof buildNotamBorderAreas === 'function') buildNotamBorderAreas();
     const n = notams.find(x => x.id === 'C1158/26');
     if (!n.geom || n.geom.type !== 'polygon') return null;
@@ -268,7 +271,8 @@ test('a point within the border buffer is detected as inside the NOTAM', async (
       text: 'AN AREA FM LEBANON BOUNDRAY TO 8KM SB CLSD TO ALL DOM FLT.' },
   ] });
   await page.locator('#notam-cb').check();
-  const hits = await page.evaluate(() => {
+  const hits = await page.evaluate(async () => {
+    if (typeof loadNotamBorders === 'function') await loadNotamBorders();
     if (typeof buildNotamBorderAreas === 'function') buildNotamBorderAreas();
     map.setView([33.15, 35.55], 10); draw();
     return {
@@ -292,7 +296,8 @@ test('border NOTAM outline is solid, ordinary area outline is dashed', async ({ 
   await page.locator('#notam-cb').check();
   // Spy on setLineDash during a draw: a border area must stroke with no dash
   // ([] / empty), the ordinary polygon must stroke dashed ([6,4]).
-  const dashes = await page.evaluate(() => {
+  const dashes = await page.evaluate(async () => {
+    if (typeof loadNotamBorders === 'function') await loadNotamBorders();
     if (typeof buildNotamBorderAreas === 'function') buildNotamBorderAreas();
     const seen = [];
     const orig = octx.setLineDash;
