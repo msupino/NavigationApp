@@ -13,6 +13,7 @@
 // GA / GTM traffic never escapes the test page.
 
 const { test, expect } = require('./_setup');
+const { pressShortcut } = require('./_toolbar');
 
 const TRANSPARENT_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
@@ -259,9 +260,7 @@ test.describe('issue #388 — review cleanup', () => {
       // beforeEach presets every toolbar section open, and in desktop-menubar
       // mode menu churn can hide the View dropdown mid-click (same family as
       // the mosaic-modal incident in magnifier.spec.js).
-      await page.evaluate(() => window.closeToolbarMenus && window.closeToolbarMenus());
-      await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
-      await page.keyboard.press('m');
+      await pressShortcut(page, 'm');
       await expect(page.locator('#magnifier')).toBeVisible();
       await page.waitForTimeout(600);
 

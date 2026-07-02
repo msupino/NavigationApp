@@ -281,7 +281,10 @@ window.S = {
   windUnflyable: 'הרוח חזקה ממהירות האוויר',
   windResetTitle: 'נקה דריסת רוח (השתמש ברוח המסלול)',
   tbFetchWind: '⤓ משוך נתוני רוח',
-  tbFetchWindTitle: 'משוך תחזית רוחות גובה לכל רגל מ-Open-Meteo — כל רגל מקבלת רוח משלה לפי נקודת האמצע ורום הטיסה שלה (דורש מסלול)',
+  tbFetchWindTitle: 'משוך תחזית רוחות גובה לכל רגל מ-Open-Meteo — כל רגל מקבלת רוח משלה לפי נקודת האמצע, רום הטיסה וזמן ההגעה הצפוי אליה בהנחת המראה עכשיו (דורש מסלול)',
+  tbWindDepart: 'המראה +ש',
+  tbWindDepartTitle: 'היסט זמן המראה לתחזית: 0 = המראה עכשיו; ‎+N = המראה בעוד N שעות. משיכת הרוח דוגמת כל רגל לפי זמן ההגעה הצפוי אליה מהמראה זו.',
+  windDepartNow: 'עכשיו',
   windFetching: 'מושך רוח…',
   windFetchOk: function(hpa, dir, spd) {
     return hpa + ' hPa ← ' + dir + '/' + spd;

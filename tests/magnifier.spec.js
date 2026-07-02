@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('./_setup');
+const { pressShortcut } = require('./_toolbar');
 
 // e2e-deployed pulls real map tiles; z=8 pane + loupe CSS settle can exceed
 // the default 15s test timeout without these budgets.
@@ -115,9 +116,7 @@ test.describe('Magnifying glass', () => {
     // to flakily hit the Charts dropdown's Mosaic button, whose modal then
     // closed all menus and hid #tool-add (60s click timeout). Close the menus
     // and toggle add-mode via its keyboard shortcut, no dropdowns involved.
-    await page.evaluate(() => window.closeToolbarMenus && window.closeToolbarMenus());
-    await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
-    await page.keyboard.press('a');
+    await pressShortcut(page, 'a');
     await page.waitForFunction(() => state.mode === 'add');
     const wp1x = mapBox.x + 400, wp1y = mapBox.y + 300;
     const wp2x = mapBox.x + 600, wp2y = mapBox.y + 300;

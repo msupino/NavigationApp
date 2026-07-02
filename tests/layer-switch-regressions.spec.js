@@ -55,6 +55,64 @@ test('layer switch + subsequent edit never rewrite a pinned route\'s altitudes',
   expect(String(after.out)).toBe(String(before.out));
 });
 
+test('extending a pinned route after a layer switch does not fill the new leg from the wrong table', async ({ page }) => {
+  await boot(page);
+  // Build + pin on CVFR, passively switch to Low Alt, then ADD a waypoint:
+  // syncLegs' grow loop fills fresh legs via applyLegAltitudeToLeg directly,
+  // which used to bypass the pin gate and mix two layers' altitudes.
+  await page.evaluate(async () => {
+    for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+    map.addLayer(layers['CVFR']);
+    window.legAltitudeMap = null; window.routeAltPrefix = null;
+    await loadLegAltitudes();
+    state.waypoints = [{ lat: 32.917, lng: 35.097, name: 'AAKKO' }, { lat: 32.911, lng: 35.180, name: 'AHIUD' }];
+    syncLegs();
+  });
+  await page.evaluate(() => {
+    for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+    map.addLayer(layers['Low Alt']);
+    return reloadLayerDatasets();
+  });
+  const r = await page.evaluate(() => {
+    // Extend the route with the ALMOG→ZUKIM pair — a segment present in BOTH
+    // tables with different altitudes (LSA 500/500 vs CVFR 3500/4000), so a
+    // pin-bypassing fill from the loaded LSA table is detectable.
+    state.waypoints.push({ lat: 31.79, lng: 35.45, name: 'ALMOG' });
+    state.waypoints.push({ lat: 31.72, lng: 35.45, name: 'ZUKIM' });
+    syncLegs();
+    const leg = state.legs[2];           // the ALMOG→ZUKIM leg
+    return { pin: window.routeAltPrefix, mapPrefix: window.legAltitudeMapPrefix,
+             in: leg.inboundAltitude, out: leg.outboundAltitude };
+  });
+  expect(r.pin).toBe('cvfr');            // still pinned to the build layer
+  expect(r.mapPrefix).toBe('lsa');       // the wrong-layer table IS loaded
+  // The new leg must NOT be filled from the Low Alt table (500/500).
+  expect(Number.isFinite(r.in)).toBe(false);
+  expect(Number.isFinite(r.out)).toBe(false);
+});
+
+test('undo restores the route\'s altitude-layer pin from the snapshot', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    for (const k in layers) if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+    map.addLayer(layers['CVFR']);
+    window.legAltitudeMap = null; window.routeAltPrefix = null;
+    await loadLegAltitudes();
+    state.waypoints = [{ lat: 32.917, lng: 35.097, name: 'AAKKO' }, { lat: 32.911, lng: 35.180, name: 'AHIUD' }];
+    syncLegs();
+    draw();                                    // persist() pushes the undo snapshot
+    const pinned = window.routeAltPrefix;
+    state.waypoints = []; syncLegs(); draw();  // clear → unpin (and snapshot)
+    const cleared = window.routeAltPrefix;
+    undo();                                    // restore the pinned route
+    return { pinned, cleared, restored: window.routeAltPrefix, wps: state.waypoints.length };
+  });
+  expect(r.pinned).toBe('cvfr');
+  expect(r.cleared).toBeNull();
+  expect(r.wps).toBe(2);
+  expect(r.restored).toBe('cvfr');   // pin came back with the snapshot
+});
+
 test('clearing the route unpins it; a fresh route repins to the active layer', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
@@ -139,10 +197,9 @@ test('editor "Load known" refuses layers without a known set and refuses the cvf
     map.addLayer(layers['Satellite']);
   });
   await page.click('#ed-load');
-  await page.waitForFunction(() => true);
-  await page.waitForTimeout(200);
+  // The alert is async (dialog event) — poll for it instead of sleeping.
+  await expect.poll(() => alerts.some(m => /No known waypoint set/.test(m))).toBe(true);
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.editor.points') || '[]').length);
-  expect(alerts.some(m => /No known waypoint set/.test(m))).toBe(true);
   expect(stored).toBe(0);
   // Low Alt whose own dataset failed (fetchLayerData returned the cvfr
   // fallback): must alert, not import CVFR points tagged as Low Alt.
@@ -155,8 +212,7 @@ test('editor "Load known" refuses layers without a known set and refuses the cvf
     map.addLayer(layers['Low Alt']);
   });
   await page.click('#ed-load');
-  await page.waitForTimeout(300);
+  await expect.poll(() => alerts.some(m => /failed to load|fallback/i.test(m))).toBe(true);
   const stored2 = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.editor.points') || '[]').length);
-  expect(alerts.some(m => /failed to load|fallback/i.test(m))).toBe(true);
   expect(stored2).toBe(0);                 // CVFR points must NOT be imported as Low Alt
 });
