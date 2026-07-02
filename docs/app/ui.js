@@ -2502,9 +2502,17 @@ function fmtViewTime(h, clock) {
   if (!h) return clock;
   return S.notamTimeAt ? S.notamTimeAt(h, clock) : ('+' + h + 'h · ' + clock);
 }
-// Slider readout: 0 = clock of now, otherwise "+Nh · HH:MMZ".
+// Slider readout: 0 = clock of the current hour, otherwise "+Nh · HH:00Z".
+// Rounded to the top of the hour so every look-ahead slider reads round
+// clock times like the wind-field slider (whose clock is the hourly forecast
+// timestamp) — these sliders step in whole hours over hourly data.
+function topOfHour(ms) {
+  const d = new Date(ms);
+  d.setUTCMinutes(0, 0, 0);
+  return d.getTime();
+}
 function notamTimeLabel(h) {
-  return fmtViewTime(h, fmtViewClock(new Date(Date.now() + h * 3600e3)));
+  return fmtViewTime(h, fmtViewClock(new Date(topOfHour(Date.now()) + h * 3600e3)));
 }
 function syncNotamTime() {
   const h = notamTimeEl ? (parseInt(notamTimeEl.value, 10) || 0) : 0;
