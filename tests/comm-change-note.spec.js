@@ -1892,3 +1892,38 @@ test.describe('comm-change auto-note (#487)', () => {
     expect(out.lines).toEqual(['פלוטו', '118.40']);
   });
 });
+
+test.describe('airfield freq change auto-seeds the main frequency', () => {
+  test('adding a freq change at an airfield picks its primary call-sign freq', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    const note = await page.evaluate(() => {
+      // LLBG is an airfield (AIRFIELD_CALL_SIGN_IDS.LLBG = BEN_GURION, primary
+      // 118.30 in the fixture) but not a route comm-change point.
+      const wp = { lat: 32.0, lng: 34.88, name: 'LLBG' };
+      state.waypoints = [wp];
+      syncLegs();
+      window.showCommChange = true;
+      const idx = addCommChangeNoteForWaypoint(wp, waypointFreqChangeKey(wp));
+      return state.notes[idx];
+    });
+    expect(note.cc).toBe('LLBG');
+    expect(note.freq).toBe('118.30');       // Ben Gurion primary, auto-seeded
+    expect(note.freqName).toBe('Ben Gurion');
+    expect(note.freqAuto).toBe(true);
+  });
+
+  test('a non-airfield waypoint with no catalog freq is left blank', async ({ page }) => {
+    await installCommChangeFixture(page);
+    await boot(page);
+    const note = await page.evaluate(() => {
+      const wp = { lat: 32.4, lng: 35.2, name: 'ZZZZ' };   // not an airfield, not a comm point
+      state.waypoints = [wp];
+      syncLegs();
+      window.showCommChange = true;
+      const idx = addCommChangeNoteForWaypoint(wp, waypointFreqChangeKey(wp));
+      return state.notes[idx];
+    });
+    expect(note.freq).toBe('');              // nothing to seed
+  });
+});
