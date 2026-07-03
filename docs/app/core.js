@@ -2036,7 +2036,9 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
 // the area around it is blank. Render OSM in a pane BELOW the chart tiles to
 // fill the surroundings; the chart shows on top wherever it has coverage. Not
 // needed for the already-global layers (Satellite / OpenStreetMap).
-map.createPane('basemapUnderlay');
+// leaflet-rotate splits mapPane into rotatePane+norotatePane; custom panes default
+// to mapPane and are skipped by rotation. Force into rotatePane when available.
+map.createPane('basemapUnderlay', map._rotatePane || undefined);
 map.getPane('basemapUnderlay').style.zIndex = 150;        // below tilePane (200)
 const osmUnderlay = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   { pane: 'basemapUnderlay', minZoom: 6, maxZoom: 18, subdomains: 'abc',
