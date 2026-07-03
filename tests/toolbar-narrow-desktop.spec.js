@@ -52,15 +52,15 @@ test('narrow desktop RTL: bar stays within the viewport', async ({ page }) => {
 
 test('Information section sliders + values stay inside the menu', async ({ page }) => {
   await boot(page, 1000);
-  // Open the Information (weather) section and reveal the wind-field + NOTAM
-  // timeline sliders. The NOTAM time value ("+72h · 12:00Z") is the long one
-  // that used to spill outside the menu.
+  // Open the Information (weather) section and reveal the wind-field sliders.
+  // The shared look-ahead time value ("+24h · 12-31 12:00Z") is the long one
+  // that used to spill outside / resize the menu.
   await page.evaluate(() => {
     const sec = document.querySelector('.tb-section[data-sec="weather"]');
     sec.classList.add('open');
     document.getElementById('windfield-controls').hidden = false;
     document.getElementById('notam-controls').hidden = false;
-    document.getElementById('notam-time-val').textContent = '+72h · 12:00Z';
+    document.getElementById('lookahead-time-val').textContent = '+24h · 12-31 12:00Z';
   });
   const overflow = await page.evaluate(() => {
     const body = document.querySelector('.tb-section[data-sec="weather"] .tb-section-body');
@@ -97,10 +97,10 @@ test('Information section sliders + values stay inside the menu', async ({ page 
   expect(new Set(widths).size).toBe(1);                 // uniform width
 
   const before = await page.evaluate(() =>
-    Math.round(document.getElementById('notam-time').getBoundingClientRect().width));
-  await page.evaluate(() => { document.getElementById('notam-time-val').textContent = '0'; });
+    Math.round(document.getElementById('lookahead-time').getBoundingClientRect().width));
+  await page.evaluate(() => { document.getElementById('lookahead-time-val').textContent = '0'; });
   const after = await page.evaluate(() =>
-    Math.round(document.getElementById('notam-time').getBoundingClientRect().width));
+    Math.round(document.getElementById('lookahead-time').getBoundingClientRect().width));
   expect(after).toBe(before);                           // stable while value changes
 });
 

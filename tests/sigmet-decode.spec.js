@@ -4,7 +4,7 @@ const { test, expect } = require('./_setup');
 
 async function boot(page) {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); localStorage.setItem('navaid.showSigmet', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.charts', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   await page.route('**raw.githubusercontent.com/**sigmet-data/**', r => r.fulfill({
     contentType: 'application/json',
@@ -46,11 +46,14 @@ test('decodeSigmet handles unknown codes + surface base', async ({ page }) => {
   expect(txt).toContain('FL050');         // 5000 ft → FL050
 });
 
-test('clicking the SIGMET readout opens the decoded list', async ({ page }) => {
+test('clicking the SIGMET chart button opens the decoded list', async ({ page }) => {
   await boot(page);
-  await page.locator('#sigmet-cb').check();
+  // Eager boot load populates sigmets and unhides the Charts-section button.
   await page.waitForFunction(() => Array.isArray(sigmets) && sigmets.length === 1);
-  await page.locator('#sigmet-readout').click();
+  await page.waitForFunction(() => {
+    const b = document.getElementById('sigmet-btn'); return b && b.hidden === false;
+  });
+  await page.evaluate(() => document.getElementById('sigmet-btn').click());
   const modal = page.locator('.modal-title', { hasText: /SIGMET/i });
   await expect(modal).toBeVisible();
   const body = page.locator('.modal-back .modal');
