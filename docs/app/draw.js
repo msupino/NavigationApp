@@ -2948,24 +2948,32 @@ function drawWaypoints() {
 }
 
 // --- notes (free-text annotation boxes) ------------------------------
-function noteFont() {
-  return `bold ${tune('noteFontPx')}px sans-serif`;
+// Per-note size multiplier (default 1). Clamped so a note can't shrink to
+// nothing or blow up the canvas. Applied to the font and every rect metric so
+// the note scales uniformly around its anchor point.
+function noteScale(n) {
+  const s = Number(n && n.size);
+  return Number.isFinite(s) && s > 0 ? Math.max(0.5, Math.min(s, 4)) : 1;
+}
+function noteFont(n) {
+  return `bold ${tune('noteFontPx') * noteScale(n)}px sans-serif`;
 }
 
 function noteRect(i) {
   const n = state.notes[i];
   if (n && n.cc) return commCalloutRect(n);
   const s = proj(n);
+  const sc = noteScale(n);
   const lines = noteLines(n);
-  const lineH = tune('noteLineHeightPx');
-  octx.font = noteFont();
+  const lineH = tune('noteLineHeightPx') * sc;
+  octx.font = noteFont(n);
   let maxW = 1;
   for (const l of lines) {
     const w = octx.measureText(l || ' ').width;
     if (w > maxW) maxW = w;
   }
-  let w = Math.max(maxW + tune('notePadXPx') * 2, tune('noteMinWidthPx'));
-  let h = Math.max(1, lines.length) * lineH + tune('notePadYPx') * 2;
+  let w = Math.max(maxW + tune('notePadXPx') * sc * 2, tune('noteMinWidthPx') * sc);
+  let h = Math.max(1, lines.length) * lineH + tune('notePadYPx') * sc * 2;
   const oval = n.shape === 'oval';
   if (oval) { w *= Math.SQRT2; h *= Math.SQRT2; }   // ellipse must bound the text
   return { x: s.x - w / 2, y: s.y - h / 2, w, h, lines, oval };
@@ -3193,8 +3201,8 @@ function drawNotes() {
       octx.strokeRect(r.x, r.y, r.w, r.h);
     }
 
-    const lineH = tune('noteLineHeightPx');
-    octx.font = noteFont();
+    const lineH = tune('noteLineHeightPx') * noteScale(n);
+    octx.font = noteFont(n);
     octx.fillStyle = tune('inkColor');
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';

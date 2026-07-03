@@ -423,6 +423,10 @@ function validateRoute(d) {
           typeof n.freqAuto !== 'boolean') {
         errs.push(p + '.freqAuto: expected boolean, got ' + _vKind(n.freqAuto));
       }
+      if (Object.prototype.hasOwnProperty.call(n, 'size') &&
+          typeof n.size !== 'number') {
+        errs.push(p + '.size: expected number, got ' + _vKind(n.size));
+      }
     }
   }
   if (wpsOk && legsOk) {
@@ -855,6 +859,7 @@ function serializeRoute() {
       ...(n.freqName ? { freqName: n.freqName } : {}),
       ...(n.freq ? { freq: n.freq } : {}),
       ...(n.freqAuto === true ? { freqAuto: true } : {}),
+      ...(Number.isFinite(n.size) && n.size !== 1 ? { size: n.size } : {}),
     })),
   };
   if (commChangeSuppressions.length) data.commChangeSuppressions = commChangeSuppressions;
@@ -1370,6 +1375,7 @@ function applyRouteData(d) {
     ...(n.freqName ? { freqName: n.freqName } : {}),
     ...(n.freq ? { freq: n.freq } : {}),
     ...(n.freqAuto === true ? { freqAuto: true } : {}),
+    ...(Number.isFinite(n.size) && n.size !== 1 ? { size: n.size } : {}),
   }));
   state.commChangeSuppressions = storedCommChangeSuppressions(d);
   state.wind = storedWind(d);
@@ -3977,6 +3983,7 @@ function restoreRoute() {
     ...(n.freqName ? { freqName: n.freqName } : {}),
     ...(n.freq ? { freq: n.freq } : {}),
     ...(n.freqAuto === true ? { freqAuto: true } : {}),
+    ...(Number.isFinite(n.size) && n.size !== 1 ? { size: n.size } : {}),
   }));
   state.commChangeSuppressions = storedCommChangeSuppressions(d);
   state.wind = storedWind(d);
