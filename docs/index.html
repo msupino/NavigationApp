@@ -353,16 +353,20 @@
       <!-- Each map layer is a uniform .tb-group-box: a toggle on top, its
            controls (sliders / selects) below, same spacing + widths for all. -->
       <div class="tb-section-body">
+        <!-- Unified look-ahead slider: drives NOTAM, wind-depart, and wind-field time together. -->
+        <div class="tb-group-box">
+          <label class="navtoggle" data-i18n-title="tbLookAheadTitle">
+            <span data-i18n="tbWindFieldTime"></span>
+            <input type="range" id="lookahead-time" min="0" max="24" step="1" value="0">
+            <span class="slider-val" id="lookahead-time-val"></span>
+          </label>
+        </div>
         <div class="tb-group-box">
           <label class="navtoggle" data-i18n-title="tbShowNotamTitle">
             <input type="checkbox" id="notam-cb"> <span data-i18n="tbShowNotam"></span>
           </label>
           <div id="notam-controls" hidden>
-            <label class="navtoggle" data-i18n-title="tbLookAheadTitle">
-              <span data-i18n="tbWindFieldTime"></span>
-              <input type="range" id="notam-time" min="0" max="72" step="1" value="0">
-              <span class="slider-val" id="notam-time-val"></span>
-            </label>
+            <input type="range" id="notam-time" min="0" max="72" step="1" value="0" hidden>
             <div id="notam-updated" class="notam-updated" dir="ltr"></div>
           </div>
         </div>
@@ -370,11 +374,7 @@
           <label class="navtoggle" data-i18n-title="tbShowWindTitle">
             <input type="checkbox" id="show-wind-cb"> <span data-i18n="tbShowWind"></span>
           </label>
-          <label class="navtoggle wind-input-row" style="display:none" data-i18n-title="tbLookAheadTitle">
-            <span data-i18n="tbWindFieldTime"></span>
-            <input type="range" id="wind-depart" min="0" max="24" step="1" value="0">
-            <span class="slider-val" id="wind-depart-val"></span>
-          </label>
+          <input type="range" id="wind-depart" min="0" max="24" step="1" value="0" hidden>
           <div id="wind-fetch-status" class="wind-input-row wind-fetch-status" style="display:none"></div>
         </div>
         <!-- Animated wind-field overlay (live Open-Meteo grid → leaflet-velocity). -->
@@ -388,11 +388,7 @@
               <input type="range" id="windfield-alt" min="1000" max="5000" step="500" value="1500">
               <span class="slider-val" id="windfield-alt-val"></span>
             </label>
-            <label class="navtoggle" data-i18n-title="tbLookAheadTitle">
-              <span data-i18n="tbWindFieldTime"></span>
-              <input type="range" id="windfield-time" min="0" max="24" step="1" value="0">
-              <span class="slider-val" id="windfield-time-val"></span>
-            </label>
+            <input type="range" id="windfield-time" min="0" max="24" step="1" value="0" hidden>
             <label class="navtoggle">
               <span data-i18n="tbWindFieldOpacity"></span>
               <input type="range" id="windfield-opacity" min="0.2" max="1" step="0.05" value="0.7">
