@@ -33,3 +33,32 @@ test.describe('Note inspector edits', () => {
     expect(await page.evaluate(() => state.notes[0].shape)).toBe('rect');
   });
 });
+
+test.describe('Note resize', () => {
+  test('size slider scales state.notes[i].size and grows the drawn rect', async ({ page }) => {
+    await bootWithNote(page);
+    const before = await page.evaluate(() => { const r = noteRect(0); return { w: r.w, h: r.h }; });
+    // The range input in the note inspector is the size slider.
+    await page.evaluate(() => {
+      const inp = document.querySelector('#insp-body input[type=range]');
+      inp.value = '2';
+      inp.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    expect(await page.evaluate(() => state.notes[0].size)).toBe(2);
+    const after = await page.evaluate(() => { const r = noteRect(0); return { w: r.w, h: r.h }; });
+    expect(after.w).toBeGreaterThan(before.w);
+    expect(after.h).toBeCloseTo(before.h * 2, 0);   // height scales with size
+  });
+
+  test('note size round-trips through serializeRoute', async ({ page }) => {
+    await bootWithNote(page);
+    const blob = await page.evaluate(() => {
+      state.notes[0].size = 1.75;
+      return serializeRoute();
+    });
+    expect(blob.notes[0].size).toBe(1.75);
+    // size === 1 is the default and must NOT be serialized (no schema churn).
+    const blob1 = await page.evaluate(() => { state.notes[0].size = 1; return serializeRoute(); });
+    expect('size' in blob1.notes[0]).toBe(false);
+  });
+});

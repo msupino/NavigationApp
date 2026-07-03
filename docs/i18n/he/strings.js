@@ -302,6 +302,7 @@ window.S = {
   shapeRect: 'מלבן',
   shapeOval: 'אליפסה',
   color: 'צבע',
+  noteSize: 'גודל',
   deleteNote: '🗑 מחק הערה (D)',
   latitude: 'קו רוחב',
   longitude: 'קו אורך',
