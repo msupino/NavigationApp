@@ -318,6 +318,8 @@
              Information section. Hidden until the ims-data pwx manifest loads. -->
         <button id="pwx-btn" type="button" hidden
                 data-i18n="tbPwxCharts" data-i18n-title="tbPwxChartsTitle"></button>
+        <!-- Active-SIGMET decoded list (modal). Hidden until SIGMET data loads. -->
+        <button id="sigmet-btn" type="button" hidden data-i18n="tbSigmet" data-i18n-title="tbSigmetTitle"></button>
         <!-- Active-NOTAM text list (modal). Hidden until notam data loads; the
              on-map NOTAM layer + timeline live in the Information section. -->
         <button id="notam-list-btn" type="button" hidden data-i18n="tbNotamList" data-i18n-title="tbNotamListTitle"></button>
@@ -351,11 +353,6 @@
       <!-- Each map layer is a uniform .tb-group-box: a toggle on top, its
            controls (sliders / selects) below, same spacing + widths for all. -->
       <div class="tb-section-body">
-        <div class="tb-group-box">
-          <label class="navtoggle" data-i18n-title="tbShowSigmetTitle">
-            <input type="checkbox" id="sigmet-cb"> <span data-i18n="tbShowSigmet"></span>
-          </label>
-        </div>
         <div class="tb-group-box">
           <label class="navtoggle" data-i18n-title="tbShowNotamTitle">
             <input type="checkbox" id="notam-cb"> <span data-i18n="tbShowNotam"></span>
