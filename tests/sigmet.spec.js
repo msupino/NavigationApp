@@ -4,7 +4,7 @@ const { test, expect } = require('./_setup');
 
 async function boot(page) {
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.charts', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined' &&
@@ -37,57 +37,53 @@ test('sigmetHazardColor maps hazards (TS red, others distinct, unknown→red)', 
   expect(c.turb).not.toBe(c.ts);
 });
 
-test('toggle off by default, opt-in, persists', async ({ page }) => {
+test('the SIGMET chart button appears on boot when active SIGMETs load', async ({ page }) => {
   await page.route('**raw.githubusercontent.com/**sigmet-data/**', r =>
     r.fulfill({ contentType: 'application/json', body: JSON.stringify(SAMPLE) }));
   await boot(page);
-  const cb = page.locator('#sigmet-cb');
-  await expect(cb).not.toBeChecked();
-  expect(await page.evaluate(() => window.showSigmet)).toBeFalsy();
-  await cb.check();
+  // Eager boot load populates sigmets and unhides the Charts-section button.
   await page.waitForFunction(() => Array.isArray(sigmets) && sigmets.length === 1);
-  expect(await page.evaluate(() => localStorage.getItem('navaid.showSigmet'))).toBe('1');
-  await page.reload();
-  await page.waitForFunction(() => typeof state !== 'undefined');
-  await expect(page.locator('#sigmet-cb')).toBeChecked();
-});
-
-test('fetched SIGMET populates the overlay and the status readout', async ({ page }) => {
-  await page.route('**raw.githubusercontent.com/**sigmet-data/**', r =>
-    r.fulfill({ contentType: 'application/json', body: JSON.stringify(SAMPLE) }));
-  await boot(page);
-  await page.locator('#sigmet-cb').check();
-  await page.waitForFunction(() => Array.isArray(sigmets) && sigmets.length === 1);
-  // draw() must not throw with a SIGMET polygon present.
+  await page.waitForFunction(() => {
+    const b = document.getElementById('sigmet-btn'); return b && b.hidden === false;
+  });
+  // No map overlay is drawn any more — draw() must stay clean with SIGMETs loaded.
   await page.evaluate(() => {
     state.waypoints = [{ lat: 32.0, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 35.1, name: 'B' }];
     syncLegs(); draw();
   });
-  const readout = page.locator('#sigmet-readout');
-  await expect(readout).toHaveClass(/show/);
-  await expect(readout).toContainText('1 SIGMET');
-  await expect(readout).toHaveAttribute('title', /Obscured Thunderstorm/);
+  expect(await page.evaluate(() => document.getElementById('sigmet-readout'))).toBeNull();
 });
 
-test('empty feed shows the calm "no SIGMET" readout', async ({ page }) => {
+test('clicking the SIGMET button opens the decoded-list modal', async ({ page }) => {
+  await page.route('**raw.githubusercontent.com/**sigmet-data/**', r =>
+    r.fulfill({ contentType: 'application/json', body: JSON.stringify(SAMPLE) }));
+  await boot(page);
+  await page.waitForFunction(() => {
+    const b = document.getElementById('sigmet-btn'); return b && b.hidden === false;
+  });
+  await page.evaluate(() => document.getElementById('sigmet-btn').click());
+  const modal = page.locator('.modal-back .modal');
+  await expect(modal).toBeVisible();
+  await expect(modal.locator('.modal-title')).toContainText(/SIGMET/i);
+  await expect(modal).toContainText(/Obscured Thunderstorm/);
+});
+
+test('empty feed leaves the SIGMET button hidden', async ({ page }) => {
   await page.route('**raw.githubusercontent.com/**sigmet-data/**', r =>
     r.fulfill({ contentType: 'application/json',
       body: JSON.stringify({ generatedAt: null, sigmets: [] }) }));
   await boot(page);
-  await page.locator('#sigmet-cb').check();
   await page.waitForFunction(() => Array.isArray(sigmets));
-  const readout = page.locator('#sigmet-readout');
-  await expect(readout).toHaveClass(/sigmet-none/);
-  await expect(readout).toContainText(/No SIGMET/i);
+  expect(await page.evaluate(() => sigmets.length)).toBe(0);
+  await expect(page.locator('#sigmet-btn')).toBeHidden();
 });
 
 test('falls back to same-origin data/sigmet.json when the raw branch fails', async ({ page }) => {
   await page.route('**raw.githubusercontent.com/**sigmet-data/**', r =>
     r.fulfill({ status: 404, body: 'not found' }));
   await boot(page);
-  await page.locator('#sigmet-cb').check();
   // The committed placeholder is an empty list — load must resolve, not throw.
   await page.waitForFunction(() => Array.isArray(sigmets));
   expect(await page.evaluate(() => sigmets.length)).toBe(0);
-  await expect(page.locator('#sigmet-readout')).toHaveClass(/sigmet-none/);
+  await expect(page.locator('#sigmet-btn')).toBeHidden();   // nothing active → no button
 });

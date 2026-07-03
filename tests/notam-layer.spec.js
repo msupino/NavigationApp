@@ -120,6 +120,10 @@ test('clicking an airport NOTAM badge opens the (scrollable) list, not the picke
   await page.locator('#notam-cb').check();
   await page.evaluate(() => loadAirfields && loadAirfields());
   await page.waitForFunction(() => Array.isArray(window.airfields) && airfields.length > 0);
+  // Close the preset-open toolbar dropdowns — in desktop-menubar mode they
+  // overlay the map (the Charts menu now carries the SIGMET button too), so a
+  // map click could land on a dropdown instead of the badge.
+  await page.evaluate(() => window.closeToolbarMenus && window.closeToolbarMenus());
   // Click the LLBG count badge (disc at proj(field) offset +14px down).
   const box = await page.locator('#map').boundingBox();
   const pt = await page.evaluate(() => {
@@ -160,6 +164,8 @@ test('a NOTAM badge under a route waypoint stays selectable (drawn on top)', asy
     const p = proj({ lat: af.lat, lng: af.lng });
     return { x: p.x, y: p.y + 14 };
   });
+  // Close the preset-open toolbar dropdowns so they don't overlay the badge.
+  await page.evaluate(() => window.closeToolbarMenus && window.closeToolbarMenus());
   const box = await page.locator('#map').boundingBox();
   await page.mouse.click(box.x + pt.x, box.y + pt.y);
   // The badge wins over the waypoint: NOTAM list opens, waypoint not selected.
@@ -312,20 +318,20 @@ test('border NOTAM outline is solid, ordinary area outline is dashed', async ({ 
 
 test('timeline slider scrubs which NOTAMs are active', async ({ page }) => {
   const started = new Date(Date.now() - 36e5).toISOString();     // -1h (already active)
-  const startIn48 = new Date(Date.now() + 48 * 3600e3).toISOString();
+  const startIn12 = new Date(Date.now() + 12 * 3600e3).toISOString();
   const farEnd = new Date(Date.now() + 30 * 864e5).toISOString();
   await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [
     { id: 'N-NOW/26', text: 'active now', start: started, end: farEnd, geom: null, icao: 'LLBG' },
-    { id: 'N-LATER/26', text: 'starts in 48h', start: startIn48, end: farEnd, geom: null, icao: 'LLHA' },
+    { id: 'N-LATER/26', text: 'starts in 12h', start: startIn12, end: farEnd, geom: null, icao: 'LLHA' },
   ] });
   await page.locator('#notam-cb').check();
-  // Slider hidden until overlay on; now visible with data.
+  // Overlay on → the shared look-ahead slider drives the NOTAM time.
   await expect(page.locator('#notam-controls')).toBeVisible();
   // At "now" only the started NOTAM is active.
   expect(await page.evaluate(() => activeNotams().length)).toBe(1);
-  // Scrub to +60h → the later NOTAM is now active too.
-  await page.locator('#notam-time').fill('60');
-  await page.locator('#notam-time').dispatchEvent('input');
+  // Scrub the unified look-ahead slider to +18h → the later NOTAM joins.
+  await page.locator('#lookahead-time').fill('18');
+  await page.locator('#lookahead-time').dispatchEvent('input');
   expect(await page.evaluate(() => activeNotams().map(n => n.id).sort()))
     .toEqual(['N-LATER/26', 'N-NOW/26']);
   // Modal title reflects the scrubbed count.
