@@ -1446,6 +1446,18 @@ function routeLibrarySaveCurrent(name) {
   list.unshift(entry);
   return persistRouteLibrary(list) ? entry : null;
 }
+// Overwrite an existing library entry's route with the current one (update in
+// place), bumping savedAt so the change wins the Drive merge. Keeps the id and
+// name. Returns the updated entry or null.
+function routeLibraryUpdate(id) {
+  if (state.waypoints.length < 2) { alert(S.errNeedWps); return null; }
+  const list = loadRouteLibrary();
+  const entry = list.find(x => x && x.id === id && !x.deleted);
+  if (!entry) return null;
+  entry.savedAt = new Date().toISOString();
+  entry.data = serializeRoute();
+  return persistRouteLibrary(list) ? entry : null;
+}
 // Apply a saved library entry to the live route. Returns true if applied.
 function routeLibraryApply(entry) {
   if (!entry || !entry.data) return false;
@@ -3266,7 +3278,7 @@ async function fetchTileBitmap(layer, coords, signal) {
     if (r.status === 404) return { bmp: null, failed: false };
     if (!r.ok) return { bmp: null, failed: true };
     const blob = await r.blob();
-    return { bmp: await createImageBitmap(blob), failed: false };
+    return { bmp: await window.createImageBitmap(blob), failed: false };
   } catch (e) {
     return { bmp: null, failed: true };
   }

@@ -1260,6 +1260,16 @@ function showRouteLibraryModal() {
       loadBtn.className = 'route-library-load';
       loadBtn.textContent = S.routeLibraryLoad || 'Load';
       loadBtn.onclick = () => { if (routeLibraryApply(entry)) modal.close(); };
+      const save = document.createElement('button');
+      save.type = 'button';
+      save.className = 'route-library-save';
+      save.textContent = S.routeLibrarySave || 'Save';
+      save.onclick = () => {
+        // Overwrite this saved route with the current one.
+        if (!confirm((S.routeLibrarySaveConfirm && S.routeLibrarySaveConfirm(entry.name)) ||
+            ('Overwrite "' + entry.name + '" with the current route?'))) return;
+        if (routeLibraryUpdate(entry.id)) render();
+      };
       const rename = document.createElement('button');
       rename.type = 'button';
       rename.textContent = S.routeLibraryRename || 'Rename';
@@ -1294,7 +1304,7 @@ function showRouteLibraryModal() {
           : x);
         if (persistRouteLibrary(all)) render();
       };
-      actions.append(loadBtn, rename, dup, del);
+      actions.append(loadBtn, save, rename, dup, del);
       row.append(main, actions);
       list.appendChild(row);
     }

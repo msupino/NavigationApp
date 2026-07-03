@@ -72,6 +72,33 @@ test.describe('Route library', () => {
     await expect(modal2.locator('.route-library-row')).toHaveCount(1);
   });
 
+  test('per-row Save overwrites the saved route with the current one (same id/name)', async ({ page }) => {
+    await boot(page);
+    page.on('dialog', d => d.accept());
+    await setRoute(page, ['LLSD', 'BAZRA', 'LLHA']);   // 3 WP
+    await clickToolbarControl(page, '#route-library');
+    const modal = page.locator('.route-library-modal');
+    await modal.locator('.route-library-name').fill('My route');
+    await modal.getByRole('button', { name: 'Save current route' }).click();
+    const before = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.routes'))[0]);
+    expect(before.data.waypoints.length).toBe(3);
+
+    // Change the live route to 5 WP, then Save onto the existing entry.
+    await setRoute(page, ['A', 'B', 'C', 'D', 'E']);
+    await modal.locator('.route-library-row').first()
+      .getByRole('button', { name: 'Save', exact: true }).click();
+
+    // Same entry (id + name kept), route replaced with the current 5-WP one.
+    const after = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.routes')));
+    expect(after.length).toBe(1);
+    expect(after[0].id).toBe(before.id);
+    expect(after[0].name).toBe('My route');
+    expect(after[0].data.waypoints.length).toBe(5);
+    expect(new Date(after[0].savedAt).getTime())
+      .toBeGreaterThanOrEqual(new Date(before.savedAt).getTime());
+    await expect(modal.locator('.route-library-row').first()).toContainText('5 WP');
+  });
+
   test('Hebrew library rows isolate mixed route names and metadata', async ({ page }) => {
     await boot(page, 'he');
     await page.evaluate(() => {
