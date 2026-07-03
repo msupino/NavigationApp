@@ -76,7 +76,7 @@ test('legWindFor: per-leg override beats route wind; speed 0 marks calm', async 
   expect(r.allCalm).toBeNull();
 });
 
-test('Show-wind toggle reveals the departure slider; no manual wind inputs, no fetch button', async ({ page }) => {
+test('Show-wind toggle: no manual wind inputs, no fetch button; shared look-ahead slider present', async ({ page }) => {
   await page.addInitScript(() => {
     try { localStorage.setItem('navaid.sec.view', '1'); localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
@@ -86,20 +86,20 @@ test('Show-wind toggle reveals the departure slider; no manual wind inputs, no f
   await expect(page.locator('#wind-speed')).toHaveCount(0);
   // The manual "Pull Wind data" button is gone — fetch is automatic on toggle.
   await expect(page.locator('#wind-fetch')).toHaveCount(0);
-  const depart = page.locator('#wind-depart');
-  await expect(depart).toBeHidden();
+  // The per-feature departure slider is superseded by the shared look-ahead
+  // slider (always present at the top of the section) and stays hidden.
+  await expect(page.locator('#wind-depart')).toBeHidden();
+  await expect(page.locator('#lookahead-time')).toBeVisible();
   const toggle = page.locator('#show-wind-cb');
   await expect(toggle).not.toBeChecked();
   await toggle.check();
-  await expect(depart).toBeVisible();
-  // The corner readout still reflects a route-wide wind when one is present.
+  // The corner readout reflects a route-wide wind when one is present.
   await page.evaluate(() => { state.wind = { dir: 300, speed: 18 }; refreshWindInputs(); });
   const readout = page.locator('#wind-readout');
   await expect(readout).toHaveClass(/show/);
   await expect(readout).toContainText('300');
   await expect(readout).toContainText('18');
   await toggle.uncheck();
-  await expect(depart).toBeHidden();
   await expect(readout).not.toHaveClass(/show/);
 });
 
@@ -349,15 +349,15 @@ test('departure slider shifts every leg\'s sampled forecast hour', async ({ page
   await page.waitForFunction(() => state.legs[0].wind);
   const nowSpeed = await page.evaluate(() => state.legs[0].wind.speed);
   expect(nowSpeed).toBeLessThanOrEqual(11);              // idx 0-1
-  // Move the slider to +6 h: the wind updates IMMEDIATELY on the input tick
-  // (mid-drag, before release) from the cached hourly data — no second
-  // click, no second network request.
-  const depart = page.locator('#wind-depart');
-  await depart.fill('6');
-  await depart.dispatchEvent('input');
-  await expect(page.locator('#wind-depart-val')).toContainText('+6h');   // shared fmtViewTime readout
+  // Move the shared look-ahead slider to +6 h: it drives the (hidden)
+  // departure slider, and the wind updates IMMEDIATELY on the input tick from
+  // the cached hourly data — no second click, no second network request.
+  const master = page.locator('#lookahead-time');
+  await master.fill('6');
+  await master.dispatchEvent('input');
+  await expect(page.locator('#lookahead-time-val')).toContainText('+6h');   // shared fmtViewTime readout
   // Round clock times like the wind-field slider — top of the hour, ':00Z'.
-  await expect(page.locator('#wind-depart-val')).toContainText(':00Z');
+  await expect(page.locator('#lookahead-time-val')).toContainText(':00Z');
   await page.waitForFunction(ns => state.legs[0].wind.speed !== ns, nowSpeed);
   const laterSpeed = await page.evaluate(() => state.legs[0].wind.speed);
   expect(laterSpeed - nowSpeed).toBe(6);                 // exactly +6 forecast hours
