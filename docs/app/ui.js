@@ -2392,6 +2392,26 @@ if (windDepartSlider) {
   NavAid.refreshWindField = () => { if (cb.checked && !busy) addLayer(); };
 })();
 
+// --- Unified look-ahead time slider (drives NOTAM + wind-depart + windfield) ---
+(function () {
+  const master = document.getElementById('lookahead-time');
+  const masterVal = document.getElementById('lookahead-time-val');
+  const targets = ['notam-time', 'wind-depart', 'windfield-time'].map(id => document.getElementById(id));
+  function sync() {
+    const h = master ? (parseInt(master.value, 10) || 0) : 0;
+    if (masterVal) masterVal.textContent = notamTimeLabel(h);
+    for (const t of targets) {
+      if (!t) continue;
+      t.value = String(Math.min(h, parseInt(t.max, 10) || 24));
+      t.dispatchEvent(new Event('input'));
+    }
+  }
+  if (master) {
+    master.oninput = sync;
+    sync();
+  }
+})();
+
 // --- SIGMET chart button (modal list, no map overlay) ---------------
 const sigmetBtn = document.getElementById('sigmet-btn');
 function refreshSigmetBtn() {
