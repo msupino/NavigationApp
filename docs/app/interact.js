@@ -2176,6 +2176,13 @@ function showInspector() {
       body.appendChild(colorRow(S.color, note.color || NOTE_DEFAULT_COLOR, v => {
         note.color = v; draw();
       }));
+      body.appendChild(rangeRow(S.noteSize || 'Size',
+        Number.isFinite(note.size) ? note.size : 1, 0.5, 3, 0.25,
+        v => Math.round(v * 100) + '%', v => {
+          note.size = v;
+          if (typeof persist === 'function') persist();
+          draw();
+        }));
     }
     const del = document.createElement('button');
     del.className = 'insp-btn';
@@ -2403,6 +2410,26 @@ function selectRow(label, value, options, onChange) {
   }
   sel.onchange = () => onChange(sel.value);
   row.append(l, sel);
+  return row;
+}
+function rangeRow(label, value, min, max, step, format, onChange) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  const l = document.createElement('label');
+  l.textContent = label;
+  const input = document.createElement('input');
+  input.type = 'range';
+  input.min = String(min); input.max = String(max); input.step = String(step);
+  input.value = String(value);
+  const val = document.createElement('span');
+  val.className = 'slider-val';
+  val.textContent = format(value);
+  input.oninput = () => {
+    const v = parseFloat(input.value);
+    val.textContent = format(v);
+    onChange(v);
+  };
+  row.append(l, input, val);
   return row;
 }
 function textareaRow(label, value, onChange) {
