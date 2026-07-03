@@ -187,6 +187,25 @@ function addCommChangeNoteForWaypoint(wp, ccKey) {
     ? commCalloutDefaultTail(wp) : { lat: r5(wp.lat), lng: r5(wp.lng) };
   const callout = typeof commCalloutDefaults === 'function'
     ? commCalloutDefaults(ccKey) : { freqName: ccKey, freq: '' };
+  let freqName = callout.freqName;
+  let freq = callout.freq;
+  // If the waypoint is an airfield with a known primary call sign, seed the
+  // freq change with that airfield's main frequency (and its call-sign name)
+  // so the user doesn't have to type it. Only when the callout has no freq of
+  // its own (a route comm-change catalog entry wins).
+  if (!freq) {
+    const af = typeof airfieldAtWaypoint === 'function' ? airfieldAtWaypoint(wp) : null;
+    const id = af && Object.prototype.hasOwnProperty.call(AIRFIELD_CALL_SIGN_IDS, af.name)
+      ? AIRFIELD_CALL_SIGN_IDS[af.name] : null;
+    const eff = id && typeof commCallSignEffectiveFreq === 'function'
+      ? commCallSignEffectiveFreq(id) : '';
+    if (eff) {
+      freq = eff;
+      const row = typeof commCatalogCallSignRow === 'function' ? commCatalogCallSignRow(id) : null;
+      const label = typeof commCallSignLabel === 'function' ? commCallSignLabel(id, row) : '';
+      if (label) freqName = label;
+    }
+  }
   state.notes.push({
     lat: tail.lat,
     lng: tail.lng,
@@ -194,8 +213,8 @@ function addCommChangeNoteForWaypoint(wp, ccKey) {
     color: NOTE_DEFAULT_COLOR,
     shape: 'rect',
     cc: ccKey,
-    freqName: callout.freqName,
-    freq: callout.freq,
+    freqName: freqName,
+    freq: freq,
     freqAuto: true,
   });
   return state.notes.length - 1;
