@@ -283,7 +283,6 @@ function draw() {
   drawCommChangeRings();
   drawAirfields();
   drawVors();
-  if (window.showSigmet && Array.isArray(sigmets) && sigmets.length) drawSigmets();
   if (window.showNotam && Array.isArray(notams) && notams.length) drawNotams();
   drawLegs();
   drawWaypoints();
