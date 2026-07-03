@@ -610,8 +610,8 @@ window.S = Object.assign({
   vorRefNone: '— none —',
   tbShowWind: 'Show per-leg wind effect',
   tbShowWindTitle: 'Show the wind inputs, the per-leg wind arrows, and the wind-corrected readout in the leg inspector',
-  tbShowSigmet: 'Show SIGMET',
-  tbShowSigmetTitle: 'Overlay active international SIGMET hazard areas for the Israel region (source: NOAA AWC, updated periodically)',
+  tbSigmet: '⚠ SIGMET',
+  tbSigmetTitle: 'Active international SIGMET hazard areas for the Israel region (source: NOAA AWC)',
   tbShowNotam: 'Show NOTAMs',
   tbShowNotamTitle: 'Overlay active NOTAM areas for the Israel FIR (LLLL). Click “NOTAM list” for the full texts. Planning aid only.',
   tbNotamList: '📋 NOTAM list',
@@ -1136,7 +1136,6 @@ var legAltitudeMapPrefix = null; // Which layer prefix ('cvfr'/'lsa'/'heli') the
 var routeAltPrefix = null;
 var showDrift = true;       // 10-degree drift reference lines
 var showWind = false;       // wind effect (#722): inputs + arrows + readout — opt-in
-var showSigmet = false;     // SIGMET hazard overlay — opt-in
 var sigmets = null;         // null = not loaded; [] or populated once fetched
 var sigmetMeta = null;      // { generatedAt } of the loaded SIGMET file
 var showNotam = false;      // NOTAM overlay — opt-in

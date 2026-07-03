@@ -423,57 +423,6 @@ windReadoutCtrl.onAdd = function () {
 windReadoutCtrl.addTo(map);
 const windReadoutBox = document.getElementById('wind-readout');
 
-// SIGMET status readout — bottom-right, above the wind readout. Shows the
-// active count (hover for the raw texts) or a calm "no SIGMET" note.
-const sigmetReadoutCtrl = L.control({ position: 'bottomright' });
-sigmetReadoutCtrl.onAdd = function () {
-  const box = L.DomUtil.create('div', 'leaflet-control coord-readout sigmet-readout');
-  box.id = 'sigmet-readout';
-  box.dir = 'ltr';                  // SIGMET text is LTR even in Hebrew mode
-  box.setAttribute('aria-hidden', 'true');
-  return box;
-};
-sigmetReadoutCtrl.addTo(map);
-const sigmetReadoutBox = document.getElementById('sigmet-readout');
-if (sigmetReadoutBox) {
-  L.DomEvent.disableClickPropagation(sigmetReadoutBox);
-  // Click the readout → decoded SIGMET list.
-  sigmetReadoutBox.addEventListener('click', () => {
-    if (Array.isArray(sigmets) && sigmets.length && typeof showSigmetDecoded === 'function') {
-      showSigmetDecoded();
-    }
-  });
-}
-function refreshSigmetReadout() {
-  if (!sigmetReadoutBox) return;
-  if (!window.showSigmet || !Array.isArray(sigmets)) {
-    sigmetReadoutBox.classList.remove('show');
-    sigmetReadoutBox.textContent = '';
-    sigmetReadoutBox.removeAttribute('title');
-    sigmetReadoutBox.setAttribute('aria-hidden', 'true');
-    return;
-  }
-  const n = sigmets.length;
-  sigmetReadoutBox.textContent = n ? S.sigmetReadout(n) : S.sigmetNone;
-  // The count badge ("⚠ n SIGMET") is Latin/numeric — keep it LTR. The "no
-  // SIGMET in effect" message is a full sentence: follow the page direction so
-  // the Hebrew reads right-to-left (the literal "SIGMET" token stays LTR via
-  // bidi). Forcing the whole box LTR scrambled the Hebrew word order.
-  sigmetReadoutBox.dir = n ? 'ltr' : (document.documentElement.dir || 'ltr');
-  sigmetReadoutBox.classList.toggle('sigmet-none', n === 0);
-  if (n) {
-    // Hover = decoded text; click opens the full decoded list.
-    sigmetReadoutBox.title = sigmets.map(s =>
-      (typeof decodeSigmet === 'function' ? decodeSigmet(s) : s.raw)).filter(Boolean).join('\n\n') +
-      '\n\n(' + (S.sigmetReadoutClickHint || 'Click to decode') + ')';
-    sigmetReadoutBox.style.cursor = 'pointer';
-  } else {
-    sigmetReadoutBox.removeAttribute('title');
-    sigmetReadoutBox.style.cursor = 'default';
-  }
-  sigmetReadoutBox.classList.add('show');
-  sigmetReadoutBox.setAttribute('aria-hidden', 'false');
-}
 
 function refreshWindReadout() {
   if (!windReadoutBox) return;
@@ -2443,26 +2392,21 @@ if (windDepartSlider) {
   NavAid.refreshWindField = () => { if (cb.checked && !busy) addLayer(); };
 })();
 
-// --- SIGMET hazard overlay toggle -----------------------------------
-const SIGMET_KEY = 'navaid.showSigmet';
-try {
-  const stored = localStorage.getItem(SIGMET_KEY);
-  if (stored !== null) window.showSigmet = stored === '1';
-} catch (e) { /* storage unavailable */ }
-const sigmetCb = document.getElementById('sigmet-cb');
-if (sigmetCb) {
-  sigmetCb.checked = !!window.showSigmet;
-  sigmetCb.onchange = async e => {
-    window.showSigmet = e.target.checked;
-    try { localStorage.setItem(SIGMET_KEY, window.showSigmet ? '1' : '0'); }
-    catch (err) { /* storage unavailable */ }
-    if (window.showSigmet && typeof loadSigmets === 'function') await loadSigmets();
-    refreshSigmetReadout();
-    draw();
+// --- SIGMET chart button (modal list, no map overlay) ---------------
+const sigmetBtn = document.getElementById('sigmet-btn');
+function refreshSigmetBtn() {
+  if (sigmetBtn) sigmetBtn.hidden = !(Array.isArray(sigmets) && sigmets.length > 0);
+}
+if (sigmetBtn) {
+  sigmetBtn.onclick = async () => {
+    if (typeof loadSigmets === 'function') await loadSigmets();
+    refreshSigmetBtn();
+    if (typeof showSigmetDecoded === 'function') showSigmetDecoded();
   };
-  if (window.showSigmet && typeof loadSigmets === 'function') {
-    loadSigmets().then(() => { refreshSigmetReadout(); draw(); });
-  }
+}
+// Eager load on boot so the button appears if SIGMETs are active.
+if (typeof loadSigmets === 'function') {
+  loadSigmets().then(refreshSigmetBtn);
 }
 
 // --- NOTAM overlay + list (FAA NOTAM API, Israel FIR LLLL) ----------
