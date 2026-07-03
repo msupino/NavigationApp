@@ -377,6 +377,13 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   min-width: 0;
 }
 #toolbar .slider-val { min-width: 3em; text-align: right; font-size: 11px; color: #ccc; flex-shrink: 0; white-space: nowrap; }
+/* Look-ahead time readouts vary in length as the slider moves ("now" →
+   "+72h · 12-31 12:00Z"); a fixed width keeps the row — and the whole
+   content-sized dropdown menu — from growing and jumping mid-drag. Sized to
+   the longest value (~114px measured at 11px). */
+#toolbar #notam-time-val,
+#toolbar #wind-depart-val,
+#toolbar #windfield-time-val { width: 120px; }
 #toolbar .slider-reset {
   flex-shrink: 0;
   font-size: 12px;
