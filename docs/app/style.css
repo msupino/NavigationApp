@@ -274,6 +274,30 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   flex-direction: column;
   gap: 3px;
 }
+/* The time-driven layers (NOTAM + wind-effect + wind-field) share the one
+   look-ahead slider, so they sit in a single outer frame headed by that
+   slider. Inner cards drop their own border to avoid nested frames; the
+   header row gets a divider under it. Wind/temp + sig-weather are separate
+   layers with their own times and stay outside this frame. */
+.tb-timed-layers {
+  border: 1px solid #443f3f;
+  border-radius: 5px;
+  padding: 4px 6px;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.tb-timed-layers > .tb-group-box {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  margin-top: 0;
+}
+.tb-timed-layers > .tb-timed-head {
+  padding-bottom: 4px;
+  border-bottom: 1px solid #443f3f;
+}
 /* Uniform layout for every layer card: stacked controls with even spacing,
    small sub-control labels, and full-width selects. */
 .tb-group-box [id$="-controls"] {
@@ -3516,6 +3540,8 @@ body.theme-light #tuning-panel input[type="color"] {
 /* Extra-layers cards share the buttons' light-theme border (specificity must
    beat the desktop media rule that flattens them in dark). */
 body.theme-light #toolbar .tb-group-box { border-color: #b8c0cc; }
+body.theme-light #toolbar .tb-timed-layers { border-color: #b8c0cc; }
+body.theme-light #toolbar .tb-timed-layers > .tb-timed-head { border-bottom-color: #b8c0cc; }
 body.theme-light #toolbar button:hover,
 body.theme-light #toolbar .slider-reset:hover,
 body.theme-light #toolbar #export-select:hover,
