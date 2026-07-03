@@ -557,6 +557,8 @@ window.S = Object.assign({
   routeLibraryNamePlaceholder: 'Route name',
   routeLibraryEmpty: 'No saved routes yet',
   routeLibraryLoad: 'Load',
+  routeLibrarySave: 'Save',
+  routeLibrarySaveConfirm: function (name) { return 'Overwrite "' + name + '" with the current route?'; },
   routeLibraryRename: 'Rename',
   routeLibraryDuplicate: 'Duplicate',
   routeLibraryDelete: 'Delete',

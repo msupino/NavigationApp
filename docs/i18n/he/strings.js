@@ -74,6 +74,8 @@ window.S = {
   routeLibraryNamePlaceholder: 'שם המסלול',
   routeLibraryEmpty: 'אין עדיין מסלולים שמורים',
   routeLibraryLoad: 'טען',
+  routeLibrarySave: 'שמור',
+  routeLibrarySaveConfirm: function (name) { return 'לשמור על "' + name + '" את המסלול הנוכחי?'; },
   routeLibraryRename: 'שנה שם',
   routeLibraryDuplicate: 'שכפל',
   routeLibraryDelete: 'מחק',
