@@ -51,7 +51,7 @@ exports.test = base.test.extend({
         // data/notam.json. Specs that need NOTAMs (notam-layer) register their
         // own route, which wins by later registration.
         if (host === 'raw.githubusercontent.com' &&
-            /\/notam-data\/|notam\.json$/.test(new URL(url).pathname)) {
+            /(?:\/notam-data\/|\/notam\.json)$/.test(new URL(url).pathname)) {
           return route.abort();
         }
       } catch (e) { /* relative URLs etc. */ }
