@@ -784,6 +784,7 @@ window.S = Object.assign({
   shapeRect: 'Rectangle',
   shapeOval: 'Oval',
   color: 'Color',
+  noteSize: 'Size',
   deleteNote: '🗑 Delete note (D)',
   latitude: 'Latitude',
   longitude: 'Longitude',
