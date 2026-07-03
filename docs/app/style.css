@@ -3533,6 +3533,15 @@ body.theme-light #tuning-panel input[type="color"] {
   background: #fff;
   border-color: #b8c0cc;
 }
+body.theme-light #toolbar button.danger {
+  color: #c0392b;
+  border-color: #e8b4b4;
+}
+body.theme-light #toolbar button.danger:hover {
+  background: #c0392b;
+  border-color: #c0392b;
+  color: #fff;
+}
 /* Extra-layers cards share the buttons' light-theme border (specificity must
    beat the desktop media rule that flattens them in dark). */
 body.theme-light #toolbar .tb-group-box { border-color: #b8c0cc; }
