@@ -3266,7 +3266,7 @@ async function fetchTileBitmap(layer, coords, signal) {
     if (r.status === 404) return { bmp: null, failed: false };
     if (!r.ok) return { bmp: null, failed: true };
     const blob = await r.blob();
-    return { bmp: await createImageBitmap(blob), failed: false };
+    return { bmp: await window.createImageBitmap(blob), failed: false };
   } catch (e) {
     return { bmp: null, failed: true };
   }
