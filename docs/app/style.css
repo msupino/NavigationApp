@@ -294,10 +294,6 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   padding: 0;
   margin-top: 0;
 }
-.tb-timed-layers > .tb-timed-head {
-  padding-bottom: 4px;
-  border-bottom: 1px solid #443f3f;
-}
 /* Uniform layout for every layer card: stacked controls with even spacing,
    small sub-control labels, and full-width selects. */
 .tb-group-box [id$="-controls"] {
@@ -3541,7 +3537,6 @@ body.theme-light #tuning-panel input[type="color"] {
    beat the desktop media rule that flattens them in dark). */
 body.theme-light #toolbar .tb-group-box { border-color: #b8c0cc; }
 body.theme-light #toolbar .tb-timed-layers { border-color: #b8c0cc; }
-body.theme-light #toolbar .tb-timed-layers > .tb-timed-head { border-bottom-color: #b8c0cc; }
 body.theme-light #toolbar button:hover,
 body.theme-light #toolbar .slider-reset:hover,
 body.theme-light #toolbar #export-select:hover,
