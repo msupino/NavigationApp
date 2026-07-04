@@ -156,7 +156,9 @@ function mergeRouteLibraries(a, b) {
   const sigSeen = new Set();
   const out = [];
   const take = (entry) => {
-    if (!entry || (!entry.data && !entry.deleted)) return;   // keep routes + tombstones
+    // keep routes (data), GPS tracks (track), and tombstones (deleted)
+    const isTrack = entry && entry.kind === 'gps' && Array.isArray(entry.track) && entry.track.length;
+    if (!entry || (!entry.data && !entry.deleted && !isTrack)) return;
     const sig = (entry.name || '') + '|' + (entry.savedAt || '');
     if (entry.id) {
       const prev = byId.get(entry.id);
