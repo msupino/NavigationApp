@@ -2310,6 +2310,10 @@ if (windDepartSlider) {
       if (layer) { map.removeLayer(layer); layer = null; }
       layer = L.velocityLayer({
         displayValues: false,
+        // Non-rotating pane (see core.js): the field draws in screen
+        // coordinates, so it must not sit in the rotate pane or it breaks when
+        // the map is rotated.
+        paneName: 'windfield',
         data: frameData(),
         // Colour particles by speed with a *saturated* ramp (no pale mids that
         // vanish on the light chart) so the motion reads over the busy base.

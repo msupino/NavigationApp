@@ -36,7 +36,7 @@ async function boot(page) {
 
 test('toggling the wind field adds a velocity canvas; untoggling removes it', async ({ page }) => {
   await boot(page);
-  const canvases = () => page.locator('.leaflet-overlay-pane canvas');
+  const canvases = () => page.locator('.leaflet-windfield-pane canvas');
   const before = await canvases().count();
   await page.locator('#windfield-cb').check();
   // Velocity layer renders a canvas into the overlay pane once the grid loads.
@@ -63,11 +63,11 @@ test('opacity slider shows with the field and drives the canvas opacity', async 
   await expect(page.locator('#windfield-controls')).toBeHidden();
   await page.locator('#windfield-cb').check();
   await expect(page.locator('#windfield-controls')).toBeVisible();
-  await expect(page.locator('.leaflet-overlay-pane canvas')).toHaveCount(1, { timeout: 10000 });
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
   const op = page.locator('#windfield-opacity');
   await op.fill('0.4');
   await op.dispatchEvent('input');
-  const canvasOpacity = await page.locator('.leaflet-overlay-pane canvas').evaluate(c => c.style.opacity);
+  const canvasOpacity = await page.locator('.leaflet-windfield-pane canvas').evaluate(c => c.style.opacity);
   expect(parseFloat(canvasOpacity)).toBeCloseTo(0.4, 2);
   await expect(page.locator('#windfield-opacity-val')).toHaveText('40%');
 });
@@ -75,7 +75,7 @@ test('opacity slider shows with the field and drives the canvas opacity', async 
 test('time slider scrubs the forecast hour (0..24 forward) and labels it in Zulu', async ({ page }) => {
   await boot(page);
   await page.locator('#windfield-cb').check();
-  await expect(page.locator('.leaflet-overlay-pane canvas')).toHaveCount(1, { timeout: 10000 });
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
   // The wind-field time is now driven by the shared look-ahead slider.
   const slider = page.locator('#lookahead-time');
   await expect(slider).toHaveAttribute('max', '24');     // 24h forward
@@ -84,7 +84,7 @@ test('time slider scrubs the forecast hour (0..24 forward) and labels it in Zulu
   await slider.fill('6');
   await slider.dispatchEvent('input');
   await expect(page.locator('#lookahead-time-val')).toHaveText(/\+6h · (\d{2}-\d{2} )?\d{2}:\d{2}Z/);
-  await expect(page.locator('.leaflet-overlay-pane canvas')).toHaveCount(1);
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1);
 });
 
 test('altitude slider refetches at the matching pressure level', async ({ page }) => {
@@ -109,7 +109,7 @@ test('altitude slider refetches at the matching pressure level', async ({ page }
 test('opacity reset restores the default', async ({ page }) => {
   await boot(page);
   await page.locator('#windfield-cb').check();
-  await expect(page.locator('.leaflet-overlay-pane canvas')).toHaveCount(1, { timeout: 10000 });
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
   const op = page.locator('#windfield-opacity');
   const def = await op.inputValue();                 // HTML default (0.7)
   await op.fill('0.3'); await op.dispatchEvent('input');
@@ -117,14 +117,39 @@ test('opacity reset restores the default', async ({ page }) => {
   await page.locator('#windfield-opacity-reset').click();
   expect(await op.inputValue()).toBe(def);
   await expect(page.locator('#windfield-opacity-val')).toHaveText(Math.round(parseFloat(def) * 100) + '%');
-  const o = await page.locator('.leaflet-overlay-pane canvas').evaluate(c => c.style.opacity);
+  const o = await page.locator('.leaflet-windfield-pane canvas').evaluate(c => c.style.opacity);
   expect(parseFloat(o)).toBeCloseTo(parseFloat(def), 2);
+});
+
+test('wind field renders in a non-rotating pane so it works on a rotated map', async ({ page }) => {
+  await boot(page);
+  await page.locator('#windfield-cb').check();
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
+  // Rotate the map; the velocity canvas draws in bearing-aware screen coords,
+  // so its pane must stay un-transformed (a second transform would break it).
+  const r = await page.evaluate(() => {
+    map.setBearing(45);
+    const pane = map.getPane('windfield');
+    const c = pane && pane.querySelector('canvas');
+    return {
+      bearing: Math.round(map.getBearing()),
+      paneTransform: getComputedStyle(pane).transform,        // must be 'none'
+      rotatePaneRotated: getComputedStyle(map.getPane('rotatePane')).transform !== 'none',
+      canvasInWindfieldPane: !!c,
+      canvasRendered: !!(c && c.width > 0 && c.height > 0),
+    };
+  });
+  expect(r.bearing).toBe(45);
+  expect(r.rotatePaneRotated).toBe(true);       // map really is rotated
+  expect(r.paneTransform).toBe('none');         // wind-field pane is NOT rotated
+  expect(r.canvasInWindfieldPane).toBe(true);
+  expect(r.canvasRendered).toBe(true);
 });
 
 test('wind-field toggle persists across reload', async ({ page }) => {
   await boot(page);
   await page.locator('#windfield-cb').check();
-  await expect(page.locator('.leaflet-overlay-pane canvas')).toHaveCount(1, { timeout: 10000 });
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
   await page.reload();
   await page.waitForFunction(() => document.getElementById('windfield-cb'));
   await expect(page.locator('#windfield-cb')).toBeChecked();
