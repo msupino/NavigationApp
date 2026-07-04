@@ -119,6 +119,37 @@ test('stop saves a kind:gps TRACK entry (a line, not a waypoint route) and shows
   expect(shownIds).toContain(r.entry.id);
 });
 
+test('a recorded GPS track shows up as a row in the Saved routes library', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__geoCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 7; };
+    navigator.geolocation.clearWatch = () => {};
+    try { localStorage.removeItem('navaid.routes'); localStorage.removeItem('navaid.tracks.shown'); } catch (e) {}
+    for (const s of ['build', 'view', 'display', 'charts', 'export', 'print']) {
+      try { localStorage.setItem('navaid.sec.' + s, '1'); } catch (e) {}
+    }
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof stopGpsRecordingAndSave === 'function' &&
+    typeof showRouteLibraryModal === 'function');
+  const name = await page.evaluate(() => {
+    startGpsRecording();
+    const fix = (lat, lng) => window.__geoCb({ coords: { latitude: lat, longitude: lng, accuracy: 8, heading: null, altitude: 100 }, timestamp: Date.now() });
+    fix(32.00, 34.00); fix(32.05, 34.00); fix(32.10, 34.02); fix(32.15, 34.10);
+    return stopGpsRecordingAndSave().name;
+  });
+  // Open the Saved routes library — the GPS track (no route `data`, only
+  // `track`) must appear as a row, not be filtered out.
+  await page.evaluate(() => showRouteLibraryModal());
+  const modal = page.locator('.route-library-modal');
+  await expect(modal).toBeVisible();
+  const rows = modal.locator('.route-library-row');
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText(name);
+  // Track rows offer Show/Hide + GPX (not route Load).
+  await expect(rows.first().getByRole('button', { name: /Show|Hide/ })).toBeVisible();
+});
+
 test('a saved track draws as an overlay polyline, independent of the route', async ({ page }) => {
   await page.addInitScript(() => {
     window.__geoCb = null;

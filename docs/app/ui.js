@@ -1225,7 +1225,10 @@ function showRouteLibraryModal() {
 
   function render() {
     list.innerHTML = '';
-    const entries = loadRouteLibrary().filter(e => e && e.data && !e.deleted);
+    // Route entries carry `data`; GPS track entries carry `track` (no route
+    // data). Include both; exclude tombstones.
+    const entries = loadRouteLibrary().filter(e => e && !e.deleted &&
+      (e.data || (e.kind === 'gps' && Array.isArray(e.track) && e.track.length)));
     if (!entries.length) {
       const empty = document.createElement('p');
       empty.className = 'route-library-empty';
