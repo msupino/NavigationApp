@@ -146,6 +146,35 @@ test('wind field renders in a non-rotating pane so it works on a rotated map', a
   expect(r.canvasRendered).toBe(true);
 });
 
+test('wind vectors rotate with the map bearing (flow tracks the chart)', async ({ page }) => {
+  await boot(page);   // fixture grid: uniform wind FROM 270° → blowing east
+  await page.evaluate(() => {
+    const orig = L.velocityLayer;
+    L.velocityLayer = function (o) { const inst = orig(o); window.__wf = inst; return inst; };
+  });
+  await page.locator('#windfield-cb').check();
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
+  await page.waitForFunction(() => window.__wf && window.__wf.options && window.__wf.options.data);
+  // North-up: wind blowing east → U ≈ +speed, V ≈ 0.
+  const b0 = await page.evaluate(() => {
+    map.setBearing(0);
+    const d = window.__wf.options.data;
+    return { u: d[0].data[0], v: d[1].data[0] };
+  });
+  expect(b0.u).toBeGreaterThan(5);
+  expect(Math.abs(b0.v)).toBeLessThan(1);
+  // Rotate 45°: the same wind rotates into the chart frame (U/V mix, V<0).
+  await page.evaluate(() => map.setBearing(45));
+  await page.waitForFunction(() => window.__wf.options.data[1].data[0] < -1);
+  const b45 = await page.evaluate(() => {
+    const d = window.__wf.options.data;
+    return { u: d[0].data[0], v: d[1].data[0] };
+  });
+  expect(b45.u).toBeGreaterThan(3);
+  expect(b45.v).toBeLessThan(-3);
+  expect(Math.abs(b45.u - b0.u * Math.SQRT1_2)).toBeLessThan(1.5);
+});
+
 test('wind-field toggle persists across reload', async ({ page }) => {
   await boot(page);
   await page.locator('#windfield-cb').check();
