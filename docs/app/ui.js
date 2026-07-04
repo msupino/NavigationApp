@@ -2257,12 +2257,21 @@ if (windDepartSlider) {
   function frameData() {
     const idx = absIndex(), g = store.g, n = g.lats.length;
     const U = new Array(n).fill(0), V = new Array(n).fill(0);
+    // Rotate the wind vectors by the map bearing. leaflet-velocity draws
+    // (u, -v) in screen space assuming north-up, so on a rotated map the flow
+    // would otherwise point the wrong way. Positions are already bearing-aware
+    // (the canvas lives in a non-rotating pane, plotted via
+    // latLngToContainerPoint) — only the vectors need this pre-rotation.
+    const th = (typeof map !== 'undefined' && map.getBearing) ? (map.getBearing() || 0) * Math.PI / 180 : 0;
+    const cb = Math.cos(th), sb = Math.sin(th);
     for (let k = 0; k < n; k++) {
       const spd = store.sp[k] && store.sp[k][idx], dir = store.di[k] && store.di[k][idx];
       if (!Number.isFinite(spd) || !Number.isFinite(dir)) continue;
       const r = dir * Math.PI / 180;                  // met direction = FROM
-      U[k] = -spd * Math.sin(r);
-      V[k] = -spd * Math.cos(r);
+      const u = -spd * Math.sin(r);                   // eastward component
+      const v = -spd * Math.cos(r);                   // northward component
+      U[k] = u * cb + v * sb;
+      V[k] = v * cb - u * sb;
     }
     return velocityData(g, U, V);
   }
@@ -2310,6 +2319,10 @@ if (windDepartSlider) {
       if (layer) { map.removeLayer(layer); layer = null; }
       layer = L.velocityLayer({
         displayValues: false,
+        // Non-rotating pane (see core.js): the field draws in screen
+        // coordinates, so it must not sit in the rotate pane or it breaks when
+        // the map is rotated.
+        paneName: 'windfield',
         data: frameData(),
         // Colour particles by speed with a *saturated* ramp (no pale mids that
         // vanish on the light chart) so the motion reads over the busy base.
@@ -2336,6 +2349,21 @@ if (windDepartSlider) {
     if (layer) { map.removeLayer(layer); layer = null; }
     if (statusEl) statusEl.style.display = 'none';
   }
+
+  // Re-derive the field when the map rotates: frameData() bakes the current
+  // bearing into the vectors, so the flow tracks the chart as it turns. A dial
+  // drag fires 'rotate' continuously — coalesce to one rebuild per frame.
+  let bearingRebuildPending = false;
+  function refreshFieldForBearing() {
+    if (!layer || !store || bearingRebuildPending) return;
+    bearingRebuildPending = true;
+    requestAnimationFrame(() => {
+      bearingRebuildPending = false;
+      if (layer && store && typeof layer.setData === 'function') layer.setData(frameData());
+    });
+  }
+  map.on('rotate', refreshFieldForBearing);
+  map.on('rotateend', refreshFieldForBearing);
 
   // leaflet-velocity draws into a canvas in the overlay pane; set its element
   // opacity so the field can be dialled down against the chart base.
