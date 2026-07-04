@@ -1327,11 +1327,18 @@ function showRouteLibraryModal() {
         if (persistRouteLibrary(all)) render();
       };
       if (isGps) {
+        // Load the flown track as an editable waypoint route (simplified).
+        const toRoute = document.createElement('button');
+        toRoute.type = 'button';
+        toRoute.textContent = S.routeLibraryTrackToRoute || 'Load as route';
+        toRoute.onclick = () => {
+          if (typeof loadTrackAsRoute === 'function' && loadTrackAsRoute(entry)) modal.close();
+        };
         const gpx = document.createElement('button');
         gpx.type = 'button';
         gpx.textContent = S.routeLibraryExportGpx || 'GPX';
         gpx.onclick = () => { if (typeof downloadGpsTrackGpx === 'function') downloadGpsTrackGpx(entry); };
-        actions.append(loadBtn, rename, gpx, del);   // no Save/Duplicate (not an editable route)
+        actions.append(loadBtn, toRoute, rename, gpx, del);   // Show/Hide + Load-as-route + GPX
       } else {
         actions.append(loadBtn, save, rename, dup, del);
       }

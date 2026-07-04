@@ -148,6 +148,12 @@ test('a recorded GPS track shows up as a row in the Saved routes library', async
   await expect(rows.first()).toContainText(name);
   // Track rows offer Show/Hide + GPX (not route Load).
   await expect(rows.first().getByRole('button', { name: /Show|Hide/ })).toBeVisible();
+  // ...and can be loaded as an editable waypoint route.
+  page.once('dialog', d => d.accept());   // replace-route confirm (no current route → none, but be safe)
+  await rows.first().getByRole('button', { name: 'Load as route' }).click();
+  await expect(modal).toHaveCount(0);     // modal closes on load
+  const wps = await page.evaluate(() => state.waypoints.length);
+  expect(wps).toBeGreaterThanOrEqual(2);  // track became a route
 });
 
 test('a saved track draws as an overlay polyline, independent of the route', async ({ page }) => {

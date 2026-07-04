@@ -267,6 +267,28 @@ function trackPointsFromEntry(entry) {
   }
   return [];
 }
+// Turn a saved track into an editable waypoint route: simplify the flown fix
+// list into waypoints and replace the current route (with a confirm, like the
+// other route-replacement paths). Returns true if the route was loaded.
+function loadTrackAsRoute(entry) {
+  const pts = trackPointsFromEntry(entry);
+  const simp = simplifyTrack(pts.map(p => ({ lat: p.lat, lng: p.lng })), GPS_SIMPLIFY_EPS_DEG);
+  if (simp.length < 2) { alert(S.gpsNoTrack || 'No track recorded.'); return false; }
+  if ((state.waypoints.length || state.notes.length) &&
+      !confirm(S.routeLibraryReplaceConfirm ||
+        S.routeTemplateReplaceConfirm || 'Replace the current route?')) return false;
+  routeAltPrefix = null;              // replacing the route unpins its altitude layer
+  state.waypoints = simp.map(p => ({ lat: r5(p.lat), lng: r5(p.lng), name: '' }));
+  state.legs = [];
+  state.notes = [];
+  state.commChangeSuppressions = [];
+  syncLegs();
+  state.selected = null;
+  if (typeof showInspector === 'function') showInspector();
+  if (typeof fitView === 'function') fitView();
+  draw();
+  return true;
+}
 function isTrackShown(id) { return shownTracks.some(t => t.id === id); }
 function _nextTrackColor() {
   const used = new Set(shownTracks.map(t => t.color));

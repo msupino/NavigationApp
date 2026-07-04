@@ -562,6 +562,7 @@ window.S = Object.assign({
   routeLibraryShow: 'Show',
   routeLibraryHide: 'Hide',
   routeLibraryExportGpx: 'GPX',
+  routeLibraryTrackToRoute: 'Load as route',
   routeLibraryRename: 'Rename',
   routeLibraryDuplicate: 'Duplicate',
   routeLibraryDelete: 'Delete',

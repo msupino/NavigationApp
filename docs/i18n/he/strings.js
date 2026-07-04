@@ -79,6 +79,7 @@ window.S = {
   routeLibraryShow: 'הצג',
   routeLibraryHide: 'הסתר',
   routeLibraryExportGpx: 'GPX',
+  routeLibraryTrackToRoute: 'טען כמסלול',
   routeLibraryRename: 'שנה שם',
   routeLibraryDuplicate: 'שכפל',
   routeLibraryDelete: 'מחק',
