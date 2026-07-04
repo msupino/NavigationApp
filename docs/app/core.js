@@ -2043,6 +2043,14 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
 // to mapPane and are skipped by rotation. Force into rotatePane when available.
 map.createPane('basemapUnderlay', map._rotatePane || undefined);
 map.getPane('basemapUnderlay').style.zIndex = 150;        // below tilePane (200)
+// Wind-field (leaflet-velocity) pane: deliberately NOT in the rotate pane.
+// leaflet-velocity draws in bearing-aware container (screen) coordinates, so
+// its canvas must stay screen-aligned; putting it in the rotate pane would
+// transform it a second time and break the field on a rotated map. A plain
+// mapPane child is never rotated. zIndex sits above the chart tiles (rotatePane
+// is 400) but below the app's own #overlay route canvas.
+map.createPane('windfield');
+map.getPane('windfield').style.zIndex = 410;
 const osmUnderlay = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   { pane: 'basemapUnderlay', minZoom: 6, maxZoom: 18, subdomains: 'abc',
     opacity: 0.7, attribution: '© OpenStreetMap contributors' });
