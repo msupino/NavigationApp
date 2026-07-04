@@ -100,9 +100,14 @@ NavAid.tuningDefaults = {
 
   legKiteFillColor: { value: '#00ff00', type: 'color', label: 'Leg kite fill color' },
   returnKiteFillColor: { value: '#ffccd6', type: 'color', label: 'Return kite fill color' },
-  legKiteHeightPx: { value: 47, min: 8, max: 120, step: 1, label: 'Leg kite height' },
-  legKiteCellWidthPx: { value: 24, min: 8, max: 80, step: 1, label: 'Leg kite cell width' },
-  legKiteTriangleLenPx: { value: 35, min: 8, max: 100, step: 1, label: 'Leg kite triangle length' },
+  // Kite sizes are anchored at z12 (legZoomScale = 2^(z-12)), so px here map to
+  // a fixed ground footprint and thus a fixed paper size at 1:250,000
+  // (the app's page-frame scale): 1 mm = 250 m, and mpp(z12) ≈ 32.37 m/px, so
+  // 1 mm ≈ 7.72 px. Defaults: square 18.5 mm wide (cell×2 = 143 px) × 20 mm
+  // tall (154.5 px); triangle 10 mm long (77 px).
+  legKiteHeightPx: { value: 154.5, min: 8, max: 220, step: 1, label: 'Leg kite height' },
+  legKiteCellWidthPx: { value: 71.5, min: 8, max: 120, step: 0.5, label: 'Leg kite cell width' },
+  legKiteTriangleLenPx: { value: 77, min: 8, max: 120, step: 1, label: 'Leg kite triangle length' },
   legKiteBorderPx: { value: 2, min: 0.25, max: 8, step: 0.25, label: 'Leg kite border width' },
   legKiteDividerPx: { value: 1, min: 0.25, max: 6, step: 0.25, label: 'Leg kite divider width' },
   legKiteHaloPx: { value: 7, min: 0, max: 20, step: 0.5, label: 'Leg kite halo width' },
