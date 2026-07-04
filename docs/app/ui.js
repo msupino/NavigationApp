@@ -1225,7 +1225,10 @@ function showRouteLibraryModal() {
 
   function render() {
     list.innerHTML = '';
-    const entries = loadRouteLibrary().filter(e => e && e.data && !e.deleted);
+    // Route entries carry `data`; GPS track entries carry `track` (no route
+    // data). Include both; exclude tombstones.
+    const entries = loadRouteLibrary().filter(e => e && !e.deleted &&
+      (e.data || (e.kind === 'gps' && Array.isArray(e.track) && e.track.length)));
     if (!entries.length) {
       const empty = document.createElement('p');
       empty.className = 'route-library-empty';
@@ -1239,6 +1242,7 @@ function showRouteLibraryModal() {
       const main = document.createElement('button');
       main.type = 'button';
       main.className = 'route-library-open';
+      const isGps = entry.kind === 'gps';
       const wpN = (entry.data && entry.data.waypoints && entry.data.waypoints.length) || 0;
       const when = (entry.savedAt || '').slice(0, 10);
       main.innerHTML = '';
@@ -1249,23 +1253,40 @@ function showRouteLibraryModal() {
       const meta = document.createElement('span');
       meta.className = 'route-library-row-meta';
       meta.dir = 'ltr';
-      meta.textContent = wpN + ' WP' + (when ? ' · ' + when : '');
+      if (isGps && typeof trackPointsFromEntry === 'function') {
+        const pts = trackPointsFromEntry(entry);
+        const nm2 = typeof trackDistanceNm === 'function' ? trackDistanceNm(pts) : 0;
+        meta.textContent = pts.length + ' pts · ' + nm2.toFixed(1) + ' NM' + (when ? ' · ' + when : '');
+      } else {
+        meta.textContent = wpN + ' WP' + (when ? ' · ' + when : '');
+      }
       main.append(nm, meta);
-      main.onclick = () => { if (routeLibraryApply(entry)) modal.close(); };
+      // GPS tracks toggle a map overlay; routes replace the working route.
+      main.onclick = isGps
+        ? () => { if (typeof toggleTrackOverlay === 'function') { toggleTrackOverlay(entry); render(); } }
+        : () => { if (routeLibraryApply(entry)) modal.close(); };
 
       const actions = document.createElement('div');
       actions.className = 'route-library-actions';
       const loadBtn = document.createElement('button');
       loadBtn.type = 'button';
       loadBtn.className = 'route-library-load';
-      loadBtn.textContent = S.routeLibraryLoad || 'Load';
-      loadBtn.onclick = () => { if (routeLibraryApply(entry)) modal.close(); };
+      if (isGps) {
+        const shown = typeof isTrackShown === 'function' && isTrackShown(entry.id);
+        loadBtn.textContent = shown ? (S.routeLibraryHide || 'Hide') : (S.routeLibraryShow || 'Show');
+        loadBtn.onclick = () => { if (typeof toggleTrackOverlay === 'function') { toggleTrackOverlay(entry); render(); } };
+      } else {
+        loadBtn.textContent = S.routeLibraryLoad || 'Load';
+        loadBtn.onclick = () => { if (routeLibraryApply(entry)) modal.close(); };
+      }
+      // Per-row Save overwrites this saved route with the current one — routes
+      // only (a GPS track is a recording, not an editable route). Appended
+      // conditionally below.
       const save = document.createElement('button');
       save.type = 'button';
       save.className = 'route-library-save';
       save.textContent = S.routeLibrarySave || 'Save';
       save.onclick = () => {
-        // Overwrite this saved route with the current one.
         if (!confirm((S.routeLibrarySaveConfirm && S.routeLibrarySaveConfirm(entry.name)) ||
             ('Overwrite "' + entry.name + '" with the current route?'))) return;
         if (routeLibraryUpdate(entry.id)) render();
@@ -1302,9 +1323,18 @@ function showRouteLibraryModal() {
         const all = loadRouteLibrary().map(x => x.id === entry.id
           ? { id: x.id, name: x.name, savedAt: new Date().toISOString(), deleted: true }
           : x);
+        if (typeof hideTrackOverlay === 'function') hideTrackOverlay(entry.id);
         if (persistRouteLibrary(all)) render();
       };
-      actions.append(loadBtn, save, rename, dup, del);
+      if (isGps) {
+        const gpx = document.createElement('button');
+        gpx.type = 'button';
+        gpx.textContent = S.routeLibraryExportGpx || 'GPX';
+        gpx.onclick = () => { if (typeof downloadGpsTrackGpx === 'function') downloadGpsTrackGpx(entry); };
+        actions.append(loadBtn, rename, gpx, del);   // read-only track: Show/Hide + GPX only
+      } else {
+        actions.append(loadBtn, save, rename, dup, del);
+      }
       row.append(main, actions);
       list.appendChild(row);
     }
