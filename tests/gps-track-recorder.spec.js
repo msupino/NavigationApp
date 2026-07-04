@@ -146,14 +146,38 @@ test('a recorded GPS track shows up as a row in the Saved routes library', async
   const rows = modal.locator('.route-library-row');
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText(name);
-  // Track rows offer Show/Hide + GPX (not route Load).
+  // Track rows are read-only overlays: Show/Hide + GPX, never a route Load.
   await expect(rows.first().getByRole('button', { name: /Show|Hide/ })).toBeVisible();
-  // ...and can be loaded as an editable waypoint route.
-  page.once('dialog', d => d.accept());   // replace-route confirm (no current route → none, but be safe)
-  await rows.first().getByRole('button', { name: 'Load as route' }).click();
-  await expect(modal).toHaveCount(0);     // modal closes on load
-  const wps = await page.evaluate(() => state.waypoints.length);
-  expect(wps).toBeGreaterThanOrEqual(2);  // track became a route
+  await expect(rows.first().getByRole('button', { name: 'GPX' })).toBeVisible();
+  await expect(rows.first().getByRole('button', { name: 'Load', exact: true })).toHaveCount(0);
+});
+
+test('a track overlays a loaded waypoint route for actual-vs-planned comparison', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__geoCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 7; };
+    navigator.geolocation.clearWatch = () => {};
+    try { localStorage.removeItem('navaid.routes'); localStorage.removeItem('navaid.tracks.shown'); } catch (e) {}
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof stopGpsRecordingAndSave === 'function' &&
+    typeof isTrackShown === 'function');
+  const id = await page.evaluate(() => {
+    // A planned waypoint route is loaded and stays intact.
+    state.waypoints = [{ lat: 32.0, lng: 34.85, name: 'A' }, { lat: 32.2, lng: 35.05, name: 'B' }];
+    syncLegs();
+    startGpsRecording();
+    const fix = (lat, lng) => window.__geoCb({ coords: { latitude: lat, longitude: lng, accuracy: 8, heading: null, altitude: 100 }, timestamp: Date.now() });
+    fix(32.02, 34.86); fix(32.08, 34.92); fix(32.15, 35.00); fix(32.2, 35.04);
+    const e = stopGpsRecordingAndSave();   // auto-shows the overlay
+    return e.id;
+  });
+  const r = await page.evaluate((tid) => ({
+    trackShown: isTrackShown(tid),
+    wpKept: state.waypoints.length,           // planned route untouched (read-only track)
+  }), id);
+  expect(r.trackShown).toBe(true);            // flown track overlaid
+  expect(r.wpKept).toBe(2);                    // planned route intact
 });
 
 test('a saved track draws as an overlay polyline, independent of the route', async ({ page }) => {
