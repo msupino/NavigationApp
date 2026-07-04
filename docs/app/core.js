@@ -1161,7 +1161,13 @@ var legLineWidth = 0.5;     // leg route line width scale (0.5 ≈ 1.75 px of th
 var driftLineWidth = 1;     // drift reference line width scale (1 = default 1.5 px)
 
 function legZoomScale() {   // zoom + legArrowSize → pixel multiplier for offsets/sizes
-  return Math.max(0.35, Math.pow(2, map.getZoom() - 12)) * legArrowSize;
+  const paper = Math.pow(2, map.getZoom() - 12);
+  // On screen the 0.35 floor keeps kites/labels visible and clickable when
+  // zoomed out. For PNG export the kite is a fixed 1:250,000 paper object
+  // (18.5×20 mm square, 10 mm triangle at defaults), so skip the floor and use
+  // the true z12-anchored scale → constant printed size at any framing zoom.
+  const s = (window.NavAid && NavAid.exporting) ? paper : Math.max(0.35, paper);
+  return s * legArrowSize;
 }
 // Readout for a Leaflet zoom level: the raw level plus a linear scale
 // multiplier. Zoom is logarithmic — each whole level doubles on-screen
