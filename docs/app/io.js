@@ -340,6 +340,9 @@ function validateRoute(d) {
       _v(d.wind, 'speed', 'number', 'root.wind', errs);
     }
   }
+  if (Object.prototype.hasOwnProperty.call(d, 'bearing') && typeof d.bearing !== 'number') {
+    errs.push('root.bearing: expected number, got ' + _vKind(d.bearing));
+  }
   if (wpsOk) {
     for (let i = 0; i < d.waypoints.length; i++) {
       const p = 'waypoints[' + i + ']';
@@ -830,6 +833,7 @@ function routeSnapshotForStorage() {
     // an undone or reloaded route keeps deriving from its original layer
     // instead of re-pinning to whichever layer happens to be displayed.
     ...(routeAltPrefix ? { altPin: routeAltPrefix } : {}),
+    ...(currentMapBearing() ? { bearing: currentMapBearing() } : {}),
   };
 }
 // Serializable, schema-clean snapshot of the current route. Shared by the
@@ -865,7 +869,21 @@ function serializeRoute() {
   if (commChangeSuppressions.length) data.commChangeSuppressions = commChangeSuppressions;
   const wind = encodeWind(state.wind);
   if (wind && wind.speed > 0) data.wind = wind;     // calm = omit (#722)
+  const bearing = currentMapBearing();
+  if (bearing) data.bearing = bearing;              // north-up = 0 = omit
   return data;
+}
+// Map rotation (leaflet-rotate), normalised to [0,360) and rounded to a whole
+// degree — saved with the route so a loaded route restores its orientation.
+function currentMapBearing() {
+  if (typeof map === 'undefined' || !map.getBearing) return 0;
+  const b = Math.round(map.getBearing() || 0);
+  return ((b % 360) + 360) % 360;
+}
+function applyMapBearing(d) {
+  if (typeof map === 'undefined' || !map.setBearing) return;
+  const b = d && Number.isFinite(d.bearing) ? (((Math.round(d.bearing) % 360) + 360) % 360) : 0;
+  try { map.setBearing(b); } catch (e) { /* rotate plugin absent */ }
 }
 function save() {
   const data = serializeRoute();
@@ -1384,6 +1402,7 @@ function applyRouteData(d) {
   state.selected = null;
   showInspector();
   fitView();
+  applyMapBearing(d);            // restore the saved map orientation
   draw();
 }
 
@@ -4004,6 +4023,7 @@ function restoreRoute() {
   routeAltPrefix = typeof d.altPin === 'string' ? d.altPin : null;
   if (typeof window.refreshWindInputs === 'function') window.refreshWindInputs();
   syncLegs();
+  applyMapBearing(d);            // restore the saved map orientation on boot
   return true;
 }
 
