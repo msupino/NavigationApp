@@ -220,72 +220,148 @@ function gpsTrackName() {
        + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
 
-// Build a validateRoute-passing route `data` from simplified points by reusing
-// the canonical serializer with a guarded temporary state swap.
-// Also neutralizes state.commChangeSuppressions and state.wind so the saved GPS
-// entry is not polluted with the user's current comm-change suppressions or wind.
-function gpsRouteDataFromPoints(points) {
-  const saved = {
-    waypoints: state.waypoints, legs: state.legs, notes: state.notes,
-    commChangeSuppressions: state.commChangeSuppressions,
-    wind: state.wind,
-    // syncLegs on the temp route pins routeAltPrefix as a side effect —
-    // save/restore it or the pin of a route that never existed leaks out.
-    altPin: routeAltPrefix,
-  };
-  try {
-    state.waypoints = points.map(p => ({ lat: r5(p.lat), lng: r5(p.lng), name: '' }));
-    state.legs = [];
-    state.notes = [];
-    state.commChangeSuppressions = [];
-    state.wind = { dir: 270, speed: 0 };  // calm — encodeWind omits speed:0
-    syncLegs();
-    // Carry the recorded GPS altitude into each leg as the flown cruise altitude
-    // (inbound = forward direction; the return/outbound leg stays unknown since
-    // we only flew it once). Per leg: nearest-100-ft average of its two endpoint
-    // altitudes (GPS metres → ft). Mark manual so applyLegAltitudesToRoute won't
-    // clobber it. Without this, every saved-route leg altitude reads "unknown".
-    const altFt = i => (points[i] && points[i].alt != null && !isNaN(points[i].alt))
-      ? points[i].alt * 3.28084 : null;
-    for (let i = 0; i < state.legs.length; i++) {
-      const a = altFt(i), b = altFt(i + 1);
-      if (a == null || b == null) continue;
-      state.legs[i].inboundAltitude = Math.round((a + b) / 2 / 100) * 100;
-      state.legs[i]._legAltitudeAuto = 0;
-    }
-    return serializeRoute();
-  } finally {
-    state.waypoints = saved.waypoints; state.legs = saved.legs; state.notes = saved.notes;
-    state.commChangeSuppressions = saved.commChangeSuppressions;
-    state.wind = saved.wind;
-    routeAltPrefix = saved.altPin;
-    // Do NOT call syncLegs() here — saved.legs already has the correct length
-    // for saved.waypoints, and syncLegs() would call applyLegAltitudesToRoute()
-    // which overwrites any _legAltitudeAuto leg values (e.g. custom altitudes
-    // the user set) with NaN when the waypoint names don't match the dataset.
-  }
-}
-
 // Stop recording AND save. Returns the new library entry, or null.
+// A recording is stored as a TRACK (a line), not a waypoint route: it keeps
+// only the raw fix list. On the map it's an overlay drawn on top of whatever
+// route (if any) is loaded — see the saved-track overlay section below.
 function stopGpsRecordingAndSave() {
   const raw = gpsTrack.slice();
   stopGpsRecording();
   if (raw.length < 2) { alert(S.gpsNoTrack || 'No track recorded.'); return null; }
-  const simp = simplifyTrack(raw.map(p => ({ lat: p.lat, lng: p.lng, alt: p.alt })), GPS_SIMPLIFY_EPS_DEG);
-  const data = gpsRouteDataFromPoints(simp);
   const entry = {
     id: routeLibraryId(),
     name: gpsTrackName(),
     savedAt: new Date().toISOString(),
     kind: 'gps',
-    data,
     track: raw.map(p => ({ lat: r5(p.lat), lng: r5(p.lng), t: p.t,
       ...(p.alt != null ? { alt: Math.round(p.alt) } : {}),
       ...(p.acc != null ? { acc: Math.round(p.acc) } : {}) })),
   };
   const list = loadRouteLibrary();
   list.unshift(entry);
-  return persistRouteLibrary(list) ? entry : null;
+  if (!persistRouteLibrary(list)) return null;
+  showTrackOverlay(entry);            // surface the flown line immediately
+  return entry;
+}
+
+// --- saved-track overlays --------------------------------------------------
+// A recorded GPS track is shown as a coloured polyline overlay, independent of
+// the waypoint route. Multiple can be shown at once; the set of shown ids is
+// persisted so overlays survive a reload.
+var shownTracks = [];                 // [{ id, name, points:[{lat,lng,alt,t}], color }]
+const TRACK_COLORS = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4',
+                      '#008080', '#9a6324', '#000075'];
+const SHOWN_TRACKS_KEY = 'navaid.tracks.shown';
+var _shownTracksBooted = false;
+
+// Points to draw for an entry. New entries carry `track`; old ones only had a
+// synthetic waypoint route (entry.data) — render those waypoints as the line.
+function trackPointsFromEntry(entry) {
+  if (entry && Array.isArray(entry.track) && entry.track.length) {
+    return entry.track.filter(p => p && Number.isFinite(p.lat) && Number.isFinite(p.lng));
+  }
+  if (entry && entry.data && Array.isArray(entry.data.waypoints)) {
+    return entry.data.waypoints
+      .filter(w => w && Number.isFinite(w.lat) && Number.isFinite(w.lng))
+      .map(w => ({ lat: w.lat, lng: w.lng }));
+  }
+  return [];
+}
+function isTrackShown(id) { return shownTracks.some(t => t.id === id); }
+function _nextTrackColor() {
+  const used = new Set(shownTracks.map(t => t.color));
+  return TRACK_COLORS.find(c => !used.has(c)) || TRACK_COLORS[shownTracks.length % TRACK_COLORS.length];
+}
+function _addTrackOverlay(entry) {
+  if (!entry || isTrackShown(entry.id)) return false;
+  const points = trackPointsFromEntry(entry);
+  if (points.length < 2) return false;
+  shownTracks.push({ id: entry.id, name: entry.name || '', points, color: _nextTrackColor() });
+  return true;
+}
+function showTrackOverlay(entry) {
+  if (_addTrackOverlay(entry)) { persistShownTrackIds(); scheduleDraw(); }
+}
+function hideTrackOverlay(id) {
+  const before = shownTracks.length;
+  shownTracks = shownTracks.filter(t => t.id !== id);
+  if (shownTracks.length !== before) { persistShownTrackIds(); scheduleDraw(); }
+}
+function toggleTrackOverlay(entry) {
+  if (!entry) return false;
+  if (isTrackShown(entry.id)) { hideTrackOverlay(entry.id); return false; }
+  showTrackOverlay(entry);
+  return isTrackShown(entry.id);
+}
+function persistShownTrackIds() {
+  try { localStorage.setItem(SHOWN_TRACKS_KEY, JSON.stringify(shownTracks.map(t => t.id))); } catch (e) { /* */ }
+}
+function loadShownTrackOverlays() {
+  _shownTracksBooted = true;
+  let ids = [];
+  try { ids = JSON.parse(localStorage.getItem(SHOWN_TRACKS_KEY) || '[]'); } catch (e) { /* */ }
+  if (!Array.isArray(ids) || !ids.length) return;
+  const lib = (typeof loadRouteLibrary === 'function') ? loadRouteLibrary() : [];
+  shownTracks = [];
+  for (const id of ids) { const e = lib.find(x => x.id === id); if (e) _addTrackOverlay(e); }
+  if (shownTracks.length) scheduleDraw();
+}
+
+// Total great-circle length of a track (NM) — for library row meta.
+function trackDistanceNm(points) {
+  let m = 0;
+  for (let i = 1; i < points.length; i++) m += _gpsMetres(points[i - 1], points[i]);
+  return m / 1852;
+}
+
+// Draw all shown track overlays as coloured polylines with start/end dots.
+function drawTracks() {
+  if (!_shownTracksBooted) loadShownTrackOverlays();
+  if (!Array.isArray(shownTracks) || !shownTracks.length) return;
+  octx.save();
+  octx.lineCap = 'round'; octx.lineJoin = 'round';
+  for (const t of shownTracks) {
+    const pts = t.points.map(proj);
+    if (pts.length < 2) continue;
+    octx.beginPath();
+    octx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) octx.lineTo(pts[i].x, pts[i].y);
+    octx.lineWidth = tune('gpsBreadcrumbWidthPx');
+    octx.strokeStyle = t.color;
+    octx.stroke();
+    const dot = (p, c) => {
+      octx.beginPath(); octx.arc(p.x, p.y, 4, 0, 2 * Math.PI);
+      octx.fillStyle = c; octx.fill();
+      octx.lineWidth = 1.5; octx.strokeStyle = '#fff'; octx.stroke();
+    };
+    dot(pts[0], '#0a0');                 // start = green
+    dot(pts[pts.length - 1], '#d00');    // end = red
+  }
+  octx.restore();
+  if (typeof window !== 'undefined') window.__tracksDrawn = shownTracks.length;
+}
+
+// Export a saved track as GPX (<trk>), the natural format for a flown path.
+function gpsTrackToGpx(entry) {
+  const pts = trackPointsFromEntry(entry);
+  const esc = s => String(s).replace(/[<&>]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+  const seg = pts.map(p =>
+    '      <trkpt lat="' + p.lat + '" lon="' + p.lng + '">' +
+    (p.alt != null ? '<ele>' + (p.alt / 3.28084).toFixed(1) + '</ele>' : '') +  // ft → m
+    (p.t ? '<time>' + new Date(p.t).toISOString() + '</time>' : '') +
+    '</trkpt>').join('\n');
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="NavAid">\n' +
+    '  <trk>\n    <name>' + esc(entry.name || 'GPS track') + '</name>\n    <trkseg>\n' +
+    seg + '\n    </trkseg>\n  </trk>\n</gpx>\n';
+}
+function downloadGpsTrackGpx(entry) {
+  const blob = new Blob([gpsTrackToGpx(entry)], { type: 'application/gpx+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (entry.name || 'track').replace(/[^\w\-]+/g, '_') + '.gpx';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 // Breadcrumb of the in-progress recording, drawn on the overlay.

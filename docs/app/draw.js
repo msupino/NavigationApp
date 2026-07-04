@@ -291,6 +291,7 @@ function draw() {
   if (window.showNotam && Array.isArray(notams) && notams.length) drawNotamAirportMarkers();
   drawNotes();
   if (window.showProfile) drawProfileMarkers();   // TOC/TOD markers (#672)
+  if (typeof drawTracks === 'function') drawTracks();       // saved-track overlays (flown lines)
   if (typeof drawGpsTrack === 'function') drawGpsTrack();   // GPS breadcrumb + own-ship (recording or live location)
   if (!gpsRecording && !gpsLiveOn && simOn && simAircraft) drawOwnShip(simAircraft, simAircraft.hdg);  // sim own-ship
   drawInfo();
