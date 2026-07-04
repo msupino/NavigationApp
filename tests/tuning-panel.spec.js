@@ -124,9 +124,9 @@ test.describe('Hidden tuning panel', () => {
     }));
     expect(values).toEqual({
       defaultLabelMarginPx: 20,
-      legKiteHeightPx: 47,
-      legKiteCellWidthPx: 24,
-      legKiteTriangleLenPx: 35,
+      legKiteHeightPx: 154.5,
+      legKiteCellWidthPx: 71.5,
+      legKiteTriangleLenPx: 77,
       legKiteHeadingTextPx: 13,
       legKiteHeadingAnchor: 0.25,
       cumKiteHeightPx: 23,
