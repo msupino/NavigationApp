@@ -1651,9 +1651,11 @@ document.getElementById('route-library').onclick = showRouteLibraryModal;
 // stop the click from also toggling the section open/closed. Save auto-names
 // the entry (routeLibrarySaveCurrent falls back to defaultSavedRouteName when
 // given a blank name).
-const _saveRouteBtn = document.getElementById('tool-save-route');
-if (_saveRouteBtn) _saveRouteBtn.onclick = (e) => {
-  e.stopPropagation();
+// Shared by the in-header pair (accordion) and the standalone .tb-quick pair
+// (desktop menubar). The accordion pair sits inside the clickable section
+// header, so stop the click from also toggling the section.
+function saveRouteFromHeader(e) {
+  if (e) e.stopPropagation();
   // If the current route came from a saved entry, overwrite that same entry
   // (with a confirm warning). Otherwise it's an unsaved route — open the Saved
   // routes menu so the user can name and save it.
@@ -1673,12 +1675,13 @@ if (_saveRouteBtn) _saveRouteBtn.onclick = (e) => {
     showToast(typeof S.routeLibrarySaved === 'function'
       ? S.routeLibrarySaved(entry.name) : entry.name + ' saved');
   }
-};
-const _loadRouteBtn = document.getElementById('tool-load-route');
-if (_loadRouteBtn) _loadRouteBtn.onclick = (e) => {
-  e.stopPropagation();
+}
+function loadRouteFromHeader(e) {
+  if (e) e.stopPropagation();
   showRouteLibraryModal();
-};
+}
+for (const el of document.querySelectorAll('.js-save-route')) el.onclick = saveRouteFromHeader;
+for (const el of document.querySelectorAll('.js-load-route')) el.onclick = loadRouteFromHeader;
 
 // Draggable inspector — grab the header bar (but not the editable title or the
 // close button) to reposition the panel; the spot persists across selections

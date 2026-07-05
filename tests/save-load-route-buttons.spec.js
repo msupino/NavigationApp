@@ -78,6 +78,23 @@ test.describe('Edit-header Save / Load route buttons', () => {
     await expect(page.locator('.route-library-modal')).toBeVisible();
   });
 
+  test('wide desktop shows the standalone pair; the in-header pair is hidden', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.addInitScript(() => {
+      try { localStorage.clear(); sessionStorage.clear(); } catch (e) {}
+    });
+    await page.goto('?lang=en');
+    await page.waitForFunction(() =>
+      typeof showRouteLibraryModal === 'function' && document.querySelector('.tb-quick'));
+    // Desktop-menubar: standalone pair visible, in-header pair hidden.
+    await expect(page.locator('#tool-save-route-wide')).toBeVisible();
+    await expect(page.locator('#tool-load-route-wide')).toBeVisible();
+    await expect(page.locator('#tool-save-route')).toBeHidden();
+    // Load opens the Saved routes menu.
+    await page.locator('#tool-load-route-wide').click();
+    await expect(page.locator('.route-library-modal')).toBeVisible();
+  });
+
   test('Save on an unsaved route opens the Saved routes menu (no silent save)', async ({ page }) => {
     await boot(page);
     let dialogs = 0;
