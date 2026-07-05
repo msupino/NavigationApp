@@ -749,6 +749,16 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
     background: #1d6fe0;
     border-color: #1d6fe0;
   }
+  /* Inside a dropdown the flat-button rule (.tb-section-body button:not(
+     .slider-reset) → transparent) is more specific than the active rule above,
+     so a selected button (e.g. the A3/A4 page size) rendered with no fill.
+     Re-assert the selected fill at matching specificity, after that rule. */
+  #toolbar .tb-section-body button.tool.active,
+  #toolbar .tb-section-body button[aria-pressed="true"] {
+    background: #1d6fe0;
+    border-color: #1d6fe0;
+    color: #fff;
+  }
 
   #toolbar .tb-section-body .navtoggle {
     min-height: 28px;
