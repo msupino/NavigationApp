@@ -1246,6 +1246,7 @@ function loadGpx(file) {
         return;
       }
       routeAltPrefix = null;   // replacing the route unpins its altitude layer
+      currentRouteLibraryId = null;   // decoded/imported route is not a saved entry
       state.waypoints = wps;
       state.legs = [];
       state.notes = [];
@@ -1312,6 +1313,7 @@ function loadPln(file) {
         return;
       }
       routeAltPrefix = null;   // replacing the route unpins its altitude layer
+      currentRouteLibraryId = null;   // decoded/imported route is not a saved entry
       state.waypoints = wps;
       state.legs = [];
       state.notes = [];
@@ -1365,6 +1367,8 @@ function load(file) {
 // library (#677). Caller is responsible for validateRoute() first.
 function applyRouteData(d) {
   routeAltPrefix = null;    // replacing the route unpins its altitude layer
+  currentRouteLibraryId = null;   // default: loaded route isn't a library entry
+                                  // (routeLibraryApply re-sets it right after)
   state.waypoints = d.waypoints.map(w => ({
     lat: r5(w.lat), lng: r5(w.lng), name: w.name,
   }));
@@ -1463,7 +1467,9 @@ function routeLibrarySaveCurrent(name) {
     data: serializeRoute(),
   };
   list.unshift(entry);
-  return persistRouteLibrary(list) ? entry : null;
+  if (!persistRouteLibrary(list)) return null;
+  currentRouteLibraryId = entry.id;   // this route is now tracked as a saved entry
+  return entry;
 }
 // Overwrite an existing library entry's route with the current one (update in
 // place), bumping savedAt so the change wins the Drive merge. Keeps the id and
@@ -1475,7 +1481,9 @@ function routeLibraryUpdate(id) {
   if (!entry) return null;
   entry.savedAt = new Date().toISOString();
   entry.data = serializeRoute();
-  return persistRouteLibrary(list) ? entry : null;
+  if (!persistRouteLibrary(list)) return null;
+  currentRouteLibraryId = entry.id;   // now the active saved entry
+  return entry;
 }
 // Apply a saved library entry to the live route. Returns true if applied.
 function routeLibraryApply(entry) {
@@ -1486,6 +1494,7 @@ function routeLibraryApply(entry) {
       !confirm(S.routeLibraryReplaceConfirm ||
         S.routeTemplateReplaceConfirm || 'Replace the current route?')) return false;
   applyRouteData(entry.data);
+  currentRouteLibraryId = entry.id;   // track the loaded entry for in-place Save
   return true;
 }
 

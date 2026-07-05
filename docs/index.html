@@ -120,7 +120,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=264">
+  <link rel="stylesheet" href="app/style.css?v=266">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -184,7 +184,17 @@
 
     <!-- Build: everything you do to construct or edit a route. -->
     <div class="tb-section" data-sec="build">
-      <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecBuild"></div>
+      <div class="tb-section-head" tabindex="0" role="button">
+        <span class="tb-head-left">
+          <span class="tb-head-actions">
+            <button id="tool-save-route" type="button" class="tb-head-btn"
+                    data-i18n-title="tbSaveRouteTitle" data-i18n-aria="tbSaveRoute">💾</button>
+            <button id="tool-load-route" type="button" class="tb-head-btn"
+                    data-i18n-title="tbLoadRouteTitle" data-i18n-aria="tbLoadRoute">📂</button>
+          </span>
+          <span class="tb-section-title" data-i18n="tbSecBuild"></span>
+        </span>
+      </div>
   <div class="tb-section-body">
     <button id="tool-add" class="tool" data-i18n="tbAddWp" data-i18n-title="tbAddWpTitle"></button>
     <button id="tool-note" class="tool" data-i18n="tbAddNote" data-i18n-title="tbAddNoteTitle"></button>
@@ -643,7 +653,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=264';
+      var v = '?v=266';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',

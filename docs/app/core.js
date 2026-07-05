@@ -552,6 +552,10 @@ window.S = Object.assign({
   tbRouteTemplatesTitle: 'Build a ready-made route',
   tbRouteLibrary: '💾 Saved routes',
   tbRouteLibraryTitle: 'Save, load and manage your routes (stored on this device)',
+  tbSaveRoute: '💾 Save route',
+  tbSaveRouteTitle: 'Save the current route to your saved routes',
+  tbLoadRoute: '📂 Load route',
+  tbLoadRouteTitle: 'Open your saved routes to load one',
   routeLibraryTitle: 'Saved routes',
   routeLibrarySaveCurrent: 'Save current route',
   routeLibraryNamePlaceholder: 'Route name',
@@ -1140,6 +1144,12 @@ var legAltitudeMapPrefix = null; // Which layer prefix ('cvfr'/'lsa'/'heli') the
 // then-active layer on the next apply. Not persisted: after a reload the
 // route repins to the restored layer, matching pre-existing boot behavior.
 var routeAltPrefix = null;
+// Id of the saved-library entry the current route was loaded from (or saved
+// as). Set by routeLibraryApply / routeLibrarySaveCurrent; cleared whenever the
+// route is replaced from a non-library source (file/template/share/clear). The
+// Edit-header Save button overwrites this entry when set, else opens the Saved
+// routes menu. Session-only (not persisted across reload).
+var currentRouteLibraryId = null;
 var showDrift = true;       // 10-degree drift reference lines
 var showWind = false;       // wind effect (#722): inputs + arrows + readout — opt-in
 var sigmets = null;         // null = not loaded; [] or populated once fetched
