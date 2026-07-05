@@ -2044,6 +2044,14 @@ body.theme-light .notam-raw-toggle:hover { background: #dfe4ec; color: #000; }
   overflow-y: auto;
 }
 .route-library-empty { color: #b9b3b3; margin: 4px 0; }
+.route-library-corrupt {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px solid #a3352f;
+  border-radius: 5px;
+  background: rgba(163, 53, 47, 0.14);
+}
+.route-library-corrupt p { margin: 0 0 6px; color: #f0c9c6; }
 /* Match every library button to the standard toolbar/app button look. */
 .route-library-saverow > button,
 .route-library-actions button,
