@@ -165,6 +165,30 @@ test.describe('Edit-header Save / Load route buttons', () => {
     expect(all[0].data.waypoints.length).toBe(3);                        // updated content
   });
 
+  test('opening Saved routes via the toolbar button does not prefill the name field', async ({ page }) => {
+    await boot(page);
+    await setRoute(page, ['A', 'B']);
+    await page.locator('#route-library').click();
+    const modal = page.locator('.route-library-modal');
+    await expect(modal).toBeVisible();
+    // Browsing the menu must not auto-fill/steal the name field (only the
+    // header Save shortcut on an unsaved route does that).
+    await expect(modal.locator('.route-library-name')).toHaveValue('');
+  });
+
+  test('undo clears the tracked saved-route id so Save cannot overwrite the wrong entry', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => {
+      currentRouteLibraryId = 'X';
+      undoStack.push(JSON.stringify({
+        waypoints: [{ lat: 32, lng: 34, name: 'A' }, { lat: 33, lng: 35, name: 'B' }],
+        legs: [], notes: [],
+      }));
+      undo();
+    });
+    expect(await currentId(page)).toBeNull();
+  });
+
   test('clearing the route makes Save open the menu again', async ({ page }) => {
     await boot(page);
     page.on('dialog', d => d.accept());
