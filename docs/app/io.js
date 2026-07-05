@@ -1543,8 +1543,11 @@ function routeLibraryApply(entry) {
 // --- print -----------------------------------------------------------
 
 function applyPage() {
-  document.getElementById('page-a3').classList.toggle('active', pageSize === 'A3');
-  document.getElementById('page-a4').classList.toggle('active', pageSize === 'A4');
+  // refreshPageButtons sets BOTH .active and aria-pressed; the selected-state
+  // highlight CSS keys off aria-pressed (the A3/A4 buttons have no .tool class),
+  // so toggling only .active here left a restored page size unhighlighted on
+  // boot (docs/app/io.js boot restore calls applyPage without refreshPageButtons).
+  refreshPageButtons();
   draw();
 }
 
