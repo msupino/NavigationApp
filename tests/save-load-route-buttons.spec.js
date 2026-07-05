@@ -4,11 +4,15 @@
 //                  library entry, overwrite that same entry after a confirm
 //                  warning; otherwise open the Saved routes menu to name it.
 const { test, expect } = require('./_setup');
-const { clickToolbarControl } = require('./_toolbar');
 
 async function boot(page, lang = 'en') {
+  // The header Save/Load buttons live in the stacked/accordion toolbar; they
+  // are hidden in the wide desktop-menubar layout (>=681px), so test narrow
+  // and force the (phone-default-collapsed) toolbar open + the Edit section.
+  await page.setViewportSize({ width: 600, height: 800 });
   await page.addInitScript(() => {
     try {
+      localStorage.setItem('navaid.toolbarCollapsed', '0');
       for (const s of ['build', 'view', 'display', 'charts', 'export', 'print']) {
         localStorage.setItem('navaid.sec.' + s, '1');
       }
@@ -20,6 +24,7 @@ async function boot(page, lang = 'en') {
   await page.waitForFunction(() =>
     typeof state !== 'undefined' && typeof showRouteLibraryModal === 'function' &&
     document.getElementById('tool-save-route') && document.getElementById('tool-load-route'));
+  await expect(page.locator('#tool-save-route')).toBeVisible();
 }
 
 async function setRoute(page, names) {
@@ -69,7 +74,7 @@ test.describe('Edit-header Save / Load route buttons', () => {
 
   test('Load route opens the Saved routes menu', async ({ page }) => {
     await boot(page);
-    await clickToolbarControl(page, '#tool-load-route');
+    await page.locator('#tool-load-route').click();
     await expect(page.locator('.route-library-modal')).toBeVisible();
   });
 
@@ -80,7 +85,7 @@ test.describe('Edit-header Save / Load route buttons', () => {
     await setRoute(page, ['A', 'B']);
     expect(await currentId(page)).toBeNull();
 
-    await clickToolbarControl(page, '#tool-save-route');
+    await page.locator('#tool-save-route').click();
     await expect(page.locator('.route-library-modal')).toBeVisible();
     expect(await libLen(page)).toBe(0);   // nothing saved yet — menu just opened
     expect(dialogs).toBe(0);              // no confirm on an unsaved route
@@ -93,7 +98,7 @@ test.describe('Edit-header Save / Load route buttons', () => {
     await setRoute(page, ['A', 'B']);
 
     // Save it once through the menu → becomes the tracked entry.
-    await clickToolbarControl(page, '#tool-save-route');
+    await page.locator('#tool-save-route').click();
     const modal = page.locator('.route-library-modal');
     await modal.locator('.route-library-name').fill('My Route');
     await modal.getByRole('button', { name: 'Save current route' }).click();
@@ -104,7 +109,7 @@ test.describe('Edit-header Save / Load route buttons', () => {
 
     // Edit the route, then Save again from the header → overwrites in place.
     await setRoute(page, ['A', 'B', 'C']);
-    await clickToolbarControl(page, '#tool-save-route');
+    await page.locator('#tool-save-route').click();
     await expect(page.locator('.route-library-modal')).toHaveCount(0);   // no menu; overwrote
     expect(dialogs.some(m => /overwrite|my route/i.test(m))).toBe(true); // warned
 
@@ -120,7 +125,7 @@ test.describe('Edit-header Save / Load route buttons', () => {
     await setRoute(page, ['A', 'B']);
     await page.evaluate(() => { currentRouteLibraryId = 'someid'; });
     // Clear the route via the toolbar Clear button.
-    await clickToolbarControl(page, '#clear');
+    await page.locator('#clear').click();
     expect(await currentId(page)).toBeNull();
   });
 });
