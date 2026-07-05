@@ -775,6 +775,7 @@ async function buildRouteFromQuery(raw) {
   // Hebrew label for clicked tokens and the English ICAO for typed
   // tokens — producing the mixed-locale route the user reported.
   routeAltPrefix = null;    // replacing the route unpins its altitude layer
+  currentRouteLibraryId = null;   // search-built route is not a saved entry
   state.waypoints = resolved.map(w => ({
     lat: w.lat, lng: w.lng, name: w.name,
   }));
@@ -989,6 +990,7 @@ async function applyRouteTemplate(template, speed, closeModal) {
         S.searchReplaceConfirm ||
         'Replace the current route?')) return false;
   routeAltPrefix = null;    // template replaces the route — repin to its layer
+  currentRouteLibraryId = null;   // template is not a saved entry
   state.waypoints = route.waypoints;
   state.legs = route.legs;
   state.notes = route.notes;
@@ -1128,7 +1130,7 @@ function showRouteTemplatesModal() {
   });
 }
 
-function showRouteLibraryModal() {
+function showRouteLibraryModal(focusSave) {
   if (typeof prepareChartModal === 'function') {
     if (!prepareChartModal('route-library')) return;
   } else {
@@ -1170,6 +1172,13 @@ function showRouteLibraryModal() {
     }
   };
   saveRow.append(nameInput, saveBtn);
+  // Opened via the Edit-header Save button on an unsaved route: suggest a name
+  // ("first → last" waypoints) and focus+select it so the user can accept or
+  // type over it immediately.
+  if (focusSave) {
+    if (typeof defaultSavedRouteName === 'function') nameInput.value = defaultSavedRouteName();
+    setTimeout(() => { try { nameInput.focus(); nameInput.select(); } catch (e) { /* */ } }, 0);
+  }
 
   const list = document.createElement('div');
   list.className = 'route-library-list';
@@ -1617,6 +1626,7 @@ document.getElementById('clear').onclick = () => {
   state.commChangeSuppressions = [];
   state.selected = null;
   routeAltPrefix = null;    // empty route unpins its altitude layer
+  currentRouteLibraryId = null;   // cleared route is no longer a saved entry
   showInspector(); draw();
 };
 document.getElementById('tool-reset-all-wp-names').onclick = () => {
@@ -1639,6 +1649,49 @@ document.getElementById('load').onclick = () => document.getElementById('file').
 document.getElementById('share').onclick = shareRoute;
 document.getElementById('route-templates').onclick = showRouteTemplatesModal;
 document.getElementById('route-library').onclick = showRouteLibraryModal;
+
+// Edit-header shortcuts: quick-save the current route, or open the Saved
+// routes menu to load one. These live inside the "Edit" section header, so
+// stop the click from also toggling the section open/closed. Save auto-names
+// the entry (routeLibrarySaveCurrent falls back to defaultSavedRouteName when
+// given a blank name).
+// Shared by the in-header pair (accordion) and the standalone .tb-quick pair
+// (desktop menubar). The accordion pair sits inside the clickable section
+// header, so stop the click from also toggling the section.
+function saveRouteFromHeader(e) {
+  if (e) e.stopPropagation();
+  // Nothing to save on an empty/too-short route — pop an error instead of
+  // opening the menu or attempting an overwrite (a route needs >=2 waypoints).
+  if (state.waypoints.length < 2) {
+    alert(S.errNothingToSave || S.errNeedWps || 'Nothing to save.');
+    return;
+  }
+  // If the current route came from a saved entry, overwrite that same entry
+  // (with a confirm warning). Otherwise it's an unsaved route — open the Saved
+  // routes menu so the user can name and save it.
+  const id = currentRouteLibraryId;
+  const existing = id
+    ? loadRouteLibrary().find(x => x && x.id === id && !x.deleted && x.data)
+    : null;
+  if (!existing) { showRouteLibraryModal(true); return; }
+  const msg = (typeof S.routeLibrarySaveConfirm === 'function')
+    ? S.routeLibrarySaveConfirm(existing.name)
+    : ('Overwrite "' + existing.name + '" with the current route?');
+  if (!confirm(msg)) return;
+  const entry = routeLibraryUpdate(id);
+  if (!entry) return;
+  if (typeof refreshRouteLibrary === 'function') refreshRouteLibrary();
+  if (typeof showToast === 'function') {
+    showToast(typeof S.routeLibrarySaved === 'function'
+      ? S.routeLibrarySaved(entry.name) : entry.name + ' saved');
+  }
+}
+function loadRouteFromHeader(e) {
+  if (e) e.stopPropagation();
+  showRouteLibraryModal();
+}
+for (const el of document.querySelectorAll('.js-save-route')) el.onclick = saveRouteFromHeader;
+for (const el of document.querySelectorAll('.js-load-route')) el.onclick = loadRouteFromHeader;
 
 // Draggable inspector — grab the header bar (but not the editable title or the
 // close button) to reposition the panel; the spot persists across selections
