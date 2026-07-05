@@ -1462,7 +1462,11 @@ function defaultSavedRouteName() {
     };
     const a = nm(wps[0]);
     const b = nm(wps[wps.length - 1]);
-    if (a && b) return a + ' → ' + b;
+    // Point the arrow the reading direction: LTR "first → last", RTL (Hebrew
+    // reads right-to-left, so the destination sits on the left) "first ← last".
+    const he = (typeof currentUiLang === 'function')
+      ? currentUiLang() === 'he' : (window.__navLang === 'he');
+    if (a && b) return a + (he ? ' ← ' : ' → ') + b;
     if (a || b) return a || b;
   }
   const d = new Date();

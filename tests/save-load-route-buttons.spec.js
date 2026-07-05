@@ -122,6 +122,21 @@ test.describe('Edit-header Save / Load route buttons', () => {
     expect(dialogs).toBe(0);              // no confirm on an unsaved route
   });
 
+  test('Hebrew suggests the name with a left arrow (first ← last)', async ({ page }) => {
+    await boot(page, 'he');
+    page.on('dialog', d => d.accept());
+    await page.evaluate(() => {
+      state.waypoints = [
+        { lat: 32.2, lng: 34.8, name: 'שפיים' },
+        { lat: 31.8, lng: 34.65, name: 'צומת אשדוד' },
+      ];
+      state.legs = []; syncLegs(); draw();
+    });
+    await page.locator('#tool-save-route').click();
+    await expect(page.locator('.route-library-modal .route-library-name'))
+      .toHaveValue('שפיים ← צומת אשדוד');
+  });
+
   test('Save on a loaded route overwrites the same entry after a warning', async ({ page }) => {
     await boot(page);
     const dialogs = [];
