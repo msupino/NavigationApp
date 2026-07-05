@@ -61,8 +61,9 @@ jobs:
             return (await r.json()).access_token;
           }
 
+          let fetched = false;   // true only once the API call actually succeeds
           async function run() {
-            if (!id || !secret) { console.error('No AR creds — publishing empty list.'); return; }
+            if (!id || !secret) { console.error('No AR creds — keeping last-good NOTAMs.'); return; }
             const tok = await token();
             const H = { Authorization: 'Bearer ' + tok, Accept: 'application/json' };
             const q = encodeURIComponent(JSON.stringify(ITEMAS));
@@ -90,13 +91,27 @@ jobs:
               if (offset + 100 >= (j.total || rows.length)) break;
             }
             console.error('NOTAMs:', out.notams.length, '| with geom:', out.notams.filter(n => n.geom).length);
+            fetched = true;   // reached here → the query succeeded (0 rows is a valid result)
           }
           await run().catch(e => console.error('fetch failed:', e.message));
-          writeFileSync('out/notam.json', JSON.stringify(out, null, 1));
+          // Only publish when the fetch actually succeeded. On auth/API failure
+          // (e.g. token HTTP 403) keep the last-good notam.json on the branch
+          // instead of force-pushing an empty list that blanks the map.
+          if (fetched) {
+            writeFileSync('out/notam.json', JSON.stringify(out, null, 1));
+          } else {
+            console.error('Fetch failed — not publishing; keeping last-good NOTAMs.');
+          }
           NODE
 
       - name: Publish notam-data branch
         run: |
+          # The fetch step only writes notam.json when the API call succeeded.
+          # If it's absent (auth/API failure), skip the push so the branch keeps
+          # its last-good data instead of being overwritten with an empty list.
+          if [ ! -f out/notam.json ]; then
+            echo "No fresh notam.json — keeping last-good notam-data branch."; exit 0
+          fi
           ( cd out
             git init -q
             git checkout -q -b notam-data
