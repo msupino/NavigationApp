@@ -115,6 +115,9 @@ test.describe('Edit-header Save / Load route buttons', () => {
 
     await page.locator('#tool-save-route').click();
     await expect(page.locator('.route-library-modal')).toBeVisible();
+    // Name is pre-suggested from the first → last waypoints.
+    await expect(page.locator('.route-library-modal .route-library-name'))
+      .toHaveValue('A → B');
     expect(await libLen(page)).toBe(0);   // nothing saved yet — menu just opened
     expect(dialogs).toBe(0);              // no confirm on an unsaved route
   });

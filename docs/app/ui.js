@@ -1172,9 +1172,13 @@ function showRouteLibraryModal(focusSave) {
     }
   };
   saveRow.append(nameInput, saveBtn);
-  // Opened via the Edit-header Save button on an unsaved route: focus the name
-  // field so the user can name and save immediately.
-  if (focusSave) setTimeout(() => { try { nameInput.focus(); } catch (e) { /* */ } }, 0);
+  // Opened via the Edit-header Save button on an unsaved route: suggest a name
+  // ("first → last" waypoints) and focus+select it so the user can accept or
+  // type over it immediately.
+  if (focusSave) {
+    if (typeof defaultSavedRouteName === 'function') nameInput.value = defaultSavedRouteName();
+    setTimeout(() => { try { nameInput.focus(); nameInput.select(); } catch (e) { /* */ } }, 0);
+  }
 
   const list = document.createElement('div');
   list.className = 'route-library-list';

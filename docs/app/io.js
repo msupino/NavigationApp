@@ -1451,6 +1451,20 @@ function routeLibraryId() {
 }
 // Default name for a manually-saved route: "Saved - YYYY-MM-DD HH:MM".
 function defaultSavedRouteName() {
+  // Prefer "first → last" waypoint names (localised via navName); fall back to
+  // a timestamp for unnamed/off-grid endpoints.
+  const wps = state.waypoints;
+  if (wps && wps.length >= 2) {
+    const nm = (w) => {
+      const raw = (w && w.name) ? w.name : '';
+      const disp = (raw && typeof navName === 'function') ? navName(raw) : raw;
+      return (disp || '').toString().trim();
+    };
+    const a = nm(wps[0]);
+    const b = nm(wps[wps.length - 1]);
+    if (a && b) return a + ' → ' + b;
+    if (a || b) return a || b;
+  }
   const d = new Date();
   const p = n => String(n).padStart(2, '0');
   return 'Saved - ' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate())
