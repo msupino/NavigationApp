@@ -1648,16 +1648,14 @@ document.getElementById('export-select').onchange = e => {
 document.getElementById('load').onclick = () => document.getElementById('file').click();
 document.getElementById('share').onclick = shareRoute;
 document.getElementById('route-templates').onclick = showRouteTemplatesModal;
-document.getElementById('route-library').onclick = showRouteLibraryModal;
+// Wrap so the click Event isn't forwarded as showRouteLibraryModal's focusSave
+// argument (which would prefill + focus the name field just for browsing).
+document.getElementById('route-library').onclick = () => showRouteLibraryModal();
 
-// Edit-header shortcuts: quick-save the current route, or open the Saved
-// routes menu to load one. These live inside the "Edit" section header, so
-// stop the click from also toggling the section open/closed. Save auto-names
-// the entry (routeLibrarySaveCurrent falls back to defaultSavedRouteName when
-// given a blank name).
-// Shared by the in-header pair (accordion) and the standalone .tb-quick pair
-// (desktop menubar). The accordion pair sits inside the clickable section
-// header, so stop the click from also toggling the section.
+// Save/Load route shortcuts, shared by the in-header pair (accordion) and the
+// standalone .tb-quick pair (desktop menubar) via .js-save-route/.js-load-route.
+// The accordion pair sits inside the clickable section header, so the handlers
+// stopPropagation to avoid also toggling the section open/closed.
 function saveRouteFromHeader(e) {
   if (e) e.stopPropagation();
   // Nothing to save on an empty/too-short route — pop an error instead of
