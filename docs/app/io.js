@@ -1246,6 +1246,7 @@ function loadGpx(file) {
         return;
       }
       routeAltPrefix = null;   // replacing the route unpins its altitude layer
+      currentRouteLibraryId = null;   // decoded/imported route is not a saved entry
       state.waypoints = wps;
       state.legs = [];
       state.notes = [];
@@ -1312,6 +1313,7 @@ function loadPln(file) {
         return;
       }
       routeAltPrefix = null;   // replacing the route unpins its altitude layer
+      currentRouteLibraryId = null;   // decoded/imported route is not a saved entry
       state.waypoints = wps;
       state.legs = [];
       state.notes = [];
@@ -1365,6 +1367,8 @@ function load(file) {
 // library (#677). Caller is responsible for validateRoute() first.
 function applyRouteData(d) {
   routeAltPrefix = null;    // replacing the route unpins its altitude layer
+  currentRouteLibraryId = null;   // default: loaded route isn't a library entry
+                                  // (routeLibraryApply re-sets it right after)
   state.waypoints = d.waypoints.map(w => ({
     lat: r5(w.lat), lng: r5(w.lng), name: w.name,
   }));
@@ -1447,6 +1451,24 @@ function routeLibraryId() {
 }
 // Default name for a manually-saved route: "Saved - YYYY-MM-DD HH:MM".
 function defaultSavedRouteName() {
+  // Prefer "first → last" waypoint names (localised via navName); fall back to
+  // a timestamp for unnamed/off-grid endpoints.
+  const wps = state.waypoints;
+  if (wps && wps.length >= 2) {
+    const nm = (w) => {
+      const raw = (w && w.name) ? w.name : '';
+      const disp = (raw && typeof navName === 'function') ? navName(raw) : raw;
+      return (disp || '').toString().trim();
+    };
+    const a = nm(wps[0]);
+    const b = nm(wps[wps.length - 1]);
+    // Point the arrow the reading direction: LTR "first → last", RTL (Hebrew
+    // reads right-to-left, so the destination sits on the left) "first ← last".
+    const he = (typeof currentUiLang === 'function')
+      ? currentUiLang() === 'he' : (window.__navLang === 'he');
+    if (a && b) return a + (he ? ' ← ' : ' → ') + b;
+    if (a || b) return a || b;
+  }
   const d = new Date();
   const p = n => String(n).padStart(2, '0');
   return 'Saved - ' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate())
@@ -1463,7 +1485,9 @@ function routeLibrarySaveCurrent(name) {
     data: serializeRoute(),
   };
   list.unshift(entry);
-  return persistRouteLibrary(list) ? entry : null;
+  if (!persistRouteLibrary(list)) return null;
+  currentRouteLibraryId = entry.id;   // this route is now tracked as a saved entry
+  return entry;
 }
 // Overwrite an existing library entry's route with the current one (update in
 // place), bumping savedAt so the change wins the Drive merge. Keeps the id and
@@ -1475,7 +1499,9 @@ function routeLibraryUpdate(id) {
   if (!entry) return null;
   entry.savedAt = new Date().toISOString();
   entry.data = serializeRoute();
-  return persistRouteLibrary(list) ? entry : null;
+  if (!persistRouteLibrary(list)) return null;
+  currentRouteLibraryId = entry.id;   // now the active saved entry
+  return entry;
 }
 // Apply a saved library entry to the live route. Returns true if applied.
 function routeLibraryApply(entry) {
@@ -1486,6 +1512,7 @@ function routeLibraryApply(entry) {
       !confirm(S.routeLibraryReplaceConfirm ||
         S.routeTemplateReplaceConfirm || 'Replace the current route?')) return false;
   applyRouteData(entry.data);
+  currentRouteLibraryId = entry.id;   // track the loaded entry for in-place Save
   return true;
 }
 

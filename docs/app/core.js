@@ -552,6 +552,10 @@ window.S = Object.assign({
   tbRouteTemplatesTitle: 'Build a ready-made route',
   tbRouteLibrary: '💾 Saved routes',
   tbRouteLibraryTitle: 'Save, load and manage your routes (stored on this device)',
+  tbSaveRoute: '💾 Save route',
+  tbSaveRouteTitle: 'Save the current route to your saved routes',
+  tbLoadRoute: '📂 Load route',
+  tbLoadRouteTitle: 'Open your saved routes to load one',
   routeLibraryTitle: 'Saved routes',
   routeLibrarySaveCurrent: 'Save current route',
   routeLibraryNamePlaceholder: 'Route name',
@@ -747,6 +751,7 @@ window.S = Object.assign({
   errPngFail: 'PNG export failed (a map tile could not be loaded).',
   errTilesFail: function(f, t) { return f + ' of ' + t + ' map tiles failed to load — the PNG may have blank patches. Re-run the export to retry.'; },
   errNeedWps: 'Add at least two waypoints first.',
+  errNothingToSave: 'Nothing to save — add at least two waypoints to your route first.',
   flyConfirm: 'Fly the route in Google Earth Pro (desktop).\n\nPress OK to save the tour file (.kml), then open it in Google Earth — the “Fly the route” tour appears under Places; press play to fly above the terrain.\n\nNo Google Earth? Free desktop app: google.com/earth/versions',
   geWebConfirm: 'Open the route in Google Earth Web (browser).\n\nThe KML file will also be downloaded so you can drag it into the web page to see the full route.',
   chooseGeMode: 'Open in',
@@ -1140,6 +1145,12 @@ var legAltitudeMapPrefix = null; // Which layer prefix ('cvfr'/'lsa'/'heli') the
 // then-active layer on the next apply. Not persisted: after a reload the
 // route repins to the restored layer, matching pre-existing boot behavior.
 var routeAltPrefix = null;
+// Id of the saved-library entry the current route was loaded from (or saved
+// as). Set by routeLibraryApply / routeLibrarySaveCurrent; cleared whenever the
+// route is replaced from a non-library source (file/template/share/clear). The
+// Edit-header Save button overwrites this entry when set, else opens the Saved
+// routes menu. Session-only (not persisted across reload).
+var currentRouteLibraryId = null;
 var showDrift = true;       // 10-degree drift reference lines
 var showWind = false;       // wind effect (#722): inputs + arrows + readout — opt-in
 var sigmets = null;         // null = not loaded; [] or populated once fetched
