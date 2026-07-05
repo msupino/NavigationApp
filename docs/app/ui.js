@@ -1190,8 +1190,12 @@ function showRouteLibraryModal(focusSave) {
   exportBtn.type = 'button';
   exportBtn.textContent = S.routeLibraryExport || 'Export library';
   exportBtn.onclick = () => {
-    const blob = new Blob([JSON.stringify(loadRouteLibrary(), null, 2)],
-      { type: 'application/json' });
+    // When the stored library is corrupt, export the raw blob verbatim so the
+    // user can attempt recovery — not the empty parsed fallback.
+    const payload = (NavAid.routeLibraryCorrupt && typeof NavAid.routeLibraryCorruptRaw === 'string')
+      ? NavAid.routeLibraryCorruptRaw
+      : JSON.stringify(loadRouteLibrary(), null, 2);
+    const blob = new Blob([payload], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'navaid-routes-' + fileStamp() + '.json';
@@ -1350,6 +1354,38 @@ function showRouteLibraryModal(focusSave) {
   }
 
   body.append(saveRow, list, tools);
+
+  // Corrupt library (issue mirror of #73): loadRouteLibrary() sets the flag.
+  // Surface it with recovery actions and note that saving is blocked
+  // (persistRouteLibrary refuses to overwrite the raw blob).
+  loadRouteLibrary();
+  if (NavAid.routeLibraryCorrupt) {
+    const warn = document.createElement('div');
+    warn.className = 'route-library-corrupt';
+    const msg = document.createElement('p');
+    msg.textContent = S.routeLibraryCorruptBanner ||
+      'Saved routes could not be read (the stored data is corrupted).';
+    const acts = document.createElement('div');
+    acts.className = 'route-library-tools';
+    const exp = document.createElement('button');
+    exp.type = 'button';
+    exp.textContent = S.routeLibraryExportCorrupt || 'Export corrupted data';
+    exp.onclick = () => exportBtn.click();     // exports the raw blob when corrupt
+    const disc = document.createElement('button');
+    disc.type = 'button';
+    disc.className = 'route-library-del';
+    disc.textContent = S.routeLibraryDiscardCorrupt || 'Discard corrupted library';
+    disc.onclick = () => {
+      if (!confirm(S.routeLibraryDiscardCorruptConfirm ||
+        'Discard the corrupted saved-route library and start empty? This cannot be undone.')) return;
+      persistRouteLibrary([], { force: true });
+      render();
+      warn.remove();
+    };
+    acts.append(exp, disc);
+    warn.append(msg, acts);
+    body.prepend(warn);
+  }
 
   // Optional Google Drive sync (#677 follow-up). Only shown when an OAuth
   // client ID is configured (gdrive.js); otherwise the feature stays dormant.
