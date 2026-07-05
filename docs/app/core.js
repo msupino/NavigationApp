@@ -751,6 +751,7 @@ window.S = Object.assign({
   errPngFail: 'PNG export failed (a map tile could not be loaded).',
   errTilesFail: function(f, t) { return f + ' of ' + t + ' map tiles failed to load — the PNG may have blank patches. Re-run the export to retry.'; },
   errNeedWps: 'Add at least two waypoints first.',
+  errNothingToSave: 'Nothing to save — add at least two waypoints to your route first.',
   flyConfirm: 'Fly the route in Google Earth Pro (desktop).\n\nPress OK to save the tour file (.kml), then open it in Google Earth — the “Fly the route” tour appears under Places; press play to fly above the terrain.\n\nNo Google Earth? Free desktop app: google.com/earth/versions',
   geWebConfirm: 'Open the route in Google Earth Web (browser).\n\nThe KML file will also be downloaded so you can drag it into the web page to see the full route.',
   chooseGeMode: 'Open in',

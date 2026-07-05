@@ -95,6 +95,17 @@ test.describe('Edit-header Save / Load route buttons', () => {
     await expect(page.locator('.route-library-modal')).toBeVisible();
   });
 
+  test('Save on an empty route shows an error and does not open the menu', async ({ page }) => {
+    await boot(page);
+    const dialogs = [];
+    page.on('dialog', d => { dialogs.push(d.message()); d.accept(); });
+    // No route built — nothing to save.
+    await page.locator('#tool-save-route').click();
+    await expect(page.locator('.route-library-modal')).toHaveCount(0);
+    expect(dialogs.some(m => /nothing to save|two waypoints/i.test(m))).toBe(true);
+    expect(await libLen(page)).toBe(0);
+  });
+
   test('Save on an unsaved route opens the Saved routes menu (no silent save)', async ({ page }) => {
     await boot(page);
     let dialogs = 0;

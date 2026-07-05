@@ -269,6 +269,7 @@ window.S = {
   errPngFail: 'ייצוא PNG נכשל (אריח מפה לא נטען).',
   errTilesFail: function(f, t) { return f + ' מתוך ' + t + ' אריחי מפה נכשלו — ייתכן שב-PNG יש אזורים ריקים. נסה שוב.'; },
   errNeedWps: 'הוסף לפחות שני ציוני דרך תחילה.',
+  errNothingToSave: 'אין מה לשמור — הוסף לפחות שני ציוני דרך למסלול תחילה.',
   flyConfirm: 'טוס את המסלול ב-Google Earth Pro (שולחן עבודה).\n\nלחץ אישור כדי לשמור את קובץ הסיור (.kml), ואז פתח אותו ב-Google Earth — הסיור "Fly the route" יופיע תחת Places; לחץ הפעל לטיסה מעל הקרקע.\n\nאין Google Earth? הורד חינם: google.com/earth/versions',
   geWebConfirm: 'פתח את המסלול ב-Google Earth Web (דפדפן).\n\nגם קובץ KML יורד כדי שתוכל לגרור אותו לדף האינטרנט לצפייה במסלול המלא.',
   chooseGeMode: 'פתח ב-',

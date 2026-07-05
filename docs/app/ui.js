@@ -1656,6 +1656,12 @@ document.getElementById('route-library').onclick = showRouteLibraryModal;
 // header, so stop the click from also toggling the section.
 function saveRouteFromHeader(e) {
   if (e) e.stopPropagation();
+  // Nothing to save on an empty/too-short route — pop an error instead of
+  // opening the menu or attempting an overwrite (a route needs >=2 waypoints).
+  if (state.waypoints.length < 2) {
+    alert(S.errNothingToSave || S.errNeedWps || 'Nothing to save.');
+    return;
+  }
   // If the current route came from a saved entry, overwrite that same entry
   // (with a confirm warning). Otherwise it's an unsaved route — open the Saved
   // routes menu so the user can name and save it.
