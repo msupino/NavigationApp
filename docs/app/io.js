@@ -1414,15 +1414,39 @@ function applyRouteData(d) {
 // Device-local only (no backend). Each entry: { id, name, savedAt, data }
 // where `data` is a serializeRoute() blob.
 const ROUTE_LIBRARY_KEY = 'navaid.routes';
+// A corrupt (unparseable / non-array) library blob must not be treated as an
+// empty library: save / import / GPS-save would then persist [] over it and
+// silently erase the user's raw saved routes. Mirror the main route store's
+// #73 protection — preserve the raw blob, flag it, and block writes until the
+// user recovers (export raw) or explicitly clears it (persist with force).
 function loadRouteLibrary() {
+  const raw = localStorage.getItem(ROUTE_LIBRARY_KEY);
+  if (raw == null || raw === '') { NavAid.routeLibraryCorrupt = false; return []; }
   try {
-    const a = JSON.parse(localStorage.getItem(ROUTE_LIBRARY_KEY) || '[]');
-    return Array.isArray(a) ? a : [];
-  } catch (e) { return []; }
+    const a = JSON.parse(raw);
+    if (Array.isArray(a)) { NavAid.routeLibraryCorrupt = false; return a; }
+    NavAid.routeLibraryCorruptError = 'saved-route library is not an array';
+  } catch (e) {
+    NavAid.routeLibraryCorruptError = e && e.message ? e.message : 'parse error';
+  }
+  NavAid.routeLibraryCorrupt = true;
+  NavAid.routeLibraryCorruptRaw = raw;   // keep the raw blob for export/recovery
+  return [];
 }
-function persistRouteLibrary(list) {
+function persistRouteLibrary(list, opts) {
+  // Refuse to overwrite a corrupt blob with a list derived from the empty
+  // fallback — that is the silent data loss. A deliberate recovery/clear from
+  // the Saved routes menu passes { force: true }.
+  if (NavAid.routeLibraryCorrupt && !(opts && opts.force)) {
+    try {
+      alert(S.errRouteLibraryCorrupt ||
+        'Your saved-route library is corrupted and could not be read. Export or clear it from the Saved routes menu before saving new routes.');
+    } catch (_) { /* alert blocked */ }
+    return false;
+  }
   try {
     localStorage.setItem(ROUTE_LIBRARY_KEY, JSON.stringify(list));
+    NavAid.routeLibraryCorrupt = false;   // a successful write clears the flag
     scheduleRouteAutoSync();
     return true;
   } catch (e) {
