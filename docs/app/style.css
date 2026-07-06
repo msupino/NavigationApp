@@ -4150,21 +4150,28 @@ body.theme-light #tuning-panel summary {
 }
 
 /* --- AI assistant chat panel (assistant.js) ------------------------- */
+/* The FAB is docked into the Leaflet bottom-right control column (as a
+   .leaflet-control), so Leaflet stacks it above the zoom buttons — it never
+   covers a control or floats over the map. */
+.assistant-fab-control { margin-bottom: 8px !important; }
 .assistant-fab {
-  position: fixed;
-  /* Sit above the Leaflet zoom control + bottom-right readouts (both pinned to
-     the bottom-right corner) so the FAB never covers the zoom buttons. */
-  inset-block-end: 116px;
-  inset-inline-end: 16px;
-  width: 48px; height: 48px;
+  display: block;
+  width: 44px; height: 44px;
   border-radius: 50%;
   border: 1px solid rgba(255, 204, 51, 0.55);
   background: rgba(20, 18, 18, 0.92);
   color: #fff;
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1;
   cursor: pointer;
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
+}
+/* Fallback when not docked in the map (no Leaflet/map): float bottom-right,
+   clear of the corner controls. */
+.assistant-fab.assistant-fab-floating {
+  position: fixed;
+  inset-block-end: 116px;
+  inset-inline-end: 16px;
   z-index: 1200;
 }
 .assistant-fab.assistant-busy { animation: mag-loading-pulse 1.2s ease-in-out infinite; }

@@ -30,6 +30,26 @@ async function boot(page) {
 const runTool = (page, name, args) => page.evaluate(([n, a]) =>
   NavAid.assistant._tools.find(t => t.name === n).run(a), [name, args]);
 
+test('the FAB docks in the bottom-right control column and hides no control', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const fab = document.querySelector('.assistant-fab');
+    const docked = !!fab.closest('.leaflet-bottom.leaflet-right');
+    const R = e => { const b = e.getBoundingClientRect(); return { l: b.left, r: b.right, t: b.top, b: b.bottom }; };
+    const overlap = (a, b) => !(a.r <= b.l || a.l >= b.r || a.b <= b.t || a.t >= b.b);
+    const zoom = document.querySelector('.leaflet-control-zoom');
+    const coord = document.querySelector('#coord-readout');
+    return {
+      docked,
+      overlapZoom: zoom ? overlap(R(fab), R(zoom)) : false,
+      overlapCoord: coord ? overlap(R(fab), R(coord)) : false,
+    };
+  });
+  expect(r.docked).toBe(true);          // in the Leaflet control stack, not floating over the map
+  expect(r.overlapZoom).toBe(false);    // doesn't cover the zoom control
+  expect(r.overlapCoord).toBe(false);   // doesn't cover the coordinate readout
+});
+
 test('the FAB is present and opening the panel shows settings when no key is set', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => { try { localStorage.removeItem('navaid.ai.key'); } catch (e) {} });

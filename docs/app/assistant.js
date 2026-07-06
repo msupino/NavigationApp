@@ -542,7 +542,21 @@
     row.append(inputEl, sendBtn);
 
     panel.append(head, settingsEl, logEl, row);
-    document.body.append(fab, panel);
+    document.body.appendChild(panel);
+    // Dock the launcher in the Leaflet bottom-right control column so it stacks
+    // above the zoom buttons (spaced by Leaflet) instead of floating over the map
+    // and covering controls/readouts. Prepend so it sits above zoom, not below.
+    if (typeof L !== 'undefined' && L.Control && typeof map !== 'undefined' && map && map.addControl) {
+      const wrap = el('div', 'leaflet-control assistant-fab-control');
+      wrap.appendChild(fab);
+      const Ctl = L.Control.extend({ options: { position: 'bottomright' }, onAdd: () => wrap });
+      map.addControl(new Ctl());
+      const corner = wrap.parentNode;   // the bottomright corner container
+      if (corner && corner.firstChild !== wrap) corner.insertBefore(wrap, corner.firstChild);
+    } else {
+      fab.classList.add('assistant-fab-floating');
+      document.body.appendChild(fab);
+    }
   }
 
   function buildSettings() {
