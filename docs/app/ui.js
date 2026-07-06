@@ -2402,7 +2402,11 @@ if (windDepartSlider) {
 
   async function addLayer() {
     if (typeof L === 'undefined' || typeof L.velocityLayer !== 'function') {
-      if (statusEl) statusEl.textContent = S.windFieldErr || 'Wind field unavailable';
+      // Library missing → wind field unavailable: show the error, hide the
+      // sliders (nothing to control), and clear the toggle.
+      if (statusEl) { statusEl.classList.remove('windfield-loading'); statusEl.style.display = ''; statusEl.textContent = S.windFieldErr || 'Wind field unavailable'; }
+      cb.checked = false;
+      showControls(false);
       return;
     }
     busy = true;
@@ -2438,8 +2442,10 @@ if (windDepartSlider) {
       applyTimeLabel();
       if (statusEl) { statusEl.classList.remove('windfield-loading'); statusEl.style.display = 'none'; }
     } catch (e) {
+      // Fetch failed → unavailable: show the error, hide the sliders, untoggle.
       if (statusEl) { statusEl.classList.remove('windfield-loading'); statusEl.style.display = ''; statusEl.textContent = S.windFieldErr || 'Wind field fetch failed'; }
       cb.checked = false;
+      showControls(false);
     } finally { busy = false; }
   }
 

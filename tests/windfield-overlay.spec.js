@@ -242,3 +242,17 @@ test('a Loading wind banner shows while fetching, then clears', async ({ page })
   await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
   await expect(page.locator('#windfield-status')).toBeHidden();           // clears when loaded
 });
+
+test('a failed fetch hides the sliders and clears the toggle', async ({ page }) => {
+  // Wind grid request fails → field unavailable.
+  await page.route(OM_RE, r => r.fulfill({ status: 500, contentType: 'text/plain', body: 'err' }));
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
+  await page.locator('#windfield-cb').check();
+  // Error surfaces; sliders hidden; toggle cleared; no canvas.
+  await expect(page.locator('#windfield-status')).toBeVisible();
+  await expect(page.locator('#windfield-controls')).toBeHidden();
+  await expect(page.locator('#windfield-cb')).not.toBeChecked();
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(0);
+});
