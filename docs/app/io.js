@@ -3553,6 +3553,12 @@ function exportPNG() {
       drawNavWaypoints();
       drawCommChangeRings();
       drawAirfields();
+      // Draw VOR stations when the live "Show VOR stations" toggle is on, or —
+      // even with it off — when the export carries VOR info (the plan card's
+      // Radial/DME columns), so the chart shows where those readings reference.
+      const exportHasVorInfo = !!window.planCard &&
+        (window.vorRef || (state.legs || []).some(l => l && l.vorRef));
+      drawVors(exportHasVorInfo);
       drawLegs();
       drawWaypoints();
       drawNotes();
