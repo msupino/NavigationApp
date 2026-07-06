@@ -543,14 +543,14 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.profileVS` — vertical-profile climb/descent rate input for timing and
   TOC/TOD ramp distance.
 - `navaid.ai.provider` — active AI-assistant LLM provider id (`gemini` |
-  `anthropic` | `openai`; default `gemini`; `assistant.js`).
+  `anthropic` | `openrouter` | `deepseek`; default `gemini`; `assistant.js`).
 - `navaid.ai.key.<provider>` — the user's own API key per provider (BYOK).
   Never leaves the browser except in the request to that provider.
 - `navaid.ai.model.<provider>` — model id per provider (defaults:
-  `gemini-2.5-flash` / `claude-sonnet-5` / `gpt-4o-mini`).
-- `navaid.ai.baseUrl` — OpenAI-compatible base URL override (ChatGPT provider;
-  OpenAI's public API blocks browser CORS, so a proxy/compatible endpoint is
-  needed).
+  `gemini-2.5-flash` / `claude-sonnet-5` / `openai/gpt-4o-mini` /
+  `deepseek-chat`).
+- `navaid.ai.baseUrl` — base-URL override for the OpenAI-compatible providers
+  (OpenRouter / DeepSeek), e.g. to route through a CORS proxy.
 - `navaid.routes` — saved-route library entries and tombstones. An entry
   may carry `kind: 'gps'` plus a raw `track[]` (the recorded GPS
   breadcrumb: `{lat,lng,t,alt?,acc?}`); loading applies the simplified

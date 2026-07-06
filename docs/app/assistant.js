@@ -434,9 +434,9 @@
   // The conversation history is kept in a neutral Gemini-style "parts" shape
   // ({text} / {functionCall:{name,args}} / {functionResponse:{name,response}});
   // each adapter translates that (and the tool schema) to/from its own API and
-  // returns a normalised parts[] array. Only Gemini + Anthropic support direct
-  // browser (BYOK) calls; OpenAI's public API blocks browser CORS, so ChatGPT
-  // needs an OpenAI-compatible endpoint/proxy (baseUrl override).
+  // returns a normalised parts[] array. Gemini, Anthropic and OpenRouter support
+  // direct browser (BYOK) calls; DeepSeek may block browser CORS, so it can take
+  // a proxy baseUrl override.
   function toolDefs() { return TOOLS.map(x => ({ name: x.name, description: x.description, parameters: x.parameters })); }
   function keyOrThrow() { const k = ls(keyKey(activeProvider())); if (!k) throw new Error('no-key'); return k; }
   function modelFor(p) { return ls(modelKey(p)) || PROVIDERS[p].model; }
@@ -481,9 +481,13 @@
     }
     return out;
   }
-  async function openaiSend(messages) {
-    const key = keyOrThrow(), model = modelFor('openai');
-    const base = (ls(BASEURL) || 'https://api.openai.com/v1').replace(/\/+$/, '');
+  // Shared adapter for OpenAI-compatible chat APIs (DeepSeek, OpenRouter, or any
+  // OpenAI-style endpoint). Base URL comes from the provider (or a user override
+  // for a proxy). DeepSeek and OpenRouter both speak this format.
+  async function openAiCompatSend(messages) {
+    const p = activeProvider();
+    const key = keyOrThrow(), model = modelFor(p);
+    const base = (ls(BASEURL) || PROVIDERS[p].base).replace(/\/+$/, '');
     const body = {
       model, messages: toOpenAI(messages),
       tools: TOOLS.map(x => ({ type: 'function', function: { name: x.name, description: x.description, parameters: x.parameters } })),
@@ -491,7 +495,7 @@
     };
     const r = await fetch(base + '/chat/completions',
       { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) });
-    if (!r.ok) { const txt = await r.text().catch(() => ''); throw new Error('OpenAI ' + r.status + ': ' + txt.slice(0, 200)); }
+    if (!r.ok) { const txt = await r.text().catch(() => ''); throw new Error(PROVIDERS[p].label + ' ' + r.status + ': ' + txt.slice(0, 200)); }
     const j = await r.json();
     const msg = j.choices && j.choices[0] && j.choices[0].message;
     const parts = [];
@@ -500,7 +504,7 @@
       let args = {}; try { args = JSON.parse(tc.function.arguments || '{}'); } catch (e) { /* */ }
       parts.push({ functionCall: { name: tc.function.name, args } });
     }
-    if (!parts.length) throw new Error('OpenAI returned no content');
+    if (!parts.length) throw new Error(PROVIDERS[p].label + ' returned no content');
     return parts;
   }
 
@@ -547,7 +551,8 @@
   const PROVIDERS = {
     gemini: { label: 'Google Gemini', model: 'gemini-2.5-flash', keyUrl: 'https://aistudio.google.com/apikey', send: geminiSend },
     anthropic: { label: 'Anthropic (Claude)', model: 'claude-sonnet-5', keyUrl: 'https://console.anthropic.com/settings/keys', send: anthropicSend },
-    openai: { label: 'OpenAI (ChatGPT)', model: 'gpt-4o-mini', keyUrl: 'https://platform.openai.com/api-keys', send: openaiSend, browserBlocked: true },
+    openrouter: { label: 'OpenRouter', model: 'openai/gpt-4o-mini', keyUrl: 'https://openrouter.ai/keys', send: openAiCompatSend, base: 'https://openrouter.ai/api/v1', openaiCompat: true },
+    deepseek: { label: 'DeepSeek', model: 'deepseek-chat', keyUrl: 'https://platform.deepseek.com/api_keys', send: openAiCompatSend, base: 'https://api.deepseek.com', openaiCompat: true, browserBlocked: true },
   };
   async function dispatchSend(messages) { return PROVIDERS[activeProvider()].send(messages); }
   let providerSend = dispatchSend;   // tests override via NS.assistant._setProvider
@@ -666,13 +671,13 @@
 
     // Provider picker.
     const provSel = el('select', 'assistant-field');
-    for (const id of ['gemini', 'anthropic', 'openai']) {
+    for (const id of ['gemini', 'anthropic', 'openrouter', 'deepseek']) {
       const opt = el('option', null, PROVIDERS[id].label + (id === 'gemini' ? ' — ' + t('assistantFreeTier', 'free tier') : ''));
       opt.value = id; provSel.appendChild(opt);
     }
     const keyIn = el('input', 'assistant-field'); keyIn.type = 'password'; keyIn.placeholder = t('assistantKeyPlaceholder', 'API key');
     const modelIn = el('input', 'assistant-field'); modelIn.type = 'text'; modelIn.placeholder = t('assistantModelPlaceholder', 'model');
-    const baseIn = el('input', 'assistant-field'); baseIn.type = 'text'; baseIn.placeholder = 'https://api.openai.com/v1'; baseIn.value = ls(BASEURL) || '';
+    const baseIn = el('input', 'assistant-field'); baseIn.type = 'text'; baseIn.placeholder = t('assistantBaseUrlPlaceholder', 'Base URL (optional proxy)'); baseIn.value = ls(BASEURL) || '';
     const help = el('div', 'assistant-help');
     const link = el('a', null, ''); link.target = '_blank'; link.rel = 'noopener'; help.appendChild(link);
     const note = el('div', 'assistant-help assistant-note');
@@ -684,9 +689,9 @@
       modelIn.placeholder = P.model;
       link.textContent = t('assistantGetKey', 'Get an API key') + ' — ' + P.label;
       link.href = P.keyUrl;
-      baseIn.style.display = id === 'openai' ? '' : 'none';
+      baseIn.style.display = P.openaiCompat ? '' : 'none';   // proxy override for OpenAI-compatible providers
       note.textContent = P.browserBlocked
-        ? t('assistantOpenAiNote', 'OpenAI blocks direct browser calls (CORS) — set an OpenAI-compatible base URL / proxy above.')
+        ? t('assistantCorsNote', 'This provider may block direct browser calls (CORS) — if so, set a proxy base URL above.')
         : '';
       note.style.display = note.textContent ? '' : 'none';
     }
@@ -700,7 +705,7 @@
       setLs(PROV, id);
       setLs(keyKey(id), keyIn.value.trim() || null);
       setLs(modelKey(id), modelIn.value.trim() || null);
-      if (id === 'openai') setLs(BASEURL, baseIn.value.trim() || null);
+      if (PROVIDERS[id].openaiCompat) setLs(BASEURL, baseIn.value.trim() || null);
       box.classList.add('hidden');
       toast(t('assistantKeySaved', 'Settings saved'));
     };

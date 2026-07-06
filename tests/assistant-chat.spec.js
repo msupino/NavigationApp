@@ -296,10 +296,10 @@ test('Anthropic (Claude) adapter: converts the loop and parses tool_use (fetch m
   expect(sawToolResult).toBe(true); // functionResponse converted to a tool_result block
 });
 
-test('OpenAI (ChatGPT) adapter: converts the loop and parses tool_calls (fetch mocked, custom base URL)', async ({ page }) => {
+test('OpenRouter adapter: converts the loop, hits its default base, parses tool_calls (fetch mocked)', async ({ page }) => {
   await boot(page);
   let calls = 0, auth = null, sawFnTools = false, sawToolRole = false;
-  await page.route(/^https:\/\/my-openai-proxy\.test\//, async route => {
+  await page.route(/^https:\/\/openrouter\.ai\/api\/v1\//, async route => {
     calls++;
     const req = route.request();
     auth = req.headers()['authorization'];
@@ -311,28 +311,42 @@ test('OpenAI (ChatGPT) adapter: converts the loop and parses tool_calls (fetch m
       : { choices: [{ message: { role: 'assistant', content: 'No route.' } }] };
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(resp) });
   });
-  await page.evaluate(() => {
-    localStorage.setItem('navaid.ai.provider', 'openai');
-    localStorage.setItem('navaid.ai.key.openai', 'k');
-    localStorage.setItem('navaid.ai.baseUrl', 'https://my-openai-proxy.test/v1');
-  });
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.provider', 'openrouter'); localStorage.setItem('navaid.ai.key.openrouter', 'k'); });
   await page.evaluate(() => NavAid.assistant.send('my route?'));
   await expect(page.locator('.assistant-assistant')).toContainText('No route');
-  expect(calls).toBe(2);
-  expect(auth).toBe('Bearer k');      // key sent as Bearer
-  expect(sawFnTools).toBe(true);      // tools as {type:'function'}
-  expect(sawToolRole).toBe(true);     // functionResponse converted to a tool-role message
+  expect(calls).toBe(2);              // hit openrouter.ai/api/v1 (provider default base)
+  expect(auth).toBe('Bearer k');
+  expect(sawFnTools).toBe(true);
+  expect(sawToolRole).toBe(true);
 });
 
-test('settings offer Gemini, Claude and ChatGPT; OpenAI shows the CORS note', async ({ page }) => {
+test('DeepSeek adapter: uses api.deepseek.com and a proxy base URL override', async ({ page }) => {
+  await boot(page);
+  let hitDefault = false, hitProxy = false;
+  const reply = () => ({ choices: [{ message: { role: 'assistant', content: 'ok' } }] });
+  await page.route(/^https:\/\/api\.deepseek\.com\//, route => { hitDefault = true; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(reply()) }); });
+  await page.route(/^https:\/\/my-proxy\.test\//, route => { hitProxy = true; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(reply()) }); });
+  // Default base.
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.provider', 'deepseek'); localStorage.setItem('navaid.ai.key.deepseek', 'k'); localStorage.removeItem('navaid.ai.baseUrl'); });
+  await page.evaluate(() => NavAid.assistant.send('hi'));
+  await expect.poll(() => hitDefault).toBe(true);
+  // Proxy override.
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.baseUrl', 'https://my-proxy.test/v1'); NavAid.assistant.reset(); });
+  await page.evaluate(() => NavAid.assistant.send('hi again'));
+  await expect.poll(() => hitProxy).toBe(true);
+});
+
+test('settings offer Gemini, Claude, OpenRouter and DeepSeek; DeepSeek shows the CORS note', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => NavAid.assistant.open());
   await page.evaluate(() => document.querySelector('.assistant-settings').classList.remove('hidden'));
   const sel = page.locator('.assistant-settings select.assistant-field');
-  await expect(sel.locator('option')).toHaveCount(3);
-  await sel.selectOption('openai');
+  await expect(sel.locator('option')).toHaveCount(4);
+  await sel.selectOption('deepseek');
   await expect(page.locator('.assistant-note')).toBeVisible();
   await expect(page.locator('.assistant-note')).toContainText(/CORS|proxy/i);
+  await sel.selectOption('openrouter');
+  await expect(page.locator('.assistant-note')).toBeHidden();   // OpenRouter works browser-direct
   await sel.selectOption('gemini');
   await expect(page.locator('.assistant-note')).toBeHidden();
 });
