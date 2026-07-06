@@ -2310,6 +2310,7 @@ if (windDepartSlider) {
   const cb = document.getElementById('windfield-cb');
   const statusEl = document.getElementById('windfield-status');
   const controls = document.getElementById('windfield-controls');
+  const loadBtn = document.getElementById('windfield-load');
   const opacity = document.getElementById('windfield-opacity');
   const opacityVal = document.getElementById('windfield-opacity-val');
   const opacityReset = document.getElementById('windfield-opacity-reset');
@@ -2541,23 +2542,38 @@ if (windDepartSlider) {
     altSlider.value = (saved !== null) ? saved : String(defaultAltFt());   // tunable default
     applyAltLabel();
     altSlider.oninput = applyAltLabel;
-    // Changing altitude means a different pressure level → refetch (on release,
-    // not every tick) so the field shows winds at the selected altitude.
+    // Changing altitude means a different pressure level → a fresh fetch is
+    // needed. Only auto-refetch when a field is already loaded/shown; otherwise
+    // the new altitude applies on the next explicit "Load wind".
     altSlider.onchange = () => {
       try { localStorage.setItem(ALT_KEY, altSlider.value); } catch (e) { /* */ }
       applyAltLabel();
-      if (cb.checked && !busy) addLayer();
+      if (layer && !busy) addLayer();
     };
   }
+
+  // Prompt shown when the field is toggled on but not yet fetched.
+  function promptLoad() {
+    if (statusEl) { statusEl.style.display = ''; statusEl.textContent = S.windFieldPressLoad || 'Press "Load wind" to fetch the field'; }
+  }
+  // Explicit "Load wind" — the fetch is the slow part, so it's gated behind a
+  // button rather than firing automatically on toggle / altitude change / boot.
+  if (loadBtn) loadBtn.onclick = () => {
+    if (busy) return;
+    if (!cb.checked) { cb.checked = true; try { localStorage.setItem(KEY, '1'); } catch (e) { /* */ } showControls(true); }
+    addLayer();
+  };
 
   try { if (localStorage.getItem(KEY) === '1') cb.checked = true; } catch (e) { /* */ }
   showControls(cb.checked);
   cb.onchange = () => {
     try { localStorage.setItem(KEY, cb.checked ? '1' : '0'); } catch (e) { /* */ }
     showControls(cb.checked);
-    if (cb.checked) { if (!busy) addLayer(); } else removeLayer();
+    if (!cb.checked) { removeLayer(); return; }
+    // Show/hide uses the cached grid — instant. Only fetch via "Load wind".
+    if (store) buildLayer(); else promptLoad();
   };
-  if (cb.checked && !busy) addLayer();
+  if (cb.checked) promptLoad();   // don't auto-fetch on boot — wait for Load wind
   NavAid.refreshWindField = () => { if (cb.checked && !busy) addLayer(); };
 })();
 

@@ -34,11 +34,18 @@ async function boot(page) {
   await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
 }
 
+// Loading is now an explicit action: checking the box reveals the controls,
+// then "Load wind" fetches the grid and renders the field.
+async function loadWind(page) {
+  await page.locator('#windfield-cb').check();
+  await page.locator('#windfield-load').click();
+}
+
 test('toggling the wind field adds a velocity canvas; untoggling removes it', async ({ page }) => {
   await boot(page);
   const canvases = () => page.locator('.leaflet-windfield-pane canvas');
   const before = await canvases().count();
-  await page.locator('#windfield-cb').check();
+  await loadWind(page);
   // Velocity layer renders a canvas into the overlay pane once the grid loads.
   await expect(canvases()).toHaveCount(before + 1, { timeout: 10000 });
   await page.locator('#windfield-cb').uncheck();
@@ -51,7 +58,7 @@ test('the grid request covers many points over Israel in m/s', async ({ page }) 
   await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
-  await page.locator('#windfield-cb').check();
+  await loadWind(page);
   await expect.poll(() => url).toMatch(/wind_speed_\d+hPa/);
   const lats = new URLSearchParams(url.split('?')[1]).get('latitude').split(',');
   expect(lats.length).toBeGreaterThan(50);             // a real grid, not a point
@@ -61,7 +68,7 @@ test('the grid request covers many points over Israel in m/s', async ({ page }) 
 test('opacity slider shows with the field and drives the canvas opacity', async ({ page }) => {
   await boot(page);
   await expect(page.locator('#windfield-controls')).toBeHidden();
-  await page.locator('#windfield-cb').check();
+  await loadWind(page);
   await expect(page.locator('#windfield-controls')).toBeVisible();
   await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
   const op = page.locator('#windfield-opacity');
@@ -74,7 +81,7 @@ test('opacity slider shows with the field and drives the canvas opacity', async 
 
 test('time slider scrubs the forecast hour (0..24 forward) and labels it in Zulu', async ({ page }) => {
   await boot(page);
-  await page.locator('#windfield-cb').check();
+  await loadWind(page);
   await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
   // The wind-field time is now driven by the shared look-ahead slider.
   const slider = page.locator('#lookahead-time');
@@ -93,7 +100,7 @@ test('altitude slider refetches at the matching pressure level', async ({ page }
   await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
-  await page.locator('#windfield-cb').check();
+  await loadWind(page);
   await expect.poll(() => url).toMatch(/wind_speed_\d+hPa/);
   const lvlOf = u => (u.match(/wind_speed_(\d+)hPa/) || [])[1];
   const lowAltLevel = lvlOf(url);                  // default 1500 ft
@@ -108,7 +115,7 @@ test('altitude slider refetches at the matching pressure level', async ({ page }
 
 test('opacity reset restores the default', async ({ page }) => {
   await boot(page);
-  await page.locator('#windfield-cb').check();
+  await loadWind(page);
   await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
   const op = page.locator('#windfield-opacity');
   const def = await op.inputValue();                 // HTML default (0.7)
@@ -123,7 +130,7 @@ test('opacity reset restores the default', async ({ page }) => {
 
 test('wind field renders in a non-rotating pane so it works on a rotated map', async ({ page }) => {
   await boot(page);
-  await page.locator('#windfield-cb').check();
+  await loadWind(page);
   await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
   // Rotate the map; the velocity canvas draws in bearing-aware screen coords,
   // so its pane must stay un-transformed (a second transform would break it).
@@ -148,7 +155,7 @@ test('wind field renders in a non-rotating pane so it works on a rotated map', a
 
 test('wind field survives a pan on a rotated map (does not go blank)', async ({ page }) => {
   await boot(page);
-  await page.locator('#windfield-cb').check();
+  await loadWind(page);
   await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
   // Count non-transparent pixels on the velocity canvas (particles drawn).
   const pixels = () => page.evaluate(() => {
@@ -171,7 +178,7 @@ test('wind vectors rotate with the map bearing (flow tracks the chart)', async (
     const orig = L.velocityLayer;
     L.velocityLayer = function (o) { const inst = orig(o); window.__wf = inst; return inst; };
   });
-  await page.locator('#windfield-cb').check();
+  await loadWind(page);
   await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
   await page.waitForFunction(() => window.__wf && window.__wf.options && window.__wf.options.data);
   // North-up: wind blowing east → U ≈ +speed, V ≈ 0.
@@ -196,9 +203,44 @@ test('wind vectors rotate with the map bearing (flow tracks the chart)', async (
 
 test('wind-field toggle persists across reload', async ({ page }) => {
   await boot(page);
-  await page.locator('#windfield-cb').check();
+  await loadWind(page);
   await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
   await page.reload();
   await page.waitForFunction(() => document.getElementById('windfield-cb'));
   await expect(page.locator('#windfield-cb')).toBeChecked();
+});
+
+// Boot with a request counter so tests can assert whether a fetch happened.
+async function bootCounting(page, ref) {
+  await page.route(OM_RE, r => { ref.n++; return r.fulfill({ status: 200, contentType: 'application/json', body: gridBody(r.request().url()) }); });
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
+}
+
+test('checking the box reveals controls but does not fetch — Load wind is required', async ({ page }) => {
+  const ref = { n: 0 };
+  await bootCounting(page, ref);
+  await page.locator('#windfield-cb').check();
+  await expect(page.locator('#windfield-controls')).toBeVisible();
+  await expect(page.locator('#windfield-load')).toBeVisible();
+  await expect(page.locator('#windfield-status')).toBeVisible();          // "Press Load wind" prompt
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(0);
+  expect(ref.n).toBe(0);                                                  // nothing fetched yet
+  await page.locator('#windfield-load').click();
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
+  expect(ref.n).toBeGreaterThan(0);
+});
+
+test('hide then show after loading reuses the cached grid (no refetch)', async ({ page }) => {
+  const ref = { n: 0 };
+  await bootCounting(page, ref);
+  await loadWind(page);
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
+  const afterLoad = ref.n;
+  await page.locator('#windfield-cb').uncheck();
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(0);
+  await page.locator('#windfield-cb').check();
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
+  expect(ref.n).toBe(afterLoad);                                         // shown from cache, no new fetch
 });
