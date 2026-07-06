@@ -92,6 +92,71 @@ test('reverse_route swaps start/destination and is Undo-able', async ({ page }) 
   expect(back).toBe(before);
 });
 
+test('route replacement clears the tracked saved-route id (no accidental overwrite)', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { window.currentRouteLibraryId = 'TRIP_A'; });
+  await runTool(page, 'set_route', { points: ['LLHZ', 'LLIB'] });
+  expect(await page.evaluate(() => currentRouteLibraryId)).toBeNull();
+  await page.evaluate(() => { window.currentRouteLibraryId = 'TRIP_B'; });
+  await runTool(page, 'apply_route_template', { template: 'Herzliya to Haifa' });
+  expect(await page.evaluate(() => currentRouteLibraryId)).toBeNull();
+});
+
+test('reverse_route preserves per-leg data (swaps inbound/outbound, does not wipe)', async ({ page }) => {
+  await boot(page);
+  await runTool(page, 'set_route', { points: ['LLHZ', 'HADERA', 'LLIB'] });
+  await runTool(page, 'set_leg', { leg: 1, speedKt: 123, altitudeFt: 2500 });
+  await runTool(page, 'reverse_route', {});
+  const last = await page.evaluate(() => {
+    const l = state.legs[state.legs.length - 1];
+    return { s: l.flightSpeed, o: l.outboundAltitude };
+  });
+  expect(last.s).toBe(123);      // speed preserved (not reset to default 90)
+  expect(last.o).toBe(2500);     // inbound altitude swapped to outbound on the mirrored leg
+});
+
+test('busy guard blocks a second send while one is in flight', async ({ page }) => {
+  await boot(page);
+  const calls = await page.evaluate(async () => {
+    let n = 0, release;
+    const gate = new Promise(r => { release = r; });
+    NavAid.assistant._setProvider(async () => { n++; await gate; return [{ text: 'done' }]; });
+    NavAid.assistant.send('first');    // starts, awaits the gate (busy = true)
+    NavAid.assistant.send('second');   // must be dropped by the busy guard
+    release();
+    await new Promise(r => setTimeout(r, 60));
+    return n;
+  });
+  expect(calls).toBe(1);
+});
+
+test('resetChat is a no-op while a turn is in flight', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(async () => {
+    let release;
+    const gate = new Promise(r => { release = r; });
+    NavAid.assistant._setProvider(async () => { await gate; return [{ text: 'hi' }]; });
+    NavAid.assistant.send('q');                         // busy; user turn pushed
+    const before = NavAid.assistant._messages().length;
+    NavAid.assistant.reset();                           // should no-op (busy)
+    const mid = NavAid.assistant._messages().length;
+    release();
+    await new Promise(r => setTimeout(r, 60));
+    return { before, mid };
+  });
+  expect(out.mid).toBe(out.before);   // history not wiped mid-run
+});
+
+test('exhausting the tool budget without an answer surfaces a message', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    // Always return a tool call, never final text → hits MAX_ITERS.
+    NavAid.assistant._setProvider(async () => [{ functionCall: { name: 'describe_route', args: {} } }]);
+  });
+  await page.evaluate(() => NavAid.assistant.send('loop forever'));
+  await expect(page.locator('.assistant-error')).toContainText(/without a final answer|rephrasing/i);
+});
+
 test('route templates: list finds the corridor and apply builds it with its reporting points', async ({ page }) => {
   await boot(page);
   const list = await runTool(page, 'list_route_templates', {});

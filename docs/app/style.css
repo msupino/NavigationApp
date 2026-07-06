@@ -4152,7 +4152,9 @@ body.theme-light #tuning-panel summary {
 /* --- AI assistant chat panel (assistant.js) ------------------------- */
 .assistant-fab {
   position: fixed;
-  inset-block-end: 16px;
+  /* Sit above the Leaflet zoom control + bottom-right readouts (both pinned to
+     the bottom-right corner) so the FAB never covers the zoom buttons. */
+  inset-block-end: 116px;
   inset-inline-end: 16px;
   width: 48px; height: 48px;
   border-radius: 50%;
@@ -4168,7 +4170,7 @@ body.theme-light #tuning-panel summary {
 .assistant-fab.assistant-busy { animation: mag-loading-pulse 1.2s ease-in-out infinite; }
 .assistant-panel {
   position: fixed;
-  inset-block-end: 74px;
+  inset-block-end: 174px;
   inset-inline-end: 16px;
   width: min(380px, calc(100vw - 24px));
   max-height: min(70vh, 620px);

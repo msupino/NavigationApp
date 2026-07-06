@@ -114,12 +114,16 @@
   // app's own replacement paths do) so nothing from the previous route carries
   // onto the new one when the leg counts happen to match, then rebuild + repaint.
   function applyReplacementRoute(waypoints) {
+    if (typeof routeAltPrefix !== 'undefined') routeAltPrefix = null;   // repin altitude layer to the new route
+    if (typeof currentRouteLibraryId !== 'undefined') currentRouteLibraryId = null;   // not the loaded saved entry anymore
     state.waypoints = waypoints;
     state.legs = [];
     state.notes = state.notes || [];
     state.commChangeSuppressions = [];
     state.selected = null;
     if (typeof syncLegs === 'function') syncLegs();
+    // Drop orphan comm-change callouts from the old route + seed the new one's.
+    if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
     if (typeof draw === 'function') draw();
     toast(t('assistantEditedRoute', 'Assistant edited the route'));
   }
@@ -319,12 +323,15 @@
         catch (e) { return { error: 'unresolved waypoint in template: ' + ((e && e.message) || e) }; }
         // Template supplies its own legs (with charted altitudes) — set them
         // explicitly, then syncLegs() reconciles count. draw()→persist() records undo.
+        if (typeof routeAltPrefix !== 'undefined') routeAltPrefix = null;
+        if (typeof currentRouteLibraryId !== 'undefined') currentRouteLibraryId = null;
         state.waypoints = route.waypoints;
         state.legs = route.legs;
         state.notes = route.notes || [];
         state.commChangeSuppressions = Array.isArray(route.commChangeSuppressions) ? route.commChangeSuppressions.slice() : [];
         state.selected = null;
         if (typeof syncLegs === 'function') syncLegs();
+        if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
         if (typeof draw === 'function') draw();
         toast(t('assistantEditedRoute', 'Assistant edited the route'));
         return { ok: true, template: tpl.name, waypoints: route.waypoints.map(w => w.name) };
@@ -373,7 +380,11 @@
       run: async () => {
         const wps = (typeof state !== 'undefined' && state.waypoints) || [];
         if (wps.length < 2) return { error: 'no route to reverse' };
-        applyReplacementRoute(wps.slice().reverse());
+        // Delegate to the app's Reverse action, which swaps each leg's
+        // inbound/outbound altitude+speed (and labels) instead of discarding
+        // per-leg data. It repaints + records undo itself.
+        const btn = typeof document !== 'undefined' && document.getElementById('reverse');
+        if (btn) btn.click(); else applyReplacementRoute(wps.slice().reverse());
         return { ok: true, waypoints: state.waypoints.map(w => w.name) };
       },
     },
@@ -451,13 +462,14 @@
     renderUser(userText);
     setBusy(true);
     try {
+      let producedText = false, hitCap = true;
       for (let iter = 0; iter < MAX_ITERS; iter++) {
         const parts = await providerSend(messages);
         messages.push({ role: 'model', parts });
         const text = parts.filter(p => p && p.text).map(p => p.text).join('').trim();
-        if (text) renderAssistant(text);
+        if (text) { renderAssistant(text); producedText = true; }
         const calls = parts.filter(p => p && p.functionCall).map(p => p.functionCall);
-        if (!calls.length) break;
+        if (!calls.length) { hitCap = false; break; }
         const responses = [];
         for (const call of calls) {
           renderActivity(call.name, call.args);
@@ -472,6 +484,9 @@
         }
         messages.push({ role: 'user', parts: responses });
       }
+      // Ran the whole tool budget without ever producing an answer — don't leave
+      // the user staring at activity spinners with no result.
+      if (hitCap && !producedText) renderError(t('assistantMaxSteps', 'Stopped after several steps without a final answer — try rephrasing.'));
     } catch (e) {
       renderError((e && e.message) === 'no-key'
         ? t('assistantNoKey', 'Add an API key in settings to start chatting.')
@@ -499,11 +514,19 @@
     fab.onclick = toggle;
 
     panel = el('div', 'assistant-panel hidden');
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', t('assistantTitle', 'Flight assistant'));
+    // Escape closes the panel (accessibility) while focus is inside it.
+    panel.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); toggle(); } });
     const head = el('div', 'assistant-head');
     head.appendChild(el('span', 'assistant-title', t('assistantTitle', 'Flight assistant')));
-    const gear = el('button', 'assistant-icon-btn', '⚙'); gear.type = 'button'; gear.title = t('assistantSettings', 'Settings'); gear.onclick = toggleSettings;
-    const clr = el('button', 'assistant-icon-btn', '🗑'); clr.type = 'button'; clr.title = t('assistantClear', 'Clear chat'); clr.onclick = resetChat;
-    const x = el('button', 'assistant-icon-btn', '✕'); x.type = 'button'; x.title = t('close', 'Close'); x.onclick = toggle;
+    const iconBtn = (glyph, key, fb, fn) => {
+      const b = el('button', 'assistant-icon-btn', glyph); b.type = 'button';
+      b.title = t(key, fb); b.setAttribute('aria-label', t(key, fb)); b.onclick = fn; return b;
+    };
+    const gear = iconBtn('⚙', 'assistantSettings', 'Settings', toggleSettings);
+    const clr = iconBtn('🗑', 'assistantClear', 'Clear chat', resetChat);
+    const x = iconBtn('✕', 'assistantClose', 'Close', toggle);
     head.append(gear, clr, x);
 
     logEl = el('div', 'assistant-log');
@@ -572,13 +595,17 @@
   function renderAssistant(text) { addMsg('assistant', text); }
   function renderError(text) { addMsg('error', text); }
   function renderActivity(name, args) {
+    const notam = '🔎 ' + t('assistantActNotam', 'checking NOTAMs');
+    const wx = '🌦 ' + t('assistantActWx', 'checking weather');
+    const route = '🧭 ' + t('assistantActRoute', 'updating route');
+    const save = '💾 ' + t('assistantActSave', 'saving route');
+    const look = '🔎 ' + t('assistantActLookup', 'looking up');
     const label = ({
-      get_notams: '🔎 ' + t('assistantActNotam', 'checking NOTAMs'),
-      get_weather: '🌦 ' + t('assistantActWx', 'checking weather'),
-      set_route: '🧭 ' + t('assistantActRoute', 'updating route'),
-      reverse_route: '🧭 ' + t('assistantActRoute', 'updating route'),
-      set_leg: '🧭 ' + t('assistantActRoute', 'updating route'),
-      save_route: '💾 ' + t('assistantActSave', 'saving route'),
+      get_notams: notam, get_weather: wx, save_route: save,
+      set_route: route, reverse_route: route, set_leg: route,
+      plan_corridor: route, apply_route_template: route,
+      find_point: look, get_airfield_info: look, get_vor_radial: look,
+      list_route_templates: look, describe_route: look,
     })[name] || ('· ' + name);
     addMsg('activity', label + '…');
   }
