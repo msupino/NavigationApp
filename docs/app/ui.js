@@ -2433,27 +2433,7 @@ if (windDepartSlider) {
       if (!times.length) throw new Error('no data');
       store = { g, times, sp, di, baseIdx: nearestHourIndex(times) };
       if (timeSlider) { timeSlider.value = '0'; }
-      if (layer) { map.removeLayer(layer); layer = null; }
-      layer = L.velocityLayer({
-        displayValues: false,
-        // Non-rotating pane (see core.js): the field draws in screen
-        // coordinates, so it must not sit in the rotate pane or it breaks when
-        // the map is rotated.
-        paneName: 'windfield',
-        data: frameData(),
-        // Colour particles by speed with a *saturated* ramp (no pale mids that
-        // vanish on the light chart) so the motion reads over the busy base.
-        minVelocity: tn('windFieldMinVelocity', 0), maxVelocity: tn('windFieldMaxVelocity', 24),
-        colorScale: ['#00429d', '#1d6fd0', '#00b4d8', '#00d49b', '#7cd800',
-                     '#ffd000', '#ff8800', '#ff2a00', '#c4000b'],
-        velocityScale: tn('windFieldVelocityScale', 0.028),
-        particleAge: tn('windFieldParticleAge', 80),
-        particleMultiplier: tn('windFieldParticleMultiplier', 0.0032),
-        lineWidth: tn('windFieldLineWidth', 1.8),
-        frameRate: tn('windFieldFrameRate', 22),
-      });
-      layer.addTo(map);
-      applyOpacity();
+      buildLayer();
       applyTimeLabel();
       if (statusEl) statusEl.style.display = 'none';
     } catch (e) {
@@ -2462,25 +2442,59 @@ if (windDepartSlider) {
     } finally { busy = false; }
   }
 
+  // Create (or recreate) the velocity layer from the current store + bearing.
+  function buildLayer() {
+    if (!store) return;
+    if (layer) { map.removeLayer(layer); layer = null; }
+    layer = L.velocityLayer({
+      displayValues: false,
+      // Non-rotating pane (see core.js): the field draws in screen
+      // coordinates, so it must not sit in the rotate pane or it breaks when
+      // the map is rotated.
+      paneName: 'windfield',
+      data: frameData(),
+      // Colour particles by speed with a *saturated* ramp (no pale mids that
+      // vanish on the light chart) so the motion reads over the busy base.
+      minVelocity: tn('windFieldMinVelocity', 0), maxVelocity: tn('windFieldMaxVelocity', 24),
+      colorScale: ['#00429d', '#1d6fd0', '#00b4d8', '#00d49b', '#7cd800',
+                   '#ffd000', '#ff8800', '#ff2a00', '#c4000b'],
+      velocityScale: tn('windFieldVelocityScale', 0.028),
+      particleAge: tn('windFieldParticleAge', 80),
+      particleMultiplier: tn('windFieldParticleMultiplier', 0.0032),
+      lineWidth: tn('windFieldLineWidth', 1.8),
+      frameRate: tn('windFieldFrameRate', 22),
+    });
+    layer.addTo(map);
+    applyOpacity();
+  }
+
   function removeLayer() {
     if (layer) { map.removeLayer(layer); layer = null; }
     if (statusEl) statusEl.style.display = 'none';
   }
 
-  // Re-derive the field when the map rotates: frameData() bakes the current
-  // bearing into the vectors, so the flow tracks the chart as it turns. A dial
-  // drag fires 'rotate' continuously — coalesce to one rebuild per frame.
-  let bearingRebuildPending = false;
-  function refreshFieldForBearing() {
-    if (!layer || !store || bearingRebuildPending) return;
-    bearingRebuildPending = true;
-    requestAnimationFrame(() => {
-      bearingRebuildPending = false;
-      if (layer && store && typeof layer.setData === 'function') layer.setData(frameData());
-    });
+  // leaflet-velocity draws in bearing-aware screen coords into a non-rotating
+  // pane. On a rotated map that works for a static view, but after a pan/zoom
+  // the library re-projects onto a stale canvas position and the field redraws
+  // EMPTY. Recreating the layer re-runs the field build cleanly (same as the
+  // initial render). North-up pans/zooms are handled natively by Leaflet, so
+  // only rebuild when the map is (or just was) rotated. 'rotate' fires
+  // continuously during a dial drag → coalesce to one rebuild per frame.
+  let lastFieldBearing = 0;
+  let rebuildPending = false;
+  function rebuildForView() {
+    if (!cb.checked || !store || busy) return;
+    const b = (map.getBearing ? map.getBearing() : 0) || 0;
+    if (b === 0 && lastFieldBearing === 0) return;   // north-up: native handling is fine
+    lastFieldBearing = b;
+    if (rebuildPending) return;
+    rebuildPending = true;
+    requestAnimationFrame(() => { rebuildPending = false; if (cb.checked && store) buildLayer(); });
   }
-  map.on('rotate', refreshFieldForBearing);
-  map.on('rotateend', refreshFieldForBearing);
+  map.on('moveend', rebuildForView);
+  map.on('zoomend', rebuildForView);
+  map.on('rotate', rebuildForView);
+  map.on('rotateend', rebuildForView);
 
   // leaflet-velocity draws into a canvas in the overlay pane; set its element
   // opacity so the field can be dialled down against the chart base.
