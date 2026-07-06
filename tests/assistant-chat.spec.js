@@ -316,6 +316,20 @@ test('get_notams filters by airfield ICAO from the live feed', async ({ page }) 
   expect(res.notams[0].text).toMatch(/closed/i);   // MRLC decoded + RWY..CLSD expanded
 });
 
+test('get_notams with an unresolvable "near" errors instead of returning all NOTAMs', async ({ page }) => {
+  await boot(page);
+  const r = await runTool(page, 'get_notams', { near: 'NOPLACE' });
+  expect(r.error).toMatch(/could not resolve/i);
+  expect(r.notams).toBeUndefined();     // did not fall through to the full list
+});
+
+test('get_vor_radial returns dmeNm as a number', async ({ page }) => {
+  await boot(page);
+  const r = await runTool(page, 'get_vor_radial', { vor: 'NAT', point: 'LLHZ' });
+  expect(typeof r.dmeNm).toBe('number');
+  expect(Number.isFinite(r.dmeNm)).toBe(true);
+});
+
 test('save_route (outbound tier) is gated by a confirm', async ({ page }) => {
   await boot(page);
   await runTool(page, 'set_route', { points: ['LLHZ', 'LLIB'] });

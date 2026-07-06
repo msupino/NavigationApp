@@ -804,6 +804,7 @@ window.S = Object.assign({
   assistantSend: 'Send',
   assistantGetKey: 'Get a free Google Gemini key',
   assistantKeyPlaceholder: 'API key',
+  assistantModelPlaceholder: 'model',
   assistantSaveKey: 'Save',
   assistantKeySaved: 'API key saved',
   assistantNoKey: 'Add an API key in settings to start chatting.',

@@ -239,7 +239,7 @@
         if (!v) return { error: 'unknown VOR ' + a.vor };
         if (!p) return { error: 'unknown point ' + a.point };
         const rd = typeof vorRadialDme === 'function' ? vorRadialDme(v, p.lat, p.lng) : null;
-        return rd ? { vor: v.ident, point: p.name, radial: rd.radial, dmeNm: rd.dme } : { error: 'could not compute' };
+        return rd ? { vor: v.ident, point: p.name, radial: rd.radial, dmeNm: Number(rd.dme) } : { error: 'could not compute' };
       },
     },
     {
@@ -260,8 +260,9 @@
         if (a.icao) { const ic = String(a.icao).toUpperCase(); hits = hits.filter(n => (n.icao || '').toUpperCase() === ic); }
         if (a.near) {
           const p = resolvePoint(a.near);
+          if (!p) return { error: 'could not resolve "near" point: ' + a.near };   // don't silently return unrelated NOTAMs
           const rad = Number.isFinite(a.radiusNm) ? a.radiusNm : 15;
-          if (p) hits = hits.filter(n => { const c = notamCoord(n); return c && nmBetween(p, c) <= rad; });
+          hits = hits.filter(n => { const c = notamCoord(n); return c && nmBetween(p, c) <= rad; });
         }
         const capped = hits.slice(0, 15);
         return {
@@ -549,7 +550,7 @@
     box.appendChild(el('div', 'assistant-settings-h', t('assistantSettings', 'Settings')));
     const keyIn = el('input', 'assistant-field'); keyIn.type = 'password'; keyIn.placeholder = t('assistantKeyPlaceholder', 'API key');
     keyIn.value = ls(KEY) || '';
-    const modelIn = el('input', 'assistant-field'); modelIn.type = 'text'; modelIn.placeholder = 'model'; modelIn.value = ls(MODEL) || DEFAULT_MODEL;
+    const modelIn = el('input', 'assistant-field'); modelIn.type = 'text'; modelIn.placeholder = t('assistantModelPlaceholder', 'model'); modelIn.value = ls(MODEL) || DEFAULT_MODEL;
     const help = el('div', 'assistant-help');
     const link = el('a', null, t('assistantGetKey', 'Get a free Google Gemini key'));
     link.href = 'https://aistudio.google.com/apikey'; link.target = '_blank'; link.rel = 'noopener';

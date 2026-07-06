@@ -323,6 +323,7 @@ window.S = {
   assistantSend: 'שלח',
   assistantGetKey: 'קבל מפתח Google Gemini חינם',
   assistantKeyPlaceholder: 'מפתח API',
+  assistantModelPlaceholder: 'מודל',
   assistantSaveKey: 'שמור',
   assistantKeySaved: 'מפתח ה-API נשמר',
   assistantNoKey: 'הוסף מפתח API בהגדרות כדי להתחיל שיחה.',
