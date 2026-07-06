@@ -249,7 +249,9 @@ test('a failed fetch hides the sliders and clears the toggle', async ({ page }) 
   await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
-  await page.locator('#windfield-cb').check();
+  // click (not check) — the error path unchecks it, so check()'s state
+  // assertion would race and fail.
+  await page.locator('#windfield-cb').click();
   // Error surfaces; sliders hidden; toggle cleared; no canvas.
   await expect(page.locator('#windfield-status')).toBeVisible();
   await expect(page.locator('#windfield-controls')).toBeHidden();
