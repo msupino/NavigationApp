@@ -50,6 +50,32 @@ test('the FAB docks in the bottom-right control column and hides no control', as
   expect(r.overlapCoord).toBe(false);   // doesn't cover the coordinate readout
 });
 
+test('the chat panel can be dragged by its header and the position persists', async ({ page }) => {
+  await boot(page);
+  const moved = await page.evaluate(() => {
+    NavAid.assistant.open();
+    const panel = document.querySelector('.assistant-panel');
+    const head = document.querySelector('.assistant-head');
+    const b = panel.getBoundingClientRect();
+    const hb = head.getBoundingClientRect();
+    const sx = hb.left + 40, sy = hb.top + 8;
+    const pe = (type, x, y) => head.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1, clientX: x, clientY: y }));
+    pe('pointerdown', sx, sy); pe('pointermove', sx + 60, sy + 120); pe('pointerup', sx + 60, sy + 120);
+    const a = panel.getBoundingClientRect();
+    return { movedY: Math.round(a.top - b.top), saved: localStorage.getItem('navaid.ai.panelPos') };
+  });
+  expect(moved.movedY).toBeGreaterThan(80);   // dragged down ~120px
+  expect(moved.saved).toBeTruthy();           // position persisted
+  // Reopen (fresh) → restores the saved position.
+  const restored = await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('navaid.ai.panelPos'));
+    NavAid.assistant.close(); NavAid.assistant.open();
+    const r = document.querySelector('.assistant-panel').getBoundingClientRect();
+    return { savedY: saved.y, topY: Math.round(r.top) };
+  });
+  expect(Math.abs(restored.topY - restored.savedY)).toBeLessThanOrEqual(2);
+});
+
 test('the FAB is present and opening the panel shows settings when no key is set', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => { try { localStorage.removeItem('navaid.ai.key.gemini'); } catch (e) {} });

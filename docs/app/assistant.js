@@ -613,6 +613,46 @@
 
   function el(tag, cls, txt) { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
 
+  // --- draggable panel (persisted like the inspector / clock) ---------
+  const PANELPOS = 'navaid.ai.panelPos';
+  let panelDrag = null;
+  function clampPanel(x, y) {
+    const w = panel.offsetWidth || 380, h = panel.offsetHeight || 200;
+    const maxX = Math.max(0, window.innerWidth - w), maxY = Math.max(0, window.innerHeight - h);
+    return { x: Math.min(Math.max(0, x), maxX), y: Math.min(Math.max(0, y), maxY) };
+  }
+  function placePanel(x, y) {
+    const c = clampPanel(x, y);
+    // Switch from the corner-anchored default to absolute left/top.
+    panel.style.insetInlineEnd = 'auto'; panel.style.insetBlockEnd = 'auto';
+    panel.style.left = c.x + 'px'; panel.style.top = c.y + 'px';
+  }
+  function restorePanelPos() {
+    let p = null; try { p = JSON.parse(ls(PANELPOS) || 'null'); } catch (e) { /* */ }
+    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) placePanel(p.x, p.y);
+  }
+  function wirePanelDrag(handle) {
+    handle.addEventListener('pointerdown', (ev) => {
+      if (ev.target.closest('.assistant-icon-btn')) return;   // buttons aren't drag handles
+      const r = panel.getBoundingClientRect();
+      panelDrag = { dx: ev.clientX - r.left, dy: ev.clientY - r.top };
+      try { handle.setPointerCapture(ev.pointerId); } catch (e) { /* */ }
+      ev.preventDefault();
+    });
+    handle.addEventListener('pointermove', (ev) => {
+      if (panelDrag) placePanel(ev.clientX - panelDrag.dx, ev.clientY - panelDrag.dy);
+    });
+    const end = (ev) => {
+      if (!panelDrag) return;
+      panelDrag = null;
+      try { handle.releasePointerCapture(ev.pointerId); } catch (e) { /* */ }
+      const r = panel.getBoundingClientRect();
+      setLs(PANELPOS, JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top) }));
+    };
+    handle.addEventListener('pointerup', end);
+    handle.addEventListener('pointercancel', end);
+  }
+
   function build() {
     if (built) return; built = true;
     fab = el('button', 'assistant-fab'); fab.type = 'button';
@@ -635,6 +675,7 @@
     const clr = iconBtn('🗑', 'assistantClear', 'Clear chat', resetChat);
     const x = iconBtn('✕', 'assistantClose', 'Close', toggle);
     head.append(gear, clr, x);
+    wirePanelDrag(head);   // drag the panel by its header
 
     logEl = el('div', 'assistant-log');
 
@@ -715,12 +756,13 @@
   function hasKey() { return !!ls(keyKey(activeProvider())); }
 
   function toggleSettings() { settingsEl.classList.toggle('hidden'); }
-  function openSettings() { build(); panel.classList.remove('hidden'); settingsEl.classList.remove('hidden'); }
+  function openSettings() { build(); panel.classList.remove('hidden'); restorePanelPos(); settingsEl.classList.remove('hidden'); }
 
   function toggle() {
     build();
     panel.classList.toggle('hidden');
     if (!panel.classList.contains('hidden')) {
+      restorePanelPos();   // apply the saved drag position (needs the panel visible for sizing)
       if (!hasKey()) settingsEl.classList.remove('hidden');
       if (inputEl) inputEl.focus();
     }

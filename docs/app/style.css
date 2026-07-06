@@ -4198,7 +4198,9 @@ body.theme-light #tuning-panel summary {
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(0, 0, 0, 0.25);
   flex-shrink: 0;   /* pin header — only the log scrolls */
+  cursor: move; touch-action: none; user-select: none;   /* drag handle */
 }
+.assistant-icon-btn { cursor: pointer; }   /* buttons override the move cursor */
 .assistant-title { flex: 1; font-weight: 600; font-size: 14px; }
 .assistant-icon-btn {
   background: none; border: none; color: #ddd; cursor: pointer;
