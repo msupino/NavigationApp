@@ -11,6 +11,9 @@ name: Update NOTAMs (IAA → notam-data)
 # Parse validity (B/C) + geometry (Q-line circle / item-E coordinate polygon),
 # publish notam.json to the orphan `notam-data` branch. The site sits behind
 # Radware bot protection — a session cookie is forwarded across requests.
+#
+# This is a CVFR / LSA (VFR) planner, so IFR-only and checklist NOTAMs are
+# filtered out by the Q-line traffic field (keep V / IV, drop I / K).
 
 on:
   schedule:
@@ -101,10 +104,10 @@ jobs:
             if (!rows.length) { console.error('no rows parsed — aborting (keep last-good)'); return; }
 
             const seen = new Set();
-            let detailOk = 0;
+            let detailOk = 0, skipped = 0;
             for (const row of rows) {
               if (seen.has(row.id)) continue; seen.add(row.id);
-              let raw = '', start = '', end = '', text = '';
+              let raw = '', start = '', end = '', text = '', traffic = '';
               try {
                 const d = await get(BASE + '/maiDetails.aspx?rowID=' + row.rowID + '&scrpos=0&mode=notam');
                 if (d.status === 200 && !/Block ID|Error 100/.test(d.text) && /NOTAM NO:/.test(d.text)) {
@@ -125,12 +128,21 @@ jobs:
                           : (vt ? `${vt[3]}-${vt[2]}-${vt[1]}T${vt[4]}:${vt[5]}:00Z` : '');
                   const e = raw.match(/\bE\)\s*([\s\S]*?)\s*(?:\bF\)\s|\bG\)\s|$)/);
                   text = e ? e[1].trim().replace(/\)+\s*$/, '') : '';
+                  // Q-line traffic field (3rd, after FIR + Q-code): I=IFR only,
+                  // V=VFR, IV=both, K=checklist. This is a CVFR/LSA (VFR) planner
+                  // — keep V/IV, drop IFR-only + checklists to cut the noise.
+                  const ql = raw.match(/\bQ\)\s*([A-Z]{4}[\s\S]*?)\s*\bA\)/);
+                  traffic = ql ? (ql[1].split('/')[2] || '').trim().toUpperCase() : '';
                 }
               } catch (e) { /* skip this NOTAM's detail */ }
+              // Skip IFR-only and checklist NOTAMs (not relevant to VFR/LSA).
+              // Unknown traffic ('') is kept — better shown than wrongly hidden.
+              if (traffic === 'I' || traffic === 'K') { skipped++; await new Promise(s => setTimeout(s, 120)); continue; }
               out.notams.push({ id: row.id, icao: row.icao, type: '', text: text || row.id, start, end, geom: geomFromRaw(raw) });
               await new Promise(s => setTimeout(s, 120));   // gentle on the site
             }
             console.error('NOTAMs:', out.notams.length, '| detail OK:', detailOk,
+              '| skipped IFR/checklist:', skipped,
               '| with geom:', out.notams.filter(n => n.geom).length,
               '| with dates:', out.notams.filter(n => n.start || n.end).length);
             // Publish only if we actually got full NOTAM detail for a good share
