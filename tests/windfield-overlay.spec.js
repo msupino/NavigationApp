@@ -34,11 +34,10 @@ async function boot(page) {
   await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
 }
 
-// Loading is now an explicit action: checking the box reveals the controls,
-// then "Load wind" fetches the grid and renders the field.
+// Checking the box auto-fetches the grid (a "Loading wind…" banner shows while
+// it's in flight) and renders the field.
 async function loadWind(page) {
   await page.locator('#windfield-cb').check();
-  await page.locator('#windfield-load').click();
 }
 
 test('toggling the wind field adds a velocity canvas; untoggling removes it', async ({ page }) => {
@@ -218,29 +217,28 @@ async function bootCounting(page, ref) {
   await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
 }
 
-test('checking the box reveals controls but does not fetch — Load wind is required', async ({ page }) => {
+test('checking the box auto-fetches (no Load button) and renders', async ({ page }) => {
   const ref = { n: 0 };
   await bootCounting(page, ref);
+  await expect(page.locator('#windfield-load')).toHaveCount(0);           // button is gone
   await page.locator('#windfield-cb').check();
-  await expect(page.locator('#windfield-controls')).toBeVisible();
-  await expect(page.locator('#windfield-load')).toBeVisible();
-  await expect(page.locator('#windfield-status')).toBeVisible();          // "Press Load wind" prompt
-  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(0);
-  expect(ref.n).toBe(0);                                                  // nothing fetched yet
-  await page.locator('#windfield-load').click();
   await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
-  expect(ref.n).toBeGreaterThan(0);
+  expect(ref.n).toBeGreaterThan(0);                                       // fetched automatically
 });
 
-test('hide then show after loading reuses the cached grid (no refetch)', async ({ page }) => {
-  const ref = { n: 0 };
-  await bootCounting(page, ref);
-  await loadWind(page);
-  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
-  const afterLoad = ref.n;
-  await page.locator('#windfield-cb').uncheck();
-  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(0);
+test('a Loading wind banner shows while fetching, then clears', async ({ page }) => {
+  // Delay the grid response so the banner is observable mid-fetch.
+  await page.route(OM_RE, async r => {
+    await new Promise(s => setTimeout(s, 800));
+    return r.fulfill({ status: 200, contentType: 'application/json', body: gridBody(r.request().url()) });
+  });
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
   await page.locator('#windfield-cb').check();
+  const banner = page.locator('#windfield-status.windfield-loading');
+  await expect(banner).toBeVisible();                                     // banner during fetch
+  await expect(banner).toHaveText(/loading/i);
   await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
-  expect(ref.n).toBe(afterLoad);                                         // shown from cache, no new fetch
+  await expect(page.locator('#windfield-status')).toBeHidden();           // clears when loaded
 });
