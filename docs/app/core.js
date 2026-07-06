@@ -785,7 +785,6 @@ window.S = Object.assign({
   windFetchErr: 'Wind fetch failed — check connection',
   tbWindField: 'Show wind field',
   tbWindFieldTitle: 'Animated winds-aloft field (~3000 ft) from a live Open-Meteo grid',
-  notamUnavailable: 'NOTAM data is currently unavailable.',
   tbWindFieldAlt: 'Altitude',
   tbWindFieldOpacity: 'Field opacity',
   tbWindFieldOpacityReset: 'Reset opacity',

@@ -148,7 +148,6 @@ window.S = {
   tbSigmetTitle: 'אזורי מפגע SIGMET פעילים עבור אזור ישראל (מקור: NOAA AWC)',
   tbShowNotam: 'הצג NOTAM',
   tbShowNotamTitle: 'הצג אזורי NOTAM פעילים עבור FIR ישראל (LLLL). לחץ על "רשימת NOTAM" לטקסט המלא. אמצעי תכנון בלבד.',
-  notamUnavailable: 'מידע NOTAM אינו זמין כרגע.',
   tbNotamList: '📋 רשימת NOTAM',
   tbNotamListTitle: 'הצג את כל ה-NOTAM הפעילים עבור FIR ישראל כטקסט',
   tbMosaic: '🛰 פסיפס',
