@@ -1513,6 +1513,7 @@ const NOTAM_COND = {            // Q-code letters 4-5 (condition/status)
   LW: 'will take place', LX: 'operating — caution advised',
   TT: 'trigger NOTAM (AIP amendment)',
   KK: 'checklist',
+  XX: 'plain language (see text)',
 };
 const NOTAM_ABBR = {
   ACFT: 'aircraft', ACT: 'active', ADZ: 'advised', AGL: 'above ground level',
@@ -1531,6 +1532,27 @@ const NOTAM_ABBR = {
   AIP: 'AIP', AIC: 'AIC', DOM: 'domestic', REESTABLISHED: 'reestablished',
   MON: 'Monday', TUE: 'Tuesday', WED: 'Wednesday', THU: 'Thursday', FRI: 'Friday',
   SAT: 'Saturday', SUN: 'Sunday', DLY: 'daily',
+  // Extra abbreviations seen in the Israel FIR feed (ICAO Doc 8400 subset).
+  // NB: AD, ENR, GEN are deliberately NOT expanded — they double as ICAO AIP
+  // part identifiers ("PART ENR 5.1", "PAGE AD-2-LLBG", "PART GEN 3.1") in
+  // trigger/amendment NOTAMs, where expanding them corrupts the citation.
+  FLT: 'flight', NR: 'number', AMDT: 'amendment',
+  OPR: 'operated by', HEL: 'helicopter', TRG: 'training', CTR: 'control zone',
+  TWY: 'taxiway', TKOF: 'take-off', TKOFF: 'take-off', TEMPO: 'temporary',
+  ARO: 'ATS reporting office', APN: 'apron', FPL: 'flight plan', LDG: 'landing',
+  FMP: 'flow management position', MAINT: 'maintenance',
+  IFR: 'instrument flight rules', VFR: 'visual flight rules', CVFR: 'controlled VFR',
+  IAF: 'initial approach fix', ATS: 'air traffic services',
+  OBST: 'obstacle', COORD: 'coordinates', COOR: 'coordinates', XNG: 'crossing',
+  THR: 'threshold', ARR: 'arrival', PAX: 'passengers', GLD: 'glider',
+  COMM: 'communications', INTL: 'international', AFS: 'aeronautical fixed service',
+  EQPT: 'equipment', LGT: 'lighting', NAV: 'navigation', EMERG: 'emergency',
+  INFO: 'information', MIL: 'military', PARA: 'paragraph',
+  PCR: 'pavement classification rating', SKED: 'scheduled', PSNS: 'positions',
+  IAA: 'Israel Airports Authority', CAAI: 'Civil Aviation Authority of Israel',
+  IDF: 'Israel Defense Forces',
+  NE: 'north-east', NW: 'north-west', SE: 'south-east', SW: 'south-west',
+  NB: 'northbound', SB: 'southbound', EB: 'eastbound', WB: 'westbound',
 };
 // Expand the standard abbreviations in a NOTAM body, tidying the source's
 // 3-space wrap indentation. Coordinate tokens (digits+N/E/S/W) carry no word
