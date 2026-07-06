@@ -111,6 +111,24 @@ test('NOTAMs decode to plain English; Raw toggle shows the source text', async (
   await expect(modal.locator('.notam-text')).not.toContainText('above mean sea level');
 });
 
+test('decodeNotam covers the extended Israel-FIR abbreviations and the XX condition', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => ({
+    // FA subject + XX plain-language condition (e.g. FAXX in the live feed).
+    xx: decodeNotam({ type: 'FAXX', text: '' }),
+    // Newly added body abbreviations.
+    abbr: decodeNotam({ type: '', text: 'TWY A CLSD. HEL FLT TRG WI CTR. LDG PROHIBITED.' }),
+  }));
+  expect(out.xx).toContain('Aerodrome');            // FA subject
+  expect(out.xx).toContain('plain language');       // XX condition
+  expect(out.abbr).toContain('taxiway');            // TWY
+  expect(out.abbr).toContain('helicopter');         // HEL
+  expect(out.abbr).toContain('flight');             // FLT
+  expect(out.abbr).toContain('training');           // TRG
+  expect(out.abbr).toContain('control zone');       // CTR
+  expect(out.abbr).toContain('landing');            // LDG
+});
+
 test('clicking an airport NOTAM badge opens the (scrollable) list, not the picker', async ({ page }) => {
   const many = [];
   for (let i = 0; i < 17; i++) {
