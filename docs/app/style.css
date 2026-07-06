@@ -1669,6 +1669,22 @@ body.theme-light .notam-raw-toggle:hover { background: #dfe4ec; color: #000; }
   color: #d4cfcf;
   font-weight: 400;
 }
+/* Light theme: the modal turns near-white, so the dark-theme text/kbd colours
+   above render light-on-light (barely readable). Re-colour for light. */
+body.theme-light .shortcuts-help-group {
+  color: #647184;
+  border-bottom-color: #d8dde5;
+}
+body.theme-light .shortcuts-help-keys { color: #1f252c; }
+body.theme-light .shortcuts-help-desc { color: #26313d; }
+body.theme-light .shortcuts-help-plus,
+body.theme-light .shortcuts-help-sep { color: #8a93a0; }
+body.theme-light .shortcuts-help-keys kbd {
+  color: #1f252c;
+  background: #eef1f6;
+  border-color: #c6ccd6;
+  box-shadow: 0 1px 0 rgba(31, 37, 44, 0.15);
+}
 
 /* Print (browser Cmd+P): drop the UI, keep the map + route overlay. */
 @media print {
