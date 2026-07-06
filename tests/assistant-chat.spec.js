@@ -52,7 +52,7 @@ test('the FAB docks in the bottom-right control column and hides no control', as
 
 test('the FAB is present and opening the panel shows settings when no key is set', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => { try { localStorage.removeItem('navaid.ai.key'); } catch (e) {} });
+  await page.evaluate(() => { try { localStorage.removeItem('navaid.ai.key.gemini'); } catch (e) {} });
   await page.locator('.assistant-fab').click();
   await expect(page.locator('.assistant-panel')).toBeVisible();
   // No key → settings pane is revealed with the get-a-key link.
@@ -257,7 +257,7 @@ test('geminiSend parses a real Gemini response and drives the loop (fetch mocked
       : { candidates: [{ content: { parts: [{ text: 'You have no route planned.' }] } }] };
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
-  await page.evaluate(() => { localStorage.setItem('navaid.ai.key', 'test-key'); });
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.key.gemini', 'test-key'); });
   await page.evaluate(() => NavAid.assistant.send('what is my route?'));
   await expect(page.locator('.assistant-assistant')).toContainText('no route planned');
   expect(calls).toBe(2);   // tool call, then final text — the real geminiSend parsed both
@@ -267,9 +267,74 @@ test('geminiSend surfaces a blocked / empty candidate as an error', async ({ pag
   await boot(page);
   await page.route(/^https:\/\/generativelanguage\.googleapis\.com\//, route =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ candidates: [{ finishReason: 'SAFETY' }] }) }));
-  await page.evaluate(() => { localStorage.setItem('navaid.ai.key', 'test-key'); });
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.key.gemini', 'test-key'); });
   await page.evaluate(() => NavAid.assistant.send('hi'));
   await expect(page.locator('.assistant-error')).toContainText(/no content|SAFETY/i);
+});
+
+test('Anthropic (Claude) adapter: converts the loop and parses tool_use (fetch mocked)', async ({ page }) => {
+  await boot(page);
+  let calls = 0, ver = null, sawToolSchema = false, sawToolResult = false;
+  await page.route(/^https:\/\/api\.anthropic\.com\//, async route => {
+    calls++;
+    const req = route.request();
+    ver = req.headers()['anthropic-version'];
+    const body = JSON.parse(req.postData() || '{}');
+    if (body.tools && body.tools[0] && body.tools[0].input_schema) sawToolSchema = true;
+    if (JSON.stringify(body.messages || []).includes('tool_result')) sawToolResult = true;
+    const resp = calls === 1
+      ? { content: [{ type: 'tool_use', id: 'tu_1', name: 'describe_route', input: {} }], stop_reason: 'tool_use' }
+      : { content: [{ type: 'text', text: 'No route planned.' }], stop_reason: 'end_turn' };
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(resp) });
+  });
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.provider', 'anthropic'); localStorage.setItem('navaid.ai.key.anthropic', 'k'); });
+  await page.evaluate(() => NavAid.assistant.send('my route?'));
+  await expect(page.locator('.assistant-assistant')).toContainText('No route planned');
+  expect(calls).toBe(2);            // tool_use round-trip then text
+  expect(ver).toBe('2023-06-01');   // correct Anthropic version header
+  expect(sawToolSchema).toBe(true); // tools sent as input_schema
+  expect(sawToolResult).toBe(true); // functionResponse converted to a tool_result block
+});
+
+test('OpenAI (ChatGPT) adapter: converts the loop and parses tool_calls (fetch mocked, custom base URL)', async ({ page }) => {
+  await boot(page);
+  let calls = 0, auth = null, sawFnTools = false, sawToolRole = false;
+  await page.route(/^https:\/\/my-openai-proxy\.test\//, async route => {
+    calls++;
+    const req = route.request();
+    auth = req.headers()['authorization'];
+    const body = JSON.parse(req.postData() || '{}');
+    if (body.tools && body.tools[0] && body.tools[0].type === 'function') sawFnTools = true;
+    if ((body.messages || []).some(m => m.role === 'tool')) sawToolRole = true;
+    const resp = calls === 1
+      ? { choices: [{ message: { role: 'assistant', content: null, tool_calls: [{ id: 'c1', type: 'function', function: { name: 'describe_route', arguments: '{}' } }] } }] }
+      : { choices: [{ message: { role: 'assistant', content: 'No route.' } }] };
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(resp) });
+  });
+  await page.evaluate(() => {
+    localStorage.setItem('navaid.ai.provider', 'openai');
+    localStorage.setItem('navaid.ai.key.openai', 'k');
+    localStorage.setItem('navaid.ai.baseUrl', 'https://my-openai-proxy.test/v1');
+  });
+  await page.evaluate(() => NavAid.assistant.send('my route?'));
+  await expect(page.locator('.assistant-assistant')).toContainText('No route');
+  expect(calls).toBe(2);
+  expect(auth).toBe('Bearer k');      // key sent as Bearer
+  expect(sawFnTools).toBe(true);      // tools as {type:'function'}
+  expect(sawToolRole).toBe(true);     // functionResponse converted to a tool-role message
+});
+
+test('settings offer Gemini, Claude and ChatGPT; OpenAI shows the CORS note', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => NavAid.assistant.open());
+  await page.evaluate(() => document.querySelector('.assistant-settings').classList.remove('hidden'));
+  const sel = page.locator('.assistant-settings select.assistant-field');
+  await expect(sel.locator('option')).toHaveCount(3);
+  await sel.selectOption('openai');
+  await expect(page.locator('.assistant-note')).toBeVisible();
+  await expect(page.locator('.assistant-note')).toContainText(/CORS|proxy/i);
+  await sel.selectOption('gemini');
+  await expect(page.locator('.assistant-note')).toBeHidden();
 });
 
 test('get_weather parses Open-Meteo current conditions (fetch mocked)', async ({ page }) => {
@@ -369,7 +434,7 @@ test('save_route (outbound tier) is gated by a confirm', async ({ page }) => {
 
 test('sending with no API key surfaces an error and opens settings', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => { try { localStorage.removeItem('navaid.ai.key'); } catch (e) {} });
+  await page.evaluate(() => { try { localStorage.removeItem('navaid.ai.key.gemini'); } catch (e) {} });
   // Do NOT stub the provider → the real Gemini path throws no-key before any fetch.
   await page.evaluate(() => NavAid.assistant.send('hello'));
   await expect(page.locator('.assistant-error')).toContainText(/API key/i);

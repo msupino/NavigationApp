@@ -13,15 +13,19 @@
 // an operational briefing.
 (function () {
   const NS = (window.NavAid = window.NavAid || {});
-  const KEY = 'navaid.ai.key', PROV = 'navaid.ai.provider', MODEL = 'navaid.ai.model';
+  const PROV = 'navaid.ai.provider';                   // active provider id
+  const BASEURL = 'navaid.ai.baseUrl';                 // OpenAI-compatible base URL override
   const DEFAULT_PROVIDER = 'gemini';
-  const DEFAULT_MODEL = 'gemini-2.5-flash';   // free-tier, function-calling capable
+  // key/model are stored PER provider so switching keeps each provider's setup.
+  const keyKey = p => 'navaid.ai.key.' + p;
+  const modelKey = p => 'navaid.ai.model.' + p;
 
   const S = window.S || {};
   const t = (k, fb) => (S && S[k]) || fb;
 
   function ls(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function setLs(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) { /* */ } }
+  function activeProvider() { const p = ls(PROV); return PROVIDERS[p] ? p : DEFAULT_PROVIDER; }
 
   const SYSTEM = [
     'You are the NavAid flight-planning assistant for CVFR / LSA VFR flying in the Israel FIR (LLLL).',
@@ -426,30 +430,127 @@
   let confirmAction = (msg) => (typeof confirm === 'function') ? confirm(msg) : true;
   function toast(msg) { if (typeof showToast === 'function') showToast(msg); }
 
-  // --- provider (Gemini by default; swappable for tests) --------------
+  // --- providers (BYOK, provider-agnostic) ----------------------------
+  // The conversation history is kept in a neutral Gemini-style "parts" shape
+  // ({text} / {functionCall:{name,args}} / {functionResponse:{name,response}});
+  // each adapter translates that (and the tool schema) to/from its own API and
+  // returns a normalised parts[] array. Only Gemini + Anthropic support direct
+  // browser (BYOK) calls; OpenAI's public API blocks browser CORS, so ChatGPT
+  // needs an OpenAI-compatible endpoint/proxy (baseUrl override).
+  function toolDefs() { return TOOLS.map(x => ({ name: x.name, description: x.description, parameters: x.parameters })); }
+  function keyOrThrow() { const k = ls(keyKey(activeProvider())); if (!k) throw new Error('no-key'); return k; }
+  function modelFor(p) { return ls(modelKey(p)) || PROVIDERS[p].model; }
+
   async function geminiSend(messages) {
-    const key = ls(KEY), model = ls(MODEL) || DEFAULT_MODEL;
-    if (!key) throw new Error('no-key');
+    const key = keyOrThrow(), model = modelFor('gemini');
     const body = {
       systemInstruction: { parts: [{ text: SYSTEM }] },
       contents: messages,
-      tools: [{ functionDeclarations: TOOLS.map(x => ({ name: x.name, description: x.description, parameters: x.parameters })) }],
+      tools: [{ functionDeclarations: toolDefs() }],
     };
     const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' +
       encodeURIComponent(model) + ':generateContent',
       { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify(body) });
     if (!r.ok) { const txt = await r.text().catch(() => ''); throw new Error('Gemini ' + r.status + ': ' + txt.slice(0, 200)); }
     const j = await r.json();
-    // A prompt-level block has no candidates at all.
     if (j.promptFeedback && j.promptFeedback.blockReason) throw new Error('Gemini blocked the request (' + j.promptFeedback.blockReason + ')');
     const cand = j.candidates && j.candidates[0];
     const parts = cand && cand.content && cand.content.parts;
-    // A candidate with no parts is a block / truncation (SAFETY, MAX_TOKENS, …) —
-    // surface it instead of faking an empty answer.
     if (!parts || !parts.length) throw new Error('Gemini returned no content' + (cand && cand.finishReason ? ' (' + cand.finishReason + ')' : ''));
     return parts;
   }
-  let providerSend = geminiSend;   // tests override via NS.assistant._setProvider
+
+  // Convert neutral history → OpenAI chat messages (unique tool_call ids link
+  // an assistant turn's calls to the following tool results, in order).
+  function toOpenAI(messages) {
+    const out = [{ role: 'system', content: SYSTEM }];
+    let cid = 0, lastIds = [];
+    for (const m of messages) {
+      if (m.role === 'model') {
+        const text = m.parts.filter(p => p.text).map(p => p.text).join('');
+        const calls = m.parts.filter(p => p.functionCall).map(p => p.functionCall);
+        lastIds = calls.map(() => 'call_' + (cid++));
+        const msg = { role: 'assistant', content: text || null };
+        if (calls.length) msg.tool_calls = calls.map((c, i) => ({ id: lastIds[i], type: 'function', function: { name: c.name, arguments: JSON.stringify(c.args || {}) } }));
+        out.push(msg);
+      } else {
+        const frs = m.parts.filter(p => p.functionResponse);
+        if (frs.length) frs.forEach((p, i) => out.push({ role: 'tool', tool_call_id: lastIds[i] || ('call_' + i), content: JSON.stringify(p.functionResponse.response) }));
+        else out.push({ role: 'user', content: m.parts.map(p => p.text || '').join('') });
+      }
+    }
+    return out;
+  }
+  async function openaiSend(messages) {
+    const key = keyOrThrow(), model = modelFor('openai');
+    const base = (ls(BASEURL) || 'https://api.openai.com/v1').replace(/\/+$/, '');
+    const body = {
+      model, messages: toOpenAI(messages),
+      tools: TOOLS.map(x => ({ type: 'function', function: { name: x.name, description: x.description, parameters: x.parameters } })),
+      tool_choice: 'auto',
+    };
+    const r = await fetch(base + '/chat/completions',
+      { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) });
+    if (!r.ok) { const txt = await r.text().catch(() => ''); throw new Error('OpenAI ' + r.status + ': ' + txt.slice(0, 200)); }
+    const j = await r.json();
+    const msg = j.choices && j.choices[0] && j.choices[0].message;
+    const parts = [];
+    if (msg && msg.content) parts.push({ text: msg.content });
+    for (const tc of ((msg && msg.tool_calls) || [])) {
+      let args = {}; try { args = JSON.parse(tc.function.arguments || '{}'); } catch (e) { /* */ }
+      parts.push({ functionCall: { name: tc.function.name, args } });
+    }
+    if (!parts.length) throw new Error('OpenAI returned no content');
+    return parts;
+  }
+
+  // Convert neutral history → Anthropic messages (tool_use ids link to tool_result).
+  function toAnthropic(messages) {
+    const out = [];
+    let cid = 0, lastIds = [];
+    for (const m of messages) {
+      if (m.role === 'model') {
+        const blocks = [];
+        const text = m.parts.filter(p => p.text).map(p => p.text).join('');
+        if (text) blocks.push({ type: 'text', text });
+        const calls = m.parts.filter(p => p.functionCall).map(p => p.functionCall);
+        lastIds = calls.map(() => 'tool_' + (cid++));
+        calls.forEach((c, i) => blocks.push({ type: 'tool_use', id: lastIds[i], name: c.name, input: c.args || {} }));
+        out.push({ role: 'assistant', content: blocks });
+      } else {
+        const frs = m.parts.filter(p => p.functionResponse);
+        if (frs.length) out.push({ role: 'user', content: frs.map((p, i) => ({ type: 'tool_result', tool_use_id: lastIds[i] || ('tool_' + i), content: JSON.stringify(p.functionResponse.response) })) });
+        else out.push({ role: 'user', content: m.parts.map(p => p.text || '').join('') });
+      }
+    }
+    return out;
+  }
+  async function anthropicSend(messages) {
+    const key = keyOrThrow(), model = modelFor('anthropic');
+    const body = {
+      model, max_tokens: 1024, system: SYSTEM, messages: toAnthropic(messages),
+      tools: TOOLS.map(x => ({ name: x.name, description: x.description, input_schema: x.parameters })),
+    };
+    const r = await fetch('https://api.anthropic.com/v1/messages',
+      { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body: JSON.stringify(body) });
+    if (!r.ok) { const txt = await r.text().catch(() => ''); throw new Error('Claude ' + r.status + ': ' + txt.slice(0, 200)); }
+    const j = await r.json();
+    const parts = [];
+    for (const b of (j.content || [])) {
+      if (b.type === 'text') parts.push({ text: b.text });
+      else if (b.type === 'tool_use') parts.push({ functionCall: { name: b.name, args: b.input || {} } });
+    }
+    if (!parts.length) throw new Error('Claude returned no content' + (j.stop_reason ? ' (' + j.stop_reason + ')' : ''));
+    return parts;
+  }
+
+  const PROVIDERS = {
+    gemini: { label: 'Google Gemini', model: 'gemini-2.5-flash', keyUrl: 'https://aistudio.google.com/apikey', send: geminiSend },
+    anthropic: { label: 'Anthropic (Claude)', model: 'claude-sonnet-5', keyUrl: 'https://console.anthropic.com/settings/keys', send: anthropicSend },
+    openai: { label: 'OpenAI (ChatGPT)', model: 'gpt-4o-mini', keyUrl: 'https://platform.openai.com/api-keys', send: openaiSend, browserBlocked: true },
+  };
+  async function dispatchSend(messages) { return PROVIDERS[activeProvider()].send(messages); }
+  let providerSend = dispatchSend;   // tests override via NS.assistant._setProvider
 
   // --- agent loop -----------------------------------------------------
   let messages = [];   // Gemini "contents" history
@@ -562,24 +663,51 @@
   function buildSettings() {
     const box = el('div', 'assistant-settings hidden');
     box.appendChild(el('div', 'assistant-settings-h', t('assistantSettings', 'Settings')));
+
+    // Provider picker.
+    const provSel = el('select', 'assistant-field');
+    for (const id of ['gemini', 'anthropic', 'openai']) {
+      const opt = el('option', null, PROVIDERS[id].label + (id === 'gemini' ? ' — ' + t('assistantFreeTier', 'free tier') : ''));
+      opt.value = id; provSel.appendChild(opt);
+    }
     const keyIn = el('input', 'assistant-field'); keyIn.type = 'password'; keyIn.placeholder = t('assistantKeyPlaceholder', 'API key');
-    keyIn.value = ls(KEY) || '';
-    const modelIn = el('input', 'assistant-field'); modelIn.type = 'text'; modelIn.placeholder = t('assistantModelPlaceholder', 'model'); modelIn.value = ls(MODEL) || DEFAULT_MODEL;
+    const modelIn = el('input', 'assistant-field'); modelIn.type = 'text'; modelIn.placeholder = t('assistantModelPlaceholder', 'model');
+    const baseIn = el('input', 'assistant-field'); baseIn.type = 'text'; baseIn.placeholder = 'https://api.openai.com/v1'; baseIn.value = ls(BASEURL) || '';
     const help = el('div', 'assistant-help');
-    const link = el('a', null, t('assistantGetKey', 'Get a free Google Gemini key'));
-    link.href = 'https://aistudio.google.com/apikey'; link.target = '_blank'; link.rel = 'noopener';
-    help.appendChild(link);
+    const link = el('a', null, ''); link.target = '_blank'; link.rel = 'noopener'; help.appendChild(link);
+    const note = el('div', 'assistant-help assistant-note');
+
+    // Reflect the selected provider's stored key/model + help link + notes.
+    function syncProvider(id, loadStored) {
+      const P = PROVIDERS[id];
+      if (loadStored) { keyIn.value = ls(keyKey(id)) || ''; modelIn.value = ls(modelKey(id)) || ''; }
+      modelIn.placeholder = P.model;
+      link.textContent = t('assistantGetKey', 'Get an API key') + ' — ' + P.label;
+      link.href = P.keyUrl;
+      baseIn.style.display = id === 'openai' ? '' : 'none';
+      note.textContent = P.browserBlocked
+        ? t('assistantOpenAiNote', 'OpenAI blocks direct browser calls (CORS) — set an OpenAI-compatible base URL / proxy above.')
+        : '';
+      note.style.display = note.textContent ? '' : 'none';
+    }
+    provSel.value = activeProvider();
+    syncProvider(provSel.value, true);
+    provSel.onchange = () => syncProvider(provSel.value, true);
+
     const save = el('button', 'assistant-send', t('assistantSaveKey', 'Save')); save.type = 'button';
     save.onclick = () => {
-      setLs(KEY, keyIn.value.trim() || null);
-      setLs(PROV, DEFAULT_PROVIDER);
-      setLs(MODEL, modelIn.value.trim() || DEFAULT_MODEL);
+      const id = provSel.value;
+      setLs(PROV, id);
+      setLs(keyKey(id), keyIn.value.trim() || null);
+      setLs(modelKey(id), modelIn.value.trim() || null);
+      if (id === 'openai') setLs(BASEURL, baseIn.value.trim() || null);
       box.classList.add('hidden');
-      toast(t('assistantKeySaved', 'API key saved'));
+      toast(t('assistantKeySaved', 'Settings saved'));
     };
-    box.append(keyIn, modelIn, help, save);
+    box.append(provSel, keyIn, modelIn, baseIn, help, note, save);
     return box;
   }
+  function hasKey() { return !!ls(keyKey(activeProvider())); }
 
   function toggleSettings() { settingsEl.classList.toggle('hidden'); }
   function openSettings() { build(); panel.classList.remove('hidden'); settingsEl.classList.remove('hidden'); }
@@ -588,7 +716,7 @@
     build();
     panel.classList.toggle('hidden');
     if (!panel.classList.contains('hidden')) {
-      if (!ls(KEY)) settingsEl.classList.remove('hidden');
+      if (!hasKey()) settingsEl.classList.remove('hidden');
       if (inputEl) inputEl.focus();
     }
   }
