@@ -1,114 +1,148 @@
-name: Update NOTAMs (autorouter → notam-data)
+name: Update NOTAMs (IAA → notam-data)
 
-# Pulls Israel NOTAMs from autorouter (Eurocontrol EAD source) for the FIR +
-# airports, parses geometry from the NOTAM item-E text (polygons + radius
-# circles), and publishes notam.json to the orphan `notam-data` branch.
-# Requires repo secrets AR_CLIENT_ID (account email) + AR_CLIENT_SECRET
-# (password). Without them the job publishes an empty list.
+# Scrapes Israel NOTAMs from the IAA Mobile AeroInfo site
+# (brin.iaa.gov.il/MobileAeroinfo) — the authoritative national source, no
+# credentials needed. FAA SWIM / autorouter only carry the international
+# A-series FIR NOTAMs; the domestic C-series (airfield / CVFR / UAS / airspace
+# closures) live only here.
+#
+# Flow: GET maiNotam.aspx (list of active NOTAMs → rowIDs), then
+# GET maiDetails.aspx?rowID=..&mode=notam for each (full ICAO NOTAM: Q/A/B/C/E).
+# Parse validity (B/C) + geometry (Q-line circle / item-E coordinate polygon),
+# publish notam.json to the orphan `notam-data` branch. The site sits behind
+# Radware bot protection — a session cookie is forwarded across requests.
 
 on:
   schedule:
-    - cron: '23 * * * *'        # hourly (UTC) — keep NOTAMs fresh like the other feeds
+    - cron: '23 * * * *'        # hourly (UTC)
   workflow_dispatch:
 
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Fetch + normalise NOTAMs
-        env:
-          AR_ID: ${{ secrets.AR_CLIENT_ID }}
-          AR_SECRET: ${{ secrets.AR_CLIENT_SECRET }}
         run: |
           mkdir -p out
           node --input-type=module <<'NODE'
           import { writeFileSync } from 'node:fs';
-          const id = process.env.AR_ID, secret = process.env.AR_SECRET;
-          // FIR + Israel airports to query (item-A identifiers).
-          const ITEMAS = ['LLLL','LLBG','LLHA','LLOV','LLNV','LLIB','LLHZ','LLER',
-            'LLMG','LLES','LLBS','LLEY','LLKS','LLRS','LLRM','LLMZ','LLEK','LLHS',
-            'LLFK','LLBO','LLEV','LLKZ','LLPL','LLRD','LLHB','LLAR'];
-          const out = { generatedAt: new Date().toISOString(), source: 'autorouter (Eurocontrol EAD)', fir: 'LLLL', notams: [] };
+          import { execFileSync } from 'node:child_process';
+          import { tmpdir } from 'node:os';
+          import { join } from 'node:path';
+          const BASE = 'https://brin.iaa.gov.il/MobileAeroinfo';
+          const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+          const out = { generatedAt: new Date().toISOString(), source: 'IAA (brin.iaa.gov.il MobileAeroinfo)', fir: 'LLLL', notams: [] };
+          let fetched = false;
 
-          // DDMMSS / DDMM [NS] DDDMMSS / DDDMM [EW] → [lat, lng] decimal.
-          const toDeg = (tok) => {
-            const m = String(tok).match(/^(\d{2})(\d{2})(\d{2})?([NS])(\d{3})(\d{2})(\d{2})?([EW])$/);
-            if (!m) return null;
-            const lat = +m[1] + +m[2] / 60 + (m[3] ? +m[3] / 3600 : 0);
-            const lng = +m[5] + +m[6] / 60 + (m[7] ? +m[7] / 3600 : 0);
-            return [m[4] === 'S' ? -lat : lat, m[8] === 'W' ? -lng : lng];
-          };
-          // Geometry from the NOTAM item-E text: a list of ≥3 coords → polygon;
-          // a single coord + an "x NM RADIUS" → circle.
-          const geomFromText = (txt) => {
-            const T = String(txt || '').toUpperCase();
-            const toks = T.match(/\d{4,6}[NS]\d{5,7}[EW]/g) || [];
-            const pts = toks.map(toDeg).filter(Boolean);
+          // The site's Radware layer blocks Node's fetch (TLS fingerprint) but
+          // serves curl. Shell out to curl with a shared cookie jar so the
+          // ASP.NET session + Radware cookies persist across list → detail GETs.
+          const JAR = join(tmpdir(), 'iaa-notam-jar.txt');
+          function get(url) {
+            try {
+              return {
+                status: 200,
+                text: execFileSync('curl', ['-sS', '-m', '30', '-A', UA, '-b', JAR, '-c', JAR,
+                  '-H', 'Referer: ' + BASE + '/maiNotam.aspx',
+                  '-H', 'Accept: text/html,application/xhtml+xml', url],
+                  { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 }),
+              };
+            } catch (e) { return { status: 0, text: '' }; }
+          }
+
+          // --- geometry from the raw ICAO NOTAM ---
+          // Q-line trailing field: DDMM[NS]DDDMM[EW]RRR (RRR = radius NM; 000/999 = FIR-wide → skip).
+          // Otherwise item-E lists DDMMSS coordinates → polygon (>=3) or a single point + "x NM RADIUS".
+          const geomFromRaw = (raw) => {
+            const T = String(raw || '').toUpperCase();
+            const q = T.match(/\bQ\)[^\n]*?(\d{2})(\d{2})([NS])(\d{3})(\d{2})([EW])(\d{3})(?:\s|$)/);
+            if (q) {
+              const r = +q[7];
+              if (r > 0 && r < 999) {
+                const lat = +q[1] + +q[2] / 60, lng = +q[4] + +q[5] / 60;
+                return { type: 'circle', lat: q[3] === 'S' ? -lat : lat, lng: q[6] === 'W' ? -lng : lng, radiusNm: r };
+              }
+            }
+            const toks = T.match(/\d{6}[NS]\d{7}[EW]/g) || [];
+            const pts = toks.map(tok => {
+              const m = tok.match(/^(\d{2})(\d{2})(\d{2})([NS])(\d{3})(\d{2})(\d{2})([EW])$/);
+              if (!m) return null;
+              const lat = +m[1] + +m[2] / 60 + +m[3] / 3600;
+              const lng = +m[5] + +m[6] / 60 + +m[7] / 3600;
+              return [m[4] === 'S' ? -lat : lat, m[8] === 'W' ? -lng : lng];
+            }).filter(Boolean);
             if (pts.length >= 3) return { type: 'polygon', coords: pts };
-            const rad = T.match(/(\d+(?:\.\d+)?)\s*NM\s*RADIUS|RADIUS\s*(?:OF\s+)?(\d+(?:\.\d+)?)\s*NM/);
-            if (pts.length >= 1 && rad) return { type: 'circle', lat: pts[0][0], lng: pts[0][1], radiusNm: +(rad[1] || rad[2]) };
+            if (pts.length >= 1) {
+              const rad = T.match(/(\d+(?:\.\d+)?)\s*NM\s*RADIUS|RADIUS\s*(?:OF\s+)?(\d+(?:\.\d+)?)\s*NM/);
+              if (rad) return { type: 'circle', lat: pts[0][0], lng: pts[0][1], radiusNm: +(rad[1] || rad[2]) };
+            }
             return null;
           };
-          const PERM = 2147483647;   // endvalidity sentinel = permanent/UFN
-          const iso = (sec) => (Number.isFinite(sec) && sec > 0 && sec < PERM) ? new Date(sec * 1000).toISOString() : '';
+          // B)/C) time YYMMDDHHmm → ISO (all NOTAM times are UTC).
+          const iso = (s) => { const m = String(s).match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/); return m ? `20${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00Z` : ''; };
 
-          async function token() {
-            const body = new URLSearchParams({ grant_type: 'client_credentials', client_id: id, client_secret: secret });
-            const r = await fetch('https://api.autorouter.aero/v1.0/oauth2/token', {
-              method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
-            if (!r.ok) throw new Error('token HTTP ' + r.status);
-            return (await r.json()).access_token;
-          }
-
-          let fetched = false;   // true only once the API call actually succeeds
           async function run() {
-            if (!id || !secret) { console.error('No AR creds — keeping last-good NOTAMs.'); return; }
-            const tok = await token();
-            const H = { Authorization: 'Bearer ' + tok, Accept: 'application/json' };
-            const q = encodeURIComponent(JSON.stringify(ITEMAS));
+            try { execFileSync('rm', ['-f', JAR]); } catch (e) { /* fresh jar */ }
+            const list = await get(BASE + '/maiNotam.aspx');
+            if (list.status !== 200) { console.error('list HTTP ' + list.status); return; }
+            const html = list.text.replace(/&#39;/g, "'");
+            if (/Block ID|Error 100/.test(html)) { console.error('list blocked by Radware'); return; }
+            const rows = [];
+            const re = /rowClicked\('(\d+)'\)">[\s\S]*?DivRecordID">([A-Z]\d+\/\d+)<\/td><td[^>]*>\s*([A-Z]{4})/g;
+            let m; while ((m = re.exec(html))) rows.push({ rowID: m[1], id: m[2], icao: m[3] });
+            console.error('list rows:', rows.length);
+            if (!rows.length) { console.error('no rows parsed — aborting (keep last-good)'); return; }
+
             const seen = new Set();
-            for (let offset = 0; offset < 1000; offset += 100) {
-              const r = await fetch(`https://api.autorouter.aero/v1.0/notam?itemas=${q}&offset=${offset}&limit=100`, { headers: H });
-              if (!r.ok) { console.error('notam HTTP ' + r.status); break; }
-              const j = await r.json();
-              const rows = j.rows || [];
-              for (const n of rows) {
-                const num = String(n.number == null ? '' : n.number).padStart(4, '0');
-                const idStr = `${n.series || ''}${num}/${n.year == null ? '' : n.year}`;
-                if (seen.has(idStr)) continue;
-                seen.add(idStr);
-                out.notams.push({
-                  id: idStr,
-                  icao: (Array.isArray(n.itema) && n.itema[0]) || n.fir || '',
-                  type: ((n.code23 || '') + (n.code45 || '')).trim(),
-                  text: String(n.iteme || '').trim(),
-                  start: iso(n.startvalidity),
-                  end: n.endvalidity >= PERM ? 'PERM' : iso(n.endvalidity),
-                  geom: geomFromText(n.iteme),
-                });
-              }
-              if (offset + 100 >= (j.total || rows.length)) break;
+            let detailOk = 0;
+            for (const row of rows) {
+              if (seen.has(row.id)) continue; seen.add(row.id);
+              let raw = '', start = '', end = '', text = '';
+              try {
+                const d = await get(BASE + '/maiDetails.aspx?rowID=' + row.rowID + '&scrpos=0&mode=notam');
+                if (d.status === 200 && !/Block ID|Error 100/.test(d.text) && /NOTAM NO:/.test(d.text)) {
+                  // Flatten to text; parse fields (Q/B/C/E) + the Valid From/To
+                  // header straight out of it — no fragile paren wrapper.
+                  raw = d.text
+                    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+                    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+                    .replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ')
+                    .replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ')
+                    .split(/IAA Site|Go Back|חזור אחורה/)[0];   // drop the page footer
+                  detailOk++;
+                  const b = raw.match(/\bB\)\s*(\d{10})/), c = raw.match(/\bC\)\s*(\d{10}|PERM)/i);
+                  const vf = raw.match(/Valid From:\s*(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+                  const vt = raw.match(/Valid To:\s*(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+                  start = b ? iso(b[1]) : (vf ? `${vf[3]}-${vf[2]}-${vf[1]}T${vf[4]}:${vf[5]}:00Z` : '');
+                  end = c ? (/PERM/i.test(c[1]) ? 'PERM' : iso(c[1]))
+                          : (vt ? `${vt[3]}-${vt[2]}-${vt[1]}T${vt[4]}:${vt[5]}:00Z` : '');
+                  const e = raw.match(/\bE\)\s*([\s\S]*?)\s*(?:\bF\)\s|\bG\)\s|$)/);
+                  text = e ? e[1].trim().replace(/\)+\s*$/, '') : '';
+                }
+              } catch (e) { /* skip this NOTAM's detail */ }
+              out.notams.push({ id: row.id, icao: row.icao, type: '', text: text || row.id, start, end, geom: geomFromRaw(raw) });
+              await new Promise(s => setTimeout(s, 120));   // gentle on the site
             }
-            console.error('NOTAMs:', out.notams.length, '| with geom:', out.notams.filter(n => n.geom).length);
-            fetched = true;   // reached here → the query succeeded (0 rows is a valid result)
+            console.error('NOTAMs:', out.notams.length, '| detail OK:', detailOk,
+              '| with geom:', out.notams.filter(n => n.geom).length,
+              '| with dates:', out.notams.filter(n => n.start || n.end).length);
+            // Publish only if we actually got full NOTAM detail for a good share
+            // of them (guards against a Radware block that lets the list through
+            // but 403s the detail pages, which would publish text-less NOTAMs).
+            if (detailOk >= Math.max(1, rows.length * 0.5)) fetched = true;
+            else console.error('too few detail pages succeeded — keep last-good');
           }
           await run().catch(e => console.error('fetch failed:', e.message));
-          // Only publish when the fetch actually succeeded. On auth/API failure
-          // (e.g. token HTTP 403) keep the last-good notam.json on the branch
-          // instead of force-pushing an empty list that blanks the map.
-          if (fetched) {
-            writeFileSync('out/notam.json', JSON.stringify(out, null, 1));
-          } else {
-            console.error('Fetch failed — not publishing; keeping last-good NOTAMs.');
-          }
+          if (fetched) writeFileSync('out/notam.json', JSON.stringify(out, null, 1));
+          else console.error('Not publishing; keeping last-good NOTAMs.');
           NODE
 
       - name: Publish notam-data branch
         run: |
-          # The fetch step only writes notam.json when the API call succeeded.
-          # If it's absent (auth/API failure), skip the push so the branch keeps
-          # its last-good data instead of being overwritten with an empty list.
+          # The fetch step only writes notam.json when the scrape succeeded. If
+          # it's absent (site blocked / no rows), skip the push so the branch
+          # keeps its last-good data instead of being overwritten with empty.
           if [ ! -f out/notam.json ]; then
             echo "No fresh notam.json — keeping last-good notam-data branch."; exit 0
           fi
