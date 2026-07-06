@@ -775,6 +775,7 @@ async function buildRouteFromQuery(raw) {
   // Hebrew label for clicked tokens and the English ICAO for typed
   // tokens — producing the mixed-locale route the user reported.
   routeAltPrefix = null;    // replacing the route unpins its altitude layer
+  currentRouteLibraryId = null;   // search-built route is not a saved entry
   state.waypoints = resolved.map(w => ({
     lat: w.lat, lng: w.lng, name: w.name,
   }));
@@ -989,6 +990,7 @@ async function applyRouteTemplate(template, speed, closeModal) {
         S.searchReplaceConfirm ||
         'Replace the current route?')) return false;
   routeAltPrefix = null;    // template replaces the route — repin to its layer
+  currentRouteLibraryId = null;   // template is not a saved entry
   state.waypoints = route.waypoints;
   state.legs = route.legs;
   state.notes = route.notes;
@@ -1128,7 +1130,7 @@ function showRouteTemplatesModal() {
   });
 }
 
-function showRouteLibraryModal() {
+function showRouteLibraryModal(focusSave) {
   if (typeof prepareChartModal === 'function') {
     if (!prepareChartModal('route-library')) return;
   } else {
@@ -1170,6 +1172,13 @@ function showRouteLibraryModal() {
     }
   };
   saveRow.append(nameInput, saveBtn);
+  // Opened via the Edit-header Save button on an unsaved route: suggest a name
+  // ("first → last" waypoints) and focus+select it so the user can accept or
+  // type over it immediately.
+  if (focusSave) {
+    if (typeof defaultSavedRouteName === 'function') nameInput.value = defaultSavedRouteName();
+    setTimeout(() => { try { nameInput.focus(); nameInput.select(); } catch (e) { /* */ } }, 0);
+  }
 
   const list = document.createElement('div');
   list.className = 'route-library-list';
@@ -1181,8 +1190,12 @@ function showRouteLibraryModal() {
   exportBtn.type = 'button';
   exportBtn.textContent = S.routeLibraryExport || 'Export library';
   exportBtn.onclick = () => {
-    const blob = new Blob([JSON.stringify(loadRouteLibrary(), null, 2)],
-      { type: 'application/json' });
+    // When the stored library is corrupt, export the raw blob verbatim so the
+    // user can attempt recovery — not the empty parsed fallback.
+    const payload = (NavAid.routeLibraryCorrupt && typeof NavAid.routeLibraryCorruptRaw === 'string')
+      ? NavAid.routeLibraryCorruptRaw
+      : JSON.stringify(loadRouteLibrary(), null, 2);
+    const blob = new Blob([payload], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'navaid-routes-' + fileStamp() + '.json';
@@ -1341,6 +1354,38 @@ function showRouteLibraryModal() {
   }
 
   body.append(saveRow, list, tools);
+
+  // Corrupt library (issue mirror of #73): loadRouteLibrary() sets the flag.
+  // Surface it with recovery actions and note that saving is blocked
+  // (persistRouteLibrary refuses to overwrite the raw blob).
+  loadRouteLibrary();
+  if (NavAid.routeLibraryCorrupt) {
+    const warn = document.createElement('div');
+    warn.className = 'route-library-corrupt';
+    const msg = document.createElement('p');
+    msg.textContent = S.routeLibraryCorruptBanner ||
+      'Saved routes could not be read (the stored data is corrupted).';
+    const acts = document.createElement('div');
+    acts.className = 'route-library-tools';
+    const exp = document.createElement('button');
+    exp.type = 'button';
+    exp.textContent = S.routeLibraryExportCorrupt || 'Export corrupted data';
+    exp.onclick = () => exportBtn.click();     // exports the raw blob when corrupt
+    const disc = document.createElement('button');
+    disc.type = 'button';
+    disc.className = 'route-library-del';
+    disc.textContent = S.routeLibraryDiscardCorrupt || 'Discard corrupted library';
+    disc.onclick = () => {
+      if (!confirm(S.routeLibraryDiscardCorruptConfirm ||
+        'Discard the corrupted saved-route library and start empty? This cannot be undone.')) return;
+      persistRouteLibrary([], { force: true });
+      render();
+      warn.remove();
+    };
+    acts.append(exp, disc);
+    warn.append(msg, acts);
+    body.prepend(warn);
+  }
 
   // Optional Google Drive sync (#677 follow-up). Only shown when an OAuth
   // client ID is configured (gdrive.js); otherwise the feature stays dormant.
@@ -1617,6 +1662,7 @@ document.getElementById('clear').onclick = () => {
   state.commChangeSuppressions = [];
   state.selected = null;
   routeAltPrefix = null;    // empty route unpins its altitude layer
+  currentRouteLibraryId = null;   // cleared route is no longer a saved entry
   showInspector(); draw();
 };
 document.getElementById('tool-reset-all-wp-names').onclick = () => {
@@ -1638,7 +1684,48 @@ document.getElementById('export-select').onchange = e => {
 document.getElementById('load').onclick = () => document.getElementById('file').click();
 document.getElementById('share').onclick = shareRoute;
 document.getElementById('route-templates').onclick = showRouteTemplatesModal;
-document.getElementById('route-library').onclick = showRouteLibraryModal;
+// Wrap so the click Event isn't forwarded as showRouteLibraryModal's focusSave
+// argument (which would prefill + focus the name field just for browsing).
+document.getElementById('route-library').onclick = () => showRouteLibraryModal();
+
+// Save/Load route shortcuts, shared by the in-header pair (accordion) and the
+// standalone .tb-quick pair (desktop menubar) via .js-save-route/.js-load-route.
+// The accordion pair sits inside the clickable section header, so the handlers
+// stopPropagation to avoid also toggling the section open/closed.
+function saveRouteFromHeader(e) {
+  if (e) e.stopPropagation();
+  // Nothing to save on an empty/too-short route — pop an error instead of
+  // opening the menu or attempting an overwrite (a route needs >=2 waypoints).
+  if (state.waypoints.length < 2) {
+    alert(S.errNothingToSave || S.errNeedWps || 'Nothing to save.');
+    return;
+  }
+  // If the current route came from a saved entry, overwrite that same entry
+  // (with a confirm warning). Otherwise it's an unsaved route — open the Saved
+  // routes menu so the user can name and save it.
+  const id = currentRouteLibraryId;
+  const existing = id
+    ? loadRouteLibrary().find(x => x && x.id === id && !x.deleted && x.data)
+    : null;
+  if (!existing) { showRouteLibraryModal(true); return; }
+  const msg = (typeof S.routeLibrarySaveConfirm === 'function')
+    ? S.routeLibrarySaveConfirm(existing.name)
+    : ('Overwrite "' + existing.name + '" with the current route?');
+  if (!confirm(msg)) return;
+  const entry = routeLibraryUpdate(id);
+  if (!entry) return;
+  if (typeof refreshRouteLibrary === 'function') refreshRouteLibrary();
+  if (typeof showToast === 'function') {
+    showToast(typeof S.routeLibrarySaved === 'function'
+      ? S.routeLibrarySaved(entry.name) : entry.name + ' saved');
+  }
+}
+function loadRouteFromHeader(e) {
+  if (e) e.stopPropagation();
+  showRouteLibraryModal();
+}
+for (const el of document.querySelectorAll('.js-save-route')) el.onclick = saveRouteFromHeader;
+for (const el of document.querySelectorAll('.js-load-route')) el.onclick = loadRouteFromHeader;
 
 // Draggable inspector — grab the header bar (but not the editable title or the
 // close button) to reposition the panel; the spot persists across selections

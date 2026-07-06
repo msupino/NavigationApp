@@ -1246,6 +1246,7 @@ function loadGpx(file) {
         return;
       }
       routeAltPrefix = null;   // replacing the route unpins its altitude layer
+      currentRouteLibraryId = null;   // decoded/imported route is not a saved entry
       state.waypoints = wps;
       state.legs = [];
       state.notes = [];
@@ -1312,6 +1313,7 @@ function loadPln(file) {
         return;
       }
       routeAltPrefix = null;   // replacing the route unpins its altitude layer
+      currentRouteLibraryId = null;   // decoded/imported route is not a saved entry
       state.waypoints = wps;
       state.legs = [];
       state.notes = [];
@@ -1365,6 +1367,8 @@ function load(file) {
 // library (#677). Caller is responsible for validateRoute() first.
 function applyRouteData(d) {
   routeAltPrefix = null;    // replacing the route unpins its altitude layer
+  currentRouteLibraryId = null;   // default: loaded route isn't a library entry
+                                  // (routeLibraryApply re-sets it right after)
   state.waypoints = d.waypoints.map(w => ({
     lat: r5(w.lat), lng: r5(w.lng), name: w.name,
   }));
@@ -1410,15 +1414,39 @@ function applyRouteData(d) {
 // Device-local only (no backend). Each entry: { id, name, savedAt, data }
 // where `data` is a serializeRoute() blob.
 const ROUTE_LIBRARY_KEY = 'navaid.routes';
+// A corrupt (unparseable / non-array) library blob must not be treated as an
+// empty library: save / import / GPS-save would then persist [] over it and
+// silently erase the user's raw saved routes. Mirror the main route store's
+// #73 protection — preserve the raw blob, flag it, and block writes until the
+// user recovers (export raw) or explicitly clears it (persist with force).
 function loadRouteLibrary() {
+  const raw = localStorage.getItem(ROUTE_LIBRARY_KEY);
+  if (raw == null || raw === '') { NavAid.routeLibraryCorrupt = false; return []; }
   try {
-    const a = JSON.parse(localStorage.getItem(ROUTE_LIBRARY_KEY) || '[]');
-    return Array.isArray(a) ? a : [];
-  } catch (e) { return []; }
+    const a = JSON.parse(raw);
+    if (Array.isArray(a)) { NavAid.routeLibraryCorrupt = false; return a; }
+    NavAid.routeLibraryCorruptError = 'saved-route library is not an array';
+  } catch (e) {
+    NavAid.routeLibraryCorruptError = e && e.message ? e.message : 'parse error';
+  }
+  NavAid.routeLibraryCorrupt = true;
+  NavAid.routeLibraryCorruptRaw = raw;   // keep the raw blob for export/recovery
+  return [];
 }
-function persistRouteLibrary(list) {
+function persistRouteLibrary(list, opts) {
+  // Refuse to overwrite a corrupt blob with a list derived from the empty
+  // fallback — that is the silent data loss. A deliberate recovery/clear from
+  // the Saved routes menu passes { force: true }.
+  if (NavAid.routeLibraryCorrupt && !(opts && opts.force)) {
+    try {
+      alert(S.errRouteLibraryCorrupt ||
+        'Your saved-route library is corrupted and could not be read. Export or clear it from the Saved routes menu before saving new routes.');
+    } catch (_) { /* alert blocked */ }
+    return false;
+  }
   try {
     localStorage.setItem(ROUTE_LIBRARY_KEY, JSON.stringify(list));
+    NavAid.routeLibraryCorrupt = false;   // a successful write clears the flag
     scheduleRouteAutoSync();
     return true;
   } catch (e) {
@@ -1447,6 +1475,24 @@ function routeLibraryId() {
 }
 // Default name for a manually-saved route: "Saved - YYYY-MM-DD HH:MM".
 function defaultSavedRouteName() {
+  // Prefer "first → last" waypoint names (localised via navName); fall back to
+  // a timestamp for unnamed/off-grid endpoints.
+  const wps = state.waypoints;
+  if (wps && wps.length >= 2) {
+    const nm = (w) => {
+      const raw = (w && w.name) ? w.name : '';
+      const disp = (raw && typeof navName === 'function') ? navName(raw) : raw;
+      return (disp || '').toString().trim();
+    };
+    const a = nm(wps[0]);
+    const b = nm(wps[wps.length - 1]);
+    // Point the arrow the reading direction: LTR "first → last", RTL (Hebrew
+    // reads right-to-left, so the destination sits on the left) "first ← last".
+    const he = (typeof currentUiLang === 'function')
+      ? currentUiLang() === 'he' : (window.__navLang === 'he');
+    if (a && b) return a + (he ? ' ← ' : ' → ') + b;
+    if (a || b) return a || b;
+  }
   const d = new Date();
   const p = n => String(n).padStart(2, '0');
   return 'Saved - ' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate())
@@ -1463,7 +1509,9 @@ function routeLibrarySaveCurrent(name) {
     data: serializeRoute(),
   };
   list.unshift(entry);
-  return persistRouteLibrary(list) ? entry : null;
+  if (!persistRouteLibrary(list)) return null;
+  currentRouteLibraryId = entry.id;   // this route is now tracked as a saved entry
+  return entry;
 }
 // Overwrite an existing library entry's route with the current one (update in
 // place), bumping savedAt so the change wins the Drive merge. Keeps the id and
@@ -1475,7 +1523,9 @@ function routeLibraryUpdate(id) {
   if (!entry) return null;
   entry.savedAt = new Date().toISOString();
   entry.data = serializeRoute();
-  return persistRouteLibrary(list) ? entry : null;
+  if (!persistRouteLibrary(list)) return null;
+  currentRouteLibraryId = entry.id;   // now the active saved entry
+  return entry;
 }
 // Apply a saved library entry to the live route. Returns true if applied.
 function routeLibraryApply(entry) {
@@ -1486,14 +1536,18 @@ function routeLibraryApply(entry) {
       !confirm(S.routeLibraryReplaceConfirm ||
         S.routeTemplateReplaceConfirm || 'Replace the current route?')) return false;
   applyRouteData(entry.data);
+  currentRouteLibraryId = entry.id;   // track the loaded entry for in-place Save
   return true;
 }
 
 // --- print -----------------------------------------------------------
 
 function applyPage() {
-  document.getElementById('page-a3').classList.toggle('active', pageSize === 'A3');
-  document.getElementById('page-a4').classList.toggle('active', pageSize === 'A4');
+  // refreshPageButtons sets BOTH .active and aria-pressed; the selected-state
+  // highlight CSS keys off aria-pressed (the A3/A4 buttons have no .tool class),
+  // so toggling only .active here left a restored page size unhighlighted on
+  // boot (docs/app/io.js boot restore calls applyPage without refreshPageButtons).
+  refreshPageButtons();
   draw();
 }
 
@@ -3943,6 +3997,10 @@ function undo() {
   // so the restored route is not re-pinned to — and rewritten from —
   // whichever layer happens to be displayed at undo time.
   routeAltPrefix = typeof snap.altPin === 'string' ? snap.altPin : null;
+  // The restored snapshot may predate (or differ from) the loaded library
+  // entry, so drop the tracked id — Save then opens the menu instead of
+  // silently overwriting a saved route with unrelated content.
+  currentRouteLibraryId = null;
   state.selected = null;
   undoing = true;
   lastCommitted = prev;            // align baseline so the redraw won't re-push
