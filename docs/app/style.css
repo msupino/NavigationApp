@@ -4190,7 +4190,13 @@ body.theme-light #tuning-panel summary {
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
   z-index: 1200;
   overflow: hidden;
+  /* user-resizable (grabber at the corner); size persisted in JS */
+  resize: both;
+  min-width: 260px; min-height: 220px;
+  max-width: 95vw;
 }
+/* When the user has resized (inline height set), that height wins over the cap. */
+.assistant-panel[style*="height"] { max-height: 92vh; }
 .assistant-panel.hidden, .assistant-settings.hidden { display: none; }
 .assistant-head {
   display: flex; align-items: center; gap: 6px;

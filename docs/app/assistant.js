@@ -365,17 +365,37 @@
     },
     {
       name: 'set_route', tier: 'route',
-      description: 'Replace the planned route with these waypoints in order (each an ICAO / reporting point / VOR ident). Use this only when no curated template or CVFR corridor fits. Applies immediately; user can Undo.',
+      description: 'Replace the planned route with these waypoints in order (each an ICAO / reporting point / VOR ident). Consecutive points that are NOT directly connected on the CVFR leg network are auto-expanded via the published corridor (reporting points inserted) — so the route never contains a made-up direct leg. Applies immediately; user can Undo.',
       parameters: { type: 'object', properties: { points: { type: 'array', items: { type: 'string' }, description: 'ordered list, e.g. ["LLHZ","HADERA","LLIB"]' } }, required: ['points'] },
       run: async (a) => {
         await ensureData();
-        const names = Array.isArray(a.points) ? a.points : [];
+        const names = Array.isArray(a.points) ? a.points.map(n => String(n == null ? '' : n).trim().toUpperCase()).filter(Boolean) : [];
         if (names.length < 2) return { error: 'need at least two waypoints' };
-        const resolved = [], bad = [];
-        for (const nm of names) { const p = resolvePoint(nm); p ? resolved.push(p) : bad.push(nm); }
-        if (bad.length) return { error: 'could not resolve: ' + bad.join(', '), resolved: resolved.map(p => p.name) };
-        applyReplacementRoute(resolved.map(p => ({ lat: p.lat, lng: p.lng, name: p.name })));
-        return { ok: true, waypoints: resolved.map(p => p.name) };
+        // Every listed point must resolve to real coordinates first.
+        const bad = names.filter(n => !resolvePoint(n));
+        if (bad.length) return { error: 'could not resolve: ' + bad.join(', ') };
+        // Expand each consecutive pair through the CVFR leg network so we never
+        // emit a straight-line leg that isn't a published route. If a pair has
+        // no network path, keep the direct segment but report it as a gap.
+        const segs = await segmentsData();
+        const chain = [names[0]];
+        const gaps = [];
+        let inserted = false;
+        for (let i = 1; i < names.length; i++) {
+          const from = names[i - 1], to = names[i];
+          const res = segs.length ? corridorPath(segs, from, to) : { path: null };
+          if (res.path && res.path.length >= 2) {
+            for (let k = 1; k < res.path.length; k++) chain.push(res.path[k]);
+            if (res.path.length > 2) inserted = true;
+          } else { chain.push(to); gaps.push(from + '→' + to); }
+        }
+        const wps = [];
+        for (const nm of chain) { const p = resolvePoint(nm); if (p) wps.push({ lat: p.lat, lng: p.lng, name: p.name }); }
+        applyReplacementRoute(wps);
+        const out = { ok: true, waypoints: wps.map(w => w.name) };
+        if (inserted) out.note = 'Expanded via the CVFR corridor (reporting points inserted) — candidate leg data, verify altitudes.';
+        if (gaps.length) out.directGaps = gaps;   // pairs with no known CVFR leg — direct segment (may not be a real route)
+        return out;
       },
     },
     {
@@ -613,9 +633,21 @@
 
   function el(tag, cls, txt) { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
 
-  // --- draggable panel (persisted like the inspector / clock) ---------
+  // --- draggable + resizable panel (persisted like the inspector / clock) ---
   const PANELPOS = 'navaid.ai.panelPos';
+  const PANELSIZE = 'navaid.ai.panelSize';
   let panelDrag = null;
+  function restorePanelSize() {
+    let s = null; try { s = JSON.parse(ls(PANELSIZE) || 'null'); } catch (e) { /* */ }
+    if (s && s.w > 0 && s.h > 0) {
+      panel.style.width = Math.min(s.w, window.innerWidth - 8) + 'px';
+      panel.style.height = Math.min(s.h, window.innerHeight - 8) + 'px';
+    }
+  }
+  function savePanelSize() {
+    if (panel.classList.contains('hidden')) return;
+    setLs(PANELSIZE, JSON.stringify({ w: Math.round(panel.offsetWidth), h: Math.round(panel.offsetHeight) }));
+  }
   function clampPanel(x, y) {
     const w = panel.offsetWidth || 380, h = panel.offsetHeight || 200;
     const maxX = Math.max(0, window.innerWidth - w), maxY = Math.max(0, window.innerHeight - h);
@@ -663,6 +695,7 @@
     panel = el('div', 'assistant-panel hidden');
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-label', t('assistantTitle', 'Flight assistant'));
+    panel.addEventListener('mouseup', savePanelSize);   // persist size after a resize-grabber drag
     // Escape closes the panel (accessibility) while focus is inside it.
     panel.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); toggle(); } });
     const head = el('div', 'assistant-head');
@@ -756,12 +789,13 @@
   function hasKey() { return !!ls(keyKey(activeProvider())); }
 
   function toggleSettings() { settingsEl.classList.toggle('hidden'); }
-  function openSettings() { build(); panel.classList.remove('hidden'); restorePanelPos(); settingsEl.classList.remove('hidden'); }
+  function openSettings() { build(); panel.classList.remove('hidden'); restorePanelSize(); restorePanelPos(); settingsEl.classList.remove('hidden'); }
 
   function toggle() {
     build();
     panel.classList.toggle('hidden');
     if (!panel.classList.contains('hidden')) {
+      restorePanelSize();  // apply saved size first so the position clamp uses real dims
       restorePanelPos();   // apply the saved drag position (needs the panel visible for sizing)
       if (!hasKey()) settingsEl.classList.remove('hidden');
       if (inputEl) inputEl.focus();

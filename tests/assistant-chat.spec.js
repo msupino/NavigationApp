@@ -113,9 +113,41 @@ test('set_route builds the route and is Undo-able', async ({ page }) => {
   const r = await runTool(page, 'set_route', { points: ['LLHZ', 'LLIB'] });
   expect(r.ok).toBe(true);
   const built = await page.evaluate(() => (state.waypoints || []).map(w => w.name));
-  expect(built.length).toBe(2);
+  expect(built.length).toBeGreaterThanOrEqual(2);   // may expand via the corridor
+  expect(built[0]).toBe('LLHZ');
+  expect(built[built.length - 1]).toBe('LLIB');
   const afterUndo = await page.evaluate(() => { undo(); return (state.waypoints || []).length; });
   expect(afterUndo).toBe(0);                  // undo restored the empty route
+});
+
+test('set_route expands an airfield pair through the CVFR corridor (no fake direct leg)', async ({ page }) => {
+  await boot(page);
+  const r = await runTool(page, 'set_route', { points: ['LLHZ', 'LLHA'] });
+  expect(r.ok).toBe(true);
+  const wps = await page.evaluate(() => state.waypoints.map(w => w.name));
+  expect(wps[0]).toBe('LLHZ');
+  expect(wps[wps.length - 1]).toBe('LLHA');
+  expect(wps.length).toBeGreaterThan(2);   // reporting points inserted, not a 1-leg direct line
+  expect(r.note).toMatch(/corridor/i);
+});
+
+test('the chat panel is resizable and the size persists across reopen', async ({ page }) => {
+  await boot(page);
+  const saved = await page.evaluate(() => {
+    NavAid.assistant.open();
+    const p = document.querySelector('.assistant-panel');
+    p.style.width = '300px'; p.style.height = '420px';
+    p.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));   // resize-grabber release
+    return localStorage.getItem('navaid.ai.panelSize');
+  });
+  expect(saved).toBeTruthy();
+  const size = await page.evaluate(() => {
+    NavAid.assistant.close(); NavAid.assistant.open();
+    const p = document.querySelector('.assistant-panel');
+    return { w: Math.round(p.offsetWidth), h: Math.round(p.offsetHeight) };
+  });
+  expect(size.w).toBe(300);
+  expect(size.h).toBe(420);
 });
 
 test('set_route reports unresolved waypoints instead of mutating', async ({ page }) => {
@@ -247,7 +279,14 @@ test('plan_corridor rejects a point not on the leg network', async ({ page }) =>
 
 test('describe_route exposes per-leg detail (heading, distance, altitude, speed, freq)', async ({ page }) => {
   await boot(page);
-  await runTool(page, 'set_route', { points: ['LLHZ', 'HADERA', 'LLIB'] });
+  // Build the exact 3-waypoint route directly (set_route would corridor-expand it).
+  await page.evaluate(async () => {
+    if (typeof loadAirfields === 'function') await loadAirfields();
+    if (typeof loadNavWaypoints === 'function') await loadNavWaypoints();
+    const r = NavAid.assistant._resolvePoint;
+    state.waypoints = ['LLHZ', 'HADERA', 'LLIB'].map(n => { const p = r(n); return { lat: p.lat, lng: p.lng, name: p.name }; });
+    state.legs = []; syncLegs(); draw();
+  });
   await runTool(page, 'set_leg', { leg: 2, altitudeFt: 3500, speedKt: 110 });
   const d = await runTool(page, 'describe_route', {});
   expect(d.legCount).toBe(2);
