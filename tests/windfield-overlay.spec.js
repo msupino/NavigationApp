@@ -146,6 +146,25 @@ test('wind field renders in a non-rotating pane so it works on a rotated map', a
   expect(r.canvasRendered).toBe(true);
 });
 
+test('wind field survives a pan on a rotated map (does not go blank)', async ({ page }) => {
+  await boot(page);
+  await page.locator('#windfield-cb').check();
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
+  // Count non-transparent pixels on the velocity canvas (particles drawn).
+  const pixels = () => page.evaluate(() => {
+    const c = document.querySelector('.leaflet-windfield-pane canvas');
+    if (!c || !c.width) return -1;
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    let n = 0; for (let i = 3; i < d.length; i += 4) { if (d[i] !== 0) { n++; if (n > 30) break; } }
+    return n;
+  });
+  await page.evaluate(() => map.setBearing(45));
+  await expect.poll(pixels, { timeout: 8000 }).toBeGreaterThan(0);   // rotated: drawn
+  // Pan the rotated map — the field must NOT vanish.
+  await page.evaluate(() => map.panBy([150, 90], { animate: false }));
+  await expect.poll(pixels, { timeout: 8000 }).toBeGreaterThan(0);   // still drawn after pan
+});
+
 test('wind vectors rotate with the map bearing (flow tracks the chart)', async ({ page }) => {
   await boot(page);   // fixture grid: uniform wind FROM 270° → blowing east
   await page.evaluate(() => {

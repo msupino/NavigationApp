@@ -120,7 +120,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=270">
+  <link rel="stylesheet" href="app/style.css?v=272">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -211,6 +211,9 @@
     <button id="tool-note" class="tool" data-i18n="tbAddNote" data-i18n-title="tbAddNoteTitle"></button>
     <button id="search-trigger" type="button" data-i18n="tbSearchOpen" data-i18n-title="tbSearchOpenTitle"></button>
     <button id="reverse" data-i18n="tbReverse" data-i18n-title="tbReverseTitle"></button>
+    <label class="navtoggle" data-i18n-title="tbShowReturnTitle">
+      <input type="checkbox" id="ret-cb"> <span data-i18n="tbShowReturn"></span>
+    </label>
     <button id="undo" data-i18n="tbUndo" data-i18n-title="tbUndoTitle" disabled></button>
     <button id="clear" data-i18n="tbClear" data-i18n-title="tbClearTitle"></button>
     <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
@@ -255,9 +258,6 @@
         </label>
         <label class="navtoggle" data-i18n-title="tbShowCommChangeTitle">
           <input type="checkbox" id="commchange-cb"> <span data-i18n="tbShowCommChange"></span>
-        </label>
-        <label class="navtoggle" data-i18n-title="tbShowReturnTitle">
-          <input type="checkbox" id="ret-cb"> <span data-i18n="tbShowReturn"></span>
         </label>
         <label class="navtoggle" data-i18n-title="tbShowMidLegTitle">
           <input type="checkbox" id="mid-cb"> <span data-i18n="tbShowMidLeg"></span>
@@ -664,7 +664,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=270';
+      var v = '?v=272';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
