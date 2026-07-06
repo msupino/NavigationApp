@@ -118,6 +118,8 @@ test('decodeNotam covers the extended Israel-FIR abbreviations and the XX condit
     xx: decodeNotam({ type: 'FAXX', text: '' }),
     // Newly added body abbreviations.
     abbr: decodeNotam({ type: '', text: 'TWY A CLSD. HEL FLT TRG WI CTR. LDG PROHIBITED.' }),
+    // AIP part identifiers must stay literal (AD/ENR/GEN are NOT expanded).
+    aip: decodeNotam({ type: '', text: 'ISRAEL AIP PART ENR 5.1 PAGE AD-2-LLBG PART GEN 3.1.' }),
   }));
   expect(out.xx).toContain('Aerodrome');            // FA subject
   expect(out.xx).toContain('plain language');       // XX condition
@@ -127,6 +129,11 @@ test('decodeNotam covers the extended Israel-FIR abbreviations and the XX condit
   expect(out.abbr).toContain('training');           // TRG
   expect(out.abbr).toContain('control zone');       // CTR
   expect(out.abbr).toContain('landing');            // LDG
+  // AIP citations preserved — no over-expansion of the part identifiers.
+  expect(out.aip).toContain('PART ENR 5.1');
+  expect(out.aip).toContain('AD-2-LLBG');
+  expect(out.aip).toContain('PART GEN 3.1');
+  expect(out.aip).not.toMatch(/en-route|aerodrome|general/);
 });
 
 test('clicking an airport NOTAM badge opens the (scrollable) list, not the picker', async ({ page }) => {

@@ -1533,18 +1533,21 @@ const NOTAM_ABBR = {
   MON: 'Monday', TUE: 'Tuesday', WED: 'Wednesday', THU: 'Thursday', FRI: 'Friday',
   SAT: 'Saturday', SUN: 'Sunday', DLY: 'daily',
   // Extra abbreviations seen in the Israel FIR feed (ICAO Doc 8400 subset).
-  FLT: 'flight', AD: 'aerodrome', NR: 'number', AMDT: 'amendment',
+  // NB: AD, ENR, GEN are deliberately NOT expanded — they double as ICAO AIP
+  // part identifiers ("PART ENR 5.1", "PAGE AD-2-LLBG", "PART GEN 3.1") in
+  // trigger/amendment NOTAMs, where expanding them corrupts the citation.
+  FLT: 'flight', NR: 'number', AMDT: 'amendment',
   OPR: 'operated by', HEL: 'helicopter', TRG: 'training', CTR: 'control zone',
   TWY: 'taxiway', TKOF: 'take-off', TKOFF: 'take-off', TEMPO: 'temporary',
   ARO: 'ATS reporting office', APN: 'apron', FPL: 'flight plan', LDG: 'landing',
   FMP: 'flow management position', MAINT: 'maintenance',
   IFR: 'instrument flight rules', VFR: 'visual flight rules', CVFR: 'controlled VFR',
-  IAF: 'initial approach fix', ENR: 'en-route', ATS: 'air traffic services',
+  IAF: 'initial approach fix', ATS: 'air traffic services',
   OBST: 'obstacle', COORD: 'coordinates', COOR: 'coordinates', XNG: 'crossing',
   THR: 'threshold', ARR: 'arrival', PAX: 'passengers', GLD: 'glider',
   COMM: 'communications', INTL: 'international', AFS: 'aeronautical fixed service',
   EQPT: 'equipment', LGT: 'lighting', NAV: 'navigation', EMERG: 'emergency',
-  INFO: 'information', MIL: 'military', GEN: 'general', PARA: 'paragraph',
+  INFO: 'information', MIL: 'military', PARA: 'paragraph',
   PCR: 'pavement classification rating', SKED: 'scheduled', PSNS: 'positions',
   IAA: 'Israel Airports Authority', CAAI: 'Civil Aviation Authority of Israel',
   IDF: 'Israel Defense Forces',
