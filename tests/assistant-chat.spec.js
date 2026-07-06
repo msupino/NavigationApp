@@ -165,7 +165,7 @@ test('read tools: find_point and get_airfield_info resolve real data', async ({ 
 test('geminiSend parses a real Gemini response and drives the loop (fetch mocked)', async ({ page }) => {
   await boot(page);
   let calls = 0;
-  await page.route(/generativelanguage\.googleapis\.com/, async route => {
+  await page.route(/^https:\/\/generativelanguage\.googleapis\.com\//, async route => {
     calls++;
     const body = calls === 1
       ? { candidates: [{ content: { parts: [{ functionCall: { name: 'describe_route', args: {} } }] } }] }
@@ -180,7 +180,7 @@ test('geminiSend parses a real Gemini response and drives the loop (fetch mocked
 
 test('geminiSend surfaces a blocked / empty candidate as an error', async ({ page }) => {
   await boot(page);
-  await page.route(/generativelanguage\.googleapis\.com/, route =>
+  await page.route(/^https:\/\/generativelanguage\.googleapis\.com\//, route =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ candidates: [{ finishReason: 'SAFETY' }] }) }));
   await page.evaluate(() => { localStorage.setItem('navaid.ai.key', 'test-key'); });
   await page.evaluate(() => NavAid.assistant.send('hi'));
@@ -189,7 +189,7 @@ test('geminiSend surfaces a blocked / empty candidate as an error', async ({ pag
 
 test('get_weather parses Open-Meteo current conditions (fetch mocked)', async ({ page }) => {
   await boot(page);
-  await page.route(/api\.open-meteo\.com/, route => route.fulfill({
+  await page.route(/^https:\/\/api\.open-meteo\.com\//, route => route.fulfill({
     status: 200, contentType: 'application/json',
     body: JSON.stringify({ current: { temperature_2m: 20, wind_speed_10m: 12, wind_direction_10m: 270, time: '2026-07-06T12:00' } }),
   }));
