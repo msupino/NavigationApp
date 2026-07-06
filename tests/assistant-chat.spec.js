@@ -115,6 +115,25 @@ test('apply_route_template reports available names for an unknown template', asy
   expect(Array.isArray(r.available)).toBe(true);
 });
 
+test('plan_corridor graph-routes an airfield pair over the CVFR leg network', async ({ page }) => {
+  await boot(page);
+  const c = await runTool(page, 'plan_corridor', { from: 'LLHZ', to: 'LLIB' });
+  expect(c.ok).toBe(true);
+  expect(c.corridor[0]).toBe('LLHZ');
+  expect(c.corridor[c.corridor.length - 1]).toBe('LLIB');
+  expect(c.corridor.length).toBeGreaterThan(2);       // via reporting points, not a direct line
+  const wps = await page.evaluate(() => state.waypoints.map(w => w.name));
+  expect(wps.length).toBe(c.corridor.length);
+  const afterUndo = await page.evaluate(() => { undo(); return state.waypoints.length; });
+  expect(afterUndo).toBe(0);                           // undo-able
+});
+
+test('plan_corridor rejects a point not on the leg network', async ({ page }) => {
+  await boot(page);
+  const r = await runTool(page, 'plan_corridor', { from: 'LLHZ', to: 'ZZZZ' });
+  expect(r.error).toMatch(/not on the CVFR leg network/i);
+});
+
 test('describe_route exposes per-leg detail (heading, distance, altitude, speed, freq)', async ({ page }) => {
   await boot(page);
   await runTool(page, 'set_route', { points: ['LLHZ', 'HADERA', 'LLIB'] });

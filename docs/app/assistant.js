@@ -29,10 +29,11 @@
     'ALWAYS use the provided tools to get facts. NEVER invent or guess a NOTAM, a weather value, a frequency, or coordinates —',
     'if a tool returns nothing, say so plainly. Quote the real values the tools return.',
     'Waypoints are Israeli ICAO codes (LLxx), VFR reporting-point codes, or VOR idents; pass them to the tools as written.',
-    'For an airfield-to-airfield route, FIRST call list_route_templates: if a curated route connects the two',
-    'airfields (matching from/to in either direction), use apply_route_template so the route follows the published',
-    'CVFR corridor and its reporting points — do NOT draw a direct line. Only fall back to a direct set_route when no',
-    'template matches, and say so explicitly.',
+    'Route planning, in order of preference: (1) call list_route_templates and, if a curated route connects the two',
+    'airfields (from/to in either direction), use apply_route_template; (2) otherwise call plan_corridor(from,to) to',
+    'route over the published CVFR leg network through its reporting points; (3) only if plan_corridor finds no path,',
+    'fall back to a direct set_route — and say so. Never draw a direct line when a template or corridor exists.',
+    'Corridor/segment altitudes are candidate data — remind the user to verify against the official CVFR chart.',
     'Be concise. When you change the route, briefly say what you did.',
     'This is a PLANNING AID ONLY — not an operational briefing. Remind the user to verify against the official AIP,',
     'NOTAM office and a proper weather brief before flight.',
@@ -44,6 +45,49 @@
       try { await loadRouteTemplates(); } catch (e) { /* */ }
     }
     return (typeof routeTemplates !== 'undefined' && Array.isArray(routeTemplates)) ? routeTemplates : [];
+  }
+  // CVFR leg network (green-route segments) — fetched once, cached. Used to
+  // graph-route any airfield pair through the published reporting points when no
+  // curated template fits. Altitudes here are candidate data (planning aid).
+  let _segCache = null;
+  async function segmentsData() {
+    if (_segCache) return _segCache;
+    try {
+      const url = (S && S.legAltitudeUrl) || 'data/cvfr-leg-altitude.json';
+      const r = await fetch(url);
+      const j = await r.json();
+      _segCache = Array.isArray(j.segments) ? j.segments : [];
+    } catch (e) { _segCache = []; }
+    return _segCache;
+  }
+  // Shortest-distance path over the leg network (Dijkstra). One-way segments are
+  // directed from→to; two-way segments traverse both ways.
+  function corridorPath(segs, from, to) {
+    const nodes = new Set(), adj = {};
+    const add = (a, b, w) => { (adj[a] = adj[a] || []).push([b, w]); };
+    for (const s of segs) {
+      if (!s.from || !s.to) continue;
+      nodes.add(s.from); nodes.add(s.to);
+      const w = Number(s.distanceNm) > 0 ? Number(s.distanceNm) : 1;
+      add(s.from, s.to, w);
+      if (!s.oneWay) add(s.to, s.from, w);
+    }
+    if (!nodes.has(from) || !nodes.has(to)) return { missing: !nodes.has(from) ? from : to };
+    const dist = { [from]: 0 }, prev = {}, pq = [[0, from]];
+    while (pq.length) {
+      pq.sort((a, b) => a[0] - b[0]);
+      const [d, n] = pq.shift();
+      if (n === to) break;
+      if (d > (dist[n] == null ? Infinity : dist[n])) continue;
+      for (const [m, w] of (adj[n] || [])) {
+        const nd = d + w;
+        if (dist[m] == null || nd < dist[m]) { dist[m] = nd; prev[m] = n; pq.push([nd, m]); }
+      }
+    }
+    if (dist[to] == null) return { path: null };
+    const path = [to]; let c = to;
+    while (c !== from) { c = prev[c]; if (c == null) return { path: null }; path.unshift(c); }
+    return { path };
   }
   async function ensureData() {
     const jobs = [];
@@ -277,8 +321,33 @@
       },
     },
     {
+      name: 'plan_corridor', tier: 'route',
+      description: 'Route between two points over the published CVFR leg network (green-route segments through reporting points), shortest by distance. Use when no curated template matches. Applies immediately; Undo-able. Segment altitudes are candidate data — a planning aid.',
+      parameters: { type: 'object', properties: { from: { type: 'string' }, to: { type: 'string' } }, required: ['from', 'to'] },
+      run: async (a) => {
+        await ensureData();
+        const segs = await segmentsData();
+        if (!segs.length) return { error: 'CVFR leg network unavailable' };
+        const F = String(a.from == null ? '' : a.from).trim().toUpperCase();
+        const To = String(a.to == null ? '' : a.to).trim().toUpperCase();
+        const res = corridorPath(segs, F, To);
+        if (res.missing) return { error: res.missing + ' is not on the CVFR leg network' };
+        if (!res.path) return { error: 'no CVFR corridor found between ' + F + ' and ' + To };
+        const resolved = [], bad = [];
+        for (const nm of res.path) { const p = resolvePoint(nm); p ? resolved.push(p) : bad.push(nm); }
+        if (bad.length) return { error: 'could not resolve corridor points: ' + bad.join(', ') };
+        snapshotForUndo();
+        state.waypoints = resolved.map(p => ({ lat: p.lat, lng: p.lng, name: p.name }));
+        state.notes = state.notes || [];
+        if (typeof syncLegs === 'function') syncLegs();
+        if (typeof draw === 'function') draw();
+        toast(t('assistantEditedRoute', 'Assistant edited the route'));
+        return { ok: true, corridor: res.path, note: 'Routed over candidate CVFR leg data — verify altitudes against the official chart.' };
+      },
+    },
+    {
       name: 'set_route', tier: 'route',
-      description: 'Replace the planned route with these waypoints in order (each an ICAO / reporting point / VOR ident). Use this only when no curated template fits. Applies immediately; user can Undo.',
+      description: 'Replace the planned route with these waypoints in order (each an ICAO / reporting point / VOR ident). Use this only when no curated template or CVFR corridor fits. Applies immediately; user can Undo.',
       parameters: { type: 'object', properties: { points: { type: 'array', items: { type: 'string' }, description: 'ordered list, e.g. ["LLHZ","HADERA","LLIB"]' } }, required: ['points'] },
       run: async (a) => {
         await ensureData();
