@@ -45,8 +45,12 @@ jobs:
           function get(url) {
             try {
               return {
+                // -f: exit non-zero on HTTP >=400 so the catch fires (a 4xx/5xx
+                // error page must not be treated as a successful body). The
+                // Radware block page returns 200, so it's caught by the text
+                // checks at the call sites instead.
                 status: 200,
-                text: execFileSync('curl', ['-sS', '-m', '30', '-A', UA, '-b', JAR, '-c', JAR,
+                text: execFileSync('curl', ['-sS', '-f', '-m', '30', '-A', UA, '-b', JAR, '-c', JAR,
                   '-H', 'Referer: ' + BASE + '/maiNotam.aspx',
                   '-H', 'Accept: text/html,application/xhtml+xml', url],
                   { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 }),
@@ -79,15 +83,20 @@ jobs:
             // airfield marker + inspector, so don't scatter circles over the
             // aerodrome — leave them geomless (list / airfield only).
             if (icao !== 'LLLL') return null;
-            const rad = T.match(/(\d+(?:\.\d+)?)\s*NM\s*RADIUS|RADIUS\s*(?:OF\s+)?(\d+(?:\.\d+)?)\s*NM/);
-            if (pts.length >= 1 && rad) return { type: 'circle', lat: pts[0][0], lng: pts[0][1], radiusNm: +(rad[1] || rad[2]) };
+            // Radius in NM or KM (Israeli NOTAMs use both) → NM.
+            const radNm = T.match(/(\d+(?:\.\d+)?)\s*NM\s*RADIUS|RADIUS\s*(?:OF\s+)?(\d+(?:\.\d+)?)\s*NM/);
+            const radKm = T.match(/(\d+(?:\.\d+)?)\s*KM\s*RADIUS|RADIUS\s*(?:OF\s+)?(\d+(?:\.\d+)?)\s*KM/);
+            const rad = radNm ? +(radNm[1] || radNm[2]) : (radKm ? +(radKm[1] || radKm[2]) * 0.539957 : null);
+            if (pts.length >= 1 && rad) return { type: 'circle', lat: pts[0][0], lng: pts[0][1], radiusNm: rad };
             // Fallback: Q-line centre+radius (coarse). The Q-line radius is the
             // NOTAM's *coverage/influence* extent, which for FIR-wide or admin
             // NOTAMs (GNSS-in-FIR, flight-plan/phone changes, VOR withdrawn) is
             // huge (25–121 NM) and blankets the chart. Only draw a small local
             // circle (<=12 NM); larger ones are list-only (real hazard areas
-            // carry explicit item-E coordinates handled above).
-            const q = T.match(/\bQ\)[^\n]*?(\d{2})(\d{2})([NS])(\d{3})(\d{2})([EW])(\d{3})(?:\s|$)/);
+            // carry explicit item-E coordinates handled above). Match ONLY within
+            // the Q-line (up to " A)") so a coordless Q-line can't leak into item-E.
+            const qline = (T.match(/\bQ\)([\s\S]*?)\bA\)/) || [])[1] || '';
+            const q = qline.match(/(\d{2})(\d{2})([NS])(\d{3})(\d{2})([EW])(\d{3})(?:\s|$)/);
             if (q) {
               const r = +q[7];
               if (r > 0 && r <= 12) {
@@ -109,13 +118,14 @@ jobs:
             const rows = [];
             const re = /rowClicked\('(\d+)'\)">[\s\S]*?DivRecordID">([A-Z]\d+\/\d+)<\/td><td[^>]*>\s*([A-Z]{4})/g;
             let m; while ((m = re.exec(html))) rows.push({ rowID: m[1], id: m[2], icao: m[3] });
-            console.error('list rows:', rows.length);
-            if (!rows.length) { console.error('no rows parsed — aborting (keep last-good)'); return; }
+            // Dedup by NOTAM id up front so the publish threshold below compares
+            // like-for-like (detailOk counts unique NOTAMs).
+            const uniq = [...new Map(rows.map(r => [r.id, r])).values()];
+            console.error('list rows:', rows.length, '| unique:', uniq.length);
+            if (!uniq.length) { console.error('no rows parsed — aborting (keep last-good)'); return; }
 
-            const seen = new Set();
             let detailOk = 0, skipped = 0;
-            for (const row of rows) {
-              if (seen.has(row.id)) continue; seen.add(row.id);
+            for (const row of uniq) {
               let raw = '', start = '', end = '', text = '', traffic = '';
               try {
                 const d = await get(BASE + '/maiDetails.aspx?rowID=' + row.rowID + '&scrpos=0&mode=notam');
@@ -136,7 +146,11 @@ jobs:
                   end = c ? (/PERM/i.test(c[1]) ? 'PERM' : iso(c[1]))
                           : (vt ? `${vt[3]}-${vt[2]}-${vt[1]}T${vt[4]}:${vt[5]}:00Z` : '');
                   const e = raw.match(/\bE\)\s*([\s\S]*?)\s*(?:\bF\)\s|\bG\)\s|$)/);
-                  text = e ? e[1].trim().replace(/\)+\s*$/, '') : '';
+                  text = e ? e[1].trim() : '';
+                  // The item-E capture includes the NOTAM's wrapping ')' — strip
+                  // it only when parens are unbalanced (a lone trailing close),
+                  // so legitimate text like "(SEE AIP)" is preserved.
+                  if (text && (text.match(/\)/g) || []).length > (text.match(/\(/g) || []).length) text = text.replace(/\)\s*$/, '').trim();
                   // Q-line traffic field (3rd, after FIR + Q-code): I=IFR only,
                   // V=VFR, IV=both, K=checklist. This is a CVFR/LSA (VFR) planner
                   // — keep V/IV, drop IFR-only + checklists to cut the noise.
@@ -157,7 +171,7 @@ jobs:
             // Publish only if we actually got full NOTAM detail for a good share
             // of them (guards against a Radware block that lets the list through
             // but 403s the detail pages, which would publish text-less NOTAMs).
-            if (detailOk >= Math.max(1, rows.length * 0.5)) fetched = true;
+            if (detailOk >= Math.max(1, uniq.length * 0.5)) fetched = true;
             else console.error('too few detail pages succeeded — keep last-good');
           }
           await run().catch(e => console.error('fetch failed:', e.message));

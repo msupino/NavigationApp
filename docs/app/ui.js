@@ -1229,8 +1229,12 @@ function showRouteLibraryModal(focusSave) {
           savedAt: it.savedAt || new Date().toISOString(), data: it.data });
         added++;
       }
-      if (persistRouteLibrary(merged)) render();
-      if (typeof showToast === 'function') showToast(added + ' route(s) imported');
+      // Only claim success (render + toast) if the write actually happened — a
+      // corrupt library refuses the write, so don't show a false "imported".
+      if (persistRouteLibrary(merged)) {
+        render();
+        if (typeof showToast === 'function') showToast(added + ' route(s) imported');
+      }
     };
     reader.readAsText(f);
   };
@@ -2336,6 +2340,7 @@ if (windDepartSlider) {
   }
   let layer = null;
   let busy = false;
+  let refetchPending = false;   // an altitude change arrived mid-fetch → refetch after
   let store = null;     // { g, times, sp[k][], di[k][], baseIdx } — all 48 fetched hours
 
   function gridPoints() {
@@ -2438,6 +2443,9 @@ if (windDepartSlider) {
       if (!times.length) throw new Error('no data');
       store = { g, times, sp, di, baseIdx: nearestHourIndex(times) };
       if (timeSlider) { timeSlider.value = '0'; }
+      // The fetch is async — if the user turned the field off meanwhile, cache
+      // the data but don't add an orphan layer.
+      if (!cb.checked) { if (statusEl) { statusEl.classList.remove('windfield-loading'); statusEl.style.display = 'none'; } return; }
       buildLayer();
       applyTimeLabel();
       if (statusEl) { statusEl.classList.remove('windfield-loading'); statusEl.style.display = 'none'; }
@@ -2446,7 +2454,11 @@ if (windDepartSlider) {
       if (statusEl) { statusEl.classList.remove('windfield-loading'); statusEl.style.display = ''; statusEl.textContent = S.windFieldErr || 'Wind field fetch failed'; }
       cb.checked = false;
       showControls(false);
-    } finally { busy = false; }
+    } finally {
+      busy = false;
+      // A refetch requested during the fetch (e.g. altitude change) runs now.
+      if (refetchPending && cb.checked) { refetchPending = false; addLayer(); }
+    }
   }
 
   // Create (or recreate) the velocity layer from the current store + bearing.
@@ -2477,7 +2489,7 @@ if (windDepartSlider) {
 
   function removeLayer() {
     if (layer) { map.removeLayer(layer); layer = null; }
-    if (statusEl) statusEl.style.display = 'none';
+    if (statusEl) { statusEl.classList.remove('windfield-loading'); statusEl.style.display = 'none'; }
   }
 
   // leaflet-velocity draws in bearing-aware screen coords into a non-rotating
@@ -2553,7 +2565,9 @@ if (windDepartSlider) {
     altSlider.onchange = () => {
       try { localStorage.setItem(ALT_KEY, altSlider.value); } catch (e) { /* */ }
       applyAltLabel();
-      if (cb.checked && !busy) addLayer();
+      if (!cb.checked) return;
+      if (busy) { refetchPending = true; return; }   // apply the new altitude after the in-flight fetch
+      addLayer();
     };
   }
 
@@ -2630,10 +2644,11 @@ function refreshNotamListBtn() {
       lbl.classList.toggle('navtoggle-disabled', !have);
       lbl.title = have ? (S.tbShowNotamTitle || '') : (S.notamUnavailable || 'NOTAM data is currently unavailable.');
     }
-    if (!have && notamCb.checked) {        // was on but nothing to show → turn off
+    if (!have && notamCb.checked) {        // nothing to show → turn off in-memory
       notamCb.checked = false;
       window.showNotam = false;
-      try { localStorage.setItem(NOTAM_KEY, '0'); } catch (e) { /* */ }
+      // Don't persist '0' here — a transient empty feed must not wipe the user's
+      // saved 'on' preference; it re-enables when NOTAMs return.
     }
   }
   // The timeline slider only makes sense with the overlay on and data present.

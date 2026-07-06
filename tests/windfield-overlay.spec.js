@@ -258,3 +258,19 @@ test('a failed fetch hides the sliders and clears the toggle', async ({ page }) 
   await expect(page.locator('#windfield-cb')).not.toBeChecked();
   await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(0);
 });
+
+test('unchecking mid-fetch leaves no orphan wind layer', async ({ page }) => {
+  // Delay the grid so we can uncheck before it resolves.
+  await page.route(OM_RE, async r => {
+    await new Promise(s => setTimeout(s, 1000));
+    return r.fulfill({ status: 200, contentType: 'application/json', body: gridBody(r.request().url()) });
+  });
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
+  await page.locator('#windfield-cb').check();
+  await page.locator('#windfield-cb').uncheck();     // before the fetch resolves
+  await page.waitForTimeout(1500);                    // let the stale fetch finish
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(0);
+  await expect(page.locator('#windfield-cb')).not.toBeChecked();
+});
