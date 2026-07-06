@@ -77,11 +77,16 @@ jobs:
             if (pts.length >= 3) return { type: 'polygon', coords: pts };
             const rad = T.match(/(\d+(?:\.\d+)?)\s*NM\s*RADIUS|RADIUS\s*(?:OF\s+)?(\d+(?:\.\d+)?)\s*NM/);
             if (pts.length >= 1 && rad) return { type: 'circle', lat: pts[0][0], lng: pts[0][1], radiusNm: +(rad[1] || rad[2]) };
-            // Fallback: Q-line centre+radius (coarse), skipping FIR-wide (000/999).
+            // Fallback: Q-line centre+radius (coarse). The Q-line radius is the
+            // NOTAM's *coverage/influence* extent, which for FIR-wide or admin
+            // NOTAMs (GNSS-in-FIR, flight-plan/phone changes, VOR withdrawn) is
+            // huge (25–121 NM) and blankets the chart. Only draw a small local
+            // circle (<=12 NM); larger ones are list-only (real hazard areas
+            // carry explicit item-E coordinates handled above).
             const q = T.match(/\bQ\)[^\n]*?(\d{2})(\d{2})([NS])(\d{3})(\d{2})([EW])(\d{3})(?:\s|$)/);
             if (q) {
               const r = +q[7];
-              if (r > 0 && r < 999) {
+              if (r > 0 && r <= 12) {
                 const lat = +q[1] + +q[2] / 60, lng = +q[4] + +q[5] / 60;
                 return { type: 'circle', lat: q[3] === 'S' ? -lat : lat, lng: q[6] === 'W' ? -lng : lng, radiusNm: r };
               }
