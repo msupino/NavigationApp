@@ -636,7 +636,7 @@
     settingsEl = buildSettings();
 
     const row = el('div', 'assistant-input-row');
-    inputEl = el('textarea', 'assistant-input'); inputEl.rows = 1;
+    inputEl = el('textarea', 'assistant-input'); inputEl.rows = 2;
     inputEl.placeholder = t('assistantPlaceholder', 'Ask about NOTAMs, weather, or plan a route…');
     inputEl.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); submit(); } });
     sendBtn = el('button', 'assistant-send', t('assistantSend', 'Send')); sendBtn.type = 'button'; sendBtn.onclick = submit;
