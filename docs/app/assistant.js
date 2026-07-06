@@ -29,12 +29,22 @@
     'ALWAYS use the provided tools to get facts. NEVER invent or guess a NOTAM, a weather value, a frequency, or coordinates —',
     'if a tool returns nothing, say so plainly. Quote the real values the tools return.',
     'Waypoints are Israeli ICAO codes (LLxx), VFR reporting-point codes, or VOR idents; pass them to the tools as written.',
+    'For an airfield-to-airfield route, FIRST call list_route_templates: if a curated route connects the two',
+    'airfields (matching from/to in either direction), use apply_route_template so the route follows the published',
+    'CVFR corridor and its reporting points — do NOT draw a direct line. Only fall back to a direct set_route when no',
+    'template matches, and say so explicitly.',
     'Be concise. When you change the route, briefly say what you did.',
     'This is a PLANNING AID ONLY — not an operational briefing. Remind the user to verify against the official AIP,',
     'NOTAM office and a proper weather brief before flight.',
   ].join(' ');
 
   // --- data readiness -------------------------------------------------
+  async function ensureTemplates() {
+    if (typeof loadRouteTemplates === 'function' && (typeof routeTemplates === 'undefined' || routeTemplates == null)) {
+      try { await loadRouteTemplates(); } catch (e) { /* */ }
+    }
+    return (typeof routeTemplates !== 'undefined' && Array.isArray(routeTemplates)) ? routeTemplates : [];
+  }
   async function ensureData() {
     const jobs = [];
     if (typeof loadAirfields === 'function' && (typeof airfields === 'undefined' || airfields == null)) jobs.push(loadAirfields());
@@ -227,8 +237,48 @@
       },
     },
     {
+      name: 'list_route_templates', tier: 'read',
+      description: 'Curated CVFR route templates (published corridors). Each has from/to airfields and the full ordered waypoint list including the required VFR reporting points. Use this to find a real route between two airfields.',
+      parameters: { type: 'object', properties: {} },
+      run: async () => {
+        const list = await ensureTemplates();
+        return {
+          templates: list.map(x => ({
+            id: x.id, name: x.name,
+            from: x.waypoints[0], to: x.waypoints[x.waypoints.length - 1],
+            waypoints: x.waypoints, defaultSpeedKt: Number(x.defaultSpeed) || 90,
+          })),
+        };
+      },
+    },
+    {
+      name: 'apply_route_template', tier: 'route',
+      description: 'Build the route from a curated template (by id or name). Uses the corridor\'s reporting points. Applies immediately; user can Undo.',
+      parameters: { type: 'object', properties: { template: { type: 'string', description: 'template id or name' } }, required: ['template'] },
+      run: async (a) => {
+        const list = await ensureTemplates();
+        const key = String(a.template == null ? '' : a.template).trim().toLowerCase();
+        if (!key) return { error: 'need a template id or name' };
+        const tpl = list.find(x => x.id.toLowerCase() === key || (x.name || '').toLowerCase() === key) ||
+          list.find(x => (x.name || '').toLowerCase().includes(key));
+        if (!tpl) return { error: 'no template matching "' + a.template + '"', available: list.map(x => x.name) };
+        let route;
+        try { route = await routeFromTemplate(tpl, Number(tpl.defaultSpeed) || 90); }
+        catch (e) { return { error: 'unresolved waypoint in template: ' + ((e && e.message) || e) }; }
+        snapshotForUndo();
+        state.waypoints = route.waypoints;
+        state.legs = route.legs;
+        state.notes = route.notes || [];
+        state.commChangeSuppressions = Array.isArray(route.commChangeSuppressions) ? route.commChangeSuppressions.slice() : [];
+        if (typeof syncLegs === 'function') syncLegs();
+        if (typeof draw === 'function') draw();
+        toast(t('assistantEditedRoute', 'Assistant edited the route'));
+        return { ok: true, template: tpl.name, waypoints: route.waypoints.map(w => w.name) };
+      },
+    },
+    {
       name: 'set_route', tier: 'route',
-      description: 'Replace the planned route with these waypoints in order (each an ICAO / reporting point / VOR ident). Applies immediately; user can Undo.',
+      description: 'Replace the planned route with these waypoints in order (each an ICAO / reporting point / VOR ident). Use this only when no curated template fits. Applies immediately; user can Undo.',
       parameters: { type: 'object', properties: { points: { type: 'array', items: { type: 'string' }, description: 'ordered list, e.g. ["LLHZ","HADERA","LLIB"]' } }, required: ['points'] },
       run: async (a) => {
         await ensureData();

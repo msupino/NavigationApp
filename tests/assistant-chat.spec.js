@@ -92,6 +92,29 @@ test('reverse_route swaps start/destination and is Undo-able', async ({ page }) 
   expect(back).toBe(before);
 });
 
+test('route templates: list finds the corridor and apply builds it with its reporting points', async ({ page }) => {
+  await boot(page);
+  const list = await runTool(page, 'list_route_templates', {});
+  const m = list.templates.find(x => x.from === 'LLHZ' && x.to === 'LLHA');
+  expect(m).toBeTruthy();
+  expect(m.waypoints.length).toBeGreaterThan(2);      // a corridor, not a direct line
+  const ap = await runTool(page, 'apply_route_template', { template: m.name });
+  expect(ap.ok).toBe(true);
+  const wps = await page.evaluate(() => state.waypoints.map(w => w.name));
+  expect(wps[0]).toBe('LLHZ');
+  expect(wps[wps.length - 1]).toBe('LLHA');
+  expect(wps.length).toBe(m.waypoints.length);        // reporting points included
+  const afterUndo = await page.evaluate(() => { undo(); return state.waypoints.length; });
+  expect(afterUndo).toBe(0);                           // undo-able
+});
+
+test('apply_route_template reports available names for an unknown template', async ({ page }) => {
+  await boot(page);
+  const r = await runTool(page, 'apply_route_template', { template: 'no-such-route' });
+  expect(r.error).toMatch(/no template matching/i);
+  expect(Array.isArray(r.available)).toBe(true);
+});
+
 test('describe_route exposes per-leg detail (heading, distance, altitude, speed, freq)', async ({ page }) => {
   await boot(page);
   await runTool(page, 'set_route', { points: ['LLHZ', 'HADERA', 'LLIB'] });
