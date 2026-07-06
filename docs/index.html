@@ -120,7 +120,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=274">
+  <link rel="stylesheet" href="app/style.css?v=275">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -406,8 +406,6 @@
               <input type="checkbox" id="windfield-cb"> <span data-i18n="tbWindField"></span>
             </label>
             <div id="windfield-controls" hidden>
-              <button id="windfield-load" type="button" class="windfield-load-btn"
-                      data-i18n="tbWindFieldLoad" data-i18n-title="tbWindFieldLoadTitle"></button>
               <label class="navtoggle">
                 <span data-i18n="tbWindFieldAlt"></span>
                 <input type="range" id="windfield-alt" min="1000" max="5000" step="500" value="1500">
@@ -666,7 +664,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=274';
+      var v = '?v=275';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
