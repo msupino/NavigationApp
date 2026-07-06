@@ -5,7 +5,9 @@
 // outbound (confirm).
 const { test, expect } = require('./_setup');
 
-const NOTAM_RE = /notam-data\/notam\.json/;
+// Anchored to the raw.githubusercontent origin so it can't match a look-alike
+// host embedded elsewhere in a URL (CodeQL js/regex/missing-anchor).
+const NOTAM_RE = /^https:\/\/raw\.githubusercontent\.com\/.*\/notam-data\/notam\.json/;
 const NOTAM_DATA = {
   generatedAt: '2026-06-23T09:00:00Z',
   notams: [
