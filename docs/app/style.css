@@ -4148,3 +4148,77 @@ body.theme-light #tuning-panel summary {
   0%, 100% { opacity: 0.65; }
   50% { opacity: 1; }
 }
+
+/* --- AI assistant chat panel (assistant.js) ------------------------- */
+.assistant-fab {
+  position: fixed;
+  inset-block-end: 16px;
+  inset-inline-end: 16px;
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 204, 51, 0.55);
+  background: rgba(20, 18, 18, 0.92);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
+  z-index: 1200;
+}
+.assistant-fab.assistant-busy { animation: mag-loading-pulse 1.2s ease-in-out infinite; }
+.assistant-panel {
+  position: fixed;
+  inset-block-end: 74px;
+  inset-inline-end: 16px;
+  width: min(380px, calc(100vw - 24px));
+  max-height: min(70vh, 620px);
+  display: flex;
+  flex-direction: column;
+  background: rgba(24, 22, 22, 0.98);
+  color: #f2f2f2;
+  border: 1px solid rgba(255, 204, 51, 0.45);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  z-index: 1200;
+  overflow: hidden;
+}
+.assistant-panel.hidden, .assistant-settings.hidden { display: none; }
+.assistant-head {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.25);
+}
+.assistant-title { flex: 1; font-weight: 600; font-size: 14px; }
+.assistant-icon-btn {
+  background: none; border: none; color: #ddd; cursor: pointer;
+  font-size: 14px; padding: 2px 6px; border-radius: 6px;
+}
+.assistant-icon-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.assistant-log {
+  flex: 1; overflow-y: auto; padding: 10px;
+  display: flex; flex-direction: column; gap: 8px;
+  font-size: 13px; line-height: 1.4;
+}
+.assistant-msg { padding: 7px 10px; border-radius: 10px; max-width: 90%; white-space: pre-wrap; overflow-wrap: anywhere; }
+.assistant-user { align-self: flex-end; background: rgba(255, 204, 51, 0.16); border: 1px solid rgba(255, 204, 51, 0.35); }
+.assistant-assistant { align-self: flex-start; background: rgba(255, 255, 255, 0.07); }
+.assistant-activity { align-self: flex-start; font-size: 11px; opacity: 0.7; font-style: italic; padding: 2px 6px; }
+.assistant-error { align-self: stretch; background: rgba(220, 60, 60, 0.18); border: 1px solid rgba(220, 60, 60, 0.5); }
+.assistant-input-row { display: flex; gap: 6px; padding: 8px; border-top: 1px solid rgba(255, 255, 255, 0.12); }
+.assistant-input {
+  flex: 1; resize: none; min-height: 34px; max-height: 96px;
+  background: rgba(0, 0, 0, 0.3); color: #f2f2f2;
+  border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px;
+  padding: 7px 9px; font: inherit; font-size: 13px;
+}
+.assistant-send {
+  background: rgba(255, 204, 51, 0.85); color: #201c1c; font-weight: 600;
+  border: none; border-radius: 8px; padding: 0 12px; cursor: pointer; font-size: 13px;
+}
+.assistant-send:disabled { opacity: 0.5; cursor: default; }
+.assistant-settings { display: flex; flex-direction: column; gap: 6px; padding: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); background: rgba(0, 0, 0, 0.2); }
+.assistant-settings-h { font-weight: 600; font-size: 13px; }
+.assistant-field { background: rgba(0, 0, 0, 0.3); color: #f2f2f2; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 7px 9px; font: inherit; font-size: 13px; }
+.assistant-help { font-size: 12px; }
+.assistant-help a { color: #ffcc33; }
