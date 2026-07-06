@@ -1631,8 +1631,11 @@ function drawNavWaypoints() {
 // N/E/S/W ticks + centre dot) with an ident + frequency label. The selected
 // reference VOR is highlighted so it is obvious which one feeds the radial/
 // DME readouts. Gated by the "Show VOR stations" toggle.
-function drawVors() {
-  if (!showVorStations || !vors || !vors.length) return;
+// `force` draws the stations regardless of the "Show VOR stations" toggle —
+// used by the PNG export so the exported chart shows the stations whenever it
+// carries VOR info (plan-card Radial/DME columns) even with the toggle off.
+function drawVors(force) {
+  if ((!showVorStations && !force) || !vors || !vors.length) return;
   const r = tune('vorMarkerRadiusPx');
   const showLabels = map.getZoom() >= tune('vorLabelMinZoom');
   octx.save();

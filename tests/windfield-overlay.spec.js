@@ -127,77 +127,55 @@ test('opacity reset restores the default', async ({ page }) => {
   expect(parseFloat(o)).toBeCloseTo(parseFloat(def), 2);
 });
 
-test('wind field renders in a non-rotating pane so it works on a rotated map', async ({ page }) => {
+test('wind field renders in a non-rotating pane', async ({ page }) => {
   await boot(page);
   await loadWind(page);
   await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
-  // Rotate the map; the velocity canvas draws in bearing-aware screen coords,
-  // so its pane must stay un-transformed (a second transform would break it).
+  // The velocity canvas draws in bearing-aware screen coords, so its pane must
+  // stay un-transformed (a second transform would break the north-up render).
   const r = await page.evaluate(() => {
-    map.setBearing(45);
     const pane = map.getPane('windfield');
     const c = pane && pane.querySelector('canvas');
     return {
-      bearing: Math.round(map.getBearing()),
       paneTransform: getComputedStyle(pane).transform,        // must be 'none'
-      rotatePaneRotated: getComputedStyle(map.getPane('rotatePane')).transform !== 'none',
       canvasInWindfieldPane: !!c,
       canvasRendered: !!(c && c.width > 0 && c.height > 0),
     };
   });
-  expect(r.bearing).toBe(45);
-  expect(r.rotatePaneRotated).toBe(true);       // map really is rotated
   expect(r.paneTransform).toBe('none');         // wind-field pane is NOT rotated
   expect(r.canvasInWindfieldPane).toBe(true);
   expect(r.canvasRendered).toBe(true);
 });
 
-test('wind field survives a pan on a rotated map (does not go blank)', async ({ page }) => {
+test('a rotated map hides the wind field and shows a north-up note; it returns at 0°', async ({ page }) => {
   await boot(page);
   await loadWind(page);
-  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
-  // Count non-transparent pixels on the velocity canvas (particles drawn).
-  const pixels = () => page.evaluate(() => {
-    const c = document.querySelector('.leaflet-windfield-pane canvas');
-    if (!c || !c.width) return -1;
-    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-    let n = 0; for (let i = 3; i < d.length; i += 4) { if (d[i] !== 0) { n++; if (n > 30) break; } }
-    return n;
-  });
+  const canvas = page.locator('.leaflet-windfield-pane canvas');
+  await expect(canvas).toHaveCount(1, { timeout: 10000 });
+  // leaflet-velocity bakes a north-up screen field, so on a rotated map it can't
+  // be placed — the fallback removes the field and shows a note instead.
   await page.evaluate(() => map.setBearing(45));
-  await expect.poll(pixels, { timeout: 8000 }).toBeGreaterThan(0);   // rotated: drawn
-  // Pan the rotated map — the field must NOT vanish.
-  await page.evaluate(() => map.panBy([150, 90], { animate: false }));
-  await expect.poll(pixels, { timeout: 8000 }).toBeGreaterThan(0);   // still drawn after pan
+  await expect(canvas).toHaveCount(0);
+  const note = page.locator('#windfield-status');
+  await expect(note).toBeVisible();
+  await expect(note).toHaveText(/north-up/i);
+  // Back to north → the field returns and the note clears.
+  await page.evaluate(() => map.setBearing(0));
+  await expect(canvas).toHaveCount(1, { timeout: 10000 });
+  await expect(note).toBeHidden();
 });
 
-test('wind vectors rotate with the map bearing (flow tracks the chart)', async ({ page }) => {
-  await boot(page);   // fixture grid: uniform wind FROM 270° → blowing east
-  await page.evaluate(() => {
-    const orig = L.velocityLayer;
-    L.velocityLayer = function (o) { const inst = orig(o); window.__wf = inst; return inst; };
-  });
+test('a north-up pan keeps the wind field (no spurious removal)', async ({ page }) => {
+  await boot(page);
   await loadWind(page);
-  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(1, { timeout: 10000 });
-  await page.waitForFunction(() => window.__wf && window.__wf.options && window.__wf.options.data);
-  // North-up: wind blowing east → U ≈ +speed, V ≈ 0.
-  const b0 = await page.evaluate(() => {
-    map.setBearing(0);
-    const d = window.__wf.options.data;
-    return { u: d[0].data[0], v: d[1].data[0] };
-  });
-  expect(b0.u).toBeGreaterThan(5);
-  expect(Math.abs(b0.v)).toBeLessThan(1);
-  // Rotate 45°: the same wind rotates into the chart frame (U/V mix, V<0).
-  await page.evaluate(() => map.setBearing(45));
-  await page.waitForFunction(() => window.__wf.options.data[1].data[0] < -1);
-  const b45 = await page.evaluate(() => {
-    const d = window.__wf.options.data;
-    return { u: d[0].data[0], v: d[1].data[0] };
-  });
-  expect(b45.u).toBeGreaterThan(3);
-  expect(b45.v).toBeLessThan(-3);
-  expect(Math.abs(b45.u - b0.u * Math.SQRT1_2)).toBeLessThan(1.5);
+  const canvas = page.locator('.leaflet-windfield-pane canvas');
+  await expect(canvas).toHaveCount(1, { timeout: 10000 });
+  // bearing 0: pans are handled natively by Leaflet; the field must not be torn
+  // down (and no north-up note should appear).
+  await page.evaluate(() => map.panBy([150, 90], { animate: false }));
+  await page.waitForTimeout(200);   // let any moveend rAF settle
+  await expect(canvas).toHaveCount(1);
+  await expect(page.locator('#windfield-status')).toBeHidden();
 });
 
 test('wind-field toggle persists across reload', async ({ page }) => {
@@ -257,4 +235,49 @@ test('a failed fetch hides the sliders and clears the toggle', async ({ page }) 
   await expect(page.locator('#windfield-controls')).toBeHidden();
   await expect(page.locator('#windfield-cb')).not.toBeChecked();
   await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(0);
+});
+
+test('a refetch queued mid-fetch does not leak into a later re-enable', async ({ page }) => {
+  const ref = { n: 0 };
+  // Slow responses so we can act while a fetch is in flight (busy === true).
+  await page.route(OM_RE, async r => {
+    ref.n++;
+    await new Promise(s => setTimeout(s, 800));
+    return r.fulfill({ status: 200, contentType: 'application/json', body: gridBody(r.request().url()) });
+  });
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
+  const cb = page.locator('#windfield-cb');
+  await cb.check();                              // fetch #1 in flight
+  await expect.poll(() => ref.n).toBe(1);
+  // Altitude change while busy queues a refetch (refetchPending = true)…
+  const alt = page.locator('#windfield-alt');
+  await alt.fill('5000');
+  await alt.dispatchEvent('change');
+  // …then turn the field OFF before the fetch resolves. The queued refetch must
+  // be dropped, not leaked into the next enable.
+  await cb.uncheck();
+  await page.waitForTimeout(1100);              // fetch #1 settles; no leaked refetch
+  expect(ref.n).toBe(1);
+  // Re-enable → exactly one fresh fetch, not a double from a stale pending flag.
+  await cb.check();
+  await page.waitForTimeout(1100);
+  expect(ref.n).toBe(2);
+});
+
+test('unchecking mid-fetch leaves no orphan wind layer', async ({ page }) => {
+  // Delay the grid so we can uncheck before it resolves.
+  await page.route(OM_RE, async r => {
+    await new Promise(s => setTimeout(s, 1000));
+    return r.fulfill({ status: 200, contentType: 'application/json', body: gridBody(r.request().url()) });
+  });
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {} });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof L !== 'undefined' && typeof L.velocityLayer === 'function', null, { timeout: 20000 });
+  await page.locator('#windfield-cb').check();
+  await page.locator('#windfield-cb').uncheck();     // before the fetch resolves
+  await page.waitForTimeout(1500);                    // let the stale fetch finish
+  await expect(page.locator('.leaflet-windfield-pane canvas')).toHaveCount(0);
+  await expect(page.locator('#windfield-cb')).not.toBeChecked();
 });

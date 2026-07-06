@@ -198,4 +198,36 @@ test.describe('Edit-header Save / Load route buttons', () => {
     await page.locator('#clear').click();
     expect(await currentId(page)).toBeNull();
   });
+
+  test('deleting the tracked saved route clears its id so Save cannot overwrite a tombstone', async ({ page }) => {
+    await boot(page);
+    page.on('dialog', d => d.accept());
+    await setRoute(page, ['A', 'B']);
+    // Save through the menu → this becomes the tracked entry.
+    await page.locator('#tool-save-route').click();
+    const modal = page.locator('.route-library-modal');
+    await modal.locator('.route-library-name').fill('My Route');
+    await modal.getByRole('button', { name: 'Save current route' }).click();
+    await expect(modal.locator('.route-library-row')).toHaveCount(1);
+    expect(await currentId(page)).not.toBeNull();
+    // Delete that entry → the tracked id must clear (else a later header Save
+    // would overwrite the now-tombstoned entry).
+    await modal.locator('.route-library-del').first().click();
+    await expect(modal.locator('.route-library-row')).toHaveCount(0);
+    expect(await currentId(page)).toBeNull();
+  });
+
+  test('importing a file with no valid routes shows a toast and writes nothing', async ({ page }) => {
+    await boot(page);
+    await page.locator('#route-library').click();
+    const modal = page.locator('.route-library-modal');
+    await expect(modal).toBeVisible();
+    // A JSON array whose entries carry no route `data` → nothing to import.
+    await modal.locator('input[type="file"]').setInputFiles({
+      name: 'bad.json', mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify([{ name: 'no-data' }, { foo: 1 }])),
+    });
+    await expect(page.locator('.toast')).toContainText(/no valid routes/i);
+    expect(await libLen(page)).toBe(0);                 // nothing written
+  });
 });

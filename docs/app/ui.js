@@ -1229,8 +1229,16 @@ function showRouteLibraryModal(focusSave) {
           savedAt: it.savedAt || new Date().toISOString(), data: it.data });
         added++;
       }
-      if (persistRouteLibrary(merged)) render();
-      if (typeof showToast === 'function') showToast(added + ' route(s) imported');
+      if (!added) {   // file had no valid routes → nothing to write
+        if (typeof showToast === 'function') showToast(S.routeLibraryImportNone || 'No valid routes in that file');
+        return;
+      }
+      // Only claim success (render + toast) if the write actually happened — a
+      // corrupt library refuses the write, so don't show a false "imported".
+      if (persistRouteLibrary(merged)) {
+        render();
+        if (typeof showToast === 'function') showToast(added + ' route(s) imported');
+      }
     };
     reader.readAsText(f);
   };
@@ -1337,6 +1345,9 @@ function showRouteLibraryModal(focusSave) {
           ? { id: x.id, name: x.name, savedAt: new Date().toISOString(), deleted: true }
           : x);
         if (typeof hideTrackOverlay === 'function') hideTrackOverlay(entry.id);
+        // Deleting the currently-loaded route unbinds the header Save from the
+        // now-tombstoned id.
+        if (currentRouteLibraryId === entry.id) currentRouteLibraryId = null;
         if (persistRouteLibrary(all)) render();
       };
       if (isGps) {
@@ -2336,6 +2347,7 @@ if (windDepartSlider) {
   }
   let layer = null;
   let busy = false;
+  let refetchPending = false;   // an altitude change arrived mid-fetch → refetch after
   let store = null;     // { g, times, sp[k][], di[k][], baseIdx } — all 48 fetched hours
 
   function gridPoints() {
@@ -2438,15 +2450,25 @@ if (windDepartSlider) {
       if (!times.length) throw new Error('no data');
       store = { g, times, sp, di, baseIdx: nearestHourIndex(times) };
       if (timeSlider) { timeSlider.value = '0'; }
-      buildLayer();
-      applyTimeLabel();
+      // The fetch is async — if the user turned the field off meanwhile, cache
+      // the data but don't add an orphan layer.
+      if (!cb.checked) { if (statusEl) { statusEl.classList.remove('windfield-loading'); statusEl.style.display = 'none'; } return; }
       if (statusEl) { statusEl.classList.remove('windfield-loading'); statusEl.style.display = 'none'; }
+      applyTimeLabel();
+      applyRotationState();   // builds the field north-up, or shows the rotated-map note
     } catch (e) {
       // Fetch failed → unavailable: show the error, hide the sliders, untoggle.
       if (statusEl) { statusEl.classList.remove('windfield-loading'); statusEl.style.display = ''; statusEl.textContent = S.windFieldErr || 'Wind field fetch failed'; }
       cb.checked = false;
       showControls(false);
-    } finally { busy = false; }
+    } finally {
+      busy = false;
+      // A refetch requested during the fetch (e.g. altitude change) runs now.
+      // Always clear the flag (even if the field was turned off / the fetch
+      // failed) so it can't leak true into a later enable and double-fetch.
+      const pending = refetchPending; refetchPending = false;
+      if (pending && cb.checked) addLayer();
+    }
   }
 
   // Create (or recreate) the velocity layer from the current store + bearing.
@@ -2477,31 +2499,42 @@ if (windDepartSlider) {
 
   function removeLayer() {
     if (layer) { map.removeLayer(layer); layer = null; }
-    if (statusEl) statusEl.style.display = 'none';
+    refetchPending = false;
+    if (statusEl) { statusEl.classList.remove('windfield-loading'); statusEl.style.display = 'none'; }
   }
 
-  // leaflet-velocity draws in bearing-aware screen coords into a non-rotating
-  // pane. On a rotated map that works for a static view, but after a pan/zoom
-  // the library re-projects onto a stale canvas position and the field redraws
-  // EMPTY. Recreating the layer re-runs the field build cleanly (same as the
-  // initial render). North-up pans/zooms are handled natively by Leaflet, so
-  // only rebuild when the map is (or just was) rotated. 'rotate' fires
-  // continuously during a dial drag → coalesce to one rebuild per frame.
-  let lastFieldBearing = 0;
-  let rebuildPending = false;
-  function rebuildForView() {
-    if (!cb.checked || !store || busy) return;
-    const b = (map.getBearing ? map.getBearing() : 0) || 0;
-    if (b === 0 && lastFieldBearing === 0) return;   // north-up: native handling is fine
-    lastFieldBearing = b;
-    if (rebuildPending) return;
-    rebuildPending = true;
-    requestAnimationFrame(() => { rebuildPending = false; if (cb.checked && store) buildLayer(); });
+  // leaflet-velocity bakes its particle field into a north-up screen grid at
+  // build time, so on a rotated map (leaflet-rotate) it renders offset off the
+  // viewport — the field can't be re-placed for a non-zero bearing. Rather than
+  // show a broken field, only display it north-up: when the map is rotated
+  // (bearing != 0) hide the field and show a note; it reappears automatically at
+  // 0°. 'rotate' fires continuously during a dial drag → coalesce per frame.
+  const isRotated = () => ((map.getBearing ? map.getBearing() : 0) || 0) !== 0;
+  function applyRotationState() {
+    if (!cb.checked || !store) return;
+    if (isRotated()) {
+      if (layer) removeLayer();
+      if (statusEl) {
+        statusEl.classList.remove('windfield-loading');
+        statusEl.style.display = '';
+        statusEl.textContent = (window.S && S.windFieldNorthUpOnly) || 'Wind field shows north-up only — rotate the map to 0°';
+      }
+    } else if (!layer) {
+      buildLayer();
+      applyTimeLabel();
+      if (statusEl) { statusEl.textContent = ''; statusEl.style.display = 'none'; }
+    }
   }
-  map.on('moveend', rebuildForView);
-  map.on('zoomend', rebuildForView);
-  map.on('rotate', rebuildForView);
-  map.on('rotateend', rebuildForView);
+  let rotStatePending = false;
+  function onWindViewChange() {
+    if (busy || rotStatePending) return;   // mid-fetch: addLayer will settle state on completion
+    rotStatePending = true;
+    requestAnimationFrame(() => { rotStatePending = false; applyRotationState(); });
+  }
+  map.on('moveend', onWindViewChange);
+  map.on('zoomend', onWindViewChange);
+  map.on('rotate', onWindViewChange);
+  map.on('rotateend', onWindViewChange);
 
   // leaflet-velocity draws into a canvas in the overlay pane; set its element
   // opacity so the field can be dialled down against the chart base.
@@ -2553,7 +2586,9 @@ if (windDepartSlider) {
     altSlider.onchange = () => {
       try { localStorage.setItem(ALT_KEY, altSlider.value); } catch (e) { /* */ }
       applyAltLabel();
-      if (cb.checked && !busy) addLayer();
+      if (!cb.checked) return;
+      if (busy) { refetchPending = true; return; }   // apply the new altitude after the in-flight fetch
+      addLayer();
     };
   }
 
@@ -2620,20 +2655,28 @@ function refreshNotamListBtn() {
   const have = Array.isArray(notams) && notams.length;
   if (notamListBtn) notamListBtn.hidden = !have;
   // Gray out the NOTAM toggle when the feed has no data (source currently
-  // unavailable) — data-driven, so it re-enables automatically once NOTAMs
-  // return. Only act once a load has actually completed (notams !== null); a
-  // pending load leaves the toggle as-is.
+  // unavailable). Data-driven: every call re-evaluates, so when a non-empty
+  // feed is present the toggle is enabled again. (The feed is loaded once per
+  // session, so an empty-at-boot feed clears on the next reload — the saved
+  // preference is preserved below either way.) Only act once a load has
+  // completed (notams !== null); a pending load leaves the toggle as-is.
   if (notamCb && notams !== null) {
     const lbl = notamCb.closest('label');
     notamCb.disabled = !have;
+    // Re-check from the saved preference when the feed is present again.
+    if (have && !notamCb.checked) {
+      let pref = false; try { pref = localStorage.getItem(NOTAM_KEY) === '1'; } catch (e) { /* */ }
+      if (pref) { notamCb.checked = true; window.showNotam = true; }
+    }
     if (lbl) {
       lbl.classList.toggle('navtoggle-disabled', !have);
       lbl.title = have ? (S.tbShowNotamTitle || '') : (S.notamUnavailable || 'NOTAM data is currently unavailable.');
     }
-    if (!have && notamCb.checked) {        // was on but nothing to show → turn off
+    if (!have && notamCb.checked) {        // nothing to show → turn off in-memory
       notamCb.checked = false;
       window.showNotam = false;
-      try { localStorage.setItem(NOTAM_KEY, '0'); } catch (e) { /* */ }
+      // Don't persist '0' here — a transient empty feed must not wipe the user's
+      // saved 'on' preference; it re-enables when NOTAMs return.
     }
   }
   // The timeline slider only makes sense with the overlay on and data present.
