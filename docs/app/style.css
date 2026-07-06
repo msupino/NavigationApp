@@ -1348,6 +1348,9 @@ body.theme-light #aircraft-custom input {
    override stands out (#722 follow-up). */
 .wind-fetch-status { font-size: 11px; color: #9a948f; padding: 0 2px; min-height: 14px; }
 .windfield-load-btn { width: 100%; margin: 2px 0 4px; }
+/* A toggle whose data source is currently unavailable (e.g. NOTAM feed down). */
+.navtoggle-disabled { opacity: 0.45; cursor: not-allowed; }
+.navtoggle-disabled input { pointer-events: none; }
 .row input.is-default,
 .charts-alt-input.is-default,
 .charts-freq-input.is-default {

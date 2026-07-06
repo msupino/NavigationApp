@@ -788,6 +788,7 @@ window.S = Object.assign({
   tbWindFieldLoad: 'Load wind',
   tbWindFieldLoadTitle: 'Fetch the winds-aloft field (may take a few seconds)',
   windFieldPressLoad: 'Press "Load wind" to fetch the field',
+  notamUnavailable: 'NOTAM data is currently unavailable.',
   tbWindFieldAlt: 'Altitude',
   tbWindFieldOpacity: 'Field opacity',
   tbWindFieldOpacityReset: 'Reset opacity',

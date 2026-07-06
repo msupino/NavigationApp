@@ -2626,6 +2626,23 @@ const notamUpdatedEl = document.getElementById('notam-updated');
 function refreshNotamListBtn() {
   const have = Array.isArray(notams) && notams.length;
   if (notamListBtn) notamListBtn.hidden = !have;
+  // Gray out the NOTAM toggle when the feed has no data (source currently
+  // unavailable) — data-driven, so it re-enables automatically once NOTAMs
+  // return. Only act once a load has actually completed (notams !== null); a
+  // pending load leaves the toggle as-is.
+  if (notamCb && notams !== null) {
+    const lbl = notamCb.closest('label');
+    notamCb.disabled = !have;
+    if (lbl) {
+      lbl.classList.toggle('navtoggle-disabled', !have);
+      lbl.title = have ? (S.tbShowNotamTitle || '') : (S.notamUnavailable || 'NOTAM data is currently unavailable.');
+    }
+    if (!have && notamCb.checked) {        // was on but nothing to show → turn off
+      notamCb.checked = false;
+      window.showNotam = false;
+      try { localStorage.setItem(NOTAM_KEY, '0'); } catch (e) { /* */ }
+    }
+  }
   // The timeline slider only makes sense with the overlay on and data present.
   if (notamControls) notamControls.hidden = !(window.showNotam && have);
   // Feed freshness, shown in the panel (not just the list modal).
@@ -2852,8 +2869,9 @@ if (notamCb) {
     draw();
   };
   // Load on boot so the list button can reveal (and the overlay restore) even
-  // if the toggle is off — the JSON is small.
-  ensureNotams().then(() => { if (window.showNotam) draw(); });
+  // if the toggle is off — the JSON is small. refreshNotamListBtn() then grays
+  // the toggle if the feed came back empty (source unavailable).
+  ensureNotams().then(() => { refreshNotamListBtn(); if (window.showNotam) draw(); });
 }
 if (notamListBtn) notamListBtn.onclick = () => { ensureNotams().then(showNotamModal); };
 
