@@ -57,15 +57,14 @@ jobs:
           // --- geometry from the raw ICAO NOTAM ---
           // Q-line trailing field: DDMM[NS]DDDMM[EW]RRR (RRR = radius NM; 000/999 = FIR-wide → skip).
           // Otherwise item-E lists DDMMSS coordinates → polygon (>=3) or a single point + "x NM RADIUS".
-          const geomFromRaw = (raw) => {
+          const geomFromRaw = (raw, icao) => {
             const T = String(raw || '').toUpperCase();
             // Border-buffer NOTAMs ("FM LEBANON BOUNDARY TO 8KM") carry no usable
             // coordinates — leave them geomless so the app traces the national
             // border arc itself (buildNotamBorderAreas). A Q-line circle here
             // would suppress that and draw a wrong little circle.
             if (/\b(LEBANON|SYRIA|EGYPT|JORDAN)\b\s+BOUND\w*\s+TO\s+\d/.test(T)) return null;
-            // Prefer explicit item-E coordinates (precise) over the Q-line's
-            // coarse bounding circle.
+            // Explicit item-E coordinate polygon (precise) — for any NOTAM.
             const toks = T.match(/\d{6}[NS]\d{7}[EW]/g) || [];
             const pts = toks.map(tok => {
               const m = tok.match(/^(\d{2})(\d{2})(\d{2})([NS])(\d{3})(\d{2})(\d{2})([EW])$/);
@@ -75,6 +74,11 @@ jobs:
               return [m[4] === 'S' ? -lat : lat, m[8] === 'W' ? -lng : lng];
             }).filter(Boolean);
             if (pts.length >= 3) return { type: 'polygon', coords: pts };
+            // Circles are only meaningful for FIR-wide (LLLL) area NOTAMs.
+            // Airfield-specific NOTAMs (LLBG/LLHZ/…) are surfaced via their
+            // airfield marker + inspector, so don't scatter circles over the
+            // aerodrome — leave them geomless (list / airfield only).
+            if (icao !== 'LLLL') return null;
             const rad = T.match(/(\d+(?:\.\d+)?)\s*NM\s*RADIUS|RADIUS\s*(?:OF\s+)?(\d+(?:\.\d+)?)\s*NM/);
             if (pts.length >= 1 && rad) return { type: 'circle', lat: pts[0][0], lng: pts[0][1], radiusNm: +(rad[1] || rad[2]) };
             // Fallback: Q-line centre+radius (coarse). The Q-line radius is the
@@ -143,7 +147,7 @@ jobs:
               // Skip IFR-only and checklist NOTAMs (not relevant to VFR/LSA).
               // Unknown traffic ('') is kept — better shown than wrongly hidden.
               if (traffic === 'I' || traffic === 'K') { skipped++; await new Promise(s => setTimeout(s, 120)); continue; }
-              out.notams.push({ id: row.id, icao: row.icao, type: '', text: text || row.id, start, end, geom: geomFromRaw(raw) });
+              out.notams.push({ id: row.id, icao: row.icao, type: '', text: text || row.id, start, end, geom: geomFromRaw(raw, row.icao) });
               await new Promise(s => setTimeout(s, 120));   // gentle on the site
             }
             console.error('NOTAMs:', out.notams.length, '| detail OK:', detailOk,
