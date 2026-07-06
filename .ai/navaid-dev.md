@@ -542,6 +542,11 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.aircraft` — last-used aircraft profile JSON (fuel planner).
 - `navaid.profileVS` — vertical-profile climb/descent rate input for timing and
   TOC/TOD ramp distance.
+- `navaid.ai.key` — the user's own LLM API key for the AI assistant (BYOK;
+  `assistant.js`). Never leaves the browser except in the request to the
+  configured provider.
+- `navaid.ai.provider` — assistant LLM provider id (default `gemini`).
+- `navaid.ai.model` — assistant model id (default `gemini-2.5-flash`).
 - `navaid.routes` — saved-route library entries and tombstones. An entry
   may carry `kind: 'gps'` plus a raw `track[]` (the recorded GPS
   breadcrumb: `{lat,lng,t,alt?,acc?}`); loading applies the simplified

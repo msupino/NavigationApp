@@ -107,13 +107,21 @@
     return null;
   }
 
-  function snapshotForUndo() {
-    if (typeof commitRoute !== 'function' || typeof state === 'undefined') return;
-    commitRoute(JSON.stringify({
-      waypoints: state.waypoints, legs: state.legs, notes: state.notes,
-      commChangeSuppressions: state.commChangeSuppressions,
-      altPin: (typeof routeAltPrefix !== 'undefined' ? routeAltPrefix : undefined),
-    }));
+  // Route edits are Undo-able for free: draw() calls persist(), which records an
+  // undo snapshot synchronously on every state change (io.js). So a tool just
+  // mutates state and calls draw(); the standard Undo button reverts it.
+  // Full route REPLACEMENT: clear legs + comm-change suppressions first (as the
+  // app's own replacement paths do) so nothing from the previous route carries
+  // onto the new one when the leg counts happen to match, then rebuild + repaint.
+  function applyReplacementRoute(waypoints) {
+    state.waypoints = waypoints;
+    state.legs = [];
+    state.notes = state.notes || [];
+    state.commChangeSuppressions = [];
+    state.selected = null;
+    if (typeof syncLegs === 'function') syncLegs();
+    if (typeof draw === 'function') draw();
+    toast(t('assistantEditedRoute', 'Assistant edited the route'));
   }
 
   function r1(x) { return Math.round(x * 10) / 10; }
@@ -309,11 +317,13 @@
         let route;
         try { route = await routeFromTemplate(tpl, Number(tpl.defaultSpeed) || 90); }
         catch (e) { return { error: 'unresolved waypoint in template: ' + ((e && e.message) || e) }; }
-        snapshotForUndo();
+        // Template supplies its own legs (with charted altitudes) — set them
+        // explicitly, then syncLegs() reconciles count. draw()→persist() records undo.
         state.waypoints = route.waypoints;
         state.legs = route.legs;
         state.notes = route.notes || [];
         state.commChangeSuppressions = Array.isArray(route.commChangeSuppressions) ? route.commChangeSuppressions.slice() : [];
+        state.selected = null;
         if (typeof syncLegs === 'function') syncLegs();
         if (typeof draw === 'function') draw();
         toast(t('assistantEditedRoute', 'Assistant edited the route'));
@@ -330,18 +340,14 @@
         if (!segs.length) return { error: 'CVFR leg network unavailable' };
         const F = String(a.from == null ? '' : a.from).trim().toUpperCase();
         const To = String(a.to == null ? '' : a.to).trim().toUpperCase();
+        if (F === To) return { error: 'from and to are the same point' };
         const res = corridorPath(segs, F, To);
         if (res.missing) return { error: res.missing + ' is not on the CVFR leg network' };
-        if (!res.path) return { error: 'no CVFR corridor found between ' + F + ' and ' + To };
+        if (!res.path || res.path.length < 2) return { error: 'no CVFR corridor found between ' + F + ' and ' + To };
         const resolved = [], bad = [];
         for (const nm of res.path) { const p = resolvePoint(nm); p ? resolved.push(p) : bad.push(nm); }
         if (bad.length) return { error: 'could not resolve corridor points: ' + bad.join(', ') };
-        snapshotForUndo();
-        state.waypoints = resolved.map(p => ({ lat: p.lat, lng: p.lng, name: p.name }));
-        state.notes = state.notes || [];
-        if (typeof syncLegs === 'function') syncLegs();
-        if (typeof draw === 'function') draw();
-        toast(t('assistantEditedRoute', 'Assistant edited the route'));
+        applyReplacementRoute(resolved.map(p => ({ lat: p.lat, lng: p.lng, name: p.name })));
         return { ok: true, corridor: res.path, note: 'Routed over candidate CVFR leg data — verify altitudes against the official chart.' };
       },
     },
@@ -356,12 +362,7 @@
         const resolved = [], bad = [];
         for (const nm of names) { const p = resolvePoint(nm); p ? resolved.push(p) : bad.push(nm); }
         if (bad.length) return { error: 'could not resolve: ' + bad.join(', '), resolved: resolved.map(p => p.name) };
-        snapshotForUndo();
-        state.waypoints = resolved.map(p => ({ lat: p.lat, lng: p.lng, name: p.name }));
-        state.notes = state.notes || [];
-        if (typeof syncLegs === 'function') syncLegs();
-        if (typeof draw === 'function') draw();
-        toast(t('assistantEditedRoute', 'Assistant edited the route'));
+        applyReplacementRoute(resolved.map(p => ({ lat: p.lat, lng: p.lng, name: p.name })));
         return { ok: true, waypoints: resolved.map(p => p.name) };
       },
     },
@@ -372,11 +373,7 @@
       run: async () => {
         const wps = (typeof state !== 'undefined' && state.waypoints) || [];
         if (wps.length < 2) return { error: 'no route to reverse' };
-        snapshotForUndo();
-        state.waypoints = wps.slice().reverse();
-        if (typeof syncLegs === 'function') syncLegs();
-        if (typeof draw === 'function') draw();
-        toast(t('assistantEditedRoute', 'Assistant edited the route'));
+        applyReplacementRoute(wps.slice().reverse());
         return { ok: true, waypoints: state.waypoints.map(w => w.name) };
       },
     },
@@ -388,8 +385,11 @@
         const legs = (typeof state !== 'undefined' && state.legs) || [];
         const i = (a.leg | 0) - 1;
         if (i < 0 || i >= legs.length) return { error: 'leg ' + a.leg + ' out of range (route has ' + legs.length + ' legs)' };
-        snapshotForUndo();
-        if (Number.isFinite(a.altitudeFt)) legs[i].inboundAltitude = a.altitudeFt;
+        if (Number.isFinite(a.altitudeFt)) {
+          legs[i].inboundAltitude = a.altitudeFt;
+          // Pin as manual so the CVFR dataset reconciler doesn't overwrite it.
+          if (typeof markLegAltitudeManual === 'function') markLegAltitudeManual(i);
+        }
         if (Number.isFinite(a.speedKt)) legs[i].flightSpeed = a.speedKt;
         if (typeof draw === 'function') draw();
         toast(t('assistantEditedRoute', 'Assistant edited the route'));
@@ -424,12 +424,18 @@
       tools: [{ functionDeclarations: TOOLS.map(x => ({ name: x.name, description: x.description, parameters: x.parameters })) }],
     };
     const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' +
-      encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key),
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      encodeURIComponent(model) + ':generateContent',
+      { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify(body) });
     if (!r.ok) { const txt = await r.text().catch(() => ''); throw new Error('Gemini ' + r.status + ': ' + txt.slice(0, 200)); }
     const j = await r.json();
+    // A prompt-level block has no candidates at all.
+    if (j.promptFeedback && j.promptFeedback.blockReason) throw new Error('Gemini blocked the request (' + j.promptFeedback.blockReason + ')');
     const cand = j.candidates && j.candidates[0];
-    return (cand && cand.content && cand.content.parts) || [{ text: '(no response)' }];
+    const parts = cand && cand.content && cand.content.parts;
+    // A candidate with no parts is a block / truncation (SAFETY, MAX_TOKENS, …) —
+    // surface it instead of faking an empty answer.
+    if (!parts || !parts.length) throw new Error('Gemini returned no content' + (cand && cand.finishReason ? ' (' + cand.finishReason + ')' : ''));
+    return parts;
   }
   let providerSend = geminiSend;   // tests override via NS.assistant._setProvider
 
@@ -459,7 +465,10 @@
           let result;
           try { result = tool ? await tool.run(call.args || {}) : { error: 'unknown tool ' + call.name }; }
           catch (e) { result = { error: String((e && e.message) || e) }; }
-          responses.push({ functionResponse: { name: call.name, response: (result && typeof result === 'object') ? result : { result } } });
+          // Gemini requires a non-empty functionResponse object; JSON.stringify
+          // drops undefined values, so coerce to a serializable shape.
+          const response = (result && typeof result === 'object') ? result : { result: result == null ? null : result };
+          responses.push({ functionResponse: { name: call.name, response } });
         }
         messages.push({ role: 'user', parts: responses });
       }
@@ -471,7 +480,11 @@
     } finally { busy = false; setBusy(false); }
   }
 
-  function resetChat() { messages = []; if (logEl) logEl.innerHTML = ''; }
+  function resetChat() {
+    if (busy) return;   // don't wipe history mid-turn — it would corrupt the in-flight request
+    messages = [];
+    if (logEl) logEl.innerHTML = '';
+  }
 
   // --- UI (built in JS; only the script tag lives in index.html) ------
   let fab, panel, logEl, inputEl, sendBtn, settingsEl, built = false;
@@ -583,6 +596,7 @@
     reset: resetChat,
     _tools: TOOLS,
     _resolvePoint: resolvePoint,
+    _corridorPath: corridorPath,
     _setProvider: (fn) => { providerSend = fn || geminiSend; },
     _setConfirm: (fn) => { confirmAction = fn || confirmAction; },
     _messages: () => messages,

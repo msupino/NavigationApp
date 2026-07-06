@@ -162,6 +162,87 @@ test('read tools: find_point and get_airfield_info resolve real data', async ({ 
   expect(af.icao).toBe('LLHZ');
 });
 
+test('geminiSend parses a real Gemini response and drives the loop (fetch mocked)', async ({ page }) => {
+  await boot(page);
+  let calls = 0;
+  await page.route(/generativelanguage\.googleapis\.com/, async route => {
+    calls++;
+    const body = calls === 1
+      ? { candidates: [{ content: { parts: [{ functionCall: { name: 'describe_route', args: {} } }] } }] }
+      : { candidates: [{ content: { parts: [{ text: 'You have no route planned.' }] } }] };
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+  });
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.key', 'test-key'); });
+  await page.evaluate(() => NavAid.assistant.send('what is my route?'));
+  await expect(page.locator('.assistant-assistant')).toContainText('no route planned');
+  expect(calls).toBe(2);   // tool call, then final text — the real geminiSend parsed both
+});
+
+test('geminiSend surfaces a blocked / empty candidate as an error', async ({ page }) => {
+  await boot(page);
+  await page.route(/generativelanguage\.googleapis\.com/, route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ candidates: [{ finishReason: 'SAFETY' }] }) }));
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.key', 'test-key'); });
+  await page.evaluate(() => NavAid.assistant.send('hi'));
+  await expect(page.locator('.assistant-error')).toContainText(/no content|SAFETY/i);
+});
+
+test('get_weather parses Open-Meteo current conditions (fetch mocked)', async ({ page }) => {
+  await boot(page);
+  await page.route(/api\.open-meteo\.com/, route => route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ current: { temperature_2m: 20, wind_speed_10m: 12, wind_direction_10m: 270, time: '2026-07-06T12:00' } }),
+  }));
+  const w = await runTool(page, 'get_weather', { point: 'LLHZ' });
+  expect(w.surfaceWindKt).toBe(12);
+  expect(w.surfaceWindDir).toBe(270);
+  expect(w.tempC).toBe(20);
+});
+
+test('corridorPath picks the shortest distance and respects one-way segments', async ({ page }) => {
+  await boot(page);
+  const res = await page.evaluate(() => {
+    const segs = [
+      { from: 'A', to: 'B', distanceNm: 1 }, { from: 'B', to: 'C', distanceNm: 1 },
+      { from: 'A', to: 'C', distanceNm: 5 },                 // longer direct
+      { from: 'C', to: 'D', distanceNm: 1, oneWay: true },   // one-way C→D only
+    ];
+    const cp = NavAid.assistant._corridorPath;
+    return { short: cp(segs, 'A', 'C').path, fwd: cp(segs, 'C', 'D').path, back: cp(segs, 'D', 'C').path };
+  });
+  expect(res.short).toEqual(['A', 'B', 'C']);   // 2 NM via B beats the 5 NM direct
+  expect(res.fwd).toEqual(['C', 'D']);          // one-way allowed forward
+  expect(res.back).toBeNull();                  // one-way blocked backward
+});
+
+test('plan_corridor rejects from === to', async ({ page }) => {
+  await boot(page);
+  const r = await runTool(page, 'plan_corridor', { from: 'LLHZ', to: 'LLHZ' });
+  expect(r.error).toMatch(/same point/i);
+});
+
+test('set_leg altitude survives the CVFR altitude reconciler (marked manual)', async ({ page }) => {
+  await boot(page);
+  await runTool(page, 'set_route', { points: ['LLHZ', 'HADERA', 'LLIB'] });
+  await runTool(page, 'set_leg', { leg: 2, altitudeFt: 4500 });
+  // Force the reconciler + a redraw/persist cycle.
+  const alt = await page.evaluate(() => {
+    if (typeof applyLegAltitudesToRoute === 'function') applyLegAltitudesToRoute();
+    draw();
+    return state.legs[1].inboundAltitude;
+  });
+  expect(alt).toBe(4500);   // markLegAltitudeManual kept it from being overwritten
+});
+
+test('replacing a route does not carry stale leg data onto the new route', async ({ page }) => {
+  await boot(page);
+  await runTool(page, 'set_route', { points: ['LLHZ', 'LLIB'] });   // 1 leg
+  await runTool(page, 'set_leg', { leg: 1, speedKt: 150 });
+  await runTool(page, 'set_route', { points: ['LLHZ', 'LLHA'] });   // different 1-leg route
+  const spd = await page.evaluate(() => state.legs[0].flightSpeed);
+  expect(spd).not.toBe(150);   // legs were reset, not carried over
+});
+
 test('get_notams filters by airfield ICAO from the live feed', async ({ page }) => {
   await boot(page);
   const res = await runTool(page, 'get_notams', { icao: 'LLBG' });
