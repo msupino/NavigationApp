@@ -2402,11 +2402,16 @@ if (windDepartSlider) {
 
   async function addLayer() {
     if (typeof L === 'undefined' || typeof L.velocityLayer !== 'function') {
-      if (statusEl) statusEl.textContent = S.windFieldErr || 'Wind field unavailable';
+      // Library missing → wind field unavailable: show the error, hide the
+      // sliders (nothing to control), and clear the toggle.
+      if (statusEl) { statusEl.classList.remove('windfield-loading'); statusEl.style.display = ''; statusEl.textContent = S.windFieldErr || 'Wind field unavailable'; }
+      cb.checked = false;
+      showControls(false);
       return;
     }
     busy = true;
-    if (statusEl) { statusEl.style.display = ''; statusEl.textContent = S.windFieldLoading || 'Loading wind field…'; }
+    // Loading banner while the (slow) grid request is in flight.
+    if (statusEl) { statusEl.style.display = ''; statusEl.classList.add('windfield-loading'); statusEl.textContent = S.windFieldLoading || 'Loading wind field…'; }
     try {
       const g = gridPoints();
       const lv = level();
@@ -2435,10 +2440,12 @@ if (windDepartSlider) {
       if (timeSlider) { timeSlider.value = '0'; }
       buildLayer();
       applyTimeLabel();
-      if (statusEl) statusEl.style.display = 'none';
+      if (statusEl) { statusEl.classList.remove('windfield-loading'); statusEl.style.display = 'none'; }
     } catch (e) {
-      if (statusEl) { statusEl.style.display = ''; statusEl.textContent = S.windFieldErr || 'Wind field fetch failed'; }
+      // Fetch failed → unavailable: show the error, hide the sliders, untoggle.
+      if (statusEl) { statusEl.classList.remove('windfield-loading'); statusEl.style.display = ''; statusEl.textContent = S.windFieldErr || 'Wind field fetch failed'; }
       cb.checked = false;
+      showControls(false);
     } finally { busy = false; }
   }
 
@@ -2542,7 +2549,7 @@ if (windDepartSlider) {
     applyAltLabel();
     altSlider.oninput = applyAltLabel;
     // Changing altitude means a different pressure level → refetch (on release,
-    // not every tick) so the field shows winds at the selected altitude.
+    // not every tick) when the field is on.
     altSlider.onchange = () => {
       try { localStorage.setItem(ALT_KEY, altSlider.value); } catch (e) { /* */ }
       applyAltLabel();
@@ -2555,6 +2562,8 @@ if (windDepartSlider) {
   cb.onchange = () => {
     try { localStorage.setItem(KEY, cb.checked ? '1' : '0'); } catch (e) { /* */ }
     showControls(cb.checked);
+    // Auto-fetch on enable; addLayer() shows a "Loading wind…" banner while the
+    // (slow) grid request is in flight.
     if (cb.checked) { if (!busy) addLayer(); } else removeLayer();
   };
   if (cb.checked && !busy) addLayer();
@@ -2610,6 +2619,23 @@ const notamUpdatedEl = document.getElementById('notam-updated');
 function refreshNotamListBtn() {
   const have = Array.isArray(notams) && notams.length;
   if (notamListBtn) notamListBtn.hidden = !have;
+  // Gray out the NOTAM toggle when the feed has no data (source currently
+  // unavailable) — data-driven, so it re-enables automatically once NOTAMs
+  // return. Only act once a load has actually completed (notams !== null); a
+  // pending load leaves the toggle as-is.
+  if (notamCb && notams !== null) {
+    const lbl = notamCb.closest('label');
+    notamCb.disabled = !have;
+    if (lbl) {
+      lbl.classList.toggle('navtoggle-disabled', !have);
+      lbl.title = have ? (S.tbShowNotamTitle || '') : (S.notamUnavailable || 'NOTAM data is currently unavailable.');
+    }
+    if (!have && notamCb.checked) {        // was on but nothing to show → turn off
+      notamCb.checked = false;
+      window.showNotam = false;
+      try { localStorage.setItem(NOTAM_KEY, '0'); } catch (e) { /* */ }
+    }
+  }
   // The timeline slider only makes sense with the overlay on and data present.
   if (notamControls) notamControls.hidden = !(window.showNotam && have);
   // Feed freshness, shown in the panel (not just the list modal).
@@ -2836,8 +2862,9 @@ if (notamCb) {
     draw();
   };
   // Load on boot so the list button can reveal (and the overlay restore) even
-  // if the toggle is off — the JSON is small.
-  ensureNotams().then(() => { if (window.showNotam) draw(); });
+  // if the toggle is off — the JSON is small. refreshNotamListBtn() then grays
+  // the toggle if the feed came back empty (source unavailable).
+  ensureNotams().then(() => { refreshNotamListBtn(); if (window.showNotam) draw(); });
 }
 if (notamListBtn) notamListBtn.onclick = () => { ensureNotams().then(showNotamModal); };
 

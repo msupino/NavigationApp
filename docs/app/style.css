@@ -1347,6 +1347,20 @@ body.theme-light #aircraft-custom input {
 /* Resettable fields still holding their default read muted, so a typed
    override stands out (#722 follow-up). */
 .wind-fetch-status { font-size: 11px; color: #9a948f; padding: 0 2px; min-height: 14px; }
+/* Loading banner while the wind-field grid is being fetched. */
+.wind-fetch-status.windfield-loading {
+  color: #e8e8e8;
+  background: rgba(29, 111, 224, 0.18);
+  border: 1px solid #1d6fe0;
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin: 2px 0 4px;
+  font-weight: 600;
+}
+body.theme-light .wind-fetch-status.windfield-loading { color: #1f252c; }
+/* A toggle whose data source is currently unavailable (e.g. NOTAM feed down). */
+.navtoggle-disabled { opacity: 0.45; cursor: not-allowed; }
+.navtoggle-disabled input { pointer-events: none; }
 .row input.is-default,
 .charts-alt-input.is-default,
 .charts-freq-input.is-default {

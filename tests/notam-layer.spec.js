@@ -434,3 +434,13 @@ test('expired NOTAMs are filtered out; modal shows the active count', async ({ p
   await expect(modal.locator('h3')).toContainText('2');         // active count in title
   await expect(modal).not.toContainText('X2/26');
 });
+
+test('empty NOTAM feed grays out and disables the Show NOTAMs toggle', async ({ page }) => {
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [] });
+  // Boot loads the (empty) feed, then refreshNotamListBtn disables the toggle.
+  const cb = page.locator('#notam-cb');
+  await expect(cb).toBeDisabled();
+  const label = page.locator('label').filter({ has: cb });
+  await expect(label).toHaveClass(/navtoggle-disabled/);
+  await expect(page.locator('#notam-list-btn')).toBeHidden();
+});
