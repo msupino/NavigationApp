@@ -444,3 +444,11 @@ test('empty NOTAM feed grays out and disables the Show NOTAMs toggle', async ({ 
   await expect(label).toHaveClass(/navtoggle-disabled/);
   await expect(page.locator('#notam-list-btn')).toBeHidden();
 });
+
+test('empty feed unchecks the NOTAM toggle but preserves the saved on-preference', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.showNotam', '1'); } catch (e) {} });
+  await boot(page, { generatedAt: '2026-06-23T09:00:00Z', notams: [] });
+  await expect(page.locator('#notam-cb')).not.toBeChecked();      // turned off in-memory
+  const pref = await page.evaluate(() => localStorage.getItem('navaid.showNotam'));
+  expect(pref).toBe('1');                                          // preference NOT wiped
+});
