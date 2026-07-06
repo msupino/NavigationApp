@@ -37,7 +37,7 @@ test('the FAB is present and opening the panel shows settings when no key is set
   await expect(page.locator('.assistant-panel')).toBeVisible();
   // No key → settings pane is revealed with the get-a-key link.
   await expect(page.locator('.assistant-settings')).toBeVisible();
-  await expect(page.locator('.assistant-settings a')).toHaveAttribute('href', /aistudio\.google\.com/);
+  await expect(page.locator('.assistant-settings a')).toHaveAttribute('href', /^https:\/\/aistudio\.google\.com\//);
 });
 
 test('agent loop: model tool-call runs the tool and the result is fed back', async ({ page }) => {
