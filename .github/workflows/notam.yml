@@ -67,7 +67,7 @@ jobs:
             // coordinates — leave them geomless so the app traces the national
             // border arc itself (buildNotamBorderAreas). A Q-line circle here
             // would suppress that and draw a wrong little circle.
-            if (/\b(LEBANON|SYRIA|EGYPT|JORDAN)\b\s+BOUND\w*\s+TO\s+\d/.test(T)) return null;
+            if (/\b(LEBANON|SYRIA|EGYPT|JORDAN)\b/.test(T) && /\bBORD\w*|\bBOUND\w*/.test(T)) return null;
             // Explicit item-E coordinate polygon (precise) — for any NOTAM.
             const toks = T.match(/\d{6}[NS]\d{7}[EW]/g) || [];
             const pts = toks.map(tok => {
@@ -126,7 +126,7 @@ jobs:
 
             let detailOk = 0, skipped = 0;
             for (const row of uniq) {
-              let raw = '', start = '', end = '', text = '', traffic = '';
+              let raw = '', start = '', end = '', text = '', traffic = '', type = '';
               try {
                 const d = await get(BASE + '/maiDetails.aspx?rowID=' + row.rowID + '&scrpos=0&mode=notam');
                 if (d.status === 200 && !/Block ID|Error 100/.test(d.text) && /NOTAM NO:/.test(d.text)) {
@@ -145,23 +145,32 @@ jobs:
                   start = b ? iso(b[1]) : (vf ? `${vf[3]}-${vf[2]}-${vf[1]}T${vf[4]}:${vf[5]}:00Z` : '');
                   end = c ? (/PERM/i.test(c[1]) ? 'PERM' : iso(c[1]))
                           : (vt ? `${vt[3]}-${vt[2]}-${vt[1]}T${vt[4]}:${vt[5]}:00Z` : '');
-                  const e = raw.match(/\bE\)\s*([\s\S]*?)\s*(?:\bF\)\s|\bG\)\s|$)/);
+                  // Item-E up to the next real ICAO field. Anchor F)/G) to a
+                  // limit token so a stray 'F)'/'G)' inside the prose doesn't
+                  // truncate the text.
+                  const e = raw.match(/\bE\)\s*([\s\S]*?)\s*(?:\bF\)\s*(?:GND|SFC|FL|UNL|AMSL|AGL|\d)|\bG\)\s*(?:GND|SFC|FL|UNL|AMSL|\d)|$)/);
                   text = e ? e[1].trim() : '';
                   // The item-E capture includes the NOTAM's wrapping ')' — strip
                   // it only when parens are unbalanced (a lone trailing close),
                   // so legitimate text like "(SEE AIP)" is preserved.
                   if (text && (text.match(/\)/g) || []).length > (text.match(/\(/g) || []).length) text = text.replace(/\)\s*$/, '').trim();
-                  // Q-line traffic field (3rd, after FIR + Q-code): I=IFR only,
-                  // V=VFR, IV=both, K=checklist. This is a CVFR/LSA (VFR) planner
-                  // — keep V/IV, drop IFR-only + checklists to cut the noise.
-                  const ql = raw.match(/\bQ\)\s*([A-Z]{4}[\s\S]*?)\s*\bA\)/);
-                  traffic = ql ? (ql[1].split('/')[2] || '').trim().toUpperCase() : '';
+                  // Q-line: '<FIR>/Q<code>/<traffic>/...'. Match the traffic field
+                  // directly (I=IFR, V=VFR, IV=both, K=checklist) so a missing
+                  // item-A can't blank it (which would fail the filter open). Also
+                  // grab the 4-char Q-code (subject/condition) for decodeNotam.
+                  const tm = raw.match(/\bQ\)\s*[A-Z]{4}\/Q[A-Z]{4}\/([IVK]+)\b/);
+                  traffic = tm ? tm[1].toUpperCase() : '';
+                  const qc = raw.match(/\bQ\)\s*[A-Z]{4}\/Q([A-Z]{4})\b/);
+                  type = qc ? qc[1] : '';
                 }
               } catch (e) { /* skip this NOTAM's detail */ }
+              // Detail failed to parse → don't publish a text-less placeholder
+              // (would show a NOTAM whose text is just its id).
+              if (!raw) { await new Promise(s => setTimeout(s, 120)); continue; }
               // Skip IFR-only and checklist NOTAMs (not relevant to VFR/LSA).
               // Unknown traffic ('') is kept — better shown than wrongly hidden.
               if (traffic === 'I' || traffic === 'K') { skipped++; await new Promise(s => setTimeout(s, 120)); continue; }
-              out.notams.push({ id: row.id, icao: row.icao, type: '', text: text || row.id, start, end, geom: geomFromRaw(raw, row.icao) });
+              out.notams.push({ id: row.id, icao: row.icao, type, text: text || row.id, start, end, geom: geomFromRaw(raw, row.icao) });
               await new Promise(s => setTimeout(s, 120));   // gentle on the site
             }
             console.error('NOTAMs:', out.notams.length, '| detail OK:', detailOk,
