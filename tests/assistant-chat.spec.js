@@ -30,9 +30,55 @@ async function boot(page) {
 const runTool = (page, name, args) => page.evaluate(([n, a]) =>
   NavAid.assistant._tools.find(t => t.name === n).run(a), [name, args]);
 
+test('the FAB docks in the bottom-right control column and hides no control', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const fab = document.querySelector('.assistant-fab');
+    const docked = !!fab.closest('.leaflet-bottom.leaflet-right');
+    const R = e => { const b = e.getBoundingClientRect(); return { l: b.left, r: b.right, t: b.top, b: b.bottom }; };
+    const overlap = (a, b) => !(a.r <= b.l || a.l >= b.r || a.b <= b.t || a.t >= b.b);
+    const zoom = document.querySelector('.leaflet-control-zoom');
+    const coord = document.querySelector('#coord-readout');
+    return {
+      docked,
+      overlapZoom: zoom ? overlap(R(fab), R(zoom)) : false,
+      overlapCoord: coord ? overlap(R(fab), R(coord)) : false,
+    };
+  });
+  expect(r.docked).toBe(true);          // in the Leaflet control stack, not floating over the map
+  expect(r.overlapZoom).toBe(false);    // doesn't cover the zoom control
+  expect(r.overlapCoord).toBe(false);   // doesn't cover the coordinate readout
+});
+
+test('the chat panel can be dragged by its header and the position persists', async ({ page }) => {
+  await boot(page);
+  const moved = await page.evaluate(() => {
+    NavAid.assistant.open();
+    const panel = document.querySelector('.assistant-panel');
+    const head = document.querySelector('.assistant-head');
+    const b = panel.getBoundingClientRect();
+    const hb = head.getBoundingClientRect();
+    const sx = hb.left + 40, sy = hb.top + 8;
+    const pe = (type, x, y) => head.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1, clientX: x, clientY: y }));
+    pe('pointerdown', sx, sy); pe('pointermove', sx + 60, sy + 120); pe('pointerup', sx + 60, sy + 120);
+    const a = panel.getBoundingClientRect();
+    return { movedY: Math.round(a.top - b.top), saved: localStorage.getItem('navaid.ai.panelPos') };
+  });
+  expect(moved.movedY).toBeGreaterThan(80);   // dragged down ~120px
+  expect(moved.saved).toBeTruthy();           // position persisted
+  // Reopen (fresh) → restores the saved position.
+  const restored = await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('navaid.ai.panelPos'));
+    NavAid.assistant.close(); NavAid.assistant.open();
+    const r = document.querySelector('.assistant-panel').getBoundingClientRect();
+    return { savedY: saved.y, topY: Math.round(r.top) };
+  });
+  expect(Math.abs(restored.topY - restored.savedY)).toBeLessThanOrEqual(2);
+});
+
 test('the FAB is present and opening the panel shows settings when no key is set', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => { try { localStorage.removeItem('navaid.ai.key'); } catch (e) {} });
+  await page.evaluate(() => { try { localStorage.removeItem('navaid.ai.key.gemini'); } catch (e) {} });
   await page.locator('.assistant-fab').click();
   await expect(page.locator('.assistant-panel')).toBeVisible();
   // No key → settings pane is revealed with the get-a-key link.
@@ -67,9 +113,41 @@ test('set_route builds the route and is Undo-able', async ({ page }) => {
   const r = await runTool(page, 'set_route', { points: ['LLHZ', 'LLIB'] });
   expect(r.ok).toBe(true);
   const built = await page.evaluate(() => (state.waypoints || []).map(w => w.name));
-  expect(built.length).toBe(2);
+  expect(built.length).toBeGreaterThanOrEqual(2);   // may expand via the corridor
+  expect(built[0]).toBe('LLHZ');
+  expect(built[built.length - 1]).toBe('LLIB');
   const afterUndo = await page.evaluate(() => { undo(); return (state.waypoints || []).length; });
   expect(afterUndo).toBe(0);                  // undo restored the empty route
+});
+
+test('set_route expands an airfield pair through the CVFR corridor (no fake direct leg)', async ({ page }) => {
+  await boot(page);
+  const r = await runTool(page, 'set_route', { points: ['LLHZ', 'LLHA'] });
+  expect(r.ok).toBe(true);
+  const wps = await page.evaluate(() => state.waypoints.map(w => w.name));
+  expect(wps[0]).toBe('LLHZ');
+  expect(wps[wps.length - 1]).toBe('LLHA');
+  expect(wps.length).toBeGreaterThan(2);   // reporting points inserted, not a 1-leg direct line
+  expect(r.note).toMatch(/corridor/i);
+});
+
+test('the chat panel is resizable and the size persists across reopen', async ({ page }) => {
+  await boot(page);
+  const saved = await page.evaluate(() => {
+    NavAid.assistant.open();
+    const p = document.querySelector('.assistant-panel');
+    p.style.width = '300px'; p.style.height = '420px';
+    p.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));   // resize-grabber release
+    return localStorage.getItem('navaid.ai.panelSize');
+  });
+  expect(saved).toBeTruthy();
+  const size = await page.evaluate(() => {
+    NavAid.assistant.close(); NavAid.assistant.open();
+    const p = document.querySelector('.assistant-panel');
+    return { w: Math.round(p.offsetWidth), h: Math.round(p.offsetHeight) };
+  });
+  expect(size.w).toBe(300);
+  expect(size.h).toBe(420);
 });
 
 test('set_route reports unresolved waypoints instead of mutating', async ({ page }) => {
@@ -201,7 +279,14 @@ test('plan_corridor rejects a point not on the leg network', async ({ page }) =>
 
 test('describe_route exposes per-leg detail (heading, distance, altitude, speed, freq)', async ({ page }) => {
   await boot(page);
-  await runTool(page, 'set_route', { points: ['LLHZ', 'HADERA', 'LLIB'] });
+  // Build the exact 3-waypoint route directly (set_route would corridor-expand it).
+  await page.evaluate(async () => {
+    if (typeof loadAirfields === 'function') await loadAirfields();
+    if (typeof loadNavWaypoints === 'function') await loadNavWaypoints();
+    const r = NavAid.assistant._resolvePoint;
+    state.waypoints = ['LLHZ', 'HADERA', 'LLIB'].map(n => { const p = r(n); return { lat: p.lat, lng: p.lng, name: p.name }; });
+    state.legs = []; syncLegs(); draw();
+  });
   await runTool(page, 'set_leg', { leg: 2, altitudeFt: 3500, speedKt: 110 });
   const d = await runTool(page, 'describe_route', {});
   expect(d.legCount).toBe(2);
@@ -237,7 +322,7 @@ test('geminiSend parses a real Gemini response and drives the loop (fetch mocked
       : { candidates: [{ content: { parts: [{ text: 'You have no route planned.' }] } }] };
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
-  await page.evaluate(() => { localStorage.setItem('navaid.ai.key', 'test-key'); });
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.key.gemini', 'test-key'); });
   await page.evaluate(() => NavAid.assistant.send('what is my route?'));
   await expect(page.locator('.assistant-assistant')).toContainText('no route planned');
   expect(calls).toBe(2);   // tool call, then final text — the real geminiSend parsed both
@@ -247,9 +332,88 @@ test('geminiSend surfaces a blocked / empty candidate as an error', async ({ pag
   await boot(page);
   await page.route(/^https:\/\/generativelanguage\.googleapis\.com\//, route =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ candidates: [{ finishReason: 'SAFETY' }] }) }));
-  await page.evaluate(() => { localStorage.setItem('navaid.ai.key', 'test-key'); });
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.key.gemini', 'test-key'); });
   await page.evaluate(() => NavAid.assistant.send('hi'));
   await expect(page.locator('.assistant-error')).toContainText(/no content|SAFETY/i);
+});
+
+test('Anthropic (Claude) adapter: converts the loop and parses tool_use (fetch mocked)', async ({ page }) => {
+  await boot(page);
+  let calls = 0, ver = null, sawToolSchema = false, sawToolResult = false;
+  await page.route(/^https:\/\/api\.anthropic\.com\//, async route => {
+    calls++;
+    const req = route.request();
+    ver = req.headers()['anthropic-version'];
+    const body = JSON.parse(req.postData() || '{}');
+    if (body.tools && body.tools[0] && body.tools[0].input_schema) sawToolSchema = true;
+    if (JSON.stringify(body.messages || []).includes('tool_result')) sawToolResult = true;
+    const resp = calls === 1
+      ? { content: [{ type: 'tool_use', id: 'tu_1', name: 'describe_route', input: {} }], stop_reason: 'tool_use' }
+      : { content: [{ type: 'text', text: 'No route planned.' }], stop_reason: 'end_turn' };
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(resp) });
+  });
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.provider', 'anthropic'); localStorage.setItem('navaid.ai.key.anthropic', 'k'); });
+  await page.evaluate(() => NavAid.assistant.send('my route?'));
+  await expect(page.locator('.assistant-assistant')).toContainText('No route planned');
+  expect(calls).toBe(2);            // tool_use round-trip then text
+  expect(ver).toBe('2023-06-01');   // correct Anthropic version header
+  expect(sawToolSchema).toBe(true); // tools sent as input_schema
+  expect(sawToolResult).toBe(true); // functionResponse converted to a tool_result block
+});
+
+test('OpenRouter adapter: converts the loop, hits its default base, parses tool_calls (fetch mocked)', async ({ page }) => {
+  await boot(page);
+  let calls = 0, auth = null, sawFnTools = false, sawToolRole = false;
+  await page.route(/^https:\/\/openrouter\.ai\/api\/v1\//, async route => {
+    calls++;
+    const req = route.request();
+    auth = req.headers()['authorization'];
+    const body = JSON.parse(req.postData() || '{}');
+    if (body.tools && body.tools[0] && body.tools[0].type === 'function') sawFnTools = true;
+    if ((body.messages || []).some(m => m.role === 'tool')) sawToolRole = true;
+    const resp = calls === 1
+      ? { choices: [{ message: { role: 'assistant', content: null, tool_calls: [{ id: 'c1', type: 'function', function: { name: 'describe_route', arguments: '{}' } }] } }] }
+      : { choices: [{ message: { role: 'assistant', content: 'No route.' } }] };
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(resp) });
+  });
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.provider', 'openrouter'); localStorage.setItem('navaid.ai.key.openrouter', 'k'); });
+  await page.evaluate(() => NavAid.assistant.send('my route?'));
+  await expect(page.locator('.assistant-assistant')).toContainText('No route');
+  expect(calls).toBe(2);              // hit openrouter.ai/api/v1 (provider default base)
+  expect(auth).toBe('Bearer k');
+  expect(sawFnTools).toBe(true);
+  expect(sawToolRole).toBe(true);
+});
+
+test('DeepSeek adapter: uses api.deepseek.com and a proxy base URL override', async ({ page }) => {
+  await boot(page);
+  let hitDefault = false, hitProxy = false;
+  const reply = () => ({ choices: [{ message: { role: 'assistant', content: 'ok' } }] });
+  await page.route(/^https:\/\/api\.deepseek\.com\//, route => { hitDefault = true; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(reply()) }); });
+  await page.route(/^https:\/\/my-proxy\.test\//, route => { hitProxy = true; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(reply()) }); });
+  // Default base.
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.provider', 'deepseek'); localStorage.setItem('navaid.ai.key.deepseek', 'k'); localStorage.removeItem('navaid.ai.baseUrl'); });
+  await page.evaluate(() => NavAid.assistant.send('hi'));
+  await expect.poll(() => hitDefault).toBe(true);
+  // Proxy override.
+  await page.evaluate(() => { localStorage.setItem('navaid.ai.baseUrl', 'https://my-proxy.test/v1'); NavAid.assistant.reset(); });
+  await page.evaluate(() => NavAid.assistant.send('hi again'));
+  await expect.poll(() => hitProxy).toBe(true);
+});
+
+test('settings offer Gemini, Claude, OpenRouter and DeepSeek; DeepSeek shows the CORS note', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => NavAid.assistant.open());
+  await page.evaluate(() => document.querySelector('.assistant-settings').classList.remove('hidden'));
+  const sel = page.locator('.assistant-settings select.assistant-field');
+  await expect(sel.locator('option')).toHaveCount(4);
+  await sel.selectOption('deepseek');
+  await expect(page.locator('.assistant-note')).toBeVisible();
+  await expect(page.locator('.assistant-note')).toContainText(/CORS|proxy/i);
+  await sel.selectOption('openrouter');
+  await expect(page.locator('.assistant-note')).toBeHidden();   // OpenRouter works browser-direct
+  await sel.selectOption('gemini');
+  await expect(page.locator('.assistant-note')).toBeHidden();
 });
 
 test('get_weather parses Open-Meteo current conditions (fetch mocked)', async ({ page }) => {
@@ -349,7 +513,7 @@ test('save_route (outbound tier) is gated by a confirm', async ({ page }) => {
 
 test('sending with no API key surfaces an error and opens settings', async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => { try { localStorage.removeItem('navaid.ai.key'); } catch (e) {} });
+  await page.evaluate(() => { try { localStorage.removeItem('navaid.ai.key.gemini'); } catch (e) {} });
   // Do NOT stub the provider → the real Gemini path throws no-key before any fetch.
   await page.evaluate(() => NavAid.assistant.send('hello'));
   await expect(page.locator('.assistant-error')).toContainText(/API key/i);

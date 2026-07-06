@@ -542,11 +542,15 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.aircraft` — last-used aircraft profile JSON (fuel planner).
 - `navaid.profileVS` — vertical-profile climb/descent rate input for timing and
   TOC/TOD ramp distance.
-- `navaid.ai.key` — the user's own LLM API key for the AI assistant (BYOK;
-  `assistant.js`). Never leaves the browser except in the request to the
-  configured provider.
-- `navaid.ai.provider` — assistant LLM provider id (default `gemini`).
-- `navaid.ai.model` — assistant model id (default `gemini-2.5-flash`).
+- `navaid.ai.provider` — active AI-assistant LLM provider id (`gemini` |
+  `anthropic` | `openrouter` | `deepseek`; default `gemini`; `assistant.js`).
+- `navaid.ai.key.<provider>` — the user's own API key per provider (BYOK).
+  Never leaves the browser except in the request to that provider.
+- `navaid.ai.model.<provider>` — model id per provider (defaults:
+  `gemini-2.5-flash` / `claude-sonnet-5` / `openai/gpt-4o-mini` /
+  `deepseek-chat`).
+- `navaid.ai.baseUrl` — base-URL override for the OpenAI-compatible providers
+  (OpenRouter / DeepSeek), e.g. to route through a CORS proxy.
 - `navaid.routes` — saved-route library entries and tombstones. An entry
   may carry `kind: 'gps'` plus a raw `track[]` (the recorded GPS
   breadcrumb: `{lat,lng,t,alt?,acc?}`); loading applies the simplified

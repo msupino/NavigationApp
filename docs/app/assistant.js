@@ -13,15 +13,19 @@
 // an operational briefing.
 (function () {
   const NS = (window.NavAid = window.NavAid || {});
-  const KEY = 'navaid.ai.key', PROV = 'navaid.ai.provider', MODEL = 'navaid.ai.model';
+  const PROV = 'navaid.ai.provider';                   // active provider id
+  const BASEURL = 'navaid.ai.baseUrl';                 // OpenAI-compatible base URL override
   const DEFAULT_PROVIDER = 'gemini';
-  const DEFAULT_MODEL = 'gemini-2.5-flash';   // free-tier, function-calling capable
+  // key/model are stored PER provider so switching keeps each provider's setup.
+  const keyKey = p => 'navaid.ai.key.' + p;
+  const modelKey = p => 'navaid.ai.model.' + p;
 
   const S = window.S || {};
   const t = (k, fb) => (S && S[k]) || fb;
 
   function ls(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function setLs(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) { /* */ } }
+  function activeProvider() { const p = ls(PROV); return PROVIDERS[p] ? p : DEFAULT_PROVIDER; }
 
   const SYSTEM = [
     'You are the NavAid flight-planning assistant for CVFR / LSA VFR flying in the Israel FIR (LLLL).',
@@ -361,17 +365,37 @@
     },
     {
       name: 'set_route', tier: 'route',
-      description: 'Replace the planned route with these waypoints in order (each an ICAO / reporting point / VOR ident). Use this only when no curated template or CVFR corridor fits. Applies immediately; user can Undo.',
+      description: 'Replace the planned route with these waypoints in order (each an ICAO / reporting point / VOR ident). Consecutive points that are NOT directly connected on the CVFR leg network are auto-expanded via the published corridor (reporting points inserted) — so the route never contains a made-up direct leg. Applies immediately; user can Undo.',
       parameters: { type: 'object', properties: { points: { type: 'array', items: { type: 'string' }, description: 'ordered list, e.g. ["LLHZ","HADERA","LLIB"]' } }, required: ['points'] },
       run: async (a) => {
         await ensureData();
-        const names = Array.isArray(a.points) ? a.points : [];
+        const names = Array.isArray(a.points) ? a.points.map(n => String(n == null ? '' : n).trim().toUpperCase()).filter(Boolean) : [];
         if (names.length < 2) return { error: 'need at least two waypoints' };
-        const resolved = [], bad = [];
-        for (const nm of names) { const p = resolvePoint(nm); p ? resolved.push(p) : bad.push(nm); }
-        if (bad.length) return { error: 'could not resolve: ' + bad.join(', '), resolved: resolved.map(p => p.name) };
-        applyReplacementRoute(resolved.map(p => ({ lat: p.lat, lng: p.lng, name: p.name })));
-        return { ok: true, waypoints: resolved.map(p => p.name) };
+        // Every listed point must resolve to real coordinates first.
+        const bad = names.filter(n => !resolvePoint(n));
+        if (bad.length) return { error: 'could not resolve: ' + bad.join(', ') };
+        // Expand each consecutive pair through the CVFR leg network so we never
+        // emit a straight-line leg that isn't a published route. If a pair has
+        // no network path, keep the direct segment but report it as a gap.
+        const segs = await segmentsData();
+        const chain = [names[0]];
+        const gaps = [];
+        let inserted = false;
+        for (let i = 1; i < names.length; i++) {
+          const from = names[i - 1], to = names[i];
+          const res = segs.length ? corridorPath(segs, from, to) : { path: null };
+          if (res.path && res.path.length >= 2) {
+            for (let k = 1; k < res.path.length; k++) chain.push(res.path[k]);
+            if (res.path.length > 2) inserted = true;
+          } else { chain.push(to); gaps.push(from + '→' + to); }
+        }
+        const wps = [];
+        for (const nm of chain) { const p = resolvePoint(nm); if (p) wps.push({ lat: p.lat, lng: p.lng, name: p.name }); }
+        applyReplacementRoute(wps);
+        const out = { ok: true, waypoints: wps.map(w => w.name) };
+        if (inserted) out.note = 'Expanded via the CVFR corridor (reporting points inserted) — candidate leg data, verify altitudes.';
+        if (gaps.length) out.directGaps = gaps;   // pairs with no known CVFR leg — direct segment (may not be a real route)
+        return out;
       },
     },
     {
@@ -426,30 +450,132 @@
   let confirmAction = (msg) => (typeof confirm === 'function') ? confirm(msg) : true;
   function toast(msg) { if (typeof showToast === 'function') showToast(msg); }
 
-  // --- provider (Gemini by default; swappable for tests) --------------
+  // --- providers (BYOK, provider-agnostic) ----------------------------
+  // The conversation history is kept in a neutral Gemini-style "parts" shape
+  // ({text} / {functionCall:{name,args}} / {functionResponse:{name,response}});
+  // each adapter translates that (and the tool schema) to/from its own API and
+  // returns a normalised parts[] array. Gemini, Anthropic and OpenRouter support
+  // direct browser (BYOK) calls; DeepSeek may block browser CORS, so it can take
+  // a proxy baseUrl override.
+  function toolDefs() { return TOOLS.map(x => ({ name: x.name, description: x.description, parameters: x.parameters })); }
+  function keyOrThrow() { const k = ls(keyKey(activeProvider())); if (!k) throw new Error('no-key'); return k; }
+  function modelFor(p) { return ls(modelKey(p)) || PROVIDERS[p].model; }
+
   async function geminiSend(messages) {
-    const key = ls(KEY), model = ls(MODEL) || DEFAULT_MODEL;
-    if (!key) throw new Error('no-key');
+    const key = keyOrThrow(), model = modelFor('gemini');
     const body = {
       systemInstruction: { parts: [{ text: SYSTEM }] },
       contents: messages,
-      tools: [{ functionDeclarations: TOOLS.map(x => ({ name: x.name, description: x.description, parameters: x.parameters })) }],
+      tools: [{ functionDeclarations: toolDefs() }],
     };
     const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' +
       encodeURIComponent(model) + ':generateContent',
       { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify(body) });
     if (!r.ok) { const txt = await r.text().catch(() => ''); throw new Error('Gemini ' + r.status + ': ' + txt.slice(0, 200)); }
     const j = await r.json();
-    // A prompt-level block has no candidates at all.
     if (j.promptFeedback && j.promptFeedback.blockReason) throw new Error('Gemini blocked the request (' + j.promptFeedback.blockReason + ')');
     const cand = j.candidates && j.candidates[0];
     const parts = cand && cand.content && cand.content.parts;
-    // A candidate with no parts is a block / truncation (SAFETY, MAX_TOKENS, …) —
-    // surface it instead of faking an empty answer.
     if (!parts || !parts.length) throw new Error('Gemini returned no content' + (cand && cand.finishReason ? ' (' + cand.finishReason + ')' : ''));
     return parts;
   }
-  let providerSend = geminiSend;   // tests override via NS.assistant._setProvider
+
+  // Convert neutral history → OpenAI chat messages (unique tool_call ids link
+  // an assistant turn's calls to the following tool results, in order).
+  function toOpenAI(messages) {
+    const out = [{ role: 'system', content: SYSTEM }];
+    let cid = 0, lastIds = [];
+    for (const m of messages) {
+      if (m.role === 'model') {
+        const text = m.parts.filter(p => p.text).map(p => p.text).join('');
+        const calls = m.parts.filter(p => p.functionCall).map(p => p.functionCall);
+        lastIds = calls.map(() => 'call_' + (cid++));
+        const msg = { role: 'assistant', content: text || null };
+        if (calls.length) msg.tool_calls = calls.map((c, i) => ({ id: lastIds[i], type: 'function', function: { name: c.name, arguments: JSON.stringify(c.args || {}) } }));
+        out.push(msg);
+      } else {
+        const frs = m.parts.filter(p => p.functionResponse);
+        if (frs.length) frs.forEach((p, i) => out.push({ role: 'tool', tool_call_id: lastIds[i] || ('call_' + i), content: JSON.stringify(p.functionResponse.response) }));
+        else out.push({ role: 'user', content: m.parts.map(p => p.text || '').join('') });
+      }
+    }
+    return out;
+  }
+  // Shared adapter for OpenAI-compatible chat APIs (DeepSeek, OpenRouter, or any
+  // OpenAI-style endpoint). Base URL comes from the provider (or a user override
+  // for a proxy). DeepSeek and OpenRouter both speak this format.
+  async function openAiCompatSend(messages) {
+    const p = activeProvider();
+    const key = keyOrThrow(), model = modelFor(p);
+    const base = (ls(BASEURL) || PROVIDERS[p].base).replace(/\/+$/, '');
+    const body = {
+      model, messages: toOpenAI(messages),
+      tools: TOOLS.map(x => ({ type: 'function', function: { name: x.name, description: x.description, parameters: x.parameters } })),
+      tool_choice: 'auto',
+    };
+    const r = await fetch(base + '/chat/completions',
+      { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) });
+    if (!r.ok) { const txt = await r.text().catch(() => ''); throw new Error(PROVIDERS[p].label + ' ' + r.status + ': ' + txt.slice(0, 200)); }
+    const j = await r.json();
+    const msg = j.choices && j.choices[0] && j.choices[0].message;
+    const parts = [];
+    if (msg && msg.content) parts.push({ text: msg.content });
+    for (const tc of ((msg && msg.tool_calls) || [])) {
+      let args = {}; try { args = JSON.parse(tc.function.arguments || '{}'); } catch (e) { /* */ }
+      parts.push({ functionCall: { name: tc.function.name, args } });
+    }
+    if (!parts.length) throw new Error(PROVIDERS[p].label + ' returned no content');
+    return parts;
+  }
+
+  // Convert neutral history → Anthropic messages (tool_use ids link to tool_result).
+  function toAnthropic(messages) {
+    const out = [];
+    let cid = 0, lastIds = [];
+    for (const m of messages) {
+      if (m.role === 'model') {
+        const blocks = [];
+        const text = m.parts.filter(p => p.text).map(p => p.text).join('');
+        if (text) blocks.push({ type: 'text', text });
+        const calls = m.parts.filter(p => p.functionCall).map(p => p.functionCall);
+        lastIds = calls.map(() => 'tool_' + (cid++));
+        calls.forEach((c, i) => blocks.push({ type: 'tool_use', id: lastIds[i], name: c.name, input: c.args || {} }));
+        out.push({ role: 'assistant', content: blocks });
+      } else {
+        const frs = m.parts.filter(p => p.functionResponse);
+        if (frs.length) out.push({ role: 'user', content: frs.map((p, i) => ({ type: 'tool_result', tool_use_id: lastIds[i] || ('tool_' + i), content: JSON.stringify(p.functionResponse.response) })) });
+        else out.push({ role: 'user', content: m.parts.map(p => p.text || '').join('') });
+      }
+    }
+    return out;
+  }
+  async function anthropicSend(messages) {
+    const key = keyOrThrow(), model = modelFor('anthropic');
+    const body = {
+      model, max_tokens: 1024, system: SYSTEM, messages: toAnthropic(messages),
+      tools: TOOLS.map(x => ({ name: x.name, description: x.description, input_schema: x.parameters })),
+    };
+    const r = await fetch('https://api.anthropic.com/v1/messages',
+      { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body: JSON.stringify(body) });
+    if (!r.ok) { const txt = await r.text().catch(() => ''); throw new Error('Claude ' + r.status + ': ' + txt.slice(0, 200)); }
+    const j = await r.json();
+    const parts = [];
+    for (const b of (j.content || [])) {
+      if (b.type === 'text') parts.push({ text: b.text });
+      else if (b.type === 'tool_use') parts.push({ functionCall: { name: b.name, args: b.input || {} } });
+    }
+    if (!parts.length) throw new Error('Claude returned no content' + (j.stop_reason ? ' (' + j.stop_reason + ')' : ''));
+    return parts;
+  }
+
+  const PROVIDERS = {
+    gemini: { label: 'Google Gemini', model: 'gemini-2.5-flash', keyUrl: 'https://aistudio.google.com/apikey', send: geminiSend },
+    anthropic: { label: 'Anthropic (Claude)', model: 'claude-sonnet-5', keyUrl: 'https://console.anthropic.com/settings/keys', send: anthropicSend },
+    openrouter: { label: 'OpenRouter', model: 'openai/gpt-4o-mini', keyUrl: 'https://openrouter.ai/keys', send: openAiCompatSend, base: 'https://openrouter.ai/api/v1', openaiCompat: true },
+    deepseek: { label: 'DeepSeek', model: 'deepseek-chat', keyUrl: 'https://platform.deepseek.com/api_keys', send: openAiCompatSend, base: 'https://api.deepseek.com', openaiCompat: true, browserBlocked: true },
+  };
+  async function dispatchSend(messages) { return PROVIDERS[activeProvider()].send(messages); }
+  let providerSend = dispatchSend;   // tests override via NS.assistant._setProvider
 
   // --- agent loop -----------------------------------------------------
   let messages = [];   // Gemini "contents" history
@@ -507,6 +633,58 @@
 
   function el(tag, cls, txt) { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
 
+  // --- draggable + resizable panel (persisted like the inspector / clock) ---
+  const PANELPOS = 'navaid.ai.panelPos';
+  const PANELSIZE = 'navaid.ai.panelSize';
+  let panelDrag = null;
+  function restorePanelSize() {
+    let s = null; try { s = JSON.parse(ls(PANELSIZE) || 'null'); } catch (e) { /* */ }
+    if (s && s.w > 0 && s.h > 0) {
+      panel.style.width = Math.min(s.w, window.innerWidth - 8) + 'px';
+      panel.style.height = Math.min(s.h, window.innerHeight - 8) + 'px';
+    }
+  }
+  function savePanelSize() {
+    if (panel.classList.contains('hidden')) return;
+    setLs(PANELSIZE, JSON.stringify({ w: Math.round(panel.offsetWidth), h: Math.round(panel.offsetHeight) }));
+  }
+  function clampPanel(x, y) {
+    const w = panel.offsetWidth || 380, h = panel.offsetHeight || 200;
+    const maxX = Math.max(0, window.innerWidth - w), maxY = Math.max(0, window.innerHeight - h);
+    return { x: Math.min(Math.max(0, x), maxX), y: Math.min(Math.max(0, y), maxY) };
+  }
+  function placePanel(x, y) {
+    const c = clampPanel(x, y);
+    // Switch from the corner-anchored default to absolute left/top.
+    panel.style.insetInlineEnd = 'auto'; panel.style.insetBlockEnd = 'auto';
+    panel.style.left = c.x + 'px'; panel.style.top = c.y + 'px';
+  }
+  function restorePanelPos() {
+    let p = null; try { p = JSON.parse(ls(PANELPOS) || 'null'); } catch (e) { /* */ }
+    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) placePanel(p.x, p.y);
+  }
+  function wirePanelDrag(handle) {
+    handle.addEventListener('pointerdown', (ev) => {
+      if (ev.target.closest('.assistant-icon-btn')) return;   // buttons aren't drag handles
+      const r = panel.getBoundingClientRect();
+      panelDrag = { dx: ev.clientX - r.left, dy: ev.clientY - r.top };
+      try { handle.setPointerCapture(ev.pointerId); } catch (e) { /* */ }
+      ev.preventDefault();
+    });
+    handle.addEventListener('pointermove', (ev) => {
+      if (panelDrag) placePanel(ev.clientX - panelDrag.dx, ev.clientY - panelDrag.dy);
+    });
+    const end = (ev) => {
+      if (!panelDrag) return;
+      panelDrag = null;
+      try { handle.releasePointerCapture(ev.pointerId); } catch (e) { /* */ }
+      const r = panel.getBoundingClientRect();
+      setLs(PANELPOS, JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top) }));
+    };
+    handle.addEventListener('pointerup', end);
+    handle.addEventListener('pointercancel', end);
+  }
+
   function build() {
     if (built) return; built = true;
     fab = el('button', 'assistant-fab'); fab.type = 'button';
@@ -517,6 +695,7 @@
     panel = el('div', 'assistant-panel hidden');
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-label', t('assistantTitle', 'Flight assistant'));
+    panel.addEventListener('mouseup', savePanelSize);   // persist size after a resize-grabber drag
     // Escape closes the panel (accessibility) while focus is inside it.
     panel.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); toggle(); } });
     const head = el('div', 'assistant-head');
@@ -529,52 +708,96 @@
     const clr = iconBtn('🗑', 'assistantClear', 'Clear chat', resetChat);
     const x = iconBtn('✕', 'assistantClose', 'Close', toggle);
     head.append(gear, clr, x);
+    wirePanelDrag(head);   // drag the panel by its header
 
     logEl = el('div', 'assistant-log');
 
     settingsEl = buildSettings();
 
     const row = el('div', 'assistant-input-row');
-    inputEl = el('textarea', 'assistant-input'); inputEl.rows = 1;
+    inputEl = el('textarea', 'assistant-input'); inputEl.rows = 2;
     inputEl.placeholder = t('assistantPlaceholder', 'Ask about NOTAMs, weather, or plan a route…');
     inputEl.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); submit(); } });
     sendBtn = el('button', 'assistant-send', t('assistantSend', 'Send')); sendBtn.type = 'button'; sendBtn.onclick = submit;
     row.append(inputEl, sendBtn);
 
     panel.append(head, settingsEl, logEl, row);
-    document.body.append(fab, panel);
+    document.body.appendChild(panel);
+    // Dock the launcher in the Leaflet bottom-right control column so it stacks
+    // above the zoom buttons (spaced by Leaflet) instead of floating over the map
+    // and covering controls/readouts. Prepend so it sits above zoom, not below.
+    if (typeof L !== 'undefined' && L.Control && typeof map !== 'undefined' && map && map.addControl) {
+      const wrap = el('div', 'leaflet-control assistant-fab-control');
+      wrap.appendChild(fab);
+      const Ctl = L.Control.extend({ options: { position: 'bottomright' }, onAdd: () => wrap });
+      map.addControl(new Ctl());
+      const corner = wrap.parentNode;   // the bottomright corner container
+      if (corner && corner.firstChild !== wrap) corner.insertBefore(wrap, corner.firstChild);
+    } else {
+      fab.classList.add('assistant-fab-floating');
+      document.body.appendChild(fab);
+    }
   }
 
   function buildSettings() {
     const box = el('div', 'assistant-settings hidden');
     box.appendChild(el('div', 'assistant-settings-h', t('assistantSettings', 'Settings')));
+
+    // Provider picker.
+    const provSel = el('select', 'assistant-field');
+    for (const id of ['gemini', 'anthropic', 'openrouter', 'deepseek']) {
+      const opt = el('option', null, PROVIDERS[id].label + (id === 'gemini' ? ' — ' + t('assistantFreeTier', 'free tier') : ''));
+      opt.value = id; provSel.appendChild(opt);
+    }
     const keyIn = el('input', 'assistant-field'); keyIn.type = 'password'; keyIn.placeholder = t('assistantKeyPlaceholder', 'API key');
-    keyIn.value = ls(KEY) || '';
-    const modelIn = el('input', 'assistant-field'); modelIn.type = 'text'; modelIn.placeholder = t('assistantModelPlaceholder', 'model'); modelIn.value = ls(MODEL) || DEFAULT_MODEL;
+    const modelIn = el('input', 'assistant-field'); modelIn.type = 'text'; modelIn.placeholder = t('assistantModelPlaceholder', 'model');
+    const baseIn = el('input', 'assistant-field'); baseIn.type = 'text'; baseIn.placeholder = t('assistantBaseUrlPlaceholder', 'Base URL (optional proxy)'); baseIn.value = ls(BASEURL) || '';
     const help = el('div', 'assistant-help');
-    const link = el('a', null, t('assistantGetKey', 'Get a free Google Gemini key'));
-    link.href = 'https://aistudio.google.com/apikey'; link.target = '_blank'; link.rel = 'noopener';
-    help.appendChild(link);
+    const link = el('a', null, ''); link.target = '_blank'; link.rel = 'noopener'; help.appendChild(link);
+    const note = el('div', 'assistant-help assistant-note');
+
+    // Reflect the selected provider's stored key/model + help link + notes.
+    function syncProvider(id, loadStored) {
+      const P = PROVIDERS[id];
+      if (loadStored) { keyIn.value = ls(keyKey(id)) || ''; modelIn.value = ls(modelKey(id)) || ''; }
+      modelIn.placeholder = P.model;
+      link.textContent = t('assistantGetKey', 'Get an API key') + ' — ' + P.label;
+      link.href = P.keyUrl;
+      baseIn.style.display = P.openaiCompat ? '' : 'none';   // proxy override for OpenAI-compatible providers
+      note.textContent = P.browserBlocked
+        ? t('assistantCorsNote', 'This provider may block direct browser calls (CORS) — if so, set a proxy base URL above.')
+        : '';
+      note.style.display = note.textContent ? '' : 'none';
+    }
+    provSel.value = activeProvider();
+    syncProvider(provSel.value, true);
+    provSel.onchange = () => syncProvider(provSel.value, true);
+
     const save = el('button', 'assistant-send', t('assistantSaveKey', 'Save')); save.type = 'button';
     save.onclick = () => {
-      setLs(KEY, keyIn.value.trim() || null);
-      setLs(PROV, DEFAULT_PROVIDER);
-      setLs(MODEL, modelIn.value.trim() || DEFAULT_MODEL);
+      const id = provSel.value;
+      setLs(PROV, id);
+      setLs(keyKey(id), keyIn.value.trim() || null);
+      setLs(modelKey(id), modelIn.value.trim() || null);
+      if (PROVIDERS[id].openaiCompat) setLs(BASEURL, baseIn.value.trim() || null);
       box.classList.add('hidden');
-      toast(t('assistantKeySaved', 'API key saved'));
+      toast(t('assistantKeySaved', 'Settings saved'));
     };
-    box.append(keyIn, modelIn, help, save);
+    box.append(provSel, keyIn, modelIn, baseIn, help, note, save);
     return box;
   }
+  function hasKey() { return !!ls(keyKey(activeProvider())); }
 
   function toggleSettings() { settingsEl.classList.toggle('hidden'); }
-  function openSettings() { build(); panel.classList.remove('hidden'); settingsEl.classList.remove('hidden'); }
+  function openSettings() { build(); panel.classList.remove('hidden'); restorePanelSize(); restorePanelPos(); settingsEl.classList.remove('hidden'); }
 
   function toggle() {
     build();
     panel.classList.toggle('hidden');
     if (!panel.classList.contains('hidden')) {
-      if (!ls(KEY)) settingsEl.classList.remove('hidden');
+      restorePanelSize();  // apply saved size first so the position clamp uses real dims
+      restorePanelPos();   // apply the saved drag position (needs the panel visible for sizing)
+      if (!hasKey()) settingsEl.classList.remove('hidden');
       if (inputEl) inputEl.focus();
     }
   }
