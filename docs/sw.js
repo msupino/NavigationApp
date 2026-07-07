@@ -15,6 +15,9 @@ function refreshTilePackFlag() {
 }
 refreshTilePackFlag();
 self.addEventListener('message', e => {
+  // Only accept the refresh ping from our own clients (CodeQL js/missing-origin-check;
+  // some browsers report an empty origin for same-origin SW clients).
+  if (e.origin && e.origin !== self.location.origin) return;
   if (e.data && e.data.type === 'tile-pack-changed') refreshTilePackFlag();
 });
 
