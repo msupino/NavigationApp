@@ -81,6 +81,60 @@ function _gpsMetres(a, b) {
   return 2 * R * Math.asin(Math.sqrt(Math.min(1, h)));
 }
 
+// --- native (Capacitor APK) background watch ----------------------------
+// In the APK, navigator.geolocation stops when the phone locks. The Capacitor
+// background-geolocation plugin runs an Android foreground service (persistent
+// notification), so fixes keep flowing with the screen off. Web/PWA builds
+// don't have the plugin and fall back to plain watchPosition — unchanged.
+function _bgGeo() {
+  const C = typeof window !== 'undefined' && window.Capacitor;
+  return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform() &&
+          C.Plugins && C.Plugins.BackgroundGeolocation) || null;
+}
+// Start a position watch. Returns an opaque handle for gpsStopWatch().
+// onPos always receives a GeolocationPosition-shaped fix ({coords, timestamp}).
+function gpsStartWatch(onPos, onErr, title, message) {
+  const bg = _bgGeo();
+  if (!bg) {
+    return { web: navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true }) };
+  }
+  const h = { native: null, stopped: false };
+  bg.addWatcher({
+    backgroundTitle: title,
+    backgroundMessage: message,
+    requestPermissions: true,
+    stale: false,
+    distanceFilter: 0,
+  }, function (loc, err) {
+    if (err) { onErr(err); return; }
+    if (!loc) return;
+    onPos({
+      coords: {
+        latitude: loc.latitude, longitude: loc.longitude, accuracy: loc.accuracy,
+        altitude: loc.altitude, speed: loc.speed, heading: loc.bearing,
+      },
+      timestamp: loc.time || Date.now(),
+    });
+  }).then(function (id) {
+    // A stop that raced the async registration must still kill the watcher,
+    // or the foreground service (and its notification) would leak.
+    if (h.stopped) bg.removeWatcher({ id }).catch(function () {});
+    else h.native = id;
+  }).catch(function (e) { onErr(e); });
+  return h;
+}
+function gpsStopWatch(h) {
+  if (!h) return;
+  h.stopped = true;
+  if (h.native != null) {
+    const bg = _bgGeo();
+    if (bg) bg.removeWatcher({ id: h.native }).catch(function () {});
+    h.native = null;
+  } else if (h.web != null && navigator.geolocation) {
+    navigator.geolocation.clearWatch(h.web);
+  }
+}
+
 var gpsLiveOn = false;
 var gpsLiveWatchId = null;
 var _gpsLivePrev = null;
@@ -105,14 +159,15 @@ function onLivePosition(pos) {
 
 function startLiveLocation() {
   if (gpsLiveOn) return;
-  if (!navigator.geolocation) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
+  if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsLiveOn = true; _gpsLivePrev = null;
-  gpsLiveWatchId = navigator.geolocation.watchPosition(onLivePosition, onGpsLiveError, { enableHighAccuracy: true });
+  gpsLiveWatchId = gpsStartWatch(onLivePosition, onGpsLiveError,
+    S.gpsLiveNotifTitle || 'NavAid location', S.gpsLiveNotifText || 'Showing your position on the map');
   scheduleDraw();
 }
 
 function stopLiveLocation() {
-  if (gpsLiveWatchId != null && navigator.geolocation) navigator.geolocation.clearWatch(gpsLiveWatchId);
+  gpsStopWatch(gpsLiveWatchId);
   gpsLiveWatchId = null;
   gpsLiveOn = false;
   _gpsLivePrev = null;
@@ -202,12 +257,13 @@ function onGpsLiveError(err) {
 
 function startGpsRecording() {
   if (gpsRecording) return;
-  if (!navigator.geolocation) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
+  if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsRecording = true;
   gpsTrack = [];
   if (!gpsLiveOn) gpsOwn = null;
   gpsStartT = Date.now();
-  gpsWatchId = navigator.geolocation.watchPosition(onGpsPosition, onGpsRecError, { enableHighAccuracy: true });
+  gpsWatchId = gpsStartWatch(onGpsPosition, onGpsRecError,
+    S.gpsRecNotifTitle || 'NavAid GPS recording', S.gpsRecNotifText || 'Recording your track — tap to return');
   gpsAcquireWakeLock();
   gpsUpdateReadout();
   scheduleDraw();
@@ -382,7 +438,7 @@ function drawGpsTrack() {
 
 // Stop watching without saving. (Save handled in a later task.)
 function stopGpsRecording() {
-  if (gpsWatchId != null && navigator.geolocation) navigator.geolocation.clearWatch(gpsWatchId);
+  gpsStopWatch(gpsWatchId);
   gpsWatchId = null;
   gpsRecording = false;
   gpsReleaseWakeLock();

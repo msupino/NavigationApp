@@ -7,10 +7,19 @@ mobile/android/app/src/main/assets/public/
 mobile/android/build/
 mobile/android/capacitor-cordova-android-plugins/build/
 mobile/android/local.properties
+mobile/android/keystore.properties
 mobile/ios/App/Pods/
 mobile/ios/App/App/public/
 mobile/ios/App/App.xcworkspace/
 mobile/ios/App/DerivedData/
+# Capacitor Android (root layout): commit the platform, ignore build outputs +
+# the synced copy of docs/ + per-machine SDK path.
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/assets/public/
+android/capacitor-cordova-android-plugins/build/
+android/local.properties
 .vscode/
 .idea/
 *.log
