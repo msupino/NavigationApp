@@ -1052,12 +1052,12 @@ window.S = Object.assign({
   tbSecCharts: '📋 Charts',
   tbSecExport: '📤 Export/import',
   tbSecWeather: '🗂 Extra layers',
-  // Offline chart packs (offline-tiles.js, Extra layers section)
-  tbOfflineCharts: '⬇ Download charts for offline',
-  tbOfflineChartsTitle: 'Pre-download the current chart layer so the map works with no internet (tap again to cancel)',
-  offlineDownloadConfirm: 'Download the current chart for offline use? About ',
-  offlineDelete: '🗑 Delete offline charts',
-  offlineDeleteConfirm: 'Delete the offline charts?',
+  // Offline map packs (offline-tiles.js, Charts section)
+  tbOfflineCharts: '⬇ Download offline maps',
+  tbOfflineChartsTitle: 'Pre-download the current map layer so it works with no internet (tap again to cancel)',
+  offlineDownloadConfirm: 'Download the current map for offline use? About ',
+  offlineDelete: '🗑 Delete offline maps',
+  offlineDeleteConfirm: 'Delete the offline maps?',
   offlineCancel: '✕ Cancel — ',
   offlineCancelled: 'cancelled',
   offlineDone: 'saved ',
