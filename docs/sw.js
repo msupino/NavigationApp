@@ -5,6 +5,18 @@ const CACHE = 'navaid-v6';
 // cleanup never wipes a 100+ MB user download on a service-worker upgrade.
 const TILE_CACHE = 'navaid-tiles-v1';
 const TILE_HOST = 'flight-maps.com';
+// Tiles are the hottest request path (pans fetch dozens in a burst), so the
+// SW only proxies them when a pack actually exists — otherwise the fetch
+// handler returns without respondWith and the browser's native network path
+// handles the tile with zero SW overhead (issue-388 magnifier perf).
+let tilePackReady = false;
+function refreshTilePackFlag() {
+  return caches.has(TILE_CACHE).then(h => { tilePackReady = h; }, () => {});
+}
+refreshTilePackFlag();
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'tile-pack-changed') refreshTilePackFlag();
+});
 
 function cacheable(url) {
   // Same-origin app assets + the two pinned CDN libs the app can't run without.
@@ -63,6 +75,7 @@ self.addEventListener('fetch', e => {
   // dozens per frame burst) and a caches.open() per request measurably slows
   // tile-heavy interactions (magnifier pan perf test).
   if (url.host === TILE_HOST && url.pathname.indexOf('/tiles/') === 0) {
+    if (!tilePackReady) return;   // no pack downloaded -> native network path, zero SW overhead
     if (!self._tileCachePromise) self._tileCachePromise = caches.open(TILE_CACHE);
     e.respondWith(
       self._tileCachePromise

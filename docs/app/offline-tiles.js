@@ -78,11 +78,22 @@
     const workers = []; for (let i = 0; i < CONCURRENCY; i++) workers.push(worker());
     await Promise.all(workers);
     _running = false;
+    notifySw();   // SW starts serving tiles cache-first now that a pack exists
     return { ok, failed, cancelled: _cancel };
   }
 
+  // The SW skips tile proxying entirely while no pack exists (perf); tell it
+  // to re-check after a download or delete.
+  function notifySw() {
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'tile-pack-changed' });
+      }
+    } catch (e) { /* */ }
+  }
+
   async function deletePack() {
-    try { await caches.delete(TILE_CACHE); return true; } catch (e) { return false; }
+    try { await caches.delete(TILE_CACHE); notifySw(); return true; } catch (e) { return false; }
   }
 
   async function packSize() {

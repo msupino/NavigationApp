@@ -90,4 +90,8 @@ test('sw.js exempts the tile cache from activate cleanup and serves tiles cache-
   const cacheableBail = sw.indexOf('if (!cacheable(url)) return');
   expect(tileBranch).toBeGreaterThan(0);
   expect(tileBranch).toBeLessThan(cacheableBail);   // tiles handled before the bailout
+  // Perf invariant (issue-388): with NO pack downloaded, the SW must not
+  // respondWith on tile requests at all — native network path, zero overhead.
+  expect(sw).toMatch(/if \(!tilePackReady\) return/);
+  expect(sw).toMatch(/tile-pack-changed/);          // page tells the SW when a pack appears
 });
