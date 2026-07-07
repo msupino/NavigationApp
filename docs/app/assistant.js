@@ -37,6 +37,8 @@
     'airfields (from/to in either direction), use apply_route_template; (2) otherwise call plan_corridor(from,to) to',
     'route over the published CVFR leg network through its reporting points; (3) only if plan_corridor finds no path,',
     'fall back to a direct set_route — and say so. Never draw a direct line when a template or corridor exists.',
+    'If a waypoint name is not in the datasets but you know its position, pass it to set_route as "NAME=lat,lng"',
+    '(decimal degrees). ALWAYS draw the route on the map with the tools — never answer with a coordinate table instead.',
     'Corridor/segment altitudes are candidate data — remind the user to verify against the official CVFR chart.',
     'Be concise. When you change the route, briefly say what you did.',
     'This is a PLANNING AID ONLY — not an operational briefing. Remind the user to verify against the official AIP,',
@@ -384,34 +386,61 @@
     },
     {
       name: 'set_route', tier: 'route',
-      description: 'Replace the planned route with these waypoints in order (each an ICAO / reporting point / VOR ident). Consecutive points that are NOT directly connected on the CVFR leg network are auto-expanded via the published corridor (reporting points inserted) — so the route never contains a made-up direct leg. Applies immediately; user can Undo.',
-      parameters: { type: 'object', properties: { points: { type: 'array', items: { type: 'string' }, description: 'ordered list, e.g. ["LLHZ","HADERA","LLIB"]' } }, required: ['points'] },
+      description: 'Replace the planned route with these waypoints in order. Each point is an ICAO / reporting point / VOR ident, OR explicit coordinates as "NAME=lat,lng" / "lat,lng" (decimal degrees) for points not in the datasets — so a route can ALWAYS be drawn on the map, never dumped as a text table. Consecutive NAMED points not directly connected on the CVFR leg network are auto-expanded via the published corridor (reporting points inserted); coordinate points are used verbatim. Applies immediately; user can Undo.',
+      parameters: { type: 'object', properties: { points: { type: 'array', items: { type: 'string' }, description: 'ordered list, e.g. ["LLHZ","HADERA","BKAMA=31.44167,34.76556","LLRM"]' } }, required: ['points'] },
       run: async (a) => {
         await ensureData();
-        const names = Array.isArray(a.points) ? a.points.map(n => String(n == null ? '' : n).trim().toUpperCase()).filter(Boolean) : [];
-        if (names.length < 2) return { error: 'need at least two waypoints' };
-        // Every listed point must resolve to real coordinates first.
-        const bad = names.filter(n => !resolvePoint(n));
-        if (bad.length) return { error: 'could not resolve: ' + bad.join(', ') };
-        // Expand each consecutive pair through the CVFR leg network so we never
-        // emit a straight-line leg that isn't a published route. If a pair has
-        // no network path, keep the direct segment but report it as a gap.
+        // Each token: a resolvable name, or explicit coords "NAME=lat,lng" / "lat,lng".
+        const coordTok = s => {
+          const m = String(s).match(/^(?:([^=]+?)\s*=\s*)?(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+          if (!m) return null;
+          const lat = +m[2], lng = +m[3];
+          if (!Number.isFinite(lat) || !Number.isFinite(lng) ||
+              lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+          return { lat, lng, name: (m[1] || '').trim() };
+        };
+        const raw = Array.isArray(a.points) ? a.points.map(n => String(n == null ? '' : n).trim()).filter(Boolean) : [];
+        const pts = [];   // { lat, lng, name, key? } — key set only for network-resolvable names
+        const bad = [];
+        for (const s of raw) {
+          const c = coordTok(s);
+          if (c) { pts.push(c); continue; }
+          const n = s.toUpperCase();
+          const p = resolvePoint(n);
+          if (p) pts.push({ lat: p.lat, lng: p.lng, name: p.name, key: n });
+          else bad.push(n);
+        }
+        if (bad.length) {
+          return { error: 'could not resolve: ' + bad.join(', ') +
+            '. If you know their coordinates, pass those points as "NAME=lat,lng" (decimal degrees) and call set_route again — do NOT fall back to printing a table.' };
+        }
+        if (pts.length < 2) return { error: 'need at least two waypoints' };
+        // Expand each consecutive NAMED pair through the CVFR leg network so we
+        // never emit a straight-line leg that isn't a published route. Pairs with
+        // no network path (or with an explicit-coordinate end) keep the direct
+        // segment and are reported as gaps.
         const segs = await segmentsData();
-        const chain = [names[0]];
+        const chain = [pts[0]];
         const gaps = [];
         let inserted = false;
-        for (let i = 1; i < names.length; i++) {
-          const from = names[i - 1], to = names[i];
-          const res = segs.length ? corridorPath(segs, from, to) : { path: null };
+        for (let i = 1; i < pts.length; i++) {
+          const A = pts[i - 1], B = pts[i];
+          const res = (A.key && B.key && segs.length) ? corridorPath(segs, A.key, B.key) : { path: null };
           if (res.path && res.path.length >= 2) {
-            for (let k = 1; k < res.path.length; k++) chain.push(res.path[k]);
+            for (let k = 1; k < res.path.length; k++) {
+              const nm = res.path[k];
+              const p = resolvePoint(nm);
+              if (p) chain.push({ lat: p.lat, lng: p.lng, name: p.name, key: nm });
+            }
             if (res.path.length > 2) inserted = true;
-          } else { chain.push(to); gaps.push(from + '→' + to); }
+          } else {
+            chain.push(B);
+            gaps.push((A.name || A.key || A.lat + ',' + A.lng) + '→' + (B.name || B.key || B.lat + ',' + B.lng));
+          }
         }
-        const wps = [];
-        for (const nm of chain) { const p = resolvePoint(nm); if (p) wps.push({ lat: p.lat, lng: p.lng, name: p.name }); }
+        const wps = chain.map(p => ({ lat: p.lat, lng: p.lng, name: p.name || '' }));
         applyReplacementRoute(wps);
-        const out = { ok: true, waypoints: wps.map(w => w.name) };
+        const out = { ok: true, waypoints: wps.map(w => w.name || '(coords)') };
         if (inserted) out.note = 'Expanded via the CVFR corridor (reporting points inserted) — candidate leg data, verify altitudes.';
         if (gaps.length) out.directGaps = gaps;   // pairs with no known CVFR leg — direct segment (may not be a real route)
         return out;
@@ -843,6 +872,7 @@
   function renderUser(text) { addMsg('user', text); }
   function renderAssistant(text) { addMsg('assistant', text); }
   function renderError(text) { addMsg('error', text); }
+  let _lastActivity = null;   // { name, el, count } — collapses repeated same-tool lines
   function renderActivity(name, args) {
     const notam = '🔎 ' + t('assistantActNotam', 'checking NOTAMs');
     const wx = '🌦 ' + t('assistantActWx', 'checking weather');
@@ -856,7 +886,19 @@
       find_point: look, get_airfield_info: look, get_vor_radial: look,
       list_route_templates: look, describe_route: look,
     })[name] || ('· ' + name);
-    addMsg('activity', label + '…');
+    // A tool called in a burst (e.g. find_point per waypoint) used to print one
+    // identical line per call — collapse consecutive repeats into "label ×N".
+    if (_lastActivity && _lastActivity.name === name && logEl &&
+        _lastActivity.el === logEl.lastElementChild) {
+      _lastActivity.count++;
+      _lastActivity.el.textContent = label + ' ×' + _lastActivity.count + '…';
+      logEl.scrollTop = logEl.scrollHeight;
+      return;
+    }
+    // Single lookups show what's being looked up (e.g. "🔎 looking up: BKAMA…").
+    const arg = args && typeof args.name === 'string' && args.name.trim()
+      ? ': ' + args.name.trim() : '';
+    _lastActivity = { name, el: addMsg('activity', label + arg + '…'), count: 1 };
   }
   function setBusy(b) {
     if (sendBtn) sendBtn.disabled = b;
