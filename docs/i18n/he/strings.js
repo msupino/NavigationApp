@@ -321,7 +321,7 @@ window.S = {
   windFieldErr: 'שדה הרוח אינו זמין',
   windFieldNorthUpOnly: 'שדה הרוח מוצג רק בכיוון צפון — סובבו את המפה ל-0°',
   // עוזר AI (assistant.js)
-  assistantTitle: 'עוזר טיסה',
+  assistantTitle: 'עוזר תכנון טיסה',
   assistantSettings: 'הגדרות',
   assistantClear: 'נקה שיחה',
   assistantClose: 'סגור',
