@@ -1149,10 +1149,7 @@ function drawAreas() {
   if (areas === null) { loadAreas(); return; }   // lazy-load on first draw
   if (!areas.length) return;
   octx.save();
-  octx.lineWidth = 2;
-  octx.strokeStyle = '#0aa3c2';
-  octx.fillStyle = 'rgba(10,163,194,0.10)';
-  for (const a of areas) {
+  for (const a of areas) {              // paint state (fill/stroke/width) is set per-polygon below
     octx.beginPath();
     for (let i = 0; i < a.coords.length; i++) {
       const s = proj({ lat: a.coords[i][0], lng: a.coords[i][1] });

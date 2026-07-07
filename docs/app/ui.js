@@ -2956,27 +2956,17 @@ function refreshLsaListBtn() {
 }
 function showLsaChart() {
   if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
-  if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
   const list = Array.isArray(areas) ? areas : [];
-  const back = document.createElement('div');
-  back.className = 'modal-back'; back.dataset.chartModal = 'lsa-list';
-  const box = document.createElement('div');
-  box.className = 'modal wide lsa-modal';
-  const closeAll = () => back.remove();
-  const close = document.createElement('button');
-  close.className = 'modal-close-x'; close.type = 'button'; close.textContent = '×';
-  close.setAttribute('aria-label', S.close || 'Close'); close.onclick = closeAll;
-  back.addEventListener('click', e => { if (e.target === back) closeAll(); });
-  box.appendChild(close);
-  const h = document.createElement('h3');
-  h.textContent = (S.lsaModalTitle || 'LSA bubbles') + ' — ' + list.length;
-  box.appendChild(h);
+  // Reuse the shared modal builder so the LSA list behaves like every other
+  // chart: Escape-to-close, drag, click-outside, and closeOpenChartModals().
+  const title = (S.lsaModalTitle || 'LSA bubbles') + ' — ' + list.length;
+  const { box, close, show } = createDraggableModal(title, 'modal wide lsa-modal', null, { chartKind: 'lsa-list' });
   const ul = document.createElement('div');
   ul.className = 'lsa-list';
   if (!list.length) {
-    const e = document.createElement('div');
-    e.className = 'lsa-empty'; e.textContent = S.lsaEmpty || 'No LSA areas on this layer.';
-    ul.appendChild(e);
+    const empty = document.createElement('div');
+    empty.className = 'lsa-empty'; empty.textContent = S.lsaEmpty || 'No LSA areas on this layer.';
+    ul.appendChild(empty);
   }
   list.forEach((a, i) => {
     const row = document.createElement('button');
@@ -2990,13 +2980,12 @@ function showLsaChart() {
       } catch (err) { /* */ }
       window.__lsaHighlight = a; draw();
       setTimeout(() => { if (window.__lsaHighlight === a) { window.__lsaHighlight = null; draw(); } }, 2000);
-      closeAll();
+      close();
     };
     ul.appendChild(row);
   });
   box.appendChild(ul);
-  back.appendChild(box);
-  document.body.appendChild(back);
+  show();
 }
 const lsaListBtn = document.getElementById('lsa-list-btn');
 if (lsaListBtn) lsaListBtn.onclick = showLsaChart;
