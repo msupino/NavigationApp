@@ -861,6 +861,8 @@ window.S = Object.assign({
                  'Helicopters': 'Helicopters', 'Satellite': 'Satellite', 'OpenStreetMap': 'OpenStreetMap' },
   // Toolbar static strings — filled into DOM by applyI18n() on boot
   tbHandleTitle: 'Drag to move',
+  tbBrandTag: 'CVFR flight planner for Israel',
+  tbAbout: 'About',
   tbAddNote: '📝 Add note (N)',
   tbAddNoteTitle: 'Click map to drop a note (click button again to stop)',
   tbLayerLabel: 'Layer',
