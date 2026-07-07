@@ -2971,8 +2971,10 @@ function showLsaChart() {
   list.forEach((a, i) => {
     const row = document.createElement('button');
     row.type = 'button'; row.className = 'lsa-row';
-    row.textContent = (typeof areaLabel === 'function' && areaLabel(a)) ||
+    if (a.active === 'weekend') row.classList.add('lsa-row-weekend');
+    const base = (typeof areaLabel === 'function' && areaLabel(a)) ||
       ((S.lsaUnnamed || 'Unnamed area') + ' #' + (i + 1));
+    row.textContent = a.active === 'weekend' ? (base + ' · ' + (S.lsaWeekend || 'weekend')) : base;
     row.onclick = () => {
       try {
         const b = L.latLngBounds(a.coords.map(c => L.latLng(c[0], c[1])));

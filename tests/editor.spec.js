@@ -221,6 +221,34 @@ test('Load known (polygon mode) imports the shipped LSA bubbles for naming', asy
   expect(out.fields).toBe(true);                // name/en/he present → clickable to set
 });
 
+test('polygon naming sets active type — weekend exported, always omitted', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.goto('?lang=en&editor=1');
+  await page.waitForSelector('#editor-panel');
+  await page.waitForFunction(() => typeof layers !== 'undefined');
+  const answers = ['WK', 'WkEn', 'WkHe', 'weekend'];   // name, en, he, active prompts (in order)
+  let di = 0;
+  page.on('dialog', d => { d.accept(answers[Math.min(di, answers.length - 1)]); di++; });
+  await page.evaluate(() => {
+    for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
+    map.addLayer(layers['Low Alt']);
+    document.querySelector('input[name=ed-m][value=polygon]').click();
+  });
+  await page.click('#ed-load');
+  await page.waitForFunction(() => JSON.parse(document.getElementById('ed-json').value).length >= 26);
+  // loaded bubbles default to 'always' → the field is omitted from the export.
+  expect(await page.evaluate(() => JSON.parse(document.getElementById('ed-json').value).some(o => 'active' in o))).toBe(false);
+  // click one polygon (editor polys use fillOpacity 0.12) → the 4 prompts set it weekend.
+  await page.evaluate(async () => {
+    let poly = null; map.eachLayer(l => { if (!poly && l instanceof L.Polygon && l.options.fillOpacity === 0.12) poly = l; });
+    poly.fire('click', {});
+    await new Promise(r => setTimeout(r, 60));
+  });
+  const out = await page.evaluate(() => JSON.parse(document.getElementById('ed-json').value));
+  expect(out.some(o => o.active === 'weekend')).toBe(true);     // named one is weekend
+  expect(out.filter(o => o.active === 'weekend').length).toBe(1);
+});
+
 test('Load known (polygon mode) refuses on a layer with no areas file (CVFR)', async ({ page }) => {
   await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
   await page.goto('?lang=en&editor=1');

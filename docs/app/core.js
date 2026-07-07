@@ -638,6 +638,7 @@ window.S = Object.assign({
   lsaModalTitle: 'LSA bubbles',
   lsaUnnamed: 'Unnamed area',
   lsaEmpty: 'No LSA areas on this layer.',
+  lsaWeekend: 'weekend',
   tbMosaic: '🛰 Mosaic',
   tbMosaicTitle: 'A grid of map previews, one per route waypoint',
   mosaicTitle: 'Route mosaic',

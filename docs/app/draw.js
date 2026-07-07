@@ -1112,7 +1112,11 @@ async function loadAreas() {
     const arr = Array.isArray(d) ? d : (d.areas || []);
     const mapped = arr
       .filter(a => a && Array.isArray(a.coords) && a.coords.length >= 3)
-      .map(a => ({ coords: a.coords, name: a.name || '', en: a.en || '', he: a.he || '' }));
+      // `active`: 'weekend' bubbles are only in force on the Israel weekend
+      // (Fri–Sat); everything else defaults to 'always'. Field is optional in
+      // the data — absent means 'always'.
+      .map(a => ({ coords: a.coords, name: a.name || '', en: a.en || '', he: a.he || '',
+        active: a.active === 'weekend' ? 'weekend' : 'always' }));
     if (gen !== _layerGen) return loadAreas();   // superseded — don't stomp; re-enter (joins via memo)
     areas = mapped;
   } catch (e) {
@@ -1160,9 +1164,13 @@ function drawAreas() {
     octx.fillStyle = hl ? 'rgba(255,204,51,0.22)' : 'rgba(10,163,194,0.10)';
     octx.strokeStyle = hl ? '#ffcc33' : '#0aa3c2';
     octx.lineWidth = hl ? 4 : 2;
+    // Weekend-only bubbles: dashed outline (a palette-neutral "conditional"
+    // cue that doesn't clash with the amber locate highlight). Always-type: solid.
+    octx.setLineDash(a.active === 'weekend' && !hl ? [6, 4] : []);
     octx.fill();
     octx.stroke();
   }
+  octx.setLineDash([]);                            // labels below must not inherit the dash
   // Names, at each bubble's centroid (zoomed in enough to be readable).
   const showLabels = map.getZoom() >= (typeof tune === 'function' ? tune('vorLabelMinZoom') : 8);
   if (showLabels) {

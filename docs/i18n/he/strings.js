@@ -157,6 +157,7 @@ window.S = {
   lsaModalTitle: 'בועות LSA',
   lsaUnnamed: 'אזור ללא שם',
   lsaEmpty: 'אין אזורי LSA בשכבה זו.',
+  lsaWeekend: 'סופ״ש',
   tbNotamListTitle: 'הצג את כל ה-NOTAM הפעילים עבור FIR ישראל כטקסט',
   tbMosaic: '🛰 פסיפס',
   tbMosaicTitle: 'רשת תצוגות מפה, אחת לכל נקודת מסלול',

@@ -4249,4 +4249,6 @@ body.theme-light #tuning-panel summary {
   border: 1px solid rgba(0, 0, 0, 0.15); border-radius: 8px; background: transparent; color: inherit;
 }
 .lsa-row:hover { background: rgba(10, 163, 194, 0.14); }
+/* Weekend-only bubbles: dashed border echoes the dashed outline on the map. */
+.lsa-row-weekend { border-style: dashed; }
 .lsa-empty { opacity: 0.7; padding: 8px; }
