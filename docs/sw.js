@@ -1,6 +1,10 @@
 /* NavAid service worker — installable PWA + offline app shell.
    Map tiles (cross-origin, large) are left to the network. */
 const CACHE = 'navaid-v6';
+// Offline chart packs (offline-tiles.js): a dedicated bucket so the activate
+// cleanup never wipes a 100+ MB user download on a service-worker upgrade.
+const TILE_CACHE = 'navaid-tiles-v1';
+const TILE_HOST = 'flight-maps.com';
 
 function cacheable(url) {
   // Same-origin app assets + the two pinned CDN libs the app can't run without.
@@ -43,14 +47,27 @@ self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
-      .then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(ks => Promise.all(ks.filter(k => k !== CACHE && k !== TILE_CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim()));
 });
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-  if (!cacheable(url)) return;            // map tiles etc -> straight to network
+
+  // Chart tiles: serve from a downloaded offline pack when present, else the
+  // network. Misses are NOT auto-cached (cross-origin tiles are opaque and
+  // Chrome quota-pads opaque cache entries; packs are populated explicitly by
+  // offline-tiles.js from the CORS mirror instead).
+  if (url.host === TILE_HOST && url.pathname.indexOf('/tiles/') === 0) {
+    e.respondWith(
+      caches.open(TILE_CACHE)
+        .then(c => c.match(e.request.url))
+        .then(hit => hit || fetch(e.request)));
+    return;
+  }
+
+  if (!cacheable(url)) return;            // other cross-origin (imagery/OSM) -> straight to network
 
   // HTML navigations: network-first so a new ?v= is picked up immediately.
   // Only cache 2xx responses (#84: never cache a 404/5xx as the offline
