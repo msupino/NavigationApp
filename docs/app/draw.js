@@ -210,7 +210,7 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   const cum = prof.wpCum || [];
   const tcum = prof.wpTime || [];
   const last = cum.length - 1;
-  const gap = last > 0 ? w / last : w;          // px between adjacent waypoints
+  const gap = last > 0 ? plotW / last : plotW;  // px between adjacent waypoints (ticks span plotW, not full w)
   const wpId = i => {
     const wp = state.waypoints[i];
     if (!wp) return '';
@@ -2984,6 +2984,7 @@ function selectionVisible() {
 function drawWaypoints() {
   for (let i = 0; i < state.waypoints.length; i++) {
     const wp = state.waypoints[i];
+    if (!wp) continue;   // skip a null/hole (corrupt/partially-applied state) rather than throwing in proj()
     const s = proj(wp);
     const selected = selectionVisible() && state.selected &&
                      state.selected.type === 'wp' &&
@@ -3279,7 +3280,9 @@ function drawNotes() {
 function drawInfo() {
   let totalDist = 0, totalH = 0;
   for (let i = 0; i < state.legs.length; i++) {
-    const { dist } = geo(state.waypoints[i], state.waypoints[i + 1]);
+    const A = state.waypoints[i], B = state.waypoints[i + 1];
+    if (!A || !B) continue;   // legs can transiently outnumber waypoints-1 mid-edit; guard like the sibling loops
+    const { dist } = geo(A, B);
     totalDist += dist;
     if (state.legs[i].flightSpeed > 0) totalH += dist / state.legs[i].flightSpeed;
   }
@@ -3373,7 +3376,10 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     rows.push({ num: i + 1, from: waypointDisplayLabel(A, i),
       to: waypointDisplayLabel(B, i + 1),
       hdg: pad3(hdg) + '°M', dist: dist.toFixed(1),
-      speed: String(legs[i].flightSpeed), alt: String(legs[i].inboundAltitude),
+      speed: String(legs[i].flightSpeed),
+      // Guard non-finite (unknown) altitude like the kite + flight-plan modal do,
+      // so the PNG plan card shows the unknown-label instead of the literal "NaN".
+      alt: formatAltitudeValue(legs[i].inboundAltitude, legs[i], 'inboundAltitude'),
       time: dur > 0 ? toHMS(dur) : '--', fuel: fLabel,
       cumTime: totTime > 0 ? toHMS(totTime) : '--',
       cumFuel: ac ? totFuel.toFixed(1) : '--',
