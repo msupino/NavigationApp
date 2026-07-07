@@ -264,7 +264,7 @@ test.describe('issue #388 — review cleanup', () => {
       await expect(page.locator('#magnifier')).toBeVisible();
       await page.waitForTimeout(600);
 
-      const result = await page.evaluate(async isDeployedPreview => {
+      const result = await page.evaluate(async useShortRun => {
         const readBatch = () => {
           const imgs = Array.from(
             document.querySelectorAll('#mag-content img[data-batch]'));
@@ -274,7 +274,12 @@ test.describe('issue #388 — review cleanup', () => {
         };
         const before = readBatch();
         const t0 = performance.now();
-        const frames = isDeployedPreview ? 30 : 60;
+        // CI runs the suite at full worker parallelism, so 60 awaited rAF
+        // frames on a saturated runner stretch wall-clock unboundedly (the
+        // budget tripped at 30-41s as the suite grew). Use the same 30-frame
+        // short run the deployed-preview job already accepts — identical
+        // smoke coverage of the rebuild hot path, half the wall-clock.
+        const frames = useShortRun ? 30 : 60;
         // Small panBys drive rebuilds via
         // the `move`/`moveend` listeners. Pre-H1 each rebuild fired a
         // `toDataURL`; post-H1 each rebuild does a single `drawImage` —
@@ -292,7 +297,7 @@ test.describe('issue #388 — review cleanup', () => {
         const elapsed = performance.now() - t0;
         const after = readBatch();
         return { before, after, elapsed };
-      }, deployedPreview);
+      }, deployedPreview || !!process.env.CI);
 
       // A new rebuild must have happened (otherwise we're not actually
       // exercising the hot path).

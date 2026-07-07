@@ -4238,8 +4238,17 @@ function isNativeCapacitorShell() {
       typeof window.Capacitor.isNativePlatform === 'function' &&
       window.Capacitor.isNativePlatform());
 }
+// The old STATIC shell served assets from a local native origin, where a
+// service worker was pointless (assets already on-device) — so it skipped SW
+// boot for any native shell. The remote-URL shell (capacitor.config
+// server.url) loads the production site instead, and offline (app shell +
+// downloaded chart packs) DEPENDS on the SW — so only skip the legacy local
+// origins, and register normally when the shell shows the live site.
+function isNativeLocalOrigin() {
+  return location.hostname === 'app.navaid.local' || location.protocol === 'capacitor:';
+}
 
-if ('serviceWorker' in navigator && !isNativeCapacitorShell()) {
+if ('serviceWorker' in navigator && !isNativeLocalOrigin()) {
   watchBuildUpdateCheckTriggers();
   window.addEventListener('load', () => {
     watchServiceWorkerUpdates(navigator.serviceWorker);

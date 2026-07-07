@@ -108,6 +108,7 @@
        of `staging/`, `pr/`, `branch/`. -->
   <script>
     if (location.hostname !== 'app.navaid.local' &&
+        typeof window.Capacitor === 'undefined' &&   // native shell loads the prod URL — keep GA browser-only
         !location.pathname.match(/^(?:\/[^/]+)?\/(?:staging|pr|branch)\//)) {
       (function(w,d,s){var f=d.getElementsByTagName(s)[0],j=d.createElement(s);
       j.async=true;j.src='https://www.googletagmanager.com/gtag/js?id=G-0XM5PHEK8B';
@@ -120,7 +121,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=314">
+  <link rel="stylesheet" href="app/style.css?v=321">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -349,6 +350,12 @@
         <button id="lsa-list-btn" type="button" hidden data-i18n="tbLsaList" data-i18n-title="tbLsaListTitle"></button>
         <!-- Satellite mosaic of the route's waypoints (modal grid of previews). -->
         <button id="mosaic-btn" type="button" data-i18n="tbMosaic" data-i18n-title="tbMosaicTitle"></button>
+        <!-- Offline chart packs (chart layers only; wired by offline-tiles.js). -->
+        <div id="offline-tiles-group" class="tb-group-box" hidden>
+          <button id="offline-tiles-btn" type="button" data-i18n="tbOfflineCharts" data-i18n-title="tbOfflineChartsTitle"></button>
+          <button id="offline-tiles-del" type="button" hidden data-i18n="offlineDelete"></button>
+          <span id="offline-tiles-status" class="offline-tiles-status"></span>
+        </div>
       </div>
     </div>
 
@@ -674,7 +681,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=314';
+      var v = '?v=321';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
@@ -690,7 +697,8 @@
         'app/gps.js' + v,
         'app/ui.js' + v,
         'app/editor.js' + v,
-        'app/assistant.js' + v
+        'app/assistant.js' + v,
+        'app/offline-tiles.js' + v
       ];
       for (var i = 0; i < srcs.length; i++) {
         var s = document.createElement('script');

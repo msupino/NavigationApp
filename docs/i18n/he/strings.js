@@ -548,6 +548,16 @@ window.S = {
   tbSecCharts: '📋 דפיות',
   tbSecExport: '📤 ייצוא/ייבוא',
   tbSecWeather: '🗂 שכבות נוספות',
+  // חבילות מפות לא-מקוונות (offline-tiles.js, קטע שכבות נוספות)
+  tbOfflineCharts: '⬇ הורדת מפות לשימוש לא-מקוון',
+  tbOfflineChartsTitle: 'הורדה מראש של שכבת המפה הנוכחית כך שהמפה תעבוד ללא אינטרנט (הקשה נוספת מבטלת)',
+  offlineDownloadConfirm: 'להוריד את המפה הנוכחית לשימוש לא-מקוון? בערך ',
+  offlineDelete: '🗑 מחק מפות לא-מקוונות',
+  offlineDeleteConfirm: 'למחוק את המפות הלא-מקוונות?',
+  offlineCancel: '✕ ביטול — ',
+  offlineCancelled: 'בוטל',
+  offlineDone: 'נשמרו ',
+  offlineTilesCount: 'אריחים שמורים: ',
   tbSecSim: 'סימולטור',   // כפתור פוטר + כותרת המודל; האייקון מגיע מה-SVG של הכפתור
   tbSimConnect: 'התחבר לסימולטור',
   tbSimDisconnect: 'התנתק מהסימולטור',
