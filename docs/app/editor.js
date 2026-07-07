@@ -83,12 +83,30 @@
     points.forEach(function (p, i) { if ((p.layer || '') === cur) group.addLayer(marker(p, i)); });
     polys.forEach(function (pg, i) {
       if ((pg.layer || '') !== cur) return;
-      var poly = L.polygon(pg.coords, { color: COLOR, weight: 2, fillColor: COLOR, fillOpacity: 0.12 });
-      if (pg.name) poly.bindTooltip(String(pg.name), { sticky: true });
-      poly.on('click', function (ev) {            // click a polygon to delete it
+      // Match the map/legend: always = green, weekend = black outline + tan fill.
+      var col = pg.active === 'weekend' ? '#2b2b2b' : '#3c8f3c';
+      var fillCol = pg.active === 'weekend' ? '#c9b28a' : '#4caf50';
+      var poly = L.polygon(pg.coords, { color: col, weight: 2, fillColor: fillCol, fillOpacity: 0.12 });
+      var lbl = String(pg.name || pg.en || pg.he || '');
+      if (pg.active === 'weekend') lbl = (lbl ? lbl + ' · ' : '') + 'weekend';
+      if (lbl) poly.bindTooltip(lbl, { sticky: true });
+      poly.on('click', function (ev) {            // click = name/type (shift-click = delete)
         L.DomEvent.stopPropagation(ev);
-        if (!confirm('Delete this polygon?')) return;
-        polys.splice(i, 1); savePolys(); render(); redraw();
+        if (ev.originalEvent && ev.originalEvent.shiftKey) {
+          if (!confirm('Delete this polygon?')) return;
+          polys.splice(i, 1); savePolys(); render(); redraw(); return;
+        }
+        var name = prompt('Bubble code / name (blank to clear):', polys[i].name || '');
+        if (name === null) return;                 // cancel — no change
+        var en = prompt('English name:', polys[i].en || '');
+        if (en === null) return;
+        var he = prompt('Hebrew name:', polys[i].he || '');
+        if (he === null) return;
+        var typ = prompt('Active — "weekend" or "always":', polys[i].active || 'always');
+        if (typ === null) return;
+        polys[i].name = name.trim(); polys[i].en = en.trim(); polys[i].he = he.trim();
+        polys[i].active = /^\s*w/i.test(typ) ? 'weekend' : 'always';
+        savePolys(); render(); redraw();           // lands in the exported JSON
       });
       group.addLayer(poly);
     });
@@ -105,6 +123,9 @@
       return JSON.stringify(curPolys().map(function (pg) {
         var o = { type: 'polygon', coords: pg.coords };
         if (pg.name) o.name = pg.name;
+        if (pg.en) o.en = pg.en;
+        if (pg.he) o.he = pg.he;
+        if (pg.active === 'weekend') o.active = 'weekend';   // 'always' is the default → omitted
         return o;
       }), null, 2);
     }
@@ -160,6 +181,34 @@
       savePoints(); render(); redraw();
     }).catch(function (e) { alert('Failed to load known set: ' + e); });
   }
+  // Polygon-mode counterpart of loadKnown: pull the shipped LSA bubbles into the
+  // editor so their name/en/he can be set by clicking, then Copy JSON to paste
+  // back into data/<layer>-areas.json. Same anti-corruption guard as loadKnown:
+  // refuse the silent cvfr fallback (no cvfr-areas.json exists).
+  function loadKnownAreas() {
+    var lyr = currentLayer();
+    var expected = prefixForLayer(lyr);
+    if (expected === 'cvfr') { alert('No known LSA areas for ' + (lyr || 'this layer')); return; }
+    if (curPolys().length && !confirm('Replace ' + curPolys().length + ' polygon(s) on ' + lyr + ' with the known set?')) return;
+    fetchLayerData('areas').then(function (res) {
+      if (currentLayer() !== lyr) {
+        alert('Layer changed while loading — not importing. Try again on ' + lyr + '.');
+        return;
+      }
+      if (res.prefix !== expected) {
+        alert('The ' + lyr + ' areas set failed to load (got the ' + res.prefix +
+          ' fallback instead) — not importing. Try again.');
+        return;
+      }
+      var d = res.data;
+      var arr = Array.isArray(d) ? d : (d.areas || []);
+      var loaded = arr.filter(function (a) { return a && Array.isArray(a.coords) && a.coords.length >= 3; }).map(function (a) {
+        return { coords: a.coords.map(function (c) { return [r5(c[0]), r5(c[1])]; }), layer: lyr, name: a.name || '', en: a.en || '', he: a.he || '', active: a.active === 'weekend' ? 'weekend' : 'always' };
+      });
+      polys = polys.filter(function (p) { return (p.layer || '') !== lyr; }).concat(loaded);
+      savePolys(); render(); redraw();
+    }).catch(function (e) { alert('Failed to load known areas: ' + e); });
+  }
 
   // ---- actions ----------------------------------------------------------
   function addPoint(latlng) {
@@ -177,7 +226,7 @@
   }
   function finishPoly() {
     if (draft.length < 3) { draft = []; render(); redraw(); return; }
-    polys.push({ coords: draft.map(function (ll) { return [r5(ll.lat), r5(ll.lng)]; }), layer: currentLayer(), name: '' });
+    polys.push({ coords: draft.map(function (ll) { return [r5(ll.lat), r5(ll.lng)]; }), layer: currentLayer(), name: '', en: '', he: '', active: 'always' });
     draft = []; savePolys(); render(); redraw();
   }
 
@@ -216,7 +265,7 @@
       '<div id="ed-type" style="margin-bottom:6px">' +
       '<label style="margin-right:8px"><input type="radio" name="ed-t" value="mandatory"> mandatory</label>' +
       '<label><input type="radio" name="ed-t" value="onRequest" checked> on-request</label></div>' +
-      '<div style="opacity:.8;margin-bottom:6px">Point: click add · click marker to name (blank deletes) · shift-click marker to delete.<br>Polygon: click vertices · dbl-click / Finish / click 1st vertex to close · polygon to delete.</div>' +
+      '<div style="opacity:.8;margin-bottom:6px">Point: click add · click marker to name (blank deletes) · shift-click marker to delete.<br>Polygon: click vertices · dbl-click / Finish / click 1st vertex to close · click polygon to set name/en/he + active (always/weekend) · shift-click to delete · “Load known” imports the shipped bubbles.</div>' +
       '<div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">' +
       '<button id="ed-finish" type="button">Finish</button>' +
       '<button id="ed-load" type="button">Load known</button>' +
@@ -234,7 +283,7 @@
     box.querySelectorAll('input[name=ed-m]').forEach(function (r) { r.addEventListener('change', function () { setMode(r.value); }); });
     box.querySelectorAll('input[name=ed-t]').forEach(function (r) { r.addEventListener('change', function () { curType = r.value; }); });
     finishBtn.onclick = finishPoly;
-    box.querySelector('#ed-load').onclick = loadKnown;
+    box.querySelector('#ed-load').onclick = function () { if (mode === 'polygon') loadKnownAreas(); else loadKnown(); };
     box.querySelector('#ed-undo').onclick = function () {
       var cur = currentLayer();
       if (mode === 'polygon') {

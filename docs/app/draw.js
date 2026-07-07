@@ -981,6 +981,11 @@ const _CVFR_DATA_URL = {
   'nav-waypoints': () => S.navWpUrl,
   'comm-change': () => S.commChangeUrl,
   'leg-altitude': () => S.legAltitudeUrl,
+  // No cvfr-areas.json exists (areas are lsa/heli-only) — this entry is only a
+  // version carrier: _verOf() reads its ?v= to cache-bust data/<layer>-areas.json.
+  // Bump ?v= whenever an *-areas.json changes. The cvfr fallback fetch never
+  // runs (loadAreas skips the network on the cvfr prefix).
+  'areas': () => 'data/cvfr-areas.json?v=4',
   // route-templates is a single shared file; templates self-tag with a `layer`.
 };
 function _verOf(url) { const m = /\?v=([^&]+)/.exec(url || ''); return m ? m[1] : '1'; }
@@ -1093,12 +1098,13 @@ var areas = null;            // null = not loaded; [] or populated = loaded
 async function loadAreas() {
   if (areas !== null) return areas;
   const gen = _layerGen;
-  // No cvfr-areas.json exists (areas are an lsa/heli-only overlay) and
-  // _CVFR_DATA_URL has no 'areas' entry, so fetchLayerData would otherwise
-  // waste a guaranteed-404 request every time the cvfr-prefixed layers
-  // (CVFR/Navigation/Satellite/OSM) are selected. Skip the network call.
+  // No cvfr-areas.json exists (areas are an lsa/heli-only overlay), so on the
+  // cvfr-prefixed layers (CVFR/Navigation/Satellite/OSM) skip the network call
+  // to avoid a guaranteed-404 (the 'areas' _CVFR_DATA_URL entry is only a
+  // cache-bust version carrier, never actually fetched).
   if (layerDataPrefix() === 'cvfr') {
     areas = [];
+    if (typeof refreshLsaListBtn === 'function') refreshLsaListBtn();
     return areas;
   }
   try {
@@ -1106,31 +1112,82 @@ async function loadAreas() {
     const arr = Array.isArray(d) ? d : (d.areas || []);
     const mapped = arr
       .filter(a => a && Array.isArray(a.coords) && a.coords.length >= 3)
-      .map(a => ({ coords: a.coords, name: a.name || '' }));
+      // `active`: 'weekend' bubbles are only in force on the Israel weekend
+      // (Fri–Sat); everything else defaults to 'always'. Field is optional in
+      // the data — absent means 'always'.
+      .map(a => ({ coords: a.coords, name: a.name || '', en: a.en || '', he: a.he || '',
+        active: a.active === 'weekend' ? 'weekend' : 'always' }));
     if (gen !== _layerGen) return loadAreas();   // superseded — don't stomp; re-enter (joins via memo)
     areas = mapped;
   } catch (e) {
     if (gen === _layerGen) areas = [];      // no areas file for this layer (or fetch failed)
   }
   if (areas && areas.length) scheduleDraw();
+  if (typeof refreshLsaListBtn === 'function') refreshLsaListBtn();
   return areas;
 }
+// Localized display name for an LSA bubble (Hebrew label on the he layer, else
+// English/base). Empty when the bubble is unnamed.
+function areaLabel(a) {
+  if (!a) return '';
+  const heFirst = (typeof S !== 'undefined' && S.airfieldLabelField === 'he');
+  return (heFirst ? (a.he || a.name || a.en) : (a.en || a.name || a.he)) || '';
+}
+// Polygon centroid (area-weighted) for label placement; falls back to the
+// vertex average for degenerate rings.
+function areaCentroid(coords) {
+  let a2 = 0, cx = 0, cy = 0;
+  for (let i = 0, n = coords.length; i < n; i++) {
+    const [y0, x0] = coords[i], [y1, x1] = coords[(i + 1) % n];
+    const cross = x0 * y1 - x1 * y0;
+    a2 += cross; cx += (x0 + x1) * cross; cy += (y0 + y1) * cross;
+  }
+  if (Math.abs(a2) < 1e-9) {
+    const s = coords.reduce((p, c) => [p[0] + c[0], p[1] + c[1]], [0, 0]);
+    return { lat: s[0] / coords.length, lng: s[1] / coords.length };
+  }
+  return { lat: cy / (3 * a2), lng: cx / (3 * a2) };
+}
 function drawAreas() {
+  if (!showLsaBubbles) return;                    // "Show LSA bubbles" toggle (Extra layers)
   if (areas === null) { loadAreas(); return; }   // lazy-load on first draw
   if (!areas.length) return;
   octx.save();
-  octx.lineWidth = 2;
-  octx.strokeStyle = '#0aa3c2';
-  octx.fillStyle = 'rgba(10,163,194,0.10)';
-  for (const a of areas) {
+  octx.setLineDash([]);                 // official legend uses solid outlines for both types
+  for (const a of areas) {              // paint state (fill/stroke/width) is set per-polygon below
     octx.beginPath();
     for (let i = 0; i < a.coords.length; i++) {
       const s = proj({ lat: a.coords[i][0], lng: a.coords[i][1] });
       if (i === 0) octx.moveTo(s.x, s.y); else octx.lineTo(s.x, s.y);
     }
     octx.closePath();
+    const hl = a === window.__lsaHighlight;   // chart "locate" highlight
+    const wknd = a.active === 'weekend';
+    // Official legend colours: always = green outline + pale-green fill (in force
+    // every day); weekend = black outline + tan fill (Fri–Sat only). The locate
+    // highlight overrides both with amber.
+    octx.fillStyle = hl ? 'rgba(255,204,51,0.22)' : (wknd ? 'rgba(201,178,138,0.35)' : 'rgba(60,160,60,0.15)');
+    octx.strokeStyle = hl ? '#ffcc33' : (wknd ? '#2b2b2b' : '#3c8f3c');
+    octx.lineWidth = hl ? 4 : 2;
     octx.fill();
     octx.stroke();
+  }
+  // Names, at each bubble's centroid (zoomed in enough to be readable).
+  const showLabels = map.getZoom() >= (typeof tune === 'function' ? tune('vorLabelMinZoom') : 8);
+  if (showLabels) {
+    octx.textAlign = 'center';
+    octx.textBaseline = 'middle';
+    octx.font = 'bold ' + (typeof tune === 'function' ? tune('vorLabelFontPx') : 12) + 'px sans-serif';
+    for (const a of areas) {
+      const nm = areaLabel(a);
+      if (!nm) continue;
+      const s = proj(areaCentroid(a.coords));
+      octx.lineWidth = 2.5;
+      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
+      octx.strokeText(nm, s.x, s.y);
+      octx.fillStyle = '#222';                       // neutral: reads over green + tan fills
+      octx.fillText(nm, s.x, s.y);
+    }
   }
   octx.restore();
 }
