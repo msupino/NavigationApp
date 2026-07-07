@@ -2940,6 +2940,7 @@ if (lsaCb) {
     window.showLsaBubbles = e.target.checked;
     try { localStorage.setItem(LSA_BUBBLES_KEY, showLsaBubbles ? '1' : '0'); }
     catch (err) { /* storage unavailable */ }
+    if (typeof refreshLsaListBtn === 'function') refreshLsaListBtn();  // list button follows the toggle
     draw();   // drawAreas() lazy-loads the areas file if needed
   };
 }
@@ -2951,8 +2952,11 @@ function refreshLsaListBtn() {
   // exist nowhere else, so hide the toggle + list button on other layers.
   const grp = document.getElementById('lsa-group');
   if (grp) grp.hidden = !onLsa;
+  // The list button follows the overlay toggle too: with bubbles hidden, the
+  // list's "locate" would zoom to an unpainted bubble (drawAreas early-returns),
+  // so the button is only shown when the overlay is actually on.
   const btn = document.getElementById('lsa-list-btn');
-  if (btn) btn.hidden = !(onLsa && Array.isArray(areas) && areas.length > 0);
+  if (btn) btn.hidden = !(onLsa && showLsaBubbles && Array.isArray(areas) && areas.length > 0);
 }
 function showLsaChart() {
   if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
