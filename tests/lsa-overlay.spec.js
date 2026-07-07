@@ -97,9 +97,23 @@ test('LSA bubble chart: list button appears on Low Alt, modal lists bubbles, row
     map.addLayer(layers['Low Alt']);
     if (typeof reloadLayerDatasets === 'function') await reloadLayerDatasets(); else { window.areas = null; await loadAreas(); }
   });
-  // button revealed on Low Alt (checked via the hidden attribute; the section
-  // may be collapsed so toBeVisible() is unreliable).
+  // control group + button revealed on Low Alt (checked via the hidden
+  // attribute; the section may be collapsed so toBeVisible() is unreliable).
+  expect(await page.locator('#lsa-group').evaluate(el => el.hidden)).toBe(false);
   expect(await page.locator('#lsa-list-btn').evaluate(el => el.hidden)).toBe(false);
+  // ...and the whole group hides again on a non-LSA layer.
+  await page.evaluate(async () => {
+    for (const x in layers) if (map.hasLayer(layers[x])) map.removeLayer(layers[x]);
+    map.addLayer(layers['CVFR']);
+    if (typeof reloadLayerDatasets === 'function') await reloadLayerDatasets(); else { window.areas = null; await loadAreas(); }
+  });
+  expect(await page.locator('#lsa-group').evaluate(el => el.hidden)).toBe(true);
+  // back to Low Alt for the chart interaction below.
+  await page.evaluate(async () => {
+    for (const x in layers) if (map.hasLayer(layers[x])) map.removeLayer(layers[x]);
+    map.addLayer(layers['Low Alt']);
+    if (typeof reloadLayerDatasets === 'function') await reloadLayerDatasets(); else { window.areas = null; await loadAreas(); }
+  });
   const r = await page.evaluate(() => {
     areas[0].en = 'Test Area';       // name one bubble → localized label in the list
     showLsaChart();

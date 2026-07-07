@@ -2946,10 +2946,13 @@ if (lsaCb) {
 // LSA "bubble chart": a list of named bubbles (shown only on the Low Alt layer
 // once areas load). Clicking a row zooms to it and highlights it.
 function refreshLsaListBtn() {
-  const btn = document.getElementById('lsa-list-btn');
-  if (!btn) return;
   const onLsa = typeof layerDataPrefix === 'function' && layerDataPrefix() === 'lsa';
-  btn.hidden = !(onLsa && Array.isArray(areas) && areas.length > 0);
+  // The whole LSA control group belongs to the Low Alt layer only — bubbles
+  // exist nowhere else, so hide the toggle + list button on other layers.
+  const grp = document.getElementById('lsa-group');
+  if (grp) grp.hidden = !onLsa;
+  const btn = document.getElementById('lsa-list-btn');
+  if (btn) btn.hidden = !(onLsa && Array.isArray(areas) && areas.length > 0);
 }
 function showLsaChart() {
   if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
