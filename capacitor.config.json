@@ -1,11 +1,12 @@
 {
   "appId": "org.supino.navaid",
   "appName": "NavAid",
-  "webDir": "docs",
+  "webDir": "mobile-shell",
+  "server": {
+    "url": "https://navaid.supino.org",
+    "androidScheme": "https"
+  },
   "android": {
     "allowMixedContent": false
-  },
-  "server": {
-    "androidScheme": "https"
   }
 }
