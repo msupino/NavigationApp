@@ -780,7 +780,9 @@ async function buildRouteFromQuery(raw) {
     lat: w.lat, lng: w.lng, name: w.name,
   }));
   state.legs = [];
+  state.notes = [];                       // fresh route: drop the previous route's freehand notes (seedCommChangeNotes re-adds comm notes)
   state.commChangeSuppressions = [];
+  state.wind = { dir: 270, speed: 0 };     // search-built route carries no wind — don't inherit the previous route's
   state.selected = null;
   syncLegs();
   if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();  // #487
