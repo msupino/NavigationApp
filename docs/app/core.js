@@ -1022,12 +1022,15 @@ window.S = Object.assign({
   tbPrintTitle: 'Save the framed map + route as a PNG',
   tbMagnifier: '🔍 Magnifying glass (M)',
   tbMagnifierTitle: 'Magnifying glass (M) — zoomed view at cursor; +/− adjust loupe zoom while open',
-  tbGpsRecord: '📍 Record GPS track',
+  // Footer-button labels carry NO icon prefix: the button's own
+  // .footer-link-icon span renders the glyph, so an emoji in the label
+  // showed a double icon in the mobile footer menu.
+  tbGpsRecord: 'Record GPS track',
   tbGpsRecordTitle: 'Record your flown track from the device GPS and save it',
-  tbGpsStop: '■ Stop & save',
-  tbGpsLive: '📍 Show my location',
+  tbGpsStop: 'Stop & save',
+  tbGpsLive: 'Show my location',
   tbGpsLiveTitle: 'Show your live position on the map (device GPS, no recording)',
-  tbGpsLiveStop: '■ Hide my location',
+  tbGpsLiveStop: 'Hide my location',
   gpsUnsupported: 'GPS is not available in this browser.',
   gpsNoTrack: 'No track recorded.',
   gpsError: 'GPS error: ',
@@ -1049,7 +1052,7 @@ window.S = Object.assign({
   tbSecCharts: '📋 Charts',
   tbSecExport: '📤 Export/import',
   tbSecWeather: '🗂 Extra layers',
-  tbSecSim: '✈ Simulator',
+  tbSecSim: 'Simulator',   // footer button + sim modal title; the footer icon span draws the plane
   tbSimConnect: 'Connect to simulator',
   tbSimDisconnect: 'Disconnect from simulator',
   tbSimConnectTitle: 'Poll a local SimConnect bridge (e.g. Little NavMap) for live aircraft position',

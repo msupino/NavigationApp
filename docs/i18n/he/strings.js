@@ -547,7 +547,7 @@ window.S = {
   tbSecCharts: '📋 דפיות',
   tbSecExport: '📤 ייצוא/ייבוא',
   tbSecWeather: '🗂 שכבות נוספות',
-  tbSecSim: '✈ סימולטור',
+  tbSecSim: 'סימולטור',   // כפתור פוטר + כותרת המודל; האייקון מגיע מה-SVG של הכפתור
   tbSimConnect: 'התחבר לסימולטור',
   tbSimDisconnect: 'התנתק מהסימולטור',
   tbSimConnectTitle: 'סקור גשר SimConnect מקומי (כגון Little NavMap / MSFS) לקבלת מיקום מטוס בזמן אמת',
@@ -605,12 +605,14 @@ window.S = {
   magZoomLabel: 'תקריב',
   magZoomTitle: 'גורם התקריב של הזכוכית המגדלת',
   magLoading: 'משכלל…',
-  tbGpsRecord: '📍 הקלטת מסלול GPS',
+  // תוויות כפתורי הפוטר ללא אימוג'י — האייקון מגיע מ-.footer-link-icon
+  // (אימוג'י בתווית הכפיל את האייקון בתפריט הנייד).
+  tbGpsRecord: 'הקלטת מסלול GPS',
   tbGpsRecordTitle: 'הקלטת המסלול בפועל מ-GPS המכשיר ושמירתו',
-  tbGpsStop: '■ עצור ושמור',
-  tbGpsLive: '📍 הצג מיקום',
+  tbGpsStop: 'עצור ושמור',
+  tbGpsLive: 'הצג מיקום',
   tbGpsLiveTitle: 'הצגת המיקום החי שלך על המפה (GPS, ללא הקלטה)',
-  tbGpsLiveStop: '■ הסתר מיקום',
+  tbGpsLiveStop: 'הסתר מיקום',
   gpsUnsupported: 'GPS אינו זמין בדפדפן זה.',
   gpsNoTrack: 'לא הוקלט מסלול.',
   gpsError: 'שגיאת GPS: ',
