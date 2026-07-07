@@ -74,6 +74,7 @@ test('LSA areas (bubbles) load + draw on Low Alt, none on CVFR', async ({ page }
     const setL = k => { for (const x in layers) if (map.hasLayer(layers[x])) map.removeLayer(layers[x]); map.addLayer(layers[k]); };
     setL('Low Alt'); window.areas = null; await loadAreas();
     const lsaCount = window.areas.length;
+    const southern = window.areas.filter(a => Array.isArray(a.coords) && a.coords[0][0] < 31).length;
     map.setView([32.1, 35.0], 9);
     let fills = 0; const orig = octx.fill;
     octx.fill = function (...a) { fills++; return orig.apply(this, a); };
@@ -81,9 +82,10 @@ test('LSA areas (bubbles) load + draw on Low Alt, none on CVFR', async ({ page }
     octx.fill = orig;
     setL('CVFR'); window.areas = null; await loadAreas();
     const cvfrCount = window.areas.length;
-    return { lsaCount, fills, cvfrCount };
+    return { lsaCount, southern, fills, cvfrCount };
   });
-  expect(r.lsaCount).toBeGreaterThan(0);   // 6 bubbles
+  expect(r.lsaCount).toBeGreaterThanOrEqual(17);   // northern set + southern (Eilat-area) bubbles
+  expect(r.southern).toBeGreaterThanOrEqual(4);    // the southern LSA bubbles (lat ~30)
   expect(r.fills).toBeGreaterThan(0);      // drawn on Low Alt
   expect(r.cvfrCount).toBe(0);             // no cvfr-areas file
 });

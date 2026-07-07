@@ -981,6 +981,11 @@ const _CVFR_DATA_URL = {
   'nav-waypoints': () => S.navWpUrl,
   'comm-change': () => S.commChangeUrl,
   'leg-altitude': () => S.legAltitudeUrl,
+  // No cvfr-areas.json exists (areas are lsa/heli-only) — this entry is only a
+  // version carrier: _verOf() reads its ?v= to cache-bust data/<layer>-areas.json.
+  // Bump ?v= whenever an *-areas.json changes. The cvfr fallback fetch never
+  // runs (loadAreas skips the network on the cvfr prefix).
+  'areas': () => 'data/cvfr-areas.json?v=2',
   // route-templates is a single shared file; templates self-tag with a `layer`.
 };
 function _verOf(url) { const m = /\?v=([^&]+)/.exec(url || ''); return m ? m[1] : '1'; }
@@ -1093,10 +1098,10 @@ var areas = null;            // null = not loaded; [] or populated = loaded
 async function loadAreas() {
   if (areas !== null) return areas;
   const gen = _layerGen;
-  // No cvfr-areas.json exists (areas are an lsa/heli-only overlay) and
-  // _CVFR_DATA_URL has no 'areas' entry, so fetchLayerData would otherwise
-  // waste a guaranteed-404 request every time the cvfr-prefixed layers
-  // (CVFR/Navigation/Satellite/OSM) are selected. Skip the network call.
+  // No cvfr-areas.json exists (areas are an lsa/heli-only overlay), so on the
+  // cvfr-prefixed layers (CVFR/Navigation/Satellite/OSM) skip the network call
+  // to avoid a guaranteed-404 (the 'areas' _CVFR_DATA_URL entry is only a
+  // cache-bust version carrier, never actually fetched).
   if (layerDataPrefix() === 'cvfr') {
     areas = [];
     return areas;
