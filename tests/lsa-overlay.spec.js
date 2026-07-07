@@ -97,8 +97,11 @@ test('LSA bubble chart: list button appears on Low Alt, modal lists bubbles, row
     map.addLayer(layers['Low Alt']);
     if (typeof reloadLayerDatasets === 'function') await reloadLayerDatasets(); else { window.areas = null; await loadAreas(); }
   });
-  // control group + button revealed on Low Alt (checked via the hidden
-  // attribute; the section may be collapsed so toBeVisible() is unreliable).
+  // the list button lives in the Charts section (not the Extra-layers group).
+  expect(await page.locator('#lsa-list-btn').evaluate(el => !!el.closest('[data-sec="charts"]'))).toBe(true);
+  // control group (Extra layers, toggle) + Charts button revealed on Low Alt
+  // (checked via the hidden attribute; the section may be collapsed so
+  // toBeVisible() is unreliable).
   expect(await page.locator('#lsa-group').evaluate(el => el.hidden)).toBe(false);
   expect(await page.locator('#lsa-list-btn').evaluate(el => el.hidden)).toBe(false);
   // ...and the whole group hides again on a non-LSA layer.
