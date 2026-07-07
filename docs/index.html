@@ -121,7 +121,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=323">
+  <link rel="stylesheet" href="app/style.css?v=324">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -155,17 +155,18 @@
   <div id="map"></div>
   <canvas id="overlay"></canvas>
 
+  <!-- Visible app name + purpose, anchored independently of the toolbar so it
+       never affects the menubar geometry. OAuth branding verification requires
+       the app name and its purpose to be human-visible on the home page (the
+       sr-only prose above is crawler/screen-reader-only). -->
+  <div id="app-brand">
+    <a href="about.html" target="_blank" rel="noopener">NavAid</a>
+    <span class="app-brand-tag" data-i18n="tbBrandTag"></span>
+  </div>
+
   <div id="toolbar">
     <span id="toolbar-handle" class="drag-handle" data-i18n-title="tbHandleTitle">⋯</span>
     <span id="toolbar-toggle" role="button" tabindex="0"><span></span><span></span><span></span></span>
-
-    <!-- Visible app name + purpose. OAuth branding verification requires the
-         app name and its purpose to be HUMAN-visible on the home page (the
-         sr-only prose above is crawler/screen-reader-only). -->
-    <div id="tb-brand">
-      <a href="about.html" target="_blank" rel="noopener">NavAid</a>
-      <span class="tb-brand-tag" data-i18n="tbBrandTag"></span>
-    </div>
 
     <label id="lang-toggle" class="navtoggle">🌐
       <select id="lang-select">
@@ -700,7 +701,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=323';
+      var v = '?v=324';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
