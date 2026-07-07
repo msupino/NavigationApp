@@ -688,18 +688,18 @@
   function build() {
     if (built) return; built = true;
     fab = el('button', 'assistant-fab'); fab.type = 'button';
-    fab.textContent = '💬'; fab.title = t('assistantTitle', 'Flight assistant');
-    fab.setAttribute('aria-label', t('assistantTitle', 'Flight assistant'));
+    fab.textContent = '💬'; fab.title = t('assistantTitle', 'Flight plan assistant');
+    fab.setAttribute('aria-label', t('assistantTitle', 'Flight plan assistant'));
     fab.onclick = toggle;
 
     panel = el('div', 'assistant-panel hidden');
     panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-label', t('assistantTitle', 'Flight assistant'));
+    panel.setAttribute('aria-label', t('assistantTitle', 'Flight plan assistant'));
     panel.addEventListener('mouseup', savePanelSize);   // persist size after a resize-grabber drag
     // Escape closes the panel (accessibility) while focus is inside it.
     panel.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); toggle(); } });
     const head = el('div', 'assistant-head');
-    head.appendChild(el('span', 'assistant-title', t('assistantTitle', 'Flight assistant')));
+    head.appendChild(el('span', 'assistant-title', t('assistantTitle', 'Flight plan assistant')));
     const iconBtn = (glyph, key, fb, fn) => {
       const b = el('button', 'assistant-icon-btn', glyph); b.type = 'button';
       b.title = t(key, fb); b.setAttribute('aria-label', t(key, fb)); b.onclick = fn; return b;

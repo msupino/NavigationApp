@@ -802,7 +802,7 @@ window.S = Object.assign({
   windFieldErr: 'Wind field unavailable',
   windFieldNorthUpOnly: 'Wind field shows north-up only — rotate the map to 0°',
   // AI assistant (assistant.js)
-  assistantTitle: 'Flight assistant',
+  assistantTitle: 'Flight plan assistant',
   assistantSettings: 'Settings',
   assistantClear: 'Clear chat',
   assistantClose: 'Close',
