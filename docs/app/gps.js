@@ -350,7 +350,7 @@ function gpsTrackToGpx(entry) {
   const esc = s => String(s).replace(/[<&>]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
   const seg = pts.map(p =>
     '      <trkpt lat="' + p.lat + '" lon="' + p.lng + '">' +
-    (p.alt != null ? '<ele>' + (p.alt / 3.28084).toFixed(1) + '</ele>' : '') +  // ft → m
+    (p.alt != null ? '<ele>' + p.alt + '</ele>' : '') +  // p.alt is already metres (Geolocation altitude); GPX <ele> is metres
     (p.t ? '<time>' + new Date(p.t).toISOString() + '</time>' : '') +
     '</trkpt>').join('\n');
   return '<?xml version="1.0" encoding="UTF-8"?>\n' +

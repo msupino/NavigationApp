@@ -3376,7 +3376,10 @@ function drawFlightPlanTable(ctx, x, y, w, h, align) {
     rows.push({ num: i + 1, from: waypointDisplayLabel(A, i),
       to: waypointDisplayLabel(B, i + 1),
       hdg: pad3(hdg) + '°M', dist: dist.toFixed(1),
-      speed: String(legs[i].flightSpeed), alt: String(legs[i].inboundAltitude),
+      speed: String(legs[i].flightSpeed),
+      // Guard non-finite (unknown) altitude like the kite + flight-plan modal do,
+      // so the PNG plan card shows the unknown-label instead of the literal "NaN".
+      alt: formatAltitudeValue(legs[i].inboundAltitude, legs[i], 'inboundAltitude'),
       time: dur > 0 ? toHMS(dur) : '--', fuel: fLabel,
       cumTime: totTime > 0 ? toHMS(totTime) : '--',
       cumFuel: ac ? totFuel.toFixed(1) : '--',

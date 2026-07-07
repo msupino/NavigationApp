@@ -1636,11 +1636,18 @@ document.getElementById('reverse').onclick = () => {
       inboundAltitude: l.outboundAltitude,
       outboundAltitude: l.inboundAltitude,
       flightSpeed: showReturn ? l.outboundSpeed : l.flightSpeed,
-      outboundSpeed: showReturn ? l.flightSpeed : l.outboundSpeed,
+      // With return legs off, reset the (hidden) return speed to the forward
+      // speed rather than preserving a stale value — intentional, see
+      // flight-plan.spec.js "reverse route preserves flightSpeed when showReturn is off".
+      outboundSpeed: showReturn ? l.flightSpeed : l.flightSpeed,
       inLabel:  flipLabel(inOld, d.inLabel),
       outLabel: flipLabel(outOld, d.outLabel),
       cumLabel: flipLabel(cumOld, d.cumLabel),
       cumLabelRet: flipLabel(cumRetOld, d.cumLabelRet),
+      // Per-leg winds-aloft is an absolute FROM-direction — identical whether the
+      // leg is flown A->B or B->A — so carry it over unchanged; dropping it made
+      // Reverse silently discard a pulled forecast and corrupt heading/GS/ETE.
+      ...(l.wind ? { wind: l.wind } : {}),
       ...(l._legAltitudeAuto ? { _legAltitudeAuto: 1 } : {}),
       ...(l._legAltitudeKey ? { _legAltitudeKey: l._legAltitudeKey } : {}),
       ...(l._legAltitudeOutboundBlocked || l._legAltitudeOneWay
