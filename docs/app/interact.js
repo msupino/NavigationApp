@@ -3079,6 +3079,7 @@ map.on('mousemove', e => {
     return;
   }
   const p = e.containerPoint;
+  if (typeof setLiveDragging === 'function') setLiveDragging(true);  // collapse this drag's frames into one undo entry
   if (drag.kind === 'wp') {
     drag.moved = true;
     const wp = state.waypoints[drag.i];
@@ -3117,6 +3118,7 @@ function endMouseDrag() {
         deleteWaypoint(drag.i);   // removes the adjacent leg too; bare splice+syncLegs would drop the tail leg and misalign the rest
         state.selected = null;
         showInspector(); draw();
+        if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
         map.dragging.enable();
         drag = null;
         return;
@@ -3137,6 +3139,7 @@ function endMouseDrag() {
       const inspOpen = !document.getElementById('inspector').classList.contains('hidden');
       if (!drag.moved || inspOpen) showInspector();
     }
+    if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
     map.dragging.enable();
     drag = null;
   }
@@ -3474,6 +3477,7 @@ mapEl.addEventListener('touchmove', e => {
   e.preventDefault();
   const p = touchXY(e.touches[0]);
   const ll = map.containerPointToLatLng([p.x, p.y]);
+  if (typeof setLiveDragging === 'function') setLiveDragging(true);  // collapse this drag's frames into one undo entry
   if (touchDrag.kind === 'wp') {
     touchDrag.moved = true;
     const wp = state.waypoints[touchDrag.i];
@@ -3508,6 +3512,7 @@ function endTouch() {
         deleteWaypoint(touchDrag.i);   // removes the adjacent leg too (see endMouseDrag)
         state.selected = null;
         showInspector(); draw();
+        if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
         map.dragging.enable();
         touchDrag = null;
         return;
@@ -3520,6 +3525,7 @@ function endTouch() {
       if (typeof seedCommChangeNotes === 'function' && seedCommChangeNotes()) changed = true;
     }
     if (changed) { draw(); showInspector(); }
+    if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
     map.dragging.enable();
     touchDrag = null;
   }

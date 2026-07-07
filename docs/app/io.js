@@ -3972,13 +3972,24 @@ function flushPersist() {
 const undoStack = [];
 let lastCommitted = null;
 let undoing = false;
+// A live pointer/touch drag repaints (and persists) on every move; the
+// interaction layer flags that here so the dozens of intermediate frames of
+// one drag don't each become an undo entry (which used to flood the stack and
+// evict real history). On drag end it flips back and commits ONE snapshot of
+// the final dragged state.
+let liveDragging = false;
+function setLiveDragging(v) {
+  const was = liveDragging;
+  liveDragging = !!v;
+  if (was && !liveDragging) recordUndoSnapshot(JSON.stringify(routeSnapshotForStorage()));
+}
 
 function recordUndoSnapshot(serialized) {
   if (lastCommitted === null) {           // baseline — nothing to undo to yet
     lastCommitted = serialized;
     return;
   }
-  if (undoing || serialized === lastCommitted) return;
+  if (undoing || liveDragging || serialized === lastCommitted) return;
   undoStack.push(lastCommitted);
   if (undoStack.length > tune('undoLimit')) undoStack.shift();
   lastCommitted = serialized;
