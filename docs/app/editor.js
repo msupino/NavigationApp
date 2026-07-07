@@ -172,6 +172,34 @@
       savePoints(); render(); redraw();
     }).catch(function (e) { alert('Failed to load known set: ' + e); });
   }
+  // Polygon-mode counterpart of loadKnown: pull the shipped LSA bubbles into the
+  // editor so their name/en/he can be set by clicking, then Copy JSON to paste
+  // back into data/<layer>-areas.json. Same anti-corruption guard as loadKnown:
+  // refuse the silent cvfr fallback (no cvfr-areas.json exists).
+  function loadKnownAreas() {
+    var lyr = currentLayer();
+    var expected = prefixForLayer(lyr);
+    if (expected === 'cvfr') { alert('No known LSA areas for ' + (lyr || 'this layer')); return; }
+    if (curPolys().length && !confirm('Replace ' + curPolys().length + ' polygon(s) on ' + lyr + ' with the known set?')) return;
+    fetchLayerData('areas').then(function (res) {
+      if (currentLayer() !== lyr) {
+        alert('Layer changed while loading — not importing. Try again on ' + lyr + '.');
+        return;
+      }
+      if (res.prefix !== expected) {
+        alert('The ' + lyr + ' areas set failed to load (got the ' + res.prefix +
+          ' fallback instead) — not importing. Try again.');
+        return;
+      }
+      var d = res.data;
+      var arr = Array.isArray(d) ? d : (d.areas || []);
+      var loaded = arr.filter(function (a) { return a && Array.isArray(a.coords) && a.coords.length >= 3; }).map(function (a) {
+        return { coords: a.coords.map(function (c) { return [r5(c[0]), r5(c[1])]; }), layer: lyr, name: a.name || '', en: a.en || '', he: a.he || '' };
+      });
+      polys = polys.filter(function (p) { return (p.layer || '') !== lyr; }).concat(loaded);
+      savePolys(); render(); redraw();
+    }).catch(function (e) { alert('Failed to load known areas: ' + e); });
+  }
 
   // ---- actions ----------------------------------------------------------
   function addPoint(latlng) {
@@ -228,7 +256,7 @@
       '<div id="ed-type" style="margin-bottom:6px">' +
       '<label style="margin-right:8px"><input type="radio" name="ed-t" value="mandatory"> mandatory</label>' +
       '<label><input type="radio" name="ed-t" value="onRequest" checked> on-request</label></div>' +
-      '<div style="opacity:.8;margin-bottom:6px">Point: click add · click marker to name (blank deletes) · shift-click marker to delete.<br>Polygon: click vertices · dbl-click / Finish / click 1st vertex to close · polygon to delete.</div>' +
+      '<div style="opacity:.8;margin-bottom:6px">Point: click add · click marker to name (blank deletes) · shift-click marker to delete.<br>Polygon: click vertices · dbl-click / Finish / click 1st vertex to close · click polygon to name (name/en/he) · shift-click to delete · “Load known” imports the shipped bubbles.</div>' +
       '<div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">' +
       '<button id="ed-finish" type="button">Finish</button>' +
       '<button id="ed-load" type="button">Load known</button>' +
@@ -246,7 +274,7 @@
     box.querySelectorAll('input[name=ed-m]').forEach(function (r) { r.addEventListener('change', function () { setMode(r.value); }); });
     box.querySelectorAll('input[name=ed-t]').forEach(function (r) { r.addEventListener('change', function () { curType = r.value; }); });
     finishBtn.onclick = finishPoly;
-    box.querySelector('#ed-load').onclick = loadKnown;
+    box.querySelector('#ed-load').onclick = function () { if (mode === 'polygon') loadKnownAreas(); else loadKnown(); };
     box.querySelector('#ed-undo').onclick = function () {
       var cur = currentLayer();
       if (mode === 'polygon') {

@@ -194,6 +194,51 @@ test('unnamed point markers flash; naming stops the flash', async ({ page }) => 
   await expect(page.locator('.editor-flash')).toHaveCount(0);     // named → static
 });
 
+test('Load known (polygon mode) imports the shipped LSA bubbles for naming', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.goto('?lang=en&editor=1');
+  await page.waitForSelector('#editor-panel');
+  await page.waitForFunction(() => typeof layers !== 'undefined');
+  page.on('dialog', d => d.accept());
+  await page.evaluate(() => {
+    for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
+    map.addLayer(layers['Low Alt']);
+    document.querySelector('input[name=ed-m][value=polygon]').click();   // polygon mode → Load known = areas
+  });
+  await page.click('#ed-load');
+  await page.waitForFunction(() => JSON.parse(document.getElementById('ed-json').value).length >= 26);
+  const out = await page.evaluate(() => {
+    const j = JSON.parse(document.getElementById('ed-json').value);
+    const stored = JSON.parse(localStorage.getItem('navaid.editor.polys') || '[]');
+    const lsa = stored.filter(p => (p.layer || '') === 'Low Alt');
+    return { n: j.length, type: j[0].type, coords: j[0].coords.length,
+      storedLsa: lsa.length, fields: ('name' in lsa[0]) && ('en' in lsa[0]) && ('he' in lsa[0]) };
+  });
+  expect(out.n).toBeGreaterThanOrEqual(26);     // all shipped bubbles imported
+  expect(out.type).toBe('polygon');
+  expect(out.coords).toBeGreaterThanOrEqual(3);
+  expect(out.storedLsa).toBeGreaterThanOrEqual(26);
+  expect(out.fields).toBe(true);                // name/en/he present → clickable to set
+});
+
+test('Load known (polygon mode) refuses on a layer with no areas file (CVFR)', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.goto('?lang=en&editor=1');
+  await page.waitForSelector('#editor-panel');
+  await page.waitForFunction(() => typeof layers !== 'undefined');
+  const alerts = [];
+  page.on('dialog', d => { alerts.push(d.message()); d.accept(); });
+  await page.evaluate(() => {
+    for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
+    map.addLayer(layers['CVFR']);
+    document.querySelector('input[name=ed-m][value=polygon]').click();
+  });
+  await page.click('#ed-load');
+  await expect.poll(() => alerts.some(m => /No known LSA areas/i.test(m))).toBe(true);
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('navaid.editor.polys') || '[]').length);
+  expect(stored).toBe(0);          // nothing imported on a non-area layer
+});
+
 test('Load known works on the Helicopters layer', async ({ page }) => {
   await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
   await page.goto('?lang=en&editor=1');
