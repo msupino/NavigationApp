@@ -604,6 +604,11 @@
   async function runAgent(userText) {
     if (busy) return;
     busy = true;
+    // Remember where this turn starts so a failed send can be fully rolled back.
+    // Otherwise the pushed user turn (or a tool-response user turn) dangles, and
+    // the next send appends a second consecutive user turn → Anthropic/OpenAI
+    // 400 "roles must alternate", wedging the chat until Clear.
+    const historyBase = messages.length;
     messages.push({ role: 'user', parts: [{ text: userText }] });
     renderUser(userText);
     setBusy(true);
@@ -634,6 +639,7 @@
       // the user staring at activity spinners with no result.
       if (hitCap && !producedText) renderError(t('assistantMaxSteps', 'Stopped after several steps without a final answer — try rephrasing.'));
     } catch (e) {
+      messages.length = historyBase;   // discard the failed turn so history never ends on a dangling user turn
       renderError((e && e.message) === 'no-key'
         ? t('assistantNoKey', 'Add an API key in settings to start chatting.')
         : (t('assistantError', 'Assistant error') + ': ' + ((e && e.message) || e)));

@@ -2269,6 +2269,10 @@ function showFlightPlan() {
         state.waypoints.splice(idx === 0 ? 0 : idx + 1, 1);
         state.legs.splice(idx, 1);
         syncLegs();
+        // Drop the deleted waypoint's now-orphaned comm-change callout (this raw
+        // splice bypasses deleteWaypoint's note cleanup; the index semantics
+        // differ so we can't call it directly).
+        if (typeof pruneStaleCommChangeNotes === 'function') pruneStaleCommChangeNotes();
         state.selected = null;
         showInspector();
         draw();

@@ -3286,6 +3286,10 @@ window.addEventListener('keydown', e => {
     if (!state.selected) return;
     const freqNote = selectedFreqNoteIndex();
     if (freqNote >= 0) {
+      const note = state.notes[freqNote];
+      // Suppress so seedCommChangeNotes() doesn't re-seed it on the next
+      // drag/add/toggle — matches the other freq-note delete paths.
+      if (note && note.cc && typeof suppressCommChange === 'function') suppressCommChange(note.cc);
       state.notes.splice(freqNote, 1);
       delete state.selected.freqNoteIndex;
       draw(); showInspector();
