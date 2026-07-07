@@ -575,8 +575,10 @@ function showPointChoice(candidates) {
 }
 function hitLeg(px, py) {
   for (let i = 0; i < state.legs.length; i++) {
-    const a = proj(state.waypoints[i]);
-    const b = proj(state.waypoints[i + 1]);
+    const A = state.waypoints[i], B = state.waypoints[i + 1];
+    if (!A || !B) continue;   // guard the transient legs>waypoints-1 state (imported / mid-edit)
+    const a = proj(A);
+    const b = proj(B);
     if (distToSegment(px, py, a, b) <= tune('hitLegPx')) return i;
   }
   return -1;
@@ -3112,9 +3114,8 @@ function endMouseDrag() {
       const snappedToSelf = sameMapPoint(wp, { lat: drag.origLat, lng: drag.origLng });
       const snappedToOther = routeOccupiesPoint(wp, drag.i);
       if ((snappedToSelf && !drag.originSnapArmed) || snappedToOther) {
-        state.waypoints.splice(drag.i, 1);
+        deleteWaypoint(drag.i);   // removes the adjacent leg too; bare splice+syncLegs would drop the tail leg and misalign the rest
         state.selected = null;
-        syncLegs();
         showInspector(); draw();
         map.dragging.enable();
         drag = null;
@@ -3504,9 +3505,8 @@ function endTouch() {
       const snappedToSelf = sameMapPoint(wp, { lat: touchDrag.origLat, lng: touchDrag.origLng });
       const snappedToOther = routeOccupiesPoint(wp, touchDrag.i);
       if ((snappedToSelf && !touchDrag.originSnapArmed) || snappedToOther) {
-        state.waypoints.splice(touchDrag.i, 1);
+        deleteWaypoint(touchDrag.i);   // removes the adjacent leg too (see endMouseDrag)
         state.selected = null;
-        syncLegs();
         showInspector(); draw();
         map.dragging.enable();
         touchDrag = null;

@@ -1251,6 +1251,7 @@ function loadGpx(file) {
       state.legs = [];
       state.notes = [];
       state.commChangeSuppressions = [];
+      state.wind = { dir: 270, speed: 0 };   // imported route carries no route-wide wind — don't inherit the previous route's
       syncLegs();
       state.selected = null;
       showInspector();
@@ -1318,6 +1319,7 @@ function loadPln(file) {
       state.legs = [];
       state.notes = [];
       state.commChangeSuppressions = [];
+      state.wind = { dir: 270, speed: 0 };   // imported route carries no route-wide wind — don't inherit the previous route's
       syncLegs();
       state.selected = null;
       showInspector();
@@ -4006,6 +4008,11 @@ function undo() {
   // so the restored route is not re-pinned to — and rewritten from —
   // whichever layer happens to be displayed at undo time.
   routeAltPrefix = typeof snap.altPin === 'string' ? snap.altPin : null;
+  // Restore route-wide wind + map bearing too (the snapshot carries both, and
+  // restoreRoute/applyRouteData restore them) — otherwise an undo across a wind
+  // or rotation change leaves the current values feeding the heading/ETA math.
+  state.wind = storedWind(snap);
+  applyMapBearing(snap);
   // The restored snapshot may predate (or differ from) the loaded library
   // entry, so drop the tracked id — Save then opens the menu instead of
   // silently overwriting a saved route with unrelated content.

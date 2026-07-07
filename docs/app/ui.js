@@ -1636,7 +1636,7 @@ document.getElementById('reverse').onclick = () => {
       inboundAltitude: l.outboundAltitude,
       outboundAltitude: l.inboundAltitude,
       flightSpeed: showReturn ? l.outboundSpeed : l.flightSpeed,
-      outboundSpeed: showReturn ? l.flightSpeed : l.flightSpeed,
+      outboundSpeed: showReturn ? l.flightSpeed : l.outboundSpeed,
       inLabel:  flipLabel(inOld, d.inLabel),
       outLabel: flipLabel(outOld, d.outLabel),
       cumLabel: flipLabel(cumOld, d.cumLabel),

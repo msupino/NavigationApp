@@ -2984,6 +2984,7 @@ function selectionVisible() {
 function drawWaypoints() {
   for (let i = 0; i < state.waypoints.length; i++) {
     const wp = state.waypoints[i];
+    if (!wp) continue;   // skip a null/hole (corrupt/partially-applied state) rather than throwing in proj()
     const s = proj(wp);
     const selected = selectionVisible() && state.selected &&
                      state.selected.type === 'wp' &&
@@ -3279,7 +3280,9 @@ function drawNotes() {
 function drawInfo() {
   let totalDist = 0, totalH = 0;
   for (let i = 0; i < state.legs.length; i++) {
-    const { dist } = geo(state.waypoints[i], state.waypoints[i + 1]);
+    const A = state.waypoints[i], B = state.waypoints[i + 1];
+    if (!A || !B) continue;   // legs can transiently outnumber waypoints-1 mid-edit; guard like the sibling loops
+    const { dist } = geo(A, B);
     totalDist += dist;
     if (state.legs[i].flightSpeed > 0) totalH += dist / state.legs[i].flightSpeed;
   }
