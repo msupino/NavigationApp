@@ -175,16 +175,19 @@ test('"Show LSA bubbles" toggle (Extra layers) hides/shows the overlay and persi
     map.addLayer(layers['Low Alt']); window.areas = null; await loadAreas();
     map.setView([31.4, 34.9], 9);
     const fills = () => { let n = 0; const o = octx.fill; octx.fill = function (...a) { n++; return o.apply(this, a); }; drawAreas(); octx.fill = o; return n; };
+    const listHidden = () => document.getElementById('lsa-list-btn').hidden;
     const el = document.getElementById('lsa-cb');
     el.checked = false; el.dispatchEvent(new Event('change'));
-    const off = { fills: fills(), g: window.showLsaBubbles, ls: localStorage.getItem('navaid.showLsaBubbles') };
+    const off = { fills: fills(), g: window.showLsaBubbles, ls: localStorage.getItem('navaid.showLsaBubbles'), listHidden: listHidden() };
     el.checked = true; el.dispatchEvent(new Event('change'));
-    const on = { fills: fills(), g: window.showLsaBubbles, ls: localStorage.getItem('navaid.showLsaBubbles') };
+    const on = { fills: fills(), g: window.showLsaBubbles, ls: localStorage.getItem('navaid.showLsaBubbles'), listHidden: listHidden() };
     return { off, on };
   });
   expect(r.off.fills).toBe(0);             // hidden when off
   expect(r.off.g).toBe(false);
   expect(r.off.ls).toBe('0');              // persisted
+  expect(r.off.listHidden).toBe(true);     // list button follows the toggle (no dangling "locate")
   expect(r.on.fills).toBeGreaterThan(0);   // shown again
   expect(r.on.ls).toBe('1');
+  expect(r.on.listHidden).toBe(false);     // and returns when the overlay is back on
 });
