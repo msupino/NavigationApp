@@ -352,6 +352,7 @@
         state.legs = route.legs;
         state.notes = route.notes || [];
         state.commChangeSuppressions = Array.isArray(route.commChangeSuppressions) ? route.commChangeSuppressions.slice() : [];
+        if (typeof state.wind !== 'undefined') state.wind = { dir: 270, speed: 0 };   // template carries no route-wide wind
         state.selected = null;
         if (typeof syncLegs === 'function') syncLegs();
         if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();

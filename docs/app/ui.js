@@ -998,6 +998,7 @@ async function applyRouteTemplate(template, speed, closeModal) {
   state.notes = route.notes;
   state.commChangeSuppressions = Array.isArray(route.commChangeSuppressions)
     ? route.commChangeSuppressions.slice() : [];
+  state.wind = { dir: 270, speed: 0 };     // template carries no route-wide wind — don't inherit the previous route's
   state.selected = null;
   syncLegs();
   if (showCommChange && typeof loadCommChange === 'function') {
@@ -1680,6 +1681,7 @@ document.getElementById('clear').onclick = () => {
   state.legs = [];
   state.notes = [];
   state.commChangeSuppressions = [];
+  state.wind = { dir: 270, speed: 0 };     // cleared route: reset wind so a new hand-built route doesn't inherit it
   state.selected = null;
   routeAltPrefix = null;    // empty route unpins its altitude layer
   currentRouteLibraryId = null;   // cleared route is no longer a saved entry
