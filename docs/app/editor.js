@@ -83,8 +83,10 @@
     points.forEach(function (p, i) { if ((p.layer || '') === cur) group.addLayer(marker(p, i)); });
     polys.forEach(function (pg, i) {
       if ((pg.layer || '') !== cur) return;
-      var poly = L.polygon(pg.coords, { color: COLOR, weight: 2, fillColor: COLOR, fillOpacity: 0.12,
-        dashArray: pg.active === 'weekend' ? '6,4' : null });   // weekend = dashed, matches the map
+      // Match the map/legend: always = green, weekend = black outline + tan fill.
+      var col = pg.active === 'weekend' ? '#2b2b2b' : '#3c8f3c';
+      var fillCol = pg.active === 'weekend' ? '#c9b28a' : '#4caf50';
+      var poly = L.polygon(pg.coords, { color: col, weight: 2, fillColor: fillCol, fillOpacity: 0.12 });
       var lbl = String(pg.name || pg.en || pg.he || '');
       if (pg.active === 'weekend') lbl = (lbl ? lbl + ' · ' : '') + 'weekend';
       if (lbl) poly.bindTooltip(lbl, { sticky: true });

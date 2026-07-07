@@ -132,7 +132,7 @@ test('LSA bubble chart: list button appears on Low Alt, modal lists bubbles, row
   expect(r.closed).toBe(true);       // modal closed after selecting
 });
 
-test('weekend LSA bubbles draw dashed and are tagged in the list; always are plain', async ({ page }) => {
+test('weekend/always LSA bubbles use the legend colours and are tagged in the list', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
     for (const x in layers) if (map.hasLayer(layers[x])) map.removeLayer(layers[x]);
@@ -140,28 +140,29 @@ test('weekend LSA bubbles draw dashed and are tagged in the list; always are pla
     areas[0].active = 'weekend'; areas[0].en = 'WKND';
     areas[1].active = 'always'; areas[1].en = 'ALWY';
     map.setView([32.1, 35.0], 10);
-    const dashes = []; const orig = octx.setLineDash;
-    octx.setLineDash = function (a) { dashes.push(JSON.stringify(a)); return orig.apply(this, arguments); };
+    // capture the stroke colour used for each polygon outline
+    const strokes = []; const os = octx.stroke;
+    octx.stroke = function () { strokes.push(String(octx.strokeStyle)); return os.apply(this, arguments); };
     drawAreas();
-    octx.setLineDash = orig;
+    octx.stroke = os;
     showLsaChart();
     const rows = [...document.querySelectorAll('.lsa-row')];
     const wk = rows.find(x => /WKND/.test(x.textContent));
     const al = rows.find(x => /ALWY/.test(x.textContent));
     const res = {
-      dashed: dashes.includes('[6,4]'),          // weekend outline dashed
-      reset: dashes.includes('[]'),              // dash reset (labels stay solid)
+      weekendStroke: strokes.includes('#2b2b2b'),   // black outline
+      alwaysStroke: strokes.includes('#3c8f3c'),     // green outline
       wkTag: /weekend/.test(wk.textContent), wkClass: wk.classList.contains('lsa-row-weekend'),
       alTag: /weekend/.test(al.textContent), alClass: al.classList.contains('lsa-row-weekend')
     };
     document.querySelector('.modal-back[data-chart-modal="lsa-list"]')?._navaidClose?.();
     return res;
   });
-  expect(r.dashed).toBe(true);
-  expect(r.reset).toBe(true);
+  expect(r.weekendStroke).toBe(true);   // weekend = black outline
+  expect(r.alwaysStroke).toBe(true);    // always = green outline
   expect(r.wkTag).toBe(true);
   expect(r.wkClass).toBe(true);
-  expect(r.alTag).toBe(false);     // always-type: no tag, no dashed row
+  expect(r.alTag).toBe(false);          // always-type: no tag, no weekend row class
   expect(r.alClass).toBe(false);
 });
 

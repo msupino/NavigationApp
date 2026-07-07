@@ -1153,6 +1153,7 @@ function drawAreas() {
   if (areas === null) { loadAreas(); return; }   // lazy-load on first draw
   if (!areas.length) return;
   octx.save();
+  octx.setLineDash([]);                 // official legend uses solid outlines for both types
   for (const a of areas) {              // paint state (fill/stroke/width) is set per-polygon below
     octx.beginPath();
     for (let i = 0; i < a.coords.length; i++) {
@@ -1161,16 +1162,16 @@ function drawAreas() {
     }
     octx.closePath();
     const hl = a === window.__lsaHighlight;   // chart "locate" highlight
-    octx.fillStyle = hl ? 'rgba(255,204,51,0.22)' : 'rgba(10,163,194,0.10)';
-    octx.strokeStyle = hl ? '#ffcc33' : '#0aa3c2';
+    const wknd = a.active === 'weekend';
+    // Official legend colours: always = green outline + pale-green fill (in force
+    // every day); weekend = black outline + tan fill (Fri–Sat only). The locate
+    // highlight overrides both with amber.
+    octx.fillStyle = hl ? 'rgba(255,204,51,0.22)' : (wknd ? 'rgba(201,178,138,0.35)' : 'rgba(60,160,60,0.15)');
+    octx.strokeStyle = hl ? '#ffcc33' : (wknd ? '#2b2b2b' : '#3c8f3c');
     octx.lineWidth = hl ? 4 : 2;
-    // Weekend-only bubbles: dashed outline (a palette-neutral "conditional"
-    // cue that doesn't clash with the amber locate highlight). Always-type: solid.
-    octx.setLineDash(a.active === 'weekend' && !hl ? [6, 4] : []);
     octx.fill();
     octx.stroke();
   }
-  octx.setLineDash([]);                            // labels below must not inherit the dash
   // Names, at each bubble's centroid (zoomed in enough to be readable).
   const showLabels = map.getZoom() >= (typeof tune === 'function' ? tune('vorLabelMinZoom') : 8);
   if (showLabels) {
@@ -1184,7 +1185,7 @@ function drawAreas() {
       octx.lineWidth = 2.5;
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
       octx.strokeText(nm, s.x, s.y);
-      octx.fillStyle = '#0aa3c2';
+      octx.fillStyle = '#222';                       // neutral: reads over green + tan fills
       octx.fillText(nm, s.x, s.y);
     }
   }
