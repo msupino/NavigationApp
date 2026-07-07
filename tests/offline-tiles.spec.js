@@ -61,6 +61,8 @@ test('deletePack removes the offline tiles; packSize reports the count', async (
 
 test('the download button shows only on chart layers (has a CORS mirror)', async ({ page }) => {
   await boot(page);
+  // The group lives in the Charts toolbar section.
+  expect(await page.locator('#offline-tiles-group').evaluate(el => !!el.closest('[data-sec="charts"]'))).toBe(true);
   const r = await page.evaluate(async () => {
     const grp = document.getElementById('offline-tiles-group');
     const setL = k => { for (const x in layers) if (map.hasLayer(layers[x])) map.removeLayer(layers[x]); map.addLayer(layers[k]); };
