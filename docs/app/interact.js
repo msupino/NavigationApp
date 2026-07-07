@@ -575,8 +575,10 @@ function showPointChoice(candidates) {
 }
 function hitLeg(px, py) {
   for (let i = 0; i < state.legs.length; i++) {
-    const a = proj(state.waypoints[i]);
-    const b = proj(state.waypoints[i + 1]);
+    const A = state.waypoints[i], B = state.waypoints[i + 1];
+    if (!A || !B) continue;   // guard the transient legs>waypoints-1 state (imported / mid-edit)
+    const a = proj(A);
+    const b = proj(B);
     if (distToSegment(px, py, a, b) <= tune('hitLegPx')) return i;
   }
   return -1;
@@ -3077,6 +3079,7 @@ map.on('mousemove', e => {
     return;
   }
   const p = e.containerPoint;
+  if (typeof setLiveDragging === 'function') setLiveDragging(true);  // collapse this drag's frames into one undo entry
   if (drag.kind === 'wp') {
     drag.moved = true;
     const wp = state.waypoints[drag.i];
@@ -3112,10 +3115,10 @@ function endMouseDrag() {
       const snappedToSelf = sameMapPoint(wp, { lat: drag.origLat, lng: drag.origLng });
       const snappedToOther = routeOccupiesPoint(wp, drag.i);
       if ((snappedToSelf && !drag.originSnapArmed) || snappedToOther) {
-        state.waypoints.splice(drag.i, 1);
+        deleteWaypoint(drag.i);   // removes the adjacent leg too; bare splice+syncLegs would drop the tail leg and misalign the rest
         state.selected = null;
-        syncLegs();
         showInspector(); draw();
+        if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
         map.dragging.enable();
         drag = null;
         return;
@@ -3136,6 +3139,7 @@ function endMouseDrag() {
       const inspOpen = !document.getElementById('inspector').classList.contains('hidden');
       if (!drag.moved || inspOpen) showInspector();
     }
+    if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
     map.dragging.enable();
     drag = null;
   }
@@ -3282,6 +3286,10 @@ window.addEventListener('keydown', e => {
     if (!state.selected) return;
     const freqNote = selectedFreqNoteIndex();
     if (freqNote >= 0) {
+      const note = state.notes[freqNote];
+      // Suppress so seedCommChangeNotes() doesn't re-seed it on the next
+      // drag/add/toggle — matches the other freq-note delete paths.
+      if (note && note.cc && typeof suppressCommChange === 'function') suppressCommChange(note.cc);
       state.notes.splice(freqNote, 1);
       delete state.selected.freqNoteIndex;
       draw(); showInspector();
@@ -3473,6 +3481,7 @@ mapEl.addEventListener('touchmove', e => {
   e.preventDefault();
   const p = touchXY(e.touches[0]);
   const ll = map.containerPointToLatLng([p.x, p.y]);
+  if (typeof setLiveDragging === 'function') setLiveDragging(true);  // collapse this drag's frames into one undo entry
   if (touchDrag.kind === 'wp') {
     touchDrag.moved = true;
     const wp = state.waypoints[touchDrag.i];
@@ -3504,10 +3513,10 @@ function endTouch() {
       const snappedToSelf = sameMapPoint(wp, { lat: touchDrag.origLat, lng: touchDrag.origLng });
       const snappedToOther = routeOccupiesPoint(wp, touchDrag.i);
       if ((snappedToSelf && !touchDrag.originSnapArmed) || snappedToOther) {
-        state.waypoints.splice(touchDrag.i, 1);
+        deleteWaypoint(touchDrag.i);   // removes the adjacent leg too (see endMouseDrag)
         state.selected = null;
-        syncLegs();
         showInspector(); draw();
+        if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
         map.dragging.enable();
         touchDrag = null;
         return;
@@ -3520,6 +3529,7 @@ function endTouch() {
       if (typeof seedCommChangeNotes === 'function' && seedCommChangeNotes()) changed = true;
     }
     if (changed) { draw(); showInspector(); }
+    if (typeof setLiveDragging === 'function') setLiveDragging(false);   // commit one undo entry for the whole drag
     map.dragging.enable();
     touchDrag = null;
   }

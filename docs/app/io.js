@@ -892,7 +892,7 @@ function save() {
   a.href = URL.createObjectURL(blob);
   a.download = 'route-' + fileStamp() + '.json';
   a.click();
-  URL.revokeObjectURL(a.href);
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // revoking synchronously after click can abort the download (Firefox/Safari)
 }
 
 // --- GPX export --------------------------------------------------------
@@ -933,7 +933,7 @@ function exportGpx() {
   a.href = URL.createObjectURL(blob);
   a.download = 'route-' + fileStamp() + '.gpx';
   a.click();
-  URL.revokeObjectURL(a.href);
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // defer: see save()
 }
 
 // --- PLN export (MSFS / FSX flight plan) -------------------------------
@@ -1015,7 +1015,7 @@ function exportPln() {
   a.href = URL.createObjectURL(blob);
   a.download = 'route-' + fileStamp() + '.pln';
   a.click();
-  URL.revokeObjectURL(a.href);
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // defer: see save()
 }
 
 // --- X-Plane FDR export (issue #701) ----------------------------------------
@@ -1211,7 +1211,7 @@ function exportFdr() {
   a.href = URL.createObjectURL(blob);
   a.download = 'route-' + fileStamp() + '.fdr';
   a.click();
-  URL.revokeObjectURL(a.href);
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // defer: see save()
 }
 
 // --- GPX import --------------------------------------------------------
@@ -1251,6 +1251,7 @@ function loadGpx(file) {
       state.legs = [];
       state.notes = [];
       state.commChangeSuppressions = [];
+      state.wind = { dir: 270, speed: 0 };   // imported route carries no route-wide wind — don't inherit the previous route's
       syncLegs();
       state.selected = null;
       showInspector();
@@ -1318,6 +1319,7 @@ function loadPln(file) {
       state.legs = [];
       state.notes = [];
       state.commChangeSuppressions = [];
+      state.wind = { dir: 270, speed: 0 };   // imported route carries no route-wide wind — don't inherit the previous route's
       syncLegs();
       state.selected = null;
       showInspector();
@@ -2267,6 +2269,10 @@ function showFlightPlan() {
         state.waypoints.splice(idx === 0 ? 0 : idx + 1, 1);
         state.legs.splice(idx, 1);
         syncLegs();
+        // Drop the deleted waypoint's now-orphaned comm-change callout (this raw
+        // splice bypasses deleteWaypoint's note cleanup; the index semantics
+        // differ so we can't call it directly).
+        if (typeof pruneStaleCommChangeNotes === 'function') pruneStaleCommChangeNotes();
         state.selected = null;
         showInspector();
         draw();
@@ -3970,13 +3976,24 @@ function flushPersist() {
 const undoStack = [];
 let lastCommitted = null;
 let undoing = false;
+// A live pointer/touch drag repaints (and persists) on every move; the
+// interaction layer flags that here so the dozens of intermediate frames of
+// one drag don't each become an undo entry (which used to flood the stack and
+// evict real history). On drag end it flips back and commits ONE snapshot of
+// the final dragged state.
+let liveDragging = false;
+function setLiveDragging(v) {
+  const was = liveDragging;
+  liveDragging = !!v;
+  if (was && !liveDragging) recordUndoSnapshot(JSON.stringify(routeSnapshotForStorage()));
+}
 
 function recordUndoSnapshot(serialized) {
   if (lastCommitted === null) {           // baseline — nothing to undo to yet
     lastCommitted = serialized;
     return;
   }
-  if (undoing || serialized === lastCommitted) return;
+  if (undoing || liveDragging || serialized === lastCommitted) return;
   undoStack.push(lastCommitted);
   if (undoStack.length > tune('undoLimit')) undoStack.shift();
   lastCommitted = serialized;
@@ -4006,6 +4023,11 @@ function undo() {
   // so the restored route is not re-pinned to — and rewritten from —
   // whichever layer happens to be displayed at undo time.
   routeAltPrefix = typeof snap.altPin === 'string' ? snap.altPin : null;
+  // Restore route-wide wind + map bearing too (the snapshot carries both, and
+  // restoreRoute/applyRouteData restore them) — otherwise an undo across a wind
+  // or rotation change leaves the current values feeding the heading/ETA math.
+  state.wind = storedWind(snap);
+  applyMapBearing(snap);
   // The restored snapshot may predate (or differ from) the loaded library
   // entry, so drop the tracked id — Save then opens the menu instead of
   // silently overwriting a saved route with unrelated content.
@@ -5546,8 +5568,11 @@ function decodeShareUrl(search) {
   const waypoints = coords.map(([lat, lng], i) => ({ lat, lng, name: names[i] || '' }));
   const legs = legParts.map(s => {
     const parts = s.split(',');
-    const altitudePart = raw => raw === 'NaN' ? NaN : Number(raw);
-    const numericPart = raw => Number(raw);
+    // Treat an empty field as unset (NaN), NOT 0 — Number('') is 0, which would
+    // silently load a truncated/tampered link as a 0 ft / 0 kt leg. Empty speed
+    // → NaN → this leg is null → the whole link is rejected (guard below).
+    const altitudePart = raw => (raw === 'NaN' || raw === '') ? NaN : Number(raw);
+    const numericPart = raw => raw === '' ? NaN : Number(raw);
     if (parts.length < 3) return null;
     const ia = altitudePart(parts[0]);
     const oa = altitudePart(parts[1]);

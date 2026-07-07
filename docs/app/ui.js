@@ -780,7 +780,9 @@ async function buildRouteFromQuery(raw) {
     lat: w.lat, lng: w.lng, name: w.name,
   }));
   state.legs = [];
+  state.notes = [];                       // fresh route: drop the previous route's freehand notes (seedCommChangeNotes re-adds comm notes)
   state.commChangeSuppressions = [];
+  state.wind = { dir: 270, speed: 0 };     // search-built route carries no wind — don't inherit the previous route's
   state.selected = null;
   syncLegs();
   if (typeof seedCommChangeNotes === 'function') seedCommChangeNotes();  // #487
@@ -996,6 +998,7 @@ async function applyRouteTemplate(template, speed, closeModal) {
   state.notes = route.notes;
   state.commChangeSuppressions = Array.isArray(route.commChangeSuppressions)
     ? route.commChangeSuppressions.slice() : [];
+  state.wind = { dir: 270, speed: 0 };     // template carries no route-wide wind — don't inherit the previous route's
   state.selected = null;
   syncLegs();
   if (showCommChange && typeof loadCommChange === 'function') {
@@ -1636,11 +1639,18 @@ document.getElementById('reverse').onclick = () => {
       inboundAltitude: l.outboundAltitude,
       outboundAltitude: l.inboundAltitude,
       flightSpeed: showReturn ? l.outboundSpeed : l.flightSpeed,
+      // With return legs off, reset the (hidden) return speed to the forward
+      // speed rather than preserving a stale value — intentional, see
+      // flight-plan.spec.js "reverse route preserves flightSpeed when showReturn is off".
       outboundSpeed: showReturn ? l.flightSpeed : l.flightSpeed,
       inLabel:  flipLabel(inOld, d.inLabel),
       outLabel: flipLabel(outOld, d.outLabel),
       cumLabel: flipLabel(cumOld, d.cumLabel),
       cumLabelRet: flipLabel(cumRetOld, d.cumLabelRet),
+      // Per-leg winds-aloft is an absolute FROM-direction — identical whether the
+      // leg is flown A->B or B->A — so carry it over unchanged; dropping it made
+      // Reverse silently discard a pulled forecast and corrupt heading/GS/ETE.
+      ...(l.wind ? { wind: l.wind } : {}),
       ...(l._legAltitudeAuto ? { _legAltitudeAuto: 1 } : {}),
       ...(l._legAltitudeKey ? { _legAltitudeKey: l._legAltitudeKey } : {}),
       ...(l._legAltitudeOutboundBlocked || l._legAltitudeOneWay
@@ -1671,6 +1681,7 @@ document.getElementById('clear').onclick = () => {
   state.legs = [];
   state.notes = [];
   state.commChangeSuppressions = [];
+  state.wind = { dir: 270, speed: 0 };     // cleared route: reset wind so a new hand-built route doesn't inherit it
   state.selected = null;
   routeAltPrefix = null;    // empty route unpins its altitude layer
   currentRouteLibraryId = null;   // cleared route is no longer a saved entry

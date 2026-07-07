@@ -221,19 +221,22 @@ function gpsTrackName() {
 }
 
 // Stop recording AND save. Returns the new library entry, or null.
-// A recording is stored as a TRACK (a line), not a waypoint route: it keeps
-// only the raw fix list. On the map it's an overlay drawn on top of whatever
-// route (if any) is loaded — see the saved-track overlay section below.
+// A recording is stored as a TRACK (a line), not a waypoint route: it keeps a
+// Douglas–Peucker-simplified fix list (endpoints + shape preserved) so a long
+// flight doesn't bloat localStorage / the Drive payload. On the map it's an
+// overlay drawn on top of whatever route (if any) is loaded — see the
+// saved-track overlay section below.
 function stopGpsRecordingAndSave() {
   const raw = gpsTrack.slice();
   stopGpsRecording();
   if (raw.length < 2) { alert(S.gpsNoTrack || 'No track recorded.'); return null; }
+  const simplified = simplifyTrack(raw, GPS_SIMPLIFY_EPS_DEG);   // keeps the flown line's shape, drops redundant fixes
   const entry = {
     id: routeLibraryId(),
     name: gpsTrackName(),
     savedAt: new Date().toISOString(),
     kind: 'gps',
-    track: raw.map(p => ({ lat: r5(p.lat), lng: r5(p.lng), t: p.t,
+    track: simplified.map(p => ({ lat: r5(p.lat), lng: r5(p.lng), t: p.t,
       ...(p.alt != null ? { alt: Math.round(p.alt) } : {}),
       ...(p.acc != null ? { acc: Math.round(p.acc) } : {}) })),
   };
@@ -347,7 +350,7 @@ function gpsTrackToGpx(entry) {
   const esc = s => String(s).replace(/[<&>]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
   const seg = pts.map(p =>
     '      <trkpt lat="' + p.lat + '" lon="' + p.lng + '">' +
-    (p.alt != null ? '<ele>' + (p.alt / 3.28084).toFixed(1) + '</ele>' : '') +  // ft → m
+    (p.alt != null ? '<ele>' + p.alt + '</ele>' : '') +  // p.alt is already metres (Geolocation altitude); GPX <ele> is metres
     (p.t ? '<time>' + new Date(p.t).toISOString() + '</time>' : '') +
     '</trkpt>').join('\n');
   return '<?xml version="1.0" encoding="UTF-8"?>\n' +

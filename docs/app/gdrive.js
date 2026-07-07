@@ -111,7 +111,10 @@ function gdriveDownload(fileId) {
   return fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media',
     { headers: gdriveHeaders() })
     .then(r => { if (!r.ok) throw new Error('Drive download failed: ' + r.status); return r.json(); })
-    .then(j => (Array.isArray(j) ? j : []));
+    // A non-array means the remote file is corrupt/foreign. Abort the sync
+    // rather than treating it as [] — merging [] then uploading would silently
+    // overwrite every route that lived only on Drive.
+    .then(j => { if (!Array.isArray(j)) throw new Error('Drive file is not a route array'); return j; });
 }
 
 // Create or overwrite the library file with the given array.
@@ -188,18 +191,26 @@ function mergeRouteLibraries(a, b) {
 // Two-way sync: merge local + remote, write the merged set both to localStorage
 // and back to Drive. Returns the merged array.
 function gdriveSync() {
-  return gdriveConnect(false).then(gdriveFindFile).then(file => {
-    const remote = file ? gdriveDownload(file.id) : Promise.resolve([]);
-    return remote.then(remoteArr => {
-      const local = (typeof loadRouteLibrary === 'function') ? loadRouteLibrary() : [];
-      const merged = mergeRouteLibraries(local, remoteArr);
-      // Guard the write so persistRouteLibrary's auto-sync hook doesn't loop.
-      window._navaidSyncing = true;
-      try { if (typeof persistRouteLibrary === 'function') persistRouteLibrary(merged); }
-      finally { window._navaidSyncing = false; }
-      return gdriveUpload(file && file.id, merged).then(() => merged);
+  // Try a silent token first (returning, already-consented users get no popup);
+  // fall back to interactive consent so a first-time user can actually grant it
+  // (the silent prompt:'' can never obtain the initial consent).
+  return gdriveConnect(false).catch(() => gdriveConnect(true))
+    .then(gdriveFindFile).then(file => {
+      const remote = file ? gdriveDownload(file.id) : Promise.resolve([]);
+      return remote.then(remoteArr => {
+        const local = (typeof loadRouteLibrary === 'function') ? loadRouteLibrary() : [];
+        const merged = mergeRouteLibraries(local, remoteArr);
+        // Upload FIRST, then write local only after Drive confirms — so a failed
+        // upload (expired token, network) leaves local + Drive each unchanged
+        // rather than updating local while Drive silently missed the push.
+        return gdriveUpload(file && file.id, merged).then(() => {
+          window._navaidSyncing = true;   // guard so persistRouteLibrary's auto-sync hook doesn't loop
+          try { if (typeof persistRouteLibrary === 'function') persistRouteLibrary(merged); }
+          finally { window._navaidSyncing = false; }
+          return merged;
+        });
+      });
     });
-  });
 }
 
 if (typeof window !== 'undefined') {

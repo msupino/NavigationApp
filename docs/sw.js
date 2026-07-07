@@ -1,9 +1,12 @@
 /* NavAid service worker — installable PWA + offline app shell.
    Map tiles (cross-origin, large) are left to the network. */
-const CACHE = 'navaid-v5';
+const CACHE = 'navaid-v6';
 
 function cacheable(url) {
-  return url.origin === self.location.origin || url.host === 'unpkg.com';
+  // Same-origin app assets + the two pinned CDN libs the app can't run without.
+  // leaflet-velocity ships from jsdelivr; without it the wind layer 404s offline.
+  return url.origin === self.location.origin ||
+    url.host === 'unpkg.com' || url.host === 'cdn.jsdelivr.net';
 }
 
 function scopeRootUrl() {
