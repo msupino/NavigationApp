@@ -985,7 +985,7 @@ const _CVFR_DATA_URL = {
   // version carrier: _verOf() reads its ?v= to cache-bust data/<layer>-areas.json.
   // Bump ?v= whenever an *-areas.json changes. The cvfr fallback fetch never
   // runs (loadAreas skips the network on the cvfr prefix).
-  'areas': () => 'data/cvfr-areas.json?v=3',
+  'areas': () => 'data/cvfr-areas.json?v=4',
   // route-templates is a single shared file; templates self-tag with a `layer`.
 };
 function _verOf(url) { const m = /\?v=([^&]+)/.exec(url || ''); return m ? m[1] : '1'; }
