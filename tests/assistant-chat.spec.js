@@ -155,8 +155,52 @@ test('set_route reports unresolved waypoints instead of mutating', async ({ page
   const r = await runTool(page, 'set_route', { points: ['LLHZ', 'ZZZZZ'] });
   expect(r.error).toMatch(/could not resolve/i);
   expect(r.error).toContain('ZZZZZ');
+  expect(r.error).toMatch(/lat,lng/i);        // the error teaches the coordinate syntax
   const wps = await page.evaluate(() => (state.waypoints || []).length);
   expect(wps).toBe(0);                        // nothing applied
+});
+
+test('set_route accepts explicit "NAME=lat,lng" coordinate points', async ({ page }) => {
+  await boot(page);
+  const r = await runTool(page, 'set_route',
+    { points: ['LLHZ', 'BKAMA=31.44167,34.76556', '30.775,34.66667'] });
+  expect(r.ok).toBe(true);
+  const wps = await page.evaluate(() => state.waypoints.map(w => ({ n: w.name, lat: w.lat, lng: w.lng })));
+  const bkama = wps.find(w => w.n === 'BKAMA');
+  expect(bkama).toBeTruthy();                 // named coordinate point placed
+  expect(bkama.lat).toBeCloseTo(31.44167, 4);
+  const last = wps[wps.length - 1];
+  expect(last.lat).toBeCloseTo(30.775, 3);    // bare "lat,lng" point placed (unnamed)
+  expect(last.lng).toBeCloseTo(34.66667, 4);
+  expect(Array.isArray(r.directGaps)).toBe(true);   // coordinate legs reported as direct gaps
+});
+
+test('set_route rejects out-of-range coordinate tokens', async ({ page }) => {
+  await boot(page);
+  const r = await runTool(page, 'set_route', { points: ['LLHZ', 'X=131.44,34.76'] });
+  expect(r.error).toMatch(/could not resolve/i);    // lat 131 is invalid → not a coord token
+});
+
+test('repeated tool calls collapse into one activity line with a counter', async ({ page }) => {
+  await boot(page);
+  const acts = await page.evaluate(async () => {
+    NavAid.assistant.open();
+    let turn = 0;
+    NavAid.assistant._setProvider(async () => {
+      turn++;
+      if (turn === 1) return [
+        { functionCall: { name: 'find_point', args: { name: 'BAZRA' } } },
+        { functionCall: { name: 'find_point', args: { name: 'DEROR' } } },
+        { functionCall: { name: 'find_point', args: { name: 'SHARO' } } },
+      ];
+      return [{ text: 'done' }];
+    });
+    await NavAid.assistant.send('where are these points?');
+    return [...document.querySelectorAll('.assistant-activity')]
+      .map(e => e.textContent).filter(s => s.indexOf('🔎') >= 0);
+  });
+  expect(acts.length).toBe(1);                // one line, not three
+  expect(acts[0]).toMatch(/×3/);              // with a ×3 counter
 });
 
 test('reverse_route swaps start/destination and is Undo-able', async ({ page }) => {

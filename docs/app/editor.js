@@ -21,6 +21,13 @@
   var PKEY = 'navaid.editor.polys';
   var COLOR = '#0aa3c2';
   var r5 = function (x) { return Math.round(x * 1e5) / 1e5; };
+  // Leaflet renders a string tooltip as HTML — escape user-entered names so a
+  // name like "<img onerror=…>" can't execute (self-XSS in this dev-only tool).
+  var esc = function (s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  };
 
   function load(key) { try { var a = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
   var points = load(KEY);
@@ -52,7 +59,7 @@
     var cls = 'editor-icon' + (named ? '' : ' editor-flash');
     var icon = L.divIcon({ className: cls, html: html, iconSize: [sz, sz], iconAnchor: [sz / 2, sz * 0.65] });
     var m = L.marker([p.lat, p.lng], { icon: icon, keyboard: false, draggable: true });
-    if (p.name) m.bindTooltip(String(p.name), { direction: 'right', offset: [8, 0] });
+    if (p.name) m.bindTooltip(esc(p.name), { direction: 'right', offset: [8, 0] });
     // Unnamed points: swallow mousedown so the app's nav-WP hit-test (inspector)
     // underneath doesn't fire — clicking one should ONLY open the name setter.
     if (!named) m.on('mousedown', function (ev) { L.DomEvent.stopPropagation(ev); });
@@ -89,7 +96,7 @@
       var poly = L.polygon(pg.coords, { color: col, weight: 2, fillColor: fillCol, fillOpacity: 0.12 });
       var lbl = String(pg.name || pg.en || pg.he || '');
       if (pg.active === 'weekend') lbl = (lbl ? lbl + ' · ' : '') + 'weekend';
-      if (lbl) poly.bindTooltip(lbl, { sticky: true });
+      if (lbl) poly.bindTooltip(esc(lbl), { sticky: true });
       poly.on('click', function (ev) {            // click = name/type (shift-click = delete)
         L.DomEvent.stopPropagation(ev);
         if (ev.originalEvent && ev.originalEvent.shiftKey) {

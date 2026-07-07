@@ -44,7 +44,14 @@ function terrainMaxAtLatLng(lat, lng) {
   let c = Math.floor((lng - g.west) / lngStep);     // col 0 = west edge
   r = Math.max(0, Math.min(g.rows - 1, r));
   c = Math.max(0, Math.min(g.cols - 1, c));
-  const v = g.data[r] && g.data[r][c];
+  // Clamp to the ACTUAL array too: if data is ragged / doesn't match rows×cols,
+  // index the nearest real cell rather than reading past the end (undefined →
+  // null, which made MSA silently vanish for edge legs).
+  if (!Array.isArray(g.data) || !g.data.length) return null;
+  if (r > g.data.length - 1) r = g.data.length - 1;
+  const row = g.data[r] || [];
+  if (c > row.length - 1) c = row.length - 1;
+  const v = row[c];
   if (v == null || !Number.isFinite(v)) return null;
   return g.units === 'm' ? v * M_TO_FT : v;
 }
