@@ -77,17 +77,56 @@ function gdriveRequestToken(interactive) {
   }));
 }
 
+// --- native (Capacitor APK) sign-in --------------------------------------
+// Google BLOCKS OAuth inside WebViews (disallowed_useragent) and the GIS token
+// popup can't open there, so the browser flow above is dead in the APK. The
+// @capgo/capacitor-social-login plugin runs the platform's native Google
+// Sign-In instead and returns an access token for the requested Drive scope.
+// Requires an Android OAuth client (package + signing SHA-1) registered in the
+// same Google Cloud project as GDRIVE_CLIENT_ID.
+function _nativeSocialLogin() {
+  const C = typeof window !== 'undefined' && window.Capacitor;
+  return (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform() &&
+    C.Plugins && C.Plugins.SocialLogin) || null;
+}
+let _nativeSlInit = null;
+function gdriveNativeToken() {
+  const SL = _nativeSocialLogin();
+  if (!SL) return Promise.reject(new Error('native sign-in unavailable'));
+  if (!_nativeSlInit) {
+    _nativeSlInit = SL.initialize({
+      google: { webClientId: GDRIVE_CLIENT_ID, mode: 'online' },
+    }).catch(e => { _nativeSlInit = null; throw e; });
+  }
+  return _nativeSlInit
+    .then(() => SL.login({
+      provider: 'google',
+      options: { scopes: [GDRIVE_SCOPE] },
+    }))
+    .then(res => {
+      const r = (res && res.result) || res || {};
+      const tok = (r.accessToken && (r.accessToken.token || r.accessToken)) ||
+        r.access_token || null;
+      if (!tok || typeof tok !== 'string') throw new Error('No access token');
+      _gdriveToken = { access_token: tok, expiry: Date.now() + 55 * 60 * 1000 };
+      return _gdriveToken;
+    });
+}
+
 function gdriveConnect(interactive) {
   if (!gdriveConfigured()) {
     return Promise.reject(new Error('Google Drive is not configured'));
   }
   if (gdriveConnected()) return Promise.resolve(_gdriveToken);
+  if (_nativeSocialLogin()) return gdriveNativeToken();
   return gdriveRequestToken(interactive !== false);
 }
 
 function gdriveDisconnect() {
   const tok = _gdriveToken && _gdriveToken.access_token;
   _gdriveToken = null;
+  const SL = _nativeSocialLogin();
+  if (SL) { try { SL.logout({ provider: 'google' }); } catch (e) { /* */ } }
   if (tok && typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
     try { google.accounts.oauth2.revoke(tok); } catch (e) { /* */ }
   }
