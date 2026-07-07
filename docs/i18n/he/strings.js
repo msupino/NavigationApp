@@ -348,6 +348,7 @@ window.S = {
   windUpdatedLabel: 'עדכון רוח (Z)',
   inboundAlt: 'גובה נכנס (ft)',
   outboundAlt: 'גובה יוצא (ft)',
+  altResetKnown: 'אפס לגובה מהתרשים',
   shape: 'צורה',
   shapeRect: 'מלבן',
   shapeOval: 'אליפסה',

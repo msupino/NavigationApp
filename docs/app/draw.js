@@ -210,7 +210,7 @@ function drawVerticalProfile(ctx, x, y, w, h) {
   const cum = prof.wpCum || [];
   const tcum = prof.wpTime || [];
   const last = cum.length - 1;
-  const gap = last > 0 ? w / last : w;          // px between adjacent waypoints
+  const gap = last > 0 ? plotW / last : plotW;  // px between adjacent waypoints (ticks span plotW, not full w)
   const wpId = i => {
     const wp = state.waypoints[i];
     if (!wp) return '';

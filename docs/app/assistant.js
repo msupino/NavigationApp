@@ -118,18 +118,36 @@
   // app's own replacement paths do) so nothing from the previous route carries
   // onto the new one when the leg counts happen to match, then rebuild + repaint.
   function applyReplacementRoute(waypoints) {
-    if (typeof routeAltPrefix !== 'undefined') routeAltPrefix = null;   // repin altitude layer to the new route
-    if (typeof currentRouteLibraryId !== 'undefined') currentRouteLibraryId = null;   // not the loaded saved entry anymore
-    state.waypoints = waypoints;
-    state.legs = [];
-    state.notes = state.notes || [];
-    state.commChangeSuppressions = [];
-    state.selected = null;
-    if (typeof syncLegs === 'function') syncLegs();
-    // Drop orphan comm-change callouts from the old route + seed the new one's.
-    if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
-    if (typeof draw === 'function') draw();
-    toast(t('assistantEditedRoute', 'Assistant edited the route'));
+    // Transactional: if the rebuild throws part-way (e.g. syncLegs/seedCommChange
+    // on malformed data), roll back so the tool never leaves a half-applied route
+    // that can't be undone. `notes` is kept by reference + mutated below, so copy it.
+    const prev = {
+      waypoints: state.waypoints, legs: state.legs, notes: (state.notes || []).slice(),
+      suppressions: state.commChangeSuppressions, selected: state.selected,
+      altPrefix: typeof routeAltPrefix !== 'undefined' ? routeAltPrefix : undefined,
+      libId: typeof currentRouteLibraryId !== 'undefined' ? currentRouteLibraryId : undefined,
+    };
+    try {
+      if (typeof routeAltPrefix !== 'undefined') routeAltPrefix = null;   // repin altitude layer to the new route
+      if (typeof currentRouteLibraryId !== 'undefined') currentRouteLibraryId = null;   // not the loaded saved entry anymore
+      state.waypoints = waypoints;
+      state.legs = [];
+      state.notes = state.notes || [];
+      state.commChangeSuppressions = [];
+      state.selected = null;
+      if (typeof syncLegs === 'function') syncLegs();
+      // Drop orphan comm-change callouts from the old route + seed the new one's.
+      if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
+      if (typeof draw === 'function') draw();
+      toast(t('assistantEditedRoute', 'Assistant edited the route'));
+    } catch (e) {
+      state.waypoints = prev.waypoints; state.legs = prev.legs; state.notes = prev.notes;
+      state.commChangeSuppressions = prev.suppressions; state.selected = prev.selected;
+      if (prev.altPrefix !== undefined) routeAltPrefix = prev.altPrefix;
+      if (prev.libId !== undefined) currentRouteLibraryId = prev.libId;
+      if (typeof draw === 'function') draw();
+      throw e;   // surfaced to the tool's catch → reported to the model as { error }
+    }
   }
 
   function r1(x) { return Math.round(x * 10) / 10; }

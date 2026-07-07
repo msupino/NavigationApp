@@ -892,7 +892,7 @@ function save() {
   a.href = URL.createObjectURL(blob);
   a.download = 'route-' + fileStamp() + '.json';
   a.click();
-  URL.revokeObjectURL(a.href);
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // revoking synchronously after click can abort the download (Firefox/Safari)
 }
 
 // --- GPX export --------------------------------------------------------
@@ -933,7 +933,7 @@ function exportGpx() {
   a.href = URL.createObjectURL(blob);
   a.download = 'route-' + fileStamp() + '.gpx';
   a.click();
-  URL.revokeObjectURL(a.href);
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // defer: see save()
 }
 
 // --- PLN export (MSFS / FSX flight plan) -------------------------------
@@ -1015,7 +1015,7 @@ function exportPln() {
   a.href = URL.createObjectURL(blob);
   a.download = 'route-' + fileStamp() + '.pln';
   a.click();
-  URL.revokeObjectURL(a.href);
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // defer: see save()
 }
 
 // --- X-Plane FDR export (issue #701) ----------------------------------------
@@ -1211,7 +1211,7 @@ function exportFdr() {
   a.href = URL.createObjectURL(blob);
   a.download = 'route-' + fileStamp() + '.fdr';
   a.click();
-  URL.revokeObjectURL(a.href);
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // defer: see save()
 }
 
 // --- GPX import --------------------------------------------------------
@@ -5564,8 +5564,11 @@ function decodeShareUrl(search) {
   const waypoints = coords.map(([lat, lng], i) => ({ lat, lng, name: names[i] || '' }));
   const legs = legParts.map(s => {
     const parts = s.split(',');
-    const altitudePart = raw => raw === 'NaN' ? NaN : Number(raw);
-    const numericPart = raw => Number(raw);
+    // Treat an empty field as unset (NaN), NOT 0 — Number('') is 0, which would
+    // silently load a truncated/tampered link as a 0 ft / 0 kt leg. Empty speed
+    // → NaN → this leg is null → the whole link is rejected (guard below).
+    const altitudePart = raw => (raw === 'NaN' || raw === '') ? NaN : Number(raw);
+    const numericPart = raw => raw === '' ? NaN : Number(raw);
     if (parts.length < 3) return null;
     const ia = altitudePart(parts[0]);
     const oa = altitudePart(parts[1]);
