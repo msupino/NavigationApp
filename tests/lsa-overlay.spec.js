@@ -89,3 +89,26 @@ test('LSA areas (bubbles) load + draw on Low Alt, none on CVFR', async ({ page }
   expect(r.fills).toBeGreaterThan(0);      // drawn on Low Alt
   expect(r.cvfrCount).toBe(0);             // no cvfr-areas file
 });
+
+test('"Show LSA bubbles" toggle (Extra layers) hides/shows the overlay and persists', async ({ page }) => {
+  await boot(page);
+  const cb = page.locator('#lsa-cb');
+  await expect(cb).toBeChecked();          // default on
+  const r = await page.evaluate(async () => {
+    for (const x in layers) if (map.hasLayer(layers[x])) map.removeLayer(layers[x]);
+    map.addLayer(layers['Low Alt']); window.areas = null; await loadAreas();
+    map.setView([31.4, 34.9], 9);
+    const fills = () => { let n = 0; const o = octx.fill; octx.fill = function (...a) { n++; return o.apply(this, a); }; drawAreas(); octx.fill = o; return n; };
+    const el = document.getElementById('lsa-cb');
+    el.checked = false; el.dispatchEvent(new Event('change'));
+    const off = { fills: fills(), g: window.showLsaBubbles, ls: localStorage.getItem('navaid.showLsaBubbles') };
+    el.checked = true; el.dispatchEvent(new Event('change'));
+    const on = { fills: fills(), g: window.showLsaBubbles, ls: localStorage.getItem('navaid.showLsaBubbles') };
+    return { off, on };
+  });
+  expect(r.off.fills).toBe(0);             // hidden when off
+  expect(r.off.g).toBe(false);
+  expect(r.off.ls).toBe('0');              // persisted
+  expect(r.on.fills).toBeGreaterThan(0);   // shown again
+  expect(r.on.ls).toBe('1');
+});

@@ -1121,6 +1121,7 @@ async function loadAreas() {
   return areas;
 }
 function drawAreas() {
+  if (!showLsaBubbles) return;                    // "Show LSA bubbles" toggle (Extra layers)
   if (areas === null) { loadAreas(); return; }   // lazy-load on first draw
   if (!areas.length) return;
   octx.save();

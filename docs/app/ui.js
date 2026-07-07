@@ -2927,6 +2927,22 @@ document.getElementById('airfield-cb').onchange = async e => {
   }
   draw();
 };
+// --- LSA airspace bubbles overlay toggle (Extra layers) ------------------
+const LSA_BUBBLES_KEY = 'navaid.showLsaBubbles';
+try {
+  const stored = localStorage.getItem(LSA_BUBBLES_KEY);
+  if (stored !== null) window.showLsaBubbles = stored === '1';
+} catch (e) { /* storage unavailable */ }
+const lsaCb = document.getElementById('lsa-cb');
+if (lsaCb) {
+  lsaCb.checked = showLsaBubbles;
+  lsaCb.onchange = e => {
+    window.showLsaBubbles = e.target.checked;
+    try { localStorage.setItem(LSA_BUBBLES_KEY, showLsaBubbles ? '1' : '0'); }
+    catch (err) { /* storage unavailable */ }
+    draw();   // drawAreas() lazy-loads the areas file if needed
+  };
+}
 // --- VOR/DME overlay + reference selector --------------------------------
 const VOR_STATIONS_KEY = 'navaid.showVorStations';
 const VOR_LEGACY_KEY = 'navaid.showVor';

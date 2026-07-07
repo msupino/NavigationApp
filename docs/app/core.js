@@ -621,6 +621,8 @@ window.S = Object.assign({
   errInvalidVors: function(msg) { return 'Invalid VOR data: ' + msg; },
   tbShowVor: 'Show VOR stations',
   tbShowVorTitle: 'Overlay Israeli VOR/DME stations and pick a reference for radial/DME',
+  tbShowLsa: 'Show LSA bubbles',
+  tbShowLsaTitle: 'Overlay LSA airspace areas (bubbles) — shown on the Low Alt layer',
   vorRefLabel: 'VOR ref',
   vorRefNone: '— none —',
   tbShowWind: 'Show per-leg wind effect',
@@ -1138,6 +1140,7 @@ var navWP = null;           // null = not loaded yet (or last fetch failed —
                             // populated = last fetch resolved successfully.
 var showAirfields = true;   // Israeli airfields overlay (default on)
 var showVorStations = true; // VOR/DME station overlay (default on)
+var showLsaBubbles = true;  // LSA airspace bubbles overlay (Low Alt layer; default on)
 var vors = null;            // null = not loaded yet; [] or populated once fetched
 var vorRef = null;          // ident of the selected reference VOR (radial/DME source)
 var inspectorVorRef = undefined; // undefined = follow vorRef; string/'' = inspector-only ref
