@@ -621,6 +621,8 @@ window.S = Object.assign({
   errInvalidVors: function(msg) { return 'Invalid VOR data: ' + msg; },
   tbShowVor: 'Show VOR stations',
   tbShowVorTitle: 'Overlay Israeli VOR/DME stations and pick a reference for radial/DME',
+  tbShowLsa: 'Show LSA bubbles',
+  tbShowLsaTitle: 'Overlay LSA airspace areas (bubbles) — shown on the Low Alt layer',
   vorRefLabel: 'VOR ref',
   vorRefNone: '— none —',
   tbShowWind: 'Show per-leg wind effect',
@@ -631,6 +633,12 @@ window.S = Object.assign({
   tbShowNotamTitle: 'Overlay active NOTAM areas for the Israel FIR (LLLL). Click “NOTAM list” for the full texts. Planning aid only.',
   tbNotamList: '📋 NOTAM list',
   tbNotamListTitle: 'Show all active NOTAMs for the Israel FIR as text',
+  tbLsaList: '📋 LSA bubbles',
+  tbLsaListTitle: 'List the LSA airspace bubbles; click one to zoom to it',
+  lsaModalTitle: 'LSA bubbles',
+  lsaUnnamed: 'Unnamed area',
+  lsaEmpty: 'No LSA areas on this layer.',
+  lsaWeekend: 'weekend',
   tbMosaic: '🛰 Mosaic',
   tbMosaicTitle: 'A grid of map previews, one per route waypoint',
   mosaicTitle: 'Route mosaic',
@@ -1138,6 +1146,7 @@ var navWP = null;           // null = not loaded yet (or last fetch failed —
                             // populated = last fetch resolved successfully.
 var showAirfields = true;   // Israeli airfields overlay (default on)
 var showVorStations = true; // VOR/DME station overlay (default on)
+var showLsaBubbles = true;  // LSA airspace bubbles overlay (Low Alt layer; default on)
 var vors = null;            // null = not loaded yet; [] or populated once fetched
 var vorRef = null;          // ident of the selected reference VOR (radial/DME source)
 var inspectorVorRef = undefined; // undefined = follow vorRef; string/'' = inspector-only ref
