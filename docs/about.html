@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NavAid — About</title>
+  <link rel="canonical" href="https://navaid.supino.org/about.html">
+  <meta name="description" content="What NavAid is: a free CVFR flight-planning web app for pilots flying in Israel.">
+  <!-- Resolve language the same way index.html does: ?lang wins, then the
+       stored navaid.lang (shared per-origin with the app), else English. -->
+  <script>
+    (function () {
+      var p = new URLSearchParams(location.search).get('lang');
+      var stored = '';
+      try { stored = localStorage.getItem('navaid.lang') || ''; } catch (e) {}
+      var lang = (p === 'en' || p === 'he') ? p : (stored === 'he' ? 'he' : 'en');
+      try { localStorage.setItem('navaid.lang', lang); } catch (e) {}
+      var h = document.documentElement;
+      h.lang = lang; h.dir = lang === 'he' ? 'rtl' : 'ltr';
+      document.title = lang === 'he' ? 'NavAid — אודות' : 'NavAid — About';
+    }());
+  </script>
+  <style>
+    body { max-width: 760px; margin: 2rem auto; padding: 0 1rem;
+           font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: #1f252c; }
+    h1 { font-size: 1.6rem; } h2 { font-size: 1.2rem; margin-top: 1.6rem; }
+    a { color: #1d6fe0; }
+    .muted { color: #647184; font-size: .9rem; }
+    html[lang="en"] [data-lang="he"], html[lang="he"] [data-lang="en"] { display: none; }
+    .lang-switch { font-size: .9rem; margin-bottom: 1.5rem; }
+    .lang-switch a { text-decoration: none; }
+    html[lang="en"] .lang-switch a[hreflang="en"],
+    html[lang="he"] .lang-switch a[hreflang="he"] { font-weight: 700; color: #1f252c; }
+    [data-lang="he"] a[href^="http"], [data-lang="he"] a[href^="mailto"] {
+      unicode-bidi: isolate; direction: ltr; }
+  </style>
+</head>
+<body>
+  <p class="lang-switch">
+    <a href="?lang=en" hreflang="en">English</a> ·
+    <a href="?lang=he" hreflang="he">עברית</a>
+  </p>
+
+  <div data-lang="en">
+    <h1>About NavAid</h1>
+    <p><strong>NavAid</strong> is a free, browser-based flight-planning application for
+      pilots flying CVFR and LSA routes in Israel. It draws the official Israeli
+      aeronautical charts and lets you plan a route on top of them: place waypoints,
+      draw legs, and read the magnetic heading, distance, and estimated time for every
+      segment of your flight.</p>
+
+    <h2>What NavAid does</h2>
+    <ul>
+      <li>Interactive Israeli CVFR / Low-Altitude / Helicopter chart base maps</li>
+      <li>Route planning with waypoints, legs, headings, distances, times and fuel</li>
+      <li>Published VFR reporting points, frequencies, NOTAMs and weather overlays</li>
+      <li>Printable flight plan (nav-log), PNG map export, and GPX/PLN import/export</li>
+      <li>GPS track recording of the flown route</li>
+      <li>Works offline once loaded (installable as an app), in English and Hebrew</li>
+    </ul>
+
+    <h2>Google Drive sync</h2>
+    <p>Optionally, NavAid can back up your saved routes to your own Google Drive.
+      It uses the private per-app storage area (<em>drive.appdata</em>) only — NavAid
+      cannot see, read, or change any of your other Drive files. See the
+      <a href="privacy.html">privacy policy</a> for details.</p>
+
+    <h2>Important</h2>
+    <p>NavAid is a planning aid only — not an operational briefing. Always verify
+      against the official AIP, NOTAM office, and a proper weather briefing before
+      flight.</p>
+
+    <p class="muted">
+      <a href="./">Open the app →</a> ·
+      <a href="privacy.html">Privacy</a> ·
+      <a href="terms.html">Terms</a> ·
+      <a href="https://github.com/msupino/NavigationApp">Source on GitHub</a>
+    </p>
+  </div>
+
+  <div data-lang="he">
+    <h1>אודות NavAid</h1>
+    <p><strong>NavAid</strong> הוא יישום חינמי בדפדפן לתכנון טיסות CVFR ו-LSA בישראל.
+      היישום מציג את תרשימי התעופה הרשמיים של ישראל ומאפשר לתכנן עליהם מסלול:
+      סימון נקודות ציון, שרטוט קטעי טיסה, וקריאת כיוון מגנטי, מרחק וזמן מוערך לכל
+      קטע בטיסה.</p>
+
+    <h2>מה NavAid עושה</h2>
+    <ul>
+      <li>מפות בסיס אינטראקטיביות: CVFR, גובה נמוך ומסוקים</li>
+      <li>תכנון מסלול עם נקודות ציון, קטעים, כיוונים, מרחקים, זמנים ודלק</li>
+      <li>נקודות דיווח VFR, תדרים, NOTAM ושכבות מזג אוויר</li>
+      <li>תוכנית טיסה להדפסה, ייצוא PNG של המפה, וייבוא/ייצוא GPX/PLN</li>
+      <li>הקלטת מסלול הטיסה בפועל מ-GPS</li>
+      <li>עובד גם ללא אינטרנט לאחר טעינה ראשונה, בעברית ובאנגלית</li>
+    </ul>
+
+    <h2>סנכרון Google Drive</h2>
+    <p>אופציונלית, NavAid יכול לגבות את המסלולים השמורים ל-Google Drive הפרטי שלך.
+      הגיבוי משתמש אך ורק באזור האחסון הפרטי של היישום (<em>drive.appdata</em>) —
+      NavAid אינו יכול לראות, לקרוא או לשנות אף קובץ אחר ב-Drive שלך. פרטים
+      ב<a href="privacy.html">מדיניות הפרטיות</a>.</p>
+
+    <h2>חשוב</h2>
+    <p>NavAid הוא אמצעי תכנון בלבד — לא תדריך מבצעי. יש לאמת תמיד מול ה-AIP הרשמי,
+      לשכת ה-NOTAM ותדריך מזג אוויר מלא לפני טיסה.</p>
+
+    <p class="muted">
+      <a href="./">פתח את היישום ←</a> ·
+      <a href="privacy.html">פרטיות</a> ·
+      <a href="terms.html">תנאי שימוש</a> ·
+      <a href="https://github.com/msupino/NavigationApp">קוד המקור ב-GitHub</a>
+    </p>
+  </div>
+</body>
+</html>

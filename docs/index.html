@@ -121,7 +121,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=321">
+  <link rel="stylesheet" href="app/style.css?v=323">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -158,6 +158,14 @@
   <div id="toolbar">
     <span id="toolbar-handle" class="drag-handle" data-i18n-title="tbHandleTitle">⋯</span>
     <span id="toolbar-toggle" role="button" tabindex="0"><span></span><span></span><span></span></span>
+
+    <!-- Visible app name + purpose. OAuth branding verification requires the
+         app name and its purpose to be HUMAN-visible on the home page (the
+         sr-only prose above is crawler/screen-reader-only). -->
+    <div id="tb-brand">
+      <a href="about.html" target="_blank" rel="noopener">NavAid</a>
+      <span class="tb-brand-tag" data-i18n="tbBrandTag"></span>
+    </div>
 
     <label id="lang-toggle" class="navtoggle">🌐
       <select id="lang-select">
@@ -552,6 +560,17 @@
         </svg>
         <span class="footer-link-text" data-i18n="tbIssues"></span>
       </a>
+      <a id="about-link" class="footer-link"
+         href="about.html"
+         target="_blank" rel="noopener noreferrer"
+         data-i18n-title="tbAbout">
+        <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
+             aria-hidden="true" focusable="false">
+          <path fill="currentColor"
+                d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0Zm0 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Zm0 10.75a.875.875 0 1 1 0-1.75.875.875 0 0 1 0 1.75ZM8 3.75a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4A.75.75 0 0 1 8 3.75Z"/>
+        </svg>
+        <span class="footer-link-text" data-i18n="tbAbout"></span>
+      </a>
       <a id="privacy-link" class="footer-link"
          href="privacy.html"
          target="_blank" rel="noopener noreferrer"
@@ -681,7 +700,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=321';
+      var v = '?v=323';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
