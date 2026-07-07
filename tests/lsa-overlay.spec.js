@@ -90,6 +90,31 @@ test('LSA areas (bubbles) load + draw on Low Alt, none on CVFR', async ({ page }
   expect(r.cvfrCount).toBe(0);             // no cvfr-areas file
 });
 
+test('LSA bubble chart: list button appears on Low Alt, modal lists bubbles, row zooms + highlights', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    for (const x in layers) if (map.hasLayer(layers[x])) map.removeLayer(layers[x]);
+    map.addLayer(layers['Low Alt']);
+    if (typeof reloadLayerDatasets === 'function') await reloadLayerDatasets(); else { window.areas = null; await loadAreas(); }
+  });
+  // button revealed on Low Alt (checked via the hidden attribute; the section
+  // may be collapsed so toBeVisible() is unreliable).
+  expect(await page.locator('#lsa-list-btn').evaluate(el => el.hidden)).toBe(false);
+  const r = await page.evaluate(() => {
+    areas[0].en = 'Test Area';       // name one bubble → localized label in the list
+    showLsaChart();
+    const m = document.querySelector('.modal-back[data-chart-modal="lsa-list"]');
+    const rows = [...m.querySelectorAll('.lsa-row')];
+    const named = rows.some(x => /Test Area/.test(x.textContent));
+    rows[0].click();                 // zoom + highlight + close
+    return { rowCount: rows.length, named, hl: !!window.__lsaHighlight, closed: !document.querySelector('.modal-back[data-chart-modal="lsa-list"]') };
+  });
+  expect(r.rowCount).toBeGreaterThanOrEqual(26);
+  expect(r.named).toBe(true);        // areaLabel() shows the English name
+  expect(r.hl).toBe(true);           // row click set the map highlight
+  expect(r.closed).toBe(true);       // modal closed after selecting
+});
+
 test('"Show LSA bubbles" toggle (Extra layers) hides/shows the overlay and persists', async ({ page }) => {
   await boot(page);
   const cb = page.locator('#lsa-cb');

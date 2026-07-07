@@ -2943,6 +2943,61 @@ if (lsaCb) {
     draw();   // drawAreas() lazy-loads the areas file if needed
   };
 }
+// LSA "bubble chart": a list of named bubbles (shown only on the Low Alt layer
+// once areas load). Clicking a row zooms to it and highlights it.
+function refreshLsaListBtn() {
+  const btn = document.getElementById('lsa-list-btn');
+  if (!btn) return;
+  const onLsa = typeof layerDataPrefix === 'function' && layerDataPrefix() === 'lsa';
+  btn.hidden = !(onLsa && Array.isArray(areas) && areas.length > 0);
+}
+function showLsaChart() {
+  if (typeof closeOpenChartModals === 'function') closeOpenChartModals();
+  if (typeof window.closeToolbarMenus === 'function') window.closeToolbarMenus();
+  const list = Array.isArray(areas) ? areas : [];
+  const back = document.createElement('div');
+  back.className = 'modal-back'; back.dataset.chartModal = 'lsa-list';
+  const box = document.createElement('div');
+  box.className = 'modal wide lsa-modal';
+  const closeAll = () => back.remove();
+  const close = document.createElement('button');
+  close.className = 'modal-close-x'; close.type = 'button'; close.textContent = '×';
+  close.setAttribute('aria-label', S.close || 'Close'); close.onclick = closeAll;
+  back.addEventListener('click', e => { if (e.target === back) closeAll(); });
+  box.appendChild(close);
+  const h = document.createElement('h3');
+  h.textContent = (S.lsaModalTitle || 'LSA bubbles') + ' — ' + list.length;
+  box.appendChild(h);
+  const ul = document.createElement('div');
+  ul.className = 'lsa-list';
+  if (!list.length) {
+    const e = document.createElement('div');
+    e.className = 'lsa-empty'; e.textContent = S.lsaEmpty || 'No LSA areas on this layer.';
+    ul.appendChild(e);
+  }
+  list.forEach((a, i) => {
+    const row = document.createElement('button');
+    row.type = 'button'; row.className = 'lsa-row';
+    row.textContent = (typeof areaLabel === 'function' && areaLabel(a)) ||
+      ((S.lsaUnnamed || 'Unnamed area') + ' #' + (i + 1));
+    row.onclick = () => {
+      try {
+        const b = L.latLngBounds(a.coords.map(c => L.latLng(c[0], c[1])));
+        map.fitBounds(b, { padding: [40, 40], maxZoom: 12 });
+      } catch (err) { /* */ }
+      window.__lsaHighlight = a; draw();
+      setTimeout(() => { if (window.__lsaHighlight === a) { window.__lsaHighlight = null; draw(); } }, 2000);
+      closeAll();
+    };
+    ul.appendChild(row);
+  });
+  box.appendChild(ul);
+  back.appendChild(box);
+  document.body.appendChild(back);
+}
+const lsaListBtn = document.getElementById('lsa-list-btn');
+if (lsaListBtn) lsaListBtn.onclick = showLsaChart;
+refreshLsaListBtn();
 // --- VOR/DME overlay + reference selector --------------------------------
 const VOR_STATIONS_KEY = 'navaid.showVorStations';
 const VOR_LEGACY_KEY = 'navaid.showVor';

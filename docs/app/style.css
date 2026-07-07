@@ -4241,3 +4241,12 @@ body.theme-light #tuning-panel summary {
 .assistant-field { background: rgba(0, 0, 0, 0.3); color: #f2f2f2; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 7px 9px; font: inherit; font-size: 13px; }
 .assistant-help { font-size: 12px; }
 .assistant-help a { color: #ffcc33; }
+
+/* --- LSA bubble chart (list modal) --------------------------------- */
+.lsa-list { display: flex; flex-direction: column; gap: 4px; max-height: 60vh; overflow-y: auto; margin-top: 6px; }
+.lsa-row {
+  text-align: start; padding: 8px 10px; font: inherit; cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, 0.15); border-radius: 8px; background: transparent; color: inherit;
+}
+.lsa-row:hover { background: rgba(10, 163, 194, 0.14); }
+.lsa-empty { opacity: 0.7; padding: 8px; }

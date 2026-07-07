@@ -84,11 +84,21 @@
     polys.forEach(function (pg, i) {
       if ((pg.layer || '') !== cur) return;
       var poly = L.polygon(pg.coords, { color: COLOR, weight: 2, fillColor: COLOR, fillOpacity: 0.12 });
-      if (pg.name) poly.bindTooltip(String(pg.name), { sticky: true });
-      poly.on('click', function (ev) {            // click a polygon to delete it
+      if (pg.name || pg.en || pg.he) poly.bindTooltip(String(pg.name || pg.en || pg.he), { sticky: true });
+      poly.on('click', function (ev) {            // click = name (shift-click = delete)
         L.DomEvent.stopPropagation(ev);
-        if (!confirm('Delete this polygon?')) return;
-        polys.splice(i, 1); savePolys(); render(); redraw();
+        if (ev.originalEvent && ev.originalEvent.shiftKey) {
+          if (!confirm('Delete this polygon?')) return;
+          polys.splice(i, 1); savePolys(); render(); redraw(); return;
+        }
+        var name = prompt('Bubble code / name (blank to clear):', polys[i].name || '');
+        if (name === null) return;                 // cancel — no change
+        var en = prompt('English name:', polys[i].en || '');
+        if (en === null) return;
+        var he = prompt('Hebrew name:', polys[i].he || '');
+        if (he === null) return;
+        polys[i].name = name.trim(); polys[i].en = en.trim(); polys[i].he = he.trim();
+        savePolys(); render(); redraw();           // lands in the exported JSON
       });
       group.addLayer(poly);
     });
@@ -105,6 +115,8 @@
       return JSON.stringify(curPolys().map(function (pg) {
         var o = { type: 'polygon', coords: pg.coords };
         if (pg.name) o.name = pg.name;
+        if (pg.en) o.en = pg.en;
+        if (pg.he) o.he = pg.he;
         return o;
       }), null, 2);
     }
@@ -177,7 +189,7 @@
   }
   function finishPoly() {
     if (draft.length < 3) { draft = []; render(); redraw(); return; }
-    polys.push({ coords: draft.map(function (ll) { return [r5(ll.lat), r5(ll.lng)]; }), layer: currentLayer(), name: '' });
+    polys.push({ coords: draft.map(function (ll) { return [r5(ll.lat), r5(ll.lng)]; }), layer: currentLayer(), name: '', en: '', he: '' });
     draft = []; savePolys(); render(); redraw();
   }
 
