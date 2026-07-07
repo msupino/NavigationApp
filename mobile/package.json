@@ -16,7 +16,8 @@
     "@capacitor-community/background-geolocation": "^1.2.26",
     "@capacitor/android": "8.4.0",
     "@capacitor/core": "8.4.0",
-    "@capacitor/ios": "8.4.0"
+    "@capacitor/ios": "8.4.0",
+    "@capgo/capacitor-social-login": "^8.3.35"
   },
   "devDependencies": {
     "@capacitor/cli": "8.4.0"
