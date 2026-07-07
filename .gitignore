@@ -7,7 +7,7 @@ mobile/android/app/src/main/assets/public/
 mobile/android/build/
 mobile/android/capacitor-cordova-android-plugins/build/
 mobile/android/local.properties
-android/keystore.properties
+mobile/android/keystore.properties
 mobile/ios/App/Pods/
 mobile/ios/App/App/public/
 mobile/ios/App/App.xcworkspace/

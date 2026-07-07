@@ -21,18 +21,22 @@ const pkg = readJson(packagePath);
 
 if (config.appId !== 'org.supino.navaid') fail('unexpected appId');
 if (config.appName !== 'NavAid') fail('unexpected appName');
-if (config.webDir !== '../docs') fail('webDir must point at ../docs');
-if (config.server?.hostname !== 'app.navaid.local') {
-  fail('native app hostname must stay app.navaid.local');
+// Remote-URL shell: the WebView loads production, so the installed app
+// self-updates with every web deploy. webDir is only a packaged stub.
+if (config.webDir !== 'shell') fail('webDir must point at the mobile/shell stub');
+if (config.server?.url !== 'https://navaid.supino.org') {
+  fail('native shell must load the production site (self-updating app)');
 }
 if (config.server?.androidScheme !== 'https') {
   fail('Android must use an https app origin for secure WebView APIs');
 }
 
 const webDir = path.resolve(mobileRoot, config.webDir);
-if (webDir !== path.join(repoRoot, 'docs')) fail('webDir resolved outside repo docs');
+if (webDir !== path.join(mobileRoot, 'shell')) fail('webDir resolved outside mobile/shell');
+if (!fs.existsSync(path.join(webDir, 'index.html'))) fail('missing mobile/shell/index.html');
+// The real app still ships from docs/ — sanity-check it exists for the web deploy.
 for (const file of ['index.html', 'app/core.js', 'app/ui.js', 'manifest.json']) {
-  if (!fs.existsSync(path.join(webDir, file))) fail(`missing docs/${file}`);
+  if (!fs.existsSync(path.join(repoRoot, 'docs', file))) fail(`missing docs/${file}`);
 }
 
 for (const dep of ['@capacitor/core', '@capacitor/android', '@capacitor/ios']) {
@@ -49,14 +53,17 @@ for (const dep of ['@capacitor/core', '@capacitor/android', '@capacitor/ios', '@
   if (rootDeps[dep]) fail(`${dep} must stay isolated in mobile/package.json`);
 }
 
-const indexHtml = fs.readFileSync(path.join(webDir, 'index.html'), 'utf8');
-if (!indexHtml.includes("location.hostname !== 'app.navaid.local'")) {
+const indexHtml = fs.readFileSync(path.join(repoRoot, 'docs', 'index.html'), 'utf8');
+// In remote-URL mode the shell loads the production hostname, so GA must be
+// gated on the injected Capacitor bridge (plus the legacy local-origin check).
+if (!indexHtml.includes("location.hostname !== 'app.navaid.local'") ||
+    !indexHtml.includes('window.Capacitor')) {
   fail('docs/index.html must suppress production GA inside the native shell');
 }
 
-const uiJs = fs.readFileSync(path.join(webDir, 'app/ui.js'), 'utf8');
+const uiJs = fs.readFileSync(path.join(repoRoot, 'docs', 'app/ui.js'), 'utf8');
 if (!uiJs.includes('isNativeCapacitorShell')) {
-  fail('docs/app/ui.js must skip PWA service-worker boot in the native shell');
+  fail('docs/app/ui.js must keep the native-shell detection helper');
 }
 
 const androidGradle = path.join(mobileRoot, 'android/app/build.gradle');

@@ -58,10 +58,14 @@ self.addEventListener('fetch', e => {
   // Chart tiles: serve from a downloaded offline pack when present, else the
   // network. Misses are NOT auto-cached (cross-origin tiles are opaque and
   // Chrome quota-pads opaque cache entries; packs are populated explicitly by
-  // offline-tiles.js from the CORS mirror instead).
+  // offline-tiles.js from the CORS mirror instead). The cache handle is opened
+  // once and reused — tiles are the hottest request path (pans/zooms fetch
+  // dozens per frame burst) and a caches.open() per request measurably slows
+  // tile-heavy interactions (magnifier pan perf test).
   if (url.host === TILE_HOST && url.pathname.indexOf('/tiles/') === 0) {
+    if (!self._tileCachePromise) self._tileCachePromise = caches.open(TILE_CACHE);
     e.respondWith(
-      caches.open(TILE_CACHE)
+      self._tileCachePromise
         .then(c => c.match(e.request.url))
         .then(hit => hit || fetch(e.request)));
     return;

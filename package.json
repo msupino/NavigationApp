@@ -11,14 +11,8 @@
     "lint:spell": "cspell --config cspell.json docs/app/core.js docs/i18n/he/strings.js"
   },
   "devDependencies": {
-    "@capacitor/android": "^8.4.1",
-    "@capacitor/cli": "^8.4.1",
-    "@capacitor/core": "^8.4.1",
     "@cspell/dict-he": "^4.0.5",
     "@playwright/test": "^1.49.0",
     "cspell": "^10.0.0"
-  },
-  "dependencies": {
-    "@capacitor-community/background-geolocation": "^1.2.26"
   }
 }
