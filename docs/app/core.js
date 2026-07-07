@@ -1052,6 +1052,16 @@ window.S = Object.assign({
   tbSecCharts: '📋 Charts',
   tbSecExport: '📤 Export/import',
   tbSecWeather: '🗂 Extra layers',
+  // Offline chart packs (offline-tiles.js, Extra layers section)
+  tbOfflineCharts: '⬇ Download charts for offline',
+  tbOfflineChartsTitle: 'Pre-download the current chart layer so the map works with no internet (tap again to cancel)',
+  offlineDownloadConfirm: 'Download the current chart for offline use? About ',
+  offlineDelete: '🗑 Delete offline charts',
+  offlineDeleteConfirm: 'Delete the offline charts?',
+  offlineCancel: '✕ Cancel — ',
+  offlineCancelled: 'cancelled',
+  offlineDone: 'saved ',
+  offlineTilesCount: 'offline tiles: ',
   tbSecSim: 'Simulator',   // footer button + sim modal title; the footer icon span draws the plane
   tbSimConnect: 'Connect to simulator',
   tbSimDisconnect: 'Disconnect from simulator',

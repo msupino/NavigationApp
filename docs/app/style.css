@@ -4257,3 +4257,6 @@ body.theme-light #tuning-panel summary {
 }
 .lsa-row-weekend::before { background: rgba(201, 178, 138, 0.75); border-color: #2b2b2b; }
 .lsa-empty { opacity: 0.7; padding: 8px; }
+
+/* --- Offline chart packs (Extra layers) ------------------------------ */
+.offline-tiles-status { font-size: 12px; opacity: 0.8; align-self: center; }
