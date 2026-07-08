@@ -1000,13 +1000,11 @@ html[dir="rtl"] .sigmet-readout.sigmet-none {
   border-top: 14px solid #9a9a9a;
 }
 
-/* --- Theme fixes for the floating map controls -----------------------------
-   The base styles above are light (Leaflet-derived: white pill, dark text) and
-   the Zulu clock is dark. Each is only correct in one theme, so flip the odd
-   one out per theme: darken the light controls in dark mode, and lighten the
-   clock in light mode. */
-
-/* Dark theme: darken the light-by-default bottom-right controls. */
+/* --- Dark-theme fixes for the floating map controls ------------------------
+   These controls are light by default (Leaflet-derived: white pill, dark text),
+   which is correct in light mode but wrong on the dark map — darken them in dark
+   mode. (The Zulu clock is the opposite case: it's fully tune-driven, so its
+   light-mode palette is handled in ui.js applyTuningCssVars, not here.) */
 body.theme-dark .coord-readout,
 body.theme-dark .zoom-readout,
 body.theme-dark #rotate-hdg {
@@ -1025,14 +1023,6 @@ body.theme-dark .leaflet-control-zoom a {
 }
 body.theme-dark .leaflet-control-zoom a:hover {
   background: rgba(40, 36, 36, 0.95);
-}
-
-/* Light theme: lighten the dark-by-default Zulu clock to match. */
-body.theme-light .leaflet-control.zulu-clock {
-  color: #231F20;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #9a9a9a;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
 }
 
 /* Satellite-modal rotation dial — same look as the main map's dial. */
