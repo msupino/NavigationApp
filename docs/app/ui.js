@@ -2801,7 +2801,7 @@ function showNotamModal(only) {
   box.appendChild(rawBtn);
   if (notamMeta && notamMeta.generatedAt) {
     const u = document.createElement('div');
-    u.className = 'notam-updated'; u.dir = 'ltr';
+    u.className = 'notam-updated';
     const t = new Date(notamMeta.generatedAt);
     if (!isNaN(t)) u.textContent = (S.notamUpdated ? S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z') : '');
     box.appendChild(u);

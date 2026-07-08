@@ -174,7 +174,9 @@ window.S = {
   notamModalTitle: 'NOTAM פעילים',
   notamNone: 'אין NOTAM פעילים.',
   notamUnavailable: 'NOTAM אינם זמינים.',
-  notamUpdated: function(t) { return 'עודכן ' + t; },
+  // Wrap the Latin date/time in an LTR isolate (LRI…PDI) so the RTL context
+  // doesn't reorder it (e.g. strand the trailing Z / swap date and time).
+  notamUpdated: function(t) { return 'עודכן \u2066' + t + '\u2069'; },
   notamRaw: 'גולמי',
   notamDecoded: 'מפוענח',
   notamFilterLabel: 'סינון NOTAM לפי שדה תעופה',
@@ -183,7 +185,7 @@ window.S = {
   notamShowOnMap: 'הצג על המפה',
   sigmetReadout: function(n) { return '⚠ ' + n + ' SIGMET'; },
   sigmetNone: 'אין SIGMET בתוקף',
-  sigmetUpdated: function(t) { return 'SIGMET עודכן ' + t; },
+  sigmetUpdated: function(t) { return 'SIGMET עודכן \u2066' + t + '\u2069'; },
   sigmetReadoutClickHint: 'לחץ לפענוח',
   sigmetModalTitle: 'התרעות SIGMET פעילות',
   sigmetRaw: 'גולמי',
