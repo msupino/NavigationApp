@@ -216,11 +216,21 @@ function applyTuningCssVars() {
   px('--navaid-zulu-clock-font-size', 'zuluClockFontPx');
   root.setProperty('--navaid-zulu-clock-font-weight', tune('zuluClockFontWeight'));
   root.setProperty('--navaid-zulu-clock-line-height', tune('zuluClockLineHeight'));
-  root.setProperty('--navaid-zulu-clock-text-color', tune('zuluClockTextColor'));
+  // The clock is styled entirely from tune values whose defaults are dark (white
+  // text on a near-black pill) — correct on the dark map but wrong in light mode.
+  // When a colour is still at its dark default, swap in a light palette for light
+  // mode; any tune/gist override (a non-default value) always wins in both themes.
+  // (Read the theme from the body class so applyDisplayTheme can re-run this.)
+  const lightTheme = document.body.classList.contains('theme-light');
+  const themed = (v, dark, light) =>
+    (lightTheme && String(v).toLowerCase() === dark) ? light : v;
+  root.setProperty('--navaid-zulu-clock-text-color',
+    themed(tune('zuluClockTextColor'), '#ffffff', '#231f20'));
   root.setProperty('--navaid-zulu-clock-bg',
-    cssRgba(tune('zuluClockBgColor'), tune('zuluClockBgAlpha')));
+    cssRgba(themed(tune('zuluClockBgColor'), '#141212', '#ffffff'), tune('zuluClockBgAlpha')));
   root.setProperty('--navaid-zulu-clock-border',
-    tune('zuluClockBorderWidthPx') + 'px solid ' + tune('zuluClockBorderColor'));
+    tune('zuluClockBorderWidthPx') + 'px solid ' +
+    themed(tune('zuluClockBorderColor'), '#3a3636', '#9a9a9a'));
   px('--navaid-zulu-clock-border-radius', 'zuluClockBorderRadiusPx');
   root.setProperty('--navaid-zulu-clock-shadow',
     '0 ' + tune('zuluClockShadowYPx') + 'px ' + tune('zuluClockShadowBlurPx') +
@@ -2801,7 +2811,7 @@ function showNotamModal(only) {
   box.appendChild(rawBtn);
   if (notamMeta && notamMeta.generatedAt) {
     const u = document.createElement('div');
-    u.className = 'notam-updated'; u.dir = 'ltr';
+    u.className = 'notam-updated';
     const t = new Date(notamMeta.generatedAt);
     if (!isNaN(t)) u.textContent = (S.notamUpdated ? S.notamUpdated(t.toISOString().slice(0, 16).replace('T', ' ') + 'Z') : '');
     box.appendChild(u);
@@ -3138,6 +3148,9 @@ try {
 function applyDisplayTheme() {
   document.body.classList.toggle('theme-light', displayTheme === 'light');
   document.body.classList.toggle('theme-dark', displayTheme !== 'light');
+  // The Zulu clock's default palette is theme-aware (see applyTuningCssVars) and
+  // reads the body theme class, so refresh it now that the class is set.
+  if (typeof applyTuningCssVars === 'function') applyTuningCssVars();
 }
 const THEME_TOGGLE_EL = document.getElementById('theme-toggle');
 // The button shows the mode it switches TO: in dark it offers "Light mode",
