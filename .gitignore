@@ -23,6 +23,7 @@ android/local.properties
 .vscode/
 .idea/
 *.log
+__pycache__/
 test-results/
 playwright-report/
 blob-report/

@@ -122,7 +122,7 @@ window.S = {
   tbResetAllWpNames: '↻ אפס את כל שמות ציוני הדרך',
   tbResetAllWpNamesTitle: 'הגדר כל שם לפי ייחוס או נקה כשאין ייחוס סמוך',
   resetAllWpNamesConfirm: 'לאפס את כל שמות ציוני הדרך לפי נקודות ייחוס, או לנקות כשאין ייחוס סמוך?',
-  resetLegMarkers: '↻ אפס מיקום סמן',                // כפתור איפוס מיקום סמן הקטע באינספקטור
+  resetLegMarkers: '↻ אפס מיקום סמן',                // כפתור איפוס מיקום סמן הקטע בחלונית
   resetLegMarkersTitle: 'איפוס מיקום סמן הקטע',
   tbResetAllMarkers: '↻ אפס מיקום כל הסמנים',         // כפתור בסרגל לאיפוס מיקום כל סמני הקטעים
   tbResetAllMarkersTitle: 'איפוס מיקום סמני הקטעים למיקומי ברירת המחדל',
@@ -145,8 +145,8 @@ window.S = {
   tbShowLsaTitle: 'הצג אזורי מרחב אווירי LSA (בועות) — בשכבת גובה נמוך',
   vorRefLabel: 'תחנת ייחוס',
   vorRefNone: '— ללא —',
-  tbShowWind: 'הצג השפעת רוח לכל רגל',
-  tbShowWindTitle: 'הצג את שדות הרוח, חצי הרוח לכל רגל, וקריאת הכיוון המתוקן במפקח הרגל',
+  tbShowWind: 'הצג השפעת רוח לכל קטע',
+  tbShowWindTitle: 'הצג את שדות הרוח, חצי הרוח לכל קטע, וקריאת הכיוון המתוקן בחלונית הקטע',
   tbSigmet: '⚠ SIGMET',
   tbSigmetTitle: 'אזורי מפגע SIGMET פעילים עבור אזור ישראל (מקור: NOAA AWC)',
   tbShowNotam: 'הצג NOTAM',
@@ -245,7 +245,7 @@ window.S = {
   fpVorLabel: 'VOR',
   fpVorRadialEmpty: '—',
   fpDel: '✕',
-  fpTotal: 'סה"כ',
+  fpTotal: 'סה״כ',
   fpReturn: 'מסלול חזרה',
   fpClose: 'סגור',
   fpPrint: 'הדפס',
@@ -274,7 +274,7 @@ window.S = {
   tbGphTitle: 'צריכת דלק, גלונים לשעה',
   tbTaxiGal: 'הסעה והמראה (גאל)',
   tbTaxiGalTitle: 'דלק הפעלה / נסיעה / המראה בגלונים',
-  fpTaxiTip: function(g) { return '+ ' + g.toFixed(1) + ' גאל הפעלה / המראה כלולים בסה"כ'; },
+  fpTaxiTip: function(g) { return '+ ' + g.toFixed(1) + ' גאל הפעלה / המראה כלולים בסה״כ'; },
   pageOrientation: ' עמוד — כיוון',
   landscape: 'לרוחב',
   portrait: 'לאורך',
@@ -297,7 +297,7 @@ window.S = {
   windFromDeg: 'רוח מ-(°)',
   windSpeedKt: 'מהירות רוח (קשר)',
   windEffect: 'עם רוח',
-  windEffectTitle: 'כיוון מגנטי מתוקן-רוח, מהירות קרקע, זווית תיקון רוח, וזמן רגל.',
+  windEffectTitle: 'כיוון מגנטי מתוקן-רוח, מהירות קרקע, זווית תיקון רוח, וזמן קטע.',
   windEffectText: function(hdg, gs, wca, time) {
     return 'כיוון ' + hdg + '  GS ' + gs + '  WCA ' + wca + '  ' + time;
   },
@@ -308,7 +308,7 @@ window.S = {
     return hpa + ' hPa ← ' + dir + '/' + spd;
   },
   windFetchOkLegs: function(n) {
-    return 'רוח לכל מקטע הוגדרה (' + n + ' מקטעים)';
+    return 'רוח לכל קטע הוגדרה (' + (n === 1 ? 'קטע אחד' : n + ' קטעים') + ')';
   },
   windFetchErr: 'משיכת הרוח נכשלה — בדוק חיבור',
   tbWindField: 'הצג שדה רוח',
@@ -477,8 +477,8 @@ window.S = {
   altPairsStatus: 'כיוון',
   altPairsDistance: 'מ״י',
   altPairsBlocked: 'חסום',
-  altitudeUnknown: 'Unknown',
-  altPairsUnknown: 'Unknown',
+  altitudeUnknown: 'לא ידוע',
+  altPairsUnknown: 'לא ידוע',
   altPairsOneWay: 'חד-כיווני',
   altPairsTwoWay: 'דו-כיווני',
   altPairsRevertOrigin: 'שחזר למקור',
