@@ -2074,19 +2074,55 @@ function exportTileLayerUrl(layer, coords) {
   return tileLayerUrl(src, coords);
 }
 
+// Local MBTiles dev server (localhost only): opt in with ?localTiles=1 to serve
+// chart tiles from scripts/local-mbtiles-server.py instead of the remote CDN.
+// Off by default and inert in production; each layer keeps its exportUrl so
+// offline map-pack export still pulls from the remote mirror regardless.
+const LOCAL_TILE_KEY = 'navaid.localTiles';
+function localChartTilesEnabled() {
+  const host = location.hostname;
+  const localHost = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+  if (!localHost) return false;
+  try {
+    const params = new URLSearchParams(location.search);
+    if (params.has('localTiles')) {
+      const v = String(params.get('localTiles') || '').toLowerCase();
+      const on = v === '1' || v === 'true' || v === 'yes' || v === 'on';
+      if (on) localStorage.setItem(LOCAL_TILE_KEY, '1');
+      else localStorage.removeItem(LOCAL_TILE_KEY);
+      return on;
+    }
+    return localStorage.getItem(LOCAL_TILE_KEY) === '1';
+  } catch (e) {
+    return false;
+  }
+}
+const LOCAL_CHART_TILES = localChartTilesEnabled();
+NavAid.localChartTiles = LOCAL_CHART_TILES;
+const LOCAL_FM_ATTR =
+  'Local MBTiles © <a href="https://flight-maps.com">flight-maps.com</a> · CAAI';
+function chartTileUrl(kind, remoteUrl) {
+  return LOCAL_CHART_TILES ? 'tiles/' + kind + '/{z}/{x}/{y}.png' : remoteUrl;
+}
+function chartTileOptions(options) {
+  return LOCAL_CHART_TILES
+    ? { ...options, attribution: LOCAL_FM_ATTR, corsOk: true, localTiles: true }
+    : options;
+}
+
 const layers = {
-  'CVFR': L.tileLayer('https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png',
-    { ...TILE, attribution: FM_ATTR,
-      exportUrl: NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png' }),
-  'Navigation': L.tileLayer('https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png',
-    { ...TILE, attribution: FM_ATTR,
-      exportUrl: NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png' }),
-  'Low Alt': L.tileLayer('https://flight-maps.com/tiles/la/{z}/{x}/{y}.png',
-    { ...TILE, attribution: FM_ATTR,
-      exportUrl: NAVAID_TILE_BASE + '/LSA-Low-Altitude/{z}/{x}/{y}.png' }),
-  'Helicopters': L.tileLayer('https://flight-maps.com/tiles/il-hel/{z}/{x}/{y}.png',
-    { ...TILE, maxNativeZoom: 12, attribution: FM_ATTR,
-      exportUrl: NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png' }),
+  'CVFR': L.tileLayer(chartTileUrl('cvfr', 'https://flight-maps.com/tiles/cvfr/{z}/{x}/{y}.png'),
+    chartTileOptions({ ...TILE, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/CVFR/{z}/{x}/{y}.png' })),
+  'Navigation': L.tileLayer(chartTileUrl('nav', 'https://flight-maps.com/tiles/nav/{z}/{x}/{y}.png'),
+    chartTileOptions({ ...TILE, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/Israel-Navigation/{z}/{x}/{y}.png' })),
+  'Low Alt': L.tileLayer(chartTileUrl('la', 'https://flight-maps.com/tiles/la/{z}/{x}/{y}.png'),
+    chartTileOptions({ ...TILE, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/LSA-Low-Altitude/{z}/{x}/{y}.png' })),
+  'Helicopters': L.tileLayer(chartTileUrl('il-hel', 'https://flight-maps.com/tiles/il-hel/{z}/{x}/{y}.png'),
+    chartTileOptions({ ...TILE, maxNativeZoom: 12, attribution: FM_ATTR,
+      exportUrl: NAVAID_TILE_BASE + '/Israel-Helicopters/{z}/{x}/{y}.png' })),
   'Satellite': L.tileLayer(
     'https://services.arcgisonline.com/ArcGIS/rest/services/' +
     'World_Imagery/MapServer/tile/{z}/{y}/{x}',
