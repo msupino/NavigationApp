@@ -607,7 +607,6 @@ window.S = Object.assign({
   resetAllWpNamesConfirm: 'Reset all waypoint names to their nearest reference codes, or clear when off-grid (sequence placeholders)?',
   resetLegMarkers: '↻ Reset marker position',       // inspector leg button — reset label offsets
   resetLegMarkersTitle: 'Reset marker position',
-  resetAllLegMarkers: '↻ Reset all marker positions', // inspector leg button — reset every leg
   resetAllConfirm: 'Reset all leg marker positions to default? This will clear any manual adjustments.',
   clearConfirm: 'Remove all waypoints and notes?',
   errBadCoords: 'file has invalid waypoint coordinates',
