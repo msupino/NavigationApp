@@ -121,7 +121,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=325">
+  <link rel="stylesheet" href="app/style.css?v=327">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -155,17 +155,9 @@
   <div id="map"></div>
   <canvas id="overlay"></canvas>
 
-  <!-- Visible app name + purpose, anchored independently of the toolbar so it
-       never affects the menubar geometry. OAuth branding verification requires
-       the app name and its purpose to be human-visible on the home page (the
-       sr-only prose above is crawler/screen-reader-only). -->
-  <div id="app-brand">
-    <a href="about.html" target="_blank" rel="noopener">NavAid</a>
-    <!-- Static default text so the app name + purpose are in the raw HTML and
-         visible without JS (OAuth branding reviewers / crawlers may not run JS).
-         i18n replaces it with the Hebrew string on load. -->
-    <span class="app-brand-tag" data-i18n="tbBrandTag">— CVFR flight planner for Israel</span>
-  </div>
+  <!-- App name + purpose for OAuth branding / crawlers live in the sr-only
+       <header> above and in about.html (the consent-screen home-page URL).
+       The visible top badge was removed once branding was verified. -->
 
   <div id="toolbar">
     <span id="toolbar-handle" class="drag-handle" data-i18n-title="tbHandleTitle">⋯</span>
@@ -704,7 +696,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=325';
+      var v = '?v=327';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
