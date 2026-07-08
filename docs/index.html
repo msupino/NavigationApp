@@ -121,7 +121,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=324">
+  <link rel="stylesheet" href="app/style.css?v=325">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -161,7 +161,10 @@
        sr-only prose above is crawler/screen-reader-only). -->
   <div id="app-brand">
     <a href="about.html" target="_blank" rel="noopener">NavAid</a>
-    <span class="app-brand-tag" data-i18n="tbBrandTag"></span>
+    <!-- Static default text so the app name + purpose are in the raw HTML and
+         visible without JS (OAuth branding reviewers / crawlers may not run JS).
+         i18n replaces it with the Hebrew string on load. -->
+    <span class="app-brand-tag" data-i18n="tbBrandTag">— CVFR flight planner for Israel</span>
   </div>
 
   <div id="toolbar">
@@ -701,7 +704,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=324';
+      var v = '?v=325';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',

@@ -379,7 +379,7 @@ window.S = {
   layerLabels: { 'CVFR': 'CVFR', 'Navigation': 'ניווט', 'Low Alt': 'גובה נמוך',
                  'Helicopters': 'מסוקים', 'Satellite': 'לוויין', 'OpenStreetMap': 'OpenStreetMap' },
   tbHandleTitle: 'גרור להזזה',
-  tbBrandTag: 'מתכנן טיסות CVFR לישראל',
+  tbBrandTag: '— מתכנן טיסות CVFR לישראל',
   tbAbout: 'אודות',
   tbAddNote: '📝 הוסף הערה (N)',
   tbAddNoteTitle: 'לחץ על המפה להוספת הערה (לחץ שוב לעצירה)',
