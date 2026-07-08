@@ -313,6 +313,13 @@ const TRACK_COLORS = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4',
 const SHOWN_TRACKS_KEY = 'navaid.tracks.shown';
 var _shownTracksBooted = false;
 
+// A freshly-shown track is zoomed-to and glows for TRACK_HIGHLIGHT_MS so the
+// user can spot the flown line before it settles into a plain overlay.
+const TRACK_HIGHLIGHT_MS = 10000;
+var _trackHighlightId = null;
+var _trackHighlightUntil = 0;
+var _trackHighlightTimer = null;
+
 // Points to draw for an entry. New entries carry `track`; old ones only had a
 // synthetic waypoint route (entry.data) — render those waypoints as the line.
 function trackPointsFromEntry(entry) {
@@ -339,7 +346,32 @@ function _addTrackOverlay(entry) {
   return true;
 }
 function showTrackOverlay(entry) {
-  if (_addTrackOverlay(entry)) { persistShownTrackIds(); scheduleDraw(); }
+  if (!entry) return;
+  // Only one recorded track is shown at a time — showing one hides the rest.
+  if (!isTrackShown(entry.id)) { shownTracks = []; _addTrackOverlay(entry); persistShownTrackIds(); }
+  // Always re-zoom + glow the target (also when it was already the shown one).
+  highlightTrack(entry.id);
+}
+// Zoom the map to a shown track and glow it for TRACK_HIGHLIGHT_MS, then revert.
+function highlightTrack(id) {
+  const t = shownTracks.find(x => x.id === id);
+  if (!t) { scheduleDraw(); return; }
+  const ll = t.points
+    .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng))
+    .map(p => [p.lat, p.lng]);
+  if (typeof map !== 'undefined' && ll.length) {
+    if (ll.length === 1) map.setView(ll[0], Math.max(map.getZoom(), 12), { animate: true });
+    else map.fitBounds(L.latLngBounds(ll), { padding: [60, 60], maxZoom: 13, animate: true });
+  }
+  _trackHighlightId = id;
+  _trackHighlightUntil = Date.now() + TRACK_HIGHLIGHT_MS;
+  clearTimeout(_trackHighlightTimer);
+  _trackHighlightTimer = setTimeout(() => {
+    _trackHighlightId = null;
+    _trackHighlightUntil = 0;
+    if (typeof scheduleDraw === 'function') scheduleDraw();
+  }, TRACK_HIGHLIGHT_MS);
+  scheduleDraw();
 }
 function hideTrackOverlay(id) {
   const before = shownTracks.length;
@@ -362,7 +394,8 @@ function loadShownTrackOverlays() {
   if (!Array.isArray(ids) || !ids.length) return;
   const lib = (typeof loadRouteLibrary === 'function') ? loadRouteLibrary() : [];
   shownTracks = [];
-  for (const id of ids) { const e = lib.find(x => x.id === id); if (e) _addTrackOverlay(e); }
+  // Single track at a time: restore just the first still-existing id.
+  for (const id of ids) { const e = lib.find(x => x.id === id); if (e && _addTrackOverlay(e)) break; }
   if (shownTracks.length) scheduleDraw();
 }
 
@@ -379,12 +412,25 @@ function drawTracks() {
   if (!Array.isArray(shownTracks) || !shownTracks.length) return;
   octx.save();
   octx.lineCap = 'round'; octx.lineJoin = 'round';
+  const highlightOn = _trackHighlightId && Date.now() < _trackHighlightUntil;
   for (const t of shownTracks) {
     const pts = t.points.map(proj);
     if (pts.length < 2) continue;
     octx.beginPath();
     octx.moveTo(pts[0].x, pts[0].y);
     for (let i = 1; i < pts.length; i++) octx.lineTo(pts[i].x, pts[i].y);
+    if (highlightOn && t.id === _trackHighlightId) {   // glow halo under the line
+      octx.save();
+      // Wide soft amber outer glow + a tighter brighter ring so the freshly
+      // shown track pops on both the light and dark base maps for 10s.
+      octx.lineWidth = tune('gpsBreadcrumbWidthPx') + 16;
+      octx.strokeStyle = 'rgba(255, 209, 0, 0.35)';
+      octx.stroke();
+      octx.lineWidth = tune('gpsBreadcrumbWidthPx') + 7;
+      octx.strokeStyle = 'rgba(255, 209, 0, 0.85)';
+      octx.stroke();
+      octx.restore();
+    }
     octx.lineWidth = tune('gpsBreadcrumbWidthPx');
     octx.strokeStyle = t.color;
     octx.stroke();

@@ -207,6 +207,32 @@ test('a saved track draws as an overlay polyline, independent of the route', asy
   expect(out.moveTos).toBeGreaterThan(0);
 });
 
+test('showing a recorded track hides any other (one at a time) and highlights it', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.removeItem('navaid.routes'); localStorage.removeItem('navaid.tracks.shown'); } catch (e) {}
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof showTrackOverlay === 'function' && typeof drawTracks === 'function');
+  const out = await page.evaluate(() => {
+    const mk = (id, pts) => ({ id, name: id, track: pts.map(p => ({ lat: p[0], lng: p[1], t: Date.now() })) });
+    const A = mk('A', [[32.0, 34.8], [32.1, 34.9]]);
+    const B = mk('B', [[31.2, 34.7], [31.3, 34.8]]);
+    showTrackOverlay(A);
+    const afterA = { shown: shownTracks.map(t => t.id), highlight: _trackHighlightId, active: _trackHighlightUntil > Date.now() };
+    showTrackOverlay(B);
+    const afterB = { shown: shownTracks.map(t => t.id), highlight: _trackHighlightId, active: _trackHighlightUntil > Date.now() };
+    return { afterA, afterB };
+  });
+  // First shown track: highlighted + glow active.
+  expect(out.afterA.shown).toEqual(['A']);
+  expect(out.afterA.highlight).toBe('A');
+  expect(out.afterA.active).toBe(true);
+  // Showing the second replaces the first — only one at a time — and re-highlights.
+  expect(out.afterB.shown).toEqual(['B']);
+  expect(out.afterB.highlight).toBe('B');
+  expect(out.afterB.active).toBe(true);
+});
+
 test('breadcrumb + own-ship are drawn while recording', async ({ page }) => {
   await page.addInitScript(() => {
     window.__geoCb = null;
