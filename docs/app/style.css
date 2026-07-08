@@ -1876,6 +1876,18 @@ body.theme-light .shortcuts-help-keys kbd {
      it on a small screen — hide them until it closes. */
   body:has(.modal-back) .map-legend,
   body:has(.modal-back) #toolbar { display: none; }
+  /* Saved-routes modal: the two-column rows (name | wrapped action buttons and
+     name field | save button) don't fit a phone — the auto action/button column
+     claims its full max-content width and starves the 1fr name to a few pixels,
+     wrapping a long route name into a tall vertical sliver. Stack them into a
+     single column so the name/field spans the row and the buttons sit below.
+     Selectors are scoped through .route-library-body so they outrank the base
+     .route-library-row / .route-library-saverow rules that appear later in the
+     file (a media query alone adds no specificity). */
+  .route-library-body .route-library-saverow,
+  .route-library-body .route-library-list .route-library-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Orientation picker modal */
