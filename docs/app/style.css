@@ -232,6 +232,11 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   margin-top: 2px;
 }
 .tb-section:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+/* The Edit/build section is the first .tb-section but NOT :first-of-type (the
+   .tb-quick div precedes it), so it kept a top border that doubled the header
+   divider above its Save/Load icons. Drop it — the separator that matters is the
+   one between the icons and the "Edit" label (.tb-head-actions border-bottom). */
+.tb-quick + .tb-section { border-top: none; padding-top: 0; margin-top: 0; }
 .tb-section-head {
   display: flex;
   align-items: center;
@@ -248,10 +253,14 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   -webkit-user-select: none;
 }
 .tb-section-head:hover { color: #e0d8d8; background: rgba(255,255,255,0.06); }
-/* Edit header: quick Save/Load buttons sit on the leading side of the "Edit"
-   label (left in LTR, right in RTL, via normal flex flow). */
-.tb-head-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.tb-head-actions { display: flex; align-items: center; gap: 2px; }
+/* Edit header: quick Save/Load buttons sit on their OWN line, above the "Edit"
+   label (leading-aligned; RTL flips side via normal flex flow). Only the Edit
+   section uses .tb-head-left, so this two-line stack is scoped to it. On the
+   desktop menubar the in-header actions are hidden, leaving just the label. */
+.tb-head-left { display: flex; flex-direction: column; align-items: stretch; gap: 3px; min-width: 0; }
+/* A rule line separates the Save/Load buttons from the "Edit" label below.
+   Only shown in the accordion (the desktop menubar hides .tb-head-actions). */
+.tb-head-actions { display: flex; align-items: center; gap: 2px; padding-bottom: 3px; border-bottom: 1px solid #3a3636; }
 #toolbar button.tb-head-btn {
   background: transparent;
   border: none;
@@ -3780,6 +3789,7 @@ body.theme-light #insp-title.editable:focus {
   border-color: #8392a6;
   box-shadow: 0 0 0 1px rgba(29, 111, 224, 0.18);
 }
+body.theme-light .tb-head-actions { border-bottom-color: #c6ccd6; }
 body.theme-light .tb-section-head,
 body.theme-light #toolbar .drag-handle,
 body.theme-light #toolbar-toggle,
