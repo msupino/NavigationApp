@@ -253,6 +253,22 @@ test('showing a degenerate track (<2 points) does not wipe the currently-shown o
   expect(out.persisted).toEqual(['A']);   // and the persisted set was not blanked
 });
 
+test('the top-right REC indicator shows only while recording', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__geoCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 5; };
+    navigator.geolocation.clearWatch = () => {};
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof startGpsRecording === 'function');
+  const el = page.locator('#gps-rec-indicator');
+  await expect(el).toBeHidden();                       // idle: no indicator
+  await page.evaluate(() => startGpsRecording());
+  await expect(el).toBeVisible();                       // recording: shown
+  await page.evaluate(() => stopGpsRecording());
+  await expect(el).toBeHidden();                        // stopped: hidden again
+});
+
 test('breadcrumb + own-ship are drawn while recording', async ({ page }) => {
   await page.addInitScript(() => {
     window.__geoCb = null;
@@ -288,11 +304,11 @@ test('toolbar GPS button toggles recording and updates its label', async ({ page
   await expect(btn).toBeVisible();
   await btn.click();
   expect(await page.evaluate(() => gpsRecording)).toBe(true);
-  await expect(btn).toContainText('Stop');
+  await expect(btn).toContainText('Stop recording');
   await page.evaluate(() => { const f=(a,b)=>window.__geoCb({coords:{latitude:a,longitude:b,accuracy:8,heading:null,altitude:null},timestamp:Date.now()}); f(32.0,34.0); f(32.1,34.0); });
   await btn.click();
   expect(await page.evaluate(() => gpsRecording)).toBe(false);
-  await expect(btn).toContainText('Record');
+  await expect(btn).toContainText('Start recording');
 });
 
 test('saving a GPS track does not mutate the currently-loaded routes legs', async ({ page }) => {
@@ -339,7 +355,7 @@ test('GPS error resets recording state and button label', async ({ page }) => {
   expect(await page.evaluate(() => gpsRecording)).toBe(true);
   await page.evaluate(() => window.__errCb && window.__errCb({ code: 1, message: 'denied' }));
   expect(await page.evaluate(() => gpsRecording)).toBe(false);
-  await expect(btn).toContainText('Record');
+  await expect(btn).toContainText('Start recording');
 });
 
 test('Show my location shows own-ship without recording or saving a track', async ({ page }) => {

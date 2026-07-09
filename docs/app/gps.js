@@ -255,10 +255,18 @@ function onGpsLiveError(err) {
   alert(gpsErrMsg(err));
 }
 
+// Toggle the top-right REC indicator (a pulsing red dot) to match gpsRecording.
+function updateGpsRecIndicator() {
+  if (typeof document === 'undefined') return;
+  const el = document.getElementById('gps-rec-indicator');
+  if (el) el.hidden = !gpsRecording;
+}
+
 function startGpsRecording() {
   if (gpsRecording) return;
   if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsRecording = true;
+  updateGpsRecIndicator();
   gpsTrack = [];
   if (!gpsLiveOn) gpsOwn = null;
   gpsStartT = Date.now();
@@ -504,6 +512,7 @@ function stopGpsRecording() {
   gpsStopWatch(gpsWatchId);
   gpsWatchId = null;
   gpsRecording = false;
+  updateGpsRecIndicator();
   gpsReleaseWakeLock();
   gpsLastGS = null; gpsLastAlt = null;
   if (!gpsLiveOn) gpsOwn = null;
