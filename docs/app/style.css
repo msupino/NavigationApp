@@ -834,6 +834,37 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
 }
 .leaflet-control.zulu-clock.dragging { cursor: grabbing; }
 
+/* GPS recording indicator — a pulsing red dot inside a rounded square, pinned
+   to the top-right corner only while a track records. Sits below the top band
+   so it clears the Zulu clock (English top-right / Hebrew top-left). */
+#gps-rec-indicator {
+  position: fixed;
+  top: 58px;
+  right: 12px;
+  z-index: 1200;
+  width: 30px;
+  height: 30px;
+  box-sizing: border-box;
+  border: 2px solid #e6194b;
+  border-radius: 5px;
+  background: rgba(20, 18, 18, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+#gps-rec-indicator[hidden] { display: none; }
+#gps-rec-indicator .gps-rec-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #e6194b;
+  animation: gps-rec-pulse 1.3s ease-in-out infinite;
+}
+@keyframes gps-rec-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { #gps-rec-indicator .gps-rec-dot { animation: none; } }
+
 /* Hebrew (RTL): the floating menu bar lives top-right on desktop, so default
    the Zulu clock to the top-LEFT corner instead of stacking beneath the bar.
    (English keeps it in the Leaflet top-right control flow.) A saved drag
@@ -1913,6 +1944,18 @@ body.theme-light .shortcuts-help-keys kbd {
   .route-library-body .route-library-list .route-library-row {
     grid-template-columns: 1fr;
   }
+
+  /* Declutter the footer in the mobile expanded menu — keep the GPS controls
+     (Start/Stop recording + Show/Hide location); hide the shortcuts, doc links,
+     and simulator here (all still available on desktop). */
+  #toolbar #help-trigger,
+  #toolbar #repo-link,
+  #toolbar #wiki-link,
+  #toolbar #issues-link,
+  #toolbar #about-link,
+  #toolbar #privacy-link,
+  #toolbar #terms-link,
+  #toolbar #sim-trigger { display: none; }
 }
 
 /* Orientation picker modal */

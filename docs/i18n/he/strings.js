@@ -622,9 +622,9 @@ window.S = {
   magLoading: 'משכלל…',
   // תוויות כפתורי הפוטר ללא אימוג'י — האייקון מגיע מ-.footer-link-icon
   // (אימוג'י בתווית הכפיל את האייקון בתפריט הנייד).
-  tbGpsRecord: 'הקלטת מסלול GPS',
-  tbGpsRecordTitle: 'הקלטת המסלול בפועל מ-GPS המכשיר ושמירתו',
-  tbGpsStop: 'עצור ושמור',
+  tbGpsRecord: 'התחל הקלטה',
+  tbGpsRecordTitle: 'התחל להקליט את המסלול בפועל מ-GPS המכשיר; עצירה שומרת אותו במסלולים',
+  tbGpsStop: 'עצור הקלטה',
   tbGpsLive: 'הצג מיקום',
   tbGpsLiveTitle: 'הצגת המיקום החי שלך על המפה (GPS, ללא הקלטה)',
   tbGpsLiveStop: 'הסתר מיקום',

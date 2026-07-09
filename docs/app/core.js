@@ -1026,12 +1026,12 @@ window.S = Object.assign({
   // Footer-button labels carry NO icon prefix: the button's own
   // .footer-link-icon span renders the glyph, so an emoji in the label
   // showed a double icon in the mobile footer menu.
-  tbGpsRecord: 'Record GPS track',
-  tbGpsRecordTitle: 'Record your flown track from the device GPS and save it',
-  tbGpsStop: 'Stop & save',
-  tbGpsLive: 'Show my location',
+  tbGpsRecord: 'Start recording',
+  tbGpsRecordTitle: 'Start recording your flown track from the device GPS; Stop saves it to your routes',
+  tbGpsStop: 'Stop recording',
+  tbGpsLive: 'Show location',
   tbGpsLiveTitle: 'Show your live position on the map (device GPS, no recording)',
-  tbGpsLiveStop: 'Hide my location',
+  tbGpsLiveStop: 'Hide location',
   gpsUnsupported: 'GPS is not available in this browser.',
   gpsNoTrack: 'No track recorded.',
   gpsError: 'GPS error: ',
