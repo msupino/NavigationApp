@@ -567,6 +567,12 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.simUrl` — simulator bridge base URL.
 - `navaid.simOn` — `'0'` / `'1'` for simulator auto-reconnect state.
 - `navaid.simFollow` — `'0'` / `'1'` for simulator-follow mode.
+- `navaid.tracks.shown` — JSON array of shown recorded-track ids
+  (`gps.js`). Only one track is shown at a time, so this holds 0 or 1 id;
+  an older multi-id list is healed to a single id on load.
+- `navaid.localTiles` — `'1'` when the localhost-only `?localTiles=1` dev
+  mode (serve chart tiles from the local MBTiles server) is enabled
+  (`core.js`). Never set off localhost; absent in production.
 
 `sessionStorage` (cleared on tab close — used to survive a language
 re-load that does a full page navigation):
