@@ -305,8 +305,8 @@ function stopGpsRecordingAndSave() {
 
 // --- saved-track overlays --------------------------------------------------
 // A recorded GPS track is shown as a coloured polyline overlay, independent of
-// the waypoint route. Multiple can be shown at once; the set of shown ids is
-// persisted so overlays survive a reload.
+// the waypoint route. One track is shown at a time (showing another replaces
+// it); the shown id is persisted so the overlay survives a reload.
 var shownTracks = [];                 // [{ id, name, points:[{lat,lng,alt,t}], color }]
 const TRACK_COLORS = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4',
                       '#008080', '#9a6324', '#000075'];
@@ -348,7 +348,14 @@ function _addTrackOverlay(entry) {
 function showTrackOverlay(entry) {
   if (!entry) return;
   // Only one recorded track is shown at a time — showing one hides the rest.
-  if (!isTrackShown(entry.id)) { shownTracks = []; _addTrackOverlay(entry); persistShownTrackIds(); }
+  // But don't wipe the current overlay if the new entry has nothing to draw
+  // (<2 finite points): a degenerate/legacy track must not blank the map.
+  if (!isTrackShown(entry.id)) {
+    const prev = shownTracks;
+    shownTracks = [];
+    if (!_addTrackOverlay(entry)) { shownTracks = prev; return; }
+    persistShownTrackIds();
+  }
   // Always re-zoom + glow the target (also when it was already the shown one).
   highlightTrack(entry.id);
 }
@@ -376,7 +383,14 @@ function highlightTrack(id) {
 function hideTrackOverlay(id) {
   const before = shownTracks.length;
   shownTracks = shownTracks.filter(t => t.id !== id);
-  if (shownTracks.length !== before) { persistShownTrackIds(); scheduleDraw(); }
+  if (shownTracks.length !== before) {
+    // Cancel a pending highlight for the track being hidden so its timer can't
+    // fire a stale redraw and _trackHighlightId can't dangle past the overlay.
+    if (_trackHighlightId === id) {
+      _trackHighlightId = null; _trackHighlightUntil = 0; clearTimeout(_trackHighlightTimer);
+    }
+    persistShownTrackIds(); scheduleDraw();
+  }
 }
 function toggleTrackOverlay(entry) {
   if (!entry) return false;
@@ -396,6 +410,9 @@ function loadShownTrackOverlays() {
   shownTracks = [];
   // Single track at a time: restore just the first still-existing id.
   for (const id of ids) { const e = lib.find(x => x.id === id); if (e && _addTrackOverlay(e)) break; }
+  // Heal the stored key when it drifted from what we restored (an old multi-id
+  // list, or ids whose entries were since deleted), so it matches reality.
+  if (ids.length !== shownTracks.length) persistShownTrackIds();
   if (shownTracks.length) scheduleDraw();
 }
 

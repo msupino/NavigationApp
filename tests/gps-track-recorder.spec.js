@@ -233,6 +233,26 @@ test('showing a recorded track hides any other (one at a time) and highlights it
   expect(out.afterB.active).toBe(true);
 });
 
+test('showing a degenerate track (<2 points) does not wipe the currently-shown one', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.removeItem('navaid.routes'); localStorage.removeItem('navaid.tracks.shown'); } catch (e) {}
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof showTrackOverlay === 'function');
+  const out = await page.evaluate(() => {
+    const A = { id: 'A', name: 'A', track: [[32.0, 34.8], [32.1, 34.9]].map(p => ({ lat: p[0], lng: p[1] })) };
+    const bad = { id: 'BAD', name: 'BAD', track: [{ lat: 31.5, lng: 34.7 }] };   // only 1 point
+    showTrackOverlay(A);
+    showTrackOverlay(bad);   // must NOT clear A: nothing to draw for BAD
+    return {
+      shown: shownTracks.map(t => t.id),
+      persisted: JSON.parse(localStorage.getItem('navaid.tracks.shown') || '[]'),
+    };
+  });
+  expect(out.shown).toEqual(['A']);       // A still shown, BAD ignored
+  expect(out.persisted).toEqual(['A']);   // and the persisted set was not blanked
+});
+
 test('breadcrumb + own-ship are drawn while recording', async ({ page }) => {
   await page.addInitScript(() => {
     window.__geoCb = null;
