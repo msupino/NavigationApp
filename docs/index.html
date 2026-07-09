@@ -121,7 +121,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=333">
+  <link rel="stylesheet" href="app/style.css?v=334">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -154,6 +154,11 @@
   </header>
   <div id="map"></div>
   <canvas id="overlay"></canvas>
+  <!-- GPS recording indicator: a red dot in a square, shown top-right only while
+       a track is being recorded, so the recording state is unmistakable. -->
+  <div id="gps-rec-indicator" hidden aria-hidden="true" title="Recording GPS track">
+    <span class="gps-rec-dot"></span>
+  </div>
 
   <!-- App name + purpose for OAuth branding / crawlers live in the sr-only
        <header> above and in about.html (the consent-screen home-page URL).
@@ -696,7 +701,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=333';
+      var v = '?v=334';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
