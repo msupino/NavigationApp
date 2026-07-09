@@ -1965,6 +1965,16 @@ body.theme-light .shortcuts-help-keys kbd {
   #toolbar #privacy-link,
   #toolbar #terms-link,
   #toolbar #sim-trigger { display: none; }
+
+  /* Make the Edit-header separator (between the Save/Load buttons and the
+     "Edit" label) span the full head like the dividers between sections: let
+     the two-line block fill the head width and float the expand caret to the
+     top corner so it no longer shortens the rule. */
+  .tb-section[data-sec="build"] .tb-section-head { position: relative; }
+  .tb-section[data-sec="build"] .tb-head-left { flex: 1; }
+  .tb-section[data-sec="build"] .tb-section-head::after {
+    position: absolute; inset-inline-end: 8px; top: 8px; margin: 0;
+  }
 }
 
 /* Orientation picker modal */
