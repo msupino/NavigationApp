@@ -248,9 +248,11 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   -webkit-user-select: none;
 }
 .tb-section-head:hover { color: #e0d8d8; background: rgba(255,255,255,0.06); }
-/* Edit header: quick Save/Load buttons sit on the leading side of the "Edit"
-   label (left in LTR, right in RTL, via normal flex flow). */
-.tb-head-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+/* Edit header: quick Save/Load buttons sit on their OWN line, above the "Edit"
+   label (leading-aligned; RTL flips side via normal flex flow). Only the Edit
+   section uses .tb-head-left, so this two-line stack is scoped to it. On the
+   desktop menubar the in-header actions are hidden, leaving just the label. */
+.tb-head-left { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
 .tb-head-actions { display: flex; align-items: center; gap: 2px; }
 #toolbar button.tb-head-btn {
   background: transparent;
