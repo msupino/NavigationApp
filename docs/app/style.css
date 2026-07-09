@@ -1968,12 +1968,13 @@ body.theme-light .shortcuts-help-keys kbd {
 
   /* Make the Edit-header separator (between the Save/Load buttons and the
      "Edit" label) span the full head like the dividers between sections: let
-     the two-line block fill the head width and float the expand caret to the
-     top corner so it no longer shortens the rule. */
+     the two-line block fill the head width and float the expand caret out of
+     flow so it no longer shortens the rule. The caret sits on the "Edit" line
+     (the bottom row), aligned with the label — like the other section carets. */
   .tb-section[data-sec="build"] .tb-section-head { position: relative; }
   .tb-section[data-sec="build"] .tb-head-left { flex: 1; }
   .tb-section[data-sec="build"] .tb-section-head::after {
-    position: absolute; inset-inline-end: 8px; top: 8px; margin: 0;
+    position: absolute; inset-inline-end: 8px; bottom: 7px; top: auto; margin: 0;
   }
 }
 
