@@ -42,34 +42,35 @@ const stored = page => page.evaluate(() =>
 const currentId = page => page.evaluate(() => currentRouteLibraryId);
 
 test.describe('Edit-header Save / Load route buttons', () => {
-  test('both buttons render on the leading side of the Edit header', async ({ page }) => {
+  test('both buttons render on their own line above the Edit label', async ({ page }) => {
     await boot(page);
     const save = page.locator('#tool-save-route');
     const load = page.locator('#tool-load-route');
     await expect(save).toBeVisible();
     await expect(load).toBeVisible();
-    // Buttons sit inside the "Edit" (build) section header, before the label.
+    // Two-line Edit header: the Save/Load buttons sit on their own row ABOVE the
+    // "Edit" label (a separator divides them). Both stay inside the section head.
     const geo = await page.evaluate(() => {
       const head = document.querySelector('.tb-section[data-sec="build"] .tb-section-head');
       const sv = document.getElementById('tool-save-route').getBoundingClientRect();
       const title = head.querySelector('.tb-section-title').getBoundingClientRect();
       return { inHead: !!document.getElementById('tool-save-route').closest('.tb-section-head'),
-               saveLeftOfTitle: sv.x < title.x };
+               saveAboveTitle: sv.bottom <= title.top + 2 };
     });
     expect(geo.inHead).toBe(true);
-    expect(geo.saveLeftOfTitle).toBe(true);   // LTR: leading side is the left
+    expect(geo.saveAboveTitle).toBe(true);
   });
 
-  test('in Hebrew (RTL) the buttons sit on the right of the Edit header', async ({ page }) => {
+  test('in Hebrew (RTL) the buttons still sit above the Edit label', async ({ page }) => {
     await boot(page, 'he');
     const geo = await page.evaluate(() => {
       const head = document.querySelector('.tb-section[data-sec="build"] .tb-section-head');
       const sv = document.getElementById('tool-save-route').getBoundingClientRect();
       const title = head.querySelector('.tb-section-title').getBoundingClientRect();
-      return { dir: document.documentElement.dir, saveRightOfTitle: sv.x > title.x };
+      return { dir: document.documentElement.dir, saveAboveTitle: sv.bottom <= title.top + 2 };
     });
     expect(geo.dir).toBe('rtl');
-    expect(geo.saveRightOfTitle).toBe(true);
+    expect(geo.saveAboveTitle).toBe(true);
   });
 
   test('Load route opens the Saved routes menu', async ({ page }) => {
