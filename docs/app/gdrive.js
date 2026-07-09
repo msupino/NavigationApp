@@ -227,29 +227,52 @@ function mergeRouteLibraries(a, b) {
   return pruned;
 }
 
+// The Drive REST calls throw `... failed: <status>`; detect an auth lapse so
+// we can re-authenticate and retry once.
+function _isAuthError(err) {
+  return /\b(401|403)\b/.test(String((err && err.message) || ''));
+}
+
+// One merge+upload pass against Drive (assumes a valid token).
+function _gdriveSyncOnce() {
+  return gdriveFindFile().then(file => {
+    const remote = file ? gdriveDownload(file.id) : Promise.resolve([]);
+    return remote.then(remoteArr => {
+      const local = (typeof loadRouteLibrary === 'function') ? loadRouteLibrary() : [];
+      const merged = mergeRouteLibraries(local, remoteArr);
+      // Upload FIRST, then write local only after Drive confirms — so a failed
+      // upload (expired token, network) leaves local + Drive each unchanged
+      // rather than updating local while Drive silently missed the push.
+      return gdriveUpload(file && file.id, merged).then(() => {
+        window._navaidSyncing = true;   // guard so persistRouteLibrary's auto-sync hook doesn't loop
+        try { if (typeof persistRouteLibrary === 'function') persistRouteLibrary(merged); }
+        finally { window._navaidSyncing = false; }
+        return merged;
+      });
+    });
+  });
+}
+
 // Two-way sync: merge local + remote, write the merged set both to localStorage
 // and back to Drive. Returns the merged array.
 function gdriveSync() {
   // Try a silent token first (returning, already-consented users get no popup);
-  // fall back to interactive consent so a first-time user can actually grant it
-  // (the silent prompt:'' can never obtain the initial consent).
-  return gdriveConnect(false).catch(() => gdriveConnect(true))
-    .then(gdriveFindFile).then(file => {
-      const remote = file ? gdriveDownload(file.id) : Promise.resolve([]);
-      return remote.then(remoteArr => {
-        const local = (typeof loadRouteLibrary === 'function') ? loadRouteLibrary() : [];
-        const merged = mergeRouteLibraries(local, remoteArr);
-        // Upload FIRST, then write local only after Drive confirms — so a failed
-        // upload (expired token, network) leaves local + Drive each unchanged
-        // rather than updating local while Drive silently missed the push.
-        return gdriveUpload(file && file.id, merged).then(() => {
-          window._navaidSyncing = true;   // guard so persistRouteLibrary's auto-sync hook doesn't loop
-          try { if (typeof persistRouteLibrary === 'function') persistRouteLibrary(merged); }
-          finally { window._navaidSyncing = false; }
-          return merged;
-        });
-      });
-    });
+  // fall back to interactive consent so a first-time user can grant it (the
+  // silent prompt:'' can never obtain the initial consent). On native, the
+  // first connect is ALREADY an interactive account picker, so don't retry it —
+  // that would pop the picker a second time when the user dismisses the first.
+  const connect = gdriveConnect(false).catch(err =>
+    _nativeSocialLogin() ? Promise.reject(err) : gdriveConnect(true));
+  return connect.then(_gdriveSyncOnce).catch(err => {
+    // A 401/403 mid-sync means the token lapsed or was revoked (e.g. the native
+    // token outlived our conservative expiry estimate). Drop it, re-auth once,
+    // and retry — otherwise the whole sync fails and never recovers.
+    if (_isAuthError(err)) {
+      _gdriveToken = null;
+      return gdriveConnect(true).then(_gdriveSyncOnce);
+    }
+    throw err;
+  });
 }
 
 if (typeof window !== 'undefined') {

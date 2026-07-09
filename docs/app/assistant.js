@@ -395,8 +395,13 @@
           const m = String(s).match(/^(?:([^=]+?)\s*=\s*)?(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
           if (!m) return null;
           const lat = +m[2], lng = +m[3];
-          if (!Number.isFinite(lat) || !Number.isFinite(lng) ||
-              lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+          // Israel-region sanity (the chart extent, padded ~2°). A value outside
+          // this is almost always a typo or a lat/lng swap — and because Israel's
+          // latitude (~29-33) and longitude (~34-36) each fall inside the other's
+          // global range, a naive -90..90 / -180..180 check would accept a swap
+          // and plot a wrong point a pilot might trust. Reject so the model fixes it.
+          if (lat < 27 || lat > 36 || lng < 32 || lng > 38) return null;
           return { lat, lng, name: (m[1] || '').trim() };
         };
         const raw = Array.isArray(a.points) ? a.points.map(n => String(n == null ? '' : n).trim()).filter(Boolean) : [];

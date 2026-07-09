@@ -7,7 +7,7 @@
 // no-cors fetch would store opaque responses that Chrome quota-pads to ~7 MB
 // each) but STORED under the live flight-maps.com tile URL, so the service
 // worker can serve the map's normal tile requests cache-first offline
-// (sw.js: OFFLINE_TILE_HOSTS branch). Packs survive service-worker upgrades
+// (sw.js: the url.host === TILE_HOST tile branch). Packs survive SW upgrades
 // (sw.js activate exempts the tile cache from cleanup).
 (function () {
   'use strict';
@@ -50,36 +50,52 @@
   let _cancel = false;
 
   async function downloadPack(onProgress, zMin, zMax) {   // zMin/zMax: test seam
+    if (_running) return { error: 'busy' };
     const cur = chartLayer();
     if (!cur) return { error: 'not a chart layer' };
-    const list = offlineTileList(TILE.chartBounds, zMin || OFFLINE_MIN_Z, zMax || OFFLINE_MAX_Z);
-    // Ask the browser not to evict the pack under storage pressure.
-    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* */ }
-    const cache = await caches.open(TILE_CACHE);
-    let done = 0, ok = 0, failed = 0;
+    // Set the re-entrancy guard SYNCHRONOUSLY (before the first await) so a
+    // second tap during caches.open() cancels this run instead of starting a
+    // concurrent one that would double the bandwidth and share _cancel.
     _running = true; _cancel = false;
-    const worker = async () => {
-      while (list.length && !_cancel) {
-        const c = list.pop();
-        const liveUrl = tileLayerUrl(cur.layer, c);
-        const mirrorUrl = exportTileLayerUrl(cur.layer, c);
-        try {
-          const hit = await cache.match(liveUrl);
-          if (!hit) {
-            const r = await fetch(mirrorUrl, { mode: 'cors' });
-            if (r.ok) { await cache.put(liveUrl, r); ok++; }
-            else failed++;               // 404 = outside coverage (sea) — fine
-          } else ok++;
-        } catch (e) { failed++; }
-        done++;
-        if (done % 25 === 0 || !list.length) onProgress(done, done + list.length, ok);
-      }
-    };
-    const workers = []; for (let i = 0; i < CONCURRENCY; i++) workers.push(worker());
-    await Promise.all(workers);
-    _running = false;
-    notifySw();   // SW starts serving tiles cache-first now that a pack exists
-    return { ok, failed, cancelled: _cancel };
+    const list = offlineTileList(TILE.chartBounds, zMin || OFFLINE_MIN_Z, zMax || OFFLINE_MAX_Z);
+    let done = 0, ok = 0, failed = 0;
+    try {
+      // Ask the browser not to evict the pack under storage pressure.
+      try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* */ }
+      const cache = await caches.open(TILE_CACHE);
+      const worker = async () => {
+        while (list.length && !_cancel) {
+          const c = list.pop();
+          const liveUrl = tileLayerUrl(cur.layer, c);
+          const mirrorUrl = exportTileLayerUrl(cur.layer, c);
+          try {
+            const hit = await cache.match(liveUrl);
+            if (!hit) {
+              const r = await fetch(mirrorUrl, { mode: 'cors' });
+              if (r.ok) { await cache.put(liveUrl, r); ok++; }
+              else failed++;               // 404 = outside coverage (sea) — fine
+            } else ok++;
+          } catch (e) { failed++; }
+          done++;
+          if (done % 25 === 0 || !list.length) onProgress(done, done + list.length, ok);
+        }
+      };
+      const workers = []; for (let i = 0; i < CONCURRENCY; i++) workers.push(worker());
+      await Promise.all(workers);
+      return { ok, failed, cancelled: _cancel };
+    } finally {
+      _running = false;
+      // Never leave an EMPTY bucket behind (cancelled before any tile stored, or
+      // every fetch failed offline): an empty cache still flips the SW's
+      // tilePackReady on — reintroducing per-tile proxy overhead with zero
+      // offline benefit — and packSize()===0 keeps the Delete button hidden,
+      // stranding the user in proxy mode. A non-empty (partial) pack is kept.
+      try {
+        const c = await caches.open(TILE_CACHE);
+        if ((await c.keys()).length === 0) await caches.delete(TILE_CACHE);
+      } catch (e) { /* */ }
+      notifySw();   // reflect real state: pack exists, or was cleaned up
+    }
   }
 
   // The SW skips tile proxying entirely while no pack exists (perf); tell it
@@ -103,7 +119,7 @@
     } catch (e) { return 0; }
   }
 
-  // --- UI (Extra layers section) ---------------------------------------
+  // --- UI (Charts section) ---------------------------------------------
   const t = (k, fb) => (window.S && S[k]) || fb;
   function wire() {
     const btn = document.getElementById('offline-tiles-btn');
@@ -133,6 +149,9 @@
         if (status) status.textContent = okN + '/' + totalN;
       });
       btn.textContent = label;
+      // res.error (busy, or the base layer stopped being a chart mid-click) has
+      // no ok/cancelled — don't render "saved undefined tiles".
+      if (res.error) { refresh(); return; }
       if (status) {
         status.textContent = res.cancelled ? t('offlineCancelled', 'cancelled')
           : (t('offlineDone', 'saved ') + res.ok + ' tiles');

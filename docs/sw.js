@@ -11,6 +11,10 @@ const TILE_HOST = 'flight-maps.com';
 // handles the tile with zero SW overhead (issue-388 magnifier perf).
 let tilePackReady = false;
 function refreshTilePackFlag() {
+  // Drop any memoized cache handle: a delete+re-download replaces the underlying
+  // Cache, so a handle opened before the change would match() against the old
+  // (now detached) bucket and miss every freshly-downloaded tile.
+  self._tileCachePromise = null;
   return caches.has(TILE_CACHE).then(h => { tilePackReady = h; }, () => {});
 }
 refreshTilePackFlag();
@@ -86,7 +90,11 @@ self.addEventListener('fetch', e => {
     e.respondWith(
       self._tileCachePromise
         .then(c => c.match(e.request.url))
-        .then(hit => hit || fetch(e.request)));
+        .then(hit => hit || fetch(e.request))
+        // If the memoized handle ever rejects (storage pressure / detached
+        // cache), drop it so the next request re-opens, and fall back to the
+        // network instead of poisoning respondWith with a permanent rejection.
+        .catch(() => { self._tileCachePromise = null; return fetch(e.request); }));
     return;
   }
 
