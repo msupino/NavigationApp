@@ -87,14 +87,20 @@ self.addEventListener('fetch', e => {
   if (url.host === TILE_HOST && url.pathname.indexOf('/tiles/') === 0) {
     if (!tilePackReady) return;   // no pack downloaded -> native network path, zero SW overhead
     if (!self._tileCachePromise) self._tileCachePromise = caches.open(TILE_CACHE);
-    e.respondWith(
-      self._tileCachePromise
-        .then(c => c.match(e.request.url))
-        .then(hit => hit || fetch(e.request))
-        // If the memoized handle ever rejects (storage pressure / detached
-        // cache), drop it so the next request re-opens, and fall back to the
-        // network instead of poisoning respondWith with a permanent rejection.
-        .catch(() => { self._tileCachePromise = null; return fetch(e.request); }));
+    e.respondWith((async () => {
+      try {
+        const cache = await self._tileCachePromise;
+        const hit = await cache.match(e.request.url);
+        if (hit) return hit;
+      } catch (err) {
+        // Only a broken/detached cache HANDLE lands here (open/match rejected) —
+        // drop it so the next request re-opens. A plain cache miss does NOT throw,
+        // so this never fires on the normal offline-miss path (which must fall
+        // through to a single network fetch, not reset the memoized handle).
+        self._tileCachePromise = null;
+      }
+      return fetch(e.request);   // miss or reset handle -> network (its rejection is the normal offline result)
+    })());
     return;
   }
 

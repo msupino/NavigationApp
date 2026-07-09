@@ -57,9 +57,12 @@
     // second tap during caches.open() cancels this run instead of starting a
     // concurrent one that would double the bandwidth and share _cancel.
     _running = true; _cancel = false;
-    const list = offlineTileList(TILE.chartBounds, zMin || OFFLINE_MIN_Z, zMax || OFFLINE_MAX_Z);
     let done = 0, ok = 0, failed = 0;
     try {
+      // Inside the try so a throw here (e.g. TILE.chartBounds unavailable) still
+      // hits the finally and resets _running — otherwise downloadPack would be
+      // stuck 'busy' forever.
+      const list = offlineTileList(TILE.chartBounds, zMin || OFFLINE_MIN_Z, zMax || OFFLINE_MAX_Z);
       // Ask the browser not to evict the pack under storage pressure.
       try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* */ }
       const cache = await caches.open(TILE_CACHE);

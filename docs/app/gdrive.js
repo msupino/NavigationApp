@@ -227,10 +227,12 @@ function mergeRouteLibraries(a, b) {
   return pruned;
 }
 
-// The Drive REST calls throw `... failed: <status>`; detect an auth lapse so
-// we can re-authenticate and retry once.
+// The Drive REST calls throw `... failed: <status>`; detect a token lapse so
+// we can re-authenticate and retry once. Only 401 (unauthenticated) — NOT 403,
+// which Drive also returns for rate-limit/quota, where dropping a still-valid
+// token and forcing an interactive re-auth would be a wrong, surprising retry.
 function _isAuthError(err) {
-  return /\b(401|403)\b/.test(String((err && err.message) || ''));
+  return /\b401\b/.test(String((err && err.message) || ''));
 }
 
 // One merge+upload pass against Drive (assumes a valid token).
