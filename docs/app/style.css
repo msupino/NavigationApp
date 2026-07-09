@@ -1945,8 +1945,8 @@ body.theme-light .shortcuts-help-keys kbd {
     grid-template-columns: 1fr;
   }
 
-  /* Declutter the footer in the mobile expanded menu — keep ONLY the GPS
-     Start/Stop recording control; hide the shortcuts, doc links, live-location,
+  /* Declutter the footer in the mobile expanded menu — keep the GPS controls
+     (Start/Stop recording + Show/Hide location); hide the shortcuts, doc links,
      and simulator here (all still available on desktop). */
   #toolbar #help-trigger,
   #toolbar #repo-link,
@@ -1955,7 +1955,6 @@ body.theme-light .shortcuts-help-keys kbd {
   #toolbar #about-link,
   #toolbar #privacy-link,
   #toolbar #terms-link,
-  #toolbar #gps-live,
   #toolbar #sim-trigger { display: none; }
 }
 
