@@ -350,3 +350,83 @@ test.describe('Service worker', () => {
     expect(updates).toBe(3);
   });
 });
+
+test.describe('APK self-update (native remote-URL shell)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('?lang=en');
+  });
+
+  // The build id is the '-<sha>' suffix of NavAid.version ('1.0-<sha>').
+  test('currentBuildId parses the sha suffix; dev builds have none', async ({ page }) => {
+    const r = await page.evaluate(() => ({
+      deployed: currentBuildId('1.0-abc1234'),
+      dev: currentBuildId('1.0'),
+      empty: currentBuildId(''),
+    }));
+    expect(r.deployed).toBe('abc1234');
+    expect(r.dev).toBe('');
+    expect(r.empty).toBe('');
+  });
+
+  const runCheck = (page, args) => page.evaluate(async ({ live, running, marker }) => {
+    let reloaded = false;
+    const store = {
+      _v: marker ? { 'navaid.apkReloadedForBuild': marker } : {},
+      getItem(k) { return this._v[k] || null; },
+      setItem(k, v) { this._v[k] = v; },
+    };
+    const did = await checkApkForUpdate({
+      buildId: running,
+      force: true,
+      storage: store,
+      reload: () => { reloaded = true; },
+      fetch: () => Promise.resolve({
+        ok: true,
+        text: () => Promise.resolve("const CACHE = 'navaid-" + live + "';"),
+      }),
+    });
+    return { did, reloaded, marker: store.getItem('navaid.apkReloadedForBuild') };
+  }, args);
+
+  test('reloads when a newer build is live and records the marker', async ({ page }) => {
+    const r = await runCheck(page, { live: 'bbbbbbb', running: 'aaaaaaa', marker: null });
+    expect(r.did).toBe(true);
+    expect(r.reloaded).toBe(true);
+    expect(r.marker).toBe('bbbbbbb');
+  });
+
+  test('does not reload when the live build matches the running build', async ({ page }) => {
+    const r = await runCheck(page, { live: 'aaaaaaa', running: 'aaaaaaa', marker: null });
+    expect(r.did).toBe(false);
+    expect(r.reloaded).toBe(false);
+  });
+
+  test('does not reload twice for the same build (loop guard)', async ({ page }) => {
+    const r = await runCheck(page, { live: 'bbbbbbb', running: 'aaaaaaa', marker: 'bbbbbbb' });
+    expect(r.did).toBe(false);
+    expect(r.reloaded).toBe(false);
+  });
+
+  test('never reloads a dev build (no sha) and never hits the network', async ({ page }) => {
+    const r = await page.evaluate(async () => {
+      let fetched = false;
+      let reloaded = false;
+      const did = await checkApkForUpdate({
+        buildId: '',
+        force: true,
+        fetch: () => { fetched = true; return Promise.resolve({ ok: true, text: () => Promise.resolve('') }); },
+        reload: () => { reloaded = true; },
+      });
+      return { did, fetched, reloaded };
+    });
+    expect(r.did).toBe(false);
+    expect(r.fetched).toBe(false);
+    expect(r.reloaded).toBe(false);
+  });
+
+  test('an un-rewritten sw.js (navaid-v6) is treated as no update', async ({ page }) => {
+    const r = await runCheck(page, { live: 'v6', running: 'aaaaaaa', marker: null });
+    expect(r.did).toBe(false);
+    expect(r.reloaded).toBe(false);
+  });
+});

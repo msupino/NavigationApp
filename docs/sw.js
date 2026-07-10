@@ -77,6 +77,11 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
 
+  // Build probe (APK self-update — ui.js checkApkForUpdate): always straight to
+  // the network, never cached, so a resumed WebView reads the live build id
+  // instead of the SW's own cached copy of sw.js.
+  if (url.searchParams.has('fresh')) { e.respondWith(fetch(e.request)); return; }
+
   // Chart tiles: serve from a downloaded offline pack when present, else the
   // network. Misses are NOT auto-cached (cross-origin tiles are opaque and
   // Chrome quota-pads opaque cache entries; packs are populated explicitly by
