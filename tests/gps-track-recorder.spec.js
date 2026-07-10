@@ -396,6 +396,29 @@ test('a watch that throws on start rolls back — no phantom recording', async (
   await expect(btn).toContainText('Start recording');             // label consistent with state
 });
 
+test('native addWatcher returning a bare id (not a Promise) still registers', async ({ page }) => {
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof gpsStartWatch === 'function');
+  const res = await page.evaluate(async () => {
+    // Simulate the APK bridge: addWatcher returns the id synchronously (no
+    // .then) instead of a Promise — the reported crash source.
+    let removed = null;
+    window.Capacitor = { isNativePlatform: () => true, Plugins: { BackgroundGeolocation: {
+      addWatcher: () => 'watch-xyz',
+      removeWatcher: (o) => { removed = o && o.id; return Promise.resolve(); },
+    }}};
+    let threw = false;
+    let h;
+    try { h = gpsStartWatch(() => {}, (e) => { window.__err = e; }, 't', 'm'); }
+    catch (e) { threw = true; window.__err = e; }
+    await new Promise(r => setTimeout(r, 20));   // let Promise.resolve().then run
+    return { threw, native: h && h.native, err: window.__err ? String(window.__err) : null };
+  });
+  expect(res.threw).toBe(false);          // no ".then is not a function"
+  expect(res.native).toBe('watch-xyz');   // id captured for a later clean stop
+  expect(res.err).toBeNull();
+});
+
 test('Show my location shows own-ship without recording or saving a track', async ({ page }) => {
   await page.addInitScript(() => {
     window.__liveCb = null;

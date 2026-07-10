@@ -99,7 +99,12 @@ function gpsStartWatch(onPos, onErr, title, message) {
     return { web: navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true }) };
   }
   const h = { native: null, stopped: false };
-  bg.addWatcher({
+  // addWatcher is typed Promise<string>, but on some runtimes (Capacitor 8
+  // Android bridge accessed via Capacitor.Plugins) it returns the watcher id
+  // SYNCHRONOUSLY — a plain string with no .then (the reported
+  // "bg.addWatcher(...).then is not a function"). Promise.resolve() normalises
+  // both a Promise and a bare id so registration never throws.
+  const watcher = bg.addWatcher({
     backgroundTitle: title,
     backgroundMessage: message,
     requestPermissions: true,
@@ -115,7 +120,8 @@ function gpsStartWatch(onPos, onErr, title, message) {
       },
       timestamp: loc.time || Date.now(),
     });
-  }).then(function (id) {
+  });
+  Promise.resolve(watcher).then(function (id) {
     // A stop that raced the async registration must still kill the watcher,
     // or the foreground service (and its notification) would leak.
     if (h.stopped) bg.removeWatcher({ id }).catch(function () {});
