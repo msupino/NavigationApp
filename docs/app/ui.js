@@ -4241,6 +4241,67 @@ function watchServiceWorkerUpdates(sw) {
   }).catch(() => null);
 }
 
+// --- APK self-update (native remote-URL shell) -----------------------
+// The Capacitor WebView loads the live site once at launch and keeps the page
+// alive across app resumes — it only re-navigates on a cold start, which
+// Android seldom does. The SW-based notice above can't cover it: the SW update
+// lifecycle (reg.update / controllerchange) is unreliable inside Android
+// WebView. So an installed APK would sit frozen on its first-loaded bundle,
+// breaking the README's "updates itself with every web deploy" promise.
+//
+// Fix: on resume, read the live build id straight from the network (sw.js
+// carries CACHE='navaid-<sha>', rewritten at deploy in lockstep with
+// NavAid.version='1.0-<sha>') and reload when it differs from the running
+// build. Guards: dev builds (a version with no '-<sha>' suffix) never reload;
+// a per-build sessionStorage marker prevents a reload loop if a CDN briefly
+// serves a newer sw.js than the running page.
+const APK_UPDATE_CHECK_MIN_MS = 30 * 1000;
+const APK_RELOADED_FOR_KEY = 'navaid.apkReloadedForBuild';
+let apkUpdateCheckInFlight = null;
+let lastApkUpdateCheckAt = -Infinity;
+
+function currentBuildId(version) {
+  let v = version != null ? version
+    : ((typeof window !== 'undefined' && window.NavAid && window.NavAid.version) || '');
+  v = String(v);
+  const dash = v.indexOf('-');
+  return dash >= 0 ? v.slice(dash + 1) : '';   // '' for a dev build (no sha suffix)
+}
+
+function checkApkForUpdate(opts) {
+  opts = opts || {};
+  const running = opts.buildId != null ? opts.buildId : currentBuildId();
+  if (!running) return Promise.resolve(false);            // dev build — never reload
+  const now = (opts.now || Date.now)();
+  if (!opts.force && now - lastApkUpdateCheckAt < APK_UPDATE_CHECK_MIN_MS) {
+    return apkUpdateCheckInFlight || Promise.resolve(false);
+  }
+  lastApkUpdateCheckAt = now;
+  const doFetch = opts.fetch ||
+    ((typeof fetch === 'function') ? (u, o) => fetch(u, o) : null);
+  if (!doFetch) return Promise.resolve(false);
+  const reload = opts.reload || (() => window.location.reload());
+  const store = opts.storage !== undefined ? opts.storage
+    : (typeof sessionStorage !== 'undefined' ? sessionStorage : null);
+
+  apkUpdateCheckInFlight = Promise.resolve(doFetch('sw.js?fresh=' + now, { cache: 'no-store' }))
+    .then(r => (r && r.ok && typeof r.text === 'function') ? r.text() : '')
+    .then(txt => {
+      const m = /navaid-([A-Za-z0-9]+)/.exec(txt || '');
+      const live = m ? m[1] : '';
+      if (!live || live === 'v6' || live === running) return false;   // unknown / dev / unchanged
+      let already = '';
+      try { already = (store && store.getItem(APK_RELOADED_FOR_KEY)) || ''; } catch (e) {}
+      if (already === live) return false;    // already reloaded for this build — don't loop
+      try { if (store) store.setItem(APK_RELOADED_FOR_KEY, live); } catch (e) {}
+      reload();
+      return true;
+    })
+    .catch(() => false)
+    .finally(() => { apkUpdateCheckInFlight = null; });
+  return apkUpdateCheckInFlight;
+}
+
 // --- PWA: service worker --------------------------------------------
 // Registering the worker makes the app installable; the browser shows
 // the install control in the address bar — no in-app button needed.
@@ -4266,6 +4327,14 @@ if ('serviceWorker' in navigator && !isNativeLocalOrigin()) {
   window.addEventListener('load', () => {
     watchServiceWorkerUpdates(navigator.serviceWorker);
   });
+}
+
+// The remote-URL native shell can't rely on the SW update lifecycle, so poll
+// the live build id on resume and reload when a newer web deploy is live.
+if (isNativeCapacitorShell() && !isNativeLocalOrigin()) {
+  const check = () => { if (!document.hidden) checkApkForUpdate(); };
+  document.addEventListener('visibilitychange', check);
+  window.addEventListener('focus', check);
 }
 
 // Preload the terrain grid so MSA / terrain-clearance (#673) is ready when a
