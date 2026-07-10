@@ -1840,16 +1840,19 @@ function setFooterBtn(btn, label, icon) {
 }
 const gpsBtn = document.getElementById('gps-record');
 if (gpsBtn) {
-  if (!navigator.geolocation) { gpsBtn.disabled = true; }
+  // Recording works via the native background-geolocation plugin too, so only
+  // disable when neither the web API nor the native watch is available (else
+  // the APK, where navigator.geolocation can be absent, would disable it).
+  if (!navigator.geolocation && !(typeof _bgGeo === 'function' && _bgGeo())) { gpsBtn.disabled = true; }
   gpsBtn.addEventListener('click', () => {
+    // The label/icon/aria are kept in lockstep with gpsRecording by
+    // updateGpsRecIndicator() (called from start/stop), so they stay correct
+    // even if a start step throws — no manual flip here.
     if (gpsRecording) {
       stopGpsRecordingAndSave();
-      setFooterBtn(gpsBtn, S.tbGpsRecord, '⏺');
-      gpsBtn.setAttribute('aria-pressed', 'false');
       if (typeof window.refreshRouteLibrary === 'function') window.refreshRouteLibrary();
     } else {
       startGpsRecording();
-      if (gpsRecording) { setFooterBtn(gpsBtn, S.tbGpsStop, '⏹'); gpsBtn.setAttribute('aria-pressed', 'true'); }
     }
   });
 }
