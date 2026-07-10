@@ -255,11 +255,28 @@ function onGpsLiveError(err) {
   alert(gpsErrMsg(err));
 }
 
-// Toggle the top-right REC indicator (a pulsing red dot) to match gpsRecording.
+// Toggle the top-right REC indicator (a pulsing red dot) AND the Record
+// button's label/icon to match gpsRecording — both driven from here so they
+// can never disagree. The button label used to be flipped by the click
+// handler AFTER startGpsRecording() returned; if a later start step threw
+// (e.g. the native background-geolocation watch on the APK), the dot came on
+// but the label stayed "Start recording" — the reported "stuck on Start
+// recording with the red indicator flashing" bug. Setting it here keeps
+// start / stop / error paths consistent.
 function updateGpsRecIndicator() {
   if (typeof document === 'undefined') return;
   const el = document.getElementById('gps-rec-indicator');
   if (el) el.hidden = !gpsRecording;
+  const btn = document.getElementById('gps-record');
+  if (btn) {
+    const t = btn.querySelector('.footer-link-text');
+    const label = gpsRecording ? (S.tbGpsStop || 'Stop recording')
+                               : (S.tbGpsRecord || 'Start recording');
+    if (t) t.textContent = label; else btn.textContent = label;
+    const ic = btn.querySelector('.footer-link-icon');
+    if (ic) ic.textContent = gpsRecording ? '⏹' : '⏺';
+    btn.setAttribute('aria-pressed', gpsRecording ? 'true' : 'false');
+  }
 }
 
 function startGpsRecording() {
@@ -270,8 +287,16 @@ function startGpsRecording() {
   gpsTrack = [];
   if (!gpsLiveOn) gpsOwn = null;
   gpsStartT = Date.now();
-  gpsWatchId = gpsStartWatch(onGpsPosition, onGpsRecError,
-    S.gpsRecNotifTitle || 'NavAid GPS recording', S.gpsRecNotifText || 'Recording your track — tap to return');
+  try {
+    gpsWatchId = gpsStartWatch(onGpsPosition, onGpsRecError,
+      S.gpsRecNotifTitle || 'NavAid GPS recording', S.gpsRecNotifText || 'Recording your track — tap to return');
+  } catch (e) {
+    // A synchronous failure registering the watch (e.g. a native plugin API
+    // mismatch on the APK) must roll the recording back — stop, reset the
+    // button + dot, and surface the error — not leave a phantom "recording".
+    onGpsRecError(e);
+    return;
+  }
   gpsAcquireWakeLock();
   gpsUpdateReadout();
   scheduleDraw();

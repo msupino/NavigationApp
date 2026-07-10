@@ -358,6 +358,44 @@ test('GPS error resets recording state and button label', async ({ page }) => {
   await expect(btn).toContainText('Start recording');
 });
 
+test('the Record button label is driven together with the REC indicator', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__geoCb = null;
+    navigator.geolocation.watchPosition = (cb) => { window.__geoCb = cb; return 7; };
+    navigator.geolocation.clearWatch = () => {};
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof startGpsRecording === 'function');
+  const btn = page.locator('#gps-record');
+  const dot = page.locator('#gps-rec-indicator');
+  // Drive start/stop directly (not via the click handler): the label must
+  // follow gpsRecording from updateGpsRecIndicator, in lockstep with the dot —
+  // so it can't get stuck on "Start recording" while the dot is flashing.
+  await page.evaluate(() => startGpsRecording());
+  await expect(dot).toBeVisible();
+  await expect(btn).toContainText('Stop recording');
+  await page.evaluate(() => stopGpsRecording());
+  await expect(dot).toBeHidden();
+  await expect(btn).toContainText('Start recording');
+});
+
+test('a watch that throws on start rolls back — no phantom recording', async ({ page }) => {
+  await page.addInitScript(() => {
+    // Simulate a native/plugin watch registration that throws synchronously
+    // (the APK symptom: red indicator on, button stuck on "Start recording").
+    navigator.geolocation.watchPosition = () => { throw new Error('watch registration failed'); };
+    navigator.geolocation.clearWatch = () => {};
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof startGpsRecording === 'function');
+  page.on('dialog', d => d.dismiss().catch(() => {}));   // swallow the error alert
+  const btn = page.locator('#gps-record');
+  await btn.click();
+  expect(await page.evaluate(() => gpsRecording)).toBe(false);   // rolled back
+  await expect(page.locator('#gps-rec-indicator')).toBeHidden();  // dot cleared, not phantom-on
+  await expect(btn).toContainText('Start recording');             // label consistent with state
+});
+
 test('Show my location shows own-ship without recording or saving a track', async ({ page }) => {
   await page.addInitScript(() => {
     window.__liveCb = null;
