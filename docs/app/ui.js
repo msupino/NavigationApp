@@ -2947,10 +2947,13 @@ let circuitOpacity = (() => {
   return isNaN(v) ? CIRCUIT_DEFAULT_OPACITY : v;
 })();
 
-function circuitImgBase(pathname) {
-  let dir = (pathname || location.pathname).replace(/[^/]*$/, '');
-  dir = dir.replace(/(staging|pr\/[^/]+|branch\/[^/]+)\/$/, '');
-  return dir + 'circuit-img/';
+// Unlike byop plates (a single copy at the deployed root — see plateBase()),
+// circuit-img PNGs are committed to the repo and ship WITH every preview
+// (root, staging, /pr/N/, /branch/NAME/). So resolve them relative to the
+// document base like the app's own scripts, WITHOUT stripping any preview
+// suffix — stripping to root 404s on previews that carry their own images.
+function circuitImgBase() {
+  return new URL('circuit-img/', document.baseURI).href;
 }
 
 function loadCircuitOverlays() {

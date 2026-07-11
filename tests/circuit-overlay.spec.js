@@ -1,6 +1,6 @@
 // @ts-check
 // Circuit overlay: georeferenced VFR/circuit plate images toggled from the
-// Overlays group in the View toolbar section.
+// "Extra layers" toolbar section (data-sec="weather").
 const { test, expect } = require('./_setup');
 
 // Block the service worker so that Playwright's page.route() can intercept
@@ -23,8 +23,8 @@ async function boot(page) {
   );
   await page.addInitScript(() => {
     try {
-      // Open the View section so controls are interactable
-      localStorage.setItem('navaid.sec.view', '1');
+      // Open the "Extra layers" section so controls are interactable
+      localStorage.setItem('navaid.sec.weather', '1');
     } catch (e) {}
   });
   await page.goto('?lang=en');
@@ -56,14 +56,8 @@ test('unchecking removes all circuit overlays from the map', async ({ page }) =>
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer').first()).toBeVisible();
   await page.locator('#circuit-cb').uncheck();
   await expect(page.locator('#circuit-controls')).toBeHidden();
-  // All circuit images gone (IMS or other overlays may add their own — check count dropped)
-  const count = await page.evaluate(() => {
-    let n = 0;
-    if (window.circuitLayerGroup) window.circuitLayerGroup.eachLayer(() => n++);
-    return n;
-  });
-  // circuitLayerGroup was created but removed from map — layer count unchanged,
-  // but the group itself must not be on the map
+  // circuitLayerGroup was created but removed from map — the group itself
+  // must not be on the map after unchecking.
   const onMap = await page.evaluate(
     () => window.circuitLayerGroup ? map.hasLayer(window.circuitLayerGroup) : false
   );
@@ -146,7 +140,7 @@ test('circuit overlay PNG URLs resolve through circuitImgBase()', async ({ page 
     return r.fulfill({ status: 200, contentType: 'image/png', body: PNG });
   });
   await page.addInitScript(() => {
-    try { localStorage.setItem('navaid.sec.view', '1'); } catch (e) {}
+    try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof map !== 'undefined' && document.getElementById('circuit-cb'));
