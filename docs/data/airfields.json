@@ -288,7 +288,8 @@
       "runways": [
         "15/33",
         "05/23"
-      ]
+      ],
+      "circuit_overlay": { "png": "LLIB_circuit.png", "sw": [32.8966, 35.5114], "ne": [33.0960, 35.6678] }
     },
     {
       "name": "LLKS",
