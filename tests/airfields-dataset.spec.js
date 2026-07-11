@@ -321,6 +321,7 @@ test.describe('circuit_overlay field', () => {
   // georeferencing review. LLHZ (Annex Yud Bet — תרשים ההקפה) is the first.
   const EXPECTED = {
     LLHZ: { png: 'LLHZ_circuit.png', sw: [32.1549, 34.8063], ne: [32.2199, 34.8602] },
+    LLHA: { png: 'LLHA_circuit.png', sw: [32.7348, 34.9920], ne: [32.8583, 35.0940] },
   };
 
   test('reviewed airfields carry circuit_overlay with correct shape', async () => {
