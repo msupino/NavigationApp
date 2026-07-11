@@ -218,7 +218,7 @@
       "runways": [
         "15/33"
       ],
-      "circuit_overlay": { "png": "LLHA_circuit.png", "sw": [32.7348, 34.9920], "ne": [32.8583, 35.0940] }
+      "circuit_overlay": { "png": "LLHA_circuit.png", "sw": [32.7304, 34.9873], "ne": [32.8921, 35.1191] }
     },
     {
       "name": "LLHB",

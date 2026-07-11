@@ -321,7 +321,7 @@ test.describe('circuit_overlay field', () => {
   // georeferencing review. LLHZ (Annex Yud Bet — תרשים ההקפה) is the first.
   const EXPECTED = {
     LLHZ: { png: 'LLHZ_circuit.png', sw: [32.1549, 34.8063], ne: [32.2199, 34.8602] },
-    LLHA: { png: 'LLHA_circuit.png', sw: [32.7348, 34.9920], ne: [32.8583, 35.0940] },
+    LLHA: { png: 'LLHA_circuit.png', sw: [32.7304, 34.9873], ne: [32.8921, 35.1191] },
     LLIB: { png: 'LLIB_circuit.png', sw: [32.8966, 35.5114], ne: [33.0960, 35.6678] },
     LLBS: { png: 'LLBS_circuit.png', sw: [31.2418, 34.6830], ne: [31.3517, 34.7696] },
   };
