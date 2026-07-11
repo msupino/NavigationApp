@@ -2935,6 +2935,46 @@ if (notamCb) {
 }
 if (notamListBtn) notamListBtn.onclick = () => { ensureNotams().then(showNotamModal); };
 
+// ── Circuit overlay ──────────────────────────────────────────────────────────
+const CIRCUIT_SHOW_KEY    = 'navaid.showCircuit';
+const CIRCUIT_OPACITY_KEY = 'navaid.circuitOpacity';
+const CIRCUIT_DEFAULT_OPACITY = 0.8;
+
+window.showCircuit = localStorage.getItem(CIRCUIT_SHOW_KEY) === '1';
+window.circuitLayerGroup = null;
+let circuitOpacity = (() => {
+  const v = parseFloat(localStorage.getItem(CIRCUIT_OPACITY_KEY));
+  return isNaN(v) ? CIRCUIT_DEFAULT_OPACITY : v;
+})();
+
+function circuitImgBase(pathname) {
+  let dir = (pathname || location.pathname).replace(/[^/]*$/, '');
+  dir = dir.replace(/(staging|pr\/[^/]+|branch\/[^/]+)\/$/, '');
+  return dir + 'circuit-img/';
+}
+
+function loadCircuitOverlays() {
+  if (circuitLayerGroup) return;
+  if (!airfields) return;
+  circuitLayerGroup = L.layerGroup();
+  for (const af of airfields) {
+    const co = af.circuit_overlay;
+    if (!co) continue;
+    L.imageOverlay(
+      circuitImgBase() + encodeURIComponent(co.png),
+      [co.sw, co.ne],
+      { opacity: circuitOpacity, interactive: false, pane: 'overlayPane' }
+    ).addTo(circuitLayerGroup);
+  }
+}
+
+function applyCircuitOpacity(v) {
+  circuitOpacity = v;
+  const valEl = document.getElementById('circuit-opacity-val');
+  if (valEl) valEl.textContent = Math.round(v * 100) + '%';
+  if (circuitLayerGroup) circuitLayerGroup.eachLayer(l => l.setOpacity(v));
+}
+
 const AIRFIELDS_KEY = 'navaid.showAirfields';
 try {
   const stored = localStorage.getItem(AIRFIELDS_KEY);
@@ -3020,6 +3060,50 @@ function showLsaChart() {
 const lsaListBtn = document.getElementById('lsa-list-btn');
 if (lsaListBtn) lsaListBtn.onclick = showLsaChart;
 refreshLsaListBtn();
+// Circuit overlay toggle
+(function () {
+  const cb       = document.getElementById('circuit-cb');
+  const controls = document.getElementById('circuit-controls');
+  const opEl     = document.getElementById('circuit-opacity');
+  const opReset  = document.getElementById('circuit-opacity-reset');
+
+  if (cb) {
+    cb.checked = showCircuit;
+    if (controls) controls.hidden = !showCircuit;
+
+    cb.onchange = async function (e) {
+      window.showCircuit = e.target.checked;
+      try { localStorage.setItem(CIRCUIT_SHOW_KEY, showCircuit ? '1' : '0'); } catch (_) {}
+      if (controls) controls.hidden = !showCircuit;
+      if (showCircuit) {
+        if (!airfields) await loadAirfields();
+        loadCircuitOverlays();
+        if (circuitLayerGroup) circuitLayerGroup.addTo(map);
+      } else {
+        if (circuitLayerGroup) circuitLayerGroup.remove();
+      }
+    };
+  }
+
+  if (opEl) {
+    opEl.value = String(circuitOpacity);
+    applyCircuitOpacity(circuitOpacity);    // sets val label on load
+    opEl.oninput = function () {
+      const v = parseFloat(opEl.value);
+      try { localStorage.setItem(CIRCUIT_OPACITY_KEY, String(v)); } catch (_) {}
+      applyCircuitOpacity(v);
+    };
+  }
+
+  if (opReset) {
+    opReset.onclick = function () {
+      if (!opEl) return;
+      opEl.value = String(CIRCUIT_DEFAULT_OPACITY);
+      try { localStorage.setItem(CIRCUIT_OPACITY_KEY, String(CIRCUIT_DEFAULT_OPACITY)); } catch (_) {}
+      applyCircuitOpacity(CIRCUIT_DEFAULT_OPACITY);
+    };
+  }
+})();
 // --- VOR/DME overlay + reference selector --------------------------------
 const VOR_STATIONS_KEY = 'navaid.showVorStations';
 const VOR_LEGACY_KEY = 'navaid.showVor';
@@ -4074,6 +4158,11 @@ loadAirfields().then(() => {
   if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   draw();
   if (state.selected) showInspector();
+  // Circuit overlay: add to map if already toggled on (restored from localStorage)
+  if (showCircuit) {
+    loadCircuitOverlays();
+    if (circuitLayerGroup) circuitLayerGroup.addTo(map);
+  }
 });
 // Leg-altitude green-route altitude table: fills only freshly-created legs, and
 // leaves saved/imported/manual leg values authoritative.
