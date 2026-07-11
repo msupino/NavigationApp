@@ -315,3 +315,44 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     }
   });
 });
+
+test.describe('circuit_overlay field', () => {
+  const EXPECTED = {
+    LLBG: { png: 'LLBG_circuit.png', sw: [31.833, 34.75],  ne: [32.167, 35.0]   },
+    LLBS: { png: 'LLBS_circuit.png', sw: [31.12,  34.65],  ne: [31.43,  34.87]  },
+    LLER: { png: 'LLER_circuit.png', sw: [29.50,  34.75],  ne: [29.917, 35.083] },
+    LLHA: { png: 'LLHA_circuit.png', sw: [32.667, 35.0],   ne: [32.917, 35.167] },
+    LLHZ: { png: 'LLHZ_circuit.png', sw: [32.00,  34.83],  ne: [32.25,  35.08]  },
+    LLIB: { png: 'LLIB_circuit.png', sw: [32.833, 35.417], ne: [33.167, 35.667] },
+    LLKS: { png: 'LLKS_circuit.png', sw: [33.18,  35.55],  ne: [33.37,  35.70]  },
+    LLMG: { png: 'LLMG_circuit.png', sw: [32.567, 35.20],  ne: [32.633, 35.267] },
+  };
+
+  test('eight airfields carry circuit_overlay with correct shape', async () => {
+    const d = loadData();
+    const byCode = new Map(d.airfields.map(a => [a.name, a]));
+    for (const [code, exp] of Object.entries(EXPECTED)) {
+      const af = byCode.get(code);
+      expect(af, `${code} missing from airfields`).toBeTruthy();
+      const co = af.circuit_overlay;
+      expect(co, `${code} missing circuit_overlay`).toBeTruthy();
+      expect(co.png).toBe(exp.png);
+      expect(Array.isArray(co.sw) && co.sw.length === 2).toBe(true);
+      expect(Array.isArray(co.ne) && co.ne.length === 2).toBe(true);
+      // Rough sanity: SW south of NE, SW west of NE, coords in Israel envelope
+      expect(co.sw[0]).toBeLessThan(co.ne[0]);     // sw lat < ne lat
+      expect(co.sw[1]).toBeLessThan(co.ne[1]);     // sw lng < ne lng
+      expect(co.sw[0]).toBeGreaterThan(29);
+      expect(co.ne[0]).toBeLessThan(34);
+      expect(co.sw[1]).toBeGreaterThan(34);
+      expect(co.ne[1]).toBeLessThan(36);
+    }
+  });
+
+  test('LLES has no circuit_overlay (text plate, not georeferenced)', async () => {
+    const d = loadData();
+    const lles = d.airfields.find(a => a.name === 'LLES');
+    expect(lles).toBeTruthy();
+    expect(lles.circuit_overlay).toBeUndefined();
+  });
+});

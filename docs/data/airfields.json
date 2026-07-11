@@ -66,7 +66,8 @@
         "08/26",
         "12/30",
         "03/21"
-      ]
+      ],
+      "circuit_overlay": { "png": "LLBG_circuit.png", "sw": [31.833, 34.75], "ne": [32.167, 35.0] }
     },
     {
       "name": "LLBO",
@@ -97,7 +98,8 @@
       ],
       "runways": [
         "14/32"
-      ]
+      ],
+      "circuit_overlay": { "png": "LLBS_circuit.png", "sw": [31.12, 34.65], "ne": [31.43, 34.87] }
     },
     {
       "name": "LLEK",
@@ -139,7 +141,8 @@
       ],
       "runways": [
         "01/19"
-      ]
+      ],
+      "circuit_overlay": { "png": "LLER_circuit.png", "sw": [29.50, 34.75], "ne": [29.917, 35.083] }
     },
     {
       "name": "LLES",
@@ -216,7 +219,8 @@
       ],
       "runways": [
         "15/33"
-      ]
+      ],
+      "circuit_overlay": { "png": "LLHA_circuit.png", "sw": [32.667, 35.0], "ne": [32.917, 35.167] }
     },
     {
       "name": "LLHB",
@@ -259,7 +263,8 @@
       ],
       "runways": [
         "10/28"
-      ]
+      ],
+      "circuit_overlay": { "png": "LLHZ_circuit.png", "sw": [32.00, 34.83], "ne": [32.25, 35.08] }
     },
     {
       "name": "LLIB",
@@ -286,7 +291,8 @@
       "runways": [
         "15/33",
         "05/23"
-      ]
+      ],
+      "circuit_overlay": { "png": "LLIB_circuit.png", "sw": [32.833, 35.417], "ne": [33.167, 35.667] }
     },
     {
       "name": "LLKS",
@@ -302,7 +308,8 @@
       ],
       "runways": [
         "03/21"
-      ]
+      ],
+      "circuit_overlay": { "png": "LLKS_circuit.png", "sw": [33.18, 35.55], "ne": [33.37, 35.70] }
     },
     {
       "name": "LLKZ",
@@ -334,7 +341,8 @@
       ],
       "runways": [
         "09/27"
-      ]
+      ],
+      "circuit_overlay": { "png": "LLMG_circuit.png", "sw": [32.567, 35.20], "ne": [32.633, 35.267] }
     },
     {
       "name": "LLNV",
