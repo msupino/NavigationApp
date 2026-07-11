@@ -84,7 +84,7 @@ test('opacity slider drives overlay opacity', async ({ page }) => {
   expect(result.label).toBe('30%');
 });
 
-test('opacity reset restores default 0.8', async ({ page }) => {
+test('opacity reset restores default 0.6', async ({ page }) => {
   await boot(page);
   await page.locator('#circuit-cb').check();
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer').first()).toBeVisible();
@@ -101,9 +101,9 @@ test('opacity reset restores default 0.8', async ({ page }) => {
       label: document.getElementById('circuit-opacity-val').textContent,
     };
   });
-  expect(parseFloat(result.sliderVal)).toBeCloseTo(0.8, 2);
-  expect(result.opacity).toBeCloseTo(0.8, 2);
-  expect(result.label).toBe('80%');
+  expect(parseFloat(result.sliderVal)).toBeCloseTo(0.6, 2);
+  expect(result.opacity).toBeCloseTo(0.6, 2);
+  expect(result.label).toBe('60%');
 });
 
 test('toggle state and opacity persist across reload', async ({ page }) => {

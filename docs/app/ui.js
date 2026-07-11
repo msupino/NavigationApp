@@ -2938,7 +2938,7 @@ if (notamListBtn) notamListBtn.onclick = () => { ensureNotams().then(showNotamMo
 // ── Circuit overlay ──────────────────────────────────────────────────────────
 const CIRCUIT_SHOW_KEY    = 'navaid.showCircuit';
 const CIRCUIT_OPACITY_KEY = 'navaid.circuitOpacity';
-const CIRCUIT_DEFAULT_OPACITY = 0.8;
+const CIRCUIT_DEFAULT_OPACITY = 0.6;
 
 window.showCircuit = localStorage.getItem(CIRCUIT_SHOW_KEY) === '1';
 window.circuitLayerGroup = null;
