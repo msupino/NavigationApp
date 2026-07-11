@@ -264,7 +264,7 @@
       "runways": [
         "10/28"
       ],
-      "circuit_overlay": { "png": "LLHZ_circuit.png", "sw": [32.00, 34.83], "ne": [32.25, 35.08] }
+      "circuit_overlay": { "png": "LLHZ_circuit.png", "sw": [32.155, 34.806], "ne": [32.220, 34.860] }
     },
     {
       "name": "LLIB",

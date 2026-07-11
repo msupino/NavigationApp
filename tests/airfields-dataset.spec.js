@@ -322,7 +322,7 @@ test.describe('circuit_overlay field', () => {
     LLBS: { png: 'LLBS_circuit.png', sw: [31.12,  34.65],  ne: [31.43,  34.87]  },
     LLER: { png: 'LLER_circuit.png', sw: [29.50,  34.75],  ne: [29.917, 35.083] },
     LLHA: { png: 'LLHA_circuit.png', sw: [32.667, 35.0],   ne: [32.917, 35.167] },
-    LLHZ: { png: 'LLHZ_circuit.png', sw: [32.00,  34.83],  ne: [32.25,  35.08]  },
+    LLHZ: { png: 'LLHZ_circuit.png', sw: [32.155, 34.806], ne: [32.220, 34.860] },
     LLIB: { png: 'LLIB_circuit.png', sw: [32.833, 35.417], ne: [33.167, 35.667] },
     LLKS: { png: 'LLKS_circuit.png', sw: [33.18,  35.55],  ne: [33.37,  35.70]  },
     LLMG: { png: 'LLMG_circuit.png', sw: [32.567, 35.20],  ne: [32.633, 35.267] },
