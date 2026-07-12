@@ -193,7 +193,8 @@
         "LLFK_airport_Chart.pdf",
         "LLFK_airport_Circuit.pdf",
         "LLFK_airport_Text.pdf"
-      ]
+      ],
+      "circuit_overlay": { "png": "LLFK_circuit.png", "sw": [32.74266, 35.68131], "ne": [32.82951, 35.75707] }
     },
     {
       "name": "LLHA",
