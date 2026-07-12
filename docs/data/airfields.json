@@ -177,7 +177,8 @@
         "LLEY_airport_CVFR.pdf",
         "LLEY_airport_Chart.pdf",
         "LLEY_airport_Circuit.pdf"
-      ]
+      ],
+      "circuit_overlay": { "png": "LLEY_circuit.png", "sw": [30.59235, 35.17279], "ne": [30.65785, 35.21658] }
     },
     {
       "name": "LLFK",
