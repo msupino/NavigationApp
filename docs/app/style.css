@@ -3377,6 +3377,22 @@ body.theme-light .insp-notam-link { color: #1d6fe0; }
   background: #fff;
   border-radius: 4px;
 }
+/* PDF.js canvas viewer — the Android WebView (Capacitor shell) has no built-in
+   PDF renderer, so plates are drawn to <canvas> pages inside this scroller. */
+.plate-canvas-wrap {
+  flex: 1;
+  width: 100%;
+  overflow: auto;
+  background: #fff;
+  border-radius: 4px;
+  text-align: center;
+  -webkit-overflow-scrolling: touch;
+}
+.plate-canvas {
+  display: block;
+  width: 100%;
+  margin: 0 auto 8px;
+}
 .plate-loading {
   position: absolute;
   inset: 50% 0 auto;

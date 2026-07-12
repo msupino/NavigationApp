@@ -4134,6 +4134,45 @@ function plateUrl(filename) {
   return plateBase() + encodeURIComponent(filename);
 }
 
+// Lazy-load PDF.js (only when a plate is first opened — it's ~1 MB). Served
+// from the same jsDelivr CDN as Leaflet, so the service worker caches it like
+// the other pinned libs. The legacy UMD build exposes window.pdfjsLib and runs
+// on the older Chromium the Android System WebView can carry.
+var _pdfjsPromise = null;
+const PDFJS_VER = '3.11.174';
+const PDFJS_CDN = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@' + PDFJS_VER + '/';
+// Font/CMap assets so plates with non-embedded standard-14 fonts (Helvetica,
+// Times…) and CJK text render — without these, such text draws blank. Fetched
+// on demand by PDF.js, same jsDelivr host the SW already caches.
+function pdfDocOptions(data) {
+  return {
+    data: data,
+    cMapUrl: PDFJS_CDN + 'cmaps/',
+    cMapPacked: true,
+    standardFontDataUrl: PDFJS_CDN + 'standard_fonts/',
+  };
+}
+function ensurePdfJs() {
+  if (typeof window !== 'undefined' && window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (_pdfjsPromise) return _pdfjsPromise;
+  const base = PDFJS_CDN + 'legacy/build/';
+  _pdfjsPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = base + 'pdf.min.js';
+    s.async = true;
+    s.onload = () => {
+      if (!window.pdfjsLib) { _pdfjsPromise = null; reject(new Error('pdfjs unavailable')); return; }
+      // Cross-origin workerSrc: PDF.js fetches it and wraps a blob worker, so
+      // this is fine without a same-origin copy.
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = base + 'pdf.worker.min.js';
+      resolve(window.pdfjsLib);
+    };
+    s.onerror = () => { _pdfjsPromise = null; reject(new Error('pdfjs load failed')); };
+    document.head.appendChild(s);
+  });
+  return _pdfjsPromise;
+}
+
 function plateCategory(filename) {
   const rest = filename.replace(/^[A-Z]{4}_/, '');
   const cat = rest.split('_')[0];
@@ -4160,21 +4199,40 @@ function showPlateViewer(filename, label) {
   title.textContent = label;
   box.appendChild(title);
 
-  const iframe = document.createElement('iframe');
-  iframe.className = 'plate-iframe';
   const url = plateUrl(filename);
+
+  const viewer = document.createElement('div');
+  viewer.className = 'plate-canvas-wrap';
 
   const loading = document.createElement('div');
   loading.className = 'plate-loading';
   loading.textContent = 'Loading...\n' + url;
 
   let blobUrl = null;
-  let pdfReady = false;
 
-  iframe.onload = () => { if (pdfReady) loading.style.display = 'none'; };
-  iframe.onerror = () => {
-    loading.textContent = S.plateLoadError + '\n' + url;
-  };
+  // Draw each PDF page to a <canvas>. An <iframe src=blob:pdf> hangs forever in
+  // the Android WebView (no built-in PDF renderer) — canvas rendering works the
+  // same in the WebView and browsers, and fixes desktop browsers set to
+  // download PDFs instead of viewing them.
+  function renderPdf(pdf) {
+    const wrapW = Math.max(viewer.clientWidth || box.clientWidth || 320, 200);
+    const dpr = window.devicePixelRatio || 1;
+    let chain = Promise.resolve();
+    for (let p = 1; p <= pdf.numPages; p++) {
+      chain = chain.then(() => pdf.getPage(p)).then(page => {
+        const base = page.getViewport({ scale: 1 });
+        const vp = page.getViewport({ scale: (wrapW / base.width) * dpr });
+        const canvas = document.createElement('canvas');
+        canvas.className = 'plate-canvas';
+        canvas.width = Math.round(vp.width);
+        canvas.height = Math.round(vp.height);
+        viewer.appendChild(canvas);
+        return page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise
+          .then(() => { if (p === 1) loading.style.display = 'none'; });
+      });
+    }
+    return chain;
+  }
 
   fetch(url, { credentials: 'omit' })
     .then(r => {
@@ -4182,16 +4240,19 @@ function showPlateViewer(filename, label) {
       return r.blob();
     })
     .then(blob => {
+      // Keep a blob URL for the Open / Download buttons before the buffer is
+      // handed to (and possibly detached by) the PDF.js worker.
       blobUrl = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-      pdfReady = true;
-      iframe.src = blobUrl + '#view=FitH';
+      return blob.arrayBuffer();
     })
+    .then(buf => ensurePdfJs().then(lib => lib.getDocument(pdfDocOptions(buf)).promise))
+    .then(renderPdf)
     .catch(() => {
       loading.textContent = S.plateLoadError + '\n' + url;
     });
 
   box.appendChild(loading);
-  box.appendChild(iframe);
+  box.appendChild(viewer);
 
   const att = document.createElement('div');
   att.className = 'plate-attribution';
