@@ -309,7 +309,8 @@
       ],
       "runways": [
         "03/21"
-      ]
+      ],
+      "circuit_overlay": { "png": "LLKS_circuit.png", "sw": [33.14265, 35.56420], "ne": [33.24338, 35.65753] }
     },
     {
       "name": "LLKZ",
