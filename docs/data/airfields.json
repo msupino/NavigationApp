@@ -413,7 +413,8 @@
         "LLMZ_airport_Annex Gimel.pdf",
         "LLMZ_airport_CVFR.pdf",
         "LLMZ_airport_Chart.pdf"
-      ]
+      ],
+      "circuit_overlay": { "png": "LLMZ_circuit.png", "sw": [31.27945, 35.33016], "ne": [31.39493, 35.43228] }
     },
     {
       "name": "LLAR",
