@@ -79,7 +79,8 @@
         "LLBO_airport_Chart.pdf",
         "LLBO_airport_Circuit.pdf",
         "LLBO_airport_Routes.pdf"
-      ]
+      ],
+      "circuit_overlay": { "png": "LLBO_circuit.png", "sw": [32.56587, 34.86486], "ne": [32.74037, 35.00440] }
     },
     {
       "name": "LLBS",
