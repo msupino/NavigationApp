@@ -363,3 +363,39 @@ test.describe('circuit_overlay field', () => {
     expect(lles.circuit_overlay).toBeUndefined();
   });
 });
+
+test.describe('training_overlay field', () => {
+  // Training-area overlays are added one airfield at a time, mirroring
+  // circuit_overlay. Exact bounds per airfield are pinned here as they land.
+  const EXPECTED = {};
+
+  test('every training_overlay has correct shape and Israel-envelope bounds', async () => {
+    const d = loadData();
+    for (const af of d.airfields) {
+      const to = af.training_overlay;
+      if (!to) continue;
+      expect(typeof to.png, `${af.name} training png`).toBe('string');
+      expect(to.png).toMatch(/^[A-Z]{4}_training\.png$/);
+      expect(Array.isArray(to.sw) && to.sw.length === 2).toBe(true);
+      expect(Array.isArray(to.ne) && to.ne.length === 2).toBe(true);
+      expect(to.sw[0]).toBeLessThan(to.ne[0]);     // sw lat < ne lat
+      expect(to.sw[1]).toBeLessThan(to.ne[1]);     // sw lng < ne lng
+      expect(to.sw[0]).toBeGreaterThan(29);
+      expect(to.ne[0]).toBeLessThan(34);
+      expect(to.sw[1]).toBeGreaterThan(34);
+      expect(to.ne[1]).toBeLessThan(36);
+    }
+  });
+
+  test('pinned airfields carry the exact reviewed training_overlay bounds', async () => {
+    const d = loadData();
+    const byCode = new Map(d.airfields.map(a => [a.name, a]));
+    for (const [code, exp] of Object.entries(EXPECTED)) {
+      const to = byCode.get(code) && byCode.get(code).training_overlay;
+      expect(to, `${code} missing training_overlay`).toBeTruthy();
+      expect(to.png).toBe(exp.png);
+      expect(to.sw).toEqual(exp.sw);
+      expect(to.ne).toEqual(exp.ne);
+    }
+  });
+});
