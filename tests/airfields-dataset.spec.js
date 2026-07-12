@@ -315,3 +315,51 @@ test.describe('#412 — airfields.json (chart-sourced)', () => {
     }
   });
 });
+
+test.describe('circuit_overlay field', () => {
+  // Circuit overlays are added one airfield at a time after per-plate
+  // georeferencing review. LLHZ (Annex Yud Bet — תרשים ההקפה) is the first.
+  const EXPECTED = {
+    LLHZ: { png: 'LLHZ_circuit.png', sw: [32.1549, 34.8063], ne: [32.2199, 34.8602] },
+    LLHA: { png: 'LLHA_circuit.png', sw: [32.74073, 34.99698], ne: [32.87846, 35.10790] },
+    LLIB: { png: 'LLIB_circuit.png', sw: [32.89244, 35.49843], ne: [33.09184, 35.65483] },
+    LLBS: { png: 'LLBS_circuit.png', sw: [31.25435, 34.69456], ne: [31.33371, 34.75651] },
+    LLAR: { png: 'LLAR_circuit.png', sw: [31.1673, 35.1555], ne: [31.2831, 35.2515] },
+    LLBO: { png: 'LLBO_circuit.png', sw: [32.56587, 34.86486], ne: [32.74037, 35.00440] },
+    LLEY: { png: 'LLEY_circuit.png', sw: [30.59235, 35.17279], ne: [30.65785, 35.21658] },
+    LLMZ: { png: 'LLMZ_circuit.png', sw: [31.27945, 35.33016], ne: [31.39493, 35.43228] },
+    LLFK: { png: 'LLFK_circuit.png', sw: [32.74266, 35.68131], ne: [32.82951, 35.75707] },
+    LLKS: { png: 'LLKS_circuit.png', sw: [33.14265, 35.56420], ne: [33.24338, 35.65753] },
+    LLKZ: { png: 'LLKZ_circuit.png', sw: [30.82464, 34.41778], ne: [30.89444, 34.47649] },
+    LLMG: { png: 'LLMG_circuit.png', sw: [32.54446, 35.18406], ne: [32.65642, 35.27847] },
+    LLRS: { png: 'LLRS_circuit.png', sw: [31.94445, 34.72947], ne: [31.99599, 34.76893] },
+  };
+
+  test('reviewed airfields carry circuit_overlay with correct shape', async () => {
+    const d = loadData();
+    const byCode = new Map(d.airfields.map(a => [a.name, a]));
+    for (const [code, exp] of Object.entries(EXPECTED)) {
+      const af = byCode.get(code);
+      expect(af, `${code} missing from airfields`).toBeTruthy();
+      const co = af.circuit_overlay;
+      expect(co, `${code} missing circuit_overlay`).toBeTruthy();
+      expect(co.png).toBe(exp.png);
+      expect(Array.isArray(co.sw) && co.sw.length === 2).toBe(true);
+      expect(Array.isArray(co.ne) && co.ne.length === 2).toBe(true);
+      // Rough sanity: SW south of NE, SW west of NE, coords in Israel envelope
+      expect(co.sw[0]).toBeLessThan(co.ne[0]);     // sw lat < ne lat
+      expect(co.sw[1]).toBeLessThan(co.ne[1]);     // sw lng < ne lng
+      expect(co.sw[0]).toBeGreaterThan(29);
+      expect(co.ne[0]).toBeLessThan(34);
+      expect(co.sw[1]).toBeGreaterThan(34);
+      expect(co.ne[1]).toBeLessThan(36);
+    }
+  });
+
+  test('LLES has no circuit_overlay (text plate, not georeferenced)', async () => {
+    const d = loadData();
+    const lles = d.airfields.find(a => a.name === 'LLES');
+    expect(lles).toBeTruthy();
+    expect(lles.circuit_overlay).toBeUndefined();
+  });
+});
