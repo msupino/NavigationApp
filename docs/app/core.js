@@ -486,7 +486,7 @@ var magVar = -5;                       // signed offset added to true heading
 window.S = Object.assign({
   navWpUrl: 'data/cvfr-nav-waypoints.json?v=3',  // resolved relative to index.html (docs/)
   navWpSearchField: 'en',              // which locale label to show/search in results
-  airfieldsUrl: 'data/airfields.json?v=3',  // resolved relative to index.html (docs/)
+  airfieldsUrl: 'data/airfields.json?v=8',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   commChangeUrl: 'data/cvfr-comm-change.json?v=1', // CVFR comm-change reporting points (issue #399)
   legAltitudeUrl: 'data/cvfr-leg-altitude.json?v=1', // CVFR green-route leg altitude table
@@ -916,6 +916,11 @@ window.S = Object.assign({
   tbShowDriftTitle: 'Show 10-degree drift reference lines at each leg end',
   tbShowAirfields: 'Show/pin airfields',
   tbShowAirfieldsTitle: 'Overlay published Israeli airfields (BYOP source)',
+  tbShowCircuit: 'Show circuit overlays',
+  tbShowCircuitTitle: 'Overlay georeferenced circuit/VFR plates for Israeli airfields',
+  tbCircuitOpacity: 'Circuit opacity',
+  tbCircuitOpacityTitle: 'Adjust circuit overlay opacity',
+  tbCircuitOpacityReset: 'Reset opacity',
   tbForceSnap: 'Snap to nearest point',
   tbForceSnapTitle: 'Always snap clicks to the nearest airfield or nav-waypoint (otherwise: 18 px radius)',
   tbShowCommChange: 'Show/Add Freq Changes',
