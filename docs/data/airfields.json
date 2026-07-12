@@ -323,7 +323,8 @@
         "LLKZ_airport_Annex Alef.pdf",
         "LLKZ_airport_Chart.pdf",
         "LLKZ_airport_Circuit.pdf"
-      ]
+      ],
+      "circuit_overlay": { "png": "LLKZ_circuit.png", "sw": [30.82464, 34.41778], "ne": [30.89444, 34.47649] }
     },
     {
       "name": "LLMG",
@@ -342,7 +343,8 @@
       ],
       "runways": [
         "09/27"
-      ]
+      ],
+      "circuit_overlay": { "png": "LLMG_circuit.png", "sw": [32.54446, 35.18406], "ne": [32.65642, 35.27847] }
     },
     {
       "name": "LLNV",
@@ -400,7 +402,8 @@
         "LLRS_airport_Annex He.pdf",
         "LLRS_airport_Annex Vav.pdf",
         "LLRS_airport_Chart.pdf"
-      ]
+      ],
+      "circuit_overlay": { "png": "LLRS_circuit.png", "sw": [31.94445, 34.72947], "ne": [31.99599, 34.76893] }
     },
     {
       "name": "LLMZ",

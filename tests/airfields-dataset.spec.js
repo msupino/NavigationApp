@@ -330,6 +330,9 @@ test.describe('circuit_overlay field', () => {
     LLMZ: { png: 'LLMZ_circuit.png', sw: [31.27945, 35.33016], ne: [31.39493, 35.43228] },
     LLFK: { png: 'LLFK_circuit.png', sw: [32.74266, 35.68131], ne: [32.82951, 35.75707] },
     LLKS: { png: 'LLKS_circuit.png', sw: [33.14265, 35.56420], ne: [33.24338, 35.65753] },
+    LLKZ: { png: 'LLKZ_circuit.png', sw: [30.82464, 34.41778], ne: [30.89444, 34.47649] },
+    LLMG: { png: 'LLMG_circuit.png', sw: [32.54446, 35.18406], ne: [32.65642, 35.27847] },
+    LLRS: { png: 'LLRS_circuit.png', sw: [31.94445, 34.72947], ne: [31.99599, 34.76893] },
   };
 
   test('reviewed airfields carry circuit_overlay with correct shape', async () => {
