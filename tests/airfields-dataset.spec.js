@@ -320,10 +320,10 @@ test.describe('circuit_overlay field', () => {
   // Circuit overlays are added one airfield at a time after per-plate
   // georeferencing review. LLHZ (Annex Yud Bet — תרשים ההקפה) is the first.
   const EXPECTED = {
-    LLHZ: { png: 'LLHZ_circuit.png', sw: [32.15572, 34.80787], ne: [32.22072, 34.86177] },
-    LLHA: { png: 'LLHA_circuit.png', sw: [32.72891, 34.99166], ne: [32.89061, 35.12346] },
+    LLHZ: { png: 'LLHZ_circuit.png', sw: [32.1549, 34.8063], ne: [32.2199, 34.8602] },
+    LLHA: { png: 'LLHA_circuit.png', sw: [32.74073, 34.99698], ne: [32.87846, 35.10790] },
     LLIB: { png: 'LLIB_circuit.png', sw: [32.89244, 35.49843], ne: [33.09184, 35.65483] },
-    LLBS: { png: 'LLBS_circuit.png', sw: [31.24146, 34.68359], ne: [31.35136, 34.77019] },
+    LLBS: { png: 'LLBS_circuit.png', sw: [31.25435, 34.69456], ne: [31.33371, 34.75651] },
     LLAR: { png: 'LLAR_circuit.png', sw: [31.1673, 35.1555], ne: [31.2831, 35.2515] },
     LLBO: { png: 'LLBO_circuit.png', sw: [32.56587, 34.86486], ne: [32.74037, 35.00440] },
     LLEY: { png: 'LLEY_circuit.png', sw: [30.59235, 35.17279], ne: [30.65785, 35.21658] },
