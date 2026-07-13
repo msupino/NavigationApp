@@ -99,7 +99,8 @@
       "runways": [
         "14/32"
       ],
-      "circuit_overlay": { "png": "LLBS_circuit.png", "sw": [31.25435, 34.69456], "ne": [31.33371, 34.75651] }
+      "circuit_overlay": { "png": "LLBS_circuit.png", "sw": [31.25435, 34.69456], "ne": [31.33371, 34.75651] },
+      "training_overlay": { "png": "LLBS_training.png", "sw": [31.19001, 34.69576], "ne": [31.48626, 34.92684] }
     },
     {
       "name": "LLEK",
@@ -221,7 +222,8 @@
       "runways": [
         "15/33"
       ],
-      "circuit_overlay": { "png": "LLHA_circuit.png", "sw": [32.74073, 34.99698], "ne": [32.87846, 35.10790] }
+      "circuit_overlay": { "png": "LLHA_circuit.png", "sw": [32.74073, 34.99698], "ne": [32.87846, 35.10790] },
+      "training_overlay": { "png": "LLHA_training.png", "sw": [32.74348, 34.99938], "ne": [32.94024, 35.15854] }
     },
     {
       "name": "LLHB",
@@ -265,7 +267,8 @@
       "runways": [
         "10/28"
       ],
-      "circuit_overlay": { "png": "LLHZ_circuit.png", "sw": [32.1549, 34.8063], "ne": [32.2199, 34.8602] }
+      "circuit_overlay": { "png": "LLHZ_circuit.png", "sw": [32.1549, 34.8063], "ne": [32.2199, 34.8602] },
+      "training_overlay": { "png": "LLHZ_training.png", "sw": [32.08041, 34.72107], "ne": [32.48425, 35.06300] }
     },
     {
       "name": "LLIB",
@@ -293,7 +296,8 @@
         "15/33",
         "05/23"
       ],
-      "circuit_overlay": { "png": "LLIB_circuit.png", "sw": [32.89244, 35.49843], "ne": [33.09184, 35.65483] }
+      "circuit_overlay": { "png": "LLIB_circuit.png", "sw": [32.89244, 35.49843], "ne": [33.09184, 35.65483] },
+      "training_overlay": { "png": "LLIB_training.png", "sw": [32.87065, 35.46073], "ne": [33.24492, 35.75524] }
     },
     {
       "name": "LLKS",
@@ -344,7 +348,8 @@
       "runways": [
         "09/27"
       ],
-      "circuit_overlay": { "png": "LLMG_circuit.png", "sw": [32.54446, 35.18406], "ne": [32.65642, 35.27847] }
+      "circuit_overlay": { "png": "LLMG_circuit.png", "sw": [32.54446, 35.18406], "ne": [32.65642, 35.27847] },
+      "training_overlay": { "png": "LLMG_training.png", "sw": [32.39688, 35.18061], "ne": [32.89448, 35.59381] }
     },
     {
       "name": "LLNV",
@@ -403,7 +408,8 @@
         "LLRS_airport_Annex Vav.pdf",
         "LLRS_airport_Chart.pdf"
       ],
-      "circuit_overlay": { "png": "LLRS_circuit.png", "sw": [31.94445, 34.72947], "ne": [31.99599, 34.76893] }
+      "circuit_overlay": { "png": "LLRS_circuit.png", "sw": [31.94445, 34.72947], "ne": [31.99599, 34.76893] },
+      "training_overlay": { "png": "LLRS_training.png", "sw": [31.92292, 34.72042], "ne": [32.00147, 34.78105] }
     },
     {
       "name": "LLMZ",

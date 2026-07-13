@@ -2978,6 +2978,46 @@ function applyCircuitOpacity(v) {
   if (circuitLayerGroup) circuitLayerGroup.eachLayer(l => l.setOpacity(v));
 }
 
+// ── Training-area overlay ─────────────────────────────────────────────────────
+const TRAINING_SHOW_KEY    = 'navaid.showTraining';
+const TRAINING_OPACITY_KEY = 'navaid.trainingOpacity';
+const TRAINING_DEFAULT_OPACITY = 0.6;
+
+window.showTraining = localStorage.getItem(TRAINING_SHOW_KEY) === '1';
+window.trainingLayerGroup = null;
+let trainingOpacity = (() => {
+  const v = parseFloat(localStorage.getItem(TRAINING_OPACITY_KEY));
+  return isNaN(v) ? TRAINING_DEFAULT_OPACITY : v;
+})();
+
+// Same resolution rule as circuitImgBase(): training-img PNGs ship with every
+// preview, so resolve them relative to the document base without stripping.
+function trainingImgBase() {
+  return new URL('training-img/', document.baseURI).href;
+}
+
+function loadTrainingOverlays() {
+  if (trainingLayerGroup) return;
+  if (!airfields) return;
+  trainingLayerGroup = L.layerGroup();
+  for (const af of airfields) {
+    const to = af.training_overlay;
+    if (!to) continue;
+    L.imageOverlay(
+      trainingImgBase() + encodeURIComponent(to.png) + '?v=1',
+      [to.sw, to.ne],
+      { opacity: trainingOpacity, interactive: false, pane: 'overlayPane' }
+    ).addTo(trainingLayerGroup);
+  }
+}
+
+function applyTrainingOpacity(v) {
+  trainingOpacity = v;
+  const valEl = document.getElementById('training-opacity-val');
+  if (valEl) valEl.textContent = Math.round(v * 100) + '%';
+  if (trainingLayerGroup) trainingLayerGroup.eachLayer(l => l.setOpacity(v));
+}
+
 const AIRFIELDS_KEY = 'navaid.showAirfields';
 try {
   const stored = localStorage.getItem(AIRFIELDS_KEY);
@@ -3104,6 +3144,50 @@ refreshLsaListBtn();
       opEl.value = String(CIRCUIT_DEFAULT_OPACITY);
       try { localStorage.setItem(CIRCUIT_OPACITY_KEY, String(CIRCUIT_DEFAULT_OPACITY)); } catch (_) {}
       applyCircuitOpacity(CIRCUIT_DEFAULT_OPACITY);
+    };
+  }
+})();
+// Training-area overlay toggle
+(function () {
+  const cb       = document.getElementById('training-cb');
+  const controls = document.getElementById('training-controls');
+  const opEl     = document.getElementById('training-opacity');
+  const opReset  = document.getElementById('training-opacity-reset');
+
+  if (cb) {
+    cb.checked = showTraining;
+    if (controls) controls.hidden = !showTraining;
+
+    cb.onchange = async function (e) {
+      window.showTraining = e.target.checked;
+      try { localStorage.setItem(TRAINING_SHOW_KEY, showTraining ? '1' : '0'); } catch (_) {}
+      if (controls) controls.hidden = !showTraining;
+      if (showTraining) {
+        if (!airfields) await loadAirfields();
+        loadTrainingOverlays();
+        if (trainingLayerGroup) trainingLayerGroup.addTo(map);
+      } else {
+        if (trainingLayerGroup) trainingLayerGroup.remove();
+      }
+    };
+  }
+
+  if (opEl) {
+    opEl.value = String(trainingOpacity);
+    applyTrainingOpacity(trainingOpacity);    // sets val label on load
+    opEl.oninput = function () {
+      const v = parseFloat(opEl.value);
+      try { localStorage.setItem(TRAINING_OPACITY_KEY, String(v)); } catch (_) {}
+      applyTrainingOpacity(v);
+    };
+  }
+
+  if (opReset) {
+    opReset.onclick = function () {
+      if (!opEl) return;
+      opEl.value = String(TRAINING_DEFAULT_OPACITY);
+      try { localStorage.setItem(TRAINING_OPACITY_KEY, String(TRAINING_DEFAULT_OPACITY)); } catch (_) {}
+      applyTrainingOpacity(TRAINING_DEFAULT_OPACITY);
     };
   }
 })();
@@ -4165,6 +4249,11 @@ loadAirfields().then(() => {
   if (showCircuit) {
     loadCircuitOverlays();
     if (circuitLayerGroup) circuitLayerGroup.addTo(map);
+  }
+  // Training-area overlay: same restore-on-load guard.
+  if (showTraining) {
+    loadTrainingOverlays();
+    if (trainingLayerGroup) trainingLayerGroup.addTo(map);
   }
 });
 // Leg-altitude green-route altitude table: fills only freshly-created legs, and
