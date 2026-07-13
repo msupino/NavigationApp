@@ -297,7 +297,7 @@
         "05/23"
       ],
       "circuit_overlay": { "png": "LLIB_circuit.png", "sw": [32.89244, 35.49843], "ne": [33.09184, 35.65483] },
-      "training_overlay": { "png": "LLIB_training.png", "sw": [32.87065, 35.46073], "ne": [33.24492, 35.75524] }
+      "training_overlay": { "png": "LLIB_training.png", "sw": [32.87347, 35.45696], "ne": [33.24774, 35.75146] }
     },
     {
       "name": "LLKS",
