@@ -401,9 +401,10 @@ test.describe('training_overlay field', () => {
 });
 
 test.describe('cvfr_overlay field', () => {
-  // CVFR route / comm-failure entry overlays, mirroring circuit_overlay and
-  // training_overlay. Coverage: LLAR, LLEY, LLFK, LLHA, LLHZ, LLKS, LLMG, LLMZ.
-  const COVERAGE = ['LLAR', 'LLEY', 'LLFK', 'LLHA', 'LLHZ', 'LLKS', 'LLMG', 'LLMZ'];
+  // CVFR route overlays, mirroring circuit_overlay and training_overlay.
+  // Coverage: LLAR, LLEY, LLFK, LLHZ, LLKS, LLMG, LLMZ. (Comm-failure entry
+  // plates live in commfail_overlay, a separate layer.)
+  const COVERAGE = ['LLAR', 'LLEY', 'LLFK', 'LLHZ', 'LLKS', 'LLMG', 'LLMZ'];
 
   test('every cvfr_overlay has correct shape and Israel-envelope bounds', async () => {
     const d = loadData();
@@ -464,6 +465,40 @@ test.describe('heli_overlay field', () => {
       const ho = byCode.get(code) && byCode.get(code).heli_overlay;
       expect(ho, `${code} missing heli_overlay`).toBeTruthy();
       expect(ho.png).toBe(`${code}_heli.png`);
+    }
+  });
+});
+
+test.describe('commfail_overlay field', () => {
+  // Radio comm-failure entry overlays, mirroring cvfr_overlay.
+  // Coverage: LLHA (dedicated plate), LLHZ (reuses its CVFR-routes plate).
+  const COVERAGE = ['LLHA', 'LLHZ'];
+
+  test('every commfail_overlay has correct shape and Israel-envelope bounds', async () => {
+    const d = loadData();
+    for (const af of d.airfields) {
+      const co = af.commfail_overlay;
+      if (!co) continue;
+      expect(typeof co.png, `${af.name} commfail png`).toBe('string');
+      expect(co.png).toMatch(/^[A-Z]{4}_commfail\.png$/);
+      expect(Array.isArray(co.sw) && co.sw.length === 2).toBe(true);
+      expect(Array.isArray(co.ne) && co.ne.length === 2).toBe(true);
+      expect(co.sw[0]).toBeLessThan(co.ne[0]);     // sw lat < ne lat
+      expect(co.sw[1]).toBeLessThan(co.ne[1]);     // sw lng < ne lng
+      expect(co.sw[0]).toBeGreaterThan(29);
+      expect(co.ne[0]).toBeLessThan(34);
+      expect(co.sw[1]).toBeGreaterThan(34);
+      expect(co.ne[1]).toBeLessThan(36);
+    }
+  });
+
+  test('all covered airfields carry a commfail_overlay', async () => {
+    const d = loadData();
+    const byCode = new Map(d.airfields.map(a => [a.name, a]));
+    for (const code of COVERAGE) {
+      const co = byCode.get(code) && byCode.get(code).commfail_overlay;
+      expect(co, `${code} missing commfail_overlay`).toBeTruthy();
+      expect(co.png).toBe(`${code}_commfail.png`);
     }
   });
 });
