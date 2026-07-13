@@ -268,7 +268,7 @@
         "10/28"
       ],
       "circuit_overlay": { "png": "LLHZ_circuit.png", "sw": [32.1549, 34.8063], "ne": [32.2199, 34.8602] },
-      "training_overlay": { "png": "LLHZ_training.png", "sw": [32.08083, 34.73322], "ne": [32.48298, 35.03845] }
+      "training_overlay": { "png": "LLHZ_training.png", "sw": [32.08041, 34.72107], "ne": [32.48425, 35.06300] }
     },
     {
       "name": "LLIB",
