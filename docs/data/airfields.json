@@ -409,7 +409,7 @@
         "LLRS_airport_Chart.pdf"
       ],
       "circuit_overlay": { "png": "LLRS_circuit.png", "sw": [31.94445, 34.72947], "ne": [31.99599, 34.76893] },
-      "training_overlay": { "png": "LLRS_training.png", "sw": [31.91503, 34.71543], "ne": [32.00639, 34.78537] }
+      "training_overlay": { "png": "LLRS_training.png", "sw": [31.92292, 34.72042], "ne": [32.00147, 34.78105] }
     },
     {
       "name": "LLMZ",
