@@ -99,7 +99,8 @@
       "runways": [
         "14/32"
       ],
-      "circuit_overlay": { "png": "LLBS_circuit.png", "sw": [31.25435, 34.69456], "ne": [31.33371, 34.75651] }
+      "circuit_overlay": { "png": "LLBS_circuit.png", "sw": [31.25435, 34.69456], "ne": [31.33371, 34.75651] },
+      "training_overlay": { "png": "LLBS_training.png", "sw": [31.18857, 34.69252], "ne": [31.48670, 34.92430] }
     },
     {
       "name": "LLEK",
