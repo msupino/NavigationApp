@@ -349,7 +349,7 @@
         "09/27"
       ],
       "circuit_overlay": { "png": "LLMG_circuit.png", "sw": [32.54446, 35.18406], "ne": [32.65642, 35.27847] },
-      "training_overlay": { "png": "LLMG_training.png", "sw": [32.39688, 35.18061], "ne": [32.89448, 35.59381] }
+      "training_overlay": { "png": "LLMG_training.png", "sw": [32.40791, 35.17877], "ne": [32.90551, 35.59197] }
     },
     {
       "name": "LLNV",
