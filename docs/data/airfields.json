@@ -100,7 +100,7 @@
         "14/32"
       ],
       "circuit_overlay": { "png": "LLBS_circuit.png", "sw": [31.25435, 34.69456], "ne": [31.33371, 34.75651] },
-      "training_overlay": { "png": "LLBS_training.png", "sw": [31.18857, 34.69252], "ne": [31.48670, 34.92430] }
+      "training_overlay": { "png": "LLBS_training.png", "sw": [31.19001, 34.69576], "ne": [31.48626, 34.92684] }
     },
     {
       "name": "LLEK",
@@ -349,7 +349,7 @@
         "09/27"
       ],
       "circuit_overlay": { "png": "LLMG_circuit.png", "sw": [32.54446, 35.18406], "ne": [32.65642, 35.27847] },
-      "training_overlay": { "png": "LLMG_training.png", "sw": [32.36850, 35.18645], "ne": [32.90669, 35.59391] }
+      "training_overlay": { "png": "LLMG_training.png", "sw": [32.39688, 35.18061], "ne": [32.89448, 35.59381] }
     },
     {
       "name": "LLNV",
