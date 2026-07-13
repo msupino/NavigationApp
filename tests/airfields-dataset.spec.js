@@ -433,3 +433,37 @@ test.describe('cvfr_overlay field', () => {
     }
   });
 });
+
+test.describe('heli_overlay field', () => {
+  // Helicopter entry/exit route overlays, mirroring cvfr_overlay.
+  // Coverage: LLBS, LLHA, LLHZ, LLIB.
+  const COVERAGE = ['LLBS', 'LLHA', 'LLHZ', 'LLIB'];
+
+  test('every heli_overlay has correct shape and Israel-envelope bounds', async () => {
+    const d = loadData();
+    for (const af of d.airfields) {
+      const ho = af.heli_overlay;
+      if (!ho) continue;
+      expect(typeof ho.png, `${af.name} heli png`).toBe('string');
+      expect(ho.png).toMatch(/^[A-Z]{4}_heli\.png$/);
+      expect(Array.isArray(ho.sw) && ho.sw.length === 2).toBe(true);
+      expect(Array.isArray(ho.ne) && ho.ne.length === 2).toBe(true);
+      expect(ho.sw[0]).toBeLessThan(ho.ne[0]);     // sw lat < ne lat
+      expect(ho.sw[1]).toBeLessThan(ho.ne[1]);     // sw lng < ne lng
+      expect(ho.sw[0]).toBeGreaterThan(29);
+      expect(ho.ne[0]).toBeLessThan(34);
+      expect(ho.sw[1]).toBeGreaterThan(34);
+      expect(ho.ne[1]).toBeLessThan(36);
+    }
+  });
+
+  test('all covered airfields carry a heli_overlay', async () => {
+    const d = loadData();
+    const byCode = new Map(d.airfields.map(a => [a.name, a]));
+    for (const code of COVERAGE) {
+      const ho = byCode.get(code) && byCode.get(code).heli_overlay;
+      expect(ho, `${code} missing heli_overlay`).toBeTruthy();
+      expect(ho.png).toBe(`${code}_heli.png`);
+    }
+  });
+});

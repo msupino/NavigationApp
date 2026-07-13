@@ -1527,6 +1527,7 @@ async function loadAirfields() {
       circuit_overlay: a.circuit_overlay || null,
       training_overlay: a.training_overlay || null,
       cvfr_overlay: a.cvfr_overlay || null,
+      heli_overlay: a.heli_overlay || null,
     }));
     return airfields;
   } catch (e) {

@@ -3058,6 +3058,46 @@ function applyCvfrOpacity(v) {
   if (cvfrLayerGroup) cvfrLayerGroup.eachLayer(l => l.setOpacity(v));
 }
 
+// ── Helicopter routes overlay ─────────────────────────────────────────────────
+const HELI_SHOW_KEY    = 'navaid.showHeli';
+const HELI_OPACITY_KEY = 'navaid.heliOpacity';
+const HELI_DEFAULT_OPACITY = 0.6;
+
+window.showHeli = localStorage.getItem(HELI_SHOW_KEY) === '1';
+window.heliLayerGroup = null;
+let heliOpacity = (() => {
+  const v = parseFloat(localStorage.getItem(HELI_OPACITY_KEY));
+  return isNaN(v) ? HELI_DEFAULT_OPACITY : v;
+})();
+
+// Same resolution rule as cvfrImgBase(): heli-img PNGs ship with every
+// preview, so resolve them relative to the document base without stripping.
+function heliImgBase() {
+  return new URL('heli-img/', document.baseURI).href;
+}
+
+function loadHeliOverlays() {
+  if (heliLayerGroup) return;
+  if (!airfields) return;
+  heliLayerGroup = L.layerGroup();
+  for (const af of airfields) {
+    const ho = af.heli_overlay;
+    if (!ho) continue;
+    L.imageOverlay(
+      heliImgBase() + encodeURIComponent(ho.png) + '?v=1',
+      [ho.sw, ho.ne],
+      { opacity: heliOpacity, interactive: false, pane: 'overlayPane' }
+    ).addTo(heliLayerGroup);
+  }
+}
+
+function applyHeliOpacity(v) {
+  heliOpacity = v;
+  const valEl = document.getElementById('heli-opacity-val');
+  if (valEl) valEl.textContent = Math.round(v * 100) + '%';
+  if (heliLayerGroup) heliLayerGroup.eachLayer(l => l.setOpacity(v));
+}
+
 const AIRFIELDS_KEY = 'navaid.showAirfields';
 try {
   const stored = localStorage.getItem(AIRFIELDS_KEY);
@@ -3272,6 +3312,50 @@ refreshLsaListBtn();
       opEl.value = String(CVFR_DEFAULT_OPACITY);
       try { localStorage.setItem(CVFR_OPACITY_KEY, String(CVFR_DEFAULT_OPACITY)); } catch (_) {}
       applyCvfrOpacity(CVFR_DEFAULT_OPACITY);
+    };
+  }
+})();
+// Helicopter routes overlay toggle
+(function () {
+  const cb       = document.getElementById('heli-cb');
+  const controls = document.getElementById('heli-controls');
+  const opEl     = document.getElementById('heli-opacity');
+  const opReset  = document.getElementById('heli-opacity-reset');
+
+  if (cb) {
+    cb.checked = showHeli;
+    if (controls) controls.hidden = !showHeli;
+
+    cb.onchange = async function (e) {
+      window.showHeli = e.target.checked;
+      try { localStorage.setItem(HELI_SHOW_KEY, showHeli ? '1' : '0'); } catch (_) {}
+      if (controls) controls.hidden = !showHeli;
+      if (showHeli) {
+        if (!airfields) await loadAirfields();
+        loadHeliOverlays();
+        if (heliLayerGroup) heliLayerGroup.addTo(map);
+      } else {
+        if (heliLayerGroup) heliLayerGroup.remove();
+      }
+    };
+  }
+
+  if (opEl) {
+    opEl.value = String(heliOpacity);
+    applyHeliOpacity(heliOpacity);    // sets val label on load
+    opEl.oninput = function () {
+      const v = parseFloat(opEl.value);
+      try { localStorage.setItem(HELI_OPACITY_KEY, String(v)); } catch (_) {}
+      applyHeliOpacity(v);
+    };
+  }
+
+  if (opReset) {
+    opReset.onclick = function () {
+      if (!opEl) return;
+      opEl.value = String(HELI_DEFAULT_OPACITY);
+      try { localStorage.setItem(HELI_OPACITY_KEY, String(HELI_DEFAULT_OPACITY)); } catch (_) {}
+      applyHeliOpacity(HELI_DEFAULT_OPACITY);
     };
   }
 })();
@@ -4343,6 +4427,11 @@ loadAirfields().then(() => {
   if (showCvfr) {
     loadCvfrOverlays();
     if (cvfrLayerGroup) cvfrLayerGroup.addTo(map);
+  }
+  // Helicopter routes overlay: same restore-on-load guard.
+  if (showHeli) {
+    loadHeliOverlays();
+    if (heliLayerGroup) heliLayerGroup.addTo(map);
   }
 });
 // Leg-altitude green-route altitude table: fills only freshly-created legs, and
