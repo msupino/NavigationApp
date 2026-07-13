@@ -399,3 +399,37 @@ test.describe('training_overlay field', () => {
     }
   });
 });
+
+test.describe('cvfr_overlay field', () => {
+  // CVFR route / comm-failure entry overlays, mirroring circuit_overlay and
+  // training_overlay. Coverage: LLAR, LLEY, LLFK, LLHA, LLHZ, LLKS, LLMG, LLMZ.
+  const COVERAGE = ['LLAR', 'LLEY', 'LLFK', 'LLHA', 'LLHZ', 'LLKS', 'LLMG', 'LLMZ'];
+
+  test('every cvfr_overlay has correct shape and Israel-envelope bounds', async () => {
+    const d = loadData();
+    for (const af of d.airfields) {
+      const co = af.cvfr_overlay;
+      if (!co) continue;
+      expect(typeof co.png, `${af.name} cvfr png`).toBe('string');
+      expect(co.png).toMatch(/^[A-Z]{4}_cvfr\.png$/);
+      expect(Array.isArray(co.sw) && co.sw.length === 2).toBe(true);
+      expect(Array.isArray(co.ne) && co.ne.length === 2).toBe(true);
+      expect(co.sw[0]).toBeLessThan(co.ne[0]);     // sw lat < ne lat
+      expect(co.sw[1]).toBeLessThan(co.ne[1]);     // sw lng < ne lng
+      expect(co.sw[0]).toBeGreaterThan(29);
+      expect(co.ne[0]).toBeLessThan(34);
+      expect(co.sw[1]).toBeGreaterThan(34);
+      expect(co.ne[1]).toBeLessThan(36);
+    }
+  });
+
+  test('all covered airfields carry a cvfr_overlay', async () => {
+    const d = loadData();
+    const byCode = new Map(d.airfields.map(a => [a.name, a]));
+    for (const code of COVERAGE) {
+      const co = byCode.get(code) && byCode.get(code).cvfr_overlay;
+      expect(co, `${code} missing cvfr_overlay`).toBeTruthy();
+      expect(co.png).toBe(`${code}_cvfr.png`);
+    }
+  });
+});

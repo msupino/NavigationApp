@@ -3018,6 +3018,46 @@ function applyTrainingOpacity(v) {
   if (trainingLayerGroup) trainingLayerGroup.eachLayer(l => l.setOpacity(v));
 }
 
+// ── CVFR routes / comm-failure overlay ────────────────────────────────────────
+const CVFR_SHOW_KEY    = 'navaid.showCvfr';
+const CVFR_OPACITY_KEY = 'navaid.cvfrOpacity';
+const CVFR_DEFAULT_OPACITY = 0.6;
+
+window.showCvfr = localStorage.getItem(CVFR_SHOW_KEY) === '1';
+window.cvfrLayerGroup = null;
+let cvfrOpacity = (() => {
+  const v = parseFloat(localStorage.getItem(CVFR_OPACITY_KEY));
+  return isNaN(v) ? CVFR_DEFAULT_OPACITY : v;
+})();
+
+// Same resolution rule as trainingImgBase(): cvfr-img PNGs ship with every
+// preview, so resolve them relative to the document base without stripping.
+function cvfrImgBase() {
+  return new URL('cvfr-img/', document.baseURI).href;
+}
+
+function loadCvfrOverlays() {
+  if (cvfrLayerGroup) return;
+  if (!airfields) return;
+  cvfrLayerGroup = L.layerGroup();
+  for (const af of airfields) {
+    const co = af.cvfr_overlay;
+    if (!co) continue;
+    L.imageOverlay(
+      cvfrImgBase() + encodeURIComponent(co.png) + '?v=1',
+      [co.sw, co.ne],
+      { opacity: cvfrOpacity, interactive: false, pane: 'overlayPane' }
+    ).addTo(cvfrLayerGroup);
+  }
+}
+
+function applyCvfrOpacity(v) {
+  cvfrOpacity = v;
+  const valEl = document.getElementById('cvfr-opacity-val');
+  if (valEl) valEl.textContent = Math.round(v * 100) + '%';
+  if (cvfrLayerGroup) cvfrLayerGroup.eachLayer(l => l.setOpacity(v));
+}
+
 const AIRFIELDS_KEY = 'navaid.showAirfields';
 try {
   const stored = localStorage.getItem(AIRFIELDS_KEY);
@@ -3188,6 +3228,50 @@ refreshLsaListBtn();
       opEl.value = String(TRAINING_DEFAULT_OPACITY);
       try { localStorage.setItem(TRAINING_OPACITY_KEY, String(TRAINING_DEFAULT_OPACITY)); } catch (_) {}
       applyTrainingOpacity(TRAINING_DEFAULT_OPACITY);
+    };
+  }
+})();
+// CVFR routes / comm-failure overlay toggle
+(function () {
+  const cb       = document.getElementById('cvfr-cb');
+  const controls = document.getElementById('cvfr-controls');
+  const opEl     = document.getElementById('cvfr-opacity');
+  const opReset  = document.getElementById('cvfr-opacity-reset');
+
+  if (cb) {
+    cb.checked = showCvfr;
+    if (controls) controls.hidden = !showCvfr;
+
+    cb.onchange = async function (e) {
+      window.showCvfr = e.target.checked;
+      try { localStorage.setItem(CVFR_SHOW_KEY, showCvfr ? '1' : '0'); } catch (_) {}
+      if (controls) controls.hidden = !showCvfr;
+      if (showCvfr) {
+        if (!airfields) await loadAirfields();
+        loadCvfrOverlays();
+        if (cvfrLayerGroup) cvfrLayerGroup.addTo(map);
+      } else {
+        if (cvfrLayerGroup) cvfrLayerGroup.remove();
+      }
+    };
+  }
+
+  if (opEl) {
+    opEl.value = String(cvfrOpacity);
+    applyCvfrOpacity(cvfrOpacity);    // sets val label on load
+    opEl.oninput = function () {
+      const v = parseFloat(opEl.value);
+      try { localStorage.setItem(CVFR_OPACITY_KEY, String(v)); } catch (_) {}
+      applyCvfrOpacity(v);
+    };
+  }
+
+  if (opReset) {
+    opReset.onclick = function () {
+      if (!opEl) return;
+      opEl.value = String(CVFR_DEFAULT_OPACITY);
+      try { localStorage.setItem(CVFR_OPACITY_KEY, String(CVFR_DEFAULT_OPACITY)); } catch (_) {}
+      applyCvfrOpacity(CVFR_DEFAULT_OPACITY);
     };
   }
 })();
@@ -4254,6 +4338,11 @@ loadAirfields().then(() => {
   if (showTraining) {
     loadTrainingOverlays();
     if (trainingLayerGroup) trainingLayerGroup.addTo(map);
+  }
+  // CVFR routes / comm-failure overlay: same restore-on-load guard.
+  if (showCvfr) {
+    loadCvfrOverlays();
+    if (cvfrLayerGroup) cvfrLayerGroup.addTo(map);
   }
 });
 // Leg-altitude green-route altitude table: fills only freshly-created legs, and
