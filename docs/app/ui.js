@@ -3044,7 +3044,7 @@ function loadCvfrOverlays() {
     const co = af.cvfr_overlay;
     if (!co) continue;
     L.imageOverlay(
-      cvfrImgBase() + encodeURIComponent(co.png) + '?v=1',
+      cvfrImgBase() + encodeURIComponent(co.png) + '?v=2',
       [co.sw, co.ne],
       { opacity: cvfrOpacity, interactive: false, pane: 'overlayPane' }
     ).addTo(cvfrLayerGroup);

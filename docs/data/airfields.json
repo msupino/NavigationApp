@@ -272,7 +272,7 @@
       ],
       "circuit_overlay": { "png": "LLHZ_circuit.png", "sw": [32.1549, 34.8063], "ne": [32.2199, 34.8602] },
       "training_overlay": { "png": "LLHZ_training.png", "sw": [32.08041, 34.72107], "ne": [32.48425, 35.06300] },
-      "cvfr_overlay": { "png": "LLHZ_cvfr.png", "sw": [32.03576, 34.72753], "ne": [32.2846, 34.91463] }
+      "cvfr_overlay": { "png": "LLHZ_cvfr.png", "sw": [32.07271, 34.75854], "ne": [32.28924, 34.92414] }
     },
     {
       "name": "LLIB",
