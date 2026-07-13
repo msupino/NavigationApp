@@ -1525,6 +1525,7 @@ async function loadAirfields() {
       plates: Array.isArray(a.plates) ? a.plates.slice() : [],
       runways: Array.isArray(a.runways) ? a.runways.slice() : null,
       circuit_overlay: a.circuit_overlay || null,
+      training_overlay: a.training_overlay || null,
     }));
     return airfields;
   } catch (e) {
