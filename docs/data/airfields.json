@@ -348,7 +348,8 @@
       "runways": [
         "09/27"
       ],
-      "circuit_overlay": { "png": "LLMG_circuit.png", "sw": [32.54446, 35.18406], "ne": [32.65642, 35.27847] }
+      "circuit_overlay": { "png": "LLMG_circuit.png", "sw": [32.54446, 35.18406], "ne": [32.65642, 35.27847] },
+      "training_overlay": { "png": "LLMG_training.png", "sw": [32.36850, 35.18645], "ne": [32.90669, 35.59391] }
     },
     {
       "name": "LLNV",
