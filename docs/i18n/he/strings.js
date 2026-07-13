@@ -390,6 +390,7 @@ window.S = {
   tbGrpOverlays: 'שכבות-על',
   tbGrpRouteInfo: 'מידע מסלול',
   tbGrpSafety: 'בטיחות',
+  tbGrpPlates: 'תרשימי שדה',
   tbReverse: '⇄ הפוך מסלול (R)',
   tbReverseTitle: 'הפוך סדר מסלול',
   tbUndo: '↶ בטל (Ctrl-Z)',

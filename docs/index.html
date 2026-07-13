@@ -121,7 +121,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=362">
+  <link rel="stylesheet" href="app/style.css?v=363">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -483,6 +483,8 @@
             <input type="checkbox" id="lsa-cb"> <span data-i18n="tbShowLsa"></span>
           </label>
         </div>
+        <div class="tb-group" data-i18n="tbGrpPlates"></div>
+        <div class="tb-plate-layers">
         <div class="tb-group-box">
           <label class="navtoggle" data-i18n-title="tbShowCircuitTitle">
             <input type="checkbox" id="circuit-cb"> <span data-i18n="tbShowCircuit"></span>
@@ -552,6 +554,7 @@
                       data-i18n-title="tbCommfailOpacityReset">↻</button>
             </label>
           </div>
+        </div>
         </div>
       </div>
     </div>
@@ -771,7 +774,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=362';
+      var v = '?v=363';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
