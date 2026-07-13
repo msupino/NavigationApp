@@ -3018,6 +3018,126 @@ function applyTrainingOpacity(v) {
   if (trainingLayerGroup) trainingLayerGroup.eachLayer(l => l.setOpacity(v));
 }
 
+// ── CVFR routes / comm-failure overlay ────────────────────────────────────────
+const CVFR_SHOW_KEY    = 'navaid.showCvfr';
+const CVFR_OPACITY_KEY = 'navaid.cvfrOpacity';
+const CVFR_DEFAULT_OPACITY = 0.6;
+
+window.showCvfr = localStorage.getItem(CVFR_SHOW_KEY) === '1';
+window.cvfrLayerGroup = null;
+let cvfrOpacity = (() => {
+  const v = parseFloat(localStorage.getItem(CVFR_OPACITY_KEY));
+  return isNaN(v) ? CVFR_DEFAULT_OPACITY : v;
+})();
+
+// Same resolution rule as trainingImgBase(): cvfr-img PNGs ship with every
+// preview, so resolve them relative to the document base without stripping.
+function cvfrImgBase() {
+  return new URL('cvfr-img/', document.baseURI).href;
+}
+
+function loadCvfrOverlays() {
+  if (cvfrLayerGroup) return;
+  if (!airfields) return;
+  cvfrLayerGroup = L.layerGroup();
+  for (const af of airfields) {
+    const co = af.cvfr_overlay;
+    if (!co) continue;
+    L.imageOverlay(
+      cvfrImgBase() + encodeURIComponent(co.png) + '?v=2',
+      [co.sw, co.ne],
+      { opacity: cvfrOpacity, interactive: false, pane: 'overlayPane' }
+    ).addTo(cvfrLayerGroup);
+  }
+}
+
+function applyCvfrOpacity(v) {
+  cvfrOpacity = v;
+  const valEl = document.getElementById('cvfr-opacity-val');
+  if (valEl) valEl.textContent = Math.round(v * 100) + '%';
+  if (cvfrLayerGroup) cvfrLayerGroup.eachLayer(l => l.setOpacity(v));
+}
+
+// ── Helicopter routes overlay ─────────────────────────────────────────────────
+const HELI_SHOW_KEY    = 'navaid.showHeli';
+const HELI_OPACITY_KEY = 'navaid.heliOpacity';
+const HELI_DEFAULT_OPACITY = 0.6;
+
+window.showHeli = localStorage.getItem(HELI_SHOW_KEY) === '1';
+window.heliLayerGroup = null;
+let heliOpacity = (() => {
+  const v = parseFloat(localStorage.getItem(HELI_OPACITY_KEY));
+  return isNaN(v) ? HELI_DEFAULT_OPACITY : v;
+})();
+
+// Same resolution rule as cvfrImgBase(): heli-img PNGs ship with every
+// preview, so resolve them relative to the document base without stripping.
+function heliImgBase() {
+  return new URL('heli-img/', document.baseURI).href;
+}
+
+function loadHeliOverlays() {
+  if (heliLayerGroup) return;
+  if (!airfields) return;
+  heliLayerGroup = L.layerGroup();
+  for (const af of airfields) {
+    const ho = af.heli_overlay;
+    if (!ho) continue;
+    L.imageOverlay(
+      heliImgBase() + encodeURIComponent(ho.png) + '?v=1',
+      [ho.sw, ho.ne],
+      { opacity: heliOpacity, interactive: false, pane: 'overlayPane' }
+    ).addTo(heliLayerGroup);
+  }
+}
+
+function applyHeliOpacity(v) {
+  heliOpacity = v;
+  const valEl = document.getElementById('heli-opacity-val');
+  if (valEl) valEl.textContent = Math.round(v * 100) + '%';
+  if (heliLayerGroup) heliLayerGroup.eachLayer(l => l.setOpacity(v));
+}
+
+// ── Comm-failure entry overlay ────────────────────────────────────────────────
+const COMMFAIL_SHOW_KEY    = 'navaid.showCommfail';
+const COMMFAIL_OPACITY_KEY = 'navaid.commfailOpacity';
+const COMMFAIL_DEFAULT_OPACITY = 0.6;
+
+window.showCommfail = localStorage.getItem(COMMFAIL_SHOW_KEY) === '1';
+window.commfailLayerGroup = null;
+let commfailOpacity = (() => {
+  const v = parseFloat(localStorage.getItem(COMMFAIL_OPACITY_KEY));
+  return isNaN(v) ? COMMFAIL_DEFAULT_OPACITY : v;
+})();
+
+// Same resolution rule as cvfrImgBase(): commfail-img PNGs ship with every
+// preview, so resolve them relative to the document base without stripping.
+function commfailImgBase() {
+  return new URL('commfail-img/', document.baseURI).href;
+}
+
+function loadCommfailOverlays() {
+  if (commfailLayerGroup) return;
+  if (!airfields) return;
+  commfailLayerGroup = L.layerGroup();
+  for (const af of airfields) {
+    const co = af.commfail_overlay;
+    if (!co) continue;
+    L.imageOverlay(
+      commfailImgBase() + encodeURIComponent(co.png) + '?v=1',
+      [co.sw, co.ne],
+      { opacity: commfailOpacity, interactive: false, pane: 'overlayPane' }
+    ).addTo(commfailLayerGroup);
+  }
+}
+
+function applyCommfailOpacity(v) {
+  commfailOpacity = v;
+  const valEl = document.getElementById('commfail-opacity-val');
+  if (valEl) valEl.textContent = Math.round(v * 100) + '%';
+  if (commfailLayerGroup) commfailLayerGroup.eachLayer(l => l.setOpacity(v));
+}
+
 const AIRFIELDS_KEY = 'navaid.showAirfields';
 try {
   const stored = localStorage.getItem(AIRFIELDS_KEY);
@@ -3188,6 +3308,138 @@ refreshLsaListBtn();
       opEl.value = String(TRAINING_DEFAULT_OPACITY);
       try { localStorage.setItem(TRAINING_OPACITY_KEY, String(TRAINING_DEFAULT_OPACITY)); } catch (_) {}
       applyTrainingOpacity(TRAINING_DEFAULT_OPACITY);
+    };
+  }
+})();
+// CVFR routes / comm-failure overlay toggle
+(function () {
+  const cb       = document.getElementById('cvfr-cb');
+  const controls = document.getElementById('cvfr-controls');
+  const opEl     = document.getElementById('cvfr-opacity');
+  const opReset  = document.getElementById('cvfr-opacity-reset');
+
+  if (cb) {
+    cb.checked = showCvfr;
+    if (controls) controls.hidden = !showCvfr;
+
+    cb.onchange = async function (e) {
+      window.showCvfr = e.target.checked;
+      try { localStorage.setItem(CVFR_SHOW_KEY, showCvfr ? '1' : '0'); } catch (_) {}
+      if (controls) controls.hidden = !showCvfr;
+      if (showCvfr) {
+        if (!airfields) await loadAirfields();
+        loadCvfrOverlays();
+        if (cvfrLayerGroup) cvfrLayerGroup.addTo(map);
+      } else {
+        if (cvfrLayerGroup) cvfrLayerGroup.remove();
+      }
+    };
+  }
+
+  if (opEl) {
+    opEl.value = String(cvfrOpacity);
+    applyCvfrOpacity(cvfrOpacity);    // sets val label on load
+    opEl.oninput = function () {
+      const v = parseFloat(opEl.value);
+      try { localStorage.setItem(CVFR_OPACITY_KEY, String(v)); } catch (_) {}
+      applyCvfrOpacity(v);
+    };
+  }
+
+  if (opReset) {
+    opReset.onclick = function () {
+      if (!opEl) return;
+      opEl.value = String(CVFR_DEFAULT_OPACITY);
+      try { localStorage.setItem(CVFR_OPACITY_KEY, String(CVFR_DEFAULT_OPACITY)); } catch (_) {}
+      applyCvfrOpacity(CVFR_DEFAULT_OPACITY);
+    };
+  }
+})();
+// Helicopter routes overlay toggle
+(function () {
+  const cb       = document.getElementById('heli-cb');
+  const controls = document.getElementById('heli-controls');
+  const opEl     = document.getElementById('heli-opacity');
+  const opReset  = document.getElementById('heli-opacity-reset');
+
+  if (cb) {
+    cb.checked = showHeli;
+    if (controls) controls.hidden = !showHeli;
+
+    cb.onchange = async function (e) {
+      window.showHeli = e.target.checked;
+      try { localStorage.setItem(HELI_SHOW_KEY, showHeli ? '1' : '0'); } catch (_) {}
+      if (controls) controls.hidden = !showHeli;
+      if (showHeli) {
+        if (!airfields) await loadAirfields();
+        loadHeliOverlays();
+        if (heliLayerGroup) heliLayerGroup.addTo(map);
+      } else {
+        if (heliLayerGroup) heliLayerGroup.remove();
+      }
+    };
+  }
+
+  if (opEl) {
+    opEl.value = String(heliOpacity);
+    applyHeliOpacity(heliOpacity);    // sets val label on load
+    opEl.oninput = function () {
+      const v = parseFloat(opEl.value);
+      try { localStorage.setItem(HELI_OPACITY_KEY, String(v)); } catch (_) {}
+      applyHeliOpacity(v);
+    };
+  }
+
+  if (opReset) {
+    opReset.onclick = function () {
+      if (!opEl) return;
+      opEl.value = String(HELI_DEFAULT_OPACITY);
+      try { localStorage.setItem(HELI_OPACITY_KEY, String(HELI_DEFAULT_OPACITY)); } catch (_) {}
+      applyHeliOpacity(HELI_DEFAULT_OPACITY);
+    };
+  }
+})();
+// Comm-failure entry overlay toggle
+(function () {
+  const cb       = document.getElementById('commfail-cb');
+  const controls = document.getElementById('commfail-controls');
+  const opEl     = document.getElementById('commfail-opacity');
+  const opReset  = document.getElementById('commfail-opacity-reset');
+
+  if (cb) {
+    cb.checked = showCommfail;
+    if (controls) controls.hidden = !showCommfail;
+
+    cb.onchange = async function (e) {
+      window.showCommfail = e.target.checked;
+      try { localStorage.setItem(COMMFAIL_SHOW_KEY, showCommfail ? '1' : '0'); } catch (_) {}
+      if (controls) controls.hidden = !showCommfail;
+      if (showCommfail) {
+        if (!airfields) await loadAirfields();
+        loadCommfailOverlays();
+        if (commfailLayerGroup) commfailLayerGroup.addTo(map);
+      } else {
+        if (commfailLayerGroup) commfailLayerGroup.remove();
+      }
+    };
+  }
+
+  if (opEl) {
+    opEl.value = String(commfailOpacity);
+    applyCommfailOpacity(commfailOpacity);    // sets val label on load
+    opEl.oninput = function () {
+      const v = parseFloat(opEl.value);
+      try { localStorage.setItem(COMMFAIL_OPACITY_KEY, String(v)); } catch (_) {}
+      applyCommfailOpacity(v);
+    };
+  }
+
+  if (opReset) {
+    opReset.onclick = function () {
+      if (!opEl) return;
+      opEl.value = String(COMMFAIL_DEFAULT_OPACITY);
+      try { localStorage.setItem(COMMFAIL_OPACITY_KEY, String(COMMFAIL_DEFAULT_OPACITY)); } catch (_) {}
+      applyCommfailOpacity(COMMFAIL_DEFAULT_OPACITY);
     };
   }
 })();
@@ -4254,6 +4506,21 @@ loadAirfields().then(() => {
   if (showTraining) {
     loadTrainingOverlays();
     if (trainingLayerGroup) trainingLayerGroup.addTo(map);
+  }
+  // CVFR routes / comm-failure overlay: same restore-on-load guard.
+  if (showCvfr) {
+    loadCvfrOverlays();
+    if (cvfrLayerGroup) cvfrLayerGroup.addTo(map);
+  }
+  // Helicopter routes overlay: same restore-on-load guard.
+  if (showHeli) {
+    loadHeliOverlays();
+    if (heliLayerGroup) heliLayerGroup.addTo(map);
+  }
+  // Comm-failure entry overlay: same restore-on-load guard.
+  if (showCommfail) {
+    loadCommfailOverlays();
+    if (commfailLayerGroup) commfailLayerGroup.addTo(map);
   }
 });
 // Leg-altitude green-route altitude table: fills only freshly-created legs, and
