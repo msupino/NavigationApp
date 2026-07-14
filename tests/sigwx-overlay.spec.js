@@ -7,6 +7,7 @@ const { test, expect } = require('./_setup');
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAMgAAACWCAIAAAAUvlBOAAABlklEQVR4nO3UsQ0AIBADsYfJGZ0luALJHiDVKWvOwHP7/SQIi4jHIiEsEsIiISwSwiIhLBLCIiEsEsIiISwSwiIhLBLCIiEsEsIiISwSwiIhLBLCIiEsEsIiISwSwiIhLBLCIiEsEsIiISwSwiIhLBLCIiEsEsIiISwSwiIhLBLCIiEsEsIiISwSwiIhLBLCIiEsEsIiISwSwiIhLBLCIiEsEsIiISwSwiIhLBLCIiEsEsIiISwSwiIhLBLCIiEsEsIiISwSwiIhLBLCIiEsEsIiISwSwiIhLBLCIiEsEsIiISwSwiIhLBLCIiEsEsIiISwSwiIhLBLCIiEsEsIiISwSwiIhLBLCIiEsEsIiISwSwiIhLBLCIiEsEsIiISwSwiIhLBLCIiEsEsIiISyExT88FglhkRAWCWGREBYJYZEQFglhkRAWCWGREBYJYZEQFglhkRAWCWGREBYJYZEQFglhkRAWCWGREBYJYZEQFglhkRAWCWGREBYJYZEQFglhkRAWCWGREBYJYZEQFglhkRAWCWExhQve2wGshbOUjwAAAABJRU5ErkJggg==';
 
 async function boot(page, times) {
+  await page.route(/ims-data\/ims\/pwx\.json/, r => r.fulfill({ status: 404, body: '' }));
   await page.route(/ims-data\/ims\/sigwx\.json/, r => r.fulfill({
     status: 200, contentType: 'application/json',
     body: JSON.stringify({ generatedAt: '2026-06-24T04:00:00Z', source: 'x',
@@ -28,7 +29,7 @@ test('SIGWX overlay box reveals when the manifest loads', async ({ page }) => {
   await expect(page.locator('#sigwx-ov')).toBeVisible();
   await expect(page.locator('#sigwx-ov-controls')).toBeHidden();
   // Time dropdown is populated from the manifest.
-  await expect(page.locator('#sigwx-ov-time option')).toHaveCount(1);
+  await expect(page.locator('#wx-time option')).toHaveCount(1);
 });
 
 test('toggling adds a cropped image overlay; persists across reload', async ({ page }) => {

@@ -4890,6 +4890,45 @@ function imsNearestTimeIndex(times) {
   }
   return best;
 }
+// Shared valid-time dropdown for the IMS weather-chart overlays. Wind/temp (PWX)
+// and significant-weather (SIGWX) are both IMS products issued for the same
+// 00/03/06/12/18Z valid times, so one #wx-time dropdown drives both. The option
+// value is the valid string; each overlay resolves its own data by matching it.
+const NavWxTime = (function () {
+  const KEY = 'navaid.wxTime';
+  const sel = document.getElementById('wx-time');
+  let seeded = false;
+  // Merge a feed's times into the dropdown (deduped by valid), and seed the
+  // initial selection once — the saved time if still offered, else nearest now.
+  function ensure(times) {
+    if (!sel || !Array.isArray(times)) return;
+    const have = new Set(Array.from(sel.options, o => o.value));
+    for (const t of times) {
+      if (!t || !t.valid || have.has(t.valid)) continue;
+      const o = document.createElement('option');
+      o.value = t.valid;
+      o.textContent = (t.day ? t.day + ' ' : '') + t.valid + 'Z';
+      sel.appendChild(o); have.add(t.valid);
+    }
+    if (!seeded && sel.options.length) {
+      let saved = '';
+      try { saved = localStorage.getItem(KEY) || ''; } catch (e) {}
+      if (saved && have.has(saved)) sel.value = saved;
+      else sel.selectedIndex = Math.max(0, imsNearestTimeIndex(
+        Array.from(sel.options, o => ({ valid: o.value }))));
+      seeded = true;
+    }
+  }
+  if (sel) sel.addEventListener('change', () => {
+    try { localStorage.setItem(KEY, sel.value); } catch (e) {}
+  });
+  return {
+    value: () => (sel ? sel.value : ''),
+    ensure,
+    onChange: fn => { if (sel) sel.addEventListener('change', fn); },
+  };
+})();
+
 // Manifest + PNGs are published by .github/workflows/ims-charts.yml to the
 // ims-data orphan branch (the browser can't fetch ims.gov.il directly — no
 // CORS). The control stays hidden until the manifest loads, so nothing shows
@@ -4900,7 +4939,7 @@ function imsNearestTimeIndex(times) {
   const cb = document.getElementById('ims-pwx-cb');
   const controls = document.getElementById('ims-pwx-controls');
   const levelSel = document.getElementById('ims-pwx-level');
-  const timeSel = document.getElementById('ims-pwx-time');
+  const timeSel = document.getElementById('wx-time');   // shared with SIGWX
   const opacity = document.getElementById('ims-pwx-opacity');
   const opacityReset = document.getElementById('ims-pwx-opacity-reset');
   const DEFAULT_OPACITY = String(typeof tune === 'function' ? tune('imsPwxOpacity') : 1);
@@ -4957,19 +4996,11 @@ function imsNearestTimeIndex(times) {
     el.style.transform = deg ? (base + ' rotate(' + deg + 'deg)') : base;
   }
   map.on('move zoom zoomend viewreset', applyRotation);
+  // Merge this level's valid times into the shared #wx-time dropdown (deduped;
+  // does not clear SIGWX's options). The selection persists in the element.
   function fillTimes() {
     const lv = currentLevel();
-    const prev = timeSel.value;            // keep the chosen period across FL changes
-    timeSel.innerHTML = '';
-    if (!lv) return;
-    for (const t of lv.times) {
-      const o = document.createElement('option');
-      o.value = t.valid;
-      o.textContent = t.valid + 'Z' + (t.day ? ' (' + t.day + ')' : '');   // Zulu
-      timeSel.appendChild(o);
-    }
-    // Re-select the same valid time if the newly chosen level also has it.
-    if (prev && lv.times.some(t => t.valid === prev)) timeSel.value = prev;
+    if (lv) NavWxTime.ensure(lv.times);
   }
 
   // Persist the on/off + selections so a reload keeps the overlay as it was.
@@ -5031,11 +5062,7 @@ function imsNearestTimeIndex(times) {
           if (sv.on) { cb.checked = true; controls.hidden = false; }
         }
       } catch (e) { /* storage unavailable */ }
-      // Default the valid time to the chart closest to now (Zulu), not the first.
-      const lv0 = currentLevel();
-      if (lv0 && Array.isArray(lv0.times) && lv0.times.length) {
-        timeSel.value = lv0.times[imsNearestTimeIndex(lv0.times)].valid;
-      }
+      // The shared #wx-time dropdown was seeded to now (Zulu) by NavWxTime.
       updateLayer();
       // Show the model run time (cropped off the chart's bottom band).
       const runEl = document.getElementById('ims-pwx-run');
@@ -5274,7 +5301,7 @@ function imsNearestTimeIndex(times) {
   const box = document.getElementById('sigwx-ov');
   const cb = document.getElementById('sigwx-ov-cb');
   const controls = document.getElementById('sigwx-ov-controls');
-  const timeSel = document.getElementById('sigwx-ov-time');
+  const timeSel = document.getElementById('wx-time');   // shared with wind/temp
   const opacity = document.getElementById('sigwx-ov-opacity');
   const opacityReset = document.getElementById('sigwx-ov-opacity-reset');
   if (!box || !cb || !timeSel || !opacity || typeof map === 'undefined' || typeof L === 'undefined') return;
@@ -5351,8 +5378,9 @@ function imsNearestTimeIndex(times) {
     });
   }
   function currentTime() {
-    const i = timeSel.selectedIndex;
-    return manifest && manifest.times[i];      // by index — never trust DOM value (xss)
+    // Resolve by valid string — the shared #wx-time dropdown's option order is
+    // not this manifest's array order.
+    return manifest && manifest.times.find(t => t.valid === timeSel.value);
   }
   function boundsFrom(B, latOff, lngOff, latSc, lngSc) {
     const cLat = (B.s + B.n) / 2, cLng = (B.w + B.e) / 2;
@@ -5405,15 +5433,10 @@ function imsNearestTimeIndex(times) {
       place('header', data, [[nT, w], [nT + hLat, e]], tblOp);
     }).catch(() => { /* header optional */ });
   }
+  // Merge into the shared #wx-time dropdown (deduped; does not clear PWX's
+  // options).
   function fillTimes() {
-    timeSel.innerHTML = '';
-    if (!manifest) return;
-    manifest.times.forEach((t, i) => {
-      const o = document.createElement('option');
-      o.value = String(i);
-      o.textContent = (t.day ? t.day + ' ' : '') + t.valid + 'Z';
-      timeSel.appendChild(o);
-    });
+    if (manifest) NavWxTime.ensure(manifest.times);
   }
   const KEY = 'navaid.sigwxOv';
   const persist = () => {
@@ -5443,8 +5466,7 @@ function imsNearestTimeIndex(times) {
       try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { /* */ }
       opacity.value = saved && Number.isFinite(saved.opacity) ? String(saved.opacity) : DEFAULT_OPACITY;
       setOpacityLabel();
-      // Default the valid time to the chart closest to now (Zulu).
-      timeSel.value = String(imsNearestTimeIndex(manifest.times));
+      // The shared #wx-time dropdown was seeded to now (Zulu) by NavWxTime.
       if (saved && saved.on) { cb.checked = true; controls.hidden = false; updateLayer(); }
     })
     .catch(() => { /* manifest unreachable → stay hidden */ });

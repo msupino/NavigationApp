@@ -514,6 +514,8 @@ window.S = Object.assign({
   tbImsPwxTitle: 'Overlay the IMS PWX wind & temperature forecast on the map',
   tbImsPwxLevel: 'Level',
   tbImsPwxTime: 'Valid time',
+  tbWxTime: 'Valid time',
+  tbWxTimeTitle: 'Valid time (Zulu) — shared by the wind/temp and SIGWX charts',
   tbImsPwxOpacity: 'Sign opacity',
   tbImsPwxOpacityReset: 'Reset opacity',
   tbImsPwxRun: 'Model run',
