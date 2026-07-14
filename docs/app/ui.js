@@ -4164,11 +4164,16 @@ function refreshMapAfterToolbarModeChange() {
     if (toolbarUsesDesktopMenu()) {
       if (toolbar && toolbar.classList.contains('multi-open')) return;
       closeDesktopMenus();
-    } else if (anySectionOpen()) {
-      // Mobile / floating toolbar: a tap outside the menu closes the open
-      // section too, matching the desktop click-outside behaviour.
-      window.closeToolbarMenus();
     }
+  });
+  // Mobile / floating toolbar: close the open section on a tap outside it.
+  // Uses 'click' (not pointerdown) because on touch devices Leaflet's map can
+  // swallow the pointer event before it bubbles to document — the same 'click'
+  // path that dismisses the inspector, so it fires reliably on a real tap.
+  document.addEventListener('click', e => {
+    if (toolbarUsesDesktopMenu()) return;
+    if (e.target && e.target.closest && e.target.closest('#toolbar')) return;
+    if (anySectionOpen()) window.closeToolbarMenus();
   });
   document.addEventListener('keydown', e => {
     if (toolbarUsesDesktopMenu() && e.key === 'Escape') closeDesktopMenus();
