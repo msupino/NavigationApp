@@ -69,4 +69,25 @@ test.describe('Airfield plate viewer (PDF.js canvas)', () => {
     await expect(loading).toBeVisible();
     await expect(loading).toContainText(expected);
   });
+
+  test('prefetchPlate warms a plate URL once (deduped) so a later open hits cache', async ({ page }) => {
+    await page.goto('?lang=en');
+    await page.waitForFunction(() =>
+      typeof prefetchPlate === 'function' && typeof plateUrl === 'function');
+    const calls = await page.evaluate(() => {
+      const seen = [];
+      const real = window.fetch;
+      window.fetch = (u) => { seen.push(String(u)); return Promise.resolve(new Response('', { status: 200 })); };
+      try {
+        prefetchPlate('LLBG_SID_08.pdf');
+        prefetchPlate('LLBG_SID_08.pdf');   // same chip hovered again → deduped
+        prefetchPlate('LLHZ_VAC.pdf');
+      } finally { window.fetch = real; }
+      return seen;
+    });
+    expect(calls.length).toBe(2);                 // repeat deduped
+    expect(calls[0]).toContain('/byop/');
+    expect(calls[0]).toContain('LLBG_SID_08.pdf');
+    expect(calls[1]).toContain('LLHZ_VAC.pdf');
+  });
 });
