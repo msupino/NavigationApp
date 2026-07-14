@@ -3771,7 +3771,7 @@ body.theme-light #toolbar button.danger:hover {
 /* Extra-layers cards share the buttons' light-theme border (specificity must
    beat the desktop media rule that flattens them in dark). */
 body.theme-light #toolbar .tb-group-box { border-color: #b8c0cc; }
-body.theme-light #toolbar .tb-timed-layers { border-color: #b8c0cc; }
+body.theme-light #toolbar .tb-layer-frame { border-color: #b8c0cc; }
 body.theme-light #toolbar button:hover,
 body.theme-light #toolbar .slider-reset:hover,
 body.theme-light #toolbar #export-select:hover,
