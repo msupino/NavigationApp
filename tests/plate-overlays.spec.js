@@ -48,6 +48,33 @@ test('plate overlays are mutually exclusive — enabling one disables the rest',
   expect(groupsOnMap).toEqual({ circuit: false, cvfr: false, heli: true });
 });
 
+test('restore-on-load shows only one plate even if several were persisted on', async ({ page }) => {
+  // Simulate a stale double-on state (e.g. from an old build / cold-start race):
+  // two plate toggles saved as enabled. On load only the first may show.
+  await page.route(PNG_RE, r =>
+    r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem('navaid.sec.weather', '1');
+      localStorage.setItem('navaid.showCircuit', '1');
+      localStorage.setItem('navaid.showCvfr', '1');
+    } catch (e) {}
+  });
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof map !== 'undefined' && window.airfields);
+  const onMap = await page.evaluate(() => ({
+    circuit: window.circuitLayerGroup ? map.hasLayer(window.circuitLayerGroup) : false,
+    cvfr:    window.cvfrLayerGroup    ? map.hasLayer(window.cvfrLayerGroup)    : false,
+  }));
+  // Circuit is first in priority → it stays; CVFR is dropped.
+  expect(onMap).toEqual({ circuit: true, cvfr: false });
+  const checked = await page.evaluate(() => ({
+    circuit: document.getElementById('circuit-cb').checked,
+    cvfr: document.getElementById('cvfr-cb').checked,
+  }));
+  expect(checked).toEqual({ circuit: true, cvfr: false });
+});
+
 test('the shared plate-opacity slider drives whichever plate is showing', async ({ page }) => {
   await boot(page);
   await page.locator('#cvfr-cb').check();
