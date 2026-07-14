@@ -121,7 +121,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=368">
+  <link rel="stylesheet" href="app/style.css?v=369">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -445,6 +445,20 @@
         </div>
         <div class="tb-layer-frame">
         <div class="tb-frame-title" data-i18n="tbGrpWxCharts"></div>
+        <!-- Shared valid-time dropdown — wind/temp (PWX) and SIGWX are issued
+             for the same Zulu valid times, so one selector drives both. -->
+        <label class="navtoggle tb-wx-time" data-i18n-title="tbWxTimeTitle">
+          <span data-i18n="tbWxTime"></span>
+          <select id="wx-time" data-i18n-aria="tbWxTime"></select>
+        </label>
+        <!-- Shared opacity — one slider fades both weather-chart overlays. -->
+        <label class="navtoggle tb-wx-opacity" data-i18n-title="tbWxOpacityTitle">
+          <span data-i18n="tbWxOpacity"></span>
+          <input type="range" id="wx-opacity" min="0.2" max="1" step="0.05" value="0.6">
+          <span class="slider-val" id="wx-opacity-val"></span>
+          <button id="wx-opacity-reset" class="slider-reset" type="button"
+                  data-i18n-title="tbImsPwxOpacityReset">↻</button>
+        </label>
         <!-- IMS PWX wind/temperature chart overlay (hidden until the ims-data
              manifest loads). -->
         <div id="ims-pwx" class="tb-group-box" hidden>
@@ -453,13 +467,6 @@
           </label>
           <div id="ims-pwx-controls" hidden>
             <select id="ims-pwx-level" data-i18n-aria="tbImsPwxLevel"></select>
-            <select id="ims-pwx-time" data-i18n-aria="tbImsPwxTime"></select>
-            <label class="navtoggle">
-              <span data-i18n="tbImsPwxOpacity"></span>
-              <input type="range" id="ims-pwx-opacity" min="0.2" max="1" step="0.05" value="0.6">
-              <span class="slider-val" id="ims-pwx-opacity-val"></span>
-              <button id="ims-pwx-opacity-reset" class="slider-reset" type="button" data-i18n-title="tbImsPwxOpacityReset">↻</button>
-            </label>
             <div id="ims-pwx-run" style="font-size:10px;opacity:0.75"></div>
           </div>
         </div>
@@ -470,15 +477,7 @@
           <label class="navtoggle" data-i18n-title="tbSigwxOverlayTitle">
             <input type="checkbox" id="sigwx-ov-cb"> <span data-i18n="tbSigwxOverlay"></span>
           </label>
-          <div id="sigwx-ov-controls" hidden>
-            <select id="sigwx-ov-time" data-i18n-aria="tbSigwxTime"></select>
-            <label class="navtoggle">
-              <span data-i18n="tbImsPwxOpacity"></span>
-              <input type="range" id="sigwx-ov-opacity" min="0.2" max="1" step="0.05" value="0.55">
-              <span class="slider-val" id="sigwx-ov-opacity-val"></span>
-              <button id="sigwx-ov-opacity-reset" class="slider-reset" type="button" data-i18n-title="tbImsPwxOpacityReset">↻</button>
-            </label>
-          </div>
+          <div id="sigwx-ov-controls" hidden></div>
         </div>
         </div>
         <!-- LSA airspace bubbles overlay toggle (Low Alt layer only; hidden on
@@ -745,7 +744,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=368';
+      var v = '?v=369';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
