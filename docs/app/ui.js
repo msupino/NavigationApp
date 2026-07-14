@@ -2964,7 +2964,7 @@ function loadCircuitOverlays() {
     const co = af.circuit_overlay;
     if (!co) continue;
     L.imageOverlay(
-      circuitImgBase() + encodeURIComponent(co.png) + '?v=3',
+      circuitImgBase() + encodeURIComponent(co.png) + '?v=4',
       [co.sw, co.ne],
       { opacity: plateOpacity, interactive: false, pane: 'overlayPane' }
     ).addTo(circuitLayerGroup);
@@ -3004,7 +3004,7 @@ function loadTrainingOverlays() {
     const to = af.training_overlay;
     if (!to) continue;
     L.imageOverlay(
-      trainingImgBase() + encodeURIComponent(to.png) + '?v=1',
+      trainingImgBase() + encodeURIComponent(to.png) + '?v=4',
       [to.sw, to.ne],
       { opacity: plateOpacity, interactive: false, pane: 'overlayPane' }
     ).addTo(trainingLayerGroup);
@@ -3044,7 +3044,7 @@ function loadCvfrOverlays() {
     const co = af.cvfr_overlay;
     if (!co) continue;
     L.imageOverlay(
-      cvfrImgBase() + encodeURIComponent(co.png) + '?v=2',
+      cvfrImgBase() + encodeURIComponent(co.png) + '?v=4',
       [co.sw, co.ne],
       { opacity: plateOpacity, interactive: false, pane: 'overlayPane' }
     ).addTo(cvfrLayerGroup);
@@ -3084,7 +3084,7 @@ function loadHeliOverlays() {
     const ho = af.heli_overlay;
     if (!ho) continue;
     L.imageOverlay(
-      heliImgBase() + encodeURIComponent(ho.png) + '?v=1',
+      heliImgBase() + encodeURIComponent(ho.png) + '?v=4',
       [ho.sw, ho.ne],
       { opacity: plateOpacity, interactive: false, pane: 'overlayPane' }
     ).addTo(heliLayerGroup);
@@ -3124,7 +3124,7 @@ function loadCommfailOverlays() {
     const co = af.commfail_overlay;
     if (!co) continue;
     L.imageOverlay(
-      commfailImgBase() + encodeURIComponent(co.png) + '?v=1',
+      commfailImgBase() + encodeURIComponent(co.png) + '?v=4',
       [co.sw, co.ne],
       { opacity: plateOpacity, interactive: false, pane: 'overlayPane' }
     ).addTo(commfailLayerGroup);
@@ -3147,7 +3147,18 @@ const PLATE_OPACITY_KEY = 'navaid.plateOpacity';
 const PLATE_DEFAULT_OPACITY = 0.6;
 let plateOpacity = (() => {
   const v = parseFloat(localStorage.getItem(PLATE_OPACITY_KEY));
-  return isNaN(v) ? PLATE_DEFAULT_OPACITY : v;
+  if (!isNaN(v)) return v;
+  // One-time migration: adopt a value saved under any of the old per-layer
+  // opacity keys (before the sliders were united) so customised users keep it.
+  for (const k of ['navaid.circuitOpacity', 'navaid.trainingOpacity',
+                   'navaid.cvfrOpacity', 'navaid.heliOpacity', 'navaid.commfailOpacity']) {
+    const ov = parseFloat(localStorage.getItem(k));
+    if (!isNaN(ov)) {
+      try { localStorage.setItem(PLATE_OPACITY_KEY, String(ov)); } catch (_) {}
+      return ov;
+    }
+  }
+  return PLATE_DEFAULT_OPACITY;
 })();
 function applyPlateOpacity(v) {
   plateOpacity = v;
@@ -3259,6 +3270,9 @@ refreshLsaListBtn();
       if (controls) controls.hidden = !showCircuit;
       if (showCircuit) {
         if (!airfields) await loadAirfields();
+        // Re-check: a toggle-off (or mutual-exclusion switch) during the
+        // cold-start await would otherwise leave an orphaned overlay.
+        if (!window.showCircuit) return;
         loadCircuitOverlays();
         if (circuitLayerGroup) circuitLayerGroup.addTo(map);
       } else {
@@ -3303,6 +3317,9 @@ refreshLsaListBtn();
       if (controls) controls.hidden = !showTraining;
       if (showTraining) {
         if (!airfields) await loadAirfields();
+        // Re-check: a toggle-off (or mutual-exclusion switch) during the
+        // cold-start await would otherwise leave an orphaned overlay.
+        if (!window.showTraining) return;
         loadTrainingOverlays();
         if (trainingLayerGroup) trainingLayerGroup.addTo(map);
       } else {
@@ -3347,6 +3364,9 @@ refreshLsaListBtn();
       if (controls) controls.hidden = !showCvfr;
       if (showCvfr) {
         if (!airfields) await loadAirfields();
+        // Re-check: a toggle-off (or mutual-exclusion switch) during the
+        // cold-start await would otherwise leave an orphaned overlay.
+        if (!window.showCvfr) return;
         loadCvfrOverlays();
         if (cvfrLayerGroup) cvfrLayerGroup.addTo(map);
       } else {
@@ -3391,6 +3411,9 @@ refreshLsaListBtn();
       if (controls) controls.hidden = !showHeli;
       if (showHeli) {
         if (!airfields) await loadAirfields();
+        // Re-check: a toggle-off (or mutual-exclusion switch) during the
+        // cold-start await would otherwise leave an orphaned overlay.
+        if (!window.showHeli) return;
         loadHeliOverlays();
         if (heliLayerGroup) heliLayerGroup.addTo(map);
       } else {
@@ -3435,6 +3458,9 @@ refreshLsaListBtn();
       if (controls) controls.hidden = !showCommfail;
       if (showCommfail) {
         if (!airfields) await loadAirfields();
+        // Re-check: a toggle-off (or mutual-exclusion switch) during the
+        // cold-start await would otherwise leave an orphaned overlay.
+        if (!window.showCommfail) return;
         loadCommfailOverlays();
         if (commfailLayerGroup) commfailLayerGroup.addTo(map);
       } else {
@@ -4134,10 +4160,15 @@ function refreshMapAfterToolbarModeChange() {
     });
   }
   document.addEventListener('pointerdown', e => {
-    if (!toolbarUsesDesktopMenu()) return;
-    if (toolbar && toolbar.classList.contains('multi-open')) return;
     if (e.target && e.target.closest && e.target.closest('#toolbar')) return;
-    closeDesktopMenus();
+    if (toolbarUsesDesktopMenu()) {
+      if (toolbar && toolbar.classList.contains('multi-open')) return;
+      closeDesktopMenus();
+    } else if (anySectionOpen()) {
+      // Mobile / floating toolbar: a tap outside the menu closes the open
+      // section too, matching the desktop click-outside behaviour.
+      window.closeToolbarMenus();
+    }
   });
   document.addEventListener('keydown', e => {
     if (toolbarUsesDesktopMenu() && e.key === 'Escape') closeDesktopMenus();
@@ -4558,31 +4589,33 @@ loadAirfields().then(() => {
   if (showCommChange && typeof seedCommChangeNotes === 'function') seedCommChangeNotes();
   draw();
   if (state.selected) showInspector();
-  // Circuit overlay: add to map if already toggled on (restored from localStorage)
-  if (showCircuit) {
-    loadCircuitOverlays();
-    if (circuitLayerGroup) circuitLayerGroup.addTo(map);
-  }
-  // Training-area overlay: same restore-on-load guard.
-  if (showTraining) {
-    loadTrainingOverlays();
-    if (trainingLayerGroup) trainingLayerGroup.addTo(map);
-  }
-  // CVFR routes / comm-failure overlay: same restore-on-load guard.
-  if (showCvfr) {
-    loadCvfrOverlays();
-    if (cvfrLayerGroup) cvfrLayerGroup.addTo(map);
-  }
-  // Helicopter routes overlay: same restore-on-load guard.
-  if (showHeli) {
-    loadHeliOverlays();
-    if (heliLayerGroup) heliLayerGroup.addTo(map);
-  }
-  // Comm-failure entry overlay: same restore-on-load guard.
-  if (showCommfail) {
-    loadCommfailOverlays();
-    if (commfailLayerGroup) commfailLayerGroup.addTo(map);
-  }
+  // Airfield-plate overlays are mutually exclusive — restore only the first
+  // enabled plate and clear any stale extras, so a past double-on state (e.g.
+  // from a cold-start toggle race) can never stack two plates on load.
+  (function restorePlateOverlays() {
+    const plates = [
+      ['showCircuit',  CIRCUIT_SHOW_KEY,  'circuit-cb',  loadCircuitOverlays,  () => circuitLayerGroup],
+      ['showTraining', TRAINING_SHOW_KEY, 'training-cb', loadTrainingOverlays, () => trainingLayerGroup],
+      ['showCvfr',     CVFR_SHOW_KEY,     'cvfr-cb',     loadCvfrOverlays,     () => cvfrLayerGroup],
+      ['showHeli',     HELI_SHOW_KEY,     'heli-cb',     loadHeliOverlays,     () => heliLayerGroup],
+      ['showCommfail', COMMFAIL_SHOW_KEY, 'commfail-cb', loadCommfailOverlays, () => commfailLayerGroup],
+    ];
+    let shown = false;
+    for (const [flag, key, cbId, load, group] of plates) {
+      if (!window[flag]) continue;
+      if (!shown) {
+        load();
+        const g = group(); if (g) g.addTo(map);
+        shown = true;
+      } else {
+        // A second enabled plate — drop it so only one shows.
+        window[flag] = false;
+        try { localStorage.setItem(key, '0'); } catch (_) {}
+        const cb = document.getElementById(cbId);
+        if (cb) cb.checked = false;
+      }
+    }
+  })();
 });
 // Leg-altitude green-route altitude table: fills only freshly-created legs, and
 // leaves saved/imported/manual leg values authoritative.
