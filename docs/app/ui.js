@@ -2966,7 +2966,7 @@ function loadCircuitOverlays() {
     L.imageOverlay(
       circuitImgBase() + encodeURIComponent(co.png) + '?v=3',
       [co.sw, co.ne],
-      { opacity: circuitOpacity, interactive: false, pane: 'overlayPane' }
+      { opacity: plateOpacity, interactive: false, pane: 'overlayPane' }
     ).addTo(circuitLayerGroup);
   }
 }
@@ -3006,7 +3006,7 @@ function loadTrainingOverlays() {
     L.imageOverlay(
       trainingImgBase() + encodeURIComponent(to.png) + '?v=1',
       [to.sw, to.ne],
-      { opacity: trainingOpacity, interactive: false, pane: 'overlayPane' }
+      { opacity: plateOpacity, interactive: false, pane: 'overlayPane' }
     ).addTo(trainingLayerGroup);
   }
 }
@@ -3046,7 +3046,7 @@ function loadCvfrOverlays() {
     L.imageOverlay(
       cvfrImgBase() + encodeURIComponent(co.png) + '?v=2',
       [co.sw, co.ne],
-      { opacity: cvfrOpacity, interactive: false, pane: 'overlayPane' }
+      { opacity: plateOpacity, interactive: false, pane: 'overlayPane' }
     ).addTo(cvfrLayerGroup);
   }
 }
@@ -3086,7 +3086,7 @@ function loadHeliOverlays() {
     L.imageOverlay(
       heliImgBase() + encodeURIComponent(ho.png) + '?v=1',
       [ho.sw, ho.ne],
-      { opacity: heliOpacity, interactive: false, pane: 'overlayPane' }
+      { opacity: plateOpacity, interactive: false, pane: 'overlayPane' }
     ).addTo(heliLayerGroup);
   }
 }
@@ -3126,7 +3126,7 @@ function loadCommfailOverlays() {
     L.imageOverlay(
       commfailImgBase() + encodeURIComponent(co.png) + '?v=1',
       [co.sw, co.ne],
-      { opacity: commfailOpacity, interactive: false, pane: 'overlayPane' }
+      { opacity: plateOpacity, interactive: false, pane: 'overlayPane' }
     ).addTo(commfailLayerGroup);
   }
 }
@@ -3136,6 +3136,25 @@ function applyCommfailOpacity(v) {
   const valEl = document.getElementById('commfail-opacity-val');
   if (valEl) valEl.textContent = Math.round(v * 100) + '%';
   if (commfailLayerGroup) commfailLayerGroup.eachLayer(l => l.setOpacity(v));
+}
+
+// ── Shared airfield-plate opacity ─────────────────────────────────────────────
+// The five plate overlays (circuit, training, CVFR, helicopter, comm-failure)
+// are mutually exclusive, so one slider at the top of the "Airfield plates"
+// frame drives whichever plate is showing. All plate imageOverlays are created
+// with `plateOpacity`, and this applies live to every plate layer group.
+const PLATE_OPACITY_KEY = 'navaid.plateOpacity';
+const PLATE_DEFAULT_OPACITY = 0.6;
+let plateOpacity = (() => {
+  const v = parseFloat(localStorage.getItem(PLATE_OPACITY_KEY));
+  return isNaN(v) ? PLATE_DEFAULT_OPACITY : v;
+})();
+function applyPlateOpacity(v) {
+  plateOpacity = v;
+  const valEl = document.getElementById('plate-opacity-val');
+  if (valEl) valEl.textContent = Math.round(v * 100) + '%';
+  [circuitLayerGroup, trainingLayerGroup, cvfrLayerGroup, heliLayerGroup, commfailLayerGroup]
+    .forEach(g => { if (g) g.eachLayer(l => l.setOpacity(v)); });
 }
 
 const AIRFIELDS_KEY = 'navaid.showAirfields';
@@ -3460,6 +3479,29 @@ refreshLsaListBtn();
         }
       }
     });
+  }
+})();
+// Shared airfield-plate opacity slider — one control at the top of the frame
+// drives whichever plate overlay is showing.
+(function () {
+  const opEl    = document.getElementById('plate-opacity');
+  const opReset = document.getElementById('plate-opacity-reset');
+  if (opEl) {
+    opEl.value = String(plateOpacity);
+    applyPlateOpacity(plateOpacity);          // sets val label on load
+    opEl.oninput = function () {
+      const v = parseFloat(opEl.value);
+      try { localStorage.setItem(PLATE_OPACITY_KEY, String(v)); } catch (_) {}
+      applyPlateOpacity(v);
+    };
+  }
+  if (opReset) {
+    opReset.onclick = function () {
+      if (!opEl) return;
+      opEl.value = String(PLATE_DEFAULT_OPACITY);
+      try { localStorage.setItem(PLATE_OPACITY_KEY, String(PLATE_DEFAULT_OPACITY)); } catch (_) {}
+      applyPlateOpacity(PLATE_DEFAULT_OPACITY);
+    };
   }
 })();
 // --- VOR/DME overlay + reference selector --------------------------------
