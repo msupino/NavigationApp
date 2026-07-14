@@ -3443,6 +3443,25 @@ refreshLsaListBtn();
     };
   }
 })();
+// Airfield-plate overlays are mutually exclusive — only one plate layer shows at
+// a time, so turning one on turns the others off (each toggle's own change
+// handler then removes its layer + persists the off state).
+(function () {
+  const boxes = ['circuit-cb', 'training-cb', 'cvfr-cb', 'heli-cb', 'commfail-cb']
+    .map(id => document.getElementById(id))
+    .filter(Boolean);
+  for (const cb of boxes) {
+    cb.addEventListener('change', () => {
+      if (!cb.checked) return;
+      for (const other of boxes) {
+        if (other !== cb && other.checked) {
+          other.checked = false;
+          other.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+    });
+  }
+})();
 // --- VOR/DME overlay + reference selector --------------------------------
 const VOR_STATIONS_KEY = 'navaid.showVorStations';
 const VOR_LEGACY_KEY = 'navaid.showVor';
