@@ -121,7 +121,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=363">
+  <link rel="stylesheet" href="app/style.css?v=364">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -397,7 +397,8 @@
              slider at the top drives NOTAM, wind-effect and wind-field
              together. Wind/temp and significant-weather below carry their own
              times and stay outside this frame. -->
-        <div class="tb-timed-layers">
+        <div class="tb-layer-frame">
+          <div class="tb-frame-title" data-i18n="tbGrpTimed"></div>
           <div class="tb-group-box">
             <label class="navtoggle" data-i18n-title="tbLookAheadTitle">
               <span data-i18n="tbWindFieldTime"></span>
@@ -441,6 +442,8 @@
             <div id="windfield-status" class="wind-fetch-status" style="display:none"></div>
           </div>
         </div>
+        <div class="tb-layer-frame">
+        <div class="tb-frame-title" data-i18n="tbGrpWxCharts"></div>
         <!-- IMS PWX wind/temperature chart overlay (hidden until the ims-data
              manifest loads). -->
         <div id="ims-pwx" class="tb-group-box" hidden>
@@ -476,15 +479,19 @@
             </label>
           </div>
         </div>
+        </div>
         <!-- LSA airspace bubbles overlay toggle (Low Alt layer only; hidden on
              others). The bubble list button lives in the Charts section. -->
+        <div class="tb-layer-frame">
+        <div class="tb-frame-title" data-i18n="tbGrpAirspace"></div>
         <div id="lsa-group" class="tb-group-box" hidden>
           <label class="navtoggle" data-i18n-title="tbShowLsaTitle">
             <input type="checkbox" id="lsa-cb"> <span data-i18n="tbShowLsa"></span>
           </label>
         </div>
-        <div class="tb-group" data-i18n="tbGrpPlates"></div>
-        <div class="tb-plate-layers">
+        </div>
+        <div class="tb-layer-frame">
+        <div class="tb-frame-title" data-i18n="tbGrpPlates"></div>
         <div class="tb-group-box">
           <label class="navtoggle" data-i18n-title="tbShowCircuitTitle">
             <input type="checkbox" id="circuit-cb"> <span data-i18n="tbShowCircuit"></span>
@@ -774,7 +781,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=363';
+      var v = '?v=364';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
