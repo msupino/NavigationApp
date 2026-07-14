@@ -4929,6 +4929,33 @@ const NavWxTime = (function () {
   };
 })();
 
+// Shared opacity for the IMS weather-chart overlays — one #wx-opacity slider
+// fades both the wind/temp (PWX) and SIGWX overlays. Single owner: seeds the
+// default / persisted value, drives the label + reset, and notifies both
+// overlays on change.
+const NavWxOpacity = (function () {
+  const KEY = 'navaid.wxOpacity';
+  const DEFAULT = 0.6;
+  const sel = document.getElementById('wx-opacity');
+  const valEl = document.getElementById('wx-opacity-val');
+  const reset = document.getElementById('wx-opacity-reset');
+  const value = () => { const v = sel ? parseFloat(sel.value) : NaN; return isNaN(v) ? DEFAULT : v; };
+  const label = () => { if (valEl) valEl.textContent = Math.round(value() * 100) + '%'; };
+  if (sel) {
+    let v = DEFAULT;
+    try { const s = parseFloat(localStorage.getItem(KEY)); if (!isNaN(s)) v = s; } catch (e) {}
+    sel.value = String(v); label();
+    sel.addEventListener('input', () => { try { localStorage.setItem(KEY, sel.value); } catch (e) {} label(); });
+  }
+  if (reset && sel) reset.addEventListener('click', () => {
+    sel.value = String(DEFAULT);
+    try { localStorage.setItem(KEY, String(DEFAULT)); } catch (e) {}
+    label();
+    sel.dispatchEvent(new Event('input'));
+  });
+  return { value, onChange: fn => { if (sel) sel.addEventListener('input', fn); } };
+})();
+
 // Manifest + PNGs are published by .github/workflows/ims-charts.yml to the
 // ims-data orphan branch (the browser can't fetch ims.gov.il directly — no
 // CORS). The control stays hidden until the manifest loads, so nothing shows
@@ -4940,10 +4967,7 @@ const NavWxTime = (function () {
   const controls = document.getElementById('ims-pwx-controls');
   const levelSel = document.getElementById('ims-pwx-level');
   const timeSel = document.getElementById('wx-time');   // shared with SIGWX
-  const opacity = document.getElementById('ims-pwx-opacity');
-  const opacityReset = document.getElementById('ims-pwx-opacity-reset');
-  const DEFAULT_OPACITY = String(typeof tune === 'function' ? tune('imsPwxOpacity') : 1);
-  if (!box || !cb || !levelSel || !timeSel || !opacity || typeof map === 'undefined') return;
+  if (!box || !cb || !levelSel || !timeSel || typeof map === 'undefined') return;
 
   let manifest = null;
   let layer = null;
@@ -4974,12 +4998,12 @@ const NavWxTime = (function () {
                     [cLat + hLat + dLat, cLng + hLng + dLng]];
     const url = RAW + t.png + '?t=' + (manifest.generatedAt || '');
     if (!layer) {
-      layer = L.imageOverlay(url, bounds, { opacity: +opacity.value, interactive: false, pane: 'overlayPane', className: 'ims-pwx-layer' });
+      layer = L.imageOverlay(url, bounds, { opacity: NavWxOpacity.value(), interactive: false, pane: 'overlayPane', className: 'ims-pwx-layer' });
       layer.addTo(map);
     } else {
       layer.setUrl(url);
       layer.setBounds(bounds);
-      layer.setOpacity(+opacity.value);
+      layer.setOpacity(NavWxOpacity.value());
     }
     applyRotation();
   }
@@ -5009,7 +5033,6 @@ const NavWxTime = (function () {
     try {
       localStorage.setItem(KEY, JSON.stringify({
         on: cb.checked, level: levelSel.value, valid: timeSel.value,
-        opacity: +opacity.value,
       }));
     } catch (e) { /* storage unavailable */ }
   };
@@ -5023,18 +5046,8 @@ const NavWxTime = (function () {
   });
   levelSel.addEventListener('change', () => { fillTimes(); updateLayer(); persist(); });
   timeSel.addEventListener('change', () => { updateLayer(); persist(); });
-  const showOpacity = () => updateSliderVal(opacity, Math.round(+opacity.value * 100) + '%');
-  opacity.addEventListener('input', () => {
-    if (layer) layer.setOpacity(+opacity.value);
-    showOpacity(); persist();
-  });
-  if (opacityReset) opacityReset.addEventListener('click', () => {
-    opacity.value = DEFAULT_OPACITY;
-    if (layer) layer.setOpacity(+opacity.value);
-    showOpacity(); persist();
-  });
-  opacity.value = DEFAULT_OPACITY;   // apply the (tunable) default + show it
-  showOpacity();
+  // Opacity is the shared #wx-opacity slider (NavWxOpacity) — re-apply on change.
+  NavWxOpacity.onChange(() => { if (layer) layer.setOpacity(NavWxOpacity.value()); });
 
   fetch(RAW + 'ims/pwx.json?t=' + Date.now(), { cache: 'no-store' })
     .then(r => (r.ok ? r.json() : null))
@@ -5058,7 +5071,6 @@ const NavWxTime = (function () {
           if (sv.level && [...levelSel.options].some(o => o.value === sv.level)) {
             levelSel.value = sv.level; fillTimes();
           }
-          if (Number.isFinite(sv.opacity)) { opacity.value = sv.opacity; showOpacity(); }
           if (sv.on) { cb.checked = true; controls.hidden = false; }
         }
       } catch (e) { /* storage unavailable */ }
@@ -5302,10 +5314,7 @@ const NavWxTime = (function () {
   const cb = document.getElementById('sigwx-ov-cb');
   const controls = document.getElementById('sigwx-ov-controls');
   const timeSel = document.getElementById('wx-time');   // shared with wind/temp
-  const opacity = document.getElementById('sigwx-ov-opacity');
-  const opacityReset = document.getElementById('sigwx-ov-opacity-reset');
-  if (!box || !cb || !timeSel || !opacity || typeof map === 'undefined' || typeof L === 'undefined') return;
-  const DEFAULT_OPACITY = String(typeof tune === 'function' ? tune('sigwxOpacity') : 0.55);
+  if (!box || !cb || !timeSel || typeof map === 'undefined' || typeof L === 'undefined') return;
   // Three panels of the 1755x1240 IMS chart: the full-width title/valid-time
   // HEADER strip, the left MAP frame, and the right weather TABLE. The MAP and
   // TABLE crops both start BELOW the header (y0=0.105); the header is shown as
@@ -5414,7 +5423,7 @@ const NavWxTime = (function () {
     const url = RAW + t.png + '?t=' + (manifest.generatedAt || '');
     cropPanel(url, CROP_MAP, true).then(data => {
       if (!cb.checked) { removeLayers(); return; }
-      place('map', data, boundsFrom(BOUNDS_MAP, 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale'), +opacity.value);
+      place('map', data, boundsFrom(BOUNDS_MAP, 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale'), NavWxOpacity.value());
       applyRotation();
     }).catch(() => removeLayers());
     const tblOp = off('sigwxTblOpacity') || 0.92;
@@ -5440,19 +5449,15 @@ const NavWxTime = (function () {
   }
   const KEY = 'navaid.sigwxOv';
   const persist = () => {
-    try { localStorage.setItem(KEY, JSON.stringify({ on: cb.checked, valid: timeSel.value, opacity: +opacity.value })); }
+    try { localStorage.setItem(KEY, JSON.stringify({ on: cb.checked, valid: timeSel.value })); }
     catch (e) { /* */ }
   };
   NavAid.refreshSigwxOv = updateLayer;
 
   cb.addEventListener('change', () => { controls.hidden = !cb.checked; updateLayer(); persist(); });
   timeSel.addEventListener('change', () => { updateLayer(); persist(); });
-  function setOpacityLabel() {
-    const el = document.getElementById('sigwx-ov-opacity-val');
-    if (el) el.textContent = Math.round(+opacity.value * 100) + '%';
-  }
-  opacity.addEventListener('input', () => { setOpacityLabel(); updateLayer(); persist(); });
-  if (opacityReset) opacityReset.addEventListener('click', () => { opacity.value = DEFAULT_OPACITY; setOpacityLabel(); updateLayer(); persist(); });
+  // Opacity is the shared #wx-opacity slider (NavWxOpacity) — re-render on change.
+  NavWxOpacity.onChange(() => updateLayer());
 
   fetch(RAW + 'ims/sigwx.json?t=' + Date.now(), { cache: 'no-store' })
     .then(r => (r.ok ? r.json() : null))
@@ -5464,8 +5469,6 @@ const NavWxTime = (function () {
       // Restore persisted state.
       let saved = null;
       try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { /* */ }
-      opacity.value = saved && Number.isFinite(saved.opacity) ? String(saved.opacity) : DEFAULT_OPACITY;
-      setOpacityLabel();
       // The shared #wx-time dropdown was seeded to now (Zulu) by NavWxTime.
       if (saved && saved.on) { cb.checked = true; controls.hidden = false; updateLayer(); }
     })

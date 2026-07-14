@@ -516,6 +516,8 @@ window.S = Object.assign({
   tbImsPwxTime: 'Valid time',
   tbWxTime: 'Valid time',
   tbWxTimeTitle: 'Valid time (Zulu) — shared by the wind/temp and SIGWX charts',
+  tbWxOpacity: 'Chart opacity',
+  tbWxOpacityTitle: 'Opacity of the weather-chart overlays (shared by wind/temp and SIGWX)',
   tbImsPwxOpacity: 'Sign opacity',
   tbImsPwxOpacityReset: 'Reset opacity',
   tbImsPwxRun: 'Model run',

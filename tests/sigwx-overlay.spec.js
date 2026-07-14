@@ -35,7 +35,6 @@ test('SIGWX overlay box reveals when the manifest loads', async ({ page }) => {
 test('toggling adds a cropped image overlay; persists across reload', async ({ page }) => {
   await boot(page);
   await page.locator('#sigwx-ov-cb').check();
-  await expect(page.locator('#sigwx-ov-controls')).toBeVisible();
   // Three cropped overlays appear (map panel + table + title header), data: URLs.
   const img = page.locator('img.sigwx-ov-layer');
   await expect(img).toHaveCount(3);

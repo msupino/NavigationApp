@@ -33,6 +33,8 @@ window.S = {
   tbImsPwxTime: 'זמן תוקף',
   tbWxTime: 'זמן תוקף',
   tbWxTimeTitle: 'זמן תוקף (זולו) — משותף למפות רוח/טמפ׳ ו-SIGWX',
+  tbWxOpacity: 'שקיפות מפה',
+  tbWxOpacityTitle: 'שקיפות מפות מזג האוויר (משותף לרוח/טמפ׳ ו-SIGWX)',
   tbImsPwxOpacity: 'בהירות סימנים',
   tbImsPwxOpacityReset: 'אפס שקיפות',
   tbImsPwxRun: 'ריצת מודל',
