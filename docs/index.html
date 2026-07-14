@@ -121,7 +121,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=365">
+  <link rel="stylesheet" href="app/style.css?v=366">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -493,75 +493,37 @@
         </div>
         <div class="tb-layer-frame">
         <div class="tb-frame-title" data-i18n="tbGrpPlates"></div>
+        <label class="navtoggle tb-plate-opacity" data-i18n-title="tbPlateOpacityTitle">
+          <span data-i18n="tbPlateOpacity"></span>
+          <input type="range" id="plate-opacity" min="0.1" max="1" step="0.05" value="0.6">
+          <span class="slider-val" id="plate-opacity-val"></span>
+          <button id="plate-opacity-reset" class="slider-reset" type="button"
+                  data-i18n-title="tbPlateOpacityReset">↻</button>
+        </label>
         <div class="tb-group-box">
           <label class="navtoggle" data-i18n-title="tbShowCircuitTitle">
             <input type="checkbox" id="circuit-cb"> <span data-i18n="tbShowCircuit"></span>
           </label>
-          <div id="circuit-controls" hidden>
-            <label class="navtoggle" data-i18n-title="tbCircuitOpacityTitle">
-              <span data-i18n="tbCircuitOpacity"></span>
-              <input type="range" id="circuit-opacity" min="0.1" max="1" step="0.05" value="0.6">
-              <span class="slider-val" id="circuit-opacity-val"></span>
-              <button id="circuit-opacity-reset" class="slider-reset" type="button"
-                      data-i18n-title="tbCircuitOpacityReset">↻</button>
-            </label>
-          </div>
         </div>
         <div class="tb-group-box">
           <label class="navtoggle" data-i18n-title="tbShowTrainingTitle">
             <input type="checkbox" id="training-cb"> <span data-i18n="tbShowTraining"></span>
           </label>
-          <div id="training-controls" hidden>
-            <label class="navtoggle" data-i18n-title="tbTrainingOpacityTitle">
-              <span data-i18n="tbTrainingOpacity"></span>
-              <input type="range" id="training-opacity" min="0.1" max="1" step="0.05" value="0.6">
-              <span class="slider-val" id="training-opacity-val"></span>
-              <button id="training-opacity-reset" class="slider-reset" type="button"
-                      data-i18n-title="tbTrainingOpacityReset">↻</button>
-            </label>
-          </div>
         </div>
         <div class="tb-group-box">
           <label class="navtoggle" data-i18n-title="tbShowCvfrTitle">
             <input type="checkbox" id="cvfr-cb"> <span data-i18n="tbShowCvfr"></span>
           </label>
-          <div id="cvfr-controls" hidden>
-            <label class="navtoggle" data-i18n-title="tbCvfrOpacityTitle">
-              <span data-i18n="tbCvfrOpacity"></span>
-              <input type="range" id="cvfr-opacity" min="0.1" max="1" step="0.05" value="0.6">
-              <span class="slider-val" id="cvfr-opacity-val"></span>
-              <button id="cvfr-opacity-reset" class="slider-reset" type="button"
-                      data-i18n-title="tbCvfrOpacityReset">↻</button>
-            </label>
-          </div>
         </div>
         <div class="tb-group-box">
           <label class="navtoggle" data-i18n-title="tbShowHeliTitle">
             <input type="checkbox" id="heli-cb"> <span data-i18n="tbShowHeli"></span>
           </label>
-          <div id="heli-controls" hidden>
-            <label class="navtoggle" data-i18n-title="tbHeliOpacityTitle">
-              <span data-i18n="tbHeliOpacity"></span>
-              <input type="range" id="heli-opacity" min="0.1" max="1" step="0.05" value="0.6">
-              <span class="slider-val" id="heli-opacity-val"></span>
-              <button id="heli-opacity-reset" class="slider-reset" type="button"
-                      data-i18n-title="tbHeliOpacityReset">↻</button>
-            </label>
-          </div>
         </div>
         <div class="tb-group-box">
           <label class="navtoggle" data-i18n-title="tbShowCommfailTitle">
             <input type="checkbox" id="commfail-cb"> <span data-i18n="tbShowCommfail"></span>
           </label>
-          <div id="commfail-controls" hidden>
-            <label class="navtoggle" data-i18n-title="tbCommfailOpacityTitle">
-              <span data-i18n="tbCommfailOpacity"></span>
-              <input type="range" id="commfail-opacity" min="0.1" max="1" step="0.05" value="0.6">
-              <span class="slider-val" id="commfail-opacity-val"></span>
-              <button id="commfail-opacity-reset" class="slider-reset" type="button"
-                      data-i18n-title="tbCommfailOpacityReset">↻</button>
-            </label>
-          </div>
         </div>
         </div>
         </div>
@@ -783,7 +745,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=365';
+      var v = '?v=366';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
