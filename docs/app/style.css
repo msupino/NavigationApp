@@ -301,45 +301,55 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   flex-direction: column;
   gap: 3px;
 }
-/* The time-driven layers (NOTAM + wind-effect + wind-field) share the one
-   look-ahead slider, so they sit in a single outer frame headed by that
-   slider. Inner cards drop their own border to avoid nested frames; the
-   header row gets a divider under it. Wind/temp + sig-weather are separate
-   layers with their own times and stay outside this frame. */
-.tb-timed-layers {
+/* Every Extra-layers group sits in one titled frame: SIGMET/NOTAM/wind
+   (time-driven), weather charts (wind-temp + SIGWX), airspace (LSA) and the
+   airfield plates (circuit, training, CVFR, comm-failure, heli). Inner cards
+   drop their own border to avoid nested frames; a small title heads each
+   frame. A frame whose cards are all hidden collapses out of the menu. */
+/* All the Extra-layers frames sit in one wrapper so the small gaps between
+   frames belong to a single hit-testable element (the open dropdown body sets
+   pointer-events:none with only its direct children clickable; without this
+   wrapper a gap between frames would let a click fall through to the map). */
+.tb-frames {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tb-layer-frame {
   border: 1px solid #443f3f;
   border-radius: 5px;
   padding: 4px 6px;
-  margin-top: 4px;
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
-.tb-timed-layers > .tb-group-box {
+.tb-layer-frame > .tb-group-box {
   border: 0;
   border-radius: 0;
   padding: 0;
   margin-top: 0;
 }
-/* Airfield plate overlays (circuit, training, CVFR, comm-failure, heli) are all
-   georeferenced IAA PDF plates, so they share one outer frame like the
-   time-driven layers above. Inner cards drop their own border to avoid nested
-   frames. */
-.tb-plate-layers {
-  border: 1px solid #443f3f;
-  border-radius: 5px;
-  padding: 4px 6px;
-  margin-top: 4px;
+/* Frame title: reuse the .tb-group look but sit flush at the top of the frame. */
+.tb-frame-title {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #8a8484;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 1px;
 }
-.tb-plate-layers > .tb-group-box {
-  border: 0;
-  border-radius: 0;
-  padding: 0;
-  margin-top: 0;
+.tb-frame-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #33302f;
 }
+/* Collapse a frame (and its title) when every layer card inside is hidden —
+   e.g. weather charts / LSA before their data manifests load. */
+.tb-layer-frame:not(:has(> .tb-group-box:not([hidden]))) { display: none; }
 /* Uniform layout for every layer card: stacked controls with even spacing,
    small sub-control labels, and full-width selects. */
 .tb-group-box [id$="-controls"] {
