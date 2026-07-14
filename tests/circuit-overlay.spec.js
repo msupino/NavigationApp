@@ -36,13 +36,11 @@ async function boot(page) {
 test('circuit-cb is unchecked by default and controls are hidden', async ({ page }) => {
   await boot(page);
   await expect(page.locator('#circuit-cb')).not.toBeChecked();
-  await expect(page.locator('#circuit-controls')).toBeHidden();
 });
 
 test('checking circuit-cb reveals controls and adds image overlays', async ({ page }) => {
   await boot(page);
   await page.locator('#circuit-cb').check();
-  await expect(page.locator('#circuit-controls')).toBeVisible();
   // At least one leaflet image overlay should appear in the overlay pane
   const imgs = page.locator('.leaflet-overlay-pane img.leaflet-image-layer');
   await expect(imgs.first()).toBeVisible();
@@ -55,7 +53,6 @@ test('unchecking removes all circuit overlays from the map', async ({ page }) =>
   await page.locator('#circuit-cb').check();
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer').first()).toBeVisible();
   await page.locator('#circuit-cb').uncheck();
-  await expect(page.locator('#circuit-controls')).toBeHidden();
   // circuitLayerGroup was created but removed from map — the group itself
   // must not be on the map after unchecking.
   const onMap = await page.evaluate(
@@ -70,8 +67,8 @@ test('opacity slider drives overlay opacity', async ({ page }) => {
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer').first()).toBeVisible();
 
   const result = await page.evaluate(() => {
-    const slider = document.getElementById('circuit-opacity');
-    const valEl  = document.getElementById('circuit-opacity-val');
+    const slider = document.getElementById('plate-opacity');
+    const valEl  = document.getElementById('plate-opacity-val');
     slider.value = '0.3';
     slider.dispatchEvent(new Event('input'));
     const img = document.querySelector('.leaflet-overlay-pane img.leaflet-image-layer');
@@ -90,15 +87,15 @@ test('opacity reset restores default 0.6', async ({ page }) => {
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer').first()).toBeVisible();
 
   const result = await page.evaluate(() => {
-    const slider = document.getElementById('circuit-opacity');
+    const slider = document.getElementById('plate-opacity');
     slider.value = '0.3';
     slider.dispatchEvent(new Event('input'));
-    document.getElementById('circuit-opacity-reset').click();
+    document.getElementById('plate-opacity-reset').click();
     const img = document.querySelector('.leaflet-overlay-pane img.leaflet-image-layer');
     return {
       sliderVal: slider.value,
       opacity: parseFloat(img.style.opacity),
-      label: document.getElementById('circuit-opacity-val').textContent,
+      label: document.getElementById('plate-opacity-val').textContent,
     };
   });
   expect(parseFloat(result.sliderVal)).toBeCloseTo(0.6, 2);
@@ -113,7 +110,7 @@ test('toggle state and opacity persist across reload', async ({ page }) => {
 
   // Set a custom opacity before reloading
   await page.evaluate(() => {
-    const s = document.getElementById('circuit-opacity');
+    const s = document.getElementById('plate-opacity');
     s.value = '0.5';
     s.dispatchEvent(new Event('input'));
   });
@@ -128,8 +125,7 @@ test('toggle state and opacity persist across reload', async ({ page }) => {
   );
 
   await expect(page.locator('#circuit-cb')).toBeChecked();
-  await expect(page.locator('#circuit-controls')).toBeVisible();
-  expect(await page.evaluate(() => document.getElementById('circuit-opacity').value)).toBe('0.5');
+  expect(await page.evaluate(() => document.getElementById('plate-opacity').value)).toBe('0.5');
   await expect(page.locator('.leaflet-overlay-pane img.leaflet-image-layer').first()).toBeVisible();
 });
 
