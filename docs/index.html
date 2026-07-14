@@ -121,7 +121,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=364">
+  <link rel="stylesheet" href="app/style.css?v=365">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -397,6 +397,7 @@
              slider at the top drives NOTAM, wind-effect and wind-field
              together. Wind/temp and significant-weather below carry their own
              times and stay outside this frame. -->
+        <div class="tb-frames">
         <div class="tb-layer-frame">
           <div class="tb-frame-title" data-i18n="tbGrpTimed"></div>
           <div class="tb-group-box">
@@ -561,6 +562,7 @@
                       data-i18n-title="tbCommfailOpacityReset">↻</button>
             </label>
           </div>
+        </div>
         </div>
         </div>
       </div>
@@ -781,7 +783,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=364';
+      var v = '?v=365';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
