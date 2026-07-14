@@ -4134,6 +4134,20 @@ function plateUrl(filename) {
   return plateBase() + encodeURIComponent(filename);
 }
 
+// Prefetch a plate PDF into the (service-worker / HTTP) cache so a later open
+// resolves from cache instead of a cold ~2 MB fetch. Fired on chip hover/focus
+// — bandwidth is spent only on plates the user shows intent on. Deduped so a
+// chip hovered repeatedly fetches once; failures are ignored (the real open
+// will surface any error).
+const _platePrefetched = new Set();
+function prefetchPlate(filename) {
+  if (!filename || _platePrefetched.has(filename)) return;
+  _platePrefetched.add(filename);
+  try {
+    fetch(plateUrl(filename), { credentials: 'omit' }).catch(() => {});
+  } catch (_) { /* fetch unavailable — ignore */ }
+}
+
 // Lazy-load PDF.js (only when a plate is first opened — it's ~1 MB). Served
 // from the same jsDelivr CDN as Leaflet, so the service worker caches it like
 // the other pinned libs. The legacy UMD build exposes window.pdfjsLib and runs
@@ -5391,6 +5405,9 @@ function showAltitudePairsModal() {
 
 function showChartsModal(focusIcao) {
   if (!prepareChartModal('airport-charts')) return;
+  // Warm PDF.js while the user scans the list, so the first plate open isn't
+  // also waiting on the ~1 MB library load.
+  if (typeof ensurePdfJs === 'function') ensurePdfJs().catch(() => {});
   const modal = createDraggableModal(S.plates, 'modal wide',
     () => clearOpenChartModal('airport-charts'),
     { nonBlocking: true, chartKind: 'airport-charts' });
@@ -5469,6 +5486,11 @@ function showChartsModal(focusIcao) {
           chip.className = 'plate-chip';
           chip.textContent = prettyPlateLabel(fn);
           chip.onclick = () => showPlateViewer(fn, prettyPlateLabel(fn));
+          // Prefetch on intent (hover / keyboard focus) so the click loads from
+          // cache. One-shot per chip via prefetchPlate's dedupe.
+          const warm = () => prefetchPlate(fn);
+          chip.addEventListener('pointerenter', warm);
+          chip.addEventListener('focus', warm);
           catDiv.appendChild(chip);
         }
         pane.appendChild(catDiv);
