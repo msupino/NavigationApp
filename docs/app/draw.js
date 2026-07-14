@@ -40,8 +40,17 @@ function legKiteAlongHalfPx(sc) {
 function drawOwnShip(pos, hdg) {
   if (!pos) return;
   const s = proj(pos);
-  const mapBearing = (typeof map !== 'undefined' && map.getBearing) ? map.getBearing() : 0;
-  const screenAngle = ((hdg || 0) - mapBearing) * Math.PI / 180;
+  // Screen angle from a projected geographic offset in the heading direction,
+  // so it stays correct under map rotation (map.setBearing) — same approach as
+  // the wind/kite arrows. (The manual `heading − mapBearing` was only right at
+  // north-up.) The silhouette's nose is up (−y) in local frame, hence +90°.
+  const to = (hdg || 0) * Math.PI / 180;
+  const eps = 0.02;   // ~1.2 NM; used for direction only
+  const p2 = proj({
+    lat: pos.lat + Math.cos(to) * eps,
+    lng: pos.lng + Math.sin(to) * eps / Math.cos(pos.lat * Math.PI / 180),
+  });
+  const screenAngle = Math.atan2(p2.y - s.y, p2.x - s.x) + Math.PI / 2;
   const r = tune('liveAircraftRadiusPx');
   octx.save();
   octx.translate(s.x, s.y);
