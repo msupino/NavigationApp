@@ -121,7 +121,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=374">
+  <link rel="stylesheet" href="app/style.css?v=375">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -637,6 +637,7 @@
         </svg>
         <span class="footer-link-text" data-i18n="tbTerms"></span>
       </a>
+      <span class="footer-gps-group">
       <button id="gps-record" type="button" class="footer-link footer-link-button gps-footer-btn"
               data-i18n-title="tbGpsRecordTitle" data-i18n-aria="tbGpsRecord">
         <span class="footer-link-icon gps-footer-icon" aria-hidden="true">⏺</span>
@@ -647,6 +648,7 @@
         <span class="footer-link-icon gps-footer-icon" aria-hidden="true">📍</span>
         <span class="footer-link-text" data-i18n="tbGpsLive"></span>
       </button>
+      </span>
       <span id="gps-readout" class="gps-readout footer-gps-readout"></span>
       <button id="sim-trigger" type="button" class="footer-link footer-link-button"
               data-i18n-title="tbSecSim" data-i18n-aria="tbSecSim">
@@ -744,7 +746,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=374';
+      var v = '?v=375';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',

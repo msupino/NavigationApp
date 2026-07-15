@@ -9,6 +9,17 @@ const { test, expect } = require('./_setup');
 test.use({ viewport: { width: 390, height: 844 } });
 
 for (const lang of ['he', 'en']) {
+  test(`record + live-location buttons share one line (${lang})`, async ({ page }) => {
+    await page.goto(`?lang=${lang}`);
+    await page.waitForFunction(() => document.getElementById('gps-record') && document.getElementById('gps-live'));
+    const r = await page.evaluate(() => {
+      const rec = document.getElementById('gps-record').getBoundingClientRect();
+      const live = document.getElementById('gps-live').getBoundingClientRect();
+      return { recTop: Math.round(rec.top), liveTop: Math.round(live.top) };
+    });
+    expect(r.recTop).toBe(r.liveTop);   // grouped no-wrap → same line in both languages
+  });
+
   test(`gps-live footer button keeps a stable width across show/hide (${lang})`, async ({ page }) => {
     await page.goto(`?lang=${lang}`);
     await page.waitForFunction(() => document.getElementById('gps-live') && typeof S !== 'undefined');
