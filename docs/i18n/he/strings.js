@@ -550,6 +550,7 @@ window.S = {
   updateAvailable: 'קיימת גרסה חדשה של NavAid. בצע רענון קשיח או טען מחדש כדי לעדכן.',
   updateReload: 'טען מחדש',
   updateDismiss: 'סגור',
+  plateLoading: 'טוען…',
   plateLoadError: 'טעינת הדפית נכשלה.',
   plateAttribution: 'דפיות © רשות התעופה האזרחית / משרד התחבורה — מפורסם ב-AIP.',
   tbLightMode: 'מצב בהיר',
