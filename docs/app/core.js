@@ -2017,8 +2017,12 @@ function altitudeInputValue(v) {
 function fmtLatLng(v, pos, neg) {
   const hemi = v >= 0 ? pos : neg;
   v = Math.abs(v);
-  const d = Math.floor(v);
-  const m = (v - d) * 60;
+  let d = Math.floor(v);
+  // Round minutes to 1 dp FIRST, then carry a rounded-up 60.0 into the degree
+  // so the readout never shows e.g. 32°60.0' (should be 33°00.0'). Same 60→0
+  // carry as dmsParts()/fmtLatLngDMS.
+  let m = Math.round((v - d) * 60 * 10) / 10;
+  if (m >= 60) { m -= 60; d += 1; }
   return `${d}°${m.toFixed(1).padStart(4, '0')}'${hemi}`;
 }
 
