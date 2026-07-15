@@ -142,7 +142,7 @@ test.describe('go-to input', () => {
       lngM: document.getElementById('goto-lng-m').value,
       lngS: document.getElementById('goto-lng-s').value,
     }));
-    expect(vals).toEqual({ latD: '32', latM: '00', latS: '17', lngD: '34', lngM: '43', lngS: '38' });
+    expect(vals).toEqual({ latD: '32', latM: '00', latS: '17', lngD: '034', lngM: '43', lngS: '38' });
     // Committing the pasted value pans there.
     await page.locator('#goto-lng-s').press('Enter');
     const center = await page.evaluate(() => {

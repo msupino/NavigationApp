@@ -57,4 +57,29 @@ test.describe('Coordinate readout', () => {
     });
     await expect(page.locator('#coord-readout')).toHaveText(expected);
   });
+
+  test('minutes rounding to 60 carries into the degree (no 32°60.0)', async ({ page }) => {
+    await boot(page);
+    const r = await page.evaluate(() => ({
+      hi: fmtLatLng(32.99997, 'N', 'S'),   // was 32°60.0'N
+      exact: fmtLatLng(33.0, 'N', 'S'),
+      lng: fmtLatLng(34.999999, 'E', 'W'), // was 34°60.0'E
+      normal: fmtLatLng(32.5, 'N', 'S'),
+    }));
+    expect(r.hi).toBe("33°00.0'N");
+    expect(r.exact).toBe("33°00.0'N");
+    expect(r.lng).toBe("035°00.0'E");   // longitude zero-padded to 3 degree digits
+    expect(r.normal).toBe("32°30.0'N");
+    // never emits a 60.0 minutes value
+    for (const v of Object.values(r)) expect(v).not.toContain('60.0');
+  });
+
+  test('readout renders left-to-right even under the Hebrew RTL layout', async ({ page }) => {
+    await page.goto('?lang=he');
+    await page.waitForFunction(() =>
+      typeof map !== 'undefined' && document.getElementById('coord-readout') !== null);
+    const dir = await page.evaluate(() =>
+      getComputedStyle(document.getElementById('coord-readout')).direction);
+    expect(dir).toBe('ltr');   // hemisphere letters/values must not be bidi-reordered
+  });
 });
