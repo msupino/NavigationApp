@@ -2964,7 +2964,7 @@ function loadCircuitOverlays() {
     const co = af.circuit_overlay;
     if (!co) continue;
     L.imageOverlay(
-      circuitImgBase() + encodeURIComponent(co.png) + '?v=5',
+      circuitImgBase() + encodeURIComponent(co.png) + '?v=6',
       [co.sw, co.ne],
       { opacity: plateOpacity, interactive: false, pane: 'overlayPane' }
     ).addTo(circuitLayerGroup);
@@ -3004,7 +3004,7 @@ function loadTrainingOverlays() {
     const to = af.training_overlay;
     if (!to) continue;
     L.imageOverlay(
-      trainingImgBase() + encodeURIComponent(to.png) + '?v=4',
+      trainingImgBase() + encodeURIComponent(to.png) + '?v=5',
       [to.sw, to.ne],
       { opacity: plateOpacity, interactive: false, pane: 'overlayPane' }
     ).addTo(trainingLayerGroup);
