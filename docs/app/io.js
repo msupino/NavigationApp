@@ -5460,6 +5460,10 @@ function showChartsModal(focusIcao) {
         const open = pane.classList.toggle('open');
         header.classList.toggle('open', open);
         header.setAttribute('aria-expanded', open ? 'true' : 'false');
+        // Touch-friendly warm: hover/focus never fires on a tap, so prefetch
+        // this airfield's plates when its section is expanded (deduped by
+        // prefetchPlate, so it won't refetch ones already warmed by hover).
+        if (open) af.plates.forEach(prefetchPlate);
       }
       header.addEventListener('click', toggle);
       header.addEventListener('keydown', e => {
@@ -5501,6 +5505,7 @@ function showChartsModal(focusIcao) {
         header.classList.add('open');
         header.setAttribute('aria-expanded', 'true');
         focusSection = section;
+        af.plates.forEach(prefetchPlate);   // warm the auto-opened airfield's plates
       }
       section.appendChild(pane);
       platesSection.appendChild(section);
