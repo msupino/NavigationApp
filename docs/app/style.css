@@ -843,6 +843,11 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   white-space: nowrap;
   pointer-events: none;
   display: none;
+  /* Numeric/latin readouts (coords, VOR, wind, zoom) must read left-to-right
+     even under the Hebrew RTL layout, or the bidi algorithm reorders the
+     hemisphere letters/values (e.g. "N 35°..E 32°.."). */
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 .leaflet-control.zulu-clock {
   display: block;
