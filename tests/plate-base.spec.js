@@ -22,11 +22,13 @@ test.describe('plateBase()', () => {
       staging:      plateBase('/staging/'),
       pr:           plateBase('/pr/456/'),
       branch:       plateBase('/branch/dev-undo/'),
+      branchSlash:  plateBase('/branch/feat/loading-charts-indicator/'),
       // raw GitHub Pages (repo sub-path)
       ghProd:       plateBase('/NavigationApp/'),
       ghStaging:    plateBase('/NavigationApp/staging/'),
       ghPr:         plateBase('/NavigationApp/pr/456/'),
       ghBranch:     plateBase('/NavigationApp/branch/feat-x/'),
+      ghBranchSlash: plateBase('/NavigationApp/branch/feat/plate-png/'),
     }));
     expect(out).toEqual({
       prodRoot:  '/byop/',
@@ -34,10 +36,12 @@ test.describe('plateBase()', () => {
       staging:   '/byop/',
       pr:        '/byop/',
       branch:    '/byop/',
+      branchSlash: '/byop/',
       ghProd:    '/NavigationApp/byop/',
       ghStaging: '/NavigationApp/byop/',
       ghPr:      '/NavigationApp/byop/',
       ghBranch:  '/NavigationApp/byop/',
+      ghBranchSlash: '/NavigationApp/byop/',
     });
   });
 

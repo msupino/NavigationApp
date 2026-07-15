@@ -4126,7 +4126,10 @@ function restoreRoute() {
 // per-environment absolute path (which 404'd on the custom domain).
 function plateBase(pathname) {
   let dir = (pathname || location.pathname).replace(/[^/]*$/, '');  // drop filename, keep trailing '/'
-  dir = dir.replace(/(staging|pr\/[^/]+|branch\/[^/]+)\/$/, '');     // preview suffix → shared root
+  // Preview suffix → shared root. `branch/.+` (not `[^/]+`) so branch names
+  // that contain a slash (e.g. feat/loading-charts-indicator) strip fully,
+  // otherwise byop resolves under the branch dir and 404s on previews.
+  dir = dir.replace(/(staging|pr\/[^/]+|branch\/.+)\/$/, '');
   return dir + 'byop/';
 }
 
