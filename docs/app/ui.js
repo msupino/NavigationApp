@@ -3253,6 +3253,40 @@ function showLsaChart() {
 const lsaListBtn = document.getElementById('lsa-list-btn');
 if (lsaListBtn) lsaListBtn.onclick = showLsaChart;
 refreshLsaListBtn();
+
+// Persistent "Loading charts…" indicator shown while an Extra-layers plate
+// overlay is fetching its airfield data / building its image layers, so the
+// toggle doesn't sit silent before anything appears. Dismissed once the layer
+// is on the map (charts start rendering).
+let _chartsLoadingEl = null;
+function chartsLoading(on) {
+  if (on) {
+    if (_chartsLoadingEl) return;
+    const el = document.createElement('div');
+    el.className = 'toast show charts-loading';
+    el.textContent = S.loadingCharts || 'Loading charts…';
+    document.body.appendChild(el);
+    _chartsLoadingEl = el;
+  } else if (_chartsLoadingEl) {
+    const el = _chartsLoadingEl; _chartsLoadingEl = null;
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 250);
+  }
+}
+// Keep the indicator up until the overlay group's images have actually loaded
+// (the perceptible wait is the chart PNGs, not just adding the layer), then
+// dismiss. A timeout guards against an image that never loads.
+function chartsLoadingUntilReady(group) {
+  if (!group) { chartsLoading(false); return; }
+  let pending = 0, done = false;
+  const finish = () => { if (!done) { done = true; chartsLoading(false); } };
+  group.eachLayer(l => {
+    const img = l && l._image;
+    if (img && img.complete && img.naturalWidth) return;   // already loaded
+    if (l && l.once) { pending++; l.once('load error', () => { if (--pending <= 0) finish(); }); }
+  });
+  if (pending === 0) finish(); else setTimeout(finish, 8000);
+}
 // Circuit overlay toggle
 (function () {
   const cb       = document.getElementById('circuit-cb');
@@ -3269,12 +3303,14 @@ refreshLsaListBtn();
       try { localStorage.setItem(CIRCUIT_SHOW_KEY, showCircuit ? '1' : '0'); } catch (_) {}
       if (controls) controls.hidden = !showCircuit;
       if (showCircuit) {
+        if (!airfields || !circuitLayerGroup) chartsLoading(true);
         if (!airfields) await loadAirfields();
         // Re-check: a toggle-off (or mutual-exclusion switch) during the
         // cold-start await would otherwise leave an orphaned overlay.
-        if (!window.showCircuit) return;
+        if (!window.showCircuit) { chartsLoading(false); return; }
         loadCircuitOverlays();
         if (circuitLayerGroup) circuitLayerGroup.addTo(map);
+        chartsLoadingUntilReady(circuitLayerGroup);
       } else {
         if (circuitLayerGroup) circuitLayerGroup.remove();
       }
@@ -3316,12 +3352,14 @@ refreshLsaListBtn();
       try { localStorage.setItem(TRAINING_SHOW_KEY, showTraining ? '1' : '0'); } catch (_) {}
       if (controls) controls.hidden = !showTraining;
       if (showTraining) {
+        if (!airfields || !trainingLayerGroup) chartsLoading(true);
         if (!airfields) await loadAirfields();
         // Re-check: a toggle-off (or mutual-exclusion switch) during the
         // cold-start await would otherwise leave an orphaned overlay.
-        if (!window.showTraining) return;
+        if (!window.showTraining) { chartsLoading(false); return; }
         loadTrainingOverlays();
         if (trainingLayerGroup) trainingLayerGroup.addTo(map);
+        chartsLoadingUntilReady(trainingLayerGroup);
       } else {
         if (trainingLayerGroup) trainingLayerGroup.remove();
       }
@@ -3363,12 +3401,14 @@ refreshLsaListBtn();
       try { localStorage.setItem(CVFR_SHOW_KEY, showCvfr ? '1' : '0'); } catch (_) {}
       if (controls) controls.hidden = !showCvfr;
       if (showCvfr) {
+        if (!airfields || !cvfrLayerGroup) chartsLoading(true);
         if (!airfields) await loadAirfields();
         // Re-check: a toggle-off (or mutual-exclusion switch) during the
         // cold-start await would otherwise leave an orphaned overlay.
-        if (!window.showCvfr) return;
+        if (!window.showCvfr) { chartsLoading(false); return; }
         loadCvfrOverlays();
         if (cvfrLayerGroup) cvfrLayerGroup.addTo(map);
+        chartsLoadingUntilReady(cvfrLayerGroup);
       } else {
         if (cvfrLayerGroup) cvfrLayerGroup.remove();
       }
@@ -3410,12 +3450,14 @@ refreshLsaListBtn();
       try { localStorage.setItem(HELI_SHOW_KEY, showHeli ? '1' : '0'); } catch (_) {}
       if (controls) controls.hidden = !showHeli;
       if (showHeli) {
+        if (!airfields || !heliLayerGroup) chartsLoading(true);
         if (!airfields) await loadAirfields();
         // Re-check: a toggle-off (or mutual-exclusion switch) during the
         // cold-start await would otherwise leave an orphaned overlay.
-        if (!window.showHeli) return;
+        if (!window.showHeli) { chartsLoading(false); return; }
         loadHeliOverlays();
         if (heliLayerGroup) heliLayerGroup.addTo(map);
+        chartsLoadingUntilReady(heliLayerGroup);
       } else {
         if (heliLayerGroup) heliLayerGroup.remove();
       }
@@ -3457,12 +3499,14 @@ refreshLsaListBtn();
       try { localStorage.setItem(COMMFAIL_SHOW_KEY, showCommfail ? '1' : '0'); } catch (_) {}
       if (controls) controls.hidden = !showCommfail;
       if (showCommfail) {
+        if (!airfields || !commfailLayerGroup) chartsLoading(true);
         if (!airfields) await loadAirfields();
         // Re-check: a toggle-off (or mutual-exclusion switch) during the
         // cold-start await would otherwise leave an orphaned overlay.
-        if (!window.showCommfail) return;
+        if (!window.showCommfail) { chartsLoading(false); return; }
         loadCommfailOverlays();
         if (commfailLayerGroup) commfailLayerGroup.addTo(map);
+        chartsLoadingUntilReady(commfailLayerGroup);
       } else {
         if (commfailLayerGroup) commfailLayerGroup.remove();
       }
