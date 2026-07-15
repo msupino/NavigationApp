@@ -1028,6 +1028,7 @@ window.S = Object.assign({
   plateOpenTab: 'Open in new tab',
   plateClose: 'Close',
   platesNone: 'No charts available — see official AIP',
+  loadingCharts: 'Loading charts…',
   plateLoadError: 'Failed to load chart.',
   plateAttribution: 'Charts © Israel CAAI / Ministry of Transport — published in the AIP.',
   updateAvailable: 'New NavAid build available. Hard refresh or reload to update.',
