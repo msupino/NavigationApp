@@ -569,7 +569,7 @@ function gotoSlot(id, value, len, label) {
   i.maxLength = len;
   i.size = len;
   i.setAttribute('aria-label', label);
-  i.value = len === 2 ? String(value).padStart(2, '0') : String(value);
+  i.value = String(value).padStart(len, '0');   // zero-pad to the slot width (lng deg = 3)
   return i;
 }
 // Fill the six slots from a decimal lat/lng (used by paste).
@@ -577,7 +577,7 @@ function fillGotoSlots(lat, lng) {
   const la = dmsParts(lat), lo = dmsParts(lng);
   const set = (id, v) => {
     const el = document.getElementById(id);
-    if (el) el.value = String(v).padStart(2, '0');
+    if (el) el.value = String(v).padStart(el.maxLength || 2, '0');
   };
   set('goto-lat-d', la.d); set('goto-lat-m', la.m); set('goto-lat-s', la.s);
   set('goto-lng-d', lo.d); set('goto-lng-m', lo.m); set('goto-lng-s', lo.s);
@@ -604,7 +604,7 @@ function enterGotoEdit() {
     gotoSlot('goto-lat-m', lat.m, 2, S.latitude + ' min'), gotoSep('′'),
     gotoSlot('goto-lat-s', lat.s, 2, S.latitude + ' sec'), gotoSep('″'),
     gotoSep('N'), gotoSep(' '),
-    gotoSlot('goto-lng-d', lng.d, 2, S.longitude + ' deg'), gotoSep('°'),
+    gotoSlot('goto-lng-d', lng.d, 3, S.longitude + ' deg'), gotoSep('°'),
     gotoSlot('goto-lng-m', lng.m, 2, S.longitude + ' min'), gotoSep('′'),
     gotoSlot('goto-lng-s', lng.s, 2, S.longitude + ' sec'), gotoSep('″'),
     gotoSep('E'),
