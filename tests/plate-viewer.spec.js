@@ -90,4 +90,32 @@ test.describe('Airfield plate viewer (PDF.js canvas)', () => {
     expect(calls[0]).toContain('LLBG_SID_08.pdf');
     expect(calls[1]).toContain('LLHZ_VAC.pdf');
   });
+
+  test('expanding an airfield section prefetches its plates (touch-friendly)', async ({ page }) => {
+    await page.goto('?lang=en');
+    await page.waitForFunction(() => typeof showChartsModal === 'function');
+    await page.evaluate(() => { if (airfields === null && typeof loadAirfields === 'function') return loadAirfields(); });
+    // Spy on fetch for byop plate URLs, then open the list with all sections
+    // collapsed (no focus airfield).
+    await page.evaluate(() => {
+      window.__byop = [];
+      const real = window.fetch;
+      window.fetch = (u, o) => { const s = String(u); if (s.includes('/byop/')) window.__byop.push(s); return real(u, o); };
+      showChartsModal();
+    });
+    const section = page.locator('.charts-airport').first();
+    await expect(section.locator('.charts-airport-header')).not.toHaveClass(/open/);
+    const icao = await section.getAttribute('data-icao');
+    // Expand it — its plates should be prefetched.
+    await section.locator('.charts-airport-header').click();
+    await expect(section.locator('.charts-airport-header')).toHaveClass(/open/);
+    await page.waitForFunction(() => window.__byop && window.__byop.length > 0);
+    const warmed = await page.evaluate(() => window.__byop);
+    // Every warmed URL is a byop PDF for the expanded airfield.
+    expect(warmed.length).toBeGreaterThan(0);
+    for (const u of warmed) {
+      expect(u).toContain('/byop/');
+      expect(u).toContain(icao);
+    }
+  });
 });
