@@ -2935,6 +2935,50 @@ if (notamCb) {
 }
 if (notamListBtn) notamListBtn.onclick = () => { ensureNotams().then(showNotamModal); };
 
+// ── Overlay alignment: local bound overrides + rect/rotated rendering ─────────
+// Extra-layer chart overlays are placed by lat/long in airfields.json. The
+// align editor lets a user nudge/scale/rotate one by eye; the result is stored
+// as a per-PNG override in localStorage (merged over the shipped bounds here)
+// and can be exported to bake into airfields.json via PR.
+const OVERLAY_OVERRIDES_KEY = 'navaid.overlayBoundsOverrides';
+
+function overlayOverrides() {
+  try { return JSON.parse(localStorage.getItem(OVERLAY_OVERRIDES_KEY)) || {}; }
+  catch (e) { return {}; }
+}
+function saveOverlayOverride(png, geom) {
+  const all = overlayOverrides();
+  if (geom) all[png] = geom; else delete all[png];
+  if (Object.keys(all).length) {
+    localStorage.setItem(OVERLAY_OVERRIDES_KEY, JSON.stringify(all));
+  } else {
+    localStorage.removeItem(OVERLAY_OVERRIDES_KEY);
+  }
+}
+// Effective geometry for an overlay: a stored override wins over airfields.json.
+// Returns { rot:false, sw, ne } (axis-aligned) or { rot:true, tl, tr, bl }.
+function overlayGeom(ov) {
+  const o = overlayOverrides()[ov.png];
+  if (o && o.tl && o.tr && o.bl) return { rot: true, tl: o.tl, tr: o.tr, bl: o.bl };
+  if (o && o.sw && o.ne)         return { rot: false, sw: o.sw, ne: o.ne };
+  return { rot: false, sw: ov.sw, ne: ov.ne };
+}
+// Build the Leaflet layer for one overlay (axis-aligned or rotated), tagged so
+// the align editor can find/select it.
+function buildOverlayLayer(base, ov, ver, type) {
+  const url = base + encodeURIComponent(ov.png) + '?v=' + ver;
+  const g = overlayGeom(ov);
+  const opts = { opacity: plateOpacity, interactive: false, pane: 'overlayPane' };
+  const layer = g.rot
+    ? L.imageOverlay.rotated(url, g.tl, g.tr, g.bl, opts)
+    : L.imageOverlay(url, [g.sw, g.ne], opts);
+  layer._ovPng = ov.png;
+  layer._ovType = type;
+  layer._ovUrl = url;
+  layer._ovData = ov;
+  return layer;
+}
+
 // ── Circuit overlay ──────────────────────────────────────────────────────────
 const CIRCUIT_SHOW_KEY    = 'navaid.showCircuit';
 const CIRCUIT_OPACITY_KEY = 'navaid.circuitOpacity';
@@ -2963,11 +3007,8 @@ function loadCircuitOverlays() {
   for (const af of airfields) {
     const co = af.circuit_overlay;
     if (!co) continue;
-    L.imageOverlay(
-      circuitImgBase() + encodeURIComponent(co.png) + '?v=4',
-      [co.sw, co.ne],
-      { opacity: plateOpacity, interactive: false, pane: 'overlayPane' }
-    ).addTo(circuitLayerGroup);
+    buildOverlayLayer(circuitImgBase(), co, '6', 'circuit_overlay')
+      .addTo(circuitLayerGroup);
   }
 }
 
@@ -3003,11 +3044,8 @@ function loadTrainingOverlays() {
   for (const af of airfields) {
     const to = af.training_overlay;
     if (!to) continue;
-    L.imageOverlay(
-      trainingImgBase() + encodeURIComponent(to.png) + '?v=4',
-      [to.sw, to.ne],
-      { opacity: plateOpacity, interactive: false, pane: 'overlayPane' }
-    ).addTo(trainingLayerGroup);
+    buildOverlayLayer(trainingImgBase(), to, '5', 'training_overlay')
+      .addTo(trainingLayerGroup);
   }
 }
 
@@ -3043,11 +3081,8 @@ function loadCvfrOverlays() {
   for (const af of airfields) {
     const co = af.cvfr_overlay;
     if (!co) continue;
-    L.imageOverlay(
-      cvfrImgBase() + encodeURIComponent(co.png) + '?v=4',
-      [co.sw, co.ne],
-      { opacity: plateOpacity, interactive: false, pane: 'overlayPane' }
-    ).addTo(cvfrLayerGroup);
+    buildOverlayLayer(cvfrImgBase(), co, '5', 'cvfr_overlay')
+      .addTo(cvfrLayerGroup);
   }
 }
 
@@ -3083,11 +3118,8 @@ function loadHeliOverlays() {
   for (const af of airfields) {
     const ho = af.heli_overlay;
     if (!ho) continue;
-    L.imageOverlay(
-      heliImgBase() + encodeURIComponent(ho.png) + '?v=4',
-      [ho.sw, ho.ne],
-      { opacity: plateOpacity, interactive: false, pane: 'overlayPane' }
-    ).addTo(heliLayerGroup);
+    buildOverlayLayer(heliImgBase(), ho, '4', 'heli_overlay')
+      .addTo(heliLayerGroup);
   }
 }
 
@@ -3123,11 +3155,8 @@ function loadCommfailOverlays() {
   for (const af of airfields) {
     const co = af.commfail_overlay;
     if (!co) continue;
-    L.imageOverlay(
-      commfailImgBase() + encodeURIComponent(co.png) + '?v=4',
-      [co.sw, co.ne],
-      { opacity: plateOpacity, interactive: false, pane: 'overlayPane' }
-    ).addTo(commfailLayerGroup);
+    buildOverlayLayer(commfailImgBase(), co, '4', 'commfail_overlay')
+      .addTo(commfailLayerGroup);
   }
 }
 
@@ -3137,6 +3166,303 @@ function applyCommfailOpacity(v) {
   if (valEl) valEl.textContent = Math.round(v * 100) + '%';
   if (commfailLayerGroup) commfailLayerGroup.eachLayer(l => l.setOpacity(v));
 }
+
+// ── Overlay align editor ──────────────────────────────────────────────────────
+// Lets a user pan / scale / rotate a shown chart overlay by eye. Geometry is
+// tracked as { center:[lat,lng], a, b, rot } (a = N-S half-deg, b = E-W half in
+// metric deg = lngHalf·cos(lat), rot = degrees) so rotation looks right on the
+// map. Edits auto-save as a per-PNG localStorage override (see
+// saveOverlayOverride) and can be copied out to bake into airfields.json.
+const overlayAlign = (function () {
+  const DEG = Math.PI / 180;
+  const GTYPES = ['circuit_overlay', 'training_overlay', 'cvfr_overlay',
+                  'heli_overlay', 'commfail_overlay'];
+  const GVAR = {
+    circuit_overlay: 'circuitLayerGroup', training_overlay: 'trainingLayerGroup',
+    cvfr_overlay: 'cvfrLayerGroup', heli_overlay: 'heliLayerGroup',
+    commfail_overlay: 'commfailLayerGroup',
+  };
+  const GLOAD = {
+    circuit_overlay: () => loadCircuitOverlays(), training_overlay: () => loadTrainingOverlays(),
+    cvfr_overlay: () => loadCvfrOverlays(), heli_overlay: () => loadHeliOverlays(),
+    commfail_overlay: () => loadCommfailOverlays(),
+  };
+  let active = false, sel = null, editLayer = null, state = null;
+  let handles = {}, panel = null, mapClick = null;
+
+  const grp = (t) => window[GVAR[t]];
+  const kf = (lat) => Math.cos(lat * DEG);
+  const r5 = (n) => Math.round(n * 1e5) / 1e5;
+
+  function corners(st) {
+    const kk = kf(st.center[0]), c = Math.cos(st.rot * DEG), s = Math.sin(st.rot * DEG);
+    const pt = (x, y) => {
+      const xr = x * c - y * s, yr = x * s + y * c;
+      return [st.center[0] + yr, st.center[1] + xr / kk];
+    };
+    return { tl: pt(-st.b, st.a), tr: pt(st.b, st.a),
+             bl: pt(-st.b, -st.a), br: pt(st.b, -st.a) };
+  }
+  function rotHandle(st) {
+    const kk = kf(st.center[0]), c = Math.cos(st.rot * DEG), s = Math.sin(st.rot * DEG);
+    const y = st.a * 1.25, x = 0, xr = x * c - y * s, yr = x * s + y * c;
+    return [st.center[0] + yr, st.center[1] + xr / kk];
+  }
+  function stateFromGeom(g) {
+    if (g.rot) {
+      const tl = g.tl, tr = g.tr, bl = g.bl;
+      const br = [tr[0] + bl[0] - tl[0], tr[1] + bl[1] - tl[1]];
+      const center = [(tl[0] + br[0]) / 2, (tl[1] + br[1]) / 2];
+      const kk = kf(center[0]);
+      const ex = (tr[1] - tl[1]) * kk, ey = tr[0] - tl[0];
+      const lx = (bl[1] - tl[1]) * kk, ly = bl[0] - tl[0];
+      return { center, a: Math.hypot(lx, ly) / 2, b: Math.hypot(ex, ey) / 2,
+               rot: Math.atan2(ey, ex) / DEG };
+    }
+    const center = [(g.sw[0] + g.ne[0]) / 2, (g.sw[1] + g.ne[1]) / 2];
+    return { center, a: (g.ne[0] - g.sw[0]) / 2,
+             b: (g.ne[1] - g.sw[1]) / 2 * kf(center[0]), rot: 0 };
+  }
+  function geomFromState(st) {
+    if (Math.abs(st.rot) < 0.05) {
+      const kk = kf(st.center[0]);
+      return { sw: [r5(st.center[0] - st.a), r5(st.center[1] - st.b / kk)],
+               ne: [r5(st.center[0] + st.a), r5(st.center[1] + st.b / kk)] };
+    }
+    const c = corners(st);
+    return { tl: c.tl.map(r5), tr: c.tr.map(r5), bl: c.bl.map(r5) };
+  }
+
+  function containsPoint(g, ll) {
+    if (!g.rot) {
+      return ll.lat >= g.sw[0] && ll.lat <= g.ne[0] &&
+             ll.lng >= g.sw[1] && ll.lng <= g.ne[1];
+    }
+    const tl = g.tl, tr = g.tr, bl = g.bl;
+    const br = [tr[0] + bl[0] - tl[0], tr[1] + bl[1] - tl[1]];
+    const poly = [tl, tr, br, bl];
+    let inside = false;
+    for (let i = 0, j = 3; i < 4; j = i++) {
+      const yi = poly[i][0], xi = poly[i][1], yj = poly[j][0], xj = poly[j][1];
+      if (((yi > ll.lat) !== (yj > ll.lat)) &&
+          (ll.lng < (xj - xi) * (ll.lat - yi) / (yj - yi) + xi)) inside = !inside;
+    }
+    return inside;
+  }
+  function geomArea(g) {
+    if (!g.rot) return (g.ne[0] - g.sw[0]) * (g.ne[1] - g.sw[1]);
+    const st = stateFromGeom(g);
+    return st.a * st.b;
+  }
+  function hitTest(ll) {
+    let best = null, bestArea = Infinity;
+    for (const t of GTYPES) {
+      const G = grp(t);
+      if (!G || !map.hasLayer(G)) continue;
+      G.eachLayer((l) => {
+        if (!l._ovData) return;
+        const g = (l === editLayer) ? geomFromState(state) : overlayGeom(l._ovData);
+        g.rot = g.rot || !!g.tl;
+        if (containsPoint(g, ll)) {
+          const area = geomArea(g);
+          if (area < bestArea) { bestArea = area; best = l; }
+        }
+      });
+    }
+    return best;
+  }
+
+  function makeHandle(ll, cls, onDrag) {
+    const m = L.marker(ll, {
+      draggable: true, keyboard: false, pane: 'markerPane',
+      icon: L.divIcon({ className: 'ov-handle ' + cls, iconSize: [18, 18],
+                        iconAnchor: [9, 9] }),
+    });
+    m.on('drag', (e) => { onDrag(e.target.getLatLng()); });
+    m.on('dragend', save);
+    return m;
+  }
+  function positionHandles(except) {
+    const c = corners(state);
+    const pos = { center: state.center, tl: c.tl, tr: c.tr, bl: c.bl, br: c.br,
+                  rot: rotHandle(state) };
+    for (const key in handles) {
+      if (key !== except) handles[key].setLatLng(pos[key]);
+    }
+  }
+  function refresh(except) {
+    const c = corners(state);
+    editLayer.reposition(c.tl, c.tr, c.bl);
+    positionHandles(except);
+    updateReadout();
+  }
+  function fromCorner(ll) {
+    const kk = kf(state.center[0]);
+    const dx = (ll.lng - state.center[1]) * kk, dy = ll.lat - state.center[0];
+    const c = Math.cos(state.rot * DEG), s = Math.sin(state.rot * DEG);
+    state.b = Math.max(1e-4, Math.abs(dx * c + dy * s));
+    state.a = Math.max(1e-4, Math.abs(-dx * s + dy * c));
+  }
+  function fromRotate(ll) {
+    const kk = kf(state.center[0]);
+    const dx = (ll.lng - state.center[1]) * kk, dy = ll.lat - state.center[0];
+    state.rot = Math.atan2(dy, dx) / DEG - 90;
+  }
+
+  function buildHandles() {
+    clearHandles();
+    const c = corners(state);
+    handles.center = makeHandle(state.center, 'ov-h-center',
+      (ll) => { state.center = [ll.lat, ll.lng]; refresh('center'); });
+    handles.rot = makeHandle(rotHandle(state), 'ov-h-rot',
+      (ll) => { fromRotate(ll); refresh('rot'); });
+    for (const key of ['tl', 'tr', 'bl', 'br']) {
+      handles[key] = makeHandle(c[key], 'ov-h-corner',
+        (ll) => { fromCorner(ll); refresh(key); });
+    }
+    for (const k in handles) handles[k].addTo(map);
+  }
+  function clearHandles() {
+    for (const k in handles) map.removeLayer(handles[k]);
+    handles = {};
+  }
+
+  function select(layer) {
+    deselect();
+    sel = layer;
+    state = stateFromGeom(overlayGeom(layer._ovData));
+    const G = grp(layer._ovType), c = corners(state);
+    editLayer = L.imageOverlay.rotated(layer._ovUrl, c.tl, c.tr, c.bl,
+      { opacity: Math.max(0.5, plateOpacity), interactive: false, pane: 'overlayPane' });
+    editLayer._ovPng = layer._ovPng; editLayer._ovType = layer._ovType;
+    editLayer._ovUrl = layer._ovUrl; editLayer._ovData = layer._ovData;
+    G.removeLayer(layer); editLayer.addTo(G);
+    buildHandles();
+    updatePanel();
+  }
+  function save() {
+    if (sel) saveOverlayOverride(sel._ovPng, geomFromState(state));
+  }
+  function deselect() {
+    if (!sel) return;
+    save();
+    clearHandles();
+    const t = sel._ovType;
+    sel = null; editLayer = null; state = null;
+    reloadType(t);
+  }
+  function reloadType(t) {
+    const G = grp(t);
+    const wasShown = G && map.hasLayer(G);
+    if (G) map.removeLayer(G);
+    window[GVAR[t]] = null;
+    GLOAD[t]();
+    if (wasShown && grp(t)) grp(t).addTo(map);
+  }
+
+  // ── panel ──
+  function updateReadout() {
+    if (!panel) return;
+    const g = geomFromState(state);
+    const ro = panel.querySelector('.ov-readout');
+    if (g.sw) {
+      ro.textContent = `sw ${g.sw[0]}, ${g.sw[1]}  ne ${g.ne[0]}, ${g.ne[1]}`;
+    } else {
+      ro.textContent = `rot ${state.rot.toFixed(1)}°  tl ${g.tl[0]}, ${g.tl[1]}`;
+    }
+  }
+  function updatePanel() {
+    if (!panel) return;
+    const has = !!sel;
+    panel.querySelector('.ov-sel').textContent = has
+      ? (sel._ovPng + '  (' + sel._ovType.replace('_overlay', '') + ')')
+      : (S.ovAlignPick || 'Tap an overlay to select');
+    panel.querySelector('.ov-reset-sel').disabled = !has;
+    panel.querySelector('.ov-readout').textContent = has ? '' : '';
+    if (has) updateReadout();
+  }
+  function buildPanel() {
+    panel = document.createElement('div');
+    panel.className = 'ov-align-panel';
+    panel.innerHTML =
+      '<div class="ov-title">' + (S.ovAlignTitle || 'Align overlays') + '</div>' +
+      '<div class="ov-sel"></div>' +
+      '<div class="ov-readout"></div>' +
+      '<div class="ov-hint">' + (S.ovAlignHint ||
+        'Drag centre = move · corners = scale · top dot = rotate') + '</div>' +
+      '<div class="ov-btns">' +
+        '<button type="button" class="ov-reset-sel">' + (S.ovAlignResetSel || 'Reset this') + '</button>' +
+        '<button type="button" class="ov-reset-all">' + (S.ovAlignResetAll || 'Reset all') + '</button>' +
+        '<button type="button" class="ov-copy">' + (S.ovAlignCopy || 'Copy coords') + '</button>' +
+        '<button type="button" class="ov-done">' + (S.ovAlignDone || 'Done') + '</button>' +
+      '</div>';
+    document.body.appendChild(panel);
+    panel.querySelector('.ov-done').onclick = () => exit();
+    panel.querySelector('.ov-reset-sel').onclick = () => {
+      if (!sel) return;
+      const png = sel._ovPng, t = sel._ovType;
+      saveOverlayOverride(png, null);
+      clearHandles(); sel = null; editLayer = null; state = null;
+      reloadType(t); updatePanel();
+    };
+    panel.querySelector('.ov-reset-all').onclick = () => {
+      if (!confirm(S.ovAlignResetAllConfirm || 'Clear all overlay alignments?')) return;
+      localStorage.removeItem(OVERLAY_OVERRIDES_KEY);
+      clearHandles(); sel = null; editLayer = null; state = null;
+      GTYPES.forEach(reloadType); updatePanel();
+    };
+    panel.querySelector('.ov-copy').onclick = () => {
+      const json = JSON.stringify(overlayOverrides(), null, 2);
+      const say = (m) => { if (typeof showToast === 'function') showToast(m); };
+      navigator.clipboard.writeText(json).then(
+        () => say(S.ovAlignCopied || 'Overlay coords copied'),
+        () => say(json));
+    };
+    updatePanel();
+  }
+
+  function enter() {
+    if (active) return;
+    active = true;
+    document.body.classList.add('ov-align-active');
+    const cb = document.getElementById('overlay-align-cb');
+    if (cb) cb.checked = true;
+    buildPanel();
+    mapClick = (e) => {
+      if (e.originalEvent && e.originalEvent.target &&
+          e.originalEvent.target.closest &&
+          e.originalEvent.target.closest('.ov-handle')) return;
+      const l = hitTest(e.latlng);
+      if (l && l !== sel) select(l);
+    };
+    map.on('click', mapClick);
+  }
+  function exit() {
+    if (!active) return;
+    deselect();
+    map.off('click', mapClick); mapClick = null;
+    if (panel) { panel.remove(); panel = null; }
+    document.body.classList.remove('ov-align-active');
+    const cb = document.getElementById('overlay-align-cb');
+    if (cb) cb.checked = false;
+    active = false;
+  }
+  function toggle() { active ? exit() : enter(); }
+
+  return { toggle, enter, exit, isActive: () => active };
+})();
+window.overlayAlign = overlayAlign;
+
+// Hidden tool, like ?editor=1 / ?tune=1: the align toggle only appears with
+// ?align=1 in the URL. Otherwise its group stays hidden and unwired.
+(function wireOverlayAlignToggle() {
+  if (!/[?&]align=1\b/.test(location.search)) return;
+  const group = document.getElementById('overlay-align-group');
+  const cb = document.getElementById('overlay-align-cb');
+  if (!group || !cb) return;
+  group.hidden = false;
+  cb.onchange = () => { cb.checked ? overlayAlign.enter() : overlayAlign.exit(); };
+})();
 
 // ── Shared airfield-plate opacity ─────────────────────────────────────────────
 // The five plate overlays (circuit, training, CVFR, helicopter, comm-failure)
@@ -3253,6 +3579,40 @@ function showLsaChart() {
 const lsaListBtn = document.getElementById('lsa-list-btn');
 if (lsaListBtn) lsaListBtn.onclick = showLsaChart;
 refreshLsaListBtn();
+
+// Persistent "Loading charts…" indicator shown while an Extra-layers plate
+// overlay is fetching its airfield data / building its image layers, so the
+// toggle doesn't sit silent before anything appears. Dismissed once the layer
+// is on the map (charts start rendering).
+let _chartsLoadingEl = null;
+function chartsLoading(on) {
+  if (on) {
+    if (_chartsLoadingEl) return;
+    const el = document.createElement('div');
+    el.className = 'toast show charts-loading';
+    el.textContent = S.loadingCharts || 'Loading charts…';
+    document.body.appendChild(el);
+    _chartsLoadingEl = el;
+  } else if (_chartsLoadingEl) {
+    const el = _chartsLoadingEl; _chartsLoadingEl = null;
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 250);
+  }
+}
+// Keep the indicator up until the overlay group's images have actually loaded
+// (the perceptible wait is the chart PNGs, not just adding the layer), then
+// dismiss. A timeout guards against an image that never loads.
+function chartsLoadingUntilReady(group) {
+  if (!group) { chartsLoading(false); return; }
+  let pending = 0, done = false;
+  const finish = () => { if (!done) { done = true; chartsLoading(false); } };
+  group.eachLayer(l => {
+    const img = l && l._image;
+    if (img && img.complete && img.naturalWidth) return;   // already loaded
+    if (l && l.once) { pending++; l.once('load error', () => { if (--pending <= 0) finish(); }); }
+  });
+  if (pending === 0) finish(); else setTimeout(finish, 8000);
+}
 // Circuit overlay toggle
 (function () {
   const cb       = document.getElementById('circuit-cb');
@@ -3269,12 +3629,14 @@ refreshLsaListBtn();
       try { localStorage.setItem(CIRCUIT_SHOW_KEY, showCircuit ? '1' : '0'); } catch (_) {}
       if (controls) controls.hidden = !showCircuit;
       if (showCircuit) {
+        if (!airfields || !circuitLayerGroup) chartsLoading(true);
         if (!airfields) await loadAirfields();
         // Re-check: a toggle-off (or mutual-exclusion switch) during the
         // cold-start await would otherwise leave an orphaned overlay.
-        if (!window.showCircuit) return;
+        if (!window.showCircuit) { chartsLoading(false); return; }
         loadCircuitOverlays();
         if (circuitLayerGroup) circuitLayerGroup.addTo(map);
+        chartsLoadingUntilReady(circuitLayerGroup);
       } else {
         if (circuitLayerGroup) circuitLayerGroup.remove();
       }
@@ -3316,12 +3678,14 @@ refreshLsaListBtn();
       try { localStorage.setItem(TRAINING_SHOW_KEY, showTraining ? '1' : '0'); } catch (_) {}
       if (controls) controls.hidden = !showTraining;
       if (showTraining) {
+        if (!airfields || !trainingLayerGroup) chartsLoading(true);
         if (!airfields) await loadAirfields();
         // Re-check: a toggle-off (or mutual-exclusion switch) during the
         // cold-start await would otherwise leave an orphaned overlay.
-        if (!window.showTraining) return;
+        if (!window.showTraining) { chartsLoading(false); return; }
         loadTrainingOverlays();
         if (trainingLayerGroup) trainingLayerGroup.addTo(map);
+        chartsLoadingUntilReady(trainingLayerGroup);
       } else {
         if (trainingLayerGroup) trainingLayerGroup.remove();
       }
@@ -3363,12 +3727,14 @@ refreshLsaListBtn();
       try { localStorage.setItem(CVFR_SHOW_KEY, showCvfr ? '1' : '0'); } catch (_) {}
       if (controls) controls.hidden = !showCvfr;
       if (showCvfr) {
+        if (!airfields || !cvfrLayerGroup) chartsLoading(true);
         if (!airfields) await loadAirfields();
         // Re-check: a toggle-off (or mutual-exclusion switch) during the
         // cold-start await would otherwise leave an orphaned overlay.
-        if (!window.showCvfr) return;
+        if (!window.showCvfr) { chartsLoading(false); return; }
         loadCvfrOverlays();
         if (cvfrLayerGroup) cvfrLayerGroup.addTo(map);
+        chartsLoadingUntilReady(cvfrLayerGroup);
       } else {
         if (cvfrLayerGroup) cvfrLayerGroup.remove();
       }
@@ -3410,12 +3776,14 @@ refreshLsaListBtn();
       try { localStorage.setItem(HELI_SHOW_KEY, showHeli ? '1' : '0'); } catch (_) {}
       if (controls) controls.hidden = !showHeli;
       if (showHeli) {
+        if (!airfields || !heliLayerGroup) chartsLoading(true);
         if (!airfields) await loadAirfields();
         // Re-check: a toggle-off (or mutual-exclusion switch) during the
         // cold-start await would otherwise leave an orphaned overlay.
-        if (!window.showHeli) return;
+        if (!window.showHeli) { chartsLoading(false); return; }
         loadHeliOverlays();
         if (heliLayerGroup) heliLayerGroup.addTo(map);
+        chartsLoadingUntilReady(heliLayerGroup);
       } else {
         if (heliLayerGroup) heliLayerGroup.remove();
       }
@@ -3457,12 +3825,14 @@ refreshLsaListBtn();
       try { localStorage.setItem(COMMFAIL_SHOW_KEY, showCommfail ? '1' : '0'); } catch (_) {}
       if (controls) controls.hidden = !showCommfail;
       if (showCommfail) {
+        if (!airfields || !commfailLayerGroup) chartsLoading(true);
         if (!airfields) await loadAirfields();
         // Re-check: a toggle-off (or mutual-exclusion switch) during the
         // cold-start await would otherwise leave an orphaned overlay.
-        if (!window.showCommfail) return;
+        if (!window.showCommfail) { chartsLoading(false); return; }
         loadCommfailOverlays();
         if (commfailLayerGroup) commfailLayerGroup.addTo(map);
+        chartsLoadingUntilReady(commfailLayerGroup);
       } else {
         if (commfailLayerGroup) commfailLayerGroup.remove();
       }

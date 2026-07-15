@@ -484,9 +484,9 @@ var magVar = -5;                       // signed offset added to true heading
 // (full locale or just navWpUrl). Object.assign merges: defaults first,
 // then any pre-set keys win, so a partial override doesn't erase the rest.
 window.S = Object.assign({
-  navWpUrl: 'data/cvfr-nav-waypoints.json?v=3',  // resolved relative to index.html (docs/)
+  navWpUrl: 'data/cvfr-nav-waypoints.json?v=9',  // resolved relative to index.html (docs/)
   navWpSearchField: 'en',              // which locale label to show/search in results
-  airfieldsUrl: 'data/airfields.json?v=28',  // resolved relative to index.html (docs/)
+  airfieldsUrl: 'data/airfields.json?v=31',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   commChangeUrl: 'data/cvfr-comm-change.json?v=1', // CVFR comm-change reporting points (issue #399)
   legAltitudeUrl: 'data/cvfr-leg-altitude.json?v=1', // CVFR green-route leg altitude table
@@ -952,6 +952,17 @@ window.S = Object.assign({
   tbCommfailOpacity: 'Comm-failure opacity',
   tbCommfailOpacityTitle: 'Adjust comm-failure entry overlay opacity',
   tbCommfailOpacityReset: 'Reset opacity',
+  tbAlignOverlays: 'Align overlays',
+  tbAlignOverlaysTitle: 'Nudge, scale or rotate a shown chart overlay by eye, then copy the corrected coordinates',
+  ovAlignTitle: 'Align overlays',
+  ovAlignPick: 'Tap an overlay on the map to select it',
+  ovAlignHint: 'Drag centre = move · corners = scale · top dot = rotate',
+  ovAlignResetSel: 'Reset this',
+  ovAlignResetAll: 'Reset all',
+  ovAlignCopy: 'Copy coords',
+  ovAlignDone: 'Done',
+  ovAlignCopied: 'Overlay coordinates copied to clipboard',
+  ovAlignResetAllConfirm: 'Clear all local overlay alignments?',
   tbForceSnap: 'Snap to nearest point',
   tbForceSnapTitle: 'Always snap clicks to the nearest airfield or nav-waypoint (otherwise: 18 px radius)',
   tbShowCommChange: 'Show/Add Freq Changes',
@@ -1028,6 +1039,8 @@ window.S = Object.assign({
   plateOpenTab: 'Open in new tab',
   plateClose: 'Close',
   platesNone: 'No charts available — see official AIP',
+  plateLoading: 'Loading…',
+  loadingCharts: 'Loading charts…',
   plateLoadError: 'Failed to load chart.',
   plateAttribution: 'Charts © Israel CAAI / Ministry of Transport — published in the AIP.',
   updateAvailable: 'New NavAid build available. Hard refresh or reload to update.',

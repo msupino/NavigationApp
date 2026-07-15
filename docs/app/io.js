@@ -4126,7 +4126,10 @@ function restoreRoute() {
 // per-environment absolute path (which 404'd on the custom domain).
 function plateBase(pathname) {
   let dir = (pathname || location.pathname).replace(/[^/]*$/, '');  // drop filename, keep trailing '/'
-  dir = dir.replace(/(staging|pr\/[^/]+|branch\/[^/]+)\/$/, '');     // preview suffix → shared root
+  // Preview suffix → shared root. `branch/.+` (not `[^/]+`) so branch names
+  // that contain a slash (e.g. feat/loading-charts-indicator) strip fully,
+  // otherwise byop resolves under the branch dir and 404s on previews.
+  dir = dir.replace(/(staging|pr\/[^/]+|branch\/.+)\/$/, '');
   return dir + 'byop/';
 }
 
@@ -4134,57 +4137,39 @@ function plateUrl(filename) {
   return plateBase() + encodeURIComponent(filename);
 }
 
-// Prefetch a plate PDF into the (service-worker / HTTP) cache so a later open
-// resolves from cache instead of a cold ~2 MB fetch. Fired on chip hover/focus
-// — bandwidth is spent only on plates the user shows intent on. Deduped so a
-// chip hovered repeatedly fetches once; failures are ignored (the real open
-// will surface any error).
+// Plates are shown as pre-rendered PNGs (scripts/render-plates.sh, poppler):
+// poppler renders their embedded Hebrew CID fonts correctly (PDF.js garbled
+// them) and images work in the Android WebView, which has no native PDF
+// renderer. The manifest maps each plate → its page count so the viewer knows
+// how many page PNGs to load; the original PDF stays for download.
+const PLATES_VER = '1';   // bump when plates are re-rendered (busts PNG + manifest cache)
+let _platesManifest = null, _platesManifestPromise = null;
+function loadPlatesManifest() {
+  if (_platesManifest) return Promise.resolve(_platesManifest);
+  if (_platesManifestPromise) return _platesManifestPromise;
+  _platesManifestPromise = fetch(plateBase() + 'plates-manifest.json?v=' + PLATES_VER, { credentials: 'omit' })
+    .then(r => (r.ok ? r.json() : {}))
+    .then(m => (_platesManifest = m || {}))
+    .catch(() => (_platesManifest = {}));
+  return _platesManifestPromise;
+}
+// URL of one rendered plate page (1-based).
+function platePngUrl(filename, page) {
+  const base = filename.replace(/\.pdf$/i, '');
+  const nn = String(page).padStart(2, '0');
+  return plateBase() + encodeURIComponent(base + '-p' + nn + '.png') + '?v=' + PLATES_VER;
+}
+
+// Prefetch a plate's first page (+ the manifest) on chip hover/focus so the
+// click opens from cache. Deduped; failures ignored.
 const _platePrefetched = new Set();
 function prefetchPlate(filename) {
   if (!filename || _platePrefetched.has(filename)) return;
   _platePrefetched.add(filename);
+  loadPlatesManifest();
   try {
-    fetch(plateUrl(filename), { credentials: 'omit' }).catch(() => {});
+    fetch(platePngUrl(filename, 1), { credentials: 'omit' }).catch(() => {});
   } catch (_) { /* fetch unavailable — ignore */ }
-}
-
-// Lazy-load PDF.js (only when a plate is first opened — it's ~1 MB). Served
-// from the same jsDelivr CDN as Leaflet, so the service worker caches it like
-// the other pinned libs. The legacy UMD build exposes window.pdfjsLib and runs
-// on the older Chromium the Android System WebView can carry.
-var _pdfjsPromise = null;
-const PDFJS_VER = '3.11.174';
-const PDFJS_CDN = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@' + PDFJS_VER + '/';
-// Font/CMap assets so plates with non-embedded standard-14 fonts (Helvetica,
-// Times…) and CJK text render — without these, such text draws blank. Fetched
-// on demand by PDF.js, same jsDelivr host the SW already caches.
-function pdfDocOptions(data) {
-  return {
-    data: data,
-    cMapUrl: PDFJS_CDN + 'cmaps/',
-    cMapPacked: true,
-    standardFontDataUrl: PDFJS_CDN + 'standard_fonts/',
-  };
-}
-function ensurePdfJs() {
-  if (typeof window !== 'undefined' && window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
-  if (_pdfjsPromise) return _pdfjsPromise;
-  const base = PDFJS_CDN + 'legacy/build/';
-  _pdfjsPromise = new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = base + 'pdf.min.js';
-    s.async = true;
-    s.onload = () => {
-      if (!window.pdfjsLib) { _pdfjsPromise = null; reject(new Error('pdfjs unavailable')); return; }
-      // Cross-origin workerSrc: PDF.js fetches it and wraps a blob worker, so
-      // this is fine without a same-origin copy.
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = base + 'pdf.worker.min.js';
-      resolve(window.pdfjsLib);
-    };
-    s.onerror = () => { _pdfjsPromise = null; reject(new Error('pdfjs load failed')); };
-    document.head.appendChild(s);
-  });
-  return _pdfjsPromise;
 }
 
 function plateCategory(filename) {
@@ -4213,57 +4198,33 @@ function showPlateViewer(filename, label) {
   title.textContent = label;
   box.appendChild(title);
 
-  const url = plateUrl(filename);
+  const pdfUrl = plateUrl(filename);   // original PDF, kept for download / open-in-tab
 
   const viewer = document.createElement('div');
   viewer.className = 'plate-canvas-wrap';
 
   const loading = document.createElement('div');
   loading.className = 'plate-loading';
-  loading.textContent = 'Loading...\n' + url;
+  loading.textContent = (S.plateLoading || 'Loading…');
 
-  let blobUrl = null;
-
-  // Draw each PDF page to a <canvas>. An <iframe src=blob:pdf> hangs forever in
-  // the Android WebView (no built-in PDF renderer) — canvas rendering works the
-  // same in the WebView and browsers, and fixes desktop browsers set to
-  // download PDFs instead of viewing them.
-  function renderPdf(pdf) {
-    const wrapW = Math.max(viewer.clientWidth || box.clientWidth || 320, 200);
-    const dpr = window.devicePixelRatio || 1;
-    let chain = Promise.resolve();
-    for (let p = 1; p <= pdf.numPages; p++) {
-      chain = chain.then(() => pdf.getPage(p)).then(page => {
-        const base = page.getViewport({ scale: 1 });
-        const vp = page.getViewport({ scale: (wrapW / base.width) * dpr });
-        const canvas = document.createElement('canvas');
-        canvas.className = 'plate-canvas';
-        canvas.width = Math.round(vp.width);
-        canvas.height = Math.round(vp.height);
-        viewer.appendChild(canvas);
-        return page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise
-          .then(() => { if (p === 1) loading.style.display = 'none'; });
-      });
+  // Show each page as its pre-rendered PNG (poppler). The manifest gives the
+  // page count; if it's missing, fall back to a single page.
+  loadPlatesManifest().then(man => {
+    const pages = Math.max(1, (man && man[filename]) || 1);
+    let firstDone = false;
+    for (let p = 1; p <= pages; p++) {
+      const img = document.createElement('img');
+      img.className = 'plate-canvas';
+      img.alt = label + ' — ' + p + '/' + pages;
+      img.loading = p === 1 ? 'eager' : 'lazy';
+      if (p === 1) {
+        img.addEventListener('load', () => { if (!firstDone) { firstDone = true; loading.style.display = 'none'; } });
+        img.addEventListener('error', () => { loading.textContent = S.plateLoadError + '\n' + pdfUrl; });
+      }
+      img.src = platePngUrl(filename, p);
+      viewer.appendChild(img);
     }
-    return chain;
-  }
-
-  fetch(url, { credentials: 'omit' })
-    .then(r => {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.blob();
-    })
-    .then(blob => {
-      // Keep a blob URL for the Open / Download buttons before the buffer is
-      // handed to (and possibly detached by) the PDF.js worker.
-      blobUrl = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-      return blob.arrayBuffer();
-    })
-    .then(buf => ensurePdfJs().then(lib => lib.getDocument(pdfDocOptions(buf)).promise))
-    .then(renderPdf)
-    .catch(() => {
-      loading.textContent = S.plateLoadError + '\n' + url;
-    });
+  }).catch(() => { loading.textContent = S.plateLoadError + '\n' + pdfUrl; });
 
   box.appendChild(loading);
   box.appendChild(viewer);
@@ -4277,13 +4238,13 @@ function showPlateViewer(filename, label) {
   btns.className = 'modal-btns';
   const openTab = document.createElement('button');
   openTab.textContent = S.plateOpenTab;
-  openTab.onclick = () => { if (blobUrl) window.open(blobUrl, '_blank'); };
+  openTab.onclick = () => window.open(pdfUrl, '_blank');
   btns.appendChild(openTab);
   const download = document.createElement('button');
   download.textContent = S.plateDownload;
   download.onclick = () => {
     const a = document.createElement('a');
-    a.href = url;
+    a.href = pdfUrl;
     a.download = filename;
     a.click();
   };
@@ -4291,7 +4252,6 @@ function showPlateViewer(filename, label) {
   box.appendChild(btns);
   function teardown() {
     window.removeEventListener('keydown', onEsc, true);
-    if (blobUrl) URL.revokeObjectURL(blobUrl);
     back.remove();
   }
   addModalCloseX(box, teardown);
@@ -5405,9 +5365,9 @@ function showAltitudePairsModal() {
 
 function showChartsModal(focusIcao) {
   if (!prepareChartModal('airport-charts')) return;
-  // Warm PDF.js while the user scans the list, so the first plate open isn't
-  // also waiting on the ~1 MB library load.
-  if (typeof ensurePdfJs === 'function') ensurePdfJs().catch(() => {});
+  // Warm the plate manifest while the user scans the list, so the first open
+  // already knows the page count.
+  if (typeof loadPlatesManifest === 'function') loadPlatesManifest().catch(() => {});
   const modal = createDraggableModal(S.plates, 'modal wide',
     () => clearOpenChartModal('airport-charts'),
     { nonBlocking: true, chartKind: 'airport-charts' });
