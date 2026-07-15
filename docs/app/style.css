@@ -1582,6 +1582,15 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
    the first i18n fill at boot. Reserve its widest state per language so the
    width is stable and nothing reflows. Scoped to the wrapped footer only; the
    desktop menubar renders these icon-only (30px). */
+/* Keep the record + live-location buttons together as one no-wrap unit, so
+   they always share a line in both languages (English's wider labels used to
+   push the live button to a second line while Hebrew stayed on one). */
+#toolbar > #footer-links .footer-gps-group {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 12px;
+}
 @media (max-width: 680px) {
   #toolbar > #footer-links .gps-footer-btn { justify-content: flex-start; }
   /* Reserve comfortably past the widest label (measured ~76–82 px HE, ~94–107
