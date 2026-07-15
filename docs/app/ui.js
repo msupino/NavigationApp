@@ -2964,7 +2964,7 @@ function loadCircuitOverlays() {
     const co = af.circuit_overlay;
     if (!co) continue;
     L.imageOverlay(
-      circuitImgBase() + encodeURIComponent(co.png) + '?v=4',
+      circuitImgBase() + encodeURIComponent(co.png) + '?v=5',
       [co.sw, co.ne],
       { opacity: plateOpacity, interactive: false, pane: 'overlayPane' }
     ).addTo(circuitLayerGroup);
@@ -3044,7 +3044,7 @@ function loadCvfrOverlays() {
     const co = af.cvfr_overlay;
     if (!co) continue;
     L.imageOverlay(
-      cvfrImgBase() + encodeURIComponent(co.png) + '?v=4',
+      cvfrImgBase() + encodeURIComponent(co.png) + '?v=5',
       [co.sw, co.ne],
       { opacity: plateOpacity, interactive: false, pane: 'overlayPane' }
     ).addTo(cvfrLayerGroup);
