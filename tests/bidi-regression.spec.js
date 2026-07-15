@@ -149,7 +149,7 @@ test.describe('Bidi / mixed-direction UI regressions', () => {
     expect(spans).toEqual([
       { text: 'BAZRA', dir: 'ltr', bidi: 'isolate' },
       { text: 'בצרה', dir: 'rtl', bidi: 'isolate' },
-      { text: "32°13.1'N 34°53.0'E", dir: 'ltr', bidi: 'isolate' },
+      { text: "32°13.1'N 034°53.0'E", dir: 'ltr', bidi: 'isolate' },
     ]);
 
     await hideToolbarMenus(page);
