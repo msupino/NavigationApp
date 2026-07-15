@@ -71,11 +71,11 @@ test('opacity slider drives overlay opacity', async ({ page }) => {
     const valEl  = document.getElementById('plate-opacity-val');
     slider.value = '0.3';
     slider.dispatchEvent(new Event('input'));
-    const img = document.querySelector('.leaflet-overlay-pane img.leaflet-image-layer');
-    return {
-      opacity: parseFloat(img.style.opacity),
-      label: valEl.textContent,
-    };
+    // Read the applied opacity off the Leaflet layer's element — works for both
+    // axis-aligned (<img>) and rotated (<div>, from L.ImageOverlay.Rotated).
+    let opacity = null;
+    circuitLayerGroup.eachLayer(l => { if (opacity === null) opacity = parseFloat(l._image.style.opacity); });
+    return { opacity, label: valEl.textContent };
   });
   expect(result.opacity).toBeCloseTo(0.3, 2);
   expect(result.label).toBe('30%');
@@ -91,10 +91,11 @@ test('opacity reset restores default 0.6', async ({ page }) => {
     slider.value = '0.3';
     slider.dispatchEvent(new Event('input'));
     document.getElementById('plate-opacity-reset').click();
-    const img = document.querySelector('.leaflet-overlay-pane img.leaflet-image-layer');
+    let opacity = null;
+    circuitLayerGroup.eachLayer(l => { if (opacity === null) opacity = parseFloat(l._image.style.opacity); });
     return {
       sliderVal: slider.value,
-      opacity: parseFloat(img.style.opacity),
+      opacity,
       label: document.getElementById('plate-opacity-val').textContent,
     };
   });

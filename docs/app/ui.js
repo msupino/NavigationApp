@@ -2961,6 +2961,8 @@ function overlayGeom(ov) {
   const o = overlayOverrides()[ov.png];
   if (o && o.tl && o.tr && o.bl) return { rot: true, tl: o.tl, tr: o.tr, bl: o.bl };
   if (o && o.sw && o.ne)         return { rot: false, sw: o.sw, ne: o.ne };
+  // base airfields.json geometry — rotated (3-corner) or axis-aligned (sw/ne)
+  if (ov.tl && ov.tr && ov.bl)   return { rot: true, tl: ov.tl, tr: ov.tr, bl: ov.bl };
   return { rot: false, sw: ov.sw, ne: ov.ne };
 }
 // Build the Leaflet layer for one overlay (axis-aligned or rotated), tagged so
