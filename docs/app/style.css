@@ -1584,8 +1584,11 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
    desktop menubar renders these icon-only (30px). */
 @media (max-width: 680px) {
   #toolbar > #footer-links .gps-footer-btn { justify-content: flex-start; }
-  html[lang="he"] #toolbar > #footer-links #gps-live { min-width: 80px; }
-  html[lang="en"] #toolbar > #footer-links #gps-live { min-width: 104px; }
+  /* Reserve comfortably past the widest label (measured ~76–82 px HE, ~94–107
+     px EN) so font-metric differences across platforms can't let a label
+     exceed the reserved width and reintroduce the reflow. */
+  html[lang="he"] #toolbar > #footer-links #gps-live { min-width: 100px; }
+  html[lang="en"] #toolbar > #footer-links #gps-live { min-width: 120px; }
 }
 #toolbar .footer-link {
   display: inline-flex;
