@@ -484,7 +484,7 @@ var magVar = -5;                       // signed offset added to true heading
 // (full locale or just navWpUrl). Object.assign merges: defaults first,
 // then any pre-set keys win, so a partial override doesn't erase the rest.
 window.S = Object.assign({
-  navWpUrl: 'data/cvfr-nav-waypoints.json?v=3',  // resolved relative to index.html (docs/)
+  navWpUrl: 'data/cvfr-nav-waypoints.json?v=4',  // resolved relative to index.html (docs/)
   navWpSearchField: 'en',              // which locale label to show/search in results
   airfieldsUrl: 'data/airfields.json?v=28',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay

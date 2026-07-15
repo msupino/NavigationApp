@@ -2,7 +2,7 @@
   "_comment": "Israel LSA reporting points, hand-digitized via the editor tool (?editor=1). All on-request. name=code or Hebrew label; he=Hebrew. WGS-84.",
   "source": "hand-digitized (editor tool) on LSA-Low-Altitude chart",
   "grid": "WGS-84",
-  "count": 160,
+  "count": 171,
   "points": [
     {
       "lat": 33.22121,
@@ -1123,6 +1123,106 @@
       "report": "onRequest",
       "name": "צומת ברכיה",
       "he": "צומת ברכיה"
+    },
+    {
+      "lat": 32.18806,
+      "lng": 35.03111,
+      "report": "onRequest",
+      "name": "אלפי מנשה",
+      "he": "אלפי מנשה",
+      "code": "AMNSH",
+      "src": "airmap-azam-unverified"
+    },
+    {
+      "lat": 32.18167,
+      "lng": 35.11333,
+      "report": "onRequest",
+      "name": "קרני שומרון",
+      "he": "קרני שומרון",
+      "code": "KSMRN",
+      "src": "airmap-azam-unverified"
+    },
+    {
+      "lat": 32.11359,
+      "lng": 35.34822,
+      "report": "onRequest",
+      "name": "עקרבה",
+      "he": "עקרבה",
+      "code": "AKRBA",
+      "src": "airmap-azam-unverified"
+    },
+    {
+      "lat": 32.12552,
+      "lng": 35.24611,
+      "report": "onRequest",
+      "name": "תפוח",
+      "he": "תפוח",
+      "code": "TAPUH",
+      "src": "airmap-azam-unverified"
+    },
+    {
+      "lat": 32.9375,
+      "lng": 35.15611,
+      "report": "onRequest",
+      "name": "מכר",
+      "he": "מכר",
+      "code": "MACHR",
+      "src": "airmap-azam-unverified"
+    },
+    {
+      "lat": 32.93194,
+      "lng": 35.16083,
+      "report": "onRequest",
+      "name": "צומת טל אל",
+      "he": "צומת טל אל",
+      "code": "TAALL",
+      "src": "airmap-azam-unverified"
+    },
+    {
+      "lat": 31.87333,
+      "lng": 34.98361,
+      "report": "onRequest",
+      "name": "שעלבים",
+      "he": "שעלבים",
+      "code": "SHLVM",
+      "src": "airmap-azam-unverified"
+    },
+    {
+      "lat": 32.12239,
+      "lng": 34.9046,
+      "report": "mandatory",
+      "name": "צומת ירקון",
+      "he": "צומת ירקון",
+      "code": "ZYARK",
+      "src": "airmap-azam-unverified"
+    },
+    {
+      "lat": 32.15637,
+      "lng": 34.87227,
+      "report": "mandatory",
+      "name": "רמתיים",
+      "he": "רמתיים",
+      "code": "RAMAT",
+      "src": "airmap-azam-unverified"
+    },
+    {
+      "lat": 31.94194,
+      "lng": 34.75194,
+      "report": "mandatory",
+      "name": "שורק",
+      "he": "שורק",
+      "code": "SOREK",
+      "src": "airmap-azam-unverified"
+    },
+    {
+      "lat": 32.22694,
+      "lng": 34.86082,
+      "report": "mandatory",
+      "name": "חרוצים",
+      "he": "חרוצים",
+      "code": "HAROZ",
+      "src": "airmap-azam-unverified"
     }
-  ]
+  ],
+  "_pendingReview": "AirMap-derived LSA reporting points (src=airmap-azam-unverified) added for on-map review — NOT AIP-verified; confirm against the AIP LSA chart before treating as authoritative, and drop the src/code marker keys once verified."
 }
