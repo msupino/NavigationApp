@@ -486,7 +486,7 @@ var magVar = -5;                       // signed offset added to true heading
 window.S = Object.assign({
   navWpUrl: 'data/cvfr-nav-waypoints.json?v=9',  // resolved relative to index.html (docs/)
   navWpSearchField: 'en',              // which locale label to show/search in results
-  airfieldsUrl: 'data/airfields.json?v=28',  // resolved relative to index.html (docs/)
+  airfieldsUrl: 'data/airfields.json?v=29',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   commChangeUrl: 'data/cvfr-comm-change.json?v=1', // CVFR comm-change reporting points (issue #399)
   legAltitudeUrl: 'data/cvfr-leg-altitude.json?v=1', // CVFR green-route leg altitude table
@@ -1028,6 +1028,7 @@ window.S = Object.assign({
   plateOpenTab: 'Open in new tab',
   plateClose: 'Close',
   platesNone: 'No charts available — see official AIP',
+  plateLoading: 'Loading…',
   loadingCharts: 'Loading charts…',
   plateLoadError: 'Failed to load chart.',
   plateAttribution: 'Charts © Israel CAAI / Ministry of Transport — published in the AIP.',
