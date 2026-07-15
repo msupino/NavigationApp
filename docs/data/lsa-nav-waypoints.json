@@ -2,7 +2,7 @@
   "_comment": "Israel LSA reporting points, hand-digitized via the editor tool (?editor=1). All on-request. name=code or Hebrew label; he=Hebrew. WGS-84.",
   "source": "hand-digitized (editor tool) on LSA-Low-Altitude chart",
   "grid": "WGS-84",
-  "count": 165,
+  "count": 167,
   "points": [
     {
       "lat": 33.22121,
@@ -1158,6 +1158,21 @@
       "report": "onRequest",
       "name": "בית גוברין",
       "he": "בית גוברין"
+    },
+    {
+      "lat": 31.93964,
+      "lng": 34.70461,
+      "report": "onRequest",
+      "name": "שפך",
+      "he": "שפך"
+    },
+    {
+      "lat": 31.70373,
+      "lng": 35.33154,
+      "report": "onRequest",
+      "name": "",
+      "he": "",
+      "note": "no AirMap match (nearest 5.77nm) — name pending reviewer"
     }
   ]
 }
