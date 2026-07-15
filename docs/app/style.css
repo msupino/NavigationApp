@@ -1576,6 +1576,17 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   padding: 4px 6px 6px;
   border-top: 1px solid #3a3636;
 }
+/* Wrapped footer (mobile / panel): the live-location button's label toggles
+   between "show location" and "hide location", which are different widths — so
+   the button (and the wrap after it) jumped to another line on toggle and on
+   the first i18n fill at boot. Reserve its widest state per language so the
+   width is stable and nothing reflows. Scoped to the wrapped footer only; the
+   desktop menubar renders these icon-only (30px). */
+@media (max-width: 680px) {
+  #toolbar > #footer-links .gps-footer-btn { justify-content: flex-start; }
+  html[lang="he"] #toolbar > #footer-links #gps-live { min-width: 80px; }
+  html[lang="en"] #toolbar > #footer-links #gps-live { min-width: 104px; }
+}
 #toolbar .footer-link {
   display: inline-flex;
   align-items: center;
