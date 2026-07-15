@@ -3425,8 +3425,8 @@ const overlayAlign = (function () {
     if (active) return;
     active = true;
     document.body.classList.add('ov-align-active');
-    const b = document.getElementById('overlay-align-btn');
-    if (b) b.classList.add('active');
+    const cb = document.getElementById('overlay-align-cb');
+    if (cb) cb.checked = true;
     buildPanel();
     mapClick = (e) => {
       if (e.originalEvent && e.originalEvent.target &&
@@ -3443,8 +3443,8 @@ const overlayAlign = (function () {
     map.off('click', mapClick); mapClick = null;
     if (panel) { panel.remove(); panel = null; }
     document.body.classList.remove('ov-align-active');
-    const b = document.getElementById('overlay-align-btn');
-    if (b) b.classList.remove('active');
+    const cb = document.getElementById('overlay-align-cb');
+    if (cb) cb.checked = false;
     active = false;
   }
   function toggle() { active ? exit() : enter(); }
@@ -3453,9 +3453,15 @@ const overlayAlign = (function () {
 })();
 window.overlayAlign = overlayAlign;
 
-(function wireOverlayAlignBtn() {
-  const btn = document.getElementById('overlay-align-btn');
-  if (btn) btn.onclick = () => overlayAlign.toggle();
+// Hidden tool, like ?editor=1 / ?tune=1: the align toggle only appears with
+// ?align=1 in the URL. Otherwise its group stays hidden and unwired.
+(function wireOverlayAlignToggle() {
+  if (!/[?&]align=1\b/.test(location.search)) return;
+  const group = document.getElementById('overlay-align-group');
+  const cb = document.getElementById('overlay-align-cb');
+  if (!group || !cb) return;
+  group.hidden = false;
+  cb.onchange = () => { cb.checked ? overlayAlign.enter() : overlayAlign.exit(); };
 })();
 
 // ── Shared airfield-plate opacity ─────────────────────────────────────────────

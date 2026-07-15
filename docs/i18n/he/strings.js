@@ -468,7 +468,7 @@ window.S = {
   tbHeliOpacityReset: 'אפס שקיפות',
   tbShowCommfail: 'הצג הצטרפות בתקלת קשר',
   tbShowCommfailTitle: 'הצג תרשימי הצטרפות בתקלת קשר מוקרנים לשדות תעופה ישראלים',
-  tbAlignOverlays: '✎ יישור שכבות',
+  tbAlignOverlays: 'יישור שכבות',
   tbAlignOverlaysTitle: 'הזזה, שינוי גודל או סיבוב של שכבת תרשים מוצגת לפי העין, ואז העתקת הקואורדינטות המתוקנות',
   ovAlignTitle: 'יישור שכבות',
   ovAlignPick: 'הקש על שכבה במפה כדי לבחור אותה',

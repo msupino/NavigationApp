@@ -4435,22 +4435,7 @@ body.theme-light #tuning-panel summary {
 /* --- Offline chart packs (Extra layers) ------------------------------ */
 .offline-tiles-status { font-size: 12px; opacity: 0.8; align-self: center; }
 
-/* --- Overlay align editor (Extra layers) ---------------------------- */
-.tb-align-btn {
-  width: 100%;
-  padding: 4px 6px;
-  font-size: 12px;
-  color: #e8e8e8;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid #443f3f;
-  border-radius: 5px;
-  cursor: pointer;
-}
-.tb-align-btn:hover { background: rgba(255, 255, 255, 0.12); }
-.tb-align-btn.active { background: #2f6fb0; border-color: #2f6fb0; color: #fff; }
-body.theme-light .tb-align-btn { color: #222; background: rgba(0, 0, 0, 0.04); }
-body.theme-light .tb-align-btn.active { color: #fff; }
-
+/* --- Overlay align editor (Extra layers, ?align=1) ------------------ */
 /* Floating editor panel */
 .ov-align-panel {
   position: fixed;

@@ -14,19 +14,29 @@ const PNG = Buffer.from(
 );
 const OV_KEY = 'navaid.overlayBoundsOverrides';
 
-async function boot(page, initScript) {
+async function boot(page, initScript, query) {
   await page.route(IMG_RE, r =>
     r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
   await page.addInitScript(() => {
     try { localStorage.setItem('navaid.sec.weather', '1'); } catch (e) {}
   });
   if (initScript) await page.addInitScript(initScript);
-  await page.goto('?lang=en');
+  await page.goto(query || '?lang=en');
   await page.waitForFunction(
     () => typeof map !== 'undefined' && !!window.airfields &&
-          typeof window.overlayAlign === 'object' &&
-          !!document.getElementById('overlay-align-btn'));
+          typeof window.overlayAlign === 'object');
 }
+
+test('align toggle is hidden without ?align=1, revealed and functional with it', async ({ page }) => {
+  await boot(page);   // no ?align=1
+  await expect(page.locator('#overlay-align-group')).toBeHidden();
+  await boot(page, null, '?lang=en&align=1');
+  await expect(page.locator('#overlay-align-group')).toBeVisible();
+  await page.locator('#overlay-align-cb').check();
+  await expect(page.locator('.ov-align-panel')).toBeVisible();
+  await page.locator('#overlay-align-cb').uncheck();
+  await expect(page.locator('.ov-align-panel')).toHaveCount(0);
+});
 
 test('Align-overlays button opens and closes the editor panel', async ({ page }) => {
   await boot(page);

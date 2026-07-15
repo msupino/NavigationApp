@@ -952,7 +952,7 @@ window.S = Object.assign({
   tbCommfailOpacity: 'Comm-failure opacity',
   tbCommfailOpacityTitle: 'Adjust comm-failure entry overlay opacity',
   tbCommfailOpacityReset: 'Reset opacity',
-  tbAlignOverlays: '✎ Align overlays',
+  tbAlignOverlays: 'Align overlays',
   tbAlignOverlaysTitle: 'Nudge, scale or rotate a shown chart overlay by eye, then copy the corrected coordinates',
   ovAlignTitle: 'Align overlays',
   ovAlignPick: 'Tap an overlay on the map to select it',

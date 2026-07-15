@@ -7,7 +7,9 @@ no graticule source to auto-georeference from. Users need an in-app way to
 align an overlay by eye (pan / scale / rotate) and export the corrected coords.
 
 ## Scope (v1)
-- Enter/exit an **align mode** from the Extra-layers panel.
+- Hidden tool, like `?editor=1` / `?tune=1`: an align toggle appears in the
+  Extra-layers panel only with `?align=1` in the URL.
+- Enter/exit an **align mode** from that toggle.
 - Select any currently-shown overlay (click it on the map).
 - **Pan / scale / rotate** the selected overlay with on-map handles.
 - Persist edits locally (survives reload) and **export** corrected coords as
