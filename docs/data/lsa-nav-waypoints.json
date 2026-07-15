@@ -2,7 +2,7 @@
   "_comment": "Israel LSA reporting points, hand-digitized via the editor tool (?editor=1). All on-request. name=code or Hebrew label; he=Hebrew. WGS-84.",
   "source": "hand-digitized (editor tool) on LSA-Low-Altitude chart",
   "grid": "WGS-84",
-  "count": 160,
+  "count": 167,
   "points": [
     {
       "lat": 33.22121,
@@ -1123,6 +1123,55 @@
       "report": "onRequest",
       "name": "צומת ברכיה",
       "he": "צומת ברכיה"
+    },
+    {
+      "lat": 31.94109,
+      "lng": 34.75096,
+      "report": "onRequest",
+      "name": "שורק",
+      "he": "שורק"
+    },
+    {
+      "lat": 31.87041,
+      "lng": 34.98322,
+      "report": "onRequest",
+      "name": "שעלבים",
+      "he": "שעלבים"
+    },
+    {
+      "lat": 31.79663,
+      "lng": 35.07554,
+      "report": "onRequest",
+      "name": "שורש",
+      "he": "שורש"
+    },
+    {
+      "lat": 31.77721,
+      "lng": 35.01137,
+      "report": "onRequest",
+      "name": "אשתאול",
+      "he": "אשתאול"
+    },
+    {
+      "lat": 31.60454,
+      "lng": 34.89263,
+      "report": "onRequest",
+      "name": "בית גוברין",
+      "he": "בית גוברין"
+    },
+    {
+      "lat": 31.93964,
+      "lng": 34.70461,
+      "report": "onRequest",
+      "name": "שפך",
+      "he": "שפך"
+    },
+    {
+      "lat": 31.70373,
+      "lng": 35.33154,
+      "report": "onRequest",
+      "name": "מרסבא",
+      "he": "מרסבא"
     }
   ]
 }
