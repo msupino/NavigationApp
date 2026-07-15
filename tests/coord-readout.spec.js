@@ -68,7 +68,7 @@ test.describe('Coordinate readout', () => {
     }));
     expect(r.hi).toBe("33°00.0'N");
     expect(r.exact).toBe("33°00.0'N");
-    expect(r.lng).toBe("35°00.0'E");
+    expect(r.lng).toBe("035°00.0'E");   // longitude zero-padded to 3 degree digits
     expect(r.normal).toBe("32°30.0'N");
     // never emits a 60.0 minutes value
     for (const v of Object.values(r)) expect(v).not.toContain('60.0');
