@@ -48,12 +48,12 @@ test.describe('plateBase()', () => {
     expect(url).toBe('/byop/LLHZ_Ground_Parking%20F.pdf');
   });
 
-  // Regression for the staging PDF 404 (#457): showPlateViewer must fetch the
-  // plate at the location-resolved base and actually receive it. The local
-  // server serves docs/ at '/', so the resolved URL must return 200 and the
+  // Regression for the staging 404 (#457): showPlateViewer must load the plate
+  // at the location-resolved base and actually receive it. Plates now render as
+  // per-page PNGs, so the resolved page-image URL must return 200 and the
   // loading overlay must NOT flip to the plateLoadError text. On a host where
-  // the prefix is wrong (the original bug) this fetch 404s and the test fails.
-  test('opening a plate fetches the PDF and does not error', async ({ page }) => {
+  // the prefix is wrong (the original bug) this 404s and the test fails.
+  test('opening a plate loads its page image and does not error', async ({ page }) => {
     await page.goto('?lang=en');
     await page.waitForFunction(
       () => typeof showPlateViewer === 'function' && typeof S === 'object');
@@ -63,11 +63,11 @@ test.describe('plateBase()', () => {
     const FILE = 'LLHZ_airport_Annex Alef.pdf';
 
     const respPromise = page.waitForResponse(
-      r => r.url().includes('/byop/') && /\.pdf(\?|$)/i.test(r.url()));
+      r => r.url().includes('/byop/') && /-p\d+\.png(\?|$)/i.test(r.url()));
     await page.evaluate((f) => showPlateViewer(f, 'Annex Alef'), FILE);
 
     const resp = await respPromise;
-    expect(resp.url()).toContain('/byop/LLHZ_airport_Annex%20Alef.pdf');
+    expect(resp.url()).toContain('/byop/LLHZ_airport_Annex%20Alef-p01.png');
     expect(resp.status()).toBe(200);
 
     // The overlay must never show the failure string for a reachable plate.
