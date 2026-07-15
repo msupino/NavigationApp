@@ -4434,3 +4434,77 @@ body.theme-light #tuning-panel summary {
 
 /* --- Offline chart packs (Extra layers) ------------------------------ */
 .offline-tiles-status { font-size: 12px; opacity: 0.8; align-self: center; }
+
+/* --- Overlay align editor (Extra layers) ---------------------------- */
+.tb-align-btn {
+  width: 100%;
+  padding: 4px 6px;
+  font-size: 12px;
+  color: #e8e8e8;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #443f3f;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.tb-align-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.tb-align-btn.active { background: #2f6fb0; border-color: #2f6fb0; color: #fff; }
+body.theme-light .tb-align-btn { color: #222; background: rgba(0, 0, 0, 0.04); }
+body.theme-light .tb-align-btn.active { color: #fff; }
+
+/* Floating editor panel */
+.ov-align-panel {
+  position: fixed;
+  top: 70px;
+  right: 12px;
+  z-index: 5001;
+  width: 250px;
+  max-width: calc(100vw - 24px);
+  padding: 10px 12px;
+  background: rgba(20, 18, 18, 0.96);
+  color: #e8e8e8;
+  border: 1px solid #443f3f;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  font-size: 12px;
+  direction: ltr;
+}
+body.theme-light .ov-align-panel { background: rgba(250, 250, 250, 0.97); color: #222; border-color: #b8c0cc; }
+.ov-align-panel .ov-title { font-weight: 600; margin-bottom: 6px; }
+.ov-align-panel .ov-sel { font-size: 11px; opacity: 0.85; word-break: break-all; margin-bottom: 4px; }
+.ov-align-panel .ov-readout { font-family: ui-monospace, Menlo, monospace; font-size: 10px; opacity: 0.75; min-height: 12px; margin-bottom: 4px; }
+.ov-align-panel .ov-hint { font-size: 10px; opacity: 0.7; margin-bottom: 8px; }
+.ov-align-panel .ov-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.ov-align-panel .ov-btns button {
+  flex: 1 1 auto;
+  padding: 5px 8px;
+  font-size: 11px;
+  color: #e8e8e8;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid #443f3f;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.ov-align-panel .ov-btns button:hover { background: rgba(255, 255, 255, 0.16); }
+.ov-align-panel .ov-btns button:disabled { opacity: 0.4; cursor: default; }
+.ov-align-panel .ov-done { background: #2f6fb0 !important; border-color: #2f6fb0 !important; color: #fff; }
+body.theme-light .ov-align-panel .ov-btns button { color: #222; background: rgba(0, 0, 0, 0.05); }
+body.theme-light .ov-align-panel .ov-done { color: #fff; }
+
+/* On-map drag handles */
+.ov-handle { cursor: grab; box-sizing: border-box; }
+.ov-handle.ov-h-corner {
+  width: 14px; height: 14px; margin: 2px;
+  background: #fff; border: 2px solid #2f6fb0; border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+.ov-handle.ov-h-center {
+  width: 18px; height: 18px;
+  background: rgba(47, 111, 176, 0.9); border: 2px solid #fff; border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+.ov-handle.ov-h-rot {
+  width: 16px; height: 16px; margin: 1px;
+  background: #f0a020; border: 2px solid #fff; border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+body.ov-align-active { cursor: crosshair; }
