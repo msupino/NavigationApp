@@ -105,6 +105,22 @@ test('a saved rotated override renders the overlay as a rotated image', async ({
   expect(res.rotated).toBe(true);
 });
 
+test('a rotated overlay defined in airfields.json renders rotated (no override)', async ({ page }) => {
+  await boot(page, () => { localStorage.setItem('navaid.showCircuit', '1'); });
+  const res = await page.evaluate(async () => {
+    await new Promise(r => setTimeout(r, 100));
+    const co = (window.airfields || []).find(a => a.name === 'LLHZ')?.circuit_overlay;
+    let found = null;
+    circuitLayerGroup.eachLayer(l => { if (l._ovPng === 'LLHZ_circuit.png') found = l; });
+    return {
+      dataHasCorners: !!(co && co.tl && co.tr && co.bl),
+      rotated: !!(found && found instanceof L.ImageOverlay.Rotated),
+    };
+  });
+  expect(res.dataHasCorners).toBe(true);   // guards the committed geometry
+  expect(res.rotated).toBe(true);          // guards overlayGeom base-data path
+});
+
 test('Reset all clears every stored override', async ({ page }) => {
   await boot(page, () => {
     localStorage.setItem('navaid.overlayBoundsOverrides', JSON.stringify({

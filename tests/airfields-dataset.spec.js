@@ -344,15 +344,26 @@ test.describe('circuit_overlay field', () => {
       const co = af.circuit_overlay;
       expect(co, `${code} missing circuit_overlay`).toBeTruthy();
       expect(co.png).toBe(exp.png);
-      expect(Array.isArray(co.sw) && co.sw.length === 2).toBe(true);
-      expect(Array.isArray(co.ne) && co.ne.length === 2).toBe(true);
-      // Rough sanity: SW south of NE, SW west of NE, coords in Israel envelope
-      expect(co.sw[0]).toBeLessThan(co.ne[0]);     // sw lat < ne lat
-      expect(co.sw[1]).toBeLessThan(co.ne[1]);     // sw lng < ne lng
-      expect(co.sw[0]).toBeGreaterThan(29);
-      expect(co.ne[0]).toBeLessThan(34);
-      expect(co.sw[1]).toBeGreaterThan(34);
-      expect(co.ne[1]).toBeLessThan(36);
+      // Geometry is axis-aligned (sw/ne) or rotated (tl/tr/bl, from the
+      // ?align=1 editor). Accept either, sanity-check whichever is present.
+      const isRect = Array.isArray(co.sw) && Array.isArray(co.ne);
+      const isRot = ['tl', 'tr', 'bl'].every(k => Array.isArray(co[k]) && co[k].length === 2);
+      expect(isRect || isRot, `${code} circuit_overlay has no geometry`).toBe(true);
+      const pts = isRot ? [co.tl, co.tr, co.bl] : [co.sw, co.ne];
+      for (const p of pts) {
+        expect(p.length).toBe(2);
+        expect(p[0]).toBeGreaterThan(29);        // lat in Israel envelope
+        expect(p[0]).toBeLessThan(34);
+        expect(p[1]).toBeGreaterThan(34);        // lng in Israel envelope
+        expect(p[1]).toBeLessThan(36);
+      }
+      if (isRect) {
+        expect(co.sw[0]).toBeLessThan(co.ne[0]);   // sw lat < ne lat
+        expect(co.sw[1]).toBeLessThan(co.ne[1]);   // sw lng < ne lng
+      } else {
+        expect(co.bl[0]).toBeLessThan(co.tl[0]);   // bottom lat < top lat
+        expect(co.tl[1]).toBeLessThan(co.tr[1]);   // left lng < right lng
+      }
     }
   });
 
