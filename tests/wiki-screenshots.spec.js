@@ -6,7 +6,7 @@
 //
 // Mirrors og-preview.spec.js: seed the canonical demo route, drive the real UI
 // into each documented state, screenshot at the page's historical dimensions.
-const { test, expect } = require('./_setup');
+const { test } = require('./_setup');
 const path = require('path');
 const fs = require('fs');
 const { LLHZ, LLHA } = require('./_airfieldArp');
