@@ -360,13 +360,22 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
   max-height: 132px; overflow-y: auto;
   border: 1px solid #33302f; border-radius: 5px; padding: 2px 4px;
 }
-.tb-plate-airfields .plate-af-row {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 12px; padding: 2px 0; white-space: nowrap;
+/* #toolbar prefix so these beat the id-specific `#toolbar .navtoggle` rule
+   (which sets white-space:nowrap + align-items:center). Long airfield names
+   (e.g. "LLIB · Rosh Pina / Mahanayim") must wrap in the narrow mobile column. */
+#toolbar .tb-plate-airfields .plate-af-row {
+  display: flex; align-items: flex-start; gap: 6px;
+  font-size: 12px; padding: 2px 0; white-space: normal;
 }
-.tb-plate-airfield .plate-af-ctl { font-size: 12px; padding: 1px 0; }
+#toolbar .tb-plate-airfields .plate-af-row input { flex: none; margin-top: 2px; }
+#toolbar .tb-plate-airfields .plate-af-row span { min-width: 0; overflow-wrap: anywhere; }
+#toolbar .tb-plate-airfield .plate-af-ctl { font-size: 12px; padding: 1px 0; white-space: normal; }
 /* Per-field rows are disabled (and dimmed) while Auto drives the selection. */
 .tb-plate-airfields .plate-af-row:has(input:disabled) { opacity: 0.5; }
+/* Checkbox-toggle labels (e.g. "Show CVFR entry/exit routes") wrap on the
+   narrow mobile toolbar instead of overflowing their frame. */
+#toolbar .tb-group-box .navtoggle { white-space: normal; align-items: flex-start; }
+#toolbar .tb-group-box .navtoggle input[type="checkbox"] { flex: none; margin-top: 2px; }
 body.theme-light .tb-plate-airfields { border-color: #b8c0cc; }
 body.theme-light .tb-plate-airfield-label { color: #55606e; }
 /* Uniform layout for every layer card: stacked controls with even spacing,

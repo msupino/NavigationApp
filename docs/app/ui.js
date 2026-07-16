@@ -3243,8 +3243,10 @@ function populatePlateAirfieldSelect() {
     lab.className = 'navtoggle plate-af-row';
     const cb = document.createElement('input');
     cb.type = 'checkbox'; cb.value = name; cb.className = 'plate-af-cb';
+    const span = document.createElement('span');
+    span.textContent = text;
     lab.appendChild(cb);
-    lab.appendChild(document.createTextNode(' ' + text));
+    lab.appendChild(span);
     box.appendChild(lab);
   }
   updatePlatePickerUI();
