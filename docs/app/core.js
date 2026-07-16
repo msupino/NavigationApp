@@ -883,6 +883,7 @@ window.S = Object.assign({
   tbPlateAirfield: 'Show plates for',
   tbPlateAirfieldTitle: 'Limit airfield-plate overlays to one airfield, so neighbouring fields’ plates don’t overlap',
   tbPlateAirfieldAll: 'All airfields',
+  tbPlateAirfieldAuto: 'Auto (route start + end)',
   tbReverse: '⇄ Reverse route (R)',
   tbReverseTitle: 'Reverse route order',
   tbUndo: '↶ Undo (Ctrl-Z)',
@@ -930,7 +931,7 @@ window.S = Object.assign({
   tbShowDriftTitle: 'Show 10-degree drift reference lines at each leg end',
   tbShowAirfields: 'Show/pin airfields',
   tbShowAirfieldsTitle: 'Overlay published Israeli airfields (BYOP source)',
-  tbShowCircuit: 'Show circuit overlays',
+  tbShowCircuit: 'Show circuit patterns',
   tbShowCircuitTitle: 'Overlay georeferenced circuit/VFR plates for Israeli airfields',
   tbCircuitOpacity: 'Circuit opacity',
   tbCircuitOpacityTitle: 'Adjust circuit overlay opacity',
@@ -940,17 +941,17 @@ window.S = Object.assign({
   tbTrainingOpacity: 'Training opacity',
   tbTrainingOpacityTitle: 'Adjust training-area overlay opacity',
   tbTrainingOpacityReset: 'Reset opacity',
-  tbShowCvfr: 'Show CVFR routes',
+  tbShowCvfr: 'Show CVFR entry/exit routes',
   tbShowCvfrTitle: 'Overlay georeferenced CVFR route plates for Israeli airfields',
   tbCvfrOpacity: 'CVFR opacity',
   tbCvfrOpacityTitle: 'Adjust CVFR route overlay opacity',
   tbCvfrOpacityReset: 'Reset opacity',
-  tbShowHeli: 'Show helicopter routes',
+  tbShowHeli: 'Show helicopter entry/exit routes',
   tbShowHeliTitle: 'Overlay georeferenced helicopter entry/exit route plates for Israeli airfields',
   tbHeliOpacity: 'Helicopter opacity',
   tbHeliOpacityTitle: 'Adjust helicopter route overlay opacity',
   tbHeliOpacityReset: 'Reset opacity',
-  tbShowCommfail: 'Show comm-failure entry',
+  tbShowCommfail: 'Show comm-failure joining',
   tbShowCommfailTitle: 'Overlay georeferenced radio comm-failure entry plates for Israeli airfields',
   tbCommfailOpacity: 'Comm-failure opacity',
   tbCommfailOpacityTitle: 'Adjust comm-failure entry overlay opacity',
@@ -2292,6 +2293,8 @@ function syncLegs() {
   // A newly added leg should pick up live wind when the wind display is on
   // (the handler is debounced and no-ops when the wind display is off).
   if (state.legs.length > before && typeof onRouteLegsGrown === 'function') onRouteLegsGrown();
+  // Auto plate-filter follows the route's first/last airfield.
+  if (typeof onRouteChangedForPlates === 'function') onRouteChangedForPlates();
 }
 
 function legAltitudeKey(from, to) {
