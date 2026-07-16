@@ -3259,17 +3259,16 @@ function updatePlatePickerUI() {
   const rows = [...document.querySelectorAll('#plate-airfields .plate-af-cb')];
   const isAuto = window.plateMode === 'auto';
   if (auto) auto.checked = isAuto;
-  const endpoints = isAuto ? routeEndpointAirfields() : null;
-  for (const cb of rows) {
-    if (isAuto) { cb.checked = endpoints.has(cb.value); cb.disabled = true; }
-    else if (window.plateMode === 'all') { cb.checked = true; cb.disabled = false; }
-    else { cb.checked = window.plateAirfields.includes(cb.value); cb.disabled = false; }
-  }
+  // Reflect the currently-shown set. Nothing is disabled: ticking All or a
+  // field just switches out of Auto (handled below).
+  const shown = isAuto ? routeEndpointAirfields()
+    : (window.plateMode === 'all' ? new Set(plateFields()) : new Set(window.plateAirfields));
+  for (const cb of rows) { cb.checked = shown.has(cb.value); cb.disabled = false; }
   if (all) {
-    all.disabled = isAuto;
     const n = rows.length, sel = rows.filter(c => c.checked).length;
-    all.checked = !isAuto && n > 0 && sel === n;
-    all.indeterminate = !isAuto && sel > 0 && sel < n;
+    all.disabled = false;
+    all.checked = n > 0 && sel === n;
+    all.indeterminate = sel > 0 && sel < n;
   }
 }
 
@@ -3329,7 +3328,10 @@ function onRouteChangedForPlates() {
   box.addEventListener('change', (e) => {
     const cb = e.target;
     if (!cb || cb.type !== 'checkbox') return;
-    const base = window.plateMode === 'all' ? plateFields() : window.plateAirfields.slice();
+    // Seed from the currently-shown set (so ticking a field while Auto/All is on
+    // keeps the visible checks) then switch to a custom pick — Auto turns off.
+    const base = window.plateMode === 'auto' ? [...routeEndpointAirfields()]
+      : (window.plateMode === 'all' ? plateFields() : window.plateAirfields.slice());
     const set = new Set(base);
     if (cb.checked) set.add(cb.value); else set.delete(cb.value);
     window.plateMode = 'custom';

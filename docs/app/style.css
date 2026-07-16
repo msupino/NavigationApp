@@ -370,8 +370,6 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
 #toolbar .tb-plate-airfields .plate-af-row input { flex: none; margin-top: 2px; }
 #toolbar .tb-plate-airfields .plate-af-row span { min-width: 0; overflow-wrap: anywhere; }
 #toolbar .tb-plate-airfield .plate-af-ctl { font-size: 12px; padding: 1px 0; white-space: normal; }
-/* Per-field rows are disabled (and dimmed) while Auto drives the selection. */
-.tb-plate-airfields .plate-af-row:has(input:disabled) { opacity: 0.5; }
 /* Checkbox-toggle labels (e.g. "Show CVFR entry/exit routes") wrap on the
    narrow mobile toolbar instead of overflowing their frame. */
 #toolbar .tb-group-box .navtoggle { white-space: normal; align-items: flex-start; }

@@ -60,7 +60,7 @@ test('All off = none; ticking fields shows only those; All on restores', async (
   expect((await cvfrPngs(page)).length).toBe(all);
 });
 
-test('Auto shows only the route first & last airfield, and follows edits', async ({ page }) => {
+test('Auto shows route endpoints, follows edits, and All turns Auto off', async ({ page }) => {
   await boot(page);
   await setRoute(page, ['LLHZ', 'LLMG', 'LLFK']);   // endpoints LLHZ, LLFK
   await page.locator('#cvfr-cb').check();
@@ -71,8 +71,28 @@ test('Auto shows only the route first & last airfield, and follows edits', async
   await setRoute(page, ['LLMZ', 'LLMG']);
   await expect.poll(() => cvfrPngs(page)).toEqual(['LLMG_cvfr.png', 'LLMZ_cvfr.png']);
 
-  // per-field boxes are disabled while Auto drives the selection
-  await expect(page.locator('#plate-airfields input[value="LLMG"]')).toBeDisabled();
+  // fields stay enabled while Auto is on
+  await expect(page.locator('#plate-airfields input[value="LLMG"]')).toBeEnabled();
+
+  // ticking All turns Auto off and shows every field
+  await page.locator('#plate-all').check();
+  await expect(page.locator('#plate-auto')).not.toBeChecked();
+  expect(await page.evaluate(() => window.plateMode)).toBe('all');
+  expect((await cvfrPngs(page)).length).toBeGreaterThan(2);
+});
+
+test('picking a field while Auto is on turns Auto off and keeps the visible checks', async ({ page }) => {
+  await boot(page);
+  await setRoute(page, ['LLHZ', 'LLFK']);
+  await page.locator('#cvfr-cb').check();
+  await page.locator('#plate-auto').check();
+  expect(await cvfrPngs(page)).toEqual(['LLFK_cvfr.png', 'LLHZ_cvfr.png']);
+
+  // unticking one shown endpoint → custom (Auto off), the other endpoint stays
+  await page.locator('#plate-airfields input[value="LLHZ"]').uncheck();
+  await expect(page.locator('#plate-auto')).not.toBeChecked();
+  expect(await page.evaluate(() => window.plateMode)).toBe('custom');
+  expect(await cvfrPngs(page)).toEqual(['LLFK_cvfr.png']);
 });
 
 test('mode + selection persist across reload', async ({ page }) => {
