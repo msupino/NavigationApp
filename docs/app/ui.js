@@ -3009,7 +3009,7 @@ function loadCircuitOverlays() {
   for (const af of airfields) {
     const co = af.circuit_overlay;
     if (!co) continue;
-    if (window.plateAirfield && af.name !== window.plateAirfield) continue;
+    if (!plateAirfieldAllowed(af.name)) continue;
     buildOverlayLayer(circuitImgBase(), co, '6', 'circuit_overlay')
       .addTo(circuitLayerGroup);
   }
@@ -3047,7 +3047,7 @@ function loadTrainingOverlays() {
   for (const af of airfields) {
     const to = af.training_overlay;
     if (!to) continue;
-    if (window.plateAirfield && af.name !== window.plateAirfield) continue;
+    if (!plateAirfieldAllowed(af.name)) continue;
     buildOverlayLayer(trainingImgBase(), to, '5', 'training_overlay')
       .addTo(trainingLayerGroup);
   }
@@ -3085,7 +3085,7 @@ function loadCvfrOverlays() {
   for (const af of airfields) {
     const co = af.cvfr_overlay;
     if (!co) continue;
-    if (window.plateAirfield && af.name !== window.plateAirfield) continue;
+    if (!plateAirfieldAllowed(af.name)) continue;
     buildOverlayLayer(cvfrImgBase(), co, '5', 'cvfr_overlay')
       .addTo(cvfrLayerGroup);
   }
@@ -3123,7 +3123,7 @@ function loadHeliOverlays() {
   for (const af of airfields) {
     const ho = af.heli_overlay;
     if (!ho) continue;
-    if (window.plateAirfield && af.name !== window.plateAirfield) continue;
+    if (!plateAirfieldAllowed(af.name)) continue;
     buildOverlayLayer(heliImgBase(), ho, '4', 'heli_overlay')
       .addTo(heliLayerGroup);
   }
@@ -3161,7 +3161,7 @@ function loadCommfailOverlays() {
   for (const af of airfields) {
     const co = af.commfail_overlay;
     if (!co) continue;
-    if (window.plateAirfield && af.name !== window.plateAirfield) continue;
+    if (!plateAirfieldAllowed(af.name)) continue;
     buildOverlayLayer(commfailImgBase(), co, '4', 'commfail_overlay')
       .addTo(commfailLayerGroup);
   }
@@ -3184,6 +3184,27 @@ window.plateAirfield = (() => {
 const PLATE_OTYPES = ['circuit_overlay', 'training_overlay', 'cvfr_overlay',
                       'heli_overlay', 'commfail_overlay'];
 
+function plateFields() {
+  return (window.airfields || [])
+    .filter(a => a.name && PLATE_OTYPES.some(t => a[t])).map(a => a.name);
+}
+// First & last airfield (with plates) appearing as route waypoints.
+function routeEndpointAirfields() {
+  const set = new Set();
+  const have = new Set(plateFields());
+  const wps = (typeof state === 'object' && state && Array.isArray(state.waypoints))
+    ? state.waypoints : [];
+  const on = wps.map(w => w && w.name).filter(n => have.has(n));
+  if (on.length) { set.add(on[0]); set.add(on[on.length - 1]); }
+  return set;
+}
+// '' = every field; 'auto' = route first/last airfield; else a single ICAO.
+function plateAirfieldAllowed(name) {
+  if (window.plateAirfield === 'auto') return routeEndpointAirfields().has(name);
+  if (window.plateAirfield) return name === window.plateAirfield;
+  return true;
+}
+
 function populatePlateAirfieldSelect() {
   const sel = document.getElementById('plate-airfield');
   if (!sel || !window.airfields) return;
@@ -3193,6 +3214,9 @@ function populatePlateAirfieldSelect() {
   sel.innerHTML = '';
   const optAll = document.createElement('option');
   optAll.value = ''; optAll.textContent = allLabel; sel.appendChild(optAll);
+  const autoLabel = (typeof S === 'object' && S.tbPlateAirfieldAuto) || 'Auto (route start + end)';
+  const optAuto = document.createElement('option');
+  optAuto.value = 'auto'; optAuto.textContent = autoLabel; sel.appendChild(optAuto);
   const labelField = (typeof S === 'object' && S.airfieldLabelField) || 'en';
   for (const name of names) {
     const af = airfields.find(a => a.name === name);
@@ -3201,7 +3225,8 @@ function populatePlateAirfieldSelect() {
     sel.appendChild(o);
   }
   // A saved filter for an unknown field falls back to "all".
-  window.plateAirfield = names.includes(window.plateAirfield) ? window.plateAirfield : '';
+  window.plateAirfield = (names.includes(window.plateAirfield) || window.plateAirfield === 'auto')
+    ? window.plateAirfield : '';
   sel.value = window.plateAirfield;
 }
 
@@ -3223,6 +3248,17 @@ function rebuildPlateOverlays() {
   }
 }
 
+// Route-aware: when Auto is selected and the route's endpoint airfields change,
+// re-filter the shown plates. Called from syncLegs().
+let _plateAutoKey = '';
+function onRouteChangedForPlates() {
+  if (window.plateAirfield !== 'auto') { _plateAutoKey = ''; return; }
+  const key = [...routeEndpointAirfields()].sort().join(',');
+  if (key === _plateAutoKey) return;
+  _plateAutoKey = key;
+  rebuildPlateOverlays();
+}
+
 (function wirePlateAirfieldSelect() {
   const sel = document.getElementById('plate-airfield');
   if (!sel) return;
@@ -3230,6 +3266,7 @@ function rebuildPlateOverlays() {
   sel.onchange = () => {
     window.plateAirfield = sel.value;
     try { localStorage.setItem(PLATE_AIRFIELD_KEY, sel.value); } catch (_) {}
+    _plateAutoKey = sel.value === 'auto' ? [...routeEndpointAirfields()].sort().join(',') : '';
     rebuildPlateOverlays();
   };
 })();

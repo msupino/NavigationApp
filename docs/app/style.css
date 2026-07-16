@@ -4493,3 +4493,7 @@ body.theme-light .ov-align-panel .ov-done { color: #fff; }
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
 }
 body.ov-align-active { cursor: crosshair; }
+
+/* Long checkbox-toggle labels wrap on the narrow mobile toolbar. */
+#toolbar .tb-group-box .navtoggle { white-space: normal; align-items: flex-start; }
+#toolbar .tb-group-box .navtoggle input[type="checkbox"] { flex: none; margin-top: 2px; }
