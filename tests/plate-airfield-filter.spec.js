@@ -65,3 +65,27 @@ test('the filter persists across reload', async ({ page }) => {
   // stored value is applied to window.plateAirfield on boot
   expect(await page.evaluate(() => window.plateAirfield)).toBe('LLMG');
 });
+
+async function setRoute(page, names) {
+  await page.evaluate((ns) => {
+    state.waypoints = ns.map((n, i) => ({ name: n, lat: 32 + i * 0.1, lng: 34.8 }));
+    syncLegs();
+  }, names);
+}
+
+test('Auto option shows only the route first & last airfield and follows edits', async ({ page }) => {
+  await boot(page);
+  await setRoute(page, ['LLHZ', 'LLMG', 'LLFK']);   // endpoints LLHZ, LLFK
+  await page.locator('#cvfr-cb').check();
+  await expect(page.locator('#plate-airfield option[value="auto"]')).toHaveCount(1);
+
+  await page.selectOption('#plate-airfield', 'auto');
+  expect(await page.evaluate(() => cvfrLayerGroup.getLayers().map(l => l._ovPng).sort()))
+    .toEqual(['LLFK_cvfr.png', 'LLHZ_cvfr.png']);
+
+  // edit the route → Auto follows (endpoints become LLMZ, LLMG)
+  await setRoute(page, ['LLMZ', 'LLMG']);
+  await expect.poll(() => page.evaluate(
+    () => cvfrLayerGroup.getLayers().map(l => l._ovPng).sort()))
+    .toEqual(['LLMG_cvfr.png', 'LLMZ_cvfr.png']);
+});
