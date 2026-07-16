@@ -881,7 +881,7 @@ window.S = Object.assign({
   tbPlateOpacityTitle: 'Adjust the airfield-plate overlay opacity (shared by all plate layers)',
   tbPlateOpacityReset: 'Reset opacity',
   tbPlateAirfield: 'Show plates for',
-  tbPlateAirfieldTitle: 'Limit airfield-plate overlays to one airfield, so neighbouring fields’ plates don’t overlap',
+  tbPlateAirfieldTitle: 'Tick one or more airfields to show only their plates (so neighbouring fields don’t overlap); none ticked shows every field',
   tbPlateAirfieldAll: 'All airfields',
   tbReverse: '⇄ Reverse route (R)',
   tbReverseTitle: 'Reverse route order',

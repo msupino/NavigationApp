@@ -402,7 +402,7 @@ window.S = {
   tbPlateOpacityTitle: 'כוונן שקיפות שכבת תרשימי השדה (משותף לכל השכבות)',
   tbPlateOpacityReset: 'אפס שקיפות',
   tbPlateAirfield: 'הצג תרשימים עבור',
-  tbPlateAirfieldTitle: 'הגבל את תרשימי השדה לשדה אחד, כדי שתרשימי שדות שכנים לא יחפפו',
+  tbPlateAirfieldTitle: 'סמנו שדה אחד או יותר כדי להציג רק את התרשימים שלהם (כדי ששדות שכנים לא יחפפו); ללא סימון מציג את כל השדות',
   tbPlateAirfieldAll: 'כל השדות',
   tbReverse: '⇄ הפוך מסלול (R)',
   tbReverseTitle: 'הפוך סדר מסלול',

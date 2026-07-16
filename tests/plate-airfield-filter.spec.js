@@ -1,7 +1,7 @@
 // @ts-check
-// "Show plates for" per-airfield filter (Airfield-plates group). Limits every
-// plate overlay to a single airfield so close fields (e.g. LLKS & LLIB) don't
-// overlap. Default is "All airfields" (every field's plates, as before).
+// "Show plates for" per-airfield filter (Airfield-plates group): a multi-select
+// checkbox list. Tick one or more fields to show only their plates (so close
+// fields like LLKS & LLIB don't overlap); none ticked = every field (default).
 const { test, expect } = require('./_setup');
 
 test.use({ serviceWorkers: 'block' });
@@ -12,8 +12,6 @@ const PNG = Buffer.from(
 );
 
 async function boot(page) {
-  await page.route(/-(img)\/.*\.png/, r =>
-    r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
   await page.route(/(cvfr|circuit|training|heli|commfail)-img\/.*\.png/, r =>
     r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
   await page.addInitScript(() => {
@@ -21,47 +19,51 @@ async function boot(page) {
   });
   await page.goto('?lang=en');
   await page.waitForFunction(
-    () => typeof map !== 'undefined' && document.getElementById('plate-airfield'));
+    () => typeof map !== 'undefined' && document.getElementById('plate-airfields'));
 }
 
-test('picker is populated once plates load and defaults to All airfields', async ({ page }) => {
+test('checkbox list populates once plates load; none ticked shows every field', async ({ page }) => {
   await boot(page);
   await page.locator('#cvfr-cb').check();
-  const sel = page.locator('#plate-airfield');
-  await expect.poll(() => sel.locator('option').count()).toBeGreaterThan(1);
-  await expect(sel).toHaveValue('');                     // "All airfields"
-  // First option is the All entry (empty value).
-  expect(await sel.locator('option').first().getAttribute('value')).toBe('');
+  const boxes = page.locator('#plate-airfields input[type="checkbox"]');
+  await expect.poll(() => boxes.count()).toBeGreaterThan(1);
+  expect(await boxes.evaluateAll(els => els.every(e => !e.checked))).toBe(true);
+  await page.waitForFunction(() => window.cvfrLayerGroup &&
+    cvfrLayerGroup.getLayers().length > 1);
 });
 
-test('choosing an airfield limits plates to that field; All restores every plate', async ({ page }) => {
+test('ticking fields limits plates to them; unticking all restores every plate', async ({ page }) => {
   await boot(page);
   await page.locator('#cvfr-cb').check();
   await page.waitForFunction(() => window.cvfrLayerGroup &&
     cvfrLayerGroup.getLayers().length > 1);
-
   const all = await page.evaluate(() => cvfrLayerGroup.getLayers().length);
-  expect(all).toBeGreaterThan(1);
 
-  // LLMG has a cvfr_overlay — filtering to it must leave exactly its plate.
-  await page.selectOption('#plate-airfield', 'LLMG');
-  const only = await page.evaluate(() =>
+  // LLMG + LLFK both carry a cvfr_overlay.
+  await page.locator('#plate-airfields input[value="LLMG"]').check();
+  await page.locator('#plate-airfields input[value="LLFK"]').check();
+  const two = await page.evaluate(() =>
+    cvfrLayerGroup.getLayers().map(l => l._ovPng).sort());
+  expect(two).toEqual(['LLFK_cvfr.png', 'LLMG_cvfr.png']);
+
+  await page.locator('#plate-airfields input[value="LLMG"]').uncheck();
+  const one = await page.evaluate(() =>
     cvfrLayerGroup.getLayers().map(l => l._ovPng));
-  expect(only).toEqual(['LLMG_cvfr.png']);
+  expect(one).toEqual(['LLFK_cvfr.png']);
 
-  // Back to All → every cvfr plate again.
-  await page.selectOption('#plate-airfield', '');
+  await page.locator('#plate-airfields input[value="LLFK"]').uncheck();
   const restored = await page.evaluate(() => cvfrLayerGroup.getLayers().length);
   expect(restored).toBe(all);
 });
 
-test('the filter persists across reload', async ({ page }) => {
+test('selection persists across reload', async ({ page }) => {
   await boot(page);
   await page.locator('#cvfr-cb').check();
-  await expect.poll(() => page.locator('#plate-airfield option').count()).toBeGreaterThan(1);
-  await page.selectOption('#plate-airfield', 'LLMG');
+  await expect.poll(
+    () => page.locator('#plate-airfields input[type="checkbox"]').count()
+  ).toBeGreaterThan(1);
+  await page.locator('#plate-airfields input[value="LLMG"]').check();
   await page.reload();
-  await page.waitForFunction(() => document.getElementById('plate-airfield'));
-  // stored value is applied to window.plateAirfield on boot
-  expect(await page.evaluate(() => window.plateAirfield)).toBe('LLMG');
+  await page.waitForFunction(() => document.getElementById('plate-airfields'));
+  expect(await page.evaluate(() => window.plateAirfields)).toContain('LLMG');
 });

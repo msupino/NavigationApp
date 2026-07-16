@@ -121,7 +121,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=388">
+  <link rel="stylesheet" href="app/style.css?v=389">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -499,10 +499,10 @@
           <button id="plate-opacity-reset" class="slider-reset" type="button"
                   data-i18n-title="tbPlateOpacityReset">↻</button>
         </label>
-        <label class="navtoggle tb-plate-airfield" data-i18n-title="tbPlateAirfieldTitle">
-          <span data-i18n="tbPlateAirfield"></span>
-          <select id="plate-airfield"></select>
-        </label>
+        <div class="tb-plate-airfield" data-i18n-title="tbPlateAirfieldTitle">
+          <div class="tb-plate-airfield-label" data-i18n="tbPlateAirfield"></div>
+          <div id="plate-airfields" class="tb-plate-airfields"></div>
+        </div>
         <div class="tb-group-box">
           <label class="navtoggle" data-i18n-title="tbShowCircuitTitle">
             <input type="checkbox" id="circuit-cb"> <span data-i18n="tbShowCircuit"></span>
@@ -757,7 +757,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=388';
+      var v = '?v=389';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
