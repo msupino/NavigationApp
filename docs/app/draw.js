@@ -1539,6 +1539,7 @@ async function loadAirfields() {
       heli_overlay: a.heli_overlay || null,
       commfail_overlay: a.commfail_overlay || null,
     }));
+    if (typeof populatePlateAirfieldSelect === 'function') populatePlateAirfieldSelect();
     return airfields;
   } catch (e) {
     // Leave airfields === null so a subsequent toggle / search call can

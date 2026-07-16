@@ -3009,6 +3009,7 @@ function loadCircuitOverlays() {
   for (const af of airfields) {
     const co = af.circuit_overlay;
     if (!co) continue;
+    if (window.plateAirfield && af.name !== window.plateAirfield) continue;
     buildOverlayLayer(circuitImgBase(), co, '6', 'circuit_overlay')
       .addTo(circuitLayerGroup);
   }
@@ -3046,6 +3047,7 @@ function loadTrainingOverlays() {
   for (const af of airfields) {
     const to = af.training_overlay;
     if (!to) continue;
+    if (window.plateAirfield && af.name !== window.plateAirfield) continue;
     buildOverlayLayer(trainingImgBase(), to, '5', 'training_overlay')
       .addTo(trainingLayerGroup);
   }
@@ -3083,6 +3085,7 @@ function loadCvfrOverlays() {
   for (const af of airfields) {
     const co = af.cvfr_overlay;
     if (!co) continue;
+    if (window.plateAirfield && af.name !== window.plateAirfield) continue;
     buildOverlayLayer(cvfrImgBase(), co, '5', 'cvfr_overlay')
       .addTo(cvfrLayerGroup);
   }
@@ -3120,6 +3123,7 @@ function loadHeliOverlays() {
   for (const af of airfields) {
     const ho = af.heli_overlay;
     if (!ho) continue;
+    if (window.plateAirfield && af.name !== window.plateAirfield) continue;
     buildOverlayLayer(heliImgBase(), ho, '4', 'heli_overlay')
       .addTo(heliLayerGroup);
   }
@@ -3157,6 +3161,7 @@ function loadCommfailOverlays() {
   for (const af of airfields) {
     const co = af.commfail_overlay;
     if (!co) continue;
+    if (window.plateAirfield && af.name !== window.plateAirfield) continue;
     buildOverlayLayer(commfailImgBase(), co, '4', 'commfail_overlay')
       .addTo(commfailLayerGroup);
   }
@@ -3168,6 +3173,66 @@ function applyCommfailOpacity(v) {
   if (valEl) valEl.textContent = Math.round(v * 100) + '%';
   if (commfailLayerGroup) commfailLayerGroup.eachLayer(l => l.setOpacity(v));
 }
+
+// ── Per-airfield plate filter ("Show plates for") ────────────────────────────
+// Airfield plates of the same type overlap for close fields (e.g. LLKS & LLIB
+// CVFR). This picker limits every plate overlay to a single airfield.
+const PLATE_AIRFIELD_KEY = 'navaid.plateAirfield';
+window.plateAirfield = (() => {
+  try { return localStorage.getItem(PLATE_AIRFIELD_KEY) || ''; } catch (_) { return ''; }
+})();
+const PLATE_OTYPES = ['circuit_overlay', 'training_overlay', 'cvfr_overlay',
+                      'heli_overlay', 'commfail_overlay'];
+
+function populatePlateAirfieldSelect() {
+  const sel = document.getElementById('plate-airfield');
+  if (!sel || !window.airfields) return;
+  const names = airfields.filter(a => a.name && PLATE_OTYPES.some(t => a[t]))
+    .map(a => a.name).sort();
+  const allLabel = (typeof S === 'object' && S.tbPlateAirfieldAll) || 'All airfields';
+  sel.innerHTML = '';
+  const optAll = document.createElement('option');
+  optAll.value = ''; optAll.textContent = allLabel; sel.appendChild(optAll);
+  const labelField = (typeof S === 'object' && S.airfieldLabelField) || 'en';
+  for (const name of names) {
+    const af = airfields.find(a => a.name === name);
+    const label = af && af[labelField] ? name + ' \u00b7 ' + af[labelField] : name;
+    const o = document.createElement('option'); o.value = name; o.textContent = label;
+    sel.appendChild(o);
+  }
+  // A saved filter for an unknown field falls back to "all".
+  window.plateAirfield = names.includes(window.plateAirfield) ? window.plateAirfield : '';
+  sel.value = window.plateAirfield;
+}
+
+// Rebuild whichever plate layers are shown so they honour the current filter.
+function rebuildPlateOverlays() {
+  const defs = [
+    ['showCircuit', 'circuitLayerGroup', loadCircuitOverlays],
+    ['showTraining', 'trainingLayerGroup', loadTrainingOverlays],
+    ['showCvfr', 'cvfrLayerGroup', loadCvfrOverlays],
+    ['showHeli', 'heliLayerGroup', loadHeliOverlays],
+    ['showCommfail', 'commfailLayerGroup', loadCommfailOverlays],
+  ];
+  for (const [, gname] of defs) {
+    const g = window[gname]; if (g) g.remove(); window[gname] = null;  // force rebuild
+  }
+  for (const [flag, gname, load] of defs) {
+    if (!window[flag]) continue;
+    load(); const g = window[gname]; if (g) g.addTo(map);
+  }
+}
+
+(function wirePlateAirfieldSelect() {
+  const sel = document.getElementById('plate-airfield');
+  if (!sel) return;
+  populatePlateAirfieldSelect();
+  sel.onchange = () => {
+    window.plateAirfield = sel.value;
+    try { localStorage.setItem(PLATE_AIRFIELD_KEY, sel.value); } catch (_) {}
+    rebuildPlateOverlays();
+  };
+})();
 
 // ── Overlay align editor ──────────────────────────────────────────────────────
 // Lets a user pan / scale / rotate a shown chart overlay by eye. Geometry is
