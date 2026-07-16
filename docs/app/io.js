@@ -3853,7 +3853,7 @@ async function flyRoute() {
       const url = 'https://earth.google.com/web/@' +
         lat.toFixed(6) + ',' + lng.toFixed(6) + ',' + altM(0) + 'a,' +
         outboundHeading(0).toFixed(1) + 'h,70t';
-      window.open(url, '_blank');
+      window.open(url, '_blank', 'noopener');
       downloadKml();
       return;
     }
@@ -4238,7 +4238,7 @@ function showPlateViewer(filename, label) {
   btns.className = 'modal-btns';
   const openTab = document.createElement('button');
   openTab.textContent = S.plateOpenTab;
-  openTab.onclick = () => window.open(pdfUrl, '_blank');
+  openTab.onclick = () => window.open(pdfUrl, '_blank', 'noopener');
   btns.appendChild(openTab);
   const download = document.createElement('button');
   download.textContent = S.plateDownload;
