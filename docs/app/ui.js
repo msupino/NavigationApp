@@ -3175,34 +3175,64 @@ function applyCommfailOpacity(v) {
 }
 
 // -- Per-airfield plate filter ("Show plates for") --------------------------
-// Airfield plates of the same type overlap for close fields (e.g. LLKS & LLIB
-// CVFR). Tick one or more airfields to show only their plates; with none ticked
-// every field shows (unchanged default) -- multi-select so you can view a few
-// non-adjacent fields at once without their neighbours overlapping.
+// Plates of the same type overlap for close fields (e.g. LLKS & LLIB). This
+// picker limits which airfields' plates show. Three modes:
+//   all    - every field (default)
+//   auto   - only the first & last airfield on the current route (route-aware)
+//   custom - an explicit checkbox selection
+const PLATE_MODE_KEY = 'navaid.plateMode';
 const PLATE_AIRFIELDS_KEY = 'navaid.plateAirfields';
-window.plateAirfields = (() => {
+const PLATE_OTYPES = ['circuit_overlay', 'training_overlay', 'cvfr_overlay',
+                      'heli_overlay', 'commfail_overlay'];
+window.plateMode = (() => {
+  try { const m = localStorage.getItem(PLATE_MODE_KEY);
+    if (m === 'all' || m === 'auto' || m === 'custom') return m; } catch (_) {}
+  // migrate #1244/#1245 selection keys: any saved pick => custom
   try {
-    const a = JSON.parse(localStorage.getItem(PLATE_AIRFIELDS_KEY) || '[]');
-    if (Array.isArray(a)) return a.filter(x => typeof x === 'string');
+    const a = JSON.parse(localStorage.getItem(PLATE_AIRFIELDS_KEY) || 'null');
+    if (Array.isArray(a) && a.length) return 'custom';
+    if (localStorage.getItem('navaid.plateAirfield')) return 'custom';
   } catch (_) {}
-  // migrate the old single-select key (navaid.plateAirfield)
+  return 'all';
+})();
+window.plateAirfields = (() => {
+  try { const a = JSON.parse(localStorage.getItem(PLATE_AIRFIELDS_KEY) || '[]');
+    if (Array.isArray(a)) return a.filter(x => typeof x === 'string'); } catch (_) {}
   try { const v = localStorage.getItem('navaid.plateAirfield'); if (v) return [v]; } catch (_) {}
   return [];
 })();
-const PLATE_OTYPES = ['circuit_overlay', 'training_overlay', 'cvfr_overlay',
-                      'heli_overlay', 'commfail_overlay'];
 
-// No selection -> show every field (filter off); otherwise only the ticked ones.
+function plateFields() {
+  return (window.airfields || [])
+    .filter(a => a.name && PLATE_OTYPES.some(t => a[t])).map(a => a.name);
+}
+// First & last airfield (with plates) appearing as route waypoints.
+function routeEndpointAirfields() {
+  const set = new Set();
+  const have = new Set(plateFields());
+  const wps = (typeof state === 'object' && state && Array.isArray(state.waypoints))
+    ? state.waypoints : [];
+  const on = wps.map(w => w && w.name).filter(n => have.has(n));
+  if (on.length) { set.add(on[0]); set.add(on[on.length - 1]); }
+  return set;
+}
 function plateAirfieldAllowed(name) {
-  return !window.plateAirfields.length || window.plateAirfields.includes(name);
+  if (window.plateMode === 'auto') return routeEndpointAirfields().has(name);
+  if (window.plateMode === 'custom') return window.plateAirfields.includes(name);
+  return true;   // 'all'
+}
+function savePlateState() {
+  try {
+    localStorage.setItem(PLATE_MODE_KEY, window.plateMode);
+    localStorage.setItem(PLATE_AIRFIELDS_KEY, JSON.stringify(window.plateAirfields));
+  } catch (_) {}
 }
 
 // Kept name: draw.js calls this once airfields load.
 function populatePlateAirfieldSelect() {
   const box = document.getElementById('plate-airfields');
   if (!box || !window.airfields) return;
-  const names = airfields.filter(a => a.name && PLATE_OTYPES.some(t => a[t]))
-    .map(a => a.name).sort();
+  const names = plateFields().sort();
   window.plateAirfields = window.plateAirfields.filter(n => names.includes(n));
   const labelField = (typeof S === 'object' && S.airfieldLabelField) || 'en';
   box.innerHTML = '';
@@ -3212,11 +3242,32 @@ function populatePlateAirfieldSelect() {
     const lab = document.createElement('label');
     lab.className = 'navtoggle plate-af-row';
     const cb = document.createElement('input');
-    cb.type = 'checkbox'; cb.value = name;
-    cb.checked = window.plateAirfields.includes(name);
+    cb.type = 'checkbox'; cb.value = name; cb.className = 'plate-af-cb';
     lab.appendChild(cb);
     lab.appendChild(document.createTextNode(' ' + text));
     box.appendChild(lab);
+  }
+  updatePlatePickerUI();
+}
+
+// Reflect current mode/selection onto the Auto / All / per-field controls.
+function updatePlatePickerUI() {
+  const auto = document.getElementById('plate-auto');
+  const all = document.getElementById('plate-all');
+  const rows = [...document.querySelectorAll('#plate-airfields .plate-af-cb')];
+  const isAuto = window.plateMode === 'auto';
+  if (auto) auto.checked = isAuto;
+  const endpoints = isAuto ? routeEndpointAirfields() : null;
+  for (const cb of rows) {
+    if (isAuto) { cb.checked = endpoints.has(cb.value); cb.disabled = true; }
+    else if (window.plateMode === 'all') { cb.checked = true; cb.disabled = false; }
+    else { cb.checked = window.plateAirfields.includes(cb.value); cb.disabled = false; }
+  }
+  if (all) {
+    all.disabled = isAuto;
+    const n = rows.length, sel = rows.filter(c => c.checked).length;
+    all.checked = !isAuto && n > 0 && sel === n;
+    all.indeterminate = !isAuto && sel > 0 && sel < n;
   }
 }
 
@@ -3238,18 +3289,50 @@ function rebuildPlateOverlays() {
   }
 }
 
+// Route-aware: when Auto is on and the route's endpoint airfields change,
+// re-filter the shown plates. Called from syncLegs().
+let _plateAutoKey = '';
+function onRouteChangedForPlates() {
+  if (window.plateMode !== 'auto') { _plateAutoKey = ''; return; }
+  const key = [...routeEndpointAirfields()].sort().join(',');
+  if (key === _plateAutoKey) return;
+  _plateAutoKey = key;
+  updatePlatePickerUI();
+  rebuildPlateOverlays();
+}
+
 (function wirePlateAirfieldPicker() {
   const box = document.getElementById('plate-airfields');
+  const auto = document.getElementById('plate-auto');
+  const all = document.getElementById('plate-all');
   if (!box) return;
   populatePlateAirfieldSelect();
+
+  const apply = () => { savePlateState(); updatePlatePickerUI(); rebuildPlateOverlays(); };
+
+  if (auto) auto.addEventListener('change', () => {
+    if (auto.checked) {
+      window.plateMode = 'auto';
+      _plateAutoKey = [...routeEndpointAirfields()].sort().join(',');
+    } else {
+      window.plateMode = window.plateAirfields.length ? 'custom' : 'all';
+    }
+    apply();
+  });
+  if (all) all.addEventListener('change', () => {
+    if (all.checked) { window.plateMode = 'all'; }
+    else { window.plateMode = 'custom'; window.plateAirfields = []; }
+    apply();
+  });
   box.addEventListener('change', (e) => {
     const cb = e.target;
     if (!cb || cb.type !== 'checkbox') return;
-    const set = new Set(window.plateAirfields);
+    const base = window.plateMode === 'all' ? plateFields() : window.plateAirfields.slice();
+    const set = new Set(base);
     if (cb.checked) set.add(cb.value); else set.delete(cb.value);
+    window.plateMode = 'custom';
     window.plateAirfields = [...set];
-    try { localStorage.setItem(PLATE_AIRFIELDS_KEY, JSON.stringify(window.plateAirfields)); } catch (_) {}
-    rebuildPlateOverlays();
+    apply();
   });
 })();
 

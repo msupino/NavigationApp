@@ -1,7 +1,8 @@
 // @ts-check
-// "Show plates for" per-airfield filter (Airfield-plates group): a multi-select
-// checkbox list. Tick one or more fields to show only their plates (so close
-// fields like LLKS & LLIB don't overlap); none ticked = every field (default).
+// "Show plates for" picker (Airfield-plates group). Modes:
+//   All (default)  – every field's plates
+//   Auto           – only the first & last airfield on the current route
+//   custom         – an explicit checkbox selection
 const { test, expect } = require('./_setup');
 
 test.use({ serviceWorkers: 'block' });
@@ -22,48 +23,66 @@ async function boot(page) {
     () => typeof map !== 'undefined' && document.getElementById('plate-airfields'));
 }
 
-test('checkbox list populates once plates load; none ticked shows every field', async ({ page }) => {
+const cvfrPngs = (page) => page.evaluate(
+  () => (window.cvfrLayerGroup ? cvfrLayerGroup.getLayers().map(l => l._ovPng).sort() : []));
+
+async function setRoute(page, names) {
+  await page.evaluate((ns) => {
+    state.waypoints = ns.map((n, i) => ({ name: n, lat: 32 + i * 0.1, lng: 34.8 }));
+    syncLegs();
+  }, names);
+}
+
+test('defaults to All: every plate shows and All is checked', async ({ page }) => {
   await boot(page);
   await page.locator('#cvfr-cb').check();
-  const boxes = page.locator('#plate-airfields input[type="checkbox"]');
-  await expect.poll(() => boxes.count()).toBeGreaterThan(1);
-  expect(await boxes.evaluateAll(els => els.every(e => !e.checked))).toBe(true);
-  await page.waitForFunction(() => window.cvfrLayerGroup &&
-    cvfrLayerGroup.getLayers().length > 1);
+  await expect.poll(() => page.locator('#plate-airfields .plate-af-cb').count()).toBeGreaterThan(1);
+  await expect(page.locator('#plate-all')).toBeChecked();
+  await page.waitForFunction(() => window.cvfrLayerGroup && cvfrLayerGroup.getLayers().length > 1);
+  const all = (await cvfrPngs(page)).length;
+  expect(all).toBeGreaterThan(1);
 });
 
-test('ticking fields limits plates to them; unticking all restores every plate', async ({ page }) => {
+test('All off = none; ticking fields shows only those; All on restores', async ({ page }) => {
   await boot(page);
   await page.locator('#cvfr-cb').check();
-  await page.waitForFunction(() => window.cvfrLayerGroup &&
-    cvfrLayerGroup.getLayers().length > 1);
-  const all = await page.evaluate(() => cvfrLayerGroup.getLayers().length);
+  await page.waitForFunction(() => window.cvfrLayerGroup && cvfrLayerGroup.getLayers().length > 1);
+  const all = (await cvfrPngs(page)).length;
 
-  // LLMG + LLFK both carry a cvfr_overlay.
+  await page.locator('#plate-all').uncheck();
+  expect(await cvfrPngs(page)).toEqual([]);
+
   await page.locator('#plate-airfields input[value="LLMG"]').check();
   await page.locator('#plate-airfields input[value="LLFK"]').check();
-  const two = await page.evaluate(() =>
-    cvfrLayerGroup.getLayers().map(l => l._ovPng).sort());
-  expect(two).toEqual(['LLFK_cvfr.png', 'LLMG_cvfr.png']);
+  expect(await cvfrPngs(page)).toEqual(['LLFK_cvfr.png', 'LLMG_cvfr.png']);
 
-  await page.locator('#plate-airfields input[value="LLMG"]').uncheck();
-  const one = await page.evaluate(() =>
-    cvfrLayerGroup.getLayers().map(l => l._ovPng));
-  expect(one).toEqual(['LLFK_cvfr.png']);
-
-  await page.locator('#plate-airfields input[value="LLFK"]').uncheck();
-  const restored = await page.evaluate(() => cvfrLayerGroup.getLayers().length);
-  expect(restored).toBe(all);
+  await page.locator('#plate-all').check();
+  expect((await cvfrPngs(page)).length).toBe(all);
 });
 
-test('selection persists across reload', async ({ page }) => {
+test('Auto shows only the route first & last airfield, and follows edits', async ({ page }) => {
+  await boot(page);
+  await setRoute(page, ['LLHZ', 'LLMG', 'LLFK']);   // endpoints LLHZ, LLFK
+  await page.locator('#cvfr-cb').check();
+  await page.locator('#plate-auto').check();
+  expect(await cvfrPngs(page)).toEqual(['LLFK_cvfr.png', 'LLHZ_cvfr.png']);
+
+  // edit the route → filter follows (endpoints become LLMZ, LLMG)
+  await setRoute(page, ['LLMZ', 'LLMG']);
+  await expect.poll(() => cvfrPngs(page)).toEqual(['LLMG_cvfr.png', 'LLMZ_cvfr.png']);
+
+  // per-field boxes are disabled while Auto drives the selection
+  await expect(page.locator('#plate-airfields input[value="LLMG"]')).toBeDisabled();
+});
+
+test('mode + selection persist across reload', async ({ page }) => {
   await boot(page);
   await page.locator('#cvfr-cb').check();
-  await expect.poll(
-    () => page.locator('#plate-airfields input[type="checkbox"]').count()
-  ).toBeGreaterThan(1);
+  await expect.poll(() => page.locator('#plate-airfields .plate-af-cb').count()).toBeGreaterThan(1);
+  await page.locator('#plate-all').uncheck();
   await page.locator('#plate-airfields input[value="LLMG"]').check();
   await page.reload();
   await page.waitForFunction(() => document.getElementById('plate-airfields'));
+  expect(await page.evaluate(() => window.plateMode)).toBe('custom');
   expect(await page.evaluate(() => window.plateAirfields)).toContain('LLMG');
 });
