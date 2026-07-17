@@ -1556,7 +1556,7 @@ function applyPage() {
 // Reflect the active page size on the A3/A4 buttons (.active + aria-pressed →
 // the toolbar's active highlight) so it's clear which is selected.
 function refreshPageButtons() {
-  for (const [id, sz] of [['page-a3', 'A3'], ['page-a4', 'A4']]) {
+  for (const [id, sz] of [['page-a3', 'A3'], ['page-a4', 'A4'], ['page-a4x2', 'A4x2']]) {
     const b = document.getElementById(id);
     if (!b) continue;
     const on = pageSize === sz;
@@ -3365,6 +3365,78 @@ async function fetchTileBitmap(layer, coords, signal) {
 
 // Save the framed map + route as a PNG, rendered at the highest practical
 // native tile zoom (not the on-screen zoom) for maximum quality.
+// Slice a fully-rendered A3 export canvas into two A4 tiles at the same scale
+// (A3 = 2×A4). Landscape A3 → two A4 portrait halves (vertical cut); portrait
+// A3 → two A4 landscape halves (horizontal cut). Halves abut exactly (no
+// overlap, so 1:250 000 is preserved); a dashed cut/tape guide marks the shared
+// edge and each page is labelled. Downloads two PNGs with A4 DPI metadata.
+function exportA4x2Tiles(out, W, H, done) {
+  const landscape = pageOrient !== 'portrait';
+  const halfW = Math.floor(W / 2), halfH = Math.floor(H / 2);
+  const tiles = landscape
+    ? [{ sx: 0,     sy: 0, sw: halfW,     sh: H, seam: 'right',  n: 1, side: 'LEFT' },
+       { sx: halfW, sy: 0, sw: W - halfW, sh: H, seam: 'left',   n: 2, side: 'RIGHT' }]
+    : [{ sx: 0, sy: 0,     sw: W, sh: halfH,     seam: 'bottom', n: 1, side: 'TOP' },
+       { sx: 0, sy: halfH, sw: W, sh: H - halfH, seam: 'top',    n: 2, side: 'BOTTOM' }];
+  // Each tile prints on A4: portrait when the A3 was landscape, and vice-versa.
+  const paperW = landscape ? 210 : 297;
+  const paperH = landscape ? 297 : 210;
+
+  let i = 0;
+  (function nextTile() {
+    if (i >= tiles.length) { done(); return; }
+    const t = tiles[i++];
+    const c = document.createElement('canvas');
+    c.width = t.sw; c.height = t.sh;
+    const cx = c.getContext('2d');
+    cx.drawImage(out, t.sx, t.sy, t.sw, t.sh, 0, 0, t.sw, t.sh);
+    drawA4x2TileMarks(cx, t, tiles.length);
+    const ppmX = Math.round(t.sw * 1000 / paperW);
+    const ppmY = Math.round(t.sh * 1000 / paperH);
+    const dl = (blob) => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'navigation-A4x2-p' + t.n + 'of2-' + fileStamp() + '.png';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      setTimeout(nextTile, 400);   // stagger so the browser allows both downloads
+    };
+    c.toBlob(b => {
+      if (!b) { setTimeout(nextTile, 0); return; }
+      b.arrayBuffer()
+        .then(buf => dl(new Blob([injectPngPhys(buf, ppmX, ppmY)], { type: 'image/png' })))
+        .catch(() => dl(b));
+    }, 'image/png');
+  })();
+}
+
+// Page label + dashed cut/tape guide on the edge shared with the other tile.
+function drawA4x2TileMarks(cx, t, total) {
+  const W = cx.canvas.width, H = cx.canvas.height;
+  cx.save();
+  // page label (top-left, on a translucent chip so it reads over any chart)
+  const label = 'PAGE ' + t.n + ' OF ' + total + ' — ' + t.side +
+                ' · tape to page ' + (t.n === 1 ? 2 : 1);
+  cx.font = 'bold 22px sans-serif';
+  cx.textBaseline = 'top';
+  const tw = cx.measureText(label).width;
+  cx.fillStyle = 'rgba(255,255,255,0.85)';
+  cx.fillRect(6, 6, tw + 12, 32);
+  cx.fillStyle = '#000';
+  cx.fillText(label, 12, 12);
+  // dashed guide along the shared (seam) edge
+  cx.strokeStyle = 'rgba(0,0,0,0.7)';
+  cx.lineWidth = 2;
+  cx.setLineDash([12, 7]);
+  cx.beginPath();
+  if (t.seam === 'right')       { cx.moveTo(W - 1, 0); cx.lineTo(W - 1, H); }
+  else if (t.seam === 'left')   { cx.moveTo(1, 0);     cx.lineTo(1, H); }
+  else if (t.seam === 'bottom') { cx.moveTo(0, H - 1); cx.lineTo(W, H - 1); }
+  else                          { cx.moveTo(0, 1);     cx.lineTo(W, 1); }
+  cx.stroke();
+  cx.restore();
+}
+
 function exportPNG() {
   // Export matches the screen view exactly, including map bearing.
   // Tiles are fetched north-up (axis-aligned) for a bounding box that covers
@@ -3575,6 +3647,20 @@ function exportPNG() {
       o.restore();
     } finally {
       octx = prevOctx;
+    }
+
+    // A4×2: the frame is A3-sized — slice it into two A4 tiles at the same
+    // 1:250 000 scale (no A3 printer needed) instead of one A3 PNG.
+    if (pageSize === 'A4x2') {
+      btn.textContent = btnLabel;
+      btn.disabled = false;
+      unlockMap();
+      NavAid.exporting = false;
+      if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
+      exportA4x2Tiles(out, W, H, () => {
+        if (failed > 0) alert(S.errTilesFail(failed, jobs.length));
+      });
+      return;
     }
 
     out.toBlob(b => {
