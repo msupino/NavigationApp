@@ -82,7 +82,7 @@ test('each A4×2 tile is half the A3 canvas (A4 aspect)', async ({ page }) => {
   }
 });
 
-test('portrait orientation gives a tall frame and two pre-rotated tiles', async ({ page }) => {
+test('portrait orientation gives a tall frame and two WYSIWYG landscape tiles', async ({ page }) => {
   await boot(page);
   // Sheet semantics, like A3/A4: portrait toggle -> tall (A3-portrait) frame.
   await page.evaluate(() => { window.pageOrient = 'portrait'; });
@@ -90,8 +90,8 @@ test('portrait orientation gives a tall frame and two pre-rotated tiles', async 
   const d = await page.evaluate(() => pageDims());
   expect(d.h).toBeGreaterThan(d.w);          // tall coverage follows the toggle
 
-  // Tiler: horizontal cut -> two W×(H/2) landscape halves, SAVED pre-rotated
-  // 90° as portrait files so default print settings fill the page.
+  // Tiler: horizontal cut -> two W×(H/2) landscape halves, saved exactly as
+  // they appear on screen (WYSIWYG — no rotation).
   const dims = await page.evaluate(() => new Promise((res) => {
     const sizes = [];
     const realCreate = document.createElement.bind(document);
@@ -111,7 +111,7 @@ test('portrait orientation gives a tall frame and two pre-rotated tiles', async 
     });
   }));
   const cut = dims.filter(([w, h]) => w === 850 && h === 600);
-  const saved = dims.filter(([w, h]) => w === 600 && h === 850);
-  expect(cut.length).toBe(2);
-  expect(saved.length).toBe(2);
+  const rotated = dims.filter(([w, h]) => w === 600 && h === 850);
+  expect(cut.length).toBe(2);      // two wide halves, saved as-is
+  expect(rotated.length).toBe(0);  // WYSIWYG: nothing gets rotated
 });

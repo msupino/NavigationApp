@@ -3387,28 +3387,18 @@ function exportA4x2Tiles(out, W, H, done) {
   (function nextTile() {
     if (i >= tiles.length) { done(); return; }
     const t = tiles[i++];
-    let c = document.createElement('canvas');
+    const c = document.createElement('canvas');
     c.width = t.sw; c.height = t.sh;
     const cx = c.getContext('2d');
     cx.drawImage(out, t.sx, t.sy, t.sw, t.sh, 0, 0, t.sw, t.sh);
     drawA4x2TileMarks(cx, t, tiles.length);
-    // Landscape pages: save the file PORTRAIT-oriented (rotated 90°). Print
-    // dialogs default to portrait paper and don't auto-rotate a wide image —
-    // it would be shrunk to fit. A pre-rotated file prints full-page with
-    // default settings; the user simply reads the sheet in landscape.
-    if (!portraitPages) {
-      const rc = document.createElement('canvas');
-      rc.width = t.sh; rc.height = t.sw;
-      const rx = rc.getContext('2d');
-      rx.translate(rc.width / 2, rc.height / 2);
-      rx.rotate(Math.PI / 2);
-      rx.drawImage(c, -c.width / 2, -c.height / 2);
-      c = rc;
-    }
-    // The saved file is always portrait A4 (210×297) — landscape pages are
-    // pre-rotated above.
-    const ppmX = Math.round(c.width * 1000 / 210);
-    const ppmY = Math.round(c.height * 1000 / 297);
+    // WYSIWYG: each file is saved exactly as its half appears on screen.
+    // Portrait halves carry portrait-A4 DPI; landscape halves carry
+    // landscape-A4 DPI (pick Landscape in the print dialog for those).
+    const paperW = portraitPages ? 210 : 297;
+    const paperH = portraitPages ? 297 : 210;
+    const ppmX = Math.round(c.width * 1000 / paperW);
+    const ppmY = Math.round(c.height * 1000 / paperH);
     const dl = (blob) => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
