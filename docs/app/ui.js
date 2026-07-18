@@ -4328,6 +4328,8 @@ DRIFTLINEWIDTH_EL.oninput = e => {
 
 document.getElementById('page-a3').onclick = () => setPage('A3');
 document.getElementById('page-a4').onclick = () => setPage('A4');
+const _a4x2Btn = document.getElementById('page-a4x2');
+if (_a4x2Btn) _a4x2Btn.onclick = () => setPage('A4x2');
 // Restore last-used orientation and wire the toolbar toggle button.
 try {
   const stored = localStorage.getItem('navaid.pageOrient');
@@ -4339,7 +4341,7 @@ refreshOrientButton();
 // current map view, so it reappears over the same area.
 try {
   const sp = localStorage.getItem('navaid.pageSize');
-  if ((sp === 'A3' || sp === 'A4') && typeof setPage === 'function') setPage(sp);
+  if ((sp === 'A3' || sp === 'A4' || sp === 'A4x2') && typeof setPage === 'function') setPage(sp);
 } catch (e) { /* storage unavailable */ }
 document.getElementById('print').onclick = showExportModal;
 createMagnifier();
