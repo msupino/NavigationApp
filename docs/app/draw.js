@@ -497,10 +497,10 @@ function drawSigmets() {
     octx.moveTo(pts[0].x, pts[0].y);
     for (let i = 1; i < pts.length; i++) octx.lineTo(pts[i].x, pts[i].y);
     octx.closePath();
-    octx.fillStyle = colorWithAlpha(col, 0.16);
+    octx.fillStyle = colorWithAlpha(col, tune('sigmetFillAlpha'));
     octx.fill();
-    octx.setLineDash([8, 5]);
-    octx.lineWidth = 2;
+    octx.setLineDash([tune('sigmetDashOnPx'), tune('sigmetDashOffPx')]);
+    octx.lineWidth = tune('sigmetLineWidthPx');
     octx.strokeStyle = col;
     octx.stroke();
     octx.setLineDash([]);
@@ -510,7 +510,7 @@ function drawSigmets() {
     const label = (String(s.hazard || '') +
                    (s.qualifier ? ' ' + s.qualifier : '')).trim();
     if (label) {
-      octx.font = 'bold 12px sans-serif';
+      octx.font = 'bold ' + tune('sigmetLabelFontPx') + 'px sans-serif';
       octx.textAlign = 'center';
       octx.lineWidth = 3;
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), 0.9);
@@ -1177,7 +1177,7 @@ function drawAreas() {
     // highlight overrides both with amber.
     octx.fillStyle = hl ? 'rgba(255,204,51,0.22)' : (wknd ? 'rgba(201,178,138,0.35)' : 'rgba(60,160,60,0.15)');
     octx.strokeStyle = hl ? '#ffcc33' : (wknd ? '#2b2b2b' : '#3c8f3c');
-    octx.lineWidth = hl ? 4 : 2;
+    octx.lineWidth = hl ? tune('lsaHighlightWidthPx') : tune('lsaLineWidthPx');
     octx.fill();
     octx.stroke();
   }
