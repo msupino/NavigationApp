@@ -1,9 +1,12 @@
 name: Update wiki screenshots
 
-# On-demand only: regenerate every GitHub-wiki screenshot (English + Hebrew)
-# from the live app via tests/wiki-screenshots.spec.js, then push the images
-# to the wiki repo. Run it from the Actions tab (Run workflow).
+# Regenerate every GitHub-wiki screenshot (English + Hebrew) from the live app
+# via tests/wiki-screenshots.spec.js, then push the images to the wiki repo.
+# Runs nightly (no push happens when nothing changed) and on demand from the
+# Actions tab (Run workflow).
 on:
+  schedule:
+    - cron: '30 2 * * *'   # nightly 02:30 UTC (05:30 Israel)
   workflow_dispatch:
 
 permissions:
