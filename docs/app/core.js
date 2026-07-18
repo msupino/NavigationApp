@@ -289,7 +289,7 @@ NavAid.tuningDefaults = {
   sigwxOpacity: { value: 0.55, min: 0.2, max: 1, step: 0.05, label: 'SIGWX overlay default opacity' },
   sigwxWhiteKnockout: { value: 170, min: 120, max: 256, step: 1, label: 'SIGWX map-panel knockout lightness (drops paper+terrain so the base layer shows; 256 = off)' },
   sigwxKnockoutSat: { value: 45, min: 0, max: 120, step: 1, label: 'SIGWX map-panel knockout max saturation (keeps coloured hazard areas)' },
-  sigwxCoastWidthPx: { value: 2, min: 0, max: 6, step: 1, label: 'SIGWX coastline width (0 = off; re-strokes the sea/land boundary the knockout erases)' },
+  sigwxCoastWidthPx: { value: 0, min: 0, max: 6, step: 1, label: 'SIGWX coastline width (0 = off, the default; re-strokes the sea/land boundary the knockout erases)' },
   sigwxCoastColor: { value: '#1d4e89', type: 'color', label: 'SIGWX coastline color' },
   sigwxCoastAlpha: { value: 0.9, min: 0, max: 1, step: 0.05, label: 'SIGWX coastline alpha' },
   sigwxTblLatOffset: { value: 0, min: -3, max: 3, step: 0.02, label: 'SIGWX table latitude nudge (°)' },
