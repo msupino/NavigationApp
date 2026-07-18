@@ -5862,13 +5862,21 @@ const NavWxOpacity = (function () {
   // makes the chart's white paper transparent so it doesn't read as a glaring
   // print sheet over a dark-mode map (the table keeps its white, for legibility).
   // raw.githubusercontent serves CORS so the canvas isn't tainted.
+  function hexToRgb(h) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(h || ''));
+    const v = m ? parseInt(m[1], 16) : 0x1d4e89;
+    return { r: (v >> 16) & 255, g: (v >> 8) & 255, b: v & 255 };
+  }
   function cropPanel(url, crop, knockWhite) {
     // Map panel: drop the chart's pale paper AND terrain/sea (light + low
     // saturation) so the selected base layer (CVFR, etc.) shows through; the
     // saturated hazard areas + dark lines/labels stay. Table/header keep white.
     const thr = knockWhite ? Math.round(off('sigwxWhiteKnockout') || 170) : 999;
     const satThr = Math.round(off('sigwxKnockoutSat'));
-    const key = url + '|' + crop.x0 + '|' + crop.y0 + '|' + thr + '|' + satThr;
+    const coastKey = off('sigwxCoastWidthPx') + '|' +
+      (typeof tune === 'function' ? tune('sigwxCoastColor') : '') + '|' +
+      (typeof tune === 'function' ? tune('sigwxCoastAlpha') : '');
+    const key = url + '|' + crop.x0 + '|' + crop.y0 + '|' + thr + '|' + satThr + '|' + coastKey;
     if (cropCache[key]) return Promise.resolve(cropCache[key]);
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -5884,10 +5892,52 @@ const NavWxOpacity = (function () {
           ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
           if (knockWhite && thr <= 255) {
             const im = ctx.getImageData(0, 0, sw, sh), d = im.data;
-            for (let i = 0; i < d.length; i += 4) {
+            // Pass 1 — classify. The chart draws no coastline stroke: the
+            // coast is only the boundary between the pale-blue sea fill and
+            // the pale land/paper, and the knockout erases both. So detect
+            // sea pixels (pale AND blue-leaning) to re-stroke that boundary.
+            const n = sw * sh;
+            const sea = new Uint8Array(n);
+            const knock = new Uint8Array(n);
+            for (let p = 0, i = 0; p < n; p++, i += 4) {
               const r = d[i], g = d[i + 1], b = d[i + 2];
               const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-              if (mx >= thr && (mx - mn) <= satThr) d[i + 3] = 0;
+              if (mx >= thr && (mx - mn) <= satThr) {
+                knock[p] = 1;
+                if (b - r >= 10 && b >= g) sea[p] = 1;
+              }
+            }
+            // Pass 2 — coastline = sea pixel with a knocked non-sea neighbour
+            // (paper/terrain), thickened to sigwxCoastWidthPx by marking the
+            // sea-side neighbourhood.
+            const cw = Math.max(0, Math.round(off('sigwxCoastWidthPx')));
+            const coast = new Uint8Array(n);
+            if (cw > 0) {
+              for (let y = 1; y < sh - 1; y++) {
+                for (let x = 1; x < sw - 1; x++) {
+                  const p = y * sw + x;
+                  if (!sea[p]) continue;
+                  if ((knock[p - 1] && !sea[p - 1]) || (knock[p + 1] && !sea[p + 1]) ||
+                      (knock[p - sw] && !sea[p - sw]) || (knock[p + sw] && !sea[p + sw])) {
+                    for (let dy = -(cw - 1); dy <= cw - 1; dy++) {
+                      for (let dx = -(cw - 1); dx <= cw - 1; dx++) {
+                        const q = p + dy * sw + dx;
+                        if (q >= 0 && q < n) coast[q] = 1;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            // Pass 3 — knock out the pale fills, then paint the coastline.
+            const cc = hexToRgb(typeof tune === 'function' ? tune('sigwxCoastColor') : '#1d4e89');
+            const ca = Math.round(255 * (typeof tune === 'function' ? tune('sigwxCoastAlpha') : 0.9));
+            for (let p = 0, i = 0; p < n; p++, i += 4) {
+              if (coast[p]) {
+                d[i] = cc.r; d[i + 1] = cc.g; d[i + 2] = cc.b; d[i + 3] = ca;
+              } else if (knock[p]) {
+                d[i + 3] = 0;
+              }
             }
             ctx.putImageData(im, 0, 0);
           }
