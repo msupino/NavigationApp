@@ -34,13 +34,13 @@ test('Save PNG in A4×2 emits two A4 tile files', async ({ page }) => {
   const names = [];
   page.on('download', dl => names.push(dl.suggestedFilename()));
   // Drive the tiler directly on a synthetic A3-landscape canvas (no map
-  // tiles). Portrait pages sit side-by-side in the A3-landscape frame.
+  // tiles). A landscape sheet splits into two portrait pages side-by-side.
   await page.evaluate(() => new Promise((res) => {
     const out = document.createElement('canvas');
     out.width = 1200; out.height = 850;
     const o = out.getContext('2d');
     o.fillStyle = '#8899aa'; o.fillRect(0, 0, 1200, 850);
-    window.pageOrient = 'portrait';
+    window.pageOrient = 'landscape';
     exportA4x2Tiles(out, 1200, 850, () => res());
   }));
   await page.waitForTimeout(400);
@@ -65,7 +65,7 @@ test('each A4×2 tile is half the A3 canvas (A4 aspect)', async ({ page }) => {
     };
     const out = realCreate('canvas'); out.width = 1200; out.height = 850;
     out.getContext('2d').fillRect(0, 0, 1200, 850);
-    window.pageOrient = 'portrait';   // portrait pages = vertical cut
+    window.pageOrient = 'landscape';  // landscape sheet = vertical cut
     // stub anchor clicks so nothing actually downloads
     exportA4x2Tiles(out, 1200, 850, () => {
       document.createElement = realCreate;
@@ -82,15 +82,16 @@ test('each A4×2 tile is half the A3 canvas (A4 aspect)', async ({ page }) => {
   }
 });
 
-test('landscape orientation gives an A3-portrait frame and two landscape A4 tiles', async ({ page }) => {
+test('portrait orientation gives a tall frame and two pre-rotated tiles', async ({ page }) => {
   await boot(page);
-  // Frame: with landscape PAGES the combined A3 frame is portrait (stacked).
-  await page.evaluate(() => { window.pageOrient = 'landscape'; });
+  // Sheet semantics, like A3/A4: portrait toggle -> tall (A3-portrait) frame.
+  await page.evaluate(() => { window.pageOrient = 'portrait'; });
   await page.locator('#page-a4x2').click();
   const d = await page.evaluate(() => pageDims());
-  expect(d.h).toBeGreaterThan(d.w);          // A3-portrait coverage
+  expect(d.h).toBeGreaterThan(d.w);          // tall coverage follows the toggle
 
-  // Tiler: horizontal cut → two W×(H/2) landscape tiles.
+  // Tiler: horizontal cut -> two W×(H/2) landscape halves, SAVED pre-rotated
+  // 90° as portrait files so default print settings fill the page.
   const dims = await page.evaluate(() => new Promise((res) => {
     const sizes = [];
     const realCreate = document.createElement.bind(document);
@@ -102,16 +103,13 @@ test('landscape orientation gives an A3-portrait frame and two landscape A4 tile
     };
     const out = realCreate('canvas'); out.width = 850; out.height = 1200;
     out.getContext('2d').fillRect(0, 0, 850, 1200);
-    window.pageOrient = 'landscape';
+    window.pageOrient = 'portrait';
     exportA4x2Tiles(out, 850, 1200, () => {
       document.createElement = realCreate;
       for (const c of created) if (c.width && c.height) sizes.push([c.width, c.height]);
       res(sizes);
     });
   }));
-  // Landscape pages are cut as 850×600 halves but SAVED pre-rotated 90° as
-  // portrait files (600×850), so default portrait print settings fill the
-  // page — the user reads the sheet in landscape.
   const cut = dims.filter(([w, h]) => w === 850 && h === 600);
   const saved = dims.filter(([w, h]) => w === 600 && h === 850);
   expect(cut.length).toBe(2);

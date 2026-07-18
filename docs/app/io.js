@@ -3371,10 +3371,11 @@ async function fetchTileBitmap(layer, coords, signal) {
 // overlap, so 1:250 000 is preserved); a dashed cut/tape guide marks the shared
 // edge and each page is labelled. Downloads two PNGs with A4 DPI metadata.
 function exportA4x2Tiles(out, W, H, done) {
-  // pageOrient describes the printed A4 pages (see pageDims): portrait pages
-  // sit side-by-side in an A3-landscape frame (vertical cut); landscape pages
-  // stack in an A3-portrait frame (horizontal cut).
-  const portraitPages = pageOrient === 'portrait';
+  // pageOrient describes the assembled A3 sheet (the on-screen frame), same as
+  // A3/A4: a landscape frame splits into two portrait A4 pages side-by-side
+  // (vertical cut); a portrait frame splits into two landscape halves stacked
+  // (horizontal cut), saved pre-rotated below so they still print portrait.
+  const portraitPages = pageOrient !== 'portrait';
   const halfW = Math.floor(W / 2), halfH = Math.floor(H / 2);
   const tiles = portraitPages
     ? [{ sx: 0,     sy: 0, sw: halfW,     sh: H, seam: 'right',  n: 1, side: 'LEFT' },
