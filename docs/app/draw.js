@@ -3591,5 +3591,19 @@ function drawPageFrame() {
   octx.lineWidth = tune('pageFrameLineWidthPx');
   octx.setLineDash([tune('pageFrameDashOnPx'), tune('pageFrameDashOffPx')]);
   octx.strokeRect(r.x, r.y, r.w, r.h);
+  // A4x2: dashed mid-line showing where the A3 frame is cut into the two A4
+  // pages (vertical on a landscape frame, horizontal on a portrait one) —
+  // matches the seam the exported tiles carry.
+  if (pageSize === 'A4x2') {
+    octx.beginPath();
+    if (r.w >= r.h) {
+      octx.moveTo(r.x + r.w / 2, r.y);
+      octx.lineTo(r.x + r.w / 2, r.y + r.h);
+    } else {
+      octx.moveTo(r.x,       r.y + r.h / 2);
+      octx.lineTo(r.x + r.w, r.y + r.h / 2);
+    }
+    octx.stroke();
+  }
   octx.restore();
 }
