@@ -1069,6 +1069,7 @@ window.S = Object.assign({
   tbDriftLineWidthTitle: 'Drift reference line thickness',
   tbPageA3Title: 'A3 print page',
   tbPageA4Title: 'A4 print page',
+  tbPageA4x2Title: 'Two A4 pages (A3 area split in half, at A3 scale) — for when A3 isn’t available',
   tbPrintPageSize: 'Page size',
   tbOrientTitle: 'Orientation — click to toggle landscape / portrait',
   modalCloseTitle: 'Close',

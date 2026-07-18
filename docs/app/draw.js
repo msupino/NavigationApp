@@ -3310,7 +3310,9 @@ function drawInfo() {
 
 // --- print page frame -----------------------------------------------
 // Landscape page coverage in nautical miles at 1:250,000.
-const PAGE_NM = { A4: { w: 40.09, h: 28.35 }, A3: { w: 56.70, h: 40.09 } };
+const PAGE_NM = { A4: { w: 40.09, h: 28.35 }, A3: { w: 56.70, h: 40.09 },
+                  // A4x2 = the A3 frame, exported as two A4 tiles.
+                  A4x2: { w: 56.70, h: 40.09 } };
 
 function metresPerPixel() {
   const y = vh() / 2;

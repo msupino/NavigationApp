@@ -588,6 +588,7 @@ window.S = {
   tbDriftLineWidthTitle: 'עובי קו ייחוס הסחיפה',
   tbPageA3Title: 'עמוד A3 להדפסה',
   tbPageA4Title: 'עמוד A4 להדפסה',
+  tbPageA4x2Title: 'שני דפי A4 (שטח A3 מחולק לשניים, בקנה מידה של A3) — כשאין A3 זמין',
   tbPrintPageSize: 'גודל עמוד',
   tbOrientTitle: 'כיוון — לחץ למעבר בין לרוחב / לאורך',
   modalCloseTitle: 'סגור',
