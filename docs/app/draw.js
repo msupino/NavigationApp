@@ -3323,7 +3323,13 @@ function metresPerPixel() {
 
 function pageDims() {                   // page coverage (NM), oriented
   const p = PAGE_NM[pageSize];
-  return pageOrient === 'portrait' ? { w: p.h, h: p.w } : { w: p.w, h: p.h };
+  // For A4x2 the orientation describes the printed A4 PAGES, not the combined
+  // A3 sheet: portrait pages sit side-by-side (A3-landscape frame), landscape
+  // pages stack (A3-portrait frame) — so the toggle is inverted vs A3/A4.
+  const portraitFrame = pageSize === 'A4x2'
+    ? pageOrient !== 'portrait'
+    : pageOrient === 'portrait';
+  return portraitFrame ? { w: p.h, h: p.w } : { w: p.w, h: p.h };
 }
 
 function pageFrameRect() {

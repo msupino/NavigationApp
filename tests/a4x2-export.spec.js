@@ -33,13 +33,14 @@ test('Save PNG in A4×2 emits two A4 tile files', async ({ page }) => {
   await boot(page);
   const names = [];
   page.on('download', dl => names.push(dl.suggestedFilename()));
-  // Drive the tiler directly on a synthetic A3-landscape canvas (no map tiles).
+  // Drive the tiler directly on a synthetic A3-landscape canvas (no map
+  // tiles). Portrait pages sit side-by-side in the A3-landscape frame.
   await page.evaluate(() => new Promise((res) => {
     const out = document.createElement('canvas');
     out.width = 1200; out.height = 850;
     const o = out.getContext('2d');
     o.fillStyle = '#8899aa'; o.fillRect(0, 0, 1200, 850);
-    window.pageOrient = 'landscape';
+    window.pageOrient = 'portrait';
     exportA4x2Tiles(out, 1200, 850, () => res());
   }));
   await page.waitForTimeout(400);
@@ -64,7 +65,7 @@ test('each A4×2 tile is half the A3 canvas (A4 aspect)', async ({ page }) => {
     };
     const out = realCreate('canvas'); out.width = 1200; out.height = 850;
     out.getContext('2d').fillRect(0, 0, 1200, 850);
-    window.pageOrient = 'landscape';
+    window.pageOrient = 'portrait';   // portrait pages = vertical cut
     // stub anchor clicks so nothing actually downloads
     exportA4x2Tiles(out, 1200, 850, () => {
       document.createElement = realCreate;
@@ -78,5 +79,40 @@ test('each A4×2 tile is half the A3 canvas (A4 aspect)', async ({ page }) => {
   for (const [w, h] of tileSizes) {
     expect(w).toBe(600);
     expect(h / w).toBeGreaterThan(1.39);   // ≈ 297/210
+  }
+});
+
+test('landscape orientation gives an A3-portrait frame and two landscape A4 tiles', async ({ page }) => {
+  await boot(page);
+  // Frame: with landscape PAGES the combined A3 frame is portrait (stacked).
+  await page.evaluate(() => { window.pageOrient = 'landscape'; });
+  await page.locator('#page-a4x2').click();
+  const d = await page.evaluate(() => pageDims());
+  expect(d.h).toBeGreaterThan(d.w);          // A3-portrait coverage
+
+  // Tiler: horizontal cut → two W×(H/2) landscape tiles.
+  const dims = await page.evaluate(() => new Promise((res) => {
+    const sizes = [];
+    const realCreate = document.createElement.bind(document);
+    const created = [];
+    document.createElement = function (tag) {
+      const el = realCreate(tag);
+      if (tag === 'canvas') created.push(el);
+      return el;
+    };
+    const out = realCreate('canvas'); out.width = 850; out.height = 1200;
+    out.getContext('2d').fillRect(0, 0, 850, 1200);
+    window.pageOrient = 'landscape';
+    exportA4x2Tiles(out, 850, 1200, () => {
+      document.createElement = realCreate;
+      for (const c of created) if (c.width && c.height) sizes.push([c.width, c.height]);
+      res(sizes);
+    });
+  }));
+  const tileSizes = dims.filter(([w]) => w === 850);
+  expect(tileSizes.length).toBe(2);
+  for (const [w, h] of tileSizes) {
+    expect(h).toBe(600);
+    expect(w / h).toBeGreaterThan(1.39);     // landscape A4 aspect
   }
 });
