@@ -3593,8 +3593,12 @@ function drawPageFrame() {
   octx.strokeRect(r.x, r.y, r.w, r.h);
   // A4x2: dashed mid-line showing where the A3 frame is cut into the two A4
   // pages (vertical on a landscape frame, horizontal on a portrait one) —
-  // matches the seam the exported tiles carry.
+  // matches the seam the exported tiles carry. Style is tunable (?tune=1,
+  // "Page frame" group) and deliberately bolder than the frame border.
   if (pageSize === 'A4x2') {
+    octx.strokeStyle = colorWithAlpha(tune('a4x2CutLineColor'), tune('a4x2CutLineAlpha'));
+    octx.lineWidth = tune('a4x2CutLineWidthPx');
+    octx.setLineDash([tune('a4x2CutDashOnPx'), tune('a4x2CutDashOffPx')]);
     octx.beginPath();
     if (r.w >= r.h) {
       octx.moveTo(r.x + r.w / 2, r.y);
