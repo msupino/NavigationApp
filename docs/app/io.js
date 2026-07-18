@@ -3381,20 +3381,33 @@ function exportA4x2Tiles(out, W, H, done) {
        { sx: halfW, sy: 0, sw: W - halfW, sh: H, seam: 'left',   n: 2, side: 'RIGHT' }]
     : [{ sx: 0, sy: 0,     sw: W, sh: halfH,     seam: 'bottom', n: 1, side: 'TOP' },
        { sx: 0, sy: halfH, sw: W, sh: H - halfH, seam: 'top',    n: 2, side: 'BOTTOM' }];
-  const paperW = portraitPages ? 210 : 297;
-  const paperH = portraitPages ? 297 : 210;
 
   let i = 0;
   (function nextTile() {
     if (i >= tiles.length) { done(); return; }
     const t = tiles[i++];
-    const c = document.createElement('canvas');
+    let c = document.createElement('canvas');
     c.width = t.sw; c.height = t.sh;
     const cx = c.getContext('2d');
     cx.drawImage(out, t.sx, t.sy, t.sw, t.sh, 0, 0, t.sw, t.sh);
     drawA4x2TileMarks(cx, t, tiles.length);
-    const ppmX = Math.round(t.sw * 1000 / paperW);
-    const ppmY = Math.round(t.sh * 1000 / paperH);
+    // Landscape pages: save the file PORTRAIT-oriented (rotated 90°). Print
+    // dialogs default to portrait paper and don't auto-rotate a wide image —
+    // it would be shrunk to fit. A pre-rotated file prints full-page with
+    // default settings; the user simply reads the sheet in landscape.
+    if (!portraitPages) {
+      const rc = document.createElement('canvas');
+      rc.width = t.sh; rc.height = t.sw;
+      const rx = rc.getContext('2d');
+      rx.translate(rc.width / 2, rc.height / 2);
+      rx.rotate(Math.PI / 2);
+      rx.drawImage(c, -c.width / 2, -c.height / 2);
+      c = rc;
+    }
+    // The saved file is always portrait A4 (210×297) — landscape pages are
+    // pre-rotated above.
+    const ppmX = Math.round(c.width * 1000 / 210);
+    const ppmY = Math.round(c.height * 1000 / 297);
     const dl = (blob) => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);

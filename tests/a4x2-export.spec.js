@@ -109,10 +109,11 @@ test('landscape orientation gives an A3-portrait frame and two landscape A4 tile
       res(sizes);
     });
   }));
-  const tileSizes = dims.filter(([w]) => w === 850);
-  expect(tileSizes.length).toBe(2);
-  for (const [w, h] of tileSizes) {
-    expect(h).toBe(600);
-    expect(w / h).toBeGreaterThan(1.39);     // landscape A4 aspect
-  }
+  // Landscape pages are cut as 850×600 halves but SAVED pre-rotated 90° as
+  // portrait files (600×850), so default portrait print settings fill the
+  // page — the user reads the sheet in landscape.
+  const cut = dims.filter(([w, h]) => w === 850 && h === 600);
+  const saved = dims.filter(([w, h]) => w === 600 && h === 850);
+  expect(cut.length).toBe(2);
+  expect(saved.length).toBe(2);
 });
