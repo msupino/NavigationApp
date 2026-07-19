@@ -2641,9 +2641,23 @@ function showFlightPlan() {
     // their current values, and drop the delete column.
     const tablesHtml = Array.from(scrollArea.querySelectorAll('.flight-table')).map(t => {
       const clone = t.cloneNode(true);
-      clone.querySelectorAll('input, select').forEach(el => {
+      // cloneNode copies attributes, not live .value state (a <select>'s
+      // selection resets to its first option) — read each value from the
+      // ORIGINAL element, pairing originals and clones by document order.
+      const origEls = t.querySelectorAll('input, select');
+      clone.querySelectorAll('input, select').forEach((el, i) => {
+        const live = origEls[i];
+        const val = live ? live.value : el.value;
         const span = document.createElement('span');
-        span.textContent = el.value || '';
+        if (el.classList.contains('fp-leg-vor')) {
+          // Per-leg VOR picker: print the EFFECTIVE ident (override or the
+          // route-wide reference), so each Radial row says which VOR it's from.
+          const ident = val || (typeof vorRef === 'string' && vorRef) || '';
+          span.textContent = ident ? ident + ' ' : '';
+          span.className = 'nl-vor-ident';
+        } else {
+          span.textContent = val || '';
+        }
         el.replaceWith(span);
       });
       clone.querySelectorAll('.fp-col-hidden').forEach(el => el.remove());
@@ -2715,6 +2729,22 @@ function showFlightPlan() {
         S.navLogArrFreqs || 'Arrival frequencies');
     }
 
+    // Reference VOR(s) feeding the Radial/DME columns — the route-wide
+    // selection plus any distinct per-leg overrides — with their frequencies,
+    // so the printed log carries what to tune.
+    const vorIdents = [];
+    const pushVor = id => {
+      if (id && typeof id === 'string' && !vorIdents.includes(id)) vorIdents.push(id);
+    };
+    pushVor(typeof vorRef === 'string' ? vorRef : null);
+    (state.legs || []).forEach(l => pushVor(l && l.vorRef));
+    const vorHtml = vorIdents
+      .map(id => (typeof vorByIdent === 'function' ? vorByIdent(id) : null))
+      .filter(Boolean)
+      .map(v => ltr(v.ident) + ' \u2014 ' + esc((lang === 'he' && v.he) ? v.he : v.name) +
+                (v.freq ? ' \u2014 ' + ltr(v.freq + ' MHz') : ''))
+      .join(' \u00b7 ');
+
     const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
     const today = new Date().toISOString().slice(0, 10);
     const title = (S.navLogTitle || 'NavAid \u2014 Nav Log') + ' \u00b7 ' + dep + ' \u2192 ' + dest;
@@ -2730,6 +2760,7 @@ function showFlightPlan() {
       'th,td{border:1px solid #999;padding:3px 5px;text-align:' +
         (dir === 'rtl' ? 'right' : 'left') + '}' +
       'thead th{background:#eee}.nl-gap{height:14px}' +
+      '.nl-vor-ident{font-weight:600;color:#555;margin-inline-end:2px}' +
       'h2{font-size:14px;margin:16px 0 4px}ul{margin:4px 0;padding-inline-start:18px}' +
       '</style></head><body>' +
       '<h1>' + esc(S.navLogTitle || 'NavAid \u2014 Nav Log') + '</h1>' +
@@ -2739,6 +2770,7 @@ function showFlightPlan() {
         '<div><b>' + esc(S.tbAircraft || 'Aircraft') + ':</b> ' +
           esc(S.tbGph || 'GPH') + ' ' + esc(ac.gph) + ' \u00b7 ' +
           esc(S.tbTaxiGal || 'Taxi/T.O.') + ' ' + esc(ac.taxiGal) + '</div>' +
+        (vorHtml ? '<div><b>' + esc(S.navLogVor || 'Reference VOR') + ':</b> ' + vorHtml + '</div>' : '') +
       '</div>' +
       depFreqHtml +
       tablesHtml +
