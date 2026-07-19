@@ -438,6 +438,251 @@
         }
       ],
       "layer": "cvfr"
+    },
+    {
+      "id": "llib-llha-north",
+      "name": "Rosh Pina to Haifa",
+      "he": "ראש פינה לחיפה",
+      "description": "Northern CVFR route from Rosh Pina to Haifa via the Galilee.",
+      "heDescription": "מסלול CVFR צפוני מראש פינה לחיפה דרך הגליל.",
+      "defaultSpeed": 90,
+      "waypoints": [
+        "LLIB",
+        "AMNON",
+        "DESHE",
+        "ZALMN",
+        "SEGEV",
+        "EVLYM",
+        "GILAM",
+        "LLHA"
+      ],
+      "notes": [
+        {
+          "cc": "DESHE",
+          "freqName": "PLUTO_EAST",
+          "freqAuto": true
+        },
+        {
+          "cc": "GILAM",
+          "freqName": "HAIFA",
+          "freqAuto": true
+        }
+      ],
+      "layer": "cvfr"
+    },
+    {
+      "id": "llha-llmg-west",
+      "name": "Haifa to Megiddo",
+      "he": "חיפה למגידו",
+      "description": "CVFR route from Haifa down the coast and through Eiron to Megiddo.",
+      "heDescription": "מסלול CVFR מחיפה לאורך החוף ודרך עירון למגידו.",
+      "defaultSpeed": 90,
+      "waypoints": [
+        "LLHA",
+        "GALIM",
+        "DAROM",
+        "HOTRM",
+        "BOREN",
+        "FRDIS",
+        "HADRA",
+        "EIRON",
+        "ZMGID",
+        "LLMG"
+      ],
+      "notes": [
+        {
+          "cc": "DAROM",
+          "freqName": "PLUTO_WEST",
+          "freqAuto": true
+        },
+        {
+          "cc": "ZMGID",
+          "freqName": "MEGIDDO",
+          "freqAuto": true
+        }
+      ],
+      "layer": "cvfr"
+    },
+    {
+      "id": "llmg-llib-north",
+      "name": "Megiddo to Rosh Pina",
+      "he": "מגידו לראש פינה",
+      "description": "CVFR route from Megiddo to Rosh Pina via Tavor and the Kinneret.",
+      "heDescription": "מסלול CVFR ממגידו לראש פינה דרך תבור והכנרת.",
+      "defaultSpeed": 90,
+      "waypoints": [
+        "LLMG",
+        "AFULA",
+        "TAVOR",
+        "DESHE",
+        "AMNON",
+        "LLIB"
+      ],
+      "notes": [
+        {
+          "cc": "AFULA",
+          "freqName": "PLUTO_EAST",
+          "freqAuto": true
+        },
+        {
+          "cc": "DESHE",
+          "freqName": "ROSH_PINA",
+          "freqAuto": true
+        }
+      ],
+      "layer": "cvfr"
+    },
+    {
+      "id": "llib-llmg-south",
+      "name": "Rosh Pina to Megiddo",
+      "he": "ראש פינה למגידו",
+      "description": "CVFR route from Rosh Pina to Megiddo via the Kinneret and Tavor.",
+      "heDescription": "מסלול CVFR מראש פינה למגידו דרך הכנרת ותבור.",
+      "defaultSpeed": 90,
+      "waypoints": [
+        "LLIB",
+        "AMNON",
+        "DESHE",
+        "TAVOR",
+        "AFULA",
+        "LLMG"
+      ],
+      "notes": [
+        {
+          "cc": "DESHE",
+          "freqName": "PLUTO_EAST",
+          "freqAuto": true
+        },
+        {
+          "cc": "AFULA",
+          "freqName": "MEGIDDO",
+          "freqAuto": true
+        }
+      ],
+      "layer": "cvfr"
+    },
+    {
+      "id": "llmg-llha-west",
+      "name": "Megiddo to Haifa",
+      "he": "מגידו לחיפה",
+      "description": "CVFR route from Megiddo through Eiron and up the coast to Haifa.",
+      "heDescription": "מסלול CVFR ממגידו דרך עירון ולאורך החוף לחיפה.",
+      "defaultSpeed": 90,
+      "waypoints": [
+        "LLMG",
+        "ZMGID",
+        "EIRON",
+        "HADRA",
+        "FRDIS",
+        "BOREN",
+        "HOTRM",
+        "DAROM",
+        "GALIM",
+        "LLHA"
+      ],
+      "notes": [
+        {
+          "cc": "ZMGID",
+          "freqName": "PLUTO_WEST",
+          "freqAuto": true
+        },
+        {
+          "cc": "DAROM",
+          "freqName": "HAIFA",
+          "freqAuto": true
+        }
+      ],
+      "layer": "cvfr"
+    },
+    {
+      "id": "llib-llha-valley",
+      "name": "Rosh Pina to Haifa (via the valleys)",
+      "he": "ראש פינה לחיפה (דרך העמקים)",
+      "description": "Long CVFR route from Rosh Pina to Haifa via Tavor, Afula, Eiron and the coast.",
+      "heDescription": "מסלול CVFR ארוך מראש פינה לחיפה דרך תבור, עפולה, עירון והחוף.",
+      "defaultSpeed": 90,
+      "waypoints": [
+        "LLIB",
+        "AMNON",
+        "DESHE",
+        "TAVOR",
+        "AFULA",
+        "ZMGID",
+        "EIRON",
+        "HADRA",
+        "FRDIS",
+        "BOREN",
+        "HOTRM",
+        "DAROM",
+        "GALIM",
+        "LLHA"
+      ],
+      "notes": [
+        {
+          "cc": "DESHE",
+          "freqName": "PLUTO_EAST",
+          "freqAuto": true
+        },
+        {
+          "cc": "ZMGID",
+          "freqName": "PLUTO_WEST",
+          "freqAuto": true
+        },
+        {
+          "cc": "DAROM",
+          "freqName": "HAIFA",
+          "freqAuto": true
+        }
+      ],
+      "commChangeSuppressions": [
+        "AFULA"
+      ],
+      "layer": "cvfr"
+    },
+    {
+      "id": "llha-llib-valley",
+      "name": "Haifa to Rosh Pina (via the valleys)",
+      "he": "חיפה לראש פינה (דרך העמקים)",
+      "description": "Long CVFR route from Haifa via the coast, Eiron, Afula and Tavor to Rosh Pina.",
+      "heDescription": "מסלול CVFR ארוך מחיפה דרך החוף, עירון, עפולה ותבור לראש פינה.",
+      "defaultSpeed": 90,
+      "waypoints": [
+        "LLHA",
+        "GALIM",
+        "DAROM",
+        "HOTRM",
+        "BOREN",
+        "FRDIS",
+        "HADRA",
+        "EIRON",
+        "ZMGID",
+        "AFULA",
+        "TAVOR",
+        "DESHE",
+        "AMNON",
+        "LLIB"
+      ],
+      "notes": [
+        {
+          "cc": "DAROM",
+          "freqName": "PLUTO_WEST",
+          "freqAuto": true
+        },
+        {
+          "cc": "AFULA",
+          "freqName": "PLUTO_EAST",
+          "freqAuto": true
+        },
+        {
+          "cc": "DESHE",
+          "freqName": "ROSH_PINA",
+          "freqAuto": true
+        }
+      ],
+      "commChangeSuppressions": [
+        "ZMGID"
+      ],
+      "layer": "cvfr"
     }
   ],
   "_comment": "Route templates (shared). Each template carries a \"layer\" tag (cvfr|lsa|heli|any); the app shows templates matching the active base layer (plus any)."

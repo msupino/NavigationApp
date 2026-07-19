@@ -156,6 +156,32 @@ test.describe('route templates', () => {
 
   for (const templateCase of [
     {
+      id: 'llib-llha-north',
+      name: 'Rosh Pina to Haifa',
+      waypoints: [
+        'LLIB', 'AMNON', 'DESHE', 'ZALMN', 'SEGEV', 'EVLYM', 'GILAM', 'LLHA',
+      ],
+      alts: {},
+      notes: [
+        { cc: 'DESHE', freqName: 'PLUTO_EAST', freq: '123.85' },
+        { cc: 'GILAM', freqName: 'HAIFA', freq: '133.00' },
+      ],
+    },
+    {
+      id: 'llha-llib-valley',
+      name: 'Haifa to Rosh Pina (via the valleys)',
+      waypoints: [
+        'LLHA', 'GALIM', 'DAROM', 'HOTRM', 'BOREN', 'FRDIS', 'HADRA',
+        'EIRON', 'ZMGID', 'AFULA', 'TAVOR', 'DESHE', 'AMNON', 'LLIB',
+      ],
+      alts: {},
+      notes: [
+        { cc: 'DAROM', freqName: 'PLUTO_WEST', freq: '118.40' },
+        { cc: 'AFULA', freqName: 'PLUTO_EAST', freq: '123.85' },
+        { cc: 'DESHE', freqName: 'ROSH_PINA', freq: '118.45' },
+      ],
+    },
+    {
       id: 'llha-llib-north',
       name: 'Haifa to Rosh Pina',
       waypoints: [
