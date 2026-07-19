@@ -203,6 +203,8 @@ NavAid.tuningDefaults = {
   a4x2CutDashOffPx: { value: 9, min: 0, max: 60, step: 1, label: 'A4×2 cut dash gap' },
   a4x2CutLineColor: { value: '#ff3b30', type: 'color', label: 'A4×2 cut line color' },
   a4x2CutLineAlpha: { value: 0.9, min: 0, max: 1, step: 0.05, label: 'A4×2 cut line alpha' },
+  a4x2MarkLabelMm: { value: 3.5, min: 1, max: 10, step: 0.5, label: 'A4×2 printed page-label height (mm)' },
+  a4x2MarkGuideMm: { value: 0.5, min: 0.1, max: 3, step: 0.1, label: 'A4×2 printed cut-guide width (mm)' },
 
   hitWaypointExtraPx: { value: 6, min: 0, max: 40, step: 1, label: 'Waypoint hit extra' },
   hitLegPx: { value: 8, min: 1, max: 60, step: 1, label: 'Leg line hit width' },
@@ -398,7 +400,7 @@ NavAid.tuningGroups = [
   { name: 'Overlay labels', keys: ['overlayLabelHaloColor', 'overlayLabelHaloAlpha'] },
   { name: 'Frequency changes', keys: ['commChangeRingRadiusPx', 'commChangeRingWidthPx', 'commChangeRingColor', 'commChangeNoteLatOffset', 'commChangeNoteLngOffset', 'commChangeArrowStartGapPx', 'commChangeArrowWidthPx', 'commChangeArrowColor', 'commChangeArrowLineCap', 'commChangeArrowLineJoin', 'commChangeArrowMiterLimit', 'commChangeArrowHaloPx', 'commChangeArrowHaloColor', 'commChangeArrowHaloAlpha', 'commChangeSelectedColor', 'commChangeSelectedAlpha', 'commChangeSelectedWidthAddPx', 'commChangeArrowBoltPx', 'commChangeArrowBoltAngleDeg', 'commChangeArrowBend1Along', 'commChangeArrowBend2Along', 'commChangeNameFontPx', 'commChangeFreqFontPx', 'commChangeTextColor', 'commChangeTextHaloColor', 'commChangeTextHaloAlpha', 'commChangeTextAlong', 'commChangeTextGapPx', 'commChangeNameHaloWidthPx', 'commChangeFreqHaloWidthPx'] },
   { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx', 'noteDefaultFillColor'] },
-  { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimColor', 'pageFrameScrimAlpha', 'pageFrameHitPx', 'a4x2CutLineWidthPx', 'a4x2CutDashOnPx', 'a4x2CutDashOffPx', 'a4x2CutLineColor', 'a4x2CutLineAlpha'] },
+  { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimColor', 'pageFrameScrimAlpha', 'pageFrameHitPx', 'a4x2CutLineWidthPx', 'a4x2CutDashOnPx', 'a4x2CutDashOffPx', 'a4x2CutLineColor', 'a4x2CutLineAlpha', 'a4x2MarkLabelMm', 'a4x2MarkGuideMm'] },
   { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitLegPx', 'hitLegLabelMinPx', 'hitLegLabelScalePx', 'hitCumLabelMinPx', 'hitCumLabelScalePx'] },
   { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs', 'altPairFocusLineAlpha', 'altPairFocusDotAlpha'] },
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx'] },
@@ -1086,6 +1088,13 @@ window.S = Object.assign({
   tbPageA3Title: 'A3 print page',
   tbPageA4Title: 'A4 print page',
   tbPageA4x2Title: 'Two A4 pages (A3 area split in half, at A3 scale) — for when A3 isn’t available',
+  a4x2TileLabel: function (n, total, side, other) {
+    return 'PAGE ' + n + ' OF ' + total + ' — ' + side + ' · tape to page ' + other;
+  },
+  a4x2SideLeft: 'LEFT',
+  a4x2SideRight: 'RIGHT',
+  a4x2SideTop: 'TOP',
+  a4x2SideBottom: 'BOTTOM',
   tbPrintPageSize: 'Page size',
   tbOrientTitle: 'Orientation — click to toggle landscape / portrait',
   modalCloseTitle: 'Close',
