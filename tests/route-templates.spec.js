@@ -156,6 +156,18 @@ test.describe('route templates', () => {
 
   for (const templateCase of [
     {
+      id: 'llha-llib-north',
+      name: 'Haifa to Rosh Pina',
+      waypoints: [
+        'LLHA', 'GILAM', 'EVLYM', 'SEGEV', 'ZALMN', 'DESHE', 'AMNON', 'LLIB',
+      ],
+      alts: {},   // whatever the CVFR altitude table applies — pinned by other tests
+      notes: [
+        { cc: 'GILAM', freqName: 'PLUTO_EAST', freq: '123.85' },
+        { cc: 'DESHE', freqName: 'ROSH_PINA', freq: '118.45' },
+      ],
+    },
+    {
       id: 'llhz-llib-north',
       name: 'Herzliya to Rosh Pina',
       waypoints: [
