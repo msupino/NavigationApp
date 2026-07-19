@@ -3200,7 +3200,13 @@ function routeEndpointAirfields() {
 }
 // '' = every field; 'auto' = route first/last airfield; else a single ICAO.
 function plateAirfieldAllowed(name) {
-  if (window.plateAirfield === 'auto') return routeEndpointAirfields().has(name);
+  if (window.plateAirfield === 'auto') {
+    // With no route (or none of its waypoints on a plate-carrying airfield)
+    // a saved 'auto' must not silently blank every plate toggle — fall back
+    // to showing every field until the route provides endpoints.
+    const ends = routeEndpointAirfields();
+    return ends.size ? ends.has(name) : true;
+  }
   if (window.plateAirfield) return name === window.plateAirfield;
   return true;
 }
@@ -3232,6 +3238,11 @@ function populatePlateAirfieldSelect() {
 
 // Rebuild whichever plate layers are shown so they honour the current filter.
 function rebuildPlateOverlays() {
+  // The align editor may hold a layer inside a group we're about to destroy —
+  // deselect it first so its handles can't keep editing an orphaned layer.
+  if (window.overlayAlign && typeof overlayAlign.onPlatesRebuilt === 'function') {
+    overlayAlign.onPlatesRebuilt();
+  }
   const defs = [
     ['showCircuit', 'circuitLayerGroup', loadCircuitOverlays],
     ['showTraining', 'trainingLayerGroup', loadTrainingOverlays],
@@ -3553,7 +3564,11 @@ const overlayAlign = (function () {
   }
   function toggle() { active ? exit() : enter(); }
 
-  return { toggle, enter, exit, isActive: () => active };
+  // External hook: plate layer groups are being rebuilt (filter change /
+  // Auto route-follow) — drop the current selection so edits can't target a
+  // detached layer.
+  function onPlatesRebuilt() { if (sel) deselect(); }
+  return { toggle, enter, exit, isActive: () => active, onPlatesRebuilt };
 })();
 window.overlayAlign = overlayAlign;
 
@@ -5873,9 +5888,13 @@ const NavWxOpacity = (function () {
     // saturated hazard areas + dark lines/labels stay. Table/header keep white.
     const thr = knockWhite ? Math.round(off('sigwxWhiteKnockout') || 170) : 999;
     const satThr = Math.round(off('sigwxKnockoutSat'));
-    const coastKey = off('sigwxCoastWidthPx') + '|' +
-      (typeof tune === 'function' ? tune('sigwxCoastColor') : '') + '|' +
-      (typeof tune === 'function' ? tune('sigwxCoastAlpha') : '');
+    // Coast params only affect the knocked map panel — keep them out of the
+    // table/header cache keys so coast tuning can't invalidate those crops.
+    const coastKey = knockWhite
+      ? off('sigwxCoastWidthPx') + '|' +
+        (typeof tune === 'function' ? tune('sigwxCoastColor') : '') + '|' +
+        (typeof tune === 'function' ? tune('sigwxCoastAlpha') : '')
+      : '';
     const key = url + '|' + crop.x0 + '|' + crop.y0 + '|' + thr + '|' + satThr + '|' + coastKey;
     if (cropCache[key]) return Promise.resolve(cropCache[key]);
     return new Promise((resolve, reject) => {
@@ -5892,27 +5911,37 @@ const NavWxOpacity = (function () {
           ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
           if (knockWhite && thr <= 255) {
             const im = ctx.getImageData(0, 0, sw, sh), d = im.data;
-            // Pass 1 — classify. The chart draws no coastline stroke: the
-            // coast is only the boundary between the pale-blue sea fill and
-            // the pale land/paper, and the knockout erases both. So detect
-            // sea pixels (pale AND blue-leaning) to re-stroke that boundary.
             const n = sw * sh;
-            const sea = new Uint8Array(n);
-            const knock = new Uint8Array(n);
-            for (let p = 0, i = 0; p < n; p++, i += 4) {
-              const r = d[i], g = d[i + 1], b = d[i + 2];
-              const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-              if (mx >= thr && (mx - mn) <= satThr) {
-                knock[p] = 1;
-                if (b - r >= 10 && b >= g) sea[p] = 1;
-              }
-            }
-            // Pass 2 — coastline = sea pixel with a knocked non-sea neighbour
-            // (paper/terrain), thickened to sigwxCoastWidthPx by marking the
-            // sea-side neighbourhood.
             const cw = Math.max(0, Math.round(off('sigwxCoastWidthPx')));
-            const coast = new Uint8Array(n);
-            if (cw > 0) {
+            if (cw === 0) {
+              // Coastline off (the default): plain single-pass knockout, no
+              // scratch buffers.
+              for (let i = 0; i < d.length; i += 4) {
+                const r = d[i], g = d[i + 1], b = d[i + 2];
+                const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+                if (mx >= thr && (mx - mn) <= satThr) d[i + 3] = 0;
+              }
+            } else {
+              // Pass 1 — classify. The chart draws no coastline stroke: the
+              // coast is only the boundary between the pale-blue sea fill and
+              // the pale land/paper, and the knockout erases both. Detect sea
+              // pixels (pale AND blue-leaning) to re-stroke that boundary.
+              const sea = new Uint8Array(n);
+              const knock = new Uint8Array(n);
+              for (let p = 0, i = 0; p < n; p++, i += 4) {
+                const r = d[i], g = d[i + 1], b = d[i + 2];
+                const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+                if (mx >= thr && (mx - mn) <= satThr) {
+                  knock[p] = 1;
+                  if (b - r >= 10 && b >= g) sea[p] = 1;
+                }
+              }
+              // Pass 2 — coastline = sea pixel with a knocked non-sea
+              // neighbour (paper/terrain), thickened to cw. Marking is
+              // clamped per row (no wrap to the opposite edge) and gated on
+              // knock[q] so preserved dark ink (labels, hazard outlines) is
+              // never painted over.
+              const coast = new Uint8Array(n);
               for (let y = 1; y < sh - 1; y++) {
                 for (let x = 1; x < sw - 1; x++) {
                   const p = y * sw + x;
@@ -5920,23 +5949,27 @@ const NavWxOpacity = (function () {
                   if ((knock[p - 1] && !sea[p - 1]) || (knock[p + 1] && !sea[p + 1]) ||
                       (knock[p - sw] && !sea[p - sw]) || (knock[p + sw] && !sea[p + sw])) {
                     for (let dy = -(cw - 1); dy <= cw - 1; dy++) {
+                      const ny = y + dy;
+                      if (ny < 0 || ny >= sh) continue;
                       for (let dx = -(cw - 1); dx <= cw - 1; dx++) {
-                        const q = p + dy * sw + dx;
-                        if (q >= 0 && q < n) coast[q] = 1;
+                        const nx = x + dx;
+                        if (nx < 0 || nx >= sw) continue;
+                        const q = ny * sw + nx;
+                        if (knock[q]) coast[q] = 1;
                       }
                     }
                   }
                 }
               }
-            }
-            // Pass 3 — knock out the pale fills, then paint the coastline.
-            const cc = hexToRgb(typeof tune === 'function' ? tune('sigwxCoastColor') : '#1d4e89');
-            const ca = Math.round(255 * (typeof tune === 'function' ? tune('sigwxCoastAlpha') : 0.9));
-            for (let p = 0, i = 0; p < n; p++, i += 4) {
-              if (coast[p]) {
-                d[i] = cc.r; d[i + 1] = cc.g; d[i + 2] = cc.b; d[i + 3] = ca;
-              } else if (knock[p]) {
-                d[i + 3] = 0;
+              // Pass 3 — knock out the pale fills, then paint the coastline.
+              const cc = hexToRgb(typeof tune === 'function' ? tune('sigwxCoastColor') : '#1d4e89');
+              const ca = Math.round(255 * (typeof tune === 'function' ? tune('sigwxCoastAlpha') : 0.9));
+              for (let p = 0, i = 0; p < n; p++, i += 4) {
+                if (coast[p]) {
+                  d[i] = cc.r; d[i + 1] = cc.g; d[i + 2] = cc.b; d[i + 3] = ca;
+                } else if (knock[p]) {
+                  d[i + 3] = 0;
+                }
               }
             }
             ctx.putImageData(im, 0, 0);

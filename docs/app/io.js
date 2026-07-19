@@ -3391,7 +3391,6 @@ function exportA4x2Tiles(out, W, H, done) {
     c.width = t.sw; c.height = t.sh;
     const cx = c.getContext('2d');
     cx.drawImage(out, t.sx, t.sy, t.sw, t.sh, 0, 0, t.sw, t.sh);
-    drawA4x2TileMarks(cx, t, tiles.length);
     // WYSIWYG: each file is saved exactly as its half appears on screen.
     // Portrait halves carry portrait-A4 DPI; landscape halves carry
     // landscape-A4 DPI (pick Landscape in the print dialog for those).
@@ -3399,6 +3398,10 @@ function exportA4x2Tiles(out, W, H, done) {
     const paperH = portraitPages ? 297 : 210;
     const ppmX = Math.round(c.width * 1000 / paperW);
     const ppmY = Math.round(c.height * 1000 / paperH);
+    // Marks are sized in paper millimetres (via px-per-mm), not fixed pixels:
+    // framed exports render at native tile zoom (thousands of px per page),
+    // where a fixed 22px label would print ~2 mm tall and be illegible.
+    drawA4x2TileMarks(cx, t, tiles.length, ppmX / 1000);
     const dl = (blob) => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -3408,7 +3411,9 @@ function exportA4x2Tiles(out, W, H, done) {
       setTimeout(nextTile, 400);   // stagger so the browser allows both downloads
     };
     c.toBlob(b => {
-      if (!b) { setTimeout(nextTile, 0); return; }
+      // A null blob (canvas memory limits) must surface, not silently drop a
+      // page — the user would tape together half a chart. Abort the sequence.
+      if (!b) { alert(S.errPngFail); done(); return; }
       b.arrayBuffer()
         .then(buf => dl(new Blob([injectPngPhys(buf, ppmX, ppmY)], { type: 'image/png' })))
         .catch(() => dl(b));
@@ -3417,23 +3422,30 @@ function exportA4x2Tiles(out, W, H, done) {
 }
 
 // Page label + dashed cut/tape guide on the edge shared with the other tile.
-function drawA4x2TileMarks(cx, t, total) {
+// Sized in paper millimetres via pxPerMm so the marks print the same physical
+// size at any export resolution; label text comes from S (i18n) and the mm
+// sizes are tunable (Page frame group).
+function drawA4x2TileMarks(cx, t, total, pxPerMm) {
   const W = cx.canvas.width, H = cx.canvas.height;
+  const mm = Math.max(0.5, pxPerMm || 1);
   cx.save();
   // page label (top-left, on a translucent chip so it reads over any chart)
-  const label = 'PAGE ' + t.n + ' OF ' + total + ' — ' + t.side +
-                ' · tape to page ' + (t.n === 1 ? 2 : 1);
-  cx.font = 'bold 22px sans-serif';
+  const sideKey = { LEFT: 'a4x2SideLeft', RIGHT: 'a4x2SideRight',
+                    TOP: 'a4x2SideTop', BOTTOM: 'a4x2SideBottom' }[t.side];
+  const label = S.a4x2TileLabel(t.n, total, S[sideKey] || t.side, t.n === 1 ? 2 : 1);
+  const fontPx = Math.round(tune('a4x2MarkLabelMm') * mm);
+  cx.font = 'bold ' + fontPx + 'px sans-serif';
   cx.textBaseline = 'top';
   const tw = cx.measureText(label).width;
+  const pad = Math.round(fontPx * 0.3);
   cx.fillStyle = 'rgba(255,255,255,0.85)';
-  cx.fillRect(6, 6, tw + 12, 32);
+  cx.fillRect(pad, pad, tw + pad * 2, fontPx + pad * 2);
   cx.fillStyle = '#000';
-  cx.fillText(label, 12, 12);
+  cx.fillText(label, pad * 2, pad * 2);
   // dashed guide along the shared (seam) edge
   cx.strokeStyle = 'rgba(0,0,0,0.7)';
-  cx.lineWidth = 2;
-  cx.setLineDash([12, 7]);
+  cx.lineWidth = Math.max(1, tune('a4x2MarkGuideMm') * mm);
+  cx.setLineDash([Math.round(4 * mm), Math.round(2.5 * mm)]);
   cx.beginPath();
   if (t.seam === 'right')       { cx.moveTo(W - 1, 0); cx.lineTo(W - 1, H); }
   else if (t.seam === 'left')   { cx.moveTo(1, 0);     cx.lineTo(1, H); }
@@ -3658,12 +3670,16 @@ function exportPNG() {
     // A4×2: the frame is A3-sized — slice it into two A4 tiles at the same
     // 1:250 000 scale (no A3 printer needed) instead of one A3 PNG.
     if (pageSize === 'A4x2') {
-      btn.textContent = btnLabel;
-      btn.disabled = false;
-      unlockMap();
-      NavAid.exporting = false;
-      if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
+      // Teardown runs in the completion callback, mirroring the single-page
+      // path's toBlob callback: the Save button stays disabled and
+      // NavAid.exporting stays true until both tile downloads have fired,
+      // so a second export can't start mid-tiling.
       exportA4x2Tiles(out, W, H, () => {
+        btn.textContent = btnLabel;
+        btn.disabled = false;
+        unlockMap();
+        NavAid.exporting = false;
+        if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
         if (failed > 0) alert(S.errTilesFail(failed, jobs.length));
       });
       return;

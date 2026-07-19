@@ -56,10 +56,12 @@ jobs:
 
           if not prs:
               print('no merged PRs since', since, '- nothing to add')
-              # still advance the marker so a burst after a quiet spell is not re-scanned
-              if m: s = MARK.sub(f'<!-- auto-changelog: last={now} -->', s)
-              else: s = s.replace('# Changelog', f'# Changelog\n\n<!-- auto-changelog: last={now} -->', 1)
-              open(page, 'w', encoding='utf-8').write(s)
+              # Leave the page untouched on quiet nights (the mergedAt > since
+              # filter makes re-scanning the same window harmless); only seed
+              # the marker once if the page has never carried one.
+              if not m and '# Changelog' in s:
+                  s = s.replace('# Changelog', f'# Changelog\n\n<!-- auto-changelog: last={now} -->', 1)
+                  open(page, 'w', encoding='utf-8').write(s)
               raise SystemExit(0)
 
           GROUPS = [('feat', 'Features'), ('fix', 'Fixes'), ('data', 'Data'),
