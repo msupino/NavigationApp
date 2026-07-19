@@ -508,7 +508,7 @@ window.S = Object.assign({
   airfieldLabelField: 'en',            // which locale label to show on the overlay
   commChangeUrl: 'data/cvfr-comm-change.json?v=1', // CVFR comm-change reporting points (issue #399)
   legAltitudeUrl: 'data/cvfr-leg-altitude.json?v=1', // CVFR green-route leg altitude table
-  routeTemplatesUrl: 'data/route-templates.json?v=1', // ready-made route templates
+  routeTemplatesUrl: 'data/route-templates.json?v=2', // ready-made route templates
   vorUrl: 'data/vor.json?v=1',              // Israeli VOR/DME stations (#404 follow-up)
 
   // --- English UI copy (default locale) -------------------------------

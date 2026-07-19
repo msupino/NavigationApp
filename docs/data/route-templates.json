@@ -407,6 +407,37 @@
         }
       ],
       "layer": "cvfr"
+    },
+    {
+      "id": "llha-llib-north",
+      "name": "Haifa to Rosh Pina",
+      "he": "חיפה לראש פינה",
+      "description": "Northern CVFR route from Haifa to Rosh Pina via the Galilee.",
+      "heDescription": "מסלול CVFR צפוני מחיפה לראש פינה דרך הגליל.",
+      "defaultSpeed": 90,
+      "waypoints": [
+        "LLHA",
+        "GILAM",
+        "EVLYM",
+        "SEGEV",
+        "ZALMN",
+        "DESHE",
+        "AMNON",
+        "LLIB"
+      ],
+      "notes": [
+        {
+          "cc": "GILAM",
+          "freqName": "PLUTO_EAST",
+          "freqAuto": true
+        },
+        {
+          "cc": "DESHE",
+          "freqName": "ROSH_PINA",
+          "freqAuto": true
+        }
+      ],
+      "layer": "cvfr"
     }
   ],
   "_comment": "Route templates (shared). Each template carries a \"layer\" tag (cvfr|lsa|heli|any); the app shows templates matching the active base layer (plus any)."

@@ -8,7 +8,7 @@ window.S = {
   commChangeUrl: 'data/cvfr-comm-change.json?v=1',
   legAltitudeUrl: 'data/cvfr-leg-altitude.json?v=1',
   vorUrl: 'data/vor.json?v=1',
-  routeTemplatesUrl: 'data/route-templates.json?v=1',
+  routeTemplatesUrl: 'data/route-templates.json?v=2',
 
   // --- Waypoint terminology -------------------------------------------
   // Mirrors the English cluster in core.js — keep the noun phrase
