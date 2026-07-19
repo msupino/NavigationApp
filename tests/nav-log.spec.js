@@ -132,3 +132,19 @@ test('Nav log lists the reference VOR(s) with their frequency', async ({ page, c
     [...document.querySelectorAll('td .nl-vor-ident')].map(e => e.textContent.trim()));
   expect(radialCells).toContain('NAT');
 });
+
+test('arrival airfield ATIS prints even when airfields were never shown', async ({ page, context }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    // LLHA carries ATIS 135.40; do NOT enable the airfields layer first —
+    // the nav log must load the dataset itself.
+    state.waypoints = [{ lat: 32.0, lng: 34.8, name: 'LLSD' },
+                       { lat: 32.809, lng: 35.043, name: 'LLHA' }];
+    syncLegs(); draw(); showFlightPlan();
+  });
+  const popup = await openNavLog(page, context);
+  const txt = await popup.evaluate(() => document.body.innerText);
+  expect(txt).toContain('Arrival frequencies');
+  expect(txt).toContain('ATIS');
+  expect(txt).toContain('135.40');
+});
