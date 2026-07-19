@@ -112,6 +112,12 @@ test('Nav log lists the reference VOR(s) with their frequency', async ({ page, c
     state.legs[0].vorRef = 'NAT';             // per-leg override — both must list
     draw(); showFlightPlan();
   });
+  // fillLegVorSelects applies the per-leg value on a later tick — wait for it
+  // so the nav-log clone freezes 'NAT', not a placeholder.
+  await page.waitForFunction(() => {
+    const sel = document.querySelector('.fp-leg-vor');
+    return sel && sel.value === 'NAT';
+  });
   const popup = await openNavLog(page, context);
   const txt = await popup.evaluate(() => document.body.innerText);
   expect(txt).toContain('Reference VOR');
@@ -119,4 +125,10 @@ test('Nav log lists the reference VOR(s) with their frequency', async ({ page, c
   expect(txt).toContain('113.50 MHz');        // BGN frequency from vor.json
   expect(txt).toContain('NAT');
   expect(txt).toContain('112.40 MHz');        // NAT frequency
+
+  // Each Radial row names its effective VOR: leg 0 overrides to NAT — its
+  // radial cell must carry the NAT ident (not the route-wide BGN).
+  const radialCells = await popup.evaluate(() =>
+    [...document.querySelectorAll('td .nl-vor-ident')].map(e => e.textContent.trim()));
+  expect(radialCells).toContain('NAT');
 });

@@ -2641,9 +2641,23 @@ function showFlightPlan() {
     // their current values, and drop the delete column.
     const tablesHtml = Array.from(scrollArea.querySelectorAll('.flight-table')).map(t => {
       const clone = t.cloneNode(true);
-      clone.querySelectorAll('input, select').forEach(el => {
+      // cloneNode copies attributes, not live .value state (a <select>'s
+      // selection resets to its first option) — read each value from the
+      // ORIGINAL element, pairing originals and clones by document order.
+      const origEls = t.querySelectorAll('input, select');
+      clone.querySelectorAll('input, select').forEach((el, i) => {
+        const live = origEls[i];
+        const val = live ? live.value : el.value;
         const span = document.createElement('span');
-        span.textContent = el.value || '';
+        if (el.classList.contains('fp-leg-vor')) {
+          // Per-leg VOR picker: print the EFFECTIVE ident (override or the
+          // route-wide reference), so each Radial row says which VOR it's from.
+          const ident = val || (typeof vorRef === 'string' && vorRef) || '';
+          span.textContent = ident ? ident + ' ' : '';
+          span.className = 'nl-vor-ident';
+        } else {
+          span.textContent = val || '';
+        }
         el.replaceWith(span);
       });
       clone.querySelectorAll('.fp-col-hidden').forEach(el => el.remove());
@@ -2746,6 +2760,7 @@ function showFlightPlan() {
       'th,td{border:1px solid #999;padding:3px 5px;text-align:' +
         (dir === 'rtl' ? 'right' : 'left') + '}' +
       'thead th{background:#eee}.nl-gap{height:14px}' +
+      '.nl-vor-ident{font-weight:600;color:#555;margin-inline-end:2px}' +
       'h2{font-size:14px;margin:16px 0 4px}ul{margin:4px 0;padding-inline-start:18px}' +
       '</style></head><body>' +
       '<h1>' + esc(S.navLogTitle || 'NavAid \u2014 Nav Log') + '</h1>' +
