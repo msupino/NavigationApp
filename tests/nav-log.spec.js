@@ -100,3 +100,23 @@ test('Herzliya to Beer Sheva nav log does not include the reverse Country Club f
   expect(freqs.at(-1)).toMatch(/Teyman/i);
   expect(freqs.at(-1)).toEqual(expect.stringContaining('122.50'));
 });
+
+test('Nav log lists the reference VOR(s) with their frequency', async ({ page, context }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    state.waypoints = [{ lat: 32.0, lng: 34.8, name: 'LLSD' },
+                       { lat: 32.4, lng: 35.0, name: 'LLHA' }];
+    syncLegs();
+    if (typeof loadVors === 'function') await loadVors();
+    window.vorRef = 'BGN';                    // route-wide reference VOR
+    state.legs[0].vorRef = 'NAT';             // per-leg override — both must list
+    draw(); showFlightPlan();
+  });
+  const popup = await openNavLog(page, context);
+  const txt = await popup.evaluate(() => document.body.innerText);
+  expect(txt).toContain('Reference VOR');
+  expect(txt).toContain('BGN');
+  expect(txt).toContain('113.50 MHz');        // BGN frequency from vor.json
+  expect(txt).toContain('NAT');
+  expect(txt).toContain('112.40 MHz');        // NAT frequency
+});
