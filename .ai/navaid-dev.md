@@ -796,3 +796,5 @@ downloadable `route.json`.
   Leaflet / leaflet-rotate from `unpkg.com` and live chart tiles from their
   network hosts. True offline native use needs a later PR to vendor Leaflet and
   add native tile download/storage.
+
+<!-- ci-flake-audit: no-op change to trigger a full CI run -->
