@@ -21,6 +21,12 @@ permissions:
   contents: write
   pull-requests: write
 
+# One run at a time: two near-simultaneous dev pushes raced past the
+# existing-PR check and the loser failed on 'a pull request already exists'.
+concurrency:
+  group: auto-pr-dev-to-main
+  cancel-in-progress: false
+
 jobs:
   auto-pr:
     # Per-event guards:
@@ -107,8 +113,11 @@ jobs:
           if [ "${{ env.had_conflict }}" = "true" ]; then
             BODY="$BODY"$'\n\n'"⚠️ Auto-sync of \`main\` into \`dev\` failed due to merge conflicts. \`dev\` needs to be manually rebased/merged with \`main\` before this PR can be merged."
           fi
+          # `|| true` guard: if a parallel run created the PR between our
+          # existence check and here, "already exists" is success, not failure.
           gh pr create \
             --base main \
             --head dev \
             --title "Dev to main ($SHA)" \
-            --body "$BODY"
+            --body "$BODY" \
+            || { gh pr list --base main --head dev --state open --json number --jq 'length' | grep -q '^[1-9]' && echo "PR already exists — fine"; }

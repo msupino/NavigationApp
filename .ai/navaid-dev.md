@@ -555,7 +555,14 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   may carry `kind: 'gps'` plus a raw `track[]` (the recorded GPS
   breadcrumb: `{lat,lng,t,alt?,acc?}`); loading applies the simplified
   waypoint route, the raw track is retained for fidelity.
-- `navaid.pageSize` — selected page frame size (`A3` / `A4`) or cleared.
+- `navaid.pageSize` — selected page frame size (`A3` / `A4` / `A4x2`) or cleared.
+  (`A4x2` draws the A3-size frame; Save PNG slices it into two A4 tiles.)
+- `navaid.plateAirfield` — "Show plates for" filter on the airfield-plate
+  overlays: `''` = all airfields, `'auto'` = the route's first & last airfield
+  (live via `syncLegs()`), or a single ICAO.
+- `navaid.overlayBoundsOverrides` — per-plate overlay geometry overrides from
+  the `?align=1` align editor, keyed by overlay PNG filename; axis-aligned
+  (`sw`/`ne`) or rotated (`tl`/`tr`/`bl`). Wins over `airfields.json` bounds.
 - `navaid.pageOrient` — `'portrait'` / `'landscape'` for page export.
 - `navaid.fpPos` — `{x, y}` of the dragged Flight Plan modal.
 - `navaid.fpColumns` — JSON array of hidden Flight Plan table column keys

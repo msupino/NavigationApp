@@ -14,6 +14,12 @@ const { LLHZ, LLHA } = require('./_airfieldArp');
 const OUT = process.env.WIKI_IMG ||
   path.join(__dirname, '..', '..', 'wiki', 'img');
 
+// On-demand only: without WIKI_IMG (set by wiki-screenshots.yml) the whole
+// suite skips, so regular CI / local `npm test` runs neither burn ~a minute
+// of screenshotting nor write stray JPEGs outside the repo.
+test.skip(!process.env.WIKI_IMG,
+  'wiki-screenshot generator — set WIKI_IMG to run');
+
 // Same 11-waypoint LLHZ→LLHA coastal demo route as og-preview / share-route,
 // so every screenshot shows one consistent flight.
 const ROUTE = [

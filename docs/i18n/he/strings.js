@@ -589,6 +589,13 @@ window.S = {
   tbPageA3Title: 'עמוד A3 להדפסה',
   tbPageA4Title: 'עמוד A4 להדפסה',
   tbPageA4x2Title: 'שני דפי A4 (שטח A3 מחולק לשניים, בקנה מידה של A3) — כשאין A3 זמין',
+  a4x2TileLabel: function (n, total, side, other) {
+    return 'עמוד ' + n + ' מתוך ' + total + ' — ' + side + ' · הדביקו לעמוד ' + other;
+  },
+  a4x2SideLeft: 'שמאל',
+  a4x2SideRight: 'ימין',
+  a4x2SideTop: 'עליון',
+  a4x2SideBottom: 'תחתון',
   tbPrintPageSize: 'גודל עמוד',
   tbOrientTitle: 'כיוון — לחץ למעבר בין לרוחב / לאורך',
   modalCloseTitle: 'סגור',
