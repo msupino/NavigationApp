@@ -2908,6 +2908,13 @@ function appendFreqEdit(body, note, editOptions) {
 // --- interaction (Leaflet mouse events) ------------------------------
 let drag = null;
 let downHit = false;
+// Overlay markers (VOR / airfield / nav-WP / NOTAM) are not draggable, so map
+// panning stays enabled over them — which means selection must NOT happen on
+// mousedown (a pan started on a marker would pop the inspector). The action is
+// parked here and committed by the map 'click' handler, which Leaflet only
+// fires when the pointer did not drag.
+let pendingOverlayAction = null;
+map.on('dragstart', () => { pendingOverlayAction = null; });
 
 function dragOriginExclude(d, latlng) {
   if (!d || d.originSnapArmed) return null;
@@ -2922,6 +2929,7 @@ function dragOriginExclude(d, latlng) {
 }
 
 map.on('mousedown', e => {
+  pendingOverlayAction = null;
   const p = e.containerPoint;
   // Hit-test priority matches paint order so the topmost element wins:
   // notes are drawn above waypoints (draw.js), so test notes first (issue #71).
@@ -2952,7 +2960,9 @@ map.on('mousedown', e => {
     const badge = notamBadgeNotamsAt(e.latlng);
     if (badge.length) {
       downHit = true;
-      if (typeof showNotamModal === 'function') showNotamModal(badge);
+      pendingOverlayAction = () => {
+        if (typeof showNotamModal === 'function') showNotamModal(badge);
+      };
       return;
     }
   }
@@ -3041,22 +3051,26 @@ map.on('mousedown', e => {
     // list directly instead of the point picker, which doesn't scroll.
     if (ovAll.length > 1 && ovAll.every(c => c.type === 'notam')) {
       downHit = true;
-      if (typeof showNotamModal === 'function') showNotamModal(ovAll.map(c => c.notam));
+      pendingOverlayAction = () => {
+        if (typeof showNotamModal === 'function') showNotamModal(ovAll.map(c => c.notam));
+      };
       return;
     }
     if (ovAll.length > 1) {
       downHit = true;
-      showPointChoice(ovAll);
+      pendingOverlayAction = () => showPointChoice(ovAll);
       return;
     }
     if (ovAll.length) {
       downHit = true;
-      if (ovAll[0].type === 'notam') {
-        if (typeof showNotamModal === 'function') showNotamModal([ovAll[0].notam]);
-      } else {
-        state.selected = ovAll[0];
-        showInspector(); draw();
-      }
+      pendingOverlayAction = () => {
+        if (ovAll[0].type === 'notam') {
+          if (typeof showNotamModal === 'function') showNotamModal([ovAll[0].notam]);
+        } else {
+          state.selected = ovAll[0];
+          showInspector(); draw();
+        }
+      };
       return;
     }
   }
@@ -3149,6 +3163,15 @@ window.addEventListener('pointerup', endMouseDrag);
 window.addEventListener('pointercancel', endMouseDrag);
 
 map.on('click', e => {
+  // Commit a parked overlay action — reached only when the mousedown did not
+  // turn into a pan (Leaflet suppresses 'click' after a drag).
+  if (pendingOverlayAction) {
+    const act = pendingOverlayAction;
+    pendingOverlayAction = null;
+    downHit = false;
+    act();
+    return;
+  }
   if (downHit) { downHit = false; return; }
   // NOTAM clicks are handled in mousedown (as overlay choices); see there.
   if (state.mode === 'add') {
