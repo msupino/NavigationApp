@@ -10,12 +10,23 @@ async function waitForSW(page) {
     const reg = await navigator.serviceWorker.getRegistration();
     return reg && reg.active && reg.active.state === 'activated';
   }, null, { timeout: 15000 });
-  const controlled = await page.evaluate(() => !!navigator.serviceWorker.controller);
-  if (!controlled) {
+  // The SW calls clients.claim() on activate, but under CI parallel load the
+  // claim can lag a reload. Retry the reload a few times instead of betting the
+  // whole test on a single reload + one hard 15s wait for the controller.
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const controlled = await page.evaluate(() => !!navigator.serviceWorker.controller);
+    if (controlled) return;
     await page.reload();
+    try {
+      await page.waitForFunction(() => !!navigator.serviceWorker.controller,
+        null, { timeout: 8000 });
+      return;
+    } catch (e) {
+      // controller still not claimed — loop and reload again
+    }
   }
   await page.waitForFunction(() => !!navigator.serviceWorker.controller,
-    null, { timeout: 15000 });
+    null, { timeout: 8000 });
 }
 
 test.describe('#178 cache-first awaits cache.put', () => {
