@@ -3211,8 +3211,18 @@ map.on('click', e => {
 window.addEventListener('keydown', e => {
   const t = e.target;
   if (e.key === 'Escape') {
-    const modal = document.querySelector('.modal-back');
-    if (modal) { modal.remove(); return; }
+    // Close only the TOP-MOST modal (last appended), never the first in the DOM
+    // — otherwise a satellite picture stacked over the route mosaic closed the
+    // mosaic underneath. Modals built by createDraggableModal carry their own
+    // (top-most-guarded) Escape handler and a _navaidClose; defer to those so
+    // we don't double-close and race their guard. Only close here the plain
+    // modals that have no self-handling (no _navaidClose).
+    const modals = document.querySelectorAll('.modal-back');
+    if (modals.length) {
+      const top = modals[modals.length - 1];
+      if (typeof top._navaidClose !== 'function') { top.remove(); return; }
+      return;   // top self-handles via its own onEsc
+    }
     if (magnifierOn) { toggleMagnifier(); return; }
     if (state.selected) {
       state.selected = null;

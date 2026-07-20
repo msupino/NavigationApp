@@ -155,6 +155,26 @@ test('clicking a mosaic cell opens the satellite view for that waypoint', async 
   await expect(page.locator('.satellite-preview-modal')).toBeVisible();
 });
 
+test('Escape on the satellite picture closes only it, not the mosaic underneath', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }];
+    if (typeof syncLegs === 'function') syncLegs();
+  });
+  await page.evaluate(() => document.getElementById('mosaic-btn').click());
+  await page.locator('.route-mosaic-cell').first().click();
+  await expect(page.locator('.satellite-preview-modal')).toBeVisible();
+
+  await page.keyboard.press('Escape');
+  // The picture closes; the mosaic behind it stays open.
+  await expect(page.locator('.satellite-preview-modal')).toHaveCount(0);
+  await expect(page.locator('.route-mosaic-modal')).toBeVisible();
+
+  // A second Escape now closes the mosaic itself.
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.route-mosaic-modal')).toHaveCount(0);
+});
+
 test('mosaic with no waypoints shows an empty message', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => { state.waypoints = []; });
