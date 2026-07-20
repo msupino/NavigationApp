@@ -3027,10 +3027,16 @@ function drawWaypoints() {
 // --- notes (free-text annotation boxes) ------------------------------
 // Per-note size multiplier (default 1). Clamped so a note can't shrink to
 // nothing or blow up the canvas. Applied to the font and every rect metric so
-// the note scales uniformly around its anchor point.
+// the note scales uniformly around its anchor point. The note also grows and
+// shrinks with the map zoom, on the same 2^(z-12) curve (clamped like
+// legZoomScale) the leg/nav kites use, so a note keeps its geographic footprint
+// relative to the kites it annotates instead of staying a fixed screen size.
 function noteScale(n) {
   const s = Number(n && n.size);
-  return Number.isFinite(s) && s > 0 ? Math.max(0.5, Math.min(s, 4)) : 1;
+  const user = Number.isFinite(s) && s > 0 ? Math.max(0.5, Math.min(s, 4)) : 1;
+  const zoom = (typeof map !== 'undefined' && map.getZoom)
+    ? Math.max(0.35, Math.pow(2, map.getZoom() - 12)) : 1;
+  return user * zoom;
 }
 function noteFont(n) {
   return `bold ${tune('noteFontPx') * noteScale(n)}px sans-serif`;
