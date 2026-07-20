@@ -171,6 +171,8 @@ window.S = {
   mosaicLayer: 'שכבת הפסיפס',
   mosaicZoom: 'זום',
   mosaicSize: 'גודל',
+  mosaicResetZoom: 'איפוס זום',
+  mosaicResetSize: 'איפוס גודל',
   mosaicPrint: '🖨 הדפס',
   tbLookAheadTitle: 'הבט קדימה: 0 = עכשיו; ‎+N = בעוד N שעות',
   notamTimeNow: 'עכשיו',

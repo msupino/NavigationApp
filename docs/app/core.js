@@ -710,6 +710,8 @@ window.S = Object.assign({
   mosaicLayer: 'Mosaic layer',
   mosaicZoom: 'Zoom',
   mosaicSize: 'Size',
+  mosaicResetZoom: 'Reset zoom',
+  mosaicResetSize: 'Reset size',
   mosaicPrint: '🖨 Print',
   tbLookAheadTitle: 'Look ahead: 0 = now; +N = N hours from now',
   notamTimeNow: 'Now',
