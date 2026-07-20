@@ -1698,7 +1698,14 @@ function showRouteMosaicModal() {
   const zoomVal = document.createElement('span');
   zoomVal.className = 'route-mosaic-zoom-val';
   zoomVal.textContent = zoom.value;
+  const zoomReset = document.createElement('button');
+  zoomReset.type = 'button';
+  zoomReset.className = 'route-mosaic-reset';
+  zoomReset.textContent = '↻';
+  zoomReset.title = S.mosaicResetZoom || 'Reset zoom';
+  zoomReset.setAttribute('aria-label', zoomReset.title);
   zoomWrap.appendChild(zoomLbl); zoomWrap.appendChild(zoom); zoomWrap.appendChild(zoomVal);
+  zoomWrap.appendChild(zoomReset);
   bar.appendChild(zoomWrap);
   // Size slider — scales every preview (keeps the default aspect ratio).
   const baseW = tune('satellitePreviewWidthPx');
@@ -1713,7 +1720,14 @@ function showRouteMosaicModal() {
   const sizeVal = document.createElement('span');
   sizeVal.className = 'route-mosaic-zoom-val';
   sizeVal.textContent = size.value + 'px';
+  const sizeReset = document.createElement('button');
+  sizeReset.type = 'button';
+  sizeReset.className = 'route-mosaic-reset';
+  sizeReset.textContent = '↻';
+  sizeReset.title = S.mosaicResetSize || 'Reset size';
+  sizeReset.setAttribute('aria-label', sizeReset.title);
   sizeWrap.appendChild(sizeLbl); sizeWrap.appendChild(size); sizeWrap.appendChild(sizeVal);
+  sizeWrap.appendChild(sizeReset);
   bar.appendChild(sizeWrap);
   const printBtn = document.createElement('button');
   printBtn.type = 'button';
@@ -1795,6 +1809,17 @@ function showRouteMosaicModal() {
   sel.onchange = () => { syncZoomMax(); render(); };
   zoom.oninput = () => { zoomVal.textContent = zoom.value; render(); };
   size.oninput = () => { sizeVal.textContent = size.value + 'px'; render(); };
+  zoomReset.onclick = () => {
+    zoom.value = String(tune('satellitePreviewZoom'));
+    syncZoomMax();                        // re-clamp to the current layer's max
+    zoomVal.textContent = zoom.value;
+    render();
+  };
+  sizeReset.onclick = () => {
+    size.value = String(tune('satellitePreviewWidthPx'));
+    sizeVal.textContent = size.value + 'px';
+    render();
+  };
   syncZoomMax();
   render();
   body.appendChild(grid);

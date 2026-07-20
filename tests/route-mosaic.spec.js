@@ -175,6 +175,32 @@ test('Escape on the satellite picture closes only it, not the mosaic underneath'
   await expect(page.locator('.route-mosaic-modal')).toHaveCount(0);
 });
 
+test('mosaic zoom and size sliders each have a reset-to-default button', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }];
+    if (typeof syncLegs === 'function') syncLegs();
+  });
+  await page.evaluate(() => document.getElementById('mosaic-btn').click());
+  const zoom = page.locator('.route-mosaic-zoom input[type="range"]');
+  const size = page.locator('.route-mosaic-size input[type="range"]');
+  const defZoom = await zoom.inputValue();
+  const defSize = await size.inputValue();
+
+  // Move both off their defaults.
+  await zoom.fill('12');
+  await size.fill('320');
+  expect(await zoom.inputValue()).toBe('12');
+  expect(await size.inputValue()).toBe('320');
+
+  // Reset each → back to the tuned default.
+  await page.locator('.route-mosaic-zoom .route-mosaic-reset').click();
+  await page.locator('.route-mosaic-size .route-mosaic-reset').click();
+  expect(await zoom.inputValue()).toBe(defZoom);
+  expect(await size.inputValue()).toBe(defSize);
+  await expect(page.locator('.route-mosaic-size .route-mosaic-zoom-val')).toHaveText(defSize + 'px');
+});
+
 test('mosaic with no waypoints shows an empty message', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => { state.waypoints = []; });
