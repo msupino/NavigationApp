@@ -4465,7 +4465,14 @@ function createDraggableModal(titleText, className, onClose, options = {}) {
   });
 
   function onEsc(e) {
-    if (e.key === 'Escape') close();
+    if (e.key !== 'Escape') return;
+    // Only the top-most modal reacts to Escape, so closing a picture stacked
+    // over another modal (e.g. a satellite view over the route mosaic) doesn't
+    // also close the one underneath. Each open modal registers its own onEsc;
+    // without this guard they'd all close on a single Escape.
+    const backs = document.querySelectorAll('.modal-back');
+    if (backs.length && backs[backs.length - 1] !== back) return;
+    close();
   }
   back.onclick = e => { if (e.target === back) close(); };
   function show() {
