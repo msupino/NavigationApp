@@ -58,6 +58,48 @@ test('tuning panel reflects the gist values once they load', async ({ page }) =>
   await expect(page.locator('#tune-subtitle')).toContainText('from gist');
 });
 
+test('gist can flip a default layer-visibility toggle on for a fresh visitor', async ({ page }) => {
+  await page.route(CONFIG_RE, route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ defaultShowVor: true }),
+  }));
+  await boot(page);
+  // Reconciliation runs in the gist .then(); the VOR checkbox should switch on
+  // for a visitor who never set it, and the key stays unset so the gist keeps
+  // controlling it next boot (rather than freezing after the first load).
+  await expect.poll(() => page.evaluate(() => document.getElementById('vor-cb').checked)).toBe(true);
+  expect(await page.evaluate(() => tune('defaultShowVor'))).toBe(true);
+  expect(await page.evaluate(() => localStorage.getItem('navaid.showVorStations'))).toBeNull();
+});
+
+test('a user\'s explicit toggle choice wins over the gist default', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.showVorStations', '0'); } catch (e) { /* */ }
+  });
+  await page.route(CONFIG_RE, route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ defaultShowVor: true }),   // gist says on…
+  }));
+  await boot(page);
+  await page.waitForTimeout(400);
+  // …but the user explicitly set it off, so it stays off.
+  expect(await page.evaluate(() => document.getElementById('vor-cb').checked)).toBe(false);
+  expect(await page.evaluate(() => localStorage.getItem('navaid.showVorStations'))).toBe('0');
+});
+
+test('bool tune keys accept string and numeric truthy forms from the gist', async ({ page }) => {
+  await page.route(CONFIG_RE, route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ defaultShowMsa: '1', defaultShowDrift: 0 }),
+  }));
+  await boot(page);
+  await expect.poll(() => page.evaluate(() => tune('defaultShowMsa'))).toBe(true);
+  expect(await page.evaluate(() => tune('defaultShowDrift'))).toBe(false);
+});
+
 test('fetch failure falls back to baked-in defaults', async ({ page }) => {
   await page.route(CONFIG_RE, route => route.abort());
   await boot(page);

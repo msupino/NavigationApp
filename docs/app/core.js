@@ -368,6 +368,38 @@ NavAid.tuningDefaults = {
   zuluClockShadowYPx: { value: 2, min: 0, max: 18, step: 1, label: 'Zulu clock shadow y' },
   zuluClockShadowBlurPx: { value: 8, min: 0, max: 36, step: 1, label: 'Zulu clock shadow blur' },
   zuluClockShadowAlpha: { value: 0.45, min: 0, max: 1, step: 0.05, label: 'Zulu clock shadow alpha' },
+
+  // Default on/off state of the toolbar layer/display checkboxes for a NEW user
+  // (empty localStorage). Each value mirrors the checkbox's baked-in default, so
+  // shipping this changes nothing on its own — but the gist (or the ?tune=1
+  // panel) can now flip which layers a fresh visitor sees without a redeploy.
+  // NavAid.applyDefaultVisibility() (ui.js) reconciles the live checkboxes to
+  // these whenever localStorage has no explicit user choice for that toggle.
+  defaultShowReturn: { value: false, type: 'bool', label: 'Default: show return leg' },
+  defaultShowNavWP: { value: true, type: 'bool', label: 'Default: show VFR reporting points' },
+  defaultShowAirfields: { value: true, type: 'bool', label: 'Default: show airfields' },
+  defaultShowVor: { value: false, type: 'bool', label: 'Default: show VOR stations' },
+  defaultShowWpNames: { value: true, type: 'bool', label: 'Default: show waypoint names' },
+  defaultShowCumTime: { value: true, type: 'bool', label: 'Default: show cumulative time' },
+  defaultShowDrift: { value: true, type: 'bool', label: 'Default: show drift lines' },
+  defaultShowCommChange: { value: false, type: 'bool', label: 'Default: show comm-change rings' },
+  defaultShowMidLeg: { value: false, type: 'bool', label: 'Default: show mid-leg marks' },
+  defaultHighlightDiff: { value: false, type: 'bool', label: 'Default: highlight speed/alt change' },
+  defaultLimitLegKites: { value: true, type: 'bool', label: 'Default: limit leg kites' },
+  defaultShowMsa: { value: false, type: 'bool', label: 'Default: show MSA' },
+  defaultShowReporting: { value: false, type: 'bool', label: 'Default: show reporting points' },
+  defaultForceSnap: { value: false, type: 'bool', label: 'Default: force snap' },
+  defaultShowNotam: { value: false, type: 'bool', label: 'Default: show NOTAMs' },
+  defaultShowWind: { value: false, type: 'bool', label: 'Default: show wind' },
+  defaultWindField: { value: false, type: 'bool', label: 'Default: show wind field' },
+  defaultImsPwx: { value: false, type: 'bool', label: 'Default: show IMS PWX overlay' },
+  defaultSigwxOv: { value: false, type: 'bool', label: 'Default: show SIGWX overlay' },
+  defaultShowLsaBubbles: { value: false, type: 'bool', label: 'Default: show LSA' },
+  defaultShowCircuit: { value: false, type: 'bool', label: 'Default: show circuit plates' },
+  defaultShowTraining: { value: false, type: 'bool', label: 'Default: show training plates' },
+  defaultShowCvfr: { value: false, type: 'bool', label: 'Default: show CVFR plates' },
+  defaultShowHeli: { value: false, type: 'bool', label: 'Default: show heli plates' },
+  defaultShowCommfail: { value: false, type: 'bool', label: 'Default: show comm-fail plates' },
 };
 // Groups are ordered to mirror the route-building workflow: the route line
 // and its per-leg annotations first, then the markers you place, then the
@@ -418,12 +450,14 @@ NavAid.tuningGroups = [
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
   { name: 'Export', keys: ['exportBgColor'] },
   { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail'] },
 ];
 function tune(key) {
   const spec = NavAid.tuningDefaults && NavAid.tuningDefaults[key];
   if (!spec) return 0;
   const v = NavAid.tuning[key];
   if (spec.type === 'color') return typeof v === 'string' ? v : spec.value;
+  if (spec.type === 'bool') return typeof v === 'boolean' ? v : spec.value;
   if (spec.type === 'select') {
     return spec.options && spec.options.indexOf(v) !== -1 ? v : spec.value;
   }
@@ -435,6 +469,14 @@ function setTune(key, value) {
   if (spec.type === 'color') {
     if (typeof value !== 'string' || !/^#[0-9a-f]{6}$/i.test(value)) return;
     NavAid.tuning[key] = value.toLowerCase();
+    return;
+  }
+  if (spec.type === 'bool') {
+    // Accept a real boolean, 0/1, or '0'/'1'/'true'/'false' (gist JSON may use
+    // any of these); anything else is rejected so a bad value keeps the default.
+    if (typeof value === 'boolean') { NavAid.tuning[key] = value; return; }
+    if (value === 1 || value === '1' || value === 'true') { NavAid.tuning[key] = true; return; }
+    if (value === 0 || value === '0' || value === 'false') { NavAid.tuning[key] = false; return; }
     return;
   }
   if (spec.type === 'select') {
