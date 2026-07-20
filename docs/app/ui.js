@@ -4714,6 +4714,7 @@ function tuningPanelEnabled() {
 }
 
 function formatTuneValue(spec, value) {
+  if (spec.type === 'bool') return value ? 'on' : 'off';
   if (spec.type === 'color' || spec.type === 'select') return String(value);
   const step = String(spec.step || 1);
   const dot = step.indexOf('.');
@@ -4858,9 +4859,20 @@ function createTuningPanel() {
     if (set.color) set.color.value = String(v);
     if (set.text) set.text.value = text;
     if (set.select) set.select.value = String(v);
+    if (set.check) set.check.checked = !!v;
   };
   const applyValue = (key, raw) => {
     const spec = NavAid.tuningDefaults[key];
+    if (spec && spec.type === 'bool') {
+      setTune(key, raw);
+      syncControl(key);
+      // A default-visibility toggle only affects a fresh visitor; re-run the
+      // reconciliation so the change is visible immediately in this session too
+      // (for toggles the current user hasn't explicitly set).
+      if (typeof NavAid.applyDefaultVisibility === 'function') NavAid.applyDefaultVisibility();
+      redrawAfterTune();
+      return;
+    }
     if (spec && (spec.type === 'color' || spec.type === 'select')) {
       setTune(key, raw);
     } else {
@@ -4904,7 +4916,16 @@ function createTuningPanel() {
       reset.setAttribute('aria-label', reset.title);
 
       const set = {};
-      if (spec.type === 'color') {
+      if (spec.type === 'bool') {
+        const check = document.createElement('input');
+        check.type = 'checkbox';
+        check.id = 'tune-' + key + '-check';
+        check.setAttribute('aria-label', spec.label || key);
+        set.check = check;
+        check.addEventListener('change', () => applyValue(key, check.checked));
+        row.htmlFor = check.id;
+        row.append(name, check, reset);
+      } else if (spec.type === 'color') {
         const color = document.createElement('input');
         color.type = 'color';
         color.id = 'tune-' + key + '-color';
@@ -5388,6 +5409,9 @@ if (typeof loadRemoteConfig === "function") {
   loadRemoteConfig().then(n => {
     if (!n) return;
     if (typeof applyTuningCssVars === "function") applyTuningCssVars();
+    // Gist may have flipped a default-layer-visibility bool — reconcile the
+    // toolbar checkboxes for any toggle the user hasn't explicitly set.
+    if (NavAid && typeof NavAid.applyDefaultVisibility === "function") NavAid.applyDefaultVisibility();
     if (typeof scheduleDraw === "function") scheduleDraw();
     // Apply gist overrides to the IMS overlay too (opacity / lat-lng offset),
     // so alignment + opacity can be tuned from the gist without a redeploy.
@@ -6071,3 +6095,60 @@ const NavWxOpacity = (function () {
     })
     .catch(() => { /* manifest unreachable → stay hidden */ });
 })();
+
+// --- Default layer visibility ---------------------------------------------
+// Reconcile the toolbar layer/display checkboxes to the tune-registry defaults
+// (which the gist can override) for any toggle the current user has NOT set
+// explicitly. Each row is [checkbox id, localStorage key, tune key]; the tune
+// key's baked value mirrors the checkbox's shipped default, so for a nogist
+// user this is a no-op — it only bites when the gist (or the ?tune=1 panel)
+// flips a default. We dispatch the checkbox's own 'change' so every existing
+// loader (network fetch, layer add, redraw) runs unchanged, then erase the key
+// the handler persisted so the toggle stays gist-controlled next load.
+NavAid.defaultVisibilityMap = [
+  ['navwp-cb', 'navaid.showNavWP', 'defaultShowNavWP'],
+  ['airfield-cb', 'navaid.showAirfields', 'defaultShowAirfields'],
+  ['vor-cb', 'navaid.showVorStations', 'defaultShowVor'],
+  ['wpname-cb', 'navaid.showWpNames', 'defaultShowWpNames'],
+  ['cumtime-cb', 'navaid.showCumTime', 'defaultShowCumTime'],
+  ['drift-cb', 'navaid.showDrift', 'defaultShowDrift'],
+  ['commchange-cb', 'navaid.showFreqChanges', 'defaultShowCommChange'],
+  ['mid-cb', 'navaid.showMidLeg', 'defaultShowMidLeg'],
+  ['diff-cb', 'navaid.highlightDiff', 'defaultHighlightDiff'],
+  ['limit-kites-cb', 'navaid.limitLegKites', 'defaultLimitLegKites'],
+  ['msa-cb', 'navaid.showMsa', 'defaultShowMsa'],
+  ['reporting-cb', 'navaid.showReporting', 'defaultShowReporting'],
+  ['force-snap-cb', 'navaid.forceSnap', 'defaultForceSnap'],
+  ['ret-cb', 'navaid.showReturn', 'defaultShowReturn'],
+  ['notam-cb', 'navaid.showNotam', 'defaultShowNotam'],
+  ['show-wind-cb', 'navaid.showWind', 'defaultShowWind'],
+  ['windfield-cb', 'navaid.windField', 'defaultWindField'],
+  ['ims-pwx-cb', 'navaid.imsPwx', 'defaultImsPwx'],
+  ['sigwx-ov-cb', 'navaid.sigwxOv', 'defaultSigwxOv'],
+  ['lsa-cb', 'navaid.showLsaBubbles', 'defaultShowLsaBubbles'],
+  ['circuit-cb', 'navaid.showCircuit', 'defaultShowCircuit'],
+  ['training-cb', 'navaid.showTraining', 'defaultShowTraining'],
+  ['cvfr-cb', 'navaid.showCvfr', 'defaultShowCvfr'],
+  ['heli-cb', 'navaid.showHeli', 'defaultShowHeli'],
+  ['commfail-cb', 'navaid.showCommfail', 'defaultShowCommfail'],
+];
+NavAid.applyDefaultVisibility = function applyDefaultVisibility() {
+  if (typeof tune !== 'function') return;
+  for (const [cbId, lsKey, tuneKey] of NavAid.defaultVisibilityMap) {
+    const cb = document.getElementById(cbId);
+    if (!cb) continue;                                   // not wired yet
+    let stored = null;
+    try { stored = localStorage.getItem(lsKey); } catch (e) { /* */ }
+    if (stored !== null) continue;                       // user set this — leave it
+    const desired = !!tune(tuneKey);
+    if (cb.checked === desired) continue;                // already matches
+    cb.checked = desired;
+    cb.dispatchEvent(new Event('change'));               // run the real loader
+    // The handler persisted lsKey synchronously; erase it so this toggle keeps
+    // following the gist/default (rather than freezing after the first boot).
+    try { localStorage.removeItem(lsKey); } catch (e) { /* */ }
+  }
+};
+// Baked defaults mirror the shipped checkbox state, so this first pass is a
+// no-op for a nogist user; the gist .then() re-runs it once overrides land.
+NavAid.applyDefaultVisibility();
