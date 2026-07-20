@@ -50,6 +50,21 @@ test.describe('Note resize', () => {
     expect(after.h).toBeCloseTo(before.h * 2, 0);   // height scales with size
   });
 
+  test('a note grows and shrinks with the map zoom, like the leg kites', async ({ page }) => {
+    await bootWithNote(page);
+    const at = async z => page.evaluate(zz => {
+      map.setZoom(zz); draw();
+      const r = noteRect(0);
+      return { scale: noteScale(state.notes[0]), w: r.w, h: r.h };
+    }, z);
+    const z12 = await at(12);
+    const z14 = await at(14);
+    // Two whole zoom levels = 2^2 = 4× on the same curve legZoomScale uses.
+    expect(z14.scale / z12.scale).toBeCloseTo(4, 1);
+    expect(z14.h / z12.h).toBeCloseTo(4, 1);
+    expect(z14.w).toBeGreaterThan(z12.w);
+  });
+
   test('note size round-trips through serializeRoute', async ({ page }) => {
     await bootWithNote(page);
     const blob = await page.evaluate(() => {
