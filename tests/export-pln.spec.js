@@ -46,9 +46,11 @@ async function capturePln(page) {
 test.describe('PLN export', () => {
   test.beforeEach(async ({ page }) => bootWithRoute(page));
 
-  test('filename ends in .pln', async ({ page }) => {
+  test('filename is named for the route endpoints and ends in .pln', async ({ page }) => {
     const { name } = await capturePln(page);
-    expect(name).toMatch(/^route-.*\.pln$/);
+    // Endpoints LLSD → LLHA (see routeFileSlug): the download is named for the
+    // route, not a bare "route-".
+    expect(name).toMatch(/^LLSD-to-LLHA-.+\.pln$/);
   });
 
   test('valid FSX envelope with one ATCWaypoint per waypoint', async ({ page }) => {
