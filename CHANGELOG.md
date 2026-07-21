@@ -4,6 +4,56 @@ Browser-based CVFR flight-route planner (Israel area). HTML5 + Leaflet,
 no build step. Hosted on GitHub Pages. Summary is drawn from the merged
 pull requests; production is the `main` branch, staging is `dev`.
 
+## 2026-07-21 — recent merges _(auto-generated from merged PRs)_
+
+**Features**
+- "Loading charts…" indicator for Extra-layers overlays ([#1236](https://github.com/msupino/NavigationApp/pull/1236))
+- plate PNGs (fix garbled Hebrew) + LLBS training-overlay offset ([#1235](https://github.com/msupino/NavigationApp/pull/1235))
+- graticule-georeference 6 chart overlays from source AIP PDFs ([#1237](https://github.com/msupino/NavigationApp/pull/1237))
+- georeference 4 overlays from byop Annex sources (full page + header) ([#1238](https://github.com/msupino/NavigationApp/pull/1238))
+- in-app align editor — pan/scale/rotate chart overlays ([#1239](https://github.com/msupino/NavigationApp/pull/1239))
+- rotated LLHZ circuit alignment + render rotated from airfields.json ([#1240](https://github.com/msupino/NavigationApp/pull/1240))
+- "Show plates for" airfield picker (one field at a time) ([#1244](https://github.com/msupino/NavigationApp/pull/1244))
+- plate dropdown + Auto option + clearer labels + mobile fit ([#1246](https://github.com/msupino/NavigationApp/pull/1246))
+- A4×2 page size — the A3 frame exported as two A4 tiles ([#1252](https://github.com/msupino/NavigationApp/pull/1252))
+- show the A4×2 cut line on the page frame ([#1256](https://github.com/msupino/NavigationApp/pull/1256))
+- re-stroke the coastline the white-knockout erases ([#1260](https://github.com/msupino/NavigationApp/pull/1260))
+- list the reference VOR(s) with their frequency ([#1265](https://github.com/msupino/NavigationApp/pull/1265))
+- make every toolbar checkbox default gist/tune-controllable ([#1272](https://github.com/msupino/NavigationApp/pull/1272))
+- name exported files for the route endpoints ([#1281](https://github.com/msupino/NavigationApp/pull/1281))
+
+**Fixes**
+- roll minutes 60→degree + LTR coord readout in RTL ([#1231](https://github.com/msupino/NavigationApp/pull/1231))
+- address all 8 code-review findings ([#1262](https://github.com/msupino/NavigationApp/pull/1262))
+- don't open the inspector when a pan starts on a selectable marker ([#1268](https://github.com/msupino/NavigationApp/pull/1268))
+- stacked-Escape close + reset buttons for zoom/size sliders ([#1274](https://github.com/msupino/NavigationApp/pull/1274))
+- scale note boxes with map zoom like the leg/nav kites ([#1276](https://github.com/msupino/NavigationApp/pull/1276))
+
+**Data**
+- add 2 AIP-verified LSA reporting points (Sorek, Shaalvim) ([#1230](https://github.com/msupino/NavigationApp/pull/1230))
+- 8 Haifa/Megiddo/Rosh Pina CVFR routes ([#1267](https://github.com/msupino/NavigationApp/pull/1267))
+
+**Tests**
+- re-runnable wiki-screenshot generator ([#1242](https://github.com/msupino/NavigationApp/pull/1242))
+
+**CI**
+- on-demand wiki-screenshots Action (en+he → push to wiki) ([#1248](https://github.com/msupino/NavigationApp/pull/1248))
+- nightly wiki-screenshots refresh (02:30 UTC) ([#1253](https://github.com/msupino/NavigationApp/pull/1253))
+- nightly wiki-changelog automation from merged PRs ([#1257](https://github.com/msupino/NavigationApp/pull/1257))
+- make the dev-to-main auto-PR idempotent under concurrent runs ([#1264](https://github.com/msupino/NavigationApp/pull/1264))
+
+**Security**
+- add noopener to external window.open calls ([#1250](https://github.com/msupino/NavigationApp/pull/1250))
+
+**Chores**
+- CI flake audit (no-op) ([#1270](https://github.com/msupino/NavigationApp/pull/1270))
+- remove leftover Unity 2019 / plotter references ([#1279](https://github.com/msupino/NavigationApp/pull/1279))
+
+**Other**
+- prefetch plates on section expand (touch-friendly) ([#1225](https://github.com/msupino/NavigationApp/pull/1225))
+- Fix live-location footer button jumping lines (Hebrew) ([#1226](https://github.com/msupino/NavigationApp/pull/1226))
+- Keep record + live-location footer buttons on one line (both languages) ([#1228](https://github.com/msupino/NavigationApp/pull/1228))
+
 ## SIGWX significant-weather map overlay
 
 - **SIGWX on the map** — overlay the low-level significant-weather prog chart on
