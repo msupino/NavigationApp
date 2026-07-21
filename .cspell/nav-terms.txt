@@ -224,7 +224,6 @@ pixel
 pixels
 planewave
 playwright
-plotter
 PNG
 pointerEvents
 pointercancel

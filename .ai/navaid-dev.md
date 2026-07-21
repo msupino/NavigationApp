@@ -32,8 +32,7 @@ checklists, also use the rest of the repo-tracked `.ai/` handbook:
 
 ## Branches
 
-- `main` — production. The web app source. The Unity tree was stripped
-  here (commit `53188cc`).
+- `main` — production. The web app source.
 - `dev` — staging. The same web app, work-in-progress. Each push to
   `dev` rebuilds the staging URL.
 
@@ -590,9 +589,7 @@ re-load that does a full page navigation):
   language reload.
 
 `magVar` is hardcoded at `-5` in `core.js`; the obsolete
-`navaid.magVar` key is no longer written. A one-time migration at the
-top of `core.js` copies any old `plotter.*` keys into `navaid.*` and
-removes the old ones.
+`navaid.magVar` key is no longer written.
 
 When adding a new key, grep `localStorage.setItem` /
 `sessionStorage.setItem` under `docs/` to stay in sync with this list.
