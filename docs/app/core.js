@@ -5,20 +5,6 @@
  * Leaflet base map (Flight Maps tiles) + a canvas route overlay.
  * ------------------------------------------------------------------ */
 
-// One-time migration: the app was renamed from "Plotter" — carry over any
-// localStorage values saved under the old "plotter." prefix.
-try {
-  for (const k of Object.keys(localStorage)) {
-    if (k.indexOf('plotter.') === 0) {
-      const nk = 'navaid.' + k.slice(8);
-      if (localStorage.getItem(nk) === null) {
-        localStorage.setItem(nk, localStorage.getItem(k));
-      }
-      localStorage.removeItem(k);
-    }
-  }
-} catch (e) { /* storage unavailable */ }
-
 // `version` is intentionally stable at 1.0; `-<short-sha>` is auto-appended
 // at deploy time by .github/workflows/deploy.yml so the displayed toolbar
 // string identifies the exact deployed commit. On localhost the literal stays
