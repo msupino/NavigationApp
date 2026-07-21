@@ -310,8 +310,3 @@ pull requests; production is the `main` branch, staging is `dev`.
 - Rebrand to NavAid: favicon, GA4, GitHub Pages deploy workflow
   (`main` -> `/`, `dev` -> `/staging/`).
 - "Show Nav Waypoints" overlay — 238 Israeli VFR reporting points.
-
-## Pre-rewrite
-
-### PR #1 — Leg attributes in scene JSON (Unity, closed unmerged)
-- WIP on the original Unity app; superseded by the HTML5 rewrite.
