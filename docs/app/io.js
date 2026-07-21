@@ -890,7 +890,7 @@ function save() {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'route-' + fileStamp() + '.json';
+  a.download = routeFileSlug() + '-' + fileStamp() + '.json';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // revoking synchronously after click can abort the download (Firefox/Safari)
 }
@@ -931,7 +931,7 @@ function exportGpx() {
   const blob = new Blob([gpx], { type: 'application/gpx+xml' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'route-' + fileStamp() + '.gpx';
+  a.download = routeFileSlug() + '-' + fileStamp() + '.gpx';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // defer: see save()
 }
@@ -1013,7 +1013,7 @@ function exportPln() {
   const blob = new Blob([pln], { type: 'application/xml' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'route-' + fileStamp() + '.pln';
+  a.download = routeFileSlug() + '-' + fileStamp() + '.pln';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // defer: see save()
 }
@@ -1209,7 +1209,7 @@ function exportFdr() {
   const blob = new Blob([fdr], { type: 'text/plain' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'route-' + fileStamp() + '.fdr';
+  a.download = routeFileSlug() + '-' + fileStamp() + '.fdr';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // defer: see save()
 }
@@ -2620,7 +2620,7 @@ function showFlightPlan() {
     const blob = new Blob(['\ufeff', flightPlanCsv()], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'flight-plan-' + fileStamp() + '.csv';
+    a.download = 'flight-plan-' + routeFileSlug() + '-' + fileStamp() + '.csv';
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -2929,6 +2929,28 @@ function chooseOrientation(size, onPick) {
 function fileStamp() {
   return new Date().toISOString().slice(0, 19)
     .replace(/[-:]/g, '').replace('T', '-');
+}
+// Filename-safe "dep-to-dest" slug from the route endpoints, mirroring the
+// saved-route naming (defaultSavedRouteName) so a downloaded file is named for
+// its route instead of a bare "route-". Prefers the localised display name
+// (navName); if ASCII-sanitising that leaves nothing (e.g. a Hebrew-only
+// label), falls back to the raw canonical name, then to 'route'.
+function routeFileSlug() {
+  const slug = s => String(s || '').replace(/[^A-Za-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '').slice(0, 24);
+  const clean = (w) => {
+    const raw = (w && w.name) ? String(w.name).trim() : '';
+    const disp = (raw && typeof navName === 'function') ? navName(raw) : raw;
+    return slug(disp) || slug(raw);
+  };
+  const wps = state.waypoints;
+  if (wps && wps.length >= 2) {
+    const a = clean(wps[0]);
+    const b = clean(wps[wps.length - 1]);
+    if (a && b) return a + '-to-' + b;
+    if (a || b) return a || b;
+  }
+  return 'route';
 }
 
 // Plain-language SIGMET list (clicking the corner readout). Each entry shows
@@ -3437,7 +3459,7 @@ function exportA4x2Tiles(out, W, H, done) {
     const dl = (blob) => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'navigation-A4x2-p' + t.n + 'of2-' + fileStamp() + '.png';
+      a.download = 'navigation-' + routeFileSlug() + '-A4x2-p' + t.n + 'of2-' + fileStamp() + '.png';
       a.click();
       URL.revokeObjectURL(a.href);
       setTimeout(nextTile, 400);   // stagger so the browser allows both downloads
@@ -3730,7 +3752,7 @@ function exportPNG() {
       const setDl = function (blob) {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'navigation-' + (pageSize || baseName) +
+        a.download = 'navigation-' + routeFileSlug() + '-' + (pageSize || baseName) +
                      '-' + fileStamp() + '.png';
         a.click();
         URL.revokeObjectURL(a.href);
@@ -3973,7 +3995,7 @@ async function flyRoute() {
       { type: 'application/vnd.google-earth.kml+xml' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'navaid-flythrough-' + fileStamp() + '.kml';
+    a.download = 'navaid-flythrough-' + routeFileSlug() + '-' + fileStamp() + '.kml';
     a.click();
     URL.revokeObjectURL(a.href);
   }
