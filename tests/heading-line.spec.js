@@ -17,9 +17,9 @@ test('predictor marks the line at 2 / 5 / 10 NM for the live own-ship', async ({
   await boot(page);
   const marks = await page.evaluate(() => {
     window.__headingLine = null;
-    gpsLiveOn = true;
-    gpsOwn = { lat: 32.1, lng: 34.9, hdg: 90 };
-    drawOwnShip(gpsOwn, gpsOwn.hdg);
+    window.gpsLiveOn = true;
+    window.gpsOwn = { lat: 32.1, lng: 34.9, hdg: 90 };
+    drawOwnShip(window.gpsOwn, window.gpsOwn.hdg);
     return window.__headingLine;
   });
   expect(marks).not.toBeNull();
@@ -31,9 +31,9 @@ test('also draws for the simulator own-ship', async ({ page }) => {
   await boot(page);
   const drawn = await page.evaluate(() => {
     window.__headingLine = null;
-    simOn = true;
-    simAircraft = { lat: 32.1, lng: 34.9, hdg: 270 };
-    drawOwnShip(simAircraft, simAircraft.hdg);
+    window.simOn = true;
+    window.simAircraft = { lat: 32.1, lng: 34.9, hdg: 270 };
+    drawOwnShip(window.simAircraft, window.simAircraft.hdg);
     return window.__headingLine;
   });
   expect(drawn).not.toBeNull();
@@ -62,14 +62,14 @@ test('the 10 NM mark projects to a point 10 NM ahead on the heading', async ({ p
 test('keeps the last heading when the GPS course goes null (stationary)', async ({ page }) => {
   await boot(page);
   const frozen = await page.evaluate(() => {
-    gpsLiveOn = true;
+    window.gpsLiveOn = true;
     // First a valid course…
-    gpsOwn = { lat: 32.1, lng: 34.9, hdg: 135 };
-    drawOwnShip(gpsOwn, gpsOwn.hdg);
+    window.gpsOwn = { lat: 32.1, lng: 34.9, hdg: 135 };
+    drawOwnShip(window.gpsOwn, window.gpsOwn.hdg);
     // …then a fix with no course (stationary).
     window.__headingLine = null;
-    gpsOwn = { lat: 32.1, lng: 34.9, hdg: null };
-    drawOwnShip(gpsOwn, null);
+    window.gpsOwn = { lat: 32.1, lng: 34.9, hdg: null };
+    drawOwnShip(window.gpsOwn, null);
     return window.__headingLine;
   });
   expect(frozen).not.toBeNull();
@@ -80,9 +80,9 @@ test('draws nothing when there has never been a valid heading', async ({ page })
   await boot(page);
   const none = await page.evaluate(() => {
     window.__headingLine = null;
-    gpsLiveOn = true;
-    gpsOwn = { lat: 32.1, lng: 34.9, hdg: null };
-    drawOwnShip(gpsOwn, null);
+    window.gpsLiveOn = true;
+    window.gpsOwn = { lat: 32.1, lng: 34.9, hdg: null };
+    drawOwnShip(window.gpsOwn, null);
     return window.__headingLine;
   });
   expect(none).toBeNull();
