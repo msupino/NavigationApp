@@ -304,7 +304,7 @@ NavAid.tuningDefaults = {
   windFieldHoursAhead: { value: 24, min: 1, max: 48, step: 1, label: 'Wind field forecast slider range (h)' },
   windFieldForecastDays: { value: 2, min: 1, max: 7, step: 1, label: 'Wind field forecast fetch days' },
 
-  liveAircraftRadiusPx: { value: 18, min: 6, max: 48, step: 1, label: 'Live aircraft size' },
+  liveAircraftRadiusPx: { value: 12, min: 6, max: 48, step: 1, label: 'Live aircraft size' },
   liveHeadingLineWidthPx: { value: 2, min: 0.5, max: 6, step: 0.5, label: 'Live heading line width' },
   liveHeadingDashPx: { value: 9, min: 1, max: 30, step: 1, label: 'Live heading dash length' },
   liveHeadingDashGapPx: { value: 6, min: 0, max: 30, step: 1, label: 'Live heading dash gap' },
