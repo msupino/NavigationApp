@@ -55,3 +55,40 @@ test('framed A4 export sizes the waypoint disc to the tuned physical diameter (7
   expect(out.screenR).toBeCloseTo(out.expectScreenR, 5); // screen size unchanged
   expect(out.exportR).not.toBeCloseTo(out.screenR, 1);   // export overrode the screen radius
 });
+
+test('framed A4 export sizes the leg kite to its tuned physical size (18.5 body + 10 triangle × 21 mm)', async ({ page }) => {
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof map !== 'undefined' &&
+    typeof drawLegArrow === 'function' && typeof pageFrameRect === 'function' &&
+    typeof legZoomScale === 'function');
+  const out = await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.1, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 35.1, name: 'B' }];
+    syncLegs();
+    window.pageOrient = 'landscape';
+    if (pageSize !== 'A4') setPage('A4');
+    draw();
+    const fr = pageFrameRect(), paperW = 297, ppm = fr.w / paperW;
+    // Capture the kite path extents drawn by drawLegArrow.
+    const measure = () => {
+      const xs = [], ys = [], p = CanvasRenderingContext2D.prototype;
+      const om = p.moveTo, ol = p.lineTo;
+      p.moveTo = function (x, y) { xs.push(x); ys.push(y); return om.call(this, x, y); };
+      p.lineTo = function (x, y) { xs.push(x); ys.push(y); return ol.call(this, x, y); };
+      drawLegArrow(0, 0, 0, '123', '0:08', '2500', '#000', '#ff0', false, legZoomScale());
+      p.moveTo = om; p.lineTo = ol;
+      return { L: Math.max(...xs) - Math.min(...xs), W: Math.max(...ys) - Math.min(...ys) };
+    };
+    NavAid._exportPxPerMm = ppm;
+    const m = measure();
+    NavAid._exportPxPerMm = 0;
+    return {
+      totalLenMm: m.L / ppm, heightMm: m.W / ppm,
+      wantLen: tune('kitePrintLengthMm') + tune('kitePrintTriangleMm'),
+      wantHeight: tune('kitePrintHeightMm'),
+    };
+  });
+  expect(out.wantLen).toBe(28.5);            // 18.5 body + 10 triangle
+  expect(out.wantHeight).toBe(21);
+  expect(out.totalLenMm).toBeCloseTo(28.5, 1);
+  expect(out.heightMm).toBeCloseTo(21, 1);
+});
