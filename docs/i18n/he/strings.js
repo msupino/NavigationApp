@@ -579,7 +579,7 @@ window.S = {
   tbClearStoreTitle: 'מחק את כל המסלולים השמורים וההגדרות במכשיר זה',
   tbClearStoreConfirm: 'למחוק את כל המסלולים השמורים וההגדרות במכשיר זה? לא ניתן לבטל.',
   tbTransparency: 'שקיפות תוויות',
-  tbTransparencyTitle: 'שקיפות רקע תוויות (נקודות, קטעים, הערות)',
+  tbTransparencyTitle: 'שקיפות רקע תוויות נקודות דרך',
   tbMapOpacity: 'בהירות מפה',
   tbMapOpacityTitle: 'בהירות מפת הרקע',
   tbLegArrowSize: 'גודל חץ קטע',
