@@ -108,6 +108,13 @@ NavAid.tuningDefaults = {
   cumKiteHeightPx: { value: 23, min: 8, max: 100, step: 1, label: 'Cum kite height' },
   cumKiteCellWidthPx: { value: 43, min: 10, max: 120, step: 1, label: 'Cum kite cell width' },
   cumKiteTriangleLenPx: { value: 20, min: 6, max: 100, step: 1, label: 'Cum kite triangle length' },
+  // Physical size of the cumulative-time kite at size-selector 1 on a framed
+  // A4/A3 PNG export (1:250,000): body cell length (along the leg) + triangle
+  // length + height. Triangle sits on the short side (its base = height).
+  // Screen size unchanged; gist-tunable.
+  cumKitePrintLengthMm: { value: 9.5, min: 1, max: 80, step: 0.5, label: 'Cum kite print body length (mm)' },
+  cumKitePrintHeightMm: { value: 6, min: 1, max: 80, step: 0.5, label: 'Cum kite print height (mm)' },
+  cumKitePrintTriangleMm: { value: 9.5, min: 1, max: 80, step: 0.5, label: 'Cum kite print triangle length (mm)' },
   cumKiteBorderPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Cum kite border width' },
   cumKiteTextPx: { value: 15, min: 4, max: 36, step: 1, label: 'Cum kite text size' },
 
@@ -429,7 +436,7 @@ NavAid.tuningGroups = [
   { name: 'Wind arrows', keys: ['windArrowColor', 'windArrowHaloColor', 'windTextHaloColor'] },
   { name: 'Default marker locations', keys: ['defaultLabelMarginPx', 'defaultKiteHalfWidthPx'] },
   { name: 'Leg kites', keys: ['legKiteFillColor', 'returnKiteFillColor', 'legKiteHeightPx', 'legKiteCellWidthPx', 'legKiteTriangleLenPx', 'kitePrintLengthMm', 'kitePrintHeightMm', 'kitePrintTriangleMm', 'legKiteBorderPx', 'legKiteDividerPx', 'legKiteHaloPx', 'legKiteTextPx', 'legKiteHeadingTextPx', 'legKiteHeadingAnchor'] },
-  { name: 'Cumulative kites', keys: ['cumKiteFillColor', 'returnCumKiteFillColor', 'cumKiteHeightPx', 'cumKiteCellWidthPx', 'cumKiteTriangleLenPx', 'cumKiteBorderPx', 'cumKiteTextPx'] },
+  { name: 'Cumulative kites', keys: ['cumKiteFillColor', 'returnCumKiteFillColor', 'cumKiteHeightPx', 'cumKiteCellWidthPx', 'cumKiteTriangleLenPx', 'cumKitePrintLengthMm', 'cumKitePrintHeightMm', 'cumKitePrintTriangleMm', 'cumKiteBorderPx', 'cumKiteTextPx'] },
   { name: 'Minute markers', keys: ['minuteMarkerFontPx', 'minuteTickEvenPx', 'minuteTickOddPx', 'minuteTickEvenWidthPx', 'minuteTickOddWidthPx', 'minuteLabelOffsetPx'] },
   { name: 'Distance badges', keys: ['distanceBadgeRadiusPx', 'distanceBadgeBorderPx', 'distanceBadgeFontPx', 'distanceBadgeFillColor'] },
   { name: 'Route waypoints', keys: ['waypointBaseRadiusPx', 'waypointPrintDiaMm', 'waypointFontPx', 'waypointTextFitFactor', 'waypointMinZoomScale', 'waypointSelectedRadiusAddPx', 'waypointStrokeWidthPx', 'waypointFillColor'] },

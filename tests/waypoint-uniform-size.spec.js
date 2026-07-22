@@ -92,3 +92,36 @@ test('framed A4 export sizes the leg kite to its tuned physical size (21 body + 
   expect(out.totalLenMm).toBeCloseTo(31, 1);
   expect(out.heightMm).toBeCloseTo(18.5, 1);
 });
+
+test('framed A4 export sizes the cumulative-time kite to 9.5 body + 9.5 triangle × 6 mm', async ({ page }) => {
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof map !== 'undefined' &&
+    typeof drawCumTimeArrow === 'function' && typeof pageFrameRect === 'function' &&
+    typeof legZoomScale === 'function');
+  const out = await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.1, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 35.1, name: 'B' }];
+    syncLegs();
+    window.pageOrient = 'landscape';
+    if (pageSize !== 'A4') setPage('A4');
+    draw();
+    const fr = pageFrameRect(), paperW = 297, ppm = fr.w / paperW;
+    const xs = [], ys = [], p = CanvasRenderingContext2D.prototype;
+    const om = p.moveTo, ol = p.lineTo;
+    p.moveTo = function (x, y) { xs.push(x); ys.push(y); return om.call(this, x, y); };
+    p.lineTo = function (x, y) { xs.push(x); ys.push(y); return ol.call(this, x, y); };
+    NavAid._exportPxPerMm = ppm;
+    drawCumTimeArrow(0, 0, 0, '0:08', '#000', '#ff0', legZoomScale());
+    NavAid._exportPxPerMm = 0;
+    p.moveTo = om; p.lineTo = ol;
+    return {
+      totalLenMm: (Math.max(...xs) - Math.min(...xs)) / ppm,
+      heightMm: (Math.max(...ys) - Math.min(...ys)) / ppm,
+      wantLen: tune('cumKitePrintLengthMm') + tune('cumKitePrintTriangleMm'),
+      wantHeight: tune('cumKitePrintHeightMm'),
+    };
+  });
+  expect(out.wantLen).toBe(19);              // 9.5 body + 9.5 triangle
+  expect(out.wantHeight).toBe(6);
+  expect(out.totalLenMm).toBeCloseTo(19, 1);
+  expect(out.heightMm).toBeCloseTo(6, 1);
+});
