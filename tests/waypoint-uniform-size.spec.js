@@ -56,7 +56,7 @@ test('framed A4 export sizes the waypoint disc to the tuned physical diameter (7
   expect(out.exportR).not.toBeCloseTo(out.screenR, 1);   // export overrode the screen radius
 });
 
-test('framed A4 export sizes the leg kite to its tuned physical size (18.5 body + 10 triangle × 21 mm)', async ({ page }) => {
+test('framed A4 export sizes the leg kite to its tuned physical size (21 body + 10 triangle × 18.5 mm)', async ({ page }) => {
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof map !== 'undefined' &&
     typeof drawLegArrow === 'function' && typeof pageFrameRect === 'function' &&
@@ -87,8 +87,8 @@ test('framed A4 export sizes the leg kite to its tuned physical size (18.5 body 
       wantHeight: tune('kitePrintHeightMm'),
     };
   });
-  expect(out.wantLen).toBe(28.5);            // 18.5 body + 10 triangle
-  expect(out.wantHeight).toBe(21);
-  expect(out.totalLenMm).toBeCloseTo(28.5, 1);
-  expect(out.heightMm).toBeCloseTo(21, 1);
+  expect(out.wantLen).toBe(31);              // 21 body + 10 triangle
+  expect(out.wantHeight).toBe(18.5);         // triangle sits on the short side
+  expect(out.totalLenMm).toBeCloseTo(31, 1);
+  expect(out.heightMm).toBeCloseTo(18.5, 1);
 });
