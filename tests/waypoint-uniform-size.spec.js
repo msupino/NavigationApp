@@ -93,7 +93,7 @@ test('framed A4 export sizes the leg kite to its tuned physical size (21 body + 
   expect(out.heightMm).toBeCloseTo(18.5, 1);
 });
 
-test('framed A4 export sizes the cumulative-time kite to 9.5 body + 9.5 triangle × 6 mm', async ({ page }) => {
+test('framed A4 export sizes the cumulative-time kite to 6 body + 13 triangle × 9.5 mm', async ({ page }) => {
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof map !== 'undefined' &&
     typeof drawCumTimeArrow === 'function' && typeof pageFrameRect === 'function' &&
@@ -120,8 +120,8 @@ test('framed A4 export sizes the cumulative-time kite to 9.5 body + 9.5 triangle
       wantHeight: tune('cumKitePrintHeightMm'),
     };
   });
-  expect(out.wantLen).toBe(19);              // 9.5 body + 9.5 triangle
-  expect(out.wantHeight).toBe(6);
+  expect(out.wantLen).toBe(19);              // 6 body + 13 triangle
+  expect(out.wantHeight).toBe(9.5);
   expect(out.totalLenMm).toBeCloseTo(19, 1);
-  expect(out.heightMm).toBeCloseTo(6, 1);
+  expect(out.heightMm).toBeCloseTo(9.5, 1);
 });

@@ -112,9 +112,9 @@ NavAid.tuningDefaults = {
   // A4/A3 PNG export (1:250,000): body cell length (along the leg) + triangle
   // length + height. Triangle sits on the short side (its base = height).
   // Screen size unchanged; gist-tunable.
-  cumKitePrintLengthMm: { value: 9.5, min: 1, max: 80, step: 0.5, label: 'Cum kite print body length (mm)' },
-  cumKitePrintHeightMm: { value: 6, min: 1, max: 80, step: 0.5, label: 'Cum kite print height (mm)' },
-  cumKitePrintTriangleMm: { value: 9.5, min: 1, max: 80, step: 0.5, label: 'Cum kite print triangle length (mm)' },
+  cumKitePrintLengthMm: { value: 6, min: 1, max: 80, step: 0.5, label: 'Cum kite print body length (mm)' },
+  cumKitePrintHeightMm: { value: 9.5, min: 1, max: 80, step: 0.5, label: 'Cum kite print height (mm)' },
+  cumKitePrintTriangleMm: { value: 13, min: 1, max: 80, step: 0.5, label: 'Cum kite print triangle length (mm)' },
   cumKiteBorderPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Cum kite border width' },
   cumKiteTextPx: { value: 15, min: 4, max: 36, step: 1, label: 'Cum kite text size' },
 
