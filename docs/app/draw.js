@@ -39,6 +39,7 @@ function legKiteAlongHalfPx(sc) {
 // tracks correctly on a rotated map.
 function drawOwnShip(pos, hdg) {
   if (!pos) return;
+  drawHeadingLine(pos, hdg);   // predictor under the aircraft symbol
   const s = proj(pos);
   // Screen angle from a projected geographic offset in the heading direction,
   // so it stays correct under map rotation (map.setBearing) — same approach as
@@ -101,6 +102,72 @@ function drawOwnShip(pos, hdg) {
   octx.lineWidth = 1; octx.strokeStyle = oc; octx.stroke();
 
   octx.restore();
+}
+
+// Heading predictor for the own-ship (live GPS + simulator). A straight line
+// along the current track with cross-tick range marks at 2 / 5 / 10 NM so a
+// pilot can read distance-to-go ahead of the aircraft. Uses the same NM→geo
+// offset as notamCirclePoints and projects every point, so it stays correct
+// under map rotation. GPS course goes null at zero groundspeed, so the last
+// valid heading is remembered and reused (the line freezes rather than flicker).
+const HEADING_LINE_MARKS_NM = [2, 5, 10];
+let lastOwnHeadingDeg = null;
+function drawHeadingLine(pos, hdg) {
+  if (!pos) return;
+  const h = Number.isFinite(hdg) ? hdg : lastOwnHeadingDeg;
+  if (!Number.isFinite(h)) return;          // no heading yet — nothing to draw
+  lastOwnHeadingDeg = h;
+  const hr = h * Math.PI / 180;
+  const cosLat = Math.max(0.2, Math.cos(pos.lat * Math.PI / 180));
+  const atNm = (nm) => proj({
+    lat: pos.lat + (nm / 60) * Math.cos(hr),
+    lng: pos.lng + (nm / 60) * Math.sin(hr) / cosLat,
+  });
+  const s = proj(pos);
+  const end = atNm(HEADING_LINE_MARKS_NM[HEADING_LINE_MARKS_NM.length - 1]);
+  const dx = end.x - s.x, dy = end.y - s.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) return;                       // degenerate (extreme zoom-out)
+  const ux = dx / len, uy = dy / len;        // line direction (screen)
+  const px = -uy, py = ux;                    // unit perpendicular (screen)
+
+  octx.save();
+  octx.lineCap = 'butt';
+  octx.lineJoin = 'round';
+  // the line — dashed so it reads clearly over a busy/coloured chart
+  octx.beginPath();
+  octx.moveTo(s.x, s.y);
+  octx.lineTo(end.x, end.y);
+  octx.strokeStyle = colorWithAlpha(tune('liveHeadingLineColor'), 0.95);
+  octx.lineWidth = tune('liveHeadingLineWidthPx');
+  octx.setLineDash([tune('liveHeadingDashPx'), tune('liveHeadingDashGapPx')]);
+  octx.stroke();
+  octx.setLineDash([]);   // solid ticks below
+
+  // cross-ticks + upright labels at each range mark
+  const tick = tune('liveHeadingTickPx'), gap = tune('liveHeadingLabelGapPx');
+  octx.font = 'bold ' + tune('liveHeadingLabelPx') + 'px sans-serif';
+  octx.textAlign = 'center';
+  octx.textBaseline = 'middle';
+  for (const nm of HEADING_LINE_MARKS_NM) {
+    const m = atNm(nm);
+    octx.beginPath();
+    octx.moveTo(m.x - px * tick, m.y - py * tick);
+    octx.lineTo(m.x + px * tick, m.y + py * tick);
+    octx.strokeStyle = colorWithAlpha(tune('liveHeadingLineColor'), 0.9);
+    octx.lineWidth = tune('liveHeadingLineWidthPx');
+    octx.stroke();
+    const lx = m.x + px * (tick + gap), ly = m.y + py * (tick + gap);
+    const label = String(nm);
+    octx.lineWidth = 3;
+    octx.strokeStyle = colorWithAlpha('#000000', 0.8);
+    octx.strokeText(label, lx, ly);
+    octx.fillStyle = tune('liveHeadingTextColor');
+    octx.fillText(label, lx, ly);
+  }
+  octx.restore();
+  if (typeof window !== 'undefined')
+    window.__headingLine = { heading: h, marks: HEADING_LINE_MARKS_NM.slice() };
 }
 
 // TOC / TOD markers along the route (#672). A small dot + label at the point
