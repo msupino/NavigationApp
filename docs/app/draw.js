@@ -2975,7 +2975,14 @@ function waypointGeom(i) {
   // Match wpLabel() / inspector placeholder ("WP N"), not a bare digit.
   const label = showWpNames ? waypointDisplayLabel(wp, i) : '';
   const zoomScale = Math.max(tune('waypointMinZoomScale'), Math.pow(2, map.getZoom() - 12));
-  const scale = wpSize * zoomScale;
+  // Framed A4/A3 export pins the disc to a fixed physical diameter
+  // (waypointPrintDiaMm) via NavAid._exportWpRadiusPx; on screen it stays the
+  // wpSize × zoom size. Derive `scale` from whichever radius applies so the
+  // text still fits the disc.
+  const exportR = (window.NavAid && NavAid._exportWpRadiusPx) || 0;
+  const scale = exportR
+    ? exportR / tune('waypointBaseRadiusPx')
+    : wpSize * zoomScale;
   // Every waypoint circle is the SAME size (radius depends only on the wpSize
   // slider × zoom, never on the label). The text shrinks to fit instead of the
   // circle growing — so a 5-letter code and a single digit share one disc.

@@ -3696,6 +3696,16 @@ function exportPNG() {
     const s = W / fr.w;
     const prevOctx = octx;
     octx = o;
+    // Fixed physical waypoint-disc size on a framed A4/A3 print. Drawing here is
+    // in screen coords (then scaled by s and printed at W/paperW px per mm), so
+    // a screen radius of (diaMm/2)·fr.w/paperW lands as exactly diaMm on paper.
+    // A4x2 renders the A3 sheet then slices it, so it uses the A3 paper width.
+    if (framed && pageSize) {
+      const pmm = pageSize === 'A4' ? [210, 297] : [297, 420];
+      const paperWmm = pageOrient === 'portrait' ? pmm[0] : pmm[1];
+      const diaMm = (typeof tune === 'function') ? tune('waypointPrintDiaMm') : 7;
+      NavAid._exportWpRadiusPx = (diaMm / 2) * fr.w / paperWmm;
+    }
     o.save();
     o.scale(s, s);
     o.translate(-fr.x, -fr.y);
@@ -3719,6 +3729,7 @@ function exportPNG() {
       o.restore();
     } finally {
       octx = prevOctx;
+      NavAid._exportWpRadiusPx = 0;
     }
 
     // A4×2: the frame is A3-sized — slice it into two A4 tiles at the same
