@@ -3235,6 +3235,9 @@ function showExportModal() {
   btns.className = 'modal-btns';
   const exportBtn = document.createElement('button');
   exportBtn.textContent = S.exportBtn;
+  const printBtn = document.createElement('button');
+  printBtn.textContent = S.printBtn || 'Print';
+  printBtn.title = S.printBtnTitle || 'Open the print dialog at true physical size';
   const cancelBtn = document.createElement('button');
   cancelBtn.textContent = S.cancel;
   cancelBtn.className = 'modal-cancel';
@@ -3390,12 +3393,18 @@ function showExportModal() {
     close();
     exportPNG();
   };
+  printBtn.onclick = () => {
+    NavAid._restoreExport = restoreOrig;
+    close();
+    exportPNG('print');
+  };
   cancelBtn.onclick = function () {
     restoreOrig();
     close();
   };
 
   btns.appendChild(exportBtn);
+  btns.appendChild(printBtn);
   btns.appendChild(cancelBtn);
   box.appendChild(btns);
 
@@ -3509,7 +3518,29 @@ function drawA4x2TileMarks(cx, t, total, pxPerMm) {
   cx.restore();
 }
 
-function exportPNG() {
+// Open the framed PNG in a new window sized to the exact paper millimetres with
+// an @page rule, then fire the print dialog — so it prints 1:1 regardless of the
+// printer's "fit to page" default (the only reliable way to hit the physical mm
+// sizes). Non-framed falls back to printing the image on the default page.
+function openPrintWindow(blob, paperWmm, paperHmm) {
+  const url = URL.createObjectURL(blob);
+  const w = window.open('', '_blank');
+  if (!w) { try { alert(S.errPopupBlocked || 'Allow pop-ups to print.'); } catch (e) {} URL.revokeObjectURL(url); return; }
+  const sized = (paperWmm && paperHmm)
+    ? `@page{size:${paperWmm}mm ${paperHmm}mm;margin:0}img{width:${paperWmm}mm;height:${paperHmm}mm;display:block}`
+    : `@page{margin:0}img{max-width:100%;display:block}`;
+  w.document.open();
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' +
+    (S.printBtn || 'Print') + '</title><style>html,body{margin:0;padding:0}' + sized +
+    '</style></head><body><img alt=""></body></html>');
+  w.document.close();
+  const img = w.document.querySelector('img');
+  const go = () => { try { w.focus(); w.print(); } catch (e) {} setTimeout(() => URL.revokeObjectURL(url), 60000); };
+  img.onload = () => setTimeout(go, 60);
+  img.onerror = () => { URL.revokeObjectURL(url); };
+  img.src = url;
+}
+function exportPNG(mode) {
   // Export matches the screen view exactly, including map bearing.
   // Tiles are fetched north-up (axis-aligned) for a bounding box that covers
   // all 4 frame corners, composited onto an intermediate canvas, then drawn
@@ -3760,7 +3791,15 @@ function exportPNG() {
 
       // Embed physical DPI metadata so the PNG prints at the correct
       // physical size on A3 / A4 at 1:250,000 scale.
-      const setDl = function (blob) {
+      const printing = mode === 'print';
+      const mm = pageSize === 'A4' ? [210, 297] : [297, 420];
+      const paperW = pageOrient === 'portrait' ? mm[0] : mm[1];
+      const paperH = pageOrient === 'portrait' ? mm[1] : mm[0];
+      const deliver = function (blob) {
+        if (printing) {
+          openPrintWindow(blob, (framed && pageSize) ? paperW : 0, (framed && pageSize) ? paperH : 0);
+          return;
+        }
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = 'navigation-' + routeFileSlug() + '-' + (pageSize || baseName) +
@@ -3769,16 +3808,13 @@ function exportPNG() {
         URL.revokeObjectURL(a.href);
       };
       if (framed && pageSize) {
-        const mm = pageSize === 'A4' ? [210, 297] : [297, 420];
-        const paperW = pageOrient === 'portrait' ? mm[0] : mm[1];
-        const paperH = pageOrient === 'portrait' ? mm[1] : mm[0];
         const ppmX = Math.round(W * 1000 / paperW);
         const ppmY = Math.round(H * 1000 / paperH);
         b.arrayBuffer().then(buf => {
-          setDl(new Blob([injectPngPhys(buf, ppmX, ppmY)], { type: 'image/png' }));
-        }).catch(function () { setDl(b); });
+          deliver(new Blob([injectPngPhys(buf, ppmX, ppmY)], { type: 'image/png' }));
+        }).catch(function () { deliver(b); });
       } else {
-        setDl(b);
+        deliver(b);
       }
       if (failed > 0) alert(S.errTilesFail(failed, jobs.length));
     }, 'image/png');

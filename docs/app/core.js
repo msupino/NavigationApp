@@ -1255,6 +1255,9 @@ window.S = Object.assign({
   exportNoPageWarn: 'No page size selected — exported image ratio may not match a print page.',
   exportLayer: 'Layer',
   exportBtn: 'Export',
+  printBtn: '🖨 Print',
+  printBtnTitle: 'Open the print dialog at true physical size (A4/A3 1:250,000)',
+  errPopupBlocked: 'Allow pop-ups for this site to open the print view.',
 }, window.S || {});
 
 // Fill data-i18n / data-i18n-title / data-i18n-placeholder / data-i18n-aria

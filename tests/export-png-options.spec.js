@@ -54,8 +54,8 @@ test.describe('Export PNG options modal', () => {
     // Layer defaults to Navigation.
     const sel = page.locator('#export-layer-select');
     expect(await sel.inputValue()).toBe('Navigation');
-    // Buttons present.
-    expect(await page.locator('.modal .modal-btns button').count()).toBe(2);
+    // Buttons present: Export, Print, Cancel.
+    expect(await page.locator('.modal .modal-btns button').count()).toBe(3);
     // Cancel closes the modal.
     await page.locator('.modal .modal-cancel').click();
     await expect(page.locator('.modal-back')).toHaveCount(0);
@@ -151,6 +151,32 @@ test.describe('Export PNG options modal', () => {
     await expect(page.locator('.modal-back')).toHaveCount(0);
     // Original state restored.
     expect(await page.evaluate(() => showNavWP)).toBe(true);
+  });
+
+  test('the export modal offers a Print action that opens a 1:1 print window', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(wps => {
+      window.pageOrient = 'landscape';
+      if (typeof setPage === 'function' && pageSize !== 'A4') setPage('A4');
+      state.waypoints = wps; syncLegs(); draw();
+    }, pairLLHZ_LLHA());
+    // Capture what openPrintWindow would write to the popup.
+    const html = await page.evaluate(() => new Promise(resolve => {
+      let out = '';
+      const doc = { open() {}, close() {}, write(s) { out += s; }, querySelector: () => ({}) };
+      window.open = () => ({ document: doc, focus() {}, print() {} });
+      // A4 landscape paper.
+      openPrintWindow(new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' }), 297, 210);
+      setTimeout(() => resolve(out), 30);
+    }));
+    expect(html).toMatch(/@page\{size:297mm 210mm;margin:0\}/);
+    expect(html).toMatch(/img\{width:297mm;height:210mm/);
+
+    // The modal exposes the Print button next to Export.
+    await page.locator('#print').click();
+    await page.locator('.modal-back').waitFor();
+    const labels = await page.locator('.modal .modal-btns button').allTextContents();
+    expect(labels.some(t => /print/i.test(t))).toBe(true);
   });
 
   test('Warns when no page size (A3/A4) is selected', async ({ page }) => {
