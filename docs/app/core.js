@@ -1106,9 +1106,9 @@ window.S = Object.assign({
   tbClearStoreTitle: 'Delete all saved routes and settings stored on this device',
   tbClearStoreConfirm: 'Delete ALL saved routes and settings stored on this device? This cannot be undone.',
   tbTransparency: 'Label opacity',
-  tbTransparencyTitle: 'Opacity of waypoint / note label backgrounds',
-  tbKiteAlpha: 'Kite opacity',
-  tbKiteAlphaTitle: 'Opacity of the leg / cumulative / return kite fills',
+  tbTransparencyTitle: 'Opacity of waypoint label backgrounds',
+  tbKiteAlpha: 'Kite / note opacity',
+  tbKiteAlphaTitle: 'Opacity of the leg / cumulative / return kite fills and note backgrounds',
   tbMapOpacity: 'Map opacity',
   tbMapOpacityTitle: 'Base map brightness',
   tbLegArrowSize: 'Leg arrow size',
@@ -1328,7 +1328,7 @@ var notamMeta = null;       // { generatedAt } of the loaded NOTAM file
 var notamBorders = null;    // null = not loaded; { LEBANON:[[ [lat,lng]... ]], ... } border arcs
 var showWpNames = true;     // draw waypoint names (off = empty circle)
 var yellowAlpha = 0.8;    // opacity of waypoint / note label backgrounds (default 80%)
-var kiteAlpha = 0.8;      // opacity of the leg / cumulative / return kite fills (default 80%)
+var kiteAlpha = 0.8;      // opacity of the leg / cumulative / return kite fills + note backgrounds (default 80%)
 var wpSize = 1;             // waypoint name / number text size scale
 var legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
 var legLineWidth = 0.5;     // leg route line width scale (0.5 ≈ 1.75 px of the 3.5 px route width)
@@ -1385,8 +1385,8 @@ function saveAircraft() {
 const DEFAULT_LABEL_FILL_COLOR = '#fff6aa';
 
 // Tinted fill from any "#rrggbb" hex. Alpha defaults to yellowAlpha (the
-// waypoint / note label opacity); kite fills pass kiteAlpha so their opacity is
-// controlled by a separate slider.
+// waypoint label opacity); kite fills and note backgrounds pass kiteAlpha so
+// their opacity is controlled by a separate slider.
 function tintFill(hex, alpha) {
   const a = (typeof alpha === 'number') ? alpha : yellowAlpha;
   let h = (hex || DEFAULT_LABEL_FILL_COLOR).replace('#', '');

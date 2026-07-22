@@ -1,7 +1,8 @@
 // @ts-check
 // Test tintFill hex-to-rgba conversion. The optional second argument is the
-// alpha (used by the kite fills so their opacity is independent of the
-// waypoint/label yellowAlpha slider); when omitted it defaults to yellowAlpha.
+// alpha (used by the kite fills + note backgrounds so their opacity is
+// independent of the waypoint-label yellowAlpha slider); when omitted it
+// defaults to yellowAlpha.
 const { test, expect } = require('./_setup');
 
 test.describe('tintFill utility', () => {

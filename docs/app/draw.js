@@ -3270,7 +3270,7 @@ function drawNotes() {
       drawCommCallout(n, selected);
       continue;
     }
-    octx.fillStyle = tintFill(color);
+    octx.fillStyle = tintFill(color, kiteAlpha);   // notes share the kite-opacity slider
     octx.lineWidth = selected ? tune('noteSelectedStrokeWidthPx') : tune('noteStrokeWidthPx');
     octx.strokeStyle = selected ? tune('selectedColor') : tune('inkColor');
     if (r.oval) {
