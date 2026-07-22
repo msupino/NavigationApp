@@ -354,6 +354,11 @@ NavAid.tuningDefaults = {
   zuluClockShadowYPx: { value: 2, min: 0, max: 18, step: 1, label: 'Zulu clock shadow y' },
   zuluClockShadowBlurPx: { value: 8, min: 0, max: 36, step: 1, label: 'Zulu clock shadow blur' },
   zuluClockShadowAlpha: { value: 0.45, min: 0, max: 1, step: 0.05, label: 'Zulu clock shadow alpha' },
+  // Kite + note fill opacity. Not exposed as a Display slider — gist-only (also
+  // adjustable in the hidden ?tune panel). The waypoint label backgrounds have
+  // their own visible slider (yellowAlpha); this covers the leg / cumulative /
+  // return kites and note boxes.
+  kiteNoteAlpha: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'Kite / note fill opacity' },
 
   // Default on/off state of the toolbar layer/display checkboxes for a NEW user
   // (empty localStorage). Each value mirrors the checkbox's baked-in default, so
@@ -435,7 +440,7 @@ NavAid.tuningGroups = [
   { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
   { name: 'Export', keys: ['exportBgColor'] },
-  { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor'] },
+  { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
   { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail'] },
 ];
 function tune(key) {
@@ -1106,7 +1111,7 @@ window.S = Object.assign({
   tbClearStoreTitle: 'Delete all saved routes and settings stored on this device',
   tbClearStoreConfirm: 'Delete ALL saved routes and settings stored on this device? This cannot be undone.',
   tbTransparency: 'Label opacity',
-  tbTransparencyTitle: 'Opacity of waypoint / leg / note label backgrounds',
+  tbTransparencyTitle: 'Opacity of waypoint label backgrounds',
   tbMapOpacity: 'Map opacity',
   tbMapOpacityTitle: 'Base map brightness',
   tbLegArrowSize: 'Leg arrow size',
@@ -1325,7 +1330,9 @@ var notams = null;          // null = not loaded; [] or populated once fetched
 var notamMeta = null;       // { generatedAt } of the loaded NOTAM file
 var notamBorders = null;    // null = not loaded; { LEBANON:[[ [lat,lng]... ]], ... } border arcs
 var showWpNames = true;     // draw waypoint names (off = empty circle)
-var yellowAlpha = 0.8;    // global multiplier for yellow label backgrounds (default 80%)
+var yellowAlpha = 0.5;    // opacity of waypoint label backgrounds (Label-opacity slider, default 50%)
+// Kite + note fill opacity is not a Display slider — it's the gist-overridable
+// tune key `kiteNoteAlpha` (see tuningDefaults), read via tune() in draw.js.
 var wpSize = 1;             // waypoint name / number text size scale
 var legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
 var legLineWidth = 0.5;     // leg route line width scale (0.5 ≈ 1.75 px of the 3.5 px route width)
@@ -1381,14 +1388,17 @@ function saveAircraft() {
 
 const DEFAULT_LABEL_FILL_COLOR = '#fff6aa';
 
-// Tinted fill from any "#rrggbb" hex — yellowAlpha controls the alpha.
-function tintFill(hex) {
+// Tinted fill from any "#rrggbb" hex. Alpha defaults to yellowAlpha (the
+// waypoint label-opacity slider); kite fills and note backgrounds pass
+// tune('kiteNoteAlpha') so their opacity is gist-tunable, not a Display slider.
+function tintFill(hex, alpha) {
+  const a = (typeof alpha === 'number') ? alpha : yellowAlpha;
   let h = (hex || DEFAULT_LABEL_FILL_COLOR).replace('#', '');
   if (!/^[0-9a-f]{6}$/i.test(h)) h = DEFAULT_LABEL_FILL_COLOR.replace('#', '');
   const r = parseInt(h.slice(0, 2), 16);
   const g = parseInt(h.slice(2, 4), 16);
   const b = parseInt(h.slice(4, 6), 16);
-  return `rgba(${r},${g},${b},${yellowAlpha})`;
+  return `rgba(${r},${g},${b},${a})`;
 }
 
 // Default text-background colour. yellowAlpha directly controls opacity.
