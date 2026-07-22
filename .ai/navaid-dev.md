@@ -344,12 +344,12 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   keep only non-preview domain invariants (for example Earth radius,
   storage keys, URLs) as hard-coded constants. Cover panel behavior in
   `tests/tuning-panel.spec.js`.
-- **Opacity sliders (Display):** two independent sliders. `tintFill(hex, a)`
-  builds `rgba(r,g,b, a)` where `a` defaults to `yellowAlpha` — the
-  **Label opacity** slider for waypoint label backgrounds
-  (`navaid.yellowAlpha`). The kite fills **and note backgrounds** pass
-  `kiteAlpha` instead — the **Kite / note opacity** slider for leg /
-  cumulative / return kites and notes (`navaid.kiteAlpha`).
+- **Opacity (Display):** `tintFill(hex, a)` builds `rgba(r,g,b, a)` where `a`
+  defaults to `yellowAlpha` — the **Label opacity** slider for waypoint label
+  backgrounds (`navaid.yellowAlpha`, default 0.5). Kite fills **and note
+  backgrounds** pass `tune('kiteNoteAlpha')` instead — there is no Display
+  slider for it; it is gist-only (default 0.5), adjustable in the hidden
+  `?tune` panel under Global palette.
 - **Magnetic variation:** hardcoded at `magVar = -5` in `core.js`
   (5°E variation for Israel). The user-facing Mag-var input was
   removed; the `navaid.magVar` localStorage key is no longer written
@@ -503,7 +503,7 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.bearing` — map bearing in degrees (rotated-map support).
 - `navaid.theme` — `'dark'` / `'light'` for toolbar and panel chrome.
 - `navaid.yellowAlpha` — Label-opacity slider value (waypoint labels).
-- `navaid.kiteAlpha` — Kite/note-opacity slider value (kites + note backgrounds).
+  (Kite/note opacity is not persisted here — it's the gist tune key `kiteNoteAlpha`.)
 - `navaid.mapOpacity.v2` — base-map opacity slider value.
 - `navaid.wpSize` — Text-size slider value.
 - `navaid.legArrowSize` — leg-arrow size slider value.

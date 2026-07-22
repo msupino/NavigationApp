@@ -208,23 +208,16 @@ test.describe('Sliders persist to localStorage', () => {
     expect(await av.textContent()).toBe('50%');
   });
 
-  test('kite opacity and label opacity are separate sliders', async ({ page }) => {
+  test('kite/note opacity is gist-only (no Display slider) and defaults to 0.5', async ({ page }) => {
     await boot(page);
-    // Both sliders present with their own value read-outs.
-    await expect(page.locator('#kite-alpha')).toHaveCount(1);
+    // The label-opacity slider stays; the kite/note one is not a Display slider.
     await expect(page.locator('#yellow-alpha')).toHaveCount(1);
-    // Move only the kite slider; the label-opacity global must not change.
-    const yellowBefore = await page.evaluate(() => window.yellowAlpha);
-    await page.locator('#kite-alpha').fill('30');
-    await page.locator('#kite-alpha').dispatchEvent('input');
-    expect(await page.evaluate(() => window.kiteAlpha)).toBeCloseTo(0.3, 5);
-    expect(await page.evaluate(() => window.yellowAlpha)).toBe(yellowBefore);
-    // …and vice-versa.
-    const kiteBefore = await page.evaluate(() => window.kiteAlpha);
-    await page.locator('#yellow-alpha').fill('60');
-    await page.locator('#yellow-alpha').dispatchEvent('input');
-    expect(await page.evaluate(() => window.yellowAlpha)).toBeCloseTo(0.6, 5);
-    expect(await page.evaluate(() => window.kiteAlpha)).toBe(kiteBefore);
+    await expect(page.locator('#kite-alpha')).toHaveCount(0);
+    // Kite/note opacity lives in the tune registry (gist-overridable), default 0.5.
+    expect(await page.evaluate(() => tune('kiteNoteAlpha'))).toBe(0.5);
+    // setTune (the path the gist uses) moves it.
+    await page.evaluate(() => setTune('kiteNoteAlpha', 0.2));
+    expect(await page.evaluate(() => tune('kiteNoteAlpha'))).toBe(0.2);
   });
 
   test('decimal sliders show toFixed(2) in value display', async ({ page }) => {

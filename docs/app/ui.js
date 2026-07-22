@@ -4199,11 +4199,6 @@ try {
   const v = parseFloat(localStorage.getItem(ALPHA_KEY));
   if (!isNaN(v)) window.yellowAlpha =Math.max(0, Math.min(1, v));
 } catch (e) { /* storage unavailable */ }
-const KITE_ALPHA_KEY = 'navaid.kiteAlpha';
-try {
-  const v = parseFloat(localStorage.getItem(KITE_ALPHA_KEY));
-  if (!isNaN(v)) window.kiteAlpha = Math.max(0, Math.min(1, v));
-} catch (e) { /* storage unavailable */ }
 function updateSliderVal(el, val) {
   const span = document.getElementById(el.id + '-val');
   if (span) span.textContent = val;
@@ -4237,18 +4232,6 @@ YELLOW_EL.oninput = e => {
   window.yellowAlpha =parseFloat(e.target.value) / 100;
   updateSliderVal(e.target, e.target.value + '%');
   try { localStorage.setItem(ALPHA_KEY, String(yellowAlpha)); }
-  catch (err) { /* storage unavailable */ }
-  draw();
-};
-
-const KITE_ALPHA_EL = document.getElementById('kite-alpha');
-KITE_ALPHA_EL.min = '0'; KITE_ALPHA_EL.max = '100'; KITE_ALPHA_EL.step = '5';
-KITE_ALPHA_EL.value = Math.round(kiteAlpha * 100);
-updateSliderVal(KITE_ALPHA_EL, KITE_ALPHA_EL.value + '%');
-KITE_ALPHA_EL.oninput = e => {
-  window.kiteAlpha = parseFloat(e.target.value) / 100;
-  updateSliderVal(e.target, e.target.value + '%');
-  try { localStorage.setItem(KITE_ALPHA_KEY, String(kiteAlpha)); }
   catch (err) { /* storage unavailable */ }
   draw();
 };
@@ -4354,7 +4337,7 @@ DRIFTLINEWIDTH_EL.oninput = e => {
   draw();
 };
 // Per-slider reset buttons for the Display section sliders.
-['yellow-alpha', 'kite-alpha', 'map-opacity', 'wp-size', 'leg-arrow-size', 'leg-line-width', 'drift-line-width']
+['yellow-alpha', 'map-opacity', 'wp-size', 'leg-arrow-size', 'leg-line-width', 'drift-line-width']
   .forEach(id => addSliderReset(document.getElementById(id)));
 // magVar is hardcoded at -5 (5°E) in core.js; the input was removed.
 

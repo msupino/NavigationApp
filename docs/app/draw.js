@@ -2649,7 +2649,7 @@ function drawLegs() {
     drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, formatAltitudeValue(leg.inboundAltitude, leg, 'inboundAltitude'),
-      tune('inkColor'), tintFill(tune('legKiteFillColor'), kiteAlpha), needsHalo(i, 'in'), zoomScale);
+      tune('inkColor'), tintFill(tune('legKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'in'), zoomScale);
     // Cumulative inbound time: < [time], position driven by leg.cumLabel
     // (default: at B waypoint, same perpendicular side as main kite).
     const defCum = { a: 0, _default: 1, _m: 1 };
@@ -2661,14 +2661,14 @@ function drawLegs() {
       const cumY = sb.y + dy * cumAlong + ny * cumPerp;
       drawCumTimeArrow(cumX, cumY,
         Math.atan2(sb.y - cumY, sb.x - cumX),
-        cumInStr, tune('inkColor'), tintFill(tune('cumKiteFillColor'), kiteAlpha), zoomScale);
+        cumInStr, tune('inkColor'), tintFill(tune('cumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale);
     }
 
     if (showReturn && legAllowsReturn(i)) {
       drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, formatAltitudeValue(leg.outboundAltitude, leg, 'outboundAltitude'),
-        tune('inkColor'), tintFill(tune('returnKiteFillColor'), kiteAlpha), needsHalo(i, 'out'), zoomScale);
+        tune('inkColor'), tintFill(tune('returnKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'out'), zoomScale);
       if (showCumTime) {
         // Cumulative return time kite at A waypoint (return destination).
         // Own offset (cumLabelRet), anchored at A with the same +dx/+nx frame
@@ -2681,7 +2681,7 @@ function drawLegs() {
         const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;
         drawCumTimeArrow(cumRetX, cumRetY,
           Math.atan2(sa.y - cumRetY, sa.x - cumRetX),
-          cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor'), kiteAlpha), zoomScale);
+          cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale);
       }
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
@@ -3270,7 +3270,7 @@ function drawNotes() {
       drawCommCallout(n, selected);
       continue;
     }
-    octx.fillStyle = tintFill(color, kiteAlpha);   // notes share the kite-opacity slider
+    octx.fillStyle = tintFill(color, tune('kiteNoteAlpha'));   // notes share the gist-tuned kite opacity
     octx.lineWidth = selected ? tune('noteSelectedStrokeWidthPx') : tune('noteStrokeWidthPx');
     octx.strokeStyle = selected ? tune('selectedColor') : tune('inkColor');
     if (r.oval) {
