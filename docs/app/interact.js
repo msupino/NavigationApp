@@ -2228,7 +2228,7 @@ function showInspector() {
           note.size = v;
           if (typeof persist === 'function') persist();
           draw();
-        }));
+        }, 1));   // ↻ resets note size to 1 (100%)
     }
     const del = document.createElement('button');
     del.className = 'insp-btn';
@@ -2458,7 +2458,7 @@ function selectRow(label, value, options, onChange) {
   row.append(l, sel);
   return row;
 }
-function rangeRow(label, value, min, max, step, format, onChange) {
+function rangeRow(label, value, min, max, step, format, onChange, defaultValue) {
   const row = document.createElement('div');
   row.className = 'row';
   const l = document.createElement('label');
@@ -2470,12 +2470,24 @@ function rangeRow(label, value, min, max, step, format, onChange) {
   const val = document.createElement('span');
   val.className = 'slider-val';
   val.textContent = format(value);
-  input.oninput = () => {
-    const v = parseFloat(input.value);
-    val.textContent = format(v);
-    onChange(v);
-  };
+  const apply = v => { val.textContent = format(v); onChange(v); };
+  input.oninput = () => apply(parseFloat(input.value));
   row.append(l, input, val);
+  // Optional ↻ reset to a default value.
+  if (typeof defaultValue === 'number') {
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'slider-reset';
+    reset.textContent = '↻';
+    reset.title = (typeof S !== 'undefined' && S.sliderReset) || 'Reset to default';
+    reset.setAttribute('aria-label', reset.title);
+    reset.onclick = e => {
+      e.preventDefault();
+      input.value = String(defaultValue);
+      apply(defaultValue);
+    };
+    row.appendChild(reset);
+  }
   return row;
 }
 function textareaRow(label, value, onChange) {

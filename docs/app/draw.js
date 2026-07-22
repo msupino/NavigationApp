@@ -3112,7 +3112,11 @@ function noteRect(i) {
   let w = Math.max(maxW + tune('notePadXPx') * sc * 2, minW);
   let h = Math.max(1, lines.length) * lineH + tune('notePadYPx') * sc * 2;
   const oval = n.shape === 'oval';
-  if (oval) { w *= Math.SQRT2; h *= Math.SQRT2; }   // ellipse must bound the text
+  // On screen the ellipse is grown by √2 so it bounds the text; on a framed
+  // export the oval is pinned to the same default box as the rectangle
+  // (notePrintWidthMm × notePrintHeightMm), so both note shapes print the same
+  // physical size.
+  if (oval && !ppm) { w *= Math.SQRT2; h *= Math.SQRT2; }
   return { x: s.x - w / 2, y: s.y - h / 2, w, h, lines, oval };
 }
 

@@ -50,6 +50,32 @@ test.describe('Note resize', () => {
     expect(after.h).toBeCloseTo(before.h * 2, 0);   // height scales with size
   });
 
+  test('the note size slider has a ↻ reset to default (100%)', async ({ page }) => {
+    await bootWithNote(page);
+    await page.evaluate(() => { state.notes[0].size = 2.5; state.selected = { type: 'note', index: 0 }; showInspector(); });
+    const reset = page.locator('#insp-body .row .slider-reset');
+    await expect(reset).toHaveCount(1);
+    await reset.click();
+    expect(await page.evaluate(() => state.notes[0].size)).toBe(1);
+  });
+
+  test('framed A4 export: an oval note prints the same box as a rectangle note', async ({ page }) => {
+    await bootWithNote(page);
+    const out = await page.evaluate(() => {
+      window.pageOrient = 'landscape';
+      if (pageSize !== 'A4') setPage('A4');
+      draw();
+      const fr = pageFrameRect(), paperW = 297;
+      NavAid._exportPxPerMm = fr.w / paperW;
+      state.notes[0].shape = 'oval'; const ov = noteRect(0);
+      state.notes[0].shape = 'rect'; const rc = noteRect(0);
+      NavAid._exportPxPerMm = 0;
+      return { ovW: ov.w, ovH: ov.h, rcW: rc.w, rcH: rc.h };
+    });
+    expect(out.ovW).toBeCloseTo(out.rcW, 1);
+    expect(out.ovH).toBeCloseTo(out.rcH, 1);
+  });
+
   test('a note grows and shrinks with the map zoom, like the leg kites', async ({ page }) => {
     await bootWithNote(page);
     const at = async z => page.evaluate(zz => {
