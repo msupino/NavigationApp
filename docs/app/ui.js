@@ -4219,7 +4219,10 @@ function addSliderReset(el) {
     e.preventDefault();
     e.stopPropagation();
     el.value = el.defaultValue;
+    // Fire both: many sliders live-update on 'input', but some (e.g. the
+    // wind-field altitude) do the real work — a refetch — on 'change'.
     el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
   };
   el.parentElement.appendChild(btn);
 }
@@ -4336,8 +4339,11 @@ DRIFTLINEWIDTH_EL.oninput = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
-// Per-slider reset buttons for the Display section sliders.
-['yellow-alpha', 'map-opacity', 'wp-size', 'leg-arrow-size', 'leg-line-width', 'drift-line-width']
+// Per-slider reset buttons for the Display section sliders + the magnifier
+// zoom and wind-field altitude sliders (each restores its HTML default value
+// and re-fires the slider's own input handler).
+['yellow-alpha', 'map-opacity', 'wp-size', 'leg-arrow-size', 'leg-line-width', 'drift-line-width',
+ 'mag-zoom', 'windfield-alt']
   .forEach(id => addSliderReset(document.getElementById(id)));
 // magVar is hardcoded at -5 (5°E) in core.js; the input was removed.
 

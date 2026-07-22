@@ -3191,6 +3191,13 @@ function showExportModal() {
   opVal.style.cssText = 'width:2.2em;text-align:right;font-size:12px';
   opVal.textContent = opSlider.value + '%';
   opacityRow.appendChild(opVal);
+  const opResetBtn = document.createElement('button');
+  opResetBtn.type = 'button';
+  opResetBtn.className = 'slider-reset';
+  opResetBtn.textContent = '↻';
+  opResetBtn.title = S.sliderReset || 'Reset to default';
+  opResetBtn.setAttribute('aria-label', opResetBtn.title);
+  opacityRow.appendChild(opResetBtn);
   body.appendChild(opacityRow);
 
   // Page-size warning.
@@ -3383,6 +3390,11 @@ function showExportModal() {
     mapOpacity = parseFloat(this.value) / 100;
     opVal.textContent = this.value + '%';
     applyMapOpacity();
+  };
+  opResetBtn.onclick = function (e) {
+    e.preventDefault();
+    opSlider.value = '80';                 // default map opacity (matches the toolbar slider)
+    opSlider.oninput();
   };
 
   function close() { removeCardDrag(); window.removeEventListener('keydown', onEsc); back.remove(); }
