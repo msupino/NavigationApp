@@ -3696,15 +3696,15 @@ function exportPNG() {
     const s = W / fr.w;
     const prevOctx = octx;
     octx = o;
-    // Fixed physical waypoint-disc size on a framed A4/A3 print. Drawing here is
-    // in screen coords (then scaled by s and printed at W/paperW px per mm), so
-    // a screen radius of (diaMm/2)·fr.w/paperW lands as exactly diaMm on paper.
-    // A4x2 renders the A3 sheet then slices it, so it uses the A3 paper width.
+    // Fixed physical symbol sizes on a framed A4/A3 print. Drawing here is in
+    // screen coords (then scaled by s and printed at W/paperW px per mm), so a
+    // screen length of mm·fr.w/paperW lands as exactly mm on paper. Expose that
+    // screen-px-per-mm so the waypoint disc and note rectangle can pin their
+    // physical size. A4x2 renders the A3 sheet then slices it → A3 paper width.
     if (framed && pageSize) {
       const pmm = pageSize === 'A4' ? [210, 297] : [297, 420];
       const paperWmm = pageOrient === 'portrait' ? pmm[0] : pmm[1];
-      const diaMm = (typeof tune === 'function') ? tune('waypointPrintDiaMm') : 7;
-      NavAid._exportWpRadiusPx = (diaMm / 2) * fr.w / paperWmm;
+      NavAid._exportPxPerMm = fr.w / paperWmm;
     }
     o.save();
     o.scale(s, s);
@@ -3729,7 +3729,7 @@ function exportPNG() {
       o.restore();
     } finally {
       octx = prevOctx;
-      NavAid._exportWpRadiusPx = 0;
+      NavAid._exportPxPerMm = 0;
     }
 
     // A4×2: the frame is A3-sized — slice it into two A4 tiles at the same

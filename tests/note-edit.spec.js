@@ -65,6 +65,29 @@ test.describe('Note resize', () => {
     expect(z14.w).toBeGreaterThan(z12.w);
   });
 
+  test('framed A4 export sizes a default note rectangle to 21 × 14 mm', async ({ page }) => {
+    await bootWithNote(page);
+    const out = await page.evaluate(() => {
+      // A short single-line note so the box sits at its default (min) size.
+      state.notes = [{ lat: 32.1, lng: 34.9, text: 'X', shape: 'rect' }];
+      window.pageOrient = 'landscape';
+      if (pageSize !== 'A4') setPage('A4');
+      draw();
+      const fr = pageFrameRect();
+      const paperW = 297;                        // A4 landscape width in mm
+      NavAid._exportPxPerMm = fr.w / paperW;     // screen px per paper mm
+      const r = noteRect(0);
+      NavAid._exportPxPerMm = 0;
+      // printed mm = screenPx * paperW / fr.w
+      return { wMm: r.w * paperW / fr.w, hMm: r.h * paperW / fr.w,
+               tw: tune('notePrintWidthMm'), th: tune('notePrintHeightMm') };
+    });
+    expect(out.tw).toBe(21);
+    expect(out.th).toBe(14);
+    expect(out.wMm).toBeCloseTo(21, 1);
+    expect(out.hMm).toBeCloseTo(14, 1);
+  });
+
   test('note size round-trips through serializeRoute', async ({ page }) => {
     await bootWithNote(page);
     const blob = await page.evaluate(() => {

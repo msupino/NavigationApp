@@ -2976,10 +2976,11 @@ function waypointGeom(i) {
   const label = showWpNames ? waypointDisplayLabel(wp, i) : '';
   const zoomScale = Math.max(tune('waypointMinZoomScale'), Math.pow(2, map.getZoom() - 12));
   // Framed A4/A3 export pins the disc to a fixed physical diameter
-  // (waypointPrintDiaMm) via NavAid._exportWpRadiusPx; on screen it stays the
+  // (waypointPrintDiaMm) via NavAid._exportPxPerMm; on screen it stays the
   // wpSize × zoom size. Derive `scale` from whichever radius applies so the
   // text still fits the disc.
-  const exportR = (window.NavAid && NavAid._exportWpRadiusPx) || 0;
+  const exportPpm = (window.NavAid && NavAid._exportPxPerMm) || 0;
+  const exportR = exportPpm ? (tune('waypointPrintDiaMm') / 2) * exportPpm : 0;
   const scale = exportR
     ? exportR / tune('waypointBaseRadiusPx')
     : wpSize * zoomScale;
@@ -3038,9 +3039,21 @@ function drawWaypoints() {
 // shrinks with the map zoom, on the same 2^(z-12) curve (clamped like
 // legZoomScale) the leg/nav kites use, so a note keeps its geographic footprint
 // relative to the kites it annotates instead of staying a fixed screen size.
-function noteScale(n) {
+function noteUserSize(n) {
   const s = Number(n && n.size);
-  const user = Number.isFinite(s) && s > 0 ? Math.max(0.5, Math.min(s, 4)) : 1;
+  return Number.isFinite(s) && s > 0 ? Math.max(0.5, Math.min(s, 4)) : 1;
+}
+function noteScale(n) {
+  const user = noteUserSize(n);
+  // Framed A4/A3 export pins a default (size-1) note to notePrintHeightMm tall:
+  // one line + top/bottom padding must span that many mm. printed mm =
+  // screenPx / (screen-px-per-mm), so pick the scale that makes the 1-line box
+  // equal to the target physical height. Screen size is unchanged.
+  const ppm = (window.NavAid && NavAid._exportPxPerMm) || 0;
+  if (ppm) {
+    const oneLinePx = tune('noteLineHeightPx') + tune('notePadYPx') * 2;
+    return user * (tune('notePrintHeightMm') * ppm) / oneLinePx;
+  }
   const zoom = (typeof map !== 'undefined' && map.getZoom)
     ? Math.max(0.35, Math.pow(2, map.getZoom() - 12)) : 1;
   return user * zoom;
@@ -3062,7 +3075,13 @@ function noteRect(i) {
     const w = octx.measureText(l || ' ').width;
     if (w > maxW) maxW = w;
   }
-  let w = Math.max(maxW + tune('notePadXPx') * sc * 2, tune('noteMinWidthPx') * sc);
+  // In framed export the default box is pinned to notePrintWidthMm wide (× the
+  // note's own size); on screen it's the usual noteMinWidthPx × scale floor.
+  const ppm = (window.NavAid && NavAid._exportPxPerMm) || 0;
+  const minW = ppm
+    ? tune('notePrintWidthMm') * ppm * noteUserSize(n)
+    : tune('noteMinWidthPx') * sc;
+  let w = Math.max(maxW + tune('notePadXPx') * sc * 2, minW);
   let h = Math.max(1, lines.length) * lineH + tune('notePadYPx') * sc * 2;
   const oval = n.shape === 'oval';
   if (oval) { w *= Math.SQRT2; h *= Math.SQRT2; }   // ellipse must bound the text

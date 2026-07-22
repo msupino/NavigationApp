@@ -37,15 +37,15 @@ test('framed A4 export sizes the waypoint disc to the tuned physical diameter (7
     draw();
     const fr = pageFrameRect();
     // On screen (no export override): the zoom/wpSize formula, not the print size.
-    NavAid._exportWpRadiusPx = 0;
+    NavAid._exportPxPerMm = 0;
     const screenR = waypointGeom(0).r;
     // Export pins the disc: draw() runs in screen coords, then scales by W/fr.w
     // and prints at W/paperW px per mm, so printed mm = r_screen * paperW / fr.w.
     const paperW = 297;                       // A4 landscape width in mm
     const diaMm = tune('waypointPrintDiaMm');
-    NavAid._exportWpRadiusPx = (diaMm / 2) * fr.w / paperW;
+    NavAid._exportPxPerMm = fr.w / paperW;    // screen px per paper mm
     const exportR = waypointGeom(0).r;
-    NavAid._exportWpRadiusPx = 0;
+    NavAid._exportPxPerMm = 0;
     return { diaMm, screenR, exportR, printedMm: exportR * paperW / fr.w * 2,
              expectScreenR: tune('waypointBaseRadiusPx') *
                Math.max(tune('waypointMinZoomScale'), Math.pow(2, map.getZoom() - 12)) };
