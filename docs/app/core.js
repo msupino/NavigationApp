@@ -1156,8 +1156,8 @@ window.S = Object.assign({
   tbPrintPageSize: 'Page size',
   tbOrientTitle: 'Orientation — click to toggle landscape / portrait',
   modalCloseTitle: 'Close',
-  tbPrint: '⬇ Save PNG',
-  tbPrintTitle: 'Save the framed map + route as a PNG',
+  tbPrint: '🖨 Print',
+  tbPrintTitle: 'Print or save the framed map + route as a PNG',
   tbMagnifier: '🔍 Magnifying glass (M)',
   tbMagnifierTitle: 'Magnifying glass (M) — zoomed view at cursor; +/− adjust loupe zoom while open',
   // Footer-button labels carry NO icon prefix: the button's own
