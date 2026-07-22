@@ -132,19 +132,21 @@ function drawHeadingLine(pos, hdg) {
   const px = -uy, py = ux;                    // unit perpendicular (screen)
 
   octx.save();
-  octx.lineCap = 'round';
+  octx.lineCap = 'butt';
   octx.lineJoin = 'round';
-  // the line
+  // the line — dashed so it reads clearly over a busy/coloured chart
   octx.beginPath();
   octx.moveTo(s.x, s.y);
   octx.lineTo(end.x, end.y);
-  octx.strokeStyle = colorWithAlpha(tune('liveHeadingLineColor'), 0.9);
+  octx.strokeStyle = colorWithAlpha(tune('liveHeadingLineColor'), 0.95);
   octx.lineWidth = tune('liveHeadingLineWidthPx');
+  octx.setLineDash([tune('liveHeadingDashPx'), tune('liveHeadingDashGapPx')]);
   octx.stroke();
+  octx.setLineDash([]);   // solid ticks below
 
   // cross-ticks + upright labels at each range mark
-  const tick = 7, gap = 6;
-  octx.font = 'bold 11px sans-serif';
+  const tick = tune('liveHeadingTickPx'), gap = tune('liveHeadingLabelGapPx');
+  octx.font = 'bold ' + tune('liveHeadingLabelPx') + 'px sans-serif';
   octx.textAlign = 'center';
   octx.textBaseline = 'middle';
   for (const nm of HEADING_LINE_MARKS_NM) {

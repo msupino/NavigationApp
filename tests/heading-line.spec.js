@@ -76,6 +76,24 @@ test('keeps the last heading when the GPS course goes null (stationary)', async 
   expect(frozen.heading).toBe(135); // frozen at the last valid course
 });
 
+test('every heading-line knob is registered and exposed in the tune menu', async ({ page }) => {
+  await boot(page);
+  const info = await page.evaluate(() => {
+    const keys = ['liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingLineWidthPx',
+      'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx',
+      'liveHeadingLabelPx', 'liveHeadingLabelGapPx'];
+    const group = NavAid.tuningGroups.find(g => g.name === 'Live aircraft');
+    return {
+      registered: keys.every(k => NavAid.tuningDefaults[k]),
+      inMenu: keys.every(k => group && group.keys.includes(k)),
+      color: tune('liveHeadingLineColor'),
+    };
+  });
+  expect(info.registered).toBe(true);
+  expect(info.inMenu).toBe(true);
+  expect(info.color.toLowerCase()).toBe('#e53935'); // red default, not yellow
+});
+
 test('draws nothing when there has never been a valid heading', async ({ page }) => {
   await boot(page);
   const none = await page.evaluate(() => {
