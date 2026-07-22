@@ -2649,7 +2649,7 @@ function drawLegs() {
     drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, formatAltitudeValue(leg.inboundAltitude, leg, 'inboundAltitude'),
-      tune('inkColor'), tintFill(tune('legKiteFillColor')), needsHalo(i, 'in'), zoomScale);
+      tune('inkColor'), tintFill(tune('legKiteFillColor'), kiteAlpha), needsHalo(i, 'in'), zoomScale);
     // Cumulative inbound time: < [time], position driven by leg.cumLabel
     // (default: at B waypoint, same perpendicular side as main kite).
     const defCum = { a: 0, _default: 1, _m: 1 };
@@ -2661,14 +2661,14 @@ function drawLegs() {
       const cumY = sb.y + dy * cumAlong + ny * cumPerp;
       drawCumTimeArrow(cumX, cumY,
         Math.atan2(sb.y - cumY, sb.x - cumX),
-        cumInStr, tune('inkColor'), tintFill(tune('cumKiteFillColor')), zoomScale);
+        cumInStr, tune('inkColor'), tintFill(tune('cumKiteFillColor'), kiteAlpha), zoomScale);
     }
 
     if (showReturn && legAllowsReturn(i)) {
       drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, formatAltitudeValue(leg.outboundAltitude, leg, 'outboundAltitude'),
-        tune('inkColor'), tintFill(tune('returnKiteFillColor')), needsHalo(i, 'out'), zoomScale);
+        tune('inkColor'), tintFill(tune('returnKiteFillColor'), kiteAlpha), needsHalo(i, 'out'), zoomScale);
       if (showCumTime) {
         // Cumulative return time kite at A waypoint (return destination).
         // Own offset (cumLabelRet), anchored at A with the same +dx/+nx frame
@@ -2681,7 +2681,7 @@ function drawLegs() {
         const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;
         drawCumTimeArrow(cumRetX, cumRetY,
           Math.atan2(sa.y - cumRetY, sa.x - cumRetX),
-          cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor')), zoomScale);
+          cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor'), kiteAlpha), zoomScale);
       }
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);

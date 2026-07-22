@@ -1,7 +1,7 @@
 // @ts-check
-// Test tintFill hex-to-rgba conversion and that superfluous arguments are
-// ignored (CodeQL alert #34 — the old call passed a second alpha argument
-// that was silently dropped).
+// Test tintFill hex-to-rgba conversion. The optional second argument is the
+// alpha (used by the kite fills so their opacity is independent of the
+// waypoint/label yellowAlpha slider); when omitted it defaults to yellowAlpha.
 const { test, expect } = require('./_setup');
 
 test.describe('tintFill utility', () => {
@@ -15,12 +15,15 @@ test.describe('tintFill utility', () => {
     expect(rgba).toMatch(/^rgba\(255,\s*204,\s*51,\s*[\d.]+\)$/);
   });
 
-  test('extra arguments are ignored', async ({ page }) => {
+  test('the second argument sets the alpha (defaults to yellowAlpha)', async ({ page }) => {
     const result = await page.evaluate(() => ({
-      one: tintFill('#ffcc33'),
-      two: tintFill('#ffcc33', 0.95),
+      def: tintFill('#ffcc33'),
+      explicit: tintFill('#ffcc33', 0.3),
+      matchesYellow: tintFill('#ffcc33', window.yellowAlpha),
     }));
-    expect(result.two).toBe(result.one);
+    // Explicit alpha is honoured, and matches the "no arg" case when equal to yellowAlpha.
+    expect(result.explicit).toBe('rgba(255,204,51,0.3)');
+    expect(result.matchesYellow).toBe(result.def);
   });
 
   test('returns yellowFill for missing or invalid hex', async ({ page }) => {
