@@ -41,13 +41,13 @@ test.describe('Note resize', () => {
     // The range input in the note inspector is the size slider.
     await page.evaluate(() => {
       const inp = document.querySelector('#insp-body input[type=range]');
-      inp.value = '2';
+      inp.value = '1.5';                       // top of the symmetric 0.5–1.5 range
       inp.dispatchEvent(new Event('input', { bubbles: true }));
     });
-    expect(await page.evaluate(() => state.notes[0].size)).toBe(2);
+    expect(await page.evaluate(() => state.notes[0].size)).toBe(1.5);
     const after = await page.evaluate(() => { const r = noteRect(0); return { w: r.w, h: r.h }; });
     expect(after.w).toBeGreaterThan(before.w);
-    expect(after.h).toBeCloseTo(before.h * 2, 0);   // height scales with size
+    expect(after.h).toBeCloseTo(before.h * 1.5, 0);   // height scales with size
   });
 
   test('the note size slider has a ↻ reset to default (100%)', async ({ page }) => {

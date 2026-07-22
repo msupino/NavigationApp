@@ -2223,7 +2223,7 @@ function showInspector() {
         note.color = v; draw();
       }));
       body.appendChild(rangeRow(S.noteSize || 'Size',
-        Number.isFinite(note.size) ? note.size : 1, 0.5, 3, 0.25,
+        Number.isFinite(note.size) ? note.size : 1, 0.5, 1.5, 0.25,   // symmetric → default 100% sits mid-track
         v => Math.round(v * 100) + '%', v => {
           note.size = v;
           if (typeof persist === 'function') persist();
