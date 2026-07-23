@@ -1568,6 +1568,11 @@ function setPage(size) {
   if (pageSize === size) {             // same button toggles the frame off
     pageSize = null;
     try { localStorage.removeItem('navaid.pageSize'); } catch (e) { /* */ }
+    // The flight-plan card is anchored to the page frame — with no frame there
+    // is nothing to place it in, so drop it and re-lock the export checkbox.
+    window.planCard = null;
+    const pcb = document.getElementById('export-plan-cb');
+    if (pcb) { pcb.checked = false; pcb.disabled = true; }
     applyPage();
     refreshPageButtons();
     return;
@@ -1579,6 +1584,10 @@ function setPage(size) {
   pageSize = size;
   pageOffset = { x: 0, y: 0 };
   try { localStorage.setItem('navaid.pageSize', pageSize); } catch (e) { /* */ }
+  // A frame now exists: unlock the export panel's plan-card checkbox if the
+  // panel is open and the route has legs to tabulate.
+  const pcb = document.getElementById('export-plan-cb');
+  if (pcb) pcb.disabled = !(state.legs && state.legs.length);
   applyPage();
   fitPageFrame();
   refreshPageButtons();
@@ -3063,14 +3072,18 @@ function buildExportPanel(container) {
   const planLabel = document.createElement('label');
   planLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
   planLabel.title = S.exportPlanPlaceTitle || '';
+  const hasLegs = !!(state.legs && state.legs.length);
   const planCb = document.createElement('input');
   planCb.type = 'checkbox';
   planCb.id = 'export-plan-cb';
   planCb.checked = false;
-  planCb.disabled = !pageSize;                 // needs a page frame to anchor
+  // Needs a page frame to anchor AND at least one leg (the plan table is empty
+  // without legs, so there is nothing to place).
+  planCb.disabled = !pageSize || !hasLegs;
   planLabel.appendChild(planCb);
   planLabel.appendChild(document.createTextNode(
-    pageSize ? S.exportPlanPlace : (S.exportPlanNoFrame || S.exportPlanPlace)));
+    !hasLegs ? (S.exportPlanNoLegs || S.exportPlanPlace)
+             : (pageSize ? S.exportPlanPlace : (S.exportPlanNoFrame || S.exportPlanPlace))));
   body.appendChild(planLabel);
 
   // Reference VOR selector — pick a VOR; its station + radial/DME lines to the
@@ -3265,10 +3278,13 @@ function buildExportPanel(container) {
   window.planCard = null;                              // fresh each open
   planCb.onchange = function () {
     const fr0 = pageFrameRect();
-    if (planCb.checked) {
-      window.planCard = fr0 ? { x: fr0.x + 14, y: fr0.y + 14, scale: 1 } : { x: 40, y: 40, scale: 1 };
+    // The card only exists with a page frame to anchor it — never place one
+    // frameless (guards against a checked box with no A3/A4 selected).
+    if (planCb.checked && fr0) {
+      window.planCard = { x: fr0.x + 14, y: fr0.y + 14, scale: 1 };
     } else {
       window.planCard = null;
+      if (!fr0) planCb.checked = false;
     }
     vorRow.style.display = planCb.checked ? '' : 'none';   // VOR drives plan-card columns only
     draw();

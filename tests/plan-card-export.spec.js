@@ -54,6 +54,30 @@ test('export panel: plan checkbox is gated on a page frame', async ({ page }) =>
   await expect(page.locator('#export-plan-cb')).toBeEnabled();
 });
 
+test('plan checkbox is disabled with no route legs (even with a page frame)', async ({ page }) => {
+  await boot(page);
+  // A single waypoint = no legs; the plan table would be empty.
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.18, lng: 34.83, name: 'LLHZ' }];
+    state.legs = []; syncLegs(); setPage('A4'); draw();
+  });
+  await page.evaluate(() => openExportPanel());
+  await expect(page.locator('#export-plan-cb')).toBeDisabled();
+});
+
+test('removing the page frame drops a placed card and re-locks the checkbox', async ({ page }) => {
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => { setPage('A4'); draw(); openExportPanel(); });
+  await page.locator('#export-plan-cb').check();
+  expect(await page.evaluate(() => !!planCard)).toBe(true);
+  // Toggle the A4 frame off → the card has nothing to anchor to.
+  await page.evaluate(() => { setPage('A4'); draw(); });   // same size toggles it off
+  expect(await page.evaluate(() => pageFrameRect())).toBeNull();
+  expect(await page.evaluate(() => planCard)).toBeNull();
+  await expect(page.locator('#export-plan-cb')).toBeDisabled();
+});
+
 test('checking the box places a card; it clears when the section closes', async ({ page }) => {
   await boot(page);
   await route(page);
