@@ -4693,6 +4693,10 @@ function refreshMapAfterToolbarModeChange() {
   }
   document.addEventListener('pointerdown', e => {
     if (e.target && e.target.closest && e.target.closest('#toolbar')) return;
+    // The Print panel's flight-plan card is dragged on the map: a pointerdown
+    // on the map is the start of that drag, not a "click outside to dismiss".
+    // Keep the section open while a card is placed so the drag can proceed.
+    if (window.planCard) return;
     if (toolbarUsesDesktopMenu()) {
       if (toolbar && toolbar.classList.contains('multi-open')) return;
       closeDesktopMenus();
@@ -4705,6 +4709,7 @@ function refreshMapAfterToolbarModeChange() {
   document.addEventListener('click', e => {
     if (toolbarUsesDesktopMenu()) return;
     if (e.target && e.target.closest && e.target.closest('#toolbar')) return;
+    if (window.planCard) return;            // placing the flight-plan card — see above
     if (anySectionOpen()) window.closeToolbarMenus();
   });
   document.addEventListener('keydown', e => {

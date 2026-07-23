@@ -170,6 +170,41 @@ test('the default card lands clear of the open Print panel (grabbable on the map
   expect(hit.inToolbar).toBe(false);
 });
 
+test('grabbing the card on the map does not close the open Print section', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 1000 });
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => { setPage('A4'); draw(); openExportPanel(); });
+  await page.locator('#export-plan-cb').check();
+  // A pointerdown on the map starts the card drag. The document-level
+  // "click outside → close menu" handlers must NOT fire while a card is placed,
+  // or the section collapses mid-grab and the card disappears.
+  const res = await page.evaluate(() => {
+    const mapEl = map.getContainer();
+    const box = mapEl.getBoundingClientRect();
+    const r = planCardRect;
+    const sx = box.left + r.x + 20, sy = box.top + r.y + 10;
+    const before = { x: planCard.x, y: planCard.y };
+    const fire = (type, cx, cy) => {
+      mapEl.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX: cx, clientY: cy }));
+      window.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX: cx, clientY: cy }));
+    };
+    // Also fire the pointerdown that used to trip the close handler.
+    mapEl.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: sx, clientY: sy }));
+    fire('mousedown', sx, sy);
+    fire('mousemove', sx, sy + 120);
+    fire('mouseup', sx, sy + 120);
+    return {
+      sectionOpen: document.querySelector('[data-sec="print"]').classList.contains('open'),
+      cardStill: !!planCard,
+      movedDown: planCard && planCard.y > before.y + 40,
+    };
+  });
+  expect(res.sectionOpen).toBe(true);   // section stayed open through the grab
+  expect(res.cardStill).toBe(true);     // card not dropped
+  expect(res.movedDown).toBe(true);     // and it actually dragged
+});
+
 test('export VOR selector shows only when the flight-plan card is added', async ({ page }) => {
   await page.setViewportSize({ width: 1400, height: 1000 });
   await boot(page);
