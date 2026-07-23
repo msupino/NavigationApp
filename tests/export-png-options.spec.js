@@ -41,7 +41,7 @@ test.describe('Export PNG options panel', () => {
     timeout: process.env.EXPECTED_SHA ? 120_000 : 60_000,
   });
 
-  test('Panel opens with checkboxes defaulted and layer defaulting to Navigation', async ({ page }) => {
+  test('Panel opens mirroring the live map state; layer reflects the current base', async ({ page }) => {
     await boot(page);
     // Need a route so exportPNG doesn't NOP; the panel should show regardless.
     await page.evaluate(wps => {
@@ -49,20 +49,28 @@ test.describe('Export PNG options panel', () => {
       syncLegs(); draw();
     }, pairLLHZ_LLHA());
     await openPanel(page);
-    // 6 checkboxes: Waypoint Names (on), Drift Lines (on), Cumulative time (on),
-    // Nav WPs (off), Airfields (off), Place flight plan (off, disabled w/o frame).
     const cbs = page.locator('#export-panel input[type="checkbox"]');
     expect(await cbs.count()).toBe(6);
-    expect(await cbs.nth(0).isChecked()).toBe(true);   // Waypoint Names default on
-    expect(await cbs.nth(1).isChecked()).toBe(true);   // Drift Lines default on
-    expect(await cbs.nth(2).isChecked()).toBe(true);   // Cumulative time default on
-    expect(await cbs.nth(3).isChecked()).toBe(false);  // Nav WPs
-    expect(await cbs.nth(4).isChecked()).toBe(false);  // Airfields
-    expect(await cbs.nth(5).isChecked()).toBe(false);  // Place flight plan
-    expect(await cbs.nth(5).isDisabled()).toBe(true);  // disabled until a page frame is set
-    // Layer defaults to Navigation.
+    // The first five overlay checkboxes mirror the live globals exactly (the
+    // live-settings model applies no forced export defaults).
+    const live = await page.evaluate(() => ({
+      wpNames: showWpNames, drift: showDrift, cum: showCumTime,
+      navWP: showNavWP, af: showAirfields,
+    }));
+    expect(await cbs.nth(0).isChecked()).toBe(live.wpNames);
+    expect(await cbs.nth(1).isChecked()).toBe(live.drift);
+    expect(await cbs.nth(2).isChecked()).toBe(live.cum);
+    expect(await cbs.nth(3).isChecked()).toBe(live.navWP);
+    expect(await cbs.nth(4).isChecked()).toBe(live.af);
+    // Plan-card checkbox: off + disabled until a page frame is set.
+    expect(await cbs.nth(5).isChecked()).toBe(false);
+    expect(await cbs.nth(5).isDisabled()).toBe(true);
+    // Layer selector reflects the current base layer (Navigation on fresh boot).
     const sel = page.locator('#export-layer-select');
-    expect(await sel.inputValue()).toBe('Navigation');
+    expect(await sel.inputValue()).toBe(await page.evaluate(() => {
+      for (const n in layers) if (map.hasLayer(layers[n])) return n;
+      return 'Navigation';
+    }));
     // Two action buttons: Export + Print.
     expect(await page.locator('#export-panel .export-panel-btns button').count()).toBe(2);
     // Closing the section tears the panel down.
@@ -70,29 +78,34 @@ test.describe('Export PNG options panel', () => {
     await expect(page.locator('#export-panel .export-panel-btns button')).toHaveCount(0);
   });
 
-  test('Export with defaults uses Navigation layer', async ({ page }) => {
+  test('Export from the panel downloads a PNG for the current layer', async ({ page }) => {
     await boot(page);
     await page.locator('#layer-select').selectOption('OpenStreetMap');
     await page.evaluate(wps => {
       state.waypoints = wps;
       syncLegs(); draw();
     }, pairLLHZ_LLHA());
-    // Open panel, leave defaults, click Export.
+    // Panel mirrors the current (OSM) layer; Export downloads it.
     const dl = page.waitForEvent('download', { timeout: 30000 });
     await openPanel(page);
+    expect(await page.locator('#export-layer-select').inputValue()).toBe('OpenStreetMap');
     await page.locator('#export-panel .export-panel-btns button').first().click();
     const download = await dl;
     expect(download.suggestedFilename()).toMatch(/^navigation-.+\.png$/);
   });
 
-  test('Live preview: panel defaults hide waypoints/airfields immediately', async ({ page }) => {
+  test('Panel mirrors the current map state on open (no forced defaults)', async ({ page }) => {
     await boot(page);
-    // Turn waypoints and airfields on so we can verify the panel hides them.
+    // Turn waypoints and airfields on; the live-settings panel must reflect
+    // that state, not override it with export defaults.
     await page.evaluate(() => { showNavWP = true; showAirfields = true; draw(); });
     await openPanel(page);
-    // Default state applied: both should be false now.
-    expect(await page.evaluate(() => showNavWP)).toBe(false);
-    expect(await page.evaluate(() => showAirfields)).toBe(false);
+    const cbs = page.locator('#export-panel input[type="checkbox"]');
+    expect(await cbs.nth(3).isChecked()).toBe(true);   // Nav WPs mirrors the map
+    expect(await cbs.nth(4).isChecked()).toBe(true);   // Airfields mirrors the map
+    // The map state is untouched by opening the panel.
+    expect(await page.evaluate(() => showNavWP)).toBe(true);
+    expect(await page.evaluate(() => showAirfields)).toBe(true);
   });
 
   test('Live preview: toggling checkbox updates the map immediately', async ({ page }) => {
@@ -111,48 +124,48 @@ test.describe('Export PNG options panel', () => {
     expect(await page.evaluate(() => showAirfields)).toBe(true);
   });
 
-  test('Closing the section restores original waypoints/airfields state', async ({ page }) => {
+  test('A panel toggle sticks after the section closes and syncs the toolbar', async ({ page }) => {
     await boot(page);
-    // Starting with both visible.
-    await page.evaluate(() => { showNavWP = true; showAirfields = true; draw(); });
+    // Start with nav waypoints hidden.
+    await page.evaluate(() => { showNavWP = false; draw(); });
     await openPanel(page);
-    // Panel hides them (default). Toggle waypoints on (idx 3 = Nav WPs).
+    // Turn Nav WPs on via the panel (idx 3).
     await page.locator('#export-panel input[type="checkbox"]').nth(3).check();
     expect(await page.evaluate(() => showNavWP)).toBe(true);
-    // Close the section → restore original (both true).
+    // Live setting: persisted + the View toolbar checkbox mirrors it.
+    expect(await page.evaluate(() => localStorage.getItem('navaid.showNavWP'))).toBe('1');
+    expect(await page.locator('#navwp-cb').isChecked()).toBe(true);
+    // Close the section → the change is kept (no revert).
     await closePanel(page);
     await expect(page.locator('#export-panel .export-panel-btns button')).toHaveCount(0);
     expect(await page.evaluate(() => showNavWP)).toBe(true);
-    expect(await page.evaluate(() => showAirfields)).toBe(true);
   });
 
-  test('Closing the section restores original layer', async ({ page }) => {
+  test('A layer change from the panel sticks after the section closes', async ({ page }) => {
     await boot(page);
-    await page.locator('#layer-select').selectOption('OpenStreetMap');
     await page.evaluate(wps => {
       state.waypoints = wps;
       syncLegs(); draw();
     }, pairLLHZ_LLHA());
-    // Verify we're on OSM.
-    expect(await page.locator('#layer-select').inputValue()).toBe('OpenStreetMap');
-    // Open panel (defaults to Navigation), then close the section.
     await openPanel(page);
+    // Switch the base layer via the panel selector.
+    await page.locator('#export-layer-select').selectOption('OpenStreetMap');
+    // Close → the map stays on OSM and the toolbar selector mirrors it.
     await closePanel(page);
-    // Back to OSM.
     expect(await page.locator('#layer-select').inputValue()).toBe('OpenStreetMap');
   });
 
-  test('Reopening the panel rebuilds it with defaults restored', async ({ page }) => {
+  test('Reopening the panel reflects the persisted (kept) state', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => { showNavWP = true; draw(); });
     await openPanel(page);
     // Toggle Nav WPs off in the panel (idx 3).
     await page.locator('#export-panel input[type="checkbox"]').nth(3).uncheck();
     expect(await page.evaluate(() => showNavWP)).toBe(false);
-    // Close → original state restored.
+    // Close → the change is kept.
     await closePanel(page);
-    expect(await page.evaluate(() => showNavWP)).toBe(true);
-    // Reopen → freshly built panel re-applies its defaults (Nav WPs off again).
+    expect(await page.evaluate(() => showNavWP)).toBe(false);
+    // Reopen → the panel mirrors the kept state (still off).
     await openPanel(page);
     expect(await page.locator('#export-panel input[type="checkbox"]').nth(3).isChecked()).toBe(false);
     expect(await page.evaluate(() => showNavWP)).toBe(false);

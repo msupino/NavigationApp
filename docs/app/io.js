@@ -3013,7 +3013,7 @@ function buildExportPanel(container) {
   wpNameLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
   const wpNameCb = document.createElement('input');
   wpNameCb.type = 'checkbox';
-  wpNameCb.checked = true;
+  wpNameCb.checked = showWpNames;              // live setting — mirrors the map
   wpNameLabel.appendChild(wpNameCb);
   wpNameLabel.appendChild(document.createTextNode(S.exportShowWpNames));
   body.appendChild(wpNameLabel);
@@ -3023,7 +3023,7 @@ function buildExportPanel(container) {
   driftLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
   const driftCb = document.createElement('input');
   driftCb.type = 'checkbox';
-  driftCb.checked = true;
+  driftCb.checked = showDrift;                 // live setting — mirrors the map
   driftLabel.appendChild(driftCb);
   driftLabel.appendChild(document.createTextNode(S.exportShowDrift));
   body.appendChild(driftLabel);
@@ -3033,7 +3033,7 @@ function buildExportPanel(container) {
   cumLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
   const cumCb = document.createElement('input');
   cumCb.type = 'checkbox';
-  cumCb.checked = true;
+  cumCb.checked = showCumTime;                 // live setting — mirrors the map
   cumLabel.appendChild(cumCb);
   cumLabel.appendChild(document.createTextNode(
     S.exportShowCumTime || S.tbShowCumTime || 'Show cumulative time'));
@@ -3044,7 +3044,7 @@ function buildExportPanel(container) {
   navWpLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
   const navWpCb = document.createElement('input');
   navWpCb.type = 'checkbox';
-  navWpCb.checked = false;
+  navWpCb.checked = showNavWP;                 // live setting — mirrors the map
   navWpLabel.appendChild(navWpCb);
   navWpLabel.appendChild(document.createTextNode(S.exportShowNavWP));
   body.appendChild(navWpLabel);
@@ -3054,7 +3054,7 @@ function buildExportPanel(container) {
   afLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer';
   const afCb = document.createElement('input');
   afCb.type = 'checkbox';
-  afCb.checked = false;
+  afCb.checked = showAirfields;                // live setting — mirrors the map
   afLabel.appendChild(afCb);
   afLabel.appendChild(document.createTextNode(S.exportShowAirfields));
   body.appendChild(afLabel);
@@ -3133,11 +3133,15 @@ function buildExportPanel(container) {
   const layerSel = document.createElement('select');
   layerSel.id = 'export-layer-select';
   layerSel.style.cssText = 'font:inherit;font-size:12px;flex:1';
+  const curLayerName = (function () {
+    for (const n in layers) if (map.hasLayer(layers[n])) return n;
+    return 'Navigation';
+  })();
   for (const name in layers) {
     const opt = document.createElement('option');
     opt.value = name;
     opt.textContent = (S.layerLabels && S.layerLabels[name]) || name;
-    if (name === 'Navigation') opt.selected = true;
+    if (name === curLayerName) opt.selected = true;   // live setting — mirrors the map
     layerSel.appendChild(opt);
   }
   layerRow.appendChild(layerSel);
@@ -3184,30 +3188,12 @@ function buildExportPanel(container) {
 
   box.appendChild(body);
 
-  // Save original state (before applying defaults) so Cancel can restore.
-  const origNavWP = showNavWP;
-  const origAirfields = showAirfields;
-  const origWpNames = showWpNames;
-  const origDrift = showDrift;
-  const origCumTime = showCumTime;
-  const origMapOpacity = mapOpacity;
-  const origLayer = (function () {
-    for (const n in layers) if (map.hasLayer(layers[n])) return n;
-    return null;
-  })();
-
-  // Apply the modal's default state immediately so the user sees what
-  // the PNG will look like before touching any control.
-  showNavWP = navWpCb.checked;
-  showWpNames = wpNameCb.checked;
-  showDrift = driftCb.checked;
-  showCumTime = cumCb.checked;
-  showAirfields = afCb.checked;
-  const chosen = layerSel.value;
-  if (chosen !== origLayer) {
-    for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
-    map.addLayer(layers[chosen]);
-  }
+  // Live-settings model: the panel controls ARE the map's settings (same
+  // globals + localStorage keys as the View/Display toolbar toggles), so the
+  // panel mirrors the current map on open and every change sticks. Nothing is
+  // snapshotted and nothing is reverted — collapsing the section only tears
+  // down the export-only plan card. draw() below just repaints from the
+  // already-current state.
   draw();
 
   // Button: Export (save the framed PNG).
@@ -3219,45 +3205,47 @@ function buildExportPanel(container) {
   printBtn.textContent = S.printBtn || 'Print';
   printBtn.title = S.printBtnTitle || 'Open the print dialog at true physical size';
 
-  function restoreOrig() {
-    showNavWP = origNavWP;
-    showWpNames = origWpNames;
-    showDrift = origDrift;
-    showCumTime = origCumTime;
-    showAirfields = origAirfields;
-    const cur = (function () {
-      for (const n in layers) if (map.hasLayer(layers[n])) return n;
-      return null;
-    })();
-    if (cur !== origLayer) {
-      for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
-      if (origLayer) map.addLayer(layers[origLayer]);
-    }
-    mapOpacity = origMapOpacity;
-    applyMapOpacity();
-    window.planCard = null;            // drop the placed card (export already captured it)
+  // The plan card is an export-only overlay (not a persisted map setting), so
+  // it is the one thing dropped when the section collapses.
+  function teardown() {
+    window.planCard = null;
     draw();
   }
 
-  // Live preview: apply changes to the map immediately.
+  // Live settings: each toggle writes the real global + its localStorage key
+  // (so the change sticks after the section closes and across reloads) and
+  // keeps the matching View/Display toolbar checkbox in sync. `persistToggle`
+  // does the storage write; `sync` mirrors a toolbar checkbox.
+  function persistToggle(key, val) {
+    try { localStorage.setItem(key, val ? '1' : '0'); } catch (e) { /* storage unavailable */ }
+  }
+  function sync(id, val) {
+    const cb = document.getElementById(id);
+    if (cb) cb.checked = val;
+  }
   navWpCb.onchange = function () {
-    showNavWP = navWpCb.checked;
+    window.showNavWP = navWpCb.checked;
+    persistToggle('navaid.showNavWP', showNavWP); sync('navwp-cb', showNavWP);
     draw();
   };
   wpNameCb.onchange = function () {
-    showWpNames = wpNameCb.checked;
+    window.showWpNames = wpNameCb.checked;
+    persistToggle('navaid.showWpNames', showWpNames); sync('wpname-cb', showWpNames);
     draw();
   };
   driftCb.onchange = function () {
-    showDrift = driftCb.checked;
+    window.showDrift = driftCb.checked;
+    persistToggle('navaid.showDrift', showDrift); sync('drift-cb', showDrift);
     draw();
   };
   cumCb.onchange = function () {
-    showCumTime = cumCb.checked;
+    window.showCumTime = cumCb.checked;
+    persistToggle('navaid.showCumTime', showCumTime); sync('cumtime-cb', showCumTime);
     draw();
   };
   afCb.onchange = function () {
-    showAirfields = afCb.checked;
+    window.showAirfields = afCb.checked;
+    persistToggle('navaid.showAirfields', showAirfields); sync('airfield-cb', showAirfields);
     draw();
   };
 
@@ -3360,12 +3348,20 @@ function buildExportPanel(container) {
     for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
     map.addLayer(layers[chosen]);
     applyMapOpacity();
+    try { localStorage.setItem('navaid.layer', chosen); } catch (e) { /* storage unavailable */ }
+    const tbLayer = document.getElementById('layer-select');   // keep the toolbar in sync
+    if (tbLayer) tbLayer.value = chosen;
   };
 
   opSlider.oninput = function () {
-    mapOpacity = parseFloat(this.value) / 100;
+    window.mapOpacity = parseFloat(this.value) / 100;
     opVal.textContent = this.value + '%';
     applyMapOpacity();
+    // Live setting: persist + sync the View toolbar's map-opacity slider.
+    try { localStorage.setItem('navaid.mapOpacity.v2', String(mapOpacity)); }
+    catch (e) { /* storage unavailable */ }
+    const tbOp = document.getElementById('map-opacity');
+    if (tbOp) { tbOp.value = this.value; if (typeof updateSliderVal === 'function') updateSliderVal(tbOp, this.value + '%'); }
   };
   opResetBtn.onclick = function (e) {
     e.preventDefault();
@@ -3373,9 +3369,8 @@ function buildExportPanel(container) {
     opSlider.oninput();
   };
 
-  // Export / Print render from the live panel state and leave the preview in
-  // place (the panel stays open); the map is restored when the Print section is
-  // collapsed via the returned restore().
+  // Live-settings model: Export / Print render from the current map state and
+  // leave everything exactly as it is (the panel's changes have already stuck).
   exportBtn.onclick = () => { exportPNG(); };
   printBtn.onclick = () => { exportPNG('print'); };
 
@@ -3385,7 +3380,9 @@ function buildExportPanel(container) {
   container.appendChild(box);
 
   return {
-    restore() { removeCardDrag(); restoreOrig(); container.innerHTML = ''; },
+    // Live-settings model: closing the section keeps every map change the panel
+    // made; only the export-only plan card + its drag handlers are torn down.
+    restore() { removeCardDrag(); teardown(); container.innerHTML = ''; },
   };
 }
 
