@@ -119,4 +119,27 @@ test.describe('Note resize', () => {
     const blob1 = await page.evaluate(() => { state.notes[0].size = 1; return serializeRoute(); });
     expect('size' in blob1.notes[0]).toBe(false);
   });
+
+  test('a selected item takes drag precedence over an overlapping chooser', async ({ page }) => {
+    await bootWithNote(page);
+    const out = await page.evaluate(() => {
+      state.waypoints = [{ lat: 32.2, lng: 34.88, name: 'A' }, { lat: 32.55, lng: 34.92, name: 'B' }];
+      syncLegs(); fitView();
+      state.notes = [{ lat: 32.38, lng: 34.9, text: 'NOTE' }];
+      state.selected = { type: 'note', index: 0 };
+      draw();
+      const r = noteRect(0), cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+      const onIt = grabSelected(cx, cy, map.containerPointToLatLng([cx, cy]));
+      const away = (() => {
+        const ax = r.x + r.w + 300, ay = r.y + r.h + 300;
+        return grabSelected(ax, ay, map.containerPointToLatLng([ax, ay]));
+      })();
+      state.selected = null;
+      const none = grabSelected(cx, cy, map.containerPointToLatLng([cx, cy]));
+      return { onIt, away, none };
+    });
+    expect(out.onIt).toBe(true);    // press on the selected item → grabbed for drag
+    expect(out.away).toBe(false);   // press elsewhere → not hijacked
+    expect(out.none).toBe(false);   // nothing selected → no precedence grab
+  });
 });

@@ -603,8 +603,11 @@ function clampLegLabelAlong(legIdx, label) {
   if (!limitLegKites) return;
   if (!label || !state.waypoints[legIdx] || !state.waypoints[legIdx + 1]) return;
   if (!Number.isFinite(label.a)) label.a = 0;
-  const sc = legZoomScale() || 1;
-  const halfKite = (typeof legKiteAlongHalfPx === 'function') ? legKiteAlongHalfPx(sc) : 0;
+  const sc = legZoomScale() || 1;                 // o.a is stored in this unit
+  // Clamp against the kite's ACTUAL drawn width (kiteDrawScale), not the old
+  // zoom scale, so a bigger ground-sized kite is kept fully on the leg.
+  const drawSc = (typeof kiteDrawScale === 'function') ? kiteDrawScale() : sc;
+  const halfKite = (typeof legKiteAlongHalfPx === 'function') ? legKiteAlongHalfPx(drawSc) : 0;
   const limit = Math.max(0, (legFrame(legIdx).len / 2 - halfKite) / sc);
   label.a = Math.max(-limit, Math.min(limit, label.a));
 }
@@ -679,7 +682,8 @@ function hitLegLabel(px, py) {
   // #83: scale the hit radius with the same zoom + legArrowSize factor that
   // sizes the drawn marker (see drawLegArrow in draw.js), so the hit zone
   // tracks the visual size. Floor at 18 px keeps touch ergonomics.
-  const hit = Math.max(tune('hitLegLabelMinPx'), tune('hitLegLabelScalePx') * legZoomScale());
+  const hit = Math.max(tune('hitLegLabelMinPx'), tune('hitLegLabelScalePx') *
+    ((typeof kiteDrawScale === 'function') ? kiteDrawScale() : legZoomScale()));
   for (let i = 0; i < state.legs.length; i++) {
     for (const which of ['in', 'out']) {
       if (which === 'out' && (!showReturn || !legAllowsReturn(i))) continue;
@@ -725,7 +729,7 @@ function _materialiseDefaultCumLabel(legIdx) {
   leg.cumLabel = { a: o.a || 0, p: perpPx / sc, _m: 1 };
 }
 function hitCumLabel(px, py) {
-  const hit = Math.max(tune('hitCumLabelMinPx'), tune('hitCumLabelScalePx') * legZoomScale());
+  const hit = Math.max(tune('hitCumLabelMinPx'), tune('hitCumLabelScalePx') * ((typeof kiteDrawScale === 'function') ? kiteDrawScale() : legZoomScale()));
   for (let i = 0; i < state.legs.length; i++) {
     const c = cumLabelCenter(i);
     if (c && Math.hypot(c.x - px, c.y - py) <= hit) return { i };
@@ -797,7 +801,7 @@ function setCumLabelFromPoint(legIdx, isReturn, px, py) {
 }
 function hitCumLabelRet(px, py) {
   if (!showReturn) return null;          // return kite only drawn with the return path
-  const hit = Math.max(tune('hitCumLabelMinPx'), tune('hitCumLabelScalePx') * legZoomScale());
+  const hit = Math.max(tune('hitCumLabelMinPx'), tune('hitCumLabelScalePx') * ((typeof kiteDrawScale === 'function') ? kiteDrawScale() : legZoomScale()));
   for (let i = 0; i < state.legs.length; i++) {
     if (!legAllowsReturn(i)) continue;
     const c = cumLabelRetCenter(i);
@@ -2965,6 +2969,65 @@ function dragOriginExclude(d, latlng) {
   return { lat: d.origLat, lng: d.origLng };
 }
 
+// Precedence: if an item is already selected (its inspector is open) and the
+// press lands on that SAME item, grab it for dragging — don't reopen the point
+// chooser / re-select an item that merely overlaps it. Returns true if it set
+// up a drag. Covers the reported case of moving a selected freq-change arrow
+// that overlaps its waypoint.
+function grabSelected(px, py, latlng) {
+  const sel = state.selected;
+  if (!sel) return false;
+  // A selected note (incl. a freq-change callout, which selects as the wp with
+  // a freqNoteIndex): if the press is on that note, drag the note.
+  const noteHit = hitNote(px, py);
+  if (noteHit >= 0) {
+    const isSelFreq = sel.type === 'wp' && sel.freqNoteIndex === noteHit;
+    const isSelNote = sel.type === 'note' && sel.index === noteHit;
+    if (isSelFreq || isSelNote) {
+      state.selected = selectionForNoteHit(noteHit);
+      drag = { kind: 'note', i: noteHit,
+               offLat: state.notes[noteHit].lat - latlng.lat,
+               offLng: state.notes[noteHit].lng - latlng.lng };
+      map.dragging.disable();
+      showInspector(); draw();
+      return true;
+    }
+  }
+  if (sel.type === 'wp' && !(sel.freqNoteIndex >= 0)) {
+    const wpHits = hitWaypointCandidates(px, py);
+    if (wpHits.some(h => h.index === sel.index)) {
+      state.selected = { type: 'wp', index: sel.index };
+      drag = { kind: 'wp', i: sel.index, moved: false,
+               origLat: state.waypoints[sel.index].lat, origLng: state.waypoints[sel.index].lng,
+               originSnapArmed: false };
+      map.dragging.disable(); draw();
+      return true;
+    }
+  }
+  if (sel.type === 'leg') {
+    const cum = hitCumLabel(px, py);
+    if (cum && cum.i === sel.index) {
+      _materialiseDefaultCumLabel(cum.i);
+      drag = { kind: 'cumlabel', i: cum.i };
+      map.dragging.disable(); showInspector(); draw(); return true;
+    }
+    const cumRet = hitCumLabelRet(px, py);
+    if (cumRet && cumRet.i === sel.index) {
+      _materialiseDefaultCumLabelRet(cumRet.i);
+      drag = { kind: 'cumlabelret', i: cumRet.i };
+      map.dragging.disable(); showInspector(); draw(); return true;
+    }
+    const lab = hitLegLabel(px, py);
+    if (lab && lab.i === sel.index) {
+      _materialiseDefaultLegLabel(lab.i, lab.which);
+      drag = { kind: 'label', i: lab.i, which: lab.which,
+               ...legLabelDragGrab(lab.i, lab.which, px, py) };
+      map.dragging.disable(); showInspector(); draw(); return true;
+    }
+  }
+  return false;
+}
+
 map.on('mousedown', e => {
   pendingOverlayAction = null;
   const p = e.containerPoint;
@@ -2990,6 +3053,12 @@ map.on('mousedown', e => {
   const notamHits = (includeOverlayChoices && window.showNotam && typeof notamsAtLatLng === 'function')
     ? notamsAtLatLng(e.latlng).map(n => ({ type: 'notam', notam: n })) : [];
   const ovAll = ovHits.concat(notamHits);
+  // Already-selected item wins: if the press is on the item whose inspector is
+  // open, drag it rather than surfacing the chooser for an overlapping item.
+  if (includeOverlayChoices && grabSelected(p.x, p.y, e.latlng)) {
+    downHit = true;
+    return;
+  }
   // A NOTAM airport count-badge sits just below the field; when a route waypoint
   // is on the same field it used to cover/block the badge. The badge now draws
   // on top, and wins the click here so its NOTAMs stay selectable.
