@@ -93,7 +93,7 @@ test('framed A4 export sizes the leg kite to its tuned physical size (21 body + 
   expect(out.heightMm).toBeCloseTo(18.5, 1);
 });
 
-test('framed A4 export sizes the cumulative-time kite to 6 body + 13 triangle × 9.5 mm', async ({ page }) => {
+test('framed A4 export scales the cum-time kite to a fixed height, preserving on-screen proportions', async ({ page }) => {
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof map !== 'undefined' &&
     typeof drawCumTimeArrow === 'function' && typeof pageFrameRect === 'function' &&
@@ -105,23 +105,29 @@ test('framed A4 export sizes the cumulative-time kite to 6 body + 13 triangle ×
     if (pageSize !== 'A4') setPage('A4');
     draw();
     const fr = pageFrameRect(), paperW = 297, ppm = fr.w / paperW;
-    const xs = [], ys = [], p = CanvasRenderingContext2D.prototype;
-    const om = p.moveTo, ol = p.lineTo;
-    p.moveTo = function (x, y) { xs.push(x); ys.push(y); return om.call(this, x, y); };
-    p.lineTo = function (x, y) { xs.push(x); ys.push(y); return ol.call(this, x, y); };
-    NavAid._exportPxPerMm = ppm;
-    drawCumTimeArrow(0, 0, 0, '0:08', '#000', '#ff0', legZoomScale());
+    const measure = () => {
+      const xs = [], ys = [], p = CanvasRenderingContext2D.prototype;
+      const om = p.moveTo, ol = p.lineTo;
+      p.moveTo = function (x, y) { xs.push(x); ys.push(y); return om.call(this, x, y); };
+      p.lineTo = function (x, y) { xs.push(x); ys.push(y); return ol.call(this, x, y); };
+      drawCumTimeArrow(0, 0, 0, '0:08', '#000', '#ff0', legZoomScale());
+      p.moveTo = om; p.lineTo = ol;
+      return { L: Math.max(...xs) - Math.min(...xs), H: Math.max(...ys) - Math.min(...ys) };
+    };
+    // Screen shape (aspect) with no export override.
     NavAid._exportPxPerMm = 0;
-    p.moveTo = om; p.lineTo = ol;
+    const scr = measure();
+    NavAid._exportPxPerMm = ppm;
+    const pr = measure();
+    NavAid._exportPxPerMm = 0;
     return {
-      totalLenMm: (Math.max(...xs) - Math.min(...xs)) / ppm,
-      heightMm: (Math.max(...ys) - Math.min(...ys)) / ppm,
-      wantLen: tune('cumKitePrintLengthMm') + tune('cumKitePrintTriangleMm'),
-      wantHeight: tune('cumKitePrintHeightMm'),
+      heightMm: pr.H / ppm, wantHeight: tune('cumKitePrintHeightMm'),
+      printAspect: pr.L / pr.H, screenAspect: scr.L / scr.H,
     };
   });
-  expect(out.wantLen).toBe(19);              // 6 body + 13 triangle
+  // Printed height hits the tuned target…
   expect(out.wantHeight).toBe(9.5);
-  expect(out.totalLenMm).toBeCloseTo(19, 1);
   expect(out.heightMm).toBeCloseTo(9.5, 1);
+  // …and the length:height proportion matches the on-screen marker (WYSIWYG).
+  expect(out.printAspect).toBeCloseTo(out.screenAspect, 2);
 });

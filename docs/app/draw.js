@@ -2910,22 +2910,19 @@ function needsHalo(i, which) {
 // markers are always visible without overlap.
 function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
   sc = sc ?? 1;
-  let W = tune('cumKiteHeightPx') * sc;
-  let cell = tune('cumKiteCellWidthPx') * sc;
-  let Lt = tune('cumKiteTriangleLenPx') * sc;
-  // Framed A4/A3 export pins the cum-time kite to a fixed physical size at
-  // size-selector (legArrowSize) 1, scaled by the selector otherwise — body
-  // cell + triangle length × height (triangle on the short side). Each
-  // dimension is set from mm × NavAid._exportPxPerMm; `sc` is re-derived from
-  // the printed height so border / text stay proportional. Screen unchanged.
+  // Framed A4/A3 export scales the whole on-screen marker uniformly so its
+  // printed HEIGHT equals cumKitePrintHeightMm (× the legArrowSize selector) —
+  // WYSIWYG: same proportions as the preview, so the time text fits exactly as
+  // it does on screen. printed mm = screenPx / (screen-px-per-mm), so the scale
+  // that makes the height land at the target is (targetMm·ppm)/cumKiteHeightPx.
   const ppm = (window.NavAid && NavAid._exportPxPerMm) || 0;
   if (ppm) {
     const selc = (typeof legArrowSize === 'number' && legArrowSize > 0) ? legArrowSize : 1;
-    W = tune('cumKitePrintHeightMm') * ppm * selc;
-    cell = tune('cumKitePrintLengthMm') * ppm * selc;
-    Lt = tune('cumKitePrintTriangleMm') * ppm * selc;
-    sc = W / tune('cumKiteHeightPx');
+    sc = (tune('cumKitePrintHeightMm') * ppm / tune('cumKiteHeightPx')) * selc;
   }
+  const W = tune('cumKiteHeightPx') * sc;
+  const cell = tune('cumKiteCellWidthPx') * sc;
+  const Lt = tune('cumKiteTriangleLenPx') * sc;
   const L = Lt + cell;
   // Pentagon: tip on the LEFT (= backward along flightAng), rectangle on right.
   octx.save();
