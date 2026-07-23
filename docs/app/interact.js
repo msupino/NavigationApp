@@ -648,7 +648,7 @@ function legLabelCenter(i, which) {
     const b = proj(state.waypoints[i + 1]);
     const legLen = Math.hypot(b.x - a.x, b.y - a.y);
     const sign = which === 'in' ? 1 : -1;
-    perp = sign * legDefaultLabelPerp(legLen);
+    perp = sign * legDefaultLabelPerp();
   } else {
     perp = (o.p || 0) * sc;
   }
@@ -675,7 +675,7 @@ function _materialiseDefaultLegLabel(legIdx, which) {
   const legLen = Math.hypot(b.x - a.x, b.y - a.y);
   const sc = legZoomScale() || 1;          // never let scale be 0 here
   const sign = which === 'in' ? 1 : -1;
-  const perpPx = sign * legDefaultLabelPerp(legLen);
+  const perpPx = sign * legDefaultLabelPerp();
   leg[key] = { a: o.a || 0, p: perpPx / sc, _m: 1 };
 }
 function hitLegLabel(px, py) {
@@ -709,7 +709,7 @@ function cumLabelCenter(i) {
   const sc = legZoomScale();
   // Use own driftPerp (not inLabel's perp) so the cum kite is independent
   // of the navigation kite position when in default state.
-  const perp  = o._default ? legDefaultLabelPerp(len) : (o.p || 0) * sc;
+  const perp  = o._default ? cumDefaultLabelPerp() : (o.p || 0) * sc;
   const along = (o.a || 0) * sc;
   return { x: b.x + dx * along + nx * perp,
            y: b.y + dy * along + ny * perp };
@@ -725,7 +725,7 @@ function _materialiseDefaultCumLabel(legIdx) {
   if (!a || !b) return;
   const legLen = Math.hypot(b.x - a.x, b.y - a.y);
   const sc = legZoomScale() || 1;
-  const perpPx = legDefaultLabelPerp(legLen);
+  const perpPx = cumDefaultLabelPerp();
   leg.cumLabel = { a: o.a || 0, p: perpPx / sc, _m: 1 };
 }
 function hitCumLabel(px, py) {
@@ -751,7 +751,7 @@ function cumLabelRetCenter(i) {
   const leg = state.legs[i];
   const o = (leg && leg.cumLabelRet) || { a: 0, _default: 1, _m: 1 };
   const sc = legZoomScale();
-  const perp  = o._default ? -legDefaultLabelPerp(len) : (o.p || 0) * sc;
+  const perp  = o._default ? -cumDefaultLabelPerp() : (o.p || 0) * sc;
   const along = (o.a || 0) * sc;
   return { x: a.x + dx * along + nx * perp,
            y: a.y + dy * along + ny * perp };
@@ -766,7 +766,7 @@ function _materialiseDefaultCumLabelRet(legIdx) {
   if (!a || !b) return;
   const legLen = Math.hypot(b.x - a.x, b.y - a.y);
   const sc = legZoomScale() || 1;
-  const perpPx = legDefaultLabelPerp(legLen);
+  const perpPx = cumDefaultLabelPerp();
   leg.cumLabelRet = { a: o.a || 0, p: -perpPx / sc, _m: 1 };  // default is the -perp side
 }
 function cumLabelDragFrame(legIdx, isReturn) {

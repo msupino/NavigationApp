@@ -2,22 +2,13 @@
 /* NavAid — drawing: route, nav-waypoints, notes, page frame.
    Shares globals with core.js; loaded after it. */
 
-// Issue #394 (+ follow-up bug): default-kite clearance helpers, shared by
-// `drawLegs` (rendering), `legLabelCenter` (interact.js hit-testing),
-// and the drag-start materialiser (interact.js). The kite shape itself
-// is `46 * legZoomScale()` px wide (see drawLegArrow in this file —
-// `W = 46 * sc`), so its half-extent perpendicular to the leg axis is
-// `23 * legZoomScale()`. Drift lines fan out from each waypoint at the
-// configured drift angle (default 10°)
-// from the leg axis for half the leg length; at the default along-leg
-// position (midpoint, a=0) the cone reaches
-// `(legLength / 2) * tan(drift angle)`
-// perpendicular. The kite's *centre* must therefore sit at least
-// (cone-extent + kite-half-width + visual margin) from the leg line so
-// the kite *body* clears both the leg line and the drift dashes at
-// every zoom and `legArrowSize`. The first cut of this fix only
-// pushed the centre `(len/2)*tan(10°) + 8` out, which left the kite
-// edge ON the leg line at low zoom or `legArrowSize >= 2`.
+// Default-kite offset helpers, shared by `drawLegs` (rendering),
+// `legLabelCenter` / `cumLabelCenter` (interact.js hit-testing) and the
+// drag-start materialisers. Offsets are CONSTANT (independent of leg length):
+// each kite sits the same distance from its leg / waypoint — nav kite by its
+// drawn half-height + margin, cum kite by the waypoint disc + its own
+// half-height + margin. (Earlier the nav offset added a `(legLen/2)*tan(drift)`
+// drift-cone term, which made the distance grow with leg length.)
 function driftAngleRad() {
   return tune('driftAngleDeg') * Math.PI / 180;
 }
@@ -33,12 +24,35 @@ function kiteDrawScale() {
     ? (tune('kitePrintHeightMm') * ppm / tune('legKiteHeightPx')) * sel
     : ((typeof legZoomScale === 'function') ? legZoomScale() : 1);
 }
-function legDefaultLabelPerp(legLenPx) {
-  // Clear the leg line by the kite's actual perpendicular half-extent (its
-  // drawn height/2) plus a margin — so the bigger ground-sized kite doesn't
-  // sit on the waypoint/leg.
-  return (Math.max(1, legLenPx) / 2) * Math.tan(driftAngleRad()) +
-         (tune('legKiteHeightPx') * kiteDrawScale()) / 2 +
+function legDefaultLabelPerp() {
+  // Constant perpendicular offset for the nav (direction) kite — independent of
+  // leg length: clear the leg by the kite's drawn half-height plus a margin, so
+  // the kite sits the SAME distance from every leg.
+  return (tune('legKiteHeightPx') * kiteDrawScale()) / 2 + tune('defaultLabelMarginPx');
+}
+// Cumulative-time kite draw scale (fixed ground size, its own print height).
+function cumKiteDrawScale() {
+  const ppm = (typeof printPxPerMm === 'function') ? printPxPerMm() : 0;
+  const sel = (typeof legArrowSize === 'number' && legArrowSize > 0) ? legArrowSize : 1;
+  return ppm
+    ? (tune('cumKitePrintHeightMm') * ppm / tune('cumKiteHeightPx')) * sel
+    : ((typeof legZoomScale === 'function') ? legZoomScale() : 1);
+}
+// Waypoint disc radius in screen px (ground-sized).
+function waypointDiscRadiusPx() {
+  const ppm = (typeof printPxPerMm === 'function') ? printPxPerMm() : 0;
+  const wpSz = (typeof wpSize === 'number') ? wpSize : 1;
+  return ppm
+    ? (tune('waypointPrintDiaMm') / 2) * ppm * wpSz
+    : tune('waypointBaseRadiusPx') * wpSz *
+        Math.max(tune('waypointMinZoomScale'), Math.pow(2, map.getZoom() - 12));
+}
+// Constant offset of the cum-time kite from its waypoint anchor: clear the
+// waypoint disc + the cum kite's own half-height + a margin. Not leg-length
+// dependent, so the cum kite sits the same distance from every waypoint.
+function cumDefaultLabelPerp() {
+  return waypointDiscRadiusPx() +
+         (tune('cumKiteHeightPx') * cumKiteDrawScale()) / 2 +
          tune('defaultLabelMarginPx');
 }
 function legKiteAlongHalfPx(sc) {
@@ -2719,7 +2733,8 @@ function drawLegs() {
     // drift lines at every zoom / leg length. User-dragged offsets
     // (no `_default` flag) keep the existing `p * legZoomScale()` path so
     // hand-positioned kites round-trip exactly as PR #393 designed.
-    const driftPerp = legDefaultLabelPerp(len);
+    const driftPerp = legDefaultLabelPerp();
+    const cumPerpDef = cumDefaultLabelPerp();   // constant, waypoint-anchored
     const inPerp  = inP._default  ?  driftPerp : (inP.p  || 0) * zoomScale;
     const outPerp = outP._default ? -driftPerp : (outP.p || 0) * zoomScale;
     const inAlong  = (inP.a  || 0) * zoomScale;
@@ -2736,7 +2751,7 @@ function drawLegs() {
     const defCum = { a: 0, _default: 1, _m: 1 };
     if (showCumTime) {
       const cumP = leg.cumLabel || defCum;
-      const cumPerp  = cumP._default ? driftPerp : (cumP.p || 0) * zoomScale;
+      const cumPerp  = cumP._default ? cumPerpDef : (cumP.p || 0) * zoomScale;
       const cumAlong = (cumP.a || 0) * zoomScale;
       const cumX = sb.x + dx * cumAlong + nx * cumPerp;
       const cumY = sb.y + dy * cumAlong + ny * cumPerp;
@@ -2756,7 +2771,7 @@ function drawLegs() {
         // as the inbound kite so its drag math is identical; default sits on
         // the opposite perpendicular side (-driftPerp).
         const cumRetP = leg.cumLabelRet || defCum;
-        const cumRetPerp  = cumRetP._default ? -driftPerp : (cumRetP.p || 0) * zoomScale;
+        const cumRetPerp  = cumRetP._default ? -cumPerpDef : (cumRetP.p || 0) * zoomScale;
         const cumRetAlong = (cumRetP.a || 0) * zoomScale;
         const cumRetX = sa.x + dx * cumRetAlong + nx * cumRetPerp;
         const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;

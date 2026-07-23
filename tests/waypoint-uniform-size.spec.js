@@ -96,3 +96,29 @@ test('the cum-time kite is a fixed ground size that prints at the tuned height (
   expect(out.want).toBe(9.5);
   expect(out.heightMm).toBeCloseTo(9.5, 1);
 });
+
+test('kite default offset is constant, not leg-length dependent', async ({ page }) => {
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof map !== 'undefined' &&
+    typeof cumLabelCenter === 'function' && typeof legDefaultLabelPerp === 'function');
+  const out = await page.evaluate(() => {
+    // A very short leg (0) and a very long leg (1).
+    state.waypoints = [{ lat: 32.05, lng: 34.85, name: 'A' },
+                       { lat: 32.15, lng: 34.88, name: 'B' },
+                       { lat: 32.85, lng: 35.05, name: 'C' }];
+    syncLegs(); window.showCumTime = true; fitView(); draw();
+    const cumDist = i => {
+      const c = cumLabelCenter(i), b = proj(state.waypoints[i + 1]);
+      return Math.hypot(c.x - b.x, c.y - b.y);
+    };
+    const legLen = i => {
+      const a = proj(state.waypoints[i]), b = proj(state.waypoints[i + 1]);
+      return Math.hypot(b.x - a.x, b.y - a.y);
+    };
+    return { len0: legLen(0), len1: legLen(1), cum0: cumDist(0), cum1: cumDist(1) };
+  });
+  // The two legs differ a lot in length…
+  expect(out.len1).toBeGreaterThan(out.len0 * 3);
+  // …but the cum-time kite sits the same distance from each waypoint.
+  expect(out.cum0).toBeCloseTo(out.cum1, 0);
+});
