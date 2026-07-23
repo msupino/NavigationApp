@@ -2,30 +2,67 @@
 /* NavAid — drawing: route, nav-waypoints, notes, page frame.
    Shares globals with core.js; loaded after it. */
 
-// Issue #394 (+ follow-up bug): default-kite clearance helpers, shared by
-// `drawLegs` (rendering), `legLabelCenter` (interact.js hit-testing),
-// and the drag-start materialiser (interact.js). The kite shape itself
-// is `46 * legZoomScale()` px wide (see drawLegArrow in this file —
-// `W = 46 * sc`), so its half-extent perpendicular to the leg axis is
-// `23 * legZoomScale()`. Drift lines fan out from each waypoint at the
-// configured drift angle (default 10°)
-// from the leg axis for half the leg length; at the default along-leg
-// position (midpoint, a=0) the cone reaches
-// `(legLength / 2) * tan(drift angle)`
-// perpendicular. The kite's *centre* must therefore sit at least
-// (cone-extent + kite-half-width + visual margin) from the leg line so
-// the kite *body* clears both the leg line and the drift dashes at
-// every zoom and `legArrowSize`. The first cut of this fix only
-// pushed the centre `(len/2)*tan(10°) + 8` out, which left the kite
-// edge ON the leg line at low zoom or `legArrowSize >= 2`.
+// Default-kite offset helpers, shared by `drawLegs` (rendering),
+// `legLabelCenter` / `cumLabelCenter` (interact.js hit-testing) and the
+// drag-start materialisers. Offsets are CONSTANT (independent of leg length):
+// each kite sits the same distance from its leg / waypoint — nav kite by its
+// drawn half-height + margin, cum kite by the waypoint disc + its own
+// half-height + margin. (Earlier the nav offset added a `(legLen/2)*tan(drift)`
+// drift-cone term, which made the distance grow with leg length.)
 function driftAngleRad() {
   return tune('driftAngleDeg') * Math.PI / 180;
 }
+// Draw scale for the leg kite: a fixed GROUND size (kitePrintHeightMm at
+// 1:250,000, × the legArrowSize selector) so it matches its print size and
+// scales with the map. Falls back to the plain zoom scale before the map is
+// ready. Shared by drawLegArrow (drawing) and legDefaultLabelPerp (clearance)
+// so the default offset always clears the actual drawn kite.
+function kiteDrawScale() {
+  const ppm = (typeof printPxPerMm === 'function') ? printPxPerMm() : 0;
+  const sel = (typeof legArrowSize === 'number' && legArrowSize > 0) ? legArrowSize : 1;
+  return ppm
+    ? (tune('kitePrintHeightMm') * ppm / tune('legKiteHeightPx')) * sel
+    : ((typeof legZoomScale === 'function') ? legZoomScale() : 1);
+}
 function legDefaultLabelPerp(legLenPx) {
-  const sc = (typeof legZoomScale === 'function') ? legZoomScale() : 1;
-  return (Math.max(1, legLenPx) / 2) * Math.tan(driftAngleRad()) +
-         tune('defaultKiteHalfWidthPx') * sc +
-         tune('defaultLabelMarginPx');
+  // Nav (direction) kite sits just OUTSIDE the drift lines so it never hides
+  // them. The drift line reaches `legLen * driftLengthFactor` at the drift
+  // angle, i.e. its perpendicular extent is that × sin(angle) — grows with leg
+  // length. Add the kite's drawn half-height + a margin (both geographic, so
+  // they scale with the kite). legLen defaults to 0 (fallback for hit-tests
+  // that don't pass it → just the kite-half + margin clearance).
+  const driftPerp = Math.max(0, legLenPx || 0) * tune('driftLengthFactor') * Math.sin(driftAngleRad());
+  return driftPerp +
+         (tune('legKiteHeightPx') * kiteDrawScale()) / 2 +
+         tune('defaultLabelMarginPx') * kiteDrawScale();
+}
+// Cumulative-time kite draw scale (fixed ground size, its own print height).
+function cumKiteDrawScale() {
+  const ppm = (typeof printPxPerMm === 'function') ? printPxPerMm() : 0;
+  const sel = (typeof legArrowSize === 'number' && legArrowSize > 0) ? legArrowSize : 1;
+  return ppm
+    ? (tune('cumKitePrintHeightMm') * ppm / tune('cumKiteHeightPx')) * sel
+    : ((typeof legZoomScale === 'function') ? legZoomScale() : 1);
+}
+// Waypoint disc radius in screen px (ground-sized).
+function waypointDiscRadiusPx() {
+  const ppm = (typeof printPxPerMm === 'function') ? printPxPerMm() : 0;
+  const wpSz = (typeof wpSize === 'number') ? wpSize : 1;
+  return ppm
+    ? (tune('waypointPrintDiaMm') / 2) * ppm * wpSz
+    : tune('waypointBaseRadiusPx') * wpSz *
+        Math.max(tune('waypointMinZoomScale'), Math.pow(2, map.getZoom() - 12));
+}
+// Constant offset of the cum-time kite from its waypoint anchor: clear the
+// waypoint disc + the cum kite's own half-height + a margin. Not leg-length
+// dependent, so the cum kite sits the same distance from every waypoint.
+function cumDefaultLabelPerp() {
+  // Clear the waypoint disc, then a full cum-kite height (so the whole kite sits
+  // off the disc with a half-height gap), plus the margin. Keeps the cum kite
+  // clearly separated from the waypoint.
+  return waypointDiscRadiusPx() +
+         tune('cumKiteHeightPx') * cumKiteDrawScale() +
+         tune('defaultLabelMarginPx') * cumKiteDrawScale();
 }
 function legKiteAlongHalfPx(sc) {
   sc = sc ?? ((typeof legZoomScale === 'function') ? legZoomScale() : 1);
@@ -2706,6 +2743,7 @@ function drawLegs() {
     // (no `_default` flag) keep the existing `p * legZoomScale()` path so
     // hand-positioned kites round-trip exactly as PR #393 designed.
     const driftPerp = legDefaultLabelPerp(len);
+    const cumPerpDef = cumDefaultLabelPerp();   // constant, waypoint-anchored
     const inPerp  = inP._default  ?  driftPerp : (inP.p  || 0) * zoomScale;
     const outPerp = outP._default ? -driftPerp : (outP.p || 0) * zoomScale;
     const inAlong  = (inP.a  || 0) * zoomScale;
@@ -2722,7 +2760,7 @@ function drawLegs() {
     const defCum = { a: 0, _default: 1, _m: 1 };
     if (showCumTime) {
       const cumP = leg.cumLabel || defCum;
-      const cumPerp  = cumP._default ? driftPerp : (cumP.p || 0) * zoomScale;
+      const cumPerp  = cumP._default ? cumPerpDef : (cumP.p || 0) * zoomScale;
       const cumAlong = (cumP.a || 0) * zoomScale;
       const cumX = sb.x + dx * cumAlong + nx * cumPerp;
       const cumY = sb.y + dy * cumAlong + ny * cumPerp;
@@ -2742,7 +2780,7 @@ function drawLegs() {
         // as the inbound kite so its drag math is identical; default sits on
         // the opposite perpendicular side (-driftPerp).
         const cumRetP = leg.cumLabelRet || defCum;
-        const cumRetPerp  = cumRetP._default ? -driftPerp : (cumRetP.p || 0) * zoomScale;
+        const cumRetPerp  = cumRetP._default ? -cumPerpDef : (cumRetP.p || 0) * zoomScale;
         const cumRetAlong = (cumRetP.a || 0) * zoomScale;
         const cumRetX = sa.x + dx * cumRetAlong + nx * cumRetPerp;
         const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;
@@ -2910,6 +2948,16 @@ function needsHalo(i, which) {
 // markers are always visible without overlap.
 function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
   sc = sc ?? 1;
+  // Fixed GROUND size — cumKitePrintHeightMm tall at the 1:250,000 scale (× the
+  // legArrowSize selector) — so it scales with the map like its position and
+  // prints WYSIWYG at the intended physical height, keeping on-screen
+  // proportions (so the time text fits). Falls back to the passed zoom scale
+  // before the map is ready.
+  const ppm = printPxPerMm();
+  if (ppm) {
+    const selc = (typeof legArrowSize === 'number' && legArrowSize > 0) ? legArrowSize : 1;
+    sc = (tune('cumKitePrintHeightMm') * ppm / tune('cumKiteHeightPx')) * selc;
+  }
   const W = tune('cumKiteHeightPx') * sc;
   const cell = tune('cumKiteCellWidthPx') * sc;
   const Lt = tune('cumKiteTriangleLenPx') * sc;
@@ -2956,6 +3004,12 @@ function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
 // marker and is locked to its orientation.
 function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc) {
   sc = sc ?? 1;
+  // The whole kite is a fixed GROUND size — kitePrintHeightMm tall at the
+  // 1:250,000 scale (× the legArrowSize selector) — so it scales with the map
+  // like its position and prints WYSIWYG at the intended physical height, with
+  // the on-screen proportions (triangle included). (Falls back to the passed
+  // zoom scale before the map is ready.)
+  if (printPxPerMm()) sc = kiteDrawScale();
   const W = tune('legKiteHeightPx') * sc;
   const cell = tune('legKiteCellWidthPx') * sc;
   const Lt = tune('legKiteTriangleLenPx') * sc;
@@ -3034,17 +3088,21 @@ function drawDistanceBadge(cx, cy, dist) {
   octx.textAlign = 'left';
 }
 
-// Label to draw inside a waypoint circle, plus the radius and font px
-// needed to fit it. Scaled by wpSize slider × zoom (geographic footprint
-// stays roughly constant; floor at 0.35× so markers stay visible when zoomed out).
+// Label to draw inside a waypoint circle, plus the radius and font px needed to
+// fit it. The disc is a fixed GROUND size — waypointPrintDiaMm at the chart's
+// 1:250,000 scale (× the wpSize selector) — so it scales with the map like its
+// position and prints WYSIWYG at the intended physical mm. (Falls back to the
+// base-px × zoom size before the map is ready.)
 function waypointGeom(i) {
   const wp = state.waypoints[i];
   // Match wpLabel() / inspector placeholder ("WP N"), not a bare digit.
   const label = showWpNames ? waypointDisplayLabel(wp, i) : '';
-  const zoomScale = Math.max(tune('waypointMinZoomScale'), Math.pow(2, map.getZoom() - 12));
-  const scale = wpSize * zoomScale;
+  const ppm = printPxPerMm();
+  const scale = ppm
+    ? (tune('waypointPrintDiaMm') / 2) * ppm * wpSize / tune('waypointBaseRadiusPx')
+    : wpSize * Math.max(tune('waypointMinZoomScale'), Math.pow(2, map.getZoom() - 12));
   // Every waypoint circle is the SAME size (radius depends only on the wpSize
-  // slider × zoom, never on the label). The text shrinks to fit instead of the
+  // slider × scale, never on the label). The text shrinks to fit instead of the
   // circle growing — so a 5-letter code and a single digit share one disc.
   const r = tune('waypointBaseRadiusPx') * scale;
   let fontPx = Math.max(4, Math.round(tune('waypointFontPx') * scale));
@@ -3092,15 +3150,21 @@ function drawWaypoints() {
 }
 
 // --- notes (free-text annotation boxes) ------------------------------
-// Per-note size multiplier (default 1). Clamped so a note can't shrink to
-// nothing or blow up the canvas. Applied to the font and every rect metric so
-// the note scales uniformly around its anchor point. The note also grows and
-// shrinks with the map zoom, on the same 2^(z-12) curve (clamped like
-// legZoomScale) the leg/nav kites use, so a note keeps its geographic footprint
-// relative to the kites it annotates instead of staying a fixed screen size.
-function noteScale(n) {
+// Per-note size multiplier (default 1, clamped). A default (size-1) note is a
+// fixed GROUND size — notePrintHeightMm tall at the chart's 1:250,000 scale —
+// so it scales with the map like its position and prints WYSIWYG at the intended
+// physical mm. (Falls back to a plain zoom curve before the map is ready.)
+function noteUserSize(n) {
   const s = Number(n && n.size);
-  const user = Number.isFinite(s) && s > 0 ? Math.max(0.5, Math.min(s, 4)) : 1;
+  return Number.isFinite(s) && s > 0 ? Math.max(0.5, Math.min(s, 4)) : 1;
+}
+function noteScale(n) {
+  const user = noteUserSize(n);
+  const ppm = printPxPerMm();
+  if (ppm) {
+    const oneLinePx = tune('noteLineHeightPx') + tune('notePadYPx') * 2;
+    return user * (tune('notePrintHeightMm') * ppm) / oneLinePx;
+  }
   const zoom = (typeof map !== 'undefined' && map.getZoom)
     ? Math.max(0.35, Math.pow(2, map.getZoom() - 12)) : 1;
   return user * zoom;
@@ -3122,10 +3186,19 @@ function noteRect(i) {
     const w = octx.measureText(l || ' ').width;
     if (w > maxW) maxW = w;
   }
-  let w = Math.max(maxW + tune('notePadXPx') * sc * 2, tune('noteMinWidthPx') * sc);
+  // Default box floor: notePrintWidthMm wide at the 1:250k scale (× the note's
+  // own size). An oval uses the same default box as a rectangle so both note
+  // shapes are the same size.
+  const ppm = printPxPerMm();
+  const minW = ppm
+    ? tune('notePrintWidthMm') * ppm * noteUserSize(n)
+    : tune('noteMinWidthPx') * sc;
+  let w = Math.max(maxW + tune('notePadXPx') * sc * 2, minW);
   let h = Math.max(1, lines.length) * lineH + tune('notePadYPx') * sc * 2;
   const oval = n.shape === 'oval';
-  if (oval) { w *= Math.SQRT2; h *= Math.SQRT2; }   // ellipse must bound the text
+  // Before the map is ready (no ppm) grow the ellipse by √2 so it bounds the
+  // text; with the ground-sized box it already matches the rectangle.
+  if (oval && !ppm) { w *= Math.SQRT2; h *= Math.SQRT2; }
   return { x: s.x - w / 2, y: s.y - h / 2, w, h, lines, oval };
 }
 
@@ -3392,6 +3465,18 @@ function metresPerPixel() {
   const a = map.containerPointToLatLng([0, y]);
   const b = map.containerPointToLatLng([200, y]);
   return map.distance(a, b) / 200;
+}
+
+// Screen pixels per paper-millimetre at the chart's 1:250,000 print scale
+// (1 mm on paper = 250 m on the ground). Sizing a marker by this makes it a
+// fixed GROUND size — it scales with the map exactly like its lat/lng position,
+// so the arrangement you make on screen prints WYSIWYG, AND it comes out at the
+// intended physical mm on a 1:250k A4/A3 export. Returns 0 before the map is
+// ready so callers can fall back to a plain px size.
+function printPxPerMm() {
+  if (typeof map === 'undefined' || !map.getZoom) return 0;
+  const mpp = metresPerPixel();
+  return mpp > 0 ? 250 / mpp : 0;
 }
 
 function pageDims() {                   // page coverage (NM), oriented

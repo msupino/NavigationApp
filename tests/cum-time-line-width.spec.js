@@ -452,12 +452,11 @@ test.describe('Cumulative-time kite', () => {
     expect(await page.evaluate(() => state.legs[0].cumLabelRet._default === 1)).toBe(true);
   });
 
-  test('the cum-kite text uses the same font size as the nav kite', async ({ page }) => {
+  test('the cum-kite and nav-kite text each scale with their own (ground-sized) kite', async ({ page }) => {
     await boot(page);
     await loadRoute(page);
-    const fonts = await page.evaluate(() => {
+    const out = await page.evaluate(() => {
       window.showReturn = false; window.showCumTime = true;
-      // Force zoom 12 so legZoomScale() === 1 → kite text renders at base 13px.
       const c = map.getCenter();
       map.setView([c.lat, c.lng], 12);
       const seen = new Set();
@@ -465,9 +464,13 @@ test.describe('Cumulative-time kite', () => {
       octx.fillText = function () { seen.add(octx.font); return realText.apply(this, arguments); };
       draw();
       octx.fillText = realText;
-      return Array.from(seen);
+      // Kites are ground-sized now, each with its own draw scale — the text
+      // follows suit (fits the smaller cum kite).
+      const navFont = 'bold ' + Math.max(4, Math.round(tune('legKiteTextPx') * kiteDrawScale())) + 'px sans-serif';
+      const cumFont = 'bold ' + Math.max(4, Math.round(tune('cumKiteTextPx') * cumKiteDrawScale())) + 'px sans-serif';
+      return { fonts: Array.from(seen), navFont, cumFont };
     });
-    // The nav kite alt/time and the cum kite both render bold 13px sans-serif.
-    expect(fonts).toContain('bold 13px sans-serif');
+    expect(out.fonts).toContain(out.navFont);
+    expect(out.fonts).toContain(out.cumFont);
   });
 });

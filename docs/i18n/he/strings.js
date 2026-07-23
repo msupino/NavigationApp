@@ -602,8 +602,8 @@ window.S = {
   tbPrintPageSize: 'גודל עמוד',
   tbOrientTitle: 'כיוון — לחץ למעבר בין לרוחב / לאורך',
   modalCloseTitle: 'סגור',
-  tbPrint: '⬇ שמור PNG',
-  tbPrintTitle: 'שמור מפה + מסלול כ-PNG',
+  tbPrint: '🖨 הדפס',
+  tbPrintTitle: 'הדפס או שמור מפה + מסלול כ-PNG',
   inspCloseTitle: 'סגור',
   inspCloseLabel: 'סגור',
   tbSecEdit: '✏️ עריכה',
@@ -676,6 +676,9 @@ window.S = {
   exportNoPageWarn: 'לא נבחר גודל דף — יחס התמונה המיוצאת עשוי שלא להתאים להדפסה.',
   exportLayer: 'שכבת מפה',
   exportBtn: 'ייצא',
+  printBtn: '🖨 הדפס',
+  printBtnTitle: 'פתח את תיבת ההדפסה בגודל פיזי אמיתי (A4/A3 1:250,000)',
+  errPopupBlocked: 'אפשר חלונות קופצים לאתר כדי לפתוח את תצוגת ההדפסה.',
 
   // --- Magnifying glass ------------------------------------------------
   tbMagnifier: '🔍 זכוכית מגדלת (M)',

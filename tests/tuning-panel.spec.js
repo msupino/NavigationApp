@@ -123,7 +123,7 @@ test.describe('Hidden tuning panel', () => {
       cumKiteTextPx: tune('cumKiteTextPx'),
     }));
     expect(values).toEqual({
-      defaultLabelMarginPx: 20,
+      defaultLabelMarginPx: 30,
       legKiteHeightPx: 47,
       legKiteCellWidthPx: 24,
       legKiteTriangleLenPx: 35,
