@@ -81,7 +81,7 @@ NavAid.tuningDefaults = {
   windArrowHaloColor: { value: '#ffffff', type: 'color', label: 'Wind arrow halo color' },
   windTextHaloColor: { value: '#ffffff', type: 'color', label: 'Wind text halo color' },
 
-  defaultLabelMarginPx: { value: 20, min: 0, max: 80, step: 1, label: 'Default marker margin' },
+  defaultLabelMarginPx: { value: 30, min: 0, max: 120, step: 1, label: 'Default marker margin (scaled with the kite)' },
   defaultKiteHalfWidthPx: { value: 23, min: 1, max: 80, step: 1, label: 'Default kite half-width' },
 
   legKiteFillColor: { value: '#00ff00', type: 'color', label: 'Leg kite fill color' },

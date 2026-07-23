@@ -648,7 +648,7 @@ function legLabelCenter(i, which) {
     const b = proj(state.waypoints[i + 1]);
     const legLen = Math.hypot(b.x - a.x, b.y - a.y);
     const sign = which === 'in' ? 1 : -1;
-    perp = sign * legDefaultLabelPerp();
+    perp = sign * legDefaultLabelPerp(legLen);
   } else {
     perp = (o.p || 0) * sc;
   }
@@ -675,7 +675,7 @@ function _materialiseDefaultLegLabel(legIdx, which) {
   const legLen = Math.hypot(b.x - a.x, b.y - a.y);
   const sc = legZoomScale() || 1;          // never let scale be 0 here
   const sign = which === 'in' ? 1 : -1;
-  const perpPx = sign * legDefaultLabelPerp();
+  const perpPx = sign * legDefaultLabelPerp(legLen);
   leg[key] = { a: o.a || 0, p: perpPx / sc, _m: 1 };
 }
 function hitLegLabel(px, py) {

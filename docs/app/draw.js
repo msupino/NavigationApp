@@ -24,11 +24,17 @@ function kiteDrawScale() {
     ? (tune('kitePrintHeightMm') * ppm / tune('legKiteHeightPx')) * sel
     : ((typeof legZoomScale === 'function') ? legZoomScale() : 1);
 }
-function legDefaultLabelPerp() {
-  // Constant perpendicular offset for the nav (direction) kite — independent of
-  // leg length: clear the leg by the kite's drawn half-height plus a margin, so
-  // the kite sits the SAME distance from every leg.
-  return (tune('legKiteHeightPx') * kiteDrawScale()) / 2 + tune('defaultLabelMarginPx');
+function legDefaultLabelPerp(legLenPx) {
+  // Nav (direction) kite sits just OUTSIDE the drift lines so it never hides
+  // them. The drift line reaches `legLen * driftLengthFactor` at the drift
+  // angle, i.e. its perpendicular extent is that × sin(angle) — grows with leg
+  // length. Add the kite's drawn half-height + a margin (both geographic, so
+  // they scale with the kite). legLen defaults to 0 (fallback for hit-tests
+  // that don't pass it → just the kite-half + margin clearance).
+  const driftPerp = Math.max(0, legLenPx || 0) * tune('driftLengthFactor') * Math.sin(driftAngleRad());
+  return driftPerp +
+         (tune('legKiteHeightPx') * kiteDrawScale()) / 2 +
+         tune('defaultLabelMarginPx') * kiteDrawScale();
 }
 // Cumulative-time kite draw scale (fixed ground size, its own print height).
 function cumKiteDrawScale() {
@@ -53,7 +59,7 @@ function waypointDiscRadiusPx() {
 function cumDefaultLabelPerp() {
   return waypointDiscRadiusPx() +
          (tune('cumKiteHeightPx') * cumKiteDrawScale()) / 2 +
-         tune('defaultLabelMarginPx');
+         tune('defaultLabelMarginPx') * cumKiteDrawScale();
 }
 function legKiteAlongHalfPx(sc) {
   sc = sc ?? ((typeof legZoomScale === 'function') ? legZoomScale() : 1);
@@ -2733,7 +2739,7 @@ function drawLegs() {
     // drift lines at every zoom / leg length. User-dragged offsets
     // (no `_default` flag) keep the existing `p * legZoomScale()` path so
     // hand-positioned kites round-trip exactly as PR #393 designed.
-    const driftPerp = legDefaultLabelPerp();
+    const driftPerp = legDefaultLabelPerp(len);
     const cumPerpDef = cumDefaultLabelPerp();   // constant, waypoint-anchored
     const inPerp  = inP._default  ?  driftPerp : (inP.p  || 0) * zoomScale;
     const outPerp = outP._default ? -driftPerp : (outP.p || 0) * zoomScale;
