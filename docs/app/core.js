@@ -240,7 +240,11 @@ NavAid.tuningDefaults = {
   altPairFocusDotColor: { value: '#ff3030', type: 'color', label: 'Alt-pair focus endpoint fill' },
   altPairFocusMs: { value: 10000, min: 1000, max: 60000, step: 500, label: 'Alt-pair focus duration (ms)' },
 
-  exportBgColor: { value: '#231f20', type: 'color', label: 'PNG export background color' },
+  // Matches the on-screen #map background so map-opacity-faded tiles and
+  // translucent overlays (kites / notes at kiteNoteAlpha) composite over the
+  // same backdrop on paper as on screen — otherwise a dark export bg made them
+  // read darker/more opaque than the map. Gist-tunable.
+  exportBgColor: { value: '#e7ebf0', type: 'color', label: 'PNG export background color' },
 
   liveAircraftFillColor: { value: '#000000', type: 'color', label: 'Live aircraft fill color' },
   liveAircraftOutlineColor: { value: '#ffffff', type: 'color', label: 'Live aircraft outline color' },

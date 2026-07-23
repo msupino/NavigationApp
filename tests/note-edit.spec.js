@@ -59,17 +59,14 @@ test.describe('Note resize', () => {
     expect(await page.evaluate(() => state.notes[0].size)).toBe(1);
   });
 
-  test('framed A4 export: an oval note prints the same box as a rectangle note', async ({ page }) => {
+  test('an oval note is the same box as a rectangle note', async ({ page }) => {
     await bootWithNote(page);
     const out = await page.evaluate(() => {
       window.pageOrient = 'landscape';
       if (pageSize !== 'A4') setPage('A4');
       draw();
-      const fr = pageFrameRect(), paperW = 297;
-      NavAid._exportPxPerMm = fr.w / paperW;
       state.notes[0].shape = 'oval'; const ov = noteRect(0);
       state.notes[0].shape = 'rect'; const rc = noteRect(0);
-      NavAid._exportPxPerMm = 0;
       return { ovW: ov.w, ovH: ov.h, rcW: rc.w, rcH: rc.h };
     });
     expect(out.ovW).toBeCloseTo(out.rcW, 1);
@@ -91,7 +88,7 @@ test.describe('Note resize', () => {
     expect(z14.w).toBeGreaterThan(z12.w);
   });
 
-  test('framed A4 export sizes a default note rectangle to 21 × 14 mm', async ({ page }) => {
+  test('a default note rectangle is a fixed ground size that prints at 21 × 14 mm', async ({ page }) => {
     await bootWithNote(page);
     const out = await page.evaluate(() => {
       // A short single-line note so the box sits at its default (min) size.
@@ -99,13 +96,10 @@ test.describe('Note resize', () => {
       window.pageOrient = 'landscape';
       if (pageSize !== 'A4') setPage('A4');
       draw();
-      const fr = pageFrameRect();
-      const paperW = 297;                        // A4 landscape width in mm
-      NavAid._exportPxPerMm = fr.w / paperW;     // screen px per paper mm
+      // Geographic sizing: mm = screenPx / printPxPerMm (= 250/metresPerPixel).
+      const ppm = printPxPerMm();
       const r = noteRect(0);
-      NavAid._exportPxPerMm = 0;
-      // printed mm = screenPx * paperW / fr.w
-      return { wMm: r.w * paperW / fr.w, hMm: r.h * paperW / fr.w,
+      return { wMm: r.w / ppm, hMm: r.h / ppm,
                tw: tune('notePrintWidthMm'), th: tune('notePrintHeightMm') };
     });
     expect(out.tw).toBe(21);

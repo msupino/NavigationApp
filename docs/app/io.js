@@ -3739,16 +3739,10 @@ function exportPNG(mode) {
     const s = W / fr.w;
     const prevOctx = octx;
     octx = o;
-    // Fixed physical symbol sizes on a framed A4/A3 print. Drawing here is in
-    // screen coords (then scaled by s and printed at W/paperW px per mm), so a
-    // screen length of mm·fr.w/paperW lands as exactly mm on paper. Expose that
-    // screen-px-per-mm so the waypoint disc and note rectangle can pin their
-    // physical size. A4x2 renders the A3 sheet then slices it → A3 paper width.
-    if (framed && pageSize) {
-      const pmm = pageSize === 'A4' ? [210, 297] : [297, 420];
-      const paperWmm = pageOrient === 'portrait' ? pmm[0] : pmm[1];
-      NavAid._exportPxPerMm = fr.w / paperWmm;
-    }
+    // Symbols size themselves geographically (printPxPerMm, = 250/metresPerPixel
+    // at 1:250,000), identical on screen and here — so the export is a faithful
+    // scaled copy of what you arranged on screen and lands at the intended
+    // physical mm. No export-time size override needed.
     o.save();
     o.scale(s, s);
     o.translate(-fr.x, -fr.y);
@@ -3772,7 +3766,6 @@ function exportPNG(mode) {
       o.restore();
     } finally {
       octx = prevOctx;
-      NavAid._exportPxPerMm = 0;
     }
 
     // A4×2: the frame is A3-sized — slice it into two A4 tiles at the same

@@ -13,7 +13,11 @@ test('all waypoint circles share one radius; long labels shrink the font', async
       { lat: 32.30, lng: 35.10, name: 'LONGWAYPOINT' },
       { lat: 32.50, lng: 35.30, name: 'MID12' },
     ];
-    syncLegs(); draw();
+    syncLegs();
+    // Zoom in so the ground-sized disc is large enough that a long label has to
+    // shrink below a short one (at a far-out zoom every font floors at 4).
+    map.setView([32.30, 35.10], 14);
+    draw();
     const a = waypointGeom(0), b = waypointGeom(1), c = waypointGeom(2);
     return { ra: a.r, rb: b.r, rc: c.r, fa: a.fontPx, fb: b.fontPx, fc: c.fontPx };
   });
@@ -25,41 +29,30 @@ test('all waypoint circles share one radius; long labels shrink the font', async
   expect(g.fb).toBeGreaterThanOrEqual(4);
 });
 
-test('framed A4 export sizes the waypoint disc to the tuned physical diameter (7 mm)', async ({ page }) => {
+test('the waypoint disc is a fixed ground size that prints at the tuned diameter (7 mm)', async ({ page }) => {
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof map !== 'undefined' &&
-    typeof waypointGeom === 'function' && typeof pageFrameRect === 'function');
+    typeof waypointGeom === 'function' && typeof printPxPerMm === 'function');
   const out = await page.evaluate(() => {
     state.waypoints = [{ lat: 32.10, lng: 34.90, name: 'A' }, { lat: 32.40, lng: 35.10, name: 'B' }];
     syncLegs();
     window.pageOrient = 'landscape';
     if (pageSize !== 'A4') setPage('A4');
     draw();
-    const fr = pageFrameRect();
-    // On screen (no export override): the zoom/wpSize formula, not the print size.
-    NavAid._exportPxPerMm = 0;
-    const screenR = waypointGeom(0).r;
-    // Export pins the disc: draw() runs in screen coords, then scales by W/fr.w
-    // and prints at W/paperW px per mm, so printed mm = r_screen * paperW / fr.w.
-    const paperW = 297;                       // A4 landscape width in mm
-    const diaMm = tune('waypointPrintDiaMm');
-    NavAid._exportPxPerMm = fr.w / paperW;    // screen px per paper mm
-    const exportR = waypointGeom(0).r;
-    NavAid._exportPxPerMm = 0;
-    return { diaMm, screenR, exportR, printedMm: exportR * paperW / fr.w * 2,
-             expectScreenR: tune('waypointBaseRadiusPx') *
-               Math.max(tune('waypointMinZoomScale'), Math.pow(2, map.getZoom() - 12)) };
+    // Sizing is geographic (printPxPerMm = 250/metresPerPixel) on screen AND in
+    // export, so on-screen size already IS the printed size: mm = px / printPxPerMm.
+    const ppm = printPxPerMm();
+    const r = waypointGeom(0).r;
+    return { diaMm: (2 * r) / ppm, want: tune('waypointPrintDiaMm') };
   });
-  expect(out.diaMm).toBe(7);
-  expect(out.printedMm).toBeCloseTo(7, 2);              // exactly 7 mm on paper
-  expect(out.screenR).toBeCloseTo(out.expectScreenR, 5); // screen size unchanged
-  expect(out.exportR).not.toBeCloseTo(out.screenR, 1);   // export overrode the screen radius
+  expect(out.want).toBe(7);
+  expect(out.diaMm).toBeCloseTo(7, 1);
 });
 
-test('framed A4 export scales the leg kite to a fixed height, preserving on-screen proportions', async ({ page }) => {
+test('the leg kite is a fixed ground size that prints at the tuned height (18.5 mm)', async ({ page }) => {
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof map !== 'undefined' &&
-    typeof drawLegArrow === 'function' && typeof pageFrameRect === 'function' &&
+    typeof drawLegArrow === 'function' && typeof printPxPerMm === 'function' &&
     typeof legZoomScale === 'function');
   const out = await page.evaluate(() => {
     state.waypoints = [{ lat: 32.1, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 35.1, name: 'B' }];
@@ -67,35 +60,23 @@ test('framed A4 export scales the leg kite to a fixed height, preserving on-scre
     window.pageOrient = 'landscape';
     if (pageSize !== 'A4') setPage('A4');
     draw();
-    const fr = pageFrameRect(), paperW = 297, ppm = fr.w / paperW;
-    const measure = () => {
-      const xs = [], ys = [], p = CanvasRenderingContext2D.prototype;
-      const om = p.moveTo, ol = p.lineTo;
-      p.moveTo = function (x, y) { xs.push(x); ys.push(y); return om.call(this, x, y); };
-      p.lineTo = function (x, y) { xs.push(x); ys.push(y); return ol.call(this, x, y); };
-      drawLegArrow(0, 0, 0, '123', '0:08', '2500', '#000', '#ff0', false, legZoomScale());
-      p.moveTo = om; p.lineTo = ol;
-      return { L: Math.max(...xs) - Math.min(...xs), W: Math.max(...ys) - Math.min(...ys) };
-    };
-    NavAid._exportPxPerMm = 0;
-    const scr = measure();
-    NavAid._exportPxPerMm = ppm;
-    const pr = measure();
-    NavAid._exportPxPerMm = 0;
-    return {
-      heightMm: pr.W / ppm, wantHeight: tune('kitePrintHeightMm'),
-      printAspect: pr.L / pr.W, screenAspect: scr.L / scr.W,
-    };
+    const ppm = printPxPerMm();
+    const ys = [], p = CanvasRenderingContext2D.prototype;
+    const om = p.moveTo, ol = p.lineTo;
+    p.moveTo = function (x, y) { ys.push(y); return om.call(this, x, y); };
+    p.lineTo = function (x, y) { ys.push(y); return ol.call(this, x, y); };
+    drawLegArrow(0, 0, 0, '123', '0:08', '2500', '#000', '#ff0', false, legZoomScale());
+    p.moveTo = om; p.lineTo = ol;
+    return { heightMm: (Math.max(...ys) - Math.min(...ys)) / ppm, want: tune('kitePrintHeightMm') };
   });
-  expect(out.wantHeight).toBe(18.5);
-  expect(out.heightMm).toBeCloseTo(18.5, 1);            // printed height hits target
-  expect(out.printAspect).toBeCloseTo(out.screenAspect, 2);  // proportions = preview
+  expect(out.want).toBe(18.5);
+  expect(out.heightMm).toBeCloseTo(18.5, 1);
 });
 
-test('framed A4 export scales the cum-time kite to a fixed height, preserving on-screen proportions', async ({ page }) => {
+test('the cum-time kite is a fixed ground size that prints at the tuned height (9.5 mm)', async ({ page }) => {
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof map !== 'undefined' &&
-    typeof drawCumTimeArrow === 'function' && typeof pageFrameRect === 'function' &&
+    typeof drawCumTimeArrow === 'function' && typeof printPxPerMm === 'function' &&
     typeof legZoomScale === 'function');
   const out = await page.evaluate(() => {
     state.waypoints = [{ lat: 32.1, lng: 34.9, name: 'A' }, { lat: 32.4, lng: 35.1, name: 'B' }];
@@ -103,30 +84,15 @@ test('framed A4 export scales the cum-time kite to a fixed height, preserving on
     window.pageOrient = 'landscape';
     if (pageSize !== 'A4') setPage('A4');
     draw();
-    const fr = pageFrameRect(), paperW = 297, ppm = fr.w / paperW;
-    const measure = () => {
-      const xs = [], ys = [], p = CanvasRenderingContext2D.prototype;
-      const om = p.moveTo, ol = p.lineTo;
-      p.moveTo = function (x, y) { xs.push(x); ys.push(y); return om.call(this, x, y); };
-      p.lineTo = function (x, y) { xs.push(x); ys.push(y); return ol.call(this, x, y); };
-      drawCumTimeArrow(0, 0, 0, '0:08', '#000', '#ff0', legZoomScale());
-      p.moveTo = om; p.lineTo = ol;
-      return { L: Math.max(...xs) - Math.min(...xs), H: Math.max(...ys) - Math.min(...ys) };
-    };
-    // Screen shape (aspect) with no export override.
-    NavAid._exportPxPerMm = 0;
-    const scr = measure();
-    NavAid._exportPxPerMm = ppm;
-    const pr = measure();
-    NavAid._exportPxPerMm = 0;
-    return {
-      heightMm: pr.H / ppm, wantHeight: tune('cumKitePrintHeightMm'),
-      printAspect: pr.L / pr.H, screenAspect: scr.L / scr.H,
-    };
+    const ppm = printPxPerMm();
+    const ys = [], p = CanvasRenderingContext2D.prototype;
+    const om = p.moveTo, ol = p.lineTo;
+    p.moveTo = function (x, y) { ys.push(y); return om.call(this, x, y); };
+    p.lineTo = function (x, y) { ys.push(y); return ol.call(this, x, y); };
+    drawCumTimeArrow(0, 0, 0, '0:08', '#000', '#ff0', legZoomScale());
+    p.moveTo = om; p.lineTo = ol;
+    return { heightMm: (Math.max(...ys) - Math.min(...ys)) / ppm, want: tune('cumKitePrintHeightMm') };
   });
-  // Printed height hits the tuned target…
-  expect(out.wantHeight).toBe(9.5);
+  expect(out.want).toBe(9.5);
   expect(out.heightMm).toBeCloseTo(9.5, 1);
-  // …and the length:height proportion matches the on-screen marker (WYSIWYG).
-  expect(out.printAspect).toBeCloseTo(out.screenAspect, 2);
 });

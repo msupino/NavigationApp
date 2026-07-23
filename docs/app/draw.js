@@ -21,10 +21,24 @@
 function driftAngleRad() {
   return tune('driftAngleDeg') * Math.PI / 180;
 }
+// Draw scale for the leg kite: a fixed GROUND size (kitePrintHeightMm at
+// 1:250,000, × the legArrowSize selector) so it matches its print size and
+// scales with the map. Falls back to the plain zoom scale before the map is
+// ready. Shared by drawLegArrow (drawing) and legDefaultLabelPerp (clearance)
+// so the default offset always clears the actual drawn kite.
+function kiteDrawScale() {
+  const ppm = (typeof printPxPerMm === 'function') ? printPxPerMm() : 0;
+  const sel = (typeof legArrowSize === 'number' && legArrowSize > 0) ? legArrowSize : 1;
+  return ppm
+    ? (tune('kitePrintHeightMm') * ppm / tune('legKiteHeightPx')) * sel
+    : ((typeof legZoomScale === 'function') ? legZoomScale() : 1);
+}
 function legDefaultLabelPerp(legLenPx) {
-  const sc = (typeof legZoomScale === 'function') ? legZoomScale() : 1;
+  // Clear the leg line by the kite's actual perpendicular half-extent (its
+  // drawn height/2) plus a margin — so the bigger ground-sized kite doesn't
+  // sit on the waypoint/leg.
   return (Math.max(1, legLenPx) / 2) * Math.tan(driftAngleRad()) +
-         tune('defaultKiteHalfWidthPx') * sc +
+         (tune('legKiteHeightPx') * kiteDrawScale()) / 2 +
          tune('defaultLabelMarginPx');
 }
 function legKiteAlongHalfPx(sc) {
@@ -2910,12 +2924,12 @@ function needsHalo(i, which) {
 // markers are always visible without overlap.
 function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
   sc = sc ?? 1;
-  // Framed A4/A3 export scales the whole on-screen marker uniformly so its
-  // printed HEIGHT equals cumKitePrintHeightMm (× the legArrowSize selector) —
-  // WYSIWYG: same proportions as the preview, so the time text fits exactly as
-  // it does on screen. printed mm = screenPx / (screen-px-per-mm), so the scale
-  // that makes the height land at the target is (targetMm·ppm)/cumKiteHeightPx.
-  const ppm = (window.NavAid && NavAid._exportPxPerMm) || 0;
+  // Fixed GROUND size — cumKitePrintHeightMm tall at the 1:250,000 scale (× the
+  // legArrowSize selector) — so it scales with the map like its position and
+  // prints WYSIWYG at the intended physical height, keeping on-screen
+  // proportions (so the time text fits). Falls back to the passed zoom scale
+  // before the map is ready.
+  const ppm = printPxPerMm();
   if (ppm) {
     const selc = (typeof legArrowSize === 'number' && legArrowSize > 0) ? legArrowSize : 1;
     sc = (tune('cumKitePrintHeightMm') * ppm / tune('cumKiteHeightPx')) * selc;
@@ -2966,15 +2980,12 @@ function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
 // marker and is locked to its orientation.
 function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc) {
   sc = sc ?? 1;
-  // Framed A4/A3 export scales the whole on-screen kite uniformly so its printed
-  // HEIGHT equals kitePrintHeightMm (× the legArrowSize selector) — WYSIWYG:
-  // same proportions as the preview (triangle included), so it looks identical
-  // on paper at a fixed physical size. printed mm = screenPx / (screen-px-per-mm).
-  const ppm = (window.NavAid && NavAid._exportPxPerMm) || 0;
-  if (ppm) {
-    const sel = (typeof legArrowSize === 'number' && legArrowSize > 0) ? legArrowSize : 1;
-    sc = (tune('kitePrintHeightMm') * ppm / tune('legKiteHeightPx')) * sel;
-  }
+  // The whole kite is a fixed GROUND size — kitePrintHeightMm tall at the
+  // 1:250,000 scale (× the legArrowSize selector) — so it scales with the map
+  // like its position and prints WYSIWYG at the intended physical height, with
+  // the on-screen proportions (triangle included). (Falls back to the passed
+  // zoom scale before the map is ready.)
+  if (printPxPerMm()) sc = kiteDrawScale();
   const W = tune('legKiteHeightPx') * sc;
   const cell = tune('legKiteCellWidthPx') * sc;
   const Lt = tune('legKiteTriangleLenPx') * sc;
@@ -3053,26 +3064,21 @@ function drawDistanceBadge(cx, cy, dist) {
   octx.textAlign = 'left';
 }
 
-// Label to draw inside a waypoint circle, plus the radius and font px
-// needed to fit it. Scaled by wpSize slider × zoom (geographic footprint
-// stays roughly constant; floor at 0.35× so markers stay visible when zoomed out).
+// Label to draw inside a waypoint circle, plus the radius and font px needed to
+// fit it. The disc is a fixed GROUND size — waypointPrintDiaMm at the chart's
+// 1:250,000 scale (× the wpSize selector) — so it scales with the map like its
+// position and prints WYSIWYG at the intended physical mm. (Falls back to the
+// base-px × zoom size before the map is ready.)
 function waypointGeom(i) {
   const wp = state.waypoints[i];
   // Match wpLabel() / inspector placeholder ("WP N"), not a bare digit.
   const label = showWpNames ? waypointDisplayLabel(wp, i) : '';
-  const zoomScale = Math.max(tune('waypointMinZoomScale'), Math.pow(2, map.getZoom() - 12));
-  // Framed A4/A3 export pins the disc to a fixed physical diameter
-  // (waypointPrintDiaMm) via NavAid._exportPxPerMm; on screen it stays the
-  // wpSize × zoom size. Derive `scale` from whichever radius applies so the
-  // text still fits the disc.
-  const exportPpm = (window.NavAid && NavAid._exportPxPerMm) || 0;
-  // At size-selector 1 the disc prints at waypointPrintDiaMm; wpSize scales it.
-  const exportR = exportPpm ? (tune('waypointPrintDiaMm') / 2) * exportPpm * wpSize : 0;
-  const scale = exportR
-    ? exportR / tune('waypointBaseRadiusPx')
-    : wpSize * zoomScale;
+  const ppm = printPxPerMm();
+  const scale = ppm
+    ? (tune('waypointPrintDiaMm') / 2) * ppm * wpSize / tune('waypointBaseRadiusPx')
+    : wpSize * Math.max(tune('waypointMinZoomScale'), Math.pow(2, map.getZoom() - 12));
   // Every waypoint circle is the SAME size (radius depends only on the wpSize
-  // slider × zoom, never on the label). The text shrinks to fit instead of the
+  // slider × scale, never on the label). The text shrinks to fit instead of the
   // circle growing — so a 5-letter code and a single digit share one disc.
   const r = tune('waypointBaseRadiusPx') * scale;
   let fontPx = Math.max(4, Math.round(tune('waypointFontPx') * scale));
@@ -3120,23 +3126,17 @@ function drawWaypoints() {
 }
 
 // --- notes (free-text annotation boxes) ------------------------------
-// Per-note size multiplier (default 1). Clamped so a note can't shrink to
-// nothing or blow up the canvas. Applied to the font and every rect metric so
-// the note scales uniformly around its anchor point. The note also grows and
-// shrinks with the map zoom, on the same 2^(z-12) curve (clamped like
-// legZoomScale) the leg/nav kites use, so a note keeps its geographic footprint
-// relative to the kites it annotates instead of staying a fixed screen size.
+// Per-note size multiplier (default 1, clamped). A default (size-1) note is a
+// fixed GROUND size — notePrintHeightMm tall at the chart's 1:250,000 scale —
+// so it scales with the map like its position and prints WYSIWYG at the intended
+// physical mm. (Falls back to a plain zoom curve before the map is ready.)
 function noteUserSize(n) {
   const s = Number(n && n.size);
   return Number.isFinite(s) && s > 0 ? Math.max(0.5, Math.min(s, 4)) : 1;
 }
 function noteScale(n) {
   const user = noteUserSize(n);
-  // Framed A4/A3 export pins a default (size-1) note to notePrintHeightMm tall:
-  // one line + top/bottom padding must span that many mm. printed mm =
-  // screenPx / (screen-px-per-mm), so pick the scale that makes the 1-line box
-  // equal to the target physical height. Screen size is unchanged.
-  const ppm = (window.NavAid && NavAid._exportPxPerMm) || 0;
+  const ppm = printPxPerMm();
   if (ppm) {
     const oneLinePx = tune('noteLineHeightPx') + tune('notePadYPx') * 2;
     return user * (tune('notePrintHeightMm') * ppm) / oneLinePx;
@@ -3162,19 +3162,18 @@ function noteRect(i) {
     const w = octx.measureText(l || ' ').width;
     if (w > maxW) maxW = w;
   }
-  // In framed export the default box is pinned to notePrintWidthMm wide (× the
-  // note's own size); on screen it's the usual noteMinWidthPx × scale floor.
-  const ppm = (window.NavAid && NavAid._exportPxPerMm) || 0;
+  // Default box floor: notePrintWidthMm wide at the 1:250k scale (× the note's
+  // own size). An oval uses the same default box as a rectangle so both note
+  // shapes are the same size.
+  const ppm = printPxPerMm();
   const minW = ppm
     ? tune('notePrintWidthMm') * ppm * noteUserSize(n)
     : tune('noteMinWidthPx') * sc;
   let w = Math.max(maxW + tune('notePadXPx') * sc * 2, minW);
   let h = Math.max(1, lines.length) * lineH + tune('notePadYPx') * sc * 2;
   const oval = n.shape === 'oval';
-  // On screen the ellipse is grown by √2 so it bounds the text; on a framed
-  // export the oval is pinned to the same default box as the rectangle
-  // (notePrintWidthMm × notePrintHeightMm), so both note shapes print the same
-  // physical size.
+  // Before the map is ready (no ppm) grow the ellipse by √2 so it bounds the
+  // text; with the ground-sized box it already matches the rectangle.
   if (oval && !ppm) { w *= Math.SQRT2; h *= Math.SQRT2; }
   return { x: s.x - w / 2, y: s.y - h / 2, w, h, lines, oval };
 }
@@ -3442,6 +3441,18 @@ function metresPerPixel() {
   const a = map.containerPointToLatLng([0, y]);
   const b = map.containerPointToLatLng([200, y]);
   return map.distance(a, b) / 200;
+}
+
+// Screen pixels per paper-millimetre at the chart's 1:250,000 print scale
+// (1 mm on paper = 250 m on the ground). Sizing a marker by this makes it a
+// fixed GROUND size — it scales with the map exactly like its lat/lng position,
+// so the arrangement you make on screen prints WYSIWYG, AND it comes out at the
+// intended physical mm on a 1:250k A4/A3 export. Returns 0 before the map is
+// ready so callers can fall back to a plain px size.
+function printPxPerMm() {
+  if (typeof map === 'undefined' || !map.getZoom) return 0;
+  const mpp = metresPerPixel();
+  return mpp > 0 ? 250 / mpp : 0;
 }
 
 function pageDims() {                   // page coverage (NM), oriented
