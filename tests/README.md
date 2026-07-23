@@ -83,3 +83,5 @@ name matches `sw.spec` or `pwa.spec` is automatically excluded.
   finishing all specs after many reds.
 - **GA blocking** — all GA/GTM hosts are aborted at the network level
   (`_setup.js`). On PR previews GA is skipped entirely in `index.html`.
+
+- `wiki-screenshots.spec.js` is an on-demand generator (wiki images): it skips itself unless `WIKI_IMG` is set, so it runs only from `.github/workflows/wiki-screenshots.yml`, never in CI `npm test` or e2e-deployed.

@@ -1,0 +1,110 @@
+name: Update wiki changelog
+
+# Nightly: collect the PRs merged into dev since the last run and prepend a
+# dated, grouped section to the wiki Changelog page. The English page carries
+# an auto-marker comment that records the last covered timestamp; quiet days
+# push nothing. Promo PRs ("Dev to main …") are skipped as noise.
+on:
+  schedule:
+    - cron: '0 2 * * *'    # nightly 02:00 UTC (05:00 Israel), before screenshots
+  workflow_dispatch:
+
+permissions:
+  contents: write          # also grants push access to the <repo>.wiki.git repo
+  pull-requests: read
+
+concurrency:
+  group: wiki-changelog
+  cancel-in-progress: true
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone wiki
+        run: |
+          git clone "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git" wiki
+
+      - name: Build changelog section from merged PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - << 'PY'
+          import json, os, re, subprocess, datetime
+
+          page = 'wiki/Changelog.md'
+          s = open(page, encoding='utf-8').read()
+
+          MARK = re.compile(r'<!-- auto-changelog: last=([0-9T:\-+Z]+) -->')
+          m = MARK.search(s)
+          # First run: cover the last 24 h only.
+          since = m.group(1) if m else (
+              datetime.datetime.now(datetime.timezone.utc)
+              - datetime.timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+          prs = json.loads(subprocess.run(
+              ['gh', 'pr', 'list', '--repo', os.environ['REPO'],
+               '--base', 'dev', '--state', 'merged', '--limit', '100',
+               '--json', 'number,title,mergedAt,url'],
+              capture_output=True, text=True, check=True).stdout)
+          prs = [p for p in prs
+                 if p['mergedAt'] > since
+                 and not p['title'].startswith('Dev to main')]
+          prs.sort(key=lambda p: p['mergedAt'])
+          now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+          if not prs:
+              print('no merged PRs since', since, '- nothing to add')
+              # Leave the page untouched on quiet nights (the mergedAt > since
+              # filter makes re-scanning the same window harmless); only seed
+              # the marker once if the page has never carried one.
+              if not m and '# Changelog' in s:
+                  s = s.replace('# Changelog', f'# Changelog\n\n<!-- auto-changelog: last={now} -->', 1)
+                  open(page, 'w', encoding='utf-8').write(s)
+              raise SystemExit(0)
+
+          GROUPS = [('feat', 'Features'), ('fix', 'Fixes'), ('data', 'Data'),
+                    ('docs', 'Docs'), ('test', 'Tests'), ('ci', 'CI')]
+          buckets = {}
+          for p in prs:
+              t = p['title']
+              g = next((label for pre, label in GROUPS
+                        if re.match(rf'{pre}(\(|:)', t)), 'Other')
+              # strip the conventional prefix for readability
+              clean = re.sub(r'^[a-z]+(\([^)]*\))?:\s*', '', t)
+              buckets.setdefault(g, []).append(
+                  f"- {clean} ([#{p['number']}]({p['url']}))")
+
+          today = datetime.date.today().isoformat()
+          out = [f'## {today} — merged this period _(auto-generated)_', '']
+          for _, label in GROUPS + [('', 'Other')]:
+              if label in buckets:
+                  if len(buckets) > 1: out.append(f'**{label}**')
+                  out += buckets[label] + ['']
+          section = '\n'.join(out).rstrip() + '\n\n'
+
+          marker = f'<!-- auto-changelog: last={now} -->'
+          if m:
+              s = MARK.sub(marker, s)
+          else:
+              s = s.replace('# Changelog', '# Changelog\n\n' + marker, 1)
+          # insert the new section right after the marker line
+          mm = MARK.search(s)
+          s = s[:mm.end()] + '\n\n' + section + s[mm.end():].lstrip('\n')
+          open(page, 'w', encoding='utf-8').write(s)
+          print(f'added {len(prs)} PRs since {since}')
+          PY
+
+      - name: Push to wiki
+        run: |
+          cd wiki
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Changelog.md
+          if git diff --cached --quiet; then
+            echo "No changelog changes — nothing to push."
+            exit 0
+          fi
+          git commit -m "docs: auto-update changelog from merged PRs (changelog.yml)"
+          git push

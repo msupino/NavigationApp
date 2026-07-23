@@ -148,9 +148,10 @@ test.describe('#215 — exportPNG catch handler restores UI', () => {
     await boot(page);
     await loadRoute(page);
 
-    // Open the inline export options panel.
+    // Open the inline export options panel; the Export button is the first of
+    // the two action buttons (Export + Print).
     await page.evaluate(() => openExportPanel());
-    const btn = page.locator('#export-panel .export-panel-btns button');
+    const btn = page.locator('#export-panel .export-panel-btns button').first();
     await btn.waitFor();
 
     // Inject a failure: replace Promise.all so the tile pipeline immediately

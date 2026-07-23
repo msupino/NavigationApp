@@ -603,8 +603,11 @@ function clampLegLabelAlong(legIdx, label) {
   if (!limitLegKites) return;
   if (!label || !state.waypoints[legIdx] || !state.waypoints[legIdx + 1]) return;
   if (!Number.isFinite(label.a)) label.a = 0;
-  const sc = legZoomScale() || 1;
-  const halfKite = (typeof legKiteAlongHalfPx === 'function') ? legKiteAlongHalfPx(sc) : 0;
+  const sc = legZoomScale() || 1;                 // o.a is stored in this unit
+  // Clamp against the kite's ACTUAL drawn width (kiteDrawScale), not the old
+  // zoom scale, so a bigger ground-sized kite is kept fully on the leg.
+  const drawSc = (typeof kiteDrawScale === 'function') ? kiteDrawScale() : sc;
+  const halfKite = (typeof legKiteAlongHalfPx === 'function') ? legKiteAlongHalfPx(drawSc) : 0;
   const limit = Math.max(0, (legFrame(legIdx).len / 2 - halfKite) / sc);
   label.a = Math.max(-limit, Math.min(limit, label.a));
 }
@@ -679,7 +682,8 @@ function hitLegLabel(px, py) {
   // #83: scale the hit radius with the same zoom + legArrowSize factor that
   // sizes the drawn marker (see drawLegArrow in draw.js), so the hit zone
   // tracks the visual size. Floor at 18 px keeps touch ergonomics.
-  const hit = Math.max(tune('hitLegLabelMinPx'), tune('hitLegLabelScalePx') * legZoomScale());
+  const hit = Math.max(tune('hitLegLabelMinPx'), tune('hitLegLabelScalePx') *
+    ((typeof kiteDrawScale === 'function') ? kiteDrawScale() : legZoomScale()));
   for (let i = 0; i < state.legs.length; i++) {
     for (const which of ['in', 'out']) {
       if (which === 'out' && (!showReturn || !legAllowsReturn(i))) continue;
@@ -705,7 +709,7 @@ function cumLabelCenter(i) {
   const sc = legZoomScale();
   // Use own driftPerp (not inLabel's perp) so the cum kite is independent
   // of the navigation kite position when in default state.
-  const perp  = o._default ? legDefaultLabelPerp(len) : (o.p || 0) * sc;
+  const perp  = o._default ? cumDefaultLabelPerp() : (o.p || 0) * sc;
   const along = (o.a || 0) * sc;
   return { x: b.x + dx * along + nx * perp,
            y: b.y + dy * along + ny * perp };
@@ -721,11 +725,11 @@ function _materialiseDefaultCumLabel(legIdx) {
   if (!a || !b) return;
   const legLen = Math.hypot(b.x - a.x, b.y - a.y);
   const sc = legZoomScale() || 1;
-  const perpPx = legDefaultLabelPerp(legLen);
+  const perpPx = cumDefaultLabelPerp();
   leg.cumLabel = { a: o.a || 0, p: perpPx / sc, _m: 1 };
 }
 function hitCumLabel(px, py) {
-  const hit = Math.max(tune('hitCumLabelMinPx'), tune('hitCumLabelScalePx') * legZoomScale());
+  const hit = Math.max(tune('hitCumLabelMinPx'), tune('hitCumLabelScalePx') * ((typeof kiteDrawScale === 'function') ? kiteDrawScale() : legZoomScale()));
   for (let i = 0; i < state.legs.length; i++) {
     const c = cumLabelCenter(i);
     if (c && Math.hypot(c.x - px, c.y - py) <= hit) return { i };
@@ -747,7 +751,7 @@ function cumLabelRetCenter(i) {
   const leg = state.legs[i];
   const o = (leg && leg.cumLabelRet) || { a: 0, _default: 1, _m: 1 };
   const sc = legZoomScale();
-  const perp  = o._default ? -legDefaultLabelPerp(len) : (o.p || 0) * sc;
+  const perp  = o._default ? -cumDefaultLabelPerp() : (o.p || 0) * sc;
   const along = (o.a || 0) * sc;
   return { x: a.x + dx * along + nx * perp,
            y: a.y + dy * along + ny * perp };
@@ -762,7 +766,7 @@ function _materialiseDefaultCumLabelRet(legIdx) {
   if (!a || !b) return;
   const legLen = Math.hypot(b.x - a.x, b.y - a.y);
   const sc = legZoomScale() || 1;
-  const perpPx = legDefaultLabelPerp(legLen);
+  const perpPx = cumDefaultLabelPerp();
   leg.cumLabelRet = { a: o.a || 0, p: -perpPx / sc, _m: 1 };  // default is the -perp side
 }
 function cumLabelDragFrame(legIdx, isReturn) {
@@ -797,7 +801,7 @@ function setCumLabelFromPoint(legIdx, isReturn, px, py) {
 }
 function hitCumLabelRet(px, py) {
   if (!showReturn) return null;          // return kite only drawn with the return path
-  const hit = Math.max(tune('hitCumLabelMinPx'), tune('hitCumLabelScalePx') * legZoomScale());
+  const hit = Math.max(tune('hitCumLabelMinPx'), tune('hitCumLabelScalePx') * ((typeof kiteDrawScale === 'function') ? kiteDrawScale() : legZoomScale()));
   for (let i = 0; i < state.legs.length; i++) {
     if (!legAllowsReturn(i)) continue;
     const c = cumLabelRetCenter(i);
@@ -1698,7 +1702,14 @@ function showRouteMosaicModal() {
   const zoomVal = document.createElement('span');
   zoomVal.className = 'route-mosaic-zoom-val';
   zoomVal.textContent = zoom.value;
+  const zoomReset = document.createElement('button');
+  zoomReset.type = 'button';
+  zoomReset.className = 'route-mosaic-reset';
+  zoomReset.textContent = '↻';
+  zoomReset.title = S.mosaicResetZoom || 'Reset zoom';
+  zoomReset.setAttribute('aria-label', zoomReset.title);
   zoomWrap.appendChild(zoomLbl); zoomWrap.appendChild(zoom); zoomWrap.appendChild(zoomVal);
+  zoomWrap.appendChild(zoomReset);
   bar.appendChild(zoomWrap);
   // Size slider — scales every preview (keeps the default aspect ratio).
   const baseW = tune('satellitePreviewWidthPx');
@@ -1713,7 +1724,14 @@ function showRouteMosaicModal() {
   const sizeVal = document.createElement('span');
   sizeVal.className = 'route-mosaic-zoom-val';
   sizeVal.textContent = size.value + 'px';
+  const sizeReset = document.createElement('button');
+  sizeReset.type = 'button';
+  sizeReset.className = 'route-mosaic-reset';
+  sizeReset.textContent = '↻';
+  sizeReset.title = S.mosaicResetSize || 'Reset size';
+  sizeReset.setAttribute('aria-label', sizeReset.title);
   sizeWrap.appendChild(sizeLbl); sizeWrap.appendChild(size); sizeWrap.appendChild(sizeVal);
+  sizeWrap.appendChild(sizeReset);
   bar.appendChild(sizeWrap);
   const printBtn = document.createElement('button');
   printBtn.type = 'button';
@@ -1795,6 +1813,17 @@ function showRouteMosaicModal() {
   sel.onchange = () => { syncZoomMax(); render(); };
   zoom.oninput = () => { zoomVal.textContent = zoom.value; render(); };
   size.oninput = () => { sizeVal.textContent = size.value + 'px'; render(); };
+  zoomReset.onclick = () => {
+    zoom.value = String(tune('satellitePreviewZoom'));
+    syncZoomMax();                        // re-clamp to the current layer's max
+    zoomVal.textContent = zoom.value;
+    render();
+  };
+  sizeReset.onclick = () => {
+    size.value = String(tune('satellitePreviewWidthPx'));
+    sizeVal.textContent = size.value + 'px';
+    render();
+  };
   syncZoomMax();
   render();
   body.appendChild(grid);
@@ -2198,12 +2227,12 @@ function showInspector() {
         note.color = v; draw();
       }));
       body.appendChild(rangeRow(S.noteSize || 'Size',
-        Number.isFinite(note.size) ? note.size : 1, 0.5, 3, 0.25,
+        Number.isFinite(note.size) ? note.size : 1, 0.5, 1.5, 0.25,   // symmetric → default 100% sits mid-track
         v => Math.round(v * 100) + '%', v => {
           note.size = v;
           if (typeof persist === 'function') persist();
           draw();
-        }));
+        }, 1));   // ↻ resets note size to 1 (100%)
     }
     const del = document.createElement('button');
     del.className = 'insp-btn';
@@ -2433,7 +2462,7 @@ function selectRow(label, value, options, onChange) {
   row.append(l, sel);
   return row;
 }
-function rangeRow(label, value, min, max, step, format, onChange) {
+function rangeRow(label, value, min, max, step, format, onChange, defaultValue) {
   const row = document.createElement('div');
   row.className = 'row';
   const l = document.createElement('label');
@@ -2445,12 +2474,24 @@ function rangeRow(label, value, min, max, step, format, onChange) {
   const val = document.createElement('span');
   val.className = 'slider-val';
   val.textContent = format(value);
-  input.oninput = () => {
-    const v = parseFloat(input.value);
-    val.textContent = format(v);
-    onChange(v);
-  };
+  const apply = v => { val.textContent = format(v); onChange(v); };
+  input.oninput = () => apply(parseFloat(input.value));
   row.append(l, input, val);
+  // Optional ↻ reset to a default value.
+  if (typeof defaultValue === 'number') {
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'slider-reset';
+    reset.textContent = '↻';
+    reset.title = (typeof S !== 'undefined' && S.sliderReset) || 'Reset to default';
+    reset.setAttribute('aria-label', reset.title);
+    reset.onclick = e => {
+      e.preventDefault();
+      input.value = String(defaultValue);
+      apply(defaultValue);
+    };
+    row.appendChild(reset);
+  }
   return row;
 }
 function textareaRow(label, value, onChange) {
@@ -2908,6 +2949,13 @@ function appendFreqEdit(body, note, editOptions) {
 // --- interaction (Leaflet mouse events) ------------------------------
 let drag = null;
 let downHit = false;
+// Overlay markers (VOR / airfield / nav-WP / NOTAM) are not draggable, so map
+// panning stays enabled over them — which means selection must NOT happen on
+// mousedown (a pan started on a marker would pop the inspector). The action is
+// parked here and committed by the map 'click' handler, which Leaflet only
+// fires when the pointer did not drag.
+let pendingOverlayAction = null;
+map.on('dragstart', () => { pendingOverlayAction = null; });
 
 function dragOriginExclude(d, latlng) {
   if (!d || d.originSnapArmed) return null;
@@ -2921,7 +2969,41 @@ function dragOriginExclude(d, latlng) {
   return { lat: d.origLat, lng: d.origLng };
 }
 
+// Precedence: if an item is already selected (its inspector is open) and the
+// press lands on that SAME item, grab it for dragging — don't reopen the point
+// chooser / re-select an item that merely overlaps it. Returns true if it set
+// up a drag. Covers the reported case of moving a selected freq-change arrow
+// that overlaps its waypoint.
+function grabSelected(px, py, latlng) {
+  const sel = state.selected;
+  if (!sel) return false;
+  // Precedence is scoped to the reported case: a selected note / freq-change
+  // callout whose inspector is open. If the press is unambiguously on that same
+  // note (hitNote already yields the note — it returns -1 when a route waypoint
+  // sits under the cursor, so an overlap still surfaces the point chooser), drag
+  // the note instead of re-selecting. Waypoints and leg/cum kites already drag
+  // via their own hit-tests, and giving them precedence here would swallow the
+  // overlap chooser (issue: a selected waypoint under a freq arrow), so they're
+  // deliberately not handled.
+  const noteHit = hitNote(px, py);
+  if (noteHit >= 0) {
+    const isSelFreq = sel.type === 'wp' && sel.freqNoteIndex === noteHit;
+    const isSelNote = sel.type === 'note' && sel.index === noteHit;
+    if (isSelFreq || isSelNote) {
+      state.selected = selectionForNoteHit(noteHit);
+      drag = { kind: 'note', i: noteHit,
+               offLat: state.notes[noteHit].lat - latlng.lat,
+               offLng: state.notes[noteHit].lng - latlng.lng };
+      map.dragging.disable();
+      showInspector(); draw();
+      return true;
+    }
+  }
+  return false;
+}
+
 map.on('mousedown', e => {
+  pendingOverlayAction = null;
   const p = e.containerPoint;
   // Hit-test priority matches paint order so the topmost element wins:
   // notes are drawn above waypoints (draw.js), so test notes first (issue #71).
@@ -2945,6 +3027,12 @@ map.on('mousedown', e => {
   const notamHits = (includeOverlayChoices && window.showNotam && typeof notamsAtLatLng === 'function')
     ? notamsAtLatLng(e.latlng).map(n => ({ type: 'notam', notam: n })) : [];
   const ovAll = ovHits.concat(notamHits);
+  // Already-selected item wins: if the press is on the item whose inspector is
+  // open, drag it rather than surfacing the chooser for an overlapping item.
+  if (includeOverlayChoices && grabSelected(p.x, p.y, e.latlng)) {
+    downHit = true;
+    return;
+  }
   // A NOTAM airport count-badge sits just below the field; when a route waypoint
   // is on the same field it used to cover/block the badge. The badge now draws
   // on top, and wins the click here so its NOTAMs stay selectable.
@@ -2952,7 +3040,9 @@ map.on('mousedown', e => {
     const badge = notamBadgeNotamsAt(e.latlng);
     if (badge.length) {
       downHit = true;
-      if (typeof showNotamModal === 'function') showNotamModal(badge);
+      pendingOverlayAction = () => {
+        if (typeof showNotamModal === 'function') showNotamModal(badge);
+      };
       return;
     }
   }
@@ -3041,22 +3131,26 @@ map.on('mousedown', e => {
     // list directly instead of the point picker, which doesn't scroll.
     if (ovAll.length > 1 && ovAll.every(c => c.type === 'notam')) {
       downHit = true;
-      if (typeof showNotamModal === 'function') showNotamModal(ovAll.map(c => c.notam));
+      pendingOverlayAction = () => {
+        if (typeof showNotamModal === 'function') showNotamModal(ovAll.map(c => c.notam));
+      };
       return;
     }
     if (ovAll.length > 1) {
       downHit = true;
-      showPointChoice(ovAll);
+      pendingOverlayAction = () => showPointChoice(ovAll);
       return;
     }
     if (ovAll.length) {
       downHit = true;
-      if (ovAll[0].type === 'notam') {
-        if (typeof showNotamModal === 'function') showNotamModal([ovAll[0].notam]);
-      } else {
-        state.selected = ovAll[0];
-        showInspector(); draw();
-      }
+      pendingOverlayAction = () => {
+        if (ovAll[0].type === 'notam') {
+          if (typeof showNotamModal === 'function') showNotamModal([ovAll[0].notam]);
+        } else {
+          state.selected = ovAll[0];
+          showInspector(); draw();
+        }
+      };
       return;
     }
   }
@@ -3149,6 +3243,15 @@ window.addEventListener('pointerup', endMouseDrag);
 window.addEventListener('pointercancel', endMouseDrag);
 
 map.on('click', e => {
+  // Commit a parked overlay action — reached only when the mousedown did not
+  // turn into a pan (Leaflet suppresses 'click' after a drag).
+  if (pendingOverlayAction) {
+    const act = pendingOverlayAction;
+    pendingOverlayAction = null;
+    downHit = false;
+    act();
+    return;
+  }
   if (downHit) { downHit = false; return; }
   // NOTAM clicks are handled in mousedown (as overlay choices); see there.
   if (state.mode === 'add') {
@@ -3188,8 +3291,18 @@ map.on('click', e => {
 window.addEventListener('keydown', e => {
   const t = e.target;
   if (e.key === 'Escape') {
-    const modal = document.querySelector('.modal-back');
-    if (modal) { modal.remove(); return; }
+    // Close only the TOP-MOST modal (last appended), never the first in the DOM
+    // — otherwise a satellite picture stacked over the route mosaic closed the
+    // mosaic underneath. Modals built by createDraggableModal carry their own
+    // (top-most-guarded) Escape handler and a _navaidClose; defer to those so
+    // we don't double-close and race their guard. Only close here the plain
+    // modals that have no self-handling (no _navaidClose).
+    const modals = document.querySelectorAll('.modal-back');
+    if (modals.length) {
+      const top = modals[modals.length - 1];
+      if (typeof top._navaidClose !== 'function') { top.remove(); return; }
+      return;   // top self-handles via its own onEsc
+    }
     if (magnifierOn) { toggleMagnifier(); return; }
     if (state.selected) {
       state.selected = null;

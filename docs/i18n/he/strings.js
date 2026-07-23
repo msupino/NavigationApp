@@ -8,7 +8,7 @@ window.S = {
   commChangeUrl: 'data/cvfr-comm-change.json?v=1',
   legAltitudeUrl: 'data/cvfr-leg-altitude.json?v=1',
   vorUrl: 'data/vor.json?v=1',
-  routeTemplatesUrl: 'data/route-templates.json?v=1',
+  routeTemplatesUrl: 'data/route-templates.json?v=2',
 
   // --- Waypoint terminology -------------------------------------------
   // Mirrors the English cluster in core.js — keep the noun phrase
@@ -171,6 +171,8 @@ window.S = {
   mosaicLayer: 'שכבת הפסיפס',
   mosaicZoom: 'זום',
   mosaicSize: 'גודל',
+  mosaicResetZoom: 'איפוס זום',
+  mosaicResetSize: 'איפוס גודל',
   mosaicPrint: '🖨 הדפס',
   tbLookAheadTitle: 'הבט קדימה: 0 = עכשיו; ‎+N = בעוד N שעות',
   notamTimeNow: 'עכשיו',
@@ -262,6 +264,7 @@ window.S = {
   navLogTitle: 'NavAid — יומן ניווט',
   navLogDate: 'תאריך',
   navLogFreqs: 'תדרים',
+  navLogVor: 'VOR ייחוס',
   navLogDepFreqs: 'תדרי שדה יציאה',
   navLogArrFreqs: 'תדרי שדה נחיתה',
   navLogPopupBlocked: 'אפשר חלונות קופצים כדי לייצא את יומן הניווט.',
@@ -576,7 +579,7 @@ window.S = {
   tbClearStoreTitle: 'מחק את כל המסלולים השמורים וההגדרות במכשיר זה',
   tbClearStoreConfirm: 'למחוק את כל המסלולים השמורים וההגדרות במכשיר זה? לא ניתן לבטל.',
   tbTransparency: 'שקיפות תוויות',
-  tbTransparencyTitle: 'שקיפות רקע תוויות (נקודות, קטעים, הערות)',
+  tbTransparencyTitle: 'שקיפות רקע תוויות נקודות דרך',
   tbMapOpacity: 'בהירות מפה',
   tbMapOpacityTitle: 'בהירות מפת הרקע',
   tbLegArrowSize: 'גודל חץ קטע',
@@ -588,11 +591,19 @@ window.S = {
   tbDriftLineWidthTitle: 'עובי קו ייחוס הסחיפה',
   tbPageA3Title: 'עמוד A3 להדפסה',
   tbPageA4Title: 'עמוד A4 להדפסה',
+  tbPageA4x2Title: 'שני דפי A4 (שטח A3 מחולק לשניים, בקנה מידה של A3) — כשאין A3 זמין',
+  a4x2TileLabel: function (n, total, side, other) {
+    return 'עמוד ' + n + ' מתוך ' + total + ' — ' + side + ' · הדביקו לעמוד ' + other;
+  },
+  a4x2SideLeft: 'שמאל',
+  a4x2SideRight: 'ימין',
+  a4x2SideTop: 'עליון',
+  a4x2SideBottom: 'תחתון',
   tbPrintPageSize: 'גודל עמוד',
   tbOrientTitle: 'כיוון — לחץ למעבר בין לרוחב / לאורך',
   modalCloseTitle: 'סגור',
-  tbPrint: '⬇ שמור PNG',
-  tbPrintTitle: 'שמור מפה + מסלול כ-PNG',
+  tbPrint: '🖨 הדפס',
+  tbPrintTitle: 'הדפס או שמור מפה + מסלול כ-PNG',
   inspCloseTitle: 'סגור',
   inspCloseLabel: 'סגור',
   tbSecEdit: '✏️ עריכה',
@@ -665,6 +676,9 @@ window.S = {
   exportNoPageWarn: 'לא נבחר גודל דף — יחס התמונה המיוצאת עשוי שלא להתאים להדפסה.',
   exportLayer: 'שכבת מפה',
   exportBtn: 'ייצא',
+  printBtn: '🖨 הדפס',
+  printBtnTitle: 'פתח את תיבת ההדפסה בגודל פיזי אמיתי (A4/A3 1:250,000)',
+  errPopupBlocked: 'אפשר חלונות קופצים לאתר כדי לפתוח את תצוגת ההדפסה.',
 
   // --- Magnifying glass ------------------------------------------------
   tbMagnifier: '🔍 זכוכית מגדלת (M)',

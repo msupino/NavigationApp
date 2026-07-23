@@ -3200,7 +3200,13 @@ function routeEndpointAirfields() {
 }
 // '' = every field; 'auto' = route first/last airfield; else a single ICAO.
 function plateAirfieldAllowed(name) {
-  if (window.plateAirfield === 'auto') return routeEndpointAirfields().has(name);
+  if (window.plateAirfield === 'auto') {
+    // With no route (or none of its waypoints on a plate-carrying airfield)
+    // a saved 'auto' must not silently blank every plate toggle — fall back
+    // to showing every field until the route provides endpoints.
+    const ends = routeEndpointAirfields();
+    return ends.size ? ends.has(name) : true;
+  }
   if (window.plateAirfield) return name === window.plateAirfield;
   return true;
 }
@@ -3232,6 +3238,11 @@ function populatePlateAirfieldSelect() {
 
 // Rebuild whichever plate layers are shown so they honour the current filter.
 function rebuildPlateOverlays() {
+  // The align editor may hold a layer inside a group we're about to destroy —
+  // deselect it first so its handles can't keep editing an orphaned layer.
+  if (window.overlayAlign && typeof overlayAlign.onPlatesRebuilt === 'function') {
+    overlayAlign.onPlatesRebuilt();
+  }
   const defs = [
     ['showCircuit', 'circuitLayerGroup', loadCircuitOverlays],
     ['showTraining', 'trainingLayerGroup', loadTrainingOverlays],
@@ -3553,7 +3564,11 @@ const overlayAlign = (function () {
   }
   function toggle() { active ? exit() : enter(); }
 
-  return { toggle, enter, exit, isActive: () => active };
+  // External hook: plate layer groups are being rebuilt (filter change /
+  // Auto route-follow) — drop the current selection so edits can't target a
+  // detached layer.
+  function onPlatesRebuilt() { if (sel) deselect(); }
+  return { toggle, enter, exit, isActive: () => active, onPlatesRebuilt };
 })();
 window.overlayAlign = overlayAlign;
 
@@ -4204,7 +4219,10 @@ function addSliderReset(el) {
     e.preventDefault();
     e.stopPropagation();
     el.value = el.defaultValue;
+    // Fire both: many sliders live-update on 'input', but some (e.g. the
+    // wind-field altitude) do the real work — a refetch — on 'change'.
     el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
   };
   el.parentElement.appendChild(btn);
 }
@@ -4321,13 +4339,18 @@ DRIFTLINEWIDTH_EL.oninput = e => {
   catch (err) { /* storage unavailable */ }
   draw();
 };
-// Per-slider reset buttons for the Display section sliders.
-['yellow-alpha', 'map-opacity', 'wp-size', 'leg-arrow-size', 'leg-line-width', 'drift-line-width']
+// Per-slider reset buttons for the Display section sliders + the magnifier
+// zoom and wind-field altitude sliders (each restores its HTML default value
+// and re-fires the slider's own input handler).
+['yellow-alpha', 'map-opacity', 'wp-size', 'leg-arrow-size', 'leg-line-width', 'drift-line-width',
+ 'mag-zoom', 'windfield-alt']
   .forEach(id => addSliderReset(document.getElementById(id)));
 // magVar is hardcoded at -5 (5°E) in core.js; the input was removed.
 
 document.getElementById('page-a3').onclick = () => setPage('A3');
 document.getElementById('page-a4').onclick = () => setPage('A4');
+const _a4x2Btn = document.getElementById('page-a4x2');
+if (_a4x2Btn) _a4x2Btn.onclick = () => setPage('A4x2');
 // Restore last-used orientation and wire the toolbar toggle button.
 try {
   const stored = localStorage.getItem('navaid.pageOrient');
@@ -4339,7 +4362,7 @@ refreshOrientButton();
 // current map view, so it reappears over the same area.
 try {
   const sp = localStorage.getItem('navaid.pageSize');
-  if ((sp === 'A3' || sp === 'A4') && typeof setPage === 'function') setPage(sp);
+  if ((sp === 'A3' || sp === 'A4' || sp === 'A4x2') && typeof setPage === 'function') setPage(sp);
 } catch (e) { /* storage unavailable */ }
 createMagnifier();
 document.getElementById('tool-magnifier').onclick = toggleMagnifier;
@@ -4732,6 +4755,7 @@ function tuningPanelEnabled() {
 }
 
 function formatTuneValue(spec, value) {
+  if (spec.type === 'bool') return value ? 'on' : 'off';
   if (spec.type === 'color' || spec.type === 'select') return String(value);
   const step = String(spec.step || 1);
   const dot = step.indexOf('.');
@@ -4876,9 +4900,20 @@ function createTuningPanel() {
     if (set.color) set.color.value = String(v);
     if (set.text) set.text.value = text;
     if (set.select) set.select.value = String(v);
+    if (set.check) set.check.checked = !!v;
   };
   const applyValue = (key, raw) => {
     const spec = NavAid.tuningDefaults[key];
+    if (spec && spec.type === 'bool') {
+      setTune(key, raw);
+      syncControl(key);
+      // A default-visibility toggle only affects a fresh visitor; re-run the
+      // reconciliation so the change is visible immediately in this session too
+      // (for toggles the current user hasn't explicitly set).
+      if (typeof NavAid.applyDefaultVisibility === 'function') NavAid.applyDefaultVisibility();
+      redrawAfterTune();
+      return;
+    }
     if (spec && (spec.type === 'color' || spec.type === 'select')) {
       setTune(key, raw);
     } else {
@@ -4922,7 +4957,16 @@ function createTuningPanel() {
       reset.setAttribute('aria-label', reset.title);
 
       const set = {};
-      if (spec.type === 'color') {
+      if (spec.type === 'bool') {
+        const check = document.createElement('input');
+        check.type = 'checkbox';
+        check.id = 'tune-' + key + '-check';
+        check.setAttribute('aria-label', spec.label || key);
+        set.check = check;
+        check.addEventListener('change', () => applyValue(key, check.checked));
+        row.htmlFor = check.id;
+        row.append(name, check, reset);
+      } else if (spec.type === 'color') {
         const color = document.createElement('input');
         color.type = 'color';
         color.id = 'tune-' + key + '-color';
@@ -5406,6 +5450,9 @@ if (typeof loadRemoteConfig === "function") {
   loadRemoteConfig().then(n => {
     if (!n) return;
     if (typeof applyTuningCssVars === "function") applyTuningCssVars();
+    // Gist may have flipped a default-layer-visibility bool — reconcile the
+    // toolbar checkboxes for any toggle the user hasn't explicitly set.
+    if (NavAid && typeof NavAid.applyDefaultVisibility === "function") NavAid.applyDefaultVisibility();
     if (typeof scheduleDraw === "function") scheduleDraw();
     // Apply gist overrides to the IMS overlay too (opacity / lat-lng offset),
     // so alignment + opacity can be tuned from the gist without a redeploy.
@@ -5895,13 +5942,25 @@ const NavWxOpacity = (function () {
   // makes the chart's white paper transparent so it doesn't read as a glaring
   // print sheet over a dark-mode map (the table keeps its white, for legibility).
   // raw.githubusercontent serves CORS so the canvas isn't tainted.
+  function hexToRgb(h) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(h || ''));
+    const v = m ? parseInt(m[1], 16) : 0x1d4e89;
+    return { r: (v >> 16) & 255, g: (v >> 8) & 255, b: v & 255 };
+  }
   function cropPanel(url, crop, knockWhite) {
     // Map panel: drop the chart's pale paper AND terrain/sea (light + low
     // saturation) so the selected base layer (CVFR, etc.) shows through; the
     // saturated hazard areas + dark lines/labels stay. Table/header keep white.
     const thr = knockWhite ? Math.round(off('sigwxWhiteKnockout') || 170) : 999;
     const satThr = Math.round(off('sigwxKnockoutSat'));
-    const key = url + '|' + crop.x0 + '|' + crop.y0 + '|' + thr + '|' + satThr;
+    // Coast params only affect the knocked map panel — keep them out of the
+    // table/header cache keys so coast tuning can't invalidate those crops.
+    const coastKey = knockWhite
+      ? off('sigwxCoastWidthPx') + '|' +
+        (typeof tune === 'function' ? tune('sigwxCoastColor') : '') + '|' +
+        (typeof tune === 'function' ? tune('sigwxCoastAlpha') : '')
+      : '';
+    const key = url + '|' + crop.x0 + '|' + crop.y0 + '|' + thr + '|' + satThr + '|' + coastKey;
     if (cropCache[key]) return Promise.resolve(cropCache[key]);
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -5917,10 +5976,66 @@ const NavWxOpacity = (function () {
           ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
           if (knockWhite && thr <= 255) {
             const im = ctx.getImageData(0, 0, sw, sh), d = im.data;
-            for (let i = 0; i < d.length; i += 4) {
-              const r = d[i], g = d[i + 1], b = d[i + 2];
-              const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-              if (mx >= thr && (mx - mn) <= satThr) d[i + 3] = 0;
+            const n = sw * sh;
+            const cw = Math.max(0, Math.round(off('sigwxCoastWidthPx')));
+            if (cw === 0) {
+              // Coastline off (the default): plain single-pass knockout, no
+              // scratch buffers.
+              for (let i = 0; i < d.length; i += 4) {
+                const r = d[i], g = d[i + 1], b = d[i + 2];
+                const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+                if (mx >= thr && (mx - mn) <= satThr) d[i + 3] = 0;
+              }
+            } else {
+              // Pass 1 — classify. The chart draws no coastline stroke: the
+              // coast is only the boundary between the pale-blue sea fill and
+              // the pale land/paper, and the knockout erases both. Detect sea
+              // pixels (pale AND blue-leaning) to re-stroke that boundary.
+              const sea = new Uint8Array(n);
+              const knock = new Uint8Array(n);
+              for (let p = 0, i = 0; p < n; p++, i += 4) {
+                const r = d[i], g = d[i + 1], b = d[i + 2];
+                const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+                if (mx >= thr && (mx - mn) <= satThr) {
+                  knock[p] = 1;
+                  if (b - r >= 10 && b >= g) sea[p] = 1;
+                }
+              }
+              // Pass 2 — coastline = sea pixel with a knocked non-sea
+              // neighbour (paper/terrain), thickened to cw. Marking is
+              // clamped per row (no wrap to the opposite edge) and gated on
+              // knock[q] so preserved dark ink (labels, hazard outlines) is
+              // never painted over.
+              const coast = new Uint8Array(n);
+              for (let y = 1; y < sh - 1; y++) {
+                for (let x = 1; x < sw - 1; x++) {
+                  const p = y * sw + x;
+                  if (!sea[p]) continue;
+                  if ((knock[p - 1] && !sea[p - 1]) || (knock[p + 1] && !sea[p + 1]) ||
+                      (knock[p - sw] && !sea[p - sw]) || (knock[p + sw] && !sea[p + sw])) {
+                    for (let dy = -(cw - 1); dy <= cw - 1; dy++) {
+                      const ny = y + dy;
+                      if (ny < 0 || ny >= sh) continue;
+                      for (let dx = -(cw - 1); dx <= cw - 1; dx++) {
+                        const nx = x + dx;
+                        if (nx < 0 || nx >= sw) continue;
+                        const q = ny * sw + nx;
+                        if (knock[q]) coast[q] = 1;
+                      }
+                    }
+                  }
+                }
+              }
+              // Pass 3 — knock out the pale fills, then paint the coastline.
+              const cc = hexToRgb(typeof tune === 'function' ? tune('sigwxCoastColor') : '#1d4e89');
+              const ca = Math.round(255 * (typeof tune === 'function' ? tune('sigwxCoastAlpha') : 0.9));
+              for (let p = 0, i = 0; p < n; p++, i += 4) {
+                if (coast[p]) {
+                  d[i] = cc.r; d[i + 1] = cc.g; d[i + 2] = cc.b; d[i + 3] = ca;
+                } else if (knock[p]) {
+                  d[i + 3] = 0;
+                }
+              }
             }
             ctx.putImageData(im, 0, 0);
           }
@@ -6021,3 +6136,60 @@ const NavWxOpacity = (function () {
     })
     .catch(() => { /* manifest unreachable → stay hidden */ });
 })();
+
+// --- Default layer visibility ---------------------------------------------
+// Reconcile the toolbar layer/display checkboxes to the tune-registry defaults
+// (which the gist can override) for any toggle the current user has NOT set
+// explicitly. Each row is [checkbox id, localStorage key, tune key]; the tune
+// key's baked value mirrors the checkbox's shipped default, so for a nogist
+// user this is a no-op — it only bites when the gist (or the ?tune=1 panel)
+// flips a default. We dispatch the checkbox's own 'change' so every existing
+// loader (network fetch, layer add, redraw) runs unchanged, then erase the key
+// the handler persisted so the toggle stays gist-controlled next load.
+NavAid.defaultVisibilityMap = [
+  ['navwp-cb', 'navaid.showNavWP', 'defaultShowNavWP'],
+  ['airfield-cb', 'navaid.showAirfields', 'defaultShowAirfields'],
+  ['vor-cb', 'navaid.showVorStations', 'defaultShowVor'],
+  ['wpname-cb', 'navaid.showWpNames', 'defaultShowWpNames'],
+  ['cumtime-cb', 'navaid.showCumTime', 'defaultShowCumTime'],
+  ['drift-cb', 'navaid.showDrift', 'defaultShowDrift'],
+  ['commchange-cb', 'navaid.showFreqChanges', 'defaultShowCommChange'],
+  ['mid-cb', 'navaid.showMidLeg', 'defaultShowMidLeg'],
+  ['diff-cb', 'navaid.highlightDiff', 'defaultHighlightDiff'],
+  ['limit-kites-cb', 'navaid.limitLegKites', 'defaultLimitLegKites'],
+  ['msa-cb', 'navaid.showMsa', 'defaultShowMsa'],
+  ['reporting-cb', 'navaid.showReporting', 'defaultShowReporting'],
+  ['force-snap-cb', 'navaid.forceSnap', 'defaultForceSnap'],
+  ['ret-cb', 'navaid.showReturn', 'defaultShowReturn'],
+  ['notam-cb', 'navaid.showNotam', 'defaultShowNotam'],
+  ['show-wind-cb', 'navaid.showWind', 'defaultShowWind'],
+  ['windfield-cb', 'navaid.windField', 'defaultWindField'],
+  ['ims-pwx-cb', 'navaid.imsPwx', 'defaultImsPwx'],
+  ['sigwx-ov-cb', 'navaid.sigwxOv', 'defaultSigwxOv'],
+  ['lsa-cb', 'navaid.showLsaBubbles', 'defaultShowLsaBubbles'],
+  ['circuit-cb', 'navaid.showCircuit', 'defaultShowCircuit'],
+  ['training-cb', 'navaid.showTraining', 'defaultShowTraining'],
+  ['cvfr-cb', 'navaid.showCvfr', 'defaultShowCvfr'],
+  ['heli-cb', 'navaid.showHeli', 'defaultShowHeli'],
+  ['commfail-cb', 'navaid.showCommfail', 'defaultShowCommfail'],
+];
+NavAid.applyDefaultVisibility = function applyDefaultVisibility() {
+  if (typeof tune !== 'function') return;
+  for (const [cbId, lsKey, tuneKey] of NavAid.defaultVisibilityMap) {
+    const cb = document.getElementById(cbId);
+    if (!cb) continue;                                   // not wired yet
+    let stored = null;
+    try { stored = localStorage.getItem(lsKey); } catch (e) { /* */ }
+    if (stored !== null) continue;                       // user set this — leave it
+    const desired = !!tune(tuneKey);
+    if (cb.checked === desired) continue;                // already matches
+    cb.checked = desired;
+    cb.dispatchEvent(new Event('change'));               // run the real loader
+    // The handler persisted lsKey synchronously; erase it so this toggle keeps
+    // following the gist/default (rather than freezing after the first boot).
+    try { localStorage.removeItem(lsKey); } catch (e) { /* */ }
+  }
+};
+// Baked defaults mirror the shipped checkbox state, so this first pass is a
+// no-op for a nogist user; the gist .then() re-runs it once overrides land.
+NavAid.applyDefaultVisibility();

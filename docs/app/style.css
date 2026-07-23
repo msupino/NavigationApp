@@ -2686,10 +2686,16 @@ body.theme-light .route-library-row { border-color: #c6ccd6; }
 .route-mosaic-zoom input[type="range"],
 .route-mosaic-size input[type="range"] { width: 90px; }
 .route-mosaic-zoom-val { min-width: 1.5em; text-align: right; font-size: 11px; color: #ccc; }
+.route-mosaic-reset {
+  font: inherit; font-size: 12px; line-height: 1; padding: 2px 5px; border-radius: 5px;
+  border: 1px solid #4a4545; background: #2b2727; color: #ddd; cursor: pointer;
+}
+.route-mosaic-reset:hover { background: #3c3737; }
 body.theme-light .route-mosaic-zoom,
 body.theme-light .route-mosaic-size { color: #2b3340; }
 body.theme-light .route-mosaic-zoom-val { color: #2b3340; }
 body.theme-light .route-mosaic-layer,
+body.theme-light .route-mosaic-reset,
 body.theme-light .route-mosaic-print { border-color: #c6ccd6; background: #eef1f6; color: #2b3340; }
 .route-mosaic-empty { padding: 16px; opacity: 0.7; }
 .route-mosaic-grid {

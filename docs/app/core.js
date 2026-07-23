@@ -5,20 +5,6 @@
  * Leaflet base map (Flight Maps tiles) + a canvas route overlay.
  * ------------------------------------------------------------------ */
 
-// One-time migration: the app was renamed from "Plotter" — carry over any
-// localStorage values saved under the old "plotter." prefix.
-try {
-  for (const k of Object.keys(localStorage)) {
-    if (k.indexOf('plotter.') === 0) {
-      const nk = 'navaid.' + k.slice(8);
-      if (localStorage.getItem(nk) === null) {
-        localStorage.setItem(nk, localStorage.getItem(k));
-      }
-      localStorage.removeItem(k);
-    }
-  }
-} catch (e) { /* storage unavailable */ }
-
 // `version` is intentionally stable at 1.0; `-<short-sha>` is auto-appended
 // at deploy time by .github/workflows/deploy.yml so the displayed toolbar
 // string identifies the exact deployed commit. On localhost the literal stays
@@ -95,7 +81,7 @@ NavAid.tuningDefaults = {
   windArrowHaloColor: { value: '#ffffff', type: 'color', label: 'Wind arrow halo color' },
   windTextHaloColor: { value: '#ffffff', type: 'color', label: 'Wind text halo color' },
 
-  defaultLabelMarginPx: { value: 20, min: 0, max: 80, step: 1, label: 'Default marker margin' },
+  defaultLabelMarginPx: { value: 30, min: 0, max: 120, step: 1, label: 'Default marker margin (scaled with the kite)' },
   defaultKiteHalfWidthPx: { value: 23, min: 1, max: 80, step: 1, label: 'Default kite half-width' },
 
   legKiteFillColor: { value: '#00ff00', type: 'color', label: 'Leg kite fill color' },
@@ -103,6 +89,10 @@ NavAid.tuningDefaults = {
   legKiteHeightPx: { value: 47, min: 8, max: 120, step: 1, label: 'Leg kite height' },
   legKiteCellWidthPx: { value: 24, min: 8, max: 80, step: 1, label: 'Leg kite cell width' },
   legKiteTriangleLenPx: { value: 35, min: 8, max: 100, step: 1, label: 'Leg kite triangle length' },
+  // Printed HEIGHT of the leg kite at size-selector 1 on a framed A4/A3 export
+  // (1:250,000). The whole marker is scaled uniformly to this height, keeping
+  // the on-screen proportions (WYSIWYG). Screen size is unchanged; gist-tunable.
+  kitePrintHeightMm: { value: 18.5, min: 2, max: 120, step: 0.5, label: 'Leg kite print height (mm)' },
   legKiteBorderPx: { value: 2, min: 0.25, max: 8, step: 0.25, label: 'Leg kite border width' },
   legKiteDividerPx: { value: 1, min: 0.25, max: 6, step: 0.25, label: 'Leg kite divider width' },
   legKiteHaloPx: { value: 7, min: 0, max: 20, step: 0.5, label: 'Leg kite halo width' },
@@ -115,6 +105,11 @@ NavAid.tuningDefaults = {
   cumKiteHeightPx: { value: 23, min: 8, max: 100, step: 1, label: 'Cum kite height' },
   cumKiteCellWidthPx: { value: 43, min: 10, max: 120, step: 1, label: 'Cum kite cell width' },
   cumKiteTriangleLenPx: { value: 20, min: 6, max: 100, step: 1, label: 'Cum kite triangle length' },
+  // Printed HEIGHT of the cumulative-time kite at size-selector 1 on a framed
+  // A4/A3 export (1:250,000). The whole marker is scaled uniformly to this
+  // height, preserving the on-screen proportions (WYSIWYG). Screen size
+  // unchanged; gist-tunable.
+  cumKitePrintHeightMm: { value: 9.5, min: 1, max: 80, step: 0.5, label: 'Cum kite print height (mm)' },
   cumKiteBorderPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Cum kite border width' },
   cumKiteTextPx: { value: 15, min: 4, max: 36, step: 1, label: 'Cum kite text size' },
 
@@ -131,6 +126,10 @@ NavAid.tuningDefaults = {
   distanceBadgeFillColor: { value: '#fff6aa', type: 'color', label: 'Distance badge fill color' },
 
   waypointBaseRadiusPx: { value: 13, min: 2, max: 60, step: 1, label: 'Waypoint base radius' },
+  // Physical diameter of the waypoint disc on a framed A4/A3 PNG export (both
+  // print at 1:250,000, so one value fits both). Screen size is unchanged —
+  // this only overrides the disc size while exporting a page frame.
+  waypointPrintDiaMm: { value: 7, min: 1, max: 40, step: 0.5, label: 'Waypoint circle print diameter (mm)' },
   waypointFontPx: { value: 13, min: 4, max: 40, step: 1, label: 'Waypoint text size' },
   waypointTextFitFactor: { value: 0.85, min: 0.3, max: 1, step: 0.05, label: 'Waypoint text fit (fraction of diameter)' },
   waypointMinZoomScale: { value: 0.35, min: 0.1, max: 2, step: 0.05, label: 'Waypoint min zoom scale' },
@@ -188,6 +187,10 @@ NavAid.tuningDefaults = {
   notePadYPx: { value: 6, min: 0, max: 40, step: 1, label: 'Note vertical padding' },
   noteLineHeightPx: { value: 16, min: 6, max: 60, step: 1, label: 'Note line height' },
   noteMinWidthPx: { value: 56, min: 1, max: 240, step: 1, label: 'Note min width' },
+  // Physical size of a default (size-1) note rectangle on a framed A4/A3 PNG
+  // export (both print at 1:250,000). Screen size is unchanged; gist-tunable.
+  notePrintWidthMm: { value: 21, min: 2, max: 120, step: 0.5, label: 'Note default print width (mm)' },
+  notePrintHeightMm: { value: 14, min: 2, max: 120, step: 0.5, label: 'Note default print height (mm)' },
   noteStrokeWidthPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Note stroke width' },
   noteSelectedStrokeWidthPx: { value: 2.5, min: 0.25, max: 10, step: 0.25, label: 'Selected note stroke width' },
   noteDefaultFillColor: { value: '#fff6aa', type: 'color', label: 'Default note fill color' },
@@ -198,6 +201,13 @@ NavAid.tuningDefaults = {
   pageFrameScrimColor: { value: '#141212', type: 'color', label: 'Page frame scrim color' },
   pageFrameScrimAlpha: { value: 0.4, min: 0, max: 1, step: 0.05, label: 'Page frame scrim alpha' },
   pageFrameHitPx: { value: 14, min: 1, max: 80, step: 1, label: 'Page frame drag band' },
+  a4x2CutLineWidthPx: { value: 3, min: 0.25, max: 10, step: 0.25, label: 'A4×2 cut line width' },
+  a4x2CutDashOnPx: { value: 14, min: 1, max: 60, step: 1, label: 'A4×2 cut dash on' },
+  a4x2CutDashOffPx: { value: 9, min: 0, max: 60, step: 1, label: 'A4×2 cut dash gap' },
+  a4x2CutLineColor: { value: '#ff3b30', type: 'color', label: 'A4×2 cut line color' },
+  a4x2CutLineAlpha: { value: 0.9, min: 0, max: 1, step: 0.05, label: 'A4×2 cut line alpha' },
+  a4x2MarkLabelMm: { value: 3.5, min: 1, max: 10, step: 0.5, label: 'A4×2 printed page-label height (mm)' },
+  a4x2MarkGuideMm: { value: 0.5, min: 0.1, max: 3, step: 0.1, label: 'A4×2 printed cut-guide width (mm)' },
 
   hitWaypointExtraPx: { value: 6, min: 0, max: 40, step: 1, label: 'Waypoint hit extra' },
   hitLegPx: { value: 8, min: 1, max: 60, step: 1, label: 'Leg line hit width' },
@@ -230,10 +240,16 @@ NavAid.tuningDefaults = {
   altPairFocusDotColor: { value: '#ff3030', type: 'color', label: 'Alt-pair focus endpoint fill' },
   altPairFocusMs: { value: 10000, min: 1000, max: 60000, step: 500, label: 'Alt-pair focus duration (ms)' },
 
-  exportBgColor: { value: '#231f20', type: 'color', label: 'PNG export background color' },
+  // Matches the on-screen #map background so map-opacity-faded tiles and
+  // translucent overlays (kites / notes at kiteNoteAlpha) composite over the
+  // same backdrop on paper as on screen — otherwise a dark export bg made them
+  // read darker/more opaque than the map. Gist-tunable.
+  exportBgColor: { value: '#e7ebf0', type: 'color', label: 'PNG export background color' },
 
   liveAircraftFillColor: { value: '#000000', type: 'color', label: 'Live aircraft fill color' },
   liveAircraftOutlineColor: { value: '#ffffff', type: 'color', label: 'Live aircraft outline color' },
+  liveHeadingLineColor: { value: '#e53935', type: 'color', label: 'Live heading line color' },
+  liveHeadingTextColor: { value: '#ffffff', type: 'color', label: 'Live heading label color' },
 
   profileBgColor: { value: '#1d2733', type: 'color', label: 'Profile background color' },
   profileGridColor: { value: '#7896b4', type: 'color', label: 'Profile grid color' },
@@ -255,6 +271,13 @@ NavAid.tuningDefaults = {
   sigmetDustColor: { value: '#b8860b', type: 'color', label: 'SIGMET dust/sand color' },
   sigmetTcColor: { value: '#c2185b', type: 'color', label: 'SIGMET cyclone color' },
   sigmetDefaultColor: { value: '#dd1111', type: 'color', label: 'SIGMET default/TS color' },
+  sigmetFillAlpha: { value: 0.16, min: 0, max: 1, step: 0.02, label: 'SIGMET fill alpha' },
+  sigmetLineWidthPx: { value: 2, min: 0.25, max: 10, step: 0.25, label: 'SIGMET outline width' },
+  sigmetDashOnPx: { value: 8, min: 1, max: 60, step: 1, label: 'SIGMET dash on' },
+  sigmetDashOffPx: { value: 5, min: 0, max: 60, step: 1, label: 'SIGMET dash gap' },
+  sigmetLabelFontPx: { value: 12, min: 6, max: 32, step: 1, label: 'SIGMET label font' },
+  lsaLineWidthPx: { value: 2, min: 0.25, max: 10, step: 0.25, label: 'LSA bubble outline width' },
+  lsaHighlightWidthPx: { value: 4, min: 0.5, max: 12, step: 0.5, label: 'LSA bubble highlight width' },
   notamColor: { value: '#c026d3', type: 'color', label: 'NOTAM area color' },
   notamFillAlpha: { value: 0.14, min: 0, max: 1, step: 0.02, label: 'NOTAM area fill alpha' },
   notamLineWidthPx: { value: 2, min: 0.5, max: 5, step: 0.5, label: 'NOTAM area line width (px)' },
@@ -277,6 +300,9 @@ NavAid.tuningDefaults = {
   sigwxOpacity: { value: 0.55, min: 0.2, max: 1, step: 0.05, label: 'SIGWX overlay default opacity' },
   sigwxWhiteKnockout: { value: 170, min: 120, max: 256, step: 1, label: 'SIGWX map-panel knockout lightness (drops paper+terrain so the base layer shows; 256 = off)' },
   sigwxKnockoutSat: { value: 45, min: 0, max: 120, step: 1, label: 'SIGWX map-panel knockout max saturation (keeps coloured hazard areas)' },
+  sigwxCoastWidthPx: { value: 0, min: 0, max: 6, step: 1, label: 'SIGWX coastline width (0 = off, the default; re-strokes the sea/land boundary the knockout erases)' },
+  sigwxCoastColor: { value: '#1d4e89', type: 'color', label: 'SIGWX coastline color' },
+  sigwxCoastAlpha: { value: 0.9, min: 0, max: 1, step: 0.05, label: 'SIGWX coastline alpha' },
   sigwxTblLatOffset: { value: 0, min: -3, max: 3, step: 0.02, label: 'SIGWX table latitude nudge (°)' },
   sigwxTblLngOffset: { value: 0, min: -4, max: 6, step: 0.02, label: 'SIGWX table longitude nudge (°)' },
   sigwxTblScale: { value: 1, min: 0.4, max: 2, step: 0.02, label: 'SIGWX table size' },
@@ -299,7 +325,13 @@ NavAid.tuningDefaults = {
   windFieldHoursAhead: { value: 24, min: 1, max: 48, step: 1, label: 'Wind field forecast slider range (h)' },
   windFieldForecastDays: { value: 2, min: 1, max: 7, step: 1, label: 'Wind field forecast fetch days' },
 
-  liveAircraftRadiusPx: { value: 18, min: 6, max: 48, step: 1, label: 'Live aircraft size' },
+  liveAircraftRadiusPx: { value: 12, min: 6, max: 48, step: 1, label: 'Live aircraft size' },
+  liveHeadingLineWidthPx: { value: 2, min: 0.5, max: 6, step: 0.5, label: 'Live heading line width' },
+  liveHeadingDashPx: { value: 9, min: 1, max: 30, step: 1, label: 'Live heading dash length' },
+  liveHeadingDashGapPx: { value: 6, min: 0, max: 30, step: 1, label: 'Live heading dash gap' },
+  liveHeadingTickPx: { value: 7, min: 2, max: 20, step: 1, label: 'Live heading tick length' },
+  liveHeadingLabelPx: { value: 11, min: 7, max: 24, step: 1, label: 'Live heading label size' },
+  liveHeadingLabelGapPx: { value: 6, min: 0, max: 20, step: 1, label: 'Live heading label gap' },
   gotoMarkerColor: { value: '#c0392b', type: 'color', label: 'Go-to marker outline' },
   gotoMarkerFillColor: { value: '#e74c3c', type: 'color', label: 'Go-to marker fill' },
   gotoMarkerRadiusPx: { value: 7, min: 2, max: 24, step: 1, label: 'Go-to marker radius' },
@@ -351,6 +383,43 @@ NavAid.tuningDefaults = {
   zuluClockShadowYPx: { value: 2, min: 0, max: 18, step: 1, label: 'Zulu clock shadow y' },
   zuluClockShadowBlurPx: { value: 8, min: 0, max: 36, step: 1, label: 'Zulu clock shadow blur' },
   zuluClockShadowAlpha: { value: 0.45, min: 0, max: 1, step: 0.05, label: 'Zulu clock shadow alpha' },
+  // Kite + note fill opacity. Not exposed as a Display slider — gist-only (also
+  // adjustable in the hidden ?tune panel). The waypoint label backgrounds have
+  // their own visible slider (yellowAlpha); this covers the leg / cumulative /
+  // return kites and note boxes.
+  kiteNoteAlpha: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'Kite / note fill opacity' },
+
+  // Default on/off state of the toolbar layer/display checkboxes for a NEW user
+  // (empty localStorage). Each value mirrors the checkbox's baked-in default, so
+  // shipping this changes nothing on its own — but the gist (or the ?tune=1
+  // panel) can now flip which layers a fresh visitor sees without a redeploy.
+  // NavAid.applyDefaultVisibility() (ui.js) reconciles the live checkboxes to
+  // these whenever localStorage has no explicit user choice for that toggle.
+  defaultShowReturn: { value: false, type: 'bool', label: 'Default: show return leg' },
+  defaultShowNavWP: { value: true, type: 'bool', label: 'Default: show VFR reporting points' },
+  defaultShowAirfields: { value: true, type: 'bool', label: 'Default: show airfields' },
+  defaultShowVor: { value: true, type: 'bool', label: 'Default: show VOR stations' },
+  defaultShowWpNames: { value: true, type: 'bool', label: 'Default: show waypoint names' },
+  defaultShowCumTime: { value: true, type: 'bool', label: 'Default: show cumulative time' },
+  defaultShowDrift: { value: true, type: 'bool', label: 'Default: show drift lines' },
+  defaultShowCommChange: { value: true, type: 'bool', label: 'Default: show comm-change rings' },
+  defaultShowMidLeg: { value: false, type: 'bool', label: 'Default: show mid-leg marks' },
+  defaultHighlightDiff: { value: false, type: 'bool', label: 'Default: highlight speed/alt change' },
+  defaultLimitLegKites: { value: true, type: 'bool', label: 'Default: limit leg kites' },
+  defaultShowMsa: { value: false, type: 'bool', label: 'Default: show MSA' },
+  defaultShowReporting: { value: false, type: 'bool', label: 'Default: show reporting points' },
+  defaultForceSnap: { value: false, type: 'bool', label: 'Default: force snap' },
+  defaultShowNotam: { value: false, type: 'bool', label: 'Default: show NOTAMs' },
+  defaultShowWind: { value: false, type: 'bool', label: 'Default: show wind' },
+  defaultWindField: { value: false, type: 'bool', label: 'Default: show wind field' },
+  defaultImsPwx: { value: false, type: 'bool', label: 'Default: show IMS PWX overlay' },
+  defaultSigwxOv: { value: false, type: 'bool', label: 'Default: show SIGWX overlay' },
+  defaultShowLsaBubbles: { value: true, type: 'bool', label: 'Default: show LSA' },
+  defaultShowCircuit: { value: false, type: 'bool', label: 'Default: show circuit plates' },
+  defaultShowTraining: { value: false, type: 'bool', label: 'Default: show training plates' },
+  defaultShowCvfr: { value: false, type: 'bool', label: 'Default: show CVFR plates' },
+  defaultShowHeli: { value: false, type: 'bool', label: 'Default: show heli plates' },
+  defaultShowCommfail: { value: false, type: 'bool', label: 'Default: show comm-fail plates' },
 };
 // Groups are ordered to mirror the route-building workflow: the route line
 // and its per-leg annotations first, then the markers you place, then the
@@ -373,39 +442,42 @@ NavAid.tuningGroups = [
   { name: 'GPS track', keys: ['gpsBreadcrumbColor', 'gpsBreadcrumbWidthPx'] },
   { name: 'Wind arrows', keys: ['windArrowColor', 'windArrowHaloColor', 'windTextHaloColor'] },
   { name: 'Default marker locations', keys: ['defaultLabelMarginPx', 'defaultKiteHalfWidthPx'] },
-  { name: 'Leg kites', keys: ['legKiteFillColor', 'returnKiteFillColor', 'legKiteHeightPx', 'legKiteCellWidthPx', 'legKiteTriangleLenPx', 'legKiteBorderPx', 'legKiteDividerPx', 'legKiteHaloPx', 'legKiteTextPx', 'legKiteHeadingTextPx', 'legKiteHeadingAnchor'] },
-  { name: 'Cumulative kites', keys: ['cumKiteFillColor', 'returnCumKiteFillColor', 'cumKiteHeightPx', 'cumKiteCellWidthPx', 'cumKiteTriangleLenPx', 'cumKiteBorderPx', 'cumKiteTextPx'] },
+  { name: 'Leg kites', keys: ['legKiteFillColor', 'returnKiteFillColor', 'legKiteHeightPx', 'legKiteCellWidthPx', 'legKiteTriangleLenPx', 'kitePrintHeightMm', 'legKiteBorderPx', 'legKiteDividerPx', 'legKiteHaloPx', 'legKiteTextPx', 'legKiteHeadingTextPx', 'legKiteHeadingAnchor'] },
+  { name: 'Cumulative kites', keys: ['cumKiteFillColor', 'returnCumKiteFillColor', 'cumKiteHeightPx', 'cumKiteCellWidthPx', 'cumKiteTriangleLenPx', 'cumKitePrintHeightMm', 'cumKiteBorderPx', 'cumKiteTextPx'] },
   { name: 'Minute markers', keys: ['minuteMarkerFontPx', 'minuteTickEvenPx', 'minuteTickOddPx', 'minuteTickEvenWidthPx', 'minuteTickOddWidthPx', 'minuteLabelOffsetPx'] },
   { name: 'Distance badges', keys: ['distanceBadgeRadiusPx', 'distanceBadgeBorderPx', 'distanceBadgeFontPx', 'distanceBadgeFillColor'] },
-  { name: 'Route waypoints', keys: ['waypointBaseRadiusPx', 'waypointFontPx', 'waypointTextFitFactor', 'waypointMinZoomScale', 'waypointSelectedRadiusAddPx', 'waypointStrokeWidthPx', 'waypointFillColor'] },
+  { name: 'Route waypoints', keys: ['waypointBaseRadiusPx', 'waypointPrintDiaMm', 'waypointFontPx', 'waypointTextFitFactor', 'waypointMinZoomScale', 'waypointSelectedRadiusAddPx', 'waypointStrokeWidthPx', 'waypointFillColor'] },
   { name: 'Airfields', keys: ['airfieldMarkerRadiusPx', 'airfieldMarkerWidthFactor', 'airfieldMarkerBaseFactor', 'airfieldStrokeWidthPx', 'airfieldLabelFontPx', 'airfieldLabelOffsetPx', 'airfieldLabelHaloPx', 'airfieldFillColor', 'airfieldOutlineColor'] },
   { name: 'Nav waypoints', keys: ['navWaypointRadiusPx', 'navWaypointStrokeWidthPx', 'navWaypointLabelFontPx', 'navWaypointLabelOffsetPx', 'navWaypointLabelHaloPx', 'navWaypointDotColor'] },
   { name: 'Overlay labels', keys: ['overlayLabelHaloColor', 'overlayLabelHaloAlpha'] },
   { name: 'Frequency changes', keys: ['commChangeRingRadiusPx', 'commChangeRingWidthPx', 'commChangeRingColor', 'commChangeNoteLatOffset', 'commChangeNoteLngOffset', 'commChangeArrowStartGapPx', 'commChangeArrowWidthPx', 'commChangeArrowColor', 'commChangeArrowLineCap', 'commChangeArrowLineJoin', 'commChangeArrowMiterLimit', 'commChangeArrowHaloPx', 'commChangeArrowHaloColor', 'commChangeArrowHaloAlpha', 'commChangeSelectedColor', 'commChangeSelectedAlpha', 'commChangeSelectedWidthAddPx', 'commChangeArrowBoltPx', 'commChangeArrowBoltAngleDeg', 'commChangeArrowBend1Along', 'commChangeArrowBend2Along', 'commChangeNameFontPx', 'commChangeFreqFontPx', 'commChangeTextColor', 'commChangeTextHaloColor', 'commChangeTextHaloAlpha', 'commChangeTextAlong', 'commChangeTextGapPx', 'commChangeNameHaloWidthPx', 'commChangeFreqHaloWidthPx'] },
-  { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx', 'noteDefaultFillColor'] },
-  { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimColor', 'pageFrameScrimAlpha', 'pageFrameHitPx'] },
+  { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'notePrintWidthMm', 'notePrintHeightMm', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx', 'noteDefaultFillColor'] },
+  { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimColor', 'pageFrameScrimAlpha', 'pageFrameHitPx', 'a4x2CutLineWidthPx', 'a4x2CutDashOnPx', 'a4x2CutDashOffPx', 'a4x2CutLineColor', 'a4x2CutLineAlpha', 'a4x2MarkLabelMm', 'a4x2MarkGuideMm'] },
   { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitLegPx', 'hitLegLabelMinPx', 'hitLegLabelScalePx', 'hitCumLabelMinPx', 'hitCumLabelScalePx'] },
   { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs', 'altPairFocusLineAlpha', 'altPairFocusDotAlpha'] },
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx'] },
   { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeFontPx', 'reportBadgeColor', 'reportBadgeTextColor'] },
-  { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx'] },
+  { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx'] },
   { name: 'Vertical profile', keys: ['profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileTodColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
-  { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor'] },
+  { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx'] },
+  { name: 'LSA bubbles', keys: ['lsaLineWidthPx', 'lsaHighlightWidthPx'] },
   { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor'] },
   { name: 'Weather (IMS)', keys: ['imsPwxOpacity', 'imsPwxLatOffset', 'imsPwxLngOffset', 'imsPwxLatScale', 'imsPwxLngScale', 'imsPwxRotationDeg', 'imsPwxDarkBackdropAlpha', 'imsPwxBackdropBandPct'] },
-  { name: 'SIGWX overlay', keys: ['sigwxOpacity', 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale', 'sigwxRotationDeg', 'sigwxWhiteKnockout', 'sigwxKnockoutSat', 'sigwxTblOpacity', 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale'] },
+  { name: 'SIGWX overlay', keys: ['sigwxOpacity', 'sigwxLatOffset', 'sigwxLngOffset', 'sigwxLatScale', 'sigwxLngScale', 'sigwxRotationDeg', 'sigwxWhiteKnockout', 'sigwxKnockoutSat', 'sigwxCoastWidthPx', 'sigwxCoastColor', 'sigwxCoastAlpha', 'sigwxTblOpacity', 'sigwxTblLatOffset', 'sigwxTblLngOffset', 'sigwxTblScale'] },
   // Wind-field render params + grid + defaults. The altitude/time/opacity
   // sliders are live menu controls; their defaults live here.
   { name: 'Wind field', keys: ['windFieldDefaultAltFt', 'windFieldDefaultOpacity', 'windFieldGridDeg', 'windFieldWest', 'windFieldEast', 'windFieldSouth', 'windFieldNorth', 'windFieldVelocityScale', 'windFieldParticleAge', 'windFieldParticleMultiplier', 'windFieldLineWidth', 'windFieldMaxVelocity', 'windFieldMinVelocity', 'windFieldFrameRate', 'windFieldHoursAhead', 'windFieldForecastDays'] },
   { name: 'Chrome layout', keys: ['inspectorDefaultTopPx', 'inspectorBottomGapPx', 'zuluClockMinWidthPx', 'zuluClockPadYPx', 'zuluClockPadXPx', 'zuluClockMarginTopPx', 'zuluClockMarginRightPx', 'zuluClockFontPx', 'zuluClockFontWeight', 'zuluClockLineHeight', 'zuluClockTextColor', 'zuluClockBgColor', 'zuluClockBgAlpha', 'zuluClockBorderColor', 'zuluClockBorderWidthPx', 'zuluClockBorderRadiusPx', 'zuluClockShadowYPx', 'zuluClockShadowBlurPx', 'zuluClockShadowAlpha'] },
   { name: 'Export', keys: ['exportBgColor'] },
-  { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor'] },
+  { name: 'Global palette', keys: ['inkColor', 'selectedColor', 'labelFillColor', 'kiteTextColor', 'legKiteHaloColor', 'kiteNoteAlpha'] },
+  { name: 'Default layer visibility', keys: ['defaultShowNavWP', 'defaultShowAirfields', 'defaultShowVor', 'defaultShowWpNames', 'defaultShowCumTime', 'defaultShowDrift', 'defaultShowCommChange', 'defaultShowMidLeg', 'defaultHighlightDiff', 'defaultLimitLegKites', 'defaultShowMsa', 'defaultShowReporting', 'defaultForceSnap', 'defaultShowReturn', 'defaultShowNotam', 'defaultShowWind', 'defaultWindField', 'defaultImsPwx', 'defaultSigwxOv', 'defaultShowLsaBubbles', 'defaultShowCircuit', 'defaultShowTraining', 'defaultShowCvfr', 'defaultShowHeli', 'defaultShowCommfail'] },
 ];
 function tune(key) {
   const spec = NavAid.tuningDefaults && NavAid.tuningDefaults[key];
   if (!spec) return 0;
   const v = NavAid.tuning[key];
   if (spec.type === 'color') return typeof v === 'string' ? v : spec.value;
+  if (spec.type === 'bool') return typeof v === 'boolean' ? v : spec.value;
   if (spec.type === 'select') {
     return spec.options && spec.options.indexOf(v) !== -1 ? v : spec.value;
   }
@@ -417,6 +489,14 @@ function setTune(key, value) {
   if (spec.type === 'color') {
     if (typeof value !== 'string' || !/^#[0-9a-f]{6}$/i.test(value)) return;
     NavAid.tuning[key] = value.toLowerCase();
+    return;
+  }
+  if (spec.type === 'bool') {
+    // Accept a real boolean, 0/1, or '0'/'1'/'true'/'false' (gist JSON may use
+    // any of these); anything else is rejected so a bad value keeps the default.
+    if (typeof value === 'boolean') { NavAid.tuning[key] = value; return; }
+    if (value === 1 || value === '1' || value === 'true') { NavAid.tuning[key] = true; return; }
+    if (value === 0 || value === '0' || value === 'false') { NavAid.tuning[key] = false; return; }
     return;
   }
   if (spec.type === 'select') {
@@ -488,9 +568,9 @@ window.S = Object.assign({
   navWpSearchField: 'en',              // which locale label to show/search in results
   airfieldsUrl: 'data/airfields.json?v=33',  // resolved relative to index.html (docs/)
   airfieldLabelField: 'en',            // which locale label to show on the overlay
-  commChangeUrl: 'data/cvfr-comm-change.json?v=1', // CVFR comm-change reporting points (issue #399)
+  commChangeUrl: 'data/cvfr-comm-change.json?v=2', // CVFR comm-change reporting points (issue #399)
   legAltitudeUrl: 'data/cvfr-leg-altitude.json?v=1', // CVFR green-route leg altitude table
-  routeTemplatesUrl: 'data/route-templates.json?v=1', // ready-made route templates
+  routeTemplatesUrl: 'data/route-templates.json?v=2', // ready-made route templates
   vorUrl: 'data/vor.json?v=1',              // Israeli VOR/DME stations (#404 follow-up)
 
   // --- English UI copy (default locale) -------------------------------
@@ -650,6 +730,8 @@ window.S = Object.assign({
   mosaicLayer: 'Mosaic layer',
   mosaicZoom: 'Zoom',
   mosaicSize: 'Size',
+  mosaicResetZoom: 'Reset zoom',
+  mosaicResetSize: 'Reset size',
   mosaicPrint: '🖨 Print',
   tbLookAheadTitle: 'Look ahead: 0 = now; +N = N hours from now',
   notamTimeNow: 'Now',
@@ -741,6 +823,7 @@ window.S = Object.assign({
   navLogTitle: 'NavAid — Nav Log',
   navLogDate: 'Date',
   navLogFreqs: 'Frequencies',
+  navLogVor: 'Reference VOR',
   navLogDepFreqs: 'Departure frequencies',
   navLogArrFreqs: 'Arrival frequencies',
   navLogPopupBlocked: 'Allow pop-ups to export the nav log.',
@@ -1057,7 +1140,7 @@ window.S = Object.assign({
   tbClearStoreTitle: 'Delete all saved routes and settings stored on this device',
   tbClearStoreConfirm: 'Delete ALL saved routes and settings stored on this device? This cannot be undone.',
   tbTransparency: 'Label opacity',
-  tbTransparencyTitle: 'Opacity of waypoint / leg / note label backgrounds',
+  tbTransparencyTitle: 'Opacity of waypoint label backgrounds',
   tbMapOpacity: 'Map opacity',
   tbMapOpacityTitle: 'Base map brightness',
   tbLegArrowSize: 'Leg arrow size',
@@ -1069,11 +1152,19 @@ window.S = Object.assign({
   tbDriftLineWidthTitle: 'Drift reference line thickness',
   tbPageA3Title: 'A3 print page',
   tbPageA4Title: 'A4 print page',
+  tbPageA4x2Title: 'Two A4 pages (A3 area split in half, at A3 scale) — for when A3 isn’t available',
+  a4x2TileLabel: function (n, total, side, other) {
+    return 'PAGE ' + n + ' OF ' + total + ' — ' + side + ' · tape to page ' + other;
+  },
+  a4x2SideLeft: 'LEFT',
+  a4x2SideRight: 'RIGHT',
+  a4x2SideTop: 'TOP',
+  a4x2SideBottom: 'BOTTOM',
   tbPrintPageSize: 'Page size',
   tbOrientTitle: 'Orientation — click to toggle landscape / portrait',
   modalCloseTitle: 'Close',
-  tbPrint: '⬇ Save PNG',
-  tbPrintTitle: 'Save the framed map + route as a PNG',
+  tbPrint: '🖨 Print',
+  tbPrintTitle: 'Print or save the framed map + route as a PNG',
   tbMagnifier: '🔍 Magnifying glass (M)',
   tbMagnifierTitle: 'Magnifying glass (M) — zoomed view at cursor; +/− adjust loupe zoom while open',
   // Footer-button labels carry NO icon prefix: the button's own
@@ -1171,6 +1262,9 @@ window.S = Object.assign({
   exportNoPageWarn: 'No page size selected — exported image ratio may not match a print page.',
   exportLayer: 'Layer',
   exportBtn: 'Export',
+  printBtn: '🖨 Print',
+  printBtnTitle: 'Open the print dialog at true physical size (A4/A3 1:250,000)',
+  errPopupBlocked: 'Allow pop-ups for this site to open the print view.',
 }, window.S || {});
 
 // Fill data-i18n / data-i18n-title / data-i18n-placeholder / data-i18n-aria
@@ -1268,7 +1362,9 @@ var notams = null;          // null = not loaded; [] or populated once fetched
 var notamMeta = null;       // { generatedAt } of the loaded NOTAM file
 var notamBorders = null;    // null = not loaded; { LEBANON:[[ [lat,lng]... ]], ... } border arcs
 var showWpNames = true;     // draw waypoint names (off = empty circle)
-var yellowAlpha = 0.8;    // global multiplier for yellow label backgrounds (default 80%)
+var yellowAlpha = 0.5;    // opacity of waypoint label backgrounds (Label-opacity slider, default 50%)
+// Kite + note fill opacity is not a Display slider — it's the gist-overridable
+// tune key `kiteNoteAlpha` (see tuningDefaults), read via tune() in draw.js.
 var wpSize = 1;             // waypoint name / number text size scale
 var legArrowSize = 1;       // leg arrow (rectangle+triangle) size scale
 var legLineWidth = 0.5;     // leg route line width scale (0.5 ≈ 1.75 px of the 3.5 px route width)
@@ -1324,14 +1420,17 @@ function saveAircraft() {
 
 const DEFAULT_LABEL_FILL_COLOR = '#fff6aa';
 
-// Tinted fill from any "#rrggbb" hex — yellowAlpha controls the alpha.
-function tintFill(hex) {
+// Tinted fill from any "#rrggbb" hex. Alpha defaults to yellowAlpha (the
+// waypoint label-opacity slider); kite fills and note backgrounds pass
+// tune('kiteNoteAlpha') so their opacity is gist-tunable, not a Display slider.
+function tintFill(hex, alpha) {
+  const a = (typeof alpha === 'number') ? alpha : yellowAlpha;
   let h = (hex || DEFAULT_LABEL_FILL_COLOR).replace('#', '');
   if (!/^[0-9a-f]{6}$/i.test(h)) h = DEFAULT_LABEL_FILL_COLOR.replace('#', '');
   const r = parseInt(h.slice(0, 2), 16);
   const g = parseInt(h.slice(2, 4), 16);
   const b = parseInt(h.slice(4, 6), 16);
-  return `rgba(${r},${g},${b},${yellowAlpha})`;
+  return `rgba(${r},${g},${b},${a})`;
 }
 
 // Default text-background colour. yellowAlpha directly controls opacity.

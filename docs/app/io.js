@@ -890,7 +890,7 @@ function save() {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'route-' + fileStamp() + '.json';
+  a.download = routeFileSlug() + '-' + fileStamp() + '.json';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // revoking synchronously after click can abort the download (Firefox/Safari)
 }
@@ -931,7 +931,7 @@ function exportGpx() {
   const blob = new Blob([gpx], { type: 'application/gpx+xml' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'route-' + fileStamp() + '.gpx';
+  a.download = routeFileSlug() + '-' + fileStamp() + '.gpx';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // defer: see save()
 }
@@ -1013,7 +1013,7 @@ function exportPln() {
   const blob = new Blob([pln], { type: 'application/xml' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'route-' + fileStamp() + '.pln';
+  a.download = routeFileSlug() + '-' + fileStamp() + '.pln';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // defer: see save()
 }
@@ -1209,7 +1209,7 @@ function exportFdr() {
   const blob = new Blob([fdr], { type: 'text/plain' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'route-' + fileStamp() + '.fdr';
+  a.download = routeFileSlug() + '-' + fileStamp() + '.fdr';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);   // defer: see save()
 }
@@ -1556,7 +1556,7 @@ function applyPage() {
 // Reflect the active page size on the A3/A4 buttons (.active + aria-pressed →
 // the toolbar's active highlight) so it's clear which is selected.
 function refreshPageButtons() {
-  for (const [id, sz] of [['page-a3', 'A3'], ['page-a4', 'A4']]) {
+  for (const [id, sz] of [['page-a3', 'A3'], ['page-a4', 'A4'], ['page-a4x2', 'A4x2']]) {
     const b = document.getElementById(id);
     if (!b) continue;
     const on = pageSize === sz;
@@ -2620,7 +2620,7 @@ function showFlightPlan() {
     const blob = new Blob(['\ufeff', flightPlanCsv()], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'flight-plan-' + fileStamp() + '.csv';
+    a.download = 'flight-plan-' + routeFileSlug() + '-' + fileStamp() + '.csv';
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -2641,9 +2641,23 @@ function showFlightPlan() {
     // their current values, and drop the delete column.
     const tablesHtml = Array.from(scrollArea.querySelectorAll('.flight-table')).map(t => {
       const clone = t.cloneNode(true);
-      clone.querySelectorAll('input, select').forEach(el => {
+      // cloneNode copies attributes, not live .value state (a <select>'s
+      // selection resets to its first option) — read each value from the
+      // ORIGINAL element, pairing originals and clones by document order.
+      const origEls = t.querySelectorAll('input, select');
+      clone.querySelectorAll('input, select').forEach((el, i) => {
+        const live = origEls[i];
+        const val = live ? live.value : el.value;
         const span = document.createElement('span');
-        span.textContent = el.value || '';
+        if (el.classList.contains('fp-leg-vor')) {
+          // Per-leg VOR picker: print the EFFECTIVE ident (override or the
+          // route-wide reference), so each Radial row says which VOR it's from.
+          const ident = val || (typeof vorRef === 'string' && vorRef) || '';
+          span.textContent = ident ? ident + ' ' : '';
+          span.className = 'nl-vor-ident';
+        } else {
+          span.textContent = val || '';
+        }
         el.replaceWith(span);
       });
       clone.querySelectorAll('.fp-col-hidden').forEach(el => el.remove());
@@ -2715,6 +2729,22 @@ function showFlightPlan() {
         S.navLogArrFreqs || 'Arrival frequencies');
     }
 
+    // Reference VOR(s) feeding the Radial/DME columns — the route-wide
+    // selection plus any distinct per-leg overrides — with their frequencies,
+    // so the printed log carries what to tune.
+    const vorIdents = [];
+    const pushVor = id => {
+      if (id && typeof id === 'string' && !vorIdents.includes(id)) vorIdents.push(id);
+    };
+    pushVor(typeof vorRef === 'string' ? vorRef : null);
+    (state.legs || []).forEach(l => pushVor(l && l.vorRef));
+    const vorHtml = vorIdents
+      .map(id => (typeof vorByIdent === 'function' ? vorByIdent(id) : null))
+      .filter(Boolean)
+      .map(v => ltr(v.ident) + ' \u2014 ' + esc((lang === 'he' && v.he) ? v.he : v.name) +
+                (v.freq ? ' \u2014 ' + ltr(v.freq + ' MHz') : ''))
+      .join(' \u00b7 ');
+
     const ac = (typeof aircraft === 'object' && aircraft) ? aircraft : { gph: tune('defaultGph'), taxiGal: tune('defaultTaxiGal') };
     const today = new Date().toISOString().slice(0, 10);
     const title = (S.navLogTitle || 'NavAid \u2014 Nav Log') + ' \u00b7 ' + dep + ' \u2192 ' + dest;
@@ -2730,6 +2760,7 @@ function showFlightPlan() {
       'th,td{border:1px solid #999;padding:3px 5px;text-align:' +
         (dir === 'rtl' ? 'right' : 'left') + '}' +
       'thead th{background:#eee}.nl-gap{height:14px}' +
+      '.nl-vor-ident{font-weight:600;color:#555;margin-inline-end:2px}' +
       'h2{font-size:14px;margin:16px 0 4px}ul{margin:4px 0;padding-inline-start:18px}' +
       '</style></head><body>' +
       '<h1>' + esc(S.navLogTitle || 'NavAid \u2014 Nav Log') + '</h1>' +
@@ -2739,6 +2770,7 @@ function showFlightPlan() {
         '<div><b>' + esc(S.tbAircraft || 'Aircraft') + ':</b> ' +
           esc(S.tbGph || 'GPH') + ' ' + esc(ac.gph) + ' \u00b7 ' +
           esc(S.tbTaxiGal || 'Taxi/T.O.') + ' ' + esc(ac.taxiGal) + '</div>' +
+        (vorHtml ? '<div><b>' + esc(S.navLogVor || 'Reference VOR') + ':</b> ' + vorHtml + '</div>' : '') +
       '</div>' +
       depFreqHtml +
       tablesHtml +
@@ -2897,6 +2929,28 @@ function chooseOrientation(size, onPick) {
 function fileStamp() {
   return new Date().toISOString().slice(0, 19)
     .replace(/[-:]/g, '').replace('T', '-');
+}
+// Filename-safe "dep-to-dest" slug from the route endpoints, mirroring the
+// saved-route naming (defaultSavedRouteName) so a downloaded file is named for
+// its route instead of a bare "route-". Prefers the localised display name
+// (navName); if ASCII-sanitising that leaves nothing (e.g. a Hebrew-only
+// label), falls back to the raw canonical name, then to 'route'.
+function routeFileSlug() {
+  const slug = s => String(s || '').replace(/[^A-Za-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '').slice(0, 24);
+  const clean = (w) => {
+    const raw = (w && w.name) ? String(w.name).trim() : '';
+    const disp = (raw && typeof navName === 'function') ? navName(raw) : raw;
+    return slug(disp) || slug(raw);
+  };
+  const wps = state.waypoints;
+  if (wps && wps.length >= 2) {
+    const a = clean(wps[0]);
+    const b = clean(wps[wps.length - 1]);
+    if (a && b) return a + '-to-' + b;
+    if (a || b) return a || b;
+  }
+  return 'route';
 }
 
 // Plain-language SIGMET list (clicking the corner readout). Each entry shows
@@ -3110,7 +3164,13 @@ function buildExportPanel(container) {
   opVal.style.cssText = 'width:2.2em;text-align:right;font-size:12px';
   opVal.textContent = opSlider.value + '%';
   opacityRow.appendChild(opVal);
-  if (typeof addSliderReset === 'function') addSliderReset(opSlider);
+  const opResetBtn = document.createElement('button');
+  opResetBtn.type = 'button';
+  opResetBtn.className = 'slider-reset';
+  opResetBtn.textContent = '↻';
+  opResetBtn.title = S.sliderReset || 'Reset to default';
+  opResetBtn.setAttribute('aria-label', opResetBtn.title);
+  opacityRow.appendChild(opResetBtn);
   body.appendChild(opacityRow);
 
   // Page-size warning.
@@ -3155,6 +3215,9 @@ function buildExportPanel(container) {
   btns.className = 'modal-btns export-panel-btns';
   const exportBtn = document.createElement('button');
   exportBtn.textContent = S.exportBtn;
+  const printBtn = document.createElement('button');
+  printBtn.textContent = S.printBtn || 'Print';
+  printBtn.title = S.printBtnTitle || 'Open the print dialog at true physical size';
 
   function restoreOrig() {
     showNavWP = origNavWP;
@@ -3304,13 +3367,20 @@ function buildExportPanel(container) {
     opVal.textContent = this.value + '%';
     applyMapOpacity();
   };
+  opResetBtn.onclick = function (e) {
+    e.preventDefault();
+    opSlider.value = '80';                 // default map opacity (matches the toolbar slider)
+    opSlider.oninput();
+  };
 
   // Export / Print render from the live panel state and leave the preview in
   // place (the panel stays open); the map is restored when the Print section is
   // collapsed via the returned restore().
   exportBtn.onclick = () => { exportPNG(); };
+  printBtn.onclick = () => { exportPNG('print'); };
 
   btns.appendChild(exportBtn);
+  btns.appendChild(printBtn);
   box.appendChild(btns);
   container.appendChild(box);
 
@@ -3333,7 +3403,119 @@ async function fetchTileBitmap(layer, coords, signal) {
 
 // Save the framed map + route as a PNG, rendered at the highest practical
 // native tile zoom (not the on-screen zoom) for maximum quality.
-function exportPNG() {
+// Slice a fully-rendered A3 export canvas into two A4 tiles at the same scale
+// (A3 = 2×A4). Landscape A3 → two A4 portrait halves (vertical cut); portrait
+// A3 → two A4 landscape halves (horizontal cut). Halves abut exactly (no
+// overlap, so 1:250 000 is preserved); a dashed cut/tape guide marks the shared
+// edge and each page is labelled. Downloads two PNGs with A4 DPI metadata.
+function exportA4x2Tiles(out, W, H, done) {
+  // pageOrient describes the assembled A3 sheet (the on-screen frame), same as
+  // A3/A4: a landscape frame splits into two portrait A4 pages side-by-side
+  // (vertical cut); a portrait frame splits into two landscape halves stacked
+  // (horizontal cut), saved pre-rotated below so they still print portrait.
+  const portraitPages = pageOrient !== 'portrait';
+  const halfW = Math.floor(W / 2), halfH = Math.floor(H / 2);
+  const tiles = portraitPages
+    ? [{ sx: 0,     sy: 0, sw: halfW,     sh: H, seam: 'right',  n: 1, side: 'LEFT' },
+       { sx: halfW, sy: 0, sw: W - halfW, sh: H, seam: 'left',   n: 2, side: 'RIGHT' }]
+    : [{ sx: 0, sy: 0,     sw: W, sh: halfH,     seam: 'bottom', n: 1, side: 'TOP' },
+       { sx: 0, sy: halfH, sw: W, sh: H - halfH, seam: 'top',    n: 2, side: 'BOTTOM' }];
+
+  let i = 0;
+  (function nextTile() {
+    if (i >= tiles.length) { done(); return; }
+    const t = tiles[i++];
+    const c = document.createElement('canvas');
+    c.width = t.sw; c.height = t.sh;
+    const cx = c.getContext('2d');
+    cx.drawImage(out, t.sx, t.sy, t.sw, t.sh, 0, 0, t.sw, t.sh);
+    // WYSIWYG: each file is saved exactly as its half appears on screen.
+    // Portrait halves carry portrait-A4 DPI; landscape halves carry
+    // landscape-A4 DPI (pick Landscape in the print dialog for those).
+    const paperW = portraitPages ? 210 : 297;
+    const paperH = portraitPages ? 297 : 210;
+    const ppmX = Math.round(c.width * 1000 / paperW);
+    const ppmY = Math.round(c.height * 1000 / paperH);
+    // Marks are sized in paper millimetres (via px-per-mm), not fixed pixels:
+    // framed exports render at native tile zoom (thousands of px per page),
+    // where a fixed 22px label would print ~2 mm tall and be illegible.
+    drawA4x2TileMarks(cx, t, tiles.length, ppmX / 1000);
+    const dl = (blob) => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'navigation-' + routeFileSlug() + '-A4x2-p' + t.n + 'of2-' + fileStamp() + '.png';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      setTimeout(nextTile, 400);   // stagger so the browser allows both downloads
+    };
+    c.toBlob(b => {
+      // A null blob (canvas memory limits) must surface, not silently drop a
+      // page — the user would tape together half a chart. Abort the sequence.
+      if (!b) { alert(S.errPngFail); done(); return; }
+      b.arrayBuffer()
+        .then(buf => dl(new Blob([injectPngPhys(buf, ppmX, ppmY)], { type: 'image/png' })))
+        .catch(() => dl(b));
+    }, 'image/png');
+  })();
+}
+
+// Page label + dashed cut/tape guide on the edge shared with the other tile.
+// Sized in paper millimetres via pxPerMm so the marks print the same physical
+// size at any export resolution; label text comes from S (i18n) and the mm
+// sizes are tunable (Page frame group).
+function drawA4x2TileMarks(cx, t, total, pxPerMm) {
+  const W = cx.canvas.width, H = cx.canvas.height;
+  const mm = Math.max(0.5, pxPerMm || 1);
+  cx.save();
+  // page label (top-left, on a translucent chip so it reads over any chart)
+  const sideKey = { LEFT: 'a4x2SideLeft', RIGHT: 'a4x2SideRight',
+                    TOP: 'a4x2SideTop', BOTTOM: 'a4x2SideBottom' }[t.side];
+  const label = S.a4x2TileLabel(t.n, total, S[sideKey] || t.side, t.n === 1 ? 2 : 1);
+  const fontPx = Math.round(tune('a4x2MarkLabelMm') * mm);
+  cx.font = 'bold ' + fontPx + 'px sans-serif';
+  cx.textBaseline = 'top';
+  const tw = cx.measureText(label).width;
+  const pad = Math.round(fontPx * 0.3);
+  cx.fillStyle = 'rgba(255,255,255,0.85)';
+  cx.fillRect(pad, pad, tw + pad * 2, fontPx + pad * 2);
+  cx.fillStyle = '#000';
+  cx.fillText(label, pad * 2, pad * 2);
+  // dashed guide along the shared (seam) edge
+  cx.strokeStyle = 'rgba(0,0,0,0.7)';
+  cx.lineWidth = Math.max(1, tune('a4x2MarkGuideMm') * mm);
+  cx.setLineDash([Math.round(4 * mm), Math.round(2.5 * mm)]);
+  cx.beginPath();
+  if (t.seam === 'right')       { cx.moveTo(W - 1, 0); cx.lineTo(W - 1, H); }
+  else if (t.seam === 'left')   { cx.moveTo(1, 0);     cx.lineTo(1, H); }
+  else if (t.seam === 'bottom') { cx.moveTo(0, H - 1); cx.lineTo(W, H - 1); }
+  else                          { cx.moveTo(0, 1);     cx.lineTo(W, 1); }
+  cx.stroke();
+  cx.restore();
+}
+
+// Open the framed PNG in a new window sized to the exact paper millimetres with
+// an @page rule, then fire the print dialog — so it prints 1:1 regardless of the
+// printer's "fit to page" default (the only reliable way to hit the physical mm
+// sizes). Non-framed falls back to printing the image on the default page.
+function openPrintWindow(blob, paperWmm, paperHmm) {
+  const url = URL.createObjectURL(blob);
+  const w = window.open('', '_blank');
+  if (!w) { try { alert(S.errPopupBlocked || 'Allow pop-ups to print.'); } catch (e) {} URL.revokeObjectURL(url); return; }
+  const sized = (paperWmm && paperHmm)
+    ? `@page{size:${paperWmm}mm ${paperHmm}mm;margin:0}img{width:${paperWmm}mm;height:${paperHmm}mm;display:block}`
+    : `@page{margin:0}img{max-width:100%;display:block}`;
+  w.document.open();
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' +
+    (S.printBtn || 'Print') + '</title><style>html,body{margin:0;padding:0}' + sized +
+    '</style></head><body><img alt=""></body></html>');
+  w.document.close();
+  const img = w.document.querySelector('img');
+  const go = () => { try { w.focus(); w.print(); } catch (e) {} setTimeout(() => URL.revokeObjectURL(url), 60000); };
+  img.onload = () => setTimeout(go, 60);
+  img.onerror = () => { URL.revokeObjectURL(url); };
+  img.src = url;
+}
+function exportPNG(mode) {
   // Export matches the screen view exactly, including map bearing.
   // Tiles are fetched north-up (axis-aligned) for a bounding box that covers
   // all 4 frame corners, composited onto an intermediate canvas, then drawn
@@ -3522,6 +3704,10 @@ function exportPNG() {
     const s = W / fr.w;
     const prevOctx = octx;
     octx = o;
+    // Symbols size themselves geographically (printPxPerMm, = 250/metresPerPixel
+    // at 1:250,000), identical on screen and here — so the export is a faithful
+    // scaled copy of what you arranged on screen and lands at the intended
+    // physical mm. No export-time size override needed.
     o.save();
     o.scale(s, s);
     o.translate(-fr.x, -fr.y);
@@ -3547,6 +3733,24 @@ function exportPNG() {
       octx = prevOctx;
     }
 
+    // A4×2: the frame is A3-sized — slice it into two A4 tiles at the same
+    // 1:250 000 scale (no A3 printer needed) instead of one A3 PNG.
+    if (pageSize === 'A4x2') {
+      // Teardown runs in the completion callback, mirroring the single-page
+      // path's toBlob callback: the Save button stays disabled and
+      // NavAid.exporting stays true until both tile downloads have fired,
+      // so a second export can't start mid-tiling.
+      exportA4x2Tiles(out, W, H, () => {
+        btn.textContent = btnLabel;
+        btn.disabled = false;
+        unlockMap();
+        NavAid.exporting = false;
+        if (typeof NavAid._restoreExport === 'function') NavAid._restoreExport();
+        if (failed > 0) alert(S.errTilesFail(failed, jobs.length));
+      });
+      return;
+    }
+
     out.toBlob(b => {
       btn.textContent = btnLabel;
       btn.disabled = false;
@@ -3557,25 +3761,30 @@ function exportPNG() {
 
       // Embed physical DPI metadata so the PNG prints at the correct
       // physical size on A3 / A4 at 1:250,000 scale.
-      const setDl = function (blob) {
+      const printing = mode === 'print';
+      const mm = pageSize === 'A4' ? [210, 297] : [297, 420];
+      const paperW = pageOrient === 'portrait' ? mm[0] : mm[1];
+      const paperH = pageOrient === 'portrait' ? mm[1] : mm[0];
+      const deliver = function (blob) {
+        if (printing) {
+          openPrintWindow(blob, (framed && pageSize) ? paperW : 0, (framed && pageSize) ? paperH : 0);
+          return;
+        }
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'navigation-' + (pageSize || baseName) +
+        a.download = 'navigation-' + routeFileSlug() + '-' + (pageSize || baseName) +
                      '-' + fileStamp() + '.png';
         a.click();
         URL.revokeObjectURL(a.href);
       };
       if (framed && pageSize) {
-        const mm = pageSize === 'A4' ? [210, 297] : [297, 420];
-        const paperW = pageOrient === 'portrait' ? mm[0] : mm[1];
-        const paperH = pageOrient === 'portrait' ? mm[1] : mm[0];
         const ppmX = Math.round(W * 1000 / paperW);
         const ppmY = Math.round(H * 1000 / paperH);
         b.arrayBuffer().then(buf => {
-          setDl(new Blob([injectPngPhys(buf, ppmX, ppmY)], { type: 'image/png' }));
-        }).catch(function () { setDl(b); });
+          deliver(new Blob([injectPngPhys(buf, ppmX, ppmY)], { type: 'image/png' }));
+        }).catch(function () { deliver(b); });
       } else {
-        setDl(b);
+        deliver(b);
       }
       if (failed > 0) alert(S.errTilesFail(failed, jobs.length));
     }, 'image/png');
@@ -3803,7 +4012,7 @@ async function flyRoute() {
       { type: 'application/vnd.google-earth.kml+xml' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'navaid-flythrough-' + fileStamp() + '.kml';
+    a.download = 'navaid-flythrough-' + routeFileSlug() + '-' + fileStamp() + '.kml';
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -3823,7 +4032,7 @@ async function flyRoute() {
       const url = 'https://earth.google.com/web/@' +
         lat.toFixed(6) + ',' + lng.toFixed(6) + ',' + altM(0) + 'a,' +
         outboundHeading(0).toFixed(1) + 'h,70t';
-      window.open(url, '_blank');
+      window.open(url, '_blank', 'noopener');
       downloadKml();
       return;
     }
@@ -4208,7 +4417,7 @@ function showPlateViewer(filename, label) {
   btns.className = 'modal-btns';
   const openTab = document.createElement('button');
   openTab.textContent = S.plateOpenTab;
-  openTab.onclick = () => window.open(pdfUrl, '_blank');
+  openTab.onclick = () => window.open(pdfUrl, '_blank', 'noopener');
   btns.appendChild(openTab);
   const download = document.createElement('button');
   download.textContent = S.plateDownload;
@@ -4295,7 +4504,14 @@ function createDraggableModal(titleText, className, onClose, options = {}) {
   });
 
   function onEsc(e) {
-    if (e.key === 'Escape') close();
+    if (e.key !== 'Escape') return;
+    // Only the top-most modal reacts to Escape, so closing a picture stacked
+    // over another modal (e.g. a satellite view over the route mosaic) doesn't
+    // also close the one underneath. Each open modal registers its own onEsc;
+    // without this guard they'd all close on a single Escape.
+    const backs = document.querySelectorAll('.modal-back');
+    if (backs.length && backs[backs.length - 1] !== back) return;
+    close();
   }
   back.onclick = e => { if (e.target === back) close(); };
   function show() {

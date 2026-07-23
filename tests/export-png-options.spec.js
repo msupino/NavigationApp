@@ -26,7 +26,7 @@ async function boot(page) {
 // the Export button is present.
 async function openPanel(page) {
   await page.evaluate(() => openExportPanel());
-  await page.locator('#export-panel .export-panel-btns button').waitFor();
+  await page.locator('#export-panel .export-panel-btns button').first().waitFor();
 }
 
 // Close the Print section: tears down the panel and restores the map state.
@@ -63,8 +63,8 @@ test.describe('Export PNG options panel', () => {
     // Layer defaults to Navigation.
     const sel = page.locator('#export-layer-select');
     expect(await sel.inputValue()).toBe('Navigation');
-    // Single action button: Export.
-    expect(await page.locator('#export-panel .export-panel-btns button').count()).toBe(1);
+    // Two action buttons: Export + Print.
+    expect(await page.locator('#export-panel .export-panel-btns button').count()).toBe(2);
     // Closing the section tears the panel down.
     await closePanel(page);
     await expect(page.locator('#export-panel .export-panel-btns button')).toHaveCount(0);
@@ -156,6 +156,31 @@ test.describe('Export PNG options panel', () => {
     await openPanel(page);
     expect(await page.locator('#export-panel input[type="checkbox"]').nth(3).isChecked()).toBe(false);
     expect(await page.evaluate(() => showNavWP)).toBe(false);
+  });
+
+  test('the export panel offers a Print action that opens a 1:1 print window', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(wps => {
+      window.pageOrient = 'landscape';
+      if (typeof setPage === 'function' && pageSize !== 'A4') setPage('A4');
+      state.waypoints = wps; syncLegs(); draw();
+    }, pairLLHZ_LLHA());
+    // Capture what openPrintWindow would write to the popup.
+    const html = await page.evaluate(() => new Promise(resolve => {
+      let out = '';
+      const doc = { open() {}, close() {}, write(s) { out += s; }, querySelector: () => ({}) };
+      window.open = () => ({ document: doc, focus() {}, print() {} });
+      // A4 landscape paper.
+      openPrintWindow(new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' }), 297, 210);
+      setTimeout(() => resolve(out), 30);
+    }));
+    expect(html).toMatch(/@page\{size:297mm 210mm;margin:0\}/);
+    expect(html).toMatch(/img\{width:297mm;height:210mm/);
+
+    // The inline panel exposes a Print button next to Export.
+    await openPanel(page);
+    const labels = await page.locator('#export-panel .export-panel-btns button').allTextContents();
+    expect(labels.some(t => /print/i.test(t))).toBe(true);
   });
 
   test('Warns when no page size (A3/A4) is selected', async ({ page }) => {

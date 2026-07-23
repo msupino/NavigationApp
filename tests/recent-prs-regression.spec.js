@@ -73,7 +73,7 @@ test.describe('#250 — export panel checkbox label terminology', () => {
       syncLegs(); draw();
     }, pairLLHZ_LLHA());
     await page.evaluate(() => openExportPanel());
-    await page.locator('#export-panel .export-panel-btns button').waitFor();
+    await page.locator('#export-panel .export-panel-btns button').first().waitFor();
 
     const labels = await page.locator('#export-panel label').allTextContents();
     const joined = labels.join(' ');
@@ -108,7 +108,7 @@ test.describe('#252 — Print Waypoint Names + Map Opacity in export panel', () 
       syncLegs(); draw();
     }, pairLLHZ_LLHA());
     await page.evaluate(() => openExportPanel());
-    await page.locator('#export-panel .export-panel-btns button').waitFor();
+    await page.locator('#export-panel .export-panel-btns button').first().waitFor();
 
     const checkboxLabels = page.locator('#export-panel label:has(input[type="checkbox"])');
     expect(await checkboxLabels.count()).toBe(6);
@@ -137,7 +137,7 @@ test.describe('#252 — Print Waypoint Names + Map Opacity in export panel', () 
       syncLegs(); draw();
     }, pairLLHZ_LLHA());
     await page.evaluate(() => openExportPanel());
-    await page.locator('#export-panel .export-panel-btns button').waitFor();
+    await page.locator('#export-panel .export-panel-btns button').first().waitFor();
 
     const ranges = page.locator('#export-panel input[type="range"]');
     expect(await ranges.count()).toBeGreaterThanOrEqual(1);

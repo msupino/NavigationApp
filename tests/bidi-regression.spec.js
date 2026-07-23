@@ -275,7 +275,7 @@ test.describe('Bidi / mixed-direction UI regressions', () => {
     // The export/print options now render inline in the Print toolbar section
     // (no modal, no title). In Hebrew the panel's labels must read RTL.
     await page.evaluate(() => openExportPanel());
-    await page.locator('#export-panel .export-panel-btns button').waitFor();
+    await page.locator('#export-panel .export-panel-btns button').first().waitFor();
     const exportLabelBidi = await cssSnapshot(page.locator('#export-panel label').first());
     expect(exportLabelBidi.direction).toBe('rtl');
   });

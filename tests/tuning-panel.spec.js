@@ -123,7 +123,7 @@ test.describe('Hidden tuning panel', () => {
       cumKiteTextPx: tune('cumKiteTextPx'),
     }));
     expect(values).toEqual({
-      defaultLabelMarginPx: 20,
+      defaultLabelMarginPx: 30,
       legKiteHeightPx: 47,
       legKiteCellWidthPx: 24,
       legKiteTriangleLenPx: 35,
@@ -226,6 +226,11 @@ test.describe('Hidden tuning panel', () => {
         sigmetIceColor: '#0088cc',
       };
       for (const [key, color] of Object.entries(colors)) setTune(key, color);
+      // Pin both opacity sources so every captured fill has a known alpha,
+      // independent of the shipped defaults: waypoint labels use yellowAlpha,
+      // kites + notes use tune('kiteNoteAlpha').
+      window.yellowAlpha = 0.8;
+      setTune('kiteNoteAlpha', 0.8);
 
       const fills = [];
       const strokes = [];

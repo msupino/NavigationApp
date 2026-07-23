@@ -96,7 +96,7 @@ test.describe('PNG export filename respects pageSize + orient', () => {
     const dl = page.waitForEvent('download', { timeout: 30000 });
     await page.locator('#export-panel .export-panel-btns button').first().click();
     const download = await dl;
-    expect(download.suggestedFilename()).toMatch(/^navigation-A4-.+\.png$/);
+    expect(download.suggestedFilename()).toMatch(/^navigation-LLHZ-to-LLHA-A4-.+\.png$/);
   });
 
   test('Export with no page frame: filename uses the base layer name', async ({ page }) => {

@@ -338,11 +338,6 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
     await boot(page);
     await loadTwoWp(page);
 
-    const tan10 = Math.tan(10 * Math.PI / 180);
-    const defaults = await page.evaluate(() => ({
-      margin: tune('defaultLabelMarginPx'),
-      kiteHalf: tune('defaultKiteHalfWidthPx'),
-    }));
     for (const z of [8, 10, 11, 12, 13, 14]) {
       for (const las of [1, 2, 3]) {
         const m = await page.evaluate(({ zoom, las }) => {
@@ -352,9 +347,7 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
             const a = proj(state.waypoints[0]);
             const b = proj(state.waypoints[1]);
             const legLen = Math.hypot(b.x - a.x, b.y - a.y);
-            // Mirror drawLegs' default math for inLabel (sign +1) and
-            // outLabel (sign −1). legLabelCenter() is the same source of
-            // truth used by hit-testing, so use it directly.
+            // legLabelCenter() is the same source of truth used by hit-testing.
             const ic = legLabelCenter(0, 'in');
             const oc = legLabelCenter(0, 'out');
             const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
@@ -364,26 +357,24 @@ test.describe('PR #393 — leg marker zoom-independent offsets', () => {
             const nx = -dy, ny = dx;
             const inPerp  = (ic.x - mx) * nx + (ic.y - my) * ny;
             const outPerp = (oc.x - mx) * nx + (oc.y - my) * ny;
-            const sc = legZoomScale();
-            resolve({ zoom, las, sc, legLen, inPerp, outPerp });
+            // New geographic model: the drift line reaches
+            // legLen * driftLengthFactor at the drift angle; the kite is
+            // ground-sized (kiteDrawScale), half-height = legKiteHeightPx*sc/2.
+            const driftPerp = legLen * tune('driftLengthFactor') *
+              Math.sin(tune('driftAngleDeg') * Math.PI / 180);
+            const kiteHalf = tune('legKiteHeightPx') * kiteDrawScale() / 2;
+            resolve({ zoom, las, legLen, inPerp, outPerp, driftPerp, kiteHalf });
           }, 50));
         }, { zoom: z, las });
-        // Drift cone perpendicular extent at the midpoint, per leg length.
-        const driftPerp = (m.legLen / 2) * tan10;
-        const kiteHalf = defaults.kiteHalf * m.sc;
-        const expected = driftPerp + kiteHalf + defaults.margin;
-        expect(m.inPerp ).toBeCloseTo( expected, 1);
-        expect(m.outPerp).toBeCloseTo(-expected, 1);
-        // The kite edge nearest the leg is `centre - halfWidth`, and
-        // must be strictly past the drift cone by at least margin/2 px
-        // — i.e., the leg line is fully clear of the kite's body too.
-        const inEdge  =  m.inPerp  - kiteHalf;
-        const outEdge = -m.outPerp - kiteHalf;
-        expect(inEdge ).toBeGreaterThan(driftPerp + defaults.margin / 2);
-        expect(outEdge).toBeGreaterThan(driftPerp + defaults.margin / 2);
-        // And the kite edge is strictly clear of the leg line itself
-        // (perpendicular > 0) — this is the headline regression the
-        // user reported on PR #395.
+        // Symmetric about the leg.
+        expect(m.inPerp).toBeCloseTo(-m.outPerp, 1);
+        // Property (the headline #393/#395 regression): at every zoom /
+        // legArrowSize the kite's near edge is strictly past the drift cone
+        // (so it never hides the drift lines) and clear of the leg line.
+        const inEdge  =  m.inPerp  - m.kiteHalf;
+        const outEdge = -m.outPerp - m.kiteHalf;
+        expect(inEdge ).toBeGreaterThan(m.driftPerp);
+        expect(outEdge).toBeGreaterThan(m.driftPerp);
         expect(inEdge ).toBeGreaterThan(0);
         expect(outEdge).toBeGreaterThan(0);
       }

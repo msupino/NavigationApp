@@ -73,6 +73,18 @@ async function setRoute(page, names) {
   }, names);
 }
 
+test('Auto with no route falls back to showing every field (not none)', async ({ page }) => {
+  await boot(page);
+  // saved 'auto' from a previous session, but no route loaded
+  await page.evaluate(() => { localStorage.setItem('navaid.plateAirfield', 'auto'); });
+  await page.reload();
+  await page.waitForFunction(() => typeof map !== 'undefined' && document.getElementById('plate-airfield'));
+  await page.locator('#cvfr-cb').check();
+  await page.waitForFunction(() => window.cvfrLayerGroup);
+  const shown = await page.evaluate(() => cvfrLayerGroup.getLayers().length);
+  expect(shown).toBeGreaterThan(1);   // all fields, not an empty map
+});
+
 test('Auto option shows only the route first & last airfield and follows edits', async ({ page }) => {
   await boot(page);
   await setRoute(page, ['LLHZ', 'LLMG', 'LLFK']);   // endpoints LLHZ, LLFK
@@ -89,3 +101,4 @@ test('Auto option shows only the route first & last airfield and follows edits',
     () => cvfrLayerGroup.getLayers().map(l => l._ovPng).sort()))
     .toEqual(['LLMG_cvfr.png', 'LLMZ_cvfr.png']);
 });
+

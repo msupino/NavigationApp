@@ -32,8 +32,7 @@ checklists, also use the rest of the repo-tracked `.ai/` handbook:
 
 ## Branches
 
-- `main` — production. The web app source. The Unity tree was stripped
-  here (commit `53188cc`).
+- `main` — production. The web app source.
 - `dev` — staging. The same web app, work-in-progress. Each push to
   `dev` rebuilds the staging URL.
 
@@ -345,9 +344,12 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   keep only non-preview domain invariants (for example Earth radius,
   storage keys, URLs) as hard-coded constants. Cover panel behavior in
   `tests/tuning-panel.spec.js`.
-- **Transparency slider:** scales every label-background fill via
-  `tintFill(hex, a) = rgba(r,g,b, a * yellowAlpha)`. Persisted at
-  `navaid.yellowAlpha`.
+- **Opacity (Display):** `tintFill(hex, a)` builds `rgba(r,g,b, a)` where `a`
+  defaults to `yellowAlpha` — the **Label opacity** slider for waypoint label
+  backgrounds (`navaid.yellowAlpha`, default 0.5). Kite fills **and note
+  backgrounds** pass `tune('kiteNoteAlpha')` instead — there is no Display
+  slider for it; it is gist-only (default 0.5), adjustable in the hidden
+  `?tune` panel under Global palette.
 - **Magnetic variation:** hardcoded at `magVar = -5` in `core.js`
   (5°E variation for Israel). The user-facing Mag-var input was
   removed; the `navaid.magVar` localStorage key is no longer written
@@ -500,7 +502,8 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.tunePanelPos` — `{x, y}` of the hidden tuning panel.
 - `navaid.bearing` — map bearing in degrees (rotated-map support).
 - `navaid.theme` — `'dark'` / `'light'` for toolbar and panel chrome.
-- `navaid.yellowAlpha` — Transparency slider value.
+- `navaid.yellowAlpha` — Label-opacity slider value (waypoint labels).
+  (Kite/note opacity is not persisted here — it's the gist tune key `kiteNoteAlpha`.)
 - `navaid.mapOpacity.v2` — base-map opacity slider value.
 - `navaid.wpSize` — Text-size slider value.
 - `navaid.legArrowSize` — leg-arrow size slider value.
@@ -555,7 +558,14 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   may carry `kind: 'gps'` plus a raw `track[]` (the recorded GPS
   breadcrumb: `{lat,lng,t,alt?,acc?}`); loading applies the simplified
   waypoint route, the raw track is retained for fidelity.
-- `navaid.pageSize` — selected page frame size (`A3` / `A4`) or cleared.
+- `navaid.pageSize` — selected page frame size (`A3` / `A4` / `A4x2`) or cleared.
+  (`A4x2` draws the A3-size frame; Save PNG slices it into two A4 tiles.)
+- `navaid.plateAirfield` — "Show plates for" filter on the airfield-plate
+  overlays: `''` = all airfields, `'auto'` = the route's first & last airfield
+  (live via `syncLegs()`), or a single ICAO.
+- `navaid.overlayBoundsOverrides` — per-plate overlay geometry overrides from
+  the `?align=1` align editor, keyed by overlay PNG filename; axis-aligned
+  (`sw`/`ne`) or rotated (`tl`/`tr`/`bl`). Wins over `airfields.json` bounds.
 - `navaid.pageOrient` — `'portrait'` / `'landscape'` for page export.
 - `navaid.fpPos` — `{x, y}` of the dragged Flight Plan modal.
 - `navaid.fpColumns` — JSON array of hidden Flight Plan table column keys
@@ -583,9 +593,7 @@ re-load that does a full page navigation):
   language reload.
 
 `magVar` is hardcoded at `-5` in `core.js`; the obsolete
-`navaid.magVar` key is no longer written. A one-time migration at the
-top of `core.js` copies any old `plotter.*` keys into `navaid.*` and
-removes the old ones.
+`navaid.magVar` key is no longer written.
 
 When adding a new key, grep `localStorage.setItem` /
 `sessionStorage.setItem` under `docs/` to stay in sync with this list.
@@ -789,3 +797,5 @@ downloadable `route.json`.
   Leaflet / leaflet-rotate from `unpkg.com` and live chart tiles from their
   network hosts. True offline native use needs a later PR to vendor Leaflet and
   add native tile download/storage.
+
+<!-- ci-flake-audit: no-op change to trigger a full CI run -->

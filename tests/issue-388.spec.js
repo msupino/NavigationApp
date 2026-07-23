@@ -300,16 +300,19 @@ test.describe('issue #388 — review cleanup', () => {
       }, deployedPreview || !!process.env.CI);
 
       // A new rebuild must have happened (otherwise we're not actually
-      // exercising the hot path).
+      // exercising the hot path). This functional check runs everywhere and is
+      // the real coverage: it proves the move/moveend rebuild path fired.
       expect(result.after).toBeGreaterThan(result.before);
-      // Loose ceiling — a smoke of the hot path, not a strict perf gate (see
-      // above). CI runs the suite at full worker parallelism
-      // (playwright.config.js workers:'100%'), so the panBy rAF frames contend
-      // for CPU and wall-clock stretches past the single-worker time; give CI a
-      // generous ceiling. The deployed-preview job shares a Pages artifact
-      // runner. Local single-worker runs keep the tight budget.
-      const budgetMs = deployedPreview ? 12_000 : (process.env.CI ? 25_000 : 10_000);
-      expect(result.elapsed).toBeLessThan(budgetMs);
+      // The wall-clock ceiling is only meaningful on a single-worker local run.
+      // On CI the suite runs at full worker parallelism (playwright.config.js
+      // workers:'100%') and the awaited rAF frames get throttled by CPU
+      // contention, so `elapsed` measures the runner's load, not the code — an
+      // inherently flaky gate (it tripped intermittently at 25-41s as the suite
+      // grew). Skip the ceiling on CI / deployed-preview and keep it local,
+      // where it still catches a real per-rebuild regression.
+      if (!process.env.CI && !deployedPreview) {
+        expect(result.elapsed).toBeLessThan(10_000);
+      }
     });
 
   // M2 — cached `<img>` tiles synchronously satisfy `tile.complete` and

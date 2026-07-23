@@ -208,6 +208,18 @@ test.describe('Sliders persist to localStorage', () => {
     expect(await av.textContent()).toBe('50%');
   });
 
+  test('kite/note opacity is gist-only (no Display slider) and defaults to 0.5', async ({ page }) => {
+    await boot(page);
+    // The label-opacity slider stays; the kite/note one is not a Display slider.
+    await expect(page.locator('#yellow-alpha')).toHaveCount(1);
+    await expect(page.locator('#kite-alpha')).toHaveCount(0);
+    // Kite/note opacity lives in the tune registry (gist-overridable), default 0.5.
+    expect(await page.evaluate(() => tune('kiteNoteAlpha'))).toBe(0.5);
+    // setTune (the path the gist uses) moves it.
+    await page.evaluate(() => setTune('kiteNoteAlpha', 0.2));
+    expect(await page.evaluate(() => tune('kiteNoteAlpha'))).toBe(0.2);
+  });
+
   test('decimal sliders show toFixed(2) in value display', async ({ page }) => {
     await boot(page);
     const wv = page.locator('#wp-size-val');

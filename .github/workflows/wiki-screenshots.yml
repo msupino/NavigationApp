@@ -1,0 +1,78 @@
+name: Update wiki screenshots
+
+# Regenerate every GitHub-wiki screenshot (English + Hebrew) from the live app
+# via tests/wiki-screenshots.spec.js, then push the images to the wiki repo.
+# Runs nightly (no push happens when nothing changed) and on demand from the
+# Actions tab (Run workflow).
+on:
+  schedule:
+    - cron: '30 2 * * *'   # nightly 02:30 UTC (05:30 Israel)
+  workflow_dispatch:
+
+permissions:
+  contents: write        # also grants push access to the <repo>.wiki.git repo
+
+concurrency:
+  group: wiki-screenshots
+  cancel-in-progress: true
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Clone wiki
+        run: |
+          git clone "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git" wiki
+
+      - name: Generate screenshots (en + he)
+        run: |
+          # ThreadingHTTPServer so the parallel Playwright workers aren't serialised.
+          python3 -c "from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler; import functools; ThreadingHTTPServer(('127.0.0.1', 8000), functools.partial(SimpleHTTPRequestHandler, directory='docs')).serve_forever()" &
+          SERVER=$!
+          sleep 1
+          WIKI_IMG="$GITHUB_WORKSPACE/wiki/img" BASE_URL="http://127.0.0.1:8000" \
+            npx playwright test tests/wiki-screenshots.spec.js --reporter=line
+          kill $SERVER || true
+
+      - name: Commit & push to wiki
+        run: |
+          cd wiki
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config http.postBuffer 524288000   # image pack exceeds the default buffer
+          git add img
+          if git diff --cached --quiet; then
+            echo "No screenshot changes — nothing to push."
+            exit 0
+          fi
+          git commit -m "docs: refresh wiki screenshots (automated via wiki-screenshots.yml)"
+          git push
+
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

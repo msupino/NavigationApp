@@ -2,30 +2,67 @@
 /* NavAid — drawing: route, nav-waypoints, notes, page frame.
    Shares globals with core.js; loaded after it. */
 
-// Issue #394 (+ follow-up bug): default-kite clearance helpers, shared by
-// `drawLegs` (rendering), `legLabelCenter` (interact.js hit-testing),
-// and the drag-start materialiser (interact.js). The kite shape itself
-// is `46 * legZoomScale()` px wide (see drawLegArrow in this file —
-// `W = 46 * sc`), so its half-extent perpendicular to the leg axis is
-// `23 * legZoomScale()`. Drift lines fan out from each waypoint at the
-// configured drift angle (default 10°)
-// from the leg axis for half the leg length; at the default along-leg
-// position (midpoint, a=0) the cone reaches
-// `(legLength / 2) * tan(drift angle)`
-// perpendicular. The kite's *centre* must therefore sit at least
-// (cone-extent + kite-half-width + visual margin) from the leg line so
-// the kite *body* clears both the leg line and the drift dashes at
-// every zoom and `legArrowSize`. The first cut of this fix only
-// pushed the centre `(len/2)*tan(10°) + 8` out, which left the kite
-// edge ON the leg line at low zoom or `legArrowSize >= 2`.
+// Default-kite offset helpers, shared by `drawLegs` (rendering),
+// `legLabelCenter` / `cumLabelCenter` (interact.js hit-testing) and the
+// drag-start materialisers. Offsets are CONSTANT (independent of leg length):
+// each kite sits the same distance from its leg / waypoint — nav kite by its
+// drawn half-height + margin, cum kite by the waypoint disc + its own
+// half-height + margin. (Earlier the nav offset added a `(legLen/2)*tan(drift)`
+// drift-cone term, which made the distance grow with leg length.)
 function driftAngleRad() {
   return tune('driftAngleDeg') * Math.PI / 180;
 }
+// Draw scale for the leg kite: a fixed GROUND size (kitePrintHeightMm at
+// 1:250,000, × the legArrowSize selector) so it matches its print size and
+// scales with the map. Falls back to the plain zoom scale before the map is
+// ready. Shared by drawLegArrow (drawing) and legDefaultLabelPerp (clearance)
+// so the default offset always clears the actual drawn kite.
+function kiteDrawScale() {
+  const ppm = (typeof printPxPerMm === 'function') ? printPxPerMm() : 0;
+  const sel = (typeof legArrowSize === 'number' && legArrowSize > 0) ? legArrowSize : 1;
+  return ppm
+    ? (tune('kitePrintHeightMm') * ppm / tune('legKiteHeightPx')) * sel
+    : ((typeof legZoomScale === 'function') ? legZoomScale() : 1);
+}
 function legDefaultLabelPerp(legLenPx) {
-  const sc = (typeof legZoomScale === 'function') ? legZoomScale() : 1;
-  return (Math.max(1, legLenPx) / 2) * Math.tan(driftAngleRad()) +
-         tune('defaultKiteHalfWidthPx') * sc +
-         tune('defaultLabelMarginPx');
+  // Nav (direction) kite sits just OUTSIDE the drift lines so it never hides
+  // them. The drift line reaches `legLen * driftLengthFactor` at the drift
+  // angle, i.e. its perpendicular extent is that × sin(angle) — grows with leg
+  // length. Add the kite's drawn half-height + a margin (both geographic, so
+  // they scale with the kite). legLen defaults to 0 (fallback for hit-tests
+  // that don't pass it → just the kite-half + margin clearance).
+  const driftPerp = Math.max(0, legLenPx || 0) * tune('driftLengthFactor') * Math.sin(driftAngleRad());
+  return driftPerp +
+         (tune('legKiteHeightPx') * kiteDrawScale()) / 2 +
+         tune('defaultLabelMarginPx') * kiteDrawScale();
+}
+// Cumulative-time kite draw scale (fixed ground size, its own print height).
+function cumKiteDrawScale() {
+  const ppm = (typeof printPxPerMm === 'function') ? printPxPerMm() : 0;
+  const sel = (typeof legArrowSize === 'number' && legArrowSize > 0) ? legArrowSize : 1;
+  return ppm
+    ? (tune('cumKitePrintHeightMm') * ppm / tune('cumKiteHeightPx')) * sel
+    : ((typeof legZoomScale === 'function') ? legZoomScale() : 1);
+}
+// Waypoint disc radius in screen px (ground-sized).
+function waypointDiscRadiusPx() {
+  const ppm = (typeof printPxPerMm === 'function') ? printPxPerMm() : 0;
+  const wpSz = (typeof wpSize === 'number') ? wpSize : 1;
+  return ppm
+    ? (tune('waypointPrintDiaMm') / 2) * ppm * wpSz
+    : tune('waypointBaseRadiusPx') * wpSz *
+        Math.max(tune('waypointMinZoomScale'), Math.pow(2, map.getZoom() - 12));
+}
+// Constant offset of the cum-time kite from its waypoint anchor: clear the
+// waypoint disc + the cum kite's own half-height + a margin. Not leg-length
+// dependent, so the cum kite sits the same distance from every waypoint.
+function cumDefaultLabelPerp() {
+  // Clear the waypoint disc, then a full cum-kite height (so the whole kite sits
+  // off the disc with a half-height gap), plus the margin. Keeps the cum kite
+  // clearly separated from the waypoint.
+  return waypointDiscRadiusPx() +
+         tune('cumKiteHeightPx') * cumKiteDrawScale() +
+         tune('defaultLabelMarginPx') * cumKiteDrawScale();
 }
 function legKiteAlongHalfPx(sc) {
   sc = sc ?? ((typeof legZoomScale === 'function') ? legZoomScale() : 1);
@@ -39,6 +76,7 @@ function legKiteAlongHalfPx(sc) {
 // tracks correctly on a rotated map.
 function drawOwnShip(pos, hdg) {
   if (!pos) return;
+  drawHeadingLine(pos, hdg);   // predictor under the aircraft symbol
   const s = proj(pos);
   // Screen angle from a projected geographic offset in the heading direction,
   // so it stays correct under map rotation (map.setBearing) — same approach as
@@ -101,6 +139,72 @@ function drawOwnShip(pos, hdg) {
   octx.lineWidth = 1; octx.strokeStyle = oc; octx.stroke();
 
   octx.restore();
+}
+
+// Heading predictor for the own-ship (live GPS + simulator). A straight line
+// along the current track with cross-tick range marks at 2 / 5 / 10 NM so a
+// pilot can read distance-to-go ahead of the aircraft. Uses the same NM→geo
+// offset as notamCirclePoints and projects every point, so it stays correct
+// under map rotation. GPS course goes null at zero groundspeed, so the last
+// valid heading is remembered and reused (the line freezes rather than flicker).
+const HEADING_LINE_MARKS_NM = [2, 5, 10];
+let lastOwnHeadingDeg = null;
+function drawHeadingLine(pos, hdg) {
+  if (!pos) return;
+  const h = Number.isFinite(hdg) ? hdg : lastOwnHeadingDeg;
+  if (!Number.isFinite(h)) return;          // no heading yet — nothing to draw
+  lastOwnHeadingDeg = h;
+  const hr = h * Math.PI / 180;
+  const cosLat = Math.max(0.2, Math.cos(pos.lat * Math.PI / 180));
+  const atNm = (nm) => proj({
+    lat: pos.lat + (nm / 60) * Math.cos(hr),
+    lng: pos.lng + (nm / 60) * Math.sin(hr) / cosLat,
+  });
+  const s = proj(pos);
+  const end = atNm(HEADING_LINE_MARKS_NM[HEADING_LINE_MARKS_NM.length - 1]);
+  const dx = end.x - s.x, dy = end.y - s.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) return;                       // degenerate (extreme zoom-out)
+  const ux = dx / len, uy = dy / len;        // line direction (screen)
+  const px = -uy, py = ux;                    // unit perpendicular (screen)
+
+  octx.save();
+  octx.lineCap = 'butt';
+  octx.lineJoin = 'round';
+  // the line — dashed so it reads clearly over a busy/coloured chart
+  octx.beginPath();
+  octx.moveTo(s.x, s.y);
+  octx.lineTo(end.x, end.y);
+  octx.strokeStyle = colorWithAlpha(tune('liveHeadingLineColor'), 0.95);
+  octx.lineWidth = tune('liveHeadingLineWidthPx');
+  octx.setLineDash([tune('liveHeadingDashPx'), tune('liveHeadingDashGapPx')]);
+  octx.stroke();
+  octx.setLineDash([]);   // solid ticks below
+
+  // cross-ticks + upright labels at each range mark
+  const tick = tune('liveHeadingTickPx'), gap = tune('liveHeadingLabelGapPx');
+  octx.font = 'bold ' + tune('liveHeadingLabelPx') + 'px sans-serif';
+  octx.textAlign = 'center';
+  octx.textBaseline = 'middle';
+  for (const nm of HEADING_LINE_MARKS_NM) {
+    const m = atNm(nm);
+    octx.beginPath();
+    octx.moveTo(m.x - px * tick, m.y - py * tick);
+    octx.lineTo(m.x + px * tick, m.y + py * tick);
+    octx.strokeStyle = colorWithAlpha(tune('liveHeadingLineColor'), 0.9);
+    octx.lineWidth = tune('liveHeadingLineWidthPx');
+    octx.stroke();
+    const lx = m.x + px * (tick + gap), ly = m.y + py * (tick + gap);
+    const label = String(nm);
+    octx.lineWidth = 3;
+    octx.strokeStyle = colorWithAlpha('#000000', 0.8);
+    octx.strokeText(label, lx, ly);
+    octx.fillStyle = tune('liveHeadingTextColor');
+    octx.fillText(label, lx, ly);
+  }
+  octx.restore();
+  if (typeof window !== 'undefined')
+    window.__headingLine = { heading: h, marks: HEADING_LINE_MARKS_NM.slice() };
 }
 
 // TOC / TOD markers along the route (#672). A small dot + label at the point
@@ -497,10 +601,10 @@ function drawSigmets() {
     octx.moveTo(pts[0].x, pts[0].y);
     for (let i = 1; i < pts.length; i++) octx.lineTo(pts[i].x, pts[i].y);
     octx.closePath();
-    octx.fillStyle = colorWithAlpha(col, 0.16);
+    octx.fillStyle = colorWithAlpha(col, tune('sigmetFillAlpha'));
     octx.fill();
-    octx.setLineDash([8, 5]);
-    octx.lineWidth = 2;
+    octx.setLineDash([tune('sigmetDashOnPx'), tune('sigmetDashOffPx')]);
+    octx.lineWidth = tune('sigmetLineWidthPx');
     octx.strokeStyle = col;
     octx.stroke();
     octx.setLineDash([]);
@@ -510,7 +614,7 @@ function drawSigmets() {
     const label = (String(s.hazard || '') +
                    (s.qualifier ? ' ' + s.qualifier : '')).trim();
     if (label) {
-      octx.font = 'bold 12px sans-serif';
+      octx.font = 'bold ' + tune('sigmetLabelFontPx') + 'px sans-serif';
       octx.textAlign = 'center';
       octx.lineWidth = 3;
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), 0.9);
@@ -1177,7 +1281,7 @@ function drawAreas() {
     // highlight overrides both with amber.
     octx.fillStyle = hl ? 'rgba(255,204,51,0.22)' : (wknd ? 'rgba(201,178,138,0.35)' : 'rgba(60,160,60,0.15)');
     octx.strokeStyle = hl ? '#ffcc33' : (wknd ? '#2b2b2b' : '#3c8f3c');
-    octx.lineWidth = hl ? 4 : 2;
+    octx.lineWidth = hl ? tune('lsaHighlightWidthPx') : tune('lsaLineWidthPx');
     octx.fill();
     octx.stroke();
   }
@@ -2639,6 +2743,7 @@ function drawLegs() {
     // (no `_default` flag) keep the existing `p * legZoomScale()` path so
     // hand-positioned kites round-trip exactly as PR #393 designed.
     const driftPerp = legDefaultLabelPerp(len);
+    const cumPerpDef = cumDefaultLabelPerp();   // constant, waypoint-anchored
     const inPerp  = inP._default  ?  driftPerp : (inP.p  || 0) * zoomScale;
     const outPerp = outP._default ? -driftPerp : (outP.p || 0) * zoomScale;
     const inAlong  = (inP.a  || 0) * zoomScale;
@@ -2649,39 +2754,39 @@ function drawLegs() {
     drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, formatAltitudeValue(leg.inboundAltitude, leg, 'inboundAltitude'),
-      tune('inkColor'), tintFill(tune('legKiteFillColor')), needsHalo(i, 'in'), zoomScale);
+      tune('inkColor'), tintFill(tune('legKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'in'), zoomScale);
     // Cumulative inbound time: < [time], position driven by leg.cumLabel
     // (default: at B waypoint, same perpendicular side as main kite).
     const defCum = { a: 0, _default: 1, _m: 1 };
     if (showCumTime) {
       const cumP = leg.cumLabel || defCum;
-      const cumPerp  = cumP._default ? driftPerp : (cumP.p || 0) * zoomScale;
+      const cumPerp  = cumP._default ? cumPerpDef : (cumP.p || 0) * zoomScale;
       const cumAlong = (cumP.a || 0) * zoomScale;
       const cumX = sb.x + dx * cumAlong + nx * cumPerp;
       const cumY = sb.y + dy * cumAlong + ny * cumPerp;
       drawCumTimeArrow(cumX, cumY,
         Math.atan2(sb.y - cumY, sb.x - cumX),
-        cumInStr, tune('inkColor'), tintFill(tune('cumKiteFillColor')), zoomScale);
+        cumInStr, tune('inkColor'), tintFill(tune('cumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale);
     }
 
     if (showReturn && legAllowsReturn(i)) {
       drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
         pad3(magOut), timeStrOut, formatAltitudeValue(leg.outboundAltitude, leg, 'outboundAltitude'),
-        tune('inkColor'), tintFill(tune('returnKiteFillColor')), needsHalo(i, 'out'), zoomScale);
+        tune('inkColor'), tintFill(tune('returnKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'out'), zoomScale);
       if (showCumTime) {
         // Cumulative return time kite at A waypoint (return destination).
         // Own offset (cumLabelRet), anchored at A with the same +dx/+nx frame
         // as the inbound kite so its drag math is identical; default sits on
         // the opposite perpendicular side (-driftPerp).
         const cumRetP = leg.cumLabelRet || defCum;
-        const cumRetPerp  = cumRetP._default ? -driftPerp : (cumRetP.p || 0) * zoomScale;
+        const cumRetPerp  = cumRetP._default ? -cumPerpDef : (cumRetP.p || 0) * zoomScale;
         const cumRetAlong = (cumRetP.a || 0) * zoomScale;
         const cumRetX = sa.x + dx * cumRetAlong + nx * cumRetPerp;
         const cumRetY = sa.y + dy * cumRetAlong + ny * cumRetPerp;
         drawCumTimeArrow(cumRetX, cumRetY,
           Math.atan2(sa.y - cumRetY, sa.x - cumRetX),
-          cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor')), zoomScale);
+          cumOutArr[i], tune('inkColor'), tintFill(tune('returnCumKiteFillColor'), tune('kiteNoteAlpha')), zoomScale);
       }
     }
     if (showMidLeg) drawDistanceBadge(mid.x, mid.y, dist);
@@ -2843,6 +2948,16 @@ function needsHalo(i, which) {
 // markers are always visible without overlap.
 function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
   sc = sc ?? 1;
+  // Fixed GROUND size — cumKitePrintHeightMm tall at the 1:250,000 scale (× the
+  // legArrowSize selector) — so it scales with the map like its position and
+  // prints WYSIWYG at the intended physical height, keeping on-screen
+  // proportions (so the time text fits). Falls back to the passed zoom scale
+  // before the map is ready.
+  const ppm = printPxPerMm();
+  if (ppm) {
+    const selc = (typeof legArrowSize === 'number' && legArrowSize > 0) ? legArrowSize : 1;
+    sc = (tune('cumKitePrintHeightMm') * ppm / tune('cumKiteHeightPx')) * selc;
+  }
   const W = tune('cumKiteHeightPx') * sc;
   const cell = tune('cumKiteCellWidthPx') * sc;
   const Lt = tune('cumKiteTriangleLenPx') * sc;
@@ -2889,6 +3004,12 @@ function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
 // marker and is locked to its orientation.
 function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc) {
   sc = sc ?? 1;
+  // The whole kite is a fixed GROUND size — kitePrintHeightMm tall at the
+  // 1:250,000 scale (× the legArrowSize selector) — so it scales with the map
+  // like its position and prints WYSIWYG at the intended physical height, with
+  // the on-screen proportions (triangle included). (Falls back to the passed
+  // zoom scale before the map is ready.)
+  if (printPxPerMm()) sc = kiteDrawScale();
   const W = tune('legKiteHeightPx') * sc;
   const cell = tune('legKiteCellWidthPx') * sc;
   const Lt = tune('legKiteTriangleLenPx') * sc;
@@ -2967,17 +3088,21 @@ function drawDistanceBadge(cx, cy, dist) {
   octx.textAlign = 'left';
 }
 
-// Label to draw inside a waypoint circle, plus the radius and font px
-// needed to fit it. Scaled by wpSize slider × zoom (geographic footprint
-// stays roughly constant; floor at 0.35× so markers stay visible when zoomed out).
+// Label to draw inside a waypoint circle, plus the radius and font px needed to
+// fit it. The disc is a fixed GROUND size — waypointPrintDiaMm at the chart's
+// 1:250,000 scale (× the wpSize selector) — so it scales with the map like its
+// position and prints WYSIWYG at the intended physical mm. (Falls back to the
+// base-px × zoom size before the map is ready.)
 function waypointGeom(i) {
   const wp = state.waypoints[i];
   // Match wpLabel() / inspector placeholder ("WP N"), not a bare digit.
   const label = showWpNames ? waypointDisplayLabel(wp, i) : '';
-  const zoomScale = Math.max(tune('waypointMinZoomScale'), Math.pow(2, map.getZoom() - 12));
-  const scale = wpSize * zoomScale;
+  const ppm = printPxPerMm();
+  const scale = ppm
+    ? (tune('waypointPrintDiaMm') / 2) * ppm * wpSize / tune('waypointBaseRadiusPx')
+    : wpSize * Math.max(tune('waypointMinZoomScale'), Math.pow(2, map.getZoom() - 12));
   // Every waypoint circle is the SAME size (radius depends only on the wpSize
-  // slider × zoom, never on the label). The text shrinks to fit instead of the
+  // slider × scale, never on the label). The text shrinks to fit instead of the
   // circle growing — so a 5-letter code and a single digit share one disc.
   const r = tune('waypointBaseRadiusPx') * scale;
   let fontPx = Math.max(4, Math.round(tune('waypointFontPx') * scale));
@@ -3025,12 +3150,24 @@ function drawWaypoints() {
 }
 
 // --- notes (free-text annotation boxes) ------------------------------
-// Per-note size multiplier (default 1). Clamped so a note can't shrink to
-// nothing or blow up the canvas. Applied to the font and every rect metric so
-// the note scales uniformly around its anchor point.
-function noteScale(n) {
+// Per-note size multiplier (default 1, clamped). A default (size-1) note is a
+// fixed GROUND size — notePrintHeightMm tall at the chart's 1:250,000 scale —
+// so it scales with the map like its position and prints WYSIWYG at the intended
+// physical mm. (Falls back to a plain zoom curve before the map is ready.)
+function noteUserSize(n) {
   const s = Number(n && n.size);
   return Number.isFinite(s) && s > 0 ? Math.max(0.5, Math.min(s, 4)) : 1;
+}
+function noteScale(n) {
+  const user = noteUserSize(n);
+  const ppm = printPxPerMm();
+  if (ppm) {
+    const oneLinePx = tune('noteLineHeightPx') + tune('notePadYPx') * 2;
+    return user * (tune('notePrintHeightMm') * ppm) / oneLinePx;
+  }
+  const zoom = (typeof map !== 'undefined' && map.getZoom)
+    ? Math.max(0.35, Math.pow(2, map.getZoom() - 12)) : 1;
+  return user * zoom;
 }
 function noteFont(n) {
   return `bold ${tune('noteFontPx') * noteScale(n)}px sans-serif`;
@@ -3049,10 +3186,19 @@ function noteRect(i) {
     const w = octx.measureText(l || ' ').width;
     if (w > maxW) maxW = w;
   }
-  let w = Math.max(maxW + tune('notePadXPx') * sc * 2, tune('noteMinWidthPx') * sc);
+  // Default box floor: notePrintWidthMm wide at the 1:250k scale (× the note's
+  // own size). An oval uses the same default box as a rectangle so both note
+  // shapes are the same size.
+  const ppm = printPxPerMm();
+  const minW = ppm
+    ? tune('notePrintWidthMm') * ppm * noteUserSize(n)
+    : tune('noteMinWidthPx') * sc;
+  let w = Math.max(maxW + tune('notePadXPx') * sc * 2, minW);
   let h = Math.max(1, lines.length) * lineH + tune('notePadYPx') * sc * 2;
   const oval = n.shape === 'oval';
-  if (oval) { w *= Math.SQRT2; h *= Math.SQRT2; }   // ellipse must bound the text
+  // Before the map is ready (no ppm) grow the ellipse by √2 so it bounds the
+  // text; with the ground-sized box it already matches the rectangle.
+  if (oval && !ppm) { w *= Math.SQRT2; h *= Math.SQRT2; }
   return { x: s.x - w / 2, y: s.y - h / 2, w, h, lines, oval };
 }
 
@@ -3264,7 +3410,7 @@ function drawNotes() {
       drawCommCallout(n, selected);
       continue;
     }
-    octx.fillStyle = tintFill(color);
+    octx.fillStyle = tintFill(color, tune('kiteNoteAlpha'));   // notes share the gist-tuned kite opacity
     octx.lineWidth = selected ? tune('noteSelectedStrokeWidthPx') : tune('noteStrokeWidthPx');
     octx.strokeStyle = selected ? tune('selectedColor') : tune('inkColor');
     if (r.oval) {
@@ -3310,13 +3456,27 @@ function drawInfo() {
 
 // --- print page frame -----------------------------------------------
 // Landscape page coverage in nautical miles at 1:250,000.
-const PAGE_NM = { A4: { w: 40.09, h: 28.35 }, A3: { w: 56.70, h: 40.09 } };
+const PAGE_NM = { A4: { w: 40.09, h: 28.35 }, A3: { w: 56.70, h: 40.09 },
+                  // A4x2 = the A3 frame, exported as two A4 tiles.
+                  A4x2: { w: 56.70, h: 40.09 } };
 
 function metresPerPixel() {
   const y = vh() / 2;
   const a = map.containerPointToLatLng([0, y]);
   const b = map.containerPointToLatLng([200, y]);
   return map.distance(a, b) / 200;
+}
+
+// Screen pixels per paper-millimetre at the chart's 1:250,000 print scale
+// (1 mm on paper = 250 m on the ground). Sizing a marker by this makes it a
+// fixed GROUND size — it scales with the map exactly like its lat/lng position,
+// so the arrangement you make on screen prints WYSIWYG, AND it comes out at the
+// intended physical mm on a 1:250k A4/A3 export. Returns 0 before the map is
+// ready so callers can fall back to a plain px size.
+function printPxPerMm() {
+  if (typeof map === 'undefined' || !map.getZoom) return 0;
+  const mpp = metresPerPixel();
+  return mpp > 0 ? 250 / mpp : 0;
 }
 
 function pageDims() {                   // page coverage (NM), oriented
@@ -3589,5 +3749,23 @@ function drawPageFrame() {
   octx.lineWidth = tune('pageFrameLineWidthPx');
   octx.setLineDash([tune('pageFrameDashOnPx'), tune('pageFrameDashOffPx')]);
   octx.strokeRect(r.x, r.y, r.w, r.h);
+  // A4x2: dashed mid-line showing where the A3 frame is cut into the two A4
+  // pages (vertical on a landscape frame, horizontal on a portrait one) —
+  // matches the seam the exported tiles carry. Style is tunable (?tune=1,
+  // "Page frame" group) and deliberately bolder than the frame border.
+  if (pageSize === 'A4x2') {
+    octx.strokeStyle = colorWithAlpha(tune('a4x2CutLineColor'), tune('a4x2CutLineAlpha'));
+    octx.lineWidth = tune('a4x2CutLineWidthPx');
+    octx.setLineDash([tune('a4x2CutDashOnPx'), tune('a4x2CutDashOffPx')]);
+    octx.beginPath();
+    if (r.w >= r.h) {
+      octx.moveTo(r.x + r.w / 2, r.y);
+      octx.lineTo(r.x + r.w / 2, r.y + r.h);
+    } else {
+      octx.moveTo(r.x,       r.y + r.h / 2);
+      octx.lineTo(r.x + r.w, r.y + r.h / 2);
+    }
+    octx.stroke();
+  }
   octx.restore();
 }

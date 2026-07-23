@@ -121,7 +121,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=423">
+  <link rel="stylesheet" href="app/style.css?v=424">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -299,7 +299,7 @@
         <button id="theme-toggle" type="button" data-i18n-title="tbLightModeTitle"></button>
         <label class="navtoggle" data-i18n-title="tbTransparencyTitle">
           <span data-i18n="tbTransparency"></span>
-          <input type="range" id="yellow-alpha" value="80">
+          <input type="range" id="yellow-alpha" value="50">
           <span class="slider-val" id="yellow-alpha-val"></span>
         </label>
         <label class="navtoggle" data-i18n-title="tbMapOpacityTitle">
@@ -550,6 +550,7 @@
           <div id="page-buttons">
             <button id="page-a3" data-i18n-title="tbPageA3Title">A3</button>
             <button id="page-a4" data-i18n-title="tbPageA4Title">A4</button>
+            <button id="page-a4x2" data-i18n-title="tbPageA4x2Title">A4×2</button>
             <button id="page-orient" type="button" data-i18n-title="tbOrientTitle">
               <span class="page-orient-icon" aria-hidden="true">▭</span>
               <span class="page-orient-label"></span>
@@ -757,7 +758,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=423';
+      var v = '?v=424';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',

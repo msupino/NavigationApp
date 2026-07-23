@@ -1,8 +1,6 @@
 # AGENTS.md
 
 NavAid is a static web app deployed via GitHub Pages from a workflow.
-This branch and the production branch hold only the web app — no
-Unity.
 
 ## Layout
 
@@ -112,7 +110,6 @@ both branches and assembles a single Pages site:
   `https://navaid-tiles.supino.org`. No build step, no bundler, no
   transpiler — keep `docs/` plain HTML / CSS / JS. Capacitor dependencies
   live only under `mobile/`.
-- Don't reintroduce Unity files.
 
 ## Live + repo
 
