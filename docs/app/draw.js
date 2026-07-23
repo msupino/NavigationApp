@@ -57,8 +57,11 @@ function waypointDiscRadiusPx() {
 // waypoint disc + the cum kite's own half-height + a margin. Not leg-length
 // dependent, so the cum kite sits the same distance from every waypoint.
 function cumDefaultLabelPerp() {
+  // Clear the waypoint disc, then a full cum-kite height (so the whole kite sits
+  // off the disc with a half-height gap), plus the margin. Keeps the cum kite
+  // clearly separated from the waypoint.
   return waypointDiscRadiusPx() +
-         (tune('cumKiteHeightPx') * cumKiteDrawScale()) / 2 +
+         tune('cumKiteHeightPx') * cumKiteDrawScale() +
          tune('defaultLabelMarginPx') * cumKiteDrawScale();
 }
 function legKiteAlongHalfPx(sc) {
