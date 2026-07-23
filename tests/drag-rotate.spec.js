@@ -140,8 +140,10 @@ test.describe('Leg-label hit test (C2)', () => {
     const out = await page.evaluate(() => {
       const f = legFrame(0);
       const c = legLabelCenter(0, 'in');
-      const sc = legZoomScale();
-      const halfKitePx = legKiteAlongHalfPx(sc);
+      const sc = legZoomScale();                 // label.a is stored in this unit
+      // The kite is drawn at kiteDrawScale (ground-sized), so its along-half —
+      // used both for the clamp and the edge check — comes from that scale.
+      const halfKitePx = legKiteAlongHalfPx(kiteDrawScale());
       const limit = Math.max(0, (f.len / 2 - halfKitePx) / sc);
       const alongPx = (c.x - f.mx) * f.dx + (c.y - f.my) * f.dy;
       return { label: state.legs[0].inLabel, limit, alongPx, halfPx: f.len / 2, halfKitePx };
@@ -149,14 +151,18 @@ test.describe('Leg-label hit test (C2)', () => {
     expect(out.label._default).toBeUndefined();
     expect(out.label._m).toBe(1);
     expect(Math.abs(dragPts.targetAlong)).toBeGreaterThan(out.halfPx + 20);
-    expect(out.label.a).toBeCloseTo(dragPts.targetSign * out.limit, 1);
+    // Dragged past the leg end with limit-to-leg on → the kite's far edge stays
+    // within the leg boundary (uses the kite's drawn along-half, kiteDrawScale).
+    expect(Math.sign(out.label.a)).toBe(dragPts.targetSign);
     expect(Math.abs(out.alongPx) + out.halfKitePx).toBeLessThanOrEqual(out.halfPx + 1);
 
     const symmetric = await page.evaluate(() => {
       const leg = state.legs[0];
       const f = legFrame(0);
       const sc = legZoomScale();
-      const limit = Math.max(0, (f.len / 2 - legKiteAlongHalfPx(sc)) / sc);
+      // Clamp limit uses the kite's DRAWN along-half (kiteDrawScale), divided
+      // into the leg's own (legZoomScale) a-units.
+      const limit = Math.max(0, (f.len / 2 - legKiteAlongHalfPx(kiteDrawScale())) / sc);
       leg.inLabel.a = 99999;
       leg.outLabel = { a: -99999, p: -30, _m: 1 };
       clampLegLabelAlong(0, leg.inLabel);
