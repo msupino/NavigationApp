@@ -24,7 +24,7 @@ const CLORE = { lat: 32.05306, lng: 34.73583, name: 'CLORE' };
 const NTAIM = { lat: 31.94361, lng: 34.78083, name: 'NTAIM' };
 const NAGID = { lat: 31.88972, lng: 34.75583, name: 'NAGID' };
 const NOTE_LAT_OFFSET = 0;      // keep in sync with commChangeNoteLatOffset
-const NOTE_LNG_OFFSET = 0.09;   // keep in sync with commChangeNoteLngOffset
+const NOTE_LNG_OFFSET = -0.09;  // keep in sync with commChangeNoteLngOffset (west of the wp)
 
 const FIXTURE = {
   version: 1,
@@ -646,7 +646,7 @@ test.describe('comm-change auto-note (#487)', () => {
       return {
         lines,
         tailDistancePx: Math.hypot(target.x - tail.x, target.y - tail.y),
-        tailIsEast: state.notes[0].lng > t.lng,
+        tailIsWest: state.notes[0].lng < t.lng,
         arrowStartClearPx: Math.hypot(g.target.x - target.x, g.target.y - target.y),
         expectedStartClearPx: waypointGeom(0).r + tune('waypointStrokeWidthPx') / 2 +
           tune('commChangeArrowStartGapPx'),
@@ -684,7 +684,7 @@ test.describe('comm-change auto-note (#487)', () => {
     }, TYONA);
     expect(out.lines).toEqual(['PLUTO', '118.40']);
     expect(out.tailDistancePx).toBeGreaterThan(60);
-    expect(out.tailIsEast).toBe(true);
+    expect(out.tailIsWest).toBe(true);   // default callout points west (270°) of the wp
     expect(out.arrowStartClearPx).toBeCloseTo(out.expectedStartClearPx, 0);
     expect(out.arrowStartGap).toBe(3);
     expect(out.arrowWidth).toBe(4);
@@ -1164,9 +1164,11 @@ test.describe('comm-change auto-note (#487)', () => {
   test('comm-change arrow far tail is draggable around the waypoint', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
+    await hideToolbarMenus(page);   // clear the map so the real-mouse drag lands
     const before = await page.evaluate(t => {
       state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
       syncLegs();
+      map.setView([t.lat, t.lng], 11, { animate: false });   // centre so the tail is on-screen
       seedCommChangeNotes();
       draw();
       const g = commCalloutGeom(state.notes[0]);
