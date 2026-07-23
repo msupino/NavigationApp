@@ -8,7 +8,7 @@ const { test, expect } = require('./_setup');
 async function boot(page) {
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined' &&
-    typeof showExportModal === 'function' && typeof setPage === 'function' &&
+    typeof openExportPanel === 'function' && typeof setPage === 'function' &&
     typeof exportPNG === 'function' && typeof drawVors === 'function' &&
     typeof loadVors === 'function');
 }
@@ -79,7 +79,7 @@ test('export forces the VOR stations when the plan card carries VOR info (toggle
   page.on('download', () => { /* swallow the export download */ });
   await boot(page);
   await route(page);
-  await page.evaluate(() => { setPage('A4'); draw(); showExportModal(); });
+  await page.evaluate(() => { setPage('A4'); draw(); openExportPanel(); });
   await page.locator('#export-plan-cb').check();
   await page.locator('#export-vor-select').selectOption('NAT');   // VOR info in the plan card
   await page.evaluate(() => { window.showVorStations = false; });  // live overlay OFF
@@ -95,7 +95,7 @@ test('export does NOT force VOR stations when there is no VOR info', async ({ pa
   page.on('download', () => { /* swallow the export download */ });
   await boot(page);
   await route(page);
-  await page.evaluate(() => { setPage('A4'); draw(); showExportModal(); });
+  await page.evaluate(() => { setPage('A4'); draw(); openExportPanel(); });
   await page.locator('#export-plan-cb').check();
   await page.locator('#export-vor-select').selectOption('');      // no reference VOR
   await page.evaluate(() => {
@@ -115,7 +115,7 @@ test('export does NOT force VOR stations for a stale reference-VOR ident (not in
   page.on('download', () => { /* swallow the export download */ });
   await boot(page);
   await route(page);
-  await page.evaluate(() => { setPage('A4'); draw(); showExportModal(); });
+  await page.evaluate(() => { setPage('A4'); draw(); openExportPanel(); });
   await page.locator('#export-plan-cb').check();
   await page.evaluate(() => {
     window.showVorStations = false;

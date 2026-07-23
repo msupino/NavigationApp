@@ -4205,6 +4205,11 @@ body.theme-light #tuning-panel summary {
   gap: 4px;
   align-items: stretch;
 }
+/* Inline export/print options panel, hosted in the Print toolbar section. */
+.export-panel-host { display: block; }
+.export-panel { display: flex; flex-direction: column; }
+.export-panel .modal-btns.export-panel-btns { margin-top: 8px; display: flex; gap: 6px; }
+.export-panel .modal-btns.export-panel-btns button { flex: 1; }
 #page-buttons > * { flex: 1; }
 #page-orient {
   display: inline-flex;

@@ -1,6 +1,6 @@
 // #378 — drag-to-place flight-plan card on the PNG export. The same
 // drawFlightPlanTable() renders the live preview and the exported PNG, so the
-// card is true WYSIWYG. Tests cover the renderer, the modal toggle (gated on a
+// card is true WYSIWYG. Tests cover the renderer, the panel toggle (gated on a
 // page frame), placement + drag, and cleanup.
 const { test, expect } = require('./_setup');
 const { hideToolbarMenus } = require('./_toolbar');
@@ -8,7 +8,7 @@ const { hideToolbarMenus } = require('./_toolbar');
 async function boot(page) {
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined' &&
-    typeof showExportModal === 'function' && typeof setPage === 'function' &&
+    typeof openExportPanel === 'function' && typeof setPage === 'function' &&
     typeof drawFlightPlanTable === 'function' && typeof draw === 'function');
 }
 
@@ -41,22 +41,23 @@ test('drawFlightPlanTable renders a sized table; none without a route', async ({
   expect(r.rect.x).toBe(10);
 });
 
-test('export modal: plan checkbox is gated on a page frame', async ({ page }) => {
+test('export panel: plan checkbox is gated on a page frame', async ({ page }) => {
   await boot(page);
   await route(page);
   // No page frame → checkbox disabled.
-  await page.evaluate(() => showExportModal());
+  await page.evaluate(() => openExportPanel());
   await expect(page.locator('#export-plan-cb')).toBeDisabled();
-  await page.evaluate(() => { document.querySelector('.modal-cancel').click(); });
-  // With A4 frame → enabled.
-  await page.evaluate(() => { setPage('A4'); draw(); showExportModal(); });
+  // Close (tears the panel down) then set an A4 frame and reopen → rebuilt
+  // panel picks up the frame and enables the checkbox.
+  await page.evaluate(() => closeToolbarMenus());
+  await page.evaluate(() => { setPage('A4'); draw(); openExportPanel(); });
   await expect(page.locator('#export-plan-cb')).toBeEnabled();
 });
 
-test('checking the box places a card; it clears on cancel', async ({ page }) => {
+test('checking the box places a card; it clears when the section closes', async ({ page }) => {
   await boot(page);
   await route(page);
-  await page.evaluate(() => { setPage('A4'); draw(); showExportModal(); });
+  await page.evaluate(() => { setPage('A4'); draw(); openExportPanel(); });
   await page.locator('#export-plan-cb').check();
   // planCard set, inside the frame, and drawn (rect captured).
   const inside = await page.evaluate(() => {
@@ -65,10 +66,8 @@ test('checking the box places a card; it clears on cancel', async ({ page }) => 
     return !!planCard && !!r && r.x >= fr.x && r.y >= fr.y;
   });
   expect(inside).toBe(true);
-  // Backdrop opens up for dragging on the live map.
-  await expect(page.locator('.modal-back.export-place')).toHaveCount(1);
-  // Cancel clears the placement.
-  await page.evaluate(() => { document.querySelector('.modal-cancel').click(); });
+  // Closing the Print section clears the placement.
+  await page.evaluate(() => closeToolbarMenus());
   expect(await page.evaluate(() => planCard)).toBeNull();
 });
 
@@ -76,7 +75,7 @@ test('dragging the card on the map moves it within the frame', async ({ page }) 
   await page.setViewportSize({ width: 1400, height: 1000 });
   await boot(page);
   await route(page);
-  await page.evaluate(() => { setPage('A4'); draw(); showExportModal(); });
+  await page.evaluate(() => { setPage("A4"); draw(); openExportPanel(); });
   await page.locator('#export-plan-cb').check();
   await page.evaluate(() => draw());
   await hideToolbarMenus(page);
@@ -101,7 +100,7 @@ test('the corner grip resizes the card', async ({ page }) => {
   await page.setViewportSize({ width: 1400, height: 1000 });
   await boot(page);
   await route(page);
-  await page.evaluate(() => { setPage('A4'); draw(); showExportModal(); });
+  await page.evaluate(() => { setPage("A4"); draw(); openExportPanel(); });
   await page.locator('#export-plan-cb').check();
   await page.evaluate(() => draw());
   await hideToolbarMenus(page);
@@ -125,7 +124,7 @@ test('resizing is clamped to the page frame (no overflow)', async ({ page }) => 
   await page.setViewportSize({ width: 1400, height: 1000 });
   await boot(page);
   await route(page);
-  await page.evaluate(() => { setPage('A4'); draw(); showExportModal(); });
+  await page.evaluate(() => { setPage("A4"); draw(); openExportPanel(); });
   await page.locator('#export-plan-cb').check();
   await page.evaluate(() => draw());
   await hideToolbarMenus(page);
@@ -149,11 +148,33 @@ test('resizing is clamped to the page frame (no overflow)', async ({ page }) => 
   expect(res.withinH).toBe(true);
 });
 
+test('the default card lands clear of the open Print panel (grabbable on the map)', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 1000 });
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => { setPage('A4'); draw(); openExportPanel(); });
+  await page.locator('#export-plan-cb').check();
+  await page.evaluate(() => draw());
+  // The Print section's inline panel is an open dropdown pinned to the top-left
+  // of the map. The card must not spawn under it, or its pointer events are
+  // swallowed by the toolbar and it can't be dragged.
+  const hit = await page.evaluate(() => {
+    const mapBox = map.getContainer().getBoundingClientRect();
+    const r = planCardRect;
+    const cx = mapBox.left + r.x + r.w / 2;
+    const cy = mapBox.top + r.y + r.h / 2;
+    const el = document.elementFromPoint(cx, cy);
+    return { onMap: !!(el && el.closest('#map')), inToolbar: !!(el && el.closest('#toolbar')) };
+  });
+  expect(hit.onMap).toBe(true);
+  expect(hit.inToolbar).toBe(false);
+});
+
 test('export VOR selector shows only when the flight-plan card is added', async ({ page }) => {
   await page.setViewportSize({ width: 1400, height: 1000 });
   await boot(page);
   await route(page);
-  await page.evaluate(() => { setPage('A4'); draw(); showExportModal(); });
+  await page.evaluate(() => { setPage("A4"); draw(); openExportPanel(); });
   // Hidden until the plan-card checkbox is on.
   await expect(page.locator('#export-vor-select')).toBeHidden();
   await page.locator('#export-plan-cb').check();

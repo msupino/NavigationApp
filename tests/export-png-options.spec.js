@@ -1,9 +1,9 @@
 // @ts-check
-// Tests for the export-PNG options modal (PR #203): checkboxes for
-// printing waypoints/airports and layer dropdown, defaults, restore.
+// Tests for the inline export/print options panel, hosted in the Print toolbar
+// section (#export-panel): checkboxes for printing waypoints/airfields, the
+// layer dropdown, defaults, and map-state restore when the section closes.
 const { test, expect } = require('./_setup');
 const { pairLLHZ_LLHA } = require('./_airfieldArp');
-const { clickToolbarControl } = require('./_toolbar');
 
 async function boot(page) {
   await page.addInitScript(() => {
@@ -18,31 +18,40 @@ async function boot(page) {
     } catch (e) {}
   });
   await page.goto('?lang=en');
-  await page.waitForFunction(() => typeof state !== 'undefined' && typeof exportPNG === 'function');
+  await page.waitForFunction(() => typeof state !== 'undefined' && typeof exportPNG === 'function'
+    && typeof openExportPanel === 'function');
 }
 
-test.describe('Export PNG options modal', () => {
+// Open the inline export panel (builds it + its live preview) and wait until
+// the Export button is present.
+async function openPanel(page) {
+  await page.evaluate(() => openExportPanel());
+  await page.locator('#export-panel .export-panel-btns button').waitFor();
+}
+
+// Close the Print section: tears down the panel and restores the map state.
+async function closePanel(page) {
+  await page.evaluate(() => closeToolbarMenus());
+}
+
+test.describe('Export PNG options panel', () => {
   // PNG export waits on map tiles + canvas; default 15s is too tight for
   // waitForEvent('download', { timeout: 30_000 }) locally and on CI.
   test.describe.configure({
     timeout: process.env.EXPECTED_SHA ? 120_000 : 60_000,
   });
 
-  test('Modal opens with checkboxes off and layer defaulting to Navigation', async ({ page }) => {
+  test('Panel opens with checkboxes defaulted and layer defaulting to Navigation', async ({ page }) => {
     await boot(page);
-    // Need a route so exportPNG doesn't NOP; the modal should show regardless.
+    // Need a route so exportPNG doesn't NOP; the panel should show regardless.
     await page.evaluate(wps => {
       state.waypoints = wps;
       syncLegs(); draw();
     }, pairLLHZ_LLHA());
-    await page.locator('#print').click();
-    // Wait for the modal backdrop to appear.
-    await page.locator('.modal-back').waitFor();
-    // Title.
-    expect(await page.locator('.modal-title').textContent()).toBe('Export PNG');
+    await openPanel(page);
     // 6 checkboxes: Waypoint Names (on), Drift Lines (on), Cumulative time (on),
     // Nav WPs (off), Airfields (off), Place flight plan (off, disabled w/o frame).
-    const cbs = page.locator('.modal input[type="checkbox"]');
+    const cbs = page.locator('#export-panel input[type="checkbox"]');
     expect(await cbs.count()).toBe(6);
     expect(await cbs.nth(0).isChecked()).toBe(true);   // Waypoint Names default on
     expect(await cbs.nth(1).isChecked()).toBe(true);   // Drift Lines default on
@@ -54,35 +63,33 @@ test.describe('Export PNG options modal', () => {
     // Layer defaults to Navigation.
     const sel = page.locator('#export-layer-select');
     expect(await sel.inputValue()).toBe('Navigation');
-    // Buttons present.
-    expect(await page.locator('.modal .modal-btns button').count()).toBe(2);
-    // Cancel closes the modal.
-    await page.locator('.modal .modal-cancel').click();
-    await expect(page.locator('.modal-back')).toHaveCount(0);
+    // Single action button: Export.
+    expect(await page.locator('#export-panel .export-panel-btns button').count()).toBe(1);
+    // Closing the section tears the panel down.
+    await closePanel(page);
+    await expect(page.locator('#export-panel .export-panel-btns button')).toHaveCount(0);
   });
 
-  test('Export with both checkboxes off uses Navigation layer', async ({ page }) => {
+  test('Export with defaults uses Navigation layer', async ({ page }) => {
     await boot(page);
     await page.locator('#layer-select').selectOption('OpenStreetMap');
     await page.evaluate(wps => {
       state.waypoints = wps;
       syncLegs(); draw();
     }, pairLLHZ_LLHA());
-    // Open modal, leave defaults, click Export.
+    // Open panel, leave defaults, click Export.
     const dl = page.waitForEvent('download', { timeout: 30000 });
-    await page.locator('#print').click();
-    await page.locator('.modal-back').waitFor();
-    await page.locator('.modal .modal-btns button').first().click();
+    await openPanel(page);
+    await page.locator('#export-panel .export-panel-btns button').first().click();
     const download = await dl;
     expect(download.suggestedFilename()).toMatch(/^navigation-.+\.png$/);
   });
 
-  test('Live preview: modal defaults hide waypoints/airfields immediately', async ({ page }) => {
+  test('Live preview: panel defaults hide waypoints/airfields immediately', async ({ page }) => {
     await boot(page);
-    // Turn waypoints and airfields on so we can verify the modal hides them.
+    // Turn waypoints and airfields on so we can verify the panel hides them.
     await page.evaluate(() => { showNavWP = true; showAirfields = true; draw(); });
-    await page.locator('#print').click();
-    await page.locator('.modal-back').waitFor();
+    await openPanel(page);
     // Default state applied: both should be false now.
     expect(await page.evaluate(() => showNavWP)).toBe(false);
     expect(await page.evaluate(() => showAirfields)).toBe(false);
@@ -91,9 +98,8 @@ test.describe('Export PNG options modal', () => {
   test('Live preview: toggling checkbox updates the map immediately', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => { showNavWP = false; showAirfields = false; draw(); });
-    await page.locator('#print').click();
-    await page.locator('.modal-back').waitFor();
-    const cbs = page.locator('.modal input[type="checkbox"]');
+    await openPanel(page);
+    const cbs = page.locator('#export-panel input[type="checkbox"]');
     // Check "Print navigation waypoints" (idx 3) → showNavWP becomes true.
     await cbs.nth(3).check();
     expect(await page.evaluate(() => showNavWP)).toBe(true);
@@ -105,23 +111,22 @@ test.describe('Export PNG options modal', () => {
     expect(await page.evaluate(() => showAirfields)).toBe(true);
   });
 
-  test('Cancel restores original waypoints/airfields state', async ({ page }) => {
+  test('Closing the section restores original waypoints/airfields state', async ({ page }) => {
     await boot(page);
     // Starting with both visible.
     await page.evaluate(() => { showNavWP = true; showAirfields = true; draw(); });
-    await page.locator('#print').click();
-    await page.locator('.modal-back').waitFor();
-    // Modal hides them (default). Toggle waypoints on (idx 3 = Nav WPs).
-    await page.locator('.modal input[type="checkbox"]').nth(3).check();
+    await openPanel(page);
+    // Panel hides them (default). Toggle waypoints on (idx 3 = Nav WPs).
+    await page.locator('#export-panel input[type="checkbox"]').nth(3).check();
     expect(await page.evaluate(() => showNavWP)).toBe(true);
-    // Cancel → restore original (both true).
-    await page.locator('.modal .modal-cancel').click();
-    await expect(page.locator('.modal-back')).toHaveCount(0);
+    // Close the section → restore original (both true).
+    await closePanel(page);
+    await expect(page.locator('#export-panel .export-panel-btns button')).toHaveCount(0);
     expect(await page.evaluate(() => showNavWP)).toBe(true);
     expect(await page.evaluate(() => showAirfields)).toBe(true);
   });
 
-  test('Cancel restores original layer', async ({ page }) => {
+  test('Closing the section restores original layer', async ({ page }) => {
     await boot(page);
     await page.locator('#layer-select').selectOption('OpenStreetMap');
     await page.evaluate(wps => {
@@ -130,27 +135,27 @@ test.describe('Export PNG options modal', () => {
     }, pairLLHZ_LLHA());
     // Verify we're on OSM.
     expect(await page.locator('#layer-select').inputValue()).toBe('OpenStreetMap');
-    // Open modal (defaults to Navigation), then Cancel.
-    await page.locator('#print').click();
-    await page.locator('.modal-back').waitFor();
-    await page.locator('.modal .modal-cancel').click();
+    // Open panel (defaults to Navigation), then close the section.
+    await openPanel(page);
+    await closePanel(page);
     // Back to OSM.
     expect(await page.locator('#layer-select').inputValue()).toBe('OpenStreetMap');
   });
 
-  test('X button closes modal and restores original state', async ({ page }) => {
+  test('Reopening the panel rebuilds it with defaults restored', async ({ page }) => {
     await boot(page);
     await page.evaluate(() => { showNavWP = true; draw(); });
-    await page.locator('#print').click();
-    await page.locator('.modal-back').waitFor();
-    // Toggle waypoints off in the modal (idx 1 = Nav WPs).
-    await page.locator('.modal input[type="checkbox"]').nth(1).uncheck();
+    await openPanel(page);
+    // Toggle Nav WPs off in the panel (idx 3).
+    await page.locator('#export-panel input[type="checkbox"]').nth(3).uncheck();
     expect(await page.evaluate(() => showNavWP)).toBe(false);
-    // Click ✕ close button.
-    await page.locator('.modal-close-x').click();
-    await expect(page.locator('.modal-back')).toHaveCount(0);
-    // Original state restored.
+    // Close → original state restored.
+    await closePanel(page);
     expect(await page.evaluate(() => showNavWP)).toBe(true);
+    // Reopen → freshly built panel re-applies its defaults (Nav WPs off again).
+    await openPanel(page);
+    expect(await page.locator('#export-panel input[type="checkbox"]').nth(3).isChecked()).toBe(false);
+    expect(await page.evaluate(() => showNavWP)).toBe(false);
   });
 
   test('Warns when no page size (A3/A4) is selected', async ({ page }) => {
@@ -158,21 +163,17 @@ test.describe('Export PNG options modal', () => {
     await page.evaluate(wps => {
       state.waypoints = wps;
       syncLegs(); draw();
+      pageSize = null;
     }, pairLLHZ_LLHA());
-    // Ensure no page frame is active.
-    await page.evaluate(() => { pageSize = null; });
-    await page.locator('#print').click();
-    await page.locator('.modal-back').waitFor();
-    await expect(page.locator('.modal-back').getByText(/no page size/i)).toBeVisible();
-    await page.locator('.modal .modal-cancel').click();
-    await expect(page.locator('.modal-back')).toHaveCount(0);
+    await openPanel(page);
+    await expect(page.locator('#export-panel').getByText(/no page size/i)).toBeVisible();
+    await closePanel(page);
 
     // Select A3 and reopen — warning should be gone.
-    await clickToolbarControl(page, '#page-a3');
-    await clickToolbarControl(page, '#print');
-    await page.locator('.modal-back').waitFor();
-    await expect(page.locator('.modal-back').getByText(/no page size/i)).not.toBeVisible();
-    await page.locator('.modal .modal-cancel').click();
+    await page.evaluate(() => setPage('A3'));
+    await openPanel(page);
+    await expect(page.locator('#export-panel').getByText(/no page size/i)).not.toBeVisible();
+    await closePanel(page);
   });
 
   test.describe('PNG DPI metadata (pHYs chunk)', () => {
@@ -180,9 +181,8 @@ test.describe('Export PNG options modal', () => {
     test.describe.configure({ timeout: 60_000 });
     async function exportPng(page) {
       const dl = page.waitForEvent('download', { timeout: 30000 });
-      await page.locator('#print').click();
-      await page.locator('.modal-back').waitFor();
-      await page.locator('.modal .modal-btns button').first().click();
+      await openPanel(page);
+      await page.locator('#export-panel .export-panel-btns button').first().click();
       const download = await dl;
       const stream = await download.createReadStream();
       const chunks = [];
@@ -270,16 +270,29 @@ test.describe('Export PNG options modal', () => {
     });
   });
 
-  test('Modal respects checkbox toggles and layer change', async ({ page }) => {
+  test('map-opacity slider has a reset-to-default (80%) button', async ({ page }) => {
+    await boot(page);
+    await openPanel(page);
+    const slider = page.locator('#export-panel input[type="range"]').first();
+    const reset = page.locator('#export-panel .slider-reset').first();
+    await expect(reset).toHaveCount(1);
+    // Move it off the default, then reset.
+    await slider.fill('40');
+    expect(await page.evaluate(() => Math.round(mapOpacity * 100))).toBe(40);
+    await reset.click();
+    await expect(slider).toHaveValue('80');
+    expect(await page.evaluate(() => Math.round(mapOpacity * 100))).toBe(80);
+  });
+
+  test('Panel respects checkbox toggles and layer change', async ({ page }) => {
     await boot(page);
     await page.evaluate(wps => {
       state.waypoints = wps;
       syncLegs(); draw();
     }, pairLLHZ_LLHA());
-    await page.locator('#print').click();
-    await page.locator('.modal-back').waitFor();
+    await openPanel(page);
     // Toggle both checkboxes on, switch to CVFR.
-    const cbs = page.locator('.modal input[type="checkbox"]');
+    const cbs = page.locator('#export-panel input[type="checkbox"]');
     await cbs.nth(1).check();
     await cbs.nth(0).check();
     await page.locator('#export-layer-select').selectOption('CVFR');
@@ -288,7 +301,7 @@ test.describe('Export PNG options modal', () => {
     expect(await page.locator('#export-layer-select').inputValue()).toBe('CVFR');
     // Click Export and verify download triggers.
     const dl = page.waitForEvent('download', { timeout: 30000 });
-    await page.locator('.modal .modal-btns button').first().click();
+    await page.locator('#export-panel .export-panel-btns button').first().click();
     const download = await dl;
     expect(download.suggestedFilename()).toMatch(/^navigation-.+\.png$/);
   });

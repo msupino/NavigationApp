@@ -148,9 +148,10 @@ test.describe('#215 — exportPNG catch handler restores UI', () => {
     await boot(page);
     await loadRoute(page);
 
-    // Open the export options modal.
-    await page.locator('#print').click();
-    await page.locator('.modal-back').waitFor();
+    // Open the inline export options panel.
+    await page.evaluate(() => openExportPanel());
+    const btn = page.locator('#export-panel .export-panel-btns button');
+    await btn.waitFor();
 
     // Inject a failure: replace Promise.all so the tile pipeline immediately
     // rejects, triggering the .catch() handler in exportPNG.
@@ -163,11 +164,10 @@ test.describe('#215 — exportPNG catch handler restores UI', () => {
       };
     });
 
-    // Click Export — this closes the modal and calls exportPNG().
-    await page.locator('.modal .modal-btns button').first().click();
+    // Click Export — calls exportPNG().
+    await btn.first().click();
 
     // Wait for the catch handler to fire and restore the button.
-    const btn = page.locator('#print');
     await expect(btn).toBeEnabled({ timeout: 5000 });
 
     // NavAid.exporting must be cleared.

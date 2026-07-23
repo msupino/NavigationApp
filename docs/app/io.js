@@ -2940,46 +2940,16 @@ function showSigmetDecoded() {
 
 // Show a pre-export modal so the user can decide which overlays and base
 // layer appear in the PNG, independently of the current screen settings.
-function showExportModal() {
+// Build the export/print options panel inline into `container` (the Print
+// toolbar section). Applies a live map preview immediately; returns { restore }
+// so the caller (section collapse) can put the map back. Export / Print render
+// from the live panel state; they do NOT restore (the preview stays while the
+// section is open — WYSIWYG).
+function buildExportPanel(container) {
   if (!aircraft && typeof loadAircraft === 'function') loadAircraft();   // for the plan card's Fuel column
-  const back = document.createElement('div');
-  back.className = 'modal-back';
+  container.innerHTML = '';
   const box = document.createElement('div');
-  box.className = 'modal';
-  const title = document.createElement('div');
-  title.className = 'modal-title';
-  title.textContent = S.exportModalTitle;
-  box.appendChild(title);
-
-  addModalCloseX(box, () => { restoreOrig(); close(); });
-
-  // Drag to reposition the modal via the title bar.
-  let drag = null;
-  title.addEventListener('mousedown', function (e) {
-    const r = box.getBoundingClientRect();
-    drag = { ox: e.clientX - r.left, oy: e.clientY - r.top };
-    box.style.position = 'fixed';
-    box.style.left = r.left + 'px';
-    box.style.top = r.top + 'px';
-    box.style.margin = '0';
-    const onMove = function (e) {
-      if (!drag) return;
-      // Clamp to the viewport so the title bar + ✕ stay reachable. Same
-      // pattern the flight-plan modal already uses.
-      const x = Math.max(0, Math.min(window.innerWidth - box.offsetWidth, e.clientX - drag.ox));
-      const y = Math.max(0, Math.min(window.innerHeight - box.offsetHeight, e.clientY - drag.oy));
-      box.style.left = x + 'px';
-      box.style.top = y + 'px';
-    };
-    const onUp = function () {
-      drag = null;
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-    };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-    e.preventDefault();
-  });
+  box.className = 'export-panel';
 
   const body = document.createElement('div');
   body.style.cssText = 'display:flex;flex-direction:column;gap:10px;padding:4px 0';
@@ -3130,6 +3100,9 @@ function showExportModal() {
   opSlider.min = '10';
   opSlider.max = '100';
   opSlider.step = '5';
+  // The content attribute is the default the ↻ reset button restores (80% = the
+  // app's map-opacity default); the property reflects the current live value.
+  opSlider.setAttribute('value', '80');
   opSlider.value = Math.round(mapOpacity * 100);
   opSlider.style.cssText = 'flex:1;height:16px;accent-color:#ffd966';
   opacityRow.appendChild(opSlider);
@@ -3137,6 +3110,7 @@ function showExportModal() {
   opVal.style.cssText = 'width:2.2em;text-align:right;font-size:12px';
   opVal.textContent = opSlider.value + '%';
   opacityRow.appendChild(opVal);
+  if (typeof addSliderReset === 'function') addSliderReset(opSlider);
   body.appendChild(opacityRow);
 
   // Page-size warning.
@@ -3176,14 +3150,11 @@ function showExportModal() {
   }
   draw();
 
-  // Buttons.
+  // Button: Export (save the framed PNG).
   const btns = document.createElement('div');
-  btns.className = 'modal-btns';
+  btns.className = 'modal-btns export-panel-btns';
   const exportBtn = document.createElement('button');
   exportBtn.textContent = S.exportBtn;
-  const cancelBtn = document.createElement('button');
-  cancelBtn.textContent = S.cancel;
-  cancelBtn.className = 'modal-cancel';
 
   function restoreOrig() {
     showNavWP = origNavWP;
@@ -3236,8 +3207,6 @@ function showExportModal() {
     } else {
       window.planCard = null;
     }
-    // Open up the backdrop so the card can be dragged on the live map.
-    back.classList.toggle('export-place', planCb.checked);
     vorRow.style.display = planCb.checked ? '' : 'none';   // VOR drives plan-card columns only
     draw();
     // Default the card to ~70% of the frame width: small enough to drag in
@@ -3247,7 +3216,15 @@ function showExportModal() {
       const target = fr0.w * 0.7;
       if (planCardRect.w > target) {
         planCard.scale = Math.max(0.4, planCard.scale * target / planCardRect.w);
-        planCard.x = fr0.x + 14; planCard.y = fr0.y + 14;
+        draw();
+      }
+      // Centre the card in the frame. The Print section's inline panel is an
+      // open dropdown pinned to the top-left of the map, so a card parked in
+      // the top-left corner sits UNDER it and can't be grabbed — centring keeps
+      // it clear of the panel and grabbable. The corner grip resizes from here.
+      if (planCardRect) {
+        planCard.x = fr0.x + Math.max(0, (fr0.w - planCardRect.w) / 2);
+        planCard.y = fr0.y + Math.max(0, (fr0.h - planCardRect.h) / 2);
         draw();
       }
     }
@@ -3328,27 +3305,18 @@ function showExportModal() {
     applyMapOpacity();
   };
 
-  function close() { removeCardDrag(); window.removeEventListener('keydown', onEsc); back.remove(); }
-  function onEsc(e) { if (e.key === 'Escape') { restoreOrig(); close(); } }
-
-  exportBtn.onclick = () => {
-    NavAid._restoreExport = restoreOrig;
-    close();
-    exportPNG();
-  };
-  cancelBtn.onclick = function () {
-    restoreOrig();
-    close();
-  };
+  // Export / Print render from the live panel state and leave the preview in
+  // place (the panel stays open); the map is restored when the Print section is
+  // collapsed via the returned restore().
+  exportBtn.onclick = () => { exportPNG(); };
 
   btns.appendChild(exportBtn);
-  btns.appendChild(cancelBtn);
   box.appendChild(btns);
+  container.appendChild(box);
 
-  back.appendChild(box);
-  back.onclick = e => { if (e.target === back) close(); };
-  document.body.appendChild(back);
-  document.addEventListener('keydown', onEsc);
+  return {
+    restore() { removeCardDrag(); restoreOrig(); container.innerHTML = ''; },
+  };
 }
 
 async function fetchTileBitmap(layer, coords, signal) {
@@ -3468,7 +3436,9 @@ function exportPNG() {
   o.fillStyle = tune('exportBgColor');
   o.fillRect(0, 0, W, H);
 
-  const btn = document.getElementById('print');
+  // Feedback lives on the panel's Export button now (the old #print toolbar
+  // button is gone). Fall back to a stub if the panel isn't mounted.
+  const btn = document.querySelector('#export-panel .export-panel-btns button') || {};
   const btnLabel = btn.textContent;
   btn.textContent = S.saving;
   btn.disabled = true;

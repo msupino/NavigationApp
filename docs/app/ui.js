@@ -4341,7 +4341,6 @@ try {
   const sp = localStorage.getItem('navaid.pageSize');
   if ((sp === 'A3' || sp === 'A4') && typeof setPage === 'function') setPage(sp);
 } catch (e) { /* storage unavailable */ }
-document.getElementById('print').onclick = showExportModal;
 createMagnifier();
 document.getElementById('tool-magnifier').onclick = toggleMagnifier;
 document.getElementById('tool-reset-all-markers').onclick = () => {
@@ -4562,12 +4561,29 @@ function refreshMapAfterToolbarModeChange() {
     try { localStorage.setItem('navaid.sec.' + sec.dataset.sec, open ? '1' : '0'); }
     catch (e) { /* storage unavailable */ }
   }
+  // The Print section hosts the inline export/print panel + its live map
+  // preview. Build on open, restore the map on close.
+  let _exportPanelHandle = null;
+  function togglePrintPanel(open) {
+    const host = document.getElementById('export-panel');
+    if (!host || typeof buildExportPanel !== 'function') return;
+    if (open) {
+      if (!_exportPanelHandle) _exportPanelHandle = buildExportPanel(host);
+    } else if (_exportPanelHandle) {
+      _exportPanelHandle.restore();
+      _exportPanelHandle = null;
+    }
+  }
   function setSectionOpen(sec, open) {
     sec.classList.toggle('open', open);
     const head = sec.querySelector('.tb-section-head');
     if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
     persist(sec, open);
     updateToolbarOpenCount();
+    // The Print section hosts the export/print options panel inline. Build it
+    // (with its live map preview) when the section opens; restore the map when
+    // it closes.
+    if (sec.dataset.sec === 'print') togglePrintPanel(open);
   }
   function closeOthers(sec) {
     for (const other of sections) {
@@ -4592,6 +4608,18 @@ function refreshMapAfterToolbarModeChange() {
       if (sec.classList.contains('open')) setSectionOpen(sec, false);
     }
   };
+  // Programmatic opener for the inline export/print panel: opens the Print
+  // section (building the panel + its live map preview) and returns the host.
+  // Replaces the old showExportModal() entry point.
+  window.openExportPanel = function () {
+    const printSec = sections.find(s => s.dataset.sec === 'print');
+    if (!printSec) return null;
+    if (!printSec.classList.contains('open')) {
+      closeOthers(printSec);
+      setSectionOpen(printSec, true);
+    }
+    return document.getElementById('export-panel');
+  };
 
   for (const sec of sections) {
     const head = sec.querySelector('.tb-section-head');
@@ -4600,6 +4628,13 @@ function refreshMapAfterToolbarModeChange() {
     try {
       if (localStorage.getItem(key) === '1') sec.classList.add('open');
     } catch (e) { /* storage unavailable */ }
+    // Never restore the Print section open at boot: its panel applies a live
+    // map preview and is built lazily on open, so a persisted-open state would
+    // leave the section open with an empty panel and no preview. Start closed.
+    if (sec.dataset.sec === 'print' && sec.classList.contains('open')) {
+      sec.classList.remove('open');
+      try { localStorage.setItem(key, '0'); } catch (e) { /* */ }
+    }
     head.setAttribute('aria-expanded', sec.classList.contains('open') ? 'true' : 'false');
     function toggle() {
       const willOpen = !sec.classList.contains('open');

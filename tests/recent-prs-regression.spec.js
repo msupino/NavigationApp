@@ -65,17 +65,17 @@ test.describe('#238 — toolbar section order', () => {
 // ---------------------------------------------------------------------------
 // #250 — export-PNG checkbox labels match View section terminology.
 // ---------------------------------------------------------------------------
-test.describe('#250 — export modal checkbox label terminology', () => {
-  test('Print PNG modal labels use navigation waypoints / airfields wording', async ({ page }) => {
+test.describe('#250 — export panel checkbox label terminology', () => {
+  test('Export panel labels use navigation waypoints / airfields wording', async ({ page }) => {
     await boot(page);
     await page.evaluate(wps => {
       state.waypoints = wps;
       syncLegs(); draw();
     }, pairLLHZ_LLHA());
-    await page.locator('#print').click();
-    await page.locator('.modal-back').waitFor();
+    await page.evaluate(() => openExportPanel());
+    await page.locator('#export-panel .export-panel-btns button').waitFor();
 
-    const labels = await page.locator('.modal label').allTextContents();
+    const labels = await page.locator('#export-panel label').allTextContents();
     const joined = labels.join(' ');
     expect(joined).toMatch(/navigation waypoints/i);
     expect(joined).toMatch(/airfields/i);
@@ -100,17 +100,17 @@ test.describe('#251 — Hebrew tbMapOpacity label', () => {
 // ---------------------------------------------------------------------------
 // #252 — Print Waypoint Names checkbox + map-opacity slider added to modal.
 // ---------------------------------------------------------------------------
-test.describe('#252 — Print Waypoint Names + Map Opacity in export modal', () => {
-  test('export modal includes print checkboxes, "Waypoint Names" defaults on', async ({ page }) => {
+test.describe('#252 — Print Waypoint Names + Map Opacity in export panel', () => {
+  test('export panel includes print checkboxes, "Waypoint Names" defaults on', async ({ page }) => {
     await boot(page);
     await page.evaluate(wps => {
       state.waypoints = wps;
       syncLegs(); draw();
     }, pairLLHZ_LLHA());
-    await page.locator('#print').click();
-    await page.locator('.modal-back').waitFor();
+    await page.evaluate(() => openExportPanel());
+    await page.locator('#export-panel .export-panel-btns button').waitFor();
 
-    const checkboxLabels = page.locator('.modal label:has(input[type="checkbox"])');
+    const checkboxLabels = page.locator('#export-panel label:has(input[type="checkbox"])');
     expect(await checkboxLabels.count()).toBe(6);
     const labelText = await checkboxLabels.allTextContents();
     expect(labelText).toEqual(expect.arrayContaining([
@@ -122,24 +122,24 @@ test.describe('#252 — Print Waypoint Names + Map Opacity in export modal', () 
       expect.stringMatching(/flight plan/i),
     ]));
 
-    await expect(page.locator('.modal label:has(input[type="checkbox"])', {
+    await expect(page.locator('#export-panel label:has(input[type="checkbox"])', {
       hasText: /waypoint names/i,
     }).locator('input')).toBeChecked();
-    await expect(page.locator('.modal label:has(input[type="checkbox"])', {
+    await expect(page.locator('#export-panel label:has(input[type="checkbox"])', {
       hasText: /cumulative time/i,
     }).locator('input')).toBeChecked();
   });
 
-  test('export modal includes a map-opacity slider', async ({ page }) => {
+  test('export panel includes a map-opacity slider', async ({ page }) => {
     await boot(page);
     await page.evaluate(wps => {
       state.waypoints = wps;
       syncLegs(); draw();
     }, pairLLHZ_LLHA());
-    await page.locator('#print').click();
-    await page.locator('.modal-back').waitFor();
+    await page.evaluate(() => openExportPanel());
+    await page.locator('#export-panel .export-panel-btns button').waitFor();
 
-    const ranges = page.locator('.modal input[type="range"]');
+    const ranges = page.locator('#export-panel input[type="range"]');
     expect(await ranges.count()).toBeGreaterThanOrEqual(1);
     const opacity = ranges.first();
     await expect(opacity).toHaveAttribute('min', '10');

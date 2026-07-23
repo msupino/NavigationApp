@@ -272,11 +272,12 @@ test.describe('Bidi / mixed-direction UI regressions', () => {
     await expect(page.locator('.flight-table thead th').nth(11)).toHaveText('רדיאל');
     await expect(page.locator('.flight-table thead th').nth(12)).toHaveText('DME');
 
-    await page.evaluate(() => showExportModal());
-    await expect(page.locator('.modal-back:not(.flight-plan) .modal-title')).toHaveText('ייצוא PNG');
-    const exportTitleBidi = await cssSnapshot(page.locator('.modal-back:not(.flight-plan) .modal-title'));
-    expect(exportTitleBidi.direction).toBe('rtl');
-    expect(exportTitleBidi.unicodeBidi).toContain('isolate');
+    // The export/print options now render inline in the Print toolbar section
+    // (no modal, no title). In Hebrew the panel's labels must read RTL.
+    await page.evaluate(() => openExportPanel());
+    await page.locator('#export-panel .export-panel-btns button').waitFor();
+    const exportLabelBidi = await cssSnapshot(page.locator('#export-panel label').first());
+    expect(exportLabelBidi.direction).toBe('rtl');
   });
 
   test('Hebrew zoom readouts stay LTR (z … · …× reads like English)', async ({ page }) => {

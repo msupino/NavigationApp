@@ -57,7 +57,9 @@ test('hovering a selected page button keeps a solid fill (not white-on-white)', 
 test('modal close (×) stays readable on hover in light mode', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await boot(page);
-  await page.evaluate(() => showExportModal && showExportModal());
+  // Any modal with a close-X exercises the shared light-theme hover style; the
+  // keyboard-shortcuts help modal opens with no route/page-frame preconditions.
+  await page.locator('#help-trigger').click();
   await page.locator('.modal-back').waitFor();
   const x = page.locator('.modal-close-x').first();
   await x.hover({ force: true });

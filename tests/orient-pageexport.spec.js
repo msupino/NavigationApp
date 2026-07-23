@@ -3,6 +3,7 @@
 // export filename pattern, which depends on pageSize being set via setPage().
 const { test, expect } = require('./_setup');
 const { pairLLHZ_LLHA } = require('./_airfieldArp');
+const { clickToolbarControl } = require('./_toolbar');
 
 async function boot(page) {
   // Sentinel so the clear only runs on the first navigation — a reload in
@@ -31,7 +32,7 @@ test.describe('Orient default + persistence (#195)', () => {
 
   test('A4 click with default orient → portrait dimensions (h > w)', async ({ page }) => {
     await boot(page);
-    await page.locator('#page-a4').click();
+    await clickToolbarControl(page, '#page-a4');
     const d = await page.evaluate(() => ({ ...pageDims(), size: pageSize, orient: pageOrient }));
     expect(d.size).toBe('A4');
     expect(d.orient).toBe('portrait');
@@ -41,7 +42,7 @@ test.describe('Orient default + persistence (#195)', () => {
 
   test('Toggle to landscape, refresh → still landscape', async ({ page }) => {
     await boot(page);
-    await page.locator('#page-orient').click();           // portrait → landscape
+    await clickToolbarControl(page, '#page-orient');       // portrait → landscape
     expect(await page.evaluate(() => pageOrient)).toBe('landscape');
     expect(await page.evaluate(() => localStorage.getItem('navaid.pageOrient'))).toBe('landscape');
     await page.reload();
@@ -52,8 +53,8 @@ test.describe('Orient default + persistence (#195)', () => {
 
   test('Toggle to landscape, then back to portrait, refresh → still portrait', async ({ page }) => {
     await boot(page);
-    await page.locator('#page-orient').click();           // portrait → landscape
-    await page.locator('#page-orient').click();           // landscape → portrait
+    await clickToolbarControl(page, '#page-orient');       // portrait → landscape
+    await clickToolbarControl(page, '#page-orient');       // landscape → portrait
     expect(await page.evaluate(() => pageOrient)).toBe('portrait');
     await page.reload();
     await page.waitForFunction(() => typeof pageOrient !== 'undefined');
@@ -90,10 +91,10 @@ test.describe('PNG export filename respects pageSize + orient', () => {
       syncLegs();
       draw();
     }, pairLLHZ_LLHA());
+    await page.evaluate(() => openExportPanel());
     await page.locator('#page-a4').click();
     const dl = page.waitForEvent('download', { timeout: 30000 });
-    await page.locator('#print').click();
-    await page.locator('.modal-back button:first-child').click();
+    await page.locator('#export-panel .export-panel-btns button').first().click();
     const download = await dl;
     expect(download.suggestedFilename()).toMatch(/^navigation-A4-.+\.png$/);
   });
@@ -108,8 +109,8 @@ test.describe('PNG export filename respects pageSize + orient', () => {
     }, pairLLHZ_LLHA());
     // pageSize stays null — exporter falls back to the baseName (layer-derived).
     const dl = page.waitForEvent('download', { timeout: 30000 });
-    await page.locator('#print').click();
-    await page.locator('.modal-back button:first-child').click();
+    await page.evaluate(() => openExportPanel());
+    await page.locator('#export-panel .export-panel-btns button').first().click();
     const download = await dl;
     expect(download.suggestedFilename()).toMatch(/^navigation-.+-\d.+\.png$/);
   });
