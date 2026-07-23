@@ -81,7 +81,7 @@ NavAid.tuningDefaults = {
   windArrowHaloColor: { value: '#ffffff', type: 'color', label: 'Wind arrow halo color' },
   windTextHaloColor: { value: '#ffffff', type: 'color', label: 'Wind text halo color' },
 
-  defaultLabelMarginPx: { value: 20, min: 0, max: 80, step: 1, label: 'Default marker margin' },
+  defaultLabelMarginPx: { value: 30, min: 0, max: 120, step: 1, label: 'Default marker margin (scaled with the kite)' },
   defaultKiteHalfWidthPx: { value: 23, min: 1, max: 80, step: 1, label: 'Default kite half-width' },
 
   legKiteFillColor: { value: '#00ff00', type: 'color', label: 'Leg kite fill color' },
@@ -89,6 +89,10 @@ NavAid.tuningDefaults = {
   legKiteHeightPx: { value: 47, min: 8, max: 120, step: 1, label: 'Leg kite height' },
   legKiteCellWidthPx: { value: 24, min: 8, max: 80, step: 1, label: 'Leg kite cell width' },
   legKiteTriangleLenPx: { value: 35, min: 8, max: 100, step: 1, label: 'Leg kite triangle length' },
+  // Printed HEIGHT of the leg kite at size-selector 1 on a framed A4/A3 export
+  // (1:250,000). The whole marker is scaled uniformly to this height, keeping
+  // the on-screen proportions (WYSIWYG). Screen size is unchanged; gist-tunable.
+  kitePrintHeightMm: { value: 18.5, min: 2, max: 120, step: 0.5, label: 'Leg kite print height (mm)' },
   legKiteBorderPx: { value: 2, min: 0.25, max: 8, step: 0.25, label: 'Leg kite border width' },
   legKiteDividerPx: { value: 1, min: 0.25, max: 6, step: 0.25, label: 'Leg kite divider width' },
   legKiteHaloPx: { value: 7, min: 0, max: 20, step: 0.5, label: 'Leg kite halo width' },
@@ -101,6 +105,11 @@ NavAid.tuningDefaults = {
   cumKiteHeightPx: { value: 23, min: 8, max: 100, step: 1, label: 'Cum kite height' },
   cumKiteCellWidthPx: { value: 43, min: 10, max: 120, step: 1, label: 'Cum kite cell width' },
   cumKiteTriangleLenPx: { value: 20, min: 6, max: 100, step: 1, label: 'Cum kite triangle length' },
+  // Printed HEIGHT of the cumulative-time kite at size-selector 1 on a framed
+  // A4/A3 export (1:250,000). The whole marker is scaled uniformly to this
+  // height, preserving the on-screen proportions (WYSIWYG). Screen size
+  // unchanged; gist-tunable.
+  cumKitePrintHeightMm: { value: 9.5, min: 1, max: 80, step: 0.5, label: 'Cum kite print height (mm)' },
   cumKiteBorderPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Cum kite border width' },
   cumKiteTextPx: { value: 15, min: 4, max: 36, step: 1, label: 'Cum kite text size' },
 
@@ -117,6 +126,10 @@ NavAid.tuningDefaults = {
   distanceBadgeFillColor: { value: '#fff6aa', type: 'color', label: 'Distance badge fill color' },
 
   waypointBaseRadiusPx: { value: 13, min: 2, max: 60, step: 1, label: 'Waypoint base radius' },
+  // Physical diameter of the waypoint disc on a framed A4/A3 PNG export (both
+  // print at 1:250,000, so one value fits both). Screen size is unchanged —
+  // this only overrides the disc size while exporting a page frame.
+  waypointPrintDiaMm: { value: 7, min: 1, max: 40, step: 0.5, label: 'Waypoint circle print diameter (mm)' },
   waypointFontPx: { value: 13, min: 4, max: 40, step: 1, label: 'Waypoint text size' },
   waypointTextFitFactor: { value: 0.85, min: 0.3, max: 1, step: 0.05, label: 'Waypoint text fit (fraction of diameter)' },
   waypointMinZoomScale: { value: 0.35, min: 0.1, max: 2, step: 0.05, label: 'Waypoint min zoom scale' },
@@ -174,6 +187,10 @@ NavAid.tuningDefaults = {
   notePadYPx: { value: 6, min: 0, max: 40, step: 1, label: 'Note vertical padding' },
   noteLineHeightPx: { value: 16, min: 6, max: 60, step: 1, label: 'Note line height' },
   noteMinWidthPx: { value: 56, min: 1, max: 240, step: 1, label: 'Note min width' },
+  // Physical size of a default (size-1) note rectangle on a framed A4/A3 PNG
+  // export (both print at 1:250,000). Screen size is unchanged; gist-tunable.
+  notePrintWidthMm: { value: 21, min: 2, max: 120, step: 0.5, label: 'Note default print width (mm)' },
+  notePrintHeightMm: { value: 14, min: 2, max: 120, step: 0.5, label: 'Note default print height (mm)' },
   noteStrokeWidthPx: { value: 1.5, min: 0.25, max: 8, step: 0.25, label: 'Note stroke width' },
   noteSelectedStrokeWidthPx: { value: 2.5, min: 0.25, max: 10, step: 0.25, label: 'Selected note stroke width' },
   noteDefaultFillColor: { value: '#fff6aa', type: 'color', label: 'Default note fill color' },
@@ -223,7 +240,11 @@ NavAid.tuningDefaults = {
   altPairFocusDotColor: { value: '#ff3030', type: 'color', label: 'Alt-pair focus endpoint fill' },
   altPairFocusMs: { value: 10000, min: 1000, max: 60000, step: 500, label: 'Alt-pair focus duration (ms)' },
 
-  exportBgColor: { value: '#231f20', type: 'color', label: 'PNG export background color' },
+  // Matches the on-screen #map background so map-opacity-faded tiles and
+  // translucent overlays (kites / notes at kiteNoteAlpha) composite over the
+  // same backdrop on paper as on screen — otherwise a dark export bg made them
+  // read darker/more opaque than the map. Gist-tunable.
+  exportBgColor: { value: '#e7ebf0', type: 'color', label: 'PNG export background color' },
 
   liveAircraftFillColor: { value: '#000000', type: 'color', label: 'Live aircraft fill color' },
   liveAircraftOutlineColor: { value: '#ffffff', type: 'color', label: 'Live aircraft outline color' },
@@ -421,16 +442,16 @@ NavAid.tuningGroups = [
   { name: 'GPS track', keys: ['gpsBreadcrumbColor', 'gpsBreadcrumbWidthPx'] },
   { name: 'Wind arrows', keys: ['windArrowColor', 'windArrowHaloColor', 'windTextHaloColor'] },
   { name: 'Default marker locations', keys: ['defaultLabelMarginPx', 'defaultKiteHalfWidthPx'] },
-  { name: 'Leg kites', keys: ['legKiteFillColor', 'returnKiteFillColor', 'legKiteHeightPx', 'legKiteCellWidthPx', 'legKiteTriangleLenPx', 'legKiteBorderPx', 'legKiteDividerPx', 'legKiteHaloPx', 'legKiteTextPx', 'legKiteHeadingTextPx', 'legKiteHeadingAnchor'] },
-  { name: 'Cumulative kites', keys: ['cumKiteFillColor', 'returnCumKiteFillColor', 'cumKiteHeightPx', 'cumKiteCellWidthPx', 'cumKiteTriangleLenPx', 'cumKiteBorderPx', 'cumKiteTextPx'] },
+  { name: 'Leg kites', keys: ['legKiteFillColor', 'returnKiteFillColor', 'legKiteHeightPx', 'legKiteCellWidthPx', 'legKiteTriangleLenPx', 'kitePrintHeightMm', 'legKiteBorderPx', 'legKiteDividerPx', 'legKiteHaloPx', 'legKiteTextPx', 'legKiteHeadingTextPx', 'legKiteHeadingAnchor'] },
+  { name: 'Cumulative kites', keys: ['cumKiteFillColor', 'returnCumKiteFillColor', 'cumKiteHeightPx', 'cumKiteCellWidthPx', 'cumKiteTriangleLenPx', 'cumKitePrintHeightMm', 'cumKiteBorderPx', 'cumKiteTextPx'] },
   { name: 'Minute markers', keys: ['minuteMarkerFontPx', 'minuteTickEvenPx', 'minuteTickOddPx', 'minuteTickEvenWidthPx', 'minuteTickOddWidthPx', 'minuteLabelOffsetPx'] },
   { name: 'Distance badges', keys: ['distanceBadgeRadiusPx', 'distanceBadgeBorderPx', 'distanceBadgeFontPx', 'distanceBadgeFillColor'] },
-  { name: 'Route waypoints', keys: ['waypointBaseRadiusPx', 'waypointFontPx', 'waypointTextFitFactor', 'waypointMinZoomScale', 'waypointSelectedRadiusAddPx', 'waypointStrokeWidthPx', 'waypointFillColor'] },
+  { name: 'Route waypoints', keys: ['waypointBaseRadiusPx', 'waypointPrintDiaMm', 'waypointFontPx', 'waypointTextFitFactor', 'waypointMinZoomScale', 'waypointSelectedRadiusAddPx', 'waypointStrokeWidthPx', 'waypointFillColor'] },
   { name: 'Airfields', keys: ['airfieldMarkerRadiusPx', 'airfieldMarkerWidthFactor', 'airfieldMarkerBaseFactor', 'airfieldStrokeWidthPx', 'airfieldLabelFontPx', 'airfieldLabelOffsetPx', 'airfieldLabelHaloPx', 'airfieldFillColor', 'airfieldOutlineColor'] },
   { name: 'Nav waypoints', keys: ['navWaypointRadiusPx', 'navWaypointStrokeWidthPx', 'navWaypointLabelFontPx', 'navWaypointLabelOffsetPx', 'navWaypointLabelHaloPx', 'navWaypointDotColor'] },
   { name: 'Overlay labels', keys: ['overlayLabelHaloColor', 'overlayLabelHaloAlpha'] },
   { name: 'Frequency changes', keys: ['commChangeRingRadiusPx', 'commChangeRingWidthPx', 'commChangeRingColor', 'commChangeNoteLatOffset', 'commChangeNoteLngOffset', 'commChangeArrowStartGapPx', 'commChangeArrowWidthPx', 'commChangeArrowColor', 'commChangeArrowLineCap', 'commChangeArrowLineJoin', 'commChangeArrowMiterLimit', 'commChangeArrowHaloPx', 'commChangeArrowHaloColor', 'commChangeArrowHaloAlpha', 'commChangeSelectedColor', 'commChangeSelectedAlpha', 'commChangeSelectedWidthAddPx', 'commChangeArrowBoltPx', 'commChangeArrowBoltAngleDeg', 'commChangeArrowBend1Along', 'commChangeArrowBend2Along', 'commChangeNameFontPx', 'commChangeFreqFontPx', 'commChangeTextColor', 'commChangeTextHaloColor', 'commChangeTextHaloAlpha', 'commChangeTextAlong', 'commChangeTextGapPx', 'commChangeNameHaloWidthPx', 'commChangeFreqHaloWidthPx'] },
-  { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx', 'noteDefaultFillColor'] },
+  { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'notePrintWidthMm', 'notePrintHeightMm', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx', 'noteDefaultFillColor'] },
   { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimColor', 'pageFrameScrimAlpha', 'pageFrameHitPx', 'a4x2CutLineWidthPx', 'a4x2CutDashOnPx', 'a4x2CutDashOffPx', 'a4x2CutLineColor', 'a4x2CutLineAlpha', 'a4x2MarkLabelMm', 'a4x2MarkGuideMm'] },
   { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitLegPx', 'hitLegLabelMinPx', 'hitLegLabelScalePx', 'hitCumLabelMinPx', 'hitCumLabelScalePx'] },
   { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs', 'altPairFocusLineAlpha', 'altPairFocusDotAlpha'] },
@@ -1142,8 +1163,8 @@ window.S = Object.assign({
   tbPrintPageSize: 'Page size',
   tbOrientTitle: 'Orientation — click to toggle landscape / portrait',
   modalCloseTitle: 'Close',
-  tbPrint: '⬇ Save PNG',
-  tbPrintTitle: 'Save the framed map + route as a PNG',
+  tbPrint: '🖨 Print',
+  tbPrintTitle: 'Print or save the framed map + route as a PNG',
   tbMagnifier: '🔍 Magnifying glass (M)',
   tbMagnifierTitle: 'Magnifying glass (M) — zoomed view at cursor; +/− adjust loupe zoom while open',
   // Footer-button labels carry NO icon prefix: the button's own
@@ -1241,6 +1262,9 @@ window.S = Object.assign({
   exportNoPageWarn: 'No page size selected — exported image ratio may not match a print page.',
   exportLayer: 'Layer',
   exportBtn: 'Export',
+  printBtn: '🖨 Print',
+  printBtnTitle: 'Open the print dialog at true physical size (A4/A3 1:250,000)',
+  errPopupBlocked: 'Allow pop-ups for this site to open the print view.',
 }, window.S || {});
 
 // Fill data-i18n / data-i18n-title / data-i18n-placeholder / data-i18n-aria
