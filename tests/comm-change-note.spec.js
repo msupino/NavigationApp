@@ -13,6 +13,7 @@
 // Reuses the comm-change fixture pattern (page.route stub) so the tests don't
 // depend on the shipped dataset's contents.
 const { test, expect } = require('./_setup');
+const { hideToolbarMenus } = require('./_toolbar');
 
 const TYONA = { lat: 32.00472, lng: 34.72722, name: 'TYONA' };
 const LLHZ = { lat: 32.17944, lng: 34.83444, name: 'LLHZ' };
@@ -723,9 +724,11 @@ test.describe('comm-change auto-note (#487)', () => {
   test('waypoint center, frequency arrow, and tail open the waypoint inspector', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
+    await hideToolbarMenus(page);   // clear the map so real-mouse clicks land
     const pts = await page.evaluate(t => {
       state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
       syncLegs();
+      map.setView([t.lat, t.lng], 11, { animate: false });   // centre the target so the click lands on-screen
       seedCommChangeNotes();
       draw();
       const center = proj(state.waypoints[0]);
@@ -844,9 +847,11 @@ test.describe('comm-change auto-note (#487)', () => {
   test('comm-change arrow overlapping a route waypoint opens the point chooser', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
+    await hideToolbarMenus(page);   // clear the map so real-mouse clicks land
     const pts = await page.evaluate(t => {
       state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
       syncLegs();
+      map.setView([t.lat, t.lng], 11, { animate: false });   // centre the target so the click lands on-screen
       seedCommChangeNotes();
       draw();
       const g = commCalloutGeom(state.notes[0]);
@@ -888,6 +893,7 @@ test.describe('comm-change auto-note (#487)', () => {
   test('comm-change arrow overlapping a comm-change ring opens the point chooser', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
+    await hideToolbarMenus(page);   // clear the map so real-mouse clicks land
     const pts = await page.evaluate(t => {
       window.showNavWP = false;
       window.showCommChange = true;
@@ -1188,6 +1194,7 @@ test.describe('comm-change auto-note (#487)', () => {
   test('snapping a selected waypoint onto a comm-change point refreshes the freq editor', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
+    await hideToolbarMenus(page);   // clear the map so real-mouse clicks land
     const pts = await page.evaluate(t => {
       window.showNavWP = true;
       const center = map.latLngToContainerPoint([t.lat, t.lng]);
@@ -1265,10 +1272,12 @@ test.describe('comm-change auto-note (#487)', () => {
   test('dragging a comm-change waypoint away deletes its frequency-change callout', async ({ page }) => {
     await installCommChangeFixture(page);
     await boot(page);
+    await hideToolbarMenus(page);   // clear the map so real-mouse clicks land
     const center = await page.evaluate(t => {
       state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
       state.notes = [];
       syncLegs();
+      map.setView([t.lat, t.lng], 11, { animate: false });   // centre the target so the drag starts on-screen
       seedCommChangeNotes();
       draw();
       const p = proj(state.waypoints[0]);

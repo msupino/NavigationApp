@@ -2977,8 +2977,14 @@ function dragOriginExclude(d, latlng) {
 function grabSelected(px, py, latlng) {
   const sel = state.selected;
   if (!sel) return false;
-  // A selected note (incl. a freq-change callout, which selects as the wp with
-  // a freqNoteIndex): if the press is on that note, drag the note.
+  // Precedence is scoped to the reported case: a selected note / freq-change
+  // callout whose inspector is open. If the press is unambiguously on that same
+  // note (hitNote already yields the note — it returns -1 when a route waypoint
+  // sits under the cursor, so an overlap still surfaces the point chooser), drag
+  // the note instead of re-selecting. Waypoints and leg/cum kites already drag
+  // via their own hit-tests, and giving them precedence here would swallow the
+  // overlap chooser (issue: a selected waypoint under a freq arrow), so they're
+  // deliberately not handled.
   const noteHit = hitNote(px, py);
   if (noteHit >= 0) {
     const isSelFreq = sel.type === 'wp' && sel.freqNoteIndex === noteHit;
@@ -2991,38 +2997,6 @@ function grabSelected(px, py, latlng) {
       map.dragging.disable();
       showInspector(); draw();
       return true;
-    }
-  }
-  if (sel.type === 'wp' && !(sel.freqNoteIndex >= 0)) {
-    const wpHits = hitWaypointCandidates(px, py);
-    if (wpHits.some(h => h.index === sel.index)) {
-      state.selected = { type: 'wp', index: sel.index };
-      drag = { kind: 'wp', i: sel.index, moved: false,
-               origLat: state.waypoints[sel.index].lat, origLng: state.waypoints[sel.index].lng,
-               originSnapArmed: false };
-      map.dragging.disable(); draw();
-      return true;
-    }
-  }
-  if (sel.type === 'leg') {
-    const cum = hitCumLabel(px, py);
-    if (cum && cum.i === sel.index) {
-      _materialiseDefaultCumLabel(cum.i);
-      drag = { kind: 'cumlabel', i: cum.i };
-      map.dragging.disable(); showInspector(); draw(); return true;
-    }
-    const cumRet = hitCumLabelRet(px, py);
-    if (cumRet && cumRet.i === sel.index) {
-      _materialiseDefaultCumLabelRet(cumRet.i);
-      drag = { kind: 'cumlabelret', i: cumRet.i };
-      map.dragging.disable(); showInspector(); draw(); return true;
-    }
-    const lab = hitLegLabel(px, py);
-    if (lab && lab.i === sel.index) {
-      _materialiseDefaultLegLabel(lab.i, lab.which);
-      drag = { kind: 'label', i: lab.i, which: lab.which,
-               ...legLabelDragGrab(lab.i, lab.which, px, py) };
-      map.dragging.disable(); showInspector(); draw(); return true;
     }
   }
   return false;
