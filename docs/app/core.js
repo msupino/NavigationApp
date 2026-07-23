@@ -89,13 +89,10 @@ NavAid.tuningDefaults = {
   legKiteHeightPx: { value: 47, min: 8, max: 120, step: 1, label: 'Leg kite height' },
   legKiteCellWidthPx: { value: 24, min: 8, max: 80, step: 1, label: 'Leg kite cell width' },
   legKiteTriangleLenPx: { value: 35, min: 8, max: 100, step: 1, label: 'Leg kite triangle length' },
-  // Physical size of the leg kite at size-selector 1 on a framed A4/A3 PNG
-  // export (both print at 1:250,000): body length (along the leg) × height,
-  // plus the triangle-pointer length. The triangle sits on the short side, so
-  // its base is the (shorter) height. Screen size is unchanged; gist-tunable.
-  kitePrintLengthMm: { value: 21, min: 2, max: 120, step: 0.5, label: 'Leg kite print body length (mm)' },
+  // Printed HEIGHT of the leg kite at size-selector 1 on a framed A4/A3 export
+  // (1:250,000). The whole marker is scaled uniformly to this height, keeping
+  // the on-screen proportions (WYSIWYG). Screen size is unchanged; gist-tunable.
   kitePrintHeightMm: { value: 18.5, min: 2, max: 120, step: 0.5, label: 'Leg kite print height (mm)' },
-  kitePrintTriangleMm: { value: 10, min: 1, max: 80, step: 0.5, label: 'Leg kite print triangle length (mm)' },
   legKiteBorderPx: { value: 2, min: 0.25, max: 8, step: 0.25, label: 'Leg kite border width' },
   legKiteDividerPx: { value: 1, min: 0.25, max: 6, step: 0.25, label: 'Leg kite divider width' },
   legKiteHaloPx: { value: 7, min: 0, max: 20, step: 0.5, label: 'Leg kite halo width' },
@@ -441,7 +438,7 @@ NavAid.tuningGroups = [
   { name: 'GPS track', keys: ['gpsBreadcrumbColor', 'gpsBreadcrumbWidthPx'] },
   { name: 'Wind arrows', keys: ['windArrowColor', 'windArrowHaloColor', 'windTextHaloColor'] },
   { name: 'Default marker locations', keys: ['defaultLabelMarginPx', 'defaultKiteHalfWidthPx'] },
-  { name: 'Leg kites', keys: ['legKiteFillColor', 'returnKiteFillColor', 'legKiteHeightPx', 'legKiteCellWidthPx', 'legKiteTriangleLenPx', 'kitePrintLengthMm', 'kitePrintHeightMm', 'kitePrintTriangleMm', 'legKiteBorderPx', 'legKiteDividerPx', 'legKiteHaloPx', 'legKiteTextPx', 'legKiteHeadingTextPx', 'legKiteHeadingAnchor'] },
+  { name: 'Leg kites', keys: ['legKiteFillColor', 'returnKiteFillColor', 'legKiteHeightPx', 'legKiteCellWidthPx', 'legKiteTriangleLenPx', 'kitePrintHeightMm', 'legKiteBorderPx', 'legKiteDividerPx', 'legKiteHaloPx', 'legKiteTextPx', 'legKiteHeadingTextPx', 'legKiteHeadingAnchor'] },
   { name: 'Cumulative kites', keys: ['cumKiteFillColor', 'returnCumKiteFillColor', 'cumKiteHeightPx', 'cumKiteCellWidthPx', 'cumKiteTriangleLenPx', 'cumKitePrintHeightMm', 'cumKiteBorderPx', 'cumKiteTextPx'] },
   { name: 'Minute markers', keys: ['minuteMarkerFontPx', 'minuteTickEvenPx', 'minuteTickOddPx', 'minuteTickEvenWidthPx', 'minuteTickOddWidthPx', 'minuteLabelOffsetPx'] },
   { name: 'Distance badges', keys: ['distanceBadgeRadiusPx', 'distanceBadgeBorderPx', 'distanceBadgeFontPx', 'distanceBadgeFillColor'] },

@@ -56,7 +56,7 @@ test('framed A4 export sizes the waypoint disc to the tuned physical diameter (7
   expect(out.exportR).not.toBeCloseTo(out.screenR, 1);   // export overrode the screen radius
 });
 
-test('framed A4 export sizes the leg kite to its tuned physical size (21 body + 10 triangle × 18.5 mm)', async ({ page }) => {
+test('framed A4 export scales the leg kite to a fixed height, preserving on-screen proportions', async ({ page }) => {
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof map !== 'undefined' &&
     typeof drawLegArrow === 'function' && typeof pageFrameRect === 'function' &&
@@ -68,7 +68,6 @@ test('framed A4 export sizes the leg kite to its tuned physical size (21 body + 
     if (pageSize !== 'A4') setPage('A4');
     draw();
     const fr = pageFrameRect(), paperW = 297, ppm = fr.w / paperW;
-    // Capture the kite path extents drawn by drawLegArrow.
     const measure = () => {
       const xs = [], ys = [], p = CanvasRenderingContext2D.prototype;
       const om = p.moveTo, ol = p.lineTo;
@@ -78,19 +77,19 @@ test('framed A4 export sizes the leg kite to its tuned physical size (21 body + 
       p.moveTo = om; p.lineTo = ol;
       return { L: Math.max(...xs) - Math.min(...xs), W: Math.max(...ys) - Math.min(...ys) };
     };
+    NavAid._exportPxPerMm = 0;
+    const scr = measure();
     NavAid._exportPxPerMm = ppm;
-    const m = measure();
+    const pr = measure();
     NavAid._exportPxPerMm = 0;
     return {
-      totalLenMm: m.L / ppm, heightMm: m.W / ppm,
-      wantLen: tune('kitePrintLengthMm') + tune('kitePrintTriangleMm'),
-      wantHeight: tune('kitePrintHeightMm'),
+      heightMm: pr.W / ppm, wantHeight: tune('kitePrintHeightMm'),
+      printAspect: pr.L / pr.W, screenAspect: scr.L / scr.W,
     };
   });
-  expect(out.wantLen).toBe(31);              // 21 body + 10 triangle
-  expect(out.wantHeight).toBe(18.5);         // triangle sits on the short side
-  expect(out.totalLenMm).toBeCloseTo(31, 1);
-  expect(out.heightMm).toBeCloseTo(18.5, 1);
+  expect(out.wantHeight).toBe(18.5);
+  expect(out.heightMm).toBeCloseTo(18.5, 1);            // printed height hits target
+  expect(out.printAspect).toBeCloseTo(out.screenAspect, 2);  // proportions = preview
 });
 
 test('framed A4 export scales the cum-time kite to a fixed height, preserving on-screen proportions', async ({ page }) => {

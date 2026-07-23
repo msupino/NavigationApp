@@ -2966,23 +2966,18 @@ function drawCumTimeArrow(cx, cy, flightAng, cumTime, accent, fill, sc) {
 // marker and is locked to its orientation.
 function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc) {
   sc = sc ?? 1;
-  let W = tune('legKiteHeightPx') * sc;
-  let cell = tune('legKiteCellWidthPx') * sc;
-  let Lt = tune('legKiteTriangleLenPx') * sc;
-  // Framed A4/A3 export pins the kite to a fixed physical size at size-selector
-  // 1 (× legArrowSize for other selector values): body length (2 cells) ×
-  // height + triangle, in mm. The three tune-px ratios don't match the target
-  // mm ratios, so each dimension is set independently; `sc` is re-derived from
-  // the printed height so borders / dividers / text stay proportional. Screen
-  // size is unchanged. printed mm = screenPx / (screen-px-per-mm).
+  // Framed A4/A3 export scales the whole on-screen kite uniformly so its printed
+  // HEIGHT equals kitePrintHeightMm (× the legArrowSize selector) — WYSIWYG:
+  // same proportions as the preview (triangle included), so it looks identical
+  // on paper at a fixed physical size. printed mm = screenPx / (screen-px-per-mm).
   const ppm = (window.NavAid && NavAid._exportPxPerMm) || 0;
   if (ppm) {
     const sel = (typeof legArrowSize === 'number' && legArrowSize > 0) ? legArrowSize : 1;
-    W = tune('kitePrintHeightMm') * ppm * sel;
-    cell = tune('kitePrintLengthMm') / 2 * ppm * sel;
-    Lt = tune('kitePrintTriangleMm') * ppm * sel;
-    sc = W / tune('legKiteHeightPx');   // keep borders / text proportional to height
+    sc = (tune('kitePrintHeightMm') * ppm / tune('legKiteHeightPx')) * sel;
   }
+  const W = tune('legKiteHeightPx') * sc;
+  const cell = tune('legKiteCellWidthPx') * sc;
+  const Lt = tune('legKiteTriangleLenPx') * sc;
   const Lr = cell * 2, L = Lr + Lt;
   const xb = -L / 2 + Lr;
 
