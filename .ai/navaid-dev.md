@@ -558,6 +558,15 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
   may carry `kind: 'gps'` plus a raw `track[]` (the recorded GPS
   breadcrumb: `{lat,lng,t,alt?,acc?}`); loading applies the simplified
   waypoint route, the raw track is retained for fidelity.
+- `navaid.syncSettings` — `'1'` when the opt-in "Sync settings too" box (route
+  library → Drive) is enabled. Device-local; itself never synced.
+- `navaid.settingsSyncedAt` / `navaid.settingsSnapshot` — bookkeeping for the
+  optional Drive **settings** sync: the last-synced timestamp and a JSON
+  snapshot of the allowlisted keys, used for last-write-wins change detection.
+  The synced blob lives in Drive app-data as `navaid-settings.json` (separate
+  from `navaid-routes.json`); the allowlist is `GDRIVE_SETTINGS_KEYS` in
+  `gdrive.js` and deliberately excludes API keys, panel geometry, and the
+  working route.
 - `navaid.pageSize` — selected page frame size (`A3` / `A4` / `A4x2`) or cleared.
   (`A4x2` draws the A3-size frame; Save PNG slices it into two A4 tiles.)
 - `navaid.plateAirfield` — "Show plates for" filter on the airfield-plate
