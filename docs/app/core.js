@@ -690,6 +690,7 @@ window.S = Object.assign({
   tbResetAllWpNamesTitle: 'Set each name to its nearest reference, or clear when off-grid',
   resetAllWpNamesConfirm: 'Reset all waypoint names to their nearest reference codes, or clear when off-grid (sequence placeholders)?',
   resetLegMarkers: '↻ Reset marker position',       // inspector leg button — reset label offsets
+  addReportPoint: '＋ Add identification-point marker',  // inspector leg button — drop a נקי הזדהות oval on the leg
   resetLegMarkersTitle: 'Reset marker position',
   resetAllConfirm: 'Reset all leg marker positions to default? This will clear any manual adjustments.',
   clearConfirm: 'Remove all waypoints and notes?',
@@ -2388,6 +2389,12 @@ function syncLegs() {
     applyLegAltitudeToLeg(i);
   }
   while (state.legs.length > need) state.legs.pop();
+  // Drop identification-point ovals whose anchor leg no longer exists (route
+  // shortened / cleared). Index-shift on mid-route insert/delete is a known
+  // limitation — the anchor stays on whatever leg now holds that index.
+  if (Array.isArray(state.notes)) {
+    state.notes = state.notes.filter(n => !n || !n.rp || n.rp.leg < need);
+  }
   applyLegAltitudesToRoute();
   // A newly added leg should pick up live wind when the wind display is on
   // (the handler is debounced and no-ops when the wind display is off).
