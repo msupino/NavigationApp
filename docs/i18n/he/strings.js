@@ -105,6 +105,8 @@ window.S = {
   routeLibraryGdriveSyncing: 'מסנכרן…',
   routeLibraryGdriveSynced: 'סונכרן עם Google Drive',
   routeLibraryGdriveError: 'הסנכרון נכשל',
+  routeLibraryGdriveSyncSettings: 'סנכרן גם הגדרות',
+  routeLibraryGdriveSettingsApplied: 'ההגדרות עודכנו — טוען מחדש…',
   routeTemplatesTitle: 'תבניות מסלול',
   routeTemplateRoute: 'מסלול',
   routeTemplateSpeed: 'מהירות (קשר)',
