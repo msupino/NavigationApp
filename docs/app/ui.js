@@ -1422,18 +1422,41 @@ function showRouteLibraryModal(focusSave) {
     const status = document.createElement('span');
     status.className = 'route-library-gdrive-status';
     const setStatus = t => { status.textContent = t || ''; };
+    // Opt-in: also mirror portable settings (layers, toggles, opacities…).
+    const setLabel = document.createElement('label');
+    setLabel.className = 'route-library-gdrive-settings';
+    const setChk = document.createElement('input');
+    setChk.type = 'checkbox';
+    setChk.checked = (typeof settingsSyncEnabled === 'function' && settingsSyncEnabled());
+    setChk.onchange = () => {
+      if (typeof setSettingsSyncEnabled === 'function') setSettingsSyncEnabled(setChk.checked);
+    };
+    setLabel.append(setChk, document.createTextNode(' ' + (S.routeLibraryGdriveSyncSettings || 'Sync settings too')));
     syncBtn.onclick = () => {
       syncBtn.disabled = true;
       setStatus(S.routeLibraryGdriveSyncing || 'Syncing…');
-      gdriveSync().then(() => {
-        render();
-        setStatus(S.routeLibraryGdriveSynced || 'Synced');
-      }).catch(err => {
-        setStatus((S.routeLibraryGdriveError || 'Sync failed') +
-          (err && err.message ? ': ' + err.message : ''));
-      }).then(() => { syncBtn.disabled = false; });
+      gdriveSync()
+        .then(() => {
+          render();
+          return (typeof gdriveSyncSettings === 'function') ? gdriveSyncSettings() : null;
+        })
+        .then(res => {
+          if (res && res.applied) {
+            // Settings from another device landed — reload so every boot-time
+            // read (globals, toggles, layer) picks them up cleanly.
+            setStatus(S.routeLibraryGdriveSettingsApplied || 'Settings updated — reloading…');
+            setTimeout(() => location.reload(), 700);
+            return;
+          }
+          setStatus(S.routeLibraryGdriveSynced || 'Synced');
+        })
+        .catch(err => {
+          setStatus((S.routeLibraryGdriveError || 'Sync failed') +
+            (err && err.message ? ': ' + err.message : ''));
+        })
+        .then(() => { syncBtn.disabled = false; });
     };
-    gd.append(syncBtn, status);
+    gd.append(syncBtn, setLabel, status);
     body.append(gd);
   }
 

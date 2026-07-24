@@ -668,6 +668,8 @@ window.S = Object.assign({
   routeLibraryGdriveSyncing: 'Syncing…',
   routeLibraryGdriveSynced: 'Synced with Google Drive',
   routeLibraryGdriveError: 'Drive sync failed',
+  routeLibraryGdriveSyncSettings: 'Sync settings too',
+  routeLibraryGdriveSettingsApplied: 'Settings updated — reloading…',
   routeTemplatesTitle: 'Route templates',
   routeTemplateRoute: 'Route',
   routeTemplateSpeed: 'Speed (kt)',
