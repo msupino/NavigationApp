@@ -2294,6 +2294,16 @@ html[dir="rtl"] .modal-back.export-place > .modal.export-floating { right: auto;
   font-size: 12px;
 }
 body.theme-light .route-library-gdrive-status { color: #647184; }
+/* Opt-in "sync settings too" checkbox next to the Drive Sync button. */
+.route-library-gdrive-settings {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #b9b3b3;
+  cursor: pointer;
+}
+body.theme-light .route-library-gdrive-settings { color: #647184; }
 body.theme-light .route-library-saverow > button,
 body.theme-light .route-library-actions button,
 body.theme-light .route-library-tools button {

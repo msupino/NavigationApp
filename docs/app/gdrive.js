@@ -277,6 +277,166 @@ function gdriveSync() {
   });
 }
 
+// --- optional settings sync (opt-in) --------------------------------------
+// A second app-data file mirrors a curated set of *portable* preferences so a
+// pilot's display/layer choices follow them across devices. Kept separate from
+// the route library (different merge rule) and OFF by default.
+//
+// EXPLICIT allowlist — new or sensitive keys never sync by accident. Excluded
+// on purpose: API tokens (navaid.ai.key.*), device-local panel geometry
+// (*Pos), toolbar section state (navaid.sec.*), local-tile flags, and the
+// in-progress working route (navaid.route, which the route library already
+// covers).
+const GDRIVE_SETTINGS_FILE = 'navaid-settings.json';
+const GDRIVE_SETTINGS_KEYS = [
+  // base layer + page setup
+  'navaid.layer', 'navaid.pageSize', 'navaid.pageOrient',
+  // display / layer toggles
+  'navaid.showAirfields', 'navaid.showVorStations', 'navaid.showNavWP',
+  'navaid.showWpNames', 'navaid.showCumTime', 'navaid.showDrift',
+  'navaid.showFreqChanges', 'navaid.showCommChange', 'navaid.showMidLeg',
+  'navaid.highlightDiff', 'navaid.limitLegKites', 'navaid.showMsa',
+  'navaid.showReporting', 'navaid.forceSnap', 'navaid.showReturn',
+  'navaid.showNotam', 'navaid.showWind', 'navaid.windField', 'navaid.imsPwx',
+  'navaid.sigwxOv', 'navaid.showLsaBubbles', 'navaid.showCircuit',
+  'navaid.showTraining', 'navaid.showCvfr', 'navaid.showHeli',
+  'navaid.showCommfail',
+  // sizes / widths / opacities
+  'navaid.legArrowSize', 'navaid.legLineWidth', 'navaid.driftLineWidth',
+  'navaid.cvfrOpacity', 'navaid.heliOpacity', 'navaid.circuitOpacity',
+  'navaid.plateOpacity', 'navaid.commfailOpacity', 'navaid.mapOpacity.v2',
+  // flight-plan columns, aircraft profile, user data corrections
+  'navaid.fpColumns', 'navaid.aircraft', 'navaid.airfieldFreqOverrides',
+  'navaid.commFreqOverrides', 'navaid.overlayBoundsOverrides',
+];
+const SETTINGS_ENABLED_KEY = 'navaid.syncSettings';   // '1' when opted in (device-local, never synced)
+const SETTINGS_SYNCED_AT_KEY = 'navaid.settingsSyncedAt';
+const SETTINGS_SNAP_KEY = 'navaid.settingsSnapshot';
+
+function _lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function _lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage full/blocked */ } }
+
+function settingsSyncEnabled() { return _lsGet(SETTINGS_ENABLED_KEY) === '1'; }
+function setSettingsSyncEnabled(on) { _lsSet(SETTINGS_ENABLED_KEY, on ? '1' : '0'); }
+
+// Snapshot of the allowlisted keys currently in localStorage → { key: string }.
+function collectSyncableSettings() {
+  const out = {};
+  for (const k of GDRIVE_SETTINGS_KEYS) {
+    const v = _lsGet(k);
+    if (v !== null) out[k] = v;
+  }
+  return out;
+}
+
+// Write inbound values back to localStorage — but ONLY allowlisted keys, so a
+// foreign/corrupt remote file can never inject arbitrary keys. Returns true if
+// anything actually changed.
+function applySyncableSettings(values) {
+  if (!values || typeof values !== 'object') return false;
+  let changed = false;
+  for (const k of GDRIVE_SETTINGS_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(values, k)) continue;
+    const next = values[k];
+    if (typeof next !== 'string') continue;
+    if (_lsGet(k) !== next) { _lsSet(k, next); changed = true; }
+  }
+  return changed;
+}
+
+// Pure last-write-wins on the settings blob {updatedAt:<ms>, values:{}}. Ties
+// keep local (this device) so a no-op sync doesn't ping-pong. Testable; no I/O.
+function mergeSettings(local, remote) {
+  const lt = (local && +local.updatedAt) || 0;
+  const rt = (remote && +remote.updatedAt) || 0;
+  return rt > lt ? { winner: 'remote', blob: remote } : { winner: 'local', blob: local };
+}
+
+// Local blob with a change-detected timestamp: if the current settings differ
+// from the snapshot we last synced, they changed on THIS device → stamp now so
+// they win; otherwise keep the last synced timestamp so a newer remote wins.
+function _localSettingsBlob() {
+  const values = collectSyncableSettings();
+  const cur = JSON.stringify(values);
+  const changedLocally = cur !== _lsGet(SETTINGS_SNAP_KEY);
+  const updatedAt = changedLocally ? Date.now() : (+_lsGet(SETTINGS_SYNCED_AT_KEY) || 0);
+  return { values, cur, updatedAt, changedLocally };
+}
+
+// Generic app-data helpers (the route ones hard-code the file name + array shape).
+function gdriveFindNamed(name) {
+  const url = 'https://www.googleapis.com/drive/v3/files?spaces=appDataFolder' +
+    '&fields=files(id,name,modifiedTime)&q=' + encodeURIComponent("name='" + name + "'");
+  return fetch(url, { headers: gdriveHeaders() })
+    .then(r => { if (!r.ok) throw new Error('Drive list failed: ' + r.status); return r.json(); })
+    .then(j => (j.files && j.files[0]) || null);
+}
+function gdriveDownloadJson(fileId) {
+  return fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media',
+    { headers: gdriveHeaders() })
+    .then(r => { if (!r.ok) throw new Error('Drive download failed: ' + r.status); return r.json(); });
+}
+function gdriveUploadJson(fileId, name, obj) {
+  const body = JSON.stringify(obj);
+  if (fileId) {
+    return fetch('https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=media', {
+      method: 'PATCH',
+      headers: Object.assign(gdriveHeaders(), { 'Content-Type': 'application/json' }),
+      body,
+    }).then(r => { if (!r.ok) throw new Error('Drive update failed: ' + r.status); return r.json(); });
+  }
+  const meta = { name, parents: ['appDataFolder'] };
+  const boundary = 'navaid' + Date.now();
+  const multipart =
+    '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' +
+    JSON.stringify(meta) + '\r\n' +
+    '--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' +
+    body + '\r\n--' + boundary + '--';
+  return fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+    method: 'POST',
+    headers: Object.assign(gdriveHeaders(), { 'Content-Type': 'multipart/related; boundary=' + boundary }),
+    body: multipart,
+  }).then(r => { if (!r.ok) throw new Error('Drive create failed: ' + r.status); return r.json(); });
+}
+
+// One settings sync pass (assumes a valid token — callers connect first).
+// Resolves { applied } — true when newer remote settings were written locally.
+function _gdriveSyncSettingsOnce() {
+  return gdriveFindNamed(GDRIVE_SETTINGS_FILE).then(file => {
+    const remoteP = file ? gdriveDownloadJson(file.id).catch(() => null) : Promise.resolve(null);
+    return remoteP.then(remote => {
+      const local = _localSettingsBlob();
+      const localBlob = { updatedAt: local.updatedAt, values: local.values };
+      const remoteOk = remote && typeof remote === 'object' && remote.values;
+      const { winner } = mergeSettings(localBlob, remoteOk ? remote : null);
+      if (winner === 'remote') {
+        const changed = applySyncableSettings(remote.values);
+        _lsSet(SETTINGS_SNAP_KEY, JSON.stringify(collectSyncableSettings()));
+        _lsSet(SETTINGS_SYNCED_AT_KEY, String((+remote.updatedAt) || Date.now()));
+        return { applied: changed };
+      }
+      // Local wins (or no remote): push local up and remember what we synced.
+      return gdriveUploadJson(file && file.id, GDRIVE_SETTINGS_FILE, localBlob).then(() => {
+        _lsSet(SETTINGS_SNAP_KEY, local.cur);
+        _lsSet(SETTINGS_SYNCED_AT_KEY, String(localBlob.updatedAt || Date.now()));
+        return { applied: false };
+      });
+    });
+  });
+}
+
+// Two-way settings sync for the manual button: connect (reusing the route
+// flow's token), then one pass. Retries once on a token lapse like gdriveSync.
+function gdriveSyncSettings() {
+  if (!settingsSyncEnabled()) return Promise.resolve({ applied: false, skipped: true });
+  const connect = gdriveConnected() ? Promise.resolve()
+    : gdriveConnect(false).catch(err => (_nativeSocialLogin() ? Promise.reject(err) : gdriveConnect(true)));
+  return connect.then(_gdriveSyncSettingsOnce).catch(err => {
+    if (_isAuthError(err)) { _gdriveToken = null; return gdriveConnect(true).then(_gdriveSyncSettingsOnce); }
+    throw err;
+  });
+}
+
 if (typeof window !== 'undefined') {
   window.gdriveConfigured = gdriveConfigured;
   window.gdriveConnected = gdriveConnected;
@@ -284,4 +444,11 @@ if (typeof window !== 'undefined') {
   window.gdriveDisconnect = gdriveDisconnect;
   window.gdriveSync = gdriveSync;
   window.mergeRouteLibraries = mergeRouteLibraries;
+  window.settingsSyncEnabled = settingsSyncEnabled;
+  window.setSettingsSyncEnabled = setSettingsSyncEnabled;
+  window.gdriveSyncSettings = gdriveSyncSettings;
+  window.collectSyncableSettings = collectSyncableSettings;
+  window.applySyncableSettings = applySyncableSettings;
+  window.mergeSettings = mergeSettings;
+  window.GDRIVE_SETTINGS_KEYS = GDRIVE_SETTINGS_KEYS;
 }
