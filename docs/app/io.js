@@ -1584,6 +1584,18 @@ function updateExportPageWarn() {
     w.style.display = 'none';
   }
 }
+// Keep the open print panel's "Place flight plan" checkbox in sync with the
+// route: it needs a route (>=1 leg), not a page. Called from draw() so adding
+// or clearing a route while the (non-modal) panel is open updates it live.
+function updateExportPlanCb() {
+  const cb = document.getElementById('export-plan-cb');
+  if (!cb) return;
+  const hasLegs = !!(state.legs && state.legs.length);
+  cb.disabled = !hasLegs;
+  const lbl = document.getElementById('export-plan-cb-label');
+  if (lbl) lbl.textContent = hasLegs ? S.exportPlanPlace : (S.exportPlanNoLegs || S.exportPlanPlace);
+  if (!hasLegs && cb.checked) { cb.checked = false; window.planCard = null; }
+}
 function setPage(size) {
   if (pageSize === size) {             // same button toggles the frame off
     pageSize = null;
@@ -3146,13 +3158,15 @@ function showExportModal() {
   planCb.id = 'export-plan-cb';
   planCb.checked = false;
   // Needs a route (at least one leg) to tabulate — a page frame is NOT
-  // required; without one the card is placed on the current view.
-  const planHasLegs = !!(state.legs && state.legs.length);
-  planCb.disabled = !planHasLegs;
+  // required; without one the card is placed on the current view. The enabled
+  // state + label are kept live (updateExportPlanCb, called from draw) so
+  // adding a route while this panel is open enables it immediately.
   planLabel.appendChild(planCb);
-  planLabel.appendChild(document.createTextNode(
-    planHasLegs ? S.exportPlanPlace : (S.exportPlanNoLegs || S.exportPlanPlace)));
+  const planLabelText = document.createElement('span');
+  planLabelText.id = 'export-plan-cb-label';
+  planLabel.appendChild(planLabelText);
   body.appendChild(planLabel);
+  updateExportPlanCb();
 
   // Reference VOR selector — pick a VOR; its station + radial/DME lines to the
   // route waypoints are drawn on the map (preview + exported PNG). Shares the
@@ -3473,6 +3487,7 @@ function showExportModal() {
   back.onclick = e => { if (e.target === back) close(); };
   document.body.appendChild(back);
   updateExportPageWarn();   // now in the DOM — set the initial warning state
+  updateExportPlanCb();     // and the initial plan-checkbox enabled state + label
   // Safety net: even on desktop, if the floating panel can't fit the viewport
   // without scrolling, fall back to the centered ("mobile") modal.
   if (box.classList.contains('export-floating') && box.scrollHeight > box.clientHeight + 1) {

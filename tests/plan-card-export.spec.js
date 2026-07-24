@@ -53,6 +53,20 @@ test('export modal: plan checkbox is gated on a route, not a page frame', async 
   await expect(page.locator('#export-plan-cb')).toBeEnabled();
 });
 
+test('plan checkbox updates live when the route is added while the panel is open', async ({ page }) => {
+  await boot(page);
+  // Open with no route → disabled.
+  await page.evaluate(() => showExportModal());
+  await expect(page.locator('#export-plan-cb')).toBeDisabled();
+  // Add a route WITHOUT reopening the panel → it enables live.
+  await route(page);
+  await page.evaluate(() => draw());
+  await expect(page.locator('#export-plan-cb')).toBeEnabled();
+  // Clear the route → disables again.
+  await page.evaluate(() => { state.waypoints = []; state.legs = []; syncLegs(); draw(); });
+  await expect(page.locator('#export-plan-cb')).toBeDisabled();
+});
+
 test('checking the box places a card; it clears on cancel', async ({ page }) => {
   await boot(page);
   await route(page);

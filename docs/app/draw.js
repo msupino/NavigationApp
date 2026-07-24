@@ -414,6 +414,8 @@ function draw() {
   // when the modal isn't open, or after refresh detects a structural change
   // and closes it.
   if (refreshFlightPlan) refreshFlightPlan();
+  // Keep the open print panel's route-gated "Place flight plan" checkbox live.
+  if (typeof updateExportPlanCb === 'function') updateExportPlanCb();
   // #214: skip persist during a PNG export. The export modal flips overlay
   // toggles for the preview render, then restores them; without this guard
   // the debounced persist() would write the preview-state mutation to
