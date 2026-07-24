@@ -1566,6 +1566,23 @@ function refreshPageButtons() {
     b.classList.toggle('active', on);
     b.setAttribute('aria-pressed', on ? 'true' : 'false');
   }
+  updateExportPageWarn();   // the open print panel's ratio warning tracks the frame live
+}
+// Show/hide the print panel's "no page size → ratio may not match" warning to
+// match the CURRENT page frame. Called on every page change so toggling A3/A4
+// while the (non-modal) print panel is open updates the warning live.
+function updateExportPageWarn() {
+  const w = document.getElementById('export-page-warn');
+  if (!w) return;
+  if (!pageSize) {
+    w.textContent = S.exportNoPageWarn;
+    w.classList.add('blink-warn');
+    w.style.display = '';
+  } else {
+    w.textContent = '';
+    w.classList.remove('blink-warn');
+    w.style.display = 'none';
+  }
 }
 function setPage(size) {
   if (pageSize === size) {             // same button toggles the frame off
@@ -2997,6 +3014,19 @@ function showSigmetDecoded() {
 
 // Show a pre-export modal so the user can decide which overlays and base
 // layer appear in the PNG, independently of the current screen settings.
+// True when the Print section head sits on the toolbar's top row. When the
+// desktop menu bar wraps and the "🖨 Print" head drops to a second row (no
+// longer inline with the other section heads) this returns false, so the print
+// menu opens as the centered mobile modal instead of floating over a cramped,
+// two-row toolbar.
+function exportPrintOnTopLine() {
+  const heads = document.querySelectorAll('#toolbar .tb-section-head');
+  const printHead = document.querySelector('#toolbar .tb-section[data-sec="print"] .tb-section-head');
+  if (!heads.length || !printHead) return true;
+  let minTop = Infinity;
+  heads.forEach(h => { const t = h.getBoundingClientRect().top; if (t < minTop) minTop = t; });
+  return printHead.getBoundingClientRect().top <= minTop + 6;
+}
 function showExportModal() {
   if (!aircraft && typeof loadAircraft === 'function') loadAircraft();   // for the plan card's Fuel column
   // On desktop the print/export menu is a floating panel at the inspector's
@@ -3006,7 +3036,8 @@ function showExportModal() {
   // others) it falls back to the centered, dimmed modal. `export-place` makes
   // the backdrop transparent + click-through; `.export-floating` pins the box
   // to the inspector spot.
-  const floatPanel = (typeof toolbarUsesDesktopMenu !== 'function') || toolbarUsesDesktopMenu();
+  const floatPanel = ((typeof toolbarUsesDesktopMenu !== 'function') || toolbarUsesDesktopMenu())
+    && exportPrintOnTopLine();
   const back = document.createElement('div');
   back.className = floatPanel ? 'modal-back export-place' : 'modal-back';
   const box = document.createElement('div');
@@ -3220,14 +3251,14 @@ function showExportModal() {
   opacityRow.appendChild(opResetBtn);
   body.appendChild(opacityRow);
 
-  // Page-size warning.
+  // Page-size warning — red + blinking, and kept live (updateExportPageWarn is
+  // called from refreshPageButtons, so toggling A3/A4 while this panel is open
+  // shows/hides it immediately).
   const pageWarn = document.createElement('div');
-  pageWarn.style.cssText = 'font-size:12px;color:#e8b84b;padding:2px 0';
-  if (!pageSize) {
-    pageWarn.textContent = S.exportNoPageWarn;
-    pageWarn.classList.add('blink-warn');
-  }
+  pageWarn.id = 'export-page-warn';
+  pageWarn.style.cssText = 'font-size:12px;color:#e53935;font-weight:600;padding:2px 0';
   body.appendChild(pageWarn);
+  updateExportPageWarn();
 
   box.appendChild(body);
 
@@ -3441,6 +3472,7 @@ function showExportModal() {
   back.appendChild(box);
   back.onclick = e => { if (e.target === back) close(); };
   document.body.appendChild(back);
+  updateExportPageWarn();   // now in the DOM — set the initial warning state
   // Safety net: even on desktop, if the floating panel can't fit the viewport
   // without scrolling, fall back to the centered ("mobile") modal.
   if (box.classList.contains('export-floating') && box.scrollHeight > box.clientHeight + 1) {
