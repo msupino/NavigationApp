@@ -2999,10 +2999,24 @@ function showSigmetDecoded() {
 // layer appear in the PNG, independently of the current screen settings.
 function showExportModal() {
   if (!aircraft && typeof loadAircraft === 'function') loadAircraft();   // for the plan card's Fuel column
+  // On desktop the print/export menu is a floating panel at the inspector's
+  // default location (top-right), not a centered modal — the map stays visible
+  // and interactive underneath so the plan card can be dragged straight away.
+  // In mobile toolbar mode (the Print button no longer fits inline with the
+  // others) it falls back to the centered, dimmed modal. `export-place` makes
+  // the backdrop transparent + click-through; `.export-floating` pins the box
+  // to the inspector spot.
+  const floatPanel = (typeof toolbarUsesDesktopMenu !== 'function') || toolbarUsesDesktopMenu();
   const back = document.createElement('div');
-  back.className = 'modal-back';
+  back.className = floatPanel ? 'modal-back export-place' : 'modal-back';
   const box = document.createElement('div');
-  box.className = 'modal';
+  box.className = floatPanel ? 'modal export-floating' : 'modal';
+  // Floating panel occupies the inspector spot — hide the inspector to avoid
+  // overlap; it returns on the next selection.
+  if (floatPanel) {
+    const inspEl = document.getElementById('inspector');
+    if (inspEl) inspEl.classList.add('hidden');
+  }
   const title = document.createElement('div');
   title.className = 'modal-title';
   title.textContent = S.exportModalTitle;
@@ -3100,10 +3114,13 @@ function showExportModal() {
   planCb.type = 'checkbox';
   planCb.id = 'export-plan-cb';
   planCb.checked = false;
-  planCb.disabled = !pageSize;                 // needs a page frame to anchor
+  // Needs a route (at least one leg) to tabulate — a page frame is NOT
+  // required; without one the card is placed on the current view.
+  const planHasLegs = !!(state.legs && state.legs.length);
+  planCb.disabled = !planHasLegs;
   planLabel.appendChild(planCb);
   planLabel.appendChild(document.createTextNode(
-    pageSize ? S.exportPlanPlace : (S.exportPlanNoFrame || S.exportPlanPlace)));
+    planHasLegs ? S.exportPlanPlace : (S.exportPlanNoLegs || S.exportPlanPlace)));
   body.appendChild(planLabel);
 
   // Reference VOR selector — pick a VOR; its station + radial/DME lines to the
@@ -3303,8 +3320,6 @@ function showExportModal() {
     } else {
       window.planCard = null;
     }
-    // Open up the backdrop so the card can be dragged on the live map.
-    back.classList.toggle('export-place', planCb.checked);
     vorRow.style.display = planCb.checked ? '' : 'none';   // VOR drives plan-card columns only
     draw();
     // Default the card to ~70% of the frame width: small enough to drag in
@@ -3426,6 +3441,12 @@ function showExportModal() {
   back.appendChild(box);
   back.onclick = e => { if (e.target === back) close(); };
   document.body.appendChild(back);
+  // Safety net: even on desktop, if the floating panel can't fit the viewport
+  // without scrolling, fall back to the centered ("mobile") modal.
+  if (box.classList.contains('export-floating') && box.scrollHeight > box.clientHeight + 1) {
+    back.classList.remove('export-place');
+    box.classList.remove('export-floating');
+  }
   document.addEventListener('keydown', onEsc);
 }
 

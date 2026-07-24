@@ -2111,6 +2111,20 @@ body.theme-light .shortcuts-help-keys kbd {
   pointer-events: none;
 }
 .modal-back.export-place > .modal { pointer-events: auto; }
+/* The print/export panel floats at the inspector's default location (top-right)
+   rather than centered, so the map stays visible + interactive underneath. */
+.modal-back.export-place > .modal.export-floating {
+  position: absolute;
+  top: var(--navaid-inspector-default-top, 96px);
+  right: 12px;
+  left: auto;
+  margin: 0;
+  width: 280px;
+  max-width: 92vw;
+  max-height: calc(100dvh - var(--navaid-inspector-max-height-offset, 96px));
+  overflow: auto;
+}
+html[dir="rtl"] .modal-back.export-place > .modal.export-floating { right: auto; left: 12px; }
 .modal {
   position: relative;        /* anchor the close-✕ to the modal box, not the viewport */
   min-width: min(240px, 92vw);
@@ -4020,8 +4034,9 @@ body.theme-light .fp-columns-all:hover {
 body.theme-light .modal-back {
   background: rgba(240, 244, 248, 0.62);
 }
-body.theme-light .modal-back.flight-plan {
-  background: transparent;
+body.theme-light .modal-back.flight-plan,
+body.theme-light .modal-back.export-place {
+  background: transparent;   /* floating export panel must not dim the map */
 }
 body.theme-light .modal-btns .modal-cancel {
   color: #fff;

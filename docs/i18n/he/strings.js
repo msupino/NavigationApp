@@ -251,6 +251,7 @@ window.S = {
   exportPlanPlace: 'הצב תכנית טיסה על המפה',
   exportPlanPlaceTitle: 'הטבע את טבלת תכנית הטיסה בייצוא; גרור אותה למיקום בתוך מסגרת הדף',
   exportPlanNoFrame: 'הצב תכנית טיסה — בחר תחילה דף A3/A4',
+  exportPlanNoLegs: 'הצב תכנית טיסה — הוסף תחילה מקטע מסלול',
   fpVorLabel: 'VOR',
   fpVorRadialEmpty: '—',
   fpDel: '✕',

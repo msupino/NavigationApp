@@ -41,15 +41,15 @@ test('drawFlightPlanTable renders a sized table; none without a route', async ({
   expect(r.rect.x).toBe(10);
 });
 
-test('export modal: plan checkbox is gated on a page frame', async ({ page }) => {
+test('export modal: plan checkbox is gated on a route, not a page frame', async ({ page }) => {
   await boot(page);
-  await route(page);
-  // No page frame → checkbox disabled.
+  // No route → checkbox disabled.
   await page.evaluate(() => showExportModal());
   await expect(page.locator('#export-plan-cb')).toBeDisabled();
   await page.evaluate(() => { document.querySelector('.modal-cancel').click(); });
-  // With A4 frame → enabled.
-  await page.evaluate(() => { setPage('A4'); draw(); showExportModal(); });
+  // With a route but NO page frame → still enabled (a page is not required).
+  await route(page);
+  await page.evaluate(() => showExportModal());
   await expect(page.locator('#export-plan-cb')).toBeEnabled();
 });
 

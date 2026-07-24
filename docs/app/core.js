@@ -810,6 +810,7 @@ window.S = Object.assign({
   exportPlanPlace: 'Place flight plan on the map',
   exportPlanPlaceTitle: 'Overlay the flight-plan table on the export; drag it to position it inside the page frame',
   exportPlanNoFrame: 'Place flight plan — set an A3/A4 page first',
+  exportPlanNoLegs: 'Place flight plan — add a route leg first',
   fpVorLabel: 'VOR',
   fpVorRadialEmpty: '—',
   fpDel: '✕',
