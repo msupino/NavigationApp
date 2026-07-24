@@ -3089,6 +3089,13 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc
     octx.strokeStyle = tune('legKiteHaloColor');
     octx.stroke();
     octx.lineJoin = 'miter';
+    // The stroke is centred on the outline, so its inner half would show
+    // through the translucent fill as a second (internal) highlight. Erase
+    // everything inside the outline so only the OUTER band remains.
+    octx.save();
+    octx.globalCompositeOperation = 'destination-out';
+    octx.fill();
+    octx.restore();
   }
   octx.fillStyle = fill;
   octx.fill();
