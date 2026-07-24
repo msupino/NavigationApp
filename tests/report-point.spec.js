@@ -86,6 +86,28 @@ test('an optional label shows under the time', async ({ page }) => {
   expect(lines).toEqual(['6:20', 'GATE']);
 });
 
+test('reversing the route keeps the report point on the same geographic spot', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.1, lng: 35.0, name: 'A' }, { lat: 32.4, lng: 35.0, name: 'B' }, { lat: 32.7, lng: 35.0, name: 'C' }];
+    state.legs = []; syncLegs();
+  });
+  const r = await page.evaluate(() => {
+    const idx = addReportPointToLeg(0);
+    const n = state.notes[idx];
+    n.rp.t = 0.3;
+    const g0 = reportPointGeom(n);
+    document.getElementById('reverse').click();
+    const n2 = state.notes.find(x => x && x.rp);
+    const g1 = reportPointGeom(n2);
+    return { before: g0.lat, after: g1.lat, leg: n2.rp.leg, t: n2.rp.t, count: state.notes.filter(x => x && x.rp).length };
+  });
+  expect(r.count).toBe(1);              // not dropped
+  expect(r.after).toBeCloseTo(r.before, 6);   // same point
+  expect(r.leg).toBe(1);                // anchor remapped to the mirrored leg
+  expect(r.t).toBeCloseTo(0.7, 6);
+});
+
 test('removing the anchor leg prunes the report point', async ({ page }) => {
   await boot(page);
   await oneLeg(page);
