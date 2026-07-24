@@ -4627,6 +4627,23 @@ function refreshMapAfterToolbarModeChange() {
     if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
     persist(sec, open);
     updateToolbarOpenCount();
+    clampSectionBody(sec, open);
+  }
+  // Keep an open section dropdown inside the viewport. When the desktop menu bar
+  // wraps to a second row, a section head can sit near a screen edge and its
+  // dropdown (fixed left/right rules) overflows off-screen — e.g. the Print
+  // menu's Save-PNG button became unreachable in RTL. Nudge the body back in.
+  function clampSectionBody(sec, open) {
+    const body = sec.querySelector('.tb-section-body');
+    if (!body) return;
+    body.style.transform = '';
+    if (!open || !toolbarUsesDesktopMenu()) return;
+    const r = body.getBoundingClientRect();
+    const vw = window.innerWidth;
+    let dx = 0;
+    if (r.right > vw - 4) dx = (vw - 4) - r.right;
+    else if (r.left < 4) dx = 4 - r.left;
+    if (dx) body.style.transform = 'translateX(' + Math.round(dx) + 'px)';
   }
   function closeOthers(sec) {
     for (const other of sections) {
