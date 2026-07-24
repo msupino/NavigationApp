@@ -304,7 +304,7 @@ const GDRIVE_SETTINGS_KEYS = [
   // sizes / widths / opacities
   'navaid.legArrowSize', 'navaid.legLineWidth', 'navaid.driftLineWidth',
   'navaid.cvfrOpacity', 'navaid.heliOpacity', 'navaid.circuitOpacity',
-  'navaid.plateOpacity', 'navaid.commfailOpacity', 'navaid.mapOpacity.v',
+  'navaid.plateOpacity', 'navaid.commfailOpacity', 'navaid.mapOpacity.v2',
   // flight-plan columns, aircraft profile, user data corrections
   'navaid.fpColumns', 'navaid.aircraft', 'navaid.airfieldFreqOverrides',
   'navaid.commFreqOverrides', 'navaid.overlayBoundsOverrides',
