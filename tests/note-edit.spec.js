@@ -53,7 +53,9 @@ test.describe('Note resize', () => {
   test('the note size slider has a ↻ reset to default (100%)', async ({ page }) => {
     await bootWithNote(page);
     await page.evaluate(() => { state.notes[0].size = 2.5; state.selected = { type: 'note', index: 0 }; showInspector(); });
-    const reset = page.locator('#insp-body .row .slider-reset');
+    // Target the size row's reset specifically — the colour row also has a
+    // ↻ reset now, so scope to the row that holds the range slider.
+    const reset = page.locator('#insp-body .row:has(input[type="range"]) .slider-reset');
     await expect(reset).toHaveCount(1);
     await reset.click();
     expect(await page.evaluate(() => state.notes[0].size)).toBe(1);

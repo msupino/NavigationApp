@@ -864,6 +864,7 @@ function serializeRoute() {
       ...(n.freq ? { freq: n.freq } : {}),
       ...(n.freqAuto === true ? { freqAuto: true } : {}),
       ...(Number.isFinite(n.size) && n.size !== 1 ? { size: n.size } : {}),
+      ...(n.rp && Number.isInteger(n.rp.leg) ? { rp: { leg: n.rp.leg, t: r5(n.rp.t) } } : {}),
     })),
   };
   if (commChangeSuppressions.length) data.commChangeSuppressions = commChangeSuppressions;
@@ -1400,6 +1401,8 @@ function applyRouteData(d) {
     ...(n.freq ? { freq: n.freq } : {}),
     ...(n.freqAuto === true ? { freqAuto: true } : {}),
     ...(Number.isFinite(n.size) && n.size !== 1 ? { size: n.size } : {}),
+    ...(n.rp && Number.isInteger(n.rp.leg)
+      ? { rp: { leg: n.rp.leg, t: Number.isFinite(n.rp.t) ? n.rp.t : 0.5 } } : {}),
   }));
   state.commChangeSuppressions = storedCommChangeSuppressions(d);
   state.wind = storedWind(d);
@@ -4318,6 +4321,8 @@ function restoreRoute() {
     ...(n.freq ? { freq: n.freq } : {}),
     ...(n.freqAuto === true ? { freqAuto: true } : {}),
     ...(Number.isFinite(n.size) && n.size !== 1 ? { size: n.size } : {}),
+    ...(n.rp && Number.isInteger(n.rp.leg)
+      ? { rp: { leg: n.rp.leg, t: Number.isFinite(n.rp.t) ? n.rp.t : 0.5 } } : {}),
   }));
   state.commChangeSuppressions = storedCommChangeSuppressions(d);
   state.wind = storedWind(d);
