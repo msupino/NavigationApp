@@ -1566,6 +1566,35 @@ function refreshPageButtons() {
     b.classList.toggle('active', on);
     b.setAttribute('aria-pressed', on ? 'true' : 'false');
   }
+  updateExportPageWarn();   // the open print panel's ratio warning tracks the frame live
+}
+// Show/hide the print panel's "no page size → ratio may not match" warning to
+// match the CURRENT page frame. Called on every page change so toggling A3/A4
+// while the (non-modal) print panel is open updates the warning live.
+function updateExportPageWarn() {
+  const w = document.getElementById('export-page-warn');
+  if (!w) return;
+  if (!pageSize) {
+    w.textContent = S.exportNoPageWarn;
+    w.classList.add('blink-warn');
+    w.style.display = '';
+  } else {
+    w.textContent = '';
+    w.classList.remove('blink-warn');
+    w.style.display = 'none';
+  }
+}
+// Keep the open print panel's "Place flight plan" checkbox in sync with the
+// route: it needs a route (>=1 leg), not a page. Called from draw() so adding
+// or clearing a route while the (non-modal) panel is open updates it live.
+function updateExportPlanCb() {
+  const cb = document.getElementById('export-plan-cb');
+  if (!cb) return;
+  const hasLegs = !!(state.legs && state.legs.length);
+  cb.disabled = !hasLegs;
+  const lbl = document.getElementById('export-plan-cb-label');
+  if (lbl) lbl.textContent = hasLegs ? S.exportPlanPlace : (S.exportPlanNoLegs || S.exportPlanPlace);
+  if (!hasLegs && cb.checked) { cb.checked = false; window.planCard = null; }
 }
 function setPage(size) {
   if (pageSize === size) {             // same button toggles the frame off
@@ -2997,12 +3026,40 @@ function showSigmetDecoded() {
 
 // Show a pre-export modal so the user can decide which overlays and base
 // layer appear in the PNG, independently of the current screen settings.
+// True when the Print section head sits on the toolbar's top row. When the
+// desktop menu bar wraps and the "🖨 Print" head drops to a second row (no
+// longer inline with the other section heads) this returns false, so the print
+// menu opens as the centered mobile modal instead of floating over a cramped,
+// two-row toolbar.
+function exportPrintOnTopLine() {
+  const heads = document.querySelectorAll('#toolbar .tb-section-head');
+  const printHead = document.querySelector('#toolbar .tb-section[data-sec="print"] .tb-section-head');
+  if (!heads.length || !printHead) return true;
+  let minTop = Infinity;
+  heads.forEach(h => { const t = h.getBoundingClientRect().top; if (t < minTop) minTop = t; });
+  return printHead.getBoundingClientRect().top <= minTop + 6;
+}
 function showExportModal() {
   if (!aircraft && typeof loadAircraft === 'function') loadAircraft();   // for the plan card's Fuel column
+  // On desktop the print/export menu is a floating panel at the inspector's
+  // default location (top-right), not a centered modal — the map stays visible
+  // and interactive underneath so the plan card can be dragged straight away.
+  // In mobile toolbar mode (the Print button no longer fits inline with the
+  // others) it falls back to the centered, dimmed modal. `export-place` makes
+  // the backdrop transparent + click-through; `.export-floating` pins the box
+  // to the inspector spot.
+  const floatPanel = ((typeof toolbarUsesDesktopMenu !== 'function') || toolbarUsesDesktopMenu())
+    && exportPrintOnTopLine();
   const back = document.createElement('div');
-  back.className = 'modal-back';
+  back.className = floatPanel ? 'modal-back export-place' : 'modal-back';
   const box = document.createElement('div');
-  box.className = 'modal';
+  box.className = floatPanel ? 'modal export-floating' : 'modal';
+  // Floating panel occupies the inspector spot — hide the inspector to avoid
+  // overlap; it returns on the next selection.
+  if (floatPanel) {
+    const inspEl = document.getElementById('inspector');
+    if (inspEl) inspEl.classList.add('hidden');
+  }
   const title = document.createElement('div');
   title.className = 'modal-title';
   title.textContent = S.exportModalTitle;
@@ -3100,11 +3157,16 @@ function showExportModal() {
   planCb.type = 'checkbox';
   planCb.id = 'export-plan-cb';
   planCb.checked = false;
-  planCb.disabled = !pageSize;                 // needs a page frame to anchor
+  // Needs a route (at least one leg) to tabulate — a page frame is NOT
+  // required; without one the card is placed on the current view. The enabled
+  // state + label are kept live (updateExportPlanCb, called from draw) so
+  // adding a route while this panel is open enables it immediately.
   planLabel.appendChild(planCb);
-  planLabel.appendChild(document.createTextNode(
-    pageSize ? S.exportPlanPlace : (S.exportPlanNoFrame || S.exportPlanPlace)));
+  const planLabelText = document.createElement('span');
+  planLabelText.id = 'export-plan-cb-label';
+  planLabel.appendChild(planLabelText);
   body.appendChild(planLabel);
+  updateExportPlanCb();
 
   // Reference VOR selector — pick a VOR; its station + radial/DME lines to the
   // route waypoints are drawn on the map (preview + exported PNG). Shares the
@@ -3203,14 +3265,14 @@ function showExportModal() {
   opacityRow.appendChild(opResetBtn);
   body.appendChild(opacityRow);
 
-  // Page-size warning.
+  // Page-size warning — red + blinking, and kept live (updateExportPageWarn is
+  // called from refreshPageButtons, so toggling A3/A4 while this panel is open
+  // shows/hides it immediately).
   const pageWarn = document.createElement('div');
-  pageWarn.style.cssText = 'font-size:12px;color:#e8b84b;padding:2px 0';
-  if (!pageSize) {
-    pageWarn.textContent = S.exportNoPageWarn;
-    pageWarn.classList.add('blink-warn');
-  }
+  pageWarn.id = 'export-page-warn';
+  pageWarn.style.cssText = 'font-size:12px;color:#e53935;font-weight:600;padding:2px 0';
   body.appendChild(pageWarn);
+  updateExportPageWarn();
 
   box.appendChild(body);
 
@@ -3303,8 +3365,6 @@ function showExportModal() {
     } else {
       window.planCard = null;
     }
-    // Open up the backdrop so the card can be dragged on the live map.
-    back.classList.toggle('export-place', planCb.checked);
     vorRow.style.display = planCb.checked ? '' : 'none';   // VOR drives plan-card columns only
     draw();
     // Default the card to ~70% of the frame width: small enough to drag in
@@ -3426,6 +3486,14 @@ function showExportModal() {
   back.appendChild(box);
   back.onclick = e => { if (e.target === back) close(); };
   document.body.appendChild(back);
+  updateExportPageWarn();   // now in the DOM — set the initial warning state
+  updateExportPlanCb();     // and the initial plan-checkbox enabled state + label
+  // Safety net: even on desktop, if the floating panel can't fit the viewport
+  // without scrolling, fall back to the centered ("mobile") modal.
+  if (box.classList.contains('export-floating') && box.scrollHeight > box.clientHeight + 1) {
+    back.classList.remove('export-place');
+    box.classList.remove('export-floating');
+  }
   document.addEventListener('keydown', onEsc);
 }
 

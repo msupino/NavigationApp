@@ -41,7 +41,8 @@ test.describe('Export PNG options modal', () => {
     // Title.
     expect(await page.locator('.modal-title').textContent()).toBe('Export PNG');
     // 6 checkboxes: Waypoint Names (on), Drift Lines (on), Cumulative time (on),
-    // Nav WPs (off), Airfields (off), Place flight plan (off, disabled w/o frame).
+    // Nav WPs (off), Airfields (off), Place flight plan (off; enabled because a
+    // route is set — a page frame is not required).
     const cbs = page.locator('.modal input[type="checkbox"]');
     expect(await cbs.count()).toBe(6);
     expect(await cbs.nth(0).isChecked()).toBe(true);   // Waypoint Names default on
@@ -50,7 +51,7 @@ test.describe('Export PNG options modal', () => {
     expect(await cbs.nth(3).isChecked()).toBe(false);  // Nav WPs
     expect(await cbs.nth(4).isChecked()).toBe(false);  // Airfields
     expect(await cbs.nth(5).isChecked()).toBe(false);  // Place flight plan
-    expect(await cbs.nth(5).isDisabled()).toBe(true);  // disabled until a page frame is set
+    expect(await cbs.nth(5).isDisabled()).toBe(false);  // route present → enabled (no page needed)
     // Layer defaults to Navigation.
     const sel = page.locator('#export-layer-select');
     expect(await sel.inputValue()).toBe('Navigation');
@@ -59,6 +60,30 @@ test.describe('Export PNG options modal', () => {
     // Cancel closes the modal.
     await page.locator('.modal .modal-cancel').click();
     await expect(page.locator('.modal-back')).toHaveCount(0);
+  });
+
+  test('desktop: menu floats at the inspector location, map not dimmed', async ({ page }) => {
+    await boot(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.evaluate(wps => { state.waypoints = wps; syncLegs(); draw(); }, pairLLHZ_LLHA());
+    await page.evaluate(() => showExportModal());
+    await expect(page.locator('.modal-back.export-place')).toHaveCount(1);   // click-through backdrop
+    const box = page.locator('.modal.export-floating');
+    await expect(box).toHaveCount(1);
+    // Pinned to the top-right (inspector spot), not centered.
+    const b = await box.boundingBox();
+    expect(1280 - (b.x + b.width)).toBeLessThan(24);   // near the right edge
+    expect(b.y).toBeLessThan(140);                       // near the top
+  });
+
+  test('mobile: menu is a centered dimmed modal', async ({ page }) => {
+    await boot(page);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.evaluate(wps => { state.waypoints = wps; syncLegs(); draw(); }, pairLLHZ_LLHA());
+    await page.evaluate(() => showExportModal());
+    await expect(page.locator('.modal-back')).toHaveCount(1);
+    await expect(page.locator('.modal.export-floating')).toHaveCount(0);
+    await expect(page.locator('.modal-back.export-place')).toHaveCount(0);
   });
 
   test('Export with both checkboxes off uses Navigation layer', async ({ page }) => {
