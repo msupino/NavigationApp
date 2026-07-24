@@ -2804,7 +2804,12 @@ function drawLegs() {
     cumInH += durH;
     const cumInStr = cumInH > 0 ? toHMS(cumInH) : '--';
 
-    drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
+    // A blocked inbound direction (one-way leg flown the disallowed way) has no
+    // valid altitude to show — skip its nav kite entirely (the return kite is
+    // already gated by legAllowsReturn).
+    const inboundBlocked = typeof legAltitudeIsBlocked === 'function' &&
+      legAltitudeIsBlocked(leg, 'inboundAltitude');
+    if (!inboundBlocked) drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
       ang, pad3(magIn), timeStr, formatAltitudeValue(leg.inboundAltitude, leg, 'inboundAltitude'),
       tune('inkColor'), tintFill(tune('legKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'in'), zoomScale);

@@ -572,9 +572,10 @@
       "from": "HTZUK",
       "to": "KNTRY",
       "distanceNm": 1.2,
-      "inboundAltitude": 800,
-      "outboundAltitude": 1200,
-      "status": "candidate",
+      "inboundAltitude": 1200,
+      "outboundAltitude": null,
+      "oneWay": true,
+      "status": "reviewed",
       "detection": {
         "greenScore": 0.9,
         "maxGap": 1,
@@ -3326,16 +3327,9 @@
     {
       "from": "HTZUK",
       "to": "KNTRY",
-      "altitude": 800,
-      "segment": "HTZUK-KNTRY",
-      "field": "inboundAltitude"
-    },
-    {
-      "from": "KNTRY",
-      "to": "HTZUK",
       "altitude": 1200,
       "segment": "HTZUK-KNTRY",
-      "field": "outboundAltitude"
+      "field": "inboundAltitude"
     },
     {
       "from": "IKKEA",
