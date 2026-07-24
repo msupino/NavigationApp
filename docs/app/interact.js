@@ -611,6 +611,39 @@ function clampLegLabelAlong(legIdx, label) {
   const limit = Math.max(0, (legFrame(legIdx).len / 2 - halfKite) / sc);
   label.a = Math.max(-limit, Math.min(limit, label.a));
 }
+// Identification / report point (oval note anchored to a leg). Project a
+// screen point onto the point's leg and store the clamped fraction; the oval's
+// lat/lng resyncs from the anchor on the next draw.
+function setReportPointTFromScreen(n, px, py) {
+  if (!n || !n.rp) return;
+  const i = n.rp.leg;
+  const A = state.waypoints[i], B = state.waypoints[i + 1];
+  if (!A || !B) return;
+  const sa = proj(A), sb = proj(B);
+  const dx = sb.x - sa.x, dy = sb.y - sa.y;
+  const L2 = dx * dx + dy * dy;
+  let t = L2 > 0 ? ((px - sa.x) * dx + (py - sa.y) * dy) / L2 : 0.5;
+  n.rp.t = Math.max(0, Math.min(1, t));
+}
+// Add an identification-point oval to a leg (default: mid-leg), select it, and
+// return its note index. Reuses the note object so it persists / exports /
+// edits like any oval note; `rp` marks it as leg-anchored with an auto time.
+function addReportPointToLeg(legIdx) {
+  if (!Array.isArray(state.notes)) state.notes = [];
+  const A = state.waypoints[legIdx], B = state.waypoints[legIdx + 1];
+  if (!A || !B) return -1;
+  const t = 0.5;
+  state.notes.push({
+    lat: r5(A.lat + (B.lat - A.lat) * t),
+    lng: r5(A.lng + (B.lng - A.lng) * t),
+    text: '', color: NOTE_DEFAULT_COLOR, shape: 'oval', rp: { leg: legIdx, t },
+  });
+  const idx = state.notes.length - 1;
+  state.selected = { type: 'note', index: idx };
+  if (typeof pushUndo === 'function') pushUndo();
+  draw();
+  return idx;
+}
 function legLabelDragGrab(legIdx, which, px, py) {
   const c = legLabelCenter(legIdx, which);
   if (!c) return { grabA: 0, grabP: 0 };
@@ -2198,6 +2231,13 @@ function showInspector() {
       draw();
     };
     body.appendChild(reset);
+    // Add an identification/report-point oval on this leg (draggable along it,
+    // auto time from the leg start). CAAI נקי הזדהות.
+    const addRp = document.createElement('button');
+    addRp.className = 'insp-btn';
+    addRp.textContent = S.addReportPoint || 'Add identification-point marker';
+    addRp.onclick = () => { addReportPointToLeg(idx); showInspector(); };
+    body.appendChild(addRp);
   } else if (state.selected.type === 'note') {
     const note = state.notes[state.selected.index];
     if (note.cc) {
@@ -2219,20 +2259,27 @@ function showInspector() {
       body.appendChild(textareaRow('', note.text || '', v => {
         note.text = v; draw();
       }));
-      body.appendChild(selectRow(S.shape, note.shape || 'rect',
-        [['rect', S.shapeRect], ['oval', S.shapeOval]], v => {
-          note.shape = v; draw();
-        }));
+      // Identification-point ovals are always leg-anchored ovals at a fixed
+      // size, so the shape + size controls (which have no effect for them) are
+      // omitted; only the label + colour apply.
+      if (!note.rp) {
+        body.appendChild(selectRow(S.shape, note.shape || 'rect',
+          [['rect', S.shapeRect], ['oval', S.shapeOval]], v => {
+            note.shape = v; draw();
+          }));
+      }
       body.appendChild(colorRow(S.color, note.color || NOTE_DEFAULT_COLOR, v => {
         note.color = v; draw();
-      }));
-      body.appendChild(rangeRow(S.noteSize || 'Size',
-        Number.isFinite(note.size) ? note.size : 1, 0.5, 1.5, 0.25,   // symmetric → default 100% sits mid-track
-        v => Math.round(v * 100) + '%', v => {
-          note.size = v;
-          if (typeof persist === 'function') persist();
-          draw();
-        }, 1));   // ↻ resets note size to 1 (100%)
+      }, NOTE_DEFAULT_COLOR));
+      if (!note.rp) {
+        body.appendChild(rangeRow(S.noteSize || 'Size',
+          Number.isFinite(note.size) ? note.size : 1, 0.5, 1.5, 0.25,   // symmetric → default 100% sits mid-track
+          v => Math.round(v * 100) + '%', v => {
+            note.size = v;
+            if (typeof persist === 'function') persist();
+            draw();
+          }, 1));   // ↻ resets note size to 1 (100%)
+      }
     }
     const del = document.createElement('button');
     del.className = 'insp-btn';
@@ -2433,7 +2480,7 @@ function showInspector() {
   }
   persistInspectorSelection();
 }
-function colorRow(label, value, onChange) {
+function colorRow(label, value, onChange, defaultValue) {
   const row = document.createElement('div');
   row.className = 'row';
   const l = document.createElement('label');
@@ -2443,6 +2490,21 @@ function colorRow(label, value, onChange) {
   inp.value = value || NOTE_DEFAULT_COLOR;
   inp.oninput = () => onChange(inp.value);
   row.append(l, inp);
+  // Optional ↻ reset to a default colour.
+  if (typeof defaultValue === 'string' && defaultValue) {
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'slider-reset';
+    reset.textContent = '↻';
+    reset.title = (typeof S !== 'undefined' && S.sliderReset) || 'Reset to default';
+    reset.setAttribute('aria-label', reset.title);
+    reset.onclick = e => {
+      e.preventDefault();
+      inp.value = defaultValue;
+      onChange(defaultValue);
+    };
+    row.appendChild(reset);
+  }
   return row;
 }
 function selectRow(label, value, options, onChange) {
@@ -3182,8 +3244,13 @@ map.on('mousemove', e => {
     draw();   // move silently — but keep an already-open inspector in sync
     if (!document.getElementById('inspector').classList.contains('hidden')) showInspector();
   } else if (drag.kind === 'note') {
-    state.notes[drag.i].lat = r5(e.latlng.lat + (drag.offLat || 0));
-    state.notes[drag.i].lng = r5(e.latlng.lng + (drag.offLng || 0));
+    const n = state.notes[drag.i];
+    if (n && n.rp) {
+      setReportPointTFromScreen(n, p.x, p.y);   // constrained to slide along its leg
+    } else {
+      n.lat = r5(e.latlng.lat + (drag.offLat || 0));
+      n.lng = r5(e.latlng.lng + (drag.offLng || 0));
+    }
     draw();
   } else if (drag.kind === 'label') {
     if (setLegLabelFromPoint(drag, p.x, p.y)) draw();
@@ -3602,8 +3669,13 @@ mapEl.addEventListener('touchmove', e => {
     wp.lat = r5(r.lat); wp.lng = r5(r.lng); wp.name = r.name;
     draw(); showInspector();
   } else if (touchDrag.kind === 'note') {
-    state.notes[touchDrag.i].lat = r5(ll.lat + (touchDrag.offLat || 0));
-    state.notes[touchDrag.i].lng = r5(ll.lng + (touchDrag.offLng || 0));
+    const n = state.notes[touchDrag.i];
+    if (n && n.rp) {
+      setReportPointTFromScreen(n, p.x, p.y);   // constrained to slide along its leg
+    } else {
+      n.lat = r5(ll.lat + (touchDrag.offLat || 0));
+      n.lng = r5(ll.lng + (touchDrag.offLng || 0));
+    }
     draw();
   } else if (touchDrag.kind === 'label') {
     if (setLegLabelFromPoint(touchDrag, p.x, p.y)) draw();

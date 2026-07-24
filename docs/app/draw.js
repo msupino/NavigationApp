@@ -2449,11 +2449,39 @@ function commNoteFreq(n) {
   if (n && n.cc) return commCalloutDefaults(n.cc).freq;
   return '';
 }
+// Identification / report point (נקי הזדהות): an oval note anchored to a leg
+// at fraction t (0..1 from the leg's start waypoint). Its lat/lng is derived
+// from the leg on every draw so it always sits on the track.
+function reportPointGeom(n) {
+  if (!n || !n.rp) return null;
+  const i = n.rp.leg;
+  const A = state.waypoints[i], B = state.waypoints[i + 1];
+  if (!A || !B) return null;
+  const t = Math.max(0, Math.min(1, Number.isFinite(n.rp.t) ? n.rp.t : 0.5));
+  return { i, t, lat: A.lat + (B.lat - A.lat) * t, lng: A.lng + (B.lng - A.lng) * t };
+}
+// Planned time from the leg's start waypoint to the point, mm:ss. Uses the
+// SAME still-air/TAS basis as the minute ticks (not GS), so the number in the
+// oval always agrees with the tick it sits on. (Only the leg-total ETE in the
+// kite is GS/wind-corrected.)
+function reportPointTime(n) {
+  const g = reportPointGeom(n);
+  if (!g) return '';
+  const leg = state.legs[g.i];
+  const gg = geo(state.waypoints[g.i], state.waypoints[g.i + 1]);
+  const h = leg && leg.flightSpeed > 0 ? (gg.dist * g.t) / leg.flightSpeed : 0;
+  return h > 0 ? toHMS(h) : '0:00';
+}
 function noteLines(n) {
   if (n && n.cc) {
     const name = commNoteName(n);
     const freq = commNoteFreq(n);
     return [name ? name.toUpperCase() : '', freq].filter(Boolean);
+  }
+  if (n && n.rp) {                       // report point: auto time + optional label
+    const label = (n.text || '').trim();
+    const t = reportPointTime(n);
+    return label ? [t, label] : [t];
   }
   return (n.text || '').split('\n');
 }
@@ -2679,8 +2707,8 @@ function drawLegs() {
     for (let j = state.legs.length - 1; j >= 0; j--) {
       const Aj = state.waypoints[j], Bj = state.waypoints[j + 1];
       if (!Aj || !Bj) continue;
-      const { dist: dj } = geo(Aj, Bj);
-      const dur = state.legs[j].outboundSpeed > 0 ? dj / state.legs[j].outboundSpeed : 0;
+      const gj = geo(Aj, Bj);
+      const dur = state.legs[j].outboundSpeed > 0 ? gj.dist / state.legs[j].outboundSpeed : 0;
       cumOut += dur;
       cumOutArr[j] = cumOut > 0 ? toHMS(cumOut) : '--';
     }
@@ -2909,7 +2937,11 @@ function drawMinuteMarkers(sa, sb, durH) {
     octx.strokeStyle = tune('inkColor');
     octx.lineWidth = even ? tune('minuteTickEvenWidthPx') : tune('minuteTickOddWidthPx');
     octx.beginPath();
-    octx.moveTo(px - nx * tick, py - ny * tick);
+    // CAAI standard: minute ticks sit on the RIGHT side of the leg (relative to
+    // the direction of flight), starting on the track line and extending out to
+    // the same side as the numbers — not straddling the track. +nx/+ny is
+    // right-of-travel (holds under map rotation since it is screen-projected).
+    octx.moveTo(px, py);
     octx.lineTo(px + nx * tick, py + ny * tick);
     octx.stroke();
     if (even) {                         // minute number past the tick end
@@ -3195,7 +3227,14 @@ function noteRect(i) {
     : tune('noteMinWidthPx') * sc;
   let w = Math.max(maxW + tune('notePadXPx') * sc * 2, minW);
   let h = Math.max(1, lines.length) * lineH + tune('notePadYPx') * sc * 2;
-  const oval = n.shape === 'oval';
+  const oval = n.rp ? true : n.shape === 'oval';
+  // Identification-point ovals are a FIXED size (the hard-coded note print box)
+  // — the box never grows with its text; the text is sized to fit it instead.
+  if (n.rp && ppm) {
+    w = tune('notePrintWidthMm') * ppm * noteUserSize(n);
+    h = tune('notePrintHeightMm') * ppm * noteUserSize(n);
+    return { x: s.x - w / 2, y: s.y - h / 2, w, h, lines, oval, fixed: true };
+  }
   // Before the map is ready (no ppm) grow the ellipse by √2 so it bounds the
   // text; with the ground-sized box it already matches the rectangle.
   if (oval && !ppm) { w *= Math.SQRT2; h *= Math.SQRT2; }
@@ -3399,6 +3438,13 @@ function drawNotes() {
   for (let i = 0; i < state.notes.length; i++) {
     const n = state.notes[i];
     if (n && n.cc && !showCommChange) continue;
+    if (n && n.rp) {
+      // Keep the anchored oval on its leg: recompute lat/lng from the anchor
+      // every frame (the leg may have moved). Skip if the leg is gone.
+      const g = reportPointGeom(n);
+      if (!g) continue;
+      n.lat = g.lat; n.lng = g.lng;
+    }
     const r = noteRect(i);
     const selected = selectionVisible() && (n && n.cc
       ? selectedCommCallout(i)
@@ -3413,27 +3459,72 @@ function drawNotes() {
     octx.fillStyle = tintFill(color, tune('kiteNoteAlpha'));   // notes share the gist-tuned kite opacity
     octx.lineWidth = selected ? tune('noteSelectedStrokeWidthPx') : tune('noteStrokeWidthPx');
     octx.strokeStyle = selected ? tune('selectedColor') : tune('inkColor');
+
+    let lineH = tune('noteLineHeightPx') * noteScale(n);
+    let fontPx = tune('noteFontPx') * noteScale(n);
+    // Fixed-size ovals (identification points): shrink the text to fit the box
+    // instead of growing the box. Fit the widest line into the ellipse's usable
+    // width and all lines into its usable height.
+    if (r.fixed) {
+      octx.font = `bold ${fontPx}px sans-serif`;
+      let widest = 1;
+      for (const l of r.lines) widest = Math.max(widest, octx.measureText(l || ' ').width);
+      const fitW = (r.w * 0.72) / widest;                       // ellipse narrows → 0.72
+      const fitH = (r.h * 0.78) / (r.lines.length * lineH);
+      const k = Math.min(1, fitW, fitH);
+      fontPx *= k; lineH *= k;
+    }
+
+    // Identification-point ovals align with the leg (long axis along the track),
+    // not axis-aligned north. Draw in a frame rotated to the leg's screen angle;
+    // flip 180° when it would read upside-down so the text stays upright.
+    let ang = 0;
+    if (n.rp) {
+      const A = state.waypoints[n.rp.leg], B = state.waypoints[n.rp.leg + 1];
+      if (A && B) {
+        const pa = proj(A), pb = proj(B);
+        // Long axis ACROSS the track (per the standard's diagram): leg angle
+        // + 90°. Flip 180° when it would read upside-down so text stays upright.
+        ang = Math.atan2(pb.y - pa.y, pb.x - pa.x) + Math.PI / 2;
+        if (ang > Math.PI / 2 || ang < -Math.PI / 2) ang += Math.PI;
+      }
+    }
+    const cx0 = r.x + r.w / 2, cy0 = r.y + r.h / 2;
+    octx.save();
+    octx.translate(cx0, cy0);
+    if (ang) octx.rotate(ang);
     if (r.oval) {
       octx.beginPath();
-      octx.ellipse(r.x + r.w / 2, r.y + r.h / 2, r.w / 2, r.h / 2,
-                   0, 0, Math.PI * 2);
+      octx.ellipse(0, 0, r.w / 2, r.h / 2, 0, 0, Math.PI * 2);
       octx.fill();
       octx.stroke();
     } else {
-      octx.fillRect(r.x, r.y, r.w, r.h);
-      octx.strokeRect(r.x, r.y, r.w, r.h);
+      octx.fillRect(-r.w / 2, -r.h / 2, r.w, r.h);
+      octx.strokeRect(-r.w / 2, -r.h / 2, r.w, r.h);
     }
 
-    const lineH = tune('noteLineHeightPx') * noteScale(n);
-    octx.font = noteFont(n);
+    octx.font = `bold ${fontPx}px sans-serif`;
     octx.fillStyle = tune('inkColor');
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
-    const cx = r.x + r.w / 2;
-    const y0 = r.y + (r.h - r.lines.length * lineH) / 2;
+    const y0 = -(r.lines.length * lineH) / 2;
     for (let j = 0; j < r.lines.length; j++) {
-      octx.fillText(r.lines[j], cx, y0 + lineH / 2 + j * lineH);
+      const ly = y0 + lineH / 2 + j * lineH;
+      octx.fillText(r.lines[j], 0, ly);
+      // CAAI: the planned time on an identification point is underlined. It is
+      // the first line of a report-point oval.
+      if (n.rp && j === 0 && r.lines[j]) {
+        const tw = octx.measureText(r.lines[j]).width;
+        const uy = ly + lineH * 0.42;
+        octx.strokeStyle = tune('inkColor');
+        octx.lineWidth = Math.max(1, tune('noteStrokeWidthPx'));
+        octx.beginPath();
+        octx.moveTo(-tw / 2, uy);
+        octx.lineTo(tw / 2, uy);
+        octx.stroke();
+      }
     }
+    octx.restore();
     octx.textAlign = 'left';
   }
 }
@@ -3443,9 +3534,9 @@ function drawInfo() {
   for (let i = 0; i < state.legs.length; i++) {
     const A = state.waypoints[i], B = state.waypoints[i + 1];
     if (!A || !B) continue;   // legs can transiently outnumber waypoints-1 mid-edit; guard like the sibling loops
-    const { dist } = geo(A, B);
-    totalDist += dist;
-    if (state.legs[i].flightSpeed > 0) totalH += dist / state.legs[i].flightSpeed;
+    const g = geo(A, B);
+    totalDist += g.dist;
+    if (state.legs[i].flightSpeed > 0) totalH += g.dist / state.legs[i].flightSpeed;
   }
   document.getElementById('info').textContent =
     `${S.summaryWaypoints}: ${state.waypoints.length}\n` +
