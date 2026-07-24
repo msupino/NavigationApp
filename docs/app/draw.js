@@ -2495,10 +2495,32 @@ function commCalloutTarget(n) {
   const refWp = Array.isArray(navWP) ? navWP.find(w => w && w.name === key) : null;
   return refWp || null;
 }
-function commCalloutDefaultTail(wp) {
+// Default position for a freq-change callout: offset from the waypoint to the
+// LEFT of the direction of travel — the opposite side from the nav kites
+// (which sit on the right / +nx). This flips with route direction instead of
+// being a static compass offset, so on a north->south leg the callout no longer
+// lands on the same side as the kites. Magnitude comes from the existing tune
+// (its sign is ignored now — the side is derived from the leg).
+function commCalloutDefaultTail(wp, idx) {
+  const D = Math.abs(tune('commChangeNoteLngOffset')) || 0.09;
+  let brg = null;
+  const wps = state.waypoints;
+  if (Array.isArray(wps) && Number.isInteger(idx) && typeof geo === 'function') {
+    const prev = wps[idx - 1], next = wps[idx + 1];
+    if (prev && wp) brg = geo(prev, wp).brg;          // inbound leg preferred
+    else if (wp && next) brg = geo(wp, next).brg;     // else outbound
+  }
+  if (brg == null) {                                  // no leg direction → keep the plain tune offset
+    return {
+      lat: r5(wp.lat + (tune('commChangeNoteLatOffset') || 0)),
+      lng: r5(wp.lng + tune('commChangeNoteLngOffset')),
+    };
+  }
+  const th = (brg - 90) * Math.PI / 180;              // left of travel
+  const cosLat = Math.max(0.1, Math.cos(wp.lat * Math.PI / 180));
   return {
-    lat: r5(wp.lat + tune('commChangeNoteLatOffset')),
-    lng: r5(wp.lng + tune('commChangeNoteLngOffset')),
+    lat: r5(wp.lat + D * Math.cos(th)),
+    lng: r5(wp.lng + D * Math.sin(th) / cosLat),
   };
 }
 function commChangeReferencePoint(name) {
@@ -2625,7 +2647,8 @@ function seedCommChangeNotes() {
   let changed = pruneStaleCommChangeNotes();
   if (pruneStaleCommChangeSuppressions()) changed = true;
   const routeDefaults = commRouteCalloutDefaultsMap();
-  for (const wp of state.waypoints) {
+  for (let wpIdx = 0; wpIdx < state.waypoints.length; wpIdx++) {
+    const wp = state.waypoints[wpIdx];
     if (!wp) continue;
     // Resolve comm-change key: try stored name first, then fall back to
     // coordinate scan so a renamed waypoint at a known ICAO position still
@@ -2667,7 +2690,7 @@ function seedCommChangeNotes() {
       const oldLng = r5(wp.lng);
       if (oldLats.some(oldLat => Math.abs(existing.lat - oldLat) < 0.00002) &&
           Math.abs(existing.lng - oldLng) < 0.00002) {
-        const tail = commCalloutDefaultTail(wp);
+        const tail = commCalloutDefaultTail(wp, wpIdx);
         existing.lat = tail.lat;
         existing.lng = tail.lng;
         changed = true;
@@ -2675,7 +2698,7 @@ function seedCommChangeNotes() {
       continue;
     }
     if (isCommChangeSuppressed(nm)) continue;
-    const tail = commCalloutDefaultTail(wp);
+    const tail = commCalloutDefaultTail(wp, wpIdx);
     state.notes.push({
       lat: tail.lat,
       lng: tail.lng,
