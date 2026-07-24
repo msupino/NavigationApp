@@ -1672,6 +1672,16 @@ document.getElementById('reverse').onclick = () => {
     };
   });
   applyLegAltitudesToRoute();
+  // Identification-point ovals are anchored to (leg, t); reversing flips both
+  // so the oval stays on the same geographic spot instead of jumping to the
+  // mirrored end. new leg = (M-1) - leg; new t = 1 - t.
+  const legCount = state.legs.length;
+  for (const n of state.notes) {
+    if (n && n.rp && Number.isInteger(n.rp.leg)) {
+      n.rp.leg = (legCount - 1) - n.rp.leg;
+      n.rp.t = 1 - (Number.isFinite(n.rp.t) ? n.rp.t : 0.5);
+    }
+  }
   // Keep the inspector open on the same leg/waypoint after the reversal — the
   // item moves to the mirrored index (count is unchanged).
   const sel = state.selected;
