@@ -1628,6 +1628,21 @@ document.getElementById('reverse').onclick = () => {
   // Reversing flight direction means each leg's inbound/outbound roles swap.
   // The leg's local axes (along + perpendicular) also flip, so negating the
   // label offsets keeps the markers visually pinned to the same map pixels.
+  // Freq-change callouts default to the side opposite the nav kites, which
+  // depends on travel direction — so before reversing, note which callouts are
+  // still on their (pre-reverse) default tail; those get re-defaulted after the
+  // reversal so they flip with the route. User-dragged callouts are left put.
+  const commOnDefault = new Set();
+  if (typeof commCalloutTarget === 'function' && typeof commCalloutDefaultTail === 'function') {
+    for (const n of state.notes) {
+      if (!n || !n.cc) continue;
+      const wp = commCalloutTarget(n);
+      const idx = wp ? state.waypoints.indexOf(wp) : -1;
+      if (idx < 0) continue;
+      const def = commCalloutDefaultTail(wp, idx);
+      if (Math.abs(n.lat - def.lat) < 1e-4 && Math.abs(n.lng - def.lng) < 1e-4) commOnDefault.add(n);
+    }
+  }
   state.waypoints.reverse();
   // A leg imported from a corrupted file / share URL may be missing a
   // label; fall back to the default so negating its offsets can't throw.
@@ -1680,6 +1695,17 @@ document.getElementById('reverse').onclick = () => {
     if (n && n.rp && Number.isInteger(n.rp.leg)) {
       n.rp.leg = (legCount - 1) - n.rp.leg;
       n.rp.t = 1 - (Number.isFinite(n.rp.t) ? n.rp.t : 0.5);
+    }
+  }
+  // Re-default the freq-change callouts that were on their default tail so they
+  // flip to the far side of the now-reversed legs (see snapshot above).
+  if (commOnDefault.size && typeof commCalloutTarget === 'function') {
+    for (const n of commOnDefault) {
+      const wp = commCalloutTarget(n);
+      const idx = wp ? state.waypoints.indexOf(wp) : -1;
+      if (idx < 0) continue;
+      const def = commCalloutDefaultTail(wp, idx);
+      n.lat = def.lat; n.lng = def.lng;
     }
   }
   // Keep the inspector open on the same leg/waypoint after the reversal — the
