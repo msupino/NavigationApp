@@ -550,12 +550,12 @@
       "segment": "HTZUK-KNTRY",
       "from": "HTZUK",
       "to": "KNTRY",
-      "inboundAltitude": 800,
-      "outboundAltitude": 1200,
-      "status": "candidate",
+      "inboundAltitude": 1200,
+      "outboundAltitude": null,
+      "status": "reviewed",
       "distanceNm": 1.2,
       "crop": "/tmp/navaid-altitude-extract/HTZUK_KNTRY.png",
-      "evidence": "Clean CVFR North crop and airway-table comparison agree: HTZUK->KNTRY uses 800, while KNTRY->HTZUK uses the 1200 connector marker. The nearby 1600 labels belong to the coastal ARENA/HTZUK continuation."
+      "evidence": "Maintainer correction: HTZUK->KNTRY (Country Club) is 1200 and one-way; the reverse KNTRY->HTZUK is blocked. Supersedes the earlier 800/1200 airway-table reading."
     },
     {
       "segment": "IKKEA-LLRS",

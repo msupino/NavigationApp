@@ -196,8 +196,9 @@ test.describe('cvfr-leg-altitude.json scaffold', () => {
       outboundAltitude: 3000,
     });
     expect(byName.get('HTZUK-KNTRY')).toMatchObject({
-      inboundAltitude: 800,
-      outboundAltitude: 1200,
+      inboundAltitude: 1200,
+      outboundAltitude: null,
+      oneWay: true,
     });
     expect(byName.get('HTZUK-RIDNG')).toMatchObject({
       inboundAltitude: 800,
