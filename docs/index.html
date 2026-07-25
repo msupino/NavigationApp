@@ -17,6 +17,8 @@
   <meta name="apple-mobile-web-app-title" content="NavAid">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="NavAid">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="he_IL">
   <meta property="og:title" content="NavAid — CVFR Israel Map Navigation Aid &amp; Flight Planner">
   <meta property="og:description" content="CVFR Israel map navigation aid for pilots. Plan routes on the Israeli aeronautical chart with waypoints, headings, distances, times and flight-plan tools.">
   <meta property="og:url" content="https://navaid.supino.org/">
@@ -56,7 +58,7 @@
         "applicationSubCategory": "Aviation flight planning",
         "operatingSystem": "Any (web browser)",
         "browserRequirements": "Requires a modern browser with HTML5 Canvas support.",
-        "keywords": ["CVFR Israel map navigation aid", "CVFR", "flight planning", "Israel aviation", "navigation map", "aeronautical chart", "VFR", "IFR", "pilot tools", "ILS", "waypoints"],
+        "keywords": ["CVFR Israel map navigation aid", "CVFR", "flight planning", "Israel aviation", "navigation map", "aeronautical chart", "VFR", "IFR", "pilot tools", "ILS", "waypoints", "מתכנן טיסה", "CVFR ישראל", "תרשים אווירי ישראלי", "ניווט טיסה", "תכנון מסלול טיסה", "נקודות דיווח VFR", "מפת ניווט אווירי", "טיסה ויזואלית", "רישיון טייס פרטי", "שדות תעופה ישראל", "ציוני ניווט"],
         "featureList": [
           "Interactive Israeli CVFR / VFR aeronautical chart base maps",
           "Waypoint, leg, and note drawing with magnetic headings and distances",
@@ -121,7 +123,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=430">
+  <link rel="stylesheet" href="app/style.css?v=432">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -758,7 +760,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=430';
+      var v = '?v=432';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
