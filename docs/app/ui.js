@@ -4752,6 +4752,11 @@ function refreshMapAfterToolbarModeChange() {
     if (toolbarUsesDesktopMenu() && e.key === 'Escape') closeDesktopMenus();
   });
   if (toolbar) {
+    // Commands that close the desktop submenu after opening their modal. EVERY
+    // modal-opening Charts-section item is listed so the submenu closes
+    // uniformly whenever any chart item is opened (previously sigwx-btn/pwx-btn/
+    // sigmet-btn/notam-list-btn/lsa-list-btn/mosaic-btn were missing, leaving
+    // the submenu open behind those — the bug this fixes).
     const closeAfterCommandIds = new Set([
       'search-trigger',
       'route-templates',
@@ -4759,6 +4764,12 @@ function refreshMapAfterToolbarModeChange() {
       'freq-table',
       'alt-pairs',
       'charts',
+      'sigwx-btn',
+      'pwx-btn',
+      'sigmet-btn',
+      'notam-list-btn',
+      'lsa-list-btn',
+      'mosaic-btn',
       'load',
       'route-library',
       'share',
