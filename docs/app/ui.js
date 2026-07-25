@@ -4726,6 +4726,9 @@ function refreshMapAfterToolbarModeChange() {
         }
       }
       if (toolbarUsesDesktopMenu() && e.key === 'Escape') {
+        // A modal (e.g. a Charts item) is open → let its own Escape close just
+        // the modal and leave the submenu open behind it.
+        if (document.querySelector('.modal-back')) return;
         e.preventDefault();
         closeDesktopMenus();
         head.focus();
@@ -4734,6 +4737,7 @@ function refreshMapAfterToolbarModeChange() {
   }
   document.addEventListener('pointerdown', e => {
     if (e.target && e.target.closest && e.target.closest('#toolbar')) return;
+    if (document.querySelector('.modal-back')) return;   // keep the submenu open behind a modal
     if (toolbarUsesDesktopMenu()) {
       if (toolbar && toolbar.classList.contains('multi-open')) return;
       closeDesktopMenus();
@@ -4746,19 +4750,23 @@ function refreshMapAfterToolbarModeChange() {
   document.addEventListener('click', e => {
     if (toolbarUsesDesktopMenu()) return;
     if (e.target && e.target.closest && e.target.closest('#toolbar')) return;
+    if (document.querySelector('.modal-back')) return;   // keep the section open behind a modal
     if (anySectionOpen()) window.closeToolbarMenus();
   });
   document.addEventListener('keydown', e => {
-    if (toolbarUsesDesktopMenu() && e.key === 'Escape') closeDesktopMenus();
+    if (!toolbarUsesDesktopMenu() || e.key !== 'Escape') return;
+    if (document.querySelector('.modal-back')) return;   // modal Escape closes only the modal
+    closeDesktopMenus();
   });
   if (toolbar) {
+    // Commands that close the desktop menu after opening. The Charts items
+    // (freq-table / alt-pairs / charts) are intentionally NOT here: their
+    // submenu stays open behind the chart modal so Escape/closing the chart
+    // returns to it — uniform across all three.
     const closeAfterCommandIds = new Set([
       'search-trigger',
       'route-templates',
       'plan',
-      'freq-table',
-      'alt-pairs',
-      'charts',
       'load',
       'route-library',
       'share',
