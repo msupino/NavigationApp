@@ -4759,14 +4759,14 @@ function refreshMapAfterToolbarModeChange() {
     closeDesktopMenus();
   });
   if (toolbar) {
-    // Commands that close the desktop menu after opening. The Charts items
-    // (freq-table / alt-pairs / charts) are intentionally NOT here: their
-    // submenu stays open behind the chart modal so Escape/closing the chart
-    // returns to it — uniform across all three.
+    // Commands that close the desktop menu after opening. NONE of the Charts
+    // section's items are here (freq-table, alt-pairs, charts, route-templates,
+    // plan, sigwx, pwx, sigmet, notam, lsa, mosaic, …): their submenu stays
+    // open behind the modal so Escape/closing it returns to the submenu —
+    // uniform across every chart-menu item. Only standalone actions from other
+    // sections close the menu.
     const closeAfterCommandIds = new Set([
       'search-trigger',
-      'route-templates',
-      'plan',
       'load',
       'route-library',
       'share',
