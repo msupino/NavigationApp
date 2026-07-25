@@ -765,7 +765,6 @@ function _materialiseDefaultCumLabel(legIdx) {
   const a = proj(state.waypoints[legIdx]);
   const b = proj(state.waypoints[legIdx + 1]);
   if (!a || !b) return;
-  const legLen = Math.hypot(b.x - a.x, b.y - a.y);
   const sc = legZoomScale() || 1;
   const perpPx = cumDefaultLabelPerp();
   leg.cumLabel = { a: o.a || 0, p: perpPx / sc, _m: 1 };
@@ -828,7 +827,6 @@ function _materialiseDefaultCumLabelRet(legIdx) {
   const a = proj(state.waypoints[legIdx]);
   const b = proj(state.waypoints[legIdx + 1]);
   if (!a || !b) return;
-  const legLen = Math.hypot(b.x - a.x, b.y - a.y);
   const sc = legZoomScale() || 1;
   const perpPx = cumDefaultLabelPerp();
   leg.cumLabelRet = { a: o.a || 0, p: -perpPx / sc, _m: 1 };  // default is the -perp side
