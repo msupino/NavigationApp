@@ -712,16 +712,25 @@ function _materialiseDefaultLegLabel(legIdx, which) {
   leg[key] = { a: o.a || 0, p: perpPx / sc, _m: 1 };
 }
 function hitLegLabel(px, py) {
-  // #83: scale the hit radius with the same zoom + legArrowSize factor that
-  // sizes the drawn marker (see drawLegArrow in draw.js), so the hit zone
-  // tracks the visual size. Floor at 18 px keeps touch ergonomics.
-  const hit = Math.max(tune('hitLegLabelMinPx'), tune('hitLegLabelScalePx') *
-    ((typeof kiteDrawScale === 'function') ? kiteDrawScale() : legZoomScale()));
+  // The kite is a wide rectangle+triangle, not a disc — a circular hit zone
+  // only covered the middle, so the enlarged kite could only be grabbed there.
+  // Test the kite's actual ROTATED footprint (its full length × height at the
+  // current draw scale) plus a small touch margin, in the leg's local frame.
+  const sc = (typeof kiteDrawScale === 'function') ? kiteDrawScale() : legZoomScale();
+  const m = tune('hitLegLabelMinPx') / 2;   // touch margin / floor
+  const halfL = (tune('legKiteCellWidthPx') * 2 + tune('legKiteTriangleLenPx')) * sc / 2 + m;
+  const halfW = tune('legKiteHeightPx') * sc / 2 + m;
   for (let i = 0; i < state.legs.length; i++) {
+    const f = legFrame(i);
+    if (!f) continue;
     for (const which of ['in', 'out']) {
       if (which === 'out' && (!showReturn || !legAllowsReturn(i))) continue;
       const c = legLabelCenter(i, which);
-      if (c && Math.hypot(c.x - px, c.y - py) <= hit) return { i, which };
+      if (!c) continue;
+      const rx = px - c.x, ry = py - c.y;
+      const along = rx * f.dx + ry * f.dy;   // project onto the leg axis
+      const perp = rx * f.nx + ry * f.ny;     // and its perpendicular
+      if (Math.abs(along) <= halfL && Math.abs(perp) <= halfW) return { i, which };
     }
   }
   return null;
@@ -761,11 +770,33 @@ function _materialiseDefaultCumLabel(legIdx) {
   const perpPx = cumDefaultLabelPerp();
   leg.cumLabel = { a: o.a || 0, p: perpPx / sc, _m: 1 };
 }
+// Point inside a rotated box: center (cx,cy), unit along-axis (ux,uy) toward
+// `anchor`, half-length halfL, half-height halfW.
+function _pointInKiteBox(px, py, cx, cy, ax, ay, halfL, halfW) {
+  let ux = ax - cx, uy = ay - cy;
+  const len = Math.hypot(ux, uy) || 1;
+  ux /= len; uy /= len;
+  const rx = px - cx, ry = py - cy;
+  const along = rx * ux + ry * uy;
+  const perp = rx * (-uy) + ry * ux;
+  return Math.abs(along) <= halfL && Math.abs(perp) <= halfW;
+}
+function _cumKiteHalfDims() {
+  const sc = (typeof cumKiteDrawScale === 'function') ? cumKiteDrawScale() : legZoomScale();
+  const m = tune('hitCumLabelMinPx') / 2;
+  return {
+    halfL: (tune('cumKiteCellWidthPx') + tune('cumKiteTriangleLenPx')) * sc / 2 + m,
+    halfW: tune('cumKiteHeightPx') * sc / 2 + m,
+  };
+}
 function hitCumLabel(px, py) {
-  const hit = Math.max(tune('hitCumLabelMinPx'), tune('hitCumLabelScalePx') * ((typeof kiteDrawScale === 'function') ? kiteDrawScale() : legZoomScale()));
+  // Elongated pentagon oriented toward B — test its rotated footprint, not a
+  // circle (which only covered the middle of the enlarged kite).
+  const { halfL, halfW } = _cumKiteHalfDims();
   for (let i = 0; i < state.legs.length; i++) {
     const c = cumLabelCenter(i);
-    if (c && Math.hypot(c.x - px, c.y - py) <= hit) return { i };
+    const b = state.waypoints[i + 1] && proj(state.waypoints[i + 1]);
+    if (c && b && _pointInKiteBox(px, py, c.x, c.y, b.x, b.y, halfL, halfW)) return { i };
   }
   return null;
 }
@@ -834,11 +865,12 @@ function setCumLabelFromPoint(legIdx, isReturn, px, py) {
 }
 function hitCumLabelRet(px, py) {
   if (!showReturn) return null;          // return kite only drawn with the return path
-  const hit = Math.max(tune('hitCumLabelMinPx'), tune('hitCumLabelScalePx') * ((typeof kiteDrawScale === 'function') ? kiteDrawScale() : legZoomScale()));
+  const { halfL, halfW } = _cumKiteHalfDims();
   for (let i = 0; i < state.legs.length; i++) {
     if (!legAllowsReturn(i)) continue;
     const c = cumLabelRetCenter(i);
-    if (c && Math.hypot(c.x - px, c.y - py) <= hit) return { i };
+    const a = state.waypoints[i] && proj(state.waypoints[i]);   // return kite points toward A
+    if (c && a && _pointInKiteBox(px, py, c.x, c.y, a.x, a.y, halfL, halfW)) return { i };
   }
   return null;
 }
