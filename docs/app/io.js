@@ -6608,6 +6608,7 @@ function simStart() {
   if (_simInterval) return;
   simOn = true;
   window.simAircraft = null;
+  if (typeof resetHeadingPredictor === 'function') resetHeadingPredictor();
   try { localStorage.setItem('navaid.simOn', '1'); } catch (e) { /* */ }
   _simFetch();
   _simInterval = setInterval(_simFetch, 1000);

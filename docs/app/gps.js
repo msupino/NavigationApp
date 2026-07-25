@@ -167,6 +167,7 @@ function startLiveLocation() {
   if (gpsLiveOn) return;
   if (!navigator.geolocation && !_bgGeo()) { alert(S.gpsUnsupported || 'GPS is not available in this browser.'); return; }
   gpsLiveOn = true; _gpsLivePrev = null;
+  if (typeof resetHeadingPredictor === 'function') resetHeadingPredictor();
   gpsLiveWatchId = gpsStartWatch(onLivePosition, onGpsLiveError,
     S.gpsLiveNotifTitle || 'NavAid location', S.gpsLiveNotifText || 'Showing your position on the map');
   scheduleDraw();

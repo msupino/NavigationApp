@@ -725,6 +725,11 @@ function hitLegLabel(px, py) {
     if (!f) continue;
     for (const which of ['in', 'out']) {
       if (which === 'out' && (!showReturn || !legAllowsReturn(i))) continue;
+      // A blocked inbound one-way leg draws NO nav kite (see draw.js) — so it must
+      // not be hit-testable either, or it leaves an invisible clickable/draggable
+      // kite (e.g. HTZUK→KNTRY).
+      if (which === 'in' && typeof legAltitudeIsBlocked === 'function' &&
+          legAltitudeIsBlocked(state.legs[i], 'inboundAltitude')) continue;
       const c = legLabelCenter(i, which);
       if (!c) continue;
       const rx = px - c.x, ry = py - c.y;
