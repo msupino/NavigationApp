@@ -149,6 +149,12 @@ function drawOwnShip(pos, hdg) {
 // valid heading is remembered and reused (the line freezes rather than flicker).
 const HEADING_LINE_MARKS_NM = [2, 5, 10];
 let lastOwnHeadingDeg = null;
+// Clear the frozen predictor heading when the own-ship SOURCE changes (live GPS
+// start, sim start). Without this, restarting live location while parked (GPS
+// course goes null at zero groundspeed → falls back to the last heading) points
+// confidently at a stale course, and switching sim↔live leaks one source's
+// heading into the other.
+function resetHeadingPredictor() { lastOwnHeadingDeg = null; }
 function drawHeadingLine(pos, hdg) {
   if (!pos) return;
   const h = Number.isFinite(hdg) ? hdg : lastOwnHeadingDeg;
