@@ -334,11 +334,26 @@ function collectSyncableSettings() {
 // anything actually changed.
 function applySyncableSettings(values) {
   if (!values || typeof values !== 'object') return false;
+  // Some allowlisted toggles are gist-controlled: applyDefaultVisibility only
+  // honors the gist while the key is null (non-null = an explicit user choice).
+  // Blindly pinning an inbound value that merely equals the current default would
+  // freeze this device on it, permanently opting it out of future gist changes.
+  // So for those keys we write only genuine deviations; when the inbound value
+  // matches the gist default we clear the key, keeping it gist-controlled.
+  const gistDefault = {};
+  const map = (typeof NavAid === 'object' && NavAid && NavAid.defaultVisibilityMap) || [];
+  if (typeof tune === 'function') {
+    for (const row of map) gistDefault[row[1]] = tune(row[2]) ? '1' : '0';
+  }
   let changed = false;
   for (const k of GDRIVE_SETTINGS_KEYS) {
     if (!Object.prototype.hasOwnProperty.call(values, k)) continue;
     const next = values[k];
     if (typeof next !== 'string') continue;
+    if (Object.prototype.hasOwnProperty.call(gistDefault, k) && next === gistDefault[k]) {
+      if (_lsGet(k) !== null) { try { localStorage.removeItem(k); } catch (e) { /* */ } changed = true; }
+      continue;
+    }
     if (_lsGet(k) !== next) { _lsSet(k, next); changed = true; }
   }
   return changed;
@@ -358,8 +373,16 @@ function mergeSettings(local, remote) {
 function _localSettingsBlob() {
   const values = collectSyncableSettings();
   const cur = JSON.stringify(values);
-  const changedLocally = cur !== _lsGet(SETTINGS_SNAP_KEY);
-  const updatedAt = changedLocally ? Date.now() : (+_lsGet(SETTINGS_SYNCED_AT_KEY) || 0);
+  const snap = _lsGet(SETTINGS_SNAP_KEY);
+  // A device that has never completed a sync (snapshot unseeded) has no baseline
+  // proving its settings are newer than a peer's. Claiming Date.now() here let a
+  // fresh device outrank — and overwrite — the very settings it was meant to
+  // receive (the exact inverse of the feature). Until the first sync seeds a
+  // snapshot, this device's blob carries updatedAt 0, so any real remote wins;
+  // only when NO remote exists does it establish the file (stamped at upload).
+  const changedLocally = snap !== null && cur !== snap;
+  const updatedAt = snap === null ? 0
+    : (changedLocally ? Date.now() : (+_lsGet(SETTINGS_SYNCED_AT_KEY) || 0));
   return { values, cur, updatedAt, changedLocally };
 }
 
@@ -403,7 +426,11 @@ function gdriveUploadJson(fileId, name, obj) {
 // Resolves { applied } — true when newer remote settings were written locally.
 function _gdriveSyncSettingsOnce() {
   return gdriveFindNamed(GDRIVE_SETTINGS_FILE).then(file => {
-    const remoteP = file ? gdriveDownloadJson(file.id).catch(() => null) : Promise.resolve(null);
+    // Do NOT swallow a download error into "no remote": a transient 500/offline
+    // blip would make local win and PATCH over the other device's settings. Let
+    // it reject so the sync aborts instead of clobbering (same stance the route
+    // path takes — throw on a bad read rather than overwrite).
+    const remoteP = file ? gdriveDownloadJson(file.id) : Promise.resolve(null);
     return remoteP.then(remote => {
       const local = _localSettingsBlob();
       const localBlob = { updatedAt: local.updatedAt, values: local.values };
@@ -415,10 +442,15 @@ function _gdriveSyncSettingsOnce() {
         _lsSet(SETTINGS_SYNCED_AT_KEY, String((+remote.updatedAt) || Date.now()));
         return { applied: changed };
       }
-      // Local wins (or no remote): push local up and remember what we synced.
+      // Local wins (or no remote): push local up and remember what we synced. A
+      // first-ever push (no baseline → updatedAt 0) stamps now so the file it
+      // establishes outranks the next fresh device — and so the uploaded blob and
+      // our local syncedAt agree (they previously diverged: 0 up, now local).
+      const stamp = localBlob.updatedAt || Date.now();
+      localBlob.updatedAt = stamp;
       return gdriveUploadJson(file && file.id, GDRIVE_SETTINGS_FILE, localBlob).then(() => {
         _lsSet(SETTINGS_SNAP_KEY, local.cur);
-        _lsSet(SETTINGS_SYNCED_AT_KEY, String(localBlob.updatedAt || Date.now()));
+        _lsSet(SETTINGS_SYNCED_AT_KEY, String(stamp));
         return { applied: false };
       });
     });

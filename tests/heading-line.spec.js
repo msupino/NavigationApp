@@ -105,3 +105,22 @@ test('draws nothing when there has never been a valid heading', async ({ page })
   });
   expect(none).toBeNull();
 });
+
+test('resetHeadingPredictor clears the frozen heading so a parked restart draws nothing', async ({ page }) => {
+  await boot(page);
+  const out = await page.evaluate(() => {
+    window.gpsLiveOn = true;
+    // Establish a course; without a reset, a later null-course fix would freeze
+    // at this 200° (the stale-heading bug on source stop/restart or sim↔live).
+    window.gpsOwn = { lat: 32.1, lng: 34.9, hdg: 200 };
+    drawOwnShip(window.gpsOwn, 200);
+    const before = window.__headingLine && window.__headingLine.heading;
+    resetHeadingPredictor();                 // the source-change hook (live/sim start)
+    window.__headingLine = null;
+    window.gpsOwn = { lat: 32.1, lng: 34.9, hdg: null };
+    drawOwnShip(window.gpsOwn, null);         // parked: no course yet
+    return { before, after: window.__headingLine };
+  });
+  expect(out.before).toBe(200);              // heading was established
+  expect(out.after).toBeNull();              // reset dropped it — 200° did not persist
+});

@@ -107,6 +107,70 @@ test('the route library shows a "Sync settings too" checkbox that persists the o
   expect(await page.evaluate(() => localStorage.getItem('navaid.syncSettings'))).toBe('1');
 });
 
+test('a fresh device (no snapshot) does not outrank an existing remote', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // Brand-new device: settings present, but the first sync never ran, so the
+    // snapshot is unseeded. It must NOT claim Date.now() and beat the remote it
+    // was set up to receive (the exact inverse the feature would otherwise cause).
+    localStorage.removeItem('navaid.settingsSnapshot');
+    localStorage.removeItem('navaid.settingsSyncedAt');
+    localStorage.setItem('navaid.layer', 'nav');
+    const local = _localSettingsBlob();
+    const remote = { updatedAt: 1000, values: { 'navaid.layer': 'cvfr' } };
+    return {
+      updatedAt: local.updatedAt,
+      winner: mergeSettings({ updatedAt: local.updatedAt, values: local.values }, remote).winner,
+    };
+  });
+  expect(r.updatedAt).toBe(0);        // no baseline → 0, not Date.now()
+  expect(r.winner).toBe('remote');    // receives the other device's settings
+});
+
+test('an established device with local edits stamps a real timestamp and wins over an older remote', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    localStorage.setItem('navaid.layer', 'nav');
+    localStorage.setItem('navaid.settingsSnapshot', JSON.stringify({ 'navaid.layer': 'heli' })); // differs → changed
+    localStorage.setItem('navaid.settingsSyncedAt', '500');
+    const local = _localSettingsBlob();
+    const remote = { updatedAt: 1000, values: {} };
+    return {
+      changed: local.changedLocally,
+      updatedAt: local.updatedAt,
+      winner: mergeSettings({ updatedAt: local.updatedAt, values: local.values }, remote).winner,
+    };
+  });
+  expect(r.changed).toBe(true);
+  expect(r.updatedAt).toBeGreaterThan(1000);   // Date.now() ≫ the old remote
+  expect(r.winner).toBe('local');
+});
+
+test('an inbound toggle equal to the gist default is not pinned (stays gist-controlled)', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const row = NavAid.defaultVisibilityMap.find(x => x[1] === 'navaid.showMsa');
+    const def = tune(row[2]) ? '1' : '0';
+    const opp = def === '1' ? '0' : '1';
+    // Inbound == gist default → must NOT create the key (gist keeps control).
+    localStorage.removeItem('navaid.showMsa');
+    applySyncableSettings({ 'navaid.showMsa': def });
+    const afterDefault = localStorage.getItem('navaid.showMsa');
+    // A genuine deviation IS pinned as an explicit choice.
+    applySyncableSettings({ 'navaid.showMsa': opp });
+    const afterDeviation = localStorage.getItem('navaid.showMsa');
+    // Inbound == default over a previously pinned key clears it back to gist.
+    localStorage.setItem('navaid.showMsa', opp);
+    const changed = applySyncableSettings({ 'navaid.showMsa': def });
+    const afterClear = localStorage.getItem('navaid.showMsa');
+    return { def, opp, afterDefault, afterDeviation, changed, afterClear };
+  });
+  expect(r.afterDefault).toBeNull();       // gist default not pinned
+  expect(r.afterDeviation).toBe(r.opp);    // deviation pinned
+  expect(r.changed).toBe(true);            // clearing counts as a change
+  expect(r.afterClear).toBeNull();         // pinned key cleared → follows gist again
+});
+
 test('settings sync is opt-in and off by default', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {
