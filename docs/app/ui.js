@@ -4726,9 +4726,6 @@ function refreshMapAfterToolbarModeChange() {
         }
       }
       if (toolbarUsesDesktopMenu() && e.key === 'Escape') {
-        // A modal (e.g. a Charts item) is open → let its own Escape close just
-        // the modal and leave the submenu open behind it.
-        if (document.querySelector('.modal-back')) return;
         e.preventDefault();
         closeDesktopMenus();
         head.focus();
@@ -4737,7 +4734,6 @@ function refreshMapAfterToolbarModeChange() {
   }
   document.addEventListener('pointerdown', e => {
     if (e.target && e.target.closest && e.target.closest('#toolbar')) return;
-    if (document.querySelector('.modal-back')) return;   // keep the submenu open behind a modal
     if (toolbarUsesDesktopMenu()) {
       if (toolbar && toolbar.classList.contains('multi-open')) return;
       closeDesktopMenus();
@@ -4750,23 +4746,30 @@ function refreshMapAfterToolbarModeChange() {
   document.addEventListener('click', e => {
     if (toolbarUsesDesktopMenu()) return;
     if (e.target && e.target.closest && e.target.closest('#toolbar')) return;
-    if (document.querySelector('.modal-back')) return;   // keep the section open behind a modal
     if (anySectionOpen()) window.closeToolbarMenus();
   });
   document.addEventListener('keydown', e => {
-    if (!toolbarUsesDesktopMenu() || e.key !== 'Escape') return;
-    if (document.querySelector('.modal-back')) return;   // modal Escape closes only the modal
-    closeDesktopMenus();
+    if (toolbarUsesDesktopMenu() && e.key === 'Escape') closeDesktopMenus();
   });
   if (toolbar) {
-    // Commands that close the desktop menu after opening. NONE of the Charts
-    // section's items are here (freq-table, alt-pairs, charts, route-templates,
-    // plan, sigwx, pwx, sigmet, notam, lsa, mosaic, …): their submenu stays
-    // open behind the modal so Escape/closing it returns to the submenu —
-    // uniform across every chart-menu item. Only standalone actions from other
-    // sections close the menu.
+    // Commands that close the desktop submenu after opening their modal. EVERY
+    // modal-opening Charts-section item is listed so the submenu closes
+    // uniformly whenever any chart item is opened (previously sigwx-btn/pwx-btn/
+    // sigmet-btn/notam-list-btn/lsa-list-btn/mosaic-btn were missing, leaving
+    // the submenu open behind those — the bug this fixes).
     const closeAfterCommandIds = new Set([
       'search-trigger',
+      'route-templates',
+      'plan',
+      'freq-table',
+      'alt-pairs',
+      'charts',
+      'sigwx-btn',
+      'pwx-btn',
+      'sigmet-btn',
+      'notam-list-btn',
+      'lsa-list-btn',
+      'mosaic-btn',
       'load',
       'route-library',
       'share',
