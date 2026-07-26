@@ -246,6 +246,7 @@ NavAid.tuningDefaults = {
 
   hitWaypointExtraPx: { value: 6, min: 0, max: 40, step: 1, label: 'Waypoint hit extra' },
   hitLegPx: { value: 8, min: 1, max: 60, step: 1, label: 'Leg line hit width' },
+  defaultLegSpeedKt: { value: 90, min: 20, max: 400, step: 5, label: 'Default leg speed (kt)' },
   hitLegLabelMinPx: { value: 18, min: 1, max: 80, step: 1, label: 'Leg label hit min' },
   hitCumLabelMinPx: { value: 18, min: 1, max: 80, step: 1, label: 'Cum label hit min' },
 
@@ -492,6 +493,7 @@ NavAid.tuningGroups = [
   { name: 'Frequency changes', keys: ['commChangeRingRadiusPx', 'commChangeRingWidthPx', 'commChangeRingColor', 'commChangeNoteLatOffset', 'commChangeNoteLngOffset', 'commChangeArrowStartGapPx', 'commChangeArrowWidthPx', 'commChangeArrowColor', 'commChangeArrowLineCap', 'commChangeArrowLineJoin', 'commChangeArrowMiterLimit', 'commChangeArrowHaloPx', 'commChangeArrowHaloColor', 'commChangeArrowHaloAlpha', 'commChangeSelectedColor', 'commChangeSelectedAlpha', 'commChangeSelectedWidthAddPx', 'commChangeArrowBoltPx', 'commChangeArrowBoltAngleDeg', 'commChangeArrowBend1Along', 'commChangeArrowBend2Along', 'commChangeNameFontPx', 'commChangeFreqFontPx', 'commChangeTextColor', 'commChangeTextHaloColor', 'commChangeTextHaloAlpha', 'commChangeTextAlong', 'commChangeTextGapPx', 'commChangeNameHaloWidthPx', 'commChangeFreqHaloWidthPx'] },
   { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'notePrintWidthMm', 'notePrintHeightMm', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx', 'noteDefaultFillColor'] },
   { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimColor', 'pageFrameScrimAlpha', 'pageFrameHitPx', 'a4x2CutLineWidthPx', 'a4x2CutDashOnPx', 'a4x2CutDashOffPx', 'a4x2CutLineColor', 'a4x2CutLineAlpha', 'a4x2MarkLabelMm', 'a4x2MarkGuideMm', 'a4x2MarkLabelBgColor', 'a4x2MarkLabelInkColor'] },
+  { name: 'Route defaults', keys: ['defaultLegSpeedKt'] },
   { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitLegPx', 'hitLegLabelMinPx', 'hitCumLabelMinPx'] },
   { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs', 'altPairFocusLineAlpha', 'altPairFocusDotAlpha'] },
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx'] },
@@ -1536,13 +1538,20 @@ function _defaultLegLabels() {
     cumLabelRet: { a: 0, _default: 1, _m: 1 },
   };
 }
+// Seed speed for a leg with nothing to inherit from. Gistable, rather than a literal
+// 90 buried in newLeg().
+const _defaultLegSpeedKt = () => {
+  const v = (typeof tune === 'function') ? Number(tune('defaultLegSpeedKt')) : NaN;
+  return Number.isFinite(v) && v > 0 ? v : 90;
+};
 const newLeg = () => {
   const d = _defaultLegLabels();
+  const seed = _defaultLegSpeedKt();
   return {
     inboundAltitude: NaN,
     outboundAltitude: NaN,
-    flightSpeed: 90,
-    outboundSpeed: 90,
+    flightSpeed: seed,
+    outboundSpeed: seed,
     _legAltitudeAuto: 1,           // fresh leg; safe to fill from dataset
     inLabel: d.inLabel,                  // marker offset: along leg, perpendicular
     outLabel: d.outLabel,
@@ -2546,7 +2555,17 @@ function syncLegs() {
   const need = Math.max(0, state.waypoints.length - 1);
   while (state.legs.length < need) {
     const i = state.legs.length;
-    state.legs.push(newLeg());
+    const leg = newLeg();
+    // Continue the route at the speed already being flown. Splitting a leg has always
+    // inherited it (splitLegCopy), but appending reset to the default — so extending a
+    // 110 kt route silently produced a 90 kt final leg, with the wrong ETE and fuel.
+    const prev = i > 0 ? state.legs[i - 1] : null;
+    if (prev && Number.isFinite(prev.flightSpeed) && prev.flightSpeed > 0) {
+      leg.flightSpeed = prev.flightSpeed;
+      leg.outboundSpeed = Number.isFinite(prev.outboundSpeed) && prev.outboundSpeed > 0
+        ? prev.outboundSpeed : prev.flightSpeed;
+    }
+    state.legs.push(leg);
     applyLegAltitudeToLeg(i);
   }
   while (state.legs.length > need) state.legs.pop();
