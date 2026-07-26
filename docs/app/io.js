@@ -2010,20 +2010,24 @@ function showFlightPlan() {
   // Flight-plan columns are tagged once so the selector, CSV export, print
   // view, and nav-log clone all read the same visibility state.
   const baseHeaders = (S.fpHeaders || []).slice(0, 13);
+  // Displayed column titles, kept SEPARATE from `fpHeaders`. `fpHeaders` is the CSV
+  // export contract — the header row anything downstream keys on — so it must not move
+  // when a title is reworded. Anything missing here falls back to the export name.
+  const dispHeaders = (S.fpHeadersDisplay || []).slice(0, 13);
   const fpColumns = [
-    { key: 'seq', label: baseHeaders[0] || '#' },
-    { key: 'from', label: baseHeaders[1] || 'From' },
-    { key: 'to', label: baseHeaders[2] || 'To' },
-    { key: 'hdg', label: baseHeaders[3] || 'Hdg' },
-    { key: 'dist', label: baseHeaders[4] || 'Dist (NM)' },
-    { key: 'speed', label: baseHeaders[5] || 'Speed (kt)' },
-    { key: 'alt', label: baseHeaders[6] || 'Alt (ft)' },
-    { key: 'time', label: baseHeaders[7] || 'Time' },
-    { key: 'fuel', label: baseHeaders[8] || 'Fuel (gal)' },
-    { key: 'cumTime', label: baseHeaders[9] || 'Cum. time' },
-    { key: 'cumFuel', label: baseHeaders[10] || 'Cum. fuel' },
-    { key: 'radial', label: baseHeaders[11] || 'Radial', className: 'fp-vor-col' },
-    { key: 'dme', label: baseHeaders[12] || 'DME', className: 'fp-vor-col' },
+    { key: 'seq', label: baseHeaders[0] || '#', display: dispHeaders[0] || '#' },
+    { key: 'from', label: baseHeaders[1] || 'From', display: dispHeaders[1] || 'From' },
+    { key: 'to', label: baseHeaders[2] || 'To', display: dispHeaders[2] || 'To' },
+    { key: 'hdg', label: baseHeaders[3] || 'Hdg', display: dispHeaders[3] || 'Hdg' },
+    { key: 'dist', label: baseHeaders[4] || 'Dist (NM)', display: dispHeaders[4] || 'Dist (NM)' },
+    { key: 'speed', label: baseHeaders[5] || 'Speed (kt)', display: dispHeaders[5] || 'Speed (kt)' },
+    { key: 'alt', label: baseHeaders[6] || 'Alt (ft)', display: dispHeaders[6] || 'Alt (ft)' },
+    { key: 'time', label: baseHeaders[7] || 'Time', display: dispHeaders[7] || 'Time' },
+    { key: 'fuel', label: baseHeaders[8] || 'Fuel (gal)', display: dispHeaders[8] || 'Fuel (gal)' },
+    { key: 'cumTime', label: baseHeaders[9] || 'Cum. time', display: dispHeaders[9] || 'Cum. time' },
+    { key: 'cumFuel', label: baseHeaders[10] || 'Cum. fuel', display: dispHeaders[10] || 'Cum. fuel' },
+    { key: 'radial', label: baseHeaders[11] || 'Radial', display: dispHeaders[11] || 'Radial', className: 'fp-vor-col' },
+    { key: 'dme', label: baseHeaders[12] || 'DME', display: dispHeaders[12] || 'DME', className: 'fp-vor-col' },
   ];
   if (freqActive) fpColumns.push({ key: 'freq', label: S.fpFreq || 'Freq', className: 'fp-freq-col' });
   fpColumns.push({ key: 'delete', label: '', className: 'fp-del-col', control: true });
@@ -2134,9 +2138,11 @@ function showFlightPlan() {
   const buildHeadRow = trEl => {
     fpColumns.forEach(col => {
       const th = document.createElement('th');
-      th.textContent = col.label;
-      // Units as a tooltip, not in the label: the label doubles as the CSV column
-      // name, and "13:15" beside a Zulu clock otherwise reads as a clock time.
+      th.textContent = col.display || col.label;
+      // The CSV header row is scraped from these cells, so carry the stable export
+      // name explicitly. Without it, rewording a title silently rewrote the exported
+      // file's header and broke anything keyed on the old name.
+      th.dataset.csv = col.label || '';
       if (col.key === 'time' || col.key === 'cumTime') {
         th.title = S.fpTimeUnitsTitle || 'Elapsed time, mm:ss (not a clock time)';
       }
@@ -2671,7 +2677,9 @@ function showFlightPlan() {
   function flightPlanCsv() {
     const visibleHeaders = Array.from(table.querySelectorAll('thead th'))
       .filter(th => !(th.classList && th.classList.contains('fp-col-hidden')))
-      .map(th => th.textContent || '')
+      // data-csv is the stable export name; the visible text may carry units or other
+      // wording that must never reach the file.
+      .map(th => (th.dataset && th.dataset.csv) || th.textContent || '')
       .filter(h => h.trim() !== '');
     const columnCount = visibleHeaders.length;
     const csvCell = value => {

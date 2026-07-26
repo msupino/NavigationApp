@@ -860,6 +860,9 @@ window.S = Object.assign({
   },
   errNoLegs: 'No legs yet — drop at least two waypoints first.',
   flightPlan: 'Flight plan',
+  // Shown in the table; fpHeaders stays the CSV export contract. Only the two time
+  // columns differ — "13:15" beside a Zulu clock reads as a clock time, not elapsed.
+  fpHeadersDisplay: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time (mm:ss)', 'Fuel (gal)', 'Cum. time (mm:ss)', 'Cum. fuel', 'Radial', 'DME', ''],
   fpHeaders: ['#', 'From', 'To', 'Hdg', 'Dist (NM)', 'Speed (kt)', 'Alt (ft)', 'Time', 'Fuel (gal)', 'Cum. time', 'Cum. fuel', 'Radial', 'DME', ''],
   // Printed PNG plan-card column headers — fixed kneeboard set.
   planColDestination: 'Destination',

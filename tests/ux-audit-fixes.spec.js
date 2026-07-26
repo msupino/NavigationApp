@@ -244,7 +244,9 @@ test('the flight-plan time columns state their units, without changing the CSV',
     showFlightPlan();
     await new Promise(r2 => setTimeout(r2, 200));
     const ths = [...document.querySelectorAll('.flight-table thead th')];
-    const time = ths.find(t => /^Time$/.test(t.textContent.trim()));
+    // The visible title now carries units (see fp-header-display-vs-csv.spec.js);
+    // the CSV contract is asserted separately below.
+    const time = ths.find(t => /^Time/.test(t.textContent.trim()));
     return { title: time && time.title, headers: S.fpHeaders.join(',') };
   });
   // "13:15" beside a Zulu clock reads as a clock time; it is mm:ss.
