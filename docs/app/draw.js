@@ -202,8 +202,8 @@ function drawHeadingLine(pos, hdg) {
     octx.stroke();
     const lx = m.x + px * (tick + gap), ly = m.y + py * (tick + gap);
     const label = String(nm);
-    octx.lineWidth = 3;
-    octx.strokeStyle = colorWithAlpha('#000000', 0.8);
+    octx.lineWidth = tune('liveHeadingTickHaloWidthPx');
+    octx.strokeStyle = colorWithAlpha(tune('liveHeadingTickHaloColor'), tune('liveHeadingTickHaloAlpha'));
     octx.strokeText(label, lx, ly);
     octx.fillStyle = tune('liveHeadingTextColor');
     octx.fillText(label, lx, ly);
@@ -801,7 +801,7 @@ function drawNotams() {
   const divCol = tune('notamDivertColor');
   const flashId = notamFlashId;
   const flashPulse = notamFlashPulse();
-  const flashCol = '#ffd400';
+  const flashCol = tune('notamFlashColor');
   for (const n of activeNotams()) {
     // Resolved route lines (named-fix closures / diversions). Closed = solid
     // NOTAM colour; diverted = dashed divert colour, drawn distinctly.
@@ -932,7 +932,7 @@ function drawNotamAirportMarkers() {
       octx.beginPath();
       octx.arc(p.x, p.y + 14, 15, 0, 2 * Math.PI);   // pulsing halo around the badge
       octx.lineWidth = 4;
-      octx.strokeStyle = colorWithAlpha('#ffd400', flashPulse);
+      octx.strokeStyle = colorWithAlpha(tune('notamFlashColor'), flashPulse);
       octx.stroke();
     }
     octx.beginPath();
@@ -942,8 +942,8 @@ function drawNotamAirportMarkers() {
     octx.lineWidth = 1.5;
     octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), 0.9);
     octx.stroke();
-    octx.fillStyle = '#fff';
-    octx.font = 'bold 11px sans-serif';
+    octx.fillStyle = tune('notamBadgeTextColor');
+    octx.font = 'bold ' + tune('notamBadgeFontPx') + 'px sans-serif';
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
     octx.fillText(String(byIcao[code].length), p.x, p.y + 14);
@@ -1288,7 +1288,8 @@ function drawAreas() {
     // every day); weekend = black outline + tan fill (Fri–Sat only). The locate
     // highlight overrides both with amber.
     octx.fillStyle = hl ? 'rgba(255,204,51,0.22)' : (wknd ? 'rgba(201,178,138,0.35)' : 'rgba(60,160,60,0.15)');
-    octx.strokeStyle = hl ? '#ffcc33' : (wknd ? '#2b2b2b' : '#3c8f3c');
+    octx.strokeStyle = hl ? tune('lsaHighlightColor')
+      : (wknd ? tune('lsaWeekendColor') : tune('lsaAlwaysColor'));
     octx.lineWidth = hl ? tune('lsaHighlightWidthPx') : tune('lsaLineWidthPx');
     octx.fill();
     octx.stroke();
@@ -1303,10 +1304,10 @@ function drawAreas() {
       const nm = areaLabel(a);
       if (!nm) continue;
       const s = proj(areaCentroid(a.coords));
-      octx.lineWidth = 2.5;
+      octx.lineWidth = tune('overlayLabelHaloWidthPx');
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
       octx.strokeText(nm, s.x, s.y);
-      octx.fillStyle = '#222';                       // neutral: reads over green + tan fills
+      octx.fillStyle = tune('lsaLabelColor');        // neutral: reads over green + tan fills
       octx.fillText(nm, s.x, s.y);
     }
   }
@@ -1846,7 +1847,7 @@ function drawVors(force) {
     (typeof inspectorVorRef === 'string' && inspectorVorRef) || vorRef;
   const selV = selIdent ? vors.find(v => v.ident === selIdent) : null;
   if (selV && selV.coverageNm > 0 && typeof notamCirclePoints === 'function') {
-    const pts = notamCirclePoints(selV.lat, selV.lng, selV.coverageNm, 96).map(c => proj({ lat: c[0], lng: c[1] }));
+    const pts = notamCirclePoints(selV.lat, selV.lng, selV.coverageNm, tune('vorRangeRingSteps')).map(c => proj({ lat: c[0], lng: c[1] }));
     octx.save();
     octx.beginPath();
     octx.moveTo(pts[0].x, pts[0].y);
@@ -1864,11 +1865,11 @@ function drawVors(force) {
       octx.font = `bold ${tune('vorLabelFontPx')}px sans-serif`;
       octx.textAlign = 'center';
       octx.textBaseline = 'bottom';
-      octx.lineWidth = 2.5;
+      octx.lineWidth = tune('overlayLabelHaloWidthPx');
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
-      octx.strokeText(txt, top.x, top.y - 3);
+      octx.strokeText(txt, top.x, top.y - tune('vorRangeRingLabelGapPx'));
       octx.fillStyle = colorWithAlpha(tune('vorRangeRingColor'), 1);
-      octx.fillText(txt, top.x, top.y - 3);
+      octx.fillText(txt, top.x, top.y - tune('vorRangeRingLabelGapPx'));
     }
     octx.restore();
   }
@@ -1896,7 +1897,7 @@ function drawVors(force) {
     if (showLabels) {
       const label = v.ident + '  ' + (typeof vorEffectiveFreq === 'function' ? vorEffectiveFreq(v) : v.freq);
       const lx = s.x + r + 6, ly = s.y;
-      octx.lineWidth = 2.5;
+      octx.lineWidth = tune('overlayLabelHaloWidthPx');
       octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
       octx.strokeText(label, lx, ly);
       octx.fillStyle = col;

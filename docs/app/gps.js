@@ -348,8 +348,14 @@ function stopGpsRecordingAndSave() {
 // the waypoint route. One track is shown at a time (showing another replaces
 // it); the shown id is persisted so the overlay survives a reload.
 var shownTracks = [];                 // [{ id, name, points:[{lat,lng,alt,t}], color }]
-const TRACK_COLORS = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4',
-                      '#008080', '#9a6324', '#000075'];
+// Palette for recorded GPS tracks. Driven by the gistable `gpsTrackColors` knob
+// (comma-separated); the literal list is only the fallback before tune() exists.
+const TRACK_COLORS_FALLBACK = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#008080', '#9a6324', '#000075'];  // FALLBACK only
+function trackColors() {
+  const raw = (typeof tune === 'function') ? tune('gpsTrackColors') : '';
+  const list = String(raw || '').split(',').map(c => c.trim()).filter(Boolean);
+  return list.length ? list : TRACK_COLORS_FALLBACK;
+}
 const SHOWN_TRACKS_KEY = 'navaid.tracks.shown';
 var _shownTracksBooted = false;
 
@@ -376,7 +382,8 @@ function trackPointsFromEntry(entry) {
 function isTrackShown(id) { return shownTracks.some(t => t.id === id); }
 function _nextTrackColor() {
   const used = new Set(shownTracks.map(t => t.color));
-  return TRACK_COLORS.find(c => !used.has(c)) || TRACK_COLORS[shownTracks.length % TRACK_COLORS.length];
+  const pal = trackColors();
+  return pal.find(c => !used.has(c)) || pal[shownTracks.length % pal.length];
 }
 function _addTrackOverlay(entry) {
   if (!entry || isTrackShown(entry.id)) return false;
@@ -494,10 +501,10 @@ function drawTracks() {
     const dot = (p, c) => {
       octx.beginPath(); octx.arc(p.x, p.y, 4, 0, 2 * Math.PI);
       octx.fillStyle = c; octx.fill();
-      octx.lineWidth = 1.5; octx.strokeStyle = '#fff'; octx.stroke();
+      octx.lineWidth = 1.5; octx.strokeStyle = tune('gpsTrackOutlineColor'); octx.stroke();
     };
-    dot(pts[0], '#0a0');                 // start = green
-    dot(pts[pts.length - 1], '#d00');    // end = red
+    dot(pts[0], tune('gpsTrackStartColor'));       // start
+    dot(pts[pts.length - 1], tune('gpsTrackEndColor'));  // end
   }
   octx.restore();
   if (typeof window !== 'undefined') window.__tracksDrawn = shownTracks.length;
