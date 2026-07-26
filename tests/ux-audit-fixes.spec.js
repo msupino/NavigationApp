@@ -13,20 +13,90 @@ async function boot(page, w, h) {
   });
 }
 
-test('an empty route shows a hint, and a plain map click starts the route', async ({ page }) => {
+test('the first click starts the route AND arms add mode, so clicks keep adding', async ({ page }) => {
   await boot(page);
-  // The core action had no discoverable entry point: a click did nothing and the add
-  // tool is two levels into a menu.
   await expect(page.locator('#empty-route-hint')).toBeVisible();
-  const r = await page.evaluate(() => {
+  const r = await page.evaluate(async () => {
     const before = state.waypoints.length;
     map.fire('click', { latlng: L.latLng(32.2, 34.9) });
-    return { before, after: state.waypoints.length, selected: state.selected && state.selected.type };
+    await new Promise(r2 => setTimeout(r2, 60));
+    const first = { n: state.waypoints.length, mode: state.mode };
+    // Arming the mode (rather than dropping one point) is the whole point: the next
+    // click has to keep adding, or the user is stuck after the first.
+    map.fire('click', { latlng: L.latLng(32.4, 35.0) });
+    await new Promise(r2 => setTimeout(r2, 60));
+    return { before, first, second: { n: state.waypoints.length, mode: state.mode } };
   });
   expect(r.before).toBe(0);
-  expect(r.after).toBe(1);              // the click itself starts the route
-  expect(r.selected).toBe('wp');        // and selects it, so the inspector explains it
-  await expect(page.locator('#empty-route-hint')).toHaveCount(0);   // hint retires
+  expect(r.first.n).toBe(1);
+  expect(r.first.mode).toBe('add');       // armed, not a one-shot
+  expect(r.second.n).toBe(2);             // keeps adding
+  await expect(page.locator('#mode-chip')).toBeVisible();
+  await expect(page.locator('#empty-route-hint')).toHaveCount(0);
+});
+
+test('a chart waypoint offers an explicit way onto the route', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    await loadNavWaypoints();
+    const i = navWP.findIndex(w => w.name === 'DEROR');
+    const out = {};
+    // Clicking a chart point used to open an info panel and stop there — the only
+    // route-building path was the add tool, two levels into a menu.
+    state.selected = { type: 'navwp', index: i }; draw(); showInspector();
+    await new Promise(r2 => setTimeout(r2, 60));
+    let btn = document.getElementById('insp-add-to-route');
+    out.emptyLabel = btn && btn.textContent;
+    btn.click();
+    await new Promise(r2 => setTimeout(r2, 60));
+    out.added = { n: state.waypoints.length, name: state.waypoints[0] && state.waypoints[0].name };
+    // Revisiting the same point must not offer a duplicate.
+    state.selected = { type: 'navwp', index: i }; showInspector();
+    await new Promise(r2 => setTimeout(r2, 60));
+    btn = document.getElementById('insp-add-to-route');
+    out.second = { label: btn && btn.textContent, disabled: btn && btn.disabled };
+    return out;
+  });
+  expect(r.emptyLabel).toMatch(/start route/i);     // wording adapts to an empty route
+  expect(r.added.n).toBe(1);
+  expect(r.added.name).toBe('DEROR');               // keeps the charted name
+  expect(r.second.disabled).toBe(true);
+  expect(r.second.label).toMatch(/already/i);
+});
+
+test('an airfield offers the same route action once a route exists', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    await loadAirfields();
+    state.waypoints = [{ lat: 32.1, lng: 34.9, name: 'A' }]; syncLegs();
+    state.selected = { type: 'airfield', index: 0 }; draw(); showInspector();
+    await new Promise(r2 => setTimeout(r2, 60));
+    const btn = document.getElementById('insp-add-to-route');
+    const before = state.waypoints.length;
+    btn.click();
+    await new Promise(r2 => setTimeout(r2, 60));
+    return { label: btn.textContent, before, after: state.waypoints.length };
+  });
+  expect(r.label).toMatch(/add to route/i);
+  expect(r.after).toBe(r.before + 1);
+});
+
+test('selecting a chart point still opens its inspector (the chooser is untouched)', async ({ page }) => {
+  await boot(page);
+  // An earlier attempt made an empty route bypass overlay hit-testing so the first
+  // click could land on a chart point. That also removed comm-change rings from the
+  // point chooser (they report type 'navwp' too) and stopped VOR/NOTAM inspection.
+  const r = await page.evaluate(async () => {
+    await loadVors();
+    state.waypoints = [];
+    state.selected = { type: 'vor', index: vors.findIndex(v => v.ident === 'ZFR') };
+    draw(); showInspector();
+    await new Promise(r2 => setTimeout(r2, 60));
+    return { hidden: document.getElementById('inspector').classList.contains('hidden'),
+             title: document.getElementById('insp-title').value };
+  });
+  expect(r.hidden).toBe(false);
+  expect(r.title).toMatch(/ZFR/);
 });
 
 test('the hint never swallows the click it asks for', async ({ page }) => {

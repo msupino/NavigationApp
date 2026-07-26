@@ -1133,6 +1133,31 @@ function populateInspectorVorSelect(sel, selected) {
   sel.value = selected || '';
 }
 
+// Chart points (nav waypoints, airfields) had no way onto the route: clicking one
+// opened an info panel and stopped there, so the only route-building path was the
+// add tool, two levels into a menu. This puts the action where the user already is.
+function appendAddToRouteButton(body, pt) {
+  if (!pt || !Number.isFinite(pt.lat) || !Number.isFinite(pt.lng)) return;
+  const empty = !state.waypoints || !state.waypoints.length;
+  const already = typeof routeOccupiesPoint === 'function' && routeOccupiesPoint(pt);
+  const btn = document.createElement('button');
+  btn.className = 'insp-btn';
+  btn.id = 'insp-add-to-route';
+  btn.textContent = already ? (S.alreadyOnRoute || '✓ Already on the route')
+    : empty ? (S.startRouteHere || '➕ Start route here')
+            : (S.addToRoute || '➕ Add to route');
+  btn.disabled = !!already;
+  btn.onclick = () => {
+    if (already) return;
+    state.waypoints.push({ lat: r5(pt.lat), lng: r5(pt.lng), name: pt.name || '' });
+    syncLegs();
+    state.selected = { type: 'wp', index: state.waypoints.length - 1 };
+    draw();
+    showInspector();
+  };
+  body.appendChild(btn);
+}
+
 // Published ENR 4.1 detail for a station, as compact key/value lines: what it is,
 // what to tune, when it runs, how far it is usable, and its limits. Shown on the
 // STATION's own inspector (select the VOR on the map) — that is where facts about
@@ -2508,6 +2533,7 @@ function showInspector() {
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     appendPointCoordinateRows(body, af);
     appendAirfieldDetailRows(body, af, title.value);
+    appendAddToRouteButton(body, af);
   } else if (state.selected.type === 'navwp') {
     const nw = navWP && navWP[state.selected.index];
     if (!nw) {
@@ -2525,6 +2551,7 @@ function showInspector() {
     appendNavWaypointCommChangeInfo(body, nw.name);
     appendSatelliteSnippet(body, nw, title.value);
     appendVorRadialRow(body, nw.lat, nw.lng);
+    appendAddToRouteButton(body, nw);
   } else {
     const wp = state.waypoints[state.selected.index];
     normalizeWaypointSequenceName(wp);
@@ -3486,19 +3513,13 @@ map.on('click', e => {
   }
   if (downHit) { downHit = false; return; }
   // NOTAM clicks are handled in mousedown (as overlay choices); see there.
-  // First waypoint: a plain click on an EMPTY route starts one. Clicking the map is
-  // the first thing anyone tries, and doing nothing (add-mode lives behind a menu)
-  // left a newcomer stuck on a loaded chart with no way in. Only while the route is
-  // empty, so it never fights selection or panning on a real route.
+  // First click on an EMPTY route ARMS add mode, then falls through to the normal add
+  // path below. Clicking the map is the first thing anyone tries and it did nothing
+  // (add-mode lives two levels into a menu). Arming it — rather than dropping a single
+  // point — means the next click keeps adding, chart waypoints snap exactly as they do
+  // in add mode, and the mode chip states what is happening and how to stop.
   if (!state.mode && (!state.waypoints || !state.waypoints.length)) {
-    const r0 = applyNavSnap(e.latlng, '');
-    state.waypoints.push({ lat: r5(r0.lat), lng: r5(r0.lng), name: r0.name });
-    syncLegs();
-    state.selected = { type: 'wp', index: 0 };
-    if (typeof refreshEmptyRouteHint === 'function') refreshEmptyRouteHint();
-    draw();
-    showInspector();
-    return;
+    if (typeof setMode === 'function') setMode('add');
   }
   if (state.mode === 'add') {
     const r = applyNavSnap(e.latlng, '');
