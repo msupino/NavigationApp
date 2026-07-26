@@ -275,3 +275,50 @@ test('the frequency-change toggle sits with the VOR overlay, not under Route inf
   expect(r.comm).toBeGreaterThan(r.vorRef);
   expect(r.comm).toBeLessThan(r.routeInfoGroup);
 });
+
+async function clickChartPoint(page, name) {
+  return page.evaluate(async (nm) => {
+    await loadNavWaypoints();
+    window.showNavWP = true; window.showCommChange = false;
+    const wp = navWP.find(w => w.name === nm) || navWP[0];
+    map.setView([wp.lat, wp.lng], 11, { animate: false });
+    draw();
+    const p = proj(wp);
+    const box = map.getContainer().getBoundingClientRect();
+    const at = (t, x, y) => map.getContainer().dispatchEvent(
+      new MouseEvent(t, { clientX: box.left + x, clientY: box.top + y, bubbles: true, cancelable: true }));
+    at('mousedown', p.x, p.y); at('mouseup', p.x, p.y); at('click', p.x, p.y);
+    await new Promise(r => setTimeout(r, 120));
+    return {
+      target: wp.name,
+      n: state.waypoints.length,
+      names: state.waypoints.map(w => w.name),
+      mode: state.mode,
+      selType: state.selected && state.selected.type,
+    };
+  }, name);
+}
+
+test('with no route, clicking ON a chart waypoint starts the route there', async ({ page }) => {
+  await boot(page);
+  const r = await clickChartPoint(page, 'DEROR');
+  // A press on a named point used to be consumed as a selection, so the first click
+  // only worked on blank map — useless for routing between charted fixes.
+  expect(r.n).toBe(1);
+  expect(r.names[0]).toBe('DEROR');    // charted name, not a bare coordinate
+  expect(r.mode).toBe('add');          // and it keeps adding from here
+});
+
+test('with a route present, clicking a chart waypoint inspects it instead', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    state.waypoints = [{ lat: 31.0, lng: 34.0, name: 'FAR' }];
+    syncLegs(); state.selected = null; state.mode = null; draw();
+  });
+  const r = await clickChartPoint(page, 'DEROR');
+  // Priming is only for the empty-route case: once a route exists a click must not
+  // silently append, or panning and inspecting become impossible.
+  expect(r.n).toBe(1);
+  expect(r.selType).toBe('navwp');     // its info panel, as before
+  expect(r.mode).toBeNull();
+});

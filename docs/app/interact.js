@@ -375,7 +375,7 @@ function hitAirfieldMarkerCandidates(px, py) {
   const r = tune('airfieldMarkerRadiusPx') + tune('hitWaypointExtraPx');
   for (let i = airfields.length - 1; i >= 0; i--) {
     const s = proj(airfields[i]);
-    if (Math.hypot(s.x - px, s.y - py) <= r) hits.push({ type: 'airfield', index: i });
+    if (Math.hypot(s.x - px, s.y - py) <= r) hits.push({ type: 'airfield', index: i, chartPoint: true });
   }
   return hits;
 }
@@ -389,7 +389,10 @@ function hitNavWpMarkerCandidates(px, py) {
   const r = tune('navWaypointRadiusPx') + tune('hitWaypointExtraPx');
   for (let i = navWP.length - 1; i >= 0; i--) {
     const s = proj(navWP[i]);
-    if (Math.hypot(s.x - px, s.y - py) <= r) hits.push({ type: 'navwp', index: i });
+    // `chartPoint` marks a real chart-point marker. Comm-change rings report the same
+    // 'navwp' type (they are drawn on these dots), so type alone cannot tell them
+    // apart — and filtering by type removed rings from the point chooser.
+    if (Math.hypot(s.x - px, s.y - py) <= r) hits.push({ type: 'navwp', index: i, chartPoint: true });
   }
   return hits;
 }
@@ -3273,7 +3276,14 @@ map.on('mousedown', e => {
     const wi = commCalloutWaypointIndex(state.notes[c.index]);
     return !(wi >= 0 && wpHitSet.has(wi));
   });
-  const ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
+  let ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
+  // Empty route, no mode: the map is primed to start one, so a press on a CHART POINT
+  // (nav waypoint / airfield marker) falls through to the add path instead of being
+  // consumed as a selection — clicking the named points you want to route between is
+  // the obvious gesture. Only `chartPoint` candidates are dropped, so comm-change
+  // rings stay in the chooser and VOR / NOTAM stay inspectable with no route.
+  const primingRoute = includeOverlayChoices && !(state.waypoints && state.waypoints.length);
+  if (primingRoute) ovHits = ovHits.filter(h => !h.chartPoint);
   // NOTAM areas / lines / badges are clickable too — include them as overlay
   // choices so an overlap surfaces the multi-selector. Waypoints stay higher
   // priority (so they remain draggable inside large NOTAM areas); a NOTAM-only
@@ -3754,7 +3764,14 @@ mapEl.addEventListener('touchstart', e => {
     const wi = commCalloutWaypointIndex(state.notes[c.index]);
     return !(wi >= 0 && wpHitSet.has(wi));
   });
-  const ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
+  let ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
+  // Empty route, no mode: the map is primed to start one, so a press on a CHART POINT
+  // (nav waypoint / airfield marker) falls through to the add path instead of being
+  // consumed as a selection — clicking the named points you want to route between is
+  // the obvious gesture. Only `chartPoint` candidates are dropped, so comm-change
+  // rings stay in the chooser and VOR / NOTAM stay inspectable with no route.
+  const primingRoute = includeOverlayChoices && !(state.waypoints && state.waypoints.length);
+  if (primingRoute) ovHits = ovHits.filter(h => !h.chartPoint);
   // NOTAM areas/lines/badges as overlay choices (see the mousedown handler).
   const notamHits = (includeOverlayChoices && window.showNotam && typeof notamsAtLatLng === 'function')
     ? notamsAtLatLng(map.containerPointToLatLng([p.x, p.y])).map(n => ({ type: 'notam', notam: n })) : [];
