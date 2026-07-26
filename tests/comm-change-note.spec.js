@@ -1165,9 +1165,6 @@ test.describe('comm-change auto-note (#487)', () => {
     await installCommChangeFixture(page);
     await boot(page);
     const before = await page.evaluate(t => {
-      // Centre on the fixture point: this test drags by screen coordinates, and TYONA
-      // is off-screen from the default landing view.
-      map.setView([t.lat, t.lng], map.getZoom(), { animate: false });
       state.waypoints = [{ lat: t.lat, lng: t.lng, name: t.name }];
       syncLegs();
       seedCommChangeNotes();
@@ -1200,8 +1197,6 @@ test.describe('comm-change auto-note (#487)', () => {
     await hideToolbarMenus(page);   // clear the map so real-mouse clicks land
     const pts = await page.evaluate(t => {
       window.showNavWP = true;
-      // Same reason as above — put the fixture point under the cursor's reach.
-      map.setView([t.lat, t.lng], map.getZoom(), { animate: false });
       const center = map.latLngToContainerPoint([t.lat, t.lng]);
       const startLl = map.containerPointToLatLng([center.x + 80, center.y + 60]);
       state.waypoints = [{ lat: r5(startLl.lat), lng: r5(startLl.lng), name: '' }];

@@ -68,6 +68,30 @@ exports.test = base.test.extend({
       } catch (e) {}
     });
 
+    // 2b. Page-level: make map.setView() land instantly under test. Specs read
+    //     screen coordinates (proj(), latLngToContainerPoint(), getCenter())
+    //     immediately after positioning the map, and a SAME-ZOOM setView is an
+    //     animated pan in Leaflet — so those reads raced a slide still in
+    //     progress. It only surfaced when the app's landing zoom happened to
+    //     equal the zoom a spec asked for, which makes it a latent flake in ~48
+    //     call sites across 25 specs rather than a bug in any one of them.
+    //     (Zoom animation is already off in the app, to keep the canvas overlay
+    //     in sync; this extends the same determinism to pans.)
+    await page.addInitScript(() => {
+      const install = () => {
+        if (typeof window.L === 'undefined' || !window.L.Map) return false;
+        const orig = window.L.Map.prototype.setView;
+        window.L.Map.prototype.setView = function (center, zoom, options) {
+          return orig.call(this, center, zoom, Object.assign({}, options, { animate: false }));
+        };
+        return true;
+      };
+      if (!install()) {
+        const iv = setInterval(() => { if (install()) clearInterval(iv); }, 2);
+        window.addEventListener('load', () => clearInterval(iv));
+      }
+    });
+
     await use(page);
 
     // 3. After the test, verify deployed SHA if EXPECTED_SHA is set.
