@@ -16,12 +16,23 @@ function hitNote(px, py) {
       if (hitComm === false) continue;
     }
     const r = noteRect(i);
+    // Test in the note's OWN frame: identification-point ovals are drawn rotated
+    // across the track, so un-rotate the point by the same angle drawNotes used
+    // (noteDrawAngle) before the ellipse/box test. Without this the hit region sat
+    // 90° off the painted oval on an east-west leg.
+    const ang = (typeof noteDrawAngle === 'function') ? noteDrawAngle(note) : 0;
+    let qx = px - (r.x + r.w / 2);
+    let qy = py - (r.y + r.h / 2);
+    if (ang) {
+      const c = Math.cos(-ang), s = Math.sin(-ang);
+      const rx = qx * c - qy * s, ry = qx * s + qy * c;
+      qx = rx; qy = ry;
+    }
     if (r.oval) {
-      const dx = (px - (r.x + r.w / 2)) / (r.w / 2);
-      const dy = (py - (r.y + r.h / 2)) / (r.h / 2);
+      const dx = qx / (r.w / 2);
+      const dy = qy / (r.h / 2);
       if (dx * dx + dy * dy <= 1) return i;
-    } else if (px >= r.x && px <= r.x + r.w &&
-               py >= r.y && py <= r.y + r.h) {
+    } else if (Math.abs(qx) <= r.w / 2 && Math.abs(qy) <= r.h / 2) {
       return i;
     }
   }
@@ -590,11 +601,20 @@ function distToSegment(px, py, a, b) {
   t = Math.max(0, Math.min(1, t));
   return Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy));
 }
+// Unit frame of leg i: along-track (dx,dy) and its perpendicular (nx,ny).
+// Returns null when the leg has no direction to speak of — either endpoint
+// missing, or both endpoints projecting to the same pixel (a sub-pixel leg at low
+// zoom, or two coincident waypoints). A zero-length frame used to yield
+// dx=dy=nx=ny=0, which made the rotated-box hit tests evaluate |0| <= half for
+// EVERY point on the map, so the first click anywhere grabbed that leg's kite.
 function legFrame(i) {
-  const a = proj(state.waypoints[i]);
-  const b = proj(state.waypoints[i + 1]);
+  const A = state.waypoints[i], B = state.waypoints[i + 1];
+  if (!A || !B) return null;
+  const a = proj(A);
+  const b = proj(B);
   let dx = b.x - a.x, dy = b.y - a.y;
-  const len = Math.hypot(dx, dy) || 1;
+  const len = Math.hypot(dx, dy);
+  if (!(len > 0)) return null;
   dx /= len; dy /= len;
   return { mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2,
            dx, dy, nx: -dy, ny: dx, len };
@@ -778,7 +798,11 @@ function _materialiseDefaultCumLabel(legIdx) {
 // `anchor`, half-length halfL, half-height halfW.
 function _pointInKiteBox(px, py, cx, cy, ax, ay, halfL, halfW) {
   let ux = ax - cx, uy = ay - cy;
-  const len = Math.hypot(ux, uy) || 1;
+  const len = Math.hypot(ux, uy);
+  // No axis to orient the box along (center coincides with its anchor, e.g. a
+  // degenerate leg). Bail out instead of normalizing to (0,0), which made the
+  // along/perp test true for every point on the map.
+  if (!(len > 0)) return false;
   ux /= len; uy /= len;
   const rx = px - cx, ry = py - cy;
   const along = rx * ux + ry * uy;
@@ -796,6 +820,7 @@ function _cumKiteHalfDims() {
 function hitCumLabel(px, py) {
   // Elongated pentagon oriented toward B — test its rotated footprint, not a
   // circle (which only covered the middle of the enlarged kite).
+  if (!showCumTime) return null;   // not drawn (draw.js gates on it) → not grabbable
   const { halfL, halfW } = _cumKiteHalfDims();
   for (let i = 0; i < state.legs.length; i++) {
     const c = cumLabelCenter(i);
@@ -868,6 +893,7 @@ function setCumLabelFromPoint(legIdx, isReturn, px, py) {
 }
 function hitCumLabelRet(px, py) {
   if (!showReturn) return null;          // return kite only drawn with the return path
+  if (!showCumTime) return null;         // draw.js nests it in showCumTime too
   const { halfL, halfW } = _cumKiteHalfDims();
   for (let i = 0; i < state.legs.length; i++) {
     if (!legAllowsReturn(i)) continue;
@@ -916,7 +942,12 @@ function deleteWaypoint(k) {
     ? canonicalNavWaypointName(wp.name) : '';
   state.waypoints.splice(k, 1);
   if (state.legs.length) {
-    state.legs.splice(Math.min(k, state.legs.length - 1), 1);
+    const removed = Math.min(k, state.legs.length - 1);
+    state.legs.splice(removed, 1);
+    // Renumber report-point anchors for the leg that went away, before syncLegs
+    // sees them — otherwise its index prune deletes markers whose segment still
+    // exists and leaves the survivors pointing at the wrong leg.
+    if (typeof remapReportPointsOnLegDelete === 'function') remapReportPointsOnLegDelete(removed);
   }
   if (ccName && Array.isArray(state.notes) &&
       !state.waypoints.some(w => canonicalNavWaypointName(w && w.name) === ccName)) {
@@ -961,7 +992,14 @@ function splitLegAt(legIndex, latlng) {
   if (!state.waypoints[i] || !state.waypoints[i + 1]) return false;
 
   const source = state.legs[i];
+  const A = state.waypoints[i], B = state.waypoints[i + 1];
   const inserted = { lat: r5(latlng.lat), lng: r5(latlng.lng), name: '', _defaultWpName: 1 };
+  // Remap BEFORE the splice, while A/B still describe the leg being split. The
+  // splices keep legs.length === waypoints.length - 1, so syncLegs never runs
+  // here and would not have fixed the anchors anyway.
+  if (typeof remapReportPointsOnLegInsert === 'function') {
+    remapReportPointsOnLegInsert(i, A, inserted, B);
+  }
   state.waypoints.splice(i + 1, 0, inserted);
   state.legs.splice(i, 1, splitLegCopy(source), splitLegCopy(source));
   if (state.legs.length !== Math.max(0, state.waypoints.length - 1)) syncLegs();

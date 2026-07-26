@@ -38,3 +38,46 @@ test('the nav kite is grabbable across its whole footprint, not just the centre'
   expect(r.outsideAlong).toBe(false);   // still bounded — doesn't grab far away
   expect(r.outsidePerp).toBe(false);
 });
+
+test('a zero-length leg does not turn the whole map into one kite hit box', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // Two coincident waypoints: the leg projects to a single pixel, so it has no
+    // direction. A zero frame used to make the along/perp test true everywhere.
+    state.waypoints = [{ lat: 32.4, lng: 35.0, name: 'A' }, { lat: 32.4, lng: 35.0, name: 'B' }];
+    state.legs = []; syncLegs();
+    state.legs[0].flightSpeed = 90;
+    map.setView([32.4, 35.0], 10, { animate: false }); draw();
+    const box = map.getContainer().getBoundingClientRect();
+    const farX = box.width - 10, farY = box.height - 10;
+    return {
+      frame: legFrame(0),                       // null → no usable direction
+      farLeg: hitLegLabel(farX, farY),
+      farCum: hitCumLabel(farX, farY),
+      cornerLeg: hitLegLabel(5, 5),
+    };
+  });
+  expect(r.frame).toBeNull();          // degenerate frame reported, not (0,0)
+  expect(r.farLeg).toBeNull();         // a click across the map grabs nothing
+  expect(r.farCum).toBeNull();
+  expect(r.cornerLeg).toBeNull();
+});
+
+test('the cum-time kite is not hit-testable while its toggle is off', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.2, lng: 35.0, name: 'A' }, { lat: 32.7, lng: 35.0, name: 'B' }];
+    state.legs = []; syncLegs();
+    state.legs[0].flightSpeed = 90;
+    map.setView([32.45, 35.0], 10, { animate: false });
+    window.showCumTime = true; draw();
+    const c = cumLabelCenter(0);
+    const on = !!hitCumLabel(c.x, c.y);        // drawn → grabbable
+    window.showCumTime = false; draw();
+    const off = !!hitCumLabel(c.x, c.y);       // not drawn → must not be grabbable
+    window.showCumTime = true;
+    return { on, off };
+  });
+  expect(r.on).toBe(true);
+  expect(r.off).toBe(false);
+});

@@ -2381,6 +2381,52 @@ function proj(wp) {
 }
 
 // --- leg bookkeeping -------------------------------------------------
+// --- report-point anchor remapping -----------------------------------------
+// Identification-point ovals anchor to a leg by INDEX ({leg, t}), so any splice
+// that renumbers legs has to remap them. These run BEFORE syncLegs at the call
+// site that performs the splice, which is the only place that knows which leg
+// moved where.
+
+// Fraction of the way from A to B at which P sits (clamped 0..1). Planar is fine
+// at leg scale — it only has to place a marker back on its own segment.
+function legFractionAt(A, B, P) {
+  if (!A || !B || !P) return 0;
+  const dx = B.lng - A.lng, dy = B.lat - A.lat;
+  const d2 = dx * dx + dy * dy;
+  if (!d2) return 0;
+  const t = ((P.lng - A.lng) * dx + (P.lat - A.lat) * dy) / d2;
+  return Math.max(0, Math.min(1, t));
+}
+
+// A leg was REMOVED at `removed` (its two waypoints merged into one segment).
+// Anchors above it shift down; anchors on it stay on the merged segment rather
+// than being deleted — the pilot placed that marker on a segment that still
+// exists, so dropping it was silent data loss.
+function remapReportPointsOnLegDelete(removed) {
+  if (!Array.isArray(state.notes) || !Number.isInteger(removed)) return;
+  for (const n of state.notes) {
+    if (!n || !n.rp || !Number.isInteger(n.rp.leg)) continue;
+    if (n.rp.leg > removed) n.rp.leg -= 1;
+  }
+}
+
+// Leg `i` was SPLIT in two at `inserted`. Anchors above it shift up; an anchor on
+// the split leg moves to whichever half now contains it, with t rescaled so the
+// marker does not move on the map.
+function remapReportPointsOnLegInsert(i, A, inserted, B) {
+  if (!Array.isArray(state.notes) || !Number.isInteger(i)) return;
+  const tSplit = legFractionAt(A, B, inserted);
+  for (const n of state.notes) {
+    if (!n || !n.rp || !Number.isInteger(n.rp.leg)) continue;
+    if (n.rp.leg > i) { n.rp.leg += 1; continue; }
+    if (n.rp.leg !== i) continue;
+    const t = Number.isFinite(n.rp.t) ? n.rp.t : 0.5;
+    if (tSplit <= 0 || tSplit >= 1) continue;            // degenerate split
+    if (t <= tSplit) n.rp.t = t / tSplit;                // stays on leg i
+    else { n.rp.leg = i + 1; n.rp.t = (t - tSplit) / (1 - tSplit); }
+  }
+}
+
 function syncLegs() {
   const before = state.legs.length;
   const need = Math.max(0, state.waypoints.length - 1);
@@ -2390,9 +2436,11 @@ function syncLegs() {
     applyLegAltitudeToLeg(i);
   }
   while (state.legs.length > need) state.legs.pop();
-  // Drop identification-point ovals whose anchor leg no longer exists (route
-  // shortened / cleared). Index-shift on mid-route insert/delete is a known
-  // limitation — the anchor stays on whatever leg now holds that index.
+  // Last-resort prune for identification-point ovals left past the end of the
+  // route (cleared / truncated / a loaded blob). Mid-route inserts and deletes
+  // must NOT rely on this: pruning by index deleted markers whose segment still
+  // existed and slid the survivors onto a different leg, so those call sites
+  // remap the anchors first — see remapReportPointsOnLegDelete / ...OnLegInsert.
   if (Array.isArray(state.notes)) {
     state.notes = state.notes.filter(n => !n || !n.rp || n.rp.leg < need);
   }

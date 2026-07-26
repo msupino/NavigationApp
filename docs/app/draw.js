@@ -3100,12 +3100,28 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc
     octx.strokeStyle = tune('legKiteHaloColor');
     octx.stroke();
     octx.lineJoin = 'miter';
-    // The stroke is centred on the outline, so its inner half would show
-    // through the translucent fill as a second (internal) highlight. Erase
-    // everything inside the outline so only the OUTER band remains.
+    // The stroke is centred on the outline, so its inner half would show through
+    // the translucent fill as a second (internal) highlight. Erase just that
+    // inner half: clip to the kite interior and re-stroke with destination-out,
+    // so only where the band overlaps the interior is cleared.
+    //
+    // Filling the whole path here instead (the previous approach) wiped every
+    // pixel already drawn inside the kite — the track line, drift lines and the
+    // minute ticks that pass under it — and since the kite's own fill is
+    // translucent the bare map showed through. In PNG export, where octx is the
+    // export context holding the background and composited tiles, it punched a
+    // fully transparent kite-shaped hole in the delivered image. The explicit
+    // opaque strokeStyle + globalAlpha also make the erase deterministic: it
+    // previously inherited whatever fillStyle was left over from an earlier draw,
+    // so a translucent leftover erased only partially and left a ghost band.
     octx.save();
+    octx.clip();
     octx.globalCompositeOperation = 'destination-out';
-    octx.fill();
+    octx.globalAlpha = 1;
+    octx.strokeStyle = '#000';
+    octx.lineJoin = 'round';
+    octx.lineWidth = tune('legKiteHaloPx') * sc;
+    octx.stroke();
     octx.restore();
   }
   octx.fillStyle = fill;
@@ -3246,6 +3262,23 @@ function noteScale(n) {
 }
 function noteFont(n) {
   return `bold ${tune('noteFontPx') * noteScale(n)}px sans-serif`;
+}
+
+// Screen rotation applied to a note when it is drawn. Identification-point ovals
+// align ACROSS the track (leg angle + 90°, per the standard's diagram), flipped
+// 180° when the text would read upside-down; every other note is axis-aligned.
+// SHARED with hitNote — when only drawNotes knew the angle, the clickable ellipse
+// stayed axis-aligned while the painted one rotated, so on an east-west leg the
+// two were 90° apart: clicking the visible oval missed it and clicking empty map
+// beside it grabbed it.
+function noteDrawAngle(n) {
+  if (!n || !n.rp) return 0;
+  const A = state.waypoints[n.rp.leg], B = state.waypoints[n.rp.leg + 1];
+  if (!A || !B) return 0;
+  const pa = proj(A), pb = proj(B);
+  let ang = Math.atan2(pb.y - pa.y, pb.x - pa.x) + Math.PI / 2;
+  if (ang > Math.PI / 2 || ang < -Math.PI / 2) ang += Math.PI;
+  return ang;
 }
 
 function noteRect(i) {
@@ -3518,20 +3551,9 @@ function drawNotes() {
       fontPx *= k; lineH *= k;
     }
 
-    // Identification-point ovals align with the leg (long axis along the track),
-    // not axis-aligned north. Draw in a frame rotated to the leg's screen angle;
-    // flip 180° when it would read upside-down so the text stays upright.
-    let ang = 0;
-    if (n.rp) {
-      const A = state.waypoints[n.rp.leg], B = state.waypoints[n.rp.leg + 1];
-      if (A && B) {
-        const pa = proj(A), pb = proj(B);
-        // Long axis ACROSS the track (per the standard's diagram): leg angle
-        // + 90°. Flip 180° when it would read upside-down so text stays upright.
-        ang = Math.atan2(pb.y - pa.y, pb.x - pa.x) + Math.PI / 2;
-        if (ang > Math.PI / 2 || ang < -Math.PI / 2) ang += Math.PI;
-      }
-    }
+    // Identification-point ovals align ACROSS the track; see noteDrawAngle, which
+    // hitNote shares so the clickable region matches what is painted.
+    const ang = noteDrawAngle(n);
     const cx0 = r.x + r.w / 2, cy0 = r.y + r.h / 2;
     octx.save();
     octx.translate(cx0, cy0);

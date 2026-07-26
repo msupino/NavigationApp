@@ -108,6 +108,97 @@ test('reversing the route keeps the report point on the same geographic spot', a
   expect(r.t).toBeCloseTo(0.7, 6);
 });
 
+test('the oval is clickable where it is drawn, not 90° off', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => {
+    // Due-EAST leg → the oval is drawn rotated 90° (long axis across the track),
+    // so it paints NARROW horizontally and TALL vertically.
+    state.waypoints = [{ lat: 32.0, lng: 35.0, name: 'A' }, { lat: 32.0, lng: 35.4, name: 'B' }];
+    state.legs = []; syncLegs();
+    state.legs[0].flightSpeed = 90;
+    map.setView([32.0, 35.2], 11, { animate: false });
+    addReportPointToLeg(0);
+    draw();
+  });
+  const r = await page.evaluate(() => {
+    const idx = state.notes.findIndex(n => n && n.rp);
+    const rc = noteRect(idx);
+    const cx = rc.x + rc.w / 2, cy = rc.y + rc.h / 2;
+    const halfLong = rc.w / 2, halfShort = rc.h / 2;   // w is the LONG axis, drawn vertical
+    return {
+      ang: Math.round(noteDrawAngle(state.notes[idx]) * 180 / Math.PI),
+      centre: hitNote(cx, cy) === idx,
+      // Along the drawn long axis (vertical here) — inside the painted oval.
+      alongDrawn: hitNote(cx, cy + halfLong * 0.8) === idx,
+      // Along the drawn short axis (horizontal) at the same distance — OUTSIDE.
+      offDrawn: hitNote(cx + halfLong * 0.8, cy) === idx,
+      inShort: hitNote(cx + halfShort * 0.8, cy) === idx,
+    };
+  });
+  expect(Math.abs(r.ang)).toBe(90);      // drawn across the track
+  expect(r.centre).toBe(true);
+  expect(r.alongDrawn).toBe(true);       // tall direction is grabbable (was a miss)
+  expect(r.offDrawn).toBe(false);        // empty map beside it is not (was a false grab)
+  expect(r.inShort).toBe(true);
+});
+
+test('deleting a mid-route waypoint keeps a marker whose segment still exists', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.0, lng: 35.0, name: 'A' }, { lat: 32.2, lng: 35.0, name: 'B' },
+      { lat: 32.4, lng: 35.0, name: 'C' }, { lat: 32.6, lng: 35.0, name: 'D' },
+    ];
+    state.legs = []; syncLegs();
+    const idx = addReportPointToLeg(2);            // on C–D
+    state.notes[idx].rp.t = 0.5;
+    const before = reportPointGeom(state.notes[idx]).lat;
+    deleteWaypoint(1);                              // delete B; C–D still exists (now leg 1)
+    const n = state.notes.find(x => x && x.rp);
+    return n ? { kept: true, leg: n.rp.leg, lat: reportPointGeom(n).lat, before }
+             : { kept: false, before };
+  });
+  expect(r.kept).toBe(true);             // was silently deleted by the index prune
+  expect(r.leg).toBe(1);                 // anchor renumbered onto the same segment
+  expect(r.lat).toBeCloseTo(r.before, 6);   // and it did not move on the map
+});
+
+test('splitting an earlier leg does not slide a marker onto the wrong leg', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.0, lng: 35.0, name: 'A' }, { lat: 32.2, lng: 35.0, name: 'B' },
+      { lat: 32.4, lng: 35.0, name: 'C' }, { lat: 32.6, lng: 35.0, name: 'D' },
+    ];
+    state.legs = []; syncLegs();
+    const idx = addReportPointToLeg(2);            // on C–D
+    state.notes[idx].rp.t = 0.5;
+    const before = reportPointGeom(state.notes[idx]).lat;
+    splitLegAt(0, { lat: 32.1, lng: 35.0 });        // insert X inside A–B
+    const n = state.notes.find(x => x && x.rp);
+    return { leg: n.rp.leg, lat: reportPointGeom(n).lat, before };
+  });
+  expect(r.leg).toBe(3);                 // shifted up: C–D is now leg 3 (stayed 2 before)
+  expect(r.lat).toBeCloseTo(r.before, 6);   // marker stayed on the same ground point
+});
+
+test('splitting the marker\'s own leg keeps it on the correct half', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.0, lng: 35.0, name: 'A' }, { lat: 32.4, lng: 35.0, name: 'B' }];
+    state.legs = []; syncLegs();
+    const idx = addReportPointToLeg(0);
+    state.notes[idx].rp.t = 0.75;                   // in the far quarter
+    const before = reportPointGeom(state.notes[idx]).lat;
+    splitLegAt(0, { lat: 32.2, lng: 35.0 });        // split at the midpoint
+    const n = state.notes.find(x => x && x.rp);
+    return { leg: n.rp.leg, t: n.rp.t, lat: reportPointGeom(n).lat, before };
+  });
+  expect(r.leg).toBe(1);                 // moved to the second half
+  expect(r.t).toBeCloseTo(0.5, 2);       // t rescaled within that half
+  expect(r.lat).toBeCloseTo(r.before, 6);   // same ground point
+});
+
 test('removing the anchor leg prunes the report point', async ({ page }) => {
   await boot(page);
   await oneLeg(page);
