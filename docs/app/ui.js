@@ -4615,6 +4615,7 @@ function refreshMapAfterToolbarModeChange() {
       setCollapsed(false, { persist: false });
       restorePos();                  // re-apply a saved desktop position, if any
       refreshMapAfterToolbarModeChange();
+      if (typeof window.reclampToolbarSections === 'function') window.reclampToolbarSections();
       return;
     }
     restorePos();
@@ -4625,6 +4626,8 @@ function refreshMapAfterToolbarModeChange() {
     const narrowDefault = !!(window.matchMedia && window.matchMedia('(max-width: 680px)').matches);
     setCollapsed(sc === null ? narrowDefault : sc === '1', { persist: sc !== null });
     refreshMapAfterToolbarModeChange();
+    // A stale dropdown nudge from the other layout must not survive the switch.
+    if (typeof window.reclampToolbarSections === 'function') window.reclampToolbarSections();
   }
 
   window.addEventListener('resize', () => {
@@ -4701,6 +4704,23 @@ function refreshMapAfterToolbarModeChange() {
       if (sec.classList.contains('open')) setSectionOpen(sec, false);
     }
   };
+
+  // Re-apply the viewport clamp to whatever is currently open. Two gaps this
+  // closes: a section restored open from localStorage at boot only gets
+  // classList.add('open') and never goes through setSectionOpen, so it was never
+  // clamped — that is the original off-screen dropdown (an unreachable Save-PNG
+  // button in RTL on a wrapped menu bar), which only healed after manually
+  // closing and reopening. And an already-applied translateX goes stale when the
+  // viewport resizes or the toolbar switches desktop<->mobile, leaving the
+  // dropdown nudged away from its section head.
+  function reclampOpenSections() {
+    for (const sec of sections) clampSectionBody(sec, sec.classList.contains('open'));
+  }
+  window.reclampToolbarSections = reclampOpenSections;
+  window.addEventListener('resize', reclampOpenSections);
+  // After this IIFE finishes (so the restore loop below has run) and layout has
+  // settled, clamp whatever was restored open.
+  requestAnimationFrame(reclampOpenSections);
 
   for (const sec of sections) {
     const head = sec.querySelector('.tb-section-head');

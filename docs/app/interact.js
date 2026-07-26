@@ -602,11 +602,17 @@ function distToSegment(px, py, a, b) {
   return Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy));
 }
 // Unit frame of leg i: along-track (dx,dy) and its perpendicular (nx,ny).
-// Returns null when the leg has no direction to speak of — either endpoint
-// missing, or both endpoints projecting to the same pixel (a sub-pixel leg at low
-// zoom, or two coincident waypoints). A zero-length frame used to yield
-// dx=dy=nx=ny=0, which made the rotated-box hit tests evaluate |0| <= half for
-// EVERY point on the map, so the first click anywhere grabbed that leg's kite.
+// Returns null only when an endpoint is missing (the transient
+// legs > waypoints-1 state), which every caller guards.
+//
+// When both endpoints project to the SAME pixel — a sub-pixel leg at low zoom, or
+// two coincident waypoints — there is no direction to normalize. It used to divide
+// by `hypot(...) || 1`, leaving dx=dy=nx=ny=0, and the rotated-box hit tests then
+// evaluated |0| <= half for EVERY point, so the first click anywhere on the map
+// grabbed that leg's kite, killed panning and silently wrote label offsets.
+// Fall back to the +x axis instead of zeros: that is exactly what the renderer
+// draws in this case (atan2(0,0) === 0), so the hit box stays finite AND lines up
+// with the kite the user can see.
 function legFrame(i) {
   const A = state.waypoints[i], B = state.waypoints[i + 1];
   if (!A || !B) return null;
@@ -614,8 +620,7 @@ function legFrame(i) {
   const b = proj(B);
   let dx = b.x - a.x, dy = b.y - a.y;
   const len = Math.hypot(dx, dy);
-  if (!(len > 0)) return null;
-  dx /= len; dy /= len;
+  if (len > 0) { dx /= len; dy /= len; } else { dx = 1; dy = 0; }
   return { mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2,
            dx, dy, nx: -dy, ny: dx, len };
 }
@@ -628,7 +633,9 @@ function clampLegLabelAlong(legIdx, label) {
   // zoom scale, so a bigger ground-sized kite is kept fully on the leg.
   const drawSc = (typeof kiteDrawScale === 'function') ? kiteDrawScale() : sc;
   const halfKite = (typeof legKiteAlongHalfPx === 'function') ? legKiteAlongHalfPx(drawSc) : 0;
-  const limit = Math.max(0, (legFrame(legIdx).len / 2 - halfKite) / sc);
+  const f = legFrame(legIdx);
+  if (!f) return;                                 // no length to clamp against
+  const limit = Math.max(0, (f.len / 2 - halfKite) / sc);
   label.a = Math.max(-limit, Math.min(limit, label.a));
 }
 // Identification / report point (oval note anchored to a leg). Project a
@@ -660,7 +667,9 @@ function addReportPointToLeg(legIdx) {
   });
   const idx = state.notes.length - 1;
   state.selected = { type: 'note', index: idx };
-  if (typeof pushUndo === 'function') pushUndo();
+  // No pushUndo() call: no such function exists, so the guarded call was dead.
+  // Undo is snapshot-based — draw() runs persist(), which records an undo
+  // snapshot synchronously, so this action is already undoable.
   draw();
   return idx;
 }
@@ -668,6 +677,7 @@ function legLabelDragGrab(legIdx, which, px, py) {
   const c = legLabelCenter(legIdx, which);
   if (!c) return { grabA: 0, grabP: 0 };
   const f = legFrame(legIdx);
+  if (!f) return { grabA: 0, grabP: 0 };
   const sc = legZoomScale() || 1;
   return {
     grabA: ((px - c.x) * f.dx + (py - c.y) * f.dy) / sc,
@@ -679,6 +689,7 @@ function setLegLabelFromPoint(dragState, px, py) {
   const o = leg && (dragState.which === 'in' ? leg.inLabel : leg.outLabel);
   if (!o) return false;                // malformed leg / label — issue #82
   const f = legFrame(dragState.i);
+  if (!f) return false;                // degenerate leg — nothing to drag along
   const sc = legZoomScale() || 1;
   o.a = ((px - f.mx) * f.dx + (py - f.my) * f.dy) / sc - (dragState.grabA || 0);
   clampLegLabelAlong(dragState.i, o);
@@ -688,6 +699,7 @@ function setLegLabelFromPoint(dragState, px, py) {
 function legLabelCenter(i, which) {
   if (!state.waypoints[i] || !state.waypoints[i + 1]) return null;
   const f = legFrame(i);
+  if (!f) return null;                 // zero-length leg → no kite position
   const o = (which === 'in' ? state.legs[i].inLabel : state.legs[i].outLabel)
             || { a: 0, p: 0 };
   const sc = legZoomScale();
@@ -799,11 +811,11 @@ function _materialiseDefaultCumLabel(legIdx) {
 function _pointInKiteBox(px, py, cx, cy, ax, ay, halfL, halfW) {
   let ux = ax - cx, uy = ay - cy;
   const len = Math.hypot(ux, uy);
-  // No axis to orient the box along (center coincides with its anchor, e.g. a
-  // degenerate leg). Bail out instead of normalizing to (0,0), which made the
-  // along/perp test true for every point on the map.
-  if (!(len > 0)) return false;
-  ux /= len; uy /= len;
+  // Center coincides with its anchor (degenerate leg) → no axis to orient along.
+  // Use +x, which is what the renderer draws here (atan2(0,0) === 0), rather than
+  // normalizing to (0,0) — that made the along/perp test true for EVERY point on
+  // the map, so a click anywhere grabbed this kite.
+  if (len > 0) { ux /= len; uy /= len; } else { ux = 1; uy = 0; }
   const rx = px - cx, ry = py - cy;
   const along = rx * ux + ry * uy;
   const perp = rx * (-uy) + ry * ux;

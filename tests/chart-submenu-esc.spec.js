@@ -6,11 +6,37 @@
 // wrongly left the submenu open; this asserts the fixed, uniform behaviour.
 const { test, expect } = require('./_setup');
 
+// #sigmet-btn ships hidden and is only unhidden when the SIGMET feed has
+// entries, so clicking it without a stub made this test depend on live Israeli
+// weather (and on reaching raw.githubusercontent.com from CI) — it would block on
+// Playwright's visibility auto-wait until timeout whenever the feed was empty.
+// Serve a deterministic one-SIGMET payload instead.
+const SIGMET_FIXTURE = {
+  generatedAt: '2026-01-01T00:00:00Z',
+  sigmets: [{
+    hazard: 'TS', rawSigmet: 'LLLL SIGMET 1 VALID',
+    coords: [[32.0, 34.6], [32.6, 34.6], [32.6, 35.4], [32.0, 35.4]],
+  }],
+};
+
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });   // desktop menu-bar mode
+  await page.route(/sigmet\.json/, r =>
+    r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(SIGMET_FIXTURE) }));
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined' &&
     document.querySelector('[data-sec="charts"] .tb-section-head'));
+  // Load the stubbed feed and unhide the button so the click below is stable.
+  await page.evaluate(async () => {
+    if (typeof loadSigmets === 'function') await loadSigmets(true);
+    if (typeof refreshSigmetBtn === 'function') refreshSigmetBtn();
+  });
+  // It lives inside the (still closed) Charts dropdown, so assert the `hidden`
+  // property rather than visibility.
+  await page.waitForFunction(() => {
+    const b = document.getElementById('sigmet-btn');
+    return !!b && b.hidden === false;
+  });
 });
 
 async function openCharts(page) {
