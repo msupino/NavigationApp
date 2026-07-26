@@ -1752,7 +1752,11 @@ function showFlightPlan() {
   const inspWasVisible = !!(inspEl && !inspEl.classList.contains('hidden'));
   if (inspWasVisible) inspEl.classList.add('hidden');
   const restoreInspector = () => {
-    if (inspWasVisible && state.selected && typeof showInspector === 'function') showInspector();
+    // Also covers a selection restored WHILE the plan was open (see
+    // tryRestoreInspectorSelection): the panel was deferred, not discarded.
+    const deferred = !!window.__inspectorDeferredByPlan;
+    window.__inspectorDeferredByPlan = false;
+    if ((inspWasVisible || deferred) && state.selected && typeof showInspector === 'function') showInspector();
   };
 
   const title = document.createElement('div');
@@ -2009,6 +2013,8 @@ function showFlightPlan() {
 
   // Flight-plan columns are tagged once so the selector, CSV export, print
   // view, and nav-log clone all read the same visibility state.
+  // Phone-width layout: drives both the default column set and the short titles below.
+  const fpNarrowLayout = typeof window !== 'undefined' && window.innerWidth < 700;
   const baseHeaders = (S.fpHeaders || []).slice(0, 13);
   // Displayed column titles, kept SEPARATE from `fpHeaders`. `fpHeaders` is the CSV
   // export contract — the header row anything downstream keys on — so it must not move
@@ -2031,12 +2037,32 @@ function showFlightPlan() {
   ];
   if (freqActive) fpColumns.push({ key: 'freq', label: S.fpFreq || 'Freq', className: 'fp-freq-col' });
   fpColumns.push({ key: 'delete', label: '', className: 'fp-del-col', control: true });
+  // Phone widths get short display titles (the export names never change).
+  if (fpNarrowLayout && S.fpHeadersNarrow) {
+    for (const col of fpColumns) {
+      const short = S.fpHeadersNarrow[col.key];
+      if (short) col.display = short;
+    }
+  }
   const fpColumnMap = Object.fromEntries(fpColumns.map(col => [col.key, col]));
   const fpSelectableColumns = fpColumns.filter(col => !col.control);
   const fpSelectableKeys = new Set(fpSelectableColumns.map(col => col.key));
   const fpHiddenColumns = new Set();
   const fpColumnsKey = 'navaid.fpColumns';
-  const fpDefaultHiddenColumns = ['dist'];
+  // Per-leg distance is a nav-log staple, so it is no longer hidden by default.
+  // On a phone the table can only show ~4 columns before it scrolls sideways, and
+  // Time/Fuel were the ones off-screen; there the default drops the columns a pilot
+  // can rebuild from the row above (From, cumulative fuel) and the VOR pair, which
+  // is blank until a VOR is picked. The Columns menu still overrides all of it.
+  const fpDefaultHiddenColumns = fpNarrowLayout
+    // ~315px of table on a phone fits five columns. These five answer "where am I
+    // going, on what heading, at what altitude, and for how long"; everything else
+    // (From, per-leg distance, speed, per-leg fuel, cumulatives, the VOR pair, freq)
+    // is one tap away in the Columns menu, and the totals line above the table always
+    // carries distance/ETE/fuel. The full table is 874px wide, so on a 375px phone the
+    // columns you actually fly by started off-screen behind a sideways scroll.
+    ? ['from', 'dist', 'speed', 'fuel', 'cumTime', 'cumFuel', 'radial', 'dme', 'freq']
+    : [];
   let savedFpColumns = fpDefaultHiddenColumns;
   try {
     const rawColumns = localStorage.getItem(fpColumnsKey);
@@ -2279,7 +2305,7 @@ function showFlightPlan() {
         refresh();
         if (retRefresh) retRefresh();
         // Keep an open leg inspector in sync with the edit (#672 follow-up).
-        if (state.selected && typeof showInspector === 'function') showInspector();
+        refreshInspectorIfVisible();
       }
       else inp.value = leg.flightSpeed;   // invalid — restore the real value
     });
@@ -2299,7 +2325,7 @@ function showFlightPlan() {
       draw();
       refresh();
       if (retRefresh) retRefresh();
-      if (state.selected && typeof showInspector === 'function') showInspector();
+      refreshInspectorIfVisible();
     });
     altInputs[i] = altCell.querySelector('.plan-num');
     altInputs[i].placeholder = legAltitudePlaceholder(leg, 'inboundAltitude');
@@ -2537,7 +2563,7 @@ function showFlightPlan() {
           draw();
           refresh();
           retRefresh();
-          if (state.selected && typeof showInspector === 'function') showInspector();
+          refreshInspectorIfVisible();
         }
         else inp.value = leg.outboundSpeed;
       });
@@ -2557,7 +2583,7 @@ function showFlightPlan() {
         draw();
         refresh();
         retRefresh();
-        if (state.selected && typeof showInspector === 'function') showInspector();
+        refreshInspectorIfVisible();
       });
       rAltInputs[i] = altCell.querySelector('.plan-num');
       rAltInputs[i].placeholder = legAltitudePlaceholder(leg, 'outboundAltitude');
@@ -3103,7 +3129,7 @@ function showSigmetDecoded() {
 // menu opens as the centered mobile modal instead of floating over a cramped,
 // two-row toolbar.
 function exportPrintOnTopLine() {
-  const heads = document.querySelectorAll('#toolbar .tb-section-head');
+  const heads = document.querySelectorAll('#toolbar .tb-section:not(.tb-standalone) .tb-section-head');
   const printHead = document.querySelector('#toolbar .tb-section[data-sec="print"] .tb-section-head');
   if (!heads.length || !printHead) return true;
   let minTop = Infinity;
@@ -4796,7 +4822,7 @@ function createDraggableModal(titleText, className, onClose, options = {}) {
 
 function afterFreqTableEdit() {
   draw();
-  if (state.selected && typeof showInspector === 'function') showInspector();
+  refreshInspectorIfVisible();
 }
 
 function renderFreqTable(freqSection) {

@@ -247,6 +247,12 @@ NavAid.tuningDefaults = {
   hitWaypointExtraPx: { value: 6, min: 0, max: 40, step: 1, label: 'Waypoint hit extra' },
   hitLegPx: { value: 8, min: 1, max: 60, step: 1, label: 'Leg line hit width' },
   defaultLegSpeedKt: { value: 90, min: 20, max: 400, step: 5, label: 'Default leg speed (kt)' },
+  unknownProfileAltFt: { value: 2000, min: 500, max: 15000, step: 100,
+    label: 'Height the profile draws a leg with no altitude at (ft)' },
+  defaultViewZoom: { value: 11, min: 8, max: 14, step: 0.5, label: 'First-run map zoom' },
+  touchRotateGesture: { value: 0, min: 0, max: 1, step: 1, label: 'Two-finger rotate gesture (0/1)' },
+  defaultViewLat: { value: 32.1, min: 29, max: 34, step: 0.05, label: 'First-run map centre latitude' },
+  defaultViewLng: { value: 34.95, min: 33, max: 36.5, step: 0.05, label: 'First-run map centre longitude' },
   hitLegLabelMinPx: { value: 18, min: 1, max: 80, step: 1, label: 'Leg label hit min' },
   hitCumLabelMinPx: { value: 18, min: 1, max: 80, step: 1, label: 'Cum label hit min' },
 
@@ -493,7 +499,9 @@ NavAid.tuningGroups = [
   { name: 'Frequency changes', keys: ['commChangeRingRadiusPx', 'commChangeRingWidthPx', 'commChangeRingColor', 'commChangeNoteLatOffset', 'commChangeNoteLngOffset', 'commChangeArrowStartGapPx', 'commChangeArrowWidthPx', 'commChangeArrowColor', 'commChangeArrowLineCap', 'commChangeArrowLineJoin', 'commChangeArrowMiterLimit', 'commChangeArrowHaloPx', 'commChangeArrowHaloColor', 'commChangeArrowHaloAlpha', 'commChangeSelectedColor', 'commChangeSelectedAlpha', 'commChangeSelectedWidthAddPx', 'commChangeArrowBoltPx', 'commChangeArrowBoltAngleDeg', 'commChangeArrowBend1Along', 'commChangeArrowBend2Along', 'commChangeNameFontPx', 'commChangeFreqFontPx', 'commChangeTextColor', 'commChangeTextHaloColor', 'commChangeTextHaloAlpha', 'commChangeTextAlong', 'commChangeTextGapPx', 'commChangeNameHaloWidthPx', 'commChangeFreqHaloWidthPx'] },
   { name: 'Notes', keys: ['noteFontPx', 'notePadXPx', 'notePadYPx', 'noteLineHeightPx', 'noteMinWidthPx', 'notePrintWidthMm', 'notePrintHeightMm', 'noteStrokeWidthPx', 'noteSelectedStrokeWidthPx', 'noteDefaultFillColor'] },
   { name: 'Page frame', keys: ['pageFrameLineWidthPx', 'pageFrameDashOnPx', 'pageFrameDashOffPx', 'pageFrameScrimColor', 'pageFrameScrimAlpha', 'pageFrameHitPx', 'a4x2CutLineWidthPx', 'a4x2CutDashOnPx', 'a4x2CutDashOffPx', 'a4x2CutLineColor', 'a4x2CutLineAlpha', 'a4x2MarkLabelMm', 'a4x2MarkGuideMm', 'a4x2MarkLabelBgColor', 'a4x2MarkLabelInkColor'] },
-  { name: 'Route defaults', keys: ['defaultLegSpeedKt'] },
+  { name: 'Route defaults', keys: ['defaultLegSpeedKt', 'unknownProfileAltFt'] },
+  { name: 'First-run view', keys: ['defaultViewZoom', 'defaultViewLat', 'defaultViewLng'] },
+  { name: 'Gestures', keys: ['touchRotateGesture'] },
   { name: 'Hit testing', keys: ['hitWaypointExtraPx', 'hitLegPx', 'hitLegLabelMinPx', 'hitCumLabelMinPx'] },
   { name: 'Alt pairs', keys: ['altPairFocusColor', 'altPairFocusWidthPx', 'altPairFocusDashOnPx', 'altPairFocusDashOffPx', 'altPairFocusDotRadiusPx', 'altPairFocusDotColor', 'altPairFocusMs', 'altPairFocusLineAlpha', 'altPairFocusDotAlpha'] },
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx'] },
@@ -718,8 +726,13 @@ window.S = Object.assign({
   modeChipNote: 'Adding notes',
   modeChipStop: 'tap to stop',
   modeChipTitle: 'Click to leave this mode',
+  // Phone-width display labels. Full titles ("Time (mm:ss)", "Fuel (gal)") pushed the
+  // table 111px past a 375px screen on their own. CSV/export headers are unaffected --
+  // those come from fpHeaders, which is the export contract.
+  fpHeadersNarrow: { dist: 'NM', speed: 'kt', alt: 'Alt', time: 'Time', fuel: 'Fuel',
+    cumTime: 'Cum', cumFuel: 'Cum fuel' },
   fpMobileSummary: function (legs, nm, time, gal) {
-    return legs + ' legs · ' + nm + ' NM · ' + time + ' · ' + gal + ' gal';
+    return legs + (legs === 1 ? ' leg · ' : ' legs · ') + nm + ' NM · ' + time + ' · ' + gal + ' gal';
   },
   vorInfoType: 'Type',
   vorInfoChannel: 'Channel',
@@ -1133,6 +1146,8 @@ window.S = Object.assign({
   legendTitle: 'Legend',
   legendAirfield: 'Airfield',
   legendWaypoint: 'Waypoint',
+  legendVor: 'VOR station',
+  tbMoreLinks: 'More links (repo, wiki, issues, about, privacy, terms)',
   legendAtcChange: 'Freq change',
   commChangeBadge: '📡 Freq change point',
   commChangeNoteText: 'Freq change',
@@ -1171,6 +1186,7 @@ window.S = Object.assign({
   altPairsDistance: 'NM',
   altPairsBlocked: 'Blocked',
   altitudeUnknown: 'Unknown',
+  altitudeUnsetShort: '—',                          // map kite placeholder — see kiteAltitudeLabel
   altPairsUnknown: 'Unknown',
   altPairsOneWay: 'One way',
   altPairsTwoWay: 'Two way',
@@ -1540,6 +1556,14 @@ function _defaultLegLabels() {
 }
 // Seed speed for a leg with nothing to inherit from. Gistable, rather than a literal
 // 90 buried in newLeg().
+// Height the vertical profile DRAWS a leg with no altitude at. Never used for timing
+// (see routeProfile: such a leg is flown level), so changing it moves the strip's
+// baseline only. Gistable rather than a literal 2000 scattered through the code.
+const _unknownProfileAltFt = () => {
+  const v = (typeof tune === 'function') ? Number(tune('unknownProfileAltFt')) : NaN;
+  return Number.isFinite(v) && v > 0 ? v : 2000;
+};
+
 const _defaultLegSpeedKt = () => {
   const v = (typeof tune === 'function') ? Number(tune('defaultLegSpeedKt')) : NaN;
   return Number.isFinite(v) && v > 0 ? v : 90;
@@ -2002,13 +2026,21 @@ function routeProfile(ac) {
   const gph = ac.gph > 0 ? ac.gph : tune('defaultGph');
   const legs = state.legs || [], wps = state.waypoints || [];
   const n = legs.length;
-  const legAlt = i => Number.isFinite(legs[i].inboundAltitude) ? legs[i].inboundAltitude : 2000;
+  // A leg with no altitude entered is flown LEVEL for timing: the plan must not
+  // charge climb/descent time against an altitude the pilot never typed. It used
+  // to assume 2 000 ft silently, model a descent onto the field, and come out ~50 s
+  // short of the map kites and the route summary for the very same leg -- three
+  // surfaces, two ETEs, and the assumption shown nowhere. The fallback survives only
+  // as the height the profile strip is DRAWN at (flat, no TOC/TOD).
+  const unknownAlt = _unknownProfileAltFt();
+  const altKnown = i => Number.isFinite(legs[i].inboundAltitude);
+  const legAlt = i => altKnown(i) ? legs[i].inboundAltitude : unknownAlt;
   // TOC/TOD are only meaningful off/onto the ground, so they're emitted solely
   // when the departure / destination is an actual airfield (has a field elev).
   const depElev = routeEndpointElev(0);
   const destElev = routeEndpointElev(n);
-  const fieldStart = depElev != null ? depElev : (n ? legAlt(0) : 2000);
-  const fieldEnd = destElev != null ? destElev : (n ? legAlt(n - 1) : 2000);
+  const fieldStart = depElev != null ? depElev : (n ? legAlt(0) : unknownAlt);
+  const fieldEnd = destElev != null ? destElev : (n ? legAlt(n - 1) : unknownAlt);
   const out = { legs: [], pts: [], tocs: [], tods: [], wpCum: [0], wpTime: [0], totalDist: 0, totalTimeH: 0, totalFuel: 0 };
 
   // Prepass: per-leg distance + cumulative NM at each waypoint.
@@ -2031,13 +2063,17 @@ function routeProfile(ac) {
     // leg's altitude) up/down to its own altitude at the climb/descent rate, so
     // altitude changes happen gradually over distance — not as a vertical step.
     // The ramp is confined to the leg (capped at the leg distance).
-    const startAlt = isFirst ? fieldStart : legAlt(i - 1);
+    // No altitude on this leg -> nothing to ramp between: hold `cr` (the drawing
+    // fallback) flat across the leg so its time is dist/speed, the same number the
+    // map kite and the route summary show.
+    const level = !altKnown(i);
+    const startAlt = level ? cr : (isFirst ? fieldStart : legAlt(i - 1));
     let climbDist = 0, descDist = 0;
     if (cr > startAlt) climbDist = Math.min(dist, climbKt * ((cr - startAlt) / climbFpm) / 60);
     else if (cr < startAlt) descDist = Math.min(dist, descKt * ((startAlt - cr) / descFpm) / 60);
     // The final leg also descends to the destination field at its end.
     let endDescDist = 0, endAlt = cr;
-    if (isLast && cr > fieldEnd) {
+    if (isLast && !level && cr > fieldEnd) {
       endAlt = fieldEnd;
       const availableDist = Math.max(0, dist - climbDist - descDist);
       endDescDist = Math.min(availableDist, descKt * ((cr - fieldEnd) / descFpm) / 60);
@@ -2205,6 +2241,13 @@ function legAltitudeIsBlocked(leg, key) {
 }
 function legAltitudePlaceholder(leg, key) {
   return legAltitudeIsBlocked(leg, key) ? altitudeBlockedLabel() : altitudeUnknownLabel();
+}
+// Map kites are glanced at, not read: a full-width "Unknown" on every leg label was
+// the loudest text on the chart and looked like an error rather than "not set yet".
+// Tables and the inspector keep the explicit word; the kite gets a dash.
+function kiteAltitudeLabel(v, leg, key) {
+  if (legAltitudeIsBlocked(leg, key)) return altitudeBlockedLabel();
+  return Number.isFinite(v) ? String(v) : (S.altitudeUnsetShort || '—');
 }
 function formatAltitudeValue(v, leg, key) {
   if (legAltitudeIsBlocked(leg, key)) return altitudeBlockedLabel();
@@ -2383,9 +2426,24 @@ try {
   if (saved && layers[saved]) initialLayer = layers[saved];
 } catch (e) { /* storage unavailable */ }
 
+// First-run view. z9 fitted the whole country but drew the CVFR chart at 0.13× --
+// unreadable, and mostly off-chart, so a new user's first screen was a near-white
+// page speckled with unlabelled reporting points. z11 is the first zoom where the
+// chart reads as a chart. A saved navaid.view (see io.js) still wins on a return
+// visit -- this is the first-run / rejected-save fallback. Gistable, so the landing
+// view can be retuned without a build.
+const _touchRotateGesture = () => {
+  const v = (typeof tune === 'function') ? Number(tune('touchRotateGesture')) : 0;
+  return v === 1;
+};
+const _initialView = (() => {
+  const num = (k, d) => { const v = (typeof tune === 'function') ? Number(tune(k)) : NaN;
+    return Number.isFinite(v) && v !== 0 ? v : d; };
+  return { center: [num('defaultViewLat', 32.1), num('defaultViewLng', 34.95)], zoom: num('defaultViewZoom', 11) };
+})();
 const map = L.map('map', {
-  center: [32.0, 34.9],
-  zoom: 9,
+  center: _initialView.center,
+  zoom: _initialView.zoom,
   minZoom: 8,                  // do not zoom out past the chart extent
   maxZoom: 15,
   layers: [initialLayer],
@@ -2398,7 +2456,11 @@ const map = L.map('map', {
   worldCopyJump: false,
   rotate: true,                // leaflet-rotate: enable map bearing
   rotateControl: false,        // own dial in the toolbar instead
-  touchRotate: true,
+  // Two-finger ROTATION is off by default: on a phone every pinch-zoom twisted the
+  // chart a few degrees, and nothing on screen says why north moved. Bearing is set
+  // deliberately from the toolbar dial instead. Gistable, so the gesture can come
+  // back without a build for anyone who wants it.
+  touchRotate: _touchRotateGesture(),
 });
 L.control.zoom({ position: 'bottomright' }).addTo(map);
 // Base layer is chosen from the toolbar (#layer-select, wired in ui.js).

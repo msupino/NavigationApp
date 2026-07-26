@@ -2882,7 +2882,7 @@ function drawLegs() {
       legAltitudeIsBlocked(leg, 'inboundAltitude');
     if (!inboundBlocked) drawLegArrow(mid.x + dx * inAlong + nx * inPerp,
       mid.y + dy * inAlong + ny * inPerp,
-      ang, pad3(magIn), timeStr, formatAltitudeValue(leg.inboundAltitude, leg, 'inboundAltitude'),
+      ang, pad3(magIn), timeStr, kiteAltitudeLabel(leg.inboundAltitude, leg, 'inboundAltitude'),
       tune('inkColor'), tintFill(tune('legKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'in'), zoomScale);
     // Cumulative inbound time: < [time], position driven by leg.cumLabel
     // (default: at B waypoint, same perpendicular side as main kite).
@@ -2901,7 +2901,7 @@ function drawLegs() {
     if (showReturn && legAllowsReturn(i)) {
       drawLegArrow(mid.x + dx * outAlong + nx * outPerp,
         mid.y + dy * outAlong + ny * outPerp, ang + Math.PI,
-        pad3(magOut), timeStrOut, formatAltitudeValue(leg.outboundAltitude, leg, 'outboundAltitude'),
+        pad3(magOut), timeStrOut, kiteAltitudeLabel(leg.outboundAltitude, leg, 'outboundAltitude'),
         tune('inkColor'), tintFill(tune('returnKiteFillColor'), tune('kiteNoteAlpha')), needsHalo(i, 'out'), zoomScale);
       if (showCumTime) {
         // Cumulative return time kite at A waypoint (return destination).
@@ -3669,19 +3669,52 @@ function drawNotes() {
 }
 
 function drawInfo() {
+  // Totals come from routeProfile() -- the same model the flight plan's summary and
+  // table use -- so the stats panel, the summary pill and the plan cannot print three
+  // different ETEs for one route. (Per-leg kite times stay still-air/TAS on purpose:
+  // they have to agree with the minute ticks they sit on.)
+  const prof = (typeof routeProfile === 'function') ? routeProfile() : null;
   let totalDist = 0, totalH = 0;
-  for (let i = 0; i < state.legs.length; i++) {
-    const A = state.waypoints[i], B = state.waypoints[i + 1];
-    if (!A || !B) continue;   // legs can transiently outnumber waypoints-1 mid-edit; guard like the sibling loops
-    const g = geo(A, B);
-    totalDist += g.dist;
-    if (state.legs[i].flightSpeed > 0) totalH += g.dist / state.legs[i].flightSpeed;
+  if (prof) {
+    totalDist = prof.totalDist;
+    totalH = prof.totalTimeH;
+  } else {
+    for (let i = 0; i < state.legs.length; i++) {
+      const A = state.waypoints[i], B = state.waypoints[i + 1];
+      if (!A || !B) continue;   // legs can transiently outnumber waypoints-1 mid-edit; guard like the sibling loops
+      const g = geo(A, B);
+      totalDist += g.dist;
+      if (state.legs[i].flightSpeed > 0) totalH += g.dist / state.legs[i].flightSpeed;
+    }
   }
+  // The VOR legend row only makes sense while the stations are on the map.
+  const vorRow = document.getElementById('legend-row-vor');
+  if (vorRow) vorRow.style.display = (typeof showVorStations !== 'undefined' && showVorStations) ? '' : 'none';
   document.getElementById('info').textContent =
     `${S.summaryWaypoints}: ${state.waypoints.length}\n` +
     `${S.summaryLegs}: ${state.legs.length}\n` +
     `${S.summaryDist}: ${totalDist.toFixed(1)} NM\n` +
     `${S.summaryTime}: ${totalH > 0 ? toHMS(totalH) : '--'}`;
+  drawSummaryPill(prof, totalDist, totalH);
+}
+
+// Route totals, always on screen while a route exists. They lived only inside the
+// mobile hamburger (and nowhere at all on desktop), so the headline numbers a pilot
+// checks constantly -- distance, ETE, fuel -- meant opening a menu or the whole plan.
+function drawSummaryPill(prof, totalDist, totalH) {
+  const pill = document.getElementById('route-summary');
+  if (!pill) return;
+  if (!state.legs.length || totalDist <= 0) { pill.style.display = 'none'; return; }
+  // Trip fuel includes the taxi/takeoff allowance when departing an airfield —
+  // exactly the plan's rule (io.js taxiFuel), or the pill would read 1.1 gal light.
+  const taxi = (aircraft && aircraft.taxiGal > 0 && typeof isAirport === 'function' &&
+    state.waypoints[0] && isAirport(state.waypoints[0])) ? aircraft.taxiGal : 0;
+  const gal = prof && prof.totalFuel > 0 ? prof.totalFuel + taxi : 0;
+  pill.style.display = '';
+  pill.textContent = (typeof S.fpMobileSummary === 'function')
+    ? S.fpMobileSummary(state.legs.length, totalDist.toFixed(1),
+      totalH > 0 ? toHMS(totalH) : '--', gal.toFixed(1))
+    : `${totalDist.toFixed(1)} NM`;
 }
 
 // --- print page frame -----------------------------------------------

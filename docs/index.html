@@ -123,7 +123,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=438">
+  <link rel="stylesheet" href="app/style.css?v=449">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -328,6 +328,15 @@
           <span class="slider-val" id="drift-line-width-val"></span>
         </label>
       </div>
+    </div>
+
+    <!-- Flight plan: the app's main output, promoted to a top-level button. It used
+         to sit inside "Charts" next to SIGMET, the NOTAM list and offline-map
+         downloads — two levels deep, under a label that reads like chart reference
+         material. The Charts entry stays for muscle memory. -->
+    <div class="tb-section tb-standalone" data-sec="plan">
+      <button id="plan-top" type="button" class="tb-section-head tb-standalone-head"
+              data-i18n="tbPlan" data-i18n-title="tbPlanTitle"></button>
     </div>
 
     <!-- Charts: route references, planning tables, and airfield charts. -->
@@ -583,78 +592,88 @@
         </svg>
         <span class="footer-link-text" data-i18n="shortcutsHelpButton"></span>
       </button>
-      <a id="repo-link" class="footer-link"
-         href="https://github.com/msupino/NavigationApp"
-         target="_blank" rel="noopener noreferrer"
-         data-i18n-title="tbViewSource">
-        <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
-             aria-hidden="true" focusable="false">
-          <path fill="currentColor" fill-rule="evenodd"
-                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
-                   0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
-                   -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07
-                   -1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0
-                   0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44
-                   1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48
-                   0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
-        </svg>
-        <span class="footer-link-text" data-i18n="tbViewSource"></span>
-      </a>
-      <a id="wiki-link" class="footer-link"
-         href="https://github.com/msupino/NavigationApp/wiki"
-         target="_blank" rel="noopener noreferrer"
-         data-i18n-title="tbWiki">
-        <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
-             aria-hidden="true" focusable="false">
-          <path fill="currentColor" fill-rule="evenodd"
-                d="M0 1.75A.75.75 0 0 1 .75 1h4.253c1.227 0 2.317.59 3 1.501A3.744 3.744 0 0 1 11.006 1h4.245a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75h-4.507a2.25 2.25 0 0 0-1.591.659l-.622.621a.75.75 0 0 1-1.06 0l-.622-.621A2.25 2.25 0 0 0 5.258 13H.75a.75.75 0 0 1-.75-.75Zm7.251 10.324.004-5.073-.002-2.253A2.25 2.25 0 0 0 5.003 2.5H1.5v9h3.757a3.75 3.75 0 0 1 1.994.574ZM8.755 4.75l-.004 7.322a3.752 3.752 0 0 1 1.992-.572H14.5v-9h-3.495a2.25 2.25 0 0 0-2.25 2.25Z"/>
-        </svg>
-        <span class="footer-link-text" data-i18n="tbWiki"></span>
-      </a>
-      <a id="issues-link" class="footer-link"
-         href="https://github.com/msupino/NavigationApp/issues/new/choose"
-         target="_blank" rel="noopener noreferrer"
-         data-i18n-title="tbIssues">
-        <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
-             aria-hidden="true" focusable="false">
-          <path fill="currentColor" fill-rule="evenodd"
-                d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm9 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm-.25-6.25a.75.75 0 0 0-1.5 0v3.5a.75.75 0 0 0 1.5 0v-3.5Z"/>
-        </svg>
-        <span class="footer-link-text" data-i18n="tbIssues"></span>
-      </a>
-      <a id="about-link" class="footer-link"
-         href="about.html"
-         target="_blank" rel="noopener noreferrer"
-         data-i18n-title="tbAbout">
-        <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
-             aria-hidden="true" focusable="false">
-          <path fill="currentColor"
-                d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0Zm0 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Zm0 10.75a.875.875 0 1 1 0-1.75.875.875 0 0 1 0 1.75ZM8 3.75a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4A.75.75 0 0 1 8 3.75Z"/>
-        </svg>
-        <span class="footer-link-text" data-i18n="tbAbout"></span>
-      </a>
-      <a id="privacy-link" class="footer-link"
-         href="privacy.html"
-         target="_blank" rel="noopener noreferrer"
-         data-i18n-title="tbPrivacy">
-        <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
-             aria-hidden="true" focusable="false">
-          <path fill="currentColor" fill-rule="evenodd"
-                d="M8 0a.75.75 0 0 1 .32.072l5.5 2.5A.75.75 0 0 1 14.25 3.25v4.5c0 3.64-2.4 6.3-5.98 8.16a.75.75 0 0 1-.54 0C4.15 14.05 1.75 11.39 1.75 7.75v-4.5a.75.75 0 0 1 .43-.678l5.5-2.5A.75.75 0 0 1 8 0Zm0 1.578L3.25 3.74v4.01c0 2.86 1.83 5.04 4.75 6.64 2.92-1.6 4.75-3.78 4.75-6.64V3.74L8 1.578Z"/>
-        </svg>
-        <span class="footer-link-text" data-i18n="tbPrivacy"></span>
-      </a>
-      <a id="terms-link" class="footer-link"
-         href="terms.html"
-         target="_blank" rel="noopener noreferrer"
-         data-i18n-title="tbTerms">
-        <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
-             aria-hidden="true" focusable="false">
-          <path fill="currentColor" fill-rule="evenodd"
-                d="M3 1.75C3 .784 3.784 0 4.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237V14.25A1.75 1.75 0 0 1 14.25 16H4.75A1.75 1.75 0 0 1 3 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V5h-2.75A1.25 1.25 0 0 1 10.5 3.75V1.5Zm7.25.62V3.75c0 .138.112.25.25.25h1.63ZM5.75 7.5h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5Zm0 3h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5Z"/>
-        </svg>
-        <span class="footer-link-text" data-i18n="tbTerms"></span>
-      </a>
+      <!-- Reference links (repo, wiki, issues, about, privacy, terms) are read once
+           and never again, yet they claimed more of the menu bar than the flight plan.
+           Collapsed behind one overflow toggle so the primary actions get the width. -->
+      <div id="footer-more" class="footer-more">
+        <button id="footer-more-btn" type="button" class="footer-link footer-link-button"
+                aria-expanded="false" aria-controls="footer-more-menu"
+                data-i18n-title="tbMoreLinks" data-i18n-aria="tbMoreLinks">⋯</button>
+        <div id="footer-more-menu" class="footer-more-menu" hidden>
+          <a id="repo-link" class="footer-link"
+             href="https://github.com/msupino/NavigationApp"
+             target="_blank" rel="noopener noreferrer"
+             data-i18n-title="tbViewSource">
+            <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
+                 aria-hidden="true" focusable="false">
+              <path fill="currentColor" fill-rule="evenodd"
+                    d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+                       0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
+                       -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07
+                       -1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0
+                       0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44
+                       1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48
+                       0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+            </svg>
+            <span class="footer-link-text" data-i18n="tbViewSource"></span>
+          </a>
+          <a id="wiki-link" class="footer-link"
+             href="https://github.com/msupino/NavigationApp/wiki"
+             target="_blank" rel="noopener noreferrer"
+             data-i18n-title="tbWiki">
+            <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
+                 aria-hidden="true" focusable="false">
+              <path fill="currentColor" fill-rule="evenodd"
+                    d="M0 1.75A.75.75 0 0 1 .75 1h4.253c1.227 0 2.317.59 3 1.501A3.744 3.744 0 0 1 11.006 1h4.245a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75h-4.507a2.25 2.25 0 0 0-1.591.659l-.622.621a.75.75 0 0 1-1.06 0l-.622-.621A2.25 2.25 0 0 0 5.258 13H.75a.75.75 0 0 1-.75-.75Zm7.251 10.324.004-5.073-.002-2.253A2.25 2.25 0 0 0 5.003 2.5H1.5v9h3.757a3.75 3.75 0 0 1 1.994.574ZM8.755 4.75l-.004 7.322a3.752 3.752 0 0 1 1.992-.572H14.5v-9h-3.495a2.25 2.25 0 0 0-2.25 2.25Z"/>
+            </svg>
+            <span class="footer-link-text" data-i18n="tbWiki"></span>
+          </a>
+          <a id="issues-link" class="footer-link"
+             href="https://github.com/msupino/NavigationApp/issues/new/choose"
+             target="_blank" rel="noopener noreferrer"
+             data-i18n-title="tbIssues">
+            <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
+                 aria-hidden="true" focusable="false">
+              <path fill="currentColor" fill-rule="evenodd"
+                    d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm9 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm-.25-6.25a.75.75 0 0 0-1.5 0v3.5a.75.75 0 0 0 1.5 0v-3.5Z"/>
+            </svg>
+            <span class="footer-link-text" data-i18n="tbIssues"></span>
+          </a>
+          <a id="about-link" class="footer-link"
+             href="about.html"
+             target="_blank" rel="noopener noreferrer"
+             data-i18n-title="tbAbout">
+            <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
+                 aria-hidden="true" focusable="false">
+              <path fill="currentColor"
+                    d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0Zm0 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Zm0 10.75a.875.875 0 1 1 0-1.75.875.875 0 0 1 0 1.75ZM8 3.75a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4A.75.75 0 0 1 8 3.75Z"/>
+            </svg>
+            <span class="footer-link-text" data-i18n="tbAbout"></span>
+          </a>
+          <a id="privacy-link" class="footer-link"
+             href="privacy.html"
+             target="_blank" rel="noopener noreferrer"
+             data-i18n-title="tbPrivacy">
+            <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
+                 aria-hidden="true" focusable="false">
+              <path fill="currentColor" fill-rule="evenodd"
+                    d="M8 0a.75.75 0 0 1 .32.072l5.5 2.5A.75.75 0 0 1 14.25 3.25v4.5c0 3.64-2.4 6.3-5.98 8.16a.75.75 0 0 1-.54 0C4.15 14.05 1.75 11.39 1.75 7.75v-4.5a.75.75 0 0 1 .43-.678l5.5-2.5A.75.75 0 0 1 8 0Zm0 1.578L3.25 3.74v4.01c0 2.86 1.83 5.04 4.75 6.64 2.92-1.6 4.75-3.78 4.75-6.64V3.74L8 1.578Z"/>
+            </svg>
+            <span class="footer-link-text" data-i18n="tbPrivacy"></span>
+          </a>
+          <a id="terms-link" class="footer-link"
+             href="terms.html"
+             target="_blank" rel="noopener noreferrer"
+             data-i18n-title="tbTerms">
+            <svg class="footer-link-icon" viewBox="0 0 16 16" width="14" height="14"
+                 aria-hidden="true" focusable="false">
+              <path fill="currentColor" fill-rule="evenodd"
+                    d="M3 1.75C3 .784 3.784 0 4.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237V14.25A1.75 1.75 0 0 1 14.25 16H4.75A1.75 1.75 0 0 1 3 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V5h-2.75A1.25 1.25 0 0 1 10.5 3.75V1.5Zm7.25.62V3.75c0 .138.112.25.25.25h1.63ZM5.75 7.5h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5Zm0 3h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5Z"/>
+            </svg>
+            <span class="footer-link-text" data-i18n="tbTerms"></span>
+          </a>
+        </div>
+      </div>
       <span class="footer-gps-group">
       <button id="gps-record" type="button" class="footer-link footer-link-button gps-footer-btn"
               data-i18n-title="tbGpsRecordTitle" data-i18n-aria="tbGpsRecord">
@@ -739,6 +758,10 @@
        data-i18n text at boot; ui.js then reparents it into a top-right
        Leaflet control so it floats over the map like a chart legend.
        Hidden until that move so it never flashes in the page flow. -->
+  <!-- Route totals pill. Reparented next to the legend (bottom-left) by ui.js;
+       filled by drawSummaryPill() and hidden while there is no route. -->
+  <div id="route-summary" class="route-summary" style="display:none"></div>
+
   <div id="map-legend" class="map-legend" data-i18n-aria="legendTitle" style="display:none">
     <div class="map-legend-title" data-i18n="legendTitle"></div>
     <div class="map-legend-row">
@@ -753,6 +776,12 @@
       <span class="legend-symbol legend-atc" aria-hidden="true"></span>
       <span data-i18n="legendAtcChange"></span>
     </div>
+    <!-- VOR stations are drawn with ident + frequency but were missing from the
+         legend; the row follows the View/Set toggle (see drawInfo). -->
+    <div class="map-legend-row" id="legend-row-vor">
+      <span class="legend-symbol legend-vor" aria-hidden="true"></span>
+      <span data-i18n="legendVor"></span>
+    </div>
     <!-- App version: the desktop menu bar hides #app-version, so surface it
          here under the legend (CSS shows this only on the desktop layout). -->
     <div id="legend-version" class="map-legend-version"></div>
@@ -764,7 +793,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=438';
+      var v = '?v=449';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',

@@ -200,7 +200,7 @@ test('the flight plan is not covered by the inspector, and shows a mobile summar
   });
   expect(r.inspVisibleBefore).toBe(true);
   expect(r.inspHiddenDuringPlan).toBe(true);   // it sat at z2320 over the z2000 modal
-  expect(r.summary).toMatch(/legs/);           // Time/Fuel/Total are otherwise scrolled off
+  expect(r.summary).toMatch(/^1 leg · /);      // singular for one leg; Time/Fuel are otherwise scrolled off
   expect(r.summary).toMatch(/NM/);
 });
 
