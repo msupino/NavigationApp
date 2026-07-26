@@ -5,7 +5,8 @@
 const { test, expect } = require('./_setup');
 
 test('clear store removes the route from the map (no re-persist on reload)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.build', '1'); } catch (e) {} });
+  // #clear-store now lives with the other data-management controls, not in Edit.
+  await page.addInitScript(() => { try { localStorage.setItem('navaid.sec.export', '1'); } catch (e) {} });
   await page.goto('?lang=en');
   await page.waitForFunction(() => typeof state !== 'undefined' && typeof flushPersist === 'function');
 

@@ -3,6 +3,41 @@
    Shares globals with core.js; loaded last. */
 
 // --- toolbar ---------------------------------------------------------
+// Floating "you are in a mode" chip. The mode buttons live inside a dropdown that
+// closes as soon as one is clicked, so their .active highlight is hidden and the only
+// remaining cue was the crosshair cursor — easy to miss, and every later map click
+// kept adding waypoints (a click meant to dismiss a panel silently added one).
+// One-time nudge over the map while the route is empty. The core action had no
+// discoverable entry point: a plain click did nothing and the add tool is two levels
+// into a menu.
+function refreshEmptyRouteHint() {
+  const empty = !state.waypoints || !state.waypoints.length;
+  let el = document.getElementById('empty-route-hint');
+  if (!empty || state.mode) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'empty-route-hint';
+    document.body.appendChild(el);
+  }
+  el.textContent = S.emptyRouteHint || 'Click the map to add your first waypoint';
+}
+
+function refreshModeChip() {
+  let chip = document.getElementById('mode-chip');
+  const label = state.mode === 'add' ? (S.modeChipAdd || 'Adding waypoints')
+    : state.mode === 'note' ? (S.modeChipNote || 'Adding notes') : '';
+  if (!label) { if (chip) chip.remove(); return; }
+  if (!chip) {
+    chip = document.createElement('button');
+    chip.id = 'mode-chip';
+    chip.type = 'button';
+    chip.onclick = () => setMode(null);
+    document.body.appendChild(chip);
+  }
+  chip.textContent = label + ' — ' + (S.modeChipStop || 'tap to stop');
+  chip.title = S.modeChipTitle || 'Click to leave this mode';
+}
+
 function setMode(mode) {
   // Clicking the currently-active mode button toggles back to inspect (null).
   if (state.mode === mode) mode = null;
@@ -18,6 +53,14 @@ function setMode(mode) {
   addBtn.setAttribute('aria-pressed', String(mode === 'add'));
   noteBtn.setAttribute('aria-pressed', String(mode === 'note'));
   document.getElementById('map').classList.toggle('add', mode === 'add' || mode === 'note');
+  refreshModeChip();
+  // A map tool needs the map. In mobile-column mode the menu stays open over it —
+  // covering ~98% of the height, so points had to be placed through a narrow strip —
+  // so collapse it here. Desktop already closes the dropdown after a command.
+  if (mode && typeof toolbarUsesDesktopMenu === 'function' && !toolbarUsesDesktopMenu()) {
+    if (typeof window.collapseToolbarForMapTool === 'function') window.collapseToolbarForMapTool();
+  }
+  if (typeof refreshEmptyRouteHint === 'function') refreshEmptyRouteHint();
 }
 document.getElementById('tool-add').onclick = () => setMode('add');
 document.getElementById('tool-note').onclick = () => setMode('note');
@@ -4715,6 +4758,11 @@ function refreshMapAfterToolbarModeChange() {
     if (bar.style.left) setPos(parseFloat(bar.style.left), parseFloat(bar.style.top));
   });
 
+  // Lets setMode() get the mobile column out of the way when a map tool is armed.
+  window.collapseToolbarForMapTool = () => {
+    if (typeof toolbarUsesDesktopMenu === 'function' && toolbarUsesDesktopMenu()) return;
+    setCollapsed(true, { persist: false });
+  };
   onToolbarDesktopMenuChange(applyResponsiveToolbarMode);
   applyResponsiveToolbarMode();
 })();
@@ -6351,3 +6399,16 @@ NavAid.applyDefaultVisibility = function applyDefaultVisibility() {
 // Baked defaults mirror the shipped checkbox state, so this first pass is a
 // no-op for a nogist user; the gist .then() re-runs it once overrides land.
 NavAid.applyDefaultVisibility();
+
+// Keep the empty-route nudge in step with the route. draw() runs on every route
+// change, so wrap it once rather than touching every mutation site.
+refreshEmptyRouteHint();
+if (!window.__navaidHintWrapped) {
+  window.__navaidHintWrapped = true;
+  const _origDraw = window.draw;
+  window.draw = function (...a) {
+    const r = _origDraw.apply(this, a);
+    try { refreshEmptyRouteHint(); } catch (e) { /* never break a draw */ }
+    return r;
+  };
+}

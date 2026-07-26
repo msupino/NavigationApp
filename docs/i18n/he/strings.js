@@ -105,6 +105,18 @@ window.S = {
   routeLibraryGdriveSyncing: 'מסנכרן…',
   routeLibraryGdriveSynced: 'סונכרן עם Google Drive',
   routeLibraryGdriveError: 'הסנכרון נכשל',
+  fpTimeUnitsTitle: 'זמן טיסה, דק:שנ (לא שעת שעון)',
+  startRouteHere: '➕ התחל מסלול כאן',
+  addToRoute: '➕ הוסף למסלול',
+  alreadyOnRoute: '✓ כבר במסלול',
+  emptyRouteHint: 'לחץ על נקודה במפה כדי להתחיל מסלול',
+  modeChipAdd: 'הוספת נקודות דרך',
+  modeChipNote: 'הוספת הערות',
+  modeChipStop: 'לחץ לסיום',
+  modeChipTitle: 'לחץ ליציאה מהמצב',
+  fpMobileSummary: function (legs, nm, time, gal) {
+    return legs + ' קטעים · ' + nm + ' NM · ' + time + ' · ' + gal + ' גלון';
+  },
   vorInfoType: 'סוג',
   vorInfoChannel: 'ערוץ',
   vorInfoHours: 'שעות',

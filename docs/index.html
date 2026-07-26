@@ -123,7 +123,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=434">
+  <link rel="stylesheet" href="app/style.css?v=435">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -207,7 +207,7 @@
     </div>
 
     <div class="tb-section" data-sec="build">
-      <div class="tb-section-head" tabindex="0" role="button">
+      <div class="tb-section-head" tabindex="0" role="button" data-i18n-aria="tbSecBuild">
         <span class="tb-head-left">
           <span class="tb-head-actions">
             <button id="tool-save-route" type="button" class="tb-head-btn js-save-route"
@@ -231,8 +231,6 @@
     <button id="fit" data-i18n="tbFit" data-i18n-title="tbFitTitle"></button>
     <button id="tool-reset-all-markers" type="button" data-i18n="tbResetAllMarkers" data-i18n-title="tbResetAllMarkersTitle"></button>
     <button id="tool-reset-all-wp-names" type="button" data-i18n="tbResetAllWpNames" data-i18n-title="tbResetAllWpNamesTitle"></button>
-    <button id="clear-store" type="button" class="danger"
-            data-i18n="tbClearStore" data-i18n-title="tbClearStoreTitle"></button>
   </div>
     </div>
 
@@ -258,6 +256,9 @@
           <span data-i18n="vorRefLabel"></span>
           <select id="vor-ref-select"></select>
         </label>
+        <label class="navtoggle" data-i18n-title="tbShowCommChangeTitle">
+          <input type="checkbox" id="commchange-cb"> <span data-i18n="tbShowCommChange"></span>
+        </label>
         <div class="tb-group" data-i18n="tbGrpRouteInfo"></div>
         <label class="navtoggle" data-i18n-title="tbShowWpNamesTitle">
           <input type="checkbox" id="wpname-cb" checked> <span data-i18n="tbShowWpNames"></span>
@@ -267,9 +268,6 @@
         </label>
         <label class="navtoggle" data-i18n-title="tbShowDriftTitle">
           <input type="checkbox" id="drift-cb" checked> <span data-i18n="tbShowDrift"></span>
-        </label>
-        <label class="navtoggle" data-i18n-title="tbShowCommChangeTitle">
-          <input type="checkbox" id="commchange-cb"> <span data-i18n="tbShowCommChange"></span>
         </label>
         <label class="navtoggle" data-i18n-title="tbShowMidLegTitle">
           <input type="checkbox" id="mid-cb"> <span data-i18n="tbShowMidLeg"></span>
@@ -386,6 +384,12 @@
         <button id="share" data-i18n="tbShare" data-i18n-title="tbShareTitle"></button>
         <button id="fly" data-i18n="tbFly" data-i18n-title="tbFlyTitle"></button>
         <input type="file" id="file" accept="application/json,.json,.gpx,application/gpx+xml,.pln,application/xml" hidden>
+        <!-- Moved here from the Edit menu: wiping every saved route + setting sat
+             directly beside everyday actions (Undo / Clear / Fit), one slip away.
+             It belongs with the other data-management controls. -->
+        <hr class="tb-danger-sep">
+        <button id="clear-store" type="button" class="danger"
+                data-i18n="tbClearStore" data-i18n-title="tbClearStoreTitle"></button>
       </div>
     </div>
 
@@ -760,7 +764,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=434';
+      var v = '?v=435';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
