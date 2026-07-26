@@ -470,7 +470,10 @@ function validateNavWaypoints(d) {
   return errs.length ? errs.join('; ') : null;
 }
 // Strict schema for docs/data/vor.json — { vors:[{ ident, name, freq, lat, lng,
-// he? }] }. Unknown keys tolerated (forward-compat).
+// he?, aipName?, type?, ch?, hours?, elevFt?, coverageNm?, remarks?, dmeOnly? }].
+// The optional fields carry the published AIP ENR 4.1 detail (facility type, DME
+// channel, hours, antenna elevation, coverage radius and limits). Unknown keys
+// tolerated (forward-compat).
 function validateVors(d) {
   const errs = [];
   if (!d || typeof d !== 'object' || Array.isArray(d)) {
@@ -489,6 +492,20 @@ function validateVors(d) {
     _v(v, 'freq',  'string', p, errs);
     _v(v, 'lat',   'number', p, errs);
     _v(v, 'lng',   'number', p, errs);
+    // Optional AIP detail — checked only when present.
+    for (const k of ['aipName', 'type', 'ch', 'hours', 'remarks']) {
+      if (v[k] !== undefined && typeof v[k] !== 'string') {
+        errs.push(p + '.' + k + ': expected string, got ' + _vKind(v[k]));
+      }
+    }
+    for (const k of ['elevFt', 'coverageNm']) {
+      if (v[k] !== undefined && typeof v[k] !== 'number') {
+        errs.push(p + '.' + k + ': expected number, got ' + _vKind(v[k]));
+      }
+    }
+    if (v.dmeOnly !== undefined && typeof v.dmeOnly !== 'boolean') {
+      errs.push(p + '.dmeOnly: expected boolean, got ' + _vKind(v.dmeOnly));
+    }
   }
   return errs.length ? errs.join('; ') : null;
 }

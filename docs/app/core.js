@@ -60,6 +60,12 @@ NavAid.tuningDefaults = {
   satelliteExpandedZoom: { value: 17, min: 10, max: 20, step: 1, label: 'Satellite expanded zoom' },
   satelliteMinZoom: { value: 13, min: 8, max: 18, step: 1, label: 'Satellite min zoom' },
   satelliteMaxZoom: { value: 18, min: 12, max: 20, step: 1, label: 'Satellite max zoom' },
+  vorRangeRingColor: { value: '#1d6fe0', type: 'color', label: 'VOR range ring color' },
+  vorRangeRingAlpha: { value: 0.5, min: 0, max: 1, step: 0.05, label: 'VOR range ring alpha' },
+  vorRangeRingWidthPx: { value: 1.5, min: 0.5, max: 6, step: 0.5, label: 'VOR range ring width' },
+  vorRangeRingDashPx: { value: 7, min: 0, max: 30, step: 1, label: 'VOR range ring dash' },
+  vorRangeRingGapPx: { value: 6, min: 0, max: 30, step: 1, label: 'VOR range ring dash gap' },
+  vorRangeRingLabel: { value: 1, min: 0, max: 1, step: 1, label: 'VOR range ring label (0/1)' },
   satelliteChartOverscale: { value: 1, min: 0, max: 3, step: 1, label: 'Satellite chart overscale levels' },
 
   magBaselineZoom: { value: 12, min: 8, max: 18, step: 1, label: 'Magnifier baseline zoom' },
@@ -429,6 +435,7 @@ NavAid.tuningGroups = [
   { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileDescentFpm', 'profileClimbKt', 'profileDescentKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },
+  { name: 'VOR range ring', keys: ['vorRangeRingColor', 'vorRangeRingAlpha', 'vorRangeRingWidthPx', 'vorRangeRingDashPx', 'vorRangeRingGapPx', 'vorRangeRingLabel'] },
   { name: 'Satellite', keys: ['satellitePreviewZoom', 'satelliteExpandedZoom', 'satelliteMinZoom', 'satelliteMaxZoom', 'satelliteChartOverscale', 'satellitePreviewWidthPx', 'satellitePreviewHeightPx', 'satelliteMarkerRadiusPx', 'satelliteMarkerColor', 'satelliteMarkerWeightPx', 'satelliteMarkerAlpha'] },
   { name: 'Go-to marker', keys: ['gotoMarkerColor', 'gotoMarkerFillColor', 'gotoMarkerRadiusPx', 'gotoMarkerWeightPx', 'gotoMarkerFillAlpha'] },
   { name: 'Map label zoom', keys: ['airfieldLabelMinZoom', 'navWpLabelMinZoom', 'vorLabelMinZoom'] },
@@ -569,7 +576,7 @@ window.S = Object.assign({
   commChangeUrl: 'data/cvfr-comm-change.json?v=2', // CVFR comm-change reporting points (issue #399)
   legAltitudeUrl: 'data/cvfr-leg-altitude.json?v=1', // CVFR green-route leg altitude table
   routeTemplatesUrl: 'data/route-templates.json?v=2', // ready-made route templates
-  vorUrl: 'data/vor.json?v=1',              // Israeli VOR/DME stations (#404 follow-up)
+  vorUrl: 'data/vor.json?v=2',              // Israeli VOR/DME stations (#404 follow-up)
 
   // --- English UI copy (default locale) -------------------------------
   // Sentence case: capitalize the first word and proper nouns / acronyms
@@ -666,6 +673,17 @@ window.S = Object.assign({
   routeLibraryGdriveSyncing: 'Syncing…',
   routeLibraryGdriveSynced: 'Synced with Google Drive',
   routeLibraryGdriveError: 'Drive sync failed',
+  vorInfoType: 'Type',
+  vorInfoChannel: 'Channel',
+  vorInfoHours: 'Hours',
+  vorInfoRange: 'Range',
+  vorInfoRangeNone: 'not published',
+  vorInfoElev: 'DME antenna',
+  vorInfoLimits: 'Limits',
+  vorInfoOutOfRange: 'This point is {dme} NM out — beyond the published {cov} NM coverage.',
+  vorDmeOnlyReadout: function (dme) { return dme + ' NM (DME only)'; },
+  searchKindRouteWp: 'on your route',
+  searchKindNote: 'note',
   routeLibraryGdriveSyncSettings: 'Sync settings too',
   routeLibraryGdriveSettingsApplied: 'Settings updated — reloading…',
   routeLibraryGdriveFirstSyncConflict: 'This device and Google Drive both have settings for: {keys}.\n\nOK = REPLACE this device\'s values with the ones from Drive.\nCancel = do nothing (sync again to choose).',

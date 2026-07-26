@@ -1541,30 +1541,45 @@ function runSearch() {
   if (multi && !lastToken) { closeSearch(); return; }
   const q = lastToken.toUpperCase();
   if (!q) { closeSearch(); return; }
-  const afHits = [], wpHits = [];
-  // #124: split budget evenly — up to 6 airfields then up to 6 nav-WPs so a
-  // broad query (e.g. "LL") can't fill all 12 slots with airfield results.
-  if (airfields && airfields.length) {
-    for (const a of airfields) {
-      if (a.name.toUpperCase().indexOf(q) >= 0 ||
-          (a.en && a.en.toUpperCase().indexOf(q) >= 0) ||
-          (a.he && a.he.indexOf(lastToken) >= 0)) {
-        afHits.push({ kind: 'af', entry: a });
-      }
-    }
+  // Searchable sources — every named thing drawn on the map. Adding a dataset is
+  // one entry here rather than another branch below. `routable` marks sources whose
+  // `name` is a canonical route point, so multi-token route building can accept
+  // them; everything else just flies the map to the hit.
+  const src = [];
+  const has = a => Array.isArray(a) && a.length;
+  const hit = (s2, up) => s2 && String(s2).toUpperCase().indexOf(up) >= 0;
+  const hitHe = s2 => s2 && String(s2).indexOf(lastToken) >= 0;
+  if (has(vors)) src.push({                                   // VOR/DME stations
+    kind: 'vor', cap: 3, items: vors, routable: false,
+    match: v => hit(v.ident, q) || hit(v.name, q) || hitHe(v.he),
+  });
+  if (has(airfields)) src.push({
+    kind: 'af', cap: 6, items: airfields, routable: true,
+    match: a => hit(a.name, q) || hit(a.en, q) || hitHe(a.he),
+  });
+  if (has(navWP)) src.push({
+    kind: 'wp', cap: 12, items: navWP, routable: true,
+    match: w => hit(w.name, q) || hit(w.en, q) || hitHe(w.he),
+  });
+  if (has(state.waypoints)) src.push({                        // the user's own route
+    kind: 'routewp', cap: 4, items: state.waypoints, routable: false,
+    match: w => hit(w.name, q) || hitHe(w.he),
+  });
+  if (has(state.notes)) src.push({                            // notes placed on the map
+    kind: 'note', cap: 3,
+    items: state.notes.filter(n => n && (n.text || n.cc)), routable: false,
+    match: n => hit(n.text, q) || hit(n.cc, q) || hitHe(n.text),
+  });
+  // #124: split the 12 slots across sources so one broad match cannot fill them all.
+  const hits = [];
+  const perSource = [];
+  for (const so of src) perSource.push(so.items.filter(so.match).map(e => ({ kind: so.kind, entry: e, src: so })));
+  let budget = 12;
+  for (let i = 0; i < perSource.length && budget > 0; i++) {
+    const take = Math.min(perSource[i].length, src[i].cap, budget);
+    hits.push(...perSource[i].slice(0, take));
+    budget -= take;
   }
-  if (navWP && navWP.length) {
-    for (const w of navWP) {
-      if (w.name.toUpperCase().indexOf(q) >= 0 ||
-          (w.en && w.en.toUpperCase().indexOf(q) >= 0) ||
-          (w.he && w.he.indexOf(lastToken) >= 0)) {
-        wpHits.push({ kind: 'wp', entry: w });
-      }
-    }
-  }
-  const afSlots = Math.min(afHits.length, 6);
-  const wpSlots = Math.min(wpHits.length, 12 - afSlots);
-  const hits = afHits.slice(0, afSlots).concat(wpHits.slice(0, wpSlots));
   if (!hits.length) { closeSearch(); return; }
   wpResults.innerHTML = '';
   const wpField = S.navWpSearchField;
@@ -1574,7 +1589,25 @@ function runSearch() {
     const item = document.createElement('div');
     item.className = 'wp-search-item';
     let primary, alt;
-    if (h.kind === 'af') {
+    if (h.kind === 'routewp') {
+      primary = w.name || (S.wpLabel || 'WP');
+      alt = S.searchKindRouteWp || 'on your route';
+    } else if (h.kind === 'note') {
+      primary = (w.text || w.cc || '').slice(0, 40);
+      alt = S.searchKindNote || 'note';
+    } else if (h.kind === 'vor') {
+      // "ZFR — Zofar · 115.60" so the ident, the name and the frequency to tune are
+      // all visible without opening anything.
+      primary = w.ident;
+      const nm = (wpField === 'he' && w.he) ? w.he : w.name;
+      const bits = [];
+      if (nm) bits.push(nm);
+      if (w.freq && !w.dmeOnly) bits.push(w.freq);
+      if (w.ch) bits.push('CH ' + w.ch);
+      if (w.type) bits.push(w.type);
+      if (w.coverageNm) bits.push(w.coverageNm + ' NM');
+      alt = bits.join(' \u00b7 ');
+    } else if (h.kind === 'af') {
       primary = w.name;                  // ICAO is always shown first
       alt = (w[afField] || w.en || '');
       if (alt === primary) alt = '';
@@ -1588,6 +1621,13 @@ function runSearch() {
     }
     item.textContent = alt && alt !== primary ? primary + ' / ' + alt : primary;
     item.onclick = () => {
+      if (multi && !h.src.routable) {
+        // Route building works on named route points; a station is a place to look
+        // at, so just fly the map there and leave the typed route untouched.
+        map.setView([w.lat, w.lng], Math.max(map.getZoom(), 12));
+        closeSearch();
+        return;
+      }
       if (multi) {
         // Replace just the last token with the canonical code — keeps the
         // typed route in a single stable identifier set. Trailing
@@ -1635,6 +1675,16 @@ function showSearchOverlay() {
   searchOverlay.classList.remove('hidden');
   wpSearch.focus();
   wpSearch.select();
+  // The VOR dataset is lazy-loaded with its map layer, so a search opened before
+  // that layer was ever shown would silently have no stations to match. Pull it in
+  // and re-run once, so typing ZOFAR works on a cold start.
+  if (typeof vors === 'undefined' || !vors) {
+    if (typeof loadVors === 'function') {
+      Promise.resolve(loadVors())
+        .then(() => { if (!searchOverlay.classList.contains('hidden') && wpSearch.value.trim()) runSearch(); })
+        .catch(() => {});
+    }
+  }
 }
 function hideSearchOverlay() {
   searchOverlay.classList.add('hidden');

@@ -1,14 +1,14 @@
 'use strict';
 /* Hebrew localisation — loaded before core.js so the || in core.js keeps this. */
 window.S = {
-  navWpUrl: 'data/cvfr-nav-waypoints.json?v=3',
+  // Dataset URLs are deliberately NOT set here. They are locale-independent (the
+  // same files, with the Hebrew text inside them), and this file is loaded BEFORE
+  // core.js, so anything defined here wins the `||` in core.js. Duplicating them
+  // meant every `?v=` bump in core.js silently missed Hebrew users, who kept
+  // serving their cached copy: airfields sat at v3 while core reached v33, and
+  // nav-waypoints at v3 against v9. Only the locale FIELD choices belong here.
   navWpSearchField: 'he',
-  airfieldsUrl: 'data/airfields.json?v=3',
   airfieldLabelField: 'he',
-  commChangeUrl: 'data/cvfr-comm-change.json?v=1',
-  legAltitudeUrl: 'data/cvfr-leg-altitude.json?v=1',
-  vorUrl: 'data/vor.json?v=1',
-  routeTemplatesUrl: 'data/route-templates.json?v=2',
 
   // --- Waypoint terminology -------------------------------------------
   // Mirrors the English cluster in core.js — keep the noun phrase
@@ -105,6 +105,17 @@ window.S = {
   routeLibraryGdriveSyncing: 'מסנכרן…',
   routeLibraryGdriveSynced: 'סונכרן עם Google Drive',
   routeLibraryGdriveError: 'הסנכרון נכשל',
+  vorInfoType: 'סוג',
+  vorInfoChannel: 'ערוץ',
+  vorInfoHours: 'שעות',
+  vorInfoRange: 'טווח',
+  vorInfoRangeNone: 'לא פורסם',
+  vorInfoElev: 'אנטנת DME',
+  vorInfoLimits: 'מגבלות',
+  vorInfoOutOfRange: 'הנקודה במרחק {dme} NM — מעבר לטווח המפורסם {cov} NM.',
+  vorDmeOnlyReadout: function (dme) { return dme + ' NM (DME בלבד)'; },
+  searchKindRouteWp: 'במסלול שלך',
+  searchKindNote: 'הערה',
   routeLibraryGdriveSyncSettings: 'סנכרן גם הגדרות',
   routeLibraryGdriveSettingsApplied: 'ההגדרות עודכנו — טוען מחדש…',
   routeLibraryGdriveFirstSyncConflict: 'גם למכשיר הזה וגם ל-Google Drive יש הגדרות עבור: {keys}.\n\nאישור = להחליף את הערכים של המכשיר הזה בערכים מה-Drive.\nביטול = לא לעשות דבר (אפשר לסנכרן שוב ולבחור).',

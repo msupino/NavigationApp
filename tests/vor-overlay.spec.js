@@ -840,3 +840,92 @@ test('station coordinates match the published AIP antenna positions', async ({ p
     expect(byId[ident][1], ident + ' lng').toBeCloseTo(lng, 5);
   }
 });
+
+test('the AIP detail is carried through loadVors and shown on the STATION inspector', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    await loadVors();
+    window.showVorStations = true;
+    // Select the STATION itself — facts about the facility belong on its own
+    // inspector, not on whichever waypoint happens to be selected.
+    state.selected = { type: 'vor', index: vors.findIndex(v => v.ident === 'ZFR') };
+    draw(); showInspector();
+    const z = vors.find(v => v.ident === 'ZFR');
+    const info = document.querySelector('.vor-aip-info');
+    return {
+      // loadVors used to whitelist six fields, silently dropping all of this.
+      carried: { type: z.type, ch: z.ch, hours: z.hours, cov: z.coverageNm, elev: z.elevFt,
+                 remarks: !!z.remarks },
+      text: info ? info.textContent : '',
+    };
+  });
+  expect(r.carried).toEqual({ type: 'VOR/DME', ch: '103X', hours: 'H24', cov: 30, elev: 100, remarks: true });
+  expect(r.text).toContain('VOR/DME');
+  expect(r.text).toContain('CH 103X');
+  expect(r.text).toContain('H24');
+  expect(r.text).toContain('30 NM');
+  expect(r.text).toContain('100 ft');
+  expect(r.text).toContain('RDL009');       // the published limits
+});
+
+test('the waypoint inspector keeps only the point-relative out-of-range notice', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    await loadVors();
+    window.vorRef = 'ZFR';
+    // A point well outside ZFR's published 30 NM coverage.
+    state.waypoints = [{ lat: 31.20, lng: 35.30, name: 'FAR' }, { lat: 30.40, lng: 35.10, name: 'B' }];
+    state.legs = []; syncLegs();
+    state.selected = { type: 'wp', index: 0 };
+    draw(); showInspector();
+    const info = document.querySelector('.vor-aip-info');
+    return { warned: !!document.querySelector('.vor-aip-warn'), text: info ? info.textContent : '' };
+  });
+  expect(r.warned).toBe(true);              // depends on THIS point, so it stays here
+  expect(r.text).not.toContain('CH 103X');  // station facts moved to the station
+  expect(r.text).not.toContain('H24');
+});
+
+test('a DME-only facility reports distance without inventing a radial', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    await loadVors();
+    const lot = vors.find(v => v.ident === 'LOT');
+    window.vorRef = 'LOT';
+    state.waypoints = [{ lat: 31.9, lng: 35.1, name: 'A' }, { lat: 31.7, lng: 35.0, name: 'B' }];
+    state.legs = []; syncLegs();
+    state.selected = { type: 'wp', index: 0 };
+    draw(); showInspector();
+    return { dmeOnly: lot.dmeOnly, type: lot.type,
+             readout: (document.querySelector('.vor-radial-val') || {}).textContent || '' };
+  });
+  expect(r.dmeOnly).toBe(true);            // BET-MEIR is DME-only per ENR 4.1
+  expect(r.type).toBe('DME');
+  expect(r.readout).toMatch(/DME only/);   // no R-xxx bearing from a DME
+  expect(r.readout).not.toMatch(/R-\d/);
+});
+
+test('the selected station draws a published-range ring; unpublished draws none', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    await loadVors();
+    window.showVorStations = true;
+    map.setView([30.85, 35.2], 8, { animate: false });
+    const count = () => {
+      // Count ring strokes by spying on the dashed-path calls drawVors makes.
+      let dashed = 0;
+      const orig = octx.setLineDash.bind(octx);
+      octx.setLineDash = a => { if (a && a.length && a[0]) dashed++; return orig(a); };
+      draw();
+      octx.setLineDash = orig;
+      return dashed;
+    };
+    window.vorRef = 'ZFR';  const withCov = count();      // 30 NM published
+    window.vorRef = 'RAM';  const noCov  = count();       // no coverage published
+    return { withCov, noCov, zfrCov: vors.find(v=>v.ident==='ZFR').coverageNm,
+             ramCov: vors.find(v=>v.ident==='RAM').coverageNm };
+  });
+  expect(r.zfrCov).toBe(30);
+  expect(r.ramCov).toBeUndefined();
+  expect(r.withCov).toBeGreaterThan(r.noCov);   // ring only when a range is published
+});

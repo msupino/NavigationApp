@@ -1662,7 +1662,8 @@ async function loadAirfields() {
   }
 }
 // --- VOR/DME stations (issue #404 follow-up) ------------------------
-// Lazy-loads docs/data/vor.json: { vors:[{ ident, name, he?, freq, lat, lng }] }.
+// Lazy-loads docs/data/vor.json: { vors:[{ ident, name, he?, freq, lat, lng,
+// aipName?, type?, ch?, hours?, elevFt?, coverageNm?, remarks?, dmeOnly? }].
 // Used by the overlay markers, the selectable reference for radial/DME
 // readouts, and (later) the flight-plan radial/DME columns.
 async function loadVors() {
@@ -1677,9 +1678,15 @@ async function loadVors() {
       if (typeof S.errInvalidVors === 'function') alert(S.errInvalidVors(verr));
       return [];
     }
+    // Carry the published AIP detail through — the inspector shows type / channel /
+    // hours / range / limits, and the range ring needs coverageNm. This mapping used
+    // to whitelist six fields, so everything else was silently dropped.
     vors = d.vors.map(v => ({
       ident: v.ident, name: v.name, he: v.he,
       freq: v.freq, lat: v.lat, lng: v.lng,
+      aipName: v.aipName, type: v.type, ch: v.ch, hours: v.hours,
+      elevFt: v.elevFt, coverageNm: v.coverageNm, remarks: v.remarks,
+      dmeOnly: v.dmeOnly === true,
     }));
     return vors;
   } catch (e) {
@@ -1826,9 +1833,49 @@ function drawVors(force) {
   octx.textAlign = 'left';
   octx.textBaseline = 'middle';
   octx.font = `bold ${tune('vorLabelFontPx')}px sans-serif`;
+  // Published coverage ring for the SELECTED station, drawn first so the marker and
+  // label sit on top of it. Radius is the AIP ENR 4.1 coverage figure, so it shows
+  // where the station is actually usable — several are far smaller than pilots
+  // assume (BSA 15 NM, ROP 20 NM) and two publish none at all.
+  // Selecting a station on the map rings it immediately — that is what a pilot is
+  // asking when they tap it. The inspector-only override and the global reference
+  // VOR also ring, in that order of precedence.
+  const selectedStation = (state.selected && state.selected.type === 'vor' &&
+    vors[state.selected.index]) ? vors[state.selected.index].ident : null;
+  const selIdent = selectedStation ||
+    (typeof inspectorVorRef === 'string' && inspectorVorRef) || vorRef;
+  const selV = selIdent ? vors.find(v => v.ident === selIdent) : null;
+  if (selV && selV.coverageNm > 0 && typeof notamCirclePoints === 'function') {
+    const pts = notamCirclePoints(selV.lat, selV.lng, selV.coverageNm, 96).map(c => proj({ lat: c[0], lng: c[1] }));
+    octx.save();
+    octx.beginPath();
+    octx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) octx.lineTo(pts[i].x, pts[i].y);
+    octx.closePath();
+    octx.setLineDash([tune('vorRangeRingDashPx'), tune('vorRangeRingGapPx')]);
+    octx.lineWidth = tune('vorRangeRingWidthPx');
+    octx.strokeStyle = colorWithAlpha(tune('vorRangeRingColor'), tune('vorRangeRingAlpha'));
+    octx.stroke();
+    octx.setLineDash([]);
+    if (tune('vorRangeRingLabel')) {
+      // Label at the ring's top so it reads without covering the station.
+      const top = pts.reduce((a, b) => (b.y < a.y ? b : a), pts[0]);
+      const txt = selV.ident + ' ' + selV.coverageNm + ' NM';
+      octx.font = `bold ${tune('vorLabelFontPx')}px sans-serif`;
+      octx.textAlign = 'center';
+      octx.textBaseline = 'bottom';
+      octx.lineWidth = 2.5;
+      octx.strokeStyle = colorWithAlpha(tune('overlayLabelHaloColor'), tune('overlayLabelHaloAlpha'));
+      octx.strokeText(txt, top.x, top.y - 3);
+      octx.fillStyle = colorWithAlpha(tune('vorRangeRingColor'), 1);
+      octx.fillText(txt, top.x, top.y - 3);
+    }
+    octx.restore();
+  }
+
   for (const v of vors) {
     const s = proj(v);
-    const sel = v.ident === vorRef;
+    const sel = v.ident === selIdent;
     const col = sel ? tune('vorSelectedColor') : tune('vorMarkerColor');
     octx.strokeStyle = col;
     octx.fillStyle = col;
