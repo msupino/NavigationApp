@@ -375,7 +375,7 @@ function hitAirfieldMarkerCandidates(px, py) {
   const r = tune('airfieldMarkerRadiusPx') + tune('hitWaypointExtraPx');
   for (let i = airfields.length - 1; i >= 0; i--) {
     const s = proj(airfields[i]);
-    if (Math.hypot(s.x - px, s.y - py) <= r) hits.push({ type: 'airfield', index: i });
+    if (Math.hypot(s.x - px, s.y - py) <= r) hits.push({ type: 'airfield', index: i, chartPoint: true });
   }
   return hits;
 }
@@ -389,7 +389,10 @@ function hitNavWpMarkerCandidates(px, py) {
   const r = tune('navWaypointRadiusPx') + tune('hitWaypointExtraPx');
   for (let i = navWP.length - 1; i >= 0; i--) {
     const s = proj(navWP[i]);
-    if (Math.hypot(s.x - px, s.y - py) <= r) hits.push({ type: 'navwp', index: i });
+    // `chartPoint` marks a real chart-point marker. Comm-change rings report the same
+    // 'navwp' type (they are drawn on these dots), so type alone cannot tell them
+    // apart — and filtering by type removed rings from the point chooser.
+    if (Math.hypot(s.x - px, s.y - py) <= r) hits.push({ type: 'navwp', index: i, chartPoint: true });
   }
   return hits;
 }
@@ -1131,6 +1134,31 @@ function populateInspectorVorSelect(sel, selected) {
     sel.appendChild(opt);
   }
   sel.value = selected || '';
+}
+
+// Chart points (nav waypoints, airfields) had no way onto the route: clicking one
+// opened an info panel and stopped there, so the only route-building path was the
+// add tool, two levels into a menu. This puts the action where the user already is.
+function appendAddToRouteButton(body, pt) {
+  if (!pt || !Number.isFinite(pt.lat) || !Number.isFinite(pt.lng)) return;
+  const empty = !state.waypoints || !state.waypoints.length;
+  const already = typeof routeOccupiesPoint === 'function' && routeOccupiesPoint(pt);
+  const btn = document.createElement('button');
+  btn.className = 'insp-btn';
+  btn.id = 'insp-add-to-route';
+  btn.textContent = already ? (S.alreadyOnRoute || '✓ Already on the route')
+    : empty ? (S.startRouteHere || '➕ Start route here')
+            : (S.addToRoute || '➕ Add to route');
+  btn.disabled = !!already;
+  btn.onclick = () => {
+    if (already) return;
+    state.waypoints.push({ lat: r5(pt.lat), lng: r5(pt.lng), name: pt.name || '' });
+    syncLegs();
+    state.selected = { type: 'wp', index: state.waypoints.length - 1 };
+    draw();
+    showInspector();
+  };
+  body.appendChild(btn);
 }
 
 // Published ENR 4.1 detail for a station, as compact key/value lines: what it is,
@@ -2234,6 +2262,23 @@ function appendAirfieldWeather(body, af) {
   load(false);
 }
 
+// Split the inspector's actions from its data rows: they go into one sticky block so
+// the destructive ones cannot fall below the fold on a phone, and only genuinely
+// destructive ones keep the alarm red.
+function finalizeInspectorActions(body) {
+  const btns = [...body.children].filter(el => el.classList && el.classList.contains('insp-btn'));
+  if (!btns.length) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'insp-actions';
+  for (const b of btns) {
+    const txt = (b.textContent || '').toLowerCase();
+    const destructive = /🗑|delete|remove|מחק|הסר/.test(txt);
+    if (!destructive) b.classList.add('insp-btn-safe');
+    wrap.appendChild(b);
+  }
+  body.appendChild(wrap);
+}
+
 function showInspector() {
   const insp = document.getElementById('inspector');
   const title = document.getElementById('insp-title');
@@ -2491,6 +2536,7 @@ function showInspector() {
     title.placeholder = ''; title.readOnly = true; title.oninput = null;
     appendPointCoordinateRows(body, af);
     appendAirfieldDetailRows(body, af, title.value);
+    appendAddToRouteButton(body, af);
   } else if (state.selected.type === 'navwp') {
     const nw = navWP && navWP[state.selected.index];
     if (!nw) {
@@ -2508,6 +2554,7 @@ function showInspector() {
     appendNavWaypointCommChangeInfo(body, nw.name);
     appendSatelliteSnippet(body, nw, title.value);
     appendVorRadialRow(body, nw.lat, nw.lng);
+    appendAddToRouteButton(body, nw);
   } else {
     const wp = state.waypoints[state.selected.index];
     normalizeWaypointSequenceName(wp);
@@ -2625,6 +2672,7 @@ function showInspector() {
     resetName.onclick = () => resetWpName(state.selected.index);
     body.appendChild(resetName);
   }
+  finalizeInspectorActions(body);
   persistInspectorSelection();
 }
 function colorRow(label, value, onChange, defaultValue) {
@@ -3228,7 +3276,14 @@ map.on('mousedown', e => {
     const wi = commCalloutWaypointIndex(state.notes[c.index]);
     return !(wi >= 0 && wpHitSet.has(wi));
   });
-  const ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
+  let ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
+  // Empty route, no mode: the map is primed to start one, so a press on a CHART POINT
+  // (nav waypoint / airfield marker) falls through to the add path instead of being
+  // consumed as a selection — clicking the named points you want to route between is
+  // the obvious gesture. Only `chartPoint` candidates are dropped, so comm-change
+  // rings stay in the chooser and VOR / NOTAM stay inspectable with no route.
+  const primingRoute = includeOverlayChoices && !(state.waypoints && state.waypoints.length);
+  if (primingRoute) ovHits = ovHits.filter(h => !h.chartPoint);
   // NOTAM areas / lines / badges are clickable too — include them as overlay
   // choices so an overlap surfaces the multi-selector. Waypoints stay higher
   // priority (so they remain draggable inside large NOTAM areas); a NOTAM-only
@@ -3468,6 +3523,14 @@ map.on('click', e => {
   }
   if (downHit) { downHit = false; return; }
   // NOTAM clicks are handled in mousedown (as overlay choices); see there.
+  // First click on an EMPTY route ARMS add mode, then falls through to the normal add
+  // path below. Clicking the map is the first thing anyone tries and it did nothing
+  // (add-mode lives two levels into a menu). Arming it — rather than dropping a single
+  // point — means the next click keeps adding, chart waypoints snap exactly as they do
+  // in add mode, and the mode chip states what is happening and how to stop.
+  if (!state.mode && (!state.waypoints || !state.waypoints.length)) {
+    if (typeof setMode === 'function') setMode('add');
+  }
   if (state.mode === 'add') {
     const r = applyNavSnap(e.latlng, '');
     // #104: ignore the click if a waypoint already sits at the snap target.
@@ -3701,7 +3764,14 @@ mapEl.addEventListener('touchstart', e => {
     const wi = commCalloutWaypointIndex(state.notes[c.index]);
     return !(wi >= 0 && wpHitSet.has(wi));
   });
-  const ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
+  let ovHits = includeOverlayChoices ? hitOverlayMarkerCandidates(p.x, p.y) : [];
+  // Empty route, no mode: the map is primed to start one, so a press on a CHART POINT
+  // (nav waypoint / airfield marker) falls through to the add path instead of being
+  // consumed as a selection — clicking the named points you want to route between is
+  // the obvious gesture. Only `chartPoint` candidates are dropped, so comm-change
+  // rings stay in the chooser and VOR / NOTAM stay inspectable with no route.
+  const primingRoute = includeOverlayChoices && !(state.waypoints && state.waypoints.length);
+  if (primingRoute) ovHits = ovHits.filter(h => !h.chartPoint);
   // NOTAM areas/lines/badges as overlay choices (see the mousedown handler).
   const notamHits = (includeOverlayChoices && window.showNotam && typeof notamsAtLatLng === 'function')
     ? notamsAtLatLng(map.containerPointToLatLng([p.x, p.y])).map(n => ({ type: 'notam', notam: n })) : [];

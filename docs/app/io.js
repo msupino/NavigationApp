@@ -1745,6 +1745,15 @@ function showFlightPlan() {
   back.className = 'modal-back flight-plan';
   const box = document.createElement('div');
   box.className = 'modal wide';
+  // The inspector is pinned top-right at z-index 2320, above this modal's 2000, so an
+  // open selection covered the right-hand columns (Cum. fuel was unreadable). Hide it
+  // while the plan is up and put it back on close if the selection still stands.
+  const inspEl = document.getElementById('inspector');
+  const inspWasVisible = !!(inspEl && !inspEl.classList.contains('hidden'));
+  if (inspWasVisible) inspEl.classList.add('hidden');
+  const restoreInspector = () => {
+    if (inspWasVisible && state.selected && typeof showInspector === 'function') showInspector();
+  };
 
   const title = document.createElement('div');
   title.className = 'modal-title';
@@ -1812,6 +1821,7 @@ function showFlightPlan() {
       window.removeEventListener('touchmove', onTouchMove, { passive: false });
       window.removeEventListener('touchend', end);
       window.removeEventListener('touchcancel', end);
+      restoreInspector();          // put the inspector back if it was open
     };
   })(box);
 
@@ -2125,6 +2135,11 @@ function showFlightPlan() {
     fpColumns.forEach(col => {
       const th = document.createElement('th');
       th.textContent = col.label;
+      // Units as a tooltip, not in the label: the label doubles as the CSV column
+      // name, and "13:15" beside a Zulu clock otherwise reads as a clock time.
+      if (col.key === 'time' || col.key === 'cumTime') {
+        th.title = S.fpTimeUnitsTitle || 'Elapsed time, mm:ss (not a clock time)';
+      }
       trEl.appendChild(markFpColumn(th, col.key));
     });
   };
@@ -2349,6 +2364,13 @@ function showFlightPlan() {
   }
   table.appendChild(tbody);
 
+  // Narrow screens: the table is ~2.6x the viewport width, so Dist / Time / Fuel and
+  // the Total row are all scrolled off and a phone shows only names + heading. Put the
+  // figures that matter in one line above it. Inserted once the scroll area is in the
+  // DOM (below) — inserting here threw, because the table is not in `box` yet.
+  const mobileSummary = document.createElement('div');
+  mobileSummary.id = 'fp-mobile-summary';
+
   const tfoot = document.createElement('tfoot');
   const trF = document.createElement('tr');
   const tdLabel = document.createElement('td');
@@ -2439,6 +2461,13 @@ function showFlightPlan() {
     totFuelCell.textContent = ac ? tf.toFixed(1) : '--';
     totCumTimeCell.textContent = totTimeCell.textContent;
     totCumFuelCell.textContent = totFuelCell.textContent;
+    // Keep the narrow-screen summary in step with the table it summarises.
+    if (mobileSummary) {
+      mobileSummary.textContent = (typeof S.fpMobileSummary === 'function')
+        ? S.fpMobileSummary(state.legs.length, td.toFixed(1),
+            th > 0 ? toHMS(th) : '--', ac ? tf.toFixed(1) : '--')
+        : '';
+    }
     if (freqActive) {
       freqSources = typeof routeFreqSources === 'function' ? routeFreqSources() : freqSources;
       for (let i = 0; i < freqCells.length; i++) {
@@ -2448,6 +2477,8 @@ function showFlightPlan() {
   }
   refresh();
   scrollArea.appendChild(table);
+  // Above the horizontally-scrolling table, inside the same parent.
+  if (scrollArea.parentElement) scrollArea.parentElement.insertBefore(mobileSummary, scrollArea);
 
   // --- return-route table (when showReturn is on) --------------------
   let retRefresh = null;
