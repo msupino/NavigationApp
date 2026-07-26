@@ -131,7 +131,9 @@ test('a template callout is seeded left of travel, like every other one', async 
     const def = commCalloutDefaultTail(wp, i, built.waypoints);
     return { skipped: false, noteLng: note.lng, defLng: def.lng, noteLat: note.lat, defLat: def.lat };
   });
-  if (r.skipped) return;
+  // Fail loudly rather than no-op if the dataset ever stops carrying a lean
+  // cc-only template — otherwise this regression test goes permanently silent.
+  expect(r.skipped).toBe(false);
   // Seeded position must equal the shared bearing-derived default, not the old
   // static +0.09 east (which sat on the kite side for a northbound template and
   // was invisible to both the migration and the reverse re-default).

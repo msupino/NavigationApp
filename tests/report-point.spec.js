@@ -163,6 +163,56 @@ test('deleting a mid-route waypoint keeps a marker whose segment still exists', 
   expect(r.lat).toBeCloseTo(r.before, 6);   // and it did not move on the map
 });
 
+test('deleting a waypoint does not move the marker to the next leg', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // User-reported: the marker jumped one leg forward on delete, because the
+    // anchor on the removed leg kept its index and that index is the NEXT leg
+    // after the splice.
+    state.waypoints = [
+      { lat: 32.0, lng: 35.0, name: 'A' }, { lat: 32.2, lng: 35.0, name: 'B' },
+      { lat: 32.4, lng: 35.0, name: 'C' }, { lat: 32.6, lng: 35.0, name: 'D' },
+    ];
+    state.legs = []; syncLegs();
+    const idx = addReportPointToLeg(1);            // on B-C, the leg that vanishes
+    state.notes[idx].rp.t = 0.5;
+    const before = reportPointGeom(state.notes[idx]).lat;   // 32.3
+    deleteWaypoint(1);                              // B goes; A-C merges
+    const n = state.notes.find(x => x && x.rp);
+    return n ? { kept: true, lat: reportPointGeom(n).lat, leg: n.rp.leg, before } : { kept: false, before };
+  });
+  expect(r.kept).toBe(true);
+  expect(r.before).toBeCloseTo(32.3, 5);
+  // It must stay on the same GROUND point (now partway along the merged A-C leg),
+  // not jump onto C-D (which would read 32.5).
+  expect(r.lat).toBeCloseTo(32.3, 4);
+  expect(r.leg).toBe(0);
+});
+
+test('the flight-plan modal delete-leg button keeps report points too', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.0, lng: 35.0, name: 'A' }, { lat: 32.2, lng: 35.0, name: 'B' },
+      { lat: 32.4, lng: 35.0, name: 'C' }, { lat: 32.6, lng: 35.0, name: 'D' },
+    ];
+    state.legs = []; syncLegs();
+    const idx = addReportPointToLeg(2);            // on C-D
+    state.notes[idx].rp.t = 0.5;
+    const before = reportPointGeom(state.notes[idx]).lat;
+    // Same raw splice the flight-plan modal's delete button performs.
+    const rpGeo = captureReportPointGeo();
+    state.waypoints.splice(1, 1);
+    state.legs.splice(0, 1);
+    reanchorReportPoints(rpGeo);
+    syncLegs();
+    const n = state.notes.find(x => x && x.rp);
+    return n ? { kept: true, lat: reportPointGeom(n).lat, before } : { kept: false, before };
+  });
+  expect(r.kept).toBe(true);                 // the index prune used to delete it
+  expect(r.lat).toBeCloseTo(r.before, 4);
+});
+
 test('splitting an earlier leg does not slide a marker onto the wrong leg', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {

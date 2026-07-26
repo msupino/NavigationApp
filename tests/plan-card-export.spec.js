@@ -207,20 +207,26 @@ test('with no page frame the card is bounded by the viewport, not unclamped', as
     return { frame: pageFrameRect(), size: { x: size.x, y: size.y }, rect: planCardRect, mb: { x: mb.left, y: mb.top } };
   });
   expect(r.frame).toBeNull();                     // genuinely no page frame
-  // Drag it: the move clamp is what keeps it on the page.
-  const start = await page.evaluate(() => {
-    planCard.x = 40; planCard.y = 40; draw();
-    const mb = map.getContainer().getBoundingClientRect();
-    return { rect: planCardRect, mb: { x: mb.left, y: mb.top } };
-  });
-  await page.mouse.move(start.mb.x + start.rect.x + 15, start.mb.y + start.rect.y + 8);
-  await page.mouse.down();
-  await page.mouse.move(start.mb.x + start.rect.x + 4000, start.mb.y + start.rect.y + 4000, { steps: 6 });
-  await page.mouse.up();
+  // Drag it: the move clamp is what keeps it on the page. Dispatch straight at the
+  // map container (cardDown is a capture listener there) instead of driving the
+  // real mouse — page furniture such as the footer buttons sits over the computed
+  // coordinate, so a synthetic pointer never reached the map and this assertion
+  // passed even with the clamp reverted.
   const after = await page.evaluate(() => {
+    planCard.x = 40; planCard.y = 40; draw();
+    const mapEl = map.getContainer();
+    const mb = mapEl.getBoundingClientRect();
+    const at = (type, cx, cy, target) => target.dispatchEvent(
+      new MouseEvent(type, { clientX: cx, clientY: cy, bubbles: true, cancelable: true }));
+    const x0 = mb.left + planCardRect.x + 15, y0 = mb.top + planCardRect.y + 8;
+    at('mousedown', x0, y0, mapEl);
+    at('mousemove', x0 + 4000, y0 + 4000, window);
+    at('mouseup', x0 + 4000, y0 + 4000, window);
     const s = map.getSize();
     return { card: { x: planCard.x, y: planCard.y }, rect: planCardRect, size: { x: s.x, y: s.y } };
   });
+  // Prove the drag was actually delivered (guards against a silent no-op again).
+  expect(after.card.x).toBeGreaterThan(40);
   expect(after.card.x + after.rect.w).toBeLessThanOrEqual(after.size.x + 1);
   expect(after.card.y + after.rect.h).toBeLessThanOrEqual(after.size.y + 1);
 });
@@ -259,13 +265,12 @@ test('a closed panel leaves no Escape handler behind', async ({ page }) => {
     await page.evaluate(() => showExportModal());
     await page.evaluate(() => { document.querySelector('.modal-cancel').click(); });
   }
-  await page.evaluate(() => {
-    const cb = document.getElementById('navwp-cb');
-    cb.checked = true;
-    cb.dispatchEvent(new Event('change'));
-  });
-  const before = await page.evaluate(() => showNavWP);
+  // A leaked handler would run restoreOrig(), whose most observable effect is
+  // nulling planCard. Plant one with no panel open: it must survive Escape. The
+  // old assertion used showNavWP at its compiled-in default, so every leaked
+  // handler's captured value matched and firing them was a coincidental no-op.
+  await page.evaluate(() => { window.planCard = { x: 10, y: 10, scale: 1 }; });
   await page.keyboard.press('Escape');            // no panel open — must be inert
-  expect(await page.evaluate(() => showNavWP)).toBe(before);
-  expect(await page.evaluate(() => planCard)).toBeNull();
+  expect(await page.evaluate(() => planCard)).not.toBeNull();
+  await page.evaluate(() => { window.planCard = null; });
 });

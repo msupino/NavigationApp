@@ -139,8 +139,12 @@ function gdriveHeaders() {
 // Locate the library file in the app-data folder (null if none yet).
 function gdriveFindFile() {
   const q = encodeURIComponent("name='" + GDRIVE_FILE + "'");
+  // orderBy=createdTime so that if two devices ever raced and created two files
+  // with this name (appDataFolder does not enforce uniqueness, and a create cannot
+  // be guarded), every device deterministically converges on the same, earliest
+  // one instead of each latching onto whichever the API happened to list first.
   const url = 'https://www.googleapis.com/drive/v3/files?spaces=appDataFolder' +
-    '&fields=files(id,name,modifiedTime)&q=' + q;
+    '&fields=files(id,name,modifiedTime)&orderBy=createdTime&q=' + q;
   return fetch(url, { headers: gdriveHeaders() })
     .then(r => { if (!r.ok) throw new Error('Drive list failed: ' + r.status); return r.json(); })
     .then(j => (j.files && j.files[0]) || null);
@@ -358,17 +362,30 @@ function applySyncableSettings(values) {
   if (!values || typeof values !== 'object') return false;
   let changed = false;
   const failed = [];
+  const undo = [];               // [key, previousValue|null] for rollback
   for (const k of GDRIVE_SETTINGS_KEYS) {
     if (!Object.prototype.hasOwnProperty.call(values, k)) continue;
     const next = values[k];
+    const prev = _lsGet(k);
     if (next === null) {
-      if (_lsGet(k) !== null) { if (!_lsDel(k)) failed.push(k); changed = true; }
+      if (prev !== null) {
+        if (_lsDel(k)) { undo.push([k, prev]); changed = true; } else failed.push(k);
+      }
       continue;
     }
     if (typeof next !== 'string') continue;
-    if (_lsGet(k) !== next) { if (!_lsSet(k, next)) failed.push(k); changed = true; }
+    if (prev !== next) {
+      if (_lsSet(k, next)) { undo.push([k, prev]); changed = true; } else failed.push(k);
+    }
   }
   if (failed.length) {
+    // Roll the successful writes back, then abort. A half-applied device is worse
+    // than an unapplied one: its next sync sees cur !== snap, reads that as a local
+    // edit, wins on the monotonic stamp and PATCHes the mixture over the authoring
+    // device's settings — the very clobber aborting was meant to prevent.
+    for (const [k, prev] of undo.reverse()) {
+      if (prev === null) _lsDel(k); else _lsSet(k, prev);
+    }
     throw new Error('Settings could not be stored (storage full?): ' + failed.join(', '));
   }
   return changed;
@@ -419,7 +436,25 @@ function _nextSettingsStamp(remoteAt) {
 // actually intended, not a fresh read of localStorage — re-reading live storage
 // is what let a write that silently failed be remembered as applied.
 function _recordSettingsSynced(values, stamp) {
-  _lsSet(SETTINGS_SNAP_KEY, JSON.stringify(values));
+  // The snapshot is the biggest write in the feature (every allowlisted key,
+  // including the aircraft profile and the override maps), so it is the one most
+  // likely to be refused at quota. Ignoring that failure left a stale snapshot
+  // with a current syncedAt, which reads as a permanent local edit: the device
+  // would then win every later sync and push its pre-sync values over everyone.
+  // Serialize in canonical allowlist order. _localSettingsBlob compares this
+  // string against JSON.stringify(collectSyncableSettings()), which always emits
+  // allowlist order — a snapshot built by Object.assign (the first-sync union) has
+  // a different key order, so the strings differed forever and every later sync
+  // reported a phantom local edit and pushed over a newer remote.
+  const canon = {};
+  for (const k of GDRIVE_SETTINGS_KEYS) {
+    if (values && Object.prototype.hasOwnProperty.call(values, k) && values[k] !== null) {
+      canon[k] = values[k];
+    }
+  }
+  if (!_lsSet(SETTINGS_SNAP_KEY, JSON.stringify(canon))) {
+    throw new Error('Settings synced, but this device could not record it (storage full?)');
+  }
   _lsSet(SETTINGS_SYNCED_AT_KEY, String(stamp));
 }
 
@@ -459,7 +494,8 @@ function _localSettingsBlob(remoteAt) {
 // and our PATCH (Drive v3 has no If-Match for file content).
 function gdriveFindNamed(name) {
   const url = 'https://www.googleapis.com/drive/v3/files?spaces=appDataFolder' +
-    '&fields=files(id,name,modifiedTime,version)&q=' + encodeURIComponent("name='" + name + "'");
+    '&fields=files(id,name,modifiedTime,version)&orderBy=createdTime' +
+    '&q=' + encodeURIComponent("name='" + name + "'");
   return fetch(url, { headers: gdriveHeaders() })
     .then(r => { if (!r.ok) throw new Error('Drive list failed: ' + r.status); return r.json(); })
     .then(j => (j.files && j.files[0]) || null);
@@ -510,7 +546,12 @@ function gdriveUploadJson(fileId, name, obj) {
 
 // One settings sync pass (assumes a valid token — callers connect first).
 // Resolves { applied } — true when newer remote settings were written locally.
-function _gdriveSyncSettingsOnce() {
+// `resolveFirstConflict` is an optional callback the UI supplies. On the FIRST
+// sync of a device that already has its own settings, keys set on both sides
+// genuinely conflict and there is no correct automatic answer — see the union
+// branch below. It is called with the conflicting key list and returns (or
+// resolves to) 'local' or 'remote'. Absent, it defaults to 'local'.
+function _gdriveSyncSettingsOnce(resolveFirstConflict) {
   return gdriveFindNamed(GDRIVE_SETTINGS_FILE).then(file => {
     // Do NOT swallow a download error into "no remote": a transient 500/offline
     // blip would make local win and PATCH over the other device's settings. Let
@@ -531,26 +572,50 @@ function _gdriveSyncSettingsOnce() {
             { updatedAt: stamp, values }))
           .then(() => { _recordSettingsSynced(snapshot, stamp); return { applied: false }; });
 
-      // FIRST sync against an existing file: never pick a side. Ranking by
-      // timestamp here is what let a device with a year of tuned settings be
-      // silently overwritten by whichever device happened to opt in first — the
-      // one moment where there is no baseline to fall back on. Union instead:
-      // this device keeps every value it has, the remote fills only the keys it
-      // lacks, and the result goes straight back up (no waiting for a 2nd sync).
-      // Tombstones are ignored on this pass — we have no basis to delete yet.
+      // FIRST sync against an existing file. There is no baseline here, so ranking
+      // by timestamp is not an option: it silently overwrote whichever device
+      // happened to opt in second, and that device might be the one with a year of
+      // tuning on it. Union per key instead — keys only one side has are simply
+      // taken, which is loss-free. Keys BOTH sides set with different values are a
+      // real conflict with no correct automatic answer, so the UI is asked; without
+      // a resolver this device's values win (and nothing it has is ever lost).
       if (local.firstSync && remoteOk) {
-        const merged = Object.assign({}, local.values);
-        const incoming = {};
+        const conflicts = [];
         for (const k of GDRIVE_SETTINGS_KEYS) {
-          if (Object.prototype.hasOwnProperty.call(local.values, k)) continue;
+          if (!Object.prototype.hasOwnProperty.call(local.values, k)) continue;
           if (!Object.prototype.hasOwnProperty.call(remoteValues, k)) continue;
-          const rv = remoteValues[k];
-          if (typeof rv !== 'string') continue;
-          merged[k] = rv; incoming[k] = rv;
+          if (typeof remoteValues[k] !== 'string') continue;
+          if (remoteValues[k] !== local.values[k]) conflicts.push(k);
         }
-        const changed = applySyncableSettings(incoming);
-        return push(merged, _nextSettingsStamp(remoteAt), merged)
-          .then(() => ({ applied: changed }));
+        const decide = (conflicts.length && typeof resolveFirstConflict === 'function')
+          ? Promise.resolve(resolveFirstConflict(conflicts.slice()))
+          : Promise.resolve('local');
+        return decide.then(side => {
+          const preferRemote = side === 'remote';
+          const merged = {};
+          const incoming = {};
+          for (const k of GDRIVE_SETTINGS_KEYS) {
+            const haveLocal = Object.prototype.hasOwnProperty.call(local.values, k);
+            const haveRemote = Object.prototype.hasOwnProperty.call(remoteValues, k);
+            const rv = haveRemote ? remoteValues[k] : undefined;
+            const remoteUsable = haveRemote && typeof rv === 'string';
+            if (haveLocal && remoteUsable && preferRemote) {
+              merged[k] = rv; if (rv !== local.values[k]) incoming[k] = rv;
+              continue;
+            }
+            if (haveLocal) { merged[k] = local.values[k]; continue; }
+            if (!haveRemote) continue;
+            // Carry a remote tombstone forward instead of dropping it: re-publishing
+            // without it erased a deletion from the shared blob for good, so the key
+            // came back on every device that had not applied it yet.
+            if (rv === null) { merged[k] = null; continue; }
+            if (!remoteUsable) continue;
+            merged[k] = rv; incoming[k] = rv;
+          }
+          const changed = applySyncableSettings(incoming);
+          return push(merged, _nextSettingsStamp(remoteAt), merged)
+            .then(() => ({ applied: changed }));
+        });
       }
 
       const { winner } = mergeSettings(
@@ -579,12 +644,14 @@ function _gdriveSyncSettingsOnce() {
 
 // Two-way settings sync for the manual button: connect (reusing the route
 // flow's token), then one pass. Retries once on a token lapse like gdriveSync.
-function gdriveSyncSettings() {
+function gdriveSyncSettings(opts) {
   if (!settingsSyncEnabled()) return Promise.resolve({ applied: false, skipped: true });
+  const resolver = opts && opts.resolveFirstConflict;
+  const once = () => _gdriveSyncSettingsOnce(resolver);
   const connect = gdriveConnected() ? Promise.resolve()
     : gdriveConnect(false).catch(err => (_nativeSocialLogin() ? Promise.reject(err) : gdriveConnect(true)));
-  return connect.then(_gdriveSyncSettingsOnce).catch(err => {
-    if (_isAuthError(err)) { _gdriveToken = null; return gdriveConnect(true).then(_gdriveSyncSettingsOnce); }
+  return connect.then(once).catch(err => {
+    if (_isAuthError(err)) { _gdriveToken = null; return gdriveConnect(true).then(once); }
     throw err;
   });
 }

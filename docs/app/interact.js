@@ -606,13 +606,14 @@ function distToSegment(px, py, a, b) {
 // legs > waypoints-1 state), which every caller guards.
 //
 // When both endpoints project to the SAME pixel — a sub-pixel leg at low zoom, or
-// two coincident waypoints — there is no direction to normalize. It used to divide
-// by `hypot(...) || 1`, leaving dx=dy=nx=ny=0, and the rotated-box hit tests then
-// evaluated |0| <= half for EVERY point, so the first click anywhere on the map
-// grabbed that leg's kite, killed panning and silently wrote label offsets.
-// Fall back to the +x axis instead of zeros: that is exactly what the renderer
-// draws in this case (atan2(0,0) === 0), so the hit box stays finite AND lines up
-// with the kite the user can see.
+// two coincident waypoints — there is no direction, and `len` is reported as 0.
+// The vector components stay ZERO in that case, deliberately: the renderer does
+// the same (`hypot(...) || 1` with a zero delta, ang = atan2(0,0) = 0), so the
+// kite is drawn at the midpoint with no perpendicular offset, and legLabelCenter
+// has to agree or the hit box lands somewhere the kite isn't.
+// Consumers that need an orientation must check `len` and fall back to screen axes
+// (see hitLegLabel) — a rotated-box test fed zero vectors evaluates |0| <= half
+// for EVERY point, which is what let one click anywhere on the map grab this kite.
 function legFrame(i) {
   const A = state.waypoints[i], B = state.waypoints[i + 1];
   if (!A || !B) return null;
@@ -620,7 +621,7 @@ function legFrame(i) {
   const b = proj(B);
   let dx = b.x - a.x, dy = b.y - a.y;
   const len = Math.hypot(dx, dy);
-  if (len > 0) { dx /= len; dy /= len; } else { dx = 1; dy = 0; }
+  if (len > 0) { dx /= len; dy /= len; }
   return { mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2,
            dx, dy, nx: -dy, ny: dx, len };
 }
@@ -764,9 +765,16 @@ function hitLegLabel(px, py) {
           legAltitudeIsBlocked(state.legs[i], 'inboundAltitude')) continue;
       const c = legLabelCenter(i, which);
       if (!c) continue;
+      // A zero-length leg has no axis (legFrame reports len 0 and zero vectors, to
+      // stay in step with the renderer). Use SCREEN axes there — the renderer draws
+      // that kite at ang 0, i.e. axis-aligned — instead of projecting onto zero
+      // vectors, which made |along| and |perp| both 0 and so matched every point on
+      // the map: one click anywhere grabbed the kite and killed panning.
+      const ux = f.len ? f.dx : 1, uy = f.len ? f.dy : 0;
+      const vx = f.len ? f.nx : 0, vy = f.len ? f.ny : 1;
       const rx = px - c.x, ry = py - c.y;
-      const along = rx * f.dx + ry * f.dy;   // project onto the leg axis
-      const perp = rx * f.nx + ry * f.ny;     // and its perpendicular
+      const along = rx * ux + ry * uy;   // project onto the leg axis
+      const perp = rx * vx + ry * vy;     // and its perpendicular
       if (Math.abs(along) <= halfL && Math.abs(perp) <= halfW) return { i, which };
     }
   }
@@ -952,14 +960,11 @@ function deleteWaypoint(k) {
   const wp = state.waypoints[k];
   const ccName = wp && typeof canonicalNavWaypointName === 'function'
     ? canonicalNavWaypointName(wp.name) : '';
+  // Where the report points sit on the ground, before the splice renumbers legs.
+  const rpGeo = (typeof captureReportPointGeo === 'function') ? captureReportPointGeo() : [];
   state.waypoints.splice(k, 1);
   if (state.legs.length) {
-    const removed = Math.min(k, state.legs.length - 1);
-    state.legs.splice(removed, 1);
-    // Renumber report-point anchors for the leg that went away, before syncLegs
-    // sees them — otherwise its index prune deletes markers whose segment still
-    // exists and leaves the survivors pointing at the wrong leg.
-    if (typeof remapReportPointsOnLegDelete === 'function') remapReportPointsOnLegDelete(removed);
+    state.legs.splice(Math.min(k, state.legs.length - 1), 1);
   }
   if (ccName && Array.isArray(state.notes) &&
       !state.waypoints.some(w => canonicalNavWaypointName(w && w.name) === ccName)) {
@@ -967,6 +972,10 @@ function deleteWaypoint(k) {
       !(n && n.cc && canonicalNavWaypointName(n.cc) === ccName));
     if (typeof unsuppressCommChange === 'function') unsuppressCommChange(ccName);
   }
+  // Re-anchor BEFORE syncLegs: its index prune would drop an anchor that is only
+  // temporarily out of range (its segment usually still exists under a new index).
+  // waypoints and legs are already consistent here, so nearest-leg is well defined.
+  if (typeof reanchorReportPoints === 'function') reanchorReportPoints(rpGeo);
   syncLegs();
 }
 
@@ -1004,16 +1013,14 @@ function splitLegAt(legIndex, latlng) {
   if (!state.waypoints[i] || !state.waypoints[i + 1]) return false;
 
   const source = state.legs[i];
-  const A = state.waypoints[i], B = state.waypoints[i + 1];
   const inserted = { lat: r5(latlng.lat), lng: r5(latlng.lng), name: '', _defaultWpName: 1 };
-  // Remap BEFORE the splice, while A/B still describe the leg being split. The
-  // splices keep legs.length === waypoints.length - 1, so syncLegs never runs
-  // here and would not have fixed the anchors anyway.
-  if (typeof remapReportPointsOnLegInsert === 'function') {
-    remapReportPointsOnLegInsert(i, A, inserted, B);
-  }
+  // Capture ground positions first: the splices keep legs.length ===
+  // waypoints.length - 1, so syncLegs never runs here and every anchor above the
+  // split would otherwise keep an index that now points one leg too low.
+  const rpGeo = (typeof captureReportPointGeo === 'function') ? captureReportPointGeo() : [];
   state.waypoints.splice(i + 1, 0, inserted);
   state.legs.splice(i, 1, splitLegCopy(source), splitLegCopy(source));
+  if (typeof reanchorReportPoints === 'function') reanchorReportPoints(rpGeo);
   if (state.legs.length !== Math.max(0, state.waypoints.length - 1)) syncLegs();
   state.selected = { type: 'wp', index: i + 1 };
   draw();

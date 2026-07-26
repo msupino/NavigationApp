@@ -668,6 +668,7 @@ window.S = Object.assign({
   routeLibraryGdriveError: 'Drive sync failed',
   routeLibraryGdriveSyncSettings: 'Sync settings too',
   routeLibraryGdriveSettingsApplied: 'Settings updated — reloading…',
+  routeLibraryGdriveFirstSyncConflict: 'This device and Google Drive both have settings for: {keys}.\n\nOK = keep THIS device\'s values (Drive is updated).\nCancel = use the values from Drive.',
   routeTemplatesTitle: 'Route templates',
   routeTemplateRoute: 'Route',
   routeTemplateSpeed: 'Speed (kt)',
@@ -2381,14 +2382,21 @@ function proj(wp) {
 }
 
 // --- leg bookkeeping -------------------------------------------------
-// --- report-point anchor remapping -----------------------------------------
+// --- report-point re-anchoring ---------------------------------------------
 // Identification-point ovals anchor to a leg by INDEX ({leg, t}), so any splice
-// that renumbers legs has to remap them. These run BEFORE syncLegs at the call
-// site that performs the splice, which is the only place that knows which leg
-// moved where.
+// that renumbers legs invalidates them. Rather than doing index arithmetic per
+// splice shape (which got the delete case wrong — an anchor on the removed leg
+// kept its index, and after the splice that index is the NEXT leg, so the marker
+// jumped a segment forward), capture where each marker sits on the GROUND before
+// the splice and re-anchor it to the nearest surviving leg afterwards. One
+// mechanism, correct for delete / insert / merge, and it keeps the marker on the
+// spot the pilot actually put it.
+//
+// Call captureReportPointGeo() before mutating waypoints/legs and pass the result
+// to reanchorReportPoints() after syncLegs().
 
 // Fraction of the way from A to B at which P sits (clamped 0..1). Planar is fine
-// at leg scale — it only has to place a marker back on its own segment.
+// at leg scale — it only has to place a marker back onto a segment.
 function legFractionAt(A, B, P) {
   if (!A || !B || !P) return 0;
   const dx = B.lng - A.lng, dy = B.lat - A.lat;
@@ -2398,32 +2406,34 @@ function legFractionAt(A, B, P) {
   return Math.max(0, Math.min(1, t));
 }
 
-// A leg was REMOVED at `removed` (its two waypoints merged into one segment).
-// Anchors above it shift down; anchors on it stay on the merged segment rather
-// than being deleted — the pilot placed that marker on a segment that still
-// exists, so dropping it was silent data loss.
-function remapReportPointsOnLegDelete(removed) {
-  if (!Array.isArray(state.notes) || !Number.isInteger(removed)) return;
+function captureReportPointGeo() {
+  const out = [];
+  if (!Array.isArray(state.notes)) return out;
   for (const n of state.notes) {
     if (!n || !n.rp || !Number.isInteger(n.rp.leg)) continue;
-    if (n.rp.leg > removed) n.rp.leg -= 1;
+    const A = state.waypoints[n.rp.leg], B = state.waypoints[n.rp.leg + 1];
+    if (!A || !B) continue;
+    const t = Number.isFinite(n.rp.t) ? n.rp.t : 0.5;
+    out.push({ n, lat: A.lat + (B.lat - A.lat) * t, lng: A.lng + (B.lng - A.lng) * t });
   }
+  return out;
 }
 
-// Leg `i` was SPLIT in two at `inserted`. Anchors above it shift up; an anchor on
-// the split leg moves to whichever half now contains it, with t rescaled so the
-// marker does not move on the map.
-function remapReportPointsOnLegInsert(i, A, inserted, B) {
-  if (!Array.isArray(state.notes) || !Number.isInteger(i)) return;
-  const tSplit = legFractionAt(A, B, inserted);
-  for (const n of state.notes) {
-    if (!n || !n.rp || !Number.isInteger(n.rp.leg)) continue;
-    if (n.rp.leg > i) { n.rp.leg += 1; continue; }
-    if (n.rp.leg !== i) continue;
-    const t = Number.isFinite(n.rp.t) ? n.rp.t : 0.5;
-    if (tSplit <= 0 || tSplit >= 1) continue;            // degenerate split
-    if (t <= tSplit) n.rp.t = t / tSplit;                // stays on leg i
-    else { n.rp.leg = i + 1; n.rp.t = (t - tSplit) / (1 - tSplit); }
+function reanchorReportPoints(captured) {
+  if (!Array.isArray(captured) || !captured.length) return;
+  for (const c of captured) {
+    if (!c || !c.n || !c.n.rp) continue;
+    let best = -1, bestD = Infinity, bestT = 0.5;
+    for (let i = 0; i < state.legs.length; i++) {
+      const A = state.waypoints[i], B = state.waypoints[i + 1];
+      if (!A || !B) continue;
+      const t = legFractionAt(A, B, c);
+      const dLat = (A.lat + (B.lat - A.lat) * t) - c.lat;
+      const dLng = (A.lng + (B.lng - A.lng) * t) - c.lng;
+      const d = dLat * dLat + dLng * dLng;
+      if (d < bestD) { bestD = d; best = i; bestT = t; }
+    }
+    if (best >= 0) { c.n.rp.leg = best; c.n.rp.t = bestT; }
   }
 }
 

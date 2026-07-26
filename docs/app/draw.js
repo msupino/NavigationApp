@@ -3101,46 +3101,52 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc
   const Lr = cell * 2, L = Lr + Lt;
   const xb = -L / 2 + Lr;
 
+  // Kite outline, reusable: clip() consumes the current path, so the halo pass
+  // needs to lay it down more than once.
+  const kitePath = () => {
+    octx.beginPath();
+    octx.moveTo(-L / 2, -W / 2);
+    octx.lineTo(xb, -W / 2);
+    octx.lineTo(L / 2, 0);
+    octx.lineTo(xb, W / 2);
+    octx.lineTo(-L / 2, W / 2);
+    octx.closePath();
+  };
+
   octx.save();
   octx.translate(cx, cy);
   octx.rotate(flightAng);
-  octx.beginPath();
-  octx.moveTo(-L / 2, -W / 2);
-  octx.lineTo(xb, -W / 2);
-  octx.lineTo(L / 2, 0);
-  octx.lineTo(xb, W / 2);
-  octx.lineTo(-L / 2, W / 2);
-  octx.closePath();
   if (halo) {                            // purple band around the marker
-    octx.lineJoin = 'round';
-    octx.lineWidth = tune('legKiteHaloPx') * sc;
-    octx.strokeStyle = tune('legKiteHaloColor');
-    octx.stroke();
-    octx.lineJoin = 'miter';
-    // The stroke is centred on the outline, so its inner half would show through
-    // the translucent fill as a second (internal) highlight. Erase just that
-    // inner half: clip to the kite interior and re-stroke with destination-out,
-    // so only where the band overlaps the interior is cleared.
+    // Only the OUTER half of the band should show: a stroke centred on the outline
+    // would otherwise read as a second, internal highlight through the translucent
+    // fill. Clip to everything OUTSIDE the kite (even-odd against a huge rect) and
+    // stroke at double width, so the visible result is a halo-wide outer band.
     //
-    // Filling the whole path here instead (the previous approach) wiped every
-    // pixel already drawn inside the kite — the track line, drift lines and the
-    // minute ticks that pass under it — and since the kite's own fill is
-    // translucent the bare map showed through. In PNG export, where octx is the
-    // export context holding the background and composited tiles, it punched a
-    // fully transparent kite-shaped hole in the delivered image. The explicit
-    // opaque strokeStyle + globalAlpha also make the erase deterministic: it
-    // previously inherited whatever fillStyle was left over from an earlier draw,
-    // so a translucent leftover erased only partially and left a ghost band.
+    // This deliberately ERASES NOTHING. Both earlier attempts used
+    // destination-out: filling the whole path wiped every pixel already drawn
+    // inside the kite (track line, drift lines, minute ticks), and clipping to the
+    // interior and re-stroking merely narrowed that to a ring — still destructive,
+    // because destination-out removes whatever is underneath, which during PNG
+    // export is the background and the composited map tiles. Both left a
+    // transparent hole (or ring) in the delivered image.
     octx.save();
-    octx.clip();
-    octx.globalCompositeOperation = 'destination-out';
-    octx.globalAlpha = 1;
-    octx.strokeStyle = '#000';
+    octx.beginPath();
+    octx.rect(-1e5, -1e5, 2e5, 2e5);     // outer subpath …
+    octx.moveTo(-L / 2, -W / 2);          // … minus the kite (even-odd)
+    octx.lineTo(xb, -W / 2);
+    octx.lineTo(L / 2, 0);
+    octx.lineTo(xb, W / 2);
+    octx.lineTo(-L / 2, W / 2);
+    octx.closePath();
+    octx.clip('evenodd');
     octx.lineJoin = 'round';
-    octx.lineWidth = tune('legKiteHaloPx') * sc;
+    octx.lineWidth = tune('legKiteHaloPx') * sc * 2;
+    octx.strokeStyle = tune('legKiteHaloColor');
+    kitePath();
     octx.stroke();
     octx.restore();
   }
+  kitePath();
   octx.fillStyle = fill;
   octx.fill();
   octx.lineWidth = tune('legKiteBorderPx') * sc;

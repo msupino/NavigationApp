@@ -62,8 +62,11 @@ test('a zero-length leg does not turn the whole map into one kite hit box', asyn
       cornerLeg: hitLegLabel(5, 5),
     };
   });
-  expect(r.frame.len).toBe(0);         // genuinely degenerate
-  expect(r.frame.dx).toBe(1);          // deterministic +x fallback, not 0
+  expect(r.frame.len).toBe(0);         // genuinely degenerate, and reported as such
+  // Vectors stay zero so legLabelCenter agrees with the renderer (which also
+  // collapses to zero and draws the kite at the midpoint, unrotated); the hit test
+  // substitutes screen axes for this case rather than projecting onto zeros.
+  expect(r.frame.dx).toBe(0);
   expect(r.frame.dy).toBe(0);
   expect(r.centre).toBe(true);         // drawn kite stays grabbable where it is
   expect(r.farLeg).toBeNull();         // but a click across the map grabs nothing

@@ -1448,7 +1448,20 @@ function showRouteLibraryModal(focusSave) {
       gdriveSync()
         .then(() => {
           render();
-          return (typeof gdriveSyncSettings === 'function') ? gdriveSyncSettings() : null;
+          if (typeof gdriveSyncSettings !== 'function') return null;
+          return gdriveSyncSettings({
+            // First sync only, and only for keys set differently on BOTH sides:
+            // there is no correct automatic answer, and picking one silently
+            // discards real settings, so ask once.
+            resolveFirstConflict: keys => {
+              const names = keys.map(k => k.replace(/^navaid\./, '')).join(', ');
+              const msg = (S.routeLibraryGdriveFirstSyncConflict ||
+                'This device and Google Drive both have settings for: {keys}.\n\n' +
+                'OK = keep THIS device\'s values (Drive is updated).\n' +
+                'Cancel = use the values from Drive.').replace('{keys}', names);
+              return window.confirm(msg) ? 'local' : 'remote';
+            },
+          });
         })
         .then(res => {
           if (res && res.applied) {

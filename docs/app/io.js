@@ -2298,8 +2298,13 @@ function showFlightPlan() {
       delBtn.title = S.fpDelTitle || 'Delete leg';
       delBtn.onclick = function () {
         if (state.waypoints.length < 2) return;
+        // Same report-point re-anchoring deleteWaypoint does — this raw splice
+        // renumbers legs too, so without it syncLegs' index prune deletes markers
+        // whose segment still exists.
+        const rpGeo = (typeof captureReportPointGeo === 'function') ? captureReportPointGeo() : [];
         state.waypoints.splice(idx === 0 ? 0 : idx + 1, 1);
         state.legs.splice(idx, 1);
+        if (typeof reanchorReportPoints === 'function') reanchorReportPoints(rpGeo);
         syncLegs();
         // Drop the deleted waypoint's now-orphaned comm-change callout (this raw
         // splice bypasses deleteWaypoint's note cleanup; the index semantics
@@ -3288,23 +3293,14 @@ function showExportModal() {
     return null;
   })();
 
-  // What the PANEL last assigned to each value. The floating panel is
-  // click-through, so the toolbar stays usable while it is open: on cancel we
-  // revert a value only if it still equals what the panel put there. If the user
-  // changed it from the toolbar meanwhile it no longer matches and their change is
-  // left alone — replaying the whole open-time snapshot used to silently undo it,
-  // and left the toolbar checkbox ticked while the layer rendered off.
-  const panelSet = {};
-
   // Apply the modal's default state immediately so the user sees what
   // the PNG will look like before touching any control.
-  showNavWP = panelSet.navWP = navWpCb.checked;
-  showWpNames = panelSet.wpNames = wpNameCb.checked;
-  showDrift = panelSet.drift = driftCb.checked;
-  showCumTime = panelSet.cumTime = cumCb.checked;
-  showAirfields = panelSet.airfields = afCb.checked;
+  showNavWP = navWpCb.checked;
+  showWpNames = wpNameCb.checked;
+  showDrift = driftCb.checked;
+  showCumTime = cumCb.checked;
+  showAirfields = afCb.checked;
   const chosen = layerSel.value;
-  panelSet.layer = chosen;
   if (chosen !== origLayer) {
     for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
     map.addLayer(layers[chosen]);
@@ -3340,25 +3336,36 @@ function showExportModal() {
     back.classList.toggle('export-place', floatPanel || placing);
   }
 
+  // Undo the panel's preview by restoring each value from the TOOLBAR control that
+  // owns it, rather than from a snapshot taken when the panel opened. The panel is
+  // click-through, so the toolbar stays usable while it is open: replaying an
+  // open-time snapshot silently undid changes made there, and comparing the current
+  // value against what the panel last set cannot tell "the panel still owns this"
+  // from "the user set it to the same boolean from the toolbar" — for a boolean the
+  // two are indistinguishable. The checkbox IS the user-facing truth, so reading it
+  // back can never leave the control and the render disagreeing.
   function restoreOrig() {
-    // Revert only values still holding what the panel put there (see panelSet).
-    if (showNavWP === panelSet.navWP) showNavWP = origNavWP;
-    if (showWpNames === panelSet.wpNames) showWpNames = origWpNames;
-    if (showDrift === panelSet.drift) showDrift = origDrift;
-    if (showCumTime === panelSet.cumTime) showCumTime = origCumTime;
-    if (showAirfields === panelSet.airfields) showAirfields = origAirfields;
+    const cb = id => document.getElementById(id);
+    const chk = (id, fallback) => { const e = cb(id); return e ? e.checked : fallback; };
+    showNavWP = chk('navwp-cb', origNavWP);
+    showWpNames = chk('wpname-cb', origWpNames);
+    showDrift = chk('drift-cb', origDrift);
+    showCumTime = chk('cumtime-cb', origCumTime);
+    showAirfields = chk('airfield-cb', origAirfields);
+    const sel = cb('layer-select');
+    const wantLayer = (sel && layers[sel.value]) ? sel.value : origLayer;
     const cur = (function () {
       for (const n in layers) if (map.hasLayer(layers[n])) return n;
       return null;
     })();
-    if (cur === panelSet.layer && cur !== origLayer) {
+    if (cur !== wantLayer) {
       for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
-      if (origLayer) map.addLayer(layers[origLayer]);
+      if (wantLayer) map.addLayer(layers[wantLayer]);
     }
-    if (panelSet.opacity !== undefined && mapOpacity === panelSet.opacity) {
-      mapOpacity = origMapOpacity;
-      applyMapOpacity();
-    }
+    const opEl = cb('map-opacity');
+    const opVal = opEl ? parseFloat(opEl.value) / 100 : NaN;
+    mapOpacity = Number.isFinite(opVal) ? opVal : origMapOpacity;
+    applyMapOpacity();
     window.planCard = null;            // drop the placed card (export already captured it)
     draw();
   }
@@ -3367,23 +3374,23 @@ function showExportModal() {
   // the PANEL owns this value, so cancel reverts it — and leaves alone anything
   // the user changed from the toolbar while the panel was open.
   navWpCb.onchange = function () {
-    showNavWP = panelSet.navWP = navWpCb.checked;
+    showNavWP = navWpCb.checked;
     draw();
   };
   wpNameCb.onchange = function () {
-    showWpNames = panelSet.wpNames = wpNameCb.checked;
+    showWpNames = wpNameCb.checked;
     draw();
   };
   driftCb.onchange = function () {
-    showDrift = panelSet.drift = driftCb.checked;
+    showDrift = driftCb.checked;
     draw();
   };
   cumCb.onchange = function () {
-    showCumTime = panelSet.cumTime = cumCb.checked;
+    showCumTime = cumCb.checked;
     draw();
   };
   afCb.onchange = function () {
-    showAirfields = panelSet.airfields = afCb.checked;
+    showAirfields = afCb.checked;
     draw();
   };
 
@@ -3480,14 +3487,14 @@ function showExportModal() {
     if (cardDrag && map.dragging) map.dragging.enable();
   }
   layerSel.onchange = function () {
-    const chosen = panelSet.layer = layerSel.value;
+    const chosen = layerSel.value;
     for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
     map.addLayer(layers[chosen]);
     applyMapOpacity();
   };
 
   opSlider.oninput = function () {
-    mapOpacity = panelSet.opacity = parseFloat(this.value) / 100;
+    mapOpacity = parseFloat(this.value) / 100;
     opVal.textContent = this.value + '%';
     applyMapOpacity();
   };
