@@ -175,3 +175,97 @@ test('export VOR selector shows only when the flight-plan card is added', async 
   await page.locator('#export-plan-cb').uncheck();
   await expect(page.locator('#export-vor-select')).toBeHidden();
 });
+
+test('mobile: the backdrop opens up so the placed card can be dragged', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await boot(page);
+  await route(page);
+  await page.evaluate(() => { setPage('A4'); draw(); showExportModal(); });
+  // Centered/dimmed modal while nothing is placed — the backdrop still blocks.
+  await expect(page.locator('.modal-back.export-place')).toHaveCount(0);
+  await page.locator('#export-plan-cb').check();
+  // With a card placed the backdrop MUST become click-through, or cardDown never
+  // sees a mousedown and the card is stuck with its resize grip unreachable.
+  await expect(page.locator('.modal-back.export-place')).toHaveCount(1);
+  await page.locator('#export-plan-cb').uncheck();
+  await expect(page.locator('.modal-back.export-place')).toHaveCount(0);
+});
+
+test('with no page frame the card is bounded by the viewport, not unclamped', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 700 });
+  await boot(page);
+  await route(page);
+  // No setPage() → pageFrameRect() is null; the exporter captures the viewport.
+  await page.evaluate(() => { draw(); showExportModal(); });
+  await page.locator('#export-plan-cb').check();
+  const r = await page.evaluate(() => {
+    draw();
+    const size = map.getSize();
+    // Try to shove it far off-screen; the clamp must keep it inside the viewport.
+    planCard.x = 5000; planCard.y = 5000;
+    const mb = map.getContainer().getBoundingClientRect();
+    return { frame: pageFrameRect(), size: { x: size.x, y: size.y }, rect: planCardRect, mb: { x: mb.left, y: mb.top } };
+  });
+  expect(r.frame).toBeNull();                     // genuinely no page frame
+  // Drag it: the move clamp is what keeps it on the page.
+  const start = await page.evaluate(() => {
+    planCard.x = 40; planCard.y = 40; draw();
+    const mb = map.getContainer().getBoundingClientRect();
+    return { rect: planCardRect, mb: { x: mb.left, y: mb.top } };
+  });
+  await page.mouse.move(start.mb.x + start.rect.x + 15, start.mb.y + start.rect.y + 8);
+  await page.mouse.down();
+  await page.mouse.move(start.mb.x + start.rect.x + 4000, start.mb.y + start.rect.y + 4000, { steps: 6 });
+  await page.mouse.up();
+  const after = await page.evaluate(() => {
+    const s = map.getSize();
+    return { card: { x: planCard.x, y: planCard.y }, rect: planCardRect, size: { x: s.x, y: s.y } };
+  });
+  expect(after.card.x + after.rect.w).toBeLessThanOrEqual(after.size.x + 1);
+  expect(after.card.y + after.rect.h).toBeLessThanOrEqual(after.size.y + 1);
+});
+
+test('cancel keeps a toolbar change made while the panel was open', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 1000 });
+  await boot(page);
+  await route(page);
+  // Start ON, so the open-time snapshot the panel would replay is "on".
+  await page.evaluate(() => {
+    const cb = document.getElementById('cumtime-cb');
+    cb.checked = true; window.showCumTime = true; draw();
+    showExportModal();
+  });
+  expect(await page.evaluate(() => showCumTime)).toBe(true);
+  // Now turn it OFF from the TOOLBAR while the click-through panel is open — a
+  // value that no longer matches what the panel put there.
+  await page.evaluate(() => {
+    const cb = document.getElementById('cumtime-cb');
+    cb.checked = false;
+    cb.dispatchEvent(new Event('change'));
+  });
+  expect(await page.evaluate(() => showCumTime)).toBe(false);
+  await page.evaluate(() => { document.querySelector('.modal-cancel').click(); });
+  // Cancel must NOT replay its open-time snapshot over the user's toolbar change.
+  expect(await page.evaluate(() => showCumTime)).toBe(false);
+  expect(await page.evaluate(() => document.getElementById('cumtime-cb').checked)).toBe(false);
+});
+
+test('a closed panel leaves no Escape handler behind', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 1000 });
+  await boot(page);
+  await route(page);
+  // Open and close the panel a few times, then change an overlay from the toolbar.
+  for (let i = 0; i < 3; i++) {
+    await page.evaluate(() => showExportModal());
+    await page.evaluate(() => { document.querySelector('.modal-cancel').click(); });
+  }
+  await page.evaluate(() => {
+    const cb = document.getElementById('navwp-cb');
+    cb.checked = true;
+    cb.dispatchEvent(new Event('change'));
+  });
+  const before = await page.evaluate(() => showNavWP);
+  await page.keyboard.press('Escape');            // no panel open — must be inert
+  expect(await page.evaluate(() => showNavWP)).toBe(before);
+  expect(await page.evaluate(() => planCard)).toBeNull();
+});
