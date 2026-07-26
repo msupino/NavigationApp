@@ -1133,6 +1133,39 @@ function populateInspectorVorSelect(sel, selected) {
   sel.value = selected || '';
 }
 
+// Published ENR 4.1 detail for a station, as compact key/value lines: what it is,
+// what to tune, when it runs, how far it is usable, and its limits. Shown on the
+// STATION's own inspector (select the VOR on the map) — that is where facts about
+// the facility belong, rather than on whichever waypoint happens to be selected.
+function appendVorAipInfo(body, v) {
+  if (!v) return;
+  const info = document.createElement('div');
+  info.className = 'vor-aip-info';
+  const line = (k, t, cls) => {
+    if (!t) return;
+    const d = document.createElement('div');
+    d.className = 'vor-aip-line' + (cls ? ' ' + cls : '');
+    const kk = document.createElement('span');
+    kk.className = 'vor-aip-key';
+    kk.textContent = k;
+    const vv = document.createElement('span');
+    vv.className = 'vor-aip-val';
+    vv.textContent = t;
+    d.append(kk, vv);
+    info.appendChild(d);
+  };
+  line(S.vorInfoType || 'Type', v.type || '');
+  // No frequency here: the editable Frequency row above already shows it. The DME
+  // channel has no other home, so it stays.
+  line(S.vorInfoChannel || 'Channel', v.ch ? 'CH ' + v.ch : '');
+  line(S.vorInfoHours || 'Hours', v.hours || '');
+  line(S.vorInfoRange || 'Range',
+    v.coverageNm ? v.coverageNm + ' NM' : (S.vorInfoRangeNone || 'not published'));
+  if (Number.isFinite(v.elevFt)) line(S.vorInfoElev || 'DME antenna', v.elevFt + ' ft');
+  if (v.remarks && v.remarks !== 'Nil') line(S.vorInfoLimits || 'Limits', v.remarks);
+  if (info.childNodes.length) body.appendChild(info);
+}
+
 // Shared inspector-only VOR selector + "From <VOR>  R-xxx° / yy.y NM" readout.
 // Changing this selector never writes `vorRef` or localStorage; it only changes
 // the active inspector readout.
@@ -1154,11 +1187,31 @@ function appendVorRadialRow(body, lat, lng) {
   sel.setAttribute('aria-label', S.vorRefLabel || 'VOR ref');
   const val = document.createElement('span');
   val.className = 'val vor-radial-val';
+  // Out-of-range notice only: it depends on THIS point's distance, so it belongs
+  // here. Everything else about the station lives on the station's own inspector.
+  const info = document.createElement('div');
+  info.className = 'vor-aip-info';
+  const renderInfo = (v) => {
+    info.textContent = '';
+    if (!v) return;
+    const rd2 = vorRadialDme(v, lat, lng);
+    if (rd2 && v.coverageNm && Number(rd2.dme) > v.coverageNm) {
+      const w = document.createElement('div');
+      w.className = 'vor-aip-line vor-aip-warn';
+      w.textContent = (S.vorInfoOutOfRange ||
+        'This point is {dme} NM out — beyond the published {cov} NM coverage.')
+        .replace('{dme}', rd2.dme).replace('{cov}', v.coverageNm);
+      info.appendChild(w);
+    }
+  };
   const render = () => {
     const v = vorByIdent(sel.value);
     const rd = v ? vorRadialDme(v, lat, lng) : null;
-    val.textContent = rd ? S.vorRadialDme(rd.radial, rd.dme) : '';
+    // A DME-only facility has no radial to give — show distance only rather than
+    // inventing a bearing from it.
+    val.textContent = rd ? (v.dmeOnly ? S.vorDmeOnlyReadout(rd.dme) : S.vorRadialDme(rd.radial, rd.dme)) : '';
     val.title = v && rd ? S.vorFrom(v.ident) : '';
+    renderInfo(v);
   };
   populateInspectorVorSelect(sel, inspectorVorIdent());
   sel.onchange = () => {
@@ -1169,6 +1222,7 @@ function appendVorRadialRow(body, lat, lng) {
   row.append(label, controls);
   render();
   body.appendChild(row);
+  body.appendChild(info);
 }
 
 function airfieldAtisText(af) {
@@ -2406,6 +2460,7 @@ function showInspector() {
         onReset: () => { if (typeof setVorFreqOverride === 'function') setVorFreqOverride(v.ident, ''); return vdef; },
       }));
     }
+    appendVorAipInfo(body, v);
     appendSatelliteSnippet(body, v, title.value);
     const useBtn = document.createElement('button');
     useBtn.className = 'insp-btn';
