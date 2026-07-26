@@ -16,12 +16,23 @@ function hitNote(px, py) {
       if (hitComm === false) continue;
     }
     const r = noteRect(i);
+    // Test in the note's OWN frame: identification-point ovals are drawn rotated
+    // across the track, so un-rotate the point by the same angle drawNotes used
+    // (noteDrawAngle) before the ellipse/box test. Without this the hit region sat
+    // 90° off the painted oval on an east-west leg.
+    const ang = (typeof noteDrawAngle === 'function') ? noteDrawAngle(note) : 0;
+    let qx = px - (r.x + r.w / 2);
+    let qy = py - (r.y + r.h / 2);
+    if (ang) {
+      const c = Math.cos(-ang), s = Math.sin(-ang);
+      const rx = qx * c - qy * s, ry = qx * s + qy * c;
+      qx = rx; qy = ry;
+    }
     if (r.oval) {
-      const dx = (px - (r.x + r.w / 2)) / (r.w / 2);
-      const dy = (py - (r.y + r.h / 2)) / (r.h / 2);
+      const dx = qx / (r.w / 2);
+      const dy = qy / (r.h / 2);
       if (dx * dx + dy * dy <= 1) return i;
-    } else if (px >= r.x && px <= r.x + r.w &&
-               py >= r.y && py <= r.y + r.h) {
+    } else if (Math.abs(qx) <= r.w / 2 && Math.abs(qy) <= r.h / 2) {
       return i;
     }
   }
@@ -590,12 +601,27 @@ function distToSegment(px, py, a, b) {
   t = Math.max(0, Math.min(1, t));
   return Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy));
 }
+// Unit frame of leg i: along-track (dx,dy) and its perpendicular (nx,ny).
+// Returns null only when an endpoint is missing (the transient
+// legs > waypoints-1 state), which every caller guards.
+//
+// When both endpoints project to the SAME pixel — a sub-pixel leg at low zoom, or
+// two coincident waypoints — there is no direction, and `len` is reported as 0.
+// The vector components stay ZERO in that case, deliberately: the renderer does
+// the same (`hypot(...) || 1` with a zero delta, ang = atan2(0,0) = 0), so the
+// kite is drawn at the midpoint with no perpendicular offset, and legLabelCenter
+// has to agree or the hit box lands somewhere the kite isn't.
+// Consumers that need an orientation must check `len` and fall back to screen axes
+// (see hitLegLabel) — a rotated-box test fed zero vectors evaluates |0| <= half
+// for EVERY point, which is what let one click anywhere on the map grab this kite.
 function legFrame(i) {
-  const a = proj(state.waypoints[i]);
-  const b = proj(state.waypoints[i + 1]);
+  const A = state.waypoints[i], B = state.waypoints[i + 1];
+  if (!A || !B) return null;
+  const a = proj(A);
+  const b = proj(B);
   let dx = b.x - a.x, dy = b.y - a.y;
-  const len = Math.hypot(dx, dy) || 1;
-  dx /= len; dy /= len;
+  const len = Math.hypot(dx, dy);
+  if (len > 0) { dx /= len; dy /= len; }
   return { mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2,
            dx, dy, nx: -dy, ny: dx, len };
 }
@@ -608,7 +634,9 @@ function clampLegLabelAlong(legIdx, label) {
   // zoom scale, so a bigger ground-sized kite is kept fully on the leg.
   const drawSc = (typeof kiteDrawScale === 'function') ? kiteDrawScale() : sc;
   const halfKite = (typeof legKiteAlongHalfPx === 'function') ? legKiteAlongHalfPx(drawSc) : 0;
-  const limit = Math.max(0, (legFrame(legIdx).len / 2 - halfKite) / sc);
+  const f = legFrame(legIdx);
+  if (!f) return;                                 // no length to clamp against
+  const limit = Math.max(0, (f.len / 2 - halfKite) / sc);
   label.a = Math.max(-limit, Math.min(limit, label.a));
 }
 // Identification / report point (oval note anchored to a leg). Project a
@@ -640,7 +668,9 @@ function addReportPointToLeg(legIdx) {
   });
   const idx = state.notes.length - 1;
   state.selected = { type: 'note', index: idx };
-  if (typeof pushUndo === 'function') pushUndo();
+  // No pushUndo() call: no such function exists, so the guarded call was dead.
+  // Undo is snapshot-based — draw() runs persist(), which records an undo
+  // snapshot synchronously, so this action is already undoable.
   draw();
   return idx;
 }
@@ -648,6 +678,7 @@ function legLabelDragGrab(legIdx, which, px, py) {
   const c = legLabelCenter(legIdx, which);
   if (!c) return { grabA: 0, grabP: 0 };
   const f = legFrame(legIdx);
+  if (!f) return { grabA: 0, grabP: 0 };
   const sc = legZoomScale() || 1;
   return {
     grabA: ((px - c.x) * f.dx + (py - c.y) * f.dy) / sc,
@@ -659,6 +690,7 @@ function setLegLabelFromPoint(dragState, px, py) {
   const o = leg && (dragState.which === 'in' ? leg.inLabel : leg.outLabel);
   if (!o) return false;                // malformed leg / label — issue #82
   const f = legFrame(dragState.i);
+  if (!f) return false;                // degenerate leg — nothing to drag along
   const sc = legZoomScale() || 1;
   o.a = ((px - f.mx) * f.dx + (py - f.my) * f.dy) / sc - (dragState.grabA || 0);
   clampLegLabelAlong(dragState.i, o);
@@ -668,6 +700,7 @@ function setLegLabelFromPoint(dragState, px, py) {
 function legLabelCenter(i, which) {
   if (!state.waypoints[i] || !state.waypoints[i + 1]) return null;
   const f = legFrame(i);
+  if (!f) return null;                 // zero-length leg → no kite position
   const o = (which === 'in' ? state.legs[i].inLabel : state.legs[i].outLabel)
             || { a: 0, p: 0 };
   const sc = legZoomScale();
@@ -732,9 +765,16 @@ function hitLegLabel(px, py) {
           legAltitudeIsBlocked(state.legs[i], 'inboundAltitude')) continue;
       const c = legLabelCenter(i, which);
       if (!c) continue;
+      // A zero-length leg has no axis (legFrame reports len 0 and zero vectors, to
+      // stay in step with the renderer). Use SCREEN axes there — the renderer draws
+      // that kite at ang 0, i.e. axis-aligned — instead of projecting onto zero
+      // vectors, which made |along| and |perp| both 0 and so matched every point on
+      // the map: one click anywhere grabbed the kite and killed panning.
+      const ux = f.len ? f.dx : 1, uy = f.len ? f.dy : 0;
+      const vx = f.len ? f.nx : 0, vy = f.len ? f.ny : 1;
       const rx = px - c.x, ry = py - c.y;
-      const along = rx * f.dx + ry * f.dy;   // project onto the leg axis
-      const perp = rx * f.nx + ry * f.ny;     // and its perpendicular
+      const along = rx * ux + ry * uy;   // project onto the leg axis
+      const perp = rx * vx + ry * vy;     // and its perpendicular
       if (Math.abs(along) <= halfL && Math.abs(perp) <= halfW) return { i, which };
     }
   }
@@ -778,8 +818,12 @@ function _materialiseDefaultCumLabel(legIdx) {
 // `anchor`, half-length halfL, half-height halfW.
 function _pointInKiteBox(px, py, cx, cy, ax, ay, halfL, halfW) {
   let ux = ax - cx, uy = ay - cy;
-  const len = Math.hypot(ux, uy) || 1;
-  ux /= len; uy /= len;
+  const len = Math.hypot(ux, uy);
+  // Center coincides with its anchor (degenerate leg) → no axis to orient along.
+  // Use +x, which is what the renderer draws here (atan2(0,0) === 0), rather than
+  // normalizing to (0,0) — that made the along/perp test true for EVERY point on
+  // the map, so a click anywhere grabbed this kite.
+  if (len > 0) { ux /= len; uy /= len; } else { ux = 1; uy = 0; }
   const rx = px - cx, ry = py - cy;
   const along = rx * ux + ry * uy;
   const perp = rx * (-uy) + ry * ux;
@@ -796,6 +840,7 @@ function _cumKiteHalfDims() {
 function hitCumLabel(px, py) {
   // Elongated pentagon oriented toward B — test its rotated footprint, not a
   // circle (which only covered the middle of the enlarged kite).
+  if (!showCumTime) return null;   // not drawn (draw.js gates on it) → not grabbable
   const { halfL, halfW } = _cumKiteHalfDims();
   for (let i = 0; i < state.legs.length; i++) {
     const c = cumLabelCenter(i);
@@ -868,6 +913,7 @@ function setCumLabelFromPoint(legIdx, isReturn, px, py) {
 }
 function hitCumLabelRet(px, py) {
   if (!showReturn) return null;          // return kite only drawn with the return path
+  if (!showCumTime) return null;         // draw.js nests it in showCumTime too
   const { halfL, halfW } = _cumKiteHalfDims();
   for (let i = 0; i < state.legs.length; i++) {
     if (!legAllowsReturn(i)) continue;
@@ -914,6 +960,8 @@ function deleteWaypoint(k) {
   const wp = state.waypoints[k];
   const ccName = wp && typeof canonicalNavWaypointName === 'function'
     ? canonicalNavWaypointName(wp.name) : '';
+  // Where the report points sit on the ground, before the splice renumbers legs.
+  const rpGeo = (typeof captureReportPointGeo === 'function') ? captureReportPointGeo() : [];
   state.waypoints.splice(k, 1);
   if (state.legs.length) {
     state.legs.splice(Math.min(k, state.legs.length - 1), 1);
@@ -924,6 +972,10 @@ function deleteWaypoint(k) {
       !(n && n.cc && canonicalNavWaypointName(n.cc) === ccName));
     if (typeof unsuppressCommChange === 'function') unsuppressCommChange(ccName);
   }
+  // Re-anchor BEFORE syncLegs: its index prune would drop an anchor that is only
+  // temporarily out of range (its segment usually still exists under a new index).
+  // waypoints and legs are already consistent here, so nearest-leg is well defined.
+  if (typeof reanchorReportPoints === 'function') reanchorReportPoints(rpGeo);
   syncLegs();
 }
 
@@ -962,8 +1014,13 @@ function splitLegAt(legIndex, latlng) {
 
   const source = state.legs[i];
   const inserted = { lat: r5(latlng.lat), lng: r5(latlng.lng), name: '', _defaultWpName: 1 };
+  // Capture ground positions first: the splices keep legs.length ===
+  // waypoints.length - 1, so syncLegs never runs here and every anchor above the
+  // split would otherwise keep an index that now points one leg too low.
+  const rpGeo = (typeof captureReportPointGeo === 'function') ? captureReportPointGeo() : [];
   state.waypoints.splice(i + 1, 0, inserted);
   state.legs.splice(i, 1, splitLegCopy(source), splitLegCopy(source));
+  if (typeof reanchorReportPoints === 'function') reanchorReportPoints(rpGeo);
   if (state.legs.length !== Math.max(0, state.waypoints.length - 1)) syncLegs();
   state.selected = { type: 'wp', index: i + 1 };
   draw();

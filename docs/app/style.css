@@ -2107,7 +2107,11 @@ body.theme-light .shortcuts-help-keys kbd {
 /* Export modal while placing the flight-plan card: clear the backdrop so the
    map (and the draggable card) stays reachable underneath the dialog. */
 .modal-back.export-place {
-  z-index: 2000;
+  /* Above the inspector (2320) — it is pinned to the same top-right spot, so at
+     2000 the inspector reappearing on the next map selection hid the whole open
+     panel. Still below the toolbar dropdowns (2330/2340) so an open menu wins.
+     Safe to raise: the backdrop itself is pointer-events:none. */
+  z-index: 2325;
   background: transparent;
   pointer-events: none;
 }

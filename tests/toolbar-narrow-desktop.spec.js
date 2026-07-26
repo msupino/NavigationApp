@@ -132,3 +132,49 @@ test('multi-open dropdowns get distinct columns (Extra layers ≠ Charts overlap
     Math.max(rects.charts.left, rects.weather.left);
   expect(overlap).toBeLessThanOrEqual(0);
 });
+
+test('a section restored open at boot is clamped into the viewport', async ({ page }) => {
+  // Mark the Print section open BEFORE the app loads, so the boot restore path
+  // (classList.add('open'), which never goes through setSectionOpen) is used.
+  await page.addInitScript(() => {
+    try { localStorage.setItem('navaid.sec.print', '1'); } catch (e) { /* */ }
+  });
+  await boot(page, 760);
+  await page.waitForFunction(() => document.querySelector('[data-sec="print"].open'));
+  const r = await page.evaluate(() => {
+    const body = document.querySelector('[data-sec="print"] .tb-section-body');
+    const b = body.getBoundingClientRect();
+    return { left: b.left, right: b.right, vw: window.innerWidth, w: b.width };
+  });
+  // Whatever the nudge, the restored-open dropdown must be fully on screen —
+  // previously it was never clamped at boot, so it could sit off the edge with
+  // its buttons unreachable until the section was closed and reopened.
+  expect(r.right).toBeLessThanOrEqual(r.vw + 1);
+  expect(r.left).toBeGreaterThanOrEqual(-1);
+});
+
+test('a dropdown nudge does not survive a resize', async ({ page }) => {
+  await boot(page, 760);
+  await page.locator('[data-sec="print"] .tb-section-head').click();
+  await expect(page.locator('[data-sec="print"]')).toHaveClass(/open/);
+  // Plant an obviously stale nudge, then resize. Nothing outside setSectionOpen
+  // used to clear it, so the open dropdown kept a translateX computed for the old
+  // viewport (and for the old toolbar layout after a desktop<->mobile switch).
+  await page.evaluate(() => {
+    document.querySelector('[data-sec="print"] .tb-section-body').style.transform =
+      'translateX(-9999px)';
+  });
+  await page.setViewportSize({ width: 1400, height: 800 });
+  await page.waitForFunction(() =>
+    document.querySelector('[data-sec="print"] .tb-section-body').style.transform
+      !== 'translateX(-9999px)');
+  const r = await page.evaluate(() => {
+    const body = document.querySelector('[data-sec="print"] .tb-section-body');
+    const b = body.getBoundingClientRect();
+    return { transform: body.style.transform, left: b.left, right: b.right, vw: window.innerWidth };
+  });
+  // Recomputed for the new viewport, and fully on screen.
+  expect(r.transform).not.toBe('translateX(-9999px)');
+  expect(r.right).toBeLessThanOrEqual(r.vw + 1);
+  expect(r.left).toBeGreaterThanOrEqual(-1);
+});

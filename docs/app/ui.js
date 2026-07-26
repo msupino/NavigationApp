@@ -961,8 +961,18 @@ async function routeFromTemplate(template, speed) {
         const wp = waypoints.find(w => (typeof canonicalNavWaypointName === 'function'
           ? canonicalNavWaypointName(w.name) : String(w.name).trim().toUpperCase()) === key);
         if (wp) {
-          lat = wp.lat + (typeof tune === 'function' ? tune('commChangeNoteLatOffset') : 0);
-          lng = wp.lng + (typeof tune === 'function' ? tune('commChangeNoteLngOffset') : 0);
+          // Use the shared default so a template callout lands LEFT of travel like
+          // every other one. Hand-rolling the static compass offset here put every
+          // template's callouts due east — on a northbound leg that is the nav-kite
+          // side, the overlap the shared helper exists to avoid — and the migration
+          // in seedCommChangeNotes does not recognise that position, so nothing
+          // ever corrected it. `waypoints` is this route's own list; it is not in
+          // state yet.
+          const tail = (typeof commCalloutDefaultTail === 'function')
+            ? commCalloutDefaultTail(wp, waypoints.indexOf(wp), waypoints)
+            : { lat: wp.lat, lng: wp.lng };
+          lat = tail.lat;
+          lng = tail.lng;
         }
       }
       return {
@@ -1438,9 +1448,35 @@ function showRouteLibraryModal(focusSave) {
       gdriveSync()
         .then(() => {
           render();
-          return (typeof gdriveSyncSettings === 'function') ? gdriveSyncSettings() : null;
+          if (typeof gdriveSyncSettings !== 'function') return null;
+          return gdriveSyncSettings({
+            // First sync only, and only for keys set differently on BOTH sides:
+            // there is no correct automatic answer, and picking one silently
+            // discards real settings, so ask once.
+            resolveFirstConflict: keys => {
+              const names = keys.map(k => k.replace(/^navaid\./, '')).join(', ');
+              const msg = (S.routeLibraryGdriveFirstSyncConflict ||
+                'This device and Google Drive both have settings for: {keys}.\n\n' +
+                'OK = REPLACE this device\'s values with the ones from Drive.\n' +
+                'Cancel = do nothing (sync again to choose).').replace('{keys}', names);
+              // Both sides are destructive to SOMEBODY: keeping local overwrites the
+              // other device's values in the shared file, taking remote overwrites
+              // this one's. So only an explicit OK acts, and anything else — Cancel,
+              // Escape, a WebView that never renders confirm() — aborts the settings
+              // sync entirely rather than silently picking a side.
+              if (window.confirm(msg)) return 'remote';
+              const keep = S.routeLibraryGdriveKeepThisDevice ||
+                'Keep THIS device\'s settings and update Google Drive?';
+              return window.confirm(keep) ? 'local' : 'abort';
+            },
+          });
         })
         .then(res => {
+          if (res && res.needsChoice) {
+            setStatus(S.routeLibraryGdriveSettingsSkipped ||
+              'Settings not synced — sync again to choose which device wins.');
+            return;
+          }
           if (res && res.applied) {
             // Settings from another device landed — reload so every boot-time
             // read (globals, toggles, layer) picks them up cleanly.
@@ -4605,6 +4641,7 @@ function refreshMapAfterToolbarModeChange() {
       setCollapsed(false, { persist: false });
       restorePos();                  // re-apply a saved desktop position, if any
       refreshMapAfterToolbarModeChange();
+      if (typeof window.reclampToolbarSections === 'function') window.reclampToolbarSections();
       return;
     }
     restorePos();
@@ -4615,6 +4652,8 @@ function refreshMapAfterToolbarModeChange() {
     const narrowDefault = !!(window.matchMedia && window.matchMedia('(max-width: 680px)').matches);
     setCollapsed(sc === null ? narrowDefault : sc === '1', { persist: sc !== null });
     refreshMapAfterToolbarModeChange();
+    // A stale dropdown nudge from the other layout must not survive the switch.
+    if (typeof window.reclampToolbarSections === 'function') window.reclampToolbarSections();
   }
 
   window.addEventListener('resize', () => {
@@ -4691,6 +4730,23 @@ function refreshMapAfterToolbarModeChange() {
       if (sec.classList.contains('open')) setSectionOpen(sec, false);
     }
   };
+
+  // Re-apply the viewport clamp to whatever is currently open. Two gaps this
+  // closes: a section restored open from localStorage at boot only gets
+  // classList.add('open') and never goes through setSectionOpen, so it was never
+  // clamped — that is the original off-screen dropdown (an unreachable Save-PNG
+  // button in RTL on a wrapped menu bar), which only healed after manually
+  // closing and reopening. And an already-applied translateX goes stale when the
+  // viewport resizes or the toolbar switches desktop<->mobile, leaving the
+  // dropdown nudged away from its section head.
+  function reclampOpenSections() {
+    for (const sec of sections) clampSectionBody(sec, sec.classList.contains('open'));
+  }
+  window.reclampToolbarSections = reclampOpenSections;
+  window.addEventListener('resize', reclampOpenSections);
+  // After this IIFE finishes (so the restore loop below has run) and layout has
+  // settled, clamp whatever was restored open.
+  requestAnimationFrame(reclampOpenSections);
 
   for (const sec of sections) {
     const head = sec.querySelector('.tb-section-head');
