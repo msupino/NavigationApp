@@ -146,29 +146,85 @@ test('an established device with local edits stamps a real timestamp and wins ov
   expect(r.winner).toBe('local');
 });
 
-test('an inbound toggle equal to the gist default is not pinned (stays gist-controlled)', async ({ page }) => {
+test('an explicit null is a tombstone: it deletes the key instead of being ignored', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {
-    const row = NavAid.defaultVisibilityMap.find(x => x[1] === 'navaid.showMsa');
-    const def = tune(row[2]) ? '1' : '0';
-    const opp = def === '1' ? '0' : '1';
-    // Inbound == gist default → must NOT create the key (gist keeps control).
-    localStorage.removeItem('navaid.showMsa');
-    applySyncableSettings({ 'navaid.showMsa': def });
-    const afterDefault = localStorage.getItem('navaid.showMsa');
-    // A genuine deviation IS pinned as an explicit choice.
-    applySyncableSettings({ 'navaid.showMsa': opp });
-    const afterDeviation = localStorage.getItem('navaid.showMsa');
-    // Inbound == default over a previously pinned key clears it back to gist.
-    localStorage.setItem('navaid.showMsa', opp);
-    const changed = applySyncableSettings({ 'navaid.showMsa': def });
-    const afterClear = localStorage.getItem('navaid.showMsa');
-    return { def, opp, afterDefault, afterDeviation, changed, afterClear };
+    localStorage.setItem('navaid.showMsa', '1');
+    localStorage.setItem('navaid.layer', 'heli');
+    // null = "gone on the author's device" → delete here too. An ABSENT key is
+    // no information (older blob) and must be left alone.
+    const changed = applySyncableSettings({ 'navaid.showMsa': null });
+    return {
+      changed,
+      deleted: localStorage.getItem('navaid.showMsa'),
+      untouched: localStorage.getItem('navaid.layer'),
+      noopAgain: applySyncableSettings({ 'navaid.showMsa': null }),
+    };
   });
-  expect(r.afterDefault).toBeNull();       // gist default not pinned
-  expect(r.afterDeviation).toBe(r.opp);    // deviation pinned
-  expect(r.changed).toBe(true);            // clearing counts as a change
-  expect(r.afterClear).toBeNull();         // pinned key cleared → follows gist again
+  expect(r.changed).toBe(true);
+  expect(r.deleted).toBeNull();        // tombstone applied
+  expect(r.untouched).toBe('heli');    // absent key untouched
+  expect(r.noopAgain).toBe(false);     // already gone → no change reported
+});
+
+test('a key deleted since the last sync is published as a tombstone, and a remote tombstone is carried forward', async ({ page }) => {
+  await page.goto('?lang=en');
+  await page.waitForFunction(() => typeof _settingsPublishValues === 'function');
+  const r = await page.evaluate(() => {
+    // Deleted locally since the last sync (in snapshot, absent now) → null.
+    const a = _settingsPublishValues(
+      { 'navaid.layer': 'nav' },
+      { 'navaid.layer': 'nav', 'navaid.showMsa': '1' },
+      null);
+    // Still absent here and the remote already carries the tombstone → keep it,
+    // so the deletion keeps reaching devices that have not synced yet.
+    const b = _settingsPublishValues(
+      { 'navaid.layer': 'nav' }, { 'navaid.layer': 'nav' }, { 'navaid.showMsa': null });
+    // Set locally again → the value wins over the stale tombstone.
+    const c = _settingsPublishValues(
+      { 'navaid.layer': 'nav', 'navaid.showMsa': '0' }, null, { 'navaid.showMsa': null });
+    return {
+      deleted: a['navaid.showMsa'], hasDeleted: 'navaid.showMsa' in a,
+      carried: b['navaid.showMsa'], resurrected: c['navaid.showMsa'],
+    };
+  });
+  expect(r.hasDeleted).toBe(true);
+  expect(r.deleted).toBeNull();        // tombstone published
+  expect(r.carried).toBeNull();        // remote tombstone carried forward
+  expect(r.resurrected).toBe('0');     // a real local value overrides it
+});
+
+test('stamps are monotonic, so a skewed clock cannot outrank forever and ties cannot freeze', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const future = Date.now() + 90 * 24 * 3600 * 1000;   // a device 3 months ahead
+    localStorage.setItem('navaid.settingsSyncedAt', String(future));
+    const past = _nextSettingsStamp(0);            // our own stamp must still advance
+    const vsFuture = _nextSettingsStamp(future);   // and must beat the poisoned remote
+    localStorage.removeItem('navaid.settingsSyncedAt');
+    return { past, vsFuture, future, now: Date.now() };
+  });
+  expect(r.past).toBeGreaterThan(r.future);        // beats our own stored stamp
+  expect(r.vsFuture).toBeGreaterThan(r.future);    // beats the remote's future stamp
+});
+
+test('a rejected write aborts the sync instead of being recorded as synced', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const orig = Storage.prototype.setItem;
+    let threw = null;
+    // Simulate a full quota for one specific key.
+    Storage.prototype.setItem = function (k, v) {
+      if (k === 'navaid.aircraft') { const e = new Error('quota'); e.name = 'QuotaExceededError'; throw e; }
+      return orig.call(this, k, v);
+    };
+    try {
+      applySyncableSettings({ 'navaid.showMsa': '1', 'navaid.aircraft': '{"reg":"4X-ABC"}' });
+    } catch (e) { threw = e.message; } finally { Storage.prototype.setItem = orig; }
+    return { threw, aircraft: localStorage.getItem('navaid.aircraft') };
+  });
+  expect(r.threw).toMatch(/could not be stored/i);   // surfaced, not swallowed
+  expect(r.aircraft).toBeNull();                     // the write really did fail
 });
 
 test('settings sync is opt-in and off by default', async ({ page }) => {

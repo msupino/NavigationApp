@@ -294,7 +294,7 @@ const GDRIVE_SETTINGS_KEYS = [
   // display / layer toggles
   'navaid.showAirfields', 'navaid.showVorStations', 'navaid.showNavWP',
   'navaid.showWpNames', 'navaid.showCumTime', 'navaid.showDrift',
-  'navaid.showFreqChanges', 'navaid.showCommChange', 'navaid.showMidLeg',
+  'navaid.showFreqChanges', 'navaid.showMidLeg',
   'navaid.highlightDiff', 'navaid.limitLegKites', 'navaid.showMsa',
   'navaid.showReporting', 'navaid.forceSnap', 'navaid.showReturn',
   'navaid.showNotam', 'navaid.showWind', 'navaid.windField', 'navaid.imsPwx',
@@ -314,7 +314,12 @@ const SETTINGS_SYNCED_AT_KEY = 'navaid.settingsSyncedAt';
 const SETTINGS_SNAP_KEY = 'navaid.settingsSnapshot';
 
 function _lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-function _lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage full/blocked */ } }
+// Returns false when the write did NOT land (quota/blocked). Callers that record
+// sync bookkeeping MUST check it: silently swallowing a failed write let a
+// partially-applied sync be recorded as full parity, which then pushed the stale
+// value back over the authoring device.
+function _lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+function _lsDel(k) { try { localStorage.removeItem(k); return true; } catch (e) { return false; } }
 
 function settingsSyncEnabled() { return _lsGet(SETTINGS_ENABLED_KEY) === '1'; }
 function setSettingsSyncEnabled(on) { _lsSet(SETTINGS_ENABLED_KEY, on ? '1' : '0'); }
@@ -332,31 +337,90 @@ function collectSyncableSettings() {
 // Write inbound values back to localStorage — but ONLY allowlisted keys, so a
 // foreign/corrupt remote file can never inject arbitrary keys. Returns true if
 // anything actually changed.
+//
+// Three inbound states per key, and the distinction matters:
+//   string  → an explicit value on the author's device; pin it here too.
+//   null    → a TOMBSTONE: the key is gone on the author's device, so delete it
+//             here. For a plain setting that is a real deletion; for a
+//             gist-controlled toggle it means "the author is following the gist",
+//             and clearing the key puts this device back under gist control too
+//             (applyDefaultVisibility only honors the gist while the key is null).
+//             One mechanism, and it is symmetric — the previous code cleared a
+//             key whenever the inbound value merely EQUALED the local gist
+//             default while the sender kept its pin, so an explicit choice that
+//             coincided with today's default was erased on the receiver and the
+//             two devices diverged for good once the gist default flipped.
+//   absent  → no information (an older blob, written before tombstones); skip.
+//
+// Throws if any write was rejected (quota), so the caller aborts BEFORE recording
+// parity rather than remembering a partial apply as complete.
 function applySyncableSettings(values) {
   if (!values || typeof values !== 'object') return false;
-  // Some allowlisted toggles are gist-controlled: applyDefaultVisibility only
-  // honors the gist while the key is null (non-null = an explicit user choice).
-  // Blindly pinning an inbound value that merely equals the current default would
-  // freeze this device on it, permanently opting it out of future gist changes.
-  // So for those keys we write only genuine deviations; when the inbound value
-  // matches the gist default we clear the key, keeping it gist-controlled.
-  const gistDefault = {};
-  const map = (typeof NavAid === 'object' && NavAid && NavAid.defaultVisibilityMap) || [];
-  if (typeof tune === 'function') {
-    for (const row of map) gistDefault[row[1]] = tune(row[2]) ? '1' : '0';
-  }
   let changed = false;
+  const failed = [];
   for (const k of GDRIVE_SETTINGS_KEYS) {
     if (!Object.prototype.hasOwnProperty.call(values, k)) continue;
     const next = values[k];
-    if (typeof next !== 'string') continue;
-    if (Object.prototype.hasOwnProperty.call(gistDefault, k) && next === gistDefault[k]) {
-      if (_lsGet(k) !== null) { try { localStorage.removeItem(k); } catch (e) { /* */ } changed = true; }
+    if (next === null) {
+      if (_lsGet(k) !== null) { if (!_lsDel(k)) failed.push(k); changed = true; }
       continue;
     }
-    if (_lsGet(k) !== next) { _lsSet(k, next); changed = true; }
+    if (typeof next !== 'string') continue;
+    if (_lsGet(k) !== next) { if (!_lsSet(k, next)) failed.push(k); changed = true; }
+  }
+  if (failed.length) {
+    throw new Error('Settings could not be stored (storage full?): ' + failed.join(', '));
   }
   return changed;
+}
+
+// Values to PUBLISH: everything present locally, plus an explicit null for any
+// allowlisted key that we synced before and that is now gone locally — a real
+// deletion, or a toggle handed back to gist control. Tombstones the remote
+// already carries are preserved while the key stays absent here, so a deletion
+// keeps propagating to a device that has not synced yet instead of being
+// resurrected by the next upload.
+function _settingsPublishValues(values, snapValues, remoteValues) {
+  const out = Object.assign({}, values);
+  for (const k of GDRIVE_SETTINGS_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(values, k)) continue;   // still set here
+    const knownBefore = snapValues &&
+      Object.prototype.hasOwnProperty.call(snapValues, k) && snapValues[k] !== null;
+    const remoteTomb = remoteValues &&
+      Object.prototype.hasOwnProperty.call(remoteValues, k) && remoteValues[k] === null;
+    if (knownBefore || remoteTomb) out[k] = null;
+  }
+  return out;
+}
+
+function _sameSettingsValues(a, b) {
+  if (!a || !b) return false;
+  for (const k of GDRIVE_SETTINGS_KEYS) {
+    const ha = Object.prototype.hasOwnProperty.call(a, k);
+    const hb = Object.prototype.hasOwnProperty.call(b, k);
+    if (ha !== hb) return false;
+    if (ha && a[k] !== b[k]) return false;
+  }
+  return true;
+}
+
+// Every stamp this device writes is strictly greater than both its own last
+// stamp and the remote's, i.e. monotonic rather than raw wall-clock. That kills
+// two failures at once: a device whose clock is months ahead no longer outranks
+// everyone else forever (the next real edit anywhere still advances past it), and
+// re-publishing on a tie can no longer freeze updatedAt so that two devices
+// overwrite each other's blob without ever converging.
+function _nextSettingsStamp(remoteAt) {
+  const last = +_lsGet(SETTINGS_SYNCED_AT_KEY) || 0;
+  return Math.max(Date.now(), last + 1, (+remoteAt || 0) + 1);
+}
+
+// Record "we are in parity with `values` as of `stamp`". Snapshots the values we
+// actually intended, not a fresh read of localStorage — re-reading live storage
+// is what let a write that silently failed be remembered as applied.
+function _recordSettingsSynced(values, stamp) {
+  _lsSet(SETTINGS_SNAP_KEY, JSON.stringify(values));
+  _lsSet(SETTINGS_SYNCED_AT_KEY, String(stamp));
 }
 
 // Pure last-write-wins on the settings blob {updatedAt:<ms>, values:{}}. Ties
@@ -370,29 +434,51 @@ function mergeSettings(local, remote) {
 // Local blob with a change-detected timestamp: if the current settings differ
 // from the snapshot we last synced, they changed on THIS device → stamp now so
 // they win; otherwise keep the last synced timestamp so a newer remote wins.
-function _localSettingsBlob() {
+function _localSettingsBlob(remoteAt) {
   const values = collectSyncableSettings();
   const cur = JSON.stringify(values);
   const snap = _lsGet(SETTINGS_SNAP_KEY);
+  let snapValues = null;
+  if (snap !== null) { try { snapValues = JSON.parse(snap); } catch (e) { snapValues = null; } }
   // A device that has never completed a sync (snapshot unseeded) has no baseline
   // proving its settings are newer than a peer's. Claiming Date.now() here let a
   // fresh device outrank — and overwrite — the very settings it was meant to
   // receive (the exact inverse of the feature). Until the first sync seeds a
-  // snapshot, this device's blob carries updatedAt 0, so any real remote wins;
-  // only when NO remote exists does it establish the file (stamped at upload).
-  const changedLocally = snap !== null && cur !== snap;
-  const updatedAt = snap === null ? 0
-    : (changedLocally ? Date.now() : (+_lsGet(SETTINGS_SYNCED_AT_KEY) || 0));
-  return { values, cur, updatedAt, changedLocally };
+  // snapshot, this device's blob carries updatedAt 0, so any real remote wins.
+  // A first sync against an EXISTING file does not use this ranking at all — see
+  // the union branch in _gdriveSyncSettingsOnce, which is loss-free either way.
+  const firstSync = snap === null;
+  const changedLocally = !firstSync && cur !== snap;
+  const updatedAt = firstSync ? 0
+    : (changedLocally ? _nextSettingsStamp(remoteAt) : (+_lsGet(SETTINGS_SYNCED_AT_KEY) || 0));
+  return { values, cur, snapValues, firstSync, updatedAt, changedLocally };
 }
 
 // Generic app-data helpers (the route ones hard-code the file name + array shape).
+// `version` is requested so a write can confirm nothing landed between our read
+// and our PATCH (Drive v3 has no If-Match for file content).
 function gdriveFindNamed(name) {
   const url = 'https://www.googleapis.com/drive/v3/files?spaces=appDataFolder' +
-    '&fields=files(id,name,modifiedTime)&q=' + encodeURIComponent("name='" + name + "'");
+    '&fields=files(id,name,modifiedTime,version)&q=' + encodeURIComponent("name='" + name + "'");
   return fetch(url, { headers: gdriveHeaders() })
     .then(r => { if (!r.ok) throw new Error('Drive list failed: ' + r.status); return r.json(); })
     .then(j => (j.files && j.files[0]) || null);
+}
+// Re-read just the version/modifiedTime to confirm the file has not changed since
+// `seen`. Drive offers no atomic precondition on a content PATCH, so this narrows
+// the lost-update window from the whole download+merge to one request; it does not
+// eliminate it. Aborting is the safe side: the next sync merges normally.
+function gdriveAssertUnchanged(fileId, seen) {
+  if (!fileId || !seen) return Promise.resolve();
+  const url = 'https://www.googleapis.com/drive/v3/files/' + fileId + '?fields=version,modifiedTime';
+  return fetch(url, { headers: gdriveHeaders() })
+    .then(r => { if (!r.ok) throw new Error('Drive check failed: ' + r.status); return r.json(); })
+    .then(j => {
+      const now = String((j && (j.version || j.modifiedTime)) || '');
+      if (now && String(seen) !== now) {
+        throw new Error('Another device changed the settings while syncing — sync again');
+      }
+    });
 }
 function gdriveDownloadJson(fileId) {
   return fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media',
@@ -431,28 +517,62 @@ function _gdriveSyncSettingsOnce() {
     // it reject so the sync aborts instead of clobbering (same stance the route
     // path takes — throw on a bad read rather than overwrite).
     const remoteP = file ? gdriveDownloadJson(file.id) : Promise.resolve(null);
+    const seen = file && (file.version || file.modifiedTime);
     return remoteP.then(remote => {
-      const local = _localSettingsBlob();
-      const localBlob = { updatedAt: local.updatedAt, values: local.values };
-      const remoteOk = remote && typeof remote === 'object' && remote.values;
-      const { winner } = mergeSettings(localBlob, remoteOk ? remote : null);
+      const remoteOk = !!(remote && typeof remote === 'object' &&
+        remote.values && typeof remote.values === 'object');
+      const remoteValues = remoteOk ? remote.values : null;
+      const remoteAt = remoteOk ? (+remote.updatedAt || 0) : 0;
+      const local = _localSettingsBlob(remoteAt);
+
+      const push = (values, stamp, snapshot) =>
+        gdriveAssertUnchanged(file && file.id, seen)
+          .then(() => gdriveUploadJson(file && file.id, GDRIVE_SETTINGS_FILE,
+            { updatedAt: stamp, values }))
+          .then(() => { _recordSettingsSynced(snapshot, stamp); return { applied: false }; });
+
+      // FIRST sync against an existing file: never pick a side. Ranking by
+      // timestamp here is what let a device with a year of tuned settings be
+      // silently overwritten by whichever device happened to opt in first — the
+      // one moment where there is no baseline to fall back on. Union instead:
+      // this device keeps every value it has, the remote fills only the keys it
+      // lacks, and the result goes straight back up (no waiting for a 2nd sync).
+      // Tombstones are ignored on this pass — we have no basis to delete yet.
+      if (local.firstSync && remoteOk) {
+        const merged = Object.assign({}, local.values);
+        const incoming = {};
+        for (const k of GDRIVE_SETTINGS_KEYS) {
+          if (Object.prototype.hasOwnProperty.call(local.values, k)) continue;
+          if (!Object.prototype.hasOwnProperty.call(remoteValues, k)) continue;
+          const rv = remoteValues[k];
+          if (typeof rv !== 'string') continue;
+          merged[k] = rv; incoming[k] = rv;
+        }
+        const changed = applySyncableSettings(incoming);
+        return push(merged, _nextSettingsStamp(remoteAt), merged)
+          .then(() => ({ applied: changed }));
+      }
+
+      const { winner } = mergeSettings(
+        { updatedAt: local.updatedAt, values: local.values },
+        remoteOk ? remote : null);
       if (winner === 'remote') {
-        const changed = applySyncableSettings(remote.values);
-        _lsSet(SETTINGS_SNAP_KEY, JSON.stringify(collectSyncableSettings()));
-        _lsSet(SETTINGS_SYNCED_AT_KEY, String((+remote.updatedAt) || Date.now()));
+        // Remote wins. applySyncableSettings throws if a write was rejected, so a
+        // partial apply never reaches the bookkeeping below.
+        const changed = applySyncableSettings(remoteValues);
+        _recordSettingsSynced(collectSyncableSettings(), remoteAt);
         return { applied: changed };
       }
-      // Local wins (or no remote): push local up and remember what we synced. A
-      // first-ever push (no baseline → updatedAt 0) stamps now so the file it
-      // establishes outranks the next fresh device — and so the uploaded blob and
-      // our local syncedAt agree (they previously diverged: 0 up, now local).
-      const stamp = localBlob.updatedAt || Date.now();
-      localBlob.updatedAt = stamp;
-      return gdriveUploadJson(file && file.id, GDRIVE_SETTINGS_FILE, localBlob).then(() => {
-        _lsSet(SETTINGS_SNAP_KEY, local.cur);
-        _lsSet(SETTINGS_SYNCED_AT_KEY, String(stamp));
+
+      // Local wins (or there is no remote yet).
+      const publish = _settingsPublishValues(local.values, local.snapValues, remoteValues);
+      if (remoteOk && !local.changedLocally && _sameSettingsValues(publish, remoteValues)) {
+        // Already identical — record parity and write nothing. Re-publishing here
+        // is what used to overwrite the peer's blob on every no-op sync.
+        _recordSettingsSynced(local.values, Math.max(remoteAt, local.updatedAt));
         return { applied: false };
-      });
+      }
+      return push(publish, _nextSettingsStamp(remoteAt), local.values);
     });
   });
 }
