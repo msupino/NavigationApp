@@ -707,6 +707,15 @@ window.S = Object.assign({
   routeLibraryGdriveSyncing: 'Syncing…',
   routeLibraryGdriveSynced: 'Synced with Google Drive',
   routeLibraryGdriveError: 'Drive sync failed',
+  fpTimeUnitsTitle: 'Elapsed time, mm:ss (not a clock time)',
+  emptyRouteHint: 'Click the map to add your first waypoint',
+  modeChipAdd: 'Adding waypoints',
+  modeChipNote: 'Adding notes',
+  modeChipStop: 'tap to stop',
+  modeChipTitle: 'Click to leave this mode',
+  fpMobileSummary: function (legs, nm, time, gal) {
+    return legs + ' legs · ' + nm + ' NM · ' + time + ' · ' + gal + ' gal';
+  },
   vorInfoType: 'Type',
   vorInfoChannel: 'Channel',
   vorInfoHours: 'Hours',

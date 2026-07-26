@@ -2234,6 +2234,23 @@ function appendAirfieldWeather(body, af) {
   load(false);
 }
 
+// Split the inspector's actions from its data rows: they go into one sticky block so
+// the destructive ones cannot fall below the fold on a phone, and only genuinely
+// destructive ones keep the alarm red.
+function finalizeInspectorActions(body) {
+  const btns = [...body.children].filter(el => el.classList && el.classList.contains('insp-btn'));
+  if (!btns.length) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'insp-actions';
+  for (const b of btns) {
+    const txt = (b.textContent || '').toLowerCase();
+    const destructive = /🗑|delete|remove|מחק|הסר/.test(txt);
+    if (!destructive) b.classList.add('insp-btn-safe');
+    wrap.appendChild(b);
+  }
+  body.appendChild(wrap);
+}
+
 function showInspector() {
   const insp = document.getElementById('inspector');
   const title = document.getElementById('insp-title');
@@ -2625,6 +2642,7 @@ function showInspector() {
     resetName.onclick = () => resetWpName(state.selected.index);
     body.appendChild(resetName);
   }
+  finalizeInspectorActions(body);
   persistInspectorSelection();
 }
 function colorRow(label, value, onChange, defaultValue) {
@@ -3468,6 +3486,20 @@ map.on('click', e => {
   }
   if (downHit) { downHit = false; return; }
   // NOTAM clicks are handled in mousedown (as overlay choices); see there.
+  // First waypoint: a plain click on an EMPTY route starts one. Clicking the map is
+  // the first thing anyone tries, and doing nothing (add-mode lives behind a menu)
+  // left a newcomer stuck on a loaded chart with no way in. Only while the route is
+  // empty, so it never fights selection or panning on a real route.
+  if (!state.mode && (!state.waypoints || !state.waypoints.length)) {
+    const r0 = applyNavSnap(e.latlng, '');
+    state.waypoints.push({ lat: r5(r0.lat), lng: r5(r0.lng), name: r0.name });
+    syncLegs();
+    state.selected = { type: 'wp', index: 0 };
+    if (typeof refreshEmptyRouteHint === 'function') refreshEmptyRouteHint();
+    draw();
+    showInspector();
+    return;
+  }
   if (state.mode === 'add') {
     const r = applyNavSnap(e.latlng, '');
     // #104: ignore the click if a waypoint already sits at the snap target.
