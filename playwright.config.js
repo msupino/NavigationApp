@@ -17,7 +17,13 @@ module.exports = defineConfig({
   //   oversubscribes CPU (browsers are CPU-bound) and causes timeout flakes.
   workers: process.env.EXPECTED_SHA ? 4 : (process.env.CI ? '100%' : undefined),
   forbidOnly: !!process.env.CI,
-  retries: 0,
+  // CI gets a retry budget: the suite is ~1265 tests on a shared runner, where a
+  // single load-dependent `page.goto` stall (15s cap) otherwise fails the whole run
+  // on an unrelated spec — seen on the dev→main promo, where both failures passed
+  // locally against the same commit. A genuine break still fails all attempts, and
+  // `trace: 'on-first-retry'` above only becomes useful once retries exist.
+  // Local stays at 0 so a real failure surfaces immediately.
+  retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? 'github' : 'list',
   use: {
     baseURL: process.env.BASE_URL || 'http://127.0.0.1:8000',
