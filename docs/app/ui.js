@@ -1550,23 +1550,23 @@ function runSearch() {
   const hit = (s2, up) => s2 && String(s2).toUpperCase().indexOf(up) >= 0;
   const hitHe = s2 => s2 && String(s2).indexOf(lastToken) >= 0;
   if (has(vors)) src.push({                                   // VOR/DME stations
-    kind: 'vor', cap: 3, items: vors, routable: false,
+    kind: 'vor', cap: tune('searchMaxVor'), items: vors, routable: false,
     match: v => hit(v.ident, q) || hit(v.name, q) || hitHe(v.he),
   });
   if (has(airfields)) src.push({
-    kind: 'af', cap: 6, items: airfields, routable: true,
+    kind: 'af', cap: tune('searchMaxAirfields'), items: airfields, routable: true,
     match: a => hit(a.name, q) || hit(a.en, q) || hitHe(a.he),
   });
   if (has(navWP)) src.push({
-    kind: 'wp', cap: 12, items: navWP, routable: true,
+    kind: 'wp', cap: tune('searchMaxNavWp'), items: navWP, routable: true,
     match: w => hit(w.name, q) || hit(w.en, q) || hitHe(w.he),
   });
   if (has(state.waypoints)) src.push({                        // the user's own route
-    kind: 'routewp', cap: 4, items: state.waypoints, routable: false,
+    kind: 'routewp', cap: tune('searchMaxRouteWp'), items: state.waypoints, routable: false,
     match: w => hit(w.name, q) || hitHe(w.he),
   });
   if (has(state.notes)) src.push({                            // notes placed on the map
-    kind: 'note', cap: 3,
+    kind: 'note', cap: tune('searchMaxNotes'),
     items: state.notes.filter(n => n && (n.text || n.cc)), routable: false,
     match: n => hit(n.text, q) || hit(n.cc, q) || hitHe(n.text),
   });
@@ -1574,7 +1574,7 @@ function runSearch() {
   const hits = [];
   const perSource = [];
   for (const so of src) perSource.push(so.items.filter(so.match).map(e => ({ kind: so.kind, entry: e, src: so })));
-  let budget = 12;
+  let budget = tune('searchMaxResults');
   for (let i = 0; i < perSource.length && budget > 0; i++) {
     const take = Math.min(perSource[i].length, src[i].cap, budget);
     hits.push(...perSource[i].slice(0, take));
@@ -1593,7 +1593,7 @@ function runSearch() {
       primary = w.name || (S.wpLabel || 'WP');
       alt = S.searchKindRouteWp || 'on your route';
     } else if (h.kind === 'note') {
-      primary = (w.text || w.cc || '').slice(0, 40);
+      primary = (w.text || w.cc || '').slice(0, tune('searchNoteLabelChars'));
       alt = S.searchKindNote || 'note';
     } else if (h.kind === 'vor') {
       // "ZFR — Zofar · 115.60" so the ident, the name and the frequency to tune are

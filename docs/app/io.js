@@ -3707,9 +3707,9 @@ function drawA4x2TileMarks(cx, t, total, pxPerMm) {
   cx.textBaseline = 'top';
   const tw = cx.measureText(label).width;
   const pad = Math.round(fontPx * 0.3);
-  cx.fillStyle = 'rgba(255,255,255,0.85)';
+  cx.fillStyle = tune('a4x2MarkLabelBgColor');
   cx.fillRect(pad, pad, tw + pad * 2, fontPx + pad * 2);
-  cx.fillStyle = '#000';
+  cx.fillStyle = tune('a4x2MarkLabelInkColor');
   cx.fillText(label, pad * 2, pad * 2);
   // dashed guide along the shared (seam) edge
   cx.strokeStyle = 'rgba(0,0,0,0.7)';
@@ -6085,7 +6085,9 @@ function tryLoadRouteFromUrl() {
   if (Array.isArray(r.freqNotes) && r.freqNotes.length) {
     for (const fn of r.freqNotes) {
       const idx = state.notes.push({
-        text: 'Freq change', color: '#fff6aa', shape: 'rect',
+        text: 'Freq change',
+        color: (typeof NOTE_DEFAULT_COLOR !== 'undefined' ? NOTE_DEFAULT_COLOR : tune('labelFillColor')),
+        shape: 'rect',
         cc: fn.cc, freqName: fn.freqName, freq: fn.freq,
       }) - 1;
       // Place tail at default position for the target waypoint.
@@ -6702,7 +6704,7 @@ function _simSetStatus(ok) {
   if (!el) return;
   el.textContent = ok ? (S.tbSimStatusOk || '✅ Connected')
                       : (S.tbSimStatusErr || '⚠ No data');
-  el.style.color = ok ? '#2ecc71' : '#e67e22';
+  el.style.color = ok ? tune('simStatusOkColor') : tune('simStatusErrColor');
 }
 
 async function _simFetch() {
