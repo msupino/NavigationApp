@@ -1594,7 +1594,17 @@ function updateExportPlanCb() {
   cb.disabled = !hasLegs;
   const lbl = document.getElementById('export-plan-cb-label');
   if (lbl) lbl.textContent = hasLegs ? S.exportPlanPlace : (S.exportPlanNoLegs || S.exportPlanPlace);
-  if (!hasLegs && cb.checked) { cb.checked = false; window.planCard = null; }
+  if (!hasLegs && cb.checked) {
+    cb.checked = false;
+    window.planCard = null;
+    // The card is gone, so the export backdrop must go back to being a normal
+    // dimmed, click-blocking modal. Without this it stayed transparent and
+    // pointer-events:none, so tapping outside no longer dismissed the panel and the
+    // VOR row kept offering columns for a card that no longer exists.
+    const vr = document.getElementById('export-vor-select');
+    if (vr && vr.parentElement) vr.parentElement.style.display = 'none';
+    if (typeof window.__exportSyncPlaceThrough === 'function') window.__exportSyncPlaceThrough();
+  }
 }
 function setPage(size) {
   if (pageSize === size) {             // same button toggles the frame off
@@ -3335,6 +3345,9 @@ function showExportModal() {
     const placing = !!(planCb && planCb.checked && planCard);
     back.classList.toggle('export-place', floatPanel || placing);
   }
+  // updateExportPlanCb() can clear the card from OUTSIDE this closure (the route was
+  // cleared while the panel is open), and it has to be able to re-sync the backdrop.
+  window.__exportSyncPlaceThrough = syncPlaceThrough;
 
   // Undo the panel's preview by restoring each value from the TOOLBAR control that
   // owns it, rather than from a snapshot taken when the panel opened. The panel is
@@ -3535,7 +3548,12 @@ function showExportModal() {
   // Removing it from `window` left every open's handler alive, so a later Escape
   // — with no panel on screen — still ran restoreOrig() and reverted the overlay
   // toggles, base layer, map opacity and the placed card.
-  function close() { removeCardDrag(); document.removeEventListener('keydown', onEsc); back.remove(); }
+  function close() {
+    removeCardDrag();
+    document.removeEventListener('keydown', onEsc);
+    if (window.__exportSyncPlaceThrough === syncPlaceThrough) window.__exportSyncPlaceThrough = null;
+    back.remove();
+  }
   function onEsc(e) {
     if (e.key !== 'Escape') return;
     // The panel is click-through, so another modal can be opened on top of it. Only

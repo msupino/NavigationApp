@@ -2441,26 +2441,36 @@ function reanchorReportPoints(captured) {
       if (state.waypoints[i] === c.A && state.waypoints[i + 1] === c.B) { same = i; break; }
     }
     if (same >= 0) { c.n.rp.leg = same; c.n.rp.t = c.t; continue; }
-    // 2. Segment is gone (its waypoint was deleted, or it was split). Fall back to
-    //    the leg passing closest to where the marker actually sat.
+    // 2. Segment is gone (a waypoint was deleted, or it was split). Prefer a leg
+    //    that still shares one of the marker's own endpoints — after deleting B from
+    //    A-B-C that is the merged A-C, which is where the marker belongs. Only if
+    //    NEITHER endpoint survives do we consider the whole route.
     //
-    //    Deliberately no distance cut-off: dropping the marker when nothing is close
-    //    (deleting the apex of a dogleg leaves only the far chord) silently destroys
-    //    a named reporting point the pilot placed. Landing it on the nearest leg can
-    //    look wrong — worst case on top of a waypoint — but that is visible and can
-    //    be dragged, whereas a deletion cannot be undone without discarding the
-    //    whole edit.
-    let best = -1, bestD = Infinity, bestT = 0.5;
-    for (let i = 0; i < state.legs.length; i++) {
-      const A = state.waypoints[i], B = state.waypoints[i + 1];
-      if (!A || !B) continue;
-      const t = legFractionAt(A, B, c);
-      const dLat = (A.lat + (B.lat - A.lat) * t) - c.lat;
-      const dLng = (A.lng + (B.lng - A.lng) * t) - c.lng;
-      const d = dLat * dLat + dLng * dLng;
-      if (d < bestD) { bestD = d; best = i; bestT = t; }
-    }
-    if (best >= 0) { c.n.rp.leg = best; c.n.rp.t = bestT; }
+    //    Restricting the candidates matters: a route that loops back near itself (an
+    //    out-and-back) has an unrelated leg passing closer to the old position than
+    //    the merged one, and an unbounded nearest-leg search moved the marker there —
+    //    where it looks plausible but prints a different leg's time on the nav log.
+    //
+    //    Deliberately no distance cut-off either way: dropping the marker when
+    //    nothing is close (deleting the apex of a dogleg leaves only the far chord)
+    //    silently destroys a named reporting point the pilot placed.
+    const scan = (restrict) => {
+      let best = -1, bestD = Infinity, bestT = 0.5;
+      for (let i = 0; i < state.legs.length; i++) {
+        const A = state.waypoints[i], B = state.waypoints[i + 1];
+        if (!A || !B) continue;
+        if (restrict && A !== c.A && B !== c.A && A !== c.B && B !== c.B) continue;
+        const t = legFractionAt(A, B, c);
+        const dLat = (A.lat + (B.lat - A.lat) * t) - c.lat;
+        const dLng = (A.lng + (B.lng - A.lng) * t) - c.lng;
+        const d = dLat * dLat + dLng * dLng;
+        if (d < bestD) { bestD = d; best = i; bestT = t; }
+      }
+      return { best, bestT };
+    };
+    let hit = scan(true);
+    if (hit.best < 0) hit = scan(false);
+    if (hit.best >= 0) { c.n.rp.leg = hit.best; c.n.rp.t = hit.bestT; }
   }
 }
 
@@ -2477,7 +2487,7 @@ function syncLegs() {
   // route (cleared / truncated / a loaded blob). Mid-route inserts and deletes
   // must NOT rely on this: pruning by index deleted markers whose segment still
   // existed and slid the survivors onto a different leg, so those call sites
-  // remap the anchors first — see remapReportPointsOnLegDelete / ...OnLegInsert.
+  // re-anchor first — see captureReportPointGeo / reanchorReportPoints.
   if (Array.isArray(state.notes)) {
     state.notes = state.notes.filter(n => !n || !n.rp || n.rp.leg < need);
   }

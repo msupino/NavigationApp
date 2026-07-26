@@ -15,9 +15,13 @@ for (const lang of ['he', 'en']) {
     const r = await page.evaluate(() => {
       const rec = document.getElementById('gps-record').getBoundingClientRect();
       const live = document.getElementById('gps-live').getBoundingClientRect();
-      return { recTop: Math.round(rec.top), liveTop: Math.round(live.top) };
+      return { recTop: rec.top, liveTop: live.top, recH: rec.height };
     });
-    expect(r.recTop).toBe(r.liveTop);   // grouped no-wrap → same line in both languages
+    // Same LINE, not the same subpixel: the regression this guards against is the
+    // button wrapping onto another row, which differs by a whole line height. Exact
+    // equality was brittle — the two buttons legitimately differ by up to a pixel
+    // from font metrics and fractional layout.
+    expect(Math.abs(r.recTop - r.liveTop)).toBeLessThan(Math.max(4, r.recH / 2));
   });
 
   test(`gps-live footer button keeps a stable width across show/hide (${lang})`, async ({ page }) => {
