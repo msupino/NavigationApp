@@ -961,8 +961,18 @@ async function routeFromTemplate(template, speed) {
         const wp = waypoints.find(w => (typeof canonicalNavWaypointName === 'function'
           ? canonicalNavWaypointName(w.name) : String(w.name).trim().toUpperCase()) === key);
         if (wp) {
-          lat = wp.lat + (typeof tune === 'function' ? tune('commChangeNoteLatOffset') : 0);
-          lng = wp.lng + (typeof tune === 'function' ? tune('commChangeNoteLngOffset') : 0);
+          // Use the shared default so a template callout lands LEFT of travel like
+          // every other one. Hand-rolling the static compass offset here put every
+          // template's callouts due east — on a northbound leg that is the nav-kite
+          // side, the overlap the shared helper exists to avoid — and the migration
+          // in seedCommChangeNotes does not recognise that position, so nothing
+          // ever corrected it. `waypoints` is this route's own list; it is not in
+          // state yet.
+          const tail = (typeof commCalloutDefaultTail === 'function')
+            ? commCalloutDefaultTail(wp, waypoints.indexOf(wp), waypoints)
+            : { lat: wp.lat, lng: wp.lng };
+          lat = tail.lat;
+          lng = tail.lng;
         }
       }
       return {

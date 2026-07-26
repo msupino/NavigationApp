@@ -2509,10 +2509,27 @@ function commCalloutTarget(n) {
 // being a static compass offset, so on a north->south leg the callout no longer
 // lands on the same side as the kites. Magnitude comes from the existing tune
 // (its sign is ignored now — the side is derived from the leg).
-function commCalloutDefaultTail(wp, idx) {
-  const D = Math.abs(tune('commChangeNoteLngOffset')) || 0.09;
+// `wpsOverride` lets a route being BUILT (a template, before it reaches state)
+// resolve the side from its own waypoint list.
+function commCalloutDefaultTail(wp, idx, wpsOverride) {
+  // A magnitude of 0 must mean 0. `Math.abs(x) || 0.09` silently restored the
+  // shipped default when the slider (or a gist override) was set to zero, and
+  // then applied it in BOTH axes via the bearing — an unfalsifiable control.
+  const rawD = tune('commChangeNoteLngOffset');
+  const D = Number.isFinite(rawD) ? Math.abs(rawD) : 0.09;
   let brg = null;
-  const wps = state.waypoints;
+  const wps = Array.isArray(wpsOverride) ? wpsOverride : state.waypoints;
+  // Derive the route index when the caller did not pass one. Callers that omit it
+  // used to fall through to the static compass offset, which put the callout back
+  // on the nav-kite side — and left it there permanently, because the reverse
+  // handler's "is this still at default?" test compares against the bearing-derived
+  // position and so classified it as user-dragged. Resolving the index here means a
+  // caller cannot reintroduce that by forgetting the argument. A target that is not
+  // on the route (a navWP reference) yields -1 and keeps the static fallback.
+  if (!Number.isInteger(idx) && Array.isArray(wps) && wp) {
+    const found = wps.indexOf(wp);
+    if (found >= 0) idx = found;
+  }
   if (Array.isArray(wps) && Number.isInteger(idx) && typeof geo === 'function') {
     const prev = wps[idx - 1], next = wps[idx + 1];
     if (prev && wp) brg = geo(prev, wp).brg;          // inbound leg preferred
