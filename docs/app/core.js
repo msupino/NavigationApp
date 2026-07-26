@@ -668,6 +668,11 @@ window.S = Object.assign({
   routeLibraryGdriveError: 'Drive sync failed',
   routeLibraryGdriveSyncSettings: 'Sync settings too',
   routeLibraryGdriveSettingsApplied: 'Settings updated — reloading…',
+  routeLibraryGdriveFirstSyncConflict: 'This device and Google Drive both have settings for: {keys}.\n\nOK = REPLACE this device\'s values with the ones from Drive.\nCancel = do nothing (sync again to choose).',
+  routeLibraryGdriveKeepThisDevice: 'Keep THIS device\'s settings and update Google Drive?',
+  routeLibraryGdriveSettingsSkipped: 'Settings not synced — sync again to choose which device wins.',
+  routeLibraryGdriveStorageFull: 'This device could not store the settings (storage full).',
+  routeLibraryGdriveRaced: 'Another device changed the settings while syncing — sync again.',
   routeTemplatesTitle: 'Route templates',
   routeTemplateRoute: 'Route',
   routeTemplateSpeed: 'Speed (kt)',
@@ -2381,6 +2386,94 @@ function proj(wp) {
 }
 
 // --- leg bookkeeping -------------------------------------------------
+// --- report-point re-anchoring ---------------------------------------------
+// Identification-point ovals anchor to a leg by INDEX ({leg, t}), so any splice
+// that renumbers legs invalidates them. Rather than doing index arithmetic per
+// splice shape (which got the delete case wrong — an anchor on the removed leg
+// kept its index, and after the splice that index is the NEXT leg, so the marker
+// jumped a segment forward), capture where each marker sits on the GROUND before
+// the splice and re-anchor it to the nearest surviving leg afterwards. One
+// mechanism, correct for delete / insert / merge, and it keeps the marker on the
+// spot the pilot actually put it.
+//
+// Call captureReportPointGeo() before mutating waypoints/legs and pass the result
+// to reanchorReportPoints() after syncLegs().
+
+// Fraction of the way from A to B at which P sits (clamped 0..1). Planar is fine
+// at leg scale — it only has to place a marker back onto a segment.
+function legFractionAt(A, B, P) {
+  if (!A || !B || !P) return 0;
+  const dx = B.lng - A.lng, dy = B.lat - A.lat;
+  const d2 = dx * dx + dy * dy;
+  if (!d2) return 0;
+  const t = ((P.lng - A.lng) * dx + (P.lat - A.lat) * dy) / d2;
+  return Math.max(0, Math.min(1, t));
+}
+
+function captureReportPointGeo() {
+  const out = [];
+  if (!Array.isArray(state.notes)) return out;
+  for (const n of state.notes) {
+    if (!n || !n.rp || !Number.isInteger(n.rp.leg)) continue;
+    const A = state.waypoints[n.rp.leg], B = state.waypoints[n.rp.leg + 1];
+    if (!A || !B) continue;
+    // Clamp exactly as reportPointGeom does, so the captured point is the pixel the
+    // user actually sees. An out-of-range t (possible in a loaded/imported route)
+    // would otherwise extrapolate past the leg end and re-anchor onto a neighbour.
+    const raw = Number.isFinite(n.rp.t) ? n.rp.t : 0.5;
+    const t = Math.max(0, Math.min(1, raw));
+    // Keep the endpoint OBJECTS, not the index: waypoint objects survive a splice,
+    // so identity is how we recognise the same segment afterwards. Comparing indexes
+    // cannot work — that is the whole reason this helper exists.
+    out.push({ n, A, B, t,
+      lat: A.lat + (B.lat - A.lat) * t, lng: A.lng + (B.lng - A.lng) * t });
+  }
+  return out;
+}
+
+function reanchorReportPoints(captured) {
+  if (!Array.isArray(captured) || !captured.length) return;
+  for (const c of captured) {
+    if (!c || !c.n || !c.n.rp) continue;
+    // 1. Same segment still in the route (renumbered, or untouched)? Keep t exactly.
+    let same = -1;
+    for (let i = 0; i < state.legs.length; i++) {
+      if (state.waypoints[i] === c.A && state.waypoints[i + 1] === c.B) { same = i; break; }
+    }
+    if (same >= 0) { c.n.rp.leg = same; c.n.rp.t = c.t; continue; }
+    // 2. Segment is gone (a waypoint was deleted, or it was split). Prefer a leg
+    //    that still shares one of the marker's own endpoints — after deleting B from
+    //    A-B-C that is the merged A-C, which is where the marker belongs. Only if
+    //    NEITHER endpoint survives do we consider the whole route.
+    //
+    //    Restricting the candidates matters: a route that loops back near itself (an
+    //    out-and-back) has an unrelated leg passing closer to the old position than
+    //    the merged one, and an unbounded nearest-leg search moved the marker there —
+    //    where it looks plausible but prints a different leg's time on the nav log.
+    //
+    //    Deliberately no distance cut-off either way: dropping the marker when
+    //    nothing is close (deleting the apex of a dogleg leaves only the far chord)
+    //    silently destroys a named reporting point the pilot placed.
+    const scan = (restrict) => {
+      let best = -1, bestD = Infinity, bestT = 0.5;
+      for (let i = 0; i < state.legs.length; i++) {
+        const A = state.waypoints[i], B = state.waypoints[i + 1];
+        if (!A || !B) continue;
+        if (restrict && A !== c.A && B !== c.A && A !== c.B && B !== c.B) continue;
+        const t = legFractionAt(A, B, c);
+        const dLat = (A.lat + (B.lat - A.lat) * t) - c.lat;
+        const dLng = (A.lng + (B.lng - A.lng) * t) - c.lng;
+        const d = dLat * dLat + dLng * dLng;
+        if (d < bestD) { bestD = d; best = i; bestT = t; }
+      }
+      return { best, bestT };
+    };
+    let hit = scan(true);
+    if (hit.best < 0) hit = scan(false);
+    if (hit.best >= 0) { c.n.rp.leg = hit.best; c.n.rp.t = hit.bestT; }
+  }
+}
+
 function syncLegs() {
   const before = state.legs.length;
   const need = Math.max(0, state.waypoints.length - 1);
@@ -2390,9 +2483,11 @@ function syncLegs() {
     applyLegAltitudeToLeg(i);
   }
   while (state.legs.length > need) state.legs.pop();
-  // Drop identification-point ovals whose anchor leg no longer exists (route
-  // shortened / cleared). Index-shift on mid-route insert/delete is a known
-  // limitation — the anchor stays on whatever leg now holds that index.
+  // Last-resort prune for identification-point ovals left past the end of the
+  // route (cleared / truncated / a loaded blob). Mid-route inserts and deletes
+  // must NOT rely on this: pruning by index deleted markers whose segment still
+  // existed and slid the survivors onto a different leg, so those call sites
+  // re-anchor first — see captureReportPointGeo / reanchorReportPoints.
   if (Array.isArray(state.notes)) {
     state.notes = state.notes.filter(n => !n || !n.rp || n.rp.leg < need);
   }

@@ -135,6 +135,13 @@
       state.waypoints = waypoints;
       state.legs = [];
       state.notes = state.notes || [];
+      // This replaces the WHOLE route, so identification-point ovals anchored to the
+      // old legs describe segments that no longer exist. Their {leg, t} anchor would
+      // survive and place them on unrelated geometry, printing a named reporting fix
+      // at the wrong position and time. Every other whole-route replacement (imports,
+      // search-built routes, templates) clears notes; drop just the anchored ones so
+      // the user's free-standing notes and callouts are kept.
+      state.notes = state.notes.filter(n => !(n && n.rp));
       state.commChangeSuppressions = [];
       state.selected = null;
       if (typeof syncLegs === 'function') syncLegs();

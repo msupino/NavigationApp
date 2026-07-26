@@ -38,3 +38,57 @@ test('the nav kite is grabbable across its whole footprint, not just the centre'
   expect(r.outsideAlong).toBe(false);   // still bounded — doesn't grab far away
   expect(r.outsidePerp).toBe(false);
 });
+
+test('a zero-length leg does not turn the whole map into one kite hit box', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // Two coincident waypoints: the leg projects to a single pixel, so it has no
+    // direction. A zero frame used to make the along/perp test true everywhere.
+    state.waypoints = [{ lat: 32.4, lng: 35.0, name: 'A' }, { lat: 32.4, lng: 35.0, name: 'B' }];
+    state.legs = []; syncLegs();
+    state.legs[0].flightSpeed = 90;
+    map.setView([32.4, 35.0], 10, { animate: false }); draw();
+    const box = map.getContainer().getBoundingClientRect();
+    const farX = box.width - 10, farY = box.height - 10;
+    const f = legFrame(0);
+    const c = legLabelCenter(0, 'in');
+    return {
+      // A usable axis, not (0,0) — the renderer draws this kite along +x, so the
+      // hit box must line up with it rather than collapsing.
+      frame: { dx: f.dx, dy: f.dy, len: f.len },
+      centre: !!hitLegLabel(c.x, c.y),          // the visible kite is still grabbable
+      farLeg: hitLegLabel(farX, farY),
+      farCum: hitCumLabel(farX, farY),
+      cornerLeg: hitLegLabel(5, 5),
+    };
+  });
+  expect(r.frame.len).toBe(0);         // genuinely degenerate, and reported as such
+  // Vectors stay zero so legLabelCenter agrees with the renderer (which also
+  // collapses to zero and draws the kite at the midpoint, unrotated); the hit test
+  // substitutes screen axes for this case rather than projecting onto zeros.
+  expect(r.frame.dx).toBe(0);
+  expect(r.frame.dy).toBe(0);
+  expect(r.centre).toBe(true);         // drawn kite stays grabbable where it is
+  expect(r.farLeg).toBeNull();         // but a click across the map grabs nothing
+  expect(r.farCum).toBeNull();
+  expect(r.cornerLeg).toBeNull();
+});
+
+test('the cum-time kite is not hit-testable while its toggle is off', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.2, lng: 35.0, name: 'A' }, { lat: 32.7, lng: 35.0, name: 'B' }];
+    state.legs = []; syncLegs();
+    state.legs[0].flightSpeed = 90;
+    map.setView([32.45, 35.0], 10, { animate: false });
+    window.showCumTime = true; draw();
+    const c = cumLabelCenter(0);
+    const on = !!hitCumLabel(c.x, c.y);        // drawn → grabbable
+    window.showCumTime = false; draw();
+    const off = !!hitCumLabel(c.x, c.y);       // not drawn → must not be grabbable
+    window.showCumTime = true;
+    return { on, off };
+  });
+  expect(r.on).toBe(true);
+  expect(r.off).toBe(false);
+});

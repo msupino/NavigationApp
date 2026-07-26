@@ -2509,10 +2509,27 @@ function commCalloutTarget(n) {
 // being a static compass offset, so on a north->south leg the callout no longer
 // lands on the same side as the kites. Magnitude comes from the existing tune
 // (its sign is ignored now — the side is derived from the leg).
-function commCalloutDefaultTail(wp, idx) {
-  const D = Math.abs(tune('commChangeNoteLngOffset')) || 0.09;
+// `wpsOverride` lets a route being BUILT (a template, before it reaches state)
+// resolve the side from its own waypoint list.
+function commCalloutDefaultTail(wp, idx, wpsOverride) {
+  // A magnitude of 0 must mean 0. `Math.abs(x) || 0.09` silently restored the
+  // shipped default when the slider (or a gist override) was set to zero, and
+  // then applied it in BOTH axes via the bearing — an unfalsifiable control.
+  const rawD = tune('commChangeNoteLngOffset');
+  const D = Number.isFinite(rawD) ? Math.abs(rawD) : 0.09;
   let brg = null;
-  const wps = state.waypoints;
+  const wps = Array.isArray(wpsOverride) ? wpsOverride : state.waypoints;
+  // Derive the route index when the caller did not pass one. Callers that omit it
+  // used to fall through to the static compass offset, which put the callout back
+  // on the nav-kite side — and left it there permanently, because the reverse
+  // handler's "is this still at default?" test compares against the bearing-derived
+  // position and so classified it as user-dragged. Resolving the index here means a
+  // caller cannot reintroduce that by forgetting the argument. A target that is not
+  // on the route (a navWP reference) yields -1 and keeps the static fallback.
+  if (!Number.isInteger(idx) && Array.isArray(wps) && wp) {
+    const found = wps.indexOf(wp);
+    if (found >= 0) idx = found;
+  }
   if (Array.isArray(wps) && Number.isInteger(idx) && typeof geo === 'function') {
     const prev = wps[idx - 1], next = wps[idx + 1];
     if (prev && wp) brg = geo(prev, wp).brg;          // inbound leg preferred
@@ -3084,30 +3101,55 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc
   const Lr = cell * 2, L = Lr + Lt;
   const xb = -L / 2 + Lr;
 
+  // Kite outline, reusable: clip() consumes the current path, so the halo pass
+  // needs to lay it down more than once.
+  const kitePath = () => {
+    octx.beginPath();
+    octx.moveTo(-L / 2, -W / 2);
+    octx.lineTo(xb, -W / 2);
+    octx.lineTo(L / 2, 0);
+    octx.lineTo(xb, W / 2);
+    octx.lineTo(-L / 2, W / 2);
+    octx.closePath();
+  };
+
   octx.save();
   octx.translate(cx, cy);
   octx.rotate(flightAng);
-  octx.beginPath();
-  octx.moveTo(-L / 2, -W / 2);
-  octx.lineTo(xb, -W / 2);
-  octx.lineTo(L / 2, 0);
-  octx.lineTo(xb, W / 2);
-  octx.lineTo(-L / 2, W / 2);
-  octx.closePath();
   if (halo) {                            // purple band around the marker
+    // Only the OUTER half of the band should show: a stroke centred on the outline
+    // would otherwise read as a second, internal highlight through the translucent
+    // fill. Clip to everything OUTSIDE the kite (even-odd against a huge rect) and
+    // stroke at double width, so the visible result is a halo-wide outer band.
+    //
+    // This deliberately ERASES NOTHING. Both earlier attempts used
+    // destination-out: filling the whole path wiped every pixel already drawn
+    // inside the kite (track line, drift lines, minute ticks), and clipping to the
+    // interior and re-stroking merely narrowed that to a ring — still destructive,
+    // because destination-out removes whatever is underneath, which during PNG
+    // export is the background and the composited map tiles. Both left a
+    // transparent hole (or ring) in the delivered image.
+    octx.save();
+    octx.beginPath();
+    octx.rect(-1e5, -1e5, 2e5, 2e5);     // outer subpath …
+    octx.moveTo(-L / 2, -W / 2);          // … minus the kite (even-odd)
+    octx.lineTo(xb, -W / 2);
+    octx.lineTo(L / 2, 0);
+    octx.lineTo(xb, W / 2);
+    octx.lineTo(-L / 2, W / 2);
+    octx.closePath();
+    octx.clip('evenodd');
     octx.lineJoin = 'round';
+    // Centred stroke, inner half clipped away → the visible band is lineWidth/2,
+    // which is exactly what the old erase-the-inside approach left. Do NOT double
+    // it here or every haloed kite gets a band twice the shipped width.
     octx.lineWidth = tune('legKiteHaloPx') * sc;
     octx.strokeStyle = tune('legKiteHaloColor');
+    kitePath();
     octx.stroke();
-    octx.lineJoin = 'miter';
-    // The stroke is centred on the outline, so its inner half would show
-    // through the translucent fill as a second (internal) highlight. Erase
-    // everything inside the outline so only the OUTER band remains.
-    octx.save();
-    octx.globalCompositeOperation = 'destination-out';
-    octx.fill();
     octx.restore();
   }
+  kitePath();
   octx.fillStyle = fill;
   octx.fill();
   octx.lineWidth = tune('legKiteBorderPx') * sc;
@@ -3246,6 +3288,23 @@ function noteScale(n) {
 }
 function noteFont(n) {
   return `bold ${tune('noteFontPx') * noteScale(n)}px sans-serif`;
+}
+
+// Screen rotation applied to a note when it is drawn. Identification-point ovals
+// align ACROSS the track (leg angle + 90°, per the standard's diagram), flipped
+// 180° when the text would read upside-down; every other note is axis-aligned.
+// SHARED with hitNote — when only drawNotes knew the angle, the clickable ellipse
+// stayed axis-aligned while the painted one rotated, so on an east-west leg the
+// two were 90° apart: clicking the visible oval missed it and clicking empty map
+// beside it grabbed it.
+function noteDrawAngle(n) {
+  if (!n || !n.rp) return 0;
+  const A = state.waypoints[n.rp.leg], B = state.waypoints[n.rp.leg + 1];
+  if (!A || !B) return 0;
+  const pa = proj(A), pb = proj(B);
+  let ang = Math.atan2(pb.y - pa.y, pb.x - pa.x) + Math.PI / 2;
+  if (ang > Math.PI / 2 || ang < -Math.PI / 2) ang += Math.PI;
+  return ang;
 }
 
 function noteRect(i) {
@@ -3518,20 +3577,9 @@ function drawNotes() {
       fontPx *= k; lineH *= k;
     }
 
-    // Identification-point ovals align with the leg (long axis along the track),
-    // not axis-aligned north. Draw in a frame rotated to the leg's screen angle;
-    // flip 180° when it would read upside-down so the text stays upright.
-    let ang = 0;
-    if (n.rp) {
-      const A = state.waypoints[n.rp.leg], B = state.waypoints[n.rp.leg + 1];
-      if (A && B) {
-        const pa = proj(A), pb = proj(B);
-        // Long axis ACROSS the track (per the standard's diagram): leg angle
-        // + 90°. Flip 180° when it would read upside-down so text stays upright.
-        ang = Math.atan2(pb.y - pa.y, pb.x - pa.x) + Math.PI / 2;
-        if (ang > Math.PI / 2 || ang < -Math.PI / 2) ang += Math.PI;
-      }
-    }
+    // Identification-point ovals align ACROSS the track; see noteDrawAngle, which
+    // hitNote shares so the clickable region matches what is painted.
+    const ang = noteDrawAngle(n);
     const cx0 = r.x + r.w / 2, cy0 = r.y + r.h / 2;
     octx.save();
     octx.translate(cx0, cy0);

@@ -1594,7 +1594,17 @@ function updateExportPlanCb() {
   cb.disabled = !hasLegs;
   const lbl = document.getElementById('export-plan-cb-label');
   if (lbl) lbl.textContent = hasLegs ? S.exportPlanPlace : (S.exportPlanNoLegs || S.exportPlanPlace);
-  if (!hasLegs && cb.checked) { cb.checked = false; window.planCard = null; }
+  if (!hasLegs && cb.checked) {
+    cb.checked = false;
+    window.planCard = null;
+    // The card is gone, so the export backdrop must go back to being a normal
+    // dimmed, click-blocking modal. Without this it stayed transparent and
+    // pointer-events:none, so tapping outside no longer dismissed the panel and the
+    // VOR row kept offering columns for a card that no longer exists.
+    const vr = document.getElementById('export-vor-select');
+    if (vr && vr.parentElement) vr.parentElement.style.display = 'none';
+    if (typeof window.__exportSyncPlaceThrough === 'function') window.__exportSyncPlaceThrough();
+  }
 }
 function setPage(size) {
   if (pageSize === size) {             // same button toggles the frame off
@@ -2298,8 +2308,13 @@ function showFlightPlan() {
       delBtn.title = S.fpDelTitle || 'Delete leg';
       delBtn.onclick = function () {
         if (state.waypoints.length < 2) return;
+        // Same report-point re-anchoring deleteWaypoint does — this raw splice
+        // renumbers legs too, so without it syncLegs' index prune deletes markers
+        // whose segment still exists.
+        const rpGeo = (typeof captureReportPointGeo === 'function') ? captureReportPointGeo() : [];
         state.waypoints.splice(idx === 0 ? 0 : idx + 1, 1);
         state.legs.splice(idx, 1);
+        if (typeof reanchorReportPoints === 'function') reanchorReportPoints(rpGeo);
         syncLegs();
         // Drop the deleted waypoint's now-orphaned comm-change callout (this raw
         // splice bypasses deleteWaypoint's note cleanup; the index semantics
@@ -3048,7 +3063,9 @@ function showExportModal() {
   // others) it falls back to the centered, dimmed modal. `export-place` makes
   // the backdrop transparent + click-through; `.export-floating` pins the box
   // to the inspector spot.
-  const floatPanel = ((typeof toolbarUsesDesktopMenu !== 'function') || toolbarUsesDesktopMenu())
+  // `let`: the fit check after the panel is in the DOM can demote it to the
+  // centered modal, and syncPlaceThrough() reads the current value.
+  let floatPanel = ((typeof toolbarUsesDesktopMenu !== 'function') || toolbarUsesDesktopMenu())
     && exportPrintOnTopLine();
   const back = document.createElement('div');
   back.className = floatPanel ? 'modal-back export-place' : 'modal-back';
@@ -3166,7 +3183,6 @@ function showExportModal() {
   planLabelText.id = 'export-plan-cb-label';
   planLabel.appendChild(planLabelText);
   body.appendChild(planLabel);
-  updateExportPlanCb();
 
   // Reference VOR selector — pick a VOR; its station + radial/DME lines to the
   // route waypoints are drawn on the map (preview + exported PNG). Shares the
@@ -3272,7 +3288,6 @@ function showExportModal() {
   pageWarn.id = 'export-page-warn';
   pageWarn.style.cssText = 'font-size:12px;color:#e53935;font-weight:600;padding:2px 0';
   body.appendChild(pageWarn);
-  updateExportPageWarn();
 
   box.appendChild(body);
 
@@ -3314,27 +3329,63 @@ function showExportModal() {
   cancelBtn.textContent = S.cancel;
   cancelBtn.className = 'modal-cancel';
 
+  // Bounds the plan card lives in. With a page frame that is the frame; without
+  // one the exporter captures the viewport, so the viewport IS the page. Both the
+  // auto-shrink and the drag/resize clamps were gated on a frame existing, so
+  // once the checkbox stopped requiring a page the card could be placed at scale
+  // 1 and dragged clean off-screen — ending up clipped or missing in the PNG.
+  function planBounds() {
+    const fr = pageFrameRect();
+    if (fr) return fr;
+    const s = map.getSize();
+    return { x: 0, y: 0, w: s.x, h: s.y };
+  }
+  // Keep the backdrop click-through while a card is placed (or while floating).
+  function syncPlaceThrough() {
+    const placing = !!(planCb && planCb.checked && planCard);
+    back.classList.toggle('export-place', floatPanel || placing);
+  }
+  // updateExportPlanCb() can clear the card from OUTSIDE this closure (the route was
+  // cleared while the panel is open), and it has to be able to re-sync the backdrop.
+  window.__exportSyncPlaceThrough = syncPlaceThrough;
+
+  // Undo the panel's preview by restoring each value from the TOOLBAR control that
+  // owns it, rather than from a snapshot taken when the panel opened. The panel is
+  // click-through, so the toolbar stays usable while it is open: replaying an
+  // open-time snapshot silently undid changes made there, and comparing the current
+  // value against what the panel last set cannot tell "the panel still owns this"
+  // from "the user set it to the same boolean from the toolbar" — for a boolean the
+  // two are indistinguishable. The checkbox IS the user-facing truth, so reading it
+  // back can never leave the control and the render disagreeing.
   function restoreOrig() {
-    showNavWP = origNavWP;
-    showWpNames = origWpNames;
-    showDrift = origDrift;
-    showCumTime = origCumTime;
-    showAirfields = origAirfields;
+    const cb = id => document.getElementById(id);
+    const chk = (id, fallback) => { const e = cb(id); return e ? e.checked : fallback; };
+    showNavWP = chk('navwp-cb', origNavWP);
+    showWpNames = chk('wpname-cb', origWpNames);
+    showDrift = chk('drift-cb', origDrift);
+    showCumTime = chk('cumtime-cb', origCumTime);
+    showAirfields = chk('airfield-cb', origAirfields);
+    const sel = cb('layer-select');
+    const wantLayer = (sel && layers[sel.value]) ? sel.value : origLayer;
     const cur = (function () {
       for (const n in layers) if (map.hasLayer(layers[n])) return n;
       return null;
     })();
-    if (cur !== origLayer) {
+    if (cur !== wantLayer) {
       for (const n in layers) if (map.hasLayer(layers[n])) map.removeLayer(layers[n]);
-      if (origLayer) map.addLayer(layers[origLayer]);
+      if (wantLayer) map.addLayer(layers[wantLayer]);
     }
-    mapOpacity = origMapOpacity;
+    const opEl = cb('map-opacity');
+    const opVal = opEl ? parseFloat(opEl.value) / 100 : NaN;
+    mapOpacity = Number.isFinite(opVal) ? opVal : origMapOpacity;
     applyMapOpacity();
     window.planCard = null;            // drop the placed card (export already captured it)
     draw();
   }
 
-  // Live preview: apply changes to the map immediately.
+  // Live preview: apply changes to the map immediately. Each handler records that
+  // the PANEL owns this value, so cancel reverts it — and leaves alone anything
+  // the user changed from the toolbar while the panel was open.
   navWpCb.onchange = function () {
     showNavWP = navWpCb.checked;
     draw();
@@ -3359,18 +3410,24 @@ function showExportModal() {
   // Flight-plan card placement: toggle + drag on the live map.
   window.planCard = null;                              // fresh each open
   planCb.onchange = function () {
-    const fr0 = pageFrameRect();
+    const fr0 = planBounds();
     if (planCb.checked) {
-      window.planCard = fr0 ? { x: fr0.x + 14, y: fr0.y + 14, scale: 1 } : { x: 40, y: 40, scale: 1 };
+      window.planCard = { x: fr0.x + 14, y: fr0.y + 14, scale: 1 };
     } else {
       window.planCard = null;
     }
     vorRow.style.display = planCb.checked ? '' : 'none';   // VOR drives plan-card columns only
+    // The card is dragged on the LIVE map, so the backdrop has to let pointer
+    // events through the moment a card is placed — including the centered
+    // (mobile / short-desktop) modal, where the opaque backdrop swallowed every
+    // mousedown so the card could not be moved and its resize grip was
+    // unreachable. Tapping the map there hit back.onclick and closed the panel.
+    syncPlaceThrough();
     draw();
     // Default the card to ~70% of the frame width: small enough to drag in
     // BOTH directions (a full-width card can only move up/down), large enough
     // to read. The corner grip resizes it from there.
-    if (planCard && fr0 && planCardRect) {
+    if (planCard && planCardRect) {
       const target = fr0.w * 0.7;
       if (planCardRect.w > target) {
         planCard.scale = Math.max(0.4, planCard.scale * target / planCardRect.w);
@@ -3407,7 +3464,7 @@ function showExportModal() {
       // Scale ∝ rendered width. Clamp so the card never grows past the page
       // frame (prevents overflow + the snap-back that follows it).
       let s = Math.max(0.15, (pt.x - planCard.x) / cardDrag.baseW1);
-      const fr = pageFrameRect();
+      const fr = planBounds();
       if (fr && planCardRect && planCardRect.w) {
         const ratio = planCardRect.h / planCardRect.w;   // table aspect (scale-invariant)
         const maxW = (fr.x + fr.w) - planCard.x;
@@ -3419,7 +3476,7 @@ function showExportModal() {
       return;
     }
     let nx = pt.x - cardDrag.dx, ny = pt.y - cardDrag.dy;
-    const fr0 = pageFrameRect();
+    const fr0 = planBounds();
     const cw = planCardRect ? planCardRect.w : 0, ch = planCardRect ? planCardRect.h : 0;
     if (fr0) {
       nx = Math.max(fr0.x, Math.min(fr0.x + fr0.w - cw, nx));
@@ -3433,13 +3490,40 @@ function showExportModal() {
     cardDrag = null;
     if (map.dragging) map.dragging.enable();
   }
+  // Touch equivalents. Without these the card was mouse-only, so on a phone —
+  // where the backdrop is now click-through so the card CAN be reached — a finger
+  // drag fell through to the map instead: it panned, selected a waypoint, or even
+  // split a leg under the open panel, and the card stayed put with its resize grip
+  // unreachable. Reuse the mouse handlers by passing the first touch through.
+  const asMouse = e => (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
+  function cardTouchStart(e) {
+    const t = asMouse(e);
+    if (!t) return;
+    cardDown({ clientX: t.clientX, clientY: t.clientY,
+      preventDefault: () => e.preventDefault(), stopPropagation: () => e.stopPropagation() });
+  }
+  function cardTouchMove(e) {
+    if (!cardDrag) return;
+    const t = asMouse(e);
+    if (!t) return;
+    e.preventDefault();               // we own the gesture — don't let the map pan
+    cardMove({ clientX: t.clientX, clientY: t.clientY });
+  }
   mapEl.addEventListener('mousedown', cardDown, true);
   window.addEventListener('mousemove', cardMove, true);
   window.addEventListener('mouseup', cardUp, true);
+  mapEl.addEventListener('touchstart', cardTouchStart, true);
+  window.addEventListener('touchmove', cardTouchMove, { capture: true, passive: false });
+  window.addEventListener('touchend', cardUp, true);
+  window.addEventListener('touchcancel', cardUp, true);
   function removeCardDrag() {
     mapEl.removeEventListener('mousedown', cardDown, true);
     window.removeEventListener('mousemove', cardMove, true);
     window.removeEventListener('mouseup', cardUp, true);
+    mapEl.removeEventListener('touchstart', cardTouchStart, true);
+    window.removeEventListener('touchmove', cardTouchMove, { capture: true });
+    window.removeEventListener('touchend', cardUp, true);
+    window.removeEventListener('touchcancel', cardUp, true);
     if (cardDrag && map.dragging) map.dragging.enable();
   }
   layerSel.onchange = function () {
@@ -3460,8 +3544,26 @@ function showExportModal() {
     opSlider.oninput();
   };
 
-  function close() { removeCardDrag(); window.removeEventListener('keydown', onEsc); back.remove(); }
-  function onEsc(e) { if (e.key === 'Escape') { restoreOrig(); close(); } }
+  // Must detach from the SAME target the listener was added to (document, below).
+  // Removing it from `window` left every open's handler alive, so a later Escape
+  // — with no panel on screen — still ran restoreOrig() and reverted the overlay
+  // toggles, base layer, map opacity and the placed card.
+  function close() {
+    removeCardDrag();
+    document.removeEventListener('keydown', onEsc);
+    if (window.__exportSyncPlaceThrough === syncPlaceThrough) window.__exportSyncPlaceThrough = null;
+    back.remove();
+  }
+  function onEsc(e) {
+    if (e.key !== 'Escape') return;
+    // The panel is click-through, so another modal can be opened on top of it. Only
+    // the topmost backdrop may act, or one Escape closed the flight-plan modal AND
+    // silently reverted this panel's whole preview (matching the guard the other
+    // modals in this file use).
+    const backs = document.querySelectorAll('.modal-back');
+    if (backs.length && backs[backs.length - 1] !== back) return;
+    restoreOrig(); close();
+  }
 
   exportBtn.onclick = () => {
     NavAid._restoreExport = restoreOrig;
@@ -3484,15 +3586,19 @@ function showExportModal() {
   box.appendChild(btns);
 
   back.appendChild(box);
-  back.onclick = e => { if (e.target === back) close(); };
+  // Dismissing via the backdrop must undo the preview like Cancel/Escape/X do;
+  // closing without restoreOrig() left the panel's overlay/layer/opacity preview
+  // applied permanently.
+  back.onclick = e => { if (e.target === back) { restoreOrig(); close(); } };
   document.body.appendChild(back);
   updateExportPageWarn();   // now in the DOM — set the initial warning state
   updateExportPlanCb();     // and the initial plan-checkbox enabled state + label
   // Safety net: even on desktop, if the floating panel can't fit the viewport
   // without scrolling, fall back to the centered ("mobile") modal.
   if (box.classList.contains('export-floating') && box.scrollHeight > box.clientHeight + 1) {
-    back.classList.remove('export-place');
+    floatPanel = false;
     box.classList.remove('export-floating');
+    syncPlaceThrough();   // keeps the backdrop click-through if a card is placed
   }
   document.addEventListener('keydown', onEsc);
 }

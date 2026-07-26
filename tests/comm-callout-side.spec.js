@@ -67,3 +67,76 @@ test('a lone point (no adjacent leg) falls back to the plain tune offset', async
   // +0.09 east; a gist may override the magnitude/sign).
   expect(Math.abs(dLng)).toBeGreaterThan(0.05);
 });
+
+test('omitting the index still resolves the side (no caller can regress to static)', async ({ page }) => {
+  const r = await page.evaluate(() => {
+    // Northbound: left of travel is WEST. A one-argument call must match the
+    // two-argument one — several callers (the ↻ reset button, a manually added
+    // freq change, reset-all-markers, a shared-link load) pass no index, and used
+    // to silently get the static east offset instead.
+    state.waypoints = [{ lat: 32.1, lng: 35.0, name: 'S' }, { lat: 32.4, lng: 35.0, name: 'MID' }, { lat: 32.7, lng: 35.0, name: 'N' }];
+    state.legs = []; syncLegs();
+    const withIdx = commCalloutDefaultTail(state.waypoints[1], 1);
+    const noIdx = commCalloutDefaultTail(state.waypoints[1]);
+    return { withIdx, noIdx, dLng: noIdx.lng - 35.0 };
+  });
+  expect(r.dLng).toBeLessThan(0);                    // west = left of travel
+  expect(r.noIdx.lat).toBeCloseTo(r.withIdx.lat, 6); // identical to the indexed call
+  expect(r.noIdx.lng).toBeCloseTo(r.withIdx.lng, 6);
+});
+
+test('a callout placed without an index is still recognised as "at default" on reverse', async ({ page }) => {
+  const r = await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.7, lng: 35.0, name: 'N' }, { lat: 32.4, lng: 35.0, name: 'MID' }, { lat: 32.1, lng: 35.0, name: 'S' }];
+    state.legs = []; syncLegs();
+    const def = commCalloutDefaultTail(state.waypoints[1]);       // no index, southbound → east
+    state.notes = [{ lat: def.lat, lng: def.lng, text: 'Freq change', color: '#fff6aa', shape: 'rect', cc: 'MID', freqName: 'X', freq: '118.40', freqAuto: true }];
+    const before = state.notes[0].lng - 35.0;
+    document.getElementById('reverse').click();
+    return { before, after: state.notes[0].lng - 35.0 };
+  });
+  // It must FLIP (treated as a default), not be frozen as user-dragged.
+  expect(r.before).toBeGreaterThan(0);
+  expect(r.after).toBeLessThan(0);
+});
+
+test('a zero offset means zero, not the shipped default', async ({ page }) => {
+  const r = await page.evaluate(() => {
+    state.waypoints = [{ lat: 32.1, lng: 35.0, name: 'S' }, { lat: 32.4, lng: 35.0, name: 'MID' }, { lat: 32.7, lng: 35.0, name: 'N' }];
+    state.legs = []; syncLegs();
+    const before = commCalloutDefaultTail(state.waypoints[1], 1);
+    NavAid.tuningDefaults.commChangeNoteLngOffset.value = 0;      // pin callouts on the waypoint
+    const zero = commCalloutDefaultTail(state.waypoints[1], 1);
+    NavAid.tuningDefaults.commChangeNoteLngOffset.value = 0.09;   // restore
+    return { movedBefore: Math.abs(before.lng - 35.0), zeroLng: Math.abs(zero.lng - 35.0), zeroLat: Math.abs(zero.lat - 32.4) };
+  });
+  expect(r.movedBefore).toBeGreaterThan(0.05);   // normally offset
+  expect(r.zeroLng).toBeCloseTo(0, 6);           // 0 really means 0 …
+  expect(r.zeroLat).toBeCloseTo(0, 6);           // … in both axes (was 0.09 via `|| 0.09`)
+});
+
+test('a template callout is seeded left of travel, like every other one', async ({ page }) => {
+  const r = await page.evaluate(async () => {
+    const res = await fetch('data/route-templates.json?cb=' + Date.now(), { cache: 'no-store' });
+    const data = await res.json();
+    const list = data.templates || data;
+    // Any template whose notes are lean (cc only, no explicit lat/lng).
+    const t = list.find(x => (x.notes || []).some(n => n.cc && !Number.isFinite(n.lat)));
+    if (!t) return { skipped: true };
+    const built = await routeFromTemplate(t, 100);
+    const note = built.notes.find(n => n.cc);
+    const wp = built.waypoints.find(w =>
+      canonicalNavWaypointName(w.name) === canonicalNavWaypointName(note.cc));
+    const i = built.waypoints.indexOf(wp);
+    const def = commCalloutDefaultTail(wp, i, built.waypoints);
+    return { skipped: false, noteLng: note.lng, defLng: def.lng, noteLat: note.lat, defLat: def.lat };
+  });
+  // Fail loudly rather than no-op if the dataset ever stops carrying a lean
+  // cc-only template — otherwise this regression test goes permanently silent.
+  expect(r.skipped).toBe(false);
+  // Seeded position must equal the shared bearing-derived default, not the old
+  // static +0.09 east (which sat on the kite side for a northbound template and
+  // was invisible to both the migration and the reverse re-default).
+  expect(r.noteLng).toBeCloseTo(r.defLng, 5);
+  expect(r.noteLat).toBeCloseTo(r.defLat, 5);
+});
