@@ -561,12 +561,36 @@ commit on `main`, `dev`, or an unrelated feature branch by mistake.
 - `navaid.syncSettings` — `'1'` when the opt-in "Sync settings too" box (route
   library → Drive) is enabled. Device-local; itself never synced.
 - `navaid.settingsSyncedAt` / `navaid.settingsSnapshot` — bookkeeping for the
-  optional Drive **settings** sync: the last-synced timestamp and a JSON
-  snapshot of the allowlisted keys, used for last-write-wins change detection.
-  The synced blob lives in Drive app-data as `navaid-settings.json` (separate
-  from `navaid-routes.json`); the allowlist is `GDRIVE_SETTINGS_KEYS` in
-  `gdrive.js` and deliberately excludes API keys, panel geometry, and the
-  working route.
+  optional Drive **settings** sync. The synced blob lives in Drive app-data as
+  `navaid-settings.json` (separate from `navaid-routes.json`); the allowlist is
+  `GDRIVE_SETTINGS_KEYS` in `gdrive.js` and deliberately excludes API keys,
+  panel geometry, and the working route. Protocol details that a second
+  reader/writer of that file MUST honour:
+  - `values[key] === null` is a **tombstone** ("deleted on the authoring
+    device"), not "no value". A reader that drops nulls when re-publishing
+    erases the deletion for every device that has not synced yet. A key that is
+    *absent* means "no information" (an older blob) and must be left alone.
+    For a gist-controlled toggle a tombstone also means "following the gist",
+    which is why clearing the key is the correct way to apply it.
+  - `updatedAt` is **monotonic**, not wall-clock:
+    `max(Date.now(), ourLast + 1, remote + 1)`. This is what stops a device with
+    a skewed clock from outranking everyone until the skew passes, and stops a
+    tie from freezing the stamp so two devices overwrite each other forever.
+  - `navaid.settingsSnapshot` must be byte-identical to
+    `JSON.stringify(collectSyncableSettings())` — i.e. canonical
+    `GDRIVE_SETTINGS_KEYS` order, nulls omitted. A snapshot built with
+    `Object.assign` has a different key order, which reads as a phantom local
+    edit on every later sync and pushes over newer remotes.
+  - Snapshot **absent but `settingsSyncedAt` present** = "synced before, could
+    not store the snapshot" (quota). It is NOT a new device: treat local as
+    unchanged and rank by the stored stamp.
+  - Snapshot **and** stamp absent = never synced. That first sync against an
+    existing file does a per-key **union** (never timestamp ranking), and keys
+    set differently on both sides are a conflict the UI must resolve; a
+    dismissed prompt aborts the sync rather than picking a side.
+  - Applying is all-or-nothing: a rejected `localStorage` write rolls the
+    already-written keys back and throws, because a half-applied device reads as
+    a local edit and would push the mixture over the authoring device.
 - `navaid.pageSize` — selected page frame size (`A3` / `A4` / `A4x2`) or cleared.
   (`A4x2` draws the A3-size frame; Save PNG slices it into two A4 tiles.)
 - `navaid.plateAirfield` — "Show plates for" filter on the airfield-plate

@@ -1458,15 +1458,25 @@ function showRouteLibraryModal(focusSave) {
               const msg = (S.routeLibraryGdriveFirstSyncConflict ||
                 'This device and Google Drive both have settings for: {keys}.\n\n' +
                 'OK = REPLACE this device\'s values with the ones from Drive.\n' +
-                'Cancel = keep this device\'s values (Drive is updated).').replace('{keys}', names);
-              // Overwriting this device is the destructive branch, so it needs an
-              // explicit OK. Escape / a dismissed dialog / a WebView that never
-              // renders confirm() all return false, and must land on the safe side.
-              return window.confirm(msg) ? 'remote' : 'local';
+                'Cancel = do nothing (sync again to choose).').replace('{keys}', names);
+              // Both sides are destructive to SOMEBODY: keeping local overwrites the
+              // other device's values in the shared file, taking remote overwrites
+              // this one's. So only an explicit OK acts, and anything else — Cancel,
+              // Escape, a WebView that never renders confirm() — aborts the settings
+              // sync entirely rather than silently picking a side.
+              if (window.confirm(msg)) return 'remote';
+              const keep = S.routeLibraryGdriveKeepThisDevice ||
+                'Keep THIS device\'s settings and update Google Drive?';
+              return window.confirm(keep) ? 'local' : 'abort';
             },
           });
         })
         .then(res => {
+          if (res && res.needsChoice) {
+            setStatus(S.routeLibraryGdriveSettingsSkipped ||
+              'Settings not synced — sync again to choose which device wins.');
+            return;
+          }
           if (res && res.applied) {
             // Settings from another device landed — reload so every boot-time
             // read (globals, toggles, layer) picks them up cleanly.

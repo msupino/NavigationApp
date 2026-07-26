@@ -269,21 +269,49 @@ test('a marker parked on a shared waypoint stays on its own leg', async ({ page 
   expect(r.t).toBeCloseTo(0, 6);
 });
 
-test('a marker whose segment is gone is dropped, not stacked on a waypoint', async ({ page }) => {
+test('a marker whose segment is gone survives on the nearest leg', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {
-    // A far away from the B-C leg, so a marker on A-B has no nearby surviving leg.
+    // Dogleg: deleting the apex leaves only the far chord, so nothing is near where
+    // the markers sat. They must still SURVIVE — silently deleting a named
+    // reporting point is worse than landing it somewhere the pilot can drag.
     state.waypoints = [
-      { lat: 31.0, lng: 34.0, name: 'A' }, { lat: 31.2, lng: 34.2, name: 'B' },
-      { lat: 32.6, lng: 35.6, name: 'C' },
+      { lat: 31.8, lng: 34.7, name: 'A' }, { lat: 32.0, lng: 35.3, name: 'B' },
+      { lat: 32.4, lng: 34.8, name: 'C' },
     ];
     state.legs = []; syncLegs();
-    const i1 = addReportPointToLeg(0); state.notes[i1].rp.t = 0.3;
-    const i2 = addReportPointToLeg(0); state.notes[i2].rp.t = 0.7;
-    deleteWaypoint(0);                          // A goes; only B-C survives
-    return { left: state.notes.filter(x => x && x.rp).length };
+    const i1 = addReportPointToLeg(0); state.notes[i1].rp.t = 0.5;
+    const i2 = addReportPointToLeg(1); state.notes[i2].rp.t = 0.5;
+    deleteWaypoint(1);                          // apex B goes; only A-C survives
+    const kept = state.notes.filter(x => x && x.rp);
+    return { left: kept.length, legs: kept.map(n => n.rp.leg) };
   });
-  expect(r.left).toBe(0);                // both dropped rather than piled onto B
+  expect(r.left).toBe(2);                // both kept, not dropped
+  expect(r.legs).toEqual([0, 0]);        // re-anchored onto the surviving chord
+});
+
+test('an unrelated delete keeps a marker on its own segment, exactly', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // C-D is untouched by deleting A, so identity matching must keep t EXACTLY —
+    // no nearest-leg re-projection, no drift.
+    state.waypoints = [
+      { lat: 32.0, lng: 35.0, name: 'A' }, { lat: 32.2, lng: 35.2, name: 'B' },
+      { lat: 32.4, lng: 34.9, name: 'C' }, { lat: 32.6, lng: 35.4, name: 'D' },
+    ];
+    state.legs = []; syncLegs();
+    const idx = addReportPointToLeg(2);
+    state.notes[idx].rp.t = 0.37;
+    const before = reportPointGeom(state.notes[idx]);
+    deleteWaypoint(0);                          // A goes; C-D becomes leg 1
+    const n = state.notes.find(x => x && x.rp);
+    const after = reportPointGeom(n);
+    return { leg: n.rp.leg, t: n.rp.t, dLat: after.lat - before.lat, dLng: after.lng - before.lng };
+  });
+  expect(r.leg).toBe(1);                 // renumbered
+  expect(r.t).toBeCloseTo(0.37, 10);     // and t preserved exactly
+  expect(r.dLat).toBeCloseTo(0, 10);
+  expect(r.dLng).toBeCloseTo(0, 10);
 });
 
 test('removing the anchor leg prunes the report point', async ({ page }) => {

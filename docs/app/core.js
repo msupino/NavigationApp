@@ -668,7 +668,11 @@ window.S = Object.assign({
   routeLibraryGdriveError: 'Drive sync failed',
   routeLibraryGdriveSyncSettings: 'Sync settings too',
   routeLibraryGdriveSettingsApplied: 'Settings updated — reloading…',
-  routeLibraryGdriveFirstSyncConflict: 'This device and Google Drive both have settings for: {keys}.\n\nOK = REPLACE this device\'s values with the ones from Drive.\nCancel = keep this device\'s values (Drive is updated).',
+  routeLibraryGdriveFirstSyncConflict: 'This device and Google Drive both have settings for: {keys}.\n\nOK = REPLACE this device\'s values with the ones from Drive.\nCancel = do nothing (sync again to choose).',
+  routeLibraryGdriveKeepThisDevice: 'Keep THIS device\'s settings and update Google Drive?',
+  routeLibraryGdriveSettingsSkipped: 'Settings not synced — sync again to choose which device wins.',
+  routeLibraryGdriveStorageFull: 'This device could not store the settings (storage full).',
+  routeLibraryGdriveRaced: 'Another device changed the settings while syncing — sync again.',
   routeTemplatesTitle: 'Route templates',
   routeTemplateRoute: 'Route',
   routeTemplateSpeed: 'Speed (kt)',
@@ -2406,11 +2410,6 @@ function legFractionAt(A, B, P) {
   return Math.max(0, Math.min(1, t));
 }
 
-// A marker further than this from every surviving leg has lost its segment; snapping
-// it onto the nearest endpoint would silently stack markers on a waypoint, so it is
-// dropped instead. ~0.05 deg is roughly 3 NM.
-const REPORT_POINT_REANCHOR_MAX_DEG = 0.05;
-
 function captureReportPointGeo() {
   const out = [];
   if (!Array.isArray(state.notes)) return out;
@@ -2423,7 +2422,10 @@ function captureReportPointGeo() {
     // would otherwise extrapolate past the leg end and re-anchor onto a neighbour.
     const raw = Number.isFinite(n.rp.t) ? n.rp.t : 0.5;
     const t = Math.max(0, Math.min(1, raw));
-    out.push({ n, leg: n.rp.leg,
+    // Keep the endpoint OBJECTS, not the index: waypoint objects survive a splice,
+    // so identity is how we recognise the same segment afterwards. Comparing indexes
+    // cannot work — that is the whole reason this helper exists.
+    out.push({ n, A, B, t,
       lat: A.lat + (B.lat - A.lat) * t, lng: A.lng + (B.lng - A.lng) * t });
   }
   return out;
@@ -2431,9 +2433,23 @@ function captureReportPointGeo() {
 
 function reanchorReportPoints(captured) {
   if (!Array.isArray(captured) || !captured.length) return;
-  const drop = [];
   for (const c of captured) {
     if (!c || !c.n || !c.n.rp) continue;
+    // 1. Same segment still in the route (renumbered, or untouched)? Keep t exactly.
+    let same = -1;
+    for (let i = 0; i < state.legs.length; i++) {
+      if (state.waypoints[i] === c.A && state.waypoints[i + 1] === c.B) { same = i; break; }
+    }
+    if (same >= 0) { c.n.rp.leg = same; c.n.rp.t = c.t; continue; }
+    // 2. Segment is gone (its waypoint was deleted, or it was split). Fall back to
+    //    the leg passing closest to where the marker actually sat.
+    //
+    //    Deliberately no distance cut-off: dropping the marker when nothing is close
+    //    (deleting the apex of a dogleg leaves only the far chord) silently destroys
+    //    a named reporting point the pilot placed. Landing it on the nearest leg can
+    //    look wrong — worst case on top of a waypoint — but that is visible and can
+    //    be dragged, whereas a deletion cannot be undone without discarding the
+    //    whole edit.
     let best = -1, bestD = Infinity, bestT = 0.5;
     for (let i = 0; i < state.legs.length; i++) {
       const A = state.waypoints[i], B = state.waypoints[i + 1];
@@ -2442,20 +2458,10 @@ function reanchorReportPoints(captured) {
       const dLat = (A.lat + (B.lat - A.lat) * t) - c.lat;
       const dLng = (A.lng + (B.lng - A.lng) * t) - c.lng;
       const d = dLat * dLat + dLng * dLng;
-      // Strictly-better only, EXCEPT that a tie is resolved toward the marker's own
-      // previous leg. Ties are common — a marker parked on a shared waypoint is at
-      // distance 0 from both legs, and on a route that retraces itself an entire
-      // leg is equidistant — and taking the lowest index moved the marker onto a
-      // neighbouring leg, changing the time shown in its oval.
-      const better = d < bestD - 1e-18 ||
-        (Math.abs(d - bestD) <= 1e-18 && Math.abs(i - c.leg) < Math.abs(best - c.leg));
-      if (better) { bestD = d; best = i; bestT = t; }
+      if (d < bestD) { bestD = d; best = i; bestT = t; }
     }
-    if (best < 0) continue;                              // no legs left; prune handles it
-    if (Math.sqrt(bestD) > REPORT_POINT_REANCHOR_MAX_DEG) { drop.push(c.n); continue; }
-    c.n.rp.leg = best; c.n.rp.t = bestT;
+    if (best >= 0) { c.n.rp.leg = best; c.n.rp.t = bestT; }
   }
-  if (drop.length) state.notes = state.notes.filter(n => !drop.includes(n));
 }
 
 function syncLegs() {

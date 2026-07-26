@@ -3477,13 +3477,40 @@ function showExportModal() {
     cardDrag = null;
     if (map.dragging) map.dragging.enable();
   }
+  // Touch equivalents. Without these the card was mouse-only, so on a phone —
+  // where the backdrop is now click-through so the card CAN be reached — a finger
+  // drag fell through to the map instead: it panned, selected a waypoint, or even
+  // split a leg under the open panel, and the card stayed put with its resize grip
+  // unreachable. Reuse the mouse handlers by passing the first touch through.
+  const asMouse = e => (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
+  function cardTouchStart(e) {
+    const t = asMouse(e);
+    if (!t) return;
+    cardDown({ clientX: t.clientX, clientY: t.clientY,
+      preventDefault: () => e.preventDefault(), stopPropagation: () => e.stopPropagation() });
+  }
+  function cardTouchMove(e) {
+    if (!cardDrag) return;
+    const t = asMouse(e);
+    if (!t) return;
+    e.preventDefault();               // we own the gesture — don't let the map pan
+    cardMove({ clientX: t.clientX, clientY: t.clientY });
+  }
   mapEl.addEventListener('mousedown', cardDown, true);
   window.addEventListener('mousemove', cardMove, true);
   window.addEventListener('mouseup', cardUp, true);
+  mapEl.addEventListener('touchstart', cardTouchStart, true);
+  window.addEventListener('touchmove', cardTouchMove, { capture: true, passive: false });
+  window.addEventListener('touchend', cardUp, true);
+  window.addEventListener('touchcancel', cardUp, true);
   function removeCardDrag() {
     mapEl.removeEventListener('mousedown', cardDown, true);
     window.removeEventListener('mousemove', cardMove, true);
     window.removeEventListener('mouseup', cardUp, true);
+    mapEl.removeEventListener('touchstart', cardTouchStart, true);
+    window.removeEventListener('touchmove', cardTouchMove, { capture: true });
+    window.removeEventListener('touchend', cardUp, true);
+    window.removeEventListener('touchcancel', cardUp, true);
     if (cardDrag && map.dragging) map.dragging.enable();
   }
   layerSel.onchange = function () {
@@ -3509,7 +3536,16 @@ function showExportModal() {
   // — with no panel on screen — still ran restoreOrig() and reverted the overlay
   // toggles, base layer, map opacity and the placed card.
   function close() { removeCardDrag(); document.removeEventListener('keydown', onEsc); back.remove(); }
-  function onEsc(e) { if (e.key === 'Escape') { restoreOrig(); close(); } }
+  function onEsc(e) {
+    if (e.key !== 'Escape') return;
+    // The panel is click-through, so another modal can be opened on top of it. Only
+    // the topmost backdrop may act, or one Escape closed the flight-plan modal AND
+    // silently reverted this panel's whole preview (matching the guard the other
+    // modals in this file use).
+    const backs = document.querySelectorAll('.modal-back');
+    if (backs.length && backs[backs.length - 1] !== back) return;
+    restoreOrig(); close();
+  }
 
   exportBtn.onclick = () => {
     NavAid._restoreExport = restoreOrig;

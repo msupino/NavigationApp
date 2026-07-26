@@ -388,8 +388,10 @@ function applySyncableSettings(values) {
       const ok = (prev === null) ? _lsDel(k) : _lsSet(k, prev);
       if (!ok) stuck.push(k);   // restoring a larger previous value can itself fail
     }
-    throw new Error('Settings could not be stored (storage full?): ' + failed.join(', ') +
-      (stuck.length ? ' — and these could not be restored: ' + stuck.join(', ') : ''));
+    const label = (typeof S === 'object' && S && S.routeLibraryGdriveStorageFull) ||
+      'This device could not store the settings (storage full).';
+    throw new Error(label + ' [' + failed.join(', ') +
+      (stuck.length ? '; not restored: ' + stuck.join(', ') : '') + ']');
   }
   return changed;
 }
@@ -461,8 +463,13 @@ function _recordSettingsSynced(values, stamp) {
     // reload. Instead clear the snapshot, which marks this device unseeded — its
     // next sync takes the loss-free union path rather than mistaking a stale
     // snapshot for a local edit and winning every future sync with it.
+    // Keep syncedAt: it is what tells _localSettingsBlob this device HAS synced.
+    // Clearing both made the device look brand new, so the next sync re-entered the
+    // first-sync union against the blob this very device had just uploaded — and
+    // popped the once-only conflict dialog, where accepting discarded the user's
+    // newer local edit.
     _lsDel(SETTINGS_SNAP_KEY);
-    _lsDel(SETTINGS_SYNCED_AT_KEY);
+    _lsSet(SETTINGS_SYNCED_AT_KEY, String(stamp));
     return;
   }
   _lsSet(SETTINGS_SYNCED_AT_KEY, String(stamp));
@@ -492,10 +499,16 @@ function _localSettingsBlob(remoteAt) {
   // snapshot, this device's blob carries updatedAt 0, so any real remote wins.
   // A first sync against an EXISTING file does not use this ranking at all — see
   // the union branch in _gdriveSyncSettingsOnce, which is loss-free either way.
-  const firstSync = snap === null;
-  const changedLocally = !firstSync && cur !== snap;
+  // A missing snapshot WITH a recorded syncedAt means "synced before, but the
+  // snapshot could not be stored" — not a new device. Treating it as first-sync
+  // re-ran the union (and its dialog) against our own uploaded blob. With no
+  // baseline to compare we cannot detect a local edit, so assume unchanged and let
+  // the recorded stamp rank us.
+  const syncedAt = +_lsGet(SETTINGS_SYNCED_AT_KEY) || 0;
+  const firstSync = snap === null && !syncedAt;
+  const changedLocally = snap !== null && cur !== snap;
   const updatedAt = firstSync ? 0
-    : (changedLocally ? _nextSettingsStamp(remoteAt) : (+_lsGet(SETTINGS_SYNCED_AT_KEY) || 0));
+    : (changedLocally ? _nextSettingsStamp(remoteAt) : syncedAt);
   return { values, cur, snapValues, firstSync, updatedAt, changedLocally };
 }
 
@@ -522,7 +535,8 @@ function gdriveAssertUnchanged(fileId, seen) {
     .then(j => {
       const now = String((j && (j.version || j.modifiedTime)) || '');
       if (now && String(seen) !== now) {
-        throw new Error('Another device changed the settings while syncing — sync again');
+        throw new Error((typeof S === 'object' && S && S.routeLibraryGdriveRaced) ||
+          'Another device changed the settings while syncing — sync again.');
       }
     });
 }
@@ -603,9 +617,16 @@ function _gdriveSyncSettingsOnce(resolveFirstConflict) {
           }
         }
         const decide = (conflicts.length && typeof resolveFirstConflict === 'function')
-          ? Promise.resolve(resolveFirstConflict(conflicts.slice()))
+          ? Promise.resolve(resolveFirstConflict(conflicts.slice())).catch(() => 'abort')
           : Promise.resolve('local');
         return decide.then(side => {
+          // Neither side is safe by default: keeping local overwrites the peer's
+          // values in the shared blob, taking remote overwrites this device's. A
+          // dismissed dialog is not an answer, so change nothing anywhere and let
+          // the user re-run the sync and choose.
+          if (side !== 'local' && side !== 'remote') {
+            return { applied: false, skipped: true, needsChoice: conflicts.slice() };
+          }
           const preferRemote = side === 'remote';
           const merged = {};
           const incoming = {};
