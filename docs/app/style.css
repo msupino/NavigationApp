@@ -4533,3 +4533,12 @@ body.ov-align-active { cursor: crosshair; }
 /* Long checkbox-toggle labels wrap on the narrow mobile toolbar. */
 #toolbar .tb-group-box .navtoggle { white-space: normal; align-items: flex-start; }
 #toolbar .tb-group-box .navtoggle input[type="checkbox"] { flex: none; margin-top: 2px; }
+
+/* Published AIP detail for the inspector's selected VOR (type / tune / hours /
+   range / limits). Compact key-value lines under the radial readout. */
+.vor-aip-info { margin: 2px 0 6px; font-size: 12px; line-height: 1.35; }
+.vor-aip-line { display: flex; gap: 6px; padding: 1px 0; }
+.vor-aip-key { flex: 0 0 84px; color: #647184; }
+.vor-aip-val { flex: 1 1 auto; min-width: 0; word-break: break-word; }
+.vor-aip-warn { color: #b03636; font-weight: 600; }
+html[dir="rtl"] .vor-aip-line { flex-direction: row; }

@@ -66,18 +66,14 @@ test.describe('#304 — deploy sed bumps every cache-bust marker', () => {
     fs.unlinkSync(file);
   });
 
-  test('sed rewrites i18n/he/strings.js data-file ?v= too', async () => {
-    const file = tmpCopy(path.join(__dirname, '..', 'docs', 'i18n', 'he', 'strings.js'));
-    const SHA = 'def5678';
-    run(`s|(data/[A-Za-z0-9_-]+\\.json)\\?v=[A-Za-z0-9]+|\\1?v=${SHA}|g`, file);
-    const out = fs.readFileSync(file, 'utf8');
-    expect(out).toMatch(new RegExp(`data/cvfr-nav-waypoints\\.json\\?v=${SHA}`));
-    expect(out).toMatch(new RegExp(`data/airfields\\.json\\?v=${SHA}`));
-    expect(out).toMatch(new RegExp(`data/cvfr-comm-change\\.json\\?v=${SHA}`));
-    expect(out).toMatch(new RegExp(`data/cvfr-leg-altitude\\.json\\?v=${SHA}`));
-    expect(out).toMatch(new RegExp(`data/route-templates\\.json\\?v=${SHA}`));
-    expect(out).toMatch(new RegExp(`data/vor\\.json\\?v=${SHA}`));
-    fs.unlinkSync(file);
+  test('i18n/he/strings.js has no data-file ?v= left for sed to rewrite', async () => {
+    // The locale file used to duplicate every dataset URL, so the deploy sed had to
+    // rewrite it there too. Those overrides are gone (see locale-data-urls.spec.js):
+    // dataset URLs live only in core.js, which this suite still covers above. The
+    // sed pattern is harmless here now, but assert the invariant so nobody
+    // reintroduces a locale-local dataset version that silently shadows core.js.
+    const src = fs.readFileSync(path.join(__dirname, '..', 'docs', 'i18n', 'he', 'strings.js'), 'utf8');
+    expect(src).not.toMatch(/data\/[A-Za-z0-9_-]+\.json\?v=/);
   });
 
   test('sed rewrites app/terrain.js data-file ?v= too', async () => {
