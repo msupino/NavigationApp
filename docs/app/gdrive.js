@@ -440,6 +440,11 @@ function _nextSettingsStamp(remoteAt) {
 // Record "we are in parity with `values` as of `stamp`". Snapshots the values we
 // actually intended, not a fresh read of localStorage — re-reading live storage
 // is what let a write that silently failed be remembered as applied.
+// Session fallback for the snapshot when localStorage refuses it. Without this, a
+// storage-pressured device has no baseline at all: it could never detect a local
+// edit, so the user's change was silently reverted by the next remote blob.
+let _settingsSnapMem = null;
+
 function _recordSettingsSynced(values, stamp) {
   // The snapshot is the biggest write in the feature (every allowlisted key,
   // including the aircraft profile and the override maps), so it is the one most
@@ -457,7 +462,9 @@ function _recordSettingsSynced(values, stamp) {
       canon[k] = values[k];
     }
   }
-  if (!_lsSet(SETTINGS_SNAP_KEY, JSON.stringify(canon))) {
+  const canonStr = JSON.stringify(canon);
+  _settingsSnapMem = canonStr;               // always keep an in-memory baseline
+  if (!_lsSet(SETTINGS_SNAP_KEY, canonStr)) {
     // Do NOT throw: by now the values are applied locally and/or already uploaded,
     // so rejecting would leave storage and the running app disagreeing and skip the
     // reload. Instead clear the snapshot, which marks this device unseeded — its
@@ -489,7 +496,8 @@ function mergeSettings(local, remote) {
 function _localSettingsBlob(remoteAt) {
   const values = collectSyncableSettings();
   const cur = JSON.stringify(values);
-  const snap = _lsGet(SETTINGS_SNAP_KEY);
+  // Fall back to the in-memory baseline when storage could not hold the snapshot.
+  const snap = _lsGet(SETTINGS_SNAP_KEY) !== null ? _lsGet(SETTINGS_SNAP_KEY) : _settingsSnapMem;
   let snapValues = null;
   if (snap !== null) { try { snapValues = JSON.parse(snap); } catch (e) { snapValues = null; } }
   // A device that has never completed a sync (snapshot unseeded) has no baseline
@@ -652,9 +660,13 @@ function _gdriveSyncSettingsOnce(resolveFirstConflict) {
             if (!remoteUsable) continue;
             merged[k] = rv; incoming[k] = rv;
           }
-          const changed = applySyncableSettings(incoming);
+          // Upload FIRST, then apply locally. Applying first meant a failed push
+          // (a version race, a 5xx, offline) left this device's settings already
+          // replaced with no bookkeeping and no reload — and because local then
+          // equalled the remote, the next sync found no conflict and consumed the
+          // once-only prompt, making the original values unrecoverable.
           return push(merged, _nextSettingsStamp(remoteAt), merged)
-            .then(() => ({ applied: changed }));
+            .then(() => ({ applied: applySyncableSettings(incoming) }));
         });
       }
 

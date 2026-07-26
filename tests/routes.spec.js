@@ -358,6 +358,11 @@ test.describe('Split leg', () => {
     expect(pos.routeHits).toBe(0);
     expect(pos.overlayHits).toContain('navwp');
 
+    // bootWithRoute presets every toolbar section open, and in desktop menu-bar mode
+    // those dropdowns overlay the map — including the centre point this test
+    // double-clicks, so the gesture never reached the canvas. Same flake family the
+    // helper's own comment describes.
+    await hideToolbarMenus(page);
     await page.mouse.dblclick(pos.x, pos.y);
     const after = await page.evaluate(() => ({
       waypoints: state.waypoints.length,
