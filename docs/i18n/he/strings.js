@@ -109,7 +109,7 @@ window.S = {
   startRouteHere: '➕ התחל מסלול כאן',
   addToRoute: '➕ הוסף למסלול',
   alreadyOnRoute: '✓ כבר במסלול',
-  emptyRouteHint: 'לחץ על המפה כדי להתחיל מסלול',
+  emptyRouteHint: 'לחץ על נקודה במפה כדי להתחיל מסלול',
   modeChipAdd: 'הוספת נקודות דרך',
   modeChipNote: 'הוספת הערות',
   modeChipStop: 'לחץ לסיום',

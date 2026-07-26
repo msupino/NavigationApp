@@ -711,7 +711,7 @@ window.S = Object.assign({
   startRouteHere: '➕ Start route here',
   addToRoute: '➕ Add to route',
   alreadyOnRoute: '✓ Already on the route',
-  emptyRouteHint: 'Click the map to start your route',
+  emptyRouteHint: 'Click a point on the map to start a route',
   modeChipAdd: 'Adding waypoints',
   modeChipNote: 'Adding notes',
   modeChipStop: 'tap to stop',
