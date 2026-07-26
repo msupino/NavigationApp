@@ -814,4 +814,29 @@ test('printed plan card shows Radial/DME columns only when a VOR is selected', a
   expect(r.onDME).toBe(true);       // VOR → DME column header
   expect(r.onRadialHdr).toBe(true); // Radial header (with ident)
   expect(r.onRval).toBe(true);      // R-xxx values
+
+});
+
+test('station coordinates match the published AIP antenna positions', async ({ page }) => {
+  await boot(page);
+  // Coordinates come from eAIP ENR 4.1 (AIRAC 2024-10-31), not the OurAirports
+  // approximations that preceded them: those sat 100-500 m off the CAAI CVFR
+  // chart and the satellite imagery, which is visible as a symbol offset on the
+  // map (reported for ZOFAR and NATANIA).
+  const aip = {
+    BGN: [32.01306, 34.87528], NAT: [32.33389, 34.96889], ROP: [32.98250, 35.57278],
+    MZD: [31.33167, 35.39167], ZFR: [30.55889, 35.16194], BSA: [31.28611, 34.72167],
+    RAM: [29.75306, 35.02056],
+  };
+  const got = await page.evaluate(async () => {
+    if (typeof loadVors === 'function') await loadVors();
+    return vors.map(v => [v.ident, v.lat, v.lng]);
+  });
+  const byId = Object.fromEntries(got.map(([i, la, ln]) => [i, [la, ln]]));
+  for (const [ident, [lat, lng]] of Object.entries(aip)) {
+    expect(byId[ident], ident + ' present').toBeTruthy();
+    // Tight: these are exact published positions, so any drift is a data regression.
+    expect(byId[ident][0], ident + ' lat').toBeCloseTo(lat, 5);
+    expect(byId[ident][1], ident + ' lng').toBeCloseTo(lng, 5);
+  }
 });

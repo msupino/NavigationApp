@@ -1,14 +1,14 @@
 {
-  "_source": "Israeli VOR/DME stations. Idents, names and types from the IAA eAIP GEN 2.5 (List of Radio Navigation Aids); frequencies and coordinates from the OurAirports open navaid dataset (RAM coords from an LLER NOTAM, whole-minute precision). VERIFY against the current eAIP before operational use — coordinates are antenna-site approximations. 'Teyman' on local charts refers to the Beer-Sheba (BSA) VOR at the Sde Teyman base.",
+  "_source": "Israeli VOR/DME stations. Idents, names and types from the IAA eAIP GEN 2.5 (List of Radio Navigation Aids). Coordinates for BGN, NAT, ROP, MZD, ZFR, BSA and RAM are the published antenna positions from eAIP ENR 4.1 (AIRAC 2024-10-31), converted from DMS — they replace the earlier OurAirports approximations, which sat 100-500 m off the CAAI CVFR chart and satellite imagery (ZFR ~104 m, NAT ~226 m, MZD ~162 m, RAM ~504 m). NOT yet reconciled with ENR 4.1: LOT (this file still carries Eilot VOR 112.00; the current AIP assigns ident LOT to BET-MEIR DME, DME-only, ~243 km away) and OVD (Ovda, absent from current ENR 4.1). 'Teyman' on local charts refers to the Beer-Sheba (BSA) VOR at the Sde Teyman base.",
   "vors": [
-    { "ident": "BGN", "name": "Ben Gurion", "he": "בן גוריון", "freq": "113.50", "lat": 32.0131, "lng": 34.8752 },
-    { "ident": "NAT", "name": "Natania", "he": "נתניה", "freq": "112.40", "lat": 32.332, "lng": 34.968 },
-    { "ident": "ROP", "name": "Rosh Pina", "he": "ראש פינה", "freq": "115.30", "lat": 32.9826, "lng": 35.5727 },
-    { "ident": "MZD", "name": "Metzada (Masada)", "he": "מצדה", "freq": "115.00", "lat": 31.3306, "lng": 35.3905 },
-    { "ident": "ZFR", "name": "Zofar", "he": "צופר", "freq": "115.60", "lat": 30.5583, "lng": 35.1611 },
+    { "ident": "BGN", "name": "Ben Gurion", "he": "בן גוריון", "freq": "113.50", "lat": 32.01306, "lng": 34.87528 },
+    { "ident": "NAT", "name": "Natania", "he": "נתניה", "freq": "112.40", "lat": 32.33389, "lng": 34.96889 },
+    { "ident": "ROP", "name": "Rosh Pina", "he": "ראש פינה", "freq": "115.30", "lat": 32.9825, "lng": 35.57278 },
+    { "ident": "MZD", "name": "Metzada (Masada)", "he": "מצדה", "freq": "115.00", "lat": 31.33167, "lng": 35.39167 },
+    { "ident": "ZFR", "name": "Zofar", "he": "צופר", "freq": "115.60", "lat": 30.55889, "lng": 35.16194 },
     { "ident": "OVD", "name": "Ovda", "he": "עובדה", "freq": "114.10", "lat": 29.9667, "lng": 34.9472 },
     { "ident": "LOT", "name": "Eilot", "he": "אילות", "freq": "112.00", "lat": 29.6078, "lng": 34.9756 },
-    { "ident": "BSA", "name": "Beer-Sheba (Teyman)", "he": "באר שבע (תימן)", "freq": "114.30", "lat": 31.2862, "lng": 34.7213 },
-    { "ident": "RAM", "name": "Ramon", "he": "רמון", "freq": "113.85", "lat": 29.75, "lng": 35.0167 }
+    { "ident": "BSA", "name": "Beer-Sheba (Teyman)", "he": "באר שבע (תימן)", "freq": "114.30", "lat": 31.28611, "lng": 34.72167 },
+    { "ident": "RAM", "name": "Ramon", "he": "רמון", "freq": "113.85", "lat": 29.75306, "lng": 35.02056 }
   ]
 }
