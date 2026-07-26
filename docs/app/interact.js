@@ -984,15 +984,17 @@ function deleteWaypoint(k) {
 
 function splitLegCopy(source) {
   const d = _defaultLegLabels();
+  // Same tunable seed newLeg() uses, rather than two more literal 90s here.
+  const seed = (typeof _defaultLegSpeedKt === 'function') ? _defaultLegSpeedKt() : 90;
   const leg = {
     inboundAltitude: source ? source.inboundAltitude : NaN,
     outboundAltitude: source ? source.outboundAltitude : NaN,
     flightSpeed: source && Number.isFinite(source.flightSpeed) && source.flightSpeed > 0
-      ? source.flightSpeed : 90,
+      ? source.flightSpeed : seed,
     outboundSpeed: source && Number.isFinite(source.outboundSpeed) && source.outboundSpeed > 0
       ? source.outboundSpeed
       : (source && Number.isFinite(source.flightSpeed) && source.flightSpeed > 0
-        ? source.flightSpeed : 90),
+        ? source.flightSpeed : seed),
     inLabel: d.inLabel,
     outLabel: d.outLabel,
     cumLabel: d.cumLabel,
@@ -2326,8 +2328,17 @@ function showInspector() {
         pad3(toMagnetic(fx.hdgTrue)), Math.round(fx.gs),
         (wca >= 0 ? '+' : '') + wca, toHMS(dist / fx.gs));
     };
+    // Speed carries forward the same way it does in the flight plan (propagateAlt
+    // from the speed cell there): one aircraft flies the whole route, so setting
+    // 110 on a leg walks it down the legs still at the old value and stops at the
+    // first intentional change. Editing leg by leg was the only place that did NOT
+    // propagate, so the two editors disagreed about the same number.
     body.appendChild(numberRow(S.speedKt, leg.flightSpeed, v => {
-      leg.flightSpeed = v > 0 ? v : leg.flightSpeed; draw(); refreshWindFx();
+      if (!(v > 0)) return;
+      const oldVal = leg.flightSpeed;
+      leg.flightSpeed = v;
+      propagateAlt(idx, 'flightSpeed', v, oldVal);
+      draw(); refreshWindFx();
     }));
     // Leg magnetic heading (read-only) — sits between speed and altitude.
     const _dirA = state.waypoints[idx], _dirB = state.waypoints[idx + 1];
