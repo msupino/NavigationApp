@@ -1457,9 +1457,12 @@ function showRouteLibraryModal(focusSave) {
               const names = keys.map(k => k.replace(/^navaid\./, '')).join(', ');
               const msg = (S.routeLibraryGdriveFirstSyncConflict ||
                 'This device and Google Drive both have settings for: {keys}.\n\n' +
-                'OK = keep THIS device\'s values (Drive is updated).\n' +
-                'Cancel = use the values from Drive.').replace('{keys}', names);
-              return window.confirm(msg) ? 'local' : 'remote';
+                'OK = REPLACE this device\'s values with the ones from Drive.\n' +
+                'Cancel = keep this device\'s values (Drive is updated).').replace('{keys}', names);
+              // Overwriting this device is the destructive branch, so it needs an
+              // explicit OK. Escape / a dismissed dialog / a WebView that never
+              // renders confirm() all return false, and must land on the safe side.
+              return window.confirm(msg) ? 'remote' : 'local';
             },
           });
         })

@@ -249,6 +249,43 @@ test('splitting the marker\'s own leg keeps it on the correct half', async ({ pa
   expect(r.lat).toBeCloseTo(r.before, 6);   // same ground point
 });
 
+test('a marker parked on a shared waypoint stays on its own leg', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    state.waypoints = [
+      { lat: 32.0, lng: 35.0, name: 'A' }, { lat: 32.2, lng: 35.0, name: 'B' },
+      { lat: 32.4, lng: 35.0, name: 'C' }, { lat: 32.6, lng: 35.0, name: 'D' },
+    ];
+    state.legs = []; syncLegs();
+    const idx = addReportPointToLeg(2);
+    state.notes[idx].rp.t = 0;                 // exactly on waypoint C
+    // Both leg 1 (B-C, t=1) and leg 2 (C-D, t=0) are distance 0 from this point.
+    const rpGeo = captureReportPointGeo();
+    reanchorReportPoints(rpGeo);
+    const n = state.notes.find(x => x && x.rp);
+    return { leg: n.rp.leg, t: n.rp.t };
+  });
+  expect(r.leg).toBe(2);                 // ties resolve toward its own leg, not the lowest
+  expect(r.t).toBeCloseTo(0, 6);
+});
+
+test('a marker whose segment is gone is dropped, not stacked on a waypoint', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    // A far away from the B-C leg, so a marker on A-B has no nearby surviving leg.
+    state.waypoints = [
+      { lat: 31.0, lng: 34.0, name: 'A' }, { lat: 31.2, lng: 34.2, name: 'B' },
+      { lat: 32.6, lng: 35.6, name: 'C' },
+    ];
+    state.legs = []; syncLegs();
+    const i1 = addReportPointToLeg(0); state.notes[i1].rp.t = 0.3;
+    const i2 = addReportPointToLeg(0); state.notes[i2].rp.t = 0.7;
+    deleteWaypoint(0);                          // A goes; only B-C survives
+    return { left: state.notes.filter(x => x && x.rp).length };
+  });
+  expect(r.left).toBe(0);                // both dropped rather than piled onto B
+});
+
 test('removing the anchor leg prunes the report point', async ({ page }) => {
   await boot(page);
   await oneLeg(page);

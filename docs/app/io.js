@@ -3532,7 +3532,10 @@ function showExportModal() {
   box.appendChild(btns);
 
   back.appendChild(box);
-  back.onclick = e => { if (e.target === back) close(); };
+  // Dismissing via the backdrop must undo the preview like Cancel/Escape/X do;
+  // closing without restoreOrig() left the panel's overlay/layer/opacity preview
+  // applied permanently.
+  back.onclick = e => { if (e.target === back) { restoreOrig(); close(); } };
   document.body.appendChild(back);
   updateExportPageWarn();   // now in the DOM — set the initial warning state
   updateExportPlanCb();     // and the initial plan-checkbox enabled state + label

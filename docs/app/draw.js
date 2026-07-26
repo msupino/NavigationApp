@@ -3140,7 +3140,10 @@ function drawLegArrow(cx, cy, flightAng, head, time, alt, accent, fill, halo, sc
     octx.closePath();
     octx.clip('evenodd');
     octx.lineJoin = 'round';
-    octx.lineWidth = tune('legKiteHaloPx') * sc * 2;
+    // Centred stroke, inner half clipped away → the visible band is lineWidth/2,
+    // which is exactly what the old erase-the-inside approach left. Do NOT double
+    // it here or every haloed kite gets a band twice the shipped width.
+    octx.lineWidth = tune('legKiteHaloPx') * sc;
     octx.strokeStyle = tune('legKiteHaloColor');
     kitePath();
     octx.stroke();

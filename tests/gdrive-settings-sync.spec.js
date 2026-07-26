@@ -227,6 +227,67 @@ test('a rejected write aborts the sync instead of being recorded as synced', asy
   expect(r.aircraft).toBeNull();                     // the write really did fail
 });
 
+test('a failed snapshot write clears the baseline instead of throwing', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    localStorage.setItem('navaid.settingsSnapshot', '{"navaid.layer":"nav"}');
+    localStorage.setItem('navaid.settingsSyncedAt', '5000');
+    const orig = Storage.prototype.setItem;
+    let threw = null;
+    Storage.prototype.setItem = function (k, v) {
+      if (k === 'navaid.settingsSnapshot') throw new Error('quota');
+      return orig.call(this, k, v);
+    };
+    try { _recordSettingsSynced({ 'navaid.layer': 'heli' }, 9000); }
+    catch (e) { threw = e.message; } finally { Storage.prototype.setItem = orig; }
+    return {
+      threw,
+      snap: localStorage.getItem('navaid.settingsSnapshot'),
+      at: localStorage.getItem('navaid.settingsSyncedAt'),
+    };
+  });
+  // Throwing here would leave storage applied but the app un-reloaded. Instead the
+  // device is marked unseeded so its next sync takes the loss-free union path.
+  expect(r.threw).toBeNull();
+  expect(r.snap).toBeNull();
+  expect(r.at).toBeNull();
+});
+
+test('the snapshot is written in canonical allowlist order', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    localStorage.setItem('navaid.layer', 'nav');
+    localStorage.setItem('navaid.showMsa', '1');
+    // Record with the keys in the WRONG order (what Object.assign produced).
+    _recordSettingsSynced({ 'navaid.showMsa': '1', 'navaid.layer': 'nav' }, 1234);
+    const snap = localStorage.getItem('navaid.settingsSnapshot');
+    return { snap, live: JSON.stringify(collectSyncableSettings()) };
+  });
+  // Must match collectSyncableSettings() byte-for-byte, or every later sync reads a
+  // phantom local edit and pushes over a newer remote.
+  expect(r.snap).toBe(r.live);
+});
+
+test('a rejected write is rolled back, leaving nothing half-applied', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    localStorage.setItem('navaid.layer', 'nav');
+    localStorage.removeItem('navaid.aircraft');
+    const orig = Storage.prototype.setItem;
+    let threw = null;
+    Storage.prototype.setItem = function (k, v) {
+      if (k === 'navaid.aircraft') throw new Error('quota');
+      return orig.call(this, k, v);
+    };
+    try {
+      applySyncableSettings({ 'navaid.layer': 'heli', 'navaid.aircraft': '{"reg":"4X"}' });
+    } catch (e) { threw = e.message; } finally { Storage.prototype.setItem = orig; }
+    return { threw, layer: localStorage.getItem('navaid.layer') };
+  });
+  expect(r.threw).toMatch(/could not be stored/i);
+  expect(r.layer).toBe('nav');       // the successful write was undone, not kept
+});
+
 test('settings sync is opt-in and off by default', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {

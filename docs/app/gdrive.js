@@ -139,12 +139,12 @@ function gdriveHeaders() {
 // Locate the library file in the app-data folder (null if none yet).
 function gdriveFindFile() {
   const q = encodeURIComponent("name='" + GDRIVE_FILE + "'");
-  // orderBy=createdTime so that if two devices ever raced and created two files
-  // with this name (appDataFolder does not enforce uniqueness, and a create cannot
-  // be guarded), every device deterministically converges on the same, earliest
-  // one instead of each latching onto whichever the API happened to list first.
+  // Deliberately NOT ordered by createdTime: an account that already has two
+  // library files would switch to the earliest one, and routes that live only in
+  // the newer file would become unreachable from every device. The settings file is
+  // new enough to have no such legacy, so only it is ordered (gdriveFindNamed).
   const url = 'https://www.googleapis.com/drive/v3/files?spaces=appDataFolder' +
-    '&fields=files(id,name,modifiedTime)&orderBy=createdTime&q=' + q;
+    '&fields=files(id,name,modifiedTime)&q=' + q;
   return fetch(url, { headers: gdriveHeaders() })
     .then(r => { if (!r.ok) throw new Error('Drive list failed: ' + r.status); return r.json(); })
     .then(j => (j.files && j.files[0]) || null);
@@ -383,10 +383,13 @@ function applySyncableSettings(values) {
     // than an unapplied one: its next sync sees cur !== snap, reads that as a local
     // edit, wins on the monotonic stamp and PATCHes the mixture over the authoring
     // device's settings — the very clobber aborting was meant to prevent.
+    const stuck = [];
     for (const [k, prev] of undo.reverse()) {
-      if (prev === null) _lsDel(k); else _lsSet(k, prev);
+      const ok = (prev === null) ? _lsDel(k) : _lsSet(k, prev);
+      if (!ok) stuck.push(k);   // restoring a larger previous value can itself fail
     }
-    throw new Error('Settings could not be stored (storage full?): ' + failed.join(', '));
+    throw new Error('Settings could not be stored (storage full?): ' + failed.join(', ') +
+      (stuck.length ? ' — and these could not be restored: ' + stuck.join(', ') : ''));
   }
   return changed;
 }
@@ -453,7 +456,14 @@ function _recordSettingsSynced(values, stamp) {
     }
   }
   if (!_lsSet(SETTINGS_SNAP_KEY, JSON.stringify(canon))) {
-    throw new Error('Settings synced, but this device could not record it (storage full?)');
+    // Do NOT throw: by now the values are applied locally and/or already uploaded,
+    // so rejecting would leave storage and the running app disagreeing and skip the
+    // reload. Instead clear the snapshot, which marks this device unseeded — its
+    // next sync takes the loss-free union path rather than mistaking a stale
+    // snapshot for a local edit and winning every future sync with it.
+    _lsDel(SETTINGS_SNAP_KEY);
+    _lsDel(SETTINGS_SYNCED_AT_KEY);
+    return;
   }
   _lsSet(SETTINGS_SYNCED_AT_KEY, String(stamp));
 }
@@ -584,8 +594,13 @@ function _gdriveSyncSettingsOnce(resolveFirstConflict) {
         for (const k of GDRIVE_SETTINGS_KEYS) {
           if (!Object.prototype.hasOwnProperty.call(local.values, k)) continue;
           if (!Object.prototype.hasOwnProperty.call(remoteValues, k)) continue;
-          if (typeof remoteValues[k] !== 'string') continue;
-          if (remoteValues[k] !== local.values[k]) conflicts.push(k);
+          const rv = remoteValues[k];
+          // A remote tombstone against a value we still hold is "deleted there,
+          // kept here" — just as much a conflict as two different values, and it
+          // must reach the dialog or the deletion is silently discarded.
+          if (rv === null || (typeof rv === 'string' && rv !== local.values[k])) {
+            conflicts.push(k);
+          }
         }
         const decide = (conflicts.length && typeof resolveFirstConflict === 'function')
           ? Promise.resolve(resolveFirstConflict(conflicts.slice()))
@@ -599,6 +614,10 @@ function _gdriveSyncSettingsOnce(resolveFirstConflict) {
             const haveRemote = Object.prototype.hasOwnProperty.call(remoteValues, k);
             const rv = haveRemote ? remoteValues[k] : undefined;
             const remoteUsable = haveRemote && typeof rv === 'string';
+            if (haveLocal && preferRemote && rv === null) {
+              merged[k] = null; incoming[k] = null;   // accept the deletion
+              continue;
+            }
             if (haveLocal && remoteUsable && preferRemote) {
               merged[k] = rv; if (rv !== local.values[k]) incoming[k] = rv;
               continue;

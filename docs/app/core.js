@@ -668,7 +668,7 @@ window.S = Object.assign({
   routeLibraryGdriveError: 'Drive sync failed',
   routeLibraryGdriveSyncSettings: 'Sync settings too',
   routeLibraryGdriveSettingsApplied: 'Settings updated — reloading…',
-  routeLibraryGdriveFirstSyncConflict: 'This device and Google Drive both have settings for: {keys}.\n\nOK = keep THIS device\'s values (Drive is updated).\nCancel = use the values from Drive.',
+  routeLibraryGdriveFirstSyncConflict: 'This device and Google Drive both have settings for: {keys}.\n\nOK = REPLACE this device\'s values with the ones from Drive.\nCancel = keep this device\'s values (Drive is updated).',
   routeTemplatesTitle: 'Route templates',
   routeTemplateRoute: 'Route',
   routeTemplateSpeed: 'Speed (kt)',
@@ -2406,6 +2406,11 @@ function legFractionAt(A, B, P) {
   return Math.max(0, Math.min(1, t));
 }
 
+// A marker further than this from every surviving leg has lost its segment; snapping
+// it onto the nearest endpoint would silently stack markers on a waypoint, so it is
+// dropped instead. ~0.05 deg is roughly 3 NM.
+const REPORT_POINT_REANCHOR_MAX_DEG = 0.05;
+
 function captureReportPointGeo() {
   const out = [];
   if (!Array.isArray(state.notes)) return out;
@@ -2413,14 +2418,20 @@ function captureReportPointGeo() {
     if (!n || !n.rp || !Number.isInteger(n.rp.leg)) continue;
     const A = state.waypoints[n.rp.leg], B = state.waypoints[n.rp.leg + 1];
     if (!A || !B) continue;
-    const t = Number.isFinite(n.rp.t) ? n.rp.t : 0.5;
-    out.push({ n, lat: A.lat + (B.lat - A.lat) * t, lng: A.lng + (B.lng - A.lng) * t });
+    // Clamp exactly as reportPointGeom does, so the captured point is the pixel the
+    // user actually sees. An out-of-range t (possible in a loaded/imported route)
+    // would otherwise extrapolate past the leg end and re-anchor onto a neighbour.
+    const raw = Number.isFinite(n.rp.t) ? n.rp.t : 0.5;
+    const t = Math.max(0, Math.min(1, raw));
+    out.push({ n, leg: n.rp.leg,
+      lat: A.lat + (B.lat - A.lat) * t, lng: A.lng + (B.lng - A.lng) * t });
   }
   return out;
 }
 
 function reanchorReportPoints(captured) {
   if (!Array.isArray(captured) || !captured.length) return;
+  const drop = [];
   for (const c of captured) {
     if (!c || !c.n || !c.n.rp) continue;
     let best = -1, bestD = Infinity, bestT = 0.5;
@@ -2431,10 +2442,20 @@ function reanchorReportPoints(captured) {
       const dLat = (A.lat + (B.lat - A.lat) * t) - c.lat;
       const dLng = (A.lng + (B.lng - A.lng) * t) - c.lng;
       const d = dLat * dLat + dLng * dLng;
-      if (d < bestD) { bestD = d; best = i; bestT = t; }
+      // Strictly-better only, EXCEPT that a tie is resolved toward the marker's own
+      // previous leg. Ties are common — a marker parked on a shared waypoint is at
+      // distance 0 from both legs, and on a route that retraces itself an entire
+      // leg is equidistant — and taking the lowest index moved the marker onto a
+      // neighbouring leg, changing the time shown in its oval.
+      const better = d < bestD - 1e-18 ||
+        (Math.abs(d - bestD) <= 1e-18 && Math.abs(i - c.leg) < Math.abs(best - c.leg));
+      if (better) { bestD = d; best = i; bestT = t; }
     }
-    if (best >= 0) { c.n.rp.leg = best; c.n.rp.t = bestT; }
+    if (best < 0) continue;                              // no legs left; prune handles it
+    if (Math.sqrt(bestD) > REPORT_POINT_REANCHOR_MAX_DEG) { drop.push(c.n); continue; }
+    c.n.rp.leg = best; c.n.rp.t = bestT;
   }
+  if (drop.length) state.notes = state.notes.filter(n => !drop.includes(n));
 }
 
 function syncLegs() {

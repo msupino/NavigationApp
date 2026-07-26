@@ -107,7 +107,7 @@ window.S = {
   routeLibraryGdriveError: 'הסנכרון נכשל',
   routeLibraryGdriveSyncSettings: 'סנכרן גם הגדרות',
   routeLibraryGdriveSettingsApplied: 'ההגדרות עודכנו — טוען מחדש…',
-  routeLibraryGdriveFirstSyncConflict: 'גם למכשיר הזה וגם ל-Google Drive יש הגדרות עבור: {keys}.\n\nאישור = לשמור על הערכים של המכשיר הזה (ה-Drive יתעדכן).\nביטול = להשתמש בערכים מה-Drive.',
+  routeLibraryGdriveFirstSyncConflict: 'גם למכשיר הזה וגם ל-Google Drive יש הגדרות עבור: {keys}.\n\nאישור = להחליף את הערכים של המכשיר הזה בערכים מה-Drive.\nביטול = לשמור על הערכים של המכשיר הזה (ה-Drive יתעדכן).',
   routeTemplatesTitle: 'תבניות מסלול',
   routeTemplateRoute: 'מסלול',
   routeTemplateSpeed: 'מהירות (קשר)',
