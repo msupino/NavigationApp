@@ -117,7 +117,13 @@ window.S = {
   fpHeadersNarrow: { dist: 'NM', speed: 'kt', alt: 'גובה', time: 'זמן', fuel: 'דלק',
     cumTime: 'מצטבר', cumFuel: 'דלק מצטבר' },
   fpMobileSummary: function (legs, nm, time, gal) {
-    return legs + ' קטעים · ' + nm + ' NM · ' + time + ' · ' + gal + ' גלון';
+    // Each value is an LTR run inside RTL text, so without isolation the bidi
+    // algorithm merges the neighbouring numbers and separators into one run and
+    // reorders them -- "46.0 NM · 5.2 · 30:40" came out scrambled on screen.
+    // U+2066 LRI ... U+2069 PDI pins each value's direction without adding glyphs.
+    const ltr = v => '\u2066' + v + '\u2069';
+    return ltr(legs) + ' קטעים · ' + ltr(nm + ' NM') + ' · ' + ltr(time) +
+      ' · ' + ltr(gal) + ' גלון';
   },
   vorInfoType: 'סוג',
   vorInfoChannel: 'ערוץ',

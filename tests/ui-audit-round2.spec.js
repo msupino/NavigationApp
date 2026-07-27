@@ -92,7 +92,7 @@ test('route totals are always on screen, and match the plan', async ({ page }) =
   await withRoute(page);
   const r = await page.evaluate(() => {
     const pill = document.getElementById('route-summary');
-    document.getElementById('plan-top').click();
+    document.getElementById('plan').click();
     const fp = [...document.querySelectorAll('.modal *')]
       .map(e => e.childNodes.length === 1 ? e.textContent.trim() : '')
       .find(t => /leg[s]? ·/.test(t));
@@ -139,12 +139,18 @@ test('VOR legend row follows the VOR toggle', async ({ page }) => {
   expect(r.label).toContain('VOR');
 });
 
-test('Flight plan is a top-level toolbar action, and the Charts entry still works', async ({ page }) => {
+test('Flight plan is a top-level toolbar action, listed exactly once', async ({ page }) => {
   await boot(page);
   await withRoute(page);
-  await page.evaluate(() => document.getElementById('plan-top').click());
-  await expect(page.locator('.modal-back.flight-plan')).toHaveCount(1);
-  await page.evaluate(() => document.querySelector('.modal-back.flight-plan .modal-close-x').click());
+  // Promoting it while leaving the Charts item in place printed the same command
+  // twice in one menu bar.
+  const entries = await page.evaluate(() => {
+    const label = (S.tbPlan || '').replace(/[^\p{L} ]/gu, '').trim();
+    return [...document.querySelectorAll('#toolbar button')]
+      .filter(b => b.textContent.replace(/[^\p{L} ]/gu, '').trim() === label)
+      .map(b => b.id);
+  });
+  expect(entries).toEqual(['plan']);
   await page.evaluate(() => document.getElementById('plan').click());
   await expect(page.locator('.modal-back.flight-plan')).toHaveCount(1);
 });
@@ -153,7 +159,7 @@ test('the standalone Flight plan entry is not a dropdown', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {
     const sec = document.querySelector('.tb-section[data-sec="plan"]');
-    const btn = document.getElementById('plan-top');
+    const btn = document.getElementById('plan');
     btn.click();
     return { open: sec.classList.contains('open'), hasBody: !!sec.querySelector('.tb-section-body'),
       persisted: localStorage.getItem('navaid.sec.plan') };
@@ -189,7 +195,7 @@ test('per-leg distance is visible by default on desktop', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await boot(page);
   await withRoute(page);
-  await page.evaluate(() => document.getElementById('plan-top').click());
+  await page.evaluate(() => document.getElementById('plan').click());
   const heads = await page.evaluate(() => [...document.querySelectorAll('.modal thead th')]
     .filter(t => !(t.hidden || getComputedStyle(t).display === 'none'))
     .map(t => t.textContent.trim()));
@@ -204,7 +210,7 @@ test.describe('phone layout', () => {
     await boot(page);
     await withRoute(page);
     const r = await page.evaluate(() => {
-      document.getElementById('plan-top').click();
+      document.getElementById('plan').click();
       const tbl = document.querySelector('.modal table');
       const scroll = document.querySelector('.fp-scroll');
       return { tableW: tbl.scrollWidth, paneW: scroll.clientWidth,
@@ -310,7 +316,7 @@ test('editing a speed in the plan does not raise the hidden inspector', async ({
     state.selected = { type: 'leg', index: 0 };
     showInspector();
     const before = !insp.classList.contains('hidden');
-    document.getElementById('plan-top').click();
+    document.getElementById('plan').click();
     const hiddenWithPlan = insp.classList.contains('hidden');
     const spd = [...document.querySelectorAll('.modal input.plan-num')][0];
     spd.value = '115';
@@ -332,7 +338,7 @@ test('closing the plan hands the inspector back', async ({ page }) => {
     const insp = document.getElementById('inspector');
     state.selected = { type: 'wp', index: 1 };
     showInspector();
-    document.getElementById('plan-top').click();
+    document.getElementById('plan').click();
     const hidden = insp.classList.contains('hidden');
     document.querySelector('.modal-back.flight-plan .modal-close-x').click();
     return { hidden, restored: !insp.classList.contains('hidden'), sel: state.selected };
@@ -350,7 +356,7 @@ test('a selection restored while the plan is open waits for the plan to close', 
   await page.evaluate(() => {
     state.selected = { type: 'wp', index: 1 };
     persistInspectorSelection();
-    document.getElementById('plan-top').click();
+    document.getElementById('plan').click();
     try { sessionStorage.setItem('navaid.fpOpen', '1'); } catch (e) { /* */ }
   });
   await page.reload();
@@ -367,4 +373,83 @@ test('a selection restored while the plan is open waits for the plan to close', 
     return !document.getElementById('inspector').classList.contains('hidden');
   });
   expect(after).toBe(true);
+});
+
+// --- follow-ups reported against the merged round-2 work -------------------
+
+test('a loaded template shows the same per-leg time on the chart and in the plan', async ({ page }) => {
+  // Template legs carry altitudes, so each one costs climb/descent time. The kites
+  // used still-air dist/speed, so leg 1 of "Beer Sheva to Herzliya" read 1:55 on the
+  // chart and 2:20 in the plan — the climb out of the field.
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const tpls = await loadRouteTemplates();
+    const t = tpls[0];
+    await applyRouteTemplate(t, t.defaultSpeed || 90, () => {});
+    draw();
+    const p = routeProfile();
+    const stillAir = state.legs.map((l, i) => {
+      const g = geo(state.waypoints[i], state.waypoints[i + 1]);
+      return l.flightSpeed > 0 ? g.dist / l.flightSpeed : 0;
+    });
+    return {
+      alts: state.legs.map(l => l.inboundAltitude),
+      plan: p.legs.map(l => toHMS(l.timeH)),
+      kite: p.legs.map((l, i) => toHMS(legKiteTimeH(i))),
+      stillAir: stillAir.map(toHMS),
+      cumMatchesPlan: toHMS(p.totalTimeH) ===
+        toHMS(p.legs.reduce((a, l) => a + l.timeH, 0)),
+    };
+  });
+  expect(r.alts.every(a => Number.isFinite(a))).toBe(true);   // template really set them
+  expect(r.kite).toEqual(r.plan);                             // chart == plan, leg by leg
+  expect(r.kite[0]).not.toBe(r.stillAir[0]);                  // and the climb is counted
+  expect(r.cumMatchesPlan).toBe(true);
+});
+
+test('the Hebrew summary keeps its numbers in order (bidi isolation)', async ({ page }) => {
+  await page.goto('?lang=he&nogist');
+  await page.waitForFunction(() => typeof syncLegs === 'function');
+  const r = await page.evaluate(r2 => {
+    state.waypoints = r2; state.legs = []; syncLegs(); draw();
+    const txt = document.getElementById('route-summary').textContent;
+    // Strip the isolates to read the logical order the user should see.
+    const logical = txt.replace(/[⁦⁩]/g, '');
+    return { txt, logical,
+      isolates: (txt.match(/⁦/g) || []).length,
+      pops: (txt.match(/⁩/g) || []).length };
+  }, ROUTE);
+  expect(r.isolates).toBe(4);          // legs, NM, time, gal — each pinned LTR
+  expect(r.pops).toBe(r.isolates);
+  // Values appear in the intended order, with no two numbers merged into one run
+  // (the bug rendered "... · 5.2 46.0 NM · גלון").
+  expect(r.logical).toMatch(/^2 קטעים · 37\.8 NM · \d+:\d\d · [\d.]+ גלון$/);
+});
+
+test('dragging the legend takes the route totals with it', async ({ page }) => {
+  // The totals started life as a sibling Leaflet control: dragging the legend left
+  // them behind at the corner, which read as the route info vanishing.
+  await boot(page);
+  await withRoute(page);
+  const legend = page.locator('#map-legend');
+  const pill = page.locator('#route-summary');
+  await expect(pill).toBeVisible();
+  const before = await legend.boundingBox();
+  await page.mouse.move(before.x + 20, before.y + 6);
+  await page.mouse.down();
+  await page.mouse.move(520, 220, { steps: 8 });
+  await page.mouse.up();
+  const after = await legend.boundingBox();
+  const box = await pill.boundingBox();
+  expect(Math.abs(after.x - before.x)).toBeGreaterThan(50);   // it really moved
+  await expect(pill).toBeVisible();
+  expect(box.y).toBeGreaterThanOrEqual(after.y - 1);          // still inside the card
+  expect(box.y).toBeLessThan(after.y + after.height);
+  // ...and the position persists for both together
+  await page.reload();
+  await page.waitForFunction(() => typeof syncLegs === 'function');
+  await withRoute(page);
+  const restored = await legend.boundingBox();
+  expect(Math.abs(restored.x - after.x)).toBeLessThan(4);
+  await expect(pill).toBeVisible();
 });

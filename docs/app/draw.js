@@ -2528,6 +2528,19 @@ function reportPointTime(n) {
   const h = leg && leg.flightSpeed > 0 ? (gg.dist * g.t) / leg.flightSpeed : 0;
   return h > 0 ? toHMS(h) : '0:00';
 }
+// Per-leg time as printed on the kite -- and in the flight plan, which reads the same
+// model (io.js refresh: prof.legs[i].timeH). A leg with an altitude, i.e. every leg of
+// a loaded template, costs climb/descent time, so still-air dist/speed put a different
+// ETE on the chart than in the plan for the very same leg. Falls back to dist/speed
+// when the profile engine is unavailable.
+function legKiteTimeH(i, prof) {
+  const A = state.waypoints[i], B = state.waypoints[i + 1];
+  const leg = state.legs[i];
+  if (!A || !B || !leg) return 0;
+  const p = prof || ((typeof routeProfile === 'function') ? routeProfile() : null);
+  if (p && p.legs[i]) return p.legs[i].timeH;
+  return leg.flightSpeed > 0 ? geo(A, B).dist / leg.flightSpeed : 0;
+}
 function noteLines(n) {
   if (n && n.cc) {
     const name = commNoteName(n);
@@ -2810,6 +2823,10 @@ function drawLegs() {
     }
   }
 
+  // One model for every time on screen: the kites, the cumulative labels and the
+  // flight-plan table all read per-leg times from here.
+  const legProfile = (typeof routeProfile === 'function') ? routeProfile() : null;
+
   let cumInH = 0;  // running inbound cumulative time (hours)
 
   for (let i = 0; i < state.legs.length; i++) {
@@ -2834,7 +2851,7 @@ function drawLegs() {
     if (showDrift) drawDriftLines(sa, sb);
 
     const { dist, brg } = geo(A, B);
-    const durH = leg.flightSpeed > 0 ? dist / leg.flightSpeed : 0;
+    const durH = legKiteTimeH(i, legProfile);
     const durOut = leg.outboundSpeed > 0 ? dist / leg.outboundSpeed : 0;
     const magIn = toMagnetic(brg);
     const magOut = (magIn + 180) % 360;

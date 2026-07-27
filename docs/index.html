@@ -123,7 +123,7 @@
   </script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css">
-  <link rel="stylesheet" href="app/style.css?v=449">
+  <link rel="stylesheet" href="app/style.css?v=452">
 </head>
 <body>
   <!-- Crawlable static content. The app renders into a full-screen canvas/map
@@ -333,9 +333,10 @@
     <!-- Flight plan: the app's main output, promoted to a top-level button. It used
          to sit inside "Charts" next to SIGMET, the NOTAM list and offline-map
          downloads — two levels deep, under a label that reads like chart reference
-         material. The Charts entry stays for muscle memory. -->
+         material. It is the only flight-plan entry -- keeping the Charts item as well
+         listed the same command twice in one menu bar. -->
     <div class="tb-section tb-standalone" data-sec="plan">
-      <button id="plan-top" type="button" class="tb-section-head tb-standalone-head"
+      <button id="plan" type="button" class="tb-section-head tb-standalone-head"
               data-i18n="tbPlan" data-i18n-title="tbPlanTitle"></button>
     </div>
 
@@ -344,7 +345,6 @@
       <div class="tb-section-head" tabindex="0" role="button" data-i18n="tbSecCharts"></div>
       <div class="tb-section-body">
         <button id="route-templates" type="button" data-i18n="tbRouteTemplates" data-i18n-title="tbRouteTemplatesTitle"></button>
-        <button id="plan" data-i18n="tbPlan" data-i18n-title="tbPlanTitle"></button>
         <button id="freq-table" data-i18n="tbFreqTable" data-i18n-title="tbFreqTableTitle"></button>
         <button id="alt-pairs" data-i18n="tbAltPairs" data-i18n-title="tbAltPairsTitle"></button>
         <button id="charts" data-i18n="tbCharts" data-i18n-title="tbChartsTitle"></button>
@@ -758,11 +758,12 @@
        data-i18n text at boot; ui.js then reparents it into a top-right
        Leaflet control so it floats over the map like a chart legend.
        Hidden until that move so it never flashes in the page flow. -->
-  <!-- Route totals pill. Reparented next to the legend (bottom-left) by ui.js;
-       filled by drawSummaryPill() and hidden while there is no route. -->
-  <div id="route-summary" class="route-summary" style="display:none"></div>
-
   <div id="map-legend" class="map-legend" data-i18n-aria="legendTitle" style="display:none">
+    <!-- Route totals live INSIDE the legend card so the two move (and persist) as one
+         unit: as a sibling control they separated the moment the legend was dragged,
+         which read as the route info disappearing. Filled by drawSummaryPill();
+         hidden while there is no route. -->
+    <div id="route-summary" class="route-summary" style="display:none"></div>
     <div class="map-legend-title" data-i18n="legendTitle"></div>
     <div class="map-legend-row">
       <span class="legend-symbol legend-airfield" aria-hidden="true"></span>
@@ -793,7 +794,7 @@
        hack for strings.js. Silences CodeQL js/eval-like-call (#12). -->
   <script>
     (function () {
-      var v = '?v=449';
+      var v = '?v=452';
       var srcs = [
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js',
