@@ -268,6 +268,7 @@ body.theme-light .leaflet-image-layer.ims-pwx-layer {
 .footer-more-menu .footer-link-text { display: inline; }
 body.theme-light .footer-more-menu { background: #fff; border-color: rgba(0, 0, 0, 0.2); }
 
+
 /* Route totals — the legend card's top row, above its own title, separated by a rule.
    Inherits the card's background, theme and drag position, so it cannot drift away
    from it. */
@@ -604,7 +605,6 @@ body.theme-light .footer-more-menu { background: #fff; border-color: rgba(0, 0, 
   }
 
   #toolbar-toggle,
-  #info,
   #app-version {
     display: none;
   }
@@ -1635,17 +1635,6 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
   cursor: default;
 }
 .insp-btn:disabled:hover { background: #b03636; }
-/* Route summary — a footer section at the bottom of the toolbar. */
-#info {
-  margin-top: 4px;
-  padding: 6px 6px 2px;
-  border-top: 1px solid #443f3f;
-  font-size: 12px;
-  color: #b9b3b3;
-  font-variant-numeric: tabular-nums;
-  white-space: pre-line;
-}
-#info:empty { display: none; }
 #app-version {
   display: block;
   text-align: right;
@@ -1725,7 +1714,6 @@ body.theme-light .row-reset:hover { color: #111; background: #e0e0e0; }
 }
 
 @media (min-width: 681px) {
-  #info,
   #app-version {
     display: none;
   }
@@ -2087,7 +2075,6 @@ body.theme-light .shortcuts-help-keys kbd {
   }
   .row input[type="number"],
   .row input[type="text"] { padding: 8px 6px; font-size: 15px; }
-  #info { font-size: 12px; }
   /* Flight-plan table is wider than a phone — scroll sideways instead of
      truncating columns. With the narrow default column set (see io.js) plus these
      tighter metrics the flown-by numbers fit without any sideways scroll at all. */
@@ -2118,6 +2105,10 @@ body.theme-light .shortcuts-help-keys kbd {
      (Start/Stop recording + Show/Hide location); hide the shortcuts, doc links,
      and simulator here (all still available on desktop). */
   #toolbar #help-trigger,
+  /* ...including the ⋯ that holds them: on a phone it was an 11px-wide trigger for
+     six hidden links, and it still claimed a whole flex row, leaving a ~100px empty
+     band above the GPS buttons in the collapsed card. */
+  #toolbar #footer-more-btn,
   #toolbar #repo-link,
   #toolbar #wiki-link,
   #toolbar #issues-link,
@@ -3965,7 +3956,7 @@ body.theme-light .satellite-snippet {
 }
 body.theme-light .tb-section,
 body.theme-light #toolbar > #lang-toggle,
-body.theme-light #info,
+
 body.theme-light #footer-links,
 body.theme-light #insp-header,
 body.theme-light #mag-settings-header,
@@ -4018,7 +4009,7 @@ body.theme-light #toolbar .slider-val,
 body.theme-light #toolbar .slider-reset,
 body.theme-light #toolbar .navtoggle .hint,
 body.theme-light .row label,
-body.theme-light #info,
+
 body.theme-light #app-version,
 body.theme-light #toolbar .footer-link,
 body.theme-light .map-legend-title,
