@@ -1942,6 +1942,8 @@ function showFlightPlan() {
   const vsLbl = document.createElement('label');
   vsLbl.className = 'fp-profile-vs';
   vsLbl.textContent = (S.profileVs || 'V/S (ft/min)') + ' ';
+  // Say so out loud: this number shapes the drawn climb, it does not buy or spend ETE.
+  if (S.profileVsTitle) vsLbl.title = S.profileVsTitle;
   const vsInput = document.createElement('input');
   vsInput.type = 'number'; vsInput.min = '50'; vsInput.step = '50';
   vsInput.value = String(window.profileVS);
@@ -1951,8 +1953,8 @@ function showFlightPlan() {
     if (v > 0) {
       window.profileVS = v;
       try { localStorage.setItem('navaid.profileVS', String(v)); } catch (e) { /* ignore */ }
-      draw();        // map TOC/TOD markers move with the new ramp
-      refresh();     // recompute leg times + redraw the profile strip
+      draw();        // the map TOC marker moves with the new ramp
+      refresh();     // redraw the profile strip (leg times do not depend on V/S)
     }
   };
   vsLbl.appendChild(vsInput);

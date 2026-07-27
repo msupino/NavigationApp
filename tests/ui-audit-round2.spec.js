@@ -38,12 +38,12 @@ test('an unset altitude does not invent climb/descent time', async ({ page }) =>
       simple += g.dist / state.legs[i].flightSpeed;
     }
     return { profile: toHMS(p.totalTimeH), simple: toHMS(simple),
-      tocs: p.tocs.length, tods: p.tods.length,
+      tocs: p.tocs.length,
       ramps: p.legs.map(l => +(l.climbDist + l.descDist).toFixed(2)) };
   });
   expect(r.profile).toBe(r.simple);            // one route, one ETE
   expect(r.ramps.every(x => x === 0)).toBe(true);
-  expect(r.tocs + r.tods).toBe(0);             // nothing to mark without an altitude
+  expect(r.tocs).toBe(0);                      // nothing to mark without an altitude
 });
 
 test('a real altitude still produces a climb profile with a TOC', async ({ page }) => {
@@ -402,7 +402,7 @@ test('a loaded template shows the same per-leg time on the chart and in the plan
   });
   expect(r.alts.every(a => Number.isFinite(a))).toBe(true);   // template really set them
   expect(r.kite).toEqual(r.plan);                             // chart == plan, leg by leg
-  expect(r.kite[0]).not.toBe(r.stillAir[0]);                  // and the climb is counted
+  expect(r.kite).toEqual(r.stillAir);        // and both are simply distance / speed
   expect(r.cumMatchesPlan).toBe(true);
 });
 
@@ -494,4 +494,50 @@ test('the overflow toggle is still there on desktop', async ({ page }) => {
   await page.locator('#footer-more-btn').click();
   await expect(page.locator('#footer-more-menu')).toBeVisible();
   await expect(page.locator('#footer-more-menu a')).toHaveCount(6);
+});
+
+// --- V/S shapes the profile, never the clock -------------------------------
+
+test('V/S changes the drawn climb but not time or fuel', async ({ page }) => {
+  await boot(page);
+  await withRoute(page);
+  const r = await page.evaluate(() => {
+    state.legs.forEach(l => { l.inboundAltitude = 3000; l.flightSpeed = 100; });
+    routeEndpointElev = i => (i === 0 ? 200 : null);      // depart from a field
+    const at = vs => { window.profileVS = vs; const p = routeProfile({ gph: 8 });
+      return { time: p.totalTimeH, fuel: p.totalFuel, climb: p.legs[0].climbDist,
+        tocs: p.tocs.length }; };
+    const slow = at(200), fast = at(1500);
+    window.profileVS = 500;
+    const stillAir = state.legs.reduce((a, l, i) => {
+      const g = geo(state.waypoints[i], state.waypoints[i + 1]);
+      return a + g.dist / l.flightSpeed; }, 0);
+    return { slow, fast, stillAir };
+  });
+  expect(r.slow.climb).toBeGreaterThan(r.fast.climb);   // the picture responds
+  expect(r.slow.time).toBeCloseTo(r.fast.time, 10);     // the clock does not
+  expect(r.slow.fuel).toBeCloseTo(r.fast.fuel, 10);
+  expect(r.slow.time).toBeCloseTo(r.stillAir, 10);      // == distance / speed
+  expect(r.slow.tocs).toBe(1);                          // TOC still marked
+});
+
+test('only a leg starting on an airfield gets a ramp', async ({ page }) => {
+  await boot(page);
+  await withRoute(page);
+  const r = await page.evaluate(() => {
+    state.legs.forEach(l => { l.inboundAltitude = 4000; });
+    routeEndpointElev = () => null;                     // nothing is a field
+    const none = routeProfile({ gph: 8 });
+    routeEndpointElev = i => (i === 0 ? 300 : null);
+    const dep = routeProfile({ gph: 8 });
+    return { noneRamps: none.legs.map(l => l.climbDist), noneTocs: none.tocs.length,
+      depRamp0: dep.legs[0].climbDist, depRamp1: dep.legs[1].climbDist,
+      depStart: dep.legs[0].startAlt, endAlt: dep.legs[dep.legs.length - 1].endAlt };
+  });
+  expect(r.noneRamps.every(d => d === 0)).toBe(true);
+  expect(r.noneTocs).toBe(0);
+  expect(r.depRamp0).toBeGreaterThan(0);
+  expect(r.depRamp1).toBe(0);                 // mid-route legs stay level
+  expect(r.depStart).toBe(300);               // ramp begins at field elevation
+  expect(r.endAlt).toBe(4000);                // and nothing descends into the end
 });

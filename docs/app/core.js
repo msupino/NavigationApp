@@ -32,9 +32,7 @@ NavAid.tuningDefaults = {
   msaBufferFt: { value: 1000, min: 0, max: 5000, step: 100, label: 'MSA clearance above terrain (ft)' },
 
   profileClimbFpm: { value: 500, min: 100, max: 3000, step: 50, label: 'Default climb rate (fpm)' },
-  profileDescentFpm: { value: 500, min: 100, max: 3000, step: 50, label: 'Default descent rate (fpm)' },
   profileClimbKt: { value: 75, min: 30, max: 200, step: 1, label: 'Default climb speed (kt)' },
-  profileDescentKt: { value: 110, min: 30, max: 250, step: 1, label: 'Default descent speed (kt)' },
   defaultGph: { value: 8, min: 1, max: 60, step: 0.5, label: 'Default fuel burn (GPH)' },
   defaultTaxiGal: { value: 1.1, min: 0, max: 10, step: 0.1, label: 'Default taxi/run-up fuel (gal)' },
 
@@ -301,8 +299,7 @@ NavAid.tuningDefaults = {
   profileAreaColor: { value: '#5096e6', type: 'color', label: 'Profile area color' },
   profileLineColor: { value: '#5a96e6', type: 'color', label: 'Profile line color' },
   profileTocColor: { value: '#2e9e4f', type: 'color', label: 'TOC marker color' },
-  profileTodColor: { value: '#c47f17', type: 'color', label: 'TOD marker color' },
-  profileMarkerHaloColor: { value: '#ffffff', type: 'color', label: 'TOC/TOD halo color' },
+  profileMarkerHaloColor: { value: '#ffffff', type: 'color', label: 'TOC halo color' },
 
   sigmetTurbColor: { value: '#e67e22', type: 'color', label: 'SIGMET turbulence color' },
   sigmetIceColor: { value: '#1ba1e2', type: 'color', label: 'SIGMET icing color' },
@@ -468,7 +465,7 @@ NavAid.tuningDefaults = {
 // global colour palette.
 NavAid.tuningGroups = [
   { name: 'Navigation', keys: ['magneticVariationDeg', 'msaBufferFt'] },
-  { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileDescentFpm', 'profileClimbKt', 'profileDescentKt', 'defaultGph', 'defaultTaxiGal'] },
+  { name: 'Performance defaults', keys: ['profileClimbFpm', 'profileClimbKt', 'defaultGph', 'defaultTaxiGal'] },
   { name: 'Altitude inference', keys: ['legAltInferMaxHops', 'legAltInferMaxDistRatio', 'legAltInferMaxExtraNm'] },
   { name: 'Plan card', keys: ['planCardBaseRowPx', 'planCardGripPx', 'planCardBgColor', 'planCardHeaderBgColor', 'planCardTotalBgColor', 'planCardStripeBgColor', 'planCardGridColor', 'planCardTextColor', 'planCardGripColor', 'planCardGripLineColor'] },
   { name: 'VOR range ring', keys: ['vorRangeRingColor', 'vorRangeRingAlpha', 'vorRangeRingWidthPx', 'vorRangeRingDashPx', 'vorRangeRingGapPx', 'vorRangeRingLabel', 'vorRangeRingSteps', 'vorRangeRingLabelGapPx'] },
@@ -507,7 +504,7 @@ NavAid.tuningGroups = [
   { name: 'VOR stations', keys: ['vorMarkerRadiusPx', 'vorMarkerWidthPx', 'vorMarkerColor', 'vorSelectedColor', 'vorLabelFontPx'] },
   { name: 'Reporting badges', keys: ['reportBadgeRadiusPx', 'reportBadgeOffsetPx', 'reportBadgeFontPx', 'reportBadgeColor', 'reportBadgeTextColor'] },
   { name: 'Live aircraft', keys: ['liveAircraftFillColor', 'liveAircraftOutlineColor', 'liveAircraftRadiusPx', 'liveHeadingLineColor', 'liveHeadingTextColor', 'liveHeadingLineWidthPx', 'liveHeadingDashPx', 'liveHeadingDashGapPx', 'liveHeadingTickPx', 'liveHeadingLabelPx', 'liveHeadingLabelGapPx'] },
-  { name: 'Vertical profile', keys: ['profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileTodColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
+  { name: 'Vertical profile', keys: ['profileBgColor', 'profileGridColor', 'profileAxisColor', 'profileGroundColor', 'profileTextColor', 'profileNmTextColor', 'profileTimeTextColor', 'profileAreaColor', 'profileLineColor', 'profileTocColor', 'profileMarkerHaloColor', 'profileAxisHeightPx', 'profileYPadPx'] },
   { name: 'SIGMETs', keys: ['sigmetTurbColor', 'sigmetIceColor', 'sigmetMtwColor', 'sigmetVaColor', 'sigmetDustColor', 'sigmetTcColor', 'sigmetDefaultColor', 'sigmetFillAlpha', 'sigmetLineWidthPx', 'sigmetDashOnPx', 'sigmetDashOffPx', 'sigmetLabelFontPx'] },
   { name: 'LSA bubbles', keys: ['lsaLineWidthPx', 'lsaHighlightWidthPx'] },
   { name: 'NOTAMs', keys: ['notamColor', 'notamFillAlpha', 'notamLineWidthPx', 'notamRouteWidthPx', 'notamDivertColor'] },
@@ -921,9 +918,9 @@ window.S = Object.assign({
   msaLowTitle: 'Planned altitude is below the minimum safe altitude for this leg',
   profileTitle: 'Vertical profile',
   profileVs: 'V/S (ft/min)',
+  profileVsTitle: 'Climb rate used to draw the departure climb on the profile. It does not affect leg times or fuel — those are distance and speed only.',
   fpDirection: 'Direction',
   toc: 'TOC',
-  tod: 'TOD',
   tocTitle: 'Top of climb',
   todTitle: 'Top of descent',
   tbAircraft: 'Aircraft',
@@ -2008,7 +2005,7 @@ function routeEndpointElev(i) {
 }
 // Model each leg at its own planned altitude. A leg ramps gradually from its
 // start altitude to its own altitude at the configured climb/descent
-// performance. The ramp is confined to the leg. TOC/TOD markers are emitted only
+// performance. The ramp is confined to the leg. A TOC marker is emitted only
 // when the departure / destination is an actual airfield (has a field
 // elevation); intermediate per-leg altitude changes are drawn but not marked.
 // Returns per-leg
@@ -2016,13 +2013,13 @@ function routeEndpointElev(i) {
 // each waypoint, for the distance axis).
 function routeProfile(ac) {
   ac = ac || (typeof aircraft === 'object' && aircraft) || {};
-  // A single vertical-speed (V/S) override drives both the climb and descent
-  // ramp slope when set (the profile's V/S input); otherwise per-aircraft perf.
+  // V/S shapes the PICTURE, never the clock. Leg time is dist / speed, full stop, so
+  // the kite, the plan, the totals and the nav log cannot disagree, and the ETE never
+  // moves because of a rate the pilot did not think they were entering. (Climb time is
+  // conventionally carried as a separate allowance, not smeared into leg ETEs.)
   const vs = typeof window !== 'undefined' && window.profileVS > 0 ? window.profileVS : 0;
   const climbFpm = vs > 0 ? vs : (ac.climbFpm > 0 ? ac.climbFpm : tune('profileClimbFpm'));
-  const descFpm = vs > 0 ? vs : (ac.descentFpm > 0 ? ac.descentFpm : tune('profileDescentFpm'));
   const climbKt = ac.climbKt > 0 ? ac.climbKt : tune('profileClimbKt');
-  const descKt = ac.descentKt > 0 ? ac.descentKt : tune('profileDescentKt');
   const gph = ac.gph > 0 ? ac.gph : tune('defaultGph');
   const legs = state.legs || [], wps = state.waypoints || [];
   const n = legs.length;
@@ -2031,17 +2028,15 @@ function routeProfile(ac) {
   // to assume 2 000 ft silently, model a descent onto the field, and come out ~50 s
   // short of the map kites and the route summary for the very same leg -- three
   // surfaces, two ETEs, and the assumption shown nowhere. The fallback survives only
-  // as the height the profile strip is DRAWN at (flat, no TOC/TOD).
+  // as the height the profile strip is DRAWN at (flat, no TOC).
   const unknownAlt = _unknownProfileAltFt();
   const altKnown = i => Number.isFinite(legs[i].inboundAltitude);
   const legAlt = i => altKnown(i) ? legs[i].inboundAltitude : unknownAlt;
-  // TOC/TOD are only meaningful off/onto the ground, so they're emitted solely
-  // when the departure / destination is an actual airfield (has a field elev).
-  const depElev = routeEndpointElev(0);
-  const destElev = routeEndpointElev(n);
-  const fieldStart = depElev != null ? depElev : (n ? legAlt(0) : unknownAlt);
-  const fieldEnd = destElev != null ? destElev : (n ? legAlt(n - 1) : unknownAlt);
-  const out = { legs: [], pts: [], tocs: [], tods: [], wpCum: [0], wpTime: [0], totalDist: 0, totalTimeH: 0, totalFuel: 0 };
+  // The only ramp in the profile is the climb off an airfield: that is where the
+  // aircraft demonstrably leaves a known elevation. A leg starting anywhere else is
+  // drawn level at its own altitude -- no synthesized mid-route ramps, and no descent
+  // invented onto the destination field (so TOD is gone; TOC stays).
+  const out = { legs: [], pts: [], tocs: [], wpCum: [0], wpTime: [0], totalDist: 0, totalTimeH: 0, totalFuel: 0 };
 
   // Prepass: per-leg distance + cumulative NM at each waypoint.
   const dists = [];
@@ -2058,48 +2053,26 @@ function routeProfile(ac) {
   for (let i = 0; i < n; i++) {
     const dist = dists[i];
     const cr = legAlt(i);
-    const isFirst = i === 0, isLast = i === n - 1;
-    // Each leg ramps from its start altitude (field on leg 1, else the previous
-    // leg's altitude) up/down to its own altitude at the climb/descent rate, so
-    // altitude changes happen gradually over distance — not as a vertical step.
-    // The ramp is confined to the leg (capped at the leg distance).
-    // No altitude on this leg -> nothing to ramp between: hold `cr` (the drawing
-    // fallback) flat across the leg so its time is dist/speed, the same number the
-    // map kite and the route summary show.
-    const level = !altKnown(i);
-    const startAlt = level ? cr : (isFirst ? fieldStart : legAlt(i - 1));
-    let climbDist = 0, descDist = 0;
-    if (cr > startAlt) climbDist = Math.min(dist, climbKt * ((cr - startAlt) / climbFpm) / 60);
-    else if (cr < startAlt) descDist = Math.min(dist, descKt * ((startAlt - cr) / descFpm) / 60);
-    // The final leg also descends to the destination field at its end.
-    let endDescDist = 0, endAlt = cr;
-    if (isLast && !level && cr > fieldEnd) {
-      endAlt = fieldEnd;
-      const availableDist = Math.max(0, dist - climbDist - descDist);
-      endDescDist = Math.min(availableDist, descKt * ((cr - fieldEnd) / descFpm) / 60);
-    }
-    const cruiseDist = Math.max(0, dist - climbDist - descDist - endDescDist);
-    const climbT = climbKt > 0 ? climbDist / climbKt : 0;
-    const descT = descKt > 0 ? (descDist + endDescDist) / descKt : 0;
-    const cruiseT = legs[i].flightSpeed > 0 ? cruiseDist / legs[i].flightSpeed : 0;
-    const timeH = climbT + cruiseT + descT;
+    // Does this leg start ON an airfield? Then it climbs from that field's elevation
+    // to its own altitude at the V/S, over however much distance that takes (capped
+    // at the leg). Everything else is drawn level.
+    const startElev = routeEndpointElev(i);
+    const climbs = altKnown(i) && startElev != null && cr > startElev;
+    const startAlt = climbs ? startElev : cr;
+    const climbDist = climbs
+      ? Math.min(dist, climbKt * ((cr - startAlt) / climbFpm) / 60)
+      : 0;
+    // Time is speed and distance only -- the ramp above costs nothing.
+    const timeH = legs[i].flightSpeed > 0 ? dist / legs[i].flightSpeed : 0;
     const fuel = timeH * gph;
-    out.legs.push({ dist, timeH, fuel, climbDist, descDist: descDist + endDescDist, cruiseDist, startAlt, cruiseAlt: cr, endAlt });
-    // Vertices: start, ramp to cr over the start transition, hold, then (last
-    // leg) ramp down to the field at the end.
+    out.legs.push({ dist, timeH, fuel, climbDist, descDist: 0,
+      cruiseDist: Math.max(0, dist - climbDist), startAlt, cruiseAlt: cr, endAlt: cr });
+    // Vertices: field elevation, ramp up to the leg altitude, then level to the end.
     out.pts.push({ d: cum, alt: startAlt });
-    const trans = climbDist + descDist;
-    if (trans > 0) out.pts.push({ d: cum + trans, alt: cr });
-    if (endDescDist > 0) out.pts.push({ d: cum + dist - endDescDist, alt: cr });
-    out.pts.push({ d: cum + dist, alt: endAlt });
-    // TOC only for the first leg climbing out of a departure airfield; TOD only
-    // for the last leg descending into a destination airfield. Intermediate
-    // altitude ramps are drawn but not marked.
-    if (isFirst && depElev != null && climbDist > 0) {
-      out.tocs.push({ leg: 0, frac: dist > 0 ? climbDist / dist : 0, alt: cr });
-    }
-    if (isLast && destElev != null && endDescDist > 0) {
-      out.tods.push({ leg: i, frac: dist > 0 ? (dist - endDescDist) / dist : 1, alt: cr });
+    if (climbDist > 0) out.pts.push({ d: cum + climbDist, alt: cr });
+    out.pts.push({ d: cum + dist, alt: cr });
+    if (climbDist > 0) {
+      out.tocs.push({ leg: i, frac: dist > 0 ? climbDist / dist : 0, alt: cr });
     }
     cum += dist; out.totalTimeH += timeH; out.totalFuel += fuel;
     out.wpTime.push(out.totalTimeH);

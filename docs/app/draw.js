@@ -242,7 +242,6 @@ function drawProfileMarkers() {
     octx.restore();
   };
   for (const t of prof.tocs) mark(t, S.toc || 'TOC', tune('profileTocColor'));
-  for (const t of prof.tods) mark(t, S.tod || 'TOD', tune('profileTodColor'));
 }
 
 // Render the altitude-vs-distance profile strip onto a canvas context within
@@ -321,7 +320,6 @@ function drawVerticalProfile(ctx, x, y, w, h) {
     ctx.fillText(label, cx, cy - 6);
   };
   for (const t of prof.tocs) dot(t, tune('profileTocColor'), S.toc || 'TOC');
-  for (const t of prof.tods) dot(t, tune('profileTodColor'), S.tod || 'TOD');
 
   // X axis: at each waypoint a tick + cumulative NM + cumulative time, plus a
   // short waypoint id, with a faint gridline up through the plot so you can
@@ -383,7 +381,6 @@ function drawVerticalProfile(ctx, x, y, w, h) {
     ctx.fillText(fmtT(t), lx, baseY + 13);
   };
   for (const t of prof.tocs) markAxis(t, tune('profileTocColor'));
-  for (const t of prof.tods) markAxis(t, tune('profileTodColor'));
 
   // Axis unit caption.
   ctx.fillStyle = tune('profileTextColor');

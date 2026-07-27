@@ -212,7 +212,6 @@ test.describe('Hidden tuning panel', () => {
         profileAreaColor: '#778899',
         profileLineColor: '#8899aa',
         profileTocColor: '#00aa33',
-        profileTodColor: '#bb6600',
         profileMarkerHaloColor: '#ffffff',
         planCardBgColor: '#fafafa',
         planCardHeaderBgColor: '#111111',
@@ -379,7 +378,6 @@ test.describe('Hidden tuning panel', () => {
     expect(out.fills).toContain('#001122');
     expect(out.fills).toContain('rgba(119, 136, 153, 0.2)');
     expect(out.fills).toContain('#00aa33');
-    expect(out.fills).toContain('#bb6600');
     expect(out.fills).toContain('#fafafa');
     expect(out.fills).toContain('#111111');
     expect(out.fills).toContain('#222222');
