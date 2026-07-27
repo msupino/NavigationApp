@@ -96,12 +96,11 @@ test('route totals are always on screen, and match the plan', async ({ page }) =
     const fp = [...document.querySelectorAll('.modal *')]
       .map(e => e.childNodes.length === 1 ? e.textContent.trim() : '')
       .find(t => /leg[s]? ·/.test(t));
-    return { pill: pill.textContent, visible: pill.style.display !== 'none', fp,
-      stats: document.getElementById('info').textContent };
+    return { pill: pill.textContent, visible: pill.style.display !== 'none', fp };
   });
   expect(r.visible).toBe(true);
-  expect(r.pill).toBe(r.fp);                   // pill, plan and stats cannot disagree
-  expect(r.stats).toContain('37.8 NM');
+  expect(r.pill).toBe(r.fp);                   // the pill and the plan cannot disagree
+  expect(r.pill).toContain('37.8 NM');
 });
 
 test('a one-leg route says "1 leg", not "1 legs"', async ({ page }) => {
@@ -452,4 +451,47 @@ test('dragging the legend takes the route totals with it', async ({ page }) => {
   const restored = await legend.boundingBox();
   expect(Math.abs(restored.x - after.x)).toBeLessThan(4);
   await expect(pill).toBeVisible();
+});
+
+test('route totals are shown in exactly one place', async ({ page }) => {
+  // The mobile menu carried its own stats block (Waypoints / Legs / Distance / Total
+  // time) while the legend card shows the same totals, so a phone printed the route
+  // info twice. The legend is now the only readout.
+  await page.setViewportSize({ width: 375, height: 812 });
+  await boot(page);
+  await withRoute(page);
+  const r = await page.evaluate(() => {
+    const texts = [...document.querySelectorAll('body *')]
+      .filter(el => el.children.length === 0 && /\d+\.\d NM/.test(el.textContent))
+      .map(el => el.id || el.className.toString().slice(0, 24));
+    return { withNm: texts, statsBlock: !!document.getElementById('info'),
+      pill: document.getElementById('route-summary').textContent };
+  });
+  expect(r.statsBlock).toBe(false);
+  expect(r.withNm).toEqual(['route-summary']);
+  expect(r.pill).toContain('NM');
+});
+
+test('the collapsed phone card has no empty band', async ({ page }) => {
+  // The ⋯ overflow was an 11px-wide trigger for six links that phones hide by
+  // design, and it still claimed a whole flex row above the GPS buttons.
+  await page.setViewportSize({ width: 375, height: 812 });
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const fl = document.getElementById('footer-links').getBoundingClientRect();
+    const gps = document.querySelector('#footer-links .footer-gps-group').getBoundingClientRect();
+    return { footerH: fl.height, gpsH: gps.height,
+      moreBtn: getComputedStyle(document.getElementById('footer-more-btn')).display };
+  });
+  expect(r.moreBtn).toBe('none');                    // follows the links it holds
+  expect(r.footerH).toBeLessThan(r.gpsH + 20);       // one row, not two
+});
+
+test('the overflow toggle is still there on desktop', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await boot(page);
+  await expect(page.locator('#footer-more-btn')).toBeVisible();
+  await page.locator('#footer-more-btn').click();
+  await expect(page.locator('#footer-more-menu')).toBeVisible();
+  await expect(page.locator('#footer-more-menu a')).toHaveCount(6);
 });

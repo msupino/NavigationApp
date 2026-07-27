@@ -3707,11 +3707,9 @@ function drawInfo() {
   // The VOR legend row only makes sense while the stations are on the map.
   const vorRow = document.getElementById('legend-row-vor');
   if (vorRow) vorRow.style.display = (typeof showVorStations !== 'undefined' && showVorStations) ? '' : 'none';
-  document.getElementById('info').textContent =
-    `${S.summaryWaypoints}: ${state.waypoints.length}\n` +
-    `${S.summaryLegs}: ${state.legs.length}\n` +
-    `${S.summaryDist}: ${totalDist.toFixed(1)} NM\n` +
-    `${S.summaryTime}: ${totalH > 0 ? toHMS(totalH) : '--'}`;
+  // The stats block that used to live at the bottom of the mobile menu is gone: the
+  // legend card now carries the same totals at every width, and on a phone the two
+  // were on screen together saying the same thing twice.
   drawSummaryPill(prof, totalDist, totalH);
 }
 
