@@ -3708,15 +3708,48 @@ function drawInfo() {
   // legend card now carries the same totals at every width, and on a phone the two
   // were on screen together saying the same thing twice.
   drawSummaryPill(prof, totalDist, totalH);
+  // Panning, zooming, editing the route or dragging the frame can all push the route
+  // off the page — re-check here so the warning tracks whatever the map is showing.
+  if (typeof refreshPrintFit === 'function') refreshPrintFit();
 }
 
 // Route totals, always on screen while a route exists. They lived only inside the
 // mobile hamburger (and nowhere at all on desktop), so the headline numbers a pilot
 // checks constantly -- distance, ETE, fuel -- meant opening a menu or the whole plan.
+// Widest summary this browser has shown, in px. The legend card is hand-placed and
+// draggable, so it must not resize under the cursor when a route appears, changes or
+// is cleared -- and the reserved width has to survive a reload, when there is no
+// route to measure. Monotone: it only ever grows.
+const LEGEND_PILL_W_KEY = 'navaid.legendPillW';
+let _legendPillW = (() => {
+  try { return Math.max(0, parseFloat(localStorage.getItem(LEGEND_PILL_W_KEY)) || 0); }
+  catch (e) { return 0; }
+})();
+function reserveSummaryWidth(pill) {
+  const w = Math.ceil(pill.scrollWidth);
+  if (w > _legendPillW + 0.5) {
+    _legendPillW = w;
+    try { localStorage.setItem(LEGEND_PILL_W_KEY, String(w)); } catch (e) { /* storage */ }
+  }
+  if (_legendPillW > 0) pill.style.minWidth = _legendPillW + 'px';
+}
+
 function drawSummaryPill(prof, totalDist, totalH) {
   const pill = document.getElementById('route-summary');
   if (!pill) return;
-  if (!state.legs.length || totalDist <= 0) { pill.style.display = 'none'; return; }
+  // No route: keep the row's BOX but hide its ink. Removing it from layout made the
+  // legend card resize the instant a route appeared or was cleared -- the card is
+  // draggable and hand-placed, so it must not change size under the cursor. A
+  // placeholder of the same shape as a real summary reserves a realistic width.
+  if (!state.legs.length || totalDist <= 0) {
+    pill.style.display = '';
+    pill.style.visibility = 'hidden';
+    pill.textContent = (typeof S.fpMobileSummary === 'function')
+      ? S.fpMobileSummary(0, '0.0', '0:00', '0.0') : '0 NM';
+    reserveSummaryWidth(pill);
+    return;
+  }
+  pill.style.visibility = '';
   // Trip fuel includes the taxi/takeoff allowance when departing an airfield —
   // exactly the plan's rule (io.js taxiFuel), or the pill would read 1.1 gal light.
   const taxi = (aircraft && aircraft.taxiGal > 0 && typeof isAirport === 'function' &&
@@ -3727,6 +3760,7 @@ function drawSummaryPill(prof, totalDist, totalH) {
     ? S.fpMobileSummary(state.legs.length, totalDist.toFixed(1),
       totalH > 0 ? toHMS(totalH) : '--', gal.toFixed(1))
     : `${totalDist.toFixed(1)} NM`;
+  reserveSummaryWidth(pill);
 }
 
 // --- print page frame -----------------------------------------------
@@ -3767,6 +3801,55 @@ function pageFrameRect() {
   const h = d.h * 1852 / mpp;
   return { x: (vw() - w) / 2 + pageOffset.x,
            y: (vh() - h) / 2 + pageOffset.y, w, h };
+}
+
+// Does the whole route sit inside the page frame? The frame is a fixed REAL-WORLD
+// size (A4 is ~40x28 NM at 1:250,000), so a long route cannot fit however far you
+// zoom -- and nothing said so: Print happily produced a page with two thirds of the
+// route outside it. Reports what is inside so the UI can warn.
+function routePageFit() {
+  const r = pageFrameRect();
+  const wps = (state.waypoints || []);
+  if (!r || !wps.length) return { fits: true, inside: wps.length, total: wps.length };
+  let inside = 0;
+  for (const w of wps) {
+    const p = proj(w);
+    if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) inside++;
+  }
+  return { fits: inside === wps.length, inside, total: wps.length };
+}
+
+// Smallest page that holds the route, centred on it. Tries every size/orientation in
+// increasing paper area and centres the frame on the route's midpoint; returns false
+// when even the largest cannot hold it (the caller says so rather than pretending).
+function fitPageToRoute() {
+  const wps = (state.waypoints || []);
+  if (!wps.length) return false;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const w of wps) {
+    const p = proj(w);
+    minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+    minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+  }
+  const need = { w: maxX - minX, h: maxY - minY };
+  const mid = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+  const mpp = metresPerPixel();
+  const candidates = [];
+  for (const size of ['A4', 'A4x2', 'A3']) {
+    for (const orient of ['landscape', 'portrait']) {
+      const p = PAGE_NM[size];
+      const d = orient === 'portrait' ? { w: p.h, h: p.w } : { w: p.w, h: p.h };
+      candidates.push({ size, orient, w: d.w * 1852 / mpp, h: d.h * 1852 / mpp });
+    }
+  }
+  const pick = candidates.find(c => c.w >= need.w && c.h >= need.h);
+  if (!pick) return false;
+  pageSize = pick.size;
+  pageOrient = pick.orient;
+  // Centre the chosen page on the route: pageFrameRect() centres on the viewport and
+  // then adds pageOffset, so the offset is simply route-midpoint minus viewport-centre.
+  pageOffset = { x: mid.x - vw() / 2, y: mid.y - vh() / 2 };
+  return { size: pick.size, orient: pick.orient };
 }
 
 // True if (px,py) is on the page-frame border band — the drag grip.

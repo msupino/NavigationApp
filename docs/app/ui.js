@@ -397,9 +397,29 @@ legendCtrl.addTo(map);
   const box = document.getElementById('map-legend');
   if (!box) return;
   const KEY = 'navaid.legendPos';
+  // The card must not come to rest under the menu bar. It carries the route totals as
+  // its top row, so that is exactly the line the toolbar hid -- the always-visible
+  // number ended up the invisible one. Only pushes DOWN, and only while the card
+  // actually overlaps the bar horizontally, so the rest of the map stays fair game.
+  function clearOfToolbar(x, y) {
+    const tb = document.getElementById('toolbar');
+    if (!tb) return y;
+    const t = tb.getBoundingClientRect();
+    if (!t.height) return y;                       // hidden (print, mobile modal)
+    const w = box.offsetWidth, h = box.offsetHeight;
+    const horizontallyClear = x + w < t.left || x > t.right;
+    // Leave the position alone unless the card would actually SIT ON the bar: clear to
+    // its side, fully above it, or fully below it are all fine. Testing only "above"
+    // pinned every card below the bar to bottom+6 -- it could be dragged up but never
+    // back down again.
+    const verticallyClear = y + h < t.top || y > t.bottom;
+    if (horizontallyClear || verticallyClear) return y;
+    return t.bottom + 6;
+  }
   function applyPos(x, y) {
     const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
     const maxY = Math.max(0, window.innerHeight - box.offsetHeight);
+    y = clearOfToolbar(Math.max(0, Math.min(maxX, x)), y);
     box.style.position = 'fixed';
     box.style.left = Math.max(0, Math.min(maxX, x)) + 'px';
     box.style.top = Math.max(0, Math.min(maxY, y)) + 'px';
@@ -4584,6 +4604,20 @@ try {
   if (stored === 'portrait' || stored === 'landscape') window.pageOrient = stored;
 } catch (e) { /* storage unavailable */ }
 document.getElementById('page-orient').onclick = toggleOrientation;
+// One-click fix for a route that overruns the page: pick the smallest page that holds
+// it and centre it there. Hidden unless the route actually overruns (refreshPrintFit).
+const _printFitBtn = document.getElementById('print-fit');
+if (_printFitBtn) _printFitBtn.onclick = () => {
+  const pick = (typeof fitPageToRoute === 'function') ? fitPageToRoute() : false;
+  if (!pick) return;                       // nothing fits; the warning already says so
+  try {
+    localStorage.setItem('navaid.pageSize', pageSize);
+    localStorage.setItem('navaid.pageOrient', pageOrient);
+  } catch (e) { /* storage unavailable */ }
+  if (typeof refreshPageButtons === 'function') refreshPageButtons();
+  if (typeof refreshOrientButton === 'function') refreshOrientButton();
+  draw();
+};
 refreshOrientButton();
 // Restore the A3/A4 page frame across reloads — the frame re-centres on the
 // current map view, so it reappears over the same area.
